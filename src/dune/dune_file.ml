@@ -13,13 +13,6 @@ module Jbuild_version = struct
   let decode = enum [ ("1", V1) ]
 end
 
-let relative_file =
-  plain_string (fun ~loc fn ->
-      if Filename.is_relative fn then
-        fn
-      else
-        User_error.raise ~loc [ Pp.textf "relative filename expected" ])
-
 let () =
   Dune_project.Extension.register_deleted ~name:"library_variants"
     ~deleted_in:(2, 6)
@@ -1982,60 +1975,19 @@ module Stanzas = struct
     let parser = parser project in
     parse parser sexp
 
-  exception Include_loop of Path.Source.t * (Loc.t * Path.Source.t) list
-
-  let rec parse_file_includes ~stanza_parser ~lexer ~current_file ~include_stack
-      sexps =
+  let rec parse_file_includes ~stanza_parser ~context sexps =
     List.concat_map sexps ~f:(parse stanza_parser)
     |> List.concat_map ~f:(function
          | Include (loc, fn) ->
-           let include_stack = (loc, current_file) :: include_stack in
-           let dir = Path.Source.parent_exn current_file in
-           let current_file = Path.Source.relative dir fn in
-           if not (Path.exists (Path.source current_file)) then
-             User_error.raise ~loc
-               [ Pp.textf "File %s doesn't exist."
-                   (Path.Source.to_string_maybe_quoted current_file)
-               ];
-           if
-             List.exists include_stack ~f:(fun (_, f) ->
-                 Path.Source.equal f current_file)
-           then
-             raise (Include_loop (current_file, include_stack));
-           let sexps =
-             Dune_lang.Parser.load ~lexer (Path.source current_file) ~mode:Many
-           in
-           parse_file_includes ~stanza_parser ~lexer ~current_file
-             ~include_stack sexps
+           let sexps, context = Include.load_sexps ~context (loc, fn) in
+           parse_file_includes ~stanza_parser ~context sexps
          | stanza -> [ stanza ])
 
   let parse ~file (project : Dune_project.t) sexps =
     let stanza_parser = parser project in
-    let lexer = Dune_lang.Lexer.token in
     let stanzas =
-      try
-        parse_file_includes ~stanza_parser ~lexer ~include_stack:[]
-          ~current_file:file sexps
-      with
-      | Include_loop (_, []) -> assert false
-      | Include_loop (file, last :: rest) ->
-        let loc = fst (Option.value (List.last rest) ~default:last) in
-        let line_loc (loc, file) =
-          sprintf "%s:%d"
-            (Path.Source.to_string_maybe_quoted file)
-            loc.Loc.start.pos_lnum
-        in
-        User_error.raise ~loc
-          [ Pp.text "Recursive inclusion of dune files detected:"
-          ; Pp.textf "File %s is included from %s"
-              (Path.Source.to_string_maybe_quoted file)
-              (line_loc last)
-          ; Pp.vbox
-              (Pp.concat_map rest ~sep:Pp.cut ~f:(fun x ->
-                   Pp.box ~indent:3
-                     (Pp.seq (Pp.verbatim "-> ")
-                        (Pp.textf "included from %s" (line_loc x)))))
-          ]
+      let context = Include.in_file file in
+      parse_file_includes ~stanza_parser ~context sexps
     in
     let (_ : bool) =
       List.fold_left stanzas ~init:false ~f:(fun env stanza ->

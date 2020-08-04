@@ -304,3 +304,34 @@ let decode =
          Dir_map.singleton { Dir_map.sexps = rest; subdir_status } :: subdirs)
   in
   enter (fields (decode ~allow_ignored_subdirs:true))
+
+let decode_includes ~context =
+  let open Dune_lang.Decoder in
+  let rec subdir ~context =
+    let* loc = loc in
+    let* name =
+      plain_string (fun ~loc s -> Atom (loc, Dune_lang.Atom.of_string s))
+    in
+    let+ nodes = fields (decode ~context) in
+    List
+      (loc, Atom (Loc.none, Dune_lang.Atom.of_string "subdir") :: name :: nodes)
+  and decode ~context =
+    let* includes =
+      multi_field "include"
+        (let* loc = loc
+         and+ fn = relative_file in
+         let sexps, context =
+           Stanza_common.Include.load_sexps ~context (loc, fn)
+         in
+         fields (with_input sexps (decode ~context)))
+    in
+    let+ subdirs = multi_field "subdir" (subdir ~context)
+    and+ sexps = leftover_fields in
+    List.concat (sexps :: subdirs :: includes)
+  in
+  enter (fields (decode ~context))
+
+let decode ~file =
+  let open Dune_lang.Decoder in
+  let* sexps = decode_includes ~context:(Stanza_common.Include.in_file file) in
+  with_input [ List (Loc.none, sexps) ] decode

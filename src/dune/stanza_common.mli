@@ -12,3 +12,12 @@ module Pkg : sig
 end
 
 val modules_field : string -> Ordered_set_lang.t Dune_lang.Decoder.fields_parser
+
+module Include : sig
+  type context
+
+  val in_file : Path.Source.t -> context
+
+  val load_sexps :
+    context:context -> Loc.t * string -> Dune_lang.Ast.t list * context
+end

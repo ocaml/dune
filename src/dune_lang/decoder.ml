@@ -184,6 +184,35 @@ let parse t context sexp =
   let ctx = Values (Ast.loc sexp, None, context) in
   result ctx (t ctx [ sexp ])
 
+let fields_of_values sexps =
+  let unparsed =
+    List.fold_left sexps ~init:Name.Map.empty ~f:(fun acc sexp ->
+        match sexp with
+        | List (_, name_sexp :: values) -> (
+          match name_sexp with
+          | Atom (_, A name) ->
+            Name.Map.set acc name
+              { Fields.Unparsed.values
+              ; entry = sexp
+              ; prev = Name.Map.find acc name
+              }
+          | List (loc, _)
+          | Quoted_string (loc, _)
+          | Template { loc; _ } ->
+            User_error.raise ~loc [ Pp.text "Atom expected" ] )
+        | _ ->
+          User_error.raise ~loc:(Ast.loc sexp)
+            [ Pp.text "S-expression of the form (<name> <values>...) expected" ])
+  in
+  { Fields.unparsed; known = [] }
+
+let with_input : type a k. ast list -> (a, k) parser -> k context -> k -> a * k
+    =
+ fun sexps t context _ ->
+  match context with
+  | Values _ -> t context sexps
+  | Fields _ -> t context (fields_of_values sexps)
+
 let capture ctx state =
   let f t = result ctx (t ctx state) in
   (f, [])
@@ -272,6 +301,13 @@ let filename =
         User_error.raise ~loc
           [ Pp.textf "'.' and '..' are not valid filenames" ]
       | fn -> fn)
+
+let relative_file =
+  plain_string (fun ~loc fn ->
+      if Filename.is_relative fn then
+        fn
+      else
+        User_error.raise ~loc [ Pp.textf "relative filename expected" ])
 
 let enter t =
   next_with_user_context (fun uc sexp ->
@@ -577,27 +613,8 @@ let multi_field name t (Fields (_, _, uc)) (state : Fields.t) =
   (res, Fields.consume name state)
 
 let fields t (Values (loc, cstr, uc)) sexps =
-  let unparsed =
-    List.fold_left sexps ~init:Name.Map.empty ~f:(fun acc sexp ->
-        match sexp with
-        | List (_, name_sexp :: values) -> (
-          match name_sexp with
-          | Atom (_, A name) ->
-            Name.Map.set acc name
-              { Fields.Unparsed.values
-              ; entry = sexp
-              ; prev = Name.Map.find acc name
-              }
-          | List (loc, _)
-          | Quoted_string (loc, _)
-          | Template { loc; _ } ->
-            User_error.raise ~loc [ Pp.text "Atom expected" ] )
-        | _ ->
-          User_error.raise ~loc:(Ast.loc sexp)
-            [ Pp.text "S-expression of the form (<name> <values>...) expected" ])
-  in
   let ctx = Fields (loc, cstr, uc) in
-  let x = result ctx (t ctx { Fields.unparsed; known = [] }) in
+  let x = result ctx (t ctx (fields_of_values sexps)) in
   (x, [])
 
 let leftover_fields_generic t more_fields (Fields (loc, cstr, uc)) state =

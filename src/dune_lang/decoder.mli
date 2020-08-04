@@ -47,6 +47,8 @@ type 'a fields_parser = ('a, fields) parser
     information such as versions to individual parsers. *)
 val parse : 'a t -> Univ_map.t -> ast -> 'a
 
+val with_input : ast list -> ('a, 'k) parser -> ('a, 'k) parser
+
 val return : 'a -> ('a, _) parser
 
 val ( >>= ) : ('a, 'k) parser -> ('a -> ('b, 'k) parser) -> ('b, 'k) parser
@@ -169,6 +171,9 @@ val plain_string : (loc:Loc.t -> string -> 'a) -> 'a t
 
 (** A valid filename, i.e. a string other than "." or ".." *)
 val filename : string t
+
+(** A relative filename *)
+val relative_file : string t
 
 val fix : ('a t -> 'a t) -> 'a t
 

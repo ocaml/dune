@@ -1156,9 +1156,11 @@ let rec clear_dir dir =
              (error, dir, "Stdune.Path.rm_rf: read_directory_with_kinds"))
   | Ok listing ->
     List.iter listing
-      ~f:(function
-        | (fn, Unix.S_DIR) -> rm_rf_dir fn
-        | (fn, _) -> unlink_operation fn);
+      ~f:(fun (fn, kind) ->
+        let fn = (Filename.concat dir fn) in
+        match kind with
+        | (Unix.S_DIR) -> rm_rf_dir fn
+        | (_) -> unlink_operation fn);
 
 and rm_rf_dir path =
   clear_dir path;

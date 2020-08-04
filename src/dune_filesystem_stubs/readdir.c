@@ -1,15 +1,20 @@
+
 #include <caml/alloc.h>
 #include <caml/memory.h>
 #include <caml/mlvalues.h>
-#include <caml/signals.h>
 #include <caml/unixsupport.h>
+
+#include <errno.h>
+
+#ifndef _WIN32
+
+#include <caml/signals.h>
 
 #include <errno.h>
 #include <sys/types.h>
 #include <dirent.h>
 typedef struct dirent directory_entry;
 
-#ifndef _WIN32
 value val_file_type(int typ) {
   switch(typ)
     {

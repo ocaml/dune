@@ -55,7 +55,7 @@ CAMLprim value caml__dune_filesystem_stubs__readdir(value vd)
   }
   v_filename = caml_copy_string(e->d_name);
   v_tuple = caml_alloc_small(2, 0);
-  caml_modify(&Field(v_tuple, 0), v_filename);
-  caml_modify(&Field(v_tuple, 1), val_file_type(e->d_type));
+  Field(v_tuple, 0) = v_filename;
+  Field(v_tuple, 1) = val_file_type(e->d_type);
   CAMLreturn(v_tuple);
 }

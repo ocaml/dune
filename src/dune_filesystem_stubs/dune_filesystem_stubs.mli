@@ -11,8 +11,8 @@ end
 
 (** [read_directory_with_kinds] is similar to [Sys.readdir], while additionally
     returning kinds of the filesystem entries. *)
-val read_directory_with_kinds : string ->
-  ((string * File_kind.t) list, Unix.error) Result.t
+val read_directory_with_kinds :
+  string -> ((string * File_kind.t) list, Unix.error) Result.t
 
 (** [read_directory_with_kinds d] returns all the filesystem entries in [d]
     except for "." and "..", similar to [Sys.readdir]. *)

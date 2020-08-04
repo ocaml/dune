@@ -1074,8 +1074,7 @@ let explode_exn t =
 
 let exists t = try Sys.file_exists (to_string t) with Sys_error _ -> false
 
-let readdir_unsorted t =
-  Dune_filesystem_stubs.read_directory (to_string t)
+let readdir_unsorted t = Dune_filesystem_stubs.read_directory (to_string t)
 
 let readdir_unsorted_with_kinds t =
   Dune_filesystem_stubs.read_directory_with_kinds (to_string t)

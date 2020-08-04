@@ -105,7 +105,7 @@ let do_promote db files_to_promote =
     | Error _ -> []
     | Ok files ->
       List.filter_map files ~f:(function
-        | (fn, Unix.S_DIR) ->
+        | fn, Unix.S_DIR ->
           if fn = "" || fn.[0] = '.' || fn = "install" then
             None
           else

@@ -425,7 +425,7 @@ let get_dir_triage t ~dir =
              ; Pp.textf "Reason: %s" (Unix.error_message m)
              ];
            Path.Set.empty
-         | Ok filenames -> Path.Set.of_listing ~dir ~filenames))
+         | Ok filenames -> Path.Set.of_listing ~dir ~filenames ))
   | Build (Regular Root) ->
     let allowed_subdirs =
       Subdir_set.to_dir_set

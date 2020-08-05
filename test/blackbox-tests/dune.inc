@@ -2117,17 +2117,6 @@
    (progn (run dune-cram run run.t) (diff? run.t run.t.corrected)))))
 
 (rule
- (alias no-name-field)
- (deps
-  (package dune)
-  (source_tree test-cases/no-name-field.t)
-  (alias test-deps))
- (action
-  (chdir
-   test-cases/no-name-field.t
-   (progn (run dune-cram run run.t) (diff? run.t run.t.corrected)))))
-
-(rule
  (alias null-dep)
  (deps (package dune) (source_tree test-cases/null-dep.t) (alias test-deps))
  (action
@@ -3397,7 +3386,6 @@
   (alias name-field-validation)
   (alias no-infer)
   (alias no-installable-mode)
-  (alias no-name-field)
   (alias null-dep)
   (alias ocaml-config-macro)
   (alias ocaml-syntax)
@@ -3684,7 +3672,6 @@
   (alias name-field-validation)
   (alias no-infer)
   (alias no-installable-mode)
-  (alias no-name-field)
   (alias null-dep)
   (alias ocaml-config-macro)
   (alias ocaml-syntax)

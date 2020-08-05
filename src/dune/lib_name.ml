@@ -12,6 +12,14 @@ module Local = struct
     Stringlike.Make (struct
       type t = string
 
+      let valid_char = function
+        | 'A' .. 'Z'
+        | 'a' .. 'z'
+        | '_'
+        | '0' .. '9' ->
+          true
+        | _ -> false
+
       let to_string s = s
 
       let module_ = "Lib_name.Local"
@@ -20,13 +28,18 @@ module Local = struct
 
       let description_of_valid_string = Some valid_format_doc
 
-      let valid_char = function
-        | 'A' .. 'Z'
-        | 'a' .. 'z'
-        | '_'
-        | '0' .. '9' ->
-          true
-        | _ -> false
+      let hint_valid =
+        Some
+          (fun name ->
+            String.filter_map name ~f:(fun c ->
+                if valid_char c then
+                  Some c
+                else
+                  match c with
+                  | '.'
+                  | '-' ->
+                    Some '_'
+                  | _ -> None))
 
       let of_string_opt (name : string) =
         match name with
@@ -61,12 +74,14 @@ let split t =
   | [] -> assert false
   | pkg :: rest -> (Package.Name.of_string pkg, rest)
 
-let to_local = Local.of_string_opt
+let to_local = Local.of_string_user_error
 
 include Stringlike.Make (struct
   type nonrec t = string
 
   let description_of_valid_string = None
+
+  let hint_valid = None
 
   let to_string s = s
 

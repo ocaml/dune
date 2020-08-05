@@ -19,7 +19,7 @@ val equal : t -> t -> bool
 
 val of_local : Loc.t * Local.t -> t
 
-val to_local : t -> Local.t option
+val to_local : Loc.t * t -> (Local.t, User_message.t) result
 
 val split : t -> Package.Name.t * string list
 

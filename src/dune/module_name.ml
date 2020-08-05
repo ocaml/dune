@@ -1,7 +1,21 @@
 open Stdune
 
+let valid_format_doc =
+  Pp.text
+    "Module names must be non-empty and composed only of the following \
+     characters: 'A'..'Z', 'a'..'z', '_', ''' or '0'..'9'."
+
 include Stringlike.Make (struct
   type t = string
+
+  let valid_char = function
+    | 'A' .. 'Z'
+    | 'a' .. 'z'
+    | '0' .. '9'
+    | '\''
+    | '_' ->
+      true
+    | _ -> false
 
   let to_string s = s
 
@@ -9,7 +23,20 @@ include Stringlike.Make (struct
 
   let module_ = "Module_name"
 
-  let description_of_valid_string = None
+  let description_of_valid_string = Some valid_format_doc
+
+  let hint_valid =
+    Some
+      (fun name ->
+        String.filter_map name ~f:(fun c ->
+            if valid_char c then
+              Some c
+            else
+              match c with
+              | '.'
+              | '-' ->
+                Some '_'
+              | _ -> None))
 
   let is_valid_module_name name =
     match name with
@@ -21,14 +48,8 @@ include Stringlike.Make (struct
         | 'a' .. 'z' ->
           ()
         | _ -> raise_notrace Exit );
-        String.iter s ~f:(function
-          | 'A' .. 'Z'
-          | 'a' .. 'z'
-          | '0' .. '9'
-          | '\''
-          | '_' ->
-            ()
-          | _ -> raise_notrace Exit);
+        String.iter s ~f:(fun c ->
+            if not (valid_char c) then raise_notrace Exit);
         true
       with Exit -> false )
 

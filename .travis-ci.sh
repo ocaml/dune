@@ -24,8 +24,7 @@ opam_install_test_deps () {
     opam install \
          ocamlfind \
          ppxlib \
-         cinaps \
-         ppx_expect.v0.13.1 \
+         "ppx_expect>=v0.14" \
          "$ODOC" \
          menhir \
          ocaml-migrate-parsetree \

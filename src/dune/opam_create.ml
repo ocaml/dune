@@ -99,6 +99,8 @@ let package_fields
 
 let dune_name = Package.Name.of_string "dune"
 
+let odoc_name = Package.Name.of_string "odoc"
+
 let insert_dune_dep depends dune_version =
   let constraint_ : Package.Dependency.Constraint.t =
     let dune_version = Dune_lang.Syntax.Version.to_string dune_version in
@@ -130,6 +132,35 @@ let insert_dune_dep depends dune_version =
   in
   loop [] depends
 
+let rec already_requires_odoc : Package.Dependency.Constraint.t -> bool =
+  function
+  | Bvar (Var "with-doc" | Var "build" | Var "post")
+  | Uop _
+  | Bop _ ->
+    true
+  | Bvar _ -> false
+  | And l -> List.for_all ~f:already_requires_odoc l
+  | Or l -> List.exists ~f:already_requires_odoc l
+
+let insert_odoc_dep depends =
+  let with_doc : Package.Dependency.Constraint.t = Bvar (Var "with-doc") in
+  let odoc_dep =
+    { Package.Dependency.name = odoc_name; constraint_ = Some with_doc }
+  in
+  let rec loop acc = function
+    | [] -> List.rev (odoc_dep :: acc)
+    | (dep : Package.Dependency.t) :: rest ->
+      if
+        Package.Name.equal dep.name odoc_name
+        && Option.forall ~f:already_requires_odoc dep.constraint_
+      then
+        (* Stop now as odoc will be required anyway *)
+        List.rev_append (dep :: acc) rest
+      else
+        loop (dep :: acc) rest
+  in
+  loop [] depends
+
 let opam_fields project (package : Package.t) =
   let dune_version = Dune_project.dune_version project in
   let package =
@@ -137,6 +168,12 @@ let opam_fields project (package : Package.t) =
       package
     else
       { package with depends = insert_dune_dep package.depends dune_version }
+  in
+  let package =
+    if dune_version < (2, 7) || Package.Name.equal package.name odoc_name then
+      package
+    else
+      { package with depends = insert_odoc_dep package.depends }
   in
   let package_fields = package_fields package ~project in
   let open Opam_file.Create in

@@ -76,6 +76,7 @@ no stability guarantee.
 (package
  (name dune-configurator)
  (depends
+  (ocaml (>= 4.03.0))
   (dune (>= 2.6.0)))
  (synopsis "Helper library for gathering system configuration")
  (description "\

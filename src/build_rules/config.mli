@@ -1,6 +1,7 @@
 (** Configuration parameters *)
 
-open! Import
+open! Dune.Import
+open! Dune
 
 (** Local installation directory *)
 val local_install_dir : context:Context_name.t -> Path.Build.t

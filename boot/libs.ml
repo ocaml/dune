@@ -23,7 +23,7 @@ let local_libraries =
   ; ("otherlibs/action-plugin/src", Some "Dune_action_plugin", false, None)
   (* CR cwong: here *)
   ; ("src/engine", Some "Dune", true, None)
-  ; ("src/api", Some "Dune_api", true, None)
+  ; ("src/build_rules", Some "Dune_rules", true, None)
   ; ("vendor/cmdliner/src", None, false, None)
   ; ("otherlibs/build-info/src", Some "Build_info", false,
     Some "build_info_data")

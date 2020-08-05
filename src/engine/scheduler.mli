@@ -1,6 +1,7 @@
 (** Scheduling *)
 
 open! Stdune
+open Dune_rules
 
 (** [go ?log ?config fiber] runs the fiber until it terminates. *)
 val go : ?config:Config.t -> (unit -> 'a Fiber.t) -> 'a

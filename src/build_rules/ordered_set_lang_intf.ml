@@ -1,4 +1,4 @@
-open Import
+open Dune.Import
 
 module type Key = sig
   type t

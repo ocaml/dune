@@ -1,4 +1,5 @@
 open Stdune
+open Dune
 
 module Status : sig
   type t =

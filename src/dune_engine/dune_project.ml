@@ -504,9 +504,10 @@ let interpret_lang_and_extensions ~(lang : Lang.Instance.t) ~explicit_extensions
     in
     let extension_args, extension_stanzas =
       List.fold_left extensions ~init:(Univ_map.empty, [])
-        ~f:(fun (args_acc, stanzas_acc)
-                ((ext : Extension.automatic), is_explicit)
-                ->
+        ~f:(fun
+             (args_acc, stanzas_acc)
+             ((ext : Extension.automatic), is_explicit)
+           ->
           match ext with
           | Disabled _ -> (args_acc, stanzas_acc)
           | Enabled instance ->

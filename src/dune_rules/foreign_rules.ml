@@ -100,7 +100,8 @@ let build_c ~kind ~sctx ~dir ~expander ~include_flags (loc, src, dst) =
     ~dir
       (* With sandboxing we get errors like: bar.c:2:19: fatal error: foo.cxx:
          No such file or directory #include "foo.cxx". (These errors happen only
-         when compiling c files.) *) ~sandbox:Sandbox_config.no_sandboxing
+         when compiling c files.) *)
+    ~sandbox:Sandbox_config.no_sandboxing
     (let src = Path.build (Foreign.Source.path src) in
      let c_compiler = Ocaml_config.c_compiler ctx.ocaml_config in
      (* We have to execute the rule in the library directory as the .o is

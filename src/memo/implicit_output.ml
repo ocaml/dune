@@ -33,15 +33,14 @@ end = struct
 
   type 'a t = (module T with type a = 'a)
 
-  let create (type a) (module I : Implicit_output with type t = a) =
-    ( ( module struct
-        type nonrec a = a
+  let create (type a) (module I : Implicit_output with type t = a) : a t =
+    ( module struct
+      type nonrec a = a
 
-        type _ w += W : a w
+      type _ w += W : a w
 
-        include I
-      end )
-      : a t )
+      include I
+    end )
 
   let get (type a) (module T : T with type a = a) =
     (module T : Implicit_output with type t = a)

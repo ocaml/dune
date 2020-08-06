@@ -88,6 +88,18 @@ subdir stanzas can also appear in included files
   >   (action (with-stdout-to hello.txt (echo "Hello from subdir\n")))))
   > EOF
   $ dune build --root . subdir/hello.txt
+  File "dune.inc", line 1, characters 0-90:
+  1 | (subdir subdir
+  2 |  (rule
+  3 |   (action (with-stdout-to hello.txt (echo "Hello from subdir\n")))))
+  Error: Using a `subdir' stanza within an `include'd file is only available
+  since version 2.7 of the dune language. Please update your dune-project file
+  to have (lang dune 2.7).
+  [1]
+  $ cat >dune-project <<EOF
+  > (lang dune 2.7)
+  > EOF
+  $ dune build --root . subdir/hello.txt
   $ cat _build/default/subdir/hello.txt
   Hello from subdir
 

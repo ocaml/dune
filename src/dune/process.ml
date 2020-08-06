@@ -146,6 +146,12 @@ type purpose =
   | Internal_job
   | Build_job of Path.Build.Set.t
 
+let io_to_redirection_path (kind : Io.kind) =
+  match kind with
+  | Terminal -> None
+  | Null -> Some (Lazy.force Io.null_path)
+  | File fn -> Some (Path.to_string fn)
+
 let command_line_enclosers ~dir ~(stdout_to : Io.output Io.t)
     ~(stderr_to : Io.output Io.t) ~(stdin_from : Io.input Io.t) =
   let quote fn = String.quote_for_shell (Path.to_string fn) in
@@ -156,26 +162,26 @@ let command_line_enclosers ~dir ~(stdout_to : Io.output Io.t)
   in
   let suffix =
     match stdin_from.kind with
-    | Null -> suffix
-    | Terminal -> suffix
+    | Null
+    | Terminal ->
+      suffix
     | File fn -> suffix ^ " < " ^ quote fn
   in
   let suffix =
-    match (stdout_to.kind, stderr_to.kind) with
-    | File fn1, File fn2 when Path.equal fn1 fn2 -> " &> " ^ quote fn1
-    | _ -> (
-      let suffix =
-        match stdout_to.kind with
-        | Terminal -> suffix
-        | Null ->
-          suffix ^ " > " ^ String.quote_for_shell (Lazy.force Io.null_path)
-        | File fn -> suffix ^ " > " ^ quote fn
+    match
+      ( io_to_redirection_path stdout_to.kind
+      , io_to_redirection_path stderr_to.kind )
+    with
+    | Some fn1, Some fn2 when String.equal fn1 fn2 ->
+      " &> " ^ String.quote_for_shell fn1
+    | path_out, path_err ->
+      let add_to_suffix suffix path redirect =
+        match path with
+        | None -> suffix
+        | Some path -> suffix ^ redirect ^ String.quote_for_shell path
       in
-      match stderr_to.kind with
-      | Terminal -> suffix
-      | Null ->
-        suffix ^ " 2> " ^ String.quote_for_shell (Lazy.force Io.null_path)
-      | File fn -> suffix ^ " 2> " ^ quote fn )
+      let suffix = add_to_suffix suffix path_out " > " in
+      add_to_suffix suffix path_err " 2> "
   in
   (prefix, suffix)
 

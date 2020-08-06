@@ -476,7 +476,7 @@ let exec ~targets ~context ~env ~rule_loc ~build_deps t =
     ; env
     ; stdout_to = Process.Io.stdout
     ; stderr_to = Process.Io.stderr
-    ; stdin_from = Process.Io.stdin
+    ; stdin_from = Process.Io.null In
     ; prepared_dependencies = DAP.Dependency.Set.empty
     ; exit_codes = Predicate_lang.Element 0
     }

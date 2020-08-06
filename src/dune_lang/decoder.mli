@@ -47,7 +47,7 @@ type 'a fields_parser = ('a, fields) parser
     information such as versions to individual parsers. *)
 val parse : 'a t -> Univ_map.t -> ast -> 'a
 
-val with_input : ast list -> ('a, 'k) parser -> ('a, 'k) parser
+val set_input : ast list -> (unit, 'k) parser
 
 val return : 'a -> ('a, _) parser
 

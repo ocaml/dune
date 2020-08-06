@@ -206,12 +206,11 @@ let fields_of_values sexps =
   in
   { Fields.unparsed; known = [] }
 
-let with_input : type a k. ast list -> (a, k) parser -> k context -> k -> a * k
-    =
- fun sexps t context _ ->
+let set_input : type k. ast list -> (unit, k) parser =
+ fun sexps context _ ->
   match context with
-  | Values _ -> t context sexps
-  | Fields _ -> t context (fields_of_values sexps)
+  | Values _ -> ((), sexps)
+  | Fields _ -> ((), fields_of_values sexps)
 
 let capture ctx state =
   let f t = result ctx (t ctx state) in

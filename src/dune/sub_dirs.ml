@@ -329,7 +329,8 @@ let decode_includes ~context =
          let sexps, context =
            Stanza_common.Include.load_sexps ~context (loc, fn)
          in
-         fields (with_input sexps (decode ~context ~path)))
+         let* () = set_input sexps in
+         fields (decode ~context ~path))
     in
     let+ subdirs = multi_field "subdir" (subdir ~context ~path)
     and+ sexps = leftover_fields in
@@ -340,4 +341,5 @@ let decode_includes ~context =
 let decode ~file =
   let open Dune_lang.Decoder in
   let* sexps = decode_includes ~context:(Stanza_common.Include.in_file file) in
-  with_input [ List (Loc.none, sexps) ] decode
+  let* () = set_input [ List (Loc.none, sexps) ] in
+  decode

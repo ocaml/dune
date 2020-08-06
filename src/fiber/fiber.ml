@@ -108,7 +108,7 @@ end = struct
     | Do_nothing -> ()
     | Exec r -> r.ref_count <- r.ref_count + n
 
-  let deref t =
+  let rec deref t =
     match t.on_release with
     | Do_nothing -> ()
     | Exec r ->
@@ -117,10 +117,16 @@ end = struct
       r.ref_count <- n;
       if n = 0 then (
         current := r.k.ctx;
-        r.k.run r.result
+        (* We need to call [safe_run_k] as we might be the in handler of the
+           [try...with] block inside [apply] and so we are no more in a
+           [try...with] blocks *)
+        safe_run_k r.k.run r.result
       )
 
-  let forward_error =
+  and safe_run_k : type a. (a -> unit) -> a -> unit =
+   fun k x -> try k x with exn -> forward_error exn
+
+  and forward_error =
     let rec loop t exn =
       match t.on_error with
       | None -> Exn_with_backtrace.reraise exn
@@ -171,8 +177,6 @@ end = struct
     let t = !current in
     current := { t with vars };
     Exn.protect ~finally:(fun () -> current := t) ~f:(fun () -> f x)
-
-  let safe_run_k k x = try k x with exn -> forward_error exn
 
   module K = struct
     type 'a t = 'a k

@@ -264,15 +264,15 @@ let fork_and_join fa fb k =
   EC.apply fa () (fun a ->
       match !state with
       | Nothing_yet ->
-        EC.deref ();
-        state := Got_a a
+        state := Got_a a;
+        EC.deref ()
       | Got_a _ -> assert false
       | Got_b b -> k (a, b));
   fb () (fun b ->
       match !state with
       | Nothing_yet ->
-        EC.deref ();
-        state := Got_b b
+        state := Got_b b;
+        EC.deref ()
       | Got_a a -> k (a, b)
       | Got_b _ -> assert false)
 
@@ -282,15 +282,15 @@ let fork_and_join_unit fa fb k =
   EC.apply fa () (fun () ->
       match !state with
       | Nothing_yet ->
-        EC.deref ();
-        state := Got_a ()
+        state := Got_a ();
+        EC.deref ()
       | Got_a _ -> assert false
       | Got_b b -> k b);
   fb () (fun b ->
       match !state with
       | Nothing_yet ->
-        EC.deref ();
-        state := Got_b b
+        state := Got_b b;
+        EC.deref ()
       | Got_a () -> k b
       | Got_b _ -> assert false)
 

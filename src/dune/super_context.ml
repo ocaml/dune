@@ -295,10 +295,10 @@ let build_dir_is_vendored build_dir =
   in
   Option.value ~default:false opt
 
-let ocaml_flags t ~dir (x : Dune_file.Buildable.t) =
+let ocaml_flags t ~dir (f : Ocaml_flags.Spec.t) =
   let expander = Env_tree.expander t.env_tree ~dir in
   let flags =
-    Ocaml_flags.make ~spec:x.flags
+    Ocaml_flags.make ~spec:f
       ~default:(get_node t.env_tree ~dir |> Env_node.ocaml_flags)
       ~eval:(Expander.expand_and_eval_set expander)
   in

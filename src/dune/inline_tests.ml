@@ -163,6 +163,7 @@ include Sub_system.Register_end_point (struct
       ; deps : Dep_conf.t list
       ; modes : Mode_conf.Set.t
       ; flags : Ordered_set_lang.Unexpanded.t
+      ; compile_flags : Ordered_set_lang.Unexpanded.t
       ; backend : (Loc.t * Lib_name.t) option
       ; libraries : (Loc.t * Lib_name.t) list
       }
@@ -182,6 +183,7 @@ include Sub_system.Register_end_point (struct
         (let+ loc = loc
          and+ deps = field "deps" (repeat Dep_conf.decode) ~default:[]
          and+ flags = Ordered_set_lang.Unexpanded.field "flags"
+         and+ compile_flags = Ordered_set_lang.Unexpanded.field "compile_flags"
          and+ backend = field_o "backend" (located Lib_name.decode)
          and+ libraries =
            field "libraries" (repeat (located Lib_name.decode)) ~default:[]
@@ -190,7 +192,7 @@ include Sub_system.Register_end_point (struct
              (Dune_lang.Syntax.since syntax (1, 11) >>> Mode_conf.Set.decode)
              ~default:Mode_conf.Set.default
          in
-         { loc; deps; flags; backend; libraries; modes })
+         { loc; deps; flags; compile_flags; backend; libraries; modes })
 
     (* We don't use this at the moment, but we could implement it for debugging
        purposes *)
@@ -280,7 +282,10 @@ include Sub_system.Register_end_point (struct
       Compilation_context.create () ~super_context:sctx ~expander ~scope
         ~obj_dir ~modules ~opaque:(Explicit false) ~requires_compile:runner_libs
         ~requires_link:(lazy runner_libs)
-        ~flags:(Ocaml_flags.of_list [ "-w"; "-24"; "-g" ])
+        ~flags:
+          (Ocaml_flags.append_common
+             (Super_context.ocaml_flags sctx ~dir lib.buildable.flags)
+             [ "-w"; "-24"; "-g" ])
         ~js_of_ocaml:(Some lib.buildable.js_of_ocaml) ~dynlink:false
         ~package:(Option.map lib.public ~f:Dune_file.Public_lib.package)
     in

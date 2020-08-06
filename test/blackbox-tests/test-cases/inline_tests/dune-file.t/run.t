@@ -30,3 +30,10 @@ package:
   Entering directory 'dune-file-user'
   inline_test_runner_foo_tests alias runtest
   414243
+
+We run the inline tests with a program that passes in specifc compile flags:
+
+  $ export OCAMLPATH=$PWD/_install/lib; dune runtest --root dune-file-compile-flags
+  Entering directory 'dune-file-compile-flags'
+  inline_test_runner_compile_flags_test alias runtest
+  414243

@@ -1,0 +1,5 @@
+(library
+ (name compile_flags_test)
+ (inline_tests
+  (backend foo)
+  (compile_flags -bar)))

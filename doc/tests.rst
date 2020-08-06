@@ -469,6 +469,7 @@ File Tests
 To define a standalone test, we create a ``.t`` file. For example, ``foo.t``:
 
 .. code:: bash
+
    Simplest possible cram test
      $ echo "testing"
 
@@ -500,9 +501,10 @@ manually, instead we detect failure when the command produces a different output
 than what is recorded in the test script.
 
 For example, here's an example of how we'd test the ``wc`` utility. ``wc.t``:
+
 .. code:: bash
 
-   We create a fixture called foo
+   We create a test artifact called foo
      $ cat >foo <<EOF
      > foo
      > bar
@@ -515,18 +517,18 @@ For example, here's an example of how we'd test the ``wc`` utility. ``wc.t``:
      4
 
 The above example uses the here doc syntax to pipe the subsequent lines to
-``cat``. This is convenient for creating small fixtures.
+``cat``. This is convenient for creating small test artifacts.
 
 Directory Tests
 ---------------
 
-In the above example we used ``cat`` to create the fixture, but what if there
-are too many fixtures to comfortably fit in test file? Or some of the fixtures
-are binary? It's possible to include the fixtures as normal files or directories
-provided the test is defined as a directory. The name of the test directory must
-end with ``.t`` and must include a ``run.t`` as the test script. Everything else
-in that directory is treated as raw data for the test. It's not possible to
-define rules using ``dune`` files in such a directory.
+In the above example we used ``cat`` to create the test artifact, but what if
+there are too many artifacts to comfortably fit in test file? Or some of the
+artifacts are binary? It's possible to include the artifacts as normal files or
+directories provided the test is defined as a directory. The name of the test
+directory must end with ``.t`` and must include a ``run.t`` as the test script.
+Everything else in that directory is treated as raw data for the test. It's not
+possible to define rules using ``dune`` files in such a directory.
 
 We convert the ``wc`` test above into a directory test ``wc.t``:
 
@@ -536,8 +538,8 @@ We convert the ``wc`` test above into a directory test ``wc.t``:
      run.t foo.txt bar/
 
 This defines a directory test ``wc.t`` which must include a ``run.t`` file as
-the test script, with ``fool.txt`` and ``bar`` are fixtures. We may then access
-their contents in the test script ``run.t``:
+the test script, with ``fool.txt`` and ``bar`` are test artifacts. We may then
+access their contents in the test script ``run.t``:
 
 .. code:: bash
 
@@ -574,16 +576,16 @@ field:
     (applies_to * \ foo bar)
     (deps ../foo.exe))
 
-We use the predicate language to apply this stanza to all tests in this
+We use the :ref:`predicate-lang` to apply this stanza to all tests in this
 directory except for ``foo.t`` and ``bar.t``. The ``applies_to`` field also
-accepts the value ``:whole_subtree`` in order to apply the options to all tests
+accepts the special value ``:whole_subtree`` in order to apply the options to all tests
 in all sub directories (recursively). This is useful to apply common options to
 an entire test suite.
 
 The ``cram`` stanza accepts the following fields:
 
 - ``enabled_if`` - controls whether the tests are enabled
-- ``alias`` - aliases that can be used to run the test (in addition to
+- ``alias`` - alias that can be used to run the test (in addition to
   ``runtest``)
 - ``deps`` - dependencies of the test
 

@@ -5,7 +5,6 @@
 (alias
  (name test-deps)
  (deps
-  ../utils/dune_cmd.exe
   %{bin:dune_cmd}
   (package dune)))
 

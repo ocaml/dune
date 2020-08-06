@@ -90,3 +90,19 @@ subdir stanzas can also appear in included files
   $ dune build --root . subdir/hello.txt
   $ cat _build/default/subdir/hello.txt
   Hello from subdir
+
+Include stanzas within subdir stanzas
+
+  $ mkdir -p subdir-include/a; cd subdir-include
+  $ cat >dune-project <<EOF
+  > (lang dune 2.5)
+  > EOF
+  $ cat >dune <<EOF
+  > (subdir a (include dune.inc))
+  > EOF
+  $ cat >a/dune.inc <<EOF
+  > (rule (with-stdout-to hello.txt (echo Hello!)))
+  > EOF
+  $ dune build --root . a/hello.txt
+  $ cat _build/default/a/hello.txt
+  Hello!

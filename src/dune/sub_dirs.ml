@@ -307,29 +307,35 @@ let decode =
 
 let decode_includes ~context =
   let open Dune_lang.Decoder in
-  let rec subdir ~context =
+  let rec subdir ~context ~path =
     let* loc = loc in
-    let* name =
-      plain_string (fun ~loc s -> Atom (loc, Dune_lang.Atom.of_string s))
+    let* name, path =
+      plain_string (fun ~loc s ->
+          (Atom (loc, Dune_lang.Atom.of_string s), s :: path))
     in
-    let+ nodes = fields (decode ~context) in
+    let+ nodes = fields (decode ~context ~path) in
     List
       (loc, Atom (Loc.none, Dune_lang.Atom.of_string "subdir") :: name :: nodes)
-  and decode ~context =
+  and decode ~context ~path =
     let* includes =
       multi_field "include"
         (let* loc = loc
          and+ fn = relative_file in
+         let fn =
+           List.fold_left
+             ~f:(fun fn dir -> Filename.concat dir fn)
+             ~init:fn path
+         in
          let sexps, context =
            Stanza_common.Include.load_sexps ~context (loc, fn)
          in
-         fields (with_input sexps (decode ~context)))
+         fields (with_input sexps (decode ~context ~path)))
     in
-    let+ subdirs = multi_field "subdir" (subdir ~context)
+    let+ subdirs = multi_field "subdir" (subdir ~context ~path)
     and+ sexps = leftover_fields in
     List.concat (sexps :: subdirs :: includes)
   in
-  enter (fields (decode ~context))
+  enter (fields (decode ~context ~path:[]))
 
 let decode ~file =
   let open Dune_lang.Decoder in

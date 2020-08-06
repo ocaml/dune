@@ -169,6 +169,39 @@ let%expect_test _ =
 (Error [ { exn = "Exit"; backtrace = "" } ], ())
 |}]
 
+let%expect_test "collect errors inside with_error_handler" =
+  test (backtrace_result unit) ~expect_never:true
+    (Fiber.with_error_handler
+       ~on_error:(fun _ -> print_endline "captured the error")
+       (fun () ->
+         let* res = Fiber.collect_errors (fun () -> raise (Failure "")) in
+         match res with
+         | Ok () -> assert false
+         | Error l ->
+           print_endline "got the error out of collect_errors";
+           List.iter l ~f:Exn_with_backtrace.reraise;
+           assert false));
+  [%expect
+    {|
+    got the error out of collect_errors
+    captured the error
+    [PASS] Never raised as expected |}]
+
+let%expect_test "wait_errors restores the execution context properly" =
+  let var = Fiber.Var.create () in
+  test unit
+    (Fiber.Var.set var "a" (fun () ->
+         let* _res =
+           Fiber.Var.set var "b" (fun () ->
+               Fiber.collect_errors (fun () ->
+                   Fiber.Var.set var "c" (fun () -> raise Exit)))
+         in
+         print_endline (Fiber.Var.get_exn var);
+         Fiber.return ()));
+  [%expect {|
+    a
+    () |}]
+
 let%expect_test _ =
   test ~expect_never:true opaque
     (Fiber.fork_and_join
@@ -190,6 +223,25 @@ let%expect_test _ =
     inner: raised Exit
     outer: raised Exit
     [PASS] Never raised as expected |}]
+
+let%expect_test "nested with_error_handler" =
+  let fiber =
+    Fiber.with_error_handler
+      ~on_error:(fun exn ->
+        print_endline "outter handler";
+        Exn_with_backtrace.reraise exn)
+      (fun () ->
+        Fiber.with_error_handler
+          ~on_error:(fun exn ->
+            print_endline "inner handler";
+            Exn_with_backtrace.reraise exn)
+          (fun () -> raise Exit))
+  in
+  (try test unit fiber with Exit -> print_endline "[PASS] got Exit");
+  [%expect {|
+     inner handler
+     outter handler
+     [PASS] got Exit |}]
 
 let must_set_flag f =
   let flag = ref false in
@@ -244,6 +296,46 @@ let%expect_test "finalize" =
     exn: Exit
     finally
     [PASS] Never raised as expected |}]
+
+let%expect_test "nested finalize" =
+  let fiber =
+    Fiber.finalize
+      ~finally:(fun () -> Fiber.return (print_endline "outter finally"))
+      (fun () ->
+        Fiber.finalize
+          ~finally:(fun () -> Fiber.return (print_endline "inner finally"))
+          (fun () -> raise Exit))
+  in
+  (try test unit fiber with Exit -> print_endline "[PASS] got Exit");
+  [%expect {|
+    inner finally
+    outter finally
+    [PASS] got Exit |}]
+
+let%expect_test "context switch and raise inside finalize" =
+  let fiber =
+    let mvar = Fiber.Mvar.create () in
+    Fiber.fork_and_join_unit
+      (fun () ->
+        let* () = Fiber.Mvar.read mvar in
+        printf "Hello from first fiber!\n";
+        Fiber.Mvar.write mvar ())
+      (fun () ->
+        Fiber.finalize
+          ~finally:(fun () -> Fiber.return (print_endline "finally"))
+          (fun () ->
+            let* () = Fiber.Mvar.write mvar () in
+            let* () = Fiber.Mvar.read mvar in
+            printf "raising in second fiber\n";
+            raise Exit))
+  in
+  (try test unit fiber with Exit -> print_endline "[PASS] got Exit");
+  [%expect
+    {|
+    Hello from first fiber!
+    raising in second fiber
+    finally
+    [PASS] got Exit |}]
 
 let%expect_test "sequential_iter error handling" =
   let fiber =

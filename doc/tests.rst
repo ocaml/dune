@@ -6,17 +6,18 @@ Dune tries to streamline the testing story as much as possible, so
 that you can focus on the tests themselves and not bother with setting
 up with various test frameworks.
 
-In this section, we will explain the workflow to deal with tests in
-dune. In particular we will see how to run the testsuite of a
-project, how to describe your tests to dune and how to promote
-tests result as expectation.
+In this section, we will explain the workflow to deal with tests in dune. In
+particular we will see how to run the testsuite of a project, how to describe
+your tests to dune and how to promote tests result as expectation.
 
-We distinguish two kinds of tests: inline tests and custom
-tests. Inline tests are usually written directly inside the ml files
-of a library. They are the easiest to work with and usually requires
-nothing more than writing ``(inline_tests)`` inside your library
-stanza. Custom tests consist on executing an executable and sometimes
-do something afterwards, such as diffing its output.
+We distinguish three kinds of tests:
+
+* inline tests - written directly inside the ml files of a library
+
+* custom tests - run an executable, possibly followed by an action such as
+  diffing the produced output.
+
+* cram tests - expect tests written in cram_ style.
 
 Running tests
 =============
@@ -448,8 +449,162 @@ which displays nicer looking diffs that the standard ``diff``
 tool. You can change that by passing ``--diff-command CMD`` to
 dune.
 
+Cram Tests
+==========
+
+Cram tests are expectation tests written in a shell-like syntax. They are ideal
+for testing binaries. Cram tests are auto discovered from files or directories
+with a ``.t`` extension, so they must be enabled manually in the
+``dune-project`` file:
+
+.. code:: scheme
+
+   (lang dune 2.7)
+   (cram enable)
+
+
+File Tests
+----------
+
+To define a standalone test, we create a ``.t`` file. For example, ``foo.t``:
+
+.. code:: bash
+
+   Simplest possible cram test
+     $ echo "testing"
+
+This simple example demonstrates two components of cram tests:
+
+* Comments - Anything that doesn't start with a 2 space indentation is a comment
+
+* Commands - A command starts with 2 spaces followed by a ``$``. It is executed
+  in the shell and the output is diffed against the output below. In this
+  example, there's no output yet.
+
+To run the test and promote the results:
+
+.. code:: bash
+
+   $ dune runtest
+   $ dune promote
+
+We now see the output of the command:
+
+.. code:: bash
+
+   Simplest possible cram test
+     $ echo "testing"
+     testing
+
+This is the main advantage of expect tests. We don't need to write assertions
+manually, instead we detect failure when the command produces a different output
+than what is recorded in the test script.
+
+For example, here's an example of how we'd test the ``wc`` utility. ``wc.t``:
+
+.. code:: bash
+
+   We create a test artifact called foo
+     $ cat >foo <<EOF
+     > foo
+     > bar
+     > baz
+     > EOF
+
+   After creating the fixture, we want to verify that ``wc`` gives us the right
+   result:
+     $ wc -l foo | awk '{ print $1 }'
+     4
+
+The above example uses the here doc syntax to pipe the subsequent lines to
+``cat``. This is convenient for creating small test artifacts.
+
+Directory Tests
+---------------
+
+In the above example we used ``cat`` to create the test artifact, but what if
+there are too many artifacts to comfortably fit in test file? Or some of the
+artifacts are binary? It's possible to include the artifacts as normal files or
+directories provided the test is defined as a directory. The name of the test
+directory must end with ``.t`` and must include a ``run.t`` as the test script.
+Everything else in that directory is treated as raw data for the test. It's not
+possible to define rules using ``dune`` files in such a directory.
+
+We convert the ``wc`` test above into a directory test ``wc.t``:
+
+.. code:: bash
+
+   $ ls wc.t
+     run.t foo.txt bar/
+
+This defines a directory test ``wc.t`` which must include a ``run.t`` file as
+the test script, with ``fool.txt`` and ``bar`` are test artifacts. We may then
+access their contents in the test script ``run.t``:
+
+.. code:: bash
+
+   $ wc -l foo | awk '{ print $1 }'
+   4
+   $ wc -l $(ls bar) | awk '{ print $1 }'
+   1231
+
+Test Options
+------------
+
+When testing binaries, it's important to to specify a dependency on the binary
+for two reasons:
+
+- Dune must know to re-run the test when a dependency changes
+
+- The dependencies must be specified to guarantee that they are visible to the
+  test when running it.
+
+We can specify dependencies using the ``deps`` field using the usual syntax:
+
+.. code:: bash
+
+   (cram
+    (deps ../foo.exe))
+
+This introduces a dependency on ``foo.exe`` on all cram tests in this directory.
+To apply the stanza to a particular test, it's possible to use ``applies_to``
+field:
+
+.. code:: bash
+
+   (cram
+    (applies_to * \ foo bar)
+    (deps ../foo.exe))
+
+We use the :ref:`predicate-lang` to apply this stanza to all tests in this
+directory except for ``foo.t`` and ``bar.t``. The ``applies_to`` field also
+accepts the special value ``:whole_subtree`` in order to apply the options to all tests
+in all sub directories (recursively). This is useful to apply common options to
+an entire test suite.
+
+The ``cram`` stanza accepts the following fields:
+
+- ``enabled_if`` - controls whether the tests are enabled
+- ``alias`` - alias that can be used to run the test (in addition to
+  ``runtest``)
+- ``deps`` - dependencies of the test
+
+A single test may be configured by more than one ``cram`` stanza. In such cases,
+the values from all applicable ``cram`` stanzas are merged together to get the
+final values for all the fields.
+
+Sandboxing
+----------
+
+Since cram tests often create intermediate artifacts, it's important that cram
+tests are executed in a clean environment. This is why all cram tests are
+sandboxed. To respect sandboxing, every test should specify dependency on any
+artifact that might rely on using the ``deps`` field.
+
+See :ref:`dune-action-plugin` for details about the sandboxing mechanism.
 
 .. _ppx_inline_test: https://github.com/janestreet/ppx_inline_test
 .. _ppx_expect:      https://github.com/janestreet/ppx_expect
 .. _qtest:           https://github.com/vincent-hugot/qtest
 .. _patdiff:         https://github.com/janestreet/patdiff
+.. _cram:            https://bitheap.org/cram/

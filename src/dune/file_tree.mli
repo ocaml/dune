@@ -27,6 +27,10 @@ end
 module Dir : sig
   type t
 
+  type error = Missing_run_t of Cram.test
+
+  val cram_tests : t -> (Cram.test, error) result list
+
   val path : t -> Path.Source.t
 
   val files : t -> String.Set.t
@@ -91,3 +95,5 @@ val dir_exists : Path.Source.t -> bool
 
 (** [true] iff the path is a file *)
 val file_exists : Path.Source.t -> bool
+
+val find_dir_specified_on_command_line : dir:Path.Source.t -> Dir.t

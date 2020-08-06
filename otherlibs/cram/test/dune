@@ -1,6 +1,0 @@
-(rule
- (alias runtest)
- (action
-  (progn
-   (run dune-cram run run.t)
-   (diff? run.t run.t.corrected))))

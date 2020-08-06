@@ -274,6 +274,8 @@ module Dir0 = struct
         Memo.Cell.t
     }
 
+  type error = Missing_run_t of Cram.test
+
   let rec to_dyn { path; status; contents; project = _; vcs } =
     let open Dyn in
     Record
@@ -571,7 +573,18 @@ end = struct
       let* dir_status, virtual_ =
         let basename = Path.Source.basename path in
         let+ sub_dir = String.Map.find parent_dir.contents.sub_dirs basename in
-        (sub_dir.sub_dir_status, sub_dir.virtual_)
+        let status =
+          let status = sub_dir.sub_dir_status in
+          if
+            Dune_project.cram parent_dir.project
+            && Cram.is_cram_suffix basename
+            && status = Normal
+          then
+            Sub_dirs.Status.Data_only
+          else
+            status
+        in
+        (status, sub_dir.virtual_)
       in
       let dirs_visited = Dirs_visited.Per_fn.find dirs_visited path in
       let settings = Settings.get () in
@@ -688,6 +701,42 @@ module Dir = struct
       let acc = f t acc in
       fold_sub_dirs t ~init:acc ~f:(fun ~basename:_ t acc ->
           fold t ~traverse ~init:acc ~f)
+
+  let cram_tests (t : t) =
+    match Dune_project.cram t.project with
+    | false -> []
+    | true ->
+      let file_tests =
+        String.Set.to_list t.contents.files
+        |> List.filter_map ~f:(fun s ->
+               if Cram.is_cram_suffix s then
+                 Some (Ok (Cram.File (Path.Source.relative t.path s)))
+               else
+                 None)
+      in
+      let dir_tests =
+        String.Map.to_list t.contents.sub_dirs
+        |> List.filter_map ~f:(fun (name, sub_dir) ->
+               match Cram.is_cram_suffix name with
+               | false -> None
+               | true ->
+                 let contents =
+                   (Memo.Cell.get_sync sub_dir.sub_dir_as_t |> Option.value_exn)
+                     .dir
+                 in
+                 let dir = contents.path in
+                 let fname = "run.t" in
+                 let test =
+                   let file = Path.Source.relative dir fname in
+                   Cram.Dir { file; dir }
+                 in
+                 Some
+                   ( if String.Set.mem contents.contents.files fname then
+                     Ok test
+                   else
+                     Error (Missing_run_t test) ))
+      in
+      file_tests @ dir_tests
 end
 
 let fold_with_progress ~traverse ~init ~f =
@@ -703,3 +752,12 @@ let fold_with_progress ~traverse ~init ~f =
   in
   Console.Status_line.set (Fun.const None);
   res
+
+let find_dir_specified_on_command_line ~dir =
+  match find_dir dir with
+  | Some dir -> dir
+  | None ->
+    User_error.raise
+      [ Pp.textf "Don't know about directory %s specified on the command line!"
+          (Path.Source.to_string_maybe_quoted dir)
+      ]

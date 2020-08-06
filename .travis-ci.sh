@@ -118,7 +118,6 @@ case "$TARGET" in
   ;;
   build)
     UPDATE_OPAM=0
-    RUNTEST_NO_DEPS=runtest-no-deps.out
     echo -en "travis_fold:start:dune.bootstrap\r"
     if [ $OLD_OCAML -eq 1 ] ; then
       eval $(opam env)
@@ -140,10 +139,6 @@ case "$TARGET" in
         UPDATE_OPAM=1
         keep_travis_happy opam upgrade
       fi
-      if ! ./dune.exe build @runtest-no-deps &> $RUNTEST_NO_DEPS ; then
-        cat $RUNTEST_NO_DEPS;
-        exit 1;
-      fi
       opam list
       version=$(head -1 CHANGES.md |cut -d' ' -f 1)
       for i in *.opam; do
@@ -153,7 +148,6 @@ case "$TARGET" in
       echo -en "travis_fold:end:opam.deps\r"
     fi
     if [ $WITH_OPAM -eq 1 ] ; then
-      cat $RUNTEST_NO_DEPS;
       ./dune.exe runtest && \
       # ./dune.exe build @test/blackbox-tests/runtest-js && \
       ./dune.exe build @test/blackbox-tests/runtest-coq && \

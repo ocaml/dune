@@ -585,8 +585,9 @@ an entire test suite.
 The ``cram`` stanza accepts the following fields:
 
 - ``enabled_if`` - controls whether the tests are enabled
-- ``alias`` - alias that can be used to run the test (in addition to
-  ``runtest``)
+- ``alias`` - alias that can be used to run the test. In addition to the user
+  alias, every test ``foo.t`` is attached to the ``@runtest`` alias and gets its
+  own ``@foo`` alias to make it convenient to run individually.
 - ``deps`` - dependencies of the test
 
 A single test may be configured by more than one ``cram`` stanza. In such cases,

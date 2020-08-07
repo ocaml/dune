@@ -136,11 +136,12 @@ let run_expect_test file ~f =
 
 let _BUILD_PATH_PREFIX_MAP = "BUILD_PATH_PREFIX_MAP"
 
-let extend_build_path_prefix_map ~env ~cwd =
+let extend_build_path_prefix_map ~env ~cwd ~temp_dir =
   let s =
     Build_path_prefix_map.encode_map
       [ Some
           { source = Path.to_absolute_filename cwd; target = "$TESTCASE_ROOT" }
+      ; Some { source = Path.to_absolute_filename temp_dir; target = "$TMPDIR" }
       ]
   in
   Env.update env ~var:_BUILD_PATH_PREFIX_MAP ~f:(function
@@ -359,8 +360,8 @@ let run ~env ~script lexbuf : string Fiber.t =
   let cwd = Path.parent_exn script in
   let env =
     let env = Env.add env ~var:"LC_ALL" ~value:"C" in
-    let env = extend_build_path_prefix_map ~env ~cwd in
     let temp_dir = Path.relative temp_dir "tmp" in
+    let env = extend_build_path_prefix_map ~env ~cwd ~temp_dir in
     Path.mkdir_p temp_dir;
     Env.add env ~var:Env.Var.temp_dir
       ~value:(Path.to_absolute_filename temp_dir)

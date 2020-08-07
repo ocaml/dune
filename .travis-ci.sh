@@ -102,6 +102,7 @@ case "$TARGET" in
         fi
 
         if [ $WITH_OPAM -eq 1 ] ; then
+          ulimit -n 512
           ./dune.exe runtest && \
               opam_install_test_deps
           opam remove dune jbuilder \

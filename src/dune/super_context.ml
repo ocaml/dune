@@ -3,9 +3,12 @@ open Import
 
 let default_context_flags (ctx : Context.t) =
   (* TODO (v3) Current flag behavior is different when calling the C compiler or
-     the C++ compiler: 1.[ocamlc_cflags] and [ocamlc_cppflags] are always
-     prenpended to the C compiler arguments to reproduce [ocamlc]'s behavior, 2.
-     [ocamlc_cflags] are present in [:standard] and prepended to the C++
+     the C++ compiler:
+
+     1.[ocamlc_cflags] and [ocamlc_cppflags] are always prenpended to the C
+     compiler arguments to reproduce [ocamlc]'s behavior,
+
+     2. [ocamlc_cflags] are present in [:standard] and prepended to the C++
      compiler arguments only if the user didn't redefined them (or used
      [:standard] to extend them) *)
   let c = [] in

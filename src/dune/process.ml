@@ -93,13 +93,18 @@ module Io = struct
       else
         "/dev/null" )
 
+  let open_null flags = lazy (Unix.openfile (Lazy.force null_path) flags 0o666)
+
+  let null_in = open_null [ Unix.O_RDONLY ]
+
+  let null_out = open_null [ Unix.O_WRONLY ]
+
   let null (type a) (mode : a mode) : a t =
-    let flags =
+    let fd =
       match mode with
-      | Out -> [ Unix.O_WRONLY ]
-      | In -> [ O_RDONLY ]
+      | In -> null_in
+      | Out -> null_out
     in
-    let fd = lazy (Unix.openfile (Lazy.force null_path) flags 0o666) in
     let channel = lazy (channel_of_descr (Lazy.force fd) mode) in
     { kind = Null; mode; fd; channel; status = Close_after_exec }
 

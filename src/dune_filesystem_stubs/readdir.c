@@ -42,7 +42,7 @@ value val_file_type(int typ) {
 CAMLprim value caml__dune_filesystem_stubs__readdir(value vd)
 {
   CAMLparam1(vd);
-  CAMLlocal3(v_filename, v_kind, v_tuple);
+  CAMLlocal2(v_filename, v_tuple);
 
   DIR * d;
   directory_entry * e;

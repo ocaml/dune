@@ -28,7 +28,6 @@ type t =
   ; ocaml_config : Value.t list String.Map.t Lazy.t
   ; bindings : Pform.Map.t
   ; scope : Scope.t
-  ; c_compiler : string
   ; context : Context.t
   ; expand_var : t -> Expanded.t String_with_vars.expander
   ; artifacts_dynamic : bool
@@ -202,7 +201,6 @@ let make ~scope ~(context : Context.t) ~lib_artifacts ~bin_artifacts_host
     Pform.Map.superpose context cc_cxx_bindings
   in
   let env = context.env in
-  let c_compiler = Ocaml_config.c_compiler context.ocaml_config in
   { dir
   ; hidden_env = Env.Var.Set.empty
   ; env
@@ -212,7 +210,6 @@ let make ~scope ~(context : Context.t) ~lib_artifacts ~bin_artifacts_host
   ; lib_artifacts
   ; bin_artifacts_host
   ; expand_var = static_expand
-  ; c_compiler
   ; context
   ; artifacts_dynamic = false
   ; lookup_artifacts = None
@@ -328,9 +325,13 @@ let parse_lib_file ~loc s =
 let cc t ~dir =
   let open Build.O in
   let cc = t.foreign_flags ~dir in
+  let c_compiler = Ocaml_config.c_compiler t.context.ocaml_config in
+  let cflags = Ocaml_config.ocamlc_cflags t.context.ocaml_config in
+  let cflags = Build.map cc.c ~f:(fun fl -> cflags @ fl) in
+  let cc = Foreign.Language.Dict.make ~c:cflags ~cxx:cc.cxx in
   Foreign.Language.Dict.map cc ~f:(fun cc ->
       let+ flags = cc in
-      Value.L.strings (t.c_compiler :: flags))
+      Value.L.strings (c_compiler :: flags))
 
 type expand_result =
   | Static of Value.t list

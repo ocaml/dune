@@ -1,0 +1,3 @@
+(rule
+ (alias cc)
+ (action (echo %{cc})))

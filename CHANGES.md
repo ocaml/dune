@@ -62,6 +62,9 @@ next
 - Add `"odoc" {with-doc}` to the dependencies in the generated `.opam` files.
   (#3667, @kit-ty-kate)
 
+- Do not allow user actions to capture dune's stdin (#3677, fixes #3672,
+  @rgrinberg)
+
 2.6.1 (02/07/2020)
 ------------------
 

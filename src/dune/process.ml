@@ -33,6 +33,7 @@ module Io = struct
 
   type kind =
     | File of Path.t
+    | Null
     | Terminal
 
   type status =
@@ -85,6 +86,23 @@ module Io = struct
 
   let stdin = terminal (In_chan stdin)
 
+  let null_path =
+    lazy
+      ( if Sys.win32 then
+        "nul"
+      else
+        "/dev/null" )
+
+  let null (type a) (mode : a mode) : a t =
+    let flags =
+      match mode with
+      | Out -> [ Unix.O_WRONLY ]
+      | In -> [ O_RDONLY ]
+    in
+    let fd = lazy (Unix.openfile (Lazy.force null_path) flags 0o666) in
+    let channel = lazy (channel_of_descr (Lazy.force fd) mode) in
+    { kind = Null; mode; fd; channel; status = Close_after_exec }
+
   let file : type a. _ -> a mode -> a t =
    fun fn mode ->
     let flags =
@@ -128,6 +146,12 @@ type purpose =
   | Internal_job
   | Build_job of Path.Build.Set.t
 
+let io_to_redirection_path (kind : Io.kind) =
+  match kind with
+  | Terminal -> None
+  | Null -> Some (Lazy.force Io.null_path)
+  | File fn -> Some (Path.to_string fn)
+
 let command_line_enclosers ~dir ~(stdout_to : Io.output Io.t)
     ~(stderr_to : Io.output Io.t) ~(stdin_from : Io.input Io.t) =
   let quote fn = String.quote_for_shell (Path.to_string fn) in
@@ -138,21 +162,26 @@ let command_line_enclosers ~dir ~(stdout_to : Io.output Io.t)
   in
   let suffix =
     match stdin_from.kind with
-    | Terminal -> suffix
+    | Null
+    | Terminal ->
+      suffix
     | File fn -> suffix ^ " < " ^ quote fn
   in
   let suffix =
-    match (stdout_to.kind, stderr_to.kind) with
-    | File fn1, File fn2 when Path.equal fn1 fn2 -> " &> " ^ quote fn1
-    | _ -> (
-      let suffix =
-        match stdout_to.kind with
-        | Terminal -> suffix
-        | File fn -> suffix ^ " > " ^ quote fn
+    match
+      ( io_to_redirection_path stdout_to.kind
+      , io_to_redirection_path stderr_to.kind )
+    with
+    | Some fn1, Some fn2 when String.equal fn1 fn2 ->
+      " &> " ^ String.quote_for_shell fn1
+    | path_out, path_err ->
+      let add_to_suffix suffix path redirect =
+        match path with
+        | None -> suffix
+        | Some path -> suffix ^ redirect ^ String.quote_for_shell path
       in
-      match stderr_to.kind with
-      | Terminal -> suffix
-      | File fn -> suffix ^ " 2> " ^ quote fn )
+      let suffix = add_to_suffix suffix path_out " > " in
+      add_to_suffix suffix path_err " 2> "
   in
   (prefix, suffix)
 
@@ -425,7 +454,7 @@ module Exit_status = struct
 end
 
 let run_internal ?dir ?(stdout_to = Io.stdout) ?(stderr_to = Io.stderr)
-    ?(stdin_from = Io.stdin) ~env ~purpose fail_mode prog args =
+    ?(stdin_from = Io.null In) ~env ~purpose fail_mode prog args =
   Scheduler.with_job_slot (fun () ->
       let display = (Config.t ()).display in
       let dir =

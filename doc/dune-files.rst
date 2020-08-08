@@ -1135,7 +1135,7 @@ Dune supports installing packages on the system, i.e. copying freshly built
 artifacts from the workspace to the system. The ``install`` stanza takes three
 pieces of information:
 
-- the list of files the install
+- the list of files to install
 - the package to attach these files to. This field is optional if your
   project contains a single package
 - the section in which the files will be installed

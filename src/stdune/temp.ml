@@ -40,6 +40,10 @@ let set = function
   | Dir -> tmp_dirs
   | File -> tmp_files
 
+let create = function
+  | Dir -> create_temp_dir
+  | File -> create_temp_file
+
 let () =
   let iter_and_clear r ~f =
     let tmp = !r in
@@ -51,28 +55,40 @@ let () =
           let set = set what in
           iter_and_clear set ~f:(destroy what)))
 
-let temp ~set ~prefix ~suffix ~create =
+let temp_in_dir what ~dir ~prefix ~suffix =
   let path =
-    let temp_dir = Filename.get_temp_dir_name () in
+    let create = create what in
     try_times 1000 ~f:(fun _ ->
-        let name = temp_file_name ~temp_dir ~prefix ~suffix in
+        let name = temp_file_name ~temp_dir:dir ~prefix ~suffix in
         create name;
         name)
     |> Path.of_string
   in
+  let set = set what in
   set := Path.Set.add !set path;
   path
 
 let create what ~prefix ~suffix =
-  let create =
-    match what with
-    | Dir -> create_temp_dir
-    | File -> create_temp_file
-  in
-  let set = set what in
-  temp ~set ~prefix ~suffix ~create
+  let dir = Filename.get_temp_dir_name () in
+  temp_in_dir what ~dir ~prefix ~suffix
+
+let temp_in_dir what ~dir =
+  temp_in_dir what ~dir:(Path.to_absolute_filename dir)
 
 let destroy what fn =
   destroy what fn;
   let set = set what in
   set := Path.Set.remove !set fn
+
+let clear_dir dir =
+  Path.clear_dir dir;
+  let remove_from_set ~set =
+    set :=
+      Path.Set.filter !set ~f:(fun f ->
+          let removed =
+            (not (Path.equal f dir)) && Path.is_descendant ~of_:dir f
+          in
+          not removed)
+  in
+  remove_from_set ~set:tmp_files;
+  remove_from_set ~set:tmp_dirs

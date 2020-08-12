@@ -78,8 +78,10 @@ module Dune_file = struct
     | None -> Sub_dirs.default
     | Some t -> Sub_dirs.or_default t.plain.contents.subdir_status
 
-  let load_plain sexps ~from_parent ~project =
-    let decoder = Dune_project.set_parsing_context project Sub_dirs.decode in
+  let load_plain sexps ~file ~from_parent ~project =
+    let decoder =
+      Dune_project.set_parsing_context project (Sub_dirs.decode ~file)
+    in
     let active =
       let parsed =
         Dune_lang.Decoder.parse decoder Univ_map.empty
@@ -95,15 +97,15 @@ module Dune_file = struct
   let load file ~file_exists ~from_parent ~project =
     let kind, plain =
       match file_exists with
-      | false -> (Plain, load_plain [] ~from_parent ~project)
+      | false -> (Plain, load_plain [] ~file ~from_parent ~project)
       | true ->
         Io.with_lexbuf_from_file (Path.source file) ~f:(fun lb ->
             if Dune_lexer.is_script lb then
-              let from_parent = load_plain [] ~from_parent ~project in
+              let from_parent = load_plain [] ~file ~from_parent ~project in
               (Ocaml_script, from_parent)
             else
               let sexps = Dune_lang.Parser.parse lb ~mode:Many in
-              (Plain, load_plain sexps ~from_parent ~project))
+              (Plain, load_plain sexps ~file ~from_parent ~project))
     in
     { path = file; kind; plain }
 end

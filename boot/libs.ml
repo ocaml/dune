@@ -24,6 +24,8 @@ let local_libraries =
   (* CR cwong: here *)
   ; ("src/engine", Some "Dune", true, None)
   ; ("src/build_rules", Some "Dune_rules", true, None)
+  ; ("vendor/build_path_prefix_map/src", Some "Build_path_prefix_map", false,
+    None)
   ; ("vendor/cmdliner/src", None, false, None)
   ; ("otherlibs/build-info/src", Some "Build_info", false,
     Some "build_info_data")

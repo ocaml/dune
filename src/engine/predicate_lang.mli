@@ -51,4 +51,6 @@ module Glob : sig
   val of_pred : (string -> bool) -> t
 
   val of_string_set : String.Set.t -> t
+
+  val true_ : t
 end

@@ -6,9 +6,9 @@ dune-project
 ============
 
 These files are used to mark the root of projects as well as define project-wide
-parameters. These files are required to have a ``lang`` which controls the names
-and contents of all configuration files read by Dune. The ``lang`` stanza looks
-like:
+parameters. The first line of ``dune-project`` must be a ``lang`` stanza with no
+extra whitespace or comments. The ``lang`` stanza controls the names and
+contents of all configuration files read by Dune and looks like:
 
 .. code:: scheme
 
@@ -1135,7 +1135,7 @@ Dune supports installing packages on the system, i.e. copying freshly built
 artifacts from the workspace to the system. The ``install`` stanza takes three
 pieces of information:
 
-- the list of files the install
+- the list of files to install
 - the package to attach these files to. This field is optional if your
   project contains a single package
 - the section in which the files will be installed

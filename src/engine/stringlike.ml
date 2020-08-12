@@ -14,12 +14,17 @@ module Make (S : Stringlike_intf.S_base) = struct
   let error_message s = Printf.sprintf "%S is an invalid %s." s S.description
 
   let user_error (loc, s) =
+    let hints =
+      match S.hint_valid with
+      | None -> []
+      | Some f -> [ Pp.textf "%s would be a correct %s" (f s) S.description ]
+    in
     let valid_desc =
       match S.description_of_valid_string with
       | None -> []
       | Some m -> [ m ]
     in
-    User_error.make ~loc (Pp.text (error_message s) :: valid_desc)
+    User_error.make ~loc ~hints (Pp.text (error_message s) :: valid_desc)
 
   let of_string_user_error (loc, s) =
     match of_string_opt s with

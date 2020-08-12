@@ -356,6 +356,10 @@ let rec exec t ~ectx ~eenv =
     Format_dune_lang.format_file ~input:(Some src)
       ~output:(Some (Path.build dst));
     Fiber.return Done
+  | Cram script ->
+    (* We don't pass cwd because Cram_exec will use the script's dir to run *)
+    let+ () = Cram_exec.run ~env:eenv.env ~script in
+    Done
 
 and redirect_out t ~ectx ~eenv outputs fn =
   redirect t ~ectx ~eenv ~out:(outputs, fn) ()
@@ -472,7 +476,7 @@ let exec ~targets ~context ~env ~rule_loc ~build_deps t =
     ; env
     ; stdout_to = Process.Io.stdout
     ; stderr_to = Process.Io.stderr
-    ; stdin_from = Process.Io.stdin
+    ; stdin_from = Process.Io.null In
     ; prepared_dependencies = DAP.Dependency.Set.empty
     ; exit_codes = Predicate_lang.Element 0
     }

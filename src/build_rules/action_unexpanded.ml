@@ -205,6 +205,7 @@ module Partial = struct
     | Pipe (outputs, l) -> Pipe (outputs, List.map l ~f:(expand ~expander))
     | Format_dune_file (src, dst) ->
       Format_dune_file (E.path ~expander src, E.target ~expander dst)
+    | Cram script -> Cram (E.path ~expander script)
 end
 
 module E = Expand (struct
@@ -320,6 +321,7 @@ let rec partial_expand t ~expander : Partial.t =
   | Pipe (outputs, l) -> Pipe (outputs, List.map l ~f:(partial_expand ~expander))
   | Format_dune_file (src, dst) ->
     Format_dune_file (E.path ~expander src, E.target ~expander dst)
+  | Cram script -> Cram (E.path ~expander script)
 
 module Infer : sig
   module Outcome : sig
@@ -429,6 +431,7 @@ end = struct
       | Pipe (_, l) ->
         List.fold_left l ~init:acc ~f:infer
       | Digest_files l -> List.fold_left l ~init:acc ~f:( +< )
+      | Cram script -> acc +< script
       | Diff { optional; file1; file2; mode = _ } ->
         if optional then
           acc +< file1 +<- file2

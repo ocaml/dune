@@ -623,9 +623,9 @@ module Library = struct
          | Some (loc, res), _ -> (loc, res)
          | None, Some { name = loc, name; _ } ->
            if dune_version >= (1, 1) then
-             match Lib_name.to_local name with
-             | Some m -> (loc, m)
-             | None ->
+             match Lib_name.to_local (loc, name) with
+             | Ok m -> (loc, m)
+             | Error user_message ->
                User_error.raise ~loc
                  [ Pp.textf "Invalid library name."
                  ; Pp.text
@@ -633,7 +633,7 @@ module Library = struct
                       can either change this public name to be a valid library \
                       name or add a \"name\" field with a valid library name."
                  ]
-                 ~hints:[ Lib_name.Local.valid_format_doc ]
+                 ~hints:(Lib_name.Local.valid_format_doc :: user_message.hints)
            else
              User_error.raise ~loc
                [ Pp.text
@@ -972,6 +972,10 @@ module Executables = struct
       let stanza = pluralize stanza ~multi in
       let names =
         let open Dune_lang.Syntax.Version.Infix in
+        Option.iter names
+          ~f:
+            (List.iter ~f:(fun name ->
+                 ignore (Module_name.parse_string_exn name : Module_name.t)));
         match (names, public_names) with
         | Some names, _ -> names
         | None, Some public_names ->
@@ -981,7 +985,20 @@ module Executables = struct
                 | None ->
                   User_error.raise ~loc
                     [ Pp.text "This executable must have a name field" ]
-                | Some s -> (loc, s))
+                | Some s -> (
+                  match Module_name.of_string_user_error (loc, s) with
+                  | Ok _ -> (loc, s)
+                  | Error user_message ->
+                    User_error.raise ~loc
+                      [ Pp.textf "Invalid module name."
+                      ; Pp.text
+                          "Public executable names don't have this \
+                           restriction. You can either change this public name \
+                           to be a valid module name or add a \"name\" field \
+                           with a valid module name."
+                      ]
+                      ~hints:(Module_name.valid_format_doc :: user_message.hints)
+                  ))
           else
             User_error.raise ~loc
               [ Pp.textf "%s field may not be omitted before dune version %s"
@@ -1853,6 +1870,7 @@ type Stanza.t +=
   | Include_subdirs of Loc.t * Include_subdirs.t
   | Toplevel of Toplevel.t
   | Deprecated_library_name of Deprecated_library_name.t
+  | Cram of Cram.Stanza.t
 
 module Stanzas = struct
   type t = Stanza.t list
@@ -1947,6 +1965,10 @@ module Stanzas = struct
       , let+ () = Dune_lang.Syntax.since Stanza.syntax (2, 0)
         and+ t = Deprecated_library_name.decode in
         [ Deprecated_library_name t ] )
+    ; ( "cram"
+      , let+ () = Dune_lang.Syntax.since Stanza.syntax (2, 7)
+        and+ t = Cram.Stanza.decode in
+        [ Cram t ] )
     ]
 
   let () = Dune_project.Lang.register Stanza.syntax stanzas
@@ -2016,15 +2038,18 @@ module Stanzas = struct
                         (Pp.textf "included from %s" (line_loc x)))))
           ]
     in
-    match
-      List.filter_map stanzas ~f:(function
-        | Dune_env.T e -> Some e
-        | _ -> None)
-    with
-    | _ :: e :: _ ->
-      User_error.raise ~loc:e.loc
-        [ Pp.text "The 'env' stanza cannot appear more than once" ]
-    | _ -> stanzas
+    let (_ : bool) =
+      List.fold_left stanzas ~init:false ~f:(fun env stanza ->
+          match stanza with
+          | Dune_env.T e ->
+            if env then
+              User_error.raise ~loc:e.loc
+                [ Pp.text "The 'env' stanza cannot appear more than once" ]
+            else
+              true
+          | _ -> env)
+    in
+    stanzas
 end
 
 let stanza_package = function

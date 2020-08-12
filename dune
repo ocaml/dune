@@ -1,8 +1,3 @@
-(env
- (_
-  (binaries
-   (otherlibs/cram/bin/dune_cram.exe as dune-cram))))
-
 (rule
  (copy dune-private-libs.opam.template dune-configurator.opam.template))
 

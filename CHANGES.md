@@ -59,6 +59,12 @@ next
 - Fix typo in `cache-check-probablity` field in dune config files. This field
   now requires 2.7 as it wasn't usable before this version. (#3652, @edwintorok)
 
+- Add `"odoc" {with-doc}` to the dependencies in the generated `.opam` files.
+  (#3667, @kit-ty-kate)
+
+- Do not allow user actions to capture dune's stdin (#3677, fixes #3672,
+  @rgrinberg)
+
 2.6.1 (02/07/2020)
 ------------------
 
@@ -75,6 +81,8 @@ next
 
 - Fix a stack overflow when displaying large outputs (including diffs) (#3537,
   fixes #2767, #3490, @emillon)
+
+- Pass `-g` when compiling ppx preprocessors (#3671, @rgrinberg)
 
 2.6.0 (05/06/2020)
 ------------------

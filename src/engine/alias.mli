@@ -24,6 +24,8 @@ module Name : sig
   val parse_local_path : Loc.t * Path.Local.t -> Path.Local.t * t
 
   module Map : Map.S with type key = t
+
+  module Set : Set.S with type elt = t
 end
 
 type t
@@ -71,8 +73,6 @@ val fmt : dir:Path.Build.t -> t
 
 (** Return the underlying stamp file *)
 val stamp_file : t -> Path.Build.t
-
-val find_dir_specified_on_command_line : dir:Path.Source.t -> File_tree.Dir.t
 
 val is_standard : Name.t -> bool
 

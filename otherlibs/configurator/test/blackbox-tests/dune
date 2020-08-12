@@ -1,45 +1,9 @@
-(data_only_dirs test-cases)
-
-(rule
- (alias runtest)
- (package dune-configurator)
+(cram
  (deps
   (package dune)
-  (package dune-configurator)
-  (source_tree test-cases/configurator))
- (action
-  (chdir
-   test-cases/configurator
-   (progn
-    (run dune-cram run run.t)
-    (diff? run.t run.t.corrected))))
+  (package dune-configurator)))
+
+(cram
  (enabled_if
-  (<> %{ocaml-config:system} win)))
-
-(rule
- (alias runtest)
- (package dune-configurator)
- (deps
-  (package dune)
-  (package dune-configurator)
-  (source_tree test-cases/configurator-gh1166))
- (action
-  (chdir
-   test-cases/configurator-gh1166
-   (progn
-    (run dune-cram run run.t)
-    (diff? run.t run.t.corrected)))))
-
-(rule
- (alias runtest)
- (package dune-configurator)
- (deps
-  (package dune)
-  (package dune-configurator)
-  (source_tree test-cases/pkg-config-quoting))
- (action
-  (chdir
-   test-cases/pkg-config-quoting
-   (progn
-    (run dune-cram run run.t)
-    (diff? run.t run.t.corrected)))))
+  (<> %{ocaml-config:system} win))
+ (applies_to configurator.t))

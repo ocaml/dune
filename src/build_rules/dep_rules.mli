@@ -1,4 +1,4 @@
-open! Dune
+open! Engine
 (** Get dependencies for a set of modules using either ocamldep or ocamlobjinfo *)
 
 val rules :

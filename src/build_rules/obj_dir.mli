@@ -1,4 +1,4 @@
-open! Dune
+open! Engine
 (** Representation of the object directory for libraries *)
 
 (** Dune store the artifacts of a library or a set of executables in a dedicated

@@ -1,4 +1,4 @@
-open! Dune
+open! Engine
 (** Handling of coq source files *)
 open Stdune
 

@@ -1,4 +1,4 @@
-open! Dune
+open! Engine
 (** MDX integration *)
 
 open Stdune

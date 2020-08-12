@@ -1,4 +1,4 @@
-open! Dune
+open! Engine
 (** Integration with feedback-directed optimizations using ocamlfdo. *)
 open Stdune
 

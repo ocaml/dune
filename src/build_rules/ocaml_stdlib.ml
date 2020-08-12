@@ -1,4 +1,4 @@
-open! Dune
+open! Engine
 type t =
   { modules_before_stdlib : Module_name.Set.t
   ; exit_module : Module_name.t option

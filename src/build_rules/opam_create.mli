@@ -1,4 +1,4 @@
-open! Dune
+open! Engine
 (** Generate opam files from dune-project metadata *)
 
 open Stdune

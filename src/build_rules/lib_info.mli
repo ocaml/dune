@@ -1,4 +1,4 @@
-open! Dune
+open! Engine
 (** Raw library descriptions *)
 
 (** This module regroup all information about a library. We call such

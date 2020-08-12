@@ -1,4 +1,4 @@
-open! Dune
+open! Engine
 (** High-level API for compiling OCaml files *)
 
 open! Stdune

@@ -1,4 +1,4 @@
-open! Dune
+open! Engine
 (** Parse ocamlobjinfo output *)
 open Stdune
 

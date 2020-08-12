@@ -1,4 +1,4 @@
-open! Dune
+open! Engine
 (** Interpret dependencies written in Dune files *)
 open Stdune
 

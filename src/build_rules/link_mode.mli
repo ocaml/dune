@@ -1,4 +1,4 @@
-open! Dune
+open! Engine
 (** Link mode of OCaml programs *)
 
 type t =

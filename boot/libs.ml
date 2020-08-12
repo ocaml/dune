@@ -21,11 +21,9 @@ let local_libraries =
   ; ("src/catapult", Some "Catapult", false, None)
   ; ("src/jbuild_support", Some "Jbuild_support", false, None)
   ; ("otherlibs/action-plugin/src", Some "Dune_action_plugin", false, None)
-  (* CR cwong: here *)
-  ; ("src/engine", Some "Dune", true, None)
-  ; ("src/build_rules", Some "Dune_rules", true, None)
   ; ("vendor/build_path_prefix_map/src", Some "Build_path_prefix_map", false,
     None)
+  ; ("src/engine", Some "Engine", true, None)
   ; ("vendor/cmdliner/src", None, false, None)
   ; ("otherlibs/build-info/src", Some "Build_info", false,
     Some "build_info_data")

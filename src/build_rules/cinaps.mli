@@ -1,4 +1,4 @@
-open! Dune
+open! Engine
 (** Cinaps integration *)
 
 (** Cinaps is a small tool that allows to auto-generate part of ml or other

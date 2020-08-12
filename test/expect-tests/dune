@@ -8,7 +8,7 @@
   ocaml_config
   dune_tests_common
   stdune
-  dune
+  engine
   fiber
   dune_lang
   cache

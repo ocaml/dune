@@ -1,4 +1,4 @@
-open! Dune
+open! Engine
 (** Extra information required to generate rules for virtual library
     implementations *)
 

@@ -1,6 +1,6 @@
 open! Stdune
 open Import
-open! Dune
+open! Engine
 open Dune_lang.Decoder
 
 let is_cram_suffix = String.is_suffix ~suffix:".t"

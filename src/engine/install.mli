@@ -1,7 +1,6 @@
 (** Opam install file *)
 
 open! Stdune
-open Dune
 
 module Dst : sig
   type t

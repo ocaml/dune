@@ -1,5 +1,5 @@
 open Import
-open! Dune
+open! Engine
 
 module Sanitizer : sig
   [@@@ocaml.warning "-32"]

@@ -1,4 +1,4 @@
-open! Dune
+open! Engine
 (** Scopes *)
 
 (** A scope is a project + a library database *)

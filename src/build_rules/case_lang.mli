@@ -1,4 +1,4 @@
-open! Dune
+open! Engine
 (** The case language expresses conditional evaluation. The general form is:
     [(case %{expr} (<pred> -> <outcome>))] where [<pred>] is described using the
     predicate language: [Predicate_lang.t]. *)

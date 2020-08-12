@@ -1,5 +1,5 @@
 open Import
-open! Dune
+open! Engine
 
 type test =
   | File of Path.Source.t

@@ -1,4 +1,4 @@
-open! Dune
+open! Engine
 open Stdune
 
 val gen_rules : Super_context.t -> dir:Path.Build.t -> Build_system.Subdir_set.t

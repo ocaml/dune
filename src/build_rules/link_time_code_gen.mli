@@ -1,4 +1,4 @@
-open! Dune
+open! Engine
 (** {1 Handle link time code generation} *)
 
 open Stdune

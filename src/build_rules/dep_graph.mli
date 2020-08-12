@@ -1,4 +1,4 @@
-open! Dune
+open! Engine
 (** Represent dependency graphs between OCaml modules *)
 
 open Stdune

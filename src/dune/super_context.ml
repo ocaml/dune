@@ -2,19 +2,12 @@ open! Stdune
 open Import
 
 let default_context_flags (ctx : Context.t) =
-  (* TODO (v3) Current flag behavior is different when calling the C compiler or
-     the C++ compiler:
-
-     1.[ocamlc_cflags] and [ocamlc_cppflags] are always prenpended to the C
-     compiler arguments to reproduce [ocamlc]'s behavior,
-
-     2. [ocamlc_cflags] are present in [:standard] and prepended to the C++
-     compiler arguments only if the user didn't redefined them (or used
-     [:standard] to extend them) *)
-  let c = [] in
+  (* TODO DUNE3 To ensure full backward compatibility, ocaml_cflags are still
+     present in the :standard set of flags. However these should not as they are
+     already prepended when calling the compiler, causing flag duplication. *)
+  let c = Ocaml_config.ocamlc_cflags ctx.ocaml_config in
   let cxx =
-    Ocaml_config.ocamlc_cflags ctx.ocaml_config
-    |> List.filter ~f:(fun s -> not (String.is_prefix s ~prefix:"-std="))
+    List.filter c ~f:(fun s -> not (String.is_prefix s ~prefix:"-std="))
   in
   Foreign.Language.Dict.make ~c ~cxx
 

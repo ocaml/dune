@@ -1,3 +1,4 @@
+open! Dune
 open Import
 
 (** This module loads and validates foreign sources from directories. *)

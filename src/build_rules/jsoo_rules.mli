@@ -1,3 +1,4 @@
+open! Dune
 (** Generate rules for js_of_ocaml *)
 
 open! Stdune

@@ -1,3 +1,4 @@
+open! Dune
 (** Watermarking *)
 
 (** Expand watermarks in source files, similarly to what topkg does.

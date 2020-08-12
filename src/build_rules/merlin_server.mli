@@ -1,3 +1,4 @@
+open! Dune
 (** Merlin config server *)
 
 (** Once started the server will wait for commands on stdin, read the requested

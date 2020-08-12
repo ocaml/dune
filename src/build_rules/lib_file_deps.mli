@@ -1,3 +1,4 @@
+open! Dune
 module Group : sig
   type t =
     | Cmi

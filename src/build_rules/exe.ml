@@ -1,3 +1,4 @@
+open! Dune
 open! Stdune
 open Import
 module CC = Compilation_context

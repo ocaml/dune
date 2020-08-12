@@ -1,3 +1,4 @@
+open! Dune
 (** ocamldep management *)
 
 open Stdune

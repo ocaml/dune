@@ -1,3 +1,4 @@
+open! Dune
 (** Menhir rules *)
 
 open Stdune

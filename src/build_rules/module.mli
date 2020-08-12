@@ -1,3 +1,4 @@
+open! Dune
 (** Represents OCaml and Reason source files *)
 open! Stdune
 

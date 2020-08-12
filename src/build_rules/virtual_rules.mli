@@ -1,3 +1,4 @@
+open! Dune
 open Stdune
 
 val setup_copy_rules_for_impl :

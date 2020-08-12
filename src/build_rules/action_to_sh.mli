@@ -1,3 +1,4 @@
+open! Dune
 (** Convert an action to a shell command suitable for [/bin/sh] *)
 
 open Stdune

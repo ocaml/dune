@@ -1,3 +1,4 @@
+open! Dune
 (** Extra information required to generate rules for virtual library
     implementations *)
 

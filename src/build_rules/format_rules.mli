@@ -1,3 +1,4 @@
+open! Dune
 open Import
 
 (** Setup automatic format rules for the given dir. If tools like ocamlformat

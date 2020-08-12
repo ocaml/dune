@@ -1,3 +1,4 @@
+open! Dune
 (** Rules and helpers shared by OCaml libraries and executables *)
 
 open Stdune

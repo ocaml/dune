@@ -1,3 +1,4 @@
+open! Dune
 (** Command line arguments specification *)
 open! Stdune
 

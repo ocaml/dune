@@ -1,3 +1,4 @@
+open! Dune
 (** Representation of dune-package files *)
 open! Stdune
 

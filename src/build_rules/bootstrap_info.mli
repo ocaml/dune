@@ -1,3 +1,4 @@
+open! Dune
 (** Generate bootstrap info *)
 
 (** Generate an OCaml file containing a description of the dune sources for the

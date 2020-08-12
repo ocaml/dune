@@ -1,3 +1,4 @@
+open! Dune
 (** Generate a META file *)
 
 open! Import

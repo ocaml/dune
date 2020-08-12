@@ -1,3 +1,4 @@
+open! Dune
 (** An environment node represents an evaluated (env ..) stanza in a directory. *)
 
 open Stdune

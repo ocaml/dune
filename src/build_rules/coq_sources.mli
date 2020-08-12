@@ -1,3 +1,4 @@
+open! Dune
 (** Handling of coq source files *)
 open Stdune
 

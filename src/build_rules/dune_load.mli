@@ -1,3 +1,4 @@
+open! Dune
 (** Loads dune files from the file system.
 
     Also responsible for evaluating dune files written in OCaml syntax. *)

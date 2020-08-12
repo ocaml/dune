@@ -1,3 +1,4 @@
+open! Dune
 (** Raw library descriptions *)
 
 (** This module regroup all information about a library. We call such

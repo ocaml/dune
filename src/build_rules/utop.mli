@@ -1,3 +1,4 @@
+open! Dune
 (** Utop rules *)
 
 open! Stdune

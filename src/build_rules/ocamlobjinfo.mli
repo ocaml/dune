@@ -1,3 +1,4 @@
+open! Dune
 (** Parse ocamlobjinfo output *)
 open Stdune
 

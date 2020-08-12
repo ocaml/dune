@@ -1,3 +1,4 @@
+open! Dune
 (** Interpret dependencies written in Dune files *)
 open Stdune
 

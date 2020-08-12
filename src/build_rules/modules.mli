@@ -1,3 +1,4 @@
+open! Dune
 (** Module layout information. Contains information about aliasing, wrapping. *)
 open Stdune
 

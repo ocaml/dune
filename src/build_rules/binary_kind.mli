@@ -1,3 +1,4 @@
+open! Dune
 (** Linking modes for binaries *)
 
 open! Stdune

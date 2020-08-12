@@ -1,3 +1,4 @@
+open! Dune
 module Ppx_args : sig
   module Cookie : sig
     type t =

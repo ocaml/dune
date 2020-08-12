@@ -1,3 +1,4 @@
+open! Dune
 (** Generate opam files from dune-project metadata *)
 
 open Stdune

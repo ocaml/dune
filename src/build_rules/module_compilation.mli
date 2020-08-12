@@ -1,3 +1,4 @@
+open! Dune
 (** OCaml module compilation *)
 
 open Import

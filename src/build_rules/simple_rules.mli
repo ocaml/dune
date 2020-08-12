@@ -1,3 +1,4 @@
+open! Dune
 (** Simple rules: user, copy_files, alias *)
 
 open! Stdune

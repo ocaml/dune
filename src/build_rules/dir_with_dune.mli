@@ -1,3 +1,4 @@
+open! Dune
 open Stdune
 
 (** A directory with a [dune] file *)

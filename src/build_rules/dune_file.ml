@@ -1,3 +1,4 @@
+open! Dune
 open! Stdune
 open Import
 open Dune_lang.Decoder

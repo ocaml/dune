@@ -1,3 +1,4 @@
+open! Dune
 let jbuild_plugin_ml = {jbp|let () =
   Hashtbl.add Toploop.directive_table "require"
     (Toploop.Directive_string ignore);

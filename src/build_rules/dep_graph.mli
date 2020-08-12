@@ -1,3 +1,4 @@
+open! Dune
 (** Represent dependency graphs between OCaml modules *)
 
 open Stdune

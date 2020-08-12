@@ -1,3 +1,4 @@
+open! Dune
 (** Compilation and linking of executables *)
 open Stdune
 

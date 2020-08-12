@@ -1,3 +1,4 @@
+open! Dune
 (** {1 Handle link time code generation} *)
 
 open Stdune

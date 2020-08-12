@@ -1,3 +1,4 @@
+open! Dune
 (** Get dependencies for a set of modules using either ocamldep or ocamlobjinfo *)
 
 val rules :

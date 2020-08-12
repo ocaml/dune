@@ -1,3 +1,4 @@
+open! Dune
 (** Preprocessing of OCaml source files *)
 
 open! Stdune

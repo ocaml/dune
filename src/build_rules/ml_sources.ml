@@ -1,3 +1,4 @@
+open! Dune
 open Import
 open Dune_file
 module Modules_group = Modules

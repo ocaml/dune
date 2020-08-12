@@ -1,3 +1,4 @@
+open! Dune
 (** A collection of rules for one or multiple directories. *)
 
 open! Stdune

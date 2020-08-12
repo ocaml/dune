@@ -1,3 +1,4 @@
+open! Dune
 open Stdune
 
 (** Represents a valid OCaml module name *)

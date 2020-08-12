@@ -1,3 +1,4 @@
+open! Dune
 (** Defines target behavior for rules. *)
 
 open Import

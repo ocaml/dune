@@ -1,3 +1,4 @@
+open! Dune
 open Stdune
 
 let dev_files =

@@ -1,3 +1,4 @@
+open! Dune
 (** Scopes *)
 
 (** A scope is a project + a library database *)

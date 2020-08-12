@@ -1,3 +1,4 @@
+open! Dune
 open Stdune
 
 let toplevel_dir_prefix = ".toplevel."

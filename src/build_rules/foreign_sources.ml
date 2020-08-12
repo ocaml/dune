@@ -1,3 +1,4 @@
+open! Dune
 open Stdune
 open Dune_file
 module Library = Dune_file.Library

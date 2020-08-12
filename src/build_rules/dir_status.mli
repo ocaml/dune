@@ -1,3 +1,4 @@
+open! Dune
 open Stdune
 
 type is_component_of_a_group_but_not_the_root =

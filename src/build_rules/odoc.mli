@@ -1,3 +1,4 @@
+open! Dune
 (** Odoc rules *)
 
 open! Stdune

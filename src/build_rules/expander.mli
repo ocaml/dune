@@ -1,3 +1,4 @@
+open! Dune
 (** An expander is able to expand any dune template. It has two modes of
     expansion:
 

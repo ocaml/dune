@@ -1,3 +1,4 @@
+open! Dune
 (** OCaml sources *)
 
 (** This module encapsulates the structure of source files in a particular

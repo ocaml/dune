@@ -1,3 +1,4 @@
+open! Dune
 (** Dune sub-systems *)
 
 (** This module allows to define sub-systems. The aim is to define everything

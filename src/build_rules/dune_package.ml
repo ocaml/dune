@@ -1,3 +1,4 @@
+open! Dune
 open! Stdune
 
 module Vfile = Dune_lang.Versioned_file.Make (struct

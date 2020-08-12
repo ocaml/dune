@@ -1,3 +1,4 @@
+open! Dune
 (** Merlin rules *)
 
 open! Stdune

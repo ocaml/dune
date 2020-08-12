@@ -1,3 +1,4 @@
+open! Dune
 (** Link mode of OCaml programs *)
 
 type t =

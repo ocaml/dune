@@ -1,3 +1,4 @@
+open! Dune
 (** Integration with feedback-directed optimizations using ocamlfdo. *)
 open Stdune
 

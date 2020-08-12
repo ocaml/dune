@@ -1,3 +1,4 @@
+open! Dune
 (** MDX integration *)
 
 open Stdune

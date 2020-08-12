@@ -1,3 +1,4 @@
+open! Dune
 (** Initialize dune components *)
 open! Stdune
 

@@ -1,3 +1,4 @@
+open! Dune
 (** Directories contents *)
 
 (** This modules takes care of attaching source files of OCaml, C, Coq found in

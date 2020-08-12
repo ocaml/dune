@@ -1,3 +1,4 @@
+open! Dune
 open Import
 module CC = Compilation_context
 module SC = Super_context

@@ -1,3 +1,4 @@
+open! Dune
 open! Stdune
 open! Import
 include Sub_system_intf

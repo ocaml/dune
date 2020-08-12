@@ -1,3 +1,4 @@
+open! Dune
 open Import
 
 module Multiplicity = struct

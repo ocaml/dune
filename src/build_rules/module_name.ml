@@ -1,3 +1,4 @@
+open! Dune
 open Stdune
 
 include Stringlike.Make (struct

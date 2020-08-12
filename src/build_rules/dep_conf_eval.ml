@@ -1,3 +1,4 @@
+open! Dune
 open Stdune
 open Build.O
 open Dep_conf

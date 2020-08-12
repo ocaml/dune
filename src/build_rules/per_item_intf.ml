@@ -1,3 +1,4 @@
+open! Dune
 module type S = sig
   type key
 

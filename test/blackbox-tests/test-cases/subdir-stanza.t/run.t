@@ -72,3 +72,49 @@ In conjunction with dune generated files:
   $ dune build ./sub/bar
   $ cat _build/default/sub/bar
   parent
+
+subdir stanzas can also appear in included files
+
+  $ mkdir -p include/subdir; cd include
+  $ cat >dune-project <<EOF
+  > (lang dune 2.5)
+  > EOF
+  $ cat >dune <<EOF
+  > (include dune.inc)
+  > EOF
+  $ cat >dune.inc <<EOF
+  > (subdir subdir
+  >  (rule
+  >   (action (with-stdout-to hello.txt (echo "Hello from subdir\n")))))
+  > EOF
+  $ dune build --root . subdir/hello.txt
+  File "dune.inc", line 1, characters 0-90:
+  1 | (subdir subdir
+  2 |  (rule
+  3 |   (action (with-stdout-to hello.txt (echo "Hello from subdir\n")))))
+  Error: Using a `subdir' stanza within an `include'd file is only available
+  since version 2.7 of the dune language. Please update your dune-project file
+  to have (lang dune 2.7).
+  [1]
+  $ cat >dune-project <<EOF
+  > (lang dune 2.7)
+  > EOF
+  $ dune build --root . subdir/hello.txt
+  $ cat _build/default/subdir/hello.txt
+  Hello from subdir
+
+Include stanzas within subdir stanzas
+
+  $ mkdir -p subdir-include/a; cd subdir-include
+  $ cat >dune-project <<EOF
+  > (lang dune 2.5)
+  > EOF
+  $ cat >dune <<EOF
+  > (subdir a (include dune.inc))
+  > EOF
+  $ cat >a/dune.inc <<EOF
+  > (rule (with-stdout-to hello.txt (echo Hello!)))
+  > EOF
+  $ dune build --root . a/hello.txt
+  $ cat _build/default/a/hello.txt
+  Hello!

@@ -382,3 +382,5 @@ let run ~env ~script lexbuf : string Fiber.t =
 
 let run ~env ~script =
   run_expect_test script ~f:(fun lexbuf -> run ~env ~script lexbuf)
+
+let linkme = ()

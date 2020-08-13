@@ -2,6 +2,8 @@ open! Stdune
 open Import
 open Dune_lang.Decoder
 
+let () = Cram_exec.linkme
+
 type test = File_tree.Cram.test =
   | File of Path.Source.t
   | Dir of

@@ -249,6 +249,17 @@ module Output = struct
     record [ ("dir", f dir); ("visited", Dirs_visited.Per_fn.to_dyn visited) ]
 end
 
+module Cram = struct
+  type test =
+    | File of Path.Source.t
+    | Dir of
+        { file : Path.Source.t
+        ; dir : Path.Source.t
+        }
+
+  let is_cram_suffix = String.is_suffix ~suffix:".t"
+end
+
 module Dir0 = struct
   type t =
     { path : Path.Source.t

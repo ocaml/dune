@@ -24,6 +24,17 @@ module Dune_file : sig
   val path : t -> Path.Source.t
 end
 
+module Cram : sig
+  type test =
+    | File of Path.Source.t
+    | Dir of
+        { file : Path.Source.t
+        ; dir : Path.Source.t
+        }
+
+  val is_cram_suffix : string -> bool
+end
+
 module Dir : sig
   type t
 

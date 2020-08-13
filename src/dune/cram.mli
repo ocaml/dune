@@ -1,6 +1,6 @@
 open Import
 
-type test =
+type test = File_tree.Cram.test =
   | File of Path.Source.t
   | Dir of
       { file : Path.Source.t

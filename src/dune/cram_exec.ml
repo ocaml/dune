@@ -7,6 +7,7 @@ module Sanitizer : sig
     type t =
       { output : string
       ; build_path_prefix_map : string
+      ; script : Path.t
       }
   end
 
@@ -24,16 +25,21 @@ end = struct
     type t =
       { output : string
       ; build_path_prefix_map : string
+      ; script : Path.t
       }
 
-    let of_sexp (csexp : Sexp.t) : t =
+    let of_sexp script (csexp : Sexp.t) : t =
       match csexp with
       | List [ Atom build_path_prefix_map; Atom output ] ->
-        { build_path_prefix_map; output }
+        { build_path_prefix_map; output; script }
       | _ -> Code_error.raise "Command.of_csexp: invalid csexp" []
 
-    let to_sexp { output; build_path_prefix_map } : Sexp.t =
-      List [ Atom build_path_prefix_map; Atom output ]
+    let to_sexp { output; build_path_prefix_map; script } : Sexp.t =
+      List
+        [ Atom build_path_prefix_map
+        ; Atom output
+        ; Atom (Path.to_absolute_filename script)
+        ]
   end
 
   let run_sanitizer ?temp_dir ~prog ~argv commands =
@@ -74,7 +80,7 @@ end = struct
         Code_error.raise "unable to parse csexp" [ ("error", String error) ]
       | Ok None -> ()
       | Ok (Some sexp) ->
-        let command = Command.of_sexp sexp in
+        let command = Command.of_sexp (assert false) sexp in
         Csexp.to_channel out (Atom (f command));
         flush out;
         loop ()
@@ -136,11 +142,12 @@ let run_expect_test file ~f =
 
 let _BUILD_PATH_PREFIX_MAP = "BUILD_PATH_PREFIX_MAP"
 
-let extend_build_path_prefix_map ~env ~cwd =
+let extend_build_path_prefix_map ~env ~cwd ~temp_dir =
   let s =
     Build_path_prefix_map.encode_map
       [ Some
           { source = Path.to_absolute_filename cwd; target = "$TESTCASE_ROOT" }
+      ; Some { source = Path.to_absolute_filename temp_dir; target = "$TMPDIR" }
       ]
   in
   Env.update env ~var:_BUILD_PATH_PREFIX_MAP ~f:(function
@@ -176,6 +183,7 @@ let cat_eof ~dest oc lines =
 type block_result =
   { command : string list
   ; output_file : Path.t
+  ; script : Path.t
   }
 
 type metadata_entry =
@@ -186,9 +194,10 @@ type metadata_entry =
 type full_block_result = block_result * metadata_entry
 
 type sh_script =
-  { script : string
+  { script : Path.t
   ; cram_to_output : block_result Cram_lexer.block list
   ; metadata_file : Path.t option
+  ; command_count : int
   }
 
 let read_exit_codes_and_prefix_maps file =
@@ -235,7 +244,11 @@ let read_and_attach_exit_codes (sh_script : sh_script) :
   in
   loop [] metadata_entries sh_script.cram_to_output
 
-let rewrite_paths build_path_prefix_map =
+let line_number =
+  let open Re in
+  seq [ set "123456789"; rep digit ]
+
+let rewrite_paths build_path_prefix_map ~parent_script ~command_script s =
   match Build_path_prefix_map.decode_map build_path_prefix_map with
   | Error msg ->
     Code_error.raise "Cannot decode build prefix map"
@@ -247,11 +260,28 @@ let rewrite_paths build_path_prefix_map =
       let not_dir = Printf.sprintf " \n\r\t%c" Bin.path_sep in
       Re.(compile (seq [ char '/'; rep1 (diff any (set not_dir)) ]))
     in
-    fun s ->
-      Re.replace abs_path_re s ~f:(fun g ->
-          Build_path_prefix_map.rewrite map (Re.Group.get g 0))
+    let error_msg =
+      let open Re in
+      let command_script = str (Path.to_absolute_filename command_script) in
+      let parent_script = str (Path.to_absolute_filename parent_script) in
+      let a =
+        [ parent_script
+        ; str ": "
+        ; line_number
+        ; str ": "
+        ; command_script
+        ; str ": "
+        ]
+        |> seq
+      in
+      let b = seq [ command_script; str ": line "; line_number; str ": " ] in
+      [ a; b ] |> List.map ~f:(fun re -> seq [ bol; re ]) |> alt |> compile
+    in
+    Re.replace abs_path_re s ~f:(fun g ->
+        Build_path_prefix_map.rewrite map (Re.Group.get g 0))
+    |> Re.replace_string error_msg ~by:""
 
-let sanitize cram_to_output :
+let sanitize ~parent_script cram_to_output :
     (block_result * metadata_entry * string) Cram_lexer.block list =
   List.map cram_to_output ~f:(fun t ->
       match t with
@@ -261,7 +291,8 @@ let sanitize cram_to_output :
         let output =
           Io.read_file block_result.output_file
           |> Ansi_color.strip
-          |> rewrite_paths build_path_prefix_map
+          |> rewrite_paths ~parent_script ~command_script:block_result.script
+               build_path_prefix_map
         in
         Command (block_result, entry, output))
 
@@ -280,7 +311,7 @@ let compose_cram_output (cram_to_output : _ Cram_lexer.block list) =
       match (block : _ Cram_lexer.block) with
       | Comment lines -> List.iter lines ~f:add_line
       | Command
-          ( { command; output_file = _ }
+          ( { command; output_file = _; script = _ }
           , { exit_code; build_path_prefix_map = _ }
           , output ) -> (
         List.iteri command ~f:(fun i line ->
@@ -303,7 +334,6 @@ let compose_cram_output (cram_to_output : _ Cram_lexer.block list) =
 let create_sh_script cram_stanzas ~temp_dir : sh_script Fiber.t =
   let script = Path.relative temp_dir "main.sh" in
   let oc = Io.open_out ~binary:true script in
-  let script = Path.to_string script in
   let file name = Path.relative temp_dir name in
   let open Fiber.O in
   let sh_path path =
@@ -338,12 +368,16 @@ let create_sh_script cram_stanzas ~temp_dir : sh_script Fiber.t =
       fprln oc {|printf "%%d\0%%s\0" $? $%s >> %s|} _BUILD_PATH_PREFIX_MAP
         metadata_file_sh_path;
       Cram_lexer.Command
-        { command = lines; output_file = user_shell_code_output_file }
+        { command = lines
+        ; output_file = user_shell_code_output_file
+        ; script = user_shell_code_file
+        }
   in
   let+ cram_to_output = Fiber.sequential_map ~f:loop cram_stanzas in
   close_out oc;
-  let metadata_file = Option.some_if (!i > 0) metadata_file in
-  { script; cram_to_output; metadata_file }
+  let command_count = !i in
+  let metadata_file = Option.some_if (command_count > 0) metadata_file in
+  { script; cram_to_output; metadata_file; command_count }
 
 let _display_with_bars s =
   List.iter (String.split_lines s) ~f:(Printf.eprintf "| %s\n")
@@ -359,8 +393,8 @@ let run ~env ~script lexbuf : string Fiber.t =
   let cwd = Path.parent_exn script in
   let env =
     let env = Env.add env ~var:"LC_ALL" ~value:"C" in
-    let env = extend_build_path_prefix_map ~env ~cwd in
     let temp_dir = Path.relative temp_dir "tmp" in
+    let env = extend_build_path_prefix_map ~env ~cwd ~temp_dir in
     Path.mkdir_p temp_dir;
     Env.add env ~var:Env.Var.temp_dir
       ~value:(Path.to_absolute_filename temp_dir)
@@ -371,14 +405,11 @@ let run ~env ~script lexbuf : string Fiber.t =
       let path = Env.path Env.initial in
       Option.value_exn (Bin.which ~path "sh")
     in
-    Process.run ~dir:cwd ~env Strict sh [ sh_script.script ]
+    Process.run ~dir:cwd ~env Strict sh [ Path.to_string sh_script.script ]
   in
-  let output =
-    let raw = read_and_attach_exit_codes sh_script in
-    let sanitized = sanitize raw in
-    compose_cram_output sanitized
-  in
-  output
+  let raw = read_and_attach_exit_codes sh_script in
+  let sanitized = sanitize ~parent_script:sh_script.script raw in
+  compose_cram_output sanitized
 
 let run ~env ~script =
   run_expect_test script ~f:(fun lexbuf -> run ~env ~script lexbuf)

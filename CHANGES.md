@@ -65,6 +65,9 @@ next
 - Do not allow user actions to capture dune's stdin (#3677, fixes #3672,
   @rgrinberg)
 
+- `(subdir ...)` stanzas can now appear in dune files used via `(include ...)`.
+  (#3676, @nojb)
+
 2.6.1 (02/07/2020)
 ------------------
 

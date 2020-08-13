@@ -304,3 +304,47 @@ let decode =
          Dir_map.singleton { Dir_map.sexps = rest; subdir_status } :: subdirs)
   in
   enter (fields (decode ~allow_ignored_subdirs:true))
+
+let decode_includes ~context =
+  let open Dune_lang.Decoder in
+  let rec subdir ~context ~path ~inside_include =
+    let* dune_version = Dune_lang.Syntax.get_exn Stanza.syntax in
+    let* loc = loc in
+    let* name, path =
+      plain_string (fun ~loc s ->
+          (Atom (loc, Dune_lang.Atom.of_string s), s :: path))
+    in
+    let+ nodes = fields (decode ~context ~path ~inside_include) in
+    let required_version = (2, 7) in
+    if inside_include && dune_version < required_version then
+      Dune_lang.Syntax.Error.since loc Stanza.syntax required_version
+        ~what:"Using a `subdir' stanza within an `include'd file";
+    List
+      (loc, Atom (Loc.none, Dune_lang.Atom.of_string "subdir") :: name :: nodes)
+  and decode ~context ~path ~inside_include =
+    let* includes =
+      multi_field "include"
+        (let* loc = loc
+         and+ fn = relative_file in
+         let fn =
+           List.fold_left
+             ~f:(fun fn dir -> Filename.concat dir fn)
+             ~init:fn path
+         in
+         let sexps, context =
+           Stanza_common.Include.load_sexps ~context (loc, fn)
+         in
+         let* () = set_input sexps in
+         fields (decode ~context ~path ~inside_include:true))
+    in
+    let+ subdirs = multi_field "subdir" (subdir ~context ~path ~inside_include)
+    and+ sexps = leftover_fields in
+    List.concat (sexps :: subdirs :: includes)
+  in
+  enter (fields (decode ~context ~path:[] ~inside_include:false))
+
+let decode ~file =
+  let open Dune_lang.Decoder in
+  let* sexps = decode_includes ~context:(Stanza_common.Include.in_file file) in
+  let* () = set_input [ List (Loc.none, sexps) ] in
+  decode

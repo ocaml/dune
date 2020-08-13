@@ -2,8 +2,6 @@ open! Stdune
 open Import
 open Dune_lang.Decoder
 
-let is_cram_suffix = File_tree.Cram.is_cram_suffix
-
 type test = File_tree.Cram.test =
   | File of Path.Source.t
   | Dir of

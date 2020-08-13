@@ -13,8 +13,6 @@ val name : test -> string
 
 val script : test -> Path.Source.t
 
-val is_cram_suffix : string -> bool
-
 module Stanza : sig
   type applies_to =
     | Whole_subtree

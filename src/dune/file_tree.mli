@@ -31,8 +31,6 @@ module Cram : sig
         { file : Path.Source.t
         ; dir : Path.Source.t
         }
-
-  val is_cram_suffix : string -> bool
 end
 
 module Dir : sig

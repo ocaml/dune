@@ -70,7 +70,7 @@ lib: invalid name
   [1]
 
 
-exe: invalid name prior to 2.7
+exe: invalid name
   $ dune build --root name-invalid-exe
   Entering directory 'name-invalid-exe'
   File "dune", line 2, characters 7-10:
@@ -79,38 +79,11 @@ exe: invalid name prior to 2.7
   Error: Module "A.b" doesn't exist.
   [1]
 
-exe: invalid name since 2.7
-  $ dune build --root name-invalid-exe-2-7
-  Entering directory 'name-invalid-exe-2-7'
-  File "dune", line 2, characters 7-10:
-  2 |  (name a.b))
-             ^^^
-  Error: "a.b" is an invalid module name.
-  Module names must be non-empty and composed only of the following characters:
-  'A'..'Z', 'a'..'z', '_', ''' or '0'..'9'.
-  Hint: a_b would be a correct module name
-  [1]
-
-exe: invalid public-name prior to 2.7
+exe: invalid public-name
   $ dune build --root public-name-invalid-exe
   Entering directory 'public-name-invalid-exe'
   File "dune", line 2, characters 14-17:
   2 |  (public_name a.b))
                     ^^^
   Error: Module "A.b" doesn't exist.
-  [1]
-
-exe: invalid public-name since 2.7
-  $ dune build --root public-name-invalid-exe-2-7
-  Entering directory 'public-name-invalid-exe-2-7'
-  File "dune", line 2, characters 14-17:
-  2 |  (public_name a.b))
-                    ^^^
-  Error: Invalid module name.
-  Public executable names don't have this restriction. You can either change
-  this public name to be a valid module name or add a "name" field with a valid
-  module name.
-  Hint: Module names must be non-empty and composed only of the following
-  characters: 'A'..'Z', 'a'..'z', '_', ''' or '0'..'9'.
-  Hint: a_b would be a correct module name
   [1]

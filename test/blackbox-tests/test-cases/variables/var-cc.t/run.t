@@ -8,6 +8,8 @@ merged with (and sometimes replaced by) the flags in the env stanza.
 
   $ O_CC=$(ocamlc -config-var c_compiler)
   $ O_CCF=$(ocamlc -config-var ocamlc_cflags)
+  $ O_CC=${O_CC%% }
+  $ O_CCF=${O_CCF%% }
 
 No env
   $ cat > dune <<'EOF'
@@ -27,7 +29,7 @@ With added env flags
   OK
 
 With redefining env flags
-  $ sed -i "s/:standard //g" dune
+  $ sed -i.bak "s/:standard //g" dune
 
   $ dune build @cc | sed "s,${O_CC} -fPIC,OK,"
   OK

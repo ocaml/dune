@@ -1,5 +1,5 @@
-next
-----
+2.7.0 (13/08/2020)
+------------------
 
 - Write intermediate files in a `.mdx` folder for each `mdx` stanza
   to prevent the corresponding actions to be executed as part of the `@all`

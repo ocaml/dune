@@ -947,7 +947,7 @@ module Executables = struct
         s
 
     let make ~multi ~stanza ~allow_omit_names_version =
-      let check_valid_name_version = (2, 7) in
+      let check_valid_name_version = (3, 0) in
       let+ names =
         if multi then
           multi_fields

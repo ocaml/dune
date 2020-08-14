@@ -70,9 +70,18 @@ lib: invalid name
   [1]
 
 
-exe: invalid name
+exe: invalid name prior to 2.7
   $ dune build --root name-invalid-exe
   Entering directory 'name-invalid-exe'
+  File "dune", line 2, characters 7-10:
+  2 |  (name a.b))
+             ^^^
+  Error: Module "A.b" doesn't exist.
+  [1]
+
+exe: invalid name since 2.7
+  $ dune build --root name-invalid-exe-2-7
+  Entering directory 'name-invalid-exe-2-7'
   File "dune", line 2, characters 7-10:
   2 |  (name a.b))
              ^^^
@@ -82,9 +91,18 @@ exe: invalid name
   Hint: a_b would be a correct module name
   [1]
 
-exe: invalid public-name
+exe: invalid public-name prior to 2.7
   $ dune build --root public-name-invalid-exe
   Entering directory 'public-name-invalid-exe'
+  File "dune", line 2, characters 14-17:
+  2 |  (public_name a.b))
+                    ^^^
+  Error: Module "A.b" doesn't exist.
+  [1]
+
+exe: invalid public-name since 2.7
+  $ dune build --root public-name-invalid-exe-2-7
+  Entering directory 'public-name-invalid-exe-2-7'
   File "dune", line 2, characters 14-17:
   2 |  (public_name a.b))
                     ^^^

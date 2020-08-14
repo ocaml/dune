@@ -7,8 +7,9 @@
 
 - Read Coq flags from `env` (#3547 , fixes #3486, @gares)
 
-- Allow bisect_ppx to be enabled/disabled via dune-workspace. (#3404,
-  @stephanieyou)
+- Add instrumentation framework to toggle instrumentation by `bisect_ppx`,
+  `landmarks`, etc, via dune-workspace and/or the command-line. (#3404, #3526
+  @stephanieyou, @nojb)
 
 - Formatting of dune files is now done in the executing dune process instead of
   in a separate process. (#3536, @nojb)

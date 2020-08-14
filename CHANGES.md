@@ -68,6 +68,11 @@ next
 - `(subdir ...)` stanzas can now appear in dune files used via `(include ...)`.
   (#3676, @nojb)
 
+2.6.2 (26/07/2020)
+------------------
+
+* Fix compatibility with OCaml 4.12 (#3585, fixes #3583, @ejgallego)
+
 2.6.1 (02/07/2020)
 ------------------
 

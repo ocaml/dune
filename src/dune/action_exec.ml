@@ -5,7 +5,7 @@ module DAP = Dune_action_plugin.Private.Protocol
 
 (* CR-someday cwong: Adjust this to be a nicer design. It would be ideal if we
    could generally allow actions to be extended. *)
-let cram_run = ref None
+let cram_run = Fdecl.create (fun _ -> Dyn.Opaque)
 
 (** A version of [Dune_action_plugin.Private.Protocol.Dependency] where all
     relative paths are replaced by [Path.t]. (except the protocol doesn't
@@ -362,10 +362,10 @@ let rec exec t ~ectx ~eenv =
     Fiber.return Done
   | Cram script ->
     let+ () =
-      match !cram_run with
-      | None -> assert false
-      (* We don't pass cwd because Cram_exec will use the script's dir to run *)
-      | Some run -> run ~env:eenv.env ~script
+      Fdecl.get
+        cram_run
+        (* We don't pass cwd because Cram_exec will use the script's dir to run *)
+        ~env:eenv.env ~script
     in
     Done
 

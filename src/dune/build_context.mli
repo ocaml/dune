@@ -10,7 +10,6 @@ type t = private
   { name : Context_name.t
   ; build_dir : Path.Build.t
   ; env : Env.t
-  ; ocaml : Action.Prog.t
   ; host : t option
   }
 
@@ -18,6 +17,5 @@ val create :
      name:Context_name.t
   -> build_dir:Path.Build.t
   -> env:Env.t
-  -> ocaml:Action.Prog.t
   -> host:t option
   -> t

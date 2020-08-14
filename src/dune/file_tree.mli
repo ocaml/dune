@@ -24,21 +24,12 @@ module Dune_file : sig
   val path : t -> Path.Source.t
 end
 
-module Cram : sig
-  type test =
-    | File of Path.Source.t
-    | Dir of
-        { file : Path.Source.t
-        ; dir : Path.Source.t
-        }
-end
-
 module Dir : sig
   type t
 
-  type error = Missing_run_t of Cram.test
+  type error = Missing_run_t of Cram_test.t
 
-  val cram_tests : t -> (Cram.test, error) result list
+  val cram_tests : t -> (Cram_test.t, error) result list
 
   val path : t -> Path.Source.t
 

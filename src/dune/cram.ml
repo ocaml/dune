@@ -4,7 +4,7 @@ open Dune_lang.Decoder
 
 let () = Cram_exec.linkme
 
-type test = File_tree.Cram.test =
+type test = Cram_test.t =
   | File of Path.Source.t
   | Dir of
       { file : Path.Source.t

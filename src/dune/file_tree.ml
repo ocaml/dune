@@ -251,17 +251,6 @@ module Output = struct
     record [ ("dir", f dir); ("visited", Dirs_visited.Per_fn.to_dyn visited) ]
 end
 
-module Cram = struct
-  type test =
-    | File of Path.Source.t
-    | Dir of
-        { file : Path.Source.t
-        ; dir : Path.Source.t
-        }
-
-  let is_cram_suffix = String.is_suffix ~suffix:".t"
-end
-
 module Dir0 = struct
   type t =
     { path : Path.Source.t
@@ -287,7 +276,7 @@ module Dir0 = struct
         Memo.Cell.t
     }
 
-  type error = Missing_run_t of Cram.test
+  type error = Missing_run_t of Cram_test.t
 
   let rec to_dyn { path; status; contents; project = _; vcs } =
     let open Dyn in
@@ -590,7 +579,7 @@ end = struct
           let status = sub_dir.sub_dir_status in
           if
             Dune_project.cram parent_dir.project
-            && Cram.is_cram_suffix basename
+            && Cram_test.is_cram_suffix basename
             && status = Normal
           then
             Sub_dirs.Status.Data_only
@@ -722,15 +711,15 @@ module Dir = struct
       let file_tests =
         String.Set.to_list t.contents.files
         |> List.filter_map ~f:(fun s ->
-               if Cram.is_cram_suffix s then
-                 Some (Ok (Cram.File (Path.Source.relative t.path s)))
+               if Cram_test.is_cram_suffix s then
+                 Some (Ok (Cram_test.File (Path.Source.relative t.path s)))
                else
                  None)
       in
       let dir_tests =
         String.Map.to_list t.contents.sub_dirs
         |> List.filter_map ~f:(fun (name, sub_dir) ->
-               match Cram.is_cram_suffix name with
+               match Cram_test.is_cram_suffix name with
                | false -> None
                | true ->
                  let contents =
@@ -741,7 +730,7 @@ module Dir = struct
                  let fname = "run.t" in
                  let test =
                    let file = Path.Source.relative dir fname in
-                   Cram.Dir { file; dir }
+                   Cram_test.Dir { file; dir }
                  in
                  Some
                    ( if String.Set.mem contents.contents.files fname then

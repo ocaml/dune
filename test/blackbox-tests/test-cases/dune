@@ -84,8 +84,10 @@
  (applies_to windows-diff)
  (alias runtest-windows))
 
-(subdir cram
+(subdir
+ cram
  ;  mac has a different sh error message
  (cram
   (applies_to error)
-  (enabled_if (<> "macosx" %{ocaml-config:system}))))
+  (enabled_if
+   (<> "macosx" %{ocaml-config:system}))))

@@ -68,7 +68,7 @@ type done_or_more_deps =
 
 type exec_context =
   { targets : Path.Build.Set.t
-  ; context : Context.t option
+  ; context : Build_context.t option
   ; purpose : Process.purpose
   ; rule_loc : Loc.t
   ; build_deps : Dep.Set.t -> unit Fiber.t
@@ -87,9 +87,9 @@ type exec_environment =
 let validate_context_and_prog context prog =
   match context with
   | None
-  | Some { Context.for_host = None; _ } ->
+  | Some { Build_context.host = None; _ } ->
     ()
-  | Some ({ Context.for_host = Some host; _ } as target) ->
+  | Some ({ Build_context.host = Some host; _ } as target) ->
     let target_name = Context_name.to_string target.name in
     let invalid_prefix prefix =
       match Path.descendant prog ~of_:prefix with

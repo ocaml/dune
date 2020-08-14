@@ -409,14 +409,15 @@ end = struct
             | None -> Lib_name.Map.empty
             | Some entries ->
               List.fold_left entries ~init:Lib_name.Map.empty
-                ~f:(fun acc
-                        { Dune_file.Deprecated_library_name.old_public_name =
-                            { public = old_public_name; _ }
-                        ; new_public_name = _, new_public_name
-                        ; loc
-                        ; _
-                        }
-                        ->
+                ~f:(fun
+                     acc
+                     { Dune_file.Deprecated_library_name.old_public_name =
+                         { public = old_public_name; _ }
+                     ; new_public_name = _, new_public_name
+                     ; loc
+                     ; _
+                     }
+                   ->
                   let old_public_name =
                     Dune_file.Public_lib.name old_public_name
                   in
@@ -635,7 +636,9 @@ let install_rules sctx (package : Package.t) =
   in
   let () =
     let target_alias =
-      Build_system.Alias.package_install ~context:ctx ~pkg:package
+      Build_system.Alias.package_install
+        ~context:(Context.to_build_context ctx)
+        ~pkg:package
     in
     Rules.Produce.Alias.add_deps target_alias files
       ~dyn_deps:
@@ -645,7 +648,9 @@ let install_rules sctx (package : Package.t) =
                 let pkg =
                   Package.Name.Map.find_exn (Super_context.packages sctx) pkg
                 in
-                Build_system.Alias.package_install ~context:ctx ~pkg
+                Build_system.Alias.package_install
+                  ~context:(Context.to_build_context ctx)
+                  ~pkg
                 |> Alias.stamp_file |> Path.build))
   in
   let action =

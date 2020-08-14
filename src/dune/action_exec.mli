@@ -26,7 +26,7 @@ end
 
 val exec :
      targets:Path.Build.Set.t
-  -> context:Context.t option
+  -> context:Build_context.t option
   -> env:Env.t
   -> rule_loc:Loc.t
   -> build_deps:(Dep.Set.t -> unit Fiber.t)

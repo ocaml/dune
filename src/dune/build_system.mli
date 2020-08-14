@@ -14,7 +14,7 @@ type caching =
 
 (** Initializes the build system. This must be called first. *)
 val init :
-     contexts:Context.t list
+     contexts:Build_context.t list
   -> ?caching:caching
   -> sandboxing_preference:Sandbox_mode.t list
   -> unit
@@ -107,7 +107,7 @@ module Alias : sig
   type t = Alias.t
 
   (** Alias for all the files in [_build/install] that belong to this package *)
-  val package_install : context:Context.t -> pkg:Package.t -> t
+  val package_install : context:Build_context.t -> pkg:Package.t -> t
 
   (** [dep t = Build.path (stamp_file t)] *)
   val dep : t -> unit Build.t
@@ -163,7 +163,7 @@ module Evaluated_rule : sig
     ; dir : Path.Build.t
     ; deps : Dep.Set.t
     ; targets : Path.Build.Set.t
-    ; context : Context.t option
+    ; context : Build_context.t option
     ; action : Action.t
     }
 end

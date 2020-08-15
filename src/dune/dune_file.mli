@@ -362,7 +362,7 @@ type Stanza.t +=
   | Include_subdirs of Loc.t * Include_subdirs.t
   | Toplevel of Toplevel.t
   | Deprecated_library_name of Deprecated_library_name.t
-  | Cram of Cram.Stanza.t
+  | Cram of Cram_stanza.t
 
 val stanza_package : Stanza.t -> Package.t option
 

@@ -1,5 +1,9 @@
 open Import
 
+(* cwong: This should probably go in a better place than here, but I'm not sure
+   where. Putting it in [Cram_test] creates dependency cycles. *)
+let () = Cram_exec.linkme
+
 type effective =
   { loc : Loc.t
   ; alias : Alias.Name.Set.t
@@ -14,7 +18,7 @@ let empty_effective =
   ; deps = []
   }
 
-let missing_run_t (error : Cram.test) =
+let missing_run_t (error : Cram_test.t) =
   Build.fail
     { fail =
         (fun () ->
@@ -33,7 +37,7 @@ let missing_run_t (error : Cram.test) =
   |> Build.with_no_targets
 
 let test_rule ~sctx ~expander ~dir (spec : effective)
-    (test : (Cram.test, File_tree.Dir.error) result) =
+    (test : (Cram_test.t, File_tree.Dir.error) result) =
   let module Alias_rules = Simple_rules.Alias_rules in
   let enabled = Expander.eval_blang expander (Blang.And spec.enabled_if) in
   let loc = Some spec.loc in
@@ -42,8 +46,8 @@ let test_rule ~sctx ~expander ~dir (spec : effective)
   in
   let test_name =
     match test with
-    | Ok t -> Cram.name t
-    | Error (Missing_run_t t) -> Cram.name t
+    | Ok t -> Cram_test.name t
+    | Error (Missing_run_t t) -> Cram_test.name t
   in
   let stamp_no_rule () = (Path.Build.to_dyn dir, "no-cram-rules", test_name) in
   match test with
@@ -59,7 +63,9 @@ let test_rule ~sctx ~expander ~dir (spec : effective)
           Alias_rules.add_empty sctx ~alias ~loc ~stamp:(stamp_no_rule ()))
     | true ->
       let prefix_with, _ = Path.Build.extract_build_context_dir_exn dir in
-      let script = Path.Build.append_source prefix_with (Cram.script test) in
+      let script =
+        Path.Build.append_source prefix_with (Cram_test.script test)
+      in
       let action =
         Action.progn
           [ Action.Cram (Path.build script)
@@ -72,7 +78,7 @@ let test_rule ~sctx ~expander ~dir (spec : effective)
           ]
       in
       let stamp =
-        (Path.Build.to_dyn dir, Action.for_shell action, Cram.name test)
+        (Path.Build.to_dyn dir, Action.for_shell action, Cram_test.name test)
       in
       let cram =
         let open Build.O in
@@ -105,7 +111,7 @@ let rules ~sctx ~expander ~dir tests =
     in
     let rec collect_whole_subtree acc dir =
       let acc =
-        stanzas dir ~f:(fun (s : Cram.Stanza.t) -> s.applies_to = Whole_subtree)
+        stanzas dir ~f:(fun (s : Cram_stanza.t) -> s.applies_to = Whole_subtree)
         :: acc
       in
       match Path.Build.parent dir with
@@ -120,8 +126,8 @@ let rules ~sctx ~expander ~dir tests =
   List.iter tests ~f:(fun test ->
       let name =
         match test with
-        | Ok test -> Cram.name test
-        | Error (File_tree.Dir.Missing_run_t test) -> Cram.name test
+        | Ok test -> Cram_test.name test
+        | Error (File_tree.Dir.Missing_run_t test) -> Cram_test.name test
       in
       let effective =
         let init =
@@ -132,7 +138,7 @@ let rules ~sctx ~expander ~dir tests =
           { empty_effective with alias }
         in
         List.fold_left stanzas ~init
-          ~f:(fun acc (dir, (spec : Cram.Stanza.t)) ->
+          ~f:(fun acc (dir, (spec : Cram_stanza.t)) ->
             match
               match spec.applies_to with
               | Whole_subtree -> true

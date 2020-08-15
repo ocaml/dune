@@ -8,16 +8,25 @@ BIN := ./dune.exe
 
 # Dependencies used for developing and testing dune
 DEV_DEPS := \
+"csexp>=1.3.0" \
+bisect_ppx \
+coq \
 core_bench \
+"mdx=1.6.0" \
 menhir \
 merlin \
+ocaml-migrate-parsetree \
+ocamlfind \
 ocamlformat \
-odoc \
-ppx_expect \
+"odoc>=1.5.0" \
+"ppx_expect>=v0.14" \
 ppx_inline_test \
 ppxlib \
 cinaps \
-utop
+result \
+js_of_ocaml-ppx \
+js_of_ocaml-compiler \
+"utop>=2.6.0"
 
 -include Makefile.dev
 

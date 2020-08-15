@@ -947,6 +947,7 @@ module Executables = struct
         s
 
     let make ~multi ~stanza ~allow_omit_names_version =
+      let check_valid_name_version = (3, 0) in
       let+ names =
         if multi then
           multi_fields
@@ -964,20 +965,23 @@ module Executables = struct
       let stanza = pluralize stanza ~multi in
       let names =
         let open Dune_lang.Syntax.Version.Infix in
-        Option.iter names
-          ~f:
-            (List.iter ~f:(fun name ->
-                 ignore (Module_name.parse_string_exn name : Module_name.t)));
+        if dune_syntax >= check_valid_name_version then
+          Option.iter names
+            ~f:
+              (List.iter ~f:(fun name ->
+                   ignore (Module_name.parse_string_exn name : Module_name.t)));
         match (names, public_names) with
         | Some names, _ -> names
         | None, Some public_names ->
           if dune_syntax >= allow_omit_names_version then
+            let check_names = dune_syntax >= check_valid_name_version in
             List.map public_names ~f:(fun (loc, p) ->
-                match p with
-                | None ->
+                match (p, check_names) with
+                | None, _ ->
                   User_error.raise ~loc
                     [ Pp.text "This executable must have a name field" ]
-                | Some s -> (
+                | Some s, false -> (loc, s)
+                | Some s, true -> (
                   match Module_name.of_string_user_error (loc, s) with
                   | Ok _ -> (loc, s)
                   | Error user_message ->

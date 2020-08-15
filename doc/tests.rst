@@ -604,8 +604,36 @@ artifact that might rely on using the ``deps`` field.
 
 See :ref:`dune-action-plugin` for details about the sandboxing mechanism.
 
-.. _ppx_inline_test: https://github.com/janestreet/ppx_inline_test
-.. _ppx_expect:      https://github.com/janestreet/ppx_expect
-.. _qtest:           https://github.com/vincent-hugot/qtest
-.. _patdiff:         https://github.com/janestreet/patdiff
-.. _cram:            https://bitheap.org/cram/
+Test Output Sanitation
+----------------------
+
+In some situations, cram tests emit non portable or non deterministic output. We
+recommend to sanitize such outputs using pipes. For example, we can scrub the
+ocaml magic number using sed as follows:
+
+.. code:: bash
+
+   $ ocamlc -config | grep "cmi_magic_number:" | sed 's/Caml.*/$SPECIAL_CODE/'
+   cmi_magic_number: $SPECIAL_CODE
+
+By default, dune will scrub the some paths from the output of the tests. The
+default list of paths is:
+
+- The ``PWD`` of the test will be replaced by ``$TESTCASE_ROOT``
+- The temporary directory for the current script will be replaced by ``$TMPDIR``
+
+To add additional paths to this sanitation mechanism, it's sufficient to modify
+the standard BUILD_PATH_PREFIX_MAP_ environment variable. For example:
+
+.. code:: bash
+
+   $ export BUILD_PATH_PREFIX_MAP="HOME=$HOME:$BUILD_PATH_PREFIX_MAP"
+   $ echo $HOME
+   $HOME
+
+.. _ppx_inline_test:       https://github.com/janestreet/ppx_inline_test
+.. _ppx_expect:            https://github.com/janestreet/ppx_expect
+.. _qtest:                 https://github.com/vincent-hugot/qtest
+.. _patdiff:               https://github.com/janestreet/patdiff
+.. _cram:                  https://bitheap.org/cram/
+.. _BUILD_PATH_PREFIX_MAP: https://reproducible-builds.org/specs/build-path-prefix-map/

@@ -126,7 +126,7 @@ let cram_stanzas lexbuf =
   loop []
 
 let run_expect_test file ~f =
-  let file_contents = Io.read_file file in
+  let file_contents = Io.read_file ~binary:false file in
   let open Fiber.O in
   let+ expected =
     let lexbuf =
@@ -136,7 +136,7 @@ let run_expect_test file ~f =
   in
   let corrected_file = Path.extend_basename file ~suffix:".corrected" in
   if file_contents <> expected then
-    Io.write_file corrected_file expected
+    Io.write_file ~binary:false corrected_file expected
   else if Path.exists corrected_file then
     Path.rm_rf corrected_file
 
@@ -289,7 +289,7 @@ let sanitize ~parent_script cram_to_output :
       | Command
           (block_result, ({ build_path_prefix_map; exit_code = _ } as entry)) ->
         let output =
-          Io.read_file block_result.output_file
+          Io.read_file ~binary:false block_result.output_file
           |> Ansi_color.strip
           |> rewrite_paths ~parent_script ~command_script:block_result.script
                build_path_prefix_map

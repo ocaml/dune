@@ -28,7 +28,9 @@ let fake_gc_stat =
   ; compactions = 0
   ; top_heap_words = 0
   ; stack_size = 0
-  } [@ocaml.warning "-23"]      (* all fiels of record used *)
+  } [@ocaml.warning "-23"]
+
+(* all fiels of record used *)
 
 let fake time_ref buf =
   let print s = Buffer.add_string buf s in

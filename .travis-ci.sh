@@ -14,10 +14,10 @@ TARGET="$1"; shift
 # building Coq. This simply outputs something regularly to prevent
 # this behavior.
 keep_travis_happy () {
-    for i in $(seq 15); do sleep 60; echo "Keeping Travis happy ..."; done&
+    for i in $(seq 20); do sleep 60; echo "Keeping Travis happy ..."; done&
     local job=$!
     "$@"
-    kill "$job"
+    kill "$job" || true
 }
 
 opam_install_test_deps () {

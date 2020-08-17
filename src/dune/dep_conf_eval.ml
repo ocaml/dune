@@ -47,7 +47,10 @@ let dep expander = function
              let context = Expander.context expander in
              match Expander.find_package expander pkg with
              | Some pkg ->
-               Build.alias (Build_system.Alias.package_install ~context ~pkg)
+               Build.alias
+                 (Build_system.Alias.package_install
+                    ~context:(Context.to_build_context context)
+                    ~pkg)
              | None ->
                Build.fail
                  { fail =
@@ -88,8 +91,7 @@ let unnamed ~expander l =
   ()
 
 let named =
-  make_interpreter ~f:(fun expander ->
-    function
+  make_interpreter ~f:(fun expander -> function
     | Bindings.Unnamed p ->
       dep expander p
       |> Result.map ~f:(fun l ->

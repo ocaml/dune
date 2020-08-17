@@ -228,8 +228,7 @@ let lib_entries_of_package t pkg_name =
 let internal_lib_names t =
   List.fold_left t.stanzas ~init:Lib_name.Set.empty
     ~f:(fun acc { Dir_with_dune.data = stanzas; _ } ->
-      List.fold_left stanzas ~init:acc ~f:(fun acc ->
-        function
+      List.fold_left stanzas ~init:acc ~f:(fun acc -> function
         | Dune_file.Library lib ->
           Lib_name.Set.add
             ( match lib.public with
@@ -263,7 +262,8 @@ let make_rule t ?sandbox ?mode ?locks ?loc ~dir build =
   let build = chdir_to_build_context_root t build in
   let env = get_node t.env_tree ~dir |> Env_node.external_env in
   Rule.make ?sandbox ?mode ?locks ~info:(Rule.Info.of_loc_opt loc)
-    ~context:(Some t.context) ~env:(Some env) build
+    ~context:(Some (Context.to_build_context t.context))
+    ~env:(Some env) build
 
 let add_rule t ?sandbox ?mode ?locks ?loc ~dir build =
   let rule = make_rule t ?sandbox ?mode ?locks ?loc ~dir build in
@@ -279,8 +279,9 @@ let add_rules t ?sandbox ~dir builds =
 
 let add_alias_action t alias ~dir ~loc ?locks ~stamp action =
   let env = Some (get_node t.env_tree ~dir |> Env_node.external_env) in
-  Rules.Produce.Alias.add_action ~context:t.context ~env alias ~loc ?locks
-    ~stamp action
+  Rules.Produce.Alias.add_action
+    ~context:(Context.to_build_context t.context)
+    ~env alias ~loc ?locks ~stamp action
 
 let build_dir_is_vendored build_dir =
   let opt =

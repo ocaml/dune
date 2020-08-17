@@ -127,6 +127,8 @@ val lib_config : t -> Lib_config.t
     the host build context. Otherwise, it just returns [exe]. *)
 val map_exe : t -> Path.t -> Path.t
 
+val to_build_context : t -> Build_context.t
+
 module DB : sig
   val get : Path.Build.t -> t
 

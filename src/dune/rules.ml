@@ -7,7 +7,7 @@ module Dir_rules = struct
     { stamp : Digest.t
     ; action : Action.t Build.With_targets.t
     ; locks : Path.t list
-    ; context : Context.t
+    ; context : Build_context.t
     ; env : Env.t option
     ; loc : Loc.t option
     }

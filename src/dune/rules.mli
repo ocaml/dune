@@ -14,7 +14,7 @@ module Dir_rules : sig
     { stamp : Digest.t
     ; action : Action.t Build.With_targets.t
     ; locks : Path.t list
-    ; context : Context.t
+    ; context : Build_context.t
     ; env : Env.t option
     ; loc : Loc.t option
     }
@@ -76,7 +76,7 @@ module Produce : sig
         S-expression that is unique and persistent S-expression. *)
     val add_action :
          t
-      -> context:Context.t
+      -> context:Build_context.t
       -> env:Env.t option
       -> loc:Loc.t option
       -> ?locks:Path.t list

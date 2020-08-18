@@ -265,7 +265,8 @@ let coqc_rule (cctx : _ Context.t) ~file_flags coq_module =
   let source = Coq_module.source coq_module in
   let file_flags =
     let object_to = Coq_module.obj_file ~obj_dir:cctx.dir coq_module in
-    [ Command.Args.Hidden_targets [ object_to ]
+    let aux = Coq_module.aux_file ~obj_dir:cctx.dir coq_module in
+    [ Command.Args.Hidden_targets [ object_to; aux ]
     ; S file_flags
     ; Command.Args.Dep (Path.build source)
     ]

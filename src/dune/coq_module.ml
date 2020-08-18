@@ -41,6 +41,10 @@ let dep_file x ~obj_dir =
   let vo_dir = build_vo_dir ~obj_dir x in
   Path.Build.relative vo_dir (x.name ^ ".v.d")
 
+let aux_file x ~obj_dir =
+  let vo_dir = build_vo_dir ~obj_dir x in
+  Path.Build.relative vo_dir ("." ^ x.name ^ ".aux")
+
 let obj_file x ~obj_dir =
   let vo_dir = build_vo_dir ~obj_dir x in
   Path.Build.relative vo_dir (x.name ^ ".vo")

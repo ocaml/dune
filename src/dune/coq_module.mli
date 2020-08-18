@@ -38,6 +38,8 @@ val name : t -> Name.t
 
 val dep_file : t -> obj_dir:Path.Build.t -> Path.Build.t
 
+val aux_file : t -> obj_dir:Path.Build.t -> Path.Build.t
+
 val obj_file : t -> obj_dir:Path.Build.t -> Path.Build.t
 
 val to_dyn : t -> Dyn.t

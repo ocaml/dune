@@ -3,10 +3,10 @@
         coqdep b/foo.v.d
         coqdep c/d/bar.v.d
         coqdep c/ooo.v.d
-          coqc b/foo.vo
-          coqc c/d/bar.vo
-          coqc c/ooo.vo
-          coqc a/bar.vo
+          coqc b/.foo.aux,b/foo.vo
+          coqc c/d/.bar.aux,c/d/bar.vo
+          coqc c/.ooo.aux,c/ooo.vo
+          coqc a/.bar.aux,a/bar.vo
 
   $ dune build --debug-dependency-path @default
   lib: [

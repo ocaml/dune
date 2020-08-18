@@ -1,8 +1,8 @@
   $ dune build --display short --debug-dependency-path
         coqdep b/b.v.d
         coqdep a/a.v.d
-          coqc a/a.vo
-          coqc b/b.vo
+          coqc a/.a.aux,a/a.vo
+          coqc b/.b.aux,b/b.vo
   lib: [
     "_build/install/default/lib/subtheory/META"
     "_build/install/default/lib/subtheory/dune-package"

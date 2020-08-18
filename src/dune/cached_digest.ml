@@ -114,7 +114,7 @@ let refresh_and_chmod fn =
     if Cache.cachable stats.st_kind then
       try
         Path.chmod ~stats:(Some stats) ~mode:0o222 ~op:`Remove fn
-      with _ ->
+      with Unix.Unix_error _ ->
         if not !chmod_error_reported then (
           chmod_error_reported := true;
           User_warning.emit ~loc:(Loc.in_file fn)

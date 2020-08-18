@@ -16,7 +16,7 @@ type t =
   { scope : Scope.t
   ; local_binaries : File_binding.Expanded.t list Memo.Lazy.t
   ; ocaml_flags : Ocaml_flags.t Memo.Lazy.t
-  ; foreign_flags : string list Build.t Foreign.Language.Dict.t Memo.Lazy.t
+  ; foreign_flags : string list Build.t Foreign_language.Dict.t Memo.Lazy.t
   ; external_env : Env.t Memo.Lazy.t
   ; bin_artifacts : Artifacts.Bin.t Memo.Lazy.t
   ; inline_tests : Dune_env.Stanza.Inline_tests.t Memo.Lazy.t
@@ -107,11 +107,11 @@ let make ~dir ~inherit_from ~scope ~config_stanza ~profile ~expander
   in
   let foreign_flags =
     inherited ~field:foreign_flags
-      ~root:(Foreign.Language.Dict.map ~f:Build.return default_context_flags)
+      ~root:(Foreign_language.Dict.map ~f:Build.return default_context_flags)
       (fun flags ->
         let expander = Expander.set_dir (Memo.Lazy.force expander) ~dir in
-        Foreign.Language.Dict.mapi config.foreign_flags ~f:(fun ~language f ->
-            let standard = Foreign.Language.Dict.get flags language in
+        Foreign_language.Dict.mapi config.foreign_flags ~f:(fun ~language f ->
+            let standard = Foreign_language.Dict.get flags language in
             Expander.expand_and_eval_set expander f ~standard))
   in
   let menhir_flags =

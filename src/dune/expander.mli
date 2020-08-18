@@ -26,7 +26,7 @@ val make :
   -> t
 
 val set_foreign_flags :
-  t -> f:(dir:Path.Build.t -> string list Build.t Foreign.Language.Dict.t) -> t
+  t -> f:(dir:Path.Build.t -> string list Build.t Foreign_language.Dict.t) -> t
 
 val set_env : t -> var:string -> value:string -> t
 

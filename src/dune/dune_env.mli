@@ -26,7 +26,7 @@ module Stanza : sig
 
   type config =
     { flags : Ocaml_flags.Spec.t
-    ; foreign_flags : Ordered_set_lang.Unexpanded.t Foreign.Language.Dict.t
+    ; foreign_flags : Ordered_set_lang.Unexpanded.t Foreign_language.Dict.t
     ; env_vars : Env.t
     ; binaries : File_binding.Unexpanded.t list
     ; inline_tests : Inline_tests.t option
@@ -52,7 +52,7 @@ module Stanza : sig
 
   val foreign_flags :
        since:Dune_lang.Syntax.Version.t option
-    -> Ordered_set_lang.Unexpanded.t Foreign.Language.Dict.t
+    -> Ordered_set_lang.Unexpanded.t Foreign_language.Dict.t
        Dune_lang.Decoder.fields_parser
 
   val decode : t Dune_lang.Decoder.t

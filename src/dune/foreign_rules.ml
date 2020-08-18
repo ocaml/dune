@@ -77,14 +77,14 @@ let build_c ~kind ~sctx ~dir ~expander ~include_flags (loc, src, dst) =
   let flags =
     let ctx_flags =
       match kind with
-      | Foreign.Language.C ->
+      | Foreign_language.C ->
         let cfg = ctx.ocaml_config in
         List.concat
           [ Ocaml_config.ocamlc_cflags cfg
           ; Ocaml_config.ocamlc_cppflags cfg
           ; Fdo.c_flags ctx
           ]
-      | Foreign.Language.Cxx -> Fdo.cxx_flags ctx
+      | Foreign_language.Cxx -> Fdo.cxx_flags ctx
     in
     let flags = Foreign.Source.flags src in
     Super_context.foreign_flags sctx ~dir ~expander ~flags ~language:kind
@@ -122,7 +122,8 @@ let build_o_files ~sctx ~foreign_sources ~(dir : Path.Build.t) ~expander
   let h_files =
     List.fold_left all_dirs ~init:[] ~f:(fun acc dc ->
         String.Set.fold (Dir_contents.text_files dc) ~init:acc ~f:(fun fn acc ->
-            if String.is_suffix fn ~suffix:Foreign.header_extension then
+            if String.is_suffix fn ~suffix:Foreign_language.header_extension
+            then
               Path.relative (Path.build (Dir_contents.dir dc)) fn :: acc
             else
               acc))
@@ -154,7 +155,7 @@ let build_o_files ~sctx ~foreign_sources ~(dir : Path.Build.t) ~expander
          in
          let build_file =
            match Foreign.Source.language src with
-           | C -> build_c ~kind:Foreign.Language.C
-           | Cxx -> build_c ~kind:Foreign.Language.Cxx
+           | C -> build_c ~kind:Foreign_language.C
+           | Cxx -> build_c ~kind:Foreign_language.Cxx
          in
          build_file ~sctx ~dir ~expander ~include_flags (loc, src, dst))

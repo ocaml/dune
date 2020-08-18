@@ -56,7 +56,7 @@ let install_file ~(package : Package.Name.t) ~findlib_toolchain =
 
 let line_directive ~filename:fn ~line_number =
   let directive =
-    if Foreign.has_foreign_extension ~fn then
+    if Foreign_language.has_foreign_extension ~fn then
       "line"
     else
       ""

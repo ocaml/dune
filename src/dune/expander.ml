@@ -35,7 +35,7 @@ type t =
   ; lookup_artifacts : (dir:Path.Build.t -> Ml_sources.Artifacts.t) option
   ; map_exe : Path.t -> Path.t
   ; foreign_flags :
-      dir:Path.Build.t -> string list Build.t Foreign.Language.Dict.t
+      dir:Path.Build.t -> string list Build.t Foreign_language.Dict.t
   ; find_package : Package.Name.t -> Package.t option
   }
 
@@ -328,7 +328,7 @@ let parse_lib_file ~loc s =
 let cc t ~dir =
   let open Build.O in
   let cc = t.foreign_flags ~dir in
-  Foreign.Language.Dict.map cc ~f:(fun cc ->
+  Foreign_language.Dict.map cc ~f:(fun cc ->
       let+ flags = cc in
       Value.L.strings (t.c_compiler :: flags))
 

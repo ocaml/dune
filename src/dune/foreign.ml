@@ -1,105 +1,26 @@
 open Stdune
 
-module Language = struct
-  module T = struct
-    type t =
-      | C
-      | Cxx
+let encode_lang = function
+  | Foreign_language.C -> "c"
+  | Cxx -> "cxx"
 
-    let compare x y =
-      match (x, y) with
-      | C, C -> Eq
-      | C, _ -> Lt
-      | _, C -> Gt
-      | Cxx, Cxx -> Eq
-
-    let equal x y =
-      match (x, y) with
-      | C, C -> true
-      | Cxx, Cxx -> true
-      | _, _ -> false
-
-    let to_dyn = function
-      | C -> Dyn.Variant ("C", [])
-      | Cxx -> Dyn.Variant ("Cxx", [])
-  end
-
-  include T
-
-  let proper_name = function
-    | C -> "C"
-    | Cxx -> "C++"
-
-  let encode = function
-    | C -> "c"
-    | Cxx -> "cxx"
-
-  let decode = Dune_lang.Decoder.enum [ (encode C, C); (encode Cxx, Cxx) ]
-
-  include Comparable.Make (T)
-
-  module Dict = struct
-    type 'a t =
-      { c : 'a
-      ; cxx : 'a
-      }
-
-    let equal f { c; cxx } t = f c t.c && f cxx t.cxx
-
-    let c t = t.c
-
-    let cxx t = t.cxx
-
-    let map { c; cxx } ~f = { c = f c; cxx = f cxx }
-
-    let mapi { c; cxx } ~f = { c = f ~language:C c; cxx = f ~language:Cxx cxx }
-
-    let make_both a = { c = a; cxx = a }
-
-    let make ~c ~cxx = { c; cxx }
-
-    let get { c; cxx } = function
-      | C -> c
-      | Cxx -> cxx
-
-    let add t k v =
-      match k with
-      | C -> { t with c = v }
-      | Cxx -> { t with cxx = v }
-
-    let update t k ~f =
-      let v = get t k in
-      add t k (f v)
-
-    let merge t1 t2 ~f = { c = f t1.c t2.c; cxx = f t1.cxx t2.cxx }
-  end
-end
-
-let header_extension = ".h"
-
-let source_extentions =
-  String.Map.of_list_exn
-    [ ("c", (Language.C, (1, 0)))
-    ; ("cpp", (Cxx, (1, 0)))
-    ; ("cxx", (Cxx, (1, 8)))
-    ; ("cc", (Cxx, (1, 10)))
-    ]
-
-let has_foreign_extension ~fn =
-  let ext = Filename.extension fn in
-  ext = header_extension || String.Map.mem source_extentions (String.drop ext 1)
+let decode_lang =
+  let open Foreign_language in
+  Dune_lang.Decoder.enum [ (encode_lang C, C); (encode_lang Cxx, Cxx) ]
 
 let drop_source_extension fn ~dune_version =
   let open Option.O in
   let* obj, ext = String.rsplit2 fn ~on:'.' in
-  let* language, version = String.Map.find source_extentions ext in
+  let* language, version =
+    String.Map.find Foreign_language.source_extensions ext
+  in
   Option.some_if (dune_version >= version) (obj, language)
 
 let possible_sources ~language obj ~dune_version =
-  List.filter_map (String.Map.to_list source_extentions)
+  List.filter_map (String.Map.to_list Foreign_language.source_extensions)
     ~f:(fun (ext, (lang, version)) ->
       Option.some_if
-        (Language.equal lang language && dune_version >= version)
+        (Foreign_language.equal lang language && dune_version >= version)
         (obj ^ "." ^ ext))
 
 module Archive = struct
@@ -188,7 +109,7 @@ module Stubs = struct
 
   type t =
     { loc : Loc.t
-    ; language : Language.t
+    ; language : Foreign_language.t
     ; names : Ordered_set_lang.t
     ; flags : Ordered_set_lang.Unexpanded.t
     ; include_dirs : Include_dir.t list
@@ -203,7 +124,7 @@ module Stubs = struct
     let+ loc = loc
     and+ loc_archive_name, archive_name =
       located (field_o "archive_name" string)
-    and+ language = field "language" Language.decode
+    and+ language = field "language" decode_lang
     and+ names = Ordered_set_lang.field "names"
     and+ flags = Ordered_set_lang.Unexpanded.field "flags"
     and+ include_dirs =
@@ -270,14 +191,15 @@ module Sources = struct
     |> List.map ~f:(fun c -> Path.Build.relative dir (c ^ ext_obj))
 
   module Unresolved = struct
-    type t = (Language.t * Path.Build.t) String.Map.Multi.t
+    type t = (Foreign_language.t * Path.Build.t) String.Map.Multi.t
 
     let to_dyn t =
       String.Map.to_dyn
         (fun xs ->
           Dyn.List
             (List.map xs ~f:(fun (language, path) ->
-                 Dyn.Tuple [ Language.to_dyn language; Path.Build.to_dyn path ])))
+                 Dyn.Tuple
+                   [ Foreign_language.to_dyn language; Path.Build.to_dyn path ])))
         t
 
     let load ~dune_version ~dir ~files =

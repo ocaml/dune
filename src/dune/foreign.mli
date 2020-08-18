@@ -1,72 +1,26 @@
 open Stdune
 
-module Language : sig
-  type t =
-    | C
-    | Cxx
-
-  val compare : t -> t -> ordering
-
-  val equal : t -> t -> bool
-
-  val to_dyn : t -> Dyn.t
-
-  (** The proper name of a language, e.g. "C++" for [Cxx]. Useful for diagnostic
-      messages. *)
-  val proper_name : t -> string
-
-  (** The string used to encode a language in Dune files, e.g. "cxx" for [Cxx]. *)
-  val encode : t -> string
-
-  val decode : t Dune_lang.Decoder.t
-
-  module Map : Map.S with type key = t
-
-  module Dict : sig
-    type language
-
-    type 'a t =
-      { c : 'a
-      ; cxx : 'a
-      }
-
-    val equal : ('a -> 'a -> bool) -> 'a t -> 'a t -> bool
-
-    val c : 'a t -> 'a
-
-    val cxx : 'a t -> 'a
-
-    val map : 'a t -> f:('a -> 'b) -> 'b t
-
-    val mapi : 'a t -> f:(language:language -> 'a -> 'b) -> 'b t
-
-    val make_both : 'a -> 'a t
-
-    val make : c:'a -> cxx:'a -> 'a t
-
-    val update : 'a t -> language -> f:('a -> 'a) -> 'a t
-
-    val merge : 'a t -> 'b t -> f:('a -> 'b -> 'c) -> 'c t
-
-    val get : 'a t -> language -> 'a
-  end
-  with type language := t
-end
-
-val header_extension : string
-
-val has_foreign_extension : fn:string -> bool
-
 val drop_source_extension :
      string
   -> dune_version:Dune_lang.Syntax.Version.t
-  -> (string * Language.t) option
+  -> (string * Foreign_language.t) option
 
 val possible_sources :
-     language:Language.t
+     language:Foreign_language.t
   -> string
   -> dune_version:Dune_lang.Syntax.Version.t
   -> string list
+
+(* CR-soon cwong: I'd really prefer to keep the convension that these functions
+   are spelled [Foreign_language.encode] and [Foreign_language.decode], but due
+   to some organizational reasons (see the rant at the top of
+   [foreign_language.mli]), these need to be here instead, as they cannot reside
+   in the backend. *)
+
+(** The string used to encode a language in Dune files, e.g. "cxx" for [Cxx]. *)
+val encode_lang : Foreign_language.t -> string
+
+val decode_lang : Foreign_language.t Dune_lang.Decoder.t
 
 (** Foreign archives appear in the [(foreign_archives ...)] field of libraries
     and executables, for example [(foreign_archives some/dir/lib)]. When parsing
@@ -132,7 +86,7 @@ module Stubs : sig
 
   type t =
     { loc : Loc.t
-    ; language : Language.t
+    ; language : Foreign_language.t
     ; names : Ordered_set_lang.t
     ; flags : Ordered_set_lang.Unexpanded.t
     ; include_dirs : Include_dir.t list
@@ -142,7 +96,7 @@ module Stubs : sig
   (** Construct foreign library stubs with some fields set to default values. *)
   val make :
        loc:Loc.t
-    -> language:Language.t
+    -> language:Foreign_language.t
     -> names:Ordered_set_lang.t
     -> flags:Ordered_set_lang.Unexpanded.t
     -> t
@@ -191,7 +145,7 @@ module Source : sig
     ; path : Path.Build.t
     }
 
-  val language : t -> Language.t
+  val language : t -> Foreign_language.t
 
   val flags : t -> Ordered_set_lang.Unexpanded.t
 
@@ -213,7 +167,7 @@ module Sources : sig
 
   (** A map from object names to lists of possible language/path combinations. *)
   module Unresolved : sig
-    type t = (Language.t * Path.Build.t) String.Map.Multi.t
+    type t = (Foreign_language.t * Path.Build.t) String.Map.Multi.t
 
     val to_dyn : t -> Dyn.t
 

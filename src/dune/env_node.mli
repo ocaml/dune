@@ -24,7 +24,7 @@ val make :
   -> profile:Profile.t
   -> expander:Expander.t Memo.Lazy.t
   -> expander_for_artifacts:Expander.t Memo.Lazy.t
-  -> default_context_flags:string list Foreign.Language.Dict.t
+  -> default_context_flags:string list Foreign_language.Dict.t
   -> default_env:Env.t
   -> default_bin_artifacts:Artifacts.Bin.t
   -> t
@@ -37,7 +37,7 @@ val ocaml_flags : t -> Ocaml_flags.t
 
 val inline_tests : t -> Dune_env.Stanza.Inline_tests.t
 
-val foreign_flags : t -> string list Build.t Foreign.Language.Dict.t
+val foreign_flags : t -> string list Build.t Foreign_language.Dict.t
 
 val local_binaries : t -> File_binding.Expanded.t list
 

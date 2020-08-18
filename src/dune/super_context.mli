@@ -62,7 +62,7 @@ val foreign_flags :
   -> dir:Path.Build.t
   -> expander:Expander.t
   -> flags:Ordered_set_lang.Unexpanded.t
-  -> language:Foreign.Language.t
+  -> language:Foreign_language.t
   -> string list Build.t
 
 val menhir_flags :

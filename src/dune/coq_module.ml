@@ -37,11 +37,11 @@ let name x = x.name
 let build_vo_dir ~obj_dir x =
   List.fold_left x.prefix ~init:obj_dir ~f:Path.Build.relative
 
-let dep_file ~obj_dir x =
+let dep_file x ~obj_dir =
   let vo_dir = build_vo_dir ~obj_dir x in
   Path.Build.relative vo_dir (x.name ^ ".v.d")
 
-let obj_file ~obj_dir x =
+let obj_file x ~obj_dir =
   let vo_dir = build_vo_dir ~obj_dir x in
   Path.Build.relative vo_dir (x.name ^ ".vo")
 

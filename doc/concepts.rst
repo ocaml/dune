@@ -743,9 +743,9 @@ have this action in a ``src/foo/dune``:
 
 .. code:: lisp
 
-    (action (chdir ../../.. (echo %{path:dune})))
+    (action (chdir ../../.. (echo %{dep:dune})))
 
-Then ``%{path:dune}`` will expand to ``src/foo/dune``. When you run various
+Then ``%{dep:dune}`` will expand to ``src/foo/dune``. When you run various
 tools, they often use the filename given on the command line in error messages.
 As a result, if you execute the command from the original directory, it will
 only see the basename.

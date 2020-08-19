@@ -728,21 +728,25 @@ end = struct
                 } )
       in
       Alias.Name.Map.foldi aliases ~init:[]
-        ~f:(fun
-             name
-             { Rules.Dir_rules.Alias_spec.deps; dyn_deps; actions }
-             rules
-           ->
+        ~f:(fun name
+                { Rules.Dir_rules.Alias_spec.deps; dyn_deps; actions }
+                rules
+                ->
           let base_path =
             Path.Build.relative alias_dir (Alias.Name.to_string name)
           in
           let rules, action_stamp_files =
             List.fold_left (Appendable_list.to_list actions)
               ~init:(rules, Path.Set.empty)
-              ~f:(fun
-                   (rules, action_stamp_files)
-                   { Rules.Dir_rules.stamp; action; locks; context; loc; env }
-                 ->
+              ~f:(fun (rules, action_stamp_files)
+                      { Rules.Dir_rules.stamp
+                      ; action
+                      ; locks
+                      ; context
+                      ; loc
+                      ; env
+                      }
+                      ->
                 let path =
                   Path.Build.extend_basename base_path
                     ~suffix:("-" ^ Digest.to_string stamp)

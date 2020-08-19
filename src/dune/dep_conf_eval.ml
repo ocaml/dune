@@ -91,7 +91,8 @@ let unnamed ~expander l =
   ()
 
 let named =
-  make_interpreter ~f:(fun expander -> function
+  make_interpreter ~f:(fun expander ->
+    function
     | Bindings.Unnamed p ->
       dep expander p
       |> Result.map ~f:(fun l ->

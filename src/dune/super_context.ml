@@ -228,7 +228,8 @@ let lib_entries_of_package t pkg_name =
 let internal_lib_names t =
   List.fold_left t.stanzas ~init:Lib_name.Set.empty
     ~f:(fun acc { Dir_with_dune.data = stanzas; _ } ->
-      List.fold_left stanzas ~init:acc ~f:(fun acc -> function
+      List.fold_left stanzas ~init:acc ~f:(fun acc ->
+        function
         | Dune_file.Library lib ->
           Lib_name.Set.add
             ( match lib.public with

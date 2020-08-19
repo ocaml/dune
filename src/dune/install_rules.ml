@@ -409,15 +409,14 @@ end = struct
             | None -> Lib_name.Map.empty
             | Some entries ->
               List.fold_left entries ~init:Lib_name.Map.empty
-                ~f:(fun
-                     acc
-                     { Dune_file.Deprecated_library_name.old_public_name =
-                         { public = old_public_name; _ }
-                     ; new_public_name = _, new_public_name
-                     ; loc
-                     ; _
-                     }
-                   ->
+                ~f:(fun acc
+                        { Dune_file.Deprecated_library_name.old_public_name =
+                            { public = old_public_name; _ }
+                        ; new_public_name = _, new_public_name
+                        ; loc
+                        ; _
+                        }
+                        ->
                   let old_public_name =
                     Dune_file.Public_lib.name old_public_name
                   in

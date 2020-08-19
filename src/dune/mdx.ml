@@ -162,7 +162,7 @@ let files_to_mdx t ~sctx ~dir =
     Predicate_lang.Glob.exec t.files ~standard:default_files file
   in
   let build_path src_path =
-    Path.Build.append_source (Super_context.build_dir sctx) src_path
+    Path.Build.append_source (Super_context.context sctx).build_dir src_path
   in
   List.filter_map src_dir_files ~f:(fun src_path ->
       if must_mdx src_path then

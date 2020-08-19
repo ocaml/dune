@@ -34,9 +34,8 @@ let term =
         Dune.Context_name.Map.find setup.scontexts ctx_name |> Option.value_exn
       in
       let dir =
-        Path.Build.relative
-          (Super_context.build_dir sctx)
-          (Common.prefix_target common dir)
+        let build_dir = (Super_context.context sctx).build_dir in
+        Path.Build.relative build_dir (Common.prefix_target common dir)
       in
       let scope = Super_context.find_scope_by_dir sctx dir in
       let db = Dune.Scope.libs scope in

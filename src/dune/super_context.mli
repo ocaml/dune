@@ -27,12 +27,6 @@ val stanzas_in :
 
 val packages : t -> Package.t Package.Name.Map.t
 
-val artifacts : t -> Artifacts.t
-
-val build_dir : t -> Path.Build.t
-
-val profile : t -> Profile.t
-
 val host : t -> t
 
 module Lib_entry : sig

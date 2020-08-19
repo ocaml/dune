@@ -205,12 +205,6 @@ let stanzas_in t ~dir = Path.Build.Map.find t.stanzas_per_dir dir
 
 let packages t = t.packages
 
-let artifacts t = t.artifacts
-
-let build_dir t = t.context.build_dir
-
-let profile t = t.context.profile
-
 let equal = (( == ) : t -> t -> bool)
 
 let hash t = Context.hash t.context
@@ -431,8 +425,7 @@ let create ~(context : Context.t) ?host ~projects ~packages ~stanzas =
   let lib_config = Context.lib_config context in
   let installed_libs = Lib.DB.create_from_findlib context.findlib ~lib_config in
   let scopes, public_libs =
-    Scope.DB.create_from_stanzas ~projects ~context ~installed_libs ~lib_config
-      stanzas
+    Scope.DB.create_from_stanzas ~projects ~context ~installed_libs stanzas
   in
   let stanzas =
     List.map stanzas ~f:(fun { Dune_load.Dune_file.dir; project; stanzas } ->

@@ -28,8 +28,7 @@ let libs_and_ppx_under_dir sctx ~db ~dir =
   File_tree.Dir.fold_dune_files dir ~init:([], [])
     ~f:(fun ~basename:_ dir _dune_file (acc, pps) ->
       let dir =
-        Path.Build.append_source
-          (Super_context.build_dir sctx)
+        Path.Build.append_source (Super_context.context sctx).build_dir
           (File_tree.Dir.path dir)
       in
       match Super_context.stanzas_in sctx ~dir with
@@ -105,8 +104,9 @@ let setup sctx ~dir =
   let flags =
     let project = Scope.project scope in
     let dune_version = Dune_project.dune_version project in
+    let profile = (Super_context.context sctx).profile in
     Ocaml_flags.append_common
-      (Ocaml_flags.default ~dune_version ~profile:(Super_context.profile sctx))
+      (Ocaml_flags.default ~dune_version ~profile)
       [ "-w"; "-24" ]
   in
   let cctx =

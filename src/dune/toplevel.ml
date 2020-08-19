@@ -169,7 +169,7 @@ module Stanza = struct
     let requires_link = Lib.Compile.requires_link compile_info in
     let obj_dir = Source.obj_dir source in
     let flags =
-      let profile = Super_context.profile sctx in
+      let profile = (Super_context.context sctx).profile in
       Ocaml_flags.append_common
         (Ocaml_flags.default ~dune_version ~profile)
         [ "-w"; "-24" ]

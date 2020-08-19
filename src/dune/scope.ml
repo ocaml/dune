@@ -10,8 +10,6 @@ type t =
 
 let root t = t.root
 
-let name t = Dune_project.name t.project
-
 let project t = t.project
 
 let libs t = t.db
@@ -21,10 +19,7 @@ let coq_libs t = t.coq_db
 module DB = struct
   type scope = t
 
-  type t =
-    { by_dir : scope Path.Source.Map.t
-    ; context : Context_name.t
-    }
+  type t = { by_dir : scope Path.Source.Map.t }
 
   (* This function is linear in the depth of [dir] in the worst case, so if it
      shows up in the profile we should memoize it. *)
@@ -56,6 +51,7 @@ module DB = struct
       Lib.DB.Resolve_result.redirect (Some scope.db) (Loc.none, name)
     | Some (Name name) -> Lib.DB.Resolve_result.redirect None name
 
+  (* Create a database from the public libraries defined in the stanzas *)
   let public_libs t ~installed_libs ~lib_config stanzas =
     let public_libs =
       List.filter_map stanzas
@@ -100,9 +96,7 @@ module DB = struct
       ~all:(fun () -> Lib_name.Map.keys public_libs)
       ~lib_config ()
 
-  let scopes_by_dir context ~projects ~lib_config ~public_libs stanzas
-      coq_stanzas =
-    let build_context_dir = Context_name.build_dir context in
+  let scopes_by_dir context ~projects ~public_libs stanzas coq_stanzas =
     let projects_by_dir =
       List.map projects ~f:(fun (project : Dune_project.t) ->
           (Dune_project.root project, project))
@@ -131,41 +125,41 @@ module DB = struct
           let coq_stanzas = Option.value coq_stanzas ~default:[] in
           Some (stanza, coq_stanzas))
     in
+    let lib_config = Context.lib_config context in
     Path.Source.Map.merge projects_by_dir stanzas_by_project_dir
       ~f:(fun _dir project stanzas ->
         let project = Option.value_exn project in
         let stanzas, coq_stanzas = Option.value stanzas ~default:([], []) in
         let db =
-          Lib.DB.create_from_stanzas stanzas ~parent:public_libs ~lib_config
+          Lib.DB.create_from_stanzas stanzas ~parent:(Some public_libs)
+            ~lib_config
         in
         let coq_db = Coq_lib.DB.create_from_coqlib_stanzas coq_stanzas in
         let root =
-          Path.Build.append_source build_context_dir (Dune_project.root project)
+          Path.Build.append_source context.build_dir (Dune_project.root project)
         in
         Some { project; db; coq_db; root })
 
-  let create ~projects ~context ~installed_libs ~lib_config stanzas coq_stanzas
-      =
+  let create ~projects ~context ~installed_libs stanzas coq_stanzas =
     let t = Fdecl.create Dyn.Encoder.opaque in
-    let public_libs = public_libs t ~installed_libs ~lib_config stanzas in
-    let by_dir =
-      scopes_by_dir context ~projects ~lib_config
-        ~public_libs:(Some public_libs) stanzas coq_stanzas
+    let public_libs =
+      let lib_config = Context.lib_config context in
+      public_libs t ~installed_libs ~lib_config stanzas
     in
-    let value = { by_dir; context } in
+    let by_dir =
+      scopes_by_dir context ~projects ~public_libs stanzas coq_stanzas
+    in
+    let value = { by_dir } in
     Fdecl.set t value;
     (value, public_libs)
 
   let find_by_dir t dir =
     if Path.Build.is_root dir then
       Code_error.raise "Scope.DB.find_by_dir got an invalid path"
-        [ ("dir", Path.Build.to_dyn dir)
-        ; ("context", Context_name.to_dyn t.context)
-        ];
+        [ ("dir", Path.Build.to_dyn dir) ];
     find_by_dir t (Path.Build.drop_build_context_exn dir)
 
-  let create_from_stanzas ~projects ~context ~installed_libs ~lib_config stanzas
-      =
+  let create_from_stanzas ~projects ~context ~installed_libs stanzas =
     let stanzas, coq_stanzas =
       Dune_load.Dune_file.fold_stanzas stanzas ~init:([], [])
         ~f:(fun dune_file stanza (acc, coq_acc) ->
@@ -185,6 +179,5 @@ module DB = struct
             (acc, (ctx_dir, coq_lib) :: coq_acc)
           | _ -> (acc, coq_acc))
     in
-    create ~projects ~context:context.name ~installed_libs ~lib_config stanzas
-      coq_stanzas
+    create ~projects ~context ~installed_libs stanzas coq_stanzas
 end

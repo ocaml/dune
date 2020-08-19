@@ -291,7 +291,8 @@ module Driver = struct
 end
 
 let ppx_exe sctx ~key =
-  Path.Build.relative (SC.build_dir sctx) (".ppx/" ^ key ^ "/ppx.exe")
+  let build_dir = (Super_context.context sctx).build_dir in
+  Path.Build.relative build_dir (".ppx/" ^ key ^ "/ppx.exe")
 
 let build_ppx_driver sctx ~dep_kind ~target ~pps ~pp_names =
   let ctx = SC.context sctx in
@@ -372,7 +373,8 @@ let get_rules sctx key =
           | None -> SC.public_libs sctx
           | Some dir ->
             let dir =
-              Path.Build.append_source (Super_context.build_dir sctx) dir
+              Path.Build.append_source (Super_context.context sctx).build_dir
+                dir
             in
             Scope.libs (SC.find_scope_by_dir sctx dir)
         in
@@ -569,8 +571,10 @@ let lint_module sctx ~dir ~expander ~dep_kind ~lint ~lib_name ~scope =
                          (Option.value_exn (Module.file source ~ml_kind)))
                       (Build.With_targets.of_result_map ~targets:[]
                          driver_and_flags ~f:(fun (exe, flags, args) ->
-                           Command.run
-                             ~dir:(Path.build (SC.build_dir sctx))
+                           let dir =
+                             Path.build (Super_context.context sctx).build_dir
+                           in
+                           Command.run ~dir
                              (Ok (Path.build exe))
                              [ args
                              ; Command.Ml_kind.ppx_driver_flag ml_kind
@@ -651,8 +655,10 @@ let make sctx ~dir ~expander ~dep_kind ~lint ~preprocess ~preprocessor_deps
                      ( Build.with_no_targets preprocessor_deps
                      >>> Build.With_targets.of_result_map driver_and_flags
                            ~targets:[ dst ] ~f:(fun (exe, flags, args) ->
-                             Command.run
-                               ~dir:(Path.build (SC.build_dir sctx))
+                             let dir =
+                               Path.build (Super_context.context sctx).build_dir
+                             in
+                             Command.run ~dir
                                (Ok (Path.build exe))
                                [ args
                                ; A "-o"
@@ -681,7 +687,7 @@ let make sctx ~dir ~expander ~dep_kind ~lint ~preprocess ~preprocessor_deps
                   List.map
                     (List.concat
                        [ [ Path.reach (Path.build exe)
-                             ~from:(Path.build (SC.build_dir sctx))
+                             ~from:(Path.build (SC.context sctx).build_dir)
                          ]
                        ; driver_flags
                        ; flags

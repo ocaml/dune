@@ -61,7 +61,9 @@ let gen_rules sctx t ~dir ~scope =
              Predicate_lang.Glob.exec t.files (Path.Source.basename p)
                ~standard:Predicate_lang.any
            then
-             Some (Path.Build.append_source (Super_context.build_dir sctx) p)
+             Some
+               (Path.Build.append_source (Super_context.context sctx).build_dir
+                  p)
            else
              None)
   in

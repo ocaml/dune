@@ -205,12 +205,6 @@ let stanzas_in t ~dir = Path.Build.Map.find t.stanzas_per_dir dir
 
 let packages t = t.packages
 
-let artifacts t = t.artifacts
-
-let build_dir t = t.context.build_dir
-
-let profile t = t.context.profile
-
 let equal = (( == ) : t -> t -> bool)
 
 let hash t = Context.hash t.context

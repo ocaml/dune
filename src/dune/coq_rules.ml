@@ -162,7 +162,7 @@ module Context = struct
     let ml_flags, mlpack_rule =
       setup_ml_deps ~lib_db buildable.libraries theories_deps
     in
-    let build_dir = Super_context.build_dir sctx in
+    let build_dir = (Super_context.context sctx).build_dir in
     { coqdep = rr "coqdep"
     ; coqc = (rr "coqc", coqc_dir)
     ; wrapper_name
@@ -330,7 +330,7 @@ let setup_rules ~sctx ~dir ~dir_contents (s : Theory.t) =
     let wrapper_name = Coq_lib.wrapper theory in
     (* Coq flags for depending libraries *)
     let theories_deps = Coq_lib.DB.requires coq_lib_db theory in
-    let coqc_dir = Super_context.build_dir sctx in
+    let coqc_dir = (Super_context.context sctx).build_dir in
     Context.create sctx ~coqc_dir ~dir ~wrapper_name ~theories_deps s.buildable
   in
 
@@ -438,7 +438,8 @@ let coqpp_rules ~sctx ~dir (s : Coqpp.t) =
     let source = Path.build (Path.Build.relative dir (m ^ ".mlg")) in
     let target = Path.Build.relative dir (m ^ ".ml") in
     let args = [ Command.Args.Dep source; Hidden_targets [ target ] ] in
-    Command.run ~dir:(Path.build (Super_context.build_dir sctx)) coqpp args
+    let build_dir = (Super_context.context sctx).build_dir in
+    Command.run ~dir:(Path.build build_dir) coqpp args
   in
   List.map ~f:mlg_rule s.modules
 

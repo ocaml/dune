@@ -69,4 +69,4 @@ module Dir_map : sig
   val root : t -> per_dir
 end
 
-val decode : Dir_map.t Dune_lang.Decoder.t
+val decode : file:Path.Source.t -> Dir_map.t Dune_lang.Decoder.t

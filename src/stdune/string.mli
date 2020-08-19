@@ -128,3 +128,5 @@ val need_quoting : string -> bool
 (** [quote_for_shell s] quotes [s] using [Filename.quote] if [need_quoting s] is
     [true] *)
 val quote_for_shell : string -> string
+
+val filter_map : string -> f:(char -> char option) -> string

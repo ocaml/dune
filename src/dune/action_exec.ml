@@ -3,6 +3,10 @@ open Import
 open Fiber.O
 module DAP = Dune_action_plugin.Private.Protocol
 
+(* CR-someday cwong: Adjust this to be a nicer design. It would be ideal if we
+   could generally allow actions to be extended. *)
+let cram_run = Fdecl.create (fun _ -> Dyn.Opaque)
+
 (** A version of [Dune_action_plugin.Private.Protocol.Dependency] where all
     relative paths are replaced by [Path.t]. (except the protocol doesn't
     support Globs yet) *)
@@ -68,7 +72,7 @@ type done_or_more_deps =
 
 type exec_context =
   { targets : Path.Build.Set.t
-  ; context : Context.t option
+  ; context : Build_context.t option
   ; purpose : Process.purpose
   ; rule_loc : Loc.t
   ; build_deps : Dep.Set.t -> unit Fiber.t
@@ -87,9 +91,9 @@ type exec_environment =
 let validate_context_and_prog context prog =
   match context with
   | None
-  | Some { Context.for_host = None; _ } ->
+  | Some { Build_context.host = None; _ } ->
     ()
-  | Some ({ Context.for_host = Some host; _ } as target) ->
+  | Some ({ Build_context.host = Some host; _ } as target) ->
     let target_name = Context_name.to_string target.name in
     let invalid_prefix prefix =
       match Path.descendant prog ~of_:prefix with
@@ -356,6 +360,14 @@ let rec exec t ~ectx ~eenv =
     Format_dune_lang.format_file ~input:(Some src)
       ~output:(Some (Path.build dst));
     Fiber.return Done
+  | Cram script ->
+    let+ () =
+      Fdecl.get
+        cram_run
+        (* We don't pass cwd because Cram_exec will use the script's dir to run *)
+        ~env:eenv.env ~script
+    in
+    Done
 
 and redirect_out t ~ectx ~eenv outputs fn =
   redirect t ~ectx ~eenv ~out:(outputs, fn) ()
@@ -472,7 +484,7 @@ let exec ~targets ~context ~env ~rule_loc ~build_deps t =
     ; env
     ; stdout_to = Process.Io.stdout
     ; stderr_to = Process.Io.stderr
-    ; stdin_from = Process.Io.stdin
+    ; stdin_from = Process.Io.null In
     ; prepared_dependencies = DAP.Dependency.Set.empty
     ; exit_codes = Predicate_lang.Element 0
     }

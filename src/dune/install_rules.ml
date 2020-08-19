@@ -635,7 +635,9 @@ let install_rules sctx (package : Package.t) =
   in
   let () =
     let target_alias =
-      Build_system.Alias.package_install ~context:ctx ~pkg:package
+      Build_system.Alias.package_install
+        ~context:(Context.to_build_context ctx)
+        ~pkg:package
     in
     Rules.Produce.Alias.add_deps target_alias files
       ~dyn_deps:
@@ -645,7 +647,9 @@ let install_rules sctx (package : Package.t) =
                 let pkg =
                   Package.Name.Map.find_exn (Super_context.packages sctx) pkg
                 in
-                Build_system.Alias.package_install ~context:ctx ~pkg
+                Build_system.Alias.package_install
+                  ~context:(Context.to_build_context ctx)
+                  ~pkg
                 |> Alias.stamp_file |> Path.build))
   in
   let action =

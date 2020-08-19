@@ -49,6 +49,7 @@ module type Ast = sig
     | No_infer of t
     | Pipe of Outputs.t * t list
     | Format_dune_file of path * target
+    | Cram of path
 end
 
 module type Helpers = sig

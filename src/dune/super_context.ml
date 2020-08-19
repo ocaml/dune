@@ -2,16 +2,12 @@ open! Stdune
 open Import
 
 let default_context_flags (ctx : Context.t) =
-  (* TODO (v3) Current flag behavior is different when calling the C compiler or
-     the C++ compiler: 1.[ocamlc_cflags] and [ocamlc_cppflags] are always
-     prenpended to the C compiler arguments to reproduce [ocamlc]'s behavior, 2.
-     [ocamlc_cflags] are present in [:standard] and prepended to the C++
-     compiler arguments only if the user didn't redefined them (or used
-     [:standard] to extend them) *)
-  let c = [] in
+  (* TODO DUNE3 To ensure full backward compatibility, ocaml_cflags are still
+     present in the :standard set of flags. However these should not as they are
+     already prepended when calling the compiler, causing flag duplication. *)
+  let c = Ocaml_config.ocamlc_cflags ctx.ocaml_config in
   let cxx =
-    Ocaml_config.ocamlc_cflags ctx.ocaml_config
-    |> List.filter ~f:(fun s -> not (String.is_prefix s ~prefix:"-std="))
+    List.filter c ~f:(fun s -> not (String.is_prefix s ~prefix:"-std="))
   in
   Foreign.Language.Dict.make ~c ~cxx
 
@@ -267,7 +263,8 @@ let make_rule t ?sandbox ?mode ?locks ?loc ~dir build =
   let build = chdir_to_build_context_root t build in
   let env = get_node t.env_tree ~dir |> Env_node.external_env in
   Rule.make ?sandbox ?mode ?locks ~info:(Rule.Info.of_loc_opt loc)
-    ~context:(Some t.context) ~env:(Some env) build
+    ~context:(Some (Context.to_build_context t.context))
+    ~env:(Some env) build
 
 let add_rule t ?sandbox ?mode ?locks ?loc ~dir build =
   let rule = make_rule t ?sandbox ?mode ?locks ?loc ~dir build in
@@ -283,8 +280,9 @@ let add_rules t ?sandbox ~dir builds =
 
 let add_alias_action t alias ~dir ~loc ?locks ~stamp action =
   let env = Some (get_node t.env_tree ~dir |> Env_node.external_env) in
-  Rules.Produce.Alias.add_action ~context:t.context ~env alias ~loc ?locks
-    ~stamp action
+  Rules.Produce.Alias.add_action
+    ~context:(Context.to_build_context t.context)
+    ~env alias ~loc ?locks ~stamp action
 
 let build_dir_is_vendored build_dir =
   let opt =

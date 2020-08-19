@@ -204,6 +204,10 @@ struct
             , Dune_lang.Syntax.since Stanza.syntax (2, 7)
               >>> let+ ts = two_or_more t in
                   Pipe (Outputs, ts) )
+          ; ( "cram"
+            , Dune_lang.Syntax.since Stanza.syntax (2, 7)
+              >>> let+ script = path in
+                  Cram script )
           ])
 
   let rec encode =
@@ -274,6 +278,7 @@ struct
         :: List.map l ~f:encode )
     | Format_dune_file (src, dst) ->
       List [ atom "format-dune-file"; path src; target dst ]
+    | Cram script -> List [ atom "cram"; path script ]
 
   let run prog args = Run (prog, args)
 

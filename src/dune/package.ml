@@ -30,6 +30,8 @@ module Name = struct
 
       let description_of_valid_string = None
 
+      let hint_valid = None
+
       let of_string_opt s =
         (* DUNE3 verify no dots or spaces *)
         if s = "" then

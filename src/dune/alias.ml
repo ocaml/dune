@@ -31,6 +31,8 @@ module Name : sig
   val parse_local_path : Loc.t * Path.Local.t -> Path.Local.t * t
 
   module Map : Map.S with type key = t
+
+  module Set : Set.S with type elt = t
 end = struct
   include String
 
@@ -157,15 +159,6 @@ let fully_qualified_name t = Path.Build.relative t.dir (Name.to_string t.name)
 
 let stamp_file t =
   Path.Build.relative (stamp_file_dir t) (Name.to_string t.name ^ suffix)
-
-let find_dir_specified_on_command_line ~dir =
-  match File_tree.find_dir dir with
-  | None ->
-    User_error.raise
-      [ Pp.textf "Don't know about directory %s specified on the command line!"
-          (Path.Source.to_string_maybe_quoted dir)
-      ]
-  | Some dir -> dir
 
 (* This mutable table is safe: it's modified only at the top level. *)
 let standard_aliases = Table.create (module Name) 7

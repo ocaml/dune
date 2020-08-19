@@ -51,6 +51,7 @@ let simplify act =
       Redirect_out (block act, outputs, Dev_null) :: acc
     | Progn l -> List.fold_left l ~init:acc ~f:(fun acc act -> loop act acc)
     | Echo xs -> echo (String.concat xs ~sep:"")
+    | Cram script -> echo (sprintf "cram %s" script)
     | Cat x -> cat x :: acc
     | Copy (x, y) -> Run ("cp", [ x; y ]) :: acc
     | Symlink (x, y) ->

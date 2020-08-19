@@ -296,7 +296,7 @@ end = struct
              [ Pp.text
                  ( if Sys.linux then
                    "Please install inotifywait to enable watch mode. If \
-                    inotifywait is unavailable, fswtach may also be used but \
+                    inotifywait is unavailable, fswatch may also be used but \
                     will result in a worse experience."
                  else
                    "Please install fswatch to enable watch mode." )

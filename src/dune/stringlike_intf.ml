@@ -15,6 +15,10 @@ module type S_base = sig
       present *)
   val description_of_valid_string : 'a Pp.t option
 
+  (** A function suggesting a valid replacement for an erroneous input. Will be
+      added to error messages if present *)
+  val hint_valid : (string -> string) option
+
   val of_string_opt : string -> t option
 
   val to_string : t -> string
@@ -35,6 +39,8 @@ module type S = sig
   val to_dyn : t -> Dyn.t
 
   val of_string_opt : string -> t option
+
+  val of_string_user_error : Loc.t * string -> (t, User_message.t) result
 
   (** From&to string conversions, for use with [Cmdliner.Arg.conv] *)
   val conv :

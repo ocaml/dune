@@ -1,12 +1,8 @@
-(rule
+(cram
  (alias check-lang-dune)
  (deps
   (package dune)
-  (glob_files ../*.rst))
- (action
-  (progn
-   (run dune-cram run run.t)
-   (diff? run.t run.t.corrected))))
+  (glob_files ../*.rst)))
 
 (alias
  (name runtest)

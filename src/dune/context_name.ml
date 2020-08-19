@@ -25,6 +25,8 @@ include (
 
     let description_of_valid_string = None
 
+    let hint_valid = None
+
     let to_string = T.to_string
 
     let module_ = "Context_name"

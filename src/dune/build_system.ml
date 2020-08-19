@@ -83,7 +83,7 @@ module Alias0 = struct
   let dep t = Build.path (Path.build (stamp_file t))
 
   let dep_multi_contexts ~dir ~name ~contexts =
-    ignore (find_dir_specified_on_command_line ~dir);
+    ignore (File_tree.find_dir_specified_on_command_line ~dir);
     let context_to_stamp_file ctx =
       let ctx_dir = Context_name.build_dir ctx in
       let dir = Path.Build.(append_source ctx_dir dir) in
@@ -133,7 +133,7 @@ module Alias0 = struct
 
   let dep_rec_multi_contexts ~dir:src_dir ~name ~contexts =
     let open Build.O in
-    let dir = find_dir_specified_on_command_line ~dir:src_dir in
+    let dir = File_tree.find_dir_specified_on_command_line ~dir:src_dir in
     let+ is_empty_list =
       Build.all
         (List.map contexts ~f:(fun ctx ->
@@ -149,7 +149,7 @@ module Alias0 = struct
             (Path.Source.to_string_maybe_quoted src_dir)
         ]
 
-  let package_install ~(context : Context.t) ~(pkg : Package.t) =
+  let package_install ~(context : Build_context.t) ~(pkg : Package.t) =
     let dir = Path.Build.append_source context.build_dir pkg.path in
     make
       (Alias.Name.of_string
@@ -321,7 +321,7 @@ type caching =
   }
 
 type t =
-  { contexts : Context.t Context_name.Map.t
+  { contexts : Build_context.t Context_name.Map.t
   ; init_rules : Rules.t Fdecl.t
   ; gen_rules :
       (   Context_or_install.t
@@ -1115,7 +1115,7 @@ let all_targets t =
                load_dir
                  ~dir:
                    (Path.build
-                      (Path.Build.append_source ctx.Context.build_dir
+                      (Path.Build.append_source ctx.Build_context.build_dir
                          (File_tree.Dir.path dir)))
              with
              | Non_build _ -> acc
@@ -1867,7 +1867,7 @@ module Evaluated_rule = struct
       ; dir : Path.Build.t
       ; deps : Dep.Set.t
       ; targets : Path.Build.Set.t
-      ; context : Context.t option
+      ; context : Build_context.t option
       ; action : Action.t
       }
 
@@ -2013,7 +2013,8 @@ let load_dir ~dir = load_dir_and_produce_its_rules ~dir
 
 let init ~contexts ?caching ~sandboxing_preference =
   let contexts =
-    Context_name.Map.of_list_map_exn contexts ~f:(fun c -> (c.Context.name, c))
+    Context_name.Map.of_list_map_exn contexts ~f:(fun c ->
+        (c.Build_context.name, c))
   in
   let caching =
     let open Option.O in

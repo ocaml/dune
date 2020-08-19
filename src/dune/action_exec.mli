@@ -1,5 +1,8 @@
 open! Stdune
 
+(* For registering the cram_exec function. *)
+val cram_run : (env:Env.t -> script:Path.t -> unit Fiber.t) Fdecl.t
+
 (** Type for dependency requested by the dynamic action.
 
     Must be different from [Dep.t] type because we require it to be
@@ -26,7 +29,7 @@ end
 
 val exec :
      targets:Path.Build.Set.t
-  -> context:Context.t option
+  -> context:Build_context.t option
   -> env:Env.t
   -> rule_loc:Loc.t
   -> build_deps:(Dep.Set.t -> unit Fiber.t)

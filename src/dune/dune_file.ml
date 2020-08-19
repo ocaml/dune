@@ -13,13 +13,6 @@ module Jbuild_version = struct
   let decode = enum [ ("1", V1) ]
 end
 
-let relative_file =
-  plain_string (fun ~loc fn ->
-      if Filename.is_relative fn then
-        fn
-      else
-        User_error.raise ~loc [ Pp.textf "relative filename expected" ])
-
 let () =
   Dune_project.Extension.register_deleted ~name:"library_variants"
     ~deleted_in:(2, 6)
@@ -622,9 +615,9 @@ module Library = struct
          | Some (loc, res), _ -> (loc, res)
          | None, Some { name = loc, name; _ } ->
            if dune_version >= (1, 1) then
-             match Lib_name.to_local name with
-             | Some m -> (loc, m)
-             | None ->
+             match Lib_name.to_local (loc, name) with
+             | Ok m -> (loc, m)
+             | Error user_message ->
                User_error.raise ~loc
                  [ Pp.textf "Invalid library name."
                  ; Pp.text
@@ -632,7 +625,7 @@ module Library = struct
                       can either change this public name to be a valid library \
                       name or add a \"name\" field with a valid library name."
                  ]
-                 ~hints:[ Lib_name.Local.valid_format_doc ]
+                 ~hints:(Lib_name.Local.valid_format_doc :: user_message.hints)
            else
              User_error.raise ~loc
                [ Pp.text
@@ -954,6 +947,7 @@ module Executables = struct
         s
 
     let make ~multi ~stanza ~allow_omit_names_version =
+      let check_valid_name_version = (3, 0) in
       let+ names =
         if multi then
           multi_fields
@@ -971,16 +965,36 @@ module Executables = struct
       let stanza = pluralize stanza ~multi in
       let names =
         let open Dune_lang.Syntax.Version.Infix in
+        if dune_syntax >= check_valid_name_version then
+          Option.iter names
+            ~f:
+              (List.iter ~f:(fun name ->
+                   ignore (Module_name.parse_string_exn name : Module_name.t)));
         match (names, public_names) with
         | Some names, _ -> names
         | None, Some public_names ->
           if dune_syntax >= allow_omit_names_version then
+            let check_names = dune_syntax >= check_valid_name_version in
             List.map public_names ~f:(fun (loc, p) ->
-                match p with
-                | None ->
+                match (p, check_names) with
+                | None, _ ->
                   User_error.raise ~loc
                     [ Pp.text "This executable must have a name field" ]
-                | Some s -> (loc, s))
+                | Some s, false -> (loc, s)
+                | Some s, true -> (
+                  match Module_name.of_string_user_error (loc, s) with
+                  | Ok _ -> (loc, s)
+                  | Error user_message ->
+                    User_error.raise ~loc
+                      [ Pp.textf "Invalid module name."
+                      ; Pp.text
+                          "Public executable names don't have this \
+                           restriction. You can either change this public name \
+                           to be a valid module name or add a \"name\" field \
+                           with a valid module name."
+                      ]
+                      ~hints:(Module_name.valid_format_doc :: user_message.hints)
+                  ))
           else
             User_error.raise ~loc
               [ Pp.textf "%s field may not be omitted before dune version %s"
@@ -1852,6 +1866,7 @@ type Stanza.t +=
   | Include_subdirs of Loc.t * Include_subdirs.t
   | Toplevel of Toplevel.t
   | Deprecated_library_name of Deprecated_library_name.t
+  | Cram of Cram_stanza.t
 
 module Stanzas = struct
   type t = Stanza.t list
@@ -1946,6 +1961,10 @@ module Stanzas = struct
       , let+ () = Dune_lang.Syntax.since Stanza.syntax (2, 0)
         and+ t = Deprecated_library_name.decode in
         [ Deprecated_library_name t ] )
+    ; ( "cram"
+      , let+ () = Dune_lang.Syntax.since Stanza.syntax (2, 7)
+        and+ t = Cram_stanza.decode in
+        [ Cram t ] )
     ]
 
   let () = Dune_project.Lang.register Stanza.syntax stanzas
@@ -1960,70 +1979,32 @@ module Stanzas = struct
     let parser = parser project in
     parse parser sexp
 
-  exception Include_loop of Path.Source.t * (Loc.t * Path.Source.t) list
-
-  let rec parse_file_includes ~stanza_parser ~lexer ~current_file ~include_stack
-      sexps =
+  let rec parse_file_includes ~stanza_parser ~context sexps =
     List.concat_map sexps ~f:(parse stanza_parser)
     |> List.concat_map ~f:(function
          | Include (loc, fn) ->
-           let include_stack = (loc, current_file) :: include_stack in
-           let dir = Path.Source.parent_exn current_file in
-           let current_file = Path.Source.relative dir fn in
-           if not (Path.exists (Path.source current_file)) then
-             User_error.raise ~loc
-               [ Pp.textf "File %s doesn't exist."
-                   (Path.Source.to_string_maybe_quoted current_file)
-               ];
-           if
-             List.exists include_stack ~f:(fun (_, f) ->
-                 Path.Source.equal f current_file)
-           then
-             raise (Include_loop (current_file, include_stack));
-           let sexps =
-             Dune_lang.Parser.load ~lexer (Path.source current_file) ~mode:Many
-           in
-           parse_file_includes ~stanza_parser ~lexer ~current_file
-             ~include_stack sexps
+           let sexps, context = Include.load_sexps ~context (loc, fn) in
+           parse_file_includes ~stanza_parser ~context sexps
          | stanza -> [ stanza ])
 
   let parse ~file (project : Dune_project.t) sexps =
     let stanza_parser = parser project in
-    let lexer = Dune_lang.Lexer.token in
     let stanzas =
-      try
-        parse_file_includes ~stanza_parser ~lexer ~include_stack:[]
-          ~current_file:file sexps
-      with
-      | Include_loop (_, []) -> assert false
-      | Include_loop (file, last :: rest) ->
-        let loc = fst (Option.value (List.last rest) ~default:last) in
-        let line_loc (loc, file) =
-          sprintf "%s:%d"
-            (Path.Source.to_string_maybe_quoted file)
-            loc.Loc.start.pos_lnum
-        in
-        User_error.raise ~loc
-          [ Pp.text "Recursive inclusion of dune files detected:"
-          ; Pp.textf "File %s is included from %s"
-              (Path.Source.to_string_maybe_quoted file)
-              (line_loc last)
-          ; Pp.vbox
-              (Pp.concat_map rest ~sep:Pp.cut ~f:(fun x ->
-                   Pp.box ~indent:3
-                     (Pp.seq (Pp.verbatim "-> ")
-                        (Pp.textf "included from %s" (line_loc x)))))
-          ]
+      let context = Include.in_file file in
+      parse_file_includes ~stanza_parser ~context sexps
     in
-    match
-      List.filter_map stanzas ~f:(function
-        | Dune_env.T e -> Some e
-        | _ -> None)
-    with
-    | _ :: e :: _ ->
-      User_error.raise ~loc:e.loc
-        [ Pp.text "The 'env' stanza cannot appear more than once" ]
-    | _ -> stanzas
+    let (_ : bool) =
+      List.fold_left stanzas ~init:false ~f:(fun env stanza ->
+          match stanza with
+          | Dune_env.T e ->
+            if env then
+              User_error.raise ~loc:e.loc
+                [ Pp.text "The 'env' stanza cannot appear more than once" ]
+            else
+              true
+          | _ -> env)
+    in
+    stanzas
 end
 
 let stanza_package = function

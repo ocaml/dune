@@ -23,6 +23,8 @@ include (
 
     let description_of_valid_string = None
 
+    let hint_valid = None
+
     let to_string = function
       | Dev -> "dev"
       | Release -> "release"

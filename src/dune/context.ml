@@ -100,6 +100,10 @@ module T = struct
 
   let hash t = Context_name.hash t.name
 
+  let rec to_build_context { name; build_dir; env; for_host; _ } =
+    Build_context.create ~name ~build_dir ~env
+      ~host:(Option.map ~f:to_build_context for_host)
+
   let to_dyn t : Dyn.t =
     let open Dyn.Encoder in
     let path = Path.to_dyn in

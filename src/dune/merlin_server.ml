@@ -68,7 +68,7 @@ end
 
 (* [to_local p] makes absolute path [p] relative to the projects root and
    optionally removes the build context *)
-let to_local abs_file_path =
+let _to_local abs_file_path =
   let error msg = Error msg in
   let path_opt =
     String.drop_prefix
@@ -106,9 +106,15 @@ let out s =
   flush stdout
 
 let print_merlin_conf file =
-  let dir, _file = Filename.(dirname file, basename file) in
+  let _dir, _file = Filename.(dirname file, basename file) in
   let answer =
-    match to_local dir with
+    (* TODO Remove this permanent error when dune stops generating `.merlin`
+       files *)
+    match
+      Error
+        "No configuration file found. Try calling `dune build` to generate \
+         `.merlin` files."
+    with
     | Ok p -> load_merlin_file p
     | Error s -> Dot_merlin.make_error s
   in

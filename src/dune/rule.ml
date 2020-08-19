@@ -46,7 +46,7 @@ module Id = Id.Make ()
 module T = struct
   type t =
     { id : Id.t
-    ; context : Context.t option
+    ; context : Build_context.t option
     ; env : Env.t option
     ; action : Action.t Build.With_targets.t
     ; mode : Mode.t

@@ -1,5 +1,5 @@
-next
-----
+2.7.0 (13/08/2020)
+------------------
 
 - Write intermediate files in a `.mdx` folder for each `mdx` stanza
   to prevent the corresponding actions to be executed as part of the `@all`
@@ -7,8 +7,9 @@ next
 
 - Read Coq flags from `env` (#3547 , fixes #3486, @gares)
 
-- Allow bisect_ppx to be enabled/disabled via dune-workspace. (#3404,
-  @stephanieyou)
+- Add instrumentation framework to toggle instrumentation by `bisect_ppx`,
+  `landmarks`, etc, via dune-workspace and/or the command-line. (#3404, #3526
+  @stephanieyou, @nojb)
 
 - Formatting of dune files is now done in the executing dune process instead of
   in a separate process. (#3536, @nojb)
@@ -59,6 +60,20 @@ next
 - Fix typo in `cache-check-probablity` field in dune config files. This field
   now requires 2.7 as it wasn't usable before this version. (#3652, @edwintorok)
 
+- Add `"odoc" {with-doc}` to the dependencies in the generated `.opam` files.
+  (#3667, @kit-ty-kate)
+
+- Do not allow user actions to capture dune's stdin (#3677, fixes #3672,
+  @rgrinberg)
+
+- `(subdir ...)` stanzas can now appear in dune files used via `(include ...)`.
+  (#3676, @nojb)
+
+2.6.2 (26/07/2020)
+------------------
+
+* Fix compatibility with OCaml 4.12 (#3585, fixes #3583, @ejgallego)
+
 2.6.1 (02/07/2020)
 ------------------
 
@@ -75,6 +90,8 @@ next
 
 - Fix a stack overflow when displaying large outputs (including diffs) (#3537,
   fixes #2767, #3490, @emillon)
+
+- Pass `-g` when compiling ppx preprocessors (#3671, @rgrinberg)
 
 2.6.0 (05/06/2020)
 ------------------

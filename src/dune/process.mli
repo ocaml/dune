@@ -28,6 +28,8 @@ module Io : sig
 
   val stdin : input t
 
+  val null : 'a mode -> 'a t
+
   (** Return a buffered channel for this output. The channel is created lazily. *)
   val out_channel : output t -> out_channel
 

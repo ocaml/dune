@@ -4,6 +4,24 @@ open! Stdune
 open Import
 open Dune_file
 
+module Alias_rules : sig
+  val add :
+       Super_context.t
+    -> alias:Alias.t
+    -> stamp:'a
+    -> loc:Loc.t option
+    -> locks:Path.t list
+    -> Action.t Build.With_targets.t
+    -> unit
+
+  val add_empty :
+       Super_context.t
+    -> loc:Stdune.Loc.t option
+    -> alias:Alias.t
+    -> stamp:'a
+    -> unit
+end
+
 (** Interpret a [(rule ...)] stanza and return the targets it produces. *)
 val user_rule :
      Super_context.t

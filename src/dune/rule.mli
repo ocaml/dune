@@ -56,7 +56,7 @@ end
 
 type t = private
   { id : Id.t
-  ; context : Context.t option
+  ; context : Build_context.t option
   ; env : Env.t option
   ; action : Action.t Build.With_targets.t
   ; mode : Mode.t
@@ -76,7 +76,7 @@ val to_dyn : t -> Dyn.t
 val make :
      ?sandbox:Sandbox_config.t
   -> ?mode:Mode.t
-  -> context:Context.t option
+  -> context:Build_context.t option
   -> env:Env.t option
   -> ?locks:Path.t list
   -> ?info:Info.t

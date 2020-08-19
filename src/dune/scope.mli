@@ -8,8 +8,6 @@ type t
 
 val root : t -> Path.Build.t
 
-val name : t -> Dune_project.Name.t
-
 val project : t -> Dune_project.t
 
 (** Return the library database associated to this scope *)
@@ -28,7 +26,6 @@ module DB : sig
        projects:Dune_project.t list
     -> context:Context.t
     -> installed_libs:Lib.DB.t
-    -> lib_config:Lib_config.t
     -> Dune_load.Dune_file.t list
     -> t * Lib.DB.t
 

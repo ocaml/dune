@@ -157,7 +157,8 @@ let for_alias_module t =
   let flags =
     let project = Scope.project t.scope in
     let dune_version = Dune_project.dune_version project in
-    Ocaml_flags.default ~profile:(SC.profile t.super_context) ~dune_version
+    Ocaml_flags.default ~profile:(Super_context.context t.super_context).profile
+      ~dune_version
   in
   let sandbox =
     let ctx = Super_context.context t.super_context in

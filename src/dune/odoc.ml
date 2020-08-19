@@ -59,7 +59,8 @@ type odoc =
   }
 
 let add_rule sctx =
-  Super_context.add_rule sctx ~dir:(Super_context.build_dir sctx)
+  let dir = (Super_context.context sctx).build_dir in
+  Super_context.add_rule sctx ~dir
 
 module Paths = struct
   let root (context : Context.t) =
@@ -142,9 +143,8 @@ end = struct
 end
 
 let odoc sctx =
-  SC.resolve_program sctx
-    ~dir:(Super_context.build_dir sctx)
-    "odoc" ~loc:None ~hint:"opam install odoc"
+  let dir = (Super_context.context sctx).build_dir in
+  SC.resolve_program sctx ~dir "odoc" ~loc:None ~hint:"opam install odoc"
 
 let odoc_base_flags sctx build_dir =
   let conf = Super_context.odoc sctx ~dir:build_dir in

@@ -248,7 +248,7 @@ let generate project pkg ~template =
 
 let add_rule sctx ~project ~pkg =
   let open Build.O in
-  let build_dir = Super_context.build_dir sctx in
+  let build_dir = (Super_context.context sctx).build_dir in
   let opam_path = Path.Build.append_source build_dir (Package.opam_file pkg) in
   let opam_rule =
     (let+ template = opam_template ~opam_path:(Path.build opam_path) in

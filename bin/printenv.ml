@@ -60,7 +60,8 @@ let term =
             Dune.Context_name.Map.values setup.scontexts
             |> List.map ~f:(fun sctx ->
                    let dir =
-                     Path.Build.append_source (Super_context.build_dir sctx) dir
+                     Path.Build.append_source
+                       (Super_context.context sctx).build_dir dir
                    in
                    dump sctx ~dir)
           | External _ ->

@@ -9,7 +9,7 @@ let default_context_flags (ctx : Context.t) =
   let cxx =
     List.filter c ~f:(fun s -> not (String.is_prefix s ~prefix:"-std="))
   in
-  Foreign.Language.Dict.make ~c ~cxx
+  Foreign_language.Dict.make ~c ~cxx
 
 module Env_tree : sig
   type t
@@ -303,9 +303,9 @@ let ocaml_flags t ~dir (x : Dune_file.Buildable.t) =
 let foreign_flags t ~dir ~expander ~flags ~language =
   let ccg = Context.cc_g t.context in
   let default = get_node t.env_tree ~dir |> Env_node.foreign_flags in
-  let name = Foreign.Language.proper_name language in
+  let name = Foreign_language.proper_name language in
   Build.memoize (sprintf "%s flags" name)
-    (let default = Foreign.Language.Dict.get default language in
+    (let default = Foreign_language.Dict.get default language in
      let c = Expander.expand_and_eval_set expander flags ~standard:default in
      let open Build.O in
      let+ l = c in

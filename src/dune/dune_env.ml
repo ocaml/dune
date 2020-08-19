@@ -12,7 +12,7 @@ module Stanza = struct
     in
     let+ c = Ordered_set_lang.Unexpanded.field "c_flags" ?check
     and+ cxx = Ordered_set_lang.Unexpanded.field "cxx_flags" ?check in
-    Foreign.Language.Dict.make ~c ~cxx
+    Foreign_language.Dict.make ~c ~cxx
 
   let menhir_flags ~since =
     let check =
@@ -72,7 +72,7 @@ module Stanza = struct
 
   type config =
     { flags : Ocaml_flags.Spec.t
-    ; foreign_flags : Ordered_set_lang.Unexpanded.t Foreign.Language.Dict.t
+    ; foreign_flags : Ordered_set_lang.Unexpanded.t Foreign_language.Dict.t
     ; env_vars : Env.t
     ; binaries : File_binding.Unexpanded.t list
     ; inline_tests : Inline_tests.t option
@@ -92,7 +92,7 @@ module Stanza = struct
       ; coq
       } t =
     Ocaml_flags.Spec.equal flags t.flags
-    && Foreign.Language.Dict.equal Ordered_set_lang.Unexpanded.equal
+    && Foreign_language.Dict.equal Ordered_set_lang.Unexpanded.equal
          foreign_flags t.foreign_flags
     && Env.equal env_vars t.env_vars
     && List.equal File_binding.Unexpanded.equal binaries t.binaries
@@ -106,7 +106,7 @@ module Stanza = struct
   let empty_config =
     { flags = Ocaml_flags.Spec.standard
     ; foreign_flags =
-        Foreign.Language.Dict.make_both Ordered_set_lang.Unexpanded.standard
+        Foreign_language.Dict.make_both Ordered_set_lang.Unexpanded.standard
     ; env_vars = Env.empty
     ; binaries = []
     ; inline_tests = None

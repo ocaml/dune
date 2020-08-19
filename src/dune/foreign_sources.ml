@@ -36,7 +36,7 @@ let valid_name language ~loc s =
   | ".." ->
     User_error.raise ~loc
       [ Pp.textf "%S is not a valid %s name." s
-          (Foreign.Language.proper_name language)
+          (Foreign_language.proper_name language)
       ]
   | _ -> s
 
@@ -69,7 +69,7 @@ let eval_foreign_stubs (d : _ Dir_with_dune.t) foreign_stubs
       String.Map.filter_mapi sources ~f:(fun name srcs ->
           List.find_map srcs ~f:(fun (l, _) ->
               Option.some_if
-                (Foreign.Language.equal l language)
+                (Foreign_language.equal l language)
                 (stubs.loc, name)))
     in
     let names =
@@ -91,7 +91,7 @@ let eval_foreign_stubs (d : _ Dir_with_dune.t) foreign_stubs
           let* candidates = String.Map.find sources name in
           match
             List.filter_map candidates ~f:(fun (l, path) ->
-                Option.some_if (Foreign.Language.equal l language) path)
+                Option.some_if (Foreign_language.equal l language) path)
           with
           | [ path ] -> Some (loc, Foreign.Source.make ~stubs ~path)
           | [] -> None

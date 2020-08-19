@@ -378,11 +378,12 @@ let expand_and_record_generic acc ~dep_kind ~(dir : Path.Build.t) ~pform t
       if lib_private then
         let open Result.O in
         let* lib = Lib.DB.resolve (Scope.libs t.scope) (loc, lib) in
-        let current_project_name = Scope.name t.scope
+        let current_project_name = Scope.project t.scope |> Dune_project.name
         and referenced_project_name =
           Lib.info lib |> Lib_info.status |> Lib_info.Status.project_name
         in
         if
+          (* TODO This breaks scoped packages and projects *)
           Option.equal Dune_project.Name.equal (Some current_project_name)
             referenced_project_name
         then

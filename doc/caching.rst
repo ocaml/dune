@@ -88,9 +88,11 @@ space.
 On can run `dune cache trim --size=BYTES` to manually trigger trimming
 in the cache daemon.
 
+Reproducibility
+===============
 
 Reproducibility check
-=====================
+---------------------
 
 While default mode of operation of the cache is to speedup build times
 by not re-running some rules, it can also be used to check build
@@ -101,6 +103,13 @@ dune will rerun the rule anyway with the given probability and compare
 the resulting files against a potential cache hit. If the files
 differ, the rule is not reproducible and a warning will be emitted.
 
+Non-reproducible rules
+----------------------
+
+If you know that some rule is not reproducible (e.g. because it
+downloads a non-fixed file from the internet) and should never be
+cached, then you can mark it as such by using `(deps (universe))`.
+See :ref:`deps-field`.
 
 Daemon-less mode
 ================

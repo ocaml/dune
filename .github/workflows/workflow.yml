@@ -1,0 +1,86 @@
+name: Main workflow
+
+on:
+  - push
+  - pull_request
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        os:
+          - macos-latest
+          - ubuntu-latest
+          - windows-latest
+        # Please keep the list in sync with the minimal version of OCaml in
+        # dune-project, dune.opam.template and bootstrap.ml
+        ocaml-version:
+          - 4.10.0
+        skip_test:
+          - false
+        include:
+          - ocaml-version: 4.09.1
+            os: ubuntu-latest
+            skip_test: true
+          - ocaml-version: 4.08.1
+            os: ubuntu-latest
+            skip_test: true
+          - ocaml-version: 4.03.0
+            os: ubuntu-latest
+            skip_test: true
+          - ocaml-version: 4.02.3
+            os: ubuntu-latest
+            skip_test: true
+
+    # We don't run tests on all versions of the Windows environment and on
+    # 4.02.3 and 4.07.1 in other environments
+    env:
+      # Note that this environment variable is recognized as a string by GitHub
+      # Actions, so the following doesn't actually work:
+      #
+      # if: env.SKIP_TEST
+      #
+      # To skip an action, the following should be used:
+      # if: ${{ env.SKIP_TEST != "false" }}
+      SKIP_TEST: ${{ matrix.skip_test }}
+      OCAML_VERSION: ${{ matrix.ocaml-version }}
+      OS: ${{ matrix.os }}
+
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - name: Use OCaml ${{ matrix.ocaml-version }}
+        uses: avsm/setup-ocaml@v1
+        with:
+          ocaml-version: ${{ matrix.ocaml-version }}
+
+      # git user needs to be configured for the following tests:
+      # otherlibs/build-info/test/run.t
+      # test/blackbox-tests/test-cases/dune-project-meta/run.t
+      # test/blackbox-tests/test-cases/subst/run.t
+      # test/expect-tests/vcs_tests.ml
+      - name: Set git user
+        run: |
+          git config --global user.name github-actions
+          git config --global user.email github-actions-bot@users.noreply.github.com
+
+      - run: opam exec -- ocaml .github/workflows/ci.ml pin
+
+      # Install ocamlfind-secondary and ocaml-secondary-compiler, if needed
+      - run: opam install ./dune.opam --deps-only --with-test
+
+      # dune doesn't have any additional dependencies so we can build it right
+      # away this makes it possible to see build errors as soon as possible
+      - run: opam exec -- make dune.exe
+
+      - name: run test suite
+        run: opam exec -- ocaml .github/workflows/ci.ml test
+        if: env.SKIP_TEST != 'true'
+
+      - name: test source is well formatted
+        run: opam exec -- make fmt
+        if: env.OCAML_VERSION == '4.10.0' && env.OS == 'ubuntu-latest'

@@ -41,8 +41,8 @@ build: [
   ["./dune.exe" "build" "-p" name "--profile" "dune-bootstrap" "-j" jobs]
 ]
 depends: [
-  # Please keep the lower bound in sync with .travis.yml, dune-project
-  # and min_ocaml_version in bootstrap.ml
+  # Please keep the lower bound in sync with .github/workflows/workflow.yml,
+  # dune-project and min_ocaml_version in bootstrap.ml
   ("ocaml" {>= "4.08"} | ("ocaml" {< "4.08~~"} & "ocamlfind-secondary"))
   "base-unix"
   "base-threads"

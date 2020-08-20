@@ -8,16 +8,25 @@ BIN := ./dune.exe
 
 # Dependencies used for developing and testing dune
 DEV_DEPS := \
+"csexp>=1.3.0" \
+bisect_ppx \
+coq \
 core_bench \
+"mdx=1.6.0" \
 menhir \
 merlin \
-ocamlformat \
-odoc \
-ppx_expect \
+ocaml-migrate-parsetree \
+ocamlfind \
+ocamlformat.0.14.3 \
+"odoc>=1.5.0" \
+"ppx_expect>=v0.14" \
 ppx_inline_test \
 ppxlib \
 cinaps \
-utop
+result \
+js_of_ocaml-ppx \
+js_of_ocaml-compiler \
+"utop>=2.6.0"
 
 -include Makefile.dev
 
@@ -44,12 +53,18 @@ uninstall:
 
 reinstall: uninstall install
 
+dev-deps:
+	opam install -y $(DEV_DEPS)
+
 dev-switch:
 	opam switch create -y . --deps-only --with-test
 	opam install -y $(DEV_DEPS)
 
 test: $(BIN)
 	$(BIN) runtest
+
+test-windows: $(BIN)
+	$(BIN) build @runtest-windows
 
 test-js: $(BIN)
 	$(BIN) build @runtest-js

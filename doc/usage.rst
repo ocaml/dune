@@ -202,6 +202,23 @@ You can also build an alias non-recursively by using ``@@`` instead of
 
    dune build @@runtest
 
+Note that it's currently not possible to build a target directly if that target
+lives in a directory that starts with the ``@`` character. In the rare cases
+where you need to do that, you can declare an alias like so:
+
+.. code:: scheme
+
+    (alias
+     (name foo)
+     (deps @foo/some.exe))
+
+``@foo/some.exe`` can then be built with:
+
+.. code::
+
+   dune build @foo
+
+
 .. _default-alias:
 
 Default alias

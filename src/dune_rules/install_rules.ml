@@ -321,10 +321,10 @@ end = struct
       List.fold_left lib_entries ~init:Lib_name.Map.empty ~f:(fun acc stanza ->
           match stanza with
           | Super_context.Lib_entry.Deprecated_library_name
-              { old_name = Public (_, Deprecated _); _ } ->
+              { old_name = _, Deprecated _; _ } ->
             acc
           | Super_context.Lib_entry.Deprecated_library_name
-              { old_name = Public (old_public_name, Not_deprecated)
+              { old_name = old_public_name, Not_deprecated
               ; new_public_name = _, new_public_name
               ; loc
               ; project = _
@@ -392,7 +392,7 @@ end = struct
     let deprecated_dune_packages =
       List.filter_map lib_entries ~f:(function
         | Super_context.Lib_entry.Deprecated_library_name
-            ({ old_name = Public (old_public_name, Deprecated _); _ } as t) ->
+            ({ old_name = old_public_name, Deprecated _; _ } as t) ->
           Some
             ( Lib_name.package_name (Dune_file.Public_lib.name old_public_name)
             , t )
@@ -407,8 +407,8 @@ end = struct
             | Some entries ->
               List.fold_left entries ~init:Lib_name.Map.empty
                 ~f:(fun acc
-                        { Dune_file.Deprecated_library_name.old_name =
-                            Public (old_public_name, _)
+                        { Dune_file.Library_redirect.old_name =
+                            old_public_name, _
                         ; new_public_name = _, new_public_name
                         ; loc
                         ; _
@@ -444,8 +444,8 @@ end = struct
       let entries = Super_context.lib_entries_of_package sctx pkg.name in
       List.partition_map entries ~f:(function
         | Super_context.Lib_entry.Deprecated_library_name
-            { old_name = Public (public, Deprecated { deprecated_package }); _ }
-          as entry -> (
+            { old_name = public, Deprecated { deprecated_package }; _ } as entry
+          -> (
           match Dune_file.Public_lib.sub_dir public with
           | None -> Left (deprecated_package, entry)
           | Some _ -> Right entry )

@@ -173,7 +173,7 @@ module Lib_entry = struct
 
   let name = function
     | Library lib -> Lib.Local.to_lib lib |> Lib.name
-    | Deprecated_library_name { old_name = Public (old_public_name, _); _ } ->
+    | Deprecated_library_name { old_name = old_public_name, _; _ } ->
       Dune_file.Public_lib.name old_public_name
 end
 
@@ -513,9 +513,10 @@ let create ~(context : Context.t) ?host ~projects ~packages ~stanzas =
               , Lib_entry.Library (Option.value_exn (Lib.Local.of_lib lib)) )
               :: acc )
           | Dune_file.Deprecated_library_name
-              ({ old_name = Public (old_public_name, _); _ } as d) ->
+              ({ old_name = old_public_name, deprecated; _ } as d) ->
             ( (Dune_file.Public_lib.package old_public_name).name
-            , Lib_entry.Deprecated_library_name d )
+            , Lib_entry.Deprecated_library_name
+                { d with old_name = (old_public_name, deprecated) } )
             :: acc
           | _ -> acc)
       |> Package.Name.Map.of_list_multi

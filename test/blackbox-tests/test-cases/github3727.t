@@ -34,11 +34,21 @@ visible regardless if the stanzas were filtered.
   $ dune exec ./bin.exe
   private_foo
 
+  $ rm -rf _build
+  $ dune build -p foo
+  $ dune install foo --prefix ./_install
+  Installing _install/lib/foo/META
+  Installing _install/lib/foo/bar/private_foo.a
+  Installing _install/lib/foo/bar/private_foo.cma
+  Installing _install/lib/foo/bar/private_foo.cmi
+  Installing _install/lib/foo/bar/private_foo.cmt
+  Installing _install/lib/foo/bar/private_foo.cmx
+  Installing _install/lib/foo/bar/private_foo.cmxa
+  Installing _install/lib/foo/bar/private_foo.cmxs
+  Installing _install/lib/foo/bar/private_foo.ml
+  Installing _install/lib/foo/dune-package
+
+  $ export OCAMLPATH=$PWD/_install/lib
   $ dune build -p bar
-  File "dune", line 8, characters 12-23:
-  8 |  (libraries private_foo)
-                  ^^^^^^^^^^^
-  Error: Library "private_foo" not found.
-  Hint: try:
-    dune external-lib-deps --missing -p bar @install
-  [1]
+  $ _build/install/default/bin/bin
+  private_foo

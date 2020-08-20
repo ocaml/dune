@@ -60,21 +60,29 @@ module DB = struct
           match stanza with
           | Library (_, { project; public = Some p; _ }) ->
             Some (Dune_file.Public_lib.name p, Project project)
-          | Library _ -> None
-          | Deprecated_library_name
-              { old_name = Public (old_public_name, _); new_public_name; _ } ->
-            Some
-              (Dune_file.Public_lib.name old_public_name, Name new_public_name))
+          | Library _
+          | Library_redirect _ ->
+            None
+          | Deprecated_library_name s ->
+            let old_name =
+              Dune_file.Deprecated_library_name.old_public_name s
+            in
+            Some (old_name, Name s.new_public_name))
       |> Lib_name.Map.of_list
       |> function
       | Ok x -> x
       | Error (name, _, _) -> (
         match
           List.filter_map stanzas ~f:(fun stanza ->
+              let named p loc = Option.some_if (name = p) loc in
               match stanza with
-              | Library (_, { buildable = { loc; _ }; public = Some p; _ })
-              | Deprecated_library_name { loc; old_name = Public (p, _); _ } ->
-                Option.some_if (name = Dune_file.Public_lib.name p) loc
+              | Library (_, { buildable = { loc; _ }; public = Some p; _ }) ->
+                named (Dune_file.Public_lib.name p) loc
+              | Deprecated_library_name d ->
+                let old_name =
+                  Dune_file.Deprecated_library_name.old_public_name d
+                in
+                named old_name d.loc
               | _ -> None)
         with
         | []
@@ -104,6 +112,7 @@ module DB = struct
           let project =
             match stanza with
             | Library (_, lib) -> lib.project
+            | Library_redirect x -> x.project
             | Deprecated_library_name x -> x.project
           in
           (Dune_project.root project, stanza))
@@ -169,6 +178,7 @@ module DB = struct
             , coq_acc )
           | Dune_file.Deprecated_library_name d ->
             (Deprecated_library_name d :: acc, coq_acc)
+          | Dune_file.Library_redirect d -> (Library_redirect d :: acc, coq_acc)
           | Coq_stanza.Theory.T coq_lib ->
             let ctx_dir =
               Path.Build.append_source context.build_dir dune_file.dir

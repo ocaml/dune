@@ -330,23 +330,44 @@ module Include_subdirs : sig
     | Include of qualification
 end
 
+(** The purpose of [Library_redirect] stanza is to create a redirection from an
+    [old_name] to a [new_public_name].
+
+    This is used in two cases:
+
+    - When a library changes its public name, a redirection is created for
+      backwards compatibility with the code using its old name.
+      (deprecated_library_name stanza in dune files)
+
+    - When hiding public libraries with [--only-packages] (or [-p]), we use this
+      stanza to make sure that their project-local names remain in scope. *)
+module Library_redirect : sig
+  type 'old_name t =
+    { project : Dune_project.t
+    ; loc : Loc.t
+    ; old_name : 'old_name
+    ; new_public_name : Loc.t * Lib_name.t
+    }
+
+  module Local : sig
+    type nonrec t = (Loc.t * Lib_name.Local.t) t
+
+    val of_lib : Library.t -> t option
+  end
+end
+
 module Deprecated_library_name : sig
   module Old_name : sig
     type deprecation =
       | Not_deprecated
       | Deprecated of { deprecated_package : Package.Name.t }
 
-    type t =
-      | Local of (Loc.t * Lib_name.Local.t)
-      | Public of Public_lib.t * deprecation
+    type t = Public_lib.t * deprecation
   end
 
-  type t =
-    { loc : Loc.t
-    ; project : Dune_project.t
-    ; old_name : Old_name.t
-    ; new_public_name : Loc.t * Lib_name.t
-    }
+  type t = Old_name.t Library_redirect.t
+
+  val old_public_name : t -> Lib_name.t
 end
 
 type Stanza.t +=
@@ -361,6 +382,7 @@ type Stanza.t +=
   | Tests of Tests.t
   | Include_subdirs of Loc.t * Include_subdirs.t
   | Toplevel of Toplevel.t
+  | Library_redirect of Library_redirect.Local.t
   | Deprecated_library_name of Deprecated_library_name.t
   | Cram of Cram_stanza.t
 

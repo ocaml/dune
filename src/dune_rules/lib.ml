@@ -1658,6 +1658,7 @@ module DB = struct
   module Library_related_stanza = struct
     type t =
       | Library of Path.Build.t * Dune_file.Library.t
+      | Library_redirect of Dune_file.Library_redirect.Local.t
       | Deprecated_library_name of Dune_file.Deprecated_library_name.t
   end
 
@@ -1671,11 +1672,14 @@ module DB = struct
     let map : Found_or_redirect.t Lib_name.Map.t =
       List.concat_map stanzas ~f:(fun stanza ->
           match (stanza : Library_related_stanza.t) with
-          | Deprecated_library_name
-              { old_name = Public (old_public_name, _); new_public_name; _ } ->
-            [ ( Dune_file.Public_lib.name old_public_name
-              , Found_or_redirect.Redirect new_public_name )
-            ]
+          | Library_redirect s ->
+            let old_public_name = Lib_name.of_local s.old_name in
+            [ (old_public_name, Found_or_redirect.Redirect s.new_public_name) ]
+          | Deprecated_library_name s ->
+            let old_public_name =
+              Dune_file.Deprecated_library_name.old_public_name s
+            in
+            [ (old_public_name, Found_or_redirect.Redirect s.new_public_name) ]
           | Library (dir, (conf : Dune_file.Library.t)) -> (
             let info =
               Dune_file.Library.to_lib_info conf ~dir ~lib_config

@@ -1810,19 +1810,18 @@ module Include_subdirs = struct
 end
 
 module Deprecated_library_name = struct
-  module Old_public_name = struct
-    type kind =
+  module Old_name = struct
+    type deprecation =
       | Not_deprecated
       | Deprecated of { deprecated_package : Package.Name.t }
 
     type t =
-      { kind : kind
-      ; public : Public_lib.t
-      }
+      | Local of (Loc.t * Lib_name.Local.t)
+      | Public of Public_lib.t * deprecation
 
     let decode =
       let+ public = Public_lib.decode ~allow_deprecated_names:true in
-      let kind =
+      let deprecation =
         let deprecated_package =
           Lib_name.package_name (Public_lib.name public)
         in
@@ -1833,13 +1832,13 @@ module Deprecated_library_name = struct
         else
           Deprecated { deprecated_package }
       in
-      { kind; public }
+      Public (public, deprecation)
   end
 
   type t =
     { loc : Loc.t
     ; project : Dune_project.t
-    ; old_public_name : Old_public_name.t
+    ; old_name : Old_name.t
     ; new_public_name : Loc.t * Lib_name.t
     }
 
@@ -1847,11 +1846,11 @@ module Deprecated_library_name = struct
     fields
       (let+ loc = loc
        and+ project = Dune_project.get_exn ()
-       and+ old_public_name = field "old_public_name" Old_public_name.decode
+       and+ old_name = field "old_public_name" Old_name.decode
        and+ new_public_name =
          field "new_public_name" (located Lib_name.decode)
        in
-       { loc; project; old_public_name; new_public_name })
+       { loc; project; old_name; new_public_name })
 end
 
 type Stanza.t +=

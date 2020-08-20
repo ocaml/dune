@@ -1672,10 +1672,7 @@ module DB = struct
       List.concat_map stanzas ~f:(fun stanza ->
           match (stanza : Library_related_stanza.t) with
           | Deprecated_library_name
-              { old_public_name = { public = old_public_name; _ }
-              ; new_public_name
-              ; _
-              } ->
+              { old_name = Public (old_public_name, _); new_public_name; _ } ->
             [ ( Dune_file.Public_lib.name old_public_name
               , Found_or_redirect.Redirect new_public_name )
             ]

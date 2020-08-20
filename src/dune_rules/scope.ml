@@ -62,10 +62,7 @@ module DB = struct
             Some (Dune_file.Public_lib.name p, Project project)
           | Library _ -> None
           | Deprecated_library_name
-              { old_public_name = { public = old_public_name; _ }
-              ; new_public_name
-              ; _
-              } ->
+              { old_name = Public (old_public_name, _); new_public_name; _ } ->
             Some
               (Dune_file.Public_lib.name old_public_name, Name new_public_name))
       |> Lib_name.Map.of_list
@@ -76,8 +73,7 @@ module DB = struct
           List.filter_map stanzas ~f:(fun stanza ->
               match stanza with
               | Library (_, { buildable = { loc; _ }; public = Some p; _ })
-              | Deprecated_library_name
-                  { loc; old_public_name = { public = p; _ }; _ } ->
+              | Deprecated_library_name { loc; old_name = Public (p, _); _ } ->
                 Option.some_if (name = Dune_file.Public_lib.name p) loc
               | _ -> None)
         with

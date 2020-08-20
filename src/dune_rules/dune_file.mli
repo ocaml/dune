@@ -331,21 +331,20 @@ module Include_subdirs : sig
 end
 
 module Deprecated_library_name : sig
-  module Old_public_name : sig
-    type kind =
+  module Old_name : sig
+    type deprecation =
       | Not_deprecated
       | Deprecated of { deprecated_package : Package.Name.t }
 
     type t =
-      { kind : kind
-      ; public : Public_lib.t
-      }
+      | Local of (Loc.t * Lib_name.Local.t)
+      | Public of Public_lib.t * deprecation
   end
 
   type t =
     { loc : Loc.t
     ; project : Dune_project.t
-    ; old_public_name : Old_public_name.t
+    ; old_name : Old_name.t
     ; new_public_name : Loc.t * Lib_name.t
     }
 end

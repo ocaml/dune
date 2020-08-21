@@ -22,6 +22,7 @@ ocaml-migrate-parsetree \
 ocamlfind \
 ocamlformat.0.14.3 \
 "odoc>=1.5.0" \
+patdiff \
 "ppx_expect>=v0.14" \
 ppx_inline_test \
 "ppxlib.0.13.0" \

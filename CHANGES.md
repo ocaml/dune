@@ -9,7 +9,8 @@ Unreleased
   to use instrumentation backends defined in installed libraries (eg via OPAM).
   (#3735, @nojb)
 
-- Add missing `.aux` targets to coq rules (3721, fixes #3437, @rgrinberg)
+- Add missing `.aux` & `.glob` targets to coq rules (3721, fixes #3437,
+  @rgrinberg)
 
 2.7.0 (13/08/2020)
 ------------------

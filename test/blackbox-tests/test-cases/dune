@@ -81,7 +81,7 @@
  (enabled_if false))
 
 (cram
- (applies_to windows-diff)
+ (applies_to windows-diff github2852)
  (alias runtest-windows))
 
 (subdir

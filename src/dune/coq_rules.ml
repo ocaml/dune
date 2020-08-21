@@ -239,7 +239,7 @@ let parse_coqdep ~dir ~(boot_type : Bootstrap.t) ~coq_module
       :: deps )
 
 let deps_of ~dir ~boot_type coq_module =
-  let stdout_to = Coq_module.dep_file ~obj_dir:dir coq_module in
+  let stdout_to = Coq_module.obj_file ~obj_dir:dir coq_module Dep in
   Build.dyn_paths_unit
     (Build.map
        (Build.lines_of (Path.build stdout_to))
@@ -254,7 +254,7 @@ let coqdep_rule (cctx : _ Context.t) ~source_rule ~file_flags coq_module =
     ; Dep (Path.build source)
     ]
   in
-  let stdout_to = Coq_module.dep_file ~obj_dir:cctx.dir coq_module in
+  let stdout_to = Coq_module.obj_file ~obj_dir:cctx.dir coq_module Dep in
   (* Coqdep has to be called in the stanza's directory *)
   let open Build.With_targets.O in
   Build.with_no_targets cctx.mlpack_rule
@@ -264,9 +264,9 @@ let coqdep_rule (cctx : _ Context.t) ~source_rule ~file_flags coq_module =
 let coqc_rule (cctx : _ Context.t) ~file_flags coq_module =
   let source = Coq_module.source coq_module in
   let file_flags =
-    let object_to = Coq_module.obj_file ~obj_dir:cctx.dir coq_module in
-    let aux = Coq_module.aux_file ~obj_dir:cctx.dir coq_module in
-    let glob = Coq_module.glob_file ~obj_dir:cctx.dir coq_module in
+    let object_to = Coq_module.obj_file ~obj_dir:cctx.dir coq_module Obj in
+    let aux = Coq_module.obj_file ~obj_dir:cctx.dir coq_module Aux in
+    let glob = Coq_module.obj_file ~obj_dir:cctx.dir coq_module Glob in
     [ Command.Args.Hidden_targets [ object_to; aux; glob ]
     ; S file_flags
     ; Command.Args.Dep (Path.build source)
@@ -423,7 +423,7 @@ let install_rules ~sctx ~dir s =
            let to_dst f =
              Path.Local.to_string @@ Path.Local.relative dst_dir f
            in
-           let vofile = Coq_module.obj_file ~obj_dir:dir vfile in
+           let vofile = Coq_module.obj_file ~obj_dir:dir vfile Obj in
            let vfile = Coq_module.source vfile in
            let make_entry file =
              ( Some loc

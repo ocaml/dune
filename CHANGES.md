@@ -5,6 +5,10 @@ Unreleased
   the object file, as long as they are the same after parsing. (#3739, fixes
   #3736, @rgrinberg)
 
+- Record instrumentation backends in dune-package files. This makes it possible
+  to use instrumentation backends defined in installed libraries (eg via OPAM).
+  (#3735, @nojb)
+
 2.7.0 (13/08/2020)
 ------------------
 

@@ -59,6 +59,7 @@ module Lib = struct
     in
     let jsoo_runtime = Lib_info.jsoo_runtime info in
     let virtual_ = Option.is_some (Lib_info.virtual_ info) in
+    let instrumentation_backend = Lib_info.instrumentation_backend info in
     record_fields
     @@ [ field "name" Lib_name.encode name
        ; field "kind" Lib_kind.encode kind
@@ -82,6 +83,8 @@ module Lib = struct
        ; field_o "modules" Modules.encode modules
        ; field_o "special_builtin_support"
            Lib_info.Special_builtin_support.encode special_builtin_support
+       ; field_o "instrumentation.backend" (no_loc Lib_name.encode)
+           instrumentation_backend
        ]
     @ ( Sub_system_name.Map.to_list sub_systems
       |> List.map ~f:(fun (name, info) ->
@@ -145,6 +148,8 @@ module Lib = struct
          field_o "special_builtin_support"
            ( Dune_lang.Syntax.since Stanza.syntax (1, 10)
            >>> Lib_info.Special_builtin_support.decode )
+       and+ instrumentation_backend =
+         field_o "instrumentation.backend" (located Lib_name.decode)
        in
        let modes = Mode.Dict.Set.of_list modes in
        let info : Path.t Lib_info.t =
@@ -176,7 +181,7 @@ module Lib = struct
            ~jsoo_runtime ~jsoo_archive ~preprocess ~enabled ~virtual_deps
            ~dune_version ~virtual_ ~implements ~default_implementation ~modes
            ~wrapped ~special_builtin_support ~exit_module:None
-           ~instrumentation_backend:None
+           ~instrumentation_backend
        in
        { info; main_module_name; modules })
 

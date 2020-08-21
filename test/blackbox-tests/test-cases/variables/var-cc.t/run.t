@@ -16,6 +16,7 @@ No env
   > (rule
   >  (alias cc)
   >   (action (echo %{cc})))
+  > EOF
 
   $ dune build @cc | sed "s,${O_CC} ${O_CCF},OK,"
   OK

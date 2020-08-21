@@ -5,15 +5,15 @@ possibly fail if interpreted relative to an incorrect dir.
   > (lang dune 2.0)
   > EOF
   $ cat >dune.inc <<EOF
-  > (copy_files# ../aux.ml)
+  > (copy_files# ../auxiliary.ml)
   > EOF
   $ mkdir -p a
   $ cat >a/dune <<EOF
   > (include ../dune.inc)
-  > (executable (name aux))
+  > (executable (name auxiliary))
   > EOF
-  $ cat > aux.ml <<EOF
+  $ cat > auxiliary.ml <<EOF
   > print_endline "success"
   > EOF
-  $ dune exec ./a/aux.exe
+  $ dune exec ./a/auxiliary.exe
   success

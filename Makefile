@@ -57,7 +57,10 @@ dev-deps:
 	opam install -y $(DEV_DEPS)
 
 dev-switch:
-	opam switch create -y . --deps-only --with-test
+	opam update
+	# Ensuring that either a dev switch already exists or a new one is created
+	[[ $(shell opam switch show) == $(shell pwd) ]] || \
+		opam switch create -y . --deps-only --with-test
 	opam install -y $(DEV_DEPS)
 
 test: $(BIN)

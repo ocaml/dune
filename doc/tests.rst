@@ -570,7 +570,7 @@ This introduces a dependency on ``foo.exe`` on all cram tests in this directory.
 To apply the stanza to a particular test, it's possible to use ``applies_to``
 field:
 
-.. code:: bash
+.. code:: scheme
 
    (cram
     (applies_to * \ foo bar)
@@ -593,6 +593,25 @@ The ``cram`` stanza accepts the following fields:
 A single test may be configured by more than one ``cram`` stanza. In such cases,
 the values from all applicable ``cram`` stanzas are merged together to get the
 final values for all the fields.
+
+Testing an OCaml Program
+------------------------
+
+The most common testing situation involves testing an executable that is defined
+in dune. For example:
+
+.. code:: scheme
+
+   (executable
+    (name wc)
+    (public_name wc))
+
+To use this binary in the cram test, we should depend on the binary in the test:
+
+.. code:: scheme
+
+   (cram
+    (deps %{bin:wc}))
 
 Sandboxing
 ----------

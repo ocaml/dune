@@ -11,7 +11,7 @@ No ppx driver found
   $ dune build --root no-driver
   Entering directory 'no-driver'
   Info: Creating file dune-project with this contents:
-  | (lang dune 2.7)
+  | (lang dune 2.8)
   File "dune", line 5, characters 13-18:
   5 |  (preprocess (pps)))
                    ^^^^^

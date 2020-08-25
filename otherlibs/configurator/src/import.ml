@@ -56,6 +56,8 @@ module Option = struct
     else
       None
 
+  let some x = Some x
+
   let try_with f =
     match f () with
     | exception _ -> None

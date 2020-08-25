@@ -466,10 +466,6 @@ module C_define = struct
       | Switch of bool
       | Int of int
       | String of string
-
-    let switch b = Switch b
-
-    let int i = Int i
   end
 
   let extract_program ?prelude includes vars =
@@ -532,28 +528,44 @@ const char *s%i = "BEGIN-%i-false-END";
   let extract_values obj_file vars =
     let values =
       Io.with_lexbuf_from_file obj_file ~f:(Extract_obj.extract [])
-      |> Int.Map.of_list_exn
+      |> List.fold_left ~init:Int.Map.empty ~f:(fun acc (key, v) ->
+             Int.Map.update acc ~key ~f:(function
+               | None -> Some [ v ]
+               | Some vs -> Some (v :: vs)))
     in
     List.mapi vars ~f:(fun i (name, t) ->
-        let raw_val =
+        let raw_vals =
           match Int.Map.find values i with
-          | None -> die "Unable to get value for %s" name
           | Some v -> v
+          | None -> die "Unable to get value for %s" name
+        in
+        let parse_val_or_exn f =
+          let f x =
+            match f x with
+            | Some s -> s
+            | None ->
+              die
+                "Unable to read variable %S of type %s. Invalid value %S in %s \
+                 found"
+                name (Type.name t) x obj_file
+          in
+          let vs =
+            List.map ~f:(fun x -> (x, f x)) raw_vals
+            |> List.sort_uniq ~cmp:(fun (_, x) (_, y) -> compare x y)
+          in
+          match vs with
+          | [] -> assert false
+          | [ (_, v) ] -> v
+          | vs ->
+            let vs = List.map ~f:fst vs in
+            die "Duplicate values for %s:\n%s" name
+              (vs |> List.map ~f:(sprintf "- %s") |> String.concat ~sep:"\n")
         in
         let value =
           match t with
-          | Type.Switch -> Bool.of_string raw_val |> Option.map ~f:Value.switch
-          | Int -> Int.of_string raw_val |> Option.map ~f:Value.int
-          | String -> Some (String raw_val)
-        in
-        let value =
-          match value with
-          | Some v -> v
-          | None ->
-            die
-              "Unable to read variable %S of type %s. Invalid value %S in %s \
-               found"
-              name (Type.name t) raw_val obj_file
+          | Type.Switch -> Value.Switch (parse_val_or_exn Bool.of_string)
+          | Int -> Value.Int (parse_val_or_exn Int.of_string)
+          | String -> String (parse_val_or_exn Option.some)
         in
         (name, value))
 

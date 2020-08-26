@@ -167,7 +167,10 @@ module File_ops_real (W : Workspace) : File_operations = struct
     in
     if
       List.exists dp ~f:(function
-        | Dune_lang.List (Atom (A "version") :: _) -> true
+        | Dune_lang.List (Atom (A "version") :: _)
+        | Dune_lang.List [ Atom (A "use_meta"); Atom (A "true") ]
+        | Dune_lang.List [ Atom (A "use_meta") ] ->
+          true
         | _ -> false)
     then
       No_version_needed

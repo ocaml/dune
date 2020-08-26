@@ -22,16 +22,17 @@ custom version:
   > EOF
 
   $ cat >META.foobarlib.template <<EOF
+  > # DUNE_GEN
   > EOF
 
   $ dune build @install
 
-  $ cat _build/install/default/lib/foobarlib/dune-package
-  (lang dune 2.7)
-  (use_meta)
-
   $ dune install --prefix ./_install 2>&1 | grep -v Installing
   [1]
+
+  $ cat ./_install/lib/foobarlib/dune-package
+  (lang dune 2.7)
+  (use_meta)
 
   $ mkdir external
   $ echo "(lang dune 2.7)" > external/dune-project
@@ -45,8 +46,4 @@ custom version:
   $ OCAMLPATH=$PWD/_install/lib dune exec --root external ./main.exe
   Entering directory 'external'
   Entering directory 'external'
-  File "$TESTCASE_ROOT/_install/lib/foobarlib/dune-package", line 3, characters 1-8:
-  3 | (version 1.0)
-       ^^^^^^^
-  Error: Unknown field version
-  [1]
+  foobarlib

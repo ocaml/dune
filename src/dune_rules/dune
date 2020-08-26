@@ -17,7 +17,8 @@
   (with-stdout-to
    %{target}
    (progn
-    (echo "let jbuild_plugin_ml = {jbp|")
+    (echo "let jbuild_plugin_ml =\n")
+    (echo "  {jbp|\n")
     (cat %{project_root}/plugin/jbuild_plugin.ml)
     (echo "|jbp}\n\n")
     (echo "let jbuild_plugin_mli = {jbp|")

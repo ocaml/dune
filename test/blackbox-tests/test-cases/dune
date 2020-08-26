@@ -27,7 +27,7 @@
  (applies_to windows-diff)
  (alias runtest-windows))
 
-; Disabled tests
+; DISABLED TESTS
 
 (subdir
  bisect-ppx
@@ -44,15 +44,16 @@
  (applies_to fdo)
  (enabled_if false))
 
-; This test is flaky due to platform sensitivity
+; The following test is flaky due to platform sensitivity
 ; see https://github.com/ocaml/dune/issues/3744
+
 (subdir
  cram
  (cram
   (applies_to error)
   (enabled_if false)))
 
-; Conditionally disabled tests
+; CONDITIONALLY DISABLED TESTS
 
 (cram
  (applies_to github764)

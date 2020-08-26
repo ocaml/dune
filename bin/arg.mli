@@ -1,5 +1,6 @@
 open Stdune
-open Dune
+open Dune_engine
+open Dune_rules
 
 include module type of struct
   include Cmdliner.Arg
@@ -18,9 +19,9 @@ module Dep : sig
 
   val file : string -> t
 
-  val alias : dir:Stdune.Path.Local.t -> Dune.Alias.Name.t -> t
+  val alias : dir:Stdune.Path.Local.t -> Dune_engine.Alias.Name.t -> t
 
-  val alias_rec : dir:Stdune.Path.Local.t -> Dune.Alias.Name.t -> t
+  val alias_rec : dir:Stdune.Path.Local.t -> Dune_engine.Alias.Name.t -> t
 
   val to_string_maybe_quoted : t -> string
 end

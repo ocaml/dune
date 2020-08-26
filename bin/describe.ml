@@ -30,7 +30,8 @@ let info = Term.info "describe" ~doc ~man
 
 (* Crawl the workspace to get all the data *)
 module Crawl = struct
-  open Dune
+  open Dune_rules
+  open Dune_engine
 
   let uid_of_library lib =
     Digest.generic
@@ -88,7 +89,7 @@ module Crawl = struct
                 ]
             ] ))
 
-  let workspace { Dune.Main.workspace; scontexts } (context : Context.t) =
+  let workspace { Dune_rules.Main.workspace; scontexts } (context : Context.t) =
     let sctx = Context_name.Map.find_exn scontexts context.name in
     let libs =
       List.fold_left workspace.conf.projects ~init:Lib.Set.empty
@@ -107,25 +108,29 @@ end
 
 module Opam_files = struct
   let get () =
-    let project = Dune.File_tree.root () |> Dune.File_tree.Dir.project in
+    let project =
+      Dune_engine.File_tree.root () |> Dune_engine.File_tree.Dir.project
+    in
     let packages =
-      Dune_project.packages project |> Dune.Package.Name.Map.values
+      Dune_project.packages project |> Dune_engine.Package.Name.Map.values
     in
     Dyn.List
       (List.map packages ~f:(fun pkg ->
-           let opam_file = Path.source (Dune.Package.opam_file pkg) in
+           let opam_file = Path.source (Dune_engine.Package.opam_file pkg) in
            let contents =
              if not (Dune_project.generate_opam_files project) then
                Io.read_file opam_file
              else
-               let template_file = Dune.Opam_create.template_file opam_file in
+               let template_file =
+                 Dune_rules.Opam_create.template_file opam_file
+               in
                let template =
                  if Path.exists template_file then
                    Some (template_file, Io.read_file template_file)
                  else
                    None
                in
-               Dune.Opam_create.generate project pkg ~template
+               Dune_rules.Opam_create.generate project pkg ~template
            in
            Dyn.Tuple [ String (Path.to_string opam_file); String contents ]))
 end
@@ -152,7 +157,9 @@ module What = struct
     match args with
     | [] -> default
     | _ ->
-      let parse = Dune_lang.Syntax.set Dune.Stanza.syntax (Active lang) parse in
+      let parse =
+        Dune_lang.Syntax.set Dune_engine.Stanza.syntax (Active lang) parse
+      in
       let ast =
         Dune_lang.Ast.add_loc ~loc:Loc.none
           (List (List.map args ~f:Dune_lang.atom_or_quoted_string))
@@ -223,7 +230,7 @@ let print_as_sexp dyn =
     |> Dune_lang.Ast.add_loc ~loc:Loc.none
     |> Dune_lang.Cst.concrete
   in
-  Dune.Format_dune_lang.pp_top_sexps Stdlib.Format.std_formatter [ cst ]
+  Dune_engine.Format_dune_lang.pp_top_sexps Stdlib.Format.std_formatter [ cst ]
 
 let term =
   let+ common = Common.term

@@ -21,14 +21,15 @@ let man =
 let info = Term.info "external-lib-deps" ~doc ~man
 
 let run ~lib_deps ~by_dir ~setup ~only_missing ~sexp =
-  Dune.Context_name.Map.foldi lib_deps ~init:false
+  Dune_engine.Context_name.Map.foldi lib_deps ~init:false
     ~f:(fun context_name lib_deps_by_dir acc ->
       let lib_deps =
         Path.Source.Map.values lib_deps_by_dir
         |> List.fold_left ~init:Lib_name.Map.empty ~f:Lib_deps_info.merge
       in
       let internals =
-        Dune.Context_name.Map.find_exn setup.Import.Main.scontexts context_name
+        Dune_engine.Context_name.Map.find_exn setup.Import.Main.scontexts
+          context_name
         |> Super_context.internal_lib_names
       in
       let is_external name _kind = not (Lib_name.Set.mem internals name) in
@@ -41,7 +42,7 @@ let run ~lib_deps ~by_dir ~setup ~only_missing ~sexp =
             ];
         let context =
           List.find_exn setup.workspace.contexts ~f:(fun c ->
-              Dune.Context_name.equal c.name context_name)
+              Dune_engine.Context_name.equal c.name context_name)
         in
         let missing =
           Lib_name.Map.filteri externals ~f:(fun name _ ->
@@ -57,7 +58,7 @@ let run ~lib_deps ~by_dir ~setup ~only_missing ~sexp =
             (User_error.make
                [ Pp.textf
                    "The following libraries are missing in the %s context:"
-                   (Dune.Context_name.to_string context_name)
+                   (Dune_engine.Context_name.to_string context_name)
                ; pp_external_libs missing
                ]);
           false
@@ -75,11 +76,11 @@ let run ~lib_deps ~by_dir ~setup ~only_missing ~sexp =
             (User_error.make
                [ Pp.textf
                    "The following libraries are missing in the %s context:"
-                   (Dune.Context_name.to_string context_name)
+                   (Dune_engine.Context_name.to_string context_name)
                ; pp_external_libs missing
                ]
                ~hints:
-                 [ Dune.Utils.pp_command_hint
+                 [ Dune_engine.Utils.pp_command_hint
                      ( "opam install" :: required_package_names
                      |> String.concat ~sep:" " )
                  ]);
@@ -97,7 +98,7 @@ let run ~lib_deps ~by_dir ~setup ~only_missing ~sexp =
           |> Sexp.of_dyn
         in
         Format.printf "%a@." Sexp.pp
-          (List [ Atom (Dune.Context_name.to_string context_name); sexp ]);
+          (List [ Atom (Dune_engine.Context_name.to_string context_name); sexp ]);
         acc
       ) else (
         if by_dir then
@@ -108,7 +109,7 @@ let run ~lib_deps ~by_dir ~setup ~only_missing ~sexp =
              [ Pp.textf
                  "These are the external library dependencies in the %s \
                   context:"
-                 (Dune.Context_name.to_string context_name)
+                 (Dune_engine.Context_name.to_string context_name)
              ; pp_external_libs externals
              ]);
         acc

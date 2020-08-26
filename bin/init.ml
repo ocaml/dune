@@ -1,6 +1,6 @@
 open Stdune
 open Import
-open Dune.Dune_init
+open Dune_rules.Dune_init
 
 (** {1 Helper functions} *)
 

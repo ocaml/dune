@@ -1,30 +1,30 @@
 open Stdune
-open Dune
+open Dune_engine
 module Term = Cmdliner.Term
 module Manpage = Cmdliner.Manpage
-module Super_context = Dune.Super_context
-module Context = Dune.Context
-module Config = Dune.Config
-module Lib_name = Dune.Lib_name
-module Lib_deps_info = Dune.Lib_deps_info
-module Build_system = Dune.Build_system
-module Findlib = Dune.Findlib
-module Package = Dune.Package
-module Dune_package = Dune.Dune_package
-module Hooks = Dune.Hooks
-module Build = Dune.Build
-module Action = Dune.Action
-module Dep = Dune.Dep
-module Action_to_sh = Dune.Action_to_sh
-module Dpath = Dune.Dpath
-module Install = Dune.Install
-module Watermarks = Dune.Watermarks
-module Promotion = Dune.Promotion
-module Colors = Dune.Colors
-module Dune_project = Dune.Dune_project
-module Workspace = Dune.Workspace
-module Cached_digest = Dune.Cached_digest
-module Profile = Dune.Profile
+module Super_context = Dune_rules.Super_context
+module Context = Dune_rules.Context
+module Config = Dune_engine.Config
+module Lib_name = Dune_engine.Lib_name
+module Lib_deps_info = Dune_engine.Lib_deps_info
+module Build_system = Dune_engine.Build_system
+module Findlib = Dune_rules.Findlib
+module Package = Dune_engine.Package
+module Dune_package = Dune_rules.Dune_package
+module Hooks = Dune_engine.Hooks
+module Build = Dune_engine.Build
+module Action = Dune_engine.Action
+module Dep = Dune_engine.Dep
+module Action_to_sh = Dune_rules.Action_to_sh
+module Dpath = Dune_engine.Dpath
+module Install = Dune_rules.Install
+module Watermarks = Dune_rules.Watermarks
+module Promotion = Dune_engine.Promotion
+module Colors = Dune_rules.Colors
+module Dune_project = Dune_engine.Dune_project
+module Workspace = Dune_rules.Workspace
+module Cached_digest = Dune_engine.Cached_digest
+module Profile = Dune_rules.Profile
 module Log = Dune_util.Log
 include Common.Let_syntax
 
@@ -67,7 +67,7 @@ let make_cache (config : Config.t) =
       None )
 
 module Main = struct
-  include Dune.Main
+  include Dune_rules.Main
 
   let scan_workspace (common : Common.t) =
     let workspace_file =
@@ -103,10 +103,10 @@ module Main = struct
                          |> List.map ~f:Package.Name.to_string )));
           Package.Name.Map.filter workspace.conf.packages ~f:(fun pkg ->
               let vendored =
-                match Dune.File_tree.find_dir pkg.path with
+                match Dune_engine.File_tree.find_dir pkg.path with
                 | None -> assert false
                 | Some d -> (
-                  match Dune.File_tree.Dir.status d with
+                  match Dune_engine.File_tree.Dir.status d with
                   | Vendored -> true
                   | _ -> false )
               in
@@ -127,7 +127,7 @@ module Main = struct
 end
 
 module Scheduler = struct
-  include Dune.Scheduler
+  include Dune_engine.Scheduler
   open Fiber.O
 
   let go ~(common : Common.t) f =

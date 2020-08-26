@@ -1,10 +1,10 @@
 open Stdune
 
 type t =
-  { name : Dune.Alias.Name.t
+  { name : Dune_engine.Alias.Name.t
   ; recursive : bool
   ; dir : Path.Source.t
-  ; contexts : Dune.Context.t list
+  ; contexts : Dune_rules.Context.t list
   }
 
 let pp { name; recursive; dir; contexts = _ } =
@@ -15,7 +15,7 @@ let pp { name; recursive; dir; contexts = _ } =
     else
       "@@" )
     ^ Path.Source.to_string
-        (Path.Source.relative dir (Dune.Alias.Name.to_string name))
+        (Path.Source.relative dir (Dune_engine.Alias.Name.to_string name))
   in
   let pp = Pp.verbatim "alias" ++ Pp.space ++ Pp.verbatim s in
   if recursive then
@@ -34,7 +34,7 @@ let in_dir ~name ~recursive ~contexts dir =
     User_error.raise
       [ Pp.textf "Invalid alias: %s."
           (Path.to_string_maybe_quoted
-             (Path.build Dune.Dpath.Build.install_dir))
+             (Path.build Dune_engine.Dpath.Build.install_dir))
       ; Pp.textf "There are no aliases in %s." (Path.to_string_maybe_quoted dir)
       ]
   | In_build_dir (ctx, dir) ->
@@ -43,7 +43,9 @@ let in_dir ~name ~recursive ~contexts dir =
     ; name
     ; contexts =
         [ List.find_exn contexts ~f:(fun c ->
-              Dune.Context_name.equal (Dune.Context.name c) ctx.name)
+              Dune_engine.Context_name.equal
+                (Dune_rules.Context.name c)
+                ctx.name)
         ]
     }
 
@@ -55,5 +57,5 @@ let of_string common ~recursive s ~contexts =
       ]
   else
     let dir = Path.parent_exn path in
-    let name = Dune.Alias.Name.of_string (Path.basename path) in
+    let name = Dune_engine.Alias.Name.of_string (Path.basename path) in
     in_dir ~name ~recursive ~contexts dir

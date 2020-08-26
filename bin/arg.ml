@@ -1,5 +1,6 @@
 open Stdune
-open Dune
+open Dune_engine
+open Dune_rules
 include Cmdliner.Arg
 
 let package_name = conv Package.Name.conv
@@ -16,7 +17,7 @@ end
 
 let path = Path.conv
 
-let profile = conv Dune.Profile.conv
+let profile = conv Dune_rules.Profile.conv
 
 module Dep = struct
   module Dep_conf = Dep_conf
@@ -27,7 +28,7 @@ module Dep = struct
 
   let make_alias_sw ~dir s =
     let path =
-      Dune.Alias.Name.to_string s
+      Dune_engine.Alias.Name.to_string s
       |> Stdune.Path.Local.relative dir
       |> Stdune.Path.Local.to_string
     in
@@ -50,7 +51,7 @@ module Dep = struct
       let s = String.drop s pos in
       let dir, alias =
         let path = Stdune.Path.Local.of_string s in
-        Dune.Alias.Name.parse_local_path (Loc.none, path)
+        Dune_engine.Alias.Name.parse_local_path (Loc.none, path)
       in
       Some (recursive, dir, alias)
 
@@ -123,4 +124,4 @@ let bytes =
 
 let context_name : Context_name.t conv = conv Context_name.conv
 
-let lib_name = conv Dune.Lib_name.conv
+let lib_name = conv Dune_engine.Lib_name.conv

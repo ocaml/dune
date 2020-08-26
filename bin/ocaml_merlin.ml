@@ -19,8 +19,9 @@ let term =
   let+ common = Common.term in
   Common.set_common common ~targets:[];
   Scheduler.go ~common (fun () ->
-      Dune.File_tree.init ~recognize_jbuilder_projects:true ~ancestor_vcs:None;
-      Dune.Workspace.init ();
-      Dune.Merlin_server.start () |> Fiber.return)
+      Dune_engine.File_tree.init ~recognize_jbuilder_projects:true
+        ~ancestor_vcs:None;
+      Dune_rules.Workspace.init ();
+      Dune_rules.Merlin_server.start () |> Fiber.return)
 
 let command = (term, info)

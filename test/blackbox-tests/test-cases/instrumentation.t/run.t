@@ -11,7 +11,6 @@ Dune!" at the beginning of the module.
   >  (modules main)
   >  (libraries mylib)
   >  (instrumentation (backend hello)))
-  > 
   > (library
   >  (name mylib)
   >  (modules mylib)
@@ -106,3 +105,29 @@ Per-context setting takes precedence over per-workspace setting.
   $ dune build
 
   $ _build/coverage/main.exe
+
+Next, we check the backend can be used when it is installed.
+
+  $ dune build ppx/hello.install
+  $ dune install hello --prefix _install 2>/dev/null
+  $ grep instrumentation.backend _install/lib/hello/dune-package
+   (instrumentation.backend hello.ppx))
+  $ mkdir -p installed
+  $ cat >installed/dune-workspace <<EOF
+  > (lang dune 2.7)
+  > (instrument_with hello)
+  > EOF
+  $ cat >installed/dune-project <<EOF
+  > (lang dune 2.7)
+  > EOF
+  $ cat >installed/dune <<EOF
+  > (executable
+  >  (name main)
+  >  (instrumentation (backend hello)))
+  > EOF
+  $ cat >installed/main.ml <<EOF
+  > EOF
+  $ OCAMLPATH=$PWD/_install/lib dune build --root installed
+  Entering directory 'installed'
+  $ installed/_build/default/main.exe
+  Hello, Dune!

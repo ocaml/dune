@@ -1,8 +1,8 @@
   $ dune build --display short --debug-dependency-path
         coqdep a/a.v.d
         coqdep b/b.v.d
-          coqc a/a.vo
-          coqc b/b.vo
+          coqc a/.a.aux,a/a.{glob,vo}
+          coqc b/.b.aux,b/b.{glob,vo}
   lib: [
     "_build/install/default/lib/csimple/META"
     "_build/install/default/lib/csimple/dune-package"

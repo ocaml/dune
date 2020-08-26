@@ -38,13 +38,23 @@ let name x = x.name
 let build_vo_dir ~obj_dir x =
   List.fold_left x.prefix ~init:obj_dir ~f:Path.Build.relative
 
-let dep_file ~obj_dir x =
-  let vo_dir = build_vo_dir ~obj_dir x in
-  Path.Build.relative vo_dir (x.name ^ ".v.d")
+type obj =
+  | Dep
+  | Aux
+  | Glob
+  | Obj
 
-let obj_file ~obj_dir x =
-  let vo_dir = build_vo_dir ~obj_dir x in
-  Path.Build.relative vo_dir (x.name ^ ".vo")
+let fname_of_obj t obj =
+  match obj with
+  | Dep -> t.name ^ ".v.d"
+  | Aux -> "." ^ t.name ^ ".aux"
+  | Glob -> t.name ^ ".glob"
+  | Obj -> t.name ^ ".vo"
+
+let obj_file t obj ~obj_dir =
+  let vo_dir = build_vo_dir ~obj_dir t in
+  let fname = fname_of_obj t obj in
+  Path.Build.relative vo_dir fname
 
 let to_dyn { source; prefix; name } =
   let open Dyn.Encoder in

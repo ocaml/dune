@@ -1,5 +1,5 @@
-open! Dune_engine
 (** ocamldep management *)
+open! Dune_engine
 
 open Stdune
 

@@ -1,5 +1,5 @@
-open! Dune_engine
 (** Link mode of OCaml programs *)
+open! Dune_engine
 
 type t =
   | Byte

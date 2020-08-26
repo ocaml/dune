@@ -1,5 +1,5 @@
-open! Dune_engine
 (** Watermarking *)
+open! Dune_engine
 
 (** Expand watermarks in source files, similarly to what topkg does.
 

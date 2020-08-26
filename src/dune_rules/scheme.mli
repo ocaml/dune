@@ -1,5 +1,5 @@
-open! Dune_engine
 (** A collection of rules for one or multiple directories. *)
+open! Dune_engine
 
 open! Stdune
 

@@ -1,5 +1,5 @@
-open! Dune_engine
 (** MDX integration *)
+open! Dune_engine
 
 open Stdune
 

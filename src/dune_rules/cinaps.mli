@@ -1,5 +1,5 @@
-open! Dune_engine
 (** Cinaps integration *)
+open! Dune_engine
 
 (** Cinaps is a small tool that allows to auto-generate part of ml or other
     source files and keep them in sync:

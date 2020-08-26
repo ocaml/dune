@@ -1,5 +1,5 @@
-open! Dune_engine
 (** Representation and parsing of Dune files *)
+open! Dune_engine
 
 open! Stdune
 open Import

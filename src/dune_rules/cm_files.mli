@@ -1,7 +1,7 @@
-open! Dune_engine
 (** This module encapsulates the trick of speeding up builds by providing an
     unsorted list of module dependencies statically and only using the topsorted
     list of deps for the order when passing to ocamlopt *)
+open! Dune_engine
 
 open Stdune
 

@@ -1,5 +1,5 @@
-open! Dune_engine
 (** Opam install file *)
+open! Dune_engine
 
 open! Stdune
 

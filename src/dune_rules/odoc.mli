@@ -1,5 +1,5 @@
-open! Dune_engine
 (** Odoc rules *)
+open! Dune_engine
 
 open! Stdune
 open Import

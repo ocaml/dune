@@ -1,5 +1,5 @@
-open! Dune_engine
 (** Linking modes for binaries *)
+open! Dune_engine
 
 open! Stdune
 

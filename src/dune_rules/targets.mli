@@ -1,5 +1,5 @@
-open! Dune_engine
 (** Defines target behavior for rules. *)
+open! Dune_engine
 
 open Import
 

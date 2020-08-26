@@ -1,5 +1,5 @@
-open! Dune_engine
 (** OCaml sources *)
+open! Dune_engine
 
 (** This module encapsulates the structure of source files in a particular
     directory. *)

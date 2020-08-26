@@ -1,4 +1,5 @@
-let jbuild_plugin_ml = {jbp|let () =
+let jbuild_plugin_ml =
+  {jbp|let () =
   Hashtbl.add Toploop.directive_table "require"
     (Toploop.Directive_string ignore);
   Hashtbl.add Toploop.directive_table "use"
@@ -50,7 +51,8 @@ module V1 = struct
 end
 |jbp}
 
-let jbuild_plugin_mli = {jbp|(** API for jbuild plugins *)
+let jbuild_plugin_mli =
+  {jbp|(** API for jbuild plugins *)
 
 (* CR-someday amokhov: rename to [dune_plugin]. *)
 

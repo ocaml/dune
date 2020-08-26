@@ -1,5 +1,5 @@
-open! Dune_engine
 (** Represent dependency graphs between OCaml modules *)
+open! Dune_engine
 
 open Stdune
 

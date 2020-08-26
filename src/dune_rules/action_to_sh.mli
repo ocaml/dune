@@ -1,5 +1,5 @@
-open! Dune_engine
 (** Convert an action to a shell command suitable for [/bin/sh] *)
+open! Dune_engine
 
 open Stdune
 

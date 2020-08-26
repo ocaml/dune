@@ -1,5 +1,5 @@
-open! Dune_engine
 (** Menhir rules *)
+open! Dune_engine
 
 open Stdune
 

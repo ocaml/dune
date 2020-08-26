@@ -1,5 +1,5 @@
-open! Dune_engine
 (** {1 Handle link time code generation} *)
+open! Dune_engine
 
 open Stdune
 

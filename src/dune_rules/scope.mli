@@ -1,5 +1,5 @@
-open! Dune_engine
 (** Scopes *)
+open! Dune_engine
 
 (** A scope is a project + a library database *)
 

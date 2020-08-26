@@ -1,5 +1,5 @@
-open! Dune_engine
 (** Compilation contexts *)
+open! Dune_engine
 
 (** Dune supports two different kind of contexts:
 

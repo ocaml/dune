@@ -1,5 +1,5 @@
-open! Dune_engine
 (** Workspaces definitions *)
+open! Dune_engine
 
 open! Stdune
 open! Import

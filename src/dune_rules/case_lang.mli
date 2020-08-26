@@ -1,7 +1,7 @@
-open! Dune_engine
 (** The case language expresses conditional evaluation. The general form is:
     [(case %{expr} (<pred> -> <outcome>))] where [<pred>] is described using the
     predicate language: [Predicate_lang.t]. *)
+open! Dune_engine
 
 open! Stdune
 

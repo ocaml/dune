@@ -1,5 +1,5 @@
-open! Dune_engine
 (** High-level API for compiling OCaml files *)
+open! Dune_engine
 
 open! Stdune
 open Import

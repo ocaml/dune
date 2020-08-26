@@ -1,5 +1,5 @@
-open! Dune_engine
 (** Generate a META file *)
+open! Dune_engine
 
 open! Import
 

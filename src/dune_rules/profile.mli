@@ -1,6 +1,6 @@
-open! Dune_engine
 (** Defines build profile for dune. Only one profile is active per context. Some
     profiles are treat specially by dune. *)
+open! Dune_engine
 
 type t =
   | Dev

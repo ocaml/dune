@@ -1,5 +1,5 @@
-open! Dune_engine
 (** An environment node represents an evaluated (env ..) stanza in a directory. *)
+open! Dune_engine
 
 open Stdune
 

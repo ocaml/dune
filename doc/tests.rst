@@ -270,6 +270,26 @@ as:
 
 The argument of the ``flags`` field follows the :ref:`ordered-set-language`.
 
+Passing special arguments to the test executable
+------------------------------------------------
+
+To control how the test executable is built, it’s possible to customize a subset
+of compilation options for an executable using the ``executable`` field. Dune
+gives you the right to do that by simply specifying command line arguments as flags.
+You can specify such flags by using ``flags`` field. For instance:
+
+.. code:: ocaml
+
+          (library
+           (name foo)
+           (inline_tests
+            (flags (-foo bar)
+            (executable
+             (flags (-foo bar))))
+            (preprocess (pps ppx_expect))))
+
+The argument of the ``flags`` field follows the :ref:`ordered-set-language`.
+
 Using additional libraries in the test runner
 ---------------------------------------------
 

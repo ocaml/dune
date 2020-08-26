@@ -55,8 +55,7 @@ val internal_lib_names : t -> Lib_name.Set.t
 
 (** Compute the ocaml flags based on the directory environment and a buildable
     stanza *)
-val ocaml_flags :
-  t -> dir:Path.Build.t -> Dune_file.Buildable.t -> Ocaml_flags.t
+val ocaml_flags : t -> dir:Path.Build.t -> Ocaml_flags.Spec.t -> Ocaml_flags.t
 
 val foreign_flags :
      t

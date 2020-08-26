@@ -1,0 +1,6 @@
+(library
+ (name valid_option_test)
+ (inline_tests
+  (backend backend_foo)
+  (executable
+   (flags -nolabels))))

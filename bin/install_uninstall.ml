@@ -78,7 +78,7 @@ module type File_operations = sig
 end
 
 module type Workspace = sig
-  val workspace : Dune.Main.workspace
+  val workspace : Dune_rules.Main.workspace
 end
 
 module File_ops_dry_run : File_operations = struct
@@ -104,7 +104,7 @@ end
 module File_ops_real (W : Workspace) : File_operations = struct
   open W
 
-  let get_vcs p = Dune.File_tree.nearest_vcs p
+  let get_vcs p = Dune_engine.File_tree.nearest_vcs p
 
   type load_special_file_result =
     | No_version_needed
@@ -131,20 +131,21 @@ module File_ops_real (W : Workspace) : File_operations = struct
       | None -> plain_copy ()
       | Some vcs ->
         let open Fiber.O in
-        let+ version = Dune.Vcs.describe vcs in
+        let+ version = Dune_engine.Vcs.describe vcs in
         let ppf = Format.formatter_of_out_channel oc in
         print ppf ~version;
         Format.pp_print_flush ppf () )
 
   let process_meta ic =
     let lb = Lexing.from_channel ic in
-    let meta : Dune.Meta.t =
-      { name = None; entries = Dune.Meta.parse_entries lb }
+    let meta : Dune_rules.Meta.t =
+      { name = None; entries = Dune_rules.Meta.parse_entries lb }
     in
     let need_more_versions =
       try
-        let (_ : Dune.Meta.t) =
-          Dune.Meta.add_versions meta ~get_version:(fun _ -> raise_notrace Exit)
+        let (_ : Dune_rules.Meta.t) =
+          Dune_rules.Meta.add_versions meta ~get_version:(fun _ ->
+              raise_notrace Exit)
         in
         false
       with Exit -> true
@@ -155,9 +156,10 @@ module File_ops_real (W : Workspace) : File_operations = struct
       Need_version
         (fun ppf ~version ->
           let meta =
-            Dune.Meta.add_versions meta ~get_version:(fun _ -> Some version)
+            Dune_rules.Meta.add_versions meta ~get_version:(fun _ ->
+                Some version)
           in
-          Pp.render_ignore_tags ppf (Dune.Meta.pp meta.entries))
+          Pp.render_ignore_tags ppf (Dune_rules.Meta.pp meta.entries))
 
   let process_dune_package ic =
     let lb = Lexing.from_channel ic in
@@ -212,7 +214,7 @@ module File_ops_real (W : Workspace) : File_operations = struct
         | Some Dune_package ->
           copy_special_file ~src ~package ~ic ~oc ~f:process_dune_package
         | None ->
-          Dune.Artifact_substitution.copy ~get_vcs ~input_file:src
+          Dune_engine.Artifact_substitution.copy ~get_vcs ~input_file:src
             ~input:(input ic) ~output:(output oc))
 
   let remove_if_exists dst =
@@ -272,11 +274,11 @@ let file_operations ~dry_run ~workspace : (module File_operations) =
       let workspace = workspace
     end) )
 
-let package_is_vendored (pkg : Dune.Package.t) =
-  match Dune.File_tree.find_dir pkg.path with
+let package_is_vendored (pkg : Dune_engine.Package.t) =
+  match Dune_engine.File_tree.find_dir pkg.path with
   | None -> assert false
   | Some d -> (
-    match Dune.File_tree.Dir.status d with
+    match Dune_engine.File_tree.Dir.status d with
     | Vendored -> true
     | _ -> false )
 
@@ -424,7 +426,7 @@ let install_uninstall ~what =
             Option.map ~f:Path.of_string
               ( match mandir with
               | Some _ -> mandir
-              | None -> Dune.Setup.mandir )
+              | None -> Dune_rules.Setup.mandir )
           in
           Fiber.sequential_iter install_files_by_context
             ~f:(fun (context, entries_per_package) ->

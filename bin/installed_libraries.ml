@@ -31,7 +31,7 @@ let term =
           List.filter_map (Findlib.all_packages findlib) ~f:(function
             | Hidden_library lib ->
               Some
-                ( Dune_package.Lib.info lib |> Dune.Lib_info.name
+                ( Dune_package.Lib.info lib |> Dune_rules.Lib_info.name
                 , "unsatisfied 'exist_if'" )
             | _ -> None)
         in

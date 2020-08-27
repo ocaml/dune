@@ -1,7 +1,7 @@
 (* Benchmark the scheduler *)
 
 open Stdune
-open Dune
+open Dune_engine
 
 let setup =
   lazy

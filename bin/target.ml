@@ -1,8 +1,8 @@
 open Stdune
 module Log = Dune_util.Log
-module Context = Dune.Context
-module Build = Dune.Build
-module Build_system = Dune.Build_system
+module Context = Dune_rules.Context
+module Build = Dune_engine.Build
+module Build_system = Dune_engine.Build_system
 
 type t =
   | File of Path.t
@@ -20,14 +20,14 @@ let request targets =
       match target with
       | File path -> Build.path path
       | Alias { Alias.name; recursive; dir; contexts } ->
-        let contexts = List.map ~f:Dune.Context.name contexts in
+        let contexts = List.map ~f:Dune_rules.Context.name contexts in
         ( if recursive then
           Build_system.Alias.dep_rec_multi_contexts
         else
           Build_system.Alias.dep_multi_contexts )
           ~dir ~name ~contexts)
 
-let target_hint (_setup : Dune.Main.build_system) path =
+let target_hint (_setup : Dune_rules.Main.build_system) path =
   assert (Path.is_managed path);
   let sub_dir = Option.value ~default:path (Path.parent path) in
   let candidates = Path.Build.Set.to_list (Build_system.all_targets ()) in
@@ -52,14 +52,14 @@ let target_hint (_setup : Dune.Main.build_system) path =
   let candidates = String.Set.of_list candidates |> String.Set.to_list in
   User_message.did_you_mean (Path.to_string path) ~candidates
 
-let resolve_path path ~(setup : Dune.Main.build_system) =
+let resolve_path path ~(setup : Dune_rules.Main.build_system) =
   let checked = Util.check_path setup.workspace.contexts path in
   let can't_build path = Error (target_hint setup path) in
   let as_source_dir src =
-    if Dune.File_tree.dir_exists src then
+    if Dune_engine.File_tree.dir_exists src then
       Some
         [ Alias
-            (Alias.in_dir ~name:Dune.Alias.Name.default ~recursive:true
+            (Alias.in_dir ~name:Dune_engine.Alias.Name.default ~recursive:true
                ~contexts:setup.workspace.contexts path)
         ]
     else
@@ -95,21 +95,23 @@ let resolve_path path ~(setup : Dune.Main.build_system) =
     | None -> build () )
   | In_install_dir _ -> build ()
 
-let expand_path common ~(setup : Dune.Main.build_system) ctx sv =
+let expand_path common ~(setup : Dune_rules.Main.build_system) ctx sv =
   let sctx =
-    Dune.Context_name.Map.find_exn setup.scontexts (Context.name ctx)
+    Dune_engine.Context_name.Map.find_exn setup.scontexts (Context.name ctx)
   in
   let dir =
     Path.Build.relative ctx.Context.build_dir
       (String.concat ~sep:Filename.dir_sep (Common.root common).to_cwd)
   in
-  let expander = Dune.Super_context.expander sctx ~dir in
-  let expander = Dune.Dir_contents.add_sources_to_expander sctx expander in
+  let expander = Dune_rules.Super_context.expander sctx ~dir in
+  let expander =
+    Dune_rules.Dir_contents.add_sources_to_expander sctx expander
+  in
   Path.relative Path.root
-    (Common.prefix_target common (Dune.Expander.expand_str expander sv))
+    (Common.prefix_target common (Dune_rules.Expander.expand_str expander sv))
 
-let resolve_alias common ~recursive sv ~(setup : Dune.Main.build_system) =
-  match Dune.String_with_vars.text_only sv with
+let resolve_alias common ~recursive sv ~(setup : Dune_rules.Main.build_system) =
+  match Dune_engine.String_with_vars.text_only sv with
   | Some s ->
     Ok
       [ Alias
@@ -119,7 +121,7 @@ let resolve_alias common ~recursive sv ~(setup : Dune.Main.build_system) =
   | None -> Error [ Pp.text "alias cannot contain variables" ]
 
 let resolve_target common ~setup = function
-  | Dune.Dep_conf.Alias sv as dep ->
+  | Dune_rules.Dep_conf.Alias sv as dep ->
     Result.map_error
       ~f:(fun hints -> (dep, hints))
       (resolve_alias common ~recursive:false sv ~setup)
@@ -161,7 +163,7 @@ let resolve_targets_mixed common setup user_targets =
         ];
     targets
 
-let resolve_targets common (setup : Dune.Main.build_system) user_targets =
+let resolve_targets common (setup : Dune_rules.Main.build_system) user_targets =
   List.map ~f:(fun dep -> Dep dep) user_targets
   |> resolve_targets_mixed common setup
 

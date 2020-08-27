@@ -2,19 +2,19 @@ type t
 
 val workspace_file : t -> Arg.Path.t option
 
-val x : t -> Dune.Context_name.t option
+val x : t -> Dune_engine.Context_name.t option
 
-val profile : t -> Dune.Profile.t option
+val profile : t -> Dune_rules.Profile.t option
 
 val capture_outputs : t -> bool
 
 val root : t -> Workspace_root.t
 
-val config : t -> Dune.Config.t
+val config : t -> Dune_engine.Config.t
 
 module Only_packages : sig
   type t =
-    { names : Dune.Package.Name.Set.t
+    { names : Dune_engine.Package.Name.Set.t
     ; command_line_option : string
           (** Which of [-p], [--only-packages], ... was passed *)
     }
@@ -28,7 +28,7 @@ val default_target : t -> Arg.Dep.t
 
 val prefix_target : t -> string -> string
 
-val instrument_with : t -> Dune.Lib_name.t list option
+val instrument_with : t -> Dune_engine.Lib_name.t list option
 
 (** [set_common ?log common ~targets ~external_lib_deps_mode] is
     [set_dirs common] followed by [set_common_other common ~targets]. In
@@ -60,11 +60,11 @@ val footer : Cmdliner.Manpage.block
 
 val term : t Cmdliner.Term.t
 
-val config_term : Dune.Config.t Cmdliner.Term.t
+val config_term : Dune_engine.Config.t Cmdliner.Term.t
 
-val display_term : Dune.Config.Display.t option Cmdliner.Term.t
+val display_term : Dune_engine.Config.Display.t option Cmdliner.Term.t
 
-val context_arg : doc:string -> Dune.Context_name.t Cmdliner.Term.t
+val context_arg : doc:string -> Dune_engine.Context_name.t Cmdliner.Term.t
 
 (** A [--build-info] command line argument that print build information
     (included in [term]) *)

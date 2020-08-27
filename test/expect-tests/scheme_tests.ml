@@ -29,7 +29,7 @@ module Directory_rules = struct
 end
 
 module Scheme = struct
-  include Dune.Scheme
+  include Dune_rules.Scheme
 
   (* Calls [print] every time any code embedded in the scheme runs, be it a
      [Thunk] constructor or an [Approximation] function.
@@ -70,7 +70,7 @@ module Scheme = struct
       | Empty -> Directory_rules.empty
       | Union (a, b) -> Directory_rules.union (go a ~dir) (go b ~dir)
       | Approximation (dirs, t) -> (
-        match Dune.Dir_set.mem dirs dir with
+        match Dune_engine.Dir_set.mem dirs dir with
         | true -> go t ~dir
         | false -> Directory_rules.empty )
       | Finite rules -> (
@@ -89,7 +89,7 @@ module Scheme = struct
       ~default:Directory_rules.empty
 end
 
-module Dir_set = Dune.Dir_set
+module Dir_set = Dune_engine.Dir_set
 
 module Path = struct
   include Path.Build
@@ -147,7 +147,7 @@ let print_rules scheme ~dir =
     print "rules:";
     print_log res1
 
-open Dune.Scheme
+open Dune_rules.Scheme
 
 let%expect_test _ =
   let scheme = Scheme.Thunk (fun () -> Scheme.Empty) in

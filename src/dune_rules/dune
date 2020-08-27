@@ -1,0 +1,31 @@
+(include_subdirs unqualified)
+
+(library
+ (name dune_rules)
+ (libraries unix stdune fiber incremental_cycles dag memo xdg dune_re
+   threads.posix opam_file_format dune_lang cache_daemon cache dune_glob
+   ocaml_config catapult jbuild_support dune_action_plugin dune_util
+   build_path_prefix_map dune_engine)
+ (synopsis "Internal Dune library, do not use!"))
+
+(ocamllex ocamlobjinfo cram_lexer)
+
+(rule
+ (mode promote)
+ (target assets.ml)
+ (action
+  (with-stdout-to
+   %{target}
+   (progn
+    (echo "let jbuild_plugin_ml = {jbp|\n")
+    (cat %{project_root}/plugin/jbuild_plugin.ml)
+    (echo "|jbp}\n\n")
+    (echo "let jbuild_plugin_mli = {jbp|")
+    (cat %{project_root}/plugin/jbuild_plugin.mli)
+    (echo "|jbp}")))))
+
+(rule
+ (targets setup.ml)
+ (mode fallback)
+ (action
+  (copy# setup.defaults.ml setup.ml)))

@@ -1,6 +1,6 @@
 open Import
 open Stdune
-module Format_dune_lang = Dune.Format_dune_lang
+module Format_dune_lang = Dune_engine.Format_dune_lang
 
 let doc = "Format dune files"
 

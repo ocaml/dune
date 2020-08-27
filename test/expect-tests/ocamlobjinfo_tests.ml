@@ -1,4 +1,4 @@
-open Dune
+open Dune_rules
 open! Stdune
 open Dune_tests_common
 

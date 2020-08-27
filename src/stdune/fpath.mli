@@ -6,3 +6,10 @@ type mkdir_p =
   | Created  (** The directory was created. *)
 
 val mkdir_p : ?perms:int -> string -> mkdir_p
+
+type follow_symlink_error =
+  | Not_a_symlink
+  | Max_depth_exceeded
+  | Unix_error of Unix.error
+
+val follow_symlink : string -> (string, follow_symlink_error) result

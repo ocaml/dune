@@ -2,6 +2,19 @@ open! Stdune
 open Import
 open Fiber.O
 
+let resolve_link ~dir path file =
+  match Path.follow_symlink path with
+  | Ok p -> Path.reach ~from:dir p
+  | Error Not_a_symlink -> file
+  | Error Max_depth_exceeded ->
+    User_error.raise
+      [ Pp.textf "Unable to resolve symlink %s. Max recrusion depth exceeded"
+          (Path.to_string path)
+      ]
+  | Error (Unix_error _) ->
+    User_error.raise
+      [ Pp.textf "Unable to resolve symlink %s" (Path.to_string path) ]
+
 let print ?(skip_trailing_cr = Sys.win32) path1 path2 =
   let dir, file1, file2 =
     match
@@ -22,16 +35,19 @@ let print ?(skip_trailing_cr = Sys.win32) path1 path2 =
       ]
   in
   let normal_diff () =
-    let path, args, skip_trailing_cr_arg =
+    let path, args, skip_trailing_cr_arg, files =
       let which prog = Bin.which ~path:(Env.path Env.initial) prog in
       match which "git" with
       | Some path ->
         ( path
         , [ "diff"; "--no-index"; "--color=always"; "-u" ]
-        , "--ignore-cr-at-eol" )
+        , "--ignore-cr-at-eol"
+        , List.map
+            ~f:(fun (path, file) -> resolve_link ~dir path file)
+            [ (path1, file1); (path2, file2) ] )
       | None -> (
         match which "diff" with
-        | Some path -> (path, [ "-u" ], "--strip-trailing-cr")
+        | Some path -> (path, [ "-u" ], "--strip-trailing-cr", [ file1; file2 ])
         | None -> fallback () )
     in
     let args =
@@ -40,7 +56,7 @@ let print ?(skip_trailing_cr = Sys.win32) path1 path2 =
       else
         args
     in
-    let args = args @ [ file1; file2 ] in
+    let args = args @ files in
     Format.eprintf "%a@?" Loc.render (Loc.pp loc);
     let* () = Process.run ~dir ~env:Env.initial Strict path args in
     fallback ()

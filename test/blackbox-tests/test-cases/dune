@@ -14,21 +14,46 @@
   (alias test-deps)))
 
 (subdir
- bisect-ppx
- (cram
-  ;  disabled for now
-  (enabled_if false)))
-
-(subdir
  coq
  (cram
   (alias runtest-coq)))
+
+(subdir
+ jsoo
+ (cram
+  (alias runtest-js)))
+
+(cram
+ (applies_to windows-diff)
+ (alias runtest-windows))
+
+; DISABLED TESTS
+
+(subdir
+ bisect-ppx
+ (cram
+  (enabled_if false)))
 
 (subdir
  env
  (cram
   (applies_to envs-and-contexts)
   (enabled_if false)))
+
+(cram
+ (applies_to fdo)
+ (enabled_if false))
+
+; The following test is flaky due to platform sensitivity
+; see https://github.com/ocaml/dune/issues/3744
+
+(subdir
+ cram
+ (cram
+  (applies_to error)
+  (enabled_if false)))
+
+; CONDITIONALLY DISABLED TESTS
 
 (cram
  (applies_to github764)
@@ -66,23 +91,10 @@
   (enabled_if
    (>= %{ocaml_version} 4.05.0))))
 
-(subdir
- jsoo
- (cram
-  (alias runtest-js)))
-
 (cram
  (applies_to wrapped-transition)
  (enabled_if
   (>= %{ocaml_version} 4.06.0)))
-
-(cram
- (applies_to fdo)
- (enabled_if false))
-
-(cram
- (applies_to windows-diff)
- (alias runtest-windows))
 
 (subdir
  cram

@@ -164,7 +164,7 @@ let gen ~(package : Package.t) ~add_directory_entry entries =
           | _package :: path ->
             (pub_name, gen_lib pub_name ~path (Lib.Local.to_lib lib) ~version) )
         | Deprecated_library_name
-            { old_public_name = { public = old_public_name; _ }
+            { old_name = old_public_name, _
             ; new_public_name = _, new_public_name
             ; _
             } ->

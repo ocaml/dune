@@ -375,11 +375,19 @@ let filter_out_stanzas_from_hidden_packages ~visible_pkgs =
   List.filter_map ~f:(fun stanza ->
       match Dune_file.stanza_package stanza with
       | None -> Some stanza
-      | Some package ->
+      | Some package -> (
         if Package.Name.Map.mem visible_pkgs package.name then
           Some stanza
         else
-          None)
+          match stanza with
+          | Library l ->
+            (* A public library should still be referable by its private name
+               even we filter it out. Therefore, we create a private -> public
+               name mapping for the filtered libraries *)
+            let open Option.O in
+            let+ dln = Library_redirect.Local.of_lib l in
+            Library_redirect dln
+          | _ -> None ))
 
 let gen ~contexts ?only_packages conf =
   let open Fiber.O in

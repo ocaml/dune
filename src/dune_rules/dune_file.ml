@@ -1809,20 +1809,43 @@ module Include_subdirs = struct
     enum opts_list
 end
 
+module Library_redirect = struct
+  type 'old_name t =
+    { project : Dune_project.t
+    ; loc : Loc.t
+    ; old_name : 'old_name
+    ; new_public_name : Loc.t * Lib_name.t
+    }
+
+  module Local = struct
+    type nonrec t = (Loc.t * Lib_name.Local.t) t
+
+    let of_lib (lib : Library.t) : t option =
+      let open Option.O in
+      let* public = lib.public in
+      if Lib_name.equal (Lib_name.of_local lib.name) (snd public.name) then
+        None
+      else
+        Some
+          { loc = Loc.none
+          ; project = lib.project
+          ; old_name = lib.name
+          ; new_public_name = public.name
+          }
+  end
+end
+
 module Deprecated_library_name = struct
-  module Old_public_name = struct
-    type kind =
+  module Old_name = struct
+    type deprecation =
       | Not_deprecated
       | Deprecated of { deprecated_package : Package.Name.t }
 
-    type t =
-      { kind : kind
-      ; public : Public_lib.t
-      }
+    type t = Public_lib.t * deprecation
 
     let decode =
       let+ public = Public_lib.decode ~allow_deprecated_names:true in
-      let kind =
+      let deprecation =
         let deprecated_package =
           Lib_name.package_name (Public_lib.name public)
         in
@@ -1833,25 +1856,22 @@ module Deprecated_library_name = struct
         else
           Deprecated { deprecated_package }
       in
-      { kind; public }
+      (public, deprecation)
   end
 
-  type t =
-    { loc : Loc.t
-    ; project : Dune_project.t
-    ; old_public_name : Old_public_name.t
-    ; new_public_name : Loc.t * Lib_name.t
-    }
+  type t = Old_name.t Library_redirect.t
+
+  let old_public_name (t : t) = Public_lib.name (fst t.old_name)
 
   let decode =
     fields
       (let+ loc = loc
        and+ project = Dune_project.get_exn ()
-       and+ old_public_name = field "old_public_name" Old_public_name.decode
+       and+ old_name = field "old_public_name" Old_name.decode
        and+ new_public_name =
          field "new_public_name" (located Lib_name.decode)
        in
-       { loc; project; old_public_name; new_public_name })
+       { Library_redirect.loc; project; old_name; new_public_name })
 end
 
 type Stanza.t +=
@@ -1866,6 +1886,7 @@ type Stanza.t +=
   | Tests of Tests.t
   | Include_subdirs of Loc.t * Include_subdirs.t
   | Toplevel of Toplevel.t
+  | Library_redirect of Library_redirect.Local.t
   | Deprecated_library_name of Deprecated_library_name.t
   | Cram of Cram_stanza.t
 

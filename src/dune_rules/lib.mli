@@ -180,6 +180,7 @@ module DB : sig
   module Library_related_stanza : sig
     type t =
       | Library of Path.Build.t * Dune_file.Library.t
+      | Library_redirect of Dune_file.Library_redirect.Local.t
       | Deprecated_library_name of Dune_file.Deprecated_library_name.t
   end
 

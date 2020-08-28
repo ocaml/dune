@@ -1820,14 +1820,18 @@ module Library_redirect = struct
   module Local = struct
     type nonrec t = (Loc.t * Lib_name.Local.t) t
 
-    let of_lib (lib : Library.t) =
+    let of_lib (lib : Library.t) : t option =
       let open Option.O in
-      let+ public = lib.public in
-      { loc = Loc.none
-      ; project = lib.project
-      ; old_name = lib.name
-      ; new_public_name = public.name
-      }
+      let* public = lib.public in
+      if Lib_name.equal (Lib_name.of_local lib.name) (snd public.name) then
+        None
+      else
+        Some
+          { loc = Loc.none
+          ; project = lib.project
+          ; old_name = lib.name
+          ; new_public_name = public.name
+          }
   end
 end
 

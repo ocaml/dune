@@ -21,7 +21,7 @@ ocamlformat.0.14.3 \
 "odoc>=1.5.0" \
 "ppx_expect>=v0.14" \
 ppx_inline_test \
-ppxlib \
+"ppxlib.0.13.0" \
 cinaps \
 result \
 js_of_ocaml-ppx \

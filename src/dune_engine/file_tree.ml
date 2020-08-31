@@ -732,11 +732,15 @@ module Dir = struct
                    let file = Path.Source.relative dir fname in
                    Cram_test.Dir { file; dir }
                  in
-                 Some
-                   ( if String.Set.mem contents.contents.files fname then
-                     Ok test
-                   else
-                     Error (Missing_run_t test) ))
+                 let files = contents.contents.files in
+                 if String.Set.is_empty files then
+                   None
+                 else
+                   Some
+                     ( if String.Set.mem files fname then
+                       Ok test
+                     else
+                       Error (Missing_run_t test) ))
       in
       file_tests @ dir_tests
 end

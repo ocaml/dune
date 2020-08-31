@@ -17,6 +17,9 @@ Unreleased
 
 - Resolve symlinks before running `$ git diff` (#3750, fixes #3740, @rgrinberg)
 
+- Cram tests: when checking that all test directories contain a `run.t` file,
+  skip empty directories. These can be left around by git. (#3753, @emillon)
+
 2.7.0 (13/08/2020)
 ------------------
 

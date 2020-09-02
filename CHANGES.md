@@ -15,6 +15,8 @@ Unreleased
 - Fix `dune-package` installation when META templates are present (#3743, fixes
   #3746, @rgrinberg)
 
+- Resolve symlinks before running `$ git diff` (#3750, fixes #3740, @rgrinberg)
+
 2.7.0 (13/08/2020)
 ------------------
 

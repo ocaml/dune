@@ -384,3 +384,6 @@ val chmod :
   -> ?op:[ `Add | `Remove | `Set ]
   -> t
   -> unit
+
+(** Attempts to resolve a symlink. Returns [None] if the path isn't a symlink *)
+val follow_symlink : t -> (t, Fpath.follow_symlink_error) result

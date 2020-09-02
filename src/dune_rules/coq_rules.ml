@@ -88,6 +88,13 @@ end
 (* get_libraries from Coq's ML dependencies *)
 let libs_of_coq_deps ~lib_db = Result.List.map ~f:(Lib.DB.resolve lib_db)
 
+let select_native_mode ~sctx ~(buildable : Buildable.t) =
+  let profile = (SC.context sctx).profile in
+  if Profile.is_dev profile then
+    Coq_mode.VoOnly
+  else
+    snd buildable.mode
+
 module Context = struct
   type 'a t =
     { coqdep : Action.Prog.t
@@ -215,6 +222,7 @@ module Context = struct
     let ml_flags, mlpack_rule =
       setup_ml_deps ~lib_db buildable.libraries theories_deps
     in
+    let mode = select_native_mode ~sctx ~buildable in
     let native_includes =
       Lib.DB.resolve lib_db (Loc.none, Lib_name.of_string "coq.kernel")
       |> Result.map ~f:(fun lib -> Util.native_paths [ lib ])
@@ -236,7 +244,7 @@ module Context = struct
     ; boot_type = Bootstrap.No_boot
     ; build_dir
     ; profile_flags = Super_context.coq sctx ~dir
-    ; mode = snd buildable.mode
+    ; mode
     ; native_includes
     ; native_theory_includes
     }
@@ -461,7 +469,8 @@ let coq_plugins_install_rules ~scope ~package ~dst_dir (s : Theory.t) =
 let install_rules ~sctx ~dir s =
   match s with
   | { Theory.package = None; _ } -> []
-  | { Theory.package = Some package; buildable = { mode; _ }; _ } ->
+  | { Theory.package = Some package; buildable; _ } ->
+    let mode = select_native_mode ~sctx ~buildable in
     let loc = s.buildable.loc in
     let scope = SC.find_scope_by_dir sctx dir in
     let dir_contents = Dir_contents.get sctx ~dir in
@@ -486,7 +495,6 @@ let install_rules ~sctx ~dir s =
         coq_plugins_install_rules ~scope ~package ~dst_dir s
     in
     let wrapper_name = dst_suffix in
-    let mode = snd mode in
     let to_path f = Path.reach ~from:(Path.build dir) (Path.build f) in
     let to_dst f = Path.Local.to_string @@ Path.Local.relative dst_dir f in
     let make_entry (orig_file : Path.Build.t) (dst_file : string) =

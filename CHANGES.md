@@ -1,3 +1,9 @@
+Unreleased
+----------
+
+- Ignore special files (BLK, CHR, FIFO, SOCKET) , fixes #3124, #3546
+  (#3570, @ejgallego)
+
 2.7.1 (2/09/2020)
 -----------------
 

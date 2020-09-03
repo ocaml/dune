@@ -139,6 +139,17 @@ end = struct
     || String.is_suffix fn ~suffix:".swp"
     || String.is_suffix fn ~suffix:"~"
 
+  (* Returns [true] for special files such as character devices of sockets; see
+     #3124 for more on issues caused by special devices *)
+  let is_special (st_kind : Unix.file_kind) =
+    match st_kind with
+    | S_CHR
+    | S_BLK
+    | S_FIFO
+    | S_SOCK ->
+      true
+    | _ -> false
+
   let of_source_path path =
     match Path.readdir_unsorted (Path.source path) with
     | Error unix_error ->
@@ -162,15 +173,16 @@ end = struct
             if Path.Source.is_in_build_dir path then
               Skip
             else
+              let fstat = Path.stat (Path.source path) in
               let is_directory, file =
-                match Path.stat (Path.source path) with
+                match fstat with
                 | exception _ -> (false, File.dummy)
                 | { st_kind = S_DIR; _ } as st -> (true, File.of_stats st)
                 | _ -> (false, File.dummy)
               in
               if is_directory then
                 Right (fn, path, file)
-              else if is_temp_file fn then
+              else if is_temp_file fn || is_special fstat.st_kind then
                 Skip
               else
                 Left fn)

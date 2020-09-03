@@ -12,10 +12,16 @@ let dev_files =
       let ext = Filename.extension p in
       List.mem ext ~set:exts)
 
-let add_obj_dir sctx ~obj_dir =
+let add_obj_dir sctx ~obj_dir ~use_native_cmt =
   if (Super_context.context sctx).merlin then
     let dir_glob =
-      let dir = Path.build (Obj_dir.byte_dir obj_dir) in
+      let which_dir =
+        if use_native_cmt then
+          Obj_dir.native_dir
+        else
+          Obj_dir.byte_dir
+      in
+      let dir = Path.build (which_dir obj_dir) in
       File_selector.create ~dir dev_files
     in
     let dyn_deps = Build.paths_matching ~loc:(Loc.of_pos __POS__) dir_glob in

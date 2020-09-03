@@ -10,7 +10,6 @@ let executables_rules ~sctx ~dir ~expander ~dir_contents ~scope ~compile_info
   (* Use "eobjs" rather than "objs" to avoid a potential conflict with a library
      of the same name *)
   let obj_dir = Dune_file.Executables.obj_dir exes ~dir in
-  Check_rules.add_obj_dir sctx ~obj_dir;
   let first_exe = snd (List.hd exes.names) in
   let modules =
     let ml_sources = Dir_contents.ocaml dir_contents in
@@ -87,6 +86,11 @@ let executables_rules ~sctx ~dir ~expander ~dir_contents ~scope ~compile_info
     else
       l
   in
+  let use_native_cmt =
+    let module L = Dune_file.Executables.Link_mode in
+    not (L.Map.mem exes.modes L.byte)
+  in
+  Check_rules.add_obj_dir sctx ~obj_dir ~use_native_cmt;
   let flags = SC.ocaml_flags sctx ~dir exes.buildable in
   let link_deps = Dep_conf_eval.unnamed ~expander exes.link_deps in
   let foreign_archives = exes.buildable.foreign_archives |> List.map ~f:snd in

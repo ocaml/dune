@@ -390,7 +390,11 @@ let library_rules (lib : Library.t) ~cctx ~source_modules ~dir_contents
   let requires_compile = Compilation_context.requires_compile cctx in
   let dep_graphs = Dep_rules.rules cctx ~modules in
   Option.iter vimpl ~f:(Virtual_rules.setup_copy_rules_for_impl ~sctx ~dir);
-  Check_rules.add_obj_dir sctx ~obj_dir;
+  let use_native_cmt =
+    let { Mode.Dict.byte; _ } = Compilation_context.modes cctx in
+    byte
+  in
+  Check_rules.add_obj_dir sctx ~obj_dir ~use_native_cmt;
   gen_wrapped_compat_modules lib cctx;
   Module_compilation.build_all cctx ~dep_graphs;
   let expander = Super_context.expander sctx ~dir in

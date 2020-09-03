@@ -423,7 +423,7 @@ let library_rules (lib : Library.t) ~cctx ~source_modules ~dir_contents
   ( cctx
   , Merlin.make () ~requires:requires_compile ~flags ~modules
       ~preprocess:(Preprocess.Per_module.single_preprocess preprocess)
-      ~libname:(snd lib.name) ~obj_dir )
+      ~libname:(snd lib.name) ~obj_dir ~use_native_cmt )
 
 let rules (lib : Library.t) ~sctx ~dir_contents ~dir ~expander ~scope :
     Compilation_context.t * Merlin.t =

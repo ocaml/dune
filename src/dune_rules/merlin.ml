@@ -103,16 +103,21 @@ type t =
   }
 
 let make ?(requires = Ok []) ~flags ?(preprocess = Preprocess.No_preprocessing)
-    ?libname ?(source_dirs = Path.Source.Set.empty) ~modules ~obj_dir () =
+    ?libname ?(source_dirs = Path.Source.Set.empty) ~modules ~obj_dir
+    ~use_native_cmt () =
   (* Merlin shouldn't cause the build to fail, so we just ignore errors *)
   let requires =
     match requires with
     | Ok l -> Lib.Set.of_list l
     | Error _ -> Lib.Set.empty
   in
-  let objs_dirs =
-    Obj_dir.byte_dir obj_dir |> Path.build |> Path.Set.singleton
+  let which_dir =
+    if use_native_cmt then
+      Obj_dir.native_dir
+    else
+      Obj_dir.byte_dir
   in
+  let objs_dirs = which_dir obj_dir |> Path.build |> Path.Set.singleton in
   let flags =
     match Modules.alias_module modules with
     | None -> Ocaml_flags.common flags

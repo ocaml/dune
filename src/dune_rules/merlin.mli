@@ -14,6 +14,7 @@ val make :
   -> ?source_dirs:Path.Source.Set.t
   -> modules:Modules.t
   -> obj_dir:Path.Build.t Obj_dir.t
+  -> use_native_cmt:bool
   -> unit
   -> t
 

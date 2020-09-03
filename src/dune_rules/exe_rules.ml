@@ -179,7 +179,7 @@ let executables_rules ~sctx ~dir ~expander ~dir_contents ~scope ~compile_info
   ( cctx
   , Merlin.make () ~requires:requires_compile ~flags ~modules
       ~preprocess:(Preprocess.Per_module.single_preprocess preprocess)
-      ~obj_dir )
+      ~obj_dir ~use_native_cmt )
 
 let rules ~sctx ~dir ~dir_contents ~scope ~expander
     (exes : Dune_file.Executables.t) =

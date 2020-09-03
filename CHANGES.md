@@ -1,5 +1,5 @@
-Unreleased
-----------
+2.7.1 (2/09/2020)
+-----------------
 
 - configurator: More flexible probing of `#define`. We allow duplicate values in
   the object file, as long as they are the same after parsing. (#3739, fixes

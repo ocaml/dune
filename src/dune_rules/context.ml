@@ -87,6 +87,7 @@ module T = struct
     ; env : Env.t
     ; findlib : Findlib.t
     ; findlib_toolchain : Context_name.t option
+    ; default_ocamlpath : Path.t list
     ; arch_sixtyfour : bool
     ; install_prefix : Path.t Memo.Lazy.Async.t
     ; ocaml_config : Ocaml_config.t
@@ -101,8 +102,9 @@ module T = struct
 
   let hash t = Context_name.hash t.name
 
-  let rec to_build_context { name; build_dir; env; for_host; _ } =
-    Build_context.create ~name ~build_dir ~env
+  let rec to_build_context
+      { name; build_dir; env; for_host; stdlib_dir; default_ocamlpath; _ } =
+    Build_context.create ~name ~build_dir ~env ~stdlib_dir ~default_ocamlpath
       ~host:(Option.map ~f:to_build_context for_host)
 
   let to_dyn t : Dyn.t =
@@ -379,29 +381,28 @@ let create ~(kind : Kind.t) ~path ~env ~env_nodes ~name ~merlin ~targets
       Memo.lazy_async ~cutoff:(Option.equal String.equal) (fun () ->
           read_opam_config_var ~env "lib")
     in
-    let findlib_paths () =
+    let default_findlib_paths () =
       match Build_environment_kind.query ~kind ~findlib_toolchain ~env with
       | Cross_compilation_using_findlib_toolchain toolchain ->
         let ocamlfind = which_exn "ocamlfind" in
+        let env = Env.remove env ~var:"OCAMLPATH" in
         ocamlfind_printconf_path ~env ~ocamlfind ~toolchain:(Some toolchain)
       | Hardcoded_path l ->
-        Fiber.return
-          (ocamlpath @ List.map l ~f:Path.of_filename_relative_to_initial_cwd)
+        Fiber.return (List.map l ~f:Path.of_filename_relative_to_initial_cwd)
       | Opam2_environment opam_prefix ->
         let p = Path.of_filename_relative_to_initial_cwd opam_prefix in
         let p = Path.relative p "lib" in
-        Fiber.return (ocamlpath @ [ p ])
+        Fiber.return [ p ]
       | Opam1_environment -> (
         Memo.Lazy.Async.force opam_config_var_lib >>| function
-        | Some s -> ocamlpath @ [ Path.of_filename_relative_to_initial_cwd s ]
+        | Some s -> [ Path.of_filename_relative_to_initial_cwd s ]
         | None -> Utils.program_not_found "opam" ~loc:None )
       | Unknown -> (
         match which "ocamlfind" with
         | Some ocamlfind ->
+          let env = Env.remove env ~var:"OCAMLPATH" in
           ocamlfind_printconf_path ~env ~ocamlfind ~toolchain:None
-        | None ->
-          Fiber.return
-            (ocamlpath @ [ Path.relative (Path.parent_exn dir) "lib" ]) )
+        | None -> Fiber.return [ Path.relative (Path.parent_exn dir) "lib" ] )
     in
     let ocaml_config_ok_exn = function
       | Ok x -> x
@@ -414,8 +415,8 @@ let create ~(kind : Kind.t) ~path ~env ~env_nodes ~name ~merlin ~targets
       | Error (Makefile_config file, msg) ->
         User_error.raise ~loc:(Loc.in_file file) [ Pp.text msg ]
     in
-    let* findlib_paths, ocfg =
-      Fiber.fork_and_join findlib_paths (fun () ->
+    let* default_findlib_paths, ocfg =
+      Fiber.fork_and_join default_findlib_paths (fun () ->
           let+ lines =
             Process.run_capture_lines ~env Strict ocamlc [ "-config" ]
           in
@@ -426,6 +427,7 @@ let create ~(kind : Kind.t) ~path ~env ~env_nodes ~name ~merlin ~targets
               Ocaml_config.make vars
             | Error msg -> Error (Ocamlc_config, msg) ))
     in
+    let findlib_paths = ocamlpath @ default_findlib_paths in
     let version = Ocaml_version.of_ocaml_config ocfg in
     let env =
       (* See comment in ansi_color.ml for setup_env_for_colors. For versions
@@ -466,6 +468,11 @@ let create ~(kind : Kind.t) ~path ~env ~env_nodes ~name ~merlin ~targets
                   (Config.local_install_dir ~context:name)
                   "lib/stublibs"))
         ; extend_var "OCAMLPATH" ~path_sep:ocamlpath_sep local_lib_path
+        ; ("DUNE_OCAML_STDLIB", Ocaml_config.standard_library ocfg)
+        ; ( "DUNE_OCAML_HARDCODED"
+          , String.concat
+              ~sep:(Char.escaped ocamlpath_sep)
+              (List.map ~f:Path.to_string default_findlib_paths) )
         ; extend_var "OCAMLTOP_INCLUDE_PATH"
             (Path.relative local_lib_path "toplevel")
         ; extend_var "OCAMLFIND_IGNORE_DUPS_IN" ~path_sep:ocamlpath_sep
@@ -473,6 +480,8 @@ let create ~(kind : Kind.t) ~path ~env ~env_nodes ~name ~merlin ~targets
         ; extend_var "MANPATH"
             (Path.build (Config.local_install_man_dir ~context:name))
         ; ("INSIDE_DUNE", Path.to_absolute_filename (Path.build build_dir))
+        ; ( "DUNE_SOURCEROOT"
+          , Path.to_absolute_filename (Path.source Path.Source.root) )
         ]
       in
       Env.extend env ~vars:(Env.Map.of_list_exn vars)
@@ -561,6 +570,7 @@ let create ~(kind : Kind.t) ~path ~env ~env_nodes ~name ~merlin ~targets
       ; env
       ; findlib = Findlib.create ~paths:findlib_paths ~lib_config
       ; findlib_toolchain
+      ; default_ocamlpath = default_findlib_paths
       ; arch_sixtyfour
       ; install_prefix
       ; stdlib_dir

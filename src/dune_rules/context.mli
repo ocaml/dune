@@ -82,6 +82,7 @@ type t = private
   ; env : Env.t
   ; findlib : Findlib.t
   ; findlib_toolchain : Context_name.t option  (** Misc *)
+  ; default_ocamlpath : Path.t list
   ; arch_sixtyfour : bool
   ; install_prefix : Path.t Memo.Lazy.Async.t
   ; ocaml_config : Ocaml_config.t

@@ -126,6 +126,9 @@ end = struct
     | Install i ->
       files_to_install i;
       empty_none
+    | Plugin p ->
+      Plugin_rules.setup_rules ~sctx ~dir p;
+      empty_none
     | Cinaps.T cinaps ->
       Cinaps.gen_rules sctx cinaps ~dir ~scope;
       empty_none

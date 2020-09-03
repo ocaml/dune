@@ -822,9 +822,29 @@ module Library = struct
       ~exit_module ~instrumentation_backend
 end
 
+module Plugin = struct
+  type t =
+    { package : Package.t
+    ; name : Package.Name.t
+    ; libraries : (Loc.t * Lib_name.t) list
+    ; site : Loc.t * (Package.Name.t * Section.Site.t)
+    ; optional : bool
+    }
+
+  let decode =
+    fields
+      (let+ name = field "name" Package.Name.decode
+       and+ libraries = field "libraries" (repeat (located Lib_name.decode))
+       and+ site =
+         field "site" (located (pair Package.Name.decode Section.Site.decode))
+       and+ package = Pkg.field "package"
+       and+ optional = field_b "optional" in
+       { name; libraries; site; package; optional })
+end
+
 module Install_conf = struct
   type t =
-    { section : Install.Section.t
+    { section : Install.Section_with_site.t
     ; files : File_binding.Unexpanded.t list
     ; package : Package.t
     ; enabled_if : Blang.t
@@ -832,7 +852,7 @@ module Install_conf = struct
 
   let decode =
     fields
-      (let+ section = field "section" Install.Section.decode
+      (let+ section = field "section" Install.Section_with_site.decode
        and+ files = field "files" File_binding.Unexpanded.L.decode
        and+ package = Pkg.field "install"
        and+ enabled_if =
@@ -1045,7 +1065,7 @@ module Executables = struct
                       ~dst:(locp, pub)))
             |> List.filter_opt
           in
-          { Install_conf.section = Bin; files; package; enabled_if })
+          { Install_conf.section = Section Bin; files; package; enabled_if })
   end
 
   module Link_mode = struct
@@ -1874,6 +1894,32 @@ module Deprecated_library_name = struct
        { Library_redirect.loc; project; old_name; new_public_name })
 end
 
+module Generate_module = struct
+  type t =
+    { loc : Loc.t
+    ; module_ : Module_name.t
+    ; sourceroot : bool
+    ; relocatable : bool
+    ; sites : (Loc.t * Package.Name.t) list
+    ; plugins : (Loc.t * (Package.Name.t * (Loc.t * Section.Site.t))) list
+    }
+
+  let decode =
+    fields
+      (let+ loc = loc
+       and+ module_ = field "module" Module_name.decode
+       and+ sourceroot = field_b "sourceroot"
+       and+ relocatable = field_b "relocatable"
+       and+ sites =
+         field "sites" ~default:[] (repeat (located Package.Name.decode))
+       and+ plugins =
+         field "plugins" ~default:[]
+           (repeat
+              (located (pair Package.Name.decode (located Section.Site.decode))))
+       in
+       { loc; module_; sourceroot; relocatable; sites; plugins })
+end
+
 type Stanza.t +=
   | Library of Library.t
   | Foreign_library of Foreign.Library.t
@@ -1889,6 +1935,8 @@ type Stanza.t +=
   | Library_redirect of Library_redirect.Local.t
   | Deprecated_library_name of Deprecated_library_name.t
   | Cram of Cram_stanza.t
+  | Generate_module of Generate_module.t
+  | Plugin of Plugin.t
 
 module Stanzas = struct
   type t = Stanza.t list
@@ -1987,6 +2035,14 @@ module Stanzas = struct
       , let+ () = Dune_lang.Syntax.since Stanza.syntax (2, 7)
         and+ t = Cram_stanza.decode in
         [ Cram t ] )
+    ; ( "generate_module"
+      , let+ () = Dune_lang.Syntax.since Section.dune_site_syntax (0, 1)
+        and+ t = Generate_module.decode in
+        [ Generate_module t ] )
+    ; ( "plugin"
+      , let+ () = Dune_lang.Syntax.since Section.dune_site_syntax (0, 1)
+        and+ t = Plugin.decode in
+        [ Plugin t ] )
     ]
 
   let () = Dune_project.Lang.register Stanza.syntax stanzas
@@ -2034,6 +2090,7 @@ let stanza_package = function
   | Alias { package = Some package; _ }
   | Rule { package = Some package; _ }
   | Install { package; _ }
+  | Plugin { package; _ }
   | Executables { install_conf = Some { package; _ }; _ }
   | Documentation { package; _ }
   | Tests { package = Some package; _ } ->

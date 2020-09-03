@@ -2,12 +2,44 @@
 
 open Stdune
 
+type configpath =
+  | Sourceroot
+  | Stdlib
+
 (** A symbolic representation of the value to substitute to *)
 type t =
   | Vcs_describe of Path.Source.t
+  | Location of Section.t * Package.Name.t
+  | Configpath of configpath
+  | Hardcoded_ocaml_path
   | Repeat of int * string
       (** [Repeat (n, s)] evaluates to [s] repeated [n] times. This substitution
           is used for unit tests. *)
+
+type hardcoded_ocaml_path =
+  | Hardcoded of Path.t list
+  | Relocatable of Path.t
+
+type conf = private
+  { get_vcs : Path.Source.t -> Vcs.t option
+  ; get_location : Section.t -> Package.Name.t -> Path.t
+  ; get_config_path : configpath -> Path.t option
+  ; hardcoded_ocaml_path : hardcoded_ocaml_path
+        (** Initial prefix of installation when relocatable chosen *)
+  }
+
+val conf_of_context : Build_context.t option -> conf
+
+val conf_for_install :
+     relocatable:bool
+  -> default_ocamlpath:Path.t list
+  -> stdlib_dir:Path.t
+  -> prefix:Path.t
+  -> libdir:Path.t option
+  -> mandir:Path.t option
+  -> conf
+
+val conf_dummy : conf
 
 val to_dyn : t -> Dyn.t
 
@@ -24,7 +56,7 @@ val decode : string -> t option
 
 (** Copy a file, performing all required substitutions *)
 val copy_file :
-     get_vcs:(Path.Source.t -> Vcs.t option)
+     conf:conf
   -> ?chmod:(int -> int)
   -> src:Path.t
   -> dst:Path.t
@@ -38,7 +70,7 @@ val copy_file :
     [input_file] is used only for debugging purposes. It must be the name of the
     source file. *)
 val copy :
-     get_vcs:(Path.Source.t -> Vcs.t option)
+     conf:conf
   -> input_file:Path.t
   -> input:(Bytes.t -> int -> int -> int)
   -> output:(Bytes.t -> int -> int -> unit)

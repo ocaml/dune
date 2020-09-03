@@ -31,7 +31,7 @@ custom version:
   [1]
 
   $ cat ./_install/lib/foobarlib/dune-package
-  (lang dune 2.7)
+  (lang dune 2.8)
   (use_meta)
 
   $ mkdir external

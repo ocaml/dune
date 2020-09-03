@@ -148,6 +148,7 @@ end = struct
       | Dune_file.Documentation _ -> true
       | Dune_file.Install { enabled_if; _ } ->
         Expander.eval_blang expander enabled_if
+      | Dune_file.Plugin _ -> true
       | Dune_file.Executables ({ install_conf = Some _; _ } as exes) ->
         Expander.eval_blang expander exes.enabled_if
         && ( (not exes.optional)
@@ -265,7 +266,10 @@ end = struct
                   let loc = File_binding.Expanded.src_loc fb in
                   let src = File_binding.Expanded.src fb in
                   let dst = File_binding.Expanded.dst fb in
-                  (Some loc, Install.Entry.make section src ?dst))
+                  ( Some loc
+                  , Install.Entry.make_with_site section
+                      (Super_context.get_site_of_packages sctx)
+                      src ?dst ))
             | Dune_file.Library lib ->
               let sub_dir =
                 Option.value_exn lib.public |> Dune_file.Public_lib.sub_dir
@@ -281,7 +285,8 @@ end = struct
                   ( None
                   , Install.Entry.make
                       ~dst:(sprintf "odoc-pages/%s" (Path.Build.basename mld))
-                      Install.Section.Doc mld ))
+                      Section.Doc mld ))
+            | Dune_file.Plugin t -> Plugin_rules.install_rules ~sctx ~dir t
             | _ -> []
           in
           Package.Name.Map.Multi.add_all acc package.name new_entries)
@@ -364,11 +369,19 @@ end = struct
                        ~dir:(Path.build (lib_root lib))
                        ~modules ~foreign_objects))))
     in
+    let sections =
+      Section.Site.Map.values pkg.sites
+      |> Section.Set.of_list |> Section.Set.to_map
+      |> Section.Map.mapi ~f:(fun section () ->
+             Install.Section.Paths.get_local_location ctx.name section pkg.name)
+    in
     Dune_package.Or_meta.Dune_package
       { Dune_package.version = pkg.version
       ; name = pkg.name
       ; entries
       ; dir = Path.build pkg_root
+      ; sections
+      ; sites = pkg.sites
       }
 
   let gen_dune_package sctx (pkg : Package.t) =
@@ -421,12 +434,21 @@ end = struct
                     (Dune_package.Entry.Deprecated_library_name
                        { loc; old_public_name; new_public_name }))
           in
+          let sections =
+            let sections =
+              Section.Set.of_list (Section.Site.Map.values pkg.sites)
+            in
+            Section.Map.mapi (Section.Set.to_map sections) ~f:(fun section () ->
+                Install.Section.Paths.get_local_location ctx.name section name)
+          in
           { Dune_package.version = pkg.version
           ; name
           ; entries
           ; dir =
               Path.build
                 (Config.local_install_lib_dir ~context:ctx.name ~package:name)
+          ; sections
+          ; sites = pkg.sites
           }
         in
         Build.write_file

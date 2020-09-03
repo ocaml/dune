@@ -1,4 +1,4 @@
-(lang dune 2.7)
+(lang dune 2.8)
 ;          ^^^
 ; When changing the version, don't forget to regenerate *.opam files
 ; by running [dune build].
@@ -119,3 +119,9 @@ execution of the action.
  (description "\
 dune-glob provides a parser and interpreter for globs as \
 understood by dune language."))
+
+(package
+ (name dune-site)
+ (depends (dune-private-libs (= :version)))
+ (synopsis "Embed locations informations inside executable and libraries")
+ (description ""))

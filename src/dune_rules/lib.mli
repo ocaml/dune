@@ -286,6 +286,7 @@ val to_dune_lib :
   -> dir:Path.t
   -> Dune_package.Lib.t Or_exn.t
 
+(** Local libraries *)
 module Local : sig
   type lib
 

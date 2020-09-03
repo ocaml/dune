@@ -1,3 +1,9 @@
+Unreleased
+----------
+
+- Ignore special files (BLK, CHR, FIFO, SOCKET) , fixes #3124, #3546
+  (#3570, @ejgallego)
+
 2.7.1 (2/09/2020)
 -----------------
 
@@ -19,9 +25,6 @@
 
 - Cram tests: when checking that all test directories contain a `run.t` file,
   skip empty directories. These can be left around by git. (#3753, @emillon)
-
-- Ignore special files (BLK, CHR, FIFO, SOCKET) , fixes #3124, #3546
-  (#3570, @ejgallego)
 
 2.7.0 (13/08/2020)
 ------------------

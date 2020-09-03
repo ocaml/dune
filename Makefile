@@ -103,7 +103,7 @@ clean: $(BIN)
 	rm -rf _boot dune.exe
 
 distclean: clean
-	rm -f src/dune/setup.ml
+	rm -f src/dune_rules/setup.ml
 
 doc:
 	cd doc && sphinx-build . _build

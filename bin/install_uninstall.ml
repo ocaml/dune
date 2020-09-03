@@ -68,6 +68,7 @@ module type File_operations = sig
     -> executable:bool
     -> special_file:Special_file.t option
     -> package:Package.Name.t
+    -> conf:Dune_engine.Artifact_substitution.conf
     -> unit Fiber.t
 
   val mkdir_p : Path.t -> unit
@@ -78,11 +79,11 @@ module type File_operations = sig
 end
 
 module type Workspace = sig
-  val workspace : Dune.Main.workspace
+  val workspace : Dune_rules.Main.workspace
 end
 
 module File_ops_dry_run : File_operations = struct
-  let copy_file ~src ~dst ~executable ~special_file:_ ~package:_ =
+  let copy_file ~src ~dst ~executable ~special_file:_ ~package:_ ~conf:_ =
     Format.printf "Copying %s to %s (executable: %b)\n"
       (Path.to_string_maybe_quoted src)
       (Path.to_string_maybe_quoted dst)
@@ -104,7 +105,7 @@ end
 module File_ops_real (W : Workspace) : File_operations = struct
   open W
 
-  let get_vcs p = Dune.File_tree.nearest_vcs p
+  let get_vcs p = Dune_engine.File_tree.nearest_vcs p
 
   type load_special_file_result =
     | No_version_needed
@@ -119,7 +120,10 @@ module File_ops_real (W : Workspace) : File_operations = struct
     match f ic with
     | exception _ ->
       User_warning.emit ~loc:(Loc.in_file src)
-        [ Pp.text "Failed to parse file, not adding version information." ];
+        [ Pp.text
+            "Failed to parse file, not adding version and locations \
+             information."
+        ];
       plain_copy ()
     | No_version_needed -> plain_copy ()
     | Need_version print -> (
@@ -131,20 +135,21 @@ module File_ops_real (W : Workspace) : File_operations = struct
       | None -> plain_copy ()
       | Some vcs ->
         let open Fiber.O in
-        let+ version = Dune.Vcs.describe vcs in
+        let+ version = Dune_engine.Vcs.describe vcs in
         let ppf = Format.formatter_of_out_channel oc in
         print ppf ~version;
         Format.pp_print_flush ppf () )
 
   let process_meta ic =
     let lb = Lexing.from_channel ic in
-    let meta : Dune.Meta.t =
-      { name = None; entries = Dune.Meta.parse_entries lb }
+    let meta : Dune_rules.Meta.t =
+      { name = None; entries = Dune_rules.Meta.parse_entries lb }
     in
     let need_more_versions =
       try
-        let (_ : Dune.Meta.t) =
-          Dune.Meta.add_versions meta ~get_version:(fun _ -> raise_notrace Exit)
+        let (_ : Dune_rules.Meta.t) =
+          Dune_rules.Meta.add_versions meta ~get_version:(fun _ ->
+              raise_notrace Exit)
         in
         false
       with Exit -> true
@@ -155,19 +160,53 @@ module File_ops_real (W : Workspace) : File_operations = struct
       Need_version
         (fun ppf ~version ->
           let meta =
-            Dune.Meta.add_versions meta ~get_version:(fun _ -> Some version)
+            Dune_rules.Meta.add_versions meta ~get_version:(fun _ ->
+                Some version)
           in
-          Pp.render_ignore_tags ppf (Dune.Meta.pp meta.entries))
+          Pp.render_ignore_tags ppf (Dune_rules.Meta.pp meta.entries))
 
-  let process_dune_package ic =
+  let replace_sites
+      ~(get_location : Dune_engine.Section.t -> Package.Name.t -> Stdune.Path.t)
+      dp =
+    match
+      List.find_map dp ~f:(function
+        | Dune_lang.List [ Atom (A "name"); Atom (A name) ] -> Some name
+        | _ -> None)
+    with
+    | None -> dp
+    | Some name ->
+      List.map dp ~f:(function
+        | Dune_lang.List ((Atom (A "sites") as sexp_sites) :: sites) ->
+          let sites =
+            List.map sites ~f:(function
+              | Dune_lang.List [ (Atom (A section) as section_sexp); _ ] ->
+                let path =
+                  get_location
+                    (Option.value_exn (Section.of_string section))
+                    (Package.Name.of_string name)
+                in
+                let open Dune_lang.Encoder in
+                pair sexp string (section_sexp, Path.to_absolute_filename path)
+              | _ -> assert false)
+          in
+          Dune_lang.List (sexp_sites :: sites)
+        | x -> x)
+
+  let process_dune_package ~get_location ic =
     let lb = Lexing.from_channel ic in
     let dp =
       Dune_lang.Parser.parse ~mode:Many lb
       |> List.map ~f:Dune_lang.Ast.remove_locs
     in
+    (* replace sites with external path in the file *)
+    let dp = replace_sites ~get_location dp in
+    (* replace version if needed in the file *)
     if
       List.exists dp ~f:(function
-        | Dune_lang.List (Atom (A "version") :: _) -> true
+        | Dune_lang.List (Atom (A "version") :: _)
+        | Dune_lang.List [ Atom (A "use_meta"); Atom (A "true") ]
+        | Dune_lang.List [ Atom (A "use_meta") ] ->
+          true
         | _ -> false)
     then
       No_version_needed
@@ -192,7 +231,8 @@ module File_ops_real (W : Workspace) : File_operations = struct
               Format.pp_print_cut ppf ());
           Format.pp_close_box ppf ())
 
-  let copy_file ~src ~dst ~executable ~special_file ~package =
+  let copy_file ~src ~dst ~executable ~special_file ~package
+      ~(conf : Dune_engine.Artifact_substitution.conf) =
     let chmod =
       if executable then
         fun _ ->
@@ -210,9 +250,10 @@ module File_ops_real (W : Workspace) : File_operations = struct
         match (special_file : Special_file.t option) with
         | Some META -> copy_special_file ~src ~package ~ic ~oc ~f:process_meta
         | Some Dune_package ->
-          copy_special_file ~src ~package ~ic ~oc ~f:process_dune_package
+          copy_special_file ~src ~package ~ic ~oc
+            ~f:(process_dune_package ~get_location:conf.get_location)
         | None ->
-          Dune.Artifact_substitution.copy ~get_vcs ~input_file:src
+          Dune_engine.Artifact_substitution.copy ~conf ~input_file:src
             ~input:(input ic) ~output:(output oc))
 
   let remove_if_exists dst =
@@ -238,13 +279,12 @@ end
 module Sections = struct
   type t =
     | All
-    | Only of Install.Section.Set.t
+    | Only of Section.Set.t
 
-  let sections_conv : Install.Section.t list Cmdliner.Arg.converter =
+  let sections_conv : Section.t list Cmdliner.Arg.converter =
     let all =
-      Install.Section.all |> Install.Section.Set.to_list
-      |> List.map ~f:(fun section ->
-             (Install.Section.to_string section, section))
+      Section.all |> Section.Set.to_list
+      |> List.map ~f:(fun section -> (Section.to_string section, section))
     in
     Arg.list ~sep:',' (Arg.enum all)
 
@@ -256,12 +296,12 @@ module Sections = struct
     in
     match sections with
     | None -> All
-    | Some sections -> Only (Install.Section.Set.of_list sections)
+    | Some sections -> Only (Section.Set.of_list sections)
 
   let should_install t section =
     match t with
     | All -> true
-    | Only set -> Install.Section.Set.mem set section
+    | Only set -> Section.Set.mem set section
 end
 
 let file_operations ~dry_run ~workspace : (module File_operations) =
@@ -272,11 +312,11 @@ let file_operations ~dry_run ~workspace : (module File_operations) =
       let workspace = workspace
     end) )
 
-let package_is_vendored (pkg : Dune.Package.t) =
-  match Dune.File_tree.find_dir pkg.path with
+let package_is_vendored (pkg : Dune_engine.Package.t) =
+  match Dune_engine.File_tree.find_dir pkg.path with
   | None -> assert false
   | Some d -> (
-    match Dune.File_tree.Dir.status d with
+    match Dune_engine.File_tree.Dir.status d with
     | Vendored -> true
     | _ -> false )
 
@@ -323,6 +363,13 @@ let install_uninstall ~what =
         value & flag
         & info [ "dry-run" ]
             ~doc:"Only display the file operations that would be performed.")
+    and+ relocatable =
+      Arg.(
+        value & flag
+        & info [ "relocatable" ]
+            ~doc:
+              "Make the binaries relocatable (the installation directory can \
+               be moved).")
     and+ pkgs = Arg.(value & pos_all package_name [] name_)
     and+ context =
       Arg.(
@@ -424,13 +471,18 @@ let install_uninstall ~what =
             Option.map ~f:Path.of_string
               ( match mandir with
               | Some _ -> mandir
-              | None -> Dune.Setup.mandir )
+              | None -> Dune_rules.Setup.mandir )
           in
           Fiber.sequential_iter install_files_by_context
             ~f:(fun (context, entries_per_package) ->
               let* prefix, libdir =
                 get_dirs context ~prefix_from_command_line
                   ~libdir_from_command_line
+              in
+              let conf =
+                Dune_engine.Artifact_substitution.conf_for_install ~relocatable
+                  ~default_ocamlpath:context.default_ocamlpath
+                  ~stdlib_dir:context.stdlib_dir ~prefix ~libdir ~mandir
               in
               Fiber.sequential_iter entries_per_package
                 ~f:(fun (package, entries) ->
@@ -451,11 +503,10 @@ let install_uninstall ~what =
                           (Path.to_string_maybe_quoted dst);
                         Ops.mkdir_p dir;
                         let executable =
-                          Install.Section.should_set_executable_bit
-                            entry.section
+                          Section.should_set_executable_bit entry.section
                         in
                         Ops.copy_file ~src:entry.src ~dst ~executable
-                          ~special_file ~package
+                          ~special_file ~package ~conf
                       ) else (
                         Ops.remove_if_exists dst;
                         files_deleted_in := Path.Set.add !files_deleted_in dir;

@@ -1,0 +1,105 @@
+(env
+ (_
+  (binaries ../utils/dune_cmd.exe)))
+
+(alias
+ (name test-deps)
+ (deps
+  %{bin:dune_cmd}
+  (package dune)))
+
+(cram
+ (applies_to :whole_subtree)
+ (deps
+  (alias test-deps)))
+
+(subdir
+ coq
+ (cram
+  (alias runtest-coq)))
+
+(subdir
+ jsoo
+ (cram
+  (alias runtest-js)))
+
+(cram
+ (applies_to windows-diff)
+ (alias runtest-windows))
+
+; DISABLED TESTS
+
+(subdir
+ bisect-ppx
+ (cram
+  (enabled_if false)))
+
+(subdir
+ env
+ (cram
+  (applies_to envs-and-contexts)
+  (enabled_if false)))
+
+(cram
+ (applies_to fdo)
+ (enabled_if false))
+
+; The following test is flaky due to platform sensitivity
+; see https://github.com/ocaml/dune/issues/3744
+
+(subdir
+ cram
+ (cram
+  (applies_to error)
+  (enabled_if false)))
+
+; CONDITIONALLY DISABLED TESTS
+
+(cram
+ (applies_to github764)
+ (enabled_if
+  (<> %{ocaml-config:system} win)))
+
+(subdir
+ odoc
+ (cram
+  (enabled_if
+   (<> %{ocaml_version} 4.02.3))))
+
+(cram
+ (applies_to output-obj)
+ (enabled_if
+  (and
+   (and
+    (<> %{ocaml-config:system} macosx)
+    (<> %{ocaml-config:system} win))
+   (>= %{ocaml_version} 4.06.0))))
+
+(cram
+ (applies_to ppx-rewriter)
+ (enabled_if
+  (<> %{ocaml_version} 4.02.3)))
+
+(cram
+ (applies_to toplevel-stanza)
+ (enabled_if
+  (>= %{ocaml_version} 4.05.0)))
+
+(subdir
+ utop
+ (cram
+  (enabled_if
+   (>= %{ocaml_version} 4.05.0))))
+
+(cram
+ (applies_to wrapped-transition)
+ (enabled_if
+  (>= %{ocaml_version} 4.06.0)))
+
+(subdir
+ cram
+ ;  mac has a different sh error message
+ (cram
+  (applies_to error)
+  (enabled_if
+   (<> "macosx" %{ocaml-config:system}))))

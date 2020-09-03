@@ -57,8 +57,96 @@ set of predicates:
   it is linked as part of a driver or meant to add a ``-ppx`` argument
   to the compiler, choose the former behavior
 
-Dynamic loading of packages
-===========================
+.. _plugins:
+
+Plugins and dynamic loading of packages
+========================================
+
+Dune allows to define and load plugins without having to deal with specific
+compilation, installation directories, dependencies or the module `Dynlink`.
+Here we show an example of an executable which can be extended using plugins,
+and the definition of one plugin in another package.
+
+Example
+-------
+
+Main executable (C)
+^^^^^^^^^^^^^^^^^^^^^
+
+- ``dune-project`` file:
+
+.. code:: scheme
+
+   (lang dune 2.8)
+   (name c)
+   (package (name c) (sites (lib plugins)))
+
+
+- ``dune`` file:
+
+.. code:: scheme
+
+   (executable
+    (public_name c)
+    (modules sites c)
+    (libraries c.register dune-site dune-site.plugins))
+
+   (library
+    (public_name c.register)
+    (name c_register)
+    (modules c_register))
+
+   (generate_module (module sites)  (plugins (c plugins)))
+
+- The module ``c_register.ml`` of the library ``c.register``:
+
+.. code:: ocaml
+
+   let todo = Queue.create ()
+
+- The code of the exectuable ``c.ml``:
+
+.. code:: ocaml
+
+   (* load all the available plugins *)
+   let () = Sites.Plugins.Plugins.load_all ()
+   (* Execute the code registered by the plugins *)
+   let () = Queue.iter (fun f -> f ()) !C_register.todo
+
+One plugin (B)
+^^^^^^^^^^^^^^
+
+- ``dune-project`` file:
+
+.. code:: scheme
+
+   (lang dune 2.8)
+   (name b)
+
+- ``dune`` file:
+
+.. code:: scheme
+
+  (library
+   (public_name b)
+   (libraries c.register))
+
+  (plugin
+   (name b)
+   (libraries b)
+   (site (c plugins)))
+
+- The code of the plugin ``b.ml``:
+
+.. code:: ocaml
+
+   let () = Queue.add (fun () -> print_endline "B is doing something") C_register.todo
+
+
+Dynamic loading of packages with findlib
+========================================
+
+The prefered way for new developement is to use :ref:`plugins`.
 
 Dune supports the ``findlib.dynload`` package from `findlib
 <http://projects.camlcity.org/projects/findlib.html>`_ that enables

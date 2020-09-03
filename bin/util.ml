@@ -1,8 +1,8 @@
 open! Stdune
-module Context = Dune.Context
-module Workspace = Dune.Workspace
-module Dune_project = Dune.Dune_project
-module Vcs = Dune.Vcs
+module Context = Dune_rules.Context
+module Workspace = Dune_rules.Workspace
+module Dune_project = Dune_engine.Dune_project
+module Vcs = Dune_engine.Vcs
 
 type checked =
   | In_build_dir of (Context.t * Path.Source.t)
@@ -12,7 +12,7 @@ type checked =
 
 let check_path contexts =
   let contexts =
-    Dune.Context_name.Map.of_list_map_exn contexts ~f:(fun c ->
+    Dune_engine.Context_name.Map.of_list_map_exn contexts ~f:(fun c ->
         (c.Context.name, c))
   in
   fun path ->
@@ -23,26 +23,26 @@ let check_path contexts =
         ]
     in
     let context_exn ctx =
-      match Dune.Context_name.Map.find contexts ctx with
+      match Dune_engine.Context_name.Map.find contexts ctx with
       | Some context -> context
       | None ->
         User_error.raise
           [ Pp.textf "%s refers to unknown build context: %s"
               (Path.to_string_maybe_quoted path)
-              (Dune.Context_name.to_string ctx)
+              (Dune_engine.Context_name.to_string ctx)
           ]
           ~hints:
             (User_message.did_you_mean
-               (Dune.Context_name.to_string ctx)
+               (Dune_engine.Context_name.to_string ctx)
                ~candidates:
-                 ( Dune.Context_name.Map.keys contexts
-                 |> List.map ~f:Dune.Context_name.to_string ))
+                 ( Dune_engine.Context_name.Map.keys contexts
+                 |> List.map ~f:Dune_engine.Context_name.to_string ))
     in
     match path with
     | External e -> External e
     | In_source_tree s -> In_source_dir s
     | In_build_dir path -> (
-      match Dune.Dpath.analyse_target path with
+      match Dune_engine.Dpath.analyse_target path with
       | Other _ -> internal_path ()
       | Alias (_, _) -> internal_path ()
       | Install (name, src) -> In_install_dir (context_exn name, src)

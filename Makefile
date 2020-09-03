@@ -6,18 +6,33 @@ DESTDIR_ARG := $(if $(DESTDIR),--destdir $(DESTDIR),)
 INSTALL_ARGS := $(PREFIX_ARG) $(LIBDIR_ARG) $(DESTDIR_ARG)
 BIN := ./dune.exe
 
-# Dependencies used for developing and testing dune
-DEV_DEPS := \
+# Dependencies used for testing dune, when developed locally and
+# when tested in CI
+TEST_DEPS := \
+bisect_ppx \
+cinaps \
+coq \
 core_bench \
+"csexp>=1.3.0" \
+js_of_ocaml-ppx \
+js_of_ocaml-compiler \
+"mdx=1.6.0" \
 menhir \
 merlin \
-ocamlformat \
-odoc \
-ppx_expect \
+ocaml-migrate-parsetree \
+ocamlfind \
+ocamlformat.0.14.3 \
+"odoc>=1.5.0" \
+"ppx_expect>=v0.14" \
 ppx_inline_test \
-ppxlib \
-cinaps \
-utop
+"ppxlib.0.13.0" \
+result \
+"utop>=2.6.0"
+
+# Dependencies recommended for developing dune locally,
+# but not wanted in CI
+DEV_DEPS := \
+patdiff
 
 -include Makefile.dev
 
@@ -44,12 +59,21 @@ uninstall:
 
 reinstall: uninstall install
 
+dev-deps:
+	opam install -y $(TEST_DEPS)
+
 dev-switch:
-	opam switch create -y . --deps-only --with-test
-	opam install -y $(DEV_DEPS)
+	opam update
+	# Ensuring that either a dev switch already exists or a new one is created
+	[[ $(shell opam switch show) == $(shell pwd) ]] || \
+		opam switch create -y . --deps-only --with-test
+	opam install -y $(TEST_DEPS) $(DEV_DEPS)
 
 test: $(BIN)
 	$(BIN) runtest
+
+test-windows: $(BIN)
+	$(BIN) build @runtest-windows
 
 test-js: $(BIN)
 	$(BIN) build @runtest-js
@@ -79,7 +103,7 @@ clean: $(BIN)
 	rm -rf _boot dune.exe
 
 distclean: clean
-	rm -f src/dune/setup.ml
+	rm -f src/dune_rules/setup.ml
 
 doc:
 	cd doc && sphinx-build . _build

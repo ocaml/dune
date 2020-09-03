@@ -1,5 +1,5 @@
 open Stdune
-open Dune
+open Dune_engine
 module Re = Dune_re
 
 let () =
@@ -155,8 +155,7 @@ let test input =
        to_copy
      in
      let output = Buffer.add_subbytes buf in
-     Artifact_substitution.copy
-       ~get_vcs:(fun _ -> None)
+     Artifact_substitution.copy ~conf:Artifact_substitution.conf_dummy
        ~input_file:(Path.of_string "<memory>")
        ~input ~output);
   let result = Buffer.contents buf in

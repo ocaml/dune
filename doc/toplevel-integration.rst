@@ -31,6 +31,8 @@ to make it available in older versions of OCaml:
 
 .. code:: ocaml
 
+    #directory "+compiler-libs"
+
     let try_finally ~always f =
       match f () with
       | x ->
@@ -56,4 +58,7 @@ to make it available in older versions of OCaml:
       if not (Hashtbl.mem Toploop.directive_table name) then
         Hashtbl.add Toploop.directive_table name
           (Toploop.Directive_string use_output)
+
+   ;;
+   #remove_directory "+compiler-libs"
 

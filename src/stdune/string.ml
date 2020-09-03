@@ -305,3 +305,7 @@ let of_list chars =
   let s = Bytes.make (List.length chars) '0' in
   List.iteri chars ~f:(fun i c -> Bytes.set s i c);
   Bytes.to_string s
+
+let filter_map t ~f =
+  (* TODO more efficient implementation *)
+  to_seq t |> Seq.filter_map ~f |> of_seq

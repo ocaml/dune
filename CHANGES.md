@@ -1,10 +1,46 @@
-next
-----
+Unreleased
+----------
+
+- Ignore special files (BLK, CHR, FIFO, SOCKET), (#3570, fixes #3124, #3546,
+  @ejgallego)
+
+- Experimental: Introduce specific installation sites. Allow to define plugins
+  to be installed in these sites. (#3104, fixes #1185, @bobot)
+
+2.7.1 (2/09/2020)
+-----------------
+
+- configurator: More flexible probing of `#define`. We allow duplicate values in
+  the object file, as long as they are the same after parsing. (#3739, fixes
+  #3736, @rgrinberg)
+
+- Record instrumentation backends in dune-package files. This makes it possible
+  to use instrumentation backends defined in installed libraries (eg via OPAM).
+  (#3735, @nojb)
+
+- Add missing `.aux` & `.glob` targets to coq rules (#3721, fixes #3437,
+  @rgrinberg)
+
+- Fix `dune-package` installation when META templates are present (#3743, fixes
+  #3746, @rgrinberg)
+
+- Resolve symlinks before running `$ git diff` (#3750, fixes #3740, @rgrinberg)
+
+- Cram tests: when checking that all test directories contain a `run.t` file,
+  skip empty directories. These can be left around by git. (#3753, @emillon)
+
+2.7.0 (13/08/2020)
+------------------
+
+- Write intermediate files in a `.mdx` folder for each `mdx` stanza
+  to prevent the corresponding actions to be executed as part of the `@all`
+  alias (#3659, @NathanReb)
 
 - Read Coq flags from `env` (#3547 , fixes #3486, @gares)
 
-- Allow bisect_ppx to be enabled/disabled via dune-workspace. (#3404,
-  @stephanieyou)
+- Add instrumentation framework to toggle instrumentation by `bisect_ppx`,
+  `landmarks`, etc, via dune-workspace and/or the command-line. (#3404, #3526
+  @stephanieyou, @nojb)
 
 - Formatting of dune files is now done in the executing dune process instead of
   in a separate process. (#3536, @nojb)
@@ -49,6 +85,26 @@ next
 - Insert correct extension name when editing `dune-project` files. Previously,
   dune would just insert the stanza name. (#3649, fixes #3624, @rgrinberg)
 
+- Fix crash when evaluating an `mdx` stanza that depends on unavailable
+  packages. (#3650, @CraigFe)
+
+- Fix typo in `cache-check-probablity` field in dune config files. This field
+  now requires 2.7 as it wasn't usable before this version. (#3652, @edwintorok)
+
+- Add `"odoc" {with-doc}` to the dependencies in the generated `.opam` files.
+  (#3667, @kit-ty-kate)
+
+- Do not allow user actions to capture dune's stdin (#3677, fixes #3672,
+  @rgrinberg)
+
+- `(subdir ...)` stanzas can now appear in dune files used via `(include ...)`.
+  (#3676, @nojb)
+
+2.6.2 (26/07/2020)
+------------------
+
+* Fix compatibility with OCaml 4.12 (#3585, fixes #3583, @ejgallego)
+
 2.6.1 (02/07/2020)
 ------------------
 
@@ -65,6 +121,8 @@ next
 
 - Fix a stack overflow when displaying large outputs (including diffs) (#3537,
   fixes #2767, #3490, @emillon)
+
+- Pass `-g` when compiling ppx preprocessors (#3671, @rgrinberg)
 
 2.6.0 (05/06/2020)
 ------------------

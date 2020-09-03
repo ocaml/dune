@@ -94,7 +94,7 @@ configuration will tell ``dune`` to generate two opam files: ``cohttp.opam`` and
 
 .. code:: scheme
 
-   (lang dune 2.7)
+   (lang dune 2.8)
    (name cohttp)
    ; version field is optional
    (version 1.0.0)

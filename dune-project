@@ -1,10 +1,12 @@
-(lang dune 2.5)
+(lang dune 2.8)
 ;          ^^^
 ; When changing the version, don't forget to regenerate *.opam files
 ; by running [dune build].
 (name dune)
 
 (generate_opam_files true)
+
+(cram enable)
 
 ; Reserved for Dune itself. This is to help with the bootstrap
 (using dune-bootstrap-info 0.1)
@@ -61,7 +63,7 @@ executable was built.
 (package
  (name dune-private-libs)
  (depends
-  (ocaml (>= 4.10)))
+  (ocaml (>= 4.08)))
  (synopsis "Private libraries of Dune")
  (description "\
 !!!!!!!!!!!!!!!!!!!!!!
@@ -76,7 +78,10 @@ no stability guarantee.
 (package
  (name dune-configurator)
  (depends
-  (dune (>= 2.6.0)))
+  (ocaml (>= 4.03.0))
+  (dune (>= 2.6.0))
+  result
+  (csexp (>= 1.3.0)))
  (synopsis "Helper library for gathering system configuration")
  (description "\
 dune-configurator is a small library that helps writing OCaml scripts that
@@ -114,3 +119,9 @@ execution of the action.
  (description "\
 dune-glob provides a parser and interpreter for globs as \
 understood by dune language."))
+
+(package
+ (name dune-site)
+ (depends (dune-private-libs (= :version)))
+ (synopsis "Embed locations informations inside executable and libraries")
+ (description ""))

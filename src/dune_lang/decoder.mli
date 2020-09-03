@@ -47,6 +47,8 @@ type 'a fields_parser = ('a, fields) parser
     information such as versions to individual parsers. *)
 val parse : 'a t -> Univ_map.t -> ast -> 'a
 
+val set_input : ast list -> (unit, 'k) parser
+
 val return : 'a -> ('a, _) parser
 
 val ( >>= ) : ('a, 'k) parser -> ('a -> ('b, 'k) parser) -> ('b, 'k) parser
@@ -170,6 +172,9 @@ val plain_string : (loc:Loc.t -> string -> 'a) -> 'a t
 (** A valid filename, i.e. a string other than "." or ".." *)
 val filename : string t
 
+(** A relative filename *)
+val relative_file : string t
+
 val fix : ('a t -> 'a t) -> 'a t
 
 val located : ('a, 'k) parser -> (Loc.t * 'a, 'k) parser
@@ -213,12 +218,14 @@ val fields_mutually_exclusive :
   -> (string * 'a t) list
   -> 'a fields_parser
 
+(** Test if the field is present *)
 val field_b :
      ?check:unit t
   -> ?on_dup:(Univ_map.t -> string -> Ast.t list -> unit)
   -> string
   -> bool fields_parser
 
+(** Differentiate between not present and set to true or false *)
 val field_o_b :
      ?check:unit t
   -> ?on_dup:(Univ_map.t -> string -> Ast.t list -> unit)

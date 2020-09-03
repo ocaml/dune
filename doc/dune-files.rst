@@ -1899,9 +1899,9 @@ a typical ``dune-workspace`` file looks like:
 .. code:: scheme
 
     (lang dune 2.8)
-    (context (opam (switch 4.02.3)))
-    (context (opam (switch 4.03.0)))
-    (context (opam (switch 4.04.0)))
+    (context (opam (switch 4.07.1)))
+    (context (opam (switch 4.08.1)))
+    (context (opam (switch 4.11.1)))
 
 The rest of this section describe the stanzas available.
 

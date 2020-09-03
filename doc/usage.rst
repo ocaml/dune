@@ -532,3 +532,16 @@ no difference.
 
 Note that ``--prefix`` and ``--libdir`` are only supported if a single build
 context is in use.
+
+Relocation Mode
+---------------
+
+The installation can be done in specific mode (``--relocation``) for creating a
+directory that can be moved around. In that case the executables installed will
+lookup the sites (cf :ref:`sites`) of the packages relatively to its location.
+The `--prefix` directory should be used to specify the destination.
+
+
+If you are using plugins that depends on installed libraries which are not
+dependencies of the executables -- so libraries that need to be loaded at
+runtime -- you must copy the libraries manually to the destination directory.

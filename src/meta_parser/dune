@@ -1,0 +1,6 @@
+(library
+ (name dune_meta_parser)
+ (public_name dune-private-libs.meta_parser)
+ (synopsis "[Internal] findlib META parser"))
+
+(ocamllex meta_lexer)

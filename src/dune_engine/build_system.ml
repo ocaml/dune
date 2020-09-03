@@ -1667,8 +1667,11 @@ end = struct
                    source tree to be writable by the user, so we explicitly set
                    the user writable bit. *)
                 let chmod n = n lor 0o200 in
+                let conf : Artifact_substitution.conf =
+                  Artifact_substitution.conf_of_context context
+                in
                 Artifact_substitution.copy_file () ~src:path ~dst:in_source_tree
-                  ~get_vcs:File_tree.nearest_vcs ~chmod ))
+                  ~conf ~chmod ))
     in
     t.rule_done <- t.rule_done + 1
 

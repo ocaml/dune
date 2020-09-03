@@ -38,6 +38,8 @@ val init_build_system :
 
 val find_context_exn : workspace -> name:Context_name.t -> Context.t
 
+val find_scontext_exn : build_system -> name:Context_name.t -> Super_context.t
+
 (** Setup the environment *)
 val setup_env : capture_outputs:bool -> Env.t
 

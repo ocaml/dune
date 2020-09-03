@@ -45,7 +45,8 @@ let term =
   and+ args = Arg.(value & pos_right 0 string [] (Arg.info [] ~docv:"ARGS")) in
   Common.set_common common ~targets:[ Arg.Dep.file prog ];
   let setup = Scheduler.go ~common (fun () -> Import.Main.setup common) in
-  let context = Import.Main.find_context_exn setup.workspace ~name:context in
+  let sctx = Import.Main.find_scontext_exn setup ~name:context in
+  let context = Dune_rules.Super_context.context sctx in
   let path_relative_to_build_root p =
     Common.prefix_target common p
     |> Path.Build.relative context.build_dir
@@ -131,6 +132,7 @@ let term =
   | Some real_prog, _ ->
     let real_prog = Path.to_string real_prog in
     let argv = prog :: args in
-    restore_cwd_and_execve common real_prog argv context.env
+    restore_cwd_and_execve common real_prog argv
+      (Super_context.context_env sctx)
 
 let command = (term, info)

@@ -1,6 +1,15 @@
 Unreleased
 ----------
 
+- Ignore special files (BLK, CHR, FIFO, SOCKET), (#3570, fixes #3124, #3546,
+  @ejgallego)
+
+- Experimental: Introduce specific installation sites. Allow to define plugins
+  to be installed in these sites. (#3104, fixes #1185, @bobot)
+
+2.7.1 (2/09/2020)
+-----------------
+
 - configurator: More flexible probing of `#define`. We allow duplicate values in
   the object file, as long as they are the same after parsing. (#3739, fixes
   #3736, @rgrinberg)
@@ -14,6 +23,11 @@ Unreleased
 
 - Fix `dune-package` installation when META templates are present (#3743, fixes
   #3746, @rgrinberg)
+
+- Resolve symlinks before running `$ git diff` (#3750, fixes #3740, @rgrinberg)
+
+- Cram tests: when checking that all test directories contain a `run.t` file,
+  skip empty directories. These can be left around by git. (#3753, @emillon)
 
 2.7.0 (13/08/2020)
 ------------------

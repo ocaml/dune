@@ -1,7 +1,7 @@
 (** Opam install file *)
-open! Dune_engine
-
 open! Stdune
+
+module Dune_section = Section
 
 module Dst : sig
   type t
@@ -9,26 +9,29 @@ module Dst : sig
   val to_string : t -> string
 end
 
-module Section : sig
+(** Location for installation, containing the sections relative to the current
+    package, and sites of possibly other packages *)
+module Section_with_site : sig
   type t =
-    | Lib
-    | Lib_root
-    | Libexec
-    | Libexec_root
-    | Bin
-    | Sbin
-    | Toplevel
-    | Share
-    | Share_root
-    | Etc
-    | Doc
-    | Stublibs
-    | Man
-    | Misc
+    | Section of Section.t
+    | Site of
+        { pkg : Package.Name.t
+        ; site : Section.Site.t
+        }
+
+  val to_string : t -> string
+
+  (* val parse_string : string -> (t, string) Result.t *)
+
+  val decode : t Dune_lang.Decoder.t
+
+  val to_dyn : t -> Dyn.t
+end
+
+module Section : sig
+  type t = Section.t
 
   module Set : Set.S with type elt = t
-
-  val all : Set.t
 
   val to_string : t -> string
 
@@ -36,9 +39,7 @@ module Section : sig
 
   val decode : t Dune_lang.Decoder.t
 
-  (** [true] iff the executable bit should be set for files installed in this
-      location. *)
-  val should_set_executable_bit : t -> bool
+  val to_dyn : t -> Dyn.t
 
   module Paths : sig
     type section = t
@@ -54,6 +55,11 @@ module Section : sig
       -> t
 
     val install_path : t -> section -> Dst.t -> Path.t
+
+    val get : t -> section -> Path.t
+
+    val get_local_location :
+      Context_name.t -> section -> Package.Name.t -> Path.t
   end
   with type section := t
 end
@@ -73,12 +79,28 @@ module Entry : sig
 
   val make : Section.t -> ?dst:string -> Path.Build.t -> Path.Build.t t
 
+  val make_with_site :
+       Section_with_site.t
+    -> ?dst:string
+    -> (pkg:Package.Name.t -> site:Dune_section.Site.t -> Section.t)
+    -> Path.Build.t
+    -> Path.Build.t t
+
   val set_src : _ t -> 'src -> 'src t
 
   val relative_installed_path : _ t -> paths:Section.Paths.t -> Path.t
 
   val add_install_prefix :
     Path.Build.t t -> paths:Section.Paths.t -> prefix:Path.t -> Path.Build.t t
+end
+
+(** Same as Entry, but the destination can be in the site of a package *)
+module Entry_with_site : sig
+  type 'src t =
+    { src : 'src
+    ; dst : Dst.t
+    ; section : Section_with_site.t
+    }
 end
 
 val files : Path.Build.t Entry.t list -> Path.Set.t

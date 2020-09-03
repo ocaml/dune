@@ -11,6 +11,8 @@ type t = private
   ; build_dir : Path.Build.t
   ; env : Env.t
   ; host : t option
+  ; stdlib_dir : Path.t
+  ; default_ocamlpath : Path.t list
   }
 
 val create :
@@ -18,4 +20,6 @@ val create :
   -> build_dir:Path.Build.t
   -> env:Env.t
   -> host:t option
+  -> stdlib_dir:Path.t
+  -> default_ocamlpath:Path.t list
   -> t

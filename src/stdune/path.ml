@@ -1335,3 +1335,6 @@ let chmod ~mode ?(stats = None) ?(op = `Set) path =
         stats.st_perm land lnot mode
   in
   Unix.chmod (to_string path) mode
+
+let follow_symlink path =
+  Fpath.follow_symlink (to_string path) |> Result.map ~f:of_string

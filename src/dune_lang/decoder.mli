@@ -218,12 +218,14 @@ val fields_mutually_exclusive :
   -> (string * 'a t) list
   -> 'a fields_parser
 
+(** Test if the field is present *)
 val field_b :
      ?check:unit t
   -> ?on_dup:(Univ_map.t -> string -> Ast.t list -> unit)
   -> string
   -> bool fields_parser
 
+(** Differentiate between not present and set to true or false *)
 val field_o_b :
      ?check:unit t
   -> ?on_dup:(Univ_map.t -> string -> Ast.t list -> unit)

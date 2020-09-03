@@ -96,6 +96,12 @@ end = struct
         Dune_file.Mode_conf.Set.eval lib.modes ~has_native
       in
       let virtual_library = Library.is_virtual lib in
+      let cm_kind =
+        if byte then
+          Cm_kind.Cmo
+        else
+          Cmx
+      in
       List.concat_map installable_modules ~f:(fun m ->
           let cm_file_unsafe kind =
             Obj_dir.Module.cm_file_unsafe obj_dir m ~kind
@@ -109,7 +115,7 @@ end = struct
                 (native && has_impl && virtual_library)
                 [ Obj_dir.Module.obj_file obj_dir m ~kind:Cmx ~ext:ext_obj ]
             ; List.filter_map Ml_kind.all ~f:(fun ml_kind ->
-                  Obj_dir.Module.cmt_file obj_dir m ~ml_kind)
+                  Obj_dir.Module.cmt_file obj_dir m ~ml_kind ~cm_kind)
             ]
             |> List.concat
             |> List.map ~f:(fun f -> (Visibility.Public, f))

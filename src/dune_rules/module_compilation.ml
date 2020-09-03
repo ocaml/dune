@@ -47,7 +47,8 @@ let copy_interface ~sctx ~dir ~obj_dir m =
          ~src:(Path.build (Obj_dir.Module.cm_file_unsafe obj_dir m ~kind:Cmi))
          ~dst:(Obj_dir.Module.cm_public_file_unsafe obj_dir m ~kind:Cmi))
 
-let build_cm cctx ~dep_graphs ~precompiled_cmi ~cm_kind (m : Module.t) ~phase =
+let build_cm cctx ~dep_graphs ~precompiled_cmi ~cm_kind (m : Module.t) ~phase
+    ~output_cmt =
   let sctx = CC.super_context cctx in
   let dir = CC.dir cctx in
   let obj_dir = CC.obj_dir cctx in
@@ -116,12 +117,13 @@ let build_cm cctx ~dep_graphs ~precompiled_cmi ~cm_kind (m : Module.t) ~phase =
     Build.dyn_paths_unit (other_cm_files ~opaque ~cm_kind ~dep_graph ~obj_dir m)
   in
   let other_targets, cmt_args =
-    match cm_kind with
-    | Cmx -> (other_targets, Command.Args.empty)
-    | Cmi
-    | Cmo ->
-      let fn = Option.value_exn (Obj_dir.Module.cmt_file obj_dir m ~ml_kind) in
-      (fn :: other_targets, A "-bin-annot")
+    if output_cmt then
+      let fn =
+        Option.value_exn (Obj_dir.Module.cmt_file obj_dir m ~ml_kind ~cm_kind)
+      in
+      (fn :: other_targets, Command.Args.A "-bin-annot")
+    else
+      (other_targets, Command.Args.empty)
   in
   let opaque_arg =
     let intf_only = cm_kind = Cmi && not (Module.has m ~ml_kind:Impl) in
@@ -196,7 +198,12 @@ let build_cm cctx ~dep_graphs ~precompiled_cmi ~cm_kind (m : Module.t) ~phase =
   |> Option.value ~default:()
 
 let build_module ~dep_graphs ?(precompiled_cmi = false) cctx m =
-  build_cm cctx m ~dep_graphs ~precompiled_cmi ~cm_kind:Cmo ~phase:None;
+  (* cwong: This is not the cleanest place to put this, but I think it's the
+     least-intrusive. *)
+  let modes = CC.modes cctx in
+  let includes_bytecode = modes.byte in
+  build_cm cctx m ~dep_graphs ~precompiled_cmi ~cm_kind:Cmo ~phase:None
+    ~output_cmt:(not includes_bytecode);
   let ctx = CC.context cctx in
   let can_split =
     Ocaml_version.supports_split_at_emit ctx.version
@@ -205,17 +212,19 @@ let build_module ~dep_graphs ?(precompiled_cmi = false) cctx m =
   ( match (ctx.fdo_target_exe, can_split) with
   | None, _ ->
     build_cm cctx m ~dep_graphs ~precompiled_cmi ~cm_kind:Cmx ~phase:None
+      ~output_cmt:includes_bytecode
   | Some _, false ->
     build_cm cctx m ~dep_graphs ~precompiled_cmi ~cm_kind:Cmx
-      ~phase:(Some Fdo.All)
+      ~phase:(Some Fdo.All) ~output_cmt:includes_bytecode
   | Some _, true ->
     build_cm cctx m ~dep_graphs ~precompiled_cmi ~cm_kind:Cmx
-      ~phase:(Some Fdo.Compile);
+      ~phase:(Some Fdo.Compile) ~output_cmt:includes_bytecode;
     Fdo.opt_rule cctx m;
     build_cm cctx m ~dep_graphs ~precompiled_cmi ~cm_kind:Cmx
-      ~phase:(Some Fdo.Emit) );
+      ~phase:(Some Fdo.Emit) ~output_cmt:includes_bytecode );
   if not precompiled_cmi then
-    build_cm cctx m ~dep_graphs ~precompiled_cmi ~cm_kind:Cmi ~phase:None;
+    build_cm cctx m ~dep_graphs ~precompiled_cmi ~cm_kind:Cmi ~phase:None
+      ~output_cmt:true;
   Compilation_context.js_of_ocaml cctx
   |> Option.iter ~f:(fun js_of_ocaml ->
          (* Build *.cmo.js *)

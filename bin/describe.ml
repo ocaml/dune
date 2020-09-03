@@ -46,6 +46,7 @@ module Crawl = struct
       let info = Lib.info lib in
       let src_dir = Lib_info.src_dir info in
       let obj_dir = Lib_info.obj_dir info in
+      let { Mode.Dict.byte; _ } = Lib_info.modes info in
       let dyn_path p = Dyn.String (Path.to_string p) in
       let modules_ =
         if Lib.is_local lib then
@@ -58,8 +59,14 @@ module Crawl = struct
                      (Option.map (Module.source m ~ml_kind) ~f:Module.File.path)
                  in
                  let cmt ml_kind =
+                   let cm_kind =
+                     if byte then
+                       Cm_kind.Cmo
+                     else
+                       Cmx
+                   in
                    Dyn.Encoder.option dyn_path
-                     (Obj_dir.Module.cmt_file obj_dir m ~ml_kind)
+                     (Obj_dir.Module.cmt_file obj_dir m ~ml_kind ~cm_kind)
                  in
                  Dyn.Encoder.record
                    [ ("name", Module_name.to_dyn (Module.name m))

@@ -462,7 +462,6 @@ let default_env = lazy (Dtemp.add_to_env Env.initial)
 
 let run_internal ?dir ?(stdout_to = Io.stdout) ?(stderr_to = Io.stderr)
     ?(stdin_from = Io.null In) ~env ~purpose fail_mode prog args =
-  Dtemp.init_env ();
   Scheduler.with_job_slot (fun () ->
       let display = (Config.t ()).display in
       let dir =

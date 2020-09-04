@@ -1,9 +1,6 @@
 (** Temp directory used by dune processes *)
 open Stdune
 
-(** Sets the environment for this process to reflect the temporary directory *)
-val init_env : unit -> unit
-
 (** This returns a build path, but we don't rely on that *)
 val file : prefix:string -> suffix:string -> Path.t
 

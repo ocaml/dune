@@ -4,12 +4,6 @@ let temp_dir = lazy (Temp.create Dir ~prefix:"build" ~suffix:".dune")
 
 let temp_dir_value = lazy (Path.to_absolute_filename (Lazy.force temp_dir))
 
-let init_env =
-  let putenv =
-    lazy (Unix.putenv Env.Var.temp_dir (Lazy.force temp_dir_value))
-  in
-  fun () -> Lazy.force putenv
-
 let file ~prefix ~suffix =
   Temp.temp_in_dir File ~dir:(Lazy.force temp_dir) ~suffix ~prefix
 

@@ -29,6 +29,7 @@ jobs:
           - ocaml-version: 4.03.0
             os: ubuntu-latest
             skip_test: true
+            configurator: true
           - ocaml-version: 4.02.3
             os: ubuntu-latest
             skip_test: true
@@ -46,6 +47,7 @@ jobs:
       SKIP_TEST: ${{ matrix.skip_test }}
       OCAML_VERSION: ${{ matrix.ocaml-version }}
       OS: ${{ matrix.os }}
+      CONFIGURATOR: ${{ matrix.configurator }}
 
     runs-on: ${{ matrix.os }}
 
@@ -84,3 +86,10 @@ jobs:
       - name: test source is well formatted
         run: opam exec -- make fmt
         if: env.OCAML_VERSION == '4.10.0' && env.OS == 'ubuntu-latest'
+
+      - name: install configurator deps
+        run: opam install ./dune-configurator.opam
+        if: env.CONFIGURATOR == 'true'
+      - name: build configurator
+        run: opam exec -- ./dune.exe build dune-configurator.install
+        if: env.CONFIGURATOR == 'true'

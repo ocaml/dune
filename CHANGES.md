@@ -16,6 +16,8 @@ Unreleased
 - Add the `executable` field to `inline_tests` to customize the compilation
   flags of the test runner executable (#3747, fixes #3679, @lubegasimon)
 
+- Add (enabled_if ...) to (copy_files ...) (#3756, @nojb)
+
 2.7.1 (2/09/2020)
 -----------------
 

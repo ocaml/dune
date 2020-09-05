@@ -87,9 +87,6 @@ jobs:
         run: opam exec -- make fmt
         if: env.OCAML_VERSION == '4.10.0' && env.OS == 'ubuntu-latest'
 
-      - name: install configurator deps
-        run: opam install ./dune-configurator.opam
-        if: env.CONFIGURATOR == 'true'
       - name: build configurator
-        run: opam exec -- ./dune.exe build dune-configurator.install
+        run: opam install ./dune-configurator.opam
         if: env.CONFIGURATOR == 'true'

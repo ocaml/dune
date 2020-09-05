@@ -29,5 +29,5 @@ let local_libraries =
   ; ("src/dune_rules", Some "Dune_rules", true, None)
   ; ("vendor/cmdliner/src", None, false, None)
   ; ("otherlibs/build-info/src", Some "Build_info", false,
-    Some "build_info_data")
+    Some "Build_info_data")
   ]

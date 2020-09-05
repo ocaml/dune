@@ -46,28 +46,28 @@ module Special_builtin_support = struct
     let supported_api_versions = [ (1, V1) ]
 
     type t =
-      { data_module : string
+      { data_module : Module_name.t
       ; api_version : api_version
       }
 
     let to_dyn { data_module; api_version } =
       let open Dyn.Encoder in
       record
-        [ ("data_module", string data_module)
+        [ ("data_module", Module_name.to_dyn data_module)
         ; ("api_version", api_version_to_dyn api_version)
         ]
 
     let decode =
       let open Dune_lang.Decoder in
       fields
-        (let+ data_module = field "data_module" string
+        (let+ data_module = field "data_module" Module_name.decode
          and+ api_version = api_version_field supported_api_versions in
          { data_module; api_version })
 
     let encode { data_module; api_version } =
       let open Dune_lang.Encoder in
       record_fields
-        [ field "data_module" string data_module
+        [ field "data_module" Module_name.encode data_module
         ; field "api_version" int
             ( match api_version with
             | V1 -> 1 )
@@ -105,25 +105,30 @@ module Special_builtin_support = struct
 
   module Dune_site = struct
     type t =
-      { data_module : string
+      { data_module : Module_name.t
       ; plugins : bool
       }
 
     let to_dyn { data_module; plugins } =
       let open Dyn.Encoder in
-      record [ ("data_module", string data_module); ("plugins", bool plugins) ]
+      record
+        [ ("data_module", Module_name.to_dyn data_module)
+        ; ("plugins", bool plugins)
+        ]
 
     let decode =
       let open Dune_lang.Decoder in
       fields
-        (let+ data_module = field "data_module" string
+        (let+ data_module = field "data_module" Module_name.decode
          and+ plugins = field_b "plugins" in
          { data_module; plugins })
 
     let encode { data_module; plugins } =
       let open Dune_lang.Encoder in
       record_fields
-        [ field "data_module" string data_module; field_b "plugins" plugins ]
+        [ field "data_module" Module_name.encode data_module
+        ; field_b "plugins" plugins
+        ]
   end
 
   type t =

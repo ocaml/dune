@@ -105,9 +105,11 @@ module Source = struct
     | None, Some x ->
       x
 
-  let add_file t kind file =
-    assert (not @@ has t ~ml_kind:kind);
-    match kind with
+  let add_file t ml_kind file =
+    if has t ~ml_kind then
+      Code_error.raise "Attempted to add a duplicate file to module"
+        [ ("module", to_dyn t); ("file", File.to_dyn file) ];
+    match ml_kind with
     | Ml_kind.Impl -> { t with files = { t.files with impl = Some file } }
     | Intf -> { t with files = { t.files with intf = Some file } }
 

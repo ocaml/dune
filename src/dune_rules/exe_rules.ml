@@ -102,8 +102,8 @@ let with_empty_intf ~sctx ~dir module_ =
   Super_context.add_rule sctx ~dir rule;
   Module.add_file module_ Ml_kind.Intf (Module.File.make Dialect.ocaml name)
 
-let executables_rules ~sctx ~dir ~expander ~dir_contents ~scope ~compile_info
-    ~embed_in_plugin_libraries (exes : Dune_file.Executables.t) =
+let executables_rules ~sctx ~dune_version ~dir ~expander ~dir_contents ~scope
+    ~compile_info ~embed_in_plugin_libraries (exes : Dune_file.Executables.t) =
   (* Use "eobjs" rather than "objs" to avoid a potential conflict with a library
      of the same name *)
   let modules, obj_dir =
@@ -124,16 +124,21 @@ let executables_rules ~sctx ~dir ~expander ~dir_contents ~scope ~compile_info
       ~lint:exes.buildable.lint ~lib_name:None
   in
   let modules =
+    let executable_names =
+      List.map exes.names ~f:Module_name.of_string_allow_invalid
+    in
     Modules.map_user_written modules ~f:(fun m ->
         let name = Module.name m in
         let m = Pp_spec.pp_module_as pp name m in
-        let is_main =
-          List.mem name
-            ~set:(exes.names |> List.map ~f:Module_name.of_string_allow_invalid)
+        let add_empty_intf =
+          dune_version >= (2, 8)
+          && List.mem name ~set:executable_names
+          && not (Module.has m ~ml_kind:Intf)
         in
-        match (not (Module.has m ~ml_kind:Intf)) && is_main with
-        | false -> m
-        | true -> with_empty_intf ~sctx ~dir m)
+        if add_empty_intf then
+          with_empty_intf ~sctx ~dir m
+        else
+          m)
   in
   let programs = programs ~modules ~exes in
   let explicit_js_mode = Dune_project.explicit_js_mode (Scope.project scope) in
@@ -213,8 +218,9 @@ let rules ~sctx ~dir ~dir_contents ~scope ~expander
     (exes : Dune_file.Executables.t) =
   let compile_info = compile_info ~scope exes in
   let f () =
-    executables_rules exes ~sctx ~dir ~dir_contents ~scope ~expander
-      ~compile_info ~embed_in_plugin_libraries:exes.embed_in_plugin_libraries
+    executables_rules exes ~sctx ~dune_version ~dir ~dir_contents ~scope
+      ~expander ~compile_info
+      ~embed_in_plugin_libraries:exes.embed_in_plugin_libraries
   in
   Buildable_rules.gen_select_rules sctx compile_info ~dir;
   Bootstrap_info.gen_rules sctx exes ~dir compile_info;

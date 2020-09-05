@@ -702,10 +702,10 @@ end = struct
     let fiber =
       Fiber.Var.set t_var t (fun () -> Fiber.with_error_handler f ~on_error)
     in
-    Console.Status_line.set (Fun.const None);
     match Fiber.run fiber ~iter with
     | res ->
       assert (Event.pending_jobs () = 0);
+      Console.Status_line.set (Fun.const None);
       Ok res
     | exception Abort err -> Error err
     | exception exn -> Error (Exn (Exn_with_backtrace.capture exn))

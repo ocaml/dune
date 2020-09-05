@@ -105,6 +105,12 @@ module Source = struct
     | None, Some x ->
       x
 
+  let add_file t kind file =
+    assert (not @@ has t ~ml_kind:kind);
+    match kind with
+    | Ml_kind.Impl -> { t with files = { t.files with impl = Some file } }
+    | Intf -> { t with files = { t.files with intf = Some file } }
+
   let src_dir t = Path.parent_exn (choose_file t).path
 
   let map_files t ~f =
@@ -178,6 +184,10 @@ let iter t ~f =
 
 let with_wrapper t ~main_module_name =
   { t with obj_name = Module_name.wrap t.source.name ~with_:main_module_name }
+
+let add_file t kind file =
+  let source = Source.add_file t.source kind file in
+  { t with source }
 
 let map_files t ~f =
   let source =

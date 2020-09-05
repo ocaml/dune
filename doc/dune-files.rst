@@ -633,6 +633,10 @@ binary at the same place as where ``ocamlc`` was found.
 Executables can also be linked as object or shared object files. See
 `linking modes`_ for more information.
 
+Starting from dune 2.8, executable modules without interface files (e.g. `.mli`,
+`.rei`) are compiled against empty interfaces in order to improve dead code
+detection.
+
 ``<optional-fields>`` are:
 
 - ``(public_name <public-name>)`` specifies that the executable should be
@@ -1343,6 +1347,10 @@ running dune runtest you can use the following stanza:
     (names mytest)
     (libraries alcotest mylib)
     (action (run %{test} -e)))
+
+Starting from dune 2.8, test modules without interface files (e.g. `.mli`,
+`.rei`) are compiled against empty interfaces in order to improve dead code
+detection.
 
 test
 ----

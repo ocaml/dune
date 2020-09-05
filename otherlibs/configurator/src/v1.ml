@@ -529,7 +529,7 @@ const char *s%i = "BEGIN-%i-false-END";
     let values =
       Io.with_lexbuf_from_file obj_file ~f:(Extract_obj.extract [])
       |> List.fold_left ~init:Int.Map.empty ~f:(fun acc (key, v) ->
-             Int.Map.update acc ~key ~f:(function
+             Int.Map.update acc key ~f:(function
                | None -> Some [ v ]
                | Some vs -> Some (v :: vs)))
     in

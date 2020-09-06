@@ -33,3 +33,12 @@ Empty `.mli` files are only generated when lang version >= 2.8:
   $ dune runtest
   $ test ! -f _build/default/bin/executable.mli
   $ test ! -f _build/default/test/test.mli
+
+If an executable already has an interface, it is preserved:
+
+  $ dune clean
+  $ echo "(lang dune 2.8)" > dune-project
+  $ dune build ./bin_with_intf/executable.exe
+  $ cat _build/default/bin_with_intf/executable.mli
+  val a : int
+

@@ -20,6 +20,9 @@ jobs:
         skip_test:
           - false
         include:
+          - ocaml-version: 4.11.0
+            os: ubuntu-latest
+            skip_test: true
           - ocaml-version: 4.09.1
             os: ubuntu-latest
             skip_test: true

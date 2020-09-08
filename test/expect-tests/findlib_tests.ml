@@ -30,6 +30,7 @@ let findlib =
     ; ocaml_version_string = "4.02.3"
     ; ocaml_version = Ocaml_version.make (4, 2, 3)
     ; instrument_with = []
+    ; context_name = Context_name.of_string "default"
     }
   in
   Findlib.create ~paths:[ db_path ] ~lib_config

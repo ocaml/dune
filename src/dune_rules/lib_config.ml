@@ -17,6 +17,7 @@ type t =
   ; ocaml_version_string : string
   ; ocaml_version : Ocaml_version.t
   ; instrument_with : Lib_name.t list
+  ; context_name : Context_name.t
   }
 
 let var_map =
@@ -27,6 +28,7 @@ let var_map =
   ; ("ccomp_type", fun t -> Ocaml_config.Ccomp_type.to_string t.ccomp_type)
   ; ("profile", fun t -> Profile.to_string t.profile)
   ; ("ocaml_version", fun t -> t.ocaml_version_string)
+  ; ("context_name", fun t -> Context_name.to_string t.context_name)
   ]
 
 let allowed_in_enabled_if =
@@ -36,6 +38,7 @@ let allowed_in_enabled_if =
         | "profile" -> (2, 5)
         | "ccomp_type" -> (2, 0)
         | "ocaml_version" -> (2, 5)
+        | "context_name" -> (2, 8)
         | _ -> (1, 0)
       in
       (var, min_version))

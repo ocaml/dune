@@ -1,4 +1,4 @@
-This one unse forbidden variables
+This one uses forbidden variables
   $ dune build foo
   File "dune", line 3, characters 18-31:
   3 |  (enabled_if (= %{project_root} "")))

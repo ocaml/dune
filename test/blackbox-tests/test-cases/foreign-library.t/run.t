@@ -741,8 +741,8 @@ Testsuite for the (foreign_library ...) stanza.
   > EOF
 
   $ export OCAMLPATH=$PWD/external/install/lib; ./sdune exec ./main.exe --root=some/dir
-  Entering directory 'some/dir'
-  Entering directory 'some/dir'
+  Entering directory `some/dir'
+  Entering directory `some/dir'
   Answer = 42
 
 ----------------------------------------------------------------------------------
@@ -785,7 +785,7 @@ Testsuite for the (foreign_library ...) stanza.
   > EOF
 
   $ ./sdune build --root=github2914/dir
-  Entering directory 'github2914/dir'
+  Entering directory `github2914/dir'
   File "dune", line 2, characters 15-27:
   2 |  (archive_name some/path/id)
                      ^^^^^^^^^^^^
@@ -900,6 +900,6 @@ Testsuite for the (foreign_library ...) stanza.
   >  (foreign_stubs (language c) (names stubs)))
   > EOF
   $ dune build --root stubs_in_libs
-  Entering directory 'stubs_in_libs'
+  Entering directory `stubs_in_libs'
   $ stubs_in_libs/_build/default/main.exe
   12

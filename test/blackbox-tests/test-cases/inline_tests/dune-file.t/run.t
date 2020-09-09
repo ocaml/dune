@@ -27,6 +27,6 @@ Now we make sure that we can use the backend when it's available as an external
 package:
 
   $ export OCAMLPATH=$PWD/_install/lib; dune runtest --root dune-file-user
-  Entering directory 'dune-file-user'
+  Entering directory `dune-file-user'
   inline_test_runner_foo_tests alias runtest
   414243

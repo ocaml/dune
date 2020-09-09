@@ -1,7 +1,7 @@
 stubs and js files installed
 
   $ dune build --root stubs | dune_cmd sanitize
-  Entering directory 'stubs'
+  Entering directory `stubs'
   lib: [
     "_build/install/default/lib/foo/META"
     "_build/install/default/lib/foo/cfoo.h"
@@ -25,7 +25,7 @@ stubs and js files installed
 install stanza is respected
 
   $ dune build --root install-stanza
-  Entering directory 'install-stanza'
+  Entering directory `install-stanza'
   lib: [
     "_build/install/default/lib/foo/META"
     "_build/install/default/lib/foo/dune-package"
@@ -39,7 +39,7 @@ install stanza is respected
 public exes are installed
 
   $ dune build --root exe
-  Entering directory 'exe'
+  Entering directory `exe'
   lib: [
     "_build/install/default/lib/foo/META"
     "_build/install/default/lib/foo/dune-package"
@@ -52,7 +52,7 @@ public exes are installed
 mld files are installed
 
   $ dune build --root mld
-  Entering directory 'mld'
+  Entering directory `mld'
   lib: [
     "_build/install/default/lib/foo/META"
     "_build/install/default/lib/foo/dune-package"
@@ -65,7 +65,7 @@ mld files are installed
 unwrapped libraries have the correct artifacts
 
   $ dune build --root lib-unwrapped | dune_cmd sanitize
-  Entering directory 'lib-unwrapped'
+  Entering directory `lib-unwrapped'
   lib: [
     "_build/install/default/lib/foo/META"
     "_build/install/default/lib/foo/dune-package"
@@ -85,7 +85,7 @@ unwrapped libraries have the correct artifacts
 wrapped lib with lib interface module
 
   $ dune build --root lib-wrapped-alias | dune_cmd sanitize
-  Entering directory 'lib-wrapped-alias'
+  Entering directory `lib-wrapped-alias'
   lib: [
     "_build/install/default/lib/foo/META"
     "_build/install/default/lib/foo/bar.ml"
@@ -113,7 +113,7 @@ wrapped lib with lib interface module
 wrapped lib without lib interface module
 
   $ dune build --root lib-wrapped-no-alias | dune_cmd sanitize
-  Entering directory 'lib-wrapped-no-alias'
+  Entering directory `lib-wrapped-no-alias'
   lib: [
     "_build/install/default/lib/foo/META"
     "_build/install/default/lib/foo/bar.ml"

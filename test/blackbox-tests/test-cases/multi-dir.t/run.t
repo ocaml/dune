@@ -2,7 +2,7 @@ Simple test with a multi dir exe
 --------------------------------
 
   $ dune build --root test1
-  Entering directory 'test1'
+  Entering directory `test1'
            foo alias default
   Hello, world!
 
@@ -10,7 +10,7 @@ Test that include_subdirs stop the recursion
 --------------------------------------------
 
   $ dune build --root test2
-  Entering directory 'test2'
+  Entering directory `test2'
           main alias default
   Hello, world!
 
@@ -18,7 +18,7 @@ Test with C stubs in sub-directories
 ------------------------------------
 
   $ dune runtest --root test3
-  Entering directory 'test3'
+  Entering directory `test3'
   File "dune", line 9, characters 16-25:
   9 |  (c_names stub1 sub/stub2))
                       ^^^^^^^^^
@@ -30,7 +30,7 @@ Test some error cases
 ---------------------
 
   $ dune build --root error1
-  Entering directory 'error1'
+  Entering directory `error1'
   File "dune", line 1, characters 0-0:
   Error: Module "X" appears in several directories:
   - _build/default/b
@@ -39,7 +39,7 @@ Test some error cases
   [1]
 
   $ dune build --root error2
-  Entering directory 'error2'
+  Entering directory `error2'
   File "dune", line 2, characters 0-29:
   2 | (include_subdirs unqualified)
       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -47,7 +47,7 @@ Test some error cases
   [1]
 
   $ dune build --root error3
-  Entering directory 'error3'
+  Entering directory `error3'
   File "src/gen/dune", line 1, characters 0-23:
   1 | (executable (name gen))
       ^^^^^^^^^^^^^^^^^^^^^^^
@@ -60,6 +60,6 @@ Test for (include_subdir unqualified) with (preprocess (action ...))
 --------------------------------------------------------------------
 
   $ dune exec ./main.exe --root test4 @all
-  Entering directory 'test4'
-  Entering directory 'test4'
+  Entering directory `test4'
+  Entering directory `test4'
   print_endline "foo"

@@ -1,7 +1,7 @@
 public libraries may not have private dependencies
 
   $ dune build --root private-dep
-  Entering directory 'private-dep'
+  Entering directory `private-dep'
   File "dune", line 8, characters 12-22:
   8 |  (libraries privatelib)
                   ^^^^^^^^^^
@@ -11,7 +11,7 @@ public libraries may not have private dependencies
 
 On the other hand, public libraries may have private preprocessors
   $ dune build --display short --root private-rewriter
-  Entering directory 'private-rewriter'
+  Entering directory `private-rewriter'
         ocamlc .ppx_internal.objs/byte/ppx_internal.{cmi,cmo,cmt}
       ocamlopt .ppx_internal.objs/native/ppx_internal.{cmx,o}
       ocamlopt ppx_internal.{a,cmxa}
@@ -26,7 +26,7 @@ On the other hand, public libraries may have private preprocessors
 
 Unless they introduce private runtime dependencies:
   $ dune build --root private-runtime-deps
-  Entering directory 'private-runtime-deps'
+  Entering directory `private-runtime-deps'
   File "dune", line 16, characters 7-18:
   16 |   (pps private_ppx))
               ^^^^^^^^^^^
@@ -36,9 +36,9 @@ Unless they introduce private runtime dependencies:
 
 However, public binaries may accept private dependencies
   $ dune exec --root exes ./publicbin.exe
-  Entering directory 'exes'
-  Entering directory 'exes'
+  Entering directory `exes'
+  Entering directory `exes'
 
 Private dependencies shouldn't make the library optional
   $ dune build @install --display short --root optional
-  Entering directory 'optional'
+  Entering directory `optional'

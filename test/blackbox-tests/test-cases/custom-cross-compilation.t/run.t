@@ -1,5 +1,5 @@
   $ dune build --root ./normal --display short file @install
-  Entering directory 'normal'
+  Entering directory `normal'
       ocamldep .p.eobjs/p.ml.d [cross]
       ocamldep .p.eobjs/p.ml.d
         ocamlc .p.eobjs/byte/p.{cmi,cmo,cmt} [cross]
@@ -15,7 +15,7 @@
   137
 
   $ dune build --root ./bad-configuration --display short file @install
-  Entering directory 'bad-configuration'
+  Entering directory `bad-configuration'
   File "dune-workspace", line 5, characters 9-50:
   5 | (context (default
   6 |  (name cross-1)
@@ -25,7 +25,7 @@
   [1]
 
   $ dune build --root ./topological-loop --display short file @install
-  Entering directory 'topological-loop'
+  Entering directory `topological-loop'
   File "dune-workspace", line 13, characters 9-50:
   13 | (context (default
   14 |  (name cross-3)
@@ -35,7 +35,7 @@
   [1]
 
   $ env OCAMLFIND_CONF=$PWD/target-and-host/etc/findlib.conf dune build --root ./target-and-host --display short file @install
-  Entering directory 'target-and-host'
+  Entering directory `target-and-host'
   File "dune-workspace", line 5, characters 9-65:
   5 | (context (default
   6 |  (name cross-1)
@@ -46,7 +46,7 @@
 
 
   $ dune build --root ./context-not-found --display short file @install
-  Entering directory 'context-not-found'
+  Entering directory `context-not-found'
   File "dune-workspace", line 5, characters 9-47:
   5 | (context (default
   6 |  (name cross-1)

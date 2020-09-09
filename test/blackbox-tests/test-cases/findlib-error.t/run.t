@@ -1,7 +1,7 @@
 We are dropping support for findlib in dune
 
   $ dune build --root in-dune target.txt
-  Entering directory 'in-dune'
+  Entering directory `in-dune'
   File "dune", line 2, characters 25-37:
   2 | (write-file target.txt %{findlib:pkg})
                                ^^^^^^^^^^^^

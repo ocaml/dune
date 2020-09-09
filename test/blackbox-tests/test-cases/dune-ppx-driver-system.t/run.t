@@ -9,7 +9,7 @@ No ppx driver found
   >  (preprocess (pps)))
   > EOF
   $ dune build --root no-driver
-  Entering directory 'no-driver'
+  Entering directory `no-driver'
   Info: Creating file dune-project with this contents:
   | (lang dune 2.8)
   File "dune", line 5, characters 13-18:
@@ -21,7 +21,7 @@ No ppx driver found
 Too many drivers
 
   $ dune build --root driver-tests foo2.cma
-  Entering directory 'driver-tests'
+  Entering directory `driver-tests'
   File "dune", line 6, characters 13-28:
   6 |  (preprocess (pps ppx1 ppx2)))
                    ^^^^^^^^^^^^^^^
@@ -32,7 +32,7 @@ Too many drivers
 Not compatible with Dune
 
   $ dune build --root driver-tests foo3.cma
-  Entering directory 'driver-tests'
+  Entering directory `driver-tests'
   File "dune", line 13, characters 13-28:
   13 |  (preprocess (pps ppx_other)))
                     ^^^^^^^^^^^^^^^
@@ -44,7 +44,7 @@ Not compatible with Dune
 Incompatible Cookies
 
   $ dune build --root driver-tests foo4.cma
-  Entering directory 'driver-tests'
+  Entering directory `driver-tests'
   File "dune", line 20, characters 13-28:
   20 |  (preprocess (pps ppx3 ppx4)))
                     ^^^^^^^^^^^^^^^
@@ -55,19 +55,19 @@ Incompatible Cookies
 Same, but with error pointing to .ppx
 
   $ dune build --root driver-tests .ppx/foo.ppx1+foo.ppx2/ppx.exe
-  Entering directory 'driver-tests'
+  Entering directory `driver-tests'
   Error: invalid ppx key for default/.ppx/foo.ppx1+foo.ppx2/ppx.exe
   [1]
 
   $ dune build --root driver-tests .ppx/foo.ppx-other/ppx.exe
-  Entering directory 'driver-tests'
+  Entering directory `driver-tests'
   Error: invalid ppx key for default/.ppx/foo.ppx-other/ppx.exe
   [1]
 
 Test the argument syntax
 
   $ dune build --root driver-tests test_ppx_args.cma
-  Entering directory 'driver-tests'
+  Entering directory `driver-tests'
            ppx test_ppx_args.pp.ml
   .ppx/454728df5270ab91f8a5af6b5e860eb0/ppx.exe
   -arg1
@@ -97,7 +97,7 @@ Test the argument syntax
 Test that going through the -ppx option of the compiler works
 
   $ dune build --root driver-tests test_ppx_staged.cma
-  Entering directory 'driver-tests'
+  Entering directory `driver-tests'
       ocamldep .test_ppx_staged.objs/test_ppx_staged.ml.d
   tool name: ocamldep
   args:--as-ppx -arg1 -arg2 -arg3=Oreo -foo bar Snickerdoodle --cookie france="Petit Beurre" --cookie italy="Biscotti" --cookie library-name="test_ppx_staged"
@@ -108,9 +108,9 @@ Test that going through the -ppx option of the compiler works
 Test using installed drivers
 
   $ dune build --root driver @install
-  Entering directory 'driver'
+  Entering directory `driver'
   $ OCAMLPATH=driver/_build/install/default/lib dune build --root use-external-driver driveruser.cma
-  Entering directory 'use-external-driver'
+  Entering directory `use-external-driver'
            ppx driveruser.pp.ml
   .ppx/35d69311d5da258d073875db2b34f33b/ppx.exe
   -arg1
@@ -132,7 +132,7 @@ Test using installed drivers
   [1]
 
   $ OCAMLPATH=driver/_build/install/default/lib dune build --root replaces driveruser.cma
-  Entering directory 'replaces'
+  Entering directory `replaces'
            ppx driveruser.pp.ml
   replacesdriver
   .ppx/886937db0da323b743b4366c6d3a795f/ppx.exe
@@ -155,9 +155,9 @@ Test using installed drivers
   [1]
 
   $ OCAMLPATH=driver/_build/install/default/lib dune build --root driver-replaces @install
-  Entering directory 'driver-replaces'
+  Entering directory `driver-replaces'
   $ OCAMLPATH=driver/_build/install/default/lib:driver-replaces/_build/install/default/lib dune build --root replaces-external driveruser.cma
-  Entering directory 'replaces-external'
+  Entering directory `replaces-external'
            ppx driveruser.pp.ml
   replacesdriver
   .ppx/886937db0da323b743b4366c6d3a795f/ppx.exe

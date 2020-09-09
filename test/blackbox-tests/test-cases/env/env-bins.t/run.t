@@ -1,6 +1,6 @@
 Basic test that we can use private binaries as public ones
   $ dune build --root private-bin-import
-  Entering directory 'private-bin-import'
+  Entering directory `private-bin-import'
           priv alias using-priv/runtest
   Executing priv as priv
   PATH:
@@ -14,7 +14,7 @@ Basic test that we can use private binaries as public ones
 
 Override public binary in env
   $ dune build --root override-bins
-  Entering directory 'override-bins'
+  Entering directory `override-bins'
            foo alias test/runtest
   private binary
            foo alias default
@@ -22,7 +22,7 @@ Override public binary in env
 
 Nest env binaries
   $ dune build --root nested-env
-  Entering directory 'nested-env'
+  Entering directory `nested-env'
           priv alias using-priv/nested/runtest
   Executing priv as priv
   PATH:

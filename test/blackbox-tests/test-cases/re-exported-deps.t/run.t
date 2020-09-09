@@ -1,12 +1,12 @@
 dependencies can be exported transitively:
   $ dune exec ./foo.exe --root transitive
-  Entering directory 'transitive'
-  Entering directory 'transitive'
+  Entering directory `transitive'
+  Entering directory `transitive'
 
 transtive deps expressed in the dune-package
 
   $ dune build @install --root transitive
-  Entering directory 'transitive'
+  Entering directory `transitive'
   $ dune_cmd cat transitive/_build/install/default/lib/pkg/dune-package | sed "s/(lang dune .*)/(lang dune <version>)/" | dune_cmd sanitize
   (lang dune <version>)
   (name pkg)
@@ -42,7 +42,7 @@ transtive deps expressed in the dune-package
 
 Re-exporting deps in executables isn't allowed
   $ dune build --root re-export-exe @all
-  Entering directory 're-export-exe'
+  Entering directory `re-export-exe'
   File "dune", line 7, characters 12-27:
   7 |  (libraries (re_export foo)))
                   ^^^^^^^^^^^^^^^

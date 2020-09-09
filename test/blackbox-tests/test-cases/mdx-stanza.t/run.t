@@ -6,13 +6,13 @@ To use the mdx stanza you need to explicitly set (using mdx ..) in the
 dune-project
 
   $ dune build @install --root using-mdx/
-  Entering directory 'using-mdx'
+  Entering directory `using-mdx'
   Info: Appending this line to dune-project: (using mdx 0.1)
 
 It also requires dune lang 2.4 or higher
 
   $ dune build @install --root lang-version/
-  Entering directory 'lang-version'
+  Entering directory `lang-version'
   File "dune-project", line 3, characters 11-14:
   3 | (using mdx 0.1)
                  ^^^
@@ -31,7 +31,7 @@ It also requires dune lang 2.4 or higher
 You can use the mdx stanza to check your documentation in markdown and mli files
 
   $ dune runtest --root simple/
-  Entering directory 'simple'
+  Entering directory `simple'
   File "README.md", line 1, characters 0-0:
   Error: Files _build/default/README.md and
   _build/default/.mdx/README.md.corrected differ.
@@ -41,13 +41,13 @@ Dune should invoke `ocaml-mdx deps` to figure out the files and directories a ma
 or mli to-be-mdxed file depends upon
 
   $ dune runtest --root mdx-deps/
-  Entering directory 'mdx-deps'
+  Entering directory `mdx-deps'
 
 You can make local packages available to mdx by using the `packages` field of
 the stanza
 
   $ dune runtest --root local-package
-  Entering directory 'local-package'
+  Entering directory `local-package'
 
 Dune does not fail if the `packages` are not available at evaluation time
 (regression test fixed by ocaml/dune#3650)
@@ -65,4 +65,4 @@ Dune fails if the `packages` are not avaliable at execution time
 You can set MDX preludes using the preludes field of the stanza
 
   $ dune runtest --root preludes
-  Entering directory 'preludes'
+  Entering directory `preludes'

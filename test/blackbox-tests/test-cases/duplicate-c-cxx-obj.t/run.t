@@ -8,7 +8,7 @@ stubs names, things are still broken if their .o files overlap:
   > EOF
 
   $ dune build --root diff-stanza @all 2>&1 | dune_cmd sanitize
-  Entering directory 'diff-stanza'
+  Entering directory `diff-stanza'
   File "dune", line 4, characters 10-13:
   4 |  (c_names foo))
                 ^^^
@@ -22,7 +22,7 @@ directories. In this case, the rules are fine, but this is probably not what the
 user intended.
 
   $ dune build --root same-stanza @all
-  Entering directory 'same-stanza'
+  Entering directory `same-stanza'
   File "dune", line 3, characters 14-21:
   3 |  (c_names foo sub/foo))
                     ^^^^^^^
@@ -38,7 +38,7 @@ user intended.
   > EOF
 
   $ dune build --root same-stanza @all
-  Entering directory 'same-stanza'
+  Entering directory `same-stanza'
   File "dune", line 4, characters 10-13:
   4 |  (c_names foo))
                 ^^^

@@ -7,7 +7,7 @@ dune files
 In expands to a file name, and registers this as a dependency.
 
   $ dune build --root dune @test-dep
-  Entering directory 'dune'
+  Entering directory `dune'
   File "dune", line 13, characters 17-47:
   13 |         (echo "%{path:file-that-does-not-exist}\n")
                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -21,7 +21,7 @@ In expands to a file name, and registers this as a dependency.
 This form does not exist, but displays an hint:
 
   $ dune build --root dune-invalid @test-path-no-dep
-  Entering directory 'dune-invalid'
+  Entering directory `dune-invalid'
   File "dune", line 7, characters 17-54:
   7 |         (echo "%{path-no-dep:file-that-does-not-exist}\n")
                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

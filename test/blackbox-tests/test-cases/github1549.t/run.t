@@ -1,7 +1,7 @@
 Reproduction case for #1549: too many parentheses in installed .dune files
 
   $ dune build @install --root backend
-  Entering directory 'backend'
+  Entering directory `backend'
 
   $ dune_cmd cat backend/_build/install/default/lib/dune_inline_tests/dune-package | sed "s/(lang dune .*)/(lang dune <version>)/" | dune_cmd sanitize
   (lang dune <version>)
@@ -30,4 +30,4 @@ Reproduction case for #1549: too many parentheses in installed .dune files
      (run sed "s/(\\*TEST:\\(.*\\)\\*)/let () = \\1;;/" %{impl-files}))))
 
   $ env OCAMLPATH=backend/_build/install/default/lib dune runtest --root example
-  Entering directory 'example'
+  Entering directory `example'

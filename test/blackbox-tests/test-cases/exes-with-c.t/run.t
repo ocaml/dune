@@ -13,7 +13,7 @@
   >  (foreign_stubs (language c) (names stubs)))
   > EOF
   $ dune build --root err @all
-  Entering directory 'err'
+  Entering directory `err'
   File "dune", line 1, characters 0-86:
   1 | (executable
   2 |  (name foo)

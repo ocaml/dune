@@ -1,7 +1,7 @@
 Successes:
 
   $ dune build --display short --root foo --debug-dep
-  Entering directory 'foo'
+  Entering directory `foo'
       ocamldep .foo.objs/foo.ml.d
         ocamlc .foo.objs/byte/foo__.{cmi,cmo,cmt}
       ocamldep .foo.objs/intf.mli.d
@@ -22,7 +22,7 @@ Successes:
 Errors:
 
   $ dune build --root a foo.cma
-  Entering directory 'a'
+  Entering directory `a'
   File "dune", line 1, characters 0-21:
   1 | (library
   2 |  (name foo))
@@ -32,7 +32,7 @@ Errors:
     (modules_without_implementation x y)
   [1]
   $ dune build --root b foo.cma
-  Entering directory 'b'
+  Entering directory `b'
   File "dune", line 3, characters 33-34:
   3 |  (modules_without_implementation x))
                                        ^
@@ -41,14 +41,14 @@ Errors:
   - Y
   [1]
   $ dune build --root c foo.cma
-  Entering directory 'c'
+  Entering directory `c'
   File "dune", line 3, characters 33-34:
   3 |  (modules_without_implementation x))
                                        ^
   Error: Module X doesn't exist.
   [1]
   $ dune build --root d foo.cma
-  Entering directory 'd'
+  Entering directory `d'
   File "dune", line 3, characters 33-34:
   3 |  (modules_without_implementation x))
                                        ^

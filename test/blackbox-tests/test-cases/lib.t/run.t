@@ -171,7 +171,7 @@ TODO: Fix %{libexec} and %{libexec-private} variables and test them.
   $ echo "(name test-lib)" >> src/dune-project
 
   $ export OCAMLPATH=$PWD/external/install/lib; ./sdune build @find-a --root=src
-  Entering directory 'src'
+  Entering directory `src'
   File "dune", line 7, characters 18-52:
   7 |  (action (echo "%{lib-private:external_library:opam}")))
                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

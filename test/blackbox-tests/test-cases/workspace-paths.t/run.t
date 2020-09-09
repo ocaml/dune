@@ -19,7 +19,7 @@ is prohibited.
   > (lang dune 1.12)
   > EOF
   $ dune build --root sub
-  Entering directory 'sub'
+  Entering directory `sub'
   File "dune-workspace", line 4, characters 19-22:
   4 |    (paths (FOO a) (FOO b))))
                          ^^^

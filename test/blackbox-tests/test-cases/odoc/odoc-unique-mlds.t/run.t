@@ -1,6 +1,6 @@
 Duplicate mld's in the same scope
   $ dune build @doc --display short --root ./same-scope
-  Entering directory 'same-scope'
+  Entering directory `same-scope'
           odoc _doc/_html/highlight.pack.js,_doc/_html/odoc.css
         ocamlc lib1/.root_lib1.objs/byte/root_lib1.{cmi,cmo,cmt}
           odoc _doc/_odoc/pkg/root/page-index.odoc
@@ -14,7 +14,7 @@ Duplicate mld's in the same scope
 Duplicate mld's in different scope
   $ rm -rf diff-scope/_build
   $ dune build @doc --display short --root ./diff-scope
-  Entering directory 'diff-scope'
+  Entering directory `diff-scope'
           odoc _doc/_html/highlight.pack.js,_doc/_html/odoc.css
         ocamlc scope1/.scope1.objs/byte/scope1.{cmi,cmo,cmt}
           odoc _doc/_odoc/pkg/scope1/page-index.odoc

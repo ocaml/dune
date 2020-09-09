@@ -1,7 +1,7 @@
 Exact path provided by the user:
 
   $ dune runtest --root precise-path
-  Entering directory 'precise-path'
+  Entering directory `precise-path'
   File "dune", line 1, characters 0-49:
   1 | (alias
   2 |  (name runtest)
@@ -12,7 +12,7 @@ Exact path provided by the user:
 Path that needs to be searched:
 
   $ dune runtest --root search-path
-  Entering directory 'search-path'
+  Entering directory `search-path'
   File "dune", line 3, characters 14-32:
   3 |  (action (run foo-does-not-exist)))
                     ^^^^^^^^^^^^^^^^^^
@@ -23,7 +23,7 @@ Path that needs to be searched:
 Path in deps field of alias stanza
 
   $ dune runtest --root alias-deps-field
-  Entering directory 'alias-deps-field'
+  Entering directory `alias-deps-field'
   File "dune", line 1, characters 0-38:
   1 | (alias
   2 |  (name runtest)

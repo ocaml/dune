@@ -39,11 +39,11 @@ Since dune 2.5 libraries `enabled_if` can use the `%{ocaml_version}` variable.
 
 This library is enabled (all versions)
   $ dune build main.exe --root ocaml_version
-  Entering directory 'ocaml_version'
+  Entering directory `ocaml_version'
 
 This one is disabled (version too low)
   $ dune build main2.exe --root ocaml_version
-  Entering directory 'ocaml_version'
+  Entering directory `ocaml_version'
   File "dune", line 27, characters 12-22:
   27 |  (libraries futurecaml))
                    ^^^^^^^^^^
@@ -55,7 +55,7 @@ This one is disabled (version too low)
 
 This one unse forbidden variables
   $ dune build foo --root forbidden_var
-  Entering directory 'forbidden_var'
+  Entering directory `forbidden_var'
   File "dune", line 3, characters 18-31:
   3 |  (enabled_if (= %{project_root} "")))
                         ^^^^^^^^^^^^^

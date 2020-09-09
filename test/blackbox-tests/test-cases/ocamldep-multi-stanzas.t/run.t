@@ -1,5 +1,5 @@
   $ dune exec ./test.exe --debug-dep --root dune
-  Entering directory 'dune'
+  Entering directory `dune'
   File "dune", line 1, characters 0-0:
   Error: Module "Lib" is used in several stanzas:
   - dune:1
@@ -11,7 +11,7 @@
   [1]
 
   $ dune build src/a.cma --debug-dep --root dune
-  Entering directory 'dune'
+  Entering directory `dune'
   File "src/dune", line 1, characters 0-0:
   Error: Module "X" is used in several stanzas:
   - src/dune:1

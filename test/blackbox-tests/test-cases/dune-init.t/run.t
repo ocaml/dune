@@ -314,16 +314,16 @@ Can init and build a new executable project
   test_exec_proj.ml
 
   $ dune exec --root test_exec_proj ./bin/main.exe 2>&1 | sed "s/(lang dune .*)/(lang dune <version>)/"
-  Entering directory 'test_exec_proj'
+  Entering directory `test_exec_proj'
   Info: Creating file dune-project with this contents:
   | (lang dune <version>)
   | (name test_exec_proj)
-  Entering directory 'test_exec_proj'
+  Entering directory `test_exec_proj'
   Hello, World!
 
   $ dune exec --root test_exec_proj ./test/test_exec_proj.exe
-  Entering directory 'test_exec_proj'
-  Entering directory 'test_exec_proj'
+  Entering directory `test_exec_proj'
+  Entering directory `test_exec_proj'
   $ rm -rf ./test_exec_proj
 
 Can init and build a new library project
@@ -342,7 +342,7 @@ Can init and build a new library project
   test_lib_proj.ml
 
   $ dune build --root test_lib_proj @install --display short 2>&1 | sed "s/(lang dune .*)/(lang dune <version>)/"
-  Entering directory 'test_lib_proj'
+  Entering directory `test_lib_proj'
   Info: Creating file dune-project with this contents:
   | (lang dune <version>)
   | (name test_lib_proj)
@@ -353,7 +353,7 @@ Can init and build a new library project
       ocamlopt lib/test_lib_proj.cmxs
 
   $ dune runtest --root test_lib_proj --display short
-  Entering directory 'test_lib_proj'
+  Entering directory `test_lib_proj'
       ocamldep test/.test_lib_proj.eobjs/test_lib_proj.ml.d
         ocamlc test/.test_lib_proj.eobjs/byte/dune__exe__Test_lib_proj.{cmi,cmo,cmt}
       ocamlopt test/.test_lib_proj.eobjs/native/dune__exe__Test_lib_proj.{cmx,o}

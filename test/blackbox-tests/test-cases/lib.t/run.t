@@ -214,3 +214,44 @@ TODO: Fix %{libexec} and %{libexec-private} variables and test them.
   project. The current project's name is "test-lib", but the reference is to
   "another-lib".
   [1]
+
+----------------------------------------------------------------------------------
+* lib-private with --only-packages
+In this test, two packages are defined in the same project, but we may not
+access the artifacts through %{lib-private}
+
+  $ mkdir lib-private-only-packages
+  $ cd lib-private-only-packages
+  $ mkdir lib1 lib2
+  $ cat >dune-project <<EOF
+  > (lang dune 2.8)
+  > (name lib-private-test)
+  > (package (name public_lib1))
+  > (package (name public_lib2))
+  > EOF
+  $ cat >lib1/dune <<EOF
+  > (library
+  >  (name lib1)
+  >  (public_name public_lib1))
+  > EOF
+  $ touch lib1/lib1.ml
+  $ cat >lib2/dune <<EOF
+  > (library
+  >  (name lib2)
+  >  (public_name public_lib2))
+  > (rule
+  >  (with-stdout-to lib2.ml (echo "let _ = {|%{lib-private:lib1:lib1.ml}|}")))
+  > EOF
+
+The build works in development:
+  $ dune build @install
+
+But will fail when we release it, as it will need to run with -p:
+  $ dune build @install --only-packages public_lib2
+  File "lib2/dune", line 5, characters 44-69:
+  5 |  (with-stdout-to lib2.ml (echo "let _ = {|%{lib-private:lib1:lib1.ml}|}")))
+                                                  ^^^^^^^^^^^^^^^^^^^^^^^^^
+  Error: Library "lib1" not found.
+  Hint: try:
+    dune external-lib-deps --missing --only-packages public_lib2 @install
+  [1]

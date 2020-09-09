@@ -379,14 +379,13 @@ let expand_and_record_generic acc ~dep_kind ~(dir : Path.Build.t) ~pform t
       if lib_private then
         let open Result.O in
         let* lib = Lib.DB.resolve (Scope.libs t.scope) (loc, lib) in
-        let current_project_name = Scope.project t.scope |> Dune_project.name
-        and referenced_project_name =
-          Lib.info lib |> Lib_info.status |> Lib_info.Status.project_name
+        let current_project = Scope.project t.scope
+        and referenced_project =
+          Lib.info lib |> Lib_info.status |> Lib_info.Status.project
         in
         if
-          (* TODO This breaks scoped packages and projects *)
-          Option.equal Dune_project.Name.equal (Some current_project_name)
-            referenced_project_name
+          Option.equal Dune_project.equal (Some current_project)
+            referenced_project
         then
           Ok (Path.relative (Lib_info.src_dir (Lib.info lib)) file)
         else
@@ -397,11 +396,13 @@ let expand_and_record_generic acc ~dep_kind ~(dir : Path.Build.t) ~pform t
                       "The variable \"lib-private\" can only refer to \
                        libraries within the same project. The current \
                        project's name is %S, but the reference is to %s."
-                      (Dune_project.Name.to_string_hum current_project_name)
-                      ( match referenced_project_name with
-                      | Some name ->
-                        "\"" ^ Dune_project.Name.to_string_hum name ^ "\""
-                      | None -> "an external library" )
+                      (Dune_project.Name.to_string_hum
+                         (Dune_project.name current_project))
+                      ( match referenced_project with
+                      | None -> "an external library"
+                      | Some project ->
+                        Dune_project.name project
+                        |> Dune_project.Name.to_string_hum |> String.quoted )
                   ]))
       else
         Artifacts.Public_libs.file_of_lib t.lib_artifacts ~loc ~lib ~file

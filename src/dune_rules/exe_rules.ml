@@ -122,6 +122,7 @@ let executables_rules ~sctx ~dir ~expander ~dir_contents ~scope ~compile_info
     in
     let dynlink =
       (* See https://github.com/ocaml/dune/issues/2527 *)
+      (* XXX rgrinberg: what is this? *)
       true
       || Dune_file.Executables.Link_mode.Map.existsi exes.modes
            ~f:(fun mode _loc ->

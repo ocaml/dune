@@ -40,7 +40,7 @@ module Special_builtin_support : sig
     type api_version = V1
 
     type t =
-      { data_module : string (* TODO should be Module_name.t *)
+      { data_module : Module_name.t
       ; api_version : api_version
       }
   end
@@ -53,7 +53,7 @@ module Special_builtin_support : sig
 
   module Dune_site : sig
     type t =
-      { data_module : string (* TODO Should be Module_name.t *)
+      { data_module : Module_name.t
       ; plugins : bool
       }
   end

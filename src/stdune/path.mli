@@ -316,6 +316,10 @@ val link : t -> t -> unit
 
 val rm_rf : ?allow_external:bool -> t -> unit
 
+(** [clear_dir t] deletes all the contents of directory [t] without removing [t]
+    itself *)
+val clear_dir : t -> unit
+
 val mkdir_p : ?perms:int -> t -> unit
 
 val touch : ?create:bool -> t -> unit

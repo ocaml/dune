@@ -8,17 +8,12 @@ type t =
   ; force_linkall : bool
   }
 
-let generate_and_compile_module cctx ~precompiled_cmi ~name:basename ~lib ~code
-    ~requires =
+let generate_and_compile_module cctx ~precompiled_cmi ~name ~lib ~code ~requires
+    =
   let sctx = CC.super_context cctx in
   let obj_dir = CC.obj_dir cctx in
   let dir = CC.dir cctx in
   let module_ =
-    let name =
-      let info = Lib.info lib in
-      let loc = Lib_info.loc info in
-      Module_name.of_string_allow_invalid (loc, basename)
-    in
     let wrapped = Result.ok_exn (Lib.wrapped lib) in
     let src_dir = Path.build (Obj_dir.obj_dir obj_dir) in
     let gen_module = Module.generated ~src_dir name in
@@ -266,7 +261,8 @@ let handle_special_libs cctx =
             [ dynlink; findlib ]
           in
           let module_ =
-            generate_and_compile_module cctx ~lib ~name:"findlib_initl"
+            generate_and_compile_module cctx ~lib
+              ~name:(Module_name.of_string "findlib_initl")
               ~code:
                 (Build.return
                    (findlib_init_code

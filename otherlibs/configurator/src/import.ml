@@ -100,7 +100,20 @@ module Bool = struct
 end
 
 module Map (S : Map.OrderedType) = struct
-  include MoreLabels.Map.Make (S)
+  module M = MoreLabels.Map.Make (S)
+  include M
+
+  let update (type a) (t : a t) (key : M.key) ~(f : a option -> a option) : a t
+      =
+    let v =
+      match find key t with
+      | exception Not_found -> None
+      | v -> Some v
+    in
+    match (f v, v) with
+    | None, None -> t
+    | None, Some _ -> remove key t
+    | Some data, _ -> add ~key ~data t
 
   let find m k =
     match find k m with

@@ -631,7 +631,7 @@ let prepare ?(config = Config.default) () =
   Process_watcher.init ();
   let cwd = Sys.getcwd () in
   if cwd <> initial_cwd && not !Clflags.no_print_directory then
-    Printf.eprintf "Entering directory '%s'\n%!"
+    Printf.eprintf "Entering directory `%s'\n%!"
       ( if Config.inside_dune then
         let descendant_simple p ~of_ =
           match String.drop_prefix p ~prefix:of_ with

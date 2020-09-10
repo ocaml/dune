@@ -41,6 +41,15 @@ include Backend.S
     {[ print_user_message (User_message.make paragraphs) ]} *)
 val print : User_message.Style.t Pp.t list -> unit
 
+(** [lock] captures any messages written to the console, which are rendered in
+    the previous console mode upon being [unlock]ed.
+
+    To allow these to be used alongside [Fiber] jobs, we expose this unsafe
+    interface instead of [with_lock: (unit -> unit) -> unit]. *)
+val lock : unit -> unit
+
+val unlock : unit -> unit
+
 module Status_line : sig
   (** This module allows to buffer status updates so that they don't slow down
       the application *)

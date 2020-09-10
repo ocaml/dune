@@ -69,9 +69,37 @@ module Backend = struct
     let reset () = Dumb.reset ()
   end
 
+  module Buffered = struct
+    type event =
+      | Message of User_message.t
+      | Reset
+
+    let underlying = ref (module Dumb : S)
+
+    let buffer : event Queue.t = Queue.create ()
+
+    let print_user_message msg = Queue.push buffer (Message msg)
+
+    let set_status_line _ = ()
+
+    (* I'm unsure of what the behavior should be here. My gut tells me that it
+       is less surprising to do nothing (and thus preserving the entire log),
+       but it may also be more correct to render the buffered outbut in its
+       entirety, resets and all. *)
+    let reset () = Queue.push buffer Reset
+
+    let restore () =
+      let (module P : S) = !underlying in
+      Queue.iter buffer ~f:(function
+        | Message msg -> P.print_user_message msg
+        | Reset -> P.reset ())
+  end
+
   let dumb = (module Dumb : S)
 
   let progress = (module Progress : S)
+
+  let buffered = (module Buffered : S)
 
   let main = ref dumb
 
@@ -106,6 +134,14 @@ let set_status_line line =
 let reset () =
   let (module M : Backend.S) = !Backend.main in
   M.reset ()
+
+let lock () =
+  Backend.Buffered.underlying := !Backend.main;
+  Backend.main := Backend.buffered
+
+let unlock () =
+  Backend.Buffered.restore ();
+  Backend.main := !Backend.Buffered.underlying
 
 module Status_line = struct
   type t = unit -> User_message.Style.t Pp.t option

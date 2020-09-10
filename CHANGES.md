@@ -11,6 +11,8 @@ Unreleased
   and make sure that actions executed by dune also use this directory by
   settting `TMPDIR` (or `TEMP` on Windows). (#3691, fixes #3422, @rgrinberg)
 
+- Fix bootstrap script with custom configuration. (#3757, fixes #3774, @marsam)
+
 2.7.1 (2/09/2020)
 -----------------
 

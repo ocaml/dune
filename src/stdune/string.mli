@@ -89,6 +89,8 @@ val for_all : t -> f:(char -> bool) -> bool
     whether to add the quote characters ends up being quite arbitrary. *) *)
 val maybe_quoted : t -> t
 
+val quoted : t -> t
+
 (** Produces: "x, y and z" *)
 val enumerate_and : string list -> string
 

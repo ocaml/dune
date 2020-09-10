@@ -746,7 +746,7 @@ module Library = struct
     let status =
       match conf.public with
       | None -> Lib_info.Status.Private conf.project
-      | Some p -> Public (Dune_project.name conf.project, p.package)
+      | Some p -> Public (conf.project, p.package)
     in
     let virtual_library = is_virtual conf in
     let foreign_archives = foreign_lib_files conf ~dir ~ext_lib in

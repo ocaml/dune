@@ -187,12 +187,14 @@ let for_all =
   in
   fun s ~f -> loop s 0 (length s) f
 
+let quoted = Printf.sprintf "%S"
+
 let maybe_quoted s =
   let escaped = escaped s in
   if (s == escaped || s = escaped) && not (String.contains s ' ') then
     s
   else
-    Printf.sprintf {|"%s"|} escaped
+    quoted s
 
 module O = Comparable.Make (T)
 

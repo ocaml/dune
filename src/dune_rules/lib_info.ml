@@ -177,15 +177,15 @@ end
 module Status = struct
   type t =
     | Installed
-    | Public of Dune_project.Name.t * Package.t
+    | Public of Dune_project.t * Package.t
     | Private of Dune_project.t
 
   let to_dyn x =
     let open Dyn.Encoder in
     match x with
     | Installed -> constr "Installed" []
-    | Public (name, package) ->
-      constr "Public" [ Dune_project.Name.to_dyn name; Package.to_dyn package ]
+    | Public (project, package) ->
+      constr "Public" [ Dune_project.to_dyn project; Package.to_dyn package ]
     | Private proj -> constr "Private" [ Dune_project.to_dyn proj ]
 
   let is_private = function
@@ -194,10 +194,11 @@ module Status = struct
     | Public _ ->
       false
 
-  let project_name = function
+  let project = function
     | Installed -> None
-    | Private project -> Some (Dune_project.name project)
-    | Public (name, _) -> Some name
+    | Private project
+    | Public (project, _) ->
+      Some project
 end
 
 module Source = struct

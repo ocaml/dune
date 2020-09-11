@@ -2,7 +2,6 @@ open! Dune_engine
 open! Stdune
 open Import
 open Dune_lang.Decoder
-open Stanza_common
 
 (* This file defines Dune types as well as the S-expression syntax for the
    various supported versions of the specification. *)
@@ -210,7 +209,7 @@ module Buildable = struct
       located
         (only_in_library
            (field_o "cxx_names" (use_foreign >>> Ordered_set_lang.decode)))
-    and+ modules = modules_field "modules"
+    and+ modules = Stanza_common.modules_field "modules"
     and+ self_build_stubs_archive_loc, self_build_stubs_archive =
       located
         (only_in_library
@@ -219,7 +218,7 @@ module Buildable = struct
                   ~extra_info:"Use the (foreign_archives ...) field instead."
               >>> enter (maybe string) )))
     and+ modules_without_implementation =
-      modules_field "modules_without_implementation"
+      Stanza_common.modules_field "modules_without_implementation"
     and+ libraries =
       field "libraries" (Lib_deps.decode ~allow_re_export) ~default:[]
     and+ flags = Ocaml_flags.Spec.decode
@@ -327,7 +326,7 @@ module Public_lib = struct
     match x with
     | Some x -> Ok x
     | None ->
-      Pkg.resolve project pkg
+      Stanza_common.Pkg.resolve project pkg
       |> Result.map ~f:(fun pkg ->
              { package = pkg
              ; sub_dir =
@@ -837,7 +836,7 @@ module Plugin = struct
        and+ libraries = field "libraries" (repeat (located Lib_name.decode))
        and+ site =
          field "site" (located (pair Package.Name.decode Section.Site.decode))
-       and+ package = Pkg.field "package"
+       and+ package = Stanza_common.Pkg.field "package"
        and+ optional = field_b "optional" in
        { name; libraries; site; package; optional })
 end
@@ -854,7 +853,7 @@ module Install_conf = struct
     fields
       (let+ section = field "section" Install.Section_with_site.decode
        and+ files = field "files" File_binding.Unexpanded.L.decode
-       and+ package = Pkg.field "install"
+       and+ package = Stanza_common.Pkg.field "install"
        and+ enabled_if =
          let allowed_vars = Enabled_if.common_vars ~since:(2, 6) in
          Enabled_if.decode ~allowed_vars ~since:(Some (2, 6)) ()
@@ -979,7 +978,7 @@ module Executables = struct
       and+ package =
         field_o "package"
           (let+ loc = loc
-           and+ pkg = Pkg.decode in
+           and+ pkg = Stanza_common.Pkg.decode in
            (loc, pkg))
       and+ project = Dune_project.get_exn () in
       let names, public_names = names in
@@ -1045,7 +1044,8 @@ module Executables = struct
             Some
               { public_names
               ; package =
-                  Pkg.default_exn ~loc project (pluralize "executable" ~multi)
+                  Stanza_common.Pkg.default_exn ~loc project
+                    (pluralize "executable" ~multi)
               }
         | Some (loc, _), None ->
           User_error.raise ~loc
@@ -1498,7 +1498,8 @@ module Rule = struct
       Enabled_if.decode ~allowed_vars:Any ~since:(Some (1, 4)) ()
     and+ package =
       field_o "package"
-        (Dune_lang.Syntax.since Stanza.syntax (2, 0) >>> Pkg.decode)
+        ( Dune_lang.Syntax.since Stanza.syntax (2, 0)
+        >>> Stanza_common.Pkg.decode )
     and+ alias =
       field_o "alias"
         (Dune_lang.Syntax.since Stanza.syntax (2, 0) >>> Alias.Name.decode)
@@ -1650,7 +1651,7 @@ module Alias_conf = struct
   let decode =
     fields
       (let+ name = field "name" Alias.Name.decode
-       and+ package = field_o "package" Pkg.decode
+       and+ package = field_o "package" Stanza_common.Pkg.decode
        and+ action =
          field_o "action"
            (let extra_info = "Use a rule stanza with the alias field instead" in
@@ -1682,7 +1683,7 @@ module Tests = struct
          Buildable.decode ~in_library:false ~allow_re_export:false
        and+ link_flags = Ordered_set_lang.Unexpanded.field "link_flags"
        and+ names = names
-       and+ package = field_o "package" Pkg.decode
+       and+ package = field_o "package" Stanza_common.Pkg.decode
        and+ locks = field "locks" (repeat String_with_vars.decode) ~default:[]
        and+ modes =
          field "modes" Executables.Link_mode.Map.decode
@@ -1802,7 +1803,7 @@ module Documentation = struct
 
   let decode =
     fields
-      (let+ package = Pkg.field "documentation"
+      (let+ package = Stanza_common.Pkg.field "documentation"
        and+ mld_files = Ordered_set_lang.field "mld_files"
        and+ loc = loc in
        { loc; package; mld_files })
@@ -2061,14 +2062,16 @@ module Stanzas = struct
     List.concat_map sexps ~f:(parse stanza_parser)
     |> List.concat_map ~f:(function
          | Include (loc, fn) ->
-           let sexps, context = Include.load_sexps ~context (loc, fn) in
+           let sexps, context =
+             Stanza_common.Include.load_sexps ~context (loc, fn)
+           in
            parse_file_includes ~stanza_parser ~context sexps
          | stanza -> [ stanza ])
 
   let parse ~file (project : Dune_project.t) sexps =
     let stanza_parser = parser project in
     let stanzas =
-      let context = Include.in_file file in
+      let context = Stanza_common.Include.in_file file in
       parse_file_includes ~stanza_parser ~context sexps
     in
     let (_ : bool) =

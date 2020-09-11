@@ -1,7 +1,6 @@
 open! Dune_engine
 open Import
 open Dune_lang.Decoder
-open Stanza_common
 
 module Coqpp = struct
   type t =
@@ -99,7 +98,8 @@ module Theory = struct
             | None -> Package.Name.of_string name
             | Some (pkg, _) -> Package.Name.of_string pkg
           in
-          Pkg.resolve project pkg |> Result.map ~f:(fun pkg -> Some (loc, pkg)))
+          Stanza_common.Pkg.resolve project pkg
+          |> Result.map ~f:(fun pkg -> Some (loc, pkg)))
 
   let select_deprecation ~package ~public =
     match (package, public) with
@@ -122,13 +122,13 @@ module Theory = struct
   let decode =
     fields
       (let+ name = field "name" Coq_lib_name.decode
-       and+ package = field_o "package" Pkg.decode
+       and+ package = field_o "package" Stanza_common.Pkg.decode
        and+ project = Dune_project.get_exn ()
        and+ public = coq_public_decode
        and+ synopsis = field_o "synopsis" string
        and+ boot =
          field_b "boot" ~check:(Dune_lang.Syntax.since coq_syntax (0, 2))
-       and+ modules = modules_field "modules"
+       and+ modules = Stanza_common.modules_field "modules"
        and+ enabled_if = Enabled_if.decode ~allowed_vars:Any ~since:None ()
        and+ buildable = Buildable.decode in
        let package = select_deprecation ~package ~public in

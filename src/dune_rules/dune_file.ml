@@ -2062,16 +2062,14 @@ module Stanzas = struct
     List.concat_map sexps ~f:(parse stanza_parser)
     |> List.concat_map ~f:(function
          | Include (loc, fn) ->
-           let sexps, context =
-             Stanza_common.Include.load_sexps ~context (loc, fn)
-           in
+           let sexps, context = Include_stanza.load_sexps ~context (loc, fn) in
            parse_file_includes ~stanza_parser ~context sexps
          | stanza -> [ stanza ])
 
   let parse ~file (project : Dune_project.t) sexps =
     let stanza_parser = parser project in
     let stanzas =
-      let context = Stanza_common.Include.in_file file in
+      let context = Include_stanza.in_file file in
       parse_file_includes ~stanza_parser ~context sexps
     in
     let (_ : bool) =

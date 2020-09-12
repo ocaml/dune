@@ -33,8 +33,8 @@ with other targets by passing ``@runtest`` to ``dune build``. For instance:
 
 .. code:: bash
 
-          $ dune build @install @runtest
-          $ dune build @install @test/runtest
+   $ dune build @install @runtest
+   $ dune build @install @test/runtest
 
 
 Running a single test
@@ -71,39 +71,39 @@ follows:
 
 .. code:: ocaml
 
-          let rec fact n = if n = 1 then 1 else n * fact (n - 1)
+   let rec fact n = if n = 1 then 1 else n * fact (n - 1)
 
-          let%test _ = fact 5 = 120
+   let%test _ = fact 5 = 120
 
 The file has to be preprocessed with the ppx_inline_test ppx rewriter,
 so for instance the ``dune`` file might look like this:
 
 .. code:: scheme
 
-          (library
-           (name foo)
-           (preprocess (pps ppx_inline_test)))
+   (library
+    (name foo)
+    (preprocess (pps ppx_inline_test)))
 
 In order to instruct dune that our library contains inline tests,
 all we have to do is add an ``inline_tests`` field:
 
 .. code:: scheme
 
-          (library
-           (name foo)
-           (inline_tests)
-           (preprocess (pps ppx_inline_test)))
+   (library
+    (name foo)
+    (inline_tests)
+    (preprocess (pps ppx_inline_test)))
 
 We can now build and execute this test by running ``dune runtest``. For
 instance, if we make the test fail by replacing ``120`` by ``0`` we get:
 
 .. code:: bash
 
-          $ dune runtest
-          [...]
-          File "src/fact.ml", line 3, characters 0-25: <<(fact 5) = 0>> is false.
+   $ dune runtest
+   [...]
+   File "src/fact.ml", line 3, characters 0-25: <<(fact 5) = 0>> is false.
 
-          FAILED 1 / 1 tests
+   FAILED 1 / 1 tests
 
 Note that in this case Dune knew how to build and run the tests
 without any special configuration. This is because ppx_inline_test
@@ -115,9 +115,9 @@ field:
 
 .. code:: scheme
 
-          (library
-           (name foo)
-           (inline_tests (backend qtest.lib)))
+   (library
+    (name foo)
+    (inline_tests (backend qtest.lib)))
 
 In the example above, the name `qtest.lib` comes from the `public_name` field
 in `qtest`'s own `dune` file.
@@ -132,11 +132,11 @@ expect this code to print. For instance, using ppx_expect_:
 
 .. code:: ocaml
 
-          let%expect_test _ =
-            print_endline "Hello, world!";
-            [%expect{|
-              Hello, world!
-            |}]
+   let%expect_test _ =
+     print_endline "Hello, world!";
+     [%expect{|
+       Hello, world!
+     |}]
 
 The test procedure consist of executing the OCaml code and replacing
 the contents of the ``[%expect]`` extension point by the real
@@ -163,10 +163,10 @@ your list of ppx rewriters as follows:
 
 .. code:: scheme
 
-          (library
-           (name foo)
-           (inline_tests)
-           (preprocess (pps ppx_expect)))
+   (library
+    (name foo)
+    (inline_tests)
+    (preprocess (pps ppx_expect)))
 
 Then calling ``dune runtest`` will run these tests and in case of
 mismatch dune will print a diff of the original source file and
@@ -174,30 +174,30 @@ the suggested correction. For instance:
 
 .. code:: bash
 
-          $ dune runtest
-          [...]
-          -src/fact.ml
-          +src/fact.ml.corrected
-          File "src/fact.ml", line 5, characters 0-1:
-          let rec fact n = if n = 1 then 1 else n * fact (n - 1)
+   $ dune runtest
+   [...]
+   -src/fact.ml
+   +src/fact.ml.corrected
+   File "src/fact.ml", line 5, characters 0-1:
+   let rec fact n = if n = 1 then 1 else n * fact (n - 1)
 
-          let%expect_test _ =
-            print_int (fact 5);
-          -  [%expect]
-          +  [%expect{| 120 |}]
+   let%expect_test _ =
+     print_int (fact 5);
+   -  [%expect]
+   +  [%expect{| 120 |}]
 
 In order to accept the correction, simply run:
 
 .. code:: bash
 
-          $ dune promote
+   $ dune promote
 
 You can also make dune automatically accept the correction after
 running the tests by typing:
 
 .. code:: bash
 
-          $ dune runtest --auto-promote
+   $ dune runtest --auto-promote
 
 Finally, some editor integration is possible to make the editor do the
 promotion and make the workflow even smoother.
@@ -234,10 +234,10 @@ For instance:
 
 .. code:: ocaml
 
-          (library
-           (name foo)
-           (inline_tests (modes byte best js))
-           (preprocess (pps ppx_expect)))
+   (library
+    (name foo)
+    (inline_tests (modes byte best js))
+    (preprocess (pps ppx_expect)))
 
 Specifying inline test dependencies
 -----------------------------------
@@ -248,10 +248,10 @@ a ``deps`` field the ``inline_tests`` field. The argument of this
 
 .. code:: ocaml
 
-          (library
-           (name foo)
-           (inline_tests (deps data.txt))
-           (preprocess (pps ppx_expect)))
+   (library
+    (name foo)
+    (inline_tests (deps data.txt))
+    (preprocess (pps ppx_expect)))
 
 Passing special arguments to the test runner
 --------------------------------------------
@@ -263,10 +263,10 @@ as:
 
 .. code:: ocaml
 
-          (library
-           (name foo)
-           (inline_tests (flags (-foo bar)))
-           (preprocess (pps ppx_expect)))
+   (library
+    (name foo)
+    (inline_tests (flags (-foo bar)))
+    (preprocess (pps ppx_expect)))
 
 The argument of the ``flags`` field follows the :ref:`ordered-set-language`.
 
@@ -280,13 +280,13 @@ You can specify such flags by using ``flags`` field. For instance:
 
 .. code:: ocaml
 
-          (library
-           (name foo)
-           (inline_tests
-            (flags (-foo bar)
-            (executable
-             (flags (-foo bar))))
-            (preprocess (pps ppx_expect))))
+   (library
+    (name foo)
+    (inline_tests
+     (flags (-foo bar)
+     (executable
+      (flags (-foo bar))))
+     (preprocess (pps ppx_expect))))
 
 The argument of the ``flags`` field follows the :ref:`ordered-set-language`.
 
@@ -300,10 +300,11 @@ such libraries using a ``libraries`` field, such as:
 
 .. code:: ocaml
 
-          (library
-           (name foo)
-           (inline_tests (backend qtest)
-                         (libraries bar)))
+   (library
+    (name foo)
+    (inline_tests
+     (backend qtest)
+     (libraries bar)))
 
 Defining your own inline test backend
 -------------------------------------
@@ -328,10 +329,10 @@ These three parameters can be specified inside the
 
 .. code:: scheme
 
-          (generate_runner   <action>)
-          (runner_libraries (<ocaml-libraries>))
-          (flags             <flags>)
-          (extends          (<backends>))
+   (generate_runner   <action>)
+   (runner_libraries (<ocaml-libraries>))
+   (flags             <flags>)
+   (extends          (<backends>))
 
 For instance:
 
@@ -377,17 +378,16 @@ In this example, we put tests in comments of the form:
 
 .. code:: ocaml
 
-          (*TEST: assert (fact 5 = 120) *)
+   (*TEST: assert (fact 5 = 120) *)
 
 The backend for such a framework looks like this:
 
 .. code:: lisp
 
-          (library
-           (name simple_tests)
-           (inline_tests.backend
-            (generate_runner (run sed "s/(\\*TEST:\\(.*\\)\\*)/let () = \\1;;/" %{impl-files}))
-            ))
+   (library
+    (name simple_tests)
+    (inline_tests.backend
+     (generate_runner (run sed "s/(\\*TEST:\\(.*\\)\\*)/let () = \\1;;/" %{impl-files}))))
 
 Now all you have to do is write ``(inline_tests ((backend
 simple_tests)))`` wherever you want to write such tests. Note that
@@ -405,9 +405,9 @@ running your testsuite, simply add this to a dune file:
 
 .. code:: scheme
 
-          (rule
-           (alias  runtest)
-           (action (run ./tests.exe)))
+   (rule
+    (alias  runtest)
+    (action (run ./tests.exe)))
 
 Hence to define an a test a pair of alias and executable stanzas are required.
 To simplify this common pattern, dune provides a :ref:`tests-stanza` stanza to
@@ -428,12 +428,12 @@ command. For instance let's consider this test:
 
 .. code:: scheme
 
-          (rule
-           (with-stdout-to tests.output (run ./tests.exe)))
+   (rule
+    (with-stdout-to tests.output (run ./tests.exe)))
 
-          (rule
-           (alias runtest)
-           (action (diff tests.expected test.output)))
+   (rule
+    (alias runtest)
+    (action (diff tests.expected test.output)))
 
 After having run ``tests.exe`` and dumping its output to ``tests.output``, dune
 will compare the latter to ``tests.expected``. In case of mismatch, dune will
@@ -454,15 +454,15 @@ This provides a nice way of dealing with the usual *write code*,
 
 .. code:: bash
 
-          $ dune runtest
-          [...]
-          -tests.expected
-          +tests.output
-          File "tests.expected", line 1, characters 0-1:
-          -Hello, world!
-          +Good bye!
-          $ dune promote
-          Promoting _build/default/tests.output to tests.expected.
+   $ dune runtest
+   [...]
+   -tests.expected
+   +tests.output
+   File "tests.expected", line 1, characters 0-1:
+   -Hello, world!
+   +Good bye!
+   $ dune promote
+   Promoting _build/default/tests.output to tests.expected.
 
 Note that if available, the diffing is done using the patdiff_ tool,
 which displays nicer looking diffs that the standard ``diff``

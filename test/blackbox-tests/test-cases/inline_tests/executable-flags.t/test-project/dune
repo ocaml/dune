@@ -1,0 +1,6 @@
+(library
+ (name backend_foo)
+ (modules ())
+ (inline_tests.backend
+  (generate_runner
+   (echo "let () = print_endline \"backend_foo\""))))

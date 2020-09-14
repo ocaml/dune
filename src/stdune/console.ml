@@ -92,7 +92,8 @@ module Backend = struct
       let (module P : S) = !underlying in
       Queue.iter buffer ~f:(function
         | Message msg -> P.print_user_message msg
-        | Reset -> P.reset ())
+        | Reset -> P.reset ());
+      Queue.clear buffer
   end
 
   let dumb = (module Dumb : S)

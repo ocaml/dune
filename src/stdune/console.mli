@@ -45,7 +45,9 @@ val print : User_message.Style.t Pp.t list -> unit
     the previous console mode upon being [unlock]ed.
 
     To allow these to be used alongside [Fiber] jobs, we expose this unsafe
-    interface instead of [with_lock: (unit -> unit) -> unit]. *)
+    interface instead of [with_lock: (unit -> unit) -> unit]. Double-[lock]ing
+    or [unlock]ing the console will lead to output errors (no output, repeated
+    output, etc). *)
 val lock : unit -> unit
 
 val unlock : unit -> unit

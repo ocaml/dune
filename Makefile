@@ -64,9 +64,9 @@ dev-deps:
 
 dev-switch:
 	opam update
-	# Ensuring that either a dev switch already exists or a new one is created
+# Ensuring that either a dev switch already exists or a new one is created
 	[[ $(shell opam switch show) == $(shell pwd) ]] || \
-		opam switch create -y . --deps-only --with-test
+		opam switch create -y . 4.10.0 --deps-only --with-test
 	opam install -y $(TEST_DEPS) $(DEV_DEPS)
 
 test: $(BIN)
@@ -131,7 +131,7 @@ dune: $(BIN)
 
 opam-release:
 	dune-release distrib --skip-build --skip-lint --skip-tests -n dune
-	# See https://github.com/ocamllabs/dune-release/issues/206
+# See https://github.com/ocamllabs/dune-release/issues/206
 	DUNE_RELEASE_DELEGATE=github-dune-release-delegate dune-release publish distrib --verbose -n dune
 	dune-release opam pkg -n dune
 	dune-release opam submit -n dune

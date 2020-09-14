@@ -42,11 +42,15 @@ And then request the ``.js`` target:
 Similar targets are created for libraries, but we recommend sticking to the
 executable targets.
 
-To support js_of_ocaml syntax extensions ``preprocess`` field is required:
+If you're using the js_of_ocaml syntax extension, you must remember to add the
+appropriate ppx in the ``preprocess`` field:
 
 .. code:: scheme
 
-  (executable (name foo) (modes js) (preprocess (pps js_of_ocaml-ppx)))
+  (executable
+   (name foo)
+   (modes js)
+   (preprocess (pps js_of_ocaml-ppx)))
 
 Separate compilation
 ====================

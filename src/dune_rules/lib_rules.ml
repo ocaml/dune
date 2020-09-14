@@ -338,7 +338,7 @@ let cctx (lib : Library.t) ~sctx ~source_modules ~dir ~expander ~scope
     else
       Required
   in
-  let flags = Super_context.ocaml_flags sctx ~dir lib.buildable in
+  let flags = Super_context.ocaml_flags sctx ~dir lib.buildable.flags in
   let obj_dir = Library.obj_dir ~dir lib in
   let vimpl = Virtual_rules.impl sctx ~lib ~scope in
   let ctx = Super_context.context sctx in

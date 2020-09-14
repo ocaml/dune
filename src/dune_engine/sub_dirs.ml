@@ -331,9 +331,7 @@ let decode_includes ~context =
              ~f:(fun fn dir -> Filename.concat dir fn)
              ~init:fn path
          in
-         let sexps, context =
-           Stanza_common.Include.load_sexps ~context (loc, fn)
-         in
+         let sexps, context = Include_stanza.load_sexps ~context (loc, fn) in
          let* () = set_input sexps in
          fields (decode ~context ~path ~inside_include:true))
     in
@@ -345,6 +343,6 @@ let decode_includes ~context =
 
 let decode ~file =
   let open Dune_lang.Decoder in
-  let* sexps = decode_includes ~context:(Stanza_common.Include.in_file file) in
+  let* sexps = decode_includes ~context:(Include_stanza.in_file file) in
   let* () = set_input [ List (Loc.none, sexps) ] in
   decode

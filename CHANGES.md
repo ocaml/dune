@@ -11,6 +11,11 @@ Unreleased
   and make sure that actions executed by dune also use this directory by
   settting `TMPDIR` (or `TEMP` on Windows). (#3691, fixes #3422, @rgrinberg)
 
+- Fix bootstrap script with custom configuration. (#3757, fixes #3774, @marsam)
+
+- Add the `executable` field to `inline_tests` to customize the compilation
+  flags of the test runner executable (#3747, fixes #3679, @lubegasimon)
+
 2.7.1 (2/09/2020)
 -----------------
 

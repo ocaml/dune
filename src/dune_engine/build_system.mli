@@ -70,9 +70,6 @@ val set_rule_generators :
 (** Set the list of VCS repositiories contained in the source tree *)
 val set_vcs : Vcs.t list -> unit Fiber.t
 
-(** Get the list of VCS repositiories contained in the source tree *)
-val get_vcs : unit -> Vcs.t list
-
 (** All other functions in this section must be called inside the rule generator
     callback. *)
 

@@ -64,26 +64,12 @@ module DB = struct
               Dune_file.Deprecated_library_name.old_public_name s
             in
             [ Found_or_redirect.redirect old_public_name s.new_public_name ]
-          | Library (dir, (conf : Dune_file.Library.t)) -> (
+          | Library (dir, (conf : Dune_file.Library.t)) ->
             let info =
               Dune_file.Library.to_lib_info conf ~dir ~lib_config
               |> Lib_info.of_local
             in
-            match conf.visibility with
-            | Private ->
-              [ (Dune_file.Library.best_name conf, Found_or_redirect.found info)
-              ]
-            | Public p ->
-              let name = Dune_file.Public_lib.name p in
-              if Lib_name.equal name (Lib_name.of_local conf.name) then
-                [ (name, Found_or_redirect.found info) ]
-              else
-                let loc = Dune_file.Public_lib.loc p in
-                [ (name, Found_or_redirect.found info)
-                ; Found_or_redirect.redirect
-                    (Lib_name.of_local conf.name)
-                    (loc, name)
-                ] ))
+            [ (Dune_file.Library.best_name conf, Found_or_redirect.found info) ])
       |> Lib_name.Map.of_list_reducei
            ~f:(fun name (v1 : Found_or_redirect.t) v2 ->
              let res =

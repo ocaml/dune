@@ -1990,7 +1990,10 @@ module Stanzas = struct
   let stanzas : constructors =
     [ ( "library"
       , let+ x = Library.decode in
-        [ Library x ] )
+        let base = [ Library x ] in
+        match Library_redirect.Local.of_lib x with
+        | None -> base
+        | Some r -> Library_redirect r :: base )
     ; ( "foreign_library"
       , let+ () = Dune_lang.Syntax.since Stanza.syntax (2, 0)
         and+ x = Foreign.Library.decode in

@@ -345,7 +345,7 @@ let best_src_dir t = Option.value ~default:t.src_dir t.orig_src_dir
 let set_version t version = { t with version }
 
 let for_dune_package t ~ppx_runtime_deps ~requires ~foreign_objects ~obj_dir
-    ~implements ~default_implementation ~sub_systems =
+    ~implements ~default_implementation ~sub_systems ~has_modules =
   let foreign_objects = Source.External foreign_objects in
   let orig_src_dir =
     match !Clflags.store_orig_src_dir with
@@ -361,6 +361,12 @@ let for_dune_package t ~ppx_runtime_deps ~requires ~foreign_objects ~obj_dir
             Path.source src_dir |> Path.to_absolute_filename |> Path.of_string )
         )
   in
+  let native_archives =
+    if has_modules then
+      t.native_archives
+    else
+      []
+  in
   { t with
     ppx_runtime_deps
   ; requires
@@ -370,6 +376,7 @@ let for_dune_package t ~ppx_runtime_deps ~requires ~foreign_objects ~obj_dir
   ; default_implementation
   ; sub_systems
   ; orig_src_dir
+  ; native_archives
   }
 
 let user_written_deps t =

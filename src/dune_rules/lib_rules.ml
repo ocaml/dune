@@ -51,6 +51,34 @@ let build_lib (lib : Library.t) ~sctx ~dir_contents ~expander ~flags ~dir ~mode
         Expander.expand_and_eval_set expander lib.library_flags
           ~standard:(Build.return [])
       in
+      let native_archive () =
+        ((* Here we make sure that if there's no archive, the user specified
+            this *)
+         let modules =
+           let name = Dune_file.Library.best_name lib in
+           let ml_sources = Dir_contents.ocaml dir_contents in
+           Ml_sources.modules_of_library ml_sources ~name
+         in
+         if
+           (not (Dune_file.Buildable.no_modules_specified lib.buildable))
+           && Modules.is_empty modules
+         then
+           let is_error =
+             not
+               (Ocaml_version.ocamlopt_always_calls_library_linker
+                  ctx.lib_config.ocaml_version)
+           in
+           let loc = lib.buildable.loc in
+           User_warning.emit ~loc ~is_error
+             [ Pp.textf
+                 "This library does not contain any modules. This should be \
+                  specified explicitly by setting an empty field: (modules)."
+             ]);
+        if Lib_archives.has_native_archive lib ctx.lib_config dir_contents then
+          [ Library.archive lib ~dir ~ext:ext_lib ]
+        else
+          []
+      in
       Super_context.add_rule ~dir sctx ~loc:lib.buildable.loc
         (let open Build.With_targets.O in
         Build.with_no_targets obj_deps
@@ -76,14 +104,7 @@ let build_lib (lib : Library.t) ~sctx ~dir_contents ~expander ~flags ~dir ~mode
               ; Hidden_targets
                   ( match mode with
                   | Byte -> []
-                  | Native ->
-                    if
-                      Lib_archives.has_native_archive lib ctx.lib_config
-                        dir_contents
-                    then
-                      [ Library.archive lib ~dir ~ext:ext_lib ]
-                    else
-                      [] )
+                  | Native -> native_archive () )
               ]))
 
 let gen_wrapped_compat_modules (lib : Library.t) cctx =

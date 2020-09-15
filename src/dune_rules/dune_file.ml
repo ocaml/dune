@@ -163,6 +163,8 @@ module Buildable = struct
     ; allow_overlapping_dependencies : bool
     }
 
+  let no_modules_specified t = Ordered_set_lang.is_empty_ast t.modules
+
   let decode ~in_library ~allow_re_export =
     let use_foreign =
       Dune_lang.Syntax.deleted_in Stanza.syntax (2, 0)
@@ -750,7 +752,11 @@ module Library = struct
     let virtual_library = is_virtual conf in
     let foreign_archives = foreign_lib_files conf ~dir ~ext_lib in
     let native_archives =
-      [ Path.Build.relative dir (Lib_name.Local.to_string lib_name ^ ext_lib) ]
+      if Buildable.no_modules_specified conf.buildable then
+        []
+      else
+        [ Path.Build.relative dir (Lib_name.Local.to_string lib_name ^ ext_lib)
+        ]
     in
     let foreign_dll_files = foreign_dll_files conf ~dir ~ext_dll in
     let exit_module = Option.bind conf.stdlib ~f:(fun x -> x.exit_module) in

@@ -51,6 +51,8 @@ module Buildable : sig
     ; allow_overlapping_dependencies : bool
     }
 
+  val no_modules_specified : t -> bool
+
   (** Check if the buildable has any foreign stubs or archives. *)
   val has_foreign : t -> bool
 end

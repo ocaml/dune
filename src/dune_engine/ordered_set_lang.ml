@@ -124,6 +124,11 @@ let is_standard t =
   | Ast.Standard -> true
   | _ -> false
 
+let is_empty_ast t =
+  match (t.ast : ast_expanded) with
+  | Ast.Union [] -> true
+  | _ -> false
+
 module Eval = struct
   let of_ast ~diff ~singleton ~union t ~parse ~standard =
     let rec loop (t : ast_expanded) =

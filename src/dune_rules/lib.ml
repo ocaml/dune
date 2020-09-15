@@ -1947,9 +1947,10 @@ let to_dune_lib ({ info; _ } as lib) ~modules ~foreign_objects ~dir =
         else
           Direct (loc, lib.name))
   in
+  let has_modules = Modules.is_empty modules in
   let info =
     Lib_info.for_dune_package info ~ppx_runtime_deps ~requires ~foreign_objects
-      ~obj_dir ~implements ~default_implementation ~sub_systems
+      ~obj_dir ~implements ~default_implementation ~sub_systems ~has_modules
   in
   Dune_package.Lib.make ~info ~modules:(Some modules) ~main_module_name
 

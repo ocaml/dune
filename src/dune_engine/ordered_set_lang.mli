@@ -35,6 +35,8 @@ val replace_standard_with_empty : t -> t
 
 val is_standard : t -> bool
 
+val is_empty_ast : t -> bool
+
 val field :
   ?check:unit Dune_lang.Decoder.t -> string -> t Dune_lang.Decoder.fields_parser
 

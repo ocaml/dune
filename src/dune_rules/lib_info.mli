@@ -182,6 +182,7 @@ val for_dune_package :
   -> implements:(Loc.t * Lib_name.t) option
   -> default_implementation:(Loc.t * Lib_name.t) option
   -> sub_systems:Sub_system_info.t Sub_system_name.Map.t
+  -> has_modules:bool
   -> Path.t t
 
 val map_path : 'a t -> f:('a -> 'a) -> 'a t

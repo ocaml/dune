@@ -711,15 +711,16 @@ end = struct
 
   let run_and_cleanup t f =
     let res = run t f in
-    Console.Status_line.set
-      (Fun.const
-         ( match res with
-           | Error Files_changed ->
-             Some
-               (Pp.seq
-                  (Pp.tag User_message.Style.Error (Pp.verbatim "Had errors"))
-                  (Pp.verbatim ", killing current build..."))
-           | _ -> None ));
+    let opt =
+      match res with
+      | Error Files_changed ->
+        Some
+          (Pp.seq
+             (Pp.tag User_message.Style.Error (Pp.verbatim "Had errors"))
+             (Pp.verbatim ", killing current build..."))
+      | _ -> None
+    in
+    Console.Status_line.set (Fun.const opt);
     match kill_and_wait_for_all_processes t () with
     | Got_signal -> Error Got_signal
     | Ok -> res

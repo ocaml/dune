@@ -1230,6 +1230,9 @@ The syntax is as follows:
 - ``(mode <mode>)`` to specify how to handle the targets, see `modes`_
   for details.
 
+- ``(enabled_if <blang expression>)`` conditionally disables this stanza. The
+  condition is specified using the :ref:`blang`.
+
 The short form
 
 .. code:: scheme

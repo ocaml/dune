@@ -60,3 +60,27 @@ Test external paths:
   Entering directory 'test4'
   $ cat test4/_build/default/$(basename $P)
   Hola
+
+Test (enabled_if ...)
+
+  $ mkdir -p test5/subdir
+  $ cat >test5/dune-project <<EOF
+  > (lang dune 2.8)
+  > EOF
+  $ cat >test5/subdir/dune <<EOF
+  > (rule (with-stdout-to foo.txt (progn)))
+  > EOF
+  $ cat >test5/dune <<EOF
+  > (copy_files (enabled_if false) (files subdir/foo.txt))
+  > EOF
+  $ dune build --root test5
+  Entering directory 'test5'
+  $ ls test5/_build/default | grep foo.txt
+  [1]
+  $ cat >test5/dune <<EOF
+  > (copy_files (enabled_if true) (files subdir/foo.txt))
+  > EOF
+  $ dune build --root test5
+  Entering directory 'test5'
+  $ ls test5/_build/default | grep foo.txt
+  foo.txt

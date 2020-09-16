@@ -705,21 +705,21 @@ end = struct
     match Fiber.run fiber ~iter with
     | res ->
       assert (Event.pending_jobs () = 0);
-      Console.Status_line.set (Fun.const None);
       Ok res
     | exception Abort err -> Error err
     | exception exn -> Error (Exn (Exn_with_backtrace.capture exn))
 
   let run_and_cleanup t f =
     let res = run t f in
-    ( match res with
-    | Error Files_changed ->
-      Console.Status_line.set (fun () ->
-          Some
-            (Pp.seq
-               (Pp.tag User_message.Style.Error (Pp.verbatim "Had errors"))
-               (Pp.verbatim ", killing current build...")))
-    | _ -> () );
+    Console.Status_line.set
+      (Fun.const
+         ( match res with
+           | Error Files_changed ->
+             Some
+               (Pp.seq
+                  (Pp.tag User_message.Style.Error (Pp.verbatim "Had errors"))
+                  (Pp.verbatim ", killing current build..."))
+           | _ -> None ));
     match kill_and_wait_for_all_processes t () with
     | Got_signal -> Error Got_signal
     | Ok -> res

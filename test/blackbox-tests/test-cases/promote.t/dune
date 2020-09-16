@@ -4,6 +4,10 @@
  (name blah)
  (action (diff x x.gen)))
 
+(alias
+ (name blah-non-existent)
+ (action (diff x-non-existent x.gen)))
+
 (rule (with-stdout-to x.gen.copy (cat x.gen)))
 
 (rule (with-stdout-to y.gen (echo "titi")))

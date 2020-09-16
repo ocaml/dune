@@ -327,6 +327,7 @@ module Infer : sig
   module Outcome : sig
     type t =
       { deps : Path.Set.t
+      ; deps_if_exist : Path.Set.t
       ; targets : Path.Build.Set.t
       }
   end
@@ -340,6 +341,7 @@ end = struct
   module Outcome = struct
     type t =
       { deps : Path.Set.t
+      ; deps_if_exist : Path.Set.t
       ; targets : Path.Build.Set.t
       }
   end
@@ -369,6 +371,7 @@ end = struct
 
     type t =
       { deps : path_set
+      ; deps_if_exist : path_set
       ; targets : target_set
       }
   end
@@ -386,11 +389,16 @@ end = struct
 
     val ( +< ) : outcome -> path -> outcome
 
+    (** Add a dependency *)
     val ( +<+ ) : outcome -> target -> outcome
 
     val ( +<! ) : outcome -> program -> outcome
 
+    (** Remove a target *)
     val ( +<- ) : outcome -> target -> outcome
+
+    (** Add an optional (if exists) dependency *)
+    val ( +<? ) : outcome -> path -> outcome
   end
 
   module Make
@@ -434,9 +442,9 @@ end = struct
       | Cram script -> acc +< script
       | Diff { optional; file1; file2; mode = _ } ->
         if optional then
-          acc +< file1 +<- file2
+          acc +<? file1 +<- file2
         else
-          acc +< file1 +<+ file2
+          acc +<? file1 +<+ file2
       | Merge_files_into (sources, _extras, target) ->
         List.fold_left sources ~init:acc ~f:( +< ) +@+ target
       | Echo _
@@ -449,14 +457,22 @@ end = struct
       | Format_dune_file (src, dst) -> acc +< src +@+ dst
 
     let infer t =
-      let { deps; targets } =
-        infer { deps = Sets.Deps.empty; targets = Sets.Targets.empty } t
+      let { deps; deps_if_exist; targets } =
+        infer
+          { deps = Sets.Deps.empty
+          ; deps_if_exist = Sets.Deps.empty
+          ; targets = Sets.Targets.empty
+          }
+          t
       in
 
       (* A file can be inferred as both a dependency and a target, for instance:
 
          {[ (progn (copy a b) (copy b c)) ]} *)
-      { deps = Sets.Deps.diff deps targets; targets }
+      { deps = Sets.Deps.diff deps targets
+      ; deps_if_exist = Sets.Deps.diff deps_if_exist targets
+      ; targets
+      }
   end
   [@@inline always]
 
@@ -481,6 +497,9 @@ end = struct
 
               let ( +<+ ) acc fn =
                 { acc with deps = Path.Set.add acc.deps (Path.build fn) }
+
+              let ( +<? ) acc fn =
+                { acc with deps_if_exist = Path.Set.add acc.deps_if_exist fn }
 
               let ( +<- ) acc fn =
                 { acc with targets = Path.Build.Set.remove acc.targets fn }
@@ -511,6 +530,12 @@ end = struct
           match fn with
           | Expanded fn ->
             { acc with deps = Path.Set.add acc.deps (Path.build fn) }
+          | Unexpanded _ -> acc
+
+        let ( +<? ) acc (fn : _ String_with_vars.Partial.t) =
+          match fn with
+          | Expanded fn ->
+            { acc with deps_if_exist = Path.Set.add acc.deps_if_exist fn }
           | Unexpanded _ -> acc
 
         let ( +<- ) acc (fn : _ String_with_vars.Partial.t) =
@@ -545,6 +570,12 @@ end = struct
           match fn with
           | Expanded fn ->
             { acc with deps = Path.Set.add acc.deps (Path.build fn) }
+          | Unexpanded _ -> acc
+
+        let ( +<? ) acc (fn : _ String_with_vars.Partial.t) =
+          match fn with
+          | Expanded fn ->
+            { acc with deps_if_exist = Path.Set.add acc.deps_if_exist fn }
           | Unexpanded _ -> acc
 
         let ( +<- ) acc (fn : _ String_with_vars.Partial.t) =
@@ -595,6 +626,7 @@ end = struct
   module Outcome_unexp = struct
     type t =
       { deps : S_unexp.Deps.t
+      ; deps_if_exist : S_unexp.Deps.t
       ; targets : S_unexp.Targets.t
       }
   end
@@ -614,6 +646,8 @@ end = struct
 
         let ( +<+ ) acc _ = acc
 
+        let ( +<? ) acc _ = acc
+
         let ( +<! ) = ( +< )
 
         let ( +<- ) acc fn =
@@ -625,6 +659,20 @@ end = struct
 
   let unexpanded_targets t = (Unexp.infer t).targets
 end
+
+let add_deps_if_exist deps_if_exist =
+  let open Build.O in
+  (let+ l =
+     Path.Set.to_list deps_if_exist
+     |> List.map
+          ~f:
+            Build.(
+              fun f ->
+                if_file_exists f ~then_:(return (Some f)) ~else_:(return None))
+     |> Build.all
+   in
+   List.filter_opt l)
+  |> Build.dyn_paths_unit
 
 let expand t ~loc ~dep_kind ~targets_dir ~targets:targets_written_by_user
     ~expander deps_written_by_user =
@@ -645,7 +693,7 @@ let expand t ~loc ~dep_kind ~targets_dir ~targets:targets_written_by_user
       ~partial:(fun expander -> partial_expand t ~expander)
       ~final:(fun expander t -> Partial.expand t ~expander)
   in
-  let { Infer.Outcome.deps; targets } =
+  let { Infer.Outcome.deps; deps_if_exist; targets } =
     Infer.partial targets_written_by_user partially_expanded
   in
   Path.Build.Set.iter targets ~f:(fun target ->
@@ -659,22 +707,33 @@ let expand t ~loc ~dep_kind ~targets_dir ~targets:targets_written_by_user
           ]);
   let targets = Path.Build.Set.to_list targets in
   Build.path_set deps
+  >>> add_deps_if_exist deps_if_exist
   >>> Build.dyn_path_set
-        (let+ action =
-           let+ unresolved = fully_expanded in
-           let artifacts = Expander.artifacts expander in
-           Action.Unresolved.resolve unresolved ~f:(fun loc prog ->
-               Artifacts.Bin.binary artifacts ~loc prog |> Action.Prog.ok_exn)
+        (let+ (action, deps), deps_if_exist_which_exist =
+           Build.filter_existing_files
+             (let+ action =
+                let+ unresolved = fully_expanded in
+                let artifacts = Expander.artifacts expander in
+                Action.Unresolved.resolve unresolved ~f:(fun loc prog ->
+                    Artifacts.Bin.binary artifacts ~loc prog
+                    |> Action.Prog.ok_exn)
+              in
+
+              (* Targets cannot be introduced at this stage because they must
+                 all be expanded after partial expansion.
+
+                 This is because we don't allow things like: [(with-stdout-to
+                 %{read:foo} ..)] *)
+              let { Infer.Outcome.deps
+                  ; Infer.Outcome.deps_if_exist
+                  ; targets = _
+                  } =
+                Infer.infer action
+              in
+              let dir = Path.build (Expander.dir expander) in
+              ((Action.Chdir (dir, action), deps), deps_if_exist))
          in
-
-         (* Targets cannot be introduced at this stage because they must all be
-            expanded after partial expansion.
-
-            This is because we don't allow things like: [(with-stdout-to
-            %{read:foo} ..)] *)
-         let { Infer.Outcome.deps; targets = _ } = Infer.infer action in
-         let dir = Path.build (Expander.dir expander) in
-         (Action.Chdir (dir, action), deps))
+         (action, Path.Set.union deps deps_if_exist_which_exist))
   |> Build.with_targets ~targets
 
 (* We re-export [Action_dune_lang] in the end to avoid polluting the inferred

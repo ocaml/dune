@@ -943,6 +943,8 @@ However, it is different for the following reason:
   produce ``b``. For cases where commands optionally produce a
   *corrected* file
 
+- if ``<file1>`` doesn't exists it will compare with the empty file
+
 - it allows promotion. See below
 
 Note that ``(cmp a b)`` does no end-of-line normalization and doesn't

@@ -10,6 +10,7 @@ type 'a t =
   | Paths_for_rule : Path.Set.t -> unit t
   | Paths_glob : File_selector.t -> Path.Set.t t
   | If_file_exists : Path.t * 'a t * 'a t -> 'a t
+  | Filter_existing_files : ('a * Path.Set.t) t -> ('a * Path.Set.t) t
   | Contents : Path.t -> string t
   | Lines_of : Path.t -> string list t
   | Dyn_paths : ('a * Path.Set.t) t -> 'a t
@@ -137,6 +138,8 @@ let read_sexp p =
 let if_file_exists p ~then_ ~else_ = If_file_exists (p, then_, else_)
 
 let file_exists p = if_file_exists p ~then_:(return true) ~else_:(return false)
+
+let filter_existing_files p = Filter_existing_files p
 
 let paths_existing paths =
   all_unit
@@ -296,6 +299,7 @@ end = struct
         static_deps then_
       else
         static_deps else_
+    | Filter_existing_files p -> static_deps p
     | Dyn_paths t -> static_deps t
     | Dyn_deps t -> static_deps t
     | Contents p ->
@@ -336,6 +340,7 @@ let fold_labeled (type acc) t ~(init : acc) ~f =
         loop then_ acc
       else
         loop else_ acc
+    | Filter_existing_files p -> loop p acc
     | Memo m -> loop m.t acc
     | Catch (t, _) -> loop t acc
   in
@@ -394,6 +399,10 @@ end = struct
           go then_
         else
           go else_
+      | Filter_existing_files p ->
+        let (x, files), dyn_deps = go p in
+        let files = Path.Set.filter ~f:file_exists files in
+        ((x, files), dyn_deps)
       | Catch (t, on_error) -> (
         try go t with exn -> (on_error exn, Dep.Set.empty) )
       | Memo m -> Memo.eval m

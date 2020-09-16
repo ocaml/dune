@@ -3,16 +3,21 @@ General tests
 
   $ printf titi > x
 
-  $ dune build @blah
+  $ dune build @blah @blah-non-existent
   File "x", line 1, characters 0-0:
   Error: Files _build/default/x and _build/default/x.gen differ.
+  File "x-non-existent", line 1, characters 0-0:
+  Error: Files _build/default/x-non-existent and _build/default/x.gen differ.
   [1]
   $ cat x
   titi
 
   $ dune promote
   Promoting _build/default/x.gen to x.
+  Promoting _build/default/x.gen to x-non-existent.
   $ cat x
+  toto
+  $ cat x-non-existent
   toto
 
   $ dune build @blah

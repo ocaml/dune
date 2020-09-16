@@ -1,3 +1,7 @@
+open Stdune
+
+let terminal_lock = Fiber.Mutex.create ()
+
 module Backend = struct
   module type S = sig
     val print_user_message : User_message.t -> unit
@@ -144,6 +148,18 @@ let unlock () =
   Backend.Buffered.restore ();
   Backend.main := !Backend.Buffered.underlying
 
+let with_terminal_lock f =
+  let open Fiber.O in
+  Fiber.Mutex.with_lock terminal_lock (fun () ->
+      lock ();
+      try
+        let* result = f () in
+        unlock ();
+        Fiber.return result
+      with e ->
+        unlock ();
+        raise e)
+
 module Status_line = struct
   type t = unit -> User_message.Style.t Pp.t option
 
@@ -155,7 +171,7 @@ module Status_line = struct
     | Some pp ->
       (* Always put the status line inside a horizontal to force the [Format]
          module to prefer a single line. In particular, it seems that
-         [Format.pp_print_text] split sthe line before the last word, unless it
+         [Format.pp_print_text] splits the line before the last word, unless it
          is succeeded by a space. This seems like a bug in [Format] and putting
          the whole thing into a [hbox] works around this bug.
 

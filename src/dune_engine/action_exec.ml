@@ -3,8 +3,6 @@ open Import
 open Fiber.O
 module DAP = Dune_action_plugin.Private.Protocol
 
-let terminal_lock = Fiber.Mutex.create ()
-
 (* CR-someday cwong: Adjust this to be a nicer design. It would be ideal if we
    could generally allow actions to be extended. *)
 let cram_run = Fdecl.create (fun _ -> Dyn.Opaque)
@@ -358,18 +356,13 @@ let rec exec t ~ectx ~eenv =
     Fiber.return Done
   | No_infer t -> exec t ~ectx ~eenv
   | Using_terminal t ->
-    Fiber.Mutex.with_lock terminal_lock (fun () ->
-        Console.lock ();
-        let* result =
-          exec t ~ectx
-            ~eenv:
-              { eenv with
-                stdout_to = Process.Io.stdout
-              ; stderr_to = Process.Io.stderr
-              }
-        in
-        Console.unlock ();
-        Fiber.return result)
+    Console.with_terminal_lock (fun () ->
+        exec t ~ectx
+          ~eenv:
+            { eenv with
+              stdout_to = Process.Io.stdout
+            ; stderr_to = Process.Io.stderr
+            })
   | Pipe (outputs, l) -> exec_pipe ~ectx ~eenv outputs l
   | Format_dune_file (src, dst) ->
     Format_dune_lang.format_file ~input:(Some src)

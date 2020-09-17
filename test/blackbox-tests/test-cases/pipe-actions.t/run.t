@@ -38,7 +38,7 @@ You need to set the language to 2.7 or higher for it to work:
   y
   z
 
-The makefile version of pipe actious uses actual pipes:
+The makefile version of pipe actions uses actual pipes:
 
   $ touch a.ml b.ml c.ml dummy.opam
   $ cat >dune <<EOF
@@ -61,3 +61,58 @@ The makefile version of pipe actious uses actual pipes:
   	../install/default/bin/a 2>&1 | ../install/default/bin/b 2>&1 | ../install/default/bin/c \
   	  &> target
   
+
+  $ cat >dune <<EOF
+  > (executable
+  >  (public_name apl) (name append_to_line) (modules append_to_line))
+  > (executable
+  >  (public_name echo-outputs) (name echo_outputs) (modules echo_outputs))
+  > 
+  > (rule
+  >  (action
+  >   (with-stderr-to target-stdout.stderr
+  >   (with-stdout-to target-stdout.stdout
+  >       (pipe-stdout (run echo-outputs a) (run apl b) (run apl c))
+  >    ))))
+  > (rule
+  >  (action
+  >   (with-stderr-to target-stderr.stderr
+  >   (with-stdout-to target-stderr.stdout
+  >       (pipe-stderr (run echo-outputs a) (run apl b) (run apl c))
+  >    ))))
+  > (rule
+  >  (action
+  >   (with-stderr-to target-outputs.stderr
+  >   (with-stdout-to target-outputs.stdout
+  >       (pipe-outputs (run echo-outputs a) (run apl b) (run apl c))
+  >    ))))
+  > EOF
+
+  $ dune build _build/default/target-stdout.stdout _build/default/target-stdout.stderr 2>&1 | sed -e "s/build[0-9a-z]*\.dune/buildxxx.dune/g" -e "s/dune-pipe-action-[0-9a-z]*/dune-pipe-action-/g"
+           apl target-stdout.{stderr,stdout} (exit 2)
+  (cd _build/default && ../install/default/bin/apl b) < /tmp/buildxxx.dune/buildxxx.dune/dune-pipe-action-.stdout > /tmp/buildxxx.dune/buildxxx.dune/dune-pipe-action-.stdout 2> _build/default/target-stdout.stderr
+  $ cat _build/default/target-stdout.stdout
+  cat: _build/default/target-stdout.stdout: No such file or directory
+  [1]
+  $ cat _build/default/target-stdout.stderr
+  cat: _build/default/target-stdout.stderr: No such file or directory
+  [1]
+  $ dune build _build/default/target-stderr.stdout _build/default/target-stderr.stderr
+  $ cat _build/default/target-stderr.stdout
+  o a
+  $ cat _build/default/target-stderr.stderr
+  e a | o b | o c
+  e a | o b | e c
+  e a | e b | o c
+  e a | e b | e c
+  $ dune build _build/default/target-outputs.stdout _build/default/target-outputs.stderr
+  $ cat _build/default/target-outputs.stdout
+  o a | o b | o c
+  o a | e b | o c
+  e a | o b | o c
+  e a | e b | o c
+  $ cat _build/default/target-outputs.stderr
+  o a | o b | e c
+  o a | e b | e c
+  e a | o b | e c
+  e a | e b | e c

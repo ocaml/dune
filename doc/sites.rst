@@ -40,7 +40,7 @@ in the section ``share``. This package can add files to this ``sites`` using the
 .. code:: scheme
 
    (install
-     (section (site c themes))
+     (section (site mygui themes))
      (files
        (layout.css as default/layout.css)
        (ok.png  as default/ok.png)
@@ -54,7 +54,7 @@ theme. Inside the scope of ``mygui_material_theme`` the ``dune`` file contains:
 .. code:: scheme
 
    (install
-     (section (site c themes))
+     (section (site mygui themes))
      (files
        (layout.css as material/layout.css)
        (ok.png  as material/ok.png)
@@ -80,7 +80,7 @@ site using the :ref:`generate module stanza<generate_module>`
       (modules mygui mysites)
    )
 
-   (generate_module (name mysites) (sites c))
+   (generate_module (name mysites) (sites mygui))
 
 Then inside ``mygui.ml`` module the locations can be recovered and used:
 

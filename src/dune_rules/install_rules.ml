@@ -524,7 +524,7 @@ end = struct
                 else
                   Pp.verbatim s))
        in
-       Format.asprintf "%a" Pp.render_ignore_tags pp)
+       Format.asprintf "%a" Pp.to_fmt pp)
       |> Build.write_file_dyn meta);
     let deprecated_packages =
       Package.Name.Map.of_list_multi deprecated_packages
@@ -544,7 +544,7 @@ end = struct
                let open Pp.O in
                Pp.vbox (Meta.pp meta.entries ++ Pp.cut)
              in
-             Format.asprintf "%a" Pp.render_ignore_tags pp)
+             Format.asprintf "%a" Pp.to_fmt pp)
           |> Build.write_file meta ))
 
   let meta_and_dune_package_rules_impl (project, sctx) =

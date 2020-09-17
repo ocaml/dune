@@ -117,6 +117,6 @@ let did_you_mean s ~candidates =
   | l -> [ Pp.textf "did you mean %s?" (String.enumerate_or l) ]
 
 let to_string t =
-  Format.asprintf "%a" Pp.render_ignore_tags (pp { t with loc = None })
+  Format.asprintf "%a" Pp.to_fmt (pp { t with loc = None })
   |> String.drop_prefix ~prefix:"Error: "
   |> Option.value_exn |> String.trim

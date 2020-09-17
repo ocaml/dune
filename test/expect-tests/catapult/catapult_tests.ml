@@ -26,7 +26,7 @@ let () = Catapult.close c
 let buffer_lines () = String.split_lines (Buffer.contents buf)
 
 let%expect_test _ =
-  Format.printf "%a@." Pp.render_ignore_tags
+  Format.printf "%a@." Pp.to_fmt
     (Pp.vbox (Pp.concat_map (buffer_lines ()) ~sep:Pp.cut ~f:Pp.verbatim));
   [%expect
     {|

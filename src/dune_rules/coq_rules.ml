@@ -293,7 +293,7 @@ end
 let setup_rule cctx ~source_rule coq_module =
   let open Build.With_targets.O in
   if coq_debug then
-    Format.eprintf "gen_rule coq_module: %a@\n%!" Pp.render_ignore_tags
+    Format.eprintf "gen_rule coq_module: %a@\n%!" Pp.to_fmt
       (Dyn.pp (Coq_module.to_dyn coq_module));
 
   let file_flags = Context.coqc_file_flags cctx in

@@ -219,7 +219,7 @@ let to_dyn f =
       ; Dune_lang.Syntax.Version.to_dyn v
       ; List
           (List.map repl ~f:(fun pp ->
-               Dyn.String (Format.asprintf "%a" Pp.render_ignore_tags pp)))
+               Dyn.String (Format.asprintf "%a" Pp.to_fmt pp)))
       ]
   | Renamed_in (v, s) ->
     constr "Renamed_in" [ Dune_lang.Syntax.Version.to_dyn v; string s ]

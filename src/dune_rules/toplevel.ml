@@ -109,7 +109,7 @@ let setup_module_rules t =
            let pp_ppx = pp_flags t in
            let pp_dirs = Source.pp_ml t.source ~include_dirs in
            let pp = Pp.seq pp_ppx pp_dirs in
-           Format.asprintf "%a@." Pp.render_ignore_tags pp))
+           Format.asprintf "%a@." Pp.to_fmt pp))
     |> Build.write_file_dyn path
   in
   Super_context.add_rule sctx ~dir main_ml

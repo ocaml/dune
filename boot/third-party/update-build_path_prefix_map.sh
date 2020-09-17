@@ -21,5 +21,4 @@ SRC=$TMP/build_path_prefix_map
 
 cp -v $SRC/build_path_prefix_map.{ml,mli} build_path_prefix_map/src
 
-git checkout build_path_prefix_map/src/dune
 git add -A .

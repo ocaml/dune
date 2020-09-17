@@ -1,6 +1,13 @@
 let executables = [ "main" ]
 
-let external_libraries = [ "result"; "pp"; "unix"; "csexp"; "threads.posix" ]
+let external_libraries =
+  [ "result"
+  ; "pp"
+  ; "unix"
+  ; "csexp"
+  ; "threads.posix"
+  ; "build_path_prefix_map"
+  ]
 
 let local_libraries =
   [ ("vendor/csexp/src", Some "Dune_csexp", false, None)
@@ -24,8 +31,6 @@ let local_libraries =
   ; ("otherlibs/action-plugin/src", Some "Dune_action_plugin", false, None)
   ; ("src/meta_parser", Some "Dune_meta_parser", false, None)
   ; ("src/section", Some "Dune_section", false, None)
-  ; ("vendor/build_path_prefix_map/src", Some "Build_path_prefix_map", false,
-    None)
   ; ("src/dune_engine", Some "Dune_engine", false, None)
   ; ("src/dune_rules", Some "Dune_rules", true, None)
   ; ("vendor/cmdliner/src", None, false, None)

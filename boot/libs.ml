@@ -6,6 +6,7 @@ let external_libraries =
   ; "unix"
   ; "csexp"
   ; "threads.posix"
+  ; "opam-file-format"
   ; "build_path_prefix_map"
   ]
 
@@ -23,7 +24,6 @@ let local_libraries =
   ; ("src/cache", Some "Cache", false, None)
   ; ("src/cache_daemon", Some "Cache_daemon", false, None)
   ; ("vendor/re/src", Some "Dune_re", false, None)
-  ; ("vendor/opam-file-format/src", None, false, None)
   ; ("otherlibs/dune-glob/src", Some "Dune_glob", false, None)
   ; ("src/ocaml-config", Some "Ocaml_config", false, None)
   ; ("src/catapult", Some "Catapult", false, None)

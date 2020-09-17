@@ -286,7 +286,7 @@ module Preserved = struct
       aux [] l
     in
     let is_variable name = function
-      | Variable (_, name1, _v1) -> name = name1
+      | Variable (_, name1, v1) -> name = name1
       | _ -> false
     in
     let is_section kind name = function

@@ -29,4 +29,5 @@ let libs =
     , "build_path_prefix_map/src"
     , Some "Build_path_prefix_map"
     , false )
+  ; ("opam-file-format", "opam-file-format/src", None, false)
   ]

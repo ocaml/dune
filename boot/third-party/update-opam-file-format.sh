@@ -10,11 +10,15 @@ trap "rm -rf $TMP" EXIT
 rm -rf opam-file-format
 mkdir -p opam-file-format/src
 
-(cd $TMP && opam source opam-file-format.$version)
+(
+    cd $TMP
+    git clone https://github.com/ocaml/opam-file-format
+    cd opam-file-format
+    git checkout $version
+)
 
-SRC=$TMP/opam-file-format.$version
+SRC=$TMP/opam-file-format
 
 cp -v $SRC/src/*.{ml,mli,mll,mly} opam-file-format/src
 
-git checkout opam-file-format/src/dune
 git add -A .

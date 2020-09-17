@@ -43,7 +43,7 @@ let print_rule_makefile ppf (rule : Build_system.Evaluated_rule.t) =
     (fun ppf ->
       Path.Set.iter (Dep.Set.paths rule.deps ~eval_pred) ~f:(fun dep ->
           Format.fprintf ppf "@ %s" (Path.to_string dep)))
-    Pp.render_ignore_tags (Action_to_sh.pp action)
+    Pp.to_fmt (Action_to_sh.pp action)
 
 let print_rule_sexp ppf (rule : Build_system.Evaluated_rule.t) =
   let sexp_of_action action =

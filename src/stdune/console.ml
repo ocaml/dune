@@ -51,9 +51,7 @@ module Backend = struct
         flush stderr
       | Some line ->
         let line = Pp.map_tags line ~f:User_message.Print_config.default in
-        let line_len =
-          String.length (Format.asprintf "%a" Pp.render_ignore_tags line)
-        in
+        let line_len = String.length (Format.asprintf "%a" Pp.to_fmt line) in
         hide_status_line ();
         status_line := line;
         status_line_len := line_len;

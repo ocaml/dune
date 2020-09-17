@@ -37,7 +37,7 @@ let rec pp = function
   | Template t -> Template.pp t
 
 module Deprecated = struct
-  let pp ppf t = Pp.render_ignore_tags ppf (pp t)
+  let pp ppf t = Pp.to_fmt ppf (pp t)
 
   let pp_print_quoted_string ppf s =
     if String.contains s '\n' then (

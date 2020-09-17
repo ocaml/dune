@@ -2,7 +2,7 @@ open! Stdune
 
 let () = Dune_tests_common.init ()
 
-let pp pp = Format.printf "%a@." Pp.render_ignore_tags pp
+let pp pp = Format.printf "%a@." Pp.to_fmt pp
 
 let enum_x_and_y =
   Pp.enumerate [ Array.make 50 "x"; Array.make 50 "y" ] ~f:(fun a ->

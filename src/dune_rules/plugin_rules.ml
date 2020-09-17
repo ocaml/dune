@@ -34,7 +34,7 @@ let setup_rules ~sctx ~dir t =
             ]
         }
       in
-      Format.asprintf "@[<v>%a@,@]" Pp.render_ignore_tags (Meta.pp meta.entries))
+      Format.asprintf "@[<v>%a@,@]" Pp.to_fmt (Meta.pp meta.entries))
   |> Build.write_file_dyn meta
   |> Super_context.add_rule sctx ~dir
 

@@ -1,30 +1,27 @@
 .. _sites:
 
-*****************
+***************************************
 How to load additional files at runtime
-*****************
+***************************************
+
+There are many ways for applications to load files at runtime and Dune provides
+a well tested, key-in-hand portable system for doing so. The Dune model works by
+defining ``sites`` where files will be installed and looked up at runtime. At
+runtime each site is associated to a list of directories which contains the
+files added in the site.
+
 
 Sites
 =====
 
-Sites are a way for a package to define particular sub-directories in a :ref:`section<install>`
-(``lib``, ``share``, ``etc``, ... ) directory. The main difficulty is that those directories
-are not at the same location at different time:
-
-- When the package is available locally, the location is inside ``_build``
-- When the package is installed, the location is inside the install prefix
-- If a local package want to install files to the site of another installed
-  package the location is at the same time in ``_build`` and in the install prefix
-  of the second package.
-
-With the last example we see that the location of a site is not always uniq but
-could be layers of directories: ``["dir1";"dir2"]``. So a lookup must first look
-into "dir1", then into "dir2".
 
 Defining a site
 ---------------
 
-A site is defined a package :ref:`package` in the ``dune-project`` file.
+A site is defined in a package :ref:`package` in the ``dune-project`` file. It
+consists in a name and a :ref:`section<install>` (e.g ``lib``, ``share``,
+``etc``) where the site will be installed as a sub-directory.
+
 
 .. code:: scheme
 
@@ -36,7 +33,7 @@ Adding files to a site
 ----------------------
 
 
-Here the package ``mygui`` defines a sites named ``themes`` it will be located
+Here the package ``mygui`` defines a site named ``themes`` it will be located
 in the section ``share``. This package can add files to this ``sites`` using the
 :ref:`install stanza<install>`:
 
@@ -52,7 +49,7 @@ in the section ``share``. This package can add files to this ``sites`` using the
    )
 
 Another package ``mygui_material_theme`` can install files inside ``mygui`` directory for adding a new
-theme. Inside the scope of ``mygui_material_theme`` the ``dune`` file:
+theme. Inside the scope of ``mygui_material_theme`` the ``dune`` file contains:
 
 .. code:: scheme
 
@@ -67,6 +64,9 @@ theme. Inside the scope of ``mygui_material_theme`` the ``dune`` file:
 
 The package ``mygui`` must be present in the workspace or installed.
 
+.. warning::
+   Two files should not be installed by different packages at the same destination.
+
 Getting the locations of a site at runtime
 ------------------------------------------
 
@@ -77,12 +77,12 @@ site using the :ref:`generate module stanza<generate_module>`
 
    (executable
       (name mygui)
-      (module mygui mysites)
+      (modules mygui mysites)
    )
 
    (generate_module (name mysites) (sites c))
 
-Then inside the ``mygui.ml`` module the locations can be recovered and used:
+Then inside ``mygui.ml`` module the locations can be recovered and used:
 
 .. code:: ocaml
 
@@ -99,7 +99,7 @@ Then inside the ``mygui.ml`` module the locations can be recovered and used:
    (** Get the lists of the available themes  *)
    let find_available_themes () : string list = lookup_dirs themes_locations
 
-   (** Lookup a file in the directories, priority on the first *)
+   (** Lookup a file in the directories *)
    let rec lookup_file filename = function
      | [] -> raise Not_found
      | dir::dirs ->
@@ -130,9 +130,26 @@ Installation
 Installation is done simply with ``dune install``, however if one want to
 install this tool such as it is relocatable. One can use ``dune
 install --relocatable --prefix $dir``. The files will be copied to the directory
-``$dir`` but the binary ``$dir/bin/mygui`` will get the site location relatively
-to its location. So even if the directory ``$dir`` is moved, ``themese_locations`` will
+``$dir`` but the binary ``$dir/bin/mygui`` will find the site location relatively
+to its location. So even if the directory ``$dir`` is moved, ``themes_locations`` will
 be correct.
+
+Implementation details
+----------------------
+
+The main difficulty for the sites is that those directories are
+not at the same location at different time:
+
+- When the package is available locally, the location is inside ``_build``
+- When the package is installed, the location is inside the install prefix
+- If a local package want to install files to the site of another installed
+  package the location is at the same time in ``_build`` and in the install prefix
+  of the second package.
+
+With the last example we see that the location of a site is not always uniq but
+could be layers of directories: ``["dir1";"dir2"]``. So a lookup must first look
+into "dir1", then into "dir2".
+
 
 .. _plugins:
 
@@ -142,7 +159,9 @@ Plugins and dynamic loading of packages
 Dune allows to define and load plugins without having to deal with specific
 compilation, installation directories, dependencies or the module `Dynlink`.
 Here we show an example of an executable which can be extended using plugins,
-and the definition of one plugin in another package.
+and the definition of one plugin in another package. The sites used for plugins
+are not particular, but it is better to use them just for that pupose and not install
+other files in them.
 
 Example
 -------

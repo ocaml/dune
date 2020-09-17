@@ -63,6 +63,7 @@ executable was built.
 (package
  (name dune-private-libs)
  (depends
+  pp
   result
   csexp
   (ocaml (>= 4.08)))

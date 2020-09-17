@@ -1,6 +1,6 @@
 let executables = [ "main" ]
 
-let external_libraries = [ "result"; "unix"; "csexp"; "threads.posix" ]
+let external_libraries = [ "result"; "pp"; "unix"; "csexp"; "threads.posix" ]
 
 let local_libraries =
   [ ("vendor/csexp/src", Some "Dune_csexp", false, None)

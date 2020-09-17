@@ -24,4 +24,5 @@
 let libs =
   [ ("csexp", "csexp/src", Some "Csexp", false)
   ; ("result", "result", Some "Result", false)
+  ; ("pp", "pp/src", Some "Pp", false)
   ]

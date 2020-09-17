@@ -30,4 +30,5 @@ let libs =
     , Some "Build_path_prefix_map"
     , false )
   ; ("opam-file-format", "opam-file-format/src", None, false)
+  ; ("cmdliner", "cmdliner/src", None, false)
   ]

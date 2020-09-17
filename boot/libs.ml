@@ -8,6 +8,7 @@ let external_libraries =
   ; "threads.posix"
   ; "opam-file-format"
   ; "build_path_prefix_map"
+  ; "cmdliner"
   ]
 
 let local_libraries =
@@ -33,7 +34,6 @@ let local_libraries =
   ; ("src/section", Some "Dune_section", false, None)
   ; ("src/dune_engine", Some "Dune_engine", false, None)
   ; ("src/dune_rules", Some "Dune_rules", true, None)
-  ; ("vendor/cmdliner/src", None, false, None)
   ; ("otherlibs/build-info/src", Some "Build_info", false,
     Some "Build_info_data")
   ]

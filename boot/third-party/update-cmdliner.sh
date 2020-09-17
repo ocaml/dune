@@ -24,5 +24,4 @@ SRC=$TMP/cmdliner
 cp -v $SRC/LICENSE.md cmdliner
 cp -v $SRC/src/*.{ml,mli} cmdliner/src
 
-git checkout cmdliner/src/dune
 git add -A .

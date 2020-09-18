@@ -8,8 +8,8 @@ Unreleased
   to be installed in these sites. (#3104, fixes #1185, @bobot)
 
 - Move all temporary files created by dune to run actions to a single directory
-  and make sure that actions executed by dune also use this directory by
-  settting `TMPDIR` (or `TEMP` on Windows). (#3691, fixes #3422, @rgrinberg)
+  and make sure that actions executed by dune also use this directory by setting
+  `TMPDIR` (or `TEMP` on Windows). (#3691, fixes #3422, @rgrinberg)
 
 - Fix bootstrap script with custom configuration. (#3757, fixes #3774, @marsam)
 

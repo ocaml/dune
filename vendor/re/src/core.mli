@@ -28,50 +28,9 @@ type t
 type re
 (** Compiled regular expression *)
 
-type groups
-(** Information about groups in a match. *)
-
-(** {2 Compilation and execution of a regular expression} *)
-
-val compile : t -> re
-(** Compile a regular expression into an executable version that can be
-    used to match strings, e.g. with {!exec}. *)
-
-val exec :
-  ?pos:int ->    (* Default: 0 *)
-  ?len:int ->    (* Default: -1 (until end of string) *)
-  re -> string -> groups
-(** [exec re str] matches [str] against the compiled expression [re],
-    and returns the matched groups if any.
-    @param pos optional beginning of the string (default 0)
-    @param len length of the substring of [str] that can be matched (default [-1],
-      meaning to the end of the string
-    @raise Not_found if the regular expression can't be found in [str]
-*)
-
-val exec_opt :
-  ?pos:int ->    (* Default: 0 *)
-  ?len:int ->    (* Default: -1 (until end of string) *)
-  re -> string -> groups option
-(** Similar to {!exec}, but returns an option instead of using an exception. *)
-
-val execp :
-  ?pos:int ->    (* Default: 0 *)
-  ?len:int ->    (* Default: -1 (until end of string) *)
-  re -> string -> bool
-(** Similar to {!exec}, but returns [true] if the expression matches,
-    and [false] if it doesn't *)
-
-val exec_partial :
-  ?pos:int ->    (* Default: 0 *)
-  ?len:int ->    (* Default: -1 (until end of string) *)
-  re -> string -> [ `Full | `Partial | `Mismatch ]
-(** More detailed version of {!exec_p} *)
-
 (** Manipulate matching groups. *)
 module Group : sig
-
-  type t = groups
+  type t
   (** Information about groups in a match. *)
 
   val get : t -> int -> string
@@ -100,8 +59,45 @@ module Group : sig
       This function is experimental. *)
 
   val pp : Format.formatter -> t -> unit
-
 end
+type groups = Group.t [@@ocaml.deprecated "Use Group.t"]
+
+(** {2 Compilation and execution of a regular expression} *)
+
+val compile : t -> re
+(** Compile a regular expression into an executable version that can be
+    used to match strings, e.g. with {!exec}. *)
+
+val exec :
+  ?pos:int ->    (* Default: 0 *)
+  ?len:int ->    (* Default: -1 (until end of string) *)
+  re -> string -> Group.t
+(** [exec re str] matches [str] against the compiled expression [re],
+    and returns the matched groups if any.
+    @param pos optional beginning of the string (default 0)
+    @param len length of the substring of [str] that can be matched (default [-1],
+      meaning to the end of the string
+    @raise Not_found if the regular expression can't be found in [str]
+*)
+
+val exec_opt :
+  ?pos:int ->    (* Default: 0 *)
+  ?len:int ->    (* Default: -1 (until end of string) *)
+  re -> string -> Group.t option
+(** Similar to {!exec}, but returns an option instead of using an exception. *)
+
+val execp :
+  ?pos:int ->    (* Default: 0 *)
+  ?len:int ->    (* Default: -1 (until end of string) *)
+  re -> string -> bool
+(** Similar to {!exec}, but returns [true] if the expression matches,
+    and [false] if it doesn't *)
+
+val exec_partial :
+  ?pos:int ->    (* Default: 0 *)
+  ?len:int ->    (* Default: -1 (until end of string) *)
+  re -> string -> [ `Full | `Partial | `Mismatch ]
+(** More detailed version of {!exec_p} *)
 
 (** Marks *)
 module Mark : sig
@@ -124,62 +120,84 @@ end
 
 (** {2 High Level Operations} *)
 
-type 'a gen = unit -> 'a option
-
-val all :
-  ?pos:int ->    (** Default: 0 *)
-  ?len:int ->
-  re -> string -> Group.t list
-(** Repeatedly calls {!exec} on the given string, starting at given
-    position and length.*)
-
-val all_gen :
-  ?pos:int ->    (** Default: 0 *)
-  ?len:int ->
-  re -> string -> Group.t gen
-(** Same as {!all} but returns a generator *)
-
-val matches :
-  ?pos:int ->    (** Default: 0 *)
-  ?len:int ->
-  re -> string -> string list
-(** Same as {!all}, but extracts the matched substring rather than
-    returning the whole group. This basically iterates over matched
-    strings *)
-
-val matches_gen :
-  ?pos:int ->    (** Default: 0 *)
-  ?len:int ->
-  re -> string -> string gen
-(** Same as {!matches}, but returns a generator. *)
-
-val split :
-  ?pos:int ->    (** Default: 0 *)
-  ?len:int ->
-  re -> string -> string list
-(** [split re s] splits [s] into chunks separated by [re]. It yields
-    the chunks themselves, not the separator. For instance
-    this can be used with a whitespace-matching re such as ["[\t ]+"]. *)
-
-val split_gen :
-  ?pos:int ->    (** Default: 0 *)
-  ?len:int ->
-  re -> string -> string gen
-
 type split_token =
   [ `Text of string  (** Text between delimiters *)
   | `Delim of Group.t (** Delimiter *)
   ]
 
-val split_full :
-  ?pos:int ->    (** Default: 0 *)
-  ?len:int ->
-  re -> string -> split_token list
+type 'a seq = 'a Seq.t
 
-val split_full_gen :
-  ?pos:int ->    (** Default: 0 *)
-  ?len:int ->
-  re -> string -> split_token gen
+module Seq : sig
+  val all :
+    ?pos:int ->    (** Default: 0 *)
+    ?len:int ->
+    re -> string -> Group.t Seq.t
+    (** Same as {!all} but returns an iterator
+        @since NEXT_RELEASE *)
+
+  val matches :
+    ?pos:int ->    (** Default: 0 *)
+    ?len:int ->
+    re -> string -> string Seq.t
+    (** Same as {!matches}, but returns an iterator
+        @since NEXT_RELEASE *)
+
+  val split :
+    ?pos:int ->    (** Default: 0 *)
+    ?len:int ->
+    re -> string -> string Seq.t
+    (** @since NEXT_RELEASE *)
+
+  val split_full :
+    ?pos:int ->    (** Default: 0 *)
+    ?len:int ->
+    re -> string -> split_token Seq.t
+    (** @since NEXT_RELEASE *)
+end
+
+val all : ?pos:int -> ?len:int -> re -> string -> Group.t list
+(** Repeatedly calls {!exec} on the given string, starting at given position and
+    length.*)
+
+type 'a gen = unit -> 'a option
+
+val all_gen : ?pos:int -> ?len:int -> re -> string -> Group.t gen
+[@@ocaml.deprecated "Use Seq.all"]
+
+val all_seq : ?pos:int -> ?len:int -> re -> string -> Group.t seq
+[@@ocaml.deprecated "Use Seq.all"]
+
+val matches : ?pos:int -> ?len:int -> re -> string -> string list
+(** Same as {!all}, but extracts the matched substring rather than returning
+    the whole group. This basically iterates over matched strings *)
+
+val matches_gen : ?pos:int -> ?len:int -> re -> string -> string gen
+[@@ocaml.deprecated "Use Seq.matches"]
+
+val matches_seq : ?pos:int -> ?len:int -> re -> string -> string seq
+[@@ocaml.deprecated "Use Seq.matches"]
+
+val split : ?pos:int -> ?len:int -> re -> string -> string list
+(** [split re s] splits [s] into chunks separated by [re]. It yields the chunks
+    themselves, not the separator. For instance this can be used with a
+    whitespace-matching re such as ["[\t ]+"]. *)
+
+val split_gen : ?pos:int -> ?len:int -> re -> string -> string gen
+[@@ocaml.deprecated "Use Seq.split"]
+
+val split_seq : ?pos:int -> ?len:int -> re -> string -> string seq
+[@@ocaml.deprecated "Use Seq.split"]
+
+val split_full : ?pos:int -> ?len:int -> re -> string -> split_token list
+(** [split re s] splits [s] into chunks separated by [re]. It yields the chunks
+    along with the separators. For instance this can be used with a
+    whitespace-matching re such as ["[\t ]+"]. *)
+
+val split_full_gen : ?pos:int -> ?len:int -> re -> string -> split_token gen
+[@@ocaml.deprecated "Use Seq.split_full"]
+
+val split_full_seq : ?pos:int -> ?len:int -> re -> string -> split_token seq
+[@@ocaml.deprecated "Use Seq.split_full"]
 
 val replace :
   ?pos:int ->    (** Default: 0 *)
@@ -372,6 +390,31 @@ val pp_re : Format.formatter -> re -> unit
 (** Alias for {!pp_re}. Deprecated *)
 val print_re : Format.formatter -> re -> unit
 
+module View : sig
+  type outer
+
+  (** A view of the top-level of a regex. This type is unstable and may change *)
+  type t =
+      Set of Cset.t
+    | Sequence of outer list
+    | Alternative of outer list
+    | Repeat of outer * int * int option
+    | Beg_of_line | End_of_line
+    | Beg_of_word | End_of_word | Not_bound
+    | Beg_of_str | End_of_str
+    | Last_end_of_line | Start | Stop
+    | Sem of Automata.sem * outer
+    | Sem_greedy of Automata.rep_kind * outer
+    | Group of outer | No_group of outer | Nest of outer
+    | Case of outer | No_case of outer
+    | Intersection of outer list
+    | Complement of outer list
+    | Difference of outer * outer
+    | Pmark of Pmark.t * outer
+
+  val view : outer -> t
+end with type outer := t
+
 (** {2 Experimental functions}. *)
 
 val witness : t -> string
@@ -381,28 +424,37 @@ val witness : t -> string
 (** {2 Deprecated functions} *)
 
 type substrings = Group.t
+[@@ocaml.deprecated "Use Group.t"]
 (** Alias for {!Group.t}. Deprecated *)
 
 val get : Group.t -> int -> string
+[@@ocaml.deprecated "Use Group.get"]
 (** Same as {!Group.get}. Deprecated *)
 
 val get_ofs : Group.t -> int -> int * int
+[@@ocaml.deprecated "Use Group.offset"]
 (** Same as {!Group.offset}. Deprecated *)
 
 val get_all : Group.t -> string array
+[@@ocaml.deprecated "Use Group.all"]
 (** Same as {!Group.all}. Deprecated *)
 
 val get_all_ofs : Group.t -> (int * int) array
+[@@ocaml.deprecated "Use Group.all_offset"]
 (** Same as {!Group.all_offset}. Deprecated *)
 
 val test : Group.t -> int -> bool
+[@@ocaml.deprecated "Use Group.test"]
 (** Same as {!Group.test}. Deprecated *)
 
 type markid = Mark.t
+[@@ocaml.deprecated "Use Mark."]
 (** Alias for {!Mark.t}. Deprecated *)
 
 val marked : Group.t -> Mark.t -> bool
+[@@ocaml.deprecated "Use Mark.test"]
 (** Same as {!Mark.test}. Deprecated *)
 
 val mark_set : Group.t -> Mark.Set.t
+[@@ocaml.deprecated "Use Mark.all"]
 (** Same as {!Mark.all}. Deprecated *)

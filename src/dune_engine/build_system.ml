@@ -151,10 +151,8 @@ module Alias0 = struct
 
   let package_install ~(context : Build_context.t) ~(pkg : Package.t) =
     let dir = Path.Build.append_source context.build_dir pkg.path in
-    make
-      (Alias.Name.of_string
-         (sprintf ".%s-files" (Package.Name.to_string pkg.name)))
-      ~dir
+    sprintf ".%s-files" (Package.Name.to_string pkg.name)
+    |> Alias.Name.of_string |> make ~dir
 end
 
 module Loaded = struct
@@ -355,12 +353,12 @@ let t = get_build_system
 
 let pp_paths set =
   Pp.enumerate (Path.Set.to_list set) ~f:(fun p ->
-      Pp.verbatim
-        (Path.to_string_maybe_quoted (Path.drop_optional_build_context p)))
+      Path.drop_optional_build_context p
+      |> Path.to_string_maybe_quoted |> Pp.verbatim)
 
 let set_rule_generators ~init ~gen_rules =
   let t = t () in
-  let (), init_rules = Rules.collect (fun () -> init ()) in
+  let (), init_rules = Rules.collect init in
   Fdecl.set t.init_rules init_rules;
   Fdecl.set t.gen_rules gen_rules
 
@@ -438,10 +436,9 @@ let get_dir_triage t ~dir =
     Dir_triage.Known (Loaded.no_rules ~allowed_subdirs)
   | Build (Install Root) ->
     let allowed_subdirs =
-      Subdir_set.to_dir_set
-        (Subdir_set.of_list
-           ( Context_name.Map.keys t.contexts
-           |> List.map ~f:Context_name.to_string ))
+      Context_name.Map.keys t.contexts
+      |> List.map ~f:Context_name.to_string
+      |> Subdir_set.of_list |> Subdir_set.to_dir_set
     in
     Dir_triage.Known (Loaded.no_rules ~allowed_subdirs)
   | Build (Alias p) ->
@@ -1003,10 +1000,10 @@ end = struct
             ; ("rules", Rules.Dir_rules.to_dyn rules)
             ] ) );
     let rules_generated_in =
-      Dir_set.of_list
-        ( Path.Build.Map.keys (Rules.to_map rules_produced)
-        |> List.filter_map ~f:(fun subdir ->
-               Path.Local_gen.descendant ~of_:dir subdir) )
+      Rules.to_map rules_produced
+      |> Path.Build.Map.keys
+      |> List.filter_map ~f:(Path.Local_gen.descendant ~of_:dir)
+      |> Dir_set.of_list
     in
     let allowed_granddescendants_of_parent =
       match allowed_by_parent with
@@ -1042,22 +1039,21 @@ end = struct
   let load_dir_impl t ~dir : Loaded.t =
     match get_dir_triage t ~dir with
     | Known l -> l
+    | Need_step2 -> load_dir_step2_exn t ~dir
     | Alias_dir_of dir' -> (
       match load_dir ~dir:(Path.build dir') with
       | Non_build _ -> Code_error.raise "Can only forward to a build dir" []
       | Build
-          { rules_here = _
-          ; rules_of_alias_dir
-          ; rules_produced
-          ; allowed_subdirs
-          } ->
+          ( { rules_here = _
+            ; rules_of_alias_dir
+            ; rules_produced = _
+            ; allowed_subdirs = _
+            } as load ) ->
         Loaded.Build
-          { rules_here = rules_of_alias_dir
+          { load with
+            rules_here = rules_of_alias_dir
           ; rules_of_alias_dir = Path.Build.Map.empty
-          ; rules_produced
-          ; allowed_subdirs
           } )
-    | Need_step2 -> load_dir_step2_exn t ~dir
 
   let load_dir =
     let load_dir_impl dir = load_dir_impl (t ()) ~dir in

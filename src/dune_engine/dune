@@ -2,7 +2,7 @@
 
 (library
  (name dune_engine)
- (libraries unix stdune fiber incremental_cycles dag memo xdg dune_re
+ (libraries unix stdune fiber incremental_cycles dag memo xdg re
    threads.posix opam-file-format dune_lang cache_daemon cache dune_glob
    ocaml_config catapult jbuild_support dune_action_plugin dune_util
    build_path_prefix_map dune_section)

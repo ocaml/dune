@@ -31,4 +31,5 @@ let libs =
     , false )
   ; ("opam-file-format", "opam-file-format/src", None, false)
   ; ("cmdliner", "cmdliner/src", None, false)
+  ; ("re", "re/src", Some "Re", false)
   ]

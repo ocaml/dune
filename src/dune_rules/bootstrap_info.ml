@@ -14,6 +14,10 @@ let rule sctx compile (exes : Dune_file.Executables.t) () =
         | Some x -> Left x
         | None -> Right lib)
   in
+  let externals =
+    let seq = Lib_name.of_string "seq" in
+    List.filter externals ~f:(fun l -> Lib.name l <> seq)
+  in
   Format.asprintf "%a@." Pp.to_fmt
     (Pp.vbox
        (Pp.concat ~sep:Pp.cut

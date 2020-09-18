@@ -52,7 +52,7 @@ type purpose =
   | Build_job of Path.Build.Set.t
 
 (** [run ?dir ?stdout_to prog args] spawns a sub-process and wait for its
-    termination *)
+    termination. [stdout_to] [stderr_to] are released *)
 val run :
      ?dir:Path.t
   -> ?stdout_to:Io.output Io.t

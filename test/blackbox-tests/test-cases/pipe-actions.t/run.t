@@ -88,22 +88,19 @@ The makefile version of pipe actions uses actual pipes:
   >    ))))
   > EOF
 
-  $ dune build _build/default/target-stdout.stdout _build/default/target-stdout.stderr 2>&1 | sed -e "s/build[0-9a-z]*\.dune/buildxxx.dune/g" -e "s/dune-pipe-action-[0-9a-z]*/dune-pipe-action-/g"
-           apl target-stdout.{stderr,stdout} (exit 2)
-  (cd _build/default && ../install/default/bin/apl b) < /tmp/buildxxx.dune/buildxxx.dune/dune-pipe-action-.stdout > /tmp/buildxxx.dune/buildxxx.dune/dune-pipe-action-.stdout 2> _build/default/target-stdout.stderr
+  $ dune build _build/default/target-stdout.stdout _build/default/target-stdout.stderr
   $ cat _build/default/target-stdout.stdout
-  cat: _build/default/target-stdout.stdout: No such file or directory
-  [1]
+  o a | o b | o c
   $ cat _build/default/target-stdout.stderr
-  cat: _build/default/target-stdout.stderr: No such file or directory
-  [1]
+  e a
+  o a | e b
+  o a | o b | e c
   $ dune build _build/default/target-stderr.stdout _build/default/target-stderr.stderr
   $ cat _build/default/target-stderr.stdout
   o a
-  $ cat _build/default/target-stderr.stderr
-  e a | o b | o c
-  e a | o b | e c
+  e a | o b
   e a | e b | o c
+  $ cat _build/default/target-stderr.stderr
   e a | e b | e c
   $ dune build _build/default/target-outputs.stdout _build/default/target-outputs.stderr
   $ cat _build/default/target-outputs.stdout

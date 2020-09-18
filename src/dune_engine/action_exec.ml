@@ -453,7 +453,9 @@ and exec_pipe outputs ts ~ectx ~eenv =
   | [] -> assert false
   | t1 :: ts -> (
     let out = tmp_file () in
-    let* done_or_deps = redirect_out t1 ~ectx ~eenv outputs out in
+    let* done_or_deps =
+      redirect_out t1 ~ectx ~eenv:multi_use_eenv outputs out
+    in
     match done_or_deps with
     | Need_more_deps _ as need -> Fiber.return need
     | Done -> loop ~in_:out ts )

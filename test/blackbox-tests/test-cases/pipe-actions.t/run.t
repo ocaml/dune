@@ -98,18 +98,16 @@ The makefile version of pipe actions uses actual pipes:
   $ dune build _build/default/target-stderr.stdout _build/default/target-stderr.stderr
   $ cat _build/default/target-stderr.stdout
   o a
-  e a | o b
-  e a | e b | o c
   $ cat _build/default/target-stderr.stderr
-  e a | e b | e c
+  e a | e b
+  e a | o b | o c
+  e a | o b | e c
   $ dune build _build/default/target-outputs.stdout _build/default/target-outputs.stderr
   $ cat _build/default/target-outputs.stdout
   o a | o b | o c
-  o a | e b | o c
   e a | o b | o c
-  e a | e b | o c
   $ cat _build/default/target-outputs.stderr
+  o a | e b
+  e a | e b
   o a | o b | e c
-  o a | e b | e c
   e a | o b | e c
-  e a | e b | e c

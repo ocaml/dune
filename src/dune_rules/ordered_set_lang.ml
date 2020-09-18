@@ -1,5 +1,5 @@
 open! Stdune
-open! Import
+open! Dune_engine
 
 module Ast = struct
   [@@@warning "-37"]

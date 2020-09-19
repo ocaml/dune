@@ -69,14 +69,11 @@ dev-switch:
 		opam switch create -y . 4.10.0 --deps-only --with-test
 	opam install -y $(TEST_DEPS) $(DEV_DEPS)
 
-_esy:
-	mkdir _esy
+test: $(BIN)
+	$(BIN) runtest
 
-test: $(BIN) _esy
-	DUNE_BUILD_DIR=$$(pwd)/_esy/something $(BIN) runtest
-
-test-windows: $(BIN) _esy
-	DUNE_BUILD_DIR=$$(pwd)/_esy/something $(BIN) build @runtest-windows
+test-windows: $(BIN)
+	$(BIN) build @runtest-windows
 
 test-js: $(BIN)
 	$(BIN) build @runtest-js

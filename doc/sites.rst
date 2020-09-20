@@ -7,7 +7,7 @@ How to load additional files at runtime
 There are many ways for applications to load files at runtime and Dune provides
 a well tested, key-in-hand portable system for doing so. The Dune model works by
 defining ``sites`` where files will be installed and looked up at runtime. At
-runtime each site is associated to a list of directories which contains the
+runtime each site is associated to a list of directories which contain the
 files added in the site.
 
 
@@ -19,7 +19,7 @@ Defining a site
 ---------------
 
 A site is defined in a package :ref:`package` in the ``dune-project`` file. It
-consists in a name and a :ref:`section<install>` (e.g ``lib``, ``share``,
+consists of a name and a :ref:`section<install>` (e.g ``lib``, ``share``,
 ``etc``) where the site will be installed as a sub-directory.
 
 
@@ -33,7 +33,7 @@ Adding files to a site
 ----------------------
 
 
-Here the package ``mygui`` defines a site named ``themes`` it will be located
+Here the package ``mygui`` defines a site named ``themes`` that will be located
 in the section ``share``. This package can add files to this ``sites`` using the
 :ref:`install stanza<install>`:
 
@@ -128,7 +128,7 @@ Installation
 ------------
 
 Installation is done simply with ``dune install``, however if one want to
-install this tool such as it is relocatable. One can use ``dune
+install this tool such that it is relocatable, one can use ``dune
 install --relocatable --prefix $dir``. The files will be copied to the directory
 ``$dir`` but the binary ``$dir/bin/mygui`` will find the site location relatively
 to its location. So even if the directory ``$dir`` is moved, ``themes_locations`` will
@@ -137,17 +137,17 @@ be correct.
 Implementation details
 ----------------------
 
-The main difficulty for the sites is that those directories are
-not at the same location at different time:
+The main difficulty for sites is that their directories are
+found at different locations at different times:
 
 - When the package is available locally, the location is inside ``_build``
 - When the package is installed, the location is inside the install prefix
-- If a local package want to install files to the site of another installed
+- If a local package wants to install files to the site of another installed
   package the location is at the same time in ``_build`` and in the install prefix
   of the second package.
 
-With the last example we see that the location of a site is not always uniq but
-could be layers of directories: ``["dir1";"dir2"]``. So a lookup must first look
+With the last example we see that the location of a site is not always a single directory,
+but can consist of a sequence of directories: ``["dir1";"dir2"]``. So a lookup must first look
 into "dir1", then into "dir2".
 
 

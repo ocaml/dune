@@ -6,12 +6,21 @@ let def name dyn =
   let open Pp.O in
   Pp.box ~indent:2 (Pp.textf "let %s = " name ++ Dyn.pp dyn)
 
+let is_from_duniverse local_lib =
+  Lib.Local.info local_lib |> Lib_info.src_dir
+  |> Path.Build.drop_build_context_exn
+  |> Path.Source.is_descendant ~of_:(Path.Source.of_string "duniverse")
+
 let rule sctx compile (exes : Dune_file.Executables.t) () =
   let libs = Result.ok_exn (Lazy.force (Lib.Compile.requires_link compile)) in
   let locals, externals =
     List.partition_map libs ~f:(fun lib ->
         match Lib.Local.of_lib lib with
-        | Some x -> Left x
+        | Some x ->
+          if is_from_duniverse x then
+            Right lib
+          else
+            Left x
         | None -> Right lib)
   in
   let externals =

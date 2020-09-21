@@ -351,6 +351,8 @@ let reset () = t := None
 
 let t = get_build_system
 
+let contexts () = (t ()).contexts
+
 let pp_paths set =
   Pp.enumerate (Path.Set.to_list set) ~f:(fun p ->
       Path.drop_optional_build_context p
@@ -1943,64 +1945,33 @@ let evaluate_rules ~recursive ~request =
                      (Path.build (Path.Build.Set.choose_exn rule.targets))))
           ])
 
-module All_lib_deps : sig
-  val all_lib_deps :
-    request:unit Build.t -> Lib_deps_info.t Path.Source.Map.t Context_name.Map.t
-end = struct
-  let static_deps_of_request request =
-    Static_deps.paths @@ Build.static_deps request
+let static_deps_of_request request =
+  Static_deps.paths ~eval_pred @@ Build.static_deps request
 
-  let rules_for_files paths =
-    Path.Set.fold paths ~init:[] ~f:(fun path acc ->
-        match get_rule path with
-        | None -> acc
-        | Some rule -> rule :: acc)
-    |> Rule.Set.of_list |> Rule.Set.to_list
+let rules_for_files paths =
+  Path.Set.fold paths ~init:[] ~f:(fun path acc ->
+      match get_rule path with
+      | None -> acc
+      | Some rule -> rule :: acc)
+  |> Rule.Set.of_list |> Rule.Set.to_list
 
-  let rules_for_transitive_closure targets =
-    Rule_top_closure.top_closure (rules_for_files targets)
-      ~key:(fun r -> r.Rule.id)
-      ~deps:(fun r ->
-        Build.static_deps r.action.build
-        |> Static_deps.paths ~eval_pred
-        |> rules_for_files)
-    |> function
-    | Ok l -> l
-    | Error cycle ->
-      User_error.raise
-        [ Pp.text "Dependency cycle detected:"
-        ; Pp.chain cycle ~f:(fun rule ->
-              Pp.verbatim
-                (Path.to_string_maybe_quoted
-                   (Path.build (Path.Build.Set.choose_exn rule.action.targets))))
-        ]
-
-  let all_lib_deps ~request =
-    let t = t () in
-    let targets = static_deps_of_request request ~eval_pred in
-    let rules = rules_for_transitive_closure targets in
-    let lib_deps =
-      List.map rules ~f:(fun rule ->
-          let deps = Lib_deps_info.lib_deps rule.Rule.action.build in
-          (rule, deps))
-    in
-    List.fold_left lib_deps ~init:[] ~f:(fun acc (rule, deps) ->
-        if Lib_name.Map.is_empty deps then
-          acc
-        else
-          match Path.Build.extract_build_context rule.Rule.dir with
-          | None -> acc
-          | Some (context, p) ->
-            let context = Context_name.of_string context in
-            (context, (p, deps)) :: acc)
-    |> Context_name.Map.of_list_multi
-    |> Context_name.Map.filteri ~f:(fun ctx _ ->
-           Context_name.Map.mem t.contexts ctx)
-    |> Context_name.Map.map
-         ~f:(Path.Source.Map.of_list_reduce ~f:Lib_deps_info.merge)
-end
-
-include All_lib_deps
+let rules_for_transitive_closure targets =
+  Rule_top_closure.top_closure (rules_for_files targets)
+    ~key:(fun r -> r.Rule.id)
+    ~deps:(fun r ->
+      Build.static_deps r.action.build
+      |> Static_deps.paths ~eval_pred
+      |> rules_for_files)
+  |> function
+  | Ok l -> l
+  | Error cycle ->
+    User_error.raise
+      [ Pp.text "Dependency cycle detected:"
+      ; Pp.chain cycle ~f:(fun rule ->
+            Pp.verbatim
+              (Path.to_string_maybe_quoted
+                 (Path.build (Path.Build.Set.choose_exn rule.action.targets))))
+      ]
 
 let load_dir_and_produce_its_rules ~dir =
   let loaded = load_dir ~dir in

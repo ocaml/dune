@@ -1981,7 +1981,7 @@ end = struct
     let rules = rules_for_transitive_closure targets in
     let lib_deps =
       List.map rules ~f:(fun rule ->
-          let deps = Build.lib_deps rule.Rule.action.build in
+          let deps = Lib_deps_info.lib_deps rule.Rule.action.build in
           (rule, deps))
     in
     List.fold_left lib_deps ~init:[] ~f:(fun acc (rule, deps) ->

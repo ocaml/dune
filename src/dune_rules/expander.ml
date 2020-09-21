@@ -305,7 +305,7 @@ module Resolved_forms = struct
   let to_build t =
     let open Build.O in
     let ddeps = Pform.Expansion.Map.to_list t.ddeps in
-    let+ () = Build.record_lib_deps t.lib_deps
+    let+ () = Build.label (Lib_deps_info.Label t.lib_deps)
     and+ () = Build.path_set t.sdeps
     and+ values = Build.all (List.map ddeps ~f:snd)
     and+ () =

@@ -3,6 +3,9 @@
 open! Stdune
 open! Import
 
+(** Type of values allowed to be labeled *)
+type label = ..
+
 type 'a t
 
 include Applicative_intf.S1 with type 'a t := 'a t
@@ -82,10 +85,10 @@ val delayed : (unit -> 'a) -> 'a t
    -> t end
 
    (** Same as [t >>> arr (fun x -> Action_with_deps.add_file_dependency x p)]
-   but better as [p] is statically known *) val record_dependency : Path.t ->
+   but better as [p] is statically known *) val label_dependency : Path.t ->
    ('a, Action_with_deps.t) t -> ('a, Action_with_deps.t) t ]} *)
 
-(** [path p] records [p] as a file that is read by the action produced by the
+(** [path p] labels [p] as a file that is read by the action produced by the
     build description. *)
 val path : Path.t -> unit t
 
@@ -99,7 +102,7 @@ val paths : Path.t list -> unit t
 
 val path_set : Path.Set.t -> unit t
 
-(** Evaluate a predicate against all targets and record all the matched files as
+(** Evaluate a predicate against all targets and label all the matched files as
     dependencies of the action produced by the build description. *)
 val paths_matching : loc:Loc.t -> File_selector.t -> Path.Set.t t
 
@@ -107,17 +110,17 @@ val paths_matching : loc:Loc.t -> File_selector.t -> Path.Set.t t
     exist. *)
 val paths_existing : Path.t list -> unit t
 
-(** [env_var v] records [v] as an environment variable that is read by the
-    action produced by the build description. *)
+(** [env_var v] labels [v] as an environment variable that is read by the action
+    produced by the build description. *)
 val env_var : string -> unit t
 
 val alias : Alias.t -> unit t
 
 (** Compute the set of source of all files present in the sub-tree starting at
-    [dir] and record them as dependencies. *)
+    [dir] and label them as dependencies. *)
 val source_tree : dir:Path.t -> Path.Set.t t
 
-(** Record dynamic dependencies *)
+(** Label dynamic dependencies *)
 val dyn_paths : ('a * Path.t list) t -> 'a t
 
 val dyn_paths_unit : Path.t list t -> unit t
@@ -182,7 +185,7 @@ val create_file : Path.Build.t -> Action.t With_targets.t
 (** Merge a list of actions accumulating the sets of their targets. *)
 val progn : Action.t With_targets.t list -> Action.t With_targets.t
 
-val record_lib_deps : Lib_deps_info.t -> unit t
+val label : label -> unit t
 
 (** {1 Analysis} *)
 
@@ -190,7 +193,7 @@ val record_lib_deps : Lib_deps_info.t -> unit t
 val static_deps : _ t -> Static_deps.t
 
 (** Compute static library dependencies of a build description. *)
-val lib_deps : _ t -> Lib_deps_info.t
+val fold_labeled : _ t -> init:'acc -> f:(label -> 'acc -> 'acc) -> 'acc
 
 (** {1 Execution} *)
 

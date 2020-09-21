@@ -47,12 +47,23 @@ module Prog = struct
     | Error e -> Not_found.raise e
 end
 
+module Ext = struct
+  type t =
+    { name : string
+    ; version : int
+    ; deps : Path.t list
+    ; targets : Path.Build.t list
+    ; action : unit -> unit Fiber.t
+    }
+end
+
 module type Ast =
   Action_intf.Ast
     with type program = Prog.t
     with type path = Path.t
     with type target = Path.Build.t
     with type string = String.t
+    with type ext = Ext.t
 
 module rec Ast : Ast = Ast
 
@@ -134,6 +145,7 @@ module Unresolved = struct
       with type path = Path.t
       with type target = Path.Build.t
       with type string = String.t
+      with type ext = Ext.t
 
   module rec Uast : Uast = Uast
 
@@ -180,7 +192,8 @@ let fold_one_step t ~init:acc ~f =
   | Diff _
   | Merge_files_into _
   | Cram _
-  | Format_dune_file _ ->
+  | Format_dune_file _
+  | Extension _ ->
     acc
 
 include Action_mapper.Make (Ast) (Ast)
@@ -229,6 +242,12 @@ let rec is_dynamic = function
   | Cram _
   | Format_dune_file _ ->
     false
+  | Extension _ ->
+    (* cwong: Extensions as arbitrary closures can probably do arbitrarily bad
+       things. However, maybe we can either restrict what extensions are allowed
+       to do or push the responsibility onto the extension author by adding this
+       as a field instead. *)
+    true
 
 let prepare_managed_paths ~link ~sandboxed deps ~eval_pred =
   let steps =
@@ -314,6 +333,9 @@ let is_useful_to distribute memoize =
     | System _ -> true
     | Bash _ -> true
     | Format_dune_file _ -> memoize
+    | Extension _ ->
+      (* Maybe this should be a field instead? *)
+      false
   in
   fun t ->
     match loop t with

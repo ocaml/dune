@@ -368,6 +368,9 @@ let rec exec t ~ectx ~eenv =
         ~env:eenv.env ~script
     in
     Done
+  | Extension { Action.action; _ } ->
+    let* () = action () in
+    Fiber.return Done
 
 and redirect_out t ~ectx ~eenv outputs fn =
   redirect t ~ectx ~eenv ~out:(outputs, fn) ()

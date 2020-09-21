@@ -67,6 +67,9 @@ let ensure_at_most_one_dynamic_run ~loc action =
     | Cram _
     | Format_dune_file _ ->
       false
+    | Extension _ ->
+      (* see comment on [is_dynamic] in [action.ml] *)
+      true
     | Pipe (_, ts)
     | Progn ts ->
       List.fold_left ts ~init:false ~f:(fun acc t ->

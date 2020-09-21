@@ -206,6 +206,14 @@ module Partial = struct
     | Format_dune_file (src, dst) ->
       Format_dune_file (E.path ~expander src, E.target ~expander dst)
     | Cram script -> Cram (E.path ~expander script)
+    | Extension { name; version; deps; targets; action } ->
+      Extension
+        { name
+        ; version
+        ; deps = List.map ~f:(E.path ~expander) deps
+        ; targets = List.map ~f:(E.target ~expander) targets
+        ; action
+        }
 end
 
 module E = Expand (struct
@@ -322,6 +330,14 @@ let rec partial_expand t ~expander : Partial.t =
   | Format_dune_file (src, dst) ->
     Format_dune_file (E.path ~expander src, E.target ~expander dst)
   | Cram script -> Cram (E.path ~expander script)
+  | Extension { Action_dune_lang.name; version; deps; targets; action } ->
+    Extension
+      { name
+      ; version
+      ; deps = List.map ~f:(E.path ~expander) deps
+      ; targets = List.map ~f:(E.target ~expander) targets
+      ; action
+      }
 
 module Infer : sig
   module Outcome : sig
@@ -447,6 +463,10 @@ end = struct
       | No_infer _ ->
         acc
       | Format_dune_file (src, dst) -> acc +< src +@+ dst
+      | Extension { deps; targets; _ } ->
+        List.fold_left
+          ~init:(List.fold_left ~init:acc ~f:( +<+ ) targets)
+          ~f:( +< ) deps
 
     let infer t =
       let { deps; targets } =

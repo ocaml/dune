@@ -279,6 +279,16 @@ struct
     | Format_dune_file (src, dst) ->
       List [ atom "format-dune-file"; path src; target dst ]
     | Cram script -> List [ atom "cram"; path script ]
+    | Extension { name; version; _ } ->
+      (* cwong: I think hiding [Extension] variants from the surface language is
+         the correct idea, even if we allow it to be encoded. However, this
+         possibly breaks a law that encoding then decoding an object yields back
+         that object, so maybe this is a bad idea. *)
+      List
+        [ atom "extension-action"
+        ; List [ atom "name"; atom name ]
+        ; List [ atom "version"; atom (Int.to_string version) ]
+        ]
 
   let run prog args = Run (prog, args)
 

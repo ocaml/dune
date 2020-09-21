@@ -11,6 +11,8 @@ module Inputs = struct
   type t = Stdin
 end
 
+type ocaml_string = string
+
 module type Ast = sig
   type program
 
@@ -19,6 +21,18 @@ module type Ast = sig
   type target
 
   type string
+
+  (* We need a story for allowing extension authors to access the string
+     expansion machinery. For now, manually calling the right will work, but
+     will probably get really unwieldy quickly. *)
+  type ext =
+    { name : ocaml_string
+    ; (* Maybe we should use a dedicated semver instead? *)
+      version : int
+    ; deps : path list
+    ; targets : target list
+    ; action : unit -> unit Fiber.t
+    }
 
   type t =
     | Run of program * string list
@@ -50,6 +64,8 @@ module type Ast = sig
     | Pipe of Outputs.t * t list
     | Format_dune_file of path * target
     | Cram of path
+    (* This variant is intentionally not exposed to the surface language, *)
+    | Extension of ext
 end
 
 module type Helpers = sig

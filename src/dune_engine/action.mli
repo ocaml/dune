@@ -53,6 +53,7 @@ module Ast :
     with type path = Path.t
     with type target = Path.Build.t
     with type string = string
+    with type ext = ext
     with type t = t
 
 include
@@ -106,6 +107,7 @@ module Unresolved : sig
       with type path := Path.t
       with type target := Path.Build.t
       with type string := string
+      with type ext := ext
 
   val resolve : t -> f:(Loc.t option -> string -> Path.t) -> action
 end

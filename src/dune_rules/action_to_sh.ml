@@ -95,6 +95,11 @@ let simplify act =
       Redirect_out
         ([ Run ("dune", [ "format-dune-file"; src ]) ], Stdout, File dst)
       :: acc
+      (* CR cwong: Come up with a better design for this. One idea might be to
+         move [Simplified] into the backend, allowing us to make an [sh] field
+         in [Action.ext]. *)
+    | Extension _ ->
+      Code_error.raise "simplication of extensions is unimplemented" []
   and block act =
     match List.rev (loop act []) with
     | [] -> [ Run ("true", []) ]

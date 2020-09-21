@@ -3,6 +3,7 @@ Since dune 2.8 libraries `enabled_if` can use the `%{context_name}` variable.
 dune < 2.8
   $ cat >dune-project <<EOF
   > (lang dune 2.7)
+  > EOF
 
   $ dune build bar
   File "dune", line 8, characters 18-31:
@@ -16,6 +17,7 @@ dune < 2.8
 dune >= 2.8
   $ cat >dune-project <<EOF
   > (lang dune 2.8)
+  > EOF
 
 + Print the context
   $ dune build @print_context

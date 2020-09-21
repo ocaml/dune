@@ -78,9 +78,12 @@ site using the :ref:`generate module stanza<generate_module>`
    (executable
       (name mygui)
       (modules mygui mysites)
+      (libraries dune-site)
    )
 
    (generate_module (name mysites) (sites mygui))
+
+The generated module `mysites` depends on the library `dune-site` provided by Dune.
 
 Then inside ``mygui.ml`` module the locations can be recovered and used:
 
@@ -193,6 +196,9 @@ Main executable (C)
     (modules c_register))
 
    (generate_module (module sites)  (plugins (c plugins)))
+
+The generated module `sites` depends here also on the library
+`dune-site.plugins` because the plugins optional field is requested.
 
 - The module ``c_register.ml`` of the library ``c.register``:
 

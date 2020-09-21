@@ -24,12 +24,10 @@ cp -v $SRC/lib/*.{ml,mli} re/src/
 
 echo "include Re" > re/src/dune_re.ml
 cat >re/src/dune <<EOF
-(subdir re
- (library
-  (name        dune_re)
-  (public_name dune-private-libs.dune_re)
-  (synopsis "Internal Dune library, do not use!")))
+(library
+ (name dune_re)
+ (public_name dune-private-libs.dune_re)
+ (synopsis "Internal Dune library, do not use!"))
 EOF
 
-git checkout re/src/dune
 git add -A .

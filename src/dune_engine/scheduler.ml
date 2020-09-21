@@ -711,7 +711,7 @@ end = struct
 
   let run_and_cleanup t f =
     let res = run t f in
-    let opt =
+    let status_line =
       match res with
       | Error Files_changed ->
         Some
@@ -720,7 +720,7 @@ end = struct
              (Pp.verbatim ", killing current build..."))
       | _ -> None
     in
-    Console.Status_line.set (Fun.const opt);
+    Console.Status_line.set (Fun.const status_line);
     match kill_and_wait_for_all_processes t () with
     | Got_signal -> Error Got_signal
     | Ok -> res

@@ -79,16 +79,25 @@ val all_unit : unit t list -> unit t
 (** Delay a static computation until the description is evaluated *)
 val delayed : (unit -> 'a) -> 'a t
 
-(* CR-someday diml: this API is not great, what about:
+(** CR-someday diml: this API is not great, what about:
 
-   {[ module Action_with_deps : sig type t val add_file_dependency : t -> Path.t
-   -> t end
+    {[
+      module Action_with_deps : sig
+        type t
+        val add_file_dependency : t -> Path.t -> t
+      end
 
-   (** Same as [t >>> arr (fun x -> Action_with_deps.add_file_dependency x p)]
-   but better as [p] is statically known *) val label_dependency : Path.t ->
-   ('a, Action_with_deps.t) t -> ('a, Action_with_deps.t) t ]} *)
+      (** Same as
+          [t >>> arr (fun x -> Action_with_deps.add_file_dependency x p)]
+          but better as [p] is statically known *)
 
-(** [path p] labels [p] as a file that is read by the action produced by the
+      val record_dependency
+        :  Path.t
+        -> ('a, Action_with_deps.t) t
+        -> ('a, Action_with_deps.t) t
+    ]} *)
+
+(** [path p] records [p] as a file that is read by the action produced by the
     build description. *)
 val path : Path.t -> unit t
 
@@ -102,7 +111,7 @@ val paths : Path.t list -> unit t
 
 val path_set : Path.Set.t -> unit t
 
-(** Evaluate a predicate against all targets and label all the matched files as
+(** Evaluate a predicate against all targets and record all the matched files as
     dependencies of the action produced by the build description. *)
 val paths_matching : loc:Loc.t -> File_selector.t -> Path.Set.t t
 
@@ -110,17 +119,17 @@ val paths_matching : loc:Loc.t -> File_selector.t -> Path.Set.t t
     exist. *)
 val paths_existing : Path.t list -> unit t
 
-(** [env_var v] labels [v] as an environment variable that is read by the action
-    produced by the build description. *)
+(** [env_var v] records [v] as an environment variable that is read by the
+    action produced by the build description. *)
 val env_var : string -> unit t
 
 val alias : Alias.t -> unit t
 
 (** Compute the set of source of all files present in the sub-tree starting at
-    [dir] and label them as dependencies. *)
+    [dir] and record them as dependencies. *)
 val source_tree : dir:Path.t -> Path.Set.t t
 
-(** Label dynamic dependencies *)
+(** Record dynamic dependencies *)
 val dyn_paths : ('a * Path.t list) t -> 'a t
 
 val dyn_paths_unit : Path.t list t -> unit t

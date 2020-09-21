@@ -16,7 +16,9 @@ let gen_select_rules t ~dir compile_info =
           |> Build.with_targets ~targets:[ dst ] ))
 
 let with_lib_deps (t : Context.t) compile_info ~dir ~f =
-  let prefix = Build.record_lib_deps (Lib.Compile.lib_deps_info compile_info) in
+  let prefix =
+    Build.label (Lib_deps_info.Label (Lib.Compile.lib_deps_info compile_info))
+  in
   let prefix =
     if t.merlin then
       Path.Build.relative dir ".merlin-exists"

@@ -20,3 +20,7 @@ type t = Kind.t Lib_name.Map.t
 val merge : t -> t -> t
 
 val to_dyn : t -> Dyn.t
+
+type Build.label += Label of t
+
+val lib_deps : _ Build.t -> t

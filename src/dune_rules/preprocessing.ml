@@ -331,8 +331,9 @@ let build_ppx_driver sctx ~dep_kind ~target ~pps ~pp_names =
     |> Build.write_file_dyn ml );
   add_rule ~sandbox:Sandbox_config.no_special_requirements
     ( Build.with_no_targets
-        (Build.record_lib_deps
-           (Lib_deps.info ~kind:dep_kind (Lib_deps.of_pps pp_names)))
+        (Build.label
+           (Lib_deps_info.Label
+              (Lib_deps.info ~kind:dep_kind (Lib_deps.of_pps pp_names))))
     >>> Command.run compiler ~dir:(Path.build ctx.build_dir)
           [ A "-g"
           ; A "-o"

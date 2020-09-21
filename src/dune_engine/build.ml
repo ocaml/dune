@@ -1,6 +1,8 @@
 open! Stdune
 open Import
 
+type label = ..
+
 type 'a t =
   | Pure : 'a -> 'a t
   | Map : ('a -> 'b) * 'a t -> 'b t
@@ -12,7 +14,7 @@ type 'a t =
   | Lines_of : Path.t -> string list t
   | Dyn_paths : ('a * Path.Set.t) t -> 'a t
   | Dyn_deps : ('a * Dep.Set.t) t -> 'a t
-  | Record_lib_deps : Lib_deps_info.t -> unit t
+  | Label : label -> unit t
   | Fail : fail -> _ t
   | Memo : 'a memo -> 'a t
   | Catch : 'a t * (exn -> 'a) -> 'a t
@@ -68,7 +70,7 @@ let all_unit xs =
   let+ (_ : unit list) = all xs in
   ()
 
-let record_lib_deps lib_deps = Record_lib_deps lib_deps
+let label map = Label map
 
 let deps d = Deps d
 
@@ -300,7 +302,7 @@ end = struct
       { Static_deps.empty with rule_deps = Dep.Set.of_files [ p ] }
     | Lines_of p ->
       { Static_deps.empty with rule_deps = Dep.Set.of_files [ p ] }
-    | Record_lib_deps _ -> Static_deps.empty
+    | Label _ -> Static_deps.empty
     | Fail _ -> Static_deps.empty
     | Memo m -> Memo.exec memo (Input.T m)
     | Catch (t, _) -> static_deps t
@@ -310,9 +312,9 @@ let static_deps = Analysis.static_deps
 
 (* We do no memoization in this function because it is currently used only to
    support the [external-lib-deps] command and so it's not on the critical path. *)
-let lib_deps t =
+let fold_labeled (type acc) t ~(init : acc) ~f =
   let file_exists = Fdecl.get file_exists_fdecl in
-  let rec loop : type a. a t -> Lib_deps_info.t -> Lib_deps_info.t =
+  let rec loop : type a. a t -> acc -> acc =
    fun t acc ->
     match t with
     | Pure _ -> acc
@@ -327,7 +329,7 @@ let lib_deps t =
     | Dyn_deps t -> loop t acc
     | Contents _ -> acc
     | Lines_of _ -> acc
-    | Record_lib_deps deps -> Lib_deps_info.merge deps acc
+    | Label r -> f r acc
     | Fail _ -> acc
     | If_file_exists (p, then_, else_) ->
       if file_exists p then
@@ -337,7 +339,7 @@ let lib_deps t =
     | Memo m -> loop m.t acc
     | Catch (t, _) -> loop t acc
   in
-  loop t Lib_name.Map.empty
+  loop t init
 
 (* Execution *)
 
@@ -385,7 +387,7 @@ end = struct
       | Dyn_deps t ->
         let (x, dyn_deps), dyn_deps_x = go t in
         (x, Dep.Set.union dyn_deps dyn_deps_x)
-      | Record_lib_deps _ -> ((), Dep.Set.empty)
+      | Label _ -> ((), Dep.Set.empty)
       | Fail { fail } -> fail ()
       | If_file_exists (p, then_, else_) ->
         if file_exists p then

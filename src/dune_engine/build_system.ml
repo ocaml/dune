@@ -1297,6 +1297,33 @@ end = struct
       | exception Unix.Unix_error (ENOENT, _, _) -> ()
       | () -> () )
 
+  type action_digest =
+    | Standard of Action.For_shell.t
+    | Ext of
+        { name : string
+        ; version : int
+        ; deps : string list
+        ; targets : string list
+        }
+
+  (* cwong: I am unsure about this change -- this will cause a cache miss when
+     rebuilding a project that was built with a prior version of dune, even if
+     the action has otherwise not changed. *)
+  let compute_action_digest action =
+    match Action.for_shell action with
+    | Action.For_shell.Extension
+        { name
+        ; version
+        ; deps
+        ; targets
+        ; (* explicitly ignore what the action actually does -- it is the
+             responsibility of rule maintainers to ensure that the versioning
+             evolves in sync with the code *)
+          action = _
+        } ->
+      Ext { name; version; deps; targets }
+    | s -> Standard s
+
   let compute_rule_digest (rule : Rule.t) ~deps ~action ~sandbox_mode =
     let targets_as_list = Path.Build.Set.to_list rule.action.targets in
     let env = Rule.effective_env rule in
@@ -1304,7 +1331,7 @@ end = struct
       ( Dep.Set.trace deps ~sandbox_mode ~env ~eval_pred
       , List.map targets_as_list ~f:(fun p -> Path.to_string (Path.build p))
       , Option.map rule.context ~f:(fun c -> c.name)
-      , Action.for_shell action )
+      , compute_action_digest action )
     in
     Digest.generic trace
 

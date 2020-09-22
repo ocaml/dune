@@ -22,6 +22,102 @@ module DB = struct
 
   type t = { by_dir : scope Path.Source.Map.t }
 
+  module Found_or_redirect : sig
+    type t = private
+      | Found of Lib_info.external_
+      | Redirect of (Loc.t * Lib_name.t)
+
+    val redirect : Lib_name.t -> Loc.t * Lib_name.t -> Lib_name.t * t
+
+    val found : Lib_info.external_ -> t
+  end = struct
+    type t =
+      | Found of Lib_info.external_
+      | Redirect of (Loc.t * Lib_name.t)
+
+    let redirect from (loc, to_) =
+      if Lib_name.equal from to_ then
+        Code_error.raise ~loc "Invalid redirect"
+          [ ("to_", Lib_name.to_dyn to_) ]
+      else
+        (from, Redirect (loc, to_))
+
+    let found x = Found x
+  end
+
+  module Library_related_stanza = struct
+    type t =
+      | Library of Path.Build.t * Dune_file.Library.t
+      | Library_redirect of Dune_file.Library_redirect.Local.t
+      | Deprecated_library_name of Dune_file.Deprecated_library_name.t
+  end
+
+  let create_from_stanzas ~parent ~lib_config stanzas =
+    let map : Found_or_redirect.t Lib_name.Map.t =
+      List.concat_map stanzas ~f:(fun stanza ->
+          match (stanza : Library_related_stanza.t) with
+          | Library_redirect s ->
+            let old_public_name = Lib_name.of_local s.old_name in
+            [ Found_or_redirect.redirect old_public_name s.new_public_name ]
+          | Deprecated_library_name s ->
+            let old_public_name =
+              Dune_file.Deprecated_library_name.old_public_name s
+            in
+            [ Found_or_redirect.redirect old_public_name s.new_public_name ]
+          | Library (dir, (conf : Dune_file.Library.t)) -> (
+            let info =
+              Dune_file.Library.to_lib_info conf ~dir ~lib_config
+              |> Lib_info.of_local
+            in
+            match conf.public with
+            | None ->
+              [ (Dune_file.Library.best_name conf, Found_or_redirect.found info)
+              ]
+            | Some p ->
+              let name = Dune_file.Public_lib.name p in
+              if Lib_name.equal name (Lib_name.of_local conf.name) then
+                [ (name, Found_or_redirect.found info) ]
+              else
+                let loc = Dune_file.Public_lib.loc p in
+                [ (name, Found_or_redirect.found info)
+                ; Found_or_redirect.redirect
+                    (Lib_name.of_local conf.name)
+                    (loc, name)
+                ] ))
+      |> Lib_name.Map.of_list_reducei
+           ~f:(fun name (v1 : Found_or_redirect.t) v2 ->
+             let res =
+               match (v1, v2) with
+               | Found info1, Found info2 ->
+                 Error (Lib_info.loc info1, Lib_info.loc info2)
+               | Found info, Redirect (loc, _)
+               | Redirect (loc, _), Found info ->
+                 Error (loc, Lib_info.loc info)
+               | Redirect (loc1, lib1), Redirect (loc2, lib2) ->
+                 if Lib_name.equal lib1 lib2 then
+                   Ok v1
+                 else
+                   Error (loc1, loc2)
+             in
+             match res with
+             | Ok x -> x
+             | Error (loc1, loc2) ->
+               User_error.raise
+                 [ Pp.textf "Library %s is defined twice:"
+                     (Lib_name.to_string name)
+                 ; Pp.textf "- %s" (Loc.to_file_colon_line loc1)
+                 ; Pp.textf "- %s" (Loc.to_file_colon_line loc2)
+                 ])
+    in
+    Lib.DB.create () ~parent
+      ~resolve:(fun name ->
+        match Lib_name.Map.find map name with
+        | None -> Lib.DB.Resolve_result.not_found
+        | Some (Redirect lib) -> Lib.DB.Resolve_result.redirect None lib
+        | Some (Found lib) -> Lib.DB.Resolve_result.found lib)
+      ~all:(fun () -> Lib_name.Map.keys map)
+      ~lib_config
+
   (* This function is linear in the depth of [dir] in the worst case, so if it
      shows up in the profile we should memoize it. *)
   let find_by_dir t (dir : Path.Source.t) =
@@ -55,8 +151,7 @@ module DB = struct
   (* Create a database from the public libraries defined in the stanzas *)
   let public_libs t ~installed_libs ~lib_config stanzas =
     let public_libs =
-      List.filter_map stanzas
-        ~f:(fun (stanza : Lib.DB.Library_related_stanza.t) ->
+      List.filter_map stanzas ~f:(fun (stanza : Library_related_stanza.t) ->
           match stanza with
           | Library (_, { project; public = Some p; _ }) ->
             Some (Dune_file.Public_lib.name p, Project project)
@@ -108,7 +203,7 @@ module DB = struct
       |> Path.Source.Map.of_list_exn
     in
     let stanzas_by_project_dir =
-      List.map stanzas ~f:(fun (stanza : Lib.DB.Library_related_stanza.t) ->
+      List.map stanzas ~f:(fun (stanza : Library_related_stanza.t) ->
           let project =
             match stanza with
             | Library (_, lib) -> lib.project
@@ -137,8 +232,7 @@ module DB = struct
         let project = Option.value_exn project in
         let stanzas, coq_stanzas = Option.value stanzas ~default:([], []) in
         let db =
-          Lib.DB.create_from_stanzas stanzas ~parent:(Some public_libs)
-            ~lib_config
+          create_from_stanzas stanzas ~parent:(Some public_libs) ~lib_config
         in
         let coq_db = Coq_lib.DB.create_from_coqlib_stanzas coq_stanzas in
         let root =
@@ -174,8 +268,7 @@ module DB = struct
             let ctx_dir =
               Path.Build.append_source context.Context.build_dir dune_file.dir
             in
-            ( Lib.DB.Library_related_stanza.Library (ctx_dir, lib) :: acc
-            , coq_acc )
+            (Library_related_stanza.Library (ctx_dir, lib) :: acc, coq_acc)
           | Dune_file.Deprecated_library_name d ->
             (Deprecated_library_name d :: acc, coq_acc)
           | Dune_file.Library_redirect d -> (Library_redirect d :: acc, coq_acc)

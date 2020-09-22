@@ -156,6 +156,8 @@ module DB : sig
 
     val not_found : t
 
+    val found : Lib_info.external_ -> t
+
     val to_dyn : t Dyn.Encoder.t
 
     val redirect : db option -> Loc.t * Lib_name.t -> t
@@ -175,20 +177,6 @@ module DB : sig
     -> all:(unit -> Lib_name.t list)
     -> lib_config:Lib_config.t
     -> unit
-    -> t
-
-  module Library_related_stanza : sig
-    type t =
-      | Library of Path.Build.t * Dune_file.Library.t
-      | Library_redirect of Dune_file.Library_redirect.Local.t
-      | Deprecated_library_name of Dune_file.Deprecated_library_name.t
-  end
-
-  (** Create a database from a list of library stanzas *)
-  val create_from_stanzas :
-       parent:t option
-    -> lib_config:Lib_config.t
-    -> Library_related_stanza.t list
     -> t
 
   val create_from_findlib : lib_config:Lib_config.t -> Findlib.t -> t

@@ -2,6 +2,7 @@ open! Stdune
 open Import
 module Outputs = Action_ast.Outputs
 module Inputs = Action_ast.Inputs
+module Memoize_or_distribute = Action_intf.Memoize_or_distribute
 
 module Prog = struct
   module Not_found = struct
@@ -54,6 +55,7 @@ module Ext = struct
     ; deps : Path.t list
     ; targets : Path.Build.t list
     ; action : unit -> unit Fiber.t
+    ; how_to_cache : Memoize_or_distribute.t
     }
 end
 
@@ -240,14 +242,9 @@ let rec is_dynamic = function
   | Digest_files _
   | Merge_files_into _
   | Cram _
-  | Format_dune_file _ ->
-    false
+  | Format_dune_file _
   | Extension _ ->
-    (* cwong: Extensions as arbitrary closures can probably do arbitrarily bad
-       things. However, maybe we can either restrict what extensions are allowed
-       to do or push the responsibility onto the extension author by adding this
-       as a field instead. *)
-    true
+    false
 
 let prepare_managed_paths ~link ~sandboxed deps ~eval_pred =
   let steps =
@@ -333,9 +330,11 @@ let is_useful_to distribute memoize =
     | System _ -> true
     | Bash _ -> true
     | Format_dune_file _ -> memoize
-    | Extension _ ->
-      (* Maybe this should be a field instead? *)
-      false
+    | Extension { how_to_cache; _ } -> (
+      match how_to_cache with
+      | Memoize_or_distribute.Neither -> false
+      | Memoize -> memoize
+      | Distribute -> distribute )
   in
   fun t ->
     match loop t with

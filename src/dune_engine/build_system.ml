@@ -1318,6 +1318,7 @@ end = struct
              responsibility of rule maintainers to ensure that the versioning
              evolves in sync with the code *)
           action = _
+        ; how_to_cache = _
         } ->
       Ext { name; version; deps; targets }
     | s -> Standard s

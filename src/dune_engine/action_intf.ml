@@ -13,6 +13,13 @@ end
 
 type ocaml_string = string
 
+module Memoize_or_distribute = struct
+  type t =
+    | Neither
+    | Memoize
+    | Distribute
+end
+
 module type Ast = sig
   type program
 
@@ -32,6 +39,7 @@ module type Ast = sig
     ; deps : path list
     ; targets : target list
     ; action : unit -> unit Fiber.t
+    ; how_to_cache : Memoize_or_distribute.t
     }
 
   type t =

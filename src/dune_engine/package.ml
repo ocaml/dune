@@ -225,33 +225,95 @@ module Dependency = struct
 end
 
 module Source_kind = struct
+  module Host = struct
+    type kind =
+      | Github
+      | Bitbucket
+      | Gitlab
+
+    let to_string = function
+      | Github -> "github"
+      | Bitbucket -> "bitbucket"
+      | Gitlab -> "gitlab"
+
+    type t =
+      { user : string
+      ; repo : string
+      ; kind : kind
+      }
+
+    let dyn_of_kind kind = kind |> to_string |> Dyn.Encoder.string
+
+    let to_dyn { user; repo; kind } =
+      let open Dyn.Encoder in
+      record
+        [ ("kind", dyn_of_kind kind)
+        ; ("user", string user)
+        ; ("repo", string repo)
+        ]
+
+    let host_of_kind = function
+      | Github -> "github.com"
+      | Bitbucket -> "bitbucket.org"
+      | Gitlab -> "gitlab.com"
+
+    let homepage { kind; user; repo } =
+      let host = host_of_kind kind in
+      sprintf "https://%s/%s/%s" host user repo
+
+    let bug_reports t =
+      homepage t
+      ^
+      match t.kind with
+      | Bitbucket
+      | Github ->
+        "/issues"
+      | Gitlab -> "/-/issues"
+
+    let enum k =
+      [ ("GitHub", Github, None)
+      ; ("Bitbucket", Bitbucket, Some (2, 8))
+      ; ("Gitlab", Gitlab, Some (2, 8))
+      ]
+      |> List.map ~f:(fun (name, kind, since) ->
+             let decode =
+               let of_string ~loc s =
+                 match String.split ~on:'/' s with
+                 | [ user; repo ] -> k { kind; user; repo }
+                 | _ ->
+                   User_error.raise ~loc
+                     [ Pp.textf "%s repository must be of form user/repo" name ]
+               in
+               let open Dune_lang.Decoder in
+               ( match since with
+               | None -> return ()
+               | Some v -> Dune_lang.Syntax.since Stanza.syntax v )
+               >>> plain_string of_string
+             in
+             let constr = to_string kind in
+             (constr, decode))
+
+    let to_string { user; repo; kind } =
+      sprintf "git+https://%s/%s/%s.git" (host_of_kind kind) user repo
+  end
+
   type t =
-    | Github of string * string
+    | Host of Host.t
     | Url of string
 
   let to_dyn =
     let open Dyn.Encoder in
     function
-    | Github (user, repo) -> constr "Github" [ string user; string repo ]
+    | Host h -> constr "Host" [ Host.to_dyn h ]
     | Url url -> constr "Url" [ string url ]
 
   let to_string = function
-    | Github (user, repo) ->
-      sprintf "git+https://github.com/%s/%s.git" user repo
+    | Host h -> Host.to_string h
     | Url u -> u
 
   let decode =
     let open Dune_lang.Decoder in
-    sum
-      [ ( "github"
-        , plain_string (fun ~loc s ->
-              match String.split ~on:'/' s with
-              | [ user; repo ] -> Github (user, repo)
-              | _ ->
-                User_error.raise ~loc
-                  [ Pp.textf "GitHub repository must be of form user/repo" ]) )
-      ; ("uri", string >>| fun s -> Url s)
-      ]
+    sum (("uri", string >>| fun s -> Url s) :: Host.enum (fun x -> Host x))
 end
 
 module Info = struct
@@ -273,14 +335,12 @@ module Info = struct
 
   let homepage t =
     match (t.homepage, t.source) with
-    | None, Some (Github (user, repo)) ->
-      Some (sprintf "https://github.com/%s/%s" user repo)
+    | None, Some (Host h) -> Some (Source_kind.Host.homepage h)
     | s, _ -> s
 
   let bug_reports t =
     match (t.bug_reports, t.source) with
-    | None, Some (Github (user, repo)) ->
-      Some (sprintf "https://github.com/%s/%s/issues" user repo)
+    | None, Some (Host h) -> Some (Source_kind.Host.bug_reports h)
     | s, _ -> s
 
   let documentation t = t.documentation

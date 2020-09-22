@@ -1,0 +1,25 @@
+dist: bionic
+language: c
+install: wget https://raw.githubusercontent.com/ocaml/ocaml-ci-scripts/master/.travis-opam.sh
+script: bash -ex .travis-opam.sh
+env:
+  global:
+  - PACKAGE=opam-file-format
+  - DEPOPTS=dune
+  - DUNE_PROFILE=dev
+  matrix:
+  - OCAML_VERSION=4.02 DUNE_PROFILE=release
+  - OCAML_VERSION=4.03
+  - OCAML_VERSION=4.04
+  - OCAML_VERSION=4.05
+  - OCAML_VERSION=4.06
+  - OCAML_VERSION=4.07
+  - OCAML_VERSION=4.08
+  - OCAML_VERSION=4.09
+  - OCAML_VERSION=4.10 TESTS=true
+os:
+  - linux
+  - osx
+cache:
+    directories:
+    - $HOME/.opam

@@ -1,0 +1,6 @@
+int: 0
+string: "foo"
+#Identity
+section "thing" {
+  url: "https://theinter.net"
+}

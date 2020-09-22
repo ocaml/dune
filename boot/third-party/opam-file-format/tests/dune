@@ -1,0 +1,5 @@
+(test
+  (name tests)
+  (deps sample.opam)
+  (package opam-file-format)
+  (libraries alcotest opam-file-format))

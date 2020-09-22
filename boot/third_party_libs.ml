@@ -26,10 +26,10 @@ let libs =
   ; ("result", "result", Some "Result", false)
   ; ("pp", "pp/src", Some "Pp", false)
   ; ( "build_path_prefix_map"
-    , "build_path_prefix_map/src"
+    , "build_path_prefix_map"
     , Some "Build_path_prefix_map"
     , false )
   ; ("opam-file-format", "opam-file-format/src", None, false)
   ; ("cmdliner", "cmdliner/src", None, false)
-  ; ("re", "re/src", Some "Re", false)
+  ; ("re", "re/lib", Some "Re", false)
   ]

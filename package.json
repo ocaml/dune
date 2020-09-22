@@ -1,0 +1,13 @@
+{
+    "name": "dune",
+    "license": "MIT",
+    "dependencies": {
+        "re": "github:ocaml/ocaml-re",
+        "pp": "github:ocaml-dune/pp",
+        "csexp": "github:diml/csexp",
+        "opam-file-format": "github:ocaml/opam-file-format",
+        "cmdliner": "github:dbuenzli/cmdliner",
+        "result": "github:rgrinberg/result#remove-backwards-compat",
+        "build_path_prefix_map": "git+https://gitlab.com/rgrinberg/build_path_prefix_map.git"
+    },
+}

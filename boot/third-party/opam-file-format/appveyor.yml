@@ -1,0 +1,42 @@
+platform:
+  - x64
+
+image: Visual Studio 2017
+
+clone_depth: 1
+
+environment:
+  global:
+    CYG_ROOT: cygwin64
+    CYG_ARCH: x86_64
+    OCAML_ROOT: C:\OCaml
+    OCAML_VERSION: 4.06.1
+    CYG_CACHE: C:\cygwin\var\cache\setup
+    CYG_MIRROR: http://mirrors.kernel.org/sourceware/cygwin/
+  matrix:
+    - CYG_ROOT: cygwin
+      CYG_ARCH: x86
+      OCAML_PORT: cygwin
+    - CYG_ROOT: cygwin64
+      OCAML_PORT: cygwin64
+    - OCAML_PORT: msvc
+    - OCAML_PORT: msvc64
+    - OCAML_PORT: mingw
+    - OCAML_PORT: mingw64
+
+cache:
+  - C:\OCaml
+
+install:
+  - call "%APPVEYOR_BUILD_FOLDER%\appveyor.cmd" install
+
+build_script:
+  - call "%APPVEYOR_BUILD_FOLDER%\appveyor.cmd" build
+
+test_script:
+  - call "%APPVEYOR_BUILD_FOLDER%\appveyor.cmd" test
+
+# Uncomment this to enable Remote Desktop on the build worker at the end of the
+# build. The worker is available for the remainder of the allocated hour.
+#on_finish:
+#    - ps: $blockRdp = $true; iex ((new-object net.webclient).DownloadString('https://raw.githubusercontent.com/appveyor/ci/master/scripts/enable-rdp.ps1'))

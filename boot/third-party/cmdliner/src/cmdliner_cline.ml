@@ -1,7 +1,7 @@
 (*---------------------------------------------------------------------------
    Copyright (c) 2011 Daniel C. Bünzli. All rights reserved.
    Distributed under the ISC license, see terms at the end of the file.
-   cmdliner v1.0.2-18-gac44bb7
+   %%NAME%% %%VERSION%%
   ---------------------------------------------------------------------------*)
 
 (* A command line stores pre-parsed information about the command

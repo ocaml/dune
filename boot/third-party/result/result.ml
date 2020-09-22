@@ -1,5 +1,2 @@
-type nonrec ('a, 'b) result = ('a, 'b) result =
-  | Ok of 'a
-  | Error of 'b
-
-type ('a, 'b) t = ('a, 'b) result
+include Stdlib.Result
+type ('a, 'b) result = ('a, 'b) Stdlib.Result.t = Ok of 'a | Error of 'b

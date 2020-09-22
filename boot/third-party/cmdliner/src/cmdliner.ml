@@ -1,12 +1,13 @@
 (*---------------------------------------------------------------------------
    Copyright (c) 2011 Daniel C. Bünzli. All rights reserved.
    Distributed under the ISC license, see terms at the end of the file.
-   cmdliner v1.0.2-18-gac44bb7
+   %%NAME%% %%VERSION%%
   ---------------------------------------------------------------------------*)
 
 module Manpage = Cmdliner_manpage
 module Arg = Cmdliner_arg
 module Term = struct
+  type ('a, 'b) stdlib_result = ('a, 'b) result
 
   include Cmdliner_term
 
@@ -111,7 +112,7 @@ module Term = struct
     ('a, [ term_escape
          | `Exn of exn * Printexc.raw_backtrace
          | `Parse of string
-         | `Std_help of Manpage.format | `Std_version ]) Pervasives.result
+         | `Std_help of Manpage.format | `Std_version ]) stdlib_result
 
   let run ~catch ei cl f = try (f ei cl :> 'a eval_result) with
   | exn when catch ->
@@ -193,12 +194,14 @@ module Term = struct
       match res with
       | `Std_help fmt -> Cmdliner_docgen.pp_man err_ppf fmt help_ppf ei; `Help
       | `Std_version -> Cmdliner_msg.pp_version help_ppf ei; `Version
-      | `Parse err -> Cmdliner_msg.pp_err_usage err_ppf ei ~err; `Error `Parse
+      | `Parse err ->
+          Cmdliner_msg.pp_err_usage err_ppf ei ~err_lines:false ~err;
+          `Error `Parse
       | `Help (fmt, cmd) -> do_help help_ppf err_ppf ei fmt cmd; `Help
       | `Exn (e, bt) -> Cmdliner_msg.pp_backtrace err_ppf ei e bt; `Error `Exn
       | `Error (usage, err) ->
           (if usage
-           then Cmdliner_msg.pp_err_usage err_ppf ei ~err
+           then Cmdliner_msg.pp_err_usage err_ppf ei ~err_lines:true ~err
            else Cmdliner_msg.pp_err err_ppf ei ~err);
           `Error `Term
 
@@ -255,7 +258,8 @@ module Term = struct
     match choose_term main_f choices_f (remove_exec argv) with
     | Error err ->
         let ei = Cmdliner_info.eval ~term:main ~main ~choices ~env in
-        Cmdliner_msg.pp_err_usage err_ppf ei ~err; `Error `Parse
+        Cmdliner_msg.pp_err_usage err_ppf ei ~err_lines:false ~err;
+        `Error `Parse
     | Ok ((chosen, f), args) ->
         let ei = Cmdliner_info.eval ~term:chosen ~main ~choices ~env in
         let ei, res = term_eval ~catch ei f args in
@@ -281,9 +285,10 @@ module Term = struct
   | `Ok n -> n
   | r -> exit_status_of_result ?term_err r
 
-  let exit ?term_err r = Pervasives.exit (exit_status_of_result ?term_err r)
+  let stdlib_exit = exit
+  let exit ?term_err r = stdlib_exit (exit_status_of_result ?term_err r)
   let exit_status ?term_err r =
-    Pervasives.exit (exit_status_of_status_result ?term_err r)
+    stdlib_exit (exit_status_of_status_result ?term_err r)
 
 end
 

@@ -35,3 +35,11 @@ let merge a b =
       | Some a, Some b -> Some (Kind.merge a b))
 
 let to_dyn = Lib_name.Map.to_dyn Kind.to_dyn
+
+type Build.label += Label of t
+
+let lib_deps t : t =
+  Build.fold_labeled t ~init:Lib_name.Map.empty ~f:(fun r acc ->
+      match r with
+      | Label u -> merge u acc
+      | _ -> acc)

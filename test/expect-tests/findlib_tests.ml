@@ -30,6 +30,7 @@ let findlib =
     ; ocaml_version_string = "4.02.3"
     ; ocaml_version = Ocaml_version.make (4, 2, 3)
     ; instrument_with = []
+    ; context_name = Context_name.of_string "default"
     }
   in
   Findlib.create ~paths:[ db_path ] ~lib_config
@@ -45,7 +46,7 @@ let%expect_test _ =
   let requires = Lib_info.requires info in
   let dyn = Dyn.Encoder.list Lib_dep.to_dyn requires in
   let pp = Dyn.pp dyn in
-  Format.printf "%a@." Pp.render_ignore_tags pp;
+  Format.printf "%a@." Pp.to_fmt pp;
   [%expect {|[ "baz" ]|}]
 
 (* Meta parsing/simplification *)

@@ -98,16 +98,17 @@ let stderr_supports_color =
 
 let rec tag_handler current_styles ppf styles pp =
   Format.pp_print_as ppf 0 (Style.escape_sequence_no_reset styles);
-  Pp.render ppf pp ~tag_handler:(tag_handler (current_styles @ styles));
+  Pp.to_fmt_with_tags ppf pp
+    ~tag_handler:(tag_handler (current_styles @ styles));
   Format.pp_print_as ppf 0 (Style.escape_sequence current_styles)
 
 let make_printer supports_color ppf =
   let f =
     lazy
       ( if Lazy.force supports_color then
-        Pp.render ppf ~tag_handler:(tag_handler [])
+        Pp.to_fmt_with_tags ppf ~tag_handler:(tag_handler [])
       else
-        Pp.render_ignore_tags ppf )
+        Pp.to_fmt ppf )
   in
   Staged.stage (fun pp ->
       Lazy.force f pp;

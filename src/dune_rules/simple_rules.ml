@@ -198,6 +198,12 @@ let copy_files sctx ~dir ~expander ~src_dir (def : Copy_files.t) =
       Rules.Produce.Alias.add_deps alias targets);
   targets
 
+let copy_files sctx ~dir ~expander ~src_dir (def : Copy_files.t) =
+  if Expander.eval_blang expander def.enabled_if then
+    copy_files sctx ~dir ~expander ~src_dir def
+  else
+    Path.Set.empty
+
 let alias sctx ?extra_bindings ~dir ~expander (alias_conf : Alias_conf.t) =
   let alias = Alias.make ~dir alias_conf.name in
   let stamp =

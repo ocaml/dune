@@ -2,7 +2,7 @@
     strings, with some set like operations. *)
 open! Stdune
 
-open Import
+open Dune_engine
 
 type t
 

@@ -116,7 +116,7 @@ let rec pp =
       (Pp.concat
          [ Pp.verbatim v; Pp.space; Pp.concat_map ~sep:(Pp.char ',') xs ~f:pp ])
 
-let to_string t = Format.asprintf "%a" Pp.render_ignore_tags (pp t)
+let to_string t = Format.asprintf "%a" Pp.to_fmt (pp t)
 
 module Encoder = struct
   type dyn = t

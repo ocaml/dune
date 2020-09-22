@@ -163,7 +163,7 @@ module File_ops_real (W : Workspace) : File_operations = struct
             Dune_rules.Meta.add_versions meta ~get_version:(fun _ ->
                 Some version)
           in
-          Pp.render_ignore_tags ppf (Dune_rules.Meta.pp meta.entries))
+          Pp.to_fmt ppf (Dune_rules.Meta.pp meta.entries))
 
   let replace_sites
       ~(get_location : Dune_engine.Section.t -> Package.Name.t -> Stdune.Path.t)

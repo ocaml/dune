@@ -163,5 +163,5 @@ let on_same_line loc1 loc2 =
 let span begin_ end_ = { begin_ with stop = end_.stop }
 
 let rec render ppf pp =
-  Pp.render ppf pp ~tag_handler:(fun ppf Loc pp ->
+  Pp.to_fmt_with_tags ppf pp ~tag_handler:(fun ppf Loc pp ->
       Format.fprintf ppf "@{<loc>%a@}" render pp)

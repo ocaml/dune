@@ -285,12 +285,12 @@ let decode =
     and+ subdirs = multi_field "subdir" (subdir ())
     and+ rest = leftover_fields in
     match (data_only, dirs, ignored_sub_dirs) with
-    | None, Some (loc, _), _ :: _ ->
+    | _, Some (loc, _), _ :: _ ->
       User_error.raise ~loc
         [ Pp.text
             "Cannot have both dirs and ignored_subdirs stanza in a dune file. "
         ]
-    | Some (loc, _), None, _ :: _ ->
+    | Some (loc, _), _, _ :: _ ->
       User_error.raise ~loc
         [ Pp.text
             "Cannot have both data_only_dirs and ignored_subdirs stanza in a \

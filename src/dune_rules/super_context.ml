@@ -256,9 +256,9 @@ let internal_lib_names t =
         function
         | Dune_file.Library lib ->
           Lib_name.Set.add
-            ( match lib.public with
-            | None -> acc
-            | Some public ->
+            ( match lib.visibility with
+            | Private -> acc
+            | Public public ->
               Lib_name.Set.add acc (Dune_file.Public_lib.name public) )
             (Lib_name.of_local lib.name)
         | _ -> acc))
@@ -455,7 +455,7 @@ let get_installed_binaries stanzas ~(context : Context.t) =
 let create_lib_entries_by_package ~public_libs stanzas =
   Dir_with_dune.deep_fold stanzas ~init:[] ~f:(fun _ stanza acc ->
       match stanza with
-      | Dune_file.Library { public = Some pub; _ } -> (
+      | Dune_file.Library { visibility = Public pub; _ } -> (
         match Lib.DB.find public_libs (Dune_file.Public_lib.name pub) with
         | None ->
           (* Skip hidden or unavailable libraries. TODO we should assert that

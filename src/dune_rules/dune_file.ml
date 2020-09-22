@@ -505,9 +505,13 @@ module Library = struct
     let field = field_o "wrapped" (located decode)
   end
 
+  type visibility =
+    | Public of Public_lib.t
+    | Private
+
   type t =
     { name : Loc.t * Lib_name.Local.t
-    ; public : Public_lib.t option
+    ; visibility : visibility
     ; synopsis : string option
     ; install_c_headers : string list
     ; ppx_runtime_libraries : (Loc.t * Lib_name.t) list
@@ -641,6 +645,11 @@ module Library = struct
                    "name field is missing" )
              ]
        in
+       let visibility =
+         match public with
+         | None -> Private
+         | Some public -> Public public
+       in
        Option.both virtual_modules implements
        |> Option.iter ~f:(fun (virtual_modules, (_, impl)) ->
               User_error.raise
@@ -656,7 +665,7 @@ module Library = struct
            ]
        | _ -> () );
        { name
-       ; public
+       ; visibility
        ; synopsis
        ; install_c_headers
        ; ppx_runtime_libraries
@@ -682,6 +691,16 @@ module Library = struct
        ; instrumentation_backend
        })
 
+  let package t =
+    match t.visibility with
+    | Public p -> Some p.package
+    | Private -> None
+
+  let sub_dir t =
+    match t.visibility with
+    | Public p -> p.sub_dir
+    | Private -> None
+
   let has_foreign t = Buildable.has_foreign t.buildable
 
   let foreign_archives t =
@@ -703,9 +722,9 @@ module Library = struct
     Path.Build.relative dir (Lib_name.Local.to_string (snd t.name) ^ ext)
 
   let best_name t =
-    match t.public with
-    | None -> Lib_name.of_local t.name
-    | Some p -> snd p.name
+    match t.visibility with
+    | Private -> Lib_name.of_local t.name
+    | Public p -> snd p.name
 
   let is_virtual t = Option.is_some t.virtual_modules
 
@@ -743,9 +762,9 @@ module Library = struct
         ~f:(Path.Build.relative dir)
     in
     let status =
-      match conf.public with
-      | None -> Lib_info.Status.Private conf.project
-      | Some p -> Public (conf.project, p.package)
+      match conf.visibility with
+      | Private -> Lib_info.Status.Private conf.project
+      | Public p -> Public (conf.project, p.package)
     in
     let virtual_library = is_virtual conf in
     let foreign_archives = foreign_lib_files conf ~dir ~ext_lib in
@@ -1853,7 +1872,11 @@ module Library_redirect = struct
 
     let of_lib (lib : Library.t) : t option =
       let open Option.O in
-      let* public = lib.public in
+      let* public =
+        match lib.visibility with
+        | Public p -> Some p
+        | Private -> None
+      in
       if Lib_name.equal (Lib_name.of_local lib.name) (snd public.name) then
         None
       else
@@ -2097,7 +2120,7 @@ module Stanzas = struct
 end
 
 let stanza_package = function
-  | Library { public = Some { package; _ }; _ }
+  | Library lib -> Library.package lib
   | Alias { package = Some package; _ }
   | Rule { package = Some package; _ }
   | Install { package; _ }

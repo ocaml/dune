@@ -367,12 +367,11 @@ let cctx (lib : Library.t) ~sctx ~source_modules ~dir ~expander ~scope
     let { Lib_config.has_native; _ } = ctx.lib_config in
     Dune_file.Mode_conf.Set.eval_detailed lib.modes ~has_native
   in
+  let package = Dune_file.Library.package lib in
   Compilation_context.create () ~super_context:sctx ~expander ~scope ~obj_dir
     ~modules ~flags ~requires_compile ~requires_link ~preprocessing:pp
     ~opaque:Inherit_from_settings ~js_of_ocaml:(Some lib.buildable.js_of_ocaml)
-    ~dynlink ?stdlib:lib.stdlib
-    ~package:(Option.map lib.public ~f:Dune_file.Public_lib.package)
-    ?vimpl ~modes
+    ~dynlink ?stdlib:lib.stdlib ~package ?vimpl ~modes
 
 let library_rules (lib : Library.t) ~cctx ~source_modules ~dir_contents
     ~compile_info =

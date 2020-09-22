@@ -112,9 +112,13 @@ module Mode_conf : sig
 end
 
 module Library : sig
+  type visibility =
+    | Public of Public_lib.t
+    | Private
+
   type t =
     { name : Loc.t * Lib_name.Local.t
-    ; public : Public_lib.t option
+    ; visibility : visibility
     ; synopsis : string option
     ; install_c_headers : string list
     ; ppx_runtime_libraries : (Loc.t * Lib_name.t) list
@@ -144,6 +148,10 @@ module Library : sig
     ; enabled_if : Blang.t
     ; instrumentation_backend : (Loc.t * Lib_name.t) option
     }
+
+  val sub_dir : t -> string option
+
+  val package : t -> Package.t option
 
   (** Check if the library has any foreign stubs or archives. *)
   val has_foreign : t -> bool

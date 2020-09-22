@@ -643,9 +643,9 @@ let init sctx =
     |> List.concat_map ~f:(fun (w : _ Dir_with_dune.t) ->
            List.filter_map w.data ~f:(function
              | Dune_file.Library (l : Dune_file.Library.t) -> (
-               match l.public with
-               | Some _ -> None
-               | None ->
+               match l.visibility with
+               | Public _ -> None
+               | Private ->
                  let scope = SC.find_scope_by_dir sctx w.ctx_dir in
                  Library.best_name l
                  |> Lib.DB.find_even_when_hidden (Scope.libs scope)

@@ -88,6 +88,29 @@ type exec_environment =
   ; exit_codes : int Predicate_lang.t
   }
 
+(* When passing these to an extension, they shouldn't need to know about any
+   kind of dynamic build dependency functions or prepped dependencies, etc,
+   which should be handled here instead. *)
+let restrict_ctx { targets; context; purpose; rule_loc; build_deps = _ } =
+  { Action_ext_intf.targets; context; purpose; rule_loc }
+
+let restrict_env
+    { working_dir
+    ; env
+    ; stdout_to
+    ; stderr_to
+    ; stdin_from
+    ; exit_codes
+    ; prepared_dependencies = _
+    } =
+  { Action_ext_intf.working_dir
+  ; env
+  ; stdout_to
+  ; stderr_to
+  ; stdin_from
+  ; exit_codes
+  }
+
 let validate_context_and_prog context prog =
   match context with
   | None
@@ -369,7 +392,7 @@ let rec exec t ~ectx ~eenv =
     in
     Done
   | Extension { Action.action; _ } ->
-    let* () = action () in
+    let* () = action ~ectx:(restrict_ctx ectx) ~eenv:(restrict_env eenv) in
     Fiber.return Done
 
 and redirect_out t ~ectx ~eenv outputs fn =

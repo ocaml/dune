@@ -35,13 +35,14 @@ module type Ast = sig
       version : int
     ; deps : path list
     ; targets : target list
-    ; action : unit -> unit Fiber.t
     ; how_to_cache : Memoize_or_distribute.t
     ; (* cwong: I'm not sure how much I like the presence of this field. On the
          one hand, it breaks the intuition that encode/decode are inverses. On
          the other hand, we would only ever encode this type for debugging, so
          it shouldn't matter. *)
       encode : unit -> Dune_lang.t
+    ; action :
+        ectx:Action_ext_intf.context -> eenv:Action_ext_intf.env -> unit Fiber.t
     }
 
   type t =

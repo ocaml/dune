@@ -54,9 +54,10 @@ module Ext = struct
     ; version : int
     ; deps : Path.t list
     ; targets : Path.Build.t list
-    ; action : unit -> unit Fiber.t
     ; how_to_cache : Memoize_or_distribute.t
     ; encode : unit -> Dune_lang.t
+    ; action :
+        ectx:Action_ext_intf.context -> eenv:Action_ext_intf.env -> unit Fiber.t
     }
 end
 

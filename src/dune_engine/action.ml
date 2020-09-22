@@ -2,6 +2,7 @@ open! Stdune
 open Import
 module Outputs = Action_ast.Outputs
 module Inputs = Action_ast.Inputs
+module Simplified = Action_intf.Simplified
 module Memoize_or_distribute = Action_intf.Memoize_or_distribute
 
 module Prog = struct
@@ -56,6 +57,7 @@ module Ext = struct
     ; targets : Path.Build.t list
     ; how_to_cache : Memoize_or_distribute.t
     ; encode : unit -> Dune_lang.t
+    ; simplified : unit -> Simplified.t
     ; action :
         ectx:Action_ext_intf.context -> eenv:Action_ext_intf.env -> unit Fiber.t
     }

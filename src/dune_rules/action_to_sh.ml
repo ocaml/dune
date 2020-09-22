@@ -1,24 +1,6 @@
 open! Dune_engine
 open Import
-
-module Simplified = struct
-  type destination =
-    | Dev_null
-    | File of string
-
-  type source = string
-
-  type t =
-    | Run of string * string list
-    | Chdir of string
-    | Setenv of string * string
-    | Redirect_out of t list * Action.Outputs.t * destination
-    | Redirect_in of t list * Action.Inputs.t * source
-    | Pipe of t list list * Action.Outputs.t
-    | Sh of string
-end
-
-open Simplified
+open Action_intf.Simplified
 
 let echo s =
   let lines = String.split_lines s in
@@ -95,11 +77,7 @@ let simplify act =
       Redirect_out
         ([ Run ("dune", [ "format-dune-file"; src ]) ], Stdout, File dst)
       :: acc
-      (* CR cwong: Come up with a better design for this. One idea might be to
-         move [Simplified] into the backend, allowing us to make an [sh] field
-         in [Action.ext]. *)
-    | Extension _ ->
-      Code_error.raise "simplication of extensions is unimplemented" []
+    | Extension { Action.For_shell.simplified; _ } -> simplified () :: acc
   and block act =
     match List.rev (loop act []) with
     | [] -> [ Run ("true", []) ]

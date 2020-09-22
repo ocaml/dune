@@ -55,7 +55,15 @@ module Make (Src : Action_intf.Ast) (Dst : Action_intf.Ast) = struct
       Format_dune_file (f_path ~dir src, f_target ~dir dst)
     | Cram script -> Cram (f_path ~dir script)
     | Extension
-        { Src.name; version; deps; targets; action; how_to_cache; encode } ->
+        { Src.name
+        ; version
+        ; deps
+        ; targets
+        ; action
+        ; how_to_cache
+        ; encode
+        ; simplified
+        } ->
       Extension
         { name
         ; version
@@ -64,6 +72,7 @@ module Make (Src : Action_intf.Ast) (Dst : Action_intf.Ast) = struct
         ; action
         ; how_to_cache
         ; encode
+        ; simplified
         }
 
   let rec map t ~dir ~f_program ~f_string ~f_path ~f_target =

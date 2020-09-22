@@ -1314,13 +1314,14 @@ end = struct
         ; version
         ; deps
         ; targets
+        ; how_to_cache = _
+        ; (* Maybe we could use this instead? *)
+          encode = _
+        ; simplified = _
         ; (* explicitly ignore what the action actually does -- it is the
              responsibility of rule maintainers to ensure that the versioning
              evolves in sync with the code *)
           action = _
-        ; how_to_cache = _
-        ; (* Maybe we could use this instead? *)
-          encode = _
         } ->
       Ext { name; version; deps; targets }
     | s -> Standard s

@@ -11,14 +11,31 @@ module Inputs = struct
   type t = Stdin
 end
 
-type ocaml_string = string
-
 module Memoize_or_distribute = struct
   type t =
     | Neither
     | Memoize
     | Distribute
 end
+
+module Simplified = struct
+  type destination =
+    | Dev_null
+    | File of string
+
+  type source = string
+
+  type t =
+    | Run of string * string list
+    | Chdir of string
+    | Setenv of string * string
+    | Redirect_out of t list * Outputs.t * destination
+    | Redirect_in of t list * Inputs.t * source
+    | Pipe of t list list * Outputs.t
+    | Sh of string
+end
+
+type ocaml_string = string
 
 module type Ast = sig
   type program
@@ -41,6 +58,7 @@ module type Ast = sig
          the other hand, we would only ever encode this type for debugging, so
          it shouldn't matter. *)
       encode : unit -> Dune_lang.t
+    ; simplified : unit -> Simplified.t
     ; action :
            ectx:Action_ext_intf.context
         -> eenv:Action_ext_intf.env

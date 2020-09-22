@@ -42,7 +42,14 @@ module type Ast = sig
          it shouldn't matter. *)
       encode : unit -> Dune_lang.t
     ; action :
-        ectx:Action_ext_intf.context -> eenv:Action_ext_intf.env -> unit Fiber.t
+           ectx:Action_ext_intf.context
+        -> eenv:Action_ext_intf.env
+        -> (* cwong: For now, I think we should only worry about extensions with
+              known dependencies. In the future, we may generalize this to
+              return an [Action_exec.done_or_more_deps], but that may be
+              trickier to get right, and is a bridge we can cross when we get
+              there. *)
+           unit Fiber.t
     }
 
   type t =

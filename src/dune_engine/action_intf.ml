@@ -29,9 +29,6 @@ module type Ast = sig
 
   type string
 
-  (* We need a story for allowing extension authors to access the string
-     expansion machinery. For now, manually calling the right will work, but
-     will probably get really unwieldy quickly. *)
   type ext =
     { name : ocaml_string
     ; (* Maybe we should use a dedicated semver instead? *)
@@ -40,6 +37,11 @@ module type Ast = sig
     ; targets : target list
     ; action : unit -> unit Fiber.t
     ; how_to_cache : Memoize_or_distribute.t
+    ; (* cwong: I'm not sure how much I like the presence of this field. On the
+         one hand, it breaks the intuition that encode/decode are inverses. On
+         the other hand, we would only ever encode this type for debugging, so
+         it shouldn't matter. *)
+      encode : unit -> Dune_lang.t
     }
 
   type t =
@@ -72,7 +74,9 @@ module type Ast = sig
     | Pipe of Outputs.t * t list
     | Format_dune_file of path * target
     | Cram of path
-    (* This variant is intentionally not exposed to the surface language, *)
+    (* This variant is intentionally not exposed to the surface language.
+       Instead, rule authors should construct and return this variant. when
+       desired. *)
     | Extension of ext
 end
 

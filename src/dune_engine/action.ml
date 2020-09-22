@@ -56,6 +56,7 @@ module Ext = struct
     ; targets : Path.Build.t list
     ; action : unit -> unit Fiber.t
     ; how_to_cache : Memoize_or_distribute.t
+    ; encode : unit -> Dune_lang.t
     }
 end
 

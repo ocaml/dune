@@ -206,7 +206,8 @@ module Partial = struct
     | Format_dune_file (src, dst) ->
       Format_dune_file (E.path ~expander src, E.target ~expander dst)
     | Cram script -> Cram (E.path ~expander script)
-    | Extension { name; version; deps; targets; action; how_to_cache } ->
+    | Extension { name; version; deps; targets; action; how_to_cache; encode }
+      ->
       Extension
         { name
         ; version
@@ -214,6 +215,7 @@ module Partial = struct
         ; targets = List.map ~f:(E.target ~expander) targets
         ; action
         ; how_to_cache
+        ; encode
         }
 end
 
@@ -332,7 +334,14 @@ let rec partial_expand t ~expander : Partial.t =
     Format_dune_file (E.path ~expander src, E.target ~expander dst)
   | Cram script -> Cram (E.path ~expander script)
   | Extension
-      { Action_dune_lang.name; version; deps; targets; action; how_to_cache } ->
+      { Action_dune_lang.name
+      ; version
+      ; deps
+      ; targets
+      ; action
+      ; how_to_cache
+      ; encode
+      } ->
     Extension
       { name
       ; version
@@ -340,6 +349,7 @@ let rec partial_expand t ~expander : Partial.t =
       ; targets = List.map ~f:(E.target ~expander) targets
       ; action
       ; how_to_cache
+      ; encode
       }
 
 module Infer : sig

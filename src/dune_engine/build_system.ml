@@ -1319,6 +1319,8 @@ end = struct
              evolves in sync with the code *)
           action = _
         ; how_to_cache = _
+        ; (* Maybe we could use this instead? *)
+          encode = _
         } ->
       Ext { name; version; deps; targets }
     | s -> Standard s

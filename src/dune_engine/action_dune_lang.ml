@@ -65,11 +65,9 @@ let ensure_at_most_one_dynamic_run ~loc action =
     | Diff _
     | Merge_files_into _
     | Cram _
-    | Format_dune_file _ ->
-      false
+    | Format_dune_file _
     | Extension _ ->
-      (* see comment on [is_dynamic] in [action.ml] *)
-      true
+      false
     | Pipe (_, ts)
     | Progn ts ->
       List.fold_left ts ~init:false ~f:(fun acc t ->

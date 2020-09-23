@@ -256,9 +256,9 @@ let internal_lib_names t =
         function
         | Dune_file.Library lib ->
           Lib_name.Set.add
-            ( match lib.public with
-            | None -> acc
-            | Some public ->
+            ( match lib.visibility with
+            | Private -> acc
+            | Public public ->
               Lib_name.Set.add acc (Dune_file.Public_lib.name public) )
             (Lib_name.of_local lib.name)
         | _ -> acc))
@@ -452,6 +452,32 @@ let get_installed_binaries stanzas ~(context : Context.t) =
           acc
       | _ -> acc)
 
+let create_lib_entries_by_package ~public_libs stanzas =
+  Dir_with_dune.deep_fold stanzas ~init:[] ~f:(fun _ stanza acc ->
+      match stanza with
+      | Dune_file.Library { visibility = Public pub; _ } -> (
+        match Lib.DB.find public_libs (Dune_file.Public_lib.name pub) with
+        | None ->
+          (* Skip hidden or unavailable libraries. TODO we should assert that
+             the libary name is always found somehow *)
+          acc
+        | Some lib ->
+          ( (Dune_file.Public_lib.package pub).name
+          , Lib_entry.Library (Lib.Local.of_lib_exn lib) )
+          :: acc )
+      | Dune_file.Deprecated_library_name
+          ({ old_name = old_public_name, deprecated; _ } as d) ->
+        ( (Dune_file.Public_lib.package old_public_name).name
+        , Lib_entry.Deprecated_library_name
+            { d with old_name = (old_public_name, deprecated) } )
+        :: acc
+      | _ -> acc)
+  |> Package.Name.Map.of_list_multi
+  |> Package.Name.Map.map
+       ~f:
+         (List.sort ~compare:(fun a b ->
+              Lib_name.compare (Lib_entry.name a) (Lib_entry.name b)))
+
 let create ~(context : Context.t) ?host ~projects ~packages ~stanzas =
   let lib_config = Context.lib_config context in
   let installed_libs = Lib.DB.create_from_findlib context.findlib ~lib_config in
@@ -563,6 +589,9 @@ let create ~(context : Context.t) ?host ~projects ~packages ~stanzas =
     Dune_project.File_key.Map.of_list_map_exn projects ~f:(fun project ->
         (Dune_project.file_key project, project))
   in
+  let lib_entries_by_package =
+    create_lib_entries_by_package ~public_libs stanzas
+  in
   { context
   ; root_expander
   ; host
@@ -573,28 +602,7 @@ let create ~(context : Context.t) ?host ~projects ~packages ~stanzas =
   ; stanzas_per_dir
   ; packages
   ; artifacts
-  ; lib_entries_by_package =
-      Dir_with_dune.deep_fold stanzas ~init:[] ~f:(fun _ stanza acc ->
-          match stanza with
-          | Dune_file.Library { public = Some pub; _ } -> (
-            match Lib.DB.find public_libs (Dune_file.Public_lib.name pub) with
-            | None -> acc
-            | Some lib ->
-              ( (Dune_file.Public_lib.package pub).name
-              , Lib_entry.Library (Option.value_exn (Lib.Local.of_lib lib)) )
-              :: acc )
-          | Dune_file.Deprecated_library_name
-              ({ old_name = old_public_name, deprecated; _ } as d) ->
-            ( (Dune_file.Public_lib.package old_public_name).name
-            , Lib_entry.Deprecated_library_name
-                { d with old_name = (old_public_name, deprecated) } )
-            :: acc
-          | _ -> acc)
-      |> Package.Name.Map.of_list_multi
-      |> Package.Name.Map.map
-           ~f:
-             (List.sort ~compare:(fun a b ->
-                  Lib_name.compare (Lib_entry.name a) (Lib_entry.name b)))
+  ; lib_entries_by_package
   ; env_tree
   ; default_env
   ; dir_status_db

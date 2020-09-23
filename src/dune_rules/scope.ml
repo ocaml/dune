@@ -69,11 +69,11 @@ module DB = struct
               Dune_file.Library.to_lib_info conf ~dir ~lib_config
               |> Lib_info.of_local
             in
-            match conf.public with
-            | None ->
+            match conf.visibility with
+            | Private ->
               [ (Dune_file.Library.best_name conf, Found_or_redirect.found info)
               ]
-            | Some p ->
+            | Public p ->
               let name = Dune_file.Public_lib.name p in
               if Lib_name.equal name (Lib_name.of_local conf.name) then
                 [ (name, Found_or_redirect.found info) ]
@@ -153,7 +153,7 @@ module DB = struct
     let public_libs =
       List.filter_map stanzas ~f:(fun (stanza : Library_related_stanza.t) ->
           match stanza with
-          | Library (_, { project; public = Some p; _ }) ->
+          | Library (_, { project; visibility = Public p; _ }) ->
             Some (Dune_file.Public_lib.name p, Project project)
           | Library _
           | Library_redirect _ ->
@@ -171,7 +171,8 @@ module DB = struct
           List.filter_map stanzas ~f:(fun stanza ->
               let named p loc = Option.some_if (name = p) loc in
               match stanza with
-              | Library (_, { buildable = { loc; _ }; public = Some p; _ }) ->
+              | Library (_, { buildable = { loc; _ }; visibility = Public p; _ })
+                ->
                 named (Dune_file.Public_lib.name p) loc
               | Deprecated_library_name d ->
                 let old_name =

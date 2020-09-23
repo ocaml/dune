@@ -1295,38 +1295,6 @@ end = struct
       | exception Unix.Unix_error (ENOENT, _, _) -> ()
       | () -> () )
 
-  type action_digest =
-    | Standard of Action.For_shell.t
-    | Ext of
-        { name : string
-        ; version : int
-        ; deps : string list
-        ; targets : string list
-        }
-
-  (* cwong: I am unsure about this change -- this will cause a cache miss when
-     rebuilding a project that was built with a prior version of dune, even if
-     the action has otherwise not changed. *)
-  let compute_action_digest action =
-    match Action.for_shell action with
-    | Action.For_shell.Extension
-        ( v
-        , { name
-          ; version
-          ; deps
-          ; targets
-          ; how_to_cache = _
-          ; (* Maybe we could use this instead? *)
-            encode = _
-          ; simplified = _
-          ; (* explicitly ignore what the action actually does -- it is the
-               responsibility of rule maintainers to ensure that the versioning
-               evolves in sync with the code *)
-            action = _
-          } ) ->
-      Ext { name; version; deps = deps v; targets = targets v }
-    | s -> Standard s
-
   let compute_rule_digest (rule : Rule.t) ~deps ~action ~sandbox_mode =
     let targets_as_list = Path.Build.Set.to_list rule.action.targets in
     let env = Rule.effective_env rule in
@@ -1334,7 +1302,13 @@ end = struct
       ( Dep.Set.trace deps ~sandbox_mode ~env ~eval_pred
       , List.map targets_as_list ~f:(fun p -> Path.to_string (Path.build p))
       , Option.map rule.context ~f:(fun c -> c.name)
-      , compute_action_digest action )
+      , (* By encoding, we discard all parts of any extension other than its
+           name, version number and the output of its [encode] function.
+
+           This might force cache misses when the encode function changes even
+           if nothing else does, but there's probably not much reason for the
+           encode function to change in isolation. *)
+        Action.For_shell.encode (Action.for_shell action) )
     in
     Digest.generic trace
 

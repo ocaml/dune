@@ -1627,6 +1627,8 @@ module DB = struct
       | Invalid of exn
       | Redirect of db option * (Loc.t * Lib_name.t)
 
+    let found f = Found f
+
     let not_found = Not_found
 
     let redirect db lib = Redirect (db, lib)
@@ -1654,102 +1656,6 @@ module DB = struct
     ; lib_config
     ; instrument_with = lib_config.Lib_config.instrument_with
     }
-
-  module Library_related_stanza = struct
-    type t =
-      | Library of Path.Build.t * Dune_file.Library.t
-      | Library_redirect of Dune_file.Library_redirect.Local.t
-      | Deprecated_library_name of Dune_file.Deprecated_library_name.t
-  end
-
-  module Found_or_redirect : sig
-    type t = private
-      | Found of Lib_info.external_
-      | Redirect of (Loc.t * Lib_name.t)
-
-    val redirect : Lib_name.t -> Loc.t * Lib_name.t -> Lib_name.t * t
-
-    val found : Lib_info.external_ -> t
-  end = struct
-    type t =
-      | Found of Lib_info.external_
-      | Redirect of (Loc.t * Lib_name.t)
-
-    let redirect from (loc, to_) =
-      if Lib_name.equal from to_ then
-        Code_error.raise ~loc "Invalid redirect"
-          [ ("to_", Lib_name.to_dyn to_) ]
-      else
-        (from, Redirect (loc, to_))
-
-    let found x = Found x
-  end
-
-  let create_from_stanzas ~parent ~lib_config stanzas =
-    let map : Found_or_redirect.t Lib_name.Map.t =
-      List.concat_map stanzas ~f:(fun stanza ->
-          match (stanza : Library_related_stanza.t) with
-          | Library_redirect s ->
-            let old_public_name = Lib_name.of_local s.old_name in
-            [ Found_or_redirect.redirect old_public_name s.new_public_name ]
-          | Deprecated_library_name s ->
-            let old_public_name =
-              Dune_file.Deprecated_library_name.old_public_name s
-            in
-            [ Found_or_redirect.redirect old_public_name s.new_public_name ]
-          | Library (dir, (conf : Dune_file.Library.t)) -> (
-            let info =
-              Dune_file.Library.to_lib_info conf ~dir ~lib_config
-              |> Lib_info.of_local
-            in
-            match conf.public with
-            | None ->
-              [ (Dune_file.Library.best_name conf, Found_or_redirect.found info)
-              ]
-            | Some p ->
-              let name = Dune_file.Public_lib.name p in
-              if Lib_name.equal name (Lib_name.of_local conf.name) then
-                [ (name, Found_or_redirect.found info) ]
-              else
-                let loc = Dune_file.Public_lib.loc p in
-                [ (name, Found_or_redirect.found info)
-                ; Found_or_redirect.redirect
-                    (Lib_name.of_local conf.name)
-                    (loc, name)
-                ] ))
-      |> Lib_name.Map.of_list_reducei
-           ~f:(fun name (v1 : Found_or_redirect.t) v2 ->
-             let res =
-               match (v1, v2) with
-               | Found info1, Found info2 ->
-                 Error (Lib_info.loc info1, Lib_info.loc info2)
-               | Found info, Redirect (loc, _)
-               | Redirect (loc, _), Found info ->
-                 Error (loc, Lib_info.loc info)
-               | Redirect (loc1, lib1), Redirect (loc2, lib2) ->
-                 if Lib_name.equal lib1 lib2 then
-                   Ok v1
-                 else
-                   Error (loc1, loc2)
-             in
-             match res with
-             | Ok x -> x
-             | Error (loc1, loc2) ->
-               User_error.raise
-                 [ Pp.textf "Library %s is defined twice:"
-                     (Lib_name.to_string name)
-                 ; Pp.textf "- %s" (Loc.to_file_colon_line loc1)
-                 ; Pp.textf "- %s" (Loc.to_file_colon_line loc2)
-                 ])
-    in
-    create () ~parent
-      ~resolve:(fun name ->
-        match Lib_name.Map.find map name with
-        | None -> Not_found
-        | Some (Redirect lib) -> Redirect (None, lib)
-        | Some (Found lib) -> Found lib)
-      ~all:(fun () -> Lib_name.Map.keys map)
-      ~lib_config
 
   let create_from_findlib ~lib_config findlib =
     create () ~parent:None ~lib_config

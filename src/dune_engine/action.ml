@@ -49,27 +49,12 @@ module Prog = struct
     | Error e -> Not_found.raise e
 end
 
-module Ext = struct
-  type t =
-    { name : string
-    ; version : int
-    ; deps : Path.t list
-    ; targets : Path.Build.t list
-    ; how_to_cache : Memoize_or_distribute.t
-    ; encode : unit -> Dune_lang.t
-    ; simplified : unit -> Simplified.t list
-    ; action :
-        ectx:Action_ext_intf.context -> eenv:Action_ext_intf.env -> unit Fiber.t
-    }
-end
-
 module type Ast =
   Action_intf.Ast
     with type program = Prog.t
     with type path = Path.t
     with type target = Path.Build.t
     with type string = String.t
-    with type ext = Ext.t
 
 module rec Ast : Ast = Ast
 
@@ -151,7 +136,6 @@ module Unresolved = struct
       with type path = Path.t
       with type target = Path.Build.t
       with type string = String.t
-      with type ext = Ext.t
 
   module rec Uast : Uast = Uast
 
@@ -334,7 +318,7 @@ let is_useful_to distribute memoize =
     | System _ -> true
     | Bash _ -> true
     | Format_dune_file _ -> memoize
-    | Extension { how_to_cache; _ } -> (
+    | Extension (_, { how_to_cache; _ }) -> (
       match how_to_cache with
       | Memoize_or_distribute.Neither -> false
       | Memoize -> memoize

@@ -35,7 +35,31 @@ module Simplified = struct
     | Sh of string
 end
 
-type ocaml_string = string
+module Ext = struct
+  type ('path, 'target, 'a) t =
+    { name : string
+    ; version : int
+    ; how_to_cache : Memoize_or_distribute.t
+    ; (* cwong: I'm not sure how much I like the presence of this field. On the
+         one hand, it breaks the intuition that encode/decode are inverses. On
+         the other hand, we would only ever encode this type for debugging, so
+         it shouldn't matter. *)
+      encode : 'a -> Dune_lang.t
+    ; simplified : 'a -> Simplified.t list
+    ; deps : 'a -> 'path list
+    ; targets : 'a -> 'target list
+    ; action :
+           'a
+        -> ectx:Action_ext_intf.context
+        -> eenv:Action_ext_intf.env
+        -> (* cwong: For now, I think we should only worry about extensions with
+              known dependencies. In the future, we may generalize this to
+              return an [Action_exec.done_or_more_deps], but that may be
+              trickier to get right, and is a bridge we can cross when we get
+              there. *)
+           unit Fiber.t
+    }
+end
 
 module type Ast = sig
   type program
@@ -46,29 +70,7 @@ module type Ast = sig
 
   type string
 
-  type ext =
-    { name : ocaml_string
-    ; (* Maybe we should use a dedicated semver instead? *)
-      version : int
-    ; deps : path list
-    ; targets : target list
-    ; how_to_cache : Memoize_or_distribute.t
-    ; (* cwong: I'm not sure how much I like the presence of this field. On the
-         one hand, it breaks the intuition that encode/decode are inverses. On
-         the other hand, we would only ever encode this type for debugging, so
-         it shouldn't matter. *)
-      encode : unit -> Dune_lang.t
-    ; simplified : unit -> Simplified.t list
-    ; action :
-           ectx:Action_ext_intf.context
-        -> eenv:Action_ext_intf.env
-        -> (* cwong: For now, I think we should only worry about extensions with
-              known dependencies. In the future, we may generalize this to
-              return an [Action_exec.done_or_more_deps], but that may be
-              trickier to get right, and is a bridge we can cross when we get
-              there. *)
-           unit Fiber.t
-    }
+  type 'a ext = (path, target, 'a) Ext.t
 
   type t =
     | Run of program * string list
@@ -103,7 +105,7 @@ module type Ast = sig
     (* This variant is intentionally not exposed to the surface language.
        Instead, rule authors should construct and return this variant. when
        desired. *)
-    | Extension of ext
+    | Extension : 'a * 'a ext -> t
 end
 
 module type Helpers = sig

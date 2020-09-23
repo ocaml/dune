@@ -279,7 +279,7 @@ struct
     | Format_dune_file (src, dst) ->
       List [ atom "format-dune-file"; path src; target dst ]
     | Cram script -> List [ atom "cram"; path script ]
-    | Extension { encode; _ } -> encode ()
+    | Extension (v, { encode; _ }) -> encode v
 
   let run prog args = Run (prog, args)
 

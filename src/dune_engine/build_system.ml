@@ -1310,20 +1310,21 @@ end = struct
   let compute_action_digest action =
     match Action.for_shell action with
     | Action.For_shell.Extension
-        { name
-        ; version
-        ; deps
-        ; targets
-        ; how_to_cache = _
-        ; (* Maybe we could use this instead? *)
-          encode = _
-        ; simplified = _
-        ; (* explicitly ignore what the action actually does -- it is the
-             responsibility of rule maintainers to ensure that the versioning
-             evolves in sync with the code *)
-          action = _
-        } ->
-      Ext { name; version; deps; targets }
+        ( v
+        , { name
+          ; version
+          ; deps
+          ; targets
+          ; how_to_cache = _
+          ; (* Maybe we could use this instead? *)
+            encode = _
+          ; simplified = _
+          ; (* explicitly ignore what the action actually does -- it is the
+               responsibility of rule maintainers to ensure that the versioning
+               evolves in sync with the code *)
+            action = _
+          } ) ->
+      Ext { name; version; deps = deps v; targets = targets v }
     | s -> Standard s
 
   let compute_rule_digest (rule : Rule.t) ~deps ~action ~sandbox_mode =

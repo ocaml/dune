@@ -207,25 +207,27 @@ module Partial = struct
       Format_dune_file (E.path ~expander src, E.target ~expander dst)
     | Cram script -> Cram (E.path ~expander script)
     | Extension
-        { name
-        ; version
-        ; deps
-        ; targets
-        ; action
-        ; how_to_cache
-        ; encode
-        ; simplified
-        } ->
+        ( v
+        , { name
+          ; version
+          ; deps
+          ; targets
+          ; action
+          ; how_to_cache
+          ; encode
+          ; simplified
+          } ) ->
       Extension
-        { name
-        ; version
-        ; deps = List.map ~f:(E.path ~expander) deps
-        ; targets = List.map ~f:(E.target ~expander) targets
-        ; action
-        ; how_to_cache
-        ; encode
-        ; simplified
-        }
+        ( v
+        , { name
+          ; version
+          ; deps = (fun v -> List.map ~f:(E.path ~expander) (deps v))
+          ; targets = (fun v -> List.map ~f:(E.target ~expander) (targets v))
+          ; action
+          ; how_to_cache
+          ; encode
+          ; simplified
+          } )
 end
 
 module E = Expand (struct
@@ -343,25 +345,27 @@ let rec partial_expand t ~expander : Partial.t =
     Format_dune_file (E.path ~expander src, E.target ~expander dst)
   | Cram script -> Cram (E.path ~expander script)
   | Extension
-      { Action_dune_lang.name
-      ; version
-      ; deps
-      ; targets
-      ; action
-      ; how_to_cache
-      ; encode
-      ; simplified
-      } ->
+      ( v
+      , { name
+        ; version
+        ; deps
+        ; targets
+        ; action
+        ; how_to_cache
+        ; encode
+        ; simplified
+        } ) ->
     Extension
-      { name
-      ; version
-      ; deps = List.map ~f:(E.path ~expander) deps
-      ; targets = List.map ~f:(E.target ~expander) targets
-      ; action
-      ; how_to_cache
-      ; encode
-      ; simplified
-      }
+      ( v
+      , { name
+        ; version
+        ; deps = (fun v -> List.map ~f:(E.path ~expander) (deps v))
+        ; targets = (fun v -> List.map ~f:(E.target ~expander) (targets v))
+        ; action
+        ; how_to_cache
+        ; encode
+        ; simplified
+        } )
 
 module Infer : sig
   module Outcome : sig
@@ -487,10 +491,10 @@ end = struct
       | No_infer _ ->
         acc
       | Format_dune_file (src, dst) -> acc +< src +@+ dst
-      | Extension { deps; targets; _ } ->
+      | Extension (v, { deps; targets; _ }) ->
         List.fold_left
-          ~init:(List.fold_left ~init:acc ~f:( +<+ ) targets)
-          ~f:( +< ) deps
+          ~init:(List.fold_left ~init:acc ~f:( +<+ ) (targets v))
+          ~f:( +< ) (deps v)
 
     let infer t =
       let { deps; targets } =

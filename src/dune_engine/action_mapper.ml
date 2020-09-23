@@ -55,25 +55,27 @@ module Make (Src : Action_intf.Ast) (Dst : Action_intf.Ast) = struct
       Format_dune_file (f_path ~dir src, f_target ~dir dst)
     | Cram script -> Cram (f_path ~dir script)
     | Extension
-        { Src.name
-        ; version
-        ; deps
-        ; targets
-        ; action
-        ; how_to_cache
-        ; encode
-        ; simplified
-        } ->
+        ( v
+        , { name
+          ; version
+          ; deps
+          ; targets
+          ; action
+          ; how_to_cache
+          ; encode
+          ; simplified
+          } ) ->
       Extension
-        { name
-        ; version
-        ; deps = List.map ~f:(f_path ~dir) deps
-        ; targets = List.map ~f:(f_target ~dir) targets
-        ; action
-        ; how_to_cache
-        ; encode
-        ; simplified
-        }
+        ( v
+        , { name
+          ; version
+          ; deps = (fun v -> List.map ~f:(f_path ~dir) (deps v))
+          ; targets = (fun v -> List.map ~f:(f_target ~dir) (targets v))
+          ; action
+          ; how_to_cache
+          ; encode
+          ; simplified
+          } )
 
   let rec map t ~dir ~f_program ~f_string ~f_path ~f_target =
     map_one_step map t ~dir ~f_program ~f_string ~f_path ~f_target

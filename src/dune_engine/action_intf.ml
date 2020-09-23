@@ -58,7 +58,7 @@ module type Ast = sig
          the other hand, we would only ever encode this type for debugging, so
          it shouldn't matter. *)
       encode : unit -> Dune_lang.t
-    ; simplified : unit -> Simplified.t
+    ; simplified : unit -> Simplified.t list
     ; action :
            ectx:Action_ext_intf.context
         -> eenv:Action_ext_intf.env

@@ -77,7 +77,7 @@ let simplify act =
       Redirect_out
         ([ Run ("dune", [ "format-dune-file"; src ]) ], Stdout, File dst)
       :: acc
-    | Extension { Action.For_shell.simplified; _ } -> simplified () :: acc
+    | Extension { Action.For_shell.simplified; _ } -> simplified () @ acc
   and block act =
     match List.rev (loop act []) with
     | [] -> [ Run ("true", []) ]

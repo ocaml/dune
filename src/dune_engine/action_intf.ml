@@ -102,9 +102,14 @@ module type Ast = sig
     | Pipe of Outputs.t * t list
     | Format_dune_file of path * target
     | Cram of path
-    (* This variant is intentionally not exposed to the surface language.
-       Instead, rule authors should construct and return this variant. when
-       desired. *)
+    (* We encode this variant as such a GADT because:
+
+       - It allows extensions to provide their own state representation
+
+       - By separating that state representation from the functions operating on
+       it, we can allocate the operations record once and reuse it across
+       multiple instantiations of the same extension, instead of allocating a
+       huge record of closures each time *)
     | Extension : 'a * 'a ext -> t
 end
 

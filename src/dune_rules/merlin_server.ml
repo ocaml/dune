@@ -7,20 +7,6 @@ module Merlin_conf = struct
 
   let make_error msg = Sexp.(List [ List [ Atom "ERROR"; Atom msg ] ])
 
-  let parse content filename : t =
-    let parts = String.split content ~on:'\n' in
-    let rec aux = function
-      | []
-      | [ _ ] ->
-        make_error "Unexpected merlin-conf content"
-      | file :: config :: _tl when String.equal file filename -> (
-        match Csexp.parse_string config with
-        | Ok (Sexp.List sexps) -> Sexp.List sexps
-        | _ -> Sexp.List [] )
-      | _file :: _config :: tl -> aux tl
-    in
-    aux parts
-
   let to_stdout (t : t) =
     Csexp.to_channel stdout t;
     flush stdout
@@ -71,7 +57,7 @@ let get_context_root () =
 
 let load_merlin_file path file =
   let ctx_root = get_context_root () in
-  let filename = Filename.remove_extension file |> String.lowercase in
+  let filename = String.lowercase_ascii file in
 
   let no_config_error () =
     Merlin_conf.make_error "Project isn't built. (Try calling `dune build`.)"
@@ -80,9 +66,11 @@ let load_merlin_file path file =
   let dir_path = Path.Build.(append_local ctx_root path) in
   let file_path = Path.Build.relative dir_path Merlin.merlin_file_name in
   if Path.(exists (build file_path)) then
-    let build = Build.contents (Path.build file_path) in
-    let content, _ = Build.exec build in
-    Merlin_conf.parse content filename
+    match Merlin.Processed.load (Path.build file_path) with
+    | Some config ->
+      Option.value ~default:(no_config_error ())
+        (Merlin.Processed.get config ~filename)
+    | None -> no_config_error ()
   else
     no_config_error ()
 

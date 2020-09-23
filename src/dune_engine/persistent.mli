@@ -28,6 +28,8 @@ end
     [D.name] stored in the persistent file to locate the appropriate pretty
     printer. *)
 module Make (D : Desc) : sig
+  val to_string : D.t -> string
+
   val dump : Path.t -> D.t -> unit
 
   val load : Path.t -> D.t option

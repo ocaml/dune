@@ -4,7 +4,21 @@ open! Dune_engine
 open! Stdune
 open Import
 
+val merlin_file_name : string
+
 type t
+
+val add_source_dir : t -> Path.Source.t -> t
+
+val merge_all : t list -> t option
+
+module Processed : sig
+  type t
+
+  val load : Path.t -> t option
+
+  val get : t -> filename:string -> Sexp.t option
+end
 
 val make :
      ?requires:Lib.t list Or_exn.t
@@ -17,12 +31,6 @@ val make :
   -> dialects:Dialect.DB.t
   -> unit
   -> t
-
-val merlin_file_name : string
-
-val add_source_dir : t -> Path.Source.t -> t
-
-val merge_all : t list -> t option
 
 (** Add rules for generating the .merlin in a directory *)
 val add_rules :

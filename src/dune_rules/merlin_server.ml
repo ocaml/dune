@@ -47,26 +47,25 @@ let to_local abs_file_path =
   | None ->
     Printf.sprintf "Path is not in dune workspace %s" abs_file_path |> error
 
-let get_context_root () =
+let get_merlin_file_path local_path =
   let workspace = Workspace.workspace () in
   let context =
     Option.value ~default:Context_name.default workspace.merlin_context
   in
   let ctx = Context_name.to_string context in
-  Path.Build.(relative root ctx)
+  let ctx_root = Path.Build.(relative root ctx) in
+  let dir_path = Path.Build.(append_local ctx_root local_path) in
+  Path.Build.relative dir_path Merlin.merlin_file_name |> Path.build
 
-let load_merlin_file path file =
-  let ctx_root = get_context_root () in
-  let filename = String.lowercase_ascii file in
-
+let load_merlin_file local_path file =
   let no_config_error () =
     Merlin_conf.make_error "Project isn't built. (Try calling `dune build`.)"
   in
 
-  let dir_path = Path.Build.(append_local ctx_root path) in
-  let file_path = Path.Build.relative dir_path Merlin.merlin_file_name in
-  if Path.(exists (build file_path)) then
-    match Merlin.Processed.load (Path.build file_path) with
+  let filename = String.lowercase_ascii file in
+  let file_path = get_merlin_file_path local_path in
+  if Path.exists file_path then
+    match Merlin.Processed.load_file file_path with
     | Some config ->
       Option.value ~default:(no_config_error ())
         (Merlin.Processed.get config ~filename)
@@ -82,6 +81,11 @@ let print_merlin_conf file =
     | Error s -> Merlin_conf.make_error s
   in
   Merlin_conf.to_stdout answer
+
+let dump s =
+  match to_local s with
+  | Ok path -> Merlin.Processed.print_file (get_merlin_file_path path)
+  | Error mess -> Printf.eprintf "%s\n%!" mess
 
 let start () =
   let rec main () =

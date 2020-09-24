@@ -15,7 +15,8 @@ val merge_all : t list -> t option
 module Processed : sig
   type t
 
-  val load : Path.t -> t option
+  val load_file : Path.t -> t option
+  val print_file : Path.t -> unit
 
   val get : t -> filename:string -> Sexp.t option
 end

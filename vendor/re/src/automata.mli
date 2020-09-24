@@ -22,7 +22,6 @@
 
 (* Regular expressions *)
 
-type category = int
 type mark = int
 
 type sem = [ `Longest | `Shortest | `First ]
@@ -31,14 +30,6 @@ type rep_kind = [ `Greedy | `Non_greedy ]
 val pp_sem : Format.formatter -> sem -> unit
 val pp_rep_kind : Format.formatter -> rep_kind -> unit
 
-module Pmark : sig
-  type t = private int
-  val equal : t -> t -> bool
-  val compare : t -> t -> int
-  val gen : unit -> t
-  val pp : Format.formatter -> t -> unit
-end
-
 type expr
 val is_eps : expr -> bool
 val pp : Format.formatter -> expr -> unit
@@ -46,7 +37,7 @@ val pp : Format.formatter -> expr -> unit
 type ids
 val create_ids : unit -> ids
 
-val cst : ids -> Re_cset.t -> expr
+val cst : ids -> Cset.t -> expr
 val empty : ids -> expr
 val alt : ids -> expr list -> expr
 val seq : ids -> sem -> expr -> expr -> expr
@@ -55,14 +46,12 @@ val rep : ids -> rep_kind -> sem -> expr -> expr
 val mark : ids -> mark -> expr
 val pmark : ids -> Pmark.t -> expr
 val erase : ids -> mark -> mark -> expr
-val before : ids -> category -> expr
-val after : ids -> category -> expr
+val before : ids -> Category.t -> expr
+val after : ids -> Category.t -> expr
 
 val rename : ids -> expr -> expr
 
 (****)
-
-module PmarkSet : Set.S with type elt = Pmark.t
 
 (* States of the automata *)
 
@@ -70,7 +59,7 @@ type idx = int
 module Marks : sig
   type t =
     { marks: (mark * idx) list
-    ; pmarks: PmarkSet.t }
+    ; pmarks: Pmark.Set.t }
 end
 
 module E : sig
@@ -80,17 +69,17 @@ end
 
 type hash
 type mark_infos = int array
-type status = Failed | Match of mark_infos * PmarkSet.t | Running
+type status = Failed | Match of mark_infos * Pmark.Set.t | Running
 
 module State : sig
   type t =
     { idx: idx
-    ; category: category
+    ; category: Category.t
     ; desc: E.t list
     ; mutable status: status option
     ; hash: hash }
   val dummy : t
-  val create : category -> expr -> t
+  val create : Category.t -> expr -> t
   module Table : Hashtbl.S with type key = t
 end
 
@@ -102,10 +91,10 @@ type working_area
 val create_working_area : unit -> working_area
 val index_count : working_area -> int
 
-val delta : working_area -> category -> Re_cset.c -> State.t -> State.t
+val delta : working_area -> Category.t -> Cset.c -> State.t -> State.t
 val deriv :
-  working_area -> Re_cset.t -> (category * Re_cset.t) list -> State.t ->
-  (Re_cset.t * State.t) list
+  working_area -> Cset.t -> (Category.t * Cset.t) list -> State.t ->
+  (Cset.t * State.t) list
 
 (****)
 

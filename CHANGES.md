@@ -114,6 +114,9 @@ Unreleased
 - `(subdir ...)` stanzas can now appear in dune files used via `(include ...)`.
   (#3676, @nojb)
 
+- Add actions `pipe-{stdout,stderr,outputs}` for output redirections (#3392,
+  fixes #428, @NathanReb)
+
 2.6.2 (26/07/2020)
 ------------------
 

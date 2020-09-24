@@ -4,6 +4,7 @@ module Outputs = Action_ast.Outputs
 module Inputs = Action_ast.Inputs
 module Simplified = Action_intf.Simplified
 module Memoize_or_distribute = Action_intf.Memoize_or_distribute
+module Ext = Action_intf.Ext
 
 module Prog = struct
   module Not_found = struct
@@ -182,7 +183,6 @@ let fold_one_step t ~init:acc ~f =
   | Diff _
   | Merge_files_into _
   | Cram _
-  | Format_dune_file _
   | Extension _ ->
     acc
 
@@ -230,7 +230,6 @@ let rec is_dynamic = function
   | Digest_files _
   | Merge_files_into _
   | Cram _
-  | Format_dune_file _
   | Extension _ ->
     false
 
@@ -317,7 +316,6 @@ let is_useful_to distribute memoize =
     | Dynamic_run _ -> true
     | System _ -> true
     | Bash _ -> true
-    | Format_dune_file _ -> memoize
     | Extension (_, { how_to_cache; _ }) -> (
       match how_to_cache with
       | Memoize_or_distribute.Neither -> false

@@ -130,7 +130,6 @@ module type Ast = sig
     | Merge_files_into of path list * string list * target
     | No_infer of t
     | Pipe of Outputs.t * t list
-    | Format_dune_file of path * target
     | Cram of path
         (** We encode this variant as such a GADT because:
 
@@ -200,6 +199,4 @@ module type Helpers = sig
   val digest_files : path list -> t
 
   val diff : ?optional:bool -> ?mode:Diff.Mode.t -> path -> target -> t
-
-  val format_dune_file : path -> target -> t
 end

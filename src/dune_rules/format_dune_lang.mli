@@ -1,3 +1,4 @@
+open Dune_engine
 open Import
 
 type dune_file =
@@ -16,3 +17,5 @@ val format_file : input:Path.t option -> output:Path.t option -> unit
 
 (** Pretty-print a list of toplevel s-expressions *)
 val pp_top_sexps : Format.formatter -> Dune_lang.Cst.t list -> unit
+
+val make_action : src:Dpath.t -> dst:Dpath.Build.t -> Action.t

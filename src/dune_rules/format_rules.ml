@@ -42,7 +42,7 @@ let gen_rules_output sctx (config : Format_config.t) ~dialects ~expander
         @@
         let open Build.O in
         let+ () = Build.path input in
-        Action.format_dune_file input output
+        Format_dune_lang.make_action ~src:input ~dst:output
       | _ ->
         let ext = Path.Source.extension file in
         let open Option.O in

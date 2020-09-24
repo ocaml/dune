@@ -379,10 +379,6 @@ let rec exec t ~ectx ~eenv =
     Fiber.return Done
   | No_infer t -> exec t ~ectx ~eenv
   | Pipe (outputs, l) -> exec_pipe ~ectx ~eenv outputs l
-  | Format_dune_file (src, dst) ->
-    Format_dune_lang.format_file ~input:(Some src)
-      ~output:(Some (Path.build dst));
-    Fiber.return Done
   | Cram script ->
     let+ () =
       Fdecl.get

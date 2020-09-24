@@ -276,8 +276,6 @@ struct
       List
         ( atom (sprintf "pipe-%s" (Outputs.to_string outputs))
         :: List.map l ~f:encode )
-    | Format_dune_file (src, dst) ->
-      List [ atom "format-dune-file"; path src; target dst ]
     | Cram script -> List [ atom "cram"; path script ]
     | Extension (v, { name; version; encode; _ }) ->
       List
@@ -335,6 +333,4 @@ struct
 
   let diff ?(optional = false) ?(mode = Diff.Mode.Text) file1 file2 =
     Diff { optional; file1; file2; mode }
-
-  let format_dune_file src dst = Format_dune_file (src, dst)
 end

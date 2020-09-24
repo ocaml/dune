@@ -203,8 +203,6 @@ module Partial = struct
         , E.target ~expander target )
     | No_infer t -> No_infer (expand t ~expander)
     | Pipe (outputs, l) -> Pipe (outputs, List.map l ~f:(expand ~expander))
-    | Format_dune_file (src, dst) ->
-      Format_dune_file (E.path ~expander src, E.target ~expander dst)
     | Cram script -> Cram (E.path ~expander script)
     | Extension
         ( v
@@ -341,8 +339,6 @@ let rec partial_expand t ~expander : Partial.t =
       , E.target ~expander target )
   | No_infer t -> No_infer (partial_expand t ~expander)
   | Pipe (outputs, l) -> Pipe (outputs, List.map l ~f:(partial_expand ~expander))
-  | Format_dune_file (src, dst) ->
-    Format_dune_file (E.path ~expander src, E.target ~expander dst)
   | Cram script -> Cram (E.path ~expander script)
   | Extension
       ( v
@@ -490,7 +486,6 @@ end = struct
       | Mkdir _
       | No_infer _ ->
         acc
-      | Format_dune_file (src, dst) -> acc +< src +@+ dst
       | Extension (v, { deps; targets; _ }) ->
         List.fold_left
           ~init:(List.fold_left ~init:acc ~f:( +<+ ) (targets v))

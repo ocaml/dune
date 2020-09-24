@@ -11,6 +11,14 @@ module Inputs : module type of struct
   include Action_intf.Inputs
 end
 
+module Ext : module type of struct
+  include Action_intf.Ext
+end
+
+module Simplified : module type of struct
+  include Action_intf.Simplified
+end
+
 (** result of the lookup of a program, the path to it or information about the
     failure and possibly a hint how to fix it *)
 module Prog : sig

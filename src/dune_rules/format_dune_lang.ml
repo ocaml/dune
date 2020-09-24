@@ -1,5 +1,10 @@
 open! Stdune
-open! Import
+open Dune_engine
+
+type t =
+  { src : Path.t
+  ; dst : Path.Build.t
+  }
 
 type dune_file =
   | OCaml_syntax of Loc.t
@@ -117,3 +122,33 @@ let format_file ~input ~output =
     with_output (fun oc ->
         let oc = Format.formatter_of_out_channel oc in
         Format.fprintf oc "%a%!" pp_top_sexps sexps)
+
+let encode { src; dst } =
+  let open Dune_lang in
+  let path = Dpath.encode in
+  let target = Dpath.Build.encode in
+  List [ atom "format-dune-file"; path src; target dst ]
+
+let simplified { src; dst } =
+  let open Action.Simplified in
+  [ Redirect_out
+      ( [ Run ("dune", [ "format-dune-file"; Path.to_string src ]) ]
+      , Stdout
+      , File (Path.Build.to_string dst) )
+  ]
+
+let methods =
+  { Action.Ext.name = "format_dune_file"
+  ; version = 0
+  ; how_to_cache = Memoize
+  ; encode
+  ; simplified
+  ; deps = (fun { src; _ } -> [ src ])
+  ; targets = (fun { dst; _ } -> [ dst ])
+  ; action =
+      (fun { src; dst } ~ectx:_ ~eenv:_ ->
+        format_file ~input:(Some src) ~output:(Some (Path.build dst));
+        Fiber.return ())
+  }
+
+let make_action ~src ~dst = Action.Extension ({ src; dst }, methods)

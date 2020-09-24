@@ -35,6 +35,33 @@ module Simplified = struct
     | Sh of string
 end
 
+(** CR-soon cwong: It would be nice to not need to have [Action_ext_intf].
+    Currently, we need to strip some dependency stuff from the execution context
+    when passing it here, as that forms a dependency cycle ([Deps] -> [Action]
+    \-> [Action_intf] -> [Deps]).
+
+    One idea (jdimino's) is to make [ectx] and [eenv] abstract types, which are
+    then instantiated with the types in [Action_exec]. I don't like this for a
+    bunch of reasons:
+
+    - Using a module type like [module type Ext = sig type ectx ... end] would
+      necessitate having a module ascribing to that signature in [Ast], so the
+      [Extension] variant can refer to it. Additionally, this means we have to
+      rewrite [Action_ast.Make]. The line [include Ast with type t := Ast.t] is
+      no longer sound, as there's no good way of proving to the typechecker that
+      [Ext.t] and [Ast.Ext.t] are the same type (at least, the compiler didn't
+      accept [module Ext = Ast.Ext] when I tried).
+    - With the type fully abstracted, there isn't a way to express
+      [Action_mapper]. We can work around this by forcing the input and outputs
+      to a particular [ext] type, which is safe because we will only ever
+      instantiate it to [Action_exec.whatever] anyway. This leads to some nasty
+      cycles, however, and I think the easy cycle breaks are quite ugly and
+      difficult to read.
+
+    From a performance perspective, I don't think it matters too much -- the
+    elements of the record are already allocated, so restricting the tuple only
+    allocates the outer record and nothing internally, so fewer than 10 pointers
+    total. *)
 module Ext = struct
   type ('path, 'target, 'a) t =
     { name : string
@@ -70,6 +97,9 @@ module type Ast = sig
 
   type string
 
+  (* This needs to be a type declaration rather than in a module so that
+     [include Action_intf.Ast with type t := Ast.t] knows that the [Extension]
+     fields are actually the same *)
   type 'a ext = (path, target, 'a) Ext.t
 
   type t =
@@ -102,14 +132,13 @@ module type Ast = sig
     | Pipe of Outputs.t * t list
     | Format_dune_file of path * target
     | Cram of path
-    (* We encode this variant as such a GADT because:
+        (** We encode this variant as such a GADT because:
 
-       - It allows extensions to provide their own state representation
-
-       - By separating that state representation from the functions operating on
-       it, we can allocate the operations record once and reuse it across
-       multiple instantiations of the same extension, instead of allocating a
-       huge record of closures each time *)
+            - It allows extensions to provide their own state representation
+            - By separating that state representation from the functions
+              operating on it, we can allocate the operations record once and
+              reuse it across multiple instantiations of the same extension,
+              instead of allocating a huge record of closures each time *)
     | Extension : 'a * 'a ext -> t
 end
 

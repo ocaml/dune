@@ -61,7 +61,6 @@ The makefile version of pipe actions uses actual pipes:
   	../install/default/bin/a 2>&1 | ../install/default/bin/b 2>&1 | ../install/default/bin/c \
   	  &> target
   
-
   $ cat >dune <<EOF
   > (executable
   >  (public_name apl) (name append_to_line) (modules append_to_line))
@@ -71,21 +70,27 @@ The makefile version of pipe actions uses actual pipes:
   > (rule
   >  (action
   >   (with-stderr-to target-stdout.stderr
-  >   (with-stdout-to target-stdout.stdout
-  >       (pipe-stdout (run echo-outputs a) (run apl b) (run apl c))
-  >    ))))
+  >    (with-stdout-to target-stdout.stdout
+  >     (pipe-stdout
+  >      (run echo-outputs a)
+  >      (run apl b)
+  >      (run apl c))))))
   > (rule
   >  (action
   >   (with-stderr-to target-stderr.stderr
-  >   (with-stdout-to target-stderr.stdout
-  >       (pipe-stderr (run echo-outputs a) (run apl b) (run apl c))
-  >    ))))
+  >    (with-stdout-to target-stderr.stdout
+  >     (pipe-stderr
+  >      (run echo-outputs a)
+  >      (run apl b)
+  >      (run apl c))))))
   > (rule
   >  (action
   >   (with-stderr-to target-outputs.stderr
   >   (with-stdout-to target-outputs.stdout
-  >       (pipe-outputs (run echo-outputs a) (run apl b) (run apl c))
-  >    ))))
+  >    (pipe-outputs
+  >     (run echo-outputs a)
+  >     (run apl b)
+  >     (run apl c))))))
   > EOF
 
   $ dune build _build/default/target-stdout.stdout _build/default/target-stdout.stderr

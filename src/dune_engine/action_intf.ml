@@ -35,6 +35,7 @@ module Simplified = struct
     | Sh of string
 end
 
+
 (** CR-soon cwong: It would be nice to not need to have [Action_ext_intf].
     Currently, we need to strip some dependency stuff from the execution context
     when passing it here, as that forms a dependency cycle ([Deps] -> [Action]
@@ -63,6 +64,23 @@ end
     allocates the outer record and nothing internally, so fewer than 10 pointers
     total. *)
 module Ext = struct
+
+  type context =
+    { targets : Path.Build.Set.t
+    ; context : Build_context.t option
+    ; purpose : Process.purpose
+    ; rule_loc : Loc.t
+    }
+
+  type env =
+    { working_dir : Path.t
+    ; env : Env.t
+    ; stdout_to : Process.Io.output Process.Io.t
+    ; stderr_to : Process.Io.output Process.Io.t
+    ; stdin_from : Process.Io.input Process.Io.t
+    ; exit_codes : int Predicate_lang.t
+    }
+
   type ('path, 'target, 'a) t =
     { name : string
     ; version : int
@@ -77,8 +95,8 @@ module Ext = struct
     ; targets : 'a -> 'target list
     ; action :
            'a
-        -> ectx:Action_ext_intf.context
-        -> eenv:Action_ext_intf.env
+        -> ectx:context
+        -> eenv:env
         -> (* cwong: For now, I think we should only worry about extensions with
               known dependencies. In the future, we may generalize this to
               return an [Action_exec.done_or_more_deps], but that may be

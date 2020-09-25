@@ -2,8 +2,91 @@ open! Dune_engine
 open Import
 open! No_io
 open Build.O
-module SC = Super_context
 module Executables = Dune_file.Executables
+
+let first_exe (exes : Executables.t) = snd (List.hd exes.names)
+
+let linkages (ctx : Context.t) ~(exes : Executables.t) ~explicit_js_mode =
+  let module L = Dune_file.Executables.Link_mode in
+  let l =
+    let has_native = Result.is_ok ctx.ocamlopt in
+    let modes =
+      let add_if_not_already_present modes mode loc =
+        match L.Map.add exes.modes mode loc with
+        | Ok modes -> modes
+        | Error _ -> modes
+      in
+      match L.Map.find exes.modes L.js with
+      | Some loc -> add_if_not_already_present exes.modes L.byte loc
+      | None -> (
+        if explicit_js_mode then
+          exes.modes
+        else
+          match L.Map.find exes.modes L.byte with
+          | Some loc -> add_if_not_already_present exes.modes L.js loc
+          | None -> exes.modes )
+    in
+    L.Map.to_list modes
+    |> List.filter_map ~f:(fun ((mode : L.t), loc) ->
+           match (has_native, mode) with
+           | false, Other { mode = Native; _ } -> None
+           | _ -> Some (Exe.Linkage.of_user_config ctx ~loc mode))
+  in
+  (* If bytecode was requested but not native or best version, add custom
+     linking *)
+  if
+    L.Map.mem exes.modes L.byte
+    && (not (L.Map.mem exes.modes L.native))
+    && not (L.Map.mem exes.modes L.exe)
+  then
+    Exe.Linkage.custom ctx :: l
+  else
+    l
+
+let programs ~modules ~(exes : Executables.t) =
+  List.map exes.names ~f:(fun (loc, name) ->
+      let mod_name = Module_name.of_string_allow_invalid (loc, name) in
+      match Modules.find modules mod_name with
+      | Some m ->
+        if Module.has m ~ml_kind:Impl then
+          { Exe.Program.name; main_module_name = mod_name; loc }
+        else
+          User_error.raise ~loc
+            [ Pp.textf "Module %S has no implementation."
+                (Module_name.to_string mod_name)
+            ]
+      | None ->
+        User_error.raise ~loc
+          [ Pp.textf "Module %S doesn't exist." (Module_name.to_string mod_name)
+          ])
+
+let o_files sctx ~dir ~expander ~(exes : Executables.t) ~linkages ~dir_contents
+    ~requires_compile =
+  if not (Executables.has_foreign exes) then
+    []
+  else
+    let what =
+      if List.is_empty exes.buildable.Dune_file.Buildable.foreign_stubs then
+        "archives"
+      else
+        "stubs"
+    in
+    if List.mem Exe.Linkage.byte ~set:linkages then
+      User_error.raise ~loc:exes.buildable.loc
+        [ Pp.textf "Pure bytecode executables cannot contain foreign %s." what ]
+        ~hints:
+          [ Pp.text
+              "If you only need to build a native executable use \"(modes \
+               exe)\"."
+          ];
+    let foreign_sources =
+      let foreign_sources = Dir_contents.foreign_sources dir_contents in
+      let first_exe = first_exe exes in
+      Foreign_sources.for_exes foreign_sources ~first_exe
+    in
+    Foreign_rules.build_o_files ~sctx ~dir ~expander ~requires:requires_compile
+      ~dir_contents ~foreign_sources
+    |> List.map ~f:Path.build
 
 let executables_rules ~sctx ~dir ~expander ~dir_contents ~scope ~compile_info
     ~embed_in_plugin_libraries (exes : Dune_file.Executables.t) =
@@ -11,18 +94,18 @@ let executables_rules ~sctx ~dir ~expander ~dir_contents ~scope ~compile_info
      of the same name *)
   let obj_dir = Dune_file.Executables.obj_dir exes ~dir in
   Check_rules.add_obj_dir sctx ~obj_dir;
-  let first_exe = snd (List.hd exes.names) in
   let modules =
+    let first_exe = first_exe exes in
     let ml_sources = Dir_contents.ocaml dir_contents in
     Ml_sources.modules_of_executables ml_sources ~first_exe ~obj_dir
   in
-  let ctx = SC.context sctx in
-  let preprocess =
-    Preprocess.Per_module.with_instrumentation exes.buildable.preprocess
-      ~instrumentation_backend:
-        (Lib.DB.instrumentation_backend (Scope.libs scope))
-  in
+  let ctx = Super_context.context sctx in
   let pp =
+    let preprocess =
+      Preprocess.Per_module.with_instrumentation exes.buildable.preprocess
+        ~instrumentation_backend:
+          (Lib.DB.instrumentation_backend (Scope.libs scope))
+    in
     Preprocessing.make sctx ~dir ~dep_kind:Required ~scope ~expander ~preprocess
       ~preprocessor_deps:exes.buildable.preprocessor_deps
       ~lint:exes.buildable.lint ~lib_name:None
@@ -32,86 +115,12 @@ let executables_rules ~sctx ~dir ~expander ~dir_contents ~scope ~compile_info
         let name = Module.name m in
         Preprocessing.pp_module_as pp name m)
   in
-  let programs =
-    List.map exes.names ~f:(fun (loc, name) ->
-        let mod_name = Module_name.of_string_allow_invalid (loc, name) in
-        match Modules.find modules mod_name with
-        | Some m ->
-          if not (Module.has m ~ml_kind:Impl) then
-            User_error.raise ~loc
-              [ Pp.textf "Module %S has no implementation."
-                  (Module_name.to_string mod_name)
-              ]
-          else
-            { Exe.Program.name; main_module_name = mod_name; loc }
-        | None ->
-          User_error.raise ~loc
-            [ Pp.textf "Module %S doesn't exist."
-                (Module_name.to_string mod_name)
-            ])
-  in
+  let programs = programs ~modules ~exes in
   let explicit_js_mode = Dune_project.explicit_js_mode (Scope.project scope) in
-  let linkages =
-    let module L = Dune_file.Executables.Link_mode in
-    let l =
-      let has_native = Result.is_ok ctx.ocamlopt in
-      let modes =
-        let add_if_not_already_present modes mode loc =
-          match L.Map.add exes.modes mode loc with
-          | Ok modes -> modes
-          | Error _ -> modes
-        in
-        match L.Map.find exes.modes L.js with
-        | Some loc -> add_if_not_already_present exes.modes L.byte loc
-        | None -> (
-          if explicit_js_mode then
-            exes.modes
-          else
-            match L.Map.find exes.modes L.byte with
-            | Some loc -> add_if_not_already_present exes.modes L.js loc
-            | None -> exes.modes )
-      in
-      List.filter_map (L.Map.to_list modes) ~f:(fun ((mode : L.t), loc) ->
-          match (has_native, mode) with
-          | false, Other { mode = Native; _ } -> None
-          | _ -> Some (Exe.Linkage.of_user_config ctx ~loc mode))
-    in
-    (* If bytecode was requested but not native or best version, add custom
-       linking *)
-    if
-      L.Map.mem exes.modes L.byte
-      && (not (L.Map.mem exes.modes L.native))
-      && not (L.Map.mem exes.modes L.exe)
-    then
-      Exe.Linkage.custom ctx :: l
-    else
-      l
-  in
-  let flags = SC.ocaml_flags sctx ~dir exes.buildable.flags in
-  let link_deps = Dep_conf_eval.unnamed ~expander exes.link_deps in
-  let foreign_archives = exes.buildable.foreign_archives |> List.map ~f:snd in
-  let link_flags =
-    link_deps
-    >>> Expander.expand_and_eval_set expander exes.link_flags
-          ~standard:(Build.return [])
-  in
-  (* TODO: Currently [exe_rules] differ from [lib_rules] in some aspects and the
-     reason is unclear. For example, instead of building an archive for foreign
-     stubs, we link the corresponding object files directly. It would be nice to
-     make the code more uniform. *)
-  let ext_lib = ctx.lib_config.ext_lib in
-  let link_args =
-    let+ flags = link_flags in
-    Command.Args.S
-      [ Command.Args.As flags
-      ; Command.Args.S
-          (List.map foreign_archives ~f:(fun archive ->
-               let lib = Foreign.Archive.lib_file ~archive ~dir ~ext_lib in
-               Command.Args.S [ A "-cclib"; Dep (Path.build lib) ]))
-      ]
-  in
-  let requires_compile = Lib.Compile.direct_requires compile_info in
+  let linkages = linkages ctx ~exes ~explicit_js_mode in
+  let flags = Super_context.ocaml_flags sctx ~dir exes.buildable.flags in
   let cctx =
+    let requires_compile = Lib.Compile.direct_requires compile_info in
     let requires_link = Lib.Compile.requires_link compile_info in
     let js_of_ocaml =
       let js_of_ocaml = exes.buildable.js_of_ocaml in
@@ -122,7 +131,6 @@ let executables_rules ~sctx ~dir ~expander ~dir_contents ~scope ~compile_info
     in
     let dynlink =
       (* See https://github.com/ocaml/dune/issues/2527 *)
-      (* XXX rgrinberg: what is this? *)
       true
       || Dune_file.Executables.Link_mode.Map.existsi exes.modes
            ~f:(fun mode _loc ->
@@ -134,45 +142,45 @@ let executables_rules ~sctx ~dir ~expander ~dir_contents ~scope ~compile_info
       ~modules ~flags ~requires_link ~requires_compile ~preprocessing:pp
       ~js_of_ocaml ~opaque:Inherit_from_settings ~dynlink ~package:exes.package
   in
-  let o_files =
-    if not (Executables.has_foreign exes) then
-      []
-    else
-      let what =
-        if List.is_empty exes.buildable.Dune_file.Buildable.foreign_stubs then
-          "archives"
-        else
-          "stubs"
-      in
-      if List.mem Exe.Linkage.byte ~set:linkages then
-        User_error.raise ~loc:exes.buildable.loc
-          [ Pp.textf "Pure bytecode executables cannot contain foreign %s." what
-          ]
-          ~hints:
-            [ Pp.text
-                "If you only need to build a native executable use \"(modes \
-                 exe)\"."
-            ];
-      let foreign_sources =
-        let foreign_sources = Dir_contents.foreign_sources dir_contents in
-        Foreign_sources.for_exes foreign_sources ~first_exe
-      in
-      let o_files =
-        Foreign_rules.build_o_files ~sctx ~dir ~expander
-          ~requires:requires_compile ~dir_contents ~foreign_sources
-        |> List.map ~f:Path.build
-      in
-      Check_rules.add_files sctx ~dir o_files;
-      o_files
-  in
   let requires_compile = Compilation_context.requires_compile cctx in
   let preprocess =
     Preprocess.Per_module.with_instrumentation exes.buildable.preprocess
       ~instrumentation_backend:
         (Lib.DB.instrumentation_backend (Scope.libs scope))
   in
-  Exe.build_and_link_many cctx ~programs ~linkages ~link_args ~o_files
-    ~promote:exes.promote ~embed_in_plugin_libraries;
+  let () =
+    (* TODO: Currently [exe_rules] differ from [lib_rules] in some aspects and
+       the reason is unclear. For example, instead of building an archive for
+       foreign stubs, we link the corresponding object files directly. It would
+       be nice to make the code more uniform. *)
+    let link_args =
+      let link_flags =
+        let link_deps = Dep_conf_eval.unnamed ~expander exes.link_deps in
+        link_deps
+        >>> Expander.expand_and_eval_set expander exes.link_flags
+              ~standard:(Build.return [])
+      in
+      let+ flags = link_flags in
+      Command.Args.S
+        [ Command.Args.As flags
+        ; Command.Args.S
+            (let ext_lib = ctx.lib_config.ext_lib in
+             let foreign_archives =
+               exes.buildable.foreign_archives |> List.map ~f:snd
+             in
+             List.map foreign_archives ~f:(fun archive ->
+                 let lib = Foreign.Archive.lib_file ~archive ~dir ~ext_lib in
+                 Command.Args.S [ A "-cclib"; Dep (Path.build lib) ]))
+        ]
+    in
+    let o_files =
+      o_files sctx ~dir ~expander ~exes ~linkages ~dir_contents
+        ~requires_compile
+    in
+    Check_rules.add_files sctx ~dir o_files;
+    Exe.build_and_link_many cctx ~programs ~linkages ~link_args ~o_files
+      ~promote:exes.promote ~embed_in_plugin_libraries
+  in
   ( cctx
   , Merlin.make () ~requires:requires_compile ~flags ~modules
       ~preprocess:(Preprocess.Per_module.single_preprocess preprocess)

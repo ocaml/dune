@@ -35,10 +35,13 @@ module Simplified = struct
     | Sh of string
 end
 
-(** CR-soon cwong: It would be nice to not need to have [Action_ext_intf].
-    Currently, we need to strip some dependency stuff from the execution context
-    when passing it here, as that forms a dependency cycle ([Deps] -> [Action]
-    \-> [Action_intf] -> [Deps]).
+(** CR-soon cwong: It would be nice to not need to have [Action_ext_intf], as it
+    makes the module structure even more confusing -- it introduces more types
+    and modules to an already convoluted collection of modules, and there's no
+    apparent reason to make them different types. Currently, we need to strip
+    some dependency stuff from the execution context when passing it here, as
+    that forms a dependency cycle ([Deps] -> [Action] -> [Action_intf] ->
+    [Deps]).
 
     One idea (jdimino's) is to make [ectx] and [eenv] abstract types, which are
     then instantiated with the types in [Action_exec]. I don't like this for a
@@ -69,8 +72,8 @@ module Ext = struct
     ; how_to_cache : Memoize_or_distribute.t
     ; (* cwong: I'm not sure how much I like the presence of this field. On the
          one hand, it breaks the intuition that encode/decode are inverses. On
-         the other hand, we would only ever encode this type for debugging, so
-         it shouldn't matter. *)
+         the other hand, we only ever encode this type for debugging and making
+         digests, so it shouldn't matter. *)
       encode : 'a -> Dune_lang.t
     ; simplified : 'a -> Simplified.t list
     ; deps : 'a -> 'path list

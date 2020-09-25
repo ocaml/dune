@@ -92,7 +92,7 @@ type exec_environment =
    kind of dynamic build dependency functions or prepped dependencies, etc,
    which should be handled here instead. *)
 let restrict_ctx { targets; context; purpose; rule_loc; build_deps = _ } =
-  { Action_ext_intf.targets; context; purpose; rule_loc }
+  { Action_intf.Ext.targets; context; purpose; rule_loc }
 
 let restrict_env
     { working_dir
@@ -103,7 +103,7 @@ let restrict_env
     ; exit_codes
     ; prepared_dependencies = _
     } =
-  { Action_ext_intf.working_dir
+  { Action_intf.Ext.working_dir
   ; env
   ; stdout_to
   ; stderr_to

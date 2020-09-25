@@ -271,9 +271,7 @@ end = struct
                       (Super_context.get_site_of_packages sctx)
                       src ?dst ))
             | Dune_file.Library lib ->
-              let sub_dir =
-                Option.value_exn lib.public |> Dune_file.Public_lib.sub_dir
-              in
+              let sub_dir = Dune_file.Library.sub_dir lib in
               let dir_contents = Dir_contents.get sctx ~dir in
               lib_install_files sctx ~scope ~dir ~sub_dir lib ~dir_contents
             | Coq_stanza.Theory.T coqlib ->

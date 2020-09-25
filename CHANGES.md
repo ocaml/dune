@@ -18,6 +18,9 @@ Unreleased
 
 - Add (enabled_if ...) to (copy_files ...) (#3756, @nojb)
 
+- Make sure Dune cleans up the status line before exiting (#3767,
+  fixes #3737, @dosaylazy)
+
 2.7.1 (2/09/2020)
 -----------------
 
@@ -110,6 +113,9 @@ Unreleased
 
 - `(subdir ...)` stanzas can now appear in dune files used via `(include ...)`.
   (#3676, @nojb)
+
+- Add actions `pipe-{stdout,stderr,outputs}` for output redirections (#3392,
+  fixes #428, @NathanReb)
 
 2.6.2 (26/07/2020)
 ------------------

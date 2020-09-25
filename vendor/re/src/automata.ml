@@ -20,32 +20,12 @@
    Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 *)
 
-module Cset = Re_cset
-
 type sem = [ `Longest | `Shortest | `First ]
 
 type rep_kind = [ `Greedy | `Non_greedy ]
 
-type category = int
 type mark = int
 type idx = int
-
-module Pmark : sig
-  type t = private int
-  val equal : t -> t -> bool
-  val compare : t -> t -> int
-  val gen : unit -> t
-  val pp : Format.formatter -> t -> unit
-end
-= struct
-  type t = int
-  let equal (x : int) (y : int) = x = y
-  let compare (x : int) (y : int) = compare x y
-  let r = ref 0
-  let gen () = incr r ; !r
-
-  let pp = Format.pp_print_int
-end
 
 type expr = { id : int; def : def }
 
@@ -57,20 +37,18 @@ and def =
   | Rep of rep_kind * sem * expr
   | Mark of int
   | Erase of int * int
-  | Before of category
-  | After of category
+  | Before of Category.t
+  | After of Category.t
   | Pmark of Pmark.t
-
-module PmarkSet = Set.Make(Pmark)
 
 let hash_combine h accu = accu * 65599 + h
 
 module Marks = struct
   type t =
     { marks : (int * int) list
-    ; pmarks : PmarkSet.t }
+    ; pmarks : Pmark.Set.t }
 
-  let empty = { marks = [] ; pmarks = PmarkSet.empty }
+  let empty = { marks = [] ; pmarks = Pmark.Set.empty }
 
   let rec merge_marks_offset old = function
     | [] ->
@@ -84,7 +62,7 @@ module Marks = struct
 
   let merge old nw =
     { marks = merge_marks_offset old.marks nw.marks
-    ; pmarks = PmarkSet.union old.pmarks nw.pmarks }
+    ; pmarks = Pmark.Set.union old.pmarks nw.pmarks }
 
   let rec hash_marks_offset l accu =
     match l with
@@ -127,7 +105,7 @@ let pp_rep_kind fmt = function
   | `Non_greedy -> Format.pp_print_string fmt "Non_greedy"
 
 let rec pp ch e =
-  let open Re_fmt in
+  let open Fmt in
   match e.def with
     Cst l ->
     sexp ch "cst" Cset.pp l;
@@ -146,9 +124,9 @@ let rec pp ch e =
   | Erase (b, e) ->
     sexp ch "erase" (pair int int) (b, e)
   | Before c ->
-    sexp ch "before" int c
+    sexp ch "before" Category.pp c
   | After c ->
-    sexp ch "after" int c
+    sexp ch "after" Category.pp c
 
 
 (****)
@@ -175,7 +153,7 @@ let mk_expr ids def =
 let empty ids = mk_expr ids (Alt [])
 
 let cst ids s =
-  if Re_cset.is_empty s
+  if Cset.is_empty s
   then empty ids
   else mk_expr ids (Cst s)
 
@@ -228,7 +206,7 @@ let rec rename ids x =
 
 type hash = int
 type mark_infos = int array
-type status = Failed | Match of mark_infos * PmarkSet.t | Running
+type status = Failed | Match of mark_infos * Pmark.Set.t | Running
 
 module E = struct
   type t =
@@ -300,22 +278,22 @@ end
 module State = struct
   type t =
     { idx: idx
-    ; category: category
+    ; category: Category.t
     ; desc: E.t list
     ; mutable status: status option
     ; hash: hash }
 
   let dummy =
     { idx = -1
-    ; category = -1
+    ; category = Category.dummy
     ; desc = []
     ; status = None
     ; hash = -1 }
 
   let hash idx cat desc =
-    E.hash desc (hash_combine idx (hash_combine cat 0)) land 0x3FFFFFFF
+    E.hash desc (hash_combine idx (hash_combine (Category.to_int cat) 0)) land 0x3FFFFFFF
 
-  let mk idx cat desc = 
+  let mk idx cat desc =
     { idx
     ; category = cat
     ; desc
@@ -326,12 +304,12 @@ module State = struct
 
   let equal x y =
     (x.hash : int) = y.hash && (x.idx : int) = y.idx &&
-    (x.category : int) = y.category && E.equal x.desc y.desc
+    Category.equal x.category y.category && E.equal x.desc y.desc
 
   let compare x y =
     let c = compare (x.hash : int) y.hash in
     if c <> 0 then c else
-      let c = compare (x.category : int) y.category in
+      let c = Category.compare x.category y.category in
       if c <> 0 then c else
         compare x.desc y.desc
 
@@ -421,18 +399,18 @@ let rec set_idx idx = function
 let filter_marks b e marks =
   {marks with Marks.marks = List.filter (fun (i, _) -> i < b || i > e) marks.Marks.marks }
 
-let rec delta_1 marks c cat' cat x rem =
+let rec delta_1 marks c ~next_cat ~prev_cat x rem =
   (*Format.eprintf "%d@." x.id;*)
   match x.def with
     Cst s ->
     if Cset.mem c s then E.texp marks eps_expr :: rem else rem
   | Alt l ->
-    delta_2 marks c cat' cat l rem
+    delta_2 marks c ~next_cat ~prev_cat l rem
   | Seq (kind, y, z) ->
-    let y' = delta_1 marks c cat' cat y [] in
-    delta_seq c cat' cat kind y' z rem
+    let y' = delta_1 marks c ~next_cat ~prev_cat y [] in
+    delta_seq c ~next_cat ~prev_cat kind y' z rem
   | Rep (rep_kind, kind, y) ->
-    let y' = delta_1 marks c cat' cat y [] in
+    let y' = delta_1 marks c ~next_cat ~prev_cat y [] in
     let (y'', marks') =
       match
         first
@@ -451,21 +429,23 @@ let rec delta_1 marks c cat' cat x rem =
     let marks = { marks with Marks.marks = (i, -1) :: List.remove_assq i marks.Marks.marks } in
     E.TMatch marks :: rem
   | Pmark i ->
-    let marks = { marks with Marks.pmarks = PmarkSet.add i marks.Marks.pmarks } in
+    let marks = { marks with Marks.pmarks = Pmark.Set.add i marks.Marks.pmarks } in
     E.TMatch marks :: rem
   | Erase (b, e) ->
     E.TMatch (filter_marks b e marks) :: rem
   | Before cat'' ->
-    if cat land cat'' <> 0 then E.TMatch marks :: rem else rem
+    if Category.intersect next_cat cat'' then E.TMatch marks :: rem else rem
   | After cat'' ->
-    if cat' land cat'' <> 0 then E.TMatch marks :: rem else rem
+    if Category.intersect prev_cat cat'' then E.TMatch marks :: rem else rem
 
-and delta_2 marks c cat' cat l rem =
+and delta_2 marks c ~next_cat ~prev_cat l rem =
   match l with
     []     -> rem
-  | y :: r -> delta_1 marks c cat' cat y (delta_2 marks c cat' cat r rem)
+  | y :: r ->
+    delta_1 marks c ~next_cat ~prev_cat y
+      (delta_2 marks c ~next_cat ~prev_cat r rem)
 
-and delta_seq c cat' cat kind y z rem =
+and delta_seq c ~next_cat ~prev_cat kind y z rem =
   match
     first (function E.TMatch marks -> Some marks | _ -> None) y
   with
@@ -474,35 +454,42 @@ and delta_seq c cat' cat kind y z rem =
   | Some marks ->
     match kind with
       `Longest ->
-      E.tseq kind (remove_matches y) z (delta_1 marks c cat' cat z rem)
+      E.tseq kind (remove_matches y) z
+        (delta_1 marks c ~next_cat ~prev_cat z rem)
     | `Shortest ->
-      delta_1 marks c cat' cat z (E.tseq kind (remove_matches y) z rem)
+      delta_1 marks c ~next_cat ~prev_cat z
+        (E.tseq kind (remove_matches y) z rem)
     | `First ->
       let (y', y'') = split_at_match y in
-      E.tseq kind y' z (delta_1 marks c cat' cat z (E.tseq kind y'' z rem))
+      E.tseq kind y' z
+        (delta_1 marks c ~next_cat ~prev_cat z (E.tseq kind y'' z rem))
 
-let rec delta_3 c cat' cat x rem =
+let rec delta_3 c ~next_cat ~prev_cat x rem =
   match x with
     E.TSeq (y, z, kind) ->
-    let y' = delta_4 c cat' cat y [] in
-    delta_seq c cat' cat kind y' z rem
+    let y' = delta_4 c ~next_cat ~prev_cat y [] in
+    delta_seq c ~next_cat ~prev_cat kind y' z rem
   | E.TExp (marks, e) ->
-    delta_1 marks c cat' cat e rem
+    delta_1 marks c ~next_cat ~prev_cat e rem
   | E.TMatch _ ->
     x :: rem
 
-and delta_4 c cat' cat l rem =
+and delta_4 c ~next_cat ~prev_cat l rem =
   match l with
     []     -> rem
-  | y :: r -> delta_3 c cat' cat y (delta_4 c cat' cat r rem)
+  | y :: r ->
+    delta_3 c ~next_cat ~prev_cat y
+      (delta_4 c ~next_cat ~prev_cat r rem)
 
-let delta tbl_ref cat' char st =
+let delta tbl_ref next_cat char st =
+  let prev_cat = st.State.category in
   let (expr', _) =
-    remove_duplicates [] (delta_4 char st.State.category cat' st.State.desc [])
+    remove_duplicates []
+      (delta_4 char ~next_cat ~prev_cat st.State.desc [])
       eps_expr in
   let idx = free_index tbl_ref expr' in
   let expr'' = set_idx idx expr' in
-  State.mk idx cat' expr''
+  State.mk idx next_cat expr''
 
 (****)
 
@@ -586,7 +573,7 @@ let rec deriv_1 all_chars categories marks cat x rem =
   | Before cat' ->
     Cset.prepend (List.assq cat' categories) [E.TMatch marks] rem
   | After cat' ->
-    if cat land cat' <> 0 then Cset.prepend all_chars [E.TMatch marks] rem else rem
+    if Category.intersect cat cat' then Cset.prepend all_chars [E.TMatch marks] rem else rem
 
 and deriv_2 all_chars categories marks cat l rem =
   match l with

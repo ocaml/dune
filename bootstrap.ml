@@ -4,7 +4,7 @@ open Printf
 (* This program performs version checking of the compiler and switches to the
    secondary compiler if necessary. The script should execute in OCaml 4.02! *)
 
-let min_supported_natively = (4, 08)
+let min_supported_natively = (4, 08, 0)
 
 let verbose, keep_generated_files, debug =
   let anon s = raise (Arg.Bad (sprintf "don't know what to do with %s\n" s)) in
@@ -65,7 +65,7 @@ let read_file fn =
   s
 
 let () =
-  let v = Scanf.sscanf Sys.ocaml_version "%d.%d" (fun a b -> (a, b)) in
+  let v = Scanf.sscanf Sys.ocaml_version "%d.%d.%d" (fun a b c -> (a, b, c)) in
   let compiler, which =
     if v >= min_supported_natively then
       ("ocamlc", None)
@@ -77,15 +77,15 @@ let () =
       prerr_endline s;
       if n <> 0 || s <> "" then (
         Format.eprintf "@[%a@]@." Format.pp_print_text
-          (sprintf
+          (let a, b, _ = min_supported_natively in
+           sprintf
              "The ocamlfind's secondary toolchain does not seem to be \
               correctly installed.\n\
               Dune requires OCaml %d.%02d or later to compile.\n\
               Please either upgrade your compile or configure a secondary \
               OCaml compiler (in opam, this can be done by installing the \
               ocamlfind-secondary package)."
-             (fst min_supported_natively)
-             (snd min_supported_natively));
+             a b);
         exit 2
       );
       (compiler, Some "--secondary")
@@ -94,7 +94,7 @@ let () =
     (runf "%s %s -w -24 -g -o %s -I boot unix.cma %s" compiler
        (* Make sure to produce a self-contained binary as dlls tend to cause
           issues *)
-       ( if v < (4, 10) then
+       ( if v < (4, 10, 1) then
          "-custom"
        else
          "-output-complete-exe" )

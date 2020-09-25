@@ -283,6 +283,7 @@ include Sub_system.Register_end_point (struct
        in
        Build.With_targets.add ~targets:[ target ] action);
     let cctx =
+      let package = Dune_file.Library.package lib in
       let flags =
         Ocaml_flags.append_common
           (Super_context.ocaml_flags sctx ~dir info.executable)
@@ -292,7 +293,7 @@ include Sub_system.Register_end_point (struct
         ~obj_dir ~modules ~opaque:(Explicit false) ~requires_compile:runner_libs
         ~requires_link:(lazy runner_libs)
         ~flags ~js_of_ocaml:(Some lib.buildable.js_of_ocaml) ~dynlink:false
-        ~package:(Option.map lib.public ~f:Dune_file.Public_lib.package)
+        ~package
     in
     let linkages =
       let modes =

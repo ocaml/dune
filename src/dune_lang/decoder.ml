@@ -330,7 +330,7 @@ let ( <|> ) =
       (approximate_how_much_input_a_failing_branch_consumed exn1)
       (approximate_how_much_input_a_failing_branch_consumed exn2)
   in
-  fun a b ctx state ->
+  fun (type a k) (a : (a, k) parser) (b : (a, k) parser) ctx state ->
     try a ctx state
     with exn_a -> (
       let exn_a = Exn_with_backtrace.capture exn_a in

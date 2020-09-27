@@ -4,6 +4,7 @@
     [dune external-lib-deps] *)
 
 open! Stdune
+open Dune_engine
 
 module Kind : sig
   type t =

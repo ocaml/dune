@@ -82,6 +82,9 @@ val loc : (Loc.t, _) parser
     most input. *)
 val ( <|> ) : ('a, 'k) parser -> ('a, 'k) parser -> ('a, 'k) parser
 
+val either :
+  ('a, 'k) parser -> ('b, 'k) parser -> (('a, 'b) Either.t, 'k) parser
+
 (** [atom_matching f] expects the next element to be an atom for which [f]
     returns [Some v]. [desc] is used to describe the atom in case of error. [f]
     must not raise. *)

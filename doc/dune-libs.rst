@@ -26,8 +26,8 @@ Configurator is designed to be cross compilation friendly and avoids _running_
 any compiled code to extract any of the information above.
 
 Configurator started as an `independent library
-<https://github.com/janestreet/configurator>`__, but now lives in dune. You do
-not need to install anything to use configurator.
+<https://github.com/janestreet/configurator>`__, but now lives in dune.
+It is released as the package ``dune-configurator``.
 
 Usage
 -----
@@ -57,7 +57,8 @@ example:
 
   let () =
     C.main ~name:"foo" (fun c ->
-      let has_clock_gettime = C.c_test c clock_gettime_code ~link_flags:["-lrt"] in
+      let has_clock_gettime =
+        C.c_test c clock_gettime_code ~link_flags:["-lrt"] in
 
       C.C_define.gen_header_file c ~fname:"config.h"
         [ "HAS_CLOCK_GETTIME", Switch has_clock_gettime ]);
@@ -69,7 +70,7 @@ invoke it as an executable and tell dune about the targets that it produces:
 
   (executable
    (name discover)
-   (libraries dune.configurator))
+   (libraries dune-configurator))
 
   (rule
    (targets config.h)
@@ -106,9 +107,10 @@ the transition include:
 
 The following steps must be taken to transition from the old configurator:
 
-* Mentions of the ``configurator`` opam package should be removed.
+* Mentions of the ``configurator`` opam package should be replaced
+  with ``dune-configurator``.
 
-* The library name ``configurator`` should be changed ``dune.configurator``.
+* The library name ``configurator`` should be changed ``dune-configurator``.
 
 * The ``-ocamlc`` flag in rules that run configurator scripts should be removed.
   This information is now passed automatically by dune.

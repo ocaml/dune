@@ -480,7 +480,7 @@ let rec main_module_name = function
   | Impl { vlib; impl = _ } -> main_module_name vlib
 
 let lib ~src_dir ~main_module_name ~wrapped ~stdlib ~lib_name ~implements
-    ~modules =
+    ~modules ~force_alias_module =
   let make_wrapped main_module_name =
     Wrapped
       (Wrapped.make ~src_dir ~lib_name ~implements ~modules ~main_module_name
@@ -491,17 +491,24 @@ let lib ~src_dir ~main_module_name ~wrapped ~stdlib ~lib_name ~implements
     let main_module_name = Option.value_exn main_module_name in
     Stdlib (Stdlib.make ~stdlib ~modules ~main_module_name)
   | None -> (
-    match (wrapped, main_module_name, as_singleton modules) with
-    | Simple false, _, Some m -> Singleton m
-    | Simple false, _, None -> Unwrapped modules
-    | (Yes_with_transition _ | Simple true), Some main_module_name, Some m ->
-      if Module.name m = main_module_name && not implements then
+    match
+      (wrapped, main_module_name, as_singleton modules, force_alias_module)
+    with
+    | Simple false, _, _, true ->
+      Code_error.raise "Modules.lib: unwrapped and force_alias" []
+    | Simple false, _, Some m, false -> Singleton m
+    | Simple false, _, None, false -> Unwrapped modules
+    | (Yes_with_transition _ | Simple true), Some main_module_name, Some m, _ ->
+      if
+        Module.name m = main_module_name
+        && (not implements) && not force_alias_module
+      then
         Singleton m
       else
         make_wrapped main_module_name
-    | (Yes_with_transition _ | Simple true), Some main_module_name, None ->
+    | (Yes_with_transition _ | Simple true), Some main_module_name, None, _ ->
       make_wrapped main_module_name
-    | (Simple true | Yes_with_transition _), None, _ ->
+    | (Simple true | Yes_with_transition _), None, _, _ ->
       Code_error.raise "Modules.lib: cannot wrap without main module name" [] )
 
 let impl impl ~vlib =
@@ -561,10 +568,12 @@ let singleton_exe m =
 
 let exe_unwrapped m = Unwrapped m
 
-let exe_wrapped ~src_dir ~modules =
+let exe_wrapped ~src_dir ~modules ~force_alias =
   match as_singleton modules with
-  | None -> Wrapped (Wrapped.exe ~src_dir ~modules)
-  | Some m -> singleton_exe m
+  | Some m when not force_alias -> singleton_exe m
+  | Some _
+  | None ->
+    Wrapped (Wrapped.exe ~src_dir ~modules)
 
 let rec impl_only = function
   | Stdlib w -> Stdlib.impl_only w

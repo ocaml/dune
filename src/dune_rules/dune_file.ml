@@ -45,6 +45,10 @@ module Js_of_ocaml = struct
     { flags = Ordered_set_lang.Unexpanded.standard; javascript_files = [] }
 end
 
+type for_ =
+  | Executable
+  | Library of Wrapped.t option
+
 module Lib_deps = struct
   type t = Lib_dep.t list
 
@@ -53,9 +57,21 @@ module Lib_deps = struct
     | Optional
     | Forbidden
 
-  let decode ~allow_re_export =
+  let rename_unwrapped_error loc =
+    User_error.raise ~loc
+      [ Pp.text "rename may not be used in unwrapped libraries" ]
+
+  let decode for_ =
     let+ loc = loc
-    and+ t = repeat (Lib_dep.decode ~allow_re_export) in
+    and+ project = Dune_project.get_exn ()
+    and+ t =
+      let allow_re_export =
+        match for_ with
+        | Library _ -> true
+        | Executable -> false
+      in
+      repeat (Lib_dep.decode ~allow_re_export)
+    in
     let add kind name acc =
       match Lib_name.Map.find acc name with
       | None -> Lib_name.Map.set acc name kind
@@ -82,9 +98,28 @@ module Lib_deps = struct
                 (Lib_name.to_string name)
             ] )
     in
+    let check_rename =
+      match for_ with
+      | Library (Some (Simple false)) -> rename_unwrapped_error
+      | Library _ -> fun _loc -> ()
+      | Executable ->
+        if Dune_project.wrapped_executables project then
+          fun _loc ->
+        ()
+        else
+          fun loc ->
+        User_error.raise ~loc
+          [ Pp.text
+              "rename may not be used in executables without \
+               wrapped_executables switched on in the dune-project file"
+          ]
+    in
     ignore
       ( List.fold_left t ~init:Lib_name.Map.empty ~f:(fun acc x ->
             match x with
+            | Lib_dep.Rename ((loc, name), _) ->
+              check_rename loc;
+              add Required name acc
             | Lib_dep.Re_export (_, s)
             | Lib_dep.Direct (_, s) ->
               add Required s acc
@@ -102,8 +137,9 @@ module Lib_deps = struct
 
   let info t ~kind =
     List.concat_map t ~f:(function
-      | Lib_dep.Re_export (_, s)
-      | Lib_dep.Direct (_, s) ->
+      | Lib_dep.Rename ((_, s), _)
+      | Re_export (_, s)
+      | Direct (_, s) ->
         [ (s, kind) ]
       | Select { choices; _ } ->
         List.concat_map choices ~f:(fun (c : Lib_dep.Select.Choice.t) ->
@@ -163,16 +199,15 @@ module Buildable = struct
     ; allow_overlapping_dependencies : bool
     }
 
-  let decode ~in_library ~allow_re_export =
+  let decode (for_ : for_) =
     let use_foreign =
       Dune_lang.Syntax.deleted_in Stanza.syntax (2, 0)
         ~extra_info:"Use the (foreign_stubs ...) field instead."
     in
     let only_in_library decode =
-      if in_library then
-        decode
-      else
-        return None
+      match for_ with
+      | Executable -> return None
+      | Library _ -> decode
     in
     let add_stubs language ~loc ~names ~flags foreign_stubs =
       match names with
@@ -219,8 +254,7 @@ module Buildable = struct
               >>> enter (maybe string) )))
     and+ modules_without_implementation =
       Stanza_common.modules_field "modules_without_implementation"
-    and+ libraries =
-      field "libraries" (Lib_deps.decode ~allow_re_export) ~default:[]
+    and+ libraries = field "libraries" (Lib_deps.decode for_) ~default:[]
     and+ flags = Ocaml_flags.Spec.decode
     and+ js_of_ocaml =
       field "js_of_ocaml" Js_of_ocaml.decode ~default:Js_of_ocaml.default
@@ -313,6 +347,11 @@ module Buildable = struct
 
   let has_foreign t =
     List.is_non_empty t.foreign_stubs || List.is_non_empty t.foreign_archives
+
+  let first_rename_dep (t : t) =
+    List.find_map t.libraries ~f:(function
+      | Lib_dep.Rename ((loc, _), _) -> Some loc
+      | _ -> None)
 end
 
 module Public_lib = struct
@@ -564,8 +603,9 @@ module Library = struct
   let decode =
     fields
       (let* stanza_loc = loc in
+       let* wrapped = Wrapped.field in
        let* dune_version = Dune_lang.Syntax.get_exn Stanza.syntax in
-       let+ buildable = Buildable.decode ~in_library:true ~allow_re_export:true
+       let+ buildable = Buildable.decode (Library (Option.map ~f:snd wrapped))
        and+ name = field_o "name" Lib_name.Local.decode_loc
        and+ public =
          field_o "public_name" (Public_lib.decode ~allow_deprecated_names:false)
@@ -585,7 +625,6 @@ module Library = struct
          field "modes" Mode_conf.Set.decode
            ~default:(Mode_conf.Set.default stanza_loc)
        and+ kind = field "kind" Lib_kind.decode ~default:Lib_kind.Normal
-       and+ wrapped = Wrapped.field
        and+ optional = field_b "optional"
        and+ no_dynlink = field_b "no_dynlink"
        and+ () =
@@ -1347,7 +1386,7 @@ module Executables = struct
 
   let common =
     let* dune_version = Dune_lang.Syntax.get_exn Stanza.syntax in
-    let+ buildable = Buildable.decode ~in_library:false ~allow_re_export:false
+    let+ buildable = Buildable.decode Executable
     and+ (_ : bool) =
       field "link_executables" ~default:true
         (Dune_lang.Syntax.deleted_in Stanza.syntax (1, 0) >>> bool)
@@ -1772,8 +1811,7 @@ module Tests = struct
 
   let gen_parse names =
     fields
-      (let+ buildable =
-         Buildable.decode ~in_library:false ~allow_re_export:false
+      (let+ buildable = Buildable.decode Executable
        and+ link_flags = Ordered_set_lang.Unexpanded.field "link_flags"
        and+ names = names
        and+ package = field_o "package" Stanza_common.Pkg.decode

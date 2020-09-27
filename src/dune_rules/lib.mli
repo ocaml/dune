@@ -115,6 +115,8 @@ type sub_system = ..
 module Compile : sig
   type t
 
+  type lib
+
   (** Return the list of dependencies needed for linking this library/exe *)
   val requires_link : t -> L.t Or_exn.t Lazy.t
 
@@ -138,7 +140,10 @@ module Compile : sig
 
   (** Sub-systems used in this compilation context *)
   val sub_systems : t -> sub_system list
+
+  val renames : t -> (lib * Module_name.t) list Or_exn.t
 end
+with type lib := t
 
 (** {1 Library name resolution} *)
 

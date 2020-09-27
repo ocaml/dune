@@ -70,6 +70,7 @@ type t =
   ; vimpl : Vimpl.t option
   ; modes : Mode.Dict.Set.t
   ; bin_annot : bool
+  ; renames : (Lib.t * Module_name.t) list Or_exn.t
   }
 
 let super_context t = t.super_context
@@ -114,10 +115,37 @@ let bin_annot t = t.bin_annot
 
 let context t = Super_context.context t.super_context
 
+type rename =
+  { new_name : Module_name.t
+  ; old_name : Module_name.t
+  }
+
+let renames t =
+  let open Result.O in
+  let* renames = t.renames in
+  Result.List.map renames ~f:(fun (lib, new_name) ->
+      let* main_module_name = Lib.main_module_name lib in
+      let+ old_name =
+        match main_module_name with
+        | Some m -> Ok m
+        | None ->
+          Error
+            (User_error.E
+               (User_error.make
+                  [ Pp.text "renaming unwrapped not supported yet" ]))
+      in
+      { new_name; old_name })
+
 let create ~super_context ~scope ~expander ~obj_dir ~modules ~flags
+<<<<<<< HEAD
     ~requires_compile ~requires_link ?(preprocessing = Pp_spec.dummy) ~opaque
     ?stdlib ~js_of_ocaml ~dynlink ~package ?vimpl ?modes ?(bin_annot = true) ()
     =
+=======
+    ~requires_compile ~requires_link ?(preprocessing = Preprocessing.dummy)
+    ~opaque ?stdlib ~js_of_ocaml ~dynlink ~package ?vimpl ?modes
+    ?(bin_annot = true) ?(renames = Ok []) () =
+>>>>>>> 254959a66 (Rename dependencies)
   let project = Scope.project scope in
   let requires_compile =
     if Dune_project.implicit_transitive_deps project then
@@ -158,6 +186,7 @@ let create ~super_context ~scope ~expander ~obj_dir ~modules ~flags
   ; vimpl
   ; modes
   ; bin_annot
+  ; renames
   }
 
 let for_alias_module t =

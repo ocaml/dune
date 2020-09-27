@@ -373,6 +373,29 @@ not. When they are allowed, which is the default, all transitive
 dependencies are visible whether they are marked as re-exported or
 not.
 
+Renamed dependencies
+--------------------
+
+A library dependency might be shadowed by an internal module with the same name
+as the library.  To workaround this limitation, we may introduce a new toplevel
+name for ``foo`` using the ``rename`` construct:
+
+.. code:: scheme
+
+   (rename <lib> -> <new_name>)
+
+Note that ``<lib>`` will no longer be usable under its original name.
+
+For example:
+
+.. code:: scheme
+
+   (library
+    (name bar)
+    (libraries (rename re -> re_unshadow)))
+
+This will make the ``re`` available under the ``Re_unshadow`` toplevel name.
+
 .. _preprocessing-spec:
 
 Preprocessing specification

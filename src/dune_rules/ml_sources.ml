@@ -208,7 +208,7 @@ let virtual_modules lookup_vlib vlib =
   }
 
 let make_lib_modules (d : _ Dir_with_dune.t) ~lookup_vlib ~(lib : Library.t)
-    ~modules =
+    ~modules ~force_alias_module =
   let src_dir = d.ctx_dir in
   let kind, main_module_name, wrapped =
     match lib.implements with
@@ -264,6 +264,15 @@ let make_lib_modules (d : _ Dir_with_dune.t) ~lookup_vlib ~(lib : Library.t)
       in
       (kind, main_module_name, wrapped)
   in
+  let () =
+    match wrapped with
+    | Simple false ->
+      Buildable.first_rename_dep lib.buildable
+      |> Option.iter ~f:Lib_deps.rename_unwrapped_error
+    | Simple true
+    | Yes_with_transition _ ->
+      ()
+  in
   let modules =
     Modules_field_evaluator.eval ~modules ~buildable:lib.buildable ~kind
       ~private_modules:
@@ -273,13 +282,18 @@ let make_lib_modules (d : _ Dir_with_dune.t) ~lookup_vlib ~(lib : Library.t)
   let implements = Option.is_some lib.implements in
   let _loc, lib_name = lib.name in
   Modules_group.lib ~stdlib ~implements ~lib_name ~src_dir ~modules
-    ~main_module_name ~wrapped
+    ~main_module_name ~wrapped ~force_alias_module
 
 let libs_and_exes (d : _ Dir_with_dune.t) ~lookup_vlib ~modules =
   List.filter_partition_map d.data ~f:(fun stanza ->
       match (stanza : Stanza.t) with
       | Library lib ->
-        let modules = make_lib_modules d ~lookup_vlib ~modules ~lib in
+        let force_alias_module =
+          Buildable.first_rename_dep lib.buildable |> Option.is_some
+        in
+        let modules =
+          make_lib_modules d ~lookup_vlib ~modules ~lib ~force_alias_module
+        in
         Left (lib, modules)
       | Executables exes
       | Tests { exes; _ } ->
@@ -291,7 +305,10 @@ let libs_and_exes (d : _ Dir_with_dune.t) ~lookup_vlib ~modules =
         let modules =
           let project = Scope.project d.scope in
           if Dune_project.wrapped_executables project then
-            Modules_group.exe_wrapped ~src_dir:d.ctx_dir ~modules
+            let force_alias =
+              Buildable.first_rename_dep exes.buildable |> Option.is_some
+            in
+            Modules_group.exe_wrapped ~src_dir:d.ctx_dir ~modules ~force_alias
           else
             Modules_group.exe_unwrapped modules
         in

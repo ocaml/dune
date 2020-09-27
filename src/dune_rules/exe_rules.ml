@@ -138,9 +138,11 @@ let executables_rules ~sctx ~dir ~expander ~dir_contents ~scope ~compile_info
              | Other { kind = Shared_object; _ } -> true
              | _ -> false)
     in
+    let renames = Lib.Compile.renames compile_info in
     Compilation_context.create () ~super_context:sctx ~expander ~scope ~obj_dir
       ~modules ~flags ~requires_link ~requires_compile ~preprocessing:pp
       ~js_of_ocaml ~opaque:Inherit_from_settings ~dynlink ~package:exes.package
+      ~renames
   in
   let requires_compile = Compilation_context.requires_compile cctx in
   let preprocess =

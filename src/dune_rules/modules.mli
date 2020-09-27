@@ -15,6 +15,9 @@ val lib :
   -> lib_name:Lib_name.Local.t
   -> implements:bool
   -> modules:Module.Name_map.t
+  -> force_alias_module:bool
+       (** Force the creation of an alias module. Required if we're renaming any
+           dependencies *)
   -> t
 
 val encode : t -> Dune_lang.t
@@ -43,7 +46,8 @@ val iter_no_vlib : t -> f:(Module.t -> unit) -> unit
 
 val exe_unwrapped : Module.Name_map.t -> t
 
-val exe_wrapped : src_dir:Path.Build.t -> modules:Module.Name_map.t -> t
+val exe_wrapped :
+  src_dir:Path.Build.t -> modules:Module.Name_map.t -> force_alias:bool -> t
 
 (** For wrapped libraries, this is the user written entry module for the
     library. For single module libraries, it's the sole module in the library *)

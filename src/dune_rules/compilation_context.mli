@@ -40,6 +40,7 @@ val create :
   -> ?vimpl:Vimpl.t
   -> ?modes:Dune_file.Mode_conf.Set.Details.t Mode.Dict.t
   -> ?bin_annot:bool
+  -> ?renames:(Lib.t * Module_name.t) list Or_exn.t
   -> unit
   -> t
 
@@ -99,3 +100,10 @@ val for_plugin_executable :
 val bin_annot : t -> bool
 
 val without_bin_annot : t -> t
+
+type rename =
+  { new_name : Module_name.t
+  ; old_name : Module_name.t
+  }
+
+val renames : t -> rename list Or_exn.t

@@ -774,6 +774,8 @@ module Library = struct
     let foreign_dll_files = foreign_dll_files conf ~dir ~ext_dll in
     let exit_module = Option.bind conf.stdlib ~f:(fun x -> x.exit_module) in
     let jsoo_archive =
+      (* XXX we shouldn't access the directory of the obj_dir directly. We
+         should use something like [Obj_dir.Archive.obj] instead *)
       Some (gen_archive_file ~dir:(Obj_dir.obj_dir obj_dir) ".cma.js")
     in
     let virtual_ =

@@ -1696,13 +1696,18 @@ module DB = struct
     | Not_found ->
       None
 
-  let resolve t (loc, name) =
+  let resolve_when_exists t (loc, name) =
     match Resolve.find_internal t name ~stack:Dep_stack.empty with
     | Status.Initializing _ -> assert false
-    | Found t -> Ok t
-    | Invalid w -> Error w
-    | Not_found -> Error.not_found ~loc ~name
-    | Hidden h -> Hidden.error h ~loc ~name
+    | Found t -> Some (Ok t)
+    | Invalid w -> Some (Error w)
+    | Not_found -> None
+    | Hidden h -> Some (Hidden.error h ~loc ~name)
+
+  let resolve t (loc, name) =
+    match resolve_when_exists t (loc, name) with
+    | None -> Error.not_found ~loc ~name
+    | Some k -> k
 
   let available t name =
     Resolve.available_internal t name ~stack:Dep_stack.empty

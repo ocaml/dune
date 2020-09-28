@@ -845,6 +845,10 @@ See the :ref:`user-actions` section for more details.
 - ``(package <package>)`` specify the package this rule belongs to. This rule
   will be unavailable when installing other packages in release mode.
 
+- ``(enabled_if <blang expression>)`` specifies the boolean condition that must
+  be true for the rule to be considered. The condition is specified using the :ref:`blang`, and
+  the field allows for :ref:`variables` to appear in the expressions.
+
 Note that contrary to makefiles or other build systems, user rules currently
 don't support patterns, such as a rule to produce ``%.y`` from ``%.x`` for any
 given ``%``. This might be supported in the future.

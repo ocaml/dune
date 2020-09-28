@@ -220,6 +220,7 @@ end = struct
   let get0_impl (sctx, dir) : result0 =
     let dir_status_db = Super_context.dir_status_db sctx in
     let ctx = Super_context.context sctx in
+    let lib_config = (Super_context.context sctx).lib_config in
     match Dir_status.DB.get dir_status_db ~dir with
     | Is_component_of_a_group_but_not_the_root { group_root; stanzas = _ } ->
       See_above group_root
@@ -240,7 +241,8 @@ end = struct
         Memo.lazy_ (fun () ->
             let lookup_vlib = lookup_vlib sctx in
             let loc = loc_of_dune_file ft_dir in
-            Ml_sources.make d ~loc ~include_subdirs ~lookup_vlib ~dirs)
+            Ml_sources.make d ~lib_config ~loc ~include_subdirs ~lookup_vlib
+              ~dirs)
       in
       Here
         { t =
@@ -276,7 +278,8 @@ end = struct
       let ml =
         Memo.lazy_ (fun () ->
             let lookup_vlib = lookup_vlib sctx in
-            Ml_sources.make d ~loc ~lookup_vlib ~include_subdirs ~dirs)
+            Ml_sources.make d ~lib_config ~loc ~lookup_vlib ~include_subdirs
+              ~dirs)
       in
       let foreign_sources =
         Memo.lazy_ (fun () ->

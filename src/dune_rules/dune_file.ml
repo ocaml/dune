@@ -746,16 +746,25 @@ module Library = struct
       This (Some (Module_name.of_local_lib_name (snd t.name)))
 
   let to_lib_info conf ~dir
-      ~lib_config:({ Lib_config.has_native; ext_lib; ext_dll; _ } as lib_config)
-      =
+      ~lib_config:
+        ( { Lib_config.has_native; ext_lib; ext_dll; natdynlink_supported; _ }
+        as lib_config ) =
     let _loc, lib_name = conf.name in
     let obj_dir = obj_dir ~dir conf in
     let gen_archive_file ~dir ext =
       Path.Build.relative dir (Lib_name.Local.to_string lib_name ^ ext)
     in
     let archive_file = gen_archive_file ~dir in
+    let modes = Mode_conf.Set.eval ~has_native conf.modes in
+    let archive_file ~f_ext ~mode =
+      if Mode.Dict.get modes mode then
+        Some (archive_file (f_ext mode))
+      else
+        None
+    in
     let archive_files ~f_ext =
-      Mode.Dict.of_func (fun ~mode -> [ archive_file (f_ext mode) ])
+      Mode.Dict.of_func (fun ~mode ->
+          archive_file ~f_ext ~mode |> Option.to_list)
     in
     let jsoo_runtime =
       List.map conf.buildable.js_of_ocaml.javascript_files
@@ -776,7 +785,10 @@ module Library = struct
     let jsoo_archive =
       (* XXX we shouldn't access the directory of the obj_dir directly. We
          should use something like [Obj_dir.Archive.obj] instead *)
-      Some (gen_archive_file ~dir:(Obj_dir.obj_dir obj_dir) ".cma.js")
+      if modes.byte then
+        Some (gen_archive_file ~dir:(Obj_dir.obj_dir obj_dir) ".cma.js")
+      else
+        None
     in
     let virtual_ =
       Option.map conf.virtual_modules ~f:(fun _ -> Lib_info.Source.Local)
@@ -786,12 +798,22 @@ module Library = struct
       if virtual_library then
         (Mode.Dict.make_both [], Mode.Dict.make_both [])
       else
-        ( archive_files ~f_ext:Mode.compiled_lib_ext
-        , archive_files ~f_ext:Mode.plugin_ext )
+        let plugins =
+          let archive_file ~mode =
+            archive_file ~f_ext:Mode.plugin_ext ~mode |> Option.to_list
+          in
+          { Mode.Dict.native =
+              ( if Dynlink_supported.get conf.dynlink natdynlink_supported then
+                archive_file ~mode:Native
+              else
+                [] )
+          ; byte = archive_file ~mode:Byte
+          }
+        in
+        (archive_files ~f_ext:Mode.compiled_lib_ext, plugins)
     in
     let main_module_name = main_module_name conf in
     let name = best_name conf in
-    let modes = Mode_conf.Set.eval ~has_native conf.modes in
     let enabled =
       let enabled_if_result =
         Blang.eval conf.enabled_if ~dir:(Path.build dir) ~f:(fun v _ver ->

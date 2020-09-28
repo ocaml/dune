@@ -12,7 +12,7 @@ module Artifacts : sig
   val lookup_module :
     t -> Module_name.t -> (Path.Build.t Obj_dir.t * Module.t) option
 
-  val lookup_library : t -> Lib_name.t -> Dune_file.Library.t option
+  val lookup_library : t -> Lib_name.t -> Lib_info.local option
 end
 
 type t
@@ -40,6 +40,7 @@ val empty : t
 
 val make :
      Stanza.t list Dir_with_dune.t
+  -> lib_config:Lib_config.t
   -> loc:Loc.t
   -> lookup_vlib:(dir:Path.Build.t -> t)
   -> include_subdirs:Loc.t * Dune_file.Include_subdirs.t

@@ -80,7 +80,7 @@ end
 
 module Artifacts = struct
   type t =
-    { libraries : Library.t Lib_name.Map.t
+    { libraries : Lib_info.local Lib_name.Map.t
     ; modules : (Path.Build.t Obj_dir.t * Module.t) Module_name.Map.t
     }
 
@@ -91,12 +91,15 @@ module Artifacts = struct
 
   let lookup_library { libraries; modules = _ } = Lib_name.Map.find libraries
 
-  let make (d : _ Dir_with_dune.t) (libs, exes) =
+  let make (d : _ Dir_with_dune.t) ~lib_config (libs, exes) =
     let libraries =
       List.fold_left
         ~f:(fun libraries (lib, _) ->
           let name = Lib_name.of_local lib.Library.name in
-          Lib_name.Map.add_exn libraries name lib)
+          let info =
+            Dune_file.Library.to_lib_info lib ~dir:d.ctx_dir ~lib_config
+          in
+          Lib_name.Map.add_exn libraries name info)
         ~init:Lib_name.Map.empty libs
     in
     let modules =
@@ -300,7 +303,8 @@ let check_no_qualified (loc, include_subdirs) =
     User_error.raise ~loc
       [ Pp.text "(include_subdirs qualified) is not supported yet" ]
 
-let make (d : _ Dir_with_dune.t) ~loc ~lookup_vlib ~include_subdirs ~dirs =
+let make (d : _ Dir_with_dune.t) ~lib_config ~loc ~lookup_vlib ~include_subdirs
+    ~dirs =
   let libs_and_exes =
     Memo.lazy_ (fun () ->
         check_no_qualified include_subdirs;
@@ -323,5 +327,7 @@ let make (d : _ Dir_with_dune.t) ~loc ~lookup_vlib ~include_subdirs ~dirs =
         libs_and_exes d ~lookup_vlib ~modules)
   in
   let modules = Memo.Lazy.map ~f:Modules.make libs_and_exes in
-  let artifacts = Memo.Lazy.map ~f:(Artifacts.make d) libs_and_exes in
+  let artifacts =
+    Memo.Lazy.map ~f:(Artifacts.make ~lib_config d) libs_and_exes
+  in
   { modules; artifacts }

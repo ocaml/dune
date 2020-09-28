@@ -164,11 +164,6 @@ module Library : sig
   val foreign_lib_files :
     t -> dir:Path.Build.t -> ext_lib:string -> Path.Build.t list
 
-  (** The [dll*.so] files of all foreign archives, including foreign stubs.
-      [dir] is the directory the library is declared in. *)
-  val foreign_dll_files :
-    t -> dir:Path.Build.t -> ext_dll:string -> Path.Build.t list
-
   (** The path to a library archive. [dir] is the directory the library is
       declared in. *)
   val archive : t -> dir:Path.Build.t -> ext:string -> Path.Build.t

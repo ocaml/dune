@@ -280,7 +280,6 @@ let build_shared lib ~dir_contents ~sctx ~dir ~flags =
 
 let setup_build_archives (lib : Dune_file.Library.t) ~dir_contents ~cctx
     ~(dep_graphs : Dep_graph.Ml_kind.t) ~expander =
-  let dir = Compilation_context.dir cctx in
   let obj_dir = Compilation_context.obj_dir cctx in
   let flags = Compilation_context.flags cctx in
   let modules = Compilation_context.modules cctx in
@@ -305,17 +304,25 @@ let setup_build_archives (lib : Dune_file.Library.t) ~dir_contents ~cctx
                 let fname =
                   Module_name.Unique.artifact_filename obj_name ~ext
                 in
-                let dst = Path.Build.relative dir fname in
-                Super_context.add_rule sctx ~dir (Build.copy ~src ~dst)));
+                (* XXX we should get the directory from the dir of the cma file
+                   explicitly *)
+                let dst = Path.Build.relative (Obj_dir.dir obj_dir) fname in
+                Super_context.add_rule sctx
+                  ~dir:(Compilation_context.dir cctx)
+                  (Build.copy ~src ~dst)));
   let top_sorted_modules =
     Dep_graph.top_closed_implementations dep_graphs.impl impl_only
   in
   let modes = Compilation_context.modes cctx in
+  (* The [dir] below is used as an object directory without going through
+     [Obj_dir]. That's fragile and will break if the layout of the object
+     directory changes *)
+  let dir = Obj_dir.dir obj_dir in
   (let cm_files =
      Cm_files.make ~obj_dir ~ext_obj ~modules ~top_sorted_modules
    in
    Mode.Dict.Set.iter modes ~f:(fun mode ->
-       build_lib lib ~dir_contents ~sctx ~expander ~flags ~dir ~mode ~cm_files));
+       build_lib lib ~dir ~dir_contents ~sctx ~expander ~flags ~mode ~cm_files));
   (* Build *.cma.js *)
   if modes.byte then
     Super_context.add_rules sctx ~dir

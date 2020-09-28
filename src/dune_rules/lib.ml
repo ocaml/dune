@@ -1714,9 +1714,21 @@ module DB = struct
         [ ("name", Lib_name.to_dyn name) ]
     | Some lib -> Compile.for_lib resolve ~allow_overlaps t lib
 
-  let resolve_user_written_deps_for_exes t exes ?(allow_overlaps = false)
-      ?(forbidden_libraries = []) deps ~pps ~dune_version ~optional =
+  let resolve_user_written_deps_for_exes t exes ?preprocess
+      ?(allow_overlaps = false) ?(forbidden_libraries = []) deps ~pps
+      ~dune_version ~optional =
     let lib_deps_info =
+      let pps =
+        match preprocess with
+        | None -> pps
+        | Some pp ->
+          let resolve = resolve t in
+          Preprocess.Per_module.pps
+            (Preprocess.Per_module.with_instrumentation pp
+               ~instrumentation_backend:
+                 (instrumentation_backend ~do_not_fail:true t.instrument_with
+                    resolve))
+      in
       Compile.make_lib_deps_info ~user_written_deps:deps ~pps
         ~kind:
           ( if optional then

@@ -201,6 +201,7 @@ module DB : sig
   val resolve_user_written_deps_for_exes :
        t
     -> (Loc.t * string) list
+    -> ?preprocess:Preprocess.With_instrumentation.t Preprocess.Per_module.t
     -> ?allow_overlaps:bool
     -> ?forbidden_libraries:(Loc.t * Lib_name.t) list
     -> Lib_dep.t list

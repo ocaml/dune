@@ -59,6 +59,7 @@ module Make (Src : Action_intf.Ast) (Dst : Action_intf.Ast) = struct
           ; deps
           ; targets
           ; action
+          ; is_useful_to_sandbox
           ; how_to_cache
           ; encode
           ; simplified
@@ -70,6 +71,7 @@ module Make (Src : Action_intf.Ast) (Dst : Action_intf.Ast) = struct
           ; deps = (fun v -> List.map ~f:(f_path ~dir) (deps v))
           ; targets = (fun v -> List.map ~f:(f_target ~dir) (targets v))
           ; action
+          ; is_useful_to_sandbox
           ; how_to_cache
           ; encode
           ; simplified

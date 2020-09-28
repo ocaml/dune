@@ -211,6 +211,7 @@ module Partial = struct
           ; deps
           ; targets
           ; action
+          ; is_useful_to_sandbox
           ; how_to_cache
           ; encode
           ; simplified
@@ -222,6 +223,7 @@ module Partial = struct
           ; deps = (fun v -> List.map ~f:(E.path ~expander) (deps v))
           ; targets = (fun v -> List.map ~f:(E.target ~expander) (targets v))
           ; action
+          ; is_useful_to_sandbox
           ; how_to_cache
           ; encode
           ; simplified
@@ -347,6 +349,7 @@ let rec partial_expand t ~expander : Partial.t =
         ; deps
         ; targets
         ; action
+        ; is_useful_to_sandbox
         ; how_to_cache
         ; encode
         ; simplified
@@ -358,6 +361,7 @@ let rec partial_expand t ~expander : Partial.t =
         ; deps = (fun v -> List.map ~f:(E.path ~expander) (deps v))
         ; targets = (fun v -> List.map ~f:(E.target ~expander) (targets v))
         ; action
+        ; is_useful_to_sandbox
         ; how_to_cache
         ; encode
         ; simplified

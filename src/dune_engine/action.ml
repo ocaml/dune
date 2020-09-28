@@ -327,7 +327,45 @@ let is_useful_to distribute memoize =
     | true -> Maybe
     | false -> Clearly_not
 
-let is_useful_to_sandbox = is_useful_to false false
+let is_useful_to_sandbox =
+  let rec loop t =
+    match t with
+    | Chdir (_, t)
+    | Setenv (_, _, t)
+    | Redirect_out (_, _, t)
+    | Redirect_in (_, _, t)
+    | Ignore (_, t)
+    | With_accepted_exit_codes (_, t)
+    | No_infer t ->
+      loop t
+    | Progn l
+    | Pipe (_, l) ->
+      List.exists l ~f:loop
+    | Echo _
+    | Cat _
+    | Copy _
+    | Symlink _
+    | Copy_and_add_line_directive _
+    | Write_file _
+    | Rename _
+    | Remove_tree _
+    | Diff _
+    | Mkdir _
+    | Digest_files _
+    | Merge_files_into _ ->
+      false
+    | Cram _
+    | Run _
+    | Dynamic_run _
+    | System _
+    | Bash _ ->
+      true
+    | Extension (_, { is_useful_to_sandbox; _ }) -> is_useful_to_sandbox
+  in
+  fun t ->
+    match loop t with
+    | true -> Maybe
+    | false -> Clearly_not
 
 let is_useful_to_distribute = is_useful_to true false
 

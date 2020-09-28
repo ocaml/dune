@@ -140,6 +140,7 @@ let simplified { src; dst } =
 let methods =
   { Action.Ext.name = "format_dune_file"
   ; version = 0
+  ; is_useful_to_sandbox = false
   ; how_to_cache = Memoize
   ; encode
   ; simplified

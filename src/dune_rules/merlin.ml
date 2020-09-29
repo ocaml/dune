@@ -141,28 +141,6 @@ module Processed = struct
           let sexp = to_sexp config in
           Format.printf "@[<v>%s@,%a@]@." name Sexp.pp sexp)
         t
-
-  let dot_merlin sctx ~dir (t : t Build.With_targets.t) =
-    let open Build.With_targets.O in
-    let merlin_file = Path.Build.relative dir merlin_file_name in
-
-    (* We make the compilation of .ml/.mli files depend on the existence of
-       .merlin so that they are always generated, however the command themselves
-       don't read the merlin file, so we don't want to declare a dependency on
-       the contents of the .merlin file.
-
-       Currently dune doesn't support declaring a dependency only on the
-       existence of a file, so we have to use this trick. *)
-    SC.add_rule sctx ~dir
-      ( Build.with_no_targets (Build.path (Path.build merlin_file))
-      >>> Build.create_file (Path.Build.relative dir ".merlin-exists") );
-    Path.Set.singleton (Path.build merlin_file)
-    |> Rules.Produce.Alias.add_deps (Alias.check ~dir);
-    let action =
-      Build.With_targets.write_file_dyn merlin_file
-        (Build.With_targets.map ~f:Persist.to_string t)
-    in
-    SC.add_rule sctx ~dir action
 end
 
 module Unprocessed = struct
@@ -354,10 +332,8 @@ module Unprocessed = struct
         (Modules.source_dirs modules)
 
   let process sctx ~more_src_dirs ~expander t =
-    Module_name.Map.foldi t
-      ~init:(Build.with_no_targets (Build.return String.Map.empty))
-      ~f:
-        (fun module_name ({ requires; flags; extensions; _ } as cu_config) acc ->
+    Module_name.Map.foldi t ~init:(Build.With_targets.return String.Map.empty)
+      ~f:(fun module_name ({ requires; flags; extensions; _ } as cu_config) acc ->
         let open Build.With_targets.O in
         let pp_flags = pp_flags sctx ~expander cu_config in
         let+ flags = Build.with_no_targets flags
@@ -385,11 +361,34 @@ end
 
 include Unprocessed
 
+let dot_merlin sctx ~dir ~more_src_dirs ~expander (t : Unprocessed.t) =
+  let open Build.With_targets.O in
+  let merlin_file = Path.Build.relative dir merlin_file_name in
+
+  (* We make the compilation of .ml/.mli files depend on the existence of
+     .merlin so that they are always generated, however the command themselves
+     don't read the merlin file, so we don't want to declare a dependency on the
+     contents of the .merlin file.
+
+     Currently dune doesn't support declaring a dependency only on the existence
+     of a file, so we have to use this trick. *)
+  SC.add_rule sctx ~dir
+    ( Build.with_no_targets (Build.path (Path.build merlin_file))
+    >>> Build.create_file (Path.Build.relative dir ".merlin-exists") );
+  Path.Set.singleton (Path.build merlin_file)
+  |> Rules.Produce.Alias.add_deps (Alias.check ~dir);
+
+  let merlin = Unprocessed.process sctx ~more_src_dirs ~expander t in
+  let action =
+    Build.With_targets.write_file_dyn merlin_file
+      (Build.With_targets.map ~f:Processed.Persist.to_string merlin)
+  in
+  SC.add_rule sctx ~dir action
+
 let merge_all = function
   | [] -> None
   | init :: ts -> Some (List.fold_left ~init ~f:Module_name.Map.superpose ts)
 
 let add_rules sctx ~dir ~more_src_dirs ~expander merlin =
   if (SC.context sctx).merlin then
-    Unprocessed.process sctx ~more_src_dirs ~expander merlin
-    |> Processed.dot_merlin sctx ~dir
+    dot_merlin sctx ~more_src_dirs ~expander ~dir merlin

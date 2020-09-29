@@ -25,6 +25,10 @@ Unreleased
   stanza `(source (<host> user/repo))` in the `dune-project` file.  (#3813,
   @rgrinberg)
 
+- Fix generation of `META` and `dune-package` files when some targets (byte,
+  native, dynlink) are disabled. Previously, dune would generate all archives
+  for regardless of settings. (#3829, @rgrinberg)
+
 2.7.1 (2/09/2020)
 -----------------
 

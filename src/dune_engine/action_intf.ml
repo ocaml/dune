@@ -82,6 +82,10 @@ module Ext = struct
     ; exit_codes : int Predicate_lang.t
     }
 
+  (* The fields in this record that are ['a -> r] are those properties of an
+     extension that are expected to change based on the extension payload. The
+     others are "static", in that they are meant to be common to the operation
+     itself *)
   type ('path, 'target, 'a) t =
     { name : string
     ; version : int
@@ -160,7 +164,10 @@ module type Ast = sig
               instead of allocating a huge record of closures each time *)
     | Extension :
         { input : 'a
-        ; deps : 'a -> path list
+        ; (* [deps] and [targets] are kept in this record rather than the [ext]
+             to avoid needing to reallocate the big spec when mapping over this
+             structure. *)
+          deps : 'a -> path list
         ; targets : 'a -> target list
         ; spec : 'a ext
         }

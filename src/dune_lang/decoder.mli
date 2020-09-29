@@ -80,7 +80,10 @@ val loc : (Loc.t, _) parser
 (** [a <|> b] is either [a] or [b]. If [a] fails to parse the input, then try
     [b]. If [b] fails as well, raise the error from the parser that consumed the
     most input. *)
-val ( <|> ) : 'a t -> 'a t -> 'a t
+val ( <|> ) : ('a, 'k) parser -> ('a, 'k) parser -> ('a, 'k) parser
+
+val either :
+  ('a, 'k) parser -> ('b, 'k) parser -> (('a, 'b) Either.t, 'k) parser
 
 (** [atom_matching f] expects the next element to be an atom for which [f]
     returns [Some v]. [desc] is used to describe the atom in case of error. [f]

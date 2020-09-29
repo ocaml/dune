@@ -22,7 +22,7 @@ val merlin_file_name : string
 
 val add_source_dir : t -> Path.Source.t -> t
 
-val merge_all : allow_approx_merlin:bool -> t list -> t option
+val merge_all : t list -> t option
 
 (** Add rules for generating the .merlin in a directory *)
 val add_rules :

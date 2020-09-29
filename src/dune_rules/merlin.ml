@@ -98,7 +98,7 @@ module Dot_file = struct
       (Sexp.List (List.concat [ exclude_query_dir; obj_dirs; src_dirs; flags; suffixes ]))
 end
 
-type t =
+type config =
   { requires : Lib.Set.t
   ; flags : string list Build.t
   ; preprocess : Preprocess.Without_instrumentation.t Preprocess.t
@@ -106,6 +106,24 @@ type t =
   ; source_dirs : Path.Source.Set.t
   ; objs_dirs : Path.Set.t
   ; extensions : Extensions.Set.t
+  }
+
+type t = config Module_name.Map.t
+
+let merge_two ~allow_approx_merlin a b =
+  { requires = Lib.Set.union a.requires b.requires
+  ; flags =
+      (let+ a = a.flags
+       and+ b = b.flags in
+       a @ b)
+  ; preprocess = Pp.merge ~allow_approx_merlin a.preprocess b.preprocess
+  ; libname =
+      ( match a.libname with
+      | Some _ as x -> x
+      | None -> b.libname )
+  ; source_dirs = Path.Source.Set.union a.source_dirs b.source_dirs
+  ; objs_dirs = Path.Set.union a.objs_dirs b.objs_dirs
+  ; extensions = Extensions.Set.union a.extensions b.extensions
   }
 
 let make ?(requires = Ok []) ~flags ?(preprocess = Preprocess.No_preprocessing)
@@ -135,29 +153,39 @@ let make ?(requires = Ok []) ~flags ?(preprocess = Preprocess.No_preprocessing)
         let intf = Dialect.extension d Ml_kind.Intf in
         if
           (* Only include dialects with no preprocessing and skip default file
-             extensions *)
+            extensions *)
           Dialect.preprocess d Ml_kind.Impl <> None
           || Dialect.preprocess d Ml_kind.Intf <> None
           || impl = Dialect.extension Dialect.ocaml Ml_kind.Impl
-             && intf = Dialect.extension Dialect.ocaml Ml_kind.Intf
+            && intf = Dialect.extension Dialect.ocaml Ml_kind.Intf
         then
           s
         else
           Extensions.Set.add s (impl, intf))
   in
-  { requires
-  ; flags = Build.catch flags ~on_error:(fun _ -> [])
-  ; preprocess
-  ; libname
-  ; source_dirs
-  ; objs_dirs
-  ; extensions
-  }
+  let config =
+    { requires
+    ; flags = Build.catch flags ~on_error:(fun _ -> [])
+    ; preprocess
+    ; libname
+    ; source_dirs
+    ; objs_dirs
+    ; extensions
+    }
+  in
+  let modules =
+    List.map ~f:(fun m -> (Module.name m, config)) (Modules.impl_only modules)
+  in
+
+  (* We use [of_list_reduce] to merge configs *)
+  Module_name.Map.of_list_reduce modules
+    ~f:(merge_two ~allow_approx_merlin:false)
 
 let merlin_file_name = ".merlin-conf"
 
 let add_source_dir t dir =
-  { t with source_dirs = Path.Source.Set.add t.source_dirs dir }
+  Module_name.Map.map t ~f:(fun config ->
+      { config with source_dirs = Path.Source.Set.add config.source_dirs dir })
 
 let quote_if_needed s =
   if String.need_quoting s then
@@ -251,8 +279,7 @@ let lib_src_dirs ~sctx lib =
     Path.Set.map ~f:Path.drop_optional_build_context
       (Modules.source_dirs modules)
 
-let dot_merlin sctx ~dir ~more_src_dirs ~expander ({ requires; flags; extensions; _ } as t)
-    =
+let dot_merlin sctx ~dir ~more_src_dirs ~expander t =
   let open Build.With_targets.O in
   let merlin_file = Path.Build.relative dir merlin_file_name in
 
@@ -268,48 +295,39 @@ let dot_merlin sctx ~dir ~more_src_dirs ~expander ({ requires; flags; extensions
     >>> Build.create_file (Path.Build.relative dir ".merlin-exists") );
   Path.Set.singleton (Path.build merlin_file)
   |> Rules.Produce.Alias.add_deps (Alias.check ~dir);
-  let pp_flags = pp_flags sctx ~expander t in
   let action =
     Build.With_targets.write_file_dyn merlin_file
-      (let+ flags = Build.with_no_targets flags
-       and+ pp = pp_flags in
-       let src_dirs, obj_dirs =
-         Lib.Set.fold requires
-           ~init:(Path.set_of_source_paths t.source_dirs, t.objs_dirs)
-           ~f:(fun (lib : Lib.t) (src_dirs, obj_dirs) ->
-             let more_src_dirs = lib_src_dirs ~sctx lib in
-             ( Path.Set.union src_dirs more_src_dirs
-             , let public_cmi_dir = Obj_dir.public_cmi_dir (Lib.obj_dir lib) in
-               Path.Set.add obj_dirs public_cmi_dir ))
-       in
-       let src_dirs =
-         Path.Set.union src_dirs
-           (Path.Set.of_list_map ~f:Path.source more_src_dirs)
-       in
-       Dot_file.to_string ~pp ~flags ~src_dirs ~obj_dirs ~extensions)
+      (Module_name.Map.foldi t ~init:(Build.With_targets.return "")
+         ~f:(fun module_name ({ requires; flags; extensions; _ } as config) acc ->
+           let pp_flags = pp_flags sctx ~expander config in
+           let+ flags = Build.with_no_targets flags
+           and+ pp = pp_flags
+           and+ acc = acc in
+           let src_dirs, obj_dirs =
+             Lib.Set.fold requires
+               ~init:
+                 (Path.set_of_source_paths config.source_dirs, config.objs_dirs)
+               ~f:(fun (lib : Lib.t) (src_dirs, obj_dirs) ->
+                 let more_src_dirs = lib_src_dirs ~sctx lib in
+                 ( Path.Set.union src_dirs more_src_dirs
+                 , let public_cmi_dir =
+                     Obj_dir.public_cmi_dir (Lib.obj_dir lib)
+                   in
+                   Path.Set.add obj_dirs public_cmi_dir ))
+           in
+           let src_dirs =
+             Path.Set.union src_dirs
+               (Path.Set.of_list_map ~f:Path.source more_src_dirs)
+           in
+           Printf.sprintf "%s%s\n%s\n" acc
+             (Module_name.to_string module_name |> String.lowercase)
+             (Dot_file.to_string ~pp ~flags ~src_dirs ~obj_dirs ~extensions)))
   in
   SC.add_rule sctx ~dir action
 
-let merge_two ~allow_approx_merlin a b =
-  { requires = Lib.Set.union a.requires b.requires
-  ; flags =
-      (let+ a = a.flags
-       and+ b = b.flags in
-       a @ b)
-  ; preprocess = Pp.merge ~allow_approx_merlin a.preprocess b.preprocess
-  ; libname =
-      ( match a.libname with
-      | Some _ as x -> x
-      | None -> b.libname )
-  ; source_dirs = Path.Source.Set.union a.source_dirs b.source_dirs
-  ; objs_dirs = Path.Set.union a.objs_dirs b.objs_dirs
-  ; extensions = Extensions.Set.union a.extensions b.extensions
-  }
-
-let merge_all ~allow_approx_merlin = function
+let merge_all = function
   | [] -> None
-  | init :: ts ->
-    Some (List.fold_left ~init ~f:(merge_two ~allow_approx_merlin) ts)
+  | init :: ts -> Some (List.fold_left ~init ~f:Module_name.Map.superpose ts)
 
 let add_rules sctx ~dir ~more_src_dirs ~expander merlin =
   if (SC.context sctx).merlin then

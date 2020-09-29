@@ -7,10 +7,19 @@ module Merlin_conf = struct
 
   let make_error msg = Sexp.(List [ List [ Atom "ERROR"; Atom msg ] ])
 
-  let parse ~origin:_ content : t =
-    match Csexp.parse_string content with
-    | Ok (Sexp.List sexps) -> Sexp.List sexps
-    | _ -> Sexp.List []
+  let parse content filename : t =
+    let parts = String.split content ~on:'\n' in
+    let rec aux = function
+      | []
+      | [ _ ] ->
+        make_error "Unexpected merlin-conf content"
+      | file :: config :: _tl when String.equal file filename -> (
+        match Csexp.parse_string config with
+        | Ok (Sexp.List sexps) -> Sexp.List sexps
+        | _ -> Sexp.List [] )
+      | _file :: _config :: tl -> aux tl
+    in
+    aux parts
 
   let to_stdout (t : t) =
     Csexp.to_channel stdout t;
@@ -60,38 +69,28 @@ let get_context_root () =
   let ctx = Context_name.to_string context in
   Path.Build.(relative root ctx)
 
-let load_merlin_file dir =
+let load_merlin_file path file =
   let ctx_root = get_context_root () in
+  let filename = Filename.remove_extension file |> String.lowercase in
 
   let no_config_error () =
     Merlin_conf.make_error "Project isn't built. (Try calling `dune build`.)"
   in
 
-  let rec try_path path =
-    let dir_path = Path.Build.(append_local ctx_root path) in
-    let file_path = Path.Build.relative dir_path Merlin.merlin_file_name in
-    if Path.(exists (build file_path)) then
-      let build = Build.contents (Path.build file_path) in
-      let content, _ = Build.exec build in
-      Merlin_conf.parse ~origin:path content
-    else if
-      (* We loop until reaching the context's root or finding a .merlin-conf
-         file *)
-      Path.Build.is_descendant ~of_:ctx_root dir_path
-    then
-      match Path.Local.parent path with
-      | Some p -> try_path p
-      | None -> no_config_error ()
-    else
-      no_config_error ()
-  in
-  try_path dir
+  let dir_path = Path.Build.(append_local ctx_root path) in
+  let file_path = Path.Build.relative dir_path Merlin.merlin_file_name in
+  if Path.(exists (build file_path)) then
+    let build = Build.contents (Path.build file_path) in
+    let content, _ = Build.exec build in
+    Merlin_conf.parse content filename
+  else
+    no_config_error ()
 
 let print_merlin_conf file =
-  let abs_root, _file = Filename.(dirname file, basename file) in
+  let abs_root, file = Filename.(dirname file, basename file) in
   let answer =
     match to_local abs_root with
-    | Ok p -> load_merlin_file p
+    | Ok p -> load_merlin_file p file
     | Error s -> Merlin_conf.make_error s
   in
   Merlin_conf.to_stdout answer

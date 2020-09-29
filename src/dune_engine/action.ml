@@ -335,7 +335,7 @@ type is_useful =
   | Clearly_not
   | Maybe
 
-let is_useful_to distribute memoize =
+let is_useful_to memoize =
   let rec loop t =
     match t with
     | Chdir (_, t) -> loop t
@@ -349,29 +349,30 @@ let is_useful_to distribute memoize =
     | Progn l
     | Pipe (_, l) ->
       List.exists l ~f:loop
-    | Echo _ -> false
     | Cat _ -> memoize
     | Copy _ -> memoize
-    | Symlink _ -> false
     | Copy_and_add_line_directive _ -> memoize
-    | Write_file _ -> distribute
     | Rename _ -> memoize
-    | Remove_tree _ -> false
-    | Diff _ -> distribute
-    | Mkdir _ -> false
-    | Digest_files _ -> distribute
-    | Merge_files_into _ -> distribute
+    | Echo _
+    | Symlink _
+    | Remove_tree _
+    | Mkdir _ ->
+      false
+    | Diff _
+    | Write_file _
+    | Digest_files _
+    | Merge_files_into _
     | Cram _
-    | Run _ ->
+    | Run _
+    | Dynamic_run _
+    | System _
+    | Bash _ ->
       true
-    | Dynamic_run _ -> true
-    | System _ -> true
-    | Bash _ -> true
     | Extension { spec = { how_to_cache; _ }; _ } -> (
       match how_to_cache with
       | Memoize_or_distribute.Neither -> false
       | Memoize -> memoize
-      | Distribute -> distribute )
+      | Distribute -> true )
   in
   fun t ->
     match loop t with
@@ -419,6 +420,6 @@ let is_useful_to_sandbox =
     | true -> Maybe
     | false -> Clearly_not
 
-let is_useful_to_distribute = is_useful_to true false
+let is_useful_to_distribute = is_useful_to false
 
-let is_useful_to_memoize = is_useful_to true true
+let is_useful_to_memoize = is_useful_to true

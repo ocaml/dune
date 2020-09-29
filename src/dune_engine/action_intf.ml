@@ -89,7 +89,10 @@ module Ext = struct
   type ('path, 'target, 'a) t =
     { name : string
     ; version : int
-    ; how_to_cache : Memoize_or_distribute.t
+    ; (* cwong: I guess in theory, these might depend on the payload (ie, if an
+         extension was used to encode a recursive action), but that seems like a
+         mistake in general. *)
+      how_to_cache : Memoize_or_distribute.t
     ; is_useful_to_sandbox : bool
     ; (* cwong: I'm not sure how much I like the presence of this field. On the
          one hand, it breaks the intuition that encode/decode are inverses. On

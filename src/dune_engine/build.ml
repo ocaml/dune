@@ -11,6 +11,9 @@ type 'a t =
   | Paths_glob : File_selector.t -> Path.Set.t t
   | If_file_exists : Path.t * 'a t * 'a t -> 'a t
   | Filter_existing_files : ('a * Path.Set.t) t -> ('a * Path.Set.t) t
+  (* [Filter_existing_files] can't be defined using [If_file_exists] because in
+     the latter the path must be known when building the type t. In the former
+     case the paths can be dynamically computed *)
   | Contents : Path.t -> string t
   | Lines_of : Path.t -> string list t
   | Dyn_paths : ('a * Path.Set.t) t -> 'a t

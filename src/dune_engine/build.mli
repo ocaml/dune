@@ -166,7 +166,7 @@ val file_exists : Path.t -> bool t
 val if_file_exists : Path.t -> then_:'a t -> else_:'a t -> 'a t
 
 (** [filter_existing_files p] is a build description which keep only the
-    existing files *)
+    existing files. The files are not registered as dynamic dependencies. *)
 val filter_existing_files : ('a * Path.Set.t) t -> ('a * Path.Set.t) t
 
 (** Always fail when executed. We pass a function rather than an exception to

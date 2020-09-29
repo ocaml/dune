@@ -19,7 +19,7 @@ Unreleased
 - Add (enabled_if ...) to (copy_files ...) (#3756, @nojb)
 
 - Make sure Dune cleans up the status line before exiting (#3767,
-  fixes #3737, @dosaylazy)
+  fixes #3737, @alan-j-hu)
 
 2.7.1 (2/09/2020)
 -----------------

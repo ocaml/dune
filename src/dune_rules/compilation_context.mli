@@ -53,6 +53,8 @@ val context : t -> Context.t
 
 val scope : t -> Scope.t
 
+(** [dir] should only be used for adding rules. It should be used to access
+    dependencies or targets. *)
 val dir : t -> Path.Build.t
 
 val obj_dir : t -> Path.Build.t Obj_dir.t

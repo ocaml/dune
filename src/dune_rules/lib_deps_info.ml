@@ -1,4 +1,5 @@
 open! Stdune
+open Dune_engine
 
 module Kind = struct
   type t =

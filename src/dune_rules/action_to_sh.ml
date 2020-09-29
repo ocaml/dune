@@ -73,7 +73,7 @@ let simplify act =
       :: acc
     | No_infer act -> loop act acc
     | Pipe (outputs, l) -> Pipe (List.map ~f:block l, outputs) :: acc
-    | Extension (v, { simplified; _ }) -> simplified v @ acc
+    | Extension { input; spec = { simplified; _ }; _ } -> simplified input @ acc
   and block act =
     match List.rev (loop act []) with
     | [] -> [ Run ("true", []) ]

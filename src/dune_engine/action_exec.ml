@@ -387,8 +387,10 @@ let rec exec t ~ectx ~eenv =
         ~env:eenv.env ~script
     in
     Done
-  | Extension (v, { action; _ }) ->
-    let* () = action v ~ectx:(restrict_ctx ectx) ~eenv:(restrict_env eenv) in
+  | Extension { input; spec = { action; _ }; _ } ->
+    let* () =
+      action input ~ectx:(restrict_ctx ectx) ~eenv:(restrict_env eenv)
+    in
     Fiber.return Done
 
 and redirect_out t ~ectx ~eenv outputs fn =

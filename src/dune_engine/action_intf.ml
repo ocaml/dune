@@ -93,8 +93,6 @@ module Ext = struct
          digests, so it shouldn't matter. *)
       encode : 'a -> Dune_lang.t
     ; simplified : 'a -> Simplified.t list
-    ; deps : 'a -> 'path list
-    ; targets : 'a -> 'target list
     ; map_paths :
         f_path:('path -> 'path) -> f_target:('target -> 'target) -> 'a -> 'a
     ; action :
@@ -160,7 +158,13 @@ module type Ast = sig
               operating on it, we can allocate the operations record once and
               reuse it across multiple instantiations of the same extension,
               instead of allocating a huge record of closures each time *)
-    | Extension : 'a * 'a ext -> t
+    | Extension :
+        { input : 'a
+        ; deps : 'a -> path list
+        ; targets : 'a -> target list
+        ; spec : 'a ext
+        }
+        -> t
 end
 
 module type Helpers = sig

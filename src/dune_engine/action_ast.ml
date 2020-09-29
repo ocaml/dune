@@ -277,12 +277,12 @@ struct
         ( atom (sprintf "pipe-%s" (Outputs.to_string outputs))
         :: List.map l ~f:encode )
     | Cram script -> List [ atom "cram"; path script ]
-    | Extension (v, { name; version; encode; _ }) ->
+    | Extension { input; spec = { name; version; encode; _ }; _ } ->
       List
         [ atom "extension"
         ; List [ atom "name"; atom name ]
         ; List [ atom "version"; atom (Int.to_string version) ]
-        ; encode v
+        ; encode input
         ]
 
   let run prog args = Run (prog, args)

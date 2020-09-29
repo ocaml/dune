@@ -144,8 +144,6 @@ let methods =
   ; how_to_cache = Memoize
   ; encode
   ; simplified
-  ; deps = (fun { src; _ } -> [ src ])
-  ; targets = (fun { dst; _ } -> [ dst ])
   ; map_paths =
       (fun ~f_path ~f_target { src; dst } ->
         { src = f_path src; dst = f_target dst })
@@ -155,4 +153,10 @@ let methods =
         Fiber.return ())
   }
 
-let make_action ~src ~dst = Action.Extension ({ src; dst }, methods)
+let make_action ~src ~dst =
+  Action.Extension
+    { input = { src; dst }
+    ; spec = methods
+    ; deps = (fun { src; _ } -> [ src ])
+    ; targets = (fun { dst; _ } -> [ dst ])
+    }

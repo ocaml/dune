@@ -107,38 +107,44 @@ let for_shell t =
       let dst = Path.reach ~from:dir (Path.build dst) in
       For_shell.Symlink (src, dst)
     | Extension
-        ( v
-        , { name
-          ; version
-          ; how_to_cache
-          ; is_useful_to_sandbox
-          ; encode
-          ; simplified
-          ; deps
-          ; targets
-          ; map_paths = _
-          ; action = _
-          } ) ->
+        { input
+        ; deps
+        ; targets
+        ; spec =
+            { name
+            ; version
+            ; how_to_cache
+            ; is_useful_to_sandbox
+            ; encode
+            ; simplified
+            ; map_paths = _
+            ; action = _
+            }
+        } ->
       Extension
-        ( v
-        , { name
-          ; version
-          ; how_to_cache
-          ; is_useful_to_sandbox
-          ; encode
-          ; simplified
-          ; deps = (fun v -> List.map ~f:(f_path ~dir) (deps v))
-          ; targets = (fun v -> List.map ~f:(f_target ~dir) (targets v))
-          ; map_paths =
-              (fun ~f_path:_ ~f_target:_ _ ->
-                Code_error.raise
-                  "called [map_paths] on [Action.Relativise.Extension] variant"
-                  [])
-          ; action =
-              (fun _ ~ectx:_ ~eenv:_ ->
-                Code_error.raise
-                  "called [action] on [Action.Relativise.Extension] variant" [])
-          } )
+        { input
+        ; deps = (fun v -> List.map ~f:(f_path ~dir) (deps v))
+        ; targets = (fun v -> List.map ~f:(f_target ~dir) (targets v))
+        ; spec =
+            { name
+            ; version
+            ; how_to_cache
+            ; is_useful_to_sandbox
+            ; encode
+            ; simplified
+            ; map_paths =
+                (fun ~f_path:_ ~f_target:_ _ ->
+                  Code_error.raise
+                    "called [map_paths] on [Action.Relativise.Extension] \
+                     variant"
+                    [])
+            ; action =
+                (fun _ ~ectx:_ ~eenv:_ ->
+                  Code_error.raise
+                    "called [action] on [Action.Relativise.Extension] variant"
+                    [])
+            }
+        }
     | t ->
       Relativise.map_one_step loop t ~dir ~f_program ~f_string ~f_path ~f_target
   in
@@ -310,13 +316,14 @@ let sandbox t ~sandboxed ~mode ~deps ~eval_pred : t =
   let f_program ~dir:_ = Result.map ~f:(maybe_sandbox_path sandboxed) in
   let rec loop t ~dir ~f_program ~f_string ~f_path ~f_target =
     match t with
-    | Extension (v, ({ map_paths; deps; targets; _ } as m)) ->
+    | Extension { input; spec = { map_paths; _ } as spec; deps; targets } ->
       Extension
-        ( map_paths ~f_path:(f_path ~dir) ~f_target:(f_target ~dir) v
-        , { m with
-            deps = (fun v -> List.map ~f:(f_path ~dir) (deps v))
-          ; targets = (fun v -> List.map ~f:(f_target ~dir) (targets v))
-          } )
+        { input =
+            map_paths ~f_path:(f_path ~dir) ~f_target:(f_target ~dir) input
+        ; deps = (fun v -> List.map ~f:(f_path ~dir) (deps v))
+        ; targets = (fun v -> List.map ~f:(f_target ~dir) (targets v))
+        ; spec
+        }
     | t -> map_one_step loop t ~dir ~f_program ~f_string ~f_path ~f_target
   in
   Progn
@@ -360,7 +367,7 @@ let is_useful_to distribute memoize =
     | Dynamic_run _ -> true
     | System _ -> true
     | Bash _ -> true
-    | Extension (_, { how_to_cache; _ }) -> (
+    | Extension { spec = { how_to_cache; _ }; _ } -> (
       match how_to_cache with
       | Memoize_or_distribute.Neither -> false
       | Memoize -> memoize
@@ -404,7 +411,8 @@ let is_useful_to_sandbox =
     | System _
     | Bash _ ->
       true
-    | Extension (_, { is_useful_to_sandbox; _ }) -> is_useful_to_sandbox
+    | Extension { spec = { is_useful_to_sandbox; _ }; _ } ->
+      is_useful_to_sandbox
   in
   fun t ->
     match loop t with

@@ -446,10 +446,10 @@ end = struct
       | Mkdir _
       | No_infer _ ->
         acc
-      | Extension (v, { deps; targets; _ }) ->
+      | Extension { input; spec = _; deps; targets } ->
         List.fold_left
-          ~init:(List.fold_left ~init:acc ~f:( +<+ ) (targets v))
-          ~f:( +< ) (deps v)
+          ~init:(List.fold_left ~init:acc ~f:( +<+ ) (targets input))
+          ~f:( +< ) (deps input)
 
     let infer t =
       let { deps; targets } =

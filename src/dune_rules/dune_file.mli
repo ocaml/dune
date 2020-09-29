@@ -356,7 +356,7 @@ end
     - When hiding public libraries with [--only-packages] (or [-p]), we use this
       stanza to make sure that their project-local names remain in scope. *)
 module Library_redirect : sig
-  type 'old_name t =
+  type 'old_name t = private
     { project : Dune_project.t
     ; loc : Loc.t
     ; old_name : 'old_name

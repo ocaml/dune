@@ -465,10 +465,9 @@ let create_lib_entries_by_package ~public_libs stanzas =
           , Lib_entry.Library (Lib.Local.of_lib_exn lib) )
           :: acc )
       | Dune_file.Deprecated_library_name
-          ({ old_name = old_public_name, deprecated; _ } as d) ->
+          ({ old_name = old_public_name, _; _ } as d) ->
         ( (Dune_file.Public_lib.package old_public_name).name
-        , Lib_entry.Deprecated_library_name
-            { d with old_name = (old_public_name, deprecated) } )
+        , Lib_entry.Deprecated_library_name d )
         :: acc
       | _ -> acc)
   |> Package.Name.Map.of_list_multi

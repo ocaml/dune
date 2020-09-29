@@ -16,10 +16,14 @@ Unreleased
 - Add the `executable` field to `inline_tests` to customize the compilation
   flags of the test runner executable (#3747, fixes #3679, @lubegasimon)
 
-- Add (enabled_if ...) to (copy_files ...) (#3756, @nojb)
+- Add `(enabled_if ...)` to `(copy_files ...)` (#3756, @nojb)
 
 - Make sure Dune cleans up the status line before exiting (#3767,
   fixes #3737, @alan-j-hu)
+
+- Add `{gitlab,bitbucket}` as options for defining project sources with `source`
+  stanza `(source (<host> user/repo))` in the `dune-project` file.  (#3813,
+  @rgrinberg)
 
 2.7.1 (2/09/2020)
 -----------------

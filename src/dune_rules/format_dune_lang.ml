@@ -146,6 +146,9 @@ let methods =
   ; simplified
   ; deps = (fun { src; _ } -> [ src ])
   ; targets = (fun { dst; _ } -> [ dst ])
+  ; map_paths =
+      (fun ~f_path ~f_target { src; dst } ->
+        { src = f_path src; dst = f_target dst })
   ; action =
       (fun { src; dst } ~ectx:_ ~eenv:_ ->
         format_file ~input:(Some src) ~output:(Some (Path.build dst));

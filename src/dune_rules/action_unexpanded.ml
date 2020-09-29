@@ -204,30 +204,8 @@ module Partial = struct
     | No_infer t -> No_infer (expand t ~expander)
     | Pipe (outputs, l) -> Pipe (outputs, List.map l ~f:(expand ~expander))
     | Cram script -> Cram (E.path ~expander script)
-    | Extension
-        ( v
-        , { name
-          ; version
-          ; deps
-          ; targets
-          ; action
-          ; is_useful_to_sandbox
-          ; how_to_cache
-          ; encode
-          ; simplified
-          } ) ->
-      Extension
-        ( v
-        , { name
-          ; version
-          ; deps = (fun v -> List.map ~f:(E.path ~expander) (deps v))
-          ; targets = (fun v -> List.map ~f:(E.target ~expander) (targets v))
-          ; action
-          ; is_useful_to_sandbox
-          ; how_to_cache
-          ; encode
-          ; simplified
-          } )
+    | Extension _ ->
+      Code_error.raise "extensions should be fully-expanded on construction" []
 end
 
 module E = Expand (struct
@@ -342,30 +320,8 @@ let rec partial_expand t ~expander : Partial.t =
   | No_infer t -> No_infer (partial_expand t ~expander)
   | Pipe (outputs, l) -> Pipe (outputs, List.map l ~f:(partial_expand ~expander))
   | Cram script -> Cram (E.path ~expander script)
-  | Extension
-      ( v
-      , { name
-        ; version
-        ; deps
-        ; targets
-        ; action
-        ; is_useful_to_sandbox
-        ; how_to_cache
-        ; encode
-        ; simplified
-        } ) ->
-    Extension
-      ( v
-      , { name
-        ; version
-        ; deps = (fun v -> List.map ~f:(E.path ~expander) (deps v))
-        ; targets = (fun v -> List.map ~f:(E.target ~expander) (targets v))
-        ; action
-        ; is_useful_to_sandbox
-        ; how_to_cache
-        ; encode
-        ; simplified
-        } )
+  | Extension _ ->
+    Code_error.raise "extensions should be fully-expanded on construction" []
 
 module Infer : sig
   module Outcome : sig

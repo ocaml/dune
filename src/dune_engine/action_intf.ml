@@ -95,6 +95,8 @@ module Ext = struct
     ; simplified : 'a -> Simplified.t list
     ; deps : 'a -> 'path list
     ; targets : 'a -> 'target list
+    ; map_paths :
+        f_path:('path -> 'path) -> f_target:('target -> 'target) -> 'a -> 'a
     ; action :
            'a
         -> ectx:context

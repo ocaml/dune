@@ -319,8 +319,10 @@ let rec exec t ~ectx ~eenv =
           ~finally:(fun () ->
             ( match optional with
             | false ->
+              (* Promote if in the source tree or not a target. The second case
+                 means that the diffing have been done with the empty file *)
               if
-                is_copied_from_source_tree file1
+                (is_copied_from_source_tree file1 || not (Path.exists file1))
                 && not (is_copied_from_source_tree (Path.build file2))
               then
                 Promotion.File.register_dep
@@ -330,7 +332,8 @@ let rec exec t ~ectx ~eenv =
                           (Path.extract_build_context_dir_maybe_sandboxed file1)))
                   ~correction_file:file2
             | true ->
-              if is_copied_from_source_tree file1 then
+              if is_copied_from_source_tree file1 || not (Path.exists file1)
+              then
                 Promotion.File.register_intermediate
                   ~source_file:
                     (snd

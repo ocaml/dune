@@ -19,6 +19,7 @@ Welcome to dune's documentation!
    foreign-code
    documentation
    jsoo
+   sites
    opam
    variants
    formatting

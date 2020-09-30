@@ -149,10 +149,8 @@ let executables_rules ~sctx ~dir ~expander ~dir_contents ~scope ~compile_info
         (Lib.DB.instrumentation_backend (Scope.libs scope))
   in
   let () =
-    (* TODO: Currently [exe_rules] differ from [lib_rules] in some aspects and
-       the reason is unclear. For example, instead of building an archive for
-       foreign stubs, we link the corresponding object files directly. It would
-       be nice to make the code more uniform. *)
+    (* Building an archive for foreign stubs, we link the corresponding object
+       files directly to improve perf. *)
     let link_args =
       let link_flags =
         let link_deps = Dep_conf_eval.unnamed ~expander exes.link_deps in

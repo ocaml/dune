@@ -260,6 +260,9 @@ It contains the following fields:
   <url>)``, ``(documentation <url>)`` are the same (and take precedence over)
   the corresponding global fields. These fields are available since Dune 2.0.
 
+- ``(sites (<section> <name>) ...)`` define a site named ``<name>`` in the
+  section ``<section>``.
+
 Adding libraries to different packages is done via  ``public_name`` field. See
 :ref:`library` section for details.
 

@@ -41,6 +41,7 @@ module Infer : sig
   module Outcome : sig
     type t = private
       { deps : Path.Set.t
+      ; deps_if_exist : Path.Set.t
       ; targets : Path.Build.Set.t
       }
   end

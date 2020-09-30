@@ -158,12 +158,16 @@ val strings : Path.t -> string list t
 val read_sexp : Path.t -> Dune_lang.Ast.t t
 
 (** Evaluates to [true] if the file is present on the file system or is the
-    target of a rule. *)
+    target of a rule. It doesn't add the path as dependency *)
 val file_exists : Path.t -> bool t
 
 (** [if_file_exists p ~then ~else] is a description that behaves like [then_] if
     [file_exists p] evaluates to [true], and [else_] otherwise. *)
 val if_file_exists : Path.t -> then_:'a t -> else_:'a t -> 'a t
+
+(** [filter_existing_files p] is a build description which keep only the
+    existing files. The files are not registered as dynamic dependencies. *)
+val filter_existing_files : ('a * Path.Set.t) t -> ('a * Path.Set.t) t
 
 (** Always fail when executed. We pass a function rather than an exception to
     get a proper backtrace *)

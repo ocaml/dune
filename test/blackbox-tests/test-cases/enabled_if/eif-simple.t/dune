@@ -18,11 +18,11 @@
  (enabled_if false))
 
 (rule
+ (enabled_if true)
  (targets b)
  (action (progn
           (echo "Building file b")
-          (with-stdout-to b (progn))))
- (enabled_if true))
+          (with-stdout-to b (progn)))))
 
 (library
  (name foo)

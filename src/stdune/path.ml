@@ -1152,15 +1152,15 @@ let rec clear_dir dir =
   match Dune_filesystem_stubs.read_directory_with_kinds dir with
   | Error ENOENT -> ()
   | Error error ->
-    raise (Unix.Unix_error
-             (error, dir, "Stdune.Path.rm_rf: read_directory_with_kinds"))
+    raise
+      (Unix.Unix_error
+         (error, dir, "Stdune.Path.rm_rf: read_directory_with_kinds"))
   | Ok listing ->
-    List.iter listing
-      ~f:(fun (fn, kind) ->
-        let fn = (Filename.concat dir fn) in
+    List.iter listing ~f:(fun (fn, kind) ->
+        let fn = Filename.concat dir fn in
         match kind with
-        | (Unix.S_DIR) -> rm_rf_dir fn
-        | (_) -> unlink_operation fn);
+        | Unix.S_DIR -> rm_rf_dir fn
+        | _ -> unlink_operation fn)
 
 and rm_rf_dir path =
   clear_dir path;

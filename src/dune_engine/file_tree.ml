@@ -176,11 +176,11 @@ end = struct
               let is_directory, file =
                 match kind with
                 | S_DIR -> (true, File.of_source_path path)
-                | S_LNK ->
-                  (match Path.stat (Path.source path) with
-                   | exception _ -> (false, File.dummy)
-                   | { st_kind = S_DIR; _ } as st -> (true, File.of_stats st)
-                   | _ -> (false, File.dummy))
+                | S_LNK -> (
+                  match Path.stat (Path.source path) with
+                  | exception _ -> (false, File.dummy)
+                  | { st_kind = S_DIR; _ } as st -> (true, File.of_stats st)
+                  | _ -> (false, File.dummy) )
                 | _ -> (false, File.dummy)
               in
               if is_directory then

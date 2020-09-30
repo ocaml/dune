@@ -1,6 +1,10 @@
 Issue and PR management
 =======================
 
+Notes:
+- clarify when should someone feel confident everyone has read a PR
+- clarify that someone opening a PR should have read it
+
 The Dune team handles issues and pull requests in a way that is
 manageable for developers and provides a good user experience.
 

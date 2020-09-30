@@ -165,10 +165,8 @@ let expand_artifact ~dir ~loc t a s : Expanded.t =
       match Ml_sources.Artifacts.lookup_library artifacts name with
       | None -> does_not_exist ~loc ~what:"Library" (Lib_name.to_string name)
       | Some lib ->
-        let archive =
-          Dune_file.Library.archive lib ~dir ~ext:(Mode.compiled_lib_ext mode)
-        in
-        Value [ Value.Path (Path.build archive) ] ) )
+        let archives = Mode.Dict.get (Lib_info.archives lib) mode in
+        Value (Value.L.paths (List.map ~f:Path.build archives)) ) )
 
 (* This expansion function only expands the most "static" variables and macros.
    These are all known without building anything, evaluating any dune files, and

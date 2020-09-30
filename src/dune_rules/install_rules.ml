@@ -45,10 +45,57 @@ end = struct
       let name = Dune_file.Library.best_name lib in
       [ Preprocessing.ppx_exe sctx ~scope name |> Result.ok_exn ]
 
+  let if_ cond l =
+    if cond then
+      l
+    else
+      []
+
+  let lib_files ~modes ~dir_contents ~dir ~lib_config lib =
+    let virtual_library = Option.is_some (Lib_info.virtual_ lib) in
+    let { Lib_config.ext_obj; _ } = lib_config in
+    let archives = Lib_info.archives lib in
+    let { Mode.Dict.byte = _; native } = modes in
+    List.concat
+      [ archives.byte
+      ; archives.native
+      ; ( if virtual_library then
+          let foreign_sources = Dir_contents.foreign_sources dir_contents in
+          let name = Lib_info.name lib in
+          let files = Foreign_sources.for_lib foreign_sources ~name in
+          Foreign.Sources.object_files files ~dir ~ext_obj
+        else
+          Lib_info.foreign_archives lib )
+      ; if_
+          (native && not virtual_library)
+          ((* TODO remove the if check once Lib_info.native_archives always
+              returns the correct value for libs without modules *)
+           let modules =
+             Dir_contents.ocaml dir_contents
+             |> Ml_sources.modules_of_library ~name:(Lib_info.name lib)
+           in
+           if Lib_info.has_native_archive lib_config modules then
+             Lib_info.native_archives lib
+           else
+             [])
+      ; Lib_info.jsoo_runtime lib
+      ; (Lib_info.plugins lib).native
+      ]
+
+  let dll_files ~(modes : Mode.Dict.Set.t) ~dynlink ~(ctx : Context.t) lib =
+    if_
+      ( modes.byte
+      && Dynlink_supported.get dynlink ctx.supports_shared_libraries
+      && ctx.dynamically_linked_foreign_archives )
+      (Lib_info.foreign_dll_files lib)
+
   let lib_install_files sctx ~scope ~dir_contents ~dir ~sub_dir:lib_subdir
       (lib : Library.t) =
     let loc = lib.buildable.loc in
-    let obj_dir = Dune_file.Library.obj_dir lib ~dir in
+    let ctx = Super_context.context sctx in
+    let lib_config = ctx.lib_config in
+    let info = Dune_file.Library.to_lib_info lib ~dir ~lib_config in
+    let obj_dir = Lib_info.obj_dir info in
     let make_entry section ?sub_dir ?dst fn =
       ( Some loc
       , Install.Entry.make section fn
@@ -83,18 +130,10 @@ end = struct
               in
               make_entry Lib source ?dst))
     in
-    let ctx = Super_context.context sctx in
-    let { Lib_config.has_native; ext_obj; _ } = ctx.lib_config in
+    let { Lib_config.has_native; ext_obj; _ } = lib_config in
+    let modes = Dune_file.Mode_conf.Set.eval lib.modes ~has_native in
+    let { Mode.Dict.byte; native } = modes in
     let module_files =
-      let if_ cond l =
-        if cond then
-          l
-        else
-          []
-      in
-      let { Mode.Dict.byte; native } =
-        Dune_file.Mode_conf.Set.eval lib.modes ~has_native
-      in
       let virtual_library = Library.is_virtual lib in
       List.concat_map installable_modules ~f:(fun m ->
           let cm_file_unsafe kind =
@@ -116,8 +155,18 @@ end = struct
           in
           cmi_file :: other_cm_files)
     in
-    let archives = Lib_archives.make ~ctx ~dir_contents ~dir lib in
+    let lib_files, dll_files =
+      let lib_files = lib_files ~modes ~dir ~dir_contents ~lib_config info in
+      let dll_files = dll_files ~modes ~dynlink:lib.dynlink ~ctx info in
+      (lib_files, dll_files)
+    in
     let execs = lib_ppxs sctx ~scope ~lib in
+    let install_c_headers =
+      List.map
+        ~f:(fun base ->
+          Path.Build.relative dir (base ^ Foreign_language.header_extension))
+        lib.install_c_headers
+    in
     List.concat
       [ sources
       ; List.map module_files ~f:(fun (visibility, file) ->
@@ -128,10 +177,11 @@ end = struct
               | Private, Some dir -> Some (Filename.concat dir ".private")
             in
             make_entry ?sub_dir Lib file)
-      ; List.map (Lib_archives.lib_files archives) ~f:(make_entry Lib)
+      ; List.map lib_files ~f:(make_entry Lib)
       ; List.map execs ~f:(make_entry Libexec)
-      ; List.map (Lib_archives.dll_files archives) ~f:(fun a ->
+      ; List.map dll_files ~f:(fun a ->
             (Some loc, Install.Entry.make Stublibs a))
+      ; List.map ~f:(make_entry Lib) install_c_headers
       ]
 
   let keep_if ~external_lib_deps_mode expander =
@@ -362,6 +412,8 @@ end = struct
             in
             Lib_name.Map.add_exn acc name
               (Library
+                 (* XXX Raising here is not great. Loading the install rules
+                    will now break rules everywhere else *)
                  (Result.ok_exn
                     (Lib.to_dune_lib lib
                        ~dir:(Path.build (lib_root lib))

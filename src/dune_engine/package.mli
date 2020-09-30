@@ -59,8 +59,23 @@ module Dependency : sig
 end
 
 module Source_kind : sig
+  module Host : sig
+    type kind =
+      | Github
+      | Bitbucket
+      | Gitlab
+
+    type t =
+      { user : string
+      ; repo : string
+      ; kind : kind
+      }
+
+    val homepage : t -> string
+  end
+
   type t =
-    | Github of string * string
+    | Host of Host.t
     | Url of string
 
   val to_dyn : t Dyn.Encoder.t

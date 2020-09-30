@@ -193,6 +193,10 @@ module DB : sig
 
   val resolve : t -> Loc.t * Lib_name.t -> lib Or_exn.t
 
+  (** Like [resolve], but will return [None] instead of an error if we are
+      unable to find the library. *)
+  val resolve_when_exists : t -> Loc.t * Lib_name.t -> lib Or_exn.t option
+
   (** Resolve libraries written by the user in a [dune] file. The resulting list
       of libraries is transitively closed and sorted by the order of
       dependencies.

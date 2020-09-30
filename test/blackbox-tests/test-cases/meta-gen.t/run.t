@@ -10,9 +10,9 @@
     description = "sub library with modes set to byte"
     requires = "bytes"
     archive(byte) = "foobar_baz.cma"
-    archive(native) = "foobar_baz.cmxa"
+    archive(native) = ""
     plugin(byte) = "foobar_baz.cma"
-    plugin(native) = "foobar_baz.cmxs"
+    plugin(native) = ""
   )
   package "ppd" (
     directory = "ppd"
@@ -69,7 +69,7 @@
     description = "sub library in a sub dir"
     requires = "bytes"
     archive(byte) = "foobar_sub.cma"
-    archive(native) = "foobar_sub.cmxa"
+    archive(native) = ""
     plugin(byte) = "foobar_sub.cma"
-    plugin(native) = "foobar_sub.cmxs"
+    plugin(native) = ""
   )

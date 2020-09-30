@@ -527,3 +527,8 @@ let package t =
   | Installed -> Some (Lib_name.package_name t.name)
   | Public (_, p) -> Some p.name
   | Private _ -> None
+
+let has_native_archive lib_config modules =
+  Lib_config.linker_can_create_empty_archives lib_config
+  && Ocaml_version.ocamlopt_always_calls_library_linker lib_config.ocaml_version
+  || not (Modules.is_empty modules)

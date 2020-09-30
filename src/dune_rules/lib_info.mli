@@ -225,3 +225,7 @@ val create :
 val package : _ t -> Package.Name.t option
 
 val to_dyn : 'path Dyn.Encoder.t -> 'path t Dyn.Encoder.t
+
+(* XXX Temporary nastiness. [native_archives] returns an in incorrect result so
+   we need this for now *)
+val has_native_archive : Lib_config.t -> Modules.t -> bool

@@ -1,11 +1,16 @@
 Unreleased
 ----------
 
+- Action `(diff reference test_result)` now accept `reference` to be absent and
+  in that case consider that the reference is empty. Then running `dune promote`
+  will create the reference file. (#3795, @bobot)
+
 - Ignore special files (BLK, CHR, FIFO, SOCKET), (#3570, fixes #3124, #3546,
   @ejgallego)
 
-- Experimental: Introduce specific installation sites. Allow to define plugins
-  to be installed in these sites. (#3104, fixes #1185, @bobot)
+- Experimental: Simplify loading of additional files (data or code) at runtime in programs by
+  introducing specific installation sites. In particular it allow to define
+  plugins to be installed in these sites. (#3104, #3794, fixes #1185, @bobot)
 
 - Move all temporary files created by dune to run actions to a single directory
   and make sure that actions executed by dune also use this directory by setting

@@ -136,17 +136,22 @@ end = struct
     let module_files =
       let virtual_library = Library.is_virtual lib in
       List.concat_map installable_modules ~f:(fun m ->
-          let cm_file_unsafe kind =
-            Obj_dir.Module.cm_file_unsafe obj_dir m ~kind
+          let cmi_file =
+            (Module.visibility m, Obj_dir.Module.cm_file_exn obj_dir m ~kind:Cmi)
           in
-          let cmi_file = (Module.visibility m, cm_file_unsafe Cmi) in
+          let cm_file kind = Obj_dir.Module.cm_file obj_dir m ~kind in
+          let if_ b x =
+            if b then
+              Option.to_list x
+            else
+              []
+          in
           let other_cm_files =
-            let has_impl = Module.has ~ml_kind:Impl m in
-            [ if_ (native && has_impl) [ cm_file_unsafe Cmx ]
-            ; if_ (byte && has_impl && virtual_library) [ cm_file_unsafe Cmo ]
+            [ if_ native (cm_file Cmx)
+            ; if_ (byte && virtual_library) (cm_file Cmo)
             ; if_
-                (native && has_impl && virtual_library)
-                [ Obj_dir.Module.obj_file obj_dir m ~kind:Cmx ~ext:ext_obj ]
+                (native && virtual_library)
+                (Obj_dir.Module.o_file obj_dir m ~ext_obj)
             ; List.filter_map Ml_kind.all ~f:(fun ml_kind ->
                   Obj_dir.Module.cmt_file obj_dir m ~ml_kind)
             ]

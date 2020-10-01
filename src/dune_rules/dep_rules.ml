@@ -19,7 +19,7 @@ let ooi_deps cctx ~vlib_obj_map ~(ml_kind : Ml_kind.t) (m : Module.t) =
   let write, read =
     let ctx = Super_context.context sctx in
     let unit =
-      Obj_dir.Module.cm_file_unsafe obj_dir m ~kind:cm_kind |> Path.build
+      Obj_dir.Module.cm_file_exn obj_dir m ~kind:cm_kind |> Path.build
     in
     Ocamlobjinfo.rules ~dir ~ctx ~unit
   in

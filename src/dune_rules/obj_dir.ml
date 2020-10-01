@@ -293,27 +293,40 @@ module Module = struct
     let dir = cm_dir t kind visibility in
     relative t dir obj_name
 
-  let cm_file_unsafe t m ~kind =
-    let ext = Cm_kind.ext kind in
-    obj_file t m ~kind ~ext
+  let has_impl_if_needed m ~kind =
+    match (kind : Cm_kind.t) with
+    | Cmo
+    | Cmx ->
+      Module.has m ~ml_kind:Impl
+    | Cmi -> true
 
-  let o_file_unsafe t m ~ext_obj = obj_file t m ~kind:Cmx ~ext:ext_obj
+  let raise_no_impl m ~kind =
+    Code_error.raise "module has no implementation"
+      [ ("m", Module.to_dyn m); ("kind", Cm_kind.to_dyn kind) ]
+
+  let o_file t m ~ext_obj =
+    let kind = Cm_kind.Cmx in
+    if Module.has m ~ml_kind:Impl then
+      Some (obj_file t m ~kind ~ext:ext_obj)
+    else
+      None
+
+  let o_file_exn t m ~ext_obj =
+    match o_file t m ~ext_obj with
+    | Some o -> o
+    | None -> raise_no_impl m ~kind:Cmx
 
   let cm_file t m ~(kind : Cm_kind.t) =
-    let has_impl = Module.has m ~ml_kind:Impl in
-    match kind with
-    | Cmx
-    | Cmo
-      when not has_impl ->
+    if has_impl_if_needed m ~kind then
+      let ext = Cm_kind.ext kind in
+      Some (obj_file t m ~kind ~ext)
+    else
       None
-    | _ -> Some (cm_file_unsafe t m ~kind)
 
-  let cm_public_file_unsafe t m ~kind =
-    let ext = Cm_kind.ext kind in
-    let base = cm_public_dir t kind in
-    let obj_name = Module.obj_name m in
-    let fname = Module_name.Unique.artifact_filename obj_name ~ext in
-    relative t base fname
+  let cm_file_exn t m ~kind =
+    match cm_file t m ~kind with
+    | Some s -> s
+    | None -> raise_no_impl m ~kind
 
   let cm_public_file (type path) (t : path t) m ~(kind : Cm_kind.t) :
       path option =
@@ -325,7 +338,21 @@ module Module = struct
       when not has_impl ->
       None
     | Cmi when is_private -> None
-    | _ -> Some (cm_public_file_unsafe t m ~kind)
+    | _ ->
+      let ext = Cm_kind.ext kind in
+      let base = cm_public_dir t kind in
+      let obj_name = Module.obj_name m in
+      let fname = Module_name.Unique.artifact_filename obj_name ~ext in
+      Some (relative t base fname)
+
+  let cm_public_file_exn t m ~kind =
+    match cm_public_file t m ~kind with
+    | Some x -> x
+    | None ->
+      Code_error.raise
+        "cm_public_file_exn: invalid access. module has no implementation or \
+         is private"
+        [ ("m", Module.to_dyn m); ("kind", Cm_kind.to_dyn kind) ]
 
   let cmt_file t m ~(ml_kind : Ml_kind.t) =
     let file = Module.file m ~ml_kind in

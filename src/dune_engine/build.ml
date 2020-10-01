@@ -14,7 +14,7 @@ type 'a t =
   (* [Filter_existing_files] can't be defined using [If_file_exists] because in
      the latter the path must be known when building the type t. In the former
      case the paths can be dynamically computed *)
-  | Contents : Path.t -> string t
+  | Contents : Path.t * bool -> string t
   | Lines_of : Path.t -> string list t
   | Dyn_paths : ('a * Path.Set.t) t -> 'a t
   | Dyn_deps : ('a * Dep.Set.t) t -> 'a t
@@ -115,7 +115,7 @@ let alias a = dep (Dep.alias a)
 
 let catch t ~on_error = Catch (t, on_error)
 
-let contents p = Contents p
+let contents ?(binary = true) p = Contents (p, binary)
 
 let lines_of p = Lines_of p
 
@@ -305,7 +305,7 @@ end = struct
     | Filter_existing_files p -> static_deps p
     | Dyn_paths t -> static_deps t
     | Dyn_deps t -> static_deps t
-    | Contents p ->
+    | Contents (p, _) ->
       { Static_deps.empty with rule_deps = Dep.Set.of_files [ p ] }
     | Lines_of p ->
       { Static_deps.empty with rule_deps = Dep.Set.of_files [ p ] }
@@ -387,7 +387,7 @@ end = struct
       | Deps _ -> ((), Dep.Set.empty)
       | Paths_for_rule _ -> ((), Dep.Set.empty)
       | Paths_glob g -> ((eval_pred g : Path.Set.t), Dep.Set.empty)
-      | Contents p -> (Io.read_file p, Dep.Set.empty)
+      | Contents (p, binary) -> (Io.read_file ~binary p, Dep.Set.empty)
       | Lines_of p -> (Io.lines_of_file p, Dep.Set.empty)
       | Dyn_paths t ->
         let (x, paths), dyn_deps = go t in

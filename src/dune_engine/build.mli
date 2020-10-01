@@ -143,8 +143,8 @@ val dyn_path_set_reuse : Path.Set.t t -> Path.Set.t t
 val catch : 'a t -> on_error:(exn -> 'a) -> 'a t
 
 (** [contents path] returns a description that when run will return the contents
-    of the file at [path]. *)
-val contents : Path.t -> string t
+    of the file at [path]. Files are opened in binary mode by default. *)
+val contents : ?binary:bool -> Path.t -> string t
 
 (** [lines_of path] returns a description that when run will return the contents
     of the file at [path] as a list of lines. *)

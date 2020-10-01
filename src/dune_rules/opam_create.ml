@@ -222,7 +222,7 @@ let opam_template ~opam_path =
   let opam_template_path = template_file opam_path in
   Build.if_file_exists opam_template_path
     ~then_:
-      (let+ contents = Build.contents opam_template_path in
+      (let+ contents = Build.contents ~binary:false opam_template_path in
        Some (opam_template_path, contents))
     ~else_:(Build.return None)
 

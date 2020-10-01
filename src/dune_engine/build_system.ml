@@ -565,18 +565,18 @@ let rec with_locks mutexes ~f =
       (fun () -> with_locks mutexes ~f)
 
 let remove_old_artifacts ~dir ~rules_here ~(subdirs_to_keep : Subdir_set.t) =
-  match Path.readdir_unsorted (Path.build dir) with
+  match Path.readdir_unsorted_with_kinds (Path.build dir) with
   | exception _ -> ()
   | Error _ -> ()
   | Ok files ->
-    List.iter files ~f:(fun fn ->
+    List.iter files ~f:(fun (fn, kind) ->
         let path = Path.Build.relative dir fn in
         let path_is_a_target = Path.Build.Map.mem rules_here path in
         if path_is_a_target then
           ()
         else
-          match Unix.lstat (Path.Build.to_string path) with
-          | { st_kind = S_DIR; _ } -> (
+          match kind with
+          | Unix.S_DIR -> (
             match subdirs_to_keep with
             | All -> ()
             | These set ->
@@ -584,7 +584,6 @@ let remove_old_artifacts ~dir ~rules_here ~(subdirs_to_keep : Subdir_set.t) =
                 ()
               else
                 Path.rm_rf (Path.build path) )
-          | exception _ -> Path.unlink (Path.build path)
           | _ -> Path.unlink (Path.build path))
 
 let no_rule_found t ~loc fn =

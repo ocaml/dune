@@ -215,7 +215,7 @@ module With_targets = struct
   let write_file_dyn fn s =
     add ~targets:[ fn ]
       (let+ s = s in
-       Action.Write_file (fn, s))
+       Action.Write_file (fn, s, true))
 
   let of_result_map res ~f ~targets =
     add ~targets
@@ -235,13 +235,14 @@ let with_targets build ~targets : _ With_targets.t =
 let with_no_targets build : _ With_targets.t =
   { build; targets = Path.Build.Set.empty }
 
-let write_file fn s =
-  with_targets ~targets:[ fn ] (return (Action.Write_file (fn, s)))
+let write_file ?(binary = true) fn s =
+  with_targets ~targets:[ fn ] (return (Action.Write_file (fn, s, binary)))
 
-let write_file_dyn fn s =
+let write_file_dyn ?(binary = Pure true) fn s =
   with_targets ~targets:[ fn ]
-    (let+ s = s in
-     Action.Write_file (fn, s))
+    (let+ s = s
+     and+ binary = binary in
+     Action.Write_file (fn, s, binary))
 
 let copy ~src ~dst =
   with_targets ~targets:[ dst ] (path src >>> return (Action.Copy (src, dst)))

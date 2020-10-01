@@ -181,10 +181,13 @@ val of_result_map : 'a Or_exn.t -> f:('a -> 'b t) -> 'b t
     its result is computed only once. *)
 val memoize : string -> 'a t -> 'a t
 
-(** Create a file with the given contents. *)
-val write_file : Path.Build.t -> string -> Action.t With_targets.t
+(** Create a file with the given contents. Files are written in binary mode by
+    default. *)
+val write_file :
+  ?binary:bool -> Path.Build.t -> string -> Action.t With_targets.t
 
-val write_file_dyn : Path.Build.t -> string t -> Action.t With_targets.t
+val write_file_dyn :
+  ?binary:bool t -> Path.Build.t -> string t -> Action.t With_targets.t
 
 val copy : src:Path.t -> dst:Path.Build.t -> Action.t With_targets.t
 

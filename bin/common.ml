@@ -64,6 +64,8 @@ let root t = t.root
 
 let config t = t.config
 
+let build_dir t = t.build_dir
+
 let only_packages t = t.only_packages
 
 let watch t = t.watch

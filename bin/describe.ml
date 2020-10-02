@@ -239,6 +239,32 @@ module Format = struct
       & info [ "format" ] ~docv:"FORMAT" ~doc:"Output format.")
 end
 
+module Path_options = struct
+  let show_prefix =
+    Arg.(
+      value & flag
+      & info [ "show-prefix" ] ~docs:"OPTIONS" ~doc:"Show workspace prefix.")
+
+  let show_cdup =
+    Arg.(
+      value & flag
+      & info [ "show-cdup" ] ~docs:"OPTIONS"
+          ~doc:"Show path to workspace root relative to working directory.")
+
+  let build_path =
+    Arg.(
+      value
+      & opt (some string) None
+      & info [ "build-path" ] ~docs:"OPTIONS"
+          ~doc:"Resolve path inside build directory.")
+
+  let show_toplevel =
+    Arg.(
+      value & flag
+      & info [ "show-toplevel" ] ~docs:"OPTIONS"
+          ~doc:"Show the absolute path of the workspace root.")
+end
+
 module Lang = struct
   type t = Dune_lang.Syntax.Version.t
 
@@ -301,7 +327,41 @@ let term =
              version passed to $(b,--lang)")
   and+ context_name = Common.context_arg ~doc:"Build context to use."
   and+ format = Format.arg
-  and+ lang = Lang.arg in
+  and+ lang = Lang.arg
+  and+ show_prefix = Path_options.show_prefix
+  and+ show_cdup = Path_options.show_cdup
+  and+ show_toplevel = Path_options.show_toplevel
+  and+ build_path = Path_options.build_path in
+  let root = Common.root common in
+  if show_prefix then (
+    print_endline (String.concat ~sep:"/" root.Workspace_root.to_cwd);
+    exit 0
+  );
+  if show_cdup then (
+    print_endline
+      (String.concat ~sep:"/"
+         (List.map
+            ~f:(Fun.const Filename.parent_dir_name)
+            root.Workspace_root.to_cwd));
+    exit 0
+  );
+  if show_toplevel then (
+    print_endline root.Workspace_root.dir;
+    exit 0
+  );
+  ( match build_path with
+  | None -> ()
+  | Some s ->
+    print_endline
+      (String.concat ~sep:"/"
+         ( List.map
+             ~f:(Fun.const Filename.parent_dir_name)
+             root.Workspace_root.to_cwd
+         @ [ Common.build_dir common
+           ; Dune_engine.Context_name.to_string context_name
+           ; s
+           ] ));
+    exit 0 );
   Common.set_common common ~targets:[] ~external_lib_deps_mode:false;
   let what = What.parse what ~lang in
   Scheduler.go ~common (fun () ->

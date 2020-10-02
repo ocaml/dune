@@ -12,6 +12,8 @@ val root : t -> Workspace_root.t
 
 val config : t -> Dune_engine.Config.t
 
+val build_dir : t -> string
+
 module Only_packages : sig
   type t =
     { names : Dune_engine.Package.Name.Set.t

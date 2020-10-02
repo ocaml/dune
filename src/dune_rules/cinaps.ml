@@ -87,7 +87,7 @@ let gen_rules sctx t ~dir ~scope =
   in
   let modules =
     Modules.singleton_exe module_
-    |> Modules.map_user_written ~f:(Preprocessing.pp_module preprocess)
+    |> Modules.map_user_written ~f:(Pp_spec.pp_module preprocess)
   in
   let dune_version = Scope.project scope |> Dune_project.dune_version in
   let compile_info =

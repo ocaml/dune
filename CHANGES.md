@@ -49,11 +49,15 @@ Unreleased
   (#3853, @kit-ty-kate)
 
 - Fix `$ dune install` modifying the build directory. This made the build
-  directory unusable when `$ sudo dune install` modified permissions.  (fix
+  directory unusable when `$ sudo dune install` modified permissions. (fix
   #3857, @rgrinberg)
 
 - Fix handling of aliases given on the command line (using the `@` and `@@`
   syntax) so as to correctly handle relative paths. (#3874, fixes #3850, @nojb)
+
+- Allow link time code generation to be used in preprocessing executable. This
+  makes it possible to use the build info module inside the preprocessor.
+  (#3848, fix #3848, @rgrinberg)
 
 2.7.1 (2/09/2020)
 -----------------

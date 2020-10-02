@@ -4,11 +4,6 @@ open! Dune_engine
 open! Stdune
 open! Import
 
-(** Preprocessing object *)
-type t
-
-val dummy : t
-
 val make :
      Super_context.t
   -> dir:Path.Build.t
@@ -19,15 +14,7 @@ val make :
   -> preprocessor_deps:Dep_conf.t list
   -> lib_name:Lib_name.Local.t option
   -> scope:Scope.t
-  -> t
-
-(** Setup the preprocessing rules for the following modules and returns the
-    translated modules *)
-val pp_module : t -> ?lint:bool -> Module.t -> Module.t
-
-(** Preprocess a single module, using the configuration for the given module
-    name. *)
-val pp_module_as : t -> ?lint:bool -> Module_name.t -> Module.t -> Module.t
+  -> Pp_spec.t
 
 (** Get a path to a cached ppx driver with some extra flags for cookies. *)
 val get_ppx_driver :

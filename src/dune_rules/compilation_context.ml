@@ -60,7 +60,7 @@ type t =
   ; requires_compile : Lib.t list Or_exn.t
   ; requires_link : Lib.t list Or_exn.t Lazy.t
   ; includes : Includes.t
-  ; preprocessing : Preprocessing.t
+  ; preprocessing : Pp_spec.t
   ; opaque : bool
   ; stdlib : Ocaml_stdlib.t option
   ; js_of_ocaml : Dune_file.Js_of_ocaml.t option
@@ -115,9 +115,9 @@ let bin_annot t = t.bin_annot
 let context t = Super_context.context t.super_context
 
 let create ~super_context ~scope ~expander ~obj_dir ~modules ~flags
-    ~requires_compile ~requires_link ?(preprocessing = Preprocessing.dummy)
-    ~opaque ?stdlib ~js_of_ocaml ~dynlink ~package ?vimpl ?modes
-    ?(bin_annot = true) () =
+    ~requires_compile ~requires_link ?(preprocessing = Pp_spec.dummy) ~opaque
+    ?stdlib ~js_of_ocaml ~dynlink ~package ?vimpl ?modes ?(bin_annot = true) ()
+    =
   let project = Scope.project scope in
   let requires_compile =
     if Dune_project.implicit_transitive_deps project then

@@ -283,6 +283,11 @@ let as_local_exn (t : Path.t t) =
 
 let make_exe ~dir ~name = Local (Local.make_exe ~dir ~name)
 
+let for_pp ~dir =
+  Local
+    (Local.make ~dir ~obj_dir:dir ~native_dir:dir ~byte_dir:dir
+       ~public_cmi_dir:None ~private_lib:false)
+
 let to_local (t : Path.t t) =
   match t with
   | Local _ -> assert false

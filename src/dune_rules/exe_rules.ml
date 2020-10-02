@@ -113,7 +113,7 @@ let executables_rules ~sctx ~dir ~expander ~dir_contents ~scope ~compile_info
   let modules =
     Modules.map_user_written modules ~f:(fun m ->
         let name = Module.name m in
-        Preprocessing.pp_module_as pp name m)
+        Pp_spec.pp_module_as pp name m)
   in
   let programs = programs ~modules ~exes in
   let explicit_js_mode = Dune_project.explicit_js_mode (Scope.project scope) in

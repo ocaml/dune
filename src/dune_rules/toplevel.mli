@@ -8,7 +8,7 @@ module Source : sig
 
   val loc : t -> Loc.t
 
-  val modules : t -> Preprocessing.t -> Modules.t
+  val modules : t -> Pp_spec.t -> Modules.t
 
   val obj_dir : t -> Path.Build.t Obj_dir.t
 end

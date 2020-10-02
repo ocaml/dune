@@ -31,7 +31,7 @@ val create :
   -> flags:Ocaml_flags.t
   -> requires_compile:Lib.t list Or_exn.t
   -> requires_link:Lib.t list Or_exn.t Lazy.t
-  -> ?preprocessing:Preprocessing.t
+  -> ?preprocessing:Pp_spec.t
   -> opaque:opaque
   -> ?stdlib:Ocaml_stdlib.t
   -> js_of_ocaml:Dune_file.Js_of_ocaml.t option
@@ -70,7 +70,7 @@ val requires_compile : t -> Lib.t list Or_exn.t
 
 val includes : t -> Command.Args.dynamic Command.Args.t Cm_kind.Dict.t
 
-val preprocessing : t -> Preprocessing.t
+val preprocessing : t -> Pp_spec.t
 
 val opaque : t -> bool
 

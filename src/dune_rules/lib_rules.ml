@@ -359,7 +359,7 @@ let cctx (lib : Library.t) ~sctx ~source_modules ~dir ~expander ~scope
       ~lib_name:(Some (snd lib.name))
   in
   let modules =
-    Modules.map_user_written source_modules ~f:(Preprocessing.pp_module pp)
+    Modules.map_user_written source_modules ~f:(Pp_spec.pp_module pp)
   in
   let modules = Vimpl.impl_modules vimpl modules in
   let requires_compile = Lib.Compile.direct_requires compile_info in

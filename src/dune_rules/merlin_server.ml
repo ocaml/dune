@@ -55,23 +55,45 @@ let get_merlin_file_path local_path =
   let ctx = Context_name.to_string context in
   let ctx_root = Path.Build.(relative root ctx) in
   let dir_path = Path.Build.(append_local ctx_root local_path) in
-  Path.Build.relative dir_path Merlin.merlin_file_name |> Path.build
+  let merlin_path = Path.Build.relative dir_path Merlin.merlin_file_name in
+  let files =
+    Result.value ~default:[] (Path.readdir_unsorted (Path.build merlin_path))
+    |> List.fast_sort ~cmp:Stdlib.compare
+  in
+  List.map files ~f:(fun f -> Path.Build.relative merlin_path f |> Path.build)
 
 let load_merlin_file local_path file =
   let no_config_error () =
     Merlin_conf.make_error "Project isn't built. (Try calling `dune build`.)"
   in
 
-  let filename = String.lowercase_ascii file in
-  let file_path = get_merlin_file_path local_path in
-  if Path.exists file_path then
-    match Merlin.Processed.load_file file_path with
-    | Some config ->
-      Option.value ~default:(no_config_error ())
-        (Merlin.Processed.get config ~filename)
-    | None -> no_config_error ()
-  else
-    no_config_error ()
+  (* We search for an appropriate merlin configuration in the current directory
+     and its parents *)
+  let rec find_closest path =
+    let filename = String.lowercase_ascii file in
+    let file_paths = get_merlin_file_path path in
+
+    let result =
+      List.find_map file_paths ~f:(fun file_path ->
+          if Path.exists file_path then
+            match Merlin.Processed.load_file file_path with
+            | Some config -> Merlin.Processed.get config ~filename
+            | None -> None
+          else
+            None)
+    in
+    match result with
+    | Some p -> Some p
+    | None ->
+      Option.bind
+        ( if Path.Local.is_root path then
+          None
+        else
+          Path.Local.parent path )
+        ~f:find_closest
+  in
+
+  Option.value (find_closest local_path) ~default:(no_config_error ())
 
 let print_merlin_conf file =
   let abs_root, file = Filename.(dirname file, basename file) in
@@ -84,7 +106,8 @@ let print_merlin_conf file =
 
 let dump s =
   match to_local s with
-  | Ok path -> Merlin.Processed.print_file (get_merlin_file_path path)
+  | Ok path ->
+    List.iter (get_merlin_file_path path) ~f:Merlin.Processed.print_file
   | Error mess -> Printf.eprintf "%s\n%!" mess
 
 let start () =

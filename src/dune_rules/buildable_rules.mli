@@ -16,4 +16,9 @@ val gen_select_rules :
 
 (** Generate the rules for the [(select ...)] forms in library dependencies *)
 val with_lib_deps :
-  Context.t -> Lib.Compile.t -> dir:Path.Build.t -> f:(unit -> 'a) -> 'a
+     merlin_ident:string
+  -> Context.t
+  -> Lib.Compile.t
+  -> dir:Path.Build.t
+  -> f:(unit -> 'a)
+  -> 'a

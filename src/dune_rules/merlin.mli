@@ -4,13 +4,20 @@ open! Dune_engine
 open! Stdune
 open Import
 
+(* Merlin file names and tools to manipulate them *)
 val merlin_file_name : string
+
+val merlin_exist_name : string
+
+val make_lib_ident : Dune_file.Library.t -> string
+
+val make_exe_ident : Dune_file.Executables.t -> string
+
+val make_merlin_exists : ident:string -> string
 
 type t
 
 val add_source_dir : t -> Path.Source.t -> t
-
-val merge_all : t list -> t option
 
 module Processed : sig
   type t
@@ -37,6 +44,7 @@ val make :
 (** Add rules for generating the .merlin in a directory *)
 val add_rules :
      Super_context.t
+  -> ident:string
   -> dir:Path.Build.t
   -> more_src_dirs:Path.Source.t list
   -> expander:Expander.t

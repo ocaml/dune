@@ -1,7 +1,6 @@
 open! Dune_engine
 open! Stdune
 open Import
-open Build.O
 open! No_io
 module SC = Super_context
 
@@ -13,57 +12,19 @@ module Extensions = Comparable.Make (struct
   let to_dyn = Tuple.T2.to_dyn String.to_dyn String.to_dyn
 end)
 
-let merlin_file_name = ".merlin-conf"
+let merlin_file_name = ".merlin-conf/"
 
-let warn_dropped_pp loc ~allow_approx_merlin ~reason =
-  if not allow_approx_merlin then
-    User_warning.emit ~loc
-      [ Pp.textf ".merlin generated is inaccurate. %s." reason
-      ; Pp.text
-          "Split the stanzas into different directories or silence this \
-           warning by adding (allow_approximate_merlin) to your dune-project."
-      ]
+let merlin_exist_name = ".merlin-exist"
 
-module Pp = struct
-  let merge ~allow_approx_merlin (a : _ Preprocess.t) (b : _ Preprocess.t) =
-    match (a, b) with
-    | No_preprocessing, No_preprocessing -> Preprocess.No_preprocessing
-    | No_preprocessing, pp
-    | pp, No_preprocessing ->
-      let loc =
-        Preprocess.loc pp |> Option.value_exn
-        (* only No_preprocessing has no loc*)
-      in
-      warn_dropped_pp loc ~allow_approx_merlin
-        ~reason:"Cannot mix preprocessed and non preprocessed specifications";
-      Preprocess.No_preprocessing
-    | (Future_syntax _ as future_syntax), _
-    | _, (Future_syntax _ as future_syntax) ->
-      future_syntax
-    | Action (loc, a1), Action (_, a2) ->
-      if Action_dune_lang.compare_no_locs a1 a2 <> Ordering.Eq then
-        warn_dropped_pp loc ~allow_approx_merlin
-          ~reason:
-            "this action preprocessor is not equivalent to other preprocessor \
-             specifications.";
-      Action (loc, a1)
-    | Pps _, Action (loc, _)
-    | Action (loc, _), Pps _ ->
-      warn_dropped_pp loc ~allow_approx_merlin
-        ~reason:"cannot mix action and pps preprocessors";
-      No_preprocessing
-    | (Pps pp1 as pp), Pps pp2 ->
-      if
-        Ordering.neq
-          (Preprocess.Pps.compare_no_locs
-             Preprocess.Without_instrumentation.compare_no_locs pp1 pp2)
-      then (
-        warn_dropped_pp pp1.loc ~allow_approx_merlin
-          ~reason:"pps specification isn't identical in all stanzas";
-        No_preprocessing
-      ) else
-        pp
-end
+let make_lib_ident lib =
+  Printf.sprintf "-lib-%s"
+    (Dune_file.Library.best_name lib |> Lib_name.to_string)
+
+let make_exe_ident exes =
+  Printf.sprintf "-exe-%s"
+    (String.concat ~sep:"-" (List.map ~f:snd exes.Dune_file.Executables.names))
+
+let make_merlin_exists ~ident = merlin_exist_name ^ ident
 
 module Processed = struct
   (* The actual content of the merlin file as built by the [Unprocessed.process]
@@ -166,21 +127,7 @@ module Unprocessed = struct
           source_dirs = Path.Source.Set.add cu_config.source_dirs dir
         })
 
-  let merge_config a b =
-    { requires = Lib.Set.union a.requires b.requires
-    ; flags =
-        (let+ a = a.flags
-         and+ b = b.flags in
-         a @ b)
-    ; preprocess = Pp.merge ~allow_approx_merlin:false a.preprocess b.preprocess
-    ; libname =
-        ( match a.libname with
-        | Some _ as x -> x
-        | None -> b.libname )
-    ; source_dirs = Path.Source.Set.union a.source_dirs b.source_dirs
-    ; objs_dirs = Path.Set.union a.objs_dirs b.objs_dirs
-    ; extensions = Extensions.Set.union a.extensions b.extensions
-    }
+  let merge_config _a b = b
 
   let make ?(requires = Ok []) ~flags
       ?(preprocess = Preprocess.No_preprocessing) ?libname
@@ -333,7 +280,8 @@ module Unprocessed = struct
 
   let process sctx ~more_src_dirs ~expander t =
     Module_name.Map.foldi t ~init:(Build.With_targets.return String.Map.empty)
-      ~f:(fun module_name ({ requires; flags; extensions; _ } as cu_config) acc ->
+      ~f:(fun module_name ({ requires; flags; extensions; _ } as cu_config) acc
+         ->
         let open Build.With_targets.O in
         let pp_flags = pp_flags sctx ~expander cu_config in
         let+ flags = Build.with_no_targets flags
@@ -361,8 +309,10 @@ end
 
 include Unprocessed
 
-let dot_merlin sctx ~dir ~more_src_dirs ~expander (t : Unprocessed.t) =
+let dot_merlin sctx ~ident ~dir ~more_src_dirs ~expander (t : Unprocessed.t) =
   let open Build.With_targets.O in
+  let merlin_file_name = merlin_file_name ^ ident in
+  let merlin_exist_name = make_merlin_exists ~ident in
   let merlin_file = Path.Build.relative dir merlin_file_name in
 
   (* We make the compilation of .ml/.mli files depend on the existence of
@@ -374,7 +324,7 @@ let dot_merlin sctx ~dir ~more_src_dirs ~expander (t : Unprocessed.t) =
      of a file, so we have to use this trick. *)
   SC.add_rule sctx ~dir
     ( Build.with_no_targets (Build.path (Path.build merlin_file))
-    >>> Build.create_file (Path.Build.relative dir ".merlin-exists") );
+    >>> Build.create_file (Path.Build.relative dir merlin_exist_name) );
   Path.Set.singleton (Path.build merlin_file)
   |> Rules.Produce.Alias.add_deps (Alias.check ~dir);
 
@@ -385,10 +335,6 @@ let dot_merlin sctx ~dir ~more_src_dirs ~expander (t : Unprocessed.t) =
   in
   SC.add_rule sctx ~dir action
 
-let merge_all = function
-  | [] -> None
-  | init :: ts -> Some (List.fold_left ~init ~f:Module_name.Map.superpose ts)
-
-let add_rules sctx ~dir ~more_src_dirs ~expander merlin =
+let add_rules sctx ~ident ~dir ~more_src_dirs ~expander merlin =
   if (SC.context sctx).merlin then
-    dot_merlin sctx ~more_src_dirs ~expander ~dir merlin
+    dot_merlin sctx ~ident ~more_src_dirs ~expander ~dir merlin

@@ -19,7 +19,6 @@ js_of_ocaml-compiler \
 "mdx=1.6.0" \
 menhir \
 merlin \
-ocaml-migrate-parsetree \
 ocamlfind \
 ocamlformat.0.14.3 \
 "odoc>=1.5.0" \

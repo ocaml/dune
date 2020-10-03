@@ -2,4 +2,4 @@
  (name fooppx)
  (public_name fooppx)
  (kind ppx_rewriter)
- (libraries ocaml-migrate-parsetree))
+ (libraries ppxlib))

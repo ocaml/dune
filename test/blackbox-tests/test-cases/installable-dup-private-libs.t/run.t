@@ -1,6 +1,4 @@
   $ dune build @install --display short
-      ocamldep a1/.a.objs/a.ml.d
-      ocamldep a2/.a.objs/a.ml.d
         ocamlc a1/.a.objs/byte/a.{cmi,cmo,cmt}
         ocamlc a2/.a.objs/byte/a.{cmi,cmo,cmt}
       ocamlopt a1/.a.objs/native/a.{cmx,o}

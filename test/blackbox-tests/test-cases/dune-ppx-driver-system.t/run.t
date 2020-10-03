@@ -98,9 +98,6 @@ Test that going through the -ppx option of the compiler works
 
   $ dune build --root driver-tests test_ppx_staged.cma
   Entering directory 'driver-tests'
-      ocamldep .test_ppx_staged.objs/test_ppx_staged.ml.d
-  tool name: ocamldep
-  args:--as-ppx -arg1 -arg2 -arg3=Oreo -foo bar Snickerdoodle --cookie france="Petit Beurre" --cookie italy="Biscotti" --cookie library-name="test_ppx_staged"
         ocamlc .test_ppx_staged.objs/byte/test_ppx_staged.{cmi,cmo,cmt}
   tool name: ocamlc
   args:--as-ppx -arg1 -arg2 -arg3=Oreo -foo bar Snickerdoodle --cookie france="Petit Beurre" --cookie italy="Biscotti" --cookie library-name="test_ppx_staged"

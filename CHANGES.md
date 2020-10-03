@@ -34,6 +34,9 @@ Unreleased
   native, dynlink) are disabled. Previously, dune would generate all archives
   for regardless of settings. (#3829, @rgrinberg)
 
+- Do no run ocamldep to for single module executables & libraries. The
+  dependency graph for such artifacts is trivial (#3847, @rgrinberg)
+
 2.7.1 (2/09/2020)
 -----------------
 

@@ -354,7 +354,6 @@ Can init and build a new library project
 
   $ dune runtest --root test_lib_proj --display short
   Entering directory 'test_lib_proj'
-      ocamldep test/.test_lib_proj.eobjs/test_lib_proj.ml.d
         ocamlc test/.test_lib_proj.eobjs/byte/dune__exe__Test_lib_proj.{cmi,cmo,cmt}
       ocamlopt test/.test_lib_proj.eobjs/native/dune__exe__Test_lib_proj.{cmx,o}
       ocamlopt test/test_lib_proj.exe

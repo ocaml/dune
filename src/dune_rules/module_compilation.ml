@@ -234,18 +234,17 @@ let build_module ~dep_graphs ?(precompiled_cmi = false) cctx m =
            SC.add_rules sctx ~dir
              (Jsoo_rules.build_cm cctx ~js_of_ocaml ~src ~target))
 
-let ocamlc_i ?(flags = []) ~dep_graphs cctx (m : Module.t) ~output =
+let ocamlc_i ?(flags = []) ~deps cctx (m : Module.t) ~output =
   let sctx = CC.super_context cctx in
   let obj_dir = CC.obj_dir cctx in
   let dir = CC.dir cctx in
   let ctx = SC.context sctx in
   let src = Option.value_exn (Module.file m ~ml_kind:Impl) in
-  let dep_graph = Ml_kind.Dict.get dep_graphs Impl in
   let sandbox = Compilation_context.sandbox cctx in
   let cm_deps =
     Build.dyn_paths_unit
       (let open Build.O in
-      let+ deps = Dep_graph.deps_of dep_graph m in
+      let+ deps = Ml_kind.Dict.get deps Impl in
       List.concat_map deps ~f:(fun m ->
           [ Path.build (Obj_dir.Module.cm_file_exn obj_dir m ~kind:Cmi) ]))
   in

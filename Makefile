@@ -14,7 +14,7 @@ cinaps \
 coq \
 core_bench \
 "csexp>=1.3.0" \
-js_of_ocaml-ppx \
+js_of_ocaml \
 js_of_ocaml-compiler \
 "mdx=1.6.0" \
 menhir \

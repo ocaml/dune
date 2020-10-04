@@ -120,8 +120,13 @@ let build_cm cctx ~dep_graphs ~precompiled_cmi ~cm_kind (m : Module.t) ~phase =
     | Cmx -> (other_targets, Command.Args.empty)
     | Cmi
     | Cmo ->
-      let fn = Option.value_exn (Obj_dir.Module.cmt_file obj_dir m ~ml_kind) in
-      (fn :: other_targets, A "-bin-annot")
+      if Compilation_context.bin_annot cctx then
+        let fn =
+          Option.value_exn (Obj_dir.Module.cmt_file obj_dir m ~ml_kind)
+        in
+        (fn :: other_targets, A "-bin-annot")
+      else
+        (other_targets, Command.Args.empty)
   in
   let opaque_arg =
     let intf_only = cm_kind = Cmi && not (Module.has m ~ml_kind:Impl) in

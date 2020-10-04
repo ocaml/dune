@@ -39,6 +39,7 @@ val create :
   -> package:Package.t option
   -> ?vimpl:Vimpl.t
   -> ?modes:Dune_file.Mode_conf.Set.Details.t Mode.Dict.t
+  -> ?bin_annot:bool
   -> unit
   -> t
 
@@ -94,3 +95,7 @@ val for_module_generated_at_link_time :
 
 val for_plugin_executable :
   t -> embed_in_plugin_libraries:(Loc.t * Lib_name.t) list -> t
+
+val bin_annot : t -> bool
+
+val without_bin_annot : t -> t

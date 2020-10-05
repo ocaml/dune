@@ -35,8 +35,7 @@ let libs_and_ppx_under_dir sctx ~db ~dir =
       match Super_context.stanzas_in sctx ~dir with
       | None -> (acc, pps)
       | Some (d : _ Dir_with_dune.t) ->
-        List.fold_left d.data ~init:(acc, pps) ~f:(fun (acc, pps) ->
-          function
+        List.fold_left d.data ~init:(acc, pps) ~f:(fun (acc, pps) -> function
           | Dune_file.Library l -> (
             match
               Lib.DB.resolve_when_exists db

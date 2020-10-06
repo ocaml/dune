@@ -2,4 +2,4 @@
  (name reasonppx)
  (wrapped false)
  (kind ppx_rewriter)
- (libraries ocaml-migrate-parsetree))
+ (libraries ppxlib))

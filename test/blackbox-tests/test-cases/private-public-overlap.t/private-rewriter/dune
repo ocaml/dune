@@ -2,7 +2,7 @@
  (name ppx_internal)
  (modules :standard \ mylib)
  (kind ppx_rewriter)
- (libraries ocaml-migrate-parsetree))
+ (libraries ppxlib))
 
 (library
  (name mylib)

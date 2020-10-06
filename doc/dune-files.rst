@@ -500,10 +500,9 @@ to use the :ref:`include_subdirs` stanza.
   :ref:`inline_tests` for a reference of corresponding options.
 
 Note that when binding C libraries, dune doesn't provide special support for
-tools such as ``pkg-config``, however it integrates easily with configurator_ by
+tools such as ``pkg-config``, however it integrates easily with
+:ref:`configurator` by
 using ``(c_flags (:include ...))`` and ``(c_library_flags (:include ...))``.
-
-.. _configurator: https://github.com/janestreet/configurator
 
 .. _foreign_library:
 

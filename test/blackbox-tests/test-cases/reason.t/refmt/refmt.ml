@@ -17,6 +17,7 @@ module File = struct
     | Impl fn -> fn ^ ".ml"
     | Intf fn -> fn ^ ".mli"
 end
+
 let () =
   let set_binary = function
     | "binary" -> ()
@@ -39,23 +40,13 @@ let () =
     | Some s -> s
   in
   let ic = open_in source in
-  let lexbuf = Lexing.from_channel ic in
-  Location.input_name := source;
   let source_file = File.of_filename source in
-  let ast =
-    match source_file with
-    | Impl _ ->
-      Impl (Parse.implementation lexbuf)
-    | Intf _ ->
-      Intf (Parse.interface lexbuf)
-  in
   let out_fn = File.output_fn source_file in
-  Migrate_parsetree.Ast_io.to_channel stdout out_fn
-    (match ast with
-     | Impl sg ->
-       Migrate_parsetree.Ast_io.Impl
-         ((module Migrate_parsetree.OCaml_current), sg)
-     | Intf st ->
-       Migrate_parsetree.Ast_io.Intf
-         ((module Migrate_parsetree.OCaml_current), st));
-  flush stdout
+  let out = open_out_bin out_fn in
+  let rec loop () =
+    match input_char ic with
+    | exception End_of_file -> ()
+    | s -> output_char out s; loop ()
+  in
+  loop ();
+  close_out_noerr out

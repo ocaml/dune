@@ -1,3 +1,3 @@
-global.globalPrintFunciton = function(x){
+global.globalPrintFunction = function(x){
     console.log(x);
 }

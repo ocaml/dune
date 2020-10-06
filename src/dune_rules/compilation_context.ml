@@ -69,6 +69,7 @@ type t =
   ; package : Package.t option
   ; vimpl : Vimpl.t option
   ; modes : Mode.Dict.Set.t
+  ; bin_annot : bool
   }
 
 let super_context t = t.super_context
@@ -109,11 +110,14 @@ let vimpl t = t.vimpl
 
 let modes t = t.modes
 
+let bin_annot t = t.bin_annot
+
 let context t = Super_context.context t.super_context
 
 let create ~super_context ~scope ~expander ~obj_dir ~modules ~flags
     ~requires_compile ~requires_link ?(preprocessing = Preprocessing.dummy)
-    ~opaque ?stdlib ~js_of_ocaml ~dynlink ~package ?vimpl ?modes () =
+    ~opaque ?stdlib ~js_of_ocaml ~dynlink ~package ?vimpl ?modes
+    ?(bin_annot = true) () =
   let requires_compile =
     if Dune_project.implicit_transitive_deps (Scope.project scope) then
       Lazy.force requires_link
@@ -152,6 +156,7 @@ let create ~super_context ~scope ~expander ~obj_dir ~modules ~flags
   ; package
   ; vimpl
   ; modes
+  ; bin_annot
   }
 
 let for_alias_module t =
@@ -206,3 +211,5 @@ let for_plugin_executable t ~embed_in_plugin_libraries =
     lazy (Result.List.map ~f:(Lib.DB.resolve libs) embed_in_plugin_libraries)
   in
   { t with requires_link }
+
+let without_bin_annot t = { t with bin_annot = false }

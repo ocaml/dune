@@ -100,13 +100,15 @@ module Module : sig
 
   val obj_file : 'path t -> Module.t -> kind:Cm_kind.t -> ext:string -> 'path
 
-  (** Same as [cm_file] but doesn't raise if [cm_kind] is [Cmo] or [Cmx] and the
-      module has no implementation.*)
-  val cm_file_unsafe : 'path t -> Module.t -> kind:Cm_kind.t -> 'path
+  (** Same as [cm_file] but raises if [cm_kind] is [Cmo] or [Cmx] and the module
+      has no implementation.*)
+  val cm_file_exn : 'path t -> Module.t -> kind:Cm_kind.t -> 'path
 
-  val o_file_unsafe : 'path t -> Module.t -> ext_obj:string -> 'path
+  val o_file : 'path t -> Module.t -> ext_obj:string -> 'path option
 
-  val cm_public_file_unsafe : 'path t -> Module.t -> kind:Cm_kind.t -> 'path
+  val o_file_exn : 'path t -> Module.t -> ext_obj:string -> 'path
+
+  val cm_public_file_exn : 'path t -> Module.t -> kind:Cm_kind.t -> 'path
 
   (** Either the .cmti, or .cmt if the module has no interface *)
   val cmti_file : 'path t -> Module.t -> 'path

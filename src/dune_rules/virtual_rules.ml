@@ -44,8 +44,8 @@ let setup_copy_rules_for_impl ~sctx ~dir vimpl =
     Dune_file.Mode_conf.Set.eval impl.modes ~has_native
   in
   let copy_obj_file m kind =
-    let src = Obj_dir.Module.cm_file_unsafe vlib_obj_dir m ~kind in
-    let dst = Obj_dir.Module.cm_file_unsafe impl_obj_dir m ~kind in
+    let src = Obj_dir.Module.cm_file_exn vlib_obj_dir m ~kind in
+    let dst = Obj_dir.Module.cm_file_exn impl_obj_dir m ~kind in
     copy_to_obj_dir ~src ~dst
   in
   let copy_objs src =
@@ -54,20 +54,14 @@ let setup_copy_rules_for_impl ~sctx ~dir vimpl =
       Module.visibility src = Public
       && Obj_dir.need_dedicated_public_dir impl_obj_dir
     then
-      let dst =
-        Obj_dir.Module.cm_public_file_unsafe impl_obj_dir src ~kind:Cmi
-      in
-      let src =
-        Obj_dir.Module.cm_public_file_unsafe vlib_obj_dir src ~kind:Cmi
-      in
+      let dst = Obj_dir.Module.cm_public_file_exn impl_obj_dir src ~kind:Cmi in
+      let src = Obj_dir.Module.cm_public_file_exn vlib_obj_dir src ~kind:Cmi in
       copy_to_obj_dir ~src ~dst );
     if Module.has src ~ml_kind:Impl then (
       if byte then copy_obj_file src Cmo;
       if native then (
         copy_obj_file src Cmx;
-        let object_file dir =
-          Obj_dir.Module.obj_file dir src ~kind:Cmx ~ext:ext_obj
-        in
+        let object_file dir = Obj_dir.Module.o_file_exn dir src ~ext_obj in
         copy_to_obj_dir ~src:(object_file vlib_obj_dir)
           ~dst:(object_file impl_obj_dir)
       )

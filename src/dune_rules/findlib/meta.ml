@@ -224,6 +224,7 @@ let builtins ~stdlib_dir ~version:ocaml_version =
         ]
     }
   in
+  let graphics = simple "graphics" [] ~dir:"+" in
   let libs =
     let base =
       [ stdlib; compiler_libs; str; unix; bigarray; threads; dynlink; bytes ]
@@ -243,6 +244,12 @@ let builtins ~stdlib_dir ~version:ocaml_version =
     let base =
       if Ocaml_version.stdlib_includes_seq ocaml_version then
         seq :: base
+      else
+        base
+    in
+    let base =
+      if Path.exists (Path.relative stdlib_dir "graphics.cma") then
+        graphics :: base
       else
         base
     in

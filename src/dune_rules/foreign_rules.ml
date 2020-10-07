@@ -85,8 +85,14 @@ let build_c ~kind ~sctx ~dir ~expander ~include_flags (loc, src, dst) =
         ; Fdo.c_flags ctx
         ]
     | Foreign_language.Cxx ->
-      List.concat
-        [ Cxx_flags.get_flags (Ocaml_config.ccomp_type cfg); Fdo.cxx_flags ctx ]
+      let base_flags =
+        let scope = Super_context.find_scope_by_dir sctx dir in
+        if Dune_project.add_cxx_flags (Scope.project scope) then
+          Cxx_flags.get_flags (Ocaml_config.ccomp_type cfg)
+        else
+          []
+      in
+      List.concat [ base_flags; Fdo.cxx_flags ctx ]
   in
   let with_user_and_std_flags =
     let flags = Foreign.Source.flags src in

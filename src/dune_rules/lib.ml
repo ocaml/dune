@@ -544,14 +544,14 @@ module Lib_and_module = struct
           | Module (obj_dir, m) ->
             Command.Args.S
               ( Dep
-                  (Obj_dir.Module.cm_file_unsafe obj_dir m
+                  (Obj_dir.Module.cm_file_exn obj_dir m
                      ~kind:(Mode.cm_kind (Link_mode.mode mode)))
               ::
               ( match mode with
               | Native ->
                 [ Command.Args.Hidden_deps
                     (Dep.Set.of_files
-                       [ Obj_dir.Module.o_file_unsafe obj_dir m
+                       [ Obj_dir.Module.o_file_exn obj_dir m
                            ~ext_obj:lib_config.ext_obj
                        ])
                 ]

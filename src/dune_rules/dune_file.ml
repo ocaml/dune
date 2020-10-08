@@ -1950,6 +1950,14 @@ module Deprecated_library_name = struct
        and+ new_public_name =
          field "new_public_name" (located Lib_name.decode)
        in
+       let () =
+         let loc, old_name = (fst old_name).name in
+         if Lib_name.equal (snd new_public_name) old_name then
+           User_error.raise ~loc
+             [ Pp.text
+                 "old_public_name cannot be the same as the new_public_name"
+             ]
+       in
        { Library_redirect.loc; project; old_name; new_public_name })
 end
 

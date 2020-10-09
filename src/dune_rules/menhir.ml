@@ -193,21 +193,15 @@ module Run (P : PARAMS) : sig end = struct
       in
       Module.of_source ~visibility:Public ~kind:Impl source
     in
-    let modules =
-      (* The following incantation allows the mock [.ml] file to be preprocessed
-         by the user-specified [ppx] rewriters. *)
-      let mock_module =
-        Preprocessing.pp_module_as
-          (Compilation_context.preprocessing cctx)
-          name mock_module ~lint:false
-      in
-      Modules.singleton_exe mock_module
+    let mock_module =
+      Preprocessing.pp_module_as
+        (Compilation_context.preprocessing cctx)
+        name mock_module ~lint:false
     in
-    let dep_graphs = Dep_rules.rules cctx ~modules in
     let cctx = Compilation_context.without_bin_annot cctx in
-    Modules.iter_no_vlib modules ~f:(fun m ->
-        Module_compilation.ocamlc_i ~dep_graphs cctx m
-          ~output:(inferred_mli base));
+    let deps = Dep_rules.for_module cctx mock_module in
+    Module_compilation.ocamlc_i ~deps cctx mock_module
+      ~output:(inferred_mli base);
     (* 3. A second invocation of Menhir reads the inferred [.mli] file. *)
     rule
       (menhir

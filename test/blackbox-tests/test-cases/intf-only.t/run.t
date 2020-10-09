@@ -5,7 +5,6 @@ Successes:
       ocamldep .foo.objs/foo.ml.d
         ocamlc .foo.objs/byte/foo__.{cmi,cmo,cmt}
       ocamldep .foo.objs/intf.mli.d
-      ocamldep test/.bar.objs/bar.ml.d
       ocamlopt .foo.objs/native/foo__.{cmx,o}
         ocamlc .foo.objs/byte/foo__Intf.{cmi,cmti}
         ocamlc .foo.objs/byte/foo.{cmi,cmo,cmt}

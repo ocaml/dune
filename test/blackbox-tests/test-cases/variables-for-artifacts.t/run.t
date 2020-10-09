@@ -19,12 +19,10 @@ prefixed and unprefixed modules are built.
   $ ./sdune clean
   $ ./sdune build --display short @t1
       ocamldep .a1.objs/a.ml.d
-      ocamldep .b.eobjs/b.ml.d
-      ocamldep .c1.objs/c.ml.d
-      ocamldep .c2.objs/d.ml.d
-        ocamlc .a1.objs/byte/a1.{cmi,cmo,cmt}
         ocamlc .b.eobjs/byte/dune__exe__B.{cmi,cmo,cmt}
         ocamlc .c1.objs/byte/c.{cmi,cmo,cmt}
+      ocamldep .c2.objs/d.ml.d
+        ocamlc .a1.objs/byte/a1.{cmi,cmo,cmt}
         ocamlc .c2.objs/byte/c2.{cmi,cmo,cmt}
         ocamlc .a1.objs/byte/a1__A.{cmi,cmo,cmt}
         ocamlc .c2.objs/byte/c2__D.{cmi,cmo,cmt}
@@ -182,7 +180,6 @@ public library defined in a subdirectory.
 
   $ ./sdune clean
   $ ./sdune build --display short @t10
-      ocamldep .c1.objs/c.ml.d
         ocamlc .c1.objs/byte/c.{cmi,cmo,cmt}
         ocamlc c1.cma
 

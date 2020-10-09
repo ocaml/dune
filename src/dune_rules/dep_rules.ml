@@ -102,8 +102,14 @@ let rec deps_of cctx ~ml_kind (m : Modules.Sourced_module.t) =
       | Intf -> deps_of cctx ~ml_kind (Imported_from_vlib m)
       | Impl -> deps_of cctx ~ml_kind (Normal m) )
 
+let for_module cctx module_ =
+  Ml_kind.Dict.of_func (fun ~ml_kind -> deps_of cctx ~ml_kind (Normal module_))
+
 let rules cctx ~modules =
-  let dir = Compilation_context.dir cctx in
-  Ml_kind.Dict.of_func (fun ~ml_kind ->
-      let per_module = Modules.obj_map modules ~f:(deps_of cctx ~ml_kind) in
-      Dep_graph.make ~dir ~per_module)
+  match Modules.as_singleton modules with
+  | Some m -> Dep_graph.Ml_kind.dummy m
+  | None ->
+    let dir = Compilation_context.dir cctx in
+    Ml_kind.Dict.of_func (fun ~ml_kind ->
+        let per_module = Modules.obj_map modules ~f:(deps_of cctx ~ml_kind) in
+        Dep_graph.make ~dir ~per_module)

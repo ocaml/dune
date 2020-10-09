@@ -763,6 +763,10 @@ let is_empty = function
   | Unwrapped w -> Module_name.Map.is_empty w
   | Wrapped w -> Wrapped.empty w
 
+let as_singleton = function
+  | Singleton m -> Some m
+  | _ -> None
+
 let source_dirs =
   fold_user_written ~init:Path.Set.empty ~f:(fun m acc ->
       Module.sources m

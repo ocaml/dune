@@ -228,11 +228,4 @@ moment, so for now we are relying on shared goals between people and
 good will. Asking on #dune-dev is another way to find reviewers when
 needed.
 
-## Things that are not covered by this document
-
-Sometimes, we might find ourselves in a situation where this document
-doesn't describe what to do next. In such a case, we should simply
-discuss with the other people involved so that they are aware of our
-point of view and a way forward can be found.
-
 [wiki]: https://github.com/ocaml/dune/wiki

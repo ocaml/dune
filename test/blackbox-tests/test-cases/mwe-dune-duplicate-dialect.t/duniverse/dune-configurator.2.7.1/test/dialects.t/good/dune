@@ -1,9 +1,0 @@
-(executable
- (name main)
- (public_name main)
- (modules main))
-
-(executable
- (name fmt)
- (public_name fmt)
- (modules fmt))

@@ -595,7 +595,6 @@ end = struct
           if
             Dune_project.cram parent_dir.project
             && Cram_test.is_cram_suffix basename
-            && status = Normal
           then
             Sub_dirs.Status.Data_only
           else

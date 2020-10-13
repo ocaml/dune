@@ -37,6 +37,9 @@ Unreleased
 - Do no run ocamldep to for single module executables & libraries. The
   dependency graph for such artifacts is trivial (#3847, @rgrinberg)
 
+- Fix cram tests inside vendored directories not being interpreted correctly.
+  (@rgrinberg, #3860)
+
 2.7.1 (2/09/2020)
 -----------------
 

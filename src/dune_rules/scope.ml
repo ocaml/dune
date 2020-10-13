@@ -52,7 +52,7 @@ module DB = struct
       | Deprecated_library_name of Dune_file.Deprecated_library_name.t
   end
 
-  let create_from_stanzas ~parent ~lib_config stanzas =
+  let create_db_from_stanzas ~parent ~lib_config stanzas =
     let map : Found_or_redirect.t Lib_name.Map.t =
       List.concat_map stanzas ~f:(fun stanza ->
           match (stanza : Library_related_stanza.t) with
@@ -95,7 +95,7 @@ module DB = struct
                  ; Pp.textf "- %s" (Loc.to_file_colon_line loc2)
                  ])
     in
-    Lib.DB.create () ~parent
+    Lib.DB.create () ~parent:(Some parent)
       ~resolve:(fun name ->
         match Lib_name.Map.find map name with
         | None -> Lib.DB.Resolve_result.not_found
@@ -135,7 +135,7 @@ module DB = struct
     | Some (Name name) -> Lib.DB.Resolve_result.redirect None name
 
   (* Create a database from the public libraries defined in the stanzas *)
-  let public_libs t ~installed_libs ~lib_config stanzas =
+  let public_libs t ~installed_libs ~lib_config ~projects_by_package stanzas =
     let public_libs =
       List.filter_map stanzas ~f:(fun (stanza : Library_related_stanza.t) ->
           match stanza with
@@ -158,13 +158,9 @@ module DB = struct
               let named p loc = Option.some_if (name = p) loc in
               match stanza with
               | Library (_, { buildable = { loc; _ }; visibility = Public p; _ })
-                ->
+              | Deprecated_library_name
+                  { Dune_file.Library_redirect.loc; old_name = p, _; _ } ->
                 named (Dune_file.Public_lib.name p) loc
-              | Deprecated_library_name d ->
-                let old_name =
-                  Dune_file.Deprecated_library_name.old_public_name d
-                in
-                named old_name d.loc
               | _ -> None)
         with
         | []
@@ -179,11 +175,12 @@ module DB = struct
             ] )
     in
     let resolve = resolve t public_libs in
-    Lib.DB.create ~parent:(Some installed_libs) ~resolve
+    Lib.DB.create ~parent:(Some installed_libs) ~resolve ~projects_by_package
       ~all:(fun () -> Lib_name.Map.keys public_libs)
       ~lib_config ()
 
-  let scopes_by_dir context ~projects ~public_libs stanzas coq_stanzas =
+  let scopes_by_dir context ~projects_by_package ~projects ~public_libs stanzas
+      coq_stanzas =
     let projects_by_dir =
       List.map projects ~f:(fun (project : Dune_project.t) ->
           (Dune_project.root project, project))
@@ -219,7 +216,8 @@ module DB = struct
         let project = Option.value_exn project in
         let stanzas, coq_stanzas = Option.value stanzas ~default:([], []) in
         let db =
-          create_from_stanzas stanzas ~parent:(Some public_libs) ~lib_config
+          create_db_from_stanzas stanzas ~parent:public_libs
+            ~projects_by_package ~lib_config
         in
         let coq_db = Coq_lib.DB.create_from_coqlib_stanzas coq_stanzas in
         let root =
@@ -227,14 +225,16 @@ module DB = struct
         in
         Some { project; db; coq_db; root })
 
-  let create ~projects ~context ~installed_libs stanzas coq_stanzas =
+  let create ~projects_by_package ~context ~installed_libs ~projects stanzas
+      coq_stanzas =
     let t = Fdecl.create Dyn.Encoder.opaque in
     let public_libs =
       let lib_config = Context.lib_config context in
-      public_libs t ~installed_libs ~lib_config stanzas
+      public_libs t ~installed_libs ~lib_config ~projects_by_package stanzas
     in
     let by_dir =
-      scopes_by_dir context ~projects ~public_libs stanzas coq_stanzas
+      scopes_by_dir context ~projects ~projects_by_package ~public_libs stanzas
+        coq_stanzas
     in
     let value = { by_dir } in
     Fdecl.set t value;
@@ -246,7 +246,8 @@ module DB = struct
         [ ("dir", Path.Build.to_dyn dir) ];
     find_by_dir t (Path.Build.drop_build_context_exn dir)
 
-  let create_from_stanzas ~projects ~context ~installed_libs stanzas =
+  let create_from_stanzas ~projects ~projects_by_package ~context
+      ~installed_libs stanzas =
     let stanzas, coq_stanzas =
       Dune_load.Dune_file.fold_stanzas stanzas ~init:([], [])
         ~f:(fun dune_file stanza (acc, coq_acc) ->
@@ -266,5 +267,6 @@ module DB = struct
             (acc, (ctx_dir, coq_lib) :: coq_acc)
           | _ -> (acc, coq_acc))
     in
-    create ~projects ~context ~installed_libs stanzas coq_stanzas
+    create ~projects ~context ~installed_libs ~projects_by_package stanzas
+      coq_stanzas
 end

@@ -60,7 +60,8 @@ end = struct
               let info = Lib.info lib in
               let status = Lib_info.status info in
               match status with
-              | Private scope_name -> Some scope_name
+              | Private (scope_name, _) -> Some scope_name
+              | Installed_private
               | Public _
               | Installed ->
                 None

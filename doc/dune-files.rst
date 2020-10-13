@@ -356,6 +356,12 @@ to use the :ref:`include_subdirs` stanza.
   want. The package name must be one of the packages that dune knows about,
   as determined by the :ref:`opam-files`
 
+- ``(package <package>)`` Install private library under the specified package.
+  Such a library is now usable by public libraries defined in the same project.
+  The findlib name for this library will be ``<package>.__private__.<name>``,
+  however the library's interface will be hidden from consumers outside the
+  project.
+
 - ``(synopsis <string>)`` should give a one-line description of the library.
   This is used by tools that list installed libraries
 

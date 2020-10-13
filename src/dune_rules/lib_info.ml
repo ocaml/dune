@@ -176,27 +176,35 @@ end
 
 module Status = struct
   type t =
+    | Installed_private
     | Installed
     | Public of Dune_project.t * Package.t
-    | Private of Dune_project.t
+    | Private of Dune_project.t * Package.t option
 
   let to_dyn x =
     let open Dyn.Encoder in
     match x with
+    | Installed_private -> constr "Installed_private" []
     | Installed -> constr "Installed" []
     | Public (project, package) ->
       constr "Public" [ Dune_project.to_dyn project; Package.to_dyn package ]
-    | Private proj -> constr "Private" [ Dune_project.to_dyn proj ]
+    | Private (proj, package) ->
+      constr "Private"
+        [ Dune_project.to_dyn proj; option Package.to_dyn package ]
 
   let is_private = function
-    | Private _ -> true
+    | Installed_private
+    | Private _ ->
+      true
     | Installed
     | Public _ ->
       false
 
   let project = function
-    | Installed -> None
-    | Private project
+    | Installed_private
+    | Installed ->
+      None
+    | Private (project, _)
     | Public (project, _) ->
       Some project
 end
@@ -344,8 +352,8 @@ let best_src_dir t = Option.value ~default:t.src_dir t.orig_src_dir
 
 let set_version t version = { t with version }
 
-let for_dune_package t ~ppx_runtime_deps ~requires ~foreign_objects ~obj_dir
-    ~implements ~default_implementation ~sub_systems =
+let for_dune_package t ~name ~ppx_runtime_deps ~requires ~foreign_objects
+    ~obj_dir ~implements ~default_implementation ~sub_systems =
   let foreign_objects = Source.External foreign_objects in
   let orig_src_dir =
     match !Clflags.store_orig_src_dir with
@@ -363,6 +371,7 @@ let for_dune_package t ~ppx_runtime_deps ~requires ~foreign_objects ~obj_dir
   in
   { t with
     ppx_runtime_deps
+  ; name
   ; requires
   ; foreign_objects
   ; obj_dir
@@ -524,9 +533,11 @@ let to_dyn path
 
 let package t =
   match t.status with
-  | Installed -> Some (Lib_name.package_name t.name)
+  | Installed_private
+  | Installed ->
+    Some (Lib_name.package_name t.name)
   | Public (_, p) -> Some p.name
-  | Private _ -> None
+  | Private (_, p) -> Option.map p ~f:(fun t -> t.name)
 
 let has_native_archive lib_config modules =
   Lib_config.linker_can_create_empty_archives lib_config

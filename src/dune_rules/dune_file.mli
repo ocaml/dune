@@ -114,7 +114,7 @@ end
 module Library : sig
   type visibility =
     | Public of Public_lib.t
-    | Private
+    | Private of Package.t option
 
   type t =
     { name : Loc.t * Lib_name.Local.t
@@ -365,6 +365,8 @@ module Library_redirect : sig
 
   module Local : sig
     type nonrec t = (Loc.t * Lib_name.Local.t) t
+
+    val of_private_lib : Library.t -> t option
   end
 end
 

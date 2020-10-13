@@ -66,9 +66,9 @@ module L : sig
 
   val to_iflags : Path.Set.t -> _ Command.Args.t
 
-  val include_paths : t -> Path.Set.t
+  val include_paths : ?project:Dune_project.t -> t -> Path.Set.t
 
-  val include_flags : t -> _ Command.Args.t
+  val include_flags : ?project:Dune_project.t -> t -> _ Command.Args.t
 
   val c_include_flags : t -> _ Command.Args.t
 
@@ -174,12 +174,17 @@ module DB : sig
   val create :
        parent:t option
     -> resolve:(Lib_name.t -> Resolve_result.t)
+    -> projects_by_package:Dune_project.t Package.Name.Map.t
     -> all:(unit -> Lib_name.t list)
     -> lib_config:Lib_config.t
     -> unit
     -> t
 
-  val create_from_findlib : lib_config:Lib_config.t -> Findlib.t -> t
+  val create_from_findlib :
+       lib_config:Lib_config.t
+    -> projects_by_package:Dune_project.t Package.Name.Map.t
+    -> Findlib.t
+    -> t
 
   val find : t -> Lib_name.t -> lib option
 

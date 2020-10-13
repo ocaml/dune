@@ -507,7 +507,7 @@ module Library = struct
 
   type visibility =
     | Public of Public_lib.t
-    | Private
+    | Private of Package.t option
 
   type t =
     { name : Loc.t * Lib_name.Local.t
@@ -609,6 +609,10 @@ module Library = struct
          field_o "instrumentation.backend"
            ( Dune_lang.Syntax.since Stanza.syntax (2, 7)
            >>> fields (field "ppx" (located Lib_name.decode)) )
+       and+ package =
+         field_o "package"
+           ( Dune_lang.Syntax.since Stanza.syntax (2, 8)
+           >>> located Stanza_common.Pkg.decode )
        in
        let wrapped =
          Wrapped.make ~wrapped ~implements ~special_builtin_support
@@ -646,9 +650,17 @@ module Library = struct
              ]
        in
        let visibility =
-         match public with
-         | None -> Private
-         | Some public -> Public public
+         match (public, package) with
+         | None, None -> Private None
+         | Some public, None -> Public public
+         | None, Some (_loc, package) -> Private (Some package)
+         | Some public, Some (loc, _) ->
+           User_error.raise ~loc
+             [ Pp.textf
+                 "This library has a pullic_name, it already belongs to the \
+                  package %s"
+                 (Package.Name.to_string public.package.name)
+             ]
        in
        Option.both virtual_modules implements
        |> Option.iter ~f:(fun (virtual_modules, (_, impl)) ->
@@ -694,12 +706,15 @@ module Library = struct
   let package t =
     match t.visibility with
     | Public p -> Some p.package
-    | Private -> None
+    | Private p -> p
 
   let sub_dir t =
     match t.visibility with
     | Public p -> p.sub_dir
-    | Private -> None
+    | Private None -> None
+    | Private (Some _) ->
+      Lib_name.Local.mangled_path_under_package (snd t.name)
+      |> String.concat ~sep:"/" |> Option.some
 
   let has_foreign t = Buildable.has_foreign t.buildable
 
@@ -723,7 +738,7 @@ module Library = struct
 
   let best_name t =
     match t.visibility with
-    | Private -> Lib_name.of_local t.name
+    | Private _ -> Lib_name.of_local t.name
     | Public p -> snd p.name
 
   let is_virtual t = Option.is_some t.virtual_modules
@@ -731,9 +746,16 @@ module Library = struct
   let is_impl t = Option.is_some t.implements
 
   let obj_dir ~dir t =
+    let private_lib =
+      match t.visibility with
+      | Private (Some _) -> true
+      | Private None
+      | Public _ ->
+        false
+    in
     Obj_dir.make_lib ~dir
       ~has_private_modules:(t.private_modules <> None)
-      (snd t.name)
+      ~private_lib (snd t.name)
 
   let main_module_name t : Lib_info.Main_module_name.t =
     match (t.implements, t.wrapped) with
@@ -772,7 +794,7 @@ module Library = struct
     in
     let status =
       match conf.visibility with
-      | Private -> Lib_info.Status.Private conf.project
+      | Private pkg -> Lib_info.Status.Private (conf.project, pkg)
       | Public p -> Public (conf.project, p.package)
     in
     let virtual_library = is_virtual conf in
@@ -835,6 +857,7 @@ module Library = struct
     let version =
       match status with
       | Public (_, pkg) -> pkg.version
+      | Installed_private
       | Installed
       | Private _ ->
         None
@@ -1895,22 +1918,31 @@ module Library_redirect = struct
   module Local = struct
     type nonrec t = (Loc.t * Lib_name.Local.t) t
 
+    let for_lib (lib : Library.t) ~new_public_name ~loc : t =
+      { loc; new_public_name; old_name = lib.name; project = lib.project }
+
+    let of_private_lib (lib : Library.t) : t option =
+      match lib.visibility with
+      | Public _
+      | Private None ->
+        None
+      | Private (Some package) ->
+        let loc, name = lib.name in
+        let new_public_name = (loc, Lib_name.mangled package.name name) in
+        Some (for_lib lib ~loc ~new_public_name)
+
     let of_lib (lib : Library.t) : t option =
       let open Option.O in
-      let* public =
+      let* public_name =
         match lib.visibility with
-        | Public p -> Some p
-        | Private -> None
+        | Public plib -> Some plib.name
+        | Private _ -> None
       in
-      if Lib_name.equal (Lib_name.of_local lib.name) (snd public.name) then
+      if Lib_name.equal (Lib_name.of_local lib.name) (snd public_name) then
         None
       else
-        Some
-          { loc = Loc.none
-          ; project = lib.project
-          ; old_name = lib.name
-          ; new_public_name = public.name
-          }
+        let loc = fst public_name in
+        Some (for_lib lib ~loc ~new_public_name:public_name)
   end
 end
 

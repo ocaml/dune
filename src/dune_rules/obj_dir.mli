@@ -57,6 +57,7 @@ val all_obj_dirs : 'path t -> mode:Mode.t -> 'path list
 val make_lib :
      dir:Path.Build.t
   -> has_private_modules:bool
+  -> private_lib:bool
   -> Lib_name.Local.t
   -> Path.Build.t t
 
@@ -71,8 +72,6 @@ val decode : dir:Path.t -> Path.t t Dune_lang.Decoder.t
 val convert_to_external : Path.Build.t t -> dir:Path.t -> Path.t t
 
 val cm_dir : 'path t -> Cm_kind.t -> Visibility.t -> 'path
-
-val cm_public_dir : 'path t -> Cm_kind.t -> 'path
 
 val to_dyn : _ t -> Dyn.t
 

@@ -1,5 +1,7 @@
 open Stdune
 
+let private_key = "__private__"
+
 module Local = struct
   type t = string
 
@@ -67,6 +69,9 @@ module Local = struct
             loop false 0
     end) :
       Stringlike_intf.S with type t := t )
+
+  let mangled_path_under_package local_name =
+    [ private_key; to_string local_name ]
 end
 
 let split t =
@@ -75,6 +80,13 @@ let split t =
   | pkg :: rest -> (Package.Name.of_string pkg, rest)
 
 let to_local = Local.of_string_user_error
+
+let to_local_exn t =
+  match Local.of_string_opt t with
+  | Some s -> s
+  | None ->
+    Code_error.raise "invalid Lib_name.t -> Lib_name.Local.t conversion"
+      [ ("t", String t) ]
 
 include Stringlike.Make (struct
   type nonrec t = string
@@ -94,6 +106,20 @@ include Stringlike.Make (struct
     | "" -> None
     | s -> Option.some_if (s.[0] <> '.') s
 end)
+
+type analyze =
+  | Public of Package.Name.t * string list
+  | Private of Package.Name.t * Local.t
+
+let analyze t =
+  let pkg, rest = split t in
+  match rest with
+  | [ pkey; name ] when pkey = private_key -> Private (pkg, Local.of_string name)
+  | _ -> Public (pkg, rest)
+
+let mangled pkg local_name =
+  let under_pkg = Local.mangled_path_under_package local_name in
+  Package.Name.to_string pkg :: under_pkg |> String.concat ~sep:"." |> of_string
 
 let of_local (_loc, t) = t
 

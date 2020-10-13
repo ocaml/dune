@@ -8,9 +8,7 @@ module Pub_name = struct
     | Dot of t * string
     | Id of string
 
-  let parse s =
-    let s = Lib_name.to_string s in
-    match String.split s ~on:'.' with
+  let of_list = function
     | [] -> assert false
     | x :: l ->
       let rec loop acc l =
@@ -19,6 +17,10 @@ module Pub_name = struct
         | x :: l -> loop (Dot (acc, x)) l
       in
       loop (Id x) l
+
+  let of_lib_name s =
+    let pkg, xs = Lib_name.split s in
+    of_list (Package.Name.to_string pkg :: xs)
 
   let rec root = function
     | Dot (t, _) -> root t
@@ -157,18 +159,39 @@ let gen ~(package : Package.t) ~add_directory_entry entries =
     List.map entries ~f:(fun (e : Super_context.Lib_entry.t) ->
         match e with
         | Library lib -> (
-          let name = Lib.Local.info lib |> Lib_info.name in
-          let pub_name = Pub_name.parse name in
+          let info = Lib.Local.info lib in
+          let pub_name =
+            let name = Lib_info.name info in
+            Pub_name.of_lib_name name
+          in
           match Pub_name.to_list pub_name with
           | [] -> assert false
-          | _package :: path ->
+          | package :: path ->
+            let pub_name, path =
+              match Lib_info.status info with
+              | Private (_, None) ->
+                (* Not possible b/c we wouldn't be generating a META file for a
+                   private library without a package. *)
+                assert false
+              | Private (_, Some pkg) ->
+                assert (path = []);
+                let path =
+                  Lib_name.Local.mangled_path_under_package
+                    (Lib_name.Local.of_string package)
+                in
+                let pub_name =
+                  Pub_name.of_list (Package.Name.to_string pkg.name :: path)
+                in
+                (pub_name, path)
+              | _ -> (pub_name, path)
+            in
             (pub_name, gen_lib pub_name ~path (Lib.Local.to_lib lib) ~version) )
         | Deprecated_library_name
             { old_name = old_public_name, _
             ; new_public_name = _, new_public_name
             ; _
             } ->
-          ( Pub_name.parse (Dune_file.Public_lib.name old_public_name)
+          ( Pub_name.of_lib_name (Dune_file.Public_lib.name old_public_name)
           , version @ [ requires (Lib_name.Set.singleton new_public_name) ] ))
   in
   let pkgs =

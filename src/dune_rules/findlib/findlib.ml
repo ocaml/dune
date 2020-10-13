@@ -297,7 +297,11 @@ end = struct
         let kind = kind t in
         let sub_systems = Sub_system_name.Map.empty in
         let synopsis = description t in
-        let status = Lib_info.Status.Installed in
+        let status =
+          match Lib_name.analyze t.name with
+          | Private (_, _) -> Lib_info.Status.Installed_private
+          | Public (_, _) -> Lib_info.Status.Installed
+        in
         let src_dir = Obj_dir.dir obj_dir in
         let version = version t in
         let dune_version = None in

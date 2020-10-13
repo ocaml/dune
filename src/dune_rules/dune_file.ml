@@ -1918,25 +1918,31 @@ module Library_redirect = struct
   module Local = struct
     type nonrec t = (Loc.t * Lib_name.Local.t) t
 
+    let for_lib (lib : Library.t) ~new_public_name ~loc : t =
+      { loc; new_public_name; old_name = lib.name; project = lib.project }
+
+    let of_private_lib (lib : Library.t) : t option =
+      match lib.visibility with
+      | Public _
+      | Private None ->
+        None
+      | Private (Some package) ->
+        let loc, name = lib.name in
+        let new_public_name = (loc, Lib_name.mangled package.name name) in
+        Some (for_lib lib ~loc ~new_public_name)
+
     let of_lib (lib : Library.t) : t option =
       let open Option.O in
       let* public_name =
         match lib.visibility with
         | Public plib -> Some plib.name
-        | Private None -> None
-        | Private (Some package) ->
-          let loc, name = lib.name in
-          Some (loc, Lib_name.mangled package.name name)
+        | Private _ -> None
       in
       if Lib_name.equal (Lib_name.of_local lib.name) (snd public_name) then
         None
       else
-        Some
-          { loc = Loc.none
-          ; project = lib.project
-          ; old_name = lib.name
-          ; new_public_name = public_name
-          }
+        let loc = fst public_name in
+        Some (for_lib lib ~loc ~new_public_name:public_name)
   end
 end
 

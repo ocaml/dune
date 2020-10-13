@@ -76,11 +76,9 @@ module DB = struct
                match (v1, v2) with
                | Found info1, Found info2 ->
                  Error (Lib_info.loc info1, Lib_info.loc info2)
-               | Found info, Redirect (loc, r)
-               | Redirect (loc, r), Found info -> (
-                 match Lib_name.analyze r with
-                 | Private _ -> Ok (Found_or_redirect.found info)
-                 | Public _ -> Error (loc, Lib_info.loc info) )
+               | Found info, Redirect (loc, _)
+               | Redirect (loc, _), Found info ->
+                 Error (loc, Lib_info.loc info)
                | Redirect (loc1, lib1), Redirect (loc2, lib2) ->
                  if Lib_name.equal lib1 lib2 then
                    Ok v1

@@ -381,7 +381,15 @@ let filter_out_stanzas_from_hidden_packages ~visible_pkgs =
         | None -> true
         | Some package -> Package.Name.Map.mem visible_pkgs package.name
       in
-      Option.some_if include_stanza stanza)
+      if include_stanza then
+        Some stanza
+      else
+        match stanza with
+        | Library l ->
+          let open Option.O in
+          let+ redirect = Dune_file.Library_redirect.Local.of_private_lib l in
+          Dune_file.Library_redirect redirect
+        | _ -> None)
 
 let gen ~contexts ?only_packages conf =
   let open Fiber.O in

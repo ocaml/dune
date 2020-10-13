@@ -816,6 +816,23 @@ let parse ~dir ~lang ~opam_packages ~file ~dir_status =
            Dialect.DB.add dialects ~loc dialect)
          ~init:Dialect.DB.builtin dialects
      in
+     let () =
+       match name with
+       | Named _ -> ()
+       | Anonymous _ ->
+         if
+           dune_version >= (2, 8)
+           && generate_opam_files
+           && dir_status = Sub_dirs.Status.Normal
+         then
+           let loc = Loc.in_file (Path.source file) in
+           User_warning.emit ~loc
+             [ Pp.text
+                 "Project name is not specified. Add a (name <project-name>) \
+                  field to your dune-project file to make sure that $ dune \
+                  subst works in release or pinned builds"
+             ]
+     in
      { name
      ; file_key
      ; root
@@ -884,3 +901,5 @@ let () =
 let strict_package_deps t = t.strict_package_deps
 
 let cram t = t.cram
+
+let info t = t.info

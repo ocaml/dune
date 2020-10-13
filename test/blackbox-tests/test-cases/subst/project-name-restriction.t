@@ -25,8 +25,7 @@ doesn't verify that this is the case
   File "dune-project", line 2, characters 6-9:
   2 | (name bar)
             ^^^
-  Error: Package bar doesn't exist. Please add a (package (name bar) ...)
-  stanza to your dune-project file.
+  Error: Package bar doesn't exist.
   [1]
 
   $ cat file.ml

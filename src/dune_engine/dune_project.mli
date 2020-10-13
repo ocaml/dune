@@ -170,3 +170,5 @@ val wrapped_executables : t -> bool
 val strict_package_deps : t -> bool
 
 val cram : t -> bool
+
+val info : t -> Package.Info.t

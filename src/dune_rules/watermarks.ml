@@ -146,36 +146,35 @@ module Dune_project = struct
   let filename = Path.in_source Dune_project.filename
 
   let load ~dir ~files ~infer_from_opam_files =
-    let project =
-      (* XXX dir_status only affects warning status, but it will not matter
-         here. dune subst will fail with a hard error if the name is missing *)
+    let open Option.O in
+    let* project =
+      (* dir_status only affects warning status, but it will not matter here.
+         dune subst will fail with a hard error if the name is missing *)
       let dir_status = Sub_dirs.Status.Normal in
       Dune_project.load ~dir ~files ~infer_from_opam_files ~dir_status
     in
-    match project with
-    | Some project ->
-      let file = Dune_project.file project in
-      let file = Path.in_source (Path.Source.to_string file) in
-      let s = Io.read_file file in
-      let lb = Lexbuf.from_string s ~fname:(Path.to_string file) in
-      let sexp = Dune_lang.Parser.parse lb ~mode:Many_as_one in
-      let parser =
-        let open Dune_lang.Decoder in
-        let simple_field name arg =
-          let+ loc, x = located (field_o name (located arg)) in
-          match x with
-          | Some (loc_of_arg, arg) -> Some { loc; loc_of_arg; arg }
-          | None -> None
-        in
-        enter
-          (fields
-             (let+ name = simple_field "name" Package.Name.decode
-              and+ version = simple_field "version" string
-              and+ () = junk_everything in
-              Some { contents = s; name; version; project }))
+    let file =
+      Dune_project.file project |> Path.Source.to_string |> Path.in_source
+    in
+    let contents = Io.read_file file in
+    let sexp =
+      let lb = Lexbuf.from_string contents ~fname:(Path.to_string file) in
+      Dune_lang.Parser.parse lb ~mode:Many_as_one
+    in
+    let parser =
+      let open Dune_lang.Decoder in
+      let simple_field name arg =
+        let+ loc, x = located (field_o name (located arg)) in
+        Option.map x ~f:(fun (loc_of_arg, arg) -> { loc; loc_of_arg; arg })
       in
-      Dune_lang.Decoder.parse parser Univ_map.empty sexp
-    | None -> None
+      enter
+        (fields
+           (let+ name = simple_field "name" Package.Name.decode
+            and+ version = simple_field "version" string
+            and+ () = junk_everything in
+            Some { contents; name; version; project }))
+    in
+    Dune_lang.Decoder.parse parser Univ_map.empty sexp
 
   let project t = t.project
 
@@ -228,13 +227,12 @@ module Dune_project = struct
     if s <> t.contents then Io.write_file filename s
 end
 
-let make_watermark_map ~commit ~version ~dune_project ~package =
+let make_watermark_map ~commit ~version ~dune_project ~info =
   let dune_project = Dune_project.project dune_project in
   let version_num =
     Option.value ~default:version (String.drop_prefix version ~prefix:"v")
   in
   let name = Dune_project.name dune_project in
-  let info = package.Package.info in
   (* XXX these error messages aren't particularly good as these values do not
      necessarily come from the project file. It's possible for them to be
      defined in the .opam file directly*)
@@ -276,7 +274,7 @@ let subst vcs =
           (fun () -> Vcs.commit_id vcs))
       (fun () -> Vcs.files vcs)
   in
-  let dune_project =
+  let dune_project : Dune_project.t =
     match
       let files =
         (* Filter-out files form sub-directories *)
@@ -299,7 +297,7 @@ let subst vcs =
           [ Pp.text "dune subst must be executed from the root of the project."
           ]
   in
-  let package =
+  let info =
     let loc, name =
       match dune_project.name with
       | None ->
@@ -310,20 +308,38 @@ let subst vcs =
           ]
       | Some n -> (n.loc_of_arg, n.arg)
     in
-    match
-      Package.Name.Map.find (Dune_project.packages dune_project.project) name
-    with
-    | Some pkg -> pkg
-    | None ->
-      User_error.raise ~loc
-        [ Pp.textf
-            "Package %s doesn't exist. Please add a (package (name %s) ...) \
-             stanza to your dune-project file."
-            (Package.Name.to_string name)
-            (Package.Name.to_string name)
-        ]
+    let package_named_after_project =
+      let packages = Dune_project.packages dune_project.project in
+      Package.Name.Map.find packages name
+    in
+    let metadata_from_dune_project () =
+      Dune_project.info dune_project.project
+    in
+    let metadata_from_matching_package () =
+      match package_named_after_project with
+      | Some pkg -> Ok pkg.info
+      | None ->
+        Error
+          (User_error.make ~loc
+             [ Pp.textf "Package %s doesn't exist."
+                 (Package.Name.to_string name)
+             ])
+    in
+    let version = Dune_project.dune_version dune_project.project in
+    let ok_exn = function
+      | Ok s -> s
+      | Error e -> raise (User_error.E e)
+    in
+    if version >= (3, 0) then
+      metadata_from_dune_project ()
+    else if version >= (2, 8) then
+      match metadata_from_matching_package () with
+      | Ok p -> p
+      | Error _ -> metadata_from_dune_project ()
+    else
+      ok_exn (metadata_from_matching_package ())
   in
-  let watermarks = make_watermark_map ~commit ~version ~dune_project ~package in
+  let watermarks = make_watermark_map ~commit ~version ~dune_project ~info in
   Dune_project.subst ~map:watermarks ~version dune_project;
   List.iter files ~f:(fun path ->
       if is_a_source_file path && not (Path.equal path Dune_project.filename)

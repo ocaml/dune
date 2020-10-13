@@ -743,20 +743,15 @@ module Dep_stack = struct
 end
 
 type private_deps =
-  | From_project of Dune_project.t
+  | From_same_project
   | Allow_all
 
 let check_private_deps lib ~loc ~(private_deps : private_deps) =
   match private_deps with
   | Allow_all -> Ok lib
-  | From_project project -> (
+  | From_same_project -> (
     match Lib_info.status lib.info with
-    | Private (_, Some (package : Package.t)) ->
-      let packages = Dune_project.packages project in
-      if Package.Name.Map.mem packages package.name then
-        Ok lib
-      else
-        Error.private_deps_not_allowed ~loc lib.info
+    | Private (_, Some _) -> Ok lib
     | Private (_, None) -> Error.private_deps_not_allowed ~loc lib.info
     | _ -> Ok lib )
 
@@ -1031,7 +1026,7 @@ end = struct
       | Private _
       | Installed ->
         Allow_all
-      | Public (project, _) -> From_project project
+      | Public (_, _) -> From_same_project
     in
     let resolve name = resolve_dep db name ~private_deps ~stack in
     let implements =

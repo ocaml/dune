@@ -1022,6 +1022,9 @@ end = struct
     let status = Lib_info.status info in
     let private_deps =
       match status with
+      (* [Allow_all] is used for libraries that are installed because we don't
+         have to check it again. It has been checked when compiling the
+         libraries before their installation *)
       | Installed_private
       | Private _
       | Installed ->

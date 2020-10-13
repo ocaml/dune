@@ -746,8 +746,8 @@ type private_deps =
   | From_project of Dune_project.t
   | Allow_all
 
-let check_private_deps lib ~loc ~(allow_private_deps : private_deps) =
-  match allow_private_deps with
+let check_private_deps lib ~loc ~(private_deps : private_deps) =
+  match private_deps with
   | Allow_all -> Ok lib
   | From_project project -> (
     match Lib_info.status lib.info with
@@ -968,7 +968,7 @@ module rec Resolve : sig
   val resolve_dep :
        db
     -> Loc.t * Lib_name.t
-    -> allow_private_deps:private_deps
+    -> private_deps:private_deps
     -> stack:Dep_stack.t
     -> lib Or_exn.t
 
@@ -979,7 +979,7 @@ module rec Resolve : sig
   val resolve_simple_deps :
        db
     -> (Loc.t * Lib_name.t) list
-    -> allow_private_deps:private_deps
+    -> private_deps:private_deps
     -> stack:Dep_stack.t
     -> (t list, exn) Result.t
 
@@ -993,7 +993,7 @@ module rec Resolve : sig
   val resolve_deps_and_add_runtime_deps :
        db
     -> Lib_dep.t list
-    -> allow_private_deps:private_deps
+    -> private_deps:private_deps
     -> pps:(Loc.t * Lib_name.t) list
     -> dune_version:Dune_lang.Syntax.Version.t option
     -> stack:Dep_stack.t
@@ -1025,7 +1025,7 @@ end = struct
     (* Add [id] to the table, to detect loops *)
     Table.add_exn db.table name (Status.Initializing unique_id);
     let status = Lib_info.status info in
-    let allow_private_deps =
+    let private_deps =
       match status with
       | Installed_private
       | Private _
@@ -1033,7 +1033,7 @@ end = struct
         Allow_all
       | Public (project, _) -> From_project project
     in
-    let resolve name = resolve_dep db name ~allow_private_deps ~stack in
+    let resolve name = resolve_dep db name ~private_deps ~stack in
     let implements =
       let open Option.O in
       let+ ((loc, _) as name) = Lib_info.implements info in
@@ -1097,8 +1097,8 @@ end = struct
       in
       let dune_version = Lib_info.dune_version info in
       Lib_info.requires info
-      |> resolve_deps_and_add_runtime_deps db ~allow_private_deps ~dune_version
-           ~pps ~stack
+      |> resolve_deps_and_add_runtime_deps db ~private_deps ~dune_version ~pps
+           ~stack
     in
     let requires =
       match implements with
@@ -1110,7 +1110,7 @@ end = struct
     in
     let ppx_runtime_deps =
       Lib_info.ppx_runtime_deps info
-      |> resolve_simple_deps db ~allow_private_deps ~stack
+      |> resolve_simple_deps db ~private_deps ~stack
     in
     let src_dir = Lib_info.src_dir info in
     let map_error x =
@@ -1175,10 +1175,10 @@ end = struct
     | Some x -> x
     | None -> resolve_name db name ~stack
 
-  let resolve_dep db (loc, name) ~allow_private_deps ~stack : t Or_exn.t =
+  let resolve_dep db (loc, name) ~private_deps ~stack : t Or_exn.t =
     match find_internal db name ~stack with
     | Initializing id -> Dep_stack.dependency_cycle stack id
-    | Found lib -> check_private_deps lib ~loc ~allow_private_deps
+    | Found lib -> check_private_deps lib ~loc ~private_deps
     | Not_found -> Error.not_found ~loc ~name
     | Invalid why -> Error why
     | Hidden h -> Hidden.error h ~loc ~name
@@ -1214,11 +1214,11 @@ end = struct
       | _ -> instantiate db name info ~stack ~hidden:(Some hidden) )
 
   let available_internal db (name : Lib_name.t) ~stack =
-    resolve_dep db (Loc.none, name) ~allow_private_deps:Allow_all ~stack
+    resolve_dep db (Loc.none, name) ~private_deps:Allow_all ~stack
     |> Result.is_ok
 
-  let resolve_simple_deps db names ~allow_private_deps ~stack =
-    Result.List.map names ~f:(resolve_dep db ~allow_private_deps ~stack)
+  let resolve_simple_deps db names ~private_deps ~stack =
+    Result.List.map names ~f:(resolve_dep db ~private_deps ~stack)
 
   let re_exports_closure ts =
     let visited = ref Set.empty in
@@ -1249,7 +1249,7 @@ end = struct
     ; re_exports : lib list Or_exn.t
     }
 
-  let resolve_complex_deps db deps ~allow_private_deps ~stack : resolved_deps =
+  let resolve_complex_deps db deps ~private_deps ~stack : resolved_deps =
     let resolve_select { Lib_dep.Select.result_fn; choices; loc } =
       let res, src_fn =
         match
@@ -1263,7 +1263,7 @@ end = struct
                     Lib_name.Set.fold required ~init:[] ~f:(fun x acc ->
                         (loc, x) :: acc)
                   in
-                  resolve_simple_deps ~allow_private_deps db deps ~stack
+                  resolve_simple_deps ~private_deps db deps ~stack
                 with
                 | Ok ts -> Some (ts, file)
                 | Error _ -> None)
@@ -1280,7 +1280,7 @@ end = struct
         ~f:(fun (acc_res, acc_selects, acc_re_exports) dep ->
           match (dep : Lib_dep.t) with
           | Re_export (loc, name) ->
-            let lib = resolve_dep db (loc, name) ~allow_private_deps ~stack in
+            let lib = resolve_dep db (loc, name) ~private_deps ~stack in
             let acc_re_exports =
               let+ lib = lib
               and+ acc_re_exports = acc_re_exports in
@@ -1294,7 +1294,7 @@ end = struct
             (acc_res, acc_selects, acc_re_exports)
           | Direct (loc, name) ->
             let acc_res =
-              let+ lib = resolve_dep db (loc, name) ~allow_private_deps ~stack
+              let+ lib = resolve_dep db (loc, name) ~private_deps ~stack
               and+ acc_res = acc_res in
               lib :: acc_res
             in
@@ -1317,7 +1317,7 @@ end = struct
     ; runtime_deps : t list Or_exn.t
     }
 
-  let pp_deps db pps ~stack ~dune_version ~allow_private_deps =
+  let pp_deps db pps ~stack ~dune_version ~private_deps =
     let allow_only_ppx_deps =
       match dune_version with
       | Some version -> Dune_lang.Syntax.Version.Infix.(version >= (2, 2))
@@ -1344,7 +1344,7 @@ end = struct
         let* pps =
           Result.List.map pps ~f:(fun (loc, name) ->
               let* lib =
-                resolve_dep db (loc, name) ~allow_private_deps:Allow_all ~stack
+                resolve_dep db (loc, name) ~private_deps:Allow_all ~stack
               in
               match (allow_only_ppx_deps, Lib_info.kind lib.info) with
               | true, Normal -> Error.only_ppx_deps_allowed ~loc lib.info
@@ -1359,16 +1359,16 @@ end = struct
           Result.List.concat_map pps ~f:(fun pp ->
               let* ppx_runtime_deps = pp.ppx_runtime_deps in
               Result.List.map ppx_runtime_deps
-                ~f:(check_private_deps ~loc ~allow_private_deps))
+                ~f:(check_private_deps ~loc ~private_deps))
         in
         pps_deps
       in
       { runtime_deps = deps; pps }
 
-  let add_pp_runtime_deps db resolved ~allow_private_deps ~pps ~dune_version
-      ~stack : resolved =
+  let add_pp_runtime_deps db resolved ~private_deps ~pps ~dune_version ~stack :
+      resolved =
     let { runtime_deps; pps } =
-      pp_deps db pps ~stack ~dune_version ~allow_private_deps
+      pp_deps db pps ~stack ~dune_version ~private_deps
     in
     let deps =
       let* runtime_deps = runtime_deps in
@@ -1381,10 +1381,10 @@ end = struct
     ; re_exports = resolved.re_exports
     }
 
-  let resolve_deps_and_add_runtime_deps db deps ~allow_private_deps ~pps
-      ~dune_version ~stack =
-    resolve_complex_deps db ~allow_private_deps ~stack deps
-    |> add_pp_runtime_deps db ~allow_private_deps ~dune_version ~pps ~stack
+  let resolve_deps_and_add_runtime_deps db deps ~private_deps ~pps ~dune_version
+      ~stack =
+    resolve_complex_deps db ~private_deps ~stack deps
+    |> add_pp_runtime_deps db ~private_deps ~dune_version ~pps ~stack
 
   (* Compute transitive closure of libraries to figure which ones will trigger
      their default implementation.
@@ -1792,7 +1792,7 @@ module DB = struct
         ; re_exports = _
         } =
       Resolve.resolve_deps_and_add_runtime_deps t deps ~pps
-        ~allow_private_deps:Allow_all ~stack:Dep_stack.empty
+        ~private_deps:Allow_all ~stack:Dep_stack.empty
         ~dune_version:(Some dune_version)
     in
     let requires_link =
@@ -1828,7 +1828,7 @@ module DB = struct
   (* Here we omit the [only_ppx_deps_allowed] check because by the time we reach
      this point, all preprocess dependencies should have been checked already. *)
   let resolve_pps t pps =
-    Resolve.resolve_simple_deps t ~allow_private_deps:Allow_all pps
+    Resolve.resolve_simple_deps t ~private_deps:Allow_all pps
       ~stack:Dep_stack.empty
 
   let rec all ?(recursive = false) t =

@@ -91,6 +91,8 @@ Unreleased
 
 - [coq] Add `-q` flag to `:standard` `coqc` flags , fixes #3924, (#3931 , @ejgallego)
 
+- Add support for Coq's native compute compilation mode (@ejgallego, #3210)
+
 2.7.1 (2/09/2020)
 -----------------
 

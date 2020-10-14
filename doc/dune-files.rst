@@ -1625,6 +1625,7 @@ The basic form for defining Coq libraries is very similar to the OCaml form:
      (modules <ordered_set_lang>)
      (libraries <ocaml_libraries>)
      (flags <coq_flags>)
+     (mode <coq_native_mode>)
      (theories <coq_theories>))
 
 The stanza will build all ``.v`` files on the given directory. The semantics of fields is:
@@ -1668,6 +1669,13 @@ The stanza will build all ``.v`` files on the given directory. The semantics of 
   composition with the Coq's standard library is supported, but in
   this case the ``Coq`` prefix will be made available in a qualified
   way. Since Coq's lang version ``0.2``.
+- you can enable the production of Coq's native compiler object files
+  by setting ``<coq_native_mode>`` to ``native``, this will pass
+  ``-native-compiler on`` to Coq and install the corresponding object
+  files under `.coq-native`. Note that the support for native compute
+  is experimental, and requires Coq >= 8.12.1; moreover, depending
+  libraries *must* be built with ``(mode native)`` too for this to
+  work.
 
 Recursive qualification of modules
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

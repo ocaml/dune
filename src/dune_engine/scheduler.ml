@@ -3,9 +3,11 @@ let on_error = Report_error.report
 open! Stdune
 open Import
 
+type time = float
+
 type job =
   { pid : Pid.t
-  ; ivar : Unix.process_status Fiber.Ivar.t
+  ; ivar : (Unix.process_status * time) Fiber.Ivar.t
   }
 
 module Signal = struct
@@ -62,7 +64,7 @@ end
 module Event : sig
   type t =
     | Files_changed
-    | Job_completed of job * Unix.process_status
+    | Job_completed of job * (Unix.process_status * time)
     | Signal of Signal.t
 
   (** Return the next event. File changes event are always flattened and
@@ -84,7 +86,7 @@ module Event : sig
   (** Send an event to the main thread. *)
   val send_files_changed : Path.t list -> unit
 
-  val send_job_completed : job -> Unix.process_status -> unit
+  val send_job_completed : job -> Unix.process_status * time -> unit
 
   val send_signal : Signal.t -> unit
 
@@ -92,7 +94,7 @@ module Event : sig
 end = struct
   type t =
     | Files_changed
-    | Job_completed of job * Unix.process_status
+    | Job_completed of job * (Unix.process_status * time)
     | Signal of Signal.t
 
   let jobs_completed = Queue.create ()
@@ -405,7 +407,7 @@ end = struct
   module Process_table : sig
     val add : job -> unit
 
-    val remove : pid:Pid.t -> Unix.process_status -> unit
+    val remove : pid:Pid.t -> (Unix.process_status * time) -> unit
 
     val running_count : unit -> int
 
@@ -413,7 +415,7 @@ end = struct
   end = struct
     type process_state =
       | Running of job
-      | Zombie of Unix.process_status
+      | Zombie of (Unix.process_status * time)
 
     (* This mutable table is safe: it does not interact with the state we track
        in the build system. *)
@@ -475,8 +477,9 @@ end = struct
     with Finished (job, status) ->
       (* We need to do the [Unix.waitpid] and remove the process while holding
          the lock, otherwise the pid might be reused in between. *)
-      Process_table.remove ~pid:job.pid status;
-      true
+    let t1 = Unix.gettimeofday () in
+    Process_table.remove ~pid:job.pid (status, t1);
+    true
 
   let wait_win32 () =
     while not (wait_nonblocking_win32 ()) do
@@ -488,12 +491,13 @@ end = struct
   let wait_unix () =
     Mutex.unlock mutex;
     let pid, status = Unix.wait () in
+    let t1 = Unix.gettimeofday () in
     Mutex.lock mutex;
     let pid = Pid.of_int pid in
-    Process_table.remove ~pid status
+    Process_table.remove ~pid (status, t1)
 
   let wait =
-    if Sys.win32 then
+    if Sys.win32 || true then
       wait_win32
     else
       wait_unix

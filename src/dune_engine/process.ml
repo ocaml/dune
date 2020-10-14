@@ -539,9 +539,11 @@ let run_internal ?dir ?(stdout_to = Io.stdout) ?(stderr_to = Io.stderr)
           | Some env -> Dtemp.add_to_env env
         in
         fun () ->
-          Spawn.spawn () ~prog:prog_str ~argv ~env ~stdout ~stderr ~stdin
+          let t0 = Unix.gettimeofday () in
+          let pid = Spawn.spawn () ~prog:prog_str ~argv ~env ~stdout ~stderr ~stdin in
+          (pid, t0)
       in
-      let pid =
+      let pid, t0 =
         match dir with
         | None -> run ()
         | Some dir -> Scheduler.with_chdir ~dir ~f:run
@@ -549,7 +551,7 @@ let run_internal ?dir ?(stdout_to = Io.stdout) ?(stderr_to = Io.stderr)
       Io.release stdout_to;
       Io.release stderr_to;
       let+ exit_status =
-        Stats.with_process ~program:prog_str ~args
+        Stats.with_process ~t0 ~program:prog_str ~args
           (Scheduler.wait_for_process pid)
       in
       Option.iter response_file ~f:Path.unlink;
@@ -561,7 +563,7 @@ let run_internal ?dir ?(stdout_to = Io.stdout) ?(stderr_to = Io.stderr)
           Temp.destroy File fn;
           s
       in
-      Log.command ~command_line ~output ~exit_status;
+      Log.command ~command_line ~output ~exit_status:(exit_status);
       let exit_status : Exit_status.t =
         match exit_status with
         | WEXITED n when ok_codes n -> Ok n

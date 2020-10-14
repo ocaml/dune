@@ -20,8 +20,10 @@ val poll :
     available and then calls [f]. *)
 val with_job_slot : (unit -> 'a Fiber.t) -> 'a Fiber.t
 
+type time = float
+
 (** Wait for the following process to terminate *)
-val wait_for_process : Pid.t -> Unix.process_status Fiber.t
+val wait_for_process : Pid.t -> (Unix.process_status * time) Fiber.t
 
 (** Wait for dune cache to be disconnected. Drop any other event. *)
 val wait_for_dune_cache : unit -> unit

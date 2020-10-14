@@ -63,10 +63,17 @@ let printf t format_string =
   let c = next_leading_char t in
   Printf.ksprintf t.print ("%c" ^^ format_string ^^ "\n") c
 
-let pp_args l =
-  l
-  |> List.map ~f:(Printf.sprintf "%S")
-  |> String.concat ~sep:"," |> Printf.sprintf "[%s]"
+let json_object fields =
+  "{" ^ String.concat ~sep:","
+          (List.map fields ~f:(fun (k, v) -> "\"" ^ k ^ "\" : " ^ v)) ^ "}"
+
+let pp_args ~extra_fields l =
+  let cmd =
+    l
+    |> List.map ~f:(Printf.sprintf "%S")
+    |> String.concat ~sep:"," |> Printf.sprintf "[%s]"
+  in
+  json_object (["cmd", cmd] @ extra_fields)
 
 let pp_time f =
   let n = int_of_float @@ (f *. 1_000_000.) in
@@ -74,11 +81,12 @@ let pp_time f =
 
 type event = int * string
 
-let on_process_end t (id, name) =
-  let time = t.get_time () in
+let on_process_end t ~time (id, name) =
+  let end_overhead = t.get_time () -. time in
   printf t
-    {|{"cat": "process", "name": %S, "id": %d, "pid": 0, "ph": "e", "ts": %s}|}
+    {|{"cat": "process", "name": %S, "id": %d, "pid": 0, "ph": "e", "ts": %s, "args": %s}|}
     name id (pp_time time)
+    (json_object ["end_overhead", pp_time end_overhead])
 
 let gen_emit_counter t key pvalue value =
   let time = t.get_time () in
@@ -112,11 +120,12 @@ let next_id t =
   t.next_id <- r + 1;
   r
 
-let on_process_start t ~program ~args =
+let on_process_start t ~time ~program ~args =
   let name = Filename.basename program in
   let id = next_id t in
-  let time = t.get_time () in
+  let start_overhead  = time -. t.get_time () in
   printf t
     {|{"cat": "process", "name": %S, "id": %d, "pid": 0, "ph": "b", "ts": %s, "args": %s}|}
-    name id (pp_time time) (pp_args args);
+    name id (pp_time time)
+    (pp_args ~extra_fields:["start_overhead", pp_time start_overhead] args);
   (id, name)

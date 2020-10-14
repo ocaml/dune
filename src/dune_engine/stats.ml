@@ -53,12 +53,14 @@ let enable path =
   catapult := Some reporter;
   at_exit (fun () -> Catapult.close reporter)
 
-let with_process ~program ~args fiber =
+let with_process ~t0 ~program ~args fiber =
+  let open Fiber.O in
   match !catapult with
-  | None -> fiber
+  | None ->
+    let+ (result, _) = fiber in
+    result
   | Some reporter ->
-    let open Fiber.O in
-    let event = Catapult.on_process_start reporter ~program ~args in
-    let+ result = fiber in
-    Catapult.on_process_end reporter event;
+    let event = Catapult.on_process_start reporter ~time:t0 ~program ~args in
+    let+ (result, t1) = fiber in
+    Catapult.on_process_end reporter ~time:t1 event;
     result

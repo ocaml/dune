@@ -19,10 +19,10 @@ type event
 
 (** Prepare data related to the processus. This will capture the current time to
     compute the start and duration. *)
-val on_process_start : t -> program:string -> args:string list -> event
+val on_process_start : t -> time:float -> program:string -> args:string list -> event
 
 (** Capture the current time and output a complete event. *)
-val on_process_end : t -> event -> unit
+val on_process_end : t -> time:float -> event -> unit
 
 (** Emit a counter event. This is measuring the value of an integer variable. *)
 val emit_counter : t -> string -> int -> unit

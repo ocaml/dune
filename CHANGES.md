@@ -44,6 +44,10 @@ Unreleased
   installed and to be usable by other public libraries in the same project
   (#3655, fixes #1017, @rgrinberg)
 
+- Fix the `%{make}` variable on Windows by only checking for a `gmake` binary
+  on UNIX-like systems as a unrelated `gmake` binary might exist on Windows.
+  (#3853, @kit-ty-kate)
+
 2.7.1 (2/09/2020)
 -----------------
 

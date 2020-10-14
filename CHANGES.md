@@ -38,7 +38,7 @@ Unreleased
   dependency graph for such artifacts is trivial (#3847, @rgrinberg)
 
 - Fix cram tests inside vendored directories not being interpreted correctly.
-  (@rgrinberg, #3860)
+  (#3860, fixes #3843, @rgrinberg)
 
 - Add `package` field to private libraries. This allows such libraries to be
   installed and to be usable by other public libraries in the same project

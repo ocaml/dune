@@ -25,7 +25,7 @@ consists of a name and a :ref:`section<install>` (e.g ``lib``, ``share``,
 
 .. code:: scheme
 
-   (lang gune 2.8)
+   (lang dune 2.8)
    (name mygui)
    (package (name mygui) (sites (share themes)))
 

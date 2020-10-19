@@ -62,6 +62,7 @@ let build_lib (lib : Library.t) ~sctx ~dir_contents ~expander ~flags ~dir ~mode
          if
            (not (Dune_file.Buildable.no_modules_specified lib.buildable))
            && Modules.is_empty modules
+           && lib.wrapped = (This (Simple false))
          then
            let is_error =
              not

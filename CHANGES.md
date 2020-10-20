@@ -63,6 +63,9 @@ Unreleased
   fixes problems with `dune subst` in the presence of unicode
   files. Fixes #3219 (#3879, @ejgallego)
 
+- `dune subst` now accepts common command-line arguments such as
+  `--debug-backtraces` (#3878, @ejgallego)
+
 2.7.1 (2/09/2020)
 -----------------
 

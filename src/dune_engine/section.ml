@@ -25,10 +25,9 @@ let parse_string s =
   | Some s -> Ok s
   | None -> Error (sprintf "invalid section: %s" s)
 
-let decode =
-  Dune_section.all
-  |> List.map ~f:(fun (x, y) -> (y, x))
-  |> Dune_lang.Decoder.enum
+let enum_decoder = Dune_section.all |> List.map ~f:(fun (x, y) -> (y, x))
+
+let decode = Dune_lang.Decoder.enum enum_decoder
 
 let encode v =
   let open Dune_lang.Encoder in

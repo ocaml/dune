@@ -97,25 +97,13 @@ module Section_with_site = struct
   let decode =
     let open Dune_lang.Decoder in
     sum
-      [ ("lib", return (Section Lib))
-      ; ("lib_root", return (Section Lib_root))
-      ; ("libexec", return (Section Libexec))
-      ; ("libexec_root", return (Section Libexec_root))
-      ; ("bin", return (Section Bin))
-      ; ("sbin", return (Section Sbin))
-      ; ("toplevel", return (Section Toplevel))
-      ; ("share", return (Section Share))
-      ; ("share_root", return (Section Share_root))
-      ; ("etc", return (Section Etc))
-      ; ("doc", return (Section Doc))
-      ; ("stublibs", return (Section Stublibs))
-      ; ("man", return (Section Man))
-      ; ("misc", return (Section Misc))
-      ; ( "site"
-        , Dune_lang.Syntax.since Section.dune_site_syntax (0, 1)
-          >>> pair Package.Name.decode Section.Site.decode
-          >>| fun (pkg, site) -> Site { pkg; site } )
-      ]
+      ( ( Dune_section.enum_decoder
+        |> List.map ~f:(fun (k, d) -> (k, return (Section d))) )
+      @ [ ( "site"
+          , Dune_lang.Syntax.since Section.dune_site_syntax (0, 1)
+            >>> pair Package.Name.decode Section.Site.decode
+            >>| fun (pkg, site) -> Site { pkg; site } )
+        ] )
 end
 
 module Section = struct

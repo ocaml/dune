@@ -3,28 +3,8 @@ include Dune_section
 
 let compare : t -> t -> Ordering.t = Poly.compare
 
-let allmap =
-  [ ("lib", Lib)
-  ; ("lib_root", Lib_root)
-  ; ("libexec", Libexec)
-  ; ("libexec_root", Libexec_root)
-  ; ("bin", Bin)
-  ; ("sbin", Sbin)
-  ; ("toplevel", Toplevel)
-  ; ("share", Share)
-  ; ("share_root", Share_root)
-  ; ("etc", Etc)
-  ; ("doc", Doc)
-  ; ("stublibs", Stublibs)
-  ; ("man", Man)
-  ; ("misc", Misc)
-  ]
-
 let to_dyn x =
-  let s =
-    List.find_map ~f:(fun (s, v) -> Option.some_if (x = v) s) allmap
-    |> Option.value_exn
-  in
+  let s = Dune_section.to_string x in
   let open Dyn.Encoder in
   constr (String.uppercase_ascii s) []
 
@@ -46,14 +26,15 @@ let parse_string s =
   | None -> Error (sprintf "invalid section: %s" s)
 
 let decode =
-  let open Dune_lang.Decoder in
-  enum allmap
+  Dune_section.all
+  |> List.map ~f:(fun (x, y) -> (y, x))
+  |> Dune_lang.Decoder.enum
 
 let encode v =
   let open Dune_lang.Encoder in
   string (to_string v)
 
-let all = Set.of_list (List.map ~f:snd allmap)
+let all = Set.of_list (List.map ~f:fst Dune_section.all)
 
 let should_set_executable_bit = function
   | Lib

@@ -602,6 +602,9 @@ let run_capture = run_capture_gen ~f:Stdune.Io.read_file
 
 let run_capture_lines = run_capture_gen ~f:Stdune.Io.lines_of_file
 
+let run_capture_zero_separated =
+  run_capture_gen ~f:Stdune.Io.zero_strings_of_file
+
 let run_capture_line ?dir ?stderr_to ?stdin_from ?env ?(purpose = Internal_job)
     fail_mode prog args =
   run_capture_gen ?dir ?stderr_to ?stdin_from ?env ~purpose fail_mode prog args

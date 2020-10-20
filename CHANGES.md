@@ -59,6 +59,10 @@ Unreleased
   makes it possible to use the build info module inside the preprocessor.
   (#3848, fix #3848, @rgrinberg)
 
+- Correctly call `git ls-tree` so unicode files are not quoted, this
+  fixes problems with `dune subst` in the presence of unicode
+  files. Fixes #3219 (#3879, @ejgallego)
+
 2.7.1 (2/09/2020)
 -----------------
 

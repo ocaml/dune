@@ -2,13 +2,16 @@ open! Dune_engine
 open! Stdune
 open Import
 
-let default_context_flags (ctx : Context.t) =
-  (* TODO DUNE3 To ensure full backward compatibility, ocaml_cflags are still
-     present in the :standard set of flags. However these should not as they are
-     already prepended when calling the compiler, causing flag duplication. *)
-  let c = Ocaml_config.ocamlc_cflags ctx.ocaml_config in
+let default_context_flags (ctx : Context.t) ~dune_version =
+  let cflags = Ocaml_config.ocamlc_cflags ctx.ocaml_config in
   let cxx =
-    List.filter c ~f:(fun s -> not (String.is_prefix s ~prefix:"-std="))
+    List.filter cflags ~f:(fun s -> not (String.is_prefix s ~prefix:"-std="))
+  in
+  let c =
+    if Dune_lang.Syntax.Version.Infix.(dune_version >= (2, 8)) then
+      cflags @ Ocaml_config.ocamlc_cppflags ctx.ocaml_config
+    else
+      cflags
   in
   Foreign_language.Dict.make ~c ~cxx
 
@@ -115,7 +118,9 @@ end = struct
         | Some parent -> Memo.lazy_ (fun () -> get_node t ~dir:parent)
     in
     let config_stanza = get_env_stanza t ~dir in
-    let default_context_flags = default_context_flags t.context in
+    let project = Scope.project scope in
+    let dune_version = Dune_project.dune_version project in
+    let default_context_flags = default_context_flags t.context ~dune_version in
     let expander_for_artifacts =
       Memo.lazy_ (fun () ->
           expander_for_artifacts ~scope ~root_expander:t.root_expander
@@ -580,7 +585,11 @@ let create ~(context : Context.t) ?host ~projects ~packages ~stanzas =
         let make ~inherit_from ~config_stanza =
           let dir = context.build_dir in
           let scope = Scope.DB.find_by_dir scopes dir in
-          let default_context_flags = default_context_flags context in
+          let project = Scope.project scope in
+          let dune_version = Dune_project.dune_version project in
+          let default_context_flags =
+            default_context_flags context ~dune_version
+          in
           let expander_for_artifacts =
             Memo.lazy_ (fun () ->
                 Code_error.raise

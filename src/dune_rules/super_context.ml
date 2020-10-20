@@ -2,13 +2,30 @@ open! Dune_engine
 open! Stdune
 open Import
 
-let default_context_flags (ctx : Context.t) =
+let default_context_flags (ctx : Context.t) ~project =
   (* TODO DUNE3 To ensure full backward compatibility, ocaml_cflags are still
      present in the :standard set of flags. However these should not as they are
      already prepended when calling the compiler, causing flag duplication. *)
   let c = Ocaml_config.ocamlc_cflags ctx.ocaml_config in
   let cxx =
     List.filter c ~f:(fun s -> not (String.is_prefix s ~prefix:"-std="))
+  in
+  let cxx =
+    if Dune_project.add_cxx_flags project then
+      let ccomp_type = Ocaml_config.ccomp_type ctx.ocaml_config in
+      match ccomp_type with
+      | Ocaml_config.Ccomp_type.Other s ->
+        User_warning.emit
+          [ Pp.textf
+              "Dune was not able to automatically infer the C compiler in use: \
+               \"%s\". Please open an issue on github to help us improve this \
+               feature."
+              s
+          ];
+        cxx
+      | _ -> Cxx_flags.get_flags ccomp_type @ cxx
+    else
+      cxx
   in
   Foreign_language.Dict.make ~c ~cxx
 
@@ -118,7 +135,9 @@ end = struct
         | Some parent -> Memo.lazy_ (fun () -> get_node t ~dir:parent)
     in
     let config_stanza = get_env_stanza t ~dir in
-    let default_context_flags = default_context_flags t.context in
+    let default_context_flags =
+      default_context_flags t.context ~project:(Scope.project scope)
+    in
     let expander_for_artifacts =
       Memo.lazy_ (fun () ->
           expander_for_artifacts ~scope ~root_expander:t.root_expander
@@ -619,7 +638,9 @@ let create ~(context : Context.t) ?host ~projects ~packages ~stanzas () =
         let make ~inherit_from ~config_stanza =
           let dir = context.build_dir in
           let scope = Scope.DB.find_by_dir scopes dir in
-          let default_context_flags = default_context_flags context in
+          let default_context_flags =
+            default_context_flags context ~project:(Scope.project scope)
+          in
           let expander_for_artifacts =
             Memo.lazy_ (fun () ->
                 Code_error.raise

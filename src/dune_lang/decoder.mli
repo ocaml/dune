@@ -112,6 +112,9 @@ val kind : (kind, _) parser
     end of sequence is reached. *)
 val repeat : 'a t -> 'a list t
 
+(** Like [repeat] but the list of elements must be non-empty. *)
+val repeat1 : 'a t -> 'a list t
+
 (** Capture the rest of the input for later parsing *)
 val capture : ('a t -> 'a) t
 

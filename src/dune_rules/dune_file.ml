@@ -1003,8 +1003,8 @@ module Executables = struct
 
     let multi_fields =
       map_validate
-        (let+ names = field_o "names" (repeat (located string))
-         and+ pub_names = field_o "public_names" (repeat public_name) in
+        (let+ names = field_o "names" (repeat1 (located string))
+         and+ pub_names = field_o "public_names" (repeat1 public_name) in
          (names, pub_names))
         ~f:(fun (names, public_names) ->
           match (names, public_names) with
@@ -1791,7 +1791,7 @@ module Tests = struct
        ; action
        })
 
-  let multi = gen_parse (field "names" (repeat (located string)))
+  let multi = gen_parse (field "names" (repeat1 (located string)))
 
   let single = gen_parse (field "name" (located string) >>| List.singleton)
 end

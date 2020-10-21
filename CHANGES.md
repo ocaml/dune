@@ -48,6 +48,10 @@ Unreleased
   on UNIX-like systems as a unrelated `gmake` binary might exist on Windows.
   (#3853, @kit-ty-kate)
 
+- Fix `$ dune install` modifying the build directory. This made the build
+  directory unusable when `$ sudo dune install` modified permissions.  (fix
+  #3857, @rgrinberg)
+
 2.7.1 (2/09/2020)
 -----------------
 

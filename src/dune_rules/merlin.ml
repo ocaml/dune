@@ -17,14 +17,14 @@ let merlin_file_name = ".merlin-conf/"
 let merlin_exist_name = ".merlin-exist"
 
 let make_lib_ident lib =
-  Printf.sprintf "-lib-%s"
-    (Dune_file.Library.best_name lib |> Lib_name.to_string)
+  Printf.sprintf "lib-%s" (Dune_file.Library.best_name lib |> Lib_name.to_string)
 
 let make_exe_ident exes =
-  Printf.sprintf "-exe-%s"
+  Printf.sprintf "exe-%s"
     (String.concat ~sep:"-" (List.map ~f:snd exes.Dune_file.Executables.names))
 
-let make_merlin_exists ~ident = merlin_exist_name ^ ident
+let make_merlin_exists ~ident =
+  String.concat ~sep:"-" [ merlin_exist_name; ident ]
 
 module Processed = struct
   (* The actual content of the merlin file as built by the [Unprocessed.process]
@@ -127,6 +127,8 @@ module Unprocessed = struct
           source_dirs = Path.Source.Set.add cu_config.source_dirs dir
         })
 
+  (* Since one merlin configuration per stanza is generated, merging should
+     always be trivial *)
   let merge_config _a b = b
 
   let make ?(requires = Ok []) ~flags
@@ -176,14 +178,11 @@ module Unprocessed = struct
       ; extensions
       }
     in
-
     let modules =
       List.map
         ~f:(fun m -> (Module.name m, cu_config))
         (Modules.impl_only modules)
     in
-
-    (* We use [of_list_reduce] to merge configs *)
     Module_name.Map.of_list_reduce modules ~f:merge_config
 
   let quote_if_needed s =
@@ -325,6 +324,7 @@ let dot_merlin sctx ~ident ~dir ~more_src_dirs ~expander (t : Unprocessed.t) =
   SC.add_rule sctx ~dir
     ( Build.with_no_targets (Build.path (Path.build merlin_file))
     >>> Build.create_file (Path.Build.relative dir merlin_exist_name) );
+
   Path.Set.singleton (Path.build merlin_file)
   |> Rules.Produce.Alias.add_deps (Alias.check ~dir);
 

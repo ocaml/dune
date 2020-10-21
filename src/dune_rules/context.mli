@@ -86,6 +86,7 @@ type t = private
   ; arch_sixtyfour : bool
   ; install_prefix : Path.t Memo.Lazy.Async.t
   ; ocaml_config : Ocaml_config.t
+  ; ocaml_config_vars : Ocaml_config.Vars.t
   ; version : Ocaml_version.t
   ; stdlib_dir : Path.t
   ; supports_shared_libraries : Dynlink_supported.By_the_os.t
@@ -130,6 +131,8 @@ val lib_config : t -> Lib_config.t
 val map_exe : t -> Path.t -> Path.t
 
 val to_build_context : t -> Build_context.t
+
+val init_configurator : t -> unit
 
 module DB : sig
   val get : Path.Build.t -> t

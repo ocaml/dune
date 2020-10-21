@@ -37,11 +37,12 @@ With redefining env flags
   $ dune build @cc | sed "s,${O_CC} -fPIC,OK,"
   OK
 
-Since dune 2.8 the :standard set of flag and thus the %{cc} variable contain
-both the cflags and cppflags from ocaml config. These flags are not added
-systematically anymore to the compiler command line.
+Since dune 2.8, when using the new_foreign_flags_handling option the :standard
+set of flag and thus the %{cc} variable contain both the cflags and cppflags
+from ocaml config. These flags are not added systematically anymore to the
+compiler command line.
 
-  $ cd dune28
+  $ cd new_ff_handling
 
 No env
   $ cat > dune <<'EOF'

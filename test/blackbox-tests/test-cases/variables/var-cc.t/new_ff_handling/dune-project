@@ -1,0 +1,2 @@
+(lang dune 2.8)
+(new_foreign_flags_handling true)

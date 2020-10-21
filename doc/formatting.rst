@@ -18,8 +18,9 @@ Furthermore it can be used to format code of any defined dialect (see
 Configuring automatic formatting (dune 2.0)
 ===========================================
 
-If using ``(lang dune 2.0)``, there is nothing to do, formatting will be set up
-by default.
+If using ``(lang dune 2.0)``, there is nothing to setup in dune, formatting will
+be set up by default. However, ocamlformat will still refuse to format sources
+without an ``.ocamlformat`` file present in the project root.
 
 By default, formatting will be enabled for all languages and dialects present in
 the project that dune knows about. This is not always desirable, for example if

@@ -1,0 +1,4 @@
+(executable
+ (name foo)
+ (public_name foo)
+ (promote (until-clean)))

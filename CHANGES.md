@@ -52,6 +52,9 @@ Unreleased
   directory unusable when `$ sudo dune install` modified permissions.  (fix
   #3857, @rgrinberg)
 
+- Fix handling of aliases given on the command line (using the `@` and `@@`
+  syntax) so as to correctly handle relative paths. (#3874, fixes #3850, @nojb)
+
 2.7.1 (2/09/2020)
 -----------------
 

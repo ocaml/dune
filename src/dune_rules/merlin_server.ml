@@ -31,7 +31,7 @@ module Commands = struct
     | Error _ -> Halt
 end
 
-(* [to_local p] makes absolute path [p] relative to the projects root and
+(* [to_local p] makes absolute path [p] relative to the project's root and
    optionally removes the build context *)
 let to_local abs_file_path =
   let error msg = Error msg in
@@ -47,7 +47,7 @@ let to_local abs_file_path =
   | None ->
     Printf.sprintf "Path is not in dune workspace %s" abs_file_path |> error
 
-let get_merlin_file_path local_path =
+let get_merlin_files_paths local_path =
   let workspace = Workspace.workspace () in
   let context =
     Option.value ~default:Context_name.default workspace.merlin_context
@@ -66,13 +66,11 @@ let load_merlin_file local_path file =
   let no_config_error () =
     Merlin_conf.make_error "Project isn't built. (Try calling `dune build`.)"
   in
-
   (* We search for an appropriate merlin configuration in the current directory
      and its parents *)
   let rec find_closest path =
     let filename = String.lowercase_ascii file in
-    let file_paths = get_merlin_file_path path in
-
+    let file_paths = get_merlin_files_paths path in
     let result =
       List.find_map file_paths ~f:(fun file_path ->
           if Path.exists file_path then
@@ -92,7 +90,6 @@ let load_merlin_file local_path file =
           Path.Local.parent path )
         ~f:find_closest
   in
-
   Option.value (find_closest local_path) ~default:(no_config_error ())
 
 let print_merlin_conf file =
@@ -107,7 +104,7 @@ let print_merlin_conf file =
 let dump s =
   match to_local s with
   | Ok path ->
-    List.iter (get_merlin_file_path path) ~f:Merlin.Processed.print_file
+    List.iter (get_merlin_files_paths path) ~f:Merlin.Processed.print_file
   | Error mess -> Printf.eprintf "%s\n%!" mess
 
 let start () =

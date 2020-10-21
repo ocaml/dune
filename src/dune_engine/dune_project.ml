@@ -162,6 +162,7 @@ type t =
   ; dune_version : Dune_lang.Syntax.Version.t
   ; allow_approx_merlin : bool
   ; generate_opam_files : bool
+  ; new_foreign_flags_handling : bool
   ; file_key : File_key.t
   ; dialects : Dialect.DB.t
   ; explicit_js_mode : bool
@@ -194,6 +195,8 @@ let allow_approx_merlin t = t.allow_approx_merlin
 
 let generate_opam_files t = t.generate_opam_files
 
+let new_foreign_flags_handling t = t.new_foreign_flags_handling
+
 let dialects t = t.dialects
 
 let explicit_js_mode t = t.explicit_js_mode
@@ -213,6 +216,7 @@ let to_dyn
     ; dune_version
     ; allow_approx_merlin
     ; generate_opam_files
+    ; new_foreign_flags_handling
     ; file_key
     ; dialects
     ; explicit_js_mode
@@ -235,6 +239,7 @@ let to_dyn
     ; ("dune_version", Dune_lang.Syntax.Version.to_dyn dune_version)
     ; ("allow_approx_merlin", bool allow_approx_merlin)
     ; ("generate_opam_files", bool generate_opam_files)
+    ; ("new_foreign_flags_handling", bool new_foreign_flags_handling)
     ; ("file_key", string file_key)
     ; ("dialects", Dialect.DB.to_dyn dialects)
     ; ("explicit_js_mode", bool explicit_js_mode)
@@ -610,6 +615,7 @@ let infer ~dir packages =
   ; dune_version = lang.version
   ; allow_approx_merlin = true
   ; generate_opam_files = false
+  ; new_foreign_flags_handling = false
   ; file_key
   ; dialects = Dialect.DB.builtin
   ; explicit_js_mode
@@ -675,6 +681,9 @@ let parse ~dir ~lang ~opam_packages ~file =
      and+ generate_opam_files =
        field_o_b "generate_opam_files"
          ~check:(Dune_lang.Syntax.since Stanza.syntax (1, 10))
+     and+ new_foreign_flags_handling =
+       field_o_b "new_foreign_flags_handling"
+         ~check:(Dune_lang.Syntax.since Stanza.syntax (2, 8))
      and+ dialects =
        multi_field "dialect"
          ( Dune_lang.Syntax.since Stanza.syntax (1, 11)
@@ -792,6 +801,9 @@ let parse ~dir ~lang ~opam_packages ~file =
      let generate_opam_files =
        Option.value ~default:false generate_opam_files
      in
+     let new_foreign_flags_handling =
+       Option.value ~default:false new_foreign_flags_handling
+     in
      let cram =
        match cram with
        | None -> false
@@ -820,6 +832,7 @@ let parse ~dir ~lang ~opam_packages ~file =
      ; dune_version
      ; allow_approx_merlin
      ; generate_opam_files
+     ; new_foreign_flags_handling
      ; dialects
      ; explicit_js_mode
      ; format_config

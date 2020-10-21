@@ -75,16 +75,13 @@ let include_dir_flags ~expander ~dir (stubs : Foreign.Stubs.t) =
 
 let build_c ~kind ~sctx ~dir ~expander ~include_flags (loc, src, dst) =
   let ctx = Super_context.context sctx in
-  let dune_version =
-    Super_context.find_scope_by_dir sctx dir
-    |> Scope.project |> Dune_project.dune_version
-  in
+  let project = Super_context.find_scope_by_dir sctx dir |> Scope.project in
   let flags =
     let ctx_flags =
       match kind with
       | Foreign_language.C ->
         let cfg = ctx.ocaml_config in
-        if Dune_lang.Syntax.Version.Infix.(dune_version >= (2, 8)) then
+        if Dune_project.new_foreign_flags_handling project then
           Fdo.c_flags ctx
         else
           (* In dune < 2.8 flags from ocamlc_config are always added *)

@@ -2,13 +2,13 @@ open! Dune_engine
 open! Stdune
 open Import
 
-let default_context_flags (ctx : Context.t) ~dune_version =
+let default_context_flags (ctx : Context.t) ~project =
   let cflags = Ocaml_config.ocamlc_cflags ctx.ocaml_config in
   let cxx =
     List.filter cflags ~f:(fun s -> not (String.is_prefix s ~prefix:"-std="))
   in
   let c =
-    if Dune_lang.Syntax.Version.Infix.(dune_version >= (2, 8)) then
+    if Dune_project.new_foreign_flags_handling project then
       cflags @ Ocaml_config.ocamlc_cppflags ctx.ocaml_config
     else
       cflags
@@ -119,8 +119,7 @@ end = struct
     in
     let config_stanza = get_env_stanza t ~dir in
     let project = Scope.project scope in
-    let dune_version = Dune_project.dune_version project in
-    let default_context_flags = default_context_flags t.context ~dune_version in
+    let default_context_flags = default_context_flags t.context ~project in
     let expander_for_artifacts =
       Memo.lazy_ (fun () ->
           expander_for_artifacts ~scope ~root_expander:t.root_expander
@@ -586,10 +585,7 @@ let create ~(context : Context.t) ?host ~projects ~packages ~stanzas =
           let dir = context.build_dir in
           let scope = Scope.DB.find_by_dir scopes dir in
           let project = Scope.project scope in
-          let dune_version = Dune_project.dune_version project in
-          let default_context_flags =
-            default_context_flags context ~dune_version
-          in
+          let default_context_flags = default_context_flags context ~project in
           let expander_for_artifacts =
             Memo.lazy_ (fun () ->
                 Code_error.raise

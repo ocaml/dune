@@ -4,17 +4,4 @@ dune install should not write anything to _build/
   $ ls -aR _build
   .
   ..
-  default
   log
-  
-  _build/default:
-  .
-  ..
-  .dune
-  
-  _build/default/.dune:
-  .
-  ..
-  .dune-keep
-  configurator
-  configurator.v2

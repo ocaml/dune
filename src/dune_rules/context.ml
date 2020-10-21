@@ -91,6 +91,7 @@ module T = struct
     ; arch_sixtyfour : bool
     ; install_prefix : Path.t Memo.Lazy.Async.t
     ; ocaml_config : Ocaml_config.t
+    ; ocaml_config_vars : Ocaml_config.Vars.t
     ; version : Ocaml_version.t
     ; stdlib_dir : Path.t
     ; supports_shared_libraries : Dynlink_supported.By_the_os.t
@@ -274,6 +275,9 @@ let write_dot_dune_dir ~build_dir ~ocamlc ~ocaml_config_vars =
   in
   ()
 
+let init_configurator { build_dir; ocamlc; ocaml_config_vars; _ } =
+  write_dot_dune_dir ~build_dir ~ocamlc ~ocaml_config_vars
+
 let create ~(kind : Kind.t) ~path ~env ~env_nodes ~name ~merlin ~targets
     ~host_context ~host_toolchain ~profile ~fdo_target_exe
     ~dynamically_linked_foreign_archives ~instrument_with =
@@ -415,7 +419,7 @@ let create ~(kind : Kind.t) ~path ~env ~env_nodes ~name ~merlin ~targets
       | Error (Makefile_config file, msg) ->
         User_error.raise ~loc:(Loc.in_file file) [ Pp.text msg ]
     in
-    let* default_findlib_paths, ocfg =
+    let* default_findlib_paths, (ocaml_config_vars, ocfg) =
       Fiber.fork_and_join default_findlib_paths (fun () ->
           let+ lines =
             Process.run_capture_lines ~env Strict ocamlc [ "-config" ]
@@ -423,8 +427,9 @@ let create ~(kind : Kind.t) ~path ~env ~env_nodes ~name ~merlin ~targets
           ocaml_config_ok_exn
             ( match Ocaml_config.Vars.of_lines lines with
             | Ok vars ->
-              write_dot_dune_dir ~build_dir ~ocamlc ~ocaml_config_vars:vars;
-              Ocaml_config.make vars
+              let open Result.O in
+              let+ ocfg = Ocaml_config.make vars in
+              (vars, ocfg)
             | Error msg -> Error (Ocamlc_config, msg) ))
     in
     let findlib_paths = ocamlpath @ default_findlib_paths in
@@ -576,6 +581,7 @@ let create ~(kind : Kind.t) ~path ~env ~env_nodes ~name ~merlin ~targets
       ; install_prefix
       ; stdlib_dir
       ; ocaml_config = ocfg
+      ; ocaml_config_vars
       ; version
       ; supports_shared_libraries =
           Dynlink_supported.By_the_os.of_bool supports_shared_libraries

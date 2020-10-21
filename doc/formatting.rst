@@ -19,13 +19,13 @@ Configuring automatic formatting (dune 2.0)
 ===========================================
 
 If using ``(lang dune 2.0)``, there is nothing to setup in dune, formatting will
-be set up by default. However, ocamlformat will still refuse to format sources
+be set up by default. However, ocamlformat_ will still refuse to format sources
 without an ``.ocamlformat`` file present in the project root.
 
 By default, formatting will be enabled for all languages and dialects present in
 the project that dune knows about. This is not always desirable, for example if
 in a mixed Reason/OCaml project, one only wants to format the Reason files to
-avoid pulling ``ocamlformat`` as a dependency.
+avoid pulling ocamlformat_ as a dependency.
 
 It is possible to restrict the languages considered for formatting or disable it
 altogether by using the :ref:`formatting` stanza.

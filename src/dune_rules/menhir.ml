@@ -194,7 +194,7 @@ module Run (P : PARAMS) : sig end = struct
       Module.of_source ~visibility:Public ~kind:Impl source
     in
     let mock_module =
-      Preprocessing.pp_module_as
+      Pp_spec.pp_module_as
         (Compilation_context.preprocessing cctx)
         name mock_module ~lint:false
     in

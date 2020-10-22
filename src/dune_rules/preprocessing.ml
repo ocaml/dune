@@ -2,7 +2,6 @@ open! Dune_engine
 open! Stdune
 open Import
 open Build.O
-open Dune_file
 module SC = Super_context
 
 (* Encoded representation of a set of library names + scope *)
@@ -296,15 +295,8 @@ let ppx_exe sctx ~key =
   let build_dir = (Super_context.context sctx).build_dir in
   Path.Build.relative build_dir (".ppx/" ^ key ^ "/ppx.exe")
 
-let build_ppx_driver sctx ~dep_kind ~target ~pps ~pp_names =
+let build_ppx_driver sctx ~scope ~target ~pps ~pp_names =
   let ctx = SC.context sctx in
-  let mode = Context.best_mode ctx in
-  let link_mode : Link_mode.t =
-    match mode with
-    | Byte -> Byte_with_stubs_statically_linked_in
-    | Native -> Native
-  in
-  let compiler = Context.compiler ctx mode in
   let jbuild_driver, pps, pp_names = (None, pps, pp_names) in
   let driver_and_libs =
     let open Result.O in
@@ -323,72 +315,67 @@ let build_ppx_driver sctx ~dep_kind ~target ~pps ~pp_names =
   (* CR-someday diml: what we should do is build the .cmx/.cmo once and for all
      at the point where the driver is defined. *)
   let dir = Path.Build.parent_exn target in
-  let ml = Path.Build.relative dir "_ppx.ml" in
+  let main_module_name =
+    Module_name.of_string_allow_invalid (Loc.none, "_ppx")
+  in
+  let module_ = Module.generated ~src_dir:(Path.build dir) main_module_name in
+  let ml_source =
+    Module.file ~ml_kind:Impl module_
+    |> Option.value_exn |> Path.as_in_build_dir_exn
+  in
   let add_rule ~sandbox = SC.add_rule ~sandbox sctx ~dir in
-  let open Build.With_targets.O in
   add_rule ~sandbox:Sandbox_config.default
     ( Build.of_result_map driver_and_libs ~f:(fun (driver, _) ->
           Build.return (sprintf "let () = %s ()\n" driver.info.main))
-    |> Build.write_file_dyn ml );
-  add_rule ~sandbox:Sandbox_config.no_special_requirements
-    ( Build.with_no_targets
-        (Build.label
-           (Lib_deps_info.Label
-              (Lib_deps.info ~kind:dep_kind (Lib_deps.of_pps pp_names))))
-    >>> Command.run compiler ~dir:(Path.build ctx.build_dir)
-          [ A "-g"
-          ; A "-o"
-          ; Target target
-          ; A "-w"
-          ; A "-24"
-          ; As
-              ( match link_mode with
-              | Byte_with_stubs_statically_linked_in ->
-                [ Ocaml_version.custom_or_output_complete_exe ctx.version ]
-              | Byte
-              | Native ->
-                [] )
-          ; Command.of_result
-              (Result.map driver_and_libs ~f:(fun (_driver, libs) ->
-                   Command.Args.S
-                     [ Lib.L.compile_and_link_flags ~mode:link_mode
-                         ~compile:libs ~link:libs
-                     ; Hidden_deps
-                         (Lib_file_deps.deps libs ~groups:[ Cmi; Cmx ])
-                     ]))
-          ; Dep (Path.build ml)
-          ] )
+    |> Build.write_file_dyn ml_source );
+  let linkages = [ Exe.Linkage.native_or_custom ctx ] in
+  let program : Exe.Program.t =
+    { name = Filename.remove_extension (Path.Build.basename target)
+    ; main_module_name
+    ; loc = Loc.none
+    }
+  in
+  let obj_dir = Obj_dir.for_pp ~dir in
+  let cctx =
+    let expander = Super_context.expander sctx ~dir in
+    let requires_compile = Result.map driver_and_libs ~f:snd in
+    let requires_link = lazy requires_compile in
+    let flags = Ocaml_flags.of_list [ "-g"; "-w"; "-24" ] in
+    let opaque = Compilation_context.Explicit false in
+    let modules = Modules.singleton_exe module_ in
+    Compilation_context.create ~super_context:sctx ~scope ~expander ~obj_dir
+      ~modules ~flags ~requires_compile ~requires_link ~opaque ~js_of_ocaml:None
+      ~dynlink:false ~package:None ~bin_annot:false ()
+  in
+  Exe.build_and_link ~program ~linkages cctx ~promote:None
 
 let get_rules sctx key =
   let exe = ppx_exe sctx ~key in
-  let pps, pp_names =
-    let names, lib_db =
-      match Digest.from_hex key with
-      | None ->
-        User_error.raise
-          [ Pp.textf "invalid ppx key for %s"
-              (Path.Build.to_string_maybe_quoted exe)
-          ]
-      | Some key ->
-        let { Key.Decoded.pps; project_root } = Key.decode key in
-        let lib_db =
+  let pp_names, scope =
+    match Digest.from_hex key with
+    | None ->
+      User_error.raise
+        [ Pp.textf "invalid ppx key for %s"
+            (Path.Build.to_string_maybe_quoted exe)
+        ]
+    | Some key ->
+      let { Key.Decoded.pps; project_root } = Key.decode key in
+      let scope =
+        let dir =
           match project_root with
-          | None -> SC.public_libs sctx
+          | None -> (Super_context.context sctx).build_dir
           | Some dir ->
-            let dir =
-              Path.Build.append_source (Super_context.context sctx).build_dir
-                dir
-            in
-            Scope.libs (SC.find_scope_by_dir sctx dir)
+            Path.Build.append_source (Super_context.context sctx).build_dir dir
         in
-        (pps, lib_db)
-    in
-    let pps =
-      Lib.DB.resolve_pps lib_db (List.map names ~f:(fun x -> (Loc.none, x)))
-    in
-    (pps, names)
+        Super_context.find_scope_by_dir sctx dir
+      in
+      (pps, scope)
   in
-  build_ppx_driver sctx ~pps ~pp_names ~dep_kind:Required ~target:exe
+  let pps =
+    let lib_db = Scope.libs scope in
+    List.map pp_names ~f:(fun x -> (Loc.none, x)) |> Lib.DB.resolve_pps lib_db
+  in
+  build_ppx_driver sctx ~scope ~pps ~pp_names ~target:exe
 
 let gen_rules sctx components =
   match components with
@@ -588,10 +575,6 @@ let lint_module sctx ~dir ~expander ~dep_kind ~lint ~lib_name ~scope =
      fun ~(source : Module.t) ~ast ->
        Module_name.Per_item.get lint (Module.name source) ~source ~ast)
 
-type t = (Module.t -> lint:bool -> Module.t) Module_name.Per_item.t
-
-let dummy = Module_name.Per_item.for_all (fun m ~lint:_ -> m)
-
 let make sctx ~dir ~expander ~dep_kind ~lint ~preprocess ~preprocessor_deps
     ~lib_name ~scope =
   let preprocess =
@@ -705,12 +688,7 @@ let make sctx ~dir ~expander ~dep_kind ~lint ~preprocess ~preprocessor_deps
             let ast = setup_dialect_rules sctx ~dir ~dep_kind ~expander m in
             if lint then lint_module ~ast ~source:m;
             Module.set_pp ast pp)
-
-let pp_module t ?(lint = true) m =
-  Module_name.Per_item.get t (Module.name m) m ~lint
-
-let pp_module_as t ?(lint = true) name m =
-  Module_name.Per_item.get t name m ~lint
+  |> Pp_spec.make
 
 let get_ppx_driver sctx ~loc ~expander ~scope ~lib_name ~flags pps =
   let open Result.O in

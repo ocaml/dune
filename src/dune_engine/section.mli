@@ -20,6 +20,8 @@ val compare : t -> t -> Ordering.t
 
 include Comparable_intf.S with type Key.t = t
 
+val enum_decoder : (string * t) list
+
 val all : Set.t
 
 val to_string : t -> string

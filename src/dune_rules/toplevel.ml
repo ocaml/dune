@@ -25,7 +25,7 @@ module Source = struct
   let obj_dir { dir; name; _ } = Obj_dir.make_exe ~dir ~name
 
   let modules t pp =
-    main_module t |> Preprocessing.pp_module pp |> Modules.singleton_exe
+    main_module t |> Pp_spec.pp_module pp |> Modules.singleton_exe
 
   let make ~dir ~loc ~main ~name = { dir; main; name; loc }
 

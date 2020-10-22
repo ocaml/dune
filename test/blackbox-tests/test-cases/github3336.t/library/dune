@@ -1,0 +1,4 @@
+(library
+ (name lib)
+ (library_flags (-linkall))
+ (libraries dune-build-info))

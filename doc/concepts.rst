@@ -717,7 +717,8 @@ The following constructions are available:
   and targets. This is useful if you are generating dependencies in a way
   that Dune doesn't know about, for instance by calling an external build system.
 - ``(pipe-<outputs> <DSL> <DSL> <DSL>...)`` to execute several actions (at least two)
-  in sequence, piping the output of each one into the input of the next.
+  in sequence, filtering the ``<outputs>`` of the first command through the other
+  command, piping the standard output of each one into the input of the next.
   This action is available since dune 2.7.
 
 As mentioned ``copy#`` inserts a line directive at the beginning of

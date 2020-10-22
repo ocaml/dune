@@ -207,10 +207,7 @@ let rules ~sctx ~dir ~dir_contents ~scope ~expander
   in
   Buildable_rules.gen_select_rules sctx compile_info ~dir;
   Bootstrap_info.gen_rules sctx exes ~dir compile_info;
-  let merlin_ident =
-    Printf.sprintf "exe-%s"
-      (String.concat ~sep:"-" (List.map ~f:snd exes.names))
-  in
-  Buildable_rules.with_lib_deps ~merlin_ident
+  Buildable_rules.with_lib_deps
     (Super_context.context sctx)
+    (Merlin.make_exe_ident exes)
     compile_info ~dir ~f

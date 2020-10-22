@@ -442,7 +442,7 @@ let rules (lib : Library.t) ~sctx ~dir_contents ~dir ~expander ~scope :
     library_rules lib ~cctx ~source_modules ~dir_contents ~compile_info
   in
   Buildable_rules.gen_select_rules sctx compile_info ~dir;
-  let merlin_ident = Merlin.make_lib_ident lib in
-  Buildable_rules.with_lib_deps ~merlin_ident
+  Buildable_rules.with_lib_deps
     (Super_context.context sctx)
+    (Merlin.make_lib_ident lib)
     compile_info ~dir ~f

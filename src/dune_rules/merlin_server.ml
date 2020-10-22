@@ -55,7 +55,7 @@ let get_merlin_files_paths local_path =
   let ctx = Context_name.to_string context in
   let ctx_root = Path.Build.(relative root ctx) in
   let dir_path = Path.Build.(append_local ctx_root local_path) in
-  let merlin_path = Path.Build.relative dir_path Merlin.merlin_file_name in
+  let merlin_path = Path.Build.relative dir_path Merlin.merlin_folder_name in
   let files =
     Result.value ~default:[] (Path.readdir_unsorted (Path.build merlin_path))
     |> List.fast_sort ~cmp:Stdlib.compare

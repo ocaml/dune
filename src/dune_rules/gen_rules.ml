@@ -24,7 +24,7 @@ module For_stanza : sig
     -> dir_contents:Dir_contents.t
     -> expander:Expander.t
     -> files_to_install:(Install_conf.t -> unit)
-    -> ( (string * Merlin.t) list
+    -> ( (Merlin.ident * Merlin.t) list
        , (Loc.t * Compilation_context.t) list
        , Path.Build.t list
        , Path.Source.t list )
@@ -232,7 +232,7 @@ let gen_rules sctx dir_contents cctxs expander
       let more_src_dirs =
         lib_src_dirs ~dir_contents |> List.rev_append source_dirs
       in
-      Merlin.add_rules sctx ~ident ~dir:ctx_dir ~more_src_dirs ~expander
+      Merlin.add_rules sctx ident ~dir:ctx_dir ~more_src_dirs ~expander
         (Merlin.add_source_dir merlin src_dir));
   List.iter stanzas ~f:(fun stanza ->
       match (stanza : Stanza.t) with

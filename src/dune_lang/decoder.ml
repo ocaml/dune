@@ -154,6 +154,11 @@ let repeat : 'a t -> 'a list t =
   in
   fun t ctx state -> loop t [] ctx state
 
+let repeat1 p =
+  let+ x = p
+  and+ xs = repeat p in
+  x :: xs
+
 let result : type a k. k context -> a * k -> a =
  fun ctx (v, state) ->
   match ctx with

@@ -1119,9 +1119,13 @@ end = struct
     let requires = map_error requires in
     let ppx_runtime_deps = map_error ppx_runtime_deps in
     let project =
-      let open Option.O in
-      let* package = Lib_info.package info in
-      Package.Name.Map.find db.projects_by_package package
+      let status = Lib_info.status info in
+      match Lib_info.Status.project status with
+      | Some _ as project -> project
+      | None ->
+        let open Option.O in
+        let* package = Lib_info.package info in
+        Package.Name.Map.find db.projects_by_package package
     in
     let t =
       { info

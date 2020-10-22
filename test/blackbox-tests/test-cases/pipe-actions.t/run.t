@@ -58,8 +58,8 @@ The makefile version of pipe actions uses actual pipes:
   	mkdir -p _build/default; \
   	mkdir -p _build/default; \
   	cd _build/default; \
-  	../install/default/bin/a 2>&1 | ../install/default/bin/b 2>&1 | ../install/default/bin/c \
-  	  &> target
+  	../install/default/bin/a  2>&1 |  \
+  	  ../install/default/bin/b | ../install/default/bin/c  &> target
   
   $ cat >dune <<EOF
   > (executable

@@ -161,24 +161,23 @@ and pp = function
              | Dev_null -> "/dev/null"
              | File fn -> fn )
          ])
-  | Pipe (l, outputs) ->
-    let first_pipe,end_ =
+  | Pipe (l, outputs) -> (
+    let first_pipe, end_ =
       match outputs with
-      | Stdout -> " | ", ""
-      | Outputs -> " 2>&1 | ", ""
-      | Stderr ->
-        " 2> >( ", " 1>&2 )"
+      | Stdout -> (" | ", "")
+      | Outputs -> (" 2>&1 | ", "")
+      | Stderr -> (" 2> >( ", " 1>&2 )")
     in
     match l with
     | [] -> assert false
-    | first::l ->
+    | first :: l ->
       Pp.hovbox ~indent:2
         (Pp.concat ~sep:Pp.space
-           [block first;
-            Pp.verbatim first_pipe;
-            Pp.concat ~sep:(Pp.verbatim "|") (List.map l ~f:block);
-            Pp.verbatim end_
-           ])
+           [ block first
+           ; Pp.verbatim first_pipe
+           ; Pp.concat ~sep:(Pp.verbatim " | ") (List.map l ~f:block)
+           ; Pp.verbatim end_
+           ]) )
 
 let rec pp_seq = function
   | [] -> Pp.verbatim "true"

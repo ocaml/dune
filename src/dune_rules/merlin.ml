@@ -30,7 +30,10 @@ let make_merlin_exists ident =
 
 module Processed = struct
   (* The actual content of the merlin file as built by the [Unprocessed.process]
-     function from the unprocessed info gathered through [gen_rules]. *)
+     function from the unprocessed info gathered through [gen_rules]. The first
+     three fields map directly to Merlin's B, S and FLG directives and the last
+     one represents a list of preprocessors described by a preprocessing flag
+     and its arguments. *)
   type config =
     { obj_dirs : Path.Set.t
     ; src_dirs : Path.Set.t

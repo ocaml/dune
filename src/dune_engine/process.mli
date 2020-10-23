@@ -98,3 +98,14 @@ val run_capture_lines :
   -> Path.t
   -> string list
   -> 'a Fiber.t
+
+val run_capture_zero_separated :
+     ?dir:Path.t
+  -> ?stderr_to:Io.output Io.t
+  -> ?stdin_from:Io.input Io.t
+  -> ?env:Env.t
+  -> ?purpose:purpose
+  -> (string list, 'a) failure_mode
+  -> Path.t
+  -> string list
+  -> 'a Fiber.t

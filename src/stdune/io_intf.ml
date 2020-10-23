@@ -15,6 +15,9 @@ module type S = sig
 
   val lines_of_file : path -> string list
 
+  (** Reads zero-separated strings from a file *)
+  val zero_strings_of_file : path -> string list
+
   val read_file : ?binary:bool -> path -> string
 
   val write_file : ?binary:bool -> path -> string -> unit

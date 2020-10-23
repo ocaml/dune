@@ -78,8 +78,9 @@ let run t args =
   in
   String.trim s
 
-let run_lines t args =
-  Process.run_capture_lines Strict (prog t) args ~dir:t.root ~env:Env.initial
+let run_zero_separated t args =
+  Process.run_capture_zero_separated Strict (prog t) args ~dir:t.root
+    ~env:Env.initial
 
 let hg_describe t =
   let open Fiber.O in
@@ -130,7 +131,7 @@ let commit_id =
 let files =
   let f args t =
     let open Fiber.O in
-    let+ l = run_lines t args in
+    let+ l = run_zero_separated t args in
     List.map l ~f:Path.in_source
   in
   Staged.unstage
@@ -142,5 +143,5 @@ let files =
 
               let to_dyn = Dyn.Encoder.list Path.to_dyn
             end ))
-       ~git:(f [ "ls-tree"; "-r"; "--name-only"; "HEAD" ])
-       ~hg:(f [ "files" ])
+       ~git:(f [ "ls-tree"; "-z"; "-r"; "--name-only"; "HEAD" ])
+       ~hg:(f [ "files"; "-0" ])

@@ -160,7 +160,6 @@ type t =
   ; implicit_transitive_deps : bool
   ; wrapped_executables : bool
   ; dune_version : Dune_lang.Syntax.Version.t
-  ; allow_approx_merlin : bool
   ; generate_opam_files : bool
   ; file_key : File_key.t
   ; dialects : Dialect.DB.t
@@ -190,8 +189,6 @@ let file_key t = t.file_key
 
 let implicit_transitive_deps t = t.implicit_transitive_deps
 
-let allow_approx_merlin t = t.allow_approx_merlin
-
 let generate_opam_files t = t.generate_opam_files
 
 let dialects t = t.dialects
@@ -211,7 +208,6 @@ let to_dyn
     ; implicit_transitive_deps
     ; wrapped_executables
     ; dune_version
-    ; allow_approx_merlin
     ; generate_opam_files
     ; file_key
     ; dialects
@@ -233,7 +229,6 @@ let to_dyn
     ; ("implicit_transitive_deps", bool implicit_transitive_deps)
     ; ("wrapped_executables", bool wrapped_executables)
     ; ("dune_version", Dune_lang.Syntax.Version.to_dyn dune_version)
-    ; ("allow_approx_merlin", bool allow_approx_merlin)
     ; ("generate_opam_files", bool generate_opam_files)
     ; ("file_key", string file_key)
     ; ("dialects", Dialect.DB.to_dyn dialects)
@@ -609,7 +604,6 @@ let infer ~dir packages =
   ; extension_args
   ; parsing_context
   ; dune_version = lang.version
-  ; allow_approx_merlin = true
   ; generate_opam_files = false
   ; file_key
   ; dialects = Dialect.DB.builtin
@@ -669,9 +663,22 @@ let parse ~dir ~lang ~opam_packages ~file =
      and+ wrapped_executables =
        field_o_b "wrapped_executables"
          ~check:(Dune_lang.Syntax.since Stanza.syntax (1, 11))
-     and+ allow_approx_merlin =
-       field_o_b "allow_approximate_merlin"
-         ~check:(Dune_lang.Syntax.since Stanza.syntax (1, 9))
+     and+ _allow_approx_merlin =
+       (* TODO DUNE3 remove this field from parsing *)
+       let+ loc = loc
+       and+ f =
+         field_o_b "allow_approximate_merlin"
+           ~check:(Dune_lang.Syntax.since Stanza.syntax (1, 9))
+       in
+       if
+         Option.is_some f
+         && Dune_lang.Syntax.Version.Infix.(lang.version >= (2, 8))
+       then
+         Dune_lang.Syntax.Warning.deprecated_in
+           ~extra_info:
+             "It is useless since the Merlin configurations are not ambiguous \
+              anymore."
+           loc lang.syntax (2, 8) ~what:"This field"
      and+ () = Dune_lang.Versioned_file.no_more_lang
      and+ generate_opam_files =
        field_o_b "generate_opam_files"
@@ -784,9 +791,6 @@ let parse ~dir ~lang ~opam_packages ~file =
          ~default:(strict_package_deps_default ~lang)
      in
      let dune_version = lang.version in
-     let allow_approx_merlin =
-       Option.value ~default:(dune_version < (1, 9)) allow_approx_merlin
-     in
      let explicit_js_mode =
        Option.value explicit_js_mode ~default:(explicit_js_mode_default ~lang)
      in
@@ -819,7 +823,6 @@ let parse ~dir ~lang ~opam_packages ~file =
      ; implicit_transitive_deps
      ; wrapped_executables
      ; dune_version
-     ; allow_approx_merlin
      ; generate_opam_files
      ; dialects
      ; explicit_js_mode

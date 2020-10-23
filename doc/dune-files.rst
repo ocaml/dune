@@ -285,18 +285,18 @@ language: The syntax is as a list of the following elements:
 
    dep-specification = dep+
 
-.. _new-foreign-flags-handling:
+.. _always-add-cflags:
 
-new_foreign_flags_handling 
---------------------------
+always_add_cflags 
+-----------------
 
-Since Dune 2.8, it is possible to deactivate
-the systematic prepending of flags coming from ``ocamlc -config`` to the C
-compiler command line. This is done adding the following field to the ``dune-project`` file:
+Since Dune 2.8, it is possible to deactivate the systematic prepending of flags
+coming from ``ocamlc -config`` to the C compiler command line. This is done
+adding the following field to the ``dune-project`` file:
 
 .. code:: scheme
 
-    (new_foreign_flags_handling true)
+    (always_add_cflags false)
 
 In this mode, dune will populate the ``:standard`` set of C flags with the
 content of ``ocamlc_cflags`` and  ``ocamlc_cppflags``. These flags can be

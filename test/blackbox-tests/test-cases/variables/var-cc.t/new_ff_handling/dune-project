@@ -1,2 +1,2 @@
 (lang dune 2.8)
-(new_foreign_flags_handling true)
+(always_add_cflags false)

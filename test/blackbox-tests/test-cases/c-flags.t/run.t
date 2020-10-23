@@ -12,7 +12,7 @@ bar.c is built with an "empty" set of flags.
   $ O_CCPPF=${O_CCPPF%% }
 
 
-new_foreign_flags_handling = false
+always_add_cflags = false
 ==================================
 
   $ cat >dune-project <<EOF
@@ -35,12 +35,12 @@ ocamlc_cpp flags appear in the compiler command line:
   $ cat out_bar | grep -ce "${O_CCF} ${O_CCPPF}"
   1
 
-new_foreign_flags_handling = true
+always_add_cflags = true
 =================================
 
   $ cat >dune-project <<EOF
   > (lang dune 2.8)
-  > (new_foreign_flags_handling true)
+  > (always_add_cflags false)
 
   $ dune rules -m foo.o | tr -s '\t\n\\' ' ' > out_foo
   $ dune rules -m bar.o | sed "s,bar,foo," | tr -s '\t\n\\' ' ' > out_bar
@@ -64,18 +64,17 @@ ocamlc_cpp are effectively removed from the compiler command line
   0
   [1]
 
-new_foreign_flags_handling = true but dune < 2.8
+always_add_cflags = true but dune < 2.8
 ================================================
 
   $ cat >dune-project <<EOF
   > (lang dune 2.7)
-  > (new_foreign_flags_handling true)
+  > (always_add_cflags false)
 
   $ dune rules
-  File "dune-project", line 2, characters 0-33:
-  2 | (new_foreign_flags_handling true)
-      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  Error: 'new_foreign_flags_handling' is only available since version 2.8 of
-  the dune language. Please update your dune-project file to have (lang dune
-  2.8).
+  File "dune-project", line 2, characters 0-25:
+  2 | (always_add_cflags false)
+      ^^^^^^^^^^^^^^^^^^^^^^^^^
+  Error: 'always_add_cflags' is only available since version 2.8 of the dune
+  language. Please update your dune-project file to have (lang dune 2.8).
   [1]

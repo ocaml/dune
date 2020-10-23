@@ -1177,6 +1177,10 @@ Here is a complete list of supported subfields:
 - ``flags`` are passed when compiling source files. This field is specified
   using the :ref:`ordered-set-language`, where the ``:standard`` value comes
   from the environment settings ``c_flags`` and ``cxx_flags``, respectively.
+  Note that, for C subs, Dune unconditionally adds the flags present in the
+  fields ``ocamlc_cflags`` and ``ocamlc_cppflags`` of the OCaml config to the
+  compiler command line. This behavior can be disabled since Dune 2.8 via the
+  ``dune-project`` option :ref:`new-foreign-flags-handling`.
 - ``include_dirs`` are tracked as dependencies and passed to the compiler
   via the ``-I`` flag. You can use :ref:`variables` in this field, and
   refer to a library source directory using the ``(lib library-name)`` syntax.

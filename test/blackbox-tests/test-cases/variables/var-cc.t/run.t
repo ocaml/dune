@@ -3,9 +3,8 @@ compiler name followed by its flags) that was used to compile OCaml in the
 current build context.
 
 In practice, in dune < 2.8 it consists in the concatenation of OCaml's
-`c_compiler` and flags The flags are made of the :standard (= ocamlc_cflags) set
-of ocamlc_flags merged with (and sometimes replaced by) the flags in the env
-stanza.
+`c_compiler` and flags. Theses flags are made of the :standard set of flags
+merged with (and sometimes replaced by) the flags in the env stanza.
 
   $ O_CC=$(ocamlc -config-var c_compiler)
   $ O_CCF=$(ocamlc -config-var ocamlc_cflags)

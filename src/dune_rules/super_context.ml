@@ -9,6 +9,7 @@ let default_context_flags (ctx : Context.t) ~project =
   in
   let c =
     if Dune_project.new_foreign_flags_handling project then
+      (* TODO DUNE3 make this the default behavior *)
       cflags @ Ocaml_config.ocamlc_cppflags ctx.ocaml_config
     else
       cflags

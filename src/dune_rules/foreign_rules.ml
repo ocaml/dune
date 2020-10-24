@@ -89,7 +89,6 @@ let build_c ~kind ~sctx ~dir ~expander ~include_flags (loc, src, dst) =
             ; Fdo.c_flags ctx
             ]
         else
-          (* TODO DUNE3 make this the default behavior *)
           Fdo.c_flags ctx
       | Foreign_language.Cxx -> Fdo.cxx_flags ctx
     in

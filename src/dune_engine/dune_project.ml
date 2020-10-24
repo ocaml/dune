@@ -615,7 +615,7 @@ let infer ~dir packages =
   ; dune_version = lang.version
   ; allow_approx_merlin = true
   ; generate_opam_files = false
-  ; always_add_cflags = true
+  ; always_add_cflags = lang.version < (3, 0)
   ; file_key
   ; dialects = Dialect.DB.builtin
   ; explicit_js_mode
@@ -801,7 +801,9 @@ let parse ~dir ~lang ~opam_packages ~file =
      let generate_opam_files =
        Option.value ~default:false generate_opam_files
      in
-     let always_add_cflags = Option.value ~default:true always_add_cflags in
+     let always_add_cflags =
+       Option.value ~default:(dune_version < (3, 0)) always_add_cflags
+     in
      let cram =
        match cram with
        | None -> false

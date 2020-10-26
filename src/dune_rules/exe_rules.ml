@@ -184,8 +184,7 @@ let executables_rules ~sctx ~dir ~expander ~dir_contents ~scope ~compile_info
       ~preprocess:(Preprocess.Per_module.single_preprocess preprocess)
       ~obj_dir )
 
-let rules ~sctx ~dir ~dir_contents ~scope ~expander
-    (exes : Dune_file.Executables.t) =
+let compile_info ~scope (exes : Dune_file.Executables.t) =
   let dune_version = Scope.project scope |> Dune_project.dune_version in
   let pps =
     Preprocess.Per_module.pps
@@ -193,12 +192,14 @@ let rules ~sctx ~dir ~dir_contents ~scope ~expander
          ~instrumentation_backend:
            (Lib.DB.instrumentation_backend (Scope.libs scope)))
   in
-  let compile_info =
-    Lib.DB.resolve_user_written_deps_for_exes (Scope.libs scope) exes.names
-      exes.buildable.libraries ~pps ~dune_version
-      ~allow_overlaps:exes.buildable.allow_overlapping_dependencies
-      ~optional:exes.optional ~forbidden_libraries:exes.forbidden_libraries
-  in
+  Lib.DB.resolve_user_written_deps_for_exes (Scope.libs scope) exes.names
+    exes.buildable.libraries ~pps ~dune_version
+    ~allow_overlaps:exes.buildable.allow_overlapping_dependencies
+    ~optional:exes.optional ~forbidden_libraries:exes.forbidden_libraries
+
+let rules ~sctx ~dir ~dir_contents ~scope ~expander
+    (exes : Dune_file.Executables.t) =
+  let compile_info = compile_info ~scope exes in
   let f () =
     executables_rules exes ~sctx ~dir ~dir_contents ~scope ~expander
       ~compile_info ~embed_in_plugin_libraries:exes.embed_in_plugin_libraries

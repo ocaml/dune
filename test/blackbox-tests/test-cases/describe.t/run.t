@@ -46,7 +46,8 @@ Describe various things
          (impl (_build/default/main.ml))
          (intf ())
          (cmt (_build/default/.main.eobjs/byte/dune__exe__Main.cmt))
-         (cmti ()))))))
+         (cmti ()))))
+     (include_dirs (_build/default/.main.eobjs/byte))))
    (library
     ((name foo)
      (uid 5dd4bd87ad37b4f5713085aff4bee9c9)

@@ -65,13 +65,15 @@ module Crawl = struct
     let modules_ =
       Dir_contents.get sctx ~dir |> Dir_contents.ocaml
       |> Ml_sources.modules_of_executables ~first_exe ~obj_dir
-      |> modules ~obj_dir:(Obj_dir.of_local obj_dir)
     in
+    let obj_dir = Obj_dir.of_local obj_dir in
+    let modules_ = modules ~obj_dir modules_ in
     let scope = Super_context.find_scope_by_project sctx project in
     let compile_info = Exe_rules.compile_info ~scope exes in
     match Lib.Compile.direct_requires compile_info with
     | Error _ -> None
     | Ok libs ->
+      let include_dirs = Obj_dir.all_cmis obj_dir in
       Some
         (Dyn.Variant
            ( "executables"
@@ -85,6 +87,7 @@ module Crawl = struct
                    , Dyn.Encoder.(list string) (List.map ~f:uid_of_library libs)
                    )
                  ; ("modules", List modules_)
+                 ; ("include_dirs", Dyn.Encoder.list dyn_path include_dirs)
                  ]
              ] ))
 

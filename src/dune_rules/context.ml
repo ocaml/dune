@@ -457,33 +457,28 @@ let create ~(kind : Kind.t) ~path ~env ~env_nodes ~name ~merlin ~targets
     let env =
       let cwd = Sys.getcwd () in
       let extend_var var ?(path_sep = Bin.path_sep) v =
-        let v = Filename.concat cwd (Path.to_string v) in
+        let v = Filename.concat cwd (Path.Build.to_string v) in
         match Env.get env var with
         | None -> (var, v)
         | Some prev -> (var, sprintf "%s%c%s" v path_sep prev)
       in
       let vars =
-        let local_lib_path =
-          Path.Build.relative (Config.local_install_dir ~context:name) "lib"
-          |> Path.build
-        in
+        let local_lib_root = Config.local_install_lib_root ~context:name in
         [ extend_var "CAML_LD_LIBRARY_PATH"
-            (Path.build
-               (Path.Build.relative
-                  (Config.local_install_dir ~context:name)
-                  "lib/stublibs"))
-        ; extend_var "OCAMLPATH" ~path_sep:ocamlpath_sep local_lib_path
+            (Path.Build.relative
+               (Config.local_install_dir ~context:name)
+               "lib/stublibs")
+        ; extend_var "OCAMLPATH" ~path_sep:ocamlpath_sep local_lib_root
         ; ("DUNE_OCAML_STDLIB", Ocaml_config.standard_library ocfg)
         ; ( "DUNE_OCAML_HARDCODED"
           , String.concat
               ~sep:(Char.escaped ocamlpath_sep)
               (List.map ~f:Path.to_string default_findlib_paths) )
         ; extend_var "OCAMLTOP_INCLUDE_PATH"
-            (Path.relative local_lib_path "toplevel")
+            (Path.Build.relative local_lib_root "toplevel")
         ; extend_var "OCAMLFIND_IGNORE_DUPS_IN" ~path_sep:ocamlpath_sep
-            local_lib_path
-        ; extend_var "MANPATH"
-            (Path.build (Config.local_install_man_dir ~context:name))
+            local_lib_root
+        ; extend_var "MANPATH" (Config.local_install_man_dir ~context:name)
         ; ("INSIDE_DUNE", Path.to_absolute_filename (Path.build build_dir))
         ; ( "DUNE_SOURCEROOT"
           , Path.to_absolute_filename (Path.source Path.Source.root) )
@@ -494,8 +489,7 @@ let create ~(kind : Kind.t) ~path ~env ~env_nodes ~name ~merlin ~targets
              match host with
              | None ->
                let _key, path =
-                 Path.build (Config.local_install_bin_dir ~context:name)
-                 |> extend_var "PATH"
+                 Config.local_install_bin_dir ~context:name |> extend_var "PATH"
                in
                Some path
              | Some host -> Env.get host.env "PATH")

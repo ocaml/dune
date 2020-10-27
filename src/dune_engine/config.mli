@@ -5,6 +5,8 @@ open! Import
 (** Local installation directory *)
 val local_install_dir : context:Context_name.t -> Path.Build.t
 
+val local_install_lib_root : context:Context_name.t -> Path.Build.t
+
 val local_install_bin_dir : context:Context_name.t -> Path.Build.t
 
 val local_install_man_dir : context:Context_name.t -> Path.Build.t

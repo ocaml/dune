@@ -66,6 +66,9 @@ Unreleased
 - `dune subst` now accepts common command-line arguments such as
   `--debug-backtraces` (#3878, @ejgallego)
 
+- `dune describe` now also includes information about executables in addition to
+  that of libraries. (#3892, #3895, @nojb)
+
 2.7.1 (2/09/2020)
 -----------------
 

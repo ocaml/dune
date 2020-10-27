@@ -38,6 +38,59 @@ module Crawl = struct
       (Lib.name lib, Path.to_string (Lib_info.src_dir (Lib.info lib)))
     |> Digest.to_string
 
+  let dyn_path p = Dyn.String (Path.to_string p)
+
+  let modules ~obj_dir =
+    Modules.fold_no_vlib ~init:[] ~f:(fun m acc ->
+        let source ml_kind =
+          Dyn.Encoder.option dyn_path
+            (Option.map (Module.source m ~ml_kind) ~f:Module.File.path)
+        in
+        let cmt ml_kind =
+          Dyn.Encoder.option dyn_path
+            (Obj_dir.Module.cmt_file obj_dir m ~ml_kind)
+        in
+        Dyn.Encoder.record
+          [ ("name", Module_name.to_dyn (Module.name m))
+          ; ("impl", source Impl)
+          ; ("intf", source Intf)
+          ; ("cmt", cmt Impl)
+          ; ("cmti", cmt Intf)
+          ]
+        :: acc)
+
+  let executables sctx ~project ~dir exes =
+    let first_exe = snd (List.hd exes.Dune_file.Executables.names) in
+    let obj_dir = Dune_file.Executables.obj_dir exes ~dir in
+    let modules_ =
+      Dir_contents.get sctx ~dir |> Dir_contents.ocaml
+      |> Ml_sources.modules_of_executables ~first_exe ~obj_dir
+    in
+    let obj_dir = Obj_dir.of_local obj_dir in
+    let modules_ = modules ~obj_dir modules_ in
+    let scope = Super_context.find_scope_by_project sctx project in
+    let compile_info = Exe_rules.compile_info ~scope exes in
+    match Lib.Compile.direct_requires compile_info with
+    | Error _ -> None
+    | Ok libs ->
+      let include_dirs = Obj_dir.all_cmis obj_dir in
+      Some
+        (Dyn.Variant
+           ( "executables"
+           , [ Dyn.Encoder.record
+                 [ ( "names"
+                   , List
+                       (List.map
+                          ~f:(fun (_, name) -> Dyn.String name)
+                          exes.names) )
+                 ; ( "requires"
+                   , Dyn.Encoder.(list string) (List.map ~f:uid_of_library libs)
+                   )
+                 ; ("modules", List modules_)
+                 ; ("include_dirs", Dyn.Encoder.list dyn_path include_dirs)
+                 ]
+             ] ))
+
   let library sctx lib =
     match Lib.requires lib with
     | Error _ -> None
@@ -46,29 +99,12 @@ module Crawl = struct
       let info = Lib.info lib in
       let src_dir = Lib_info.src_dir info in
       let obj_dir = Lib_info.obj_dir info in
-      let dyn_path p = Dyn.String (Path.to_string p) in
       let modules_ =
         if Lib.is_local lib then
           Dir_contents.get sctx ~dir:(Path.as_in_build_dir_exn src_dir)
           |> Dir_contents.ocaml
           |> Ml_sources.modules_of_library ~name
-          |> Modules.fold_no_vlib ~init:[] ~f:(fun m acc ->
-                 let source ml_kind =
-                   Dyn.Encoder.option dyn_path
-                     (Option.map (Module.source m ~ml_kind) ~f:Module.File.path)
-                 in
-                 let cmt ml_kind =
-                   Dyn.Encoder.option dyn_path
-                     (Obj_dir.Module.cmt_file obj_dir m ~ml_kind)
-                 in
-                 Dyn.Encoder.record
-                   [ ("name", Module_name.to_dyn (Module.name m))
-                   ; ("impl", source Impl)
-                   ; ("intf", source Intf)
-                   ; ("cmt", cmt Impl)
-                   ; ("cmti", cmt Intf)
-                   ]
-                 :: acc)
+          |> modules ~obj_dir
         else
           []
       in
@@ -102,8 +138,25 @@ module Crawl = struct
           match Lib.requires lib with
           | Error _ -> libs
           | Ok requires -> Lib.Set.of_list requires |> Lib.Set.union libs)
+      |> Lib.Set.to_list
+      |> List.filter_map ~f:(library sctx)
     in
-    Dyn.List (Lib.Set.to_list libs |> List.filter_map ~f:(library sctx))
+    let open Fiber.O in
+    let+ dune_files =
+      Dune_load.Dune_files.eval workspace.conf.dune_files ~context
+    in
+    let exes_and_libs =
+      Dune_load.Dune_file.fold_stanzas dune_files ~init:libs
+        ~f:(fun dune_file stanza accu ->
+          let dir = Path.Build.append_source context.build_dir dune_file.dir in
+          match stanza with
+          | Dune_file.Executables exes -> (
+            match executables sctx ~project:dune_file.project ~dir exes with
+            | None -> accu
+            | Some exes -> exes :: accu )
+          | _ -> accu)
+    in
+    Dyn.List exes_and_libs
 end
 
 module Opam_files = struct
@@ -169,7 +222,7 @@ module What = struct
   let describe t setup context =
     match t with
     | Workspace -> Crawl.workspace setup context
-    | Opam_files -> Opam_files.get ()
+    | Opam_files -> Fiber.return (Opam_files.get ())
 end
 
 module Format = struct
@@ -252,10 +305,9 @@ let term =
       let context =
         Import.Main.find_context_exn setup.workspace ~name:context_name
       in
-      let res = What.describe what setup context in
-      Fiber.return
-        ( match format with
-        | Csexp -> Csexp.to_channel stdout (Sexp.of_dyn res)
-        | Sexp -> print_as_sexp res ))
+      let+ res = What.describe what setup context in
+      match format with
+      | Csexp -> Csexp.to_channel stdout (Sexp.of_dyn res)
+      | Sexp -> print_as_sexp res)
 
 let command = (term, info)

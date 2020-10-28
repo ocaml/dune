@@ -151,3 +151,7 @@ val is_opam_file : Path.t -> bool
 val load_opam_file : Path.Source.t -> Name.t -> t
 
 val missing_deps : t -> effective_deps:Name.Set.t -> Name.Set.t
+
+module Set : Set.S with type elt = t
+
+module Map : Map.S with type key = t

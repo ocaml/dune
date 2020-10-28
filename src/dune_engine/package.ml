@@ -615,3 +615,17 @@ let missing_deps (t : t) ~effective_deps =
     |> Name.Set.of_list
   in
   Name.Set.diff effective_deps specified_deps
+
+module C = Comparable.Make (struct
+  type nonrec t = t
+
+  let to_dyn = to_dyn
+
+  let compare { path; name; _ } pkg =
+    match Name.compare pkg.name name with
+    | Eq -> Path.Source.compare path pkg.path
+    | s -> s
+end)
+
+module Set = C.Set
+module Map = C.Map

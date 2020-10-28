@@ -712,12 +712,16 @@ let install_rules sctx (package : Package.t) =
     Dune_project.strict_package_deps dune_project
   in
   let packages =
-    let+ packages = Build_system.package_deps package.name files in
+    let+ packages = Build_system.package_deps package files in
     match strict_package_deps with
     | false -> packages
     | true ->
       let missing_deps =
-        Package.missing_deps package ~effective_deps:packages
+        let effective_deps =
+          Package.Set.to_list packages
+          |> Package.Name.Set.of_list_map ~f:(fun (pkg : Package.t) -> pkg.name)
+        in
+        Package.missing_deps package ~effective_deps
       in
       if Package.Name.Set.is_empty missing_deps then
         packages
@@ -739,10 +743,12 @@ let install_rules sctx (package : Package.t) =
     Rules.Produce.Alias.add_deps target_alias files
       ~dyn_deps:
         (let+ packages = packages in
-         Package.Name.Set.to_list packages
-         |> Path.Set.of_list_map ~f:(fun pkg ->
+         Package.Set.to_list packages
+         |> Path.Set.of_list_map ~f:(fun (pkg : Package.t) ->
                 let pkg =
-                  Package.Name.Map.find_exn (Super_context.packages sctx) pkg
+                  Package.Name.Map.find_exn
+                    (Super_context.packages sctx)
+                    pkg.name
                 in
                 Build_system.Alias.package_install
                   ~context:(Context.to_build_context ctx)
@@ -759,7 +765,7 @@ let install_rules sctx (package : Package.t) =
       (let+ () = Build.path_set files
        and+ () =
          if strict_package_deps then
-           Build.map packages ~f:(fun (_ : Package.Name.Set.t) -> ())
+           Build.map packages ~f:(fun (_ : Package.Set.t) -> ())
          else
            Build.return ()
        in
@@ -871,11 +877,10 @@ let packages =
   in
   let f sctx =
     Super_context.packages sctx
-    |> Package.Name.Map.foldi ~init:[] ~f:(fun name pkg acc ->
+    |> Package.Name.Map.fold ~init:[] ~f:(fun pkg acc ->
            List.fold_left (package_source_files sctx pkg) ~init:acc
-             ~f:(fun acc path -> (path, name) :: acc))
-    |> Path.Build.Map.of_list_fold ~init:Package.Name.Set.empty
-         ~f:Package.Name.Set.add
+             ~f:(fun acc path -> (path, pkg) :: acc))
+    |> Path.Build.Map.of_list_fold ~init:Package.Set.empty ~f:Package.Set.add
   in
   let memo =
     Memo.create "package-map" ~doc:"Return a map assining package to files"
@@ -884,11 +889,11 @@ let packages =
       ~output:
         (Allow_cutoff
            ( module struct
-             type t = Package.Name.Set.t Path.Build.Map.t
+             type t = Package.Set.t Path.Build.Map.t
 
-             let to_dyn = Path.Build.Map.to_dyn Package.Name.Set.to_dyn
+             let to_dyn = Path.Build.Map.to_dyn Package.Set.to_dyn
 
-             let equal = Path.Build.Map.equal ~equal:Package.Name.Set.equal
+             let equal = Path.Build.Map.equal ~equal:Package.Set.equal
            end ))
       Sync f
   in

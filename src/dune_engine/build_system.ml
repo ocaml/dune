@@ -327,7 +327,7 @@ type t =
           option)
       Fdecl.t
   ; (* Package files are part of *)
-    packages : (Path.Build.t -> Package.Name.Set.t) Fdecl.t
+    packages : (Path.Build.t -> Package.Set.t) Fdecl.t
   ; mutable caching : caching option
   ; sandboxing_preference : Sandbox_mode.t list
   ; mutable rule_done : int
@@ -1773,10 +1773,10 @@ let package_deps pkg files =
       acc
     | Some fn ->
       let pkgs = Fdecl.get t.packages fn in
-      if Package.Name.Set.is_empty pkgs || Package.Name.Set.mem pkgs pkg then
+      if Package.Set.is_empty pkgs || Package.Set.mem pkgs pkg then
         loop_deps fn acc
       else
-        Package.Name.Set.union acc pkgs
+        Package.Set.union acc pkgs
   and loop_deps fn acc =
     match get_rule (Path.build fn) with
     | None -> acc
@@ -1802,7 +1802,7 @@ let package_deps pkg files =
   (* We know that after [Build.paths_for_rule], all transitive dependencies of
      [files] are computed and memoized and so the above call to
      [Build_request.peek_deps_exn] is safe. *)
-  Path.Set.fold files ~init:Package.Name.Set.empty ~f:(fun fn acc ->
+  Path.Set.fold files ~init:Package.Set.empty ~f:(fun fn acc ->
       match Path.as_in_build_dir fn with
       | None -> acc
       | Some fn -> loop_deps fn acc)

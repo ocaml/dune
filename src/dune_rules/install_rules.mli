@@ -19,4 +19,4 @@ val meta_and_dune_package_rules : Super_context.t -> dir:Path.Build.t -> unit
    [meta_and_dune_package_rules] from the interface and have [gen_rules] do
    everything. *)
 
-val packages : Super_context.t -> Package.Name.Set.t Path.Build.Map.t
+val packages : Super_context.t -> Package.Set.t Path.Build.Map.t

@@ -1391,7 +1391,9 @@ module Executables = struct
                   "these executables"
                 else
                   "this executable" )
-            ; Pp.text "One of the following modes is required:"
+            ; Pp.text
+                "When public_name is set, one of the following modes is \
+                 required:"
             ; Pp.enumerate Link_mode.installable_modes ~f:(fun mode ->
                   Pp.verbatim (Dune_lang.to_string (Link_mode.encode mode)))
             ]

@@ -184,12 +184,9 @@ let command_line_enclosers ~dir ~(stdout_to : Io.output Io.t)
     with
     | Some path_out, Some path_err when String.equal path_out path_err ->
       let path = path_out in
-      suffix
-      |> add_to_suffix " &> " (Some path)
+      suffix |> add_to_suffix " &> " (Some path)
     | path_out, path_err ->
-      suffix
-      |> add_to_suffix " > " path_out
-      |> add_to_suffix " 2> " path_err
+      suffix |> add_to_suffix " > " path_out |> add_to_suffix " 2> " path_err
   in
   (prefix, suffix)
 

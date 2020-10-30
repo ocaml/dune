@@ -35,9 +35,11 @@ let lib_unique_name lib =
   let info = Lib.info lib in
   let status = Lib_info.status info in
   match status with
-  | Installed -> assert false
+  | Installed_private
+  | Installed ->
+    assert false
   | Public _ -> Lib_name.to_string name
-  | Private project -> Scope_key.to_string name project
+  | Private (project, _) -> Scope_key.to_string name project
 
 let pkg_or_lnu lib =
   match Lib_info.package (Lib.info lib) with
@@ -643,9 +645,9 @@ let init sctx =
     |> List.concat_map ~f:(fun (w : _ Dir_with_dune.t) ->
            List.filter_map w.data ~f:(function
              | Dune_file.Library (l : Dune_file.Library.t) -> (
-               match l.public with
-               | Some _ -> None
-               | None ->
+               match l.visibility with
+               | Public _ -> None
+               | Private _ ->
                  let scope = SC.find_scope_by_dir sctx w.ctx_dir in
                  Library.best_name l
                  |> Lib.DB.find_even_when_hidden (Scope.libs scope)

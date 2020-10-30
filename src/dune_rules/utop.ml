@@ -35,14 +35,17 @@ let libs_and_ppx_under_dir sctx ~db ~dir =
       match Super_context.stanzas_in sctx ~dir with
       | None -> (acc, pps)
       | Some (d : _ Dir_with_dune.t) ->
-        List.fold_left d.data ~init:(acc, pps) ~f:(fun (acc, pps) ->
-          function
+        List.fold_left d.data ~init:(acc, pps) ~f:(fun (acc, pps) -> function
           | Dune_file.Library l -> (
             match
-              Lib.DB.find_even_when_hidden db (Dune_file.Library.best_name l)
+              Lib.DB.resolve_when_exists db
+                (l.buildable.loc, Dune_file.Library.best_name l)
             with
-            | None -> (acc, pps) (* library is defined but outside our scope *)
-            | Some lib ->
+            | None
+            | Some (Error _) ->
+              (acc, pps)
+              (* library is defined but outside our scope or is disabled *)
+            | Some (Ok lib) ->
               (* still need to make sure that it's not coming from an external
                  source *)
               let info = Lib.info lib in
@@ -51,15 +54,7 @@ let libs_and_ppx_under_dir sctx ~db ~dir =
                  Implementations are selected using the default implementation
                  feature. *)
               let not_impl = Option.is_none (Lib_info.implements info) in
-              let not_hidden =
-                match Lib_info.enabled info with
-                | Normal -> true
-                | Optional -> Result.is_ok (Lib.requires lib)
-                | Disabled_because_of_enabled_if -> false
-              in
-              if
-                not_impl && not_hidden
-                && Path.is_descendant ~of_:(Path.build dir) src_dir
+              if not_impl && Path.is_descendant ~of_:(Path.build dir) src_dir
               then
                 match Lib_info.kind info with
                 | Lib_kind.Ppx_rewriter _

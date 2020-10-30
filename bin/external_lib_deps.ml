@@ -20,6 +20,32 @@ let man =
 
 let info = Term.info "external-lib-deps" ~doc ~man
 
+let all_lib_deps ~request =
+  let targets = Build_system.static_deps_of_request request in
+  let rules = Build_system.rules_for_transitive_closure targets in
+  let lib_deps =
+    List.map rules ~f:(fun (rule : Dune_engine.Rule.t) ->
+        let deps = Lib_deps_info.lib_deps rule.action.build in
+        (rule, deps))
+  in
+  let module Context_name = Dune_engine.Context_name in
+  let contexts = Build_system.contexts () in
+  List.fold_left lib_deps ~init:[]
+    ~f:(fun acc ((rule : Dune_engine.Rule.t), deps) ->
+      if Lib_name.Map.is_empty deps then
+        acc
+      else
+        match Path.Build.extract_build_context rule.dir with
+        | None -> acc
+        | Some (context, p) ->
+          let context = Context_name.of_string context in
+          (context, (p, deps)) :: acc)
+  |> Context_name.Map.of_list_multi
+  |> Context_name.Map.filteri ~f:(fun ctx _ ->
+         Context_name.Map.mem contexts ctx)
+  |> Context_name.Map.map
+       ~f:(Path.Source.Map.of_list_reduce ~f:Lib_deps_info.merge)
+
 let run ~lib_deps ~by_dir ~setup ~only_missing ~sexp =
   Dune_engine.Context_name.Map.foldi lib_deps ~init:false
     ~f:(fun context_name lib_deps_by_dir acc ->
@@ -139,7 +165,7 @@ let term =
         let+ setup = Import.Main.setup common in
         let targets = Target.resolve_targets_exn common setup targets in
         let request = Target.request targets in
-        let deps = Build_system.all_lib_deps ~request in
+        let deps = all_lib_deps ~request in
         (setup, deps))
   in
   let failure = run ~by_dir ~setup ~lib_deps ~sexp ~only_missing in

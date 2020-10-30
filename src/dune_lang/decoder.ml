@@ -154,6 +154,11 @@ let repeat : 'a t -> 'a list t =
   in
   fun t ctx state -> loop t [] ctx state
 
+let repeat1 p =
+  let+ x = p
+  and+ xs = repeat p in
+  x :: xs
+
 let result : type a k. k context -> a * k -> a =
  fun ctx (v, state) ->
   match ctx with
@@ -316,7 +321,7 @@ let enter t =
         result ctx (t ctx l)
       | sexp -> User_error.raise ~loc:(Ast.loc sexp) [ Pp.text "List expected" ])
 
-let ( <|> ) =
+let either =
   (* Before you read this code, close your eyes and internalise the fact that
      this code is temporary. It is a temporary state as part of a larger work to
      turn [Decoder.t] into a pure applicative. Once this is done, this function
@@ -331,10 +336,10 @@ let ( <|> ) =
       (approximate_how_much_input_a_failing_branch_consumed exn2)
   in
   fun a b ctx state ->
-    try a ctx state
+    try (a >>| Either.left) ctx state
     with exn_a -> (
       let exn_a = Exn_with_backtrace.capture exn_a in
-      try b ctx state
+      try (b >>| Either.right) ctx state
       with exn_b ->
         let exn_b = Exn_with_backtrace.capture exn_b in
         Exn_with_backtrace.reraise
@@ -343,6 +348,12 @@ let ( <|> ) =
           | Eq
           | Lt ->
             exn_b ) )
+
+let ( <|> ) x y =
+  let+ res = either x y in
+  match res with
+  | Left x -> x
+  | Right x -> x
 
 let fix f =
   let rec p = lazy (f r)

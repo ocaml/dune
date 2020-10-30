@@ -22,16 +22,33 @@ Setup
   >  (name foo_x)
   >  (public_name foo.x)
   >  (modules foo_x))
+  > 
+  > (executable
+  >  (name main)
+  >  (libraries foo_x foo)
+  >  (modules main))
   > EOF
 
   $ touch foo.ml
   $ touch foo_x.ml
+  $ touch main.ml
 
 Describe various things
 -----------------------
 
   $ dune describe workspace --lang 0.1
-  ((library
+  ((executables
+    ((names (main))
+     (requires
+      (c17373aee51bab94097b4b7818553cf3 5dd4bd87ad37b4f5713085aff4bee9c9))
+     (modules
+       (((name Main)
+         (impl (_build/default/main.ml))
+         (intf ())
+         (cmt (_build/default/.main.eobjs/byte/dune__exe__Main.cmt))
+         (cmti ()))))
+     (include_dirs (_build/default/.main.eobjs/byte))))
+   (library
     ((name foo)
      (uid 5dd4bd87ad37b4f5713085aff4bee9c9)
      (local true)
@@ -62,7 +79,7 @@ Test other formats
 ------------------
 
   $ dune describe workspace --format csexp --lang 0.1 | cut -c 1-85
-  ((7:library((4:name3:foo)(3:uid32:5dd4bd87ad37b4f5713085aff4bee9c9)(5:local4:true)(8:
+  ((11:executables((5:names(4:main))(8:requires(32:c17373aee51bab94097b4b7818553cf332:5
 
 Test errors
 -----------

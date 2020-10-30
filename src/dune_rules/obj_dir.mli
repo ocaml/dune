@@ -57,6 +57,7 @@ val all_obj_dirs : 'path t -> mode:Mode.t -> 'path list
 val make_lib :
      dir:Path.Build.t
   -> has_private_modules:bool
+  -> private_lib:bool
   -> Lib_name.Local.t
   -> Path.Build.t t
 
@@ -72,11 +73,11 @@ val convert_to_external : Path.Build.t t -> dir:Path.t -> Path.t t
 
 val cm_dir : 'path t -> Cm_kind.t -> Visibility.t -> 'path
 
-val cm_public_dir : 'path t -> Cm_kind.t -> 'path
-
 val to_dyn : _ t -> Dyn.t
 
 val make_exe : dir:Path.Build.t -> name:string -> Path.Build.t t
+
+val for_pp : dir:Path.Build.t -> Path.Build.t t
 
 val as_local_exn : Path.t t -> Path.Build.t t
 
@@ -100,13 +101,15 @@ module Module : sig
 
   val obj_file : 'path t -> Module.t -> kind:Cm_kind.t -> ext:string -> 'path
 
-  (** Same as [cm_file] but doesn't raise if [cm_kind] is [Cmo] or [Cmx] and the
-      module has no implementation.*)
-  val cm_file_unsafe : 'path t -> Module.t -> kind:Cm_kind.t -> 'path
+  (** Same as [cm_file] but raises if [cm_kind] is [Cmo] or [Cmx] and the module
+      has no implementation.*)
+  val cm_file_exn : 'path t -> Module.t -> kind:Cm_kind.t -> 'path
 
-  val o_file_unsafe : 'path t -> Module.t -> ext_obj:string -> 'path
+  val o_file : 'path t -> Module.t -> ext_obj:string -> 'path option
 
-  val cm_public_file_unsafe : 'path t -> Module.t -> kind:Cm_kind.t -> 'path
+  val o_file_exn : 'path t -> Module.t -> ext_obj:string -> 'path
+
+  val cm_public_file_exn : 'path t -> Module.t -> kind:Cm_kind.t -> 'path
 
   (** Either the .cmti, or .cmt if the module has no interface *)
   val cmti_file : 'path t -> Module.t -> 'path

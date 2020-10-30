@@ -47,9 +47,7 @@ let info_user_message msg =
   | None -> ()
   | Some { oc; _ } ->
     Option.iter oc ~f:(fun oc ->
-        let s =
-          Format.asprintf "%a@?" Pp.render_ignore_tags (User_message.pp msg)
-        in
+        let s = Format.asprintf "%a@?" Pp.to_fmt (User_message.pp msg) in
         List.iter (String.split_lines s) ~f:(function
           | "" -> output_string oc "#\n"
           | s -> Printf.fprintf oc "# %s\n" s);

@@ -114,9 +114,13 @@ module Mode_conf : sig
 end
 
 module Library : sig
+  type visibility =
+    | Public of Public_lib.t
+    | Private of Package.t option
+
   type t =
     { name : Loc.t * Lib_name.Local.t
-    ; public : Public_lib.t option
+    ; visibility : visibility
     ; synopsis : string option
     ; install_c_headers : string list
     ; ppx_runtime_libraries : (Loc.t * Lib_name.t) list
@@ -147,6 +151,10 @@ module Library : sig
     ; instrumentation_backend : (Loc.t * Lib_name.t) option
     }
 
+  val sub_dir : t -> string option
+
+  val package : t -> Package.t option
+
   (** Check if the library has any foreign stubs or archives. *)
   val has_foreign : t -> bool
 
@@ -157,11 +165,6 @@ module Library : sig
       is the directory the library is declared in. *)
   val foreign_lib_files :
     t -> dir:Path.Build.t -> ext_lib:string -> Path.Build.t list
-
-  (** The [dll*.so] files of all foreign archives, including foreign stubs.
-      [dir] is the directory the library is declared in. *)
-  val foreign_dll_files :
-    t -> dir:Path.Build.t -> ext_dll:string -> Path.Build.t list
 
   (** The path to a library archive. [dir] is the directory the library is
       declared in. *)
@@ -273,6 +276,7 @@ module Copy_files : sig
     { add_line_directive : bool
     ; alias : Alias.Name.t option
     ; mode : Rule.Mode.t
+    ; enabled_if : Blang.t
     ; files : String_with_vars.t
     ; syntax_version : Dune_lang.Syntax.Version.t
     }
@@ -354,7 +358,7 @@ end
     - When hiding public libraries with [--only-packages] (or [-p]), we use this
       stanza to make sure that their project-local names remain in scope. *)
 module Library_redirect : sig
-  type 'old_name t =
+  type 'old_name t = private
     { project : Dune_project.t
     ; loc : Loc.t
     ; old_name : 'old_name
@@ -364,7 +368,7 @@ module Library_redirect : sig
   module Local : sig
     type nonrec t = (Loc.t * Lib_name.Local.t) t
 
-    val of_lib : Library.t -> t option
+    val of_private_lib : Library.t -> t option
   end
 end
 

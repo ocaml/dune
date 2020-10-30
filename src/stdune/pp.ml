@@ -1,10 +1,10 @@
 module List = struct
-  include Stdlib.ListLabels
+  include ListLabels
 
   let map ~f t = rev (rev_map ~f t)
 end
 
-module String = Stdlib.StringLabels
+module String = StringLabels
 
 type +'a t =
   | Nop
@@ -17,7 +17,7 @@ type +'a t =
   | Hovbox of int * 'a t
   | Verbatim of string
   | Char of char
-  | Break of int * int
+  | Break of (string * int * string) * (string * int * string)
   | Newline
   | Text of string
   | Tag of 'a * 'a t
@@ -90,16 +90,16 @@ module Render = struct
       pp_close_box ppf ()
     | Verbatim x -> pp_print_string ppf x
     | Char x -> pp_print_char ppf x
-    | Break (nspaces, shift) -> pp_print_break ppf nspaces shift
+    | Break (fits, breaks) -> pp_print_custom_break ppf ~fits ~breaks
     | Newline -> pp_force_newline ppf ()
     | Text s -> pp_print_text ppf s
     | Tag (tag, t) -> tag_handler ppf tag t
 end
 
-let render = Render.render
+let to_fmt_with_tags = Render.render
 
-let rec render_ignore_tags ppf t =
-  render ppf t ~tag_handler:(fun ppf _tag t -> render_ignore_tags ppf t)
+let rec to_fmt ppf t =
+  Render.render ppf t ~tag_handler:(fun ppf _tag t -> to_fmt ppf t)
 
 let nop = Nop
 
@@ -136,11 +136,14 @@ let verbatim x = Verbatim x
 
 let char x = Char x
 
-let break ~nspaces ~shift = Break (nspaces, shift)
+let custom_break ~fits ~breaks = Break (fits, breaks)
 
-let space = Break (1, 0)
+let break ~nspaces ~shift =
+  custom_break ~fits:("", nspaces, "") ~breaks:("", shift, "")
 
-let cut = Break (0, 0)
+let space = break ~nspaces:1 ~shift:0
+
+let cut = break ~nspaces:0 ~shift:0
 
 let newline = Newline
 

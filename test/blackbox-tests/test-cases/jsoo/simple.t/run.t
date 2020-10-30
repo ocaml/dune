@@ -3,20 +3,15 @@ Compilation using jsoo
   $ dune build --display short bin/technologic.bc.js @install  2>&1 | \
   > sed s,^\ *$(ocamlc -config-var c_compiler),\ \ C_COMPILER,g
     C_COMPILER lib/stubs.o
-      ocamlopt .ppx/7b799aed44581cc79b02033532c5f775/ppx.exe
+      ocamldep lib/.x.objs/x.ml.d
         ocamlc lib/.x.objs/byte/x__.{cmi,cmo,cmt}
+      ocamldep lib/.x.objs/y.ml.d
    js_of_ocaml .js/stdlib/std_exit.cmo.js
    js_of_ocaml bin/technologic.bc.runtime.js
+      ocamldep bin/.technologic.eobjs/technologic.ml.d
+      ocamldep bin/.technologic.eobjs/z.ml.d
     ocamlmklib lib/dllx_stubs.so,lib/libx_stubs.a
-           ppx lib/x.pp.ml
-           ppx lib/y.pp.ml
-           ppx bin/technologic.pp.ml
-           ppx bin/z.pp.ml
       ocamlopt lib/.x.objs/native/x__.{cmx,o}
-      ocamldep lib/.x.objs/x.pp.ml.d
-      ocamldep lib/.x.objs/y.pp.ml.d
-      ocamldep bin/.technologic.eobjs/technologic.pp.ml.d
-      ocamldep bin/.technologic.eobjs/z.pp.ml.d
         ocamlc lib/.x.objs/byte/x__Y.{cmi,cmo,cmt}
    js_of_ocaml .js/js_of_ocaml/js_of_ocaml.cma.js
    js_of_ocaml .js/stdlib/stdlib.cma.js

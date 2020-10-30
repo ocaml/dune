@@ -45,10 +45,57 @@ end = struct
       let name = Dune_file.Library.best_name lib in
       [ Preprocessing.ppx_exe sctx ~scope name |> Result.ok_exn ]
 
+  let if_ cond l =
+    if cond then
+      l
+    else
+      []
+
+  let lib_files ~modes ~dir_contents ~dir ~lib_config lib =
+    let virtual_library = Option.is_some (Lib_info.virtual_ lib) in
+    let { Lib_config.ext_obj; _ } = lib_config in
+    let archives = Lib_info.archives lib in
+    let { Mode.Dict.byte = _; native } = modes in
+    List.concat
+      [ archives.byte
+      ; archives.native
+      ; ( if virtual_library then
+          let foreign_sources = Dir_contents.foreign_sources dir_contents in
+          let name = Lib_info.name lib in
+          let files = Foreign_sources.for_lib foreign_sources ~name in
+          Foreign.Sources.object_files files ~dir ~ext_obj
+        else
+          Lib_info.foreign_archives lib )
+      ; if_
+          (native && not virtual_library)
+          ((* TODO remove the if check once Lib_info.native_archives always
+              returns the correct value for libs without modules *)
+           let modules =
+             Dir_contents.ocaml dir_contents
+             |> Ml_sources.modules_of_library ~name:(Lib_info.name lib)
+           in
+           if Lib_info.has_native_archive lib_config modules then
+             Lib_info.native_archives lib
+           else
+             [])
+      ; Lib_info.jsoo_runtime lib
+      ; (Lib_info.plugins lib).native
+      ]
+
+  let dll_files ~(modes : Mode.Dict.Set.t) ~dynlink ~(ctx : Context.t) lib =
+    if_
+      ( modes.byte
+      && Dynlink_supported.get dynlink ctx.supports_shared_libraries
+      && ctx.dynamically_linked_foreign_archives )
+      (Lib_info.foreign_dll_files lib)
+
   let lib_install_files sctx ~scope ~dir_contents ~dir ~sub_dir:lib_subdir
       (lib : Library.t) =
     let loc = lib.buildable.loc in
-    let obj_dir = Dune_file.Library.obj_dir lib ~dir in
+    let ctx = Super_context.context sctx in
+    let lib_config = ctx.lib_config in
+    let info = Dune_file.Library.to_lib_info lib ~dir ~lib_config in
+    let obj_dir = Lib_info.obj_dir info in
     let make_entry section ?sub_dir ?dst fn =
       ( Some loc
       , Install.Entry.make section fn
@@ -83,55 +130,77 @@ end = struct
               in
               make_entry Lib source ?dst))
     in
-    let ctx = Super_context.context sctx in
-    let { Lib_config.has_native; ext_obj; _ } = ctx.lib_config in
+    let { Lib_config.has_native; ext_obj; _ } = lib_config in
+    let modes = Dune_file.Mode_conf.Set.eval lib.modes ~has_native in
+    let { Mode.Dict.byte; native } = modes in
     let module_files =
-      let if_ cond l =
-        if cond then
-          l
-        else
-          []
+      let inside_subdir f =
+        match lib_subdir with
+        | None -> f
+        | Some d -> Filename.concat d f
       in
-      let { Mode.Dict.byte; native } =
-        Dune_file.Mode_conf.Set.eval lib.modes ~has_native
+      let external_obj_dir =
+        Obj_dir.convert_to_external obj_dir ~dir:(Path.build dir)
+      in
+      let cm_dir m cm_kind =
+        let visibility = Module.visibility m in
+        let dir' = Obj_dir.cm_dir external_obj_dir cm_kind visibility in
+        if Path.equal (Path.build dir) dir' then
+          None
+        else
+          Path.basename dir' |> inside_subdir |> Option.some
       in
       let virtual_library = Library.is_virtual lib in
       List.concat_map installable_modules ~f:(fun m ->
-          let cm_file_unsafe kind =
-            Obj_dir.Module.cm_file_unsafe obj_dir m ~kind
+          let cm_file kind = Obj_dir.Module.cm_file obj_dir m ~kind in
+          let if_ b (cm_kind, f) =
+            if b then
+              match f with
+              | None -> []
+              | Some f -> [ (cm_kind, f) ]
+            else
+              []
           in
-          let cmi_file = (Module.visibility m, cm_file_unsafe Cmi) in
+          let cm_dir = cm_dir m in
           let other_cm_files =
-            let has_impl = Module.has ~ml_kind:Impl m in
-            [ if_ (native && has_impl) [ cm_file_unsafe Cmx ]
-            ; if_ (byte && has_impl && virtual_library) [ cm_file_unsafe Cmo ]
+            let open Cm_kind in
+            [ if_ true (Cmi, cm_file Cmi)
+            ; if_ native (Cmx, cm_file Cmx)
+            ; if_ (byte && virtual_library) (Cmo, cm_file Cmo)
             ; if_
-                (native && has_impl && virtual_library)
-                [ Obj_dir.Module.obj_file obj_dir m ~kind:Cmx ~ext:ext_obj ]
+                (native && virtual_library)
+                (Cmx, Obj_dir.Module.o_file obj_dir m ~ext_obj)
             ; List.filter_map Ml_kind.all ~f:(fun ml_kind ->
-                  Obj_dir.Module.cmt_file obj_dir m ~ml_kind)
+                  let open Option.O in
+                  let+ cmt = Obj_dir.Module.cmt_file obj_dir m ~ml_kind in
+                  (Cmi, cmt))
             ]
             |> List.concat
-            |> List.map ~f:(fun f -> (Visibility.Public, f))
+            |> List.map ~f:(fun (cm_kind, f) -> (cm_dir cm_kind, f))
           in
-          cmi_file :: other_cm_files)
+          other_cm_files)
     in
-    let archives = Lib_archives.make ~ctx ~dir_contents ~dir lib in
+    let lib_files, dll_files =
+      let lib_files = lib_files ~modes ~dir ~dir_contents ~lib_config info in
+      let dll_files = dll_files ~modes ~dynlink:lib.dynlink ~ctx info in
+      (lib_files, dll_files)
+    in
     let execs = lib_ppxs sctx ~scope ~lib in
+    let install_c_headers =
+      List.map
+        ~f:(fun base ->
+          Path.Build.relative dir (base ^ Foreign_language.header_extension))
+        lib.install_c_headers
+    in
     List.concat
       [ sources
-      ; List.map module_files ~f:(fun (visibility, file) ->
-            let sub_dir =
-              match ((visibility : Visibility.t), lib_subdir) with
-              | Public, _ -> lib_subdir
-              | Private, None -> Some ".private"
-              | Private, Some dir -> Some (Filename.concat dir ".private")
-            in
+      ; List.map module_files ~f:(fun (sub_dir, file) ->
             make_entry ?sub_dir Lib file)
-      ; List.map (Lib_archives.lib_files archives) ~f:(make_entry Lib)
+      ; List.map lib_files ~f:(make_entry Lib)
       ; List.map execs ~f:(make_entry Libexec)
-      ; List.map (Lib_archives.dll_files archives) ~f:(fun a ->
+      ; List.map dll_files ~f:(fun a ->
             (Some loc, Install.Entry.make Stublibs a))
+      ; List.map ~f:(make_entry Lib) install_c_headers
       ]
 
   let keep_if ~external_lib_deps_mode expander =
@@ -271,9 +340,7 @@ end = struct
                       (Super_context.get_site_of_packages sctx)
                       src ?dst ))
             | Dune_file.Library lib ->
-              let sub_dir =
-                Option.value_exn lib.public |> Dune_file.Public_lib.sub_dir
-              in
+              let sub_dir = Dune_file.Library.sub_dir lib in
               let dir_contents = Dir_contents.get sctx ~dir in
               lib_install_files sctx ~scope ~dir ~sub_dir lib ~dir_contents
             | Coq_stanza.Theory.T coqlib ->
@@ -319,7 +386,18 @@ end = struct
       Config.local_install_lib_dir ~context:ctx.name ~package:pkg.name
     in
     let lib_root lib =
-      let _, subdir = Lib_name.split (Lib.name lib) in
+      let subdir =
+        let name = Lib.name lib in
+        let _, subdir = Lib_name.split name in
+        match
+          let info = Lib.info lib in
+          Lib_info.status info
+        with
+        | Private (_, Some _) ->
+          Lib_name.Local.mangled_path_under_package (Lib_name.to_local_exn name)
+          @ subdir
+        | _ -> subdir
+      in
       Path.Build.L.relative pkg_root subdir
     in
     let entries =
@@ -364,6 +442,8 @@ end = struct
             in
             Lib_name.Map.add_exn acc name
               (Library
+                 (* XXX Raising here is not great. Loading the install rules
+                    will now break rules everywhere else *)
                  (Result.ok_exn
                     (Lib.to_dune_lib lib
                        ~dir:(Path.build (lib_root lib))
@@ -419,14 +499,14 @@ end = struct
             | None -> Lib_name.Map.empty
             | Some entries ->
               List.fold_left entries ~init:Lib_name.Map.empty
-                ~f:(fun acc
-                        { Dune_file.Library_redirect.old_name =
-                            old_public_name, _
-                        ; new_public_name = _, new_public_name
-                        ; loc
-                        ; _
-                        }
-                        ->
+                ~f:(fun
+                     acc
+                     { Dune_file.Library_redirect.old_name = old_public_name, _
+                     ; new_public_name = _, new_public_name
+                     ; loc
+                     ; _
+                     }
+                   ->
                   let old_public_name =
                     Dune_file.Public_lib.name old_public_name
                   in
@@ -524,7 +604,7 @@ end = struct
                 else
                   Pp.verbatim s))
        in
-       Format.asprintf "%a" Pp.render_ignore_tags pp)
+       Format.asprintf "%a" Pp.to_fmt pp)
       |> Build.write_file_dyn meta);
     let deprecated_packages =
       Package.Name.Map.of_list_multi deprecated_packages
@@ -544,7 +624,7 @@ end = struct
                let open Pp.O in
                Pp.vbox (Meta.pp meta.entries ++ Pp.cut)
              in
-             Format.asprintf "%a" Pp.render_ignore_tags pp)
+             Format.asprintf "%a" Pp.to_fmt pp)
           |> Build.write_file meta ))
 
   let meta_and_dune_package_rules_impl (project, sctx) =

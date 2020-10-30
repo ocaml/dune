@@ -702,7 +702,6 @@ end = struct
     let fiber =
       Fiber.Var.set t_var t (fun () -> Fiber.with_error_handler f ~on_error)
     in
-    Console.Status_line.set (Fun.const None);
     match Fiber.run fiber ~iter with
     | res ->
       assert (Event.pending_jobs () = 0);
@@ -712,14 +711,16 @@ end = struct
 
   let run_and_cleanup t f =
     let res = run t f in
-    ( match res with
-    | Error Files_changed ->
-      Console.Status_line.set (fun () ->
-          Some
-            (Pp.seq
-               (Pp.tag User_message.Style.Error (Pp.verbatim "Had errors"))
-               (Pp.verbatim ", killing current build...")))
-    | _ -> () );
+    let status_line =
+      match res with
+      | Error Files_changed ->
+        Some
+          (Pp.seq
+             (Pp.tag User_message.Style.Error (Pp.verbatim "Had errors"))
+             (Pp.verbatim ", killing current build..."))
+      | _ -> None
+    in
+    Console.Status_line.set (Fun.const status_line);
     match kill_and_wait_for_all_processes t () with
     | Got_signal -> Error Got_signal
     | Ok -> res

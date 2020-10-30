@@ -139,10 +139,11 @@ val do_build : request:'a Build.t -> 'a Fiber.t
 
 val is_target : Path.t -> bool
 
-(** All library dependencies (as written by the user) of a given build request,
-    indexed by context name. *)
-val all_lib_deps :
-  request:unit Build.t -> Lib_deps_info.t Path.Source.Map.t Context_name.Map.t
+val static_deps_of_request : 'a Build.t -> Path.Set.t
+
+val rules_for_transitive_closure : Path.Set.t -> Rule.t list
+
+val contexts : unit -> Build_context.t Context_name.Map.t
 
 (** List of all buildable targets. *)
 val all_targets : unit -> Path.Build.Set.t

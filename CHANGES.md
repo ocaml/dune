@@ -1,20 +1,73 @@
 Unreleased
 ----------
 
+- Action `(diff reference test_result)` now accept `reference` to be absent and
+  in that case consider that the reference is empty. Then running `dune promote`
+  will create the reference file. (#3795, @bobot)
+
 - Ignore special files (BLK, CHR, FIFO, SOCKET), (#3570, fixes #3124, #3546,
   @ejgallego)
 
-- Experimental: Introduce specific installation sites. Allow to define plugins
-  to be installed in these sites. (#3104, fixes #1185, @bobot)
+- Experimental: Simplify loading of additional files (data or code) at runtime in programs by
+  introducing specific installation sites. In particular it allow to define
+  plugins to be installed in these sites. (#3104, #3794, fixes #1185, @bobot)
 
 - Move all temporary files created by dune to run actions to a single directory
-  and make sure that actions executed by dune also use this directory by
-  settting `TMPDIR` (or `TEMP` on Windows). (#3691, fixes #3422, @rgrinberg)
+  and make sure that actions executed by dune also use this directory by setting
+  `TMPDIR` (or `TEMP` on Windows). (#3691, fixes #3422, @rgrinberg)
 
 - Fix bootstrap script with custom configuration. (#3757, fixes #3774, @marsam)
 
 - Add the `executable` field to `inline_tests` to customize the compilation
   flags of the test runner executable (#3747, fixes #3679, @lubegasimon)
+
+- Add `(enabled_if ...)` to `(copy_files ...)` (#3756, @nojb)
+
+- Make sure Dune cleans up the status line before exiting (#3767,
+  fixes #3737, @alan-j-hu)
+
+- Add `{gitlab,bitbucket}` as options for defining project sources with `source`
+  stanza `(source (<host> user/repo))` in the `dune-project` file.  (#3813,
+  @rgrinberg)
+
+- Fix generation of `META` and `dune-package` files when some targets (byte,
+  native, dynlink) are disabled. Previously, dune would generate all archives
+  for regardless of settings. (#3829, @rgrinberg)
+
+- Do no run ocamldep to for single module executables & libraries. The
+  dependency graph for such artifacts is trivial (#3847, @rgrinberg)
+
+- Fix cram tests inside vendored directories not being interpreted correctly.
+  (#3860, fixes #3843, @rgrinberg)
+
+- Add `package` field to private libraries. This allows such libraries to be
+  installed and to be usable by other public libraries in the same project
+  (#3655, fixes #1017, @rgrinberg)
+
+- Fix the `%{make}` variable on Windows by only checking for a `gmake` binary
+  on UNIX-like systems as a unrelated `gmake` binary might exist on Windows.
+  (#3853, @kit-ty-kate)
+
+- Fix `$ dune install` modifying the build directory. This made the build
+  directory unusable when `$ sudo dune install` modified permissions. (fix
+  #3857, @rgrinberg)
+
+- Fix handling of aliases given on the command line (using the `@` and `@@`
+  syntax) so as to correctly handle relative paths. (#3874, fixes #3850, @nojb)
+
+- Allow link time code generation to be used in preprocessing executable. This
+  makes it possible to use the build info module inside the preprocessor.
+  (#3848, fix #3848, @rgrinberg)
+
+- Correctly call `git ls-tree` so unicode files are not quoted, this
+  fixes problems with `dune subst` in the presence of unicode
+  files. Fixes #3219 (#3879, @ejgallego)
+
+- `dune subst` now accepts common command-line arguments such as
+  `--debug-backtraces` (#3878, @ejgallego)
+
+- `dune describe` now also includes information about executables in addition to
+  that of libraries. (#3892, #3895, @nojb)
 
 2.7.1 (2/09/2020)
 -----------------
@@ -108,6 +161,9 @@ Unreleased
 
 - `(subdir ...)` stanzas can now appear in dune files used via `(include ...)`.
   (#3676, @nojb)
+
+- Add actions `pipe-{stdout,stderr,outputs}` for output redirections (#3392,
+  fixes #428, @NathanReb)
 
 2.6.2 (26/07/2020)
 ------------------

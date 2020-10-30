@@ -260,6 +260,9 @@ It contains the following fields:
   <url>)``, ``(documentation <url>)`` are the same (and take precedence over)
   the corresponding global fields. These fields are available since Dune 2.0.
 
+- ``(sites (<section> <name>) ...)`` define a site named ``<name>`` in the
+  section ``<section>``.
+
 Adding libraries to different packages is done via  ``public_name`` field. See
 :ref:`library` section for details.
 
@@ -352,6 +355,12 @@ to use the :ref:`include_subdirs` stanza.
   name it is part of and optionally followed by a dot and anything else you
   want. The package name must be one of the packages that dune knows about,
   as determined by the :ref:`opam-files`
+
+- ``(package <package>)`` Install private library under the specified package.
+  Such a library is now usable by public libraries defined in the same project.
+  The findlib name for this library will be ``<package>.__private__.<name>``,
+  however the library's interface will be hidden from consumers outside the
+  project.
 
 - ``(synopsis <string>)`` should give a one-line description of the library.
   This is used by tools that list installed libraries
@@ -497,10 +506,9 @@ to use the :ref:`include_subdirs` stanza.
   :ref:`inline_tests` for a reference of corresponding options.
 
 Note that when binding C libraries, dune doesn't provide special support for
-tools such as ``pkg-config``, however it integrates easily with configurator_ by
+tools such as ``pkg-config``, however it integrates easily with
+:ref:`configurator` by
 using ``(c_flags (:include ...))`` and ``(c_library_flags (:include ...))``.
-
-.. _configurator: https://github.com/janestreet/configurator
 
 .. _foreign_library:
 
@@ -844,6 +852,10 @@ See the :ref:`user-actions` section for more details.
 
 - ``(package <package>)`` specify the package this rule belongs to. This rule
   will be unavailable when installing other packages in release mode.
+
+- ``(enabled_if <blang expression>)`` specifies the boolean condition that must
+  be true for the rule to be considered. The condition is specified using the :ref:`blang`, and
+  the field allows for :ref:`variables` to appear in the expressions.
 
 Note that contrary to makefiles or other build systems, user rules currently
 don't support patterns, such as a rule to produce ``%.y`` from ``%.x`` for any
@@ -1229,6 +1241,9 @@ The syntax is as follows:
 
 - ``(mode <mode>)`` to specify how to handle the targets, see `modes`_
   for details.
+
+- ``(enabled_if <blang expression>)`` conditionally disables this stanza. The
+  condition is specified using the :ref:`blang`.
 
 The short form
 

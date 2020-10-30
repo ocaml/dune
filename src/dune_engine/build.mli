@@ -3,6 +3,9 @@
 open! Stdune
 open! Import
 
+(** Type of values allowed to be labeled *)
+type label = ..
+
 type 'a t
 
 include Applicative_intf.S1 with type 'a t := 'a t
@@ -76,14 +79,23 @@ val all_unit : unit t list -> unit t
 (** Delay a static computation until the description is evaluated *)
 val delayed : (unit -> 'a) -> 'a t
 
-(* CR-someday diml: this API is not great, what about:
+(** CR-someday diml: this API is not great, what about:
 
-   {[ module Action_with_deps : sig type t val add_file_dependency : t -> Path.t
-   -> t end
+    {[
+      module Action_with_deps : sig
+        type t
+        val add_file_dependency : t -> Path.t -> t
+      end
 
-   (** Same as [t >>> arr (fun x -> Action_with_deps.add_file_dependency x p)]
-   but better as [p] is statically known *) val record_dependency : Path.t ->
-   ('a, Action_with_deps.t) t -> ('a, Action_with_deps.t) t ]} *)
+      (** Same as
+          [t >>> arr (fun x -> Action_with_deps.add_file_dependency x p)]
+          but better as [p] is statically known *)
+
+      val record_dependency
+        :  Path.t
+        -> ('a, Action_with_deps.t) t
+        -> ('a, Action_with_deps.t) t
+    ]} *)
 
 (** [path p] records [p] as a file that is read by the action produced by the
     build description. *)
@@ -146,12 +158,16 @@ val strings : Path.t -> string list t
 val read_sexp : Path.t -> Dune_lang.Ast.t t
 
 (** Evaluates to [true] if the file is present on the file system or is the
-    target of a rule. *)
+    target of a rule. It doesn't add the path as dependency *)
 val file_exists : Path.t -> bool t
 
 (** [if_file_exists p ~then ~else] is a description that behaves like [then_] if
     [file_exists p] evaluates to [true], and [else_] otherwise. *)
 val if_file_exists : Path.t -> then_:'a t -> else_:'a t -> 'a t
+
+(** [filter_existing_files p] is a build description which keep only the
+    existing files. The files are not registered as dynamic dependencies. *)
+val filter_existing_files : ('a * Path.Set.t) t -> ('a * Path.Set.t) t
 
 (** Always fail when executed. We pass a function rather than an exception to
     get a proper backtrace *)
@@ -182,7 +198,7 @@ val create_file : Path.Build.t -> Action.t With_targets.t
 (** Merge a list of actions accumulating the sets of their targets. *)
 val progn : Action.t With_targets.t list -> Action.t With_targets.t
 
-val record_lib_deps : Lib_deps_info.t -> unit t
+val label : label -> unit t
 
 (** {1 Analysis} *)
 
@@ -190,7 +206,7 @@ val record_lib_deps : Lib_deps_info.t -> unit t
 val static_deps : _ t -> Static_deps.t
 
 (** Compute static library dependencies of a build description. *)
-val lib_deps : _ t -> Lib_deps_info.t
+val fold_labeled : _ t -> init:'acc -> f:(label -> 'acc -> 'acc) -> 'acc
 
 (** {1 Execution} *)
 

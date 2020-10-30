@@ -91,6 +91,7 @@ module T = struct
     ; arch_sixtyfour : bool
     ; install_prefix : Path.t Memo.Lazy.Async.t
     ; ocaml_config : Ocaml_config.t
+    ; ocaml_config_vars : Ocaml_config.Vars.t
     ; version : Ocaml_version.t
     ; stdlib_dir : Path.t
     ; supports_shared_libraries : Dynlink_supported.By_the_os.t
@@ -274,6 +275,9 @@ let write_dot_dune_dir ~build_dir ~ocamlc ~ocaml_config_vars =
   in
   ()
 
+let init_configurator { build_dir; ocamlc; ocaml_config_vars; _ } =
+  write_dot_dune_dir ~build_dir ~ocamlc ~ocaml_config_vars
+
 let create ~(kind : Kind.t) ~path ~env ~env_nodes ~name ~merlin ~targets
     ~host_context ~host_toolchain ~profile ~fdo_target_exe
     ~dynamically_linked_foreign_archives ~instrument_with =
@@ -415,7 +419,7 @@ let create ~(kind : Kind.t) ~path ~env ~env_nodes ~name ~merlin ~targets
       | Error (Makefile_config file, msg) ->
         User_error.raise ~loc:(Loc.in_file file) [ Pp.text msg ]
     in
-    let* default_findlib_paths, ocfg =
+    let* default_findlib_paths, (ocaml_config_vars, ocfg) =
       Fiber.fork_and_join default_findlib_paths (fun () ->
           let+ lines =
             Process.run_capture_lines ~env Strict ocamlc [ "-config" ]
@@ -423,8 +427,9 @@ let create ~(kind : Kind.t) ~path ~env ~env_nodes ~name ~merlin ~targets
           ocaml_config_ok_exn
             ( match Ocaml_config.Vars.of_lines lines with
             | Ok vars ->
-              write_dot_dune_dir ~build_dir ~ocamlc ~ocaml_config_vars:vars;
-              Ocaml_config.make vars
+              let open Result.O in
+              let+ ocfg = Ocaml_config.make vars in
+              (vars, ocfg)
             | Error msg -> Error (Ocamlc_config, msg) ))
     in
     let findlib_paths = ocamlpath @ default_findlib_paths in
@@ -452,33 +457,28 @@ let create ~(kind : Kind.t) ~path ~env ~env_nodes ~name ~merlin ~targets
     let env =
       let cwd = Sys.getcwd () in
       let extend_var var ?(path_sep = Bin.path_sep) v =
-        let v = Filename.concat cwd (Path.to_string v) in
+        let v = Filename.concat cwd (Path.Build.to_string v) in
         match Env.get env var with
         | None -> (var, v)
         | Some prev -> (var, sprintf "%s%c%s" v path_sep prev)
       in
       let vars =
-        let local_lib_path =
-          Path.Build.relative (Config.local_install_dir ~context:name) "lib"
-          |> Path.build
-        in
+        let local_lib_root = Config.local_install_lib_root ~context:name in
         [ extend_var "CAML_LD_LIBRARY_PATH"
-            (Path.build
-               (Path.Build.relative
-                  (Config.local_install_dir ~context:name)
-                  "lib/stublibs"))
-        ; extend_var "OCAMLPATH" ~path_sep:ocamlpath_sep local_lib_path
+            (Path.Build.relative
+               (Config.local_install_dir ~context:name)
+               "lib/stublibs")
+        ; extend_var "OCAMLPATH" ~path_sep:ocamlpath_sep local_lib_root
         ; ("DUNE_OCAML_STDLIB", Ocaml_config.standard_library ocfg)
         ; ( "DUNE_OCAML_HARDCODED"
           , String.concat
               ~sep:(Char.escaped ocamlpath_sep)
               (List.map ~f:Path.to_string default_findlib_paths) )
         ; extend_var "OCAMLTOP_INCLUDE_PATH"
-            (Path.relative local_lib_path "toplevel")
+            (Path.Build.relative local_lib_root "toplevel")
         ; extend_var "OCAMLFIND_IGNORE_DUPS_IN" ~path_sep:ocamlpath_sep
-            local_lib_path
-        ; extend_var "MANPATH"
-            (Path.build (Config.local_install_man_dir ~context:name))
+            local_lib_root
+        ; extend_var "MANPATH" (Config.local_install_man_dir ~context:name)
         ; ("INSIDE_DUNE", Path.to_absolute_filename (Path.build build_dir))
         ; ( "DUNE_SOURCEROOT"
           , Path.to_absolute_filename (Path.source Path.Source.root) )
@@ -489,8 +489,7 @@ let create ~(kind : Kind.t) ~path ~env ~env_nodes ~name ~merlin ~targets
              match host with
              | None ->
                let _key, path =
-                 Path.build (Config.local_install_bin_dir ~context:name)
-                 |> extend_var "PATH"
+                 Config.local_install_bin_dir ~context:name |> extend_var "PATH"
                in
                Some path
              | Some host -> Env.get host.env "PATH")
@@ -520,6 +519,7 @@ let create ~(kind : Kind.t) ~path ~env ~env_nodes ~name ~merlin ~targets
       ; ocaml_version_string = Ocaml_config.version_string ocfg
       ; ocaml_version = Ocaml_version.of_ocaml_config ocfg
       ; instrument_with
+      ; context_name = name
       }
     in
     if Option.is_some fdo_target_exe then
@@ -575,6 +575,7 @@ let create ~(kind : Kind.t) ~path ~env ~env_nodes ~name ~merlin ~targets
       ; install_prefix
       ; stdlib_dir
       ; ocaml_config = ocfg
+      ; ocaml_config_vars
       ; version
       ; supports_shared_libraries =
           Dynlink_supported.By_the_os.of_bool supports_shared_libraries

@@ -717,7 +717,8 @@ The following constructions are available:
   and targets. This is useful if you are generating dependencies in a way
   that Dune doesn't know about, for instance by calling an external build system.
 - ``(pipe-<outputs> <DSL> <DSL> <DSL>...)`` to execute several actions (at least two)
-  in sequence, piping the output of each one into the input of the next.
+  in sequence, filtering the ``<outputs>`` of the first command through the other
+  command, piping the standard output of each one into the input of the next.
   This action is available since dune 2.7.
 
 As mentioned ``copy#`` inserts a line directive at the beginning of
@@ -943,6 +944,8 @@ However, it is different for the following reason:
   produce ``b``. For cases where commands optionally produce a
   *corrected* file
 
+- if ``<file1>`` doesn't exists it will compare with the empty file
+
 - it allows promotion. See below
 
 Note that ``(cmp a b)`` does no end-of-line normalization and doesn't
@@ -1048,8 +1051,6 @@ the installation directory is either guessed or can be manually
 specified by the user.  This is described more in detail in the last
 section of this page.
 
-.. _sites:
-
 Sites of a package
 ------------------
 
@@ -1058,7 +1059,7 @@ could be hard to find. Moreover some packages could add resources to another
 package, for example in the case of plugins. These location are called sites in
 dune. One package can define them. During execution one site corresponds to a
 list of directories. They are like layers, the first directories have an higher
-priority.
+priority. Examples and precisions are available at :ref:`sites`.
 
 
 Libraries

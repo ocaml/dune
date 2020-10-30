@@ -66,9 +66,9 @@ module L : sig
 
   val to_iflags : Path.Set.t -> _ Command.Args.t
 
-  val include_paths : t -> Path.Set.t
+  val include_paths : ?project:Dune_project.t -> t -> Path.Set.t
 
-  val include_flags : t -> _ Command.Args.t
+  val include_flags : ?project:Dune_project.t -> t -> _ Command.Args.t
 
   val c_include_flags : t -> _ Command.Args.t
 
@@ -156,6 +156,8 @@ module DB : sig
 
     val not_found : t
 
+    val found : Lib_info.external_ -> t
+
     val to_dyn : t Dyn.Encoder.t
 
     val redirect : db option -> Loc.t * Lib_name.t -> t
@@ -172,26 +174,17 @@ module DB : sig
   val create :
        parent:t option
     -> resolve:(Lib_name.t -> Resolve_result.t)
+    -> projects_by_package:Dune_project.t Package.Name.Map.t
     -> all:(unit -> Lib_name.t list)
     -> lib_config:Lib_config.t
     -> unit
     -> t
 
-  module Library_related_stanza : sig
-    type t =
-      | Library of Path.Build.t * Dune_file.Library.t
-      | Library_redirect of Dune_file.Library_redirect.Local.t
-      | Deprecated_library_name of Dune_file.Deprecated_library_name.t
-  end
-
-  (** Create a database from a list of library stanzas *)
-  val create_from_stanzas :
-       parent:t option
-    -> lib_config:Lib_config.t
-    -> Library_related_stanza.t list
+  val create_from_findlib :
+       lib_config:Lib_config.t
+    -> projects_by_package:Dune_project.t Package.Name.Map.t
+    -> Findlib.t
     -> t
-
-  val create_from_findlib : lib_config:Lib_config.t -> Findlib.t -> t
 
   val find : t -> Lib_name.t -> lib option
 
@@ -204,6 +197,10 @@ module DB : sig
   val get_compile_info : t -> ?allow_overlaps:bool -> Lib_name.t -> Compile.t
 
   val resolve : t -> Loc.t * Lib_name.t -> lib Or_exn.t
+
+  (** Like [resolve], but will return [None] instead of an error if we are
+      unable to find the library. *)
+  val resolve_when_exists : t -> Loc.t * Lib_name.t -> lib Or_exn.t option
 
   (** Resolve libraries written by the user in a [dune] file. The resulting list
       of libraries is transitively closed and sorted by the order of

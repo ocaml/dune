@@ -484,7 +484,7 @@ let pp_stack () =
     ++ Pp.cut
     ++ Pp.chain stack ~f:(fun frame -> Dyn.pp (Stack_frame.to_dyn frame)) )
 
-let dump_stack () = Format.eprintf "%a" Pp.render_ignore_tags (pp_stack ())
+let dump_stack () = Format.eprintf "%a" Pp.to_fmt (pp_stack ())
 
 (** Describes the state of a given sample attempt. The sample attempt starts out
     in [Running] state, accumulates dependencies over time and then transitions

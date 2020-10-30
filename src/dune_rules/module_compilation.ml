@@ -28,10 +28,10 @@ let other_cm_files ~opaque ~(cm_kind : Cm_kind.t) ~dep_graph ~obj_dir m =
   let+ deps = Dep_graph.deps_of dep_graph m in
   List.concat_map deps ~f:(fun m ->
       let deps =
-        [ Path.build (Obj_dir.Module.cm_file_unsafe obj_dir m ~kind:Cmi) ]
+        [ Path.build (Obj_dir.Module.cm_file_exn obj_dir m ~kind:Cmi) ]
       in
       if Module.has m ~ml_kind:Impl && cm_kind = Cmx && not opaque then
-        let cmx = Obj_dir.Module.cm_file_unsafe obj_dir m ~kind:Cmx in
+        let cmx = Obj_dir.Module.cm_file_exn obj_dir m ~kind:Cmx in
         Path.build cmx :: deps
       else
         deps)
@@ -44,8 +44,8 @@ let copy_interface ~sctx ~dir ~obj_dir m =
   then
     SC.add_rule sctx ~dir
       (Build.symlink
-         ~src:(Path.build (Obj_dir.Module.cm_file_unsafe obj_dir m ~kind:Cmi))
-         ~dst:(Obj_dir.Module.cm_public_file_unsafe obj_dir m ~kind:Cmi))
+         ~src:(Path.build (Obj_dir.Module.cm_file_exn obj_dir m ~kind:Cmi))
+         ~dst:(Obj_dir.Module.cm_public_file_exn obj_dir m ~kind:Cmi))
 
 let build_cm cctx ~dep_graphs ~precompiled_cmi ~cm_kind (m : Module.t) ~phase =
   let sctx = CC.super_context cctx in
@@ -60,7 +60,7 @@ let build_cm cctx ~dep_graphs ~precompiled_cmi ~cm_kind (m : Module.t) ~phase =
   let* compiler = Result.to_option (Context.compiler ctx mode) in
   let ml_kind = Cm_kind.source cm_kind in
   let+ src = Module.file m ~ml_kind in
-  let dst = Obj_dir.Module.cm_file_unsafe obj_dir m ~kind:cm_kind in
+  let dst = Obj_dir.Module.cm_file_exn obj_dir m ~kind:cm_kind in
   let obj =
     Obj_dir.Module.obj_file obj_dir m ~kind:Cmx ~ext:ctx.lib_config.ext_obj
   in
@@ -87,11 +87,11 @@ let build_cm cctx ~dep_graphs ~precompiled_cmi ~cm_kind (m : Module.t) ~phase =
            cmx we have to wait to avoid race conditions. *)
         | Cmo, None, false ->
           copy_interface ~dir ~obj_dir ~sctx m;
-          ([], [], [ Obj_dir.Module.cm_file_unsafe obj_dir m ~kind:Cmi ])
+          ([], [], [ Obj_dir.Module.cm_file_exn obj_dir m ~kind:Cmi ])
         | Cmo, None, true
         | (Cmo | Cmx), _, _ ->
           ( force_read_cmi src
-          , [ Path.build (Obj_dir.Module.cm_file_unsafe obj_dir m ~kind:Cmi) ]
+          , [ Path.build (Obj_dir.Module.cm_file_exn obj_dir m ~kind:Cmi) ]
           , [] )
         | Cmi, _, _ ->
           copy_interface ~dir ~obj_dir ~sctx m;
@@ -120,8 +120,13 @@ let build_cm cctx ~dep_graphs ~precompiled_cmi ~cm_kind (m : Module.t) ~phase =
     | Cmx -> (other_targets, Command.Args.empty)
     | Cmi
     | Cmo ->
-      let fn = Option.value_exn (Obj_dir.Module.cmt_file obj_dir m ~ml_kind) in
-      (fn :: other_targets, A "-bin-annot")
+      if Compilation_context.bin_annot cctx then
+        let fn =
+          Option.value_exn (Obj_dir.Module.cmt_file obj_dir m ~ml_kind)
+        in
+        (fn :: other_targets, A "-bin-annot")
+      else
+        (other_targets, Command.Args.empty)
   in
   let opaque_arg =
     let intf_only = cm_kind = Cmi && not (Module.has m ~ml_kind:Impl) in
@@ -216,31 +221,32 @@ let build_module ~dep_graphs ?(precompiled_cmi = false) cctx m =
       ~phase:(Some Fdo.Emit) );
   if not precompiled_cmi then
     build_cm cctx m ~dep_graphs ~precompiled_cmi ~cm_kind:Cmi ~phase:None;
-  Compilation_context.js_of_ocaml cctx
-  |> Option.iter ~f:(fun js_of_ocaml ->
-         (* Build *.cmo.js *)
-         let sctx = CC.super_context cctx in
-         let dir = CC.dir cctx in
-         let obj_dir = CC.obj_dir cctx in
-         let src = Obj_dir.Module.cm_file_unsafe obj_dir m ~kind:Cm_kind.Cmo in
-         let target = Path.Build.extend_basename src ~suffix:".js" in
-         SC.add_rules sctx ~dir
-           (Jsoo_rules.build_cm cctx ~js_of_ocaml ~src ~target))
+  let obj_dir = CC.obj_dir cctx in
+  match Obj_dir.Module.cm_file obj_dir m ~kind:Cm_kind.Cmo with
+  | None -> ()
+  | Some src ->
+    Compilation_context.js_of_ocaml cctx
+    |> Option.iter ~f:(fun js_of_ocaml ->
+           (* Build *.cmo.js *)
+           let sctx = CC.super_context cctx in
+           let dir = CC.dir cctx in
+           let target = Path.Build.extend_basename src ~suffix:".js" in
+           SC.add_rules sctx ~dir
+             (Jsoo_rules.build_cm cctx ~js_of_ocaml ~src ~target))
 
-let ocamlc_i ?(flags = []) ~dep_graphs cctx (m : Module.t) ~output =
+let ocamlc_i ?(flags = []) ~deps cctx (m : Module.t) ~output =
   let sctx = CC.super_context cctx in
   let obj_dir = CC.obj_dir cctx in
   let dir = CC.dir cctx in
   let ctx = SC.context sctx in
   let src = Option.value_exn (Module.file m ~ml_kind:Impl) in
-  let dep_graph = Ml_kind.Dict.get dep_graphs Impl in
   let sandbox = Compilation_context.sandbox cctx in
   let cm_deps =
     Build.dyn_paths_unit
       (let open Build.O in
-      let+ deps = Dep_graph.deps_of dep_graph m in
+      let+ deps = Ml_kind.Dict.get deps Impl in
       List.concat_map deps ~f:(fun m ->
-          [ Path.build (Obj_dir.Module.cm_file_unsafe obj_dir m ~kind:Cmi) ]))
+          [ Path.build (Obj_dir.Module.cm_file_exn obj_dir m ~kind:Cmi) ]))
   in
   let ocaml_flags = Ocaml_flags.get (CC.flags cctx) Mode.Byte in
   let modules = Compilation_context.modules cctx in
@@ -277,7 +283,7 @@ let ocamlc_i ?(flags = []) ~dep_graphs cctx (m : Module.t) ~output =
    `-open` option of the compiler. This module is called the alias module and is
    implicitly generated by Dune.*)
 
-let build_alias_module ~loc ~alias_module ~dir ~cctx =
+let build_alias_module ~loc ~alias_module ~cctx =
   let sctx = Compilation_context.super_context cctx in
   let file = Option.value_exn (Module.file alias_module ~ml_kind:Impl) in
   let modules = Compilation_context.modules cctx in
@@ -298,6 +304,7 @@ let build_alias_module ~loc ~alias_module ~dir ~cctx =
              name name obj_name_as_module)
     |> String.concat ~sep:"\n"
   in
+  let dir = Compilation_context.dir cctx in
   Super_context.add_rule ~loc sctx ~dir
     ( Build.delayed alias_file
     |> Build.write_file_dyn (Path.as_in_build_dir_exn file) );
@@ -312,8 +319,7 @@ let build_all cctx ~dep_graphs =
       match Module.kind m with
       | Alias ->
         let cctx = Compilation_context.for_alias_module cctx in
-        let dir = Compilation_context.dir cctx in
-        build_alias_module ~loc:Loc.none ~alias_module:m ~dir ~cctx
+        build_alias_module ~loc:Loc.none ~alias_module:m ~cctx
       | Wrapped_compat ->
         let cctx = Lazy.force for_wrapped_compat in
         build_module cctx ~dep_graphs m

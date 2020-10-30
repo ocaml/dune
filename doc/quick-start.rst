@@ -234,7 +234,7 @@ Then create a ``config`` subdirectory and write this ``dune`` file:
 
     (executable
      (name discover)
-     (libraries dune.configurator))
+     (libraries dune-configurator))
 
 as well as this ``discover.ml`` file:
 

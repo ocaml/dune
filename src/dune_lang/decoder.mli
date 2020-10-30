@@ -80,7 +80,10 @@ val loc : (Loc.t, _) parser
 (** [a <|> b] is either [a] or [b]. If [a] fails to parse the input, then try
     [b]. If [b] fails as well, raise the error from the parser that consumed the
     most input. *)
-val ( <|> ) : 'a t -> 'a t -> 'a t
+val ( <|> ) : ('a, 'k) parser -> ('a, 'k) parser -> ('a, 'k) parser
+
+val either :
+  ('a, 'k) parser -> ('b, 'k) parser -> (('a, 'b) Either.t, 'k) parser
 
 (** [atom_matching f] expects the next element to be an atom for which [f]
     returns [Some v]. [desc] is used to describe the atom in case of error. [f]
@@ -108,6 +111,9 @@ val kind : (kind, _) parser
 (** [repeat t] uses [t] to consume all remaining elements of the input until the
     end of sequence is reached. *)
 val repeat : 'a t -> 'a list t
+
+(** Like [repeat] but the list of elements must be non-empty. *)
+val repeat1 : 'a t -> 'a list t
 
 (** Capture the rest of the input for later parsing *)
 val capture : ('a t -> 'a) t

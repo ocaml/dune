@@ -68,8 +68,7 @@ let dyn_of_parse_result f =
   | Different r -> constr "Different" [ dyn_of_parse_result_diff f r ]
 
 let string_of_user_error (msg : User_message.t) =
-  Format.asprintf "%a" Pp.render_ignore_tags
-    (User_message.pp { msg with loc = None })
+  Format.asprintf "%a" Pp.to_fmt (User_message.pp { msg with loc = None })
   |> String.drop_prefix ~prefix:"Error: "
   |> Option.value_exn |> String.trim
 
@@ -294,9 +293,7 @@ let test syntax sexp =
   let res =
     ( S (syntax, sexp)
     , let s =
-        Format.asprintf "%a"
-          (fun ppf x -> Pp.render_ignore_tags ppf (Dune_lang.pp x))
-          sexp
+        Format.asprintf "%a" (fun ppf x -> Pp.to_fmt ppf (Dune_lang.pp x)) sexp
       in
       match
         Dune_lang.Parser.parse_string s ~mode:Single ~fname:""

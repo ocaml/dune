@@ -48,12 +48,12 @@ module Dep = struct
         else
           (1, true)
       in
-      let s = String.drop s pos in
-      let dir, alias =
-        let path = Stdune.Path.Local.of_string s in
-        Dune_engine.Alias.Name.parse_local_path (Loc.none, path)
-      in
-      Some (recursive, dir, alias)
+      let s = String_with_vars.make_text Loc.none (String.drop s pos) in
+      Some
+        ( if recursive then
+          Dep_conf.Alias_rec s
+        else
+          Dep_conf.Alias s )
 
   let dep_parser =
     Dune_lang.Syntax.set Stanza.syntax (Active Stanza.latest_version)
@@ -61,8 +61,7 @@ module Dep = struct
 
   let parser s =
     match parse_alias s with
-    | Some (true, dir, name) -> `Ok (alias_rec ~dir name)
-    | Some (false, dir, name) -> `Ok (alias ~dir name)
+    | Some dep -> `Ok dep
     | None -> (
       match
         Dune_lang.Decoder.parse dep_parser Univ_map.empty

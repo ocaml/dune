@@ -1,3 +1,0 @@
-(library
- (name foo)
- (enabled_if (= %{project_root} "")))

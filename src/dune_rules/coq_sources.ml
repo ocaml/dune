@@ -42,8 +42,7 @@ let extract t (stanza : Extraction.t) =
 let of_dir (d : _ Dir_with_dune.t) ~include_subdirs ~dirs =
   check_no_unqualified include_subdirs;
   let modules = coq_modules_of_files ~dirs in
-  List.fold_left d.data ~init:empty ~f:(fun acc ->
-    function
+  List.fold_left d.data ~init:empty ~f:(fun acc -> function
     | Coq_stanza.Theory.T coq ->
       let modules =
         Coq_module.eval ~dir:d.ctx_dir coq.modules ~standard:modules

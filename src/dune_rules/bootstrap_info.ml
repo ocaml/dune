@@ -14,7 +14,7 @@ let rule sctx compile (exes : Dune_file.Executables.t) () =
         | Some x -> Left x
         | None -> Right lib)
   in
-  Format.asprintf "%a@." Pp.render_ignore_tags
+  Format.asprintf "%a@." Pp.to_fmt
     (Pp.vbox
        (Pp.concat ~sep:Pp.cut
           [ def "executables"

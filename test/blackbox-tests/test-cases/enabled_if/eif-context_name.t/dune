@@ -1,0 +1,23 @@
+(rule
+ (alias print_context)
+ (action (echo %{context_name})))
+
+(library
+ (name bar)
+ (modules bar)
+ (enabled_if (= %{context_name} "not-the-context-name")))
+
+(library
+ (name foo)
+ (modules foo)
+ (enabled_if (= %{context_name} "default")))
+
+(executable
+ (name bar_exe)
+ (modules bar_exe)
+ (libraries bar))
+
+(executable
+ (name foo_exe)
+ (modules foo_exe)
+ (libraries foo))

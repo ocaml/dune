@@ -52,7 +52,7 @@ type purpose =
   | Build_job of Path.Build.Set.t
 
 (** [run ?dir ?stdout_to prog args] spawns a sub-process and wait for its
-    termination *)
+    termination. [stdout_to] [stderr_to] are released *)
 val run :
      ?dir:Path.t
   -> ?stdout_to:Io.output Io.t
@@ -89,6 +89,17 @@ val run_capture_line :
   -> 'a Fiber.t
 
 val run_capture_lines :
+     ?dir:Path.t
+  -> ?stderr_to:Io.output Io.t
+  -> ?stdin_from:Io.input Io.t
+  -> ?env:Env.t
+  -> ?purpose:purpose
+  -> (string list, 'a) failure_mode
+  -> Path.t
+  -> string list
+  -> 'a Fiber.t
+
+val run_capture_zero_separated :
      ?dir:Path.t
   -> ?stderr_to:Io.output Io.t
   -> ?stdin_from:Io.input Io.t

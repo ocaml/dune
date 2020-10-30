@@ -156,7 +156,11 @@ module Lib = struct
        let info : Path.t Lib_info.t =
          let src_dir = Obj_dir.dir obj_dir in
          let enabled = Lib_info.Enabled_status.Normal in
-         let status = Lib_info.Status.Installed in
+         let status =
+           match Lib_name.analyze name with
+           | Private (_, _) -> Lib_info.Status.Installed_private
+           | Public (_, _) -> Lib_info.Status.Installed
+         in
          let version = None in
          let main_module_name = Lib_info.Inherited.This main_module_name in
          let foreign_objects = Lib_info.Source.External foreign_objects in

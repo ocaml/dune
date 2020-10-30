@@ -87,3 +87,39 @@ exe: invalid public-name
                     ^^^
   Error: Module "A.b" doesn't exist.
   [1]
+
+exes: empty list of names/public names
+  $ mkdir -p empty-names-exes
+  $ cat >empty-names-exes/dune-project <<EOF
+  > (lang dune 2.0)
+  > EOF
+  $ cat >empty-names-exes/dune <<EOF
+  > (executables (names))
+  > EOF
+  $ dune build --root empty-names-exes
+  Entering directory 'empty-names-exes'
+  File "dune", line 1, characters 13-20:
+  1 | (executables (names))
+                   ^^^^^^^
+  Error: Not enough arguments for names
+  [1]
+  $ cat >empty-names-exes/dune <<EOF
+  > (executables (public_names))
+  > EOF
+  $ dune build --root empty-names-exes
+  Entering directory 'empty-names-exes'
+  File "dune", line 1, characters 13-27:
+  1 | (executables (public_names))
+                   ^^^^^^^^^^^^^^
+  Error: Not enough arguments for public_names
+  [1]
+  $ cat >empty-names-exes/dune <<EOF
+  > (tests (names))
+  > EOF
+  $ dune build --root empty-names-exes
+  Entering directory 'empty-names-exes'
+  File "dune", line 1, characters 7-14:
+  1 | (tests (names))
+             ^^^^^^^
+  Error: Not enough arguments for names
+  [1]

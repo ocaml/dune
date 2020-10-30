@@ -41,6 +41,12 @@ let which ~path prog =
       Option.some_if (exists fn) fn)
 
 let make ~path =
-  match which ~path "gmake" with
+  let gmake =
+    if Sys.unix then
+      which ~path "gmake"
+    else
+      None
+  in
+  match gmake with
   | None -> which ~path "make"
   | some -> some

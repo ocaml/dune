@@ -22,24 +22,32 @@ module External = struct
   type t =
     { public_dir : Path.t
     ; private_dir : Path.t option
+    ; public_cmi_dir : Path.t option
     }
 
-  let make ~dir ~has_private_modules =
+  let make ~dir ~has_private_modules ~private_lib =
     let private_dir =
       if has_private_modules then
         Some (Path.relative dir ".private")
       else
         None
     in
-    { public_dir = dir; private_dir }
+    let public_cmi_dir =
+      if private_lib then
+        Some (Path.relative dir ".public_cmi")
+      else
+        None
+    in
+    { public_dir = dir; private_dir; public_cmi_dir }
 
-  let public_cmi_dir t = t.public_dir
+  let public_cmi_dir t = Option.value ~default:t.public_dir t.public_cmi_dir
 
-  let to_dyn { public_dir; private_dir } =
+  let to_dyn { public_dir; private_dir; public_cmi_dir } =
     let open Dyn.Encoder in
     record
       [ ("public_dir", Path.to_dyn public_dir)
       ; ("private_dir", option Path.to_dyn private_dir)
+      ; ("public_cmi_dir", option Path.to_dyn public_cmi_dir)
       ]
 
   let cm_dir t (cm_kind : Cm_kind.t) (visibility : Visibility.t) =
@@ -47,25 +55,30 @@ module External = struct
     | Cmi, Private, Some p -> p
     | Cmi, Private, None ->
       Code_error.raise "External.cm_dir" [ ("t", to_dyn t) ]
-    | Cmi, Public, _
-    | (Cmo | Cmx), _, _ ->
-      t.public_dir
+    | Cmi, Public, _ -> public_cmi_dir t
+    | (Cmo | Cmx), _, _ -> t.public_dir
 
-  let encode { public_dir; private_dir } =
+  let encode { public_dir; private_dir; public_cmi_dir } =
     let open Dune_lang.Encoder in
     let extract d =
       Path.descendant ~of_:public_dir d |> Option.value_exn |> Path.to_string
     in
     let private_dir = Option.map ~f:extract private_dir in
-    record_fields [ field_o "private_dir" string private_dir ]
+    let public_cmi_dir = Option.map ~f:extract public_cmi_dir in
+    record_fields
+      [ field_o "private_dir" string private_dir
+      ; field_o "public_cmi_dir" string public_cmi_dir
+      ]
 
   let decode ~dir =
+    let public_dir = dir in
     let open Dune_lang.Decoder in
     fields
-      (let+ private_dir = field_o "private_dir" string in
-       let public_dir = dir in
+      (let+ private_dir = field_o "private_dir" string
+       and+ public_cmi_dir = field_o "public_cmi_dir" string in
        let private_dir = Option.map ~f:(Path.relative dir) private_dir in
-       { public_dir; private_dir })
+       let public_cmi_dir = Option.map ~f:(Path.relative dir) public_cmi_dir in
+       { public_dir; private_dir; public_cmi_dir })
 
   let byte_dir t = t.public_dir
 
@@ -79,8 +92,8 @@ module External = struct
 
   let all_obj_dirs t ~mode:_ = [ t.public_dir ]
 
-  let all_cmis { public_dir; private_dir } =
-    List.filter_opt [ Some public_dir; private_dir ]
+  let all_cmis { public_dir; private_dir; public_cmi_dir } =
+    List.filter_opt [ Some public_dir; private_dir; public_cmi_dir ]
 
   let cm_public_dir t (cm_kind : Cm_kind.t) =
     match cm_kind with
@@ -96,9 +109,11 @@ module Local = struct
     ; native_dir : Path.Build.t
     ; byte_dir : Path.Build.t
     ; public_cmi_dir : Path.Build.t option
+    ; private_lib : bool
     }
 
-  let to_dyn { dir; obj_dir; native_dir; byte_dir; public_cmi_dir } =
+  let to_dyn { dir; obj_dir; native_dir; byte_dir; public_cmi_dir; private_lib }
+      =
     let open Dyn.Encoder in
     record
       [ ("dir", Path.Build.to_dyn dir)
@@ -106,10 +121,11 @@ module Local = struct
       ; ("native_dir", Path.Build.to_dyn native_dir)
       ; ("byte_dir", Path.Build.to_dyn byte_dir)
       ; ("public_cmi_dir", option Path.Build.to_dyn public_cmi_dir)
+      ; ("private_lib", bool private_lib)
       ]
 
-  let make ~dir ~obj_dir ~native_dir ~byte_dir ~public_cmi_dir =
-    { dir; obj_dir; native_dir; byte_dir; public_cmi_dir }
+  let make ~dir ~obj_dir ~native_dir ~byte_dir ~public_cmi_dir ~private_lib =
+    { dir; obj_dir; native_dir; byte_dir; public_cmi_dir; private_lib }
 
   let need_dedicated_public_dir t = Option.is_some t.public_cmi_dir
 
@@ -134,7 +150,7 @@ module Local = struct
     in
     Path.Build.Set.of_list dirs |> Path.Build.Set.to_list
 
-  let make_lib ~dir ~has_private_modules lib_name =
+  let make_lib ~dir ~has_private_modules ~private_lib lib_name =
     let obj_dir = Paths.library_object_directory ~dir lib_name in
     let public_cmi_dir =
       Option.some_if has_private_modules (Paths.library_public_cmi_dir ~obj_dir)
@@ -142,14 +158,14 @@ module Local = struct
     make ~dir ~obj_dir
       ~native_dir:(Paths.library_native_dir ~obj_dir)
       ~byte_dir:(Paths.library_byte_dir ~obj_dir)
-      ~public_cmi_dir
+      ~public_cmi_dir ~private_lib
 
   let make_exe ~dir ~name =
     let obj_dir = Paths.executable_object_directory ~dir name in
     make ~dir ~obj_dir
       ~native_dir:(Paths.library_native_dir ~obj_dir)
       ~byte_dir:(Paths.library_byte_dir ~obj_dir)
-      ~public_cmi_dir:None
+      ~public_cmi_dir:None ~private_lib:false
 
   let cm_dir t cm_kind _ =
     match cm_kind with
@@ -190,11 +206,11 @@ let decode ~dir =
   let+ external_ = External.decode ~dir in
   External external_
 
-let make_lib ~dir ~has_private_modules lib_name =
-  Local (Local.make_lib ~dir ~has_private_modules lib_name)
+let make_lib ~dir ~has_private_modules ~private_lib lib_name =
+  Local (Local.make_lib ~dir ~has_private_modules ~private_lib lib_name)
 
 let make_external_no_private ~dir =
-  External (External.make ~dir ~has_private_modules:false)
+  External (External.make ~dir ~has_private_modules:false ~private_lib:false)
 
 let get_path :
     type a. a t -> l:(Local.t -> Path.Build.t) -> e:(External.t -> Path.t) -> a
@@ -226,7 +242,8 @@ let convert_to_external (t : Path.Build.t t) ~dir =
   match t with
   | Local e ->
     let has_private_modules = Local.need_dedicated_public_dir e in
-    External (External.make ~dir ~has_private_modules)
+    External
+      (External.make ~dir ~has_private_modules ~private_lib:e.private_lib)
   | _ -> assert false
 
 let all_cmis (type path) (t : path t) : path list =
@@ -266,6 +283,11 @@ let as_local_exn (t : Path.t t) =
 
 let make_exe ~dir ~name = Local (Local.make_exe ~dir ~name)
 
+let for_pp ~dir =
+  Local
+    (Local.make ~dir ~obj_dir:dir ~native_dir:dir ~byte_dir:dir
+       ~public_cmi_dir:None ~private_lib:false)
+
 let to_local (t : Path.t t) =
   match t with
   | Local _ -> assert false
@@ -293,27 +315,40 @@ module Module = struct
     let dir = cm_dir t kind visibility in
     relative t dir obj_name
 
-  let cm_file_unsafe t m ~kind =
-    let ext = Cm_kind.ext kind in
-    obj_file t m ~kind ~ext
+  let has_impl_if_needed m ~kind =
+    match (kind : Cm_kind.t) with
+    | Cmo
+    | Cmx ->
+      Module.has m ~ml_kind:Impl
+    | Cmi -> true
 
-  let o_file_unsafe t m ~ext_obj = obj_file t m ~kind:Cmx ~ext:ext_obj
+  let raise_no_impl m ~kind =
+    Code_error.raise "module has no implementation"
+      [ ("m", Module.to_dyn m); ("kind", Cm_kind.to_dyn kind) ]
+
+  let o_file t m ~ext_obj =
+    let kind = Cm_kind.Cmx in
+    if Module.has m ~ml_kind:Impl then
+      Some (obj_file t m ~kind ~ext:ext_obj)
+    else
+      None
+
+  let o_file_exn t m ~ext_obj =
+    match o_file t m ~ext_obj with
+    | Some o -> o
+    | None -> raise_no_impl m ~kind:Cmx
 
   let cm_file t m ~(kind : Cm_kind.t) =
-    let has_impl = Module.has m ~ml_kind:Impl in
-    match kind with
-    | Cmx
-    | Cmo
-      when not has_impl ->
+    if has_impl_if_needed m ~kind then
+      let ext = Cm_kind.ext kind in
+      Some (obj_file t m ~kind ~ext)
+    else
       None
-    | _ -> Some (cm_file_unsafe t m ~kind)
 
-  let cm_public_file_unsafe t m ~kind =
-    let ext = Cm_kind.ext kind in
-    let base = cm_public_dir t kind in
-    let obj_name = Module.obj_name m in
-    let fname = Module_name.Unique.artifact_filename obj_name ~ext in
-    relative t base fname
+  let cm_file_exn t m ~kind =
+    match cm_file t m ~kind with
+    | Some s -> s
+    | None -> raise_no_impl m ~kind
 
   let cm_public_file (type path) (t : path t) m ~(kind : Cm_kind.t) :
       path option =
@@ -325,7 +360,21 @@ module Module = struct
       when not has_impl ->
       None
     | Cmi when is_private -> None
-    | _ -> Some (cm_public_file_unsafe t m ~kind)
+    | _ ->
+      let ext = Cm_kind.ext kind in
+      let base = cm_public_dir t kind in
+      let obj_name = Module.obj_name m in
+      let fname = Module_name.Unique.artifact_filename obj_name ~ext in
+      Some (relative t base fname)
+
+  let cm_public_file_exn t m ~kind =
+    match cm_public_file t m ~kind with
+    | Some x -> x
+    | None ->
+      Code_error.raise
+        "cm_public_file_exn: invalid access. module has no implementation or \
+         is private"
+        [ ("m", Module.to_dyn m); ("kind", Cm_kind.to_dyn kind) ]
 
   let cmt_file t m ~(ml_kind : Ml_kind.t) =
     let file = Module.file m ~ml_kind in

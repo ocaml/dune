@@ -31,7 +31,7 @@ val create :
   -> flags:Ocaml_flags.t
   -> requires_compile:Lib.t list Or_exn.t
   -> requires_link:Lib.t list Or_exn.t Lazy.t
-  -> ?preprocessing:Preprocessing.t
+  -> ?preprocessing:Pp_spec.t
   -> opaque:opaque
   -> ?stdlib:Ocaml_stdlib.t
   -> js_of_ocaml:Dune_file.Js_of_ocaml.t option
@@ -39,6 +39,7 @@ val create :
   -> package:Package.t option
   -> ?vimpl:Vimpl.t
   -> ?modes:Dune_file.Mode_conf.Set.Details.t Mode.Dict.t
+  -> ?bin_annot:bool
   -> unit
   -> t
 
@@ -53,6 +54,8 @@ val context : t -> Context.t
 
 val scope : t -> Scope.t
 
+(** [dir] should only be used for adding rules. It should be used to access
+    dependencies or targets. *)
 val dir : t -> Path.Build.t
 
 val obj_dir : t -> Path.Build.t Obj_dir.t
@@ -67,7 +70,7 @@ val requires_compile : t -> Lib.t list Or_exn.t
 
 val includes : t -> Command.Args.dynamic Command.Args.t Cm_kind.Dict.t
 
-val preprocessing : t -> Preprocessing.t
+val preprocessing : t -> Pp_spec.t
 
 val opaque : t -> bool
 
@@ -92,3 +95,7 @@ val for_module_generated_at_link_time :
 
 val for_plugin_executable :
   t -> embed_in_plugin_libraries:(Loc.t * Lib_name.t) list -> t
+
+val bin_annot : t -> bool
+
+val without_bin_annot : t -> t

@@ -13,7 +13,7 @@ val build_module :
 
 val ocamlc_i :
      ?flags:string list
-  -> dep_graphs:Dep_graph.Ml_kind.t
+  -> deps:Module.t list Build.t Ml_kind.Dict.t
   -> Compilation_context.t
   -> Module.t
   -> output:Path.Build.t

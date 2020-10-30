@@ -25,6 +25,7 @@ module DB : sig
   (** Return the new scope database as well as the public libraries database *)
   val create_from_stanzas :
        projects:Dune_project.t list
+    -> projects_by_package:Dune_project.t Package.Name.Map.t
     -> context:Context.t
     -> installed_libs:Lib.DB.t
     -> Dune_load.Dune_file.t list

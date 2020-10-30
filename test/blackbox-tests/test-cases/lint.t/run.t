@@ -1,13 +1,5 @@
-The lint alias will run preprocessing actions listed under (lint):
-
-  $ cat > detect/add.ml << EOF
-  > let () = Printf.printf "%d\n" @@ 1 + 2
-  > EOF
-  $ dune build @detect/lint
-  File "detect/add.ml", line 1, characters 33-38:
-  This addition can be done statically.
-
-When using ppxlib, it is possible to define and promote corrections:
+The lint alias will run preprocessing actions listed under (lint). It also
+defines corrections that may be promoted.
 
   $ cat > correct/add.ml << EOF
   > let () = Printf.printf "%d\n" @@ 1 + 2

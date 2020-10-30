@@ -9,7 +9,7 @@ message is displayed:
   3 |  (public_name mylib)
   4 |  (modes shared_object))
   Error: No installable mode found for this executable.
-  One of the following modes is required:
+  When public_name is set, one of the following modes is required:
   - exe
   - native
   - byte

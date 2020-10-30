@@ -5,6 +5,9 @@ let local_install_dir ~context =
   let context = Context_name.to_string context in
   Path.Build.relative Dpath.Build.install_dir context
 
+let local_install_lib_root ~context =
+  Path.Build.relative (local_install_dir ~context) "lib"
+
 let local_install_bin_dir ~context =
   Path.Build.relative (local_install_dir ~context) "bin"
 
@@ -13,7 +16,7 @@ let local_install_man_dir ~context =
 
 let local_install_lib_dir ~context ~package =
   Path.Build.relative
-    (Path.Build.relative (local_install_dir ~context) "lib")
+    (local_install_lib_root ~context)
     (Package.Name.to_string package)
 
 let dev_null =

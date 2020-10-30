@@ -43,7 +43,7 @@ let () =
   in
   let anon s = bad "Don't know what to do with %s" s in
   Arg.parse (Arg.align args) anon
-    "Usage: ocaml configure.ml [OPTRIONS]]\nOptions are:";
+    "Usage: ocaml configure.ml [OPTIONS]\nOptions are:";
   let oc = open_out "src/dune_rules/setup.ml" in
   let pr fmt = fprintf oc (fmt ^^ "\n") in
   pr "let library_path    = %s" (option (list string) !library_path);

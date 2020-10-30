@@ -163,7 +163,7 @@ module File_ops_real (W : Workspace) : File_operations = struct
             Dune_rules.Meta.add_versions meta ~get_version:(fun _ ->
                 Some version)
           in
-          Pp.render_ignore_tags ppf (Dune_rules.Meta.pp meta.entries))
+          Pp.to_fmt ppf (Dune_rules.Meta.pp meta.entries))
 
   let replace_sites
       ~(get_location : Dune_engine.Section.t -> Package.Name.t -> Stdune.Path.t)
@@ -380,7 +380,7 @@ let install_uninstall ~what =
               "Select context to install from. By default, install files from \
                all defined contexts.")
     and+ sections = Sections.term in
-    Common.set_common common ~targets:[];
+    Common.set_common ~log_file:No_log_file common ~targets:[];
     Scheduler.go ~common (fun () ->
         let open Fiber.O in
         let* workspace = Import.Main.scan_workspace common in

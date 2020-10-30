@@ -507,9 +507,13 @@ module Library = struct
     let field = field_o "wrapped" (located decode)
   end
 
+  type visibility =
+    | Public of Public_lib.t
+    | Private of Package.t option
+
   type t =
     { name : Loc.t * Lib_name.Local.t
-    ; public : Public_lib.t option
+    ; visibility : visibility
     ; synopsis : string option
     ; install_c_headers : string list
     ; ppx_runtime_libraries : (Loc.t * Lib_name.t) list
@@ -607,6 +611,10 @@ module Library = struct
          field_o "instrumentation.backend"
            ( Dune_lang.Syntax.since Stanza.syntax (2, 7)
            >>> fields (field "ppx" (located Lib_name.decode)) )
+       and+ package =
+         field_o "package"
+           ( Dune_lang.Syntax.since Stanza.syntax (2, 8)
+           >>> located Stanza_common.Pkg.decode )
        in
        let wrapped =
          Wrapped.make ~wrapped ~implements ~special_builtin_support
@@ -643,6 +651,19 @@ module Library = struct
                    "name field is missing" )
              ]
        in
+       let visibility =
+         match (public, package) with
+         | None, None -> Private None
+         | Some public, None -> Public public
+         | None, Some (_loc, package) -> Private (Some package)
+         | Some public, Some (loc, _) ->
+           User_error.raise ~loc
+             [ Pp.textf
+                 "This library has a pullic_name, it already belongs to the \
+                  package %s"
+                 (Package.Name.to_string public.package.name)
+             ]
+       in
        Option.both virtual_modules implements
        |> Option.iter ~f:(fun (virtual_modules, (_, impl)) ->
               User_error.raise
@@ -658,7 +679,7 @@ module Library = struct
            ]
        | _ -> () );
        { name
-       ; public
+       ; visibility
        ; synopsis
        ; install_c_headers
        ; ppx_runtime_libraries
@@ -684,6 +705,19 @@ module Library = struct
        ; instrumentation_backend
        })
 
+  let package t =
+    match t.visibility with
+    | Public p -> Some p.package
+    | Private p -> p
+
+  let sub_dir t =
+    match t.visibility with
+    | Public p -> p.sub_dir
+    | Private None -> None
+    | Private (Some _) ->
+      Lib_name.Local.mangled_path_under_package (snd t.name)
+      |> String.concat ~sep:"/" |> Option.some
+
   let has_foreign t = Buildable.has_foreign t.buildable
 
   let foreign_archives t =
@@ -705,18 +739,25 @@ module Library = struct
     Path.Build.relative dir (Lib_name.Local.to_string (snd t.name) ^ ext)
 
   let best_name t =
-    match t.public with
-    | None -> Lib_name.of_local t.name
-    | Some p -> snd p.name
+    match t.visibility with
+    | Private _ -> Lib_name.of_local t.name
+    | Public p -> snd p.name
 
   let is_virtual t = Option.is_some t.virtual_modules
 
   let is_impl t = Option.is_some t.implements
 
   let obj_dir ~dir t =
+    let private_lib =
+      match t.visibility with
+      | Private (Some _) -> true
+      | Private None
+      | Public _ ->
+        false
+    in
     Obj_dir.make_lib ~dir
       ~has_private_modules:(t.private_modules <> None)
-      (snd t.name)
+      ~private_lib (snd t.name)
 
   let main_module_name t : Lib_info.Main_module_name.t =
     match (t.implements, t.wrapped) with
@@ -729,25 +770,34 @@ module Library = struct
       This (Some (Module_name.of_local_lib_name (snd t.name)))
 
   let to_lib_info conf ~dir
-      ~lib_config:({ Lib_config.has_native; ext_lib; ext_dll; _ } as lib_config)
-      =
+      ~lib_config:
+        ( { Lib_config.has_native; ext_lib; ext_dll; natdynlink_supported; _ }
+        as lib_config ) =
     let _loc, lib_name = conf.name in
     let obj_dir = obj_dir ~dir conf in
     let gen_archive_file ~dir ext =
       Path.Build.relative dir (Lib_name.Local.to_string lib_name ^ ext)
     in
     let archive_file = gen_archive_file ~dir in
+    let modes = Mode_conf.Set.eval ~has_native conf.modes in
+    let archive_file ~f_ext ~mode =
+      if Mode.Dict.get modes mode then
+        Some (archive_file (f_ext mode))
+      else
+        None
+    in
     let archive_files ~f_ext =
-      Mode.Dict.of_func (fun ~mode -> [ archive_file (f_ext mode) ])
+      Mode.Dict.of_func (fun ~mode ->
+          archive_file ~f_ext ~mode |> Option.to_list)
     in
     let jsoo_runtime =
       List.map conf.buildable.js_of_ocaml.javascript_files
         ~f:(Path.Build.relative dir)
     in
     let status =
-      match conf.public with
-      | None -> Lib_info.Status.Private conf.project
-      | Some p -> Public (conf.project, p.package)
+      match conf.visibility with
+      | Private pkg -> Lib_info.Status.Private (conf.project, pkg)
+      | Public p -> Public (conf.project, p.package)
     in
     let virtual_library = is_virtual conf in
     let foreign_archives = foreign_lib_files conf ~dir ~ext_lib in
@@ -761,7 +811,12 @@ module Library = struct
     let foreign_dll_files = foreign_dll_files conf ~dir ~ext_dll in
     let exit_module = Option.bind conf.stdlib ~f:(fun x -> x.exit_module) in
     let jsoo_archive =
-      Some (gen_archive_file ~dir:(Obj_dir.obj_dir obj_dir) ".cma.js")
+      (* XXX we shouldn't access the directory of the obj_dir directly. We
+         should use something like [Obj_dir.Archive.obj] instead *)
+      if modes.byte then
+        Some (gen_archive_file ~dir:(Obj_dir.obj_dir obj_dir) ".cma.js")
+      else
+        None
     in
     let virtual_ =
       Option.map conf.virtual_modules ~f:(fun _ -> Lib_info.Source.Local)
@@ -771,12 +826,22 @@ module Library = struct
       if virtual_library then
         (Mode.Dict.make_both [], Mode.Dict.make_both [])
       else
-        ( archive_files ~f_ext:Mode.compiled_lib_ext
-        , archive_files ~f_ext:Mode.plugin_ext )
+        let plugins =
+          let archive_file ~mode =
+            archive_file ~f_ext:Mode.plugin_ext ~mode |> Option.to_list
+          in
+          { Mode.Dict.native =
+              ( if Dynlink_supported.get conf.dynlink natdynlink_supported then
+                archive_file ~mode:Native
+              else
+                [] )
+          ; byte = archive_file ~mode:Byte
+          }
+        in
+        (archive_files ~f_ext:Mode.compiled_lib_ext, plugins)
     in
     let main_module_name = main_module_name conf in
     let name = best_name conf in
-    let modes = Mode_conf.Set.eval ~has_native conf.modes in
     let enabled =
       let enabled_if_result =
         Blang.eval conf.enabled_if ~dir:(Path.build dir) ~f:(fun v _ver ->
@@ -798,6 +863,7 @@ module Library = struct
     let version =
       match status with
       | Public (_, pkg) -> pkg.version
+      | Installed_private
       | Installed
       | Private _ ->
         None
@@ -943,8 +1009,8 @@ module Executables = struct
 
     let multi_fields =
       map_validate
-        (let+ names = field_o "names" (repeat (located string))
-         and+ pub_names = field_o "public_names" (repeat public_name) in
+        (let+ names = field_o "names" (repeat1 (located string))
+         and+ pub_names = field_o "public_names" (repeat1 public_name) in
          (names, pub_names))
         ~f:(fun (names, public_names) ->
           match (names, public_names) with
@@ -1331,7 +1397,9 @@ module Executables = struct
                   "these executables"
                 else
                   "this executable" )
-            ; Pp.text "One of the following modes is required:"
+            ; Pp.text
+                "When public_name is set, one of the following modes is \
+                 required:"
             ; Pp.enumerate Link_mode.installable_modes ~f:(fun mode ->
                   Pp.verbatim (Dune_lang.to_string (Link_mode.encode mode)))
             ]
@@ -1464,6 +1532,7 @@ module Rule = struct
       ; ("fallback", Field)
       ; ("mode", Field)
       ; ("alias", Field)
+      ; ("enabled_if", Field)
       ]
 
   let short_form =
@@ -1730,7 +1799,7 @@ module Tests = struct
        ; action
        })
 
-  let multi = gen_parse (field "names" (repeat (located string)))
+  let multi = gen_parse (field "names" (repeat1 (located string)))
 
   let single = gen_parse (field "name" (located string) >>| List.singleton)
 end
@@ -1773,6 +1842,7 @@ module Copy_files = struct
     { add_line_directive : bool
     ; alias : Alias.Name.t option
     ; mode : Rule.Mode.t
+    ; enabled_if : Blang.t
     ; files : String_with_vars.t
     ; syntax_version : Dune_lang.Syntax.Version.t
     }
@@ -1782,9 +1852,17 @@ module Copy_files = struct
     let+ alias = field_o "alias" (check >>> Alias.Name.decode)
     and+ mode =
       field "mode" ~default:Rule.Mode.Standard (check >>> Rule.Mode.decode)
+    and+ enabled_if =
+      Enabled_if.decode ~allowed_vars:Any ~since:(Some (2, 8)) ()
     and+ files = field "files" (check >>> String_with_vars.decode)
     and+ syntax_version = Dune_lang.Syntax.get_exn Stanza.syntax in
-    { add_line_directive = false; alias; mode; files; syntax_version }
+    { add_line_directive = false
+    ; alias
+    ; mode
+    ; enabled_if
+    ; files
+    ; syntax_version
+    }
 
   let decode =
     peek_exn >>= function
@@ -1795,6 +1873,7 @@ module Copy_files = struct
       { add_line_directive = false
       ; alias = None
       ; mode = Standard
+      ; enabled_if = Blang.true_
       ; files
       ; syntax_version
       }
@@ -1847,18 +1926,31 @@ module Library_redirect = struct
   module Local = struct
     type nonrec t = (Loc.t * Lib_name.Local.t) t
 
+    let for_lib (lib : Library.t) ~new_public_name ~loc : t =
+      { loc; new_public_name; old_name = lib.name; project = lib.project }
+
+    let of_private_lib (lib : Library.t) : t option =
+      match lib.visibility with
+      | Public _
+      | Private None ->
+        None
+      | Private (Some package) ->
+        let loc, name = lib.name in
+        let new_public_name = (loc, Lib_name.mangled package.name name) in
+        Some (for_lib lib ~loc ~new_public_name)
+
     let of_lib (lib : Library.t) : t option =
       let open Option.O in
-      let* public = lib.public in
-      if Lib_name.equal (Lib_name.of_local lib.name) (snd public.name) then
+      let* public_name =
+        match lib.visibility with
+        | Public plib -> Some plib.name
+        | Private _ -> None
+      in
+      if Lib_name.equal (Lib_name.of_local lib.name) (snd public_name) then
         None
       else
-        Some
-          { loc = Loc.none
-          ; project = lib.project
-          ; old_name = lib.name
-          ; new_public_name = public.name
-          }
+        let loc = fst public_name in
+        Some (for_lib lib ~loc ~new_public_name:public_name)
   end
 end
 
@@ -1897,6 +1989,14 @@ module Deprecated_library_name = struct
        and+ old_name = field "old_public_name" Old_name.decode
        and+ new_public_name =
          field "new_public_name" (located Lib_name.decode)
+       in
+       let () =
+         let loc, old_name = (fst old_name).name in
+         if Lib_name.equal (snd new_public_name) old_name then
+           User_error.raise ~loc
+             [ Pp.text
+                 "old_public_name cannot be the same as the new_public_name"
+             ]
        in
        { Library_redirect.loc; project; old_name; new_public_name })
 end
@@ -1963,7 +2063,10 @@ module Stanzas = struct
   let stanzas : constructors =
     [ ( "library"
       , let+ x = Library.decode in
-        [ Library x ] )
+        let base = [ Library x ] in
+        match Library_redirect.Local.of_lib x with
+        | None -> base
+        | Some r -> Library_redirect r :: base )
     ; ( "foreign_library"
       , let+ () = Dune_lang.Syntax.since Stanza.syntax (2, 0)
         and+ x = Foreign.Library.decode in
@@ -2093,7 +2196,7 @@ module Stanzas = struct
 end
 
 let stanza_package = function
-  | Library { public = Some { package; _ }; _ }
+  | Library lib -> Library.package lib
   | Alias { package = Some package; _ }
   | Rule { package = Some package; _ }
   | Install { package; _ }

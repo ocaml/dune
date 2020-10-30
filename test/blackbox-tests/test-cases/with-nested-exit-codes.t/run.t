@@ -20,7 +20,6 @@
   > EOF
 
   $ dune build --display=short --root . @f
-      ocamldep .exit.eobjs/exit.ml.d
         ocamlc .exit.eobjs/byte/dune__exe__Exit.{cmi,cmo,cmt}
       ocamlopt .exit.eobjs/native/dune__exe__Exit.{cmx,o}
       ocamlopt exit.exe

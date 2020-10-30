@@ -16,7 +16,7 @@ let msvc_hack_cclibs =
       Option.value ~default:lib (String.drop_prefix ~prefix:"-l" lib))
 
 (* Build an OCaml library. *)
-let build_lib (lib : Library.t) ~sctx ~dir_contents ~expander ~flags ~dir ~mode
+let build_lib (lib : Library.t) ~sctx ~modules ~expander ~flags ~dir ~mode
     ~cm_files =
   let ctx = Super_context.context sctx in
   let { Lib_config.ext_lib; _ } = ctx.lib_config in
@@ -254,7 +254,7 @@ let build_stubs lib ~cctx ~dir ~expander ~requires ~dir_contents
     ocamlmklib ~archive_name ~loc:lib.buildable.loc ~sctx ~expander ~dir
       ~o_files ~c_library_flags:lib.c_library_flags ~build_targets_together
 
-let build_shared lib ~dir_contents ~sctx ~dir ~flags =
+let build_shared lib ~modules ~sctx ~dir ~flags =
   let ctx = Super_context.context sctx in
   Result.iter ctx.ocamlopt ~f:(fun ocamlopt ->
       let ext_lib = ctx.lib_config.ext_lib in
@@ -291,7 +291,7 @@ let build_shared lib ~dir_contents ~sctx ~dir ~flags =
               ]
       in
       let build =
-        if Lib_archives.has_native_archive lib ctx.lib_config dir_contents then
+        if Lib_info.has_native_archive ctx.lib_config modules then
           Build.with_no_targets
             (Build.path (Path.build (Library.archive lib ~dir ~ext:ext_lib)))
           >>> build
@@ -300,9 +300,8 @@ let build_shared lib ~dir_contents ~sctx ~dir ~flags =
       in
       Super_context.add_rule sctx build ~dir)
 
-let setup_build_archives (lib : Dune_file.Library.t) ~dir_contents ~cctx
+let setup_build_archives (lib : Dune_file.Library.t) ~cctx
     ~(dep_graphs : Dep_graph.Ml_kind.t) ~expander =
-  let dir = Compilation_context.dir cctx in
   let obj_dir = Compilation_context.obj_dir cctx in
   let flags = Compilation_context.flags cctx in
   let modules = Compilation_context.modules cctx in
@@ -327,17 +326,25 @@ let setup_build_archives (lib : Dune_file.Library.t) ~dir_contents ~cctx
                 let fname =
                   Module_name.Unique.artifact_filename obj_name ~ext
                 in
-                let dst = Path.Build.relative dir fname in
-                Super_context.add_rule sctx ~dir (Build.copy ~src ~dst)));
+                (* XXX we should get the directory from the dir of the cma file
+                   explicitly *)
+                let dst = Path.Build.relative (Obj_dir.dir obj_dir) fname in
+                Super_context.add_rule sctx
+                  ~dir:(Compilation_context.dir cctx)
+                  (Build.copy ~src ~dst)));
   let top_sorted_modules =
     Dep_graph.top_closed_implementations dep_graphs.impl impl_only
   in
   let modes = Compilation_context.modes cctx in
+  (* The [dir] below is used as an object directory without going through
+     [Obj_dir]. That's fragile and will break if the layout of the object
+     directory changes *)
+  let dir = Obj_dir.dir obj_dir in
   (let cm_files =
      Cm_files.make ~obj_dir ~ext_obj ~modules ~top_sorted_modules
    in
    Mode.Dict.Set.iter modes ~f:(fun mode ->
-       build_lib lib ~dir_contents ~sctx ~expander ~flags ~dir ~mode ~cm_files));
+       build_lib lib ~dir ~modules ~sctx ~expander ~flags ~mode ~cm_files));
   (* Build *.cma.js *)
   if modes.byte then
     Super_context.add_rules sctx ~dir
@@ -350,7 +357,7 @@ let setup_build_archives (lib : Dune_file.Library.t) ~dir_contents ~cctx
        in
        Jsoo_rules.build_cm cctx ~js_of_ocaml ~src ~target);
   if Dynlink_supported.By_the_os.get natdynlink_supported && modes.native then
-    build_shared ~dir_contents ~sctx lib ~dir ~flags
+    build_shared ~modules ~sctx lib ~dir ~flags
 
 let cctx (lib : Library.t) ~sctx ~source_modules ~dir ~expander ~scope
     ~compile_info =
@@ -377,7 +384,7 @@ let cctx (lib : Library.t) ~sctx ~source_modules ~dir ~expander ~scope
       ~lib_name:(Some (snd lib.name))
   in
   let modules =
-    Modules.map_user_written source_modules ~f:(Preprocessing.pp_module pp)
+    Modules.map_user_written source_modules ~f:(Pp_spec.pp_module pp)
   in
   let modules = Vimpl.impl_modules vimpl modules in
   let requires_compile = Lib.Compile.direct_requires compile_info in
@@ -389,12 +396,11 @@ let cctx (lib : Library.t) ~sctx ~source_modules ~dir ~expander ~scope
     let { Lib_config.has_native; _ } = ctx.lib_config in
     Dune_file.Mode_conf.Set.eval_detailed lib.modes ~has_native
   in
+  let package = Dune_file.Library.package lib in
   Compilation_context.create () ~super_context:sctx ~expander ~scope ~obj_dir
     ~modules ~flags ~requires_compile ~requires_link ~preprocessing:pp
     ~opaque:Inherit_from_settings ~js_of_ocaml:(Some lib.buildable.js_of_ocaml)
-    ~dynlink ?stdlib:lib.stdlib
-    ~package:(Option.map lib.public ~f:Dune_file.Public_lib.package)
-    ?vimpl ~modes
+    ~dynlink ?stdlib:lib.stdlib ~package ?vimpl ~modes
 
 let library_rules (lib : Library.t) ~cctx ~source_modules ~dir_contents
     ~compile_info =
@@ -422,7 +428,7 @@ let library_rules (lib : Library.t) ~cctx ~source_modules ~dir_contents
         (Lib.DB.instrumentation_backend (Scope.libs scope))
   in
   if not (Library.is_virtual lib) then
-    setup_build_archives lib ~dir_contents ~cctx ~dep_graphs ~expander;
+    setup_build_archives lib ~cctx ~dep_graphs ~expander;
   let () =
     let vlib_stubs_o_files = Vimpl.vlib_stubs_o_files vimpl in
     if Library.has_foreign lib || List.is_non_empty vlib_stubs_o_files then

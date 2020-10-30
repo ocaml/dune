@@ -319,8 +319,10 @@ let rec exec t ~ectx ~eenv =
           ~finally:(fun () ->
             ( match optional with
             | false ->
+              (* Promote if in the source tree or not a target. The second case
+                 means that the diffing have been done with the empty file *)
               if
-                is_copied_from_source_tree file1
+                (is_copied_from_source_tree file1 || not (Path.exists file1))
                 && not (is_copied_from_source_tree (Path.build file2))
               then
                 Promotion.File.register_dep
@@ -330,7 +332,8 @@ let rec exec t ~ectx ~eenv =
                           (Path.extract_build_context_dir_maybe_sandboxed file1)))
                   ~correction_file:file2
             | true ->
-              if is_copied_from_source_tree file1 then
+              if is_copied_from_source_tree file1 || not (Path.exists file1)
+              then
                 Promotion.File.register_intermediate
                   ~source_file:
                     (snd
@@ -422,24 +425,26 @@ and exec_pipe outputs ts ~ectx ~eenv =
     Dtemp.file ~prefix:"dune-pipe-action-"
       ~suffix:("." ^ Action.Outputs.to_string outputs)
   in
-  let multi_use_eenv =
-    match outputs with
-    | Outputs -> eenv
-    | Stdout -> { eenv with stderr_to = Process.Io.multi_use eenv.stderr_to }
-    | Stderr -> { eenv with stdout_to = Process.Io.multi_use eenv.stdout_to }
-  in
   let rec loop ~in_ ts =
     match ts with
     | [] -> assert false
     | [ last_t ] ->
+      let eenv =
+        match outputs with
+        | Stderr ->
+          { eenv with stdout_to = Process.Io.multi_use eenv.stderr_to }
+        | _ -> eenv
+      in
       let+ result = redirect_in last_t ~ectx ~eenv Stdin in_ in
       Dtemp.destroy File in_;
       result
     | t :: ts -> (
       let out = tmp_file () in
       let* done_or_deps =
-        redirect t ~ectx ~eenv:multi_use_eenv ~in_:(Stdin, in_)
-          ~out:(outputs, out) ()
+        let eenv =
+          { eenv with stderr_to = Process.Io.multi_use eenv.stderr_to }
+        in
+        redirect t ~ectx ~eenv ~in_:(Stdin, in_) ~out:(Stdout, out) ()
       in
       Dtemp.destroy File in_;
       match done_or_deps with
@@ -450,6 +455,12 @@ and exec_pipe outputs ts ~ectx ~eenv =
   | [] -> assert false
   | t1 :: ts -> (
     let out = tmp_file () in
+    let eenv =
+      match outputs with
+      | Outputs -> eenv
+      | Stdout -> { eenv with stderr_to = Process.Io.multi_use eenv.stderr_to }
+      | Stderr -> { eenv with stdout_to = Process.Io.multi_use eenv.stdout_to }
+    in
     let* done_or_deps = redirect_out t1 ~ectx ~eenv outputs out in
     match done_or_deps with
     | Need_more_deps _ as need -> Fiber.return need

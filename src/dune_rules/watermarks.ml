@@ -230,6 +230,9 @@ let make_watermark_map ~commit ~version ~dune_project ~package =
   in
   let name = Dune_project.name dune_project in
   let info = package.Package.info in
+  (* XXX these error messages aren't particularly good as these values do not
+     necessarily come from the project file. It's possible for them to be
+     defined in the .opam file directly*)
   let make_value name = function
     | None -> Error (sprintf "variable %S not found in dune-project file" name)
     | Some value -> Ok value
@@ -239,8 +242,8 @@ let make_watermark_map ~commit ~version ~dune_project ~package =
     | Some value -> Ok (String.concat ~sep value)
   in
   let make_dev_repo_value = function
-    | Some (Package.Source_kind.Github (user, repo)) ->
-      Ok (sprintf "https://github.com/%s/%s" user repo)
+    | Some (Package.Source_kind.Host h) ->
+      Ok (Package.Source_kind.Host.homepage h)
     | Some (Package.Source_kind.Url url) -> Ok url
     | None -> Error (sprintf "variable dev-repo not found in dune-project file")
   in

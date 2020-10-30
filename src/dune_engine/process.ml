@@ -182,9 +182,10 @@ let command_line_enclosers ~dir ~(stdout_to : Io.output Io.t)
       ( io_to_redirection_path stdout_to.kind
       , io_to_redirection_path stderr_to.kind )
     with
-    | Some fn1, Some fn2 when String.equal fn1 fn2 ->
+    | Some path_out, Some path_err when String.equal path_out path_err ->
+      let path = path_out in
       suffix
-      |> add_to_suffix " &> " (Some fn1)
+      |> add_to_suffix " &> " (Some path)
     | path_out, path_err ->
       suffix
       |> add_to_suffix " > " path_out

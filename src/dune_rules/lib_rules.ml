@@ -54,11 +54,6 @@ let build_lib (lib : Library.t) ~sctx ~modules ~expander ~flags ~dir ~mode
       let native_archive () =
         ((* Here we make sure that if there's no archive, the user specified
             this *)
-         let modules =
-           let name = Dune_file.Library.best_name lib in
-           let ml_sources = Dir_contents.ocaml dir_contents in
-           Ml_sources.modules_of_library ml_sources ~name
-         in
          if
            (not (Dune_file.Buildable.no_modules_specified lib.buildable))
            && Modules.is_empty modules
@@ -75,7 +70,7 @@ let build_lib (lib : Library.t) ~sctx ~modules ~expander ~flags ~dir ~mode
                  "This library does not contain any modules. This should be \
                   specified explicitly by setting an empty field: (modules)."
              ]);
-        if Lib_archives.has_native_archive lib ctx.lib_config dir_contents then
+        if Lib_info.has_native_archive ctx.lib_config modules then
           [ Library.archive lib ~dir ~ext:ext_lib ]
         else
           []

@@ -33,4 +33,4 @@ Welcome to dune's documentation!
    caching
    toplevel-integration
    goals
-   working-on-dune
+   hacking

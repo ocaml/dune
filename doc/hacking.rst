@@ -4,7 +4,7 @@ Working on the Dune codebase
 
 This section gives guidelines for working on Dune itself. Many of
 these are general guidelines that are specific to Dune. However, given
-that Dune is a large project developped by many different people, it
+that Dune is a large project developed by many different people, it
 is important to follow these guidelines when working on Dune in order
 to keep the project in a good state and pleasant to work on for
 everybody.
@@ -90,5 +90,3 @@ clear that they will be able to reconstruct the original idea the
 developer had in their mind when they originally wrote the code. What
 is worse, they might understand the code in a completely different way
 which would lead them to update it the wrong way.
-
-To illustrate this, let's consider an example.

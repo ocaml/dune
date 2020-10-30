@@ -264,19 +264,11 @@ let make_lib_modules (d : _ Dir_with_dune.t) ~lookup_vlib ~(lib : Library.t)
       in
       (kind, main_module_name, wrapped)
   in
-  let () =
-    match wrapped with
-    | Simple false ->
-      Buildable.first_rename_dep lib.buildable
-      |> Option.iter ~f:Lib_deps.rename_unwrapped_error
-    | Simple true
-    | Yes_with_transition _ ->
-      ()
-  in
   let modules =
     Modules_field_evaluator.eval ~modules ~buildable:lib.buildable ~kind
       ~private_modules:
         (Option.value ~default:Ordered_set_lang.standard lib.private_modules)
+      ~src_dir
   in
   let stdlib = lib.stdlib in
   let implements = Option.is_some lib.implements in
@@ -288,27 +280,23 @@ let libs_and_exes (d : _ Dir_with_dune.t) ~lookup_vlib ~modules =
   List.filter_partition_map d.data ~f:(fun stanza ->
       match (stanza : Stanza.t) with
       | Library lib ->
-        let force_alias_module =
-          Buildable.first_rename_dep lib.buildable |> Option.is_some
-        in
         let modules =
-          make_lib_modules d ~lookup_vlib ~modules ~lib ~force_alias_module
+          make_lib_modules d ~lookup_vlib ~modules ~lib
+            ~force_alias_module:false
         in
         Left (lib, modules)
       | Executables exes
       | Tests { exes; _ } ->
+        let src_dir = d.ctx_dir in
         let modules =
           Modules_field_evaluator.eval ~modules ~buildable:exes.buildable
             ~kind:Modules_field_evaluator.Exe_or_normal_lib
-            ~private_modules:Ordered_set_lang.standard
+            ~private_modules:Ordered_set_lang.standard ~src_dir
         in
         let modules =
           let project = Scope.project d.scope in
           if Dune_project.wrapped_executables project then
-            let force_alias =
-              Buildable.first_rename_dep exes.buildable |> Option.is_some
-            in
-            Modules_group.exe_wrapped ~src_dir:d.ctx_dir ~modules ~force_alias
+            Modules_group.exe_wrapped ~src_dir ~modules
           else
             Modules_group.exe_unwrapped modules
         in

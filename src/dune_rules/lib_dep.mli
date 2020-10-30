@@ -19,15 +19,10 @@ module Select : sig
   val to_dyn : t -> Dyn.t
 end
 
-module Rename : sig
-  type t = (Loc.t * Lib_name.t) * Module_name.t
-end
-
 type t =
   | Direct of (Loc.t * Lib_name.t)
   | Re_export of (Loc.t * Lib_name.t)
   | Select of Select.t
-  | Rename of Rename.t
 
 val to_dyn : t -> Dyn.t
 

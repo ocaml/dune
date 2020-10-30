@@ -106,6 +106,13 @@ module List = struct
     match t with
     | [] -> Ok init
     | x :: xs -> f init x >>= fun init -> fold_left xs ~f ~init
+
+  let filter_map t ~f =
+    fold_left t ~init:[] ~f:(fun acc x ->
+        f x >>| function
+        | None -> acc
+        | Some y -> y :: acc)
+    >>| List.rev
 end
 
 let hash h1 h2 t =

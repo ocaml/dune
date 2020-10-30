@@ -330,13 +330,14 @@ end = struct
         let virtual_ = None in
         let default_implementation = None in
         let wrapped = None in
+        let dir_contents = Path.readdir_unsorted t.dir in
         let foreign_archives, native_archives =
           (* Here we scan [t.dir] and consider all files named [lib*.ext_lib] to
              be foreign archives, and all other files with the extension
              [ext_lib] to be native archives. The resulting lists of archives
              will be used to compute appropriate flags for linking dependent
              executables. *)
-          match Path.readdir_unsorted t.dir with
+          match dir_contents with
           | Error _ ->
             (* Raising an error is not an option here as we systematically delay
                all library loading errors until the libraries are actually used
@@ -368,6 +369,31 @@ end = struct
             let sort = List.sort ~compare:Path.compare in
             (sort foreign_archives, sort native_archives)
         in
+        let entry_modules =
+          Lib_info.Source.External
+            ( match dir_contents with
+            | Error e ->
+              Error
+                (User_error.E
+                   (User_message.make
+                      [ Pp.textf "Unable to get entry modules of %s in %s. "
+                          (Lib_name.to_string t.name)
+                          (Path.to_string src_dir)
+                      ; Pp.textf "error: %s" (Unix.error_message e)
+                      ]))
+            | Ok files ->
+              let ext = Cm_kind.ext Cmi in
+              Result.List.filter_map files ~f:(fun fname ->
+                  match Filename.check_suffix fname ext with
+                  | false -> Ok None
+                  | true -> (
+                    match
+                      let name = Filename.chop_extension fname in
+                      Module_name.of_string_user_error (Loc.in_dir src_dir, name)
+                    with
+                    | Ok s -> Ok (Some s)
+                    | Error e -> Error (User_error.E e) )) )
+        in
         Lib_info.create ~loc ~name:t.name ~kind ~status ~src_dir ~orig_src_dir
           ~obj_dir ~version ~synopsis ~main_module_name ~sub_systems ~requires
           ~foreign_objects ~plugins ~archives ~ppx_runtime_deps
@@ -375,7 +401,7 @@ end = struct
           ~jsoo_archive ~preprocess ~enabled ~virtual_deps ~dune_version
           ~virtual_ ~implements ~default_implementation ~modes ~wrapped
           ~special_builtin_support ~exit_module:None
-          ~instrumentation_backend:None
+          ~instrumentation_backend:None ~entry_modules
       in
       Dune_package.Lib.make ~info ~modules:None ~main_module_name:None
   end

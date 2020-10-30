@@ -57,13 +57,8 @@ module Lib_deps = struct
     | Optional
     | Forbidden
 
-  let rename_unwrapped_error loc =
-    User_error.raise ~loc
-      [ Pp.text "rename may not be used in unwrapped libraries" ]
-
   let decode for_ =
     let+ loc = loc
-    and+ project = Dune_project.get_exn ()
     and+ t =
       let allow_re_export =
         match for_ with
@@ -98,28 +93,9 @@ module Lib_deps = struct
                 (Lib_name.to_string name)
             ] )
     in
-    let check_rename =
-      match for_ with
-      | Library (Some (Simple false)) -> rename_unwrapped_error
-      | Library _ -> fun _loc -> ()
-      | Executable ->
-        if Dune_project.wrapped_executables project then
-          fun _loc ->
-        ()
-        else
-          fun loc ->
-        User_error.raise ~loc
-          [ Pp.text
-              "rename may not be used in executables without \
-               wrapped_executables switched on in the dune-project file"
-          ]
-    in
     ignore
       ( List.fold_left t ~init:Lib_name.Map.empty ~f:(fun acc x ->
             match x with
-            | Lib_dep.Rename ((loc, name), _) ->
-              check_rename loc;
-              add Required name acc
             | Lib_dep.Re_export (_, s)
             | Lib_dep.Direct (_, s) ->
               add Required s acc
@@ -137,8 +113,7 @@ module Lib_deps = struct
 
   let info t ~kind =
     List.concat_map t ~f:(function
-      | Lib_dep.Rename ((_, s), _)
-      | Re_export (_, s)
+      | Lib_dep.Re_export (_, s)
       | Direct (_, s) ->
         [ (s, kind) ]
       | Select { choices; _ } ->
@@ -197,6 +172,7 @@ module Buildable = struct
     ; flags : Ocaml_flags.Spec.t
     ; js_of_ocaml : Js_of_ocaml.t
     ; allow_overlapping_dependencies : bool
+    ; root_module : (Loc.t * Module_name.t) option
     }
 
   let decode (for_ : for_) =
@@ -288,6 +264,9 @@ module Buildable = struct
                        repeat (String_with_vars.decode >>| version_check)
                      in
                      (libname, flags))) ))
+    and+ root_module =
+      field_o "root_module"
+        (Dune_lang.Syntax.since Stanza.syntax (2, 8) >>> Module_name.decode_loc)
     in
     let preprocess =
       let init =
@@ -343,15 +322,11 @@ module Buildable = struct
     ; flags
     ; js_of_ocaml
     ; allow_overlapping_dependencies
+    ; root_module
     }
 
   let has_foreign t =
     List.is_non_empty t.foreign_stubs || List.is_non_empty t.foreign_archives
-
-  let first_rename_dep (t : t) =
-    List.find_map t.libraries ~f:(function
-      | Lib_dep.Rename ((loc, _), _) -> Some loc
-      | _ -> None)
 end
 
 module Public_lib = struct
@@ -941,13 +916,14 @@ module Library = struct
     let wrapped = Some conf.wrapped in
     let special_builtin_support = conf.special_builtin_support in
     let instrumentation_backend = conf.instrumentation_backend in
+    let entry_modules = Lib_info.Source.Local in
     Lib_info.create ~loc ~name ~kind ~status ~src_dir ~orig_src_dir ~obj_dir
       ~version ~synopsis ~main_module_name ~sub_systems ~requires
       ~foreign_objects ~plugins ~archives ~ppx_runtime_deps ~foreign_archives
       ~native_archives ~foreign_dll_files ~jsoo_runtime ~jsoo_archive
-      ~preprocess ~enabled ~virtual_deps ~dune_version ~virtual_ ~implements
-      ~default_implementation ~modes ~wrapped ~special_builtin_support
-      ~exit_module ~instrumentation_backend
+      ~preprocess ~enabled ~virtual_deps ~dune_version ~virtual_ ~entry_modules
+      ~implements ~default_implementation ~modes ~wrapped
+      ~special_builtin_support ~exit_module ~instrumentation_backend
 end
 
 module Plugin = struct

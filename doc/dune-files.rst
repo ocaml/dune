@@ -505,6 +505,11 @@ to use the :ref:`include_subdirs` stanza.
   configured through options using ``(inline_tests <options>)``. See
   :ref:`inline_tests` for a reference of corresponding options.
 
+- ``(root_module <module>)`` this field instructs dune to generate a module that
+  will contain module aliases for every library specified in dependencies. This
+  is useful whenever a library is shadowed by a local module. The library may
+  then still be accessible via this root module
+
 Note that when binding C libraries, dune doesn't provide special support for
 tools such as ``pkg-config``, however it integrates easily with
 :ref:`configurator` by
@@ -643,6 +648,10 @@ Executables can also be linked as object or shared object files. See
   here will be ignored and cannot be used inside the executable described by
   the current stanza. It is interpreted in the same way as the ``(modules
   ...)`` field of `library`_
+
+- ``(root_module <module>)`` specifies a ``root_module`` that collects all
+  dependencies specified in ``libraries``. See the documentation for
+  ``root_module`` in the library stanza.
 
 - ``(modes (<modes>))`` sets the `linking modes`_. The default is
   ``(exe)``. Before 2.0, it used to be ``(byte exe)``.

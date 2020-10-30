@@ -21,6 +21,10 @@ type opaque =
   | Inherit_from_settings
       (** Determined from the version of OCaml and the profile *)
 
+val modules_of_lib :
+  (* to avoid a cycle with [Dir_contents] *)
+  (Super_context.t -> dir:Path.Build.t -> name:Lib_name.t -> Modules.t) Fdecl.t
+
 (** Create a compilation context. *)
 val create :
      super_context:Super_context.t
@@ -40,7 +44,6 @@ val create :
   -> ?vimpl:Vimpl.t
   -> ?modes:Dune_file.Mode_conf.Set.Details.t Mode.Dict.t
   -> ?bin_annot:bool
-  -> ?renames:(Lib.t * Module_name.t) list Or_exn.t
   -> unit
   -> t
 
@@ -91,6 +94,8 @@ val modes : t -> Mode.Dict.Set.t
 
 val for_wrapped_compat : t -> t
 
+val for_root_module : t -> t
+
 val for_module_generated_at_link_time :
   t -> requires:Lib.t list Or_exn.t -> module_:Module.t -> t
 
@@ -101,9 +106,4 @@ val bin_annot : t -> bool
 
 val without_bin_annot : t -> t
 
-type rename =
-  { new_name : Module_name.t
-  ; old_name : Module_name.t
-  }
-
-val renames : t -> rename list Or_exn.t
+val root_module_entries : t -> Module_name.t list Or_exn.t

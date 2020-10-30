@@ -253,7 +253,7 @@ let check_invalid_module_listing ~(buildable : Buildable.t) ~intf_only ~modules
   )
 
 let eval ~modules:(all_modules : Module.Source.t Module_name.Map.t)
-    ~buildable:(conf : Buildable.t) ~private_modules ~kind =
+    ~buildable:(conf : Buildable.t) ~private_modules ~kind ~src_dir =
   (* Fake modules are modules that do not exist but it doesn't matter because
      they are only removed from a set (for jbuild file compatibility) *)
   let fake_modules = ref Module_name.Map.empty in
@@ -316,4 +316,8 @@ let eval ~modules:(all_modules : Module.Source.t Module_name.Map.t)
         in
         Module.of_source m ~kind ~visibility)
   in
-  all_modules
+  match conf.root_module with
+  | None -> all_modules
+  | Some (_, name) ->
+    let module_ = Module.generated_root ~src_dir name in
+    Module_name.Map.set all_modules name module_

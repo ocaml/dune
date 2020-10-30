@@ -31,8 +31,6 @@ module Lib_deps : sig
   val info : t -> kind:Lib_deps_info.Kind.t -> Lib_deps_info.t
 
   val decode : for_ -> t Dune_lang.Decoder.t
-
-  val rename_unwrapped_error : Loc.t -> 'a
 end
 
 (** [preprocess] and [preprocessor_deps] fields *)
@@ -55,12 +53,11 @@ module Buildable : sig
     ; flags : Ocaml_flags.Spec.t
     ; js_of_ocaml : Js_of_ocaml.t
     ; allow_overlapping_dependencies : bool
+    ; root_module : (Loc.t * Module_name.t) option
     }
 
   (** Check if the buildable has any foreign stubs or archives. *)
   val has_foreign : t -> bool
-
-  val first_rename_dep : t -> Loc.t option
 end
 
 module Public_lib : sig

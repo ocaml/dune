@@ -27,6 +27,11 @@ val info : t -> Path.t Lib_info.t
 
 val main_module_name : t -> Module_name.t option Or_exn.t
 
+val entry_module_names :
+     t
+  -> local_lib:(dir:Path.Build.t -> name:Lib_name.t -> Modules.t)
+  -> Module_name.t list Or_exn.t
+
 val wrapped : t -> Wrapped.t option Or_exn.t
 
 (** [is_impl lib] returns [true] if the library is an implementation of a
@@ -140,8 +145,6 @@ module Compile : sig
 
   (** Sub-systems used in this compilation context *)
   val sub_systems : t -> sub_system list
-
-  val renames : t -> (lib * Module_name.t) list Or_exn.t
 end
 with type lib := t
 

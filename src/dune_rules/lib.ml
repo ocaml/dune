@@ -240,9 +240,8 @@ module T = struct
     ; unique_id : Id.t
     ; re_exports : t list Or_exn.t
     ; (* [requires] is contains all required libraries, including the ones
-         mentioned in [renames] and in [re_exports]. *)
+         mentioned in [re_exports]. *)
       requires : t list Or_exn.t
-    ; renames : (t * Module_name.t) list Or_exn.t
     ; ppx_runtime_deps : t list Or_exn.t
     ; pps : t list Or_exn.t
     ; resolved_selects : Resolved_select.t list
@@ -366,6 +365,14 @@ let main_module_name t =
     match main_module_name with
     | This x -> x
     | From _ -> assert false )
+
+let entry_module_names t ~local_lib =
+  match Lib_info.entry_modules t.info with
+  | External d -> d
+  | Local ->
+    let info = Lib_info.as_local_exn t.info in
+    let modules = local_lib ~dir:(Lib_info.src_dir info) ~name:t.name in
+    Ok (Modules.entry_modules modules |> List.map ~f:Module.name)
 
 let wrapped t =
   let wrapped = Lib_info.wrapped t.info in
@@ -986,7 +993,6 @@ module rec Resolve : sig
     ; pps : lib list Or_exn.t
     ; selects : Resolved_select.t list
     ; re_exports : lib list Or_exn.t
-    ; renames : (lib * Module_name.t) list Or_exn.t
     }
 
   val resolve_deps_and_add_runtime_deps :
@@ -1090,7 +1096,7 @@ end = struct
                             (Package.Name.to_string p')
                         ] )))
     in
-    let { requires; pps; selects = resolved_selects; re_exports; renames } =
+    let { requires; pps; selects = resolved_selects; re_exports } =
       let pps =
         Preprocess.Per_module.pps
           (Preprocess.Per_module.with_instrumentation (Lib_info.preprocess info)
@@ -1146,7 +1152,6 @@ end = struct
       ; lib_config = db.lib_config
       ; re_exports
       ; project
-      ; renames
       }
     in
     t.sub_systems <-
@@ -1247,7 +1252,6 @@ end = struct
     { resolved : t list Or_exn.t
     ; selects : Resolved_select.t list
     ; re_exports : t list Or_exn.t
-    ; renames : (lib * Module_name.t) list Or_exn.t
     }
 
   type resolved =
@@ -1255,7 +1259,6 @@ end = struct
     ; pps : lib list Or_exn.t
     ; selects : Resolved_select.t list
     ; re_exports : lib list Or_exn.t
-    ; renames : (lib * Module_name.t) list Or_exn.t
     }
 
   let resolve_complex_deps db deps ~private_deps ~stack : resolved_deps =
@@ -1284,9 +1287,9 @@ end = struct
       in
       (res, { Resolved_select.src_fn; dst_fn = result_fn })
     in
-    let res, resolved_selects, re_exports, renames =
-      List.fold_left deps ~init:(Ok [], [], Ok [], Ok [])
-        ~f:(fun (acc_res, acc_selects, acc_re_exports, acc_renames) dep ->
+    let res, resolved_selects, re_exports =
+      List.fold_left deps ~init:(Ok [], [], Ok [])
+        ~f:(fun (acc_res, acc_selects, acc_re_exports) dep ->
           match (dep : Lib_dep.t) with
           | Re_export (loc, name) ->
             let lib = resolve_dep db (loc, name) ~private_deps ~stack in
@@ -1300,27 +1303,14 @@ end = struct
               and+ acc_res = acc_res in
               lib :: acc_res
             in
-            (acc_res, acc_selects, acc_re_exports, acc_renames)
-          | Rename ((loc, name), to_) ->
-            let lib = resolve_dep db (loc, name) ~private_deps ~stack in
-            let acc_res =
-              let+ lib = lib
-              and+ acc_res = acc_res in
-              lib :: acc_res
-            in
-            let acc_renames =
-              let+ lib = lib
-              and+ acc_renames = acc_renames in
-              (lib, to_) :: acc_renames
-            in
-            (acc_res, acc_selects, acc_re_exports, acc_renames)
+            (acc_res, acc_selects, acc_re_exports)
           | Direct (loc, name) ->
             let acc_res =
               let+ lib = resolve_dep db (loc, name) ~private_deps ~stack
               and+ acc_res = acc_res in
               lib :: acc_res
             in
-            (acc_res, acc_selects, acc_re_exports, acc_renames)
+            (acc_res, acc_selects, acc_re_exports)
           | Select select ->
             let res, resolved_select = resolve_select select in
             let acc_res =
@@ -1328,15 +1318,11 @@ end = struct
               and+ acc_res = acc_res in
               List.rev_append res acc_res
             in
-            ( acc_res
-            , resolved_select :: acc_selects
-            , acc_re_exports
-            , acc_renames ))
+            (acc_res, resolved_select :: acc_selects, acc_re_exports))
     in
     let res = Result.map ~f:List.rev res in
     let re_exports = Result.map ~f:List.rev re_exports in
-    let renames = Result.map ~f:List.rev renames in
-    { resolved = res; selects = resolved_selects; re_exports; renames }
+    { resolved = res; selects = resolved_selects; re_exports }
 
   type pp_deps =
     { pps : t list Or_exn.t
@@ -1405,7 +1391,6 @@ end = struct
     ; pps
     ; selects = resolved.selects
     ; re_exports = resolved.re_exports
-    ; renames = resolved.renames
     }
 
   let resolve_deps_and_add_runtime_deps db deps ~private_deps ~pps ~dune_version
@@ -1628,10 +1613,7 @@ module Compile = struct
     ; resolved_selects : Resolved_select.t list
     ; lib_deps_info : Lib_deps_info.t
     ; sub_systems : Sub_system0.Instance.t Lazy.t Sub_system_name.Map.t
-    ; renames : (lib * Module_name.t) list Or_exn.t
     }
-
-  let renames t = t.renames
 
   let make_lib_deps_info ~user_written_deps ~pps ~kind =
     Lib_deps_info.merge
@@ -1684,7 +1666,6 @@ module Compile = struct
     ; pps = t.pps
     ; lib_deps_info
     ; sub_systems = t.sub_systems
-    ; renames = t.renames
     }
 
   let direct_requires t = t.direct_requires
@@ -1821,7 +1802,6 @@ module DB = struct
         ; pps
         ; selects = resolved_selects
         ; re_exports = _
-        ; renames
         } =
       Resolve.resolve_deps_and_add_runtime_deps t deps ~pps
         ~private_deps:Allow_all ~stack:Dep_stack.empty
@@ -1855,7 +1835,6 @@ module DB = struct
     ; resolved_selects
     ; lib_deps_info
     ; sub_systems = Sub_system_name.Map.empty
-    ; renames
     }
 
   (* Here we omit the [only_ppx_deps_allowed] check because by the time we reach

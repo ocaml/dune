@@ -274,6 +274,7 @@ type 'path t =
   ; dune_version : Dune_lang.Syntax.Version.t option
   ; sub_systems : Sub_system_info.t Sub_system_name.Map.t
   ; virtual_ : Modules.t Source.t option
+  ; entry_modules : Module_name.t list Or_exn.t Source.t
   ; implements : (Loc.t * Lib_name.t) option
   ; default_implementation : (Loc.t * Lib_name.t) option
   ; wrapped : Wrapped.t Inherited.t option
@@ -389,9 +390,9 @@ let create ~loc ~name ~kind ~status ~src_dir ~orig_src_dir ~obj_dir ~version
     ~synopsis ~main_module_name ~sub_systems ~requires ~foreign_objects ~plugins
     ~archives ~ppx_runtime_deps ~foreign_archives ~native_archives
     ~foreign_dll_files ~jsoo_runtime ~jsoo_archive ~preprocess ~enabled
-    ~virtual_deps ~dune_version ~virtual_ ~implements ~default_implementation
-    ~modes ~wrapped ~special_builtin_support ~exit_module
-    ~instrumentation_backend =
+    ~virtual_deps ~dune_version ~virtual_ ~entry_modules ~implements
+    ~default_implementation ~modes ~wrapped ~special_builtin_support
+    ~exit_module ~instrumentation_backend =
   { loc
   ; name
   ; kind
@@ -418,6 +419,7 @@ let create ~loc ~name ~kind ~status ~src_dir ~orig_src_dir ~obj_dir ~version
   ; dune_version
   ; sub_systems
   ; virtual_
+  ; entry_modules
   ; implements
   ; default_implementation
   ; modes
@@ -490,6 +492,7 @@ let to_dyn path
     ; special_builtin_support
     ; exit_module
     ; instrumentation_backend
+    ; entry_modules
     } =
   let open Dyn.Encoder in
   let snd f (_, x) = f x in
@@ -518,6 +521,8 @@ let to_dyn path
     ; ("dune_version", option Dune_lang.Syntax.Version.to_dyn dune_version)
     ; ("sub_systems", Sub_system_name.Map.to_dyn Dyn.Encoder.opaque sub_systems)
     ; ("virtual_", option (Source.to_dyn Modules.to_dyn) virtual_)
+    ; ( "entry_modules"
+      , Source.to_dyn (Or_exn.to_dyn (list Module_name.to_dyn)) entry_modules )
     ; ("implements", option (snd Lib_name.to_dyn) implements)
     ; ( "default_implementation"
       , option (snd Lib_name.to_dyn) default_implementation )
@@ -543,3 +548,5 @@ let has_native_archive lib_config modules =
   Lib_config.linker_can_create_empty_archives lib_config
   && Ocaml_version.ocamlopt_always_calls_library_linker lib_config.ocaml_version
   || not (Modules.is_empty modules)
+
+let entry_modules t = t.entry_modules

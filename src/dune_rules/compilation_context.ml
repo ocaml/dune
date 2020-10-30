@@ -3,6 +3,8 @@ open! Stdune
 open Import
 module SC = Super_context
 
+let modules_of_lib = Fdecl.create Dyn.Encoder.opaque
+
 module Includes = struct
   type t = Command.Args.dynamic Command.Args.t Cm_kind.Dict.t
 
@@ -70,7 +72,6 @@ type t =
   ; vimpl : Vimpl.t option
   ; modes : Mode.Dict.Set.t
   ; bin_annot : bool
-  ; renames : (Lib.t * Module_name.t) list Or_exn.t
   }
 
 let super_context t = t.super_context
@@ -115,37 +116,10 @@ let bin_annot t = t.bin_annot
 
 let context t = Super_context.context t.super_context
 
-type rename =
-  { new_name : Module_name.t
-  ; old_name : Module_name.t
-  }
-
-let renames t =
-  let open Result.O in
-  let* renames = t.renames in
-  Result.List.map renames ~f:(fun (lib, new_name) ->
-      let* main_module_name = Lib.main_module_name lib in
-      let+ old_name =
-        match main_module_name with
-        | Some m -> Ok m
-        | None ->
-          Error
-            (User_error.E
-               (User_error.make
-                  [ Pp.text "renaming unwrapped not supported yet" ]))
-      in
-      { new_name; old_name })
-
 let create ~super_context ~scope ~expander ~obj_dir ~modules ~flags
-<<<<<<< HEAD
     ~requires_compile ~requires_link ?(preprocessing = Pp_spec.dummy) ~opaque
     ?stdlib ~js_of_ocaml ~dynlink ~package ?vimpl ?modes ?(bin_annot = true) ()
     =
-=======
-    ~requires_compile ~requires_link ?(preprocessing = Preprocessing.dummy)
-    ~opaque ?stdlib ~js_of_ocaml ~dynlink ~package ?vimpl ?modes
-    ?(bin_annot = true) ?(renames = Ok []) () =
->>>>>>> 254959a66 (Rename dependencies)
   let project = Scope.project scope in
   let requires_compile =
     if Dune_project.implicit_transitive_deps project then
@@ -186,15 +160,14 @@ let create ~super_context ~scope ~expander ~obj_dir ~modules ~flags
   ; vimpl
   ; modes
   ; bin_annot
-  ; renames
   }
 
 let for_alias_module t =
   let flags =
     let project = Scope.project t.scope in
     let dune_version = Dune_project.dune_version project in
-    Ocaml_flags.default ~profile:(Super_context.context t.super_context).profile
-      ~dune_version
+    let profile = (Super_context.context t.super_context).profile in
+    Ocaml_flags.default ~dune_version ~profile
   in
   let sandbox =
     let ctx = Super_context.context t.super_context in
@@ -213,6 +186,20 @@ let for_alias_module t =
   ; includes = Includes.empty
   ; stdlib = None
   ; sandbox
+  }
+
+let for_root_module t =
+  let flags =
+    let project = Scope.project t.scope in
+    let dune_version = Dune_project.dune_version project in
+    let profile = (Super_context.context t.super_context).profile in
+    Ocaml_flags.default ~profile ~dune_version
+  in
+  { t with
+    flags =
+      Ocaml_flags.append_common flags
+        [ "-w"; "-49"; "-nopervasives"; "-nostdlib" ]
+  ; stdlib = None
   }
 
 let for_module_generated_at_link_time cctx ~requires ~module_ =
@@ -243,3 +230,9 @@ let for_plugin_executable t ~embed_in_plugin_libraries =
   { t with requires_link }
 
 let without_bin_annot t = { t with bin_annot = false }
+
+let root_module_entries t : Module_name.t list Or_exn.t =
+  let open Result.O in
+  let* requires = t.requires_compile in
+  let local_lib = Fdecl.get modules_of_lib t.super_context in
+  Result.List.concat_map requires ~f:(Lib.entry_module_names ~local_lib)

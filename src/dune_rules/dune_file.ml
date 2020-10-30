@@ -161,6 +161,7 @@ module Buildable = struct
     ; flags : Ocaml_flags.Spec.t
     ; js_of_ocaml : Js_of_ocaml.t
     ; allow_overlapping_dependencies : bool
+    ; ctypes : Ctypes.t list
     }
 
   let decode ~in_library ~allow_re_export =
@@ -232,6 +233,8 @@ module Buildable = struct
         (multi_field "instrumentation"
            ( Dune_lang.Syntax.since Stanza.syntax (2, 7)
            >>> fields (field "backend" (located Lib_name.decode)) ))
+    and+ ctypes =
+      (multi_field "ctypes" Ctypes.decode)
     in
     let preprocess =
       let init =
@@ -285,6 +288,7 @@ module Buildable = struct
     ; flags
     ; js_of_ocaml
     ; allow_overlapping_dependencies
+    ; ctypes
     }
 
   let has_foreign t =

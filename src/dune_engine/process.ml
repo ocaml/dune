@@ -185,8 +185,9 @@ let command_line_enclosers ~dir ~(stdout_to : Io.output Io.t)
     | Some fn1, Some fn2 when String.equal fn1 fn2 ->
       " &> " ^ String.quote_for_shell fn1
     | path_out, path_err ->
-      let suffix = add_to_suffix " > " path_out suffix in
-      add_to_suffix " 2> " path_err suffix
+      suffix
+      |> add_to_suffix " > " path_out
+      |> add_to_suffix " 2> " path_err
   in
   (prefix, suffix)
 

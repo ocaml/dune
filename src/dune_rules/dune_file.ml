@@ -659,7 +659,7 @@ module Library = struct
              [ Pp.textf
                  "This library has a pullic_name, it already belongs to the \
                   package %s"
-                 (Package.Name.to_string public.package.name)
+                 (Package.Name.to_string (Package.name public.package))
              ]
        in
        Option.both virtual_modules implements
@@ -1930,7 +1930,8 @@ module Library_redirect = struct
         None
       | Private (Some package) ->
         let loc, name = lib.name in
-        let new_public_name = (loc, Lib_name.mangled package.name name) in
+        let package_name = Package.name package in
+        let new_public_name = (loc, Lib_name.mangled package_name name) in
         Some (for_lib lib ~loc ~new_public_name)
 
     let of_lib (lib : Library.t) : t option =
@@ -1963,7 +1964,8 @@ module Deprecated_library_name = struct
           Lib_name.package_name (Public_lib.name public)
         in
         if
-          Package.Name.equal deprecated_package (Public_lib.package public).name
+          let name = Package.name (Public_lib.package public) in
+          Package.Name.equal deprecated_package name
         then
           Not_deprecated
         else

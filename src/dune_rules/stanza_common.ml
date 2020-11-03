@@ -7,11 +7,13 @@ module Pkg = struct
   let listing packages =
     let longest_pkg =
       String.longest_map packages ~f:(fun p ->
-          Package.Name.to_string p.Package.name)
+          let name = Package.name p in
+          Package.Name.to_string name)
     in
     Pp.enumerate packages ~f:(fun pkg ->
+        let name = Package.name pkg in
         Printf.ksprintf Pp.verbatim "%-*s (because of %s)" longest_pkg
-          (Package.Name.to_string pkg.Package.name)
+          (Package.Name.to_string name)
           (Path.Source.to_string (Package.opam_file pkg)))
 
   let default (project : Dune_project.t) stanza =

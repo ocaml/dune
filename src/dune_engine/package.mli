@@ -20,6 +20,16 @@ module Name : sig
   val of_opam_file_basename : string -> t option
 end
 
+module Id : sig
+  type t
+
+  val name : t -> Name.t
+
+  module Set : Set.S with type elt = t
+
+  module Map : Map.S with type key = t
+end
+
 module Dependency : sig
   module Op : sig
     type t =
@@ -115,7 +125,7 @@ module Info : sig
 end
 
 type t =
-  { name : Name.t
+  { id : Id.t
   ; loc : Loc.t
   ; synopsis : string option
   ; description : string option
@@ -123,13 +133,16 @@ type t =
   ; conflicts : Dependency.t list
   ; depopts : Dependency.t list
   ; info : Info.t
-  ; path : Path.Source.t
   ; version : string option
   ; has_opam_file : bool
   ; tags : string list
   ; deprecated_package_names : Loc.t Name.Map.t
   ; sites : Section.t Section.Site.Map.t
   }
+
+val name : t -> Name.t
+
+val dir : t -> Path.Source.t
 
 val file : dir:Path.t -> name:Name.t -> Path.t
 
@@ -151,7 +164,3 @@ val is_opam_file : Path.t -> bool
 val load_opam_file : Path.Source.t -> Name.t -> t
 
 val missing_deps : t -> effective_deps:Name.Set.t -> Name.Set.t
-
-module Set : Set.S with type elt = t
-
-module Map : Map.S with type key = t

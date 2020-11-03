@@ -1878,7 +1878,7 @@ let to_dune_lib ({ info; _ } as lib) ~modules ~foreign_objects ~dir =
   let mangled_name lib =
     match Lib_info.status lib.info with
     | Private (_, Some pkg) ->
-      Lib_name.mangled pkg.name (Lib_name.to_local_exn lib.name)
+      Lib_name.mangled (Package.name pkg) (Lib_name.to_local_exn lib.name)
     | _ -> lib.name
   in
   let add_loc = List.map ~f:(fun x -> (loc, mangled_name x)) in

@@ -59,8 +59,7 @@ let package_fields
     ; conflicts
     ; depopts
     ; info = _
-    ; name = _
-    ; path = _
+    ; id = _
     ; version = _
     ; has_opam_file = _
     ; tags
@@ -165,14 +164,15 @@ let insert_odoc_dep depends =
 
 let opam_fields project (package : Package.t) =
   let dune_version = Dune_project.dune_version project in
+  let package_name = Package.name package in
   let package =
-    if dune_version < (1, 11) || Package.Name.equal package.name dune_name then
+    if dune_version < (1, 11) || Package.Name.equal package_name dune_name then
       package
     else
       { package with depends = insert_dune_dep package.depends dune_version }
   in
   let package =
-    if dune_version < (2, 7) || Package.Name.equal package.name odoc_name then
+    if dune_version < (2, 7) || Package.Name.equal package_name odoc_name then
       package
     else
       { package with depends = insert_odoc_dep package.depends }
@@ -257,7 +257,7 @@ let add_rule sctx ~project ~pkg =
      generate project pkg ~template)
     |> Build.write_file_dyn opam_path
   in
-  let dir = Path.Build.append_source build_dir pkg.path in
+  let dir = Path.Build.append_source build_dir (Package.dir pkg) in
   let mode =
     Rule.Mode.Promote { lifetime = Unlimited; into = None; only = None }
   in

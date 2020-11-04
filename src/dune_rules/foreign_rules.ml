@@ -86,9 +86,20 @@ let build_c ~kind ~sctx ~dir ~expander ~include_flags (loc, src, dst) =
         ]
     | Foreign_language.Cxx ->
       let base_flags =
+        let ccomp_type = Ocaml_config.ccomp_type cfg in
         let scope = Super_context.find_scope_by_dir sctx dir in
         if Dune_project.add_cxx_flags (Scope.project scope) then
-          Cxx_flags.get_flags (Ocaml_config.ccomp_type cfg)
+          match ccomp_type with
+          | Ocaml_config.Ccomp_type.Other s ->
+            User_warning.emit
+              [ Pp.textf
+                  "Dune was not able to automatically infer the C compiler in \
+                   use: \"%s\". Please open an issue on github to help us \
+                   improve this feature."
+                  s
+              ];
+            []
+          | _ -> Cxx_flags.get_flags ccomp_type
         else
           []
       in

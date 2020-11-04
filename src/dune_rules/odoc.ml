@@ -535,13 +535,15 @@ let setup_pkg_html_rules sctx ~pkg ~libs =
 
 let setup_package_aliases sctx (pkg : Package.t) =
   let ctx = Super_context.context sctx in
+  let name = Package.name pkg in
   let alias =
-    let dir = Path.Build.append_source ctx.build_dir pkg.Package.path in
+    let pkg_dir = Package.dir pkg in
+    let dir = Path.Build.append_source ctx.build_dir pkg_dir in
     Alias.doc ~dir
   in
   Rules.Produce.Alias.add_deps alias
-    ( Dep.html_alias ctx (Pkg pkg.name)
-      :: ( libs_of_pkg sctx ~pkg:pkg.name
+    ( Dep.html_alias ctx (Pkg name)
+      :: ( libs_of_pkg sctx ~pkg:name
          |> List.map ~f:(fun lib -> Dep.html_alias ctx (Lib lib)) )
     |> Path.Set.of_list_map ~f:(fun f -> Path.build (Alias.stamp_file f)) )
 
@@ -698,5 +700,7 @@ let gen_rules sctx ~dir:_ rest =
     Option.iter
       (Package.Name.Map.find (SC.packages sctx)
          (Package.Name.of_string lib_unique_name_or_pkg))
-      ~f:(fun pkg -> setup_pkg_html_rules pkg.name)
+      ~f:(fun pkg ->
+        let name = Package.name pkg in
+        setup_pkg_html_rules name)
   | _ -> ()

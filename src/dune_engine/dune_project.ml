@@ -695,7 +695,7 @@ let parse ~dir ~lang ~opam_packages ~file =
        else (
          ( match (packages, name) with
          | [ p ], Some (Named name) ->
-           if Package.Name.to_string p.name <> name then
+           if Package.Name.to_string (Package.name p) <> name then
              User_error.raise ~loc:p.loc
                [ Pp.textf
                    "when a single package is defined, it must have the same \
@@ -718,18 +718,19 @@ let parse ~dir ~lang ~opam_packages ~file =
                  ~f:package_defined_twice)
          in
          List.iter packages ~f:(fun p ->
-             match
-               Package.Name.Map.find deprecated_package_names p.Package.name
-             with
+             let name = Package.name p in
+             match Package.Name.Map.find deprecated_package_names name with
              | None -> ()
-             | Some loc -> package_defined_twice p.Package.name loc p.loc);
+             | Some loc -> package_defined_twice name loc p.loc);
          match
-           Package.Name.Map.of_list_map packages ~f:(fun p -> (p.name, p))
+           Package.Name.Map.of_list_map packages ~f:(fun p ->
+               (Package.name p, p))
          with
          | Error (_, _, p) ->
+           let name = Package.name p in
            User_error.raise ~loc:p.loc
              [ Pp.textf "package %s is already defined"
-                 (Package.Name.to_string p.name)
+                 (Package.Name.to_string name)
              ]
          | Ok packages ->
            Package.Name.Map.merge packages opam_packages

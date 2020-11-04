@@ -180,7 +180,8 @@ let gen ~(package : Package.t) ~add_directory_entry entries =
                     (Lib_name.Local.of_string package)
                 in
                 let pub_name =
-                  Pub_name.of_list (Package.Name.to_string pkg.name :: path)
+                  let name = Package.name pkg in
+                  Pub_name.of_list (Package.Name.to_string name :: path)
                 in
                 (pub_name, path)
               | _ -> (pub_name, path)
@@ -225,4 +226,4 @@ let gen ~(package : Package.t) ~add_directory_entry entries =
     ; entries = entries @ subs
     }
   in
-  loop (Package.Name.to_string package.name) pkgs
+  loop (Package.Name.to_string (Package.name package)) pkgs

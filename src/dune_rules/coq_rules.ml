@@ -372,8 +372,8 @@ let coq_plugins_install_rules ~scope ~package ~dst_dir (s : Theory.t) =
     let info = Lib.info lib in
     (* Don't install libraries that don't belong to this package *)
     if
-      Option.equal Package.Name.equal (Lib_info.package info)
-        (Some package.Package.name)
+      let name = Package.name package in
+      Option.equal Package.Name.equal (Lib_info.package info) (Some name)
     then
       let loc = Lib_info.loc info in
       let plugins = Lib_info.plugins info in

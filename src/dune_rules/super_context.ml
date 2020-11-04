@@ -461,7 +461,8 @@ let create_lib_entries_by_package ~public_libs stanzas =
         with
         | None -> acc
         | Some lib ->
-          (pkg.name, Lib_entry.Library (Lib.Local.of_lib_exn lib)) :: acc )
+          let name = Package.name pkg in
+          (name, Lib_entry.Library (Lib.Local.of_lib_exn lib)) :: acc )
       | Dune_file.Library { visibility = Public pub; _ } -> (
         match Lib.DB.find public_libs (Dune_file.Public_lib.name pub) with
         | None ->
@@ -469,14 +470,14 @@ let create_lib_entries_by_package ~public_libs stanzas =
              the libary name is always found somehow *)
           acc
         | Some lib ->
-          ( (Dune_file.Public_lib.package pub).name
-          , Lib_entry.Library (Lib.Local.of_lib_exn lib) )
-          :: acc )
+          let package = Dune_file.Public_lib.package pub in
+          let name = Package.name package in
+          (name, Lib_entry.Library (Lib.Local.of_lib_exn lib)) :: acc )
       | Dune_file.Deprecated_library_name
           ({ old_name = old_public_name, _; _ } as d) ->
-        ( (Dune_file.Public_lib.package old_public_name).name
-        , Lib_entry.Deprecated_library_name d )
-        :: acc
+        let package = Dune_file.Public_lib.package old_public_name in
+        let name = Package.name package in
+        (name, Lib_entry.Deprecated_library_name d) :: acc
       | _ -> acc)
   |> Package.Name.Map.of_list_multi
   |> Package.Name.Map.map
@@ -488,7 +489,9 @@ let create_projects_by_package projects : Dune_project.t Package.Name.Map.t =
   List.concat_map projects ~f:(fun project ->
       Dune_project.packages project
       |> Package.Name.Map.values
-      |> List.map ~f:(fun (pkg : Package.t) -> (pkg.name, project)))
+      |> List.map ~f:(fun (pkg : Package.t) ->
+             let name = Package.name pkg in
+             (name, project)))
   |> Package.Name.Map.of_list_exn
 
 let create ~(context : Context.t) ?host ~projects ~packages ~stanzas =

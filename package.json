@@ -11,14 +11,14 @@
         "cmdliner": "github:dbuenzli/cmdliner",
         "result": "github:rgrinberg/result#remove-backwards-compat",
         "build_path_prefix_map": "git+https://gitlab.com/rgrinberg/build_path_prefix_map.git",
-        "lwt": "git+https://github.com/ocsigen/lwt.git",
-        "lwt_log": "git+https://github.com/aantron/lwt_log.git",
-        "camomile": "git+https://github.com/yoriyuki/camomile.git",
-        "lambda-term": "git+https://github.com/ocaml-community/lambda-term.git",
-        "zed": "git+https://github.com/ocaml-community/zed.git",
-        "charInfo_width": "git+https://github.com/kandu/charInfo_width.git",
-        "mew": "git+https://github.com/kandu/mew.git",
-        "mew_vi": "git+https://github.com/kandu/mew_vi.git",
-        "utop": "git+https://github.com/ocaml-community/utop.git"
+        "lwt": "github:ocsigen/lwt.git",
+        "lwt_log": "github:aantron/lwt_log.git",
+        "camomile": "github:yoriyuki/camomile.git",
+        "lambda-term": "github:ocaml-community/lambda-term.git",
+        "zed": "github:ocaml-community/zed.git",
+        "charInfo_width": "github:kandu/charInfo_width.git",
+        "mew": "github:kandu/mew.git",
+        "mew_vi": "github:kandu/mew_vi.git",
+        "utop": "github:ocaml-community/utop.git"
     }
 }

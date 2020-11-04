@@ -6,13 +6,13 @@
   version "0.0.0"
   resolved "git+https://gitlab.com/rgrinberg/build_path_prefix_map.git#72e4090b578d3c1997effa35de1be9ab1b67af3f"
 
-"camomile@git+https://github.com/yoriyuki/camomile.git":
+"camomile@github:yoriyuki/camomile.git":
   version "0.0.0"
-  resolved "git+https://github.com/yoriyuki/camomile.git#d7d8843c88fae774f513610f8e09a613778e64b3"
+  resolved "https://codeload.github.com/yoriyuki/camomile/tar.gz/d7d8843c88fae774f513610f8e09a613778e64b3"
 
-"charInfo_width@git+https://github.com/kandu/charInfo_width.git":
+"charInfo_width@github:kandu/charInfo_width.git":
   version "0.0.0"
-  resolved "git+https://github.com/kandu/charInfo_width.git#20aaaa6dca8f1e0b1ace55b6f2a8ba5e5910b620"
+  resolved "https://codeload.github.com/kandu/charInfo_width/tar.gz/20aaaa6dca8f1e0b1ace55b6f2a8ba5e5910b620"
 
 "cmdliner@github:dbuenzli/cmdliner":
   version "0.0.0"
@@ -22,25 +22,25 @@
   version "0.0.0"
   resolved "https://codeload.github.com/diml/csexp/tar.gz/19a2e7bc171a707059c73d78dd18e4e3ff03ac9b"
 
-"lambda-term@git+https://github.com/ocaml-community/lambda-term.git":
+"lambda-term@github:ocaml-community/lambda-term.git":
   version "0.0.0"
-  resolved "git+https://github.com/ocaml-community/lambda-term.git#bcb949e420d97c1aac67f93a95d25aca5ac2cb8d"
+  resolved "https://codeload.github.com/ocaml-community/lambda-term/tar.gz/bcb949e420d97c1aac67f93a95d25aca5ac2cb8d"
 
-"lwt@git+https://github.com/ocsigen/lwt.git":
+"lwt@github:ocsigen/lwt.git":
   version "0.0.0"
-  resolved "git+https://github.com/ocsigen/lwt.git#20466b8af1d04d07bf62e9d3092f323c5edd5339"
+  resolved "https://codeload.github.com/ocsigen/lwt/tar.gz/20466b8af1d04d07bf62e9d3092f323c5edd5339"
 
-"lwt_log@git+https://github.com/aantron/lwt_log.git":
+"lwt_log@github:aantron/lwt_log.git":
   version "0.0.0"
-  resolved "git+https://github.com/aantron/lwt_log.git#2c5546203f16d649a9e0d09f759953cef34959c7"
+  resolved "https://codeload.github.com/aantron/lwt_log/tar.gz/2c5546203f16d649a9e0d09f759953cef34959c7"
 
-"mew@git+https://github.com/kandu/mew.git":
+"mew@github:kandu/mew.git":
   version "0.0.0"
-  resolved "git+https://github.com/kandu/mew.git#a72d38ee02be9658585e65fac9c087c8cc7d1c05"
+  resolved "https://codeload.github.com/kandu/mew/tar.gz/a72d38ee02be9658585e65fac9c087c8cc7d1c05"
 
-"mew_vi@git+https://github.com/kandu/mew_vi.git":
+"mew_vi@github:kandu/mew_vi.git":
   version "0.0.0"
-  resolved "git+https://github.com/kandu/mew_vi.git#ee2e80c3eb5bd6049c7e505bf2f3c3a75a887063"
+  resolved "https://codeload.github.com/kandu/mew_vi/tar.gz/ee2e80c3eb5bd6049c7e505bf2f3c3a75a887063"
 
 "ocaml-migrate-parsetree@github:ocaml-ppx/ocaml-migrate-parsetree":
   version "0.0.0"
@@ -66,10 +66,10 @@
   version "0.0.0"
   resolved "https://codeload.github.com/rgrinberg/result/tar.gz/b16aff7294f7e1d6983d444424a58ebca47b4280"
 
-"utop@git+https://github.com/ocaml-community/utop.git":
+"utop@github:ocaml-community/utop.git":
   version "0.0.0"
-  resolved "git+https://github.com/ocaml-community/utop.git#7bc5117d3449fc19f5c706a6decfdb2a30984507"
+  resolved "https://codeload.github.com/ocaml-community/utop/tar.gz/7bc5117d3449fc19f5c706a6decfdb2a30984507"
 
-"zed@git+https://github.com/ocaml-community/zed.git":
+"zed@github:ocaml-community/zed.git":
   version "0.0.0"
-  resolved "git+https://github.com/ocaml-community/zed.git#3d1293205db625a5ea4d29cfe214d731c2596850"
+  resolved "https://codeload.github.com/ocaml-community/zed/tar.gz/3d1293205db625a5ea4d29cfe214d731c2596850"

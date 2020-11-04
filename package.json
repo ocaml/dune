@@ -29,7 +29,7 @@
         "base": "github:janestreet/base",
         "ppx_here": "github:janestreet/ppx_here",
         "ocaml-compiler-libs": "github:janestreet/ocaml-compiler-libs",
-        "opam-file-format": "github:ocaml/opam-file-format",
+        "opam-file-format": "github:ocaml/opam-file-format#2.0.0",
         "cmdliner": "github:dbuenzli/cmdliner",
         "result": "github:rgrinberg/result#remove-backwards-compat",
         "build_path_prefix_map": "git+https://gitlab.com/rgrinberg/build_path_prefix_map.git",

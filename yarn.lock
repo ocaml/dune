@@ -70,9 +70,9 @@
   version "0.0.0"
   resolved "https://codeload.github.com/ocaml-ppx/ocaml-migrate-parsetree/tar.gz/4a05cf7a00d84e5f827cc9ae9c75e5dc85126085"
 
-"opam-file-format@github:ocaml/opam-file-format":
+"opam-file-format@github:ocaml/opam-file-format#2.0.0":
   version "0.0.0"
-  resolved "https://codeload.github.com/ocaml/opam-file-format/tar.gz/2170573c17aeeaba1328910af733602d171a7147"
+  resolved "https://codeload.github.com/ocaml/opam-file-format/tar.gz/f30f9b8e29499ced8bba821aed953f7b10a73314"
 
 "pp@github:ocaml-dune/pp":
   version "0.0.0"

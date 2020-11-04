@@ -1,23 +1,15 @@
 TARGETS = opam-file-format.cma opam-file-format.cmxa opam-file-format.cmxs
 
 all: $(TARGETS)
-	$(MAKE) -C src META
 
 byte: $(filter %.cma,$(TARGETS))
-	$(MAKE) -C src META
+	:
 
 native: $(filter %.cmxa,$(TARGETS))
-	$(MAKE) -C src META
-
-.PHONY: dune clean
-dune:
-	dune build --profile=dev @all
+	:
 
 %:
 	$(MAKE) -C src $@
-
-tests: opam-file-format.cmxa
-	$(MAKE) -C tests run
 
 PREFIX ?= /usr/local
 LIBDIR ?= $(PREFIX)/lib
@@ -32,8 +24,3 @@ install:
 uninstall:
 	rm -f $(DESTDIR)$(LIBDIR)/opam-file-format/*
 	rmdir $(DESTDIR)$(LIBDIR)/opam-file-format
-
-clean::
-	rm -rf _build
-	$(MAKE) -C src $@
-	$(MAKE) -C tests $@

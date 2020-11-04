@@ -1,6 +1,6 @@
 (**************************************************************************)
 (*                                                                        *)
-(*    Copyright 2012-2020 OCamlPro                                        *)
+(*    Copyright 2012-2016 OCamlPro                                        *)
 (*    Copyright 2012 INRIA                                                *)
 (*                                                                        *)
 (*  All rights reserved. This file is distributed under the terms of the  *)
@@ -70,8 +70,7 @@ let rec format_value fmt = function
   | Bool (_,b)      -> Format.fprintf fmt "%b" b
   | String (_,s)    ->
     if String.contains s '\n'
-    then Format.fprintf fmt "\"\"\"%s%s\"\"\""
-        (if s.[0] = '\n' then "" else "\\\n")
+    then Format.fprintf fmt "\"\"\"\n%s\"\"\""
         (escape_string ~triple:true s)
     else Format.fprintf fmt "\"%s\"" (escape_string s)
   | List (_, l) ->
@@ -175,6 +174,19 @@ let rec opamfile_item_equals i1 i2 = match i1, i2 with
   | _ -> false
 
 module Normalise = struct
+  (** OPAM normalised file format, for signatures:
+      - each top-level field on a single line
+      - file ends with a newline
+      - spaces only after [fieldname:], between elements in lists, before braced
+        options, between operators and their operands
+      - fields are sorted lexicographically by field name (using [String.compare])
+      - newlines in strings turned to ['\n'], backslashes and double quotes
+        escaped
+      - no comments (they don't appear in the internal file format anyway)
+      - fields containing an empty list, or a singleton list containing an empty
+        list, are not printed at all
+  *)
+
   let escape_string s =
     let len = String.length s in
     let buf = Buffer.create (len * 2) in
@@ -274,7 +286,7 @@ module Preserved = struct
       aux [] l
     in
     let is_variable name = function
-      | Variable (_, name1, _v1) -> name = name1
+      | Variable (_, name1, v1) -> name = name1
       | _ -> false
     in
     let is_section kind name = function

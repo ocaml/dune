@@ -1,6 +1,6 @@
 (**************************************************************************)
 (*                                                                        *)
-(*    Copyright 2012-2019 OCamlPro                                        *)
+(*    Copyright 2012-2015 OCamlPro                                        *)
 (*    Copyright 2012 INRIA                                                *)
 (*                                                                        *)
 (*  All rights reserved. This file is distributed under the terms of the  *)
@@ -75,11 +75,8 @@ let char_for_hexadecimal_code lexbuf i =
   Char.chr (val1 * 16 + val2)
 
 let buffer_rule r lb =
-  let pos = lb.Lexing.lex_start_p in
   let b = Buffer.create 64 in
   r b lb ;
-  (* buffer start position, instead of last lexem position *)
-  lb.Lexing.lex_start_p <- pos;
   Buffer.contents b
 }
 

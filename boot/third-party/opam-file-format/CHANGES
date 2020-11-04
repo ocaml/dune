@@ -1,7 +1,0 @@
-2.1.0 [26 Aug 2020]
-* Don't add a newline at the start of strings with newlines [#18 @dra27]
-* Report starting position of strings correctly [#19 @rjbou]
-* Add dune files [#13 @avsm @jonludlam @dra27]
-
-2.0.0 [1 Aug 2018]
-* Initial version

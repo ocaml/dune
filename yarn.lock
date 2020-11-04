@@ -122,17 +122,17 @@
   version "0.0.0"
   resolved "https://codeload.github.com/janestreet/ppx_js_style/tar.gz/7915232f477977a4db75a402c557ef2499e7c1c1"
 
-"ppx_optcomp@github:janestreet/ppx_optcomp":
+"ppx_optcomp@github:janestreet/ppx_optcomp#v0.14.1":
   version "0.0.0"
-  resolved "https://codeload.github.com/janestreet/ppx_optcomp/tar.gz/e096abcdb6a904ad17be1a176e7a932c3622c2fd"
+  resolved "https://codeload.github.com/janestreet/ppx_optcomp/tar.gz/8f30ac19cc93996e4ade8993baafafd94f3a77cb"
 
-"ppx_sexp_conv@github:janestreet/ppx_sexp_conv":
+"ppx_sexp_conv@github:janestreet/ppx_sexp_conv#v0.14.1":
   version "0.0.0"
-  resolved "https://codeload.github.com/janestreet/ppx_sexp_conv/tar.gz/9a7fa6e6743cbef0438e015143eb7be476ec6e99"
+  resolved "https://codeload.github.com/janestreet/ppx_sexp_conv/tar.gz/8b6ad3db2719a5e8792ad3d85466ef58ea000879"
 
-"ppxlib@github:ocaml-ppx/ppxlib#v0.17.0":
+"ppxlib@github:ocaml-ppx/ppxlib#v0.16.0":
   version "0.0.0"
-  resolved "https://codeload.github.com/ocaml-ppx/ppxlib/tar.gz/710a18a5a3b195d910d72ab97d6eeed536c8d7d3"
+  resolved "https://codeload.github.com/ocaml-ppx/ppxlib/tar.gz/9b447ff8abd42ec2800df17815431f335056ffce"
 
 "re@github:ocaml/ocaml-re":
   version "0.0.0"

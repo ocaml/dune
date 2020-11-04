@@ -1,6 +1,6 @@
 /**************************************************************************/
 /*                                                                        */
-/*    Copyright 2012-2015 OCamlPro                                        */
+/*    Copyright 2012-2017 OCamlPro                                        */
 /*    Copyright 2012 INRIA                                                */
 /*                                                                        */
 /*  All rights reserved. This file is distributed under the terms of the  */
@@ -13,7 +13,7 @@
 
 open OpamParserTypes
 
-(** OPAM config file generic type parser *)
+(** Opam config file generic type parser *)
 
 let get_pos n =
   let pos = Parsing.rhs_start_pos n in

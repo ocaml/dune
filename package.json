@@ -5,9 +5,20 @@
         "re": "github:ocaml/ocaml-re",
         "pp": "github:ocaml-dune/pp",
         "csexp": "github:diml/csexp",
+        "ocaml-migrate-parsetree": "github:ocaml-ppx/ocaml-migrate-parsetree",
+        "ppxlib": "github:ocaml-ppx/ppxlib",
         "opam-file-format": "github:ocaml/opam-file-format",
         "cmdliner": "github:dbuenzli/cmdliner",
         "result": "github:rgrinberg/result#remove-backwards-compat",
-        "build_path_prefix_map": "git+https://gitlab.com/rgrinberg/build_path_prefix_map.git"
-    },
+        "build_path_prefix_map": "git+https://gitlab.com/rgrinberg/build_path_prefix_map.git",
+        "lwt": "git+https://github.com/ocsigen/lwt.git",
+        "lwt_log": "git+https://github.com/aantron/lwt_log.git",
+        "camomile": "git+https://github.com/yoriyuki/camomile.git",
+        "lambda-term": "git+https://github.com/ocaml-community/lambda-term.git",
+        "zed": "git+https://github.com/ocaml-community/zed.git",
+        "charInfo_width": "git+https://github.com/kandu/charInfo_width.git",
+        "mew": "git+https://github.com/kandu/mew.git",
+        "mew_vi": "git+https://github.com/kandu/mew_vi.git",
+        "utop": "git+https://github.com/ocaml-community/utop.git"
+    }
 }

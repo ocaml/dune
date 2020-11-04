@@ -79,17 +79,18 @@ let build_c ~kind ~sctx ~dir ~expander ~include_flags (loc, src, dst) =
   let flags =
     let ctx_flags =
       match kind with
-      | Foreign_language.C ->
+      | Foreign_language.C -> (
         let cfg = ctx.ocaml_config in
-        if Dune_project.always_add_cflags project then
+        match Dune_project.always_add_cflags project with
+        | None
+        | Some true ->
           (* In dune < 2.8 flags from ocamlc_config are always added *)
           List.concat
             [ Ocaml_config.ocamlc_cflags cfg
             ; Ocaml_config.ocamlc_cppflags cfg
             ; Fdo.c_flags ctx
             ]
-        else
-          Fdo.c_flags ctx
+        | Some false -> Fdo.c_flags ctx )
       | Foreign_language.Cxx -> Fdo.cxx_flags ctx
     in
     let flags = Foreign.Source.flags src in

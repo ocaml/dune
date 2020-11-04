@@ -162,7 +162,7 @@ type t =
   ; dune_version : Dune_lang.Syntax.Version.t
   ; allow_approx_merlin : bool
   ; generate_opam_files : bool
-  ; always_add_cflags : bool
+  ; always_add_cflags : bool option
   ; file_key : File_key.t
   ; dialects : Dialect.DB.t
   ; explicit_js_mode : bool
@@ -239,7 +239,7 @@ let to_dyn
     ; ("dune_version", Dune_lang.Syntax.Version.to_dyn dune_version)
     ; ("allow_approx_merlin", bool allow_approx_merlin)
     ; ("generate_opam_files", bool generate_opam_files)
-    ; ("always_add_cflags", bool always_add_cflags)
+    ; ("always_add_cflags", option bool always_add_cflags)
     ; ("file_key", string file_key)
     ; ("dialects", Dialect.DB.to_dyn dialects)
     ; ("explicit_js_mode", bool explicit_js_mode)
@@ -615,7 +615,11 @@ let infer ~dir packages =
   ; dune_version = lang.version
   ; allow_approx_merlin = true
   ; generate_opam_files = false
-  ; always_add_cflags = lang.version < (3, 0)
+  ; always_add_cflags =
+      ( if lang.version < (3, 0) then
+        None
+      else
+        Some false )
   ; file_key
   ; dialects = Dialect.DB.builtin
   ; explicit_js_mode
@@ -802,7 +806,10 @@ let parse ~dir ~lang ~opam_packages ~file =
        Option.value ~default:false generate_opam_files
      in
      let always_add_cflags =
-       Option.value ~default:(dune_version < (3, 0)) always_add_cflags
+       match always_add_cflags with
+       | None when dune_version >= (3, 0) -> Some false
+       | None -> None
+       | some -> some
      in
      let cram =
        match cram with

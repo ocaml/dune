@@ -67,7 +67,7 @@ val allow_approx_merlin : t -> bool
 
 val generate_opam_files : t -> bool
 
-val always_add_cflags : t -> bool
+val always_add_cflags : t -> bool option
 
 val dialects : t -> Dialect.DB.t
 

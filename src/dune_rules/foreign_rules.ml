@@ -94,6 +94,31 @@ let build_c ~kind ~sctx ~dir ~expander ~include_flags (loc, src, dst) =
       | Foreign_language.Cxx -> Fdo.cxx_flags ctx
     in
     let flags = Foreign.Source.flags src in
+    (* DUNE3 will have [always_add_cflags] disabled by default. To guide users
+       toward this change we emit a warning when dune_lang is >= 1.8,
+       [always_add_cflags] is not specified in the [dune-project] file (thus
+       defaulting to [true]) and the [:standard] set of flags has been overriden *)
+    let has_standard =
+      Ordered_set_lang.Unexpanded.encode flags
+      |> List.map ~f:Dune_lang.to_string
+      |> List.exists ~f:(String.equal ":standard")
+    in
+    if
+      Dune_project.dune_version project >= (2, 8)
+      && Option.is_none (Dune_project.always_add_cflags project)
+      && not has_standard
+    then
+      User_warning.emit ~loc
+        [ Pp.text
+            "The flag set for these foreign sources overrides the `:standard` \
+             set of flags. However the flags in this standard set are still \
+             added to the compiler arguments by Dune. This might cause \
+             unexpected issues. You can disable this warning by defining the \
+             option `(always_add_cflags <bool>)` in your `dune-project` file. \
+             Setting this option to `false` will effectively prevent Dune from \
+             silently adding c-flags to the compiler arguments which is the \
+             new recommended behaviour."
+        ];
     Super_context.foreign_flags sctx ~dir ~expander ~flags ~language:kind
     |> Build.map ~f:(List.append ctx_flags)
   in

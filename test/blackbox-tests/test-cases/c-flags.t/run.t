@@ -19,7 +19,28 @@ always_add_cflags = false
   > (lang dune 2.8)
 
   $ dune rules -m foo.o | tr -s '\t\n\\' ' ' > out_foo
-  $ dune rules -m bar.o | sed "s,bar,foo," | tr -s '\t\n\\' ' ' > out_bar
+  File "dune", line 4, characters 36-39:
+  4 |  (foreign_stubs (language c) (names bar) (flags)))
+                                          ^^^
+  Warning: The flag set for these foreign sources overrides the `:standard` set
+  of flags. However the flags in this standard set are still added to the
+  compiler arguments by Dune. This might cause unexpected issues. You can
+  disable this warning by defining the option `(always_add_cflags <bool>)` in
+  your `dune-project` file. Setting this option to `false` will effectively
+  prevent Dune from silently adding c-flags to the compiler arguments which is
+  the new recommended behaviour.
+
+  $ dune rules -m bar.o | tr -s '\t\n\\' ' ' > out_bar
+  File "dune", line 4, characters 36-39:
+  4 |  (foreign_stubs (language c) (names bar) (flags)))
+                                          ^^^
+  Warning: The flag set for these foreign sources overrides the `:standard` set
+  of flags. However the flags in this standard set are still added to the
+  compiler arguments by Dune. This might cause unexpected issues. You can
+  disable this warning by defining the option `(always_add_cflags <bool>)` in
+  your `dune-project` file. Setting this option to `false` will effectively
+  prevent Dune from silently adding c-flags to the compiler arguments which is
+  the new recommended behaviour.
 
 Ocamlc_cflags are duplicated if the :standard set is kept:
   $ cat out_foo | grep -ce "${O_CCF} ${O_CCPPF} ${O_CCF}"
@@ -30,7 +51,6 @@ ocamlc_cpp flags appear in the compiler command line:
 
   $ cat out_foo | grep -ce "${O_CCF} ${O_CCPPF}"
   1
-
 
   $ cat out_bar | grep -ce "${O_CCF} ${O_CCPPF}"
   1
@@ -43,7 +63,7 @@ always_add_cflags = true
   > (always_add_cflags false)
 
   $ dune rules -m foo.o | tr -s '\t\n\\' ' ' > out_foo
-  $ dune rules -m bar.o | sed "s,bar,foo," | tr -s '\t\n\\' ' ' > out_bar
+  $ dune rules -m bar.o | tr -s '\t\n\\' ' ' > out_bar
 
 Ocamlc_cflags are not duplicated anymore:
   $ cat out_foo | grep -ce "${O_CCF} ${O_CCPPF} ${O_CCF}"

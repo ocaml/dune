@@ -3,10 +3,10 @@ let executables = [ "main" ]
 let external_libraries = [ "unix"; "threads.posix" ]
 
 let local_libraries =
-  [ ("src/dune_filesystem_stubs", Some "Dune_filesystem_stubs", false, None)
-  ; ("boot/third-party/result", Some "Result", false, None)
+  [ ("boot/third-party/result", Some "Result", false, None)
   ; ("boot/third-party/pp/src", Some "Pp", false, None)
   ; ("boot/third-party/csexp/src", Some "Csexp", false, None)
+  ; ("src/dune_filesystem_stubs", Some "Dune_filesystem_stubs", false, None)
   ; ("src/stdune", Some "Stdune", false, None)
   ; ("src/dune_lang", Some "Dune_lang", false, None)
   ; ("vendor/incremental-cycles/src", Some "Incremental_cycles", false, None)

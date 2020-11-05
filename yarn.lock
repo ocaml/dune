@@ -58,9 +58,9 @@
   version "0.0.0"
   resolved "https://codeload.github.com/aantron/lwt_log/tar.gz/2c5546203f16d649a9e0d09f759953cef34959c7"
 
-"mdx@github:janestreet/realworldocaml/mdx":
+"mdx@github:janestreet/realworldocaml/mdx#1.6.0":
   version "0.0.0"
-  resolved "https://codeload.github.com/realworldocaml/mdx/tar.gz/04bc0925ca0bfc58271504131c7b2cb3510cb1c9"
+  resolved "https://codeload.github.com/realworldocaml/mdx/tar.gz/143b13fad7560f7ae9b1d32da13acb1d6cae5413"
 
 "menhir@git+https://gitlab.inria.fr/fpottier/menhir.git":
   version "0.0.0"

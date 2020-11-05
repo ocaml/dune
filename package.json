@@ -24,7 +24,7 @@
         "ppx_optcomp": "github:janestreet/ppx_optcomp#v0.14.1",
         "ppx_sexp_conv": "github:janestreet/ppx_sexp_conv#v0.14.1",
         "time_now": "github:janestreet/time_now",
-        "mdx": "github:janestreet/realworldocaml/mdx",
+        "mdx": "github:janestreet/realworldocaml/mdx#1.6.0",
         "js_of_ocaml-compiler": "github:ocsigen/js_of_ocaml",
         "menhir": "git+https://gitlab.inria.fr/fpottier/menhir.git",
         "sexplib0": "github:janestreet/sexplib0",

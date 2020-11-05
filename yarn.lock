@@ -18,6 +18,10 @@
   version "0.0.0"
   resolved "https://codeload.github.com/kandu/charInfo_width/tar.gz/20aaaa6dca8f1e0b1ace55b6f2a8ba5e5910b620"
 
+"cinaps@github:janestreet/cinaps":
+  version "0.0.0"
+  resolved "https://codeload.github.com/janestreet/cinaps/tar.gz/b03f0b2ccf0754ab6fba04105319141ed06bd56a"
+
 "cmdliner@github:dbuenzli/cmdliner":
   version "0.0.0"
   resolved "https://codeload.github.com/dbuenzli/cmdliner/tar.gz/db4d02a9eb47b5c43127a67cb121004b03ea3719"
@@ -34,6 +38,10 @@
   version "0.0.0"
   resolved "https://codeload.github.com/janestreet/jane-street-headers/tar.gz/b90ae4d1fc4356e68e30de6ce7c71cde771c0c52"
 
+"js_of_ocaml-compiler@github:ocsigen/js_of_ocaml":
+  version "0.0.0"
+  resolved "https://codeload.github.com/ocsigen/js_of_ocaml/tar.gz/09d5731241917577e9c16b6a0063c23baae00df8"
+
 "jst-config@github:janestreet/jst-config":
   version "0.0.0"
   resolved "https://codeload.github.com/janestreet/jst-config/tar.gz/150b1bdb16c2dab8a8bca0f3bdc146791a5c1ddb"
@@ -49,6 +57,14 @@
 "lwt_log@github:aantron/lwt_log.git":
   version "0.0.0"
   resolved "https://codeload.github.com/aantron/lwt_log/tar.gz/2c5546203f16d649a9e0d09f759953cef34959c7"
+
+"mdx@github:janestreet/realworldocaml/mdx":
+  version "0.0.0"
+  resolved "https://codeload.github.com/realworldocaml/mdx/tar.gz/04bc0925ca0bfc58271504131c7b2cb3510cb1c9"
+
+"menhir@git+https://gitlab.inria.fr/fpottier/menhir.git":
+  version "0.0.0"
+  resolved "git+https://gitlab.inria.fr/fpottier/menhir.git#673f63e0f2c4ba7046ffae2504eb9ea29ad6d88c"
 
 "mew@github:kandu/mew.git":
   version "0.0.0"
@@ -130,9 +146,9 @@
   version "0.0.0"
   resolved "https://codeload.github.com/janestreet/ppx_sexp_conv/tar.gz/8b6ad3db2719a5e8792ad3d85466ef58ea000879"
 
-"ppxlib@github:ocaml-ppx/ppxlib#v0.16.0":
+"ppxlib@github:ocaml-ppx/ppxlib#v0.15.0":
   version "0.0.0"
-  resolved "https://codeload.github.com/ocaml-ppx/ppxlib/tar.gz/9b447ff8abd42ec2800df17815431f335056ffce"
+  resolved "https://codeload.github.com/ocaml-ppx/ppxlib/tar.gz/20cacbfc311f1baef6454051e0edd7b1628cb721"
 
 "re@github:ocaml/ocaml-re":
   version "0.0.0"

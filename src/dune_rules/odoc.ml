@@ -93,7 +93,24 @@ module Paths = struct
   let toplevel_index ctx = html_root ctx ++ "index.html"
 end
 
-module Dep = struct
+module Dep : sig
+  (** [html_alias ctx target] returns the alias that depends on all html targets
+      produced by odoc for [target] *)
+  val html_alias : Context.t -> target -> Alias.t
+
+  (** [deps ctx pkg libraries] returns all odoc dependencies of [libraries. If
+      [libraries] are all part of a package [pkg], then the odoc dependencies of
+      the package are also returned*)
+  val deps :
+       Context.t
+    -> Package.Name.t option
+    -> (Lib.t list, exn) result
+    -> unit Build.t
+
+  (*** [setup_deps ctx target odocs] Adds [odocs] as dependencies for [target].
+    These dependencies may be used using the [deps] function *)
+  val setup_deps : Context.t -> target -> Path.Set.t -> unit
+end = struct
   let html_alias ctx m = Alias.doc ~dir:(Paths.html ctx m)
 
   let alias = Alias.make (Alias.Name.of_string ".odoc-all")
@@ -117,8 +134,6 @@ module Dep = struct
                  Dep.Set.add acc (Dep.alias alias))))
 
   let alias ctx m = alias ~dir:(Paths.odocs ctx m)
-
-  (* let static_deps t lib = Build_system.Alias.dep (alias t lib) *)
 
   let setup_deps ctx m files = Rules.Produce.Alias.add_deps (alias ctx m) files
 end

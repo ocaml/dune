@@ -1,21 +1,55 @@
 open Stdune
 open Import
 
-let run_build_command ~common ~targets =
+let make_setup common =
+  let rpc = Common.rpc common in
+  let build_mutex = Option.map rpc ~f:Dune_rpc_impl.Server.build_mutex in
+  Import.Main.setup ?build_mutex common
+
+let run_build_command_poll ~(common : Common.t) ~targets ~setup =
+  let open Fiber.O in
   let once () =
-    Memo.Build.run
-      (let open Memo.Build.O in
-      let* setup = Import.Main.setup common in
-      do_build (targets setup))
+    Cached_digest.invalidate_cached_timestamps ();
+    let* setup = Memo.Build.run (setup ()) in
+    match
+      match
+        let open Option.O in
+        let* rpc = Common.rpc common in
+        Dune_rpc_impl.Server.pending_build_action rpc
+      with
+      | None -> `Build (targets setup, None)
+      | Some Shutdown -> `Shutdown
+      | Some (Build (targets, ivar)) ->
+        `Build (Target.resolve_targets_exn common setup targets, Some ivar)
+    with
+    | `Shutdown -> Fiber.return `Stop
+    | `Build (targets, ivar) ->
+      let* () =
+        match ivar with
+        | None -> Fiber.return ()
+        | Some ivar -> Fiber.Ivar.fill ivar Accepted
+      in
+      let+ () = Memo.Build.run (do_build targets) in
+      `Continue
   in
-  if Common.watch common then
-    let once () =
-      Cached_digest.invalidate_cached_timestamps ();
-      once ()
-    in
-    Scheduler.poll ~common ~once ~finally:Hooks.End_of_build.run
+  Scheduler.poll ~common ~once ~finally:Hooks.End_of_build.run
+
+let run_build_command_once ~(common : Common.t) ~targets ~setup =
+  let once () =
+    let open Fiber.O in
+    let* setup = Memo.Build.run (setup ()) in
+    let targets = targets setup in
+    Memo.Build.run (do_build targets)
+  in
+  Scheduler.go ~common once
+
+let run_build_command ~(common : Common.t) ~targets =
+  let setup () = make_setup common in
+  ( if Common.watch common then
+    run_build_command_poll
   else
-    Scheduler.go ~common once;
+    run_build_command_once )
+    ~setup ~common ~targets;
   Build_system.cache_teardown ()
 
 let runtest =

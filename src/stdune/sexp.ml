@@ -68,3 +68,6 @@ let rec of_dyn : Dyn.t -> t = function
 let rec to_dyn : t -> Dyn.t = function
   | Atom s -> String s
   | List xs -> List (List.map ~f:to_dyn xs)
+
+let record (xs : (string * t) list) : t =
+  List (List.map xs ~f:(fun (x, y) -> List [ Atom x; y ]))

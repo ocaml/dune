@@ -51,6 +51,10 @@ let debug = Option.is_some (Env.get Env.initial "DUNE_RPC_DEBUG")
 module Session = struct
   module Id = Session_id
 
+  type kind =
+    | Socket
+    | Channel
+
   type t =
     { out_channel : out_channel
     ; in_channel : in_channel
@@ -58,9 +62,10 @@ module Session = struct
     ; writer : Async.t
     ; reader : Async.t
     ; scheduler : Scheduler.t
+    ; kind : kind
     }
 
-  let create in_channel out_channel scheduler =
+  let create_full kind in_channel out_channel scheduler =
     if debug then Format.eprintf ">> NEW SESSION@.";
     let reader_ref = ref None in
     let t =
@@ -71,10 +76,14 @@ module Session = struct
       ; reader = Async.create scheduler
       ; writer = Async.create scheduler
       ; scheduler
+      ; kind
       }
     in
     reader_ref := Some t.reader;
     t
+
+  let create in_channel out_channel scheduler =
+    create_full Channel in_channel out_channel scheduler
 
   let string_of_packet = function
     | None -> "EOF"
@@ -114,10 +123,13 @@ module Session = struct
           fun () ->
             Csexp.to_channel t.out_channel sexp;
             flush t.out_channel
-        | None ->
-          fun () ->
-            close_in_noerr t.in_channel;
-            close_out_noerr t.out_channel )
+        | None -> (
+          match t.kind with
+          | Channel -> fun () -> close_out_noerr t.out_channel
+          | Socket ->
+            fun () ->
+              let fd = Unix.descr_of_out_channel t.out_channel in
+              Unix.shutdown fd Unix.SHUTDOWN_SEND ) )
 end
 
 let close_fd_no_error fd = try Unix.close fd with _ -> ()
@@ -214,7 +226,7 @@ module Server = struct
       | Ok None ->
         None
       | Ok (Some (in_, out)) ->
-        let session = Session.create in_ out t.scheduler in
+        let session = Session.create_full Socket in_ out t.scheduler in
         Some session
     in
     Fiber.Stream.In.create loop

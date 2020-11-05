@@ -29,7 +29,7 @@ let all : _ Term.Group.t list =
     ]
     |> List.map ~f:in_group
   in
-  let groups = [ Ocaml.group ] in
+  let groups = [ Ocaml.group; Rpc.group ] in
   terms @ groups
 
 let common_commands_synopsis =

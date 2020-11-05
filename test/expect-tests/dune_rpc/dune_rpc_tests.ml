@@ -1,0 +1,229 @@
+open! Stdune
+open! Fiber.O
+module Dune_rpc = Dune_rpc_private
+open Dune_rpc
+open Dune_rpc_server
+module Scheduler = Test_scheduler
+
+let () = Printexc.record_backtrace false
+
+let print pp = Format.printf "%a@." Pp.to_fmt pp
+
+let print_dyn dyn = print (Dyn.pp dyn)
+
+module Chan = struct
+  module Mvar = Fiber.Mvar
+
+  type t =
+    { (* Read end. Populated by writing by [snd] *)
+      in_ : Sexp.t Fiber.Stream.In.t * Sexp.t Fiber.Stream.Out.t
+    ; (* Write end. Can be read via [fst] *)
+      out : Sexp.t Fiber.Stream.In.t * Sexp.t Fiber.Stream.Out.t
+    }
+
+  let create () = { in_ = Fiber.Stream.pipe (); out = Fiber.Stream.pipe () }
+
+  let write t s = Fiber.Stream.Out.write (snd t.out) s
+
+  let read t = Fiber.Stream.In.read (fst t.in_)
+
+  let connect c1 c2 =
+    Fiber.fork_and_join_unit
+      (fun () -> Fiber.Stream.connect (fst c1.out) (snd c2.in_))
+      (fun () -> Fiber.Stream.connect (fst c2.out) (snd c1.in_))
+end
+
+module Drpc = struct
+  module Client = Dune_rpc.Client (struct
+    module Fiber = struct
+      include Fiber
+
+      let parallel_iter t ~f =
+        let stream = Fiber.Stream.In.create t in
+        Fiber.Stream.In.parallel_iter stream ~f
+    end
+
+    module Chan = Chan
+  end)
+
+  module Server = Dune_rpc_server.Make (Chan)
+
+  let connect_raw = Client.connect_raw
+
+  let serve = Server.serve
+end
+
+open Drpc
+
+let on_init _ _ = Fiber.return ()
+
+let setup_client_server () =
+  let client_chan = Chan.create () in
+  let server_chan = Chan.create () in
+  let sessions = Fiber.Stream.In.of_list [ server_chan ] in
+  let connect () = Chan.connect client_chan server_chan in
+  (client_chan, sessions, connect)
+
+let test ?(on_notification = fun _ -> assert false) ~client ~handler ~init () =
+  let run =
+    let client_chan, sessions, connect = setup_client_server () in
+    let client () =
+      Drpc.connect_raw client_chan init ~on_notification ~f:(fun c ->
+          let* () = client c in
+          Chan.write client_chan None)
+    in
+    let server () =
+      let+ () = Drpc.serve sessions (Dune_rpc_server.make handler) in
+      printfn "server: finished."
+    in
+    Fiber.parallel_iter [ connect; client; server ] ~f:(fun f -> f ())
+  in
+  Scheduler.run (Scheduler.create ()) run
+
+let init ?(id = Id.make (Atom "test-client")) ?(version = (1, 1)) () =
+  { Initialize.Request.version; id }
+
+let%expect_test "initialize scheduler with rpc" =
+  let handler = Handler.create ~on_init ~version:(2, 0) () in
+  let init = init () in
+  test ~init
+    ~client:(fun _ ->
+      printfn "client: connected. now terminating";
+      Fiber.return ())
+    ~handler ();
+  [%expect {|
+    client: connected. now terminating
+    server: finished. |}]
+
+let%expect_test "invalid client version" =
+  let handler = Handler.create ~on_init ~version:(2, 0) () in
+  let init = init ~version:(2, 5) () in
+  test ~init ~client:(fun _ -> assert false) ~handler ();
+  [%expect.unreachable]
+  [@@expect.uncaught_exn
+    {|
+  ( "{ payload = Some [ [ \"supported versions until\"; [ \"2\"; \"0\" ] ] ]\
+   \n; message = \"Unsupported version\"\
+   \n; kind = Version_error\
+   \n}") |}]
+
+let%expect_test "call private method" =
+  let decl = Decl.request ~method_:"double" Conv.int Conv.int in
+  let handler =
+    let rpc = Handler.create ~on_init ~version:(1, 1) () in
+    let () =
+      let cb =
+        Handler.callback Handler.private_ (fun x ->
+            if x = 0 then
+              raise
+                (Response.Error.E
+                   (Response.Error.create ~kind:Invalid_request
+                      ~message:"0 not allowed" ()))
+            else
+              Fiber.return (x + x))
+      in
+      Handler.request rpc cb decl
+    in
+    rpc
+  in
+  let client client =
+    printfn "client: sending request";
+    let* resp = Client.request client decl 5 in
+    ( match resp with
+    | Error _ -> assert false
+    | Ok s -> printfn "client: result %d" s );
+    printfn "client: sending invalid request";
+    let* resp = Client.request client decl 0 in
+    ( match resp with
+    | Error e -> printfn "client: error %s" e.message
+    | Ok _ -> assert false );
+    Fiber.return ()
+  in
+  let init =
+    { Initialize.Request.version = (1, 1); id = Id.make (Atom "test-client") }
+  in
+  test ~init ~client ~handler ();
+  [%expect
+    {|
+    client: sending request
+    client: result 10
+    client: sending invalid request
+    client: error 0 not allowed
+    server: finished. |}]
+
+let%expect_test "versioning public methods" =
+  let decl = Decl.request ~method_:"double" Conv.int Conv.int in
+  let handler =
+    let rpc = Handler.create ~on_init ~version:(2, 0) () in
+    let () =
+      let cb =
+        Handler.callback
+          (Handler.public ~since:(1, 5) ~until:(2, 0) ())
+          (fun x -> Fiber.return (x + x))
+      in
+      Handler.request rpc cb decl
+    in
+    rpc
+  in
+  let client client =
+    printfn "client: sending request";
+    let* resp = Client.request client decl 0 in
+    ( match resp with
+    | Error e -> printfn "client: error %s" e.message
+    | Ok _ -> assert false );
+    Fiber.return ()
+  in
+  let init =
+    { Initialize.Request.version = (1, 1); id = Id.make (Atom "test-client") }
+  in
+  test ~init ~client ~handler ();
+  [%expect
+    {|
+    client: sending request
+    client: error no method matching this client version
+    server: finished. |}]
+
+let%expect_test "versioning public methods" =
+  let decl =
+    let input =
+      let open Conv in
+      record
+        (both
+           (field "x" (required int))
+           (field "y" (optional (version int ~since:(2, 0)))))
+    in
+    Decl.request ~method_:"add" input Conv.int
+  in
+  let handler =
+    let rpc = Handler.create ~on_init ~version:(2, 0) () in
+    let () =
+      let cb =
+        Handler.callback
+          (Handler.public ~since:(1, 5) ())
+          (fun (x, y) -> Fiber.return (x + Option.value y ~default:x))
+      in
+      Handler.request rpc cb decl
+    in
+    rpc
+  in
+  let client client =
+    printfn "client: sending request";
+    let* resp = Client.request client decl (10, None) in
+    ( match resp with
+    | Error _ -> assert false
+    | Ok x -> printfn "client: %d" x );
+    let+ resp = Client.request client decl (10, Some 20) in
+    match resp with
+    | Error e -> printfn "client: error %s" e.message
+    | Ok _ -> ()
+  in
+  let init =
+    { Initialize.Request.version = (1, 9); id = Id.make (Atom "test-client") }
+  in
+  test ~init ~client ~handler ();
+  [%expect
+    {|
+    client: sending request
+    client: 20
+    client: error invalid version
+    server: finished. |}]

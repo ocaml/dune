@@ -16,7 +16,10 @@
   threads.posix
   build_info
   dune_config
-  dune_csexp)
+  dune_csexp
+  csexp_rpc
+  dune_rpc_impl
+  dune_rpc_private)
  (bootstrap_info bootstrap-info))
 
 (rule

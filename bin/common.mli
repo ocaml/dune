@@ -12,6 +12,10 @@ val root : t -> Workspace_root.t
 
 val config : t -> Dune_config.t
 
+val rpc : t -> Dune_rpc_impl.Server.t option
+
+val set_config : t -> Dune_config.t -> t
+
 module Only_packages : sig
   type t = private
     { names : Dune_engine.Package.Name.Set.t
@@ -80,3 +84,5 @@ module Let_syntax : sig
   val ( and+ ) :
     'a Cmdliner.Term.t -> 'b Cmdliner.Term.t -> ('a * 'b) Cmdliner.Term.t
 end
+
+val set_rpc : t -> Dune_rpc_impl.Server.t -> t

@@ -15,6 +15,7 @@ type caching =
 (** Initializes the build system. This must be called first. *)
 val init :
      contexts:Build_context.t list
+  -> ?build_mutex:Fiber.Mutex.t
   -> promote_source:
        (   ?chmod:(int -> int)
         -> src:Path.Build.t

@@ -1,7 +1,7 @@
 (*---------------------------------------------------------------------------
    Copyright (c) 2011 Daniel C. Bünzli. All rights reserved.
    Distributed under the ISC license, see terms at the end of the file.
-   cmdliner v1.0.2-18-gac44bb7
+   cmdliner v1.0.4-3-ga5ff0e8
   ---------------------------------------------------------------------------*)
 
 (** Messages for the end-user. *)
@@ -32,7 +32,9 @@ val err_arg_missing : Cmdliner_info.arg -> string
 val pp_version : Format.formatter -> Cmdliner_info.eval -> unit
 val pp_try_help : Format.formatter -> Cmdliner_info.eval -> unit
 val pp_err : Format.formatter -> Cmdliner_info.eval -> err:string -> unit
-val pp_err_usage : Format.formatter -> Cmdliner_info.eval -> err:string -> unit
+val pp_err_usage :
+  Format.formatter -> Cmdliner_info.eval -> err_lines:bool -> err:string -> unit
+
 val pp_backtrace :
   Format.formatter ->
   Cmdliner_info.eval -> exn -> Printexc.raw_backtrace -> unit

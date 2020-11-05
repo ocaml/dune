@@ -8,7 +8,7 @@
         "csexp": "github:diml/csexp",
         "ocaml-migrate-parsetree": "github:ocaml-ppx/ocaml-migrate-parsetree",
         "ocaml-doc": "github:ocaml-doc/octavius",
-        "ppxlib": "github:ocaml-ppx/ppxlib#v0.15.0",
+        "ppxlib": "github:ocaml-ppx/ppxlib#v0.13.0",
         "jane-street-headers": "github:janestreet/jane-street-headers",
         "cinaps": "github:janestreet/cinaps",
         "jst-config": "github:janestreet/jst-config",

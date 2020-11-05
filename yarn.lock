@@ -146,9 +146,9 @@
   version "0.0.0"
   resolved "https://codeload.github.com/janestreet/ppx_sexp_conv/tar.gz/8b6ad3db2719a5e8792ad3d85466ef58ea000879"
 
-"ppxlib@github:ocaml-ppx/ppxlib#v0.15.0":
+"ppxlib@github:ocaml-ppx/ppxlib#v0.13.0":
   version "0.0.0"
-  resolved "https://codeload.github.com/ocaml-ppx/ppxlib/tar.gz/20cacbfc311f1baef6454051e0edd7b1628cb721"
+  resolved "https://codeload.github.com/ocaml-ppx/ppxlib/tar.gz/a148a3c976e0a3d71e93ea5287c7cfd546844656"
 
 "re@github:ocaml/ocaml-re":
   version "0.0.0"

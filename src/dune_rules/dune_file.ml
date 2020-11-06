@@ -161,7 +161,6 @@ module Buildable = struct
     ; flags : Ocaml_flags.Spec.t
     ; js_of_ocaml : Js_of_ocaml.t
     ; allow_overlapping_dependencies : bool
-    ; ctypes : Ctypes.t list
     }
 
   let decode ~in_library ~allow_re_export =
@@ -233,9 +232,7 @@ module Buildable = struct
         (multi_field "instrumentation"
            ( Dune_lang.Syntax.since Stanza.syntax (2, 7)
            >>> fields (field "backend" (located Lib_name.decode)) ))
-    and+ ctypes =
-      (multi_field "ctypes" Ctypes.decode)
-    in
+   in
     let preprocess =
       let init =
         let f libname = Preprocess.With_instrumentation.Ordinary libname in
@@ -288,7 +285,6 @@ module Buildable = struct
     ; flags
     ; js_of_ocaml
     ; allow_overlapping_dependencies
-    ; ctypes
     }
 
   let has_foreign t =
@@ -479,6 +475,40 @@ module Mode_conf = struct
   end
 end
 
+module Ctypes = struct
+  type t =
+    { name : string
+    ; pkg_config_name : string option
+    ; c_headers : string option
+    ; generated_modules : string list
+    }
+
+  let name = "ctypes"
+
+  type Stanza.t += T of t
+
+  let decode =
+    let open Dune_lang.Decoder in
+    fields
+      (let+ name = field "name" string
+       and+ pkg_config_name = field_o "pkg_config_name" string
+       and+ c_headers = field_o "c_headers" string
+       and+ generated_modules = field "generated_modules" (repeat string)
+     in
+     { name; pkg_config_name; c_headers; generated_modules })
+
+  let syntax =
+    Dune_lang.Syntax.create ~name ~desc:"the ctypes extension"
+      (* XXX: insert the latest version of dune language *)
+      [ ((0, 1), `Since (2, 8))
+    ]
+
+  let () =
+    let open Dune_lang.Decoder in
+    Dune_project.Extension.register_simple syntax
+      (return [ (name, decode >>| fun x -> [ T x ]) ])
+end
+
 module Library = struct
   module Wrapped = struct
     include Wrapped
@@ -539,6 +569,7 @@ module Library = struct
     ; special_builtin_support : Lib_info.Special_builtin_support.t option
     ; enabled_if : Blang.t
     ; instrumentation_backend : (Loc.t * Lib_name.t) option
+    ; ctypes : Ctypes.t option
     }
 
   let decode =
@@ -617,6 +648,8 @@ module Library = struct
          field_o "package"
            ( Dune_lang.Syntax.since Stanza.syntax (2, 8)
            >>> located Stanza_common.Pkg.decode )
+       and+ ctypes =
+         (field_o "ctypes" Ctypes.decode)
        in
        let wrapped =
          Wrapped.make ~wrapped ~implements ~special_builtin_support
@@ -705,6 +738,7 @@ module Library = struct
        ; special_builtin_support
        ; enabled_if
        ; instrumentation_backend
+       ; ctypes
        })
 
   let package t =

@@ -49,7 +49,6 @@ module Buildable : sig
     ; flags : Ocaml_flags.Spec.t
     ; js_of_ocaml : Js_of_ocaml.t
     ; allow_overlapping_dependencies : bool
-    ; ctypes : Ctypes.t list
     }
 
   (** Check if the buildable has any foreign stubs or archives. *)
@@ -112,6 +111,18 @@ module Mode_conf : sig
   end
 end
 
+module Ctypes : sig
+  type t =
+    { name : string
+    ; pkg_config_name : string option
+    ; c_headers : string option
+    ; generated_modules : string list
+    }
+
+  type Stanza.t += T of t
+end
+
+
 module Library : sig
   type visibility =
     | Public of Public_lib.t
@@ -148,6 +159,7 @@ module Library : sig
     ; special_builtin_support : Lib_info.Special_builtin_support.t option
     ; enabled_if : Blang.t
     ; instrumentation_backend : (Loc.t * Lib_name.t) option
+    ; ctypes : Ctypes.t option
     }
 
   val sub_dir : t -> string option

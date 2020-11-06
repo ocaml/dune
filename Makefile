@@ -104,8 +104,11 @@ clean: $(BIN)
 distclean: clean
 	rm -f src/dune_rules/setup.ml
 
+man: $(BIN)
+	$(BIN) build @man
+
 doc:
-	cd doc && sphinx-build . _build
+	cd doc && sphinx-build -b man . man
 
 livedoc:
 	cd doc && sphinx-autobuild . _build \

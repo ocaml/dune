@@ -163,3 +163,45 @@ If such extensions are experimental, it's recommended that they pass
 It's also recommended that such extensions introduce stanzas or fields of the
 form ``ext_name.stanza_name`` or ``ext_name.field_name`` to make it clear to the
 user which extensions is providing a certain feature.
+
+Dune Rules
+==========
+
+Creating Rules
+--------------
+
+A dune rule consists of 3 components:
+
+- Dependencies that the rule may read when executed (files, aliases, ..)
+  This is described by ``'a Build.t`` values
+
+- Targets the rule produces (files)
+  Targets, in addition to dependencies is described by ``'a Build.With_targets.t'``
+
+- Action that dune must execute (external programs, redirects, etc.)
+  Actions are represented by ``Action.t``
+
+Combined, one needs to produce a ``Action.t Build.With_targets.t`` value to
+create a rule. The rule may then be added by ``Super_context.add_rule``, or a
+related function.
+
+To make this maximally convenient, there's a ``Command`` module to make it
+easier to create actions that run external commands and describe their targets &
+dependencies simultaneously.
+
+Loading Rules
+-------------
+
+Dune rules are loaded lazily to improve performance. Here's a sketch of the
+algorithm that tries to load the rule that generates some target file `t`.
+
+- Get the directory that of `t`. Call it `d`.
+
+- Load all rules in `d` into a map from targets in that directory to rules that
+  produce it.
+
+- Look up the rule for `t` in this map.
+
+To obey this loading scheme, our rules must therefore be generated as part of
+the callback that generates targets in that directory. See the ``Gen_rules`` for
+how this callback is constructed.

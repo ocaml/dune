@@ -55,6 +55,34 @@ module Name = struct
   module Infix = Comparator.Operators (T)
 end
 
+module Id = struct
+  module T = struct
+    type t =
+      { name : Name.t
+      ; dir : Path.Source.t
+      }
+
+    let compare { dir; name } pkg =
+      match Name.compare pkg.name name with
+      | Eq -> Path.Source.compare dir pkg.dir
+      | s -> s
+
+    let to_dyn { dir; name } =
+      let open Dyn.Encoder in
+      record [ ("name", Name.to_dyn name); ("dir", Path.Source.to_dyn dir) ]
+  end
+
+  include T
+
+  let hash { name; dir } = Tuple.T2.hash Name.hash Path.Source.hash (name, dir)
+
+  let name t = t.name
+
+  module C = Comparable.Make (T)
+  module Set = C.Set
+  module Map = C.Map
+end
+
 module Dependency = struct
   module Op = struct
     type t =
@@ -428,7 +456,7 @@ module Info = struct
 end
 
 type t =
-  { name : Name.t
+  { id : Id.t
   ; loc : Loc.t
   ; synopsis : string option
   ; description : string option
@@ -436,7 +464,6 @@ type t =
   ; conflicts : Dependency.t list
   ; depopts : Dependency.t list
   ; info : Info.t
-  ; path : Path.Source.t
   ; version : string option
   ; has_opam_file : bool
   ; tags : string list
@@ -447,7 +474,11 @@ type t =
 (* Package name are globally unique, so we can reasonably expect that there will
    always be only a single value of type [t] with a given name in memory. That's
    why we only hash the name. *)
-let hash t = Name.hash t.name
+let hash t = Id.hash t.id
+
+let name t = t.id.name
+
+let dir t = t.id.dir
 
 let decode ~dir =
   let open Dune_lang.Decoder in
@@ -486,7 +517,8 @@ let decode ~dir =
          (pair Section.decode Section.Site.decode)
          Section.to_string "Site location name"
      in
-     { name
+     let id = { Id.name; dir } in
+     { id
      ; loc
      ; synopsis
      ; description
@@ -494,7 +526,6 @@ let decode ~dir =
      ; conflicts
      ; depopts
      ; info
-     ; path = dir
      ; version
      ; has_opam_file = false
      ; tags
@@ -503,8 +534,7 @@ let decode ~dir =
      }
 
 let to_dyn
-    { name
-    ; path
+    { id
     ; version
     ; synopsis
     ; description
@@ -520,8 +550,7 @@ let to_dyn
     } =
   let open Dyn.Encoder in
   record
-    [ ("name", Name.to_dyn name)
-    ; ("path", Path.Source.to_dyn path)
+    [ ("id", Id.to_dyn id)
     ; ("synopsis", option string synopsis)
     ; ("description", option string description)
     ; ("depends", list Dependency.to_dyn depends)
@@ -536,14 +565,14 @@ let to_dyn
     ; ("sites", Section.Site.Map.to_dyn Section.to_dyn sites)
     ]
 
-let opam_file t = Path.Source.relative t.path (Name.opam_fn t.name)
+let opam_file t = Path.Source.relative t.id.dir (Name.opam_fn t.id.name)
 
-let meta_file t = Path.Source.relative t.path (Name.meta_fn t.name)
+let meta_file t = Path.Source.relative t.id.dir (Name.meta_fn t.id.name)
 
 let file ~dir ~name = Path.relative dir (Name.to_string name ^ opam_ext)
 
 let deprecated_meta_file t name =
-  Path.Source.relative t.path (Name.meta_fn name)
+  Path.Source.relative t.id.dir (Name.meta_fn name)
 
 let load_opam_file file name =
   let open Option.O in
@@ -583,9 +612,9 @@ let load_opam_file file name =
       List.rev l
     | _ -> None
   in
-  { name
+  let id = { Id.name; dir = Path.Source.parent_exn file } in
+  { id
   ; loc
-  ; path = Path.Source.parent_exn file
   ; version = get_one "version"
   ; conflicts = []
   ; depends = []

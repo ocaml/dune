@@ -35,7 +35,7 @@ Sets the version of the project:
 
     (version <version>)
 
-.. _implicit-transitive-deps:
+.. _implicit_transitive_deps:
 
 implicit_transitive_deps
 ------------------------

@@ -130,7 +130,7 @@ module File_ops_real (W : Workspace) : File_operations = struct
       match
         let open Option.O in
         let* package = Package.Name.Map.find workspace.conf.packages package in
-        get_vcs package.path
+        Package.dir package |> get_vcs
       with
       | None -> plain_copy ()
       | Some vcs ->
@@ -313,7 +313,8 @@ let file_operations ~dry_run ~workspace : (module File_operations) =
     end) )
 
 let package_is_vendored (pkg : Dune_engine.Package.t) =
-  match Dune_engine.File_tree.find_dir pkg.path with
+  let dir = Package.dir pkg in
+  match Dune_engine.File_tree.find_dir dir with
   | None -> assert false
   | Some d -> (
     match Dune_engine.File_tree.Dir.status d with
@@ -397,7 +398,8 @@ let install_uninstall ~what =
                 if package_is_vendored pkg then
                   acc
                 else
-                  pkg.name :: acc)
+                  let name = Package.name pkg in
+                  name :: acc)
             |> List.rev
           | l -> l
         in

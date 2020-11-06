@@ -93,7 +93,24 @@ module Paths = struct
   let toplevel_index ctx = html_root ctx ++ "index.html"
 end
 
-module Dep = struct
+module Dep : sig
+  (** [html_alias ctx target] returns the alias that depends on all html targets
+      produced by odoc for [target] *)
+  val html_alias : Context.t -> target -> Alias.t
+
+  (** [deps ctx pkg libraries] returns all odoc dependencies of [libraries. If
+      [libraries] are all part of a package [pkg], then the odoc dependencies of
+      the package are also returned*)
+  val deps :
+       Context.t
+    -> Package.Name.t option
+    -> (Lib.t list, exn) result
+    -> unit Build.t
+
+  (*** [setup_deps ctx target odocs] Adds [odocs] as dependencies for [target].
+    These dependencies may be used using the [deps] function *)
+  val setup_deps : Context.t -> target -> Path.Set.t -> unit
+end = struct
   let html_alias ctx m = Alias.doc ~dir:(Paths.html ctx m)
 
   let alias = Alias.make (Alias.Name.of_string ".odoc-all")
@@ -117,8 +134,6 @@ module Dep = struct
                  Dep.Set.add acc (Dep.alias alias))))
 
   let alias ctx m = alias ~dir:(Paths.odocs ctx m)
-
-  (* let static_deps t lib = Build_system.Alias.dep (alias t lib) *)
 
   let setup_deps ctx m files = Rules.Produce.Alias.add_deps (alias ctx m) files
 end
@@ -535,13 +550,15 @@ let setup_pkg_html_rules sctx ~pkg ~libs =
 
 let setup_package_aliases sctx (pkg : Package.t) =
   let ctx = Super_context.context sctx in
+  let name = Package.name pkg in
   let alias =
-    let dir = Path.Build.append_source ctx.build_dir pkg.Package.path in
+    let pkg_dir = Package.dir pkg in
+    let dir = Path.Build.append_source ctx.build_dir pkg_dir in
     Alias.doc ~dir
   in
   Rules.Produce.Alias.add_deps alias
-    ( Dep.html_alias ctx (Pkg pkg.name)
-      :: ( libs_of_pkg sctx ~pkg:pkg.name
+    ( Dep.html_alias ctx (Pkg name)
+      :: ( libs_of_pkg sctx ~pkg:name
          |> List.map ~f:(fun lib -> Dep.html_alias ctx (Lib lib)) )
     |> Path.Set.of_list_map ~f:(fun f -> Path.build (Alias.stamp_file f)) )
 
@@ -698,5 +715,7 @@ let gen_rules sctx ~dir:_ rest =
     Option.iter
       (Package.Name.Map.find (SC.packages sctx)
          (Package.Name.of_string lib_unique_name_or_pkg))
-      ~f:(fun pkg -> setup_pkg_html_rules pkg.name)
+      ~f:(fun pkg ->
+        let name = Package.name pkg in
+        setup_pkg_html_rules name)
   | _ -> ()

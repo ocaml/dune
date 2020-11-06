@@ -28,16 +28,17 @@ let sites_code sctx buf (loc, pkg) =
     | None ->
       User_error.raise ~loc [ Pp.text "dune_site used outside a package" ]
   in
+  let package_name = Package.name package in
   (* Parse the replacement format described in [artifact_substitution.ml]. *)
   Section.Site.Map.iteri package.sites ~f:(fun name section ->
       pr buf "    let %s = %s.site"
         (String.uncapitalize_ascii (Section.Site.to_string name))
         helpers;
-      pr buf "      ~package:%S" (Package.Name.to_string package.name);
+      pr buf "      ~package:%S" (Package.Name.to_string package_name);
       pr buf "      ~section:Dune_section.%s"
         (String.capitalize_ascii (Section.to_string section));
       pr buf "      ~suffix:%S" (Section.Site.to_string name);
-      pr buf "      ~encoded:%a" encode (Location (section, package.name)))
+      pr buf "      ~encoded:%a" encode (Location (section, package_name)))
 
 let plugins_code sctx buf pkg sites =
   let package =

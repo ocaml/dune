@@ -6,6 +6,7 @@ type label = ..
 type 'a t =
   | Pure : 'a -> 'a t
   | Map : ('a -> 'b) * 'a t -> 'b t
+  | Both : 'a t * 'b t -> ('a * 'b) t
   | Map2 : ('a -> 'b -> 'c) * 'a t * 'b t -> 'c t
   | Paths_for_rule : Path.Set.t -> unit t
   | Paths_glob : File_selector.t -> Path.Set.t t
@@ -53,17 +54,14 @@ let delayed f = Map (f, Pure ())
 module O = struct
   let ( >>> ) a b = Map2 ((fun () y -> y), a, b)
 
-  let ( and+ ) a b = Map2 ((fun x y -> (x, y)), a, b)
+  let ( and+ ) a b = Both (a, b)
 
   let ( let+ ) t f = Map (f, t)
 end
 
 open O
 
-let both x y =
-  let+ x = x
-  and+ y = y in
-  (x, y)
+let both x y = Both (x, y)
 
 let rec all xs =
   match xs with
@@ -289,6 +287,7 @@ end = struct
     match t with
     | Pure _ -> Static_deps.empty
     | Map (_, t) -> static_deps t
+    | Both (x, y) -> Static_deps.union (static_deps x) (static_deps y)
     | Map2 (_, x, y) -> Static_deps.union (static_deps x) (static_deps y)
     | Deps deps -> { Static_deps.empty with action_deps = deps }
     | Paths_for_rule fns ->
@@ -326,6 +325,9 @@ let fold_labeled (type acc) t ~(init : acc) ~f =
     match t with
     | Pure _ -> acc
     | Map (_, a) -> loop a acc
+    | Both (a, b) ->
+      let acc = loop a acc in
+      loop b acc
     | Map2 (_, a, b) ->
       let acc = loop a acc in
       loop b acc
@@ -380,6 +382,10 @@ end = struct
       | Map (f, a) ->
         let a, dyn_deps_a = go a in
         (f a, dyn_deps_a)
+      | Both (a, b) ->
+        let a, dyn_deps_a = go a in
+        let b, dyn_deps_b = go b in
+        ((a, b), Dep.Set.union dyn_deps_a dyn_deps_b)
       | Map2 (f, a, b) ->
         let a, dyn_deps_a = go a in
         let b, dyn_deps_b = go b in

@@ -101,15 +101,14 @@ module Context = struct
     let dir = Path.build (snd t.coqc) in
     Command.run ~dir ?stdout_to (fst t.coqc) args
 
+  let standard_coq_flags = Build.return [ "-q" ]
+
   let coq_flags t =
-    Build.(
-      map ~f:List.concat
-        (all
-           [ Expander.expand_and_eval_set t.expander t.profile_flags
-               ~standard:(Build.return [])
-           ; Expander.expand_and_eval_set t.expander t.buildable.flags
-               ~standard:(Build.return [])
-           ]))
+    let standard = standard_coq_flags in
+    let standard =
+      Expander.expand_and_eval_set t.expander t.profile_flags ~standard
+    in
+    Expander.expand_and_eval_set t.expander t.buildable.flags ~standard
 
   let theories_flags =
     let setup_theory_flag lib =

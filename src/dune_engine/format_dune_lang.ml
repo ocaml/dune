@@ -34,7 +34,7 @@ let pp_simple fmt t =
   |> Dune_lang.Deprecated.pp fmt
 
 let print_wrapped_list fmt =
-  Format.fprintf fmt "(@[<hov 1>%a@])"
+  Format.fprintf fmt "@[<hv 1>(%a)@]"
     (Format.pp_print_list
        ~pp_sep:(fun fmt () -> Format.fprintf fmt "@ ")
        pp_simple)

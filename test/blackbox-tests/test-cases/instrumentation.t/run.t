@@ -1,5 +1,6 @@
   $ cat >dune-project <<EOF
   > (lang dune 2.7)
+  > (wrapped_executables false)
   > EOF
 
 "Hello" is an instrumentation backend that instruments by printing "Hello,
@@ -18,7 +19,7 @@ Dune!" at the beginning of the module.
   > EOF
 
   $ cat >mylib.ml <<EOF
-  > let f () = print_endline "Mylib"
+  > let f () = ()
   > EOF
 
   $ cat >main.ml <<EOF
@@ -30,16 +31,14 @@ message.
 
   $ dune build
   $ _build/default/main.exe
-  Mylib
 
 This should print the instrumentation message twice, once for "main" and once
 for "mylib":
 
   $ dune build --instrument-with hello
   $ _build/default/main.exe
-  Hello, Dune!
-  Hello, Dune!
-  Mylib
+  Hello from Mylib!
+  Hello from Main!
 
 An empty file:
 
@@ -61,14 +60,27 @@ We rebuild with instrumentation via the CLI.
 We get the message.
 
   $ _build/default/main.exe
-  Hello, Dune!
+  Hello from Main!
+
+We also check that we can pass arguments to the ppx.
+
+  $ cat >dune <<EOF
+  > (executable
+  >  (name main)
+  >  (modules main)
+  >  (instrumentation (backend hello -place Spain)))
+  > EOF
+
+  $ dune build --instrument-with hello
+  $ _build/default/main.exe
+  Hello from Spain!
 
 Can also enable with an environment variable.
 
   $ DUNE_INSTRUMENT_WITH=hello dune build
 
   $ _build/default/main.exe
-  Hello, Dune!
+  Hello from Spain!
 
 Instrumentation can also be controlled by using the dune-workspace file.
 
@@ -80,7 +92,7 @@ Instrumentation can also be controlled by using the dune-workspace file.
   $ dune build
 
   $ _build/default/main.exe
-  Hello, Dune!
+  Hello from Spain!
 
 It can also be controlled on a per-context scope.
 
@@ -92,7 +104,7 @@ It can also be controlled on a per-context scope.
   $ dune build
 
   $ _build/coverage/main.exe
-  Hello, Dune!
+  Hello from Spain!
 
 Per-context setting takes precedence over per-workspace setting.
 
@@ -119,6 +131,7 @@ Next, we check the backend can be used when it is installed.
   > EOF
   $ cat >installed/dune-project <<EOF
   > (lang dune 2.7)
+  > (wrapped_executables false)
   > EOF
   $ cat >installed/dune <<EOF
   > (executable
@@ -130,4 +143,4 @@ Next, we check the backend can be used when it is installed.
   $ OCAMLPATH=$PWD/_install/lib dune build --root installed
   Entering directory 'installed'
   $ installed/_build/default/main.exe
-  Hello, Dune!
+  Hello from Main!

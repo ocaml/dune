@@ -8,11 +8,11 @@ let default_context_flags (ctx : Context.t) ~project =
     List.filter cflags ~f:(fun s -> not (String.is_prefix s ~prefix:"-std="))
   in
   let c =
-    match Dune_project.always_add_cflags project with
+    match Dune_project.future_c_and_cxx_flags_handling project with
     | None
-    | Some true ->
+    | Some false ->
       cflags
-    | Some false -> cflags @ Ocaml_config.ocamlc_cppflags ctx.ocaml_config
+    | Some true -> cflags @ Ocaml_config.ocamlc_cppflags ctx.ocaml_config
   in
   Foreign_language.Dict.make ~c ~cxx
 

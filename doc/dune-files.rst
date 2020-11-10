@@ -287,7 +287,7 @@ language: The syntax is as a list of the following elements:
 
 .. _always-add-cflags:
 
-always_add_cflags 
+future_c_and_cxx_flags_handling
 -----------------
 
 Since Dune 2.8, it is possible to deactivate the systematic prepending of flags
@@ -296,11 +296,11 @@ adding the following field to the ``dune-project`` file:
 
 .. code:: scheme
 
-    (always_add_cflags false)
+    (future_c_and_cxx_flags_handling true)
 
 In this mode, dune will populate the ``:standard`` set of C flags with the
 content of ``ocamlc_cflags`` and  ``ocamlc_cppflags``. These flags can be
-completed or overridden using the :ref:`ordered-set-language`. 
+completed or overridden using the :ref:`ordered-set-language`.
 
 dune
 ====

@@ -12,7 +12,7 @@ bar.c is built with an "empty" set of flags.
   $ O_CCPPF=${O_CCPPF%% }
 
 
-always_add_cflags = false
+future_c_and_cxx_flags_handling = default (false)
 ==================================
 
   $ cat >dune-project <<EOF
@@ -25,10 +25,10 @@ always_add_cflags = false
   Warning: The flag set for these foreign sources overrides the `:standard` set
   of flags. However the flags in this standard set are still added to the
   compiler arguments by Dune. This might cause unexpected issues. You can
-  disable this warning by defining the option `(always_add_cflags <bool>)` in
-  your `dune-project` file. Setting this option to `false` will effectively
-  prevent Dune from silently adding c-flags to the compiler arguments which is
-  the new recommended behaviour.
+  disable this warning by defining the option `(future_c_and_cxx_flags_handling
+  <bool>)` in your `dune-project` file. Setting this option to `true` will
+  effectively prevent Dune from silently adding c-flags to the compiler
+  arguments which is the new recommended behaviour.
 
   $ dune rules -m bar.o | tr -s '\t\n\\' ' ' > out_bar
   File "dune", line 4, characters 36-39:
@@ -37,10 +37,10 @@ always_add_cflags = false
   Warning: The flag set for these foreign sources overrides the `:standard` set
   of flags. However the flags in this standard set are still added to the
   compiler arguments by Dune. This might cause unexpected issues. You can
-  disable this warning by defining the option `(always_add_cflags <bool>)` in
-  your `dune-project` file. Setting this option to `false` will effectively
-  prevent Dune from silently adding c-flags to the compiler arguments which is
-  the new recommended behaviour.
+  disable this warning by defining the option `(future_c_and_cxx_flags_handling
+  <bool>)` in your `dune-project` file. Setting this option to `true` will
+  effectively prevent Dune from silently adding c-flags to the compiler
+  arguments which is the new recommended behaviour.
 
 Ocamlc_cflags are duplicated if the :standard set is kept:
   $ cat out_foo | grep -ce "${O_CCF} ${O_CCPPF} ${O_CCF}"
@@ -55,12 +55,12 @@ ocamlc_cpp flags appear in the compiler command line:
   $ cat out_bar | grep -ce "${O_CCF} ${O_CCPPF}"
   1
 
-always_add_cflags = true
+future_c_and_cxx_flags_handling = true
 =================================
 
   $ cat >dune-project <<EOF
   > (lang dune 2.8)
-  > (always_add_cflags false)
+  > (future_c_and_cxx_flags_handling true)
 
   $ dune rules -m foo.o | tr -s '\t\n\\' ' ' > out_foo
   $ dune rules -m bar.o | tr -s '\t\n\\' ' ' > out_bar
@@ -84,17 +84,18 @@ ocamlc_cpp are effectively removed from the compiler command line
   0
   [1]
 
-always_add_cflags = true but dune < 2.8
+future_c_and_cxx_flags_handling = true but dune < 2.8
 ================================================
 
   $ cat >dune-project <<EOF
   > (lang dune 2.7)
-  > (always_add_cflags false)
+  > (future_c_and_cxx_flags_handling true)
 
   $ dune rules
-  File "dune-project", line 2, characters 0-25:
-  2 | (always_add_cflags false)
-      ^^^^^^^^^^^^^^^^^^^^^^^^^
-  Error: 'always_add_cflags' is only available since version 2.8 of the dune
-  language. Please update your dune-project file to have (lang dune 2.8).
+  File "dune-project", line 2, characters 0-38:
+  2 | (future_c_and_cxx_flags_handling true)
+      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  Error: 'future_c_and_cxx_flags_handling' is only available since version 2.8
+  of the dune language. Please update your dune-project file to have (lang dune
+  2.8).
   [1]

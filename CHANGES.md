@@ -79,9 +79,10 @@ Unreleased
 - Avoid pager when running `$ git diff` (#3912, @AltGr)
 
 - Add the option `new_foreign_flags_handling` to `dune-project` that disables
-- Add the option `always_add_cflags` to `dune-project` that disables
-  the unconditional use of the `ocamlc_cflags` and `ocamlc_cppflags` from
-  `ocamlc -config` in C compiler calls. These flags are present in the
+
+- Add the option `future_c_and_cxx_flags_handling` to `dune-project` that
+  disables the unconditional use of the `ocamlc_cflags` and `ocamlc_cppflags`
+  from `ocamlc -config` in C compiler calls. These flags are present in the
   `:standard` set instead. (#3875, fix #3718, @voodoos)
 
 2.7.1 (2/09/2020)

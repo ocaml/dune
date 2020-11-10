@@ -231,7 +231,11 @@ module Buildable = struct
       located
         (multi_field "instrumentation"
            ( Dune_lang.Syntax.since Stanza.syntax (2, 7)
-           >>> fields (field "backend" (located Lib_name.decode)) ))
+           >>> fields
+                 (field "backend"
+                    (let+ libname = located Lib_name.decode
+                     and+ flags = repeat String_with_vars.decode in
+                     (libname, flags))) ))
     in
     let preprocess =
       let init =
@@ -239,7 +243,9 @@ module Buildable = struct
         Module_name.Per_item.map preprocess ~f:(Preprocess.map ~f)
       in
       List.fold_left instrumentation
-        ~f:(Preprocess.Per_module.add_instrumentation ~loc:loc_instrumentation)
+        ~f:(fun accu (instrumentation, flags) ->
+          Preprocess.Per_module.add_instrumentation accu
+            ~loc:loc_instrumentation ~flags instrumentation)
         ~init
     in
     let foreign_stubs =

@@ -70,6 +70,14 @@ module Archive : sig
   val dll_file : archive:t -> dir:Path.Build.t -> ext_dll:string -> Path.Build.t
 end
 
+(* CR-amokhov: add docs. *)
+module Compilation_mode : sig
+  type t = private
+    | Both_byte_and_native
+    | Only_byte
+    | Only_native
+end
+
 (** A type of foreign library "stubs", which includes all fields of the
     [Library.t] type except for the [archive_name] field. The type is parsed as
     an optional [foreign_stubs] field of the [library] stanza, or as part of the
@@ -88,6 +96,7 @@ module Stubs : sig
   type t =
     { loc : Loc.t
     ; language : Foreign_language.t
+    ; mode : Compilation_mode.t
     ; names : Ordered_set_lang.t
     ; flags : Ordered_set_lang.Unexpanded.t
     ; include_dirs : Include_dir.t list
@@ -148,6 +157,8 @@ module Source : sig
 
   val language : t -> Foreign_language.t
 
+  val mode : t -> Compilation_mode.t
+
   val flags : t -> Ordered_set_lang.Unexpanded.t
 
   val path : t -> Path.Build.t
@@ -159,12 +170,26 @@ module Source : sig
   val make : stubs:Stubs.t -> path:Path.Build.t -> t
 end
 
+module Object : sig
+  type t =
+    { path : Path.Build.t
+    ; mode : Compilation_mode.t
+    }
+
+  val both_byte_and_native : t -> bool
+
+  val build_path : t -> Path.t
+
+  val build_path_byte : t -> Path.t option
+
+  val build_path_native : t -> Path.t option
+end
+
 (** A map from object names to the corresponding sources. *)
 module Sources : sig
   type t = (Loc.t * Source.t) String.Map.t
 
-  val object_files :
-    t -> dir:Path.Build.t -> ext_obj:string -> Path.Build.t list
+  val object_files : t -> dir:Path.Build.t -> ext_obj:string -> Object.t list
 
   (** A map from object names to lists of possible language/path combinations. *)
   module Unresolved : sig

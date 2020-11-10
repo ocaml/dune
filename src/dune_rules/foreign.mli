@@ -70,9 +70,11 @@ module Archive : sig
   val dll_file : archive:t -> dir:Path.Build.t -> ext_dll:string -> Path.Build.t
 end
 
-(* CR-amokhov: add docs. *)
+(** In some situations, it is useful to make compilation of foreign source files
+    conditional, and include the resulting objects only into native or bytecode
+    libraries, but not both. *)
 module Compilation_mode : sig
-  type t = private
+  type t =
     | Both_byte_and_native
     | Only_byte
     | Only_native
@@ -170,18 +172,27 @@ module Source : sig
   val make : stubs:Stubs.t -> path:Path.Build.t -> t
 end
 
+(** The [path] to a foreign object file along with the compilation [mode] that
+    specfies whether it should be included into native or bytecode libraries, or
+    into both (the latter is the most common case). *)
 module Object : sig
   type t =
     { path : Path.Build.t
     ; mode : Compilation_mode.t
     }
 
+  (** Should this file be included into both native and bytecode libraries? *)
   val both_byte_and_native : t -> bool
 
+  (** Path to the object file in the build directory. *)
   val build_path : t -> Path.t
 
+  (** Like [build_path] but returns [Some] only if the object should be included
+      into bytecode libraries. *)
   val build_path_byte : t -> Path.t option
 
+  (** Like [build_path] but returns [Some] only if the object should be included
+      into native libraries. *)
   val build_path_native : t -> Path.t option
 end
 

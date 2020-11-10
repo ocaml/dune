@@ -115,6 +115,8 @@ let gen_wrapped_compat_modules (lib : Library.t) cctx =
 (* Rules for building static and dynamic libraries using [ocamlmklib]. *)
 let ocamlmklib ~loc ~c_library_flags ~sctx ~dir ~expander ~foreign_objects
     ~vlib_stubs_o_files ~archive_name ~build_targets_together =
+  (* We can't build static and dynamic libraries together if one of the object
+     files should be treated specially. *)
   let build_targets_together =
     build_targets_together
     && List.for_all foreign_objects ~f:Foreign.Object.both_byte_and_native
@@ -125,6 +127,8 @@ let ocamlmklib ~loc ~c_library_flags ~sctx ~dir ~expander ~foreign_objects
     Foreign.Archive.Name.lib_file archive_name ~dir ~ext_lib
   in
   let build ~custom ~sandbox ~o_files targets =
+    (* CR amokhov: Should we include [vlib_stubs_o_files] into both static and
+       dynamic libraries? *)
     let o_files = vlib_stubs_o_files @ o_files in
     Super_context.add_rule sctx ~sandbox ~dir ~loc
       (let cclibs_args =

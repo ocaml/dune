@@ -1,7 +1,7 @@
 (*---------------------------------------------------------------------------
    Copyright (c) 2011 Daniel C. Bünzli. All rights reserved.
    Distributed under the ISC license, see terms at the end of the file.
-   cmdliner v1.0.4-3-ga5ff0e8
+   cmdliner v1.0.4-24-gb0f156d
   ---------------------------------------------------------------------------*)
 
 
@@ -191,28 +191,58 @@ let term_args t = t.term_args
 let term_add_args t args =
   { t with term_args = Args.union args t.term_args }
 
+type eval_kind =
+| Simple of term
+| Main of { term : term ; choices : term list }
+| Sub_command of { term : term;
+                   (** is [term] is from a group, [path] are the ancestors
+                        direct with the direct parent *)
+                   path : term list;
+                   main : term;
+                   sibling_terms : term list }
+
 (* Eval info *)
 
 type eval =                     (* information about the evaluation context. *)
   { term : term;                                    (* term being evaluated. *)
     main : term;                                               (* main term. *)
+    path : term list;
     choices : term list;                                (* all term choices. *)
     env : string -> string option }          (* environment variable lookup. *)
 
-let eval ~term ~main ~choices ~env = { term; main; choices; env }
+let eval ~env kind =
+  let (main, term, path, choices) =
+    match kind with
+    | Simple term -> (term, term, [term], [])
+    | Main { term ; choices } -> (term, term, [term], choices)
+    | Sub_command { main ; term ; path ; sibling_terms } ->
+        (main, term, path, sibling_terms)
+  in
+  { term; main; choices; env; path }
+
 let eval_term e = e.term
 let eval_main e = e.main
+let eval_term_path e = e.path
 let eval_choices e = e.choices
 let eval_env_var e v = e.env v
 
 let eval_kind ei =
+  (* subgroup *)
   if ei.choices = [] then `Simple else
   if (ei.term.term_info.term_name == ei.main.term_info.term_name)
-  then `Multiple_main else `Multiple_sub
+  then
+    match ei.path with
+    | [] -> assert false
+    | [_] -> `Multiple_main
+    | _ :: _ :: _ -> `Multiple_group
+  else `Multiple_sub
+
+let eval_terms_rev ei = ei.path
 
 let eval_with_term ei term = { ei with term }
 
 let eval_has_choice e cmd =
+  (* handle subgroup *)
   let is_cmd t = t.term_info.term_name = cmd in
   List.exists is_cmd e.choices
 

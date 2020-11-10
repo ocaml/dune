@@ -1,7 +1,7 @@
 (*---------------------------------------------------------------------------
    Copyright (c) 2011 Daniel C. Bünzli. All rights reserved.
    Distributed under the ISC license, see terms at the end of the file.
-   cmdliner v1.0.4-3-ga5ff0e8
+   cmdliner v1.0.4-24-gb0f156d
   ---------------------------------------------------------------------------*)
 
 let strf = Printf.sprintf
@@ -68,7 +68,9 @@ let err_arg_missing a =
 
 (* Other messages *)
 
-let exec_name ei = Cmdliner_info.(term_name @@ eval_main ei)
+let exec_name_terms terms =
+  String.concat " " (List.rev_map Cmdliner_info.term_name terms)
+let exec_name ei = exec_name_terms (Cmdliner_info.eval_terms_rev ei)
 
 let pp_version ppf ei = match Cmdliner_info.(term_version @@ eval_main ei) with
 | None -> assert false
@@ -77,10 +79,16 @@ let pp_version ppf ei = match Cmdliner_info.(term_version @@ eval_main ei) with
 let pp_try_help ppf ei = match Cmdliner_info.eval_kind ei with
 | `Simple | `Multiple_main ->
     pp ppf "@[<2>Try `%s --help' for more information.@]" (exec_name ei)
+| `Multiple_group
 | `Multiple_sub ->
     let exec_cmd = Cmdliner_docgen.plain_invocation ei in
+    let parent =
+      Cmdliner_info.eval_terms_rev ei
+      |> List.tl
+      |> exec_name_terms
+    in
     pp ppf "@[<2>Try `%s --help' or `%s --help' for more information.@]"
-      exec_cmd (exec_name ei)
+      exec_cmd parent
 
 let pp_err ppf ei ~err = pp ppf "%s: @[%a@]@." (exec_name ei) pp_lines err
 

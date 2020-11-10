@@ -98,7 +98,7 @@ module Dep : sig
       produced by odoc for [target] *)
   val html_alias : Context.t -> target -> Alias.t
 
-  (** [deps ctx pkg libraries] returns all odoc dependencies of [libraries. If
+  (** [deps ctx pkg libraries] returns all odoc dependencies of [libraries]. If
       [libraries] are all part of a package [pkg], then the odoc dependencies of
       the package are also returned*)
   val deps :

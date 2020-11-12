@@ -265,12 +265,16 @@ module Lang = struct
        if v = (0, 1) then
          `Ok v
        else
-         `Error
-           ( true
-           , "Only --lang 0.1 is available at the moment as this command is \
+         let msg =
+           let pp =
+             "Only --lang 0.1 is available at the moment as this command is \
               not yet stabilised. If you would like to release a software that \
               relies on the output of 'dune describe', please open a ticket on \
-              https://github.com/ocaml/dune." )
+              https://github.com/ocaml/dune." |> Pp.text
+           in
+           Stdlib.Format.asprintf "%a" Pp.to_fmt pp
+         in
+         `Error (true, msg)
 end
 
 let print_as_sexp dyn =

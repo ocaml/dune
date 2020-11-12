@@ -860,13 +860,11 @@ let scheme_per_ctx_memo =
          end ))
     "install-rule-scheme" ~doc:"install rules scheme" ~visibility:Hidden Sync
     (fun sctx ->
-      let packages = Super_context.packages sctx in
-      let scheme =
-        Scheme.all
-          (List.map (Package.Name.Map.to_list packages) ~f:(fun (_, pkg) ->
-               scheme sctx pkg))
-      in
-      Scheme.evaluate ~union:Rules.Dir_rules.union scheme)
+      Super_context.packages sctx
+      |> Package.Name.Map.values
+      |> List.map ~f:(scheme sctx)
+      |> Scheme.all
+      |> Scheme.evaluate ~union:Rules.Dir_rules.union)
 
 let gen_rules sctx ~dir =
   let rules, subdirs =

@@ -383,6 +383,9 @@ let gen_rules sctx components =
 
 let ppx_driver_exe sctx libs =
   let key = Digest.to_string (Key.Decoded.of_libs libs |> Key.encode) in
+  (* Make sure to compile ppx.exe for the compiling host. See: #2252, #2286 and
+     #3698 *)
+  let sctx = SC.host sctx in
   ppx_exe sctx ~key
 
 let get_cookies ~loc ~expander ~lib_name libs =

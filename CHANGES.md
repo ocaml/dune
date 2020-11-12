@@ -79,6 +79,9 @@ Unreleased
   removed it to make room for new more important features (#4298,
   @jeremiedimino)
 
+- Fix `ppx.exe` being compiled for the wrong target when cross-compiling
+  (#3751, fixes #3698, @toots)
+
 2.8.2 (21/01/2021)
 ------------------
 

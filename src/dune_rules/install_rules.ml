@@ -874,16 +874,13 @@ let gen_rules sctx ~dir =
   Build_system.Subdir_set.These subdirs
 
 let packages =
-  let package_source_files sctx package =
-    List.map
-      ~f:(fun (_loc, entry) -> entry.Install.Entry.src)
-      (install_entries sctx package)
-  in
   let f sctx =
     Super_context.packages sctx
-    |> Package.Name.Map.fold ~init:[] ~f:(fun (pkg : Package.t) acc ->
-           List.fold_left (package_source_files sctx pkg) ~init:acc
-             ~f:(fun acc path -> (path, pkg.id) :: acc))
+    |> Package.Name.Map.fold ~init:[] ~f:(fun (pkg : Package.t) init ->
+           install_entries sctx pkg
+           |> List.fold_left ~init
+                ~f:(fun acc (_loc, (entry : _ Install.Entry.t)) ->
+                  (entry.src, pkg.id) :: acc))
     |> Path.Build.Map.of_list_fold ~init:Package.Id.Set.empty
          ~f:Package.Id.Set.add
   in

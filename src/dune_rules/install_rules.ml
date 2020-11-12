@@ -384,6 +384,13 @@ end
 module Meta_and_dune_package : sig
   val meta_and_dune_package_rules : Super_context.t -> dir:Path.Build.t -> unit
 end = struct
+  let sections ctx_name pkg =
+    let pkg_name = Package.name pkg in
+    Section.Site.Map.values pkg.sites
+    |> Section.Set.of_list |> Section.Set.to_map
+    |> Section.Map.mapi ~f:(fun section () ->
+           Install.Section.Paths.get_local_location ctx_name section pkg_name)
+
   let make_dune_package sctx lib_entries (pkg : Package.t) =
     let pkg_name = Package.name pkg in
     let ctx = Super_context.context sctx in
@@ -454,12 +461,7 @@ end = struct
                        ~dir:(Path.build (lib_root lib))
                        ~modules ~foreign_objects))))
     in
-    let sections =
-      Section.Site.Map.values pkg.sites
-      |> Section.Set.of_list |> Section.Set.to_map
-      |> Section.Map.mapi ~f:(fun section () ->
-             Install.Section.Paths.get_local_location ctx.name section pkg_name)
-    in
+    let sections = sections ctx.name pkg in
     Dune_package.Or_meta.Dune_package
       { Dune_package.version = pkg.version
       ; name = pkg_name
@@ -521,13 +523,7 @@ end = struct
                     (Dune_package.Entry.Deprecated_library_name
                        { loc; old_public_name; new_public_name }))
           in
-          let sections =
-            let sections =
-              Section.Set.of_list (Section.Site.Map.values pkg.sites)
-            in
-            Section.Map.mapi (Section.Set.to_map sections) ~f:(fun section () ->
-                Install.Section.Paths.get_local_location ctx.name section name)
-          in
+          let sections = sections ctx.name pkg in
           { Dune_package.version = pkg.version
           ; name
           ; entries

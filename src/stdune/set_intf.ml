@@ -71,5 +71,5 @@ module type S = sig
 
   val of_keys : _ map -> t
 
-  val to_map : t -> unit map
+  val to_map : t -> f:(elt -> 'a) -> 'a map
 end

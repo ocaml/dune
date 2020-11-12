@@ -384,6 +384,13 @@ end
 module Meta_and_dune_package : sig
   val meta_and_dune_package_rules : Super_context.t -> dir:Path.Build.t -> unit
 end = struct
+  let sections ctx_name pkg =
+    let pkg_name = Package.name pkg in
+    Section.Site.Map.values pkg.sites
+    |> Section.Set.of_list
+    |> Section.Set.to_map ~f:(fun section ->
+           Install.Section.Paths.get_local_location ctx_name section pkg_name)
+
   let make_dune_package sctx lib_entries (pkg : Package.t) =
     let pkg_name = Package.name pkg in
     let ctx = Super_context.context sctx in
@@ -454,12 +461,7 @@ end = struct
                        ~dir:(Path.build (lib_root lib))
                        ~modules ~foreign_objects))))
     in
-    let sections =
-      Section.Site.Map.values pkg.sites
-      |> Section.Set.of_list |> Section.Set.to_map
-      |> Section.Map.mapi ~f:(fun section () ->
-             Install.Section.Paths.get_local_location ctx.name section pkg_name)
-    in
+    let sections = sections ctx.name pkg in
     Dune_package.Or_meta.Dune_package
       { Dune_package.version = pkg.version
       ; name = pkg_name
@@ -521,13 +523,7 @@ end = struct
                     (Dune_package.Entry.Deprecated_library_name
                        { loc; old_public_name; new_public_name }))
           in
-          let sections =
-            let sections =
-              Section.Set.of_list (Section.Site.Map.values pkg.sites)
-            in
-            Section.Map.mapi (Section.Set.to_map sections) ~f:(fun section () ->
-                Install.Section.Paths.get_local_location ctx.name section name)
-          in
+          let sections = sections ctx.name pkg in
           { Dune_package.version = pkg.version
           ; name
           ; entries
@@ -864,13 +860,11 @@ let scheme_per_ctx_memo =
          end ))
     "install-rule-scheme" ~doc:"install rules scheme" ~visibility:Hidden Sync
     (fun sctx ->
-      let packages = Super_context.packages sctx in
-      let scheme =
-        Scheme.all
-          (List.map (Package.Name.Map.to_list packages) ~f:(fun (_, pkg) ->
-               scheme sctx pkg))
-      in
-      Scheme.evaluate ~union:Rules.Dir_rules.union scheme)
+      Super_context.packages sctx
+      |> Package.Name.Map.values
+      |> List.map ~f:(scheme sctx)
+      |> Scheme.all
+      |> Scheme.evaluate ~union:Rules.Dir_rules.union)
 
 let gen_rules sctx ~dir =
   let rules, subdirs =
@@ -880,16 +874,13 @@ let gen_rules sctx ~dir =
   Build_system.Subdir_set.These subdirs
 
 let packages =
-  let package_source_files sctx package =
-    List.map
-      ~f:(fun (_loc, entry) -> entry.Install.Entry.src)
-      (install_entries sctx package)
-  in
   let f sctx =
     Super_context.packages sctx
-    |> Package.Name.Map.fold ~init:[] ~f:(fun (pkg : Package.t) acc ->
-           List.fold_left (package_source_files sctx pkg) ~init:acc
-             ~f:(fun acc path -> (path, pkg.id) :: acc))
+    |> Package.Name.Map.fold ~init:[] ~f:(fun (pkg : Package.t) init ->
+           install_entries sctx pkg
+           |> List.fold_left ~init
+                ~f:(fun acc (_loc, (entry : _ Install.Entry.t)) ->
+                  (entry.src, pkg.id) :: acc))
     |> Path.Build.Map.of_list_fold ~init:Package.Id.Set.empty
          ~f:Package.Id.Set.add
   in

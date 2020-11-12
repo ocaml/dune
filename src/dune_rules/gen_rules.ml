@@ -153,8 +153,8 @@ end
  * See: https://github.com/ocaml/dune/pull/1354#issuecomment-427922592 *)
 
 let with_format sctx ~dir ~f =
-  Super_context.find_scope_by_dir sctx dir
-  |> Scope.project |> Dune_project.format_config |> Option.iter ~f
+  let f config = if not (Format_config.is_empty config) then f config in
+  Super_context.format_config sctx ~dir |> f
 
 let gen_format_rules sctx ~expander ~output_dir =
   let scope = Super_context.find_scope_by_dir sctx output_dir in

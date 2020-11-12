@@ -106,7 +106,10 @@ end = struct
     let scope = Scope.DB.find_by_dir t.scopes dir in
     let inherit_from =
       if Path.Build.equal dir (Scope.root scope) then
-        t.default_env
+        let format_config = Dune_project.format_config (Scope.project scope) in
+        Memo.lazy_ (fun () ->
+            let default_env = Memo.Lazy.force t.default_env in
+            Env_node.set_format_config default_env format_config)
       else
         match Path.Build.parent dir with
         | None ->
@@ -351,6 +354,8 @@ let local_binaries t ~dir = get_node t.env_tree ~dir |> Env_node.local_binaries
 let odoc t ~dir = get_node t.env_tree ~dir |> Env_node.odoc
 
 let coq t ~dir = get_node t.env_tree ~dir |> Env_node.coq
+
+let format_config t ~dir = get_node t.env_tree ~dir |> Env_node.format_config
 
 let dump_env t ~dir =
   let t = t.env_tree in

@@ -24,6 +24,7 @@ type t =
   ; menhir_flags : string list Build.t Memo.Lazy.t
   ; odoc : Odoc.t Memo.Lazy.t
   ; coq : Coq.t Memo.Lazy.t
+  ; format_config : Format_config.t Memo.Lazy.t
   }
 
 let scope t = t.scope
@@ -41,6 +42,11 @@ let bin_artifacts t = Memo.Lazy.force t.bin_artifacts
 let inline_tests t = Memo.Lazy.force t.inline_tests
 
 let menhir_flags t = Memo.Lazy.force t.menhir_flags
+
+let format_config t = Memo.Lazy.force t.format_config
+
+let set_format_config t format_config =
+  { t with format_config = Memo.Lazy.of_val format_config }
 
 let odoc t = Memo.Lazy.force t.odoc
 
@@ -131,6 +137,16 @@ let make ~dir ~inherit_from ~scope ~config_stanza ~profile ~expander
         { warnings = Option.value config.odoc.warnings ~default:warnings })
   in
   let coq = inherited ~field:coq ~root:config.coq (fun x -> x) in
+  let format_config =
+    Memo.lazy_ (fun () ->
+        match config.format_config with
+        | None -> (
+          match inherit_from with
+          | None ->
+            Code_error.raise "format config not taken from default env" []
+          | Some t -> format_config (Memo.Lazy.force t) )
+        | Some x -> x)
+  in
   { scope
   ; ocaml_flags
   ; foreign_flags
@@ -141,4 +157,5 @@ let make ~dir ~inherit_from ~scope ~config_stanza ~profile ~expander
   ; menhir_flags
   ; odoc
   ; coq
+  ; format_config
   }

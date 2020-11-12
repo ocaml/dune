@@ -82,6 +82,9 @@ val odoc : t -> dir:Path.Build.t -> Env_node.Odoc.t
 (** coq config in the corresponding [(env)] stanza. *)
 val coq : t -> dir:Path.Build.t -> Env_node.Coq.t
 
+(** Formatting settings in the corresponding [(env)] stanza. *)
+val format_config : t -> dir:Path.Build.t -> Format_config.t
+
 (** Dump a directory environment in a readable form *)
 val dump_env : t -> dir:Path.Build.t -> Dune_lang.t list Build.t
 

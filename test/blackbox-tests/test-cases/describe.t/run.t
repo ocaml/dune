@@ -95,8 +95,8 @@ Test errors
 
   $ dune describe --lang 1.0
   dune: Only --lang 0.1 is available at the moment as this command is not yet
-        stabilised. If you would like to release a software that relies on the
-        output of 'dune describe', please open a ticket on
+        stabilised. If you would like to release a software that relies on the output
+        of 'dune describe', please open a ticket on
         https://github.com/ocaml/dune.
   Usage: dune describe [OPTION]... [STRING]...
   Try `dune describe --help' or `dune --help' for more information.

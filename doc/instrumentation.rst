@@ -23,7 +23,9 @@ executable stanza:
    (library
     (name ...)
     (instrumentation
-     (backend <name>)))
+     (backend <name> <args>)))
+
+The backend ``<name>`` can be passed arguments using ``<args>``.
 
 This field can be repeated multiple times in order to support various
 backends. For instance:
@@ -33,7 +35,7 @@ backends. For instance:
    (library
     (name foo)
     (modules foo)
-    (instrumentation (backend bisect_ppx))
+    (instrumentation (backend bisect_ppx --bisect-silent yes))
     (instrumentation (backend landmarks)))
 
 This will instruct Dune that when either the ``bisect_ppx`` or ``landmarks``

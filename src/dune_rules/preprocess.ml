@@ -197,19 +197,18 @@ module Per_module = struct
     else
       No_preprocessing
 
-  let add_instrumentation t ~loc libname =
+  let add_instrumentation t ~loc ~flags:flags' libname =
     Per_module.map t ~f:(fun pp ->
         match pp with
         | No_preprocessing ->
           let pps = [ With_instrumentation.Instrumentation_backend libname ] in
-          let flags = [] in
           let staged = false in
-          Pps { loc; pps; flags; staged }
+          Pps { loc; pps; flags = flags'; staged }
         | Pps { loc; pps; flags; staged } ->
           let pps =
             With_instrumentation.Instrumentation_backend libname :: pps
           in
-          Pps { loc; pps; flags; staged }
+          Pps { loc; pps; flags = flags @ flags'; staged }
         | Action (loc, _)
         | Future_syntax loc ->
           User_error.raise ~loc

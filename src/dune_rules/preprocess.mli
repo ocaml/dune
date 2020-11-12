@@ -77,6 +77,7 @@ module Per_module : sig
   val add_instrumentation :
        With_instrumentation.t t
     -> loc:Loc.t
+    -> flags:String_with_vars.t list
     -> Loc.t * Lib_name.t
     -> With_instrumentation.t t
 

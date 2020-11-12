@@ -7,13 +7,15 @@ How to load additional files at runtime
 There are many ways for applications to load files at runtime and Dune provides
 a well tested, key-in-hand portable system for doing so. The Dune model works by
 defining ``sites`` where files will be installed and looked up at runtime. At
-runtime each site is associated to a list of directories which contain the
+runtime, each site is associated to a list of directories which contain the
 files added in the site.
 
+*WARNING*: This feature remains experimental and is subject to breaking changes
+without warning. It must be explicitly enabled in the ``dune-project`` file with
+``(using dune_site 0.1)``
 
 Sites
 =====
-
 
 Defining a site
 ---------------
@@ -22,16 +24,18 @@ A site is defined in a package :ref:`package` in the ``dune-project`` file. It
 consists of a name and a :ref:`section<install>` (e.g ``lib``, ``share``,
 ``etc``) where the site will be installed as a sub-directory.
 
-
 .. code:: scheme
 
    (lang dune 2.8)
+   (using dune_site 0.1)
    (name mygui)
-   (package (name mygui) (sites (share themes)))
+
+   (package
+    (name mygui)
+    (sites (share themes)))
 
 Adding files to a site
 ----------------------
-
 
 Here the package ``mygui`` defines a site named ``themes`` that will be located
 in the section ``share``. This package can add files to this ``sites`` using the
@@ -40,31 +44,29 @@ in the section ``share``. This package can add files to this ``sites`` using the
 .. code:: scheme
 
    (install
-     (section (site mygui themes))
-     (files
-       (layout.css as default/layout.css)
-       (ok.png  as default/ok.png)
-       (ko.png  as default/ko.png)
-     )
-   )
+    (section (site mygui themes))
+    (files
+     (layout.css as default/layout.css)
+     (ok.png  as default/ok.png)
+     (ko.png  as default/ko.png)))
 
-Another package ``mygui_material_theme`` can install files inside ``mygui`` directory for adding a new
-theme. Inside the scope of ``mygui_material_theme`` the ``dune`` file contains:
+Another package ``mygui_material_theme`` can install files inside ``mygui``
+directory for adding a new theme. Inside the scope of ``mygui_material_theme``
+the ``dune`` file contains:
 
 .. code:: scheme
 
    (install
-     (section (site mygui themes))
-     (files
-       (layout.css as material/layout.css)
-       (ok.png  as material/ok.png)
-       (ko.png  as material/ko.png)
-     )
-   )
+    (section (site mygui themes))
+    (files
+     (layout.css as material/layout.css)
+     (ok.png  as material/ok.png)
+     (ko.png  as material/ko.png)))
 
 The package ``mygui`` must be present in the workspace or installed.
 
 .. warning::
+
    Two files should not be installed by different packages at the same destination.
 
 Getting the locations of a site at runtime
@@ -76,14 +78,16 @@ site using the :ref:`generate module stanza<generate_module>`
 .. code:: scheme
 
    (executable
-      (name mygui)
-      (modules mygui mysites)
-      (libraries dune-site)
-   )
+    (name mygui)
+    (modules mygui mysites)
+    (libraries dune-site))
 
-   (generate_module (name mysites) (sites mygui))
+   (generate_module
+    (name mysites)
+    (sites mygui))
 
-The generated module `mysites` depends on the library `dune-site` provided by Dune.
+The generated module `mysites` depends on the library `dune-site` provided by
+Dune.
 
 Then inside ``mygui.ml`` module the locations can be recovered and used:
 
@@ -126,22 +130,21 @@ During tests the files are copied into the sites through the dependency
 ``(package mygui)`` and ``(package mygui_material_theme)`` as for other files in
 install stanza.
 
-
 Installation
 ------------
 
 Installation is done simply with ``dune install``, however if one want to
 install this tool such that it is relocatable, one can use ``dune
 install --relocatable --prefix $dir``. The files will be copied to the directory
-``$dir`` but the binary ``$dir/bin/mygui`` will find the site location relatively
-to its location. So even if the directory ``$dir`` is moved, ``themes_locations`` will
-be correct.
+``$dir`` but the binary ``$dir/bin/mygui`` will find the site location relative
+to its location. So even if the directory ``$dir`` is moved,
+``themes_locations`` will be correct.
 
 Implementation details
 ----------------------
 
-The main difficulty for sites is that their directories are
-found at different locations at different times:
+The main difficulty for sites is that their directories are found at different
+locations at different times:
 
 - When the package is available locally, the location is inside ``_build``
 - When the package is installed, the location is inside the install prefix
@@ -149,10 +152,9 @@ found at different locations at different times:
   package the location is at the same time in ``_build`` and in the install prefix
   of the second package.
 
-With the last example we see that the location of a site is not always a single directory,
-but can consist of a sequence of directories: ``["dir1";"dir2"]``. So a lookup must first look
-into "dir1", then into "dir2".
-
+With the last example we see that the location of a site is not always a single
+directory, but can consist of a sequence of directories: ``["dir1" ; "dir2"]``.
+So a lookup must first look into `dir1`, then into `dir2`.
 
 .. _plugins:
 
@@ -160,14 +162,41 @@ Plugins and dynamic loading of packages
 ========================================
 
 Dune allows to define and load plugins without having to deal with specific
-compilation, installation directories, dependencies or the module `Dynlink`.
-Here we show an example of an executable which can be extended using plugins,
-and the definition of one plugin in another package. The sites used for plugins
-are not particular, but it is better to use them just for that pupose and not install
-other files in them.
+compilation, installation directories, dependencies, or the Dynlink_ module.
+
+To define a plugin:
+
+- The package defining the plugin interface must define a `site` where the
+  plugins must live. Traditionally, this is in ``(lib plugins)``, but it is just
+  a convention.
+
+- Define a library that each plugin must use to register itself (or otherwise
+  provide its functionality).
+
+- Define the plugin in another package using the `plugin` stanza.
+
+- Generate a module that may load all available plugins using the
+  `generated_module` stanza.
 
 Example
 -------
+
+We demonstrate an example of the scheme above. The example consists of the
+following components:
+
+Inside package `c`,
+
+- A package `c`, containing the executable `c`, that we intend to extend with
+  plugins.
+
+- A library `c.register` which defines the plugin registration interface.
+
+- A generated module `Sites` which can load available plugins at runtime.
+
+- An executable `c` that will use the module `Sites` to load all the plugins.
+
+Inside package `b`, we declare plugin using the `c.register` api and the
+`plugin` stanza.
 
 Main executable (C)
 ^^^^^^^^^^^^^^^^^^^^^
@@ -177,8 +206,11 @@ Main executable (C)
 .. code:: scheme
 
    (lang dune 2.8)
+   (using dune_site 0.1)
    (name c)
-   (package (name c) (sites (lib plugins)))
+   (package
+    (name c)
+    (sites (lib plugins)))
 
 
 - ``dune`` file:
@@ -195,7 +227,9 @@ Main executable (C)
     (name c_register)
     (modules c_register))
 
-   (generate_module (module sites)  (plugins (c plugins)))
+   (generate_module
+    (module sites)
+    (plugins (c plugins)))
 
 The generated module `sites` depends here also on the library
 `dune-site.plugins` because the plugins optional field is requested.
@@ -223,6 +257,7 @@ One plugin (B)
 .. code:: scheme
 
    (lang dune 2.8)
+   (using dune_site 0.1)
    (name b)
 
 - ``dune`` file:
@@ -242,4 +277,7 @@ One plugin (B)
 
 .. code:: ocaml
 
-   let () = Queue.add (fun () -> print_endline "B is doing something") C_register.todo
+   let () =
+     Queue.add (fun () -> print_endline "B is doing something") C_register.todo
+
+.. _Dynlink: https://caml.inria.fr/pub/docs/manual-ocaml/libref/Dynlink.html

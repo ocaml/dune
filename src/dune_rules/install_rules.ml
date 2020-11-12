@@ -387,8 +387,8 @@ end = struct
   let sections ctx_name pkg =
     let pkg_name = Package.name pkg in
     Section.Site.Map.values pkg.sites
-    |> Section.Set.of_list |> Section.Set.to_map
-    |> Section.Map.mapi ~f:(fun section () ->
+    |> Section.Set.of_list
+    |> Section.Set.to_map ~f:(fun section ->
            Install.Section.Paths.get_local_location ctx_name section pkg_name)
 
   let make_dune_package sctx lib_entries (pkg : Package.t) =

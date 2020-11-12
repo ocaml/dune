@@ -51,7 +51,7 @@
   b: called
   a: called
 
-  $ dune exe mytool_auto
+  $ dune exec mytool_auto
   m: init
   a: init
   b: init
@@ -59,7 +59,7 @@
   b: called
   a: called
 
-  $ dune exe mytool c_thread
+  $ dune exec mytool c_thread
   m: init
   c_thread: registering
 

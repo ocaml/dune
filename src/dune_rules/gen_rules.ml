@@ -160,8 +160,11 @@ let gen_format_rules sctx ~expander ~output_dir =
   let scope = Super_context.find_scope_by_dir sctx output_dir in
   let project = Scope.project scope in
   let dialects = Dune_project.dialects project in
+  let version = Dune_project.dune_version project in
   with_format sctx ~dir:output_dir
-    ~f:(Format_rules.gen_rules_output sctx ~dialects ~expander ~output_dir)
+    ~f:
+      (Format_rules.gen_rules_output sctx ~version ~dialects ~expander
+         ~output_dir)
 
 (* This is used to determine the list of source directories to give to Merlin.
    This serves the same purpose as [Merlin.lib_src_dirs] and has a similar

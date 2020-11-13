@@ -1,4 +1,4 @@
-open Import
+open Stdune
 
 module type S_base = sig
   type t

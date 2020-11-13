@@ -1,4 +1,4 @@
-open! Stdune
+open! Import
 
 let opam_ext = ".opam"
 

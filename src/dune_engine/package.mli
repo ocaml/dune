@@ -1,6 +1,6 @@
 (** Information about a package defined in the workspace *)
 
-open! Stdune
+open Import
 
 module Name : sig
   type t

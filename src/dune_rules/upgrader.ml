@@ -134,7 +134,8 @@ module Common = struct
   let string_of_sexps sexps comments =
     let new_csts = List.map sexps ~f:Dune_lang.Cst.concrete in
     Dune_lang.Parser.insert_comments new_csts comments
-    |> Format.asprintf "%a@?" Format_dune_lang.pp_top_sexps
+    |> Format_dune_lang.pp_top_sexps
+    |> Format.asprintf "%a@?" Pp.to_fmt
 end
 
 module V1 = struct
@@ -324,7 +325,9 @@ module V1 = struct
         (List.map ~f:Dune_lang.Cst.concrete sexps)
         comments
     in
-    let contents = Format.asprintf "%a@?" Format_dune_lang.pp_top_sexps sexps in
+    let contents =
+      Format.asprintf "%a@?" Pp.to_fmt (Format_dune_lang.pp_top_sexps sexps)
+    in
     todo.to_rename_and_edit <-
       { original_file = file; new_file; extra_files_to_delete; contents }
       :: todo.to_rename_and_edit

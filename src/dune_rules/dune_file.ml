@@ -234,7 +234,25 @@ module Buildable = struct
            >>> fields
                  (field "backend"
                     (let+ libname = located Lib_name.decode
-                     and+ flags = repeat String_with_vars.decode in
+                     and+ flags =
+                       let* current_ver =
+                         Dune_lang.Syntax.get_exn Stanza.syntax
+                       in
+                       let version_check flag =
+                         let ver = (2, 8) in
+                         if current_ver >= ver then
+                           flag
+                         else
+                           let what =
+                             "The possibility to pass arguments to \
+                              instrumentation backends"
+                           in
+                           Dune_lang.Syntax.Error.since
+                             (String_with_vars.loc flag)
+                             Stanza.syntax ver ~what
+                       in
+                       repeat (String_with_vars.decode >>| version_check)
+                     in
                      (libname, flags))) ))
     in
     let preprocess =

@@ -70,7 +70,18 @@ We also check that we can pass arguments to the ppx.
   >  (modules main)
   >  (instrumentation (backend hello -place Spain)))
   > EOF
+  $ dune build --instrument-with hello
+  File "dune", line 4, characters 33-39:
+  4 |  (instrumentation (backend hello -place Spain)))
+                                       ^^^^^^
+  Error: The possibility to pass arguments to instrumentation backends is only
+  available since version 2.8 of the dune language. Please update your
+  dune-project file to have (lang dune 2.8).
+  [1]
 
+  $ cat >dune-project <<EOF
+  > (lang dune 2.8)
+  > EOF
   $ dune build --instrument-with hello
   $ _build/default/main.exe
   Hello from Spain!

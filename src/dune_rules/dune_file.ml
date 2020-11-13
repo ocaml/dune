@@ -240,7 +240,9 @@ module Buildable = struct
                        in
                        let version_check flag =
                          let ver = (2, 8) in
-                         if current_ver < ver then
+                         if current_ver >= ver then
+                           flag
+                         else
                            let what =
                              "The possibility to pass arguments to \
                               instrumentation backends"
@@ -248,8 +250,6 @@ module Buildable = struct
                            Dune_lang.Syntax.Error.since
                              (String_with_vars.loc flag)
                              Stanza.syntax ver ~what
-                         else
-                           flag
                        in
                        repeat (String_with_vars.decode >>| version_check)
                      in

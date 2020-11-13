@@ -29,7 +29,8 @@ let pp ppf ~fields sexps =
       if do_print then
         Dune_lang.Ast.add_loc sexp ~loc:Loc.none
         |> Dune_lang.Cst.concrete |> List.singleton
-        |> Format.fprintf ppf "%a@?" Dune_engine.Format_dune_lang.pp_top_sexps)
+        |> Dune_engine.Format_dune_lang.pp_top_sexps
+        |> Format.fprintf ppf "%a@?" Pp.to_fmt)
 
 let term =
   let+ common = Common.term

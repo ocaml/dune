@@ -1,5 +1,6 @@
 open! Stdune
 open! Import
+open Pp.O
 
 type dune_file =
   | OCaml_syntax of Loc.t
@@ -29,73 +30,63 @@ let can_be_displayed_wrapped =
       | Comment _ ->
         false)
 
-let pp_simple fmt t =
+let pp_simple t =
   Dune_lang.Cst.abstract t |> Option.value_exn |> Dune_lang.Ast.remove_locs
-  |> Dune_lang.Deprecated.pp fmt
+  |> Dune_lang.pp
 
-let print_wrapped_list fmt =
-  Format.fprintf fmt "(@[<hov 1>%a@])"
-    (Format.pp_print_list
-       ~pp_sep:(fun fmt () -> Format.fprintf fmt "@ ")
-       pp_simple)
+let print_wrapped_list x =
+  Pp.hvbox ~indent:1
+    (Pp.char '(' ++ Pp.concat_map ~sep:Pp.space ~f:pp_simple x ++ Pp.char ')')
 
-let pp_comment_line fmt l = Format.fprintf fmt ";%s" l
+let pp_comment_line l = Pp.char ';' ++ Pp.verbatim l
 
-let pp_comment loc fmt (comment : Dune_lang.Cst.Comment.t) =
+let pp_comment loc (comment : Dune_lang.Cst.Comment.t) =
   match comment with
-  | Lines ls ->
-    Format.fprintf fmt "@[<v 0>%a@]"
-      (Format.pp_print_list
-         ~pp_sep:(fun fmt () -> Format.fprintf fmt "@;")
-         pp_comment_line)
-      ls
+  | Lines ls -> Pp.vbox (Pp.concat_map ~sep:Pp.cut ~f:pp_comment_line ls)
   | Legacy ->
     User_error.raise ~loc
       [ Pp.text "Formatting is only supported with the dune syntax" ]
 
-let pp_break fmt attached =
+let pp_break attached =
   if attached then
-    Format.fprintf fmt " "
+    Pp.char ' '
   else
-    Format.fprintf fmt "@,"
+    Pp.cut
 
-let pp_list_with_comments pp_sexp fmt sexps =
-  let rec go fmt (l : Dune_lang.Cst.t list) =
+let pp_list_with_comments pp_sexp sexps =
+  let rec go (l : Dune_lang.Cst.t list) =
     match l with
     | x :: Comment (loc, c) :: xs ->
       let attached = Loc.on_same_line (Dune_lang.Cst.loc x) loc in
-      Format.fprintf fmt "%a%a%a@,%a" pp_sexp x pp_break attached
-        (pp_comment loc) c go xs
-    | Comment (loc, c) :: xs ->
-      Format.fprintf fmt "%a@,%a" (pp_comment loc) c go xs
-    | [ x ] -> Format.fprintf fmt "%a" pp_sexp x
-    | x :: xs -> Format.fprintf fmt "%a@,%a" pp_sexp x go xs
-    | [] -> ()
+      pp_sexp x ++ pp_break attached ++ pp_comment loc c ++ Pp.cut ++ go xs
+    | Comment (loc, c) :: xs -> pp_comment loc c ++ Pp.cut ++ go xs
+    | [ x ] -> pp_sexp x
+    | x :: xs -> pp_sexp x ++ Pp.cut ++ go xs
+    | [] -> Pp.nop
   in
-  go fmt sexps
+  go sexps
 
-let rec pp_sexp fmt : Dune_lang.Cst.t -> _ = function
-  | (Atom _ | Quoted_string _ | Template _) as sexp -> pp_simple fmt sexp
+let rec pp_sexp : Dune_lang.Cst.t -> _ = function
+  | (Atom _ | Quoted_string _ | Template _) as sexp -> pp_simple sexp
   | List (_, sexps) ->
-    Format.fprintf fmt "@[<v 1>%a@]"
+    Pp.vbox ~indent:1
       ( if can_be_displayed_wrapped sexps then
-        print_wrapped_list
+        print_wrapped_list sexps
       else
-        pp_sexp_list )
-      sexps
-  | Comment (loc, c) -> pp_comment loc fmt c
+        pp_sexp_list sexps )
+  | Comment (loc, c) -> pp_comment loc c
 
-and pp_sexp_list fmt = Format.fprintf fmt "(%a)" (pp_list_with_comments pp_sexp)
+and pp_sexp_list sexps =
+  Pp.char '(' ++ pp_list_with_comments pp_sexp sexps ++ Pp.char ')'
 
-let pp_top_sexp fmt sexp = Format.fprintf fmt "%a\n" pp_sexp sexp
+let pp_top_sexp sexp = pp_sexp sexp ++ Pp.char '\n'
 
-let pp_top_sexps =
-  Format.pp_print_list ~pp_sep:Format.pp_print_newline pp_top_sexp
+let pp_top_sexps = Pp.concat_map ~sep:Pp.newline ~f:pp_top_sexp
 
 let write_file ~path sexps =
   let f oc =
     let fmt = Format.formatter_of_out_channel oc in
-    Format.fprintf fmt "%a%!" pp_top_sexps sexps
+    Format.fprintf fmt "%a%!" Pp.to_fmt (pp_top_sexps sexps)
   in
   Io.with_file_out ~binary:true path ~f
 
@@ -116,4 +107,4 @@ let format_file ~input ~output =
   | Sexps sexps ->
     with_output (fun oc ->
         let oc = Format.formatter_of_out_channel oc in
-        Format.fprintf oc "%a%!" pp_top_sexps sexps)
+        Format.fprintf oc "%a%!" Pp.to_fmt (pp_top_sexps sexps))

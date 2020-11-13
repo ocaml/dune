@@ -72,6 +72,8 @@ Unreleased
 - instrumentations backends can now receive arguments via `(instrumentation
   (backend <name> <args>))`. (#3906, #3932, @nojb)
 
+- Tweak auto-formatting of `dune` files to improve readability. (#3928, @nojb)
+
 2.7.1 (2/09/2020)
 -----------------
 

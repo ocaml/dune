@@ -61,16 +61,16 @@ let run ~lib_deps ~by_dir ~setup ~only_missing ~sexp =
         Path.Source.Map.values lib_deps_by_dir
         |> List.fold_left ~init:Lib_name.Map.empty ~f:Lib_deps_info.merge
       in
-      let scontext =
+      let sctx =
         Dune_engine.Context_name.Map.find_exn setup.Import.Main.scontexts
           context_name
       in
-      let opam_switch_name =
-        match Super_context.context scontext |> fun ctx -> ctx.Context.kind with
+      let switch_name =
+        match (Super_context.context sctx).Context.kind with
         | Default -> None
         | Opam { switch; _ } -> Some switch
       in
-      let internals = Super_context.internal_lib_names scontext in
+      let internals = Super_context.internal_lib_names sctx in
       let is_external name _kind = not (Lib_name.Set.mem internals name) in
       let externals = Lib_name.Map.filteri lib_deps ~f:is_external in
       if only_missing then (
@@ -120,8 +120,7 @@ let run ~lib_deps ~by_dir ~setup ~only_missing ~sexp =
                ]
                ~hints:
                  [ Dune_engine.Utils.pp_command_hint
-                     (populate_opam_command ?switch_name:opam_switch_name
-                        required_package_names)
+                     (populate_opam_command ?switch_name required_package_names)
                  ]);
           true
       ) else if sexp then (

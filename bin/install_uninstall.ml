@@ -314,12 +314,7 @@ let file_operations ~dry_run ~workspace : (module File_operations) =
 
 let package_is_vendored (pkg : Dune_engine.Package.t) =
   let dir = Package.dir pkg in
-  match Dune_engine.File_tree.find_dir dir with
-  | None -> assert false
-  | Some d -> (
-    match Dune_engine.File_tree.Dir.status d with
-    | Vendored -> true
-    | _ -> false )
+  Dune_engine.File_tree.is_vendored dir
 
 let install_uninstall ~what =
   let doc = sprintf "%s packages." (String.capitalize what) in

@@ -313,13 +313,9 @@ let add_alias_action t alias ~dir ~loc ?locks ~stamp action =
     ~env alias ~loc ?locks ~stamp action
 
 let build_dir_is_vendored build_dir =
-  let opt =
-    let open Option.O in
-    let* src_dir = Path.Build.drop_build_context build_dir in
-    let+ src_dir = File_tree.find_dir src_dir in
-    Sub_dirs.Status.Vendored = File_tree.Dir.status src_dir
-  in
-  Option.value ~default:false opt
+  match Path.Build.drop_build_context build_dir with
+  | Some src_dir -> Dune_engine.File_tree.is_vendored src_dir
+  | None -> false
 
 let ocaml_flags t ~dir (spec : Ocaml_flags.Spec.t) =
   let expander = Env_tree.expander t.env_tree ~dir in

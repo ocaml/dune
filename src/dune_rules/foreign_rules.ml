@@ -100,10 +100,15 @@ let build_c ~kind ~sctx ~dir ~expander ~include_flags (loc, src, dst) =
        [dune-project] file (thus defaulting to [true]) and the [:standard] set
        of flags has been overriden *)
     let has_standard = Ordered_set_lang.Unexpanded.has_standard flags in
+    let is_vendored =
+      match Path.Build.drop_build_context dir with
+      | Some src_dir -> Dune_engine.File_tree.is_vendored src_dir
+      | None -> false
+    in
     if
       Dune_project.dune_version project >= (2, 8)
       && Option.is_none (Dune_project.future_c_and_cxx_flags_handling project)
-      && not has_standard
+      && (not is_vendored) && not has_standard
     then
       User_warning.emit ~loc
         [ Pp.text

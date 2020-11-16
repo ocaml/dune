@@ -1,4 +1,4 @@
-open Stdune
+open Import
 
 let private_key = "__private__"
 

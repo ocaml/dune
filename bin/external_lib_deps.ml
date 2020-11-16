@@ -46,6 +46,14 @@ let all_lib_deps ~request =
   |> Context_name.Map.map
        ~f:(Path.Source.Map.of_list_reduce ~f:Lib_deps_info.merge)
 
+let opam_install_command ?switch_name packages =
+  let cmd =
+    match switch_name with
+    | Some name -> Printf.sprintf "opam install --switch=%s" name
+    | None -> "opam install"
+  in
+  cmd :: packages |> String.concat ~sep:" "
+
 let run ~lib_deps ~by_dir ~setup ~only_missing ~sexp =
   Dune_engine.Context_name.Map.foldi lib_deps ~init:false
     ~f:(fun context_name lib_deps_by_dir acc ->
@@ -53,11 +61,16 @@ let run ~lib_deps ~by_dir ~setup ~only_missing ~sexp =
         Path.Source.Map.values lib_deps_by_dir
         |> List.fold_left ~init:Lib_name.Map.empty ~f:Lib_deps_info.merge
       in
-      let internals =
+      let sctx =
         Dune_engine.Context_name.Map.find_exn setup.Import.Main.scontexts
           context_name
-        |> Super_context.internal_lib_names
       in
+      let switch_name =
+        match (Super_context.context sctx).Context.kind with
+        | Default -> None
+        | Opam { switch; _ } -> Some switch
+      in
+      let internals = Super_context.internal_lib_names sctx in
       let is_external name _kind = not (Lib_name.Set.mem internals name) in
       let externals = Lib_name.Map.filteri lib_deps ~f:is_external in
       if only_missing then (
@@ -107,8 +120,7 @@ let run ~lib_deps ~by_dir ~setup ~only_missing ~sexp =
                ]
                ~hints:
                  [ Dune_engine.Utils.pp_command_hint
-                     ( "opam install" :: required_package_names
-                     |> String.concat ~sep:" " )
+                     (opam_install_command ?switch_name required_package_names)
                  ]);
           true
       ) else if sexp then (

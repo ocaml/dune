@@ -99,11 +99,7 @@ let build_c ~kind ~sctx ~dir ~expander ~include_flags (loc, src, dst) =
        1.8, [future_c_and_cxx_flags_handling] is not specified in the
        [dune-project] file (thus defaulting to [true]) and the [:standard] set
        of flags has been overriden *)
-    let has_standard =
-      Ordered_set_lang.Unexpanded.encode flags
-      |> List.map ~f:Dune_lang.to_string
-      |> List.exists ~f:(String.equal ":standard")
-    in
+    let has_standard = Ordered_set_lang.Unexpanded.has_standard flags in
     if
       Dune_project.dune_version project >= (2, 8)
       && Option.is_none (Dune_project.future_c_and_cxx_flags_handling project)

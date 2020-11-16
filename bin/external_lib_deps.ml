@@ -46,7 +46,7 @@ let all_lib_deps ~request =
   |> Context_name.Map.map
        ~f:(Path.Source.Map.of_list_reduce ~f:Lib_deps_info.merge)
 
-let populate_opam_command ?switch_name packages =
+let opam_install_command ?switch_name packages =
   let cmd =
     match switch_name with
     | Some name -> Printf.sprintf "opam install --switch=%s" name
@@ -120,7 +120,7 @@ let run ~lib_deps ~by_dir ~setup ~only_missing ~sexp =
                ]
                ~hints:
                  [ Dune_engine.Utils.pp_command_hint
-                     (populate_opam_command ?switch_name required_package_names)
+                     (opam_install_command ?switch_name required_package_names)
                  ]);
           true
       ) else if sexp then (

@@ -74,7 +74,7 @@ Unreleased
 
 - Tweak auto-formatting of `dune` files to improve readability. (#3928, @nojb)
 
-- Add a switch argument to opam when context is not default. (#3951m @tmattio)
+- Add a switch argument to opam when context is not default. (#3951, @tmattio)
 
 2.7.1 (2/09/2020)
 -----------------

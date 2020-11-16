@@ -1,4 +1,3 @@
-open Dune_engine
 open Dune_rules
 open Import
 open Dune_tests_common

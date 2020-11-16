@@ -46,6 +46,14 @@ let all_lib_deps ~request =
   |> Context_name.Map.map
        ~f:(Path.Source.Map.of_list_reduce ~f:Lib_deps_info.merge)
 
+let populate_opam_command ~context_name packages =
+  let cmd =
+    match Dune_engine.Context_name.to_string context_name with
+    | "default" -> "opam install"
+    | ctx -> Printf.sprintf "opam install --switch=%s" ctx
+  in
+  cmd :: packages |> String.concat ~sep:" "
+
 let run ~lib_deps ~by_dir ~setup ~only_missing ~sexp =
   Dune_engine.Context_name.Map.foldi lib_deps ~init:false
     ~f:(fun context_name lib_deps_by_dir acc ->
@@ -107,8 +115,8 @@ let run ~lib_deps ~by_dir ~setup ~only_missing ~sexp =
                ]
                ~hints:
                  [ Dune_engine.Utils.pp_command_hint
-                     ( "opam install" :: required_package_names
-                     |> String.concat ~sep:" " )
+                     (populate_opam_command ~context_name
+                        required_package_names)
                  ]);
           true
       ) else if sexp then (

@@ -23,7 +23,7 @@ ocamlformat.0.15.0 \
 "odoc>=1.5.0" \
 "ppx_expect>=v0.14" \
 ppx_inline_test \
-"ppxlib.0.14.0" \
+"ppxlib.0.15.0" \
 result \
 "utop>=2.6.0"
 

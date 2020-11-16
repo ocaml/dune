@@ -46,11 +46,11 @@ let all_lib_deps ~request =
   |> Context_name.Map.map
        ~f:(Path.Source.Map.of_list_reduce ~f:Lib_deps_info.merge)
 
-let populate_opam_command ~context_name packages =
+let populate_opam_command ?switch_name packages =
   let cmd =
-    match Dune_engine.Context_name.to_string context_name with
-    | "default" -> "opam install"
-    | ctx -> Printf.sprintf "opam install --switch=%s" ctx
+    match switch_name with
+    | Some name -> Printf.sprintf "opam install --switch=%s" name
+    | None -> "opam install"
   in
   cmd :: packages |> String.concat ~sep:" "
 
@@ -61,11 +61,16 @@ let run ~lib_deps ~by_dir ~setup ~only_missing ~sexp =
         Path.Source.Map.values lib_deps_by_dir
         |> List.fold_left ~init:Lib_name.Map.empty ~f:Lib_deps_info.merge
       in
-      let internals =
+      let scontext =
         Dune_engine.Context_name.Map.find_exn setup.Import.Main.scontexts
           context_name
-        |> Super_context.internal_lib_names
       in
+      let opam_switch_name =
+        match Super_context.context scontext |> fun ctx -> ctx.Context.kind with
+        | Default -> None
+        | Opam { switch; _ } -> Some switch
+      in
+      let internals = Super_context.internal_lib_names scontext in
       let is_external name _kind = not (Lib_name.Set.mem internals name) in
       let externals = Lib_name.Map.filteri lib_deps ~f:is_external in
       if only_missing then (
@@ -115,7 +120,7 @@ let run ~lib_deps ~by_dir ~setup ~only_missing ~sexp =
                ]
                ~hints:
                  [ Dune_engine.Utils.pp_command_hint
-                     (populate_opam_command ~context_name
+                     (populate_opam_command ?switch_name:opam_switch_name
                         required_package_names)
                  ]);
           true

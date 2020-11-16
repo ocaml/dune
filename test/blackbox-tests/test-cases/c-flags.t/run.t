@@ -42,6 +42,10 @@ future_c_and_cxx_flags_handling = default (false)
   effectively prevent Dune from silently adding c-flags to the compiler
   arguments which is the new recommended behaviour.
 
+No warning in vendored subfolder
+
+  $ dune build vendor/barv.o
+
 Ocamlc_cflags are duplicated if the :standard set is kept:
   $ cat out_foo | grep -ce "${O_CCF} ${O_CCPPF} ${O_CCF}"
   1
@@ -99,3 +103,4 @@ future_c_and_cxx_flags_handling = true but dune < 2.8
   of the dune language. Please update your dune-project file to have (lang dune
   2.8).
   [1]
+

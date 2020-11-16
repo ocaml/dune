@@ -2,3 +2,5 @@
  (name test)
  (foreign_stubs (language c) (names foo))
  (foreign_stubs (language c) (names bar) (flags)))
+
+(vendored_dirs vendor)

@@ -781,3 +781,7 @@ let find_dir_specified_on_command_line ~dir =
       [ Pp.textf "Don't know about directory %s specified on the command line!"
           (Path.Source.to_string_maybe_quoted dir)
       ]
+
+let () =
+  Fdecl.set Dune_project.dir_status (fun dir ->
+      Option.map (find_dir dir) ~f:(fun d -> Dir.status d))

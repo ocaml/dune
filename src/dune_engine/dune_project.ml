@@ -185,6 +185,8 @@ let stanza_parser t = t.stanza_parser
 
 let file t = t.project_file.file
 
+let dir_status = Fdecl.create (fun _ -> Dyn.opaque)
+
 let file_key t = t.file_key
 
 let implicit_transitive_deps t = t.implicit_transitive_deps
@@ -670,9 +672,15 @@ let parse ~dir ~lang ~opam_packages ~file =
          field_o_b "allow_approximate_merlin"
            ~check:(Dune_lang.Syntax.since Stanza.syntax (1, 9))
        in
+       let vendored =
+         match (Fdecl.get dir_status) dir with
+         | Some Sub_dirs.Status.Vendored -> true
+         | _ -> false
+       in
        if
          Option.is_some f
          && Dune_lang.Syntax.Version.Infix.(lang.version >= (2, 8))
+         && not vendored
        then
          Dune_lang.Syntax.Warning.deprecated_in
            ~extra_info:

@@ -51,6 +51,8 @@ end
 
 val to_dyn : t -> Dyn.t
 
+val dir_status : (Path.Source.t -> Sub_dirs.Status.t option) Fdecl.t
+
 val file_key : t -> File_key.t
 
 val packages : t -> Package.t Package.Name.Map.t

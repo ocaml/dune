@@ -19,10 +19,10 @@ let merlin_folder_name = ".merlin-conf"
 let merlin_exist_name = ".merlin-exist"
 
 let make_lib_ident lib =
-  Printf.sprintf "lib-%s" (Dune_file.Library.best_name lib |> Lib_name.to_string)
+  sprintf "lib-%s" (Dune_file.Library.best_name lib |> Lib_name.to_string)
 
 let make_exe_ident exes =
-  Printf.sprintf "exe-%s"
+  sprintf "exe-%s"
     (String.concat ~sep:"-" (List.map ~f:snd exes.Dune_file.Executables.names))
 
 let make_merlin_exists ident =
@@ -105,6 +105,7 @@ module Processed = struct
       String.Map.iteri
         ~f:(fun name config ->
           let sexp = to_sexp config in
+          (* TODO Switch to Pp *)
           Format.printf "@[<v>%s@,%a@]@." name Sexp.pp sexp)
         t
 end

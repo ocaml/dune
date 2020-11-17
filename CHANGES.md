@@ -76,6 +76,8 @@ Unreleased
 
 - Add a switch argument to opam when context is not default. (#3951, @tmattio)
 
+- Avoid pager when running `$ git diff` (#3912, @AltGr)
+
 2.7.1 (2/09/2020)
 -----------------
 

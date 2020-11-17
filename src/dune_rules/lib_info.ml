@@ -536,8 +536,8 @@ let package t =
   | Installed_private
   | Installed ->
     Some (Lib_name.package_name t.name)
-  | Public (_, p) -> Some p.name
-  | Private (_, p) -> Option.map p ~f:(fun t -> t.name)
+  | Public (_, p) -> Some (Package.name p)
+  | Private (_, p) -> Option.map p ~f:Package.name
 
 let has_native_archive lib_config modules =
   Lib_config.linker_can_create_empty_archives lib_config

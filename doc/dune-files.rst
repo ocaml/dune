@@ -35,7 +35,7 @@ Sets the version of the project:
 
     (version <version>)
 
-.. _implicit-transitive-deps:
+.. _implicit_transitive_deps:
 
 implicit_transitive_deps
 ------------------------
@@ -1714,7 +1714,7 @@ process. This is done using the ``coq.extraction`` stanza:
 - ``(prelude <name>)`` refers to the Coq source that contains the extraction
   commands.
 
-- ``(extraced_modules <names>)`` is an exhaustive list of OCaml modules
+- ``(extracted_modules <names>)`` is an exhaustive list of OCaml modules
   extracted.
 
 - ``<optional-fields>`` are ``flags``, ``theories``, and ``libraries``. All of

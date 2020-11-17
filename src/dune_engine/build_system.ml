@@ -150,8 +150,12 @@ module Alias0 = struct
         ]
 
   let package_install ~(context : Build_context.t) ~(pkg : Package.t) =
-    let dir = Path.Build.append_source context.build_dir pkg.path in
-    sprintf ".%s-files" (Package.Name.to_string pkg.name)
+    let dir =
+      let dir = Package.dir pkg in
+      Path.Build.append_source context.build_dir dir
+    in
+    let name = Package.name pkg in
+    sprintf ".%s-files" (Package.Name.to_string name)
     |> Alias.Name.of_string |> make ~dir
 end
 
@@ -327,7 +331,7 @@ type t =
           option)
       Fdecl.t
   ; (* Package files are part of *)
-    packages : (Path.Build.t -> Package.Name.Set.t) Fdecl.t
+    packages : (Path.Build.t -> Package.Id.Set.t) Fdecl.t
   ; mutable caching : caching option
   ; sandboxing_preference : Sandbox_mode.t list
   ; mutable rule_done : int
@@ -1762,7 +1766,7 @@ let set_packages f =
   let t = t () in
   Fdecl.set t.packages f
 
-let package_deps pkg files =
+let package_deps (pkg : Package.t) files =
   let t = t () in
   let rules_seen = ref Rule.Set.empty in
   let rec loop fn acc =
@@ -1773,10 +1777,10 @@ let package_deps pkg files =
       acc
     | Some fn ->
       let pkgs = Fdecl.get t.packages fn in
-      if Package.Name.Set.is_empty pkgs || Package.Name.Set.mem pkgs pkg then
+      if Package.Id.Set.is_empty pkgs || Package.Id.Set.mem pkgs pkg.id then
         loop_deps fn acc
       else
-        Package.Name.Set.union acc pkgs
+        Package.Id.Set.union acc pkgs
   and loop_deps fn acc =
     match get_rule (Path.build fn) with
     | None -> acc
@@ -1802,7 +1806,7 @@ let package_deps pkg files =
   (* We know that after [Build.paths_for_rule], all transitive dependencies of
      [files] are computed and memoized and so the above call to
      [Build_request.peek_deps_exn] is safe. *)
-  Path.Set.fold files ~init:Package.Name.Set.empty ~f:(fun fn acc ->
+  Path.Set.fold files ~init:Package.Id.Set.empty ~f:(fun fn acc ->
       match Path.as_in_build_dir fn with
       | None -> acc
       | Some fn -> loop_deps fn acc)

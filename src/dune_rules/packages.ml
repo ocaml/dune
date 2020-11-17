@@ -22,7 +22,8 @@ let mlds_by_package_def =
                | Documentation d ->
                  let dc = Dir_contents.get sctx ~dir:w.ctx_dir in
                  let mlds = Dir_contents.mlds dc d in
-                 Some (d.package.name, mlds)
+                 let name = Package.name d.package in
+                 Some (name, mlds)
                | _ -> None))
       |> Package.Name.Map.of_list_reduce ~f:List.rev_append)
 

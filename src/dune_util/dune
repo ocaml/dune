@@ -1,4 +1,4 @@
 (library
  (name dune_util)
  (public_name dune-private-libs.dune_util)
- (libraries stdune))
+ (libraries stdune dune_lang))

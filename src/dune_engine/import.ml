@@ -1,6 +1,8 @@
 include Stdune
 module Log = Dune_util.Log
 module Re = Dune_re
+module Stringlike = Dune_util.Stringlike
+module Stringlike_intf = Dune_util.Stringlike_intf
 
 (* To make bug reports usable *)
 let () = Printexc.record_backtrace true

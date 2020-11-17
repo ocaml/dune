@@ -104,21 +104,23 @@ module Main = struct
                          |> List.map ~f:Package.Name.to_string )));
           Package.Name.Map.filter workspace.conf.packages ~f:(fun pkg ->
               let vendored =
-                match Dune_engine.File_tree.find_dir pkg.path with
+                let dir = Package.dir pkg in
+                match Dune_engine.File_tree.find_dir dir with
                 | None -> assert false
                 | Some d -> (
                   match Dune_engine.File_tree.Dir.status d with
                   | Vendored -> true
                   | _ -> false )
               in
-              let included = Package.Name.Set.mem names pkg.name in
+              let name = Package.name pkg in
+              let included = Package.Name.Set.mem names name in
               if vendored && included then
                 User_error.raise
                   [ Pp.textf
                       "Package %s is vendored and so will never be masked. It \
                        makes no sense to pass it to -p, --only-packages or \
                        --for-release-of-packages."
-                      (Package.Name.to_string pkg.name)
+                      (Package.Name.to_string name)
                   ];
               vendored || included))
     in

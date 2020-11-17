@@ -357,7 +357,7 @@ following syntax:
 
    (re_export foo)
 
-For insance:
+For instance:
 
 .. code:: scheme
 

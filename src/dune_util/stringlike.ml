@@ -1,4 +1,4 @@
-open Import
+open Stdune
 
 module Make (S : Stringlike_intf.S_base) = struct
   include S

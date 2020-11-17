@@ -641,7 +641,7 @@ end
 
 let anonymous ~dir = infer ~dir Package.Name.Map.empty
 
-let parse ~dir ~lang ~opam_packages ~file =
+let parse ~dir ~lang ~opam_packages ~file ~dir_status =
   fields
     (let+ name = field_o "name" Name.decode
      and+ version = field_o "version" string
@@ -670,9 +670,15 @@ let parse ~dir ~lang ~opam_packages ~file =
          field_o_b "allow_approximate_merlin"
            ~check:(Dune_lang.Syntax.since Stanza.syntax (1, 9))
        in
+       let vendored =
+         match dir_status with
+         | Sub_dirs.Status.Vendored -> true
+         | _ -> false
+       in
        if
          Option.is_some f
          && Dune_lang.Syntax.Version.Infix.(lang.version >= (2, 8))
+         && not vendored
        then
          Dune_lang.Syntax.Warning.deprecated_in
            ~extra_info:
@@ -831,12 +837,12 @@ let parse ~dir ~lang ~opam_packages ~file =
      ; cram
      })
 
-let load_dune_project ~dir opam_packages =
+let load_dune_project ~dir opam_packages ~dir_status =
   let file = Path.Source.relative dir filename in
   load_exn (Path.source file) ~f:(fun lang ->
-      parse ~dir ~lang ~opam_packages ~file)
+      parse ~dir ~lang ~opam_packages ~file ~dir_status)
 
-let load ~dir ~files ~infer_from_opam_files =
+let load ~dir ~files ~infer_from_opam_files ~dir_status =
   let opam_packages =
     String.Set.fold files ~init:[] ~f:(fun fn acc ->
         match Package.Name.of_opam_file_basename fn with
@@ -852,7 +858,7 @@ let load ~dir ~files ~infer_from_opam_files =
     |> Package.Name.Map.of_list_exn
   in
   if String.Set.mem files filename then
-    Some (load_dune_project ~dir opam_packages)
+    Some (load_dune_project ~dir opam_packages ~dir_status)
   else if
     Path.Source.is_root dir
     || (infer_from_opam_files && not (Package.Name.Map.is_empty opam_packages))

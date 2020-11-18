@@ -10,22 +10,11 @@ open! Dune_engine
 open! Stdune
 open Import
 
-(** Dune produces one-merlin file per stanza, whose name is the result of the
-    concatenation of base names and unique identifiers *)
-
-type ident
-
 (** Merlin config folder name *)
 val merlin_folder_name : string
 
-(** Create a unique ident from a library stanza *)
-val make_lib_ident : Dune_file.Library.t -> ident
-
-(** Create a unique ident from an executables stanza *)
-val make_exe_ident : Dune_file.Executables.t -> ident
-
-(** Return the name of the merlin file for a given ident *)
-val make_merlin_exists : ident -> string
+(** Return the name of the merlin file for a given stanza *)
+val make_merlin_exists : string -> string
 
 (** Type of "unprocessed" merlin information *)
 type t
@@ -52,6 +41,7 @@ val make :
   -> modules:Modules.t
   -> obj_dir:Path.Build.t Obj_dir.t
   -> dialects:Dialect.DB.t
+  -> ident:string
   -> unit
   -> t
 
@@ -59,7 +49,6 @@ val make :
     identified by [ident] in a directory *)
 val add_rules :
      Super_context.t
-  -> ident
   -> dir:Path.Build.t
   -> more_src_dirs:Path.Source.t list
   -> expander:Expander.t

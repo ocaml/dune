@@ -15,13 +15,16 @@ let gen_select_rules t ~dir compile_info =
           Build.fail { fail = (fun () -> raise e) }
           |> Build.with_targets ~targets:[ dst ] ))
 
-let with_lib_deps (t : Context.t) merlin_ident compile_info ~dir ~f =
+let with_lib_deps (t : Context.t) compile_info ~dir ~f =
   let prefix =
     Build.label (Lib_deps_info.Label (Lib.Compile.lib_deps_info compile_info))
   in
+  let merlin_exists =
+    Merlin.make_merlin_exists (Lib.Compile.merlin_ident compile_info)
+  in
   let prefix =
     if t.merlin then
-      Path.Build.relative dir (Merlin.make_merlin_exists merlin_ident)
+      Path.Build.relative dir merlin_exists
       |> Path.build |> Build.path >>> prefix
     else
       prefix

@@ -24,7 +24,7 @@ module For_stanza : sig
     -> dir_contents:Dir_contents.t
     -> expander:Expander.t
     -> files_to_install:(Install_conf.t -> unit)
-    -> ( (Merlin.ident * Merlin.t) list
+    -> ( Merlin.t list
        , (Loc.t * Compilation_context.t) list
        , Path.Build.t list
        , Path.Source.t list )
@@ -76,8 +76,7 @@ end = struct
       let cctx, merlin =
         Lib_rules.rules lib ~sctx ~dir ~scope ~dir_contents ~expander
       in
-      let merlin_ident = Merlin.make_lib_ident lib in
-      { merlin = Some (merlin_ident, merlin)
+      { merlin = Some merlin
       ; cctx = Some (lib.buildable.loc, cctx)
       ; js = None
       ; source_dirs = None
@@ -90,8 +89,7 @@ end = struct
       let cctx, merlin =
         Exe_rules.rules exes ~sctx ~dir ~scope ~expander ~dir_contents
       in
-      let merlin_ident = Merlin.make_exe_ident exes in
-      { merlin = Some (merlin_ident, merlin)
+      { merlin = Some merlin
       ; cctx = Some (exes.buildable.loc, cctx)
       ; js =
           Some
@@ -108,8 +106,7 @@ end = struct
       let cctx, merlin =
         Test_rules.rules tests ~sctx ~dir ~scope ~expander ~dir_contents
       in
-      let merlin_ident = Merlin.make_exe_ident tests.exes in
-      { merlin = Some (merlin_ident, merlin)
+      { merlin = Some merlin
       ; cctx = Some (tests.exes.buildable.loc, cctx)
       ; js = None
       ; source_dirs = None
@@ -228,11 +225,11 @@ let gen_rules sctx dir_contents cctxs expander
     For_stanza.of_stanzas stanzas ~cctxs ~sctx ~src_dir ~ctx_dir ~scope
       ~dir_contents ~expander ~files_to_install
   in
-  List.iter merlins ~f:(fun (ident, merlin) ->
+  List.iter merlins ~f:(fun merlin ->
       let more_src_dirs =
         lib_src_dirs ~dir_contents |> List.rev_append source_dirs
       in
-      Merlin.add_rules sctx ident ~dir:ctx_dir ~more_src_dirs ~expander
+      Merlin.add_rules sctx ~dir:ctx_dir ~more_src_dirs ~expander
         (Merlin.add_source_dir merlin src_dir));
   List.iter stanzas ~f:(fun stanza ->
       match (stanza : Stanza.t) with

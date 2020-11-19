@@ -1615,7 +1615,7 @@ module Compile = struct
     ; resolved_selects : Resolved_select.t list
     ; lib_deps_info : Lib_deps_info.t
     ; sub_systems : Sub_system0.Instance.t Lazy.t Sub_system_name.Map.t
-    ; name_for_merlin : string
+    ; name_for_merlin : [ `Lib of Lib_name.t | `Exes of string list ]
     }
 
   let make_lib_deps_info ~user_written_deps ~pps ~kind =
@@ -1663,7 +1663,7 @@ module Compile = struct
         >>= Resolve.compile_closure_with_overlap_checks db
               ~stack:Dep_stack.empty ~forbidden_libraries:Map.empty )
     in
-    let name_for_merlin = sprintf "lib-%s" (Lib_name.to_string t.name) in
+    let name_for_merlin = `Lib t.name in
     { direct_requires = requires
     ; requires_link
     ; resolved_selects = t.resolved_selects
@@ -1836,9 +1836,7 @@ module DB = struct
          |> Result.map_error ~f:(fun e ->
                 Dep_path.prepend_exn e (Executables exes)))
     in
-    let name_for_merlin =
-      sprintf "exe-%s" (String.concat ~sep:"-" (List.map ~f:snd exes))
-    in
+    let name_for_merlin = `Exes (List.map ~f:snd exes) in
     { Compile.direct_requires = res
     ; requires_link
     ; pps

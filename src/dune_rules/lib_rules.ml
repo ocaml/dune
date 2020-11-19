@@ -423,8 +423,8 @@ let library_rules (lib : Library.t) ~cctx ~source_modules ~dir_contents
   , Merlin.make ~requires:requires_compile ~flags ~modules
       ~preprocess:(Preprocess.Per_module.single_preprocess preprocess)
       ~libname:(snd lib.name) ~obj_dir
-      ~ident:(Lib.Compile.merlin_ident compile_info)
       ~dialects:(Dune_project.dialects (Scope.project scope))
+      ~for_:(Lib.Compile.merlin_ident compile_info)
       () )
 
 let rules (lib : Library.t) ~sctx ~dir_contents ~dir ~expander ~scope :

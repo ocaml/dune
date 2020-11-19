@@ -11,7 +11,7 @@ let default_context_flags (ctx : Context.t) ~project =
     List.filter c ~f:(fun s -> not (String.is_prefix s ~prefix:"-std="))
   in
   let cxx =
-    if Dune_project.add_cxx_flags project then
+    if Dune_project.use_standard_c_and_cxx_flags project then
       let ccomp_type = Ocaml_config.ccomp_type ctx.ocaml_config in
       match ccomp_type with
       | Ocaml_config.Ccomp_type.Other s ->

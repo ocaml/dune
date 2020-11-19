@@ -239,8 +239,7 @@ let to_dyn
     ; ("dune_version", Dune_lang.Syntax.Version.to_dyn dune_version)
     ; ("allow_approx_merlin", bool allow_approx_merlin)
     ; ("generate_opam_files", bool generate_opam_files)
-    ; ( "use_standard_c_and_cxx_flags"
-      , option bool use_standard_c_and_cxx_flags )
+    ; ("use_standard_c_and_cxx_flags", option bool use_standard_c_and_cxx_flags)
     ; ("file_key", string file_key)
     ; ("dialects", Dialect.DB.to_dyn dialects)
     ; ("explicit_js_mode", bool explicit_js_mode)

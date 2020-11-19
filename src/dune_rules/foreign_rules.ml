@@ -81,7 +81,7 @@ let build_c ~kind ~sctx ~dir ~expander ~include_flags (loc, src, dst) =
       match kind with
       | Foreign_language.C -> (
         let cfg = ctx.ocaml_config in
-        match Dune_project.future_c_and_cxx_flags_handling project with
+        match Dune_project.use_standard_c_and_cxx_flags project with
         | None
         | Some false ->
           (* In dune < 2.8 flags from ocamlc_config are always added *)
@@ -94,9 +94,9 @@ let build_c ~kind ~sctx ~dir ~expander ~include_flags (loc, src, dst) =
       | Foreign_language.Cxx -> Fdo.cxx_flags ctx
     in
     let flags = Foreign.Source.flags src in
-    (* DUNE3 will have [future_c_and_cxx_flags_handling] disabled by default. To
+    (* DUNE3 will have [use_standard_c_and_cxx_flags] disabled by default. To
        guide users toward this change we emit a warning when dune_lang is >=
-       1.8, [future_c_and_cxx_flags_handling] is not specified in the
+       1.8, [use_standard_c_and_cxx_flags] is not specified in the
        [dune-project] file (thus defaulting to [true]) and the [:standard] set
        of flags has been overriden *)
     let has_standard = Ordered_set_lang.Unexpanded.has_standard flags in
@@ -107,7 +107,7 @@ let build_c ~kind ~sctx ~dir ~expander ~include_flags (loc, src, dst) =
     in
     if
       Dune_project.dune_version project >= (2, 8)
-      && Option.is_none (Dune_project.future_c_and_cxx_flags_handling project)
+      && Option.is_none (Dune_project.use_standard_c_and_cxx_flags project)
       && (not is_vendored) && not has_standard
     then
       User_warning.emit ~loc
@@ -116,7 +116,7 @@ let build_c ~kind ~sctx ~dir ~expander ~include_flags (loc, src, dst) =
              set of flags. However the flags in this standard set are still \
              added to the compiler arguments by Dune. This might cause \
              unexpected issues. You can disable this warning by defining the \
-             option `(future_c_and_cxx_flags_handling <bool>)` in your \
+             option `(use_standard_c_and_cxx_flags <bool>)` in your \
              `dune-project` file. Setting this option to `true` will \
              effectively prevent Dune from silently adding c-flags to the \
              compiler arguments which is the new recommended behaviour."

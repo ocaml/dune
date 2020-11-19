@@ -8,7 +8,7 @@ let default_context_flags (ctx : Context.t) ~project =
     List.filter cflags ~f:(fun s -> not (String.is_prefix s ~prefix:"-std="))
   in
   let c =
-    match Dune_project.future_c_and_cxx_flags_handling project with
+    match Dune_project.use_standard_c_and_cxx_flags project with
     | None
     | Some false ->
       cflags

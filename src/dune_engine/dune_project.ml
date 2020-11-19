@@ -162,7 +162,7 @@ type t =
   ; dune_version : Dune_lang.Syntax.Version.t
   ; allow_approx_merlin : bool
   ; generate_opam_files : bool
-  ; future_c_and_cxx_flags_handling : bool option
+  ; use_standard_c_and_cxx_flags : bool option
   ; file_key : File_key.t
   ; dialects : Dialect.DB.t
   ; explicit_js_mode : bool
@@ -195,7 +195,7 @@ let allow_approx_merlin t = t.allow_approx_merlin
 
 let generate_opam_files t = t.generate_opam_files
 
-let future_c_and_cxx_flags_handling t = t.future_c_and_cxx_flags_handling
+let use_standard_c_and_cxx_flags t = t.use_standard_c_and_cxx_flags
 
 let dialects t = t.dialects
 
@@ -216,7 +216,7 @@ let to_dyn
     ; dune_version
     ; allow_approx_merlin
     ; generate_opam_files
-    ; future_c_and_cxx_flags_handling
+    ; use_standard_c_and_cxx_flags
     ; file_key
     ; dialects
     ; explicit_js_mode
@@ -239,8 +239,8 @@ let to_dyn
     ; ("dune_version", Dune_lang.Syntax.Version.to_dyn dune_version)
     ; ("allow_approx_merlin", bool allow_approx_merlin)
     ; ("generate_opam_files", bool generate_opam_files)
-    ; ( "future_c_and_cxx_flags_handling"
-      , option bool future_c_and_cxx_flags_handling )
+    ; ( "use_standard_c_and_cxx_flags"
+      , option bool use_standard_c_and_cxx_flags )
     ; ("file_key", string file_key)
     ; ("dialects", Dialect.DB.to_dyn dialects)
     ; ("explicit_js_mode", bool explicit_js_mode)
@@ -616,7 +616,7 @@ let infer ~dir packages =
   ; dune_version = lang.version
   ; allow_approx_merlin = true
   ; generate_opam_files = false
-  ; future_c_and_cxx_flags_handling =
+  ; use_standard_c_and_cxx_flags =
       ( if lang.version < (3, 0) then
         None
       else
@@ -686,8 +686,8 @@ let parse ~dir ~lang ~opam_packages ~file =
      and+ generate_opam_files =
        field_o_b "generate_opam_files"
          ~check:(Dune_lang.Syntax.since Stanza.syntax (1, 10))
-     and+ future_c_and_cxx_flags_handling =
-       field_o_b "future_c_and_cxx_flags_handling"
+     and+ use_standard_c_and_cxx_flags =
+       field_o_b "use_standard_c_and_cxx_flags"
          ~check:(Dune_lang.Syntax.since Stanza.syntax (2, 8))
      and+ dialects =
        multi_field "dialect"
@@ -806,8 +806,8 @@ let parse ~dir ~lang ~opam_packages ~file =
      let generate_opam_files =
        Option.value ~default:false generate_opam_files
      in
-     let future_c_and_cxx_flags_handling =
-       match future_c_and_cxx_flags_handling with
+     let use_standard_c_and_cxx_flags =
+       match use_standard_c_and_cxx_flags with
        | None when dune_version >= (3, 0) -> Some false
        | None -> None
        | some -> some
@@ -840,7 +840,7 @@ let parse ~dir ~lang ~opam_packages ~file =
      ; dune_version
      ; allow_approx_merlin
      ; generate_opam_files
-     ; future_c_and_cxx_flags_handling
+     ; use_standard_c_and_cxx_flags
      ; dialects
      ; explicit_js_mode
      ; format_config

@@ -162,6 +162,7 @@ end = struct
           | [] ->
             let job, status = Queue.pop_exn jobs_completed in
             decr pending_jobs;
+            assert (!pending_jobs >= 0);
             Job_completed (job, status)
           | fns ->
             files_changed := [];

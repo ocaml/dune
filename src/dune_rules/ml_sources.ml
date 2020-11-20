@@ -208,7 +208,7 @@ let virtual_modules lookup_vlib vlib =
   }
 
 let make_lib_modules (d : _ Dir_with_dune.t) ~lookup_vlib ~(lib : Library.t)
-    ~modules ~force_alias_module =
+    ~modules =
   let src_dir = d.ctx_dir in
   let kind, main_module_name, wrapped =
     match lib.implements with
@@ -274,16 +274,13 @@ let make_lib_modules (d : _ Dir_with_dune.t) ~lookup_vlib ~(lib : Library.t)
   let implements = Option.is_some lib.implements in
   let _loc, lib_name = lib.name in
   Modules_group.lib ~stdlib ~implements ~lib_name ~src_dir ~modules
-    ~main_module_name ~wrapped ~force_alias_module
+    ~main_module_name ~wrapped
 
 let libs_and_exes (d : _ Dir_with_dune.t) ~lookup_vlib ~modules =
   List.filter_partition_map d.data ~f:(fun stanza ->
       match (stanza : Stanza.t) with
       | Library lib ->
-        let modules =
-          make_lib_modules d ~lookup_vlib ~modules ~lib
-            ~force_alias_module:false
-        in
+        let modules = make_lib_modules d ~lookup_vlib ~modules ~lib in
         Left (lib, modules)
       | Executables exes
       | Tests { exes; _ } ->

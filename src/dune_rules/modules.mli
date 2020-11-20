@@ -15,9 +15,6 @@ val lib :
   -> lib_name:Lib_name.Local.t
   -> implements:bool
   -> modules:Module.Name_map.t
-  -> force_alias_module:bool
-       (** Force the creation of an alias module. Required if we're renaming any
-           dependencies *)
   -> t
 
 val encode : t -> Dune_lang.t

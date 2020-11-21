@@ -48,12 +48,13 @@ We can use the rename dependency type to use lib1 with a different name:
 
   $ cat >lib2/dune <<EOF
   > (library
-  >  (libraries lib1)
+  >  (libraries lib1 unix)
   >  (root_module root)
   >  (name lib2))
   > EOF
   $ cat >lib2/lib2.ml <<EOF
-  > print_endline Root.Lib1.greeting
+  > module U = UnixLabels
+  > let () = print_endline Root.Lib1.greeting
   > EOF
   $ dune build @all
 

@@ -247,6 +247,11 @@ end = struct
         (make_archives t "archive" (Ps.add preds Variant.plugin))
         (make_archives t "plugin" preds)
 
+    let mangled_module_re =
+      lazy
+        (let open Re in
+        [ rep any; str "__"; rep any ] |> seq |> compile)
+
     let exists t ~is_builtin =
       let exists_if = Vars.get_words t.vars "exists_if" Ps.empty in
       match exists_if with
@@ -371,28 +376,39 @@ end = struct
         in
         let entry_modules =
           Lib_info.Source.External
-            ( match dir_contents with
-            | Error e ->
-              Error
-                (User_error.E
-                   (User_message.make
-                      [ Pp.textf "Unable to get entry modules of %s in %s. "
-                          (Lib_name.to_string t.name)
-                          (Path.to_string src_dir)
-                      ; Pp.textf "error: %s" (Unix.error_message e)
-                      ]))
-            | Ok files ->
-              let ext = Cm_kind.ext Cmi in
-              Result.List.filter_map files ~f:(fun fname ->
-                  match Filename.check_suffix fname ext with
-                  | false -> Ok None
-                  | true -> (
-                    match
-                      let name = Filename.chop_extension fname in
-                      Module_name.of_string_user_error (Loc.in_dir src_dir, name)
-                    with
-                    | Ok s -> Ok (Some s)
-                    | Error e -> Error (User_error.E e) )) )
+            ( match Vars.get_words t.vars "main_modules" Ps.empty with
+            | _ :: _ as modules ->
+              Ok (List.map ~f:Module_name.of_string modules)
+            | [] -> (
+              match dir_contents with
+              | Error e ->
+                Error
+                  (User_error.E
+                     (User_message.make
+                        [ Pp.textf "Unable to get entry modules of %s in %s. "
+                            (Lib_name.to_string t.name)
+                            (Path.to_string src_dir)
+                        ; Pp.textf "error: %s" (Unix.error_message e)
+                        ]))
+              | Ok files ->
+                let ext = Cm_kind.ext Cmi in
+                Result.List.filter_map files ~f:(fun fname ->
+                    match Filename.check_suffix fname ext with
+                    | false -> Ok None
+                    | true -> (
+                      if
+                        (* We add this hack to skip manually mangled libraries *)
+                        Re.execp (Lazy.force mangled_module_re) fname
+                      then
+                        Ok None
+                      else
+                        match
+                          let name = Filename.chop_extension fname in
+                          Module_name.of_string_user_error
+                            (Loc.in_dir src_dir, name)
+                        with
+                        | Ok s -> Ok (Some s)
+                        | Error e -> Error (User_error.E e) )) ) )
         in
         Lib_info.create ~loc ~name:t.name ~kind ~status ~src_dir ~orig_src_dir
           ~obj_dir ~version ~synopsis ~main_module_name ~sub_systems ~requires

@@ -63,6 +63,16 @@ let make ~dir ~inherit_from ~scope ~config_stanza ~profile ~expander
           | None -> root
           | Some t -> field (Memo.Lazy.force t) ))
   in
+  let inherited_if_absent ~field ~root f_absent =
+    Memo.lazy_ (fun () ->
+        match root with
+        | None ->
+          f_absent
+            ( match inherit_from with
+            | None -> None
+            | Some t -> Some (field (Memo.Lazy.force t)) )
+        | Some x -> x)
+  in
   let local_binaries =
     inherited ~field:local_binaries ~root:[] (fun binaries ->
         binaries
@@ -138,14 +148,14 @@ let make ~dir ~inherit_from ~scope ~config_stanza ~profile ~expander
   in
   let coq = inherited ~field:coq ~root:config.coq (fun x -> x) in
   let format_config =
-    Memo.lazy_ (fun () ->
-        match config.format_config with
-        | None -> (
-          match inherit_from with
-          | None ->
-            Code_error.raise "format config not taken from default env" []
-          | Some t -> format_config (Memo.Lazy.force t) )
-        | Some x -> x)
+    inherited_if_absent ~field:format_config ~root:config.format_config
+      (function
+      | None ->
+        Code_error.raise
+          "format config should always have a default value taken from the \
+           project root"
+          []
+      | Some x -> x)
   in
   { scope
   ; ocaml_flags

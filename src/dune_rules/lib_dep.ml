@@ -111,16 +111,6 @@ let direct x = Direct x
 
 let re_export x = Re_export x
 
-let to_lib_names = function
-  | Direct (_, s)
-  | Re_export (_, s) ->
-    [ s ]
-  | Select s ->
-    List.fold_left s.choices ~init:Lib_name.Set.empty
-      ~f:(fun acc (x : Select.Choice.t) ->
-        Lib_name.Set.union acc (Lib_name.Set.union x.required x.forbidden))
-    |> Lib_name.Set.to_list
-
 let decode ~allow_re_export =
   let open Dune_lang.Decoder in
   let+ loc, t =

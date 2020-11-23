@@ -78,6 +78,10 @@ Unreleased
 
 - Avoid pager when running `$ git diff` (#3912, @AltGr)
 
+- Add `(root_module ..)` field to libraries & executables. This makes it
+  possible to use library dependencies shadowed by local modules (#3825,
+  @rgrinberg)
+
 2.7.1 (2/09/2020)
 -----------------
 

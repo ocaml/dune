@@ -19,6 +19,10 @@ module Js_of_ocaml : sig
   val default : t
 end
 
+type for_ =
+  | Executable
+  | Library of Wrapped.t option
+
 module Lib_deps : sig
   type nonrec t = Lib_dep.t list
 
@@ -26,7 +30,7 @@ module Lib_deps : sig
 
   val info : t -> kind:Lib_deps_info.Kind.t -> Lib_deps_info.t
 
-  val decode : allow_re_export:bool -> t Dune_lang.Decoder.t
+  val decode : for_ -> t Dune_lang.Decoder.t
 end
 
 (** [preprocess] and [preprocessor_deps] fields *)
@@ -49,6 +53,7 @@ module Buildable : sig
     ; flags : Ocaml_flags.Spec.t
     ; js_of_ocaml : Js_of_ocaml.t
     ; allow_overlapping_dependencies : bool
+    ; root_module : (Loc.t * Module_name.t) option
     }
 
   (** Check if the buildable has any foreign stubs or archives. *)

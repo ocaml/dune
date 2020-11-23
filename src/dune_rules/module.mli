@@ -23,6 +23,7 @@ module Kind : sig
     | Alias
     | Impl_vmodule
     | Wrapped_compat
+    | Root
 
   include Dune_lang.Conv.S with type t := t
 end
@@ -132,3 +133,5 @@ val generated : src_dir:Path.t -> Module_name.t -> t
 
 (** Represent the generated alias module. *)
 val generated_alias : src_dir:Path.Build.t -> Module_name.t -> t
+
+val generated_root : src_dir:Path.Build.t -> Module_name.t -> t

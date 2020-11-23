@@ -268,6 +268,7 @@ let make_lib_modules (d : _ Dir_with_dune.t) ~lookup_vlib ~(lib : Library.t)
     Modules_field_evaluator.eval ~modules ~buildable:lib.buildable ~kind
       ~private_modules:
         (Option.value ~default:Ordered_set_lang.standard lib.private_modules)
+      ~src_dir
   in
   let stdlib = lib.stdlib in
   let implements = Option.is_some lib.implements in
@@ -283,15 +284,16 @@ let libs_and_exes (d : _ Dir_with_dune.t) ~lookup_vlib ~modules =
         Left (lib, modules)
       | Executables exes
       | Tests { exes; _ } ->
+        let src_dir = d.ctx_dir in
         let modules =
           Modules_field_evaluator.eval ~modules ~buildable:exes.buildable
             ~kind:Modules_field_evaluator.Exe_or_normal_lib
-            ~private_modules:Ordered_set_lang.standard
+            ~private_modules:Ordered_set_lang.standard ~src_dir
         in
         let modules =
           let project = Scope.project d.scope in
           if Dune_project.wrapped_executables project then
-            Modules_group.exe_wrapped ~src_dir:d.ctx_dir ~modules
+            Modules_group.exe_wrapped ~src_dir ~modules
           else
             Modules_group.exe_unwrapped modules
         in

@@ -239,7 +239,9 @@ module T = struct
     ; name : Lib_name.t
     ; unique_id : Id.t
     ; re_exports : t list Or_exn.t
-    ; requires : t list Or_exn.t
+    ; (* [requires] is contains all required libraries, including the ones
+         mentioned in [re_exports]. *)
+      requires : t list Or_exn.t
     ; ppx_runtime_deps : t list Or_exn.t
     ; pps : t list Or_exn.t
     ; resolved_selects : Resolved_select.t list
@@ -363,6 +365,14 @@ let main_module_name t =
     match main_module_name with
     | This x -> x
     | From _ -> assert false )
+
+let entry_module_names t ~local_lib =
+  match Lib_info.entry_modules t.info with
+  | External d -> d
+  | Local ->
+    let info = Lib_info.as_local_exn t.info in
+    let modules = local_lib ~dir:(Lib_info.src_dir info) ~name:t.name in
+    Ok (Modules.entry_modules modules |> List.map ~f:Module.name)
 
 let wrapped t =
   let wrapped = Lib_info.wrapped t.info in

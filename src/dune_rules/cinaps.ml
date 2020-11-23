@@ -30,9 +30,7 @@ let decode =
        field "files" Predicate_lang.Glob.decode ~default:Predicate_lang.any
      and+ preprocess, preprocessor_deps = Dune_file.preprocess_fields
      and+ libraries =
-       field "libraries"
-         (Dune_file.Lib_deps.decode ~allow_re_export:false)
-         ~default:[]
+       field "libraries" (Dune_file.Lib_deps.decode Executable) ~default:[]
      and+ flags = Ocaml_flags.Spec.decode in
      { loc; files; libraries; preprocess; preprocessor_deps; flags })
 

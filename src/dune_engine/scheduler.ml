@@ -477,7 +477,7 @@ end = struct
   let wait_win32 () =
     while not (wait_nonblocking_win32 ()) do
       Mutex.unlock mutex;
-      ignore (Unix.select [] [] [] 0.001);
+      Thread.delay 0.001;
       Mutex.lock mutex
     done
 

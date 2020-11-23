@@ -1,3 +1,0 @@
-(lang dune 2.3)
-
-(using mdx 0.1)

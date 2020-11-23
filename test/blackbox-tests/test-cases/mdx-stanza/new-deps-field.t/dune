@@ -1,0 +1,4 @@
+(mdx
+ (files README.md)
+ (deps (package pkg2))
+ (packages pkg))

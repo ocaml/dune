@@ -40,7 +40,9 @@ let setup_rules ~sctx ~dir t =
   |> Super_context.add_rule sctx ~dir
 
 let install_rules ~sctx ~dir ({ name; site = loc, (pkg, site); _ } as t) =
-  if (not t.optional) || Result.is_ok (resolve_libs ~sctx t) then
+  if t.optional && Result.is_error (resolve_libs ~sctx t) then
+    []
+  else
     let meta = meta_file ~dir t in
     [ ( Some loc
       , Install.Entry.make_with_site
@@ -49,5 +51,3 @@ let install_rules ~sctx ~dir ({ name; site = loc, (pkg, site); _ } as t) =
           (Super_context.get_site_of_packages sctx)
           meta )
     ]
-  else
-    []

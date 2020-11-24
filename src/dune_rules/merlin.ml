@@ -15,17 +15,8 @@ let merlin_folder_name = ".merlin-conf"
 
 let merlin_exist_name = ".merlin-exist"
 
-type for_ =
-  [ `Lib of Lib_name.t
-  | `Exes of string list
-  ]
-
-let make_ident = function
-  | `Lib name -> sprintf "lib-%s" (Lib_name.to_string name)
-  | `Exes names -> sprintf "exe-%s" (String.concat ~sep:"-" names)
-
-let make_merlin_exists for_ =
-  String.concat ~sep:"-" [ merlin_exist_name; make_ident for_ ]
+let make_merlin_exists ident =
+  String.concat ~sep:"-" [ merlin_exist_name; Merlin_ident.to_string ident ]
 
 module Processed = struct
   (* The actual content of the merlin file as built by the [Unprocessed.process]
@@ -125,7 +116,7 @@ module Unprocessed = struct
     }
 
   type t =
-    { for_ : for_
+    { ident : Merlin_ident.t
     ; configs : config Module_name.Map.t
     }
 
@@ -144,7 +135,7 @@ module Unprocessed = struct
 
   let make ?(requires = Ok []) ~flags
       ?(preprocess = Preprocess.No_preprocessing) ?libname
-      ?(source_dirs = Path.Source.Set.empty) ~modules ~obj_dir ~dialects ~for_
+      ?(source_dirs = Path.Source.Set.empty) ~modules ~obj_dir ~dialects ~ident
       () =
     (* Merlin shouldn't cause the build to fail, so we just ignore errors *)
     let requires =
@@ -195,7 +186,7 @@ module Unprocessed = struct
         ~f:(fun m -> (Module.name m, cu_config))
         (Modules.impl_only modules)
     in
-    { for_; configs = Module_name.Map.of_list_reduce modules ~f:merge_config }
+    { ident; configs = Module_name.Map.of_list_reduce modules ~f:merge_config }
 
   let quote_if_needed s =
     if String.need_quoting s then
@@ -322,9 +313,9 @@ include Unprocessed
 
 let dot_merlin sctx ~dir ~more_src_dirs ~expander (t : Unprocessed.t) =
   let open Build.With_targets.O in
-  let ident = make_ident t.for_ in
+  let ident = Merlin_ident.to_string t.ident in
   let merlin_file_name = Filename.concat merlin_folder_name ident in
-  let merlin_exist_name = make_merlin_exists t.for_ in
+  let merlin_exist_name = make_merlin_exists t.ident in
   let merlin_file = Path.Build.relative dir merlin_file_name in
 
   (* We make the compilation of .ml/.mli files depend on the existence of

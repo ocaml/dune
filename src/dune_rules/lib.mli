@@ -143,7 +143,7 @@ module Compile : sig
 
   val lib_deps_info : t -> Lib_deps_info.t
 
-  val merlin_ident : t -> [ `Lib of Lib_name.t | `Exes of string list ]
+  val merlin_ident : t -> Merlin_ident.t
 
   (** Sub-systems used in this compilation context *)
   val sub_systems : t -> sub_system list

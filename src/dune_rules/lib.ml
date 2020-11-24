@@ -1615,7 +1615,7 @@ module Compile = struct
     ; resolved_selects : Resolved_select.t list
     ; lib_deps_info : Lib_deps_info.t
     ; sub_systems : Sub_system0.Instance.t Lazy.t Sub_system_name.Map.t
-    ; name_for_merlin : [ `Lib of Lib_name.t | `Exes of string list ]
+    ; merlin_ident : Merlin_ident.t
     }
 
   let make_lib_deps_info ~user_written_deps ~pps ~kind =
@@ -1663,14 +1663,14 @@ module Compile = struct
         >>= Resolve.compile_closure_with_overlap_checks db
               ~stack:Dep_stack.empty ~forbidden_libraries:Map.empty )
     in
-    let name_for_merlin = `Lib t.name in
+    let merlin_ident = Merlin_ident.for_lib t.name in
     { direct_requires = requires
     ; requires_link
     ; resolved_selects = t.resolved_selects
     ; pps = t.pps
     ; lib_deps_info
     ; sub_systems = t.sub_systems
-    ; name_for_merlin
+    ; merlin_ident
     }
 
   let direct_requires t = t.direct_requires
@@ -1683,7 +1683,7 @@ module Compile = struct
 
   let lib_deps_info t = t.lib_deps_info
 
-  let merlin_ident t = t.name_for_merlin
+  let merlin_ident t = t.merlin_ident
 
   let sub_systems t =
     Sub_system_name.Map.values t.sub_systems
@@ -1836,14 +1836,14 @@ module DB = struct
          |> Result.map_error ~f:(fun e ->
                 Dep_path.prepend_exn e (Executables exes)))
     in
-    let name_for_merlin = `Exes (List.map ~f:snd exes) in
+    let merlin_ident = Merlin_ident.for_exes ~names:(List.map ~f:snd exes) in
     { Compile.direct_requires = res
     ; requires_link
     ; pps
     ; resolved_selects
     ; lib_deps_info
     ; sub_systems = Sub_system_name.Map.empty
-    ; name_for_merlin
+    ; merlin_ident
     }
 
   (* Here we omit the [only_ppx_deps_allowed] check because by the time we reach

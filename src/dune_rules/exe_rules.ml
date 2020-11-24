@@ -184,7 +184,7 @@ let executables_rules ~sctx ~dir ~expander ~dir_contents ~scope ~compile_info
       ~preprocess:(Preprocess.Per_module.single_preprocess preprocess)
       ~obj_dir
       ~dialects:(Dune_project.dialects (Scope.project scope))
-      ~for_:(Lib.Compile.merlin_ident compile_info)
+      ~ident:(Lib.Compile.merlin_ident compile_info)
       () )
 
 let compile_info ~scope (exes : Dune_file.Executables.t) =

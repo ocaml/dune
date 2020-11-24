@@ -27,7 +27,8 @@ let setup_rules ~sctx ~dir t =
             ]
         }
       in
-      Format.asprintf "@[<v>%a@,@]" Pp.to_fmt (Meta.pp meta.entries))
+      Format.asprintf "%a" Pp.to_fmt
+        (Pp.vbox (Pp.seq (Meta.pp meta.entries) Pp.cut)))
   |> Build.or_exn |> Build.write_file_dyn meta
   |> Super_context.add_rule sctx ~dir
 

@@ -798,6 +798,19 @@ module Vlib : sig
 
     val with_default_implementations : t -> lib list
   end
+
+  module Visit : sig
+    type t
+
+    val create : unit -> t
+
+    val visit :
+         t
+      -> lib
+      -> stack:Lib_info.external_ list
+      -> f:(lib -> unit Or_exn.t)
+      -> unit Or_exn.t
+  end
 end = struct
   module Unimplemented = struct
     type t =
@@ -912,39 +925,28 @@ end = struct
       second_step_closure closure impls
     else
       Ok closure
-end
 
-module Vlib_visit : sig
-  type t
+  module Visit = struct
+    module Status = struct
+      type t =
+        | Visiting
+        | Visited
+    end
 
-  val create : unit -> t
+    type t = Status.t Map.t ref
 
-  val visit :
-       t
-    -> lib
-    -> stack:Lib_info.external_ list
-    -> f:(lib -> unit Or_exn.t)
-    -> unit Or_exn.t
-end = struct
-  module Status = struct
-    type t =
-      | Visiting
-      | Visited
+    let create () = ref Map.empty
+
+    let visit t lib ~stack ~f =
+      match Map.find !t lib with
+      | Some Status.Visited -> Ok ()
+      | Some Visiting -> Error.default_implementation_cycle (lib.info :: stack)
+      | None ->
+        t := Map.set !t lib Visiting;
+        let res = f lib in
+        t := Map.set !t lib Visited;
+        res
   end
-
-  type t = Status.t Map.t ref
-
-  let create () = ref Map.empty
-
-  let visit t lib ~stack ~f =
-    match Map.find !t lib with
-    | Some Status.Visited -> Ok ()
-    | Some Visiting -> Error.default_implementation_cycle (lib.info :: stack)
-    | None ->
-      t := Map.set !t lib Visiting;
-      let res = f lib in
-      t := Map.set !t lib Visited;
-      res
 end
 
 let instrumentation_backend ?(do_not_fail = false) instrument_with resolve
@@ -1406,7 +1408,7 @@ end = struct
   let resolve_default_libraries libraries =
     (* Map from a vlib to vlibs that are implemented in the transitive closure
        of its default impl. *)
-    let vlib_status = Vlib_visit.create () in
+    let vlib_status = Vlib.Visit.create () in
     (* Reverse map *)
     let vlib_default_parent = ref Map.empty in
     let avoid_direct_parent vlib (impl : lib) =
@@ -1444,7 +1446,7 @@ end = struct
     (* Gather vlibs that are transitively implemented by another vlib's default
        implementation. *)
     let rec visit ~stack ancestor_vlib =
-      Vlib_visit.visit vlib_status ~stack ~f:(fun lib ->
+      Vlib.Visit.visit vlib_status ~stack ~f:(fun lib ->
           (* Visit direct dependencies *)
           let* deps = lib.requires in
           let* () =

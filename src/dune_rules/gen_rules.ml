@@ -423,7 +423,7 @@ let gen ~contexts ?only_packages conf =
     in
     let* host, stanzas = Fiber.fork_and_join host stanzas in
     let sctx =
-      Super_context.create ?host ~context ~projects ~packages ~stanzas
+      Super_context.create ?host ~context ~projects ~packages ~stanzas ()
     in
     let+ () = Fiber.Ivar.fill (Table.find_exn sctxs context.name) sctx in
     (context.name, sctx)

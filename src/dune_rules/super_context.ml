@@ -499,7 +499,7 @@ let create_projects_by_package projects : Dune_project.t Package.Name.Map.t =
              (name, project)))
   |> Package.Name.Map.of_list_exn
 
-let create ~(context : Context.t) ?host ~projects ~packages ~stanzas =
+let create ~(context : Context.t) ?host ~projects ~packages ~stanzas () =
   let lib_config = Context.lib_config context in
   let projects_by_package = create_projects_by_package projects in
   let installed_libs =

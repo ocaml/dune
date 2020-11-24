@@ -75,7 +75,7 @@ let init_build_system ?only_packages ~sandboxing_preference ?caching w =
   Build_system.reset ();
   Build_system.init ~sandboxing_preference
     ~contexts:(List.map ~f:Context.to_build_context w.contexts)
-    ?caching;
+    ?caching ();
   List.iter w.contexts ~f:Context.init_configurator;
   let+ scontexts = Gen_rules.gen w.conf ~contexts:w.contexts ?only_packages in
   { workspace = w; scontexts }

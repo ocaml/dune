@@ -18,6 +18,7 @@ val init :
   -> ?caching:caching
   -> sandboxing_preference:Sandbox_mode.t list
   -> unit
+  -> unit
 
 val reset : unit -> unit
 

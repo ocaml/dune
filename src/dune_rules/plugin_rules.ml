@@ -8,7 +8,7 @@ let meta_file ~dir { name; libraries = _; site = _, (pkg, site); _ } =
     ; Package.Name.to_string pkg
     ; Section.Site.to_string site
     ; Package.Name.to_string name
-    ; "META"
+    ; Findlib.meta_fn
     ]
 
 let resolve_libs ~sctx t =
@@ -43,7 +43,7 @@ let install_rules ~sctx ~dir ({ name; site = loc, (pkg, site); _ } as t) =
     let meta = meta_file ~dir t in
     [ ( Some loc
       , Install.Entry.make_with_site
-          ~dst:(sprintf "%s/%s" (Package.Name.to_string name) "META")
+          ~dst:(sprintf "%s/%s" (Package.Name.to_string name) Findlib.meta_fn)
           (Site { pkg; site })
           (Super_context.get_site_of_packages sctx)
           meta )

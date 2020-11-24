@@ -83,6 +83,9 @@ Unreleased
   possible to use library dependencies shadowed by local modules (#3825,
   @rgrinberg)
 
+- Allow (formatting ...) field in (env ...) stanza to set per-directory
+  formatting specification. (#3942, @nojb)
+
 2.7.1 (2/09/2020)
 -----------------
 

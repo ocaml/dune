@@ -103,3 +103,13 @@
   (applies_to error)
   (enabled_if
    (<> "macosx" %{ocaml-config:system}))))
+
+(cram
+ (applies_to github3766)
+ (deps ./github3766.t/test.exe))
+
+(subdir
+ github3766.t
+ (executable
+  (libraries stdune)
+  (name test)))

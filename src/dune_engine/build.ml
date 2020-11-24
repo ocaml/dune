@@ -21,6 +21,7 @@ type 'a t =
   | Dyn_paths : ('a * Path.Set.t) t -> 'a t
   | Dyn_deps : ('a * Dep.Set.t) t -> 'a t
   | Label : label -> unit t
+  | Or_exn : 'a Or_exn.t t -> 'a t
   | Fail : fail -> _ t
   | Memo : 'a memo -> 'a t
   | Catch : 'a t * (exn -> 'a) -> 'a t
@@ -51,6 +52,8 @@ let map x ~f = Map (f, x)
 let map2 x y ~f = Map2 (f, x, y)
 
 let delayed f = Map (f, Pure ())
+
+let or_exn s = Or_exn s
 
 module O = struct
   let ( >>> ) a b = Seq (a, b)
@@ -311,6 +314,7 @@ end = struct
     | Lines_of p ->
       { Static_deps.empty with rule_deps = Dep.Set.of_files [ p ] }
     | Label _ -> Static_deps.empty
+    | Or_exn _ -> Static_deps.empty
     | Fail _ -> Static_deps.empty
     | Memo m -> Memo.exec memo (Input.T m)
     | Catch (t, _) -> static_deps t
@@ -344,6 +348,7 @@ let fold_labeled (type acc) t ~(init : acc) ~f =
     | Contents _ -> acc
     | Lines_of _ -> acc
     | Label r -> f r acc
+    | Or_exn _ -> acc
     | Fail _ -> acc
     | If_file_exists (p, then_, else_) ->
       if file_exists p then
@@ -411,6 +416,9 @@ end = struct
         let (x, dyn_deps), dyn_deps_x = go t in
         (x, Dep.Set.union dyn_deps dyn_deps_x)
       | Label _ -> ((), Dep.Set.empty)
+      | Or_exn e ->
+        let a, deps = go e in
+        (Result.ok_exn a, deps)
       | Fail { fail } -> fail ()
       | If_file_exists (p, then_, else_) ->
         if file_exists p then

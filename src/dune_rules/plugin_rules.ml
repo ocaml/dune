@@ -19,19 +19,11 @@ let setup_rules ~sctx ~dir t =
   let meta = meta_file ~dir t in
   Build.delayed (fun () ->
       let open Result.O in
-      let+ requires =
-        let+ libs = resolve_libs ~sctx t in
-        List.map libs ~f:(fun lib -> Lib_name.to_string (Lib.name lib))
-      in
+      let+ requires = resolve_libs ~sctx t in
       let meta =
         { Meta.name = None
         ; entries =
-            [ Rule
-                { Meta.var = "requires"
-                ; action = Set
-                ; predicates = []
-                ; value = String.concat ~sep:" " requires
-                }
+            [ Gen_meta.requires (Lib_name.Set.of_list_map ~f:Lib.name requires)
             ]
         }
       in

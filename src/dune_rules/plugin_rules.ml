@@ -18,9 +18,10 @@ let resolve_libs ~sctx t =
 let setup_rules ~sctx ~dir t =
   let meta = meta_file ~dir t in
   Build.delayed (fun () ->
-      let requires =
-        resolve_libs ~sctx t |> Result.ok_exn
-        |> List.map ~f:(fun lib -> Lib_name.to_string (Lib.name lib))
+      let open Result.O in
+      let+ requires =
+        let+ libs = resolve_libs ~sctx t in
+        List.map libs ~f:(fun lib -> Lib_name.to_string (Lib.name lib))
       in
       let meta =
         { Meta.name = None
@@ -35,7 +36,7 @@ let setup_rules ~sctx ~dir t =
         }
       in
       Format.asprintf "@[<v>%a@,@]" Pp.to_fmt (Meta.pp meta.entries))
-  |> Build.write_file_dyn meta
+  |> Build.or_exn |> Build.write_file_dyn meta
   |> Super_context.add_rule sctx ~dir
 
 let install_rules ~sctx ~dir ({ name; site = loc, (pkg, site); _ } as t) =

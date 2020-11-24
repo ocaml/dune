@@ -1405,6 +1405,9 @@ Fields supported in ``<settings>`` are:
 - ``(coq (flags <flags>))``. This allows to pass options to Coq, see
   :ref:`coq-theory` for more details.
 
+- ``(formatting <settings>)``. This allows to set auto-formatting in the current
+  directory subtree, see :ref:`formatting`.
+
 .. _dune-subdirs:
 
 dirs (since 1.6)

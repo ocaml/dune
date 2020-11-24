@@ -177,3 +177,61 @@ Sometimes, the suggestion is to just remove the configuration.
   Error: Starting with (lang dune 2.0), formatting is enabled by default.
   To port it to the new syntax, you can delete this part.
   [1]
+
+Formatting can also be set in the (env ...) stanza
+
+  $ mkdir -p using-env
+  $ cat >using-env/dune-project <<EOF
+  > (lang dune 2.7)
+  > EOF
+  $ cat >using-env/dune <<EOF
+  > (env (_ (formatting disabled)))
+  > EOF
+  $ mkdir -p using-env/subdir
+  $ cat >using-env/subdir/dune <<EOF
+  > (executable (name foo))
+  > EOF
+  $ cat >using-env/subdir/foo.ml <<EOF
+  > let x =     12
+  > EOF
+  $ (cd using-env && dune build @fmt)
+  File "dune", line 1, characters 8-29:
+  1 | (env (_ (formatting disabled)))
+              ^^^^^^^^^^^^^^^^^^^^^
+  Error: 'formatting' is only available since version 2.8 of the dune language.
+  Please update your dune-project file to have (lang dune 2.8).
+  [1]
+  $ cat >using-env/dune-project <<EOF
+  > (lang dune 2.8)
+  > EOF
+  $ (cd using-env && dune build @fmt)
+  $ cat >using-env/dune <<EOF
+  > (env (_ (formatting (enabled_for ocaml))))
+  > EOF
+  $ touch using-env/.ocamlformat
+  $ (cd using-env && dune build @fmt)
+  File "subdir/foo.ml", line 1, characters 0-0:
+  Error: Files _build/default/subdir/foo.ml and
+  _build/default/subdir/.formatted/foo.ml differ.
+  [1]
+
+We check that the formatting stanza in (env ...) takes precedence over that in
+dune-project:
+
+  $ cat >>using-env/dune-project <<EOF
+  > (formatting disabled)
+  > EOF
+  $ (cd using-env && dune build @fmt)
+  File "subdir/foo.ml", line 1, characters 0-0:
+  Error: Files _build/default/subdir/foo.ml and
+  _build/default/subdir/.formatted/foo.ml differ.
+  [1]
+
+Next we check that the new logic does not interfere with default per-project
+settings as dictated by the dune language version.
+
+  $ cat >using-env/subdir/dune-project <<EOF
+  > (lang dune 1.7)
+  > ;; formatting disabled by default
+  > EOF
+  $ (cd using-env && dune build @fmt)

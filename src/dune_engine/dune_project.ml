@@ -238,7 +238,7 @@ let to_dyn
     ; ("file_key", string file_key)
     ; ("dialects", Dialect.DB.to_dyn dialects)
     ; ("explicit_js_mode", bool explicit_js_mode)
-    ; ("format_config", (option Format_config.to_dyn) format_config)
+    ; ("format_config", option Format_config.to_dyn format_config)
     ; ("strict_package_deps", bool strict_package_deps)
     ; ("cram", bool cram)
     ]
@@ -562,7 +562,8 @@ let format_extension_key =
 let format_config t =
   let ext = find_extension_args t format_extension_key in
   let dune_lang = t.format_config in
-  Format_config.of_config ~ext ~dune_lang
+  let version = t.dune_version in
+  Format_config.of_config ~ext ~dune_lang ~version
 
 let default_name ~dir ~(packages : Package.t Package.Name.Map.t) =
   match Package.Name.Map.min_binding packages with
@@ -682,7 +683,7 @@ let parse ~dir ~lang ~opam_packages ~file =
      and+ explicit_js_mode =
        field_o_b "explicit_js_mode"
          ~check:(Dune_lang.Syntax.since Stanza.syntax (1, 11))
-     and+ format_config = Format_config.field
+     and+ format_config = Format_config.field ~since:(2, 0)
      and+ strict_package_deps =
        field_o_b "strict_package_deps"
          ~check:(Dune_lang.Syntax.since Stanza.syntax (2, 3))

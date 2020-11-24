@@ -17,6 +17,7 @@ val create :
   -> projects:Dune_project.t list
   -> packages:Package.t Package.Name.Map.t
   -> stanzas:Dune_load.Dune_file.t list
+  -> unit
   -> t
 
 val context : t -> Context.t

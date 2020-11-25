@@ -12,3 +12,9 @@ let for_exes ~names = Exes names
 let to_string = function
   | Lib name -> sprintf "lib-%s" (Lib_name.to_string name)
   | Exes names -> sprintf "exe-%s" (String.concat ~sep:"-" names)
+
+let merlin_exist_name = ".merlin-exist"
+
+let merlin_exists_path path ident =
+  String.concat ~sep:"-" [ merlin_exist_name; to_string ident ]
+  |> Path.Build.relative path

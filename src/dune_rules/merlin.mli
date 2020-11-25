@@ -13,9 +13,6 @@ open Import
 (** Merlin config folder name *)
 val merlin_folder_name : string
 
-(** Return the name of the merlin file for a given stanza *)
-val make_merlin_exists : Merlin_ident.t -> string
-
 (** Type of "unprocessed" merlin information *)
 type t
 

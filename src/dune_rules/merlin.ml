@@ -13,11 +13,6 @@ end)
 
 let merlin_folder_name = ".merlin-conf"
 
-let merlin_exist_name = ".merlin-exist"
-
-let make_merlin_exists ident =
-  String.concat ~sep:"-" [ merlin_exist_name; Merlin_ident.to_string ident ]
-
 module Processed = struct
   (* The actual content of the merlin file as built by the [Unprocessed.process]
      function from the unprocessed info gathered through [gen_rules]. The first
@@ -315,7 +310,7 @@ let dot_merlin sctx ~dir ~more_src_dirs ~expander (t : Unprocessed.t) =
   let open Build.With_targets.O in
   let ident = Merlin_ident.to_string t.ident in
   let merlin_file_name = Filename.concat merlin_folder_name ident in
-  let merlin_exist_name = make_merlin_exists t.ident in
+  let merlin_exist = Merlin_ident.merlin_exists_path dir t.ident in
   let merlin_file = Path.Build.relative dir merlin_file_name in
 
   (* We make the compilation of .ml/.mli files depend on the existence of
@@ -327,7 +322,7 @@ let dot_merlin sctx ~dir ~more_src_dirs ~expander (t : Unprocessed.t) =
      of a file, so we have to use this trick. *)
   SC.add_rule sctx ~dir
     ( Build.with_no_targets (Build.path (Path.build merlin_file))
-    >>> Build.create_file (Path.Build.relative dir merlin_exist_name) );
+    >>> Build.create_file merlin_exist );
 
   Path.Set.singleton (Path.build merlin_file)
   |> Rules.Produce.Alias.add_deps (Alias.check ~dir);

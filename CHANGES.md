@@ -1,6 +1,8 @@
 Unreleased
 ----------
 
+- List native object directories in .merlin files. (#3974, @mrmr1993)
+
 - Action `(diff reference test_result)` now accept `reference` to be absent and
   in that case consider that the reference is empty. Then running `dune promote`
   will create the reference file. (#3795, @bobot)

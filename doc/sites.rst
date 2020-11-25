@@ -73,7 +73,7 @@ Getting the locations of a site at runtime
 ------------------------------------------
 
 The executable ``mygui`` will be able to get the locations of the ``themes``
-site using the :ref:`generate module stanza<generate_module>`
+site using the :ref:`generate sites module stanza<generate_sites_module>`
 
 .. code:: scheme
 
@@ -82,7 +82,7 @@ site using the :ref:`generate module stanza<generate_module>`
     (modules mygui mysites)
     (libraries dune-site))
 
-   (generate_module
+   (generate_sites_module
     (name mysites)
     (sites mygui))
 
@@ -227,7 +227,7 @@ Main executable (C)
     (name c_register)
     (modules c_register))
 
-   (generate_module
+   (generate_sites_module
     (module sites)
     (plugins (c plugins)))
 

@@ -86,6 +86,11 @@ Unreleased
 - Allow (formatting ...) field in (env ...) stanza to set per-directory
   formatting specification. (#3942, @nojb)
 
+- [coq] In `coq.theory`, `:standard` for the `flags` field now uses the
+  flags set in `env` profile flags (#3931 , @ejgallego @rgrinberg)
+
+- [coq] Add `-q` flag to `:standard` `coqc` flags , fixes #3924, (#3931 , @ejgallego)
+
 2.7.1 (2/09/2020)
 -----------------
 

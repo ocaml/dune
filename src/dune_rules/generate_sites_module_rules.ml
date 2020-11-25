@@ -56,7 +56,7 @@ let plugins_code sctx buf pkg sites =
       pr buf "    module %s : %s.S = %s.Make(struct let paths = Sites.%s end)"
         (String.capitalize site) plugins plugins site)
 
-let setup_rules sctx ~dir (def : Dune_file.Generate_module.t) =
+let setup_rules sctx ~dir (def : Dune_file.Generate_sites_module.t) =
   let buf = Buffer.create 1024 in
   if def.sourceroot then sourceroot_code buf;
   if def.relocatable then relocatable_code buf;

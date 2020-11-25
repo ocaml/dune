@@ -390,7 +390,7 @@ module Deprecated_library_name : sig
 end
 
 (** Stanza which generate a module for getting information from dune *)
-module Generate_module : sig
+module Generate_sites_module : sig
   type t =
     { loc : Loc.t
     ; module_ : Module_name.t  (** name of the module to generate *)
@@ -419,7 +419,7 @@ type Stanza.t +=
   | Library_redirect of Library_redirect.Local.t
   | Deprecated_library_name of Deprecated_library_name.t
   | Cram of Cram_stanza.t
-  | Generate_module of Generate_module.t
+  | Generate_sites_module of Generate_sites_module.t
   | Plugin of Plugin.t
 
 val stanza_package : Stanza.t -> Package.t option

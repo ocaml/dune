@@ -42,8 +42,8 @@ let to_local abs_file_path =
   in
   match path_opt with
   | Some path -> (
-    try Ok Path.(Filename.concat "." path |> of_string |> local_part)
-    with _ -> Printf.sprintf "Could not resolve path %s" path |> error )
+    try Ok (Filename.concat "." path |> Path.Local.of_string)
+    with User_error.E mess -> User_message.to_string mess |> error )
   | None ->
     Printf.sprintf "Path is not in dune workspace %s" abs_file_path |> error
 
@@ -65,9 +65,6 @@ let get_merlin_files_paths local_path =
   List.map files ~f:(fun f -> Path.Build.relative merlin_path f |> Path.build)
 
 let load_merlin_file local_path file =
-  let no_config_error () =
-    Merlin_conf.make_error "Project isn't built. (Try calling `dune build`.)"
-  in
   (* We search for an appropriate merlin configuration in the current directory
      and its parents *)
   let rec find_closest path =
@@ -76,23 +73,25 @@ let load_merlin_file local_path file =
     let result =
       List.find_map file_paths ~f:(fun file_path ->
           if Path.exists file_path then
-            match Merlin.Processed.load_file file_path with
-            | Some config -> Merlin.Processed.get config ~filename
-            | None -> None
+            let open Option.O in
+            let* config = Merlin.Processed.load_file file_path in
+            Merlin.Processed.get config ~filename
           else
             None)
     in
     match result with
     | Some p -> Some p
     | None ->
-      Option.bind
+      Option.bind ~f:find_closest
         ( if Path.Local.is_root path then
           None
         else
           Path.Local.parent path )
-        ~f:find_closest
   in
-  Option.value (find_closest local_path) ~default:(no_config_error ())
+  let default =
+    Merlin_conf.make_error "Project isn't built. (Try calling `dune build`.)"
+  in
+  Option.value (find_closest local_path) ~default
 
 let print_merlin_conf file =
   let abs_root, file = Filename.(dirname file, basename file) in

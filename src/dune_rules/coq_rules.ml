@@ -155,29 +155,31 @@ module Context = struct
     in
     [ Command.Args.S (Bootstrap.flags cctx.boot_type); S file_flags ]
 
-  let coqc_native_flags cctx =
+  let coqc_native_flags cctx : _ Command.Args.t =
     match cctx.mode with
-    | Coq_mode.VoOnly -> []
+    | Coq_mode.VoOnly -> Command.Args.empty
     | Coq_mode.Native ->
-      let native_include_ml_args =
-        Path.Set.fold
-          (Result.ok_exn cctx.native_includes)
-          ~f:(fun dir acc -> Command.Args.Path dir :: A "-nI" :: acc)
-          ~init:[]
+      let args =
+        let open Result.O in
+        let* native_includes = cctx.native_includes in
+        let include_ dir acc = Command.Args.Path dir :: A "-nI" :: acc in
+        let native_include_ml_args =
+          Path.Set.fold native_includes ~init:[] ~f:include_
+        in
+        let+ native_theory_includes = cctx.native_theory_includes in
+        let native_include_theory_output =
+          Path.Build.Set.fold native_theory_includes ~init:[] ~f:(fun dir acc ->
+              include_ (Path.build dir) acc)
+        in
+        (* This dir is relative to the file, by default [.coq-native/] *)
+        Command.Args.S
+          [ Command.Args.As [ "-native-output-dir"; "." ]
+          ; Command.Args.As [ "-native-compiler"; "on" ]
+          ; Command.Args.S (List.rev native_include_ml_args)
+          ; Command.Args.S (List.rev native_include_theory_output)
+          ]
       in
-      let native_include_theory_output =
-        Path.Build.Set.fold
-          (Result.ok_exn cctx.native_theory_includes)
-          ~f:(fun dir acc ->
-            Command.Args.Path (Path.build dir) :: A "-nI" :: acc)
-          ~init:[]
-      in
-      (* This dir is relative to the file, by default [.coq-native/] *)
-      [ Command.Args.As [ "-native-output-dir"; "." ]
-      ; Command.Args.As [ "-native-compiler"; "on" ]
-      ; Command.Args.S (List.rev native_include_ml_args)
-      ; Command.Args.S (List.rev native_include_theory_output)
-      ]
+      Command.of_result args
 
   (* compute include flags and mlpack rules *)
   let setup_ml_deps ~lib_db libs theories =
@@ -343,7 +345,7 @@ let coqc_rule (cctx : _ Context.t) ~file_flags coq_module =
     in
     let native_flags = Context.coqc_native_flags cctx in
     [ Command.Args.Hidden_targets objects_to
-    ; S native_flags
+    ; native_flags
     ; S file_flags
     ; Command.Args.Dep (Path.build source)
     ]

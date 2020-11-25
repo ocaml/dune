@@ -8,9 +8,10 @@ Unreleased
 - Ignore special files (BLK, CHR, FIFO, SOCKET), (#3570, fixes #3124, #3546,
   @ejgallego)
 
-- Experimental: Simplify loading of additional files (data or code) at runtime in programs by
-  introducing specific installation sites. In particular it allow to define
-  plugins to be installed in these sites. (#3104, #3794, fixes #1185, @bobot)
+- Experimental: Simplify loading of additional files (data or code) at runtime
+  in programs by introducing specific installation sites. In particular it allow
+  to define plugins to be installed in these sites. (#3104, #3794, fixes #1185,
+  @bobot)
 
 - Move all temporary files created by dune to run actions to a single directory
   and make sure that actions executed by dune also use this directory by setting
@@ -34,7 +35,7 @@ Unreleased
   native, dynlink) are disabled. Previously, dune would generate all archives
   for regardless of settings. (#3829, @rgrinberg)
 
-- Do no run ocamldep to for single module executables & libraries. The
+- Do not run ocamldep to for single module executables & libraries. The
   dependency graph for such artifacts is trivial (#3847, @rgrinberg)
 
 - Fix cram tests inside vendored directories not being interpreted correctly.
@@ -59,15 +60,31 @@ Unreleased
   makes it possible to use the build info module inside the preprocessor.
   (#3848, fix #3848, @rgrinberg)
 
-- Correctly call `git ls-tree` so unicode files are not quoted, this
-  fixes problems with `dune subst` in the presence of unicode
-  files. Fixes #3219 (#3879, @ejgallego)
+- Correctly call `git ls-tree` so unicode files are not quoted, this fixes
+  problems with `dune subst` in the presence of unicode files. Fixes #3219
+  (#3879, @ejgallego)
 
 - `dune subst` now accepts common command-line arguments such as
   `--debug-backtraces` (#3878, @ejgallego)
 
 - `dune describe` now also includes information about executables in addition to
   that of libraries. (#3892, #3895, @nojb)
+
+- instrumentation backends can now receive arguments via `(instrumentation
+  (backend <name> <args>))`. (#3906, #3932, @nojb)
+
+- Tweak auto-formatting of `dune` files to improve readability. (#3928, @nojb)
+
+- Add a switch argument to opam when context is not default. (#3951, @tmattio)
+
+- Avoid pager when running `$ git diff` (#3912, @AltGr)
+
+- Add `(root_module ..)` field to libraries & executables. This makes it
+  possible to use library dependencies shadowed by local modules (#3825,
+  @rgrinberg)
+
+- Allow (formatting ...) field in (env ...) stanza to set per-directory
+  formatting specification. (#3942, @nojb)
 
 2.7.1 (2/09/2020)
 -----------------

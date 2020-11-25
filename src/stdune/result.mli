@@ -69,6 +69,9 @@ module List : sig
     -> f:('acc -> 'a -> ('acc, 'c) result)
     -> init:'acc
     -> ('acc, 'c) result
+
+  val filter_map :
+    'a list -> f:('a -> ('b option, 'error) t) -> ('b list, 'error) t
 end
 
 module Option : sig

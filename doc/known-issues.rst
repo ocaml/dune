@@ -16,7 +16,7 @@ So, while they are supported, you should be careful where you use them. Using a
 `.ml` only module is still preferable.
 
 parallel dune invocations on the same tree
-================
+==========================================
 
 One can invoke dune multiple times in parallel, as long as the invocations are not
 under the same root. That is to say, two dune runs cannot share the same target

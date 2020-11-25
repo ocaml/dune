@@ -71,7 +71,7 @@ val dialects : t -> Dialect.DB.t
 
 val explicit_js_mode : t -> bool
 
-val format_config : t -> Format_config.t option
+val format_config : t -> Format_config.t
 
 val equal : t -> t -> bool
 

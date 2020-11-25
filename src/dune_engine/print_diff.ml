@@ -40,7 +40,7 @@ let print ?(skip_trailing_cr = Sys.win32) path1 path2 =
       match which "git" with
       | Some path ->
         ( path
-        , [ "diff"; "--no-index"; "--color=always"; "-u" ]
+        , [ "--no-pager"; "diff"; "--no-index"; "--color=always"; "-u" ]
         , "--ignore-cr-at-eol"
         , List.map
             ~f:(fun (path, file) -> resolve_link ~dir path file)

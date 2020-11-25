@@ -25,4 +25,5 @@ val eval :
   -> buildable:Dune_file.Buildable.t
   -> private_modules:Ordered_set_lang.t
   -> kind:kind
+  -> src_dir:Path.Build.t
   -> Module.Name_map.t

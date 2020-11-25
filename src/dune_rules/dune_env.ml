@@ -80,6 +80,7 @@ module Stanza = struct
     ; menhir_flags : Ordered_set_lang.Unexpanded.t
     ; odoc : Odoc.t
     ; coq : Ordered_set_lang.Unexpanded.t
+    ; format_config : Format_config.t option
     }
 
   let equal_config
@@ -91,6 +92,7 @@ module Stanza = struct
       ; menhir_flags
       ; odoc
       ; coq
+      ; format_config
       } t =
     Ocaml_flags.Spec.equal flags t.flags
     && Foreign_language.Dict.equal Ordered_set_lang.Unexpanded.equal
@@ -101,6 +103,7 @@ module Stanza = struct
     && Ordered_set_lang.Unexpanded.equal menhir_flags t.menhir_flags
     && Odoc.equal odoc t.odoc
     && Ordered_set_lang.Unexpanded.equal coq t.coq
+    && Option.equal Format_config.equal format_config t.format_config
 
   let hash_config = Hashtbl.hash
 
@@ -114,6 +117,7 @@ module Stanza = struct
     ; menhir_flags = Ordered_set_lang.Unexpanded.standard
     ; odoc = Odoc.empty
     ; coq = Ordered_set_lang.Unexpanded.standard
+    ; format_config = None
     }
 
   type pattern =
@@ -177,7 +181,8 @@ module Stanza = struct
     and+ inline_tests = inline_tests_field
     and+ menhir_flags = menhir_flags ~since:(Some (2, 1))
     and+ odoc = odoc_field
-    and+ coq = coq_field in
+    and+ coq = coq_field
+    and+ format_config = Format_config.field ~since:(2, 8) in
     { flags
     ; foreign_flags
     ; env_vars
@@ -186,6 +191,7 @@ module Stanza = struct
     ; menhir_flags
     ; odoc
     ; coq
+    ; format_config
     }
 
   let rule =

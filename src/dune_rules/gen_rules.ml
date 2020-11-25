@@ -153,8 +153,8 @@ end
  * See: https://github.com/ocaml/dune/pull/1354#issuecomment-427922592 *)
 
 let with_format sctx ~dir ~f =
-  Super_context.find_scope_by_dir sctx dir
-  |> Scope.project |> Dune_project.format_config |> Option.iter ~f
+  let f config = if not (Format_config.is_empty config) then f config in
+  Super_context.format_config sctx ~dir |> f
 
 let gen_format_rules sctx ~expander ~output_dir =
   let scope = Super_context.find_scope_by_dir sctx output_dir in
@@ -379,7 +379,9 @@ let filter_out_stanzas_from_hidden_packages ~visible_pkgs =
       let include_stanza =
         match Dune_file.stanza_package stanza with
         | None -> true
-        | Some package -> Package.Name.Map.mem visible_pkgs package.name
+        | Some package ->
+          let name = Package.name package in
+          Package.Name.Map.mem visible_pkgs name
       in
       if include_stanza then
         Some stanza
@@ -421,7 +423,7 @@ let gen ~contexts ?only_packages conf =
     in
     let* host, stanzas = Fiber.fork_and_join host stanzas in
     let sctx =
-      Super_context.create ?host ~context ~projects ~packages ~stanzas
+      Super_context.create ?host ~context ~projects ~packages ~stanzas ()
     in
     let+ () = Fiber.Ivar.fill (Table.find_exn sctxs context.name) sctx in
     (context.name, sctx)
@@ -431,7 +433,7 @@ let gen ~contexts ?only_packages conf =
   let () =
     Build_system.set_packages (fun path ->
         let open Option.O in
-        Option.value ~default:Package.Name.Set.empty
+        Option.value ~default:Package.Id.Set.empty
           (let* ctx_name, _ = Path.Build.extract_build_context path in
            let* ctx_name = Context_name.of_string_opt ctx_name in
            let* sctx = Context_name.Map.find sctxs ctx_name in

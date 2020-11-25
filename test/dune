@@ -36,13 +36,13 @@
   (glob_files *.{foo,bar}))
  (action
   (bash
-    "echo 'expected result: 10'\necho 'without locking:' $(< x)\necho 'with locking:   ' $(< y)\nrm -f *.{foo,bar} x y")))
+   "echo 'expected result: 10'\necho 'without locking:' $(< x)\necho 'with locking:   ' $(< y)\nrm -f *.{foo,bar} x y")))
 
 (rule
  (with-stdout-to
   incr.ml
   (echo
-    "let fn = Sys.argv.(1) in\nlet x =\n  match open_in fn with\n  | ic ->\n    let x = int_of_string (input_line ic) in\n    close_in ic;\n    x\n  | exception _ -> 0\nin\nUnix.sleepf 0.2;\nPrintf.fprintf (open_out fn) \"%d\\n\" (x + 1);\nPrintf.fprintf (open_out Sys.argv.(2)) \"%g\n%!\" (Sys.time ())\n")))
+   "let fn = Sys.argv.(1) in\nlet x =\n  match open_in fn with\n  | ic ->\n    let x = int_of_string (input_line ic) in\n    close_in ic;\n    x\n  | exception _ -> 0\nin\nUnix.sleepf 0.2;\nPrintf.fprintf (open_out fn) \"%d\\n\" (x + 1);\nPrintf.fprintf (open_out Sys.argv.(2)) \"%g\n%!\" (Sys.time ())\n")))
 
 (executable
  (name incr)

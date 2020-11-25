@@ -79,6 +79,8 @@ val all_unit : unit t list -> unit t
 (** Delay a static computation until the description is evaluated *)
 val delayed : (unit -> 'a) -> 'a t
 
+val or_exn : 'a Or_exn.t t -> 'a t
+
 (** CR-someday diml: this API is not great, what about:
 
     {[

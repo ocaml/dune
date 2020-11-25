@@ -29,6 +29,7 @@ module Kind = struct
     | Alias
     | Impl_vmodule
     | Wrapped_compat
+    | Root
 
   let to_string = function
     | Intf_only -> "intf_only"
@@ -37,6 +38,7 @@ module Kind = struct
     | Alias -> "alias"
     | Impl_vmodule -> "impl_vmodule"
     | Wrapped_compat -> "wrapped_compat"
+    | Root -> "root"
 
   let to_dyn t = Dyn.Encoder.string (to_string t)
 
@@ -51,12 +53,14 @@ module Kind = struct
       ; ("alias", Alias)
       ; ("impl_vmodule", Impl_vmodule)
       ; ("wrapped_compat", Wrapped_compat)
+      ; ("root", Root)
       ]
 
   let has_impl = function
     | Alias
     | Impl_vmodule
     | Wrapped_compat
+    | Root
     | Impl ->
       true
     | Intf_only
@@ -248,6 +252,7 @@ let encode
     match kind with
     | Kind.Impl when has_impl -> None
     | Intf_only when not has_impl -> None
+    | Root
     | Wrapped_compat
     | Impl_vmodule
     | Alias
@@ -333,6 +338,11 @@ let generated_alias ~src_dir name =
   let src_dir = Path.build src_dir in
   let t = generated ~src_dir name in
   { t with kind = Alias }
+
+let generated_root ~src_dir name =
+  let src_dir = Path.build src_dir in
+  let t = generated ~src_dir name in
+  { t with kind = Root; visibility = Private }
 
 let of_source ~visibility ~kind source = of_source ~visibility ~kind source
 

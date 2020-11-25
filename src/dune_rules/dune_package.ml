@@ -141,7 +141,7 @@ module Lib = struct
        and+ orig_src_dir = field_o "orig_src_dir" path
        and+ modules =
          let src_dir = Obj_dir.dir obj_dir in
-         field_o "modules"
+         field "modules"
            (Modules.decode
               ~implements:(Option.is_some implements)
               ~src_dir ~version:lang.version)
@@ -153,6 +153,9 @@ module Lib = struct
          field_o "instrumentation.backend" (located Lib_name.decode)
        in
        let modes = Mode.Dict.Set.of_list modes in
+       let entry_modules =
+         Modules.entry_modules modules |> List.map ~f:Module.name
+       in
        let info : Path.t Lib_info.t =
          let src_dir = Obj_dir.dir obj_dir in
          let enabled = Lib_info.Enabled_status.Normal in
@@ -170,25 +173,24 @@ module Lib = struct
          let dune_version = None in
          let virtual_ =
            if virtual_ then
-             let modules = Option.value_exn modules in
              Some (Lib_info.Source.External modules)
            else
              None
          in
          let wrapped =
-           Option.map modules ~f:Modules.wrapped
-           |> Option.map ~f:(fun w -> Lib_info.Inherited.This w)
+           Some (Lib_info.Inherited.This (Modules.wrapped modules))
          in
+         let entry_modules = Lib_info.Source.External (Ok entry_modules) in
          Lib_info.create ~loc ~name ~kind ~status ~src_dir ~orig_src_dir
            ~obj_dir ~version ~synopsis ~main_module_name ~sub_systems ~requires
            ~foreign_objects ~plugins ~archives ~ppx_runtime_deps
            ~foreign_archives ~native_archives ~foreign_dll_files:[]
            ~jsoo_runtime ~jsoo_archive ~preprocess ~enabled ~virtual_deps
-           ~dune_version ~virtual_ ~implements ~default_implementation ~modes
-           ~wrapped ~special_builtin_support ~exit_module:None
-           ~instrumentation_backend
+           ~dune_version ~virtual_ ~entry_modules ~implements
+           ~default_implementation ~modes ~wrapped ~special_builtin_support
+           ~exit_module:None ~instrumentation_backend
        in
-       { info; main_module_name; modules })
+       { info; main_module_name; modules = Some modules })
 
   let modules t = t.modules
 

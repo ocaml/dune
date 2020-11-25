@@ -49,3 +49,7 @@ val odoc : t -> Odoc.t
 val coq : t -> Coq.t
 
 val menhir_flags : t -> string list Build.t
+
+val format_config : t -> Format_config.t
+
+val set_format_config : t -> Format_config.t -> t

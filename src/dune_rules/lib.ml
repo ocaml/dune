@@ -239,7 +239,9 @@ module T = struct
     ; name : Lib_name.t
     ; unique_id : Id.t
     ; re_exports : t list Or_exn.t
-    ; requires : t list Or_exn.t
+    ; (* [requires] is contains all required libraries, including the ones
+         mentioned in [re_exports]. *)
+      requires : t list Or_exn.t
     ; ppx_runtime_deps : t list Or_exn.t
     ; pps : t list Or_exn.t
     ; resolved_selects : Resolved_select.t list
@@ -363,6 +365,14 @@ let main_module_name t =
     match main_module_name with
     | This x -> x
     | From _ -> assert false )
+
+let entry_module_names t ~local_lib =
+  match Lib_info.entry_modules t.info with
+  | External d -> d
+  | Local ->
+    let info = Lib_info.as_local_exn t.info in
+    let modules = local_lib ~dir:(Lib_info.src_dir info) ~name:t.name in
+    Ok (Modules.entry_modules modules |> List.map ~f:Module.name)
 
 let wrapped t =
   let wrapped = Lib_info.wrapped t.info in
@@ -788,6 +798,19 @@ module Vlib : sig
 
     val with_default_implementations : t -> lib list
   end
+
+  module Visit : sig
+    type t
+
+    val create : unit -> t
+
+    val visit :
+         t
+      -> lib
+      -> stack:Lib_info.external_ list
+      -> f:(lib -> unit Or_exn.t)
+      -> unit Or_exn.t
+  end
 end = struct
   module Unimplemented = struct
     type t =
@@ -902,39 +925,28 @@ end = struct
       second_step_closure closure impls
     else
       Ok closure
-end
 
-module Vlib_visit : sig
-  type t
+  module Visit = struct
+    module Status = struct
+      type t =
+        | Visiting
+        | Visited
+    end
 
-  val create : unit -> t
+    type t = Status.t Map.t ref
 
-  val visit :
-       t
-    -> lib
-    -> stack:Lib_info.external_ list
-    -> f:(lib -> unit Or_exn.t)
-    -> unit Or_exn.t
-end = struct
-  module Status = struct
-    type t =
-      | Visiting
-      | Visited
+    let create () = ref Map.empty
+
+    let visit t lib ~stack ~f =
+      match Map.find !t lib with
+      | Some Status.Visited -> Ok ()
+      | Some Visiting -> Error.default_implementation_cycle (lib.info :: stack)
+      | None ->
+        t := Map.set !t lib Visiting;
+        let res = f lib in
+        t := Map.set !t lib Visited;
+        res
   end
-
-  type t = Status.t Map.t ref
-
-  let create () = ref Map.empty
-
-  let visit t lib ~stack ~f =
-    match Map.find !t lib with
-    | Some Status.Visited -> Ok ()
-    | Some Visiting -> Error.default_implementation_cycle (lib.info :: stack)
-    | None ->
-      t := Map.set !t lib Visiting;
-      let res = f lib in
-      t := Map.set !t lib Visited;
-      res
 end
 
 let instrumentation_backend ?(do_not_fail = false) instrument_with resolve
@@ -1396,7 +1408,7 @@ end = struct
   let resolve_default_libraries libraries =
     (* Map from a vlib to vlibs that are implemented in the transitive closure
        of its default impl. *)
-    let vlib_status = Vlib_visit.create () in
+    let vlib_status = Vlib.Visit.create () in
     (* Reverse map *)
     let vlib_default_parent = ref Map.empty in
     let avoid_direct_parent vlib (impl : lib) =
@@ -1434,7 +1446,7 @@ end = struct
     (* Gather vlibs that are transitively implemented by another vlib's default
        implementation. *)
     let rec visit ~stack ancestor_vlib =
-      Vlib_visit.visit vlib_status ~stack ~f:(fun lib ->
+      Vlib.Visit.visit vlib_status ~stack ~f:(fun lib ->
           (* Visit direct dependencies *)
           let* deps = lib.requires in
           let* () =
@@ -1878,7 +1890,7 @@ let to_dune_lib ({ info; _ } as lib) ~modules ~foreign_objects ~dir =
   let mangled_name lib =
     match Lib_info.status lib.info with
     | Private (_, Some pkg) ->
-      Lib_name.mangled pkg.name (Lib_name.to_local_exn lib.name)
+      Lib_name.mangled (Package.name pkg) (Lib_name.to_local_exn lib.name)
     | _ -> lib.name
   in
   let add_loc = List.map ~f:(fun x -> (loc, mangled_name x)) in

@@ -336,6 +336,14 @@ end = struct
       | See_above _ -> assert false
       | Here { t; rules = _; subdirs = _ } -> t )
 
+  let () =
+    let f sctx ~dir ~name =
+      let t = get sctx ~dir in
+      let ml_sources = ocaml t in
+      Ml_sources.modules_of_library ml_sources ~name
+    in
+    Fdecl.set Compilation_context.modules_of_lib f
+
   let gen_rules sctx ~dir =
     match Memo.exec memo0 (sctx, dir) with
     | See_above group_root -> Group_part group_root

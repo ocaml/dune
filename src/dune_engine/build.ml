@@ -6,6 +6,8 @@ type label = ..
 type 'a t =
   | Pure : 'a -> 'a t
   | Map : ('a -> 'b) * 'a t -> 'b t
+  | Both : 'a t * 'b t -> ('a * 'b) t
+  | Seq : unit t * 'b t -> 'b t
   | Map2 : ('a -> 'b -> 'c) * 'a t * 'b t -> 'c t
   | Paths_for_rule : Path.Set.t -> unit t
   | Paths_glob : File_selector.t -> Path.Set.t t
@@ -19,6 +21,7 @@ type 'a t =
   | Dyn_paths : ('a * Path.Set.t) t -> 'a t
   | Dyn_deps : ('a * Dep.Set.t) t -> 'a t
   | Label : label -> unit t
+  | Or_exn : 'a Or_exn.t t -> 'a t
   | Fail : fail -> _ t
   | Memo : 'a memo -> 'a t
   | Catch : 'a t * (exn -> 'a) -> 'a t
@@ -50,20 +53,19 @@ let map2 x y ~f = Map2 (f, x, y)
 
 let delayed f = Map (f, Pure ())
 
-module O = struct
-  let ( >>> ) a b = Map2 ((fun () y -> y), a, b)
+let or_exn s = Or_exn s
 
-  let ( and+ ) a b = Map2 ((fun x y -> (x, y)), a, b)
+module O = struct
+  let ( >>> ) a b = Seq (a, b)
+
+  let ( and+ ) a b = Both (a, b)
 
   let ( let+ ) t f = Map (f, t)
 end
 
 open O
 
-let both x y =
-  let+ x = x
-  and+ y = y in
-  (x, y)
+let both x y = Both (x, y)
 
 let rec all xs =
   match xs with
@@ -289,6 +291,8 @@ end = struct
     match t with
     | Pure _ -> Static_deps.empty
     | Map (_, t) -> static_deps t
+    | Both (x, y) -> Static_deps.union (static_deps x) (static_deps y)
+    | Seq (x, y) -> Static_deps.union (static_deps x) (static_deps y)
     | Map2 (_, x, y) -> Static_deps.union (static_deps x) (static_deps y)
     | Deps deps -> { Static_deps.empty with action_deps = deps }
     | Paths_for_rule fns ->
@@ -310,6 +314,7 @@ end = struct
     | Lines_of p ->
       { Static_deps.empty with rule_deps = Dep.Set.of_files [ p ] }
     | Label _ -> Static_deps.empty
+    | Or_exn _ -> Static_deps.empty
     | Fail _ -> Static_deps.empty
     | Memo m -> Memo.exec memo (Input.T m)
     | Catch (t, _) -> static_deps t
@@ -326,6 +331,12 @@ let fold_labeled (type acc) t ~(init : acc) ~f =
     match t with
     | Pure _ -> acc
     | Map (_, a) -> loop a acc
+    | Both (a, b) ->
+      let acc = loop a acc in
+      loop b acc
+    | Seq (a, b) ->
+      let acc = loop a acc in
+      loop b acc
     | Map2 (_, a, b) ->
       let acc = loop a acc in
       loop b acc
@@ -337,6 +348,7 @@ let fold_labeled (type acc) t ~(init : acc) ~f =
     | Contents _ -> acc
     | Lines_of _ -> acc
     | Label r -> f r acc
+    | Or_exn _ -> acc
     | Fail _ -> acc
     | If_file_exists (p, then_, else_) ->
       if file_exists p then
@@ -380,6 +392,14 @@ end = struct
       | Map (f, a) ->
         let a, dyn_deps_a = go a in
         (f a, dyn_deps_a)
+      | Both (a, b) ->
+        let a, dyn_deps_a = go a in
+        let b, dyn_deps_b = go b in
+        ((a, b), Dep.Set.union dyn_deps_a dyn_deps_b)
+      | Seq (a, b) ->
+        let (), dyn_deps_a = go a in
+        let b, dyn_deps_b = go b in
+        (b, Dep.Set.union dyn_deps_a dyn_deps_b)
       | Map2 (f, a, b) ->
         let a, dyn_deps_a = go a in
         let b, dyn_deps_b = go b in
@@ -396,6 +416,9 @@ end = struct
         let (x, dyn_deps), dyn_deps_x = go t in
         (x, Dep.Set.union dyn_deps dyn_deps_x)
       | Label _ -> ((), Dep.Set.empty)
+      | Or_exn e ->
+        let a, deps = go e in
+        (Result.ok_exn a, deps)
       | Fail { fail } -> fail ()
       | If_file_exists (p, then_, else_) ->
         if file_exists p then

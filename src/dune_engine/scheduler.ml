@@ -162,6 +162,7 @@ end = struct
           | [] ->
             let job, status = Queue.pop_exn jobs_completed in
             decr pending_jobs;
+            assert (!pending_jobs >= 0);
             Job_completed (job, status)
           | fns ->
             files_changed := [];
@@ -421,14 +422,11 @@ end = struct
        in [table]. *)
     let table = Table.create (module Pid) 128
 
-    let running_count = ref 0
-
     let add job =
       match Table.find table job.pid with
       | None ->
         Table.set table job.pid (Running job);
-        incr running_count;
-        if !running_count = 1 then Condition.signal something_is_running_cv
+        if Table.length table = 1 then Condition.signal something_is_running_cv
       | Some (Zombie status) ->
         Table.remove table job.pid;
         Event.send_job_completed job status
@@ -438,7 +436,6 @@ end = struct
       match Table.find table pid with
       | None -> Table.set table pid (Zombie status)
       | Some (Running job) ->
-        decr running_count;
         Table.remove table pid;
         Event.send_job_completed job status
       | Some (Zombie _) -> assert false
@@ -449,7 +446,7 @@ end = struct
           | Running job -> f job
           | Zombie _ -> ())
 
-    let running_count () = !running_count
+    let running_count () = Table.length table
   end
 
   let register_job job =
@@ -481,7 +478,7 @@ end = struct
   let wait_win32 () =
     while not (wait_nonblocking_win32 ()) do
       Mutex.unlock mutex;
-      ignore (Unix.select [] [] [] 0.001);
+      Thread.delay 0.001;
       Mutex.lock mutex
     done
 

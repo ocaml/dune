@@ -563,8 +563,8 @@ let exe_unwrapped m = Unwrapped m
 
 let exe_wrapped ~src_dir ~modules =
   match as_singleton modules with
-  | None -> Wrapped (Wrapped.exe ~src_dir ~modules)
   | Some m -> singleton_exe m
+  | None -> Wrapped (Wrapped.exe ~src_dir ~modules)
 
 let rec impl_only = function
   | Stdlib w -> Stdlib.impl_only w
@@ -733,13 +733,16 @@ let rec wrapped = function
   | Impl { vlib = _; impl } -> wrapped impl
 
 let rec alias_for t m =
-  match t with
-  | Singleton _
-  | Unwrapped _ ->
-    None
-  | Wrapped w -> Wrapped.alias_for w m
-  | Stdlib w -> Stdlib.alias_for w m
-  | Impl { impl; vlib = _ } -> alias_for impl m
+  match Module.kind m with
+  | Root -> None
+  | _ -> (
+    match t with
+    | Singleton _
+    | Unwrapped _ ->
+      None
+    | Wrapped w -> Wrapped.alias_for w m
+    | Stdlib w -> Stdlib.alias_for w m
+    | Impl { impl; vlib = _ } -> alias_for impl m )
 
 let is_stdlib_alias t m =
   match t with

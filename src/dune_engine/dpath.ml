@@ -177,3 +177,12 @@ module Build = struct
     fun s ->
       String.is_prefix (Path.Local.to_string (Path.Build.local s)) ~prefix
 end
+
+module External = struct
+  let encode p = Dune_lang.Encoder.string (Path.External.to_string p)
+
+  let decode =
+    let open Dune_lang.Decoder in
+    let+ path = string in
+    Path.External.of_string path
+end

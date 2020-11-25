@@ -229,3 +229,15 @@ Test with dune exec
   b: $TESTCASE_ROOT/_build/install/default/share/b/data
   info.txt is found: true
   run c: b_registered:true
+
+
+Test by loading a normal installation
+-------------------------------------
+  $ OCAMLPATH=$(pwd)/_install/lib:$OCAMLPATH dune build --root=b
+  Entering directory 'b'
+  File "$TESTCASE_ROOT/_install/lib/c/dune-package", line 5, characters 2-132:
+  5 |   $TESTCASE_ROOT/_build/install/default/lib/c)
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  Error: Unknown constructor
+  $TESTCASE_ROOT/_build/install/default/lib/c
+  [1]

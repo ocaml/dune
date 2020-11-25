@@ -15,6 +15,12 @@ let to_string = function
 
 let merlin_exist_name = ".merlin-exist"
 
+let merlin_folder_name = ".merlin-conf"
+
 let merlin_exists_path path ident =
   String.concat ~sep:"-" [ merlin_exist_name; to_string ident ]
+  |> Path.Build.relative path
+
+let merlin_file_path path ident =
+  Filename.concat merlin_folder_name (to_string ident)
   |> Path.Build.relative path

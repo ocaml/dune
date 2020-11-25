@@ -10,9 +10,6 @@ open! Dune_engine
 open! Stdune
 open Import
 
-(** Merlin config folder name *)
-val merlin_folder_name : string
-
 (** Type of "unprocessed" merlin information *)
 type t
 

@@ -11,8 +11,6 @@ module Extensions = Comparable.Make (struct
   let to_dyn = Tuple.T2.to_dyn String.to_dyn String.to_dyn
 end)
 
-let merlin_folder_name = ".merlin-conf"
-
 module Processed = struct
   (* The actual content of the merlin file as built by the [Unprocessed.process]
      function from the unprocessed info gathered through [gen_rules]. The first
@@ -308,10 +306,8 @@ include Unprocessed
 
 let dot_merlin sctx ~dir ~more_src_dirs ~expander (t : Unprocessed.t) =
   let open Build.With_targets.O in
-  let ident = Merlin_ident.to_string t.ident in
-  let merlin_file_name = Filename.concat merlin_folder_name ident in
   let merlin_exist = Merlin_ident.merlin_exists_path dir t.ident in
-  let merlin_file = Path.Build.relative dir merlin_file_name in
+  let merlin_file = Merlin_ident.merlin_file_path dir t.ident in
 
   (* We make the compilation of .ml/.mli files depend on the existence of
      .merlin so that they are always generated, however the command themselves

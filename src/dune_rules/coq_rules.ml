@@ -157,7 +157,9 @@ module Context = struct
 
   let coqc_native_flags cctx : _ Command.Args.t =
     match cctx.mode with
-    | Coq_mode.VoOnly -> Command.Args.empty
+    | Coq_mode.VoOnly ->
+      Command.Args.As
+        [ "-w"; "-native-compiler-disabled"; "-native-compiler"; "ondemand" ]
     | Coq_mode.Native ->
       let args =
         let open Result.O in

@@ -1673,9 +1673,13 @@ The stanza will build all ``.v`` files on the given directory. The semantics of 
   by setting ``<coq_native_mode>`` to ``native``, this will pass
   ``-native-compiler on`` to Coq and install the corresponding object
   files under `.coq-native`. Note that the support for native compute
-  is experimental, and requires Coq >= 8.12.1; moreover, depending
+  is **experimental**, and requires Coq >= 8.12.1; moreover, depending
   libraries *must* be built with ``(mode native)`` too for this to
-  work.
+  work; also Coq must be configured to support native
+  compilation. Note that Dune will by explicitly disable output of
+  native compilation objects when `(mode vo)` even if the default
+  Coq's configure flag enabled it. This will be improved in the
+  future.
 
 Recursive qualification of modules
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

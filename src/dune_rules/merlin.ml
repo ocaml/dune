@@ -5,6 +5,14 @@ open Build.O
 open! No_io
 module SC = Super_context
 
+module Extensions = Comparable.Make (struct
+  type t = string * string
+
+  let compare = Tuple.T2.compare String.compare String.compare
+
+  let to_dyn = Tuple.T2.to_dyn String.to_dyn String.to_dyn
+end)
+
 let warn_dropped_pp loc ~allow_approx_merlin ~reason =
   if not allow_approx_merlin then
     User_warning.emit ~loc
@@ -73,11 +81,11 @@ let quote_for_merlin s =
 module Dot_file = struct
   let b = Buffer.create 256
 
-  let printf = Printf.bprintf b
+  let printf f = Printf.bprintf b f
 
   let print = Buffer.add_string b
 
-  let to_string ~obj_dirs ~src_dirs ~flags ~pp ~remaindir =
+  let to_string ~obj_dirs ~src_dirs ~flags ~pp ~remaindir ~extensions =
     let serialize_path = Path.reach ~from:(Path.source remaindir) in
     Buffer.clear b;
     print "EXCLUDE_QUERY_DIR\n";
@@ -90,6 +98,8 @@ module Dot_file = struct
       print "FLG";
       List.iter flags ~f:(fun f -> printf " %s" (quote_for_merlin f));
       print "\n" );
+    Extensions.Set.iter extensions ~f:(fun (impl, intf) ->
+        printf "SUFFIX %s %s\n" (quote_for_merlin impl) (quote_for_merlin intf));
     Buffer.contents b
 end
 
@@ -100,10 +110,12 @@ type t =
   ; libname : Lib_name.Local.t option
   ; source_dirs : Path.Source.Set.t
   ; objs_dirs : Path.Set.t
+  ; extensions : Extensions.Set.t
   }
 
 let make ?(requires = Ok []) ~flags ?(preprocess = Preprocess.No_preprocessing)
-    ?libname ?(source_dirs = Path.Source.Set.empty) ~modules ~obj_dir () =
+    ?libname ?(source_dirs = Path.Source.Set.empty) ~modules ~obj_dir ~dialects
+    () =
   (* Merlin shouldn't cause the build to fail, so we just ignore errors *)
   let requires =
     match requires with
@@ -122,12 +134,29 @@ let make ?(requires = Ok []) ~flags ?(preprocess = Preprocess.No_preprocessing)
         flags
       |> Ocaml_flags.common
   in
+  let extensions =
+    Dialect.DB.fold dialects ~init:Extensions.Set.empty ~f:(fun d s ->
+        let impl = Dialect.extension d Ml_kind.Impl in
+        let intf = Dialect.extension d Ml_kind.Intf in
+        if
+          (* Only include dialects with no preprocessing and skip default file
+             extensions *)
+          Dialect.preprocess d Ml_kind.Impl <> None
+          || Dialect.preprocess d Ml_kind.Intf <> None
+          || impl = Dialect.extension Dialect.ocaml Ml_kind.Impl
+             && intf = Dialect.extension Dialect.ocaml Ml_kind.Intf
+        then
+          s
+        else
+          Extensions.Set.add s (impl, intf))
+  in
   { requires
   ; flags = Build.catch flags ~on_error:(fun _ -> [])
   ; preprocess
   ; libname
   ; source_dirs
   ; objs_dirs
+  ; extensions
   }
 
 let merlin_file_name = ".merlin"
@@ -217,8 +246,8 @@ let lib_src_dirs ~sctx lib =
     Path.Set.map ~f:Path.drop_optional_build_context
       (Modules.source_dirs modules)
 
-let dot_merlin sctx ~dir ~more_src_dirs ~expander ({ requires; flags; _ } as t)
-    =
+let dot_merlin sctx ~dir ~more_src_dirs ~expander
+    ({ requires; flags; extensions; _ } as t) =
   Path.Build.drop_build_context dir
   |> Option.iter ~f:(fun remaindir ->
          let open Build.With_targets.O in
@@ -256,7 +285,8 @@ let dot_merlin sctx ~dir ~more_src_dirs ~expander ({ requires; flags; _ } as t)
                 Path.Set.union src_dirs
                   (Path.Set.of_list_map ~f:Path.source more_src_dirs)
               in
-              Dot_file.to_string ~remaindir ~pp ~flags ~src_dirs ~obj_dirs)
+              Dot_file.to_string ~remaindir ~pp ~flags ~src_dirs ~obj_dirs
+                ~extensions)
          in
          SC.add_rule sctx ~dir
            ~mode:(Promote { lifetime = Until_clean; into = None; only = None })
@@ -275,6 +305,7 @@ let merge_two ~allow_approx_merlin a b =
       | None -> b.libname )
   ; source_dirs = Path.Source.Set.union a.source_dirs b.source_dirs
   ; objs_dirs = Path.Set.union a.objs_dirs b.objs_dirs
+  ; extensions = Extensions.Set.union a.extensions b.extensions
   }
 
 let merge_all ~allow_approx_merlin = function

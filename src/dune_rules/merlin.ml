@@ -113,7 +113,7 @@ let make ?(requires = Ok []) ~flags ?(preprocess = Preprocess.No_preprocessing)
   let objs_dirs =
     Path.Set.of_list
     @@ List.map ~f:Path.build
-         [Obj_dir.byte_dir obj_dir; Obj_dir.native_dir obj_dir]
+         [ Obj_dir.byte_dir obj_dir; Obj_dir.native_dir obj_dir ]
   in
   let flags =
     match Modules.alias_module modules with

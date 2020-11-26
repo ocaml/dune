@@ -1189,8 +1189,7 @@ end = struct
     let static_deps (type a) (t : a t) = Build.static_deps (build t)
 
     let evaluate_and_discover_dynamic_deps_unmemoized t =
-      let* () = build_deps (static_deps t).rule_deps in
-      Build_exec.exec (build t)
+      Build_exec.deps_and_exec (build t)
 
     let memo =
       Memo.create "evaluate-rule-and-discover-dynamic-deps"

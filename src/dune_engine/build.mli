@@ -214,6 +214,10 @@ module Make_exec (Build_deps:sig val build_deps: Dep.Set.t -> unit Fiber.t end) 
   (** Execute a build description. Returns the result and the set of dynamic
       dependencies discovered during execution. *)
   val exec : 'a t -> ('a * Dep.Set.t) Fiber.t
+
+  (** Same as the previous function but also build the dependencies of the build
+      description *)
+  val deps_and_exec : 'a t -> ('a * Dep.Set.t) Fiber.t
 end
 
 val do_not_use_stage_fiber: 'a Fiber.t -> 'a t

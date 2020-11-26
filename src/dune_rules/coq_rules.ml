@@ -20,7 +20,7 @@ module Util = struct
         let info = Lib.info t in
         Lib_info.src_dir info)
 
-  let native_paths ts =
+  let coq_nativelib_cmi_dirs ts =
     List.fold_left ts ~init:Path.Set.empty ~f:(fun acc t ->
         let info = Lib.info t in
         (* We want the cmi files *)
@@ -229,7 +229,7 @@ module Context = struct
     let mode = select_native_mode ~sctx ~buildable in
     let native_includes =
       Lib.DB.resolve lib_db (Loc.none, Lib_name.of_string "coq.kernel")
-      |> Result.map ~f:(fun lib -> Util.native_paths [ lib ])
+      |> Result.map ~f:(fun lib -> Util.coq_nativelib_cmi_dirs [ lib ])
     in
     let native_theory_includes =
       setup_native_theory_includes ~sctx ~mode ~theories_deps ~theory_dirs

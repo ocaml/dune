@@ -10,4 +10,4 @@ val spawn :
   -> unit
   -> Pid.t
 
-val exec : ?env:Env.t -> prog:string -> argv:string list -> unit -> unit
+val exec : ?env:Env.t -> prog:string -> argv:string list -> unit -> 'a

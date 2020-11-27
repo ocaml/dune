@@ -59,7 +59,7 @@ let exec ?env ~prog ~argv () =
       create_process ?env prog argv Unix.stdin Unix.stdout Unix.stderr
     in
     match snd (Unix.waitpid [] pid) with
-    | WEXITED 0 -> ()
+    | WEXITED 0 -> exit 0
     | WEXITED n -> exit n
     | WSIGNALED _ -> exit 255
     | WSTOPPED _ -> assert false

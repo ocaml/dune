@@ -1,7 +1,8 @@
 Unreleased
 ----------
 
-- List native object directories in .merlin files. (#3974, @mrmr1993)
+- Respect the `bin_annot` option for native builds, add native object
+  directories to .merlin files. (#3974, @mrmr1993)
 
 - Action `(diff reference test_result)` now accept `reference` to be absent and
   in that case consider that the reference is empty. Then running `dune promote`

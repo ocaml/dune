@@ -244,7 +244,7 @@ Test compiling an external plugin
   > (library
   >  (public_name e)
   >  (libraries c.register dune-site))
-  > (generate_module (module sites) (sites e))
+  > (generate_sites_module (module sites) (sites e))
   > (plugin (name c-plugins-e) (libraries e) (site (c plugins)))
   > (install (section (site (e data))) (files info.txt))
   > EOF
@@ -292,10 +292,10 @@ Test compiling an external plugin
   no sourceroot
   c: $TESTCASE_ROOT/_install/share/c/data
   b is available: true
-  run e
-  e: $TESTCASE_ROOT/_install/share/e/data
-  info.txt is found: true
   run b
   b: $TESTCASE_ROOT/_install/share/b/data
   info.txt is found: true
-  run c: registered:b,e.
+  run e
+  e: $TESTCASE_ROOT/_install/share/e/data
+  info.txt is found: true
+  run c: registered:e,b.

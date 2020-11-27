@@ -418,8 +418,6 @@ end = struct
 
     (* This mutable table is safe: it does not interact with the state we track
        in the build system. *)
-    (* Invariant: [!running_count] is equal to the number of [Running _] values
-       in [table]. *)
     let table = Table.create (module Pid) 128
 
     let add job =

@@ -51,6 +51,8 @@ module DB : sig
 
   val find_by_extension : t -> string -> (dialect * Ml_kind.t) option
 
+  val fold : t -> init:'a -> f:(dialect -> 'a -> 'a) -> 'a
+
   val to_dyn : t -> Dyn.t
 
   val builtin : t

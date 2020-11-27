@@ -93,6 +93,10 @@ Unreleased
 
 - Add support for Coq's native compute compilation mode (@ejgallego, #3210)
 
+- Add a SUFFIX directive in `.merlin` files for each dialect with no
+  preprocessing, to let merlin know of additional file extensions
+  (#3977, @vouillon)
+
 2.7.1 (2/09/2020)
 -----------------
 

@@ -14,6 +14,7 @@ val make :
   -> ?source_dirs:Path.Source.Set.t
   -> modules:Modules.t
   -> obj_dir:Path.Build.t Obj_dir.t
+  -> dialects:Dialect.DB.t
   -> unit
   -> t
 

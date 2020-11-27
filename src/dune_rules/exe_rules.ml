@@ -182,7 +182,8 @@ let executables_rules ~sctx ~dir ~expander ~dir_contents ~scope ~compile_info
   ( cctx
   , Merlin.make () ~requires:requires_compile ~flags ~modules
       ~preprocess:(Preprocess.Per_module.single_preprocess preprocess)
-      ~obj_dir )
+      ~obj_dir
+      ~dialects:(Dune_project.dialects (Scope.project scope)) )
 
 let compile_info ~scope (exes : Dune_file.Executables.t) =
   let dune_version = Scope.project scope |> Dune_project.dune_version in

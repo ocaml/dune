@@ -1607,12 +1607,16 @@ This will enable support for the ``coq.theory`` stanza in the current project. I
 language version is absent, dune will automatically add this line with the
 latest Coq version to the project file once a ``(coq.theory ...)`` stanza is used anywhere.
 
-The supported Coq language versions are ``0.1``, and ``0.2`` which
-adds support for the ``theories`` field. We don't provide any
-guarantees with respect to stability yet, however, as implementation
-of features progresses, we hope reach ``1.0`` soon. The ``1.0``
-version will commit to a stable set of functionality; all the features
-below are expected to reach 1.0 unchanged or minimally modified.
+The supported Coq language versions are:
+- ``0.1``: basic Coq theory support,
+- ``0.2``: support for the ``theories`` field, and composition of theories in the same scope,
+- ``0.3``: support for ``(mode native)``.
+
+Guarantees with respect to stability are not provided yet,
+however, as implementation of features progresses, we hope to reach
+``1.0`` soon. The ``1.0`` version will commit to a stable set of
+functionality; all the features below are expected to reach ``1.0``
+unchanged or minimally modified.
 
 The basic form for defining Coq libraries is very similar to the OCaml form:
 
@@ -1672,14 +1676,15 @@ The stanza will build all ``.v`` files on the given directory. The semantics of 
 - you can enable the production of Coq's native compiler object files
   by setting ``<coq_native_mode>`` to ``native``, this will pass
   ``-native-compiler on`` to Coq and install the corresponding object
-  files under `.coq-native`. Note that the support for native compute
-  is **experimental**, and requires Coq >= 8.12.1; moreover, depending
-  libraries *must* be built with ``(mode native)`` too for this to
-  work; also Coq must be configured to support native
-  compilation. Note that Dune will by explicitly disable output of
-  native compilation objects when `(mode vo)` even if the default
-  Coq's configure flag enabled it. This will be improved in the
-  future.
+  files under ``.coq-native`` when in ``release`` profile. The regular
+  ``dev`` profile will skip native compilation to make the build
+  faster. Since Coq's lang version ``0.3``. Note that the support for
+  native compute is **experimental**, and requires Coq >= 8.12.1;
+  moreover, depending libraries *must* be built with ``(mode native)``
+  too for this to work; also Coq must be configured to support native
+  compilation. Note that Dune will explicitly disable output of native
+  compilation objects when ``(mode vo)`` even if the default Coq's
+  configure flag enabled it. This will be improved in the future.
 
 Recursive qualification of modules
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

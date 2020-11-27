@@ -1,5 +1,5 @@
 (** Defines build profile for dune. Only one profile is active per context. Some
-    profiles are treat specially by dune. *)
+    profiles are treated specially by dune. *)
 open! Import
 
 type t =

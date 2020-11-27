@@ -2035,7 +2035,7 @@ module Deprecated_library_name = struct
        { Library_redirect.loc; project; old_name; new_public_name })
 end
 
-module Generate_module = struct
+module Generate_sites_module = struct
   type t =
     { loc : Loc.t
     ; module_ : Module_name.t
@@ -2076,7 +2076,7 @@ type Stanza.t +=
   | Library_redirect of Library_redirect.Local.t
   | Deprecated_library_name of Deprecated_library_name.t
   | Cram of Cram_stanza.t
-  | Generate_module of Generate_module.t
+  | Generate_sites_module of Generate_sites_module.t
   | Plugin of Plugin.t
 
 module Stanzas = struct
@@ -2179,10 +2179,10 @@ module Stanzas = struct
       , let+ () = Dune_lang.Syntax.since Stanza.syntax (2, 7)
         and+ t = Cram_stanza.decode in
         [ Cram t ] )
-    ; ( "generate_module"
+    ; ( "generate_sites_module"
       , let+ () = Dune_lang.Syntax.since Section.dune_site_syntax (0, 1)
-        and+ t = Generate_module.decode in
-        [ Generate_module t ] )
+        and+ t = Generate_sites_module.decode in
+        [ Generate_sites_module t ] )
     ; ( "plugin"
       , let+ () = Dune_lang.Syntax.since Section.dune_site_syntax (0, 1)
         and+ t = Plugin.decode in

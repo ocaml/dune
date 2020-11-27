@@ -8,10 +8,17 @@ open Coq_stanza
    In Coq all libs are "wrapped" so including a module twice is not so bad. *)
 type t =
   { libraries : Coq_module.t list Coq_lib_name.Map.t
+  ; directories : Path.Build.t list Coq_lib_name.Map.t
+        (* [directories] is used to compute the include paths for Coq's native
+           mode *)
   ; extract : Coq_module.t Loc.Map.t
   }
 
-let empty = { libraries = Coq_lib_name.Map.empty; extract = Loc.Map.empty }
+let empty =
+  { libraries = Coq_lib_name.Map.empty
+  ; directories = Coq_lib_name.Map.empty
+  ; extract = Loc.Map.empty
+  }
 
 let coq_modules_of_files ~dirs =
   let filter_v_files (dir, local, files) =
@@ -31,10 +38,15 @@ let coq_modules_of_files ~dirs =
 
 let library t ~name = Coq_lib_name.Map.find_exn t.libraries name
 
+let directories t ~name = Coq_lib_name.Map.find_exn t.directories name
+
 let check_no_unqualified (loc, (qualif_mode : Dune_file.Include_subdirs.t)) =
   if qualif_mode = Include Unqualified then
     User_error.raise ~loc
-      [ Pp.text "(include_subdirs unqualified) is not supported yet" ]
+      [ Pp.text
+          "(include_subdirs unqualified) is not supported yet with (coq.theory \
+           ...) stanzas"
+      ]
 
 let extract t (stanza : Extraction.t) =
   Loc.Map.find_exn t.extract stanza.buildable.loc
@@ -47,10 +59,14 @@ let of_dir (d : _ Dir_with_dune.t) ~include_subdirs ~dirs =
       let modules =
         Coq_module.eval ~dir:d.ctx_dir coq.modules ~standard:modules
       in
+      let directories =
+        Coq_lib_name.Map.add_exn acc.directories (snd coq.name)
+          (List.map dirs ~f:(fun (d, _, _) -> d))
+      in
       let libraries =
         Coq_lib_name.Map.add_exn acc.libraries (snd coq.name) modules
       in
-      { acc with libraries }
+      { acc with directories; libraries }
     | Coq_stanza.Extraction.T extract ->
       let loc, prelude = extract.prelude in
       let m =

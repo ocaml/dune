@@ -20,6 +20,17 @@ let perform_redirections stdin stdout stderr =
   safe_close stdout;
   safe_close stderr
 
+let exec ?env prog argv =
+  ignore (Unix.sigprocmask SIG_SETMASK [] : int list);
+  match env with
+  | None -> Unix.execv prog argv
+  | Some env -> Unix.execve prog argv env
+
+let create_process ?env prog argv stdin stdout stderr =
+  match env with
+  | None -> Unix.create_process prog argv stdin stdout stderr
+  | Some env -> Unix.create_process_env prog argv env stdin stdout stderr
+
 (** Note that this function's behavior differs between windows and unix.
 
     - [Unix.create_process{,_env} prog] looks up prog in PATH
@@ -30,17 +41,27 @@ let spawn ?env ~prog ~argv ?(stdin = Unix.stdin) ?(stdout = Unix.stdout)
   let env = Option.map ~f:Env.to_unix env in
   Pid.of_int
     ( if Sys.win32 then
-      match env with
-      | None -> Unix.create_process prog argv stdin stdout stderr
-      | Some env -> Unix.create_process_env prog argv env stdin stdout stderr
+      create_process prog argv stdin stdout stderr
     else
       match Unix.fork () with
       | 0 -> (
         try
-          ignore (Unix.sigprocmask SIG_SETMASK [] : int list);
           perform_redirections stdin stdout stderr;
-          match env with
-          | None -> Unix.execv prog argv
-          | Some env -> Unix.execve prog argv env
+          exec ?env prog argv
         with _ -> sys_exit 127 )
       | pid -> pid )
+
+let exec ?env ~prog ~argv () =
+  let argv = Array.of_list argv in
+  let env = Option.map ~f:Env.to_unix env in
+  if Sys.win32 then
+    let pid =
+      create_process ?env prog argv Unix.stdin Unix.stdout Unix.stderr
+    in
+    match snd (Unix.waitpid [] pid) with
+    | WEXITED 0 -> ()
+    | WEXITED n -> exit n
+    | WSIGNALED _ -> exit 255
+    | WSTOPPED _ -> assert false
+  else
+    exec ?env prog argv

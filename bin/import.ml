@@ -148,6 +148,7 @@ module Scheduler = struct
 end
 
 let restore_cwd_and_execve (common : Common.t) prog argv env =
+  Sys.chdir (Path.External.to_string Path.External.initial_cwd);
   let prog =
     if Filename.is_relative prog then
       let root = Common.root common in
@@ -155,6 +156,6 @@ let restore_cwd_and_execve (common : Common.t) prog argv env =
     else
       prog
   in
-  Proc.restore_cwd_and_execve prog argv ~env
+  Spawn.exec ~prog ~argv ~env ()
 
 let do_build targets = Build_system.do_build ~request:(Target.request targets)

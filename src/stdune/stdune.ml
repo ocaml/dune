@@ -39,7 +39,6 @@ module Interned_intf = Interned_intf
 module Univ_map = Univ_map
 module Loc = Loc
 module Env = Env
-module Proc = Proc
 module Type_eq = Type_eq
 module Nothing = Nothing
 module Bin = Bin

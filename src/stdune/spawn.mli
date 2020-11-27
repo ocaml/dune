@@ -9,3 +9,5 @@ val spawn :
   -> ?stderr:Unix.file_descr
   -> unit
   -> Pid.t
+
+val exec : ?env:Env.t -> prog:string -> argv:string list -> unit -> unit

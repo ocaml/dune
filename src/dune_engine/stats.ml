@@ -8,9 +8,12 @@ module Fd_count = struct
   let try_to_use_lsof () =
     (* note: we do not use the Process module here, because it would create a
        circular dependency *)
-    let temp = Filename.temp_file "dune" ".lsof" in
+    let temp = Temp.create File ~prefix:"dune." ~suffix:".lsof" in
     let stdout =
-      Unix.openfile temp [ O_WRONLY; O_CREAT; O_TRUNC; O_SHARE_DELETE ] 0o666
+      Unix.openfile
+        (Path.to_absolute_filename temp)
+        [ O_WRONLY; O_CREAT; O_TRUNC; O_SHARE_DELETE ]
+        0o666
     in
     let prog = "/usr/sbin/lsof" in
     let argv = [ prog; "-w"; "-p"; string_of_int (Unix.getpid ()) ] in
@@ -18,7 +21,7 @@ module Fd_count = struct
     Unix.close stdout;
     match Unix.waitpid [] (Pid.to_int pid) with
     | _, Unix.WEXITED 0 ->
-      let num_lines = List.length (Io.input_lines (open_in temp)) in
+      let num_lines = List.length (Io.input_lines (Io.open_in temp)) in
       This (num_lines - 1)
     (* the output contains a header line *)
     | _ -> Unknown

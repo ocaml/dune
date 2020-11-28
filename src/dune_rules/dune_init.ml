@@ -152,7 +152,10 @@ module File = struct
 
   let write_dune_file (dune_file : dune) =
     let path = Path.relative dune_file.path dune_file.name in
-    Format_dune_lang.write_file ~path dune_file.content
+    let version =
+      Dune_lang.Syntax.greatest_supported_version Dune_engine.Stanza.syntax
+    in
+    Format_dune_lang.write_file ~version ~path dune_file.content
 
   let write f =
     let path = full_path f in

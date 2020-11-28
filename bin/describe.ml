@@ -287,8 +287,11 @@ let print_as_sexp dyn =
     |> Dune_lang.Ast.add_loc ~loc:Loc.none
     |> Dune_lang.Cst.concrete
   in
+  let version =
+    Dune_lang.Syntax.greatest_supported_version Dune_engine.Stanza.syntax
+  in
   Pp.to_fmt Stdlib.Format.std_formatter
-    (Dune_engine.Format_dune_lang.pp_top_sexps [ cst ])
+    (Dune_engine.Format_dune_lang.pp_top_sexps ~version [ cst ])
 
 let term =
   let+ common = Common.term

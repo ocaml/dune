@@ -48,7 +48,7 @@ module type Ast = sig
     | Merge_files_into of path list * string list * target
     | No_infer of t
     | Pipe of Outputs.t * t list
-    | Format_dune_file of path * target
+    | Format_dune_file of Dune_lang.Syntax.Version.t * path * target
     | Cram of path
 end
 
@@ -111,5 +111,6 @@ module type Helpers = sig
 
   val diff : ?optional:bool -> ?mode:Diff.Mode.t -> path -> target -> t
 
-  val format_dune_file : path -> target -> t
+  val format_dune_file :
+    version:Dune_lang.Syntax.Version.t -> path -> target -> t
 end

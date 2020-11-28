@@ -131,10 +131,10 @@ module Common = struct
     iter path;
     !files
 
-  let string_of_sexps sexps comments =
+  let string_of_sexps ~version sexps comments =
     let new_csts = List.map sexps ~f:Dune_lang.Cst.concrete in
     Dune_lang.Parser.insert_comments new_csts comments
-    |> Format_dune_lang.pp_top_sexps
+    |> Format_dune_lang.pp_top_sexps ~version
     |> Format.asprintf "%a@?" Pp.to_fmt
 end
 
@@ -326,7 +326,9 @@ module V1 = struct
         comments
     in
     let contents =
-      Format.asprintf "%a@?" Pp.to_fmt (Format_dune_lang.pp_top_sexps sexps)
+      let version = !Dune_project.default_dune_language_version in
+      Format.asprintf "%a@?" Pp.to_fmt
+        (Format_dune_lang.pp_top_sexps ~version sexps)
     in
     todo.to_rename_and_edit <-
       { original_file = file; new_file; extra_files_to_delete; contents }
@@ -563,14 +565,15 @@ module V2 = struct
     let sexps, comments = read_and_parse (Dune_project.file project) in
     let v = !Dune_project.default_dune_language_version in
     let sexps = sexps |> Ast_tools.bump_lang_version v |> update_formatting in
-    let new_file_contents = string_of_sexps sexps comments in
+    let new_file_contents = string_of_sexps ~version:v sexps comments in
     (* Printf.eprintf "AAAH: %b\n!" (was_formatted sexps); *)
     todo.to_edit <-
       (Dune_project.file project, new_file_contents) :: todo.to_edit
 
   let upgrade_dune_file todo fn sexps comments =
     let new_ast = sexps |> List.map ~f:update_stanza in
-    let new_file_contents = string_of_sexps new_ast comments in
+    let version = !Dune_project.default_dune_language_version in
+    let new_file_contents = string_of_sexps ~version new_ast comments in
     todo.to_edit <- (fn, new_file_contents) :: todo.to_edit
 
   let upgrade_dune_files todo dir =

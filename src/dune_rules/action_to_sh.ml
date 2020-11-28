@@ -91,9 +91,18 @@ let simplify act =
       :: acc
     | No_infer act -> loop act acc
     | Pipe (outputs, l) -> Pipe (List.map ~f:block l, outputs) :: acc
-    | Format_dune_file (src, dst) ->
+    | Format_dune_file (ver, src, dst) ->
       Redirect_out
-        ([ Run ("dune", [ "format-dune-file"; src ]) ], Stdout, File dst)
+        ( [ Run
+              ( "dune"
+              , [ "format-dune-file"
+                ; "--dune-version"
+                ; Dune_lang.Syntax.Version.to_string ver
+                ; src
+                ] )
+          ]
+        , Stdout
+        , File dst )
       :: acc
   and block act =
     match List.rev (loop act []) with

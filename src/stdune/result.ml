@@ -6,6 +6,11 @@ let ok x = Ok x
 
 let return = ok
 
+let value r ~default =
+  match r with
+  | Ok v -> v
+  | Error _ -> default
+
 let is_ok = function
   | Ok _ -> true
   | Error _ -> false

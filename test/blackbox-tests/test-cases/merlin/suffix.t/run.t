@@ -1,5 +1,5 @@
   $ dune build @check
 
-  $ cat .merlin | grep SUFFIX
-  SUFFIX .aml .amli
-  SUFFIX .baml .bamli
+  $ dune ocaml-merlin --dump-config=$(pwd) | grep SUFFIX
+   (SUFFIX ".aml .amli")
+   (SUFFIX ".baml .bamli"))

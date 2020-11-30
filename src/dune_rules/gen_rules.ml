@@ -225,26 +225,12 @@ let gen_rules sctx dir_contents cctxs expander
     For_stanza.of_stanzas stanzas ~cctxs ~sctx ~src_dir ~ctx_dir ~scope
       ~dir_contents ~expander ~files_to_install
   in
-  let allow_approx_merlin =
-    let dune_project = Scope.project scope in
-    let status =
-      let open Option.O in
-      let+ src_dir = File_tree.find_dir src_dir in
-      File_tree.Dir.status src_dir
-    in
-    let dir_is_vendored =
-      match status with
-      | Some Vendored -> true
-      | _ -> false
-    in
-    dir_is_vendored || Dune_project.allow_approx_merlin dune_project
-  in
-  Option.iter (Merlin.merge_all ~allow_approx_merlin merlins) ~f:(fun m ->
+  List.iter merlins ~f:(fun merlin ->
       let more_src_dirs =
         lib_src_dirs ~dir_contents |> List.rev_append source_dirs
       in
       Merlin.add_rules sctx ~dir:ctx_dir ~more_src_dirs ~expander
-        (Merlin.add_source_dir m src_dir));
+        (Merlin.add_source_dir merlin src_dir));
   List.iter stanzas ~f:(fun stanza ->
       match (stanza : Stanza.t) with
       | Menhir.T m when Expander.eval_blang expander m.enabled_if -> (

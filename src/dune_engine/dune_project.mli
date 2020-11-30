@@ -63,8 +63,6 @@ val root : t -> Path.Source.t
 
 val stanza_parser : t -> Stanza.t list Dune_lang.Decoder.t
 
-val allow_approx_merlin : t -> bool
-
 val generate_opam_files : t -> bool
 
 val dialects : t -> Dialect.DB.t
@@ -127,6 +125,7 @@ val load :
      dir:Path.Source.t
   -> files:String.Set.t
   -> infer_from_opam_files:bool
+  -> dir_status:Sub_dirs.Status.t
   -> t option
 
 (** Create an anonymous project with no package rooted at the given directory *)

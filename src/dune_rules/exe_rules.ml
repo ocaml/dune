@@ -180,10 +180,12 @@ let executables_rules ~sctx ~dir ~expander ~dir_contents ~scope ~compile_info
       ~promote:exes.promote ~embed_in_plugin_libraries
   in
   ( cctx
-  , Merlin.make () ~requires:requires_compile ~flags ~modules
+  , Merlin.make ~requires:requires_compile ~flags ~modules
       ~preprocess:(Preprocess.Per_module.single_preprocess preprocess)
       ~obj_dir
-      ~dialects:(Dune_project.dialects (Scope.project scope)) )
+      ~dialects:(Dune_project.dialects (Scope.project scope))
+      ~ident:(Lib.Compile.merlin_ident compile_info)
+      () )
 
 let compile_info ~scope (exes : Dune_file.Executables.t) =
   let dune_version = Scope.project scope |> Dune_project.dune_version in

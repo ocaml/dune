@@ -11,6 +11,8 @@ end
 module Make (D : Desc) = struct
   let magic = sprintf "DUNE-%sv%d:" D.name D.version
 
+  let to_string (v : D.t) = Printf.sprintf "%s%s" magic (Marshal.to_string v [])
+
   let dump file (v : D.t) =
     Io.with_file_out file ~f:(fun oc ->
         output_string oc magic;

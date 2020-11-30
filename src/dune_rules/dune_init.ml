@@ -179,7 +179,7 @@ module Init_context = struct
     let project =
       match
         Dune_project.load ~dir:Path.Source.root ~files:String.Set.empty
-          ~infer_from_opam_files:true
+          ~infer_from_opam_files:true ~dir_status:Normal
       with
       | Some p -> p
       | None -> Dune_project.anonymous ~dir:Path.Source.root

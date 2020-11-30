@@ -1,0 +1,10 @@
+(library
+ (name foo)
+ (modules foo))
+
+(executable
+ (name test)
+ (modules test)
+ (libraries foo))
+
+(copy_files 411/test.ml)

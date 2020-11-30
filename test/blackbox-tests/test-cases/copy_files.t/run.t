@@ -1,6 +1,6 @@
 Test that (copy_files ...) works
 
-  $ dune build --root test1 test.exe .merlin
+  $ dune build --root test1 test.exe .merlin-conf/lib-foo .merlin-conf/exe-test
   Entering directory 'test1'
   $ dune build --root test1 @bar-source
   Entering directory 'test1'

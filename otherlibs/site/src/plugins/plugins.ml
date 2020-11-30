@@ -207,7 +207,7 @@ module Make (X : sig
 end) : S = struct
   include X
 
-  let list () = readdir paths
+  let list () = List.sort String.compare (readdir paths)
 
   let load name = load_plugin paths name
 

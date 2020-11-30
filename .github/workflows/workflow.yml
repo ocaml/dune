@@ -58,6 +58,16 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v2
 
+      - name: Cache Opam directory
+        id: cache
+        uses: actions/cache@v2
+        env:
+          cache-name: cache-opam
+        with:
+          # opam cache files are stored in `~/.opam` on Linux/macOS
+          path: ~/.opam
+          key: ${{ runner.os }}-${{ matrix.ocaml-version }}-build-${{ env.cache-name }}-${{ hashFiles('*.opam') }}
+
       - name: Use OCaml ${{ matrix.ocaml-version }}
         uses: avsm/setup-ocaml@v1
         with:

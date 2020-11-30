@@ -1,0 +1,8 @@
+(lang dune 2.8)
+
+(dialect
+ (name altercaml)
+ (implementation
+  (extension aml))
+ (interface
+  (extension amli)))

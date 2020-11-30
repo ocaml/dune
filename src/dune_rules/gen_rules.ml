@@ -386,17 +386,17 @@ let gen ~contexts ?only_packages conf =
   let open Fiber.O in
   let { Dune_load.dune_files; packages; projects; vcs } = conf in
   let packages = Option.value only_packages ~default:packages in
-  (* CR-soon amokhov: this mutable table is safe because [Ivar]s are created,
-     read and filled in the same memoization node (the one that calls [gen]). We
-     better rewrite this code using async memoized functions for clarity. *)
-  let sctxs = Table.create (module Context_name) 4 in
-  List.iter contexts ~f:(fun c ->
-      Table.add_exn sctxs c.Context.name (Fiber.Ivar.create ()));
+  let sctxs =
+    Context_name.Map.of_list_map_exn contexts ~f:(fun (c : Context.t) ->
+        (c.name, Fiber.Ivar.create ()))
+  in
   let make_sctx (context : Context.t) : _ Fiber.t =
     let host () =
       match context.for_host with
       | None -> Fiber.return None
-      | Some h -> Fiber.Ivar.read (Table.find_exn sctxs h.name) >>| Option.some
+      | Some h ->
+        Context_name.Map.find_exn sctxs h.name
+        |> Fiber.Ivar.read >>| Option.some
     in
     let stanzas () =
       let+ stanzas = Dune_load.Dune_files.eval ~context dune_files in
@@ -414,7 +414,9 @@ let gen ~contexts ?only_packages conf =
     let sctx =
       Super_context.create ?host ~context ~projects ~packages ~stanzas ()
     in
-    let+ () = Fiber.Ivar.fill (Table.find_exn sctxs context.name) sctx in
+    let+ () =
+      Fiber.Ivar.fill (Context_name.Map.find_exn sctxs context.name) sctx
+    in
     (context.name, sctx)
   in
   let* contexts = Fiber.parallel_map contexts ~f:make_sctx in

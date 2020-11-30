@@ -831,11 +831,11 @@ module Create = struct
           let ivar = Context_name.Map.find_exn context_ivars_map name in
           Fiber.Ivar.fill ivar contexts)
     in
-    let* contexts =
-      Fiber.parallel_map (Context_name.Map.values context_ivars_map)
-        ~f:(fun ivar -> Fiber.Ivar.read ivar)
+    let+ contexts =
+      Context_name.Map.values context_ivars_map
+      |> Fiber.parallel_map ~f:Fiber.Ivar.read
     in
-    Fiber.return (List.concat contexts)
+    List.concat contexts
 
   let memo =
     Memo.create "create-context" ~doc:"create contexts"

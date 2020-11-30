@@ -275,13 +275,13 @@ Test compiling an external plugin
   no sourceroot
   c: $TESTCASE_ROOT/_install/share/c/data
   b is available: true
-  run e
-  e: $TESTCASE_ROOT/e/_build/install/default/share/e/data
-  info.txt is found: true
   run b
   b: $TESTCASE_ROOT/_install/share/b/data
   info.txt is found: true
-  run c: registered:b,e.
+  run e
+  e: $TESTCASE_ROOT/e/_build/install/default/share/e/data
+  info.txt is found: true
+  run c: registered:e,b.
 
   $ OCAMLPATH=$(pwd)/_install/lib:$OCAMLPATH dune install --root=e --prefix $(pwd)/_install 2> /dev/null
 

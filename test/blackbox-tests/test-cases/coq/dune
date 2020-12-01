@@ -1,0 +1,13 @@
+; Coq for macos does not support native compilation yet.
+; TODO Enable tests when ready
+
+(cram
+ (applies_to native-compose native-single)
+ (enabled_if
+  (<> %{system} macosx)))
+
+; An alias that runs all Coq tests
+
+(cram
+ (applies_to :whole_subtree)
+ (alias all-coq-tests))

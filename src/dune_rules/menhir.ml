@@ -107,9 +107,11 @@ module Run (P : PARAMS) : sig end = struct
     if b then x :: xs else xs
 
   let targets m stanza =
-    let base = [ m ^ ".ml"; m ^ ".mli" ] in
-    let base = cons_if (has_flag stanza "--cmly") (m ^ ".cmly") base in
-    List.map base ~f:(Path.Build.relative dir)
+    let basenames =
+      [ m ^ ".ml"; m ^ ".mli" ]
+      |> cons_if (has_flag stanza "--cmly") (m ^ ".cmly")
+    in
+    List.map basenames ~f:(Path.Build.relative dir)
 
   let sources ms = List.map ~f:source ms
 

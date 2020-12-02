@@ -106,9 +106,9 @@ module Run (P : PARAMS) : sig end = struct
   let cons_if b x xs =
     if b then x :: xs else xs
 
-  let targets m ~cmly =
+  let targets m stanza =
     let base = [ m ^ ".ml"; m ^ ".mli" ] in
-    let base = cons_if cmly (m ^ ".cmly") base in
+    let base = cons_if (has_flag stanza "--cmly") (m ^ ".cmly") base in
     List.map base ~f:(Path.Build.relative dir)
 
   let sources ms = List.map ~f:source ms
@@ -198,7 +198,7 @@ module Run (P : PARAMS) : sig end = struct
      is the three-step process where Menhir is invoked twice and OCaml type
      inference is performed in between. *)
 
-  let process3 base ~cmly (stanza : stanza) : unit =
+  let process3 base (stanza : stanza) : unit =
     let expanded_flags = expand_flags stanza.flags in
     (* 1. A first invocation of Menhir creates a mock [.ml] file. *)
     rule ~mode:Standard
@@ -237,7 +237,7 @@ module Run (P : PARAMS) : sig end = struct
          ; Path (Path.relative (Path.build dir) base)
          ; A "--infer-read-reply"
          ; Dep (Path.build (inferred_mli base))
-         ; Hidden_targets (targets base ~cmly)
+         ; Hidden_targets (targets base stanza)
          ])
 
   (* ------------------------------------------------------------------------ *)
@@ -245,7 +245,7 @@ module Run (P : PARAMS) : sig end = struct
   (* [process3 stanza] converts a Menhir stanza into a set of build rules. This
      is a simpler one-step process where Menhir is invoked directly. *)
 
-  let process1 base ~cmly (stanza : stanza) : unit =
+  let process1 base (stanza : stanza) : unit =
     let expanded_flags = expand_flags stanza.flags in
     rule
       (menhir
@@ -253,7 +253,7 @@ module Run (P : PARAMS) : sig end = struct
          ; Deps (sources stanza.modules)
          ; A "--base"
          ; Path (Path.relative (Path.build dir) base)
-         ; Hidden_targets (targets base ~cmly)
+         ; Hidden_targets (targets base stanza)
          ])
 
   (* ------------------------------------------------------------------------ *)
@@ -266,12 +266,11 @@ module Run (P : PARAMS) : sig end = struct
 
   let process (stanza : stanza) : unit =
     let base = Option.value_exn stanza.merge_into in
-    let ocaml_type_inference_disabled = has_flag stanza "--only-tokens"
-    and cmly = has_flag stanza "--cmly" in
+    let ocaml_type_inference_disabled = has_flag stanza "--only-tokens" in
     if ocaml_type_inference_disabled || not stanza.infer then
-      process1 base stanza ~cmly
+      process1 base stanza
     else
-      process3 base stanza ~cmly
+      process3 base stanza
 
   (* ------------------------------------------------------------------------ *)
 

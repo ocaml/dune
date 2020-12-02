@@ -103,13 +103,13 @@ module Run (P : PARAMS) : sig end = struct
 
   let source m = Path.relative (Path.build dir) (m ^ ".mly")
 
+  let cons_if b x xs =
+    if b then x :: xs else xs
+
   let targets m ~cmly =
     let base = [ m ^ ".ml"; m ^ ".mli" ] in
-    List.map ~f:(Path.Build.relative dir)
-      ( if cmly then
-        (m ^ ".cmly") :: base
-      else
-        base )
+    let base = cons_if cmly (m ^ ".cmly") base in
+    List.map base ~f:(Path.Build.relative dir)
 
   let sources ms = List.map ~f:source ms
 

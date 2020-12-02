@@ -110,6 +110,9 @@ module Run (P : PARAMS) : sig end = struct
     let basenames =
       [ m ^ ".ml"; m ^ ".mli" ]
       |> cons_if (has_flag stanza "--cmly") (m ^ ".cmly")
+      |> cons_if (has_flag stanza "--dump") (m ^ ".automaton")
+      |> cons_if (has_flag stanza "--dump-resolved") (m ^ ".automaton.resolved")
+      |> cons_if (has_flag stanza "--explain") (m ^ ".conflicts")
     in
     List.map basenames ~f:(Path.Build.relative dir)
 

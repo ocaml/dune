@@ -63,6 +63,38 @@ module Run (P : PARAMS) : sig end = struct
 
   (* ------------------------------------------------------------------------ *)
 
+  (* [where_is_flag stanza flag] tests whether the flag [flag] is present
+     among the flags in [stanza]. If so, the flag's location is returned. *)
+
+  (* TODO This code ignores every element that has polarity [Neg]. This is
+     likely to be incorrect. *)
+
+  (* TODO This code seems to be the only call site of [fold_strings] in dune.
+     This is weird. There is probably a better way of testing for the presence
+     of a flag. Help is welcome! *)
+
+  let where_is_flag (stanza : stanza) (flag : string) : Loc.t option =
+    Ordered_set_lang.Unexpanded.fold_strings stanza.flags ~init:(None)
+      ~f:(fun pos sw accu ->
+        match accu, pos, String_with_vars.text_only sw with
+        | _, Neg, _ ->
+            accu
+        | Some _, Pos, _ ->
+            accu
+        | None, Pos, Some flag' when flag = flag' ->
+            Some (String_with_vars.loc sw)
+        | None, Pos, _ ->
+            accu
+      )
+
+  (* [has_flag stanza flag] tests whether the flag [flag] is present among the
+     flags in [stanza]. A Boolean result is returned. *)
+
+  let has_flag (stanza : stanza) (flag : string) : bool =
+    Option.is_some (where_is_flag stanza flag)
+
+  (* ------------------------------------------------------------------------ *)
+
   (* Naming conventions. *)
 
   (* If [m] is a (short) module name, such as "myparser", then [source m] is the
@@ -144,27 +176,21 @@ module Run (P : PARAMS) : sig end = struct
   (* The [--infer-*] commands should not be passed by the user; we take care of
      using these commands appropriately. Fail if they are present. *)
 
+  let forbidden_flags =
+    [ "--depend"
+    ; "--raw-depend"
+    ; "--infer"
+    ; "--infer-write-query"
+    ; "--infer-read-reply"
+    ]
+
   let () =
     List.iter stanzas ~f:(fun (stanza : stanza) ->
-        Ordered_set_lang.Unexpanded.fold_strings stanza.flags ~init:()
-          ~f:(fun _pos sw () ->
-            match String_with_vars.text_only sw with
-            | None -> ()
-            | Some text ->
-              if
-                List.mem text
-                  ~set:
-                    [ "--depend"
-                    ; "--raw-depend"
-                    ; "--infer"
-                    ; "--infer-write-query"
-                    ; "--infer-read-reply"
-                    ]
-              then
-                User_error.raise ~loc:(String_with_vars.loc sw)
-                  [ Pp.textf "The flag %s must not be used in a menhir stanza."
-                      text
-                  ]))
+      List.iter forbidden_flags ~f:(fun flag ->
+        Option.iter (where_is_flag stanza flag) ~f:(fun loc ->
+          User_error.raise ~loc
+            [ Pp.textf "The flag %s must not be used in a menhir stanza." flag
+            ])))
 
   (* ------------------------------------------------------------------------ *)
 
@@ -240,19 +266,8 @@ module Run (P : PARAMS) : sig end = struct
 
   let process (stanza : stanza) : unit =
     let base = Option.value_exn stanza.merge_into in
-    let ocaml_type_inference_disabled, cmly =
-      Ordered_set_lang.Unexpanded.fold_strings stanza.flags ~init:(false, false)
-        ~f:(fun pos sw ((only_tokens, cmly) as acc) ->
-          match pos with
-          | Neg -> acc
-          | Pos -> (
-            match String_with_vars.text_only sw with
-            | Some "--only-tokens" -> (true, cmly)
-            | Some "--cmly" -> (only_tokens, true)
-            | Some _
-            | None ->
-              acc ))
-    in
+    let ocaml_type_inference_disabled = has_flag stanza "--only-tokens"
+    and cmly = has_flag stanza "--cmly" in
     if ocaml_type_inference_disabled || not stanza.infer then
       process1 base stanza ~cmly
     else

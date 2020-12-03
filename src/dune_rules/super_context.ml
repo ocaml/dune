@@ -12,22 +12,13 @@ let default_context_flags (ctx : Context.t) ~project =
   in
   let cxx =
     if Dune_project.use_standard_c_and_cxx_flags project then
-      let ccomp_type = Ocaml_config.ccomp_type ctx.ocaml_config in
-      match ccomp_type with
-      | Ocaml_config.Ccomp_type.Other s ->
-        User_warning.emit
-          [ Pp.textf
-              "Dune was not able to automatically infer the C compiler in use: \
-               \"%s\". Please open an issue on github to help us improve this \
-               feature."
-              s
-          ];
-        cxx
-      | _ -> Cxx_flags.get_flags ccomp_type @ cxx
+      let open Build.O in
+      let+ db_flags = Cxx_flags.get_flags ctx.build_dir in
+      db_flags @ cxx
     else
-      cxx
+      Build.return cxx
   in
-  Foreign_language.Dict.make ~c ~cxx
+  Foreign_language.Dict.make ~c:(Build.return c) ~cxx
 
 module Env_tree : sig
   type t

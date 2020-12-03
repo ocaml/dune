@@ -1,5 +1,11 @@
 open! Stdune
-open Ocaml_config.Ccomp_type
+open Dune_engine
+
+type ccomp_type =
+  | Gcc
+  | Msvc
+  | Clang
+  | Other of string
 
 let base_cxx_flags =
   [ (Gcc, [ "-x"; "c++"; "-lstdc++"; "-shared-libgcc" ])
@@ -7,5 +13,35 @@ let base_cxx_flags =
   ; (Msvc, [ "/TP" ])
   ]
 
-let get_flags ccomp_type =
+let preprocessed_filename = "ccomp"
+
+let ccomp_type dir =
+  let open Build.O in
+  let filepath =
+    Path.Build.(relative (relative dir ".dune") preprocessed_filename)
+  in
+  let+ ccomp = Build.contents (Path.build filepath) in
+  match String.trim ccomp with
+  | "clang" -> Clang
+  | "gcc"
+  | "mingw" ->
+    Gcc
+  | "msvc" -> Msvc
+  | s -> Other s
+
+let check_warn = function
+  | Other s ->
+    User_warning.emit
+      [ Pp.textf
+          "Dune was not able to automatically infer the C compiler in use: \
+           \"%s\". Please open an issue on github to help us improve this \
+           feature."
+          s
+      ]
+  | _ -> ()
+
+let get_flags dir =
+  let open Build.O in
+  let+ ccomp_type = ccomp_type dir in
+  check_warn ccomp_type;
   List.assoc_opt ccomp_type base_cxx_flags |> Option.value ~default:[]

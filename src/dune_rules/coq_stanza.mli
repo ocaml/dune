@@ -1,5 +1,5 @@
-open! Dune_engine
-open Import
+open! Stdune
+open! Build_api.Api
 
 module Buildable : sig
   type t =

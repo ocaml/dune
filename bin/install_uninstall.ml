@@ -68,7 +68,7 @@ module type File_operations = sig
     -> executable:bool
     -> special_file:Special_file.t option
     -> package:Package.Name.t
-    -> conf:Dune_engine.Artifact_substitution.conf
+    -> conf:Build_api.Api.Artifact_substitution.conf
     -> unit Fiber.t
 
   val mkdir_p : Path.t -> unit
@@ -105,7 +105,7 @@ end
 module File_ops_real (W : Workspace) : File_operations = struct
   open W
 
-  let get_vcs p = Dune_engine.File_tree.nearest_vcs p
+  let get_vcs p = Build_api.Api.File_tree.nearest_vcs p
 
   type load_special_file_result =
     | No_version_needed
@@ -135,7 +135,7 @@ module File_ops_real (W : Workspace) : File_operations = struct
       | None -> plain_copy ()
       | Some vcs ->
         let open Fiber.O in
-        let+ version = Dune_engine.Vcs.describe vcs in
+        let+ version = Build_api.Api.Vcs.describe vcs in
         let ppf = Format.formatter_of_out_channel oc in
         print ppf ~version;
         Format.pp_print_flush ppf () )
@@ -166,8 +166,8 @@ module File_ops_real (W : Workspace) : File_operations = struct
           Pp.to_fmt ppf (Dune_rules.Meta.pp meta.entries))
 
   let replace_sites
-      ~(get_location : Dune_engine.Section.t -> Package.Name.t -> Stdune.Path.t)
-      dp =
+      ~(get_location :
+         Build_api.Api.Section.t -> Package.Name.t -> Stdune.Path.t) dp =
     match
       List.find_map dp ~f:(function
         | Dune_lang.List [ Atom (A "name"); Atom (A name) ] -> Some name
@@ -232,7 +232,7 @@ module File_ops_real (W : Workspace) : File_operations = struct
           Format.pp_close_box ppf ())
 
   let copy_file ~src ~dst ~executable ~special_file ~package
-      ~(conf : Dune_engine.Artifact_substitution.conf) =
+      ~(conf : Build_api.Api.Artifact_substitution.conf) =
     let chmod =
       if executable then
         fun _ ->
@@ -253,7 +253,7 @@ module File_ops_real (W : Workspace) : File_operations = struct
           copy_special_file ~src ~package ~ic ~oc
             ~f:(process_dune_package ~get_location:conf.get_location)
         | None ->
-          Dune_engine.Artifact_substitution.copy ~conf ~input_file:src
+          Build_api.Api.Artifact_substitution.copy ~conf ~input_file:src
             ~input:(input ic) ~output:(output oc))
 
   let remove_if_exists dst =
@@ -312,12 +312,12 @@ let file_operations ~dry_run ~workspace : (module File_operations) =
       let workspace = workspace
     end) )
 
-let package_is_vendored (pkg : Dune_engine.Package.t) =
+let package_is_vendored (pkg : Build_api.Api.Package.t) =
   let dir = Package.dir pkg in
-  match Dune_engine.File_tree.find_dir dir with
+  match Build_api.Api.File_tree.find_dir dir with
   | None -> assert false
   | Some d -> (
-    match Dune_engine.File_tree.Dir.status d with
+    match Build_api.Api.File_tree.Dir.status d with
     | Vendored -> true
     | _ -> false )
 
@@ -482,8 +482,8 @@ let install_uninstall ~what =
                   ~libdir_from_command_line
               in
               let conf =
-                Dune_engine.Artifact_substitution.conf_for_install ~relocatable
-                  ~default_ocamlpath:context.default_ocamlpath
+                Build_api.Api.Artifact_substitution.conf_for_install
+                  ~relocatable ~default_ocamlpath:context.default_ocamlpath
                   ~stdlib_dir:context.stdlib_dir ~prefix ~libdir ~mandir
               in
               Fiber.sequential_iter entries_per_package

@@ -70,7 +70,7 @@ module Scheme = struct
       | Empty -> Directory_rules.empty
       | Union (a, b) -> Directory_rules.union (go a ~dir) (go b ~dir)
       | Approximation (dirs, t) -> (
-        match Dune_engine.Dir_set.mem dirs dir with
+        match Build_api.Api.Dir_set.mem dirs dir with
         | true -> go t ~dir
         | false -> Directory_rules.empty )
       | Finite rules -> (
@@ -89,7 +89,7 @@ module Scheme = struct
       ~default:Directory_rules.empty
 end
 
-module Dir_set = Dune_engine.Dir_set
+module Dir_set = Build_api.Api.Dir_set
 
 module Path = struct
   include Path.Build

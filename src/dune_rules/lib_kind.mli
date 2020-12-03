@@ -1,4 +1,4 @@
-open! Dune_engine
+open! Build_api.Api
 
 module Ppx_args : sig
   module Cookie : sig

@@ -1,4 +1,4 @@
-open! Dune_engine
+open! Build_api.Api
 
 let syntax =
   Dune_lang.Syntax.create ~name:"menhir" ~desc:"the menhir extension"

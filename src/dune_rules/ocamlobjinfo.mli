@@ -1,5 +1,5 @@
 (** Parse ocamlobjinfo output *)
-open! Dune_engine
+open! Build_api.Api
 
 open Stdune
 

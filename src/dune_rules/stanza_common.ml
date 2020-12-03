@@ -1,5 +1,5 @@
 open Stdune
-open Dune_engine
+open Build_api.Api
 open Dune_lang.Decoder
 
 (* Parse and resolve "package" fields *)

@@ -1,6 +1,5 @@
-open! Dune_engine
+open! Build_api.Api
 open! Stdune
-open Import
 
 module Paths = struct
   let library_object_directory ~dir name =

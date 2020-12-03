@@ -4,7 +4,7 @@ type t =
   | File of Path.t
   | Alias of Alias.t
 
-val request : t list -> unit Dune_engine.Build.t
+val request : t list -> unit Build_api.Api.Build.t
 
 val resolve_target :
      Common.t

@@ -1,5 +1,5 @@
 (** Handling of coq source files *)
-open! Dune_engine
+open! Build_api.Api
 
 open Stdune
 

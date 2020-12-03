@@ -1,6 +1,5 @@
-open! Dune_engine
+open! Build_api.Api
 open! Stdune
-open Import
 open Dune_file
 open Build.O
 module SC = Super_context

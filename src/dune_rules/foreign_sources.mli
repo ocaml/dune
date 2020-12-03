@@ -1,5 +1,5 @@
-open! Dune_engine
-open Import
+open! Build_api.Api
+open Stdune
 
 (** This module loads and validates foreign sources from directories. *)
 

@@ -1,8 +1,7 @@
 (** Odoc rules *)
-open! Dune_engine
+open! Build_api.Api
 
 open! Stdune
-open Import
 open Dune_file
 
 val setup_library_odoc_rules :

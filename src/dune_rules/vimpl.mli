@@ -1,6 +1,6 @@
 (** Extra information required to generate rules for virtual library
     implementations *)
-open! Dune_engine
+open! Build_api.Api
 
 open Stdune
 

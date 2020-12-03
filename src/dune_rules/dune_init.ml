@@ -1,4 +1,4 @@
-open! Dune_engine
+open! Build_api.Api
 open! Stdune
 open! Import
 
@@ -153,7 +153,7 @@ module File = struct
   let write_dune_file (dune_file : dune) =
     let path = Path.relative dune_file.path dune_file.name in
     let version =
-      Dune_lang.Syntax.greatest_supported_version Dune_engine.Stanza.syntax
+      Dune_lang.Syntax.greatest_supported_version Build_api.Api.Stanza.syntax
     in
     Format_dune_lang.write_file ~version ~path dune_file.content
 

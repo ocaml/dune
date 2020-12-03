@@ -1,6 +1,5 @@
-open! Dune_engine
+open! Build_api.Api
 open! Stdune
-open Import
 open Dune_lang.Decoder
 
 (* This file defines Dune types as well as the S-expression syntax for the

@@ -1,5 +1,5 @@
 open! Stdune
-open! Dune_engine
+open! Build_api.Api
 open Import
 module Opam_package = Package
 module P = Variant

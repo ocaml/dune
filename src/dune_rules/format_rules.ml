@@ -1,5 +1,5 @@
-open! Dune_engine
-open Import
+open! Build_api.Api
+open Stdune
 
 let add_diff sctx loc alias ~dir ~input ~output =
   let open Build.O in

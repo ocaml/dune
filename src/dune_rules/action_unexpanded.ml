@@ -1,6 +1,5 @@
-open! Dune_engine
+open! Build_api.Api
 open! Stdune
-open Import
 module Unresolved = Action.Unresolved
 module Mapper = Action_mapper.Make (Action_dune_lang) (Action_dune_lang)
 
@@ -108,7 +107,7 @@ module Partial = struct
   module Program = Unresolved.Program
 
   module type Past =
-    Action_intf.Ast
+    Action_ast
       with type program = Program.t String_with_vars.Partial.t
       with type path = Path.t String_with_vars.Partial.t
       with type target = Path.Build.t String_with_vars.Partial.t
@@ -402,7 +401,7 @@ end = struct
   end
 
   module Make
-      (Ast : Action_intf.Ast)
+      (Ast : Action_ast)
       (Sets : Sets)
       (Out : Outcome
                with type path_set := Sets.Deps.t

@@ -1,5 +1,5 @@
 open Stdune
-open Dune_engine
+open Build_api.Api
 open Dune_rules
 open Action_unexpanded.Infer.Outcome
 open Dune_tests_common

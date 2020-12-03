@@ -1,8 +1,7 @@
 (** Findlib database *)
 
 open! Stdune
-open Dune_engine
-open Dune_engine.Import
+open Build_api.Api
 
 (** Findlib database *)
 type t

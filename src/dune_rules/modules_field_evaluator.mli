@@ -1,6 +1,6 @@
 (** The modules field evaluator interprets the module sources into proper
     modules in a directory in the context of a stanza from a dune file. *)
-open! Dune_engine
+open! Build_api.Api
 
 open! Stdune
 

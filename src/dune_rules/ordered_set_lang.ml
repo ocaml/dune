@@ -1,5 +1,5 @@
 open! Stdune
-open! Dune_engine
+open! Build_api.Api
 
 module Ast = struct
   [@@@warning "-37"]

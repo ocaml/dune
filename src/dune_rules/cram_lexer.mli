@@ -1,5 +1,5 @@
 (** .t file parser *)
-open! Dune_engine
+open! Build_api.Api
 
 (** A command or comment. Output blocks are skipped *)
 type 'command block =

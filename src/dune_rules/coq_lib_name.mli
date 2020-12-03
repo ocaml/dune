@@ -1,4 +1,4 @@
-open! Dune_engine
+open! Build_api.Api
 
 (* This file is licensed under The MIT License *)
 (* (c) MINES ParisTech 2018-2019               *)

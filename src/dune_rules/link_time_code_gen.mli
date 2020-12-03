@@ -1,5 +1,5 @@
 (** {1 Handle link time code generation} *)
-open! Dune_engine
+open! Build_api.Api
 
 open Stdune
 

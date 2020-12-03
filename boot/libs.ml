@@ -27,6 +27,7 @@ let local_libraries =
   ; ("vendor/build_path_prefix_map/src", Some "Build_path_prefix_map", false,
     None)
   ; ("src/dune_engine", Some "Dune_engine", false, None)
+  ; ("src/build_api", Some "Build_api", false, None)
   ; ("src/dune_rules", Some "Dune_rules", true, None)
   ; ("vendor/cmdliner/src", None, false, None)
   ; ("otherlibs/build-info/src", Some "Build_info", false,

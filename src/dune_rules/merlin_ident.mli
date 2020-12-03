@@ -4,7 +4,7 @@ open! Stdune
     to a specific [library] or [executable] stanza. *)
 type t
 
-val for_lib : Dune_engine.Lib_name.t -> t
+val for_lib : Build_api.Api.Lib_name.t -> t
 
 val for_exes : names:string list -> t
 

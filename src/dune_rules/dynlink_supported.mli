@@ -1,5 +1,5 @@
 (** Track whether dynamic loading of code is supported *)
-open! Dune_engine
+open! Build_api.Api
 
 module By_the_os : sig
   type t

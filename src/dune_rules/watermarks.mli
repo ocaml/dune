@@ -1,5 +1,5 @@
 (** Watermarking *)
-open! Dune_engine
+open! Build_api.Api
 
 (** Expand watermarks in source files, similarly to what topkg does.
 

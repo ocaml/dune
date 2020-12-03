@@ -1,30 +1,30 @@
 open Stdune
-open Dune_engine
+open Build_api.Api
 module Term = Cmdliner.Term
 module Manpage = Cmdliner.Manpage
 module Super_context = Dune_rules.Super_context
 module Context = Dune_rules.Context
-module Config = Dune_engine.Config
-module Lib_name = Dune_engine.Lib_name
+module Config = Build_api.Api.Config
+module Lib_name = Build_api.Api.Lib_name
 module Lib_deps_info = Dune_rules.Lib_deps_info
-module Build_system = Dune_engine.Build_system
+module Build_system = Build_api.Api.Build_system
 module Findlib = Dune_rules.Findlib
-module Package = Dune_engine.Package
+module Package = Build_api.Api.Package
 module Dune_package = Dune_rules.Dune_package
-module Hooks = Dune_engine.Hooks
-module Build = Dune_engine.Build
-module Action = Dune_engine.Action
-module Dep = Dune_engine.Dep
+module Hooks = Build_api.Api.Hooks
+module Build = Build_api.Api.Build
+module Action = Build_api.Api.Action
+module Dep = Build_api.Api.Dep
 module Action_to_sh = Dune_rules.Action_to_sh
-module Dpath = Dune_engine.Dpath
-module Install = Dune_engine.Install
-module Section = Dune_engine.Section
+module Dpath = Build_api.Api.Dpath
+module Install = Build_api.Api.Install
+module Section = Build_api.Api.Section
 module Watermarks = Dune_rules.Watermarks
-module Promotion = Dune_engine.Promotion
+module Promotion = Build_api.Api.Promotion
 module Colors = Dune_rules.Colors
-module Dune_project = Dune_engine.Dune_project
+module Dune_project = Build_api.Api.Dune_project
 module Workspace = Dune_rules.Workspace
-module Cached_digest = Dune_engine.Cached_digest
+module Cached_digest = Build_api.Api.Cached_digest
 module Profile = Dune_rules.Profile
 module Log = Dune_util.Log
 include Common.Let_syntax
@@ -105,10 +105,10 @@ module Main = struct
           Package.Name.Map.filter workspace.conf.packages ~f:(fun pkg ->
               let vendored =
                 let dir = Package.dir pkg in
-                match Dune_engine.File_tree.find_dir dir with
+                match Build_api.Api.File_tree.find_dir dir with
                 | None -> assert false
                 | Some d -> (
-                  match Dune_engine.File_tree.Dir.status d with
+                  match Build_api.Api.File_tree.Dir.status d with
                   | Vendored -> true
                   | _ -> false )
               in
@@ -130,7 +130,7 @@ module Main = struct
 end
 
 module Scheduler = struct
-  include Dune_engine.Scheduler
+  include Build_api.Api.Scheduler
   open Fiber.O
 
   let go ~(common : Common.t) f =

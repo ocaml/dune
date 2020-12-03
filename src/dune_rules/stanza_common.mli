@@ -1,5 +1,5 @@
 open Stdune
-open Dune_engine
+open Build_api.Api
 
 module Pkg : sig
   val decode : Package.t Dune_lang.Decoder.t

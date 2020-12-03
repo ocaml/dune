@@ -1,7 +1,7 @@
 (** Interpret dependencies written in Dune files *)
 open Stdune
 
-open! Dune_engine
+open! Build_api.Api
 
 (** Evaluates to the actual list of dependencies, ignoring aliases, and
     registers them as the action dependencies. *)

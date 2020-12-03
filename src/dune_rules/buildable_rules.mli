@@ -1,5 +1,5 @@
 (** Rules and helpers shared by OCaml libraries and executables *)
-open! Dune_engine
+open! Build_api.Api
 
 open Stdune
 

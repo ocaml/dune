@@ -1,5 +1,5 @@
 (** Command line arguments specification *)
-open! Dune_engine
+open! Build_api.Api
 
 open! Stdune
 

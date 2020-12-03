@@ -1,8 +1,8 @@
 open Stdune
-module Config = Dune_engine.Config
+module Config = Build_api.Api.Config
 module Colors = Dune_rules.Colors
-module Clflags = Dune_engine.Clflags
-module Package = Dune_engine.Package
+module Clflags = Build_api.Api.Clflags
+module Package = Build_api.Api.Package
 module Profile = Dune_rules.Profile
 module Term = Cmdliner.Term
 module Manpage = Cmdliner.Manpage
@@ -17,7 +17,7 @@ open Let_syntax
 
 module Only_packages = struct
   type t =
-    { names : Dune_engine.Package.Name.Set.t
+    { names : Build_api.Api.Package.Name.Set.t
     ; command_line_option : string
     }
 end
@@ -33,7 +33,7 @@ type t =
   ; target_prefix : string
   ; only_packages : Only_packages.t option
   ; capture_outputs : bool
-  ; x : Dune_engine.Context_name.t option
+  ; x : Build_api.Api.Context_name.t option
   ; diff_command : string option
   ; promote : Clflags.Promote.t option
   ; force : bool
@@ -43,13 +43,13 @@ type t =
   ; store_orig_src_dir : bool
   ; (* Original arguments for the external-lib-deps hint *)
     orig_args : string list
-  ; config : Dune_engine.Config.t
+  ; config : Build_api.Api.Config.t
   ; default_target : Arg.Dep.t (* For build & runtest only *)
   ; watch : bool
   ; stats_trace_file : string option
   ; always_show_command_line : bool
   ; promote_install_files : bool
-  ; instrument_with : Dune_engine.Lib_name.t list option
+  ; instrument_with : Build_api.Api.Lib_name.t list option
   }
 
 let workspace_file t = t.workspace_file
@@ -102,7 +102,7 @@ let set_common_other ?log_file c ~targets =
       ];
   Clflags.always_show_command_line := c.always_show_command_line;
   Clflags.ignore_promoted_rules := c.ignore_promoted_rules;
-  Option.iter ~f:Dune_engine.Stats.enable c.stats_trace_file
+  Option.iter ~f:Build_api.Api.Stats.enable c.stats_trace_file
 
 let set_common ?log_file ?external_lib_deps_mode c ~targets =
   Option.iter external_lib_deps_mode ~f:(fun x ->
@@ -273,7 +273,7 @@ module Options_implied_by_dash_p = struct
         value
         & opt dep
             (Dep.alias ~dir:Stdune.Path.Local.root
-               Dune_engine.Alias.Name.default)
+               Build_api.Api.Alias.Name.default)
         & info [ "default-target" ] ~docs ~docv:"TARGET"
             ~doc:
               {|Set the default target that when none is specified to
@@ -306,7 +306,7 @@ module Options_implied_by_dash_p = struct
     ; config_file = No_config
     ; profile = Some Profile.Release
     ; default_target =
-        Arg.Dep.alias_rec ~dir:Path.Local.root Dune_engine.Alias.Name.install
+        Arg.Dep.alias_rec ~dir:Path.Local.root Build_api.Api.Alias.Name.install
     ; always_show_command_line = true
     ; promote_install_files = true
     }
@@ -425,11 +425,11 @@ let term =
     let arg =
       Arg.conv
         ( (fun s ->
-            Result.map_error (Dune_engine.Config.Concurrency.of_string s)
+            Result.map_error (Build_api.Api.Config.Concurrency.of_string s)
               ~f:(fun s -> `Msg s))
         , fun pp x ->
             Format.pp_print_string pp
-              (Dune_engine.Config.Concurrency.to_string x) )
+              (Build_api.Api.Config.Concurrency.to_string x) )
     in
     Arg.(
       value
@@ -440,10 +440,11 @@ let term =
     let arg =
       Arg.conv
         ( (fun s ->
-            Result.map_error (Dune_engine.Sandbox_mode.of_string s) ~f:(fun s ->
-                `Msg s))
+            Result.map_error (Build_api.Api.Sandbox_mode.of_string s)
+              ~f:(fun s -> `Msg s))
         , fun pp x ->
-            Format.pp_print_string pp (Dune_engine.Sandbox_mode.to_string x) )
+            Format.pp_print_string pp (Build_api.Api.Sandbox_mode.to_string x)
+        )
     in
     Arg.(
       value
@@ -459,8 +460,8 @@ let term =
                 certain sandboxing mode, so they will ignore this setting. The \
                 allowed values are: %s."
                (String.concat ~sep:", "
-                  (List.map Dune_engine.Sandbox_mode.all
-                     ~f:Dune_engine.Sandbox_mode.to_string))))
+                  (List.map Build_api.Api.Sandbox_mode.all
+                     ~f:Build_api.Api.Sandbox_mode.to_string))))
   and+ debug_dep_path =
     Arg.(
       value & flag
@@ -715,5 +716,5 @@ let config_term =
 let context_arg ~doc =
   Arg.(
     value
-    & opt Arg.context_name Dune_engine.Context_name.default
+    & opt Arg.context_name Build_api.Api.Context_name.default
     & info [ "context" ] ~docv:"CONTEXT" ~doc)

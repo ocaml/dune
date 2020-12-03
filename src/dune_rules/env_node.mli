@@ -1,5 +1,5 @@
 (** An environment node represents an evaluated (env ..) stanza in a directory. *)
-open! Dune_engine
+open! Build_api.Api
 
 open Stdune
 

@@ -1,5 +1,5 @@
 (** Preprocessing of OCaml source files *)
-open! Dune_engine
+open! Build_api.Api
 
 open! Stdune
 open! Import

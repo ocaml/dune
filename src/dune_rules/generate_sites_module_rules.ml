@@ -1,5 +1,5 @@
 open! Stdune
-open! Dune_engine
+open! Build_api.Api
 
 (* usual value for PATH_MAX *)
 let max_path_length = 4096

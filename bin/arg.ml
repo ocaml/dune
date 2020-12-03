@@ -1,5 +1,5 @@
 open Stdune
-open Dune_engine
+open Build_api.Api
 open Dune_rules
 include Cmdliner.Arg
 
@@ -28,7 +28,7 @@ module Dep = struct
 
   let make_alias_sw ~dir s =
     let path =
-      Dune_engine.Alias.Name.to_string s
+      Build_api.Api.Alias.Name.to_string s
       |> Stdune.Path.Local.relative dir
       |> Stdune.Path.Local.to_string
     in
@@ -123,6 +123,6 @@ let bytes =
 
 let context_name : Context_name.t conv = conv Context_name.conv
 
-let lib_name = conv Dune_engine.Lib_name.conv
+let lib_name = conv Lib_name.conv
 
 let version = pair ~sep:'.' int int

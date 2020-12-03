@@ -1,5 +1,5 @@
 (** Scopes *)
-open! Dune_engine
+open! Build_api.Api
 
 (** A scope is a project + a library database *)
 

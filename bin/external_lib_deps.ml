@@ -24,14 +24,14 @@ let all_lib_deps ~request =
   let targets = Build_system.static_deps_of_request request in
   let rules = Build_system.rules_for_transitive_closure targets in
   let lib_deps =
-    List.map rules ~f:(fun (rule : Dune_engine.Rule.t) ->
+    List.map rules ~f:(fun (rule : Build_api.Api.Rule.t) ->
         let deps = Lib_deps_info.lib_deps rule.action.build in
         (rule, deps))
   in
-  let module Context_name = Dune_engine.Context_name in
+  let module Context_name = Build_api.Api.Context_name in
   let contexts = Build_system.contexts () in
   List.fold_left lib_deps ~init:[]
-    ~f:(fun acc ((rule : Dune_engine.Rule.t), deps) ->
+    ~f:(fun acc ((rule : Build_api.Api.Rule.t), deps) ->
       if Lib_name.Map.is_empty deps then
         acc
       else
@@ -55,14 +55,14 @@ let opam_install_command ?switch_name packages =
   cmd :: packages |> String.concat ~sep:" "
 
 let run ~lib_deps ~by_dir ~setup ~only_missing ~sexp =
-  Dune_engine.Context_name.Map.foldi lib_deps ~init:false
+  Build_api.Api.Context_name.Map.foldi lib_deps ~init:false
     ~f:(fun context_name lib_deps_by_dir acc ->
       let lib_deps =
         Path.Source.Map.values lib_deps_by_dir
         |> List.fold_left ~init:Lib_name.Map.empty ~f:Lib_deps_info.merge
       in
       let sctx =
-        Dune_engine.Context_name.Map.find_exn setup.Import.Main.scontexts
+        Build_api.Api.Context_name.Map.find_exn setup.Import.Main.scontexts
           context_name
       in
       let switch_name =
@@ -81,7 +81,7 @@ let run ~lib_deps ~by_dir ~setup ~only_missing ~sexp =
             ];
         let context =
           List.find_exn setup.workspace.contexts ~f:(fun c ->
-              Dune_engine.Context_name.equal c.name context_name)
+              Build_api.Api.Context_name.equal c.name context_name)
         in
         let missing =
           Lib_name.Map.filteri externals ~f:(fun name _ ->
@@ -97,7 +97,7 @@ let run ~lib_deps ~by_dir ~setup ~only_missing ~sexp =
             (User_error.make
                [ Pp.textf
                    "The following libraries are missing in the %s context:"
-                   (Dune_engine.Context_name.to_string context_name)
+                   (Build_api.Api.Context_name.to_string context_name)
                ; pp_external_libs missing
                ]);
           false
@@ -115,11 +115,11 @@ let run ~lib_deps ~by_dir ~setup ~only_missing ~sexp =
             (User_error.make
                [ Pp.textf
                    "The following libraries are missing in the %s context:"
-                   (Dune_engine.Context_name.to_string context_name)
+                   (Build_api.Api.Context_name.to_string context_name)
                ; pp_external_libs missing
                ]
                ~hints:
-                 [ Dune_engine.Utils.pp_command_hint
+                 [ Build_api.Api.Utils.pp_command_hint
                      (opam_install_command ?switch_name required_package_names)
                  ]);
           true
@@ -136,7 +136,8 @@ let run ~lib_deps ~by_dir ~setup ~only_missing ~sexp =
           |> Sexp.of_dyn
         in
         Format.printf "%a@." Sexp.pp
-          (List [ Atom (Dune_engine.Context_name.to_string context_name); sexp ]);
+          (List
+             [ Atom (Build_api.Api.Context_name.to_string context_name); sexp ]);
         acc
       ) else (
         if by_dir then
@@ -147,7 +148,7 @@ let run ~lib_deps ~by_dir ~setup ~only_missing ~sexp =
              [ Pp.textf
                  "These are the external library dependencies in the %s \
                   context:"
-                 (Dune_engine.Context_name.to_string context_name)
+                 (Build_api.Api.Context_name.to_string context_name)
              ; pp_external_libs externals
              ]);
         acc

@@ -1,8 +1,6 @@
-open Stdune
-open Dune_engine
-module Context_name = Context_name
-module Build_context = Build_context
-module Action = Action
+module Context_name = Dune_engine.Context_name
+module Build_context = Dune_engine.Build_context
+module Action = Dune_engine.Action
 module Dir_set = Dune_engine.Dir_set
 module Process = Dune_engine.Process
 module Action_dune_lang = Dune_engine.Action_dune_lang
@@ -36,10 +34,8 @@ module Install = Dune_engine.Install
 module Stats = Dune_engine.Stats
 module Clflags = Dune_engine.Clflags
 module Lib_name = Dune_engine.Lib_name
-module Stringlike_intf = Dune_engine.Stringlike_intf
 module Config = Dune_engine.Config
 module Ml_kind = Dune_engine.Ml_kind
-module Stringlike = Dune_engine.Stringlike
 module Opam_file = Dune_engine.Opam_file
 module String_with_vars = Dune_engine.String_with_vars
 module Cram_test = Dune_engine.Cram_test
@@ -59,3 +55,114 @@ module Print_diff = Dune_engine.Print_diff
 module Vcs = Dune_engine.Vcs
 module Dune_lexer = Dune_engine.Dune_lexer
 module Format_dune_lang = Dune_engine.Format_dune_lang
+module Action_inputs = Dune_engine.Action.Inputs
+module Action_outputs = Dune_engine.Action.Outputs
+
+module type Action_ast = sig
+  type program
+
+  type path
+
+  type target
+
+  type string
+
+  type t =
+    | Run of program * string list
+    | With_accepted_exit_codes of int Predicate_lang.t * t
+    | Dynamic_run of program * string list
+    | Chdir of path * t
+    | Setenv of string * string * t
+    (* It's not possible to use a build path here since jbuild supports
+       redirecting to /dev/null. In [dune] files this is replaced with %{null} *)
+    | Redirect_out of Action.Outputs.t * target * t
+    | Redirect_in of Action.Inputs.t * path * t
+    | Ignore of Action.Outputs.t * t
+    | Progn of t list
+    | Echo of string list
+    | Cat of path
+    | Copy of path * target
+    | Symlink of path * target
+    | Copy_and_add_line_directive of path * target
+    | System of string
+    | Bash of string
+    | Write_file of target * string
+    | Rename of target * target
+    | Remove_tree of target
+    | Mkdir of path
+    | Digest_files of path list
+    | Diff of (path, target) Diff.t
+    | Merge_files_into of path list * string list * target
+    | No_infer of t
+    | Pipe of Dune_engine.Action_intf.Outputs.t * t list
+    | Format_dune_file of Dune_lang.Syntax.Version.t * path * target
+    | Cram of path
+end
+
+module type Action_helpers = sig
+  type program
+
+  type path
+
+  type target
+
+  type string
+
+  type t
+
+  val run : program -> string list -> t
+
+  val chdir : path -> t -> t
+
+  val setenv : string -> string -> t -> t
+
+  val with_stdout_to : target -> t -> t
+
+  val with_stderr_to : target -> t -> t
+
+  val with_outputs_to : target -> t -> t
+
+  val with_stdin_from : path -> t -> t
+
+  val ignore_stdout : t -> t
+
+  val ignore_stderr : t -> t
+
+  val ignore_outputs : t -> t
+
+  val progn : t list -> t
+
+  val echo : string list -> t
+
+  val cat : path -> t
+
+  val copy : path -> target -> t
+
+  val symlink : path -> target -> t
+
+  val copy_and_add_line_directive : path -> target -> t
+
+  val system : string -> t
+
+  val bash : string -> t
+
+  val write_file : target -> string -> t
+
+  val rename : target -> target -> t
+
+  val remove_tree : target -> t
+
+  val mkdir : path -> t
+
+  val digest_files : path list -> t
+
+  val diff : ?optional:bool -> ?mode:Diff.Mode.t -> path -> target -> t
+
+  val format_dune_file :
+    version:Dune_lang.Syntax.Version.t -> path -> target -> t
+end
+
+module Action_plugin = Dune_engine.Action_plugin
+module Report_error = Dune_engine.Report_error
+module Promotion = Dune_engine.Promotion
+module Dtemp = Dune_engine.Dtemp

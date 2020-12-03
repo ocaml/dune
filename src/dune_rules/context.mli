@@ -1,5 +1,5 @@
 (** Compilation contexts *)
-open! Dune_engine
+open! Build_api.Api
 
 (** Dune supports two different kind of contexts:
 

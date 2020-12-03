@@ -1,5 +1,5 @@
-open! Dune_engine
-open Import
+open! Build_api.Api
+open Stdune
 module CC = Compilation_context
 module SC = Super_context
 

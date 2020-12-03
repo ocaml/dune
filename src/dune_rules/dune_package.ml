@@ -1,4 +1,4 @@
-open! Dune_engine
+open! Build_api.Api
 open! Stdune
 
 module Vfile = Dune_lang.Versioned_file.Make (struct

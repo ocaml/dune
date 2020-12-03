@@ -82,12 +82,12 @@ let runtest =
       ~targets:
         (List.map dirs ~f:(fun s ->
              let dir = Path.Local.of_string s in
-             Arg.Dep.alias_rec ~dir Dune_engine.Alias.Name.runtest));
+             Arg.Dep.alias_rec ~dir Build_api.Api.Alias.Name.runtest));
     let targets (setup : Main.build_system) =
       List.map dirs ~f:(fun dir ->
           let dir = Path.(relative root) (Common.prefix_target common dir) in
           Target.Alias
-            (Alias.in_dir ~name:Dune_engine.Alias.Name.runtest ~recursive:true
+            (Alias.in_dir ~name:Build_api.Api.Alias.Name.runtest ~recursive:true
                ~contexts:setup.workspace.contexts dir))
     in
     run_build_command ~common ~targets
@@ -264,5 +264,5 @@ let () =
     | _ -> exit 0
   with exn ->
     let exn = Exn_with_backtrace.capture exn in
-    Dune_engine.Report_error.report exn;
+    Build_api.Api.Report_error.report exn;
     exit 1

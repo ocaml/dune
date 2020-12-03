@@ -1,4 +1,4 @@
-open! Dune_engine
+open! Build_api.Api
 open! Stdune
 
 module Make (Key : Map.Key) : Per_item_intf.S with type key = Key.t = struct

@@ -61,6 +61,6 @@ let term =
   let+ common = Common.term in
   Common.set_common ~log_file:No_log_file common ~targets:[];
   let config = Common.config common in
-  Dune_engine.Scheduler.go ~config Watermarks.subst
+  Build_api.Api.Scheduler.go ~config Watermarks.subst
 
 let command = (term, info)

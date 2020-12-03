@@ -1,5 +1,5 @@
 (** Merlin config server *)
-open! Dune_engine
+open! Build_api.Api
 
 val dump : string -> unit
 

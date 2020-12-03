@@ -1,4 +1,4 @@
-open! Dune_engine
+open! Build_api.Api
 
 module Group : sig
   type t =

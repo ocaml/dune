@@ -22,14 +22,13 @@
    reasonable. *)
 
 open Stdune
-open Dune_engine
 
 (* CR cwong: get rid of this *)
 module Import : sig
-  include module type of Stdune
-
   module Log = Dune_util.Log
   module Re = Dune_re
+  module Stringlike = Dune_util.Stringlike
+  module Stringlike_intf = Dune_util.Stringlike_intf
 
   val initial_cwd : string
 
@@ -60,6 +59,8 @@ module Import : sig
 end
 
 module Context_name : sig
+  open! Import
+
   type t
 
   val is_default : t -> bool
@@ -74,19 +75,78 @@ module Context_name : sig
 
   val equal : t -> t -> bool
 
-  include Stringlike_intf.S with type t := t
+  include Import.Stringlike_intf.S with type t := t
+
+  module Map : Map.S with type key = t
+
+  module Set : Set.S with type elt = t
+
+  module Top_closure :
+    Top_closure_intf.S with type key := t and type 'a monad := 'a Monad.Id.t
 end
 
 module Dpath : sig
   (* type t = ... *)
   include Dune_lang.Conv.S with type t = Path.t
 
+  module Target_dir : sig
+    type context_related =
+      | Root
+      | With_context of Context_name.t * Path.Source.t
+
+    val build_dir : context_related -> Path.Build.t
+
+    type t =
+      | Install of context_related
+      | Alias of context_related
+      | Regular of context_related
+      | Invalid of Path.Build.t
+
+    val of_target : Path.Build.t -> t
+  end
+
+  type target_kind =
+    | Regular of Context_name.t * Path.Source.t
+    | Alias of Context_name.t * Path.Source.t
+    | Install of Context_name.t * Path.Source.t
+    | Other of Path.Build.t
+
+  type 'build path_kind =
+    | Source of Path.Source.t
+    | External of Path.External.t
+    | Build of 'build
+
   val describe_path : Path.t -> string
+
+  (** Return the name of an alias from its stamp file *)
+  val analyse_target : Path.Build.t -> target_kind
+
+  val analyse_path : Path.t -> target_kind path_kind
+
+  val analyse_dir : Path.t -> Target_dir.t path_kind
 
   module Local : sig
     val encode : dir:Path.t -> Path.t Dune_lang.Encoder.t
 
     val decode : dir:Path.t -> Path.t Dune_lang.Decoder.t
+  end
+
+  module External : sig
+    val encode : Path.External.t Dune_lang.Encoder.t
+
+    val decode : Path.External.t Dune_lang.Decoder.t
+  end
+
+  module Build : sig
+    include Dune_lang.Conv.S with type t = Path.Build.t
+
+    val is_dev_null : t -> bool
+
+    val install_dir : t
+
+    val alias_dir : t
+
+    val is_alias_stamp_file : t -> bool
   end
 end
 
@@ -374,8 +434,6 @@ module Opam_file : sig
 end
 
 module Section : sig
-  open Import
-
   type t =
     | Lib
     | Lib_root
@@ -425,7 +483,7 @@ module Section : sig
 
     module Infix : Comparator.OPS with type t = t
 
-    include Stringlike_intf.S with type t := t
+    include Import.Stringlike_intf.S with type t := t
   end
 
   val dune_site_syntax : Dune_lang.Syntax.t
@@ -445,15 +503,13 @@ module Section : sig
 
     (** The string is always a correct module name, except not capitalized *)
     val make : string -> t
-  end) : Stringlike_intf.S with type t = S.t
+  end) : Import.Stringlike_intf.S with type t = S.t
 
   val valid_format_doc : User_message.Style.t Pp.t
 end
 
 module Package : sig
   (** Information about a package defined in the workspace *)
-
-  open Import
 
   module Name : sig
     type t
@@ -468,7 +524,7 @@ module Package : sig
 
     module Infix : Comparator.OPS with type t = t
 
-    include Stringlike_intf.S with type t := t
+    include Import.Stringlike_intf.S with type t := t
 
     val of_opam_file_basename : string -> t option
   end
@@ -1016,7 +1072,7 @@ module type Action_ast = sig
     | Merge_files_into of path list * string list * target
     | No_infer of t
     | Pipe of Action_outputs.t * t list
-    | Format_dune_file of path * target
+    | Format_dune_file of Dune_lang.Syntax.Version.t * path * target
     | Cram of path
 end
 
@@ -1081,8 +1137,6 @@ module String_with_vars : sig
 
       Variables cannot contain "%\{", "%(", ")" or "\}". For instance in "%(cat
       %\{x\})", only "%\{x\}" will be considered a variable, the rest is text. *)
-
-  open Import
 
   (** A sequence of text and variables. *)
   type t
@@ -1376,8 +1430,6 @@ end
 module Format_config : sig
   (** Represent the [(formatting)] field in [dune-project] files *)
 
-  open Import
-
   module Language : sig
     (** Dune can format either source files through external programs (ocaml and
         reason are builtin dialects) or dune files *)
@@ -1419,8 +1471,6 @@ module Format_config : sig
 end
 
 module Include_stanza : sig
-  open Import
-
   type context
 
   val in_file : Path.Source.t -> context
@@ -1505,8 +1555,6 @@ end
 
 module Dune_project : sig
   (** dune-project files *)
-
-  open Import
 
   module Name : sig
     (** Invariants: - Named s -> s <> "" and s does not contain '.' or '/' -
@@ -1793,16 +1841,14 @@ module Cached_digest : sig
 end
 
 module Lib_name : sig
-  open Import
-
   type t
 
   val hash : t -> int
 
-  include Stringlike_intf.S with type t := t
+  include Import.Stringlike_intf.S with type t := t
 
   module Local : sig
-    include Stringlike_intf.S
+    include Import.Stringlike_intf.S
 
     (** Description of valid library names *)
     val valid_format_doc : User_message.Style.t Pp.t
@@ -1847,6 +1893,7 @@ end
 
 module Variant : sig
   (** Library variants *)
+  include Interned_intf.S
 
   (** Library variants allow to select the implementation of a library at link
       time.
@@ -1987,8 +2034,6 @@ end
 
 module Process : sig
   (** Running external programs *)
-
-  open Import
 
   (** How to handle sub-process failures *)
   type ('a, 'b) failure_mode =
@@ -2460,7 +2505,7 @@ module Dep : sig
 end
 
 (* see [Action_ast] above *)
-module Action_helpers = sig
+module type Action_helpers = sig
   type program
 
   type path
@@ -2525,16 +2570,8 @@ end
 
 module Action : sig
   open! Import
-
-  module Outputs : sig
-    include module type of Action_outputs
-
-    val to_string : t -> string
-  end
-
-  module Inputs : module type of struct
-    include Action_inputs
-  end
+  module Outputs = Action_outputs
+  module Inputs = Action_inputs
 
   (** result of the lookup of a program, the path to it or information about the
       failure and possibly a hint how to fix it *)
@@ -2701,8 +2738,6 @@ module Build_context : sig
 end
 
 module Format_dune_lang : sig
-  open Import
-
   type dune_file =
     | OCaml_syntax of Loc.t
     | Sexps of Dune_lang.Cst.t list

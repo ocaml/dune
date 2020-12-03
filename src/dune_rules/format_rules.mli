@@ -1,5 +1,5 @@
-open! Dune_engine
-open Import
+open! Build_api.Api
+open Stdune
 
 (** Setup automatic format rules for the given dir. If tools like ocamlformat
     are not available in $PATH, just display an error message when the alias is

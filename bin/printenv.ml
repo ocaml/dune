@@ -28,11 +28,12 @@ let pp ppf ~fields sexps =
       in
       if do_print then
         let version =
-          Dune_lang.Syntax.greatest_supported_version Dune_engine.Stanza.syntax
+          Dune_lang.Syntax.greatest_supported_version
+            Build_api.Api.Stanza.syntax
         in
         Dune_lang.Ast.add_loc sexp ~loc:Loc.none
         |> Dune_lang.Cst.concrete |> List.singleton
-        |> Dune_engine.Format_dune_lang.pp_top_sexps ~version
+        |> Build_api.Api.Format_dune_lang.pp_top_sexps ~version
         |> Format.fprintf ppf "%a@?" Pp.to_fmt)
 
 let term =
@@ -57,11 +58,11 @@ let term =
           ( match checked with
           | In_build_dir (ctx, _) ->
             let sctx =
-              Dune_engine.Context_name.Map.find_exn setup.scontexts ctx.name
+              Build_api.Api.Context_name.Map.find_exn setup.scontexts ctx.name
             in
             [ dump sctx ~dir:(Path.as_in_build_dir_exn dir) ]
           | In_source_dir dir ->
-            Dune_engine.Context_name.Map.values setup.scontexts
+            Build_api.Api.Context_name.Map.values setup.scontexts
             |> List.map ~f:(fun sctx ->
                    let dir =
                      Path.Build.append_source
@@ -80,7 +81,7 @@ let term =
       | l ->
         List.iter l ~f:(fun (name, env) ->
             Format.printf "@[<v2>Environment for context %s:@,%a@]@."
-              (Dune_engine.Context_name.to_string name)
+              (Build_api.Api.Context_name.to_string name)
               (pp ~fields) env))
 
 let command = (term, info)

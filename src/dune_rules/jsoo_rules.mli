@@ -1,8 +1,7 @@
 (** Generate rules for js_of_ocaml *)
-open! Dune_engine
+open! Build_api.Api
 
 open! Stdune
-open Import
 
 val build_cm :
      Compilation_context.t

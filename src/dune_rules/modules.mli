@@ -1,5 +1,5 @@
 (** Module layout information. Contains information about aliasing, wrapping. *)
-open! Dune_engine
+open! Build_api.Api
 
 open Stdune
 

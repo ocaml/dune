@@ -1,5 +1,5 @@
 (** Link mode of OCaml programs *)
-open! Dune_engine
+open! Build_api.Api
 
 type t =
   | Byte

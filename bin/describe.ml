@@ -31,7 +31,7 @@ let info = Term.info "describe" ~doc ~man
 (* Crawl the workspace to get all the data *)
 module Crawl = struct
   open Dune_rules
-  open Dune_engine
+  open Build_api.Api
 
   let uid_of_library lib =
     Digest.generic
@@ -162,14 +162,14 @@ end
 module Opam_files = struct
   let get () =
     let project =
-      Dune_engine.File_tree.root () |> Dune_engine.File_tree.Dir.project
+      Build_api.Api.File_tree.root () |> Build_api.Api.File_tree.Dir.project
     in
     let packages =
-      Dune_project.packages project |> Dune_engine.Package.Name.Map.values
+      Dune_project.packages project |> Build_api.Api.Package.Name.Map.values
     in
     Dyn.List
       (List.map packages ~f:(fun pkg ->
-           let opam_file = Path.source (Dune_engine.Package.opam_file pkg) in
+           let opam_file = Path.source (Build_api.Api.Package.opam_file pkg) in
            let contents =
              if not (Dune_project.generate_opam_files project) then
                Io.read_file opam_file
@@ -211,7 +211,7 @@ module What = struct
     | [] -> default
     | _ ->
       let parse =
-        Dune_lang.Syntax.set Dune_engine.Stanza.syntax (Active lang) parse
+        Dune_lang.Syntax.set Build_api.Api.Stanza.syntax (Active lang) parse
       in
       let ast =
         Dune_lang.Ast.add_loc ~loc:Loc.none
@@ -288,10 +288,10 @@ let print_as_sexp dyn =
     |> Dune_lang.Cst.concrete
   in
   let version =
-    Dune_lang.Syntax.greatest_supported_version Dune_engine.Stanza.syntax
+    Dune_lang.Syntax.greatest_supported_version Build_api.Api.Stanza.syntax
   in
   Pp.to_fmt Stdlib.Format.std_formatter
-    (Dune_engine.Format_dune_lang.pp_top_sexps ~version [ cst ])
+    (Build_api.Api.Format_dune_lang.pp_top_sexps ~version [ cst ])
 
 let term =
   let+ common = Common.term

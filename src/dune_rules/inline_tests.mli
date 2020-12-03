@@ -1,3 +1,3 @@
-open! Dune_engine
+open! Build_api.Api
 
 val linkme : unit

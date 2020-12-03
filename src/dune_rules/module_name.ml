@@ -1,4 +1,4 @@
-open! Dune_engine
+open! Build_api.Api
 open Stdune
 
 let valid_format_doc = Section.valid_format_doc

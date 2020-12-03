@@ -1,5 +1,5 @@
-open! Dune_engine
-open! Import
+open! Build_api.Api
+open! Stdune
 open Build.O
 
 let transitive_deps_contents modules =

@@ -1,7 +1,6 @@
 (** Defines target behavior for rules. *)
-open! Dune_engine
-
-open Import
+open Stdune
+open! Build_api.Api
 
 module Multiplicity : sig
   type t =

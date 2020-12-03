@@ -1,6 +1,5 @@
-open! Dune_engine
+open! Build_api.Api
 open! Stdune
-open Import
 open Build.O
 
 let default_ocamlc_flags = [ "-g" ]

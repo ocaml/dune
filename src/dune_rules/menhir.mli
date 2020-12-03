@@ -1,5 +1,5 @@
 (** Menhir rules *)
-open! Dune_engine
+open! Build_api.Api
 
 open Stdune
 

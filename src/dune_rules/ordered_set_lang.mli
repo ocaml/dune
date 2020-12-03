@@ -2,7 +2,7 @@
     strings, with some set like operations. *)
 open! Stdune
 
-open Dune_engine
+open Build_api.Api
 
 type t
 

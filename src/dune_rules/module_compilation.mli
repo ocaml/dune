@@ -1,7 +1,7 @@
 (** OCaml module compilation *)
-open! Dune_engine
+open! Build_api.Api
 
-open Import
+open Stdune
 
 (** Setup rules to build a single module.*)
 val build_module :

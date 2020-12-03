@@ -1,4 +1,4 @@
-open! Dune_engine
+open! Build_api.Api
 
 module type S = sig
   type key

@@ -32,7 +32,7 @@ let term =
       let open Fiber.O in
       let* setup = Import.Main.setup common in
       let sctx =
-        Dune_engine.Context_name.Map.find setup.scontexts ctx_name
+        Build_api.Api.Context_name.Map.find setup.scontexts ctx_name
         |> Option.value_exn
       in
       let dir =

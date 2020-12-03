@@ -1,5 +1,5 @@
 {
-open Dune_engine
+open Build_api.Api
 open Stdune
 
 type t = Module_name.Unique.Set.t Ml_kind.Dict.t

@@ -1,6 +1,5 @@
-open! Dune_engine
+open! Build_api.Api
 open! Stdune
-open Import
 
 let default_context_flags (ctx : Context.t) =
   (* TODO DUNE3 To ensure full backward compatibility, ocaml_cflags are still

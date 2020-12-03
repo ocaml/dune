@@ -1,7 +1,7 @@
 (** Rules for setting up cram tests *)
-open! Dune_engine
+open! Build_api.Api
 
-open Import
+open Stdune
 
 val rules :
      sctx:Super_context.t

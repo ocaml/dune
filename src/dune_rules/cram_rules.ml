@@ -1,5 +1,5 @@
-open! Dune_engine
-open Import
+open! Build_api.Api
+open Stdune
 
 (* cwong: This should probably go in a better place than here, but I'm not sure
    where. Putting it in [Cram_test] creates dependency cycles. *)

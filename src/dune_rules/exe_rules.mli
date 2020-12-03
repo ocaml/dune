@@ -1,4 +1,4 @@
-open! Dune_engine
+open! Build_api.Api
 open Stdune
 
 val compile_info : scope:Scope.t -> Dune_file.Executables.t -> Lib.Compile.t

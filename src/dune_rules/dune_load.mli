@@ -1,7 +1,7 @@
 (** Loads dune files from the file system.
 
     Also responsible for evaluating dune files written in OCaml syntax. *)
-open! Dune_engine
+open! Build_api.Api
 
 open! Stdune
 

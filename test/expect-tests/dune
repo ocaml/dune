@@ -10,6 +10,7 @@
   stdune
   dune_engine
   dune_rules
+  build_api
   fiber
   dune_lang
   cache

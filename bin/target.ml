@@ -1,8 +1,8 @@
 open Stdune
 module Log = Dune_util.Log
 module Context = Dune_rules.Context
-module Build = Dune_engine.Build
-module Build_system = Dune_engine.Build_system
+module Build = Build_api.Api.Build
+module Build_system = Build_api.Api.Build_system
 
 type t =
   | File of Path.t
@@ -56,10 +56,10 @@ let resolve_path path ~(setup : Dune_rules.Main.build_system) =
   let checked = Util.check_path setup.workspace.contexts path in
   let can't_build path = Error (target_hint setup path) in
   let as_source_dir src =
-    if Dune_engine.File_tree.dir_exists src then
+    if Build_api.Api.File_tree.dir_exists src then
       Some
         [ Alias
-            (Alias.in_dir ~name:Dune_engine.Alias.Name.default ~recursive:true
+            (Alias.in_dir ~name:Build_api.Api.Alias.Name.default ~recursive:true
                ~contexts:setup.workspace.contexts path)
         ]
     else
@@ -97,7 +97,7 @@ let resolve_path path ~(setup : Dune_rules.Main.build_system) =
 
 let expand_path common ~(setup : Dune_rules.Main.build_system) ctx sv =
   let sctx =
-    Dune_engine.Context_name.Map.find_exn setup.scontexts (Context.name ctx)
+    Build_api.Api.Context_name.Map.find_exn setup.scontexts (Context.name ctx)
   in
   let dir =
     Path.Build.relative ctx.Context.build_dir
@@ -111,7 +111,7 @@ let expand_path common ~(setup : Dune_rules.Main.build_system) ctx sv =
     (Common.prefix_target common (Dune_rules.Expander.expand_str expander sv))
 
 let resolve_alias common ~recursive sv ~(setup : Dune_rules.Main.build_system) =
-  match Dune_engine.String_with_vars.text_only sv with
+  match Build_api.Api.String_with_vars.text_only sv with
   | Some s ->
     Ok
       [ Alias

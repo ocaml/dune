@@ -1,4 +1,4 @@
-open! Dune_engine
+open! Build_api.Api
 
 module By_the_os = struct
   type t = bool

@@ -113,6 +113,8 @@ module Run (P : PARAMS) : sig end = struct
       |> cons_if (has_flag stanza "--dump") (m ^ ".automaton")
       |> cons_if (has_flag stanza "--dump-resolved") (m ^ ".automaton.resolved")
       |> cons_if (has_flag stanza "--explain") (m ^ ".conflicts")
+      |> cons_if (has_flag stanza "--automaton-graph") (m ^ ".dot")
+      |> cons_if (has_flag stanza "--reference-graph") (m ^ ".dot")
     in
     List.map basenames ~f:(Path.Build.relative dir)
 

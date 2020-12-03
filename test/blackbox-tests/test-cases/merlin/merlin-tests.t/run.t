@@ -36,7 +36,10 @@ CRAM sanitization
     $TESTCASE_ROOT/lib/subdir)
    (FLG
     (-ppx
-     "$TESTCASE_ROOT/_build/default/.ppx/4128e43a9cfb141a37f547484cc9bf46/ppx.exe --as-ppx --cookie 'library-name="bar"'"))
+     "$TESTCASE_ROOT/_build/default/.ppx/4128e43a9cfb141a37f547484cc9bf46/ppx.exe
+     --as-ppx
+     --cookie
+     'library-name="bar"'"))
    (FLG (-open Bar -w -40)))
   file
   ((EXCLUDE_QUERY_DIR)
@@ -48,7 +51,10 @@ CRAM sanitization
     $TESTCASE_ROOT/lib/subdir)
    (FLG
     (-ppx
-     "$TESTCASE_ROOT/_build/default/.ppx/4128e43a9cfb141a37f547484cc9bf46/ppx.exe --as-ppx --cookie 'library-name="bar"'"))
+     "$TESTCASE_ROOT/_build/default/.ppx/4128e43a9cfb141a37f547484cc9bf46/ppx.exe
+     --as-ppx
+     --cookie
+     'library-name="bar"'"))
    (FLG (-open Bar -w -40)))
   foo
   ((EXCLUDE_QUERY_DIR)
@@ -66,7 +72,10 @@ CRAM sanitization
     $TESTCASE_ROOT/lib/subdir)
    (FLG
     (-ppx
-     "$TESTCASE_ROOT/_build/default/.ppx/4128e43a9cfb141a37f547484cc9bf46/ppx.exe --as-ppx --cookie 'library-name="foo"'"))
+     "$TESTCASE_ROOT/_build/default/.ppx/4128e43a9cfb141a37f547484cc9bf46/ppx.exe
+     --as-ppx
+     --cookie
+     'library-name="foo"'"))
    (FLG (-open Foo -w -40)))
   privmod
   ((EXCLUDE_QUERY_DIR)
@@ -84,7 +93,10 @@ CRAM sanitization
     $TESTCASE_ROOT/lib/subdir)
    (FLG
     (-ppx
-     "$TESTCASE_ROOT/_build/default/.ppx/4128e43a9cfb141a37f547484cc9bf46/ppx.exe --as-ppx --cookie 'library-name="foo"'"))
+     "$TESTCASE_ROOT/_build/default/.ppx/4128e43a9cfb141a37f547484cc9bf46/ppx.exe
+     --as-ppx
+     --cookie
+     'library-name="foo"'"))
    (FLG (-open Foo -w -40)))
 
 Make sure a ppx directive is generated
@@ -103,7 +115,8 @@ Make sure pp flag is correct and variables are expanded
     $TESTCASE_ROOT/pp-with-expand)
    (FLG
     (-pp
-     "$TESTCASE_ROOT/_build/default/pp/pp.exe -nothing"))
+     "$TESTCASE_ROOT/_build/default/pp/pp.exe
+     -nothing"))
    (FLG (-w -40)))
 
 We want future-syntax to either be applied, or not, depending on OCaml version.

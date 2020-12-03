@@ -85,12 +85,14 @@ module Processed = struct
     match load_file path with
     | None -> Printf.eprintf "No merlin config found"
     | Some t ->
-      String.Map.iteri
-        ~f:(fun name config ->
-          let sexp = to_sexp config in
-          (* TODO Switch to Pp *)
-          Format.printf "@[<v>%s@,%a@]@." name Sexp.pp sexp)
-        t
+      let pp =
+        String.Map.to_list t
+        |> Pp.concat_map ~f:(fun (name, config) ->
+               let sexp = to_sexp config in
+               let open Pp.O in
+               Pp.vbox (Pp.text name ++ Pp.cut ++ Sexp.pp sexp) ++ Pp.newline)
+      in
+      Format.printf "%a%!" Pp.to_fmt pp
 end
 
 module Unprocessed = struct

@@ -6,7 +6,7 @@ type t =
 
 val to_string : t -> string
 
-val pp : Format.formatter -> t -> unit
+val pp : t -> 'a Pp.t
 
 val hash : t -> int
 

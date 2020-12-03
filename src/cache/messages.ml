@@ -217,7 +217,8 @@ let outgoing_message_of_sexp version =
           Result.Error (Format.asprintf "invalid key in hint message: %s" k) )
       | k ->
         Result.Error
-          (Format.asprintf "invalid expression in hint message: %a" Sexp.pp k)
+          (Format.asprintf "invalid expression in hint message: %a" Pp.to_fmt
+             (Sexp.pp k))
     in
     Result.List.map ~f keys
   in

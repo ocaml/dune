@@ -291,23 +291,7 @@ module File_selector : sig
 
   type t
 
-  val dir : t -> Path.t
-
   val create : dir:Path.t -> string Predicate.t -> t
-
-  val equal : t -> t -> bool
-
-  val hash : t -> int
-
-  val compare : t -> t -> Ordering.t
-
-  val encode : t Dune_lang.Encoder.t
-
-  (** [to_dyn] is used as a marshallable representation of [t] (to compute
-      digests), so it must be injective *)
-  val to_dyn : t -> Dyn.t
-
-  val test : t -> Path.t -> bool
 end
 
 module Cram_test : sig
@@ -683,9 +667,7 @@ module Sandbox_mode : sig
       - not sandboxing - sandboxing by symlinking dependencies - sandboxing by
         copying dependencies *)
 
-  type some =
-    | Symlink
-    | Copy
+  type some
 
   type t = some option
 
@@ -911,19 +893,6 @@ module Diff : sig
     ; file1 : 'path
     ; file2 : 'target
     }
-
-  val decode :
-       'path Dune_lang.Decoder.t
-    -> 'target Dune_lang.Decoder.t
-    -> optional:bool
-    -> ('path, 'target) t Dune_lang.Decoder.t
-
-  val decode_binary :
-       'path Dune_lang.Decoder.t
-    -> 'target Dune_lang.Decoder.t
-    -> ('path, 'target) t Dune_lang.Decoder.t
-
-  val eq_files : (Path.t, Path.Build.t) t -> bool
 end
 
 module Glob : sig
@@ -1009,10 +978,6 @@ module Predicate_lang : sig
 
     val true_ : t
   end
-end
-
-module Action_plugin : sig
-  val syntax : Dune_lang.Syntax.t
 end
 
 (* Only exposed for the sake of [Action_ast] below. Use [Action.Inputs] and
@@ -1519,38 +1484,6 @@ module Sub_dirs : sig
       val normal_only : t
     end
   end
-
-  type subdir_stanzas = (Loc.t * Predicate_lang.Glob.t) option Status.Map.t
-
-  val or_default : subdir_stanzas -> Predicate_lang.Glob.t Status.Map.t
-
-  val default : Predicate_lang.Glob.t Status.Map.t
-
-  type status_map
-
-  val eval :
-    Predicate_lang.Glob.t Status.Map.t -> dirs:string list -> status_map
-
-  val status : status_map -> dir:string -> Status.Or_ignored.t
-
-  module Dir_map : sig
-    type t
-
-    type per_dir =
-      { sexps : Dune_lang.Ast.t list
-      ; subdir_status : subdir_stanzas
-      }
-
-    val descend : t -> string -> t option
-
-    val sub_dirs : t -> string list
-
-    val merge : t -> t -> t
-
-    val root : t -> per_dir
-  end
-
-  val decode : file:Path.Source.t -> Dir_map.t Dune_lang.Decoder.t
 end
 
 module Dune_project : sig
@@ -1742,25 +1675,9 @@ module Hooks : sig
     val run : unit -> unit
   end
 
-  module Make () : S
-
   (** Every time a build ends, which includes every iteration in watch mode,
       including cancellation of build because of file changes. *)
   module End_of_build : S
-end
-
-module Dtemp : sig
-  (** Temp directory used by dune processes *)
-
-  (** This returns a build path, but we don't rely on that *)
-  val file : prefix:string -> suffix:string -> Path.t
-
-  (** Add the temp env var to the environment passed or return the initial
-      environment with the temp var added. *)
-  val add_to_env : Env.t -> Env.t
-
-  (** Destroy the temporary file or directory *)
-  val destroy : Temp.what -> Path.t -> unit
 end
 
 module Response_file : sig
@@ -1817,24 +1734,6 @@ end
 
 module Cached_digest : sig
   (** Digest files with caching *)
-
-  (** Digest the contents of the following file *)
-  val file : Path.t -> Digest.t
-
-  (** The digest of the following file, if cached *)
-  val peek_file : Path.t -> Digest.t option
-
-  (** Clear the following digest from the cache *)
-  val remove : Path.t -> unit
-
-  (** Same as {!file} but forces the digest to be recomputed *)
-  val refresh : Path.t -> Digest.t
-
-  (** Same as {!refresh} remove write permissions on the file *)
-  val refresh_and_chmod : Path.t -> Digest.t
-
-  (** Update the digest for a file in the cache *)
-  val set : Path.t -> Digest.t -> unit
 
   (** Invalidate cached timestamp *)
   val invalidate_cached_timestamps : unit -> unit
@@ -1974,17 +1873,6 @@ module Stats : sig
 
   (** Enable stats recording *)
   val enable : string -> unit
-
-  (** If stats recording is enabled, collect stats now *)
-  val record : unit -> unit
-
-  (** Collect data about a subprocess *)
-  val with_process :
-    program:string -> args:string list -> 'a Fiber.t -> 'a Fiber.t
-
-  (** Called by the build system when a new rule is fully evaluated and ready to
-      fire *)
-  val new_evaluated_rule : unit -> unit
 end
 
 module Scheduler : sig
@@ -2004,29 +1892,10 @@ module Scheduler : sig
     -> unit
     -> 'a
 
-  (** [with_job_slot f] waits for one job slot (as per [-j <jobs] to become
-      available and then calls [f]. *)
-  val with_job_slot : (unit -> 'a Fiber.t) -> 'a Fiber.t
-
-  (** Wait for the following process to terminate *)
-  val wait_for_process : Pid.t -> Unix.process_status Fiber.t
-
   (** Wait for dune cache to be disconnected. Drop any other event. *)
   val wait_for_dune_cache : unit -> unit
 
   val set_concurrency : int -> unit Fiber.t
-
-  (** Make the scheduler ignore next change to a certain file in watch mode.
-
-      This is used with promoted files that are copied back to the source tree
-      after generation *)
-  val ignore_for_watch : Path.t -> unit
-
-  (** Number of jobs currently running in the background *)
-  val running_jobs_count : unit -> int
-
-  (** Execute the given callback with current directory temporarily changed *)
-  val with_chdir : dir:Path.t -> f:(unit -> 'a) -> 'a
 
   (** Notify the scheduler of a file to deduplicate from another thread *)
   val send_dedup : Cache.caching -> Cache.File.t -> unit
@@ -2765,34 +2634,7 @@ module Format_dune_lang : sig
     version:Dune_lang.Syntax.Version.t -> Dune_lang.Cst.t list -> _ Pp.t
 end
 
-module Print_diff : sig
-  (** Diff two files that are expected not to match. *)
-  val print : ?skip_trailing_cr:bool -> Path.t -> Path.t -> _ Fiber.t
-end
-
 module Promotion : sig
-  module File : sig
-    type t
-
-    val to_dyn : t -> Dyn.t
-
-    (** Register an intermediate file to promote. The build path may point to
-        the sandbox and the file will be moved to the staging area. *)
-    val register_intermediate :
-      source_file:Path.Source.t -> correction_file:Path.Build.t -> unit
-
-    (** Register file to promote where the correction file is a dependency of
-        the current action (rather than an intermediate file). [correction_file]
-        refers to a path in the build dir, not in the sandbox (it can point to
-        the sandbox, but the sandbox root will be stripped). *)
-    val register_dep :
-      source_file:Path.Source.t -> correction_file:Path.Build.t -> unit
-  end
-
-  (** Promote all registered files if [!Clflags.auto_promote]. Otherwise dump
-      the list of registered files to [_build/.to-promote]. *)
-  val finalize : unit -> unit
-
   (** Describe what files should be promoted. The second argument of [These] is
       a function that is called on files that cannot be promoted. *)
   type files_to_promote =
@@ -3003,32 +2845,6 @@ module Artifact_substitution : sig
   val encode_replacement : len:int -> repl:string -> string
 end
 
-module Static_deps : sig
-  open! Import
-
-  (** A simple wrapper around [Deps.t], where some dependencies are recorded as
-      [rule_deps] and other as [action_deps]. Action dependencies are
-      dependencies the external commands are expected to access, and rule
-      dependencies are dependencies needed in order to compute the action to
-      execute as well as its dependencies. *)
-
-  type t =
-    { rule_deps : Dep.Set.t
-    ; action_deps : Dep.Set.t
-    }
-
-  val to_dyn : t -> Dyn.t
-
-  (** No dependencies. *)
-  val empty : t
-
-  (** Union of dependencies. *)
-  val union : t -> t -> t
-
-  (** The paths to both rule and action dependencies. *)
-  val paths : t -> eval_pred:Dep.eval_pred -> Path.Set.t
-end
-
 module Build : sig
   (** The build description *)
 
@@ -3234,9 +3050,6 @@ module Build : sig
   val label : label -> unit t
 
   (** {1 Analysis} *)
-
-  (** Compute static dependencies of a build description. *)
-  val static_deps : _ t -> Static_deps.t
 
   (** Compute static library dependencies of a build description. *)
   val fold_labeled : _ t -> init:'acc -> f:(label -> 'acc -> 'acc) -> 'acc

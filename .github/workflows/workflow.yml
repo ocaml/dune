@@ -57,8 +57,18 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v2
 
-      - name: Cache Opam directory
-        id: cache
+      - name: Cache Opam directory for windows
+        if: matrix.os == 'windows-latest'
+        uses: actions/cache@v2
+        env:
+          cache-name: cache-opam
+        with:
+          # opam cache files are stored in `~/.opam` on Linux/macOS
+          path: C:\cygwin\home\runneradmin\.opam
+          key: ${{ runner.os }}-${{ matrix.ocaml-version }}-build-${{ env.cache-name }}-${{ hashFiles('*.opam','.github/workflows/ci.ml','.github/workflows/workflow.yml') }}
+
+      - name: Cache Opam directory for ubuntu or mac-os
+        if: matrix.os != 'windows-latest'
         uses: actions/cache@v2
         env:
           cache-name: cache-opam
@@ -66,6 +76,7 @@ jobs:
           # opam cache files are stored in `~/.opam` on Linux/macOS
           path: ~/.opam
           key: ${{ runner.os }}-${{ matrix.ocaml-version }}-build-${{ env.cache-name }}-${{ hashFiles('*.opam','.github/workflows/ci.ml','.github/workflows/workflow.yml') }}
+
 
       - name: Use OCaml ${{ matrix.ocaml-version }}
         uses: avsm/setup-ocaml@v1
@@ -100,3 +111,7 @@ jobs:
       - name: test source is well formatted
         run: opam exec -- make fmt
         if: env.OCAML_VERSION == '4.10.0' && env.OS == 'ubuntu-latest'
+
+      - name: remove the tar command from cygwin so that it is not used by action/cache
+        run: rm c:\cygwin\bin\tar.exe
+        if: matrix.os == 'windows-latest'

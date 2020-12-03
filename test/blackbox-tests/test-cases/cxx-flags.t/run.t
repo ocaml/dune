@@ -2,9 +2,17 @@
   > (lang dune 2.8)
   > EOF
 
+The flags that Dune should use
   $ GCCF="-x c++ -lstdc++ -shared-libgcc"
   $ ClangF="-x c++"
   $ MsvcF="/TP"
+
+Check compiler detection
+  $ dune build .dune/ccomp
+
+  $ cat _build/default/.dune/ccomp |
+  > grep -ce "clang\|gcc\|msvc"
+  1
 
 Default: use_standard_c_and_cxx_flags = false
   $ dune rules baz.o | tr -s '\n' ' ' |

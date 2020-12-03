@@ -1,8 +1,9 @@
-name: Main workflow
+name: Check compilation of other packages
 
 on:
-  - push
-  - pull_request
+  schedule:
+    - cron: '42 4 * * *'
+  workflow_dispatch:
 
 jobs:
   build:
@@ -19,23 +20,6 @@ jobs:
           - 4.10.0
         skip_test:
           - false
-        include:
-          - ocaml-version: 4.11.0
-            os: ubuntu-latest
-            skip_test: true
-          - ocaml-version: 4.09.1
-            os: ubuntu-latest
-            skip_test: true
-          - ocaml-version: 4.08.1
-            os: ubuntu-latest
-            skip_test: true
-          - ocaml-version: 4.03.0
-            os: ubuntu-latest
-            skip_test: true
-            configurator: true
-          - ocaml-version: 4.02.3
-            os: ubuntu-latest
-            skip_test: true
 
     # We don't run tests on all versions of the Windows environment and on
     # 4.02.3 and 4.07.1 in other environments
@@ -51,23 +35,13 @@ jobs:
       OCAML_VERSION: ${{ matrix.ocaml-version }}
       OS: ${{ matrix.os }}
       CONFIGURATOR: ${{ matrix.configurator }}
-      TEST_DEPS: false
+      TEST_DEPS: true
 
     runs-on: ${{ matrix.os }}
 
     steps:
       - name: Checkout code
         uses: actions/checkout@v2
-
-      - name: Cache Opam directory
-        id: cache
-        uses: actions/cache@v2
-        env:
-          cache-name: cache-opam
-        with:
-          # opam cache files are stored in `~/.opam` on Linux/macOS
-          path: ~/.opam
-          key: ${{ runner.os }}-${{ matrix.ocaml-version }}-build-${{ env.cache-name }}-${{ hashFiles('*.opam') }}
 
       - name: Use OCaml ${{ matrix.ocaml-version }}
         uses: avsm/setup-ocaml@v1
@@ -84,6 +58,8 @@ jobs:
           git config --global user.name github-actions
           git config --global user.email github-actions-bot@users.noreply.github.com
 
+      - run: opam exec -- ocaml .github/workflows/ci.ml pin
+
       # Install ocamlfind-secondary and ocaml-secondary-compiler, if needed
       - run: opam install ./dune.opam --deps-only --with-test
 
@@ -94,10 +70,6 @@ jobs:
       - name: run test suite
         run: opam exec -- ocaml .github/workflows/ci.ml test
         if: env.SKIP_TEST != 'true'
-
-      - name: test source is well formatted
-        run: opam exec -- make fmt
-        if: env.OCAML_VERSION == '4.10.0' && env.OS == 'ubuntu-latest'
 
       - name: build configurator
         run: opam install ./dune-configurator.opam

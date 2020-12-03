@@ -5,6 +5,11 @@ let skip_test =
   | exception Not_found -> false
   | s -> bool_of_string s
 
+let test_dependencies =
+  match Sys.getenv "TEST_DEPS" with
+  | exception Not_found -> false
+  | s -> bool_of_string s
+
 let run cmd args =
   (* broken when arguments contain spaces but it's good enough for now. *)
   let cmd = String.concat " " (cmd :: args) in
@@ -39,7 +44,8 @@ let test () =
     opam [ "install"; "./dune-configurator.opam"; "--deps-only" ];
     run "make" [ "test-windows" ]
   ) else (
-    opam [ "install"; "."; "--deps-only"; "--with-test" ];
+    opam ([ "install"; "."; "--deps-only" ] @
+          (if test_dependencies then [ "--with-test" ] else []));
     run "make" [ "dev-deps" ];
     run "make" [ "test" ]
   )

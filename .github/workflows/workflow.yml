@@ -32,7 +32,6 @@ jobs:
           - ocaml-version: 4.03.0
             os: ubuntu-latest
             skip_test: true
-            configurator: true
           - ocaml-version: 4.02.3
             os: ubuntu-latest
             skip_test: true
@@ -50,7 +49,6 @@ jobs:
       SKIP_TEST: ${{ matrix.skip_test }}
       OCAML_VERSION: ${{ matrix.ocaml-version }}
       OS: ${{ matrix.os }}
-      CONFIGURATOR: ${{ matrix.configurator }}
       TEST_DEPS: false
 
     runs-on: ${{ matrix.os }}
@@ -85,11 +83,15 @@ jobs:
           git config --global user.email github-actions-bot@users.noreply.github.com
 
       # Install ocamlfind-secondary and ocaml-secondary-compiler, if needed
-      - run: opam install ./dune.opam --deps-only --with-test
+      - run: opam exec -- ocaml .github/workflows/ci.ml install-deps-of-dune
 
       # dune doesn't have any additional dependencies so we can build it right
       # away this makes it possible to see build errors as soon as possible
       - run: opam exec -- make dune.exe
+
+      - name: install deps of test suite
+        run: opam exec -- ocaml .github/workflows/ci.ml install-deps-of-test
+        if: env.SKIP_TEST != 'true'
 
       - name: run test suite
         run: opam exec -- ocaml .github/workflows/ci.ml test
@@ -98,7 +100,3 @@ jobs:
       - name: test source is well formatted
         run: opam exec -- make fmt
         if: env.OCAML_VERSION == '4.10.0' && env.OS == 'ubuntu-latest'
-
-      - name: build configurator
-        run: opam install ./dune-configurator.opam
-        if: env.CONFIGURATOR == 'true'

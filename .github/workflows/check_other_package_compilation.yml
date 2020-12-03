@@ -20,6 +20,23 @@ jobs:
           - 4.10.0
         skip_test:
           - false
+        include:
+          - ocaml-version: 4.11.0
+            os: ubuntu-latest
+            skip_test: true
+          - ocaml-version: 4.09.1
+            os: ubuntu-latest
+            skip_test: true
+          - ocaml-version: 4.08.1
+            os: ubuntu-latest
+            skip_test: true
+          - ocaml-version: 4.03.0
+            os: ubuntu-latest
+            skip_test: true
+            configurator: true
+          - ocaml-version: 4.02.3
+            os: ubuntu-latest
+            skip_test: true
 
     # We don't run tests on all versions of the Windows environment and on
     # 4.02.3 and 4.07.1 in other environments
@@ -58,14 +75,21 @@ jobs:
           git config --global user.name github-actions
           git config --global user.email github-actions-bot@users.noreply.github.com
 
-      - run: opam exec -- ocaml .github/workflows/ci.ml pin
+      - name: Pin used packages to local directory
+        run: opam exec -- ocaml .github/workflows/ci.ml pin
 
       # Install ocamlfind-secondary and ocaml-secondary-compiler, if needed
-      - run: opam install ./dune.opam --deps-only --with-test
+      - name: install dune dependencies
+        run: opam exec -- ocaml .github/workflows/ci.ml install-deps-of-dune
 
       # dune doesn't have any additional dependencies so we can build it right
       # away this makes it possible to see build errors as soon as possible
-      - run: opam exec -- make dune.exe
+      - name: compile dune
+        run: opam exec -- make dune.exe
+
+      - name: install deps of test suite
+        run: opam exec -- ocaml .github/workflows/ci.ml install-deps-of-test
+        if: env.SKIP_TEST != 'true'
 
       - name: run test suite
         run: opam exec -- ocaml .github/workflows/ci.ml test

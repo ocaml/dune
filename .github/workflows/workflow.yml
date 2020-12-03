@@ -67,7 +67,7 @@ jobs:
         with:
           # opam cache files are stored in `~/.opam` on Linux/macOS
           path: ~/.opam
-          key: ${{ runner.os }}-${{ matrix.ocaml-version }}-build-${{ env.cache-name }}-${{ hashFiles('*.opam') }}
+          key: ${{ runner.os }}-${{ matrix.ocaml-version }}-build-${{ env.cache-name }}-${{ hashFiles('*.opam','.github/workflows/ci.ml','.github/workflows/workflow.yml') }}
 
       - name: Use OCaml ${{ matrix.ocaml-version }}
         uses: avsm/setup-ocaml@v1

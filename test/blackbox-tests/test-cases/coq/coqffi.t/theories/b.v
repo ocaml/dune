@@ -1,3 +1,3 @@
-(* Require a. *)
+Require a.
 
 Definition a := 3.

@@ -23,7 +23,7 @@ module Util = struct
   let coq_nativelib_cmi_dirs ts =
     List.fold_left ts ~init:Path.Set.empty ~f:(fun acc t ->
         let info = Lib.info t in
-        (* We want the cmi files *)
+        (* We want the directory with the cmi files *)
         let obj_dir = Obj_dir.public_cmi_dir (Lib_info.obj_dir info) in
         Path.Set.add acc obj_dir)
 
@@ -396,6 +396,20 @@ let coq_modules_of_theory ~sctx lib =
   let coq_sources = Dir_contents.coq dir_contents in
   Coq_sources.library coq_sources ~name
 
+let ffi_rule ~dir ~coqffi ~expander (s : string) : Action.t Build.With_targets.t =
+  let ml_lib_name, coq_module_name = Coq_stanza.Theory.ffi_parse_name s in
+  let coq_v_name = Path.Build.relative dir (coq_module_name ^ ".v") in
+
+  (* Get the path to the cmi file *)
+  (* We need help here! The below fails with wrong dune *)
+  let expand_expr = String_with_vars.make_var Loc.none ~payload:ml_lib_name "cmi" in
+  let cmi_path = Expander.expand_path expander expand_expr in
+
+  let args = [ Command.Args.Path cmi_path; A "-o"; Command.Args.Target coq_v_name] in
+  let open Build.With_targets.O in
+  Build.with_no_targets (Build.path cmi_path) >>>
+  Command.run ~dir:(Path.build dir) coqffi args
+
 let source_rule ~sctx theories =
   (* sources for depending libraries coqdep requires all the files to be in the
      tree to produce correct dependencies, including those of dependencies *)
@@ -433,10 +447,15 @@ let setup_rules ~sctx ~dir ~dir_contents (s : Theory.t) =
     in
     source_rule ~sctx theories
   in
+
+  let expander = cctx.expander in
+  let ffi_rules = List.map ~f:(ffi_rule ~dir ~expander ~coqffi:cctx.coqffi) s.ffi_modules in
+
   List.concat_map coq_modules ~f:(fun m ->
       let cctx = Context.for_module cctx m in
       let { Module_rule.coqc; coqdep } = setup_rule cctx ~source_rule m in
       [ coqc; coqdep ])
+  |> List.rev_append ffi_rules
 
 (******************************************************************************)
 (* Install rules *)

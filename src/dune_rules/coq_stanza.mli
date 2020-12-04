@@ -38,6 +38,7 @@ module Theory : sig
 
   type Stanza.t += T of t
 
+  val ffi_parse_name : string -> (string * string)
   val ffi_target_fnames : t -> string list
 end
 

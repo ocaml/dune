@@ -5,8 +5,13 @@
 
 ; Petit question?
 ; (ffi
+;  (library ...)
 ;  (modules ...)
 ;  (flags ))
 ;
 ; or
 ; (ffi :flags -finterface)
+; (coq.ffi
+;
+; )
+

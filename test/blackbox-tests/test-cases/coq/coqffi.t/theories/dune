@@ -1,0 +1,4 @@
+(coq.theory
+ (name Foo)
+ (modules :standard)
+ (ffi_modules ocaml_lib.a))

@@ -30,6 +30,7 @@ module Theory : sig
     ; project : Dune_project.t
     ; synopsis : string option
     ; modules : Ordered_set_lang.t
+    ; ffi_modules : Ordered_set_lang.t
     ; boot : bool
     ; enabled_if : Blang.t
     ; buildable : Buildable.t

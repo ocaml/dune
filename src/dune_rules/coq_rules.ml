@@ -27,6 +27,27 @@ module Util = struct
         let obj_dir = Obj_dir.public_cmi_dir (Lib_info.obj_dir info) in
         Path.Set.add acc obj_dir)
 
+  let error ~loc name =
+    User_error.raise ~loc [ Pp.textf "%s does not exist." (Module_name.to_string name) ]
+
+  let path_of_cmi ~sctx ~lib_db ~lib_name (loc,name) =
+    let open Result.O in
+    let* ml_lib = Lib.DB.resolve lib_db (Loc.none, lib_name) in
+    let info = Lib.info ml_lib in
+    let src_dir = Lib_info.src_dir (Lib_info.as_local_exn info) in
+    let dir_contents = Dir_contents.get sctx ~dir:src_dir in
+    let artifacts = Dir_contents.artifacts dir_contents in
+    let name = Module_name.of_string_allow_invalid (loc, name) in
+    match Ml_sources.Artifacts.lookup_module artifacts name with
+    | None ->
+      error ~loc name
+    | Some (t, m) -> (
+      match Obj_dir.Module.cm_file t m ~kind:Cmi with
+      | None ->
+        error ~loc name
+      | Some path -> Result.return (Path.build path)
+    )
+
   let include_flags ts = include_paths ts |> Lib.L.to_iflags
 
   (* coqdep expects an mlpack file next to the sources otherwise it
@@ -396,18 +417,17 @@ let coq_modules_of_theory ~sctx lib =
   let coq_sources = Dir_contents.coq dir_contents in
   Coq_sources.library coq_sources ~name
 
-let ffi_rule ~dir ~coqffi ~expander (s : string) : Action.t Build.With_targets.t =
+let ffi_rule ~sctx ~lib_db ~dir ~coqffi (s : string) : Action.t Build.With_targets.t =
+
   let ml_lib_name, coq_module_name = Coq_stanza.Theory.ffi_parse_name s in
   let coq_v_name = Path.Build.relative dir (coq_module_name ^ ".v") in
 
   (* Get the path to the cmi file *)
-  (* We need help here! The below fails with wrong dune *)
-  let expand_expr = String_with_vars.make_var Loc.none ~payload:ml_lib_name "cmi" in
-  let cmi_path = Expander.expand_path expander expand_expr in
-
-  let args = [ Command.Args.Path cmi_path; A "-o"; Command.Args.Target coq_v_name] in
+  let lib_name = Lib_name.of_string ml_lib_name in
+  let cmi_path = Util.path_of_cmi ~sctx ~lib_db ~lib_name (Loc.none, coq_module_name)  in
+  let args = [ Command.of_result_map cmi_path ~f:(fun p -> Command.Args.Path p); A "-o"; Command.Args.Target coq_v_name] in
   let open Build.With_targets.O in
-  Build.with_no_targets (Build.path cmi_path) >>>
+  Build.with_no_targets (Build.of_result_map ~f:Build.path cmi_path) >>>
   Command.run ~dir:(Path.build dir) coqffi args
 
 let source_rule ~sctx theories =
@@ -448,8 +468,8 @@ let setup_rules ~sctx ~dir ~dir_contents (s : Theory.t) =
     source_rule ~sctx theories
   in
 
-  let expander = cctx.expander in
-  let ffi_rules = List.map ~f:(ffi_rule ~dir ~expander ~coqffi:cctx.coqffi) s.ffi_modules in
+  let lib_db = Scope.libs scope in
+  let ffi_rules = List.map ~f:(ffi_rule ~lib_db ~sctx ~dir ~coqffi:cctx.coqffi) s.ffi_modules in
 
   List.concat_map coq_modules ~f:(fun m ->
       let cctx = Context.for_module cctx m in

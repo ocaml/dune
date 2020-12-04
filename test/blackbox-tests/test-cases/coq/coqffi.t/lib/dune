@@ -1,2 +1,3 @@
 (library
-  (name ocaml_lib))
+ (name ocaml_lib)
+ (wrapped true))

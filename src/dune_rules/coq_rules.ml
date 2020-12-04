@@ -45,8 +45,8 @@ module Util = struct
     List.concat_map plugins ~f:to_mlpack
 end
 
-let resolve_program sctx ~loc ~dir prog =
-  SC.resolve_program ~dir sctx prog ~loc:(Some loc) ~hint:"opam install coq"
+let resolve_program sctx ~loc ~dir ?(hint="opam install coq") prog =
+  SC.resolve_program ~dir sctx prog ~loc:(Some loc) ~hint
 
 module Bootstrap = struct
   (* the internal boot flag determines if the Coq "standard library" is being
@@ -113,6 +113,7 @@ module Context = struct
     ; mode : Coq_mode.t
     ; native_includes : Path.Set.t Or_exn.t
     ; native_theory_includes : Path.Build.Set.t Or_exn.t
+    ; coqffi : Action.Prog.t
     }
 
   let coqc ?stdout_to t args =
@@ -251,6 +252,7 @@ module Context = struct
     ; mode
     ; native_includes
     ; native_theory_includes
+    ; coqffi = rr "coqffi" ~hint:"opam install coqffi"
     }
 
   let for_module t coq_module =

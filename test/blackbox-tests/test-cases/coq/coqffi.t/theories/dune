@@ -2,3 +2,11 @@
  (name Foo)
  (modules :standard)
  (ffi_modules ocaml_lib.a))
+
+; Petit question?
+; (ffi
+;  (modules ...)
+;  (flags ))
+;
+; or
+; (ffi :flags -finterface)

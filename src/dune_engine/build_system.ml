@@ -1091,12 +1091,12 @@ let get_rule_or_source t path =
     let rules = load_dir_and_get_buildable_targets ~dir in
     let path = Path.as_in_build_dir_exn path in
     match Path.Build.Map.find rules path with
-    | Some rule -> Fiber.return (Rule rule)
+    | Some rule -> Rule rule
     | None ->
       let loc = Rule_fn.loc () in
       no_rule_found t ~loc path
   else if Path.exists path then
-    Fiber.return Source
+    Source
   else
     let loc = Rule_fn.loc () in
     User_error.raise ?loc
@@ -1677,7 +1677,7 @@ end = struct
     let t = t () in
     let on_error exn = Dep_path.reraise exn (Path path) in
     Fiber.with_error_handler ~on_error (fun () ->
-        get_rule_or_source t path >>= function
+        match get_rule_or_source t path with
         | Source -> Fiber.return ()
         | Rule rule -> execute_rule rule)
 

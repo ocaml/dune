@@ -30,10 +30,11 @@ let rules ~sctx ~dir =
   let write_test_file = Action.write_file header_file header_file_content in
   let args =
     let open Command.Args in
-    ( match Ocaml_config.ccomp_type ocfg with
-    | Msvc -> [ A "/EP" ]
-    | Other _ -> [ A "-E"; A "-P" ] )
-    @ [ A Path.(to_absolute_filename (build header_file)) ]
+    [ ( match Ocaml_config.ccomp_type ocfg with
+      | Msvc -> A "/EP"
+      | Other _ -> As [ "-E"; "-P" ] )
+    ; A Path.(to_absolute_filename (build header_file))
+    ]
   in
   let action =
     let open Build.With_targets.O in

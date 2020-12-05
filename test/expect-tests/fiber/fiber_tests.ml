@@ -31,14 +31,16 @@ end = struct
 end
 
 let failing_fiber () : unit Fiber.t =
-  Scheduler.yield () >>= fun () -> raise Exit
+  let* () = Scheduler.yield () in
+  raise Exit
 
 let long_running_fiber () =
   let rec loop n =
     if n = 0 then
       Fiber.return ()
     else
-      Scheduler.yield () >>= fun () -> loop (n - 1)
+      let* () = Scheduler.yield () in
+      loop (n - 1)
   in
   loop 10
 
@@ -133,7 +135,8 @@ let%expect_test _ =
 let%expect_test _ =
   test (backtrace_result unit)
     (Fiber.collect_errors (fun () ->
-         failing_fiber () >>= fun () -> failing_fiber ()));
+         let* () = failing_fiber () in
+         failing_fiber ()));
   [%expect {|
 Error [ { exn = "Exit"; backtrace = "" } ]
 |}]
@@ -380,9 +383,10 @@ let%expect_test _ =
   must_set_flag (fun setter ->
       test ~expect_never:true unit
       @@ Fiber.fork_and_join_unit never_fiber (fun () ->
-             Fiber.collect_errors failing_fiber >>= fun res ->
+             let* res = Fiber.collect_errors failing_fiber in
              print_dyn (backtrace_result unit res);
-             long_running_fiber () >>= fun () -> Fiber.return (setter ())));
+             let* () = long_running_fiber () in
+             Fiber.return (setter ())));
   [%expect
     {|
     Error [ { exn = "Exit"; backtrace = "" } ]
@@ -392,7 +396,7 @@ let%expect_test _ =
 let%expect_test _ =
   let forking_fiber () =
     Fiber.parallel_map [ 1; 2; 3; 4; 5 ] ~f:(fun x ->
-        Scheduler.yield () >>= fun () ->
+        let* () = Scheduler.yield () in
         if x mod 2 = 1 then
           Fiber.return ()
         else
@@ -401,9 +405,10 @@ let%expect_test _ =
   must_set_flag (fun setter ->
       test ~expect_never:true unit
       @@ Fiber.fork_and_join_unit never_fiber (fun () ->
-             Fiber.collect_errors forking_fiber >>= fun res ->
+             let* res = Fiber.collect_errors forking_fiber in
              print_dyn (backtrace_result (list unit) res);
-             long_running_fiber () >>= fun () -> Fiber.return (setter ())));
+             let* () = long_running_fiber () in
+             Fiber.return (setter ())));
   [%expect
     {|
     Error

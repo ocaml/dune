@@ -6,6 +6,8 @@ open Dune_engine
 
 type t
 
+val of_atoms : loc:Loc.t -> string list -> t
+
 val decode : t Dune_lang.Decoder.t
 
 (** Return the location of the set. [loc standard] returns [None] *)

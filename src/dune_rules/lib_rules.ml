@@ -430,6 +430,11 @@ let rules (lib : Library.t) ~sctx ~dir_contents ~dir ~expander ~scope :
     Lib.DB.get_compile_info (Scope.libs scope) (Library.best_name lib)
       ~allow_overlaps:lib.buildable.allow_overlapping_dependencies
   in
+  Option.iter (lib.Library.ctypes) ~f:(fun _ctypes ->
+    (* ctypes rules need to be generated before the source modules are probed
+       because it introduces generated modules into the workspace that
+       library stanzas may depend on. *)
+    Ctypes_rules.gen_rules ~base_lib:lib ~sctx ~scope ~expander ~dir);
   let f () =
     let source_modules =
       Dir_contents.ocaml dir_contents
@@ -441,6 +446,8 @@ let rules (lib : Library.t) ~sctx ~dir_contents ~dir ~expander ~scope :
     library_rules lib ~cctx ~source_modules ~dir_contents ~compile_info
   in
   Buildable_rules.gen_select_rules sctx compile_info ~dir;
-  Buildable_rules.with_lib_deps
-    (Super_context.context sctx)
-    compile_info ~dir ~f
+  let cctx, merlin =
+    Buildable_rules.with_lib_deps
+      (Super_context.context sctx) compile_info ~dir ~f
+  in
+  cctx, merlin

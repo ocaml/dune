@@ -399,11 +399,13 @@ module Mode_conf = struct
   end
 
   module Set = struct
+    type mode_conf = t
+
     type nonrec t = Kind.t option Map.t
 
     let empty : t = Map.make_one None
 
-    let of_list (input : (T.t * Kind.t) list) : t =
+    let of_list (input : (mode_conf * Kind.t) list) : t =
       List.fold_left ~init:empty input ~f:(fun acc (key, kind) ->
           Map.update acc key ~f:(function
             | None -> Some kind
@@ -438,6 +440,7 @@ module Mode_conf = struct
         else
           y
     end
+
 
     let eval_detailed t ~has_native =
       let exists = function
@@ -477,31 +480,24 @@ end
 
 module Ctypes = struct
   type t =
-    { name : string
-    ; pkg_config_name : string option
-    ; c_headers : string option
-    ; generated_modules : string list
-    }
+    { lib_name : string
+    ; includes : string list }
 
   let name = "ctypes"
 
   type Stanza.t += T of t
 
+  let syntax =
+    Dune_lang.Syntax.create ~name ~desc:"the ctypes extension"
+      [ ((0, 1), `Since (2, 8)) ]
+
   let decode =
     let open Dune_lang.Decoder in
     fields
-      (let+ name = field "name" string
-       and+ pkg_config_name = field_o "pkg_config_name" string
-       and+ c_headers = field_o "c_headers" string
-       and+ generated_modules = field "generated_modules" (repeat string)
+      (let+ lib_name = field "lib_name" string
+       and+ includes = field "includes" (repeat string) ~default:[]
      in
-     { name; pkg_config_name; c_headers; generated_modules })
-
-  let syntax =
-    Dune_lang.Syntax.create ~name ~desc:"the ctypes extension"
-      (* XXX: insert the latest version of dune language *)
-      [ ((0, 1), `Since (2, 8))
-    ]
+     { lib_name; includes })
 
   let () =
     let open Dune_lang.Decoder in
@@ -649,7 +645,8 @@ module Library = struct
            ( Dune_lang.Syntax.since Stanza.syntax (2, 8)
            >>> located Stanza_common.Pkg.decode )
        and+ ctypes =
-         (field_o "ctypes" Ctypes.decode)
+         (field_o "ctypes"
+            (Dune_lang.Syntax.since Ctypes.syntax (0, 1) >>> Ctypes.decode))
        in
        let wrapped =
          Wrapped.make ~wrapped ~implements ~special_builtin_support

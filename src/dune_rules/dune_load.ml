@@ -11,11 +11,13 @@ module Dune_file = struct
 
   let parse sexps ~dir ~file ~project =
     let stanzas = Dune_file.Stanzas.parse ~file project sexps in
-    let stanzas = List.concat_map stanzas ~f:(fun stanza ->
-      match stanza with
-      | Dune_file.Stanzas.Library { ctypes = Some ctypes; _ } ->
-        Ctypes_rules.expand stanza
-      | _ -> [stanza])
+    let stanzas =
+      List.concat_map stanzas ~f:(fun stanza ->
+        match stanza with
+        | Dune_file.Library ({ ctypes = Some _; _ } as base_lib) ->
+          let libs = Ctypes_stanzas.library_stanzas base_lib in
+          (List.map libs ~f:(fun l -> Dune_file.Library l)) @ [stanza]
+        | _ -> [stanza])
     in
     let stanzas =
       if !Clflags.ignore_promoted_rules then

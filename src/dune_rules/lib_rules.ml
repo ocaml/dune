@@ -430,10 +430,7 @@ let rules (lib : Library.t) ~sctx ~dir_contents ~dir ~expander ~scope :
     Lib.DB.get_compile_info (Scope.libs scope) (Library.best_name lib)
       ~allow_overlaps:lib.buildable.allow_overlapping_dependencies
   in
-  Option.iter (lib.Library.ctypes) ~f:(fun _ctypes ->
-    (* ctypes rules need to be generated before the source modules are probed
-       because it introduces generated modules into the workspace that
-       library stanzas may depend on. *)
+  Option.iter lib.Library.ctypes ~f:(fun _ctypes ->
     Ctypes_rules.gen_rules ~base_lib:lib ~sctx ~scope ~expander ~dir);
   let f () =
     let source_modules =

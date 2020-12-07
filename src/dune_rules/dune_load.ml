@@ -16,7 +16,7 @@ module Dune_file = struct
         match stanza with
         | Dune_file.Library ({ ctypes = Some _; _ } as base_lib) ->
           let libs = Ctypes_stanzas.library_stanzas base_lib in
-          (List.map libs ~f:(fun l -> Dune_file.Library l)) @ [stanza]
+          stanza :: (List.map libs ~f:(fun l -> Dune_file.Library l))
         | _ -> [stanza])
     in
     let stanzas =

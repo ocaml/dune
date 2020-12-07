@@ -8,7 +8,6 @@ let osl_pos _base_lib = "", 0, 0, 0 ;;
 
 let library_stanza ?public_name ?(foreign_stubs=[]) ?c_library_flags
       ~base_lib:lib ~name ~modules ~libraries ~wrapped () =
-  Printf.printf "*** generate library stanza: %s\n%!" name;
   let loc, _libname = lib.Library.name in
   let open Dune_file in
   let visibility =
@@ -210,3 +209,16 @@ let library_stanzas base_lib =
   [ type_descriptions
   ; function_descriptions
   ; combined_final ]
+
+let generated_ml_and_c_files ctypes =
+  let ml_files =
+    List.map [ c_generated_functions_module ctypes
+             ; c_generated_types_module ctypes
+             ; c_types_includer_module ctypes ]
+      ~f:Module_name.to_string
+    |> List.map ~f:(fun m -> m ^ ".ml")
+  in
+  let c_files =
+    [ c_generated_functions_cout_c ctypes ]
+  in
+  ml_files @ c_files

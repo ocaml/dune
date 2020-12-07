@@ -148,11 +148,15 @@ let write_function_gen_script ~include_headers ~sctx ~dir ~name
   let script = function_gen_gen ~include_headers ~function_description_module in
   Super_context.add_rule ~loc:Loc.none sctx ~dir (Build.write_file path script)
 
-let rule ?stdout_to ?(targets=[]) ~run ~sctx ~dir () =
+let rule ?stdout_to ?(action_args=[]) ?(targets=[]) ~exe ~sctx ~dir () =
   let build =
     let targets = List.map targets ~f:(Path.Build.relative dir) in
-    let exe = Ok (Path.build (Path.Build.relative dir run)) in
-    let args = [ Command.Args.Hidden_targets targets ] in
+    let exe = Ok (Path.build (Path.Build.relative dir exe)) in
+    let args =
+      let open Command.Args in
+      [ Hidden_targets targets
+      ; As action_args ]
+    in
     let stdout_to = Option.map stdout_to ~f:(Path.Build.relative dir) in
     Command.run exe ~dir:(Path.build dir) ?stdout_to args
   in
@@ -162,13 +166,16 @@ let rule_shell_action ~deps ~targets ~action_args ~sctx ~dir () =
   let build =
     let sh_path, sh_arg = Utils.system_shell_exn ~needed_to:"build ctypes" in
     let targets = List.map targets ~f:(Path.Build.relative dir) in
-    let deps = List.map deps ~f:(Path.relative (Path.build dir)) in
+    let deps =
+      List.map deps ~f:(Path.relative (Path.build dir))
+      |> Dep.Set.of_files
+    in
     let exe = Ok sh_path in
     let args =
       let open Command.Args in
-      [ Deps deps
+      [ As (sh_arg :: action_args)
       ; Hidden_targets targets
-      ; As (sh_arg :: action_args) ]
+      ; Hidden_deps deps ]
     in
     Command.run exe ~dir:(Path.build dir) args
   in
@@ -270,7 +277,7 @@ let gen_rules ~base_lib ~scope ~expander ~dir ~sctx =
       ();
     rule
       ~targets:[cflags_sexp; cflags_txt; c_library_flags_sexp]
-      ~run:(discover_script ^ ".exe")
+      ~exe:(discover_script ^ ".exe")
       ()
   in
   let include_headers = ctypes.Ctypes.includes in
@@ -298,7 +305,7 @@ let gen_rules ~base_lib ~scope ~expander ~dir ~sctx =
       ~program:type_gen_script
       ~libraries:["ctypes.stubs"; "ctypes.foreign"; type_description_library]
       ();
-    rule ~stdout_to:c_generated_types_cout_c ~run:(type_gen_script ^ ".exe") ();
+    rule ~stdout_to:c_generated_types_cout_c ~exe:(type_gen_script ^ ".exe") ();
     rule_shell_action
       ~sctx ~dir
       ~targets:[c_generated_types_cout_exe]
@@ -313,7 +320,7 @@ let gen_rules ~base_lib ~scope ~expander ~dir ~sctx =
     rule
       ~stdout_to:(Ctypes_stanzas.c_generated_types_module ctypes
                   |> ml_of_module_name)
-      ~run:c_generated_types_cout_exe
+      ~exe:c_generated_types_cout_exe
       ()
   in
   (* Function_gen is similar to type_gen above, though it produces both an
@@ -333,12 +340,14 @@ let gen_rules ~base_lib ~scope ~expander ~dir ~sctx =
       ();
     rule
       ~stdout_to:c_generated_functions_cout_c
-      ~run:(sprintf "%s.exe c %s" function_gen_script stubs_prefix)
+      ~exe:(function_gen_script ^ ".exe")
+      ~action_args:["c"; stubs_prefix]
       ();
     rule
       ~stdout_to:(Ctypes_stanzas.c_generated_functions_module ctypes
                   |> ml_of_module_name)
-      ~run:(sprintf "%s.exe ml %s" function_gen_script stubs_prefix)
+      ~exe:(function_gen_script ^ ".exe")
+      ~action_args:["ml"; stubs_prefix]
       ()
   in
   ()

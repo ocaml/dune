@@ -11,6 +11,7 @@ BIN := ./dune.exe
 TEST_DEPS := \
 bisect_ppx \
 cinaps \
+coq-native \
 "coq>=8.12.1" \
 core_bench \
 "csexp>=1.3.0" \

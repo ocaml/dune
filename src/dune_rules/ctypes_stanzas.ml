@@ -216,6 +216,7 @@ let generated_ml_and_c_files ctypes =
              ; c_generated_types_module ctypes
              ; c_types_includer_module ctypes ]
       ~f:Module_name.to_string
+    |> List.map ~f:String.lowercase
     |> List.map ~f:(fun m -> m ^ ".ml")
   in
   let c_files =

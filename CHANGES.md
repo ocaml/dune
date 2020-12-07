@@ -100,7 +100,8 @@ Unreleased
 - Stop promoting `.merlin` files. Write per-stanza Merlin configurations in
   binary form. Add a new subcommand `dune ocaml-merlin` that Merlin can use to
   query the configuration files. The `allow_approximate_merlin` option is now
-  useless and deprecated. (#3554, @voodoos)
+  useless and deprecated. Dune now conflicts with `merlin < 3.4.0` and
+  `ocaml-lsp-server < 1.3.0` (#3554, @voodoos)
 
 2.7.1 (2/09/2020)
 -----------------

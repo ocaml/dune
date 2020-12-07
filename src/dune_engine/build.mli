@@ -217,13 +217,21 @@ module Make_exec (Build_deps:sig val build_deps: Dep.Set.t -> unit Fiber.t end) 
 
   (** Same as the previous function but also build the dependencies of the build
       description *)
-  val deps_and_exec : 'a t -> ('a * Dep.Set.t) Fiber.t
+  val build_deps_and_exec : 'a t -> ('a * Dep.Set.t) Fiber.t
 end
 
-val do_not_use_stage_fiber: 'a Fiber.t -> 'a t
-val do_not_use_stage_dyn_fiber: 'a Fiber.t t -> 'a t
-val do_not_use_stage_build: 'a t t -> 'a t
+module Expert: sig
+  (** Those function are experimental in there usage. Each usage must be
+     discussed, avoid to use them if possible. Moreover they can be more tricky
+     to use. In a {!fiber} and {!dyn_fiber} should ensure that generated files
+     are already regenerated. The {!build} function turn dependencies that can
+     be though as static in dynamic dependencies, which can reduce the
+     parallelism. *)
 
+  val fiber: 'a Fiber.t -> 'a t
+  val dyn_fiber: 'a Fiber.t t -> 'a t
+  val build: 'a t t -> 'a t
+end
 
 (**/**)
 

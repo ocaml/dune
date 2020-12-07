@@ -369,15 +369,17 @@ let fold_labeled (type acc) t ~(init : acc) ~f =
 
 (* Execution *)
 
-let do_not_use_stage_fiber f = Fiber f
-let do_not_use_stage_dyn_fiber f = Dyn_fiber f
-let do_not_use_stage_build f = Build f
+module Expert = struct
+  let fiber f = Fiber f
+  let dyn_fiber f = Dyn_fiber f
+  let build f = Build f
+end
 
 module Make_exec (Build_deps:sig val build_deps: Dep.Set.t -> unit Fiber.t end) = struct
 
   module rec Execution : sig
     val exec : 'a t -> ('a * Dep.Set.t) Fiber.t
-    val deps_and_exec : 'a t -> ('a * Dep.Set.t) Fiber.t
+    val build_deps_and_exec : 'a t -> ('a * Dep.Set.t) Fiber.t
   end = struct
     module Function = struct
       type 'a input = 'a memo
@@ -465,9 +467,9 @@ module Make_exec (Build_deps:sig val build_deps: Dep.Set.t -> unit Fiber.t end) 
         (f, deps)
       | Build b ->
         let* b, deps0 = exec b in
-        let+ r, deps1 = deps_and_exec b in
+        let+ r, deps1 = build_deps_and_exec b in
         (r, Dep.Set.union deps0 deps1)
-    and deps_and_exec : type a. a t -> (a * Dep.Set.t) Fiber.t =
+    and build_deps_and_exec : type a. a t -> (a * Dep.Set.t) Fiber.t =
       fun t ->
       let* () = Build_deps.build_deps (static_deps t).rule_deps in
       exec t

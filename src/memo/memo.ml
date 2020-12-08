@@ -763,17 +763,18 @@ end = struct
         (T { without_state = dep_node.without_state; running_state })
         (fun () ->
           match dep_node.without_state.spec.f with
-          | Function.Async f -> f inp)
+          | Function.Async f -> Fiber.collect_errors (fun () -> f inp))
     in
+    let res = Result.map_error ~f:List.hd res in
     (* update the output cache with the correct value *)
     let deps = List.rev running_state.deps_so_far.deps_reversed in
     (* CR-someday aalekseyev: Set the resulting value to [Error] if there were
        errors while running [f]. Currently not doing that because sometimes [f]
        both returns a result and keeps producing errors. Not sure why. *)
-    dep_node.state <- Done (Cached_value.create (Ok res) ~deps);
+    dep_node.state <- Done (Cached_value.create res ~deps);
     (* fill the ivar for any waiting threads *)
-    let+ () = Fiber.Ivar.fill ivar (Ok res) in
-    Ok res
+    let+ () = Fiber.Ivar.fill ivar res in
+    res
 
   (* CR-someday aalekseyev: I defined in continuation-passing style instead of
      using [Fiber.return] to make sure there's no interleaving intervening

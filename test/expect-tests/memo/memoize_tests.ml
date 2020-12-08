@@ -567,4 +567,4 @@ let%expect_test "error handling and memo - async" =
     f 20 = Ok 20
     Calling f 42
     f 42 = Error [ { exn = "(Failure 42)"; backtrace = "" } ]
-    f 42 = Error [ { exn = "Exit"; backtrace = "" } ] |}]
+    f 42 = Error [ { exn = "(Failure 42)"; backtrace = "" } ] |}]

@@ -541,6 +541,10 @@ let%expect_test "error handling and memo - async" =
         printf "Calling f %d\n" x;
         if x = 42 then
           failwith "42"
+        else if x = 84 then
+          Fiber.fork_and_join_unit
+            (fun () -> failwith "left")
+            (fun () -> failwith "right")
         else
           Fiber.return x)
   in
@@ -560,6 +564,8 @@ let%expect_test "error handling and memo - async" =
   test 20;
   test 42;
   test 42;
+  test 84;
+  test 84;
   [%expect
     {|
     Calling f 20
@@ -567,4 +573,7 @@ let%expect_test "error handling and memo - async" =
     f 20 = Ok 20
     Calling f 42
     f 42 = Error [ { exn = "(Failure 42)"; backtrace = "" } ]
-    f 42 = Error [ { exn = "(Failure 42)"; backtrace = "" } ] |}]
+    f 42 = Error [ { exn = "(Failure 42)"; backtrace = "" } ]
+    Calling f 84
+    f 84 = Error [ { exn = "(Failure left)"; backtrace = "" } ]
+    f 84 = Error [ { exn = "(Failure left)"; backtrace = "" } ] |}]

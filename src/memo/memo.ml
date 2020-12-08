@@ -668,7 +668,11 @@ module Cache_lookup_result = struct
     | Waiting (dag_node, _) -> Running dag_node
 end
 
-module Exec_sync = struct
+module Exec_sync : sig
+  val exec_dep_node : ('a, 'b, 'a -> 'b) Dep_node.t -> 'a -> 'b
+
+  val exec : ('a, 'b, 'a -> 'b) t -> 'a -> 'b
+end = struct
   let compute inp (dep_node : _ Dep_node.t) running_state : _ Value.t =
     (* define the function to update / double check intermediate result *)
     (* set context of computation then run it *)
@@ -746,7 +750,11 @@ module Exec_sync = struct
   let exec t inp = exec_dep_node (dep_node t inp) inp
 end
 
-module Exec_async = struct
+module Exec_async : sig
+  val exec_dep_node : ('a, 'b, 'a -> 'b Fiber.t) Dep_node.t -> 'a -> 'b Fiber.t
+
+  val exec : ('a, 'b, 'a -> 'b Fiber.t) t -> 'a -> 'b Fiber.t
+end = struct
   let compute inp ivar (dep_node : _ Dep_node.t) running_state =
     (* define the function to update / double check intermediate result *)
     (* set context of computation then run it *)

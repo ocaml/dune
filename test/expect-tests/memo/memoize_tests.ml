@@ -42,9 +42,9 @@ let counter = ref 0
 (* our computation increases the counter, adds the two dependencies, "some" and
    "another" and works by multiplying the input by two *)
 let comp x =
-  Fiber.return x >>= Memo.exec mcompdep1 >>= Memo.exec mcompdep2 >>= fun a ->
+  let+ a = Fiber.return x >>= Memo.exec mcompdep1 >>= Memo.exec mcompdep2 in
   counter := !counter + 1;
-  String.sub a ~pos:0 ~len:(String.length a |> min 3) |> Fiber.return
+  String.sub a ~pos:0 ~len:(String.length a |> min 3)
 
 let mcomp = string_fn_create "test" ~output:(Allow_cutoff (module String)) comp
 
@@ -112,7 +112,7 @@ let dump_stack v =
 let mcompcycle =
   let mcompcycle = Fdecl.create Dyn.Encoder.opaque in
   let compcycle x =
-    Fiber.return x >>= dump_stack >>= fun x ->
+    let* x = Fiber.return x >>= dump_stack in
     counter := !counter + 1;
     if !counter < 20 then
       (x + 1) mod 3 |> Memo.exec (Fdecl.get mcompcycle)
@@ -165,8 +165,9 @@ let mfib =
     if x <= 1 then
       Fiber.return x
     else
-      mfib (x - 1) >>= fun r1 ->
-      mfib (x - 2) >>| fun r2 -> r1 + r2
+      let* r1 = mfib (x - 1) in
+      let+ r2 = mfib (x - 2) in
+      r1 + r2
   in
   let fn = int_fn_create "fib" ~output:(Allow_cutoff (module Int)) compfib in
   Fdecl.set mfib fn;
@@ -447,11 +448,11 @@ module Function = struct
   let eval (type a) (x : a input) : a output Fiber.t =
     match x with
     | I (_, i) ->
-      Fiber.return () >>= fun () ->
+      let* () = Fiber.return () in
       Printf.printf "Evaluating %d\n" i;
       Fiber.return (List.init i ~f:(fun i -> i + 1))
     | S (_, s) ->
-      Fiber.return () >>= fun () ->
+      let* () = Fiber.return () in
       Printf.printf "Evaluating %S\n" s;
       Fiber.return [ s ]
 

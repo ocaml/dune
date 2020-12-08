@@ -93,14 +93,12 @@ module Artifacts = struct
 
   let make (d : _ Dir_with_dune.t) ~lib_config (libs, exes) =
     let libraries =
-      List.fold_left
-        ~f:(fun libraries (lib, _) ->
+      List.fold_left ~init:Lib_name.Map.empty libs ~f:(fun libraries (lib, _) ->
           let name = Lib_name.of_local lib.Library.name in
           let info =
             Dune_file.Library.to_lib_info lib ~dir:d.ctx_dir ~lib_config
           in
           Lib_name.Map.add_exn libraries name info)
-        ~init:Lib_name.Map.empty libs
     in
     let modules =
       let by_name modules obj_dir =
@@ -210,7 +208,8 @@ let virtual_modules lookup_vlib vlib =
 let make_lib_modules (d : _ Dir_with_dune.t) ~lookup_vlib ~(lib : Library.t)
     ~modules =
   let src_dir = d.ctx_dir in
-  let kind, main_module_name, wrapped =
+  let open Result.O in
+  let+ kind, main_module_name, wrapped =
     match lib.implements with
     | None ->
       (* In the two following pattern matching, we can only get [From _] if
@@ -232,7 +231,7 @@ let make_lib_modules (d : _ Dir_with_dune.t) ~lookup_vlib ~(lib : Library.t)
         | None -> Exe_or_normal_lib
         | Some virtual_modules -> Virtual { virtual_modules }
       in
-      (kind, main_module_name, wrapped)
+      Ok (kind, main_module_name, wrapped)
     | Some _ ->
       assert (Option.is_none lib.virtual_modules);
       let resolved =
@@ -241,26 +240,19 @@ let make_lib_modules (d : _ Dir_with_dune.t) ~lookup_vlib ~(lib : Library.t)
         (* can't happen because this library is defined using the current stanza *)
         |> Option.value_exn
       in
-      (* diml: this [Result.ok_exn] means that if the user writes an invalid
-         [implements] field, we will get an error immediately even if the
-         library is not built. We should change this to carry the [Or_exn.t] a
-         bit longer. *)
-      let vlib =
-        Result.ok_exn
-          (* This [Option.value_exn] is correct because the above
-             [lib.implements] is [Some _] and this [lib] variable correspond to
-             the same library. *)
-          (Option.value_exn (Lib.implements resolved))
+      let* vlib =
+        (* This [Option.value_exn] is correct because the above [lib.implements]
+           is [Some _] and this [lib] variable correspond to the same library. *)
+        Option.value_exn (Lib.implements resolved)
       in
       let kind : Modules_field_evaluator.kind =
         Implementation (virtual_modules lookup_vlib vlib)
       in
-      let main_module_name, wrapped =
-        Result.ok_exn
-          (let open Result.O in
-          let* main_module_name = Lib.main_module_name resolved in
-          let+ wrapped = Lib.wrapped resolved in
-          (main_module_name, Option.value_exn wrapped))
+      let+ main_module_name, wrapped =
+        let open Result.O in
+        let* main_module_name = Lib.main_module_name resolved in
+        let+ wrapped = Lib.wrapped resolved in
+        (main_module_name, Option.value_exn wrapped)
       in
       (kind, main_module_name, wrapped)
   in
@@ -280,7 +272,13 @@ let libs_and_exes (d : _ Dir_with_dune.t) ~lookup_vlib ~modules =
   List.filter_partition_map d.data ~f:(fun stanza ->
       match (stanza : Stanza.t) with
       | Library lib ->
-        let modules = make_lib_modules d ~lookup_vlib ~modules ~lib in
+        let modules =
+          (* diml: this [Result.ok_exn] means that if the user writes an invalid
+             [implements] field, we will get an error immediately even if the
+             library is not built. We should change this to carry the [Or_exn.t]
+             a bit longer. *)
+          Result.ok_exn (make_lib_modules d ~lookup_vlib ~modules ~lib)
+        in
         Left (lib, modules)
       | Executables exes
       | Tests { exes; _ } ->

@@ -503,3 +503,68 @@ let%expect_test "Memo.Poly.Async" =
     2 -> [ 1; 2 ]
     "hi again" -> [ "hi again" ]
     |}]
+
+let%expect_test "error handling and memo - sync" =
+  let f =
+    sync_int_fn_create "sync f"
+      ~output:(Allow_cutoff (module Int))
+      (fun x ->
+        printf "Calling f %d\n" x;
+        if x = 42 then
+          failwith "42"
+        else
+          x)
+  in
+  let test x =
+    let res = Result.try_with (fun () -> Memo.exec f x) in
+    Format.printf "f %d = %a@." x Pp.to_fmt
+      (Dyn.pp (Result.to_dyn Dyn.Encoder.int Exn.to_dyn res))
+  in
+  test 20;
+  test 20;
+  test 42;
+  test 42;
+  [%expect
+    {|
+    Calling f 20
+    f 20 = Ok 20
+    f 20 = Ok 20
+    Calling f 42
+    f 42 = Error "(Failure 42)"
+    f 42 = Error "(Failure 42)" |}]
+
+let%expect_test "error handling and memo - async" =
+  let f =
+    int_fn_create "async f"
+      ~output:(Allow_cutoff (module Int))
+      (fun x ->
+        printf "Calling f %d\n" x;
+        if x = 42 then
+          failwith "42"
+        else
+          Fiber.return x)
+  in
+  let test x =
+    let res =
+      try
+        Fiber.run
+          ~iter:(fun () -> raise Exit)
+          (Fiber.collect_errors (fun () -> Memo.exec f x))
+      with exn -> Error [ Exn_with_backtrace.capture exn ]
+    in
+    let open Dyn.Encoder in
+    Format.printf "f %d = %a@." x Pp.to_fmt
+      (Dyn.pp (Result.to_dyn int (list Exn_with_backtrace.to_dyn) res))
+  in
+  test 20;
+  test 20;
+  test 42;
+  test 42;
+  [%expect
+    {|
+    Calling f 20
+    f 20 = Ok 20
+    f 20 = Ok 20
+    Calling f 42
+    f 42 = Error [ { exn = "(Failure 42)"; backtrace = "" } ]
+    f 42 = Error [ { exn = "Exit"; backtrace = "" } ] |}]

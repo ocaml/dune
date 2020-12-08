@@ -575,5 +575,11 @@ let%expect_test "error handling and memo - async" =
     f 42 = Error [ { exn = "(Failure 42)"; backtrace = "" } ]
     f 42 = Error [ { exn = "(Failure 42)"; backtrace = "" } ]
     Calling f 84
-    f 84 = Error [ { exn = "(Failure left)"; backtrace = "" } ]
-    f 84 = Error [ { exn = "(Failure left)"; backtrace = "" } ] |}]
+    f 84 = Error
+             [ { exn = "(Failure left)"; backtrace = "" }
+             ; { exn = "(Failure right)"; backtrace = "" }
+             ]
+    f 84 = Error
+             [ { exn = "(Failure left)"; backtrace = "" }
+             ; { exn = "(Failure right)"; backtrace = "" }
+             ] |}]

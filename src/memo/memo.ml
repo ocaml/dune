@@ -146,11 +146,19 @@ let reset () =
 (* A value calculated during a sample attempt, or an exception with a backtrace
    if the attempt failed. *)
 module Value = struct
-  type 'a t = ('a, Exn_with_backtrace.t) Result.t
+  type 'a t = ('a, Exn_with_backtrace.t list) Result.t
 
-  let get_exn = function
+  let get_sync_exn = function
     | Ok a -> a
-    | Error exn -> Exn_with_backtrace.reraise exn
+    | Error [ exn ] -> Exn_with_backtrace.reraise exn
+    | Error _ -> assert false
+
+  let get_async_exn = function
+    | Ok a -> Fiber.return a
+    | Error [] -> assert false
+    | Error exns ->
+      let* () = Fiber.parallel_iter exns ~f:Exn_with_backtrace.reraise in
+      Fiber.never
 end
 
 module Completion = struct
@@ -575,7 +583,12 @@ module Stack_frame = struct
 end
 
 let handle_code_error ~frame (value : 'a Value.t) : 'a Value.t =
-  Result.map_error value ~f:(fun exn ->
+  Result.map_error value ~f:(fun exns ->
+      let exn =
+        match exns with
+        | [ exn ] -> exn
+        | _ -> assert false
+      in
       let code_error (e : Code_error_with_memo_backtrace.t) =
         let bt = exn.backtrace in
         let { Code_error_with_memo_backtrace.exn
@@ -594,16 +607,17 @@ let handle_code_error ~frame (value : 'a Value.t) : 'a Value.t =
           ; outer_call_stack = Call_stack.get_call_stack_as_dyn ()
           }
       in
-      Exn_with_backtrace.map exn ~f:(fun exn ->
-          match exn with
-          | Code_error.E exn ->
-            code_error
-              { Code_error_with_memo_backtrace.exn
-              ; reverse_backtrace = []
-              ; outer_call_stack = Dyn.String "<n/a>"
-              }
-          | Code_error_with_memo_backtrace.E e -> code_error e
-          | another_exn -> another_exn))
+      [ Exn_with_backtrace.map exn ~f:(fun exn ->
+            match exn with
+            | Code_error.E exn ->
+              code_error
+                { Code_error_with_memo_backtrace.exn
+                ; reverse_backtrace = []
+                ; outer_call_stack = Dyn.String "<n/a>"
+                }
+            | Code_error_with_memo_backtrace.E e -> code_error e
+            | another_exn -> another_exn)
+      ])
 
 let create_with_cache (type i o f) name ~cache ?doc ~input ~visibility ~output
     (typ : (i, o, f) Function.Type.t) (f : f) =
@@ -686,7 +700,8 @@ end = struct
                (* If [f] raises an exception, [push_sync_frame] re-raises it
                   twice, so you'd end up with ugly "re-raised by" stack frames.
                   Catching it here cuts the backtrace to just the desired part. *)
-               Exn_with_backtrace.try_with (fun () -> f inp)))
+               Exn_with_backtrace.try_with (fun () -> f inp)
+               |> Result.map_error ~f:(fun x -> [ x ])))
     in
     (* update the output cache with the correct value *)
     let deps = List.rev running_state.deps_so_far.deps_reversed in
@@ -745,7 +760,7 @@ end = struct
           let last_dep = Last_dep.T (dep_node, value) in
           add_last_dep ~last_dep)
     in
-    Value.get_exn value
+    Value.get_sync_exn value
 
   let exec t inp = exec_dep_node (dep_node t inp) inp
 end
@@ -765,7 +780,6 @@ end = struct
           match dep_node.without_state.spec.f with
           | Function.Async f -> Fiber.collect_errors (fun () -> f inp))
     in
-    let res = Result.map_error ~f:List.hd res in
     (* update the output cache with the correct value *)
     let deps = List.rev running_state.deps_so_far.deps_reversed in
     (* CR-someday aalekseyev: Set the resulting value to [Error] if there were
@@ -820,7 +834,7 @@ end = struct
           add_dep_from_caller ~called_from_peek:false dep_node
             (Cache_lookup_result.sample_attempt_dag_node result)
         in
-        let+ value =
+        let* value =
           match result with
           | Done v -> Fiber.return v
           | Waiting (_dag_node, ivar) -> Fiber.Ivar.read ivar
@@ -831,7 +845,7 @@ end = struct
               let last_dep = Last_dep.T (dep_node, value) in
               add_last_dep ~last_dep)
         in
-        Value.get_exn value)
+        Value.get_async_exn value)
 
   let exec t inp = exec_dep_node (dep_node t inp) inp
 end
@@ -864,7 +878,7 @@ let peek (type i o f) (t : (i, o, f) t) inp =
               let last_dep = Last_dep.T (dep_node, cv.value) in
               add_last_dep ~last_dep)
         in
-        Some (Value.get_exn cv.value)
+        Some (Value.get_sync_exn cv.value)
       else
         None )
 

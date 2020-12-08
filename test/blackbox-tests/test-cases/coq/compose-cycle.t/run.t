@@ -12,4 +12,17 @@
   -> required by ccycle.install
   -> required by alias default
   -> required by alias default
+  File "b/dune", line 2, characters 7-8:
+  2 |  (name b)
+             ^
+  Error: Cycle found
+  - a
+  - b
+  - a
+  -> required by b/b.v.d
+  -> required by b/b.vo
+  -> required by install lib/coq/user-contrib/b/b.vo
+  -> required by ccycle.install
+  -> required by alias default
+  -> required by alias default
   [1]

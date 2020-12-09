@@ -786,7 +786,13 @@ end = struct
         (T { without_state = dep_node.without_state; running_state })
         (fun () ->
           match dep_node.without_state.spec.f with
-          | Function.Async f -> Fiber.collect_errors (fun () -> f inp))
+          | Function.Async f ->
+            (* A consequence of using [Fiber.collect_errors] is that memoized
+               functions don't report errors promptly - errors are reported once
+               all child fibers terminate. To fix this, we should use
+               [Fiber.with_error_handler], but we dont have access to dune's
+               error reoprting mechanism in memo *)
+            Fiber.collect_errors (fun () -> f inp))
     in
     (* update the output cache with the correct value *)
     let deps = List.rev running_state.deps_so_far.deps_reversed in

@@ -166,6 +166,8 @@ module Value = struct
     | Ok a -> Fiber.return a
     | Error [] -> assert false
     | Error exns ->
+      (* XXX perhaps Fiber should provide a function that does this more
+         efficiently *)
       let* () = Fiber.parallel_iter exns ~f:Exn_with_backtrace.reraise in
       Fiber.never
 end

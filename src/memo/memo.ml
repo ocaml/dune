@@ -146,12 +146,21 @@ let reset () =
 (* A value calculated during a sample attempt, or an exception with a backtrace
    if the attempt failed. *)
 module Value = struct
+  (* Invariant: sync computations always produce a single exception in the error
+     case *)
   type 'a t = ('a, Exn_with_backtrace.t list) Result.t
+
+  let map_error t ~f =
+    match t with
+    | Ok _ -> t
+    | Error e -> Error (List.map e ~f)
 
   let get_sync_exn = function
     | Ok a -> a
     | Error [ exn ] -> Exn_with_backtrace.reraise exn
-    | Error _ -> assert false
+    | Error _ ->
+      (* It's not possible for a sync computation to raise more than one error *)
+      assert false
 
   let get_async_exn = function
     | Ok a -> Fiber.return a
@@ -583,12 +592,7 @@ module Stack_frame = struct
 end
 
 let handle_code_error ~frame (value : 'a Value.t) : 'a Value.t =
-  Result.map_error value ~f:(fun exns ->
-      let exn =
-        match exns with
-        | [ exn ] -> exn
-        | _ -> assert false
-      in
+  Value.map_error value ~f:(fun exn ->
       let code_error (e : Code_error_with_memo_backtrace.t) =
         let bt = exn.backtrace in
         let { Code_error_with_memo_backtrace.exn
@@ -607,17 +611,16 @@ let handle_code_error ~frame (value : 'a Value.t) : 'a Value.t =
           ; outer_call_stack = Call_stack.get_call_stack_as_dyn ()
           }
       in
-      [ Exn_with_backtrace.map exn ~f:(fun exn ->
-            match exn with
-            | Code_error.E exn ->
-              code_error
-                { Code_error_with_memo_backtrace.exn
-                ; reverse_backtrace = []
-                ; outer_call_stack = Dyn.String "<n/a>"
-                }
-            | Code_error_with_memo_backtrace.E e -> code_error e
-            | another_exn -> another_exn)
-      ])
+      Exn_with_backtrace.map exn ~f:(fun exn ->
+          match exn with
+          | Code_error.E exn ->
+            code_error
+              { Code_error_with_memo_backtrace.exn
+              ; reverse_backtrace = []
+              ; outer_call_stack = Dyn.String "<n/a>"
+              }
+          | Code_error_with_memo_backtrace.E e -> code_error e
+          | another_exn -> another_exn))
 
 let create_with_cache (type i o f) name ~cache ?doc ~input ~visibility ~output
     (typ : (i, o, f) Function.Type.t) (f : f) =

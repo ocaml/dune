@@ -194,7 +194,10 @@ end)
 module M = struct
   module rec Cached_value : sig
     type 'a t =
-      { value : 'a Value.t
+      { (* TODO For a sync computation, the error case corresponds to only a
+           single exception. Attempt to reflect this in the system by
+           parameterizing the error type. *)
+        value : 'a Value.t
       ; (* When was the value calculated. *)
         mutable calculated_at : Run.t
       ; (* The values stored in [deps] must have been calculated at

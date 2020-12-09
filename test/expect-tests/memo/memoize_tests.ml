@@ -42,9 +42,9 @@ let counter = ref 0
 (* our computation increases the counter, adds the two dependencies, "some" and
    "another" and works by multiplying the input by two *)
 let comp x =
-  Fiber.return x >>= Memo.exec mcompdep1 >>= Memo.exec mcompdep2 >>= fun a ->
+  let+ a = Fiber.return x >>= Memo.exec mcompdep1 >>= Memo.exec mcompdep2 in
   counter := !counter + 1;
-  String.sub a ~pos:0 ~len:(String.length a |> min 3) |> Fiber.return
+  String.sub a ~pos:0 ~len:(String.length a |> min 3)
 
 let mcomp = string_fn_create "test" ~output:(Allow_cutoff (module String)) comp
 
@@ -112,7 +112,7 @@ let dump_stack v =
 let mcompcycle =
   let mcompcycle = Fdecl.create Dyn.Encoder.opaque in
   let compcycle x =
-    Fiber.return x >>= dump_stack >>= fun x ->
+    let* x = Fiber.return x >>= dump_stack in
     counter := !counter + 1;
     if !counter < 20 then
       (x + 1) mod 3 |> Memo.exec (Fdecl.get mcompcycle)
@@ -165,8 +165,9 @@ let mfib =
     if x <= 1 then
       Fiber.return x
     else
-      mfib (x - 1) >>= fun r1 ->
-      mfib (x - 2) >>| fun r2 -> r1 + r2
+      let* r1 = mfib (x - 1) in
+      let+ r2 = mfib (x - 2) in
+      r1 + r2
   in
   let fn = int_fn_create "fib" ~output:(Allow_cutoff (module Int)) compfib in
   Fdecl.set mfib fn;
@@ -447,11 +448,11 @@ module Function = struct
   let eval (type a) (x : a input) : a output Fiber.t =
     match x with
     | I (_, i) ->
-      Fiber.return () >>= fun () ->
+      let* () = Fiber.return () in
       Printf.printf "Evaluating %d\n" i;
       Fiber.return (List.init i ~f:(fun i -> i + 1))
     | S (_, s) ->
-      Fiber.return () >>= fun () ->
+      let* () = Fiber.return () in
       Printf.printf "Evaluating %S\n" s;
       Fiber.return [ s ]
 
@@ -502,3 +503,83 @@ let%expect_test "Memo.Poly.Async" =
     2 -> [ 1; 2 ]
     "hi again" -> [ "hi again" ]
     |}]
+
+let%expect_test "error handling and memo - sync" =
+  let f =
+    sync_int_fn_create "sync f"
+      ~output:(Allow_cutoff (module Int))
+      (fun x ->
+        printf "Calling f %d\n" x;
+        if x = 42 then
+          failwith "42"
+        else
+          x)
+  in
+  let test x =
+    let res = Result.try_with (fun () -> Memo.exec f x) in
+    Format.printf "f %d = %a@." x Pp.to_fmt
+      (Dyn.pp (Result.to_dyn Dyn.Encoder.int Exn.to_dyn res))
+  in
+  test 20;
+  test 20;
+  test 42;
+  test 42;
+  [%expect
+    {|
+    Calling f 20
+    f 20 = Ok 20
+    f 20 = Ok 20
+    Calling f 42
+    f 42 = Error "(Failure 42)"
+    f 42 = Error "(Failure 42)" |}]
+
+let%expect_test "error handling and memo - async" =
+  let f =
+    int_fn_create "async f"
+      ~output:(Allow_cutoff (module Int))
+      (fun x ->
+        printf "Calling f %d\n" x;
+        if x = 42 then
+          failwith "42"
+        else if x = 84 then
+          Fiber.fork_and_join_unit
+            (fun () -> failwith "left")
+            (fun () -> failwith "right")
+        else
+          Fiber.return x)
+  in
+  let test x =
+    let res =
+      try
+        Fiber.run
+          ~iter:(fun () -> raise Exit)
+          (Fiber.collect_errors (fun () -> Memo.exec f x))
+      with exn -> Error [ Exn_with_backtrace.capture exn ]
+    in
+    let open Dyn.Encoder in
+    Format.printf "f %d = %a@." x Pp.to_fmt
+      (Dyn.pp (Result.to_dyn int (list Exn_with_backtrace.to_dyn) res))
+  in
+  test 20;
+  test 20;
+  test 42;
+  test 42;
+  test 84;
+  test 84;
+  [%expect
+    {|
+    Calling f 20
+    f 20 = Ok 20
+    f 20 = Ok 20
+    Calling f 42
+    f 42 = Error [ { exn = "(Failure 42)"; backtrace = "" } ]
+    f 42 = Error [ { exn = "(Failure 42)"; backtrace = "" } ]
+    Calling f 84
+    f 84 = Error
+             [ { exn = "(Failure left)"; backtrace = "" }
+             ; { exn = "(Failure right)"; backtrace = "" }
+             ]
+    f 84 = Error
+             [ { exn = "(Failure left)"; backtrace = "" }
+             ; { exn = "(Failure right)"; backtrace = "" }
+             ] |}]

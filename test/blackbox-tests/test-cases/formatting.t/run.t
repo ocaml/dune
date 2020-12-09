@@ -33,12 +33,6 @@ Formatting can be checked using the @fmt target:
   File "enabled/dune", line 1, characters 0-0:
   Error: Files _build/default/enabled/dune and
   _build/default/enabled/.formatted/dune differ.
-  File "enabled/subdir/dune", line 1, characters 0-0:
-  Error: Files _build/default/enabled/subdir/dune and
-  _build/default/enabled/subdir/.formatted/dune differ.
-  File "lang2/default/dune", line 1, characters 0-0:
-  Error: Files _build/default/lang2/default/dune and
-  _build/default/lang2/default/.formatted/dune differ.
   File "enabled/reason_file.re", line 1, characters 0-0:
   Error: Files _build/default/enabled/reason_file.re and
   _build/default/enabled/.formatted/reason_file.re differ.
@@ -51,9 +45,15 @@ Formatting can be checked using the @fmt target:
   File "enabled/ocaml_file.mli", line 1, characters 0-0:
   Error: Files _build/default/enabled/ocaml_file.mli and
   _build/default/enabled/.formatted/ocaml_file.mli differ.
+  File "enabled/subdir/dune", line 1, characters 0-0:
+  Error: Files _build/default/enabled/subdir/dune and
+  _build/default/enabled/subdir/.formatted/dune differ.
   File "enabled/subdir/lib.ml", line 1, characters 0-0:
   Error: Files _build/default/enabled/subdir/lib.ml and
   _build/default/enabled/subdir/.formatted/lib.ml differ.
+  File "lang2/default/dune", line 1, characters 0-0:
+  Error: Files _build/default/lang2/default/dune and
+  _build/default/lang2/default/.formatted/dune differ.
   File "lang2/default/e.ml", line 1, characters 0-0:
   Error: Files _build/default/lang2/default/e.ml and
   _build/default/lang2/default/.formatted/e.ml differ.
@@ -69,18 +69,6 @@ Configuration files are taken into account for this action:
 
   $ touch enabled/.ocamlformat
   $ dune build @fmt
-  File "enabled/reason_file.re", line 1, characters 0-0:
-  Error: Files _build/default/enabled/reason_file.re and
-  _build/default/enabled/.formatted/reason_file.re differ.
-  File "enabled/reason_file.rei", line 1, characters 0-0:
-  Error: Files _build/default/enabled/reason_file.rei and
-  _build/default/enabled/.formatted/reason_file.rei differ.
-  File "enabled/dune", line 1, characters 0-0:
-  Error: Files _build/default/enabled/dune and
-  _build/default/enabled/.formatted/dune differ.
-  File "enabled/subdir/dune", line 1, characters 0-0:
-  Error: Files _build/default/enabled/subdir/dune and
-  _build/default/enabled/subdir/.formatted/dune differ.
   File "lang2/default/e.ml", line 1, characters 0-0:
   Error: Files _build/default/lang2/default/e.ml and
   _build/default/lang2/default/.formatted/e.ml differ.
@@ -93,12 +81,24 @@ Configuration files are taken into account for this action:
   File "partial/a.ml", line 1, characters 0-0:
   Error: Files _build/default/partial/a.ml and
   _build/default/partial/.formatted/a.ml differ.
+  File "enabled/reason_file.re", line 1, characters 0-0:
+  Error: Files _build/default/enabled/reason_file.re and
+  _build/default/enabled/.formatted/reason_file.re differ.
+  File "enabled/reason_file.rei", line 1, characters 0-0:
+  Error: Files _build/default/enabled/reason_file.rei and
+  _build/default/enabled/.formatted/reason_file.rei differ.
+  File "enabled/dune", line 1, characters 0-0:
+  Error: Files _build/default/enabled/dune and
+  _build/default/enabled/.formatted/dune differ.
   File "enabled/ocaml_file.ml", line 1, characters 0-0:
   Error: Files _build/default/enabled/ocaml_file.ml and
   _build/default/enabled/.formatted/ocaml_file.ml differ.
   File "enabled/ocaml_file.mli", line 1, characters 0-0:
   Error: Files _build/default/enabled/ocaml_file.mli and
   _build/default/enabled/.formatted/ocaml_file.mli differ.
+  File "enabled/subdir/dune", line 1, characters 0-0:
+  Error: Files _build/default/enabled/subdir/dune and
+  _build/default/enabled/subdir/.formatted/dune differ.
   File "enabled/subdir/lib.ml", line 1, characters 0-0:
   Error: Files _build/default/enabled/subdir/lib.ml and
   _build/default/enabled/subdir/.formatted/lib.ml differ.
@@ -129,18 +129,18 @@ All .ocamlformat files are considered dependencies:
   File "enabled/reason_file.rei", line 1, characters 0-0:
   Error: Files _build/default/enabled/reason_file.rei and
   _build/default/enabled/.formatted/reason_file.rei differ.
-  File "enabled/subdir/dune", line 1, characters 0-0:
-  Error: Files _build/default/enabled/subdir/dune and
-  _build/default/enabled/subdir/.formatted/dune differ.
-  File "lang2/default/dune", line 1, characters 0-0:
-  Error: Files _build/default/lang2/default/dune and
-  _build/default/lang2/default/.formatted/dune differ.
   File "enabled/ocaml_file.mli", line 1, characters 0-0:
   Error: Files _build/default/enabled/ocaml_file.mli and
   _build/default/enabled/.formatted/ocaml_file.mli differ.
+  File "enabled/subdir/dune", line 1, characters 0-0:
+  Error: Files _build/default/enabled/subdir/dune and
+  _build/default/enabled/subdir/.formatted/dune differ.
   File "enabled/subdir/lib.ml", line 1, characters 0-0:
   Error: Files _build/default/enabled/subdir/lib.ml and
   _build/default/enabled/subdir/.formatted/lib.ml differ.
+  File "lang2/default/dune", line 1, characters 0-0:
+  Error: Files _build/default/lang2/default/dune and
+  _build/default/lang2/default/.formatted/dune differ.
   File "lang2/default/e.ml", line 1, characters 0-0:
   Error: Files _build/default/lang2/default/e.ml and
   _build/default/lang2/default/.formatted/e.ml differ.

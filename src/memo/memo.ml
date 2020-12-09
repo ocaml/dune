@@ -146,11 +146,30 @@ let reset () =
 (* A value calculated during a sample attempt, or an exception with a backtrace
    if the attempt failed. *)
 module Value = struct
-  type 'a t = ('a, Exn_with_backtrace.t) Result.t
+  (* Invariant: sync computations always produce a single exception in the error
+     case *)
+  type 'a t = ('a, Exn_with_backtrace.t list) Result.t
 
-  let get_exn = function
+  let map_error t ~f =
+    match t with
+    | Ok _ -> t
+    | Error e -> Error (List.map e ~f)
+
+  let get_sync_exn = function
     | Ok a -> a
-    | Error exn -> Exn_with_backtrace.reraise exn
+    | Error [ exn ] -> Exn_with_backtrace.reraise exn
+    | Error _ ->
+      (* It's not possible for a sync computation to raise more than one error *)
+      assert false
+
+  let get_async_exn = function
+    | Ok a -> Fiber.return a
+    | Error [] -> assert false
+    | Error exns ->
+      (* XXX perhaps Fiber should provide a function that does this more
+         efficiently *)
+      let* () = Fiber.parallel_iter exns ~f:Exn_with_backtrace.reraise in
+      Fiber.never
 end
 
 module Completion = struct
@@ -177,7 +196,10 @@ end)
 module M = struct
   module rec Cached_value : sig
     type 'a t =
-      { value : 'a Value.t
+      { (* TODO For a sync computation, the error case corresponds to only a
+           single exception. Attempt to reflect this in the system by
+           parameterizing the error type. *)
+        value : 'a Value.t
       ; (* When was the value calculated. *)
         mutable calculated_at : Run.t
       ; (* The values stored in [deps] must have been calculated at
@@ -575,7 +597,7 @@ module Stack_frame = struct
 end
 
 let handle_code_error ~frame (value : 'a Value.t) : 'a Value.t =
-  Result.map_error value ~f:(fun exn ->
+  Value.map_error value ~f:(fun exn ->
       let code_error (e : Code_error_with_memo_backtrace.t) =
         let bt = exn.backtrace in
         let { Code_error_with_memo_backtrace.exn
@@ -686,7 +708,8 @@ end = struct
                (* If [f] raises an exception, [push_sync_frame] re-raises it
                   twice, so you'd end up with ugly "re-raised by" stack frames.
                   Catching it here cuts the backtrace to just the desired part. *)
-               Exn_with_backtrace.try_with (fun () -> f inp)))
+               Exn_with_backtrace.try_with (fun () -> f inp)
+               |> Result.map_error ~f:(fun x -> [ x ])))
     in
     (* update the output cache with the correct value *)
     let deps = List.rev running_state.deps_so_far.deps_reversed in
@@ -745,7 +768,7 @@ end = struct
           let last_dep = Last_dep.T (dep_node, value) in
           add_last_dep ~last_dep)
     in
-    Value.get_exn value
+    Value.get_sync_exn value
 
   let exec t inp = exec_dep_node (dep_node t inp) inp
 end
@@ -763,17 +786,23 @@ end = struct
         (T { without_state = dep_node.without_state; running_state })
         (fun () ->
           match dep_node.without_state.spec.f with
-          | Function.Async f -> f inp)
+          | Function.Async f ->
+            (* A consequence of using [Fiber.collect_errors] is that memoized
+               functions don't report errors promptly - errors are reported once
+               all child fibers terminate. To fix this, we should use
+               [Fiber.with_error_handler], but we dont have access to dune's
+               error reoprting mechanism in memo *)
+            Fiber.collect_errors (fun () -> f inp))
     in
     (* update the output cache with the correct value *)
     let deps = List.rev running_state.deps_so_far.deps_reversed in
     (* CR-someday aalekseyev: Set the resulting value to [Error] if there were
        errors while running [f]. Currently not doing that because sometimes [f]
        both returns a result and keeps producing errors. Not sure why. *)
-    dep_node.state <- Done (Cached_value.create (Ok res) ~deps);
+    dep_node.state <- Done (Cached_value.create res ~deps);
     (* fill the ivar for any waiting threads *)
-    let+ () = Fiber.Ivar.fill ivar (Ok res) in
-    Ok res
+    let+ () = Fiber.Ivar.fill ivar res in
+    res
 
   (* CR-someday aalekseyev: I defined in continuation-passing style instead of
      using [Fiber.return] to make sure there's no interleaving intervening
@@ -819,7 +848,7 @@ end = struct
           add_dep_from_caller ~called_from_peek:false dep_node
             (Cache_lookup_result.sample_attempt_dag_node result)
         in
-        let+ value =
+        let* value =
           match result with
           | Done v -> Fiber.return v
           | Waiting (_dag_node, ivar) -> Fiber.Ivar.read ivar
@@ -830,7 +859,7 @@ end = struct
               let last_dep = Last_dep.T (dep_node, value) in
               add_last_dep ~last_dep)
         in
-        Value.get_exn value)
+        Value.get_async_exn value)
 
   let exec t inp = exec_dep_node (dep_node t inp) inp
 end
@@ -863,7 +892,7 @@ let peek (type i o f) (t : (i, o, f) t) inp =
               let last_dep = Last_dep.T (dep_node, cv.value) in
               add_last_dep ~last_dep)
         in
-        Some (Value.get_exn cv.value)
+        Some (Value.get_sync_exn cv.value)
       else
         None )
 

@@ -655,3 +655,47 @@ let%expect_test "Sequence.parallel_iter doesn't leak" =
   test ~iter_function:Fiber.Sequence.parallel_iter ~check:(fun ~prev ~curr ->
       prev = curr);
   [%expect {| PASS |}]
+
+let sorted_failures v =
+  Result.map_error v
+    ~f:
+      (List.sort
+         ~compare:(fun (x : Exn_with_backtrace.t) (y : Exn_with_backtrace.t) ->
+           match (x.exn, y.exn) with
+           | Failure x, Failure y -> String.compare x y
+           | _, _ -> assert false))
+
+let%expect_test "fork - exceptions always thrown" =
+  test
+    (fun x -> sorted_failures x |> backtrace_result unit)
+    (Fiber.collect_errors (fun () ->
+         Fiber.fork_and_join_unit
+           (fun () -> failwith "left")
+           (fun () -> failwith "right")));
+  [%expect
+    {|
+    Error
+      [ { exn = "(Failure left)"; backtrace = "" }
+      ; { exn = "(Failure right)"; backtrace = "" }
+      ] |}]
+
+let test iter =
+  test
+    (fun x -> sorted_failures x |> backtrace_result unit)
+    (Fiber.collect_errors (fun () ->
+         iter [ 1; 2; 3 ] ~f:(fun x -> failwith (Int.to_string x))))
+
+let%expect_test "parallel_iter - all exceptions raised" =
+  test Fiber.parallel_iter;
+  [%expect
+    {|
+    Error
+      [ { exn = "(Failure 1)"; backtrace = "" }
+      ; { exn = "(Failure 2)"; backtrace = "" }
+      ; { exn = "(Failure 3)"; backtrace = "" }
+      ] |}]
+
+let%expect_test "sequential_iter - stop after first exception" =
+  test Fiber.sequential_iter;
+  [%expect {|
+    Error [ { exn = "(Failure 1)"; backtrace = "" } ] |}]

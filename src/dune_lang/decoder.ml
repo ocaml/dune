@@ -43,9 +43,9 @@ module Fields : sig
     ; known : string list
     }
 
-  val add_known : string -> t -> t
+  val add_known : t -> string -> t
 
-  val consume : string -> t -> t
+  val consume : t -> string -> t
 
   val unparsed_ast : t -> Ast.t list
 end = struct
@@ -62,12 +62,12 @@ end = struct
     ; known : string list
     }
 
-  let consume name state =
+  let consume state name =
     { unparsed = Name.Map.remove state.unparsed name
     ; known = name :: state.known
     }
 
-  let add_known name state = { state with known = name :: state.known }
+  let add_known state name = { state with known = name :: state.known }
 
   let unparsed_ast { unparsed; _ } =
     let rec loop acc = function
@@ -604,10 +604,10 @@ let field name ?default ?on_dup t (Fields (loc, _, uc)) state =
   | Some { values; entry; _ } ->
     let ctx = Values (Ast.loc entry, Some name, uc) in
     let x = result ctx (t ctx values) in
-    (x, Fields.consume name state)
+    (x, Fields.consume state name)
   | None -> (
     match default with
-    | Some v -> (v, Fields.add_known name state)
+    | Some v -> (v, Fields.add_known state name)
     | None -> field_missing loc name )
 
 let field_o name ?on_dup t (Fields (_, _, uc)) state =
@@ -615,8 +615,8 @@ let field_o name ?on_dup t (Fields (_, _, uc)) state =
   | Some { values; entry; _ } ->
     let ctx = Values (Ast.loc entry, Some name, uc) in
     let x = result ctx (t ctx values) in
-    (Some x, Fields.consume name state)
-  | None -> (None, Fields.add_known name state)
+    (Some x, Fields.consume state name)
+  | None -> (None, Fields.add_known state name)
 
 let field_b_gen field_gen ?check ?on_dup name =
   field_gen name ?on_dup
@@ -639,7 +639,7 @@ let multi_field name t (Fields (_, _, uc)) (state : Fields.t) =
       loop (x :: acc) prev
   in
   let res = loop [] (Name.Map.find state.unparsed name) in
-  (res, Fields.consume name state)
+  (res, Fields.consume state name)
 
 let fields t (Values (loc, cstr, uc)) sexps =
   let ctx = Fields (loc, cstr, uc) in

@@ -31,23 +31,29 @@ end
 
 module Fields : sig
   module Unparsed : sig
-    type t =
+    type t = private
       { values : Ast.t list
       ; entry : Ast.t
       ; prev : t option (* Previous occurrence of this field *)
       }
   end
 
-  type t =
+  type t = private
     { unparsed : Unparsed.t Name.Map.t
     ; known : string list
     }
+
+  val of_values : Ast.t list -> t
 
   val add_known : t -> string -> t
 
   val consume : t -> string -> t
 
   val unparsed_ast : t -> Ast.t list
+
+  val junk_unparsed : t -> t
+
+  val leftover_fields : t -> string list -> t
 end = struct
   module Unparsed = struct
     type t =
@@ -61,6 +67,31 @@ end = struct
     { unparsed : Unparsed.t Name.Map.t
     ; known : string list
     }
+
+  let leftover_fields t fields =
+    { unparsed = Name.Map.empty; known = t.known @ fields }
+
+  let junk_unparsed t = { t with unparsed = Name.Map.empty }
+
+  let of_values sexps =
+    let unparsed =
+      List.fold_left sexps ~init:Name.Map.empty ~f:(fun acc sexp ->
+          match sexp with
+          | List (_, name_sexp :: values) -> (
+            match name_sexp with
+            | Atom (_, A name) ->
+              Name.Map.set acc name
+                { Unparsed.values; entry = sexp; prev = Name.Map.find acc name }
+            | List (loc, _)
+            | Quoted_string (loc, _)
+            | Template { loc; _ } ->
+              User_error.raise ~loc [ Pp.text "Atom expected" ] )
+          | _ ->
+            User_error.raise ~loc:(Ast.loc sexp)
+              [ Pp.text "S-expression of the form (<name> <values>...) expected"
+              ])
+    in
+    { unparsed; known = [] }
 
   let consume state name =
     { unparsed = Name.Map.remove state.unparsed name
@@ -208,33 +239,11 @@ let parse t context sexp =
   let ctx = Values (Ast.loc sexp, None, context) in
   result ctx (t ctx [ sexp ])
 
-let fields_of_values sexps =
-  let unparsed =
-    List.fold_left sexps ~init:Name.Map.empty ~f:(fun acc sexp ->
-        match sexp with
-        | List (_, name_sexp :: values) -> (
-          match name_sexp with
-          | Atom (_, A name) ->
-            Name.Map.set acc name
-              { Fields.Unparsed.values
-              ; entry = sexp
-              ; prev = Name.Map.find acc name
-              }
-          | List (loc, _)
-          | Quoted_string (loc, _)
-          | Template { loc; _ } ->
-            User_error.raise ~loc [ Pp.text "Atom expected" ] )
-        | _ ->
-          User_error.raise ~loc:(Ast.loc sexp)
-            [ Pp.text "S-expression of the form (<name> <values>...) expected" ])
-  in
-  { Fields.unparsed; known = [] }
-
 let set_input : type k. ast list -> (unit, k) parser =
  fun sexps context _ ->
   match context with
   | Values _ -> ((), sexps)
-  | Fields _ -> ((), fields_of_values sexps)
+  | Fields _ -> ((), Fields.of_values sexps)
 
 let capture ctx state =
   let f t = result ctx (t ctx state) in
@@ -278,7 +287,7 @@ let junk_everything : type k. (unit, k) parser =
  fun ctx state ->
   match ctx with
   | Values _ -> ((), [])
-  | Fields _ -> ((), { state with unparsed = Name.Map.empty })
+  | Fields _ -> ((), Fields.junk_unparsed state)
 
 let keyword kwd =
   next (function
@@ -643,7 +652,7 @@ let multi_field name t (Fields (_, _, uc)) (state : Fields.t) =
 
 let fields t (Values (loc, cstr, uc)) sexps =
   let ctx = Fields (loc, cstr, uc) in
-  let x = result ctx (t ctx (fields_of_values sexps)) in
+  let x = result ctx (t ctx (Fields.of_values sexps)) in
   (x, [])
 
 let leftover_fields_generic t more_fields (Fields (loc, cstr, uc)) state =
@@ -651,7 +660,7 @@ let leftover_fields_generic t more_fields (Fields (loc, cstr, uc)) state =
     let ctx = Values (loc, cstr, uc) in
     result ctx (repeat t ctx (Fields.unparsed_ast state))
   in
-  (x, { Fields.known = state.known @ more_fields; unparsed = Name.Map.empty })
+  (x, Fields.leftover_fields state more_fields)
 
 let leftover_fields ctx (state : Fields.t) =
   leftover_fields_generic raw (Name.Map.keys state.unparsed) ctx state

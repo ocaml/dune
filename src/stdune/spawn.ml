@@ -21,7 +21,6 @@ let perform_redirections stdin stdout stderr =
   safe_close stderr
 
 let exec ?env prog argv =
-  ignore (Unix.sigprocmask SIG_SETMASK [] : int list);
   match env with
   | None -> Unix.execv prog argv
   | Some env -> Unix.execve prog argv env
@@ -46,6 +45,7 @@ let spawn ?env ~prog ~argv ?(stdin = Unix.stdin) ?(stdout = Unix.stdout)
       match Unix.fork () with
       | 0 -> (
         try
+          ignore (Unix.sigprocmask SIG_SETMASK [] : int list);
           perform_redirections stdin stdout stderr;
           exec ?env prog argv
         with _ -> sys_exit 127 )
@@ -63,5 +63,7 @@ let exec ?env ~prog ~argv () =
     | WEXITED n -> exit n
     | WSIGNALED _ -> exit 255
     | WSTOPPED _ -> assert false
-  else
+  else (
+    ignore (Unix.sigprocmask SIG_SETMASK [] : int list);
     exec ?env prog argv
+  )

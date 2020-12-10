@@ -29,7 +29,26 @@ module Name = struct
   module Map = Map.Make (T)
 end
 
-module Fields = struct
+module Fields : sig
+  module Unparsed : sig
+    type t =
+      { values : Ast.t list
+      ; entry : Ast.t
+      ; prev : t option (* Previous occurrence of this field *)
+      }
+  end
+
+  type t =
+    { unparsed : Unparsed.t Name.Map.t
+    ; known : string list
+    }
+
+  val add_known : string -> t -> t
+
+  val consume : string -> t -> t
+
+  val unparsed_ast : t -> Ast.t list
+end = struct
   module Unparsed = struct
     type t =
       { values : Ast.t list

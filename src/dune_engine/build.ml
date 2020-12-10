@@ -24,7 +24,7 @@ type 'a t =
   | Or_exn : 'a Or_exn.t t -> 'a t
   | Fail : fail -> _ t
   | Memo : 'a memo -> 'a t
-  | Catch : 'a t * (exn -> 'a) -> 'a t
+  | Don't_fail : 'a t * 'a -> 'a t
   | Deps : Dep.Set.t -> unit t
   | Fiber : 'a Fiber.t -> 'a t
   | Dyn_fiber : 'a Fiber.t t -> 'a t
@@ -115,7 +115,7 @@ let env_var s = Deps (Dep.Set.singleton (Dep.env s))
 
 let alias a = dep (Dep.alias a)
 
-let catch t ~on_error = Catch (t, on_error)
+let don't_fail t ~on_error = Don't_fail (t, on_error)
 
 let contents p = Contents p
 
@@ -317,7 +317,7 @@ end = struct
     | Or_exn _ -> Static_deps.empty
     | Fail _ -> Static_deps.empty
     | Memo m -> Memo.exec memo (Input.T m)
-    | Catch (t, _) -> static_deps t
+    | Don't_fail (t, _) -> static_deps t
     | Fiber _ -> Static_deps.empty
     | Dyn_fiber b -> static_deps b
     | Build b -> static_deps b
@@ -360,7 +360,7 @@ let fold_labeled (type acc) t ~(init : acc) ~f =
         loop else_ acc
     | Filter_existing_files p -> loop p acc
     | Memo m -> loop m.t acc
-    | Catch (t, _) -> loop t acc
+    | Don't_fail (t, _) -> loop t acc
     | Fiber _ -> acc
     | Dyn_fiber b -> loop b acc
     | Build b -> loop b acc
@@ -446,16 +446,15 @@ module Make_exec (Build_deps:sig val build_deps: Dep.Set.t -> unit Fiber.t end) 
         let+ (x, files), dyn_deps = exec p in
         let files = Path.Set.filter ~f:file_exists files in
         ((x, files), dyn_deps)
-      | Catch (t, on_error) -> (
+      | Don't_fail (t, on_error) -> (
           let+ res = Fiber.fold_errors
-                       ~init:None
-                       ~on_error:(fun bt _ -> Some (on_error bt.Exn_with_backtrace.exn))
+                       ~init:on_error
+                       ~on_error:(fun _ x -> x)
                        (fun () -> exec t)
           in
           match res with
           | Ok r -> r
-          | Error None -> assert false
-          | Error (Some r) -> (r, Dep.Set.empty)
+          | Error r -> (r, Dep.Set.empty)
         )
       | Memo m -> Memo.eval m
       | Fiber f ->

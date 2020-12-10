@@ -168,7 +168,7 @@ module Unprocessed = struct
     in
     let cu_config =
       { requires
-      ; flags = Build.catch flags ~on_error:(fun _ -> [])
+      ; flags = Build.don't_fail flags ~on_error:[]
       ; preprocess
       ; libname
       ; source_dirs

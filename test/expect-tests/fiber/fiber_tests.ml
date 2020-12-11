@@ -182,7 +182,7 @@ let%expect_test "collect errors inside with_error_handler" =
          | Ok () -> assert false
          | Error l ->
            print_endline "got the error out of collect_errors";
-           List.iter l ~f:Exn_with_backtrace.reraise;
+           let* () = Fiber.reraise_all l in
            assert false));
   [%expect
     {|

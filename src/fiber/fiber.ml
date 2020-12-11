@@ -423,6 +423,10 @@ let collect_errors f =
   | Ok x -> Ok x
   | Error l -> Error (List.rev l)
 
+let reraise_all exns =
+  let* () = parallel_iter exns ~f:Exn_with_backtrace.reraise in
+  never
+
 let finalize f ~finally =
   let* res1 = collect_errors f in
   let* res2 = collect_errors finally in
@@ -436,10 +440,7 @@ let finalize f ~finally =
   in
   match res with
   | Ok x -> return x
-  | Error l ->
-    let* () = parallel_iter l ~f:(fun exn -> Exn_with_backtrace.reraise exn) in
-    (* We might reach this point if all raised errors were handled by the user *)
-    never
+  | Error l -> reraise_all l
 
 module Ivar = struct
   type 'a state =

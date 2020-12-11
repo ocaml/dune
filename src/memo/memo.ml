@@ -165,11 +165,7 @@ module Value = struct
   let get_async_exn = function
     | Ok a -> Fiber.return a
     | Error [] -> assert false
-    | Error exns ->
-      (* XXX perhaps Fiber should provide a function that does this more
-         efficiently *)
-      let* () = Fiber.parallel_iter exns ~f:Exn_with_backtrace.reraise in
-      Fiber.never
+    | Error exns -> Fiber.reraise_all exns
 end
 
 module Completion = struct

@@ -148,6 +148,9 @@ val collect_errors :
     fails or succeeds. *)
 val finalize : (unit -> 'a t) -> finally:(unit -> unit t) -> 'a t
 
+(** [reraise_all exns] re-raises all [exns] to the current error handler *)
+val reraise_all : Exn_with_backtrace.t list -> 'a t
+
 (** {1 Synchronization} *)
 
 (** Write once variables *)

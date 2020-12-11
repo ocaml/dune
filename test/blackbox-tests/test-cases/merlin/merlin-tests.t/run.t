@@ -119,5 +119,33 @@ Make sure pp flag is correct and variables are expanded
      -nothing"))
    (FLG (-w -40)))
 
-We want future-syntax to either be applied, or not, depending on OCaml version.
-Adding the `echo` with expected output to the set of lines is a way of achieving that.
+Check hash of executables names if more than one
+  $ dune build ./exes/.merlin-conf/exe-x-6562915302827c6dce0630390bfa68b7
+  $ dune ocaml-merlin --dump-config=$(pwd)/exes |
+  > sed 's#'$(opam config var prefix)'#OPAM_PREFIX#'
+  x
+  ((EXCLUDE_QUERY_DIR)
+   (B
+    $TESTCASE_ROOT/_build/default/exes/.x.eobjs/byte)
+   (S
+    $TESTCASE_ROOT/exes)
+   (FLG
+    (-w
+     @1..3@5..28@30..39@43@46..47@49..57@61..62-40
+     -strict-sequence
+     -strict-formats
+     -short-paths
+     -keep-locs)))
+  y
+  ((EXCLUDE_QUERY_DIR)
+   (B
+    $TESTCASE_ROOT/_build/default/exes/.x.eobjs/byte)
+   (S
+    $TESTCASE_ROOT/exes)
+   (FLG
+    (-w
+     @1..3@5..28@30..39@43@46..47@49..57@61..62-40
+     -strict-sequence
+     -strict-formats
+     -short-paths
+     -keep-locs)))

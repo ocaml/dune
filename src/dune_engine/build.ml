@@ -371,14 +371,19 @@ let fold_labeled (type acc) t ~(init : acc) ~f =
 
 module Expert = struct
   let fiber f = Fiber f
+
   let dyn_fiber f = Dyn_fiber f
+
   let build f = Build f
 end
 
-module Make_exec (Build_deps:sig val build_deps: Dep.Set.t -> unit Fiber.t end) = struct
-
+module Make_exec (Build_deps : sig
+  val build_deps : Dep.Set.t -> unit Fiber.t
+end) =
+struct
   module rec Execution : sig
     val exec : 'a t -> ('a * Dep.Set.t) Fiber.t
+
     val build_deps_and_exec : 'a t -> ('a * Dep.Set.t) Fiber.t
   end = struct
     module Function = struct
@@ -398,12 +403,13 @@ module Make_exec (Build_deps:sig val build_deps: Dep.Set.t -> unit Fiber.t end) 
     module Memo = Memo.Poly.Async (Function)
 
     let file_exists x = Fdecl.get file_exists_fdecl x
+
     let eval_pred x = Fdecl.get Dep.eval_pred x
 
     open Fiber.O
 
     let rec exec : type a. a t -> (a * Dep.Set.t) Fiber.t =
-      fun t ->
+     fun t ->
       match t with
       | Pure x -> Fiber.return (x, Dep.Set.empty)
       | Map (f, a) ->
@@ -447,15 +453,14 @@ module Make_exec (Build_deps:sig val build_deps: Dep.Set.t -> unit Fiber.t end) 
         let files = Path.Set.filter ~f:file_exists files in
         ((x, files), dyn_deps)
       | Don't_fail (t, on_error) -> (
-          let+ res = Fiber.fold_errors
-                       ~init:on_error
-                       ~on_error:(fun _ x -> x)
-                       (fun () -> exec t)
-          in
-          match res with
-          | Ok r -> r
-          | Error r -> (r, Dep.Set.empty)
-        )
+        let+ res =
+          Fiber.fold_errors ~init:on_error
+            ~on_error:(fun _ x -> x)
+            (fun () -> exec t)
+        in
+        match res with
+        | Ok r -> r
+        | Error r -> (r, Dep.Set.empty) )
       | Memo m -> Memo.eval m
       | Fiber f ->
         let+ f = f in
@@ -468,13 +473,12 @@ module Make_exec (Build_deps:sig val build_deps: Dep.Set.t -> unit Fiber.t end) 
         let* b, deps0 = exec b in
         let+ r, deps1 = build_deps_and_exec b in
         (r, Dep.Set.union deps0 deps1)
+
     and build_deps_and_exec : type a. a t -> (a * Dep.Set.t) Fiber.t =
-      fun t ->
+     fun t ->
       let* () = Build_deps.build_deps (static_deps t).rule_deps in
       exec t
-
   end
 
   include Execution
-
 end

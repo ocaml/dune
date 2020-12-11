@@ -1172,7 +1172,9 @@ end = struct
       | Sandbox_config _ ->
         Fiber.return ())
 
-  module Build_exec = Build.Make_exec(struct let build_deps = build_deps end)
+  module Build_exec = Build.Make_exec (struct
+    let build_deps = build_deps
+  end)
 
   let () = Build.set_file_system_accessors ~file_exists
 

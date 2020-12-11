@@ -209,8 +209,9 @@ val fold_labeled : _ t -> init:'acc -> f:(label -> 'acc -> 'acc) -> 'acc
 
 (** {1 Execution} *)
 
-module Make_exec (Build_deps:sig val build_deps: Dep.Set.t -> unit Fiber.t end) : sig
-
+module Make_exec (Build_deps : sig
+  val build_deps : Dep.Set.t -> unit Fiber.t
+end) : sig
   (** Execute a build description. Returns the result and the set of dynamic
       dependencies discovered during execution. *)
   val exec : 'a t -> ('a * Dep.Set.t) Fiber.t
@@ -220,17 +221,19 @@ module Make_exec (Build_deps:sig val build_deps: Dep.Set.t -> unit Fiber.t end) 
   val build_deps_and_exec : 'a t -> ('a * Dep.Set.t) Fiber.t
 end
 
-module Expert: sig
+module Expert : sig
   (** Those function are experimental in there usage. Each usage must be
-     discussed, avoid to use them if possible. Moreover they can be more tricky
-     to use. In a {!fiber} and {!dyn_fiber} should ensure that generated files
-     are already regenerated. The {!build} function turn dependencies that can
-     be though as static in dynamic dependencies, which can reduce the
-     parallelism. *)
+      discussed, avoid to use them if possible. Moreover they can be more tricky
+      to use. In a {!fiber} and {!dyn_fiber} should ensure that generated files
+      are already regenerated. The {!build} function turn dependencies that can
+      be though as static in dynamic dependencies, which can reduce the
+      parallelism. *)
 
-  val fiber: 'a Fiber.t -> 'a t
-  val dyn_fiber: 'a Fiber.t t -> 'a t
-  val build: 'a t t -> 'a t
+  val fiber : 'a Fiber.t -> 'a t
+
+  val dyn_fiber : 'a Fiber.t t -> 'a t
+
+  val build : 'a t t -> 'a t
 end
 
 (**/**)

@@ -38,10 +38,11 @@ Test embedding of sites locations information
 
   $ cat >b/dune <<EOF
   > (library
-  >  (public_name b)
+  >  (public_name b.b.b)
+  >  (name b)
   >  (libraries c.register dune-site))
   > (generate_sites_module (module sites) (sites b))
-  > (plugin (name c-plugins-b) (libraries b) (site (c plugins)))
+  > (plugin (name c-plugins-b) (libraries b.b.b) (site (c plugins)))
   > (install (section (site (b data))) (files info.txt))
   > EOF
 
@@ -124,6 +125,10 @@ Test embedding of sites locations information
   > EOF
 
   $ dune build
+             c c/out.log (exit 2)
+  (cd _build/default/c && ../../install/default/bin/c) > _build/default/c/out.log
+  Fatal error: exception Dynlink.Error (Dynlink.Cannot_open_dll "Dynlink.Error (Dynlink.Cannot_open_dll \"Failure(\\\"$TESTCASE_ROOT/_build/install/default/lib/b/b/b.cmxs: cannot open shared object file: No such file or directory\\\")\")")
+  [1]
 
 Test with a normal installation
 --------------------------------
@@ -139,10 +144,8 @@ Once installed, we have the sites information:
   no sourceroot
   c: $TESTCASE_ROOT/_install/share/c/data
   b is available: true
-  run b
-  b: $TESTCASE_ROOT/_install/share/b/data
-  info.txt is found: true
-  run c: registered:b.
+  Fatal error: exception Dynlink.Error (Dynlink.Cannot_open_dll "Dynlink.Error (Dynlink.Cannot_open_dll \"Failure(\\\"$TESTCASE_ROOT/_install/lib/b/b/b.cmxs: cannot open shared object file: No such file or directory\\\")\")")
+  [2]
 
 Test with a relocatable installation
 --------------------------------
@@ -158,10 +161,8 @@ Once installed, we have the sites information:
   no sourceroot
   c: $TESTCASE_ROOT/_install_relocatable/share/c/data
   b is available: true
-  run b
-  b: $TESTCASE_ROOT/_install_relocatable/share/b/data
-  info.txt is found: true
-  run c: registered:b.
+  Fatal error: exception Dynlink.Error (Dynlink.Cannot_open_dll "Dynlink.Error (Dynlink.Cannot_open_dll \"Failure(\\\"$TESTCASE_ROOT/_install_relocatable/lib/b/b/b.cmxs: cannot open shared object file: No such file or directory\\\")\")")
+  [2]
 
 Test after moving a relocatable installation
 --------------------------------
@@ -177,10 +178,8 @@ Once installed, we have the sites information:
   no sourceroot
   c: $TESTCASE_ROOT/_install_relocatable2/share/c/data
   b is available: true
-  run b
-  b: $TESTCASE_ROOT/_install_relocatable2/share/b/data
-  info.txt is found: true
-  run c: registered:b.
+  Fatal error: exception Dynlink.Error (Dynlink.Cannot_open_dll "Dynlink.Error (Dynlink.Cannot_open_dll \"Failure(\\\"$TESTCASE_ROOT/_install_relocatable2/lib/b/b/b.cmxs: cannot open shared object file: No such file or directory\\\")\")")
+  [2]
 
 Test substitution when promoting
 --------------------------------
@@ -195,25 +194,20 @@ development because b is not promoted
   sourceroot is "$TESTCASE_ROOT"
   c: $TESTCASE_ROOT/_build/install/default/share/c/data
   b is available: true
-  run b
-  info.txt is found: false
-  run c: registered:b.
+  Fatal error: exception Dynlink.Error (Dynlink.Cannot_open_dll "Dynlink.Error (Dynlink.Cannot_open_dll \"Failure(\\\"$TESTCASE_ROOT/_build/install/default/lib/b/b/b.cmxs: cannot open shared object file: No such file or directory\\\")\")")
+  [2]
 
 Test within dune rules
 --------------------------------
   $ dune build c/out.log
+             c c/out.log (exit 2)
+  (cd _build/default/c && ../../install/default/bin/c) > _build/default/c/out.log
+  Fatal error: exception Dynlink.Error (Dynlink.Cannot_open_dll "Dynlink.Error (Dynlink.Cannot_open_dll \"Failure(\\\"$TESTCASE_ROOT/_build/install/default/lib/b/b/b.cmxs: cannot open shared object file: No such file or directory\\\")\")")
+  [1]
 
   $ cat _build/default/c/out.log
-  run a
-  a: $TESTCASE_ROOT/_build/install/default/share/a/data
-  run c: a linked registered:.
-  sourceroot is "$TESTCASE_ROOT"
-  c: $TESTCASE_ROOT/_build/install/default/share/c/data
-  b is available: true
-  run b
-  b: $TESTCASE_ROOT/_build/install/default/share/b/data
-  info.txt is found: true
-  run c: registered:b.
+  cat: _build/default/c/out.log: No such file or directory
+  [1]
 
 
 Test with dune exec
@@ -225,10 +219,8 @@ Test with dune exec
   sourceroot is "$TESTCASE_ROOT"
   c: $TESTCASE_ROOT/_build/install/default/share/c/data
   b is available: true
-  run b
-  b: $TESTCASE_ROOT/_build/install/default/share/b/data
-  info.txt is found: true
-  run c: registered:b.
+  Fatal error: exception Dynlink.Error (Dynlink.Cannot_open_dll "Dynlink.Error (Dynlink.Cannot_open_dll \"Failure(\\\"$TESTCASE_ROOT/_build/install/default/lib/b/b/b.cmxs: cannot open shared object file: No such file or directory\\\")\")")
+  [2]
 
 
 Test compiling an external plugin
@@ -275,13 +267,8 @@ Test compiling an external plugin
   no sourceroot
   c: $TESTCASE_ROOT/_install/share/c/data
   b is available: true
-  run b
-  b: $TESTCASE_ROOT/_install/share/b/data
-  info.txt is found: true
-  run e
-  e: $TESTCASE_ROOT/e/_build/install/default/share/e/data
-  info.txt is found: true
-  run c: registered:e,b.
+  Fatal error: exception Dynlink.Error (Dynlink.Cannot_open_dll "Dynlink.Error (Dynlink.Cannot_open_dll \"Failure(\\\"$TESTCASE_ROOT/_install/lib/b/b/b.cmxs: cannot open shared object file: No such file or directory\\\")\")")
+  [2]
 
   $ OCAMLPATH=$(pwd)/_install/lib:$OCAMLPATH dune install --root=e --prefix $(pwd)/_install 2> /dev/null
 
@@ -292,10 +279,5 @@ Test compiling an external plugin
   no sourceroot
   c: $TESTCASE_ROOT/_install/share/c/data
   b is available: true
-  run b
-  b: $TESTCASE_ROOT/_install/share/b/data
-  info.txt is found: true
-  run e
-  e: $TESTCASE_ROOT/_install/share/e/data
-  info.txt is found: true
-  run c: registered:e,b.
+  Fatal error: exception Dynlink.Error (Dynlink.Cannot_open_dll "Dynlink.Error (Dynlink.Cannot_open_dll \"Failure(\\\"$TESTCASE_ROOT/_install/lib/b/b/b.cmxs: cannot open shared object file: No such file or directory\\\")\")")
+  [2]

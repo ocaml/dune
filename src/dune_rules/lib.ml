@@ -671,9 +671,13 @@ module Sub_system = struct
     | _ -> assert false
 
   let public_info lib =
-    Sub_system_name.Map.filter_map lib.sub_systems ~f:(fun (lazy inst) ->
-        let (Sub_system0.Instance.T ((module M), t)) = inst in
-        Option.map M.public_info ~f:(fun f -> M.Info.T (Result.ok_exn (f t))))
+    try
+      Ok
+        (Sub_system_name.Map.filter_map lib.sub_systems ~f:(fun (lazy inst) ->
+             let (Sub_system0.Instance.T ((module M), t)) = inst in
+             Option.map M.public_info ~f:(fun f ->
+                 M.Info.T (Result.ok_exn (f t)))))
+    with User_error.E _ as exn -> Error exn
 end
 
 (* Library name resolution and transitive closure *)
@@ -1932,9 +1936,9 @@ let to_dune_lib ({ info; _ } as lib) ~modules ~foreign_objects ~dir =
   and+ ppx_runtime_deps = lib.ppx_runtime_deps
   and+ main_module_name = main_module_name lib
   and+ requires = lib.requires
-  and+ re_exports = lib.re_exports in
+  and+ re_exports = lib.re_exports
+  and+ sub_systems = Sub_system.public_info lib in
   let ppx_runtime_deps = add_loc ppx_runtime_deps in
-  let sub_systems = Sub_system.public_info lib in
   let requires =
     List.map requires ~f:(fun lib ->
         if List.exists re_exports ~f:(fun r -> r = lib) then

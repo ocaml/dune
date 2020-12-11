@@ -271,8 +271,6 @@ module Sub_system : sig
     (** Get the instance of the subsystem for this library *)
     val get : lib -> M.t option
   end
-
-  val public_info : lib -> Sub_system_info.t Sub_system_name.Map.t
 end
 with type lib := t
 

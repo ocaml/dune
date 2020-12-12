@@ -27,10 +27,12 @@ We should not be able to produce a directory in a rule that already exists
 Dune crashes if there's a file named after the directory target
   $ dune build --root file-overlap-dir @all
   Entering directory 'file-overlap-dir'
-  Error: Multiple rules generated for _build/default/dir:
-  - file present in source tree
-  - dune:1
-  Hint: rm -f dir
+  File "dune", line 1, characters 0-57:
+  1 | (rule
+  2 |  (targets dir)
+  3 |  (action (bash "mkdir %{targets}")))
+  Error: Rule has a target default/dir
+  This conflicts with a source directory in the same directory
   [1]
 
 directory target and (mode promote) results in a crash

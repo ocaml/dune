@@ -38,40 +38,47 @@ let rec check_predicates predicates =
     (not (Data.findlib_predicates_set_by_dune pred))
     && check_predicates predicates
 
-let rec get_plugin directory plugins requires entries =
+let rec get_plugin plugins requires entries =
   match entries with
-  | [] -> (directory, List.rev plugins, List.rev requires)
-  | Meta_parser.Comment _ :: entries ->
-    get_plugin directory plugins requires entries
-  | Package _ :: entries -> get_plugin directory plugins requires entries
-  | Rule { var = "directory"; predicates = []; action = Set; value } :: entries
-    ->
-    get_plugin (Some value) plugins requires entries
+  | [] -> (List.rev plugins, List.rev requires)
+  | Meta_parser.Comment _ :: entries -> get_plugin plugins requires entries
+  | Package _ :: entries -> get_plugin plugins requires entries
   | Rule { var = "plugin"; predicates; action = Set; value } :: entries
     when check_predicates predicates ->
-    get_plugin directory [ value ] requires entries
+    get_plugin [ value ] requires entries
   | Rule { var = "plugin"; predicates; action = Add; value } :: entries
     when check_predicates predicates ->
-    get_plugin directory (value :: plugins) requires entries
+    get_plugin (value :: plugins) requires entries
   | Rule { var = "requires"; predicates; action = Set; value } :: entries
     when check_predicates predicates ->
-    get_plugin directory plugins [ value ] entries
+    get_plugin plugins [ value ] entries
   | Rule { var = "requires"; predicates; action = Add; value } :: entries
     when check_predicates predicates ->
-    get_plugin directory plugins (value :: requires) entries
-  | Rule _ :: entries -> get_plugin directory plugins requires entries
+    get_plugin plugins (value :: requires) entries
+  | Rule _ :: entries -> get_plugin plugins requires entries
 
 exception Library_not_found of string
 
-let rec find_library ~rest meta =
-  match rest with
-  | [] -> meta
-  | pkg :: rest ->
+let rec find_library ~suffix directory meta =
+  let rec find_directory directory = function
+    | [] -> directory
+    | Meta_parser.Rule
+        { var = "directory"; predicates = []; action = Set; value }
+      :: _ -> (
+      match directory with
+      | None -> Some value
+      | Some old -> Some (Filename.concat old value) )
+    | _ :: entries -> find_directory directory entries
+  in
+  match suffix with
+  | [] -> (find_directory directory meta, meta)
+  | pkg :: suffix ->
+    let directory = find_directory directory meta in
     let rec aux pkg = function
       | [] -> raise (Library_not_found pkg)
       | Meta_parser.Package { name = Some name; entries } :: _
         when String.equal name pkg ->
-        find_library ~rest entries
+        find_library ~suffix directory entries
       | _ :: entries -> aux pkg entries
     in
     aux pkg meta
@@ -105,10 +112,9 @@ let extract_comma_space_separated_words s =
 
 let split_all l = List.concat (List.map extract_comma_space_separated_words l)
 
-let find_plugin ~dir ~rest meta =
-  let directory, plugins, requires =
-    get_plugin None [] [] (find_library ~rest meta.Meta_parser.entries)
-  in
+let find_plugin ~dir ~suffix meta =
+  let directory, meta = find_library ~suffix None meta.Meta_parser.entries in
+  let plugins, requires = get_plugin [] [] meta in
   let directory =
     match directory with
     | None -> dir
@@ -163,18 +169,18 @@ let split name =
   | pkg :: rest -> (pkg, rest)
 
 let lookup_and_summarize dirs name =
-  let pkg, rest = split name in
+  let pkg, suffix = split name in
   let rec loop dirs =
     match dirs with
     | [] -> (
       List.assoc_opt pkg Data.builtin_library |> function
       | None -> raise (Library_not_found name)
-      | Some meta -> find_plugin ~dir:(Lazy.force Helpers.stdlib) ~rest meta )
+      | Some meta -> find_plugin ~dir:(Lazy.force Helpers.stdlib) ~suffix meta )
     | dir :: dirs -> (
       let dir = Filename.concat dir pkg in
       match lookup_and_load_one_dir ~dir ~pkg with
       | None -> loop dirs
-      | Some p -> find_plugin ~dir ~rest p )
+      | Some p -> find_plugin ~dir ~suffix p )
   in
   loop dirs
 

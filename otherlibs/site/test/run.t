@@ -38,10 +38,11 @@ Test embedding of sites locations information
 
   $ cat >b/dune <<EOF
   > (library
-  >  (public_name b)
+  >  (public_name b.b.b)
+  >  (name b)
   >  (libraries c.register dune-site))
   > (generate_sites_module (module sites) (sites b))
-  > (plugin (name c-plugins-b) (libraries b) (site (c plugins)))
+  > (plugin (name c-plugins-b) (libraries b.b.b) (site (c plugins)))
   > (install (section (site (b data))) (files info.txt))
   > EOF
 

@@ -76,6 +76,8 @@ module Execution_context : sig
   (* Execute a callback with a fresh execution context. For the toplevel
      [Fiber.run] function. *)
   val new_run : (unit -> 'a) -> 'a
+
+  val reraise_all : Exn_with_backtrace.t list -> unit
 end = struct
   type t =
     { on_error : Exn_with_backtrace.t k option
@@ -125,6 +127,21 @@ end = struct
 
   and safe_run_k : type a. (a -> unit) -> a -> unit =
    fun k x -> try k x with exn -> forward_error exn
+
+  and forward_exn_with_bt =
+    let rec loop t exn =
+      match t.on_error with
+      | None -> Exn_with_backtrace.reraise exn
+      | Some { ctx; run } -> (
+        current := ctx;
+        try run exn
+        with exn ->
+          let exn = Exn_with_backtrace.capture exn in
+          loop ctx exn )
+    in
+    fun t exn ->
+      loop t exn;
+      deref t
 
   and forward_error =
     let rec loop t exn =
@@ -191,6 +208,11 @@ end = struct
   let apply f x k =
     let backup = !current in
     (try f x k with exn -> forward_error exn);
+    current := backup
+
+  let reraise_all exns =
+    let backup = !current in
+    List.iter exns ~f:(forward_exn_with_bt backup);
     current := backup
 
   let new_run f =
@@ -428,7 +450,7 @@ let reraise_all = function
   | [ exn ] -> Exn_with_backtrace.reraise exn
   | exns ->
     EC.add_refs (List.length exns - 1);
-    List.iter exns ~f:(fun exn -> EC.apply Exn_with_backtrace.reraise exn never);
+    EC.reraise_all exns;
     never
 
 let finalize f ~finally =

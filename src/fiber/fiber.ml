@@ -423,9 +423,13 @@ let collect_errors f =
   | Ok x -> Ok x
   | Error l -> Error (List.rev l)
 
-let reraise_all exns =
-  let* () = parallel_iter exns ~f:Exn_with_backtrace.reraise in
-  never
+let reraise_all = function
+  | [] -> never
+  | [ exn ] -> Exn_with_backtrace.reraise exn
+  | exns ->
+    EC.add_refs (List.length exns - 1);
+    List.iter exns ~f:(fun exn -> EC.apply Exn_with_backtrace.reraise exn never);
+    never
 
 let finalize f ~finally =
   let* res1 = collect_errors f in

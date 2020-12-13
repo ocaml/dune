@@ -42,9 +42,7 @@ let test_rule ~sctx ~expander ~dir (spec : effective)
   let module Alias_rules = Simple_rules.Alias_rules in
   let enabled = Expander.eval_blang expander (Blang.And spec.enabled_if) in
   let loc = Some spec.loc in
-  let aliases =
-    Alias.Name.Set.to_list spec.alias |> List.map ~f:(Alias.make ~dir)
-  in
+  let aliases = Alias.Name.Set.to_list_map spec.alias ~f:(Alias.make ~dir) in
   let test_name =
     match test with
     | Ok t -> Cram_test.name t

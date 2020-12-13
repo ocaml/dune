@@ -260,9 +260,7 @@ module Subdir_set = struct
   let to_dir_set = function
     | All -> Dir_set.universal
     | These s ->
-      String.Set.to_list s
-      |> List.map ~f:Path.Local.of_string
-      |> Dir_set.of_list
+      String.Set.to_list_map s ~f:Path.Local.of_string |> Dir_set.of_list
 
   let of_dir_set d =
     match Dir_set.toplevel_subdirs d with
@@ -651,15 +649,14 @@ end = struct
   open Load_rules
 
   let create_copy_rules ~ctx_dir ~non_target_source_files =
-    Path.Source.Set.to_list non_target_source_files
-    |> List.map ~f:(fun path ->
-           let ctx_path = Path.Build.append_source ctx_dir path in
-           let build = Build.copy ~src:(Path.source path) ~dst:ctx_path in
-           Rule.make
-           (* There's an [assert false] in [prepare_managed_paths] that blows up
-              if we try to sandbox this. *)
-             ~sandbox:Sandbox_config.no_sandboxing build ~context:None ~env:None
-             ~info:Source_file_copy)
+    Path.Source.Set.to_list_map non_target_source_files ~f:(fun path ->
+        let ctx_path = Path.Build.append_source ctx_dir path in
+        let build = Build.copy ~src:(Path.source path) ~dst:ctx_path in
+        Rule.make
+        (* There's an [assert false] in [prepare_managed_paths] that blows up if
+           we try to sandbox this. *)
+          ~sandbox:Sandbox_config.no_sandboxing build ~context:None ~env:None
+          ~info:Source_file_copy)
 
   let compile_rules ~dir ~source_dirs rules =
     List.concat_map rules ~f:(fun rule ->

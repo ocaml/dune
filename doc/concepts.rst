@@ -673,11 +673,12 @@ source code.
 
 The following constructions are available:
 
-- ``(run <prog> <args>)`` to execute a program. ``<prog>`` is resolved
-  locally if it is available in the current workspace, otherwise it is
+- ``(run <prog> <args>)`` executes ``bin:<prog>`` with arguments ``<args>``.
+  ``<prog>`` is resolved.
+  ``<prog>`` is resolved locally if it is available in the current workspace, otherwise it is
   resolved using the ``PATH``. However, ``<prog>`` can only be resolved locally
-  if it is declared to dune, via either :ref:`install`, :ref:`env` or
-  :ref:`executable` stanzas.
+  if it is declared to dune. See :ref:`variables` for discussion of how
+  ``bin:<prog>`` is resolved and how it must be declared to dune.
 - ``(dynamic-run <prog> <args>)`` to execute a program that was linked
   against ``dune-action-plugin`` library. ``<prog>`` is resolved in
   the same way as in ``run``

@@ -193,7 +193,8 @@ In addition, ``(action ...)`` fields support the following special variables:
 - ``exe:<path>`` is the same as ``<path>``, except when cross-compiling, in
   which case it will expand to ``<path>`` from the host build context
 - ``bin:<program>`` expands to a path to ``program``. If ``program``
-  is installed by a package in the workspace (see :ref:`install` stanzas),
+  is built by a package in the workspace (see :ref:`install`, :ref:`env` and
+  :ref:`executable` stanzas),
   the locally built binary will be used, otherwise it will be searched
   in the ``PATH`` of the current build context. Note that ``(run
   %{bin:program} ...)`` and ``(run program ...)`` behave in the same
@@ -674,7 +675,9 @@ The following constructions are available:
 
 - ``(run <prog> <args>)`` to execute a program. ``<prog>`` is resolved
   locally if it is available in the current workspace, otherwise it is
-  resolved using the ``PATH``
+  resolved using the ``PATH``. However, ``<prog>`` can only be resolved locally
+  if it is declared to dune, via either :ref:`install`, :ref:`env` or
+  :ref:`executable` stanzas.
 - ``(dynamic-run <prog> <args>)`` to execute a program that was linked
   against ``dune-action-plugin`` library. ``<prog>`` is resolved in
   the same way as in ``run``

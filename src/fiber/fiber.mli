@@ -77,6 +77,12 @@ val parallel_map : 'a list -> f:('a -> 'b t) -> 'b list t
 (** Iter over a list in parallel. *)
 val parallel_iter : 'a list -> f:('a -> unit t) -> unit t
 
+val parallel_iter_set :
+     (module Set.S with type elt = 'a and type t = 's)
+  -> 's
+  -> f:('a -> unit t)
+  -> unit t
+
 (** {1 Local storage} *)
 
 (** Variables local to a fiber *)

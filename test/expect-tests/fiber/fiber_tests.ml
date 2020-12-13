@@ -62,6 +62,40 @@ let test ?(expect_never = false) to_dyn f =
     print_endline "[FAIL] expected Never to be raised but it wasn't"
   | true, false -> print_endline "[FAIL] unexpected Never raised"
 
+let%expect_test "reraise_all" =
+  let exns =
+    let exn = Exn_with_backtrace.capture Exit in
+    [ exn; exn; exn ]
+  in
+  let fail () = Fiber.reraise_all exns in
+  test (backtrace_result unit) (Fiber.collect_errors fail);
+  [%expect
+    {|
+    Error
+      [ { exn = "Exit"; backtrace = "" }
+      ; { exn = "Exit"; backtrace = "" }
+      ; { exn = "Exit"; backtrace = "" }
+      ] |}];
+  test (backtrace_result unit)
+    (Fiber.collect_errors (fun () ->
+         Fiber.finalize fail ~finally:(fun () ->
+             print_endline "finally";
+             Fiber.return ())));
+  [%expect
+    {|
+    finally
+    Error
+      [ { exn = "Exit"; backtrace = "" }
+      ; { exn = "Exit"; backtrace = "" }
+      ; { exn = "Exit"; backtrace = "" }
+      ] |}];
+
+  test unit ~expect_never:true
+    (let+ _ = Fiber.reraise_all [] in
+     print_endline "finish");
+  [%expect {|
+    [PASS] Never raised as expected |}]
+
 let%expect_test "execution context of ivars" =
   (* The point of this test it show that the execution context is restored when
      a fiber that's blocked on an ivar is resumed. This means that fiber local

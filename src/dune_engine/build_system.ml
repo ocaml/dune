@@ -1104,22 +1104,21 @@ let get_rule_or_source t path =
 
 let all_targets t =
   let root = File_tree.root () in
-  Context_name.Map.to_list t.contexts
-  |> List.fold_left ~init:Path.Build.Set.empty ~f:(fun acc (_, ctx) ->
-         File_tree.Dir.fold root ~traverse:Sub_dirs.Status.Set.all ~init:acc
-           ~f:(fun dir acc ->
-             match
-               load_dir
-                 ~dir:
-                   (Path.build
-                      (Path.Build.append_source ctx.Build_context.build_dir
-                         (File_tree.Dir.path dir)))
-             with
-             | Non_build _ -> acc
-             | Build { rules_here; rules_of_alias_dir; _ } ->
-               List.fold_left ~init:acc ~f:Path.Build.Set.add
-                 ( Path.Build.Map.keys rules_of_alias_dir
-                 @ Path.Build.Map.keys rules_here )))
+  Context_name.Map.fold t.contexts ~init:Path.Build.Set.empty ~f:(fun ctx acc ->
+      File_tree.Dir.fold root ~traverse:Sub_dirs.Status.Set.all ~init:acc
+        ~f:(fun dir acc ->
+          match
+            load_dir
+              ~dir:
+                (Path.build
+                   (Path.Build.append_source ctx.Build_context.build_dir
+                      (File_tree.Dir.path dir)))
+          with
+          | Non_build _ -> acc
+          | Build { rules_here; rules_of_alias_dir; _ } ->
+            List.fold_left ~init:acc ~f:Path.Build.Set.add
+              ( Path.Build.Map.keys rules_of_alias_dir
+              @ Path.Build.Map.keys rules_here )))
 
 module type Rec = sig
   val build_file : Path.t -> unit Fiber.t

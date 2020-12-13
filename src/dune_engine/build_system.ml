@@ -1294,16 +1294,15 @@ end = struct
     let targets_as_list = Path.Build.Set.to_list rule.action.targets in
     let env = Rule.effective_env rule in
     let trace =
-      ( Dep.Set.trace deps ~sandbox_mode ~env ~eval_pred
+      ( Dep.Set.trace deps ~sandbox_mode ~env
       , List.map targets_as_list ~f:(fun p -> Path.to_string (Path.build p))
       , Option.map rule.context ~f:(fun c -> c.name)
       , Action.for_shell action )
     in
     Digest.generic trace
 
-  let compute_dependencies_digest deps ~sandbox_mode ~env ~eval_pred =
-    Dep.Set.trace deps ~sandbox_mode ~env ~eval_pred
-    |> (Digest.generic : Dep.Trace.t -> _)
+  let compute_dependencies_digest deps ~sandbox_mode ~env =
+    Dep.Set.trace deps ~sandbox_mode ~env |> (Digest.generic : Dep.Trace.t -> _)
 
   let execute_rule_impl rule =
     let t = t () in
@@ -1397,7 +1396,7 @@ end = struct
               let deps = Action_exec.Dynamic_dep.Set.to_dep_set deps in
               let* () = build_deps deps in
               let new_digest =
-                compute_dependencies_digest deps ~sandbox_mode ~env ~eval_pred
+                compute_dependencies_digest deps ~sandbox_mode ~env
               in
               if old_digest <> new_digest then
                 Fiber.return true
@@ -1493,8 +1492,7 @@ end = struct
                      | Some path -> Fs.mkdir_p (sandboxed path));
               Fs.mkdir_p (sandboxed dir);
               ( Some sandboxed
-              , Action.sandbox action ~sandboxed ~mode:sandbox_mode ~deps
-                  ~eval_pred )
+              , Action.sandbox action ~sandboxed ~mode:sandbox_mode ~deps )
           in
           let chdirs = Action.chdirs action in
           Path.Set.iter chdirs ~f:Fs.(mkdir_p_or_check_exists ~loc);
@@ -1588,8 +1586,7 @@ end = struct
             List.map exec_result.dynamic_deps_stages ~f:(fun deps ->
                 ( deps
                 , Action_exec.Dynamic_dep.Set.to_dep_set deps
-                  |> compute_dependencies_digest ~sandbox_mode ~env ~eval_pred
-                ))
+                  |> compute_dependencies_digest ~sandbox_mode ~env ))
           in
           Trace_db.set (Path.build head_target)
             { rule_digest; dynamic_deps_stages; targets_digest }
@@ -1692,6 +1689,8 @@ end = struct
            ~output:(Allow_cutoff (module Path.Set))
            ~visibility:Hidden Sync eval_impl)
 
+    let () = Fdecl.set Dep.eval_pred eval
+
     let build =
       Memo.exec
         (Memo.create "build-pred" ~doc:"build a predicate"
@@ -1793,7 +1792,7 @@ let package_deps (pkg : Package.t) files =
            potential race conditions between [Sync] and [Async] functions, e.g.
            by moving this code into a fiber. *)
         let action_deps = Build_request.peek_deps_exn ir in
-        let action_deps = Dep.Set.paths action_deps ~eval_pred in
+        let action_deps = Dep.Set.paths action_deps in
         Path.Set.fold action_deps ~init:acc ~f:loop
       )
   in
@@ -1877,7 +1876,7 @@ module Evaluated_rule = struct
   include T
 
   let rules_for_deps rules deps =
-    Dep.Set.paths deps ~eval_pred
+    Dep.Set.paths deps
     |> Path.Set.fold ~init:Set.empty ~f:(fun path acc ->
            match
              Path.as_in_build_dir path
@@ -1909,7 +1908,7 @@ let evaluate_rules ~recursive ~request =
           in
           rules := Rule.Id.Map.set !rules rule.id rule;
           if recursive then
-            Dep.Set.parallel_iter_files deps ~f:run_dep ~eval_pred
+            Dep.Set.parallel_iter_files deps ~f:run_dep
           else
             Fiber.return ()
       and run_dep dep =
@@ -1918,7 +1917,7 @@ let evaluate_rules ~recursive ~request =
         | Some rule -> run_rule rule
       in
       let* (), deps = Build_request.evaluate (Non_memoized request) in
-      let+ () = Dep.Set.parallel_iter_files deps ~f:run_dep ~eval_pred in
+      let+ () = Dep.Set.parallel_iter_files deps ~f:run_dep in
       let rules =
         Rule.Id.Map.fold !rules ~init:Path.Build.Map.empty ~f:(fun r acc ->
             Path.Build.Set.fold r.targets ~init:acc ~f:(fun fn acc ->
@@ -1941,7 +1940,7 @@ let evaluate_rules ~recursive ~request =
           ])
 
 let static_deps_of_request request =
-  Static_deps.paths ~eval_pred @@ Build.static_deps request
+  Static_deps.paths @@ Build.static_deps request
 
 let rules_for_files paths =
   Path.Set.fold paths ~init:[] ~f:(fun path acc ->
@@ -1954,9 +1953,7 @@ let rules_for_transitive_closure targets =
   Rule_top_closure.top_closure (rules_for_files targets)
     ~key:(fun r -> r.Rule.id)
     ~deps:(fun r ->
-      Build.static_deps r.action.build
-      |> Static_deps.paths ~eval_pred
-      |> rules_for_files)
+      Build.static_deps r.action.build |> Static_deps.paths |> rules_for_files)
   |> function
   | Ok l -> l
   | Error cycle ->

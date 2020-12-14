@@ -64,7 +64,8 @@ module T = struct
     | File_selector dir_glob ->
       let id = File_selector.to_dyn dir_glob
       and files =
-        eval_pred dir_glob |> Path.Set.to_list |> List.map ~f:trace_file
+        eval_pred dir_glob
+        |> Path.Set.fold ~init:[] ~f:(fun f acc -> trace_file f :: acc)
       in
       Some (File_selector (id, files))
     | Universe -> None

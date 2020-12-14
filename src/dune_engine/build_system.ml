@@ -260,7 +260,9 @@ module Subdir_set = struct
   let to_dir_set = function
     | All -> Dir_set.universal
     | These s ->
-      String.Set.to_list_map s ~f:Path.Local.of_string |> Dir_set.of_list
+      String.Set.fold s ~init:Dir_set.empty ~f:(fun path acc ->
+          let path = Path.Local.of_string path in
+          Dir_set.union acc (Dir_set.singleton path))
 
   let of_dir_set d =
     match Dir_set.toplevel_subdirs d with
@@ -999,9 +1001,10 @@ end = struct
             ] ) );
     let rules_generated_in =
       Rules.to_map rules_produced
-      |> Path.Build.Map.keys
-      |> List.filter_map ~f:(Path.Local_gen.descendant ~of_:dir)
-      |> Dir_set.of_list
+      |> Path.Build.Map.foldi ~init:Dir_set.empty ~f:(fun p _ acc ->
+             match Path.Local_gen.descendant ~of_:dir p with
+             | None -> acc
+             | Some p -> Dir_set.union acc (Dir_set.singleton p))
     in
     let allowed_granddescendants_of_parent =
       match allowed_by_parent with

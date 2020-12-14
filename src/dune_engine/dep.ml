@@ -63,7 +63,10 @@ module T = struct
     | Alias a -> Some (File (trace_file (Path.build (Alias.stamp_file a))))
     | File_selector dir_glob ->
       let id = File_selector.to_dyn dir_glob
-      and files = eval_pred dir_glob |> Path.Set.to_list_map ~f:trace_file in
+      and files =
+        eval_pred dir_glob
+        |> Path.Set.fold ~init:[] ~f:(fun f acc -> trace_file f :: acc)
+      in
       Some (File_selector (id, files))
     | Universe -> None
     | Sandbox_config config ->

@@ -991,9 +991,7 @@ end = struct
       match Path.Build.Map.find (Rules.to_map rules_produced) dir with
       | None -> ()
       | Some rules ->
-        if Dir_set.here (Memo.Lazy.force restriction) then
-          ()
-        else
+        if not (Dir_set.here (Memo.Lazy.force restriction)) then
           Code_error.raise
             "Generated rules in a directory not allowed by the parent"
             [ ("dir", Path.Build.to_dyn dir)
@@ -1401,10 +1399,10 @@ end = struct
               let new_digest =
                 compute_dependencies_digest deps ~sandbox_mode ~env
               in
-              if old_digest <> new_digest then
-                Fiber.return true
-              else
+              if old_digest = new_digest then
                 loop rest
+              else
+                Fiber.return true
           in
           loop prev_trace.dynamic_deps_stages
     in
@@ -1414,7 +1412,9 @@ end = struct
           (Path.Build.relative sandbox_dir sandbox_suffix, mode))
     in
     let* () =
-      if rule_need_rerun then (
+      match rule_need_rerun with
+      | false -> Fiber.return ()
+      | true ->
         let from_Cache =
           match (do_not_memoize, t.caching) with
           | true, _
@@ -1593,8 +1593,6 @@ end = struct
           in
           Trace_db.set (Path.build head_target)
             { rule_digest; dynamic_deps_stages; targets_digest }
-      ) else
-        Fiber.return ()
     in
     let+ () =
       match (mode, !Clflags.promote) with

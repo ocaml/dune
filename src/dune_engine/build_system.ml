@@ -1682,7 +1682,7 @@ end = struct
 
   module Pred = struct
     let build_impl g =
-      Pred.eval g |> Path.Set.to_list |> Fiber.parallel_iter ~f:build_file
+      Fiber.parallel_iter_set (module Path.Set) (Pred.eval g) ~f:build_file
 
     let eval_impl g =
       let dir = File_selector.dir g in

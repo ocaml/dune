@@ -361,22 +361,31 @@ let parallel_map l ~f k =
             else
               EC.deref ()))
 
+let[@inline always] parallel_iter_generic ~n ~iter ~f k =
+  EC.add_refs (n - 1);
+  let left_over = ref n in
+  let k () =
+    decr left_over;
+    if !left_over = 0 then
+      k ()
+    else
+      EC.deref ()
+  in
+  iter ~f:(fun x -> EC.apply f x k)
+
 let parallel_iter l ~f k =
   match l with
   | [] -> k ()
   | [ x ] -> f x k
-  | _ ->
-    let n = List.length l in
-    EC.add_refs (n - 1);
-    let left_over = ref n in
-    let k () =
-      decr left_over;
-      if !left_over = 0 then
-        k ()
-      else
-        EC.deref ()
-    in
-    List.iter l ~f:(fun x -> EC.apply f x k)
+  | _ -> parallel_iter_generic ~n:(List.length l) ~iter:(List.iter l) ~f k
+
+let parallel_iter_set (type a s)
+    (module S : Set.S with type elt = a and type t = s) t ~(f : a -> unit t) k =
+  let len = S.cardinal t in
+  match len with
+  | 0 -> k ()
+  | 1 -> f (Option.value_exn (S.min_elt t)) k
+  | n -> parallel_iter_generic ~n ~iter:(S.iter t) ~f k
 
 module Var = struct
   include Univ_map.Key

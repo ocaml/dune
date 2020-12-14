@@ -107,88 +107,95 @@ module O = Comparable.Make (T)
 module Map = O.Map
 
 module Set = struct
-  include O.Set
+  module T = struct
+    include O.Set
 
-  let has_universe t = mem t Universe
+    let has_universe t = mem t Universe
 
-  let sandbox_config t =
-    List.fold_left (to_list t) ~init:Sandbox_config.no_special_requirements
-      ~f:(fun acc x ->
-        match x with
-        | File_selector _
-        | Env _
-        | File _
-        | Alias _
-        | Universe ->
-          acc
-        | Sandbox_config config -> Sandbox_config.inter acc config)
+    let sandbox_config t =
+      List.fold_left (to_list t) ~init:Sandbox_config.no_special_requirements
+        ~f:(fun acc x ->
+          match x with
+          | File_selector _
+          | Env _
+          | File _
+          | Alias _
+          | Universe ->
+            acc
+          | Sandbox_config config -> Sandbox_config.inter acc config)
 
-  let of_files = List.fold_left ~init:empty ~f:(fun acc f -> add acc (file f))
+    let of_files = List.fold_left ~init:empty ~f:(fun acc f -> add acc (file f))
 
-  let of_files_set =
-    Path.Set.fold ~init:empty ~f:(fun f acc -> add acc (file f))
+    let of_files_set =
+      Path.Set.fold ~init:empty ~f:(fun f acc -> add acc (file f))
 
-  let trace t ~sandbox_mode ~env ~eval_pred =
-    let facts =
-      List.filter_map (to_list t) ~f:(trace ~sandbox_mode ~env ~eval_pred)
-    in
-    { Trace.facts; sandbox_mode }
+    let trace t ~sandbox_mode ~env ~eval_pred =
+      let facts =
+        List.filter_map (to_list t) ~f:(trace ~sandbox_mode ~env ~eval_pred)
+      in
+      { Trace.facts; sandbox_mode }
 
-  let add_paths t paths =
-    Path.Set.fold paths ~init:t ~f:(fun p set -> add set (File p))
+    let add_paths t paths =
+      Path.Set.fold paths ~init:t ~f:(fun p set -> add set (File p))
 
-  let encode t = Dune_lang.Encoder.list encode (to_list t)
+    let encode t = Dune_lang.Encoder.list encode (to_list t)
 
-  let paths t ~eval_pred =
-    fold t ~init:Path.Set.empty ~f:(fun d acc ->
-        match d with
-        | Alias a -> Path.Set.add acc (Path.build (Alias.stamp_file a))
-        | File f -> Path.Set.add acc f
-        | File_selector g -> Path.Set.union acc (eval_pred g)
-        | Universe
-        | Env _ ->
-          acc
-        | Sandbox_config _ -> acc)
+    let paths t ~eval_pred =
+      fold t ~init:Path.Set.empty ~f:(fun d acc ->
+          match d with
+          | Alias a -> Path.Set.add acc (Path.build (Alias.stamp_file a))
+          | File f -> Path.Set.add acc f
+          | File_selector g -> Path.Set.union acc (eval_pred g)
+          | Universe
+          | Env _ ->
+            acc
+          | Sandbox_config _ -> acc)
 
-  let parallel_iter t ~f = Fiber.parallel_iter ~f (to_list t)
+    let dirs t =
+      fold t ~init:Path.Set.empty ~f:(fun f acc ->
+          match f with
+          | Alias a -> Path.Set.add acc (Path.build (Alias.stamp_file_dir a))
+          | File_selector g -> Path.Set.add acc (File_selector.dir g)
+          | File f -> Path.Set.add acc (Path.parent_exn f)
+          | Universe
+          | Env _ ->
+            acc
+          | Sandbox_config _ -> acc)
+
+    (* This is to force the rules to be loaded for directories without files
+       when depending on [(source_tree x)]. Otherwise, we wouldn't clean up
+       stale directories in directories that contain no file. *)
+    let dir_without_files_dep dir =
+      file_selector (File_selector.create ~dir Predicate.false_)
+
+    let source_tree dir =
+      let prefix_with, dir = Path.extract_build_context_dir_exn dir in
+      match File_tree.find_dir dir with
+      | None -> empty
+      | Some dir ->
+        File_tree.Dir.fold dir ~init:empty ~traverse:Sub_dirs.Status.Set.all
+          ~f:(fun dir acc ->
+            let files = File_tree.Dir.files dir in
+            let path =
+              Path.append_source prefix_with (File_tree.Dir.path dir)
+            in
+            match String.Set.is_empty files with
+            | true -> add acc (dir_without_files_dep path)
+            | false ->
+              let paths =
+                String.Set.fold files ~init:Path.Set.empty ~f:(fun fn acc ->
+                    Path.Set.add acc (Path.relative path fn))
+              in
+              add_paths acc paths)
+  end
+
+  include T
+
+  let parallel_iter t ~f = Fiber.parallel_iter_set (module T) t ~f
 
   let parallel_iter_files t ~f ~eval_pred =
-    paths t ~eval_pred |> Path.Set.to_list |> Fiber.parallel_iter ~f
-
-  let dirs t =
-    fold t ~init:Path.Set.empty ~f:(fun f acc ->
-        match f with
-        | Alias a -> Path.Set.add acc (Path.build (Alias.stamp_file_dir a))
-        | File_selector g -> Path.Set.add acc (File_selector.dir g)
-        | File f -> Path.Set.add acc (Path.parent_exn f)
-        | Universe
-        | Env _ ->
-          acc
-        | Sandbox_config _ -> acc)
-
-  (* This is to force the rules to be loaded for directories without files when
-     depending on [(source_tree x)]. Otherwise, we wouldn't clean up stale
-     directories in directories that contain no file. *)
-  let dir_without_files_dep dir =
-    file_selector (File_selector.create ~dir Predicate.false_)
-
-  let source_tree dir =
-    let prefix_with, dir = Path.extract_build_context_dir_exn dir in
-    match File_tree.find_dir dir with
-    | None -> empty
-    | Some dir ->
-      File_tree.Dir.fold dir ~init:empty ~traverse:Sub_dirs.Status.Set.all
-        ~f:(fun dir acc ->
-          let files = File_tree.Dir.files dir in
-          let path = Path.append_source prefix_with (File_tree.Dir.path dir) in
-          match String.Set.is_empty files with
-          | true -> add acc (dir_without_files_dep path)
-          | false ->
-            let paths =
-              String.Set.fold files ~init:Path.Set.empty ~f:(fun fn acc ->
-                  Path.Set.add acc (Path.relative path fn))
-            in
-            add_paths acc paths)
+    let paths = paths t ~eval_pred in
+    Fiber.parallel_iter_set (module Path.Set) paths ~f
 end
 
 type eval_pred = File_selector.t -> Path.Set.t

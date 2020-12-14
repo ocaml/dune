@@ -230,9 +230,9 @@ let rec is_dynamic = function
   | Format_dune_file _ ->
     false
 
-let prepare_managed_paths ~link ~sandboxed deps ~eval_pred =
+let prepare_managed_paths ~link ~sandboxed deps =
   let steps =
-    Path.Set.fold (Dep.Set.paths deps ~eval_pred) ~init:[] ~f:(fun path acc ->
+    Path.Set.fold (Dep.Set.paths deps) ~init:[] ~f:(fun path acc ->
         match Path.as_in_build_dir path with
         | None ->
           (* This can actually raise if we try to sandbox the "copy from source
@@ -266,10 +266,10 @@ let maybe_sandbox_path f p =
   | None -> p
   | Some p -> Path.build (f p)
 
-let sandbox t ~sandboxed ~mode ~deps ~eval_pred : t =
+let sandbox t ~sandboxed ~mode ~deps : t =
   let link = link_function ~mode in
   Progn
-    [ prepare_managed_paths ~sandboxed ~link deps ~eval_pred
+    [ prepare_managed_paths ~sandboxed ~link deps
     ; map t ~dir:Path.root
         ~f_string:(fun ~dir:_ x -> x)
         ~f_path:(fun ~dir:_ p -> maybe_sandbox_path sandboxed p)

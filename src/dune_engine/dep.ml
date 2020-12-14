@@ -1,5 +1,7 @@
 open Stdune
 
+let eval_pred = Fdecl.create Dyn.Encoder.opaque
+
 module Trace = struct
   module Fact = struct
     type t =
@@ -56,7 +58,7 @@ module T = struct
 
   let trace_file fn = (Path.to_string fn, Cached_digest.file fn)
 
-  let trace t ~sandbox_mode ~env ~eval_pred : Trace.Fact.t Option.t =
+  let trace t ~sandbox_mode ~env : Trace.Fact.t Option.t =
     match t with
     | Env var -> Some (Env (var, Env.get env var))
     | File fn -> Some (File (trace_file fn))
@@ -64,7 +66,7 @@ module T = struct
     | File_selector dir_glob ->
       let id = File_selector.to_dyn dir_glob
       and files =
-        eval_pred dir_glob
+        Fdecl.get eval_pred dir_glob
         |> Path.Set.fold ~init:[] ~f:(fun f acc -> trace_file f :: acc)
       in
       Some (File_selector (id, files))
@@ -130,10 +132,8 @@ module Set = struct
     let of_files_set =
       Path.Set.fold ~init:empty ~f:(fun f acc -> add acc (file f))
 
-    let trace t ~sandbox_mode ~env ~eval_pred =
-      let facts =
-        List.filter_map (to_list t) ~f:(trace ~sandbox_mode ~env ~eval_pred)
-      in
+    let trace t ~sandbox_mode ~env =
+      let facts = List.filter_map (to_list t) ~f:(trace ~sandbox_mode ~env) in
       { Trace.facts; sandbox_mode }
 
     let add_paths t paths =
@@ -141,12 +141,12 @@ module Set = struct
 
     let encode t = Dune_lang.Encoder.list encode (to_list t)
 
-    let paths t ~eval_pred =
+    let paths t =
       fold t ~init:Path.Set.empty ~f:(fun d acc ->
           match d with
           | Alias a -> Path.Set.add acc (Path.build (Alias.stamp_file a))
           | File f -> Path.Set.add acc f
-          | File_selector g -> Path.Set.union acc (eval_pred g)
+          | File_selector g -> Path.Set.union acc (Fdecl.get eval_pred g)
           | Universe
           | Env _ ->
             acc
@@ -194,9 +194,6 @@ module Set = struct
 
   let parallel_iter t ~f = Fiber.parallel_iter_set (module T) t ~f
 
-  let parallel_iter_files t ~f ~eval_pred =
-    let paths = paths t ~eval_pred in
-    Fiber.parallel_iter_set (module Path.Set) paths ~f
+  let parallel_iter_files t ~f =
+    paths t |> Fiber.parallel_iter_set (module Path.Set) ~f
 end
-
-type eval_pred = File_selector.t -> Path.Set.t

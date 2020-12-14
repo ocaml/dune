@@ -76,6 +76,8 @@ module Execution_context : sig
   (* Execute a callback with a fresh execution context. For the toplevel
      [Fiber.run] function. *)
   val new_run : (unit -> 'a) -> 'a
+
+  val reraise_all : Exn_with_backtrace.t list -> unit
 end = struct
   type t =
     { on_error : Exn_with_backtrace.t k option
@@ -126,22 +128,21 @@ end = struct
   and safe_run_k : type a. (a -> unit) -> a -> unit =
    fun k x -> try k x with exn -> forward_error exn
 
-  and forward_error =
-    let rec loop t exn =
-      match t.on_error with
-      | None -> Exn_with_backtrace.reraise exn
-      | Some { ctx; run } -> (
-        current := ctx;
-        try run exn
-        with exn ->
-          let exn = Exn_with_backtrace.capture exn in
-          loop ctx exn )
-    in
-    fun exn ->
-      let exn = Exn_with_backtrace.capture exn in
-      let t = !current in
-      loop t exn;
-      deref t
+  and forward_exn_with_bt t exn =
+    match t.on_error with
+    | None -> Exn_with_backtrace.reraise exn
+    | Some { ctx; run } -> (
+      current := ctx;
+      try run exn
+      with exn ->
+        let exn = Exn_with_backtrace.capture exn in
+        forward_exn_with_bt ctx exn )
+
+  and forward_error exn =
+    let exn = Exn_with_backtrace.capture exn in
+    let t = !current in
+    forward_exn_with_bt t exn;
+    deref t
 
   let deref () = deref !current
 
@@ -192,6 +193,12 @@ end = struct
     let backup = !current in
     (try f x k with exn -> forward_error exn);
     current := backup
+
+  let reraise_all exns =
+    let backup = !current in
+    List.iter exns ~f:(forward_exn_with_bt backup);
+    current := backup;
+    deref ()
 
   let new_run f =
     let backup = !current in
@@ -423,6 +430,13 @@ let collect_errors f =
   | Ok x -> Ok x
   | Error l -> Error (List.rev l)
 
+let reraise_all = function
+  | [] -> never
+  | [ exn ] -> Exn_with_backtrace.reraise exn
+  | exns ->
+    EC.reraise_all exns;
+    never
+
 let finalize f ~finally =
   let* res1 = collect_errors f in
   let* res2 = collect_errors finally in
@@ -436,10 +450,7 @@ let finalize f ~finally =
   in
   match res with
   | Ok x -> return x
-  | Error l ->
-    let* () = parallel_iter l ~f:(fun exn -> Exn_with_backtrace.reraise exn) in
-    (* We might reach this point if all raised errors were handled by the user *)
-    never
+  | Error l -> reraise_all l
 
 module Ivar = struct
   type 'a state =

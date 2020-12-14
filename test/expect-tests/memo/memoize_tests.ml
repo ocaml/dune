@@ -637,6 +637,6 @@ let%expect_test "error handling and async diamond" =
             ; { exn = "(Failure \"reached 0\")"; backtrace = "" }
             ]
     |}]
-(* XXX aalekseyev:
-   The exceptions get duplicated here, so the total number of exceptions is exponential
-   in the depth of the computation graph. This is worrying! *)
+(* XXX aalekseyev: The exceptions get duplicated here, so the total number of
+   exceptions is exponential in the depth of the computation graph. This is
+   worrying! *)

@@ -474,7 +474,8 @@ struct
         let+ r, deps1 = build_static_rule_deps_and_exec b in
         (r, Dep.Set.union deps0 deps1)
 
-    and build_static_rule_deps_and_exec : type a. a t -> (a * Dep.Set.t) Fiber.t =
+    and build_static_rule_deps_and_exec : type a. a t -> (a * Dep.Set.t) Fiber.t
+        =
      fun t ->
       let* () = Build_deps.build_deps (static_deps t).rule_deps in
       exec t

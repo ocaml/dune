@@ -93,9 +93,8 @@ end = struct
     go (Path.Build.explode path)
 
   let finite ~union_rules m =
-    Path.Build.Map.to_list m
-    |> List.map ~f:(fun (path, rules) -> singleton path rules)
-    |> List.fold_left ~init:empty ~f:(union ~union_rules)
+    Path.Build.Map.foldi m ~init:empty ~f:(fun path rules acc ->
+        union ~union_rules (singleton path rules) acc)
 
   let get_rules t ~dir =
     let dir = Path.Build.explode dir in

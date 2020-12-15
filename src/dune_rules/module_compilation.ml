@@ -321,6 +321,14 @@ let build_alias_module ~alias_module ~cctx =
   build_module cctx alias_module
     ~dep_graphs:(Dep_graph.Ml_kind.dummy alias_module)
 
+let build_dummy_module module_ ~cctx =
+  let sctx = Compilation_context.super_context cctx in
+  let file = Option.value_exn (Module.file module_ ~ml_kind:Impl) in
+  let dir = Compilation_context.dir cctx in
+  Super_context.add_rule ~loc:Loc.none sctx ~dir
+    (Build.write_file (Path.as_in_build_dir_exn file) "");
+  build_module cctx module_ ~dep_graphs:(Dep_graph.Ml_kind.dummy module_)
+
 let root_source entries =
   let b = Buffer.create 128 in
   List.iter entries ~f:(fun name ->
@@ -353,6 +361,9 @@ let build_all cctx ~dep_graphs =
       | Alias ->
         let cctx = Compilation_context.for_alias_module cctx in
         build_alias_module ~alias_module:m ~cctx
+      | Dummy ->
+        let cctx = Compilation_context.for_alias_module cctx in
+        build_dummy_module m ~cctx
       | Wrapped_compat ->
         let cctx = Lazy.force for_wrapped_compat in
         build_module cctx ~dep_graphs m

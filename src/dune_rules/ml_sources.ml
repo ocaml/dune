@@ -205,6 +205,29 @@ let virtual_modules lookup_vlib vlib =
   ; allow_new_public_modules
   }
 
+let add_dummy_module_if_needed modules ~src_dir ~(lib : Library.t) =
+  let at_least_one_impl =
+    Module_name.Map.exists modules ~f:(Module.has ~ml_kind:Impl)
+  in
+  if at_least_one_impl then
+    modules
+  else
+    let name =
+      let prefix =
+        let pkg =
+          match lib.visibility with
+          | Private pkg -> pkg
+          | Public p -> Some (Dune_file.Public_lib.package p)
+        in
+        match pkg with
+        | None -> Lib_name.Local.to_string (snd lib.name)
+        | Some pkg -> Package.Name.to_string (Package.name pkg)
+      in
+      Module_name.of_string (prefix ^ "_dummy")
+    in
+    let module_ = Module.generated_dummy ~src_dir name in
+    Module_name.Map.add_exn modules name module_
+
 let make_lib_modules (d : _ Dir_with_dune.t) ~lookup_vlib ~(lib : Library.t)
     ~modules =
   let src_dir = d.ctx_dir in
@@ -250,8 +273,8 @@ let make_lib_modules (d : _ Dir_with_dune.t) ~lookup_vlib ~(lib : Library.t)
       in
       let+ main_module_name, wrapped =
         let open Result.O in
-        let* main_module_name = Lib.main_module_name resolved in
-        let+ wrapped = Lib.wrapped resolved in
+        let+ main_module_name = Lib.main_module_name resolved
+        and+ wrapped = Lib.wrapped resolved in
         (main_module_name, Option.value_exn wrapped)
       in
       (kind, main_module_name, wrapped)
@@ -261,6 +284,7 @@ let make_lib_modules (d : _ Dir_with_dune.t) ~lookup_vlib ~(lib : Library.t)
       ~private_modules:
         (Option.value ~default:Ordered_set_lang.standard lib.private_modules)
       ~src_dir
+    |> add_dummy_module_if_needed ~src_dir ~lib
   in
   let stdlib = lib.stdlib in
   let implements = Option.is_some lib.implements in
@@ -282,13 +306,13 @@ let libs_and_exes (d : _ Dir_with_dune.t) ~lookup_vlib ~modules =
         Left (lib, modules)
       | Executables exes
       | Tests { exes; _ } ->
-        let src_dir = d.ctx_dir in
         let modules =
-          Modules_field_evaluator.eval ~modules ~buildable:exes.buildable
-            ~kind:Modules_field_evaluator.Exe_or_normal_lib
-            ~private_modules:Ordered_set_lang.standard ~src_dir
-        in
-        let modules =
+          let src_dir = d.ctx_dir in
+          let modules =
+            Modules_field_evaluator.eval ~modules ~buildable:exes.buildable
+              ~kind:Modules_field_evaluator.Exe_or_normal_lib
+              ~private_modules:Ordered_set_lang.standard ~src_dir
+          in
           let project = Scope.project d.scope in
           if Dune_project.wrapped_executables project then
             Modules_group.exe_wrapped ~src_dir ~modules

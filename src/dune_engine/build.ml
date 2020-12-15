@@ -384,7 +384,7 @@ struct
   module rec Execution : sig
     val exec : 'a t -> ('a * Dep.Set.t) Fiber.t
 
-    val build_deps_and_exec : 'a t -> ('a * Dep.Set.t) Fiber.t
+    val build_static_rule_deps_and_exec : 'a t -> ('a * Dep.Set.t) Fiber.t
   end = struct
     module Function = struct
       type 'a input = 'a memo
@@ -471,10 +471,10 @@ struct
         (f, deps)
       | Build b ->
         let* b, deps0 = exec b in
-        let+ r, deps1 = build_deps_and_exec b in
+        let+ r, deps1 = build_static_rule_deps_and_exec b in
         (r, Dep.Set.union deps0 deps1)
 
-    and build_deps_and_exec : type a. a t -> (a * Dep.Set.t) Fiber.t =
+    and build_static_rule_deps_and_exec : type a. a t -> (a * Dep.Set.t) Fiber.t =
      fun t ->
       let* () = Build_deps.build_deps (static_deps t).rule_deps in
       exec t

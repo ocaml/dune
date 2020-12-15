@@ -216,23 +216,23 @@ end) : sig
       dependencies discovered during execution. *)
   val exec : 'a t -> ('a * Dep.Set.t) Fiber.t
 
-  (** Same as the previous function but also build the dependencies of the build
-      description *)
-  val build_deps_and_exec : 'a t -> ('a * Dep.Set.t) Fiber.t
+  (** Same as [exec] but also builds the static rule dependencies of the build
+      description. *)
+  val build_static_rule_deps_and_exec : 'a t -> ('a * Dep.Set.t) Fiber.t
 end
 
+(** These functions are experimental and potentially unsafe to use. Each usage
+    must be discussed and justified. *)
 module Expert : sig
-  (** Those function are experimental in there usage. Each usage must be
-      discussed, avoid to use them if possible. Moreover they can be more tricky
-      to use. In a {!fiber} and {!dyn_fiber} should ensure that generated files
-      are already regenerated. The {!build} function turn dependencies that can
-      be though as static in dynamic dependencies, which can reduce the
-      parallelism. *)
-
+  (** If the fiber reads any files, you must ensure they are up to date. *)
   val fiber : 'a Fiber.t -> 'a t
 
+  (** If the fiber reads any files, you must ensure they are up to date. *)
   val dyn_fiber : 'a Fiber.t t -> 'a t
 
+  (** This function "stages" static dependencies and can therefore reduce build
+      parallelism: until the outer build description has been evaluated, the
+      static dependencies of the inner build description are unknown. *)
   val build : 'a t t -> 'a t
 end
 

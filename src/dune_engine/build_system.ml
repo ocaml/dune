@@ -1172,9 +1172,7 @@ end = struct
       | Sandbox_config _ ->
         Fiber.return ())
 
-  let eval_pred = Pred.eval
-
-  let () = Build.set_file_system_accessors ~file_exists ~eval_pred
+  let () = Build.set_file_system_accessors ~file_exists
 
   module Build_request = struct
     type 'a t =

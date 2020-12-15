@@ -22,6 +22,8 @@ val sandbox_config : Sandbox_config.t -> t
 
 val compare : t -> t -> Ordering.t
 
+(** The evaluation of file predicates is done by the build_system. This
+    necessitates a forward declaration to use in this module. *)
 val eval_pred : (File_selector.t -> Path.Set.t) Fdecl.t
 
 module Trace : sig

@@ -339,7 +339,7 @@ end = struct
     let f sctx ~dir ~name =
       let t = get sctx ~dir in
       let ml_sources = ocaml t in
-      Ml_sources.modules_of_library ml_sources ~name
+      Ml_sources.modules ml_sources ~for_:(Library name)
     in
     Fdecl.set Compilation_context.modules_of_lib f
 

@@ -74,7 +74,7 @@ end = struct
               returns the correct value for libs without modules *)
            let modules =
              Dir_contents.ocaml dir_contents
-             |> Ml_sources.modules_of_library ~name:(Lib_info.name lib)
+             |> Ml_sources.modules ~for_:(Library (Lib_info.name lib))
            in
            if Lib_info.has_native_archive lib_config modules then
              Lib_info.native_archives lib
@@ -118,7 +118,7 @@ end = struct
     in
     let installable_modules =
       Dir_contents.ocaml dir_contents
-      |> Ml_sources.modules_of_library ~name:(Library.best_name lib)
+      |> Ml_sources.modules ~for_:(Library (Library.best_name lib))
       |> Modules.fold_no_vlib ~init:[] ~f:(fun m acc -> m :: acc)
     in
     let sources =
@@ -450,7 +450,7 @@ end = struct
             in
             let modules =
               Dir_contents.ocaml dir_contents
-              |> Ml_sources.modules_of_library ~name
+              |> Ml_sources.modules ~for_:(Library name)
             in
             Lib_name.Map.add_exn acc name
               (Library

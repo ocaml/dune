@@ -270,7 +270,7 @@ module Unprocessed = struct
       let name = Lib_info.name info in
       let modules =
         Dir_contents.get sctx ~dir |> Dir_contents.ocaml
-        |> Ml_sources.modules_of_library ~name
+        |> Ml_sources.modules ~for_:(Library name)
       in
       Path.Set.map ~f:Path.drop_optional_build_context
         (Modules.source_dirs modules)

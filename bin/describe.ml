@@ -64,7 +64,7 @@ module Crawl = struct
     let obj_dir = Dune_file.Executables.obj_dir exes ~dir in
     let modules_ =
       Dir_contents.get sctx ~dir |> Dir_contents.ocaml
-      |> Ml_sources.modules_of_executables ~first_exe ~obj_dir
+      |> Ml_sources.modules ~for_:(Exe { first_exe; obj_dir })
     in
     let obj_dir = Obj_dir.of_local obj_dir in
     let modules_ = modules ~obj_dir modules_ in
@@ -103,7 +103,7 @@ module Crawl = struct
         if Lib.is_local lib then
           Dir_contents.get sctx ~dir:(Path.as_in_build_dir_exn src_dir)
           |> Dir_contents.ocaml
-          |> Ml_sources.modules_of_library ~name
+          |> Ml_sources.modules ~for_:(Library name)
           |> modules ~obj_dir
         else
           []

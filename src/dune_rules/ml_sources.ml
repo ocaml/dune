@@ -172,16 +172,22 @@ let modules_of_files ~dialects ~dir ~files =
   Module_name.Map.merge impls intfs ~f:(fun name impl intf ->
       Some (Module.Source.make name ?impl ?intf))
 
-let modules_of_library t ~name =
-  let map = (Memo.Lazy.force t.modules).libraries in
-  Lib_name.Map.find_exn map name
+type for_ =
+  | Library of Lib_name.t
+  | Exe of
+      { first_exe : string
+      ; obj_dir : Path.Build.t Obj_dir.t
+      }
 
-let modules_of_executables t ~obj_dir ~first_exe =
-  let map = (Memo.Lazy.force t.modules).executables in
-  (* we need to relocate the alias module to its own directory. *)
-  let src_dir = Path.build (Obj_dir.obj_dir obj_dir) in
-  String.Map.find_exn map first_exe
-  |> Modules_group.relocate_alias_module ~src_dir
+let modules t ~for_ =
+  let modules = Memo.Lazy.force t.modules in
+  match for_ with
+  | Library name -> Lib_name.Map.find_exn modules.libraries name
+  | Exe { obj_dir; first_exe } ->
+    (* we need to relocate the alias module to its own directory. *)
+    let src_dir = Path.build (Obj_dir.obj_dir obj_dir) in
+    String.Map.find_exn modules.executables first_exe
+    |> Modules_group.relocate_alias_module ~src_dir
 
 let lookup_module (t : t) name =
   let modules = Memo.Lazy.force t.modules in
@@ -195,7 +201,7 @@ let virtual_modules lookup_vlib vlib =
     | Local ->
       let src_dir = Lib_info.src_dir info |> Path.as_in_build_dir_exn in
       let t = lookup_vlib ~dir:src_dir in
-      modules_of_library t ~name:(Lib.name vlib)
+      modules t ~for_:(Library (Lib.name vlib))
   in
   let existing_virtual_modules = Modules_group.virtual_module_names modules in
   let allow_new_public_modules =

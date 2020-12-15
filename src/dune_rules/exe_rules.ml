@@ -96,8 +96,8 @@ let executables_rules ~sctx ~dir ~expander ~dir_contents ~scope ~compile_info
   Check_rules.add_obj_dir sctx ~obj_dir;
   let modules =
     let first_exe = first_exe exes in
-    let ml_sources = Dir_contents.ocaml dir_contents in
-    Ml_sources.modules_of_executables ml_sources ~first_exe ~obj_dir
+    Dir_contents.ocaml dir_contents
+    |> Ml_sources.modules ~for_:(Exe { first_exe; obj_dir })
   in
   let ctx = Super_context.context sctx in
   let pp =

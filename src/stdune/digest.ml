@@ -39,4 +39,16 @@ let file_with_stats p (stats : Unix.stats) =
   | S_DIR ->
     generic (stats.st_size, stats.st_perm, stats.st_mtime, stats.st_ctime)
   | _ ->
-    generic (file p, stats.st_perm land 0o100 (* Only take USR_X in account *))
+    (* We follow the digest scheme used by Jenga. *)
+    let string_and_bool ~digest_hex ~bool =
+      D.string
+        ( digest_hex
+        ^
+        if bool then
+          "\001"
+        else
+          "\000" )
+    in
+    let content_digest = file p in
+    let executable = stats.st_perm land 0o100 <> 0 in
+    string_and_bool ~digest_hex:content_digest ~bool:executable

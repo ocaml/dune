@@ -100,7 +100,8 @@ module Spec = struct
     | Some info -> (
       match find info.name with
       | Some _ ->
-        Code_error.raise "[Spec.register] called twice on the same function" []
+        Code_error.raise
+          "[Spec.register] called twice on a function with the same name" []
       | None -> String.Table.set by_name info.name (T t) )
 
   let create (type o) ~info ~input ~visibility ~(output : o Output.t) ~f =

@@ -240,6 +240,7 @@ Test compiling an external plugin
   > (using dune_site 0.1)
   > (name e)
   > (package (name e) (sites (share data)))
+  > EOF
 
   $ cat >e/dune <<EOF
   > (library

@@ -583,3 +583,62 @@ let%expect_test "error handling and memo - async" =
              [ { exn = "(Failure left)"; backtrace = "" }
              ; { exn = "(Failure right)"; backtrace = "" }
              ] |}]
+
+let%expect_test "error handling and async diamond" =
+  let f_impl = ref (fun _i -> assert false) in
+  let f =
+    int_fn_create "async-error-diamond: f"
+      ~output:(Allow_cutoff (module Unit))
+      (fun x -> !f_impl x)
+  in
+  (f_impl :=
+     fun x ->
+       printf "Calling f %d\n" x;
+       if x = 0 then
+         failwith "reached 0"
+       else
+         Fiber.fork_and_join_unit
+           (fun () -> Memo.exec f (x - 1))
+           (fun () -> Memo.exec f (x - 1)));
+  let test x =
+    let res =
+      try
+        Fiber.run
+          ~iter:(fun () -> raise Exit)
+          (Fiber.collect_errors (fun () -> Memo.exec f x))
+      with exn -> Error [ Exn_with_backtrace.capture exn ]
+    in
+    let open Dyn.Encoder in
+    Format.printf "f %d = %a@." x Pp.to_fmt
+      (Dyn.pp (Result.to_dyn unit (list Exn_with_backtrace.to_dyn) res))
+  in
+  test 0;
+  [%expect
+    {|
+    Calling f 0
+    f 0 = Error [ { exn = "(Failure \"reached 0\")"; backtrace = "" } ]
+    |}];
+  test 1;
+  [%expect
+    {|
+    Calling f 1
+    f 1 = Error
+            [ { exn = "(Failure \"reached 0\")"; backtrace = "" }
+            ; { exn = "(Failure \"reached 0\")"; backtrace = "" }
+            ]
+    |}];
+  test 2;
+  [%expect
+    {|
+    Calling f 2
+    f 2 = Error
+            [ { exn = "(Failure \"reached 0\")"; backtrace = "" }
+            ; { exn = "(Failure \"reached 0\")"; backtrace = "" }
+            ; { exn = "(Failure \"reached 0\")"; backtrace = "" }
+            ; { exn = "(Failure \"reached 0\")"; backtrace = "" }
+            ]
+    |}]
+
+(* XXX aalekseyev: The exceptions get duplicated here, so the total number of
+   exceptions is exponential in the depth of the computation graph. This is
+   worrying! *)

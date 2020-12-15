@@ -92,13 +92,12 @@ let executables_rules ~sctx ~dir ~expander ~dir_contents ~scope ~compile_info
     ~embed_in_plugin_libraries (exes : Dune_file.Executables.t) =
   (* Use "eobjs" rather than "objs" to avoid a potential conflict with a library
      of the same name *)
-  let obj_dir = Dune_file.Executables.obj_dir exes ~dir in
-  Check_rules.add_obj_dir sctx ~obj_dir;
-  let modules =
+  let modules, obj_dir =
     let first_exe = first_exe exes in
     Dir_contents.ocaml dir_contents
-    |> Ml_sources.modules ~for_:(Exe { first_exe; obj_dir })
+    |> Ml_sources.modules_and_obj_dir ~for_:(Exe { first_exe })
   in
+  Check_rules.add_obj_dir sctx ~obj_dir;
   let ctx = Super_context.context sctx in
   let pp =
     let preprocess =

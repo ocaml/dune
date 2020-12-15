@@ -24,8 +24,9 @@ type for_ =
   | Exe of
       { first_exe : string
             (** Name of first executable appearing in executables stanza *)
-      ; obj_dir : Path.Build.t Obj_dir.t
       }
+
+val modules_and_obj_dir : t -> for_:for_ -> Modules.t * Path.Build.t Obj_dir.t
 
 (** Modules attached to a library or executable.*)
 val modules : t -> for_:for_ -> Modules.t

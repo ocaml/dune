@@ -11,6 +11,10 @@ module Make (Key : Map_intf.Key) (M : Map_intf.S with type key = Key.t) = struct
 
   let to_list = elements
 
+  let to_list_map t ~f =
+    (* optimize if we get a right fold *)
+    fold t ~init:[] ~f:(fun a acc -> f a :: acc) |> List.rev
+
   let mem t x = mem x t
 
   let add t x = add x t

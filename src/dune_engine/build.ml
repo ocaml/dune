@@ -167,7 +167,7 @@ let memoize name t = Memo { name; id = Type_eq.Id.create (); t }
 let source_tree ~dir =
   let dep_set = Dep.Set.source_tree dir in
   let+ () = deps dep_set in
-  Dep.Set.paths dep_set ~eval_pred:(fun _ -> Path.Set.empty)
+  Dep.Set.paths dep_set
 
 (* CR-someday amokhov: The set of targets is accumulated using information from
    multiple sources by calling [Path.Build.Set.union] and hence occasionally

@@ -9,9 +9,14 @@ let for_lib l = Lib l
 
 let for_exes ~names = Exes names
 
+(* For debug purposes we use the name of one library or executable and the hash
+   of the others if there are multiple executables to name the merlin file *)
 let to_string = function
   | Lib name -> sprintf "lib-%s" (Lib_name.to_string name)
-  | Exes names -> sprintf "exe-%s" (String.concat ~sep:"-" names)
+  | Exes [ name ] -> sprintf "exe-%s" name
+  | Exes (name :: names) ->
+    sprintf "exe-%s-%s" name Digest.(generic names |> to_string)
+  | Exes [] -> assert false
 
 let merlin_exist_name = ".merlin-exist"
 

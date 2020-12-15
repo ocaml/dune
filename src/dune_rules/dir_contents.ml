@@ -143,11 +143,10 @@ end = struct
           | Menhir.T menhir -> Menhir_rules.targets menhir
           | Rule rule ->
             Simple_rules.user_rule sctx rule ~dir ~expander
-            |> Path.Build.Set.fold ~init:[] ~f:(fun a acc ->
-                   Path.Build.basename a :: acc)
+            |> Path.Build.Set.to_list_map ~f:Path.Build.basename
           | Copy_files def ->
             Simple_rules.copy_files sctx def ~src_dir ~dir ~expander
-            |> Path.Set.to_list |> List.map ~f:Path.basename
+            |> Path.Set.to_list_map ~f:Path.basename
           | Generate_sites_module def ->
             [ Generate_sites_module_rules.setup_rules sctx ~dir def ]
           | Library { buildable; _ }

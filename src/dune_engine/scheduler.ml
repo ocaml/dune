@@ -569,8 +569,18 @@ end = struct
   let init () = Lazy.force init
 end
 
+type status =
+  (* Waiting for file changes to start a new a build *)
+  | Waiting_for_file_changes of unit Fiber.Ivar.t
+  (* Running a build *)
+  | Building
+  (* Cancellation requested. Build jobs are immediately rejected in this state *)
+  | Restarting_build
+
 type t =
   { original_cwd : string
+  ; polling : bool
+  ; mutable status : status
   ; mutable job_throttle : Fiber.Throttle.t
   }
 
@@ -585,9 +595,18 @@ let set_concurrency n =
   let t = Fiber.Var.get_exn t_var in
   Fiber.Throttle.resize t.job_throttle n
 
+exception Cancel_build
+
 let with_job_slot f =
   let t = Fiber.Var.get_exn t_var in
-  Fiber.Throttle.run t.job_throttle ~f
+  Fiber.Throttle.run t.job_throttle ~f:(fun () ->
+      match t.status with
+      | Restarting_build -> raise Cancel_build
+      | Building -> f ()
+      | Waiting_for_file_changes _ ->
+        (* At this stage, we're not running a build, so we shouldn't be running
+           tasks here. *)
+        assert false)
 
 let wait_for_process pid =
   let ivar = Fiber.Ivar.create () in
@@ -604,10 +623,7 @@ type saw_signal =
   | Ok
   | Got_signal
 
-let kill_and_wait_for_all_processes t () =
-  (* Re-create the throttle so that we don't keep old ivars from one run to the
-     next *)
-  t.job_throttle <- Fiber.Throttle.create (Fiber.Throttle.size t.job_throttle);
+let kill_and_wait_for_all_processes () =
   Process_watcher.killall Sys.sigkill;
   let saw_signal = ref Ok in
   while Event.pending_jobs () > 0 do
@@ -619,7 +635,7 @@ let kill_and_wait_for_all_processes t () =
   done;
   !saw_signal
 
-let prepare ?(config = Config.default) () =
+let prepare ?(config = Config.default) ~polling () =
   Log.info
     [ Pp.textf "Workspace root: %s"
         (Path.to_absolute_filename Path.root |> String.maybe_quoted)
@@ -656,11 +672,13 @@ let prepare ?(config = Config.default) () =
         cwd );
   let t =
     { original_cwd = cwd
+    ; status = Building
     ; job_throttle =
         Fiber.Throttle.create
           ( match config.concurrency with
           | Auto -> 1
           | Fixed n -> n )
+    ; polling
     }
   in
   t
@@ -668,7 +686,6 @@ let prepare ?(config = Config.default) () =
 module Run_once : sig
   type run_error =
     | Got_signal
-    | Files_changed
     | Never
     | Exn of Exn_with_backtrace.t
 
@@ -677,21 +694,51 @@ module Run_once : sig
 end = struct
   type run_error =
     | Got_signal
-    | Files_changed
     | Never
     | Exn of Exn_with_backtrace.t
 
   exception Abort of run_error
 
-  let iter () =
-    let count = Event.pending_jobs () in
-    if count = 0 then
+  (** This function is the heart of the scheduler. It makes progress in
+      executing fibers by doing the following:
+
+      - notifying completed jobs
+      - starting cancellations
+      - terminating the scheduler on signals *)
+  let rec iter (t : t) =
+    if
+      ( match t.status with
+      | Waiting_for_file_changes _ ->
+        (* In polling mode, there are no pending jobs while we are waiting for
+           file changes *)
+        false
+      | _ -> true )
+      && Event.pending_jobs () = 0
+    then
       raise (Abort Never)
     else (
       Console.Status_line.refresh ();
       match Event.next () with
       | Job_completed (job, status) -> Fiber.Fill (job.ivar, status)
-      | Files_changed -> raise (Abort Files_changed)
+      | Files_changed -> (
+        match t.status with
+        | Restarting_build ->
+          (* We're already cancelling build, so file change events don't matter *)
+          iter t
+        | Building ->
+          let status_line =
+            Some
+              (Pp.seq
+                 (* XXX Why do we print "Had errors"? The user simply edited a
+                    file *)
+                 (Pp.tag User_message.Style.Error (Pp.verbatim "Had errors"))
+                 (Pp.verbatim ", killing current build..."))
+          in
+          Console.Status_line.set (Fun.const status_line);
+          t.status <- Restarting_build;
+          Process_watcher.killall Sys.sigkill;
+          iter t
+        | Waiting_for_file_changes ivar -> Fill (ivar, ()) )
       | Signal signal ->
         got_signal signal;
         raise (Abort Got_signal)
@@ -701,46 +748,28 @@ end = struct
     let fiber =
       Fiber.Var.set t_var t (fun () -> Fiber.with_error_handler f ~on_error)
     in
-    match Fiber.run fiber ~iter with
+    match Fiber.run fiber ~iter:(fun () -> iter t) with
     | res ->
-      assert (Event.pending_jobs () = 0);
+      assert ((not t.polling) && Event.pending_jobs () = 0);
       Ok res
     | exception Abort err -> Error err
     | exception exn -> Error (Exn (Exn_with_backtrace.capture exn))
 
   let run_and_cleanup t f =
     let res = run t f in
-    let status_line =
-      match res with
-      | Error Files_changed ->
-        Some
-          (Pp.seq
-             (Pp.tag User_message.Style.Error (Pp.verbatim "Had errors"))
-             (Pp.verbatim ", killing current build..."))
-      | _ -> None
-    in
-    Console.Status_line.set (Fun.const status_line);
-    match kill_and_wait_for_all_processes t () with
+    Console.Status_line.set (Fun.const None);
+    match kill_and_wait_for_all_processes () with
     | Got_signal -> Error Got_signal
     | Ok -> res
 end
 
 let go ?config f =
-  let t = prepare ?config () in
+  let t = prepare ?config ~polling:false () in
   let res = Run_once.run_and_cleanup t f in
   match res with
   | Error (Exn exn) -> Exn_with_backtrace.reraise exn
   | Ok res -> res
   | Error (Got_signal | Never) -> raise Dune_util.Report_error.Already_reported
-  | Error Files_changed ->
-    Code_error.raise
-      "Scheduler.go: files changed even though we're running without \
-       filesystem watcher"
-      []
-
-type exit_or_continue =
-  | Exit
-  | Continue
 
 let maybe_clear_screen ~config =
   match
@@ -759,45 +788,60 @@ let maybe_clear_screen ~config =
          ])
 
 let poll ?config ~once ~finally () =
-  let t = prepare ?config () in
+  let t = prepare ?config ~polling:true () in
   let watcher = File_watcher.create () in
-  let block_waiting_for_changes () =
-    match Event.next () with
-    | Job_completed _ -> assert false
-    | Files_changed -> Continue
-    | Signal signal ->
-      got_signal signal;
-      Exit
+  let rec loop () : Nothing.t Fiber.t =
+    t.status <- Building;
+    let open Fiber.O in
+    let* res =
+      let+ res =
+        let on_error exn () =
+          match t.status with
+          | Building -> Report_error.report exn
+          | Restarting_build -> ()
+          | Waiting_for_file_changes _ ->
+            (* We are inside a build, so we aren't waiting for a file change
+               event *)
+            assert false
+        in
+        Fiber.fold_errors ~init:() ~on_error once
+      in
+      finally ();
+      res
+    in
+    match t.status with
+    | Waiting_for_file_changes _ ->
+      (* We just finished a build, so there's no way this was set *)
+      assert false
+    | Restarting_build -> loop ()
+    | Building ->
+      let message =
+        match res with
+        | Ok () -> Pp.tag User_message.Style.Success (Pp.verbatim "Success")
+        | Error _ -> Pp.tag User_message.Style.Error (Pp.verbatim "Had errors")
+      in
+      Console.Status_line.set
+        (Fun.const
+           (Some
+              (Pp.seq message
+                 (Pp.verbatim ", waiting for filesystem changes..."))));
+      let ivar = Fiber.Ivar.create () in
+      t.status <- Waiting_for_file_changes ivar;
+      let* () = Fiber.Ivar.read ivar in
+      maybe_clear_screen ~config;
+      loop ()
   in
-  let wait msg =
-    Console.Status_line.set_temporarily
-      (fun () ->
-        Some (Pp.seq msg (Pp.verbatim ", waiting for filesystem changes...")))
-      (fun () ->
-        let res = block_waiting_for_changes () in
-        maybe_clear_screen ~config;
-        res)
-  in
-  let rec loop () =
-    let res = Run_once.run_and_cleanup t once in
-    finally ();
-    match res with
-    | Ok () ->
-      wait (Pp.tag User_message.Style.Success (Pp.verbatim "Success"))
-      |> after_wait
-    | Error Got_signal -> (Dune_util.Report_error.Already_reported, None)
-    | Error Never ->
-      wait (Pp.tag User_message.Style.Error (Pp.verbatim "Had errors"))
-      |> after_wait
-    | Error Files_changed -> loop ()
+  let exn, bt =
+    match Run_once.run_and_cleanup t loop with
+    | Ok (_ : Nothing.t) ->
+      (* Polling mode is an infinite loop. We aren't going to terminate *)
+      .
+    | Error (Got_signal | Never) ->
+      (Dune_util.Report_error.Already_reported, None)
     | Error (Exn exn_with_bt) -> (exn_with_bt.exn, Some exn_with_bt.backtrace)
-  and after_wait = function
-    | Exit -> (Dune_util.Report_error.Already_reported, None)
-    | Continue -> loop ()
   in
-  let exn, bt = loop () in
   ignore (wait_for_process (File_watcher.pid watcher) : _ Fiber.t);
-  ignore (kill_and_wait_for_all_processes t () : saw_signal);
+  ignore (kill_and_wait_for_all_processes () : saw_signal);
   match bt with
   | None -> Exn.raise exn
   | Some bt -> Exn.raise_with_backtrace exn bt

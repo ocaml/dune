@@ -52,10 +52,7 @@ with type 'a build := 'a t
 (** This function should be called before analysing build expressions using
     [static_deps], [lib_deps] or [exec], which all require some file system
     information. *)
-val set_file_system_accessors :
-     file_exists:(Path.t -> bool)
-  -> eval_pred:(File_selector.t -> Path.Set.t)
-  -> unit
+val set_file_system_accessors : file_exists:(Path.t -> bool) -> unit
 
 (** Add a set of targets to a build description, turning a target-less [Build.t]
     into [Build.With_targets.t]. *)

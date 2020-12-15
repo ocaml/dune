@@ -33,15 +33,12 @@ and 'a memo =
   ; t : 'a t
   }
 
-(* We use forward declarations to pass top-level [file_exists] and [eval_pred]
-   functions to avoid cyclic dependencies between modules. *)
+(* We use forward declarations to pass the top-level [file_exists] function to
+   avoid cyclic dependencies between modules. *)
 let file_exists_fdecl = Fdecl.create Dyn.Encoder.opaque
 
-let eval_pred_fdecl = Fdecl.create Dyn.Encoder.opaque
-
-let set_file_system_accessors ~file_exists ~eval_pred =
-  Fdecl.set file_exists_fdecl file_exists;
-  Fdecl.set eval_pred_fdecl eval_pred
+let set_file_system_accessors ~file_exists =
+  Fdecl.set file_exists_fdecl file_exists
 
 let return x = Pure x
 
@@ -384,7 +381,7 @@ end = struct
 
   let exec t =
     let file_exists = Fdecl.get file_exists_fdecl in
-    let eval_pred = Fdecl.get eval_pred_fdecl in
+    let eval_pred = Fdecl.get Dep.eval_pred in
     let rec go : type a. a t -> a * Dep.Set.t =
      fun t ->
       match t with

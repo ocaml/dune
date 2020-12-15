@@ -591,14 +591,15 @@ let%expect_test "error handling and async diamond" =
       ~output:(Allow_cutoff (module Unit))
       (fun x -> !f_impl x)
   in
-  f_impl := (fun x ->
-          printf "Calling f %d\n" x;
-        if x = 0 then
-          failwith "reached 0"
-        else
-          Fiber.fork_and_join_unit
-            (fun () -> Memo.exec f (x - 1))
-            (fun () -> Memo.exec f (x - 1)));
+  (f_impl :=
+     fun x ->
+       printf "Calling f %d\n" x;
+       if x = 0 then
+         failwith "reached 0"
+       else
+         Fiber.fork_and_join_unit
+           (fun () -> Memo.exec f (x - 1))
+           (fun () -> Memo.exec f (x - 1)));
   let test x =
     let res =
       try

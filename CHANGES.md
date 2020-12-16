@@ -83,7 +83,7 @@ Unreleased
   possible to use library dependencies shadowed by local modules (#3825,
   @rgrinberg)
 
-- Allow (formatting ...) field in (env ...) stanza to set per-directory
+- Allow `(formatting ...)` field in `(env ...)` stanza to set per-directory
   formatting specification. (#3942, @nojb)
 
 - [coq] In `coq.theory`, `:standard` for the `flags` field now uses the
@@ -93,9 +93,9 @@ Unreleased
 
 - Add support for Coq's native compute compilation mode (@ejgallego, #3210)
 
-- Add a SUFFIX directive in `.merlin` files for each dialect with no
-  preprocessing, to let merlin know of additional file extensions
-  (#3977, @vouillon)
+- Add a `SUFFIX` directive in `.merlin` files for each dialect with no
+  preprocessing, to let merlin know of additional file extensions (#3977,
+  @vouillon)
 
 - Stop promoting `.merlin` files. Write per-stanza Merlin configurations in
   binary form. Add a new subcommand `dune ocaml-merlin` that Merlin can use to

@@ -838,7 +838,11 @@ module Library = struct
     let virtual_library = is_virtual conf in
     let foreign_archives = foreign_lib_files conf ~dir ~ext_lib in
     let native_archives =
-      [ Path.Build.relative dir (Lib_name.Local.to_string lib_name ^ ext_lib) ]
+      if modes.native then
+        [ Path.Build.relative dir (Lib_name.Local.to_string lib_name ^ ext_lib)
+        ]
+      else
+        []
     in
     let foreign_dll_files = foreign_dll_files conf ~dir ~ext_dll in
     let exit_module = Option.bind conf.stdlib ~f:(fun x -> x.exit_module) in

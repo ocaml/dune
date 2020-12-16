@@ -46,7 +46,6 @@
    (kind normal)
    (archives (byte byte_only/d.cma))
    (plugins (byte byte_only/d.cma))
-   (native_archives byte_only/d$ext_lib)
    (main_module_name D)
    (modes byte)
    (modules

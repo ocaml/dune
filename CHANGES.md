@@ -103,6 +103,9 @@ Unreleased
   useless and deprecated. Dune now conflicts with `merlin < 3.4.0` and
   `ocaml-lsp-server < 1.3.0` (#3554, @voodoos)
 
+- Remove non-existent `(native_archives ..)` entries in `dune-package` files in
+  bytecode only libraries. (#4041, @rgrinberg)
+
 2.7.1 (2/09/2020)
 -----------------
 

@@ -30,7 +30,6 @@ module Kind = struct
     | Impl_vmodule
     | Wrapped_compat
     | Root
-    | Dummy
 
   let to_string = function
     | Intf_only -> "intf_only"
@@ -40,7 +39,6 @@ module Kind = struct
     | Impl_vmodule -> "impl_vmodule"
     | Wrapped_compat -> "wrapped_compat"
     | Root -> "root"
-    | Dummy -> "dummy"
 
   let to_dyn t = Dyn.Encoder.string (to_string t)
 
@@ -63,7 +61,6 @@ module Kind = struct
     | Impl_vmodule
     | Wrapped_compat
     | Root
-    | Dummy
     | Impl ->
       true
     | Intf_only
@@ -261,7 +258,6 @@ let encode
     | Alias
     | Impl
     | Virtual
-    | Dummy
     | Intf_only ->
       Some kind
   in
@@ -347,11 +343,6 @@ let generated_root ~src_dir name =
   let src_dir = Path.build src_dir in
   let t = generated ~src_dir name in
   { t with kind = Root; visibility = Private }
-
-let generated_dummy ~src_dir name =
-  let src_dir = Path.build src_dir in
-  let t = generated ~src_dir name in
-  { t with kind = Dummy; visibility = Private }
 
 let of_source ~visibility ~kind source = of_source ~visibility ~kind source
 

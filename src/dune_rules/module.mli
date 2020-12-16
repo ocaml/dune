@@ -24,7 +24,6 @@ module Kind : sig
     | Impl_vmodule
     | Wrapped_compat
     | Root
-    | Dummy
 
   include Dune_lang.Conv.S with type t := t
 end
@@ -136,5 +135,3 @@ val generated : src_dir:Path.t -> Module_name.t -> t
 val generated_alias : src_dir:Path.Build.t -> Module_name.t -> t
 
 val generated_root : src_dir:Path.Build.t -> Module_name.t -> t
-
-val generated_dummy : src_dir:Path.Build.t -> Module_name.t -> t

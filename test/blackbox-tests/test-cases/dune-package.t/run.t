@@ -41,6 +41,25 @@
       (kind alias)
       (impl))
      (wrapped true))))
+  (library
+   (name a.byte_only)
+   (kind normal)
+   (archives (byte byte_only/d.cma))
+   (plugins (byte byte_only/d.cma))
+   (native_archives byte_only/d$ext_lib)
+   (main_module_name D)
+   (modes byte)
+   (modules
+    (wrapped
+     (main_module_name D)
+     (modules ((name Z) (obj_name d__Z) (visibility public) (impl)))
+     (alias_module
+      (name D)
+      (obj_name d)
+      (visibility public)
+      (kind alias)
+      (impl))
+     (wrapped true))))
 
 Build with "--store-orig-source-dir" profile
   $ dune build --store-orig-source-dir
@@ -50,10 +69,16 @@ Build with "--store-orig-source-dir" profile
   --
    (orig_src_dir
     $TESTCASE_ROOT)
+  --
+   (orig_src_dir
+    $TESTCASE_ROOT)
 
 Build with "DUNE_STORE_ORIG_SOURCE_DIR=true" profile
   $ DUNE_STORE_ORIG_SOURCE_DIR=true dune build
   $ dune_cmd cat _build/install/default/lib/a/dune-package | grep -A 1 '(orig_src_dir'
+   (orig_src_dir
+    $TESTCASE_ROOT)
+  --
    (orig_src_dir
     $TESTCASE_ROOT)
   --

@@ -8,6 +8,13 @@
  (public_name a.b.c)
  (modules y))
 
+(library
+ (name d)
+ (public_name a.byte_only)
+ (modes byte)
+ (modules z))
+
 (rule (with-stdout-to x.ml (echo "")))
+(rule (with-stdout-to z.ml (echo "")))
 (rule (with-stdout-to y.ml (echo "")))
 (rule (with-stdout-to y.mli (echo "")))

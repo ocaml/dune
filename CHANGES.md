@@ -33,7 +33,7 @@ Unreleased
 
 - Fix generation of `META` and `dune-package` files when some targets (byte,
   native, dynlink) are disabled. Previously, dune would generate all archives
-  for regardless of settings. (#3829, @rgrinberg)
+  for regardless of settings. (#3829, #4041, @rgrinberg)
 
 - Do not run ocamldep to for single module executables & libraries. The
   dependency graph for such artifacts is trivial (#3847, @rgrinberg)
@@ -102,9 +102,6 @@ Unreleased
   query the configuration files. The `allow_approximate_merlin` option is now
   useless and deprecated. Dune now conflicts with `merlin < 3.4.0` and
   `ocaml-lsp-server < 1.3.0` (#3554, @voodoos)
-
-- Remove non-existent `(native_archives ..)` entries in `dune-package` files in
-  bytecode only libraries. (#4041, @rgrinberg)
 
 2.7.1 (2/09/2020)
 -----------------

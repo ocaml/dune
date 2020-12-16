@@ -419,7 +419,7 @@ end = struct
           ~special_builtin_support ~exit_module:None
           ~instrumentation_backend:None ~entry_modules
       in
-      Dune_package.Lib.make ~info ~modules:None ~main_module_name:None
+      Dune_package.Lib.of_findlib info
   end
 
   (* Parse all the packages defined in a META file *)

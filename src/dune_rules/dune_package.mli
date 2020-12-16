@@ -19,10 +19,12 @@ module Lib : sig
 
   val info : t -> Path.t Lib_info.t
 
-  val make :
+  val of_findlib : Path.t Lib_info.t -> t
+
+  val of_dune_lib :
        info:Path.t Lib_info.t
     -> main_module_name:Module_name.t option
-    -> modules:Modules.t option
+    -> modules:Modules.t
     -> t
 
   val to_dyn : t Dyn.Encoder.t

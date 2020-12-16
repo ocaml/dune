@@ -26,6 +26,11 @@ module Lib = struct
     let info = Lib_info.map_path info ~f:map_path in
     { info; main_module_name; modules }
 
+  let of_dune_lib ~info ~main_module_name ~modules =
+    make ~info ~main_module_name ~modules:(Some modules)
+
+  let of_findlib info = make ~info ~main_module_name:None ~modules:None
+
   let dir_of_name name =
     let _, components = Lib_name.split name in
     Path.Local.L.relative Path.Local.root components

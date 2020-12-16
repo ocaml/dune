@@ -224,17 +224,21 @@ end
 (** These functions are experimental and potentially unsafe to use. Each usage
     must be discussed and justified. *)
 module Expert : sig
-  (** If the fiber reads any files, you must ensure they are up to date. *)
-  val fiber : 'a Fiber.t -> 'a t
-
-  (** If the fiber reads any files, you must ensure they are up to date. *)
-  val dyn_fiber : 'a Fiber.t t -> 'a t
-
   (** This function "stages" static dependencies and can therefore reduce build
       parallelism: until the outer build description has been evaluated, the
       static dependencies of the inner build description are unknown. *)
   val build : 'a t t -> 'a t
 end
+
+(** If you're thinking of using [Process.run] in the fiber, check that: (i) you
+    don't in fact need [Command.run], and that (ii) [Process.run] only reads the
+    declared build rule dependencies. *)
+val fiber : 'a Fiber.t -> 'a t
+
+(** If you're thinking of using [Process.run] in the fiber, check that: (i) you
+    don't in fact need [Command.run], and that (ii) [Process.run] only reads the
+    declared build rule dependencies. *)
+val dyn_fiber : 'a Fiber.t t -> 'a t
 
 (**/**)
 

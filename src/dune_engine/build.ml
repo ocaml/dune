@@ -370,12 +370,12 @@ let fold_labeled (type acc) t ~(init : acc) ~f =
 (* Execution *)
 
 module Expert = struct
-  let fiber f = Fiber f
-
-  let dyn_fiber f = Dyn_fiber f
-
   let build f = Build f
 end
+
+let fiber f = Fiber f
+
+let dyn_fiber f = Dyn_fiber f
 
 module Make_exec (Build_deps : sig
   val build_deps : Dep.Set.t -> unit Fiber.t

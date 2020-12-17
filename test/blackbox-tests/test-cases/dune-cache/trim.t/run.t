@@ -9,6 +9,12 @@
   >   (targets target_b)
   >   (action (bash "touch beacon_b; echo target_b > target_b")))
   > (rule
+  >   (targets non-exe)
+  >   (action (bash "echo content > non-exe")))
+  > (rule
+  >   (targets exe)
+  >   (action (bash "echo content > exe; chmod +x exe")))
+  > (rule
   >   (targets multi_a multi_b)
   >   (action (bash "touch beacon_multi; echo multi_a > multi_a; echo multi_b > multi_b")))
   > EOF
@@ -18,19 +24,36 @@ Check that trimming does not crash when the cache directory does not exist.
   $ env DUNE_CACHE=enabled DUNE_CACHE_EXIT_NO_CLIENT=1 XDG_RUNTIME_DIR=$PWD/.xdg-runtime XDG_CACHE_HOME=$PWD/.xdg-cache dune cache trim --size 0B
   Freed 0 bytes
 
-Build some targets.
+Check that the digest scheme for executable and non-excutable digests hasn't
+changed. If it has, make sure to increment the version of the cache. Note that
+the current digests for both files match those computed by Jenga.
+
+  $ env DUNE_CACHE=enabled DUNE_CACHE_EXIT_NO_CLIENT=1 XDG_RUNTIME_DIR=$PWD/.xdg-runtime XDG_CACHE_HOME=$PWD/.xdg-cache dune build exe non-exe
+
+  $ (cd "$PWD/.xdg-cache/dune/db/files/v4"; grep -rws . -e 'content' | sort)
+  ./5e/5e5bb3a0ec0e689e19a59c3ee3d7fca8:content
+  ./62/6274851067c88e9990e912be27cce386:content
+
+Move all current v4 entries to v3 to test trimming of old versions of cache.
+
+  $ mkdir "$PWD/.xdg-cache/dune/db/files/v3"
+  $ mkdir "$PWD/.xdg-cache/dune/db/meta/v3"
+  $ mv "$PWD/.xdg-cache/dune/db/files/v4"/* "$PWD/.xdg-cache/dune/db/files/v3"
+  $ mv "$PWD/.xdg-cache/dune/db/meta/v4"/* "$PWD/.xdg-cache/dune/db/meta/v3"
+
+Build some more targets.
 
   $ env DUNE_CACHE=enabled DUNE_CACHE_EXIT_NO_CLIENT=1 XDG_RUNTIME_DIR=$PWD/.xdg-runtime XDG_CACHE_HOME=$PWD/.xdg-cache dune build target_a target_b
 
 Have a look at one of the metadata files and its size.
 
-  $ cat $PWD/.xdg-cache/dune/db/meta/v3/9a/9a8995f866fa478a9a263b8470fb218f
-  ((8:metadata)(5:files(16:default/target_b32:de8852e356e79df9dddd6b2f2cced43f)))
+  $ cat $PWD/.xdg-cache/dune/db/meta/v4/9a/9a8995f866fa478a9a263b8470fb218f
+  ((8:metadata)(5:files(16:default/target_b32:8a53bfae3829b48866079fa7f2d97781)))
 
-  $ dune_cmd stat size $PWD/.xdg-cache/dune/db/meta/v3/9a/9a8995f866fa478a9a263b8470fb218f
+  $ dune_cmd stat size $PWD/.xdg-cache/dune/db/meta/v4/9a/9a8995f866fa478a9a263b8470fb218f
   79
 
-Trimming the cache at this point should not remove anything, as both
+Trimming the cache at this point should not remove anything, as all
 files are still hard-linked in the build directory.
 
   $ XDG_RUNTIME_DIR=$PWD/.xdg-runtime XDG_CACHE_HOME=$PWD/.xdg-cache dune cache trim --trimmed-size 1B
@@ -53,11 +76,12 @@ If we unlink one file in the build tree, it can be reclaimed when trimming.
   $ test -e _build/default/beacon_a
   $ ! test -e _build/default/beacon_b
 
-Reset build tree and cache.
+Reset build tree and cache. Make sure both v3 and v4 entries are trimmed.
 
   $ rm -f _build/default/beacon_a _build/default/target_a _build/default/beacon_b _build/default/target_b
-  $ XDG_RUNTIME_DIR=$PWD/.xdg-runtime XDG_CACHE_HOME=$PWD/.xdg-cache dune cache trim --trimmed-size 18B
-  Freed 176 bytes
+  $ rm -f _build/default/non-exe _build/default/exe
+  $ XDG_RUNTIME_DIR=$PWD/.xdg-runtime XDG_CACHE_HOME=$PWD/.xdg-cache dune cache trim --size 0B
+  Freed 344 bytes
 
 The cache deletes oldest files first.
 
@@ -81,15 +105,12 @@ Reset build tree and cache.
   $ XDG_RUNTIME_DIR=$PWD/.xdg-runtime XDG_CACHE_HOME=$PWD/.xdg-cache dune cache trim --trimmed-size 18B
   Freed 176 bytes
 
-When a file is pulled from the cache, its mtime is touched so it's deleted last.
+When a cache entry becomes unused, its ctime is modified and will determine the order of trimming.
 
-  $ env DUNE_CACHE=enabled DUNE_CACHE_EXIT_NO_CLIENT=1 XDG_RUNTIME_DIR=$PWD/.xdg-runtime XDG_CACHE_HOME=$PWD/.xdg-cache dune build target_b
-  $ sleep 1
-  $ env DUNE_CACHE=enabled DUNE_CACHE_EXIT_NO_CLIENT=1 XDG_RUNTIME_DIR=$PWD/.xdg-runtime XDG_CACHE_HOME=$PWD/.xdg-cache dune build target_a
-  $ rm -f _build/default/target_b
-  $ sleep 1
   $ env DUNE_CACHE=enabled DUNE_CACHE_EXIT_NO_CLIENT=1 XDG_RUNTIME_DIR=$PWD/.xdg-runtime XDG_CACHE_HOME=$PWD/.xdg-cache dune build target_a target_b
-  $ rm -f _build/default/beacon_a _build/default/target_a _build/default/beacon_b _build/default/target_b
+  $ rm -f _build/default/beacon_a _build/default/target_a
+  $ sleep 1
+  $ rm -f _build/default/beacon_b _build/default/target_b
   $ XDG_RUNTIME_DIR=$PWD/.xdg-runtime XDG_CACHE_HOME=$PWD/.xdg-cache dune cache trim --trimmed-size 1B
   Freed 88 bytes
   $ env DUNE_CACHE=enabled DUNE_CACHE_EXIT_NO_CLIENT=1 XDG_RUNTIME_DIR=$PWD/.xdg-runtime XDG_CACHE_HOME=$PWD/.xdg-cache dune build target_a target_b
@@ -130,20 +151,3 @@ they are part of the same rule.
   $ rm -f _build/default/multi_a _build/default/multi_b
   $ XDG_RUNTIME_DIR=$PWD/.xdg-runtime XDG_CACHE_HOME=$PWD/.xdg-cache dune cache trim --trimmed-size 1B
   Freed 141 bytes
-
-Check reporting of unexpected directories at the cache root while trimming:
-
-  $ mkdir -p $PWD/.xdg-cache/dune/db/temp
-  $ mkdir -p $PWD/.xdg-cache/dune/db/runtime
-  $ mkdir -p $PWD/.xdg-cache/dune/db/v2
-  $ mkdir -p $PWD/.xdg-cache/dune/db/files/v2
-  $ mkdir -p $PWD/.xdg-cache/dune/db/meta/v2
-  $ XDG_RUNTIME_DIR=$PWD/.xdg-runtime XDG_CACHE_HOME=$PWD/.xdg-cache dune cache trim --trimmed-size 1B
-  Error: Unexpected directories found at the cache root:
-  - $TESTCASE_ROOT/.xdg-cache/dune/db/files/v2
-  - $TESTCASE_ROOT/.xdg-cache/dune/db/meta/v2
-  - $TESTCASE_ROOT/.xdg-cache/dune/db/temp
-  - $TESTCASE_ROOT/.xdg-cache/dune/db/v2
-  These directories are probably used by Dune of a different version. Please
-  trim the cache manually.
-  [1]

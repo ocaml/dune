@@ -62,6 +62,8 @@ module FirstTwoCharsSubdir : FSScheme = struct
     let first_two_chars = String.sub digest ~pos:0 ~len:2 in
     Path.L.relative root [ first_two_chars; digest ]
 
+  (** List all entries in a given cache root. Returns the empty list of the root
+      doesn't exist. *)
   let list ~root =
     let open Result.O in
     let f dir =
@@ -74,6 +76,7 @@ module FirstTwoCharsSubdir : FSScheme = struct
     in
     match Path.readdir_unsorted root >>= Result.List.concat_map ~f with
     | Ok res -> res
+    | Error ENOENT -> []
     | Error e -> User_error.raise [ Pp.text (Unix.error_message e) ]
 end
 
@@ -431,8 +434,9 @@ let garbage_collect = garbage_collect_impl ~trimmed_so_far:Trimming_result.empty
 let file_exists_and_is_unused ~stats = stats.Unix.st_nlink = 1
 
 let files_in_cache_for_all_supported_versions cache =
-  List.concat_map [ V3.file_store_root; file_store_root ] ~f:(fun root ->
-      FSSchemeImpl.list ~root:(root cache))
+  let files = FSSchemeImpl.list ~root:(file_store_root cache) in
+  let files_v3 = FSSchemeImpl.list ~root:(V3.file_store_root cache) in
+  files @ files_v3
 
 let trim cache ~goal =
   let files = files_in_cache_for_all_supported_versions cache in

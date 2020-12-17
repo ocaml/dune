@@ -1,12 +1,14 @@
   $ cat >dune-project <<EOF
-  > (lang dune 2.7) 
+  > (lang dune 2.7)
   > (allow_approximate_merlin true)
+  > EOF
 
   $ dune build @all
 
   $ cat >dune-project <<EOF
-  > (lang dune 2.8) 
+  > (lang dune 2.8)
   > (allow_approximate_merlin true)
+  > EOF
 
   $ dune build @all
   File "dune-project", line 2, characters 0-31:

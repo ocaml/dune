@@ -24,7 +24,7 @@ The with-configure-step_ example shows one way to do it which
 preserves composability; i.e. it doesn't require manually running ``./configure``
 script when working on multiple projects at the same time.
 
-.. _with-configure-step: https://github.com/ocaml/dune/tree/master/example/sample-projects/with-configure-step
+.. _with-configure-step: https://github.com/ocaml/dune/tree/master/example/sample-projects/with-configure-step.t
 
 Can I use topkg with dune?
 ==========================

@@ -103,6 +103,9 @@ Unreleased
   useless and deprecated. Dune now conflicts with `merlin < 3.4.0` and
   `ocaml-lsp-server < 1.3.0` (#3554, @voodoos)
 
+- Configurator: fix a bug introduced in 2.6.0 where the configurator V1 API doesn't work at 
+  all when used outside of dune. (#4046, @aalekseyev)
+
 2.7.1 (2/09/2020)
 -----------------
 

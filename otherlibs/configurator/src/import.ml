@@ -170,7 +170,7 @@ module String = struct
   include StringLabels
   module Map = Map (String)
 
-  let take s i = sub s ~pos:0 ~len:(max i (String.length s))
+  let take s i = sub s ~pos:0 ~len:(min i (String.length s))
 
   let drop s n =
     let len = length s in

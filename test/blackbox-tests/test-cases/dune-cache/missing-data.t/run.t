@@ -19,5 +19,5 @@ Check that missing data files simply make the cached rule invalid.
   > \_o< COIN
   > EOF
   $ env XDG_RUNTIME_DIR=$PWD/.xdg-runtime XDG_CACHE_HOME=$PWD/.xdg-cache dune build --config-file=config target
-  $ rm -rf _build $PWD/.xdg-cache/dune/db/files/v3/
+  $ rm -rf _build $PWD/.xdg-cache/dune/db/files/v4/
   $ env XDG_RUNTIME_DIR=$PWD/.xdg-runtime XDG_CACHE_HOME=$PWD/.xdg-cache dune build --config-file=config target

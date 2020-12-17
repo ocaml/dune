@@ -1172,6 +1172,10 @@ end = struct
       | Sandbox_config _ ->
         Fiber.return ())
 
+  module Build_exec = Build.Make_exec (struct
+    let build_deps = build_deps
+  end)
+
   let () = Build.set_file_system_accessors ~file_exists
 
   module Build_request = struct
@@ -1187,8 +1191,7 @@ end = struct
     let static_deps (type a) (t : a t) = Build.static_deps (build t)
 
     let evaluate_and_discover_dynamic_deps_unmemoized t =
-      let+ () = build_deps (static_deps t).rule_deps in
-      Build.exec (build t)
+      Build_exec.build_static_rule_deps_and_exec (build t)
 
     let memo =
       Memo.create "evaluate-rule-and-discover-dynamic-deps"

@@ -240,7 +240,7 @@ The generated module `sites` depends here also on the library
 
    let todo = Queue.create ()
 
-- The code of the exectuable ``c.ml``:
+- The code of the executable ``c.ml``:
 
 .. code:: ocaml
 

@@ -1656,7 +1656,7 @@ The stanza will build all ``.v`` files on the given directory. The semantics of 
   ``.cmxs`` files appearing in ``<ocaml_libraries>``,
 - ``<coq_flags>`` will be passed to ``coqc`` as command-line
   options. ``:standard`` is taken from the value set in the ``(coq (flags <flags>))``
-  field in ``env`` profile. See :ref:`_dune-env` for more information.
+  field in ``env`` profile. See :ref:`dune-env` for more information.
 - the path to installed locations of ``<ocaml_libraries>`` will be passed to
   ``coqdep`` and ``coqc`` using Coq's ``-I`` flag; this allows for a Coq
   theory to depend on a ML plugin,

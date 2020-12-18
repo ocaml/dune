@@ -1725,7 +1725,7 @@ module DB = struct
 
   type t = db
 
-  (* CR-soon amokhov: this whole module should be rewritten using the
+  (* CR-someday amokhov: this whole module should be rewritten using the
      memoization framework instead of using mutable state. *)
   let create ~parent ~resolve ~projects_by_package ~all ~lib_config () =
     { parent

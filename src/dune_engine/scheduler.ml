@@ -107,7 +107,7 @@ end = struct
 
   let cond = Condition.create ()
 
-  (* CR-soon amokhov: The way we handle "ignored files" using this mutable table
+  (* CR-someday amokhov: The way we handle "ignored files" using a mutable table
      is fragile and also wrong. We use [ignored_files] for the [(mode promote)]
      feature: if a file is promoted, we call [ignore_next_file_change_event] so
      that the upcoming file-change event does not invalidate the current build.

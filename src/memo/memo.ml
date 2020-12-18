@@ -733,7 +733,7 @@ end = struct
       if Run.is_current run then
         Waiting (state.sample_attempt, ())
       else
-        (* CR-soon amokhov: How can we end up here? If we can't raise an error. *)
+        (* CR-someday amokhov: How can we get here? If we can't raise an error. *)
         new_attempt ()
     | Done cv -> (
       match Cached_value.get_sync cv with

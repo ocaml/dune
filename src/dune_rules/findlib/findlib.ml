@@ -614,7 +614,7 @@ let all_packages t =
            (Dune_package.Entry.name a)
            (Dune_package.Entry.name b))
 
-(* CR-soon amokhov: Remove the mutable table below and add:
+(* CR-someday amokhov: Remove the mutable table below and add:
 
    - A memoized function for finding packages by names (see [find]).
 

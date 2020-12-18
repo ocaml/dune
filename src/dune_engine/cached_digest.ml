@@ -26,7 +26,7 @@ end)
 
 let needs_dumping = ref false
 
-(* CR-soon amokhov: replace this mutable table with a memoized function. This
+(* CR-someday amokhov: replace this mutable table with a memoized function. This
    will probably require splitting this module in two, for dealing with source
    and target files, respectively. For source files, we receive updates via the
    file-watching API. For target files, we modify the digests ourselves, without

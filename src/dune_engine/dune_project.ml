@@ -344,8 +344,8 @@ module Extension = struct
         -> Univ_map.t * Stanza.Parser.t list
     }
 
-  (* CR-soon amokhov: convert this mutable table to a memoized function, which
-     depends on the contents of dune files that declare extensions. *)
+  (* CR-someday amokhov: convert this mutable table to a memoized function,
+     which depends on the contents of dune files that declare extensions. *)
   let extensions = Table.create (module String) 32
 
   let register syntax stanzas arg_to_dyn =

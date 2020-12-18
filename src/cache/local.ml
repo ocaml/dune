@@ -62,8 +62,8 @@ module FirstTwoCharsSubdir : FSScheme = struct
     let first_two_chars = String.sub digest ~pos:0 ~len:2 in
     Path.L.relative root [ first_two_chars; digest ]
 
-  (** List all entries in a given cache root. Returns the empty list of the root
-      doesn't exist. *)
+  (* List all entries in a given cache root. Returns the empty list of the root
+     doesn't exist. *)
   let list ~root =
     let open Result.O in
     let f dir =
@@ -249,8 +249,8 @@ let promote_sync cache paths key metadata ~repository ~duplication =
       Result.Error message
     ) else
       let in_the_cache = file_path cache effective_digest in
-      (* CR-soon: we assume that if the file with [effective_digest] exists in
-         the file storage, then its content matches the digest, i.e. the user
+      (* CR-someday: we assume that if the file with [effective_digest] exists
+         in the file storage, then its content matches the digest, i.e. the user
          never modifies it. In principle, we could add a consistency check but
          this would have a non-negligible performance cost. A good compromise
          seems to be to add a "paranoid" mode to Dune cache where we always
@@ -366,7 +366,7 @@ let make ?(root = default_root ())
     ; command_handler
     ; duplication_mode
     ; temp_dir =
-        (* CR-soon amokhov: Introduce [val getpid : unit -> t] in [pid.ml] so
+        (* CR-someday amokhov: Introduce [val getpid : unit -> t] in [pid.ml] so
            that we don't use the untyped version of pid anywhere. *)
         Path.temp_dir ~temp_dir:root "promoting."
           ("." ^ string_of_int (Unix.getpid ()))
@@ -453,8 +453,8 @@ let trim cache ~goal =
       trimmed_so_far
     else (
       Path.unlink path;
-      (* CR-soon amokhov: We should really be using block_size * #blocks because
-         that's how much we save actually. *)
+      (* CR-someday amokhov: We should really be using block_size * #blocks
+         because that's how much we save actually. *)
       Trimming_result.add trimmed_so_far ~bytes
     )
   in

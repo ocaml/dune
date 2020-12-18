@@ -118,6 +118,12 @@ let footer =
 
 let copts_sect = "COMMON OPTIONS"
 
+let debug_backtraces =
+  Arg.(
+    value & flag
+    & info [ "debug-backtraces" ] ~docs:copts_sect
+        ~doc:{|Always print exception backtraces.|})
+
 let examples = function
   | [] -> `Blocks []
   | _ :: _ as examples ->
@@ -475,11 +481,7 @@ let term =
     Arg.(
       value & flag
       & info [ "debug-findlib" ] ~docs ~doc:{|Debug the findlib sub-system.|})
-  and+ debug_backtraces =
-    Arg.(
-      value & flag
-      & info [ "debug-backtraces" ] ~docs
-          ~doc:{|Always print exception backtraces.|})
+  and+ debug_backtraces = debug_backtraces
   and+ debug_artifact_substitution =
     Arg.(
       value & flag

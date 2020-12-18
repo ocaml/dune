@@ -53,11 +53,10 @@ end = struct
     else
       []
 
-  let lib_files ~modes ~dir_contents ~dir ~lib_config lib =
+  let lib_files ~dir_contents ~dir ~lib_config lib =
     let virtual_library = Option.is_some (Lib_info.virtual_ lib) in
     let { Lib_config.ext_obj; _ } = lib_config in
     let archives = Lib_info.archives lib in
-    let { Mode.Dict.byte = _; native } = modes in
     List.concat
       [ archives.byte
       ; archives.native
@@ -68,18 +67,12 @@ end = struct
           Foreign.Sources.object_files files ~dir ~ext_obj
         else
           Lib_info.foreign_archives lib )
-      ; if_
-          (native && not virtual_library)
-          ((* TODO remove the if check once Lib_info.native_archives always
-              returns the correct value for libs without modules *)
-           let modules =
-             Dir_contents.ocaml dir_contents
-             |> Ml_sources.modules ~for_:(Library (Lib_info.name lib))
-           in
-           if Lib_info.has_native_archive lib_config modules then
-             Lib_info.native_archives lib
-           else
-             [])
+      ; (let modules =
+           Dir_contents.ocaml dir_contents
+           |> Ml_sources.modules ~for_:(Library (Lib_info.name lib))
+           |> Option.some
+         in
+         Lib_info.eval_native_archives_exn lib ~modules)
       ; Lib_info.jsoo_runtime lib
       ; (Lib_info.plugins lib).native
       ]
@@ -183,7 +176,7 @@ end = struct
           other_cm_files)
     in
     let lib_files, dll_files =
-      let lib_files = lib_files ~modes ~dir ~dir_contents ~lib_config info in
+      let lib_files = lib_files ~dir ~dir_contents ~lib_config info in
       let dll_files = dll_files ~modes ~dynlink:lib.dynlink ~ctx info in
       (lib_files, dll_files)
     in

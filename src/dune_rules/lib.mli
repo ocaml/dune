@@ -186,6 +186,7 @@ module DB : sig
     -> resolve:(Lib_name.t -> Resolve_result.t)
     -> projects_by_package:Dune_project.t Package.Name.Map.t
     -> all:(unit -> Lib_name.t list)
+    -> modules_of_lib:(dir:Path.Build.t -> name:Lib_name.t -> Modules.t) Fdecl.t
     -> lib_config:Lib_config.t
     -> unit
     -> t

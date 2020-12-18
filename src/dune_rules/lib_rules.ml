@@ -16,10 +16,9 @@ let msvc_hack_cclibs =
       Option.value ~default:lib (String.drop_prefix ~prefix:"-l" lib))
 
 (* Build an OCaml library. *)
-let build_lib (lib : Library.t) ~sctx ~modules ~expander ~flags ~dir ~mode
-    ~cm_files =
+let build_lib (lib : Library.t) ~native_archives ~sctx ~expander ~flags ~dir
+    ~mode ~cm_files =
   let ctx = Super_context.context sctx in
-  let { Lib_config.ext_lib; _ } = ctx.lib_config in
   Result.iter (Context.compiler ctx mode) ~f:(fun compiler ->
       let target = Library.archive lib ~dir ~ext:(Mode.compiled_lib_ext mode) in
       let stubs_flags =
@@ -76,11 +75,7 @@ let build_lib (lib : Library.t) ~sctx ~modules ~expander ~flags ~dir ~mode
               ; Hidden_targets
                   ( match mode with
                   | Byte -> []
-                  | Native ->
-                    if Lib_info.has_native_archive ctx.lib_config modules then
-                      [ Library.archive lib ~dir ~ext:ext_lib ]
-                    else
-                      [] )
+                  | Native -> native_archives )
               ]))
 
 let gen_wrapped_compat_modules (lib : Library.t) cctx =
@@ -229,7 +224,7 @@ let build_stubs lib ~cctx ~dir ~expander ~requires ~dir_contents
     ocamlmklib ~archive_name ~loc:lib.buildable.loc ~sctx ~expander ~dir
       ~o_files ~c_library_flags:lib.c_library_flags ~build_targets_together
 
-let build_shared lib ~modules ~sctx ~dir ~flags =
+let build_shared lib ~native_archives ~sctx ~dir ~flags =
   let ctx = Super_context.context sctx in
   Result.iter ctx.ocamlopt ~f:(fun ocamlopt ->
       let ext_lib = ctx.lib_config.ext_lib in
@@ -266,12 +261,9 @@ let build_shared lib ~modules ~sctx ~dir ~flags =
               ]
       in
       let build =
-        if Lib_info.has_native_archive ctx.lib_config modules then
-          Build.with_no_targets
-            (Build.path (Path.build (Library.archive lib ~dir ~ext:ext_lib)))
-          >>> build
-        else
-          build
+        Build.with_no_targets
+          (Build.paths (List.map ~f:Path.build native_archives))
+        >>> build
       in
       Super_context.add_rule sctx build ~dir)
 
@@ -315,11 +307,17 @@ let setup_build_archives (lib : Dune_file.Library.t) ~cctx
      [Obj_dir]. That's fragile and will break if the layout of the object
      directory changes *)
   let dir = Obj_dir.dir obj_dir in
+  let native_archives =
+    let lib_config = ctx.lib_config in
+    let lib_info = Library.to_lib_info lib ~dir ~lib_config in
+    Lib_info.eval_native_archives_exn lib_info ~modules:(Some modules)
+  in
   (let cm_files =
      Cm_files.make ~obj_dir ~ext_obj ~modules ~top_sorted_modules
    in
    Mode.Dict.Set.iter modes ~f:(fun mode ->
-       build_lib lib ~dir ~modules ~sctx ~expander ~flags ~mode ~cm_files));
+       build_lib lib ~native_archives ~dir ~sctx ~expander ~flags ~mode
+         ~cm_files));
   (* Build *.cma.js *)
   if modes.byte then
     Super_context.add_rules sctx ~dir
@@ -332,7 +330,7 @@ let setup_build_archives (lib : Dune_file.Library.t) ~cctx
        in
        Jsoo_rules.build_cm cctx ~js_of_ocaml ~src ~target);
   if Dynlink_supported.By_the_os.get natdynlink_supported && modes.native then
-    build_shared ~modules ~sctx lib ~dir ~flags
+    build_shared ~native_archives ~sctx lib ~dir ~flags
 
 let cctx (lib : Library.t) ~sctx ~source_modules ~dir ~expander ~scope
     ~compile_info =

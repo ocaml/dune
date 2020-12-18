@@ -410,13 +410,14 @@ end = struct
                         | Ok s -> Ok (Some s)
                         | Error e -> Error (User_error.E e) )) ) )
         in
-        Lib_info.create ~loc ~name:t.name ~kind ~status ~src_dir ~orig_src_dir
-          ~obj_dir ~version ~synopsis ~main_module_name ~sub_systems ~requires
-          ~foreign_objects ~plugins ~archives ~ppx_runtime_deps
-          ~foreign_archives ~native_archives ~foreign_dll_files:[] ~jsoo_runtime
-          ~jsoo_archive ~preprocess ~enabled ~virtual_deps ~dune_version
-          ~virtual_ ~implements ~default_implementation ~modes ~wrapped
-          ~special_builtin_support ~exit_module:None
+        Lib_info.create ~path_kind:External ~loc ~name:t.name ~kind ~status
+          ~src_dir ~orig_src_dir ~obj_dir ~version ~synopsis ~main_module_name
+          ~sub_systems ~requires ~foreign_objects ~plugins ~archives
+          ~ppx_runtime_deps ~foreign_archives
+          ~native_archives:(Files native_archives) ~foreign_dll_files:[]
+          ~jsoo_runtime ~jsoo_archive ~preprocess ~enabled ~virtual_deps
+          ~dune_version ~virtual_ ~implements ~default_implementation ~modes
+          ~wrapped ~special_builtin_support ~exit_module:None
           ~instrumentation_backend:None ~entry_modules
       in
       Dune_package.Lib.of_findlib info

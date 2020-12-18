@@ -121,7 +121,8 @@ module Spec = struct
 |}
                  t.wrapped stubs);
             if t.stubs then file "stub.c" "void foo() {}";
-            if t.mli_only then file "foo.mli" "type x = unit");
+            if t.mli_only then file "foo.mli" "type x = unit";
+            cmd "cat dune");
         cmd "dune build --root . @install";
         cmd "ls _build/install/default/lib/foo/*.a");
 

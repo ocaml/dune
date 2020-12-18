@@ -341,7 +341,7 @@ end = struct
       let ml_sources = ocaml t in
       Ml_sources.modules ml_sources ~for_:(Library name)
     in
-    Fdecl.set Compilation_context.modules_of_lib f
+    Fdecl.set Super_context.modules_of_lib f
 
   let gen_rules sctx ~dir =
     match Memo.exec memo0 (sctx, dir) with

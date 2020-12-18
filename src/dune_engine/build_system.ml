@@ -1292,11 +1292,16 @@ end = struct
       | exception Unix.Unix_error (ENOENT, _, _) -> ()
       | () -> () )
 
+  (* The current version of the rule digest scheme. We should increment it when
+     making any changes to the scheme, to avoid collisions. *)
+  let rule_digest_version = 1
+
   let compute_rule_digest (rule : Rule.t) ~deps ~action ~sandbox_mode =
     let targets_as_list = Path.Build.Set.to_list rule.action.targets in
     let env = Rule.effective_env rule in
     let trace =
-      ( Dep.Set.trace deps ~sandbox_mode ~env
+      ( rule_digest_version (* Update when changing the rule digest scheme. *)
+      , Dep.Set.trace deps ~sandbox_mode ~env
       , List.map targets_as_list ~f:(fun p -> Path.to_string (Path.build p))
       , Option.map rule.context ~f:(fun c -> c.name)
       , Action.for_shell action )

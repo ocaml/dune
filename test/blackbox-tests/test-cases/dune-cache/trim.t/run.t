@@ -45,12 +45,13 @@ Build some more targets.
 
   $ env DUNE_CACHE=enabled DUNE_CACHE_EXIT_NO_CLIENT=1 XDG_RUNTIME_DIR=$PWD/.xdg-runtime XDG_CACHE_HOME=$PWD/.xdg-cache dune build target_a target_b
 
-Have a look at one of the metadata files and its size.
+Have a look at one of the metadata files and its size. If the rule digest changes,
+make sure to increment [rule_digest_version] in [build_system.ml].
 
-  $ cat $PWD/.xdg-cache/dune/db/meta/v4/9a/9a8995f866fa478a9a263b8470fb218f
+  $ cat $PWD/.xdg-cache/dune/db/meta/v4/95/95be12ef67548c59c691567564f2c158
   ((8:metadata)(5:files(16:default/target_b32:8a53bfae3829b48866079fa7f2d97781)))
 
-  $ dune_cmd stat size $PWD/.xdg-cache/dune/db/meta/v4/9a/9a8995f866fa478a9a263b8470fb218f
+  $ dune_cmd stat size $PWD/.xdg-cache/dune/db/meta/v4/95/95be12ef67548c59c691567564f2c158
   79
 
 Trimming the cache at this point should not remove anything, as all

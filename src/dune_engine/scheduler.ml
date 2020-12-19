@@ -589,7 +589,7 @@ let t_var : t Fiber.Var.t = Fiber.Var.create ()
 let with_chdir ~dir ~f =
   let t = Fiber.Var.get_exn t_var in
   Sys.chdir (Path.to_string dir);
-  protectx () ~finally:(fun () -> Sys.chdir t.original_cwd) ~f
+  protect ~finally:(fun () -> Sys.chdir t.original_cwd) ~f
 
 let set_concurrency n =
   let t = Fiber.Var.get_exn t_var in

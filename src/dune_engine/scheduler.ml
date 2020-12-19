@@ -647,7 +647,9 @@ let prepare ?(config = Config.default) ~polling () =
   let cwd = Sys.getcwd () in
   if cwd <> initial_cwd && not !Clflags.no_print_directory then
     Printf.eprintf "Entering directory '%s'\n%!"
-      ( if Config.inside_dune then
+      ( match Config.inside_dune with
+      | false -> cwd
+      | true -> (
         let descendant_simple p ~of_ =
           match String.drop_prefix p ~prefix:of_ with
           | None
@@ -667,9 +669,7 @@ let prepare ?(config = Config.default) ~polling () =
               else
                 loop (Filename.concat acc "..") (Filename.dirname dir)
             in
-            loop ".." (Filename.dirname s) )
-      else
-        cwd );
+            loop ".." (Filename.dirname s) ) ) );
   let t =
     { original_cwd = cwd
     ; status = Building

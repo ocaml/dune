@@ -581,7 +581,7 @@ type t =
   { original_cwd : string
   ; polling : bool
   ; mutable status : status
-  ; mutable job_throttle : Fiber.Throttle.t
+  ; job_throttle : Fiber.Throttle.t
   }
 
 let t_var : t Fiber.Var.t = Fiber.Var.create ()

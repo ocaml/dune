@@ -27,10 +27,7 @@ val info : t -> Path.t Lib_info.t
 
 val main_module_name : t -> Module_name.t option Or_exn.t
 
-val entry_module_names :
-     t
-  -> local_lib:(dir:Path.Build.t -> name:Lib_name.t -> Modules.t)
-  -> Module_name.t list Or_exn.t
+val entry_module_names : t -> Module_name.t list Or_exn.t
 
 val wrapped : t -> Wrapped.t option Or_exn.t
 

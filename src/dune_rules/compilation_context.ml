@@ -227,5 +227,4 @@ let without_bin_annot t = { t with bin_annot = false }
 let root_module_entries t : Module_name.t list Or_exn.t =
   let open Result.O in
   let* requires = t.requires_compile in
-  let local_lib = Fdecl.get Super_context.modules_of_lib t.super_context in
-  Result.List.concat_map requires ~f:(Lib.entry_module_names ~local_lib)
+  Result.List.concat_map requires ~f:Lib.entry_module_names

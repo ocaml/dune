@@ -345,6 +345,8 @@ let expand_and_record_generic acc ~dep_kind ~(dir : Path.Build.t) ~pform t
       ( Project_root | First_dep | Deps | Targets | Target | Named_local
       | Values _ )
   | Macro ((Ocaml_config | Env | Version), _) ->
+    (* Some of these values are filled by [static_expand], others are bindings
+       introduced by the user and handled specifically elsewhere *)
     assert false
   | Var Cc -> Dynamic (cc t ~dir).c
   | Var Cxx -> Dynamic (cc t ~dir).cxx
@@ -609,9 +611,6 @@ end = struct
       |> Expanded.to_value_opt
            ~on_deferred:(fun (expansion : Pform.Expansion.t) ->
              match expansion with
-             | Var (Project_root | Values _)
-             | Macro ((Ocaml_config | Env | Version), _) ->
-               assert false (* these have been expanded statically *)
              | Var (First_dep | Deps | Named_local) -> None
              | Var Targets -> Some (targets ~multiplicity:Multiple)
              | Var Target -> Some (targets ~multiplicity:One)

@@ -581,7 +581,7 @@ type t =
   { original_cwd : string
   ; polling : bool
   ; mutable status : status
-  ; mutable job_throttle : Fiber.Throttle.t
+  ; job_throttle : Fiber.Throttle.t
   }
 
 let t_var : t Fiber.Var.t = Fiber.Var.create ()
@@ -589,7 +589,7 @@ let t_var : t Fiber.Var.t = Fiber.Var.create ()
 let with_chdir ~dir ~f =
   let t = Fiber.Var.get_exn t_var in
   Sys.chdir (Path.to_string dir);
-  protectx () ~finally:(fun () -> Sys.chdir t.original_cwd) ~f
+  protect ~finally:(fun () -> Sys.chdir t.original_cwd) ~f
 
 let set_concurrency n =
   let t = Fiber.Var.get_exn t_var in
@@ -647,7 +647,9 @@ let prepare ?(config = Config.default) ~polling () =
   let cwd = Sys.getcwd () in
   if cwd <> initial_cwd && not !Clflags.no_print_directory then
     Printf.eprintf "Entering directory '%s'\n%!"
-      ( if Config.inside_dune then
+      ( match Config.inside_dune with
+      | false -> cwd
+      | true -> (
         let descendant_simple p ~of_ =
           match String.drop_prefix p ~prefix:of_ with
           | None
@@ -667,9 +669,7 @@ let prepare ?(config = Config.default) ~polling () =
               else
                 loop (Filename.concat acc "..") (Filename.dirname dir)
             in
-            loop ".." (Filename.dirname s) )
-      else
-        cwd );
+            loop ".." (Filename.dirname s) ) ) );
   let t =
     { original_cwd = cwd
     ; status = Building

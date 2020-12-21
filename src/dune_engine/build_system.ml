@@ -337,6 +337,7 @@ type t =
   ; mutable rule_done : int
   ; mutable rule_total : int
   ; vcs : Vcs.t list Fdecl.t
+  ; locks : (Path.t, Fiber.Mutex.t) Table.t
   }
 
 let t = ref None
@@ -557,16 +558,13 @@ let compute_targets_digest_or_raise_error ~loc targets =
 
 let sandbox_dir = Path.Build.relative Path.Build.root ".sandbox"
 
-(* This mutable table is safe: it merely maps paths to lazily created mutexes. *)
-let locks : (Path.t, Fiber.Mutex.t) Table.t = Table.create (module Path) 32
-
-let rec with_locks mutexes ~f =
+let rec with_locks t mutexes ~f =
   match mutexes with
   | [] -> f ()
   | m :: mutexes ->
     Fiber.Mutex.with_lock
-      (Table.find_or_add locks m ~f:(fun _ -> Fiber.Mutex.create ()))
-      (fun () -> with_locks mutexes ~f)
+      (Table.find_or_add t.locks m ~f:(fun _ -> Fiber.Mutex.create ()))
+      (fun () -> with_locks t mutexes ~f)
 
 let remove_old_artifacts ~dir ~rules_here ~(subdirs_to_keep : Subdir_set.t) =
   match Path.readdir_unsorted_with_kinds (Path.build dir) with
@@ -1506,7 +1504,7 @@ end = struct
           let chdirs = Action.chdirs action in
           Path.Set.iter chdirs ~f:Fs.(mkdir_p_or_check_exists ~loc);
           let+ exec_result =
-            with_locks locks ~f:(fun () ->
+            with_locks t locks ~f:(fun () ->
                 let copy_files_from_sandbox sandboxed =
                   List.iter targets_as_list ~f:(fun target ->
                       rename_optional_file ~src:(sandboxed target) ~dst:target)
@@ -2016,6 +2014,9 @@ let init ~contexts ?caching ~sandboxing_preference () =
     ; sandboxing_preference = sandboxing_preference @ Sandbox_mode.all
     ; rule_done = 0
     ; rule_total = 0
+    ; (* This mutable table is safe: it merely maps paths to lazily created
+         mutexes. *)
+      locks = Table.create (module Path) 32
     }
   in
   Console.Status_line.set (fun () ->

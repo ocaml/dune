@@ -574,18 +574,13 @@ let remove_old_artifacts ~dir ~rules_here ~(subdirs_to_keep : Subdir_set.t) =
     List.iter files ~f:(fun (fn, kind) ->
         let path = Path.Build.relative dir fn in
         let path_is_a_target = Path.Build.Map.mem rules_here path in
-        if path_is_a_target then
-          ()
-        else
+        if not path_is_a_target then
           match kind with
           | Unix.S_DIR -> (
             match subdirs_to_keep with
             | All -> ()
             | These set ->
-              if String.Set.mem set fn then
-                ()
-              else
-                Path.rm_rf (Path.build path) )
+              if not (String.Set.mem set fn) then Path.rm_rf (Path.build path) )
           | _ -> Path.unlink (Path.build path))
 
 let no_rule_found t ~loc fn =

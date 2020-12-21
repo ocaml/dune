@@ -1414,7 +1414,7 @@ end = struct
       match rule_need_rerun with
       | false -> Fiber.return ()
       | true ->
-        let from_Cache =
+        let from_cache =
           match (do_not_memoize, t.caching) with
           | true, _
           | _, None ->
@@ -1443,7 +1443,7 @@ end = struct
               Path.unlink_no_err (Path.build target))
         in
         let pulled_from_cache =
-          match from_Cache with
+          match from_cache with
           | Some (files, (module Caching)) when not cache_checking -> (
             let () = remove_targets () in
             let retrieve (file : Cache.File.t) =
@@ -1521,7 +1521,7 @@ end = struct
             (* Check cache. We don't check for missing file in the cache, since
                the file list is part of the rule hash this really never should
                happen. *)
-            match from_Cache with
+            match from_cache with
             | Some (cached, _) when cache_checking ->
               (* This being [false] is unexpected and means we have a hash
                  collision *)

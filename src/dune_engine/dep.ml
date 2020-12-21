@@ -116,8 +116,7 @@ module Set = struct
     let has_universe t = mem t Universe
 
     let sandbox_config t =
-      List.fold_left (to_list t) ~init:Sandbox_config.no_special_requirements
-        ~f:(fun acc x ->
+      fold t ~init:Sandbox_config.no_special_requirements ~f:(fun x acc ->
           match x with
           | File_selector _
           | Env _
@@ -133,7 +132,12 @@ module Set = struct
       Path.Set.fold ~init:empty ~f:(fun f acc -> add acc (file f))
 
     let trace t ~sandbox_mode ~env =
-      let facts = List.filter_map (to_list t) ~f:(trace ~sandbox_mode ~env) in
+      let facts =
+        fold t ~init:[] ~f:(fun dep acc ->
+            match trace ~sandbox_mode ~env dep with
+            | None -> acc
+            | Some fact -> fact :: acc)
+      in
       { Trace.facts; sandbox_mode }
 
     let add_paths t paths =

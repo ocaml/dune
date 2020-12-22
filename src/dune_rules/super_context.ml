@@ -532,15 +532,15 @@ let create ~(context : Context.t) ?host ~projects ~packages ~stanzas () =
     Artifacts.create context ~public_libs ~local_bins
   in
   let root_expander =
-    let artifacts_host, context_host =
+    let scopes_host, artifacts_host, context_host =
       match host with
-      | None -> (artifacts, context)
-      | Some host -> (host.artifacts, host.context)
+      | None -> (scopes, artifacts, context)
+      | Some host -> (host.scopes, host.artifacts, host.context)
     in
     let find_package = Package.Name.Map.find packages in
     Expander.make
       ~scope:(Scope.DB.find_by_dir scopes context.build_dir)
-      ~scope_host:(Scope.DB.find_by_dir scopes context_host.build_dir)
+      ~scope_host:(Scope.DB.find_by_dir scopes_host context_host.build_dir)
       ~context ~lib_artifacts:artifacts.public_libs
       ~bin_artifacts_host:artifacts_host.bin
       ~lib_artifacts_host:artifacts_host.public_libs ~find_package

@@ -242,3 +242,17 @@ field of a (rule).
                ^^^^^^^
   Error: %{cmo:..} isn't allowed in this position
   [1]
+
+The above restriction also applies to other stanzas. Any stanzas that introduces
+new files for Dir_contents, for example copy_files:
+
+  $ cat > deps-fail/dune << EOF
+  > (copy_files "%{cmo:x2}")
+  > EOF
+  $ ./sdune build --root deps-fail t
+  Entering directory 'deps-fail'
+  File "dune", line 1, characters 15-22:
+  1 | (copy_files "%{cmo:x2}")
+                     ^^^^^^^
+  Error: %{cmo:..} isn't allowed in this position
+  [1]

@@ -25,10 +25,12 @@ type t =
   ; hidden_env : Env.Var.Set.t
   ; env : Env.t
   ; lib_artifacts : Artifacts.Public_libs.t
+  ; lib_artifacts_host : Artifacts.Public_libs.t
   ; bin_artifacts_host : Artifacts.Bin.t
   ; ocaml_config : Value.t list String.Map.t Lazy.t
   ; bindings : Pform.Map.t
   ; scope : Scope.t
+  ; scope_host : Scope.t
   ; c_compiler : string
   ; context : Context.t
   ; expand_var : t -> Expanded.t String_with_vars.expander
@@ -193,8 +195,8 @@ let static_expand
 let cc_cxx_bindings =
   Pform.Map.of_list_exn [ ("cc", Pform.Var.Cc); ("cxx", Pform.Var.Cxx) ]
 
-let make ~scope ~(context : Context.t) ~lib_artifacts ~bin_artifacts_host
-    ~find_package =
+let make ~scope ~scope_host ~(context : Context.t) ~lib_artifacts
+    ~lib_artifacts_host ~bin_artifacts_host ~find_package =
   let ocaml_config = lazy (make_ocaml_config context.ocaml_config) in
   let dir = context.build_dir in
   let bindings =
@@ -209,7 +211,9 @@ let make ~scope ~(context : Context.t) ~lib_artifacts ~bin_artifacts_host
   ; ocaml_config
   ; bindings
   ; scope
+  ; scope_host
   ; lib_artifacts
+  ; lib_artifacts_host
   ; bin_artifacts_host
   ; expand_var = static_expand
   ; c_compiler

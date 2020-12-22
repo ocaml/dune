@@ -337,6 +337,7 @@ type t =
   ; mutable rule_done : int
   ; mutable rule_total : int
   ; vcs : Vcs.t list Fdecl.t
+  ; locks : (Path.t, Fiber.Mutex.t) Table.t
   }
 
 let t = ref None
@@ -557,16 +558,13 @@ let compute_targets_digest_or_raise_error ~loc targets =
 
 let sandbox_dir = Path.Build.relative Path.Build.root ".sandbox"
 
-(* This mutable table is safe: it merely maps paths to lazily created mutexes. *)
-let locks : (Path.t, Fiber.Mutex.t) Table.t = Table.create (module Path) 32
-
-let rec with_locks mutexes ~f =
+let rec with_locks t mutexes ~f =
   match mutexes with
   | [] -> f ()
   | m :: mutexes ->
     Fiber.Mutex.with_lock
-      (Table.find_or_add locks m ~f:(fun _ -> Fiber.Mutex.create ()))
-      (fun () -> with_locks mutexes ~f)
+      (Table.find_or_add t.locks m ~f:(fun _ -> Fiber.Mutex.create ()))
+      (fun () -> with_locks t mutexes ~f)
 
 let remove_old_artifacts ~dir ~rules_here ~(subdirs_to_keep : Subdir_set.t) =
   match Path.readdir_unsorted_with_kinds (Path.build dir) with
@@ -576,18 +574,13 @@ let remove_old_artifacts ~dir ~rules_here ~(subdirs_to_keep : Subdir_set.t) =
     List.iter files ~f:(fun (fn, kind) ->
         let path = Path.Build.relative dir fn in
         let path_is_a_target = Path.Build.Map.mem rules_here path in
-        if path_is_a_target then
-          ()
-        else
+        if not path_is_a_target then
           match kind with
           | Unix.S_DIR -> (
             match subdirs_to_keep with
             | All -> ()
             | These set ->
-              if String.Set.mem set fn then
-                ()
-              else
-                Path.rm_rf (Path.build path) )
+              if not (String.Set.mem set fn) then Path.rm_rf (Path.build path) )
           | _ -> Path.unlink (Path.build path))
 
 let no_rule_found t ~loc fn =
@@ -1421,7 +1414,7 @@ end = struct
       match rule_need_rerun with
       | false -> Fiber.return ()
       | true ->
-        let from_Cache =
+        let from_cache =
           match (do_not_memoize, t.caching) with
           | true, _
           | _, None ->
@@ -1450,7 +1443,7 @@ end = struct
               Path.unlink_no_err (Path.build target))
         in
         let pulled_from_cache =
-          match from_Cache with
+          match from_cache with
           | Some (files, (module Caching)) when not cache_checking -> (
             let () = remove_targets () in
             let retrieve (file : Cache.File.t) =
@@ -1506,7 +1499,7 @@ end = struct
           let chdirs = Action.chdirs action in
           Path.Set.iter chdirs ~f:Fs.(mkdir_p_or_check_exists ~loc);
           let+ exec_result =
-            with_locks locks ~f:(fun () ->
+            with_locks t locks ~f:(fun () ->
                 let copy_files_from_sandbox sandboxed =
                   List.iter targets_as_list ~f:(fun target ->
                       rename_optional_file ~src:(sandboxed target) ~dst:target)
@@ -1528,7 +1521,7 @@ end = struct
             (* Check cache. We don't check for missing file in the cache, since
                the file list is part of the rule hash this really never should
                happen. *)
-            match from_Cache with
+            match from_cache with
             | Some (cached, _) when cache_checking ->
               (* This being [false] is unexpected and means we have a hash
                  collision *)
@@ -2016,6 +2009,9 @@ let init ~contexts ?caching ~sandboxing_preference () =
     ; sandboxing_preference = sandboxing_preference @ Sandbox_mode.all
     ; rule_done = 0
     ; rule_total = 0
+    ; (* This mutable table is safe: it merely maps paths to lazily created
+         mutexes. *)
+      locks = Table.create (module Path) 32
     }
   in
   Console.Status_line.set (fun () ->

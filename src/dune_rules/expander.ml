@@ -156,10 +156,11 @@ let expand_artifact ~dir ~loc t a s : Expanded.t =
       let name = Module_name.of_string_allow_invalid (loc, name) in
       match Ml_sources.Artifacts.lookup_module artifacts name with
       | None -> does_not_exist ~loc ~what:"Module" (Module_name.to_string name)
-      | Some (t, m) -> (
-        match Obj_dir.Module.cm_file t m ~kind with
-        | None -> Value [ Value.String "" ]
-        | Some path -> Value [ Value.Path (Path.build path) ] ) )
+      | Some (t, m) ->
+        Value
+          ( match Obj_dir.Module.cm_file t m ~kind with
+          | None -> [ Value.String "" ]
+          | Some path -> [ Value.Path (Path.build path) ] ) )
     | Lib mode -> (
       let name = Lib_name.parse_string_exn (loc, name) in
       match Ml_sources.Artifacts.lookup_library artifacts name with
@@ -345,6 +346,8 @@ let expand_and_record_generic acc ~dep_kind ~(dir : Path.Build.t) ~pform t
       ( Project_root | First_dep | Deps | Targets | Target | Named_local
       | Values _ )
   | Macro ((Ocaml_config | Env | Version), _) ->
+    (* Some of these values are filled by [static_expand], others are bindings
+       introduced by the user and handled specifically elsewhere *)
     assert false
   | Var Cc -> Dynamic (cc t ~dir).c
   | Var Cxx -> Dynamic (cc t ~dir).cxx
@@ -609,9 +612,6 @@ end = struct
       |> Expanded.to_value_opt
            ~on_deferred:(fun (expansion : Pform.Expansion.t) ->
              match expansion with
-             | Var (Project_root | Values _)
-             | Macro ((Ocaml_config | Env | Version), _) ->
-               assert false (* these have been expanded statically *)
              | Var (First_dep | Deps | Named_local) -> None
              | Var Targets -> Some (targets ~multiplicity:Multiple)
              | Var Target -> Some (targets ~multiplicity:One)
@@ -625,8 +625,8 @@ end = struct
       ~partial ~final =
     let open Build.O in
     let forms = Resolved_forms.create () in
-    let expand = expand_and_record_deps ~targets_written_by_user in
     let x =
+      let expand = expand_and_record_deps ~targets_written_by_user in
       let t = gen_with_record_deps ~expand t forms ~dep_kind in
       partial t
     in

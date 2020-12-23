@@ -65,184 +65,191 @@ module Event : sig
     | Job_completed of job * Unix.process_status
     | Signal of Signal.t
 
-  type queue
+  module Queue : sig
+    type t
 
-  val queue : unit -> queue
+    type event
 
-  (** Return the next event. File changes event are always flattened and
-      returned first. *)
-  val next : queue -> t
+    val create : unit -> t
 
-  (** Handle all enqueued deduplications. *)
-  val flush_dedup : queue -> unit
+    (** Return the next event. File changes event are always flattened and
+        returned first. *)
+    val next : t -> event
 
-  (** Ignore the ne next file change event about this file. *)
-  val ignore_next_file_change_event : queue -> Path.t -> unit
+    (** Handle all enqueued deduplications. *)
+    val flush_dedup : t -> unit
 
-  (** Register the fact that a job was started. *)
-  val register_job_started : queue -> unit
+    (** Ignore the ne next file change event about this file. *)
+    val ignore_next_file_change_event : t -> Path.t -> unit
 
-  (** Number of jobs for which the status hasn't been reported yet .*)
-  val pending_jobs : queue -> int
+    (** Register the fact that a job was started. *)
+    val register_job_started : t -> unit
 
-  (** Send an event to the main thread. *)
-  val send_files_changed : queue -> Path.t list -> unit
+    (** Number of jobs for which the status hasn't been reported yet .*)
+    val pending_jobs : t -> int
 
-  val send_job_completed : queue -> job -> Unix.process_status -> unit
+    (** Send an event to the main thread. *)
+    val send_files_changed : t -> Path.t list -> unit
 
-  val send_signal : queue -> Signal.t -> unit
+    val send_job_completed : t -> job -> Unix.process_status -> unit
 
-  val send_dedup : queue -> Cache.caching -> Cache.File.t -> unit
+    val send_signal : t -> Signal.t -> unit
+
+    val send_dedup : t -> Cache.caching -> Cache.File.t -> unit
+  end
+  with type event := t
 end = struct
   type t =
     | Files_changed
     | Job_completed of job * Unix.process_status
     | Signal of Signal.t
 
-  type queue =
-    { jobs_completed : (job * Unix.process_status) Queue.t
-    ; dedup_pending : (Cache.caching * Cache.File.t) Queue.t
-    ; mutable files_changed : Path.t list
-    ; mutable signals : Signal.Set.t
-    ; mutex : Mutex.t
-    ; cond : Condition.t
-          (* CR-soon amokhov: The way we handle "ignored files" using this
-             mutable table is fragile and also wrong. We use [ignored_files] for
-             the [(mode promote)] feature: if a file is promoted, we call
-             [ignore_next_file_change_event] so that the upcoming file-change
-             event does not invalidate the current build. However, instead of
-             ignoring the events, we should merely postpone them and restart the
-             build to take the promoted files into account if need be. *)
-    ; ignored_files : (string, unit) Table.t
-    ; mutable pending_jobs : int
-    }
+  module Queue = struct
+    type t =
+      { jobs_completed : (job * Unix.process_status) Queue.t
+      ; dedup_pending : (Cache.caching * Cache.File.t) Queue.t
+      ; mutable files_changed : Path.t list
+      ; mutable signals : Signal.Set.t
+      ; mutex : Mutex.t
+      ; cond : Condition.t
+            (* CR-soon amokhov: The way we handle "ignored files" using this
+               mutable table is fragile and also wrong. We use [ignored_files]
+               for the [(mode promote)] feature: if a file is promoted, we call
+               [ignore_next_file_change_event] so that the upcoming file-change
+               event does not invalidate the current build. However, instead of
+               ignoring the events, we should merely postpone them and restart
+               the build to take the promoted files into account if need be. *)
+      ; ignored_files : (string, unit) Table.t
+      ; mutable pending_jobs : int
+      }
 
-  let queue () =
-    let jobs_completed = Queue.create () in
-    let dedup_pending = Queue.create () in
-    let files_changed = [] in
-    let signals = Signal.Set.empty in
-    let mutex = Mutex.create () in
-    let cond = Condition.create () in
-    let ignored_files = Table.create (module String) 64 in
-    let pending_jobs = 0 in
-    { jobs_completed
-    ; dedup_pending
-    ; files_changed
-    ; signals
-    ; mutex
-    ; cond
-    ; ignored_files
-    ; pending_jobs
-    }
+    let create () =
+      let jobs_completed = Queue.create () in
+      let dedup_pending = Queue.create () in
+      let files_changed = [] in
+      let signals = Signal.Set.empty in
+      let mutex = Mutex.create () in
+      let cond = Condition.create () in
+      let ignored_files = Table.create (module String) 64 in
+      let pending_jobs = 0 in
+      { jobs_completed
+      ; dedup_pending
+      ; files_changed
+      ; signals
+      ; mutex
+      ; cond
+      ; ignored_files
+      ; pending_jobs
+      }
 
-  let register_job_started q = q.pending_jobs <- q.pending_jobs + 1
+    let register_job_started q = q.pending_jobs <- q.pending_jobs + 1
 
-  let ignore_next_file_change_event q path =
-    assert (Path.is_in_source_tree path);
-    Table.set q.ignored_files (Path.to_absolute_filename path) ()
+    let ignore_next_file_change_event q path =
+      assert (Path.is_in_source_tree path);
+      Table.set q.ignored_files (Path.to_absolute_filename path) ()
 
-  let available q =
-    not
-      ( List.is_empty q.files_changed
-      && Queue.is_empty q.jobs_completed
-      && Signal.Set.is_empty q.signals
-      && Queue.is_empty q.dedup_pending )
+    let available q =
+      not
+        ( List.is_empty q.files_changed
+        && Queue.is_empty q.jobs_completed
+        && Signal.Set.is_empty q.signals
+        && Queue.is_empty q.dedup_pending )
 
-  let dedup q =
-    match Queue.pop q.dedup_pending with
-    | None -> false
-    | Some pending ->
-      let (module Caching : Cache.Caching), (file : Cache.File.t) = pending in
-      ( match Cached_digest.peek_file (Path.build file.path) with
-      | None -> ()
-      | Some d when not (Digest.equal d file.digest) -> ()
-      | _ -> Caching.Cache.deduplicate Caching.cache file );
-      true
+    let dedup q =
+      match Queue.pop q.dedup_pending with
+      | None -> false
+      | Some pending ->
+        let (module Caching : Cache.Caching), (file : Cache.File.t) = pending in
+        ( match Cached_digest.peek_file (Path.build file.path) with
+        | None -> ()
+        | Some d when not (Digest.equal d file.digest) -> ()
+        | _ -> Caching.Cache.deduplicate Caching.cache file );
+        true
 
-  let rec flush_dedup q = if dedup q then flush_dedup q
+    let rec flush_dedup q = if dedup q then flush_dedup q
 
-  let next q =
-    Stats.record ();
-    Mutex.lock q.mutex;
-    let rec loop () =
-      while not (available q) do
-        Condition.wait q.cond q.mutex
-      done;
-      if dedup q then
-        loop ()
-      else
-        match Signal.Set.choose q.signals with
-        | Some signal ->
-          q.signals <- Signal.Set.remove q.signals signal;
-          Signal signal
-        | None -> (
-          match q.files_changed with
-          | [] ->
-            let job, status = Queue.pop_exn q.jobs_completed in
-            q.pending_jobs <- q.pending_jobs - 1;
-            assert (q.pending_jobs >= 0);
-            Job_completed (job, status)
-          | fns ->
-            q.files_changed <- [];
-            let only_ignored_files =
-              List.fold_left fns ~init:true ~f:(fun acc fn ->
-                  let fn = Path.to_absolute_filename fn in
-                  if Table.mem q.ignored_files fn then (
-                    (* only use ignored record once *)
-                    Table.remove q.ignored_files fn;
-                    acc
-                  ) else
-                    false)
-            in
-            if only_ignored_files then
-              loop ()
-            else
-              Files_changed )
-    in
-    let ev = loop () in
-    Mutex.unlock q.mutex;
-    ev
+    let next q =
+      Stats.record ();
+      Mutex.lock q.mutex;
+      let rec loop () =
+        while not (available q) do
+          Condition.wait q.cond q.mutex
+        done;
+        if dedup q then
+          loop ()
+        else
+          match Signal.Set.choose q.signals with
+          | Some signal ->
+            q.signals <- Signal.Set.remove q.signals signal;
+            Signal signal
+          | None -> (
+            match q.files_changed with
+            | [] ->
+              let job, status = Queue.pop_exn q.jobs_completed in
+              q.pending_jobs <- q.pending_jobs - 1;
+              assert (q.pending_jobs >= 0);
+              Job_completed (job, status)
+            | fns ->
+              q.files_changed <- [];
+              let only_ignored_files =
+                List.fold_left fns ~init:true ~f:(fun acc fn ->
+                    let fn = Path.to_absolute_filename fn in
+                    if Table.mem q.ignored_files fn then (
+                      (* only use ignored record once *)
+                      Table.remove q.ignored_files fn;
+                      acc
+                    ) else
+                      false)
+              in
+              if only_ignored_files then
+                loop ()
+              else
+                Files_changed )
+      in
+      let ev = loop () in
+      Mutex.unlock q.mutex;
+      ev
 
-  let send_files_changed q files =
-    Mutex.lock q.mutex;
-    let avail = available q in
-    q.files_changed <- List.rev_append files q.files_changed;
-    if not avail then Condition.signal q.cond;
-    Mutex.unlock q.mutex
+    let send_files_changed q files =
+      Mutex.lock q.mutex;
+      let avail = available q in
+      q.files_changed <- List.rev_append files q.files_changed;
+      if not avail then Condition.signal q.cond;
+      Mutex.unlock q.mutex
 
-  let send_job_completed q job status =
-    Mutex.lock q.mutex;
-    let avail = available q in
-    Queue.push q.jobs_completed (job, status);
-    if not avail then Condition.signal q.cond;
-    Mutex.unlock q.mutex
+    let send_job_completed q job status =
+      Mutex.lock q.mutex;
+      let avail = available q in
+      Queue.push q.jobs_completed (job, status);
+      if not avail then Condition.signal q.cond;
+      Mutex.unlock q.mutex
 
-  let send_signal q signal =
-    Mutex.lock q.mutex;
-    let avail = available q in
-    q.signals <- Signal.Set.add q.signals signal;
-    if not avail then Condition.signal q.cond;
-    Mutex.unlock q.mutex
+    let send_signal q signal =
+      Mutex.lock q.mutex;
+      let avail = available q in
+      q.signals <- Signal.Set.add q.signals signal;
+      if not avail then Condition.signal q.cond;
+      Mutex.unlock q.mutex
 
-  (* FIXME: this is really not ideal, but we pack the Caching in the event all
-     the way through since Scheduler cannot read it directly from the build
-     system because of circular dependencies. *)
-  let send_dedup q caching file =
-    Mutex.lock q.mutex;
-    let avail = available q in
-    Queue.push q.dedup_pending (caching, file);
-    if not avail then Condition.signal q.cond;
-    Mutex.unlock q.mutex
+    (* FIXME: this is really not ideal, but we pack the Caching in the event all
+       the way through since Scheduler cannot read it directly from the build
+       system because of circular dependencies. *)
+    let send_dedup q caching file =
+      Mutex.lock q.mutex;
+      let avail = available q in
+      Queue.push q.dedup_pending (caching, file);
+      if not avail then Condition.signal q.cond;
+      Mutex.unlock q.mutex
 
-  let pending_jobs q = q.pending_jobs
+    let pending_jobs q = q.pending_jobs
+  end
 end
 
 module File_watcher : sig
   type t
 
   (** Create a new file watcher. *)
-  val create : Event.queue -> t
+  val create : Event.Queue.t -> t
 
   (** Pid of the external file watcher process *)
   val pid : t -> Pid.t
@@ -394,7 +401,7 @@ end = struct
       let files = !files_changed in
       files_changed := [];
       Mutex.unlock event_mtx;
-      Event.send_files_changed q files;
+      Event.Queue.send_files_changed q files;
       Thread.delay buffering_time;
       buffer_thread ()
     in
@@ -408,7 +415,7 @@ module Process_watcher : sig
   (** Initialize the process watcher thread. *)
   type t
 
-  val init : Event.queue -> t
+  val init : Event.Queue.t -> t
 
   (** Register a new running job. *)
   val register_job : t -> job -> unit
@@ -426,7 +433,7 @@ end = struct
     { mutex : Mutex.t
     ; something_is_running : Condition.t
     ; table : (Pid.t, process_state) Table.t
-    ; events : Event.queue
+    ; events : Event.Queue.t
     ; mutable running_count : int
     }
 
@@ -447,7 +454,7 @@ end = struct
         if t.running_count = 1 then Condition.signal t.something_is_running
       | Some (Zombie status) ->
         Table.remove t.table job.pid;
-        Event.send_job_completed t.events job status
+        Event.Queue.send_job_completed t.events job status
       | Some (Running _) -> assert false
 
     let remove t ~pid status =
@@ -456,7 +463,7 @@ end = struct
       | Some (Running job) ->
         t.running_count <- t.running_count - 1;
         Table.remove t.table pid;
-        Event.send_job_completed t.events job status
+        Event.Queue.send_job_completed t.events job status
       | Some (Zombie _) -> assert false
 
     let iter t ~f =
@@ -469,7 +476,7 @@ end = struct
   end
 
   let register_job t job =
-    Event.register_job_started t.events;
+    Event.Queue.register_job_started t.events;
     Mutex.lock t.mutex;
     Process_table.add t job;
     Mutex.unlock t.mutex
@@ -537,7 +544,7 @@ end = struct
 end
 
 module Signal_watcher : sig
-  val init : Event.queue -> unit
+  val init : Event.Queue.t -> unit
 end = struct
   let signos = List.map Signal.all ~f:Signal.to_int
 
@@ -570,7 +577,7 @@ end = struct
     let wait_signal = Staged.unstage (signal_waiter ()) in
     while true do
       let signal = wait_signal () in
-      Event.send_signal q signal;
+      Event.Queue.send_signal q signal;
       match signal with
       | Int
       | Quit
@@ -605,7 +612,7 @@ type t =
   ; polling : bool
   ; mutable status : status
   ; job_throttle : Fiber.Throttle.t
-  ; events : Event.queue
+  ; events : Event.Queue.t
   ; process_watcher : Process_watcher.t
   }
 
@@ -613,11 +620,11 @@ let t_var : t Fiber.Var.t = Fiber.Var.create ()
 
 let running_jobs_count () =
   let t = Fiber.Var.get_exn t_var in
-  Event.pending_jobs t.events
+  Event.Queue.pending_jobs t.events
 
 let ignore_for_watch p =
   let t = Fiber.Var.get_exn t_var in
-  Event.ignore_next_file_change_event t.events p
+  Event.Queue.ignore_next_file_change_event t.events p
 
 let with_chdir ~dir ~f =
   let t = Fiber.Var.get_exn t_var in
@@ -649,7 +656,7 @@ let wait_for_process pid =
 
 let wait_for_dune_cache () =
   let t = Fiber.Var.get_exn t_var in
-  Event.flush_dedup t.events
+  Event.Queue.flush_dedup t.events
 
 let got_signal signal =
   if !Log.verbose then
@@ -662,8 +669,8 @@ type saw_signal =
 let kill_and_wait_for_all_processes t =
   Process_watcher.killall t.process_watcher Sys.sigkill;
   let saw_signal = ref Ok in
-  while Event.pending_jobs t.events > 0 do
-    match Event.next t.events with
+  while Event.Queue.pending_jobs t.events > 0 do
+    match Event.Queue.next t.events with
     | Signal signal ->
       got_signal signal;
       saw_signal := Got_signal
@@ -678,7 +685,7 @@ let prepare ?(config = Config.default) ~polling () =
     [ Pp.textf "Workspace root: %s"
         (Path.to_absolute_filename Path.root |> String.maybe_quoted)
     ];
-  let events = Event.queue () in
+  let events = Event.Queue.create () in
   (* The signal watcher must be initialized first so that signals are blocked in
      all threads. *)
   Signal_watcher.init events;
@@ -755,12 +762,12 @@ end = struct
            file changes *)
         false
       | _ -> true )
-      && Event.pending_jobs t.events = 0
+      && Event.Queue.pending_jobs t.events = 0
     then
       raise (Abort Never)
     else (
       Console.Status_line.refresh ();
-      match Event.next t.events with
+      match Event.Queue.next t.events with
       | Job_completed (job, status) -> Fiber.Fill (job.ivar, status)
       | Files_changed -> (
         match t.status with
@@ -792,7 +799,7 @@ end = struct
     in
     match Fiber.run fiber ~iter:(fun () -> iter t) with
     | res ->
-      assert ((not t.polling) && Event.pending_jobs t.events = 0);
+      assert ((not t.polling) && Event.Queue.pending_jobs t.events = 0);
       Ok res
     | exception Abort err -> Error err
     | exception exn -> Error (Exn (Exn_with_backtrace.capture exn))
@@ -890,4 +897,4 @@ let poll ?config ~once ~finally () =
 
 let send_dedup d =
   let t = Option.value_exn !global in
-  Event.send_dedup t.events d
+  Event.Queue.send_dedup t.events d

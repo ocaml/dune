@@ -368,8 +368,8 @@ let make ?(root = default_root ())
     ; temp_dir =
         (* CR-someday amokhov: Introduce [val getpid : unit -> t] in [pid.ml] so
            that we don't use the untyped version of pid anywhere. *)
-        Path.temp_dir ~temp_dir:root "promoting."
-          ("." ^ string_of_int (Unix.getpid ()))
+        Temp.temp_in_dir ~perms:0o700 Temp.Dir ~dir:root ~prefix:"promoting."
+          ~suffix:("." ^ string_of_int (Unix.getpid ()))
     }
   in
   match

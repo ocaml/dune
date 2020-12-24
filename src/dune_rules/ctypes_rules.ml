@@ -148,38 +148,63 @@ let write_function_gen_script ~include_headers ~sctx ~dir ~name
   let script = function_gen_gen ~include_headers ~function_description_module in
   Super_context.add_rule ~loc:Loc.none sctx ~dir (Build.write_file path script)
 
-let rule ?stdout_to ?(action_args=[]) ?(targets=[]) ~exe ~sctx ~dir () =
+let rule ?(deps=[]) ?stdout_to ?(args=[]) ?(targets=[]) ~exe ~sctx ~dir () =
   let build =
-    let targets = List.map targets ~f:(Path.Build.relative dir) in
-    let exe = Ok (Path.build (Path.Build.relative dir exe)) in
+    let exe =
+      match exe with
+      | `relative exe -> Ok (Path.build (Path.Build.relative dir exe))
+      | `unresolved exe -> Super_context.resolve_program ~loc:None ~dir sctx exe
+    in
     let args =
+      let targets = List.map targets ~f:(Path.Build.relative dir) in
+      let deps =
+        List.map deps ~f:(Path.relative (Path.build dir))
+        |> Dep.Set.of_files
+      in
       let open Command.Args in
       [ Hidden_targets targets
-      ; As action_args ]
+      ; Hidden_deps deps
+      ; As args ]
     in
     let stdout_to = Option.map stdout_to ~f:(Path.Build.relative dir) in
     Command.run exe ~dir:(Path.build dir) ?stdout_to args
   in
   Super_context.add_rule sctx ~dir build
 
-let rule_shell_action ~deps ~targets ~action_args ~sctx ~dir () =
-  let build =
-    let sh_path, sh_arg = Utils.system_shell_exn ~needed_to:"build ctypes" in
-    let targets = List.map targets ~f:(Path.Build.relative dir) in
-    let deps =
-      List.map deps ~f:(Path.relative (Path.build dir))
-      |> Dep.Set.of_files
+let build_c_program ~sctx ~dir ~source_files ~scope ~cflags_txt ~output () =
+  let ctx = Super_context.context sctx in
+  let exe = `unresolved (Ocaml_config.c_compiler ctx.Context.ocaml_config) in
+  let include_args =
+    (* XXX: need glob dependency *)
+    let ocaml_where = Path.to_string ctx.Context.stdlib_dir in
+    (* XXX: need glob dependency *)
+    let ctypes_include_dirs =
+      let ctypes = Lib_name.of_string "ctypes" in
+      let lib =
+        match Lib.DB.resolve (Scope.libs scope) (Loc.none, ctypes) with
+        | Ok lib -> lib
+        | Error _res ->
+          (* XXX: User_error.raise *)
+          failwith "error resolving 'ctypes' lib"
+      in
+      Lib.L.include_paths [lib]
+      |> Path.Set.to_list
+      |> List.map ~f:Path.to_string
     in
-    let exe = Ok sh_path in
-    let args =
-      let open Command.Args in
-      [ As (sh_arg :: action_args)
-      ; Hidden_targets targets
-      ; Hidden_deps deps ]
-    in
-    Command.run exe ~dir:(Path.build dir) args
+    let include_dirs = ocaml_where :: ctypes_include_dirs in
+    List.concat_map include_dirs ~f:(fun dir -> ["-I"; dir])
   in
-  Super_context.add_rule sctx ~dir build
+  let cflags_args =
+    (* XXX: can we read the semantically identical cflags_sexp file and eliminate creating
+       this extra cflags_txt file?  We do this in ctypes_stanzas:
+       Ordered_set_lang.Unexpanded.of_strings ~pos [":include"; cflags_sexp ... ] *)
+    let build = Build.contents (Path.relative (Path.build dir) cflags_txt) in
+    let contents, deps = Build.exec build in
+    assert (Dep.Set.is_empty deps);
+    String.split ~on:' ' contents
+  in
+  rule ~deps:source_files ~targets:[output] ~exe ~sctx ~dir
+    ~args:(cflags_args @ include_args @ source_files @ ["-o"; output]) ()
 
 let cctx ~base_lib ?(libraries=[]) ~loc ~dir ~scope ~expander ~sctx =
   let compile_info =
@@ -264,8 +289,8 @@ let gen_rules ~base_lib ~scope ~expander ~dir ~sctx =
 
      https://dune.readthedocs.io/en/stable/quick-start.html#defining-a-library-with-c-stubs-using-pkg-config *)
   let c_library_flags_sexp = Ctypes_stanzas.c_library_flags_sexp ctypes in
+  let cflags_txt = Ctypes_stanzas.cflags_txt ctypes in
   let () =
-    let cflags_txt = Ctypes_stanzas.cflags_txt ctypes in
     let cflags_sexp = Ctypes_stanzas.cflags_sexp ctypes in
     let discover_script = sprintf "%s__ctypes_discover" external_lib_name in
     write_discover_script
@@ -277,7 +302,7 @@ let gen_rules ~base_lib ~scope ~expander ~dir ~sctx =
       ();
     rule
       ~targets:[cflags_sexp; cflags_txt; c_library_flags_sexp]
-      ~exe:(discover_script ^ ".exe")
+      ~exe:(`relative (discover_script ^ ".exe"))
       ()
   in
   let include_headers = ctypes.Ctypes.includes in
@@ -305,22 +330,20 @@ let gen_rules ~base_lib ~scope ~expander ~dir ~sctx =
       ~program:type_gen_script
       ~libraries:["ctypes.stubs"; "ctypes.foreign"; type_description_library]
       ();
-    rule ~stdout_to:c_generated_types_cout_c ~exe:(type_gen_script ^ ".exe") ();
-    rule_shell_action
-      ~sctx ~dir
-      ~targets:[c_generated_types_cout_exe]
-      ~deps:[c_generated_types_cout_c]
-      (* XXX: these substitutions probably won't work *)
-      ~action_args:["%{cc}"; c_generated_types_cout_c;
-                    "-I"; "%{lib:ctypes:.}";
-                    "-I"; "%{ocaml_where}";
-                    "%{read:c_flags.txt}";
-                    "-o"; "%{targets}"]
+    rule
+      ~stdout_to:c_generated_types_cout_c
+      ~exe:(`relative (type_gen_script ^ ".exe"))
+      ();
+    build_c_program
+      ~sctx ~dir ~scope
+      ~source_files:[c_generated_types_cout_c]
+      ~cflags_txt (*" %{read:c_flags.txt}" *)
+      ~output:c_generated_types_cout_exe
       ();
     rule
       ~stdout_to:(Ctypes_stanzas.c_generated_types_module ctypes
                   |> ml_of_module_name)
-      ~exe:c_generated_types_cout_exe
+      ~exe:(`relative c_generated_types_cout_exe)
       ()
   in
   (* Function_gen is similar to type_gen above, though it produces both an
@@ -340,14 +363,14 @@ let gen_rules ~base_lib ~scope ~expander ~dir ~sctx =
       ();
     rule
       ~stdout_to:c_generated_functions_cout_c
-      ~exe:(function_gen_script ^ ".exe")
-      ~action_args:["c"; stubs_prefix]
+      ~exe:(`relative (function_gen_script ^ ".exe"))
+      ~args:["c"; stubs_prefix]
       ();
     rule
       ~stdout_to:(Ctypes_stanzas.c_generated_functions_module ctypes
                   |> ml_of_module_name)
-      ~exe:(function_gen_script ^ ".exe")
-      ~action_args:["ml"; stubs_prefix]
+      ~exe:(`relative (function_gen_script ^ ".exe"))
+      ~args:["ml"; stubs_prefix]
       ()
   in
   ()

@@ -1372,14 +1372,17 @@ end = struct
       else
         (* [prev_trace] will be [None] if rule is run for the first time. *)
         let prev_trace = Trace_db.get (Path.build head_target) in
-        (* [targets_digest] will be [None] if not all targets were build. *)
-        let targets_digest = compute_targets_digest targets_as_list in
         let rule_or_targets_changed =
-          match (prev_trace, targets_digest) with
-          | Some prev_trace, Some targets_digest ->
+          match prev_trace with
+          | None -> true
+          | Some prev_trace -> (
             prev_trace.rule_digest <> rule_digest
-            || prev_trace.targets_digest <> targets_digest
-          | _ -> true
+            ||
+            (* [targets_digest] will be [None] if not all targets were build. *)
+            match compute_targets_digest targets_as_list with
+            | None -> true
+            | Some targets_digest -> prev_trace.targets_digest <> targets_digest
+            )
         in
         if rule_or_targets_changed then
           Fiber.return true

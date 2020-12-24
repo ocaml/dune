@@ -7,7 +7,7 @@ module Trace = struct
     type t =
       | Env of string * string option
       | File of (string * Digest.t)
-      | File_selector of Dyn.t * (string * Digest.t) list
+      | File_selector of Dyn.t * Digest.t
   end
 
   type t =
@@ -58,18 +58,27 @@ module T = struct
 
   let trace_file fn = (Path.to_string fn, Cached_digest.file fn)
 
-  let trace t ~sandbox_mode ~env : Trace.Fact.t Option.t =
+  let rec trace_file_selector =
+    Memo.exec
+      (Memo.create "trace-file-selctor"
+         ~doc:"Calculate trace of a file selector"
+         ~input:(module File_selector)
+         ~output:(Allow_cutoff (module Digest))
+         ~visibility:Hidden Sync
+         (fun dir_glob ->
+           Digest.generic
+             ( Fdecl.get eval_pred dir_glob
+             |> Path.Set.fold ~init:[] ~f:(fun f acc -> trace_file f :: acc) )))
+
+  and trace t ~sandbox_mode ~env : Trace.Fact.t Option.t =
     match t with
     | Env var -> Some (Env (var, Env.get env var))
     | File fn -> Some (File (trace_file fn))
     | Alias a -> Some (File (trace_file (Path.build (Alias.stamp_file a))))
     | File_selector dir_glob ->
       let id = File_selector.to_dyn dir_glob
-      and files =
-        Fdecl.get eval_pred dir_glob
-        |> Path.Set.fold ~init:[] ~f:(fun f acc -> trace_file f :: acc)
-      in
-      Some (File_selector (id, files))
+      and file_selector = trace_file_selector dir_glob in
+      Some (File_selector (id, file_selector))
     | Universe -> None
     | Sandbox_config config ->
       assert (Sandbox_config.mem config sandbox_mode);

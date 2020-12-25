@@ -150,11 +150,7 @@ let write_function_gen_script ~include_headers ~sctx ~dir ~name
 
 let rule ?(deps=[]) ?stdout_to ?(args=[]) ?(targets=[]) ~exe ~sctx ~dir () =
   let build =
-    let exe =
-      match exe with
-      | `relative exe -> Ok (Path.build (Path.Build.relative dir exe))
-      | `unresolved exe -> Super_context.resolve_program ~loc:None ~dir sctx exe
-    in
+    let exe = Ok (Path.build (Path.Build.relative dir exe)) in
     let args =
       let targets = List.map targets ~f:(Path.Build.relative dir) in
       let deps =
@@ -319,7 +315,7 @@ let gen_rules ~base_lib ~scope ~expander ~dir ~sctx =
       ();
     rule
       ~targets:[cflags_sexp; cflags_txt; c_library_flags_sexp]
-      ~exe:(`relative (discover_script ^ ".exe"))
+      ~exe:(discover_script ^ ".exe")
       ()
   in
   let include_headers = ctypes.Ctypes.includes in
@@ -349,7 +345,7 @@ let gen_rules ~base_lib ~scope ~expander ~dir ~sctx =
       ();
     rule
       ~stdout_to:c_generated_types_cout_c
-      ~exe:(`relative (type_gen_script ^ ".exe"))
+      ~exe:(type_gen_script ^ ".exe")
       ();
     build_c_program
       ~sctx ~dir ~scope
@@ -360,7 +356,7 @@ let gen_rules ~base_lib ~scope ~expander ~dir ~sctx =
     rule
       ~stdout_to:(Ctypes_stanzas.c_generated_types_module ctypes
                   |> ml_of_module_name)
-      ~exe:(`relative c_generated_types_cout_exe)
+      ~exe:(c_generated_types_cout_exe)
       ()
   in
   (* Function_gen is similar to type_gen above, though it produces both an
@@ -380,13 +376,13 @@ let gen_rules ~base_lib ~scope ~expander ~dir ~sctx =
       ();
     rule
       ~stdout_to:c_generated_functions_cout_c
-      ~exe:(`relative (function_gen_script ^ ".exe"))
+      ~exe:(function_gen_script ^ ".exe")
       ~args:["c"; stubs_prefix]
       ();
     rule
       ~stdout_to:(Ctypes_stanzas.c_generated_functions_module ctypes
                   |> ml_of_module_name)
-      ~exe:(`relative (function_gen_script ^ ".exe"))
+      ~exe:(function_gen_script ^ ".exe")
       ~args:["ml"; stubs_prefix]
       ()
   in

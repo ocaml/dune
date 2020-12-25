@@ -173,7 +173,10 @@ let rule ?(deps=[]) ?stdout_to ?(args=[]) ?(targets=[]) ~exe ~sctx ~dir () =
 
 let build_c_program ~sctx ~dir ~source_files ~scope ~cflags_txt ~output () =
   let ctx = Super_context.context sctx in
-  let exe = `unresolved (Ocaml_config.c_compiler ctx.Context.ocaml_config) in
+  let exe =
+    Ocaml_config.c_compiler ctx.Context.ocaml_config
+    |> Super_context.resolve_program ~loc:None ~dir sctx
+  in
   let include_args =
     (* XXX: need glob dependency *)
     let ocaml_where = Path.to_string ctx.Context.stdlib_dir in
@@ -194,17 +197,31 @@ let build_c_program ~sctx ~dir ~source_files ~scope ~cflags_txt ~output () =
     let include_dirs = ocaml_where :: ctypes_include_dirs in
     List.concat_map include_dirs ~f:(fun dir -> ["-I"; dir])
   in
-  let cflags_args =
+  let deps =
+    List.map source_files ~f:(Path.relative (Path.build dir))
+    |> Dep.Set.of_files
+  in
+  let build =
     (* XXX: can we read the semantically identical cflags_sexp file and eliminate creating
        this extra cflags_txt file?  We do this in ctypes_stanzas:
        Ordered_set_lang.Unexpanded.of_strings ~pos [":include"; cflags_sexp ... ] *)
-    let build = Build.contents (Path.relative (Path.build dir) cflags_txt) in
-    let contents, deps = Build.exec build in
-    assert (Dep.Set.is_empty deps);
-    String.split ~on:' ' contents
+    let contents = Build.contents (Path.relative (Path.build dir) cflags_txt) in
+    let cflags_args = Build.map contents ~f:(String.split ~on:' ') in
+    let action =
+      let open Build.O in
+      Build.deps deps
+      >>> Build.map cflags_args ~f:(fun cflags_args ->
+        let args = cflags_args @ include_args @ source_files @ ["-o"; output] in
+        Action.run exe args)
+    in
+    Build.with_targets action ~targets:[Path.Build.relative dir output]
   in
-  rule ~deps:source_files ~targets:[output] ~exe ~sctx ~dir
+  Super_context.add_rule sctx ~dir build
+(*
+
+  rule ~promised_args:cflags_args ~deps:source_files ~targets:[output] ~exe ~sctx ~dir
     ~args:(cflags_args @ include_args @ source_files @ ["-o"; output]) ()
+   *)
 
 let cctx ~base_lib ?(libraries=[]) ~loc ~dir ~scope ~expander ~sctx =
   let compile_info =

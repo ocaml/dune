@@ -35,7 +35,7 @@ module Processed = struct
     let version = 1
   end
 
-  module Persist = Persistent.Make (D)
+  module Persist = Dune_util.Persistent.Make (D)
 
   let load_file = Persist.load
 

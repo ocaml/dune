@@ -50,7 +50,6 @@ module Action_mapper = Action_mapper
 module Action_intf = Action_intf
 module Artifact_substitution = Artifact_substitution
 module Diff = Diff
-module Persistent = Persistent
 module Scheduler = Scheduler
 module Hooks = Hooks
 module Promotion = Promotion

@@ -1,5 +1,5 @@
 open! Dune_engine
-open Stdune
+open Import
 
 module Odoc = struct
   type warnings = Dune_env.Stanza.Odoc.warnings =

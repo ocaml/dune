@@ -7,7 +7,6 @@ module Lib_name = Lib_name
 module String_with_vars = String_with_vars
 module Ml_kind = Ml_kind
 module Install = Install
-module Value = Value
 module Import = Import
 module Package = Package
 module Stanza = Stanza

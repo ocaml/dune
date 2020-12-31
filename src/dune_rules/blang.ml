@@ -1,5 +1,6 @@
 open! Dune_engine
 open! Stdune
+open Import
 
 module Op = struct
   type t =

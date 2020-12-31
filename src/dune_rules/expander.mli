@@ -7,9 +7,9 @@
     2. Dynamic. In this mode, the expander will record dependencies that are
     introduced by forms it has failed to expand. Later, these dependenceis can
     be filled for a full expansion.*)
-open! Dune_engine
 
-open Stdune
+open! Dune_engine
+open Import
 
 type t
 

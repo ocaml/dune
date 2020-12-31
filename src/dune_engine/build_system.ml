@@ -44,7 +44,7 @@ module Promoted_to_delete : sig
 
   val load : unit -> Path.Set.t
 end = struct
-  module P = Persistent.Make (struct
+  module P = Dune_util.Persistent.Make (struct
     type t = Path.Set.t
 
     let name = "PROMOTED-TO-DELETE"
@@ -214,7 +214,7 @@ end = struct
 
   let file = Path.relative Path.build_dir ".db"
 
-  module P = Persistent.Make (struct
+  module P = Dune_util.Persistent.Make (struct
     type nonrec t = t
 
     let name = "INCREMENTAL-DB"

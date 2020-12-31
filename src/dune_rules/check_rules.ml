@@ -1,5 +1,5 @@
 open! Dune_engine
-open Stdune
+open Import
 
 let dev_files =
   let exts = [ Ml_kind.cmt_ext Impl; Ml_kind.cmt_ext Intf; Cm_kind.ext Cmi ] in

@@ -1,7 +1,7 @@
 (** Module layout information. Contains information about aliasing, wrapping. *)
-open! Dune_engine
 
-open Stdune
+open! Dune_engine
+open Import
 
 type t
 

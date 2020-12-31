@@ -5,7 +5,6 @@ module Config = Config
 module Dep = Dep
 module Lib_name = Lib_name
 module String_with_vars = String_with_vars
-module Ml_kind = Ml_kind
 module Install = Install
 module Import = Import
 module Package = Package

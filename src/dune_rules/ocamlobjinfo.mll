@@ -1,6 +1,6 @@
 {
 open Dune_engine
-open Stdune
+open Import
 
 type t = Module_name.Unique.Set.t Ml_kind.Dict.t
 

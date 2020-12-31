@@ -1,4 +1,4 @@
-open! Stdune
+open! Import
 
 module File_kind = struct
   type t =

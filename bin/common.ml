@@ -487,14 +487,19 @@ let term =
           [ "debug-artifact-substitution" ]
           ~docs ~doc:"Print debugging info about artifact substitution")
   and+ terminal_persistence =
+    let modes = Config.Terminal_persistence.all in
+    let doc =
+      let f s = fst s |> Printf.sprintf "$(b,%s)" in
+      Printf.sprintf
+        {|Changes how the log of build results are displayed to the
+          console between rebuilds while in $(b,--watch) mode. Supported modes:
+          %s.|}
+        (List.map ~f modes |> String.concat ~sep:", ")
+    in
     Arg.(
       value
-      & opt (some (enum Config.Terminal_persistence.all)) None
-      & info [ "terminal-persistence" ] ~docs ~docv:"MODE"
-          ~doc:
-            {|
-         Changes how the log of build results are displayed to the
-         console between rebuilds while in --watch mode. |})
+      & opt (some (enum modes)) None
+      & info [ "terminal-persistence" ] ~docs ~docv:"MODE" ~doc)
   and+ display = display_term
   and+ no_buffer =
     let doc =

@@ -182,7 +182,7 @@ generated META and opam files.
   > EOF
 
   $ (cd version
-  >  git init -q
+  >  git init --initial-branch master -q
   >  git add .
   >  git commit -qm _
   >  git tag -a 1.0 -m 1.0
@@ -217,7 +217,7 @@ generated META and opam files.
   > EOF
 
   $ (cd version
-  >  git init -q
+  >  git init --initial-branch master -q
   >  git add .
   >  git commit -qm _
   >  git tag -a 1.0 -m 1.0

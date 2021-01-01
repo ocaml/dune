@@ -14,7 +14,7 @@ Project with opam files
 
   $ echo 'authors: [ "John Doe <john@doe.com>" ]' > foo.opam
 
-  $ git init --quiet
+  $ git init --initial-branch master -q
   $ git add .
   $ git commit -am _ --quiet
   $ git tag -a 1.0 -m 1.0
@@ -51,7 +51,7 @@ And without an opam file preset.
   > let version = "${X}VERSION${X}"
   > EOF
 
-  $ git init --quiet
+  $ git init --initial-branch master -q
   $ git add .
   $ git commit -am _ --quiet
   $ git tag -a 1.0 -m 1.0
@@ -88,7 +88,7 @@ Test subst and files with unicode (#3879)
   > let version = "${X}VERSION${X}"
   > EOF
 
-  $ git init --quiet
+  $ git init --initial-branch master -q
   $ git add .
   $ git commit -am _ --quiet
   $ git tag -a 1.0 -m 1.0

@@ -511,7 +511,8 @@ let () =
 
 let compute_targets_digest targets =
   match
-    List.map targets ~f:(fun target -> Cached_digest.file (Path.build target))
+    Path.Build.Set.to_list_map targets ~f:(fun target ->
+        Cached_digest.file (Path.build target))
   with
   | l -> Some (Digest.generic l)
   | exception (Unix.Unix_error _ | Sys_error _) -> None
@@ -525,11 +526,12 @@ let compute_targets_digest_or_raise_error ~loc targets =
        always removing them enables to catch mistakes earlier. *)
     (* FIXME: searching the dune version for each single target seems way
        suboptimal. This information could probably be stored in rules directly. *)
-    if targets = [] then
+    if Path.Build.Set.is_empty targets then
       false
     else
       let _, src_dir =
-        Path.Build.extract_build_context_dir_exn (List.hd targets)
+        Path.Build.extract_build_context_dir_exn
+          (Path.Build.Set.choose_exn targets)
       in
       let dir = File_tree.nearest_dir src_dir in
       let version = File_tree.Dir.project dir |> Dune_project.dune_version in
@@ -542,14 +544,14 @@ let compute_targets_digest_or_raise_error ~loc targets =
       Cached_digest.refresh
   in
   let good, bad =
-    List.partition_map targets ~f:(fun target ->
+    Path.Build.Set.fold targets ~init:([], []) ~f:(fun target (good, bad) ->
         let fn = Path.build target in
         match refresh fn with
-        | digest -> Left (target, digest)
-        | exception (Unix.Unix_error _ | Sys_error _) -> Right fn)
+        | digest -> ((target, digest) :: good, bad)
+        | exception (Unix.Unix_error _ | Sys_error _) -> (good, fn :: bad))
   in
   match bad with
-  | [] -> (good, Digest.generic (List.map ~f:snd good))
+  | [] -> (List.rev good, Digest.generic (List.rev_map ~f:snd good))
   | missing ->
     User_error.raise ~loc
       [ Pp.textf "Rule failed to generate the following targets:"
@@ -656,12 +658,11 @@ end = struct
   let compile_rules ~dir ~source_dirs rules =
     List.concat_map rules ~f:(fun rule ->
         assert (Path.Build.( = ) dir rule.Rule.dir);
-        Path.Build.Set.to_list rule.action.targets
-        |> List.map ~f:(fun target ->
-               if String.Set.mem source_dirs (Path.Build.basename target) then
-                 report_rule_src_dir_conflict dir target rule
-               else
-                 (target, rule)))
+        Path.Build.Set.to_list_map rule.action.targets ~f:(fun target ->
+            if String.Set.mem source_dirs (Path.Build.basename target) then
+              report_rule_src_dir_conflict dir target rule
+            else
+              (target, rule)))
     |> Path.Build.Map.of_list_reducei ~f:report_rule_conflict
 
   (* Here we are doing a O(log |S|) lookup in a set S of files in the build
@@ -1290,12 +1291,11 @@ end = struct
   let rule_digest_version = 1
 
   let compute_rule_digest (rule : Rule.t) ~deps ~action ~sandbox_mode =
-    let targets_as_list = Path.Build.Set.to_list rule.action.targets in
     let env = Rule.effective_env rule in
     let trace =
       ( rule_digest_version (* Update when changing the rule digest scheme. *)
       , Dep.Set.trace deps ~sandbox_mode ~env
-      , List.map targets_as_list ~f:(fun p -> Path.to_string (Path.build p))
+      , Path.Build.Set.to_list_map rule.action.targets ~f:Path.Build.to_string
       , Option.map rule.context ~f:(fun c -> c.name)
       , Action.for_shell action )
     in
@@ -1311,8 +1311,7 @@ end = struct
     in
     start_rule t rule;
     let targets = action.targets in
-    let targets_as_list = Path.Build.Set.to_list targets in
-    let head_target = List.hd targets_as_list in
+    let head_target = Path.Build.Set.choose_exn targets in
     let* action, deps =
       Build_request.evaluate_and_wait_for_dynamic_dependencies (Memoized rule)
     in
@@ -1342,7 +1341,7 @@ end = struct
     let always_rerun =
       let force_rerun =
         !Clflags.force
-        && List.exists targets_as_list ~f:Dpath.Build.is_alias_stamp_file
+        && Path.Build.Set.exists targets ~f:Dpath.Build.is_alias_stamp_file
       and depends_on_universe = Dep.Set.has_universe deps in
       force_rerun || depends_on_universe
     in
@@ -1379,7 +1378,7 @@ end = struct
             prev_trace.rule_digest <> rule_digest
             ||
             (* [targets_digest] will be [None] if not all targets were build. *)
-            match compute_targets_digest targets_as_list with
+            match compute_targets_digest targets with
             | None -> true
             | Some targets_digest -> prev_trace.targets_digest <> targets_digest
             )
@@ -1441,7 +1440,7 @@ end = struct
           | _ -> false
         in
         let remove_targets () =
-          List.iter targets_as_list ~f:(fun target ->
+          Path.Build.Set.iter targets ~f:(fun target ->
               Cached_digest.remove (Path.build target);
               Path.unlink_no_err (Path.build target))
         in
@@ -1504,7 +1503,7 @@ end = struct
           let+ exec_result =
             with_locks t locks ~f:(fun () ->
                 let copy_files_from_sandbox sandboxed =
-                  List.iter targets_as_list ~f:(fun target ->
+                  Path.Build.Set.iter targets ~f:(fun target ->
                       rename_optional_file ~src:(sandboxed target) ~dst:target)
                 in
                 let+ exec_result =
@@ -1518,7 +1517,7 @@ end = struct
           (* All went well, these targets are no longer pending *)
           pending_targets := Path.Build.Set.diff !pending_targets targets;
           let targets, targets_digest =
-            compute_targets_digest_or_raise_error ~loc targets_as_list
+            compute_targets_digest_or_raise_error ~loc targets
           in
           let () =
             (* Check cache. We don't check for missing file in the cache, since
@@ -1568,8 +1567,8 @@ end = struct
               when not do_not_memoize ->
               let report msg =
                 let targets =
-                  Path.Build.Set.to_list rule.action.targets
-                  |> List.map ~f:Path.Build.to_string
+                  Path.Build.Set.to_list_map rule.action.targets
+                    ~f:Path.Build.to_string
                   |> String.concat ~sep:", "
                 in
                 Log.info [ Pp.textf "promotion failed for %s: %s" targets msg ]
@@ -1602,7 +1601,10 @@ end = struct
       | Promote _, Some Never ->
         Fiber.return ()
       | Promote { lifetime; into; only }, (Some Automatically | None) ->
-        Fiber.sequential_iter targets_as_list ~f:(fun path ->
+        Fiber.parallel_iter_set
+          (module Path.Build.Set)
+          targets
+          ~f:(fun path ->
             let consider_for_promotion =
               match only with
               | None -> true

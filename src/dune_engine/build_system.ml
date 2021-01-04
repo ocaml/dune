@@ -337,6 +337,12 @@ type t =
   ; mutable rule_done : int
   ; mutable rule_total : int
   ; vcs : Vcs.t list Fdecl.t
+  ; promote_source :
+         ?chmod:(int -> int)
+      -> src:Path.Build.t
+      -> dst:Path.Source.t
+      -> Build_context.t option
+      -> unit Fiber.t
   ; locks : (Path.t, Fiber.Mutex.t) Table.t
   }
 
@@ -1625,7 +1631,6 @@ end = struct
                        dir ~error_loc:loc)
                     (Path.Source.basename in_source_tree)
               in
-              let path = Path.build path in
               let () =
                 let dir = Path.Source.parent_exn in_source_tree in
                 match File_tree.find_dir dir with
@@ -1645,10 +1650,12 @@ end = struct
                         (Path.Source.to_string_maybe_quoted dir)
                     ]
               in
+              let dst = in_source_tree in
               let in_source_tree = Path.source in_source_tree in
               match
                 Path.exists in_source_tree
-                && Cached_digest.file path = Cached_digest.file in_source_tree
+                && Cached_digest.file (Path.build path)
+                   = Cached_digest.file in_source_tree
               with
               | true -> Fiber.return ()
               | false ->
@@ -1660,11 +1667,7 @@ end = struct
                    source tree to be writable by the user, so we explicitly set
                    the user writable bit. *)
                 let chmod n = n lor 0o200 in
-                let conf : Artifact_substitution.conf =
-                  Artifact_substitution.conf_of_context context
-                in
-                Artifact_substitution.copy_file () ~src:path ~dst:in_source_tree
-                  ~conf ~chmod ))
+                t.promote_source ~src:path ~dst ~chmod context ))
     in
     t.rule_done <- t.rule_done + 1
 
@@ -1976,7 +1979,7 @@ let load_dir_and_produce_its_rules ~dir =
 
 let load_dir ~dir = load_dir_and_produce_its_rules ~dir
 
-let init ~contexts ?caching ~sandboxing_preference () =
+let init ~contexts ~promote_source ?caching ~sandboxing_preference () =
   let contexts =
     Context_name.Map.of_list_map_exn contexts ~f:(fun c ->
         (c.Build_context.name, c))
@@ -2015,6 +2018,7 @@ let init ~contexts ?caching ~sandboxing_preference () =
     ; (* This mutable table is safe: it merely maps paths to lazily created
          mutexes. *)
       locks = Table.create (module Path) 32
+    ; promote_source
     }
   in
   Console.Status_line.set (fun () ->

@@ -15,6 +15,12 @@ type caching =
 (** Initializes the build system. This must be called first. *)
 val init :
      contexts:Build_context.t list
+  -> promote_source:
+       (   ?chmod:(int -> int)
+        -> src:Path.Build.t
+        -> dst:Path.Source.t
+        -> Build_context.t option
+        -> unit Fiber.t)
   -> ?caching:caching
   -> sandboxing_preference:Sandbox_mode.t list
   -> unit

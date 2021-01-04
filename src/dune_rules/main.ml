@@ -73,7 +73,13 @@ let scan_workspace ?workspace_file ?x ?(capture_outputs = true) ?profile
 
 let init_build_system ?only_packages ~sandboxing_preference ?caching w =
   Build_system.reset ();
-  Build_system.init ~sandboxing_preference
+  let promote_source ?chmod ~src ~dst ctx =
+    let conf = Artifact_substitution.conf_of_context ctx in
+    let src = Path.build src in
+    let dst = Path.source dst in
+    Artifact_substitution.copy_file ?chmod ~src ~dst ~conf ()
+  in
+  Build_system.init ~sandboxing_preference ~promote_source
     ~contexts:(List.map ~f:Context.to_build_context w.contexts)
     ?caching ();
   List.iter w.contexts ~f:Context.init_configurator;

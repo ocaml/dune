@@ -25,10 +25,12 @@ type t =
   ; hidden_env : Env.Var.Set.t
   ; env : Env.t
   ; lib_artifacts : Artifacts.Public_libs.t
+  ; lib_artifacts_host : Artifacts.Public_libs.t
   ; bin_artifacts_host : Artifacts.Bin.t
   ; ocaml_config : Value.t list String.Map.t Lazy.t
   ; bindings : Pform.Map.t
   ; scope : Scope.t
+  ; scope_host : Scope.t
   ; c_compiler : string
   ; context : Context.t
   ; expand_var : t -> Expanded.t String_with_vars.expander
@@ -193,8 +195,8 @@ let static_expand
 let cc_cxx_bindings =
   Pform.Map.of_list_exn [ ("cc", Pform.Var.Cc); ("cxx", Pform.Var.Cxx) ]
 
-let make ~scope ~(context : Context.t) ~lib_artifacts ~bin_artifacts_host
-    ~find_package =
+let make ~scope ~scope_host ~(context : Context.t) ~lib_artifacts
+    ~lib_artifacts_host ~bin_artifacts_host ~find_package =
   let ocaml_config = lazy (make_ocaml_config context.ocaml_config) in
   let dir = context.build_dir in
   let bindings =
@@ -209,7 +211,9 @@ let make ~scope ~(context : Context.t) ~lib_artifacts ~bin_artifacts_host
   ; ocaml_config
   ; bindings
   ; scope
+  ; scope_host
   ; lib_artifacts
+  ; lib_artifacts_host
   ; bin_artifacts_host
   ; expand_var = static_expand
   ; c_compiler
@@ -376,10 +380,16 @@ let expand_and_record_generic acc ~dep_kind ~(dir : Path.Build.t) ~pform t
   | Macro (Lib { lib_exec; lib_private }, s) -> (
     let lib, file = parse_lib_file ~loc s in
     Resolved_forms.add_lib_dep acc lib dep_kind;
+    let scope =
+      if lib_exec then
+        t.scope_host
+      else
+        t.scope
+    in
     match
       if lib_private then
         let open Result.O in
-        let* lib = Lib.DB.resolve (Scope.libs t.scope) (loc, lib) in
+        let* lib = Lib.DB.resolve (Scope.libs scope) (loc, lib) in
         let current_project = Scope.project t.scope
         and referenced_project =
           Lib.info lib |> Lib_info.status |> Lib_info.Status.project
@@ -394,9 +404,13 @@ let expand_and_record_generic acc ~dep_kind ~(dir : Path.Build.t) ~pform t
             (User_error.E
                (User_error.make ~loc
                   [ Pp.textf
-                      "The variable \"lib-private\" can only refer to \
+                      "The variable \"lib%s-private\" can only refer to \
                        libraries within the same project. The current \
                        project's name is %S, but the reference is to %s."
+                      ( if lib_exec then
+                        "exec"
+                      else
+                        "" )
                       (Dune_project.Name.to_string_hum
                          (Dune_project.name current_project))
                       ( match referenced_project with
@@ -406,11 +420,15 @@ let expand_and_record_generic acc ~dep_kind ~(dir : Path.Build.t) ~pform t
                         |> Dune_project.Name.to_string_hum |> String.quoted )
                   ]))
       else
-        Artifacts.Public_libs.file_of_lib t.lib_artifacts ~loc ~lib ~file
+        let artifacts =
+          if lib_exec then
+            t.lib_artifacts_host
+          else
+            t.lib_artifacts
+        in
+        Artifacts.Public_libs.file_of_lib artifacts ~loc ~lib ~file
     with
     | Ok path ->
-      (* TODO: The [exec = true] case is currently not handled correctly and
-         does not match the documentation. *)
       if (not lib_exec) || (not Sys.win32) || Filename.extension s = ".exe" then
         Static (path_exp path)
       else
@@ -430,14 +448,18 @@ let expand_and_record_generic acc ~dep_kind ~(dir : Path.Build.t) ~pform t
         ( match lib_private with
         | true -> e
         | false ->
-          if Lib.DB.available (Scope.libs t.scope) lib then
+          if Lib.DB.available (Scope.libs scope) lib then
             User_error.E
               (User_error.make ~loc
                  [ Pp.textf
-                     "The library %S is not public. The variable \"lib\" \
+                     "The library %S is not public. The variable \"lib%s\" \
                       expands to the file's installation path which is not \
                       defined for private libraries."
                      (Lib_name.to_string lib)
+                     ( if lib_exec then
+                       "exec"
+                     else
+                       "" )
                  ])
           else
             e ) )

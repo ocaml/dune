@@ -66,7 +66,6 @@ type t =
   ; opaque : bool
   ; stdlib : Ocaml_stdlib.t option
   ; js_of_ocaml : Dune_file.Js_of_ocaml.t option
-  ; dynlink : bool
   ; sandbox : Sandbox_config.t
   ; package : Package.t option
   ; vimpl : Vimpl.t option
@@ -102,8 +101,6 @@ let stdlib t = t.stdlib
 
 let js_of_ocaml t = t.js_of_ocaml
 
-let dynlink t = t.dynlink
-
 let sandbox t = t.sandbox
 
 let package t = t.package
@@ -118,8 +115,7 @@ let context t = Super_context.context t.super_context
 
 let create ~super_context ~scope ~expander ~obj_dir ~modules ~flags
     ~requires_compile ~requires_link ?(preprocessing = Pp_spec.dummy) ~opaque
-    ?stdlib ~js_of_ocaml ~dynlink ~package ?vimpl ?modes ?(bin_annot = true) ()
-    =
+    ?stdlib ~js_of_ocaml ~package ?vimpl ?modes ?(bin_annot = true) () =
   let project = Scope.project scope in
   let requires_compile =
     if Dune_project.implicit_transitive_deps project then
@@ -154,7 +150,6 @@ let create ~super_context ~scope ~expander ~obj_dir ~modules ~flags
   ; opaque
   ; stdlib
   ; js_of_ocaml
-  ; dynlink
   ; sandbox
   ; package
   ; vimpl

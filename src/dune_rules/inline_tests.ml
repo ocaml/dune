@@ -292,8 +292,7 @@ include Sub_system.Register_end_point (struct
       Compilation_context.create () ~super_context:sctx ~expander ~scope
         ~obj_dir ~modules ~opaque:(Explicit false) ~requires_compile:runner_libs
         ~requires_link:(lazy runner_libs)
-        ~flags ~js_of_ocaml:(Some lib.buildable.js_of_ocaml) ~dynlink:false
-        ~package
+        ~flags ~js_of_ocaml:(Some lib.buildable.js_of_ocaml) ~package
     in
     let linkages =
       let modes =

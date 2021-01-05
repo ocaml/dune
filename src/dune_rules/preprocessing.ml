@@ -345,7 +345,7 @@ let build_ppx_driver sctx ~scope ~target ~pps ~pp_names =
     let modules = Modules.singleton_exe module_ in
     Compilation_context.create ~super_context:sctx ~scope ~expander ~obj_dir
       ~modules ~flags ~requires_compile ~requires_link ~opaque ~js_of_ocaml:None
-      ~dynlink:false ~package:None ~bin_annot:false ()
+      ~package:None ~bin_annot:false ()
   in
   Exe.build_and_link ~program ~linkages cctx ~promote:None
 

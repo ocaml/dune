@@ -111,6 +111,10 @@ Unreleased
 - Fix `libexec` and `libexec-private` variables. In cross-compilation settings,
   they now point to the file in the host context. (#4058, fixes #4057, @TheLortex)
 
+- Remove support for passing `-nodynlink` for executables. It was bypassed in
+  most cases and not correct in other cases in particular on arm32.
+  (#4085, fixes #4069, fixes #2527, @emillon)
+
 2.7.1 (2/09/2020)
 -----------------
 

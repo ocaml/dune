@@ -54,7 +54,6 @@ let build_cm cctx ~dep_graphs ~precompiled_cmi ~cm_kind (m : Module.t) ~phase =
   let ctx = SC.context sctx in
   let stdlib = CC.stdlib cctx in
   let mode = Mode.of_cm_kind cm_kind in
-  let dynlink = CC.dynlink cctx in
   let sandbox =
     let default = CC.sandbox cctx in
     match Module.kind m with
@@ -187,10 +186,6 @@ let build_cm cctx ~dep_graphs ~precompiled_cmi ~cm_kind (m : Module.t) ~phase =
           ; Command.Args.S obj_dirs
           ; Cm_kind.Dict.get (CC.includes cctx) cm_kind
           ; As extra_args
-          ; ( if dynlink || cm_kind <> Cmx then
-              Command.Args.empty
-            else
-              A "-nodynlink" )
           ; A "-no-alias-deps"
           ; opaque_arg
           ; As (Fdo.phase_flags phase)

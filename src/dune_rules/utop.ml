@@ -109,8 +109,8 @@ let setup sctx ~dir =
     Compilation_context.create () ~super_context:sctx ~expander ~scope ~obj_dir
       ~modules ~opaque:(Explicit false)
       ~requires_link:(lazy requires)
-      ~requires_compile:requires ~flags ~js_of_ocaml:None ~dynlink:false
-      ~package:None ~preprocessing
+      ~requires_compile:requires ~flags ~js_of_ocaml:None ~package:None
+      ~preprocessing
   in
   let toplevel = Toplevel.make ~cctx ~source ~preprocess:pps in
   Toplevel.setup_rules toplevel

@@ -21,8 +21,10 @@ val context : t -> Context.t
 
 val make :
      scope:Scope.t
+  -> scope_host:Scope.t
   -> context:Context.t
   -> lib_artifacts:Artifacts.Public_libs.t
+  -> lib_artifacts_host:Artifacts.Public_libs.t
   -> bin_artifacts_host:Artifacts.Bin.t
   -> find_package:(Package.Name.t -> Package.t option)
   -> t

@@ -679,8 +679,12 @@ end = struct
      executing the very same [Build.t] with [Build.exec] -- the results of both
      [Build.static_deps] and [Build.exec] are cached. *)
   let file_exists fn =
-    let dir = Path.parent_exn fn in
-    Path.Set.mem (targets_of ~dir) fn
+    match load_dir ~dir:(Path.parent_exn fn) with
+    | Non_build targets -> Path.Set.mem targets fn
+    | Build { rules_here; _ } -> (
+      match Path.as_in_build_dir fn with
+      | None -> false
+      | Some fn -> Path.Build.Map.mem rules_here fn )
 
   let targets_of ~dir =
     match load_dir ~dir with

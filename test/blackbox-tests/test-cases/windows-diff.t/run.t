@@ -3,7 +3,7 @@
   $ dune runtest
 
   $ cp hello.wrong-output hello.expected
-  $ dune runtest
+  $ dune runtest --debug-backtraces
   File "hello.expected", line 1, characters 0-0:
   Error: Files _build/default/hello.expected and _build/default/hello.output
   differ.

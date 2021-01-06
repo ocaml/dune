@@ -1,6 +1,6 @@
 (** Handling of substitutions in artifacts during promotion and installation *)
 
-open Stdune
+open Import
 
 type configpath =
   | Sourceroot

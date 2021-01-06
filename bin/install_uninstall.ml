@@ -68,7 +68,7 @@ module type File_operations = sig
     -> executable:bool
     -> special_file:Special_file.t option
     -> package:Package.Name.t
-    -> conf:Dune_engine.Artifact_substitution.conf
+    -> conf:Dune_rules.Artifact_substitution.conf
     -> unit Fiber.t
 
   val mkdir_p : Path.t -> unit
@@ -232,7 +232,7 @@ module File_ops_real (W : Workspace) : File_operations = struct
           Format.pp_close_box ppf ())
 
   let copy_file ~src ~dst ~executable ~special_file ~package
-      ~(conf : Dune_engine.Artifact_substitution.conf) =
+      ~(conf : Dune_rules.Artifact_substitution.conf) =
     let chmod =
       if executable then
         fun _ ->
@@ -253,7 +253,7 @@ module File_ops_real (W : Workspace) : File_operations = struct
           copy_special_file ~src ~package ~ic ~oc
             ~f:(process_dune_package ~get_location:conf.get_location)
         | None ->
-          Dune_engine.Artifact_substitution.copy ~conf ~input_file:src
+          Dune_rules.Artifact_substitution.copy ~conf ~input_file:src
             ~input:(input ic) ~output:(output oc))
 
   let remove_if_exists dst =
@@ -482,7 +482,7 @@ let install_uninstall ~what =
                   ~libdir_from_command_line
               in
               let conf =
-                Dune_engine.Artifact_substitution.conf_for_install ~relocatable
+                Dune_rules.Artifact_substitution.conf_for_install ~relocatable
                   ~default_ocamlpath:context.default_ocamlpath
                   ~stdlib_dir:context.stdlib_dir ~prefix ~libdir ~mandir
               in

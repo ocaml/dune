@@ -1,5 +1,5 @@
 open Stdune
-open Dune_engine
+open Dune_rules
 module Re = Dune_re
 
 let () =

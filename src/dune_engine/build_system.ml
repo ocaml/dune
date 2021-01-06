@@ -1688,7 +1688,20 @@ end = struct
 
     let eval_impl g =
       let dir = File_selector.dir g in
-      Path.Set.filter (targets_of ~dir) ~f:(File_selector.test g)
+      let init = [] in
+      let f s acc =
+        if File_selector.test g s then
+          s :: acc
+        else
+          acc
+      in
+      Path.Set.of_list
+        ( match load_dir ~dir with
+        | Non_build targets -> Path.Set.fold targets ~init ~f
+        | Build { rules_here; _ } ->
+          Path.Build.Map.foldi ~init
+            ~f:(fun k _ acc -> f (Path.build k) acc)
+            rules_here )
 
     let eval =
       Memo.exec

@@ -679,8 +679,12 @@ end = struct
      executing the very same [Build.t] with [Build.exec] -- the results of both
      [Build.static_deps] and [Build.exec] are cached. *)
   let file_exists fn =
-    let dir = Path.parent_exn fn in
-    Path.Set.mem (targets_of ~dir) fn
+    match load_dir ~dir:(Path.parent_exn fn) with
+    | Non_build targets -> Path.Set.mem targets fn
+    | Build { rules_here; _ } -> (
+      match Path.as_in_build_dir fn with
+      | None -> false
+      | Some fn -> Path.Build.Map.mem rules_here fn )
 
   let targets_of ~dir =
     match load_dir ~dir with
@@ -1688,7 +1692,16 @@ end = struct
 
     let eval_impl g =
       let dir = File_selector.dir g in
-      Path.Set.filter (targets_of ~dir) ~f:(File_selector.test g)
+      match load_dir ~dir with
+      | Non_build targets -> Path.Set.filter targets ~f:(File_selector.test g)
+      | Build { rules_here; _ } ->
+        Path.Build.Map.foldi ~init:[] rules_here ~f:(fun s _ acc ->
+            let s = Path.build s in
+            if File_selector.test g s then
+              s :: acc
+            else
+              acc)
+        |> Path.Set.of_list
 
     let eval =
       Memo.exec

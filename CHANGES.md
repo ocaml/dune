@@ -105,11 +105,16 @@ Unreleased
   useless and deprecated. Dune now conflicts with `merlin < 3.4.0` and
   `ocaml-lsp-server < 1.3.0` (#3554, @voodoos)
 
-- Configurator: fix a bug introduced in 2.6.0 where the configurator V1 API doesn't work at 
-  all when used outside of dune. (#4046, @aalekseyev)
+- Configurator: fix a bug introduced in 2.6.0 where the configurator V1 API
+  doesn't work at all when used outside of dune. (#4046, @aalekseyev)
 
 - Fix `libexec` and `libexec-private` variables. In cross-compilation settings,
-  they now point to the file in the host context. (#4058, fixes #4057, @TheLortex)
+  they now point to the file in the host context. (#4058, fixes #4057,
+  @TheLortex)
+
+- When running `$ dune subst`, use project metadata as a fallback when package
+  metadata is missing. We also generate a warning when `(name ..)` is missing in
+  `dune-project` files to avoid failures in production builds.
 
 - Remove support for passing `-nodynlink` for executables. It was bypassed in
   most cases and not correct in other cases in particular on arm32.

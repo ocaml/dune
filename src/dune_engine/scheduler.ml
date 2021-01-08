@@ -654,8 +654,10 @@ let wait_for_process pid =
   Process_watcher.register_job t.process_watcher { pid; ivar };
   Fiber.Ivar.read ivar
 
+let global = ref None
+
 let wait_for_dune_cache () =
-  let t = Fiber.Var.get_exn t_var in
+  let t = Option.value_exn !global in
   Event.Queue.flush_dedup t.events
 
 let got_signal signal =
@@ -677,8 +679,6 @@ let kill_and_wait_for_all_processes t =
     | _ -> ()
   done;
   !saw_signal
-
-let global = ref None
 
 let prepare ?(config = Config.default) ~polling () =
   Log.info

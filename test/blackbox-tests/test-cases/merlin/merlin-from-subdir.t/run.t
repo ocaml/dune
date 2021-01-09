@@ -4,7 +4,7 @@ We build the project
 
 Verify that merlin configuration was generated...
   $ dune ocaml-merlin --dump-config=$(pwd)
-  test
+  Test
   ((EXCLUDE_QUERY_DIR)
    (B
     $TESTCASE_ROOT/_build/default/.foo.objs/byte)
@@ -21,7 +21,7 @@ Verify that merlin configuration was generated...
      -strict-formats
      -short-paths
      -keep-locs)))
-  foo
+  Foo
   ((EXCLUDE_QUERY_DIR)
    (B
     $TESTCASE_ROOT/_build/default/.foo.objs/byte)
@@ -47,9 +47,9 @@ Now we check that both querying from the root and the subfolder works
   $ dune ocaml-merlin  <<EOF | sed -E "s/[[:digit:]]+:/\?:/g"
   > (4:File${#FILE}:$FILE)
   > EOF
-  ((?:EXCLUDE_QUERY_DIR)(?:B?:$TESTCASE_ROOT/_build/default/.foo.objs/byte)(?:S?:$TESTCASE_ROOT)(?:S?:$TESTCASE_ROOT/411)(?:FLG(?:-w?:@1..3@5..28@30..39@43@46..47@49..57@61..62-?:-strict-sequence?:-strict-formats?:-short-paths?:-keep-locs)))
+  ((?:ERROR?:Project isn't built. (Try calling `dune build`.)))
 
   $ dune ocaml-merlin  <<EOF | sed -E "s/[[:digit:]]+:/\?:/g"
   > (4:File${#FILE411}:$FILE411)
   > EOF
-  ((?:EXCLUDE_QUERY_DIR)(?:B?:$TESTCASE_ROOT/_build/default/.foo.objs/byte)(?:B?:$TESTCASE_ROOT/_build/default/.test.eobjs/byte)(?:S?:$TESTCASE_ROOT)(?:S?:$TESTCASE_ROOT/411)(?:FLG(?:-w?:@1..3@5..28@30..39@43@46..47@49..57@61..62-?:-strict-sequence?:-strict-formats?:-short-paths?:-keep-locs)))
+  ((?:ERROR?:Project isn't built. (Try calling `dune build`.)))

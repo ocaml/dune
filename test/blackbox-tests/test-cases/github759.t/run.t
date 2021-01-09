@@ -1,6 +1,6 @@
   $ dune build foo.cma --profile release
   $ dune ocaml-merlin --dump-config=$(pwd)
-  foo
+  Foo
   ((EXCLUDE_QUERY_DIR)
    (B
     $TESTCASE_ROOT/_build/default/.foo.objs/byte)
@@ -11,7 +11,7 @@
   $ rm -f .merlin
   $ dune build foo.cma --profile release
   $ dune ocaml-merlin --dump-config=$(pwd)
-  foo
+  Foo
   ((EXCLUDE_QUERY_DIR)
    (B
     $TESTCASE_ROOT/_build/default/.foo.objs/byte)
@@ -22,7 +22,7 @@
   $ echo toto > .merlin
   $ dune build foo.cma --profile release
   $ dune ocaml-merlin --dump-config=$(pwd)
-  foo
+  Foo
   ((EXCLUDE_QUERY_DIR)
    (B
     $TESTCASE_ROOT/_build/default/.foo.objs/byte)

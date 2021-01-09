@@ -115,15 +115,6 @@ module Unprocessed = struct
     ; configs : config Module_name.Map.t
     }
 
-  let add_source_dir t dir =
-    { t with
-      configs =
-        Module_name.Map.map t.configs ~f:(fun cu_config ->
-            { cu_config with
-              source_dirs = Path.Source.Set.add cu_config.source_dirs dir
-            })
-    }
-
   (* Since one merlin configuration per stanza is generated, merging should
      always be trivial *)
   let merge_config _a b = b

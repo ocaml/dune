@@ -13,8 +13,6 @@ open Import
 (** Type of "unprocessed" merlin information *)
 type t
 
-val add_source_dir : t -> Path.Source.t -> t
-
 module Processed : sig
   (** Type of "processed" merlin information *)
   type t

@@ -56,9 +56,9 @@ module Processed = struct
           [ make_directive "FLG" (Sexp.List (List.map ~f:to_atom flags)) ]
       in
       match pp with
+      | None -> flags
       | Some (pp_flag, pp_args) ->
         make_directive "FLG" (Sexp.List [ Atom pp_flag; Atom pp_args ]) :: flags
-      | None -> flags
     in
     let suffixes =
       List.map extensions ~f:(fun { Ml_kind.Dict.impl; intf } ->
@@ -206,6 +206,9 @@ module Unprocessed = struct
       Preprocess.remove_future_syntax preprocess ~for_:Merlin
         (Super_context.context sctx).version
     with
+    | Action (loc, (action : Action_dune_lang.t)) ->
+      pp_flag_of_action ~expander ~loc ~action
+    | No_preprocessing -> Build.With_targets.return None
     | Pps { loc; pps; flags; staged = _ } -> (
       match
         Preprocessing.get_ppx_driver sctx ~loc ~expander ~lib_name:libname
@@ -219,9 +222,6 @@ module Unprocessed = struct
           |> String.concat ~sep:" "
         in
         Build.With_targets.return (Some ("-ppx", args)) )
-    | Action (loc, (action : Action_dune_lang.t)) ->
-      pp_flag_of_action ~expander ~loc ~action
-    | No_preprocessing -> Build.With_targets.return None
 
   (* This is used to determine the list of source directories to give to Merlin.
      This is similar to [Gen_rules.lib_src_dirs], but it's used for dependencies

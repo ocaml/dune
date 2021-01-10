@@ -53,6 +53,8 @@ module DB : sig
 
   val fold : t -> init:'a -> f:(dialect -> 'a -> 'a) -> 'a
 
+  val extensions_for_merlin : t -> string Ml_kind.Dict.t list
+
   val to_dyn : t -> Dyn.t
 
   val builtin : t

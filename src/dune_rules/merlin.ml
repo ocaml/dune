@@ -3,14 +3,6 @@ open! Stdune
 open Import
 module SC = Super_context
 
-module Extensions = Comparable.Make (struct
-  type t = string * string
-
-  let compare = Tuple.T2.compare String.compare String.compare
-
-  let to_dyn = Tuple.T2.to_dyn String.to_dyn String.to_dyn
-end)
-
 module Processed = struct
   (* The actual content of the merlin file as built by the [Unprocessed.process]
      function from the unprocessed info gathered through [gen_rules]. The first
@@ -22,10 +14,13 @@ module Processed = struct
     ; src_dirs : Path.Set.t
     ; flags : string list
     ; pp : (string * string) option
-    ; extensions : Extensions.Set.t
+    ; extensions : string Ml_kind.Dict.t list
     }
 
-  type t = config String.Map.t
+  type t =
+    { config : config
+    ; modules : Module_name.t list
+    }
 
   module D = struct
     type nonrec t = t
@@ -66,31 +61,35 @@ module Processed = struct
       | None -> flags
     in
     let suffixes =
-      Extensions.Set.to_list extensions
-      |> List.map ~f:(fun (impl, intf) ->
-             make_directive "SUFFIX"
-               (Sexp.Atom (Printf.sprintf "%s %s" impl intf)))
+      List.map extensions ~f:(fun { Ml_kind.Dict.impl; intf } ->
+          make_directive "SUFFIX" (Sexp.Atom (Printf.sprintf "%s %s" impl intf)))
     in
     Sexp.List
       (List.concat [ exclude_query_dir; obj_dirs; src_dirs; flags; suffixes ])
 
-  let rec get config ~filename =
-    let file = Filename.remove_extension filename in
-    match Option.map (String.Map.find config filename) ~f:to_sexp with
-    | Some result -> Some result
-    | None when String.equal file filename -> None
-    | None -> get config ~filename:file
+  let get { modules; config } ~filename =
+    let fname = Filename.remove_extension filename in
+    if
+      List.exists modules ~f:(fun m ->
+          let fname' = Module_name.to_string m |> String.lowercase in
+          String.equal fname fname')
+    then
+      Some (to_sexp config)
+    else
+      None
 
   let print_file path =
     match load_file path with
     | None -> Printf.eprintf "No merlin config found"
-    | Some t ->
+    | Some { modules; config } ->
       let pp =
-        String.Map.to_list t
-        |> Pp.concat_map ~f:(fun (name, config) ->
-               let sexp = to_sexp config in
-               let open Pp.O in
-               Pp.vbox (Pp.text name ++ Pp.cut ++ Sexp.pp sexp) ++ Pp.newline)
+        let sexp = to_sexp config in
+        let open Pp.O in
+        Pp.vbox (Sexp.pp sexp)
+        ++ Pp.newline
+        ++ Pp.vbox
+             (Pp.concat_map modules ~f:(fun m ->
+                  Pp.text (Module_name.to_string m)))
       in
       Format.printf "%a%!" Pp.to_fmt pp
 end
@@ -107,7 +106,7 @@ module Unprocessed = struct
     ; libname : Lib_name.Local.t option
     ; source_dirs : Path.Source.Set.t
     ; objs_dirs : Path.Set.t
-    ; extensions : Extensions.Set.t
+    ; extensions : string Ml_kind.Dict.t list
     }
 
   type t =
@@ -138,22 +137,7 @@ module Unprocessed = struct
           flags
         |> Ocaml_flags.common
     in
-    let extensions =
-      Dialect.DB.fold dialects ~init:Extensions.Set.empty ~f:(fun d s ->
-          let impl = Dialect.extension d Ml_kind.Impl in
-          let intf = Dialect.extension d Ml_kind.Intf in
-          if
-            (* Only include dialects with no preprocessing and skip default file
-               extensions *)
-            Dialect.preprocess d Ml_kind.Impl <> None
-            || Dialect.preprocess d Ml_kind.Intf <> None
-            || impl = Dialect.extension Dialect.ocaml Ml_kind.Impl
-               && intf = Dialect.extension Dialect.ocaml Ml_kind.Intf
-          then
-            s
-          else
-            Extensions.Set.add s (impl, intf))
-    in
+    let extensions = Dialect.DB.extensions_for_merlin dialects in
     let config =
       { requires
       ; flags = Build.catch flags ~on_error:[]
@@ -273,9 +257,8 @@ module Unprocessed = struct
       } sctx ~more_src_dirs ~expander =
     let open Build.With_targets.O in
     let+ config =
-      let pp_flags = pp_flags sctx ~expander config in
       let+ flags = Build.with_no_targets flags
-      and+ pp = pp_flags in
+      and+ pp = pp_flags sctx ~expander config in
       let src_dirs, obj_dirs =
         Lib.Set.fold requires
           ~init:(Path.set_of_source_paths source_dirs, objs_dirs)
@@ -291,9 +274,11 @@ module Unprocessed = struct
       in
       { Processed.src_dirs; obj_dirs; flags; pp; extensions }
     in
-    Modules.fold_no_vlib modules ~init:[] ~f:(fun m acc ->
-        (Module_name.to_string (Module.name m), config) :: acc)
-    |> String.Map.of_list_exn
+    let modules =
+      Modules.fold_no_vlib modules ~init:[] ~f:(fun m acc ->
+          Module.name m :: acc)
+    in
+    { Processed.modules; config }
 end
 
 let dot_merlin sctx ~dir ~more_src_dirs ~expander (t : Unprocessed.t) =

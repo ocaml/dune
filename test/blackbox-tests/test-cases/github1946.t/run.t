@@ -3,7 +3,6 @@ in the same dune file, but require different ppx specifications
 
   $ dune build @all --profile release
   $ dune ocaml-merlin --dump-config=$(pwd)
-  Usesppx1
   ((EXCLUDE_QUERY_DIR)
    (B
     $TESTCASE_ROOT/_build/default/.usesppx1.objs/byte)
@@ -16,8 +15,7 @@ in the same dune file, but require different ppx specifications
      --cookie
      'library-name="usesppx1"'"))
    (FLG (-open Usesppx1 -w -40)))
-  Usesppx2
-  ((EXCLUDE_QUERY_DIR)
+  Usesppx1((EXCLUDE_QUERY_DIR)
    (B
     $TESTCASE_ROOT/_build/default/.usesppx2.objs/byte)
    (S
@@ -29,3 +27,4 @@ in the same dune file, but require different ppx specifications
      --cookie
      'library-name="usesppx2"'"))
    (FLG (-open Usesppx2 -w -40)))
+  Usesppx2

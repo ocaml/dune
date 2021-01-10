@@ -27,6 +27,11 @@ module Dict = struct
     ; intf : 'a
     }
 
+  let compare f { impl; intf } t =
+    match f impl t.impl with
+    | (Gt | Lt) as x -> x
+    | Eq -> f intf t.intf
+
   let get t = function
     | Impl -> t.impl
     | Intf -> t.intf

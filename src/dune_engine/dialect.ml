@@ -168,6 +168,7 @@ module DB = struct
             s
           else
             { Ml_kind.Dict.impl; intf } :: s)
+      |> List.sort ~compare:(Ml_kind.Dict.compare String.compare)
     in
     t.extensions_for_merlin <- Some v;
     v

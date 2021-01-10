@@ -25,6 +25,8 @@ module Dict : sig
     ; intf : 'a
     }
 
+  val compare : ('a -> 'a -> Ordering.t) -> 'a t -> 'a t -> Ordering.t
+
   val to_dyn : ('a -> Dyn.t) -> 'a t -> Dyn.t
 
   val get : 'a t -> kind -> 'a

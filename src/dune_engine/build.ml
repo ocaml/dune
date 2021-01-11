@@ -234,6 +234,8 @@ end
 let with_targets build ~targets : _ With_targets.t =
   { build; targets = Path.Build.Set.of_list targets }
 
+let with_targets_set build ~targets : _ With_targets.t = { build; targets }
+
 let with_no_targets build : _ With_targets.t =
   { build; targets = Path.Build.Set.empty }
 

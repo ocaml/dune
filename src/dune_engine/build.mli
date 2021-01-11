@@ -58,6 +58,9 @@ val set_file_system_accessors : file_exists:(Path.t -> bool) -> unit
     into [Build.With_targets.t]. *)
 val with_targets : 'a t -> targets:Path.Build.t list -> 'a With_targets.t
 
+(** [with_targets_set] is like [with_targets] but [targets] is a set *)
+val with_targets_set : 'a t -> targets:Path.Build.Set.t -> 'a With_targets.t
+
 (** Create a value of [With_targets.t] with the empty set of targets. *)
 val with_no_targets : 'a t -> 'a With_targets.t
 

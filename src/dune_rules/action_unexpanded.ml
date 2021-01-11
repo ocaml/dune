@@ -663,12 +663,9 @@ end
 let add_deps_if_exist deps_if_exist =
   let open Build.O in
   (let+ l =
-     Path.Set.to_list deps_if_exist
-     |> List.map
-          ~f:
-            Build.(
-              fun f ->
-                if_file_exists f ~then_:(return (Some f)) ~else_:(return None))
+     Path.Set.to_list_map deps_if_exist ~f:(fun f ->
+         Build.if_file_exists f ~then_:(Build.return (Some f))
+           ~else_:(Build.return None))
      |> Build.all
    in
    List.filter_opt l)

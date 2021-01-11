@@ -197,10 +197,20 @@ module With_targets = struct
     ; targets = Path.Build.Set.union x.targets y.targets
     }
 
-  module O = struct
-    let ( >>> ) = map2 ~f:(fun () y -> y)
+  let both x y =
+    { build = Both (x.build, y.build)
+    ; targets = Path.Build.Set.union x.targets y.targets
+    }
 
-    let ( and+ ) = map2 ~f:(fun x y -> (x, y))
+  let seq x y =
+    { build = Seq (x.build, y.build)
+    ; targets = Path.Build.Set.union x.targets y.targets
+    }
+
+  module O = struct
+    let ( >>> ) = seq
+
+    let ( and+ ) = both
 
     let ( let+ ) a f = map ~f a
   end

@@ -207,10 +207,13 @@ module With_targets = struct
 
   open O
 
-  let rec all xs =
+  let all xs =
     match xs with
     | [] -> return []
-    | x :: xs -> map2 ~f:List.cons x (all xs)
+    | xs ->
+      { build = All (List.map xs ~f:(fun x -> x.build))
+      ; targets = Path.Build.Set.union_map xs ~f:(fun x -> x.targets)
+      }
 
   let write_file_dyn fn s =
     add ~targets:[ fn ]

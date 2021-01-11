@@ -416,16 +416,19 @@ struct
         let+ a, dyn_deps_a = exec a in
         (f a, dyn_deps_a)
       | Both (a, b) ->
-        let* a, dyn_deps_a = exec a in
-        let+ b, dyn_deps_b = exec b in
+        let+ (a, dyn_deps_a), (b, dyn_deps_b) =
+          Fiber.fork_and_join (fun () -> exec a) (fun () -> exec b)
+        in
         ((a, b), Dep.Set.union dyn_deps_a dyn_deps_b)
       | Seq (a, b) ->
-        let* (), dyn_deps_a = exec a in
-        let+ b, dyn_deps_b = exec b in
+        let+ ((), dyn_deps_a), (b, dyn_deps_b) =
+          Fiber.fork_and_join (fun () -> exec a) (fun () -> exec b)
+        in
         (b, Dep.Set.union dyn_deps_a dyn_deps_b)
       | Map2 (f, a, b) ->
-        let* a, dyn_deps_a = exec a in
-        let+ b, dyn_deps_b = exec b in
+        let+ (a, dyn_deps_a), (b, dyn_deps_b) =
+          Fiber.fork_and_join (fun () -> exec a) (fun () -> exec b)
+        in
         (f a b, Dep.Set.union dyn_deps_a dyn_deps_b)
       | Deps _ -> Fiber.return ((), Dep.Set.empty)
       | Paths_for_rule _ -> Fiber.return ((), Dep.Set.empty)

@@ -24,4 +24,7 @@ module type S = sig
   val fold : 'a t -> init:'acc -> f:('a -> 'acc -> 'acc) -> 'acc
 
   val exists : 'a t -> f:('a -> bool) -> bool
+
+  val map_with_targets :
+    'a t -> f:('a -> 'b Build.With_targets.t) -> 'b t Build.With_targets.t
 end

@@ -3,5 +3,4 @@
  (modules foo bar)
  (wrapped false)
  (preprocess (per_module
-  ((action (run pp/pp.exe %{input-file})) foo)))
- (libraries pp ppx))
+  ((action (run pp/pp.exe %{input-file})) foo))))

@@ -1,11 +1,4 @@
   $ dune build @check
-  File "dune", line 8, characters 15-18:
-  8 |  (libraries pp ppx))
-                     ^^^
-  Error: Library "ppx" not found.
-  Hint: try:
-    dune external-lib-deps --missing @check
-  [1]
 
 We dump the config for Foo and Bar modules but the pp.exe preprocessor
 should appear only once since only Foo is using it.

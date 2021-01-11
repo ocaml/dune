@@ -4,6 +4,7 @@ We build the project
 
 Verify that merlin configuration was generated...
   $ dune ocaml-merlin --dump-config=$(pwd)
+  Test
   ((EXCLUDE_QUERY_DIR)
    (B
     $TESTCASE_ROOT/_build/default/.foo.objs/byte)
@@ -20,7 +21,8 @@ Verify that merlin configuration was generated...
      -strict-formats
      -short-paths
      -keep-locs)))
-  Test((EXCLUDE_QUERY_DIR)
+  Foo
+  ((EXCLUDE_QUERY_DIR)
    (B
     $TESTCASE_ROOT/_build/default/.foo.objs/byte)
    (S
@@ -34,7 +36,6 @@ Verify that merlin configuration was generated...
      -strict-formats
      -short-paths
      -keep-locs)))
-  Foo
 
 ...but not in the sub-folder whose content was copied
   $ dune ocaml-merlin --dump-config=$(pwd)/411

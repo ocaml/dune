@@ -663,12 +663,9 @@ end
 let add_deps_if_exist deps_if_exist =
   let open Build.O in
   (let+ l =
-     Path.Set.to_list deps_if_exist
-     |> List.map
-          ~f:
-            Build.(
-              fun f ->
-                if_file_exists f ~then_:(return (Some f)) ~else_:(return None))
+     Path.Set.to_list_map deps_if_exist ~f:(fun f ->
+         Build.if_file_exists f ~then_:(Build.return (Some f))
+           ~else_:(Build.return None))
      |> Build.all
    in
    List.filter_opt l)
@@ -705,7 +702,6 @@ let expand t ~loc ~dep_kind ~targets_dir ~targets:targets_written_by_user
           ; Pp.enumerate (Path.Build.Set.to_list targets) ~f:(fun target ->
                 Pp.text (Dpath.describe_path (Path.build target)))
           ]);
-  let targets = Path.Build.Set.to_list targets in
   Build.path_set deps
   >>> add_deps_if_exist deps_if_exist
   >>> Build.dyn_path_set
@@ -734,7 +730,7 @@ let expand t ~loc ~dep_kind ~targets_dir ~targets:targets_written_by_user
               ((Action.Chdir (dir, action), deps), deps_if_exist))
          in
          (action, Path.Set.union deps deps_if_exist_which_exist))
-  |> Build.with_targets ~targets
+  |> Build.with_targets_set ~targets
 
 (* We re-export [Action_dune_lang] in the end to avoid polluting the inferred
    types in this module with all the various t's *)

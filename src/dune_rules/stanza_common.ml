@@ -93,12 +93,12 @@ module Pkg = struct
   let field ~stanza =
     map_validate
       (let+ p = Dune_project.get_exn ()
-       and+ pkg = field_o "package" string in
+       and+ pkg = field_o "package" Package.Name.decode in
        (p, pkg))
       ~f:(fun (p, pkg) ->
         match pkg with
         | None -> default p stanza
-        | Some name -> resolve p (Package.Name.of_string name))
+        | Some name -> resolve p name)
 
   let field_opt ?check () =
     let decode =

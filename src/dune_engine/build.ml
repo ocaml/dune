@@ -221,9 +221,12 @@ module With_targets = struct
     match xs with
     | [] -> return []
     | xs ->
-      { build = All (List.map xs ~f:(fun x -> x.build))
-      ; targets = Path.Build.Set.union_map xs ~f:(fun x -> x.targets)
-      }
+      let build, targets =
+        List.fold_left xs ~init:([], Path.Build.Set.empty)
+          ~f:(fun (xs, set) x ->
+            (x.build :: xs, Path.Build.Set.union set x.targets))
+      in
+      { build = All (List.rev build); targets }
 
   let write_file_dyn fn s =
     add ~targets:[ fn ]

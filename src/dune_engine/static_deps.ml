@@ -23,7 +23,4 @@ let paths { action_deps; rule_deps } =
   Dep.Set.paths (Dep.Set.union action_deps rule_deps)
 
 let union_map xs ~f =
-  let sets = List.map xs ~f in
-  { rule_deps = Dep.Set.union_map sets ~f:(fun x -> x.rule_deps)
-  ; action_deps = Dep.Set.union_map sets ~f:(fun x -> x.action_deps)
-  }
+  List.fold_left xs ~init:empty ~f:(fun acc a -> union acc (f a))

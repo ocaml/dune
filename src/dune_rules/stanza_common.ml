@@ -99,6 +99,22 @@ module Pkg = struct
         match pkg with
         | None -> default p stanza
         | Some name -> resolve p (Package.Name.of_string name))
+
+  let field_opt ?check () =
+    let decode =
+      let decode = Package.Name.decode in
+      match check with
+      | None -> decode
+      | Some check -> check >>> decode
+    in
+    map_validate
+      (let+ p = Dune_project.get_exn ()
+       and+ pkg = field_o "package" decode in
+       (p, pkg))
+      ~f:(fun (p, pkg) ->
+        match pkg with
+        | None -> Ok None
+        | Some name -> resolve p name |> Result.map ~f:Option.some)
 end
 
 let modules_field name = Ordered_set_lang.field name

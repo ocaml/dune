@@ -11,7 +11,7 @@ type t =
   ; alias : Alias.Name.t option
   ; deps : Dep_conf.t Bindings.t option
   ; enabled_if : Blang.t
-  ; package : (Loc.t * Package.t) option
+  ; package : Package.t option
   }
 
 val decode : t Dune_lang.Decoder.t

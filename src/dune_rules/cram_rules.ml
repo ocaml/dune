@@ -172,7 +172,7 @@ let rules ~sctx ~expander ~dir tests =
               let packages =
                 match spec.package with
                 | None -> acc.packages
-                | Some (_, (p : Package.t)) ->
+                | Some (p : Package.t) ->
                   Package.Name.Set.add acc.packages (Package.Id.name p.id)
               in
               { acc with enabled_if; deps; alias; packages })

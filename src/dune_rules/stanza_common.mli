@@ -9,6 +9,11 @@ module Pkg : sig
 
   val field : stanza:string -> Package.t Dune_lang.Decoder.fields_parser
 
+  val field_opt :
+       ?check:unit Dune_lang.Decoder.t
+    -> unit
+    -> Package.t option Dune_lang.Decoder.fields_parser
+
   val default_exn : loc:Loc.t -> Dune_project.t -> string -> Package.t
 end
 

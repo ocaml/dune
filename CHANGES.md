@@ -4,6 +4,9 @@ Unreleased
 - Fixed a crash in watch mode introduced in 2.8.0 (#4118, fixes #4117,
   @rgrinberg)
 
+- Configurator: always link the C libraries in the build command
+  (#4088, @MisterDA).
+
 2.8.1 (14/01/2021)
 ------------------
 

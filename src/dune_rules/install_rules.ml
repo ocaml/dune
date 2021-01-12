@@ -741,23 +741,20 @@ let install_rules sctx (package : Package.t) =
           ]
   in
   let () =
+    let context = Context.build_context ctx in
     let target_alias =
-      Build_system.Alias.package_install
-        ~context:(Context.to_build_context ctx)
-        ~pkg:package
+      Build_system.Alias.package_install ~context ~pkg:package
     in
     Rules.Produce.Alias.add_deps target_alias files
       ~dyn_deps:
         (let+ packages = packages in
          Package.Id.Set.to_list packages
          |> Path.Set.of_list_map ~f:(fun (pkg : Package.Id.t) ->
-                let name = Package.Id.name pkg in
                 let pkg =
+                  let name = Package.Id.name pkg in
                   Package.Name.Map.find_exn (Super_context.packages sctx) name
                 in
-                Build_system.Alias.package_install
-                  ~context:(Context.to_build_context ctx)
-                  ~pkg
+                Build_system.Alias.package_install ~context ~pkg
                 |> Alias.stamp_file |> Path.build))
   in
   let action =

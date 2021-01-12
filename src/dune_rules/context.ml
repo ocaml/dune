@@ -97,16 +97,14 @@ module T = struct
     ; supports_shared_libraries : Dynlink_supported.By_the_os.t
     ; which : string -> Path.t option
     ; lib_config : Lib_config.t
+    ; build_context : Build_context.t
     }
 
   let equal x y = Context_name.equal x.name y.name
 
   let hash t = Context_name.hash t.name
 
-  let rec to_build_context
-      { name; build_dir; env; for_host; stdlib_dir; default_ocamlpath; _ } =
-    Build_context.create ~name ~build_dir ~env ~stdlib_dir ~default_ocamlpath
-      ~host:(Option.map ~f:to_build_context for_host)
+  let build_context t = t.build_context
 
   let to_dyn t : Dyn.t =
     let open Dyn.Encoder in
@@ -419,7 +417,7 @@ let create ~(kind : Kind.t) ~path ~env ~env_nodes ~name ~merlin ~targets
       | Error (Makefile_config file, msg) ->
         User_error.raise ~loc:(Loc.in_file file) [ Pp.text msg ]
     in
-    let* default_findlib_paths, (ocaml_config_vars, ocfg) =
+    let* default_ocamlpath, (ocaml_config_vars, ocfg) =
       Fiber.fork_and_join default_findlib_paths (fun () ->
           let+ lines =
             Process.run_capture_lines ~env Strict ocamlc [ "-config" ]
@@ -432,7 +430,7 @@ let create ~(kind : Kind.t) ~path ~env ~env_nodes ~name ~merlin ~targets
               (vars, ocfg)
             | Error msg -> Error (Ocamlc_config, msg) ))
     in
-    let findlib_paths = ocamlpath @ default_findlib_paths in
+    let findlib_paths = ocamlpath @ default_ocamlpath in
     let version = Ocaml_version.of_ocaml_config ocfg in
     let env =
       (* See comment in ansi_color.ml for setup_env_for_colors. For versions
@@ -473,7 +471,7 @@ let create ~(kind : Kind.t) ~path ~env ~env_nodes ~name ~merlin ~targets
         ; ( "DUNE_OCAML_HARDCODED"
           , String.concat
               ~sep:(Char.escaped ocamlpath_sep)
-              (List.map ~f:Path.to_string default_findlib_paths) )
+              (List.map ~f:Path.to_string default_ocamlpath) )
         ; extend_var "OCAMLTOP_INCLUDE_PATH"
             (Path.Build.relative local_lib_root "toplevel")
         ; extend_var "OCAMLFIND_IGNORE_DUPS_IN" ~path_sep:ocamlpath_sep
@@ -545,6 +543,11 @@ let create ~(kind : Kind.t) ~path ~env ~env_nodes ~name ~merlin ~targets
       supports_shared_libraries && dynamically_linked_foreign_archives
     in
     let t =
+      let build_context =
+        Build_context.create ~name ~build_dir ~env ~stdlib_dir
+          ~default_ocamlpath
+          ~host:(Option.map host ~f:(fun c -> c.build_context))
+      in
       { name
       ; implicit
       ; kind
@@ -570,7 +573,7 @@ let create ~(kind : Kind.t) ~path ~env ~env_nodes ~name ~merlin ~targets
       ; env
       ; findlib = Findlib.create ~paths:findlib_paths ~lib_config
       ; findlib_toolchain
-      ; default_ocamlpath = default_findlib_paths
+      ; default_ocamlpath
       ; arch_sixtyfour
       ; install_prefix
       ; stdlib_dir
@@ -581,6 +584,7 @@ let create ~(kind : Kind.t) ~path ~env ~env_nodes ~name ~merlin ~targets
           Dynlink_supported.By_the_os.of_bool supports_shared_libraries
       ; which
       ; lib_config
+      ; build_context
       }
     in
     if Ocaml_version.supports_response_file version then (

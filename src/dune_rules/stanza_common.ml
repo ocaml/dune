@@ -90,7 +90,7 @@ module Pkg = struct
     | Ok x -> x
     | Error e -> raise (User_error.E { e with loc = Some loc })
 
-  let field stanza =
+  let field ~stanza =
     map_validate
       (let+ p = Dune_project.get_exn ()
        and+ pkg = field_o "package" string in

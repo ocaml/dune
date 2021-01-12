@@ -10,6 +10,7 @@ type effective =
   ; alias : Alias.Name.Set.t
   ; deps : unit Build.t list
   ; enabled_if : Blang.t list
+  ; packages : Package.Name.Set.t
   }
 
 let empty_effective =
@@ -17,6 +18,7 @@ let empty_effective =
   ; alias = Alias.Name.Set.singleton Alias.Name.runtest
   ; enabled_if = [ Blang.true_ ]
   ; deps = []
+  ; packages = Package.Name.Set.empty
   }
 
 let missing_run_t (error : Cram_test.t) =
@@ -167,6 +169,20 @@ let rules ~sctx ~expander ~dir tests =
                 | None -> acc.alias
                 | Some a -> Alias.Name.Set.add acc.alias a
               in
-              { acc with enabled_if; deps; alias })
+              let packages =
+                match spec.package with
+                | None -> acc.packages
+                | Some (_, (p : Package.t)) ->
+                  Package.Name.Set.add acc.packages (Package.Id.name p.id)
+              in
+              { acc with enabled_if; deps; alias; packages })
       in
-      test_rule ~sctx ~expander ~dir effective test)
+      let test_rule () = test_rule ~sctx ~expander ~dir effective test in
+      match !Clflags.only_packages with
+      | None -> test_rule ()
+      | Some only ->
+        if
+          Package.Name.Set.is_empty only
+          || Package.Name.Set.(not (is_empty (inter only effective.packages)))
+        then
+          test_rule ())

@@ -27,6 +27,7 @@ type t =
   ; alias : Alias.Name.t option
   ; deps : Dep_conf.t Bindings.t option
   ; enabled_if : Blang.t
+  ; package : (Loc.t * Package.t) option
   }
 
 let decode =
@@ -36,5 +37,23 @@ let decode =
        field "applies_to" decode_applies_to ~default:default_applies_to
      and+ alias = field_o "alias" Alias.Name.decode
      and+ deps = field_o "deps" (Bindings.decode Dep_conf.decode)
-     and+ enabled_if = Enabled_if.decode ~allowed_vars:Any ~since:None () in
-     { loc; alias; deps; enabled_if; applies_to })
+     and+ enabled_if = Enabled_if.decode ~allowed_vars:Any ~since:None ()
+     and+ project = Dune_project.get_exn ()
+     and+ package_name =
+       field_o "package"
+         ( Dune_lang.Syntax.since Stanza.syntax (2, 8)
+         >>> Package.Name.decode_loc )
+     in
+     let package =
+       let open Option.O in
+       let+ loc, name = package_name in
+       let packages = Dune_project.packages project in
+       match Package.Name.Map.find packages name with
+       | Some pkg -> (loc, pkg)
+       | None ->
+         User_error.raise ~loc
+           [ Pp.textf "The current scope doesn't define package %S"
+               (Package.Name.to_string name)
+           ]
+     in
+     { loc; alias; deps; enabled_if; applies_to; package })

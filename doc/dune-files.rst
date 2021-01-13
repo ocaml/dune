@@ -285,6 +285,23 @@ language: The syntax is as a list of the following elements:
 
    dep-specification = dep+
 
+.. _always-add-cflags:
+
+use_standard_c_and_cxx_flags
+----------------------------
+
+Since Dune 2.8, it is possible to deactivate the systematic prepending of flags
+coming from ``ocamlc -config`` to the C compiler command line. This is done
+adding the following field to the ``dune-project`` file:
+
+.. code:: scheme
+
+    (use_standard_c_and_cxx_flags true)
+
+In this mode, dune will populate the ``:standard`` set of C flags with the
+content of ``ocamlc_cflags`` and  ``ocamlc_cppflags``. These flags can be
+completed or overridden using the :ref:`ordered-set-language`.
+
 dune
 ====
 

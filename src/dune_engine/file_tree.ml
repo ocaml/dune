@@ -782,3 +782,8 @@ let find_dir_specified_on_command_line ~dir =
       [ Pp.textf "Don't know about directory %s specified on the command line!"
           (Path.Source.to_string_maybe_quoted dir)
       ]
+
+let is_vendored dir =
+  match find_dir dir with
+  | None -> false
+  | Some d -> Dir.status d = Vendored

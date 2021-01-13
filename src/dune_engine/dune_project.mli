@@ -63,13 +63,13 @@ val root : t -> Path.Source.t
 
 val stanza_parser : t -> Stanza.t list Dune_lang.Decoder.t
 
+val generate_opam_files : t -> bool
+
 (** The option [use_standard_c_and_cxx_flags] enables the automatic addition of
     flags necessary to build c++ files with the active C compiler. It also
     disables the automatic addition of C flags from [ocamlc -config] to the
     compiler command line when building C stubs. *)
-val use_standard_c_and_cxx_flags : t -> bool
-
-val generate_opam_files : t -> bool
+val use_standard_c_and_cxx_flags : t -> bool option
 
 val dialects : t -> Dialect.DB.t
 

@@ -127,6 +127,13 @@ Unreleased
   for different modules in the same folder. (#4092, fixes #2596, #1212 and
   #3409, @voodoos)
 
+- Add the option `use_standard_c_and_cxx_flags` to `dune-project` that 1.
+  disables the unconditional use of the `ocamlc_cflags` and `ocamlc_cppflags`
+  from `ocamlc -config` in C compiler calls, these flags will be present in the
+  `:standard` set instead; and 2. enables the detection of the C compiler family
+  and populates the `:standard` set of flags with common default values when
+  building CXX stubs. (#3875, #3802, fix #3718 and #3528, @voodoos)
+
 2.7.1 (2/09/2020)
 -----------------
 

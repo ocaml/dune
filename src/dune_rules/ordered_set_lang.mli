@@ -63,6 +63,8 @@ module Unexpanded : sig
 
   val has_special_forms : t -> bool
 
+  val has_standard : t -> bool
+
   (** List of files needed to expand this set *)
   val files : t -> f:(String_with_vars.t -> Path.t) -> Path.Set.t
 

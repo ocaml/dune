@@ -3,22 +3,25 @@ open! Stdune
 open Import
 
 let default_context_flags (ctx : Context.t) ~project =
-  (* TODO DUNE3 To ensure full backward compatibility, ocaml_cflags are still
-     present in the :standard set of flags. However these should not as they are
-     already prepended when calling the compiler, causing flag duplication. *)
-  let c = Ocaml_config.ocamlc_cflags ctx.ocaml_config in
-  let cxx =
-    List.filter c ~f:(fun s -> not (String.is_prefix s ~prefix:"-std="))
+  let cflags = Ocaml_config.ocamlc_cflags ctx.ocaml_config in
+  let cxxflags =
+    List.filter cflags ~f:(fun s -> not (String.is_prefix s ~prefix:"-std="))
   in
-  let cxx =
-    if Dune_project.use_standard_c_and_cxx_flags project then
-      let open Build.O in
-      let+ db_flags = Cxx_flags.get_flags ctx.build_dir in
-      db_flags @ cxx
-    else
-      Build.return cxx
+  let c, cxx =
+    match Dune_project.use_standard_c_and_cxx_flags project with
+    | None
+    | Some false ->
+      (Build.return cflags, Build.return cxxflags)
+    | Some true ->
+      let c = cflags @ Ocaml_config.ocamlc_cppflags ctx.ocaml_config in
+      let cxx =
+        let open Build.O in
+        let+ db_flags = Cxx_flags.get_flags ctx.build_dir in
+        db_flags @ cxxflags
+      in
+      (Build.return c, cxx)
   in
-  Foreign_language.Dict.make ~c:(Build.return c) ~cxx
+  Foreign_language.Dict.make ~c ~cxx
 
 module Env_tree : sig
   type t
@@ -126,9 +129,8 @@ end = struct
         | Some parent -> Memo.lazy_ (fun () -> get_node t ~dir:parent)
     in
     let config_stanza = get_env_stanza t ~dir in
-    let default_context_flags =
-      default_context_flags t.context ~project:(Scope.project scope)
-    in
+    let project = Scope.project scope in
+    let default_context_flags = default_context_flags t.context ~project in
     let expander_for_artifacts =
       Memo.lazy_ (fun () ->
           expander_for_artifacts ~scope ~root_expander:t.root_expander
@@ -324,13 +326,9 @@ let add_alias_action t alias ~dir ~loc ?locks ~stamp action =
     ~env alias ~loc ?locks ~stamp action
 
 let build_dir_is_vendored build_dir =
-  let opt =
-    let open Option.O in
-    let* src_dir = Path.Build.drop_build_context build_dir in
-    let+ src_dir = File_tree.find_dir src_dir in
-    Sub_dirs.Status.Vendored = File_tree.Dir.status src_dir
-  in
-  Option.value ~default:false opt
+  match Path.Build.drop_build_context build_dir with
+  | Some src_dir -> Dune_engine.File_tree.is_vendored src_dir
+  | None -> false
 
 let ocaml_flags t ~dir (spec : Ocaml_flags.Spec.t) =
   let expander = Env_tree.expander t.env_tree ~dir in
@@ -632,9 +630,8 @@ let create ~(context : Context.t) ?host ~projects ~packages ~stanzas () =
         let make ~inherit_from ~config_stanza =
           let dir = context.build_dir in
           let scope = Scope.DB.find_by_dir scopes dir in
-          let default_context_flags =
-            default_context_flags context ~project:(Scope.project scope)
-          in
+          let project = Scope.project scope in
+          let default_context_flags = default_context_flags context ~project in
           let expander_for_artifacts =
             Memo.lazy_ (fun () ->
                 Code_error.raise

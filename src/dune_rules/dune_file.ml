@@ -771,8 +771,9 @@ module Library = struct
     List.map (foreign_archives t) ~f:(fun archive ->
         Foreign.Archive.dll_file ~archive ~dir ~ext_dll)
 
-  let archive t ~dir ~ext =
-    Path.Build.relative dir (Lib_name.Local.to_string (snd t.name) ^ ext)
+  let archive_basename t ~ext = Lib_name.Local.to_string (snd t.name) ^ ext
+
+  let archive t ~dir ~ext = Path.Build.relative dir (archive_basename t ~ext)
 
   let best_name t =
     match t.visibility with
@@ -834,10 +835,18 @@ module Library = struct
     let virtual_library = is_virtual conf in
     let foreign_archives = foreign_lib_files conf ~dir ~ext_lib in
     let native_archives =
-      if modes.native then
-        [ archive ext_lib ]
+      let archive = archive ext_lib in
+      if virtual_library || not modes.native then
+        Lib_info.Files []
+      else if
+        Option.is_some conf.implements
+        || Lib_config.linker_can_create_empty_archives lib_config
+           && Ocaml_version.ocamlopt_always_calls_library_linker
+                lib_config.ocaml_version
+      then
+        Lib_info.Files [ archive ]
       else
-        []
+        Lib_info.Needs_module_info archive
     in
     let foreign_dll_files = foreign_dll_files conf ~dir ~ext_dll in
     let exit_module = Option.bind conf.stdlib ~f:(fun x -> x.exit_module) in
@@ -916,12 +925,12 @@ module Library = struct
     let special_builtin_support = conf.special_builtin_support in
     let instrumentation_backend = conf.instrumentation_backend in
     let entry_modules = Lib_info.Source.Local in
-    Lib_info.create ~loc ~name ~kind ~status ~src_dir ~orig_src_dir ~obj_dir
-      ~version ~synopsis ~main_module_name ~sub_systems ~requires
-      ~foreign_objects ~plugins ~archives ~ppx_runtime_deps ~foreign_archives
-      ~native_archives ~foreign_dll_files ~jsoo_runtime ~jsoo_archive
-      ~preprocess ~enabled ~virtual_deps ~dune_version ~virtual_ ~entry_modules
-      ~implements ~default_implementation ~modes ~wrapped
+    Lib_info.create ~loc ~path_kind:Local ~name ~kind ~status ~src_dir
+      ~orig_src_dir ~obj_dir ~version ~synopsis ~main_module_name ~sub_systems
+      ~requires ~foreign_objects ~plugins ~archives ~ppx_runtime_deps
+      ~foreign_archives ~native_archives ~foreign_dll_files ~jsoo_runtime
+      ~jsoo_archive ~preprocess ~enabled ~virtual_deps ~dune_version ~virtual_
+      ~entry_modules ~implements ~default_implementation ~modes ~wrapped
       ~special_builtin_support ~exit_module ~instrumentation_backend
 end
 

@@ -19,6 +19,10 @@ module Main_module_name = struct
   let to_dyn x = Inherited.to_dyn (Dyn.Encoder.option Module_name.to_dyn) x
 end
 
+type _ path =
+  | Local : Path.Build.t path
+  | External : Path.t path
+
 module Special_builtin_support = struct
   let api_version_field supported_api_versions =
     let open Dune_lang.Decoder in
@@ -241,6 +245,16 @@ module Enabled_status = struct
       constr "Disabled_because_of_enabled_if" []
 end
 
+type 'path native_archives =
+  | Needs_module_info of 'path
+  | Files of 'path list
+
+let dyn_of_native_archives path =
+  let open Dyn.Encoder in
+  function
+  | Needs_module_info f -> constr "Needs_module_info" [ path f ]
+  | Files files -> constr "Files" [ (list path) files ]
+
 (** {1 Lib_info_invariants}
 
     Many of the fields here are optional and are "entangled" in the sense that
@@ -262,7 +276,7 @@ type 'path t =
   ; plugins : 'path list Mode.Dict.t
   ; foreign_objects : 'path list Source.t
   ; foreign_archives : 'path list
-  ; native_archives : 'path list
+  ; native_archives : 'path native_archives
   ; foreign_dll_files : 'path list
   ; jsoo_runtime : 'path list
   ; jsoo_archive : 'path option
@@ -283,6 +297,7 @@ type 'path t =
   ; special_builtin_support : Special_builtin_support.t option
   ; exit_module : Module_name.t option
   ; instrumentation_backend : (Loc.t * Lib_name.t) option
+  ; path_kind : 'path path
   }
 
 let name t = t.name
@@ -353,8 +368,19 @@ let best_src_dir t = Option.value ~default:t.src_dir t.orig_src_dir
 
 let set_version t version = { t with version }
 
+let eval_native_archives_exn (type path) (t : path t) ~modules =
+  match (t.native_archives, modules) with
+  | Files f, _ -> f
+  | Needs_module_info _, None ->
+    Code_error.raise "missing module information" []
+  | Needs_module_info f, Some modules ->
+    if Modules.has_impl modules then
+      [ f ]
+    else
+      []
+
 let for_dune_package t ~name ~ppx_runtime_deps ~requires ~foreign_objects
-    ~obj_dir ~implements ~default_implementation ~sub_systems =
+    ~obj_dir ~implements ~default_implementation ~sub_systems ~modules =
   let foreign_objects = Source.External foreign_objects in
   let orig_src_dir =
     match !Clflags.store_orig_src_dir with
@@ -370,6 +396,9 @@ let for_dune_package t ~name ~ppx_runtime_deps ~requires ~foreign_objects
             Path.source src_dir |> Path.to_absolute_filename |> Path.of_string )
         )
   in
+  let native_archives =
+    Files (eval_native_archives_exn t ~modules:(Some modules))
+  in
   { t with
     ppx_runtime_deps
   ; name
@@ -380,15 +409,16 @@ let for_dune_package t ~name ~ppx_runtime_deps ~requires ~foreign_objects
   ; default_implementation
   ; sub_systems
   ; orig_src_dir
+  ; native_archives
   }
 
 let user_written_deps t =
   List.fold_left (t.virtual_deps @ t.ppx_runtime_deps) ~init:t.requires
     ~f:(fun acc s -> Lib_dep.Direct s :: acc)
 
-let create ~loc ~name ~kind ~status ~src_dir ~orig_src_dir ~obj_dir ~version
-    ~synopsis ~main_module_name ~sub_systems ~requires ~foreign_objects ~plugins
-    ~archives ~ppx_runtime_deps ~foreign_archives ~native_archives
+let create ~loc ~path_kind ~name ~kind ~status ~src_dir ~orig_src_dir ~obj_dir
+    ~version ~synopsis ~main_module_name ~sub_systems ~requires ~foreign_objects
+    ~plugins ~archives ~ppx_runtime_deps ~foreign_archives ~native_archives
     ~foreign_dll_files ~jsoo_runtime ~jsoo_archive ~preprocess ~enabled
     ~virtual_deps ~dune_version ~virtual_ ~entry_modules ~implements
     ~default_implementation ~modes ~wrapped ~special_builtin_support
@@ -427,16 +457,22 @@ let create ~loc ~name ~kind ~status ~src_dir ~orig_src_dir ~obj_dir ~version
   ; special_builtin_support
   ; exit_module
   ; instrumentation_backend
+  ; path_kind
   }
 
 type external_ = Path.t t
 
 type local = Path.Build.t t
 
-let map t ~f_path ~f_obj_dir =
+let map t ~path_kind ~f_path ~f_obj_dir =
   let f = f_path in
   let list = List.map ~f in
   let mode_list = Mode.Dict.map ~f:list in
+  let native_archives =
+    match t.native_archives with
+    | Needs_module_info t -> Needs_module_info (f t)
+    | Files t -> Files (List.map t ~f)
+  in
   { t with
     src_dir = f t.src_dir
   ; orig_src_dir = Option.map ~f t.orig_src_dir
@@ -446,20 +482,24 @@ let map t ~f_path ~f_obj_dir =
   ; foreign_objects = Source.map ~f:(List.map ~f) t.foreign_objects
   ; foreign_archives = List.map ~f t.foreign_archives
   ; foreign_dll_files = List.map ~f t.foreign_dll_files
-  ; native_archives = List.map ~f t.native_archives
+  ; native_archives
   ; jsoo_runtime = List.map ~f t.jsoo_runtime
   ; jsoo_archive = Option.map ~f t.jsoo_archive
+  ; path_kind
   }
 
-let map_path t ~f = map t ~f_path:f ~f_obj_dir:Fun.id
+let map_path t ~f = map t ~path_kind:External ~f_path:f ~f_obj_dir:Fun.id
 
-let of_local = map ~f_path:Path.build ~f_obj_dir:Obj_dir.of_local
+let of_local =
+  map ~path_kind:External ~f_path:Path.build ~f_obj_dir:Obj_dir.of_local
 
 let as_local_exn =
-  map ~f_path:Path.as_in_build_dir_exn ~f_obj_dir:Obj_dir.as_local_exn
+  map ~path_kind:Local ~f_path:Path.as_in_build_dir_exn
+    ~f_obj_dir:Obj_dir.as_local_exn
 
 let to_dyn path
     { loc
+    ; path_kind = _
     ; name
     ; kind
     ; status
@@ -510,7 +550,7 @@ let to_dyn path
     ; ("plugins", Mode.Dict.to_dyn (list path) plugins)
     ; ("foreign_objects", Source.to_dyn (list path) foreign_objects)
     ; ("foreign_archives", list path foreign_archives)
-    ; ("native_archives", list path native_archives)
+    ; ("native_archives", dyn_of_native_archives path native_archives)
     ; ("foreign_dll_files", list path foreign_dll_files)
     ; ("jsoo_runtime", list path jsoo_runtime)
     ; ("jsoo_archive", option path jsoo_archive)
@@ -543,10 +583,5 @@ let package t =
     Some (Lib_name.package_name t.name)
   | Public (_, p) -> Some (Package.name p)
   | Private (_, p) -> Option.map p ~f:Package.name
-
-let has_native_archive lib_config modules =
-  Lib_config.linker_can_create_empty_archives lib_config
-  && Ocaml_version.ocamlopt_always_calls_library_linker lib_config.ocaml_version
-  || not (Modules.is_empty modules)
 
 let entry_modules t = t.entry_modules

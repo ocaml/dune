@@ -21,3 +21,5 @@ val union : t -> t -> t
 
 (** The paths to both rule and action dependencies. *)
 val paths : t -> Path.Set.t
+
+val union_map : 'a list -> f:('a -> t) -> t

@@ -69,6 +69,8 @@ module Stdlib = struct
     let* name = t.exit_module in
     Module_name.Map.find t.modules name
 
+  let exists t ~f = Module_name.Map.exists t.modules ~f
+
   let fold t ~init ~f = Module_name.Map.fold t.modules ~f ~init
 
   let map t ~f = { t with modules = Module_name.Map.map t.modules ~f }
@@ -328,6 +330,17 @@ module Wrapped = struct
     let init = Module_name.Map.fold modules ~f ~init in
     Module_name.Map.fold wrapped_compat ~f ~init
 
+  let exists
+      { modules
+      ; wrapped_compat
+      ; alias_module
+      ; main_module_name = _
+      ; wrapped = _
+      } ~f =
+    f alias_module
+    || Module_name.Map.exists modules ~f
+    || Module_name.Map.exists wrapped_compat ~f
+
   let lib_interface t = Module_name.Map.find t.modules t.main_module_name
 
   let find t name =
@@ -576,6 +589,18 @@ let rec impl_only = function
   | Unwrapped m -> Module.Name_map.impl_only m
   | Wrapped w -> Wrapped.impl_only w
   | Impl { vlib; impl } -> impl_only impl @ impl_only vlib
+
+let rec exists t ~f =
+  match t with
+  | Stdlib w -> Stdlib.exists w ~f
+  | Wrapped m -> Wrapped.exists m ~f
+  | Singleton m -> f m
+  | Unwrapped m -> Module_name.Map.exists m ~f
+  | Impl { vlib; impl } -> exists vlib ~f || exists impl ~f
+
+let has_impl =
+  let has = Module.has ~ml_kind:Impl in
+  exists ~f:has
 
 let rec fold_no_vlib t ~init ~f =
   match t with

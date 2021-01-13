@@ -20,8 +20,21 @@ module Make () = struct
   let run () =
     let l = !one_off_hooks in
     one_off_hooks := [];
-    List.iter l ~f:(fun f -> f ());
-    List.iter !persistent_hooks ~f:(fun f -> f ())
+    let exns = ref [] in
+    let run f =
+      match Exn_with_backtrace.try_with f with
+      | Ok () -> ()
+      | Error exn -> exns := exn :: !exns
+    in
+    List.iter l ~f:run;
+    List.iter !persistent_hooks ~f:run;
+    match !exns with
+    | [] -> ()
+    | exns ->
+      let exns = List.rev exns in
+      let open Dyn.Encoder in
+      Code_error.raise "hooks failed"
+        [ ("exns", (list Exn_with_backtrace.to_dyn) exns) ]
 end
 
 module End_of_build = Make ()

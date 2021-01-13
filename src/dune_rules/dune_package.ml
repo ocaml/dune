@@ -26,6 +26,11 @@ module Lib = struct
     let info = Lib_info.map_path info ~f:map_path in
     { info; main_module_name; modules }
 
+  let of_dune_lib ~info ~main_module_name ~modules =
+    make ~info ~main_module_name ~modules:(Some modules)
+
+  let of_findlib info = make ~info ~main_module_name:None ~modules:None
+
   let dir_of_name name =
     let _, components = Lib_name.split name in
     Path.Local.L.relative Path.Local.root components
@@ -61,6 +66,12 @@ module Lib = struct
     let jsoo_runtime = Lib_info.jsoo_runtime info in
     let virtual_ = Option.is_some (Lib_info.virtual_ info) in
     let instrumentation_backend = Lib_info.instrumentation_backend info in
+    let native_archives =
+      match Lib_info.native_archives info with
+      | Lib_info.Files f -> f
+      | Needs_module_info _ ->
+        Code_error.raise "caller must set native archives to known value" []
+    in
     record_fields
     @@ [ field "name" Lib_name.encode name
        ; field "kind" Lib_kind.encode kind
@@ -71,7 +82,7 @@ module Lib = struct
        ; mode_paths "plugins" plugins
        ; paths "foreign_objects" foreign_objects
        ; paths "foreign_archives" (Lib_info.foreign_archives info)
-       ; paths "native_archives" (Lib_info.native_archives info)
+       ; paths "native_archives" native_archives
        ; paths "jsoo_runtime" jsoo_runtime
        ; Lib_dep.L.field_encode requires ~name:"requires"
        ; libs "ppx_runtime_deps" ppx_runtime_deps
@@ -181,10 +192,11 @@ module Lib = struct
            Some (Lib_info.Inherited.This (Modules.wrapped modules))
          in
          let entry_modules = Lib_info.Source.External (Ok entry_modules) in
-         Lib_info.create ~loc ~name ~kind ~status ~src_dir ~orig_src_dir
-           ~obj_dir ~version ~synopsis ~main_module_name ~sub_systems ~requires
-           ~foreign_objects ~plugins ~archives ~ppx_runtime_deps
-           ~foreign_archives ~native_archives ~foreign_dll_files:[]
+         Lib_info.create ~path_kind:External ~loc ~name ~kind ~status ~src_dir
+           ~orig_src_dir ~obj_dir ~version ~synopsis ~main_module_name
+           ~sub_systems ~requires ~foreign_objects ~plugins ~archives
+           ~ppx_runtime_deps ~foreign_archives
+           ~native_archives:(Files native_archives) ~foreign_dll_files:[]
            ~jsoo_runtime ~jsoo_archive ~preprocess ~enabled ~virtual_deps
            ~dune_version ~virtual_ ~entry_modules ~implements
            ~default_implementation ~modes ~wrapped ~special_builtin_support

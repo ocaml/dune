@@ -141,11 +141,44 @@ module DB = struct
   type t =
     { by_name : dialect String.Map.t
     ; by_extension : dialect String.Map.t
+    ; mutable extensions_for_merlin : string Ml_kind.Dict.t list option
     }
 
-  let empty = { by_name = String.Map.empty; by_extension = String.Map.empty }
+  let fold { by_name; _ } = String.Map.fold by_name
 
-  let add { by_name; by_extension } ~loc dialect =
+  let empty =
+    { by_name = String.Map.empty
+    ; by_extension = String.Map.empty
+    ; extensions_for_merlin = None
+    }
+
+  let set_extensions_for_merlin t =
+    let v =
+      fold t ~init:[] ~f:(fun d s ->
+          let impl = extension d Ml_kind.Impl in
+          let intf = extension d Ml_kind.Intf in
+          if
+            (* Only include dialects with no preprocessing and skip default file
+               extensions *)
+            preprocess d Ml_kind.Impl <> None
+            || preprocess d Ml_kind.Intf <> None
+            || impl = extension ocaml Ml_kind.Impl
+               && intf = extension ocaml Ml_kind.Intf
+          then
+            s
+          else
+            { Ml_kind.Dict.impl; intf } :: s)
+      |> List.sort ~compare:(Ml_kind.Dict.compare String.compare)
+    in
+    t.extensions_for_merlin <- Some v;
+    v
+
+  let extensions_for_merlin t =
+    match t.extensions_for_merlin with
+    | Some s -> s
+    | None -> set_extensions_for_merlin t
+
+  let add { by_name; by_extension; extensions_for_merlin = _ } ~loc dialect =
     let by_name =
       match String.Map.add by_name dialect.name dialect with
       | Ok by_name -> by_name
@@ -167,7 +200,7 @@ module DB = struct
         (add_ext by_extension dialect.file_kinds.intf.extension)
         dialect.file_kinds.impl.extension
     in
-    { by_name; by_extension }
+    { by_name; by_extension; extensions_for_merlin = None }
 
   let of_list dialects =
     List.fold_left ~f:(add ~loc:Loc.none) ~init:empty dialects
@@ -185,8 +218,6 @@ module DB = struct
         in
         (dialect, kind))
       (String.Map.find by_extension extension)
-
-  let fold { by_name; _ } = String.Map.fold by_name
 
   let to_dyn { by_name; _ } = String.Map.to_dyn to_dyn by_name
 

@@ -2,7 +2,7 @@ CRAM sanitization
   $ dune build ./exe/.merlin-conf/exe-x --profile release
   $ dune ocaml-merlin --dump-config=$(pwd)/exe |
   > sed 's#'$(opam config var prefix)'#OPAM_PREFIX#'
-  x
+  X
   ((EXCLUDE_QUERY_DIR)
    (B OPAM_PREFIX/lib/bytes)
    (B OPAM_PREFIX/lib/findlib)
@@ -26,7 +26,7 @@ CRAM sanitization
   $ dune build ./lib/.merlin-conf/lib-foo ./lib/.merlin-conf/lib-bar --profile release
   $ dune ocaml-merlin --dump-config=$(pwd)/lib |
   > sed 's#'$(opam config var prefix)'#OPAM_PREFIX#'
-  bar
+  File
   ((EXCLUDE_QUERY_DIR)
    (B
     $TESTCASE_ROOT/_build/default/lib/.bar.objs/byte)
@@ -41,7 +41,7 @@ CRAM sanitization
      --cookie
      'library-name="bar"'"))
    (FLG (-open Bar -w -40)))
-  file
+  Bar
   ((EXCLUDE_QUERY_DIR)
    (B
     $TESTCASE_ROOT/_build/default/lib/.bar.objs/byte)
@@ -56,7 +56,7 @@ CRAM sanitization
      --cookie
      'library-name="bar"'"))
    (FLG (-open Bar -w -40)))
-  foo
+  Privmod
   ((EXCLUDE_QUERY_DIR)
    (B OPAM_PREFIX/lib/bytes)
    (B OPAM_PREFIX/lib/findlib)
@@ -77,7 +77,7 @@ CRAM sanitization
      --cookie
      'library-name="foo"'"))
    (FLG (-open Foo -w -40)))
-  privmod
+  Foo
   ((EXCLUDE_QUERY_DIR)
    (B OPAM_PREFIX/lib/bytes)
    (B OPAM_PREFIX/lib/findlib)
@@ -107,7 +107,7 @@ Make sure pp flag is correct and variables are expanded
   $ dune build ./pp-with-expand/.merlin-conf/exe-foobar --profile release
   $ dune ocaml-merlin --dump-config=$(pwd)/pp-with-expand |
   > sed 's#'$(opam config var prefix)'#OPAM_PREFIX#'
-  foobar
+  Foobar
   ((EXCLUDE_QUERY_DIR)
    (B
     $TESTCASE_ROOT/_build/default/pp-with-expand/.foobar.eobjs/byte)
@@ -123,7 +123,7 @@ Check hash of executables names if more than one
   $ dune build ./exes/.merlin-conf/exe-x-6562915302827c6dce0630390bfa68b7
   $ dune ocaml-merlin --dump-config=$(pwd)/exes |
   > sed 's#'$(opam config var prefix)'#OPAM_PREFIX#'
-  x
+  Y
   ((EXCLUDE_QUERY_DIR)
    (B
     $TESTCASE_ROOT/_build/default/exes/.x.eobjs/byte)
@@ -136,7 +136,7 @@ Check hash of executables names if more than one
      -strict-formats
      -short-paths
      -keep-locs)))
-  y
+  X
   ((EXCLUDE_QUERY_DIR)
    (B
     $TESTCASE_ROOT/_build/default/exes/.x.eobjs/byte)

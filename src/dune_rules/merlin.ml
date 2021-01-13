@@ -3,29 +3,32 @@ open! Stdune
 open Import
 module SC = Super_context
 
-module Extensions = Comparable.Make (struct
-  type t = string * string
-
-  let compare = Tuple.T2.compare String.compare String.compare
-
-  let to_dyn = Tuple.T2.to_dyn String.to_dyn String.to_dyn
-end)
-
 module Processed = struct
   (* The actual content of the merlin file as built by the [Unprocessed.process]
      function from the unprocessed info gathered through [gen_rules]. The first
      three fields map directly to Merlin's B, S and FLG directives and the last
      one represents a list of preprocessors described by a preprocessing flag
      and its arguments. *)
+
+  type pp_flag =
+    { flag : string
+    ; args : string
+    }
+
+  (* Most of the configuration is shared accros a same lib/exe... *)
   type config =
     { obj_dirs : Path.Set.t
     ; src_dirs : Path.Set.t
     ; flags : string list
-    ; pp : (string * string) option
-    ; extensions : Extensions.Set.t
+    ; extensions : string Ml_kind.Dict.t list
     }
 
-  type t = config String.Map.t
+  (* ...but modules can have different preprocessing specifications*)
+  type t =
+    { config : config
+    ; modules : Module_name.t list
+    ; pp_config : pp_flag option Module_name.Per_item.t
+    }
 
   module D = struct
     type nonrec t = t
@@ -39,7 +42,7 @@ module Processed = struct
 
   let load_file = Persist.load
 
-  let to_sexp { obj_dirs; src_dirs; flags; pp; extensions } =
+  let to_sexp ~pp { obj_dirs; src_dirs; flags; extensions } =
     let serialize_path = Path.to_absolute_filename in
     let to_atom s = Sexp.Atom s in
     let make_directive tag value = Sexp.List [ Atom tag; value ] in
@@ -61,38 +64,40 @@ module Processed = struct
           [ make_directive "FLG" (Sexp.List (List.map ~f:to_atom flags)) ]
       in
       match pp with
-      | Some (pp_flag, pp_args) ->
-        make_directive "FLG" (Sexp.List [ Atom pp_flag; Atom pp_args ]) :: flags
       | None -> flags
+      | Some { flag; args } ->
+        make_directive "FLG" (Sexp.List [ Atom flag; Atom args ]) :: flags
     in
     let suffixes =
-      Extensions.Set.to_list extensions
-      |> List.map ~f:(fun (impl, intf) ->
-             make_directive "SUFFIX"
-               (Sexp.Atom (Printf.sprintf "%s %s" impl intf)))
+      List.map extensions ~f:(fun { Ml_kind.Dict.impl; intf } ->
+          make_directive "SUFFIX" (Sexp.Atom (Printf.sprintf "%s %s" impl intf)))
     in
     Sexp.List
       (List.concat [ exclude_query_dir; obj_dirs; src_dirs; flags; suffixes ])
 
-  let rec get config ~filename =
-    let file = Filename.remove_extension filename in
-    match Option.map (String.Map.find config filename) ~f:to_sexp with
-    | Some result -> Some result
-    | None when String.equal file filename -> None
-    | None -> get config ~filename:file
+  let get { modules; pp_config; config } ~filename =
+    let fname = Filename.remove_extension filename |> String.lowercase in
+    List.find_opt modules ~f:(fun name ->
+        let fname' = Module_name.to_string name |> String.lowercase in
+        String.equal fname fname')
+    |> Option.map ~f:(fun name ->
+           let pp = Module_name.Per_item.get pp_config name in
+           to_sexp ~pp config)
 
   let print_file path =
     match load_file path with
     | None -> Printf.eprintf "No merlin config found"
-    | Some t ->
-      let pp =
-        String.Map.to_list t
-        |> Pp.concat_map ~f:(fun (name, config) ->
-               let sexp = to_sexp config in
-               let open Pp.O in
-               Pp.vbox (Pp.text name ++ Pp.cut ++ Sexp.pp sexp) ++ Pp.newline)
+    | Some { modules; pp_config; config } ->
+      let pp_one module_ =
+        let pp = Module_name.Per_item.get pp_config module_ in
+        let sexp = to_sexp ~pp config in
+        let open Pp.O in
+        Pp.vbox (Pp.text (Module_name.to_string module_))
+        ++ Pp.newline
+        ++ Pp.vbox (Sexp.pp sexp)
+        ++ Pp.newline
       in
-      Format.printf "%a%!" Pp.to_fmt pp
+      Format.printf "%a%!" Pp.to_fmt (Pp.concat_map modules ~f:pp_one)
 end
 
 module Unprocessed = struct
@@ -103,33 +108,22 @@ module Unprocessed = struct
   type config =
     { requires : Lib.Set.t
     ; flags : string list Build.t
-    ; preprocess : Preprocess.Without_instrumentation.t Preprocess.t
+    ; preprocess :
+        Preprocess.Without_instrumentation.t Preprocess.t Module_name.Per_item.t
     ; libname : Lib_name.Local.t option
     ; source_dirs : Path.Source.Set.t
     ; objs_dirs : Path.Set.t
-    ; extensions : Extensions.Set.t
+    ; extensions : string Ml_kind.Dict.t list
     }
 
   type t =
     { ident : Merlin_ident.t
-    ; configs : config Module_name.Map.t
+    ; config : config
+    ; modules : Modules.t
     }
-
-  let add_source_dir t dir =
-    { t with
-      configs =
-        Module_name.Map.map t.configs ~f:(fun cu_config ->
-            { cu_config with
-              source_dirs = Path.Source.Set.add cu_config.source_dirs dir
-            })
-    }
-
-  (* Since one merlin configuration per stanza is generated, merging should
-     always be trivial *)
-  let merge_config _a b = b
 
   let make ?(requires = Ok []) ~flags
-      ?(preprocess = Preprocess.No_preprocessing) ?libname
+      ?(preprocess = Preprocess.Per_module.no_preprocessing ()) ?libname
       ?(source_dirs = Path.Source.Set.empty) ~modules ~obj_dir ~dialects ~ident
       () =
     (* Merlin shouldn't cause the build to fail, so we just ignore errors *)
@@ -150,23 +144,8 @@ module Unprocessed = struct
           flags
         |> Ocaml_flags.common
     in
-    let extensions =
-      Dialect.DB.fold dialects ~init:Extensions.Set.empty ~f:(fun d s ->
-          let impl = Dialect.extension d Ml_kind.Impl in
-          let intf = Dialect.extension d Ml_kind.Intf in
-          if
-            (* Only include dialects with no preprocessing and skip default file
-               extensions *)
-            Dialect.preprocess d Ml_kind.Impl <> None
-            || Dialect.preprocess d Ml_kind.Intf <> None
-            || impl = Dialect.extension Dialect.ocaml Ml_kind.Impl
-               && intf = Dialect.extension Dialect.ocaml Ml_kind.Intf
-          then
-            s
-          else
-            Extensions.Set.add s (impl, intf))
-    in
-    let cu_config =
+    let extensions = Dialect.DB.extensions_for_merlin dialects in
+    let config =
       { requires
       ; flags = Build.catch flags ~on_error:[]
       ; preprocess
@@ -176,12 +155,7 @@ module Unprocessed = struct
       ; extensions
       }
     in
-    let modules =
-      List.map
-        ~f:(fun m -> (Module.name m, cu_config))
-        (Modules.impl_only modules)
-    in
-    { ident; configs = Module_name.Map.of_list_reduce modules ~f:merge_config }
+    { ident; config; modules }
 
   let quote_if_needed s =
     if String.need_quoting s then
@@ -190,7 +164,7 @@ module Unprocessed = struct
       s
 
   let pp_flag_of_action ~expander ~loc ~action :
-      (string * string) option Build.With_targets.t =
+      Processed.pp_flag option Build.With_targets.t =
     match (action : Action_dune_lang.t) with
     | Run (exe, args) -> (
       let args =
@@ -223,7 +197,7 @@ module Unprocessed = struct
               |> List.map ~f:quote_if_needed
               |> String.concat ~sep:" "
             in
-            Some ("-pp", args)
+            Some Processed.{ flag = "-pp"; args }
         in
         Build.With_targets.map action ~f:(function
           | Run (exe, args) -> pp_of_action exe args
@@ -232,13 +206,16 @@ module Unprocessed = struct
           | _ -> None) )
     | _ -> Build.With_targets.return None
 
-  let pp_flags sctx ~expander { preprocess; libname; _ } :
-      (string * string) option Build.With_targets.t =
+  let pp_flags sctx ~expander libname preprocess :
+      Processed.pp_flag option Build.With_targets.t =
     let scope = Expander.scope expander in
     match
       Preprocess.remove_future_syntax preprocess ~for_:Merlin
         (Super_context.context sctx).version
     with
+    | Action (loc, (action : Action_dune_lang.t)) ->
+      pp_flag_of_action ~expander ~loc ~action
+    | No_preprocessing -> Build.With_targets.return None
     | Pps { loc; pps; flags; staged = _ } -> (
       match
         Preprocessing.get_ppx_driver sctx ~loc ~expander ~lib_name:libname
@@ -251,10 +228,7 @@ module Unprocessed = struct
           |> List.map ~f:quote_if_needed
           |> String.concat ~sep:" "
         in
-        Build.With_targets.return (Some ("-ppx", args)) )
-    | Action (loc, (action : Action_dune_lang.t)) ->
-      pp_flag_of_action ~expander ~loc ~action
-    | No_preprocessing -> Build.With_targets.return None
+        Build.With_targets.return (Some Processed.{ flag = "-ppx"; args }) )
 
   (* This is used to determine the list of source directories to give to Merlin.
      This is similar to [Gen_rules.lib_src_dirs], but it's used for dependencies
@@ -275,36 +249,47 @@ module Unprocessed = struct
       Path.Set.map ~f:Path.drop_optional_build_context
         (Modules.source_dirs modules)
 
-  let process sctx ~more_src_dirs ~expander t =
-    Module_name.Map.foldi t ~init:(Build.With_targets.return String.Map.empty)
-      ~f:(fun module_name ({ requires; flags; extensions; _ } as cu_config) acc
-         ->
-        let open Build.With_targets.O in
-        let pp_flags = pp_flags sctx ~expander cu_config in
-        let+ flags = Build.with_no_targets flags
-        and+ pp = pp_flags
-        and+ acc = acc in
-        let src_dirs, obj_dirs =
-          Lib.Set.fold requires
-            ~init:
-              ( Path.set_of_source_paths cu_config.source_dirs
-              , cu_config.objs_dirs )
-            ~f:(fun (lib : Lib.t) (src_dirs, obj_dirs) ->
-              let more_src_dirs = lib_src_dirs ~sctx lib in
-              ( Path.Set.union src_dirs more_src_dirs
-              , let public_cmi_dir = Obj_dir.public_cmi_dir (Lib.obj_dir lib) in
-                Path.Set.add obj_dirs public_cmi_dir ))
-        in
-        let src_dirs =
-          Path.Set.union src_dirs
-            (Path.Set.of_list_map ~f:Path.source more_src_dirs)
-        in
-        String.Map.add_exn acc
-          (Module_name.to_string module_name |> String.lowercase)
-          Processed.{ src_dirs; obj_dirs; flags; pp; extensions })
+  let process
+      { modules
+      ; ident = _
+      ; config =
+          { extensions
+          ; flags
+          ; objs_dirs
+          ; source_dirs
+          ; requires
+          ; preprocess
+          ; libname
+          }
+      } sctx ~more_src_dirs ~expander =
+    let open Build.With_targets.O in
+    let+ config =
+      let+ flags = Build.with_no_targets flags in
+      let src_dirs, obj_dirs =
+        Lib.Set.fold requires
+          ~init:(Path.set_of_source_paths source_dirs, objs_dirs)
+          ~f:(fun (lib : Lib.t) (src_dirs, obj_dirs) ->
+            let more_src_dirs = lib_src_dirs ~sctx lib in
+            ( Path.Set.union src_dirs more_src_dirs
+            , let public_cmi_dir = Obj_dir.public_cmi_dir (Lib.obj_dir lib) in
+              Path.Set.add obj_dirs public_cmi_dir ))
+      in
+      let src_dirs =
+        Path.Set.union src_dirs
+          (Path.Set.of_list_map ~f:Path.source more_src_dirs)
+      in
+      { Processed.src_dirs; obj_dirs; flags; extensions }
+    and+ pp_config =
+      Module_name.Per_item.map_with_targets preprocess
+        ~f:(pp_flags sctx ~expander libname)
+    in
+    let modules =
+      (* And copy for each module the resulting pp flags *)
+      Modules.fold_no_vlib modules ~init:[] ~f:(fun m acc ->
+          Module.name m :: acc)
+    in
+    { Processed.modules; pp_config; config }
 end
-
-include Unprocessed
 
 let dot_merlin sctx ~dir ~more_src_dirs ~expander (t : Unprocessed.t) =
   let open Build.With_targets.O in
@@ -325,7 +310,7 @@ let dot_merlin sctx ~dir ~more_src_dirs ~expander (t : Unprocessed.t) =
   Path.Set.singleton (Path.build merlin_file)
   |> Rules.Produce.Alias.add_deps (Alias.check ~dir);
 
-  let merlin = Unprocessed.process sctx ~more_src_dirs ~expander t.configs in
+  let merlin = Unprocessed.process t sctx ~more_src_dirs ~expander in
   let action =
     Build.With_targets.write_file_dyn merlin_file
       (Build.With_targets.map ~f:Processed.Persist.to_string merlin)
@@ -335,3 +320,5 @@ let dot_merlin sctx ~dir ~more_src_dirs ~expander (t : Unprocessed.t) =
 let add_rules sctx ~dir ~more_src_dirs ~expander merlin =
   if (SC.context sctx).merlin then
     dot_merlin sctx ~more_src_dirs ~expander ~dir merlin
+
+include Unprocessed

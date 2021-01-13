@@ -123,6 +123,10 @@ Unreleased
 - Generate archive rules compatible with 4.12. Dune longer attempt to generate
   an archive file if it's unnecessary (#3973, fixes #3766, @rgrinberg)
 
+- Fix generated Merlin configurations when multiple preprocessors are defined
+  for different modules in the same folder. (#4092, fixes #2596, #1212 and
+  #3409, @voodoos)
+
 2.7.1 (2/09/2020)
 -----------------
 

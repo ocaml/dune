@@ -170,9 +170,7 @@ let executables_rules ~sctx ~dir ~expander ~dir_contents ~scope ~compile_info
       ~promote:exes.promote ~embed_in_plugin_libraries
   in
   ( cctx
-  , Merlin.make ~requires:requires_compile ~flags ~modules
-      ~preprocess:(Preprocess.Per_module.single_preprocess preprocess)
-      ~obj_dir
+  , Merlin.make ~requires:requires_compile ~flags ~modules ~preprocess ~obj_dir
       ~dialects:(Dune_project.dialects (Scope.project scope))
       ~ident:(Lib.Compile.merlin_ident compile_info)
       () )

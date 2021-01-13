@@ -13,8 +13,6 @@ open Import
 (** Type of "unprocessed" merlin information *)
 type t
 
-val add_source_dir : t -> Path.Source.t -> t
-
 module Processed : sig
   (** Type of "processed" merlin information *)
   type t
@@ -29,7 +27,8 @@ end
 val make :
      ?requires:Lib.t list Or_exn.t
   -> flags:Ocaml_flags.t
-  -> ?preprocess:Preprocess.Without_instrumentation.t Preprocess.t
+  -> ?preprocess:
+       Preprocess.Without_instrumentation.t Preprocess.t Module_name.Per_item.t
   -> ?libname:Lib_name.Local.t
   -> ?source_dirs:Path.Source.Set.t
   -> modules:Modules.t

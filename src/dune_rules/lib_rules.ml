@@ -415,8 +415,7 @@ let library_rules (lib : Library.t) ~cctx ~source_modules ~dir_contents
     ; compile_info
     };
   ( cctx
-  , Merlin.make ~requires:requires_compile ~flags ~modules
-      ~preprocess:(Preprocess.Per_module.single_preprocess preprocess)
+  , Merlin.make ~requires:requires_compile ~flags ~modules ~preprocess
       ~libname:(snd lib.name) ~obj_dir
       ~dialects:(Dune_project.dialects (Scope.project scope))
       ~ident:(Lib.Compile.merlin_ident compile_info)

@@ -1,0 +1,6 @@
+(library
+ (name foo)
+ (modules foo bar)
+ (wrapped false)
+ (preprocess (per_module
+  ((action (run pp/pp.exe %{input-file})) foo))))

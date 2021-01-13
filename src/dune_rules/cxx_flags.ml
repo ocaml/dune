@@ -7,11 +7,11 @@ type ccomp_type =
   | Clang
   | Other of string
 
-let base_cxx_flags =
-  [ (Gcc, [ "-x"; "c++"; "-lstdc++"; "-shared-libgcc" ])
-  ; (Clang, [ "-x"; "c++" ])
-  ; (Msvc, [ "/TP" ])
-  ]
+let base_cxx_flags = function
+  | Gcc -> [ "-x"; "c++"; "-lstdc++"; "-shared-libgcc" ]
+  | Clang -> [ "-x"; "c++" ]
+  | Msvc -> [ "/TP" ]
+  | _ -> []
 
 let preprocessed_filename = "ccomp"
 
@@ -42,4 +42,4 @@ let get_flags dir =
   let open Build.O in
   let+ ccomp_type = ccomp_type dir in
   check_warn ccomp_type;
-  List.assoc_opt ccomp_type base_cxx_flags |> Option.value ~default:[]
+  base_cxx_flags ccomp_type

@@ -9,7 +9,11 @@ module Processed = struct
      three fields map directly to Merlin's B, S and FLG directives and the last
      one represents a list of preprocessors described by a preprocessing flag
      and its arguments. *)
-  type pp = (string * string) option
+
+  type pp_flag =
+    { flag : string
+    ; args : string
+    }
 
   (* Most of the configuration is shared accros a same lib/exe... *)
   type config =
@@ -23,7 +27,7 @@ module Processed = struct
   type t =
     { config : config
     ; modules : Module_name.t list
-    ; pp_config : pp Module_name.Per_item.t
+    ; pp_config : pp_flag option Module_name.Per_item.t
     }
 
   module D = struct
@@ -61,8 +65,8 @@ module Processed = struct
       in
       match pp with
       | None -> flags
-      | Some (pp_flag, pp_args) ->
-        make_directive "FLG" (Sexp.List [ Atom pp_flag; Atom pp_args ]) :: flags
+      | Some { flag; args } ->
+        make_directive "FLG" (Sexp.List [ Atom flag; Atom args ]) :: flags
     in
     let suffixes =
       List.map extensions ~f:(fun { Ml_kind.Dict.impl; intf } ->
@@ -160,7 +164,7 @@ module Unprocessed = struct
       s
 
   let pp_flag_of_action ~expander ~loc ~action :
-      (string * string) option Build.With_targets.t =
+      Processed.pp_flag option Build.With_targets.t =
     match (action : Action_dune_lang.t) with
     | Run (exe, args) -> (
       let args =
@@ -193,7 +197,7 @@ module Unprocessed = struct
               |> List.map ~f:quote_if_needed
               |> String.concat ~sep:" "
             in
-            Some ("-pp", args)
+            Some Processed.{ flag = "-pp"; args }
         in
         Build.With_targets.map action ~f:(function
           | Run (exe, args) -> pp_of_action exe args
@@ -203,7 +207,7 @@ module Unprocessed = struct
     | _ -> Build.With_targets.return None
 
   let pp_flags sctx ~expander libname preprocess :
-      (string * string) option Build.With_targets.t =
+      Processed.pp_flag option Build.With_targets.t =
     let scope = Expander.scope expander in
     match
       Preprocess.remove_future_syntax preprocess ~for_:Merlin
@@ -224,7 +228,7 @@ module Unprocessed = struct
           |> List.map ~f:quote_if_needed
           |> String.concat ~sep:" "
         in
-        Build.With_targets.return (Some ("-ppx", args)) )
+        Build.With_targets.return (Some Processed.{ flag = "-ppx"; args }) )
 
   (* This is used to determine the list of source directories to give to Merlin.
      This is similar to [Gen_rules.lib_src_dirs], but it's used for dependencies

@@ -147,26 +147,29 @@ let reset () =
 (* A value calculated during a sample attempt, or an exception with a backtrace
    if the attempt failed. *)
 module Value = struct
-  (* Invariant: sync computations always produce a single exception in the error
-     case *)
-  type 'a t = ('a, Exn_with_backtrace.t list) Result.t
+  type error =
+    | Sync of Exn_with_backtrace.t
+    | Async of Exn_with_backtrace.t list
 
-  let map_error t ~f =
+  type 'a t = ('a, error) Result.t
+
+  let map_error (t : _ t) ~f =
     match t with
     | Ok _ -> t
-    | Error e -> Error (List.map e ~f)
+    | Error (Sync exn) -> Error (Sync (f exn))
+    | Error (Async exns) -> Error (Async (List.map exns ~f))
 
   let get_sync_exn = function
     | Ok a -> a
-    | Error [ exn ] -> Exn_with_backtrace.reraise exn
-    | Error _ ->
+    | Error (Sync exn) -> Exn_with_backtrace.reraise exn
+    | Error (Async _) ->
       (* It's not possible for a sync computation to raise more than one error *)
       assert false
 
   let get_async_exn = function
     | Ok a -> Fiber.return a
-    | Error [] -> assert false
-    | Error exns -> Fiber.reraise_all exns
+    | Error (Sync _) -> assert false
+    | Error (Async exns) -> Fiber.reraise_all exns
 end
 
 module Completion = struct
@@ -706,7 +709,7 @@ end = struct
                   twice, so you'd end up with ugly "re-raised by" stack frames.
                   Catching it here cuts the backtrace to just the desired part. *)
                Exn_with_backtrace.try_with (fun () -> f inp)
-               |> Result.map_error ~f:(fun x -> [ x ])))
+               |> Result.map_error ~f:(fun x -> Value.Sync x)))
     in
     (* update the output cache with the correct value *)
     let deps = List.rev running_state.deps_so_far.deps_reversed in
@@ -793,6 +796,11 @@ end = struct
     in
     (* update the output cache with the correct value *)
     let deps = List.rev running_state.deps_so_far.deps_reversed in
+    let res =
+      match res with
+      | Ok a -> Ok a
+      | Error exns -> Error (Value.Async exns)
+    in
     dep_node.state <- Done (Cached_value.create res ~deps);
     (* fill the ivar for any waiting threads *)
     let+ () = Fiber.Ivar.fill ivar res in

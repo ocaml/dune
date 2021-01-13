@@ -949,7 +949,7 @@ module Plugin = struct
        and+ libraries = field "libraries" (repeat (located Lib_name.decode))
        and+ site =
          field "site" (located (pair Package.Name.decode Section.Site.decode))
-       and+ package = Stanza_common.Pkg.field "package"
+       and+ package = Stanza_common.Pkg.field ~stanza:"plugin"
        and+ optional = field_b "optional" in
        { name; libraries; site; package; optional })
 end
@@ -966,7 +966,7 @@ module Install_conf = struct
     fields
       (let+ section = field "section" Install.Section_with_site.decode
        and+ files = field "files" File_binding.Unexpanded.L.decode
-       and+ package = Stanza_common.Pkg.field "install"
+       and+ package = Stanza_common.Pkg.field ~stanza:"install"
        and+ enabled_if =
          let allowed_vars = Enabled_if.common_vars ~since:(2, 6) in
          Enabled_if.decode ~allowed_vars ~since:(Some (2, 6)) ()
@@ -1928,7 +1928,7 @@ module Documentation = struct
 
   let decode =
     fields
-      (let+ package = Stanza_common.Pkg.field "documentation"
+      (let+ package = Stanza_common.Pkg.field ~stanza:"documentation"
        and+ mld_files = Ordered_set_lang.field "mld_files"
        and+ loc = loc in
        { loc; package; mld_files })

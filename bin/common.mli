@@ -13,7 +13,7 @@ val root : t -> Workspace_root.t
 val config : t -> Dune_engine.Config.t
 
 module Only_packages : sig
-  type t =
+  type t = private
     { names : Dune_engine.Package.Name.Set.t
     ; command_line_option : string
           (** Which of [-p], [--only-packages], ... was passed *)

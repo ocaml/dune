@@ -98,8 +98,8 @@ let build_c ~kind ~sctx ~dir ~expander ~include_flags (loc, src, dst) =
     (* DUNE3 will have [use_standard_c_and_cxx_flags] enabled by default. To
        guide users toward this change we emit a warning when dune_lang is >=
        1.8, [use_standard_c_and_cxx_flags] is not specified in the
-       [dune-project] file (thus defaulting to [true]), the [:standard] set
-       of flags has been overriden and we are not in a vendored project *)
+       [dune-project] file (thus defaulting to [true]), the [:standard] set of
+       flags has been overriden and we are not in a vendored project *)
     let has_standard = Ordered_set_lang.Unexpanded.has_standard flags in
     let is_vendored =
       match Path.Build.drop_build_context dir with

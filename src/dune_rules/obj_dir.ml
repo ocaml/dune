@@ -301,7 +301,7 @@ module Module = struct
     | Local_as_path _ -> Path.relative dir name
     | External _ -> Path.relative dir name
 
-  let path_of_build (type path) (t : path t) (dir : path) =
+  let path_of_build (type path) (t : path t) (dir : path) : Path.t =
     match t with
     | Local _ -> Path.build dir
     | Local_as_path _ -> dir

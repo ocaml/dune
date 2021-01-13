@@ -32,7 +32,6 @@ Include variants and implementation information in dune-package
    (name foo.vlib)
    (kind normal)
    (virtual)
-   (native_archives vlib/vlib$ext_lib)
    (main_module_name Vlib)
    (modes byte native)
    (modules

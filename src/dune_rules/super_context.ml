@@ -512,15 +512,18 @@ let create_projects_by_package projects : Dune_project.t Package.Name.Map.t =
              (name, project)))
   |> Package.Name.Map.of_list_exn
 
+let modules_of_lib = Fdecl.create Dyn.Encoder.opaque
+
 let create ~(context : Context.t) ?host ~projects ~packages ~stanzas () =
   let lib_config = Context.lib_config context in
   let projects_by_package = create_projects_by_package projects in
   let installed_libs =
     Lib.DB.create_from_findlib context.findlib ~lib_config ~projects_by_package
   in
+  let modules_of_lib_for_scope = Fdecl.create Dyn.Encoder.opaque in
   let scopes, public_libs =
     Scope.DB.create_from_stanzas ~projects ~projects_by_package ~context
-      ~installed_libs stanzas
+      ~installed_libs ~modules_of_lib:modules_of_lib_for_scope stanzas
   in
   let stanzas =
     List.map stanzas ~f:(fun { Dune_load.Dune_file.dir; project; stanzas } ->
@@ -663,22 +666,27 @@ let create ~(context : Context.t) ?host ~projects ~packages ~stanzas () =
   let lib_entries_by_package =
     create_lib_entries_by_package ~public_libs stanzas
   in
-  { context
-  ; root_expander
-  ; host
-  ; scopes
-  ; public_libs
-  ; installed_libs
-  ; stanzas
-  ; stanzas_per_dir
-  ; packages
-  ; artifacts
-  ; lib_entries_by_package
-  ; env_tree
-  ; default_env
-  ; dir_status_db
-  ; projects_by_key
-  }
+  let t =
+    { context
+    ; root_expander
+    ; host
+    ; scopes
+    ; public_libs
+    ; installed_libs
+    ; stanzas
+    ; stanzas_per_dir
+    ; packages
+    ; artifacts
+    ; lib_entries_by_package
+    ; env_tree
+    ; default_env
+    ; dir_status_db
+    ; projects_by_key
+    }
+  in
+  Fdecl.set modules_of_lib_for_scope (fun ~dir ~name ->
+      Fdecl.get modules_of_lib t ~dir ~name);
+  t
 
 let dir_status_db t = t.dir_status_db
 

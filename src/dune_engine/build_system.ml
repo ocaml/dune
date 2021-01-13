@@ -1187,7 +1187,7 @@ end = struct
       | Non_memoized : 'a Build.t -> 'a t
       | Memoized : Rule.t -> Action.t t
 
-    let build (type a) (t : a t) =
+    let build (type a) (t : a t) : a Build.t =
       match t with
       | Non_memoized build -> build
       | Memoized rule -> rule.action.build
@@ -1208,7 +1208,8 @@ end = struct
         (fun rule ->
           evaluate_and_discover_dynamic_deps_unmemoized (Memoized rule))
 
-    let evaluate_and_discover_dynamic_deps (type a) (t : a t) =
+    let evaluate_and_discover_dynamic_deps (type a) (t : a t) :
+        (a * Dep.Set.t) Fiber.t =
       match t with
       | Non_memoized _ -> evaluate_and_discover_dynamic_deps_unmemoized t
       | Memoized rule -> Memo.exec memo rule

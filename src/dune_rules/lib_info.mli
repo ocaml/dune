@@ -96,8 +96,16 @@ val archives : 'path t -> 'path list Mode.Dict.t
 (** All the [lib*.a] files for stubs *)
 val foreign_archives : 'path t -> 'path list
 
+type 'path native_archives =
+  | Needs_module_info of 'path
+  | Files of 'path list
+
 (** The [lib*.a] files for the OCaml code when compiling to native mode *)
-val native_archives : 'path t -> 'path list
+val native_archives : 'path t -> 'path native_archives
+
+(** [eval_native_archives] is like [native_archives] but it knows how to
+    evaluate [Needs_module_info] into the list of archives *)
+val eval_native_archives_exn : 'path t -> modules:Modules.t option -> 'path list
 
 (** [dll*.so] files for stubs. These are read when linking a bytecode executable
     and are loaded dynamically at runtime by bytecode executables. *)
@@ -186,12 +194,18 @@ val for_dune_package :
   -> implements:(Loc.t * Lib_name.t) option
   -> default_implementation:(Loc.t * Lib_name.t) option
   -> sub_systems:Sub_system_info.t Sub_system_name.Map.t
+  -> modules:Modules.t
   -> Path.t t
 
-val map_path : 'a t -> f:('a -> 'a) -> 'a t
+val map_path : Path.t t -> f:(Path.t -> Path.t) -> Path.t t
+
+type 'a path =
+  | Local : Path.Build.t path
+  | External : Path.t path
 
 val create :
      loc:Loc.t
+  -> path_kind:'a path
   -> name:Lib_name.t
   -> kind:Lib_kind.t
   -> status:Status.t
@@ -208,7 +222,7 @@ val create :
   -> archives:'a list Mode.Dict.t
   -> ppx_runtime_deps:(Loc.t * Lib_name.t) list
   -> foreign_archives:'a list
-  -> native_archives:'a list
+  -> native_archives:'a native_archives
   -> foreign_dll_files:'a list
   -> jsoo_runtime:'a list
   -> jsoo_archive:'a option
@@ -230,7 +244,3 @@ val create :
 val package : _ t -> Package.Name.t option
 
 val to_dyn : 'path Dyn.Encoder.t -> 'path t Dyn.Encoder.t
-
-(* XXX Temporary nastiness. [native_archives] returns an in incorrect result so
-   we need this for now *)
-val has_native_archive : Lib_config.t -> Modules.t -> bool

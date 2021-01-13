@@ -120,6 +120,9 @@ Unreleased
   most cases and not correct in other cases in particular on arm32.
   (#4085, fixes #4069, fixes #2527, @emillon)
 
+- Generate archive rules compatible with 4.12. Dune longer attempt to generate
+  an archive file if it's unnecessary (#3973, fixes #3766, @rgrinberg)
+
 2.7.1 (2/09/2020)
 -----------------
 

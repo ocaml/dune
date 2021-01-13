@@ -256,6 +256,7 @@ module T = struct
          {[ This kind of expression is not allowed as right-hand side of `let
          rec' }] *)
       mutable sub_systems : Sub_system0.Instance.t Lazy.t Sub_system_name.Map.t
+    ; modules : Modules.t Lazy.t option
     }
 
   let compare (x : t) (y : t) = Id.compare x.unique_id y.unique_id
@@ -323,6 +324,7 @@ type db =
   ; all : Lib_name.t list Lazy.t
   ; lib_config : Lib_config.t
   ; instrument_with : Lib_name.t list
+  ; modules_of_lib : (dir:Path.Build.t -> name:Lib_name.t -> Modules.t) Fdecl.t
   ; projects_by_package : Dune_project.t Package.Name.Map.t
   }
 
@@ -366,13 +368,13 @@ let main_module_name t =
     | This x -> x
     | From _ -> assert false )
 
-let entry_module_names t ~local_lib =
+let entry_module_names t =
   match Lib_info.entry_modules t.info with
   | External d -> d
   | Local ->
-    let info = Lib_info.as_local_exn t.info in
-    let modules = local_lib ~dir:(Lib_info.src_dir info) ~name:t.name in
-    Ok (Modules.entry_modules modules |> List.map ~f:Module.name)
+    Ok
+      ( Option.value_exn t.modules |> Lazy.force |> Modules.entry_modules
+      |> List.map ~f:Module.name )
 
 let wrapped t =
   let wrapped = Lib_info.wrapped t.info in
@@ -407,7 +409,7 @@ module Link_params = struct
              not appear on the command line *)
     }
 
-  let get t (mode : Link_mode.t) =
+  let get (t : lib) (mode : Link_mode.t) =
     let lib_files = Lib_info.foreign_archives t.info
     and dll_files = Lib_info.foreign_dll_files t.info in
     (* OCaml library archives [*.cma] and [*.cmxa] are directly listed in the
@@ -420,7 +422,12 @@ module Link_params = struct
       match mode with
       | Byte -> dll_files
       | Byte_with_stubs_statically_linked_in -> lib_files
-      | Native -> List.rev_append (Lib_info.native_archives t.info) lib_files
+      | Native ->
+        let native_archives =
+          let modules = Option.map t.modules ~f:Lazy.force in
+          Lib_info.eval_native_archives_exn t.info ~modules
+        in
+        List.rev_append native_archives lib_files
     in
     let include_dirs =
       let files =
@@ -1143,6 +1150,11 @@ end = struct
         let* package = Lib_info.package info in
         Package.Name.Map.find db.projects_by_package package
     in
+    let modules =
+      match Path.as_in_build_dir (Lib_info.src_dir info) with
+      | None -> None
+      | Some dir -> Some (lazy (Fdecl.get db.modules_of_lib ~dir ~name))
+    in
     let t =
       { info
       ; name
@@ -1158,6 +1170,7 @@ end = struct
       ; lib_config = db.lib_config
       ; re_exports
       ; project
+      ; modules
       }
     in
     t.sub_systems <-
@@ -1727,7 +1740,8 @@ module DB = struct
 
   (* CR-someday amokhov: this whole module should be rewritten using the
      memoization framework instead of using mutable state. *)
-  let create ~parent ~resolve ~projects_by_package ~all ~lib_config () =
+  let create ~parent ~resolve ~projects_by_package ~all ~modules_of_lib
+      ~lib_config () =
     { parent
     ; resolve
     ; table = Table.create (module Lib_name) 1024
@@ -1735,10 +1749,19 @@ module DB = struct
     ; lib_config
     ; instrument_with = lib_config.Lib_config.instrument_with
     ; projects_by_package
+    ; modules_of_lib
     }
 
   let create_from_findlib ~lib_config ~projects_by_package findlib =
     create () ~parent:None ~lib_config ~projects_by_package
+      ~modules_of_lib:
+        (let t = Fdecl.create Dyn.Encoder.opaque in
+         Fdecl.set t (fun ~dir ~name ->
+             Code_error.raise "external libraries need no modules"
+               [ ("dir", Path.Build.to_dyn dir)
+               ; ("name", Lib_name.to_dyn name)
+               ]);
+         t)
       ~resolve:(fun name ->
         match Findlib.find findlib name with
         | Ok (Library pkg) -> Found (Dune_package.Lib.info pkg)
@@ -1950,8 +1973,9 @@ let to_dune_lib ({ info; _ } as lib) ~modules ~foreign_objects ~dir =
   let info =
     Lib_info.for_dune_package info ~name ~ppx_runtime_deps ~requires
       ~foreign_objects ~obj_dir ~implements ~default_implementation ~sub_systems
+      ~modules
   in
-  Dune_package.Lib.make ~info ~modules:(Some modules) ~main_module_name
+  Dune_package.Lib.of_dune_lib ~info ~modules ~main_module_name
 
 module Local : sig
   type t = private lib

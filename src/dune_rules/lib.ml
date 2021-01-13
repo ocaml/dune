@@ -257,6 +257,7 @@ module T = struct
          rec' }] *)
       mutable sub_systems : Sub_system0.Instance.t Lazy.t Sub_system_name.Map.t
     ; modules : Modules.t Lazy.t option
+    ; src_dirs : Path.Set.t Lazy.t
     }
 
   let compare (x : t) (y : t) = Id.compare x.unique_id y.unique_id
@@ -375,6 +376,8 @@ let entry_module_names t =
     Ok
       ( Option.value_exn t.modules |> Lazy.force |> Modules.entry_modules
       |> List.map ~f:Module.name )
+
+let src_dirs t = Lazy.force t.src_dirs
 
 let wrapped t =
   let wrapped = Lib_info.wrapped t.info in
@@ -1155,6 +1158,16 @@ end = struct
       | None -> None
       | Some dir -> Some (lazy (Fdecl.get db.modules_of_lib ~dir ~name))
     in
+    let src_dirs =
+      lazy
+        (let obj_dir = Lib_info.obj_dir info in
+         match Path.is_managed (Obj_dir.byte_dir obj_dir) with
+         | false -> Path.Set.singleton src_dir
+         | true ->
+           let (lazy modules) = Option.value_exn modules in
+           Path.Set.map ~f:Path.drop_optional_build_context
+             (Modules.source_dirs modules))
+    in
     let t =
       { info
       ; name
@@ -1171,6 +1184,7 @@ end = struct
       ; re_exports
       ; project
       ; modules
+      ; src_dirs
       }
     in
     t.sub_systems <-

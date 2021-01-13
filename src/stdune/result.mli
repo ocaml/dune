@@ -8,6 +8,9 @@ val return : 'a -> ('a, _) t
 
 val ok : 'a -> ('a, _) t
 
+(** [value r ~default] is [v] if [r] is [Ok v] and [default] otherwise. *)
+val value : ('a, 'e) result -> default:'a -> 'a
+
 val is_ok : _ t -> bool
 
 val is_error : _ t -> bool
@@ -69,6 +72,9 @@ module List : sig
     -> f:('acc -> 'a -> ('acc, 'c) result)
     -> init:'acc
     -> ('acc, 'c) result
+
+  val filter_map :
+    'a list -> f:('a -> ('b option, 'error) t) -> ('b list, 'error) t
 end
 
 module Option : sig

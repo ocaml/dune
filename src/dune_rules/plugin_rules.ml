@@ -8,7 +8,7 @@ let meta_file ~dir { name; libraries = _; site = _, (pkg, site); _ } =
     ; Package.Name.to_string pkg
     ; Section.Site.to_string site
     ; Package.Name.to_string name
-    ; "META"
+    ; Findlib.meta_fn
     ]
 
 let resolve_libs ~sctx t =
@@ -18,35 +18,29 @@ let resolve_libs ~sctx t =
 let setup_rules ~sctx ~dir t =
   let meta = meta_file ~dir t in
   Build.delayed (fun () ->
-      let requires =
-        resolve_libs ~sctx t |> Result.ok_exn
-        |> List.map ~f:(fun lib -> Lib_name.to_string (Lib.name lib))
-      in
+      let open Result.O in
+      let+ requires = resolve_libs ~sctx t in
       let meta =
         { Meta.name = None
         ; entries =
-            [ Rule
-                { Meta.var = "requires"
-                ; action = Set
-                ; predicates = []
-                ; value = String.concat ~sep:" " requires
-                }
+            [ Gen_meta.requires (Lib_name.Set.of_list_map ~f:Lib.name requires)
             ]
         }
       in
-      Format.asprintf "@[<v>%a@,@]" Pp.to_fmt (Meta.pp meta.entries))
-  |> Build.write_file_dyn meta
+      Format.asprintf "%a" Pp.to_fmt
+        (Pp.vbox (Pp.seq (Meta.pp meta.entries) Pp.cut)))
+  |> Build.or_exn |> Build.write_file_dyn meta
   |> Super_context.add_rule sctx ~dir
 
 let install_rules ~sctx ~dir ({ name; site = loc, (pkg, site); _ } as t) =
-  if (not t.optional) || Result.is_ok (resolve_libs ~sctx t) then
+  if t.optional && Result.is_error (resolve_libs ~sctx t) then
+    []
+  else
     let meta = meta_file ~dir t in
     [ ( Some loc
       , Install.Entry.make_with_site
-          ~dst:(sprintf "%s/%s" (Package.Name.to_string name) "META")
+          ~dst:(sprintf "%s/%s" (Package.Name.to_string name) Findlib.meta_fn)
           (Site { pkg; site })
           (Super_context.get_site_of_packages sctx)
           meta )
     ]
-  else
-    []

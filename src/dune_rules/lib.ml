@@ -239,7 +239,9 @@ module T = struct
     ; name : Lib_name.t
     ; unique_id : Id.t
     ; re_exports : t list Or_exn.t
-    ; requires : t list Or_exn.t
+    ; (* [requires] is contains all required libraries, including the ones
+         mentioned in [re_exports]. *)
+      requires : t list Or_exn.t
     ; ppx_runtime_deps : t list Or_exn.t
     ; pps : t list Or_exn.t
     ; resolved_selects : Resolved_select.t list
@@ -363,6 +365,14 @@ let main_module_name t =
     match main_module_name with
     | This x -> x
     | From _ -> assert false )
+
+let entry_module_names t ~local_lib =
+  match Lib_info.entry_modules t.info with
+  | External d -> d
+  | Local ->
+    let info = Lib_info.as_local_exn t.info in
+    let modules = local_lib ~dir:(Lib_info.src_dir info) ~name:t.name in
+    Ok (Modules.entry_modules modules |> List.map ~f:Module.name)
 
 let wrapped t =
   let wrapped = Lib_info.wrapped t.info in
@@ -661,9 +671,13 @@ module Sub_system = struct
     | _ -> assert false
 
   let public_info lib =
-    Sub_system_name.Map.filter_map lib.sub_systems ~f:(fun (lazy inst) ->
-        let (Sub_system0.Instance.T ((module M), t)) = inst in
-        Option.map M.public_info ~f:(fun f -> M.Info.T (Result.ok_exn (f t))))
+    try
+      Ok
+        (Sub_system_name.Map.filter_map lib.sub_systems ~f:(fun (lazy inst) ->
+             let (Sub_system0.Instance.T ((module M), t)) = inst in
+             Option.map M.public_info ~f:(fun f ->
+                 M.Info.T (Result.ok_exn (f t)))))
+    with User_error.E _ as exn -> Error exn
 end
 
 (* Library name resolution and transitive closure *)
@@ -788,6 +802,19 @@ module Vlib : sig
 
     val with_default_implementations : t -> lib list
   end
+
+  module Visit : sig
+    type t
+
+    val create : unit -> t
+
+    val visit :
+         t
+      -> lib
+      -> stack:Lib_info.external_ list
+      -> f:(lib -> unit Or_exn.t)
+      -> unit Or_exn.t
+  end
 end = struct
   module Unimplemented = struct
     type t =
@@ -902,39 +929,28 @@ end = struct
       second_step_closure closure impls
     else
       Ok closure
-end
 
-module Vlib_visit : sig
-  type t
+  module Visit = struct
+    module Status = struct
+      type t =
+        | Visiting
+        | Visited
+    end
 
-  val create : unit -> t
+    type t = Status.t Map.t ref
 
-  val visit :
-       t
-    -> lib
-    -> stack:Lib_info.external_ list
-    -> f:(lib -> unit Or_exn.t)
-    -> unit Or_exn.t
-end = struct
-  module Status = struct
-    type t =
-      | Visiting
-      | Visited
+    let create () = ref Map.empty
+
+    let visit t lib ~stack ~f =
+      match Map.find !t lib with
+      | Some Status.Visited -> Ok ()
+      | Some Visiting -> Error.default_implementation_cycle (lib.info :: stack)
+      | None ->
+        t := Map.set !t lib Visiting;
+        let res = f lib in
+        t := Map.set !t lib Visited;
+        res
   end
-
-  type t = Status.t Map.t ref
-
-  let create () = ref Map.empty
-
-  let visit t lib ~stack ~f =
-    match Map.find !t lib with
-    | Some Status.Visited -> Ok ()
-    | Some Visiting -> Error.default_implementation_cycle (lib.info :: stack)
-    | None ->
-      t := Map.set !t lib Visiting;
-      let res = f lib in
-      t := Map.set !t lib Visited;
-      res
 end
 
 let instrumentation_backend ?(do_not_fail = false) instrument_with resolve
@@ -1396,7 +1412,7 @@ end = struct
   let resolve_default_libraries libraries =
     (* Map from a vlib to vlibs that are implemented in the transitive closure
        of its default impl. *)
-    let vlib_status = Vlib_visit.create () in
+    let vlib_status = Vlib.Visit.create () in
     (* Reverse map *)
     let vlib_default_parent = ref Map.empty in
     let avoid_direct_parent vlib (impl : lib) =
@@ -1434,7 +1450,7 @@ end = struct
     (* Gather vlibs that are transitively implemented by another vlib's default
        implementation. *)
     let rec visit ~stack ancestor_vlib =
-      Vlib_visit.visit vlib_status ~stack ~f:(fun lib ->
+      Vlib.Visit.visit vlib_status ~stack ~f:(fun lib ->
           (* Visit direct dependencies *)
           let* deps = lib.requires in
           let* () =
@@ -1603,6 +1619,7 @@ module Compile = struct
     ; resolved_selects : Resolved_select.t list
     ; lib_deps_info : Lib_deps_info.t
     ; sub_systems : Sub_system0.Instance.t Lazy.t Sub_system_name.Map.t
+    ; merlin_ident : Merlin_ident.t
     }
 
   let make_lib_deps_info ~user_written_deps ~pps ~kind =
@@ -1650,12 +1667,14 @@ module Compile = struct
         >>= Resolve.compile_closure_with_overlap_checks db
               ~stack:Dep_stack.empty ~forbidden_libraries:Map.empty )
     in
+    let merlin_ident = Merlin_ident.for_lib t.name in
     { direct_requires = requires
     ; requires_link
     ; resolved_selects = t.resolved_selects
     ; pps = t.pps
     ; lib_deps_info
     ; sub_systems = t.sub_systems
+    ; merlin_ident
     }
 
   let direct_requires t = t.direct_requires
@@ -1667,6 +1686,8 @@ module Compile = struct
   let pps t = t.pps
 
   let lib_deps_info t = t.lib_deps_info
+
+  let merlin_ident t = t.merlin_ident
 
   let sub_systems t =
     Sub_system_name.Map.values t.sub_systems
@@ -1704,7 +1725,7 @@ module DB = struct
 
   type t = db
 
-  (* CR-soon amokhov: this whole module should be rewritten using the
+  (* CR-someday amokhov: this whole module should be rewritten using the
      memoization framework instead of using mutable state. *)
   let create ~parent ~resolve ~projects_by_package ~all ~lib_config () =
     { parent
@@ -1819,12 +1840,14 @@ module DB = struct
          |> Result.map_error ~f:(fun e ->
                 Dep_path.prepend_exn e (Executables exes)))
     in
+    let merlin_ident = Merlin_ident.for_exes ~names:(List.map ~f:snd exes) in
     { Compile.direct_requires = res
     ; requires_link
     ; pps
     ; resolved_selects
     ; lib_deps_info
     ; sub_systems = Sub_system_name.Map.empty
+    ; merlin_ident
     }
 
   (* Here we omit the [only_ppx_deps_allowed] check because by the time we reach
@@ -1913,9 +1936,9 @@ let to_dune_lib ({ info; _ } as lib) ~modules ~foreign_objects ~dir =
   and+ ppx_runtime_deps = lib.ppx_runtime_deps
   and+ main_module_name = main_module_name lib
   and+ requires = lib.requires
-  and+ re_exports = lib.re_exports in
+  and+ re_exports = lib.re_exports
+  and+ sub_systems = Sub_system.public_info lib in
   let ppx_runtime_deps = add_loc ppx_runtime_deps in
-  let sub_systems = Sub_system.public_info lib in
   let requires =
     List.map requires ~f:(fun lib ->
         if List.exists re_exports ~f:(fun r -> r = lib) then

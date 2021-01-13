@@ -9,6 +9,7 @@ val gen_rules : dir:Path.Build.t -> unit
 val gen_rules_output :
      Super_context.t
   -> Format_config.t
+  -> version:Dune_lang.Syntax.Version.t
   -> dialects:Dialect.DB.t
   -> expander:Expander.t
   -> output_dir:Path.Build.t

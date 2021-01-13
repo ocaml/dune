@@ -52,14 +52,14 @@ with type 'a build := 'a t
 (** This function should be called before analysing build expressions using
     [static_deps], [lib_deps] or [exec], which all require some file system
     information. *)
-val set_file_system_accessors :
-     file_exists:(Path.t -> bool)
-  -> eval_pred:(File_selector.t -> Path.Set.t)
-  -> unit
+val set_file_system_accessors : file_exists:(Path.t -> bool) -> unit
 
 (** Add a set of targets to a build description, turning a target-less [Build.t]
     into [Build.With_targets.t]. *)
 val with_targets : 'a t -> targets:Path.Build.t list -> 'a With_targets.t
+
+(** [with_targets_set] is like [with_targets] but [targets] is a set *)
+val with_targets_set : 'a t -> targets:Path.Build.Set.t -> 'a With_targets.t
 
 (** Create a value of [With_targets.t] with the empty set of targets. *)
 val with_no_targets : 'a t -> 'a With_targets.t
@@ -78,6 +78,8 @@ val all_unit : unit t list -> unit t
 
 (** Delay a static computation until the description is evaluated *)
 val delayed : (unit -> 'a) -> 'a t
+
+val or_exn : 'a Or_exn.t t -> 'a t
 
 (** CR-someday diml: this API is not great, what about:
 
@@ -138,9 +140,9 @@ val dyn_path_set : ('a * Path.Set.t) t -> 'a t
 
 val dyn_path_set_reuse : Path.Set.t t -> Path.Set.t t
 
-(** [catch t ~on_error] evaluates to [on_error exn] if exception [exn] is raised
-    during the evaluation of [t]. *)
-val catch : 'a t -> on_error:(exn -> 'a) -> 'a t
+(** [catch t ~on_error] evaluates to [on_error] if an exception is raised during
+    the evaluation of [t]. *)
+val catch : 'a t -> on_error:'a -> 'a t
 
 (** [contents path] returns a description that when run will return the contents
     of the file at [path]. *)
@@ -210,9 +212,36 @@ val fold_labeled : _ t -> init:'acc -> f:(label -> 'acc -> 'acc) -> 'acc
 
 (** {1 Execution} *)
 
-(** Execute a build description. Returns the result and the set of dynamic
-    dependencies discovered during execution. *)
-val exec : 'a t -> 'a * Dep.Set.t
+module Make_exec (Build_deps : sig
+  val build_deps : Dep.Set.t -> unit Fiber.t
+end) : sig
+  (** Execute a build description. Returns the result and the set of dynamic
+      dependencies discovered during execution. *)
+  val exec : 'a t -> ('a * Dep.Set.t) Fiber.t
+
+  (** Same as [exec] but also builds the static rule dependencies of the build
+      description. *)
+  val build_static_rule_deps_and_exec : 'a t -> ('a * Dep.Set.t) Fiber.t
+end
+
+(** These functions are experimental and potentially unsafe to use. Each usage
+    must be discussed and justified. *)
+module Expert : sig
+  (** This function "stages" static dependencies and can therefore reduce build
+      parallelism: until the outer build description has been evaluated, the
+      static dependencies of the inner build description are unknown. *)
+  val build : 'a t t -> 'a t
+end
+
+(** If you're thinking of using [Process.run] in the fiber, check that: (i) you
+    don't in fact need [Command.run], and that (ii) [Process.run] only reads the
+    declared build rule dependencies. *)
+val fiber : 'a Fiber.t -> 'a t
+
+(** If you're thinking of using [Process.run] in the fiber, check that: (i) you
+    don't in fact need [Command.run], and that (ii) [Process.run] only reads the
+    declared build rule dependencies. *)
+val dyn_fiber : 'a Fiber.t t -> 'a t
 
 (**/**)
 

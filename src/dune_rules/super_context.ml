@@ -4,15 +4,22 @@ open Import
 
 let default_context_flags (ctx : Context.t) ~project =
   let cflags = Ocaml_config.ocamlc_cflags ctx.ocaml_config in
-  let cxx =
+  let cxxflags =
     List.filter cflags ~f:(fun s -> not (String.is_prefix s ~prefix:"-std="))
   in
-  let c =
+  let c, cxx =
     match Dune_project.use_standard_c_and_cxx_flags project with
     | None
     | Some false ->
-      cflags
-    | Some true -> cflags @ Ocaml_config.ocamlc_cppflags ctx.ocaml_config
+      (Build.return cflags, Build.return cxxflags)
+    | Some true ->
+      let c = cflags @ Ocaml_config.ocamlc_cppflags ctx.ocaml_config in
+      let cxx =
+        let open Build.O in
+        let+ db_flags = Cxx_flags.get_flags ctx.build_dir in
+        db_flags @ cxxflags
+      in
+      (Build.return c, cxx)
   in
   Foreign_language.Dict.make ~c ~cxx
 
@@ -110,7 +117,10 @@ end = struct
     let scope = Scope.DB.find_by_dir t.scopes dir in
     let inherit_from =
       if Path.Build.equal dir (Scope.root scope) then
-        t.default_env
+        let format_config = Dune_project.format_config (Scope.project scope) in
+        Memo.lazy_ (fun () ->
+            let default_env = Memo.Lazy.force t.default_env in
+            Env_node.set_format_config default_env format_config)
       else
         match Path.Build.parent dir with
         | None ->
@@ -229,7 +239,7 @@ let to_dyn t = Context.to_dyn t.context
 
 let host t = Option.value t.host ~default:t
 
-let get_site_of_packages t ~pkg ~site =
+let get_site_of_packages_aux ~packages ~context ~pkg ~site =
   let find_site sites ~pkg ~site =
     match Section.Site.Map.find sites site with
     | Some section -> section
@@ -240,15 +250,18 @@ let get_site_of_packages t ~pkg ~site =
             (Section.Site.to_string site)
         ]
   in
-  match Package.Name.Map.find t.packages pkg with
-  | Some p -> find_site p.sites ~pkg ~site
+  match Package.Name.Map.find packages pkg with
+  | Some p -> find_site p.Package.sites ~pkg ~site
   | None -> (
-    match Findlib.find_root_package t.context.findlib pkg with
+    match Findlib.find_root_package context.Context.findlib pkg with
     | Ok p -> find_site p.sites ~pkg ~site
     | Error Not_found ->
       User_error.raise
         [ Pp.textf "The package %s is not found" (Package.Name.to_string pkg) ]
     | Error (Invalid_dune_package exn) -> Exn.raise exn )
+
+let get_site_of_packages t ~pkg ~site =
+  get_site_of_packages_aux ~packages:t.packages ~context:t.context ~pkg ~site
 
 let lib_entries_of_package t pkg_name =
   Package.Name.Map.find t.lib_entries_by_package pkg_name
@@ -352,6 +365,8 @@ let local_binaries t ~dir = get_node t.env_tree ~dir |> Env_node.local_binaries
 let odoc t ~dir = get_node t.env_tree ~dir |> Env_node.odoc
 
 let coq t ~dir = get_node t.env_tree ~dir |> Env_node.coq
+
+let format_config t ~dir = get_node t.env_tree ~dir |> Env_node.format_config
 
 let dump_env t ~dir =
   let t = t.env_tree in
@@ -495,7 +510,7 @@ let create_projects_by_package projects : Dune_project.t Package.Name.Map.t =
              (name, project)))
   |> Package.Name.Map.of_list_exn
 
-let create ~(context : Context.t) ?host ~projects ~packages ~stanzas =
+let create ~(context : Context.t) ?host ~projects ~packages ~stanzas () =
   let lib_config = Context.lib_config context in
   let projects_by_package = create_projects_by_package projects in
   let installed_libs =
@@ -525,18 +540,53 @@ let create ~(context : Context.t) ?host ~projects ~packages ~stanzas =
     Artifacts.create context ~public_libs ~local_bins
   in
   let root_expander =
-    let artifacts_host =
+    let scopes_host, artifacts_host, context_host =
       match host with
-      | None -> artifacts
-      | Some host -> host.artifacts
+      | None -> (scopes, artifacts, context)
+      | Some host -> (host.scopes, host.artifacts, host.context)
     in
     let find_package = Package.Name.Map.find packages in
     Expander.make
       ~scope:(Scope.DB.find_by_dir scopes context.build_dir)
+      ~scope_host:(Scope.DB.find_by_dir scopes_host context_host.build_dir)
       ~context ~lib_artifacts:artifacts.public_libs
-      ~bin_artifacts_host:artifacts_host.bin ~find_package
+      ~bin_artifacts_host:artifacts_host.bin
+      ~lib_artifacts_host:artifacts_host.public_libs ~find_package
   in
   let dune_dir_locations_var : Stdune.Env.Var.t = "DUNE_DIR_LOCATIONS" in
+  (* Add the section of the site mentioned in stanzas (it could be a site of an
+     external package) *)
+  let add_in_package_section m pkg section =
+    Package.Name.Map.update m pkg ~f:(function
+      | None -> Some (Section.Set.singleton section)
+      | Some s -> Some (Section.Set.add s section))
+  in
+  let package_sections =
+    Dir_with_dune.deep_fold stanzas ~init:Package.Name.Map.empty
+      ~f:(fun _ stanza acc ->
+        let add_in_package_sites acc pkg site =
+          let section =
+            get_site_of_packages_aux ~packages ~context ~pkg ~site
+          in
+          add_in_package_section acc pkg section
+        in
+        match stanza with
+        | Dune_file.Install { section = Site { pkg; site }; _ } ->
+          add_in_package_sites acc pkg site
+        | Dune_file.Plugin { site = _, (pkg, site); _ } ->
+          add_in_package_sites acc pkg site
+        | _ -> acc)
+  in
+  (* Add the site of the local package: it should only useful for making sure
+     that at least one location is given to the site of local package because if
+     the site is used it should already be in [packages_sections] *)
+  let package_sections =
+    Package.Name.Map.foldi ~init:package_sections packages
+      ~f:(fun package_name package acc ->
+        Section.Site.Map.fold ~init:acc package.Package.sites
+          ~f:(fun section acc ->
+            add_in_package_section acc package_name section))
+  in
   let env_dune_dir_locations =
     let install_dir = Config.local_install_dir ~context:context.Context.name in
     let install_dir = Path.build install_dir in
@@ -545,17 +595,13 @@ let create ~(context : Context.t) ?host ~projects ~packages ~stanzas =
         (Stdune.Env.get context.env dune_dir_locations_var)
         ~default:""
     in
-    Package.Name.Map.foldi ~init:v packages ~f:(fun package_name package init ->
-        let sections =
-          Section.Site.Map.fold ~init:Install.Section.Set.empty
-            package.Package.sites ~f:(fun section acc ->
-              Install.Section.Set.add acc section)
-        in
+    Package.Name.Map.foldi ~init:v package_sections
+      ~f:(fun package_name sections init ->
         let paths =
           Install.Section.Paths.make ~package:package_name ~destdir:install_dir
             ()
         in
-        Install.Section.Set.fold sections ~init ~f:(fun section acc ->
+        Section.Set.fold sections ~init ~f:(fun section acc ->
             sprintf "%s%c%s%c%s%s"
               (Package.Name.to_string package_name)
               Stdune.Bin.path_sep

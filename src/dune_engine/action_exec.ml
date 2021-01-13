@@ -120,8 +120,8 @@ let exec_run ~ectx ~eenv prog args =
 
 let exec_run_dynamic_client ~ectx ~eenv prog args =
   validate_context_and_prog ectx.context prog;
-  let run_arguments_fn = Filename.temp_file "" ".run_in_dune" in
-  let response_fn = Filename.temp_file "" ".response" in
+  let run_arguments_fn = Temp.create File ~prefix:"dune." ~suffix:".run" in
+  let response_fn = Temp.create File ~prefix:"dune." ~suffix:".response" in
   let run_arguments =
     let targets =
       let to_relative path =
@@ -133,10 +133,15 @@ let exec_run_dynamic_client ~ectx ~eenv prog args =
     DAP.Run_arguments.
       { prepared_dependencies = eenv.prepared_dependencies; targets }
   in
-  Io.String_path.write_file run_arguments_fn
-    (DAP.Run_arguments.serialize run_arguments);
+  Io.write_file run_arguments_fn (DAP.Run_arguments.serialize run_arguments);
   let env =
-    let value = DAP.Greeting.(serialize { run_arguments_fn; response_fn }) in
+    let value =
+      DAP.Greeting.(
+        serialize
+          { run_arguments_fn = Path.to_absolute_filename run_arguments_fn
+          ; response_fn = Path.to_absolute_filename response_fn
+          })
+    in
     Env.add eenv.env ~var:DAP.run_by_dune_env_variable ~value
   in
   let+ () =
@@ -144,10 +149,10 @@ let exec_run_dynamic_client ~ectx ~eenv prog args =
       ~stderr_to:eenv.stderr_to ~stdin_from:eenv.stdin_from
       ~purpose:ectx.purpose prog args
   in
-  let response = Io.String_path.read_file response_fn in
-  Stdune.Path.(
-    unlink_no_err (of_string run_arguments_fn);
-    unlink_no_err (of_string response_fn));
+  let response = Io.read_file response_fn in
+  Path.(
+    unlink_no_err run_arguments_fn;
+    unlink_no_err response_fn);
   let prog_name = Stdune.Path.reach ~from:eenv.working_dir prog in
   match DAP.Response.deserialize response with
   | Error _ when String.is_empty response ->
@@ -359,8 +364,8 @@ let rec exec t ~ectx ~eenv =
     Fiber.return Done
   | No_infer t -> exec t ~ectx ~eenv
   | Pipe (outputs, l) -> exec_pipe ~ectx ~eenv outputs l
-  | Format_dune_file (src, dst) ->
-    Format_dune_lang.format_file ~input:(Some src)
+  | Format_dune_file (version, src, dst) ->
+    Format_dune_lang.format_file ~version ~input:(Some src)
       ~output:(Some (Path.build dst));
     Fiber.return Done
   | Cram script ->

@@ -135,8 +135,10 @@ let run ~lib_deps ~by_dir ~setup ~only_missing ~sexp =
           Path.Source.Map.to_dyn Lib_deps_info.to_dyn lib_deps_by_dir
           |> Sexp.of_dyn
         in
-        Format.printf "%a@." Sexp.pp
-          (List [ Atom (Dune_engine.Context_name.to_string context_name); sexp ]);
+        Format.printf "%a@." Pp.to_fmt
+          (Sexp.pp
+             (List
+                [ Atom (Dune_engine.Context_name.to_string context_name); sexp ]));
         acc
       ) else (
         if by_dir then

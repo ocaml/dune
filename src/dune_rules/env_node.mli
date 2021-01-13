@@ -25,7 +25,7 @@ val make :
   -> profile:Profile.t
   -> expander:Expander.t Memo.Lazy.t
   -> expander_for_artifacts:Expander.t Memo.Lazy.t
-  -> default_context_flags:string list Foreign_language.Dict.t
+  -> default_context_flags:string list Build.t Foreign_language.Dict.t
   -> default_env:Env.t
   -> default_bin_artifacts:Artifacts.Bin.t
   -> t
@@ -49,3 +49,7 @@ val odoc : t -> Odoc.t
 val coq : t -> Coq.t
 
 val menhir_flags : t -> string list Build.t
+
+val format_config : t -> Format_config.t
+
+val set_format_config : t -> Format_config.t -> t

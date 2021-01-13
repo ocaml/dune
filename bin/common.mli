@@ -60,6 +60,8 @@ val footer : Cmdliner.Manpage.block
 
 val term : t Cmdliner.Term.t
 
+val debug_backtraces : bool Cmdliner.Term.t
+
 val config_term : Dune_engine.Config.t Cmdliner.Term.t
 
 val display_term : Dune_engine.Config.Display.t option Cmdliner.Term.t

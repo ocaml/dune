@@ -7,9 +7,9 @@
     2. Dynamic. In this mode, the expander will record dependencies that are
     introduced by forms it has failed to expand. Later, these dependenceis can
     be filled for a full expansion.*)
-open! Dune_engine
 
-open Stdune
+open! Dune_engine
+open Import
 
 type t
 
@@ -21,8 +21,10 @@ val context : t -> Context.t
 
 val make :
      scope:Scope.t
+  -> scope_host:Scope.t
   -> context:Context.t
   -> lib_artifacts:Artifacts.Public_libs.t
+  -> lib_artifacts_host:Artifacts.Public_libs.t
   -> bin_artifacts_host:Artifacts.Bin.t
   -> find_package:(Package.Name.t -> Package.t option)
   -> t

@@ -129,18 +129,9 @@ let executables_rules ~sctx ~dir ~expander ~dir_contents ~scope ~compile_info
       else
         Some js_of_ocaml
     in
-    let dynlink =
-      (* See https://github.com/ocaml/dune/issues/2527 *)
-      true
-      || Dune_file.Executables.Link_mode.Map.existsi exes.modes
-           ~f:(fun mode _loc ->
-             match mode with
-             | Other { kind = Shared_object; _ } -> true
-             | _ -> false)
-    in
     Compilation_context.create () ~super_context:sctx ~expander ~scope ~obj_dir
       ~modules ~flags ~requires_link ~requires_compile ~preprocessing:pp
-      ~js_of_ocaml ~opaque:Inherit_from_settings ~dynlink ~package:exes.package
+      ~js_of_ocaml ~opaque:Inherit_from_settings ~package:exes.package
   in
   let requires_compile = Compilation_context.requires_compile cctx in
   let preprocess =
@@ -180,9 +171,12 @@ let executables_rules ~sctx ~dir ~expander ~dir_contents ~scope ~compile_info
       ~promote:exes.promote ~embed_in_plugin_libraries
   in
   ( cctx
-  , Merlin.make () ~requires:requires_compile ~flags ~modules
+  , Merlin.make ~requires:requires_compile ~flags ~modules
       ~preprocess:(Preprocess.Per_module.single_preprocess preprocess)
-      ~obj_dir )
+      ~obj_dir
+      ~dialects:(Dune_project.dialects (Scope.project scope))
+      ~ident:(Lib.Compile.merlin_ident compile_info)
+      () )
 
 let compile_info ~scope (exes : Dune_file.Executables.t) =
   let dune_version = Scope.project scope |> Dune_project.dune_version in

@@ -2,7 +2,12 @@
  (name mylib)
  (modules lib))
 
+(library
+ (name mylib3)
+ (modules lib3)
+ (libraries mylib))
+
 (executable
  (name main)
- (modules main)
- (libraries mylib))
+ (modules main lib2)
+ (libraries mylib mylib3))

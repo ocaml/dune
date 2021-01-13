@@ -185,10 +185,6 @@ let produce_dir ~dir rules =
   | None -> ()
   | Some rules -> produce (Path.Build.Map.singleton dir rules)
 
-let produce_dir' ~dir rules =
-  let dir = Path.as_in_build_dir_exn dir in
-  produce_dir ~dir rules
-
 let collect_opt f = Memo.Implicit_output.collect_sync implicit_output f
 
 let collect f =

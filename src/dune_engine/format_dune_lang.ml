@@ -34,9 +34,12 @@ let pp_simple t =
   Dune_lang.Cst.abstract t |> Option.value_exn |> Dune_lang.Ast.remove_locs
   |> Dune_lang.pp
 
-let print_wrapped_list x =
-  Pp.hvbox ~indent:1
-    (Pp.char '(' ++ Pp.concat_map ~sep:Pp.space ~f:pp_simple x ++ Pp.char ')')
+let print_wrapped_list ~version x =
+  let inner = Pp.concat_map ~sep:Pp.space ~f:pp_simple x in
+  if version < (2, 8) then
+    Pp.char '(' ++ Pp.hovbox ~indent:1 inner ++ Pp.char ')'
+  else
+    Pp.hvbox ~indent:1 (Pp.char '(' ++ inner ++ Pp.char ')')
 
 let pp_comment_line l = Pp.char ';' ++ Pp.verbatim l
 
@@ -66,31 +69,32 @@ let pp_list_with_comments pp_sexp sexps =
   in
   go sexps
 
-let rec pp_sexp : Dune_lang.Cst.t -> _ = function
+let rec pp_sexp ~version : Dune_lang.Cst.t -> _ = function
   | (Atom _ | Quoted_string _ | Template _) as sexp -> pp_simple sexp
   | List (_, sexps) ->
     Pp.vbox ~indent:1
       ( if can_be_displayed_wrapped sexps then
-        print_wrapped_list sexps
+        print_wrapped_list ~version sexps
       else
-        pp_sexp_list sexps )
+        pp_sexp_list ~version sexps )
   | Comment (loc, c) -> pp_comment loc c
 
-and pp_sexp_list sexps =
-  Pp.char '(' ++ pp_list_with_comments pp_sexp sexps ++ Pp.char ')'
+and pp_sexp_list ~version sexps =
+  Pp.char '(' ++ pp_list_with_comments (pp_sexp ~version) sexps ++ Pp.char ')'
 
-let pp_top_sexp sexp = pp_sexp sexp ++ Pp.char '\n'
+let pp_top_sexp ~version sexp = pp_sexp ~version sexp ++ Pp.char '\n'
 
-let pp_top_sexps = Pp.concat_map ~sep:Pp.newline ~f:pp_top_sexp
+let pp_top_sexps ~version =
+  Pp.concat_map ~sep:Pp.newline ~f:(pp_top_sexp ~version)
 
-let write_file ~path sexps =
+let write_file ~version ~path sexps =
   let f oc =
     let fmt = Format.formatter_of_out_channel oc in
-    Format.fprintf fmt "%a%!" Pp.to_fmt (pp_top_sexps sexps)
+    Format.fprintf fmt "%a%!" Pp.to_fmt (pp_top_sexps ~version sexps)
   in
   Io.with_file_out ~binary:true path ~f
 
-let format_file ~input ~output =
+let format_file ~version ~input ~output =
   let with_output f =
     match output with
     | None -> f stdout
@@ -107,4 +111,4 @@ let format_file ~input ~output =
   | Sexps sexps ->
     with_output (fun oc ->
         let oc = Format.formatter_of_out_channel oc in
-        Format.fprintf oc "%a%!" Pp.to_fmt (pp_top_sexps sexps))
+        Format.fprintf oc "%a%!" Pp.to_fmt (pp_top_sexps ~version sexps))

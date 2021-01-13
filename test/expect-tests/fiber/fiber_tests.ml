@@ -31,14 +31,16 @@ end = struct
 end
 
 let failing_fiber () : unit Fiber.t =
-  Scheduler.yield () >>= fun () -> raise Exit
+  let* () = Scheduler.yield () in
+  raise Exit
 
 let long_running_fiber () =
   let rec loop n =
     if n = 0 then
       Fiber.return ()
     else
-      Scheduler.yield () >>= fun () -> loop (n - 1)
+      let* () = Scheduler.yield () in
+      loop (n - 1)
   in
   loop 10
 
@@ -59,6 +61,40 @@ let test ?(expect_never = false) to_dyn f =
   | false, true ->
     print_endline "[FAIL] expected Never to be raised but it wasn't"
   | true, false -> print_endline "[FAIL] unexpected Never raised"
+
+let%expect_test "reraise_all" =
+  let exns =
+    let exn = Exn_with_backtrace.capture Exit in
+    [ exn; exn; exn ]
+  in
+  let fail () = Fiber.reraise_all exns in
+  test (backtrace_result unit) (Fiber.collect_errors fail);
+  [%expect
+    {|
+    Error
+      [ { exn = "Exit"; backtrace = "" }
+      ; { exn = "Exit"; backtrace = "" }
+      ; { exn = "Exit"; backtrace = "" }
+      ] |}];
+  test (backtrace_result unit)
+    (Fiber.collect_errors (fun () ->
+         Fiber.finalize fail ~finally:(fun () ->
+             print_endline "finally";
+             Fiber.return ())));
+  [%expect
+    {|
+    finally
+    Error
+      [ { exn = "Exit"; backtrace = "" }
+      ; { exn = "Exit"; backtrace = "" }
+      ; { exn = "Exit"; backtrace = "" }
+      ] |}];
+
+  test unit ~expect_never:true
+    (let+ _ = Fiber.reraise_all [] in
+     print_endline "finish");
+  [%expect {|
+    [PASS] Never raised as expected |}]
 
 let%expect_test "execution context of ivars" =
   (* The point of this test it show that the execution context is restored when
@@ -133,7 +169,8 @@ let%expect_test _ =
 let%expect_test _ =
   test (backtrace_result unit)
     (Fiber.collect_errors (fun () ->
-         failing_fiber () >>= fun () -> failing_fiber ()));
+         let* () = failing_fiber () in
+         failing_fiber ()));
   [%expect {|
 Error [ { exn = "Exit"; backtrace = "" } ]
 |}]
@@ -179,7 +216,7 @@ let%expect_test "collect errors inside with_error_handler" =
          | Ok () -> assert false
          | Error l ->
            print_endline "got the error out of collect_errors";
-           List.iter l ~f:Exn_with_backtrace.reraise;
+           let* () = Fiber.reraise_all l in
            assert false));
   [%expect
     {|
@@ -380,9 +417,10 @@ let%expect_test _ =
   must_set_flag (fun setter ->
       test ~expect_never:true unit
       @@ Fiber.fork_and_join_unit never_fiber (fun () ->
-             Fiber.collect_errors failing_fiber >>= fun res ->
+             let* res = Fiber.collect_errors failing_fiber in
              print_dyn (backtrace_result unit res);
-             long_running_fiber () >>= fun () -> Fiber.return (setter ())));
+             let* () = long_running_fiber () in
+             Fiber.return (setter ())));
   [%expect
     {|
     Error [ { exn = "Exit"; backtrace = "" } ]
@@ -392,7 +430,7 @@ let%expect_test _ =
 let%expect_test _ =
   let forking_fiber () =
     Fiber.parallel_map [ 1; 2; 3; 4; 5 ] ~f:(fun x ->
-        Scheduler.yield () >>= fun () ->
+        let* () = Scheduler.yield () in
         if x mod 2 = 1 then
           Fiber.return ()
         else
@@ -401,9 +439,10 @@ let%expect_test _ =
   must_set_flag (fun setter ->
       test ~expect_never:true unit
       @@ Fiber.fork_and_join_unit never_fiber (fun () ->
-             Fiber.collect_errors forking_fiber >>= fun res ->
+             let* res = Fiber.collect_errors forking_fiber in
              print_dyn (backtrace_result (list unit) res);
-             long_running_fiber () >>= fun () -> Fiber.return (setter ())));
+             let* () = long_running_fiber () in
+             Fiber.return (setter ())));
   [%expect
     {|
     Error
@@ -650,3 +689,47 @@ let%expect_test "Sequence.parallel_iter doesn't leak" =
   test ~iter_function:Fiber.Sequence.parallel_iter ~check:(fun ~prev ~curr ->
       prev = curr);
   [%expect {| PASS |}]
+
+let sorted_failures v =
+  Result.map_error v
+    ~f:
+      (List.sort
+         ~compare:(fun (x : Exn_with_backtrace.t) (y : Exn_with_backtrace.t) ->
+           match (x.exn, y.exn) with
+           | Failure x, Failure y -> String.compare x y
+           | _, _ -> assert false))
+
+let%expect_test "fork - exceptions always thrown" =
+  test
+    (fun x -> sorted_failures x |> backtrace_result unit)
+    (Fiber.collect_errors (fun () ->
+         Fiber.fork_and_join_unit
+           (fun () -> failwith "left")
+           (fun () -> failwith "right")));
+  [%expect
+    {|
+    Error
+      [ { exn = "(Failure left)"; backtrace = "" }
+      ; { exn = "(Failure right)"; backtrace = "" }
+      ] |}]
+
+let test iter =
+  test
+    (fun x -> sorted_failures x |> backtrace_result unit)
+    (Fiber.collect_errors (fun () ->
+         iter [ 1; 2; 3 ] ~f:(fun x -> failwith (Int.to_string x))))
+
+let%expect_test "parallel_iter - all exceptions raised" =
+  test Fiber.parallel_iter;
+  [%expect
+    {|
+    Error
+      [ { exn = "(Failure 1)"; backtrace = "" }
+      ; { exn = "(Failure 2)"; backtrace = "" }
+      ; { exn = "(Failure 3)"; backtrace = "" }
+      ] |}]
+
+let%expect_test "sequential_iter - stop after first exception" =
+  test Fiber.sequential_iter;
+  [%expect {|
+    Error [ { exn = "(Failure 1)"; backtrace = "" } ] |}]

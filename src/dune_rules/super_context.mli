@@ -17,6 +17,7 @@ val create :
   -> projects:Dune_project.t list
   -> packages:Package.t Package.Name.Map.t
   -> stanzas:Dune_load.Dune_file.t list
+  -> unit
   -> t
 
 val context : t -> Context.t
@@ -81,6 +82,9 @@ val odoc : t -> dir:Path.Build.t -> Env_node.Odoc.t
 
 (** coq config in the corresponding [(env)] stanza. *)
 val coq : t -> dir:Path.Build.t -> Env_node.Coq.t
+
+(** Formatting settings in the corresponding [(env)] stanza. *)
+val format_config : t -> dir:Path.Build.t -> Format_config.t
 
 (** Dump a directory environment in a readable form *)
 val dump_env : t -> dir:Path.Build.t -> Dune_lang.t list Build.t

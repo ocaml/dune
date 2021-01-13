@@ -58,9 +58,16 @@ let man =
 let info = Term.info "subst" ~doc ~man
 
 let term =
-  let+ common = Common.term in
-  Common.set_common ~log_file:No_log_file common ~targets:[];
-  let config = Common.config common in
+  let+ () = Common.build_info
+  and+ debug_backtraces = Common.debug_backtraces in
+  let config : Config.t =
+    { Config.default with display = Quiet; concurrency = Fixed 1 }
+  in
+  Dune_engine.Clflags.debug_backtraces debug_backtraces;
+  Path.set_root (Path.External.cwd ());
+  Path.Build.set_build_dir (Path.Build.Kind.of_string Common.default_build_dir);
+  Config.init config;
+  Log.init_disabled ();
   Dune_engine.Scheduler.go ~config Watermarks.subst
 
 let command = (term, info)

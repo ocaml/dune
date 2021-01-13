@@ -1286,32 +1286,6 @@ let string_of_file_kind = function
   | Unix.S_FIFO -> "named pipe"
   | Unix.S_SOCK -> "socket"
 
-let rand_digits () =
-  let rand = Random.State.(bits (make_self_init ()) land 0xFFFFFF) in
-  Printf.sprintf "%06x" rand
-
-let get_temp_dir_name () = of_string (Filename.get_temp_dir_name ())
-
-let temp_dir ?(temp_dir = get_temp_dir_name ()) ?(mode = 0o700) prefix suffix =
-  let attempts = 512 in
-  let rec loop count =
-    if Stdlib.( >= ) count attempts then
-      Code_error.raise "Path.temp_dir: too many failing attempts"
-        [ ("attempts", Int attempts) ]
-    else
-      let dir =
-        relative temp_dir
-          (String.concat ~sep:"" [ prefix; rand_digits (); suffix ])
-      in
-      try
-        mkdir_p ~perms:mode dir;
-        dir
-      with
-      | Unix.Unix_error (Unix.EEXIST, _, _) -> loop (count - 1)
-      | Unix.Unix_error (Unix.EINTR, _, _) -> loop count
-  in
-  loop 0
-
 let rename old_path new_path =
   Sys.rename (to_string old_path) (to_string new_path)
 

@@ -33,12 +33,6 @@ Formatting can be checked using the @fmt target:
   File "enabled/dune", line 1, characters 0-0:
   Error: Files _build/default/enabled/dune and
   _build/default/enabled/.formatted/dune differ.
-  File "enabled/subdir/dune", line 1, characters 0-0:
-  Error: Files _build/default/enabled/subdir/dune and
-  _build/default/enabled/subdir/.formatted/dune differ.
-  File "lang2/default/dune", line 1, characters 0-0:
-  Error: Files _build/default/lang2/default/dune and
-  _build/default/lang2/default/.formatted/dune differ.
   File "enabled/reason_file.re", line 1, characters 0-0:
   Error: Files _build/default/enabled/reason_file.re and
   _build/default/enabled/.formatted/reason_file.re differ.
@@ -51,9 +45,15 @@ Formatting can be checked using the @fmt target:
   File "enabled/ocaml_file.mli", line 1, characters 0-0:
   Error: Files _build/default/enabled/ocaml_file.mli and
   _build/default/enabled/.formatted/ocaml_file.mli differ.
+  File "enabled/subdir/dune", line 1, characters 0-0:
+  Error: Files _build/default/enabled/subdir/dune and
+  _build/default/enabled/subdir/.formatted/dune differ.
   File "enabled/subdir/lib.ml", line 1, characters 0-0:
   Error: Files _build/default/enabled/subdir/lib.ml and
   _build/default/enabled/subdir/.formatted/lib.ml differ.
+  File "lang2/default/dune", line 1, characters 0-0:
+  Error: Files _build/default/lang2/default/dune and
+  _build/default/lang2/default/.formatted/dune differ.
   File "lang2/default/e.ml", line 1, characters 0-0:
   Error: Files _build/default/lang2/default/e.ml and
   _build/default/lang2/default/.formatted/e.ml differ.
@@ -69,18 +69,6 @@ Configuration files are taken into account for this action:
 
   $ touch enabled/.ocamlformat
   $ dune build @fmt
-  File "enabled/reason_file.re", line 1, characters 0-0:
-  Error: Files _build/default/enabled/reason_file.re and
-  _build/default/enabled/.formatted/reason_file.re differ.
-  File "enabled/reason_file.rei", line 1, characters 0-0:
-  Error: Files _build/default/enabled/reason_file.rei and
-  _build/default/enabled/.formatted/reason_file.rei differ.
-  File "enabled/dune", line 1, characters 0-0:
-  Error: Files _build/default/enabled/dune and
-  _build/default/enabled/.formatted/dune differ.
-  File "enabled/subdir/dune", line 1, characters 0-0:
-  Error: Files _build/default/enabled/subdir/dune and
-  _build/default/enabled/subdir/.formatted/dune differ.
   File "lang2/default/e.ml", line 1, characters 0-0:
   Error: Files _build/default/lang2/default/e.ml and
   _build/default/lang2/default/.formatted/e.ml differ.
@@ -93,12 +81,24 @@ Configuration files are taken into account for this action:
   File "partial/a.ml", line 1, characters 0-0:
   Error: Files _build/default/partial/a.ml and
   _build/default/partial/.formatted/a.ml differ.
+  File "enabled/reason_file.re", line 1, characters 0-0:
+  Error: Files _build/default/enabled/reason_file.re and
+  _build/default/enabled/.formatted/reason_file.re differ.
+  File "enabled/reason_file.rei", line 1, characters 0-0:
+  Error: Files _build/default/enabled/reason_file.rei and
+  _build/default/enabled/.formatted/reason_file.rei differ.
+  File "enabled/dune", line 1, characters 0-0:
+  Error: Files _build/default/enabled/dune and
+  _build/default/enabled/.formatted/dune differ.
   File "enabled/ocaml_file.ml", line 1, characters 0-0:
   Error: Files _build/default/enabled/ocaml_file.ml and
   _build/default/enabled/.formatted/ocaml_file.ml differ.
   File "enabled/ocaml_file.mli", line 1, characters 0-0:
   Error: Files _build/default/enabled/ocaml_file.mli and
   _build/default/enabled/.formatted/ocaml_file.mli differ.
+  File "enabled/subdir/dune", line 1, characters 0-0:
+  Error: Files _build/default/enabled/subdir/dune and
+  _build/default/enabled/subdir/.formatted/dune differ.
   File "enabled/subdir/lib.ml", line 1, characters 0-0:
   Error: Files _build/default/enabled/subdir/lib.ml and
   _build/default/enabled/subdir/.formatted/lib.ml differ.
@@ -129,18 +129,18 @@ All .ocamlformat files are considered dependencies:
   File "enabled/reason_file.rei", line 1, characters 0-0:
   Error: Files _build/default/enabled/reason_file.rei and
   _build/default/enabled/.formatted/reason_file.rei differ.
-  File "enabled/subdir/dune", line 1, characters 0-0:
-  Error: Files _build/default/enabled/subdir/dune and
-  _build/default/enabled/subdir/.formatted/dune differ.
-  File "lang2/default/dune", line 1, characters 0-0:
-  Error: Files _build/default/lang2/default/dune and
-  _build/default/lang2/default/.formatted/dune differ.
   File "enabled/ocaml_file.mli", line 1, characters 0-0:
   Error: Files _build/default/enabled/ocaml_file.mli and
   _build/default/enabled/.formatted/ocaml_file.mli differ.
+  File "enabled/subdir/dune", line 1, characters 0-0:
+  Error: Files _build/default/enabled/subdir/dune and
+  _build/default/enabled/subdir/.formatted/dune differ.
   File "enabled/subdir/lib.ml", line 1, characters 0-0:
   Error: Files _build/default/enabled/subdir/lib.ml and
   _build/default/enabled/subdir/.formatted/lib.ml differ.
+  File "lang2/default/dune", line 1, characters 0-0:
+  Error: Files _build/default/lang2/default/dune and
+  _build/default/lang2/default/.formatted/dune differ.
   File "lang2/default/e.ml", line 1, characters 0-0:
   Error: Files _build/default/lang2/default/e.ml and
   _build/default/lang2/default/.formatted/e.ml differ.
@@ -177,3 +177,61 @@ Sometimes, the suggestion is to just remove the configuration.
   Error: Starting with (lang dune 2.0), formatting is enabled by default.
   To port it to the new syntax, you can delete this part.
   [1]
+
+Formatting can also be set in the (env ...) stanza
+
+  $ mkdir -p using-env
+  $ cat >using-env/dune-project <<EOF
+  > (lang dune 2.7)
+  > EOF
+  $ cat >using-env/dune <<EOF
+  > (env (_ (formatting disabled)))
+  > EOF
+  $ mkdir -p using-env/subdir
+  $ cat >using-env/subdir/dune <<EOF
+  > (executable (name foo))
+  > EOF
+  $ cat >using-env/subdir/foo.ml <<EOF
+  > let x =     12
+  > EOF
+  $ (cd using-env && dune build @fmt)
+  File "dune", line 1, characters 8-29:
+  1 | (env (_ (formatting disabled)))
+              ^^^^^^^^^^^^^^^^^^^^^
+  Error: 'formatting' is only available since version 2.8 of the dune language.
+  Please update your dune-project file to have (lang dune 2.8).
+  [1]
+  $ cat >using-env/dune-project <<EOF
+  > (lang dune 2.8)
+  > EOF
+  $ (cd using-env && dune build @fmt)
+  $ cat >using-env/dune <<EOF
+  > (env (_ (formatting (enabled_for ocaml))))
+  > EOF
+  $ touch using-env/.ocamlformat
+  $ (cd using-env && dune build @fmt)
+  File "subdir/foo.ml", line 1, characters 0-0:
+  Error: Files _build/default/subdir/foo.ml and
+  _build/default/subdir/.formatted/foo.ml differ.
+  [1]
+
+We check that the formatting stanza in (env ...) takes precedence over that in
+dune-project:
+
+  $ cat >>using-env/dune-project <<EOF
+  > (formatting disabled)
+  > EOF
+  $ (cd using-env && dune build @fmt)
+  File "subdir/foo.ml", line 1, characters 0-0:
+  Error: Files _build/default/subdir/foo.ml and
+  _build/default/subdir/.formatted/foo.ml differ.
+  [1]
+
+Next we check that the new logic does not interfere with default per-project
+settings as dictated by the dune language version.
+
+  $ cat >using-env/subdir/dune-project <<EOF
+  > (lang dune 1.7)
+  > ;; formatting disabled by default
+  > EOF
+  $ (cd using-env && dune build @fmt)

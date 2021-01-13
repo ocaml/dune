@@ -59,25 +59,12 @@ let trim ~trimmed_size ~size =
   let open Result.O in
   match
     let* cache =
-      (* CR-soon amokhov: The [Hadrlink] duplication mode is chosen artitrarily
-         here, instead of respecting the corresponding configuration setting,
-         because the mode doesn't matter for the trimmer. It would be better to
-         refactor the code to avoid such arbitrary choices. *)
+      (* CR-someday amokhov: The [Hadrlink] duplication mode is chosen
+         artitrarily here, instead of respecting the corresponding configuration
+         setting, because the mode doesn't matter for the trimmer. It would be
+         better to refactor the code to avoid such arbitrary choices. *)
       Cache.Local.make ~duplication_mode:Cache.Duplication_mode.Hardlink
         ~command_handler:ignore ()
-    in
-    let () =
-      match Cache.Local.detect_unexpected_dirs_under_cache_root cache with
-      | Ok [] -> ()
-      | Ok dirs ->
-        User_error.raise
-          [ Pp.text "Unexpected directories found at the cache root:"
-          ; Pp.enumerate dirs ~f:(fun dir -> Path.to_string dir |> Pp.text)
-          ; Pp.text
-              "These directories are probably used by Dune of a different \
-               version. Please trim the cache manually."
-          ]
-      | Error e -> User_error.raise [ Pp.text (Unix.error_message e) ]
     in
     let+ goal =
       match (trimmed_size, size) with

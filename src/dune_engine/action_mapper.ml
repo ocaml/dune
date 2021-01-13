@@ -51,8 +51,8 @@ module Make (Src : Action_intf.Ast) (Dst : Action_intf.Ast) = struct
         , f_target ~dir target )
     | No_infer t -> No_infer (f t ~dir)
     | Pipe (outputs, l) -> Pipe (outputs, List.map l ~f:(fun t -> f t ~dir))
-    | Format_dune_file (src, dst) ->
-      Format_dune_file (f_path ~dir src, f_target ~dir dst)
+    | Format_dune_file (ver, src, dst) ->
+      Format_dune_file (ver, f_path ~dir src, f_target ~dir dst)
     | Cram script -> Cram (f_path ~dir script)
 
   let rec map t ~dir ~f_program ~f_string ~f_path ~f_target =

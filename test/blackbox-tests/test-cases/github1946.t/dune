@@ -10,4 +10,4 @@
 
 (alias
  (name default)
- (action (echo %{read:.merlin})))
+ (action (echo %{read:.merlin-conf})))

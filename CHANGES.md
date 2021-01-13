@@ -1,6 +1,8 @@
 Unreleased
 ----------
 
+- `dune rules` accepts aliases and other non-path rules (#4063, @mrmr1993)
+
 - Action `(diff reference test_result)` now accept `reference` to be absent and
   in that case consider that the reference is empty. Then running `dune promote`
   will create the reference file. (#3795, @bobot)
@@ -8,9 +10,10 @@ Unreleased
 - Ignore special files (BLK, CHR, FIFO, SOCKET), (#3570, fixes #3124, #3546,
   @ejgallego)
 
-- Experimental: Simplify loading of additional files (data or code) at runtime in programs by
-  introducing specific installation sites. In particular it allow to define
-  plugins to be installed in these sites. (#3104, #3794, fixes #1185, @bobot)
+- Experimental: Simplify loading of additional files (data or code) at runtime
+  in programs by introducing specific installation sites. In particular it allow
+  to define plugins to be installed in these sites. (#3104, #3794, fixes #1185,
+  @bobot)
 
 - Move all temporary files created by dune to run actions to a single directory
   and make sure that actions executed by dune also use this directory by setting
@@ -32,9 +35,9 @@ Unreleased
 
 - Fix generation of `META` and `dune-package` files when some targets (byte,
   native, dynlink) are disabled. Previously, dune would generate all archives
-  for regardless of settings. (#3829, @rgrinberg)
+  for regardless of settings. (#3829, #4041, @rgrinberg)
 
-- Do no run ocamldep to for single module executables & libraries. The
+- Do not run ocamldep to for single module executables & libraries. The
   dependency graph for such artifacts is trivial (#3847, @rgrinberg)
 
 - Fix cram tests inside vendored directories not being interpreted correctly.
@@ -59,9 +62,9 @@ Unreleased
   makes it possible to use the build info module inside the preprocessor.
   (#3848, fix #3848, @rgrinberg)
 
-- Correctly call `git ls-tree` so unicode files are not quoted, this
-  fixes problems with `dune subst` in the presence of unicode
-  files. Fixes #3219 (#3879, @ejgallego)
+- Correctly call `git ls-tree` so unicode files are not quoted, this fixes
+  problems with `dune subst` in the presence of unicode files. Fixes #3219
+  (#3879, @ejgallego)
 
 - `dune subst` now accepts common command-line arguments such as
   `--debug-backtraces` (#3878, @ejgallego)
@@ -69,7 +72,7 @@ Unreleased
 - `dune describe` now also includes information about executables in addition to
   that of libraries. (#3892, #3895, @nojb)
 
-- instrumentations backends can now receive arguments via `(instrumentation
+- instrumentation backends can now receive arguments via `(instrumentation
   (backend <name> <args>))`. (#3906, #3932, @nojb)
 
 - Tweak auto-formatting of `dune` files to improve readability. (#3928, @nojb)
@@ -78,10 +81,51 @@ Unreleased
 
 - Avoid pager when running `$ git diff` (#3912, @AltGr)
 
-- Add the option `use_standard_c_and_cxx_flags` to `dune-project` that
-  disables the unconditional use of the `ocamlc_cflags` and `ocamlc_cppflags`
-  from `ocamlc -config` in C compiler calls. These flags are present in the
-  `:standard` set instead. (#3875, fix #3718, @voodoos)
+- Add `(root_module ..)` field to libraries & executables. This makes it
+  possible to use library dependencies shadowed by local modules (#3825,
+  @rgrinberg)
+
+- Allow `(formatting ...)` field in `(env ...)` stanza to set per-directory
+  formatting specification. (#3942, @nojb)
+
+- [coq] In `coq.theory`, `:standard` for the `flags` field now uses the
+  flags set in `env` profile flags (#3931 , @ejgallego @rgrinberg)
+
+- [coq] Add `-q` flag to `:standard` `coqc` flags , fixes #3924, (#3931 , @ejgallego)
+
+- Add support for Coq's native compute compilation mode (@ejgallego, #3210)
+
+- Add a `SUFFIX` directive in `.merlin` files for each dialect with no
+  preprocessing, to let merlin know of additional file extensions (#3977,
+  @vouillon)
+
+- Stop promoting `.merlin` files. Write per-stanza Merlin configurations in
+  binary form. Add a new subcommand `dune ocaml-merlin` that Merlin can use to
+  query the configuration files. The `allow_approximate_merlin` option is now
+  useless and deprecated. Dune now conflicts with `merlin < 3.4.0` and
+  `ocaml-lsp-server < 1.3.0` (#3554, @voodoos)
+
+- Configurator: fix a bug introduced in 2.6.0 where the configurator V1 API
+  doesn't work at all when used outside of dune. (#4046, @aalekseyev)
+
+- Fix `libexec` and `libexec-private` variables. In cross-compilation settings,
+  they now point to the file in the host context. (#4058, fixes #4057,
+  @TheLortex)
+
+- When running `$ dune subst`, use project metadata as a fallback when package
+  metadata is missing. We also generate a warning when `(name ..)` is missing in
+  `dune-project` files to avoid failures in production builds.
+
+- Remove support for passing `-nodynlink` for executables. It was bypassed in
+  most cases and not correct in other cases in particular on arm32.
+  (#4085, fixes #4069, fixes #2527, @emillon)
+
+- Add the option `use_standard_c_and_cxx_flags` to `dune-project` that disables
+  the unconditional use of the `ocamlc_cflags` and `ocamlc_cppflags` from
+  `ocamlc -config` in C compiler calls. These flags are present in the
+  `:standard` set instead. This option also enable the detection of the C
+  compiler family and populates the `:standard` set of flags with common default
+  values. (#3875, #3802, fix #3718 and #3528, @voodoos)
 
 2.7.1 (2/09/2020)
 -----------------

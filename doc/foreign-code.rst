@@ -6,12 +6,13 @@ The OCaml programming language can interface with libraries written
 in foreign languages such as C. This section explains how to do this
 with Dune. Note that it does not cover how to write the C stubs
 themselves, this is covered by the
-`OCaml manual <https://caml.inria.fr/pub/docs/manual-ocaml/intfc.html>`_
+`OCaml manual <https://caml.inria.fr/pub/docs/manual-ocaml/intfc.html>`_.
 
 More precisely, this section covers:
-- how to add C/C++ stubs to an OCaml library
-- how to pass specific compilation flags for compiling the stubs
-- how to build a library with a foreign build system
+
+- how to add C/C++ stubs to an OCaml library;
+- how to pass specific compilation flags for compiling the stubs;
+- how to build a library with a foreign build system.
 
 Note that in general Dune has limited support for building source
 files written in foreign languages. This support is suitable for most

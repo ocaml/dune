@@ -19,5 +19,5 @@ let union x y =
   ; action_deps = Dep.Set.union x.action_deps y.action_deps
   }
 
-let paths { action_deps; rule_deps } ~eval_pred =
-  Dep.Set.paths (Dep.Set.union action_deps rule_deps) ~eval_pred
+let paths { action_deps; rule_deps } =
+  Dep.Set.paths (Dep.Set.union action_deps rule_deps)

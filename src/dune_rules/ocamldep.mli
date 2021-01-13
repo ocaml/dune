@@ -1,7 +1,7 @@
 (** ocamldep management *)
-open! Dune_engine
 
-open Stdune
+open! Dune_engine
+open Import
 
 val deps_of :
      cctx:Compilation_context.t

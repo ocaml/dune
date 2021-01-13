@@ -1,0 +1,10 @@
+(library
+ (name quad)
+ (modules quad)
+ (foreign_stubs (language cxx) (names baz)))
+
+(executable
+ (name main)
+ (libraries quad)
+ (modules main))
+

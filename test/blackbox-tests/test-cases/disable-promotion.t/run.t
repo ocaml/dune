@@ -1,12 +1,18 @@
 This tests shows how all promotion to the source dir may be disabled. This
-includes both .install and .merlin files
+includes .install files and manually promoted executables
 
-  $ dune build --disable-promotion @all
-.merlin is absent
-  $ test -f .merlin && echo ".merlin exists"
+  $ dune build -p foo --disable-promotion
+
+foo.exe and foo.install are absent
+  $ test -f foo.exe && echo "foo.exe exists"
+  [1]
+  $ test -f foo.install && echo "foo.install exists"
   [1]
 
-now we build without the option and see that it is present:
-  $ dune build @all
-  $ test -f .merlin && echo ".merlin exists"
-  .merlin exists
+now we build without the option and see that they are present:
+  $ dune build -p foo
+
+  $ test -f foo.exe && echo "foo.exe exists"
+  foo.exe exists
+  $ test -f foo.install && echo "foo.install exists"
+  foo.install exists

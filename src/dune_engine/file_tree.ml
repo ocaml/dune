@@ -564,7 +564,7 @@ end = struct
     let project =
       match
         Dune_project.load ~dir:path ~files:readdir.files
-          ~infer_from_opam_files:true
+          ~infer_from_opam_files:true ~dir_status
       with
       | None -> Dune_project.anonymous ~dir:path
       | Some p -> p
@@ -618,7 +618,8 @@ end = struct
         else
           Option.value
             (Dune_project.load ~dir:path ~files:readdir.files
-               ~infer_from_opam_files:settings.recognize_jbuilder_projects)
+               ~infer_from_opam_files:settings.recognize_jbuilder_projects
+               ~dir_status)
             ~default:parent_dir.project
       in
       let vcs = get_vcs ~default:parent_dir.vcs ~readdir ~path in

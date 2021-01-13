@@ -1,8 +1,0 @@
-(executable
- (name a)
- (modules a)
- (preprocess future_syntax))
-
-(executable
- (name b)
- (modules b))

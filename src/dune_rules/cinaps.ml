@@ -30,9 +30,7 @@ let decode =
        field "files" Predicate_lang.Glob.decode ~default:Predicate_lang.any
      and+ preprocess, preprocessor_deps = Dune_file.preprocess_fields
      and+ libraries =
-       field "libraries"
-         (Dune_file.Lib_deps.decode ~allow_re_export:false)
-         ~default:[]
+       field "libraries" (Dune_file.Lib_deps.decode Executable) ~default:[]
      and+ flags = Ocaml_flags.Spec.decode in
      { loc; files; libraries; preprocess; preprocessor_deps; flags })
 
@@ -103,7 +101,7 @@ let gen_rules sctx t ~dir ~scope =
       ~requires_compile:(Lib.Compile.direct_requires compile_info)
       ~requires_link:(Lib.Compile.requires_link compile_info)
       ~flags:(Ocaml_flags.of_list [ "-w"; "-24" ])
-      ~js_of_ocaml:None ~dynlink:false ~package:None
+      ~js_of_ocaml:None ~package:None
   in
   Exe.build_and_link cctx
     ~program:{ name; main_module_name; loc }

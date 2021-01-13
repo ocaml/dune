@@ -27,6 +27,11 @@ val info : t -> Path.t Lib_info.t
 
 val main_module_name : t -> Module_name.t option Or_exn.t
 
+val entry_module_names :
+     t
+  -> local_lib:(dir:Path.Build.t -> name:Lib_name.t -> Modules.t)
+  -> Module_name.t list Or_exn.t
+
 val wrapped : t -> Wrapped.t option Or_exn.t
 
 (** [is_impl lib] returns [true] if the library is an implementation of a
@@ -115,6 +120,8 @@ type sub_system = ..
 module Compile : sig
   type t
 
+  type lib
+
   (** Return the list of dependencies needed for linking this library/exe *)
   val requires_link : t -> L.t Or_exn.t Lazy.t
 
@@ -136,9 +143,12 @@ module Compile : sig
 
   val lib_deps_info : t -> Lib_deps_info.t
 
+  val merlin_ident : t -> Merlin_ident.t
+
   (** Sub-systems used in this compilation context *)
   val sub_systems : t -> sub_system list
 end
+with type lib := t
 
 (** {1 Library name resolution} *)
 
@@ -261,8 +271,6 @@ module Sub_system : sig
     (** Get the instance of the subsystem for this library *)
     val get : lib -> M.t option
   end
-
-  val public_info : lib -> Sub_system_info.t Sub_system_name.Map.t
 end
 with type lib := t
 

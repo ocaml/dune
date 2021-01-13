@@ -1,6 +1,5 @@
 ----------------------------------------------------------------------------------
 Testsuite for the %{lib...} and %{lib-private...} variable.
-TODO: Fix %{libexec} and %{libexec-private} variables and test them.
 
   $ cat >sdune <<'EOF'
   > #!/usr/bin/env bash

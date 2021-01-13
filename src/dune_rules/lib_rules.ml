@@ -364,9 +364,6 @@ let cctx (lib : Library.t) ~sctx ~source_modules ~dir ~expander ~scope
   let modules = Vimpl.impl_modules vimpl modules in
   let requires_compile = Lib.Compile.direct_requires compile_info in
   let requires_link = Lib.Compile.requires_link compile_info in
-  let dynlink =
-    Dynlink_supported.get lib.dynlink ctx.supports_shared_libraries
-  in
   let modes =
     let { Lib_config.has_native; _ } = ctx.lib_config in
     Dune_file.Mode_conf.Set.eval_detailed lib.modes ~has_native
@@ -375,7 +372,7 @@ let cctx (lib : Library.t) ~sctx ~source_modules ~dir ~expander ~scope
   Compilation_context.create () ~super_context:sctx ~expander ~scope ~obj_dir
     ~modules ~flags ~requires_compile ~requires_link ~preprocessing:pp
     ~opaque:Inherit_from_settings ~js_of_ocaml:(Some lib.buildable.js_of_ocaml)
-    ~dynlink ?stdlib:lib.stdlib ~package ?vimpl ~modes
+    ?stdlib:lib.stdlib ~package ?vimpl ~modes
 
 let library_rules (lib : Library.t) ~cctx ~source_modules ~dir_contents
     ~compile_info =
@@ -420,9 +417,12 @@ let library_rules (lib : Library.t) ~cctx ~source_modules ~dir_contents
     ; compile_info
     };
   ( cctx
-  , Merlin.make () ~requires:requires_compile ~flags ~modules
+  , Merlin.make ~requires:requires_compile ~flags ~modules
       ~preprocess:(Preprocess.Per_module.single_preprocess preprocess)
-      ~libname:(snd lib.name) ~obj_dir )
+      ~libname:(snd lib.name) ~obj_dir
+      ~dialects:(Dune_project.dialects (Scope.project scope))
+      ~ident:(Lib.Compile.merlin_ident compile_info)
+      () )
 
 let rules (lib : Library.t) ~sctx ~dir_contents ~dir ~expander ~scope :
     Compilation_context.t * Merlin.t =

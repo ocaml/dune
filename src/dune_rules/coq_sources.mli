@@ -10,6 +10,8 @@ val empty : t
 (** Coq modules of library [name] is the Coq library name. *)
 val library : t -> name:Coq_lib_name.t -> Coq_module.t list
 
+val directories : t -> name:Coq_lib_name.t -> Path.Build.t list
+
 val extract : t -> Coq_stanza.Extraction.t -> Coq_module.t
 
 val of_dir :

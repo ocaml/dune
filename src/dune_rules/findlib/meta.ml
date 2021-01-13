@@ -141,19 +141,31 @@ let archives name =
   ; plugin "native" (name ^ Mode.plugin_ext Native)
   ]
 
+(* fake entry we use to pass down the list of toplevel modules for root_module *)
+let main_modules names =
+  List.map ~f:String.capitalize_ascii names
+  |> String.concat ~sep:" " |> rule "main_modules" [] Set
+
 let builtins ~stdlib_dir ~version:ocaml_version =
   let version = version "[distributed with Ocaml]" in
-  let simple name ?dir ?archive_name deps =
+  let simple name ?(labels = false) ?dir ?archive_name deps =
     let archive_name =
       match archive_name with
       | None -> name
       | Some a -> a
     in
+    let main_modules =
+      if labels then
+        main_modules [ name; name ^ "Labels" ]
+      else
+        main_modules [ name ]
+    in
     let name = Lib_name.of_string name in
     let archives = archives archive_name in
+    let main_modules = main_modules in
     { name = Some name
     ; entries =
-        requires deps :: version
+        requires deps :: version :: main_modules
         ::
         ( match dir with
         | None -> archives
@@ -161,7 +173,9 @@ let builtins ~stdlib_dir ~version:ocaml_version =
     }
   in
   let dummy name =
-    { name = Some (Lib_name.of_string name); entries = [ version ] }
+    { name = Some (Lib_name.of_string name)
+    ; entries = [ version; main_modules [ name ] ]
+    }
   in
   let compiler_libs =
     let sub name deps =
@@ -181,7 +195,7 @@ let builtins ~stdlib_dir ~version:ocaml_version =
   in
   let stdlib = dummy "stdlib" in
   let str = simple "str" [] ~dir:"+" in
-  let unix = simple "unix" [] ~dir:"+" in
+  let unix = simple ~labels:true "unix" [] ~dir:"+" in
   let bigarray =
     if
       Ocaml_version.stdlib_includes_bigarray ocaml_version
@@ -200,6 +214,7 @@ let builtins ~stdlib_dir ~version:ocaml_version =
     { name = Some (Lib_name.of_string "threads")
     ; entries =
         [ version
+        ; main_modules [ "thread" ]
         ; requires ~preds:[ Pos "mt"; Pos "mt_vm" ] [ "threads.vm" ]
         ; requires ~preds:[ Pos "mt"; Pos "mt_posix" ] [ "threads.posix" ]
         ; directory "+"
@@ -219,6 +234,7 @@ let builtins ~stdlib_dir ~version:ocaml_version =
     { name = Some (Lib_name.of_string "num")
     ; entries =
         [ requires [ "num.core" ]
+        ; main_modules [ "num" ]
         ; version
         ; Package (simple "core" [] ~dir:"+" ~archive_name:"nums")
         ]

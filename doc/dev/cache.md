@@ -19,7 +19,8 @@ purpose, especially when using a weak hash like MD5.
 The cache stores build _artifacts_ and _values_.
 
 * An _artifact_ is a file produced by a build rule. As any file, it has a name
-  as well as content. A single build rule can produce multiple files.
+  as well as content. Note that we treat a file's executable permission bit as
+  part of its content.
 
 * A _value_ is anything else produced during a build that is not written to a
   file but which is worth storing persistently between successive builds. A
@@ -91,7 +92,7 @@ Let `root` stand for the cache root directory. It has three main subdirectories.
 * `root/files/v3` is a storage for artifacts, where files named by content
   hashes store the matching contents. We will create hard links to these files
   from build directories and rely on the hard link count, as well as on the last
-  access time as useful metrics during cache trimming.
+  change time as useful metrics during cache trimming.
 
 * `root/values/v3` is a storage for values. As in the case of `files`, we store
   the values in the files named by their content hashes. However, these files
@@ -101,6 +102,9 @@ Let `root` stand for the cache root directory. It has three main subdirectories.
 
 * `root/temp` contains temporary files used for atomic file operations needed
    when adding new entries to the cache, as will be described below.
+
+Note that since this document was first written, some of the above paths have
+changed due to version bumps (to `v4` and beyond).
 
 ## Adding entries to the cache
 
@@ -118,7 +122,7 @@ errors aside, these functions can succeed in two ways.
 
 ### Atomic writing to the cache
 
-As mentioned above, the cache can be modified concurrency by multiple systems,
+As mentioned above, the cache can be modified concurrently by multiple systems,
 so to prevent collisions on individual files, we need to create new files
 atomically. To do that, we first create a temporary file in the `temp`
 directory, then create a hard link to it from the cache (this operation will
@@ -236,8 +240,8 @@ following steps.
     - Type: artifacts precede values in the trimming list since artifacts are
       generally larger and we know for sure that they are unused;
 
-    - The time of last access: entries that were used more recently go later in
-      the list.
+    - The time of last change: entries that became unused more recently go later
+      in the list.
 
 * Traverse the list and delete the corresponding entries until the trimming goal
   has been met. Right before deleting an artifact entry, double check that its
@@ -267,3 +271,9 @@ early cut-off optimisation.
 Another promising idea is to add support for incremental cache trimming where
 the build system informs the cache that a previously added entry has become
 obsolete, letting the cache trim it early if it meets the trimming criteria.
+
+### Interaction with the previous cache versions
+
+Note also that as the new cache format evolves further and we, for example, move
+from `files/v3` to `files/v4`, the cache trimmer will need to evolve too, to be
+able to cope with entries of all currently supported versions.

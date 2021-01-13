@@ -6,6 +6,11 @@ let ok x = Ok x
 
 let return = ok
 
+let value r ~default =
+  match r with
+  | Ok v -> v
+  | Error _ -> default
+
 let is_ok = function
   | Ok _ -> true
   | Error _ -> false
@@ -106,6 +111,13 @@ module List = struct
     match t with
     | [] -> Ok init
     | x :: xs -> f init x >>= fun init -> fold_left xs ~f ~init
+
+  let filter_map t ~f =
+    fold_left t ~init:[] ~f:(fun acc x ->
+        f x >>| function
+        | None -> acc
+        | Some y -> y :: acc)
+    >>| List.rev
 end
 
 let hash h1 h2 t =

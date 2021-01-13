@@ -1,4 +1,4 @@
-open! Stdune
+open! Import
 
 module File_kind = struct
   type t =
@@ -185,6 +185,8 @@ module DB = struct
         in
         (dialect, kind))
       (String.Map.find by_extension extension)
+
+  let fold { by_name; _ } = String.Map.fold by_name
 
   let to_dyn { by_name; _ } = String.Map.to_dyn to_dyn by_name
 

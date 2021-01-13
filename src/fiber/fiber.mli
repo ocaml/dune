@@ -77,6 +77,12 @@ val parallel_map : 'a list -> f:('a -> 'b t) -> 'b list t
 (** Iter over a list in parallel. *)
 val parallel_iter : 'a list -> f:('a -> unit t) -> unit t
 
+val parallel_iter_set :
+     (module Set.S with type elt = 'a and type t = 's)
+  -> 's
+  -> f:('a -> unit t)
+  -> unit t
+
 (** {1 Local storage} *)
 
 (** Variables local to a fiber *)
@@ -141,6 +147,9 @@ val collect_errors :
 (** [finalize f ~finally] runs [finally] after [f ()] has terminated, whether it
     fails or succeeds. *)
 val finalize : (unit -> 'a t) -> finally:(unit -> unit t) -> 'a t
+
+(** [reraise_all exns] re-raises all [exns] to the current error handler *)
+val reraise_all : Exn_with_backtrace.t list -> 'a t
 
 (** {1 Synchronization} *)
 

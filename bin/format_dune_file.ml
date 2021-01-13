@@ -20,8 +20,15 @@ let term =
     let docv = "FILE" in
     let doc = "Path to the dune file to parse." in
     Arg.(value & pos 0 (some path) None & info [] ~docv ~doc)
+  and+ version =
+    let docv = "VERSION" in
+    let doc = "Which version of Dune language to use." in
+    let default =
+      Dune_lang.Syntax.greatest_supported_version Dune_engine.Stanza.syntax
+    in
+    Arg.(value & opt version default & info [ "dune-version" ] ~docv ~doc)
   in
   let input = Option.map ~f:Arg.Path.path path_opt in
-  Format_dune_lang.format_file ~input ~output:None
+  Format_dune_lang.format_file ~version ~input ~output:None
 
 let command = (term, info)

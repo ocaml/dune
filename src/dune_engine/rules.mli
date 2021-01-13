@@ -94,8 +94,6 @@ val union : t -> t -> t
 
 val produce_dir : dir:Path.Build.t -> Dir_rules.t -> unit
 
-val produce_dir' : dir:Path.t -> Dir_rules.t -> unit
-
 val produce : t -> unit
 
 val produce_opt : t option -> unit

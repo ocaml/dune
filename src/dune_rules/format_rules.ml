@@ -21,8 +21,8 @@ let depend_on_files ~named dir =
 
 let formatted = ".formatted"
 
-let gen_rules_output sctx (config : Format_config.t) ~dialects ~expander
-    ~output_dir =
+let gen_rules_output sctx (config : Format_config.t) ~version ~dialects
+    ~expander ~output_dir =
   assert (formatted = Path.Build.basename output_dir);
   let loc = Format_config.loc config in
   let dir = Path.Build.parent_exn output_dir in
@@ -42,7 +42,7 @@ let gen_rules_output sctx (config : Format_config.t) ~dialects ~expander
         @@
         let open Build.O in
         let+ () = Build.path input in
-        Action.format_dune_file input output
+        Action.format_dune_file ~version input output
       | _ ->
         let ext = Path.Source.extension file in
         let open Option.O in

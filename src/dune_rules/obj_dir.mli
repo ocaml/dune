@@ -1,5 +1,4 @@
 (** Representation of the object directory for libraries *)
-open! Dune_engine
 
 (** Dune store the artifacts of a library or a set of executables in a dedicated
     dot directory (name starting with a '.').
@@ -26,7 +25,8 @@ open! Dune_engine
     to treat object directories of both local and external library in the same
     way. *)
 
-open! Stdune
+open! Dune_engine
+open! Import
 
 type 'path t
 

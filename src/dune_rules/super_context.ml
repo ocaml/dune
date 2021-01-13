@@ -304,7 +304,7 @@ let make_rule t ?sandbox ?mode ?locks ?loc ~dir build =
   let build = chdir_to_build_context_root t build in
   let env = get_node t.env_tree ~dir |> Env_node.external_env in
   Rule.make ?sandbox ?mode ?locks ~info:(Rule.Info.of_loc_opt loc)
-    ~context:(Some (Context.to_build_context t.context))
+    ~context:(Some (Context.build_context t.context))
     ~env:(Some env) build
 
 let add_rule t ?sandbox ?mode ?locks ?loc ~dir build =
@@ -322,7 +322,7 @@ let add_rules t ?sandbox ~dir builds =
 let add_alias_action t alias ~dir ~loc ?locks ~stamp action =
   let env = Some (get_node t.env_tree ~dir |> Env_node.external_env) in
   Rules.Produce.Alias.add_action
-    ~context:(Context.to_build_context t.context)
+    ~context:(Context.build_context t.context)
     ~env alias ~loc ?locks ~stamp action
 
 let build_dir_is_vendored build_dir =

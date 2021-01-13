@@ -1,5 +1,5 @@
-Unreleased
-----------
+2.8.0 (13/01/2021)
+------------------
 
 - `dune rules` accepts aliases and other non-path rules (#4063, @mrmr1993)
 

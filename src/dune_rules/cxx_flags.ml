@@ -23,9 +23,7 @@ let ccomp_type dir =
   let+ ccomp = Build.contents (Path.build filepath) in
   match String.trim ccomp with
   | "clang" -> Clang
-  | "gcc"
-  | "mingw" ->
-    Gcc
+  | "gcc" -> Gcc
   | "msvc" -> Msvc
   | s -> Other s
 

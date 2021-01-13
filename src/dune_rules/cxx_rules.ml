@@ -5,8 +5,6 @@ let header_file_content =
   {|
 #if defined( __clang__ )
   #define CCOMP clang
-#elif defined( __MINGW32__) || defined( __MINGW64__ )
-  #define CCOMP mingw
 #elif defined( _MSC_VER )
   #define CCOMP msvc
 #elif defined( __GNUC__ )

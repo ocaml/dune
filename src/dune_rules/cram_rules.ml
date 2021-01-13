@@ -181,8 +181,6 @@ let rules ~sctx ~expander ~dir tests =
       match !Clflags.only_packages with
       | None -> test_rule ()
       | Some only ->
-        if
-          Package.Name.Set.is_empty only
-          || Package.Name.Set.(not (is_empty (inter only effective.packages)))
+        if Package.Name.Set.(not (is_empty (inter only effective.packages)))
         then
           test_rule ())

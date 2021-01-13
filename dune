@@ -9,3 +9,6 @@
 
 (rule
  (copy dune-private-libs.opam.template dune-build-info.opam.template))
+
+(rule
+ (copy dune-private-libs.opam.template dune-site.opam.template))

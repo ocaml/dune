@@ -29,6 +29,8 @@ val main_module_name : t -> Module_name.t option Or_exn.t
 
 val entry_module_names : t -> Module_name.t list Or_exn.t
 
+val src_dirs : t -> Path.Set.t
+
 val wrapped : t -> Wrapped.t option Or_exn.t
 
 (** [is_impl lib] returns [true] if the library is an implementation of a

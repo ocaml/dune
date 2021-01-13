@@ -230,25 +230,6 @@ module Unprocessed = struct
         in
         Build.With_targets.return (Some Processed.{ flag = "-ppx"; args }) )
 
-  (* This is used to determine the list of source directories to give to Merlin.
-     This is similar to [Gen_rules.lib_src_dirs], but it's used for dependencies
-     instead of the library itself. It would be nice to unify these some day. *)
-  let lib_src_dirs ~sctx lib =
-    match Lib.Local.of_lib lib with
-    | None ->
-      let info = Lib.info lib in
-      Path.Set.singleton (Lib_info.best_src_dir info)
-    | Some info ->
-      let info = Lib.Local.info info in
-      let dir = Lib_info.src_dir info in
-      let name = Lib_info.name info in
-      let modules =
-        Dir_contents.get sctx ~dir |> Dir_contents.ocaml
-        |> Ml_sources.modules ~for_:(Library name)
-      in
-      Path.Set.map ~f:Path.drop_optional_build_context
-        (Modules.source_dirs modules)
-
   let process
       { modules
       ; ident = _
@@ -269,7 +250,7 @@ module Unprocessed = struct
         Lib.Set.fold requires
           ~init:(Path.set_of_source_paths source_dirs, objs_dirs)
           ~f:(fun (lib : Lib.t) (src_dirs, obj_dirs) ->
-            let more_src_dirs = lib_src_dirs ~sctx lib in
+            let more_src_dirs = Lib.src_dirs lib in
             ( Path.Set.union src_dirs more_src_dirs
             , let public_cmi_dir = Obj_dir.public_cmi_dir (Lib.obj_dir lib) in
               Path.Set.add obj_dirs public_cmi_dir ))

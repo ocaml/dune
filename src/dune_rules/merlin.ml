@@ -72,16 +72,13 @@ module Processed = struct
       (List.concat [ exclude_query_dir; obj_dirs; src_dirs; flags; suffixes ])
 
   let get { modules; pp_config; config } ~filename =
-    let fname = Filename.remove_extension filename in
-    match
-      List.find_opt modules ~f:(fun name ->
-          let fname' = Module_name.to_string name |> String.lowercase in
-          String.equal fname fname')
-    with
-    | Some name ->
-      let pp = Module_name.Per_item.get pp_config name in
-      Some (to_sexp ~pp config)
-    | None -> None
+    let fname = Filename.remove_extension filename |> String.lowercase in
+    List.find_opt modules ~f:(fun name ->
+        let fname' = Module_name.to_string name |> String.lowercase in
+        String.equal fname fname')
+    |> Option.map ~f:(fun name ->
+           let pp = Module_name.Per_item.get pp_config name in
+           to_sexp ~pp config)
 
   let print_file path =
     match load_file path with

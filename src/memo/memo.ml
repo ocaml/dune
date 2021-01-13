@@ -149,7 +149,7 @@ let reset () =
 module Value = struct
   type error =
     | Sync of Exn_with_backtrace.t
-    | Async of Exn_with_backtrace.t list
+    | Async of Exn_with_backtrace.Set.t
 
   type 'a t = ('a, error) Result.t
 
@@ -157,7 +157,7 @@ module Value = struct
     match t with
     | Ok _ -> t
     | Error (Sync exn) -> Error (Sync (f exn))
-    | Error (Async exns) -> Error (Async (List.map exns ~f))
+    | Error (Async exns) -> Error (Async (Exn_with_backtrace.Set.map exns ~f))
 
   let get_sync_exn = function
     | Ok a -> a
@@ -169,7 +169,8 @@ module Value = struct
   let get_async_exn = function
     | Ok a -> Fiber.return a
     | Error (Sync _) -> assert false
-    | Error (Async exns) -> Fiber.reraise_all exns
+    | Error (Async exns) ->
+      Fiber.reraise_all (Exn_with_backtrace.Set.to_list exns)
 end
 
 module Completion = struct
@@ -797,10 +798,11 @@ end = struct
     (* update the output cache with the correct value *)
     let deps = List.rev running_state.deps_so_far.deps_reversed in
     let res =
-      match res with
-      | Ok a -> Ok a
-      | Error exns -> Error (Value.Async exns)
+      Result.map_error res ~f:(fun exns ->
+          (* this step deduplicates the errors *)
+          Value.Async (Exn_with_backtrace.Set.of_list exns))
     in
+
     dep_node.state <- Done (Cached_value.create res ~deps);
     (* fill the ivar for any waiting threads *)
     let+ () = Fiber.Ivar.fill ivar res in

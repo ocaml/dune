@@ -1,4 +1,4 @@
-We can attach packages to cram tests
+We can attach cram tests to packages
 
 This sub dir is needed because we are runnning cram inside and cram, and we
 don't want our own test file to be visible.

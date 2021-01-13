@@ -75,21 +75,21 @@ let include_dir_flags ~expander ~dir (stubs : Foreign.Stubs.t) =
 
 let build_c ~kind ~sctx ~dir ~expander ~include_flags (loc, src, dst) =
   let ctx = Super_context.context sctx in
-  let flags =
-    let ctx_flags =
-      match kind with
-      | Foreign_language.C ->
-        let cfg = ctx.ocaml_config in
-        List.concat
-          [ Ocaml_config.ocamlc_cflags cfg
-          ; Ocaml_config.ocamlc_cppflags cfg
-          ; Fdo.c_flags ctx
-          ]
-      | Foreign_language.Cxx -> Fdo.cxx_flags ctx
-    in
+  let base_flags =
+    let cfg = ctx.ocaml_config in
+    match kind with
+    | Foreign_language.C ->
+      List.concat
+        [ Ocaml_config.ocamlc_cflags cfg
+        ; Ocaml_config.ocamlc_cppflags cfg
+        ; Fdo.c_flags ctx
+        ]
+    | Foreign_language.Cxx -> Fdo.cxx_flags ctx
+  in
+  let with_user_and_std_flags =
     let flags = Foreign.Source.flags src in
     Super_context.foreign_flags sctx ~dir ~expander ~flags ~language:kind
-    |> Build.map ~f:(List.append ctx_flags)
+    |> Build.map ~f:(List.append base_flags)
   in
   let output_param =
     match ctx.lib_config.ccomp_type with
@@ -108,7 +108,7 @@ let build_c ~kind ~sctx ~dir ~expander ~include_flags (loc, src, dst) =
         produced in the current directory *)
      Command.run ~dir:(Path.build dir)
        (Super_context.resolve_program ~loc:None ~dir sctx c_compiler)
-       ( [ Command.Args.dyn flags
+       ( [ Command.Args.dyn with_user_and_std_flags
          ; S [ A "-I"; Path ctx.stdlib_dir ]
          ; include_flags
          ]

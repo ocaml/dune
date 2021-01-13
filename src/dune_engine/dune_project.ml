@@ -160,6 +160,7 @@ type t =
   ; implicit_transitive_deps : bool
   ; wrapped_executables : bool
   ; dune_version : Dune_lang.Syntax.Version.t
+  ; use_standard_c_and_cxx_flags : bool
   ; generate_opam_files : bool
   ; file_key : File_key.t
   ; dialects : Dialect.DB.t
@@ -189,6 +190,8 @@ let file_key t = t.file_key
 
 let implicit_transitive_deps t = t.implicit_transitive_deps
 
+let use_standard_c_and_cxx_flags t = t.use_standard_c_and_cxx_flags
+
 let generate_opam_files t = t.generate_opam_files
 
 let dialects t = t.dialects
@@ -208,6 +211,7 @@ let to_dyn
     ; implicit_transitive_deps
     ; wrapped_executables
     ; dune_version
+    ; use_standard_c_and_cxx_flags
     ; generate_opam_files
     ; file_key
     ; dialects
@@ -229,6 +233,7 @@ let to_dyn
     ; ("implicit_transitive_deps", bool implicit_transitive_deps)
     ; ("wrapped_executables", bool wrapped_executables)
     ; ("dune_version", Dune_lang.Syntax.Version.to_dyn dune_version)
+    ; ("use_standard_c_and_cxx_flags", bool use_standard_c_and_cxx_flags)
     ; ("generate_opam_files", bool generate_opam_files)
     ; ("file_key", string file_key)
     ; ("dialects", Dialect.DB.to_dyn dialects)
@@ -604,6 +609,7 @@ let infer ~dir packages =
   ; extension_args
   ; parsing_context
   ; dune_version = lang.version
+  ; use_standard_c_and_cxx_flags = false
   ; generate_opam_files = false
   ; file_key
   ; dialects = Dialect.DB.builtin
@@ -685,6 +691,9 @@ let parse ~dir ~lang ~opam_packages ~file ~dir_status =
              "It is useless since the Merlin configurations are not ambiguous \
               anymore."
            loc lang.syntax (2, 8) ~what:"This field"
+     and+ use_standard_c_and_cxx_flags =
+       field_o_b "use_standard_c_and_cxx_flags"
+         ~check:(Dune_lang.Syntax.since Stanza.syntax (2, 8))
      and+ () = Dune_lang.Versioned_file.no_more_lang
      and+ generate_opam_files =
        field_o_b "generate_opam_files"
@@ -797,6 +806,9 @@ let parse ~dir ~lang ~opam_packages ~file ~dir_status =
          ~default:(strict_package_deps_default ~lang)
      in
      let dune_version = lang.version in
+     let use_standard_c_and_cxx_flags =
+       Option.value ~default:false use_standard_c_and_cxx_flags
+     in
      let explicit_js_mode =
        Option.value explicit_js_mode ~default:(explicit_js_mode_default ~lang)
      in
@@ -846,6 +858,7 @@ let parse ~dir ~lang ~opam_packages ~file ~dir_status =
      ; implicit_transitive_deps
      ; wrapped_executables
      ; dune_version
+     ; use_standard_c_and_cxx_flags
      ; generate_opam_files
      ; dialects
      ; explicit_js_mode

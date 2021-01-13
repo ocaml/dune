@@ -11,7 +11,7 @@ Test embedding of build information
   > (package (name $i))
   > EOF
   >   (cd $i;
-  >    git init --initial-branch master -q
+  >    git init -q;
   >    git add .;
   >    git commit -q -m _;
   >    git tag -a 1.0+$i -m _)

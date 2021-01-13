@@ -57,10 +57,7 @@ type action =
 
 let run_action (vcs : Vcs.t) action =
   match action with
-  | Init -> (
-    match vcs.kind with
-    | Hg -> run vcs [ "init" ]
-    | Git -> run vcs [ "init"; "--initial-branch"; "master" ] )
+  | Init -> run vcs [ "init"; "-q" ]
   | Add fn -> run vcs [ "add"; fn ]
   | Commit -> (
     match vcs.kind with
@@ -150,7 +147,7 @@ let%expect_test _ =
   run Git script;
   [%expect
     {|
-$ git init --initial-branch master
+$ git init -q
 $ echo "-" > a
 $ git add a
 $ git commit -m 'commit message'
@@ -193,7 +190,7 @@ let%expect_test _ =
   run Hg script;
   [%expect
     {|
-$ hg init
+$ hg init -q
 $ echo "-" > a
 $ hg add a
 $ hg commit -m 'commit message' -u toto

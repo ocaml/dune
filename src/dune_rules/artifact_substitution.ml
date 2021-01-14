@@ -292,8 +292,8 @@ module Scanner = struct
        accumulated so far. *)
     | Scan_placeholder of int * int
 
-  (* [Scan_placeholder (placeholder_start, len)] is the state after seeing all of
-     [prefix] and the length field, i.e. just after the second ':' of the
+  (* [Scan_placeholder (placeholder_start, len)] is the state after seeing all
+     of [prefix] and the length field, i.e. just after the second ':' of the
      placeholder *)
 
   (* The [run] function at the end of this module is the main function that

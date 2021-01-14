@@ -84,6 +84,30 @@ developer had in their mind when they originally wrote the code. What is worse,
 they might understand the code in a completely different way which would lead
 them to update it the wrong way.
 
+Releasing Dune
+==============
+
+Dune's release process relies on dune-release_. Make sure to install and understand
+this software works before proceeding. Publishing a release consists of two steps:
+
+* Updating ``CHANGES.md`` to reflect the version being published
+* Running ``$ make opam-release`` to create the release tarball, publish it to
+  github, and submit it to opam.
+
+Major Releases
+--------------
+
+Given a new version `x.y.z`, a major release increments either `x` or `y`.  Such
+a release must be done from the `main` branch. Once the release is published, be
+sure to publish a release branch named `x.y`.
+
+Point Releases
+--------------
+
+Point releases increment the `z` in `x.y.z`. Such releases are done from the
+respective `x.y` branch for the major version this release belongs to. Once the
+release is done, be sure to update `CHANGES` in the `main` branch.
+
 Adding Stanzas
 ==============
 
@@ -199,3 +223,5 @@ algorithm that tries to load the rule that generates some target file `t`.
 To adhere to this loading scheme, our rules must therefore be generated as part
 of the callback that generates targets in that directory. See the ``Gen_rules``
 module for how this callback is constructed.
+
+.. _dune-release: https://github.com/ocamllabs/dune-release

@@ -1,0 +1,10 @@
+(library
+ (name dune_upgrader)
+ (libraries
+  stdune
+  memo
+  opam_file_format
+  dune_lang
+  jbuild_support
+  dune_engine)
+ (synopsis "Internal Dune library, do not use!"))

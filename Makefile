@@ -19,6 +19,7 @@ js_of_ocaml \
 js_of_ocaml-compiler \
 "mdx=1.7.0" \
 menhir \
+"merlin>=3.4.0" \
 ocamlfind \
 ocamlformat.0.15.0 \
 "odoc>=1.5.0" \

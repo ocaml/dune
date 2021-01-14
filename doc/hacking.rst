@@ -94,19 +94,19 @@ this software works before proceeding. Publishing a release consists of two step
 * Running ``$ make opam-release`` to create the release tarball, publish it to
   github, and submit it to opam.
 
-Major Releases
---------------
+Major & Feature Releases
+------------------------
 
-Given a new version `x.y.z`, a major release increments either `x` or `y`.  Such
-a release must be done from the `main` branch. Once the release is published, be
-sure to publish a release branch named `x.y`.
+Given a new version `x.y.z`, a major release increments `x`, and a feature
+release increments `y`.  Such a release must be done from the `main` branch.
+Once the release is published, be sure to publish a release branch named `x.y`.
 
 Point Releases
 --------------
 
 Point releases increment the `z` in `x.y.z`. Such releases are done from the
-respective `x.y` branch for the major version this release belongs to. Once the
-release is done, be sure to update `CHANGES` in the `main` branch.
+respective `x.y` branch of the respective feature release. Once the release is
+done, be sure to update `CHANGES` in the `main` branch.
 
 Adding Stanzas
 ==============

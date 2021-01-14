@@ -27,13 +27,3 @@ let to_dyn { exn; backtrace } =
     [ ("exn", string (Printexc.to_string exn))
     ; ("backtrace", string (Printexc.raw_backtrace_to_string backtrace))
     ]
-
-module C = Comparable.Make (struct
-  type nonrec t = t
-
-  let compare = Poly.compare
-
-  let to_dyn = to_dyn
-end)
-
-module Set = C.Set

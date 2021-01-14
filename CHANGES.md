@@ -1,3 +1,8 @@
+2.8.1 (14/01/2021)
+------------------
+
+- Fixed `dune --version` printing `n/a` rather than the version
+
 2.8.0 (13/01/2021)
 ------------------
 

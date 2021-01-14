@@ -76,7 +76,7 @@ module Supported_versions = struct
           | Some minor_map -> add_minor minor_map
           | None -> add_minor Int.Map.empty))
 
-  let remove_uncompatible_versions lang_ver =
+  let remove_incompatible_versions lang_ver =
     Int.Map.filter_map ~f:(fun minors ->
         let minors =
           Int.Map.filter minors ~f:(fun min_lang -> lang_ver >= min_lang)
@@ -90,7 +90,7 @@ module Supported_versions = struct
     (major, minor)
 
   let greatest_supported_version_for_dune_lang t ~dune_lang_ver =
-    let compat = remove_uncompatible_versions dune_lang_ver t in
+    let compat = remove_incompatible_versions dune_lang_ver t in
     greatest_supported_version compat
 
   let get_min_lang_ver t (major, minor) =
@@ -107,7 +107,7 @@ module Supported_versions = struct
       | None -> false )
 
   let supported_ranges lang_ver (t : t) =
-    let compat = remove_uncompatible_versions lang_ver t in
+    let compat = remove_incompatible_versions lang_ver t in
     Int.Map.to_list compat
     |> List.map ~f:(fun (major, minors) ->
            let max_minor, _ = Option.value_exn (Int.Map.max_binding minors) in

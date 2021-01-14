@@ -7,7 +7,7 @@ open! Dune_engine
 
 open! Stdune
 
-(* Coq Directoy Path *)
+(* Coq Directory Path *)
 type t = string list
 
 let to_string x = String.concat ~sep:"." x

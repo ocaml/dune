@@ -1,5 +1,5 @@
  This test checks if rule that do not list all of its dependencies cannot
- permamently corrupt internal data structures, and by that we mean that after
+ permanently corrupt internal data structures, and by that we mean that after
  the rule is replaced with a valid one the target will be rebuild.
 
   $ mkdir some_directory

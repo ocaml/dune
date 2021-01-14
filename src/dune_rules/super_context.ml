@@ -483,7 +483,7 @@ let create_lib_entries_by_package ~public_libs stanzas =
         match Lib.DB.find public_libs (Dune_file.Public_lib.name pub) with
         | None ->
           (* Skip hidden or unavailable libraries. TODO we should assert that
-             the libary name is always found somehow *)
+             the library name is always found somehow *)
           acc
         | Some lib ->
           let package = Dune_file.Public_lib.package pub in

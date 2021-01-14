@@ -54,7 +54,7 @@ Dune does not fail if the `packages` are not available at evaluation time
 
   $ cd local-package-unrelated && dune build -p unrelated-package; cd ../
 
-Dune fails if the `packages` are not avaliable at execution time
+Dune fails if the `packages` are not available at execution time
 
   $ cd local-package-unrelated && dune runtest -p unrelated-package; cd ../
   File "dune", line 3, characters 11-14:

@@ -1176,7 +1176,7 @@ Here is a complete list of supported subfields:
 - ``flags`` are passed when compiling source files. This field is specified
   using the :ref:`ordered-set-language`, where the ``:standard`` value comes
   from the environment settings ``c_flags`` and ``cxx_flags``, respectively.
-  Note that, for C subs, Dune unconditionally adds the flags present in the
+  Note that, for C stubs, Dune unconditionally adds the flags present in the
   fields ``ocamlc_cflags`` and ``ocamlc_cppflags`` of the OCaml config to the
   compiler command line. This behavior can be disabled since Dune 2.8 via the
   ``dune-project`` option :ref:`always-add-cflags`.
@@ -1250,7 +1250,7 @@ Flags
 
 Depending on the :ref:`always-add-cflags` option, the base `:standard` set of
 flags for C will contain only ``ocamlc_cflags`` or both ``ocamlc_cflags`` and
-`ocamlc_cflags`.
+``ocamlc_cppflags``.
 
 There are multiple levels where one can declare custom flags (using the
 :ref:`ordered-set-language`), and each level inherits the flags of the previous

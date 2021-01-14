@@ -2,7 +2,7 @@ open Stdune
 
 (* CR-soon cwong: I am deeply unsatisfied with the refactoring that lead to the
    existence of this module, and would like to delete it. This module (and the
-   last three functions) were intially part of [Foreign], but needed to be split
+   last three functions) were initially part of [Foreign], but needed to be split
    separately to keep [Foreign] cleanly in the front-end. However, the only real
    backend use of these files is that [Utils] uses [has_foreign_extension],
    which could theoretically be moved to the backedn by itself. However, that

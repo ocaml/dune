@@ -133,8 +133,8 @@ let syntax =
   Dune_lang.Syntax.create ~name ~desc [ ((0, 1), `Since (2, 4)) ]
 
 let default_files =
-  let has_extention ext s = String.equal ext (Filename.extension s) in
-  Predicate_lang.Glob.of_pred (has_extention ".md")
+  let has_extension ext s = String.equal ext (Filename.extension s) in
+  Predicate_lang.Glob.of_pred (has_extension ".md")
 
 let decode =
   let open Dune_lang.Decoder in

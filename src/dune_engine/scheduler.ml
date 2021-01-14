@@ -648,9 +648,10 @@ let with_job_slot f =
            tasks here. *)
         assert false)
 
-let wait_for_process pid =
+(* We use this version privately in this module whenever we can pass the
+   scheduler explicitly *)
+let wait_for_process t pid =
   let ivar = Fiber.Ivar.create () in
-  let t = Fiber.Var.get_exn t_var in
   Process_watcher.register_job t.process_watcher { pid; ivar };
   Fiber.Ivar.read ivar
 
@@ -889,7 +890,7 @@ let poll ?config ~once ~finally () =
       (Dune_util.Report_error.Already_reported, None)
     | Error (Exn exn_with_bt) -> (exn_with_bt.exn, Some exn_with_bt.backtrace)
   in
-  ignore (wait_for_process (File_watcher.pid watcher) : _ Fiber.t);
+  ignore (wait_for_process t (File_watcher.pid watcher) : _ Fiber.t);
   ignore (kill_and_wait_for_all_processes t : saw_signal);
   match bt with
   | None -> Exn.raise exn
@@ -898,3 +899,7 @@ let poll ?config ~once ~finally () =
 let send_dedup d =
   let t = Option.value_exn !global in
   Event.Queue.send_dedup t.events d
+
+let wait_for_process pid =
+  let t = Fiber.Var.get_exn t_var in
+  wait_for_process t pid

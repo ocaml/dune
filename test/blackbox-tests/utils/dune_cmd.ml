@@ -51,6 +51,29 @@ module Stat = struct
   let () = register name of_args run
 end
 
+module Wait_for_fs_clock_to_advance = struct
+  let name = "wait-for-fs-clock-to-advance"
+
+  let of_args = function
+    | [] -> ()
+    | _ -> raise (Arg.Bad ("Usage: dune_cmd " ^ name))
+
+  let run () =
+    let fn = "." ^ name ^ ".tmp" in
+    let fstime () =
+      Unix.close (Unix.openfile fn [ O_WRONLY; O_CREAT; O_TRUNC ] 0o644);
+      let t = (Unix.stat fn).st_ctime in
+      Unix.unlink fn;
+      t
+    in
+    let t = fstime () in
+    while fstime () <= t do
+      Unix.sleepf 0.01
+    done
+
+  let () = register name of_args run
+end
+
 module Cat = struct
   type t = File of Path.t
 

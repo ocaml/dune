@@ -99,7 +99,7 @@ let%expect_test "reraise_all" =
 let%expect_test "execution context of ivars" =
   (* The point of this test it show that the execution context is restored when
      a fiber that's blocked on an ivar is resumed. This means that fiber local
-     variables are visible for exmaple*)
+     variables are visible for example*)
   let open Fiber.O in
   let ivar = Fiber.Ivar.create () in
   let run_when_filled () =

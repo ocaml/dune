@@ -15,7 +15,7 @@ global vars are overridden
   var visible from dune: -principal         foo alias default
   DUNE_FOO: -principal
 
-proper inhertiance chain of env stanzas
+proper inheritance chain of env stanzas
   $ dune build --root inheritance
   Entering directory 'inheritance'
   DUNE_FOO: foo-sub

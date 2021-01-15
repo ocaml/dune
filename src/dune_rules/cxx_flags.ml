@@ -46,8 +46,13 @@ let check_warn = function
       ]
   | _ -> ()
 
-let get_flags ~for_ ctx =
+let ccomp_type ctx =
   let open Action_builder.O in
   let+ ccomp_type = ccomp_type ctx.Context.build_dir in
   check_warn ccomp_type;
+  ccomp_type
+
+let get_flags ~for_ ctx =
+  let open Action_builder.O in
+  let+ ccomp_type = ccomp_type ctx in
   base_cxx_flags ~for_ ccomp_type

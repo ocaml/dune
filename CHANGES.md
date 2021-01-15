@@ -7,6 +7,10 @@ Unreleased
 - Fixed wrong workspace discovery from `dune ocaml-merlin` (#4127, fixes #4125,
   @voodoos)
 
+- Fixed a bug that could result in needless recompilation under Windows due to
+  case differences in the result of `Sys.getcwd` (observed under `emacs`).
+  (#3966, @nojb).
+
 2.8.1 (14/01/2021)
 ------------------
 

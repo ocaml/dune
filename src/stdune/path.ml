@@ -50,6 +50,8 @@ module External : sig
   val cwd : unit -> t
 
   val as_local : t -> string
+
+  val lowercase_ascii : t -> t
 end = struct
   module T =
     Interned.No_interning
@@ -163,6 +165,8 @@ end = struct
       true
     else
       String.is_prefix ~prefix:(to_string a ^ "/") (to_string b)
+
+  let lowercase_ascii t = make (String.lowercase_ascii (to_string t))
 
   module Set = struct
     include T.Set

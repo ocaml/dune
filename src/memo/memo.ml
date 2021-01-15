@@ -1038,6 +1038,8 @@ module Cell = struct
 
   let get_async (type a b) (dep_node : (a, b, a -> b Fiber.t) Dep_node.t) =
     Exec_async.exec_dep_node dep_node dep_node.without_state.input
+
+  let invalidate (node : _ Dep_node.t) = node.state <- Init
 end
 
 let cell t inp = dep_node t inp

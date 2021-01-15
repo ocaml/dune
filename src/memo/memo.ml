@@ -162,8 +162,13 @@ module Caches = struct
   let clear () = List.iter !cleaners ~f:(fun f -> f ())
 end
 
+let should_clear_caches = match Sys.getenv_opt "DUNE_WATCHING_MODE_INCREMENTAL" with
+  | Some "true" -> false
+  | Some "false" | None -> true
+  | Some _ -> User_error.raise [Pp.text "Invalid value of DUNE_WATCHING_MODE_INCREMENTAL"]
 let reset () =
-  Caches.clear ();
+  if should_clear_caches then
+    Caches.clear ();
   Run.restart ()
 
 (* A value calculated during a sample attempt, or an exception with a backtrace

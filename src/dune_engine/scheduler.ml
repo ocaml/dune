@@ -61,7 +61,7 @@ end
 (** The event queue *)
 module Event : sig
   type t =
-    | Files_changed
+    | Files_changed of Path.t list
     | Job_completed of job * Unix.process_status
     | Signal of Signal.t
 
@@ -100,7 +100,7 @@ module Event : sig
   with type event := t
 end = struct
   type t =
-    | Files_changed
+    | Files_changed of Path.t list
     | Job_completed of job * Unix.process_status
     | Signal of Signal.t
 
@@ -191,20 +191,22 @@ end = struct
               Job_completed (job, status)
             | fns ->
               q.files_changed <- [];
-              let only_ignored_files =
-                List.fold_left fns ~init:true ~f:(fun acc fn ->
-                    let fn = Path.to_absolute_filename fn in
-                    if Table.mem q.ignored_files fn then (
-                      (* only use ignored record once *)
-                      Table.remove q.ignored_files fn;
-                      acc
-                    ) else
-                      false)
+              let files =
+                List.filter fns ~f:(fun fn ->
+                  let fn = Path.to_absolute_filename fn in
+                  if Table.mem q.ignored_files fn then (
+                    (* only use ignored record once *)
+                    Table.remove q.ignored_files fn;
+                    false
+                  ) else
+                    true
+                )
               in
-              if only_ignored_files then
+              match files with
+              | [] ->
                 loop ()
-              else
-                Files_changed )
+              | _ :: _ ->
+                Files_changed files )
       in
       let ev = loop () in
       Mutex.unlock q.mutex;
@@ -814,7 +816,8 @@ end = struct
       Console.Status_line.refresh ();
       match Event.Queue.next t.events with
       | Job_completed (job, status) -> Fiber.Fill (job.ivar, status)
-      | Files_changed -> (
+      | Files_changed changed_files -> (
+          List.iter changed_files ~f:(Fs_notify_memo.invalidate);
         match t.status with
         | Restarting_build ->
           (* We're already cancelling build, so file change events don't matter *)

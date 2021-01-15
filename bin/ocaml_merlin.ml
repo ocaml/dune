@@ -30,12 +30,10 @@ let term =
   in
   Common.set_common common ~targets:[];
   Scheduler.go ~common (fun () ->
-      Dune_engine.File_tree.init ~recognize_jbuilder_projects:true
-        ~ancestor_vcs:None;
-      Dune_rules.Workspace.init ();
-      ( match dump_config with
+      let open Fiber.O in
+      let+ _workspace = Import.Main.scan_workspace common in
+      match dump_config with
       | Some s -> Dune_rules.Merlin_server.dump s
-      | None -> Dune_rules.Merlin_server.start () )
-      |> Fiber.return)
+      | None -> Dune_rules.Merlin_server.start ())
 
 let command = (term, info)

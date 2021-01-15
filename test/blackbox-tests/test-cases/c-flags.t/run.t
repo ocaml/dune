@@ -17,6 +17,7 @@ use_standard_c_and_cxx_flags = default (false)
 
   $ cat >dune-project <<EOF
   > (lang dune 2.8)
+  > EOF
 
   $ dune rules -m foo.o | tr -s '\t\n\\' ' ' > out_foo
   File "dune", line 4, characters 36-39:
@@ -65,6 +66,7 @@ use_standard_c_and_cxx_flags = true
   $ cat >dune-project <<EOF
   > (lang dune 2.8)
   > (use_standard_c_and_cxx_flags true)
+  > EOF
 
   $ dune rules -m foo.o | tr -s '\t\n\\' ' ' > out_foo
   $ dune rules -m bar.o | tr -s '\t\n\\' ' ' > out_bar
@@ -94,6 +96,7 @@ use_standard_c_and_cxx_flags = true but dune < 2.8
   $ cat >dune-project <<EOF
   > (lang dune 2.7)
   > (use_standard_c_and_cxx_flags true)
+  > EOF
 
   $ dune rules
   File "dune-project", line 2, characters 0-35:

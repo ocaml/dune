@@ -116,7 +116,7 @@ let impl sctx ~(lib : Dune_file.Library.t) ~scope =
                 Pp_spec.make preprocess (Super_context.context sctx).version
               in
               Dir_contents.ocaml dir_contents
-              |> Ml_sources.modules_of_library ~name
+              |> Ml_sources.modules ~for_:(Library name)
               |> Modules.map_user_written ~f:(Pp_spec.pped_module pp_spec)
             in
             let foreign_objects =

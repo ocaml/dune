@@ -4,7 +4,7 @@ We build the project
 
 Verify that merlin configuration was generated...
   $ dune ocaml-merlin --dump-config=$(pwd)
-  test
+  Test
   ((EXCLUDE_QUERY_DIR)
    (B
     $TESTCASE_ROOT/_build/default/.foo.objs/byte)
@@ -21,7 +21,7 @@ Verify that merlin configuration was generated...
      -strict-formats
      -short-paths
      -keep-locs)))
-  foo
+  Foo
   ((EXCLUDE_QUERY_DIR)
    (B
     $TESTCASE_ROOT/_build/default/.foo.objs/byte)

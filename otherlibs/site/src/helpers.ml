@@ -103,7 +103,7 @@ let sourceroot local =
   | Some _ as x -> x
   | None ->
     (* None if the binary is executed from _build but not by dune, which should
-       not happend *)
+       not happen *)
     Sys.getenv_opt "DUNE_SOURCEROOT"
 
 let ocamlpath =

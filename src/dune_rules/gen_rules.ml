@@ -227,10 +227,9 @@ let gen_rules sctx dir_contents cctxs expander
   in
   List.iter merlins ~f:(fun merlin ->
       let more_src_dirs =
-        lib_src_dirs ~dir_contents |> List.rev_append source_dirs
+        lib_src_dirs ~dir_contents |> List.rev_append (src_dir :: source_dirs)
       in
-      Merlin.add_rules sctx ~dir:ctx_dir ~more_src_dirs ~expander
-        (Merlin.add_source_dir merlin src_dir));
+      Merlin.add_rules sctx ~dir:ctx_dir ~more_src_dirs ~expander merlin);
   List.iter stanzas ~f:(fun stanza ->
       match (stanza : Stanza.t) with
       | Menhir.T m when Expander.eval_blang expander m.enabled_if -> (
@@ -301,6 +300,8 @@ let gen_rules ~sctx ~dir components : Build_system.extra_sub_directories_to_keep
          attached to [write_dot_dune_dir] in context.ml *)
       Super_context.add_rule sctx ~dir
         (Build.write_file (Path.Build.relative dir "configurator") "");
+      (* Add rules for C compiler detection *)
+      Cxx_rules.rules ~sctx ~dir;
       These String.Set.empty
     | ".js" :: rest -> (
       Jsoo_rules.setup_separate_compilation_rules sctx rest;

@@ -2,13 +2,24 @@ open! Dune_engine
 open! Stdune
 open Import
 
-let default_context_flags (ctx : Context.t) =
-  (* TODO DUNE3 To ensure full backward compatibility, ocaml_cflags are still
-     present in the :standard set of flags. However these should not as they are
-     already prepended when calling the compiler, causing flag duplication. *)
-  let c = Ocaml_config.ocamlc_cflags ctx.ocaml_config in
-  let cxx =
-    List.filter c ~f:(fun s -> not (String.is_prefix s ~prefix:"-std="))
+let default_context_flags (ctx : Context.t) ~project =
+  let cflags = Ocaml_config.ocamlc_cflags ctx.ocaml_config in
+  let cxxflags =
+    List.filter cflags ~f:(fun s -> not (String.is_prefix s ~prefix:"-std="))
+  in
+  let c, cxx =
+    match Dune_project.use_standard_c_and_cxx_flags project with
+    | None
+    | Some false ->
+      (Build.return cflags, Build.return cxxflags)
+    | Some true ->
+      let c = cflags @ Ocaml_config.ocamlc_cppflags ctx.ocaml_config in
+      let cxx =
+        let open Build.O in
+        let+ db_flags = Cxx_flags.get_flags ctx.build_dir in
+        db_flags @ cxxflags
+      in
+      (Build.return c, cxx)
   in
   Foreign_language.Dict.make ~c ~cxx
 
@@ -118,7 +129,8 @@ end = struct
         | Some parent -> Memo.lazy_ (fun () -> get_node t ~dir:parent)
     in
     let config_stanza = get_env_stanza t ~dir in
-    let default_context_flags = default_context_flags t.context in
+    let project = Scope.project scope in
+    let default_context_flags = default_context_flags t.context ~project in
     let expander_for_artifacts =
       Memo.lazy_ (fun () ->
           expander_for_artifacts ~scope ~root_expander:t.root_expander
@@ -292,7 +304,7 @@ let make_rule t ?sandbox ?mode ?locks ?loc ~dir build =
   let build = chdir_to_build_context_root t build in
   let env = get_node t.env_tree ~dir |> Env_node.external_env in
   Rule.make ?sandbox ?mode ?locks ~info:(Rule.Info.of_loc_opt loc)
-    ~context:(Some (Context.to_build_context t.context))
+    ~context:(Some (Context.build_context t.context))
     ~env:(Some env) build
 
 let add_rule t ?sandbox ?mode ?locks ?loc ~dir build =
@@ -310,17 +322,13 @@ let add_rules t ?sandbox ~dir builds =
 let add_alias_action t alias ~dir ~loc ?locks ~stamp action =
   let env = Some (get_node t.env_tree ~dir |> Env_node.external_env) in
   Rules.Produce.Alias.add_action
-    ~context:(Context.to_build_context t.context)
+    ~context:(Context.build_context t.context)
     ~env alias ~loc ?locks ~stamp action
 
 let build_dir_is_vendored build_dir =
-  let opt =
-    let open Option.O in
-    let* src_dir = Path.Build.drop_build_context build_dir in
-    let+ src_dir = File_tree.find_dir src_dir in
-    Sub_dirs.Status.Vendored = File_tree.Dir.status src_dir
-  in
-  Option.value ~default:false opt
+  match Path.Build.drop_build_context build_dir with
+  | Some src_dir -> Dune_engine.File_tree.is_vendored src_dir
+  | None -> false
 
 let ocaml_flags t ~dir (spec : Ocaml_flags.Spec.t) =
   let expander = Env_tree.expander t.env_tree ~dir in
@@ -475,7 +483,7 @@ let create_lib_entries_by_package ~public_libs stanzas =
         match Lib.DB.find public_libs (Dune_file.Public_lib.name pub) with
         | None ->
           (* Skip hidden or unavailable libraries. TODO we should assert that
-             the libary name is always found somehow *)
+             the library name is always found somehow *)
           acc
         | Some lib ->
           let package = Dune_file.Public_lib.package pub in
@@ -502,15 +510,18 @@ let create_projects_by_package projects : Dune_project.t Package.Name.Map.t =
              (name, project)))
   |> Package.Name.Map.of_list_exn
 
+let modules_of_lib = Fdecl.create Dyn.Encoder.opaque
+
 let create ~(context : Context.t) ?host ~projects ~packages ~stanzas () =
   let lib_config = Context.lib_config context in
   let projects_by_package = create_projects_by_package projects in
   let installed_libs =
     Lib.DB.create_from_findlib context.findlib ~lib_config ~projects_by_package
   in
+  let modules_of_lib_for_scope = Fdecl.create Dyn.Encoder.opaque in
   let scopes, public_libs =
     Scope.DB.create_from_stanzas ~projects ~projects_by_package ~context
-      ~installed_libs stanzas
+      ~installed_libs ~modules_of_lib:modules_of_lib_for_scope stanzas
   in
   let stanzas =
     List.map stanzas ~f:(fun { Dune_load.Dune_file.dir; project; stanzas } ->
@@ -619,7 +630,8 @@ let create ~(context : Context.t) ?host ~projects ~packages ~stanzas () =
         let make ~inherit_from ~config_stanza =
           let dir = context.build_dir in
           let scope = Scope.DB.find_by_dir scopes dir in
-          let default_context_flags = default_context_flags context in
+          let project = Scope.project scope in
+          let default_context_flags = default_context_flags context ~project in
           let expander_for_artifacts =
             Memo.lazy_ (fun () ->
                 Code_error.raise
@@ -651,22 +663,27 @@ let create ~(context : Context.t) ?host ~projects ~packages ~stanzas () =
   let lib_entries_by_package =
     create_lib_entries_by_package ~public_libs stanzas
   in
-  { context
-  ; root_expander
-  ; host
-  ; scopes
-  ; public_libs
-  ; installed_libs
-  ; stanzas
-  ; stanzas_per_dir
-  ; packages
-  ; artifacts
-  ; lib_entries_by_package
-  ; env_tree
-  ; default_env
-  ; dir_status_db
-  ; projects_by_key
-  }
+  let t =
+    { context
+    ; root_expander
+    ; host
+    ; scopes
+    ; public_libs
+    ; installed_libs
+    ; stanzas
+    ; stanzas_per_dir
+    ; packages
+    ; artifacts
+    ; lib_entries_by_package
+    ; env_tree
+    ; default_env
+    ; dir_status_db
+    ; projects_by_key
+    }
+  in
+  Fdecl.set modules_of_lib_for_scope (fun ~dir ~name ->
+      Fdecl.get modules_of_lib t ~dir ~name);
+  t
 
 let dir_status_db t = t.dir_status_db
 

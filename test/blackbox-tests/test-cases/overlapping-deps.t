@@ -78,7 +78,7 @@ We can fix the error by allow overlapping dependencies:
   > EOF
   $ OCAMLPATH=$PWD/../external/_build/install/default/lib dune build %{cma:proj2/bar} --root .
 
-Strangely, the error dissapears if we remove the source for the bar lib:
+Strangely, the error disappears if we remove the source for the bar lib:
 
   $ cat >proj2/dune <<EOF
   > (library

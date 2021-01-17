@@ -21,3 +21,5 @@ val map : t -> f:(exn -> exn) -> t
 val map_and_reraise : t -> f:(exn -> exn) -> 'a
 
 val to_dyn : t -> Dyn.t
+
+module Set : Set.S with type elt = t

@@ -161,6 +161,7 @@ type t =
   ; wrapped_executables : bool
   ; dune_version : Dune_lang.Syntax.Version.t
   ; generate_opam_files : bool
+  ; use_standard_c_and_cxx_flags : bool option
   ; file_key : File_key.t
   ; dialects : Dialect.DB.t
   ; explicit_js_mode : bool
@@ -191,6 +192,8 @@ let implicit_transitive_deps t = t.implicit_transitive_deps
 
 let generate_opam_files t = t.generate_opam_files
 
+let use_standard_c_and_cxx_flags t = t.use_standard_c_and_cxx_flags
+
 let dialects t = t.dialects
 
 let explicit_js_mode t = t.explicit_js_mode
@@ -209,6 +212,7 @@ let to_dyn
     ; wrapped_executables
     ; dune_version
     ; generate_opam_files
+    ; use_standard_c_and_cxx_flags
     ; file_key
     ; dialects
     ; explicit_js_mode
@@ -230,6 +234,7 @@ let to_dyn
     ; ("wrapped_executables", bool wrapped_executables)
     ; ("dune_version", Dune_lang.Syntax.Version.to_dyn dune_version)
     ; ("generate_opam_files", bool generate_opam_files)
+    ; ("use_standard_c_and_cxx_flags", option bool use_standard_c_and_cxx_flags)
     ; ("file_key", string file_key)
     ; ("dialects", Dialect.DB.to_dyn dialects)
     ; ("explicit_js_mode", bool explicit_js_mode)
@@ -605,6 +610,11 @@ let infer ~dir packages =
   ; parsing_context
   ; dune_version = lang.version
   ; generate_opam_files = false
+  ; use_standard_c_and_cxx_flags =
+      ( if lang.version < (3, 0) then
+        None
+      else
+        Some true )
   ; file_key
   ; dialects = Dialect.DB.builtin
   ; explicit_js_mode
@@ -689,6 +699,9 @@ let parse ~dir ~lang ~opam_packages ~file ~dir_status =
      and+ generate_opam_files =
        field_o_b "generate_opam_files"
          ~check:(Dune_lang.Syntax.since Stanza.syntax (1, 10))
+     and+ use_standard_c_and_cxx_flags =
+       field_o_b "use_standard_c_and_cxx_flags"
+         ~check:(Dune_lang.Syntax.since Stanza.syntax (2, 8))
      and+ dialects =
        multi_field "dialect"
          ( Dune_lang.Syntax.since Stanza.syntax (1, 11)
@@ -803,6 +816,12 @@ let parse ~dir ~lang ~opam_packages ~file ~dir_status =
      let generate_opam_files =
        Option.value ~default:false generate_opam_files
      in
+     let use_standard_c_and_cxx_flags =
+       match use_standard_c_and_cxx_flags with
+       | None when dune_version >= (3, 0) -> Some false
+       | None -> None
+       | some -> some
+     in
      let cram =
        match cram with
        | None -> false
@@ -847,6 +866,7 @@ let parse ~dir ~lang ~opam_packages ~file ~dir_status =
      ; wrapped_executables
      ; dune_version
      ; generate_opam_files
+     ; use_standard_c_and_cxx_flags
      ; dialects
      ; explicit_js_mode
      ; format_config

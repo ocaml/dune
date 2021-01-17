@@ -50,7 +50,7 @@ let dep expander = function
              | Some pkg ->
                Build.alias
                  (Build_system.Alias.package_install
-                    ~context:(Context.to_build_context context)
+                    ~context:(Context.build_context context)
                     ~pkg)
              | None ->
                Build.fail

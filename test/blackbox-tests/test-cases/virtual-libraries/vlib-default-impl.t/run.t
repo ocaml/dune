@@ -24,7 +24,6 @@ Check that default implementation data is installed in the dune package file.
    (name a)
    (kind normal)
    (virtual)
-   (native_archives a$ext_lib)
    (default_implementation a.default-impl)
    (main_module_name A)
    (modes byte native)

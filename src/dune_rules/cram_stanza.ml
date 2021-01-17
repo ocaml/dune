@@ -27,6 +27,7 @@ type t =
   ; alias : Alias.Name.t option
   ; deps : Dep_conf.t Bindings.t option
   ; enabled_if : Blang.t
+  ; package : Package.t option
   }
 
 let decode =
@@ -36,5 +37,10 @@ let decode =
        field "applies_to" decode_applies_to ~default:default_applies_to
      and+ alias = field_o "alias" Alias.Name.decode
      and+ deps = field_o "deps" (Bindings.decode Dep_conf.decode)
-     and+ enabled_if = Enabled_if.decode ~allowed_vars:Any ~since:None () in
-     { loc; alias; deps; enabled_if; applies_to })
+     and+ enabled_if = Enabled_if.decode ~allowed_vars:Any ~since:None ()
+     and+ package =
+       Stanza_common.Pkg.field_opt
+         ~check:(Dune_lang.Syntax.since Stanza.syntax (2, 8))
+         ()
+     in
+     { loc; alias; deps; enabled_if; applies_to; package })

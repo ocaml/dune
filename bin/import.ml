@@ -105,12 +105,7 @@ module Main = struct
           Package.Name.Map.filter workspace.conf.packages ~f:(fun pkg ->
               let vendored =
                 let dir = Package.dir pkg in
-                match Dune_engine.File_tree.find_dir dir with
-                | None -> assert false
-                | Some d -> (
-                  match Dune_engine.File_tree.Dir.status d with
-                  | Vendored -> true
-                  | _ -> false )
+                Dune_engine.File_tree.is_vendored dir
               in
               let name = Package.name pkg in
               let included = Package.Name.Set.mem names name in

@@ -28,7 +28,7 @@ let term =
              debugging purposes only and should not be considered as a stable \
              ouptut.")
   in
-  Common.set_common common ~targets:[];
+  Common.set_common common ~log_file:No_log_file ~targets:[];
   Scheduler.go ~common (fun () ->
       Dune_engine.File_tree.init ~recognize_jbuilder_projects:true
         ~ancestor_vcs:None;

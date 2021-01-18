@@ -54,22 +54,22 @@ module DB = struct
 
   let create_db_from_stanzas ~parent ~lib_config ~modules_of_lib stanzas =
     let map : Found_or_redirect.t Lib_name.Map.t =
-      List.concat_map stanzas ~f:(fun stanza ->
+      List.map stanzas ~f:(fun stanza ->
           match (stanza : Library_related_stanza.t) with
           | Library_redirect s ->
             let old_public_name = Lib_name.of_local s.old_name in
-            [ Found_or_redirect.redirect old_public_name s.new_public_name ]
+            Found_or_redirect.redirect old_public_name s.new_public_name
           | Deprecated_library_name s ->
             let old_public_name =
               Dune_file.Deprecated_library_name.old_public_name s
             in
-            [ Found_or_redirect.redirect old_public_name s.new_public_name ]
+            Found_or_redirect.redirect old_public_name s.new_public_name
           | Library (dir, (conf : Dune_file.Library.t)) ->
             let info =
               Dune_file.Library.to_lib_info conf ~dir ~lib_config
               |> Lib_info.of_local
             in
-            [ (Dune_file.Library.best_name conf, Found_or_redirect.found info) ])
+            (Dune_file.Library.best_name conf, Found_or_redirect.found info))
       |> Lib_name.Map.of_list_reducei
            ~f:(fun name (v1 : Found_or_redirect.t) v2 ->
              let res =

@@ -97,7 +97,12 @@ The cache deletes oldest files first.
   $ dune build target_b
   $ dune_cmd wait-for-fs-clock-to-advance
   $ dune build target_a
-  $ rm -f _build/default/beacon_a _build/default/target_a _build/default/beacon_b _build/default/target_b
+The bellow rm commands also update the ctime, so we need to do it in
+the same order to preserve the fact that target_b is older than
+target_a:
+  $ rm -f _build/default/beacon_b _build/default/target_b
+  $ dune_cmd wait-for-fs-clock-to-advance
+  $ rm -f _build/default/beacon_a _build/default/target_a
   $ dune cache trim --trimmed-size 1B
   Freed 88 bytes
   $ dune build target_a target_b

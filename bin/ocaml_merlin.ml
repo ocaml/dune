@@ -28,7 +28,7 @@ let term =
              debugging purposes only and should not be considered as a stable \
              ouptut.")
   in
-  Common.set_common common ~targets:[];
+  Common.set_common common ~log_file:No_log_file ~targets:[];
   Scheduler.go ~common (fun () ->
       let open Fiber.O in
       let+ _workspace = Import.Main.scan_workspace common in

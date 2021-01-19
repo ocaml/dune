@@ -8,7 +8,7 @@ let resolve_link ~dir path file =
   | Error Not_a_symlink -> file
   | Error Max_depth_exceeded ->
     User_error.raise
-      [ Pp.textf "Unable to resolve symlink %s. Max recrusion depth exceeded"
+      [ Pp.textf "Unable to resolve symlink %s. Max recursion depth exceeded"
           (Path.to_string path)
       ]
   | Error (Unix_error _) ->

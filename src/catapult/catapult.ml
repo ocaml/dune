@@ -31,7 +31,7 @@ let fake_gc_stat =
   }
   [@ocaml.warning "-23"]
 
-(* all fiels of record used *)
+(* all fields of record used *)
 
 let fake time_ref buf =
   let print s = Buffer.add_string buf s in

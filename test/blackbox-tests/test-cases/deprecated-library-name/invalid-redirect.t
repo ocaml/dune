@@ -1,4 +1,4 @@
-Creating an invalid (deprecated_libary_name ..) is an error
+Creating an invalid (deprecated_library_name ..) is an error
 
   $ cat >dune-project <<EOF
   > (lang dune 2.0)

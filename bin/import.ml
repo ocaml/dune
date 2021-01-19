@@ -153,3 +153,20 @@ let restore_cwd_and_execve (common : Common.t) prog argv env =
   Proc.restore_cwd_and_execve prog argv ~env
 
 let do_build targets = Build_system.do_build ~request:(Target.request targets)
+
+(* Adapted from
+   https://github.com/ocaml/opam/blob/fbbe93c3f67034da62d28c8666ec6b05e0a9b17c/src/client/opamArg.ml#L759 *)
+let command_alias cmd name =
+  let term, info = cmd in
+  let orig = Term.name info in
+  let doc = Printf.sprintf "An alias for $(b,%s)." orig in
+  let man =
+    [ `S "DESCRIPTION"
+    ; `P
+        (Printf.sprintf "$(mname)$(b, %s) is an alias for $(mname)$(b, %s)."
+           name orig)
+    ; `P (Printf.sprintf "See $(mname)$(b, %s --help) for details." orig)
+    ; `Blocks Common.help_secs
+    ]
+  in
+  (term, Term.info name ~docs:"COMMAND ALIASES" ~doc ~man)

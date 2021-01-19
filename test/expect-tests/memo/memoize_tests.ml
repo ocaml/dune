@@ -600,6 +600,7 @@ let print_exns f =
     (Dyn.pp (Result.to_dyn unit (list Exn.to_dyn) res))
 
 let%expect_test "error handling and async diamond" =
+  Printexc.record_backtrace true;
   let f_impl = Fdecl.create Dyn.Encoder.opaque in
   let f =
     int_fn_create "async-error-diamond: f"

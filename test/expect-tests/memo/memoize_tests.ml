@@ -586,13 +586,10 @@ let%expect_test "error handling and memo - async" =
 
 let print_exns f =
   let res =
-    match
-      Fiber.run
-        ~iter:(fun () -> raise Exit)
-        (Fiber.collect_errors f)
-    with
+    match Fiber.run ~iter:(fun () -> raise Exit) (Fiber.collect_errors f) with
     | Ok _ -> assert false
-    | Error exns -> Error (List.map exns ~f:(fun (e : Exn_with_backtrace.t) -> e.exn))
+    | Error exns ->
+      Error (List.map exns ~f:(fun (e : Exn_with_backtrace.t) -> e.exn))
     | exception exn -> Error [ exn ]
   in
   let open Dyn.Encoder in
@@ -615,24 +612,19 @@ let%expect_test "error handling and async diamond" =
         Fiber.fork_and_join_unit
           (fun () -> Memo.exec f (x - 1))
           (fun () -> Memo.exec f (x - 1)));
-  let test x =
-    print_exns (fun () -> Memo.exec f x)
-  in
+  let test x = print_exns (fun () -> Memo.exec f x) in
   test 0;
-  [%expect
-    {|
+  [%expect {|
     Calling f 0
     Error [ "(Failure \"reached 0\")" ]
     |}];
   test 1;
-  [%expect
-    {|
+  [%expect {|
     Calling f 1
     Error [ "(Failure \"reached 0\")" ]
     |}];
   test 2;
-  [%expect
-    {|
+  [%expect {|
     Calling f 2
     Error [ "(Failure \"reached 0\")" ]
     |}]
@@ -661,20 +653,16 @@ let%expect_test "error handling and duplicate sync exceptions" =
       (fun x -> Memo.exec fail x)
   in
   Fdecl.set f_impl (fun x ->
-    printf "Calling f %d\n" x;
+      printf "Calling f %d\n" x;
 
-    match x with
-    | 0 ->
-      Fiber.return (Memo.exec forward_fail x)
-    | 1 ->
-      Fiber.return (Memo.exec forward_fail2 x)
-    | _ ->
-      Fiber.fork_and_join_unit
-        (fun () -> Memo.exec f (x - 1))
-        (fun () -> Memo.exec f (x - 2)));
-  let test x =
-    print_exns (fun () -> Memo.exec f x)
-  in
+      match x with
+      | 0 -> Fiber.return (Memo.exec forward_fail x)
+      | 1 -> Fiber.return (Memo.exec forward_fail2 x)
+      | _ ->
+        Fiber.fork_and_join_unit
+          (fun () -> Memo.exec f (x - 1))
+          (fun () -> Memo.exec f (x - 2)));
+  let test x = print_exns (fun () -> Memo.exec f x) in
   test 2;
   [%expect
     {|

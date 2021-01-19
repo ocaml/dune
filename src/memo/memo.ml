@@ -113,7 +113,7 @@ module Spec = struct
       | Some _ ->
         Code_error.raise
           "[Spec.register] called twice on a function with the same name"
-          ["name", Dyn.String info.name]
+          [ ("name", Dyn.String info.name) ]
       | None -> String.Table.set by_name info.name (T t) )
 
   let create (type o) ~info ~input ~visibility ~(output : o Output.t) ~f =

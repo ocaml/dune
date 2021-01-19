@@ -32,7 +32,11 @@ let term =
   Scheduler.go ~common (fun () ->
       Dune_engine.File_tree.init ~recognize_jbuilder_projects:true
         ~ancestor_vcs:None;
-      Dune_rules.Workspace.init ();
+      let x = Common.x common in
+      let workspace_file =
+        Common.workspace_file common |> Option.map ~f:Arg.Path.path
+      in
+      Dune_rules.Workspace.init ?x ?workspace_file ();
       ( match dump_config with
       | Some s -> Dune_rules.Merlin_server.dump s
       | None -> Dune_rules.Merlin_server.start () )

@@ -11,6 +11,7 @@
   dune_rules
   dune_engine
   dune_util
+  dune_upgrader
   cmdliner
   threads.posix
   build_info

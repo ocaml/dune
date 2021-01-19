@@ -584,7 +584,20 @@ let%expect_test "error handling and memo - async" =
              ; { exn = "(Failure right)"; backtrace = "" }
              ] |}]
 
+let print_exns f =
+  let res =
+    match Fiber.run ~iter:(fun () -> raise Exit) (Fiber.collect_errors f) with
+    | Ok _ -> assert false
+    | Error exns ->
+      Error (List.map exns ~f:(fun (e : Exn_with_backtrace.t) -> e.exn))
+    | exception exn -> Error [ exn ]
+  in
+  let open Dyn.Encoder in
+  Format.printf "%a@." Pp.to_fmt
+    (Dyn.pp (Result.to_dyn unit (list Exn.to_dyn) res))
+
 let%expect_test "error handling and async diamond" =
+  Printexc.record_backtrace true;
   let f_impl = Fdecl.create Dyn.Encoder.opaque in
   let f =
     int_fn_create "async-error-diamond: f"
@@ -599,33 +612,62 @@ let%expect_test "error handling and async diamond" =
         Fiber.fork_and_join_unit
           (fun () -> Memo.exec f (x - 1))
           (fun () -> Memo.exec f (x - 1)));
-  let test x =
-    let res =
-      try
-        Fiber.run
-          ~iter:(fun () -> raise Exit)
-          (Fiber.collect_errors (fun () -> Memo.exec f x))
-      with exn -> Error [ Exn_with_backtrace.capture exn ]
-    in
-    let open Dyn.Encoder in
-    Format.printf "f %d = %a@." x Pp.to_fmt
-      (Dyn.pp (Result.to_dyn unit (list Exn_with_backtrace.to_dyn) res))
-  in
+  let test x = print_exns (fun () -> Memo.exec f x) in
   test 0;
-  [%expect
-    {|
+  [%expect {|
     Calling f 0
-    f 0 = Error [ { exn = "(Failure \"reached 0\")"; backtrace = "" } ]
+    Error [ "(Failure \"reached 0\")" ]
     |}];
   test 1;
-  [%expect
-    {|
+  [%expect {|
     Calling f 1
-    f 1 = Error [ { exn = "(Failure \"reached 0\")"; backtrace = "" } ]
+    Error [ "(Failure \"reached 0\")" ]
     |}];
+  test 2;
+  [%expect {|
+    Calling f 2
+    Error [ "(Failure \"reached 0\")" ]
+    |}]
+
+let%expect_test "error handling and duplicate sync exceptions" =
+  Printexc.record_backtrace true;
+  let f_impl = Fdecl.create Dyn.Encoder.opaque in
+  let f =
+    int_fn_create "test8: async-duplicate-sync-exception: f"
+      ~output:(Allow_cutoff (module Unit))
+      (fun x -> Fdecl.get f_impl x)
+  in
+  let fail =
+    sync_int_fn_create "test8: fail"
+      ~output:(Allow_cutoff (module Unit))
+      (fun _x -> failwith "42")
+  in
+  let forward_fail =
+    sync_int_fn_create "test8: forward fail"
+      ~output:(Allow_cutoff (module Unit))
+      (fun x -> Memo.exec fail x)
+  in
+  let forward_fail2 =
+    sync_int_fn_create "test8: forward fail2"
+      ~output:(Allow_cutoff (module Unit))
+      (fun x -> Memo.exec fail x)
+  in
+  Fdecl.set f_impl (fun x ->
+      printf "Calling f %d\n" x;
+
+      match x with
+      | 0 -> Fiber.return (Memo.exec forward_fail x)
+      | 1 -> Fiber.return (Memo.exec forward_fail2 x)
+      | _ ->
+        Fiber.fork_and_join_unit
+          (fun () -> Memo.exec f (x - 1))
+          (fun () -> Memo.exec f (x - 2)));
+  let test x = print_exns (fun () -> Memo.exec f x) in
   test 2;
   [%expect
     {|
     Calling f 2
-    f 2 = Error [ { exn = "(Failure \"reached 0\")"; backtrace = "" } ]
+    Calling f 1
+    Calling f 0
+    Error [ "(Failure 42)" ]
     |}]

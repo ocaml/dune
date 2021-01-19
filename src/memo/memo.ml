@@ -74,6 +74,17 @@ module Visibility = struct
     | Public of 'i Dune_lang.Decoder.t
 end
 
+module Exn_comparable = Comparable.Make (struct
+  type t = Exn_with_backtrace.t
+
+  let compare { Exn_with_backtrace.exn; backtrace = _ } (t : t) =
+    Poly.compare exn t.exn
+
+  let to_dyn = Exn_with_backtrace.to_dyn
+end)
+
+module Exn_set = Exn_comparable.Set
+
 module Spec = struct
   type ('a, 'b, 'f) t =
     { info : Function.Info.t option
@@ -101,7 +112,8 @@ module Spec = struct
       match find info.name with
       | Some _ ->
         Code_error.raise
-          "[Spec.register] called twice on a function with the same name" []
+          "[Spec.register] called twice on a function with the same name"
+          [ ("name", Dyn.String info.name) ]
       | None -> String.Table.set by_name info.name (T t) )
 
   let create (type o) ~info ~input ~visibility ~(output : o Output.t) ~f =
@@ -149,7 +161,7 @@ let reset () =
 module Value = struct
   type error =
     | Sync of Exn_with_backtrace.t
-    | Async of Exn_with_backtrace.Set.t
+    | Async of Exn_set.t
 
   type 'a t = ('a, error) Result.t
 
@@ -157,7 +169,7 @@ module Value = struct
     match t with
     | Ok _ -> t
     | Error (Sync exn) -> Error (Sync (f exn))
-    | Error (Async exns) -> Error (Async (Exn_with_backtrace.Set.map exns ~f))
+    | Error (Async exns) -> Error (Async (Exn_set.map exns ~f))
 
   let get_sync_exn = function
     | Ok a -> a
@@ -169,8 +181,7 @@ module Value = struct
   let get_async_exn = function
     | Ok a -> Fiber.return a
     | Error (Sync _) -> assert false
-    | Error (Async exns) ->
-      Fiber.reraise_all (Exn_with_backtrace.Set.to_list exns)
+    | Error (Async exns) -> Fiber.reraise_all (Exn_set.to_list exns)
 end
 
 module Completion = struct
@@ -800,7 +811,7 @@ end = struct
     let res =
       Result.map_error res ~f:(fun exns ->
           (* this step deduplicates the errors *)
-          Value.Async (Exn_with_backtrace.Set.of_list exns))
+          Value.Async (Exn_set.of_list exns))
     in
 
     dep_node.state <- Done (Cached_value.create res ~deps);

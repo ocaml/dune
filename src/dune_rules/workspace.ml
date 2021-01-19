@@ -488,7 +488,20 @@ module DB = struct
   end
 end
 
-let init ?x ?profile ?instrument_with ?path () =
+let init ?x ?profile ?instrument_with ?workspace_file () =
+  let path : Path.t option =
+    match workspace_file with
+    | None ->
+      let p = Path.of_string filename in
+      Option.some_if (Path.exists p) p
+    | Some p ->
+      if not (Path.exists p) then
+        User_error.raise
+          [ Pp.textf "Workspace file %s does not exist"
+              (Path.to_string_maybe_quoted p)
+          ];
+      Some p
+  in
   Memo.Run.Fdecl.set DB.Settings.t
     { DB.Settings.x; profile; instrument_with; path }
 

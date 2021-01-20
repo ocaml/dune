@@ -80,7 +80,7 @@ val init :
      ?x:Context_name.t
   -> ?profile:Profile.t
   -> ?instrument_with:Lib_name.t list
-  -> ?path:Path.t
+  -> ?workspace_file:Path.t
   -> unit
   -> unit
 

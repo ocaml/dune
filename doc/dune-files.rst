@@ -102,7 +102,7 @@ By default, executables defined via ``(executables(s) ...)`` or ``(test(s)
 common to give them empty interface files to strengthen the compiler's ability
 to detect unused values in these modules.
 
-Starting from dune 2.8, an option is available to automatically generate empty
+Starting from dune 2.9, an option is available to automatically generate empty
 interface files for executables and tests that don't already have them:
 
 .. code:: scheme
@@ -651,7 +651,7 @@ binary at the same place as where ``ocamlc`` was found.
 Executables can also be linked as object or shared object files. See
 `linking modes`_ for more information.
 
-Starting from dune 2.8, it's possible to automatically generate empty interface
+Starting from dune 2.9, it's possible to automatically generate empty interface
 files for executables. See `executables_implicit_empty_intf`_.
 
 ``<optional-fields>`` are:
@@ -1365,7 +1365,7 @@ running dune runtest you can use the following stanza:
     (libraries alcotest mylib)
     (action (run %{test} -e)))
 
-Starting from dune 2.8, it's possible to automatically generate empty interface
+Starting from dune 2.9, it's possible to automatically generate empty interface
 files for test executables. See `executables_implicit_empty_intf`_.
 
 test

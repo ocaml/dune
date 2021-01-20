@@ -707,7 +707,7 @@ let parse ~dir ~lang ~opam_packages ~file ~dir_status =
            loc lang.syntax (2, 8) ~what:"This field"
      and+ executables_implicit_empty_intf =
        field_o_b "executables_implicit_empty_intf"
-         ~check:(Dune_lang.Syntax.since Stanza.syntax (2, 8))
+         ~check:(Dune_lang.Syntax.since Stanza.syntax (2, 9))
      and+ () = Dune_lang.Versioned_file.no_more_lang
      and+ generate_opam_files =
        field_o_b "generate_opam_files"

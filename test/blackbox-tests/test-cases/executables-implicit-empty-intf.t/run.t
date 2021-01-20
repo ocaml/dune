@@ -2,7 +2,7 @@ Executables with no corresponding `.mli` file will have one generated for them
 by Dune:
 
   $ cat >dune-project <<EOF
-  > (lang dune 2.8)
+  > (lang dune 2.9)
   > (executables_implicit_empty_intf true)
   > EOF
 
@@ -39,7 +39,7 @@ If an executable already has an interface, it is preserved:
 Generation of empty `.mli` files is disabled by default prior to lang 3.0:
 
   $ dune clean
-  $ echo >dune-project "(lang dune 2.8)"
+  $ echo >dune-project "(lang dune 2.9)"
   $ dune build ./bin/executable.exe
   $ dune runtest
   $ test ! -f _build/default/bin/executable.mli

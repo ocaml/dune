@@ -1,0 +1,19 @@
+(rule
+ (target x0)
+ (action (system "false")))
+
+(rule (deps x0) (target x1) (action (progn)))
+(rule (deps x1) (target x2) (action (progn)))
+(rule (deps x2) (target x3) (action (progn)))
+(rule (deps x3) (target x4) (action (progn)))
+(rule (deps x4) (target x5) (action (progn)))
+(rule (deps x5) (target x6) (action (progn)))
+(rule (deps x6) (target x7) (action (progn)))
+(rule (deps x7) (target x8) (action (progn)))
+(rule (deps x8) (target x9) (action (progn)))
+(rule (deps x9) (target x10) (action (progn)))
+(rule (deps x10) (target x11) (action (progn)))
+
+(alias
+ (name blowup)
+ (deps x0 x1 x2 x3 x4 x5 x6 x7 x8 x9 x10))

@@ -785,6 +785,11 @@ end = struct
   let exec t inp = exec_dep_node (dep_node t inp) inp
 end
 
+let debug_memo =
+  match Sys.getenv "DEBUG_MEMO" with
+  | _ -> true
+  | exception Not_found -> false
+
 module Exec_async : sig
   val exec_dep_node : ('a, 'b, 'a -> 'b Fiber.t) Dep_node.t -> 'a -> 'b Fiber.t
 
@@ -811,7 +816,12 @@ end = struct
     let res =
       Result.map_error res ~f:(fun exns ->
           (* this step deduplicates the errors *)
-          Value.Async (Exn_set.of_list exns))
+          if debug_memo then Printf.printf "%d " (List.length exns);
+          let exns = Exn_set.of_list exns in
+          if debug_memo then Printf.printf "%d\n%!" (Exn_set.cardinal exns);
+          (* Exn_set.iter exns ~f:(fun exn -> print_endline (Printexc.to_string
+             exn.exn));*)
+          Value.Async exns)
     in
 
     dep_node.state <- Done (Cached_value.create res ~deps);

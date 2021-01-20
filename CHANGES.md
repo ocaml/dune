@@ -1,3 +1,9 @@
+Unreleased
+----------
+
+- Fixed wrong workspace discovery from `dune ocaml-merlin` (#4127, fixes #4125,
+  @voodoos)
+
 2.8.1 (14/01/2021)
 ------------------
 

@@ -7,6 +7,9 @@
 - Fixed memory blow up introduced in 2.8.0 (#4144, fixes #4134,
   @jeremiedimino)
 
+- Configurator: always link the C libraries in the build command
+  (#4088, @MisterDA).
+
 2.8.1 (14/01/2021)
 ------------------
 

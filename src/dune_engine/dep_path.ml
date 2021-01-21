@@ -67,6 +67,12 @@ end
 
 exception E of exn * Entry.t list
 
+let () =
+  Memo.unwrap_exn :=
+    function
+    | E (exn, _) -> exn
+    | exn -> exn
+
 let prepend_exn exn entry =
   match exn with
   | E (exn, entries) -> E (exn, entry :: entries)

@@ -2,6 +2,8 @@ open! Stdune
 open Fiber.O
 module Function = Function
 
+let unwrap_exn = ref Fun.id
+
 module Code_error_with_memo_backtrace = struct
   (* A single memo frame and the OCaml frames it called which lead to the error *)
   type frame =
@@ -78,7 +80,7 @@ module Exn_comparable = Comparable.Make (struct
   type t = Exn_with_backtrace.t
 
   let compare { Exn_with_backtrace.exn; backtrace = _ } (t : t) =
-    Poly.compare exn t.exn
+    Poly.compare (!unwrap_exn exn) (!unwrap_exn t.exn)
 
   let to_dyn = Exn_with_backtrace.to_dyn
 end)

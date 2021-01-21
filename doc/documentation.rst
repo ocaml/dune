@@ -55,7 +55,7 @@ belong to any particular package. But the generated html will still be found in
 Examples
 --------
 
-This stanza use attach all the .mld files in the current directory in a project
+This stanza will attach all the .mld files in the current directory in a project
 with a single package.
 
 .. code-block:: lisp

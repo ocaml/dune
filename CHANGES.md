@@ -1,8 +1,5 @@
-Unreleased
-----------
-
-- Fixed a crash in watch mode introduced in 2.8.0 (#4118, fixes #4117,
-  @rgrinberg)
+2.8.2 (21/01/2021)
+------------------
 
 - Fixed wrong workspace discovery from `dune ocaml-merlin` (#4127, fixes #4125,
   @voodoos)

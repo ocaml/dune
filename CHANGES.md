@@ -7,6 +7,9 @@ Unreleased
 - Fixed wrong workspace discovery from `dune ocaml-merlin` (#4127, fixes #4125,
   @voodoos)
 
+- Fixed memory blow up introduced in 2.8.0 (#4144, fixes #4134,
+  @jeremiedimino)
+
 2.8.1 (14/01/2021)
 ------------------
 

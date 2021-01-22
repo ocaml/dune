@@ -21,7 +21,6 @@ Install files for implementations and virtual libs have all the artifacts:
     "_build/install/default/lib/impl/impl$ext_lib"
     "_build/install/default/lib/impl/impl.cma"
     "_build/install/default/lib/impl/impl.cmxa"
-    "_build/install/default/lib/impl/impl.cmxs"
     "_build/install/default/lib/impl/opam"
     "_build/install/default/lib/impl/vlib__Foo.cmi"
     "_build/install/default/lib/impl/vlib__Foo.cmt"
@@ -30,4 +29,7 @@ Install files for implementations and virtual libs have all the artifacts:
     "_build/install/default/lib/impl/vlib__impl__.cmt"
     "_build/install/default/lib/impl/vlib__impl__.cmx"
     "_build/install/default/lib/impl/vlib__impl__.ml"
+  ]
+  libexec: [
+    "_build/install/default/lib/impl/impl.cmxs"
   ]

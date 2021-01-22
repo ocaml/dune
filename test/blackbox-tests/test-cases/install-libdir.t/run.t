@@ -13,9 +13,9 @@
   Installing install/lib/foo/foo.cmt
   Installing install/lib/foo/foo.cmx
   Installing install/lib/foo/foo.cmxa
-  Installing install/lib/foo/foo.cmxs
   Installing install/lib/foo/foo.ml
   Installing install/lib/foo/opam
+  Installing install/lib/foo/foo.cmxs
   Installing install/bin/exec
   Installing install/man/a-man-page-with-no-ext
   Installing install/man/man1/a-man-page.1
@@ -32,9 +32,9 @@ If prefix is passed, the default for libdir is `$prefix/lib`:
   Installing install/lib/foo/foo.cmt
   Installing install/lib/foo/foo.cmx
   Installing install/lib/foo/foo.cmxa
-  Installing install/lib/foo/foo.cmxs
   Installing install/lib/foo/foo.ml
   Installing install/lib/foo/opam
+  Installing install/lib/foo/foo.cmxs
   Installing install/bin/exec
   Installing install/man/a-man-page-with-no-ext
   Installing install/man/man1/a-man-page.1
@@ -63,15 +63,15 @@ If prefix is passed, the default for libdir is `$prefix/lib`:
   Removing (if it exists) install/lib/foo/foo.cmxa
   Creating directory install/lib/foo
   Copying _build/install/default/lib/foo/foo.cmxa to install/lib/foo/foo.cmxa (executable: false)
-  Removing (if it exists) install/lib/foo/foo.cmxs
-  Creating directory install/lib/foo
-  Copying _build/install/default/lib/foo/foo.cmxs to install/lib/foo/foo.cmxs (executable: false)
   Removing (if it exists) install/lib/foo/foo.ml
   Creating directory install/lib/foo
   Copying _build/install/default/lib/foo/foo.ml to install/lib/foo/foo.ml (executable: false)
   Removing (if it exists) install/lib/foo/opam
   Creating directory install/lib/foo
   Copying _build/install/default/lib/foo/opam to install/lib/foo/opam (executable: false)
+  Removing (if it exists) install/lib/foo/foo.cmxs
+  Creating directory install/lib/foo
+  Copying _build/install/default/lib/foo/foo.cmxs to install/lib/foo/foo.cmxs (executable: true)
   Removing (if it exists) install/bin/exec
   Creating directory install/bin
   Copying _build/install/default/bin/exec to install/bin/exec (executable: true)
@@ -99,9 +99,9 @@ destdir`:
   Installing /OCAMLFIND_DESTDIR/foo/foo.cmt
   Installing /OCAMLFIND_DESTDIR/foo/foo.cmx
   Installing /OCAMLFIND_DESTDIR/foo/foo.cmxa
-  Installing /OCAMLFIND_DESTDIR/foo/foo.cmxs
   Installing /OCAMLFIND_DESTDIR/foo/foo.ml
   Installing /OCAMLFIND_DESTDIR/foo/opam
+  Installing /OCAMLFIND_DESTDIR/foo/foo.cmxs
   Installing /OPAM_PREFIX/bin/exec
   Installing /OPAM_PREFIX/man/a-man-page-with-no-ext
   Installing /OPAM_PREFIX/man/man1/a-man-page.1
@@ -130,15 +130,15 @@ destdir`:
   Removing (if it exists) /OCAMLFIND_DESTDIR/foo/foo.cmxa
   Creating directory /OCAMLFIND_DESTDIR/foo
   Copying _build/install/default/lib/foo/foo.cmxa to /OCAMLFIND_DESTDIR/foo/foo.cmxa (executable: false)
-  Removing (if it exists) /OCAMLFIND_DESTDIR/foo/foo.cmxs
-  Creating directory /OCAMLFIND_DESTDIR/foo
-  Copying _build/install/default/lib/foo/foo.cmxs to /OCAMLFIND_DESTDIR/foo/foo.cmxs (executable: false)
   Removing (if it exists) /OCAMLFIND_DESTDIR/foo/foo.ml
   Creating directory /OCAMLFIND_DESTDIR/foo
   Copying _build/install/default/lib/foo/foo.ml to /OCAMLFIND_DESTDIR/foo/foo.ml (executable: false)
   Removing (if it exists) /OCAMLFIND_DESTDIR/foo/opam
   Creating directory /OCAMLFIND_DESTDIR/foo
   Copying _build/install/default/lib/foo/opam to /OCAMLFIND_DESTDIR/foo/opam (executable: false)
+  Removing (if it exists) /OCAMLFIND_DESTDIR/foo/foo.cmxs
+  Creating directory /OCAMLFIND_DESTDIR/foo
+  Copying _build/install/default/lib/foo/foo.cmxs to /OCAMLFIND_DESTDIR/foo/foo.cmxs (executable: true)
   Removing (if it exists) /OPAM_PREFIX/bin/exec
   Creating directory /OPAM_PREFIX/bin
   Copying _build/install/default/bin/exec to /OPAM_PREFIX/bin/exec (executable: true)
@@ -159,9 +159,9 @@ destdir`:
   Removing (if it exists) /OCAMLFIND_DESTDIR/foo/foo.cmt
   Removing (if it exists) /OCAMLFIND_DESTDIR/foo/foo.cmx
   Removing (if it exists) /OCAMLFIND_DESTDIR/foo/foo.cmxa
-  Removing (if it exists) /OCAMLFIND_DESTDIR/foo/foo.cmxs
   Removing (if it exists) /OCAMLFIND_DESTDIR/foo/foo.ml
   Removing (if it exists) /OCAMLFIND_DESTDIR/foo/opam
+  Removing (if it exists) /OCAMLFIND_DESTDIR/foo/foo.cmxs
   Removing (if it exists) /OPAM_PREFIX/bin/exec
   Removing (if it exists) /OPAM_PREFIX/man/a-man-page-with-no-ext
   Removing (if it exists) /OPAM_PREFIX/man/man1/a-man-page.1
@@ -185,9 +185,9 @@ in libdir:
   Installing /LIBDIR/foo/foo.cmt
   Installing /LIBDIR/foo/foo.cmx
   Installing /LIBDIR/foo/foo.cmxa
-  Installing /LIBDIR/foo/foo.cmxs
   Installing /LIBDIR/foo/foo.ml
   Installing /LIBDIR/foo/opam
+  Installing /LIBDIR/foo/foo.cmxs
   Installing /OPAM_PREFIX/bin/exec
   Installing /OPAM_PREFIX/man/a-man-page-with-no-ext
   Installing /OPAM_PREFIX/man/man1/a-man-page.1
@@ -216,15 +216,15 @@ in libdir:
   Removing (if it exists) /LIBDIR/foo/foo.cmxa
   Creating directory /LIBDIR/foo
   Copying _build/install/default/lib/foo/foo.cmxa to /LIBDIR/foo/foo.cmxa (executable: false)
-  Removing (if it exists) /LIBDIR/foo/foo.cmxs
-  Creating directory /LIBDIR/foo
-  Copying _build/install/default/lib/foo/foo.cmxs to /LIBDIR/foo/foo.cmxs (executable: false)
   Removing (if it exists) /LIBDIR/foo/foo.ml
   Creating directory /LIBDIR/foo
   Copying _build/install/default/lib/foo/foo.ml to /LIBDIR/foo/foo.ml (executable: false)
   Removing (if it exists) /LIBDIR/foo/opam
   Creating directory /LIBDIR/foo
   Copying _build/install/default/lib/foo/opam to /LIBDIR/foo/opam (executable: false)
+  Removing (if it exists) /LIBDIR/foo/foo.cmxs
+  Creating directory /LIBDIR/foo
+  Copying _build/install/default/lib/foo/foo.cmxs to /LIBDIR/foo/foo.cmxs (executable: true)
   Removing (if it exists) /OPAM_PREFIX/bin/exec
   Creating directory /OPAM_PREFIX/bin
   Copying _build/install/default/bin/exec to /OPAM_PREFIX/bin/exec (executable: true)
@@ -245,9 +245,9 @@ in libdir:
   Removing (if it exists) /LIBDIR/foo/foo.cmt
   Removing (if it exists) /LIBDIR/foo/foo.cmx
   Removing (if it exists) /LIBDIR/foo/foo.cmxa
-  Removing (if it exists) /LIBDIR/foo/foo.cmxs
   Removing (if it exists) /LIBDIR/foo/foo.ml
   Removing (if it exists) /LIBDIR/foo/opam
+  Removing (if it exists) /LIBDIR/foo/foo.cmxs
   Removing (if it exists) /OPAM_PREFIX/bin/exec
   Removing (if it exists) /OPAM_PREFIX/man/a-man-page-with-no-ext
   Removing (if it exists) /OPAM_PREFIX/man/man1/a-man-page.1
@@ -270,9 +270,9 @@ This is the case when the prefix is implicit:
   Installing DESTDIR/OPAM_PREFIX/lib/foo/foo.cmt
   Installing DESTDIR/OPAM_PREFIX/lib/foo/foo.cmx
   Installing DESTDIR/OPAM_PREFIX/lib/foo/foo.cmxa
-  Installing DESTDIR/OPAM_PREFIX/lib/foo/foo.cmxs
   Installing DESTDIR/OPAM_PREFIX/lib/foo/foo.ml
   Installing DESTDIR/OPAM_PREFIX/lib/foo/opam
+  Installing DESTDIR/OPAM_PREFIX/lib/foo/foo.cmxs
   Installing DESTDIR/OPAM_PREFIX/bin/exec
   Installing DESTDIR/OPAM_PREFIX/man/a-man-page-with-no-ext
   Installing DESTDIR/OPAM_PREFIX/man/man1/a-man-page.1
@@ -301,15 +301,15 @@ This is the case when the prefix is implicit:
   Removing (if it exists) DESTDIR/OPAM_PREFIX/lib/foo/foo.cmxa
   Creating directory DESTDIR/OPAM_PREFIX/lib/foo
   Copying _build/install/default/lib/foo/foo.cmxa to DESTDIR/OPAM_PREFIX/lib/foo/foo.cmxa (executable: false)
-  Removing (if it exists) DESTDIR/OPAM_PREFIX/lib/foo/foo.cmxs
-  Creating directory DESTDIR/OPAM_PREFIX/lib/foo
-  Copying _build/install/default/lib/foo/foo.cmxs to DESTDIR/OPAM_PREFIX/lib/foo/foo.cmxs (executable: false)
   Removing (if it exists) DESTDIR/OPAM_PREFIX/lib/foo/foo.ml
   Creating directory DESTDIR/OPAM_PREFIX/lib/foo
   Copying _build/install/default/lib/foo/foo.ml to DESTDIR/OPAM_PREFIX/lib/foo/foo.ml (executable: false)
   Removing (if it exists) DESTDIR/OPAM_PREFIX/lib/foo/opam
   Creating directory DESTDIR/OPAM_PREFIX/lib/foo
   Copying _build/install/default/lib/foo/opam to DESTDIR/OPAM_PREFIX/lib/foo/opam (executable: false)
+  Removing (if it exists) DESTDIR/OPAM_PREFIX/lib/foo/foo.cmxs
+  Creating directory DESTDIR/OPAM_PREFIX/lib/foo
+  Copying _build/install/default/lib/foo/foo.cmxs to DESTDIR/OPAM_PREFIX/lib/foo/foo.cmxs (executable: true)
   Removing (if it exists) DESTDIR/OPAM_PREFIX/bin/exec
   Creating directory DESTDIR/OPAM_PREFIX/bin
   Copying _build/install/default/bin/exec to DESTDIR/OPAM_PREFIX/bin/exec (executable: true)
@@ -334,9 +334,9 @@ But also when the prefix is explicit:
   Installing DESTDIR/prefix/lib/foo/foo.cmt
   Installing DESTDIR/prefix/lib/foo/foo.cmx
   Installing DESTDIR/prefix/lib/foo/foo.cmxa
-  Installing DESTDIR/prefix/lib/foo/foo.cmxs
   Installing DESTDIR/prefix/lib/foo/foo.ml
   Installing DESTDIR/prefix/lib/foo/opam
+  Installing DESTDIR/prefix/lib/foo/foo.cmxs
   Installing DESTDIR/prefix/bin/exec
   Installing DESTDIR/prefix/man/a-man-page-with-no-ext
   Installing DESTDIR/prefix/man/man1/a-man-page.1
@@ -365,15 +365,15 @@ But also when the prefix is explicit:
   Removing (if it exists) DESTDIR/prefix/lib/foo/foo.cmxa
   Creating directory DESTDIR/prefix/lib/foo
   Copying _build/install/default/lib/foo/foo.cmxa to DESTDIR/prefix/lib/foo/foo.cmxa (executable: false)
-  Removing (if it exists) DESTDIR/prefix/lib/foo/foo.cmxs
-  Creating directory DESTDIR/prefix/lib/foo
-  Copying _build/install/default/lib/foo/foo.cmxs to DESTDIR/prefix/lib/foo/foo.cmxs (executable: false)
   Removing (if it exists) DESTDIR/prefix/lib/foo/foo.ml
   Creating directory DESTDIR/prefix/lib/foo
   Copying _build/install/default/lib/foo/foo.ml to DESTDIR/prefix/lib/foo/foo.ml (executable: false)
   Removing (if it exists) DESTDIR/prefix/lib/foo/opam
   Creating directory DESTDIR/prefix/lib/foo
   Copying _build/install/default/lib/foo/opam to DESTDIR/prefix/lib/foo/opam (executable: false)
+  Removing (if it exists) DESTDIR/prefix/lib/foo/foo.cmxs
+  Creating directory DESTDIR/prefix/lib/foo
+  Copying _build/install/default/lib/foo/foo.cmxs to DESTDIR/prefix/lib/foo/foo.cmxs (executable: true)
   Removing (if it exists) DESTDIR/prefix/bin/exec
   Creating directory DESTDIR/prefix/bin
   Copying _build/install/default/bin/exec to DESTDIR/prefix/bin/exec (executable: true)
@@ -398,9 +398,9 @@ DESTDIR can also be passed as a command line flag.
   Installing DESTDIR/prefix/lib/foo/foo.cmt
   Installing DESTDIR/prefix/lib/foo/foo.cmx
   Installing DESTDIR/prefix/lib/foo/foo.cmxa
-  Installing DESTDIR/prefix/lib/foo/foo.cmxs
   Installing DESTDIR/prefix/lib/foo/foo.ml
   Installing DESTDIR/prefix/lib/foo/opam
+  Installing DESTDIR/prefix/lib/foo/foo.cmxs
   Installing DESTDIR/prefix/bin/exec
   Installing DESTDIR/prefix/man/a-man-page-with-no-ext
   Installing DESTDIR/prefix/man/man1/a-man-page.1
@@ -429,15 +429,15 @@ DESTDIR can also be passed as a command line flag.
   Removing (if it exists) DESTDIR/prefix/lib/foo/foo.cmxa
   Creating directory DESTDIR/prefix/lib/foo
   Copying _build/install/default/lib/foo/foo.cmxa to DESTDIR/prefix/lib/foo/foo.cmxa (executable: false)
-  Removing (if it exists) DESTDIR/prefix/lib/foo/foo.cmxs
-  Creating directory DESTDIR/prefix/lib/foo
-  Copying _build/install/default/lib/foo/foo.cmxs to DESTDIR/prefix/lib/foo/foo.cmxs (executable: false)
   Removing (if it exists) DESTDIR/prefix/lib/foo/foo.ml
   Creating directory DESTDIR/prefix/lib/foo
   Copying _build/install/default/lib/foo/foo.ml to DESTDIR/prefix/lib/foo/foo.ml (executable: false)
   Removing (if it exists) DESTDIR/prefix/lib/foo/opam
   Creating directory DESTDIR/prefix/lib/foo
   Copying _build/install/default/lib/foo/opam to DESTDIR/prefix/lib/foo/opam (executable: false)
+  Removing (if it exists) DESTDIR/prefix/lib/foo/foo.cmxs
+  Creating directory DESTDIR/prefix/lib/foo
+  Copying _build/install/default/lib/foo/foo.cmxs to DESTDIR/prefix/lib/foo/foo.cmxs (executable: true)
   Removing (if it exists) DESTDIR/prefix/bin/exec
   Creating directory DESTDIR/prefix/bin
   Copying _build/install/default/bin/exec to DESTDIR/prefix/bin/exec (executable: true)

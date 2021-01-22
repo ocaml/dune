@@ -8,9 +8,9 @@
   Installing OPAM_PREFIX/lib/mylib/mylib.cmt
   Installing OPAM_PREFIX/lib/mylib/mylib.cmx
   Installing OPAM_PREFIX/lib/mylib/mylib.cmxa
-  Installing OPAM_PREFIX/lib/mylib/mylib.cmxs
   Installing OPAM_PREFIX/lib/mylib/mylib.ml
   Installing OPAM_PREFIX/lib/mylib/opam
+  Installing OPAM_PREFIX/lib/mylib/mylib.cmxs
   Removing (if it exists) OPAM_PREFIX/lib/mylib/META
   Creating directory OPAM_PREFIX/lib/mylib
   Copying _build/install/default/lib/mylib/META to OPAM_PREFIX/lib/mylib/META (executable: false)
@@ -35,15 +35,15 @@
   Removing (if it exists) OPAM_PREFIX/lib/mylib/mylib.cmxa
   Creating directory OPAM_PREFIX/lib/mylib
   Copying _build/install/default/lib/mylib/mylib.cmxa to OPAM_PREFIX/lib/mylib/mylib.cmxa (executable: false)
-  Removing (if it exists) OPAM_PREFIX/lib/mylib/mylib.cmxs
-  Creating directory OPAM_PREFIX/lib/mylib
-  Copying _build/install/default/lib/mylib/mylib.cmxs to OPAM_PREFIX/lib/mylib/mylib.cmxs (executable: false)
   Removing (if it exists) OPAM_PREFIX/lib/mylib/mylib.ml
   Creating directory OPAM_PREFIX/lib/mylib
   Copying _build/install/default/lib/mylib/mylib.ml to OPAM_PREFIX/lib/mylib/mylib.ml (executable: false)
   Removing (if it exists) OPAM_PREFIX/lib/mylib/opam
   Creating directory OPAM_PREFIX/lib/mylib
   Copying _build/install/default/lib/mylib/opam to OPAM_PREFIX/lib/mylib/opam (executable: false)
+  Removing (if it exists) OPAM_PREFIX/lib/mylib/mylib.cmxs
+  Creating directory OPAM_PREFIX/lib/mylib
+  Copying _build/install/default/lib/mylib/mylib.cmxs to OPAM_PREFIX/lib/mylib/mylib.cmxs (executable: true)
 
   $ dune uninstall --dry-run 2>&1 | sed 's#'$(opam config var prefix)'#OPAM_PREFIX#' | dune_cmd sanitize
   Removing (if it exists) OPAM_PREFIX/lib/mylib/META
@@ -54,7 +54,7 @@
   Removing (if it exists) OPAM_PREFIX/lib/mylib/mylib.cmt
   Removing (if it exists) OPAM_PREFIX/lib/mylib/mylib.cmx
   Removing (if it exists) OPAM_PREFIX/lib/mylib/mylib.cmxa
-  Removing (if it exists) OPAM_PREFIX/lib/mylib/mylib.cmxs
   Removing (if it exists) OPAM_PREFIX/lib/mylib/mylib.ml
   Removing (if it exists) OPAM_PREFIX/lib/mylib/opam
+  Removing (if it exists) OPAM_PREFIX/lib/mylib/mylib.cmxs
   Removing directory (if empty) OPAM_PREFIX/lib/mylib

@@ -72,9 +72,9 @@ deprecated library will be resolved in the installed world only.
   Installing $TESTCASE_ROOT/b/../_install/lib/b/b.cmt
   Installing $TESTCASE_ROOT/b/../_install/lib/b/b.cmx
   Installing $TESTCASE_ROOT/b/../_install/lib/b/b.cmxa
-  Installing $TESTCASE_ROOT/b/../_install/lib/b/b.cmxs
   Installing $TESTCASE_ROOT/b/../_install/lib/b/b.ml
   Installing $TESTCASE_ROOT/b/../_install/lib/b/dune-package
+  Installing $TESTCASE_ROOT/b/../_install/lib/b/b.cmxs
 
   $ rm -rf b
 

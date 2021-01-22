@@ -1,3 +1,8 @@
+2.8.5 (28/03/2021)
+------------------
+
+- Fixed absence of executable bit for installed `.cmxs` (#4149, fixes #4148, @bobot)
+
 2.8.4 (08/03/2021)
 ------------------
 

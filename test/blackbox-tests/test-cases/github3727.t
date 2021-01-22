@@ -44,9 +44,9 @@ visible regardless if the stanzas were filtered.
   Installing _install/lib/foo/bar/private_foo.cmt
   Installing _install/lib/foo/bar/private_foo.cmx
   Installing _install/lib/foo/bar/private_foo.cmxa
-  Installing _install/lib/foo/bar/private_foo.cmxs
   Installing _install/lib/foo/bar/private_foo.ml
   Installing _install/lib/foo/dune-package
+  Installing _install/lib/foo/bar/private_foo.cmxs
 
   $ export OCAMLPATH=$PWD/_install/lib
   $ dune build -p bar

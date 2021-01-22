@@ -123,9 +123,7 @@ let make ~dir ~inherit_from ~scope ~config_stanza ~profile ~expander
             Disabled )
   in
   let foreign_flags =
-    inherited ~field:foreign_flags
-      ~root:(Foreign_language.Dict.map ~f:Build.return default_context_flags)
-      (fun flags ->
+    inherited ~field:foreign_flags ~root:default_context_flags (fun flags ->
         let expander = Expander.set_dir (Memo.Lazy.force expander) ~dir in
         Foreign_language.Dict.mapi config.foreign_flags ~f:(fun ~language f ->
             let standard = Foreign_language.Dict.get flags language in

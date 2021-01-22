@@ -94,6 +94,7 @@ type t = private
         (** Given a program name, e.g. ["ocaml"], find the path to a preferred
             executable in PATH, e.g. [Some "/path/to/ocaml.opt.exe"]. *)
   ; lib_config : Lib_config.t
+  ; build_context : Build_context.t
   }
 
 val equal : t -> t -> bool
@@ -130,7 +131,7 @@ val lib_config : t -> Lib_config.t
     the host build context. Otherwise, it just returns [exe]. *)
 val map_exe : t -> Path.t -> Path.t
 
-val to_build_context : t -> Build_context.t
+val build_context : t -> Build_context.t
 
 val init_configurator : t -> unit
 

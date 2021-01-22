@@ -103,3 +103,6 @@ val is_empty : t -> bool
 val as_singleton : t -> Module.t option
 
 val source_dirs : t -> Path.Set.t
+
+(** [has_impl t] is true if there's at least one implementation in [t]*)
+val has_impl : t -> bool

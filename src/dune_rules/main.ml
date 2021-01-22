@@ -46,22 +46,7 @@ let scan_workspace ?workspace_file ?x ?(capture_outputs = true) ?profile
     ?instrument_with ~ancestor_vcs () =
   let env = setup_env ~capture_outputs in
   let conf = Dune_load.load ~ancestor_vcs in
-  let () =
-    let path : Path.t option =
-      match workspace_file with
-      | None ->
-        let p = Path.of_string Workspace.filename in
-        Option.some_if (Path.exists p) p
-      | Some p ->
-        if not (Path.exists p) then
-          User_error.raise
-            [ Pp.textf "Workspace file %s does not exist"
-                (Path.to_string_maybe_quoted p)
-            ];
-        Some p
-    in
-    Workspace.init ?x ?profile ?instrument_with ?path ()
-  in
+  let () = Workspace.init ?x ?profile ?instrument_with ?workspace_file () in
   let+ contexts = Context.DB.all () in
   List.iter contexts ~f:(fun (ctx : Context.t) ->
       let open Pp.O in
@@ -80,7 +65,7 @@ let init_build_system ?only_packages ~sandboxing_preference ?caching w =
     Artifact_substitution.copy_file ?chmod ~src ~dst ~conf ()
   in
   Build_system.init ~sandboxing_preference ~promote_source
-    ~contexts:(List.map ~f:Context.to_build_context w.contexts)
+    ~contexts:(List.map ~f:Context.build_context w.contexts)
     ?caching ();
   List.iter w.contexts ~f:Context.init_configurator;
   let+ scontexts = Gen_rules.gen w.conf ~contexts:w.contexts ?only_packages in

@@ -284,16 +284,16 @@ module Scanner = struct
     | Scan2
     (* State after seeing at least two '%' *)
     | Scan_prefix of int
-    (* [Scan_prefix placeholer_start] is the state after seeing [pos -
-       placeholer_start] characters from [prefix] *)
+    (* [Scan_prefix placeholder_start] is the state after seeing [pos -
+       placeholder_start] characters from [prefix] *)
     | Scan_length of int * int
-    (* [Scan_length (placeholer_start, acc)] is the state after seeing all of
+    (* [Scan_length (placeholder_start, acc)] is the state after seeing all of
        [prefix] and the beginning of the length field. [acc] is the length
        accumulated so far. *)
     | Scan_placeholder of int * int
 
-  (* [Scan_placeholder (placeholer_start, len)] is the state after seeing all of
-     [prefix] and the length field, i.e. just after the second ':' of the
+  (* [Scan_placeholder (placeholder_start, len)] is the state after seeing all
+     of [prefix] and the length field, i.e. just after the second ':' of the
      placeholder *)
 
   (* The [run] function at the end of this module is the main function that

@@ -21,10 +21,6 @@ type opaque =
   | Inherit_from_settings
       (** Determined from the version of OCaml and the profile *)
 
-val modules_of_lib :
-  (* to avoid a cycle with [Dir_contents] *)
-  (Super_context.t -> dir:Path.Build.t -> name:Lib_name.t -> Modules.t) Fdecl.t
-
 (** Create a compilation context. *)
 val create :
      super_context:Super_context.t

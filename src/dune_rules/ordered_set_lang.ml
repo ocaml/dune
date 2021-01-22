@@ -300,6 +300,17 @@ module Unexpanded = struct
     in
     loop t.ast
 
+  let has_standard t =
+    let rec loop ast =
+      match ast with
+      | Ast.Standard -> true
+      | Ast.Element _ -> false
+      | Ast.Union l -> List.exists ~f:loop l
+      | Ast.Diff (l, r) -> loop l || loop r
+      | Ast.Include _ -> false
+    in
+    loop t.ast
+
   type position =
     | Pos
     | Neg

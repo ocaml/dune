@@ -1,5 +1,22 @@
-Unreleased
-----------
+2.8.2 (21/01/2021)
+------------------
+
+- Fixed wrong workspace discovery from `dune ocaml-merlin` (#4127, fixes #4125,
+  @voodoos)
+
+- Fixed memory blow up introduced in 2.8.0 (#4144, fixes #4134,
+  @jeremiedimino)
+
+- Configurator: always link the C libraries in the build command
+  (#4088, @MisterDA).
+
+2.8.1 (14/01/2021)
+------------------
+
+- Fixed `dune --version` printing `n/a` rather than the version
+
+2.8.0 (13/01/2021)
+------------------
 
 - `dune rules` accepts aliases and other non-path rules (#4063, @mrmr1993)
 
@@ -24,7 +41,7 @@ Unreleased
 - Add the `executable` field to `inline_tests` to customize the compilation
   flags of the test runner executable (#3747, fixes #3679, @lubegasimon)
 
-- Add `(enabled_if ...)` to `(copy_files ...)` (#3756, @nojb)
+- Add `(enabled_if ...)` to `(copy_files ...)` (#3765, @nojb)
 
 - Make sure Dune cleans up the status line before exiting (#3767,
   fixes #3737, @alan-j-hu)
@@ -119,6 +136,20 @@ Unreleased
 - Remove support for passing `-nodynlink` for executables. It was bypassed in
   most cases and not correct in other cases in particular on arm32.
   (#4085, fixes #4069, fixes #2527, @emillon)
+
+- Generate archive rules compatible with 4.12. Dune no longer attempts to
+  generate an archive file if it's unnecessary (#3973, fixes #3766, @rgrinberg)
+
+- Fix generated Merlin configurations when multiple preprocessors are defined
+  for different modules in the same folder. (#4092, fixes #2596, #1212 and
+  #3409, @voodoos)
+
+- Add the option `use_standard_c_and_cxx_flags` to `dune-project` that 1.
+  disables the unconditional use of the `ocamlc_cflags` and `ocamlc_cppflags`
+  from `ocamlc -config` in C compiler calls, these flags will be present in the
+  `:standard` set instead; and 2. enables the detection of the C compiler family
+  and populates the `:standard` set of flags with common default values when
+  building CXX stubs. (#3875, #3802, fix #3718 and #3528, @voodoos)
 
 2.7.1 (2/09/2020)
 -----------------

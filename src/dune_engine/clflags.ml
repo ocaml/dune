@@ -35,3 +35,5 @@ let always_show_command_line = ref false
 let promote_install_files = ref false
 
 let ignore_promoted_rules = ref false
+
+let only_packages = ref None

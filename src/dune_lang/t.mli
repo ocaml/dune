@@ -32,7 +32,7 @@ module Deprecated : sig
       been prepared with [prepare_formatter]. *)
   val pp_split_strings : Format.formatter -> t -> unit
 
-  (** Prepare a formatter for [pp_split_strings]. Additionaly the formatter
+  (** Prepare a formatter for [pp_split_strings]. Additionally the formatter
       escape newlines when the tags "makefile-action" or "makefile-stuff" are
       active. *)
   val prepare_formatter : Format.formatter -> unit

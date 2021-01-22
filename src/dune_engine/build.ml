@@ -8,6 +8,7 @@ type 'a t =
   | Map : ('a -> 'b) * 'a t -> 'b t
   | Both : 'a t * 'b t -> ('a * 'b) t
   | Seq : unit t * 'b t -> 'b t
+  | All : 'a t list -> 'a list t
   | Map2 : ('a -> 'b -> 'c) * 'a t * 'b t -> 'c t
   | Paths_for_rule : Path.Set.t -> unit t
   | Paths_glob : File_selector.t -> Path.Set.t t
@@ -67,10 +68,7 @@ open O
 
 let both x y = Both (x, y)
 
-let rec all xs =
-  match xs with
-  | [] -> return []
-  | x :: xs -> Map2 (List.cons, x, all xs)
+let all xs = All xs
 
 let all_unit xs =
   let+ (_ : unit list) = all xs in
@@ -199,20 +197,36 @@ module With_targets = struct
     ; targets = Path.Build.Set.union x.targets y.targets
     }
 
-  module O = struct
-    let ( >>> ) = map2 ~f:(fun () y -> y)
+  let both x y =
+    { build = Both (x.build, y.build)
+    ; targets = Path.Build.Set.union x.targets y.targets
+    }
 
-    let ( and+ ) = map2 ~f:(fun x y -> (x, y))
+  let seq x y =
+    { build = Seq (x.build, y.build)
+    ; targets = Path.Build.Set.union x.targets y.targets
+    }
+
+  module O = struct
+    let ( >>> ) = seq
+
+    let ( and+ ) = both
 
     let ( let+ ) a f = map ~f a
   end
 
   open O
 
-  let rec all xs =
+  let all xs =
     match xs with
     | [] -> return []
-    | x :: xs -> map2 ~f:List.cons x (all xs)
+    | xs ->
+      let build, targets =
+        List.fold_left xs ~init:([], Path.Build.Set.empty)
+          ~f:(fun (xs, set) x ->
+            (x.build :: xs, Path.Build.Set.union set x.targets))
+      in
+      { build = All (List.rev build); targets }
 
   let write_file_dyn fn s =
     add ~targets:[ fn ]
@@ -296,6 +310,7 @@ end = struct
     | Both (x, y) -> Static_deps.union (static_deps x) (static_deps y)
     | Seq (x, y) -> Static_deps.union (static_deps x) (static_deps y)
     | Map2 (_, x, y) -> Static_deps.union (static_deps x) (static_deps y)
+    | All xs -> Static_deps.union_map ~f:static_deps xs
     | Deps deps -> { Static_deps.empty with action_deps = deps }
     | Paths_for_rule fns ->
       { Static_deps.empty with rule_deps = Dep.Set.of_files_set fns }
@@ -345,6 +360,7 @@ let fold_labeled (type acc) t ~(init : acc) ~f =
     | Map2 (_, a, b) ->
       let acc = loop a acc in
       loop b acc
+    | All xs -> List.fold_left xs ~init:acc ~f:(fun acc a -> loop a acc)
     | Paths_for_rule _ -> acc
     | Paths_glob _ -> acc
     | Deps _ -> acc
@@ -418,17 +434,24 @@ struct
         let+ a, dyn_deps_a = exec a in
         (f a, dyn_deps_a)
       | Both (a, b) ->
-        let* a, dyn_deps_a = exec a in
-        let+ b, dyn_deps_b = exec b in
+        let+ (a, dyn_deps_a), (b, dyn_deps_b) =
+          Fiber.fork_and_join (fun () -> exec a) (fun () -> exec b)
+        in
         ((a, b), Dep.Set.union dyn_deps_a dyn_deps_b)
       | Seq (a, b) ->
-        let* (), dyn_deps_a = exec a in
-        let+ b, dyn_deps_b = exec b in
+        let+ ((), dyn_deps_a), (b, dyn_deps_b) =
+          Fiber.fork_and_join (fun () -> exec a) (fun () -> exec b)
+        in
         (b, Dep.Set.union dyn_deps_a dyn_deps_b)
       | Map2 (f, a, b) ->
-        let* a, dyn_deps_a = exec a in
-        let+ b, dyn_deps_b = exec b in
+        let+ (a, dyn_deps_a), (b, dyn_deps_b) =
+          Fiber.fork_and_join (fun () -> exec a) (fun () -> exec b)
+        in
         (f a b, Dep.Set.union dyn_deps_a dyn_deps_b)
+      | All xs ->
+        let+ res = Fiber.parallel_map xs ~f:exec in
+        let res, deps = List.split res in
+        (res, Dep.Set.union_all deps)
       | Deps _ -> Fiber.return ((), Dep.Set.empty)
       | Paths_for_rule _ -> Fiber.return ((), Dep.Set.empty)
       | Paths_glob g -> Fiber.return ((eval_pred g : Path.Set.t), Dep.Set.empty)

@@ -93,6 +93,9 @@ val files_of : Path.Source.t -> Path.Source.Set.t
 (** [true] iff the path is a directory *)
 val dir_exists : Path.Source.t -> bool
 
+(** [true] iff the path is a vendored directory *)
+val is_vendored : Path.Source.t -> bool
+
 (** [true] iff the path is a file *)
 val file_exists : Path.Source.t -> bool
 

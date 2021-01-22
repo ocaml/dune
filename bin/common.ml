@@ -15,11 +15,23 @@ end
 
 open Let_syntax
 
-module Only_packages = struct
+module Only_packages : sig
+  type t = private
+    { names : Dune_engine.Package.Name.Set.t
+    ; command_line_option : string
+    }
+
+  val create :
+    names:Dune_engine.Package.Name.Set.t -> command_line_option:string -> t
+end = struct
   type t =
     { names : Dune_engine.Package.Name.Set.t
     ; command_line_option : string
     }
+
+  let create ~names ~command_line_option =
+    Clflags.only_packages := Some names;
+    { names; command_line_option }
 end
 
 type t =
@@ -351,7 +363,7 @@ module Options_implied_by_dash_p = struct
                       build a particular $(b,<package>.install) target.|})
       in
       Option.map names ~f:(fun names ->
-          { Only_packages.names; command_line_option = "only-packages" })
+          Only_packages.create ~names ~command_line_option:"only-packages")
     in
     { t with only_packages }
 
@@ -374,7 +386,7 @@ module Options_implied_by_dash_p = struct
     { release_options with
       only_packages =
         Option.map pkgs ~f:(fun names ->
-            { Only_packages.names; command_line_option = List.hd args })
+            Only_packages.create ~names ~command_line_option:(List.hd args))
     }
 
   let term =

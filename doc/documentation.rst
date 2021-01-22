@@ -52,11 +52,12 @@ But this libraries will not be in the main html listing above, since they do not
 belong to any particular package. But the generated html will still be found in
 ``_build/default/_doc/_html/<library>``.
 
-Examples
---------
 
-This stanza use attach all the .mld files in the current directory in a project
-with a single package.
+documentation stanza: Examples
+------------------------------
+
+The :ref:`documentation-stanza` stanza will attach all the .mld files
+in the current directory in a project with a single package.
 
 .. code-block:: lisp
 
@@ -78,6 +79,24 @@ directory to the inferred package:
 
    (documentation
     (mld_files :standard \ wip))
+
+All mld files attached to a package will be included in the generated
+``.install`` file for that package, and hence will be installed by opam.
+
+Package entry page
+------------------
+
+The ``index.mld`` file (specified as ``index`` in ``mld_files``) is
+treated specially by dune. This will be the file used to generate the
+entry page for the package, linked from the main package listing.
+
+To generate pleasant documentation, we recommend writing an
+``index.mld`` file with at least short description of your package,
+and possibly some examples.
+
+If you do not write your own ``index.mld`` file, dune will generate
+one with the entry modules for your package. But this generated file
+will not be installed.
 
 .. _odoc-options:
 

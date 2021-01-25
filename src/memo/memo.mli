@@ -1,19 +1,18 @@
 open! Stdune
 
-type ('input, 'output, 'f) t
+(** Type of memoized functions *)
+type ('input, 'output, 'f) func
 
 module Sync : sig
-  type nonrec ('i, 'o) t = ('i, 'o, 'i -> 'o) t
+  type nonrec ('i, 'o) t = ('i, 'o, 'i -> 'o) func
 end
 
 module Async : sig
-  type nonrec ('i, 'o) t = ('i, 'o, 'i -> 'o Fiber.t) t
+  type nonrec ('i, 'o) t = ('i, 'o, 'i -> 'o Fiber.t) func
 end
 
 (** A stack frame within a computation. *)
 module Stack_frame : sig
-  type ('input, 'output, 'f) memo = ('input, 'output, 'f) t
-
   type t
 
   val to_dyn : t -> Dyn.t
@@ -24,7 +23,7 @@ module Stack_frame : sig
 
   (** Checks if the stack frame is a frame of the given memoized function and if
       so, returns [Some i] where [i] is the argument of the function. *)
-  val as_instance_of : t -> of_:('input, _, _) memo -> 'input option
+  val as_instance_of : t -> of_:('input, _, _) func -> 'input option
 end
 
 module Cycle_error : sig
@@ -130,7 +129,7 @@ val create_with_store :
   -> output:'o Output.t
   -> ('i, 'o, 'f) Function.Type.t
   -> 'f
-  -> ('i, 'o, 'f) t
+  -> ('i, 'o, 'f) func
 
 (** [create name ~doc ~input ~visibility ~output f_type f] creates a memoized
     version of [f]. The result of [f] for a given input is cached, so that the
@@ -157,7 +156,7 @@ val create :
   -> output:'o Output.t
   -> ('i, 'o, 'f) Function.Type.t
   -> 'f
-  -> ('i, 'o, 'f) t
+  -> ('i, 'o, 'f) func
 
 val create_hidden :
      string
@@ -165,23 +164,23 @@ val create_hidden :
   -> input:(module Input with type t = 'i)
   -> ('i, 'o, 'f) Function.Type.t
   -> 'f
-  -> ('i, 'o, 'f) t
+  -> ('i, 'o, 'f) func
 
 (** The call [peek_exn t i] registers a dependency on [t i] and returns its
     value, failing if the value has not yet been computed. We do not expose
     [peek] because the [None] case is hard to reason about, and currently there
     are no use-cases for it. *)
-val peek_exn : ('i, 'o, _) t -> 'i -> 'o
+val peek_exn : ('i, 'o, _) func -> 'i -> 'o
 
 (** Execute a memoized function *)
-val exec : (_, _, 'f) t -> 'f
+val exec : (_, _, 'f) func -> 'f
 
 (** After running a memoization function with a given name and input, it is
     possible to query which dependencies that function used during execution by
     calling [get_deps] with the name and input used during execution.
 
     Returns [None] if the dependencies were not computed yet. *)
-val get_deps : ('i, _, _) t -> 'i -> (string option * Dyn.t) list option
+val get_deps : ('i, _, _) func -> 'i -> (string option * Dyn.t) list option
 
 (** Print the memoized call stack during execution. This is useful for debugging
     purposes. *)
@@ -286,7 +285,7 @@ module Cell : sig
   val get_async : ('a, 'b, 'a -> 'b Fiber.t) t -> 'b Fiber.t
 end
 
-val cell : ('a, 'b, 'f) t -> 'a -> ('a, 'b, 'f) Cell.t
+val cell : ('a, 'b, 'f) func -> 'a -> ('a, 'b, 'f) Cell.t
 
 module Implicit_output = Implicit_output
 

@@ -593,13 +593,13 @@ let add_dep_from_caller (type i o f) ~called_from_peek
       in
       Some add_last_dep )
 
-type ('input, 'output, 'f) t =
+type ('input, 'output, 'f) func =
   { spec : ('input, 'output, 'f) Spec.t
   ; cache : ('input, ('input, 'output, 'f) Dep_node.t) Store.t
   }
 
 module Stack_frame = struct
-  type ('input, 'output, 'f) memo = ('input, 'output, 'f) t
+  type ('input, 'output, 'f) memo = ('input, 'output, 'f) func
 
   include Stack_frame_without_state
 
@@ -684,7 +684,7 @@ module Exec = struct
     { without_state = dep_node_without_state; state }
 end
 
-let dep_node (type i o f) (t : (i, o, f) t) inp =
+let dep_node (type i o f) (t : (i, o, f) func) inp =
   match Store.find t.cache inp with
   | Some dep_node -> dep_node
   | None ->
@@ -707,7 +707,7 @@ end
 module Exec_sync : sig
   val exec_dep_node : ('a, 'b, 'a -> 'b) Dep_node.t -> 'a -> 'b
 
-  val exec : ('a, 'b, 'a -> 'b) t -> 'a -> 'b
+  val exec : ('a, 'b, 'a -> 'b) func -> 'a -> 'b
 end = struct
   let compute inp (dep_node : _ Dep_node.t) running_state : _ Value.t =
     (* define the function to update / double check intermediate result *)
@@ -790,7 +790,7 @@ end
 module Exec_async : sig
   val exec_dep_node : ('a, 'b, 'a -> 'b Fiber.t) Dep_node.t -> 'a -> 'b Fiber.t
 
-  val exec : ('a, 'b, 'a -> 'b Fiber.t) t -> 'a -> 'b Fiber.t
+  val exec : ('a, 'b, 'a -> 'b Fiber.t) func -> 'a -> 'b Fiber.t
 end = struct
   let compute inp ivar (dep_node : _ Dep_node.t) running_state =
     (* define the function to update / double check intermediate result *)
@@ -881,12 +881,12 @@ end = struct
   let exec t inp = exec_dep_node (dep_node t inp) inp
 end
 
-let exec (type i o f) (t : (i, o, f) t) =
+let exec (type i o f) (t : (i, o, f) func) =
   match t.spec.f with
   | Function.Async _ -> (Exec_async.exec t : f)
   | Function.Sync _ -> (Exec_sync.exec t : f)
 
-let peek (type i o f) (t : (i, o, f) t) inp =
+let peek (type i o f) (t : (i, o, f) func) inp =
   match Store.find t.cache inp with
   | None -> None
   | Some dep_node -> (
@@ -915,7 +915,7 @@ let peek (type i o f) (t : (i, o, f) t) inp =
 
 let peek_exn t inp = Option.value_exn (peek t inp)
 
-let get_deps (type i o f) (t : (i, o, f) t) inp =
+let get_deps (type i o f) (t : (i, o, f) func) inp =
   match Store.find t.cache inp with
   | None -> None
   | Some { state = Init; _ } -> None
@@ -961,11 +961,11 @@ let function_info name = get_func name |> function_info_of_spec
 let get_call_stack = Call_stack.get_call_stack_without_state
 
 module Sync = struct
-  type nonrec ('i, 'o) t = ('i, 'o, 'i -> 'o) t
+  type nonrec ('i, 'o) t = ('i, 'o, 'i -> 'o) func
 end
 
 module Async = struct
-  type nonrec ('i, 'o) t = ('i, 'o, 'i -> 'o Fiber.t) t
+  type nonrec ('i, 'o) t = ('i, 'o, 'i -> 'o Fiber.t) func
 end
 
 let current_run =

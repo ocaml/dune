@@ -1162,7 +1162,7 @@ and Exported : sig
   end
 
   (** Exported to inspect memoization cycles. *)
-  val build_file_memo : (Path.t, unit, Path.t -> unit Fiber.t) Memo.t
+  val build_file_memo : (Path.t, unit, Path.t -> unit Fiber.t) Memo.func
 end = struct
   open Used_recursively
 

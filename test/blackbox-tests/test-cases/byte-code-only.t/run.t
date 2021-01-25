@@ -8,8 +8,8 @@
         ocamlc src/foo.cma
         ocamlc build-info/build_info.cma
         ocamlc build-info/.build_info.objs/byte/build_info__Build_info_data.{cmi,cmti}
-        ocamlc bin-with-build-info/.print_version.eobjs/byte/build_info__Build_info_data.{cmo,cmt}
         ocamlc bin-with-build-info/.print_version.eobjs/byte/dune__exe__Print_version.{cmi,cmo,cmt}
+        ocamlc bin-with-build-info/.print_version.eobjs/byte/build_info__Build_info_data.{cmo,cmt}
         ocamlc bin-with-build-info/print_version.bc
         ocamlc bin-with-build-info/print_version.exe
 

@@ -322,17 +322,6 @@ end
 
 type extra_sub_directories_to_keep = Subdir_set.t
 
-module Action_and_deps = struct
-  type t = Action.t * Dep.Set.t
-
-  let to_dyn (action, deps) =
-    let open Dyn.Encoder in
-    let action =
-      Action.for_shell action |> Action.For_shell.encode |> Dune_lang.to_dyn
-    in
-    record [ ("action", action); ("deps", Dep.Set.to_dyn deps) ]
-end
-
 module Rule_fn = struct
   let loc_decl = Fdecl.create Dyn.Encoder.opaque
 
@@ -1189,9 +1178,9 @@ let all_targets t =
               @ Path.Build.Map.keys rules_here )))
 
 module type Rec = sig
-  val build_file : Path.t -> unit Memo.Build.t
+  val build_file_unit : Path.t -> unit Memo.Build.t
 
-  val execute_rule : Rule.t -> unit Memo.Build.t
+  val execute_rule : Rule.t -> Dep.Set.t Memo.Build.t
 
   module Pred : sig
     val eval : File_selector.t -> Path.Set.t
@@ -1208,107 +1197,39 @@ module rec Used_recursively : Rec = Exported
 and Exported : sig
   include Rec
 
-  module Build_request : sig
-    type 'a t =
-      | Non_memoized : 'a Action_builder.t -> 'a t
-      | Memoized : Rule.t -> Action.t t
+  val exec_build_request : 'a Action_builder.t -> ('a * Dep.Set.t) Memo.Build.t
 
-    (** Evaluate a build request and return its static and dynamic dependencies.
-        Note that the evaluation forces building of the static dependencies. *)
-    val evaluate : 'a t -> ('a * Dep.Set.t) Memo.Build.t
+  val build_deps : Dep.Set.t -> unit Memo.Build.t
 
-    (** A hack exported because [package_deps] is not in a fiber. *)
-    val peek_deps_exn : Rule.t -> Dep.Set.t
-
-    (** Evaluate a build request and return its static and dynamic dependencies.
-        Unlike [evaluate], this function also forces building of the dynamic
-        dependencies. *)
-    val evaluate_and_wait_for_dynamic_dependencies :
-      'a t -> ('a * Dep.Set.t) Memo.Build.t
-  end
+  (** For [package_deps] *)
+  val peek_deps_exn : Rule.t -> Dep.Set.t
 
   (** Exported to inspect memoization cycles. *)
-  val build_file_memo : (Path.t, unit, Path.t -> unit Memo.Build.t) Memo.t
+  val build_file_memo :
+    (Path.t, Dep.Set.t, Path.t -> Dep.Set.t Memo.Build.t) Memo.t
 end = struct
   open Used_recursively
 
   let build_deps =
     Dep.Set.parallel_iter ~f:(function
-      | Alias a -> build_file (Path.build (Alias.stamp_file a))
-      | File f -> build_file f
+      | Alias a -> build_file_unit (Path.build (Alias.stamp_file a))
+      | File f -> build_file_unit f
       | File_selector g -> Pred.build g
       | Universe
       | Env _
       | Sandbox_config _ ->
         Memo.Build.return ())
 
-  module Action_builder_exec = Action_builder.Make_exec (struct
+  module Build_exec = Action_builder.Make_exec (struct
     let build_deps = build_deps
+
+    let register_action_deps = build_deps
+
+    let file_exists = file_exists
   end)
+  [@@inlined]
 
-  let () = Action_builder.set_file_system_accessors ~file_exists
-
-  module Build_request = struct
-    type 'a t =
-      | Non_memoized : 'a Action_builder.t -> 'a t
-      | Memoized : Rule.t -> Action.t t
-
-    let build (type a) (t : a t) : a Action_builder.t =
-      match t with
-      | Non_memoized build -> build
-      | Memoized rule -> rule.action.build
-
-    let static_deps (type a) (t : a t) = Action_builder.static_deps (build t)
-
-    let evaluate_and_discover_dynamic_deps_unmemoized t =
-      Action_builder_exec.build_static_rule_deps_and_exec (build t)
-
-    let memo =
-      Memo.create "evaluate-rule-and-discover-dynamic-deps"
-        ~output:(Simple (module Action_and_deps))
-        ~doc:
-          "Evaluate the action builder of a rule and return the action and \
-           dynamic dependencies of the rule."
-        ~input:(module Rule)
-        ~visibility:Hidden Async
-        (fun rule ->
-          evaluate_and_discover_dynamic_deps_unmemoized (Memoized rule))
-
-    let evaluate_and_discover_dynamic_deps (type a) (t : a t) :
-        (a * Dep.Set.t) Memo.Build.t =
-      match t with
-      | Non_memoized _ -> evaluate_and_discover_dynamic_deps_unmemoized t
-      | Memoized rule -> Memo.exec memo rule
-
-    let evaluate t = evaluate_and_discover_dynamic_deps t
-
-    let peek_deps_exn rule =
-      let (_ : Action.t), dynamic_deps = Memo.peek_exn memo rule in
-      Dep.Set.union (static_deps (Memoized rule)).action_deps dynamic_deps
-
-    (* Same as the function just below, but with less parallelism. We keep this
-       here only for documentation purposes as it is easier to read than the one
-       below. The reader only has to check that the functions do the same thing. *)
-    let _evaluate_and_wait_for_dynamic_dependencies t =
-      let* result, deps = evaluate t in
-      let+ () = build_deps deps in
-      (result, deps)
-
-    (* This function is equivalent to the function above but it starts building
-       static dependencies before we know the final result and the dynamic
-       dependencies. We do this to increase parallelism. *)
-    let evaluate_and_wait_for_dynamic_dependencies (type a) (t : a t) =
-      let static_deps = (static_deps t).action_deps in
-      (* Build the static dependencies in parallel with evaluation of the result
-         and dynamic dependencies. *)
-      let* result, dynamic_deps =
-        Memo.Build.fork_and_join_unit
-          (fun () -> build_deps static_deps)
-          (fun () -> evaluate_and_discover_dynamic_deps t)
-      in
-      build_deps dynamic_deps
-      >>> Memo.Build.return (result, Dep.Set.union static_deps dynamic_deps)
-  end
+  let exec_build_request = Build_exec.exec
 
   let select_sandbox_mode (config : Sandbox_config.t) ~loc
       ~sandboxing_preference =
@@ -1387,9 +1308,7 @@ end = struct
     start_rule t rule;
     let targets = action.targets in
     let head_target = Path.Build.Set.choose_exn targets in
-    let* action, deps =
-      Build_request.evaluate_and_wait_for_dynamic_dependencies (Memoized rule)
-    in
+    let* action, deps = exec_build_request rule.action.build in
     Memo.Build.of_fiber
       (let open Fiber.O in
       let build_deps deps = Memo.Build.run (build_deps deps) in
@@ -1748,6 +1667,10 @@ end = struct
                   t.promote_source ~src:path ~dst ~chmod context ))
       in
       t.rule_done <- t.rule_done + 1)
+    (* jeremidimino: we need to include the dependencies discovered while
+       running the action here. Otherwise, package dependencies are broken in
+       the presence of dynamic actions *)
+    >>> Memo.Build.return deps
 
   (* a rule can have multiple files, but rule.run_rule may only be called once *)
   let build_file_impl path =
@@ -1755,12 +1678,14 @@ end = struct
     let on_error exn = Dep_path.reraise exn (Path path) in
     Memo.Build.with_error_handler ~on_error (fun () ->
         match get_rule_or_source t path with
-        | Source -> Memo.Build.return ()
+        | Source -> Memo.Build.return Dep.Set.empty
         | Rule rule -> execute_rule rule)
 
   module Pred = struct
     let build_impl g =
-      Memo.Build.parallel_iter_set (module Path.Set) (Pred.eval g) ~f:build_file
+      Memo.Build.parallel_iter_set
+        (module Path.Set)
+        (Pred.eval g) ~f:build_file_unit
 
     let eval_impl g =
       let dir = File_selector.dir g in
@@ -1794,32 +1719,38 @@ end = struct
 
   let build_file_memo =
     Memo.create "build-file"
-      ~output:(Allow_cutoff (module Unit))
+      ~output:(Simple (module Dep.Set))
       ~doc:"Build a file."
       ~input:(module Path)
       ~visibility:(Public Dpath.decode) Async build_file_impl
 
   let build_file = Memo.exec build_file_memo
 
+  let build_file_unit =
+    let memo =
+      Memo.create "build-file-unit"
+        ~output:(Allow_cutoff (module Unit))
+        ~doc:"Build a file."
+        ~input:(module Path)
+        ~visibility:(Public Dpath.decode) Async
+        (fun file -> build_file file >>| ignore)
+    in
+    fun file -> Memo.exec memo file
+
   let execute_rule_memo =
-    Memo.create "execute-rule"
-      ~output:(Allow_cutoff (module Unit))
-      ~doc:"-"
+    Memo.create_hidden "execute-rule"
       ~input:(module Rule)
-      ~visibility:Hidden Async execute_rule_impl
+      Async execute_rule_impl
 
   let execute_rule = Memo.exec execute_rule_memo
+
+  let peek_deps_exn rule = Memo.peek_exn execute_rule_memo rule
 
   let () =
     Fdecl.set Rule_fn.loc_decl (fun () ->
         let stack = Memo.get_call_stack () in
         List.find_map stack ~f:(fun frame ->
-            match
-              Memo.Stack_frame.as_instance_of frame ~of_:execute_rule_memo
-            with
-            | Some input -> Some input
-            | None ->
-              Memo.Stack_frame.as_instance_of frame ~of_:Build_request.memo)
+            Memo.Stack_frame.as_instance_of frame ~of_:execute_rule_memo)
         |> Option.map ~f:Rule.loc)
 end
 
@@ -1872,19 +1803,19 @@ let package_deps (pkg : Package.t) files =
   and loop_deps fn acc =
     match get_rule (Path.build fn) with
     | None -> acc
-    | Some ir ->
-      if Rule.Set.mem !rules_seen ir then
+    | Some rule ->
+      if Rule.Set.mem !rules_seen rule then
         acc
       else (
-        rules_seen := Rule.Set.add !rules_seen ir;
+        rules_seen := Rule.Set.add !rules_seen rule;
         (* We know that at this point of execution, all the action deps have
            been computed and memoized (see the call to
            [Action_builder.paths_for_rule] below), so the following call to
-           [Build_request.peek_deps_exn] cannot raise. *)
+           [peek_deps_exn] cannot raise. *)
         (* CR-someday amokhov: It would be nice to statically rule out such
            potential race conditions between [Sync] and [Async] functions, e.g.
            by moving this code into a fiber. *)
-        let action_deps = Build_request.peek_deps_exn ir in
+        let action_deps = peek_deps_exn rule in
         let action_deps = Dep.Set.paths action_deps in
         Path.Set.fold action_deps ~init:acc ~f:loop
       )
@@ -1893,7 +1824,7 @@ let package_deps (pkg : Package.t) files =
   let+ () = Action_builder.paths_for_rule files in
   (* We know that after [Action_builder.paths_for_rule], all transitive
      dependencies of [files] are computed and memoized and so the above call to
-     [Build_request.peek_deps_exn] is safe. *)
+     [peek_deps_exn] is safe. *)
   Path.Set.fold files ~init:Package.Id.Set.empty ~f:(fun fn acc ->
       match Path.as_in_build_dir fn with
       | None -> acc
@@ -1944,10 +1875,7 @@ let do_build ~request =
   entry_point_async ~f:(fun () ->
       let t = get_build_system () in
       let f () =
-        let+ result, (_ : Dep.Set.t) =
-          Build_request.evaluate_and_wait_for_dynamic_dependencies
-            (Non_memoized request)
-        in
+        let+ result, _deps = exec_build_request request in
         result
       in
       match t.build_mutex with
@@ -1998,6 +1926,15 @@ end
 
 module Rule_top_closure = Top_closure.Make (Rule.Id.Set) (Monad.Id)
 
+(* Evaluate a rule without building the action dependencies *)
+module Eval_action_builder = Action_builder.Make_exec (struct
+  let build_deps = build_deps
+
+  let register_action_deps _deps = Memo.Build.return ()
+
+  let file_exists = file_exists
+end)
+
 let evaluate_rules ~recursive ~request =
   entry_point_sync ~f:(fun () ->
       let rules = ref Rule.Id.Map.empty in
@@ -2005,7 +1942,7 @@ let evaluate_rules ~recursive ~request =
         if Rule.Id.Map.mem !rules rule.id then
           Memo.Build.return ()
         else
-          let* action, deps = Build_request.evaluate (Memoized rule) in
+          let* action, deps = Eval_action_builder.exec rule.action.build in
           let (rule : Evaluated_rule.t) =
             { id = rule.id
             ; dir = rule.dir
@@ -2025,7 +1962,7 @@ let evaluate_rules ~recursive ~request =
         | None -> Memo.Build.return () (* external files *)
         | Some rule -> run_rule rule
       in
-      let* (), deps = Build_request.evaluate (Non_memoized request) in
+      let* (), deps = Eval_action_builder.exec request in
       let+ () = Dep.Set.parallel_iter_files deps ~f:run_dep in
       let rules =
         Rule.Id.Map.fold !rules ~init:Path.Build.Map.empty ~f:(fun r acc ->
@@ -2047,33 +1984,6 @@ let evaluate_rules ~recursive ~request =
                   (Path.to_string_maybe_quoted
                      (Path.build (Path.Build.Set.choose_exn rule.targets))))
           ])
-
-let static_deps_of_request request =
-  Static_deps.paths @@ Action_builder.static_deps request
-
-let rules_for_files paths =
-  Path.Set.fold paths ~init:[] ~f:(fun path acc ->
-      match get_rule path with
-      | None -> acc
-      | Some rule -> rule :: acc)
-  |> Rule.Set.of_list |> Rule.Set.to_list
-
-let rules_for_transitive_closure targets =
-  Rule_top_closure.top_closure (rules_for_files targets)
-    ~key:(fun r -> r.Rule.id)
-    ~deps:(fun r ->
-      Action_builder.static_deps r.action.build
-      |> Static_deps.paths |> rules_for_files)
-  |> function
-  | Ok l -> l
-  | Error cycle ->
-    User_error.raise
-      [ Pp.text "Dependency cycle detected:"
-      ; Pp.chain cycle ~f:(fun rule ->
-            Pp.verbatim
-              (Path.to_string_maybe_quoted
-                 (Path.build (Path.Build.Set.choose_exn rule.action.targets))))
-      ]
 
 let load_dir_and_produce_its_rules ~dir =
   let loaded = load_dir ~dir in

@@ -21,12 +21,14 @@ Example 1
 In this example, we have a rule (attached to alias "default") which
 cats the contents of two files `y` and `z`. Both of the the rules for
 these two files are failing. What is more, the filename `z` is
-accessed via an indirection. Because of this indirection, Dune only
-reports the error for `y` and not `z`. This was because there is some
-staging in the execution of rules, meaning that the build fails before
-it had a chance to start thinking about building `z`, even though the
-path to reach `z` is independent of the path to reach `y` and so the
-two errors could be reported at the same time.
+accessed via an indirection. In the end, since the path to reach `z`
+is independent of the path to reach `y`, both errors could be reported
+at the same time.
+
+However, previous versions of Dune only reported the failure for
+`y`. This was because there was some staging in the evaluation of
+rules, and the indirection to reach `z` meant that the build was
+failing before it had a chance to start thinking about building `z`.
 
   $ echo '(lang dune 2.8)' > dune-project
   $ cat >dune<<EOF
@@ -49,4 +51,6 @@ two errors could be reported at the same time.
   $ dune build
           fail y (exit 1)
   (cd _build/default && ./fail.exe) > _build/default/y
+          fail z (exit 1)
+  (cd _build/default && ./fail.exe) > _build/default/z
   [1]

@@ -1,10 +1,10 @@
   $ dune build --display short --debug-dependency-path @all
         coqdep thy1/a.v.d
         ocamlc src_b/.ml_plugin_b.objs/byte/ml_plugin_b.{cmi,cmo,cmt}
+      ocamldep src_b/.ml_plugin_b.objs/simple_b.ml.d
         ocamlc src_a/.ml_plugin_a.objs/byte/ml_plugin_a.{cmi,cmo,cmt}
       ocamldep src_a/.ml_plugin_a.objs/gram.mli.d
       ocamldep src_a/.ml_plugin_a.objs/simple.ml.d
-      ocamldep src_b/.ml_plugin_b.objs/simple_b.ml.d
         coqdep thy2/a.v.d
          coqpp src_a/gram.ml
       ocamlopt src_b/.ml_plugin_b.objs/native/ml_plugin_b.{cmx,o}

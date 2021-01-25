@@ -147,10 +147,6 @@ val do_build : request:'a Action_builder.t -> 'a Memo.Build.t
 
 val is_target : Path.t -> bool
 
-val static_deps_of_request : 'a Action_builder.t -> Path.Set.t
-
-val rules_for_transitive_closure : Path.Set.t -> Rule.t list
-
 val contexts : unit -> Build_context.t Context_name.Map.t
 
 (** List of all buildable targets. *)

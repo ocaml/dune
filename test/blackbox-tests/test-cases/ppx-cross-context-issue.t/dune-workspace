@@ -1,0 +1,7 @@
+(lang dune 2.0)
+
+(context (default))
+
+(context (default 
+ (name cross-environment)
+ (host default)))

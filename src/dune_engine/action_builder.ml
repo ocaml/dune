@@ -27,8 +27,8 @@ type 'a t =
   | Memo : 'a memo -> 'a t
   | Catch : 'a t * 'a -> 'a t
   | Deps : Dep.Set.t -> unit t
-  | Fiber : 'a Fiber.t -> 'a t
-  | Dyn_fiber : 'a Fiber.t t -> 'a t
+  | Memo_build : 'a Memo.Build.t -> 'a t
+  | Dyn_memo_build : 'a Memo.Build.t t -> 'a t
   | Build : 'a t t -> 'a t
 
 and 'a memo =
@@ -336,8 +336,8 @@ end = struct
     | Fail _ -> Static_deps.empty
     | Memo m -> Memo.exec memo (Input.T m)
     | Catch (t, _) -> static_deps t
-    | Fiber _ -> Static_deps.empty
-    | Dyn_fiber b -> static_deps b
+    | Memo_build _ -> Static_deps.empty
+    | Dyn_memo_build b -> static_deps b
     | Build b -> static_deps b
 end
 
@@ -380,8 +380,8 @@ let fold_labeled (type acc) t ~(init : acc) ~f =
     | Filter_existing_files p -> loop p acc
     | Memo m -> loop m.t acc
     | Catch (t, _) -> loop t acc
-    | Fiber _ -> acc
-    | Dyn_fiber b -> loop b acc
+    | Memo_build _ -> acc
+    | Dyn_memo_build b -> loop b acc
     | Build b -> loop b acc
   in
   loop t init
@@ -389,21 +389,21 @@ let fold_labeled (type acc) t ~(init : acc) ~f =
 (* Execution *)
 
 module Expert = struct
-  let build f = Build f
+  let action_builder f = Build f
 end
 
-let fiber f = Fiber f
+let memo_build f = Memo_build f
 
-let dyn_fiber f = Dyn_fiber f
+let dyn_memo_build f = Dyn_memo_build f
 
 module Make_exec (Build_deps : sig
-  val build_deps : Dep.Set.t -> unit Fiber.t
+  val build_deps : Dep.Set.t -> unit Memo.Build.t
 end) =
 struct
   module rec Execution : sig
-    val exec : 'a t -> ('a * Dep.Set.t) Fiber.t
+    val exec : 'a t -> ('a * Dep.Set.t) Memo.Build.t
 
-    val build_static_rule_deps_and_exec : 'a t -> ('a * Dep.Set.t) Fiber.t
+    val build_static_rule_deps_and_exec : 'a t -> ('a * Dep.Set.t) Memo.Build.t
   end = struct
     module Function = struct
       type 'a input = 'a memo
@@ -419,52 +419,53 @@ struct
       let eval m = Execution.exec m.t
     end
 
-    module Memo = Memo.Poly.Async (Function)
+    module Poly_memo = Memo.Poly.Async (Function)
 
     let file_exists x = Fdecl.get file_exists_fdecl x
 
     let eval_pred x = Fdecl.get Dep.eval_pred x
 
-    open Fiber.O
+    open Memo.Build.O
 
-    let rec exec : type a. a t -> (a * Dep.Set.t) Fiber.t =
+    let rec exec : type a. a t -> (a * Dep.Set.t) Memo.Build.t =
      fun t ->
       match t with
-      | Pure x -> Fiber.return (x, Dep.Set.empty)
+      | Pure x -> Memo.Build.return (x, Dep.Set.empty)
       | Map (f, a) ->
         let+ a, dyn_deps_a = exec a in
         (f a, dyn_deps_a)
       | Both (a, b) ->
         let+ (a, dyn_deps_a), (b, dyn_deps_b) =
-          Fiber.fork_and_join (fun () -> exec a) (fun () -> exec b)
+          Memo.Build.fork_and_join (fun () -> exec a) (fun () -> exec b)
         in
         ((a, b), Dep.Set.union dyn_deps_a dyn_deps_b)
       | Seq (a, b) ->
         let+ ((), dyn_deps_a), (b, dyn_deps_b) =
-          Fiber.fork_and_join (fun () -> exec a) (fun () -> exec b)
+          Memo.Build.fork_and_join (fun () -> exec a) (fun () -> exec b)
         in
         (b, Dep.Set.union dyn_deps_a dyn_deps_b)
       | Map2 (f, a, b) ->
         let+ (a, dyn_deps_a), (b, dyn_deps_b) =
-          Fiber.fork_and_join (fun () -> exec a) (fun () -> exec b)
+          Memo.Build.fork_and_join (fun () -> exec a) (fun () -> exec b)
         in
         (f a b, Dep.Set.union dyn_deps_a dyn_deps_b)
       | All xs ->
-        let+ res = Fiber.parallel_map xs ~f:exec in
+        let+ res = Memo.Build.parallel_map xs ~f:exec in
         let res, deps = List.split res in
         (res, Dep.Set.union_all deps)
-      | Deps _ -> Fiber.return ((), Dep.Set.empty)
-      | Paths_for_rule _ -> Fiber.return ((), Dep.Set.empty)
-      | Paths_glob g -> Fiber.return ((eval_pred g : Path.Set.t), Dep.Set.empty)
-      | Contents p -> Fiber.return (Io.read_file p, Dep.Set.empty)
-      | Lines_of p -> Fiber.return (Io.lines_of_file p, Dep.Set.empty)
+      | Deps _ -> Memo.Build.return ((), Dep.Set.empty)
+      | Paths_for_rule _ -> Memo.Build.return ((), Dep.Set.empty)
+      | Paths_glob g ->
+        Memo.Build.return ((eval_pred g : Path.Set.t), Dep.Set.empty)
+      | Contents p -> Memo.Build.return (Io.read_file p, Dep.Set.empty)
+      | Lines_of p -> Memo.Build.return (Io.lines_of_file p, Dep.Set.empty)
       | Dyn_paths t ->
         let+ (x, paths), dyn_deps = exec t in
         (x, Dep.Set.add_paths dyn_deps paths)
       | Dyn_deps t ->
         let+ (x, dyn_deps), dyn_deps_x = exec t in
         (x, Dep.Set.union dyn_deps dyn_deps_x)
-      | Label _ -> Fiber.return ((), Dep.Set.empty)
+      | Label _ -> Memo.Build.return ((), Dep.Set.empty)
       | Or_exn e ->
         let+ a, deps = exec e in
         (Result.ok_exn a, deps)
@@ -480,18 +481,18 @@ struct
         ((x, files), dyn_deps)
       | Catch (t, on_error) -> (
         let+ res =
-          Fiber.fold_errors ~init:on_error
+          Memo.Build.fold_errors ~init:on_error
             ~on_error:(fun _ x -> x)
             (fun () -> exec t)
         in
         match res with
         | Ok r -> r
         | Error r -> (r, Dep.Set.empty) )
-      | Memo m -> Memo.eval m
-      | Fiber f ->
+      | Memo m -> Poly_memo.eval m
+      | Memo_build f ->
         let+ f = f in
         (f, Dep.Set.empty)
-      | Dyn_fiber f ->
+      | Dyn_memo_build f ->
         let* f, deps = exec f in
         let+ f = f in
         (f, deps)
@@ -500,8 +501,8 @@ struct
         let+ r, deps1 = build_static_rule_deps_and_exec b in
         (r, Dep.Set.union deps0 deps1)
 
-    and build_static_rule_deps_and_exec : type a. a t -> (a * Dep.Set.t) Fiber.t
-        =
+    and build_static_rule_deps_and_exec :
+        type a. a t -> (a * Dep.Set.t) Memo.Build.t =
      fun t ->
       let* () = Build_deps.build_deps (static_deps t).rule_deps in
       exec t

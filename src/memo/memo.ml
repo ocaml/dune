@@ -2,6 +2,14 @@ open! Stdune
 open Fiber.O
 module Function = Function
 
+module Build = struct
+  include Fiber
+
+  let run = Fun.id
+
+  let of_fiber = Fun.id
+end
+
 let unwrap_exn = ref Fun.id
 
 module Code_error_with_memo_backtrace = struct

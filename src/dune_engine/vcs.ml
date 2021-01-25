@@ -61,9 +61,10 @@ let git, hg =
   (get "git", get "hg")
 
 let select git hg t =
-  match t.kind with
-  | Git -> git t
-  | Hg -> hg t
+  Memo.Build.of_fiber
+    ( match t.kind with
+    | Git -> git t
+    | Hg -> hg t )
 
 let prog t =
   Lazy.force

@@ -83,8 +83,8 @@ module Main = struct
       ~ancestor_vcs ()
 
   let setup common =
-    let open Fiber.O in
-    let* caching = make_cache (Common.config common) in
+    let open Memo.Build.O in
+    let* caching = Memo.Build.of_fiber (make_cache (Common.config common)) in
     let* workspace = scan_workspace common in
     let only_packages =
       Option.map (Common.only_packages common)

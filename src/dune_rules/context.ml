@@ -1,7 +1,7 @@
 open! Dune_engine
 open! Stdune
 open Import
-open Fiber.O
+open Memo.Build.O
 
 module Kind = struct
   module Opam = struct
@@ -145,18 +145,126 @@ let to_dyn_concise t : Dyn.t = Context_name.to_dyn t.name
 
 let compare a b = Poly.compare a.name b.name
 
-let opam = Memo.lazy_ (fun () -> Bin.which ~path:(Env.path Env.initial) "opam")
+(** Wrap calls to the opam binary *)
+module Opam : sig
+  (** Read a configuration variable via [opam config var] *)
+  val config_var : env:Env.t -> string -> string option Memo.Build.t
 
-let read_opam_config_var ~env (var : string) : string option Fiber.t =
-  let (_ : Memo.Run.t) = Memo.current_run () in
-  match Memo.Lazy.force opam with
-  | None -> Fiber.return None
-  | Some fn -> (
-    Process.run_capture (Accept Predicate_lang.any) fn ~env
-      [ "config"; "var"; var ]
-    >>| function
-    | Ok s -> Some (String.trim s)
-    | Error _ -> None )
+  (** Environment for this opam switch *)
+  val env :
+       env:Env.t
+    -> root:string option
+    -> switch:string
+    -> string Env.Map.t Memo.Build.t
+end = struct
+  let opam =
+    Memo.lazy_ (fun () -> Bin.which ~path:(Env.path Env.initial) "opam")
+
+  let opam_exn () =
+    match Memo.Lazy.force opam with
+    | None -> Utils.program_not_found "opam" ~loc:None
+    | Some fn -> fn
+
+  let version =
+    Memo.Lazy.Async.create (fun () ->
+        let opam = opam_exn () in
+        let+ version =
+          Memo.Build.of_fiber
+            (Process.run_capture_line Strict opam
+               [ "--version"; "--color=never" ])
+        in
+        match Scanf.sscanf version "%d.%d.%d" (fun a b c -> (a, b, c)) with
+        | Ok s -> s
+        | Error () ->
+          User_error.raise
+            [ Pp.textf "`%s config --version' returned invalid output:"
+                (Path.to_string_maybe_quoted opam)
+            ; Pp.verbatim version
+            ])
+
+  let config_var =
+    let impl (env, var) =
+      match Memo.Lazy.force opam with
+      | None -> Memo.Build.return None
+      | Some fn -> (
+        Memo.Build.of_fiber
+          (Process.run_capture (Accept Predicate_lang.any) fn ~env
+             [ "config"; "var"; var ])
+        >>| function
+        | Ok s -> Some (String.trim s)
+        | Error _ -> None )
+    in
+    let module Input = struct
+      type t = Env.t * string
+
+      let equal (env_a, var_a) (env_b, var_b) =
+        Env.equal env_a env_b && String.equal var_a var_b
+
+      let hash (env, var) = Hashtbl.hash (Env.hash env, var)
+
+      let to_dyn (env, var) = Dyn.Tuple [ Env.to_dyn env; String var ]
+    end in
+    let memo =
+      Memo.create_hidden "opam-config-var" ~input:(module Input) Async impl
+    in
+    fun ~env var -> Memo.exec memo (env, var)
+
+  let env =
+    let impl (env, root, switch) =
+      let opam = opam_exn () in
+      let* version = Memo.Lazy.Async.force version in
+      let args =
+        List.concat
+          [ [ "config"; "env" ]
+          ; ( match root with
+            | None -> []
+            | Some root -> [ "--root"; root ] )
+          ; [ "--switch"; switch; "--sexp" ]
+          ; ( if version < (2, 0, 0) then
+              []
+            else
+              [ "--set-switch" ] )
+          ]
+      in
+      let+ s =
+        Memo.Build.of_fiber (Process.run_capture ~env Strict opam args)
+      in
+      Dune_lang.Parser.parse_string ~fname:"<opam output>" ~mode:Single s
+      |> Dune_lang.Decoder.(
+           parse (enter (repeat (pair string string))) Univ_map.empty)
+      |> Env.Map.of_list_multi
+      |> Env.Map.mapi ~f:(fun var values ->
+             match List.rev values with
+             | [] -> assert false
+             | [ x ] -> x
+             | x :: _ ->
+               Format.eprintf
+                 "@{<warning>Warning@}: variable %S present multiple times in \
+                  the output of:\n\
+                  @{<details>%s@}@."
+                 var
+                 (String.concat ~sep:" "
+                    (List.map ~f:String.quote_for_shell
+                       (Path.to_string opam :: args)));
+               x)
+    in
+    let module Input = struct
+      type t = Env.t * string option * string
+
+      let equal (env_a, root_a, switch_a) (env_b, root_b, switch_b) =
+        Env.equal env_a env_b
+        && Option.equal String.equal root_a root_b
+        && String.equal switch_a switch_b
+
+      let hash (env, root, switch) = Hashtbl.hash (Env.hash env, root, switch)
+
+      let to_dyn (env, root, switch) =
+        Dyn.Tuple
+          [ Env.to_dyn env; Dyn.Encoder.(option string root); String switch ]
+    end in
+    let memo = Memo.create_hidden "opam-env" ~input:(module Input) Async impl in
+    fun ~env ~root ~switch -> Memo.exec memo (env, root, switch)
+end
 
 let ocamlpath_sep =
   if Sys.cygwin then
@@ -201,7 +309,9 @@ let ocamlfind_printconf_path ~env ~ocamlfind ~toolchain =
     | None -> args
     | Some s -> "-toolchain" :: Context_name.to_string s :: args
   in
-  let+ l = Process.run_capture_lines ~env Strict ocamlfind args in
+  let+ l =
+    Memo.Build.of_fiber (Process.run_capture_lines ~env Strict ocamlfind args)
+  in
   List.map l ~f:Path.of_filename_relative_to_initial_cwd
 
 let check_fdo_support has_native ocfg ~name =
@@ -303,16 +413,17 @@ let create ~(kind : Kind.t) ~path ~env ~env_nodes ~name ~merlin ~targets
            the configuration file set at the configuration time of ocamlfind,
            sigh... *)
         ( match Env.get env "OCAMLFIND_CONF" with
-        | Some s -> Fiber.return s
+        | Some s -> Memo.Build.return s
         | None ->
-          Process.run_capture_line ~env Strict fn [ "printconf"; "conf" ] )
+          Memo.Build.of_fiber
+            (Process.run_capture_line ~env Strict fn [ "printconf"; "conf" ]) )
         >>| Path.of_filename_relative_to_initial_cwd)
   in
   let create_one ~(name : Context_name.t) ~implicit ~findlib_toolchain ~host
       ~merlin =
     let* findlib_config =
       match findlib_toolchain with
-      | None -> Fiber.return None
+      | None -> Memo.Build.return None
       | Some toolchain ->
         let+ path = Memo.Lazy.Async.force findlib_config_path in
         let toolchain = Context_name.to_string toolchain in
@@ -379,10 +490,6 @@ let create ~(kind : Kind.t) ~path ~env ~env_nodes ~name ~merlin ~targets
       | None -> []
       | Some s -> Bin.parse_path s ~sep:ocamlpath_sep
     in
-    let opam_config_var_lib =
-      Memo.lazy_async ~cutoff:(Option.equal String.equal) (fun () ->
-          read_opam_config_var ~env "lib")
-    in
     let default_findlib_paths () =
       match Build_environment_kind.query ~kind ~findlib_toolchain ~env with
       | Cross_compilation_using_findlib_toolchain toolchain ->
@@ -390,13 +497,14 @@ let create ~(kind : Kind.t) ~path ~env ~env_nodes ~name ~merlin ~targets
         let env = Env.remove env ~var:"OCAMLPATH" in
         ocamlfind_printconf_path ~env ~ocamlfind ~toolchain:(Some toolchain)
       | Hardcoded_path l ->
-        Fiber.return (List.map l ~f:Path.of_filename_relative_to_initial_cwd)
+        Memo.Build.return
+          (List.map l ~f:Path.of_filename_relative_to_initial_cwd)
       | Opam2_environment opam_prefix ->
         let p = Path.of_filename_relative_to_initial_cwd opam_prefix in
         let p = Path.relative p "lib" in
-        Fiber.return [ p ]
+        Memo.Build.return [ p ]
       | Opam1_environment -> (
-        Memo.Lazy.Async.force opam_config_var_lib >>| function
+        Opam.config_var ~env "lib" >>| function
         | Some s -> [ Path.of_filename_relative_to_initial_cwd s ]
         | None -> Utils.program_not_found "opam" ~loc:None )
       | Unknown -> (
@@ -404,7 +512,8 @@ let create ~(kind : Kind.t) ~path ~env ~env_nodes ~name ~merlin ~targets
         | Some ocamlfind ->
           let env = Env.remove env ~var:"OCAMLPATH" in
           ocamlfind_printconf_path ~env ~ocamlfind ~toolchain:None
-        | None -> Fiber.return [ Path.relative (Path.parent_exn dir) "lib" ] )
+        | None ->
+          Memo.Build.return [ Path.relative (Path.parent_exn dir) "lib" ] )
     in
     let ocaml_config_ok_exn = function
       | Ok x -> x
@@ -418,9 +527,10 @@ let create ~(kind : Kind.t) ~path ~env ~env_nodes ~name ~merlin ~targets
         User_error.raise ~loc:(Loc.in_file file) [ Pp.text msg ]
     in
     let* default_ocamlpath, (ocaml_config_vars, ocfg) =
-      Fiber.fork_and_join default_findlib_paths (fun () ->
+      Memo.Build.fork_and_join default_findlib_paths (fun () ->
           let+ lines =
-            Process.run_capture_lines ~env Strict ocamlc [ "-config" ]
+            Memo.Build.of_fiber
+              (Process.run_capture_lines ~env Strict ocamlc [ "-config" ])
           in
           ocaml_config_ok_exn
             ( match Ocaml_config.Vars.of_lines lines with
@@ -532,7 +642,7 @@ let create ~(kind : Kind.t) ~path ~env ~env_nodes ~name ~merlin ~targets
     let ocaml_bin = dir in
     let install_prefix =
       Memo.lazy_async ~cutoff:Path.equal (fun () ->
-          Fiber.map (read_opam_config_var ~env "prefix") ~f:(function
+          Memo.Build.map (Opam.config_var ~env "prefix") ~f:(function
             | Some x -> Path.of_filename_relative_to_initial_cwd x
             | None -> Path.parent_exn ocaml_bin))
     in
@@ -598,7 +708,7 @@ let create ~(kind : Kind.t) ~path ~env ~env_nodes ~name ~merlin ~targets
       if Ocaml_version.ocamlmklib_supports_response_file version then
         Result.iter ~f:set t.ocamlmklib
     );
-    Fiber.return t
+    Memo.Build.return t
   in
   let implicit = not (List.mem ~set:targets Workspace.Context.Target.Native) in
   let* native =
@@ -606,8 +716,8 @@ let create ~(kind : Kind.t) ~path ~env ~env_nodes ~name ~merlin ~targets
       ~name ~merlin
   in
   let+ others =
-    Fiber.parallel_map targets ~f:(function
-      | Native -> Fiber.return None
+    Memo.Build.parallel_map targets ~f:(function
+      | Native -> Memo.Build.return None
       | Named findlib_toolchain ->
         let name = Context_name.target name ~toolchain:findlib_toolchain in
         create_one ~implicit:false ~name ~host:(Some native) ~merlin:false
@@ -642,76 +752,10 @@ let default ~merlin ~env_nodes ~env ~targets ~fdo_target_exe
   create ~kind:Default ~path ~env ~env_nodes ~merlin ~targets ~fdo_target_exe
     ~dynamically_linked_foreign_archives ~instrument_with
 
-let opam_version =
-  let f opam =
-    let+ version =
-      Process.run_capture_line Strict opam [ "--version"; "--color=never" ]
-    in
-    match Scanf.sscanf version "%d.%d.%d" (fun a b c -> (a, b, c)) with
-    | Ok s -> s
-    | Error () ->
-      User_error.raise
-        [ Pp.textf "`%s config --version' returned invalid output:"
-            (Path.to_string_maybe_quoted opam)
-        ; Pp.verbatim version
-        ]
-  in
-  let module Output = struct
-    type t = int * int * int
-
-    let to_dyn = Tuple.T3.to_dyn Int.to_dyn Int.to_dyn Int.to_dyn
-  end in
-  let memo =
-    Memo.create "opam-version" ~doc:"get opam version"
-      ~input:(module Path)
-      ~output:(Simple (module Output))
-      Async f ~visibility:Memo.Visibility.Hidden
-  in
-  Memo.exec memo
-
 let create_for_opam ~root ~env ~env_nodes ~targets ~profile ~switch ~name
     ~merlin ~host_context ~host_toolchain ~fdo_target_exe
     ~dynamically_linked_foreign_archives ~instrument_with =
-  let opam =
-    match Memo.Lazy.force opam with
-    | None -> Utils.program_not_found "opam" ~loc:None
-    | Some fn -> fn
-  in
-  let* version = opam_version opam in
-  let args =
-    List.concat
-      [ [ "config"; "env" ]
-      ; ( match root with
-        | None -> []
-        | Some root -> [ "--root"; root ] )
-      ; [ "--switch"; switch; "--sexp" ]
-      ; ( if version < (2, 0, 0) then
-          []
-        else
-          [ "--set-switch" ] )
-      ]
-  in
-  let* s = Process.run_capture ~env Strict opam args in
-  let vars =
-    Dune_lang.Parser.parse_string ~fname:"<opam output>" ~mode:Single s
-    |> Dune_lang.Decoder.(
-         parse (enter (repeat (pair string string))) Univ_map.empty)
-    |> Env.Map.of_list_multi
-    |> Env.Map.mapi ~f:(fun var values ->
-           match List.rev values with
-           | [] -> assert false
-           | [ x ] -> x
-           | x :: _ ->
-             Format.eprintf
-               "@{<warning>Warning@}: variable %S present multiple times in \
-                the output of:\n\
-                @{<details>%s@}@."
-               var
-               (String.concat ~sep:" "
-                  (List.map ~f:String.quote_for_shell
-                     (Path.to_string opam :: args)));
-             x)
-  in
+  let* vars = Opam.env ~env ~root ~switch in
   let path =
     match Env.Map.find vars "PATH" with
     | None -> Env.path env
@@ -731,9 +775,9 @@ module T_list = struct
 end
 
 module rec Instantiate : sig
-  val instantiate : Context_name.t -> t list Fiber.t
+  val instantiate : Context_name.t -> t list Memo.Build.t
 end = struct
-  let instantiate_impl name : t list Fiber.t =
+  let instantiate_impl name : t list Memo.Build.t =
     let env = Memo.Run.Fdecl.get Global.env in
     let workspace = Workspace.workspace () in
     let context =
@@ -742,7 +786,7 @@ end = struct
     in
     let* host_context =
       match Workspace.Context.host_context context with
-      | None -> Fiber.return None
+      | None -> Memo.Build.return None
       | Some context_name -> (
         let+ contexts = Instantiate.instantiate context_name in
         match contexts with
@@ -820,7 +864,7 @@ module Create = struct
   let call () =
     let workspace = Workspace.workspace () in
     let+ contexts =
-      Fiber.parallel_map workspace.contexts ~f:(fun c ->
+      Memo.Build.parallel_map workspace.contexts ~f:(fun c ->
           Instantiate.instantiate (Workspace.Context.name c))
     in
     List.concat contexts
@@ -865,16 +909,18 @@ end
 let install_ocaml_libdir t =
   match (t.kind, t.findlib_toolchain, Setup.library_destdir) with
   | Default, None, Some d ->
-    Fiber.return (Some (Path.of_filename_relative_to_initial_cwd d))
+    Memo.Build.return (Some (Path.of_filename_relative_to_initial_cwd d))
   | _ -> (
     (* If ocamlfind is present, it has precedence over everything else. *)
     match t.which "ocamlfind" with
     | Some fn ->
       let+ s =
-        Process.run_capture_line ~env:t.env Strict fn [ "printconf"; "destdir" ]
+        Memo.Build.of_fiber
+          (Process.run_capture_line ~env:t.env Strict fn
+             [ "printconf"; "destdir" ])
       in
       Some (Path.of_filename_relative_to_initial_cwd s)
-    | None -> Fiber.return None )
+    | None -> Memo.Build.return None )
 
 let compiler t (mode : Mode.t) =
   match mode with

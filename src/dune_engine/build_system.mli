@@ -75,7 +75,7 @@ val set_rule_generators :
   -> unit
 
 (** Set the list of VCS repositiories contained in the source tree *)
-val set_vcs : Vcs.t list -> unit Fiber.t
+val set_vcs : Vcs.t list -> unit Memo.Build.t
 
 (** All other functions in this section must be called inside the rule generator
     callback. *)
@@ -140,7 +140,7 @@ end
     callback. *)
 
 (** Do the actual build *)
-val do_build : request:'a Action_builder.t -> 'a Fiber.t
+val do_build : request:'a Action_builder.t -> 'a Memo.Build.t
 
 (** {2 Other queries} *)
 
@@ -179,6 +179,6 @@ end
 val evaluate_rules :
      recursive:bool
   -> request:unit Action_builder.t
-  -> Evaluated_rule.t list Fiber.t
+  -> Evaluated_rule.t list Memo.Build.t
 
 val get_cache : unit -> caching option

@@ -1,7 +1,7 @@
 open! Dune_engine
 open Import
 open! No_io
-open! Build.O
+open! Action_builder.O
 module SC = Super_context
 
 (* This module interprets [(menhir ...)] stanzas -- that is, it provides build
@@ -111,10 +111,11 @@ module Run (P : PARAMS) : sig end = struct
 
   (* [menhir args] generates a Menhir command line (a build action). *)
 
-  let menhir (args : 'a args) : Action.t Build.With_targets.t =
+  let menhir (args : 'a args) : Action.t Action_builder.With_targets.t =
     Command.run ~dir:(Path.build build_dir) menhir_binary args
 
-  let rule ?(mode = stanza.mode) : Action.t Build.With_targets.t -> unit =
+  let rule ?(mode = stanza.mode) :
+      Action.t Action_builder.With_targets.t -> unit =
     SC.add_rule sctx ~dir ~mode ~loc:stanza.loc
 
   let expand_flags flags = Super_context.menhir_flags sctx ~dir ~expander ~flags

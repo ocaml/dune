@@ -37,7 +37,7 @@ let generate_and_compile_module cctx ~precompiled_cmi ~name ~lib ~code ~requires
            Module.file module_ ~ml_kind:Impl
            |> Option.value_exn |> Path.as_in_build_dir_exn
          in
-         Build.write_file_dyn ml code);
+         Action_builder.write_file_dyn ml code);
       let cctx =
         Compilation_context.for_module_generated_at_link_time cctx ~requires
           ~module_
@@ -243,7 +243,7 @@ let handle_special_libs cctx =
           let* module_ =
             generate_and_compile_module cctx ~name:data_module ~lib
               ~code:
-                (Build.return
+                (Action_builder.return
                    (build_info_code cctx ~libs:all_libs ~api_version))
               ~requires:(Ok [ lib ])
               ~precompiled_cmi:true
@@ -270,7 +270,7 @@ let handle_special_libs cctx =
             generate_and_compile_module cctx ~lib
               ~name:(Module_name.of_string "findlib_initl")
               ~code:
-                (Build.return
+                (Action_builder.return
                    (findlib_init_code
                       ~preds:Findlib.findlib_predicates_set_by_dune
                       ~libs:all_libs))
@@ -287,11 +287,11 @@ let handle_special_libs cctx =
           let* module_ =
             let code =
               if plugins then
-                Build.return
+                Action_builder.return
                   (dune_site_plugins_code ~libs:all_libs
                      ~builtins:(Findlib.builtins ctx.Context.findlib))
               else
-                Build.return (dune_site_code ())
+                Action_builder.return (dune_site_code ())
             in
             generate_and_compile_module cctx ~name:data_module ~lib ~code
               ~requires:(Ok [ lib ])

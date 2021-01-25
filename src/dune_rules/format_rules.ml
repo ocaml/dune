@@ -2,12 +2,13 @@ open! Dune_engine
 open Import
 
 let add_diff sctx loc alias ~dir ~input ~output =
-  let open Build.O in
+  let open Action_builder.O in
   let action = Action.Chdir (Path.build dir, Action.diff input output) in
   Super_context.add_alias_action sctx alias ~dir ~loc:(Some loc) ~locks:[]
     ~stamp:input
-    (Build.with_no_targets
-       (Build.paths [ input; Path.build output ] >>> Build.return action))
+    (Action_builder.with_no_targets
+       ( Action_builder.paths [ input; Path.build output ]
+       >>> Action_builder.return action ))
 
 let rec subdirs_until_root dir =
   match Path.parent dir with
@@ -17,7 +18,7 @@ let rec subdirs_until_root dir =
 let depend_on_files ~named dir =
   subdirs_until_root dir
   |> List.concat_map ~f:(fun dir -> List.map named ~f:(Path.relative dir))
-  |> Build.paths_existing
+  |> Action_builder.paths_existing
 
 let formatted = ".formatted"
 
@@ -38,10 +39,10 @@ let gen_rules_output sctx (config : Format_config.t) ~version ~dialects
       match Path.Source.basename file with
       | "dune" when Format_config.includes config Dune ->
         Option.some
-        @@ Build.with_targets ~targets:[ output ]
+        @@ Action_builder.with_targets ~targets:[ output ]
         @@
-        let open Build.O in
-        let+ () = Build.path input in
+        let open Action_builder.O in
+        let+ () = Action_builder.path input in
         Action.format_dune_file ~version input output
       | _ ->
         let ext = Path.Source.extension file in
@@ -63,11 +64,11 @@ let gen_rules_output sctx (config : Format_config.t) ~version ~dialects
         let src = Path.as_in_build_dir_exn input in
         let extra_deps =
           match extra_deps with
-          | [] -> Build.return ()
+          | [] -> Action_builder.return ()
           | extra_deps -> depend_on_files extra_deps
         in
-        let open Build.With_targets.O in
-        Build.with_no_targets extra_deps
+        let open Action_builder.With_targets.O in
+        Action_builder.with_no_targets extra_deps
         >>> Preprocessing.action_for_pp ~dep_kind:Lib_deps_info.Kind.Required
               ~loc ~expander ~action ~src ~target:(Some output)
     in

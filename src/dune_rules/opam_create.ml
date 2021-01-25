@@ -218,13 +218,13 @@ let opam_fields project (package : Package.t) =
 let template_file = Path.extend_basename ~suffix:".template"
 
 let opam_template ~opam_path =
-  let open Build.O in
+  let open Action_builder.O in
   let opam_template_path = template_file opam_path in
-  Build.if_file_exists opam_template_path
+  Action_builder.if_file_exists opam_template_path
     ~then_:
-      (let+ contents = Build.contents opam_template_path in
+      (let+ contents = Action_builder.contents opam_template_path in
        Some (opam_template_path, contents))
-    ~else_:(Build.return None)
+    ~else_:(Action_builder.return None)
 
 let generate project pkg ~template =
   let opam_fname = Package.opam_file pkg in
@@ -249,13 +249,13 @@ let generate project pkg ~template =
     | Some (_, s) -> s )
 
 let add_rule sctx ~project ~pkg =
-  let open Build.O in
+  let open Action_builder.O in
   let build_dir = (Super_context.context sctx).build_dir in
   let opam_path = Path.Build.append_source build_dir (Package.opam_file pkg) in
   let opam_rule =
     (let+ template = opam_template ~opam_path:(Path.build opam_path) in
      generate project pkg ~template)
-    |> Build.write_file_dyn opam_path
+    |> Action_builder.write_file_dyn opam_path
   in
   let dir = Path.Build.append_source build_dir (Package.dir pkg) in
   let mode =

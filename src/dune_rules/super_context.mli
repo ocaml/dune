@@ -68,14 +68,14 @@ val foreign_flags :
   -> expander:Expander.t
   -> flags:Ordered_set_lang.Unexpanded.t
   -> language:Foreign_language.t
-  -> string list Build.t
+  -> string list Action_builder.t
 
 val menhir_flags :
      t
   -> dir:Path.Build.t
   -> expander:Expander.t
   -> flags:Ordered_set_lang.Unexpanded.t
-  -> string list Build.t
+  -> string list Action_builder.t
 
 (** Binaries that are symlinked in the associated .bin directory of [dir]. This
     associated directory is [Path.relative dir ".bin"] *)
@@ -91,7 +91,7 @@ val coq : t -> dir:Path.Build.t -> Env_node.Coq.t
 val format_config : t -> dir:Path.Build.t -> Format_config.t
 
 (** Dump a directory environment in a readable form *)
-val dump_env : t -> dir:Path.Build.t -> Dune_lang.t list Build.t
+val dump_env : t -> dir:Path.Build.t -> Dune_lang.t list Action_builder.t
 
 val find_scope_by_dir : t -> Path.Build.t -> Scope.t
 
@@ -106,7 +106,7 @@ val add_rule :
   -> ?locks:Path.t list
   -> ?loc:Loc.t
   -> dir:Path.Build.t
-  -> Action.t Build.With_targets.t
+  -> Action.t Action_builder.With_targets.t
   -> unit
 
 val add_rule_get_targets :
@@ -116,14 +116,14 @@ val add_rule_get_targets :
   -> ?locks:Path.t list
   -> ?loc:Loc.t
   -> dir:Path.Build.t
-  -> Action.t Build.With_targets.t
+  -> Action.t Action_builder.With_targets.t
   -> Path.Build.Set.t
 
 val add_rules :
      t
   -> ?sandbox:Sandbox_config.t
   -> dir:Path.Build.t
-  -> Action.t Build.With_targets.t list
+  -> Action.t Action_builder.With_targets.t list
   -> unit
 
 val add_alias_action :
@@ -133,7 +133,7 @@ val add_alias_action :
   -> loc:Loc.t option
   -> ?locks:Path.t list
   -> stamp:_
-  -> Action.t Build.With_targets.t
+  -> Action.t Action_builder.With_targets.t
   -> unit
 
 (** [resolve_program t ?hint name] resolves a program. [name] is looked up in

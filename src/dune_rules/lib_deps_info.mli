@@ -22,6 +22,6 @@ val merge : t -> t -> t
 
 val to_dyn : t -> Dyn.t
 
-type Build.label += Label of t
+type Action_builder.label += Label of t
 
-val lib_deps : _ Build.t -> t
+val lib_deps : _ Action_builder.t -> t

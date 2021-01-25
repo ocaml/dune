@@ -35,7 +35,7 @@ let rules ~sctx ~dir =
     ]
   in
   let action =
-    let open Build.With_targets.O in
+    let open Action_builder.With_targets.O in
     let+ run_preprocessor =
       Command.run ~dir:(Path.build dir) ~stdout_to:file prog args
     in

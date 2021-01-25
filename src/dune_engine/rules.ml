@@ -5,7 +5,7 @@ module Id = Id.Make ()
 module Dir_rules = struct
   type alias_action =
     { stamp : Digest.t
-    ; action : Action.t Build.With_targets.t
+    ; action : Action.t Action_builder.With_targets.t
     ; locks : Path.t list
     ; context : Build_context.t
     ; env : Env.t option
@@ -15,19 +15,19 @@ module Dir_rules = struct
   module Alias_spec = struct
     type t =
       { deps : Path.Set.t
-      ; dyn_deps : Path.Set.t Build.t
+      ; dyn_deps : Path.Set.t Action_builder.t
       ; actions : alias_action Appendable_list.t
       }
 
     let empty =
       { deps = Path.Set.empty
-      ; dyn_deps = Build.return Path.Set.empty
+      ; dyn_deps = Action_builder.return Path.Set.empty
       ; actions = Appendable_list.empty
       }
 
     let union x y =
       { deps = Path.Set.union x.deps y.deps
-      ; dyn_deps = Build.map2 x.dyn_deps y.dyn_deps ~f:Path.Set.union
+      ; dyn_deps = Action_builder.map2 x.dyn_deps y.dyn_deps ~f:Path.Set.union
       ; actions = Appendable_list.( @ ) x.actions y.actions
       }
   end
@@ -159,13 +159,13 @@ module Produce = struct
          Path.Build.Map.singleton dir
            (Dir_rules.Nonempty.singleton (Alias { name; spec })))
 
-    let add_deps t ?(dyn_deps = Build.return Path.Set.empty) deps =
+    let add_deps t ?(dyn_deps = Action_builder.return Path.Set.empty) deps =
       alias t { deps; dyn_deps; actions = Appendable_list.empty }
 
     let add_action t ~context ~env ~loc ?(locks = []) ~stamp action =
       alias t
         { deps = Path.Set.empty
-        ; dyn_deps = Build.return Path.Set.empty
+        ; dyn_deps = Action_builder.return Path.Set.empty
         ; actions =
             Appendable_list.singleton
               ( { stamp = Digest.generic stamp

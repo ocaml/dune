@@ -17,11 +17,12 @@ type t =
   { scope : Scope.t
   ; local_binaries : File_binding.Expanded.t list Memo.Lazy.t
   ; ocaml_flags : Ocaml_flags.t Memo.Lazy.t
-  ; foreign_flags : string list Build.t Foreign_language.Dict.t Memo.Lazy.t
+  ; foreign_flags :
+      string list Action_builder.t Foreign_language.Dict.t Memo.Lazy.t
   ; external_env : Env.t Memo.Lazy.t
   ; bin_artifacts : Artifacts.Bin.t Memo.Lazy.t
   ; inline_tests : Dune_env.Stanza.Inline_tests.t Memo.Lazy.t
-  ; menhir_flags : string list Build.t Memo.Lazy.t
+  ; menhir_flags : string list Action_builder.t Memo.Lazy.t
   ; odoc : Odoc.t Memo.Lazy.t
   ; coq : Coq.t Memo.Lazy.t
   ; format_config : Format_config.t Memo.Lazy.t
@@ -130,7 +131,7 @@ let make ~dir ~inherit_from ~scope ~config_stanza ~profile ~expander
             Expander.expand_and_eval_set expander f ~standard))
   in
   let menhir_flags =
-    inherited ~field:menhir_flags ~root:(Build.return []) (fun flags ->
+    inherited ~field:menhir_flags ~root:(Action_builder.return []) (fun flags ->
         let expander = Expander.set_dir (Memo.Lazy.force expander) ~dir in
         Expander.expand_and_eval_set expander config.menhir_flags
           ~standard:flags)

@@ -15,7 +15,7 @@ val setup_rules :
   -> dir:Path.Build.t
   -> dir_contents:Dir_contents.t
   -> Theory.t
-  -> Action.t Build.With_targets.t list
+  -> Action.t Action_builder.With_targets.t list
 
 val install_rules :
      sctx:Super_context.t
@@ -27,11 +27,11 @@ val coqpp_rules :
      sctx:Super_context.t
   -> dir:Path.Build.t
   -> Coqpp.t
-  -> Action.t Build.With_targets.t list
+  -> Action.t Action_builder.With_targets.t list
 
 val extraction_rules :
      sctx:Super_context.t
   -> dir:Path.Build.t
   -> dir_contents:Dir_contents.t
   -> Extraction.t
-  -> Action.t Build.With_targets.t list
+  -> Action.t Action_builder.With_targets.t list

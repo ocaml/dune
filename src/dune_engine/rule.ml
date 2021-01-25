@@ -48,7 +48,7 @@ module T = struct
     { id : Id.t
     ; context : Build_context.t option
     ; env : Env.t option
-    ; action : Action.t Build.With_targets.t
+    ; action : Action.t Action_builder.With_targets.t
     ; mode : Mode.t
     ; locks : Path.t list
     ; info : Info.t
@@ -86,10 +86,12 @@ module Set = O.Set
 
 let make ?(sandbox = Sandbox_config.default) ?(mode = Mode.Standard) ~context
     ~env ?(locks = []) ?(info = Info.Internal) action =
-  let open Build.With_targets.O in
+  let open Action_builder.With_targets.O in
   let action =
-    Build.With_targets.memoize "Rule.make"
-      (Build.with_no_targets (Build.dep (Dep.sandbox_config sandbox)) >>> action)
+    Action_builder.With_targets.memoize "Rule.make"
+      ( Action_builder.with_no_targets
+          (Action_builder.dep (Dep.sandbox_config sandbox))
+      >>> action )
   in
   let targets = action.targets in
   let dir =
@@ -123,9 +125,9 @@ let make ?(sandbox = Sandbox_config.default) ?(mode = Mode.Standard) ~context
 let with_prefix t ~build =
   { t with
     action =
-      (let open Build.With_targets.O in
-      Build.With_targets.memoize "Rule.with_prefix"
-        (Build.with_no_targets build >>> t.action))
+      (let open Action_builder.With_targets.O in
+      Action_builder.With_targets.memoize "Rule.with_prefix"
+        (Action_builder.with_no_targets build >>> t.action))
   }
 
 let effective_env t =

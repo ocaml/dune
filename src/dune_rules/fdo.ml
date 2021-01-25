@@ -152,7 +152,7 @@ let opt_rule cctx m =
        ; Hidden_targets [ linear_fdo ]
        ; Dep (Path.build linear)
        ; As (ocamlfdo_flags ctx)
-       ; Dyn (Build.delayed flags)
+       ; Dyn (Action_builder.delayed flags)
        ])
 
 module Linker_script = struct
@@ -179,7 +179,7 @@ module Linker_script = struct
          [ A "linker-script"
          ; A "-o"
          ; Target linker_script_path
-         ; Dyn (Build.delayed flags)
+         ; Dyn (Action_builder.delayed flags)
          ; A "-q"
          ; As (ocamlfdo_linker_script_flags ctx)
          ]);

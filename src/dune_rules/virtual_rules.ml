@@ -37,7 +37,7 @@ let setup_copy_rules_for_impl ~sctx ~dir vimpl =
   let vlib_obj_dir = Lib.obj_dir vlib in
   let add_rule = Super_context.add_rule sctx ~dir in
   let copy_to_obj_dir ~src ~dst =
-    add_rule ~loc:(Loc.of_pos __POS__) (Build.symlink ~src ~dst)
+    add_rule ~loc:(Loc.of_pos __POS__) (Action_builder.symlink ~src ~dst)
   in
   let { Lib_config.has_native; ext_obj; _ } = ctx.lib_config in
   let { Mode.Dict.byte; native } =

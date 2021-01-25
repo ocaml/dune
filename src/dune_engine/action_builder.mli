@@ -54,8 +54,8 @@ with type 'a build := 'a t
     information. *)
 val set_file_system_accessors : file_exists:(Path.t -> bool) -> unit
 
-(** Add a set of targets to a build description, turning a target-less [Build.t]
-    into [Build.With_targets.t]. *)
+(** Add a set of targets to a build description, turning a target-less
+    [Action_builder.t] into [Action_builder.With_targets.t]. *)
 val with_targets : 'a t -> targets:Path.Build.t list -> 'a With_targets.t
 
 (** [with_targets_set] is like [with_targets] but [targets] is a set *)

@@ -107,7 +107,7 @@ module Unprocessed = struct
      Processed.t] *)
   type config =
     { requires : Lib.Set.t
-    ; flags : string list Build.t
+    ; flags : string list Action_builder.t
     ; preprocess :
         Preprocess.Without_instrumentation.t Preprocess.t Module_name.Per_item.t
     ; libname : Lib_name.Local.t option
@@ -147,7 +147,7 @@ module Unprocessed = struct
     let extensions = Dialect.DB.extensions_for_merlin dialects in
     let config =
       { requires
-      ; flags = Build.catch flags ~on_error:[]
+      ; flags = Action_builder.catch flags ~on_error:[]
       ; preprocess
       ; libname
       ; source_dirs
@@ -164,7 +164,7 @@ module Unprocessed = struct
       s
 
   let pp_flag_of_action ~expander ~loc ~action :
-      Processed.pp_flag option Build.With_targets.t =
+      Processed.pp_flag option Action_builder.With_targets.t =
     match (action : Action_dune_lang.t) with
     | Run (exe, args) -> (
       let args =
@@ -176,7 +176,7 @@ module Unprocessed = struct
           None
       in
       match args with
-      | None -> Build.With_targets.return None
+      | None -> Action_builder.With_targets.return None
       | Some args ->
         let action =
           let targets_dir = Expander.dir expander in
@@ -186,7 +186,7 @@ module Unprocessed = struct
           let action = Preprocessing.chdir (Run (exe, args)) in
           Action_unexpanded.expand ~loc ~expander ~dep_kind:Optional ~targets
             ~targets_dir action
-            (Build.return Bindings.empty)
+            (Action_builder.return Bindings.empty)
         in
         let pp_of_action exe args =
           match exe with
@@ -199,15 +199,15 @@ module Unprocessed = struct
             in
             Some Processed.{ flag = "-pp"; args }
         in
-        Build.With_targets.map action ~f:(function
+        Action_builder.With_targets.map action ~f:(function
           | Run (exe, args) -> pp_of_action exe args
           | Chdir (_, Run (exe, args)) -> pp_of_action exe args
           | Chdir (_, Chdir (_, Run (exe, args))) -> pp_of_action exe args
           | _ -> None) )
-    | _ -> Build.With_targets.return None
+    | _ -> Action_builder.With_targets.return None
 
   let pp_flags sctx ~expander libname preprocess :
-      Processed.pp_flag option Build.With_targets.t =
+      Processed.pp_flag option Action_builder.With_targets.t =
     let scope = Expander.scope expander in
     match
       Preprocess.remove_future_syntax preprocess ~for_:Merlin
@@ -215,20 +215,21 @@ module Unprocessed = struct
     with
     | Action (loc, (action : Action_dune_lang.t)) ->
       pp_flag_of_action ~expander ~loc ~action
-    | No_preprocessing -> Build.With_targets.return None
+    | No_preprocessing -> Action_builder.With_targets.return None
     | Pps { loc; pps; flags; staged = _ } -> (
       match
         Preprocessing.get_ppx_driver sctx ~loc ~expander ~lib_name:libname
           ~flags ~scope pps
       with
-      | Error _exn -> Build.With_targets.return None
+      | Error _exn -> Action_builder.With_targets.return None
       | Ok (exe, flags) ->
         let args =
           Path.to_absolute_filename (Path.build exe) :: "--as-ppx" :: flags
           |> List.map ~f:quote_if_needed
           |> String.concat ~sep:" "
         in
-        Build.With_targets.return (Some Processed.{ flag = "-ppx"; args }) )
+        Action_builder.With_targets.return
+          (Some Processed.{ flag = "-ppx"; args }) )
 
   let process
       { modules
@@ -243,9 +244,9 @@ module Unprocessed = struct
           ; libname
           }
       } sctx ~more_src_dirs ~expander =
-    let open Build.With_targets.O in
+    let open Action_builder.With_targets.O in
     let+ config =
-      let+ flags = Build.with_no_targets flags in
+      let+ flags = Action_builder.with_no_targets flags in
       let src_dirs, obj_dirs =
         Lib.Set.fold requires
           ~init:(Path.set_of_source_paths source_dirs, objs_dirs)
@@ -273,7 +274,7 @@ module Unprocessed = struct
 end
 
 let dot_merlin sctx ~dir ~more_src_dirs ~expander (t : Unprocessed.t) =
-  let open Build.With_targets.O in
+  let open Action_builder.With_targets.O in
   let merlin_exist = Merlin_ident.merlin_exists_path dir t.ident in
   let merlin_file = Merlin_ident.merlin_file_path dir t.ident in
 
@@ -285,16 +286,17 @@ let dot_merlin sctx ~dir ~more_src_dirs ~expander (t : Unprocessed.t) =
      Currently dune doesn't support declaring a dependency only on the existence
      of a file, so we have to use this trick. *)
   SC.add_rule sctx ~dir
-    ( Build.with_no_targets (Build.path (Path.build merlin_file))
-    >>> Build.create_file merlin_exist );
+    ( Action_builder.with_no_targets
+        (Action_builder.path (Path.build merlin_file))
+    >>> Action_builder.create_file merlin_exist );
 
   Path.Set.singleton (Path.build merlin_file)
   |> Rules.Produce.Alias.add_deps (Alias.check ~dir);
 
   let merlin = Unprocessed.process t sctx ~more_src_dirs ~expander in
   let action =
-    Build.With_targets.write_file_dyn merlin_file
-      (Build.With_targets.map ~f:Processed.Persist.to_string merlin)
+    Action_builder.With_targets.write_file_dyn merlin_file
+      (Action_builder.With_targets.map ~f:Processed.Persist.to_string merlin)
   in
   SC.add_rule sctx ~dir action
 

@@ -17,7 +17,7 @@ let resolve_libs ~sctx t =
 
 let setup_rules ~sctx ~dir t =
   let meta = meta_file ~dir t in
-  Build.delayed (fun () ->
+  Action_builder.delayed (fun () ->
       let open Result.O in
       let+ requires = resolve_libs ~sctx t in
       let meta =
@@ -29,7 +29,8 @@ let setup_rules ~sctx ~dir t =
       in
       Format.asprintf "%a" Pp.to_fmt
         (Pp.vbox (Pp.seq (Meta.pp meta.entries) Pp.cut)))
-  |> Build.or_exn |> Build.write_file_dyn meta
+  |> Action_builder.or_exn
+  |> Action_builder.write_file_dyn meta
   |> Super_context.add_rule sctx ~dir
 
 let install_rules ~sctx ~dir ({ name; site = loc, (pkg, site); _ } as t) =

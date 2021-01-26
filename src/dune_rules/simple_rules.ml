@@ -71,7 +71,7 @@ let add_user_rule sctx ~dir ~(rule : Rule.t) ~action ~expander =
     sctx
     (* user rules may have extra requirements, in which case they will be
        specified as a part of rule.deps, which will be correctly taken care of
-       by the build description *)
+       by the action builder *)
     ~sandbox:Sandbox_config.no_special_requirements ~dir ~mode:rule.mode
     ~loc:rule.loc
     ~locks:(interpret_locks ~expander rule.locks)

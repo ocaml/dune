@@ -1179,7 +1179,7 @@ end = struct
       | Sandbox_config _ ->
         Fiber.return ())
 
-  module Build_exec = Action_builder.Make_exec (struct
+  module Action_builder_exec = Action_builder.Make_exec (struct
     let build_deps = build_deps
   end)
 
@@ -1198,13 +1198,13 @@ end = struct
     let static_deps (type a) (t : a t) = Action_builder.static_deps (build t)
 
     let evaluate_and_discover_dynamic_deps_unmemoized t =
-      Build_exec.build_static_rule_deps_and_exec (build t)
+      Action_builder_exec.build_static_rule_deps_and_exec (build t)
 
     let memo =
       Memo.create "evaluate-rule-and-discover-dynamic-deps"
         ~output:(Simple (module Action_and_deps))
         ~doc:
-          "Evaluate the build description of a rule and return the action and \
+          "Evaluate the action builder of a rule and return the action and \
            dynamic dependencies of the rule."
         ~input:(module Rule)
         ~visibility:Hidden Async

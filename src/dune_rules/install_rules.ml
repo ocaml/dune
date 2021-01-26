@@ -555,8 +555,7 @@ end = struct
       let meta_template = Path.build (Package_paths.meta_template ctx pkg) in
       let meta_template_lines_or_fail =
         (* XXX this should really be lazy as it's only necessary for the then
-           clause. There's no way to express this in the build description
-           however. *)
+           clause. There's no way to express this in the action builder however. *)
         let vlib =
           List.find_map entries ~f:(function
             | Super_context.Lib_entry.Library lib ->

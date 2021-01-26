@@ -388,17 +388,22 @@ let gen ~contexts ?only_packages conf =
   let open Fiber.O in
   let { Dune_load.dune_files; packages; projects; vcs } = conf in
   let packages = Option.value only_packages ~default:packages in
-  let sctxs =
-    Context_name.Map.of_list_map_exn contexts ~f:(fun (c : Context.t) ->
-        (c.name, Fiber.Ivar.create ()))
-  in
-  let make_sctx (context : Context.t) : _ Fiber.t =
+  let rec sctxs =
+    (* This lazy is just here for the need of [let rec]. We force it straight
+       away, so it is safe regarding [Memo]. *)
+    lazy
+      (Context_name.Map.of_list_map_exn contexts ~f:(fun (c : Context.t) ->
+           (c.name, Memo.Lazy.Async.create (fun () -> make_sctx c))))
+  and make_sctx (context : Context.t) : _ Fiber.t =
     let host () =
       match context.for_host with
       | None -> Fiber.return None
       | Some h ->
-        Context_name.Map.find_exn sctxs h.name
-        |> Fiber.Ivar.read >>| Option.some
+        let+ sctx =
+          Memo.Lazy.Async.force
+            (Context_name.Map.find_exn (Lazy.force sctxs) h.name)
+        in
+        Some sctx
     in
     let stanzas () =
       let+ stanzas = Dune_load.Dune_files.eval ~context dune_files in
@@ -412,17 +417,19 @@ let gen ~contexts ?only_packages conf =
                   dir_conf.stanzas
             })
     in
-    let* host, stanzas = Fiber.fork_and_join host stanzas in
+    let+ host, stanzas = Fiber.fork_and_join host stanzas in
     let sctx =
       Super_context.create ?host ~context ~projects ~packages ~stanzas ()
     in
-    let+ () =
-      Fiber.Ivar.fill (Context_name.Map.find_exn sctxs context.name) sctx
-    in
-    (context.name, sctx)
+    sctx
   in
-  let* contexts = Fiber.parallel_map contexts ~f:make_sctx in
-  let sctxs = Context_name.Map.of_list_exn contexts in
+  let* sctxs =
+    Lazy.force sctxs |> Context_name.Map.to_list
+    |> Fiber.parallel_map ~f:(fun (name, sctx) ->
+           let+ sctx = Memo.Lazy.Async.force sctx in
+           (name, sctx))
+    >>| Context_name.Map.of_list_exn
+  in
   let () =
     Build_system.set_packages (fun path ->
         let open Option.O in

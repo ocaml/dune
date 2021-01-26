@@ -103,14 +103,14 @@ let setup_module_rules t =
   let path = Source.source_path t.source in
   let requires_compile = Compilation_context.requires_compile t.cctx in
   let main_ml =
-    Build.of_result_map requires_compile ~f:(fun libs ->
-        Build.return
+    Action_builder.of_result_map requires_compile ~f:(fun libs ->
+        Action_builder.return
           (let include_dirs = Path.Set.to_list (Lib.L.include_paths libs) in
            let pp_ppx = pp_flags t in
            let pp_dirs = Source.pp_ml t.source ~include_dirs in
            let pp = Pp.seq pp_ppx pp_dirs in
            Format.asprintf "%a@." Pp.to_fmt pp))
-    |> Build.write_file_dyn path
+    |> Action_builder.write_file_dyn path
   in
   Super_context.add_rule sctx ~dir main_ml
 
@@ -120,13 +120,14 @@ let setup_rules t =
   let sctx = Compilation_context.super_context t.cctx in
   Exe.build_and_link t.cctx ~program ~linkages:[ linkage ]
     ~link_args:
-      (Build.return (Command.Args.As [ "-linkall"; "-warn-error"; "-31" ]))
+      (Action_builder.return
+         (Command.Args.As [ "-linkall"; "-warn-error"; "-31" ]))
     ~promote:None;
   let src = Exe.exe_path t.cctx ~program ~linkage in
   let dir = Source.stanza_dir t.source in
   let dst = Path.Build.relative dir (Path.Build.basename src) in
   Super_context.add_rule sctx ~dir ~loc:t.source.loc
-    (Build.symlink ~src:(Path.build src) ~dst);
+    (Action_builder.symlink ~src:(Path.build src) ~dst);
   setup_module_rules t
 
 let print_toplevel_init_file ~include_paths ~files_to_load =

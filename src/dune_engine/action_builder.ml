@@ -174,7 +174,8 @@ let source_tree ~dir =
    would be better to rule them out completely.
 
    Another improvement is to cache [Path.Build.Set.to_list targets] which is
-   currently performed multiple times on the very same [Build.With_targets.t]. *)
+   currently performed multiple times on the very same
+   [Action_builder.With_targets.t]. *)
 module With_targets = struct
   type nonrec 'a t =
     { build : 'a t
@@ -296,7 +297,7 @@ end = struct
   end
 
   let memo =
-    Memo.create_hidden "Build.static_deps"
+    Memo.create_hidden "Action_builder.static_deps"
       ~input:(module Input)
       Sync
       (fun (T m) -> Analysis.static_deps m.t)

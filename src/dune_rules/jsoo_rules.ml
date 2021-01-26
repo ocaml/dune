@@ -95,7 +95,7 @@ let link_rule cc ~runtime ~target cm =
   let dir = Compilation_context.dir cc in
   let requires = Compilation_context.requires_link cc in
   let get_all =
-    Build.map cm ~f:(fun cm ->
+    Action_builder.map cm ~f:(fun cm ->
         Command.of_result_map requires ~f:(fun libs ->
             let all_libs = List.concat_map libs ~f:(jsoo_archives ~ctx) in
             (* Special case for the stdlib because it is not referenced in the
@@ -126,7 +126,7 @@ let build_cm cctx ~(js_of_ocaml : Dune_file.Js_of_ocaml.t) ~src ~target =
     let spec = Command.Args.Dep (Path.build src) in
     let flags =
       Expander.expand_and_eval_set expander js_of_ocaml.flags
-        ~standard:(Build.return (standard sctx))
+        ~standard:(Action_builder.return (standard sctx))
     in
     [ js_of_ocaml_rule sctx ~sub_command:Compile ~dir
         ~flags:(Command.Args.dyn flags) ~spec ~target
@@ -175,7 +175,8 @@ let setup_separate_compilation_rules sctx components =
                  ~flags:(As (standard sctx))
                  ~spec ~target)) )
 
-let build_exe cc ~js_of_ocaml ~src ~(cm : Path.t list Build.t) ~flags ~promote =
+let build_exe cc ~js_of_ocaml ~src ~(cm : Path.t list Action_builder.t) ~flags
+    ~promote =
   let { Dune_file.Js_of_ocaml.javascript_files; _ } = js_of_ocaml in
   let dir = Compilation_context.dir cc in
   let sctx = Compilation_context.super_context cc in

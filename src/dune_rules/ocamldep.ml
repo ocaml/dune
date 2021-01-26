@@ -1,7 +1,7 @@
 open! Dune_engine
 open! Stdune
 open Import
-open Build.O
+open Action_builder.O
 module CC = Compilation_context
 module SC = Super_context
 
@@ -76,7 +76,7 @@ let deps_of ~cctx ~ml_kind unit =
   let ocamldep_output = dep (Immediate source) in
   SC.add_rule sctx ~dir
     (let flags =
-       Option.value (Module.pp_flags unit) ~default:(Build.return [])
+       Option.value (Module.pp_flags unit) ~default:(Action_builder.return [])
      in
      Command.run context.ocamldep
        ~dir:(Path.build context.build_dir)
@@ -104,7 +104,7 @@ let deps_of ~cctx ~ml_kind unit =
   in
   let action =
     let paths =
-      let+ lines = Build.lines_of (Path.build ocamldep_output) in
+      let+ lines = Action_builder.lines_of (Path.build ocamldep_output) in
       lines
       |> parse_deps_exn ~file:(Module.File.path source)
       |> interpret_deps cctx ~unit
@@ -112,9 +112,9 @@ let deps_of ~cctx ~ml_kind unit =
       ( build_paths modules
       , List.map modules ~f:(fun m -> Module_name.to_string (Module.name m)) )
     in
-    Build.with_targets ~targets:[ all_deps_file ]
+    Action_builder.with_targets ~targets:[ all_deps_file ]
       (let+ sources, extras =
-         Build.dyn_paths
+         Action_builder.dyn_paths
            (let+ sources, extras = paths in
             ((sources, extras), sources))
        in
@@ -122,14 +122,15 @@ let deps_of ~cctx ~ml_kind unit =
   in
   SC.add_rule sctx ~dir action;
   let all_deps_file = Path.build all_deps_file in
-  Build.memoize
+  Action_builder.memoize
     (Path.to_string all_deps_file)
-    (Build.map ~f:(parse_module_names ~unit) (Build.lines_of all_deps_file))
+    (Action_builder.map ~f:(parse_module_names ~unit)
+       (Action_builder.lines_of all_deps_file))
 
 let read_deps_of ~obj_dir ~modules ~ml_kind unit =
   let all_deps_file = Obj_dir.Module.dep obj_dir (Transitive (unit, ml_kind)) in
-  Build.memoize
+  Action_builder.memoize
     (Path.Build.to_string all_deps_file)
-    (Build.map
+    (Action_builder.map
        ~f:(parse_module_names ~unit ~modules)
-       (Build.lines_of (Path.build all_deps_file)))
+       (Action_builder.lines_of (Path.build all_deps_file)))

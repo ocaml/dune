@@ -11,7 +11,7 @@ val rules :
      dir:Path.Build.t
   -> ctx:Context.t
   -> unit:Path.t
-  -> Action.t Build.With_targets.t * t Build.t
+  -> Action.t Action_builder.With_targets.t * t Action_builder.t
 
 (** For testing only *)
 val parse : string -> t

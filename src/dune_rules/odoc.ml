@@ -2,7 +2,7 @@ open! Dune_engine
 open! Stdune
 open Import
 open Dune_file
-open Build.O
+open Action_builder.O
 module SC = Super_context
 
 let ( ++ ) = Path.Build.relative
@@ -105,7 +105,7 @@ module Dep : sig
        Context.t
     -> Package.Name.t option
     -> (Lib.t list, exn) result
-    -> unit Build.t
+    -> unit Action_builder.t
 
   (*** [setup_deps ctx target odocs] Adds [odocs] as dependencies for [target].
     These dependencies may be used using the [deps] function *)
@@ -116,8 +116,8 @@ end = struct
   let alias = Alias.make (Alias.Name.of_string ".odoc-all")
 
   let deps ctx pkg requires =
-    Build.of_result_map requires ~f:(fun libs ->
-        Build.deps
+    Action_builder.of_result_map requires ~f:(fun libs ->
+        Action_builder.deps
           (let init =
              match pkg with
              | Some p ->
@@ -171,7 +171,7 @@ let odoc_base_flags sctx build_dir =
   | Nonfatal -> S []
 
 let module_deps (m : Module.t) ~obj_dir ~(dep_graphs : Dep_graph.Ml_kind.t) =
-  Build.dyn_paths_unit
+  Action_builder.dyn_paths_unit
     (let+ deps =
        if Module.has m ~ml_kind:Intf then
          Dep_graph.deps_of dep_graphs.intf m
@@ -184,10 +184,10 @@ let module_deps (m : Module.t) ~obj_dir ~(dep_graphs : Dep_graph.Ml_kind.t) =
 let compile_module sctx ~obj_dir (m : Module.t) ~includes:(file_deps, iflags)
     ~dep_graphs ~pkg_or_lnu =
   let odoc_file = Obj_dir.Module.odoc obj_dir m in
-  let open Build.With_targets.O in
+  let open Action_builder.With_targets.O in
   add_rule sctx
-    ( Build.with_no_targets file_deps
-    >>> Build.with_no_targets (module_deps m ~obj_dir ~dep_graphs)
+    ( Action_builder.with_no_targets file_deps
+    >>> Action_builder.with_no_targets (module_deps m ~obj_dir ~dep_graphs)
     >>>
     let doc_dir = Path.build (Obj_dir.odoc_dir obj_dir) in
     Command.run ~dir:doc_dir (odoc sctx)
@@ -247,16 +247,16 @@ let setup_html sctx (odoc_file : odoc) ~pkg ~requires =
     | Mld -> (odoc_file.html_file, [])
     | Module ->
       let dune_keep =
-        Build.create_file (odoc_file.html_dir ++ Config.dune_keep_fname)
+        Action_builder.create_file (odoc_file.html_dir ++ Config.dune_keep_fname)
       in
       (odoc_file.html_dir, [ dune_keep ])
   in
-  let open Build.With_targets.O in
+  let open Action_builder.With_targets.O in
   add_rule sctx
-    ( Build.with_no_targets deps
-    >>> Build.progn
-          ( Build.with_no_targets
-              (Build.return
+    ( Action_builder.with_no_targets deps
+    >>> Action_builder.progn
+          ( Action_builder.with_no_targets
+              (Action_builder.return
                  (* Note that we declare no targets apart from [dune_keep]. This
                     means Dune doesn't know how to build specific documentation
                     files and that we can't run this rule in a sandbox. To
@@ -362,7 +362,7 @@ let setup_toplevel_index_rule sctx =
       list_items
   in
   let ctx = Super_context.context sctx in
-  add_rule sctx (Build.write_file (Paths.toplevel_index ctx) html)
+  add_rule sctx (Action_builder.write_file (Paths.toplevel_index ctx) html)
 
 let libs_of_pkg sctx ~pkg =
   SC.lib_entries_of_package sctx pkg
@@ -635,14 +635,15 @@ let setup_package_odoc_rules_def =
           let gen_mld = Paths.gen_mld_dir ctx pkg ++ "index.mld" in
           let entry_modules = entry_modules sctx in
           add_rule sctx
-            (Build.write_file gen_mld (default_index ~pkg entry_modules));
+            (Action_builder.write_file gen_mld
+               (default_index ~pkg entry_modules));
           String.Map.set mlds "index" gen_mld
       in
       let odocs =
         List.map (String.Map.values mlds) ~f:(fun mld ->
             compile_mld sctx (Mld.create mld) ~pkg
               ~doc_dir:(Paths.odocs ctx (Pkg pkg))
-              ~includes:(Build.return []))
+              ~includes:(Action_builder.return []))
       in
       Dep.setup_deps ctx (Pkg pkg) (Path.set_of_build_paths_list odocs))
 

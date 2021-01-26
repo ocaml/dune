@@ -38,7 +38,7 @@ type t =
   ; lookup_artifacts : (dir:Path.Build.t -> Ml_sources.Artifacts.t) option
   ; map_exe : Path.t -> Path.t
   ; foreign_flags :
-      dir:Path.Build.t -> string list Build.t Foreign_language.Dict.t
+      dir:Path.Build.t -> string list Action_builder.t Foreign_language.Dict.t
   ; find_package : Package.Name.t -> Package.t option
   }
 
@@ -287,7 +287,7 @@ module Resolved_forms = struct
     ; (* Static deps from %{...} variables. For instance %{exe:...} *)
       mutable sdeps : Path.Set.t
     ; (* Dynamic deps from %{...} variables. For instance %{read:...} *)
-      mutable ddeps : Value.t list Build.t Pform.Expansion.Map.t
+      mutable ddeps : Value.t list Action_builder.t Pform.Expansion.Map.t
     }
 
   let create () =
@@ -306,15 +306,15 @@ module Resolved_forms = struct
           Path.Set.union (Path.Set.of_list (Value.L.deps_only v)) t.sdeps)
 
   let to_build t =
-    let open Build.O in
+    let open Action_builder.O in
     let ddeps = Pform.Expansion.Map.to_list t.ddeps in
-    let+ () = Build.label (Lib_deps_info.Label t.lib_deps)
-    and+ () = Build.path_set t.sdeps
-    and+ values = Build.all (List.map ddeps ~f:snd)
+    let+ () = Action_builder.label (Lib_deps_info.Label t.lib_deps)
+    and+ () = Action_builder.path_set t.sdeps
+    and+ values = Action_builder.all (List.map ddeps ~f:snd)
     and+ () =
       match t.failure with
-      | None -> Build.return ()
-      | Some fail -> Build.fail fail
+      | None -> Action_builder.return ()
+      | Some fail -> Action_builder.fail fail
     in
     List.fold_left2 ddeps values ~init:Pform.Expansion.Map.empty
       ~f:(fun acc (var, _) value -> Pform.Expansion.Map.add_exn acc var value)
@@ -330,7 +330,7 @@ let parse_lib_file ~loc s =
   | Some (lib, f) -> (Lib_name.parse_string_exn (loc, lib), f)
 
 let cc t ~dir =
-  let open Build.O in
+  let open Action_builder.O in
   let cc = t.foreign_flags ~dir in
   Foreign_language.Dict.map cc ~f:(fun cc ->
       let+ flags = cc in
@@ -338,13 +338,13 @@ let cc t ~dir =
 
 type expand_result =
   | Static of Value.t list
-  | Dynamic of Value.t list Build.t
+  | Dynamic of Value.t list Action_builder.t
 
 let expand_and_record_generic acc ~dep_kind ~(dir : Path.Build.t) ~pform t
     expansion =
   let loc = String_with_vars.Var.loc pform in
   let relative d s = Path.build (Path.Build.relative ~error_loc:loc d s) in
-  let open Build.O in
+  let open Action_builder.O in
   match (expansion : Pform.Expansion.t) with
   | Var
       ( Project_root | First_dep | Deps | Targets | Target | Named_local
@@ -357,9 +357,9 @@ let expand_and_record_generic acc ~dep_kind ~(dir : Path.Build.t) ~pform t
   | Var Cxx -> Dynamic (cc t ~dir).cxx
   | Macro (Artifact a, s) ->
     let data =
-      Build.dyn_paths
+      Action_builder.dyn_paths
         (let+ values =
-           Build.delayed (fun () ->
+           Action_builder.delayed (fun () ->
                match expand_artifact ~dir ~loc t a s with
                | Value v -> v
                | Error msg -> raise (User_error.E msg)
@@ -434,12 +434,12 @@ let expand_and_record_generic acc ~dep_kind ~(dir : Path.Build.t) ~pform t
       else
         let path_exe = Path.extend_basename path ~suffix:".exe" in
         let dep =
-          Build.if_file_exists path_exe
+          Action_builder.if_file_exists path_exe
             ~then_:
-              (let+ () = Build.path path_exe in
+              (let+ () = Action_builder.path path_exe in
                path_exp path_exe)
             ~else_:
-              (let+ () = Build.path path in
+              (let+ () = Action_builder.path path in
                path_exp path)
         in
         Dynamic dep
@@ -471,17 +471,21 @@ let expand_and_record_generic acc ~dep_kind ~(dir : Path.Build.t) ~pform t
   | Macro (Read, s) ->
     let path = relative dir s in
     let data =
-      let+ s = Build.contents path in
+      let+ s = Action_builder.contents path in
       [ Value.String s ]
     in
     Dynamic data
   | Macro (Read_lines, s) ->
     let path = relative dir s in
-    let data = Build.map (Build.lines_of path) ~f:Value.L.strings in
+    let data =
+      Action_builder.map (Action_builder.lines_of path) ~f:Value.L.strings
+    in
     Dynamic data
   | Macro (Read_strings, s) ->
     let path = relative dir s in
-    let data = Build.map (Build.strings path) ~f:Value.L.strings in
+    let data =
+      Action_builder.map (Action_builder.strings path) ~f:Value.L.strings
+    in
     Dynamic data
 
 let gen_with_record_deps ~expand t resolved_forms ~dep_kind =
@@ -495,7 +499,10 @@ let gen_with_record_deps ~expand t resolved_forms ~dep_kind =
 
 module Deps_like : sig
   val expand_deps_like_field :
-    t -> dep_kind:Lib_deps_info.Kind.t -> f:(t -> 'a Build.t) -> 'a Build.t
+       t
+    -> dep_kind:Lib_deps_info.Kind.t
+    -> f:(t -> 'a Action_builder.t)
+    -> 'a Action_builder.t
 end = struct
   let expand_and_record_static acc ~dep_kind ~(dir : Path.Build.t) ~pform t
       expansion =
@@ -513,7 +520,7 @@ end = struct
     Expanded.of_value_opt res
 
   let expand_deps_like_field t ~dep_kind ~f =
-    let open Build.O in
+    let open Action_builder.O in
     let forms = Resolved_forms.create () in
     let t = gen_with_record_deps ~expand:expand_no_ddeps t forms ~dep_kind in
     let t = { t with map_exe = Fun.id } in
@@ -531,12 +538,12 @@ include Deps_like
 module Action_like : sig
   val expand_action :
        t
-    -> deps_written_by_user:Path.t Bindings.t Build.t
+    -> deps_written_by_user:Path.t Bindings.t Action_builder.t
     -> targets_written_by_user:Targets.Or_forbidden.t
     -> dep_kind:Lib_deps_info.Kind.t
     -> partial:(t -> 'a)
     -> final:(t -> 'a -> 'b)
-    -> 'a * 'b Build.t
+    -> 'a * 'b Action_builder.t
 end = struct
   (* Expand variables that correspond to user defined variables, deps, and
      target(s) fields *)
@@ -570,8 +577,8 @@ end = struct
         [ ("var", String_with_vars.Var.to_dyn var) ]
 
   (* Responsible for the 2nd phase expansions of dynamic dependencies. After
-     we've discovered all Build.t values, waited for them to build, we can
-     finally substitute them back form the dynamic_expansions map *)
+     we've discovered all Action_builder.t values, waited for them to build, we
+     can finally substitute them back form the dynamic_expansions map *)
   let expand_ddeps_and_bindings
       ~(dynamic_expansions : Value.t list Pform.Expansion.Map.t)
       ~(deps_written_by_user : Path.t Bindings.t) ~expand_var t var
@@ -645,7 +652,7 @@ end = struct
 
   let expand_action t ~deps_written_by_user ~targets_written_by_user ~dep_kind
       ~partial ~final =
-    let open Build.O in
+    let open Action_builder.O in
     let forms = Resolved_forms.create () in
     let x =
       let expand = expand_and_record_deps ~targets_written_by_user in
@@ -666,13 +673,13 @@ end
 include Action_like
 
 let expand_and_eval_set t set ~standard =
-  let open Build.O in
+  let open Action_builder.O in
   let dir = Path.build (dir t) in
   let standard =
     if Ordered_set_lang.Unexpanded.has_special_forms set then
       standard
     else
-      Build.return []
+      Action_builder.return []
   in
   let files =
     let f template =
@@ -696,7 +703,9 @@ let expand_and_eval_set t set ~standard =
     eval set ~standard
   | paths ->
     let+ standard = standard
-    and+ sexps = Build.all (List.map paths ~f:Build.read_sexp) in
+    and+ sexps =
+      Action_builder.all (List.map paths ~f:Action_builder.read_sexp)
+    in
     let files_contents = List.combine paths sexps |> Path.Map.of_list_exn in
     expand set ~files_contents |> eval ~standard
 

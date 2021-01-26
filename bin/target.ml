@@ -1,7 +1,7 @@
 open Stdune
 module Log = Dune_util.Log
 module Context = Dune_rules.Context
-module Build = Dune_engine.Build
+module Action_builder = Dune_engine.Action_builder
 module Build_system = Dune_engine.Build_system
 
 type t =
@@ -13,12 +13,12 @@ type resolve_input =
   | Dep of Arg.Dep.t
 
 let request targets =
-  List.fold_left targets ~init:(Build.return ()) ~f:(fun acc target ->
-      let open Build.O in
+  List.fold_left targets ~init:(Action_builder.return ()) ~f:(fun acc target ->
+      let open Action_builder.O in
       acc
       >>>
       match target with
-      | File path -> Build.path path
+      | File path -> Action_builder.path path
       | Alias { Alias.name; recursive; dir; contexts } ->
         let contexts = List.map ~f:Dune_rules.Context.name contexts in
         ( if recursive then

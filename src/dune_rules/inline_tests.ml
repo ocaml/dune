@@ -267,9 +267,9 @@ include Sub_system.Register_end_point (struct
        in
        let expander = Expander.add_bindings expander ~bindings in
        let action =
-         let open Build.With_targets.O in
+         let open Action_builder.With_targets.O in
          let+ actions =
-           Build.With_targets.all
+           Action_builder.With_targets.all
              (List.filter_map backends ~f:(fun (backend : Backend.t) ->
                   Option.map backend.info.generate_runner
                     ~f:(fun (loc, action) ->
@@ -277,11 +277,11 @@ include Sub_system.Register_end_point (struct
                         ~dep_kind:Required
                         ~targets:(Forbidden "inline test generators")
                         ~targets_dir:dir
-                        (Build.return Bindings.empty))))
+                        (Action_builder.return Bindings.empty))))
          in
          Action.with_stdout_to target (Action.progn actions)
        in
-       Build.With_targets.add ~targets:[ target ] action);
+       Action_builder.With_targets.add ~targets:[ target ] action);
     let cctx =
       let package = Dune_file.Library.package lib in
       let flags =
@@ -311,7 +311,7 @@ include Sub_system.Register_end_point (struct
     Exe.build_and_link cctx
       ~program:{ name; main_module_name = Module.name main_module; loc }
       ~linkages
-      ~link_args:(Build.return (Command.Args.A "-linkall"))
+      ~link_args:(Action_builder.return (Command.Args.A "-linkall"))
       ~promote:None;
     let flags =
       let flags =
@@ -319,11 +319,13 @@ include Sub_system.Register_end_point (struct
         @ [ info.flags ]
       in
       let expander = Expander.add_bindings expander ~bindings in
-      let open Build.O in
+      let open Action_builder.O in
       let+ l =
         List.map flags
-          ~f:(Expander.expand_and_eval_set expander ~standard:(Build.return []))
-        |> Build.all
+          ~f:
+            (Expander.expand_and_eval_set expander
+               ~standard:(Action_builder.return []))
+        |> Action_builder.all
       in
       Command.Args.As (List.concat l)
     in
@@ -357,14 +359,16 @@ include Sub_system.Register_end_point (struct
                ( Super_context.resolve_program ~dir sctx ~loc:(Some loc) runner
                , Dep exe )
            in
-           let open Build.With_targets.O in
-           Build.with_no_targets (Dep_conf_eval.unnamed info.deps ~expander)
-           >>> Build.with_no_targets (Build.paths source_files)
-           >>> Build.progn
+           let open Action_builder.With_targets.O in
+           Action_builder.with_no_targets
+             (Dep_conf_eval.unnamed info.deps ~expander)
+           >>> Action_builder.with_no_targets
+                 (Action_builder.paths source_files)
+           >>> Action_builder.progn
                  ( Command.run exe ~dir:(Path.build dir)
                      [ runner_args; Dyn flags ]
                  :: List.map source_files ~f:(fun fn ->
-                        Build.With_targets.return
+                        Action_builder.With_targets.return
                           (Action.diff ~optional:true fn
                              (Path.Build.extend_basename
                                 (Path.as_in_build_dir_exn fn)

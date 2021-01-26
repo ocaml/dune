@@ -58,7 +58,7 @@ type t = private
   { id : Id.t
   ; context : Build_context.t option
   ; env : Env.t option
-  ; action : Action.t Build.With_targets.t
+  ; action : Action.t Action_builder.With_targets.t
   ; mode : Mode.t
   ; locks : Path.t list
   ; info : Info.t
@@ -80,10 +80,10 @@ val make :
   -> env:Env.t option
   -> ?locks:Path.t list
   -> ?info:Info.t
-  -> Action.t Build.With_targets.t
+  -> Action.t Action_builder.With_targets.t
   -> t
 
-val with_prefix : t -> build:unit Build.t -> t
+val with_prefix : t -> build:unit Action_builder.t -> t
 
 val loc : t -> Loc.t
 

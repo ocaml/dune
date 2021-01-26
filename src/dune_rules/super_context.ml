@@ -11,15 +11,15 @@ let default_context_flags (ctx : Context.t) ~project =
     match Dune_project.use_standard_c_and_cxx_flags project with
     | None
     | Some false ->
-      (Build.return cflags, Build.return cxxflags)
+      (Action_builder.return cflags, Action_builder.return cxxflags)
     | Some true ->
       let c = cflags @ Ocaml_config.ocamlc_cppflags ctx.ocaml_config in
       let cxx =
-        let open Build.O in
+        let open Action_builder.O in
         let+ db_flags = Cxx_flags.get_flags ctx.build_dir in
         db_flags @ cxxflags
       in
-      (Build.return c, cxx)
+      (Action_builder.return c, cxx)
   in
   Foreign_language.Dict.make ~c ~cxx
 
@@ -295,7 +295,7 @@ let expander t ~dir = Env_tree.expander t.env_tree ~dir
 let get_node t = Env_tree.get_node t
 
 let chdir_to_build_context_root t build =
-  Build.With_targets.map build ~f:(fun (action : Action.t) ->
+  Action_builder.With_targets.map build ~f:(fun (action : Action.t) ->
       match action with
       | Chdir _ -> action
       | _ -> Chdir (Path.build t.context.build_dir, action))
@@ -347,17 +347,17 @@ let foreign_flags t ~dir ~expander ~flags ~language =
   let ccg = Context.cc_g t.context in
   let default = get_node t.env_tree ~dir |> Env_node.foreign_flags in
   let name = Foreign_language.proper_name language in
-  Build.memoize (sprintf "%s flags" name)
+  Action_builder.memoize (sprintf "%s flags" name)
     (let default = Foreign_language.Dict.get default language in
      let c = Expander.expand_and_eval_set expander flags ~standard:default in
-     let open Build.O in
+     let open Action_builder.O in
      let+ l = c in
      l @ ccg)
 
 let menhir_flags t ~dir ~expander ~flags =
   let t = t.env_tree in
   let default = get_node t ~dir |> Env_node.menhir_flags in
-  Build.memoize "menhir flags"
+  Action_builder.memoize "menhir flags"
     (Expander.expand_and_eval_set expander flags ~standard:default)
 
 let local_binaries t ~dir = get_node t.env_tree ~dir |> Env_node.local_binaries
@@ -370,7 +370,7 @@ let format_config t ~dir = get_node t.env_tree ~dir |> Env_node.format_config
 
 let dump_env t ~dir =
   let t = t.env_tree in
-  let open Build.O in
+  let open Action_builder.O in
   let+ o_dump = Ocaml_flags.dump (get_node t ~dir |> Env_node.ocaml_flags)
   and+ c_dump =
     let foreign_flags = get_node t ~dir |> Env_node.foreign_flags in

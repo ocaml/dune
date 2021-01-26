@@ -123,7 +123,7 @@ let build_c ~kind ~sctx ~dir ~expander ~include_flags (loc, src, dst) =
              compiler arguments which is the new recommended behaviour."
         ];
     Super_context.foreign_flags sctx ~dir ~expander ~flags ~language:kind
-    |> Build.map ~f:(List.append base_flags)
+    |> Action_builder.map ~f:(List.append base_flags)
   in
   let output_param =
     match ctx.lib_config.ccomp_type with
@@ -182,7 +182,7 @@ let build_o_files ~sctx ~foreign_sources ~(dir : Path.Build.t) ~expander
          let stubs = src.Foreign.Source.stubs in
          let extra_flags = include_dir_flags ~expander ~dir src.stubs in
          let extra_deps =
-           let open Build.O in
+           let open Action_builder.O in
            let+ () = Dep_conf_eval.unnamed stubs.extra_deps ~expander in
            Command.Args.empty
          in

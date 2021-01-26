@@ -1,6 +1,6 @@
 module Vcs = Vcs
 module Context_name = Context_name
-module Build = Build
+module Action_builder = Action_builder
 module Config = Config
 module Dep = Dep
 module Lib_name = Lib_name

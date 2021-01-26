@@ -1,10 +1,10 @@
 open! Dune_engine
 open Import
-open Build.O
+open Action_builder.O
 
 type t =
   { dir : Path.Build.t
-  ; per_module : Module.t list Build.t Module.Obj_map.t
+  ; per_module : Module.t list Action_builder.t Module.Obj_map.t
   }
 
 let make ~dir ~per_module = { dir; per_module }
@@ -27,7 +27,7 @@ let top_closed t modules =
     |> List.map ~f:(fun (unit, deps) ->
            let+ deps = deps in
            (unit, deps))
-    |> Build.all
+    |> Action_builder.all
   in
   let per_module = Module.Obj_map.of_list_exn per_module in
   match Module.Obj_map.top_closure per_module modules with
@@ -41,15 +41,15 @@ let top_closed t modules =
       ]
 
 let top_closed_implementations t modules =
-  Build.memoize "top sorted implementations"
+  Action_builder.memoize "top sorted implementations"
     (let filter_out_intf_only = List.filter ~f:(Module.has ~ml_kind:Impl) in
-     Build.map
+     Action_builder.map
        (top_closed t (filter_out_intf_only modules))
        ~f:filter_out_intf_only)
 
 let dummy (m : Module.t) =
   { dir = Path.Build.root
-  ; per_module = Module.Obj_map.singleton m (Build.return [])
+  ; per_module = Module.Obj_map.singleton m (Action_builder.return [])
   }
 
 module Ml_kind = struct

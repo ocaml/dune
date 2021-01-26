@@ -8,8 +8,6 @@ let memo =
     ~visibility:Hidden Sync
     (fun _path -> ())
 
-let depend p =
-  Memo.exec memo p
+let depend p = Memo.exec memo p
 
-let invalidate p =
-  Memo.Cell.invalidate (Memo.cell memo p)
+let invalidate p = Memo.Cell.invalidate (Memo.cell memo p)

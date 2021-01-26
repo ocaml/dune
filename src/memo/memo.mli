@@ -243,13 +243,6 @@ val peek_exn : ('i, 'o, _) t -> 'i -> 'o
 (** Execute a memoized function *)
 val exec : (_, _, 'f) t -> 'f
 
-(** After running a memoization function with a given name and input, it is
-    possible to query which dependencies that function used during execution by
-    calling [get_deps] with the name and input used during execution.
-
-    Returns [None] if the dependencies were not computed yet. *)
-val get_deps : ('i, _, _) t -> 'i -> (string option * Dyn.t) list option
-
 (** Print the memoized call stack during execution. This is useful for debugging
     purposes. *)
 val dump_stack : unit -> unit
@@ -352,9 +345,8 @@ module Cell : sig
 
   val get_async : ('a, 'b, 'a -> 'b Build.t) t -> 'b Build.t
 
-  (** Mark this cell as invalid, forcing recomputation of this value.
-      The consumers may be recomputed or not, depending on
-      early cutoff.  *)
+  (** Mark this cell as invalid, forcing recomputation of this value. The
+      consumers may be recomputed or not, depending on early cutoff. *)
   val invalidate : _ t -> unit
 end
 

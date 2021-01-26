@@ -6,8 +6,8 @@ module Ctypes = Dune_file.Ctypes
 
 let osl_pos _base_lib = "", 0, 0, 0 ;;
 
-let library_stanza ?public_name ?(foreign_stubs=[]) ?c_library_flags
-      ~base_lib:lib ~name ~modules ~libraries ~wrapped () =
+let library_stanza ?(flags=Ocaml_flags.Spec.standard) ?public_name ?(foreign_stubs=[])
+      ?c_library_flags ~base_lib:lib ~name ~modules ~libraries ~wrapped () =
   let loc, _libname = lib.Library.name in
   let open Dune_file in
   let visibility =
@@ -45,7 +45,7 @@ let library_stanza ?public_name ?(foreign_stubs=[]) ?c_library_flags
     ; preprocess = Preprocess.Per_module.default ()
     ; preprocessor_deps = []
     ; lint = Lint.no_lint
-    ; flags = Ocaml_flags.Spec.standard
+    ; flags
     ; js_of_ocaml = Js_of_ocaml.default
     ; allow_overlapping_dependencies = false
     }
@@ -173,6 +173,13 @@ let library_stanzas base_lib =
       ~wrapped:true ()
   in
   let function_descriptions =
+    let flags =
+      (* The ctypes library emits code with some warnings; disable them so we
+         don't break compilation when warnings-as-errors *)
+      Ocaml_flags.Spec.of_unexpanded_ordered_set_lang
+        (Ordered_set_lang.Unexpanded.standard_with_of_strings
+           ~pos:(osl_pos base_lib) ["-w"; "-27"; "-w"; "-9"])
+    in
     library_stanza
       ~base_lib
       ~name:(function_description_library ctypes)
@@ -180,7 +187,7 @@ let library_stanzas base_lib =
       ~modules:[ c_generated_types_module ctypes
                ; function_description_module ctypes
                ; c_types_includer_module ctypes ]
-      (* ~flags:"-w -27 -w -9" ?*)
+      ~flags
       ~libraries:["ctypes"; (type_description_library ctypes)]
       ~wrapped:false ()
   in
@@ -191,8 +198,8 @@ let library_stanzas base_lib =
       Foreign.Stubs.make ~loc ~language:Foreign_language.C
         ~names:(Ordered_set_lang.of_atoms ~loc
                   [c_generated_functions_cout_no_ext ctypes])
-        ~flags:(Ordered_set_lang.Unexpanded.of_strings
-                  ~pos [":include"; cflags_sexp ctypes])
+        ~flags:(Ordered_set_lang.Unexpanded.include_single
+                  ~pos (cflags_sexp ctypes))
     in
     library_stanza
       ~base_lib

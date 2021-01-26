@@ -479,6 +479,9 @@ module Mode_conf = struct
 end
 
 module Ctypes = struct
+  (* XXX: this is a placeholder for the spec we talked about in PR#3905.
+     At the moment just trying to get a minimal example to compile and build
+     properly. *)
   type t =
     { lib_name : string
     ; includes : string list }

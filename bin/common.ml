@@ -86,9 +86,18 @@ let prefix_target common s = common.target_prefix ^ s
 
 let instrument_with t = t.instrument_with
 
+(* To avoid needless recompilations under Windows, where the case of
+   [Sys.getcwd] can vary between different invocations of [dune], normalize to
+   lowercase. *)
+let normalize_path p =
+  if Sys.win32 then
+    Path.External.lowercase_ascii p
+  else
+    p
+
 let set_dirs c =
   if c.root.dir <> Filename.current_dir_name then Sys.chdir c.root.dir;
-  Path.set_root (Path.External.cwd ());
+  Path.set_root (normalize_path (Path.External.cwd ()));
   Path.Build.set_build_dir (Path.Build.Kind.of_string c.build_dir)
 
 let set_common_other ?log_file c ~targets =

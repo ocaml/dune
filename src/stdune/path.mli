@@ -111,6 +111,8 @@ module External : sig
   val relative : t -> string -> t
 
   val mkdir_p : ?perms:int -> t -> unit
+
+  val lowercase_ascii : t -> t
 end
 
 module Build : sig

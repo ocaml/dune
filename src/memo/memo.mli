@@ -328,3 +328,5 @@ module Poly : sig
     val eval : 'a Function.input -> 'a Function.output Fiber.t
   end
 end
+
+val unwrap_exn : (exn -> exn) ref

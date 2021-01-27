@@ -1,7 +1,7 @@
 open! Dune_engine
 open Import
 open! No_io
-open Build.O
+open Action_builder.O
 
 type t =
   { loc : Loc.t
@@ -110,7 +110,7 @@ let gen_rules sctx t ~dir ~scope =
   let action =
     let module A = Action in
     let cinaps_exe = Path.build cinaps_exe in
-    let+ () = Build.path cinaps_exe in
+    let+ () = Action_builder.path cinaps_exe in
     A.chdir (Path.build dir)
       (A.progn
          ( A.run (Ok cinaps_exe) [ "-diff-cmd"; "-" ]
@@ -122,7 +122,7 @@ let gen_rules sctx t ~dir ~scope =
   let cinaps_alias = alias ~dir in
   Super_context.add_alias_action sctx ~dir ~loc:(Some loc) ~stamp:name
     cinaps_alias
-    (Build.with_no_targets action);
+    (Action_builder.with_no_targets action);
   let stamp_file =
     Alias.stamp_file cinaps_alias |> Path.build |> Path.Set.singleton
   in

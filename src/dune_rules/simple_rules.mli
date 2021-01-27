@@ -12,7 +12,7 @@ module Alias_rules : sig
     -> stamp:'a
     -> loc:Loc.t option
     -> locks:Path.t list
-    -> Action.t Build.With_targets.t
+    -> Action.t Action_builder.With_targets.t
     -> unit
 
   val add_empty :

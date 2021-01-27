@@ -117,7 +117,7 @@ let term =
         | [] ->
           Build_system.all_targets ()
           |> Path.Build.Set.fold ~init:[] ~f:(fun p acc -> Path.build p :: acc)
-          |> Build.paths
+          |> Action_builder.paths
         | _ -> Target.resolve_targets_exn common setup targets |> Target.request
       in
       let* rules = Build_system.evaluate_rules ~request ~recursive in

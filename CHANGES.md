@@ -1,15 +1,21 @@
 Unreleased
 ----------
 
-- Fixed a crash in watch mode introduced in 2.8.0 (#4118, fixes #4117,
-  @rgrinberg)
+- Fixed a bug that could result in needless recompilation under Windows due to
+  case differences in the result of `Sys.getcwd` (observed under `emacs`).
+  (#3966, @nojb).
+
+2.8.2 (21/01/2021)
+------------------
 
 - Fixed wrong workspace discovery from `dune ocaml-merlin` (#4127, fixes #4125,
   @voodoos)
 
-- Fixed a bug that could result in needless recompilation under Windows due to
-  case differences in the result of `Sys.getcwd` (observed under `emacs`).
-  (#3966, @nojb).
+- Fixed memory blow up introduced in 2.8.0 (#4144, fixes #4134,
+  @jeremiedimino)
+
+- Configurator: always link the C libraries in the build command
+  (#4088, @MisterDA).
 
 2.8.1 (14/01/2021)
 ------------------
@@ -42,7 +48,7 @@ Unreleased
 - Add the `executable` field to `inline_tests` to customize the compilation
   flags of the test runner executable (#3747, fixes #3679, @lubegasimon)
 
-- Add `(enabled_if ...)` to `(copy_files ...)` (#3756, @nojb)
+- Add `(enabled_if ...)` to `(copy_files ...)` (#3765, @nojb)
 
 - Make sure Dune cleans up the status line before exiting (#3767,
   fixes #3737, @alan-j-hu)

@@ -1,7 +1,7 @@
 open! Dune_engine
 open Import
 open! No_io
-open Build.O
+open Action_builder.O
 module Executables = Dune_file.Executables
 
 let first_exe (exes : Executables.t) = snd (List.hd exes.names)
@@ -146,7 +146,7 @@ let executables_rules ~sctx ~dir ~expander ~dir_contents ~scope ~compile_info
         let link_deps = Dep_conf_eval.unnamed ~expander exes.link_deps in
         link_deps
         >>> Expander.expand_and_eval_set expander exes.link_flags
-              ~standard:(Build.return [])
+              ~standard:(Action_builder.return [])
       in
       let+ flags = link_flags in
       Command.Args.S

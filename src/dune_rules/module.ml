@@ -115,7 +115,7 @@ end
 type t =
   { source : Source.t
   ; obj_name : Module_name.Unique.t
-  ; pp : string list Build.t option
+  ; pp : string list Action_builder.t option
   ; visibility : Visibility.t
   ; kind : Kind.t
   }

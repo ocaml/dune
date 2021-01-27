@@ -661,19 +661,20 @@ end = struct
 end
 
 let add_deps_if_exist deps_if_exist =
-  let open Build.O in
+  let open Action_builder.O in
   (let+ l =
      Path.Set.to_list_map deps_if_exist ~f:(fun f ->
-         Build.if_file_exists f ~then_:(Build.return (Some f))
-           ~else_:(Build.return None))
-     |> Build.all
+         Action_builder.if_file_exists f
+           ~then_:(Action_builder.return (Some f))
+           ~else_:(Action_builder.return None))
+     |> Action_builder.all
    in
    List.filter_opt l)
-  |> Build.dyn_paths_unit
+  |> Action_builder.dyn_paths_unit
 
 let expand t ~loc ~dep_kind ~targets_dir ~targets:targets_written_by_user
     ~expander deps_written_by_user =
-  let open Build.O in
+  let open Action_builder.O in
   ( match (targets_written_by_user : Targets.Or_forbidden.t) with
   | Targets _ -> ()
   | Forbidden context -> (
@@ -702,11 +703,11 @@ let expand t ~loc ~dep_kind ~targets_dir ~targets:targets_written_by_user
           ; Pp.enumerate (Path.Build.Set.to_list targets) ~f:(fun target ->
                 Pp.text (Dpath.describe_path (Path.build target)))
           ]);
-  Build.path_set deps
+  Action_builder.path_set deps
   >>> add_deps_if_exist deps_if_exist
-  >>> Build.dyn_path_set
+  >>> Action_builder.dyn_path_set
         (let+ (action, deps), deps_if_exist_which_exist =
-           Build.filter_existing_files
+           Action_builder.filter_existing_files
              (let+ action =
                 let+ unresolved = fully_expanded in
                 let artifacts = Expander.artifacts expander in
@@ -730,7 +731,7 @@ let expand t ~loc ~dep_kind ~targets_dir ~targets:targets_written_by_user
               ((Action.Chdir (dir, action), deps), deps_if_exist))
          in
          (action, Path.Set.union deps deps_if_exist_which_exist))
-  |> Build.with_targets_set ~targets
+  |> Action_builder.with_targets_set ~targets
 
 (* We re-export [Action_dune_lang] in the end to avoid polluting the inferred
    types in this module with all the various t's *)

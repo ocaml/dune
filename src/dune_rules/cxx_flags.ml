@@ -16,11 +16,11 @@ let base_cxx_flags = function
 let preprocessed_filename = "ccomp"
 
 let ccomp_type dir =
-  let open Build.O in
+  let open Action_builder.O in
   let filepath =
     Path.Build.(relative (relative dir ".dune") preprocessed_filename)
   in
-  let+ ccomp = Build.contents (Path.build filepath) in
+  let+ ccomp = Action_builder.contents (Path.build filepath) in
   match String.trim ccomp with
   | "clang" -> Clang
   | "gcc" -> Gcc
@@ -39,7 +39,7 @@ let check_warn = function
   | _ -> ()
 
 let get_flags dir =
-  let open Build.O in
+  let open Action_builder.O in
   let+ ccomp_type = ccomp_type dir in
   check_warn ccomp_type;
   base_cxx_flags ccomp_type

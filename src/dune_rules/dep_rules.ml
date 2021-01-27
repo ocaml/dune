@@ -1,6 +1,6 @@
 open! Dune_engine
 open! Import
-open Build.O
+open Action_builder.O
 
 let transitive_deps_contents modules =
   List.map modules ~f:(fun m -> Module_name.to_string (Module.name m))
@@ -26,7 +26,7 @@ let ooi_deps cctx ~vlib_obj_map ~(ml_kind : Ml_kind.t) (m : Module.t) =
   let add_rule = Super_context.add_rule sctx ~dir in
   add_rule write;
   let read =
-    Build.memoize "ocamlobjinfo"
+    Action_builder.memoize "ocamlobjinfo"
       (let+ (ooi : Ocamlobjinfo.t) = read in
        Module_name.Unique.Set.to_list ooi.intf
        |> List.filter_map ~f:(fun dep ->
@@ -37,7 +37,8 @@ let ooi_deps cctx ~vlib_obj_map ~(ml_kind : Ml_kind.t) (m : Module.t) =
   in
   add_rule
     (let target = Obj_dir.Module.dep obj_dir (Transitive (m, ml_kind)) in
-     Build.map read ~f:transitive_deps_contents |> Build.write_file_dyn target);
+     Action_builder.map read ~f:transitive_deps_contents
+     |> Action_builder.write_file_dyn target);
   read
 
 let deps_of_module cctx ~ml_kind m =
@@ -49,7 +50,7 @@ let deps_of_module cctx ~ml_kind m =
       | Some m -> m
       | None -> Modules.compat_for_exn modules m
     in
-    Build.return (List.singleton interface_module)
+    Action_builder.return (List.singleton interface_module)
   | _ -> Ocamldep.deps_of ~cctx ~ml_kind m
 
 let deps_of_vlib_module cctx ~ml_kind m =
@@ -72,7 +73,7 @@ let deps_of_vlib_module cctx ~ml_kind m =
       Obj_dir.Module.dep obj_dir (Transitive (m, ml_kind))
     in
     let sctx = Compilation_context.super_context cctx in
-    Super_context.add_rule sctx ~dir (Build.symlink ~src ~dst);
+    Super_context.add_rule sctx ~dir (Action_builder.symlink ~src ~dst);
     Ocamldep.read_deps_of ~obj_dir:vlib_obj_dir ~modules ~ml_kind m
 
 let rec deps_of cctx ~ml_kind (m : Modules.Sourced_module.t) =
@@ -84,13 +85,13 @@ let rec deps_of cctx ~ml_kind (m : Modules.Sourced_module.t) =
     | Impl_of_virtual_module _ -> false
   in
   if is_alias then
-    Build.return []
+    Action_builder.return []
   else
     let skip_if_source_absent f m =
       if Module.has m ~ml_kind then
         f m
       else
-        Build.return []
+        Action_builder.return []
     in
     match m with
     | Imported_from_vlib m ->

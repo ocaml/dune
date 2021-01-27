@@ -12,7 +12,7 @@ let man =
 let info = Term.info "printenv" ~doc ~man
 
 let dump sctx ~dir =
-  let open Build.O in
+  let open Action_builder.O in
   let+ env = Super_context.dump_env sctx ~dir in
   ((Super_context.context sctx).name, env)
 
@@ -53,7 +53,7 @@ let term =
       let dir = Path.of_string dir in
       let checked = Util.check_path setup.workspace.contexts dir in
       let request =
-        Build.all
+        Action_builder.all
           ( match checked with
           | In_build_dir (ctx, _) ->
             let sctx =

@@ -1,7 +1,7 @@
 open! Dune_engine
 open! Stdune
 open Import
-open Build.O
+open Action_builder.O
 
 let default_ocamlc_flags = [ "-g" ]
 
@@ -86,24 +86,24 @@ module Spec = struct
     { common; specific }
 end
 
-type t = string list Build.t t'
+type t = string list Action_builder.t t'
 
 let empty =
-  let build = Build.return [] in
+  let build = Action_builder.return [] in
   { common = build; specific = Mode.Dict.make_both build }
 
-let of_list l = { empty with common = Build.return l }
+let of_list l = { empty with common = Action_builder.return l }
 
 let default ~dune_version ~profile =
-  { common = Build.return (default_flags ~dune_version ~profile)
+  { common = Action_builder.return (default_flags ~dune_version ~profile)
   ; specific =
-      { byte = Build.return default_ocamlc_flags
-      ; native = Build.return default_ocamlopt_flags
+      { byte = Action_builder.return default_ocamlc_flags
+      ; native = Action_builder.return default_ocamlopt_flags
       }
   }
 
 let make ~spec ~default ~eval =
-  let f name x standard = Build.memoize name (eval x ~standard) in
+  let f name x standard = Action_builder.memoize name (eval x ~standard) in
   { common = f "common flags" spec.common default.common
   ; specific =
       { byte = f "ocamlc flags" spec.specific.byte default.specific.byte

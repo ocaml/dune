@@ -39,20 +39,20 @@ let build_lib (lib : Library.t) ~native_archives ~sctx ~expander ~flags ~dir
         | Other _ -> Fun.id
       in
       let obj_deps =
-        Build.paths (Cm_files.unsorted_objects_and_cms cm_files ~mode)
+        Action_builder.paths (Cm_files.unsorted_objects_and_cms cm_files ~mode)
       in
       let ocaml_flags = Ocaml_flags.get flags mode in
       let cclibs =
         Expander.expand_and_eval_set expander lib.c_library_flags
-          ~standard:(Build.return [])
+          ~standard:(Action_builder.return [])
       in
       let library_flags =
         Expander.expand_and_eval_set expander lib.library_flags
-          ~standard:(Build.return [])
+          ~standard:(Action_builder.return [])
       in
       Super_context.add_rule ~dir sctx ~loc:lib.buildable.loc
-        (let open Build.With_targets.O in
-        Build.with_no_targets obj_deps
+        (let open Action_builder.With_targets.O in
+        Action_builder.with_no_targets obj_deps
         >>> Command.run (Ok compiler) ~dir:(Path.build ctx.build_dir)
               [ Command.Args.dyn ocaml_flags
               ; A "-a"
@@ -60,7 +60,7 @@ let build_lib (lib : Library.t) ~native_archives ~sctx ~expander ~flags ~dir
               ; Target target
               ; As stubs_flags
               ; Dyn
-                  (Build.map cclibs ~f:(fun x ->
+                  (Action_builder.map cclibs ~f:(fun x ->
                        Command.quote_args "-cclib" (map_cclibs x)))
               ; Command.Args.dyn library_flags
               ; As
@@ -71,7 +71,7 @@ let build_lib (lib : Library.t) ~native_archives ~sctx ~expander ~flags ~dir
                     [ "-linkall" ] )
               ; Dyn
                   ( Cm_files.top_sorted_cms cm_files ~mode
-                  |> Build.map ~f:(fun x -> Command.Args.Deps x) )
+                  |> Action_builder.map ~f:(fun x -> Command.Args.Deps x) )
               ; Hidden_targets
                   ( match mode with
                   | Byte -> []
@@ -104,7 +104,7 @@ let gen_wrapped_compat_modules (lib : Library.t) cctx =
       let source_path = Option.value_exn (Module.file m ~ml_kind:Impl) in
       let loc = lib.buildable.loc in
       let sctx = Compilation_context.super_context cctx in
-      Build.write_file (Path.as_in_build_dir_exn source_path) contents
+      Action_builder.write_file (Path.as_in_build_dir_exn source_path) contents
       |> Super_context.add_rule sctx ~loc ~dir:(Compilation_context.dir cctx))
 
 (* Rules for building static and dynamic libraries using [ocamlmklib]. *)
@@ -119,7 +119,7 @@ let ocamlmklib ~loc ~c_library_flags ~sctx ~dir ~expander ~o_files ~archive_name
     Super_context.add_rule sctx ~sandbox ~dir ~loc
       (let cclibs_args =
          Expander.expand_and_eval_set expander c_library_flags
-           ~standard:(Build.return [])
+           ~standard:(Action_builder.return [])
        in
        let ctx = Super_context.context sctx in
        Command.run ~dir:(Path.build ctx.build_dir) ctx.ocamlmklib
@@ -134,7 +134,7 @@ let ocamlmklib ~loc ~c_library_flags ~sctx ~dir ~expander ~o_files ~archive_name
          ; Dyn
              (* The [c_library_flags] is needed only for the [dynamic_target]
                 case, but we pass them unconditionally for simplicity. *)
-             (Build.map cclibs_args ~f:(fun cclibs ->
+             (Action_builder.map cclibs_args ~f:(fun cclibs ->
                   (* https://github.com/ocaml/dune/issues/119 *)
                   match ctx.lib_config.ccomp_type with
                   | Msvc ->
@@ -242,10 +242,10 @@ let build_shared lib ~native_archives ~sctx ~dir ~flags =
                let dir = Foreign.Archive.dir_path ~dir archive in
                Command.Args.S [ A "-I"; Path (Path.build dir) ]))
       in
-      let open Build.With_targets.O in
+      let open Action_builder.With_targets.O in
       let build =
-        Build.with_no_targets
-          (Build.paths
+        Action_builder.with_no_targets
+          (Action_builder.paths
              ( Library.foreign_lib_files lib ~dir ~ext_lib
              |> List.map ~f:Path.build ))
         >>> Command.run ~dir:(Path.build ctx.build_dir) (Ok ocamlopt)
@@ -261,8 +261,8 @@ let build_shared lib ~native_archives ~sctx ~dir ~flags =
               ]
       in
       let build =
-        Build.with_no_targets
-          (Build.paths (List.map ~f:Path.build native_archives))
+        Action_builder.with_no_targets
+          (Action_builder.paths (List.map ~f:Path.build native_archives))
         >>> build
       in
       Super_context.add_rule sctx build ~dir)
@@ -298,7 +298,7 @@ let setup_build_archives (lib : Dune_file.Library.t) ~cctx
                 let dst = Path.Build.relative (Obj_dir.dir obj_dir) fname in
                 Super_context.add_rule sctx
                   ~dir:(Compilation_context.dir cctx)
-                  (Build.copy ~src ~dst)));
+                  (Action_builder.copy ~src ~dst)));
   let top_sorted_modules =
     Dep_graph.top_closed_implementations dep_graphs.impl impl_only
   in

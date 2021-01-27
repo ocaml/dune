@@ -19,12 +19,19 @@ let local_install_lib_dir ~context ~package =
     (local_install_lib_root ~context)
     (Package.Name.to_string package)
 
-let dev_null =
-  Path.of_filename_relative_to_initial_cwd
-    ( if Sys.win32 then
-      "nul"
-    else
-      "/dev/null" )
+let dev_null_fn =
+  if Sys.win32 then
+    "nul"
+  else
+    "/dev/null"
+
+let dev_null = Path.of_filename_relative_to_initial_cwd dev_null_fn
+
+let open_null flags = lazy (Unix.openfile dev_null_fn flags 0o666)
+
+let dev_null_in = open_null [ Unix.O_RDONLY ]
+
+let dev_null_out = open_null [ Unix.O_WRONLY ]
 
 let dune_keep_fname = ".dune-keep"
 

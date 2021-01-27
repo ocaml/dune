@@ -26,8 +26,6 @@ val wait_for_process : Pid.t -> Unix.process_status Fiber.t
 (** Wait for dune cache to be disconnected. Drop any other event. *)
 val wait_for_dune_cache : unit -> unit
 
-val set_concurrency : int -> unit Fiber.t
-
 (** Make the scheduler ignore next change to a certain file in watch mode.
 
     This is used with promoted files that are copied back to the source tree

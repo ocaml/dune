@@ -151,9 +151,9 @@ Testsuite for the %{lib...} and %{lib-private...} variable.
   Installing install/lib/external_library/extlib.cmt
   Installing install/lib/external_library/extlib.cmx
   Installing install/lib/external_library/extlib.cmxa
-  Installing install/lib/external_library/extlib.cmxs
   Installing install/lib/external_library/extlib.ml
   Installing install/lib/external_library/opam
+  Installing install/lib/external_library/extlib.cmxs
 
   $ cat >src/dune <<EOF
   > (library

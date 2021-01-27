@@ -57,7 +57,8 @@ end = struct
     let virtual_library = Option.is_some (Lib_info.virtual_ lib) in
     let { Lib_config.ext_obj; _ } = lib_config in
     let archives = Lib_info.archives lib in
-    List.concat
+    List.concat_map
+      ~f:(List.map ~f:(fun f -> (Section.Lib, f)))
       [ archives.byte
       ; archives.native
       ; ( if virtual_library then
@@ -74,8 +75,8 @@ end = struct
          in
          Lib_info.eval_native_archives_exn lib ~modules)
       ; Lib_info.jsoo_runtime lib
-      ; (Lib_info.plugins lib).native
       ]
+    @ List.map ~f:(fun f -> (Section.Libexec, f)) (Lib_info.plugins lib).native
 
   let dll_files ~(modes : Mode.Dict.Set.t) ~dynlink ~(ctx : Context.t) lib =
     if_
@@ -191,7 +192,7 @@ end = struct
       [ sources
       ; List.map module_files ~f:(fun (sub_dir, file) ->
             make_entry ?sub_dir Lib file)
-      ; List.map lib_files ~f:(make_entry Lib)
+      ; List.map lib_files ~f:(fun (section, file) -> make_entry section file)
       ; List.map execs ~f:(make_entry Libexec)
       ; List.map dll_files ~f:(fun a ->
             (Some loc, Install.Entry.make Stublibs a))

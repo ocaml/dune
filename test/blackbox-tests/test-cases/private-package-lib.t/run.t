@@ -90,8 +90,8 @@ hidden.
     "_build/install/default/lib/foo/__private__/secret/secret.cma" {"__private__/secret/secret.cma"}
     "_build/install/default/lib/foo/__private__/secret/secret.cmx" {"__private__/secret/secret.cmx"}
     "_build/install/default/lib/foo/__private__/secret/secret.cmxa" {"__private__/secret/secret.cmxa"}
-    "_build/install/default/lib/foo/__private__/secret/secret.cmxs" {"__private__/secret/secret.cmxs"}
     "_build/install/default/lib/foo/__private__/secret/secret.ml" {"__private__/secret/secret.ml"}
+    "_build/install/default/lib/foo/__private__/secret/secret.cmxs" {"__private__/secret/secret.cmxs"}
 
 We make sure that executables can use the secret library like they can use any other private library
 

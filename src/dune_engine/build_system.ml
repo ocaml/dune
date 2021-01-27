@@ -80,7 +80,7 @@ let files_in_source_tree_to_delete () = Promoted_to_delete.load ()
 module Alias0 = struct
   include Alias
 
-  let dep t = Build.path (Path.build (stamp_file t))
+  let dep t = Action_builder.path (Path.build (stamp_file t))
 
   let dep_multi_contexts ~dir ~name ~contexts =
     ignore (File_tree.find_dir_specified_on_command_line ~dir);
@@ -89,22 +89,23 @@ module Alias0 = struct
       let dir = Path.Build.(append_source ctx_dir dir) in
       Path.build (stamp_file (make ~dir name))
     in
-    Build.paths (List.map contexts ~f:context_to_stamp_file)
+    Action_builder.paths (List.map contexts ~f:context_to_stamp_file)
 
-  open Build.O
+  open Action_builder.O
 
   let dep_rec_internal ~name ~dir ~ctx_dir =
     let f dir acc =
       let path = Path.Build.append_source ctx_dir (File_tree.Dir.path dir) in
       let fn = stamp_file (make ~dir:path name) in
       let fn = Path.build fn in
-      Build.map2 ~f:( && ) acc
-        (Build.if_file_exists fn
-           ~then_:(Build.path fn >>> Build.return false)
-           ~else_:(Build.return true))
+      Action_builder.map2 ~f:( && ) acc
+        (Action_builder.if_file_exists fn
+           ~then_:(Action_builder.path fn >>> Action_builder.return false)
+           ~else_:(Action_builder.return true))
     in
     File_tree.Dir.fold dir ~traverse:Sub_dirs.Status.Set.normal_only
-      ~init:(Build.return true) ~f
+      ~init:(Action_builder.return true)
+      ~f
 
   let dep_rec t ~loc =
     let ctx_dir, src_dir =
@@ -112,7 +113,7 @@ module Alias0 = struct
     in
     match File_tree.find_dir src_dir with
     | None ->
-      Build.fail
+      Action_builder.fail
         { fail =
             (fun () ->
               User_error.raise ~loc
@@ -132,10 +133,10 @@ module Alias0 = struct
           ]
 
   let dep_rec_multi_contexts ~dir:src_dir ~name ~contexts =
-    let open Build.O in
+    let open Action_builder.O in
     let dir = File_tree.find_dir_specified_on_command_line ~dir:src_dir in
     let+ is_empty_list =
-      Build.all
+      Action_builder.all
         (List.map contexts ~f:(fun ctx ->
              let ctx_dir = Context_name.build_dir ctx in
              dep_rec_internal ~name ~dir ~ctx_dir))
@@ -654,7 +655,7 @@ end = struct
   let create_copy_rules ~ctx_dir ~non_target_source_files =
     Path.Source.Set.to_list_map non_target_source_files ~f:(fun path ->
         let ctx_path = Path.Build.append_source ctx_dir path in
-        let build = Build.copy ~src:(Path.source path) ~dst:ctx_path in
+        let build = Action_builder.copy ~src:(Path.source path) ~dst:ctx_path in
         Rule.make
         (* There's an [assert false] in [prepare_managed_paths] that blows up if
            we try to sandbox this. *)
@@ -675,9 +676,10 @@ end = struct
      directory [dir]. We could memoize these lookups, but it doesn't seem to be
      worth it, since we're unlikely to perform exactly the same lookup many
      times. As far as I can tell, each lookup will be done twice: when computing
-     static dependencies of a [Build.t] with [Build.static_deps] and when
-     executing the very same [Build.t] with [Build.exec] -- the results of both
-     [Build.static_deps] and [Build.exec] are cached. *)
+     static dependencies of a [Action_builder.t] with
+     [Action_builder.static_deps] and when executing the very same
+     [Action_builder.t] with [Action_builder.exec] -- the results of both
+     [Action_builder.static_deps] and [Action_builder.exec] are cached. *)
   let file_exists fn =
     match load_dir ~dir:(Path.parent_exn fn) with
     | Non_build targets -> Path.Set.mem targets fn
@@ -701,7 +703,7 @@ end = struct
         sub_dir
     in
     let alias_rules =
-      let open Build.O in
+      let open Action_builder.O in
       let aliases = collected.aliases in
       let aliases =
         if Alias.Name.Map.mem aliases Alias.Name.default then
@@ -755,7 +757,8 @@ end = struct
                 let rule =
                   Rule.make ~locks ~context:(Some context) ~env
                     ~info:(Rule.Info.of_loc_opt loc)
-                    (Build.progn [ action; Build.create_file path ])
+                    (Action_builder.progn
+                       [ action; Action_builder.create_file path ])
                 in
                 ( rule :: rules
                 , Path.Set.add action_stamp_files (Path.build path) ))
@@ -766,13 +769,13 @@ end = struct
           in
           Rule.make ~context:None ~env:None
             (let action =
-               let+ () = Build.path_set deps
-               and+ dyn_deps = Build.dyn_path_set_reuse dyn_deps in
+               let+ () = Action_builder.path_set deps
+               and+ dyn_deps = Action_builder.dyn_path_set_reuse dyn_deps in
                let deps = Path.Set.union deps dyn_deps in
                Action.with_stdout_to path
                  (Action.digest_files (Path.Set.to_list deps))
              in
-             Build.with_targets ~targets:[ path ] action)
+             Action_builder.with_targets ~targets:[ path ] action)
           :: rules)
     in
     fun ~subdirs_to_keep ->
@@ -1144,7 +1147,7 @@ and Exported : sig
 
   module Build_request : sig
     type 'a t =
-      | Non_memoized : 'a Build.t -> 'a t
+      | Non_memoized : 'a Action_builder.t -> 'a t
       | Memoized : Rule.t -> Action.t t
 
     (** Evaluate a build request and return its static and dynamic dependencies.
@@ -1176,32 +1179,32 @@ end = struct
       | Sandbox_config _ ->
         Fiber.return ())
 
-  module Build_exec = Build.Make_exec (struct
+  module Action_builder_exec = Action_builder.Make_exec (struct
     let build_deps = build_deps
   end)
 
-  let () = Build.set_file_system_accessors ~file_exists
+  let () = Action_builder.set_file_system_accessors ~file_exists
 
   module Build_request = struct
     type 'a t =
-      | Non_memoized : 'a Build.t -> 'a t
+      | Non_memoized : 'a Action_builder.t -> 'a t
       | Memoized : Rule.t -> Action.t t
 
-    let build (type a) (t : a t) : a Build.t =
+    let build (type a) (t : a t) : a Action_builder.t =
       match t with
       | Non_memoized build -> build
       | Memoized rule -> rule.action.build
 
-    let static_deps (type a) (t : a t) = Build.static_deps (build t)
+    let static_deps (type a) (t : a t) = Action_builder.static_deps (build t)
 
     let evaluate_and_discover_dynamic_deps_unmemoized t =
-      Build_exec.build_static_rule_deps_and_exec (build t)
+      Action_builder_exec.build_static_rule_deps_and_exec (build t)
 
     let memo =
       Memo.create "evaluate-rule-and-discover-dynamic-deps"
         ~output:(Simple (module Action_and_deps))
         ~doc:
-          "Evaluate the build description of a rule and return the action and \
+          "Evaluate the action builder of a rule and return the action and \
            dynamic dependencies of the rule."
         ~input:(module Rule)
         ~visibility:Hidden Async
@@ -1807,9 +1810,9 @@ let package_deps (pkg : Package.t) files =
       else (
         rules_seen := Rule.Set.add !rules_seen ir;
         (* We know that at this point of execution, all the action deps have
-           been computed and memoized (see the call to [Build.paths_for_rule]
-           below), so the following call to [Build_request.peek_deps_exn] cannot
-           raise. *)
+           been computed and memoized (see the call to
+           [Action_builder.paths_for_rule] below), so the following call to
+           [Build_request.peek_deps_exn] cannot raise. *)
         (* CR-someday amokhov: It would be nice to statically rule out such
            potential race conditions between [Sync] and [Async] functions, e.g.
            by moving this code into a fiber. *)
@@ -1818,17 +1821,17 @@ let package_deps (pkg : Package.t) files =
         Path.Set.fold action_deps ~init:acc ~f:loop
       )
   in
-  let open Build.O in
-  let+ () = Build.paths_for_rule files in
-  (* We know that after [Build.paths_for_rule], all transitive dependencies of
-     [files] are computed and memoized and so the above call to
+  let open Action_builder.O in
+  let+ () = Action_builder.paths_for_rule files in
+  (* We know that after [Action_builder.paths_for_rule], all transitive
+     dependencies of [files] are computed and memoized and so the above call to
      [Build_request.peek_deps_exn] is safe. *)
   Path.Set.fold files ~init:Package.Id.Set.empty ~f:(fun fn acc ->
       match Path.as_in_build_dir fn with
       | None -> acc
       | Some fn -> loop_deps fn acc)
 
-let prefix_rules (prefix : unit Build.t) ~f =
+let prefix_rules (prefix : unit Action_builder.t) ~f =
   let res, rules = Rules.collect f in
   Rules.produce (Rules.map_rules rules ~f:(Rule.with_prefix ~build:prefix));
   res
@@ -1962,7 +1965,7 @@ let evaluate_rules ~recursive ~request =
           ])
 
 let static_deps_of_request request =
-  Static_deps.paths @@ Build.static_deps request
+  Static_deps.paths @@ Action_builder.static_deps request
 
 let rules_for_files paths =
   Path.Set.fold paths ~init:[] ~f:(fun path acc ->
@@ -1975,7 +1978,8 @@ let rules_for_transitive_closure targets =
   Rule_top_closure.top_closure (rules_for_files targets)
     ~key:(fun r -> r.Rule.id)
     ~deps:(fun r ->
-      Build.static_deps r.action.build |> Static_deps.paths |> rules_for_files)
+      Action_builder.static_deps r.action.build
+      |> Static_deps.paths |> rules_for_files)
   |> function
   | Ok l -> l
   | Error cycle ->

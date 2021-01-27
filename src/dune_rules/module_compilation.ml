@@ -24,7 +24,7 @@ let opens modules m =
   | Some (m : Module.t) -> As [ "-open"; Module_name.to_string (Module.name m) ]
 
 let other_cm_files ~opaque ~(cm_kind : Cm_kind.t) ~dep_graph ~obj_dir m =
-  let open Build.O in
+  let open Action_builder.O in
   let+ deps = Dep_graph.deps_of dep_graph m in
   List.concat_map deps ~f:(fun m ->
       let deps =
@@ -43,7 +43,7 @@ let copy_interface ~sctx ~dir ~obj_dir m =
     && Obj_dir.need_dedicated_public_dir obj_dir
   then
     SC.add_rule sctx ~dir
-      (Build.symlink
+      (Action_builder.symlink
          ~src:(Path.build (Obj_dir.Module.cm_file_exn obj_dir m ~kind:Cmi))
          ~dst:(Obj_dir.Module.cm_public_file_exn obj_dir m ~kind:Cmi))
 
@@ -120,7 +120,8 @@ let build_cm cctx ~dep_graphs ~precompiled_cmi ~cm_kind (m : Module.t) ~phase =
   let dep_graph = Ml_kind.Dict.get dep_graphs ml_kind in
   let opaque = CC.opaque cctx in
   let other_cm_files =
-    Build.dyn_paths_unit (other_cm_files ~opaque ~cm_kind ~dep_graph ~obj_dir m)
+    Action_builder.dyn_paths_unit
+      (other_cm_files ~opaque ~cm_kind ~dep_graph ~obj_dir m)
   in
   let other_targets, cmt_args =
     match cm_kind with
@@ -149,7 +150,7 @@ let build_cm cctx ~dep_graphs ~precompiled_cmi ~cm_kind (m : Module.t) ~phase =
     match Module.pp_flags m with
     | None -> flags
     | Some pp ->
-      let open Build.O in
+      let open Action_builder.O in
       let+ flags = flags
       and+ pp_flags = pp in
       flags @ pp_flags
@@ -177,9 +178,9 @@ let build_cm cctx ~dep_graphs ~precompiled_cmi ~cm_kind (m : Module.t) ~phase =
            [ Command.Args.A "-I"; Path (Path.build p) ])
   in
   SC.add_rule sctx ~sandbox ~dir
-    (let open Build.With_targets.O in
-    Build.with_no_targets (Build.paths extra_deps)
-    >>> Build.with_no_targets other_cm_files
+    (let open Action_builder.With_targets.O in
+    Action_builder.with_no_targets (Action_builder.paths extra_deps)
+    >>> Action_builder.with_no_targets other_cm_files
     >>> Command.run ~dir:(Path.build dir) (Ok compiler)
           [ Command.Args.dyn flags
           ; cmt_args
@@ -247,8 +248,8 @@ let ocamlc_i ?(flags = []) ~deps cctx (m : Module.t) ~output =
   let src = Option.value_exn (Module.file m ~ml_kind:Impl) in
   let sandbox = Compilation_context.sandbox cctx in
   let cm_deps =
-    Build.dyn_paths_unit
-      (let open Build.O in
+    Action_builder.dyn_paths_unit
+      (let open Action_builder.O in
       let+ deps = Ml_kind.Dict.get deps Impl in
       List.concat_map deps ~f:(fun m ->
           [ Path.build (Obj_dir.Module.cm_file_exn obj_dir m ~kind:Cmi) ]))
@@ -256,10 +257,10 @@ let ocamlc_i ?(flags = []) ~deps cctx (m : Module.t) ~output =
   let ocaml_flags = Ocaml_flags.get (CC.flags cctx) Mode.Byte in
   let modules = Compilation_context.modules cctx in
   SC.add_rule sctx ~sandbox ~dir
-    (Build.With_targets.add ~targets:[ output ]
-       (let open Build.With_targets.O in
-       Build.with_no_targets cm_deps
-       >>> Build.With_targets.map
+    (Action_builder.With_targets.add ~targets:[ output ]
+       (let open Action_builder.With_targets.O in
+       Action_builder.with_no_targets cm_deps
+       >>> Action_builder.With_targets.map
              ~f:(Action.with_stdout_to output)
              (Command.run (Ok ctx.ocamlc) ~dir:(Path.build ctx.build_dir)
                 [ Command.Args.dyn ocaml_flags
@@ -315,8 +316,8 @@ let build_alias_module ~alias_module ~cctx =
   let alias_file () = alias_source modules in
   let dir = Compilation_context.dir cctx in
   Super_context.add_rule ~loc:Loc.none sctx ~dir
-    ( Build.delayed alias_file
-    |> Build.write_file_dyn (Path.as_in_build_dir_exn file) );
+    ( Action_builder.delayed alias_file
+    |> Action_builder.write_file_dyn (Path.as_in_build_dir_exn file) );
   let cctx = Compilation_context.for_alias_module cctx in
   build_module cctx alias_module
     ~dep_graphs:(Dep_graph.Ml_kind.dummy alias_module)
@@ -336,8 +337,8 @@ let build_root_module root_module ~entries ~cctx =
   let root_file = Result.map entries ~f:root_source in
   Super_context.add_rule ~loc:Loc.none sctx ~dir
     (let target = Path.as_in_build_dir_exn file in
-     Build.With_targets.of_result_map root_file ~targets:[ target ]
-       ~f:(Build.write_file target));
+     Action_builder.With_targets.of_result_map root_file ~targets:[ target ]
+       ~f:(Action_builder.write_file target));
   build_module cctx root_module
     ~dep_graphs:(Dep_graph.Ml_kind.dummy root_module)
 

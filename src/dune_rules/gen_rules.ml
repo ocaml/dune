@@ -202,7 +202,7 @@ let define_all_alias ~dir ~scope ~js_targets =
       Predicate.create ~id ~f
     in
     File_selector.create ~dir:(Path.build dir) pred
-    |> Build.paths_matching ~loc:Loc.none
+    |> Action_builder.paths_matching ~loc:Loc.none
   in
   Rules.Produce.Alias.add_deps ~dyn_deps (Alias.all ~dir) Path.Set.empty
 
@@ -248,7 +248,7 @@ let gen_rules sctx dir_contents cctxs expander
             List.map (Menhir_rules.targets m) ~f:(Path.Build.relative ctx_dir)
           in
           Super_context.add_rule sctx ~dir:ctx_dir
-            ( Build.fail
+            ( Action_builder.fail
                 { fail =
                     (fun () ->
                       User_error.raise ~loc:m.loc
@@ -257,7 +257,7 @@ let gen_rules sctx dir_contents cctxs expander
                              files produced by this stanza are part of."
                         ])
                 }
-            |> Build.with_targets ~targets )
+            |> Action_builder.with_targets ~targets )
         | Some cctx -> Menhir_rules.gen_rules cctx m ~dir:ctx_dir )
       | Coq_stanza.Theory.T m when Expander.eval_blang expander m.enabled_if ->
         Coq_rules.setup_rules ~sctx ~dir:ctx_dir ~dir_contents m
@@ -299,7 +299,7 @@ let gen_rules ~sctx ~dir components : Build_system.extra_sub_directories_to_keep
       (* Dummy rule to prevent dune from deleting this file. See comment
          attached to [write_dot_dune_dir] in context.ml *)
       Super_context.add_rule sctx ~dir
-        (Build.write_file (Path.Build.relative dir "configurator") "");
+        (Action_builder.write_file (Path.Build.relative dir "configurator") "");
       (* Add rules for C compiler detection *)
       Cxx_rules.rules ~sctx ~dir;
       These String.Set.empty
@@ -331,7 +331,8 @@ let gen_rules ~sctx ~dir components : Build_system.extra_sub_directories_to_keep
                let loc = File_binding.Expanded.src_loc t in
                let src = Path.build (File_binding.Expanded.src t) in
                let dst = File_binding.Expanded.dst_path t ~dir in
-               Super_context.add_rule sctx ~loc ~dir (Build.symlink ~src ~dst))
+               Super_context.add_rule sctx ~loc ~dir
+                 (Action_builder.symlink ~src ~dst))
       | _ -> (
         match File_tree.find_dir (Path.Build.drop_build_context_exn dir) with
         | None ->
@@ -387,17 +388,22 @@ let gen ~contexts ?only_packages conf =
   let open Fiber.O in
   let { Dune_load.dune_files; packages; projects; vcs } = conf in
   let packages = Option.value only_packages ~default:packages in
-  let sctxs =
-    Context_name.Map.of_list_map_exn contexts ~f:(fun (c : Context.t) ->
-        (c.name, Fiber.Ivar.create ()))
-  in
-  let make_sctx (context : Context.t) : _ Fiber.t =
+  let rec sctxs =
+    (* This lazy is just here for the need of [let rec]. We force it straight
+       away, so it is safe regarding [Memo]. *)
+    lazy
+      (Context_name.Map.of_list_map_exn contexts ~f:(fun (c : Context.t) ->
+           (c.name, Memo.Lazy.Async.create (fun () -> make_sctx c))))
+  and make_sctx (context : Context.t) : _ Fiber.t =
     let host () =
       match context.for_host with
       | None -> Fiber.return None
       | Some h ->
-        Context_name.Map.find_exn sctxs h.name
-        |> Fiber.Ivar.read >>| Option.some
+        let+ sctx =
+          Memo.Lazy.Async.force
+            (Context_name.Map.find_exn (Lazy.force sctxs) h.name)
+        in
+        Some sctx
     in
     let stanzas () =
       let+ stanzas = Dune_load.Dune_files.eval ~context dune_files in
@@ -411,17 +417,19 @@ let gen ~contexts ?only_packages conf =
                   dir_conf.stanzas
             })
     in
-    let* host, stanzas = Fiber.fork_and_join host stanzas in
+    let+ host, stanzas = Fiber.fork_and_join host stanzas in
     let sctx =
       Super_context.create ?host ~context ~projects ~packages ~stanzas ()
     in
-    let+ () =
-      Fiber.Ivar.fill (Context_name.Map.find_exn sctxs context.name) sctx
-    in
-    (context.name, sctx)
+    sctx
   in
-  let* contexts = Fiber.parallel_map contexts ~f:make_sctx in
-  let sctxs = Context_name.Map.of_list_exn contexts in
+  let* sctxs =
+    Lazy.force sctxs |> Context_name.Map.to_list
+    |> Fiber.parallel_map ~f:(fun (name, sctx) ->
+           let+ sctx = Memo.Lazy.Async.force sctx in
+           (name, sctx))
+    >>| Context_name.Map.of_list_exn
+  in
   let () =
     Build_system.set_packages (fun path ->
         let open Option.O in

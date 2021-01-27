@@ -13,7 +13,7 @@ val build_module :
 
 val ocamlc_i :
      ?flags:string list
-  -> deps:Module.t list Build.t Ml_kind.Dict.t
+  -> deps:Module.t list Action_builder.t Ml_kind.Dict.t
   -> Compilation_context.t
   -> Module.t
   -> output:Path.Build.t

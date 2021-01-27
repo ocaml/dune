@@ -1,6 +1,6 @@
 open! Dune_engine
 open Stdune
-open Build.O
+open Action_builder.O
 open Dep_conf
 
 let make_alias expander s =
@@ -12,12 +12,12 @@ let dep expander = function
   | File s ->
     Expander.Or_exn.expand_path expander s
     |> Result.map ~f:(fun path ->
-           let+ () = Build.path path in
+           let+ () = Action_builder.path path in
            [ path ])
   | Alias s ->
     make_alias expander s
     |> Result.map ~f:(fun a ->
-           let+ () = Build.alias a in
+           let+ () = Action_builder.alias a in
            [])
   | Alias_rec s ->
     make_alias expander s
@@ -34,12 +34,13 @@ let dep expander = function
           Glob.of_string_exn loc (Path.basename path) |> Glob.to_pred
         in
         let dir = Path.parent_exn path in
-        Build.map ~f:Path.Set.to_list
-          (File_selector.create ~dir pred |> Build.paths_matching ~loc))
+        Action_builder.map ~f:Path.Set.to_list
+          (File_selector.create ~dir pred |> Action_builder.paths_matching ~loc))
   | Source_tree s ->
     let path = Expander.Or_exn.expand_path expander s in
     Result.map path ~f:(fun path ->
-        Build.map ~f:Path.Set.to_list (Build.source_tree ~dir:path))
+        Action_builder.map ~f:Path.Set.to_list
+          (Action_builder.source_tree ~dir:path))
   | Package p ->
     Expander.Or_exn.expand_str expander p
     |> Result.map ~f:(fun pkg ->
@@ -48,12 +49,12 @@ let dep expander = function
              let context = Expander.context expander in
              match Expander.find_package expander pkg with
              | Some pkg ->
-               Build.alias
+               Action_builder.alias
                  (Build_system.Alias.package_install
                     ~context:(Context.build_context context)
                     ~pkg)
              | None ->
-               Build.fail
+               Action_builder.fail
                  { fail =
                      (fun () ->
                        let loc = String_with_vars.loc p in
@@ -66,16 +67,16 @@ let dep expander = function
            [])
   | Universe ->
     Ok
-      (let+ () = Build.dep Dep.universe in
+      (let+ () = Action_builder.dep Dep.universe in
        [])
   | Env_var var_sw ->
     Expander.Or_exn.expand_str expander var_sw
     |> Result.map ~f:(fun var ->
-           let+ () = Build.env_var var in
+           let+ () = Action_builder.env_var var in
            [])
   | Sandbox_config sandbox_config ->
     Ok
-      (let+ () = Build.dep (Dep.sandbox_config sandbox_config) in
+      (let+ () = Action_builder.dep (Dep.sandbox_config sandbox_config) in
        [])
 
 let make_interpreter ~f ~expander l =
@@ -83,9 +84,9 @@ let make_interpreter ~f ~expander l =
     ~f:(fun expander ->
       match Result.List.map l ~f:(f expander) with
       | Ok deps ->
-        let+ l = Build.all deps in
+        let+ l = Action_builder.all deps in
         List.concat l
-      | Error exn -> Build.fail { fail = (fun () -> reraise exn) })
+      | Error exn -> Action_builder.fail { fail = (fun () -> reraise exn) })
 
 let unnamed ~expander l =
   let+ _paths = make_interpreter ~f:dep ~expander l in
@@ -101,5 +102,5 @@ let named =
     | Named (s, ps) ->
       Result.List.map ps ~f:(dep expander)
       |> Result.map ~f:(fun xs ->
-             let+ l = Build.all xs in
+             let+ l = Action_builder.all xs in
              [ Bindings.Named (s, List.concat l) ]))

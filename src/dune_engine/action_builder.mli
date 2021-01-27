@@ -1,4 +1,4 @@
-(** The build description *)
+(** Action builder *)
 
 open! Stdune
 open! Import
@@ -35,7 +35,7 @@ module With_targets : sig
   val of_result_map :
     'a Or_exn.t -> f:('a -> 'b t) -> targets:Path.Build.t list -> 'b t
 
-  (** [memoize name t] is a build description that behaves like [t] except that
+  (** [memoize name t] is an action builder that behaves like [t] except that
       its result is computed only once. *)
   val memoize : string -> 'a t -> 'a t
 
@@ -54,8 +54,8 @@ with type 'a build := 'a t
     information. *)
 val set_file_system_accessors : file_exists:(Path.t -> bool) -> unit
 
-(** Add a set of targets to a build description, turning a target-less [Build.t]
-    into [Build.With_targets.t]. *)
+(** Add a set of targets to an action builder, turning a target-less
+    [Action_builder.t] into [Action_builder.With_targets.t]. *)
 val with_targets : 'a t -> targets:Path.Build.t list -> 'a With_targets.t
 
 (** [with_targets_set] is like [with_targets] but [targets] is a set *)
@@ -100,7 +100,7 @@ val or_exn : 'a Or_exn.t t -> 'a t
     ]} *)
 
 (** [path p] records [p] as a file that is read by the action produced by the
-    build description. *)
+    action builder. *)
 val path : Path.t -> unit t
 
 val dep : Dep.t -> unit t
@@ -114,7 +114,7 @@ val paths : Path.t list -> unit t
 val path_set : Path.Set.t -> unit t
 
 (** Evaluate a predicate against all targets and record all the matched files as
-    dependencies of the action produced by the build description. *)
+    dependencies of the action produced by the action builder. *)
 val paths_matching : loc:Loc.t -> File_selector.t -> Path.Set.t t
 
 (** [paths_existing paths] will require as dependencies the files that actually
@@ -122,7 +122,7 @@ val paths_matching : loc:Loc.t -> File_selector.t -> Path.Set.t t
 val paths_existing : Path.t list -> unit t
 
 (** [env_var v] records [v] as an environment variable that is read by the
-    action produced by the build description. *)
+    action produced by the action builder. *)
 val env_var : string -> unit t
 
 val alias : Alias.t -> unit t
@@ -167,8 +167,8 @@ val file_exists : Path.t -> bool t
     [file_exists p] evaluates to [true], and [else_] otherwise. *)
 val if_file_exists : Path.t -> then_:'a t -> else_:'a t -> 'a t
 
-(** [filter_existing_files p] is a build description which keep only the
-    existing files. The files are not registered as dynamic dependencies. *)
+(** [filter_existing_files p] is an action builder which keep only the existing
+    files. The files are not registered as dynamic dependencies. *)
 val filter_existing_files : ('a * Path.Set.t) t -> ('a * Path.Set.t) t
 
 (** Always fail when executed. We pass a function rather than an exception to
@@ -179,8 +179,8 @@ val of_result : 'a t Or_exn.t -> 'a t
 
 val of_result_map : 'a Or_exn.t -> f:('a -> 'b t) -> 'b t
 
-(** [memoize name t] is a build description that behaves like [t] except that
-    its result is computed only once. *)
+(** [memoize name t] is an action builder that behaves like [t] except that its
+    result is computed only once. *)
 val memoize : string -> 'a t -> 'a t
 
 (** Create a file with the given contents. *)
@@ -204,10 +204,10 @@ val label : label -> unit t
 
 (** {1 Analysis} *)
 
-(** Compute static dependencies of a build description. *)
+(** Compute static dependencies of an action builder. *)
 val static_deps : _ t -> Static_deps.t
 
-(** Compute static library dependencies of a build description. *)
+(** Compute static library dependencies of an action builder. *)
 val fold_labeled : _ t -> init:'acc -> f:(label -> 'acc -> 'acc) -> 'acc
 
 (** {1 Execution} *)
@@ -215,12 +215,12 @@ val fold_labeled : _ t -> init:'acc -> f:(label -> 'acc -> 'acc) -> 'acc
 module Make_exec (Build_deps : sig
   val build_deps : Dep.Set.t -> unit Fiber.t
 end) : sig
-  (** Execute a build description. Returns the result and the set of dynamic
+  (** Execute an action builder. Returns the result and the set of dynamic
       dependencies discovered during execution. *)
   val exec : 'a t -> ('a * Dep.Set.t) Fiber.t
 
-  (** Same as [exec] but also builds the static rule dependencies of the build
-      description. *)
+  (** Same as [exec] but also builds the static rule dependencies of the action
+      builder. *)
   val build_static_rule_deps_and_exec : 'a t -> ('a * Dep.Set.t) Fiber.t
 end
 
@@ -228,8 +228,8 @@ end
     must be discussed and justified. *)
 module Expert : sig
   (** This function "stages" static dependencies and can therefore reduce build
-      parallelism: until the outer build description has been evaluated, the
-      static dependencies of the inner build description are unknown. *)
+      parallelism: until the outer action builder has been evaluated, the static
+      dependencies of the inner action builder are unknown. *)
   val build : 'a t t -> 'a t
 end
 

@@ -1,7 +1,7 @@
 open! Dune_engine
 open! Stdune
 open Import
-open Build.O
+open Action_builder.O
 open! No_io
 module Library = Dune_file.Library
 
@@ -476,12 +476,13 @@ end = struct
     let action =
       let dune_package_file = Package_paths.dune_package_file ctx pkg in
       let meta_template = Package_paths.meta_template ctx pkg in
-      Build.write_file_dyn dune_package_file
+      Action_builder.write_file_dyn dune_package_file
         (let+ pkg =
-           Build.if_file_exists (Path.build meta_template)
-             ~then_:(Build.return Dune_package.Or_meta.Use_meta)
+           Action_builder.if_file_exists (Path.build meta_template)
+             ~then_:(Action_builder.return Dune_package.Or_meta.Use_meta)
              ~else_:
-               (Build.delayed (fun () -> make_dune_package sctx lib_entries pkg))
+               (Action_builder.delayed (fun () ->
+                    make_dune_package sctx lib_entries pkg))
          in
          Format.asprintf "%a" (Dune_package.Or_meta.pp ~dune_version) pkg)
     in
@@ -528,7 +529,7 @@ end = struct
           ; sites = pkg.sites
           }
         in
-        Build.write_file
+        Action_builder.write_file
           (Package_paths.deprecated_dune_package_file ctx pkg
              dune_pkg.Dune_package.name)
           (Format.asprintf "%a"
@@ -555,8 +556,7 @@ end = struct
       let meta_template = Path.build (Package_paths.meta_template ctx pkg) in
       let meta_template_lines_or_fail =
         (* XXX this should really be lazy as it's only necessary for the then
-           clause. There's no way to express this in the build description
-           however. *)
+           clause. There's no way to express this in the action builder however. *)
         let vlib =
           List.find_map entries ~f:(function
             | Super_context.Lib_entry.Library lib ->
@@ -565,9 +565,9 @@ end = struct
             | Deprecated_library_name _ -> None)
         in
         match vlib with
-        | None -> Build.lines_of meta_template
+        | None -> Action_builder.lines_of meta_template
         | Some vlib ->
-          Build.fail
+          Action_builder.fail
             { fail =
                 (fun () ->
                   let name = Lib.name (Lib.Local.to_lib vlib) in
@@ -581,13 +581,14 @@ end = struct
                     ])
             }
       in
-      Build.if_file_exists meta_template ~then_:meta_template_lines_or_fail
-        ~else_:(Build.return [ "# DUNE_GEN" ])
+      Action_builder.if_file_exists meta_template
+        ~then_:meta_template_lines_or_fail
+        ~else_:(Action_builder.return [ "# DUNE_GEN" ])
     in
     let ctx = Super_context.context sctx in
     let meta = Package_paths.meta_file ctx pkg in
     Super_context.add_rule sctx ~dir:ctx.build_dir
-      (let open Build.O in
+      (let open Action_builder.O in
       (let+ template = template in
        let meta = Gen_meta.gen ~package:pkg ~add_directory_entry:true entries in
        let pp =
@@ -603,7 +604,7 @@ end = struct
                   Pp.verbatim s))
        in
        Format.asprintf "%a" Pp.to_fmt pp)
-      |> Build.write_file_dyn meta);
+      |> Action_builder.write_file_dyn meta);
     let deprecated_packages =
       Package.Name.Map.of_list_multi deprecated_packages
     in
@@ -623,7 +624,7 @@ end = struct
                Pp.vbox (Meta.pp meta.entries ++ Pp.cut)
              in
              Format.asprintf "%a" Pp.to_fmt pp)
-          |> Build.write_file meta ))
+          |> Action_builder.write_file meta ))
 
   let meta_and_dune_package_rules_impl (project, sctx) =
     Dune_project.packages project
@@ -678,7 +679,7 @@ let symlink_installed_artifacts_to_build_install sctx
         | None -> Loc.in_file (Path.build entry.src)
       in
       Super_context.add_rule sctx ~loc ~dir:ctx.build_dir
-        (Build.symlink ~src:(Path.build entry.src) ~dst);
+        (Action_builder.symlink ~src:(Path.build entry.src) ~dst);
       Install.Entry.set_src entry dst)
 
 let promote_install_file (ctx : Context.t) =
@@ -757,13 +758,13 @@ let install_rules sctx (package : Package.t) =
         (Utils.install_file ~package:package_name
            ~findlib_toolchain:ctx.findlib_toolchain)
     in
-    Build.write_file_dyn install_file
-      (let+ () = Build.path_set files
+    Action_builder.write_file_dyn install_file
+      (let+ () = Action_builder.path_set files
        and+ () =
          if strict_package_deps then
-           Build.map packages ~f:(fun (_ : Package.Id.Set.t) -> ())
+           Action_builder.map packages ~f:(fun (_ : Package.Id.Set.t) -> ())
          else
-           Build.return ()
+           Action_builder.return ()
        in
        let entries =
          match ctx.findlib_toolchain with

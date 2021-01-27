@@ -104,7 +104,7 @@ module Context = struct
     ; expander : Expander.t
     ; buildable : Buildable.t
     ; theories_deps : Coq_lib.t list Or_exn.t
-    ; mlpack_rule : unit Build.t
+    ; mlpack_rule : unit Action_builder.t
     ; ml_flags : 'a Command.Args.t
     ; scope : Scope.t
     ; boot_type : Bootstrap.t
@@ -119,7 +119,7 @@ module Context = struct
     let dir = Path.build (snd t.coqc) in
     Command.run ~dir ?stdout_to (fst t.coqc) args
 
-  let standard_coq_flags = Build.return [ "-q" ]
+  let standard_coq_flags = Action_builder.return [ "-q" ]
 
   let coq_flags t =
     let standard = standard_coq_flags in
@@ -194,9 +194,10 @@ module Context = struct
       Lib.closure ~linking:false libs
     in
     ( Command.of_result_map libs ~f:Util.include_flags
-    , Build.of_result_map libs ~f:(fun libs ->
+    , Action_builder.of_result_map libs ~f:(fun libs ->
           (* If the mlpack files don't exist, don't fail *)
-          Build.paths_existing (List.concat_map ~f:Util.ml_pack_files libs)) )
+          Action_builder.paths_existing
+            (List.concat_map ~f:Util.ml_pack_files libs)) )
 
   let directories_of_lib ~sctx lib =
     let name = Coq_lib.name lib in
@@ -315,9 +316,9 @@ let parse_coqdep ~dir ~(boot_type : Bootstrap.t) ~coq_module
 
 let deps_of ~dir ~boot_type coq_module =
   let stdout_to = Coq_module.dep_file ~obj_dir:dir coq_module in
-  Build.dyn_paths_unit
-    (Build.map
-       (Build.lines_of (Path.build stdout_to))
+  Action_builder.dyn_paths_unit
+    (Action_builder.map
+       (Action_builder.lines_of (Path.build stdout_to))
        ~f:(parse_coqdep ~dir ~boot_type ~coq_module))
 
 let coqdep_rule (cctx : _ Context.t) ~source_rule ~file_flags coq_module =
@@ -331,9 +332,9 @@ let coqdep_rule (cctx : _ Context.t) ~source_rule ~file_flags coq_module =
   in
   let stdout_to = Coq_module.dep_file ~obj_dir:cctx.dir coq_module in
   (* Coqdep has to be called in the stanza's directory *)
-  let open Build.With_targets.O in
-  Build.with_no_targets cctx.mlpack_rule
-  >>> Build.with_no_targets source_rule
+  let open Action_builder.With_targets.O in
+  Action_builder.with_no_targets cctx.mlpack_rule
+  >>> Action_builder.with_no_targets source_rule
   >>> Command.run ~dir:(Path.build cctx.dir) ~stdout_to cctx.coqdep file_flags
 
 let coqc_rule (cctx : _ Context.t) ~file_flags coq_module =
@@ -352,24 +353,24 @@ let coqc_rule (cctx : _ Context.t) ~file_flags coq_module =
     ; Command.Args.Dep (Path.build source)
     ]
   in
-  let open Build.With_targets.O in
+  let open Action_builder.With_targets.O in
   (* The way we handle the transitive dependencies of .vo files is not safe for
      sandboxing *)
-  Build.with_no_targets
-    (Build.dep (Dep.sandbox_config Sandbox_config.no_sandboxing))
+  Action_builder.with_no_targets
+    (Action_builder.dep (Dep.sandbox_config Sandbox_config.no_sandboxing))
   >>>
   let coq_flags = Context.coq_flags cctx in
   Context.coqc cctx (Command.Args.dyn coq_flags :: file_flags)
 
 module Module_rule = struct
   type t =
-    { coqdep : Action.t Build.With_targets.t
-    ; coqc : Action.t Build.With_targets.t
+    { coqdep : Action.t Action_builder.With_targets.t
+    ; coqc : Action.t Action_builder.With_targets.t
     }
 end
 
 let setup_rule cctx ~source_rule coq_module =
-  let open Build.With_targets.O in
+  let open Action_builder.With_targets.O in
   if coq_debug then
     Format.eprintf "gen_rule coq_module: %a@\n%!" Pp.to_fmt
       (Dyn.pp (Coq_module.to_dyn coq_module));
@@ -384,7 +385,8 @@ let setup_rule cctx ~source_rule coq_module =
   (* Rules for the files *)
   { Module_rule.coqdep = coqdep_rule
   ; coqc =
-      Build.with_no_targets deps_of >>> coqc_rule cctx ~file_flags coq_module
+      Action_builder.with_no_targets deps_of
+      >>> coqc_rule cctx ~file_flags coq_module
   }
 
 let coq_modules_of_theory ~sctx lib =
@@ -397,10 +399,10 @@ let coq_modules_of_theory ~sctx lib =
 let source_rule ~sctx theories =
   (* sources for depending libraries coqdep requires all the files to be in the
      tree to produce correct dependencies, including those of dependencies *)
-  Build.of_result_map theories ~f:(fun theories ->
+  Action_builder.of_result_map theories ~f:(fun theories ->
       List.concat_map theories ~f:(coq_modules_of_theory ~sctx)
       |> List.rev_map ~f:(fun m -> Path.build (Coq_module.source m))
-      |> Build.paths)
+      |> Action_builder.paths)
 
 let setup_rules ~sctx ~dir ~dir_contents (s : Theory.t) =
   let name = snd s.name in
@@ -554,9 +556,9 @@ let extraction_rules ~sctx ~dir ~dir_contents (s : Extraction.t) =
   in
   let source_rule =
     let theories = source_rule ~sctx cctx.theories_deps in
-    let open Build.O in
-    theories >>> Build.path (Path.build (Coq_module.source coq_module))
+    let open Action_builder.O in
+    theories >>> Action_builder.path (Path.build (Coq_module.source coq_module))
   in
   let { Module_rule.coqc; coqdep } = setup_rule cctx ~source_rule coq_module in
-  let coqc = Build.With_targets.add coqc ~targets:ml_targets in
+  let coqc = Action_builder.With_targets.add coqc ~targets:ml_targets in
   [ coqdep; coqc ]

@@ -20,8 +20,8 @@ val make :
   -> default:t
   -> eval:
        (   Ordered_set_lang.Unexpanded.t
-        -> standard:string list Build.t
-        -> string list Build.t)
+        -> standard:string list Action_builder.t
+        -> string list Action_builder.t)
   -> t
 
 val default : dune_version:Dune_lang.Syntax.Version.t -> profile:Profile.t -> t
@@ -30,7 +30,7 @@ val empty : t
 
 val of_list : string list -> t
 
-val get : t -> Mode.t -> string list Build.t
+val get : t -> Mode.t -> string list Action_builder.t
 
 val append_common : t -> string list -> t
 
@@ -38,6 +38,6 @@ val prepend_common : string list -> t -> t
 
 val with_vendored_warnings : t -> t
 
-val common : t -> string list Build.t
+val common : t -> string list Action_builder.t
 
-val dump : t -> Dune_lang.t list Build.t
+val dump : t -> Dune_lang.t list Action_builder.t

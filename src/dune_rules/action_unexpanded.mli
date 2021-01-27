@@ -33,8 +33,8 @@ val expand :
   -> targets_dir:Path.Build.t
   -> targets:Targets.Or_forbidden.t
   -> expander:Expander.t
-  -> Path.t Bindings.t Build.t
-  -> Action.t Build.With_targets.t
+  -> Path.t Bindings.t Action_builder.t
+  -> Action.t Action_builder.With_targets.t
 
 (** This module is exposed only for testing *)
 module Infer : sig

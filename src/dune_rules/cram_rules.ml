@@ -8,7 +8,7 @@ let () = Cram_exec.linkme
 type effective =
   { loc : Loc.t
   ; alias : Alias.Name.Set.t
-  ; deps : unit Build.t list
+  ; deps : unit Action_builder.t list
   ; enabled_if : Blang.t list
   ; packages : Package.Name.Set.t
   }
@@ -22,7 +22,7 @@ let empty_effective =
   }
 
 let missing_run_t (error : Cram_test.t) =
-  Build.fail
+  Action_builder.fail
     { fail =
         (fun () ->
           let dir =
@@ -37,7 +37,7 @@ let missing_run_t (error : Cram_test.t) =
                 (Path.Source.to_string dir)
             ])
     }
-  |> Build.with_no_targets
+  |> Action_builder.with_no_targets
 
 let test_rule ~sctx ~expander ~dir (spec : effective)
     (test : (Cram_test.t, File_tree.Dir.error) result) =
@@ -82,21 +82,22 @@ let test_rule ~sctx ~expander ~dir (spec : effective)
         (Path.Build.to_dyn dir, Action.for_shell action, Cram_test.name test)
       in
       let cram =
-        let open Build.O in
-        let+ () = Build.path (Path.build script)
-        and+ () = Build.all_unit spec.deps
+        let open Action_builder.O in
+        let+ () = Action_builder.path (Path.build script)
+        and+ () = Action_builder.all_unit spec.deps
         and+ (_ : Path.Set.t) =
           match test with
-          | File _ -> Build.return Path.Set.empty
+          | File _ -> Action_builder.return Path.Set.empty
           | Dir { dir; file = _ } ->
             let dir = Path.build (Path.Build.append_source prefix_with dir) in
-            Build.source_tree ~dir
+            Action_builder.source_tree ~dir
         and+ () =
-          Build.dep (Dep.sandbox_config Sandbox_config.needs_sandboxing)
+          Action_builder.dep
+            (Dep.sandbox_config Sandbox_config.needs_sandboxing)
         in
         action
       in
-      let cram = Build.with_no_targets cram in
+      let cram = Action_builder.with_no_targets cram in
       List.iter aliases ~f:(fun alias ->
           Alias_rules.add sctx ~alias ~stamp ~loc cram ~locks:[]) )
 
@@ -153,9 +154,9 @@ let rules ~sctx ~expander ~dir tests =
                 match spec.deps with
                 | None -> acc.deps
                 | Some deps ->
-                  let deps : unit Build.t =
+                  let deps : unit Action_builder.t =
                     let expander = Super_context.expander sctx ~dir in
-                    let open Build.O in
+                    let open Action_builder.O in
                     let+ (_ : Path.t Bindings.t) =
                       Dep_conf_eval.named ~expander deps
                     in

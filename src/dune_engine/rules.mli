@@ -12,7 +12,7 @@ module Dir_rules : sig
 
   type alias_action =
     { stamp : Digest.t
-    ; action : Action.t Build.With_targets.t
+    ; action : Action.t Action_builder.With_targets.t
     ; locks : Path.t list
     ; context : Build_context.t
     ; env : Env.t option
@@ -22,7 +22,7 @@ module Dir_rules : sig
   module Alias_spec : sig
     type t =
       { deps : Path.Set.t
-      ; dyn_deps : Path.Set.t Build.t
+      ; dyn_deps : Path.Set.t Action_builder.t
       ; actions : alias_action Appendable_list.t
       }
   end
@@ -69,7 +69,8 @@ module Produce : sig
 
     (** [add_deps store alias ?dyn_deps deps] arrange things so that all
         [dyn_deps] and [deps] are built as part of the build of alias [alias]. *)
-    val add_deps : t -> ?dyn_deps:Path.Set.t Build.t -> Path.Set.t -> unit
+    val add_deps :
+      t -> ?dyn_deps:Path.Set.t Action_builder.t -> Path.Set.t -> unit
 
     (** [add_action store alias ~stamp action] arrange things so that [action]
         is executed as part of the build of alias [alias]. [stamp] is any
@@ -81,7 +82,7 @@ module Produce : sig
       -> loc:Loc.t option
       -> ?locks:Path.t list
       -> stamp:_
-      -> Action.t Build.With_targets.t
+      -> Action.t Action_builder.With_targets.t
       -> unit
   end
 end

@@ -17,7 +17,7 @@ module Alias_rules = struct
     SC.add_alias_action sctx alias ~dir ~loc ~locks ~stamp build
 
   let add_empty sctx ~loc ~alias ~stamp =
-    let action = Build.With_targets.return Action.empty in
+    let action = Action_builder.With_targets.return Action.empty in
     add sctx ~loc ~alias ~stamp action ~locks:[]
 end
 
@@ -57,7 +57,8 @@ type rule_kind =
   | Alias_with_targets of Alias.Name.t * Path.Build.t
   | No_alias
 
-let rule_kind ~(rule : Rule.t) ~(action : Action.t Build.With_targets.t) =
+let rule_kind ~(rule : Rule.t)
+    ~(action : Action.t Action_builder.With_targets.t) =
   match rule.alias with
   | None -> No_alias
   | Some alias -> (
@@ -70,7 +71,7 @@ let add_user_rule sctx ~dir ~(rule : Rule.t) ~action ~expander =
     sctx
     (* user rules may have extra requirements, in which case they will be
        specified as a part of rule.deps, which will be correctly taken care of
-       by the build description *)
+       by the action builder *)
     ~sandbox:Sandbox_config.no_special_requirements ~dir ~mode:rule.mode
     ~loc:rule.loc
     ~locks:(interpret_locks ~expander rule.locks)
@@ -187,9 +188,9 @@ let copy_files sctx ~dir ~expander ~src_dir (def : Copy_files.t) =
         let file_dst = Path.Build.relative dir basename in
         SC.add_rule sctx ~loc ~dir ~mode:def.mode
           (( if def.add_line_directive then
-             Build.copy_and_add_line_directive
+             Action_builder.copy_and_add_line_directive
            else
-             Build.copy )
+             Action_builder.copy )
              ~src:file_src ~dst:file_dst);
         Path.build file_dst)
   in
@@ -221,8 +222,8 @@ let alias sctx ?extra_bindings ~dir ~expander (alias_conf : Alias_conf.t) =
       match alias_conf.action with
       | None ->
         fun x ->
-          Build.with_no_targets
-            (let open Build.O in
+          Action_builder.with_no_targets
+            (let open Action_builder.O in
             let+ (_ : Path.t Bindings.t) = x in
             Action.empty)
       | Some (loc, action) ->

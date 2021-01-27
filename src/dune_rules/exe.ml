@@ -124,8 +124,8 @@ let exe_path_from_name cctx ~name ~(linkage : Linkage.t) =
   Path.Build.relative (CC.dir cctx) (name ^ linkage.ext)
 
 let link_exe ~loc ~name ~(linkage : Linkage.t) ~cm_files ~link_time_code_gen
-    ~promote ?(link_args = Build.return Command.Args.empty) ?(o_files = []) cctx
-    =
+    ~promote ?(link_args = Action_builder.return Command.Args.empty)
+    ?(o_files = []) cctx =
   let sctx = CC.super_context cctx in
   let ctx = SC.context sctx in
   let dir = CC.dir cctx in
@@ -141,9 +141,9 @@ let link_exe ~loc ~name ~(linkage : Linkage.t) ~cm_files ~link_time_code_gen
     (let ocaml_flags = Ocaml_flags.get (CC.flags cctx) mode in
      let prefix =
        Cm_files.top_sorted_objects_and_cms cm_files ~mode
-       |> Build.dyn_paths_unit
+       |> Action_builder.dyn_paths_unit
      in
-     let open Build.With_targets.O in
+     let open Action_builder.With_targets.O in
      (* NB. Below we take care to pass [link_args] last on the command-line for
         the following reason: [link_args] contains the list of foreign libraries
         being linked into the executable; on some systems (eg Linux), the linker
@@ -164,7 +164,7 @@ let link_exe ~loc ~name ~(linkage : Linkage.t) ~cm_files ~link_time_code_gen
 
         In each case, we could then pass the argument in dependency order, which
         would provide a better fix for this issue. *)
-     Build.with_no_targets prefix
+     Action_builder.with_no_targets prefix
      >>> Command.run ~dir:(Path.build ctx.build_dir)
            (Context.compiler ctx mode)
            [ Command.Args.dyn ocaml_flags
@@ -183,7 +183,9 @@ let link_exe ~loc ~name ~(linkage : Linkage.t) ~cm_files ~link_time_code_gen
                        ~lib_config:ctx.lib_config ~mode:linkage.mode
                    ])
            ; Deps o_files
-           ; Dyn (Build.map top_sorted_cms ~f:(fun x -> Command.Args.Deps x))
+           ; Dyn
+               (Action_builder.map top_sorted_cms ~f:(fun x ->
+                    Command.Args.Deps x))
            ; Fdo.Linker_script.flags fdo_linker_script
            ; Dyn link_args
            ])
@@ -197,7 +199,7 @@ let link_js ~name ~cm_files ~promote cctx =
   let src = exe_path_from_name cctx ~name ~linkage:Linkage.byte in
   let flags =
     Expander.expand_and_eval_set expander js_of_ocaml.flags
-      ~standard:(Build.return (Jsoo_rules.standard sctx))
+      ~standard:(Action_builder.return (Jsoo_rules.standard sctx))
   in
   let top_sorted_cms = Cm_files.top_sorted_cms cm_files ~mode:Mode.Byte in
   Jsoo_rules.build_exe cctx ~js_of_ocaml ~src ~cm:top_sorted_cms

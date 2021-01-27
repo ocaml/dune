@@ -79,5 +79,5 @@ let setup_rules sctx ~dir (def : Dune_file.Generate_sites_module.t) =
   let impl = Buffer.contents buf in
   let module_ = Module_name.to_string def.module_ ^ ".ml" in
   let file = Path.Build.relative dir module_ in
-  Super_context.add_rule sctx ~dir (Build.write_file file impl);
+  Super_context.add_rule sctx ~dir (Action_builder.write_file file impl);
   module_

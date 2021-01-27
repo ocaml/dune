@@ -84,7 +84,6 @@ type t = private
   ; findlib_toolchain : Context_name.t option  (** Misc *)
   ; default_ocamlpath : Path.t list
   ; arch_sixtyfour : bool
-  ; install_prefix : Path.t Memo.Lazy.Async.t
   ; ocaml_config : Ocaml_config.t
   ; ocaml_config_vars : Ocaml_config.Vars.t
   ; version : Ocaml_version.t
@@ -132,6 +131,10 @@ val lib_config : t -> Lib_config.t
 val map_exe : t -> Path.t -> Path.t
 
 val build_context : t -> Build_context.t
+
+(** Query where build artifacts should be installed if the user doesn't specify
+    an explicit installation directory. *)
+val install_prefix : t -> Path.t Memo.Build.t
 
 val init_configurator : t -> unit
 

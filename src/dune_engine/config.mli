@@ -16,6 +16,12 @@ val local_install_lib_dir :
 
 val dev_null : Path.t
 
+(** [dev_null] opened in read mode *)
+val dev_null_in : Unix.file_descr Lazy.t
+
+(** [dev_null] opened in write mode *)
+val dev_null_out : Unix.file_descr Lazy.t
+
 (** When this file is present in a directory dune will delete nothing in it if
     it knows to generate this file. *)
 val dune_keep_fname : string

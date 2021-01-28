@@ -42,6 +42,3 @@ val find_scontext_exn : build_system -> name:Context_name.t -> Super_context.t
 
 (** Setup the environment *)
 val setup_env : capture_outputs:bool -> Env.t
-
-(** Set the concurrency level according to the user configuration *)
-val set_concurrency : Config.t -> unit Fiber.t

@@ -71,62 +71,6 @@ let init_build_system ?only_packages ~sandboxing_preference ?caching w =
   let+ scontexts = Gen_rules.gen w.conf ~contexts:w.contexts ?only_packages in
   { workspace = w; scontexts }
 
-let auto_concurrency =
-  let v = ref None in
-  fun () ->
-    match !v with
-    | Some n -> Fiber.return n
-    | None ->
-      let+ n =
-        if Sys.win32 then
-          match Env.get Env.initial "NUMBER_OF_PROCESSORS" with
-          | None -> Fiber.return 1
-          | Some s -> (
-            match int_of_string s with
-            | exception _ -> Fiber.return 1
-            | n -> Fiber.return n )
-        else
-          let commands =
-            [ ("nproc", [])
-            ; ("getconf", [ "_NPROCESSORS_ONLN" ])
-            ; ("getconf", [ "NPROCESSORS_ONLN" ])
-            ]
-          in
-          let rec loop = function
-            | [] -> Fiber.return 1
-            | (prog, args) :: rest -> (
-              match Bin.which ~path:(Env.path Env.initial) prog with
-              | None -> loop rest
-              | Some prog -> (
-                let* result =
-                  Process.run_capture (Accept Predicate_lang.any) prog args
-                    ~env:Env.initial
-                    ~stderr_to:(Process.Io.file Config.dev_null Process.Io.Out)
-                in
-                match result with
-                | Error _ -> loop rest
-                | Ok s -> (
-                  match int_of_string (String.trim s) with
-                  | n -> Fiber.return n
-                  | exception _ -> loop rest ) ) )
-          in
-          loop commands
-      in
-      Log.info [ Pp.textf "Auto-detected concurrency: %d" n ];
-      v := Some n;
-      n
-
-let set_concurrency (config : Config.t) =
-  let* n =
-    match config.concurrency with
-    | Fixed n -> Fiber.return n
-    | Auto -> auto_concurrency ()
-  in
-  if n >= 1 then
-    Scheduler.set_concurrency n
-  else
-    Fiber.return ()
-
 let find_context_exn t ~name =
   match List.find t.contexts ~f:(fun c -> Context_name.equal c.name name) with
   | Some ctx -> ctx

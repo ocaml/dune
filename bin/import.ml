@@ -126,19 +126,13 @@ end
 
 module Scheduler = struct
   include Dune_engine.Scheduler
-  open Fiber.O
 
   let go ~(common : Common.t) f =
     let config = Common.config common in
-    let f () = Main.set_concurrency config >>= f in
     Scheduler.go ~config f
 
   let poll ~(common : Common.t) ~once ~finally () =
     let config = Common.config common in
-    let once () =
-      let* () = Main.set_concurrency config in
-      once ()
-    in
     Scheduler.poll ~config ~once ~finally ()
 end
 

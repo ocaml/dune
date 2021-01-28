@@ -119,12 +119,21 @@ let expand_version scope pform s =
     | None -> [ Value.String "" ]
     | Some s -> [ String s ]
   in
+  let project = Scope.project scope in
   match
     Package.Name.Map.find
-      (Dune_project.packages (Scope.project scope))
+      (Dune_project.packages project)
       (Package.Name.of_string s)
   with
   | Some p -> value_from_version p.version
+  | None when Dune_project.dune_version project < (2, 9) ->
+    User_error.raise
+      ~loc:(String_with_vars.Var.loc pform)
+      [ Pp.textf
+          "Package %S doesn't exist in the current project and installed \
+           packages support requires at least (lang dune 2.9)."
+          s
+      ]
   | None -> (
     let libname = Lib_name.of_string s in
     let pkgname = Lib_name.package_name libname in
@@ -144,7 +153,7 @@ let expand_version scope pform s =
             "Package %S doesn't exist in the current project and isn't \
              installed either."
             s
-        ] )
+        ])
 
 let isn't_allowed_in_this_position pform =
   let loc = String_with_vars.Var.loc pform in

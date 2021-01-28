@@ -22,6 +22,10 @@ module Dst : sig
   val compare : t -> t -> Ordering.t
 
   val infer : src_basename:string -> Section.t -> t
+
+  include Dune_lang.Conv.S with type t := t
+
+  val to_dyn : t -> Dyn.t
 end = struct
   type t = string
 
@@ -68,6 +72,12 @@ end = struct
         None
       else
         Some s
+
+  let decode = Dune_lang.Decoder.string
+
+  let encode = Dune_lang.Encoder.string
+
+  let to_dyn = Dyn.Encoder.string
 end
 
 module Section_with_site = struct
@@ -104,6 +114,13 @@ module Section_with_site = struct
             >>> pair Package.Name.decode Section.Site.decode
             >>| fun (pkg, site) -> Site { pkg; site } )
         ] )
+
+  let encode =
+    let open Dune_lang.Encoder in
+    function
+    | Section s -> Section.encode s
+    | Site { pkg; site } ->
+      constr "site" (pair Package.Name.encode Section.Site.encode) (pkg, site)
 end
 
 module Section = struct

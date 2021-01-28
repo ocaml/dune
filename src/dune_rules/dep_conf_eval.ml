@@ -48,11 +48,21 @@ let dep expander = function
              let pkg = Package.Name.of_string pkg in
              let context = Expander.context expander in
              match Expander.find_package expander pkg with
-             | Some pkg ->
+             | Some (Local pkg) ->
                Action_builder.alias
                  (Build_system.Alias.package_install
                     ~context:(Context.build_context context)
                     ~pkg)
+             | Some (Installed pkg) ->
+               let files =
+                 List.concat_map
+                   ~f:(fun (s, l) ->
+                     let dir = Section.Map.find_exn pkg.sections s in
+                     List.map l ~f:(fun d ->
+                         Path.relative dir (Install.Dst.to_string d)))
+                   pkg.files
+               in
+               Action_builder.paths files
              | None ->
                Action_builder.fail
                  { fail =

@@ -239,7 +239,19 @@ let to_dyn t = Context.to_dyn t.context
 
 let host t = Option.value t.host ~default:t
 
-let get_site_of_packages_aux ~packages ~context ~pkg ~site =
+let any_package_aux ~packages ~context pkg =
+  match Package.Name.Map.find packages pkg with
+  | Some p -> Some (Expander.Local p)
+  | None -> (
+    match Findlib.find_root_package context.Context.findlib pkg with
+    | Ok p -> Some (Expander.Installed p)
+    | Error Not_found -> None
+    | Error (Invalid_dune_package exn) -> Exn.raise exn )
+
+let any_package t pkg =
+  any_package_aux ~packages:t.packages ~context:t.context pkg
+
+let get_site_of_packages_aux ~any_package ~pkg ~site =
   let find_site sites ~pkg ~site =
     match Section.Site.Map.find sites site with
     | Some section -> section
@@ -250,18 +262,15 @@ let get_site_of_packages_aux ~packages ~context ~pkg ~site =
             (Section.Site.to_string site)
         ]
   in
-  match Package.Name.Map.find packages pkg with
-  | Some p -> find_site p.Package.sites ~pkg ~site
-  | None -> (
-    match Findlib.find_root_package context.Context.findlib pkg with
-    | Ok p -> find_site p.sites ~pkg ~site
-    | Error Not_found ->
-      User_error.raise
-        [ Pp.textf "The package %s is not found" (Package.Name.to_string pkg) ]
-    | Error (Invalid_dune_package exn) -> Exn.raise exn )
+  match any_package pkg with
+  | Some (Expander.Local p) -> find_site p.Package.sites ~pkg ~site
+  | Some (Expander.Installed p) -> find_site p.sites ~pkg ~site
+  | None ->
+    User_error.raise
+      [ Pp.textf "The package %s is not found" (Package.Name.to_string pkg) ]
 
 let get_site_of_packages t ~pkg ~site =
-  get_site_of_packages_aux ~packages:t.packages ~context:t.context ~pkg ~site
+  get_site_of_packages_aux ~any_package:(any_package t) ~pkg ~site
 
 let lib_entries_of_package t pkg_name =
   Package.Name.Map.find t.lib_entries_by_package pkg_name
@@ -542,19 +551,19 @@ let create ~(context : Context.t) ?host ~projects ~packages ~stanzas () =
     let local_bins = get_installed_binaries ~context stanzas in
     Artifacts.create context ~public_libs ~local_bins
   in
+  let any_package = any_package_aux ~packages ~context in
   let root_expander =
     let scopes_host, artifacts_host, context_host =
       match host with
       | None -> (scopes, artifacts, context)
       | Some host -> (host.scopes, host.artifacts, host.context)
     in
-    let find_package = Package.Name.Map.find packages in
     Expander.make
       ~scope:(Scope.DB.find_by_dir scopes context.build_dir)
       ~scope_host:(Scope.DB.find_by_dir scopes_host context_host.build_dir)
       ~context ~lib_artifacts:artifacts.public_libs
       ~bin_artifacts_host:artifacts_host.bin
-      ~lib_artifacts_host:artifacts_host.public_libs ~find_package
+      ~lib_artifacts_host:artifacts_host.public_libs ~find_package:any_package
   in
   let dune_dir_locations_var : Stdune.Env.Var.t = "DUNE_DIR_LOCATIONS" in
   (* Add the section of the site mentioned in stanzas (it could be a site of an
@@ -568,9 +577,7 @@ let create ~(context : Context.t) ?host ~projects ~packages ~stanzas () =
     Dir_with_dune.deep_fold stanzas ~init:Package.Name.Map.empty
       ~f:(fun _ stanza acc ->
         let add_in_package_sites acc pkg site =
-          let section =
-            get_site_of_packages_aux ~packages ~context ~pkg ~site
-          in
+          let section = get_site_of_packages_aux ~any_package ~pkg ~site in
           add_in_package_section acc pkg section
         in
         match stanza with

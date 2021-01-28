@@ -250,6 +250,8 @@ Test compiling an external plugin
   > (generate_sites_module (module sites) (sites e))
   > (plugin (name c-plugins-e) (libraries e) (site (c plugins)))
   > (install (section (site (e data))) (files info.txt))
+  > (rule (alias runtest) (deps (package a) (package b) (package c) (package d) (package e))
+  >   (action (run %{bin:c})))
   > EOF
 
   $ cat >e/e.ml <<EOF
@@ -300,6 +302,22 @@ Test compiling an external plugin
   info.txt is found: true
   run e
   e: $TESTCASE_ROOT/_install/share/e/data
+  info.txt is found: true
+  run c: registered:e,b.
+
+  $ OCAMLPATH=_install/lib:$OCAMLPATH dune build @runtest
+             c alias e/runtest
+  run a
+  a: $TESTCASE_ROOT/_build/install/default/share/a/data
+  run c: a linked registered:.
+  sourceroot is "$TESTCASE_ROOT"
+  c: $TESTCASE_ROOT/_build/install/default/share/c/data
+  b is available: true
+  run b
+  b: $TESTCASE_ROOT/_build/install/default/share/b/data
+  info.txt is found: true
+  run e
+  e: $TESTCASE_ROOT/_build/install/default/share/e/data
   info.txt is found: true
   run c: registered:e,b.
 

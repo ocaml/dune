@@ -20,6 +20,10 @@ module Expanded = struct
     | Some v -> Value v
 end
 
+type any_package =
+  | Local of Package.t
+  | Installed of Dune_package.t
+
 type t =
   { dir : Path.Build.t
   ; hidden_env : Env.Var.Set.t
@@ -39,7 +43,7 @@ type t =
   ; map_exe : Path.t -> Path.t
   ; foreign_flags :
       dir:Path.Build.t -> string list Action_builder.t Foreign_language.Dict.t
-  ; find_package : Package.Name.t -> Package.t option
+  ; find_package : Package.Name.t -> any_package option
   }
 
 let scope t = t.scope

@@ -2,6 +2,37 @@ Include variants and implementation information in dune-package
   $ dune build | sed "s/(lang dune .*)/(lang dune <version>)/" | dune_cmd sanitize
   (lang dune <version>)
   (name foo)
+  (sections
+   (lib
+    $TESTCASE_ROOT/_build/install/default/lib/foo)
+   (libexec
+    $TESTCASE_ROOT/_build/install/default/lib/foo))
+  (files
+   (lib
+    (META
+     dune-package
+     opam
+     vlib/vmod.mli
+     vlib/vlib.ml
+     vlib/vlib__Vmod.cmi
+     vlib/vlib__Vmod.cmti
+     vlib/vlib.cmi
+     vlib/vlib.cmx
+     vlib/vlib.cmo
+     vlib/vlib$ext_obj
+     vlib/vlib.cmt
+     impl/vmod.ml
+     impl/vlib__impl__.ml
+     impl/vlib__Vmod.cmi
+     impl/vlib__Vmod.cmx
+     impl/vlib__Vmod.cmt
+     impl/vlib__impl__.cmi
+     impl/vlib__impl__.cmx
+     impl/vlib__impl__.cmt
+     impl/impl.cma
+     impl/impl.cmxa
+     impl/impl$ext_lib))
+   (libexec (impl/impl.cmxs)))
   (library
    (name foo.impl)
    (kind normal)

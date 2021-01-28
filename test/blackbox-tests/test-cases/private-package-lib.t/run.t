@@ -72,6 +72,14 @@ Note the name mangling convention in the META file:
 We want to see mangled names in the dune-package file as well:
 
   $ cat _build/install/default/lib/foo/dune-package | grep __private__
+     __private__/secret/secret.ml
+     __private__/secret/.public_cmi/secret.cmi
+     __private__/secret/secret.cmx
+     __private__/secret/.public_cmi/secret.cmt
+     __private__/secret/secret.cma
+     __private__/secret/secret.cmxa
+     __private__/secret/secret.a))
+   (libexec (bar/foo.cmxs __private__/secret/secret.cmxs)))
    (requires foo.__private__.secret)
    (name foo.__private__.secret)
     (byte __private__/secret/secret.cma)

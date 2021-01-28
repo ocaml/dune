@@ -69,6 +69,7 @@ type t =
   ; sections : Path.t Section.Map.t
   ; sites : Section.t Section.Site.Map.t
   ; dir : Path.t
+  ; files : (Section.t * Install.Dst.t list) list
   }
 
 val to_dyn : t Dyn.Encoder.t

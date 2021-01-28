@@ -7,6 +7,10 @@ module Dst : sig
   type t
 
   val to_string : t -> string
+
+  include Dune_lang.Conv.S with type t := t
+
+  val to_dyn : t -> Dyn.t
 end
 
 (** Location for installation, containing the sections relative to the current
@@ -23,7 +27,7 @@ module Section_with_site : sig
 
   (* val parse_string : string -> (t, string) Result.t *)
 
-  val decode : t Dune_lang.Decoder.t
+  include Dune_lang.Conv.S with type t := t
 
   val to_dyn : t -> Dyn.t
 end

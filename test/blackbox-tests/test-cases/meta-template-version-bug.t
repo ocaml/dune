@@ -30,8 +30,9 @@ custom version:
   $ dune install --prefix ./_install 2>&1 | grep -v Installing
   [1]
 
-  $ cat ./_install/lib/foobarlib/dune-package
-  (lang dune 2.8)
+  $ cat ./_install/lib/foobarlib/dune-package | \
+  >   sed "s/(lang dune .*)/(lang dune <version>)/"
+  (lang dune <version>)
   (use_meta)
 
   $ mkdir external

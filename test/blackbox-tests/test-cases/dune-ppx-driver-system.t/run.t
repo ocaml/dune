@@ -1,6 +1,7 @@
 No ppx driver found
 
   $ mkdir -p no-driver
+  $ echo '(lang dune 2.8)' > no-driver/dune-project
   $ cat >no-driver/dune <<EOF
   > (library
   >  (name foo1)
@@ -10,8 +11,6 @@ No ppx driver found
   > EOF
   $ dune build --root no-driver
   Entering directory 'no-driver'
-  Info: Creating file dune-project with this contents:
-  | (lang dune 2.8)
   File "dune", line 5, characters 13-18:
   5 |  (preprocess (pps)))
                    ^^^^^

@@ -7,6 +7,8 @@ Unreleased
   
 - Fixed absence of executable bit for installed `.cmxs` (#4149, fixes #4148, @bobot)
 
+- Allow `%{version:pkg}` to work for external packages (#4104, @kit-ty-kate)
+
 2.8.2 (21/01/2021)
 ------------------
 

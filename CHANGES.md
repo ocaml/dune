@@ -9,8 +9,8 @@ Unreleased
   that `(using coq 0.3)` does require Coq 8.10 at least (#4224, fixes
   #4142, @ejgallego)
 
->>>>>>> 53775cc5d ([coq] Restore compatibility with Coq < 8.10 for coq-lang < 0.3)
-2.8.2 (21/01/2021)
+- Add a META rule for 'compiler-libs.native-toplevel' (#4175, @altgr)
+
 ------------------
 
 - Fixed wrong workspace discovery from `dune ocaml-merlin` (#4127, fixes #4125,

@@ -134,12 +134,19 @@ let archive p s = rule "archive" [ Pos p ] Set s
 
 let plugin p s = rule "plugin" [ Pos p ] Set s
 
-let archives name =
-  [ archive "byte" (name ^ Mode.compiled_lib_ext Byte)
-  ; archive "native" (name ^ Mode.compiled_lib_ext Native)
-  ; plugin "byte" (name ^ Mode.compiled_lib_ext Byte)
-  ; plugin "native" (name ^ Mode.plugin_ext Native)
-  ]
+let exists_if s = rule "exists_if" [] Set s
+
+let archives ?(kind = [ Mode.Byte; Mode.Native ]) name =
+  List.filter_map
+    [ (Mode.Byte, archive, Mode.compiled_lib_ext)
+    ; (Mode.Native, archive, Mode.compiled_lib_ext)
+    ; (Mode.Byte, plugin, Mode.compiled_lib_ext)
+    ; (Mode.Native, plugin, Mode.plugin_ext)
+    ] ~f:(fun (k, f, ext) ->
+      if List.mem k ~set:kind then
+        Some (f (Mode.to_string k) (name ^ ext k))
+      else
+        None)
 
 (* fake entry we use to pass down the list of toplevel modules for root_module *)
 let main_modules names =
@@ -148,7 +155,8 @@ let main_modules names =
 
 let builtins ~stdlib_dir ~version:ocaml_version =
   let version = version "[distributed with Ocaml]" in
-  let simple name ?(labels = false) ?dir ?archive_name deps =
+  let simple name ?(labels = false) ?dir ?archive_name ?kind ?exists_if_ext deps
+      =
     let archive_name =
       match archive_name with
       | None -> name
@@ -161,15 +169,19 @@ let builtins ~stdlib_dir ~version:ocaml_version =
         main_modules [ name ]
     in
     let name = Lib_name.of_string name in
-    let archives = archives archive_name in
+    let archives = archives archive_name ?kind in
     let main_modules = main_modules in
     { name = Some name
     ; entries =
         requires deps :: version :: main_modules
         ::
         ( match dir with
-        | None -> archives
-        | Some d -> directory d :: archives )
+        | None -> []
+        | Some d -> [ directory d ] )
+        @ ( match exists_if_ext with
+          | None -> []
+          | Some ext -> [ exists_if (archive_name ^ ext) ] )
+        @ archives
     }
   in
   let dummy name =
@@ -178,8 +190,9 @@ let builtins ~stdlib_dir ~version:ocaml_version =
     }
   in
   let compiler_libs =
-    let sub name deps =
-      Package (simple name deps ~archive_name:("ocaml" ^ name))
+    let sub name ?kind ?exists_if_ext deps =
+      Package
+        (simple name deps ~archive_name:("ocaml" ^ name) ?kind ?exists_if_ext)
     in
     { name = Some (Lib_name.of_string "compiler-libs")
     ; entries =
@@ -189,7 +202,11 @@ let builtins ~stdlib_dir ~version:ocaml_version =
         ; sub "common" []
         ; sub "bytecomp" [ "compiler-libs.common" ]
         ; sub "optcomp" [ "compiler-libs.common" ]
-        ; sub "toplevel" [ "compiler-libs.bytecomp" ]
+        ; sub "toplevel" [ "compiler-libs.bytecomp" ] ~kind:[ Byte ]
+        ; sub "toplevel"
+            [ "compiler-libs.optcomp"; "dynlink" ]
+            ~kind:[ Native ]
+            ~exists_if_ext:(Mode.compiled_lib_ext Native)
         ]
     }
   in

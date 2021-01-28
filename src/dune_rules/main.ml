@@ -1,7 +1,7 @@
 open! Dune_engine
 open! Stdune
 open Import
-open Fiber.O
+open Memo.Build.O
 
 let () = Inline_tests.linkme
 

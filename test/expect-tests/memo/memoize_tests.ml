@@ -1,5 +1,5 @@
 open Stdune
-open Fiber.O
+open Memo.Build.O
 module Caml_lazy = Lazy
 open Memo
 open Dune_tests_common
@@ -17,12 +17,12 @@ let int_fn_create name =
     ~visibility:(Public Dune_lang.Decoder.int) Async
 
 (* to run a computation *)
-let run f v = Fiber.run ~iter:(fun () -> assert false) (f v)
+let run f v = Fiber.run ~iter:(fun () -> assert false) (Memo.Build.run (f v))
 
 let run_memo f v = run (Memo.exec f) v
 
 (* the trivial dependencies are simply the identity function *)
-let compdep x = Fiber.return (x ^ x)
+let compdep x = Memo.Build.return (x ^ x)
 
 (* our two dependencies are called some and another *)
 let mcompdep1 =
@@ -42,7 +42,9 @@ let counter = ref 0
 (* our computation increases the counter, adds the two dependencies, "some" and
    "another" and works by multiplying the input by two *)
 let comp x =
-  let+ a = Fiber.return x >>= Memo.exec mcompdep1 >>= Memo.exec mcompdep2 in
+  let+ a =
+    Memo.Build.return x >>= Memo.exec mcompdep1 >>= Memo.exec mcompdep2
+  in
   counter := !counter + 1;
   String.sub a ~pos:0 ~len:(String.length a |> min 3)
 
@@ -107,12 +109,12 @@ let stack = ref []
 let dump_stack v =
   let s = get_call_stack () in
   stack := s;
-  Fiber.return v
+  Memo.Build.return v
 
 let mcompcycle =
   let mcompcycle = Fdecl.create Dyn.Encoder.opaque in
   let compcycle x =
-    let* x = Fiber.return x >>= dump_stack in
+    let* x = Memo.Build.return x >>= dump_stack in
     counter := !counter + 1;
     if !counter < 20 then
       (x + 1) mod 3 |> Memo.exec (Fdecl.get mcompcycle)
@@ -163,7 +165,7 @@ let mfib =
     let mfib = Memo.exec (Fdecl.get mfib) in
     counter := !counter + 1;
     if x <= 1 then
-      Fiber.return x
+      Memo.Build.return x
     else
       let* r1 = mfib (x - 1) in
       let+ r2 = mfib (x - 2) in
@@ -445,16 +447,16 @@ module Function = struct
 
   let to_dyn _ = Dyn.Opaque
 
-  let eval (type a) (x : a input) : a output Fiber.t =
+  let eval (type a) (x : a input) : a output Memo.Build.t =
     match x with
     | I (_, i) ->
-      let* () = Fiber.return () in
+      let* () = Memo.Build.return () in
       Printf.printf "Evaluating %d\n" i;
-      Fiber.return (List.init i ~f:(fun i -> i + 1))
+      Memo.Build.return (List.init i ~f:(fun i -> i + 1))
     | S (_, s) ->
-      let* () = Fiber.return () in
+      let* () = Memo.Build.return () in
       Printf.printf "Evaluating %S\n" s;
-      Fiber.return [ s ]
+      Memo.Build.return [ s ]
 
   let get (type a) (x : a input) : a =
     match x with
@@ -542,18 +544,18 @@ let%expect_test "error handling and memo - async" =
         if x = 42 then
           failwith "42"
         else if x = 84 then
-          Fiber.fork_and_join_unit
+          Memo.Build.fork_and_join_unit
             (fun () -> failwith "left")
             (fun () -> failwith "right")
         else
-          Fiber.return x)
+          Memo.Build.return x)
   in
   let test x =
     let res =
       try
         Fiber.run
           ~iter:(fun () -> raise Exit)
-          (Fiber.collect_errors (fun () -> Memo.exec f x))
+          (Memo.Build.run (Memo.Build.collect_errors (fun () -> Memo.exec f x)))
       with exn -> Error [ Exn_with_backtrace.capture exn ]
     in
     let open Dyn.Encoder in
@@ -586,7 +588,11 @@ let%expect_test "error handling and memo - async" =
 
 let print_exns f =
   let res =
-    match Fiber.run ~iter:(fun () -> raise Exit) (Fiber.collect_errors f) with
+    match
+      Fiber.run
+        ~iter:(fun () -> raise Exit)
+        (Memo.Build.run (Memo.Build.collect_errors f))
+    with
     | Ok _ -> assert false
     | Error exns ->
       Error (List.map exns ~f:(fun (e : Exn_with_backtrace.t) -> e.exn))
@@ -609,7 +615,7 @@ let%expect_test "error handling and async diamond" =
       if x = 0 then
         failwith "reached 0"
       else
-        Fiber.fork_and_join_unit
+        Memo.Build.fork_and_join_unit
           (fun () -> Memo.exec f (x - 1))
           (fun () -> Memo.exec f (x - 1)));
   let test x = print_exns (fun () -> Memo.exec f x) in
@@ -656,10 +662,10 @@ let%expect_test "error handling and duplicate sync exceptions" =
       printf "Calling f %d\n" x;
 
       match x with
-      | 0 -> Fiber.return (Memo.exec forward_fail x)
-      | 1 -> Fiber.return (Memo.exec forward_fail2 x)
+      | 0 -> Memo.Build.return (Memo.exec forward_fail x)
+      | 1 -> Memo.Build.return (Memo.exec forward_fail2 x)
       | _ ->
-        Fiber.fork_and_join_unit
+        Memo.Build.fork_and_join_unit
           (fun () -> Memo.exec f (x - 1))
           (fun () -> Memo.exec f (x - 2)));
   let test x = print_exns (fun () -> Memo.exec f x) in

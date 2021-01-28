@@ -51,9 +51,10 @@ module Set : sig
 
   val add_paths : t -> Path.Set.t -> t
 
-  val parallel_iter : t -> f:(elt -> unit Fiber.t) -> unit Fiber.t
+  val parallel_iter : t -> f:(elt -> unit Memo.Build.t) -> unit Memo.Build.t
 
-  val parallel_iter_files : t -> f:(Path.t -> unit Fiber.t) -> unit Fiber.t
+  val parallel_iter_files :
+    t -> f:(Path.t -> unit Memo.Build.t) -> unit Memo.Build.t
 
   val dirs : t -> Path.Set.t
 end

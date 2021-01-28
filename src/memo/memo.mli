@@ -1,5 +1,72 @@
 open! Stdune
 
+module Build : sig
+  (** The build monad *)
+
+  type 'a t
+
+  val run : 'a t -> 'a Fiber.t
+
+  val of_fiber : 'a Fiber.t -> 'a t
+
+  val return : 'a -> 'a t
+
+  module O : sig
+    val ( >>> ) : unit t -> 'a t -> 'a t
+
+    val ( >>= ) : 'a t -> ('a -> 'b t) -> 'b t
+
+    val ( >>| ) : 'a t -> ('a -> 'b) -> 'b t
+
+    val ( let* ) : 'a t -> ('a -> 'b t) -> 'b t
+
+    val ( let+ ) : 'a t -> ('a -> 'b) -> 'b t
+  end
+
+  val map : 'a t -> f:('a -> 'b) -> 'b t
+
+  val bind : 'a t -> f:('a -> 'b t) -> 'b t
+
+  val both : 'a t -> 'b t -> ('a * 'b) t
+
+  val sequential_map : 'a list -> f:('a -> 'b t) -> 'b list t
+
+  val sequential_iter : 'a list -> f:('a -> unit t) -> unit t
+
+  val fork_and_join : (unit -> 'a t) -> (unit -> 'b t) -> ('a * 'b) t
+
+  val fork_and_join_unit : (unit -> unit t) -> (unit -> 'a t) -> 'a t
+
+  val parallel_map : 'a list -> f:('a -> 'b t) -> 'b list t
+
+  val parallel_iter : 'a list -> f:('a -> unit t) -> unit t
+
+  val parallel_iter_set :
+       (module Set.S with type elt = 'a and type t = 's)
+    -> 's
+    -> f:('a -> unit t)
+    -> unit t
+
+  (** The bellow functions will eventually disappear and are only exported for
+      the transition to the memo monad *)
+
+  val with_error_handler :
+    (unit -> 'a t) -> on_error:(Exn_with_backtrace.t -> unit) -> 'a t
+
+  val fold_errors :
+       (unit -> 'a t)
+    -> init:'b
+    -> on_error:(Exn_with_backtrace.t -> 'b -> 'b)
+    -> ('a, 'b) Result.t t
+
+  val collect_errors :
+    (unit -> 'a t) -> ('a, Exn_with_backtrace.t list) Result.t t
+
+  val finalize : (unit -> 'a t) -> finally:(unit -> unit t) -> 'a t
+
+  val reraise_all : Exn_with_backtrace.t list -> 'a t
+end
+
 type ('input, 'output, 'f) t
 
 module Sync : sig
@@ -7,7 +74,7 @@ module Sync : sig
 end
 
 module Async : sig
-  type nonrec ('i, 'o) t = ('i, 'o, 'i -> 'o Fiber.t) t
+  type nonrec ('i, 'o) t = ('i, 'o, 'i -> 'o Build.t) t
 end
 
 (** A stack frame within a computation. *)
@@ -48,7 +115,7 @@ module Function : sig
   module Type : sig
     type ('a, 'b, 'f) t =
       | Sync : ('a, 'b, 'a -> 'b) t
-      | Async : ('a, 'b, 'a -> 'b Fiber.t) t
+      | Async : ('a, 'b, 'a -> 'b Build.t) t
   end
 
   module Info : sig
@@ -193,7 +260,7 @@ val pp_stack : unit -> _ Pp.t
 val get_call_stack : unit -> Stack_frame.t list
 
 (** Call a memoized function by name *)
-val call : string -> Dune_lang.Ast.t -> Dyn.t Fiber.t
+val call : string -> Dune_lang.Ast.t -> Dyn.t Build.t
 
 module Run : sig
   (** A single build run. *)
@@ -246,9 +313,9 @@ module Lazy : sig
 
     val of_val : 'a -> 'a t
 
-    val create : ?cutoff:('a -> 'a -> bool) -> (unit -> 'a Fiber.t) -> 'a t
+    val create : ?cutoff:('a -> 'a -> bool) -> (unit -> 'a Build.t) -> 'a t
 
-    val force : 'a t -> 'a Fiber.t
+    val force : 'a t -> 'a Build.t
 
     val map : 'a t -> f:('a -> 'b) -> 'b t
   end
@@ -257,7 +324,7 @@ end
 val lazy_ : ?cutoff:('a -> 'a -> bool) -> (unit -> 'a) -> 'a Lazy.t
 
 val lazy_async :
-  ?cutoff:('a -> 'a -> bool) -> (unit -> 'a Fiber.t) -> 'a Lazy.Async.t
+  ?cutoff:('a -> 'a -> bool) -> (unit -> 'a Build.t) -> 'a Lazy.Async.t
 
 module With_implicit_output : sig
   type ('i, 'o, 'f) t
@@ -283,7 +350,7 @@ module Cell : sig
 
   val get_sync : ('a, 'b, 'a -> 'b) t -> 'b
 
-  val get_async : ('a, 'b, 'a -> 'b Fiber.t) t -> 'b Fiber.t
+  val get_async : ('a, 'b, 'a -> 'b Build.t) t -> 'b Build.t
 end
 
 val cell : ('a, 'b, 'f) t -> 'a -> ('a, 'b, 'f) Cell.t
@@ -311,7 +378,7 @@ module Poly : sig
     val eval : 'a Function.input -> 'a Function.output
   end
 
-  (** Memoization of functions of type ['a input -> 'a output Fiber.t]. *)
+  (** Memoization of functions of type ['a input -> 'a output Build.t]. *)
   module Async (Function : sig
     type 'a input
 
@@ -319,13 +386,13 @@ module Poly : sig
 
     val name : string
 
-    val eval : 'a input -> 'a output Fiber.t
+    val eval : 'a input -> 'a output Build.t
 
     val to_dyn : _ input -> Dyn.t
 
     val id : 'a input -> 'a Type_eq.Id.t
   end) : sig
-    val eval : 'a Function.input -> 'a Function.output Fiber.t
+    val eval : 'a Function.input -> 'a Function.output Build.t
   end
 end
 

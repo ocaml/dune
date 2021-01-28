@@ -29,7 +29,7 @@ let term =
   let sctx, utop_path =
     Scheduler.go ~common (fun () ->
         let open Fiber.O in
-        let* setup = Import.Main.setup common in
+        let* setup = Memo.Build.run (Import.Main.setup common) in
         let context =
           Import.Main.find_context_exn setup.workspace ~name:ctx_name
         in
@@ -48,7 +48,7 @@ let term =
           | Ok [ File target ] -> target
           | Ok _ -> assert false
         in
-        let+ () = do_build [ File target ] in
+        let+ () = Memo.Build.run (do_build [ File target ]) in
         (sctx, Path.to_string target))
   in
   Hooks.End_of_build.run ();

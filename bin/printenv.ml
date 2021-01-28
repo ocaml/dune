@@ -49,7 +49,7 @@ let term =
   Common.set_common common ~targets:[];
   Scheduler.go ~common (fun () ->
       let open Fiber.O in
-      let* setup = Import.Main.setup common in
+      let* setup = Memo.Build.run (Import.Main.setup common) in
       let dir = Path.of_string dir in
       let checked = Util.check_path setup.workspace.contexts dir in
       let request =
@@ -75,7 +75,7 @@ let term =
             User_error.raise
               [ Pp.text "Environment is not defined in install dirs" ] )
       in
-      Build_system.do_build ~request >>| function
+      Memo.Build.run (Build_system.do_build ~request) >>| function
       | [ (_, env) ] -> Format.printf "%a" (pp ~fields) env
       | l ->
         List.iter l ~f:(fun (name, env) ->

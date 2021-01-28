@@ -140,7 +140,7 @@ module Crawl = struct
       |> Lib.Set.to_list
       |> List.filter_map ~f:(library sctx)
     in
-    let open Fiber.O in
+    let open Memo.Build.O in
     let+ dune_files =
       Dune_load.Dune_files.eval workspace.conf.dune_files ~context
     in
@@ -221,7 +221,7 @@ module What = struct
   let describe t setup context =
     match t with
     | Workspace -> Crawl.workspace setup context
-    | Opam_files -> Fiber.return (Opam_files.get ())
+    | Opam_files -> Memo.Build.return (Opam_files.get ())
 end
 
 module Format = struct
@@ -308,11 +308,11 @@ let term =
   let what = What.parse what ~lang in
   Scheduler.go ~common (fun () ->
       let open Fiber.O in
-      let* setup = Import.Main.setup common in
+      let* setup = Memo.Build.run (Import.Main.setup common) in
       let context =
         Import.Main.find_context_exn setup.workspace ~name:context_name
       in
-      let+ res = What.describe what setup context in
+      let+ res = Memo.Build.run (What.describe what setup context) in
       match format with
       | Csexp -> Csexp.to_channel stdout (Sexp.of_dyn res)
       | Sexp -> print_as_sexp res)

@@ -3,9 +3,10 @@ open Import
 
 let run_build_command ~common ~targets =
   let once () =
-    let open Fiber.O in
-    let* setup = Import.Main.setup common in
-    do_build (targets setup)
+    Memo.Build.run
+      (let open Memo.Build.O in
+      let* setup = Import.Main.setup common in
+      do_build (targets setup))
   in
   if Common.watch common then
     let once () =

@@ -19,7 +19,7 @@ let term =
   Scheduler.go ~common (fun () ->
       let open Fiber.O in
       let () = Workspace.init () in
-      let* ctxs = Context.DB.all () in
+      let* ctxs = Memo.Build.run (Context.DB.all ()) in
       let ctx = List.hd ctxs in
       let findlib = ctx.findlib in
       if na then (

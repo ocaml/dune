@@ -133,7 +133,7 @@ let eval t ~conf =
   | Vcs_describe p -> (
     match conf.get_vcs p with
     | None -> Fiber.return ""
-    | Some vcs -> Vcs.describe vcs )
+    | Some vcs -> Memo.Build.run (Vcs.describe vcs) )
   | Location (name, lib_name) ->
     Fiber.return (relocatable (conf.get_location name lib_name))
   | Configpath d ->

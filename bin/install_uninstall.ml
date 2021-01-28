@@ -15,10 +15,12 @@ let get_dirs context ~prefix_from_command_line ~libdir_from_command_line =
     Fiber.return (prefix, Some (Path.relative prefix dir))
   | None ->
     let open Fiber.O in
-    let* prefix = Memo.Lazy.Async.force context.Context.install_prefix in
+    let* prefix =
+      Memo.Build.run (Memo.Lazy.Async.force context.Context.install_prefix)
+    in
     let libdir =
       match libdir_from_command_line with
-      | None -> Context.install_ocaml_libdir context
+      | None -> Memo.Build.run (Context.install_ocaml_libdir context)
       | Some l -> Fiber.return (Some (Path.relative prefix l))
     in
     let+ libdir = libdir in
@@ -135,7 +137,7 @@ module File_ops_real (W : Workspace) : File_operations = struct
       | None -> plain_copy ()
       | Some vcs ->
         let open Fiber.O in
-        let+ version = Dune_engine.Vcs.describe vcs in
+        let+ version = Memo.Build.run (Dune_engine.Vcs.describe vcs) in
         let ppf = Format.formatter_of_out_channel oc in
         print ppf ~version;
         Format.pp_print_flush ppf () )
@@ -379,7 +381,7 @@ let install_uninstall ~what =
     Common.set_common ~log_file:No_log_file common ~targets:[];
     Scheduler.go ~common (fun () ->
         let open Fiber.O in
-        let* workspace = Import.Main.scan_workspace common in
+        let* workspace = Memo.Build.run (Import.Main.scan_workspace common) in
         let contexts =
           match context with
           | None -> workspace.contexts

@@ -108,7 +108,7 @@ val to_dyn_concise : t -> Dyn.t
 (** Compare the context names *)
 val compare : t -> t -> Ordering.t
 
-val install_ocaml_libdir : t -> Path.t option Fiber.t
+val install_ocaml_libdir : t -> Path.t option Memo.Build.t
 
 (** Return the compiler needed for this compilation mode *)
 val compiler : t -> Mode.t -> Action.Prog.t
@@ -138,5 +138,5 @@ val init_configurator : t -> unit
 module DB : sig
   val get : Path.Build.t -> t
 
-  val all : unit -> t list Fiber.t
+  val all : unit -> t list Memo.Build.t
 end

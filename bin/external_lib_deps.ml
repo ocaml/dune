@@ -176,7 +176,7 @@ let term =
   let setup, lib_deps =
     Scheduler.go ~common (fun () ->
         let open Fiber.O in
-        let+ setup = Import.Main.setup common in
+        let+ setup = Memo.Build.run (Import.Main.setup common) in
         let targets = Target.resolve_targets_exn common setup targets in
         let request = Target.request targets in
         let deps = all_lib_deps ~request in

@@ -33,7 +33,7 @@ let term =
      let action =
        Scheduler.go ~common (fun () ->
            let open Fiber.O in
-           let* _setup = Import.Main.setup common in
+           let* _setup = Memo.Build.run (Import.Main.setup common) in
            match (fn, inp) with
            | "list", None -> Fiber.return `List
            | "list", Some _ ->
@@ -44,7 +44,7 @@ let term =
                Dune_lang.Parser.parse_string ~fname:"<command-line>"
                  ~mode:Dune_lang.Parser.Mode.Single inp
              in
-             let+ res = Memo.call fn sexp in
+             let+ res = Memo.Build.run (Memo.call fn sexp) in
              `Result res
            | fn, None ->
              Fiber.return (`Error (sprintf "argument missing for '%s'" fn)))

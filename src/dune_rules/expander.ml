@@ -115,19 +115,36 @@ let expand_env t pform s : Value.t list option =
       Some [ String (Option.value ~default (Env.get t.env var)) ]
 
 let expand_version scope pform s =
+  let value_from_version = function
+    | None -> [ Value.String "" ]
+    | Some s -> [ String s ]
+  in
   match
     Package.Name.Map.find
       (Dune_project.packages (Scope.project scope))
       (Package.Name.of_string s)
   with
-  | None ->
-    User_error.raise
-      ~loc:(String_with_vars.Var.loc pform)
-      [ Pp.textf "Package %S doesn't exist in the current project." s ]
-  | Some p -> (
-    match p.version with
-    | None -> [ Value.String "" ]
-    | Some s -> [ String s ] )
+  | Some p -> value_from_version p.version
+  | None -> (
+    let libname = Lib_name.of_string s in
+    let pkgname = Lib_name.package_name libname in
+    if not (String.equal (Package.Name.to_string pkgname) s) then
+      User_error.raise
+        ~loc:(String_with_vars.Var.loc pform)
+        [ Pp.textf
+            "Library names are not allowed in this position. Only package \
+             names are allowed"
+        ];
+    match Lib.DB.find (Scope.libs scope) libname with
+    | Some lib -> value_from_version (Lib_info.version (Lib.info lib))
+    | None ->
+      User_error.raise
+        ~loc:(String_with_vars.Var.loc pform)
+        [ Pp.textf
+            "Package %S doesn't exist in the current project and isn't \
+             installed either."
+            s
+        ] )
 
 let isn't_allowed_in_this_position pform =
   let loc = String_with_vars.Var.loc pform in

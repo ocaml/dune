@@ -97,12 +97,22 @@ let expand_version { scope; _ } ~source s =
     | None -> [ Value.String "" ]
     | Some s -> [ String s ]
   in
+  let project = Scope.project scope in
   match
     Package.Name.Map.find
-      (Dune_project.packages (Scope.project scope))
+      (Dune_project.packages project)
       (Package.Name.of_string s)
   with
   | Some p -> value_from_version p.version
+  | None when Dune_project.dune_version project < (2, 9) ->
+    User_error.raise ~loc:source.Dune_lang.Template.Pform.loc
+      [ Pp.textf "Package %S doesn't exist in the current project." s ]
+      ~hints:
+        [ Pp.text
+            "If you want to refer to an installed package, or more generally \
+             to a package from another project, you need at least (lang dune \
+             2.9)."
+        ]
   | None -> (
     let libname = Lib_name.of_string s in
     let pkgname = Lib_name.package_name libname in

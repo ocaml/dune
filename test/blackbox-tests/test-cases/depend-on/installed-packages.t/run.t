@@ -3,7 +3,7 @@
   $ mkdir a b prefix
 
   $ cat >a/dune-project <<EOF
-  > (lang dune 2.8)
+  > (lang dune 2.9)
   > (package (name a))
   > EOF
 
@@ -25,7 +25,7 @@
   Installing $TESTCASE_ROOT/prefix/share/a/CATME
 
   $ cat >b/dune-project <<EOF
-  > (lang dune 2.8)
+  > (lang dune 2.9)
   > (package (name b))
   > EOF
 
@@ -65,3 +65,16 @@
 
   $ OCAMLPATH=$(pwd)/prefix/lib/:$OCAMLPATH dune build --root b @runtest
   Entering directory 'b'
+
+  $ cat >b/dune-project <<EOF
+  > (lang dune 2.8)
+  > (package (name b))
+  > EOF
+
+  $ OCAMLPATH=$(pwd)/prefix/lib/:$OCAMLPATH dune build --root b @runtest
+  Entering directory 'b'
+  File "dune", line 1, characters 37-38:
+  1 | (rule (alias runtest) (deps (package a)) (action (run cat $TESTCASE_ROOT/prefix/share/a/CATME)))
+                                           ^
+  Error: Dependency on an installed package requires at least (lang dune 2.9)
+  [1]

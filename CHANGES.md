@@ -68,6 +68,8 @@ unreleased - 2.9 branch
 - Do not pass include directories containing native objects when compiling
   bytecode (#4200, @nojb)
 
+- Allow `%{version:pkg}` to work for external packages (#4104, @kit-ty-kate)
+
 2.8.2 (21/01/2021)
 ------------------
 

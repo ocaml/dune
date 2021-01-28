@@ -65,7 +65,7 @@ jobs:
         with:
           # opam cache files are stored in `~/.opam` on Linux/macOS
           path: C:\cygwin\home\runneradmin\.opam
-          key: ${{ runner.os }}-${{ matrix.ocaml-version }}-build-${{ env.cache-name }}-${{ hashFiles('*.opam','.github/workflows/ci.ml','.github/workflows/workflow.yml') }}
+          key: ${{ runner.os }}-${{ matrix.ocaml-version }}-build-${{ env.cache-name }}-${{ hashFiles('*.opam','.github/workflows/ci.ml','.github/workflows/workflow.yml','src/dune_rules/dune_package.ml') }}
 
       - name: Cache Opam directory for ubuntu or mac-os
         if: matrix.os != 'windows-latest'
@@ -75,7 +75,7 @@ jobs:
         with:
           # opam cache files are stored in `~/.opam` on Linux/macOS
           path: ~/.opam
-          key: ${{ runner.os }}-${{ matrix.ocaml-version }}-build-${{ env.cache-name }}-${{ hashFiles('*.opam','.github/workflows/ci.ml','.github/workflows/workflow.yml') }}
+          key: ${{ runner.os }}-${{ matrix.ocaml-version }}-build-${{ env.cache-name }}-${{ hashFiles('*.opam','.github/workflows/ci.ml','.github/workflows/workflow.yml','src/dune_rules/dune_package.ml') }}
 
 
       - name: Use OCaml ${{ matrix.ocaml-version }}

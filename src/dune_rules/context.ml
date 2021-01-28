@@ -89,7 +89,6 @@ module T = struct
     ; findlib_toolchain : Context_name.t option
     ; default_ocamlpath : Path.t list
     ; arch_sixtyfour : bool
-    ; install_prefix : Path.t Memo.Lazy.Async.t
     ; ocaml_config : Ocaml_config.t
     ; ocaml_config_vars : Ocaml_config.Vars.t
     ; version : Ocaml_version.t
@@ -640,12 +639,6 @@ let create ~(kind : Kind.t) ~path ~env ~env_nodes ~name ~merlin ~targets
         Error (Action.Prog.Not_found.create ~context:name ~program ~loc:None ())
     in
     let ocaml_bin = dir in
-    let install_prefix =
-      Memo.lazy_async ~cutoff:Path.equal (fun () ->
-          Memo.Build.map (Opam.config_var ~env "prefix") ~f:(function
-            | Some x -> Path.of_filename_relative_to_initial_cwd x
-            | None -> Path.parent_exn ocaml_bin))
-    in
     let supports_shared_libraries =
       Ocaml_config.supports_shared_libraries ocfg
     in
@@ -685,7 +678,6 @@ let create ~(kind : Kind.t) ~path ~env ~env_nodes ~name ~merlin ~targets
       ; findlib_toolchain
       ; default_ocamlpath
       ; arch_sixtyfour
-      ; install_prefix
       ; stdlib_dir
       ; ocaml_config = ocfg
       ; ocaml_config_vars
@@ -952,3 +944,8 @@ let map_exe (context : t) =
       | Some (dir, exe) when Path.equal dir (Path.build context.build_dir) ->
         Path.append_source (Path.build host.build_dir) exe
       | _ -> exe )
+
+let install_prefix t =
+  Memo.Build.map (Opam.config_var ~env:t.env "prefix") ~f:(function
+    | Some x -> Path.of_filename_relative_to_initial_cwd x
+    | None -> Path.parent_exn t.ocaml_bin)

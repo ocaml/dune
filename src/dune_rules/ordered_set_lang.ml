@@ -278,10 +278,10 @@ module Unexpanded = struct
     ; context = Univ_map.empty
     }
 
-  let include_single ~pos f =
+  let include_single ~context ~pos f =
     { ast = Ast.Include (String_with_vars.virt_text pos f)
     ; loc = Some (Loc.of_pos pos)
-    ; context = Univ_map.empty
+    ; context
     }
 
 

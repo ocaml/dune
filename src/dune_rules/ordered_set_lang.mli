@@ -59,7 +59,7 @@ module Unexpanded : sig
 
   val standard_with_of_strings : pos:string * int * int * int -> string list -> t
 
-  val include_single : pos:string * int * int * int -> string -> t
+  val include_single : context:Univ_map.t -> pos:string * int * int * int -> string -> t
 
   val field :
        ?check:unit Dune_lang.Decoder.t

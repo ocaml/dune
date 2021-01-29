@@ -7,7 +7,8 @@ module Ctypes = Dune_file.Ctypes
 let osl_pos _base_lib = "", 0, 0, 0 ;;
 
 let library_stanza ?(flags=Ocaml_flags.Spec.standard) ?public_name ?(foreign_stubs=[])
-      ?c_library_flags ~base_lib:lib ~name ~modules ~libraries ~wrapped () =
+      ?(c_library_flags=Ordered_set_lang.Unexpanded.standard) ~base_lib:lib
+      ~name ~modules ~libraries ~wrapped () =
   let loc, _libname = lib.Library.name in
   let open Dune_file in
   let visibility =
@@ -49,13 +50,6 @@ let library_stanza ?(flags=Ocaml_flags.Spec.standard) ?public_name ?(foreign_stu
     ; js_of_ocaml = Js_of_ocaml.default
     ; allow_overlapping_dependencies = false
     }
-  in
-  let c_library_flags =
-    match c_library_flags with
-    | None -> Ordered_set_lang.Unexpanded.standard
-    | Some lst ->
-      let pos = osl_pos lib in
-      Ordered_set_lang.Unexpanded.of_strings ~pos lst
   in
   { Library.name = (loc, Lib_name.of_string name |> Lib_name.to_local_exn)
   ; visibility
@@ -157,7 +151,7 @@ let c_generated_functions_cout_no_ext ctypes =
    approach here is to simply do a quasi-lexical expansion of the base library
    config stanza into several additional support library stanzas, right after
    the dune config file parsing is completed. *)
-let library_stanzas base_lib =
+let library_stanzas ~parsing_context base_lib =
   let ctypes =
     match base_lib.Library.ctypes with
     | Some ctypes -> ctypes
@@ -192,14 +186,14 @@ let library_stanzas base_lib =
       ~wrapped:false ()
   in
   let combined_final =
+    let pos = osl_pos base_lib in
     let foreign_stub =
       let loc, _libname = base_lib.Library.name in
-      let pos = osl_pos base_lib in
       Foreign.Stubs.make ~loc ~language:Foreign_language.C
         ~names:(Ordered_set_lang.of_atoms ~loc
                   [c_generated_functions_cout_no_ext ctypes])
         ~flags:(Ordered_set_lang.Unexpanded.include_single
-                  ~pos (cflags_sexp ctypes))
+                  ~context:parsing_context ~pos (cflags_sexp ctypes))
     in
     library_stanza
       ~base_lib
@@ -209,7 +203,9 @@ let library_stanzas base_lib =
       ~modules:[ entry_module ctypes
                ; c_generated_functions_module ctypes ]
       ~foreign_stubs:[foreign_stub]
-      ~c_library_flags:[":include"; c_library_flags_sexp ctypes]
+      ~c_library_flags:(Ordered_set_lang.Unexpanded.include_single
+                          ~context:parsing_context ~pos
+                          (c_library_flags_sexp ctypes))
       ~wrapped:true
       ()
   in

@@ -15,7 +15,10 @@ module Dune_file = struct
       List.concat_map stanzas ~f:(fun stanza ->
         match stanza with
         | Dune_file.Library ({ ctypes = Some _; _ } as base_lib) ->
-          let libs = Ctypes_stanzas.library_stanzas base_lib in
+          let libs =
+            let parsing_context = Dune_project.parsing_context project in
+            Ctypes_stanzas.library_stanzas ~parsing_context base_lib
+          in
           stanza :: (List.map libs ~f:(fun l -> Dune_file.Library l))
         | _ -> [stanza])
     in

@@ -21,6 +21,6 @@ val c_generated_types_cout_exe : Ctypes.t -> string
 
 val c_generated_functions_cout_c : Ctypes.t -> string
 
-val library_stanzas : Library.t -> Library.t list
+val library_stanzas : parsing_context:Stdune.Univ_map.t -> Library.t -> Library.t list
 
 val generated_ml_and_c_files : Ctypes.t -> string list

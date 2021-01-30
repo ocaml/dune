@@ -18,7 +18,7 @@ type client =
 
 let default_port_file () =
   let runtime_dir =
-    match Sys.getenv_opt "XDG_RUNTIME_DIR" with
+    match Xdg.runtime_dir with
     | Some p -> Path.relative (Path.of_string p) "dune-cache-daemon"
     | None ->
       (* The runtime directory is 0700 owned by the user for security reasons.

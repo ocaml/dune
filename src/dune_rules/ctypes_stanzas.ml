@@ -64,7 +64,7 @@ let library_stanza ?(flags=Ocaml_flags.Spec.standard) ?public_name ?(foreign_stu
   ; wrapped = Lib_info.Inherited.This (Wrapped.Simple wrapped)
   ; optional = false
   ; buildable
-  ; dynlink = Dynlink_supported.of_bool false
+  ; dynlink = Dynlink_supported.of_bool true
   ; project = lib.Library.project
   ; sub_systems = lib.Library.sub_systems
   ; dune_version = lib.Library.dune_version

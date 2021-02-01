@@ -12,6 +12,8 @@ Unreleased
 
 - Allow `%{version:pkg}` to work for external packages (#4104, @kit-ty-kate)
 
+- Add `(glob_files_rec <dir>/<glob>)` for globbing files recursively (#4176, @jeremiedimino)
+
 2.8.2 (21/01/2021)
 ------------------
 

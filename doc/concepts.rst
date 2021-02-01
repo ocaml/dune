@@ -539,8 +539,6 @@ Dependencies in ``dune`` files can be specified using one of the following:
   ``(alias src/runtest)``, ``(alias src/foo/bar/runtest)``, ...
 - ``(glob_files <glob>)``: depend on all files matched by ``<glob>``, see the
   :ref:`glob <glob>` for details
-- ``(glob_files_rec <glob>)``: depend on all files matched by
-``<glob>`` recursively, see the :ref:`glob <glob>` for details
 - ``(source_tree <dir>)``: depend on all source files in the subtree with root
   ``<dir>``
 

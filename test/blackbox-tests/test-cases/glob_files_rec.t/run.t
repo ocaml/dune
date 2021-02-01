@@ -1,3 +1,6 @@
+Tests for (glob_files_rec <dir>/<glob>). This feature is not meat to
+be release as it. We plan to replace it by recursive globs for 3.0.0.
+
   $ cat > dune-project <<EOF
   > (lang dune 2.9)
   > EOF

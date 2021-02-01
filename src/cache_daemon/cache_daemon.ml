@@ -18,7 +18,7 @@ type client =
 
 let default_port_file () =
   let runtime_dir =
-    match Sys.getenv_opt "XDG_RUNTIME_DIR" with
+    match Xdg.runtime_dir with
     | Some p -> Path.relative (Path.of_string p) "dune-cache-daemon"
     | None ->
       (* The runtime directory is 0700 owned by the user for security reasons.
@@ -37,11 +37,12 @@ let check_port_file ?(close = true) p =
   match Result.try_with (fun () -> Unix.openfile p [ Unix.O_RDONLY ] 0o600) with
   | Result.Ok fd ->
     let f () =
-      retry (fun () ->
+      Daemonize.retry (fun () ->
           match Fcntl.lock_get fd Fcntl.Write with
           | None -> Some None
           | Some (Fcntl.Read, pid) -> Some (Some pid)
           | Some (Fcntl.Write, _) -> None)
+      |> Result.map_error ~f:(fun m -> Failure m)
       >>| Option.map ~f:(fun pid ->
               let buf = Bytes.make max_port_size ' ' in
               let read = Unix.read fd buf 0 max_port_size in

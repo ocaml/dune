@@ -11,6 +11,8 @@ let home =
 
 let ( / ) = Filename.concat
 
+let runtime_dir = Sys.getenv_opt "XDG_RUNTIME_DIR"
+
 let get env_var unix_default win32_default =
   try Sys.getenv env_var
   with Not_found ->

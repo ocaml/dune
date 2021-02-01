@@ -51,10 +51,10 @@ let dep expander = function
         in
         let+ files =
           let init = Action_builder.return [] in
-          if not recursive then
-            add_dir dir init
-          else
+          if recursive then
             fold_source_dirs dir ~init ~f:add_dir
+          else
+            add_dir dir init
         in
         List.rev files)
   | Source_tree s ->

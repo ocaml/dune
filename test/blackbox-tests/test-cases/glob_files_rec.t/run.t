@@ -6,7 +6,7 @@
   > (rule
   >  (alias x)
   >  (deps (glob_files_rec foo/*.txt))
-  >  (action (bash "for i in %{deps}; do echo \$i; done")))
+  >  (action (bash "for i in %{deps}; do printf \"\$i\\n\"; done")))
   > EOF
 
   $ mkdir -p foo/a/b1/c
@@ -29,9 +29,9 @@ Leave a/b2/c empty to make sure we don't choke on empty dirs.
   foo/a/b1/c/y.txt
   foo/a/b3/x.txt
 
-  $ find . -name \*.txt | wc -l
+  $ find . -name \*.txt | dune_cmd count-lines
   10
-  $ dune build @x --force 2>&1 | wc -l
+  $ dune build @x --force 2>&1 | dune_cmd count-lines
   6
 
 Check that generated files are taken into account

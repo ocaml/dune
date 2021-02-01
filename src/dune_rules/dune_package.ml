@@ -302,6 +302,7 @@ type t =
   ; sections : Path.t Section.Map.t
   ; sites : Section.t Section.Site.Map.t
   ; dir : Path.t
+  ; files : (Section.t * Install.Dst.t list) list
   }
 
 let decode ~lang ~dir =
@@ -314,6 +315,9 @@ let decode ~lang ~dir =
   and+ sites =
     field ~default:[] "sites"
       (repeat (pair (located Section.Site.decode) Section.decode))
+  and+ files =
+    field ~default:[] "files"
+      (repeat (pair Install.Section.decode (enter (repeat Install.Dst.decode))))
   and+ entries = leftover_fields_as_sums (Entry.cstrs ~lang ~dir) in
   let entries =
     List.map entries ~f:(fun e ->
@@ -348,7 +352,7 @@ let decode ~lang ~dir =
   let sites =
     section_map Section.Site.Map.of_list_map Section.Site.to_string sites
   in
-  { name; version; entries; dir; sections; sites }
+  { name; version; entries; dir; sections; sites; files }
 
 let () = Vfile.Lang.register Stanza.syntax ()
 
@@ -363,7 +367,8 @@ let prepend_version ~dune_version sexps =
   ]
   @ sexps
 
-let encode ~dune_version { entries; name; version; dir; sections; sites } =
+let encode ~dune_version { entries; name; version; dir; sections; sites; files }
+    =
   let open Dune_lang.Encoder in
   let sections =
     Section.Map.to_list (Section.Map.map ~f:Path.to_absolute_filename sections)
@@ -375,6 +380,7 @@ let encode ~dune_version { entries; name; version; dir; sections; sites } =
       ; field_o "version" string version
       ; field_l "sections" (pair Section.encode string) sections
       ; field_l "sites" (pair Section.Site.encode Section.encode) sites
+      ; field_l "files" (pair Section.encode (list Install.Dst.encode)) files
       ]
   in
   let list s = Dune_lang.List s in
@@ -394,7 +400,7 @@ let encode ~dune_version { entries; name; version; dir; sections; sites } =
   in
   prepend_version ~dune_version (List.concat [ sexp; entries ])
 
-let to_dyn { entries; name; version; dir; sections; sites } =
+let to_dyn { entries; name; version; dir; sections; sites; files } =
   let open Dyn.Encoder in
   record
     [ ( "entries"
@@ -404,6 +410,7 @@ let to_dyn { entries; name; version; dir; sections; sites } =
     ; ("dir", Path.to_dyn dir)
     ; ("sections", Section.Map.to_dyn Path.to_dyn sections)
     ; ("sites", Section.Site.Map.to_dyn Section.to_dyn sites)
+    ; ("files", (list (pair Section.to_dyn (list Install.Dst.to_dyn))) files)
     ]
 
 module Or_meta = struct

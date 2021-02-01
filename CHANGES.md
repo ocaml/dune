@@ -1,6 +1,9 @@
 Unreleased
 ----------
 
+- Allow `(package pkg)` in dependencies even if `pkg` is an installed package
+  (#4170, @bobot)
+
 - Fixed a bug that could result in needless recompilation under Windows due to
   case differences in the result of `Sys.getcwd` (observed under `emacs`).
   (#3966, @nojb).

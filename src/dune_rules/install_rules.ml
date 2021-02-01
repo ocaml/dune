@@ -378,12 +378,19 @@ end
 module Meta_and_dune_package : sig
   val meta_and_dune_package_rules : Super_context.t -> dir:Path.Build.t -> unit
 end = struct
-  let sections ctx_name pkg =
+  let sections ctx_name files pkg =
     let pkg_name = Package.name pkg in
-    Section.Site.Map.values pkg.sites
-    |> Section.Set.of_list
-    |> Section.Set.to_map ~f:(fun section ->
-           Install.Section.Paths.get_local_location ctx_name section pkg_name)
+    let sections =
+      (* the one from sites *)
+      Section.Site.Map.values pkg.sites |> Section.Set.of_list
+    in
+    let sections =
+      (* the one from install stanza *)
+      List.fold_left ~init:sections files ~f:(fun acc (s, _) ->
+          Section.Set.add acc s)
+    in
+    Section.Set.to_map sections ~f:(fun section ->
+        Install.Section.Paths.get_local_location ctx_name section pkg_name)
 
   let make_dune_package sctx lib_entries (pkg : Package.t) =
     let pkg_name = Package.name pkg in
@@ -455,7 +462,15 @@ end = struct
                        ~dir:(Path.build (lib_root lib))
                        ~modules ~foreign_objects))))
     in
-    let sections = sections ctx.name pkg in
+    let files =
+      Package.Name.Map.Multi.find
+        (Stanzas_to_entries.stanzas_to_entries sctx)
+        pkg_name
+      |> List.map ~f:(fun (_, entry) ->
+             (entry.Install.Entry.section, entry.dst))
+      |> Section.Map.of_list_multi |> Section.Map.to_list
+    in
+    let sections = sections ctx.name files pkg in
     Dune_package.Or_meta.Dune_package
       { Dune_package.version = pkg.version
       ; name = pkg_name
@@ -463,6 +478,7 @@ end = struct
       ; dir = Path.build pkg_root
       ; sections
       ; sites = pkg.sites
+      ; files
       }
 
   let gen_dune_package sctx (pkg : Package.t) =
@@ -518,7 +534,7 @@ end = struct
                     (Dune_package.Entry.Deprecated_library_name
                        { loc; old_public_name; new_public_name }))
           in
-          let sections = sections ctx.name pkg in
+          let sections = sections ctx.name [] pkg in
           { Dune_package.version = pkg.version
           ; name
           ; entries
@@ -527,6 +543,7 @@ end = struct
                 (Config.local_install_lib_dir ~context:ctx.name ~package:name)
           ; sections
           ; sites = pkg.sites
+          ; files = []
           }
         in
         Action_builder.write_file

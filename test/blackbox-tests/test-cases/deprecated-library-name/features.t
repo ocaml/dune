@@ -57,6 +57,10 @@ tests that the "old_public_name" field is evaluated lazily
   $ dune_cmd cat $PWD/_install/lib/a/dune-package | sed "s/(lang dune .*)/(lang dune <version>)/"
   (lang dune <version>)
   (name a)
+  (sections
+   (lib
+    $TESTCASE_ROOT/a/_build/install/default/lib/a))
+  (files (lib (META dune-package)))
   (deprecated_library_name (old_public_name a) (new_public_name b))
 
 Now we install "b". We do need to install it as an installed

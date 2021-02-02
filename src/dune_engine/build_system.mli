@@ -182,3 +182,5 @@ val evaluate_rules :
   -> Evaluated_rule.t list Memo.Build.t
 
 val get_cache : unit -> caching option
+
+val cache_teardown : unit -> unit

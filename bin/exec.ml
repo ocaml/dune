@@ -86,7 +86,8 @@ let term =
       | [] -> ()
       | targets ->
         Scheduler.go ~common (fun () -> Memo.Build.run (do_build targets));
-        Hooks.End_of_build.run () );
+        Hooks.End_of_build.run ();
+        Build_system.cache_teardown () );
     match prog_where with
     | `Search prog ->
       let path =

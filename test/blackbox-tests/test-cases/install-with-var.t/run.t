@@ -69,7 +69,7 @@ extension of [src]:
   3 |   (files (%{env:FOO=foobar.txt} as foo.txt))
                   ^^^^^^^^^^^^^^^^^^^
   Error: Because this file is installed in the 'bin' section, you cannot use
-  the variable %{env:..} in its basename.
+  the macro %{env:..} in its basename.
   [1]
 
 This is fine if the destination extension is already .exe:
@@ -108,7 +108,7 @@ Exe basename needs to be fully known if dst is missing though:
   3 |   (files %{env:FOO=foobar}.txt)
                  ^^^^^^^^^^^^^^^
   Error: Because this file is installed in the 'bin' section, you cannot use
-  the variable %{env:..} in its basename.
+  the macro %{env:..} in its basename.
   [1]
 
 When basename is fully known, all is well:

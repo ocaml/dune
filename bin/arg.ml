@@ -57,7 +57,9 @@ module Dep = struct
 
   let dep_parser =
     Dune_lang.Syntax.set Stanza.syntax (Active Stanza.latest_version)
-      Dep_conf.decode
+      (String_with_vars.set_decoding_env
+         (Pform.Env.initial Stanza.latest_version)
+         Dep_conf.decode)
 
   let parser s =
     match parse_alias s with

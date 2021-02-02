@@ -1,64 +1,98 @@
 open! Stdune
 open! Import
-open Dune_lang.Template
+
+type part =
+  | Text of string
+  | Pform of Dune_lang.Template.Pform.t * Pform.t
+  (* [Error _] is for percent forms that failed to parse with lang dune < 3.0 *)
+  | Error of Dune_lang.Template.Pform.t * User_message.t
 
 type t =
-  { template : Dune_lang.Template.t
-  ; syntax_version : Dune_lang.Syntax.Version.t
+  { quoted : bool
+  ; parts : part list
+  ; loc : Loc.t
   }
 
 let compare_no_loc t1 t2 =
-  match
-    Dune_lang.Syntax.Version.compare t1.syntax_version t2.syntax_version
-  with
+  match Bool.compare t1.quoted t2.quoted with
   | (Ordering.Lt | Gt) as a -> a
-  | Eq -> Dune_lang.Template.compare_no_loc t1.template t2.template
+  | Eq ->
+    List.compare t1.parts t2.parts ~compare:(fun a b ->
+        match (a, b) with
+        | Text a, Text b -> String.compare a b
+        | Pform (_, a), Pform (_, b) -> Pform.compare a b
+        | Error (_, a), Error (_, b) -> Poly.compare a b
+        | Text _, _ -> Lt
+        | _, Text _ -> Gt
+        | Pform _, _ -> Lt
+        | _, Pform _ -> Gt)
 
 let equal_no_loc t1 t2 = Ordering.is_eq (compare_no_loc t1 t2)
 
-let make_syntax = (1, 0)
+let make_text ?(quoted = false) loc s = { quoted; loc; parts = [ Text s ] }
 
-let make template = { template; syntax_version = make_syntax }
-
-let make_text ?(quoted = false) loc s = make { parts = [ Text s ]; quoted; loc }
-
-let make_var ?(quoted = false) loc ?payload name =
-  let var = { loc; name; payload } in
-  make { parts = [ Var var ]; quoted; loc }
+let make_pform ?(quoted = false) loc pform =
+  let source =
+    match Pform.encode_to_latest_dune_lang_version pform with
+    | Success { name; payload } ->
+      { Dune_lang.Template.Pform.loc; name; payload }
+    | Pform_was_deleted -> assert false
+  in
+  { quoted; loc; parts = [ Pform (source, pform) ] }
 
 let literal ~quoted ~loc s = { parts = [ Text s ]; quoted; loc }
 
-let decode =
+let decoding_env_key =
+  Univ_map.Key.create ~name:"pform decoding environment" Pform.Env.to_dyn
+
+let set_decoding_env env = Dune_lang.Decoder.set decoding_env_key env
+
+let add_user_vars_to_decoding_env vars =
+  Dune_lang.Decoder.update_var decoding_env_key ~f:(function
+    | None -> Code_error.raise "Decoding env not set" []
+    | Some env -> Some (Pform.Env.add_user_vars env vars))
+
+let decode_manually f =
   let open Dune_lang.Decoder in
-  let template_parser =
-    raw >>| function
-    | Template t -> t
-    | Atom (loc, A s) -> literal ~quoted:false ~loc s
-    | Quoted_string (loc, s) -> literal ~quoted:true ~loc s
-    | List (loc, _) -> User_error.raise ~loc [ Pp.text "Unexpected list" ]
+  let+ env = get decoding_env_key
+  and+ x = raw in
+  let env =
+    match env with
+    | Some env -> env
+    | None ->
+      Code_error.raise ~loc:(Dune_lang.Ast.loc x)
+        "pform decoding environment not set" []
   in
-  let+ syntax_version = Dune_lang.Syntax.get_exn Stanza.syntax
-  and+ template = template_parser in
-  { template; syntax_version }
+  match x with
+  | Atom (loc, A s) -> literal ~quoted:false ~loc s
+  | Quoted_string (loc, s) -> literal ~quoted:true ~loc s
+  | List (loc, _) -> User_error.raise ~loc [ Pp.text "Unexpected list" ]
+  | Template { quoted; loc; parts } ->
+    { quoted
+    ; loc
+    ; parts =
+        List.map parts ~f:(function
+          | Dune_lang.Template.Text s -> Text s
+          | Pform v -> (
+            match f env v with
+            | pform -> Pform (v, pform)
+            | exception User_error.E msg
+              when Pform.Env.syntax_version env < (3, 0) ->
+              (* Before dune 3.0, unknown variable errors were delayed *)
+              Error (v, msg) ))
+    }
 
-let loc t = t.template.loc
+let decode = decode_manually Pform.Env.parse
 
-let syntax_version t = t.syntax_version
+let loc t = t.loc
 
-let virt_var ?(quoted = false) pos s =
-  assert (
-    String.for_all s ~f:(function
-      | ':' -> false
-      | _ -> true) );
+let virt_pform ?quoted pos pform =
   let loc = Loc.of_pos pos in
-  let template =
-    { parts = [ Var { payload = None; name = s; loc } ]; loc; quoted }
-  in
-  { template; syntax_version = make_syntax }
+  make_pform ?quoted loc pform
 
 let virt_text pos s =
-  let template = { parts = [ Text s ]; loc = Loc.of_pos pos; quoted = true } in
-  { template; syntax_version = make_syntax }
+  let loc = Loc.of_pos pos in
+  { parts = [ Text s ]; loc; quoted = true }
 
 let concat_rev = function
   | [] -> ""
@@ -84,84 +118,67 @@ module Mode = struct
     | Single, _ -> None
 end
 
-let invalid_multivalue (v : var) x =
-  User_error.raise ~loc:v.loc
+let invalid_multivalue source _pform x =
+  User_error.raise ~loc:source.Dune_lang.Template.Pform.loc
     [ Pp.textf
-        "Variable %s expands to %d values, however a single value is expected \
-         here. Please quote this atom."
-        (string_of_var v) (List.length x)
+        "%s %s expands to %d values, however a single value is expected here. \
+         Please quote this atom."
+        (String.capitalize_ascii
+           (Dune_lang.Template.Pform.describe_kind source))
+        (Dune_lang.Template.Pform.describe source)
+        (List.length x)
     ]
-
-module Var = struct
-  type t = var
-
-  let loc (t : t) = t.loc
-
-  let name { name; _ } = name
-
-  let full_name t =
-    match t.payload with
-    | None -> t.name
-    | Some v -> t.name ^ ":" ^ v
-
-  let payload t = t.payload
-
-  let to_string = string_of_var
-
-  let to_dyn t = Dyn.Encoder.string (to_string t)
-
-  let with_name t ~name = { t with name }
-
-  let is_macro t = Option.is_some t.payload
-
-  let describe t =
-    to_string
-      ( match t.payload with
-      | None -> t
-      | Some _ -> { t with payload = Some ".." } )
-end
 
 type known_suffix =
   | Full of string
-  | Partial of (Var.t * string)
+  | Partial of
+      { source_pform : Dune_lang.Template.Pform.t
+      ; suffix : string
+      }
 
 let known_suffix =
   let rec go t acc =
     match t with
     | Text s :: rest -> go rest (s :: acc)
     | [] -> Full (String.concat ~sep:"" acc)
-    | Var v :: _ -> Partial (v, String.concat ~sep:"" acc)
+    | (Pform (p, _) | Error (p, _)) :: _ ->
+      Partial { source_pform = p; suffix = String.concat ~sep:"" acc }
   in
-  fun t -> go (List.rev t.template.parts) []
+  fun t -> go (List.rev t.parts) []
 
 type known_prefix =
   | Full of string
-  | Partial of (string * Var.t)
+  | Partial of
+      { prefix : string
+      ; source_pform : Dune_lang.Template.Pform.t
+      }
 
 let known_prefix =
   let rec go t acc =
     match t with
     | Text s :: rest -> go rest (s :: acc)
     | [] -> Full (String.concat ~sep:"" (List.rev acc))
-    | Var v :: _ -> Partial (String.concat ~sep:"" (List.rev acc), v)
+    | (Pform (p, _) | Error (p, _)) :: _ ->
+      Partial
+        { prefix = String.concat ~sep:"" (List.rev acc); source_pform = p }
   in
-  fun t -> go t.template.parts []
+  fun t -> go t.parts []
 
-let fold_vars =
+let fold_pforms =
   let rec loop parts acc f =
     match parts with
     | [] -> acc
-    | Text _ :: parts -> loop parts acc f
-    | Var v :: parts -> loop parts (f v acc) f
+    | (Text _ | Error _) :: parts -> loop parts acc f
+    | Pform (p, v) :: parts -> loop parts (f ~source:p v acc) f
   in
-  fun t ~init ~f -> loop t.template.parts init f
+  fun t ~init ~f -> loop t.parts init f
 
-type 'a expander = Var.t -> Dune_lang.Syntax.Version.t -> 'a
+type 'a expander = source:Dune_lang.Template.Pform.t -> Pform.t -> 'a
 
 type yes_no_unknown =
   | Yes
   | No
-  | Unknown of Var.t
+  | Unknown of { source_pform : Dune_lang.Template.Pform.t }
 
 let is_suffix t ~suffix:want =
   match known_suffix t with
@@ -170,11 +187,11 @@ let is_suffix t ~suffix:want =
       Yes
     else
       No
-  | Partial (v, have) ->
+  | Partial { suffix = have; source_pform } ->
     if String.is_suffix ~suffix:want have then
       Yes
     else if String.is_suffix ~suffix:have want then
-      Unknown v
+      Unknown { source_pform }
     else
       No
 
@@ -185,11 +202,11 @@ let is_prefix t ~prefix:want =
       Yes
     else
       No
-  | Partial (have, v) ->
+  | Partial { prefix = have; source_pform } ->
     if String.is_prefix ~prefix:want have then
       Yes
     else if String.is_prefix ~prefix:have want then
-      Unknown v
+      Unknown { source_pform }
     else
       No
 
@@ -252,34 +269,36 @@ module Make (A : Applicative_intf.S1) = struct
   let partial_expand :
         'a.    t -> mode:'a Mode.t -> dir:Path.t
         -> f:Value.t list option A.t expander -> 'a Partial.t A.t =
-   fun ({ template; syntax_version } as t) ~mode ~dir ~f ->
-    match template.parts with
+   fun t ~mode ~dir ~f ->
+    match t.parts with
     (* Optimizations for some common cases *)
     | [] -> A.return (Partial.Expanded (Mode.string mode ""))
     | [ Text s ] -> A.return (Partial.Expanded (Mode.string mode s))
-    | [ Var var ] when not template.quoted -> (
+    | [ Pform (source, p) ] when not t.quoted -> (
       let open App.O in
-      let+ exp = f var syntax_version in
+      let+ exp = f ~source p in
       match exp with
       | None -> Partial.Unexpanded t
       | Some e ->
         Expanded
           ( match Mode.value mode e with
-          | None -> invalid_multivalue var e
+          | None -> invalid_multivalue source p e
           | Some s -> s ) )
     | _ ->
       let expanded_parts =
-        List.map template.parts ~f:(fun part ->
+        List.map t.parts ~f:(fun part ->
             match part with
-            | Text s -> App.return (Text s)
-            | Var var -> (
+            | Text _
+            | Error _ ->
+              App.return part
+            | Pform (source, p) -> (
               let open App.O in
-              let+ exp = f var syntax_version in
+              let+ exp = f ~source p in
               match exp with
-              | Some (([] | _ :: _ :: _) as e) when not template.quoted ->
-                invalid_multivalue var e
+              | Some (([] | _ :: _ :: _) as e) when not t.quoted ->
+                invalid_multivalue source p e
               | Some t -> Text (Value.L.concat ~dir t)
-              | None -> Var var ))
+              | None -> part ))
       in
       let open App.O in
       let+ expanded = App.all expanded_parts in
@@ -297,10 +316,7 @@ module Make (A : Applicative_intf.S1) = struct
           match acc with
           | [] -> Partial.Expanded (Mode.string mode (concat_rev acc_text))
           | _ ->
-            let template =
-              { template with parts = List.rev (commit_text acc_text acc) }
-            in
-            Unexpanded { template; syntax_version } )
+            Unexpanded { t with parts = List.rev (commit_text acc_text acc) } )
         | Text s :: items -> loop (s :: acc_text) acc items
         | it :: items -> loop [] (it :: commit_text acc_text acc) items
       in
@@ -308,47 +324,66 @@ module Make (A : Applicative_intf.S1) = struct
 
   let expand t ~mode ~dir ~f =
     let open App.O in
-    let+ exp =
-      partial_expand t ~mode ~dir ~f:(fun var syntax_version ->
-          let+ exp = f var syntax_version in
-          match exp with
-          | None ->
-            if Var.is_macro var then
-              User_error.raise ~loc:var.loc
-                [ Pp.textf "Unknown macro %s" (Var.describe var) ]
-            else
-              User_error.raise ~loc:var.loc
-                [ Pp.textf "Unknown variable %S" (Var.name var) ]
-          | s -> s)
-    in
+    let+ exp = partial_expand t ~mode ~dir ~f in
     match exp with
     | Partial.Expanded s -> s
-    | Unexpanded _ -> assert false
+    | Unexpanded t ->
+      List.iter t.parts ~f:(function
+        | Error (_, msg) -> raise (User_error.E msg)
+        | _ -> ());
+      assert false
 end
 
 include Make (Applicative.Id)
 
-let is_var { template; syntax_version = _ } ~name =
-  match template.parts with
-  | [ Var n ] -> name = Var.full_name n
+let is_pform t pform =
+  match t.parts with
+  | [ Pform (_, pform') ] -> Pform.compare pform pform' = Eq
   | _ -> false
 
 let text_only t =
-  match t.template.parts with
+  match t.parts with
   | [ Text s ] -> Some s
   | _ -> None
 
-let has_vars t = Option.is_none (text_only t)
+let has_pforms t = Option.is_none (text_only t)
 
 let encode t =
   match text_only t with
   | Some s -> Dune_lang.atom_or_quoted_string s
-  | None -> Dune_lang.Template t.template
+  | None ->
+    Dune_lang.Template
+      { loc = t.loc
+      ; quoted = t.quoted
+      ; parts =
+          List.map t.parts ~f:(function
+            | Text s -> Dune_lang.Template.Text s
+            | Error (_, msg) -> raise (User_error.E msg)
+            | Pform (source, pform) -> (
+              match Pform.encode_to_latest_dune_lang_version pform with
+              | Pform_was_deleted ->
+                User_error.raise ~loc:source.loc
+                  [ Pp.textf
+                      "%s was deleted in the latest version of the dune \
+                       language. It cannot appear here. "
+                      (Dune_lang.Template.Pform.describe source)
+                  ]
+              | Success { name; payload } ->
+                Pform { loc = source.loc; name; payload } ))
+      }
 
 let to_dyn t = Dune_lang.to_dyn (encode t)
 
-let remove_locs t =
-  { t with template = Dune_lang.Template.remove_locs t.template }
+let remove_locs { quoted; loc = _; parts } =
+  { quoted
+  ; loc = Loc.none
+  ; parts =
+      List.map parts ~f:(function
+        | Text _ as p -> p
+        | Error (source, msg) ->
+          Error ({ source with loc = Loc.none }, { msg with loc = None })
+        | Pform (source, p) -> Pform ({ source with loc = Loc.none }, p))
+  }
 
 module Partial = struct
   include Private.Partial

@@ -4,14 +4,14 @@ open Import
 module Expanded = struct
   type t =
     | Value of Value.t list
-    | Deferred of Pform.Expansion.t
+    | Deferred of Dune_lang.Template.Pform.t * Pform.t
     | Unknown
     | Error of User_message.t
 
   let to_value_opt t ~on_deferred =
     match t with
     | Value v -> Some v
-    | Deferred d -> on_deferred d
+    | Deferred (source, pform) -> on_deferred ~source pform
     | Error m -> raise (User_error.E m)
     | Unknown -> None
 
@@ -32,7 +32,7 @@ type t =
   ; lib_artifacts_host : Artifacts.Public_libs.t
   ; bin_artifacts_host : Artifacts.Bin.t
   ; ocaml_config : Value.t list String.Map.t Lazy.t
-  ; bindings : Pform.Map.t
+  ; bindings : Value.t list Pform.Map.t
   ; scope : Scope.t
   ; scope_host : Scope.t
   ; c_compiler : string
@@ -95,21 +95,20 @@ let extend_env t ~env =
 let add_bindings t ~bindings =
   { t with bindings = Pform.Map.superpose t.bindings bindings }
 
-let expand_ocaml_config ocaml_config pform name =
+let expand_ocaml_config ocaml_config ~source name =
   match String.Map.find ocaml_config name with
   | Some x -> x
   | None ->
     User_error.raise
-      ~loc:(String_with_vars.Var.loc pform)
+      ~loc:(Dune_lang.Template.Pform.loc source)
       [ Pp.textf "Unknown ocaml configuration variable %S" name ]
 
-let expand_env t pform s : Value.t list option =
+let expand_env t ~source s : Value.t list option =
   match String.rsplit2 s ~on:'=' with
   | None ->
-    User_error.raise
-      ~loc:(String_with_vars.Var.loc pform)
+    User_error.raise ~loc:source.Dune_lang.Template.Pform.loc
       [ Pp.textf "%s must always come with a default value."
-          (String_with_vars.Var.describe pform)
+          (Dune_lang.Template.Pform.describe source)
       ]
       ~hints:[ Pp.text "the syntax is %{env:VAR=DEFAULT-VALUE}" ]
   | Some (var, default) ->
@@ -118,7 +117,7 @@ let expand_env t pform s : Value.t list option =
     else
       Some [ String (Option.value ~default (Env.get t.env var)) ]
 
-let expand_version scope pform s =
+let expand_version scope ~source s =
   let value_from_version = function
     | None -> [ Value.String "" ]
     | Some s -> [ String s ]
@@ -133,8 +132,7 @@ let expand_version scope pform s =
     let libname = Lib_name.of_string s in
     let pkgname = Lib_name.package_name libname in
     if not (String.equal (Package.Name.to_string pkgname) s) then
-      User_error.raise
-        ~loc:(String_with_vars.Var.loc pform)
+      User_error.raise ~loc:source.Dune_lang.Template.Pform.loc
         [ Pp.textf
             "Library names are not allowed in this position. Only package \
              names are allowed"
@@ -142,27 +140,27 @@ let expand_version scope pform s =
     match Lib.DB.find (Scope.libs scope) libname with
     | Some lib -> value_from_version (Lib_info.version (Lib.info lib))
     | None ->
-      User_error.raise
-        ~loc:(String_with_vars.Var.loc pform)
+      User_error.raise ~loc:source.Dune_lang.Template.Pform.loc
         [ Pp.textf
             "Package %S doesn't exist in the current project and isn't \
              installed either."
             s
         ] )
 
-let isn't_allowed_in_this_position pform =
-  let loc = String_with_vars.Var.loc pform in
-  User_error.raise ~loc
+let isn't_allowed_in_this_position_message ~source _pform =
+  User_error.make ~loc:source.Dune_lang.Template.Pform.loc
     [ Pp.textf "%s isn't allowed in this position"
-        (String_with_vars.Var.describe pform)
+        (Dune_lang.Template.Pform.describe source)
     ]
 
-let expand_var_exn t var syn =
-  t.expand_var t var syn
-  |> Expanded.to_value_opt ~on_deferred:(fun _ ->
-         isn't_allowed_in_this_position var)
+let isn't_allowed_in_this_position ~source pform =
+  raise (User_error.E (isn't_allowed_in_this_position_message ~source pform))
 
-let expand_artifact ~dir ~loc t a s : Expanded.t =
+let expand_var_exn t ~source pform =
+  t.expand_var t ~source pform
+  |> Expanded.to_value_opt ~on_deferred:isn't_allowed_in_this_position
+
+let expand_artifact ~dir ~source t a s : Expanded.t =
   let path = Path.Build.relative dir s in
   let name = Path.Build.basename path in
   let dir = Path.Build.parent_exn path in
@@ -176,68 +174,150 @@ let expand_artifact ~dir ~loc t a s : Expanded.t =
     let artifacts = lookup ~dir in
     match a with
     | Pform.Artifact.Mod kind -> (
-      let name = Module_name.of_string_allow_invalid (loc, name) in
+      let name =
+        Module_name.of_string_allow_invalid
+          (Dune_lang.Template.Pform.loc source, name)
+      in
       match Ml_sources.Artifacts.lookup_module artifacts name with
-      | None -> does_not_exist ~loc ~what:"Module" (Module_name.to_string name)
+      | None ->
+        does_not_exist
+          ~loc:(Dune_lang.Template.Pform.loc source)
+          ~what:"Module"
+          (Module_name.to_string name)
       | Some (t, m) ->
         Value
           ( match Obj_dir.Module.cm_file t m ~kind with
           | None -> [ Value.String "" ]
           | Some path -> [ Value.Path (Path.build path) ] ) )
     | Lib mode -> (
-      let name = Lib_name.parse_string_exn (loc, name) in
+      let name =
+        Lib_name.parse_string_exn (Dune_lang.Template.Pform.loc source, name)
+      in
       match Ml_sources.Artifacts.lookup_library artifacts name with
-      | None -> does_not_exist ~loc ~what:"Library" (Lib_name.to_string name)
+      | None ->
+        does_not_exist
+          ~loc:(Dune_lang.Template.Pform.loc source)
+          ~what:"Library" (Lib_name.to_string name)
       | Some lib ->
         let archives = Mode.Dict.get (Lib_info.archives lib) mode in
         Value (Value.L.paths (List.map ~f:Path.build archives)) ) )
+
+let path_exp path = [ Value.Path path ]
+
+let str_exp str = [ Value.String str ]
+
+let path p = Expanded.Value (path_exp p)
+
+let string s = Expanded.Value (str_exp s)
+
+let strings l = Expanded.Value (Value.L.strings l)
+
+let get_prog = function
+  | Ok p -> Expanded.Value (path_exp p)
+  | Error err -> Error (Action.Prog.Not_found.user_message err)
+
+let c_compiler_and_flags (context : Context.t) =
+  Ocaml_config.c_compiler context.ocaml_config
+  :: Ocaml_config.ocamlc_cflags context.ocaml_config
+
+let common_static_expand ~ocaml_config ~(context : Context.t) ~source
+    (pform : Pform.t) =
+  match pform with
+  | Var Ocaml -> Some (get_prog context.ocaml)
+  | Var Ocamlc -> Some (path context.ocamlc)
+  | Var Ocamlopt -> Some (get_prog context.ocamlopt)
+  | Var Make ->
+    Some
+      ( match context.which "make" with
+      | None ->
+        Error
+          (Utils.program_not_found_message ~context:context.name
+             ~loc:(Some (Dune_lang.Template.Pform.loc source))
+             "make")
+      | Some p -> path p )
+  | Var Cpp -> Some (strings (c_compiler_and_flags context @ [ "-E" ]))
+  | Var Pa_cpp ->
+    Some
+      (strings
+         ( c_compiler_and_flags context
+         @ [ "-undef"; "-traditional"; "-x"; "c"; "-E" ] ))
+  | Var Arch_sixtyfour -> Some (string (string_of_bool context.arch_sixtyfour))
+  | Var Ocaml_bin_dir -> Some (Value [ Dir context.ocaml_bin ])
+  | Var Ocaml_version ->
+    Some (string (Ocaml_config.version_string context.ocaml_config))
+  | Var Ocaml_stdlib_dir -> Some (string (Path.to_string context.stdlib_dir))
+  | Var Dev_null -> Some (string (Path.to_string Config.dev_null))
+  | Var Ext_obj -> Some (string context.lib_config.ext_obj)
+  | Var Ext_asm -> Some (string (Ocaml_config.ext_asm context.ocaml_config))
+  | Var Ext_lib -> Some (string context.lib_config.ext_lib)
+  | Var Ext_dll -> Some (string context.lib_config.ext_dll)
+  | Var Ext_exe -> Some (string (Ocaml_config.ext_exe context.ocaml_config))
+  | Var Ext_plugin ->
+    Some
+      (string
+         (Mode.plugin_ext
+            ( if Ocaml_config.natdynlink_supported context.ocaml_config then
+              Mode.Native
+            else
+              Mode.Byte )))
+  | Var Profile -> Some (string (Profile.to_string context.profile))
+  | Var Workspace_root ->
+    Some (Value [ Value.Dir (Path.build context.build_dir) ])
+  | Var Context_name -> Some (string (Context_name.to_string context.name))
+  | Var Os_type ->
+    Some
+      (string
+         (Ocaml_config.Os_type.to_string
+            (Ocaml_config.os_type context.ocaml_config)))
+  | Var Architecture ->
+    Some (string (Ocaml_config.architecture context.ocaml_config))
+  | Var System -> Some (string (Ocaml_config.system context.ocaml_config))
+  | Var Model -> Some (string (Ocaml_config.model context.ocaml_config))
+  | Var Ignoring_promoted_rules ->
+    Some (string (string_of_bool !Clflags.ignore_promoted_rules))
+  | Macro (Ocaml_config, s) ->
+    Some (Value (expand_ocaml_config (Lazy.force ocaml_config) ~source s))
+  | Var (Library_name | Impl_files | Intf_files | Input_file | Test) ->
+    (* These are always set locally. If they are not part of [bindings], then
+       they were used in a context where they shouldn't. *)
+    Some (Error (isn't_allowed_in_this_position_message ~source pform))
+  | _ -> None
 
 (* This expansion function only expands the most "static" variables and macros.
    These are all known without building anything, evaluating any dune files, and
    they do not introduce any dependencies. *)
 let static_expand
-    ({ ocaml_config; bindings; dir; scope; artifacts_dynamic; _ } as t) var
-    syntax_version : Expanded.t =
-  match Pform.Map.expand bindings var syntax_version with
-  | None -> Unknown
-  | Some expand -> (
-    match expand with
-    | Pform.Expansion.Var (Values l) -> Value l
-    | Macro (Ocaml_config, s) ->
-      Value (expand_ocaml_config (Lazy.force ocaml_config) var s)
-    | Macro (Env, s) -> Expanded.of_value_opt (expand_env t var s)
-    | Macro (Version, s) -> Value (expand_version scope var s)
-    | Var Project_root -> Value [ Value.Dir (Path.build (Scope.root scope)) ]
-    | Macro (Artifact a, s) when not artifacts_dynamic ->
-      let loc = String_with_vars.Var.loc var in
-      expand_artifact ~dir ~loc t a s
-    | expansion -> Deferred expansion )
-
-let cc_cxx_bindings =
-  Pform.Map.of_list_exn [ ("cc", Pform.Var.Cc); ("cxx", Pform.Var.Cxx) ]
+    ({ ocaml_config; bindings; dir; scope; artifacts_dynamic; context; _ } as t)
+    ~source (pform : Pform.t) : Expanded.t =
+  match Pform.Map.find bindings pform with
+  | Some x -> Expanded.Value x
+  | None -> (
+    match common_static_expand ~ocaml_config ~context ~source pform with
+    | Some x -> x
+    | None -> (
+      match pform with
+      | Var Project_root -> Value [ Value.Dir (Path.build (Scope.root scope)) ]
+      | Macro (Env, s) -> Expanded.of_value_opt (expand_env t ~source s)
+      | Macro (Version, s) -> Value (expand_version scope ~source s)
+      | Macro (Artifact a, s) when not artifacts_dynamic ->
+        expand_artifact ~dir ~source t a s
+      | pform -> Deferred (source, pform) ) )
 
 let make ~scope ~scope_host ~(context : Context.t) ~lib_artifacts
     ~lib_artifacts_host ~bin_artifacts_host ~find_package =
   let ocaml_config = lazy (make_ocaml_config context.ocaml_config) in
-  let dir = context.build_dir in
-  let bindings =
-    let context = Pform.Map.create ~context in
-    Pform.Map.superpose context cc_cxx_bindings
-  in
-  let env = context.env in
-  let c_compiler = Ocaml_config.c_compiler context.ocaml_config in
-  { dir
+  { dir = context.build_dir
   ; hidden_env = Env.Var.Set.empty
-  ; env
+  ; env = context.env
   ; ocaml_config
-  ; bindings
+  ; bindings = Pform.Map.empty
   ; scope
   ; scope_host
   ; lib_artifacts
   ; lib_artifacts_host
   ; bin_artifacts_host
   ; expand_var = static_expand
-  ; c_compiler
+  ; c_compiler = Ocaml_config.c_compiler context.ocaml_config
   ; context
   ; artifacts_dynamic = false
   ; lookup_artifacts = None
@@ -290,14 +370,15 @@ type reduced_var_result =
 
 let expand_with_reduced_var_set ~(context : Context.t) =
   let ocaml_config = lazy (make_ocaml_config context.ocaml_config) in
-  let bindings = Pform.Map.create ~context in
-  fun var syn ->
-    match Pform.Map.expand bindings var syn with
-    | None -> Unknown
-    | Some (Var (Values l)) -> Expanded l
-    | Some (Macro (Ocaml_config, s)) ->
-      Expanded (expand_ocaml_config (Lazy.force ocaml_config) var s)
-    | Some _ -> Restricted
+  fun ~source pform ->
+    match common_static_expand ~ocaml_config ~context ~source pform with
+    | None -> Restricted
+    | Some x -> (
+      match x with
+      | Value x -> Expanded x
+      | Error e -> raise (User_error.E e)
+      | Deferred (source, pform) -> isn't_allowed_in_this_position ~source pform
+      | Unknown -> Unknown )
 
 module Resolved_forms = struct
   type t =
@@ -308,14 +389,14 @@ module Resolved_forms = struct
     ; (* Static deps from %{...} variables. For instance %{exe:...} *)
       mutable sdeps : Path.Set.t
     ; (* Dynamic deps from %{...} variables. For instance %{read:...} *)
-      mutable ddeps : Value.t list Action_builder.t Pform.Expansion.Map.t
+      mutable ddeps : Value.t list Action_builder.t Pform.Map.t
     }
 
   let create () =
     { failure = None
     ; lib_deps = Lib_name.Map.empty
     ; sdeps = Path.Set.empty
-    ; ddeps = Pform.Expansion.Map.empty
+    ; ddeps = Pform.Map.empty
     }
 
   let add_lib_dep acc lib kind =
@@ -328,7 +409,7 @@ module Resolved_forms = struct
 
   let to_build t =
     let open Action_builder.O in
-    let ddeps = Pform.Expansion.Map.to_list t.ddeps in
+    let ddeps = Pform.Map.to_list t.ddeps in
     let+ () = Action_builder.label (Lib_deps_info.Label t.lib_deps)
     and+ () = Action_builder.path_set t.sdeps
     and+ values = Action_builder.all (List.map ddeps ~f:snd)
@@ -337,13 +418,9 @@ module Resolved_forms = struct
       | None -> Action_builder.return ()
       | Some fail -> Action_builder.fail fail
     in
-    List.fold_left2 ddeps values ~init:Pform.Expansion.Map.empty
-      ~f:(fun acc (var, _) value -> Pform.Expansion.Map.add_exn acc var value)
+    List.fold_left2 ddeps values ~init:Pform.Map.empty
+      ~f:(fun acc (var, _) value -> Pform.Map.add_exn acc var value)
 end
-
-let path_exp path = [ Value.Path path ]
-
-let str_exp str = [ Value.String str ]
 
 let parse_lib_file ~loc s =
   match String.lsplit2 s ~on:':' with
@@ -361,19 +438,14 @@ type expand_result =
   | Static of Value.t list
   | Dynamic of Value.t list Action_builder.t
 
-let expand_and_record_generic acc ~dep_kind ~(dir : Path.Build.t) ~pform t
-    expansion =
-  let loc = String_with_vars.Var.loc pform in
-  let relative d s = Path.build (Path.Build.relative ~error_loc:loc d s) in
+let expand_and_record_generic acc ~dep_kind ~(dir : Path.Build.t) t ~source
+    (pform : Pform.t) =
+  let relative d s =
+    Path.build
+      (Path.Build.relative ~error_loc:(Dune_lang.Template.Pform.loc source) d s)
+  in
   let open Action_builder.O in
-  match (expansion : Pform.Expansion.t) with
-  | Var
-      ( Project_root | First_dep | Deps | Targets | Target | Named_local
-      | Values _ )
-  | Macro ((Ocaml_config | Env | Version), _) ->
-    (* Some of these values are filled by [static_expand], others are bindings
-       introduced by the user and handled specifically elsewhere *)
-    assert false
+  match pform with
   | Var Cc -> Dynamic (cc t ~dir).c
   | Var Cxx -> Dynamic (cc t ~dir).cxx
   | Macro (Artifact a, s) ->
@@ -381,12 +453,12 @@ let expand_and_record_generic acc ~dep_kind ~(dir : Path.Build.t) ~pform t
       Action_builder.dyn_paths
         (let+ values =
            Action_builder.delayed (fun () ->
-               match expand_artifact ~dir ~loc t a s with
+               match expand_artifact ~dir ~source t a s with
                | Value v -> v
                | Error msg -> raise (User_error.E msg)
                | Unknown
                | Deferred _ ->
-                 isn't_allowed_in_this_position pform)
+                 isn't_allowed_in_this_position ~source pform)
          in
          (values, Value.L.deps_only values))
     in
@@ -396,10 +468,14 @@ let expand_and_record_generic acc ~dep_kind ~(dir : Path.Build.t) ~pform t
   | Macro (Dep, s) -> Static (path_exp (relative dir s))
   | Macro (Bin, s) ->
     Static
-      ( Artifacts.Bin.binary ~loc:(Some loc) t.bin_artifacts_host s
+      ( Artifacts.Bin.binary
+          ~loc:(Some (Dune_lang.Template.Pform.loc source))
+          t.bin_artifacts_host s
       |> Action.Prog.ok_exn |> path_exp )
   | Macro (Lib { lib_exec; lib_private }, s) -> (
-    let lib, file = parse_lib_file ~loc s in
+    let lib, file =
+      parse_lib_file ~loc:(Dune_lang.Template.Pform.loc source) s
+    in
     Resolved_forms.add_lib_dep acc lib dep_kind;
     let scope =
       if lib_exec then
@@ -410,7 +486,10 @@ let expand_and_record_generic acc ~dep_kind ~(dir : Path.Build.t) ~pform t
     match
       if lib_private then
         let open Result.O in
-        let* lib = Lib.DB.resolve (Scope.libs scope) (loc, lib) in
+        let* lib =
+          Lib.DB.resolve (Scope.libs scope)
+            (Dune_lang.Template.Pform.loc source, lib)
+        in
         let current_project = Scope.project t.scope
         and referenced_project =
           Lib.info lib |> Lib_info.status |> Lib_info.Status.project
@@ -423,7 +502,8 @@ let expand_and_record_generic acc ~dep_kind ~(dir : Path.Build.t) ~pform t
         else
           Error
             (User_error.E
-               (User_error.make ~loc
+               (User_error.make
+                  ~loc:(Dune_lang.Template.Pform.loc source)
                   [ Pp.textf
                       "The variable \"lib%s-private\" can only refer to \
                        libraries within the same project. The current \
@@ -447,7 +527,9 @@ let expand_and_record_generic acc ~dep_kind ~(dir : Path.Build.t) ~pform t
           else
             t.lib_artifacts
         in
-        Artifacts.Public_libs.file_of_lib artifacts ~loc ~lib ~file
+        Artifacts.Public_libs.file_of_lib artifacts
+          ~loc:(Dune_lang.Template.Pform.loc source)
+          ~lib ~file
     with
     | Ok path ->
       if (not lib_exec) || (not Sys.win32) || Filename.extension s = ".exe" then
@@ -471,7 +553,8 @@ let expand_and_record_generic acc ~dep_kind ~(dir : Path.Build.t) ~pform t
         | false ->
           if Lib.DB.available (Scope.libs scope) lib then
             User_error.E
-              (User_error.make ~loc
+              (User_error.make
+                 ~loc:(Dune_lang.Template.Pform.loc source)
                  [ Pp.textf
                      "The library %S is not public. The variable \"lib%s\" \
                       expands to the file's installation path which is not \
@@ -485,7 +568,9 @@ let expand_and_record_generic acc ~dep_kind ~(dir : Path.Build.t) ~pform t
           else
             e ) )
   | Macro (Lib_available, s) ->
-    let lib = Lib_name.parse_string_exn (loc, s) in
+    let lib =
+      Lib_name.parse_string_exn (Dune_lang.Template.Pform.loc source, s)
+    in
     Resolved_forms.add_lib_dep acc lib Optional;
     Static
       (Lib.DB.available (Scope.libs t.scope) lib |> string_of_bool |> str_exp)
@@ -508,6 +593,7 @@ let expand_and_record_generic acc ~dep_kind ~(dir : Path.Build.t) ~pform t
       Action_builder.map (Action_builder.strings path) ~f:Value.L.strings
     in
     Dynamic data
+  | _ -> assert false
 
 let gen_with_record_deps ~expand t resolved_forms ~dep_kind =
   let expand_var =
@@ -525,17 +611,17 @@ module Deps_like : sig
     -> f:(t -> 'a Action_builder.t)
     -> 'a Action_builder.t
 end = struct
-  let expand_and_record_static acc ~dep_kind ~(dir : Path.Build.t) ~pform t
-      expansion =
-    match expand_and_record_generic acc ~dep_kind ~dir ~pform t expansion with
+  let expand_and_record_static acc ~dep_kind ~(dir : Path.Build.t) t ~source
+      pform =
+    match expand_and_record_generic acc ~dep_kind ~dir t ~source pform with
     | Static l -> l
-    | Dynamic _ -> isn't_allowed_in_this_position pform
+    | Dynamic _ -> isn't_allowed_in_this_position ~source pform
 
-  let expand_no_ddeps acc ~dir ~dep_kind ~expand_var t pform syntax_version =
+  let expand_no_ddeps acc ~dir ~dep_kind ~expand_var t ~source pform =
     let res =
-      expand_var t pform syntax_version
-      |> Expanded.to_value_opt ~on_deferred:(fun exp ->
-             Some (expand_and_record_static acc ~dep_kind ~dir ~pform t exp))
+      expand_var t ~source pform
+      |> Expanded.to_value_opt ~on_deferred:(fun ~source pform ->
+             Some (expand_and_record_static acc ~dep_kind ~dir t ~source pform))
     in
     Resolved_forms.add_value_opt acc res;
     Expanded.of_value_opt res
@@ -548,7 +634,7 @@ end = struct
     let build = f t in
     let+ x = build
     and+ dynamic_expansions = Resolved_forms.to_build forms in
-    if Pform.Expansion.Map.is_empty dynamic_expansions then
+    if Pform.Map.is_empty dynamic_expansions then
       x
     else
       Code_error.raise "ddeps are not allowed in this position" []
@@ -568,50 +654,36 @@ module Action_like : sig
 end = struct
   (* Expand variables that correspond to user defined variables, deps, and
      target(s) fields *)
-  let expand_special_vars ~deps_written_by_user ~var pform =
-    let key = String_with_vars.Var.full_name var in
-    let loc = String_with_vars.Var.loc var in
+  let expand_special_vars ~deps_written_by_user ~source:_ pform =
     match pform with
-    | Pform.Expansion.Var Named_local -> (
-      match Bindings.find deps_written_by_user key with
+    | Pform.Var (User_var var) -> (
+      match Bindings.find deps_written_by_user var with
       | None ->
         Code_error.raise "Local named variable not present in named deps"
-          [ ("pform", String_with_vars.Var.to_dyn var)
+          [ ("pform", Pform.to_dyn pform)
           ; ( "deps_written_by_user"
             , Bindings.to_dyn Path.to_dyn deps_written_by_user )
           ]
       | Some x -> Value.L.paths x )
     | Var Deps -> deps_written_by_user |> Bindings.to_list |> Value.L.paths
-    | Var First_dep -> (
-      match deps_written_by_user with
-      | Named _ :: _ ->
-        (* This case is not possible: ${<} only exist in jbuild files and named
-           dependencies are not available in jbuild files *)
-        assert false
-      | Unnamed v :: _ -> [ Path v ]
-      | [] ->
-        User_warning.emit ~loc
-          [ Pp.textf "Variable '%s' used with no explicit dependencies" key ];
-        [ Value.String "" ] )
+    | Var First_dep ->
+      (* This case is for %{<} which was only allowed inside jbuild files *)
+      assert false
     | _ ->
-      Code_error.raise "Unexpected variable in step2"
-        [ ("var", String_with_vars.Var.to_dyn var) ]
+      Code_error.raise "Unexpected percent form in step2"
+        [ ("pform", Pform.to_dyn pform) ]
 
   (* Responsible for the 2nd phase expansions of dynamic dependencies. After
      we've discovered all Action_builder.t values, waited for them to build, we
      can finally substitute them back form the dynamic_expansions map *)
-  let expand_ddeps_and_bindings
-      ~(dynamic_expansions : Value.t list Pform.Expansion.Map.t)
-      ~(deps_written_by_user : Path.t Bindings.t) ~expand_var t var
-      syntax_version =
-    let open Option.O in
-    (let* key = Pform.Map.expand t.bindings var syntax_version in
-     match Pform.Expansion.Map.find dynamic_expansions key with
-     | Some v -> Some v
-     | None ->
-       expand_var t var syntax_version
-       |> Expanded.to_value_opt ~on_deferred:(fun exp ->
-              Some (expand_special_vars ~deps_written_by_user ~var exp)))
+  let expand_ddeps_and_bindings ~(dynamic_expansions : Value.t list Pform.Map.t)
+      ~(deps_written_by_user : Path.t Bindings.t) ~expand_var t ~source pform =
+    ( match Pform.Map.find dynamic_expansions pform with
+    | Some v -> Some v
+    | None ->
+      expand_var t ~source pform
+      |> Expanded.to_value_opt ~on_deferred:(fun ~source pform ->
+             Some (expand_special_vars ~deps_written_by_user ~source pform)) )
     |> Expanded.of_value_opt
 
   let add_ddeps_and_bindings t ~dynamic_expansions ~deps_written_by_user =
@@ -623,50 +695,47 @@ end = struct
 
   (* Expansion where every Dynamic value is not expanded and recorded to be
      substituted later. *)
-  let expand_and_record_dynamic acc ~dep_kind ~(dir : Path.Build.t) ~pform t
-      expansion =
-    match expand_and_record_generic acc ~dep_kind ~dir ~pform t expansion with
+  let expand_and_record_dynamic acc ~dep_kind ~(dir : Path.Build.t) t ~source
+      pform =
+    match expand_and_record_generic acc ~dep_kind ~dir t ~source pform with
     | Static l -> Some l
     | Dynamic dep ->
-      acc.ddeps <- Pform.Expansion.Map.set acc.ddeps expansion dep;
+      acc.ddeps <- Pform.Map.set acc.ddeps pform dep;
       None
     | exception (User_error.E _ as e) ->
       acc.failure <- Some { fail = (fun () -> raise e) };
       None
 
   let expand_and_record_deps acc ~(dir : Path.Build.t) ~dep_kind
-      ~targets_written_by_user ~expand_var t pform syntax_version =
+      ~targets_written_by_user ~expand_var t
+      ~(source : Dune_lang.Template.Pform.t) pform =
     let res =
       let targets ~(multiplicity : Targets.Multiplicity.t) =
-        let loc = String_with_vars.Var.loc pform in
         match (targets_written_by_user : Targets.Or_forbidden.t) with
         | Targets.Or_forbidden.Targets Infer ->
-          User_error.raise ~loc
+          User_error.raise ~loc:source.loc
             [ Pp.textf "You cannot use %s with inferred rules."
-                (String_with_vars.Var.describe pform)
+                (Dune_lang.Template.Pform.describe source)
             ]
         | Forbidden context ->
-          User_error.raise ~loc
-            [ Pp.textf "You cannot use %s in %s."
-                (String_with_vars.Var.describe pform)
-                context
+          User_error.raise ~loc:source.loc
+            [ Pp.textf "You cannot use %s in %s." context
+                (Dune_lang.Template.Pform.describe source)
             ]
         | Targets.Or_forbidden.Targets
             (Static { targets; multiplicity = field_multiplicity }) ->
-          Targets.Multiplicity.check_variable_matches_field ~loc
+          Targets.Multiplicity.check_variable_matches_field ~loc:source.loc
             ~field:field_multiplicity ~variable:multiplicity;
           (* XXX hack to signal no dep *)
           List.map ~f:Path.build targets |> Value.L.dirs
       in
-      expand_var t pform syntax_version
-      |> Expanded.to_value_opt
-           ~on_deferred:(fun (expansion : Pform.Expansion.t) ->
-             match expansion with
-             | Var (First_dep | Deps | Named_local) -> None
+      expand_var t ~source pform
+      |> Expanded.to_value_opt ~on_deferred:(fun ~source pform ->
+             match pform with
+             | Var (First_dep | Deps | User_var _) -> None
              | Var Targets -> Some (targets ~multiplicity:Multiple)
              | Var Target -> Some (targets ~multiplicity:One)
-             | _ ->
-               expand_and_record_dynamic acc ~dep_kind ~dir ~pform t expansion)
+             | _ -> expand_and_record_dynamic acc ~dep_kind ~dir t ~source pform)
     in
     Resolved_forms.add_value_opt acc res;
     Expanded.of_value_opt res

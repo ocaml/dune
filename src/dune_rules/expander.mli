@@ -59,7 +59,7 @@ val set_lookup_ml_sources :
 (** Expander needs to expand custom bindings sometimes. For example, the name of
     the library for the action that runs inline tests. This is the place to add
     such bindings. *)
-val add_bindings : t -> bindings:Pform.Map.t -> t
+val add_bindings : t -> bindings:Value.t list Pform.Map.t -> t
 
 val extend_env : t -> env:Env.t -> t
 

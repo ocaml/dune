@@ -214,19 +214,19 @@ module Entry = struct
         Section.compare x.section y.section
 
   let adjust_dst ~src ~dst ~section =
-    let error var =
-      User_error.raise
-        ~loc:(String_with_vars.Var.loc var)
+    let error (source_pform : Dune_lang.Template.Pform.t) =
+      User_error.raise ~loc:source_pform.loc
         [ Pp.textf
             "Because this file is installed in the 'bin' section, you cannot \
-             use the variable %s in its basename."
-            (String_with_vars.Var.describe var)
+             use the %s %s in its basename."
+            (Dune_lang.Template.Pform.describe_kind source_pform)
+            (Dune_lang.Template.Pform.describe source_pform)
         ]
     in
     let is_source_executable () =
       let has_ext ext =
         match String_with_vars.Partial.is_suffix ~suffix:ext src with
-        | Unknown var -> error var
+        | Unknown { source_pform } -> error source_pform
         | Yes -> true
         | No -> false
       in
@@ -238,10 +238,10 @@ module Entry = struct
       | Unexpanded src -> (
         match String_with_vars.known_suffix src with
         | Full s -> Filename.basename s
-        | Partial (var, suffix) -> (
+        | Partial { source_pform; suffix } -> (
           match String.rsplit2 ~on:'/' suffix with
           | Some (_, basename) -> basename
-          | None -> error var ) )
+          | None -> error source_pform ) )
     in
     match dst with
     | Some dst' when Filename.extension dst' = ".exe" -> Dst.explicit dst'

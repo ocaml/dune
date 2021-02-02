@@ -362,7 +362,7 @@ and template_variable = parse
         | Some "" -> error lexbuf "payload after : in variable cannot be empty"
         | p -> p
       in
-      Template.Var
+      Template.Pform
         { loc =
             { start = Lexing.lexeme_start_p lexbuf
             ; stop = Lexing.lexeme_end_p lexbuf

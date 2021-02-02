@@ -11,7 +11,7 @@ type target = String_with_vars.t
 module String_with_vars = struct
   include String_with_vars
 
-  let is_dev_null = String_with_vars.is_var ~name:"null"
+  let is_dev_null t = String_with_vars.is_pform t (Var Dev_null)
 end
 
 module type Uast =

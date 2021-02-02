@@ -435,7 +435,10 @@ module Or_meta = struct
 
   let load p =
     let dir = Path.parent_exn p in
-    Vfile.load p ~f:(fun lang -> decode ~lang ~dir)
+    Vfile.load p ~f:(fun lang ->
+        String_with_vars.set_decoding_env
+          (Pform.Env.initial lang.version)
+          (decode ~lang ~dir))
 
   let pp ~dune_version ppf t =
     let t = encode ~dune_version t in

@@ -76,7 +76,7 @@ For dune < 2.7 context_name is not allowed
   File "dune", line 3, characters 18-31:
   3 |  (enabled_if (= %{context_name} "default")))
                         ^^^^^^^^^^^^^
-  Error: This variable is only available since version 2.7 of the dune
+  Error: %{context_name} is only available since version 2.7 of the dune
   language. Please update your dune-project file to have (lang dune 2.7).
   [1]
 

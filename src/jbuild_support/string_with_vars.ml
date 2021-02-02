@@ -177,7 +177,14 @@ let upgrade_to_dune s ~loc ~quoted ~allow_first_dep_var =
     | Var v -> (
       match map_var v with
       | None -> Text (string_of_var v)
-      | Some name -> Var { name; payload = v.payload; loc = v.loc } )
+      | Some name -> Pform { name; payload = v.payload; loc = v.loc } )
   in
   let parts = List.map (parse ~loc s) ~f:map_part in
-  { Dune_lang.Template.quoted; parts; loc }
+  match
+    List.fold_left parts ~init:(Some "") ~f:(fun acc part ->
+        match (acc, part) with
+        | Some s, Dune_lang.Template.Text s' -> Some (s ^ s')
+        | _ -> None)
+  with
+  | None -> Dune_lang.Ast.Template { quoted; parts; loc }
+  | Some s -> Dune_lang.Ast.atom_or_quoted_string loc s

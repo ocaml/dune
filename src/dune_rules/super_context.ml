@@ -85,7 +85,7 @@ end = struct
         get_node t ~dir |> Env_node.inline_tests
         |> Dune_env.Stanza.Inline_tests.to_string
       in
-      Pform.Map.singleton "inline_tests" (Values [ String str ])
+      Pform.Map.singleton (Var Inline_tests) [ Value.String str ]
     in
     expander_for_artifacts
     |> Expander.add_bindings ~bindings
@@ -406,23 +406,22 @@ let get_installed_binaries stanzas ~(context : Context.t) =
   let expand_str ~dir sw =
     let dir = Path.build dir in
     String_with_vars.expand ~dir ~mode:Single
-      ~f:(fun var ver ->
-        match expander var ver with
+      ~f:(fun ~source pform ->
+        match expander ~source pform with
         | Unknown -> None
         | Expanded x -> Some x
         | Restricted ->
-          User_error.raise
-            ~loc:(String_with_vars.Var.loc var)
+          User_error.raise ~loc:source.loc
             [ Pp.textf "%s isn't allowed in this position."
-                (String_with_vars.Var.describe var)
+                (Dune_lang.Template.Pform.describe source)
             ])
       sw
     |> Value.to_string ~dir
   in
   let expand_str_partial ~dir sw =
     String_with_vars.partial_expand ~dir ~mode:Single
-      ~f:(fun var ver ->
-        match expander var ver with
+      ~f:(fun ~source pform ->
+        match expander ~source pform with
         | Expander.Unknown
         | Restricted ->
           None

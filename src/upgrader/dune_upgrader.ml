@@ -174,7 +174,7 @@ module V1 = struct
       | List (_, l) -> List.exists l ~f:uses_first_dep_var
       | Template x ->
         List.exists x.parts ~f:(function
-          | Dune_lang.Template.Var { name = "<"; _ } -> true
+          | Dune_lang.Template.Pform { name = "<"; _ } -> true
           | _ -> false)
     in
     let rec map_var ~f = function
@@ -185,15 +185,13 @@ module V1 = struct
           { x with
             parts =
               List.map x.parts ~f:(function
-                | Dune_lang.Template.Var v -> f v
+                | Dune_lang.Template.Pform v -> f v
                 | x -> x)
           }
     in
     let upgrade_string s ~loc ~quoted =
       Jbuild_support.String_with_vars.upgrade_to_dune s ~loc ~quoted
         ~allow_first_dep_var:true
-      |> String_with_vars.make |> String_with_vars.encode
-      |> Dune_lang.Ast.add_loc ~loc
     in
     let rec upgrade = function
       | Atom (loc, A s) -> (
@@ -228,8 +226,9 @@ module V1 = struct
           | (Atom (_, A ("preprocess" | "lint")) as field) :: rest ->
             upgrade field
             :: List.map rest ~f:(fun x ->
-                   map_var (upgrade x) ~f:(fun (v : Dune_lang.Template.var) ->
-                       Dune_lang.Template.Var
+                   map_var (upgrade x)
+                     ~f:(fun (v : Dune_lang.Template.Pform.t) ->
+                       Dune_lang.Template.Pform
                          ( if v.name = "<" then
                            { v with name = "input-file" }
                          else

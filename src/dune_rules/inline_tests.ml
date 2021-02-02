@@ -231,10 +231,6 @@ include Sub_system.Register_end_point (struct
       Module.generated ~src_dir name
     in
     let modules = Modules.singleton_exe main_module in
-    let bindings =
-      Pform.Map.singleton "library-name"
-        (Values [ String (Lib_name.Local.to_string (snd lib.name)) ])
-    in
     let expander = Super_context.expander sctx ~dir in
     let runner_libs =
       let open Result.O in
@@ -257,13 +253,12 @@ include Sub_system.Register_end_point (struct
          |> Option.value_exn |> Path.as_in_build_dir_exn
        in
        let files ml_kind =
-         Pform.Var.Values
-           (Value.L.paths
-              (List.filter_map source_modules ~f:(Module.file ~ml_kind)))
+         Value.L.paths
+           (List.filter_map source_modules ~f:(Module.file ~ml_kind))
        in
        let bindings =
          Pform.Map.of_list_exn
-           [ ("impl-files", files Impl); ("intf-files", files Intf) ]
+           [ (Var Impl_files, files Impl); (Var Intf_files, files Intf) ]
        in
        let expander = Expander.add_bindings expander ~bindings in
        let action =
@@ -317,6 +312,10 @@ include Sub_system.Register_end_point (struct
       let flags =
         List.map backends ~f:(fun backend -> backend.Backend.info.flags)
         @ [ info.flags ]
+      in
+      let bindings =
+        Pform.Map.singleton (Var Library_name)
+          [ Value.String (Lib_name.Local.to_string (snd lib.name)) ]
       in
       let expander = Expander.add_bindings expander ~bindings in
       let open Action_builder.O in

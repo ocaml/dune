@@ -52,3 +52,6 @@ module Hooks = Hooks
 module Promotion = Promotion
 module Cached_digest = Cached_digest
 module Report_error = Report_error
+module Pform = Pform
+module Cm_kind = Cm_kind
+module Mode = Mode

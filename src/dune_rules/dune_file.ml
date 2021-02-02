@@ -884,14 +884,10 @@ module Library = struct
     let name = best_name conf in
     let enabled =
       let enabled_if_result =
-        Blang.eval conf.enabled_if ~dir:(Path.build dir) ~f:(fun v _ver ->
-            match
-              (String_with_vars.Var.name v, String_with_vars.Var.payload v)
-            with
-            | var, None ->
-              let value = Lib_config.get_for_enabled_if lib_config ~var in
-              Some [ String value ]
-            | _ -> None)
+        Blang.eval conf.enabled_if ~dir:(Path.build dir)
+          ~f:(fun ~source:_ pform ->
+            let value = Lib_config.get_for_enabled_if lib_config pform in
+            Some [ String value ])
       in
       if not enabled_if_result then
         Lib_info.Enabled_status.Disabled_because_of_enabled_if
@@ -1590,37 +1586,39 @@ module Rule = struct
     }
 
   let long_form =
-    let+ loc = loc
-    and+ action = field "action" (located Action_dune_lang.decode)
-    and+ targets = Targets.field
-    and+ deps =
+    let* deps =
       field "deps" (Bindings.decode Dep_conf.decode) ~default:Bindings.empty
-    and+ locks = field "locks" (repeat String_with_vars.decode) ~default:[]
-    and+ () =
-      let+ fallback =
-        field_b
-          ~check:
-            (Dune_lang.Syntax.renamed_in Stanza.syntax (1, 0)
-               ~to_:"(mode fallback)")
-          "fallback"
-      in
-      (* The "fallback" field was only allowed in jbuild file, which we don't
-         support anymore. So this cannot be [true]. We just keep the parser to
-         provide a nice error message for people switching from jbuilder to
-         dune. *)
-      assert (not fallback)
-    and+ mode = field "mode" Mode.decode ~default:Mode.Standard
-    and+ enabled_if =
-      Enabled_if.decode ~allowed_vars:Any ~since:(Some (1, 4)) ()
-    and+ package =
-      field_o "package"
-        ( Dune_lang.Syntax.since Stanza.syntax (2, 0)
-        >>> Stanza_common.Pkg.decode )
-    and+ alias =
-      field_o "alias"
-        (Dune_lang.Syntax.since Stanza.syntax (2, 0) >>> Alias.Name.decode)
     in
-    { targets; deps; action; mode; locks; loc; enabled_if; alias; package }
+    String_with_vars.add_user_vars_to_decoding_env (Bindings.var_names deps)
+      (let+ loc = loc
+       and+ action = field "action" (located Action_dune_lang.decode)
+       and+ targets = Targets.field
+       and+ locks = field "locks" (repeat String_with_vars.decode) ~default:[]
+       and+ () =
+         let+ fallback =
+           field_b
+             ~check:
+               (Dune_lang.Syntax.renamed_in Stanza.syntax (1, 0)
+                  ~to_:"(mode fallback)")
+             "fallback"
+         in
+         (* The "fallback" field was only allowed in jbuild file, which we don't
+            support anymore. So this cannot be [true]. We just keep the parser
+            to provide a nice error message for people switching from jbuilder
+            to dune. *)
+         assert (not fallback)
+       and+ mode = field "mode" Mode.decode ~default:Mode.Standard
+       and+ enabled_if =
+         Enabled_if.decode ~allowed_vars:Any ~since:(Some (1, 4)) ()
+       and+ package =
+         field_o "package"
+           ( Dune_lang.Syntax.since Stanza.syntax (2, 0)
+           >>> Stanza_common.Pkg.decode )
+       and+ alias =
+         field_o "alias"
+           (Dune_lang.Syntax.since Stanza.syntax (2, 0) >>> Alias.Name.decode)
+       in
+       { targets; deps; action; mode; locks; loc; enabled_if; alias; package })
 
   let decode =
     peek_exn >>= function
@@ -1672,13 +1670,13 @@ module Rule = struct
         ; action =
             ( loc
             , Chdir
-                ( S.virt_var __POS__ "workspace_root"
+                ( S.virt_pform __POS__ (Var Workspace_root)
                 , Run
                     ( S.virt_text __POS__ "ocamllex"
                     , [ S.virt_text __POS__ "-q"
                       ; S.virt_text __POS__ "-o"
-                      ; S.virt_var __POS__ "targets"
-                      ; S.virt_var __POS__ "deps"
+                      ; S.virt_pform __POS__ (Var Targets)
+                      ; S.virt_pform __POS__ (Var Deps)
                       ] ) ) )
         ; mode
         ; locks = []
@@ -1702,10 +1700,10 @@ module Rule = struct
         ; action =
             ( loc
             , Chdir
-                ( S.virt_var __POS__ "workspace_root"
+                ( S.virt_pform __POS__ (Var Workspace_root)
                 , Run
                     ( S.virt_text __POS__ "ocamlyacc"
-                    , [ S.virt_var __POS__ "deps" ] ) ) )
+                    , [ S.virt_pform __POS__ (Var Deps) ] ) ) )
         ; mode
         ; locks = []
         ; loc
@@ -1766,21 +1764,28 @@ module Alias_conf = struct
 
   let decode =
     fields
-      (let+ name = field "name" Alias.Name.decode
-       and+ package = field_o "package" Stanza_common.Pkg.decode
-       and+ action =
-         field_o "action"
-           (let extra_info = "Use a rule stanza with the alias field instead" in
-            let* () =
-              Dune_lang.Syntax.deleted_in ~extra_info Stanza.syntax (2, 0)
-            in
-            located Action_dune_lang.decode)
-       and+ loc = loc
-       and+ locks = field "locks" (repeat String_with_vars.decode) ~default:[]
-       and+ deps =
+      (let* deps =
          field "deps" (Bindings.decode Dep_conf.decode) ~default:Bindings.empty
-       and+ enabled_if = field "enabled_if" Blang.decode ~default:Blang.true_ in
-       { name; deps; action; package; locks; enabled_if; loc })
+       in
+       String_with_vars.add_user_vars_to_decoding_env (Bindings.var_names deps)
+         (let+ name = field "name" Alias.Name.decode
+          and+ package = field_o "package" Stanza_common.Pkg.decode
+          and+ action =
+            field_o "action"
+              (let extra_info =
+                 "Use a rule stanza with the alias field instead"
+               in
+               let* () =
+                 Dune_lang.Syntax.deleted_in ~extra_info Stanza.syntax (2, 0)
+               in
+               located Action_dune_lang.decode)
+          and+ loc = loc
+          and+ locks =
+            field "locks" (repeat String_with_vars.decode) ~default:[]
+          and+ enabled_if =
+            field "enabled_if" Blang.decode ~default:Blang.true_
+          in
+          { name; deps; action; package; locks; enabled_if; loc }))
 end
 
 module Tests = struct
@@ -1795,49 +1800,52 @@ module Tests = struct
 
   let gen_parse names =
     fields
-      (let+ buildable = Buildable.decode Executable
-       and+ link_flags = Ordered_set_lang.Unexpanded.field "link_flags"
-       and+ names = names
-       and+ package = field_o "package" Stanza_common.Pkg.decode
-       and+ locks = field "locks" (repeat String_with_vars.decode) ~default:[]
-       and+ modes =
-         field "modes" Executables.Link_mode.Map.decode
-           ~default:Executables.Link_mode.Map.default_for_tests
-       and+ deps =
+      (let* deps =
          field "deps" (Bindings.decode Dep_conf.decode) ~default:Bindings.empty
-       and+ enabled_if =
-         Enabled_if.decode ~allowed_vars:Any ~since:(Some (1, 4)) ()
-       and+ action =
-         field_o "action"
-           ( Dune_lang.Syntax.since ~fatal:false Stanza.syntax (1, 2)
-           >>> Action_dune_lang.decode )
-       and+ forbidden_libraries =
-         field "forbidden_libraries"
-           ( Dune_lang.Syntax.since Stanza.syntax (2, 0)
-           >>> repeat (located Lib_name.decode) )
-           ~default:[]
        in
-       { exes =
-           { Executables.link_flags
-           ; link_deps = []
-           ; modes
-           ; optional = false
-           ; buildable
-           ; names
-           ; package = None
-           ; promote = None
-           ; install_conf = None
-           ; embed_in_plugin_libraries = []
-           ; forbidden_libraries
-           ; bootstrap_info = None
-           ; enabled_if
-           }
-       ; locks
-       ; package
-       ; deps
-       ; enabled_if
-       ; action
-       })
+       String_with_vars.add_user_vars_to_decoding_env (Bindings.var_names deps)
+         (let+ buildable = Buildable.decode Executable
+          and+ link_flags = Ordered_set_lang.Unexpanded.field "link_flags"
+          and+ names = names
+          and+ package = field_o "package" Stanza_common.Pkg.decode
+          and+ locks =
+            field "locks" (repeat String_with_vars.decode) ~default:[]
+          and+ modes =
+            field "modes" Executables.Link_mode.Map.decode
+              ~default:Executables.Link_mode.Map.default_for_tests
+          and+ enabled_if =
+            Enabled_if.decode ~allowed_vars:Any ~since:(Some (1, 4)) ()
+          and+ action =
+            field_o "action"
+              ( Dune_lang.Syntax.since ~fatal:false Stanza.syntax (1, 2)
+              >>> Action_dune_lang.decode )
+          and+ forbidden_libraries =
+            field "forbidden_libraries"
+              ( Dune_lang.Syntax.since Stanza.syntax (2, 0)
+              >>> repeat (located Lib_name.decode) )
+              ~default:[]
+          in
+          { exes =
+              { Executables.link_flags
+              ; link_deps = []
+              ; modes
+              ; optional = false
+              ; buildable
+              ; names
+              ; package = None
+              ; promote = None
+              ; install_conf = None
+              ; embed_in_plugin_libraries = []
+              ; forbidden_libraries
+              ; bootstrap_info = None
+              ; enabled_if
+              }
+          ; locks
+          ; package
+          ; deps
+          ; enabled_if
+          ; action
+          }))
 
   let multi = gen_parse (field "names" (repeat1 (located string)))
 

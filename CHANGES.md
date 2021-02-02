@@ -23,6 +23,8 @@ Unreleased
 - Do not pass include directories containing native objects when compiling
   bytecode (#4200, @nojb)
 
+- Detect unknown variables more eagerly (#4184, @jeremiedimino)
+
 2.8.2 (21/01/2021)
 ------------------
 

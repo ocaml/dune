@@ -61,8 +61,23 @@ let write_c_types_includer_module ~sctx ~dir ~filename ~type_description_module
     let buf = Buffer.create 1024 in
     let pr buf fmt = Printf.bprintf buf (fmt ^^ "\n") in
     pr buf "include %s.Types (%s)"
-      (Module_name.to_string type_description_module)
-      (Module_name.to_string c_generated_types_module);
+        (Module_name.to_string type_description_module)
+        (Module_name.to_string c_generated_types_module);
+    Buffer.contents buf
+  in
+  Super_context.add_rule ~loc:Loc.none sctx ~dir
+    (Build.write_file path contents)
+
+let write_entry_point_module ~sctx ~dir ~filename ~function_description_module
+      ~c_generated_functions_module ~c_types_includer_module =
+  let path = Path.Build.relative dir filename in
+  let contents =
+    let buf = Buffer.create 1024 in
+    let pr buf fmt = Printf.bprintf buf (fmt ^^ "\n") in
+    pr buf "module Types = %s" (Module_name.to_string c_types_includer_module);
+    pr buf "module Functions = %s.Functions (%s)"
+        (Module_name.to_string function_description_module)
+        (Module_name.to_string c_generated_functions_module);
     Buffer.contents buf
   in
   Super_context.add_rule ~loc:Loc.none sctx ~dir
@@ -213,11 +228,6 @@ let build_c_program ~sctx ~dir ~source_files ~scope ~cflags_txt ~output () =
     Build.with_targets action ~targets:[Path.Build.relative dir output]
   in
   Super_context.add_rule sctx ~dir build
-(*
-
-  rule ~promised_args:cflags_args ~deps:source_files ~targets:[output] ~exe ~sctx ~dir
-    ~args:(cflags_args @ include_args @ source_files @ ["-o"; output]) ()
-   *)
 
 let cctx ~base_lib ?(libraries=[]) ~loc ~dir ~scope ~expander ~sctx =
   let compile_info =
@@ -289,13 +299,13 @@ let gen_rules ~base_lib ~scope ~expander ~dir ~sctx =
   let function_description_library = Ctypes_stanzas.function_description_library ctypes in
   (* This includer module is simply some glue to instantiate the Types functor
      that the user provides in the type description module. *)
+  let c_types_includer_module = Ctypes_stanzas.c_types_includer_module ctypes in
   let () =
     write_c_types_includer_module
       ~sctx ~dir
-      ~filename:(Ctypes_stanzas.c_types_includer_module ctypes
-                 |> ml_of_module_name)
+      ~filename:(ml_of_module_name c_types_includer_module)
       ~c_generated_types_module:(Ctypes_stanzas.c_generated_types_module ctypes)
-      ~type_description_module;
+      ~type_description_module
   in
   (* The discover script uses dune configurator / pkg_config to figure out
      how to invoke the compiler and linker for your external C library.
@@ -385,5 +395,15 @@ let gen_rules ~base_lib ~scope ~expander ~dir ~sctx =
       ~exe:(function_gen_script ^ ".exe")
       ~args:["ml"; stubs_prefix]
       ()
+  in
+  (* The entry point module binds the instantiated Types and Functions functors
+     to the entry point module name the user specified. *)
+  let () =
+    write_entry_point_module
+      ~sctx ~dir
+      ~filename:(Ctypes_stanzas.entry_module ctypes |> ml_of_module_name)
+      ~function_description_module:(Ctypes_stanzas.function_description_module ctypes)
+      ~c_generated_functions_module:(Ctypes_stanzas.c_generated_functions_module ctypes)
+      ~c_types_includer_module
   in
   ()

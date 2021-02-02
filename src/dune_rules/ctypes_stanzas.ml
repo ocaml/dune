@@ -81,31 +81,32 @@ let library_stanza ?(flags=Ocaml_flags.Spec.standard) ?public_name ?(foreign_stu
 let sprintf = Printf.sprintf
 
 let type_description_module ctypes =
-  sprintf "%s__c_type_descriptions" ctypes.Ctypes.lib_name
-  |> Module_name.of_string
+  ctypes.Ctypes.type_descriptions
 
 let type_description_library ctypes =
-  sprintf "%s__c_type_descriptions" ctypes.Ctypes.lib_name
+  type_description_module ctypes
+  |> Module_name.to_string
+  |> String.lowercase
 
 let type_description_library_public ctypes =
   sprintf "%s.c_type_descriptions" ctypes.Ctypes.lib_name
 
 let function_description_module ctypes =
-  sprintf "%s__c_function_descriptions" ctypes.Ctypes.lib_name
-  |> Module_name.of_string
+  ctypes.Ctypes.function_descriptions
 
 let function_description_library ctypes =
-  sprintf "%s__c_function_descriptions" ctypes.Ctypes.lib_name
+  function_description_module ctypes
+  |> Module_name.to_string
+  |> String.lowercase
 
 let function_description_library_public ctypes =
   sprintf "%s.c_function_descriptions" ctypes.Ctypes.lib_name
 
 let entry_module ctypes =
-  sprintf "%s_c" ctypes.Ctypes.lib_name
-  |> Module_name.of_string
+  ctypes.Ctypes.generated_entry_point
 
 let entry_library ctypes =
-  sprintf "%s_c" ctypes.Ctypes.lib_name
+  entry_module ctypes |> Module_name.to_string |> String.lowercase
 
 let entry_library_public ctypes =
   sprintf "%s.c" ctypes.Ctypes.lib_name
@@ -127,9 +128,14 @@ let c_generated_functions_module ctypes =
   sprintf "%s__c_generated_functions" ctypes.Ctypes.lib_name
   |> Module_name.of_string
 
+(*
 let c_types_includer_module ctypes =
   sprintf "%s__c_types" ctypes.Ctypes.lib_name
   |> Module_name.of_string
+*)
+
+let c_types_includer_module ctypes =
+  ctypes.Ctypes.generated_types
 
 let c_generated_types_cout_c ctypes =
   sprintf "%s__c_cout_generated_types.c" ctypes.Ctypes.lib_name
@@ -217,7 +223,8 @@ let generated_ml_and_c_files ctypes =
   let ml_files =
     List.map [ c_generated_functions_module ctypes
              ; c_generated_types_module ctypes
-             ; c_types_includer_module ctypes ]
+             ; c_types_includer_module ctypes
+             ; entry_module ctypes ]
       ~f:Module_name.to_string
     |> List.map ~f:String.lowercase
     |> List.map ~f:(fun m -> m ^ ".ml")

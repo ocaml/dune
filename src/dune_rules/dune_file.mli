@@ -121,8 +121,11 @@ end
 module Ctypes : sig
   type t =
     { lib_name : string
-    ; includes : string list }
-
+    ; includes : string list
+    ; type_descriptions : Module_name.t
+    ; function_descriptions : Module_name.t
+    ; generated_types : Module_name.t
+    ; generated_entry_point : Module_name.t }
   type Stanza.t += T of t
 end
 

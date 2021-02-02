@@ -484,7 +484,11 @@ module Ctypes = struct
      properly. *)
   type t =
     { lib_name : string
-    ; includes : string list }
+    ; includes : string list
+    ; type_descriptions : Module_name.t
+    ; function_descriptions : Module_name.t
+    ; generated_types       : Module_name.t
+    ; generated_entry_point : Module_name.t }
 
   let name = "ctypes"
 
@@ -499,8 +503,13 @@ module Ctypes = struct
     fields
       (let+ lib_name = field "lib_name" string
        and+ includes = field "includes" (repeat string) ~default:[]
+       and+ type_descriptions = field "type_descriptions" Module_name.decode
+       and+ function_descriptions = field "function_descriptions" Module_name.decode
+       and+ generated_types       = field "generated_types" Module_name.decode
+       and+ generated_entry_point = field "generated_entry_point" Module_name.decode
      in
-     { lib_name; includes })
+     { lib_name; includes; type_descriptions; function_descriptions;
+       generated_types; generated_entry_point })
 
   let () =
     let open Dune_lang.Decoder in

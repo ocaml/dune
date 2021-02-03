@@ -97,10 +97,10 @@ Test error messages
   > EOF
 
   $ dune exec -- c/c.exe "inexistent" 2>&1 | sed -e 's&default/lib:.*&default/lib:..."&g'
-  The library "inexistent" can't be found in the search paths "$TESTCASE_ROOT/_build/install/default/lib:..."
+  The library "inexistent" can't be found in the search paths "OCAMLPATH:$TESTCASE_ROOT/_build/install/default/lib:..."
 
   $ dune exec -- c/c.exe "b.b.b"
   run b
 
   $ dune exec -- c/c.exe "b.b.inexistent" 2>&1  | sed -e 's&default/lib:.*&default/lib:..."&g'
-  The sub-library "inexistent" can't be found in the library b.b in the search paths "$TESTCASE_ROOT/_build/install/default/lib:..."
+  The sub-library "inexistent" can't be found in the library b.b in the search paths "OCAMLPATH:$TESTCASE_ROOT/_build/install/default/lib:..."

@@ -159,6 +159,7 @@ type t =
   ; parsing_context : Univ_map.t
   ; implicit_transitive_deps : bool
   ; wrapped_executables : bool
+  ; executables_implicit_empty_intf : bool
   ; dune_version : Dune_lang.Syntax.Version.t
   ; generate_opam_files : bool
   ; use_standard_c_and_cxx_flags : bool option
@@ -210,6 +211,7 @@ let to_dyn
     ; packages
     ; implicit_transitive_deps
     ; wrapped_executables
+    ; executables_implicit_empty_intf
     ; dune_version
     ; generate_opam_files
     ; use_standard_c_and_cxx_flags
@@ -232,6 +234,7 @@ let to_dyn
           (Package.Name.Map.to_list packages) )
     ; ("implicit_transitive_deps", bool implicit_transitive_deps)
     ; ("wrapped_executables", bool wrapped_executables)
+    ; ("executables_implicit_empty_intf", bool executables_implicit_empty_intf)
     ; ("dune_version", Dune_lang.Syntax.Version.to_dyn dune_version)
     ; ("generate_opam_files", bool generate_opam_files)
     ; ("use_standard_c_and_cxx_flags", option bool use_standard_c_and_cxx_flags)
@@ -550,6 +553,9 @@ let implicit_transitive_deps_default ~lang:_ = true
 let wrapped_executables_default ~(lang : Lang.Instance.t) =
   lang.version >= (2, 0)
 
+let executables_implicit_empty_intf_default ~(lang : Lang.Instance.t) =
+  lang.version >= (3, 0)
+
 let strict_package_deps_default ~(lang : Lang.Instance.t) =
   lang.version >= (3, 0)
 
@@ -593,6 +599,9 @@ let infer ~dir packages =
   in
   let implicit_transitive_deps = implicit_transitive_deps_default ~lang in
   let wrapped_executables = wrapped_executables_default ~lang in
+  let executables_implicit_empty_intf =
+    executables_implicit_empty_intf_default ~lang
+  in
   let explicit_js_mode = explicit_js_mode_default ~lang in
   let strict_package_deps = strict_package_deps_default ~lang in
   let root = dir in
@@ -604,6 +613,7 @@ let infer ~dir packages =
   ; version = None
   ; implicit_transitive_deps
   ; wrapped_executables
+  ; executables_implicit_empty_intf
   ; stanza_parser
   ; project_file
   ; extension_args
@@ -695,6 +705,9 @@ let parse ~dir ~lang ~opam_packages ~file ~dir_status =
              "It is useless since the Merlin configurations are not ambiguous \
               anymore."
            loc lang.syntax (2, 8) ~what:"This field"
+     and+ executables_implicit_empty_intf =
+       field_o_b "executables_implicit_empty_intf"
+         ~check:(Dune_lang.Syntax.since Stanza.syntax (2, 9))
      and+ () = Dune_lang.Versioned_file.no_more_lang
      and+ generate_opam_files =
        field_o_b "generate_opam_files"
@@ -805,6 +818,10 @@ let parse ~dir ~lang ~opam_packages ~file ~dir_status =
        Option.value wrapped_executables
          ~default:(wrapped_executables_default ~lang)
      in
+     let executables_implicit_empty_intf =
+       Option.value executables_implicit_empty_intf
+         ~default:(executables_implicit_empty_intf_default ~lang)
+     in
      let strict_package_deps =
        Option.value strict_package_deps
          ~default:(strict_package_deps_default ~lang)
@@ -864,6 +881,7 @@ let parse ~dir ~lang ~opam_packages ~file ~dir_status =
      ; parsing_context
      ; implicit_transitive_deps
      ; wrapped_executables
+     ; executables_implicit_empty_intf
      ; dune_version
      ; generate_opam_files
      ; use_standard_c_and_cxx_flags
@@ -912,6 +930,8 @@ let set_parsing_context t parser =
   Dune_lang.Decoder.set_many t.parsing_context parser
 
 let wrapped_executables t = t.wrapped_executables
+
+let executables_implicit_empty_intf t = t.executables_implicit_empty_intf
 
 let () =
   let open Dune_lang.Decoder in

@@ -173,6 +173,8 @@ val dune_version : t -> Dune_lang.Syntax.Version.t
 
 val wrapped_executables : t -> bool
 
+val executables_implicit_empty_intf : t -> bool
+
 val strict_package_deps : t -> bool
 
 val cram : t -> bool

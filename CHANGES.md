@@ -14,6 +14,9 @@ Unreleased
 
 - Add `(glob_files_rec <dir>/<glob>)` for globbing files recursively (#4176, @jeremiedimino)
 
+- Automatically generate empty `.mli` files for executables and tests (#3768,
+  fixes #3745, @CraigFe)
+
 2.8.2 (21/01/2021)
 ------------------
 

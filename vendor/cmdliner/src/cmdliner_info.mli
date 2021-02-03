@@ -1,7 +1,7 @@
 (*---------------------------------------------------------------------------
    Copyright (c) 2011 Daniel C. Bünzli. All rights reserved.
    Distributed under the ISC license, see terms at the end of the file.
-   cmdliner v1.0.4-3-ga5ff0e8
+   cmdliner v1.0.4-24-gb0f156d
   ---------------------------------------------------------------------------*)
 
 (** Terms, argument, env vars information.
@@ -111,17 +111,26 @@ val term_add_args : term -> args -> term
 
 type eval
 
-val eval :
-  term:term -> main:term -> choices:term list ->
-  env:(string -> string option) -> eval
+type eval_kind =
+| Simple of term
+| Main of { term : term ; choices : term list }
+| Sub_command of { term : term;
+                   (** is [term] is from a group, [path] are the ancestors
+                        direct with the direct parent *)
+                   path : term list;
+                   main : term;
+                   sibling_terms : term list }
+
+val eval : env:(string -> string option) -> eval_kind -> eval
 
 val eval_term : eval -> term
 val eval_main : eval -> term
 val eval_choices : eval -> term list
 val eval_env_var : eval -> string -> string option
-val eval_kind : eval -> [> `Multiple_main | `Multiple_sub | `Simple ]
+val eval_kind : eval -> [> `Multiple_main | `Multiple_group | `Multiple_sub | `Simple ]
 val eval_with_term : eval -> term -> eval
 val eval_has_choice : eval -> string -> bool
+val eval_terms_rev : eval -> term list
 
 (*---------------------------------------------------------------------------
    Copyright (c) 2011 Daniel C. Bünzli

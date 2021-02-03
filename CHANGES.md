@@ -7,7 +7,7 @@ Unreleased
 - Fixed a bug that could result in needless recompilation under Windows due to
   case differences in the result of `Sys.getcwd` (observed under `emacs`).
   (#3966, @nojb).
-  
+
 - Fixed absence of executable bit for installed `.cmxs` (#4149, fixes #4148, @bobot)
 
 - Allow `%{version:pkg}` to work for external packages (#4104, @kit-ty-kate)
@@ -16,6 +16,9 @@ Unreleased
 
 - Automatically generate empty `.mli` files for executables and tests (#3768,
   fixes #3745, @CraigFe)
+
+- Add `ocaml` command subgroup for OCaml related commands such as `utop`, `top`,
+  and `merlin` (#3936, @rgrinberg).
 
 2.8.2 (21/01/2021)
 ------------------

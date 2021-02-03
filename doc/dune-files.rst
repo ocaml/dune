@@ -12,7 +12,7 @@ contents of all configuration files read by Dune and looks like:
 
 .. code:: scheme
 
-   (lang dune 2.9)
+   (lang dune 3.0)
 
 Additionally, they can contains the following stanzas.
 
@@ -1949,7 +1949,7 @@ a typical ``dune-workspace`` file looks like:
 
 .. code:: scheme
 
-    (lang dune 2.9)
+    (lang dune 3.0)
     (context (opam (switch 4.07.1)))
     (context (opam (switch 4.08.1)))
     (context (opam (switch 4.11.1)))
@@ -1961,7 +1961,7 @@ containing exactly:
 
 .. code:: scheme
 
-    (lang dune 2.9)
+    (lang dune 3.0)
     (context default)
 
 This allows you to use an empty ``dune-workspace`` file to mark the root of your

@@ -314,6 +314,9 @@ module Unprocessed = struct
     | Action (loc, (action : Action_dune_lang.t)) ->
       pp_flag_of_action ~expander ~loc ~action
     | No_preprocessing -> Action_builder.With_targets.return None
+    | Camlp5 _ ->
+        (* failwith "not implemented" *)
+        Action_builder.With_targets.return None
     | Pps { loc; pps; flags; staged = _ } -> (
       match
         Preprocessing.get_ppx_driver sctx ~loc ~expander ~lib_name:libname

@@ -26,7 +26,7 @@ consists of a name and a :ref:`section<install>` (e.g ``lib``, ``share``,
 
 .. code:: scheme
 
-   (lang dune 2.9)
+   (lang dune 3.0)
    (using dune_site 0.1)
    (name mygui)
 
@@ -205,7 +205,7 @@ Main executable (C)
 
 .. code:: scheme
 
-   (lang dune 2.9)
+   (lang dune 3.0)
    (using dune_site 0.1)
    (name c)
    (package
@@ -256,7 +256,7 @@ One plugin (B)
 
 .. code:: scheme
 
-   (lang dune 2.9)
+   (lang dune 3.0)
    (using dune_site 0.1)
    (name b)
 

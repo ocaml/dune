@@ -16,9 +16,6 @@ module Lib = Lib
 module Lib_info = Lib_info
 module Modules = Modules
 module Exe_rules = Exe_rules
-
-(* TODO remove Dune_init from rules *)
-module Dune_init = Dune_init
 module Obj_dir = Obj_dir
 module Merlin_server = Merlin_server
 module Ml_sources = Ml_sources

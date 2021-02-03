@@ -1,0 +1,86 @@
+(lang dune 2.8)
+;(use_meta)
+(name camlp5)
+(version 8.00.1)
+
+(library
+ (name camlp5)
+ (kind normal)
+ (archives (byte camlp5.cma) (native camlp5.cmxa))
+ (plugins (byte camlp5.cma) (native camlp5.cmxs))
+ (native_archives camlp5.a)
+ ;(requires base ppxlib ppx_compare.expander)
+ ;(main_module_name Ppx_compare)
+ (modes byte native)
+ (modules
+  (unwrapped
+    ((name PCaml)
+     (obj_name base__Applicative)
+     (visibility public)
+     (impl)
+     (intf))
+    ((name Applicative_intf)
+     (obj_name base__Applicative_intf)
+     (visibility public)
+     (impl))
+
+    ))
+)
+
+
+(library
+ (name camlp5.pa_r)
+ (kind ppx_rewriter) ; TODO: change?
+ (archives
+  (byte pa_r.cma)
+  (native pa_r.cmxa))
+ (plugins
+  (byte pa_r.cma)
+  (native pa_r.cmxs))
+
+ (native_archives pa_r.a)
+ ;(requires base ppxlib)
+
+ ;(ppx_runtime_deps ppx_compare.runtime-lib)
+ ;(main_module_name Ppx_compare_expander)
+ (modes byte native)
+ ;(modules)
+ (modules
+  (singleton
+     (name Pa_r)
+     (obj_name Pa_r)
+     (visibility public)
+     (impl)
+     (intf)
+  )
+ )
+)
+
+
+(library
+ (name camlp5.pr_r)
+ (kind ppx_rewriter) ; TODO: change?
+ (archives
+  (byte pr_r.cma)
+  (native pr_r.cmxa))
+ (plugins
+  (byte pr_r.cma)
+  (native pr_r.cmxs))
+
+ (native_archives pr_r.a)
+ ;(requires base ppxlib)
+
+ ;(ppx_runtime_deps ppx_compare.runtime-lib)
+ ;(main_module_name Ppx_compare_expander)
+ (modes byte native)
+ ;(modules)
+ (modules
+  (singleton
+     (name Pr_r)
+     (obj_name Pr_r)
+     (visibility public)
+     (impl)
+     (intf)
+  )
+ )
+)

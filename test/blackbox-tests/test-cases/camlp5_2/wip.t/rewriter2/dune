@@ -1,0 +1,6 @@
+(library
+ (name librewriter2)
+ (modules lib2)
+ ;(libraries camlp5)
+ (preprocess
+  (camlp5 camlp5.pa_r camlp5.pr_r)))

@@ -26,14 +26,11 @@ module Dune_file = struct
       in
       List.concat_map stanzas ~f:(fun stanza ->
         match stanza with
-        | Dune_file.Executables _exe ->
-          (* XXX: implement me
-           maybe_expand_ctypes
-             ~sub_systems:()
-             ~dune_version:()
-             stanza exe.Dune_file.Executable.buildable
-          *)
-          [stanza]
+        | Dune_file.Executables exes ->
+          maybe_expand_ctypes
+            ~sub_systems:exes.Dune_file.Executables.sub_systems
+            ~dune_version:exes.Dune_file.Executables.dune_version
+            stanza exes.Dune_file.Executables.buildable
         | Dune_file.Library lib ->
           maybe_expand_ctypes
             ~sub_systems:lib.Dune_file.Library.sub_systems

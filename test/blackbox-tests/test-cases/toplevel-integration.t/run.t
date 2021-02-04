@@ -16,7 +16,6 @@ Test toplevel-init-file on a tiny project
 
   $ dune ocaml top
   #directory "$TESTCASE_ROOT/_build/default/.test.objs/byte";;
-  #directory "$TESTCASE_ROOT/_build/default/.test.objs/native";;
   #load "$TESTCASE_ROOT/_build/default/test.cma";;
 
   $ ocaml -stdin <<EOF

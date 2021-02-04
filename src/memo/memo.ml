@@ -262,8 +262,8 @@ module M = struct
            depended on to avoid recomputations of the dependencies that are no
            longer relevant (see an example below). [Async] functions induce a
            partial (rather than a total) order on dependencies, and so [deps]
-           should be a linearisation of this partial order. It is also
-           worth noting that the problem only occurs with dynamic dependencies,
+           should be a linearisation of this partial order. It is also worth
+           noting that the problem only occurs with dynamic dependencies,
            because static dependencies can never become irrelevant.
 
            As an example, consider the function [let f x = let y = g x in h y].
@@ -386,8 +386,8 @@ module Cached_value = struct
     t.deps <- capture_dep_values ~deps_rev;
     t
 
-  let value_changed (type a) (node : (_, a, _) Dep_node.t) prev_output curr_output
-      =
+  let value_changed (type a) (node : (_, a, _) Dep_node.t) prev_output
+      curr_output =
     match (prev_output, curr_output) with
     | Error _, _ -> true
     | _, Error _ -> true
@@ -666,10 +666,10 @@ module Changed_or_not = struct
     | Unchanged
 end
 
-(* CR-someday aalekseyev:
-   There's a lot of duplication between Exec_sync and Exec_async.
-   We should reduce the duplication, but there are ideas in the air of getting rid of
-   "Sync" memoization entirely, so I'm not investing effort into that. *)
+(* CR-someday aalekseyev: There's a lot of duplication between Exec_sync and
+   Exec_async. We should reduce the duplication, but there are ideas in the air
+   of getting rid of "Sync" memoization entirely, so I'm not investing effort
+   into that. *)
 module rec Exec_sync : sig
   val exec_dep_node : ('a, 'b, 'a -> 'b) Dep_node.t -> 'b
 
@@ -763,7 +763,9 @@ end = struct
                 match old_value with
                 | None -> Cached_value.create res ~deps_rev
                 | Some old_cv -> (
-                  match Cached_value.value_changed dep_node old_cv.value res with
+                  match
+                    Cached_value.value_changed dep_node old_cv.value res
+                  with
                   | false -> Cached_value.confirm_old_value ~deps_rev old_cv
                   | true -> Cached_value.create res ~deps_rev )
               in
@@ -824,7 +826,9 @@ end = struct
   let exec_dep_node_internal = consider_dep_node
 
   let exec t inp = exec_dep_node (dep_node t inp)
-end and Exec_async : sig
+end
+
+and Exec_async : sig
   (** Two kinds of recursive calls: *)
 
   (** [exec_dep_node_internal]: called when we're validating nodes and checking
@@ -858,7 +862,7 @@ end = struct
       match deps with
       | [] -> Fiber.return Changed_or_not.Unchanged
       | Last_dep.T (dep, v_id) :: deps -> (
-          let* res = Exec_unknown.exec_dep_node_internal dep in
+        let* res = Exec_unknown.exec_dep_node_internal dep in
         match Value_id.equal res.id v_id with
         | true -> go deps
         | false -> Fiber.return Changed_or_not.Changed )
@@ -913,7 +917,9 @@ end = struct
                 match old_value with
                 | None -> Cached_value.create res ~deps_rev
                 | Some old_cv -> (
-                  match Cached_value.value_changed dep_node old_cv.value res with
+                  match
+                    Cached_value.value_changed dep_node old_cv.value res
+                  with
                   | false -> Cached_value.confirm_old_value ~deps_rev old_cv
                   | true -> Cached_value.create res ~deps_rev )
               in
@@ -982,28 +988,27 @@ end = struct
   let exec_dep_node_internal = consider_dep_node
 
   let exec t inp = exec_dep_node (dep_node t inp)
-end and
-  Exec_unknown : sig
+end
 
+and Exec_unknown : sig
   val exec_dep_node_internal_from_sync :
     ('a, 'b, 'f) Dep_node.t -> 'b Cached_value.t
 
   val exec_dep_node_internal :
     ('a, 'b, 'f) Dep_node.t -> 'b Cached_value.t Fiber.t
-
 end = struct
-      let exec_dep_node_internal (type i o f) (t : (i, o, f) Dep_node.t) :
-        o Cached_value.t Fiber.t =
-        match t.without_state.spec.f with
-        | Async _ -> Exec_async.exec_dep_node_internal t
-        | Sync _ -> Fiber.return (Exec_sync.exec_dep_node_internal t)
+  let exec_dep_node_internal (type i o f) (t : (i, o, f) Dep_node.t) :
+      o Cached_value.t Fiber.t =
+    match t.without_state.spec.f with
+    | Async _ -> Exec_async.exec_dep_node_internal t
+    | Sync _ -> Fiber.return (Exec_sync.exec_dep_node_internal t)
 
-      let exec_dep_node_internal_from_sync (type i o f) (dep : (i, o, f) Dep_node.t) =
-        match dep.without_state.spec.f with
-        | Async _ -> Code_error.raise "sync computation depends on async" []
-        | Sync _ -> Exec_sync.exec_dep_node_internal dep
-
-    end
+  let exec_dep_node_internal_from_sync (type i o f) (dep : (i, o, f) Dep_node.t)
+      =
+    match dep.without_state.spec.f with
+    | Async _ -> Code_error.raise "sync computation depends on async" []
+    | Sync _ -> Exec_sync.exec_dep_node_internal dep
+end
 
 let exec (type i o f) (t : (i, o, f) t) =
   match t.spec.f with
@@ -1072,8 +1077,7 @@ module Async = struct
   type nonrec ('i, 'o) t = ('i, 'o, 'i -> 'o Fiber.t) t
 end
 
-let invalidate_dep_node (node : _ Dep_node.t) =
-  node.last_cached_value <- None
+let invalidate_dep_node (node : _ Dep_node.t) = node.last_cached_value <- None
 
 module Current_run = struct
   let f () = Run.current ()
@@ -1347,4 +1351,4 @@ let restart_current_run () =
 
 let reset () =
   restart_current_run ();
-  if should_clear_caches then Caches.clear ();
+  if should_clear_caches then Caches.clear ()

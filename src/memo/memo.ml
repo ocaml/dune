@@ -712,17 +712,12 @@ end = struct
       | Need_work { sample_attempt; _ } -> Running sample_attempt
   end
 
-  let exec_unknown_dep_node_internal (type i o f) (dep : (i, o, f) Dep_node.t) =
-    match dep.without_state.spec.f with
-    | Async _ -> Code_error.raise "sync computation depends on async" []
-    | Sync _ -> Exec_sync.exec_dep_node_internal dep
-
   let deps_changed =
     let rec go deps =
       match deps with
       | [] -> Changed_or_not.Unchanged
       | Last_dep.T (dep, v_id) :: deps -> (
-        let res = exec_unknown_dep_node_internal dep in
+        let res = Exec_unknown.exec_dep_node_internal_from_sync dep in
         match Value_id.equal res.id v_id with
         | true -> go deps
         | false -> Changed_or_not.Changed )
@@ -829,24 +824,7 @@ end = struct
   let exec_dep_node_internal = consider_dep_node
 
   let exec t inp = exec_dep_node (dep_node t inp)
-end
-
-module type Exec_dep_node_internal = sig
-  val exec_dep_node_internal :
-    ('a, 'b, 'f) Dep_node.t -> 'b Cached_value.t Fiber.t
-end
-
-let exec_dep_node_internal_ref =
-  ref
-    ( module struct
-      let exec_dep_node_internal _ = assert false
-    end : Exec_dep_node_internal )
-
-let exec_dep_node_internal node =
-  let module M = (val !exec_dep_node_internal_ref) in
-  M.exec_dep_node_internal node
-
-module rec Exec_async : sig
+end and Exec_async : sig
   (** Two kinds of recursive calls: *)
 
   (** [exec_dep_node_internal]: called when we're validating nodes and checking
@@ -880,7 +858,7 @@ end = struct
       match deps with
       | [] -> Fiber.return Changed_or_not.Unchanged
       | Last_dep.T (dep, v_id) :: deps -> (
-        let* res = exec_dep_node_internal dep in
+          let* res = Exec_unknown.exec_dep_node_internal dep in
         match Value_id.equal res.id v_id with
         | true -> go deps
         | false -> Fiber.return Changed_or_not.Changed )
@@ -1004,24 +982,33 @@ end = struct
   let exec_dep_node_internal = consider_dep_node
 
   let exec t inp = exec_dep_node (dep_node t inp)
-end
+end and
+  Exec_unknown : sig
+
+  val exec_dep_node_internal_from_sync :
+    ('a, 'b, 'f) Dep_node.t -> 'b Cached_value.t
+
+  val exec_dep_node_internal :
+    ('a, 'b, 'f) Dep_node.t -> 'b Cached_value.t Fiber.t
+
+end = struct
+      let exec_dep_node_internal (type i o f) (t : (i, o, f) Dep_node.t) :
+        o Cached_value.t Fiber.t =
+        match t.without_state.spec.f with
+        | Async _ -> Exec_async.exec_dep_node_internal t
+        | Sync _ -> Fiber.return (Exec_sync.exec_dep_node_internal t)
+
+      let exec_dep_node_internal_from_sync (type i o f) (dep : (i, o, f) Dep_node.t) =
+        match dep.without_state.spec.f with
+        | Async _ -> Code_error.raise "sync computation depends on async" []
+        | Sync _ -> Exec_sync.exec_dep_node_internal dep
+
+    end
 
 let exec (type i o f) (t : (i, o, f) t) =
   match t.spec.f with
   | Function.Async _ -> (Exec_async.exec t : f)
   | Function.Sync _ -> (Exec_sync.exec t : f)
-
-let async_exec_internal (type i o f) (t : (i, o, f) Dep_node.t) :
-    o Cached_value.t Fiber.t =
-  match t.without_state.spec.f with
-  | Function.Async _ -> Exec_async.exec_dep_node_internal t
-  | Function.Sync _ -> Fiber.return (Exec_sync.exec_dep_node_internal t)
-
-let () =
-  exec_dep_node_internal_ref :=
-    ( module struct
-      let exec_dep_node_internal = async_exec_internal
-    end )
 
 let peek_exn (type i o f) (t : (i, o, f) t) inp =
   match Store.find t.cache inp with

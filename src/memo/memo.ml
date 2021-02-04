@@ -386,7 +386,7 @@ module Cached_value = struct
     t.deps <- capture_dep_values ~deps_rev;
     t
 
-  let dep_changed (type a) (node : (_, a, _) Dep_node.t) prev_output curr_output
+  let value_changed (type a) (node : (_, a, _) Dep_node.t) prev_output curr_output
       =
     match (prev_output, curr_output) with
     | Error _, _ -> true
@@ -768,7 +768,7 @@ end = struct
                 match old_value with
                 | None -> Cached_value.create res ~deps_rev
                 | Some old_cv -> (
-                  match Cached_value.dep_changed dep_node old_cv.value res with
+                  match Cached_value.value_changed dep_node old_cv.value res with
                   | false -> Cached_value.confirm_old_value ~deps_rev old_cv
                   | true -> Cached_value.create res ~deps_rev )
               in
@@ -935,7 +935,7 @@ end = struct
                 match old_value with
                 | None -> Cached_value.create res ~deps_rev
                 | Some old_cv -> (
-                  match Cached_value.dep_changed dep_node old_cv.value res with
+                  match Cached_value.value_changed dep_node old_cv.value res with
                   | false -> Cached_value.confirm_old_value ~deps_rev old_cv
                   | true -> Cached_value.create res ~deps_rev )
               in

@@ -20,6 +20,9 @@ Unreleased
 - Add `ocaml` command subgroup for OCaml related commands such as `utop`, `top`,
   and `merlin` (#3936, @rgrinberg).
 
+- Do not pass include directories containing native objects when compiling
+  bytecode (#4200, @nojb)
+
 2.8.2 (21/01/2021)
 ------------------
 

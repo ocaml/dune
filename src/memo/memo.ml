@@ -1035,6 +1035,18 @@ let peek_exn (type i o f) (t : (i, o, f) t) inp =
         add_dep_from_caller ~called_from_peek:true dep_node Finished;
         Value.get_sync_exn cv.value ) )
 
+let get_deps (type i o f) (t : (i, o, f) t) inp =
+  match Store.find t.cache inp with
+  | None -> None
+  | Some dep_node -> (
+    match get_cached_value_in_current_cycle dep_node with
+    | None -> None
+    | Some cv ->
+      Some
+        (List.map cv.deps ~f:(fun (Last_dep.T (dep, _value)) ->
+             ( Option.map dep.without_state.spec.info ~f:(fun x -> x.name)
+             , ser_input dep.without_state ))) )
+
 let get_func name =
   match Spec.find name with
   | None -> User_error.raise [ Pp.textf "function %s doesn't exist!" name ]

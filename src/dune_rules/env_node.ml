@@ -80,10 +80,9 @@ let make ~dir ~inherit_from ~scope ~config_stanza ~profile ~expander
         @ List.map config.binaries
             ~f:
               (File_binding.Unexpanded.expand ~dir ~f:(fun template ->
-                   Expander.expand
+                   Expander.Static.expand_str
                      (Memo.Lazy.force expander_for_artifacts)
-                     ~mode:Single ~template
-                   |> Value.to_string ~dir:(Path.build dir))))
+                     template)))
   in
   let external_env =
     inherited ~field:external_env ~root:default_env (fun env ->

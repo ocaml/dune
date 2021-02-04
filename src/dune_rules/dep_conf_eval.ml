@@ -5,7 +5,7 @@ open Dep_conf
 
 let make_alias expander s =
   let loc = String_with_vars.loc s in
-  Expander.Or_exn.expand_path expander s
+  Expander.Static.Or_exn.expand_path expander s
   |> Result.map ~f:(Alias.of_user_written_path ~loc)
 
 let fold_source_dirs dir ~init ~f =
@@ -19,7 +19,7 @@ let fold_source_dirs dir ~init ~f =
 
 let dep expander = function
   | File s ->
-    Expander.Or_exn.expand_path expander s
+    Expander.Static.Or_exn.expand_path expander s
     |> Result.map ~f:(fun path ->
            let+ () = Action_builder.path path in
            [ path ])
@@ -37,7 +37,7 @@ let dep expander = function
            [])
   | Glob_files { glob = s; recursive } ->
     let loc = String_with_vars.loc s in
-    let path = Expander.Or_exn.expand_path expander s in
+    let path = Expander.Static.Or_exn.expand_path expander s in
     Result.map path ~f:(fun path ->
         let pred =
           Glob.of_string_exn loc (Path.basename path) |> Glob.to_pred
@@ -58,12 +58,12 @@ let dep expander = function
         in
         List.rev files)
   | Source_tree s ->
-    let path = Expander.Or_exn.expand_path expander s in
+    let path = Expander.Static.Or_exn.expand_path expander s in
     Result.map path ~f:(fun path ->
         Action_builder.map ~f:Path.Set.to_list
           (Action_builder.source_tree ~dir:path))
   | Package p ->
-    Expander.Or_exn.expand_str expander p
+    Expander.Static.Or_exn.expand_str expander p
     |> Result.map ~f:(fun pkg ->
            let+ () =
              let pkg = Package.Name.of_string pkg in
@@ -117,7 +117,7 @@ let dep expander = function
       (let+ () = Action_builder.dep Dep.universe in
        [])
   | Env_var var_sw ->
-    Expander.Or_exn.expand_str expander var_sw
+    Expander.Static.Or_exn.expand_str expander var_sw
     |> Result.map ~f:(fun var ->
            let+ () = Action_builder.env_var var in
            [])
@@ -126,28 +126,45 @@ let dep expander = function
       (let+ () = Action_builder.dep (Dep.sandbox_config sandbox_config) in
        [])
 
-let make_interpreter ~f ~expander l =
-  Expander.expand_deps_like_field expander ~dep_kind:Optional
-    ~f:(fun expander ->
-      match Result.List.map l ~f:(f expander) with
-      | Ok deps ->
-        let+ l = Action_builder.all deps in
-        List.concat l
-      | Error exn -> Action_builder.fail { fail = (fun () -> reraise exn) })
+let dep expander x = Action_builder.of_result (dep expander x)
+
+let prepare_expander expander =
+  let expander = Expander.set_dep_kind expander Optional in
+  Expander.set_expanding_what expander Deps_like_field
 
 let unnamed ~expander l =
-  let+ _paths = make_interpreter ~f:dep ~expander l in
-  ()
+  let expander = prepare_expander expander in
+  List.fold_left l ~init:(Action_builder.return ()) ~f:(fun acc x ->
+      let+ () = acc
+      and+ _x = dep expander x in
+      ())
 
-let named =
-  make_interpreter ~f:(fun expander -> function
-    | Bindings.Unnamed p ->
-      dep expander p
-      |> Result.map ~f:(fun l ->
-             let+ l = l in
-             List.map l ~f:(fun x -> Bindings.Unnamed x))
-    | Named (s, ps) ->
-      Result.List.map ps ~f:(dep expander)
-      |> Result.map ~f:(fun xs ->
-             let+ l = Action_builder.all xs in
-             [ Bindings.Named (s, List.concat l) ]))
+let named ~expander l =
+  let builders, bindings =
+    let expander = prepare_expander expander in
+    List.fold_left l ~init:([], Pform.Map.empty)
+      ~f:(fun (builders, bindings) x ->
+        match x with
+        | Bindings.Unnamed x -> (dep expander x :: builders, bindings)
+        | Named (name, x) ->
+          let x =
+            Action_builder.memoize ("dep " ^ name)
+              (let+ l = Action_builder.all (List.map x ~f:(dep expander)) in
+               List.concat l)
+          in
+          let bindings =
+            Pform.Map.set bindings (Var (User_var name))
+              (let+ paths = x in
+               Dune_util.Value.L.paths paths)
+          in
+          (x :: builders, bindings))
+  in
+  let builder =
+    let+ l = Action_builder.all (List.rev builders) in
+    Dune_util.Value.L.paths (List.concat l)
+  in
+  let builder = Action_builder.memoize "deps" builder in
+  let bindings = Pform.Map.set bindings (Var Deps) builder in
+  let expander = Expander.add_bindings_full expander ~bindings in
+  let builder = Action_builder.ignore builder in
+  (builder, expander)

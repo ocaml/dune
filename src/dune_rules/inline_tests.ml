@@ -268,11 +268,9 @@ include Sub_system.Register_end_point (struct
              (List.filter_map backends ~f:(fun (backend : Backend.t) ->
                   Option.map backend.info.generate_runner
                     ~f:(fun (loc, action) ->
-                      Action_unexpanded.expand action ~loc ~expander
-                        ~dep_kind:Required
+                      Action_unexpanded.expand action ~loc ~expander ~deps:[]
                         ~targets:(Forbidden "inline test generators")
-                        ~targets_dir:dir
-                        (Action_builder.return Bindings.empty))))
+                        ~targets_dir:dir)))
          in
          Action.with_stdout_to target (Action.progn actions)
        in

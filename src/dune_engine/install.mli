@@ -76,10 +76,7 @@ module Entry : sig
     }
 
   val adjust_dst :
-       src:string String_with_vars.Partial.t
-    -> dst:string option
-    -> section:Section.t
-    -> Dst.t
+    src:String_with_vars.t -> dst:string option -> section:Section.t -> Dst.t
 
   val make : Section.t -> ?dst:string -> Path.Build.t -> Path.Build.t t
 

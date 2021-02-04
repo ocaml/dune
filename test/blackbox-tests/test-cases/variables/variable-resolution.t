@@ -67,14 +67,14 @@ Specific variable used at the wrong place:
   File "dune", line 3, characters 9-22:
   3 |  (deps %{library-name}))
                ^^^^^^^^^^^^^
-  Error: %{library-name} isn't allowed in this position
+  Error: %{library-name} isn't allowed in this position.
   exit code: 1
   
   *** Behavior with Dune 3.0 ***
   File "dune", line 3, characters 9-22:
   3 |  (deps %{library-name}))
                ^^^^^^^^^^^^^
-  Error: %{library-name} isn't allowed in this position
+  Error: %{library-name} isn't allowed in this position.
   exit code: 1
 
 Specific variable used at the wrong place that we don't need to

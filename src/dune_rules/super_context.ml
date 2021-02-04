@@ -402,32 +402,11 @@ let resolve_program t ~dir ?hint ~loc bin =
 
 let get_installed_binaries stanzas ~(context : Context.t) =
   let install_dir = Config.local_install_bin_dir ~context:context.name in
-  let expander = Expander.expand_with_reduced_var_set ~context in
   let expand_str ~dir sw =
-    let dir = Path.build dir in
-    String_with_vars.expand ~dir ~mode:Single
-      ~f:(fun ~source pform ->
-        match expander ~source pform with
-        | Unknown -> None
-        | Expanded x -> Some x
-        | Restricted ->
-          User_error.raise ~loc:source.loc
-            [ Pp.textf "%s isn't allowed in this position."
-                (Dune_lang.Template.Pform.describe source)
-            ])
-      sw
-    |> Value.to_string ~dir
+    Expander.Static.With_reduced_var_set.expand_str ~context ~dir sw
   in
   let expand_str_partial ~dir sw =
-    String_with_vars.partial_expand ~dir ~mode:Single
-      ~f:(fun ~source pform ->
-        match expander ~source pform with
-        | Expander.Unknown
-        | Restricted ->
-          None
-        | Expanded x -> Some x)
-      sw
-    |> String_with_vars.Partial.map ~f:(Value.to_string ~dir)
+    Expander.Static.With_reduced_var_set.expand_str_partial ~context ~dir sw
   in
   Dir_with_dune.deep_fold stanzas ~init:Path.Build.Set.empty
     ~f:(fun d stanza acc ->
@@ -437,7 +416,7 @@ let get_installed_binaries stanzas ~(context : Context.t) =
               File_binding.Unexpanded.destination_relative_to_install_path fb
                 ~section:Bin
                 ~expand:(expand_str ~dir:d.ctx_dir)
-                ~expand_partial:(expand_str_partial ~dir:(Path.build d.ctx_dir))
+                ~expand_partial:(expand_str_partial ~dir:d.ctx_dir)
             in
             let p = Path.Local.of_string (Install.Dst.to_string p) in
             if Path.Local.is_root (Path.Local.parent_exn p) then

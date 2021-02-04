@@ -21,7 +21,8 @@ module Alias_rules = struct
     add sctx ~loc ~alias ~stamp action ~locks:[]
 end
 
-let interpret_locks ~expander = List.map ~f:(Expander.expand_path expander)
+let interpret_locks ~expander =
+  List.map ~f:(Expander.Static.expand_path expander)
 
 let check_filename =
   let not_in_dir ~error_loc s =
@@ -90,10 +91,9 @@ let user_rule sctx ?extra_bindings ~dir ~expander (rule : Rule.t) =
             List.concat_map targets ~f:(fun target ->
                 let error_loc = String_with_vars.loc target in
                 ( match multiplicity with
-                | One ->
-                  [ Expander.expand expander ~mode:Single ~template:target ]
-                | Multiple ->
-                  Expander.expand expander ~mode:Many ~template:target )
+                | One -> [ Expander.Static.expand expander ~mode:Single target ]
+                | Multiple -> Expander.Static.expand expander ~mode:Many target
+                )
                 |> List.map ~f:(check_filename ~dir ~error_loc))
           in
           Static { multiplicity; targets } )
@@ -104,9 +104,8 @@ let user_rule sctx ?extra_bindings ~dir ~expander (rule : Rule.t) =
       | Some bindings -> Expander.add_bindings expander ~bindings
     in
     let action =
-      Dep_conf_eval.named ~expander rule.deps
-      |> Action_unexpanded.expand (snd rule.action) ~loc:(fst rule.action)
-           ~expander ~dep_kind:Required ~targets ~targets_dir:dir
+      Action_unexpanded.expand (snd rule.action) ~loc:(fst rule.action)
+        ~expander ~deps:rule.deps ~targets ~targets_dir:dir
     in
     match rule_kind ~rule ~action with
     | No_alias -> add_user_rule sctx ~dir ~rule ~action ~expander
@@ -130,7 +129,7 @@ let user_rule sctx ?extra_bindings ~dir ~expander (rule : Rule.t) =
 let copy_files sctx ~dir ~expander ~src_dir (def : Copy_files.t) =
   let loc = String_with_vars.loc def.files in
   let glob_in_src =
-    let src_glob = Expander.expand_str expander def.files in
+    let src_glob = Expander.Static.expand_str expander def.files in
     if Filename.is_relative src_glob then
       Path.Source.relative src_dir src_glob ~error_loc:loc |> Path.source
     else
@@ -214,22 +213,27 @@ let alias sctx ?extra_bindings ~dir ~expander (alias_conf : Alias_conf.t) =
   | true ->
     let locks = interpret_locks ~expander alias_conf.locks in
     let action =
-      Dep_conf_eval.named ~expander alias_conf.deps
-      |>
-      match alias_conf.action with
-      | None ->
-        fun x ->
-          Action_builder.with_no_targets
-            (let open Action_builder.O in
-            let+ (_ : Path.t Bindings.t) = x in
-            Action.empty)
-      | Some (loc, action) ->
-        let expander =
-          match extra_bindings with
-          | None -> expander
-          | Some bindings -> Expander.add_bindings expander ~bindings
-        in
-        Action_unexpanded.expand action ~loc ~expander ~dep_kind:Required
-          ~targets:(Forbidden "aliases") ~targets_dir:dir
+      let builder, expander = Dep_conf_eval.named ~expander alias_conf.deps in
+      let open Action_builder.With_targets.O in
+      let+ () = Action_builder.with_no_targets builder
+      and+ action =
+        match alias_conf.action with
+        | None ->
+          let builder, _expander =
+            Dep_conf_eval.named ~expander alias_conf.deps
+          in
+          let open Action_builder.With_targets.O in
+          let+ () = Action_builder.with_no_targets builder in
+          Action.empty
+        | Some (loc, action) ->
+          let expander =
+            match extra_bindings with
+            | None -> expander
+            | Some bindings -> Expander.add_bindings expander ~bindings
+          in
+          Action_unexpanded.expand action ~loc ~expander ~deps:alias_conf.deps
+            ~targets:(Forbidden "aliases") ~targets_dir:dir
+      in
+      action
     in
     Alias_rules.add sctx ~loc ~stamp ~locks action ~alias

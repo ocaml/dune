@@ -52,4 +52,7 @@ let () =
     | Error msg -> Error (Ocamlc_config, msg)
   with
   | Error (_, e) -> failwith e
-  | Ok (_ : Ocaml_config.t) -> ()
+  | Ok c ->
+    (* Check that [Ocaml_config.to_list] and [Ocaml_config.by_name] agree *)
+    List.iter (Ocaml_config.to_list c) ~f:(fun (name, v) ->
+        assert (Ocaml_config.by_name c name = Some v))

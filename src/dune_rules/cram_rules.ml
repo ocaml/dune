@@ -156,11 +156,7 @@ let rules ~sctx ~expander ~dir tests =
                 | Some deps ->
                   let deps : unit Action_builder.t =
                     let expander = Super_context.expander sctx ~dir in
-                    let open Action_builder.O in
-                    let+ (_ : Path.t Bindings.t) =
-                      Dep_conf_eval.named ~expander deps
-                    in
-                    ()
+                    fst (Dep_conf_eval.named ~expander deps)
                   in
                   deps :: acc.deps
               in

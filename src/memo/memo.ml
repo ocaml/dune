@@ -262,7 +262,7 @@ module M = struct
            depended on to avoid recomputations of the dependencies that are no
            longer relevant (see an example below). [Async] functions induce a
            partial (rather than a total) order on dependencies, and so [deps]
-           should ideally be a linearisation of this partial order. It is also
+           should be a linearisation of this partial order. It is also
            worth noting that the problem only occurs with dynamic dependencies,
            because static dependencies can never become irrelevant.
 

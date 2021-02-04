@@ -159,10 +159,9 @@ end = struct
             |> Path.Set.to_list |> List.map ~f:Path.basename
           | Generate_module def ->
             [ Generate_module_rules.setup_rules sctx ~dir def ]
-          | Executables { buildable; _ } -> buildable_select_deps buildable
-          | Library { buildable; ctypes; _ } ->
+          | Executables { buildable; _ } | Library { buildable; _ } ->
             let ctypes_generated_ml_and_c_files =
-              match ctypes with
+              match buildable.ctypes with
               | Some ctypes -> Ctypes_stanzas.generated_ml_and_c_files ctypes
               | None -> []
             in

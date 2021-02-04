@@ -1,15 +1,15 @@
 open! Dune_engine
 open! Stdune
 
+module Buildable = Dune_file.Buildable
 module Library = Dune_file.Library
 module Ctypes = Dune_file.Ctypes
 
-let osl_pos _base_lib = "", 0, 0, 0 ;;
+let osl_pos () = "", 0, 0, 0 ;;
 
 let library_stanza ?(flags=Ocaml_flags.Spec.standard) ?public_name ?(foreign_stubs=[])
-      ?(c_library_flags=Ordered_set_lang.Unexpanded.standard) ~base_lib:lib
-      ~name ~modules ~libraries ~wrapped () =
-  let loc, _libname = lib.Library.name in
+      ?(c_library_flags=Ordered_set_lang.Unexpanded.standard) ~loc ~project ~sub_systems
+      ~dune_version ~name ~modules ~libraries ~wrapped () =
   let open Dune_file in
   let visibility =
     match public_name with
@@ -49,6 +49,7 @@ let library_stanza ?(flags=Ocaml_flags.Spec.standard) ?public_name ?(foreign_stu
     ; flags
     ; js_of_ocaml = Js_of_ocaml.default
     ; allow_overlapping_dependencies = false
+    ; ctypes = None;
     }
   in
   { Library.name = (loc, Lib_name.of_string name |> Lib_name.to_local_exn)
@@ -65,9 +66,9 @@ let library_stanza ?(flags=Ocaml_flags.Spec.standard) ?public_name ?(foreign_stu
   ; optional = false
   ; buildable
   ; dynlink = Dynlink_supported.of_bool true
-  ; project = lib.Library.project
-  ; sub_systems = lib.Library.sub_systems
-  ; dune_version = lib.Library.dune_version
+  ; project
+  ; sub_systems
+  ; dune_version
   ; virtual_modules = None
   ; implements = None
   ; default_implementation = None
@@ -75,8 +76,7 @@ let library_stanza ?(flags=Ocaml_flags.Spec.standard) ?public_name ?(foreign_stu
   ; stdlib = None
   ; special_builtin_support = None
   ; enabled_if = Blang.true_
-  ; instrumentation_backend = None
-  ; ctypes = None }
+  ; instrumentation_backend = None }
 
 let sprintf = Printf.sprintf
 
@@ -157,15 +157,16 @@ let c_generated_functions_cout_no_ext ctypes =
    approach here is to simply do a quasi-lexical expansion of the base library
    config stanza into several additional support library stanzas, right after
    the dune config file parsing is completed. *)
-let library_stanzas ~parsing_context base_lib =
+let library_stanzas ~parsing_context ~project ~sub_systems ~dune_version buildable =
   let ctypes =
-    match base_lib.Library.ctypes with
+    match buildable.Buildable.ctypes with
     | Some ctypes -> ctypes
     | None -> assert false
   in
+  let loc = buildable.Buildable.loc in
+  let library_stanza = library_stanza ~loc ~project ~sub_systems ~dune_version in
   let type_descriptions =
     library_stanza
-      ~base_lib
       ~name:(type_description_library ctypes)
       ~public_name:(type_description_library_public ctypes)
       ~modules:[type_description_module ctypes]
@@ -178,10 +179,9 @@ let library_stanzas ~parsing_context base_lib =
          don't break compilation when warnings-as-errors *)
       Ocaml_flags.Spec.of_unexpanded_ordered_set_lang
         (Ordered_set_lang.Unexpanded.standard_with_of_strings
-           ~pos:(osl_pos base_lib) ["-w"; "-27"; "-w"; "-9"])
+           ~pos:(osl_pos ()) ["-w"; "-27"; "-w"; "-9"])
     in
     library_stanza
-      ~base_lib
       ~name:(function_description_library ctypes)
       ~public_name:(function_description_library_public ctypes)
       ~modules:[ c_generated_types_module ctypes
@@ -192,9 +192,8 @@ let library_stanzas ~parsing_context base_lib =
       ~wrapped:false ()
   in
   let combined_final =
-    let pos = osl_pos base_lib in
+    let pos = osl_pos () in
     let foreign_stub =
-      let loc, _libname = base_lib.Library.name in
       Foreign.Stubs.make ~loc ~language:Foreign_language.C
         ~names:(Ordered_set_lang.of_atoms ~loc
                   [c_generated_functions_cout_no_ext ctypes])
@@ -202,7 +201,6 @@ let library_stanzas ~parsing_context base_lib =
                   ~context:parsing_context ~pos (cflags_sexp ctypes))
     in
     library_stanza
-      ~base_lib
       ~name:(entry_library ctypes)
       ~public_name:(entry_library_public ctypes)
       ~libraries:["ctypes"; function_description_library ctypes]

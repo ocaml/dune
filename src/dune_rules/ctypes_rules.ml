@@ -1,7 +1,8 @@
 open! Dune_engine
 open! Stdune
 
-module Library = Dune_file.Library
+module Buildable = Dune_file.Buildable
+module Library =  Dune_file.Library
 module Ctypes = Dune_file.Ctypes
 
 (* This module expands a [(library ... (ctypes ...))] rule into the set of
@@ -229,7 +230,7 @@ let build_c_program ~sctx ~dir ~source_files ~scope ~cflags_txt ~output () =
   in
   Super_context.add_rule sctx ~dir build
 
-let cctx ~base_lib ?(libraries=[]) ~loc ~dir ~scope ~expander ~sctx =
+let cctx ?(libraries=[]) ~buildable ~dynlink ~loc ~obj_dir ~dir ~scope ~expander ~sctx =
   let compile_info =
     let dune_version = Scope.project scope |> Dune_project.dune_version in
     Lib.DB.resolve_user_written_deps_for_exes (Scope.libs scope)
@@ -239,24 +240,19 @@ let cctx ~base_lib ?(libraries=[]) ~loc ~dir ~scope ~expander ~sctx =
       ~dune_version ~optional:false
       ~pps:[]
   in
-  let dynlink =
-    let ctx = Super_context.context sctx in
-    Dynlink_supported.get base_lib.Library.dynlink
-      ctx.Context.supports_shared_libraries
-  in
   Compilation_context.create
     ~super_context:sctx ~scope ~expander
     ~js_of_ocaml:None
     ~dynlink
     ~package:None
-    ~flags:(Super_context.ocaml_flags sctx ~dir base_lib.buildable.flags)
+    ~flags:(Super_context.ocaml_flags sctx ~dir buildable.Buildable.flags)
     ~requires_compile:(Lib.Compile.direct_requires compile_info)
     ~requires_link:(Lib.Compile.requires_link compile_info)
-    ~obj_dir:(Library.obj_dir ~dir base_lib)
+    ~obj_dir
     ~opaque:Compilation_context.Inherit_from_settings
 
-let executable ?(modules=[]) ~base_lib ~loc ~dir ~sctx ~scope ~expander
-      ~program ~libraries () =
+let executable ?(modules=[]) ~buildable ~loc ~obj_dir ~dynlink ~dir ~sctx ~scope
+      ~expander ~program ~libraries () =
   let build_dir = Path.build dir in
   let cctx =
     let modules =
@@ -272,7 +268,8 @@ let executable ?(modules=[]) ~base_lib ~loc ~dir ~sctx ~scope ~expander
       in
       Modules.exe_wrapped ~src_dir:dir ~modules:name_map
     in
-    cctx ~base_lib ~dir ~loc ~scope ~sctx ~expander ~modules ~libraries ()
+    cctx ~buildable ~dir ~loc ~obj_dir ~dynlink ~scope ~sctx ~expander
+      ~modules ~libraries ()
   in
   let program =
     Exe.Program.{
@@ -283,12 +280,13 @@ let executable ?(modules=[]) ~base_lib ~loc ~dir ~sctx ~scope ~expander
   in
   Exe.build_and_link ~program ~linkages:[Exe.Linkage.native] ~promote:None cctx
 
-let gen_rules ~base_lib ~scope ~expander ~dir ~sctx =
-  let loc, _name = base_lib.Library.name in
+let gen_rules ~buildable ~dynlink ~loc ~obj_dir ~scope ~expander ~dir ~sctx =
   let rule = rule ~sctx ~dir in
-  let executable = executable ~base_lib ~loc ~dir ~sctx ~scope ~expander in
+  let executable =
+    executable ~buildable ~loc ~obj_dir ~dynlink ~dir ~sctx ~scope ~expander
+  in
   let ctypes =
-    match base_lib.Library.ctypes with
+    match buildable.Buildable.ctypes with
     | Some ctypes -> ctypes
     | None -> assert false
   in

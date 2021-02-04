@@ -1,7 +1,10 @@
 open! Stdune
 
 val gen_rules :
-     base_lib:Dune_file.Library.t
+     buildable:Dune_file.Buildable.t
+  -> dynlink:bool
+  -> loc:Loc.t
+  -> obj_dir:Path.Build.t Obj_dir.t
   -> scope:Scope.t
   -> expander:Expander.t
   -> dir:Path.Build.t

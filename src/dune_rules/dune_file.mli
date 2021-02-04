@@ -29,6 +29,17 @@ module Lib_deps : sig
   val decode : allow_re_export:bool -> t Dune_lang.Decoder.t
 end
 
+module Ctypes : sig
+  type t =
+    { lib_name : string
+    ; includes : string list
+    ; type_descriptions : Module_name.t
+    ; function_descriptions : Module_name.t
+    ; generated_types : Module_name.t
+    ; generated_entry_point : Module_name.t }
+  type Stanza.t += T of t
+end
+
 (** [preprocess] and [preprocessor_deps] fields *)
 val preprocess_fields :
   ( Preprocess.Without_instrumentation.t Preprocess.Per_module.t
@@ -49,6 +60,7 @@ module Buildable : sig
     ; flags : Ocaml_flags.Spec.t
     ; js_of_ocaml : Js_of_ocaml.t
     ; allow_overlapping_dependencies : bool
+    ; ctypes : Ctypes.t option
     }
 
   (** Check if the buildable has any foreign stubs or archives. *)
@@ -118,18 +130,6 @@ module Mode_conf : sig
   end
 end
 
-module Ctypes : sig
-  type t =
-    { lib_name : string
-    ; includes : string list
-    ; type_descriptions : Module_name.t
-    ; function_descriptions : Module_name.t
-    ; generated_types : Module_name.t
-    ; generated_entry_point : Module_name.t }
-  type Stanza.t += T of t
-end
-
-
 module Library : sig
   type visibility =
     | Public of Public_lib.t
@@ -166,7 +166,6 @@ module Library : sig
     ; special_builtin_support : Lib_info.Special_builtin_support.t option
     ; enabled_if : Blang.t
     ; instrumentation_backend : (Loc.t * Lib_name.t) option
-    ; ctypes : Ctypes.t option
     }
 
   val sub_dir : t -> string option

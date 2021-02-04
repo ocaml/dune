@@ -430,8 +430,19 @@ let rules (lib : Library.t) ~sctx ~dir_contents ~dir ~expander ~scope :
     Lib.DB.get_compile_info (Scope.libs scope) (Library.best_name lib)
       ~allow_overlaps:lib.buildable.allow_overlapping_dependencies
   in
-  Option.iter lib.Library.ctypes ~f:(fun _ctypes ->
-    Ctypes_rules.gen_rules ~base_lib:lib ~sctx ~scope ~expander ~dir);
+  let () =
+    let buildable = lib.Library.buildable in
+    Option.iter buildable.Buildable.ctypes ~f:(fun _ctypes ->
+      let loc, _name =  lib.Library.name in
+      let dynlink =
+        let ctx = Super_context.context sctx in
+        Dynlink_supported.get lib.Library.dynlink
+          ctx.Context.supports_shared_libraries
+      in
+      let obj_dir = Library.obj_dir ~dir lib in
+      Ctypes_rules.gen_rules ~buildable ~dynlink ~loc ~obj_dir ~sctx ~scope
+        ~expander ~dir)
+  in
   let f () =
     let source_modules =
       Dir_contents.ocaml dir_contents

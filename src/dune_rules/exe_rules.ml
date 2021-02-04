@@ -3,6 +3,7 @@ open Import
 open! No_io
 open Build.O
 module Executables = Dune_file.Executables
+module Buildable = Dune_file.Buildable
 
 let first_exe (exes : Executables.t) = snd (List.hd exes.names)
 
@@ -66,7 +67,7 @@ let o_files sctx ~dir ~expander ~(exes : Executables.t) ~linkages ~dir_contents
     []
   else
     let what =
-      if List.is_empty exes.buildable.Dune_file.Buildable.foreign_stubs then
+      if List.is_empty exes.buildable.Buildable.foreign_stubs then
         "archives"
       else
         "stubs"
@@ -200,6 +201,18 @@ let compile_info ~scope (exes : Dune_file.Executables.t) =
 let rules ~sctx ~dir ~dir_contents ~scope ~expander
     (exes : Dune_file.Executables.t) =
   let compile_info = compile_info ~scope exes in
+  let () =
+    let buildable = exes.Executables.buildable in
+    Option.iter buildable.Buildable.ctypes ~f:(fun _ctypes ->
+      let loc =
+        match exes.Executables.names with
+        | hd :: _ -> fst hd
+        | [] -> assert false
+      in
+      let obj_dir = Executables.obj_dir ~dir exes in
+      Ctypes_rules.gen_rules ~buildable ~dynlink:false ~loc ~obj_dir ~sctx
+        ~scope ~expander ~dir)
+  in
   let f () =
     executables_rules exes ~sctx ~dir ~dir_contents ~scope ~expander
       ~compile_info ~embed_in_plugin_libraries:exes.embed_in_plugin_libraries

@@ -12,14 +12,33 @@ module Dune_file = struct
   let parse sexps ~dir ~file ~project =
     let stanzas = Dune_file.Stanzas.parse ~file project sexps in
     let stanzas =
-      List.concat_map stanzas ~f:(fun stanza ->
-        match stanza with
-        | Dune_file.Library ({ ctypes = Some _; _ } as base_lib) ->
+      let maybe_expand_ctypes ~dune_version ~sub_systems stanza buildable =
+        match buildable.Dune_file.Buildable.ctypes with
+        | None -> [stanza]
+        | Some _ctypes ->
           let libs =
-            let parsing_context = Dune_project.parsing_context project in
-            Ctypes_stanzas.library_stanzas ~parsing_context base_lib
+            Ctypes_stanzas.library_stanzas
+              ~parsing_context:(Dune_project.parsing_context project)
+              ~project ~dune_version ~sub_systems
+              buildable
           in
           stanza :: (List.map libs ~f:(fun l -> Dune_file.Library l))
+      in
+      List.concat_map stanzas ~f:(fun stanza ->
+        match stanza with
+        | Dune_file.Executables _exe ->
+          (* XXX: implement me
+           maybe_expand_ctypes
+             ~sub_systems:()
+             ~dune_version:()
+             stanza exe.Dune_file.Executable.buildable
+          *)
+          [stanza]
+        | Dune_file.Library lib ->
+          maybe_expand_ctypes
+            ~sub_systems:lib.Dune_file.Library.sub_systems
+            ~dune_version:lib.Dune_file.Library.dune_version
+            stanza lib.Dune_file.Library.buildable
         | _ -> [stanza])
     in
     let stanzas =

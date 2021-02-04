@@ -332,7 +332,7 @@ module M = struct
   (* We store the last value ['b Cache_value.t] we depended on to support early
      cutoff. *)
   and Last_dep : sig
-    type t = T : ('a, 'b, 'f) Dep_node.t * 'b Cached_value.t -> t
+    type t = T : ('a, 'b, 'f) Dep_node.t * Value_id.t -> t
   end =
     Last_dep
 end
@@ -372,7 +372,7 @@ module Cached_value = struct
         | None ->
           Code_error.raise
             "Attempted to create a cached value based on some stale inputs" []
-        | Some cv -> Last_dep.T (dep_node, cv) ))
+        | Some cv -> Last_dep.T (dep_node, cv.id) ))
 
   let create x ~deps_rev =
     { deps = capture_dep_values ~deps_rev
@@ -382,11 +382,9 @@ module Cached_value = struct
     }
 
   let confirm_old_value t ~deps_rev =
-    { value = t.value
-    ; id = t.id
-    ; last_validated_at = Run.current ()
-    ; deps = capture_dep_values ~deps_rev
-    }
+    t.last_validated_at <- Run.current ();
+    t.deps <- capture_dep_values ~deps_rev;
+    t
 
   let dep_changed (type a) (node : (_, a, _) Dep_node.t) prev_output curr_output
       =
@@ -723,9 +721,9 @@ end = struct
     let rec go deps =
       match deps with
       | [] -> Changed_or_not.Unchanged
-      | Last_dep.T (dep, cv) :: deps -> (
+      | Last_dep.T (dep, v_id) :: deps -> (
         let res = exec_unknown_dep_node_internal dep in
-        match Value_id.equal res.id cv.id with
+        match Value_id.equal res.id v_id with
         | true -> go deps
         | false -> Changed_or_not.Changed )
     in
@@ -881,9 +879,9 @@ end = struct
     let rec go deps =
       match deps with
       | [] -> Fiber.return Changed_or_not.Unchanged
-      | Last_dep.T (dep, cv) :: deps -> (
+      | Last_dep.T (dep, v_id) :: deps -> (
         let* res = exec_dep_node_internal dep in
-        match Value_id.equal res.id cv.id with
+        match Value_id.equal res.id v_id with
         | true -> go deps
         | false -> Fiber.return Changed_or_not.Changed )
     in
@@ -909,8 +907,7 @@ end = struct
               let+ res = deps_changed cv.deps in
               match res with
               | Unchanged ->
-                dep_node.last_cached_value <-
-                  Some { cv with last_validated_at = Run.current () };
+                cv.last_validated_at <- Run.current ();
                 Prev_cycle_cache_lookup_result.Valid cv
               | Changed ->
                 dep_node.last_cached_value <- None;
@@ -1088,7 +1085,8 @@ module Async = struct
   type nonrec ('i, 'o) t = ('i, 'o, 'i -> 'o Fiber.t) t
 end
 
-let invalidate_dep_node (node : _ Dep_node.t) = node.last_cached_value <- None
+let invalidate_dep_node (node : _ Dep_node.t) =
+  node.last_cached_value <- None
 
 module Current_run = struct
   let f () = Run.current ()
@@ -1190,7 +1188,7 @@ let lazy_ ?(cutoff = ( == )) f =
   let cell = lazy_cell ~cutoff f in
   fun () -> Cell.get_sync cell
 
-let lazy_async (type a) ?(cutoff = ( == )) f =
+let lazy_async_cell (type a) ?(cutoff = ( == )) f =
   let module Output = struct
     type t = a
 
@@ -1210,6 +1208,10 @@ let lazy_async (type a) ?(cutoff = ( == )) f =
     Exec.make_dep_node ~spec ~state:Not_considering ~last_cached_value:None
       ~input:()
   in
+  cell
+
+let lazy_async ?(cutoff = ( == )) f =
+  let cell = lazy_async_cell ~cutoff f in
   fun () -> Cell.get_async cell
 
 module Lazy = struct
@@ -1352,7 +1354,10 @@ let should_clear_caches =
     User_error.raise
       [ Pp.text "Invalid value of DUNE_WATCHING_MODE_INCREMENTAL" ]
 
-let reset () =
+let restart_current_run () =
   Current_run.invalidate ();
-  if should_clear_caches then Caches.clear ();
   Run.restart ()
+
+let reset () =
+  restart_current_run ();
+  if should_clear_caches then Caches.clear ();

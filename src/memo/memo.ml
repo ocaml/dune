@@ -700,10 +700,9 @@ end = struct
     type 'a t =
       | Done of 'a Cached_value.t
       | Need_work of
-          { ivar : 'a Cached_value.t Ivar.t
-          ; sample_attempt : Dag.node
-                (** [work] must be called to force [ivar] to be filled *)
-          ; work : (unit -> unit) option
+          { sample_attempt : Dag.node
+          (** [work] must be called to force the value to be computed. *)
+          ; work : (unit -> 'a Cached_value.t)
           }
 
     let sample_attempt_dag_node t : Sample_attempt_dag_node.t =
@@ -790,9 +789,8 @@ end = struct
       Considering
         { run = Run.current (); running = running_state; completion = Sync };
     Start_considering_result.Need_work
-      { ivar
-      ; sample_attempt
-      ; work = Some (fun () -> do_validate dep_node inp ivar running_state)
+      {sample_attempt
+      ; work = (fun () -> do_validate dep_node inp ivar running_state; Ivar.read_exn ivar)
       }
 
   let start_considering_dep_node (dep_node : ('a, 'b, 'a -> 'b) Dep_node.t) =
@@ -804,7 +802,9 @@ end = struct
     | Considering
         { running = { sample_attempt; deps_so_far = _ }; completion = Sync; _ }
       ->
-      Need_work { ivar = Ivar.create (); sample_attempt; work = None }
+      Need_work { sample_attempt; work = (fun () ->
+        (* dependency cycle, should be caught by [add_dep_from_caller] *)
+        assert false) }
 
   let consider_dep_node (dep_node : _ Dep_node.t) =
     let pre_res = start_considering_dep_node dep_node in
@@ -812,12 +812,7 @@ end = struct
       (Start_considering_result.sample_attempt_dag_node pre_res);
     match pre_res with
     | Done v -> v
-    | Need_work { ivar; sample_attempt = _; work } -> (
-      match work with
-      | None -> assert false
-      | Some work ->
-        work ();
-        Ivar.read_exn ivar )
+    | Need_work { sample_attempt = _; work } -> work ()
 
   let exec_dep_node dep_node =
     let res = consider_dep_node dep_node in
@@ -845,10 +840,9 @@ end = struct
     type 'a t =
       | Done of 'a Cached_value.t
       | Need_work of
-          { ivar : 'a Cached_value.t Fiber.Ivar.t
-          ; sample_attempt : Dag.node
+          { sample_attempt : Dag.node
                 (** [work] must be called to force [ivar] to be filled *)
-          ; work : unit Fiber.t option
+          ; work : 'a Cached_value.t Fiber.t
           }
 
     let sample_attempt_dag_node t : Sample_attempt_dag_node.t =
@@ -947,12 +941,10 @@ end = struct
         ; completion = Async ivar
         };
     Start_considering_result.Need_work
-      { ivar
-      ; sample_attempt
+      { sample_attempt
       ; work =
-          Some
-            (Fiber.of_thunk (fun () ->
-                 do_validate dep_node inp ivar running_state))
+          let* () = do_validate dep_node inp ivar running_state in
+          Fiber.Ivar.read ivar
       }
 
   let start_considering_dep_node (dep_node : _ Dep_node.t) =
@@ -966,7 +958,7 @@ end = struct
         ; completion = Async ivar
         ; _
         } ->
-      Need_work { ivar; sample_attempt; work = None }
+      Need_work { sample_attempt; work = Fiber.Ivar.read ivar }
 
   let consider_dep_node (dep_node : _ Dep_node.t) =
     let pre_res = start_considering_dep_node dep_node in
@@ -974,12 +966,8 @@ end = struct
       (Start_considering_result.sample_attempt_dag_node pre_res);
     match pre_res with
     | Done v -> Fiber.return v
-    | Need_work { ivar; sample_attempt = _; work } -> (
-      match work with
-      | None -> Fiber.Ivar.read ivar
-      | Some work ->
-        let* () = work in
-        Fiber.Ivar.read ivar )
+    | Need_work { sample_attempt = _; work } ->
+      work
 
   let exec_dep_node dep_node =
     let* res = consider_dep_node dep_node in

@@ -680,24 +680,6 @@ module rec Exec_sync : sig
   val exec_dep_node_internal :
     ('a, 'b, 'a -> 'b) Dep_node.t -> 'b Cached_value.t
 end = struct
-  module Ivar : sig
-    type 'a t
-
-    val create : unit -> 'a t
-
-    val fill : 'a t -> 'a -> unit
-
-    val read_exn : 'a t -> 'a
-  end = struct
-    type 'a t = 'a option ref
-
-    let read_exn t = Option.value_exn !t
-
-    let fill t x = t := Some x
-
-    let create () = ref None
-  end
-
   module Start_considering_result = struct
     type 'a t =
       | Done of 'a Cached_value.t
@@ -725,7 +707,7 @@ end = struct
     in
     go
 
-  let do_validate (dep_node : _ Dep_node.t) inp ivar running_state =
+  let do_validate (dep_node : _ Dep_node.t) inp running_state =
     let res =
       let frame =
         ( T { without_state = dep_node.without_state; running_state }
@@ -774,8 +756,7 @@ end = struct
               res ))
     in
     dep_node.state <- Not_considering;
-    let () = Ivar.fill ivar res in
-    ()
+    res
 
   let newly_considering (dep_node : _ Dep_node.t) inp =
     let sample_attempt : Dag.node =
@@ -783,7 +764,6 @@ end = struct
       ; data = Dep_node_without_state.T dep_node.without_state
       }
     in
-    let ivar = Ivar.create () in
     let running_state : Running_state.t =
       { sample_attempt; deps_so_far = no_deps_so_far }
     in
@@ -792,10 +772,7 @@ end = struct
         { run = Run.current (); running = running_state; completion = Sync };
     Start_considering_result.Needs_work
       { sample_attempt
-      ; work =
-          (fun () ->
-            do_validate dep_node inp ivar running_state;
-            Ivar.read_exn ivar)
+      ; work = (fun () -> do_validate dep_node inp running_state)
       }
 
   let start_considering_dep_node (dep_node : ('a, 'b, 'a -> 'b) Dep_node.t) =

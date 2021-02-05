@@ -1,7 +1,7 @@
 (*---------------------------------------------------------------------------
    Copyright (c) 2011 Daniel C. Bünzli. All rights reserved.
    Distributed under the ISC license, see terms at the end of the file.
-   cmdliner v1.0.4-3-ga5ff0e8
+   cmdliner v1.0.4-24-gb0f156d
   ---------------------------------------------------------------------------*)
 
 (** Declarative definition of command line interfaces.
@@ -22,7 +22,7 @@
     use. Open the module to use it, it defines only three modules in
     your scope.
 
-    {e v1.0.4-3-ga5ff0e8 — {{:http://erratique.ch/software/cmdliner }homepage}} *)
+    {e v1.0.4-24-gb0f156d — {{:http://erratique.ch/software/cmdliner }homepage}} *)
 
 (** {1:top Interface} *)
 
@@ -381,6 +381,31 @@ module Term : sig
       If the command name is unknown an error is reported. If the name
       is unspecified the "main" term [t] is evaluated. [i] defines the
       name and man page of the program. *)
+
+  module Group : sig
+    type 'a term
+
+    type 'a node =
+    | Term of 'a term
+    | Group of 'a t list
+    (** The type for an individual command or a command group.
+        {ul
+        {- [Term], individual command term.}
+        {- [Group], a list of command terms in the same group.}} *)
+
+    and 'a t = 'a node * info
+    (** An individual command or a command group annotated with an [info] *)
+
+    val eval :
+      ?help:Format.formatter -> ?err:Format.formatter -> ?catch:bool ->
+      ?env:(string -> string option) -> ?argv:string array ->
+      'a term * info -> 'a t list -> 'a result
+    (** [eval help err catch argv (t, i) choices] is like {!eval_choice}
+        except that it will search for term inside the command group [choices]
+
+        If a command group is selected without a sub command, the program will
+        exit with an error message. *)
+  end with type 'a term := 'a t
 
   val eval_peek_opts :
     ?version_opt:bool -> ?env:(string -> string option) ->
@@ -1255,7 +1280,7 @@ let cmd =
     `S Manpage.s_see_also; `P "$(b,rmdir)(1), $(b,unlink)(2)" ]
   in
   Term.(const rm $ prompt $ recursive $ files),
-  Term.info "rm" ~version:"v1.0.4-3-ga5ff0e8" ~doc ~exits:Term.default_exits ~man
+  Term.info "rm" ~version:"v1.0.4-24-gb0f156d" ~doc ~exits:Term.default_exits ~man
 
 let () = Term.(exit @@ eval cmd)
 ]}
@@ -1325,7 +1350,7 @@ let cmd =
       `P "Email them to <hehey at example.org>."; ]
   in
   Term.(ret (const cp $ verbose $ recurse $ force $ srcs $ dest)),
-  Term.info "cp" ~version:"v1.0.4-3-ga5ff0e8" ~doc ~exits ~man ~man_xrefs
+  Term.info "cp" ~version:"v1.0.4-24-gb0f156d" ~doc ~exits ~man ~man_xrefs
 
 let () = Term.(exit @@ eval cmd)
 ]}
@@ -1598,7 +1623,7 @@ let default_cmd =
   let exits = Term.default_exits in
   let man = help_secs in
   Term.(ret (const (fun _ -> `Help (`Pager, None)) $ copts_t)),
-  Term.info "darcs" ~version:"v1.0.4-3-ga5ff0e8" ~doc ~sdocs ~exits ~man
+  Term.info "darcs" ~version:"v1.0.4-24-gb0f156d" ~doc ~sdocs ~exits ~man
 
 let cmds = [initialize_cmd; record_cmd; help_cmd]
 

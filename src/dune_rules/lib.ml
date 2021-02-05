@@ -486,7 +486,7 @@ module L = struct
             Command.Args.Path dir :: A "-I" :: acc)
       |> List.rev )
 
-  let include_paths ?project ts =
+  let include_paths ?project ts mode =
     let visible_cmi =
       match project with
       | None -> fun _ -> true
@@ -513,14 +513,18 @@ module L = struct
             else
               acc
           in
-          let native_dir = Obj_dir.native_dir obj_dir in
-          Path.Set.add acc native_dir)
+          match mode with
+          | Mode.Byte -> acc
+          | Native ->
+            let native_dir = Obj_dir.native_dir obj_dir in
+            Path.Set.add acc native_dir)
     in
     match ts with
     | [] -> dirs
     | x :: _ -> Path.Set.remove dirs x.lib_config.stdlib_dir
 
-  let include_flags ?project ts = to_iflags (include_paths ?project ts)
+  let include_flags ?project ts mode =
+    to_iflags (include_paths ?project ts mode)
 
   let c_include_paths ts =
     let dirs =
@@ -538,7 +542,9 @@ module L = struct
     let params = List.map link ~f:(fun t -> Link_params.get t mode) in
     let dirs =
       let dirs =
-        Path.Set.union (include_paths compile) (c_include_paths link)
+        Path.Set.union
+          (include_paths compile (Link_mode.mode mode))
+          (c_include_paths link)
       in
       List.fold_left params ~init:dirs ~f:(fun acc (p : Link_params.t) ->
           List.fold_left p.include_dirs ~init:acc ~f:Path.Set.add)

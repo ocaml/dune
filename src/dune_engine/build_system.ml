@@ -2054,3 +2054,13 @@ let init ~contexts ~promote_source ?caching ~sandboxing_preference () =
            (sprintf "Done: %u/%u (jobs: %u)" t.rule_done t.rule_total
               (Scheduler.running_jobs_count ()))));
   set t
+
+let cache_teardown () =
+  match get_cache () with
+  | Some { cache = (module Caching : Cache.Caching); _ } ->
+    (* Synchronously wait for the end of the connection with the cache daemon,
+       ensuring all dedup messages have been queued. *)
+    Caching.Cache.teardown Caching.cache;
+    (* Hande all remaining dedup messages. *)
+    Scheduler.wait_for_dune_cache ()
+  | None -> ()

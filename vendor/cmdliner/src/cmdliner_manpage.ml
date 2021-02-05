@@ -1,7 +1,7 @@
 (*---------------------------------------------------------------------------
    Copyright (c) 2011 Daniel C. Bünzli. All rights reserved.
    Distributed under the ISC license, see terms at the end of the file.
-   cmdliner v1.0.4-3-ga5ff0e8
+   cmdliner v1.0.4-24-gb0f156d
   ---------------------------------------------------------------------------*)
 
 (* Manpages *)
@@ -23,7 +23,6 @@ let s_name = "NAME"
 let s_synopsis = "SYNOPSIS"
 let s_description = "DESCRIPTION"
 let s_commands = "COMMANDS"
-let s_command_aliases = "COMMAND ALIASES"
 let s_arguments = "ARGUMENTS"
 let s_options = "OPTIONS"
 let s_common_options = "COMMON OPTIONS"
@@ -46,7 +45,7 @@ let s_see_also = "SEE ALSO"
 let s_created = ""
 let order =
   [| s_name; s_synopsis; s_description; s_created; s_commands;
-     s_command_aliases; s_arguments; s_options; s_common_options; s_exit_status;
+     s_arguments; s_options; s_common_options; s_exit_status;
      s_environment; s_files; s_examples; s_bugs; s_authors; s_see_also; |]
 
 let order_synopsis = 1

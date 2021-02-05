@@ -12,7 +12,7 @@ contents of all configuration files read by Dune and looks like:
 
 .. code:: scheme
 
-   (lang dune 2.9)
+   (lang dune 3.0)
 
 Additionally, they can contains the following stanzas.
 
@@ -90,6 +90,24 @@ executables on a per project basis:
 Starting from dune 2.0, dune mangles compilation units of executables by
 default. However, this can still be turned off using ``(wrapped_executables
 false)``
+
+.. _executables_implicit_empty_intf:
+
+executables_implicit_empty_intf
+-------------------------------
+
+By default, executables defined via ``(executables(s) ...)`` or ``(test(s)
+...)`` stanzas are compiled with the interface file provided (e.g. ``.mli`` or
+``rei``). Since these modules cannot be used as library dependencies, it's
+common to give them empty interface files to strengthen the compiler's ability
+to detect unused values in these modules.
+
+Starting from dune 2.9, an option is available to automatically generate empty
+interface files for executables and tests that don't already have them:
+
+.. code:: scheme
+
+    (executables_implicit_empty_intf true)
 
 .. _explicit-js-mode:
 
@@ -632,6 +650,9 @@ binary at the same place as where ``ocamlc`` was found.
 
 Executables can also be linked as object or shared object files. See
 `linking modes`_ for more information.
+
+Starting from dune 2.9, it's possible to automatically generate empty interface
+files for executables. See `executables_implicit_empty_intf`_.
 
 ``<optional-fields>`` are:
 
@@ -1344,6 +1365,9 @@ running dune runtest you can use the following stanza:
     (libraries alcotest mylib)
     (action (run %{test} -e)))
 
+Starting from dune 2.9, it's possible to automatically generate empty interface
+files for test executables. See `executables_implicit_empty_intf`_.
+
 test
 ----
 
@@ -1925,7 +1949,7 @@ a typical ``dune-workspace`` file looks like:
 
 .. code:: scheme
 
-    (lang dune 2.9)
+    (lang dune 3.0)
     (context (opam (switch 4.07.1)))
     (context (opam (switch 4.08.1)))
     (context (opam (switch 4.11.1)))
@@ -1937,7 +1961,7 @@ containing exactly:
 
 .. code:: scheme
 
-    (lang dune 2.9)
+    (lang dune 3.0)
     (context default)
 
 This allows you to use an empty ``dune-workspace`` file to mark the root of your

@@ -86,6 +86,9 @@ let term =
       | [] -> ()
       | targets ->
         Scheduler.go ~common (fun () -> Memo.Build.run (do_build targets));
+        Build_system.cache_teardown ();
+        (* We must manually run the hook because Unix.exec will not run
+           [at_exit] hooks *)
         Hooks.End_of_build.run () );
     match prog_where with
     | `Search prog ->

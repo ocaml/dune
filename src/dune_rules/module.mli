@@ -69,6 +69,8 @@ val has : t -> ml_kind:Ml_kind.t -> bool
 (** Prefix the object name with the library name. *)
 val with_wrapper : t -> main_module_name:Module_name.t -> t
 
+val add_file : t -> Ml_kind.t -> File.t -> t
+
 val map_files : t -> f:(Ml_kind.t -> File.t -> File.t) -> t
 
 (** Set preprocessing flags *)

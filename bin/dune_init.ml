@@ -1,6 +1,7 @@
 open! Dune_engine
 open! Stdune
 open! Import
+module Dune_file = Dune_rules.Dune_file
 
 (** Because the dune_init utility deals with the addition of stanzas and fields
     to dune projects and files, we need to inspect and manipulate the concrete

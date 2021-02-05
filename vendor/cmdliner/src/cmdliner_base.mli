@@ -1,7 +1,7 @@
 (*---------------------------------------------------------------------------
    Copyright (c) 2011 Daniel C. Bünzli. All rights reserved.
    Distributed under the ISC license, see terms at the end of the file.
-   cmdliner v1.0.4-3-ga5ff0e8
+   cmdliner v1.0.4-24-gb0f156d
   ---------------------------------------------------------------------------*)
 
 (** A few helpful base definitions. *)
@@ -20,6 +20,7 @@ val err_ambiguous : kind:string -> string -> ambs:string list -> string
 val err_unknown : ?hints:string list -> kind:string -> string -> string
 val err_multi_def :
   kind:string -> string -> ('b -> string) -> 'b -> 'b -> string
+ val err_no_sub_command : string
 
 (** {1:conv Textual OCaml value converters} *)
 

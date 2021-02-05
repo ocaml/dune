@@ -11,16 +11,18 @@ module Includes = struct
     | Error exn ->
       Cm_kind.Dict.make_all (Command.Args.Fail { fail = (fun () -> raise exn) })
     | Ok libs ->
-      let iflags = Lib.L.include_flags ~project libs in
+      let iflags mode = Lib.L.include_flags ~project libs mode in
       let cmi_includes =
         Command.Args.memo
           (Command.Args.S
-             [ iflags; Hidden_deps (Lib_file_deps.deps libs ~groups:[ Cmi ]) ])
+             [ iflags Byte
+             ; Hidden_deps (Lib_file_deps.deps libs ~groups:[ Cmi ])
+             ])
       in
       let cmx_includes =
         Command.Args.memo
           (Command.Args.S
-             [ iflags
+             [ iflags Native
              ; Hidden_deps
                  ( if opaque then
                    List.map libs ~f:(fun lib ->

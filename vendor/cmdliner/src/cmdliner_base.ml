@@ -1,7 +1,7 @@
 (*---------------------------------------------------------------------------
    Copyright (c) 2011 Daniel C. Bünzli. All rights reserved.
    Distributed under the ISC license, see terms at the end of the file.
-   cmdliner v1.0.4-3-ga5ff0e8
+   cmdliner v1.0.4-24-gb0f156d
   ---------------------------------------------------------------------------*)
 
 (* Invalid argument strings *)
@@ -82,6 +82,9 @@ let err_unknown ?(hints = []) ~kind v =
   let did_you_mean s = strf ", did you mean %s ?" s in
   let hints = match hints with [] -> "." | hs -> did_you_mean (alts_str hs) in
   strf "unknown %s %s%s" kind (quote v) hints
+
+let err_no_sub_command =
+  "is a command group and requires a command argument."
 
 let err_no kind s = strf "no %s %s" (quote s) kind
 let err_not_dir s = strf "%s is not a directory" (quote s)

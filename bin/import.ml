@@ -29,6 +29,8 @@ module Profile = Dune_rules.Profile
 module Log = Dune_util.Log
 include Common.Let_syntax
 
+let in_group (t, info) = (Term.Group.Term t, info)
+
 let make_cache (config : Config.t) =
   let make_cache () =
     let command_handler (Cache.Dedup file) =

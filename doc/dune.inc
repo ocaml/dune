@@ -1,5 +1,14 @@
 
 (rule
+ (with-stdout-to dune-test.1
+  (run dune test --help=groff)))
+
+(install
+ (section man)
+ (package dune)
+ (files   dune-test.1))
+
+(rule
  (with-stdout-to dune-build.1
   (run dune build --help=groff)))
 
@@ -108,6 +117,15 @@
  (files   dune-installed-libraries.1))
 
 (rule
+ (with-stdout-to dune-ocaml.1
+  (run dune ocaml --help=groff)))
+
+(install
+ (section man)
+ (package dune)
+ (files   dune-ocaml.1))
+
+(rule
  (with-stdout-to dune-ocaml-merlin.1
   (run dune ocaml-merlin --help=groff)))
 
@@ -196,13 +214,4 @@
  (section man)
  (package dune)
  (files   dune-utop.1))
-
-(rule
- (with-stdout-to dune-test.1
-  (run dune test --help=groff)))
-
-(install
- (section man)
- (package dune)
- (files   dune-test.1))
 

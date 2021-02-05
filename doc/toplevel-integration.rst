@@ -13,9 +13,9 @@ simply execute the following in your toplevel:
 
 .. code:: ocaml
 
-    # #use_output "dune top";;
+    # #use_output "dune ocaml top";;
 
-``dune top`` is a dune command that builds all the libraries in the
+``dune ocaml top`` is a dune command that builds all the libraries in the
 current directory and sub-directories and output the relevant toplevel
 directives (``#directory`` and ``#load``) to make the various modules
 available in the toplevel.
@@ -25,9 +25,9 @@ you type in the toplevel will be rewritten with these ppx rewriters.
 
 This command is available since Dune 2.5.0.
 
-Note that the ``#use_output`` directivce is only available since OCaml
-4.11. You can add the following snippet to your ``~/.ocamlinit`` file
-to make it available in older versions of OCaml:
+Note that the ``#use_output`` directive is only available since OCaml 4.11. You
+can add the following snippet to your ``~/.ocamlinit`` file to make it available
+in older versions of OCaml:
 
 .. code:: ocaml
 

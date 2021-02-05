@@ -239,10 +239,11 @@ Comments in dune files are preserved
 Will not create components with invalid names
 
   $ dune init lib invalid-component-name ./_test_lib
-  dune: NAME argument: invalid component name `invalid-component-name'
-        Library names must be non-empty and composed only of the
-        following
-        characters: 'A'..'Z', 'a'..'z', '_' or '0'..'9'.
+  dune init: NAME argument: invalid component name
+             `invalid-component-name'
+             Library names must be non-empty and composed only of the
+             following
+             characters: 'A'..'Z', 'a'..'z', '_' or '0'..'9'.
   Usage: dune init [OPTION]... INIT_KIND NAME [PATH]
   Try `dune init --help' or `dune --help' for more information.
   [1]
@@ -252,8 +253,8 @@ Will not create components with invalid names
 Will fail and inform user when invalid component command is given
 
   $ dune init foo blah
-  dune: INIT_KIND argument: invalid value `foo', expected one of `executable',
-        `library', `project' or `test'
+  dune init: INIT_KIND argument: invalid value `foo', expected one of
+             `executable', `library', `project' or `test'
   Usage: dune init [OPTION]... INIT_KIND NAME [PATH]
   Try `dune init --help' or `dune --help' for more information.
   [1]
@@ -354,7 +355,7 @@ Can init and build a new library project
 
   $ dune runtest --root test_lib_proj --display short
   Entering directory 'test_lib_proj'
-        ocamlc test/.test_lib_proj.eobjs/byte/dune__exe__Test_lib_proj.{cmi,cmo,cmt}
+        ocamlc test/.test_lib_proj.eobjs/byte/dune__exe__Test_lib_proj.{cmi,cmti}
       ocamlopt test/.test_lib_proj.eobjs/native/dune__exe__Test_lib_proj.{cmx,o}
       ocamlopt test/test_lib_proj.exe
   test_lib_proj alias test/runtest

@@ -47,7 +47,9 @@ let term =
       let requires =
         Dune_rules.Lib.closure ~linking:true libs |> Result.ok_exn
       in
-      let include_paths = Dune_rules.Lib.L.include_paths requires in
+      let include_paths =
+        Dune_rules.Lib.L.include_paths requires Dune_rules.Mode.Byte
+      in
       let files = link_deps requires in
       let* () =
         Memo.Build.run (do_build (List.map files ~f:(fun f -> Target.File f)))

@@ -8,6 +8,15 @@ let make_alias expander s =
   Expander.Or_exn.expand_path expander s
   |> Result.map ~f:(Alias.of_user_written_path ~loc)
 
+let fold_source_dirs dir ~init ~f =
+  let prefix_with, dir = Path.extract_build_context_dir_exn dir in
+  match File_tree.find_dir dir with
+  | None -> init
+  | Some dir ->
+    File_tree.Dir.fold dir ~init ~traverse:Sub_dirs.Status.Set.all
+      ~f:(fun dir acc ->
+        f (Path.append_source prefix_with (File_tree.Dir.path dir)) acc)
+
 let dep expander = function
   | File s ->
     Expander.Or_exn.expand_path expander s
@@ -26,7 +35,7 @@ let dep expander = function
              Build_system.Alias.dep_rec ~loc:(String_with_vars.loc s) a
            in
            [])
-  | Glob_files s ->
+  | Glob_files { glob = s; recursive } ->
     let loc = String_with_vars.loc s in
     let path = Expander.Or_exn.expand_path expander s in
     Result.map path ~f:(fun path ->
@@ -34,8 +43,20 @@ let dep expander = function
           Glob.of_string_exn loc (Path.basename path) |> Glob.to_pred
         in
         let dir = Path.parent_exn path in
-        Action_builder.map ~f:Path.Set.to_list
-          (File_selector.create ~dir pred |> Action_builder.paths_matching ~loc))
+        let add_dir dir acc =
+          let+ paths =
+            Action_builder.paths_matching ~loc (File_selector.create ~dir pred)
+          and+ acc = acc in
+          Path.Set.fold paths ~init:acc ~f:(fun p acc -> p :: acc)
+        in
+        let+ files =
+          let init = Action_builder.return [] in
+          if recursive then
+            fold_source_dirs dir ~init ~f:add_dir
+          else
+            add_dir dir init
+        in
+        List.rev files)
   | Source_tree s ->
     let path = Expander.Or_exn.expand_path expander s in
     Result.map path ~f:(fun path ->

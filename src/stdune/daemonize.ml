@@ -85,6 +85,8 @@ let daemonize ?workdir ?(foreground = false) beacon
   in
   let open Result.O in
   check_beacon path >>= function
+  | Some (daemon_info, pid, _) ->
+    Result.Ok (Already_running { daemon_info; pid = Pid.of_int pid })
   | None ->
     if foreground then (
       let+ fd = make_beacon beacon in
@@ -142,8 +144,6 @@ let daemonize ?workdir ?(foreground = false) beacon
             | _ -> None)
       in
       Started { daemon_info; pid = Pid.of_int pid }
-  | Some (daemon_info, pid, _) ->
-    Result.Ok (Already_running { daemon_info; pid = Pid.of_int pid })
 
 let stop beacon =
   let open Result.O in

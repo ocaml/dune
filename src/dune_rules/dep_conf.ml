@@ -7,7 +7,10 @@ type t =
   | File of String_with_vars.t
   | Alias of String_with_vars.t
   | Alias_rec of String_with_vars.t
-  | Glob_files of String_with_vars.t
+  | Glob_files of
+      { glob : String_with_vars.t
+      ; recursive : bool
+      }
   | Source_tree of String_with_vars.t
   | Package of String_with_vars.t
   | Universe
@@ -18,7 +21,8 @@ let remove_locs = function
   | File sw -> File (String_with_vars.remove_locs sw)
   | Alias sw -> Alias (String_with_vars.remove_locs sw)
   | Alias_rec sw -> Alias_rec (String_with_vars.remove_locs sw)
-  | Glob_files sw -> Glob_files (String_with_vars.remove_locs sw)
+  | Glob_files g ->
+    Glob_files { g with glob = String_with_vars.remove_locs g.glob }
   | Source_tree sw -> Source_tree (String_with_vars.remove_locs sw)
   | Package sw -> Package (String_with_vars.remove_locs sw)
   | Universe -> Universe
@@ -46,7 +50,12 @@ let decode =
       [ ("file", sw >>| fun x -> File x)
       ; ("alias", sw >>| fun x -> Alias x)
       ; ("alias_rec", sw >>| fun x -> Alias_rec x)
-      ; ("glob_files", sw >>| fun x -> Glob_files x)
+      ; ( "glob_files"
+        , sw >>| fun x -> Glob_files { glob = x; recursive = false } )
+      ; ( "glob_files_rec"
+        , let+ () = Dune_lang.Syntax.since Stanza.syntax (2, 9)
+          and+ x = sw in
+          Glob_files { glob = x; recursive = true } )
       ; ("package", sw >>| fun x -> Package x)
       ; ("universe", return Universe)
       ; ( "files_recursively_in"
@@ -76,9 +85,13 @@ let encode = function
   | Alias_rec t ->
     List
       [ Dune_lang.unsafe_atom_of_string "alias_rec"; String_with_vars.encode t ]
-  | Glob_files t ->
+  | Glob_files { glob = t; recursive } ->
     List
-      [ Dune_lang.unsafe_atom_of_string "glob_files"
+      [ Dune_lang.unsafe_atom_of_string
+          ( if recursive then
+            "glob_files_rec"
+          else
+            "glob_files" )
       ; String_with_vars.encode t
       ]
   | Source_tree t ->

@@ -329,8 +329,10 @@ module M = struct
   end =
     Dep_node
 
-  (* We store the last value ['b Cache_value.t] we depended on to support early
-     cutoff. *)
+  (* We store the [Value_id] of the last ['b Cache_value.t] value we depended on
+     to support early cutoff. When [Value_id <> Dep_node.last_cached_value.id],
+     the early cutoff fails and the holder of the corresponding [Last_dep] needs
+     to be recomputed. *)
   and Last_dep : sig
     type t = T : ('a, 'b, 'f) Dep_node.t * Value_id.t -> t
   end =
@@ -655,9 +657,9 @@ let dep_node (type i o f) (t : (i, o, f) t) inp =
     dep_node
 
 module Prev_cycle_cache_lookup_result = struct
-  type ('a, 'b) t =
-    | Valid of 'a
-    | Invalid of { old_value : 'b option }
+  type 'a t =
+    | Valid of 'a Cached_value.t
+    | Invalid of { old_value : 'a Cached_value.t option }
 end
 
 module Changed_or_not = struct
@@ -702,8 +704,11 @@ end = struct
       | Need_work of
           { ivar : 'a Cached_value.t Ivar.t
           ; sample_attempt : Dag.node
-                (** [work] must be called to force [ivar] to be filled *)
           ; work : (unit -> unit) option
+                (** If [work = Some f] then [f] must be called to force [ivar]
+                    to be filled. Otherwise, if [work = None], the work is
+                    already under way and one can subscribe to the result by
+                    reading the [ivar]. *)
           }
 
     let sample_attempt_dag_node t : Sample_attempt_dag_node.t =
@@ -844,17 +849,15 @@ end = struct
   module Start_considering_result = struct
     type 'a t =
       | Done of 'a Cached_value.t
-      | Need_work of
-          { ivar : 'a Cached_value.t Fiber.Ivar.t
-          ; sample_attempt : Dag.node
-                (** [work] must be called to force [ivar] to be filled *)
-          ; work : unit Fiber.t option
+      | Needs_work of
+          { sample_attempt : Dag.node
+          ; work : 'a Cached_value.t Fiber.t
           }
 
     let sample_attempt_dag_node t : Sample_attempt_dag_node.t =
       match t with
       | Done _ -> Finished
-      | Need_work { sample_attempt; _ } -> Running sample_attempt
+      | Needs_work { sample_attempt; _ } -> Running sample_attempt
   end
 
   let deps_changed =
@@ -868,12 +871,6 @@ end = struct
         | false -> Fiber.return Changed_or_not.Changed )
     in
     go
-
-  module Prev_cycle_cache_lookup_result = struct
-    type ('a, 'b) t =
-      | Valid of 'a
-      | Invalid of { old_value : 'b option }
-  end
 
   let do_validate (dep_node : _ Dep_node.t) inp ivar running_state =
     let* res =
@@ -903,8 +900,8 @@ end = struct
               (* A consequence of using [Fiber.collect_errors] is that memoized
                  functions don't report errors promptly - errors are reported
                  once all child fibers terminate. To fix this, we should use
-                 [Fiber.with_error_handler], but we dont have access to dune's
-                 error reoprting mechanism in memo *)
+                 [Fiber.with_error_handler], but we don't have access to dune's
+                 error reporting mechanism in memo *)
               let+ res = Fiber.collect_errors (fun () -> f inp) in
               let res =
                 Result.map_error res ~f:(fun exns ->
@@ -920,15 +917,15 @@ end = struct
                   match
                     Cached_value.value_changed dep_node old_cv.value res
                   with
-                  | false -> Cached_value.confirm_old_value ~deps_rev old_cv
-                  | true -> Cached_value.create res ~deps_rev )
+                  | true -> Cached_value.create res ~deps_rev
+                  | false -> Cached_value.confirm_old_value ~deps_rev old_cv )
               in
               dep_node.last_cached_value <- Some res;
               res ))
     in
     dep_node.state <- Not_considering;
     let+ () = Fiber.Ivar.fill ivar res in
-    ()
+    res
 
   let newly_considering (dep_node : _ Dep_node.t) inp =
     let sample_attempt : Dag.node =
@@ -946,13 +943,10 @@ end = struct
         ; running = running_state
         ; completion = Async ivar
         };
-    Start_considering_result.Need_work
-      { ivar
-      ; sample_attempt
+    Start_considering_result.Needs_work
+      { sample_attempt
       ; work =
-          Some
-            (Fiber.of_thunk (fun () ->
-                 do_validate dep_node inp ivar running_state))
+          Fiber.of_thunk (fun () -> do_validate dep_node inp ivar running_state)
       }
 
   let start_considering_dep_node (dep_node : _ Dep_node.t) =
@@ -966,7 +960,7 @@ end = struct
         ; completion = Async ivar
         ; _
         } ->
-      Need_work { ivar; sample_attempt; work = None }
+      Needs_work { sample_attempt; work = Fiber.Ivar.read ivar }
 
   let consider_dep_node (dep_node : _ Dep_node.t) =
     let pre_res = start_considering_dep_node dep_node in
@@ -974,12 +968,7 @@ end = struct
       (Start_considering_result.sample_attempt_dag_node pre_res);
     match pre_res with
     | Done v -> Fiber.return v
-    | Need_work { ivar; sample_attempt = _; work } -> (
-      match work with
-      | None -> Fiber.Ivar.read ivar
-      | Some work ->
-        let* () = work in
-        Fiber.Ivar.read ivar )
+    | Needs_work { sample_attempt = _; work } -> work
 
   let exec_dep_node dep_node =
     let* res = consider_dep_node dep_node in

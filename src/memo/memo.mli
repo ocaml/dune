@@ -351,6 +351,10 @@ module Cell : sig
   val get_sync : ('a, 'b, 'a -> 'b) t -> 'b
 
   val get_async : ('a, 'b, 'a -> 'b Build.t) t -> 'b Build.t
+
+  (** Mark this cell as invalid, forcing recomputation of this value. The
+      consumers may be recomputed or not, depending on early cutoff. *)
+  val invalidate : _ t -> unit
 end
 
 val cell : ('a, 'b, 'f) t -> 'a -> ('a, 'b, 'f) Cell.t

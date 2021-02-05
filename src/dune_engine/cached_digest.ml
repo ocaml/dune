@@ -145,9 +145,13 @@ let peek_file fn =
       ) )
 
 let file fn =
-  match peek_file fn with
-  | None -> refresh fn
-  | Some v -> v
+  let res =
+    match peek_file fn with
+    | None -> refresh fn
+    | Some v -> v
+  in
+  Fs_notify_memo.depend fn;
+  res
 
 let remove fn =
   let cache = Lazy.force cache in

@@ -106,7 +106,7 @@ distclean: clean
 	rm -f src/dune_rules/setup.ml
 
 doc:
-	cd doc && sphinx-build . _build
+	sphinx-build doc doc/_build
 
 livedoc:
 	cd doc && sphinx-autobuild . _build \

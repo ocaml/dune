@@ -180,6 +180,10 @@ Dune supports the following variables:
   ``false`` otherwise
 - ``<ext>:<path>`` where ``<ext>`` is one of ``cmo``, ``cmi``, ``cma``,
   ``cmx``, or ``cmxa``. See :ref:`variables-for-artifacts`.
+- ``env:<var>=<default``, which expands to the value of the environment
+  variable ``<var>``, or ``<default>`` if it does not exist.
+  For example, ``%{env:BIN=/usr/bin}``.
+  Available since dune 1.4.0.
 
 In addition, ``(action ...)`` fields support the following special variables:
 

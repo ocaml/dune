@@ -1478,8 +1478,9 @@ Unreleased
   help Windows builds where paths are limited in length (#1511, fixes
   #1497, @diml)
 
-- Fix interpretation of environment variables under `setenv`. Also forbid
-  dynamic environment names or values (#1503, @rgrinberg).
+- Fix interpretation of `%{env:<var>=<default>}` environment variables
+  under `setenv`. Also forbid dynamic environment names or values
+  (#1503, @rgrinberg).
 
 1.4.0 (10/10/2018)
 ------------------
@@ -1526,6 +1527,10 @@ Unreleased
   installed (#1391, @nojb)
 
 - Take argument to self_build_stubs_archive into account. (#1395, @nojb)
+
+- New variable form `%{env:<var>=<default>}` that expands to the environment
+  variable `<var>`, or `<default>` if not found. Example: `%{env:BIN=/usr/bin}`.
+  (#1305, @trefis)
 
 - Fix bad interaction between `env` customization and vendored
   projects: when a vendored project didn't have its own `env` stanza,

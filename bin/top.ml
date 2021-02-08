@@ -57,8 +57,8 @@ let term =
       let files_to_load =
         List.filter files ~f:(fun p ->
             let ext = Path.extension p in
-            ext = Dune_rules.Mode.compiled_lib_ext Byte
-            || ext = Dune_rules.Cm_kind.ext Cmo)
+            ext = Dune_engine.Mode.compiled_lib_ext Byte
+            || ext = Dune_engine.Cm_kind.ext Cmo)
       in
       Dune_rules.Toplevel.print_toplevel_init_file ~include_paths ~files_to_load;
       Fiber.return ())

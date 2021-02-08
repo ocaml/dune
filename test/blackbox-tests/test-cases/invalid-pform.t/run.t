@@ -6,5 +6,5 @@ When an unknown pform is encountered, a sensible message is printed out.
   File "dune", line 1, characters 14-22:
   1 | (rule (copy %{unknown} x.ml))
                     ^^^^^^^^
-  Error: Unknown variable "unknown"
+  Error: Unknown variable %{unknown}
   [1]

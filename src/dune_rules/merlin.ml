@@ -170,7 +170,7 @@ module Unprocessed = struct
       let args =
         let open Option.O in
         let* args, input_file = List.destruct_last args in
-        if String_with_vars.is_var input_file ~name:"input-file" then
+        if String_with_vars.is_pform input_file (Var Input_file) then
           Some args
         else
           None

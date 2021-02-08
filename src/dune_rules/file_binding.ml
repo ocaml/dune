@@ -71,7 +71,7 @@ module Unexpanded = struct
         and+ version = Dune_lang.Syntax.get_exn Stanza.syntax in
         if (not is_atom) && version < (1, 6) then
           let what =
-            ( if String_with_vars.has_vars s then
+            ( if String_with_vars.has_pforms s then
               "variables"
             else
               "quoted strings" )

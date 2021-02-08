@@ -257,7 +257,7 @@ let tq x = Dune_lang.Template { quoted = true; parts = x; loc }
 
 let l x = Dune_lang.List x
 
-let var ?payload name = { Dune_lang.Template.loc; name; payload }
+let var ?payload name = { Dune_lang.Template.Pform.loc; name; payload }
 
 type syntax =
   | Dune

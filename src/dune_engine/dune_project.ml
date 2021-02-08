@@ -485,6 +485,10 @@ let interpret_lang_and_extensions ~(lang : Lang.Instance.t) ~explicit_extensions
           (Dune_lang.Syntax.key lang.syntax)
           (Active lang.version)
       in
+      let init =
+        Univ_map.set init String_with_vars.decoding_env_key
+          (Pform.Env.initial lang.version)
+      in
       List.fold_left extensions ~init
         ~f:(fun acc ((ext : Extension.automatic), _) ->
           let syntax =
@@ -662,235 +666,241 @@ end
 let anonymous ~dir = infer ~dir Package.Name.Map.empty
 
 let parse ~dir ~lang ~opam_packages ~file ~dir_status =
-  fields
-    (let+ name = field_o "name" Name.decode
-     and+ version = field_o "version" string
-     and+ info = Package.Info.decode ()
-     and+ packages = multi_field "package" (Package.decode ~dir)
-     and+ explicit_extensions =
-       multi_field "using"
-         (let+ loc = loc
-          and+ name = located string
-          and+ ver = located Dune_lang.Syntax.Version.decode
-          and+ parse_args = capture in
-          (* We don't parse the arguments quite yet as we want to set the
-             version of extensions before parsing them. *)
-          Extension.instantiate ~dune_lang_ver:lang.Lang.Instance.version ~loc
-            ~parse_args name ver)
-     and+ implicit_transitive_deps =
-       field_o_b "implicit_transitive_deps"
-         ~check:(Dune_lang.Syntax.since Stanza.syntax (1, 7))
-     and+ wrapped_executables =
-       field_o_b "wrapped_executables"
-         ~check:(Dune_lang.Syntax.since Stanza.syntax (1, 11))
-     and+ _allow_approx_merlin =
-       (* TODO DUNE3 remove this field from parsing *)
-       let+ loc = loc
-       and+ f =
-         field_o_b "allow_approximate_merlin"
-           ~check:(Dune_lang.Syntax.since Stanza.syntax (1, 9))
-       in
-       let vendored =
-         match dir_status with
-         | Sub_dirs.Status.Vendored -> true
-         | _ -> false
-       in
-       if
-         Option.is_some f
-         && Dune_lang.Syntax.Version.Infix.(lang.version >= (2, 8))
-         && not vendored
-       then
-         Dune_lang.Syntax.Warning.deprecated_in
-           ~extra_info:
-             "It is useless since the Merlin configurations are not ambiguous \
-              anymore."
-           loc lang.syntax (2, 8) ~what:"This field"
-     and+ executables_implicit_empty_intf =
-       field_o_b "executables_implicit_empty_intf"
-         ~check:(Dune_lang.Syntax.since Stanza.syntax (2, 9))
-     and+ () = Dune_lang.Versioned_file.no_more_lang
-     and+ generate_opam_files =
-       field_o_b "generate_opam_files"
-         ~check:(Dune_lang.Syntax.since Stanza.syntax (1, 10))
-     and+ use_standard_c_and_cxx_flags =
-       field_o_b "use_standard_c_and_cxx_flags"
-         ~check:(Dune_lang.Syntax.since Stanza.syntax (2, 8))
-     and+ dialects =
-       multi_field "dialect"
-         ( Dune_lang.Syntax.since Stanza.syntax (1, 11)
-         >>> located Dialect.decode )
-     and+ explicit_js_mode =
-       field_o_b "explicit_js_mode"
-         ~check:(Dune_lang.Syntax.since Stanza.syntax (1, 11))
-     and+ format_config = Format_config.field ~since:(2, 0)
-     and+ strict_package_deps =
-       field_o_b "strict_package_deps"
-         ~check:(Dune_lang.Syntax.since Stanza.syntax (2, 3))
-     and+ cram =
-       Toggle.field "cram" ~check:(Dune_lang.Syntax.since Stanza.syntax (2, 7))
-     in
-     let packages =
-       if List.is_empty packages then
-         Package.Name.Map.map opam_packages ~f:(fun (_loc, p) -> Lazy.force p)
-       else (
-         ( match (packages, name) with
-         | [ p ], Some (Named name) ->
-           if Package.Name.to_string (Package.name p) <> name then
-             User_error.raise ~loc:p.loc
-               [ Pp.textf
-                   "when a single package is defined, it must have the same \
-                    name as the project name: %s"
-                   name
-               ]
-         | _, _ -> () );
-         let package_defined_twice name loc1 loc2 =
-           User_error.raise
-             [ Pp.textf "Package name %s is defined twice:"
-                 (Package.Name.to_string name)
-             ; Pp.textf "- %s" (Loc.to_file_colon_line loc1)
-             ; Pp.textf "- %s" (Loc.to_file_colon_line loc2)
-             ]
-         in
-         let deprecated_package_names =
-           List.fold_left packages ~init:Package.Name.Map.empty
-             ~f:(fun acc { Package.deprecated_package_names; _ } ->
-               Package.Name.Map.union acc deprecated_package_names
-                 ~f:package_defined_twice)
-         in
-         List.iter packages ~f:(fun p ->
-             let name = Package.name p in
-             match Package.Name.Map.find deprecated_package_names name with
-             | None -> ()
-             | Some loc -> package_defined_twice name loc p.loc);
-         match
-           Package.Name.Map.of_list_map packages ~f:(fun p ->
-               (Package.name p, p))
-         with
-         | Error (_, _, p) ->
-           let name = Package.name p in
-           User_error.raise ~loc:p.loc
-             [ Pp.textf "package %s is already defined"
-                 (Package.Name.to_string name)
-             ]
-         | Ok packages ->
-           Package.Name.Map.merge packages opam_packages
-             ~f:(fun _name dune opam ->
-               match (dune, opam) with
-               | _, None -> dune
-               | Some p, Some _ -> Some { p with has_opam_file = true }
-               | None, Some (loc, _) ->
-                 User_error.raise ~loc
-                   [ Pp.text
-                       "This opam file doesn't have a corresponding (package \
-                        ...) stanza in the dune-project_file. Since you have \
-                        at least one other (package ...) stanza in your \
-                        dune-project file, you must a (package ...) stanza for \
-                        each opam package in your project."
-                   ])
-       )
-     in
-     let packages =
-       Package.Name.Map.map packages ~f:(fun p ->
-           let info = Package.Info.superpose info p.info in
-           let version =
-             match p.version with
-             | Some _ as v -> v
-             | None -> version
-           in
-           { p with version; info })
-     in
-     let name =
-       match name with
-       | Some n -> n
-       | None -> default_name ~dir ~packages
-     in
-     let project_file : Project_file.t =
-       { file; exists = true; project_name = name }
-     in
-     let parsing_context, stanza_parser, extension_args =
-       interpret_lang_and_extensions ~lang ~explicit_extensions ~project_file
-     in
-     let implicit_transitive_deps =
-       Option.value implicit_transitive_deps
-         ~default:(implicit_transitive_deps_default ~lang)
-     in
-     let wrapped_executables =
-       Option.value wrapped_executables
-         ~default:(wrapped_executables_default ~lang)
-     in
-     let executables_implicit_empty_intf =
-       Option.value executables_implicit_empty_intf
-         ~default:(executables_implicit_empty_intf_default ~lang)
-     in
-     let strict_package_deps =
-       Option.value strict_package_deps
-         ~default:(strict_package_deps_default ~lang)
-     in
-     let dune_version = lang.version in
-     let explicit_js_mode =
-       Option.value explicit_js_mode ~default:(explicit_js_mode_default ~lang)
-     in
-     let generate_opam_files =
-       Option.value ~default:false generate_opam_files
-     in
-     let use_standard_c_and_cxx_flags =
-       match use_standard_c_and_cxx_flags with
-       | None when dune_version >= (3, 0) -> Some false
-       | None -> None
-       | some -> some
-     in
-     let cram =
-       match cram with
-       | None -> false
-       | Some t -> Toggle.enabled t
-     in
-     let root = dir in
-     let file_key = File_key.make ~name ~root in
-     let dialects =
-       List.fold_left
-         ~f:(fun dialects (loc, dialect) ->
-           Dialect.DB.add dialects ~loc dialect)
-         ~init:Dialect.DB.builtin dialects
-     in
-     let () =
-       match name with
-       | Named _ -> ()
-       | Anonymous _ ->
-         if
-           dune_version >= (2, 8)
-           && generate_opam_files
-           && dir_status = Sub_dirs.Status.Normal
-         then
-           let loc = Loc.in_file (Path.source file) in
-           User_warning.emit ~loc
-             [ Pp.text
-                 "Project name is not specified. Add a (name <project-name>) \
-                  field to your dune-project file to make sure that $ dune \
-                  subst works in release or pinned builds"
-             ]
-     in
-     { name
-     ; file_key
-     ; root
-     ; version
-     ; info
-     ; packages
-     ; stanza_parser
-     ; project_file
-     ; extension_args
-     ; parsing_context
-     ; implicit_transitive_deps
-     ; wrapped_executables
-     ; executables_implicit_empty_intf
-     ; dune_version
-     ; generate_opam_files
-     ; use_standard_c_and_cxx_flags
-     ; dialects
-     ; explicit_js_mode
-     ; format_config
-     ; strict_package_deps
-     ; cram
-     })
+  String_with_vars.set_decoding_env
+    (Pform.Env.initial lang.Lang.Instance.version)
+    (fields
+       (let+ name = field_o "name" Name.decode
+        and+ version = field_o "version" string
+        and+ info = Package.Info.decode ()
+        and+ packages = multi_field "package" (Package.decode ~dir)
+        and+ explicit_extensions =
+          multi_field "using"
+            (let+ loc = loc
+             and+ name = located string
+             and+ ver = located Dune_lang.Syntax.Version.decode
+             and+ parse_args = capture in
+             (* We don't parse the arguments quite yet as we want to set the
+                version of extensions before parsing them. *)
+             Extension.instantiate ~dune_lang_ver:lang.Lang.Instance.version
+               ~loc ~parse_args name ver)
+        and+ implicit_transitive_deps =
+          field_o_b "implicit_transitive_deps"
+            ~check:(Dune_lang.Syntax.since Stanza.syntax (1, 7))
+        and+ wrapped_executables =
+          field_o_b "wrapped_executables"
+            ~check:(Dune_lang.Syntax.since Stanza.syntax (1, 11))
+        and+ _allow_approx_merlin =
+          (* TODO DUNE3 remove this field from parsing *)
+          let+ loc = loc
+          and+ f =
+            field_o_b "allow_approximate_merlin"
+              ~check:(Dune_lang.Syntax.since Stanza.syntax (1, 9))
+          in
+          let vendored =
+            match dir_status with
+            | Sub_dirs.Status.Vendored -> true
+            | _ -> false
+          in
+          if
+            Option.is_some f
+            && Dune_lang.Syntax.Version.Infix.(lang.version >= (2, 8))
+            && not vendored
+          then
+            Dune_lang.Syntax.Warning.deprecated_in
+              ~extra_info:
+                "It is useless since the Merlin configurations are not \
+                 ambiguous anymore."
+              loc lang.syntax (2, 8) ~what:"This field"
+        and+ executables_implicit_empty_intf =
+          field_o_b "executables_implicit_empty_intf"
+            ~check:(Dune_lang.Syntax.since Stanza.syntax (2, 9))
+        and+ () = Dune_lang.Versioned_file.no_more_lang
+        and+ generate_opam_files =
+          field_o_b "generate_opam_files"
+            ~check:(Dune_lang.Syntax.since Stanza.syntax (1, 10))
+        and+ use_standard_c_and_cxx_flags =
+          field_o_b "use_standard_c_and_cxx_flags"
+            ~check:(Dune_lang.Syntax.since Stanza.syntax (2, 8))
+        and+ dialects =
+          multi_field "dialect"
+            ( Dune_lang.Syntax.since Stanza.syntax (1, 11)
+            >>> located Dialect.decode )
+        and+ explicit_js_mode =
+          field_o_b "explicit_js_mode"
+            ~check:(Dune_lang.Syntax.since Stanza.syntax (1, 11))
+        and+ format_config = Format_config.field ~since:(2, 0)
+        and+ strict_package_deps =
+          field_o_b "strict_package_deps"
+            ~check:(Dune_lang.Syntax.since Stanza.syntax (2, 3))
+        and+ cram =
+          Toggle.field "cram"
+            ~check:(Dune_lang.Syntax.since Stanza.syntax (2, 7))
+        in
+        let packages =
+          if List.is_empty packages then
+            Package.Name.Map.map opam_packages ~f:(fun (_loc, p) ->
+                Lazy.force p)
+          else (
+            ( match (packages, name) with
+            | [ p ], Some (Named name) ->
+              if Package.Name.to_string (Package.name p) <> name then
+                User_error.raise ~loc:p.loc
+                  [ Pp.textf
+                      "when a single package is defined, it must have the same \
+                       name as the project name: %s"
+                      name
+                  ]
+            | _, _ -> () );
+            let package_defined_twice name loc1 loc2 =
+              User_error.raise
+                [ Pp.textf "Package name %s is defined twice:"
+                    (Package.Name.to_string name)
+                ; Pp.textf "- %s" (Loc.to_file_colon_line loc1)
+                ; Pp.textf "- %s" (Loc.to_file_colon_line loc2)
+                ]
+            in
+            let deprecated_package_names =
+              List.fold_left packages ~init:Package.Name.Map.empty
+                ~f:(fun acc { Package.deprecated_package_names; _ } ->
+                  Package.Name.Map.union acc deprecated_package_names
+                    ~f:package_defined_twice)
+            in
+            List.iter packages ~f:(fun p ->
+                let name = Package.name p in
+                match Package.Name.Map.find deprecated_package_names name with
+                | None -> ()
+                | Some loc -> package_defined_twice name loc p.loc);
+            match
+              Package.Name.Map.of_list_map packages ~f:(fun p ->
+                  (Package.name p, p))
+            with
+            | Error (_, _, p) ->
+              let name = Package.name p in
+              User_error.raise ~loc:p.loc
+                [ Pp.textf "package %s is already defined"
+                    (Package.Name.to_string name)
+                ]
+            | Ok packages ->
+              Package.Name.Map.merge packages opam_packages
+                ~f:(fun _name dune opam ->
+                  match (dune, opam) with
+                  | _, None -> dune
+                  | Some p, Some _ -> Some { p with has_opam_file = true }
+                  | None, Some (loc, _) ->
+                    User_error.raise ~loc
+                      [ Pp.text
+                          "This opam file doesn't have a corresponding \
+                           (package ...) stanza in the dune-project_file. \
+                           Since you have at least one other (package ...) \
+                           stanza in your dune-project file, you must a \
+                           (package ...) stanza for each opam package in your \
+                           project."
+                      ])
+          )
+        in
+        let packages =
+          Package.Name.Map.map packages ~f:(fun p ->
+              let info = Package.Info.superpose info p.info in
+              let version =
+                match p.version with
+                | Some _ as v -> v
+                | None -> version
+              in
+              { p with version; info })
+        in
+        let name =
+          match name with
+          | Some n -> n
+          | None -> default_name ~dir ~packages
+        in
+        let project_file : Project_file.t =
+          { file; exists = true; project_name = name }
+        in
+        let parsing_context, stanza_parser, extension_args =
+          interpret_lang_and_extensions ~lang ~explicit_extensions ~project_file
+        in
+        let implicit_transitive_deps =
+          Option.value implicit_transitive_deps
+            ~default:(implicit_transitive_deps_default ~lang)
+        in
+        let wrapped_executables =
+          Option.value wrapped_executables
+            ~default:(wrapped_executables_default ~lang)
+        in
+        let executables_implicit_empty_intf =
+          Option.value executables_implicit_empty_intf
+            ~default:(executables_implicit_empty_intf_default ~lang)
+        in
+        let strict_package_deps =
+          Option.value strict_package_deps
+            ~default:(strict_package_deps_default ~lang)
+        in
+        let dune_version = lang.version in
+        let explicit_js_mode =
+          Option.value explicit_js_mode
+            ~default:(explicit_js_mode_default ~lang)
+        in
+        let generate_opam_files =
+          Option.value ~default:false generate_opam_files
+        in
+        let use_standard_c_and_cxx_flags =
+          match use_standard_c_and_cxx_flags with
+          | None when dune_version >= (3, 0) -> Some false
+          | None -> None
+          | some -> some
+        in
+        let cram =
+          match cram with
+          | None -> false
+          | Some t -> Toggle.enabled t
+        in
+        let root = dir in
+        let file_key = File_key.make ~name ~root in
+        let dialects =
+          List.fold_left
+            ~f:(fun dialects (loc, dialect) ->
+              Dialect.DB.add dialects ~loc dialect)
+            ~init:Dialect.DB.builtin dialects
+        in
+        let () =
+          match name with
+          | Named _ -> ()
+          | Anonymous _ ->
+            if
+              dune_version >= (2, 8)
+              && generate_opam_files
+              && dir_status = Sub_dirs.Status.Normal
+            then
+              let loc = Loc.in_file (Path.source file) in
+              User_warning.emit ~loc
+                [ Pp.text
+                    "Project name is not specified. Add a (name \
+                     <project-name>) field to your dune-project file to make \
+                     sure that $ dune subst works in release or pinned builds"
+                ]
+        in
+        { name
+        ; file_key
+        ; root
+        ; version
+        ; info
+        ; packages
+        ; stanza_parser
+        ; project_file
+        ; extension_args
+        ; parsing_context
+        ; implicit_transitive_deps
+        ; wrapped_executables
+        ; executables_implicit_empty_intf
+        ; dune_version
+        ; generate_opam_files
+        ; use_standard_c_and_cxx_flags
+        ; dialects
+        ; explicit_js_mode
+        ; format_config
+        ; strict_package_deps
+        ; cram
+        }))
 
 let load_dune_project ~dir opam_packages ~dir_status =
   let file = Path.Source.relative dir filename in

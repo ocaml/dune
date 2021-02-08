@@ -74,6 +74,12 @@ val get_all : (Univ_map.t, _) parser
 
 val set_many : Univ_map.t -> ('a, 'k) parser -> ('a, 'k) parser
 
+val update_var :
+     'a Univ_map.Key.t
+  -> f:('a option -> 'a option)
+  -> ('b, 'k) parser
+  -> ('b, 'k) parser
+
 (** Return the location of the list currently being parsed. *)
 val loc : (Loc.t, _) parser
 

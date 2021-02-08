@@ -29,8 +29,6 @@ module Opam_create = Opam_create
 module Link_mode = Link_mode
 module Utop = Utop
 module Setup = Setup
-module Mode = Mode
-module Cm_kind = Cm_kind
 module Meta = Meta
 module Toplevel = Toplevel
 

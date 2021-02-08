@@ -8,4 +8,4 @@ val upgrade_to_dune :
   -> loc:Loc.t
   -> quoted:bool
   -> allow_first_dep_var:bool
-  -> Dune_lang.Template.t
+  -> Dune_lang.Ast.t

@@ -14,13 +14,15 @@ module Prog = struct
 
     let create ?hint ~context ~program ~loc () = { hint; context; program; loc }
 
-    let raise { context; program; hint; loc } =
+    let user_message { context; program; hint; loc } =
       let hint =
         match program with
         | "refmt" -> Some (Option.value ~default:"opam install reason" hint)
         | _ -> hint
       in
-      Utils.program_not_found ?hint ~loc ~context program
+      Utils.program_not_found_message ?hint ~loc ~context program
+
+    let raise t = raise (User_error.E (user_message t))
 
     let to_dyn { context; program; hint; loc = _ } =
       let open Dyn.Encoder in

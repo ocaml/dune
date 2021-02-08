@@ -24,6 +24,8 @@ module L : sig
       ]} *)
   val compare_vals : dir:Path.t -> t list -> t list -> Ordering.t
 
+  val to_dyn : t list -> Dyn.t
+
   val paths : Path.t list -> t list
 
   val deps_only : t list -> Path.t list

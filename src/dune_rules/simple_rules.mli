@@ -26,7 +26,7 @@ end
 (** Interpret a [(rule ...)] stanza and return the targets it produces. *)
 val user_rule :
      Super_context.t
-  -> ?extra_bindings:Pform.Map.t
+  -> ?extra_bindings:Value.t list Pform.Map.t
   -> dir:Path.Build.t
   -> expander:Expander.t
   -> Rule.t
@@ -44,7 +44,7 @@ val copy_files :
 (** Interpret an [(alias ...)] stanza. *)
 val alias :
      Super_context.t
-  -> ?extra_bindings:Pform.Map.t
+  -> ?extra_bindings:Value.t list Pform.Map.t
   -> dir:Path.Build.t
   -> expander:Expander.t
   -> Alias_conf.t

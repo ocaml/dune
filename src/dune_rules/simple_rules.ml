@@ -10,7 +10,7 @@ module Alias_rules = struct
     ( "user-alias"
     , Bindings.map ~f:Dep_conf.remove_locs deps
     , Option.map ~f:Action_unexpanded.remove_locs action
-    , Option.map extra_bindings ~f:Pform.Map.to_stamp )
+    , Option.map extra_bindings ~f:Pform.Map.to_list )
 
   let add sctx ~alias ~stamp ~loc ~locks build =
     let dir = Alias.dir alias in
@@ -22,12 +22,6 @@ module Alias_rules = struct
 end
 
 let interpret_locks ~expander = List.map ~f:(Expander.expand_path expander)
-
-let dep_bindings ~extra_bindings deps =
-  let base = Pform.Map.of_bindings deps in
-  match extra_bindings with
-  | Some bindings -> Pform.Map.superpose base bindings
-  | None -> base
 
 let check_filename =
   let not_in_dir ~error_loc s =
@@ -104,8 +98,11 @@ let user_rule sctx ?extra_bindings ~dir ~expander (rule : Rule.t) =
           in
           Static { multiplicity; targets } )
     in
-    let bindings = dep_bindings ~extra_bindings rule.deps in
-    let expander = Expander.add_bindings expander ~bindings in
+    let expander =
+      match extra_bindings with
+      | None -> expander
+      | Some bindings -> Expander.add_bindings expander ~bindings
+    in
     let action =
       Dep_conf_eval.named ~expander rule.deps
       |> Action_unexpanded.expand (snd rule.action) ~loc:(fst rule.action)
@@ -227,8 +224,11 @@ let alias sctx ?extra_bindings ~dir ~expander (alias_conf : Alias_conf.t) =
             let+ (_ : Path.t Bindings.t) = x in
             Action.empty)
       | Some (loc, action) ->
-        let bindings = dep_bindings ~extra_bindings alias_conf.deps in
-        let expander = Expander.add_bindings expander ~bindings in
+        let expander =
+          match extra_bindings with
+          | None -> expander
+          | Some bindings -> Expander.add_bindings expander ~bindings
+        in
         Action_unexpanded.expand action ~loc ~expander ~dep_kind:Required
           ~targets:(Forbidden "aliases") ~targets_dir:dir
     in

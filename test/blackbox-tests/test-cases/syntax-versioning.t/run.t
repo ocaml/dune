@@ -27,11 +27,12 @@
   [1]
   $ rm -f dune
 
-  $ echo '(alias (name x) (deps x) (action (run %{<})))' > dune
+  $ touch x
+  $ echo '(alias (name default) (deps x) (action (run %{<})))' > dune
   $ dune build
-  File "dune", line 1, characters 40-42:
-  1 | (alias (name x) (deps x) (action (run %{<})))
-                                              ^^
+  File "dune", line 1, characters 46-48:
+  1 | (alias (name default) (deps x) (action (run %{<})))
+                                                    ^^
   Error: %{<} was deleted in version 1.0 of the dune language.
   Use a named dependency instead:
   

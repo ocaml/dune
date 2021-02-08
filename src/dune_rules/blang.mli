@@ -21,11 +21,14 @@ type t =
 
 val true_ : t
 
-val fold_vars : t -> init:'a -> f:(String_with_vars.Var.t -> 'a -> 'a) -> 'a
-
 val eval :
   t -> dir:Path.t -> f:Value.t list option String_with_vars.expander -> bool
 
 val to_dyn : t -> Dyn.t
 
 val decode : t Dune_lang.Decoder.t
+
+(** Resolve variables manually. For complex cases such as [enabled_if] *)
+val decode_manually :
+     (Pform.Env.t -> Dune_lang.Template.Pform.t -> Pform.t)
+  -> t Dune_lang.Decoder.t

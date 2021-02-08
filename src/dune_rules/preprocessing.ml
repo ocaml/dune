@@ -393,7 +393,7 @@ let get_cookies ~loc ~expander ~lib_name libs =
     | Some lib_name ->
       let library_name = Lib_name.Local.to_string lib_name in
       let bindings =
-        Pform.Map.singleton "library_name" (Values [ String library_name ])
+        Pform.Map.singleton (Var Library_name) [ Value.String library_name ]
       in
       ( Expander.add_bindings expander ~bindings
       , Some ("library-name", (library_name, Lib_name.of_local (loc, lib_name)))
@@ -452,7 +452,8 @@ let ppx_driver_and_flags sctx ~lib_name ~expander ~scope ~loc ~flags pps =
   in
   (exe, driver, flags)
 
-let workspace_root_var = String_with_vars.virt_var __POS__ "workspace_root"
+let workspace_root_var =
+  String_with_vars.virt_pform __POS__ (Var Workspace_root)
 
 let promote_correction fn build ~suffix =
   Action_builder.progn
@@ -467,7 +468,9 @@ let chdir action = Action_unexpanded.Chdir (workspace_root_var, action)
 
 let action_for_pp ~dep_kind ~loc ~expander ~action ~src ~target =
   let action = chdir action in
-  let bindings = Pform.Map.input_file (Path.build src) in
+  let bindings =
+    Pform.Map.singleton (Var Input_file) [ Value.Path (Path.build src) ]
+  in
   let expander = Expander.add_bindings expander ~bindings in
   let targets = Targets.Or_forbidden.Forbidden "preprocessing actions" in
   let targets_dir = Option.value ~default:src target |> Path.Build.parent_exn in
@@ -503,7 +506,7 @@ let setup_dialect_rules sctx ~dir ~dep_kind ~expander (m : Module.t) =
 
 let add_corrected_suffix_binding expander suffix =
   let bindings =
-    Pform.Map.singleton "corrected-suffix" (Values [ String suffix ])
+    Pform.Map.singleton (Var Corrected_suffix) [ Value.String suffix ]
   in
   Expander.add_bindings expander ~bindings
 

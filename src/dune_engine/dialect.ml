@@ -80,11 +80,11 @@ let ocaml =
     in
     let module S = String_with_vars in
     Action_dune_lang.chdir
-      (S.make_var Loc.none "workspace_root")
+      (S.make_pform Loc.none (Var Workspace_root))
       (Action_dune_lang.run
          (S.make_text Loc.none "ocamlformat")
          [ S.make_text Loc.none (flag_of_kind kind)
-         ; S.make_var Loc.none "input-file"
+         ; S.make_pform Loc.none (Var Input_file)
          ])
   in
   let file_kind kind extension =
@@ -110,13 +110,13 @@ let reason =
         (S.make_text Loc.none "refmt")
         [ S.make_text Loc.none "--print"
         ; S.make_text Loc.none "binary"
-        ; S.make_var Loc.none "input-file"
+        ; S.make_pform Loc.none (Var Input_file)
         ]
     in
     let format =
       Action_dune_lang.run
         (S.make_text Loc.none "refmt")
-        [ S.make_var Loc.none "input-file" ]
+        [ S.make_pform Loc.none (Var Input_file) ]
     in
     { File_kind.kind
     ; extension

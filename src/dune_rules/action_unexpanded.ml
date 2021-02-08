@@ -637,7 +637,7 @@ end = struct
         open Outcome_unexp
 
         let ( +@+ ) acc fn =
-          if String_with_vars.is_var fn ~name:"null" then
+          if String_with_vars.is_pform fn (Var Dev_null) then
             acc
           else
             { acc with targets = fn :: acc.targets }
@@ -651,7 +651,7 @@ end = struct
         let ( +<! ) = ( +< )
 
         let ( +<- ) acc fn =
-          if String_with_vars.is_var fn ~name:"null" then
+          if String_with_vars.is_pform fn (Var Dev_null) then
             acc
           else
             { acc with targets = List.filter acc.targets ~f:(fun t -> t <> fn) }

@@ -48,7 +48,7 @@ let term =
         Dune_rules.Lib.closure ~linking:true libs |> Result.ok_exn
       in
       let include_paths =
-        Dune_rules.Lib.L.include_paths requires Dune_rules.Mode.Byte
+        Dune_rules.Lib.L.include_paths requires Dune_engine.Mode.Byte
       in
       let files = link_deps requires in
       let* () =

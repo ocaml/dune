@@ -174,9 +174,7 @@ module Value = struct
   let get_sync_exn = function
     | Ok a -> a
     | Error (Sync exn) -> Exn_with_backtrace.reraise exn
-    | Error (Async _) ->
-      (* It's not possible for a sync computation to raise more than one error *)
-      assert false
+    | Error (Async _) -> assert false
 
   let get_async_exn = function
     | Ok a -> Fiber.return a
@@ -707,7 +705,7 @@ end = struct
     in
     go
 
-  let do_validate (dep_node : _ Dep_node.t) inp running_state =
+  let do_validate (dep_node : _ Dep_node.t) running_state =
     let res =
       let frame =
         ( T { without_state = dep_node.without_state; running_state }
@@ -731,7 +729,10 @@ end = struct
           | Invalid { old_value } -> (
             match dep_node.without_state.spec.f with
             | Function.Sync f ->
-              let res = Exn_with_backtrace.try_with (fun () -> f inp) in
+              let res =
+                Exn_with_backtrace.try_with (fun () ->
+                    f dep_node.without_state.input)
+              in
               let res =
                 Result.map_error res ~f:(fun exn ->
                     let exn =
@@ -758,7 +759,7 @@ end = struct
     dep_node.state <- Not_considering;
     res
 
-  let newly_considering (dep_node : _ Dep_node.t) inp =
+  let newly_considering (dep_node : _ Dep_node.t) =
     let sample_attempt : Dag.node =
       { info = Dag.create_node_info global_dep_dag
       ; data = Dep_node_without_state.T dep_node.without_state
@@ -771,15 +772,13 @@ end = struct
       Considering
         { run = Run.current (); running = running_state; completion = Sync };
     Start_considering_result.Needs_work
-      { sample_attempt
-      ; work = (fun () -> do_validate dep_node inp running_state)
-      }
+      { sample_attempt; work = (fun () -> do_validate dep_node running_state) }
 
   let start_considering_dep_node (dep_node : ('a, 'b, 'a -> 'b) Dep_node.t) =
     match currently_considering dep_node.state with
     | Not_considering -> (
       match get_cached_value_in_current_cycle dep_node with
-      | None -> newly_considering dep_node dep_node.without_state.input
+      | None -> newly_considering dep_node
       | Some cv -> Done cv )
     | Considering
         { running = { sample_attempt; deps_so_far = _ }; completion = Sync; _ }
@@ -849,7 +848,7 @@ end = struct
     in
     go
 
-  let do_validate (dep_node : _ Dep_node.t) inp ivar running_state =
+  let do_validate (dep_node : _ Dep_node.t) ivar running_state =
     let* res =
       Call_stack.push_async_frame
         (T { without_state = dep_node.without_state; running_state })
@@ -879,7 +878,9 @@ end = struct
                  once all child fibers terminate. To fix this, we should use
                  [Fiber.with_error_handler], but we don't have access to dune's
                  error reporting mechanism in memo *)
-              let+ res = Fiber.collect_errors (fun () -> f inp) in
+              let+ res =
+                Fiber.collect_errors (fun () -> f dep_node.without_state.input)
+              in
               let res =
                 Result.map_error res ~f:(fun exns ->
                     (* this step deduplicates the errors *)
@@ -904,7 +905,7 @@ end = struct
     let+ () = Fiber.Ivar.fill ivar res in
     res
 
-  let newly_considering (dep_node : _ Dep_node.t) inp =
+  let newly_considering (dep_node : _ Dep_node.t) =
     let sample_attempt : Dag.node =
       { info = Dag.create_node_info global_dep_dag
       ; data = Dep_node_without_state.T dep_node.without_state
@@ -921,13 +922,13 @@ end = struct
         ; completion = Async ivar
         };
     Start_considering_result.Needs_work
-      { sample_attempt; work = do_validate dep_node inp ivar running_state }
+      { sample_attempt; work = do_validate dep_node ivar running_state }
 
   let start_considering_dep_node (dep_node : _ Dep_node.t) =
     match currently_considering dep_node.state with
     | Not_considering -> (
       match get_cached_value_in_current_cycle dep_node with
-      | None -> newly_considering dep_node dep_node.without_state.input
+      | None -> newly_considering dep_node
       | Some cv -> Done cv )
     | Considering
         { running = { sample_attempt; deps_so_far = _ }

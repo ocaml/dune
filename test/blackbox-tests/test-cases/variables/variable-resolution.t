@@ -24,16 +24,16 @@ Unknown variable:
   > EOF
   
   *** Behavior with Dune 2.8 ***
-  File "dune", line 3, characters 9-17:
+  File "dune", line 3, characters 7-17:
   3 |  (deps %{unknwon}))
-               ^^^^^^^^
+             ^^^^^^^^^^
   Error: Unknown variable %{unknwon}
   exit code: 1
   
   *** Behavior with Dune 3.0 ***
-  File "dune", line 3, characters 9-17:
+  File "dune", line 3, characters 7-17:
   3 |  (deps %{unknwon}))
-               ^^^^^^^^
+             ^^^^^^^^^^
   Error: Unknown variable %{unknwon}
   exit code: 1
 
@@ -49,9 +49,9 @@ Unknown variable that we don't need to resolve:
   exit code: 0
   
   *** Behavior with Dune 3.0 ***
-  File "dune", line 3, characters 9-17:
+  File "dune", line 3, characters 7-17:
   3 |  (deps %{unknwon}))
-               ^^^^^^^^
+             ^^^^^^^^^^
   Error: Unknown variable %{unknwon}
   exit code: 1
 
@@ -64,16 +64,16 @@ Specific variable used at the wrong place:
   > EOF
   
   *** Behavior with Dune 2.8 ***
-  File "dune", line 3, characters 9-22:
+  File "dune", line 3, characters 7-22:
   3 |  (deps %{library-name}))
-               ^^^^^^^^^^^^^
+             ^^^^^^^^^^^^^^^
   Error: %{library-name} isn't allowed in this position.
   exit code: 1
   
   *** Behavior with Dune 3.0 ***
-  File "dune", line 3, characters 9-22:
+  File "dune", line 3, characters 7-22:
   3 |  (deps %{library-name}))
-               ^^^^^^^^^^^^^
+             ^^^^^^^^^^^^^^^
   Error: %{library-name} isn't allowed in this position.
   exit code: 1
 

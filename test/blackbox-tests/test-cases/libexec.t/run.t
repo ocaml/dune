@@ -75,18 +75,18 @@ Testsuite for the %{libexec...} and %{libexec-private...} variable.
   > EOF
 
   $ ./sdune build @find-a-from-host
-  File "dune", line 4, characters 18-43:
+  File "dune", line 4, characters 16-43:
   4 |  (action (echo "%{libexec:private_lib:a.ml}")))
-                        ^^^^^^^^^^^^^^^^^^^^^^^^^
+                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^
   Error: The library "private_lib" is not public. The variable "libexec"
   expands to the file's installation path which is not defined for private
   libraries.
   [1]
 
   $ ./sdune build @find-a-from-target
-  File "dune", line 8, characters 18-43:
+  File "dune", line 8, characters 16-43:
   8 |  (action (echo "%{libexec:private_lib:a.ml}")))
-                        ^^^^^^^^^^^^^^^^^^^^^^^^^
+                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^
   Error: The library "private_lib" is not public. The variable "libexec"
   expands to the file's installation path which is not defined for private
   libraries.
@@ -196,9 +196,9 @@ Testsuite for the %{libexec...} and %{libexec-private...} variable.
 
   $ export OCAMLPATH=$PWD/external/install/lib; ./sdune build @find-a-from-host --root=src --workspace=./dune-workspace
   Entering directory 'src'
-  File "dune", line 8, characters 18-56:
+  File "dune", line 8, characters 16-56:
   8 |  (action (echo "%{libexec-private:external_library:opam}")))
-                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
   Error: The variable "libexec-private" can only refer to libraries within the
   same project. The current project's name is "test-lib", but the reference is
   to an external library.
@@ -206,9 +206,9 @@ Testsuite for the %{libexec...} and %{libexec-private...} variable.
 
   $ export OCAMLPATH=$PWD/external/install/lib; ./sdune build @find-a-from-target --root=src --workspace=./dune-workspace
   Entering directory 'src'
-  File "dune", line 12, characters 18-56:
+  File "dune", line 12, characters 16-56:
   12 |  (action (echo "%{libexec-private:external_library:opam}")))
-                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
   Error: The variable "libexec-private" can only refer to libraries within the
   same project. The current project's name is "test-lib", but the reference is
   to an external library.
@@ -248,18 +248,18 @@ Testsuite for the %{libexec...} and %{libexec-private...} variable.
   $ echo "(name another-lib)" >> another/dune-project
 
   $ ./sdune build @find-a-from-host
-  File "src/dune", line 9, characters 18-55:
+  File "src/dune", line 9, characters 16-55:
   9 |  (action (echo "%{libexec-private:another_library:file}")))
-                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
   Error: The variable "libexec-private" can only refer to libraries within the
   same project. The current project's name is "test-lib", but the reference is
   to "another-lib".
   [1]
 
   $ ./sdune build @find-a-from-target
-  File "src/dune", line 13, characters 18-55:
+  File "src/dune", line 13, characters 16-55:
   13 |  (action (echo "%{libexec-private:another_library:file}")))
-                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
   Error: The variable "libexec-private" can only refer to libraries within the
   same project. The current project's name is "test-lib", but the reference is
   to "another-lib".
@@ -309,9 +309,9 @@ The build works in development:
 
 But will fail when we release it, as it will need to run with -p:
   $ dune build @target --workspace=../dune-workspace --only-packages public_lib2
-  File "lib2/dune", line 5, characters 44-73:
+  File "lib2/dune", line 5, characters 42-73:
   5 |  (with-stdout-to lib2.ml (echo "let _ = {|%{libexec-private:lib1:lib1.ml}|}")))
-                                                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+                                                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
   Error: Library "lib1" not found.
   Hint: try:
     dune external-lib-deps --missing --only-packages public_lib2 --workspace ../dune-workspace @target

@@ -362,9 +362,12 @@ and template_variable = parse
         | Some "" -> error lexbuf "payload after : in variable cannot be empty"
         | p -> p
       in
+      let start = Lexing.lexeme_start_p lexbuf in
+      (* -2 to account for the "%{" *)
+      let start = { start with pos_cnum = start.pos_cnum - 2 } in
       Template.Pform
         { loc =
-            { start = Lexing.lexeme_start_p lexbuf
+            { start
             ; stop = Lexing.lexeme_end_p lexbuf
             }
         ; name

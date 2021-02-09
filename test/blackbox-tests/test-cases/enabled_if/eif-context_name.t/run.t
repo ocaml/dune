@@ -6,9 +6,9 @@ dune < 2.8
   > EOF
 
   $ dune build bar
-  File "dune", line 13, characters 18-31:
+  File "dune", line 13, characters 16-31:
   13 |  (enabled_if (= %{context_name} "default")))
-                         ^^^^^^^^^^^^^
+                       ^^^^^^^^^^^^^^^
   Error: %{context_name} is only available since version 2.8 of the dune
   language. Please update your dune-project file to have (lang dune 2.8).
   [1]

@@ -185,9 +185,10 @@ module Caching = struct
 
     let all =
       ("auto", None)
-      :: List.map
-           ~f:(fun (name, mode) -> (name, Some mode))
-           Cache.Duplication_mode.all
+      ::
+      List.map
+        ~f:(fun (name, mode) -> (name, Some mode))
+        Cache.Duplication_mode.all
 
     let decode = enum all
   end

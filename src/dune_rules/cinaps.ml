@@ -114,9 +114,10 @@ let gen_rules sctx t ~dir ~scope =
     A.chdir (Path.build dir)
       (A.progn
          (A.run (Ok cinaps_exe) [ "-diff-cmd"; "-" ]
-         :: List.map cinapsed_files ~f:(fun fn ->
-                A.diff ~optional:true (Path.build fn)
-                  (Path.Build.extend_basename fn ~suffix:".cinaps-corrected"))))
+          ::
+          List.map cinapsed_files ~f:(fun fn ->
+              A.diff ~optional:true (Path.build fn)
+                (Path.Build.extend_basename fn ~suffix:".cinaps-corrected"))))
   in
   let cinaps_alias = alias ~dir in
   Super_context.add_alias_action sctx ~dir ~loc:(Some loc) ~stamp:name

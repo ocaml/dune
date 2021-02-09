@@ -175,8 +175,8 @@ let client_thread (events, (client : client)) =
       in
       handle client
     and finally () =
-      (try Unix.shutdown client.fd Unix.SHUTDOWN_ALL
-       with Unix.Unix_error (Unix.ENOTCONN, _, _) -> ());
+      (try Unix.shutdown client.fd Unix.SHUTDOWN_ALL with
+      | Unix.Unix_error (Unix.ENOTCONN, _, _) -> ());
       Unix.close client.fd;
       Evt.sync (Evt.send events (Client_left client.fd))
     in
@@ -185,7 +185,8 @@ let client_thread (events, (client : client)) =
       Log.info [ Pp.textf "%s: ended" (peer_name client.peer) ]
     | Sys_error msg ->
       Log.info [ Pp.textf "%s: ended: %s" (peer_name client.peer) msg ]
-  with Code_error.E e as exn ->
+  with
+  | Code_error.E e as exn ->
     Log.info
       [ (let open Pp.O in
         Pp.textf "%s: fatal error: " (peer_name client.peer)
@@ -217,12 +218,12 @@ let run ?(port_f = ignore) ?(port = 0) daemon =
   in
   let rec accept_thread sock =
     let rec accept () =
-      try Unix.accept sock
-      with Unix.Unix_error (Unix.EINTR, _, _) -> (accept [@tailcall]) ()
+      try Unix.accept sock with
+      | Unix.Unix_error (Unix.EINTR, _, _) -> (accept [@tailcall]) ()
     in
     let fd, peer = accept () in
-    (try Evt.sync (Evt.send daemon.events (New_client (fd, peer)))
-     with Unix.Unix_error (Unix.EBADF, _, _) -> ());
+    (try Evt.sync (Evt.send daemon.events (New_client (fd, peer))) with
+    | Unix.Unix_error (Unix.EBADF, _, _) -> ());
     (accept_thread [@tailcall]) sock
   in
   let f () =
@@ -334,7 +335,7 @@ let daemon ~root ~config started =
   in
   ignore (Thread.sigmask Unix.SIG_BLOCK signals);
   ignore (Thread.create signals_handler ());
-  try run ~port_f:started daemon
-  with Error s ->
+  try run ~port_f:started daemon with
+  | Error s ->
     Printf.fprintf stderr "%s: fatal error: %s\n%!" Sys.argv.(0) s;
     exit 1

@@ -181,7 +181,8 @@ module V1 = struct
     try
       do_run t;
       exit 0
-    with Execution_error.E message ->
+    with
+    | Execution_error.E message ->
       prerr_endline message;
       exit 1
 

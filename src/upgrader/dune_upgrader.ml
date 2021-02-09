@@ -225,20 +225,21 @@ module V1 = struct
             List.map l ~f:upgrade
           | (Atom (_, A ("preprocess" | "lint")) as field) :: rest ->
             upgrade field
-            :: List.map rest ~f:(fun x ->
-                   map_var (upgrade x)
-                     ~f:(fun (v : Dune_lang.Template.Pform.t) ->
-                       Dune_lang.Template.Pform
-                         (if v.name = "<" then
-                           { v with name = "input-file" }
-                         else
-                           v)))
+            ::
+            List.map rest ~f:(fun x ->
+                map_var (upgrade x) ~f:(fun (v : Dune_lang.Template.Pform.t) ->
+                    Dune_lang.Template.Pform
+                      (if v.name = "<" then
+                        { v with name = "input-file" }
+                      else
+                        v)))
           | (Atom (_, A "per_module") as field) :: specs ->
             upgrade field
-            :: List.map specs ~f:(function
-                 | List (loc, [ spec; List (_, modules) ]) ->
-                   List (loc, upgrade spec :: List.map modules ~f:upgrade)
-                 | sexp -> upgrade sexp)
+            ::
+            List.map specs ~f:(function
+              | List (loc, [ spec; List (_, modules) ]) ->
+                List (loc, upgrade spec :: List.map modules ~f:upgrade)
+              | sexp -> upgrade sexp)
           | [ (Atom (_, A "pps") as field); List (_, pps) ] -> (
             let pps, args =
               List.partition_map pps ~f:(function
@@ -249,7 +250,7 @@ module V1 = struct
                 | sexp -> Left sexp)
             in
             let args = List.concat args in
-            (upgrade field :: pps)
+            upgrade field :: pps
             @
             match args with
             | [] -> []
@@ -269,11 +270,11 @@ module V1 = struct
                 List
                   ( loc
                   , field
-                    :: (let loc = Dune_lang.Ast.loc first in
-                        List
-                          ( loc
-                          , [ Atom (loc, Dune_lang.Atom.of_string ":<"); first ]
-                          ))
+                    ::
+                    (let loc = Dune_lang.Ast.loc first in
+                     List
+                       ( loc
+                       , [ Atom (loc, Dune_lang.Atom.of_string ":<"); first ] ))
                     :: rest )
               | x -> x)
           else
@@ -312,9 +313,10 @@ module V1 = struct
           Dune_lang.Ast.add_loc ~loc:Loc.none
             (List
                (Dune_lang.atom "data_only_dirs"
-               :: List.map
-                    (String.Set.to_list data_only_dirs)
-                    ~f:Dune_lang.atom_or_quoted_string))
+                ::
+                List.map
+                  (String.Set.to_list data_only_dirs)
+                  ~f:Dune_lang.atom_or_quoted_string))
         in
         let sexps = stanza :: sexps in
         (sexps, [ jbuild_ignore ])

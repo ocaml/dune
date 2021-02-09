@@ -266,18 +266,19 @@ let setup_html sctx (odoc_file : odoc) ~pkg ~requires =
                    [ Action.Remove_tree to_remove
                    ; Action.Mkdir (Path.build odoc_file.html_dir)
                    ]))
-          :: Command.run
-               ~dir:(Path.build (Paths.html_root ctx))
-               (odoc sctx)
-               [ A "html"
-               ; odoc_base_flags sctx odoc_file.odoc_input
-               ; odoc_include_flags ctx pkg requires
-               ; A "-o"
-               ; Path (Path.build (Paths.html_root ctx))
-               ; Dep (Path.build odoc_file.odoc_input)
-               ; Hidden_targets [ odoc_file.html_file ]
-               ]
-          :: dune_keep))
+           ::
+           Command.run
+             ~dir:(Path.build (Paths.html_root ctx))
+             (odoc sctx)
+             [ A "html"
+             ; odoc_base_flags sctx odoc_file.odoc_input
+             ; odoc_include_flags ctx pkg requires
+             ; A "-o"
+             ; Path (Path.build (Paths.html_root ctx))
+             ; Dep (Path.build odoc_file.odoc_input)
+             ; Hidden_targets [ odoc_file.html_file ]
+             ]
+           :: dune_keep))
 
 let setup_library_odoc_rules cctx (library : Library.t) ~dep_graphs =
   let lib =
@@ -558,8 +559,9 @@ let setup_package_aliases sctx (pkg : Package.t) =
   in
   Rules.Produce.Alias.add_deps alias
     (Dep.html_alias ctx (Pkg name)
-     :: (libs_of_pkg sctx ~pkg:name
-        |> List.map ~f:(fun lib -> Dep.html_alias ctx (Lib lib)))
+     ::
+     (libs_of_pkg sctx ~pkg:name
+     |> List.map ~f:(fun lib -> Dep.html_alias ctx (Lib lib)))
     |> Path.Set.of_list_map ~f:(fun f -> Path.build (Alias.stamp_file f)))
 
 let entry_modules_by_lib sctx lib =

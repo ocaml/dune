@@ -483,7 +483,8 @@ end = struct
   let killall t signal =
     Mutex.lock t.mutex;
     Process_table.iter t ~f:(fun job ->
-        try Unix.kill (Pid.to_int job.pid) signal with Unix.Unix_error _ -> ());
+        try Unix.kill (Pid.to_int job.pid) signal with
+        | Unix.Unix_error _ -> ());
     Mutex.unlock t.mutex
 
   exception Finished of job * Unix.process_status
@@ -494,7 +495,8 @@ end = struct
           let pid, status = Unix.waitpid [ WNOHANG ] (Pid.to_int job.pid) in
           if pid <> 0 then raise_notrace (Finished (job, status)));
       false
-    with Finished (job, status) ->
+    with
+    | Finished (job, status) ->
       (* We need to do the [Unix.waitpid] and remove the process while holding
          the lock, otherwise the pid might be reused in between. *)
       Process_table.remove t ~pid:job.pid status;
@@ -681,7 +683,9 @@ let auto_concurrency =
     (if Sys.win32 then
       match Env.get Env.initial "NUMBER_OF_PROCESSORS" with
       | None -> 1
-      | Some s -> ( try int_of_string s with _ -> 1)
+      | Some s -> (
+        try int_of_string s with
+        | _ -> 1)
     else
       let commands =
         [ ("nproc", [])

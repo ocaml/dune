@@ -7,7 +7,9 @@ let rec file_descr_not_standard fd =
   else
     file_descr_not_standard (Unix.dup fd)
 
-let safe_close fd = try Unix.close fd with Unix.Unix_error _ -> ()
+let safe_close fd =
+  try Unix.close fd with
+  | Unix.Unix_error _ -> ()
 
 let perform_redirections stdin stdout stderr =
   let stdin = file_descr_not_standard stdin in
@@ -42,5 +44,6 @@ let spawn ?env ~prog ~argv ?(stdin = Unix.stdin) ?(stdout = Unix.stdout)
           match env with
           | None -> Unix.execv prog argv
           | Some env -> Unix.execve prog argv env
-        with _ -> sys_exit 127)
+        with
+        | _ -> sys_exit 127)
       | pid -> pid)

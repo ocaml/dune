@@ -109,7 +109,8 @@ Stringlike.Make (struct
         String.iter s ~f:(fun c ->
             if not (valid_char c) then raise_notrace Exit);
         true
-      with Exit -> false)
+      with
+      | Exit -> false)
 
   let of_string_opt s =
     if is_valid_module_name s then

@@ -315,7 +315,8 @@ module Io = struct
         Buffer.add_channel buffer t chunk_size;
         loop ()
       in
-      try loop () with End_of_file -> Buffer.contents buffer
+      try loop () with
+      | End_of_file -> Buffer.contents buffer
     in
     fun t ->
       (* Optimisation for regular files: if the channel supports seeking, we

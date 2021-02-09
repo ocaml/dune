@@ -48,7 +48,8 @@ let%expect_test _ =
   try
     Dag.add_assuming_missing dag node41 node;
     print_endline "no cycle"
-  with Dag.Cycle cycle ->
+  with
+  | Dag.Cycle cycle ->
     let cycle = List.map cycle ~f:name in
     List.map ~f:Pp.text cycle |> Pp.concat ~sep:Pp.space |> print;
     [%expect

@@ -29,8 +29,8 @@ let of_sexp =
   enter (fields (field "foo" int))
 
 let%expect_test _ =
-  (try ignore (parse of_sexp Univ_map.empty (Lazy.force sexp) : int)
-   with User_error.E msg -> User_message.print { msg with loc = None });
+  (try ignore (parse of_sexp Univ_map.empty (Lazy.force sexp) : int) with
+  | User_error.E msg -> User_message.print { msg with loc = None });
   [%expect {|
 Error: Field "foo" is present too many times
 |}]

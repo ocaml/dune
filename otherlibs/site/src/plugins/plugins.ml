@@ -142,7 +142,8 @@ let load file ~pkg =
       let r = Meta_parser.Parse.entries lb 0 [] in
       close_in ic;
       r
-    with exn ->
+    with
+    | exn ->
       close_in ic;
       raise exn
   in
@@ -229,5 +230,7 @@ let available name =
   try
     ignore (lookup_and_summarize ocamlpath name);
     true
-  with _ -> (* CR - What exceptions are being swallowed here? *)
-            false
+  with
+  | _ ->
+    (* CR - What exceptions are being swallowed here? *)
+    false

@@ -297,8 +297,8 @@ let rec exec t ~ectx ~eenv =
   | Diff ({ optional; file1; file2; mode } as diff) ->
     let remove_intermediate_file () =
       if optional then
-        try Path.unlink (Path.build file2)
-        with Unix.Unix_error (ENOENT, _, _) -> ()
+        try Path.unlink (Path.build file2) with
+        | Unix.Unix_error (ENOENT, _, _) -> ()
     in
     if Diff.eq_files diff then (
       remove_intermediate_file ();

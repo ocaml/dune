@@ -277,9 +277,10 @@ end = struct
                  Package_paths.dune_package_file ctx pkg
                in
                (None, Install.Entry.make Lib meta_file ~dst:Findlib.meta_fn)
-               :: ( None
-                  , Install.Entry.make Lib dune_package_file
-                      ~dst:Dune_package.fn )
+               ::
+               ( None
+               , Install.Entry.make Lib dune_package_file ~dst:Dune_package.fn
+               )
                ::
                (if not pkg.has_opam_file then
                  deprecated_meta_and_dune_files

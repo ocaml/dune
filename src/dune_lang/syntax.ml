@@ -202,7 +202,7 @@ module Error = struct
              Pp.space)
          ; Pp.text extra_info
          ]
-      :: repl)
+       :: repl)
 
   let disabled loc t ~dune_lang_ver ~what =
     let min_lang_version, min_dune_version =
@@ -239,7 +239,7 @@ module Warning = struct
              Pp.space)
          ; Pp.text extra_info
          ]
-      :: repl)
+       :: repl)
 end
 
 let create ?(experimental = false) ~name ~desc supported_versions =

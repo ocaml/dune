@@ -539,7 +539,8 @@ let add_dep_from_caller (type i o f) ~called_from_peek
           try
             Dag.add_assuming_missing global_dep_dag
               running_state_of_caller.sample_attempt node
-          with Dag.Cycle cycle ->
+          with
+          | Dag.Cycle cycle ->
             raise
               (Cycle_error.E
                  { stack = Call_stack.get_call_stack_without_state ()

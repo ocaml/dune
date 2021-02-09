@@ -156,7 +156,9 @@ let ( and+ ) a b ctx state =
 
 let map t ~f = t >>| f
 
-let try_ t f ctx state = try t ctx state with exn -> f exn ctx state
+let try_ t f ctx state =
+  try t ctx state with
+  | exn -> f exn ctx state
 
 let get_user_context : type k. k context -> Univ_map.t = function
   | Values (_, _, uc) -> uc
@@ -377,11 +379,11 @@ let either =
       (approximate_how_much_input_a_failing_branch_consumed exn2)
   in
   fun a b ctx state ->
-    try (a >>| Either.left) ctx state
-    with exn_a -> (
+    try (a >>| Either.left) ctx state with
+    | exn_a -> (
       let exn_a = Exn_with_backtrace.capture exn_a in
-      try (b >>| Either.right) ctx state
-      with exn_b ->
+      try (b >>| Either.right) ctx state with
+      | exn_b ->
         let exn_b = Exn_with_backtrace.capture exn_b in
         Exn_with_backtrace.reraise
           (match compare_input_consumed exn_a exn_b with

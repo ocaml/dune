@@ -248,9 +248,10 @@ module Fancy = struct
     | [] -> []
     | "-o" :: fn :: rest ->
       Pp.verbatim "-o"
-      :: Pp.tag
-           (User_message.Style.Ansi_styles Ansi_color.Style.[ bold; fg_green ])
-           (Pp.verbatim (String.quote_for_shell fn))
+      ::
+      Pp.tag
+        (User_message.Style.Ansi_styles Ansi_color.Style.[ bold; fg_green ])
+        (Pp.verbatim (String.quote_for_shell fn))
       :: colorize_args rest
     | x :: rest -> Pp.verbatim (String.quote_for_shell x) :: colorize_args rest
 
@@ -379,9 +380,10 @@ module Exit_status = struct
       fail
         (Pp.tag User_message.Style.Kwd (Pp.verbatim "Command")
          ++ Pp.space ++ pp_id id ++ Pp.space ++ Pp.text msg ++ Pp.char ':'
-        :: Pp.tag User_message.Style.Prompt (Pp.char '$')
-           ++ Pp.char ' ' ++ command_line
-        :: Option.to_list output)
+         ::
+         Pp.tag User_message.Style.Prompt (Pp.char '$')
+         ++ Pp.char ' ' ++ command_line
+         :: Option.to_list output)
 
   (* Check if the command output starts with a location, ignoring ansi escape
      sequences *)
@@ -441,8 +443,9 @@ module Exit_status = struct
       fail
         (progname_and_purpose Error ++ Pp.char ' '
          ++ Pp.tag User_message.Style.Error (Pp.verbatim msg)
-        :: Pp.tag User_message.Style.Details (Pp.verbatim command_line)
-        :: Option.to_list output)
+         ::
+         Pp.tag User_message.Style.Details (Pp.verbatim command_line)
+         :: Option.to_list output)
 end
 
 let default_env = lazy (Dtemp.add_to_env Env.initial)

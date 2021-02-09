@@ -36,12 +36,13 @@ let sexp_of_message : type a. version -> a message -> Sexp.t =
   | Lang versions ->
     cmd "lang"
       (Sexp.Atom "dune-cache-protocol"
-      :: (List.map ~f:(fun { major; minor } ->
-              Sexp.List
-                [ Sexp.Atom (string_of_int major)
-                ; Sexp.Atom (string_of_int minor)
-                ]))
-           versions)
+       ::
+       (List.map ~f:(fun { major; minor } ->
+            Sexp.List
+              [ Sexp.Atom (string_of_int major)
+              ; Sexp.Atom (string_of_int minor)
+              ]))
+         versions)
   | Promote promotion ->
     let key = Key.to_string promotion.key
     and f (path, digest) =
@@ -75,9 +76,10 @@ let sexp_of_message : type a. version -> a message -> Sexp.t =
     in
     cmd "promote"
       (Sexp.List [ Sexp.Atom "key"; Sexp.Atom key ]
-      :: Sexp.List (Sexp.Atom "files" :: List.map ~f promotion.files)
-      :: Sexp.List [ Sexp.Atom "metadata"; Sexp.List promotion.metadata ]
-      :: rest)
+       ::
+       Sexp.List (Sexp.Atom "files" :: List.map ~f promotion.files)
+       ::
+       Sexp.List [ Sexp.Atom "metadata"; Sexp.List promotion.metadata ] :: rest)
   | SetBuildRoot root ->
     cmd "set-build-root" [ Sexp.Atom (Path.to_absolute_filename root) ]
   | SetCommonMetadata metadata -> cmd "set-common-metadata" metadata

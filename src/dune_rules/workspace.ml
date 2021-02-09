@@ -288,9 +288,10 @@ module Context = struct
   let all_names t =
     let n = name t in
     n
-    :: List.filter_map (targets t) ~f:(function
-         | Native -> None
-         | Named s -> Some (Context_name.target n ~toolchain:s))
+    ::
+    List.filter_map (targets t) ~f:(function
+      | Native -> None
+      | Named s -> Some (Context_name.target n ~toolchain:s))
 
   let default ?x ?profile ?instrument_with () =
     Default

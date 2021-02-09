@@ -42,8 +42,8 @@ let to_local abs_file_path =
   in
   match path_opt with
   | Some path -> (
-    try Ok (Filename.concat "." path |> Path.Local.of_string)
-    with User_error.E mess -> User_message.to_string mess |> error)
+    try Ok (Filename.concat "." path |> Path.Local.of_string) with
+    | User_error.E mess -> User_message.to_string mess |> error)
   | None ->
     Printf.sprintf "Path is not in dune workspace %s" abs_file_path |> error
 

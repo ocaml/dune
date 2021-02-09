@@ -165,7 +165,11 @@ let builtins ~stdlib_dir ~version:ocaml_version =
     let main_modules = main_modules in
     { name = Some name
     ; entries =
-        requires deps :: version :: main_modules
+        requires deps
+        ::
+        version
+        ::
+        main_modules
         ::
         (match dir with
         | None -> archives

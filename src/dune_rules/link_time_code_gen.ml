@@ -249,7 +249,8 @@ let handle_special_libs cctx =
               ~precompiled_cmi:true
           in
           process_libs libs
-            ~to_link_rev:(LM.Lib lib :: Module (obj_dir, module_) :: to_link_rev)
+            ~to_link_rev:
+              (LM.Lib lib :: Module (obj_dir, module_) :: to_link_rev)
             ~force_linkall
         | Findlib_dynload ->
           (* If findlib.dynload is linked, we stores in the binary the packages
@@ -277,7 +278,8 @@ let handle_special_libs cctx =
               ~requires ~precompiled_cmi:false
           in
           process_libs libs
-            ~to_link_rev:(LM.Module (obj_dir, module_) :: Lib lib :: to_link_rev)
+            ~to_link_rev:
+              (LM.Module (obj_dir, module_) :: Lib lib :: to_link_rev)
             ~force_linkall:true
         | Configurator _ ->
           process_libs libs
@@ -298,7 +300,8 @@ let handle_special_libs cctx =
               ~precompiled_cmi:true
           in
           process_libs libs
-            ~to_link_rev:(LM.Lib lib :: Module (obj_dir, module_) :: to_link_rev)
+            ~to_link_rev:
+              (LM.Lib lib :: Module (obj_dir, module_) :: to_link_rev)
             ~force_linkall))
   in
   process_libs all_libs ~to_link_rev:[] ~force_linkall:false

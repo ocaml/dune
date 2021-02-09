@@ -38,8 +38,8 @@ let resolve_package_install setup pkg =
              |> List.map ~f:Package.Name.to_string))
 
 let print_unix_error f =
-  try f ()
-  with Unix.Unix_error (e, _, _) ->
+  try f () with
+  | Unix.Unix_error (e, _, _) ->
     User_message.prerr (User_error.make [ Pp.text (Unix.error_message e) ])
 
 module Special_file = struct
@@ -152,7 +152,8 @@ module File_ops_real (W : Workspace) : File_operations = struct
               raise_notrace Exit)
         in
         false
-      with Exit -> true
+      with
+      | Exit -> true
     in
     if not need_more_versions then
       No_version_needed

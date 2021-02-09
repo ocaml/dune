@@ -391,7 +391,9 @@ end = struct
       at_exit (fun () ->
           let fns = !tmp_files in
           tmp_files := Files.empty;
-          Files.iter fns ~f:(fun fn -> try Sys.remove fn with _ -> ()))
+          Files.iter fns ~f:(fun fn ->
+              try Sys.remove fn with
+              | _ -> ()))
 
     let file prefix suffix =
       let fn = Filename.temp_file prefix suffix in
@@ -399,7 +401,8 @@ end = struct
       fn
 
     let destroy_file fn =
-      (try Sys.remove fn with _ -> ());
+      (try Sys.remove fn with
+      | _ -> ());
       tmp_files := Files.remove fn !tmp_files
   end
 
@@ -746,7 +749,10 @@ module Library = struct
     let analyse fn =
       let dn = Filename.dirname fn in
       let fn = Filename.basename fn in
-      let i = try String.index fn '.' with Not_found -> String.length fn in
+      let i =
+        try String.index fn '.' with
+        | Not_found -> String.length fn
+      in
       match String.sub fn ~pos:i ~len:(String.length fn - i) with
       | ".c" -> Some C
       | ".ml" -> Some Ml
@@ -1064,7 +1070,8 @@ let common_build_args name ~external_includes ~external_libraries =
 let build ~ocaml_config ~dependencies ~c_files
     { target = name, main; external_libraries; _ } =
   let ext_obj =
-    try StringMap.find "ext_obj" ocaml_config with Not_found -> ".o"
+    try StringMap.find "ext_obj" ocaml_config with
+    | Not_found -> ".o"
   in
   let external_libraries, external_includes =
     resolve_externals external_libraries

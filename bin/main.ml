@@ -96,7 +96,8 @@ let () =
     match Term.Group.eval default all ~catch:false with
     | `Error _ -> exit 1
     | _ -> exit 0
-  with exn ->
+  with
+  | exn ->
     let exn = Exn_with_backtrace.capture exn in
     Dune_engine.Report_error.report exn;
     exit 1

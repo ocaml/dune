@@ -337,6 +337,7 @@ type t =
   ; sandboxing_preference : Sandbox_mode.t list
   ; mutable rule_done : int
   ; mutable rule_total : int
+  ; mutable errors : Exn_with_backtrace.t list
   ; vcs : Vcs.t list Fdecl.t
   ; promote_source :
          ?chmod:(int -> int)
@@ -1850,12 +1851,17 @@ let assert_not_in_memoized_function () =
       "Build_system.entry_point: called inside a memoized function"
       [ ("stack", Dyn.Encoder.list Memo.Stack_frame.to_dyn stack) ]
 
-let process_exn_and_reraise =
-  Exn_with_backtrace.map_and_reraise
-    ~f:
-      (Dep_path.map ~f:(function
-        | Memo.Cycle_error.E exn -> process_memcycle exn
-        | _ as exn -> exn))
+let process_exn_and_reraise exn =
+  let exn =
+    Exn_with_backtrace.map exn
+      ~f:
+        (Dep_path.map ~f:(function
+          | Memo.Cycle_error.E exn -> process_memcycle exn
+          | _ as exn -> exn))
+  in
+  let build = get_build_system () in
+  build.errors <- exn :: build.errors;
+  Exn_with_backtrace.reraise exn
 
 let entry_point_async ~f =
   assert_not_in_memoized_function ();
@@ -1870,6 +1876,8 @@ let entry_point_sync ~f =
 let do_build ~request =
   let open Memo.Build.O in
   Hooks.End_of_build.once Promotion.finalize;
+  let build = get_build_system () in
+  build.errors <- [];
   entry_point_async ~f:(fun () ->
       let+ result, (_ : Dep.Set.t) =
         Build_request.evaluate_and_wait_for_dynamic_dependencies
@@ -2040,6 +2048,7 @@ let init ~contexts ~promote_source ?caching ~sandboxing_preference () =
     ; sandboxing_preference = sandboxing_preference @ Sandbox_mode.all
     ; rule_done = 0
     ; rule_total = 0
+    ; errors = []
     ; (* This mutable table is safe: it merely maps paths to lazily created
          mutexes. *)
       locks = Table.create (module Path) 32

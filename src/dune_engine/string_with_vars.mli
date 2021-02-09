@@ -47,8 +47,6 @@ val make_pform : ?quoted:bool -> Loc.t -> Pform.t -> t
 
 val make_text : ?quoted:bool -> Loc.t -> string -> t
 
-(*val make : Dune_lang.Template.t -> t*)
-
 val is_pform : t -> Pform.t -> bool
 
 val has_pforms : t -> bool
@@ -57,46 +55,24 @@ val has_pforms : t -> bool
 val text_only : t -> string option
 
 module Mode : sig
-  (** Expansion may produce either a [Single] value or [Many] values
+  (** How many values expansion of a template must produce.
 
-      The caller always knows which of the contexts above it requires, therefore
-      it can specify this to the expansion functions. This allows us to return a
-      precise result type from the expansion, and do some validation to make
-      sure we aren't expanding into multiple values in cases where it's not
-      allowed. *)
+      The caller always knows which of the contexts bellow it requires,
+      therefore it can specify this to the expansion functions. This allows us
+      to return a precise result type from the expansion, and do some validation
+      to make sure we aren't expanding into multiple values in cases where it's
+      not allowed. *)
   type _ t =
-    | Single : Value.t t
-    | Many : Value.t list t
+    | Single : Value.t t  (** Expansion must produce a single value *)
+    | Many : Value.t list t  (** Expansion may produce any number of values *)
+    | At_least_one : (Value.t * Value.t list) t
+        (** Expansion may produce 1 or more values *)
 end
 
 type yes_no_unknown =
   | Yes
   | No
   | Unknown of { source_pform : Dune_lang.Template.Pform.t }
-
-module Partial : sig
-  type string_with_vars
-
-  (** Result of a best effort expansion. If we managed to expand everything we
-      return some ['a Mode.t t], otherwise we return a new template where all
-      the variables we know about are expanded. *)
-  type nonrec 'a t =
-    | Expanded of 'a
-    | Unexpanded of t
-
-  val to_dyn : ('a -> Dyn.t) -> 'a t -> Dyn.t
-
-  val map : 'a t -> f:('a -> 'b) -> 'b t
-
-  val is_suffix : string t -> suffix:string -> yes_no_unknown
-
-  val is_prefix : string t -> prefix:string -> yes_no_unknown
-
-  val elim : 'a t -> exp:('a -> 'b) -> unexp:(string_with_vars -> 'b) -> 'b
-
-  val expanded : 'a -> 'a t
-end
-with type string_with_vars := t
 
 type known_suffix =
   | Full of string
@@ -128,31 +104,24 @@ val fold_pforms :
 
 type 'a expander = source:Dune_lang.Template.Pform.t -> Pform.t -> 'a
 
-module type S = sig
+module type Expander = sig
   type 'a app
 
   (** [expand ~f] attempts to expand all percent forms in a template. If [f]
       returns [None] for any variable (no substitution was found), then this
       function will raise. *)
   val expand :
-       t
-    -> mode:'a Mode.t
-    -> dir:Path.t
-    -> f:Value.t list option app expander
-    -> 'a app
+    t -> mode:'a Mode.t -> dir:Path.t -> f:Value.t list app expander -> 'a app
 
-  (** [partial_expand] does a best effort expansion of the template. If it fails
-      to expand any variables, it will return [Unexpanded t] where [t] is the
-      maximally expanded template. If it manages to expand everything [Expanded]
-      will be returned. *)
-  val partial_expand :
-       t
-    -> mode:'a Mode.t
-    -> dir:Path.t
-    -> f:Value.t list option app expander
-    -> 'a Partial.t app
+  (** [expand_as_much_as_possible] expands all variables for which [f] returns
+      [None] and left other unexpanded. *)
+  val expand_as_much_as_possible :
+    t -> dir:Path.t -> f:Value.t list option app expander -> t app
 end
 
-include S with type 'a app := 'a
+include Expander with type 'a app := 'a
+
+module Make_expander (A : Applicative_intf.S1) :
+  Expander with type 'a app := 'a A.t
 
 val remove_locs : t -> t

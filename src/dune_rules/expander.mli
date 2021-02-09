@@ -41,9 +41,7 @@ val set_foreign_flags :
         -> string list Action_builder.t Foreign_language.Dict.t)
   -> t
 
-val set_env : t -> var:string -> value:string -> t
-
-val hide_env : t -> var:string -> t
+val set_local_env_var : t -> var:string -> value:string Action_builder.t -> t
 
 val set_dir : t -> dir:Path.Build.t -> t
 
@@ -56,63 +54,71 @@ val set_artifacts_dynamic : t -> bool -> t
 val set_lookup_ml_sources :
   t -> f:(dir:Path.Build.t -> Ml_sources.Artifacts.t) -> t
 
+val set_dep_kind : t -> Lib_deps_info.Kind.t -> t
+
+module Expanding_what : sig
+  type t =
+    | Nothing_special
+    | Deps_like_field
+    | User_action of Targets.Or_forbidden.t
+end
+
+(** Used to improve error messages and handing special cases, such as:
+    [%{exe:fn}] maps [fn] to the host context except when expanding a deps-like
+    field. *)
+val set_expanding_what : t -> Expanding_what.t -> t
+
 (** Expander needs to expand custom bindings sometimes. For example, the name of
     the library for the action that runs inline tests. This is the place to add
     such bindings. *)
 val add_bindings : t -> bindings:Value.t list Pform.Map.t -> t
 
+val add_bindings_full :
+  t -> bindings:Value.t list Action_builder.t Pform.Map.t -> t
+
 val extend_env : t -> env:Env.t -> t
 
 val expand :
-  t -> mode:'a String_with_vars.Mode.t -> template:String_with_vars.t -> 'a
-
-val expand_path : t -> String_with_vars.t -> Path.t
-
-val expand_str : t -> String_with_vars.t -> string
-
-module Or_exn : sig
-  val expand_path : t -> String_with_vars.t -> Path.t Or_exn.t
-
-  val expand_str : t -> String_with_vars.t -> string Or_exn.t
-end
-
-type reduced_var_result =
-  | Unknown
-  | Restricted
-  | Expanded of Value.t list
-
-val expand_with_reduced_var_set :
-  context:Context.t -> reduced_var_result String_with_vars.expander
-
-(** Prepare a temporary expander capable of expanding variables in the [deps] or
-    similar fields. This expander doesn't support variables that require us to
-    build something to expand. For example, [%{exe:foo}] is allowed but
-    [%{read:bar}] is not allowed.
-
-    Once [f] has returned, the temporary expander can no longer be used. *)
-val expand_deps_like_field :
      t
-  -> dep_kind:Lib_deps_info.Kind.t
-  -> f:(t -> 'a Action_builder.t)
+  -> mode:'a String_with_vars.Mode.t
+  -> String_with_vars.t
   -> 'a Action_builder.t
 
-(** Expand user actions. Both [partial] and [final] receive temporary expander
-    that must not be used once these functions have returned. The expander
-    passed to [partial] will not expand forms such as [%{read:...}], but the one
-    passed to [final] will.
+val expand_path : t -> String_with_vars.t -> Path.t Action_builder.t
 
-    Returns both the result of partial and final expansion. *)
-val expand_action :
-     t
-  -> deps_written_by_user:Path.t Bindings.t Action_builder.t
-  -> targets_written_by_user:Targets.Or_forbidden.t
-  -> dep_kind:Lib_deps_info.Kind.t
-  -> partial:(t -> 'a)
-  -> final:(t -> 'a -> 'b)
-  -> 'a * 'b Action_builder.t
+val expand_str : t -> String_with_vars.t -> string Action_builder.t
 
-(** Expand individual string templates with this function *)
-val expand_var_exn : t -> Value.t list option String_with_vars.expander
+val expand_pform : t -> Value.t list Action_builder.t String_with_vars.expander
+
+module Static : sig
+  val expand : t -> mode:'a String_with_vars.Mode.t -> String_with_vars.t -> 'a
+
+  val expand_path : t -> String_with_vars.t -> Path.t
+
+  val expand_str : t -> String_with_vars.t -> string
+
+  val expand_pform : t -> Value.t list String_with_vars.expander
+
+  module With_reduced_var_set : sig
+    val expand_path :
+      context:Context.t -> dir:Path.Build.t -> String_with_vars.t -> Path.t
+
+    val expand_str :
+      context:Context.t -> dir:Path.Build.t -> String_with_vars.t -> string
+
+    val expand_str_partial :
+         context:Context.t
+      -> dir:Path.Build.t
+      -> String_with_vars.t
+      -> String_with_vars.t
+  end
+
+  module Or_exn : sig
+    val expand_path : t -> String_with_vars.t -> Path.t Or_exn.t
+
+    val expand_str : t -> String_with_vars.t -> string Or_exn.t
+  end
+end
 
 (** Expand forms of the form (:standard \ foo bar). Expansion is only possible
     inside [Action_builder.t] because such forms may contain the form (:include

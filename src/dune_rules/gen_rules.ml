@@ -114,7 +114,7 @@ end = struct
     | Copy_files { files = glob; _ } ->
       let source_dirs =
         let loc = String_with_vars.loc glob in
-        let src_glob = Expander.expand_str expander glob in
+        let src_glob = Expander.Static.expand_str expander glob in
         if Filename.is_relative src_glob then
           Some
             ( Path.Source.relative src_dir src_glob ~error_loc:loc
@@ -213,7 +213,7 @@ let gen_rules sctx dir_contents cctxs expander
       { Install_conf.section = _; files; package = _; enabled_if = _ } =
     Path.Set.of_list_map files ~f:(fun fb ->
         File_binding.Unexpanded.expand_src ~dir:ctx_dir fb
-          ~f:(Expander.expand_str expander)
+          ~f:(Expander.Static.expand_str expander)
         |> Path.build)
     |> Rules.Produce.Alias.add_deps (Alias.all ~dir:ctx_dir)
   in

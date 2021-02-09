@@ -1,17 +1,15 @@
 (** Interpret dependencies written in Dune files *)
-open Stdune
+open! Stdune
 
 open! Dune_engine
 
-(** Evaluates to the actual list of dependencies, ignoring aliases, and
-    registers them as the action dependencies. *)
+(** Evaluates unnamed dependency specifications. *)
 val unnamed : expander:Expander.t -> Dep_conf.t list -> unit Action_builder.t
 
-(** Evaluates to the actual list of dependencies, ignoring aliases, and
-    registers them as the action dependencies.
-
-    It returns bindings that are later used for action expansion. *)
+(** Evaluates named dependency specifications. Return the action build that
+    register dependencies as well as an expander that can be used to expand to
+    expand variables from the bindings. *)
 val named :
      expander:Expander.t
   -> Dep_conf.t Bindings.t
-  -> Path.t Bindings.t Action_builder.t
+  -> unit Action_builder.t * Expander.t

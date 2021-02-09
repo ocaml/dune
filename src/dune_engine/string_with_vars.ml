@@ -103,31 +103,36 @@ module Mode = struct
   type _ t =
     | Single : Value.t t
     | Many : Value.t list t
+    | At_least_one : (Value.t * Value.t list) t
 
   let string : type a. a t -> string -> a =
    fun t s ->
     match t with
     | Single -> Value.String s
     | Many -> [ Value.String s ]
+    | At_least_one -> (Value.String s, [])
 
-  let value : type a. a t -> Value.t list -> a option =
-   fun t s ->
-    match (t, s) with
-    | Many, s -> Some s
-    | Single, [ s ] -> Some s
-    | Single, _ -> None
+  let invalid_multivalue ~source l ~what =
+    User_error.raise ~loc:source.Dune_lang.Template.Pform.loc
+      [ Pp.textf
+          "%s %s expands to %d values, however %s value is expected here. \
+           Please quote this atom."
+          (String.capitalize_ascii
+             (Dune_lang.Template.Pform.describe_kind source))
+          (Dune_lang.Template.Pform.describe source)
+          (List.length l) what
+      ]
+
+  let value :
+      type a. source:Dune_lang.Template.Pform.t -> a t -> Value.t list -> a =
+   fun ~source t x ->
+    match (t, x) with
+    | Many, x -> x
+    | Single, [ x ] -> x
+    | At_least_one, x :: l -> (x, l)
+    | Single, _ -> invalid_multivalue ~source x ~what:"a single"
+    | At_least_one, [] -> invalid_multivalue ~source x ~what:"at least one"
 end
-
-let invalid_multivalue source _pform x =
-  User_error.raise ~loc:source.Dune_lang.Template.Pform.loc
-    [ Pp.textf
-        "%s %s expands to %d values, however a single value is expected here. \
-         Please quote this atom."
-        (String.capitalize_ascii
-           (Dune_lang.Template.Pform.describe_kind source))
-        (Dune_lang.Template.Pform.describe source)
-        (List.length x)
-    ]
 
 type known_suffix =
   | Full of string
@@ -210,131 +215,88 @@ let is_prefix t ~prefix:want =
     else
       No
 
-module Private = struct
-  module Partial = struct
-    type nonrec 'a t =
-      | Expanded of 'a
-      | Unexpanded of t
-
-    let map t ~f =
-      match t with
-      | Expanded t -> Expanded (f t)
-      | Unexpanded t -> Unexpanded t
-
-    let is_suffix t ~suffix =
-      match t with
-      | Expanded s ->
-        if String.is_suffix ~suffix s then
-          Yes
-        else
-          No
-      | Unexpanded t -> is_suffix t ~suffix
-
-    let is_prefix t ~prefix =
-      match t with
-      | Expanded s ->
-        if String.is_prefix ~prefix s then
-          Yes
-        else
-          No
-      | Unexpanded t -> is_prefix t ~prefix
-  end
-end
-
-open Private
-
-module type S = sig
+module type Expander = sig
   type 'a app
 
   val expand :
-       t
-    -> mode:'a Mode.t
-    -> dir:Path.t
-    -> f:Value.t list option app expander
-    -> 'a app
+    t -> mode:'a Mode.t -> dir:Path.t -> f:Value.t list app expander -> 'a app
 
-  val partial_expand :
-       t
-    -> mode:'a Mode.t
-    -> dir:Path.t
-    -> f:Value.t list option app expander
-    -> 'a Partial.t app
+  val expand_as_much_as_possible :
+    t -> dir:Path.t -> f:Value.t list option app expander -> t app
 end
 
-module Make (A : Applicative_intf.S1) = struct
-  (* We parameterize expansion over an applicative to be able to accumulate
-     dependencies as we expand. *)
-  module App = Applicative.Make (A)
+module Make_expander (A : Applicative_intf.S1) :
+  Expander with type 'a app := 'a A.t = struct
+  open A.O
 
-  let partial_expand :
-        'a.    t -> mode:'a Mode.t -> dir:Path.t
-        -> f:Value.t list option A.t expander -> 'a Partial.t A.t =
+  let expand :
+        'a.    t -> mode:'a Mode.t -> dir:Path.t -> f:Value.t list A.t expander
+        -> 'a A.t =
    fun t ~mode ~dir ~f ->
     match t.parts with
     (* Optimizations for some common cases *)
-    | [] -> A.return (Partial.Expanded (Mode.string mode ""))
-    | [ Text s ] -> A.return (Partial.Expanded (Mode.string mode s))
-    | [ Pform (source, p) ] when not t.quoted -> (
-      let open App.O in
-      let+ exp = f ~source p in
-      match exp with
-      | None -> Partial.Unexpanded t
-      | Some e ->
-        Expanded
-          ( match Mode.value mode e with
-          | None -> invalid_multivalue source p e
-          | Some s -> s ) )
+    | [] -> A.return (Mode.string mode "")
+    | [ Text s ] -> A.return (Mode.string mode s)
+    | [ Pform (source, p) ] when not t.quoted ->
+      let+ v = f ~source p in
+      Mode.value mode v ~source
     | _ ->
-      let expanded_parts =
-        List.map t.parts ~f:(fun part ->
-            match part with
-            | Text _
-            | Error _ ->
-              App.return part
-            | Pform (source, p) -> (
-              let open App.O in
-              let+ exp = f ~source p in
-              match exp with
-              | Some (([] | _ :: _ :: _) as e) when not t.quoted ->
-                invalid_multivalue source p e
-              | Some t -> Text (Value.L.concat ~dir t)
-              | None -> part ))
+      let+ chunks =
+        A.all
+          (List.map t.parts ~f:(function
+            | Text s -> A.return s
+            | Error (_, msg) ->
+              (* The [let+ () = A.return () in ...] is to delay the error until
+                 the evaluation of the applicative *)
+              let+ () = A.return () in
+              raise (User_error.E msg)
+            | Pform (source, p) ->
+              let+ v = f ~source p in
+              if t.quoted then
+                Value.L.concat v ~dir
+              else
+                Value.to_string ~dir (Mode.value Single v ~source)))
       in
-      let open App.O in
-      let+ expanded = App.all expanded_parts in
-      let commit_text acc_text acc =
-        let s = concat_rev acc_text in
-        if s = "" then
-          acc
-        else
-          Text s :: acc
-      in
-      (* This pass merges all consecutive [Text] constructors *)
-      let rec loop acc_text acc items =
-        match items with
-        | [] -> (
-          match acc with
-          | [] -> Partial.Expanded (Mode.string mode (concat_rev acc_text))
-          | _ ->
-            Unexpanded { t with parts = List.rev (commit_text acc_text acc) } )
-        | Text s :: items -> loop (s :: acc_text) acc items
-        | it :: items -> loop [] (it :: commit_text acc_text acc) items
-      in
-      loop [] [] expanded
+      Mode.string mode (String.concat chunks ~sep:"")
 
-  let expand t ~mode ~dir ~f =
-    let open App.O in
-    let+ exp = partial_expand t ~mode ~dir ~f in
-    match exp with
-    | Partial.Expanded s -> s
-    | Unexpanded t ->
-      List.iter t.parts ~f:(function
-        | Error (_, msg) -> raise (User_error.E msg)
-        | _ -> ());
-      assert false
+  let expand_as_much_as_possible t ~dir ~f =
+    let+ parts =
+      A.all
+        (List.map t.parts ~f:(fun part ->
+             match part with
+             | Text _
+             | Error _ ->
+               A.return part
+             | Pform (source, p) -> (
+               let+ v = f ~source p in
+               match v with
+               | None -> part
+               | Some v ->
+                 Text
+                   ( if t.quoted then
+                     Value.L.concat v ~dir
+                   else
+                     Value.to_string ~dir (Mode.value Single v ~source) ) )))
+    in
+    let commit_text acc_text acc =
+      let s = concat_rev acc_text in
+      if s = "" then
+        acc
+      else
+        Text s :: acc
+    in
+    (* This pass merges all consecutive [Text] constructors *)
+    let rec loop acc_text acc items =
+      match items with
+      | [] -> List.rev (commit_text acc_text acc)
+      | Text s :: items -> loop (s :: acc_text) acc items
+      | it :: items -> loop [] (it :: commit_text acc_text acc) items
+    in
+    let parts = loop [] [] parts in
+    { t with parts }
 end
 
-include Make (Applicative.Id)
+include Make_expander (Applicative.Id)
 
 let is_pform t pform =
   match t.parts with
@@ -384,20 +346,3 @@ let remove_locs { quoted; loc = _; parts } =
           Error ({ source with loc = Loc.none }, { msg with loc = None })
         | Pform (source, p) -> Pform ({ source with loc = Loc.none }, p))
   }
-
-module Partial = struct
-  include Private.Partial
-
-  let to_dyn f =
-    let open Dyn.Encoder in
-    function
-    | Expanded x -> constr "Expander" [ f x ]
-    | Unexpanded t -> constr "Unexpanded" [ to_dyn t ]
-
-  let elim t ~exp ~unexp =
-    match t with
-    | Expanded e -> exp e
-    | Unexpanded t -> unexp t
-
-  let expanded t = Expanded t
-end

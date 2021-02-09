@@ -887,7 +887,7 @@ module Library = struct
         Blang.eval conf.enabled_if ~dir:(Path.build dir)
           ~f:(fun ~source:_ pform ->
             let value = Lib_config.get_for_enabled_if lib_config pform in
-            Some [ String value ])
+            [ String value ])
       in
       if not enabled_if_result then
         Lib_info.Enabled_status.Disabled_because_of_enabled_if

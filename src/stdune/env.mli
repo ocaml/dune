@@ -6,6 +6,8 @@ module Var : sig
   val temp_dir : t
 
   module Set : Set.S with type elt = t
+
+  module Map : Map.S with type key = t
 end
 
 type t

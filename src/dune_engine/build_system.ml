@@ -1216,9 +1216,7 @@ end = struct
       | Non_memoized _ -> evaluate_and_discover_dynamic_deps_unmemoized t
       | Memoized rule -> Memo.exec memo rule
 
-    let evaluate t =
-      let+ result, dynamic_deps = evaluate_and_discover_dynamic_deps t in
-      (result, Dep.Set.union (static_deps t).action_deps dynamic_deps)
+    let evaluate t = evaluate_and_discover_dynamic_deps t
 
     let peek_deps_exn rule =
       let (_ : Action.t), dynamic_deps = Memo.peek_exn memo rule in

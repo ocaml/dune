@@ -25,6 +25,9 @@ Unreleased
 
 - Detect unknown variables more eagerly (#4184, @jeremiedimino)
 
+- Improve location of variables and macros in error messages (#4205,
+  @jeremiedimino)
+
 2.8.2 (21/01/2021)
 ------------------
 

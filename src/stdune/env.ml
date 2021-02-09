@@ -22,7 +22,7 @@ module Var = struct
   include T
 end
 
-module Map = Map.Make (Var)
+module Map = Var.Map
 
 (* The use of [mutable] here is safe, since we never call (back) to the
    memoization framework when computing [unix]. *)
@@ -76,7 +76,7 @@ let add t ~var ~value = make (Map.set t.vars var value)
 
 let remove t ~var = make (Map.remove t.vars var)
 
-let extend t ~vars = make (Map.union t.vars vars ~f:(fun _ _ v -> Some v))
+let extend t ~vars = make (Map.superpose t.vars vars)
 
 let extend_env x y = extend x ~vars:y.vars
 

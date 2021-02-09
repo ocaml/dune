@@ -184,9 +184,9 @@ module Unprocessed = struct
             Forbidden "preprocessing actions"
           in
           let action = Preprocessing.chdir (Run (exe, args)) in
-          Action_unexpanded.expand ~loc ~expander ~dep_kind:Optional ~targets
-            ~targets_dir action
-            (Action_builder.return Bindings.empty)
+          let expander = Expander.set_dep_kind expander Optional in
+          Action_unexpanded.expand ~loc ~expander ~deps:[] ~targets ~targets_dir
+            action
         in
         let pp_of_action exe args =
           match exe with

@@ -228,58 +228,219 @@ let supports_shared_libraries t = t.supports_shared_libraries
 
 let windows_unicode t = t.windows_unicode
 
-let to_list t : (string * Value.t) list =
-  [ ("version", String t.version_string)
-  ; ("standard_library_default", String t.standard_library_default)
-  ; ("standard_library", String t.standard_library)
-  ; ("standard_runtime", String t.standard_runtime)
-  ; ("ccomp_type", String (Ccomp_type.to_string t.ccomp_type))
-  ; ("c_compiler", String t.c_compiler)
-  ; ("ocamlc_cflags", Words t.ocamlc_cflags)
-  ; ("ocamlc_cppflags", Words t.ocamlc_cppflags)
-  ; ("ocamlopt_cflags", Words t.ocamlopt_cflags)
-  ; ("ocamlopt_cppflags", Words t.ocamlopt_cppflags)
-  ; ("bytecomp_c_compiler", Prog_and_args t.bytecomp_c_compiler)
-  ; ("bytecomp_c_libraries", Words t.bytecomp_c_libraries)
-  ; ("native_c_compiler", Prog_and_args t.native_c_compiler)
-  ; ("native_c_libraries", Words t.native_c_libraries)
-  ; ("cc_profile", Words t.cc_profile)
-  ; ("architecture", String t.architecture)
-  ; ("model", String t.model)
-  ; ("int_size", Int t.int_size)
-  ; ("word_size", Int t.word_size)
-  ; ("system", String t.system)
-  ; ("asm", Prog_and_args t.asm)
-  ; ("asm_cfi_supported", Bool t.asm_cfi_supported)
-  ; ("with_frame_pointers", Bool t.with_frame_pointers)
-  ; ("ext_exe", String t.ext_exe)
-  ; ("ext_obj", String t.ext_obj)
-  ; ("ext_asm", String t.ext_asm)
-  ; ("ext_lib", String t.ext_lib)
-  ; ("ext_dll", String t.ext_dll)
-  ; ("os_type", String (Os_type.to_string t.os_type))
-  ; ("default_executable_name", String t.default_executable_name)
-  ; ("systhread_supported", Bool t.systhread_supported)
-  ; ("host", String t.host)
-  ; ("target", String t.target)
-  ; ("profiling", Bool t.profiling)
-  ; ("flambda", Bool t.flambda)
-  ; ("spacetime", Bool t.spacetime)
-  ; ("safe_string", Bool t.safe_string)
-  ; ("exec_magic_number", String t.exec_magic_number)
-  ; ("cmi_magic_number", String t.cmi_magic_number)
-  ; ("cmo_magic_number", String t.cmo_magic_number)
-  ; ("cma_magic_number", String t.cma_magic_number)
-  ; ("cmx_magic_number", String t.cmx_magic_number)
-  ; ("cmxa_magic_number", String t.cmxa_magic_number)
-  ; ("ast_impl_magic_number", String t.ast_impl_magic_number)
-  ; ("ast_intf_magic_number", String t.ast_intf_magic_number)
-  ; ("cmxs_magic_number", String t.cmxs_magic_number)
-  ; ("cmt_magic_number", String t.cmt_magic_number)
-  ; ("natdynlink_supported", Bool t.natdynlink_supported)
-  ; ("supports_shared_libraries", Bool t.supports_shared_libraries)
-  ; ("windows_unicode", Bool t.windows_unicode)
+let to_list
+    { version = _
+    ; version_string
+    ; standard_library_default
+    ; standard_library
+    ; standard_runtime
+    ; ccomp_type
+    ; c_compiler
+    ; ocamlc_cflags
+    ; ocamlc_cppflags
+    ; ocamlopt_cflags
+    ; ocamlopt_cppflags
+    ; bytecomp_c_compiler
+    ; bytecomp_c_libraries
+    ; native_c_compiler
+    ; native_c_libraries
+    ; cc_profile
+    ; architecture
+    ; model
+    ; int_size
+    ; word_size
+    ; system
+    ; asm
+    ; asm_cfi_supported
+    ; with_frame_pointers
+    ; ext_exe
+    ; ext_obj
+    ; ext_asm
+    ; ext_lib
+    ; ext_dll
+    ; os_type
+    ; default_executable_name
+    ; systhread_supported
+    ; host
+    ; target
+    ; profiling
+    ; flambda
+    ; spacetime
+    ; safe_string
+    ; exec_magic_number
+    ; cmi_magic_number
+    ; cmo_magic_number
+    ; cma_magic_number
+    ; cmx_magic_number
+    ; cmxa_magic_number
+    ; ast_impl_magic_number
+    ; ast_intf_magic_number
+    ; cmxs_magic_number
+    ; cmt_magic_number
+    ; natdynlink_supported
+    ; supports_shared_libraries
+    ; windows_unicode
+    } : (string * Value.t) list =
+  [ ("version", String version_string)
+  ; ("standard_library_default", String standard_library_default)
+  ; ("standard_library", String standard_library)
+  ; ("standard_runtime", String standard_runtime)
+  ; ("ccomp_type", String (Ccomp_type.to_string ccomp_type))
+  ; ("c_compiler", String c_compiler)
+  ; ("ocamlc_cflags", Words ocamlc_cflags)
+  ; ("ocamlc_cppflags", Words ocamlc_cppflags)
+  ; ("ocamlopt_cflags", Words ocamlopt_cflags)
+  ; ("ocamlopt_cppflags", Words ocamlopt_cppflags)
+  ; ("bytecomp_c_compiler", Prog_and_args bytecomp_c_compiler)
+  ; ("bytecomp_c_libraries", Words bytecomp_c_libraries)
+  ; ("native_c_compiler", Prog_and_args native_c_compiler)
+  ; ("native_c_libraries", Words native_c_libraries)
+  ; ("cc_profile", Words cc_profile)
+  ; ("architecture", String architecture)
+  ; ("model", String model)
+  ; ("int_size", Int int_size)
+  ; ("word_size", Int word_size)
+  ; ("system", String system)
+  ; ("asm", Prog_and_args asm)
+  ; ("asm_cfi_supported", Bool asm_cfi_supported)
+  ; ("with_frame_pointers", Bool with_frame_pointers)
+  ; ("ext_exe", String ext_exe)
+  ; ("ext_obj", String ext_obj)
+  ; ("ext_asm", String ext_asm)
+  ; ("ext_lib", String ext_lib)
+  ; ("ext_dll", String ext_dll)
+  ; ("os_type", String (Os_type.to_string os_type))
+  ; ("default_executable_name", String default_executable_name)
+  ; ("systhread_supported", Bool systhread_supported)
+  ; ("host", String host)
+  ; ("target", String target)
+  ; ("profiling", Bool profiling)
+  ; ("flambda", Bool flambda)
+  ; ("spacetime", Bool spacetime)
+  ; ("safe_string", Bool safe_string)
+  ; ("exec_magic_number", String exec_magic_number)
+  ; ("cmi_magic_number", String cmi_magic_number)
+  ; ("cmo_magic_number", String cmo_magic_number)
+  ; ("cma_magic_number", String cma_magic_number)
+  ; ("cmx_magic_number", String cmx_magic_number)
+  ; ("cmxa_magic_number", String cmxa_magic_number)
+  ; ("ast_impl_magic_number", String ast_impl_magic_number)
+  ; ("ast_intf_magic_number", String ast_intf_magic_number)
+  ; ("cmxs_magic_number", String cmxs_magic_number)
+  ; ("cmt_magic_number", String cmt_magic_number)
+  ; ("natdynlink_supported", Bool natdynlink_supported)
+  ; ("supports_shared_libraries", Bool supports_shared_libraries)
+  ; ("windows_unicode", Bool windows_unicode)
   ]
+
+(* There is a test in the test suite to check that the names used in the above
+   functions are the same as the ones used in the below function. *)
+
+let by_name
+    { version = _
+    ; version_string
+    ; standard_library_default
+    ; standard_library
+    ; standard_runtime
+    ; ccomp_type
+    ; c_compiler
+    ; ocamlc_cflags
+    ; ocamlc_cppflags
+    ; ocamlopt_cflags
+    ; ocamlopt_cppflags
+    ; bytecomp_c_compiler
+    ; bytecomp_c_libraries
+    ; native_c_compiler
+    ; native_c_libraries
+    ; cc_profile
+    ; architecture
+    ; model
+    ; int_size
+    ; word_size
+    ; system
+    ; asm
+    ; asm_cfi_supported
+    ; with_frame_pointers
+    ; ext_exe
+    ; ext_obj
+    ; ext_asm
+    ; ext_lib
+    ; ext_dll
+    ; os_type
+    ; default_executable_name
+    ; systhread_supported
+    ; host
+    ; target
+    ; profiling
+    ; flambda
+    ; spacetime
+    ; safe_string
+    ; exec_magic_number
+    ; cmi_magic_number
+    ; cmo_magic_number
+    ; cma_magic_number
+    ; cmx_magic_number
+    ; cmxa_magic_number
+    ; ast_impl_magic_number
+    ; ast_intf_magic_number
+    ; cmxs_magic_number
+    ; cmt_magic_number
+    ; natdynlink_supported
+    ; supports_shared_libraries
+    ; windows_unicode
+    } name : Value.t option =
+  match name with
+  | "version" -> Some (String version_string)
+  | "standard_library_default" -> Some (String standard_library_default)
+  | "standard_library" -> Some (String standard_library)
+  | "standard_runtime" -> Some (String standard_runtime)
+  | "ccomp_type" -> Some (String (Ccomp_type.to_string ccomp_type))
+  | "c_compiler" -> Some (String c_compiler)
+  | "ocamlc_cflags" -> Some (Words ocamlc_cflags)
+  | "ocamlc_cppflags" -> Some (Words ocamlc_cppflags)
+  | "ocamlopt_cflags" -> Some (Words ocamlopt_cflags)
+  | "ocamlopt_cppflags" -> Some (Words ocamlopt_cppflags)
+  | "bytecomp_c_compiler" -> Some (Prog_and_args bytecomp_c_compiler)
+  | "bytecomp_c_libraries" -> Some (Words bytecomp_c_libraries)
+  | "native_c_compiler" -> Some (Prog_and_args native_c_compiler)
+  | "native_c_libraries" -> Some (Words native_c_libraries)
+  | "cc_profile" -> Some (Words cc_profile)
+  | "architecture" -> Some (String architecture)
+  | "model" -> Some (String model)
+  | "int_size" -> Some (Int int_size)
+  | "word_size" -> Some (Int word_size)
+  | "system" -> Some (String system)
+  | "asm" -> Some (Prog_and_args asm)
+  | "asm_cfi_supported" -> Some (Bool asm_cfi_supported)
+  | "with_frame_pointers" -> Some (Bool with_frame_pointers)
+  | "ext_exe" -> Some (String ext_exe)
+  | "ext_obj" -> Some (String ext_obj)
+  | "ext_asm" -> Some (String ext_asm)
+  | "ext_lib" -> Some (String ext_lib)
+  | "ext_dll" -> Some (String ext_dll)
+  | "os_type" -> Some (String (Os_type.to_string os_type))
+  | "default_executable_name" -> Some (String default_executable_name)
+  | "systhread_supported" -> Some (Bool systhread_supported)
+  | "host" -> Some (String host)
+  | "target" -> Some (String target)
+  | "profiling" -> Some (Bool profiling)
+  | "flambda" -> Some (Bool flambda)
+  | "spacetime" -> Some (Bool spacetime)
+  | "safe_string" -> Some (Bool safe_string)
+  | "exec_magic_number" -> Some (String exec_magic_number)
+  | "cmi_magic_number" -> Some (String cmi_magic_number)
+  | "cmo_magic_number" -> Some (String cmo_magic_number)
+  | "cma_magic_number" -> Some (String cma_magic_number)
+  | "cmx_magic_number" -> Some (String cmx_magic_number)
+  | "cmxa_magic_number" -> Some (String cmxa_magic_number)
+  | "ast_impl_magic_number" -> Some (String ast_impl_magic_number)
+  | "ast_intf_magic_number" -> Some (String ast_intf_magic_number)
+  | "cmxs_magic_number" -> Some (String cmxs_magic_number)
+  | "cmt_magic_number" -> Some (String cmt_magic_number)
+  | "natdynlink_supported" -> Some (Bool natdynlink_supported)
+  | "supports_shared_libraries" -> Some (Bool supports_shared_libraries)
+  | "windows_unicode" -> Some (Bool windows_unicode)
+  | _ -> None
 
 let to_dyn t =
   let open Dyn in

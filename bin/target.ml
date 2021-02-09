@@ -108,7 +108,8 @@ let expand_path common ~(setup : Dune_rules.Main.build_system) ctx sv =
     Dune_rules.Dir_contents.add_sources_to_expander sctx expander
   in
   Path.relative Path.root
-    (Common.prefix_target common (Dune_rules.Expander.expand_str expander sv))
+    (Common.prefix_target common
+       (Dune_rules.Expander.Static.expand_str expander sv))
 
 let resolve_alias common ~recursive sv ~(setup : Dune_rules.Main.build_system) =
   match Dune_engine.String_with_vars.text_only sv with

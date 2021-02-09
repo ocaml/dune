@@ -206,7 +206,7 @@ val static_deps : _ t -> Static_deps.t
 (** Compute static library dependencies of an action builder. *)
 val fold_labeled : _ t -> init:'acc -> f:(label -> 'acc -> 'acc) -> 'acc
 
-(** Returns [Some (x, t) if the following can be evaluated statically. The
+(** Returns [Some (x, t)] if the following can be evaluated statically. The
     returned [t] should be attached to the current action builder to record
     dependencies and other informations. Otherwise return [None]. *)
 val static_eval : 'a t -> ('a * unit t) option

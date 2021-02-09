@@ -719,7 +719,9 @@ end = struct
             | Some cv -> (
               let res = deps_changed cv.deps in
               match res with
-              | Unchanged -> Prev_cycle_cache_lookup_result.Valid cv
+              | Unchanged ->
+                cv.last_validated_at <- Run.current ();
+                Prev_cycle_cache_lookup_result.Valid cv
               | Changed ->
                 dep_node.last_cached_value <- None;
                 Invalid { old_value = Some cv } )

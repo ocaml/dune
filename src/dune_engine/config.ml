@@ -127,7 +127,7 @@ module Concurrency = struct
         if n >= 1 then
           Ok (Fixed n)
         else
-          error )
+          error)
 
   let decode =
     plain_string (fun ~loc s ->
@@ -235,15 +235,15 @@ let merge t (partial : Partial.t) =
 
 let default =
   { display =
-      ( if inside_dune then
+      (if inside_dune then
         Quiet
       else
-        Progress )
+        Progress)
   ; concurrency =
-      ( if inside_dune then
+      (if inside_dune then
         Fixed 1
       else
-        Auto )
+        Auto)
   ; terminal_persistence = Terminal_persistence.Preserve
   ; sandboxing_preference = []
   ; cache_mode = Disabled
@@ -278,8 +278,8 @@ let decode =
       ~default:default.cache_check_probability
   and+ cache_duplication =
     field "cache-duplication"
-      ( Dune_lang.Syntax.since Stanza.syntax (2, 1)
-      >>> Caching.Duplication.decode )
+      (Dune_lang.Syntax.since Stanza.syntax (2, 1)
+      >>> Caching.Duplication.decode)
       ~default:default.cache_duplication
   and+ cache_trim_period =
     field "cache-trim-period" Dune_lang.Decoder.duration

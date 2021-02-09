@@ -167,9 +167,9 @@ let builtins ~stdlib_dir ~version:ocaml_version =
     ; entries =
         requires deps :: version :: main_modules
         ::
-        ( match dir with
+        (match dir with
         | None -> archives
-        | Some d -> directory d :: archives )
+        | Some d -> directory d :: archives)
     }
   in
   let dummy name =
@@ -288,9 +288,9 @@ let string_of_action = function
 
 let pp_predicate p =
   Pp.verbatim
-    ( match p with
+    (match p with
     | Pos p -> p
-    | Neg p -> "-" ^ p )
+    | Neg p -> "-" ^ p)
 
 let pp_print_text s =
   let open Pp.O in

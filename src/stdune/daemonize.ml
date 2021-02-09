@@ -13,17 +13,17 @@ let retry ?message ?(count = 100) f =
   let rec loop = function
     | x when x >= count ->
       Result.Error
-        ( Printf.sprintf "too many retries (%i)" x
+        (Printf.sprintf "too many retries (%i)" x
         ^
         match message with
         | None -> ""
-        | Some msg -> ": " ^ msg )
+        | Some msg -> ": " ^ msg)
     | x -> (
       match f () with
       | Some v -> Result.Ok v
       | None ->
         Unix.sleepf 0.1;
-        loop (x + 1) )
+        loop (x + 1))
   in
   loop 0
 
@@ -160,4 +160,4 @@ let stop beacon =
       (* Unfortunately the logger may not be set. Print on stderr directly? *)
       (* Log.info "unable to terminate daemon with SIGTERM, using SIGKILL"; *)
       kill Sys.sigkill
-    | ok -> ok )
+    | ok -> ok)

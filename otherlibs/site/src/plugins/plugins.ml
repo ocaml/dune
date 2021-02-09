@@ -67,7 +67,7 @@ let rec find_library ~suffix directory meta =
       :: _ -> (
       match directory with
       | None -> Some value
-      | Some old -> Some (Filename.concat old value) )
+      | Some old -> Some (Filename.concat old value))
     | _ :: entries -> find_directory directory entries
   in
   match suffix with
@@ -175,12 +175,12 @@ let lookup_and_summarize dirs name =
     | [] -> (
       List.assoc_opt pkg Data.builtin_library |> function
       | None -> raise (Library_not_found name)
-      | Some meta -> find_plugin ~dir:(Lazy.force Helpers.stdlib) ~suffix meta )
+      | Some meta -> find_plugin ~dir:(Lazy.force Helpers.stdlib) ~suffix meta)
     | dir :: dirs -> (
       let dir = Filename.concat dir pkg in
       match lookup_and_load_one_dir ~dir ~pkg with
       | None -> loop dirs
-      | Some p -> find_plugin ~dir ~suffix p )
+      | Some p -> find_plugin ~dir ~suffix p)
   in
   loop dirs
 

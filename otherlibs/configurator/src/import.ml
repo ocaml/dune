@@ -87,7 +87,7 @@ module List = struct
     | x :: l -> (
       match f x with
       | None -> find_map l ~f
-      | Some _ as res -> res )
+      | Some _ as res -> res)
 end
 
 module Array = ArrayLabels
@@ -128,7 +128,7 @@ module Map (S : Map.OrderedType) = struct
       | (k, v) :: l -> (
         match find acc k with
         | None -> loop (set acc k v) l
-        | Some v_old -> Error (k, v_old, v) )
+        | Some v_old -> Error (k, v_old, v))
     in
     fun l -> loop empty l
 
@@ -338,7 +338,7 @@ module Io = struct
           let buffer = Buffer.create (String.length s + 1 + chunk_size) in
           Buffer.add_string buffer s;
           Buffer.add_char buffer c;
-          read_all_generic t buffer )
+          read_all_generic t buffer)
 
   let read_file ?binary fn = with_file_in fn ~f:read_all ?binary
 

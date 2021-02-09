@@ -119,7 +119,7 @@ module File = struct
             ; Pp.nop
             ; Pp.text "Pre-existing stanza:"
             ; pp b
-            ] )
+            ])
   end
 
   (* Stanza *)
@@ -305,8 +305,8 @@ module Component = struct
 
       let common (options : Options.Common.t) =
         name options.name
-        :: ( optional_field ~f:libraries options.libraries
-           @ optional_field ~f:pps options.pps )
+        :: (optional_field ~f:libraries options.libraries
+           @ optional_field ~f:pps options.pps)
     end
 
     let make kind common_options fields =

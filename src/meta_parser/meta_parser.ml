@@ -71,7 +71,7 @@ struct
           | None -> []
           | Some v ->
             [ Rule { var = "version"; predicates = []; action = Set; value = v }
-            ] )
+            ])
       | entry :: entries -> (
         match entry with
         | Comment _ ->
@@ -83,7 +83,7 @@ struct
                ~has_rules:true
         | Package t ->
           Package (map_package t ~rev_path)
-          :: map_entries entries ~rev_path ~has_version ~has_rules )
+          :: map_entries entries ~rev_path ~has_version ~has_rules)
     and map_package t ~rev_path =
       let rev_path =
         match t.name with

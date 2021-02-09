@@ -60,9 +60,9 @@ let default =
   ( term
   , Term.info "dune" ~doc
       ~version:
-        ( match Build_info.V1.version () with
+        (match Build_info.V1.version () with
         | None -> "n/a"
-        | Some v -> Build_info.V1.Version.to_string v )
+        | Some v -> Build_info.V1.Version.to_string v)
       ~man:
         [ `Blocks common_commands_synopsis
         ; `S "DESCRIPTION"

@@ -36,8 +36,8 @@ module Common = struct
 
       let more =
         List.rev
-          ( [ field_of_list [ of_string "language"; of_string lang ] ]
-          |> add_more "names" names |> add_more "flags" flags )
+          ([ field_of_list [ of_string "language"; of_string lang ] ]
+          |> add_more "names" names |> add_more "flags" flags)
       in
 
       field_of_list [ of_string "foreign_stubs" ] ~more
@@ -198,7 +198,7 @@ module V1 = struct
         match s with
         | "files_recursively_in" ->
           Atom (loc, Dune_lang.Atom.of_string "source_tree")
-        | _ -> upgrade_string s ~loc ~quoted:false )
+        | _ -> upgrade_string s ~loc ~quoted:false)
       | Template _ as x -> x
       | Quoted_string (loc, s) -> upgrade_string s ~loc ~quoted:true
       | List (loc, l) ->
@@ -229,10 +229,10 @@ module V1 = struct
                    map_var (upgrade x)
                      ~f:(fun (v : Dune_lang.Template.Pform.t) ->
                        Dune_lang.Template.Pform
-                         ( if v.name = "<" then
+                         (if v.name = "<" then
                            { v with name = "input-file" }
                          else
-                           v )))
+                           v)))
           | (Atom (_, A "per_module") as field) :: specs ->
             upgrade field
             :: List.map specs ~f:(function
@@ -253,7 +253,7 @@ module V1 = struct
             @
             match args with
             | [] -> []
-            | _ -> Atom (loc, Dune_lang.Atom.of_string "--") :: args )
+            | _ -> Atom (loc, Dune_lang.Atom.of_string "--") :: args)
           | [ (Atom (_, A field_name) as field); List (_, args) ]
             when match (field_name, args) with
                  | "rule", Atom (_, A field_name) :: _ ->
@@ -311,10 +311,10 @@ module V1 = struct
         let stanza =
           Dune_lang.Ast.add_loc ~loc:Loc.none
             (List
-               ( Dune_lang.atom "data_only_dirs"
+               (Dune_lang.atom "data_only_dirs"
                :: List.map
                     (String.Set.to_list data_only_dirs)
-                    ~f:Dune_lang.atom_or_quoted_string ))
+                    ~f:Dune_lang.atom_or_quoted_string))
         in
         let sexps = stanza :: sexps in
         (sexps, [ jbuild_ignore ])
@@ -387,8 +387,8 @@ module V1 = struct
         if start < stop then add_subst start stop ""
       | List
           ( _
-          , ( String (jpos, "jbuilder")
-              :: String (arg_pos, ("build" | "runtest")) :: _ as l ) ) ->
+          , (String (jpos, "jbuilder")
+             :: String (arg_pos, ("build" | "runtest")) :: _ as l) ) ->
         replace_jbuilder jpos;
         let _, _, start = arg_pos in
         let stop = end_offset_of_opam_value (List.last l |> Option.value_exn) in
@@ -449,13 +449,13 @@ module V1 = struct
     Dune_project.default_dune_language_version := (1, 0);
     let project = File_tree.Dir.project dir in
     let project_root = Dune_project.root project in
-    ( if project_root = File_tree.Dir.path dir then
+    (if project_root = File_tree.Dir.path dir then
       let (_ : Dune_project.created_or_already_exist) =
         Dune_project.ensure_project_file_exists project
       in
       Package.Name.Map.iter (Dune_project.packages project) ~f:(fun pkg ->
           let fn = Package.opam_file pkg in
-          if Path.exists (Path.source fn) then upgrade_opam_file todo fn) );
+          if Path.exists (Path.source fn) then upgrade_opam_file todo fn));
     if String.Set.mem (File_tree.Dir.files dir) File_tree.Dune_file.jbuild_fname
     then
       let fn =
@@ -685,10 +685,10 @@ let upgrade () =
         let { original_file; new_file; extra_files_to_delete; contents } = x in
         Console.print
           [ Pp.textf "Upgrading %s to %s..."
-              ( List.map
-                  (extra_files_to_delete @ [ original_file ])
-                  ~f:Path.Source.to_string_maybe_quoted
-              |> String.enumerate_and )
+              (List.map
+                 (extra_files_to_delete @ [ original_file ])
+                 ~f:Path.Source.to_string_maybe_quoted
+              |> String.enumerate_and)
               (Path.Source.to_string_maybe_quoted new_file)
           ];
         List.iter (original_file :: extra_files_to_delete) ~f:(fun p ->

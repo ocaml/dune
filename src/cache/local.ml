@@ -190,7 +190,7 @@ let deduplicate cache (file : File.t) =
       cache.warn
         [ Pp.textf "error handling dune-cache command: %s: %s" syscall
             (Unix.error_message e)
-        ] )
+        ])
 
 let apply ~f o v =
   match o with
@@ -204,7 +204,7 @@ let promote_sync cache paths key metadata ~repository ~duplication =
     | Some idx -> (
       match List.nth cache.repositories idx with
       | None -> Result.Error (Printf.sprintf "repository out of range: %i" idx)
-      | repo -> Result.Ok repo )
+      | repo -> Result.Ok repo)
     | None -> Result.Ok None
   in
   let metadata =
@@ -300,12 +300,12 @@ let promote_sync cache paths key metadata ~repository ~duplication =
   Path.rename metadata_tmp_path metadata_path;
   (* The files that have already been present in the cache can be deduplicated,
      i.e. replaced with hardlinks to their cached copies. *)
-  ( match cache.duplication_mode with
+  (match cache.duplication_mode with
   | Copy -> ()
   | Hardlink ->
     List.iter promoted ~f:(function
       | Already_promoted file -> cache.command_handler (Dedup file)
-      | _ -> ()) );
+      | _ -> ()));
   (metadata_file, promoted)
 
 let promote cache paths key metadata ~repository ~duplication =

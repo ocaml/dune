@@ -135,7 +135,7 @@ module V1 = struct
       let disallowed_targets =
         Stdune.String.Set.diff at.targets allowed_targets
       in
-      ( match Stdune.String.Set.to_list disallowed_targets with
+      (match Stdune.String.Set.to_list disallowed_targets with
       | [] -> ()
       | [ t ] ->
         Execution_error.raise
@@ -149,7 +149,7 @@ module V1 = struct
              "Following files were written despite not being declared as \
               targets in dune file:\n\
               %sTo fix, add them to target list in dune file."
-             (ts |> String.concat "\n")) );
+             (ts |> String.concat "\n")));
       let prepared_dependencies = Context.prepared_dependencies context in
       let required_dependencies =
         Dependency.Set.diff at.dependencies prepared_dependencies

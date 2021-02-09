@@ -175,7 +175,7 @@ struct
           let buffer = Buffer.create (String.length s + 1 + chunk_size) in
           Buffer.add_string buffer s;
           Buffer.add_char buffer c;
-          read_all_generic t buffer )
+          read_all_generic t buffer)
 
   let read_file ?binary fn = with_file_in fn ~f:read_all ?binary
 

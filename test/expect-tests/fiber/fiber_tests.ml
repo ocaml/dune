@@ -51,8 +51,8 @@ let backtrace_result dyn_of_ok =
 
 let test ?(expect_never = false) to_dyn f =
   let never_raised = ref false in
-  ( try Scheduler.run f |> to_dyn |> print_dyn
-    with Scheduler.Never -> never_raised := true );
+  (try Scheduler.run f |> to_dyn |> print_dyn
+   with Scheduler.Never -> never_raised := true);
   match (!never_raised, expect_never) with
   | false, false ->
     (* We don't raise in this case b/c we assume something else is being tested *)
@@ -285,10 +285,10 @@ let must_set_flag f =
   let setter () = flag := true in
   let check_set () =
     print_endline
-      ( if !flag then
+      (if !flag then
         "[PASS] flag set"
       else
-        "[FAIL] flag not set" )
+        "[FAIL] flag not set")
   in
   try
     f setter;

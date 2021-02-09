@@ -7,7 +7,7 @@ let home =
       if Sys.win32 then
         try Sys.getenv "AppData" with Not_found -> ""
       else
-        "" )
+        "")
 
 let ( / ) = Filename.concat
 

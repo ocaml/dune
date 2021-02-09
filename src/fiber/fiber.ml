@@ -136,7 +136,7 @@ end = struct
       try run exn
       with exn ->
         let exn = Exn_with_backtrace.capture exn in
-        forward_exn_with_bt ctx exn )
+        forward_exn_with_bt ctx exn)
 
   and forward_error exn =
     let exn = Exn_with_backtrace.capture exn in
@@ -476,9 +476,9 @@ module Ivar = struct
 
   let peek t k =
     k
-      ( match t.state with
+      (match t.state with
       | Full x -> Some x
-      | Empty _ -> None )
+      | Empty _ -> None)
 end
 
 module Mvar = struct
@@ -512,7 +512,7 @@ module Mvar = struct
       | Some (v', w) ->
         t.value <- Some v';
         EC.safe_run_k k v;
-        K.run w () )
+        K.run w ())
 
   let write t x k =
     match t.value with
@@ -524,7 +524,7 @@ module Mvar = struct
         k ()
       | Some r ->
         EC.safe_run_k k ();
-        K.run r x )
+        K.run r x)
 end
 
 module Mutex = struct

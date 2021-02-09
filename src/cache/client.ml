@@ -52,8 +52,8 @@ let make ?finally ?duplication_mode ~command_handler () =
       | Some i -> (
         try Result.Ok (Unix.inet_addr_of_string addr, i)
         with Failure _ ->
-          Result.Error (errf [ Pp.textf "invalid address: %s" addr ]) )
-      | None -> Result.Error (errf [ Pp.textf "invalid port: %s" port ]) )
+          Result.Error (errf [ Pp.textf "invalid address: %s" addr ]))
+      | None -> Result.Error (errf [ Pp.textf "invalid port: %s" port ]))
     | _ -> Result.Error (errf [ Pp.textf "invalid endpoint: %s" port ])
   in
   let fd = Unix.socket Unix.PF_INET Unix.SOCK_STREAM 0 in
@@ -113,8 +113,8 @@ let retrieve client file = Local.retrieve client.cache file
 let deduplicate client file = Local.deduplicate client.cache file
 
 let teardown client =
-  ( try Unix.shutdown client.fd Unix.SHUTDOWN_SEND
-    with Unix.Unix_error (Unix.ENOTCONN, _, _) -> () );
+  (try Unix.shutdown client.fd Unix.SHUTDOWN_SEND
+   with Unix.Unix_error (Unix.ENOTCONN, _, _) -> ());
   Thread.join client.thread;
   Local.teardown client.cache
 

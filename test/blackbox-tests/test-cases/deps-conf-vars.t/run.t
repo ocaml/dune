@@ -3,9 +3,9 @@
   deps: ../install/default/lib/foo/foo.cma
   $ dune build --root dynamic
   Entering directory 'dynamic'
-  File "dune", line 3, characters 9-18:
+  File "dune", line 3, characters 7-18:
   3 |  (deps %{read:foo}))
-               ^^^^^^^^^
+             ^^^^^^^^^^^
   Error: %{read:..} isn't allowed in this position.
   [1]
 

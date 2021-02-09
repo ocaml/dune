@@ -60,16 +60,16 @@ The next test tries to build a module that does not exist.
   > EOF
   $ ./sdune build --root ex1 @t
   Entering directory 'ex1'
-  File "dune", line 3, characters 9-17:
+  File "dune", line 3, characters 7-17:
   3 |  (deps %{cmo:foo}))
-               ^^^^^^^^
+             ^^^^^^^^^^
   Error: Module Foo does not exist.
   [1]
 
 Command line version; note that the error message is slightly different.
 
   $ ./sdune build %{cmo:xxxx}
-  File "command line", line 1, characters 2-11:
+  File "command line", line 1, characters 0-11:
   Error: Module Xxxx does not exist.
   [1]
 
@@ -101,16 +101,16 @@ This test tries to build a non-existent .cma.
   > EOF
   $ ./sdune build --root ex2 @t
   Entering directory 'ex2'
-  File "dune", line 3, characters 9-17:
+  File "dune", line 3, characters 7-17:
   3 |  (deps %{cma:bar}))
-               ^^^^^^^^
+             ^^^^^^^^^^
   Error: Library bar does not exist.
   [1]
 
 Command line version.
 
   $ ./sdune build %{cma:bar_}
-  File "command line", line 1, characters 2-11:
+  File "command line", line 1, characters 0-11:
   Error: Library bar_ does not exist.
   [1]
 
@@ -192,7 +192,7 @@ Command line version.
 This test checks error handling.
 
   $ ./sdune build %{cma:../x}
-  File "command line", line 1, characters 2-11:
+  File "command line", line 1, characters 0-11:
   Error: Library x does not exist.
   [1]
 
@@ -237,9 +237,9 @@ field of a (rule).
   > EOF
   $ ./sdune build --root deps-fail t
   Entering directory 'deps-fail'
-  File "dune", line 3, characters 9-16:
+  File "dune", line 3, characters 7-16:
   3 |  (deps %{cmo:x2})
-               ^^^^^^^
+             ^^^^^^^^^
   Error: %{cmo:..} isn't allowed in this position.
   [1]
 
@@ -251,8 +251,8 @@ new files for Dir_contents, for example copy_files:
   > EOF
   $ ./sdune build --root deps-fail t
   Entering directory 'deps-fail'
-  File "dune", line 1, characters 15-22:
+  File "dune", line 1, characters 13-22:
   1 | (copy_files "%{cmo:x2}")
-                     ^^^^^^^
+                   ^^^^^^^^^
   Error: %{cmo:..} isn't allowed in this position.
   [1]

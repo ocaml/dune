@@ -53,9 +53,9 @@ Testsuite for the %{lib...} and %{lib-private...} variable.
   > EOF
 
   $ ./sdune build @find-a
-  File "dune", line 3, characters 18-39:
+  File "dune", line 3, characters 16-39:
   3 |  (action (echo "%{lib:private_lib:a.ml}")))
-                        ^^^^^^^^^^^^^^^^^^^^^
+                      ^^^^^^^^^^^^^^^^^^^^^^^
   Error: The library "private_lib" is not public. The variable "lib" expands to
   the file's installation path which is not defined for private libraries.
   [1]
@@ -78,9 +78,9 @@ Testsuite for the %{lib...} and %{lib-private...} variable.
   > EOF
 
   $ ./sdune build @find-a
-  File "dune", line 3, characters 18-47:
+  File "dune", line 3, characters 16-47:
   3 |  (action (echo "%{lib-private:private_lib:a.ml}")))
-                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
   Error: %{lib-private:..} is only available since version 2.1 of the dune
   language. Please update your dune-project file to have (lang dune 2.1).
   [1]
@@ -171,9 +171,9 @@ Testsuite for the %{lib...} and %{lib-private...} variable.
 
   $ export OCAMLPATH=$PWD/external/install/lib; ./sdune build @find-a --root=src
   Entering directory 'src'
-  File "dune", line 7, characters 18-52:
+  File "dune", line 7, characters 16-52:
   7 |  (action (echo "%{lib-private:external_library:opam}")))
-                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
   Error: The variable "lib-private" can only refer to libraries within the same
   project. The current project's name is "test-lib", but the reference is to an
   external library.
@@ -206,9 +206,9 @@ Testsuite for the %{lib...} and %{lib-private...} variable.
   $ echo "(name another-lib)" >> another/dune-project
 
   $ ./sdune build @find-a
-  File "src/dune", line 7, characters 18-51:
+  File "src/dune", line 7, characters 16-51:
   7 |  (action (echo "%{lib-private:another_library:file}")))
-                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
   Error: The variable "lib-private" can only refer to libraries within the same
   project. The current project's name is "test-lib", but the reference is to
   "another-lib".
@@ -247,9 +247,9 @@ The build works in development:
 
 But will fail when we release it, as it will need to run with -p:
   $ dune build @install --only-packages public_lib2
-  File "lib2/dune", line 5, characters 44-69:
+  File "lib2/dune", line 5, characters 42-69:
   5 |  (with-stdout-to lib2.ml (echo "let _ = {|%{lib-private:lib1:lib1.ml}|}")))
-                                                  ^^^^^^^^^^^^^^^^^^^^^^^^^
+                                                ^^^^^^^^^^^^^^^^^^^^^^^^^^^
   Error: Library "lib1" not found.
   Hint: try:
     dune external-lib-deps --missing --only-packages public_lib2 @install

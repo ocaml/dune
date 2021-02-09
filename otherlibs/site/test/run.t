@@ -354,9 +354,9 @@ Test %{version:installed-pkg}
   $ cat f/dune | sed 's/version:a/version:a.test/' > f/dune.tmp && mv f/dune.tmp f/dune
   $ OCAMLPATH=_install/lib:$OCAMLPATH dune build --root=f
   Entering directory 'f'
-  File "dune", line 6, characters 17-32:
+  File "dune", line 6, characters 15-32:
   6 |     (echo "a = %{version:a.test}\n")
-                       ^^^^^^^^^^^^^^^
+                     ^^^^^^^^^^^^^^^^^
   Error: Library names are not allowed in this position. Only package names are
   allowed
   [1]

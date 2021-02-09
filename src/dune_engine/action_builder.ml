@@ -3,39 +3,57 @@ open Import
 
 type label = ..
 
-type 'a t =
-  | Pure : 'a -> 'a t
-  | Map : ('a -> 'b) * 'a t -> 'b t
-  | Both : 'a t * 'b t -> ('a * 'b) t
-  | Seq : unit t * 'b t -> 'b t
-  | All : 'a t list -> 'a list t
-  | Map2 : ('a -> 'b -> 'c) * 'a t * 'b t -> 'c t
-  | Paths_for_rule : Path.Set.t -> unit t
-  | Paths_glob : File_selector.t -> Path.Set.t t
-  | If_file_exists : Path.t * 'a t * 'a t -> 'a t
-  | Filter_existing_files : ('a * Path.Set.t) t -> ('a * Path.Set.t) t
-  (* [Filter_existing_files] can't be defined using [If_file_exists] because in
-     the latter the path must be known when building the type t. In the former
-     case the paths can be dynamically computed *)
-  | Contents : Path.t -> string t
-  | Lines_of : Path.t -> string list t
-  | Dyn_paths : ('a * Path.Set.t) t -> 'a t
-  | Dyn_deps : ('a * Dep.Set.t) t -> 'a t
-  | Label : label -> unit t
-  | Or_exn : 'a Or_exn.t t -> 'a t
-  | Fail : fail -> _ t
-  | Memo : 'a memo -> 'a t
-  | Catch : 'a t * 'a -> 'a t
-  | Deps : Dep.Set.t -> unit t
-  | Memo_build : 'a Memo.Build.t -> 'a t
-  | Dyn_memo_build : 'a Memo.Build.t t -> 'a t
-  | Build : 'a t t -> 'a t
+module T = struct
+  type 'a t =
+    | Pure : 'a -> 'a t
+    | Map : ('a -> 'b) * 'a t -> 'b t
+    | Both : 'a t * 'b t -> ('a * 'b) t
+    | Seq : unit t * 'b t -> 'b t
+    | All : 'a t list -> 'a list t
+    | Map2 : ('a -> 'b -> 'c) * 'a t * 'b t -> 'c t
+    | Paths_for_rule : Path.Set.t -> unit t
+    | Paths_glob : File_selector.t -> Path.Set.t t
+    | If_file_exists : Path.t * 'a t * 'a t -> 'a t
+    | Contents : Path.t -> string t
+    | Lines_of : Path.t -> string list t
+    | Dyn_paths : ('a * Path.Set.t) t -> 'a t
+    | Dyn_deps : ('a * Dep.Set.t) t -> 'a t
+    | Label : label -> unit t
+    | Or_exn : 'a Or_exn.t t -> 'a t
+    | Fail : fail -> _ t
+    | Memo : 'a memo -> 'a t
+    | Catch : 'a t * 'a -> 'a t
+    | Deps : Dep.Set.t -> unit t
+    | Memo_build : 'a Memo.Build.t -> 'a t
+    | Dyn_memo_build : 'a Memo.Build.t t -> 'a t
+    | Build : 'a t t -> 'a t
 
-and 'a memo =
-  { name : string
-  ; id : 'a Type_eq.Id.t
-  ; t : 'a t
-  }
+  and 'a memo =
+    { name : string
+    ; id : 'a Type_eq.Id.t
+    ; t : 'a t
+    }
+
+  let return x = Pure x
+
+  let map x ~f = Map (f, x)
+
+  let both x y = Both (x, y)
+
+  let all xs = All xs
+
+  module O = struct
+    let ( >>> ) a b = Seq (a, b)
+
+    let ( and+ ) a b = Both (a, b)
+
+    let ( let+ ) t f = Map (f, t)
+  end
+end
+
+module Expander = String_with_vars.Make_expander (T)
+include T
+open O
 
 (* We use forward declarations to pass the top-level [file_exists] function to
    avoid cyclic dependencies between modules. *)
@@ -44,31 +62,13 @@ let file_exists_fdecl = Fdecl.create Dyn.Encoder.opaque
 let set_file_system_accessors ~file_exists =
   Fdecl.set file_exists_fdecl file_exists
 
-let return x = Pure x
-
 let ignore x = Map (Fun.const (), x)
-
-let map x ~f = Map (f, x)
 
 let map2 x y ~f = Map2 (f, x, y)
 
 let delayed f = Map (f, Pure ())
 
 let or_exn s = Or_exn s
-
-module O = struct
-  let ( >>> ) a b = Seq (a, b)
-
-  let ( and+ ) a b = Both (a, b)
-
-  let ( let+ ) t f = Map (f, t)
-end
-
-open O
-
-let both x y = Both (x, y)
-
-let all xs = All xs
 
 let all_unit xs =
   let+ (_ : unit list) = all xs in
@@ -141,8 +141,6 @@ let read_sexp p =
 let if_file_exists p ~then_ ~else_ = If_file_exists (p, then_, else_)
 
 let file_exists p = if_file_exists p ~then_:(return true) ~else_:(return false)
-
-let filter_existing_files p = Filter_existing_files p
 
 let paths_existing paths =
   all_unit
@@ -324,7 +322,6 @@ end = struct
         static_deps then_
       else
         static_deps else_
-    | Filter_existing_files p -> static_deps p
     | Dyn_paths t -> static_deps t
     | Dyn_deps t -> static_deps t
     | Contents p ->
@@ -377,7 +374,6 @@ let fold_labeled (type acc) t ~(init : acc) ~f =
         loop then_ acc
       else
         loop else_ acc
-    | Filter_existing_files p -> loop p acc
     | Memo m -> loop m.t acc
     | Catch (t, _) -> loop t acc
     | Memo_build _ -> acc
@@ -475,10 +471,6 @@ struct
           exec then_
         else
           exec else_
-      | Filter_existing_files p ->
-        let+ (x, files), dyn_deps = exec p in
-        let files = Path.Set.filter ~f:file_exists files in
-        ((x, files), dyn_deps)
       | Catch (t, on_error) -> (
         let+ res =
           Memo.Build.fold_errors ~init:on_error
@@ -504,9 +496,129 @@ struct
     and build_static_rule_deps_and_exec :
         type a. a t -> (a * Dep.Set.t) Memo.Build.t =
      fun t ->
-      let* () = Build_deps.build_deps (static_deps t).rule_deps in
-      exec t
+      let { Static_deps.rule_deps; action_deps } = static_deps t in
+      let* () = Build_deps.build_deps rule_deps in
+      let+ x, deps = exec t in
+      (x, Dep.Set.union action_deps deps)
   end
 
   include Execution
 end
+
+(* Static evaluation *)
+
+(* Note: there is some duplicated logic between [can_eval_statically] and
+   [static_eval]. More precisely, [can_eval_statically] returns [false] exactly
+   for the nodes [static_eval] produces [assert false]. The duplication is not
+   ideal, but the code is simpler this way and also we expect that we will get
+   rid of this function eventually, once we have pushed the [Memo.Build.t] monad
+   enough in the code base.
+
+   If this code ends being more permanent that we expected, we should probably
+   get rid of the duplication. This code was introduced on February 2021, to
+   give an idea of how long it has been here. *)
+
+let rec can_eval_statically : type a. a t -> bool = function
+  | Pure _ -> true
+  | Map (_, a) -> can_eval_statically a
+  | Both (a, b) -> can_eval_statically a && can_eval_statically b
+  | Seq (a, b) -> can_eval_statically a && can_eval_statically b
+  | Map2 (_, a, b) -> can_eval_statically a && can_eval_statically b
+  | All xs -> List.for_all xs ~f:can_eval_statically
+  | Paths_for_rule _ -> false
+  | Paths_glob _ -> false
+  | Deps _ -> true
+  | Dyn_paths b -> can_eval_statically b
+  | Dyn_deps b -> can_eval_statically b
+  | Contents _ -> false
+  | Lines_of _ -> false
+  | Label _ -> true
+  | Or_exn b -> can_eval_statically b
+  | Fail _ -> true
+  | If_file_exists (_, _, _) -> false
+  | Memo _ -> false
+  | Catch (t, _) -> can_eval_statically t
+  | Memo_build _ -> false
+  | Dyn_memo_build _ -> false
+  | Build _ ->
+    (* TODO jeremiedimino: This should be [can_eval_statically b], however it
+       breaks the [Expander.set_artifacts_dynamic] trick that it used to break a
+       cycle. The cycle is as follow:
+
+       - [(rule (deps %{cmo:x}) ..)] requires expanding %{cmo:x}
+
+       - expanding %{cmo:x} requires computing the artifacts DB
+
+       - computing the artifacts DB requires computing the module<->library
+       assignment
+
+       - computing the above requires knowing the set of source files (static
+       and generated) in a given directory
+
+       - computing the above works by looking at the source tree and adding all
+       targets of user rules
+
+       - computing targets of user rules is done by effectively generating the
+       rules for the user rules, which means interpreting the [(deps
+       %{cmo:...})] thing
+
+       If we find another way to break this cycle we should be able to change
+       this code. *)
+    false
+
+let static_eval =
+  let rec loop : type a. a t -> unit t -> a * unit t =
+   fun t acc ->
+    match t with
+    | Pure x -> (x, acc)
+    | Map (f, a) ->
+      let x, acc = loop a acc in
+      (f x, acc)
+    | Both (a, b) ->
+      let a, acc = loop a acc in
+      let b, acc = loop b acc in
+      ((a, b), acc)
+    | Seq (a, b) ->
+      let (), acc = loop a acc in
+      let b, acc = loop b acc in
+      (b, acc)
+    | Map2 (f, a, b) ->
+      let a, acc = loop a acc in
+      let b, acc = loop b acc in
+      (f a b, acc)
+    | All xs -> loop_many [] xs acc
+    | Paths_for_rule _ -> assert false
+    | Paths_glob _ -> assert false
+    | Deps _ -> ((), acc >>> t)
+    | Dyn_paths b ->
+      let (x, ps), acc = loop b acc in
+      (x, Deps (Dep.Set.of_files_set ps) >>> acc)
+    | Dyn_deps b ->
+      let (x, deps), acc = loop b acc in
+      (x, Deps deps >>> acc)
+    | Contents _ -> assert false
+    | Lines_of _ -> assert false
+    | Label _ -> ((), acc >>> t)
+    | Or_exn b ->
+      let res, acc = loop b acc in
+      (Result.ok_exn res, acc)
+    | Fail { fail } -> fail ()
+    | If_file_exists (_, _, _) -> assert false
+    | Memo _ -> assert false
+    | Catch (t, v) -> ( try loop t acc with _ -> (v, return ()) )
+    | Memo_build _ -> assert false
+    | Dyn_memo_build _ -> assert false
+    | Build _ -> assert false
+  and loop_many : type a. a list -> a t list -> unit t -> a list * unit t =
+   fun acc_res l acc ->
+    match l with
+    | [] -> (List.rev acc_res, acc)
+    | t :: l ->
+      let x, acc = loop t acc in
+      loop_many (x :: acc_res) l acc
+  in
+  fun t ->
+    if can_eval_statically t then
+      Some (loop t (return ()))
+    else
+      None

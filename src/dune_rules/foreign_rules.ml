@@ -15,7 +15,7 @@ let include_dir_flags ~expander ~dir (stubs : Foreign.Stubs.t) =
          let loc, include_dir =
            match (include_dir : Foreign.Stubs.Include_dir.t) with
            | Dir dir ->
-             (String_with_vars.loc dir, Expander.expand_path expander dir)
+             (String_with_vars.loc dir, Expander.Static.expand_path expander dir)
            | Lib (loc, lib_name) -> (loc, lib_dir loc lib_name)
          in
          let dep_args =

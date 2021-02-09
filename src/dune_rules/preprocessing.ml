@@ -1,7 +1,6 @@
 open! Dune_engine
 open! Stdune
 open Import
-open Action_builder.O
 module SC = Super_context
 
 (* Encoded representation of a set of library names + scope *)
@@ -409,7 +408,7 @@ let get_cookies ~loc ~expander ~lib_name libs =
           | Ppx_deriver { cookies } ->
             List.map
               ~f:(fun { Lib_kind.Ppx_args.Cookie.name; value } ->
-                (name, (Expander.expand_str expander value, Lib.name t)))
+                (name, (Expander.Static.expand_str expander value, Lib.name t)))
               cookies)
       |> (fun l ->
            match library_name_cookie with
@@ -436,7 +435,7 @@ let get_cookies ~loc ~expander ~lib_name libs =
 
 let ppx_driver_and_flags_internal sctx ~loc ~expander ~lib_name ~flags libs =
   let open Result.O in
-  let flags = List.map ~f:(Expander.expand_str expander) flags in
+  let flags = List.map ~f:(Expander.Static.expand_str expander) flags in
   let+ cookies = get_cookies ~loc ~lib_name ~expander libs in
   let sctx = SC.host sctx in
   (ppx_driver_exe sctx libs, flags @ cookies)
@@ -475,10 +474,11 @@ let action_for_pp ~dep_kind ~loc ~expander ~action ~src ~target =
   let targets = Targets.Or_forbidden.Forbidden "preprocessing actions" in
   let targets_dir = Option.value ~default:src target |> Path.Build.parent_exn in
   let action =
-    Action_unexpanded.expand action ~loc ~expander ~dep_kind ~targets
-      ~targets_dir
-      (let+ () = Action_builder.path (Path.build src) in
-       Bindings.empty)
+    let expander = Expander.set_dep_kind expander dep_kind in
+    let open Action_builder.With_targets.O in
+    Action_builder.with_no_targets (Action_builder.path (Path.build src))
+    >>> Action_unexpanded.expand action ~loc ~expander ~deps:[] ~targets
+          ~targets_dir
   in
   match target with
   | None -> action

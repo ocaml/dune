@@ -240,7 +240,7 @@ field of a (rule).
   File "dune", line 3, characters 9-16:
   3 |  (deps %{cmo:x2})
                ^^^^^^^
-  Error: %{cmo:..} isn't allowed in this position
+  Error: %{cmo:..} isn't allowed in this position.
   [1]
 
 The above restriction also applies to other stanzas. Any stanzas that introduces
@@ -254,5 +254,5 @@ new files for Dir_contents, for example copy_files:
   File "dune", line 1, characters 15-22:
   1 | (copy_files "%{cmo:x2}")
                      ^^^^^^^
-  Error: %{cmo:..} isn't allowed in this position
+  Error: %{cmo:..} isn't allowed in this position.
   [1]

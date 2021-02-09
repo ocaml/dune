@@ -324,7 +324,7 @@ end = struct
             | Dune_file.Executables { install_conf = Some i; _ } ->
               let path_expander =
                 File_binding.Unexpanded.expand ~dir
-                  ~f:(Expander.expand_str expander)
+                  ~f:(Expander.Static.expand_str expander)
               in
               let section = i.section in
               List.map i.files ~f:(fun unexpanded ->

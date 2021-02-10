@@ -79,6 +79,14 @@ let filter_map t ~f =
       Pps { t with pps }
   | (No_preprocessing | Action _ | Future_syntax _) as t -> t
 
+let fold t ~init ~f =
+  match t with
+  | Pps t -> List.fold_left t.pps ~init ~f
+  | No_preprocessing
+  | Action _
+  | Future_syntax _ ->
+    init
+
 module Without_instrumentation = struct
   type t = Loc.t * Lib_name.t
 
@@ -88,7 +96,7 @@ end
 module With_instrumentation = struct
   type t =
     | Ordinary of Without_instrumentation.t
-    | Instrumentation_backend of (Loc.t * Lib_name.t)
+    | Instrumentation_backend of (Loc.t * Lib_name.t) * Dep_conf.t list
 end
 
 let decode =
@@ -205,16 +213,18 @@ module Per_module = struct
     else
       No_preprocessing
 
-  let add_instrumentation t ~loc ~flags:flags' libname =
+  let add_instrumentation t ~loc ~flags:flags' ~deps libname =
     Per_module.map t ~f:(fun pp ->
         match pp with
         | No_preprocessing ->
-          let pps = [ With_instrumentation.Instrumentation_backend libname ] in
+          let pps =
+            [ With_instrumentation.Instrumentation_backend (libname, deps) ]
+          in
           let staged = false in
           Pps { loc; pps; flags = flags'; staged }
         | Pps { loc; pps; flags; staged } ->
           let pps =
-            With_instrumentation.Instrumentation_backend libname :: pps
+            With_instrumentation.Instrumentation_backend (libname, deps) :: pps
           in
           Pps { loc; pps; flags = flags @ flags'; staged }
         | Action (loc, _)
@@ -235,8 +245,21 @@ module Per_module = struct
   let with_instrumentation t ~instrumentation_backend =
     let f = function
       | With_instrumentation.Ordinary libname -> Some libname
-      | With_instrumentation.Instrumentation_backend libname ->
+      | With_instrumentation.Instrumentation_backend (libname, _deps) ->
         instrumentation_backend libname
     in
     Per_module.map t ~f:(filter_map ~f)
+
+  let instrumentation_deps t ~instrumentation_backend =
+    let f = function
+      | With_instrumentation.Ordinary _ -> []
+      | With_instrumentation.Instrumentation_backend (libname, deps) -> (
+        match instrumentation_backend libname with
+        | Some _ -> deps
+        | None -> [] )
+    in
+    Per_module.fold t ~init:[] ~f:(fun t init ->
+        let f acc t = f t :: acc in
+        fold t ~init ~f)
+    |> List.rev |> List.flatten
 end

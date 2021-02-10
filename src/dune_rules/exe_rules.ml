@@ -159,6 +159,7 @@ let executables_rules ~sctx ~dir ~expander ~dir_contents ~scope ~compile_info
       ~modules ~flags ~requires_link ~requires_compile ~preprocessing:pp
       ~js_of_ocaml ~opaque:Inherit_from_settings ~package:exes.package
   in
+  let stdlib_dir = ctx.Context.stdlib_dir in
   let requires_compile = Compilation_context.requires_compile cctx in
   let preprocess =
     Preprocess.Per_module.with_instrumentation exes.buildable.preprocess
@@ -197,7 +198,8 @@ let executables_rules ~sctx ~dir ~expander ~dir_contents ~scope ~compile_info
       ~promote:exes.promote ~embed_in_plugin_libraries
   in
   ( cctx
-  , Merlin.make ~requires:requires_compile ~flags ~modules ~preprocess ~obj_dir
+  , Merlin.make ~requires:requires_compile ~stdlib_dir ~flags ~modules
+      ~preprocess ~obj_dir
       ~dialects:(Dune_project.dialects (Scope.project scope))
       ~ident:(Lib.Compile.merlin_ident compile_info)
       () )

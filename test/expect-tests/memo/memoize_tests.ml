@@ -661,6 +661,11 @@ let%expect_test "diamond with non-uniform cutoff structure" =
     Evaluating summit: 4
     f 0 = Ok 4
     |}];
+  print_result summit 1;
+  [%expect {|
+    Evaluating summit: 5
+    f 1 = Ok 5
+    |}];
   Memo.restart_current_run ();
   print_result summit 0;
   [%expect
@@ -670,6 +675,15 @@ let%expect_test "diamond with non-uniform cutoff structure" =
     Evaluating no_cutoff: 1
     Evaluating after_no_cutoff: 2
     f 0 = Ok 4
+    |}];
+  print_result summit 1;
+  [%expect {|
+    f 1 = Ok 5
+    |}];
+  print_result summit 2;
+  [%expect {|
+    Evaluating summit: 6
+    f 2 = Ok 6
     |}]
 
 let print_exns f =

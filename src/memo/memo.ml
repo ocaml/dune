@@ -234,12 +234,28 @@ end
 let _ = Value_id.to_dyn
 
 module M = struct
-  module rec Completion : sig
+  module rec Evaluation_completion : sig
     type ('a, 'b, 'f) t =
       | Sync : ('a, 'b, 'a -> 'b) t
       | Async : 'b Cached_value.t Fiber.Ivar.t -> ('a, 'b, 'a -> 'b Fiber.t) t
   end =
-    Completion
+    Evaluation_completion
+
+  and Dependencies_status : sig
+    type 'a t =
+      | Changed
+      | Unchanged of { cached_value : 'a Cached_value.t }
+  end =
+    Dependencies_status
+
+  and Validation_completion : sig
+    type ('a, 'b, 'f) t =
+      | Sync : ('a, 'b, 'a -> 'b) t
+      | Async :
+          'b Dependencies_status.t Fiber.Ivar.t
+          -> ('a, 'b, 'a -> 'b Fiber.t) t
+  end =
+    Validation_completion
 
   and Cached_value : sig
     type 'a t =
@@ -311,7 +327,8 @@ module M = struct
       | Considering of
           { run : Run.t
           ; running : Running_state.t
-          ; completion : ('a, 'b, 'f) Completion.t
+          ; validation_completion : ('a, 'b, 'f) Validation_completion.t
+          ; evaluation_completion : ('a, 'b, 'f) Evaluation_completion.t option
           }
   end =
     State
@@ -342,6 +359,7 @@ module Running_state = M.Running_state
 module Dep_node = M.Dep_node
 module Last_dep = M.Last_dep
 module Deps_so_far = M.Deps_so_far
+module Dependencies_status = M.Dependencies_status
 
 let no_deps_so_far : Deps_so_far.t = { set = Id.Set.empty; deps_reversed = [] }
 
@@ -370,8 +388,15 @@ module Cached_value = struct
     List.rev_map deps_rev ~f:(function Dep_node.T dep_node ->
         ( match get_cached_value_in_current_cycle dep_node with
         | None ->
+          let why =
+            match dep_node.last_cached_value with
+            | Some _ -> "(old run)"
+            | None -> "(none)"
+          in
           Code_error.raise
-            "Attempted to create a cached value based on some stale inputs" []
+            ( "Attempted to create a cached value based on some stale inputs "
+            ^ why )
+            []
         | Some cv -> Last_dep.T (dep_node, cv.id) ))
 
   let create x ~deps_rev =
@@ -654,18 +679,6 @@ let dep_node (type i o f) (t : (i, o, f) t) inp =
     Store.set t.cache inp dep_node;
     dep_node
 
-module Prev_cycle_cache_lookup_result = struct
-  type 'a t =
-    | Valid of 'a Cached_value.t
-    | Invalid of { old_value : 'a Cached_value.t option }
-end
-
-module Changed_or_not = struct
-  type t =
-    | Changed
-    | Unchanged
-end
-
 (* CR-someday aalekseyev: There's a lot of duplication between Exec_sync and
    Exec_async. We should reduce the duplication, but there are ideas in the air
    of getting rid of "Sync" memoization entirely, so I'm not investing effort
@@ -677,14 +690,17 @@ module rec Exec_sync : sig
 
   val exec_dep_node_internal :
     ('a, 'b, 'a -> 'b) Dep_node.t -> 'b Cached_value.t
+
+  val validate_dep_node_intenal :
+    ('a, 'b, 'a -> 'b) Dep_node.t -> 'b Dependencies_status.t
 end = struct
   module Start_considering_result = struct
     type 'a t =
-      | Done of 'a Cached_value.t
+      | Done of 'a
       | Needs_work of
           { sample_attempt : Dag.node
                 (** [work] must be called to force the value to be computed. *)
-          ; work : unit -> 'a Cached_value.t
+          ; work : unit -> 'a
           }
 
     let sample_attempt_dag_node t : Sample_attempt_dag_node.t =
@@ -693,75 +709,68 @@ end = struct
       | Needs_work { sample_attempt; _ } -> Running sample_attempt
   end
 
-  let deps_changed =
-    let rec go deps =
+  let do_validate (last_cached_value : _ Cached_value.t option) =
+    let open Dependencies_status in
+    let rec any_dependency_changed deps =
       match deps with
-      | [] -> Changed_or_not.Unchanged
-      | Last_dep.T (dep, v_id) :: deps -> (
-        let res = Exec_unknown.exec_dep_node_internal_from_sync dep in
-        match Value_id.equal res.id v_id with
-        | true -> go deps
-        | false -> Changed_or_not.Changed )
+      | [] -> false
+      | Last_dep.T (dep, old_value_id) :: deps -> (
+        let dep_changed =
+          match dep.without_state.spec.allow_cutoff with
+          | No -> (
+            match Exec_unknown.validate_dep_node_intenal_from_sync dep with
+            | Unchanged _cached_value -> false
+            | Changed -> true )
+          | Yes _equal ->
+            let value = Exec_unknown.exec_dep_node_internal_from_sync dep in
+            not (Value_id.equal value.id old_value_id)
+        in
+        match dep_changed with
+        | false -> any_dependency_changed deps
+        | true -> true )
     in
-    go
+    match last_cached_value with
+    | None -> Changed
+    | Some cv -> (
+      match any_dependency_changed cv.deps with
+      | true -> Changed
+      | false ->
+        cv.last_validated_at <- Run.current ();
+        Unchanged { cached_value = cv } )
 
-  let do_validate (dep_node : _ Dep_node.t) running_state =
-    let res =
-      let frame =
-        ( T { without_state = dep_node.without_state; running_state }
-          : Stack_frame_with_state.t )
-      in
-      Call_stack.push_sync_frame frame (fun () ->
-          let from_cache =
-            match dep_node.last_cached_value with
-            | None ->
-              Prev_cycle_cache_lookup_result.Invalid { old_value = None }
-            | Some cv -> (
-              let res = deps_changed cv.deps in
-              match res with
-              | Unchanged ->
-                cv.last_validated_at <- Run.current ();
-                Prev_cycle_cache_lookup_result.Valid cv
-              | Changed ->
-                dep_node.last_cached_value <- None;
-                Invalid { old_value = Some cv } )
+  let do_evaluate (dep_node : _ Dep_node.t) running_state =
+    let frame =
+      ( T { without_state = dep_node.without_state; running_state }
+        : Stack_frame_with_state.t )
+    in
+    Call_stack.push_sync_frame frame (fun () ->
+        match dep_node.without_state.spec.f with
+        | Function.Sync f ->
+          let res =
+            Exn_with_backtrace.try_with (fun () ->
+                f dep_node.without_state.input)
           in
-          match from_cache with
-          | Valid v -> v
-          | Invalid { old_value } -> (
-            match dep_node.without_state.spec.f with
-            | Function.Sync f ->
-              let res =
-                Exn_with_backtrace.try_with (fun () ->
-                    f dep_node.without_state.input)
-              in
-              let res =
-                Result.map_error res ~f:(fun exn ->
-                    let exn =
-                      handle_code_error
-                        ~frame:(Dep_node_without_state.T dep_node.without_state)
-                        exn
-                    in
-                    Value.Sync exn)
-              in
-              let deps_rev = running_state.deps_so_far.deps_reversed in
-              let res =
-                match old_value with
-                | None -> Cached_value.create res ~deps_rev
-                | Some old_cv -> (
-                  match
-                    Cached_value.value_changed dep_node old_cv.value res
-                  with
-                  | false -> Cached_value.confirm_old_value ~deps_rev old_cv
-                  | true -> Cached_value.create res ~deps_rev )
-              in
-              dep_node.last_cached_value <- Some res;
-              res ))
-    in
-    dep_node.state <- Not_considering;
-    res
+          let res =
+            Result.map_error res ~f:(fun exn ->
+                let exn =
+                  handle_code_error
+                    ~frame:(Dep_node_without_state.T dep_node.without_state) exn
+                in
+                Value.Sync exn)
+          in
+          let deps_rev = running_state.deps_so_far.deps_reversed in
+          let res =
+            match dep_node.last_cached_value with
+            | None -> Cached_value.create res ~deps_rev
+            | Some old_cv -> (
+              match Cached_value.value_changed dep_node old_cv.value res with
+              | false -> Cached_value.confirm_old_value ~deps_rev old_cv
+              | true -> Cached_value.create res ~deps_rev )
+          in
+          dep_node.last_cached_value <- Some res;
+          res)
 
-  let newly_considering (dep_node : _ Dep_node.t) =
+  let newly_validating (dep_node : _ Dep_node.t) =
     let sample_attempt : Dag.node =
       { info = Dag.create_node_info global_dep_dag
       ; data = Dep_node_without_state.T dep_node.without_state
@@ -772,19 +781,94 @@ end = struct
     in
     dep_node.state <-
       Considering
-        { run = Run.current (); running = running_state; completion = Sync };
-    Start_considering_result.Needs_work
-      { sample_attempt; work = (fun () -> do_validate dep_node running_state) }
+        { run = Run.current ()
+        ; running = running_state
+        ; validation_completion = Sync
+        ; evaluation_completion = None
+        };
+    let work () =
+      match do_validate dep_node.last_cached_value with
+      | Changed -> Dependencies_status.Changed
+      | Unchanged _cached_value as result ->
+        dep_node.state <- Not_considering;
+        result
+    in
+    Start_considering_result.Needs_work { sample_attempt; work }
 
-  let start_considering_dep_node (dep_node : ('a, 'b, 'a -> 'b) Dep_node.t) =
+  let newly_evaluating (dep_node : _ Dep_node.t) =
+    let sample_attempt : Dag.node =
+      { info = Dag.create_node_info global_dep_dag
+      ; data = Dep_node_without_state.T dep_node.without_state
+      }
+    in
+    let running_state : Running_state.t =
+      { sample_attempt; deps_so_far = no_deps_so_far }
+    in
+    dep_node.state <-
+      Considering
+        { run = Run.current ()
+        ; running = running_state
+        ; validation_completion = Sync
+        ; evaluation_completion = Some Sync
+        };
+    let evaluation_work () =
+      let valid = do_validate dep_node.last_cached_value in
+      match valid with
+      | Changed ->
+        let res = do_evaluate dep_node running_state in
+        dep_node.state <- Not_considering;
+        res
+      | Unchanged { cached_value } ->
+        dep_node.state <- Not_considering;
+        cached_value
+    in
+    Start_considering_result.Needs_work
+      { sample_attempt; work = evaluation_work }
+
+  let start_validating_dep_node (dep_node : _ Dep_node.t) =
     match currently_considering dep_node.state with
     | Not_considering -> (
       match get_cached_value_in_current_cycle dep_node with
-      | None -> newly_considering dep_node
-      | Some cv -> Done cv )
+      | None -> newly_validating dep_node
+      | Some cached_value -> Done (Unchanged { cached_value }) )
     | Considering
-        { running = { sample_attempt; deps_so_far = _ }; completion = Sync; _ }
-      ->
+        { running = { sample_attempt; deps_so_far = _ }
+        ; validation_completion = Sync
+        ; _
+        } ->
+      Needs_work { sample_attempt; work = (fun () -> Changed) }
+
+  let start_evaluating_dep_node (dep_node : _ Dep_node.t) =
+    match currently_considering dep_node.state with
+    | Not_considering -> (
+      match get_cached_value_in_current_cycle dep_node with
+      | None -> newly_evaluating dep_node
+      | Some cached_value_in_current_cycle -> Done cached_value_in_current_cycle
+      )
+    | Considering
+        { run
+        ; running
+        ; validation_completion = Sync
+        ; evaluation_completion = None
+        } ->
+      dep_node.state <-
+        Considering
+          { run
+          ; running
+          ; validation_completion = Sync
+          ; evaluation_completion = Some Sync
+          };
+      let work () =
+        let result = do_evaluate dep_node running in
+        dep_node.state <- Not_considering;
+        result
+      in
+      Needs_work { sample_attempt = running.sample_attempt; work }
+    | Considering
+        { running = { sample_attempt; deps_so_far = _ }
+        ; evaluation_completion = Some Sync
+        ; _
+        } ->
       Needs_work
         { sample_attempt
         ; work =
@@ -793,19 +877,29 @@ end = struct
               assert false)
         }
 
-  let consider_dep_node (dep_node : _ Dep_node.t) =
-    let pre_res = start_considering_dep_node dep_node in
+  let validate_dep_node (dep_node : _ Dep_node.t) =
+    let pre_res = start_validating_dep_node dep_node in
+    add_dep_from_caller ~called_from_peek:false dep_node
+      (Start_considering_result.sample_attempt_dag_node pre_res);
+    match pre_res with
+    | Done valid -> valid
+    | Needs_work { work; _ } -> work ()
+
+  let evaluate_dep_node (dep_node : _ Dep_node.t) =
+    let pre_res = start_evaluating_dep_node dep_node in
     add_dep_from_caller ~called_from_peek:false dep_node
       (Start_considering_result.sample_attempt_dag_node pre_res);
     match pre_res with
     | Done v -> v
-    | Needs_work { sample_attempt = _; work } -> work ()
+    | Needs_work { work; _ } -> work ()
 
   let exec_dep_node dep_node =
-    let res = consider_dep_node dep_node in
+    let res = evaluate_dep_node dep_node in
     Value.get_sync_exn res.value
 
-  let exec_dep_node_internal = consider_dep_node
+  let exec_dep_node_internal = evaluate_dep_node
+
+  let validate_dep_node_intenal = validate_dep_node
 
   let exec t inp = exec_dep_node (dep_node t inp)
 end
@@ -818,6 +912,9 @@ and Exec_async : sig
   val exec_dep_node_internal :
     ('a, 'b, 'a -> 'b Fiber.t) Dep_node.t -> 'b Cached_value.t Fiber.t
 
+  val validate_dep_node_intenal :
+    ('a, 'b, 'a -> 'b Fiber.t) Dep_node.t -> 'b Dependencies_status.t Fiber.t
+
   (** [exec] and variants thereof *)
   val exec : ('a, 'b, 'a -> 'b Fiber.t) t -> 'a -> 'b Fiber.t
 
@@ -825,11 +922,11 @@ and Exec_async : sig
 end = struct
   module Start_considering_result = struct
     type 'a t =
-      | Done of 'a Cached_value.t
+      | Done of 'a
       | Needs_work of
           { sample_attempt : Dag.node
                 (** [work] must be called to force the value to be computed. *)
-          ; work : 'a Cached_value.t Fiber.t
+          ; work : 'a Fiber.t
           }
 
     let sample_attempt_dag_node t : Sample_attempt_dag_node.t =
@@ -838,82 +935,76 @@ end = struct
       | Needs_work { sample_attempt; _ } -> Running sample_attempt
   end
 
-  let deps_changed =
-    let rec go deps =
+  let do_validate (last_cached_value : _ Cached_value.t option) =
+    let open Dependencies_status in
+    let rec any_dependency_changed deps =
       match deps with
-      | [] -> Fiber.return Changed_or_not.Unchanged
-      | Last_dep.T (dep, v_id) :: deps -> (
-        let* res = Exec_unknown.exec_dep_node_internal dep in
-        match Value_id.equal res.id v_id with
-        | true -> go deps
-        | false -> Fiber.return Changed_or_not.Changed )
+      | [] -> Fiber.return false
+      | Last_dep.T (dep, old_value_id) :: deps -> (
+        let* dep_changed =
+          match dep.without_state.spec.allow_cutoff with
+          | No -> (
+            let+ dep_status = Exec_unknown.validate_dep_node_intenal dep in
+            match dep_status with
+            | Changed -> true
+            | Unchanged _cached_value -> false )
+          | Yes _equal ->
+            let+ value = Exec_unknown.exec_dep_node_internal dep in
+            not (Value_id.equal value.id old_value_id)
+        in
+        match dep_changed with
+        | false -> any_dependency_changed deps
+        | true -> Fiber.return true )
     in
-    go
+    match last_cached_value with
+    | None -> Fiber.return Changed
+    | Some cached_value -> (
+      let+ changed = any_dependency_changed cached_value.deps in
+      match changed with
+      | true -> Changed
+      | false ->
+        cached_value.last_validated_at <- Run.current ();
+        Unchanged { cached_value } )
 
-  let do_validate (dep_node : _ Dep_node.t) ivar running_state =
-    let* res =
-      Call_stack.push_async_frame
-        (T { without_state = dep_node.without_state; running_state })
-        (fun () ->
-          let* from_cache =
-            match dep_node.last_cached_value with
-            | None ->
-              Fiber.return
-                (Prev_cycle_cache_lookup_result.Invalid { old_value = None })
-            | Some cv -> (
-              let+ res = deps_changed cv.deps in
-              match res with
-              | Unchanged ->
-                cv.last_validated_at <- Run.current ();
-                Prev_cycle_cache_lookup_result.Valid cv
-              | Changed ->
-                dep_node.last_cached_value <- None;
-                Invalid { old_value = Some cv } )
+  let do_evaluate (dep_node : _ Dep_node.t) running_state =
+    Call_stack.push_async_frame
+      (T { without_state = dep_node.without_state; running_state })
+      (fun () ->
+        match dep_node.without_state.spec.f with
+        | Function.Async f ->
+          (* A consequence of using [Fiber.collect_errors] is that memoized
+             functions don't report errors promptly - errors are reported once
+             all child fibers terminate. To fix this, we should use
+             [Fiber.with_error_handler], but we don't have access to dune's
+             error reporting mechanism in memo *)
+          let+ res =
+            Fiber.collect_errors (fun () -> f dep_node.without_state.input)
           in
-          match from_cache with
-          | Valid v -> Fiber.return v
-          | Invalid { old_value } -> (
-            match dep_node.without_state.spec.f with
-            | Function.Async f ->
-              (* A consequence of using [Fiber.collect_errors] is that memoized
-                 functions don't report errors promptly - errors are reported
-                 once all child fibers terminate. To fix this, we should use
-                 [Fiber.with_error_handler], but we don't have access to dune's
-                 error reporting mechanism in memo *)
-              let+ res =
-                Fiber.collect_errors (fun () -> f dep_node.without_state.input)
-              in
-              let res =
-                Result.map_error res ~f:(fun exns ->
-                    (* this step deduplicates the errors *)
-                    Value.Async (Exn_set.of_list exns))
-              in
-              (* update the output cache with the correct value *)
-              let deps_rev = running_state.deps_so_far.deps_reversed in
-              let res =
-                match old_value with
-                | None -> Cached_value.create res ~deps_rev
-                | Some old_cv -> (
-                  match
-                    Cached_value.value_changed dep_node old_cv.value res
-                  with
-                  | true -> Cached_value.create res ~deps_rev
-                  | false -> Cached_value.confirm_old_value ~deps_rev old_cv )
-              in
-              dep_node.last_cached_value <- Some res;
-              res ))
-    in
-    dep_node.state <- Not_considering;
-    let+ () = Fiber.Ivar.fill ivar res in
-    res
+          let res =
+            Result.map_error res ~f:(fun exns ->
+                (* this step deduplicates the errors *)
+                Value.Async (Exn_set.of_list exns))
+          in
+          (* update the output cache with the correct value *)
+          let deps_rev = running_state.deps_so_far.deps_reversed in
+          let res =
+            match dep_node.last_cached_value with
+            | None -> Cached_value.create res ~deps_rev
+            | Some old_cv -> (
+              match Cached_value.value_changed dep_node old_cv.value res with
+              | true -> Cached_value.create res ~deps_rev
+              | false -> Cached_value.confirm_old_value ~deps_rev old_cv )
+          in
+          dep_node.last_cached_value <- Some res;
+          res)
 
-  let newly_considering (dep_node : _ Dep_node.t) =
+  let newly_validating (dep_node : _ Dep_node.t) =
     let sample_attempt : Dag.node =
       { info = Dag.create_node_info global_dep_dag
       ; data = Dep_node_without_state.T dep_node.without_state
       }
     in
-    let ivar = Fiber.Ivar.create () in
+    let validation_ivar = Fiber.Ivar.create () in
     let running_state : Running_state.t =
       { sample_attempt; deps_so_far = no_deps_so_far }
     in
@@ -921,37 +1012,136 @@ end = struct
       Considering
         { run = Run.current ()
         ; running = running_state
-        ; completion = Async ivar
+        ; validation_completion = Async validation_ivar
+        ; evaluation_completion = None
         };
-    Start_considering_result.Needs_work
-      { sample_attempt; work = do_validate dep_node ivar running_state }
+    let work =
+      let* status = do_validate dep_node.last_cached_value in
+      ( match status with
+      | Changed -> ()
+      | Unchanged _cached_value -> dep_node.state <- Not_considering );
+      let+ () = Fiber.Ivar.fill validation_ivar status in
+      status
+    in
+    Start_considering_result.Needs_work { sample_attempt; work }
 
-  let start_considering_dep_node (dep_node : _ Dep_node.t) =
+  let newly_evaluating (dep_node : _ Dep_node.t) =
+    let sample_attempt : Dag.node =
+      { info = Dag.create_node_info global_dep_dag
+      ; data = Dep_node_without_state.T dep_node.without_state
+      }
+    in
+    let validation_ivar = Fiber.Ivar.create () in
+    let evaluation_ivar = Fiber.Ivar.create () in
+    let running_state : Running_state.t =
+      { sample_attempt; deps_so_far = no_deps_so_far }
+    in
+    dep_node.state <-
+      Considering
+        { run = Run.current ()
+        ; running = running_state
+        ; validation_completion = Async validation_ivar
+        ; evaluation_completion = Some (Async evaluation_ivar)
+        };
+    let validation_work =
+      let* valid = do_validate dep_node.last_cached_value in
+      let+ () = Fiber.Ivar.fill validation_ivar valid in
+      valid
+    in
+    let evalutation_work =
+      let* status = validation_work in
+      match status with
+      | Changed ->
+        let* res = do_evaluate dep_node running_state in
+        dep_node.state <- Not_considering;
+        let+ () = Fiber.Ivar.fill evaluation_ivar res in
+        res
+      | Unchanged { cached_value } ->
+        dep_node.state <- Not_considering;
+        Fiber.return cached_value
+    in
+    Start_considering_result.Needs_work
+      { sample_attempt; work = evalutation_work }
+
+  let start_validating_dep_node (dep_node : _ Dep_node.t) =
     match currently_considering dep_node.state with
     | Not_considering -> (
       match get_cached_value_in_current_cycle dep_node with
-      | None -> newly_considering dep_node
-      | Some cv -> Done cv )
+      | None -> newly_validating dep_node
+      | Some cached_value -> Done (Unchanged { cached_value }) )
     | Considering
         { running = { sample_attempt; deps_so_far = _ }
-        ; completion = Async ivar
+        ; validation_completion = Async ivar
         ; _
         } ->
       Needs_work { sample_attempt; work = Fiber.Ivar.read ivar }
 
-  let consider_dep_node (dep_node : _ Dep_node.t) =
-    let pre_res = start_considering_dep_node dep_node in
+  let start_evaluating_dep_node (dep_node : _ Dep_node.t) =
+    match currently_considering dep_node.state with
+    | Not_considering -> (
+      match get_cached_value_in_current_cycle dep_node with
+      | None -> newly_evaluating dep_node
+      | Some cached_value_in_current_cycle -> Done cached_value_in_current_cycle
+      )
+    | Considering
+        { running = { sample_attempt; deps_so_far = _ }
+        ; evaluation_completion = Some (Async ivar)
+        ; _
+        } ->
+      Needs_work { sample_attempt; work = Fiber.Ivar.read ivar }
+    | Considering
+        { run
+        ; running
+        ; validation_completion = Async validation_ivar
+        ; evaluation_completion = None
+        } ->
+      let evaluation_ivar = Fiber.Ivar.create () in
+      dep_node.state <-
+        Considering
+          { run
+          ; running
+          ; validation_completion = Async validation_ivar
+          ; evaluation_completion = Some (Async evaluation_ivar)
+          };
+      let work =
+        let* status = Fiber.Ivar.read validation_ivar in
+        let* cv =
+          match status with
+          | Changed ->
+            let+ cv = do_evaluate dep_node running in
+            dep_node.state <- Not_considering;
+            cv
+          | Unchanged { cached_value } -> Fiber.return cached_value
+        in
+        let+ () = Fiber.Ivar.fill evaluation_ivar cv in
+        cv
+      in
+      Start_considering_result.Needs_work
+        { sample_attempt = running.sample_attempt; work }
+
+  let validate_dep_node (dep_node : _ Dep_node.t) =
+    let pre_res = start_validating_dep_node dep_node in
+    add_dep_from_caller ~called_from_peek:false dep_node
+      (Start_considering_result.sample_attempt_dag_node pre_res);
+    match pre_res with
+    | Done valid -> Fiber.return valid
+    | Needs_work { work; _ } -> work
+
+  let evaluate_dep_node (dep_node : _ Dep_node.t) =
+    let pre_res = start_evaluating_dep_node dep_node in
     add_dep_from_caller ~called_from_peek:false dep_node
       (Start_considering_result.sample_attempt_dag_node pre_res);
     match pre_res with
     | Done v -> Fiber.return v
-    | Needs_work { sample_attempt = _; work } -> work
+    | Needs_work { work; _ } -> work
 
   let exec_dep_node dep_node =
-    let* res = consider_dep_node dep_node in
+    let* res = evaluate_dep_node dep_node in
     Value.get_async_exn res.value
 
-  let exec_dep_node_internal = consider_dep_node
+  let exec_dep_node_internal = evaluate_dep_node
+
+  let validate_dep_node_intenal = validate_dep_node
 
   let exec t inp = exec_dep_node (dep_node t inp)
 end
@@ -960,8 +1150,14 @@ and Exec_unknown : sig
   val exec_dep_node_internal_from_sync :
     ('a, 'b, 'f) Dep_node.t -> 'b Cached_value.t
 
+  val validate_dep_node_intenal_from_sync :
+    ('a, 'b, 'f) Dep_node.t -> 'b Dependencies_status.t
+
   val exec_dep_node_internal :
     ('a, 'b, 'f) Dep_node.t -> 'b Cached_value.t Fiber.t
+
+  val validate_dep_node_intenal :
+    ('a, 'b, 'f) Dep_node.t -> 'b Dependencies_status.t Fiber.t
 end = struct
   let exec_dep_node_internal (type i o f) (t : (i, o, f) Dep_node.t) :
       o Cached_value.t Fiber.t =
@@ -969,11 +1165,23 @@ end = struct
     | Async _ -> Exec_async.exec_dep_node_internal t
     | Sync _ -> Fiber.return (Exec_sync.exec_dep_node_internal t)
 
+  let validate_dep_node_intenal (type i o f) (t : (i, o, f) Dep_node.t) :
+      o Dependencies_status.t Fiber.t =
+    match t.without_state.spec.f with
+    | Async _ -> Exec_async.validate_dep_node_intenal t
+    | Sync _ -> Fiber.return (Exec_sync.validate_dep_node_intenal t)
+
   let exec_dep_node_internal_from_sync (type i o f) (dep : (i, o, f) Dep_node.t)
       =
     match dep.without_state.spec.f with
     | Async _ -> Code_error.raise "sync computation depends on async" []
     | Sync _ -> Exec_sync.exec_dep_node_internal dep
+
+  let validate_dep_node_intenal_from_sync (type i o f)
+      (dep : (i, o, f) Dep_node.t) =
+    match dep.without_state.spec.f with
+    | Async _ -> Code_error.raise "sync computation depends on async" []
+    | Sync _ -> Exec_sync.validate_dep_node_intenal dep
 end
 
 let exec (type i o f) (t : (i, o, f) t) =
@@ -1321,7 +1529,7 @@ let should_clear_caches =
     true
   | Some _ ->
     User_error.raise
-      [ Pp.text "Invalid value of DUNE_WATCHING_MODE_INCREMENTAL" ]
+      [ Pp.text "Unchanged value of DUNE_WATCHING_MODE_INCREMENTAL" ]
 
 let restart_current_run () =
   Current_run.invalidate ();

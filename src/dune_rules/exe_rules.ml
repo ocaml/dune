@@ -71,7 +71,7 @@ let o_files sctx ~dir ~expander ~(exes : Executables.t) ~linkages ~dir_contents
       else
         "stubs"
     in
-    if List.mem Exe.Linkage.byte ~set:linkages then
+    if List.mem linkages Exe.Linkage.byte ~equal:Exe.Linkage.equal then
       User_error.raise ~loc:exes.buildable.loc
         [ Pp.textf "Pure bytecode executables cannot contain foreign %s." what ]
         ~hints:
@@ -133,7 +133,7 @@ let executables_rules ~sctx ~dir ~expander ~dir_contents ~scope ~compile_info
         let add_empty_intf =
           let project = Scope.project scope in
           Dune_project.executables_implicit_empty_intf project
-          && List.mem name ~set:executable_names
+          && List.mem executable_names name ~equal:Module_name.equal
           && not (Module.has m ~ml_kind:Intf)
         in
         if add_empty_intf then
@@ -151,7 +151,9 @@ let executables_rules ~sctx ~dir ~expander ~dir_contents ~scope ~compile_info
     let js_of_ocaml =
       let js_of_ocaml = exes.buildable.js_of_ocaml in
       if explicit_js_mode then
-        Option.some_if (List.mem ~set:linkages Exe.Linkage.js) js_of_ocaml
+        Option.some_if
+          (List.mem linkages Exe.Linkage.js ~equal:Exe.Linkage.equal)
+          js_of_ocaml
       else
         Some js_of_ocaml
     in

@@ -219,3 +219,5 @@ let reduce xs ~f =
 let min xs ~f = reduce xs ~f:(Ordering.min f)
 
 let max xs ~f = reduce xs ~f:(Ordering.max f)
+
+let mem t a ~equal = exists t ~f:(equal a)

@@ -88,3 +88,5 @@ val reduce : 'a list -> f:('a -> 'a -> 'a) -> 'a option
 val min : 'a list -> f:('a -> 'a -> Ordering.t) -> 'a option
 
 val max : 'a list -> f:('a -> 'a -> Ordering.t) -> 'a option
+
+val mem : 'a list -> 'a -> equal:('a -> 'a -> bool) -> bool

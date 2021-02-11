@@ -104,8 +104,8 @@ CRAM sanitization
      'library-name="foo"'"))
    (FLG (-open Foo -w -40)))
 
-Make sure a ppx directive is generated
-  $ dune ocaml-merlin --dump-config=$(pwd)/lib | grep -q ppx
+Make sure a ppx directive is generated (if not, the [grep ppx] step fails)
+  $ dune ocaml-merlin --dump-config=$(pwd)/lib | grep ppx > /dev/null
 
 Make sure pp flag is correct and variables are expanded
 

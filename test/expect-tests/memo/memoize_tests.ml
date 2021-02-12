@@ -535,6 +535,18 @@ let%expect_test "error handling and memo - sync" =
     f 42 = Error "(Failure 42)"
     f 42 = Error "(Failure 42)" |}]
 
+let print_result f x =
+  let res =
+    try
+      Fiber.run
+        ~iter:(fun () -> raise Exit)
+        (Memo.Build.run (Memo.Build.collect_errors (fun () -> Memo.exec f x)))
+    with exn -> Error [ Exn_with_backtrace.capture exn ]
+  in
+  let open Dyn.Encoder in
+  Format.printf "f %d = %a@." x Pp.to_fmt
+    (Dyn.pp (Result.to_dyn int (list Exn_with_backtrace.to_dyn) res))
+
 let%expect_test "error handling and memo - async" =
   let f =
     int_fn_create "async f"
@@ -550,18 +562,7 @@ let%expect_test "error handling and memo - async" =
         else
           Memo.Build.return x)
   in
-  let test x =
-    let res =
-      try
-        Fiber.run
-          ~iter:(fun () -> raise Exit)
-          (Memo.Build.run (Memo.Build.collect_errors (fun () -> Memo.exec f x)))
-      with exn -> Error [ Exn_with_backtrace.capture exn ]
-    in
-    let open Dyn.Encoder in
-    Format.printf "f %d = %a@." x Pp.to_fmt
-      (Dyn.pp (Result.to_dyn int (list Exn_with_backtrace.to_dyn) res))
-  in
+  let test x = print_result f x in
   test 20;
   test 20;
   test 42;
@@ -585,6 +586,91 @@ let%expect_test "error handling and memo - async" =
              [ { exn = "(Failure left)"; backtrace = "" }
              ; { exn = "(Failure right)"; backtrace = "" }
              ] |}]
+
+let%expect_test "diamond with non-uniform cutoff structure" =
+  let create ~with_cutoff name f =
+    let output =
+      match with_cutoff with
+      | true -> Memo.Output.Allow_cutoff (module Int)
+      | false -> Simple (module Int)
+    in
+    Memo.create name
+      ~input:(module Unit)
+      ~visibility:Hidden ~output ~doc:"" Async f
+  in
+  let base_counter = ref 0 in
+  let base () =
+    incr base_counter;
+    let result = !base_counter in
+    printf "Evaluating base: %d\n" result;
+    let (_ : Run.t) = Memo.current_run () in
+    Build.return result
+  in
+  let base = create ~with_cutoff:true "base" base in
+  let length_of_base which () =
+    let+ base = Memo.exec base () in
+    let result = String.length (Int.to_string base) in
+    printf "Evaluating %s: %d\n" which result;
+    result
+  in
+  let no_cutoff =
+    create ~with_cutoff:false "no_cutoff" (length_of_base "no_cutoff")
+  in
+  let yes_cutoff =
+    create ~with_cutoff:true "yes_cutoff" (length_of_base "yes_cutoff")
+  in
+  let increment which which_memo () =
+    let+ input = Memo.exec which_memo () in
+    let result = input + 1 in
+    printf "Evaluating %s: %d\n" which result;
+    result
+  in
+  let after_no_cutoff =
+    create ~with_cutoff:true "after_no_cutoff"
+      (increment "after_no_cutoff" no_cutoff)
+  in
+  let after_yes_cutoff =
+    create ~with_cutoff:true "after_yes_cutoff"
+      (increment "after_yes_cutoff" yes_cutoff)
+  in
+  let summit offset =
+    let+ after_no_cutoff, after_yes_cutoff =
+      Memo.Build.both
+        (Memo.exec after_no_cutoff ())
+        (Memo.exec after_yes_cutoff ())
+    in
+    let result = after_no_cutoff + after_yes_cutoff + offset in
+    printf "Evaluating summit: %d\n" result;
+    result
+  in
+  let summit =
+    Memo.create "summit"
+      ~input:(module Int)
+      ~visibility:Hidden
+      ~output:(Simple (module Int))
+      ~doc:"" Async summit
+  in
+  print_result summit 0;
+  [%expect
+    {|
+    Evaluating base: 1
+    Evaluating no_cutoff: 1
+    Evaluating after_no_cutoff: 2
+    Evaluating yes_cutoff: 1
+    Evaluating after_yes_cutoff: 2
+    Evaluating summit: 4
+    f 0 = Ok 4
+    |}];
+  Memo.restart_current_run ();
+  print_result summit 0;
+  [%expect
+    {|
+    Evaluating base: 2
+    Evaluating yes_cutoff: 1
+    Evaluating no_cutoff: 1
+    Evaluating after_no_cutoff: 2
+    f 0 = Ok 4
+    |}]
 
 let print_exns f =
   let res =

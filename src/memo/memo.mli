@@ -111,6 +111,10 @@ end
     cache, and cancels all pending computations. *)
 val reset : unit -> unit
 
+(** Notify the memoization system that the build system has restarted but do not
+    clear the memoization cache. *)
+val restart_current_run : unit -> unit
+
 module Function : sig
   module Type : sig
     type ('a, 'b, 'f) t =

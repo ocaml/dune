@@ -37,6 +37,12 @@ end
 let make_relative_to_root p =
   let prefix = Path.(to_absolute_filename root) in
   let p = Path.(to_absolute_filename p) in
+  let prefix, p =
+    if Sys.win32 || Sys.cygwin then
+      (String.lowercase_ascii prefix, String.lowercase_ascii p)
+    else
+      (prefix, p)
+  in
   String.drop_prefix ~prefix p
   (* After dropping the prefix we need to remove the leading path separator *)
   |> Option.map ~f:(fun s -> String.drop s 1)

@@ -395,7 +395,7 @@ For customization purposes, use `dune-mode-hook'."
 
 ;;;###autoload
 (add-to-list 'auto-mode-alist
-             '("\\(?:\\`\\|/\\)dune\\(?:\\.inc\\)?\\'" . dune-mode))
+             '("\\(?:\\`\\|/\\)dune\\(?:\\.inc\|-project\\)?\\'" . dune-mode))
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;

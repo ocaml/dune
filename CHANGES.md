@@ -28,6 +28,8 @@ Unreleased
 - Improve location of variables and macros in error messages (#4205,
   @jeremiedimino)
 
+- Auto-detect `dune-project` files as `dune` files in Emacs (#4222, @shonfeder)
+
 2.8.2 (21/01/2021)
 ------------------
 

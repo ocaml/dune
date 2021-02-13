@@ -46,12 +46,73 @@ module Js_of_ocaml = struct
 end
 
 module Ctypes = struct
-  (* XXX: this is a placeholder for the spec we talked about in PR#3905.
-     At the moment just trying to get a minimal example to compile and build
-     properly. *)
+  module Build_flags_resolver = struct
+
+    module Vendored = struct
+      type t =
+        { c_flags : Ordered_set_lang.Unexpanded.t
+        ; c_library_flags : Ordered_set_lang.Unexpanded.t }
+
+      let decode =
+        fields
+          (let+ c_flags = Ordered_set_lang.Unexpanded.field "c_flags"
+           and+ c_library_flags = Ordered_set_lang.Unexpanded.field "c_library_flags" in
+           { c_flags; c_library_flags })
+    end
+
+    type t =
+      | Pkg_config
+      | Vendored of Vendored.t
+
+    let decode =
+      let vendored =
+        let+ p = Vendored.decode in
+        Vendored p
+      in
+      sum [ ("pkg_config" , return Pkg_config)
+          ; ("vendored"   , vendored ) ]
+
+    let default = Pkg_config
+  end
+
+  module Concurrency_policy = struct
+    type t =
+      | Sequential
+      | Unlocked
+      | Lwt_jobs
+      | Lwt_preemptive
+
+    let decode =
+      enum [ "sequential"     , Sequential
+           ; "unlocked"       , Unlocked
+           ; "lwt_jobs"       , Lwt_jobs
+           ; "lwt_preemptive" , Lwt_preemptive ]
+
+    let default = Sequential
+  end
+
+  (*
+  module Headers = struct
+    type t =
+      | Include of string list
+      | Preamble of string
+    let decode =
+      let include_ =
+        let+ p = field "external_library_name" string
+
+      in
+      let preamble =
+
+      in
+      sum [ ("include"  , return include_)
+          ; ("preamble" , return preamble) ]
+  end
+     *)
   type t =
-    { lib_name : string
+    { external_library_name : string
+    ; build_flags_resolver : Build_flags_resolver.t
     ; includes : string list
+    ; concurrency : Concurrency_policy.t
     ; type_descriptions : Module_name.t
     ; function_descriptions : Module_name.t
     ; generated_types       : Module_name.t
@@ -68,15 +129,23 @@ module Ctypes = struct
   let decode =
     let open Dune_lang.Decoder in
     fields
-      (let+ lib_name = field "lib_name" string
+      (let+ external_library_name = field "external_library_name" string
+       and+ build_flags_resolver = field_o "build_flags_resolver" Build_flags_resolver.decode
        and+ includes = field "includes" (repeat string) ~default:[]
+       and+ concurrency = field_o "concurrency" Concurrency_policy.decode
        and+ type_descriptions = field "type_descriptions" Module_name.decode
        and+ function_descriptions = field "function_descriptions" Module_name.decode
        and+ generated_types       = field "generated_types" Module_name.decode
        and+ generated_entry_point = field "generated_entry_point" Module_name.decode
      in
-     { lib_name; includes; type_descriptions; function_descriptions;
-       generated_types; generated_entry_point })
+     { external_library_name
+     ; build_flags_resolver = Option.value build_flags_resolver ~default:Build_flags_resolver.default
+     ; includes
+     ; concurrency = Option.value concurrency ~default:Concurrency_policy.default
+     ; type_descriptions
+     ; function_descriptions
+     ; generated_types
+     ; generated_entry_point })
 
   let () =
     let open Dune_lang.Decoder in

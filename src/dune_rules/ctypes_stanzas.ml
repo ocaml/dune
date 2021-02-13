@@ -89,7 +89,7 @@ let type_description_library ctypes =
   |> String.lowercase
 
 let type_description_library_public ctypes =
-  sprintf "%s.c_type_descriptions" ctypes.Ctypes.lib_name
+  sprintf "%s.c_type_descriptions" ctypes.Ctypes.external_library_name
 
 let function_description_module ctypes =
   ctypes.Ctypes.function_descriptions
@@ -100,7 +100,7 @@ let function_description_library ctypes =
   |> String.lowercase
 
 let function_description_library_public ctypes =
-  sprintf "%s.c_function_descriptions" ctypes.Ctypes.lib_name
+  sprintf "%s.c_function_descriptions" ctypes.Ctypes.external_library_name
 
 let entry_module ctypes =
   ctypes.Ctypes.generated_entry_point
@@ -109,28 +109,28 @@ let entry_library ctypes =
   entry_module ctypes |> Module_name.to_string |> String.lowercase
 
 let entry_library_public ctypes =
-  sprintf "%s.c" ctypes.Ctypes.lib_name
+  sprintf "%s.c" ctypes.Ctypes.external_library_name
 
 let cflags_sexp ctypes =
-  sprintf "%s__c_flags.sexp" ctypes.Ctypes.lib_name
+  sprintf "%s__c_flags.sexp" ctypes.Ctypes.external_library_name
 
 let cflags_txt ctypes =
-  sprintf "%s__c_flags.txt" ctypes.Ctypes.lib_name
+  sprintf "%s__c_flags.txt" ctypes.Ctypes.external_library_name
 
 let c_library_flags_sexp ctypes =
-  sprintf "%s__c_library_flags.sexp" ctypes.Ctypes.lib_name
+  sprintf "%s__c_library_flags.sexp" ctypes.Ctypes.external_library_name
 
 let c_generated_types_module ctypes =
-  sprintf "%s__c_generated_types" ctypes.Ctypes.lib_name
+  sprintf "%s__c_generated_types" ctypes.Ctypes.external_library_name
   |> Module_name.of_string
 
 let c_generated_functions_module ctypes =
-  sprintf "%s__c_generated_functions" ctypes.Ctypes.lib_name
+  sprintf "%s__c_generated_functions" ctypes.Ctypes.external_library_name
   |> Module_name.of_string
 
 (*
 let c_types_includer_module ctypes =
-  sprintf "%s__c_types" ctypes.Ctypes.lib_name
+  sprintf "%s__c_types" ctypes.Ctypes.external_library_name
   |> Module_name.of_string
 *)
 
@@ -138,16 +138,16 @@ let c_types_includer_module ctypes =
   ctypes.Ctypes.generated_types
 
 let c_generated_types_cout_c ctypes =
-  sprintf "%s__c_cout_generated_types.c" ctypes.Ctypes.lib_name
+  sprintf "%s__c_cout_generated_types.c" ctypes.Ctypes.external_library_name
 
 let c_generated_types_cout_exe ctypes =
-  sprintf "%s__c_cout_generated_types.exe" ctypes.Ctypes.lib_name
+  sprintf "%s__c_cout_generated_types.exe" ctypes.Ctypes.external_library_name
 
 let c_generated_functions_cout_c ctypes =
-  sprintf "%s__c_cout_generated_functions.c" ctypes.Ctypes.lib_name
+  sprintf "%s__c_cout_generated_functions.c" ctypes.Ctypes.external_library_name
 
 let c_generated_functions_cout_no_ext ctypes =
-  sprintf "%s__c_cout_generated_functions" ctypes.Ctypes.lib_name
+  sprintf "%s__c_cout_generated_functions" ctypes.Ctypes.external_library_name
 
 (* Unlike for [executable] and [rule] generation which have neat convenience
    functions for creating new ones, the machinery for creating new [library]s

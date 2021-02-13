@@ -29,10 +29,30 @@ module Lib_deps : sig
   val decode : allow_re_export:bool -> t Dune_lang.Decoder.t
 end
 
+
 module Ctypes : sig
+  module Build_flags_resolver : sig
+    module Vendored : sig
+      type t =
+        { c_flags : Ordered_set_lang.Unexpanded.t
+        ; c_library_flags : Ordered_set_lang.Unexpanded.t }
+    end
+    type t =
+      | Pkg_config
+      | Vendored of Vendored.t
+  end
+  module Concurrency_policy : sig
+    type t =
+      | Sequential
+      | Unlocked
+      | Lwt_jobs
+      | Lwt_preemptive
+  end
   type t =
-    { lib_name : string
+    { external_library_name : string
+    ; build_flags_resolver : Build_flags_resolver.t
     ; includes : string list
+    ; concurrency : Concurrency_policy.t
     ; type_descriptions : Module_name.t
     ; function_descriptions : Module_name.t
     ; generated_types : Module_name.t

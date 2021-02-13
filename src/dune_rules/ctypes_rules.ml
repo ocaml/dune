@@ -84,7 +84,7 @@ let write_entry_point_module ~sctx ~dir ~filename ~function_description_module
   Super_context.add_rule ~loc:Loc.none sctx ~dir
     (Build.write_file path contents)
 
-let discover_gen ~external_lib_name:lib ~cflags_sexp ~cflags_txt
+let discover_gen ~external_library_name:lib ~cflags_sexp ~cflags_txt
       ~c_library_flags_sexp =
   let buf = Buffer.create 1024 in
   let pr buf fmt = Printf.bprintf buf (fmt ^^ "\n") in
@@ -110,11 +110,11 @@ let discover_gen ~external_lib_name:lib ~cflags_sexp ~cflags_txt
   pr buf "    close_out oc)";
   Buffer.contents buf
 
-let write_discover_script ~filename ~sctx ~dir ~external_lib_name ~cflags_sexp
+let write_discover_script ~filename ~sctx ~dir ~external_library_name ~cflags_sexp
       ~cflags_txt ~c_library_flags_sexp =
   let path = Path.Build.relative dir filename in
   let script =
-    discover_gen ~external_lib_name ~cflags_sexp ~cflags_txt
+    discover_gen ~external_library_name ~cflags_sexp ~cflags_txt
       ~c_library_flags_sexp
   in
   Super_context.add_rule ~loc:Loc.none sctx ~dir (Build.write_file path script)
@@ -129,12 +129,17 @@ let type_gen_gen ~include_headers ~type_description_module =
   pr buf "    (module %s.Types)" (Module_name.to_string type_description_module);
   Buffer.contents buf
 
-let function_gen_gen ~include_headers ~function_description_module =
-  (* XXX: make concurrency configurable *)
+let function_gen_gen ~concurrency ~include_headers ~function_description_module =
   let function_description_module =
     Module_name.to_string function_description_module
   in
-  let concurrency = "Cstubs.unlocked" in
+  let concurrency =
+    match concurrency with
+    | Ctypes.Concurrency_policy.Unlocked -> "Cstubs.unlocked"
+    | Sequential -> "Cstubs.sequential"
+    | Lwt_jobs -> "Cstubs.lwt_jobs"
+    | Lwt_preemptive -> "Cstubs.lwt_preemptive"
+  in
   let buf = Buffer.create 1024 in
   let pr buf fmt = Printf.bprintf buf (fmt ^^ "\n") in
   pr buf "let () =";
@@ -159,9 +164,9 @@ let write_type_gen_script ~include_headers ~dir ~filename ~sctx
   Super_context.add_rule ~loc:Loc.none sctx ~dir (Build.write_file path script)
 
 let write_function_gen_script ~include_headers ~sctx ~dir ~name
-      ~function_description_module =
+      ~function_description_module ~concurrency =
   let path = Path.Build.relative dir (name ^ ".ml") in
-  let script = function_gen_gen ~include_headers ~function_description_module in
+  let script = function_gen_gen ~concurrency ~include_headers ~function_description_module in
   Super_context.add_rule ~loc:Loc.none sctx ~dir (Build.write_file path script)
 
 let rule ?(deps=[]) ?stdout_to ?(args=[]) ?(targets=[]) ~exe ~sctx ~dir () =
@@ -290,7 +295,7 @@ let gen_rules ~buildable ~dynlink ~loc ~obj_dir ~scope ~expander ~dir ~sctx =
     | Some ctypes -> ctypes
     | None -> assert false
   in
-  let external_lib_name = ctypes.Ctypes.lib_name in
+  let external_library_name = ctypes.Ctypes.external_library_name in
   let type_description_module = Ctypes_stanzas.type_description_module ctypes in
   let type_description_library = Ctypes_stanzas.type_description_library ctypes in
   let function_description_module = Ctypes_stanzas.function_description_module ctypes in
@@ -305,26 +310,37 @@ let gen_rules ~buildable ~dynlink ~loc ~obj_dir ~scope ~expander ~dir ~sctx =
       ~c_generated_types_module:(Ctypes_stanzas.c_generated_types_module ctypes)
       ~type_description_module
   in
-  (* The discover script uses dune configurator / pkg_config to figure out
+  (* The output of this process is to generate two cflags and one c library flags file.
+     We can probe it using the system pkg-config, if it's an external system
+     library, or the user tells us where they are if they're vendored.
+
+     The discover script uses dune configurator / pkg_config to figure out
      how to invoke the compiler and linker for your external C library.
 
      https://dune.readthedocs.io/en/stable/quick-start.html#defining-a-library-with-c-stubs-using-pkg-config *)
   let c_library_flags_sexp = Ctypes_stanzas.c_library_flags_sexp ctypes in
   let cflags_txt = Ctypes_stanzas.cflags_txt ctypes in
   let () =
-    let cflags_sexp = Ctypes_stanzas.cflags_sexp ctypes in
-    let discover_script = sprintf "%s__ctypes_discover" external_lib_name in
-    write_discover_script
-      ~sctx ~dir ~filename:(discover_script ^ ".ml") ~cflags_sexp
-      ~cflags_txt ~c_library_flags_sexp ~external_lib_name;
-    executable
-      ~program:discover_script
-      ~libraries:["dune.configurator"]
-      ();
-    rule
-      ~targets:[cflags_sexp; cflags_txt; c_library_flags_sexp]
-      ~exe:(discover_script ^ ".exe")
-      ()
+    match ctypes.Ctypes.build_flags_resolver with
+    | Ctypes.Build_flags_resolver.Pkg_config ->
+      let cflags_sexp = Ctypes_stanzas.cflags_sexp ctypes in
+      let discover_script = sprintf "%s__ctypes_discover" external_library_name in
+      write_discover_script
+        ~sctx ~dir ~filename:(discover_script ^ ".ml") ~cflags_sexp
+        ~cflags_txt ~c_library_flags_sexp ~external_library_name;
+      executable
+        ~program:discover_script
+        ~libraries:["dune.configurator"]
+        ();
+      (* XXX: maybe we should read these files into dune after they've been generated? rather
+         than constructing Ordered_set_langs with include directives for these files? *)
+      rule
+        ~targets:[cflags_sexp; cflags_txt; c_library_flags_sexp]
+        ~exe:(discover_script ^ ".exe")
+        ()
+    | Vendored _vendored ->
+      (* XXX: easier to implement if we read the above files into dune *)
+      failwith "TODO: implement vendored"
   in
   let include_headers = ctypes.Ctypes.includes in
   (* Type_gen produces a .c file, taking your type description module above
@@ -337,7 +353,7 @@ let gen_rules ~buildable ~dynlink ~loc ~obj_dir ~scope ~expander ~dir ~sctx =
      Note the similar function_gen process below depends on the ML-wrapped C
      data/types produced in this step. *)
   let () =
-    let type_gen_script = sprintf "%s__type_gen" external_lib_name in
+    let type_gen_script = sprintf "%s__type_gen" external_library_name in
     let c_generated_types_cout_c =
       Ctypes_stanzas.c_generated_types_cout_c ctypes
     in
@@ -371,13 +387,14 @@ let gen_rules ~buildable ~dynlink ~loc ~obj_dir ~scope ~expander ~dir ~sctx =
      .ml file and a .c file.  These files correspond to the files you would
      have to write by hand to wrap C code (if ctypes didn't exist!) *)
   let () =
-    let stubs_prefix = external_lib_name ^ "_stubs" in
-    let function_gen_script = sprintf "%s__function_gen" external_lib_name in
+    let stubs_prefix = external_library_name ^ "_stubs" in
+    let function_gen_script = sprintf "%s__function_gen" external_library_name in
     let c_generated_functions_cout_c =
       Ctypes_stanzas.c_generated_functions_cout_c ctypes
     in
     write_function_gen_script ~include_headers ~sctx ~dir
-      ~name:function_gen_script ~function_description_module;
+      ~name:function_gen_script ~function_description_module
+      ~concurrency:ctypes.Ctypes.concurrency;
     executable
       ~program:function_gen_script
       ~libraries:["ctypes.stubs"; function_description_library]

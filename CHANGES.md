@@ -46,6 +46,9 @@ Unreleased
 
 - Add support for instrumentation dependencies (#4210, fixes #3983, @nojb)
 
+- Workaround incorrect exception raised by Unix.utimes (OCaml PR#8857) in
+  Path.touch on Windows (#4223, @dra27)
+
 2.8.2 (21/01/2021)
 ------------------
 

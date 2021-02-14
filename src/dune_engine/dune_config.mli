@@ -2,20 +2,6 @@ open Import
 
 (** Dune configuration (visible to the user) *)
 
-module Terminal_persistence : sig
-  type t =
-    | Preserve
-    | Clear_on_rebuild
-
-  val all : (string * t) list
-
-  val of_string : string -> (t, string) result
-
-  val to_string : t -> string
-
-  val decode : t Dune_lang.Decoder.t
-end
-
 module Display : sig
   type t =
     | Progress  (** Single interactive status line *)
@@ -83,7 +69,7 @@ module type S = sig
   type t =
     { display : Display.t field
     ; concurrency : Concurrency.t field
-    ; terminal_persistence : Terminal_persistence.t field
+    ; terminal_persistence : Scheduler.Config.Terminal_persistence.t field
     ; sandboxing_preference : Sandboxing_preference.t field
     ; cache_mode : Caching.Mode.t field
     ; cache_transport : Caching.Transport.t field
@@ -121,3 +107,5 @@ val t : unit -> t
 val init : t -> unit
 
 val to_dyn : t -> Dyn.t
+
+val for_scheduler : t -> Scheduler.Config.t

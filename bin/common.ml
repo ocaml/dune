@@ -510,7 +510,7 @@ let term =
           [ "debug-artifact-substitution" ]
           ~docs ~doc:"Print debugging info about artifact substitution")
   and+ terminal_persistence =
-    let modes = Dune_config.Terminal_persistence.all in
+    let modes = Dune_engine.Scheduler.Config.Terminal_persistence.all in
     let doc =
       let f s = fst s |> Printf.sprintf "$(b,%s)" in
       Printf.sprintf

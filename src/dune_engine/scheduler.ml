@@ -6,66 +6,18 @@ open Import
 module Config = struct
   include Config
 
+  module Terminal_persistence = struct
+    type t =
+      | Preserve
+      | Clear_on_rebuild
+
+    let all = [ ("preserve", Preserve); ("clear-on-rebuild", Clear_on_rebuild) ]
+  end
+
   type t =
     { concurrency : int
-    ; terminal_persistence : Dune_config.Terminal_persistence.t
+    ; terminal_persistence : Terminal_persistence.t
     }
-
-  let auto_concurrency =
-    lazy
-      ( if Sys.win32 then
-        match Env.get Env.initial "NUMBER_OF_PROCESSORS" with
-        | None -> 1
-        | Some s -> ( try int_of_string s with _ -> 1 )
-      else
-        let commands =
-          [ ("nproc", [])
-          ; ("getconf", [ "_NPROCESSORS_ONLN" ])
-          ; ("getconf", [ "NPROCESSORS_ONLN" ])
-          ]
-        in
-        let rec loop = function
-          | [] -> 1
-          | (prog, args) :: rest -> (
-            match Bin.which ~path:(Env.path Env.initial) prog with
-            | None -> loop rest
-            | Some prog -> (
-              let prog = Path.to_string prog in
-              let fdr, fdw = Unix.pipe () ~cloexec:true in
-              match
-                Spawn.spawn ~prog ~argv:(prog :: args)
-                  ~stdin:(Lazy.force Config.dev_null_in)
-                  ~stdout:fdw
-                  ~stderr:(Lazy.force Config.dev_null_out)
-                  ()
-              with
-              | exception _ ->
-                Unix.close fdw;
-                Unix.close fdr;
-                loop commands
-              | pid -> (
-                Unix.close fdw;
-                let ic = Unix.in_channel_of_descr fdr in
-                let n =
-                  Option.try_with (fun () ->
-                      input_line ic |> String.trim |> int_of_string)
-                in
-                close_in ic;
-                match (n, snd (Unix.waitpid [] (Pid.to_int pid))) with
-                | Some n, WEXITED 0 -> n
-                | _ -> loop rest ) ) )
-        in
-        let n = loop commands in
-        Log.info [ Pp.textf "Auto-detected concurrency: %d" n ];
-        n )
-
-  let of_dune_config (c : Dune_config.t) =
-    let concurrency =
-      match c.concurrency with
-      | Fixed i -> i
-      | Auto -> Lazy.force auto_concurrency
-    in
-    { concurrency; terminal_persistence = c.terminal_persistence }
 end
 
 type job =

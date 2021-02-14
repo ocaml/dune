@@ -1,12 +1,18 @@
 (** Scheduling *)
 
 module Config : sig
+  module Terminal_persistence : sig
+    type t =
+      | Preserve
+      | Clear_on_rebuild
+
+    val all : (string * t) list
+  end
+
   type t =
     { concurrency : int
-    ; terminal_persistence : Dune_config.Terminal_persistence.t
+    ; terminal_persistence : Terminal_persistence.t
     }
-
-  val of_dune_config : Dune_config.t -> t
 end
 
 open! Stdune

@@ -69,7 +69,7 @@ let term =
   Dune_config.init config;
   Log.init_disabled ();
   Dune_engine.Scheduler.go
-    (Dune_engine.Scheduler.Config.of_dune_config config)
+    (Dune_engine.Dune_config.for_scheduler config)
     Watermarks.subst
 
 let command = (term, info)

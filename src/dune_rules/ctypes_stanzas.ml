@@ -114,9 +114,6 @@ let entry_library_public ctypes =
 let cflags_sexp ctypes =
   sprintf "%s__c_flags.sexp" ctypes.Ctypes.external_library_name
 
-let cflags_txt ctypes =
-  sprintf "%s__c_flags.txt" ctypes.Ctypes.external_library_name
-
 let c_library_flags_sexp ctypes =
   sprintf "%s__c_library_flags.sexp" ctypes.Ctypes.external_library_name
 

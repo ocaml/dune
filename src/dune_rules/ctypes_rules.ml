@@ -84,8 +84,7 @@ let write_entry_point_module ~sctx ~dir ~filename ~function_description_module
   Super_context.add_rule ~loc:Loc.none sctx ~dir
     (Build.write_file path contents)
 
-let discover_gen ~external_library_name:lib ~cflags_sexp ~cflags_txt
-      ~c_library_flags_sexp =
+let discover_gen ~external_library_name:lib ~cflags_sexp ~c_library_flags_sexp =
   let buf = Buffer.create 1024 in
   let pr buf fmt = Printf.bprintf buf (fmt ^^ "\n") in
   pr buf "module C = Configurator.V1";
@@ -105,17 +104,14 @@ let discover_gen ~external_library_name:lib ~cflags_sexp ~cflags_txt
   pr buf "    in";
   pr buf "    C.Flags.write_sexp \"%s\" conf.cflags;" cflags_sexp;
   pr buf "    C.Flags.write_sexp \"%s\" conf.libs;" c_library_flags_sexp;
-  pr buf "    let oc = open_out \"%s\" in" cflags_txt;
-  pr buf "    List.iter (Printf.fprintf oc \"%%s\") conf.cflags;";
-  pr buf "    close_out oc)";
+  pr buf "  )";
   Buffer.contents buf
 
 let write_discover_script ~filename ~sctx ~dir ~external_library_name ~cflags_sexp
-      ~cflags_txt ~c_library_flags_sexp =
+      ~c_library_flags_sexp =
   let path = Path.Build.relative dir filename in
   let script =
-    discover_gen ~external_library_name ~cflags_sexp ~cflags_txt
-      ~c_library_flags_sexp
+    discover_gen ~external_library_name ~cflags_sexp ~c_library_flags_sexp
   in
   Super_context.add_rule ~loc:Loc.none sctx ~dir (Build.write_file path script)
 
@@ -196,7 +192,7 @@ let rule ?(deps=[]) ?stdout_to ?(args=[]) ?(targets=[]) ~exe ~sctx ~dir () =
   in
   Super_context.add_rule sctx ~dir build
 
-let build_c_program ~sctx ~dir ~source_files ~scope ~cflags_txt ~output () =
+let build_c_program ~sctx ~dir ~source_files ~scope ~cflags_sexp ~output () =
   let ctx = Super_context.context sctx in
   let exe =
     Ocaml_config.c_compiler ctx.Context.ocaml_config
@@ -227,11 +223,24 @@ let build_c_program ~sctx ~dir ~source_files ~scope ~cflags_txt ~output () =
     |> Dep.Set.of_files
   in
   let build =
-    (* XXX: can we read the semantically identical cflags_sexp file and eliminate creating
-       this extra cflags_txt file?  We do this in ctypes_stanzas:
-       Ordered_set_lang.Unexpanded.of_strings ~pos [":include"; cflags_sexp ... ] *)
-    let contents = Build.contents (Path.relative (Path.build dir) cflags_txt) in
-    let cflags_args = Build.map contents ~f:(String.split ~on:' ') in
+    let cflags_args =
+      let contents = Build.contents (Path.relative (Path.build dir) cflags_sexp) in
+      Build.map contents ~f:(fun sexp ->
+        let ast =
+          Dune_lang.Parser.parse_string ~mode:Dune_lang.Parser.Mode.Single
+            ~fname:cflags_sexp sexp
+        in
+        match ast with
+        | Dune_lang.Ast.Atom (_loc, atom) -> [Dune_lang.Atom.to_string atom]
+        | Template _ -> failwith "'template' not supported in ctypes build flags"
+        | Quoted_string (_loc, s) -> [s]
+        | List (_loc, lst) ->
+          List.map lst ~f:(function
+            | Dune_lang.Ast.Atom (_loc, atom) -> Dune_lang.Atom.to_string atom
+            | Quoted_string (_loc, s) -> s
+            | Template _ -> failwith "'template' not supported in ctypes build flags"
+            | List _ -> failwith "nested lists not supported in ctypes build flags"))
+    in
     let action =
       let open Build.O in
       Build.deps deps
@@ -293,6 +302,21 @@ let executable ?(modules=[]) ~buildable ~loc ~obj_dir ~dynlink ~dir ~sctx ~scope
   in
   Exe.build_and_link ~program ~linkages:[Exe.Linkage.native] ~promote:None cctx
 
+let write_osl_to_sexp_file ~sctx ~dir ~filename osl =
+  let build =
+    let path = Path.Build.relative dir filename in
+    let sexp =
+      let encoded =
+        match Ordered_set_lang.Unexpanded.encode osl with
+        | [s] -> s
+        | _lst -> failwith "unexpected multi-element list"
+      in
+      Dune_lang.to_string encoded
+    in
+    Build.write_file path sexp
+  in
+  Super_context.add_rule ~loc:Loc.none sctx ~dir build
+
 let gen_rules ~buildable ~dynlink ~loc ~obj_dir ~scope ~expander ~dir ~sctx =
   let rule = rule ~sctx ~dir in
   let executable =
@@ -324,29 +348,28 @@ let gen_rules ~buildable ~dynlink ~loc ~obj_dir ~scope ~expander ~dir ~sctx =
 
      https://dune.readthedocs.io/en/stable/quick-start.html#defining-a-library-with-c-stubs-using-pkg-config *)
   let c_library_flags_sexp = Ctypes_stanzas.c_library_flags_sexp ctypes in
-  let cflags_txt = Ctypes_stanzas.cflags_txt ctypes in
+  let cflags_sexp = Ctypes_stanzas.cflags_sexp ctypes in
   let () =
+    let open Ctypes.Build_flags_resolver in
     match ctypes.Ctypes.build_flags_resolver with
-    | Ctypes.Build_flags_resolver.Pkg_config ->
+    | Vendored { c_flags; c_library_flags } ->
+      write_osl_to_sexp_file ~sctx ~dir ~filename:cflags_sexp c_flags;
+      write_osl_to_sexp_file ~sctx ~dir ~filename:c_library_flags_sexp
+        c_library_flags
+    | Pkg_config ->
       let cflags_sexp = Ctypes_stanzas.cflags_sexp ctypes in
       let discover_script = sprintf "%s__ctypes_discover" external_library_name in
       write_discover_script
         ~sctx ~dir ~filename:(discover_script ^ ".ml") ~cflags_sexp
-        ~cflags_txt ~c_library_flags_sexp ~external_library_name;
+        ~c_library_flags_sexp ~external_library_name;
       executable
         ~program:discover_script
         ~libraries:["dune.configurator"]
         ();
-      (* XXX: maybe we should read these files into dune after they've been
-         generated? rather than constructing Ordered_set_langs with include
-         directives for these files? *)
       rule
-        ~targets:[cflags_sexp; cflags_txt; c_library_flags_sexp]
+        ~targets:[cflags_sexp; c_library_flags_sexp]
         ~exe:(discover_script ^ ".exe")
         ()
-    | Vendored _vendored ->
-      (* XXX: easier to implement if we read the above files into dune *)
-      failwith "TODO: implement vendored"
   in
   let headers = ctypes.Ctypes.headers in
   (* Type_gen produces a .c file, taking your type description module above
@@ -378,9 +401,8 @@ let gen_rules ~buildable ~dynlink ~loc ~obj_dir ~scope ~expander ~dir ~sctx =
       ~exe:(type_gen_script ^ ".exe")
       ();
     build_c_program
-      ~sctx ~dir ~scope
+      ~sctx ~dir ~scope ~cflags_sexp
       ~source_files:[c_generated_types_cout_c]
-      ~cflags_txt (*" %{read:c_flags.txt}" *)
       ~output:c_generated_types_cout_exe
       ();
     rule

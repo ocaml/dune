@@ -39,8 +39,15 @@ module Buildable = struct
     let+ loc = loc
     and+ flags = Ordered_set_lang.Unexpanded.field "flags"
     and+ mode =
+      let* version = Dune_lang.Syntax.get_exn coq_syntax in
+      let default =
+        if version < (0, 3) then
+          Coq_mode.Legacy
+        else
+          Coq_mode.VoOnly
+      in
       located
-        (field "mode" ~default:Coq_mode.VoOnly
+        (field "mode" ~default
            (Dune_lang.Syntax.since coq_syntax (0, 3) >>> Coq_mode.decode))
     and+ libraries =
       field "libraries" (repeat (located Lib_name.decode)) ~default:[]

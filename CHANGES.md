@@ -30,6 +30,10 @@ Unreleased
 
 - Auto-detect `dune-project` files as `dune` files in Emacs (#4222, @shonfeder)
 
+- Restore compatibility with Coq < 8.10 for coq-lang < 0.3 , document
+  that `(using coq 0.3)` does require Coq 8.10 at least (#4224, fixes
+  #4142, @ejgallego)
+
 2.8.2 (21/01/2021)
 ------------------
 

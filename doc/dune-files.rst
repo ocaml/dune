@@ -1642,9 +1642,10 @@ language version is absent, dune will automatically add this line with the
 latest Coq version to the project file once a ``(coq.theory ...)`` stanza is used anywhere.
 
 The supported Coq language versions are:
+
 - ``0.1``: basic Coq theory support,
 - ``0.2``: support for the ``theories`` field, and composition of theories in the same scope,
-- ``0.3``: support for ``(mode native)``.
+- ``0.3``: support for ``(mode native)``, requires Coq >= 8.10.
 
 Guarantees with respect to stability are not provided yet,
 however, as implementation of features progresses, we hope to reach

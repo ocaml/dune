@@ -695,7 +695,7 @@ module Library = struct
          | Some public, Some (loc, _) ->
            User_error.raise ~loc
              [ Pp.textf
-                 "This library has a pullic_name, it already belongs to the \
+                 "This library has a public_name, it already belongs to the \
                   package %s"
                  (Package.Name.to_string (Package.name public.package))
              ]

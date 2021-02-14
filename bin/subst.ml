@@ -60,13 +60,13 @@ let info = Term.info "subst" ~doc ~man
 let term =
   let+ () = Common.build_info
   and+ debug_backtraces = Common.debug_backtraces in
-  let config : Config.t =
-    { Config.default with display = Quiet; concurrency = Fixed 1 }
+  let config : Dune_config.t =
+    { Dune_config.default with display = Quiet; concurrency = Fixed 1 }
   in
   Dune_engine.Clflags.debug_backtraces debug_backtraces;
   Path.set_root (Path.External.cwd ());
   Path.Build.set_build_dir (Path.Build.Kind.of_string Common.default_build_dir);
-  Config.init config;
+  Dune_config.init config;
   Log.init_disabled ();
   Dune_engine.Scheduler.go ~config Watermarks.subst
 

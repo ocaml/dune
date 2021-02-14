@@ -1,4 +1,5 @@
 open Stdune
+module Dune_config = Dune_engine.Dune_config
 module Config = Dune_engine.Config
 module Colors = Dune_rules.Colors
 module Clflags = Dune_engine.Clflags
@@ -55,7 +56,7 @@ type t =
   ; store_orig_src_dir : bool
   ; (* Original arguments for the external-lib-deps hint *)
     orig_args : string list
-  ; config : Dune_engine.Config.t
+  ; config : Dune_engine.Dune_config.t
   ; default_target : Arg.Dep.t (* For build & runtest only *)
   ; watch : bool
   ; stats_trace_file : string option
@@ -101,7 +102,7 @@ let set_dirs c =
   Path.Build.set_build_dir (Path.Build.Kind.of_string c.build_dir)
 
 let set_common_other ?log_file c ~targets =
-  Config.init c.config;
+  Dune_engine.Dune_config.init c.config;
   Dune_util.Log.init () ?file:log_file;
   Clflags.debug_dep_path := c.debug_dep_path;
   Clflags.debug_findlib := c.debug_findlib;
@@ -421,6 +422,7 @@ module Options_implied_by_dash_p = struct
 end
 
 let display_term =
+  let module Display = Dune_config.Display in
   one_of
     (let+ verbose =
        Arg.(
@@ -428,35 +430,33 @@ let display_term =
          & info [ "verbose" ] ~docs:copts_sect
              ~doc:"Same as $(b,--display verbose)")
      in
-     Option.some_if verbose Config.Display.Verbose)
+     Option.some_if verbose Display.Verbose)
     Arg.(
       value
-      & opt (some (enum Config.Display.all)) None
+      & opt (some (enum Display.all)) None
       & info [ "display" ] ~docs:copts_sect ~docv:"MODE"
           ~doc:
             {|Control the display mode of Dune.
          See $(b,dune-config\(5\)) for more details.|})
 
 let config_of_file = function
-  | No_config -> Config.default
-  | This fname -> Config.load_config_file fname
+  | No_config -> Dune_config.default
+  | This fname -> Dune_config.load_config_file fname
   | Default ->
-    if Config.inside_dune then
-      Config.default
+    if Dune_engine.Config.inside_dune then
+      Dune_config.default
     else
-      Config.load_user_config_file ()
+      Dune_config.load_user_config_file ()
 
 let term =
   let docs = copts_sect in
   let+ concurrency =
+    let module Concurrency = Dune_config.Concurrency in
     let arg =
       Arg.conv
         ( (fun s ->
-            Result.map_error (Dune_engine.Config.Concurrency.of_string s)
-              ~f:(fun s -> `Msg s))
-        , fun pp x ->
-            Format.pp_print_string pp
-              (Dune_engine.Config.Concurrency.to_string x) )
+            Result.map_error (Concurrency.of_string s) ~f:(fun s -> `Msg s))
+        , fun pp x -> Format.pp_print_string pp (Concurrency.to_string x) )
     in
     Arg.(
       value
@@ -510,7 +510,7 @@ let term =
           [ "debug-artifact-substitution" ]
           ~docs ~doc:"Print debugging info about artifact substitution")
   and+ terminal_persistence =
-    let modes = Config.Terminal_persistence.all in
+    let modes = Dune_config.Terminal_persistence.all in
     let doc =
       let f s = fst s |> Printf.sprintf "$(b,%s)" in
       Printf.sprintf
@@ -632,18 +632,18 @@ let term =
   and+ cache_mode =
     let doc =
       Printf.sprintf "Activate binary cache (%s). Default is `%s'."
-        (Arg.doc_alts_enum Config.Caching.Mode.all)
-        (Config.Caching.Mode.to_string Config.default.cache_mode)
+        (Arg.doc_alts_enum Dune_config.Caching.Mode.all)
+        (Dune_config.Caching.Mode.to_string Dune_config.default.cache_mode)
     in
     Arg.(
       value
-      & opt (some (enum Config.Caching.Mode.all)) None
+      & opt (some (enum Dune_config.Caching.Mode.all)) None
       & info [ "cache" ] ~docs ~env:(Arg.env_var ~doc "DUNE_CACHE") ~doc)
   and+ cache_transport =
     let doc = "Binary cache protocol" in
     Arg.(
       value
-      & opt (some (enum Config.Caching.Transport.all)) None
+      & opt (some (enum Dune_config.Caching.Transport.all)) None
       & info [ "cache-transport" ] ~docs
           ~env:(Arg.env_var ~doc "DUNE_CACHE_TRANSPORT")
           ~doc)
@@ -651,7 +651,7 @@ let term =
     let doc = "Binary cache duplication mode" in
     Arg.(
       value
-      & opt (some (enum Config.Caching.Duplication.all)) None
+      & opt (some (enum Dune_config.Caching.Duplication.all)) None
       & info [ "cache-duplication" ] ~docs
           ~env:(Arg.env_var ~doc "DUNE_CACHE_DUPLICATION")
           ~doc)
@@ -661,7 +661,7 @@ let term =
     in
     Arg.(
       value
-      & opt float Config.default.cache_check_probability
+      & opt float Dune_config.default.cache_check_probability
       & info
           [ "cache-check-probability" ]
           ~docs
@@ -685,7 +685,7 @@ let term =
   let root = Workspace_root.create ~specified_by_user:root in
   let config = config_of_file config_file in
   let config =
-    Config.merge config
+    Dune_config.merge config
       { display
       ; concurrency
       ; sandboxing_preference =
@@ -700,7 +700,7 @@ let term =
       }
   in
   let config =
-    Config.adapt_display config
+    Dune_config.adapt_display config
       ~output_is_a_tty:(Lazy.force Ansi_color.stderr_supports_color)
   in
   { debug_dep_path

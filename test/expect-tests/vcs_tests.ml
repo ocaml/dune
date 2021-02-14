@@ -5,7 +5,7 @@ open! Dune_tests_common
 
 let () =
   init ();
-  Config.init { Config.default with display = Quiet }
+  Dune_config.init { Dune_config.default with display = Quiet }
 
 let printf = Printf.printf
 

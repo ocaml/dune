@@ -3,6 +3,11 @@ let on_error = Report_error.report
 open! Stdune
 open Import
 
+module Config = struct
+  include Config
+  include Dune_config
+end
+
 type job =
   { pid : Pid.t
   ; ivar : Unix.process_status Fiber.Ivar.t

@@ -13,7 +13,8 @@ let prog = Option.value_exn (Bin.which ~path:(Env.path Env.initial) "true")
 let run () = Process.run ~env:Env.initial Strict prog []
 
 let go ~jobs fiber =
-  Scheduler.go fiber ~config:{ Config.default with concurrency = Fixed jobs }
+  Scheduler.go fiber
+    ~config:{ Dune_engine.Dune_config.default with concurrency = Fixed jobs }
 
 let%bench_fun "single" =
   Lazy.force setup;

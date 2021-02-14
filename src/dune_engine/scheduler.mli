@@ -3,14 +3,14 @@
 open! Stdune
 
 (** [go ?log ?config fiber] runs the fiber until it terminates. *)
-val go : ?config:Config.t -> (unit -> 'a Fiber.t) -> 'a
+val go : ?config:Dune_config.t -> (unit -> 'a Fiber.t) -> 'a
 
 (** Runs [once] in a loop, executing [finally] after every iteration, even if
     Fiber.Never was encountered.
 
     If any source files change in the middle of iteration, it gets canceled. *)
 val poll :
-     ?config:Config.t
+     ?config:Dune_config.t
   -> once:(unit -> unit Fiber.t)
   -> finally:(unit -> unit)
   -> unit

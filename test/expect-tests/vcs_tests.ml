@@ -116,7 +116,11 @@ let run kind script =
   Path.rm_rf temp_dir;
   Path.mkdir_p temp_dir;
   let vcs = { Vcs.kind; root = temp_dir } in
-  Scheduler.go (fun () -> Fiber.sequential_iter script ~f:(run_action vcs))
+  let config =
+    { Scheduler.Config.concurrency = 1; terminal_persistence = Preserve }
+  in
+  Scheduler.go config (fun () ->
+      Fiber.sequential_iter script ~f:(run_action vcs))
 
 let script =
   [ Init

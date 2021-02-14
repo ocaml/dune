@@ -132,11 +132,13 @@ module Scheduler = struct
 
   let go ~(common : Common.t) f =
     let config = Common.config common in
-    Scheduler.go ~config f
+    let config = Scheduler.Config.of_dune_config config in
+    Scheduler.go config f
 
-  let poll ~(common : Common.t) ~once ~finally () =
+  let poll ~(common : Common.t) ~once ~finally =
     let config = Common.config common in
-    Scheduler.poll ~config ~once ~finally ()
+    let config = Scheduler.Config.of_dune_config config in
+    Scheduler.poll config ~once ~finally
 end
 
 let restore_cwd_and_execve (common : Common.t) prog argv env =

@@ -1,20 +1,25 @@
 (** Scheduling *)
 
+module Config : sig
+  type t =
+    { concurrency : int
+    ; terminal_persistence : Dune_config.Terminal_persistence.t
+    }
+
+  val of_dune_config : Dune_config.t -> t
+end
+
 open! Stdune
 
-(** [go ?log ?config fiber] runs the fiber until it terminates. *)
-val go : ?config:Dune_config.t -> (unit -> 'a Fiber.t) -> 'a
+(** [go config fiber] runs the fiber until it terminates. *)
+val go : Config.t -> (unit -> 'a Fiber.t) -> 'a
 
 (** Runs [once] in a loop, executing [finally] after every iteration, even if
     Fiber.Never was encountered.
 
     If any source files change in the middle of iteration, it gets canceled. *)
 val poll :
-     ?config:Dune_config.t
-  -> once:(unit -> unit Fiber.t)
-  -> finally:(unit -> unit)
-  -> unit
-  -> 'a
+  Config.t -> once:(unit -> unit Fiber.t) -> finally:(unit -> unit) -> 'a
 
 (** [with_job_slot f] waits for one job slot (as per [-j <jobs] to become
     available and then calls [f]. *)

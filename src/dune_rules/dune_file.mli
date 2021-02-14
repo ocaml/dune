@@ -31,6 +31,7 @@ end
 
 
 module Ctypes : sig
+
   module Build_flags_resolver : sig
     module Vendored : sig
       type t =
@@ -41,6 +42,7 @@ module Ctypes : sig
       | Pkg_config
       | Vendored of Vendored.t
   end
+
   module Concurrency_policy : sig
     type t =
       | Sequential
@@ -48,10 +50,17 @@ module Ctypes : sig
       | Lwt_jobs
       | Lwt_preemptive
   end
+
+  module Headers : sig
+    type t =
+      | Include of string list
+      | Preamble of string
+  end
+
   type t =
     { external_library_name : string
     ; build_flags_resolver : Build_flags_resolver.t
-    ; includes : string list
+    ; headers : Headers.t
     ; concurrency : Concurrency_policy.t
     ; type_descriptions : Module_name.t
     ; function_descriptions : Module_name.t

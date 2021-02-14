@@ -91,27 +91,30 @@ module Ctypes = struct
     let default = Sequential
   end
 
-  (*
   module Headers = struct
     type t =
       | Include of string list
       | Preamble of string
+
     let decode =
       let include_ =
-        let+ p = field "external_library_name" string
-
+        let+ s = repeat string in
+        Include s
       in
       let preamble =
-
+        let+ p = string in
+        Preamble p
       in
-      sum [ ("include"  , return include_)
-          ; ("preamble" , return preamble) ]
+      sum [ ("include"  , include_)
+          ; ("preamble" , preamble) ]
+
+    let default = Include []
   end
-     *)
+
   type t =
     { external_library_name : string
     ; build_flags_resolver : Build_flags_resolver.t
-    ; includes : string list
+    ; headers : Headers.t
     ; concurrency : Concurrency_policy.t
     ; type_descriptions : Module_name.t
     ; function_descriptions : Module_name.t
@@ -131,7 +134,7 @@ module Ctypes = struct
     fields
       (let+ external_library_name = field "external_library_name" string
        and+ build_flags_resolver = field_o "build_flags_resolver" Build_flags_resolver.decode
-       and+ includes = field "includes" (repeat string) ~default:[]
+       and+ headers = field_o "headers" Headers.decode
        and+ concurrency = field_o "concurrency" Concurrency_policy.decode
        and+ type_descriptions = field "type_descriptions" Module_name.decode
        and+ function_descriptions = field "function_descriptions" Module_name.decode
@@ -140,7 +143,7 @@ module Ctypes = struct
      in
      { external_library_name
      ; build_flags_resolver = Option.value build_flags_resolver ~default:Build_flags_resolver.default
-     ; includes
+     ; headers = Option.value headers ~default:Headers.default
      ; concurrency = Option.value concurrency ~default:Concurrency_policy.default
      ; type_descriptions
      ; function_descriptions

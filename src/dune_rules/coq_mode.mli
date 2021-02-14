@@ -3,7 +3,11 @@
 (* (c) INRIA 2020                              *)
 (* Written by: Emilio Jesús Gallego Arias *)
 
+(* Legacy is used to signal that we are in a mode prior to Coq syntax 0.3 ,
+   where mode was not supported, this allows us support older Coq compiler
+   versions with coq-lang < 0.3 *)
 type t =
+  | Legacy
   | VoOnly
   | Native
 

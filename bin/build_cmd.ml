@@ -1,7 +1,8 @@
 open Stdune
 open Import
 
-let run_build_command_poll ~automation_harness ~(common : Common.t) ~config ~targets ~setup =
+let run_build_command_poll ~automation_harness ~(common : Common.t) ~config
+    ~targets ~setup =
   let open Fiber.O in
   let every () =
     Cached_digest.invalidate_cached_timestamps ();
@@ -26,7 +27,8 @@ let run_build_command_poll ~automation_harness ~(common : Common.t) ~config ~tar
     in
     `Continue
   in
-  Scheduler.poll ~automation_harness ~common ~config ~every ~finally:Hooks.End_of_build.run
+  Scheduler.poll ~automation_harness ~common ~config ~every
+    ~finally:Hooks.End_of_build.run
 
 let run_build_command_once ~(common : Common.t) ~config ~targets ~setup =
   let open Fiber.O in
@@ -42,10 +44,8 @@ let run_build_command_once ~(common : Common.t) ~config ~targets ~setup =
 let run_build_command ~(common : Common.t) ~config ~targets =
   let setup () = Import.Main.setup () in
   (match Common.watch common with
-   | Yes automation_harness ->
-     run_build_command_poll ~automation_harness
-   | No ->
-     run_build_command_once)
+  | Yes automation_harness -> run_build_command_poll ~automation_harness
+  | No -> run_build_command_once)
     ~setup ~common ~config ~targets
 
 let runtest =

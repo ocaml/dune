@@ -813,7 +813,8 @@ let prepare (config : Config.t) ~(handler : Handler.t) =
   t
 
 let special_file_for_inotify_sync =
-  Path.build (Path.Build.relative Path.Build.root ".inotify-sync")
+  (* this file needs to be not-ignored by inotify *)
+  Path.source (Path.Source.relative Path.Source.root "dune-inotify-sync")
 
 module Run_once : sig
   type run_error =
@@ -883,18 +884,17 @@ end = struct
             t.status <- Restarting_build;
             Process_watcher.killall t.process_watcher Sys.sigkill;
             iter t
-          | Waiting_for_file_changes { ivar; waiting_for_inotify_sync } ->
-            (
-              match waiting_for_inotify_sync with
-              | false -> Fill (ivar, Files_changed)
-              | true ->
-                if
-                  List.mem changed_files special_file_for_inotify_sync
-                    ~equal:Path.equal
-                then
-                  Fill (ivar, Files_changed)
-                else
-                  iter t)))
+          | Waiting_for_file_changes { ivar; waiting_for_inotify_sync } -> (
+            match waiting_for_inotify_sync with
+            | false -> Fill (ivar, Files_changed)
+            | true ->
+              if
+                List.mem changed_files special_file_for_inotify_sync
+                  ~equal:Path.equal
+              then
+                Fill (ivar, Files_changed)
+              else
+                iter t)))
       | Rpc fill -> fill
       | Signal signal ->
         got_signal signal;
@@ -933,14 +933,14 @@ module Run = struct
       let* res =
         let on_error exn =
           (match t.status with
-           | Building -> Report_error.report exn
-           | Shutting_down
-           | Restarting_build ->
-             ()
-           | Waiting_for_file_changes _ ->
-             (* We are inside a build, so we aren't waiting for a file change
-                event *)
-             assert false);
+          | Building -> Report_error.report exn
+          | Shutting_down
+          | Restarting_build ->
+            ()
+          | Waiting_for_file_changes _ ->
+            (* We are inside a build, so we aren't waiting for a file change
+               event *)
+            assert false);
           Fiber.return ()
         in
         Fiber.map_reduce_errors (module Monoid.Unit) ~on_error step
@@ -952,33 +952,34 @@ module Run = struct
       | Shutting_down -> Fiber.return ()
       | Restarting_build -> loop ()
       | Building -> (
-          t.handler t.config
-            (Build_finish
-               (match res with
-                | Error _ -> Failure
-                | Ok _ -> Success));
-          let ivar = Fiber.Ivar.create () in
-          ( match automation_harness with
-            | Some automation_harness -> (
-                match Poll_automation_harness.build_finished automation_harness with
-                | Exit -> exit 0
-                | Files_changed ->
-                  Io.write_file special_file_for_inotify_sync "z";
-                  t.status <-
-                    Waiting_for_file_changes { ivar; waiting_for_inotify_sync = true } )
-            | None ->
-              t.status <- Waiting_for_file_changes {
-                ivar ; waiting_for_inotify_sync = false });
-          let* next = Fiber.Ivar.read ivar in
-          match next with
-          | Shutdown_requested -> Fiber.return ()
-          | Files_changed -> (
-              t.handler t.config Source_files_changed;
-              match res with
-              | Error _
-              | Ok `Continue ->
-                loop ()
-              | Ok `Stop -> Fiber.return ()))
+        t.handler t.config
+          (Build_finish
+             (match res with
+             | Error _ -> Failure
+             | Ok _ -> Success));
+        let ivar = Fiber.Ivar.create () in
+        (match automation_harness with
+        | Some automation_harness -> (
+          match Poll_automation_harness.build_finished automation_harness with
+          | Exit -> exit 0
+          | Files_changed ->
+            Io.write_file special_file_for_inotify_sync "z";
+            t.status <-
+              Waiting_for_file_changes { ivar; waiting_for_inotify_sync = true }
+          )
+        | None ->
+          t.status <-
+            Waiting_for_file_changes { ivar; waiting_for_inotify_sync = false });
+        let* next = Fiber.Ivar.read ivar in
+        match next with
+        | Shutdown_requested -> Fiber.return ()
+        | Files_changed -> (
+          t.handler t.config Source_files_changed;
+          match res with
+          | Error _
+          | Ok `Continue ->
+            loop ()
+          | Ok `Stop -> Fiber.return ()))
     in
     loop ()
 

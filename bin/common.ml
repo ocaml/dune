@@ -843,10 +843,8 @@ Otherwise, dune will exit.|}
   let root = Workspace_root.create ~specified_by_user:root in
   let rpc =
     match watch with
-    | Yes _ ->
-      Some (Dune_rpc_impl.Server.create ())
-    | No ->
-      None
+    | Yes _ -> Some (Dune_rpc_impl.Server.create ())
+    | No -> None
   in
   let stats =
     Option.map stats_trace_file ~f:(fun f ->

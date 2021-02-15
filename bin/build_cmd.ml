@@ -13,7 +13,7 @@ let run_build_command ~common ~targets =
       Cached_digest.invalidate_cached_timestamps ();
       once ()
     in
-    Scheduler.poll ~common ~once ~finally:Hooks.End_of_build.run ()
+    Scheduler.poll ~common ~once ~finally:Hooks.End_of_build.run
   else
     Scheduler.go ~common once;
   Build_system.cache_teardown ()

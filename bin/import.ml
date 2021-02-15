@@ -27,11 +27,12 @@ module Workspace = Dune_rules.Workspace
 module Cached_digest = Dune_engine.Cached_digest
 module Profile = Dune_rules.Profile
 module Log = Dune_util.Log
+module Dune_config = Dune_engine.Dune_config
 include Common.Let_syntax
 
 let in_group (t, info) = (Term.Group.Term t, info)
 
-let make_cache (config : Config.t) =
+let make_cache (config : Dune_config.t) =
   let make_cache () =
     let command_handler (Cache.Dedup file) =
       match Build_system.get_cache () with
@@ -39,7 +40,7 @@ let make_cache (config : Config.t) =
       | Some caching -> Scheduler.send_dedup caching.cache file
     in
     match config.cache_transport with
-    | Config.Caching.Transport.Direct ->
+    | Dune_config.Caching.Transport.Direct ->
       Log.info [ Pp.text "enable binary cache in direct access mode" ];
       let cache =
         Result.ok_exn
@@ -60,12 +61,12 @@ let make_cache (config : Config.t) =
   in
   Fiber.return
     ( match config.cache_mode with
-    | Config.Caching.Mode.Enabled ->
+    | Dune_config.Caching.Mode.Enabled ->
       Some
         { Build_system.cache = make_cache ()
         ; check_probability = config.cache_check_probability
         }
-    | Config.Caching.Mode.Disabled ->
+    | Dune_config.Caching.Mode.Disabled ->
       Log.info [ Pp.text "disable binary cache" ];
       None )
 
@@ -131,11 +132,13 @@ module Scheduler = struct
 
   let go ~(common : Common.t) f =
     let config = Common.config common in
-    Scheduler.go ~config f
+    let config = Dune_config.for_scheduler config in
+    Scheduler.go config f
 
-  let poll ~(common : Common.t) ~once ~finally () =
+  let poll ~(common : Common.t) ~once ~finally =
     let config = Common.config common in
-    Scheduler.poll ~config ~once ~finally ()
+    let config = Dune_config.for_scheduler config in
+    Scheduler.poll config ~once ~finally
 end
 
 let restore_cwd_and_execve (common : Common.t) prog argv env =

@@ -419,7 +419,7 @@ module Exit_status = struct
     | Ok n ->
       if
         Option.is_some output
-        || (display = Config.Display.Short && purpose <> Internal_job)
+        || (display = Dune_config.Display.Short && purpose <> Internal_job)
       then
         Console.print_user_message
           (User_message.make
@@ -450,7 +450,7 @@ let default_env = lazy (Dtemp.add_to_env Env.initial)
 let run_internal ?dir ?(stdout_to = Io.stdout) ?(stderr_to = Io.stderr)
     ?(stdin_from = Io.null In) ~env ~purpose fail_mode prog args =
   Scheduler.with_job_slot (fun () ->
-      let display = (Config.t ()).display in
+      let display = (Dune_config.t ()).display in
       let dir =
         match dir with
         | None -> dir

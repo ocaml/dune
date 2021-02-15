@@ -911,7 +911,12 @@ let install_ocaml_libdir t =
           (Process.run_capture_line ~env:t.env Strict fn
              [ "printconf"; "destdir" ])
       in
-      Some (Path.of_filename_relative_to_initial_cwd s)
+      let s = String.trim s in
+      if String.is_empty s then
+        (* This case happens if ocamlfind doesn't find its configuration file *)
+        None
+      else
+        Some (Path.of_filename_relative_to_initial_cwd s)
     | None -> Memo.Build.return None )
 
 let compiler t (mode : Mode.t) =

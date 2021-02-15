@@ -262,6 +262,51 @@ module Sequence : sig
 end
 with type 'a fiber := 'a t
 
+module Stream : sig
+  (** Destructive streams that can be composed to pipelines *)
+
+  type 'a fiber
+
+  module In : sig
+    type 'a t
+
+    val create : (unit -> 'a option fiber) -> 'a t
+
+    val of_list : 'a list -> 'a t
+
+    val empty : unit -> 'a t
+
+    val read : 'a t -> 'a option fiber
+
+    val filter_map : 'a t -> f:('a -> 'b option) -> 'b t
+
+    val sequential_iter : 'a t -> f:('a -> unit fiber) -> unit fiber
+
+    val parallel_iter : 'a t -> f:('a -> unit fiber) -> unit fiber
+  end
+
+  module Out : sig
+    type 'a t
+
+    val create : ('a option -> unit fiber) -> 'a t
+
+    val write : 'a t -> 'a option -> unit fiber
+
+    val null : unit -> 'a t
+  end
+
+  (** [connect i o] reads from [i] and writes to [o]. Closes [o] when [i] is
+      exhausted. Returned fiber terminates when [i] is exhausted *)
+  val connect : 'a In.t -> 'a Out.t -> unit fiber
+
+  (** [supply i o] like [connect i o] but does not close [o] once [i] is
+      exhausted. Returned fiber terminates when [i] is exhausted*)
+  val supply : 'a In.t -> 'a Out.t -> unit fiber
+
+  val pipe : unit -> 'a In.t * 'a Out.t
+end
+with type 'a fiber := 'a t
+
 (** {1 Running fibers} *)
 
 type fill = Fill : 'a Ivar.t * 'a -> fill

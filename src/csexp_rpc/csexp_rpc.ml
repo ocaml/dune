@@ -114,15 +114,17 @@ module Session = struct
 
   let write t sexp =
     if debug then Format.eprintf ">> %s@." (string_of_packet sexp);
-    match sexp with
-    | Some sexp ->
-      Async.task_exn t.writer ~f:(fun () ->
-          Csexp.to_channel t.out_channel sexp;
-          flush t.out_channel)
-    | None ->
-      Async.task_exn t.writer ~f:(fun () ->
-          close_in_noerr t.in_channel;
-          close_out_noerr t.out_channel)
+    Async.task_exn t.writer
+      ~f:
+        ( match sexp with
+        | Some sexp ->
+          fun () ->
+            Csexp.to_channel t.out_channel sexp;
+            flush t.out_channel
+        | None ->
+          fun () ->
+            close_in_noerr t.in_channel;
+            close_out_noerr t.out_channel )
 end
 
 let close_fd_no_error fd = try Unix.close fd with _ -> ()

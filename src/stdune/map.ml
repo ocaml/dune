@@ -76,6 +76,9 @@ module Make (Key : Key) : S with type key = Key.t = struct
 
   let to_list = bindings
 
+  let to_list_map t ~f =
+    foldi t ~init:[] ~f:(fun k v acc -> f k v :: acc) |> List.rev
+
   let of_list =
     let rec loop acc = function
       | [] -> Result.Ok acc

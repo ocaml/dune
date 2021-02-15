@@ -61,7 +61,7 @@ module Dir_rules = struct
     }
 
   let consume t =
-    let data = List.map ~f:snd (Id.Map.to_list t) in
+    let data = Id.Map.values t in
     let rules =
       List.filter_map data ~f:(function
         | Rule rule -> Some rule

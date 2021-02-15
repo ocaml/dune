@@ -432,8 +432,7 @@ let install_uninstall ~what =
         let module CMap = Map.Make (Context) in
         let install_files_by_context =
           CMap.of_list_multi install_files
-          |> CMap.to_list
-          |> List.map ~f:(fun (context, install_files) ->
+          |> CMap.to_list_map ~f:(fun context install_files ->
                  let entries_per_package =
                    List.map install_files ~f:(fun (package, install_file) ->
                        let entries = Install.load_install_file install_file in

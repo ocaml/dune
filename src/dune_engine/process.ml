@@ -297,8 +297,8 @@ module Fancy = struct
       in
       let targets =
         List.map target_names ~f:Filename.split_extension_after_dot
-        |> String.Map.of_list_multi |> String.Map.to_list
-        |> List.map ~f:(fun (prefix, suffixes) ->
+        |> String.Map.of_list_multi
+        |> String.Map.to_list_map ~f:(fun prefix suffixes ->
                match suffixes with
                | [] -> assert false
                | [ suffix ] -> prefix ^ suffix

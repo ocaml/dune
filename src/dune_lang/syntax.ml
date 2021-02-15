@@ -108,19 +108,18 @@ module Supported_versions = struct
 
   let supported_ranges lang_ver (t : t) =
     let compat = remove_incompatible_versions lang_ver t in
-    Int.Map.to_list compat
-    |> List.map ~f:(fun (major, minors) ->
-           let max_minor, _ = Option.value_exn (Int.Map.max_binding minors) in
-           let lower_bound =
-             (* Map 0.0 to 0.1 since 0.0 is not a valid version number *)
-             if major = 0 then
-               (0, 1)
-             else
-               (major, 0)
-           in
-           let upper_bound = (major, max_minor) in
-           assert (lower_bound <= upper_bound);
-           (lower_bound, upper_bound))
+    Int.Map.to_list_map compat ~f:(fun major minors ->
+        let max_minor, _ = Option.value_exn (Int.Map.max_binding minors) in
+        let lower_bound =
+          (* Map 0.0 to 0.1 since 0.0 is not a valid version number *)
+          if major = 0 then
+            (0, 1)
+          else
+            (major, 0)
+        in
+        let upper_bound = (major, max_minor) in
+        assert (lower_bound <= upper_bound);
+        (lower_bound, upper_bound))
 end
 
 type t =

@@ -35,16 +35,23 @@ module Session : sig
   val read : t -> Sexp.t option Fiber.t
 end
 
-type where =
-  [ `Unix of Path.t
-  | `Ip of [ `Ipv4 | `Ipv6 ] * Unix.inet_addr * [ `Port of int ]
-  ]
+module Address : sig
+  type ip =
+    | V4
+    | V6
+
+  type port = int
+
+  type t =
+    | Unix of Path.t
+    | Ip of ip * Unix.inet_addr * port
+end
 
 module Client : sig
   (** RPC Client *)
   type t
 
-  val create : where -> Scheduler.t -> t
+  val create : Address.t -> Scheduler.t -> t
 
   val stop : t -> unit
 
@@ -55,7 +62,7 @@ module Server : sig
   (** RPC Server *)
   type t
 
-  val create : where -> backlog:int -> Scheduler.t -> t
+  val create : Address.t -> backlog:int -> Scheduler.t -> t
 
   val stop : t -> unit
 

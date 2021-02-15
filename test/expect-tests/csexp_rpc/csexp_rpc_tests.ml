@@ -172,13 +172,13 @@ end
 
 let server scheduler where =
   let s = Scheduler.for_csexp scheduler in
-  let server = Server.create (`Unix where) ~backlog:10 s in
+  let server = Server.create (Unix where) ~backlog:10 s in
   Scheduler.finally scheduler (fun () -> Server.stop server);
   server
 
 let client scheduler where =
   let s = Scheduler.for_csexp scheduler in
-  let client = Csexp_rpc.Client.create (`Unix where) s in
+  let client = Csexp_rpc.Client.create (Unix where) s in
   Scheduler.finally scheduler (fun () -> Client.stop client);
   client
 

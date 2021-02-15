@@ -37,8 +37,14 @@ val promote : Promote.t option ref
 (** Force re-running actions associated to aliases *)
 val force : bool ref
 
+module Watch : sig
+  type t =
+    | No
+    | Yes of Poll_automation_harness.t option
+end
+
 (** Instead of terminating build after completion, watch for changes *)
-val watch : bool ref
+val watch : Watch.t ref
 
 (** Do not print "Entering directory" messages *)
 val no_print_directory : bool ref

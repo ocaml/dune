@@ -94,14 +94,14 @@ module Scheduler = struct
     let config = Dune_config.for_scheduler dune_config None stats in
     Scheduler.Run.go config ~on_event:(on_event dune_config) f
 
-  let poll ~(common : Common.t) ~config:dune_config ~every ~finally =
+  let poll ~automation_harness ~(common : Common.t) ~config:dune_config ~every ~finally =
     let stats = Common.stats common in
     let rpc_where = Some (Dune_rpc_private.Where.default ()) in
     let config = Dune_config.for_scheduler dune_config rpc_where stats in
     let file_watcher = Common.file_watcher common in
     let run =
       let run () =
-        Scheduler.Run.poll (fun () ->
+        Scheduler.Run.poll ~automation_harness (fun () ->
             Fiber.finalize every ~finally:(fun () -> Fiber.return (finally ())))
       in
       match Common.rpc common with

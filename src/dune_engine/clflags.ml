@@ -4,6 +4,12 @@ module Promote = struct
     | Never
 end
 
+module Watch = struct
+  type t =
+    | No
+    | Yes of Poll_automation_harness.t option
+end
+
 let debug_findlib = ref false
 
 let debug_dep_path = ref false
@@ -26,7 +32,7 @@ let promote = ref None
 
 let force = ref false
 
-let watch = ref false
+let watch = ref (No : Watch.t)
 
 let no_print_directory = ref false
 

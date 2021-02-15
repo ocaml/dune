@@ -37,7 +37,7 @@ type t =
     orig_args : string list
   ; rpc : Dune_rpc_impl.Server.t option
   ; default_target : Arg.Dep.t (* For build & runtest only *)
-  ; watch : bool
+  ; watch : Dune_engine.Clflags.Watch.t
   ; stats_trace_file : string option
   ; always_show_command_line : bool
   ; promote_install_files : bool
@@ -706,12 +706,44 @@ let term =
             "Force actions associated to aliases to be re-executed even\n\
             \                   if their dependencies haven't changed.")
   and+ watch =
-    Arg.(
-      value & flag
-      & info [ "watch"; "w" ]
-          ~doc:
-            "Instead of terminating build after completion, wait continuously \
-             for file changes.")
+    let watch_flag_name = "watch" in
+    let on_build_finished_flag_name = "watch-on-build-finished" in
+    Term.term_result
+      (let+ watch_flag =
+         Arg.(
+           value & flag
+           & info [ watch_flag_name; "w" ]
+               ~doc:
+                 "Instead of terminating build after completion, wait \
+                  continuously for file changes.")
+       and+ on_build_finished =
+         let doc =
+           {|"In watching mode, run the specified shell $(b,COMMAND) every time the build
+finishes.
+Dune will not proceed with the next build until this command exits.
+If the command exits with exit code 0, then dune will proceed with the next build.
+Otherwise, dune will exit.|}
+         in
+         Arg.(
+           value
+           & opt (some string) None
+           & info [ on_build_finished_flag_name ] ~docs ~docv:"COMMAND" ~doc)
+       in
+       let res : (Clflags.Watch.t, _) result =
+         match (watch_flag, on_build_finished) with
+         | false, Some _ ->
+           Error
+             (`Msg
+               (sprintf "--%s can only be used together with %s"
+                  on_build_finished_flag_name watch_flag_name))
+         | false, None -> Ok No
+         | true, command ->
+           Ok
+             (Yes
+                (Option.map command ~f:(fun command ->
+                     Dune_engine.Poll_automation_harness.create ~command)))
+       in
+       res)
   and+ { Options_implied_by_dash_p.root
        ; only_packages
        ; ignore_promoted_rules
@@ -768,7 +800,7 @@ let term =
   and+ () = build_info
   and+ instrument_with =
     let doc =
-      {|"Enable instrumentation by $(b,BACKENDS).
+      {|Enable instrumentation by $(b,BACKENDS).
         $(b,BACKENDS) is a comma-separated list of library names,
         each one of which must declare an instrumentation backend.|}
     in
@@ -810,9 +842,10 @@ let term =
   let build_dir = Option.value ~default:default_build_dir build_dir in
   let root = Workspace_root.create ~specified_by_user:root in
   let rpc =
-    if watch then
+    match watch with
+    | Yes _ ->
       Some (Dune_rpc_impl.Server.create ())
-    else
+    | No ->
       None
   in
   let stats =

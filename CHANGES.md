@@ -36,6 +36,8 @@ Unreleased
 
 - Add a META rule for 'compiler-libs.native-toplevel' (#4175, @altgr)
 
+- No longer call `chmod` on symbolic links (fixes #4195, @dannywillems)
+
 2.8.2 (21/01/2021)
 ------------------
 

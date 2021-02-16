@@ -1263,6 +1263,8 @@ let local_part = function
 
 let stat t = Unix.stat (to_string t)
 
+let lstat t = Unix.lstat (to_string t)
+
 include (Comparator.Operators (T) : Comparator.OPS with type t := t)
 
 let path_of_local = of_local

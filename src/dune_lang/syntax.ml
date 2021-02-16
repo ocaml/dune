@@ -132,7 +132,7 @@ type t =
 
 and key =
   | Active of Version.t
-  | Disabled of
+  | Inactive of
       { lang : t
       ; dune_lang_ver : Version.t
       }
@@ -149,7 +149,7 @@ let to_dyn { name; desc; key = _; supported_versions; experimental } =
 module Key = struct
   type nonrec t = key =
     | Active of Version.t
-    | Disabled of
+    | Inactive of
         { lang : t
         ; dune_lang_ver : Version.t
         }
@@ -158,7 +158,7 @@ module Key = struct
     let open Dyn.Encoder in
     function
     | Active v -> Version.to_dyn v
-    | Disabled { lang; dune_lang_ver } ->
+    | Inactive { lang; dune_lang_ver } ->
       record
         [ ("lang", to_dyn lang)
         ; ("dune_lang_ver", Version.to_dyn dune_lang_ver)
@@ -203,27 +203,48 @@ module Error = struct
           ]
       :: repl )
 
-  let disabled loc t ~dune_lang_ver ~what =
-    let min_lang_version, min_dune_version =
-      let major, major_map =
-        Option.value_exn (Int.Map.min_binding t.supported_versions)
-      in
-      let minor, lang = Option.value_exn (Int.Map.min_binding major_map) in
-      ((major, minor), lang)
+  let inactive loc t ~dune_lang_ver ~what =
+    let greatest_supported_version =
+      Supported_versions.greatest_supported_version_for_dune_lang ~dune_lang_ver
+        t.supported_versions
     in
     User_error.raise ~loc
-      [ Pp.textf
-          "%s is available only when %s is enabled in the dune-project file. \
-           It cannot be enabled automatically because the currently selected \
-           version of dune (%s) does not support this plugin.\n\
-           You must enable it using (using %s ..) in your dune-project file. \
-           The first version of this plugin %s was introduced in dune %s."
-          what t.name
-          (Version.to_string dune_lang_ver)
-          t.name
-          (Version.to_string min_lang_version)
-          (Version.to_string min_dune_version)
-      ]
+      ( [ Pp.textf
+            "%s is available only when %s is enabled in the dune-project file. \
+             You must enable it using (using %s %s) in your dune-project file."
+            what t.name t.name
+            ( match greatest_supported_version with
+            | Some v -> Version.to_string v
+            | None -> ".." )
+        ]
+      @
+      if t.experimental then
+        [ Pp.textf
+            "Note however that %s is experimental and might change without \
+             notice in the future."
+            t.name
+        ]
+      else
+        match greatest_supported_version with
+        | None ->
+          let min_lang_version, min_dune_version =
+            let major, major_map =
+              Option.value_exn (Int.Map.min_binding t.supported_versions)
+            in
+            let minor, lang =
+              Option.value_exn (Int.Map.min_binding major_map)
+            in
+            ((major, minor), lang)
+          in
+          [ Pp.textf
+              "Note however that the currently selected version of dune (%s) \
+               does not support this plugin. The first version of this plugin \
+               is %s and was introduced in dune %s."
+              (Version.to_string dune_lang_ver)
+              (Version.to_string min_lang_version)
+              (Version.to_string min_dune_version)
+          ]
+        | Some _ -> [] )
 end
 
 module Warning = struct
@@ -292,10 +313,6 @@ let greatest_supported_version t =
   Option.value_exn
     (Supported_versions.greatest_supported_version t.supported_versions)
 
-let greatest_supported_version_for_dune_lang t ~dune_lang_ver =
-  Supported_versions.greatest_supported_version_for_dune_lang
-    t.supported_versions ~dune_lang_ver
-
 let key t = t.key
 
 let experimental t = t.experimental
@@ -315,9 +332,9 @@ let desc () =
 let get_exn t =
   get t.key >>= function
   | Some (Active x) -> return x
-  | Some (Disabled { dune_lang_ver; lang }) ->
+  | Some (Inactive { dune_lang_ver; lang }) ->
     let* loc, what = desc () in
-    Error.disabled loc lang ~what ~dune_lang_ver
+    Error.inactive loc lang ~what ~dune_lang_ver
   | None ->
     let+ context = get_all in
     Code_error.raise "Syntax identifier is unset"

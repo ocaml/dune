@@ -29,12 +29,6 @@ module Name : sig
   module Map : Map.S with type key = t
 end
 
-module Project_file : sig
-  type t
-
-  val to_dyn : t -> Dyn.t
-end
-
 type t
 
 module File_key : sig
@@ -143,12 +137,6 @@ val filename : string
 type created_or_already_exist =
   | Created
   | Already_exist
-
-(** Generate an appropriate project [lang] stanza *)
-val lang_stanza : unit -> string
-
-(** Check that the dune-project file exists and create it otherwise. *)
-val ensure_project_file_exists : t -> created_or_already_exist
 
 (** Default language version to use for projects that don't have a
     [dune-project] file. The default value is the latest version of the dune

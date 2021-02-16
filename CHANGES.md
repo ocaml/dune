@@ -38,6 +38,9 @@ Unreleased
 
 - No longer call `chmod` on symbolic links (fixes #4195, @dannywillems)
 
+- Dune no longer automatically create or edit `dune-project` files
+  (#4239, fixes #4108, @jeremiedimino)
+
 2.8.2 (21/01/2021)
 ------------------
 

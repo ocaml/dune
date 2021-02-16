@@ -69,6 +69,8 @@ module type S = sig
 
   val to_list : 'a t -> (key * 'a) list
 
+  val to_list_map : 'a t -> f:(key -> 'a -> 'b) -> 'b list
+
   val of_list : (key * 'a) list -> ('a t, key * 'a * 'a) Result.t
 
   val of_list_map :

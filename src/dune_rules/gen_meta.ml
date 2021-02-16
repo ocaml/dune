@@ -211,8 +211,7 @@ let gen ~(package : Package.t) ~add_directory_entry entries =
     let entries = List.concat entries in
     let subs =
       String.Map.of_list_multi sub_pkgs
-      |> String.Map.to_list
-      |> List.map ~f:(fun (name, pkgs) ->
+      |> String.Map.to_list_map ~f:(fun name pkgs ->
              let pkg = loop name pkgs in
              let pkg =
                if add_directory_entry then

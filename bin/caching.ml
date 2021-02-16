@@ -27,7 +27,7 @@ let info = Term.info name ~doc ~man
 
 let start ~config ~foreground ~port_path ~root ~display =
   let show_endpoint ep =
-    if display <> Some Config.Display.Quiet then Printf.printf "%s\n%!" ep
+    if display <> Some Dune_config.Display.Quiet then Printf.printf "%s\n%!" ep
   in
   let f started =
     let started daemon_info =

@@ -135,9 +135,9 @@ let setup_rules t =
 let print_toplevel_init_file ~include_paths ~files_to_load =
   let includes = Path.Set.to_list include_paths in
   List.iter includes ~f:(fun p ->
-      print_endline ("#directory \"" ^ Path.to_absolute_filename p ^ "\";;"));
+      Printf.printf "#directory %S;;\n" (Path.to_absolute_filename p));
   List.iter files_to_load ~f:(fun p ->
-      print_endline ("#load \"" ^ Path.to_absolute_filename p ^ "\";;"))
+      Printf.printf "#load %S;;\n" (Path.to_absolute_filename p))
 
 module Stanza = struct
   let setup ~sctx ~dir ~(toplevel : Dune_file.Toplevel.t) =

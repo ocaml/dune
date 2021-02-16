@@ -28,36 +28,53 @@
           bash alias b
   running b: old-contents
   $ dune build @b
+
   $ echo new-contents > x
   $ dune build @b
+          bash alias b
+  running b: new-contents
 
-^ Bug: dune does not re-run the action even though
-its declared dependencies changed.
+^ dune does re-run the action when a dependency declared 
+via an alias changes.
 
-Nor does the path appear in the sandbox:
+But BUG: the path does not appear in the sandbox:
 
   $ dune build @b --sandbox copy |& grep -v 'cd _build/.sandbox'
           bash alias b (exit 1)
   running b: cat: x: No such file or directory
 
-In fact none of the alias stamp files even change
-when this dependency changes, so alias stamp files are useless here,
-even if we depended on them:
 
-  $ echo old-contents > x
-  $ dune build @b &> /dev/null
-  $ md5sum _build/.aliases/default/* > stamp-files-old
-  $ rm -r _build 
+Now test that including an alias into another alias includes its expansion:
 
-  $ echo new-contents > x
-  $ dune build @b &> /dev/null
-  $ md5sum _build/.aliases/default/* > stamp-files-new
+  $ cat >dune <<EOF
+  > (alias
+  >   (name a0)
+  >   (deps x)
+  > )
+  > (alias
+  >   (name a)
+  >   (deps (alias a0))
+  > )
+  > (rule
+  >   (alias b)
+  >   (deps (alias a))
+  >   (action (bash "echo -n \"running b: \"; cat x"))
+  > )
+  > (rule
+  >   (deps (alias a))
+  >   (action (progn (bash "echo -n \"running b: \"; cat x") (with-stdout-to b (bash "cat x"))))
+  > )
+  > EOF
+
   $ rm -r _build
 
-  $ cat stamp-files-old
-  ba4d257a2d76880811986a1120e3d1ea  _build/.aliases/default/a-00000000000000000000000000000000
-  d41d8cd98f00b204e9800998ecf8427e  _build/.aliases/default/a-ff67d857b9b4f3d2e7bb31b302aa5bc4
-  9425f8e768d73fcee0cf05928f737277  _build/.aliases/default/b-00000000000000000000000000000000
-  d41d8cd98f00b204e9800998ecf8427e  _build/.aliases/default/b-de1ad9f2f2db598914453ffb73cfb3a2
+  $ echo old-contents > x
+  $ dune build @b
+          bash alias b
+  running b: old-contents
+  $ dune build @b
 
-  $ diff stamp-files-old stamp-files-new
+  $ echo new-contents > x
+  $ dune build @b
+
+^ BUG: we should re-run b here and have aliases "inherit" their expansion

@@ -211,29 +211,31 @@ let alias sctx ?extra_bindings ~dir ~expander (alias_conf : Alias_conf.t) =
   match Expander.eval_blang expander alias_conf.enabled_if with
   | false -> Alias_rules.add_empty sctx ~loc ~alias ~stamp
   | true ->
-    let locks = interpret_locks ~expander alias_conf.locks in
-    let action =
-      let builder, expander = Dep_conf_eval.named ~expander alias_conf.deps in
-      let open Action_builder.With_targets.O in
-      let+ () = Action_builder.with_no_targets builder
-      and+ action =
-        match alias_conf.action with
-        | None ->
-          let builder, _expander =
-            Dep_conf_eval.named ~expander alias_conf.deps
-          in
-          let open Action_builder.With_targets.O in
-          let+ () = Action_builder.with_no_targets builder in
-          Action.empty
-        | Some (loc, action) ->
+    match alias_conf.action with
+    | None ->
+      Dep_conf_eval.named ~expander alias_conf.deps
+      |> fun (deps, _expander) ->
+      let deps =
+        Action_builder.map deps ~f:(fun l -> Path.Set.of_list (Bindings.to_list l))
+      in
+      Rules.Produce.Alias.add_deps alias ~dyn_deps:(deps) Path.Set.empty
+    | Some (action_loc, action) ->
+      (* One might think this branch is deprecated in favor of rule with empty deps
+         (in #2681 and #2846), but it's actually used by [Test_rules] module.
+         We could probably make this less confusing by using [rule] instead. *)
+      let action =
+        let builder, expander = Dep_conf_eval.named ~expander alias_conf.deps in
+        let open Action_builder.With_targets.O in
+        let+ () = Action_builder.with_no_targets builder
+        and+ action =
           let expander =
             match extra_bindings with
             | None -> expander
             | Some bindings -> Expander.add_bindings expander ~bindings
           in
-          Action_unexpanded.expand action ~loc ~expander ~deps:alias_conf.deps
+          Action_unexpanded.expand action ~loc:action_loc ~expander ~deps:alias_conf.deps
             ~targets:(Forbidden "aliases") ~targets_dir:dir
+        in
+        action
       in
-      action
-    in
-    Alias_rules.add sctx ~loc ~stamp ~locks action ~alias
+      Alias_rules.add sctx ~loc ~stamp ~locks action ~alias

@@ -72,10 +72,10 @@ end = struct
       let (_ : Thread.t) = Thread.create f () in
       ()
     in
-    let on_event e = push_event t (Fill e) in
+    let post_ivar_from_separate_thread e = push_event t (Fill e) in
     { Csexp_rpc.Scheduler.register_pending_ivar =
         (fun () -> register_pending_ivar t)
-    ; on_event
+    ; post_ivar_from_separate_thread
     ; spawn_thread
     }
 

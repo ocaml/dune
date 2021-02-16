@@ -1,16 +1,26 @@
-(** Threaded RPC Client & Server for Csexp payloads. This RPC implementation is
-    entirely structure free and it is up to users of this library to impose some
-    sort of conventions on the protocol.
+(** Canonical S-expression RPC.
 
-    On Unix/Mac, RPC uses Unix domain sockets. On Windows, named pipes are used.
+    This module implements a RPC mechanism for exchanging canonical
+    S-expressions over unix or internet sockets. It allows a server to accept
+    connections and a client to connect to a server.
 
-    All functions reurning a fiber are non-blocking and run in their own thread. *)
+    However, it doesn't explain how to encode queries, responses or generally
+    any kind of messages as Canonical S-expressions. This part should be built
+    on top of this module.
+
+    The actual system calls to connect to a server, accept connections, read and
+    write messages are performed in separate threads. To integrate with the
+    application scheduler, this module requires a way to post an ivar to fill
+    ([Fiber.fill] value) from a separate system thread, and have the scheduler
+    effectively fill this ivar from the main thread. *)
+
 open Stdune
 
 module Scheduler : sig
   (** Hook into the fiber scheduler. *)
   type t =
-    { on_event : Fiber.fill -> unit  (** Called when any rpc event completes *)
+    { post_ivar_from_separate_thread : Fiber.fill -> unit
+          (** Called from a separate thread to post an ivar to fill. *)
     ; register_pending_ivar : unit -> unit
           (** Called before any ivar is created *)
     ; spawn_thread : (unit -> unit) -> unit

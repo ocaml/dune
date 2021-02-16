@@ -3,7 +3,7 @@ open Fiber.O
 
 module Scheduler = struct
   type t =
-    { on_event : Fiber.fill -> unit
+    { post_ivar_from_separate_thread : Fiber.fill -> unit
     ; register_pending_ivar : unit -> unit
     ; spawn_thread : (unit -> unit) -> unit
     }
@@ -32,7 +32,7 @@ end = struct
   let create (scheduler : Scheduler.t) =
     let do_ (Task (ivar, f)) =
       let res = Result.try_with f in
-      scheduler.on_event (Fiber.Fill (ivar, res))
+      scheduler.post_ivar_from_separate_thread (Fiber.Fill (ivar, res))
     in
     let worker = Worker.create ~spawn:scheduler.spawn_thread do_ in
     { worker; scheduler }

@@ -11,8 +11,8 @@ type state =
   | Stopped
   | Finished
 
-type 'a t =
-  { work : 'a Queue.t
+type t =
+  { work : (unit -> unit) Queue.t
   ; mutable state : state
   ; mutex : Mutex.t
   ; work_available : Condition.t
@@ -25,7 +25,7 @@ let is_running t =
   | Finished ->
     false
 
-let run (f, t) =
+let run t =
   let rec loop () =
     match t.state with
     | Stopped -> (
@@ -43,7 +43,7 @@ let run (f, t) =
         loop () )
   and do_work job =
     Mutex.unlock t.mutex;
-    f job;
+    job ();
     Mutex.lock t.mutex;
     loop ()
   in
@@ -51,7 +51,7 @@ let run (f, t) =
   loop ();
   Mutex.unlock t.mutex
 
-let create ~spawn do_ =
+let create ~spawn_thread =
   let t =
     { work = Queue.create ()
     ; state = Finished
@@ -60,19 +60,19 @@ let create ~spawn do_ =
     }
   in
   t.state <- Running;
-  spawn (fun () -> run (do_, t));
+  spawn_thread (fun () -> run t);
   t
 
-let add_work (type a) (t : a t) (w : a) =
+let add_work t ~f =
   with_mutex t.mutex ~f:(fun () ->
       if is_running t then (
-        Queue.push t.work w;
+        Queue.push t.work f;
         Condition.signal t.work_available;
         Ok ()
       ) else
         Error `Stopped)
 
-let stop (t : _ t) =
+let stop t =
   with_mutex t.mutex ~f:(fun () ->
       match t.state with
       | Running ->

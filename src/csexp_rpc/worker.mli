@@ -1,9 +1,11 @@
-(** Simple queue that is consumed by its own thread *)
+(** A system thread used to execute blocking functions asynchronously *)
 
-type 'work t
+type t
 
-val create : spawn:((unit -> unit) -> unit) -> ('a -> unit) -> 'a t
+(** Spawn a new worker thread *)
+val create : spawn_thread:((unit -> unit) -> unit) -> t
 
-val add_work : 'a t -> 'a -> (unit, [ `Stopped ]) result
+(** [add_work t ~f] add the work of running [f] to this worker *)
+val add_work : t -> f:(unit -> unit) -> (unit, [ `Stopped ]) result
 
-val stop : _ t -> unit
+val stop : t -> unit

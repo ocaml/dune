@@ -3,8 +3,7 @@ open Fiber.O
 
 module Scheduler = struct
   type t =
-    { post_ivar_from_separate_thread : Fiber.fill -> unit
-    ; register_pending_ivar : unit -> unit
+    { create_thread_safe_ivar : 'a. unit -> 'a Fiber.Ivar.t * ('a -> unit)
     ; spawn_thread : (unit -> unit) -> unit
     }
 end
@@ -20,27 +19,21 @@ module Async : sig
 
   val stop : t -> unit
 end = struct
-  type task = Task : 'a Or_exn.t Fiber.Ivar.t * (unit -> 'a) -> task
-
   type t =
-    { worker : task Worker.t
+    { worker : Worker.t
     ; scheduler : Scheduler.t
     }
 
   let stop t = Worker.stop t.worker
 
   let create (scheduler : Scheduler.t) =
-    let do_ (Task (ivar, f)) =
-      let res = Result.try_with f in
-      scheduler.post_ivar_from_separate_thread (Fiber.Fill (ivar, res))
-    in
-    let worker = Worker.create ~spawn:scheduler.spawn_thread do_ in
+    let worker = Worker.create ~spawn_thread:scheduler.spawn_thread in
     { worker; scheduler }
 
   let task (t : t) ~f =
-    t.scheduler.register_pending_ivar ();
-    let ivar = Fiber.Ivar.create () in
-    match Worker.add_work t.worker (Task (ivar, f)) with
+    let ivar, fill = t.scheduler.create_thread_safe_ivar () in
+    let f () = fill (Result.try_with f) in
+    match Worker.add_work t.worker ~f with
     | Ok () -> Fiber.Ivar.read ivar
     | Error `Stopped -> Code_error.raise "worker stopped" []
 
@@ -148,6 +141,18 @@ module Address = struct
   let sockaddr = function
     | Unix p -> Unix.ADDR_UNIX (Path.to_string p)
     | Ip (_, addr, port) -> Unix.ADDR_INET (addr, port)
+
+  let of_sockaddr sockaddr =
+    match sockaddr with
+    | Unix.ADDR_UNIX p -> Unix (Path.of_string p)
+    | Unix.ADDR_INET (addr, port) ->
+      let ip =
+        match Unix.domain_of_sockaddr sockaddr with
+        | PF_UNIX -> assert false
+        | PF_INET -> V4
+        | PF_INET6 -> V6
+      in
+      Ip (ip, addr, port)
 end
 
 module Server = struct
@@ -248,6 +253,11 @@ module Server = struct
     match t.transport with
     | None -> Code_error.raise "server not running" []
     | Some t -> Transport.stop t
+
+  let listening_address t =
+    match t.transport with
+    | None -> Code_error.raise "server not running" []
+    | Some t -> Address.of_sockaddr (Unix.getsockname t.fd)
 end
 
 module Client = struct

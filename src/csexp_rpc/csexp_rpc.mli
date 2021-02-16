@@ -10,19 +10,17 @@
 
     The actual system calls to connect to a server, accept connections, read and
     write messages are performed in separate threads. To integrate with the
-    application scheduler, this module requires a way to post an ivar to fill
-    ([Fiber.fill] value) from a separate system thread, and have the scheduler
-    effectively fill this ivar from the main thread. *)
+    application scheduler, this module requires a way to create an ivar than can
+    be filled from a separate system thread. *)
 
 open Stdune
 
 module Scheduler : sig
   (** Hook into the fiber scheduler. *)
   type t =
-    { post_ivar_from_separate_thread : Fiber.fill -> unit
-          (** Called from a separate thread to post an ivar to fill. *)
-    ; register_pending_ivar : unit -> unit
-          (** Called before any ivar is created *)
+    { create_thread_safe_ivar : 'a. unit -> 'a Fiber.Ivar.t * ('a -> unit)
+          (** Create a thread safe Ivar. The returned function must be called
+              from a separate thread in order to fill the ivar. *)
     ; spawn_thread : (unit -> unit) -> unit
           (** We spawn threads through this function in case the scheduler wants
               to block signals *)
@@ -77,4 +75,6 @@ module Server : sig
   val stop : t -> unit
 
   val serve : t -> Session.t Fiber.Stream.In.t Fiber.t
+
+  val listening_address : t -> Address.t
 end

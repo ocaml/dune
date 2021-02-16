@@ -72,12 +72,13 @@ end = struct
       let (_ : Thread.t) = Thread.create f () in
       ()
     in
-    let post_ivar_from_separate_thread e = push_event t (Fill e) in
-    { Csexp_rpc.Scheduler.register_pending_ivar =
-        (fun () -> register_pending_ivar t)
-    ; post_ivar_from_separate_thread
-    ; spawn_thread
-    }
+    let create_thread_safe_ivar () =
+      let ivar = Fiber.Ivar.create () in
+      let fill v = push_event t (Fill (Fiber.Fill (ivar, v))) in
+      register_pending_ivar t;
+      (ivar, fill)
+    in
+    { Csexp_rpc.Scheduler.create_thread_safe_ivar; spawn_thread }
 
   let var : t Fiber.Var.t = Fiber.Var.create ()
 
@@ -172,13 +173,13 @@ end
 
 let server scheduler where =
   let s = Scheduler.for_csexp scheduler in
-  let server = Server.create (Unix where) ~backlog:10 s in
+  let server = Server.create where ~backlog:10 s in
   Scheduler.finally scheduler (fun () -> Server.stop server);
   server
 
 let client scheduler where =
   let s = Scheduler.for_csexp scheduler in
-  let client = Csexp_rpc.Client.create (Unix where) s in
+  let client = Csexp_rpc.Client.create where s in
   Scheduler.finally scheduler (fun () -> Client.stop client);
   client
 
@@ -200,21 +201,19 @@ end
 
 let%expect_test "csexp server life cycle" =
   let tmp_dir = Temp.create Dir ~prefix:"test." ~suffix:".dune.rpc" in
-  let sock =
-    Path.relative tmp_dir
-      ( if Sys.win32 then
-        ".\\\\.\\pipe\\dunerpc"
-      else
-        "dunerpc.sock" )
+  let addr : Csexp_rpc.Address.t =
+    if Sys.win32 then
+      Ip (V4, Unix.inet_addr_loopback, 0)
+    else
+      Unix (Path.relative tmp_dir "dunerpc.sock")
   in
   let scheduler = Scheduler.create () in
-  let server = server scheduler sock in
-  let sessions = Server.serve server in
-  let client = client scheduler sock in
   let client_log = Logger.create ~name:"client" in
   let server_log = Logger.create ~name:"server" in
   let run =
-    let* sessions = sessions in
+    let server = server scheduler addr in
+    let* sessions = Server.serve server in
+    let client = client scheduler (Csexp_rpc.Server.listening_address server) in
     Fiber.fork_and_join_unit
       (fun () ->
         let log fmt = Logger.log client_log fmt in

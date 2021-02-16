@@ -1,5 +1,7 @@
 (** Scheduling *)
 
+open Stdune
+
 module Config : sig
   module Terminal_persistence : sig
     type t =
@@ -9,13 +11,26 @@ module Config : sig
     val all : (string * t) list
   end
 
+  module Display : sig
+    type t =
+      | Progress  (** Single interactive status line *)
+      | Short  (** One line per command *)
+      | Verbose  (** Display all commands fully *)
+      | Quiet  (** Only display errors *)
+
+    val all : (string * t) list
+
+    val to_string : t -> string
+
+    (** The console backend corresponding to the selected display mode *)
+    val console_backend : t -> Console.Backend.t
+  end
+
   type t =
     { concurrency : int
     ; terminal_persistence : Terminal_persistence.t
     }
 end
-
-open! Stdune
 
 (** [go config fiber] runs the fiber until it terminates. *)
 val go : Config.t -> (unit -> 'a Fiber.t) -> 'a

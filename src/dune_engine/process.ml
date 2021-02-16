@@ -419,7 +419,7 @@ module Exit_status = struct
     | Ok n ->
       if
         Option.is_some output
-        || (display = Dune_config.Display.Short && purpose <> Internal_job)
+        || (display = Scheduler.Config.Display.Short && purpose <> Internal_job)
       then
         Console.print_user_message
           (User_message.make

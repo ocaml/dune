@@ -14,6 +14,34 @@ module Config = struct
     let all = [ ("preserve", Preserve); ("clear-on-rebuild", Clear_on_rebuild) ]
   end
 
+  module Display = struct
+    type t =
+      | Progress
+      | Short
+      | Verbose
+      | Quiet
+
+    let all =
+      [ ("progress", Progress)
+      ; ("verbose", Verbose)
+      ; ("short", Short)
+      ; ("quiet", Quiet)
+      ]
+
+    let to_string = function
+      | Progress -> "progress"
+      | Quiet -> "quiet"
+      | Short -> "short"
+      | Verbose -> "verbose"
+
+    let console_backend = function
+      | Progress -> Console.Backend.progress
+      | Short
+      | Verbose
+      | Quiet ->
+        Console.Backend.dumb
+  end
+
   type t =
     { concurrency : int
     ; terminal_persistence : Terminal_persistence.t

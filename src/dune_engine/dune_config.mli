@@ -2,21 +2,6 @@ open Import
 
 (** Dune configuration (visible to the user) *)
 
-module Display : sig
-  type t =
-    | Progress  (** Single interactive status line *)
-    | Short  (** One line per command *)
-    | Verbose  (** Display all commands fully *)
-    | Quiet  (** Only display errors *)
-
-  val decode : t Dune_lang.Decoder.t
-
-  val all : (string * t) list
-
-  (** The console backend corresponding to the selected display mode *)
-  val console_backend : t -> Console.Backend.t
-end
-
 module Concurrency : sig
   type t =
     | Fixed of int
@@ -67,7 +52,7 @@ module type S = sig
   type 'a field
 
   type t =
-    { display : Display.t field
+    { display : Scheduler.Config.Display.t field
     ; concurrency : Concurrency.t field
     ; terminal_persistence : Scheduler.Config.Terminal_persistence.t field
     ; sandboxing_preference : Sandboxing_preference.t field

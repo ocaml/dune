@@ -724,7 +724,16 @@ let%expect_test "diamond with non-uniform cutoff structure" =
     f 2 = Ok 6
     |}]
 
-let%expect_test "cycles with non-uniform cutoff structure" =
+(* The test below sets up the following situation:
+
+   - In the initial run, there are no dependency cycles.
+
+   - In all subsequent runs, [first_base_then_summit] gets an additional dynamic
+   dependency and eventually cycles back to itself.
+
+   The dependency chains in the new test have alternating cutoff/no-cutoff
+   structure, to make sure that cycle detection can handle such cases. *)
+let%expect_test "dynamic cycles with non-uniform cutoff structure" =
   let base = create ~with_cutoff:true "base" (count_runs ()) in
   let first_base_then_summit which ~summit_fdecl () =
     printf "Started evaluating %s\n" which;

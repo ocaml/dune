@@ -203,13 +203,13 @@ let build_c_program ~sctx ~dir ~source_files ~scope ~cflags_sexp ~output () =
     let ocaml_where = Path.to_string ctx.Context.stdlib_dir in
     (* XXX: need glob dependency *)
     let ctypes_include_dirs =
-      let ctypes = Lib_name.of_string "ctypes" in
       let lib =
+        let ctypes = Lib_name.of_string "ctypes" in
         match Lib.DB.resolve (Scope.libs scope) (Loc.none, ctypes) with
         | Ok lib -> lib
         | Error _res ->
-          (* XXX: User_error.raise *)
-          failwith "error resolving 'ctypes' lib"
+          User_error.raise
+            [ Pp.textf "the 'ctypes' library needs to be installed to use the ctypes stanza"]
       in
       Lib.L.include_paths [lib]
       |> Path.Set.to_list
@@ -226,20 +226,21 @@ let build_c_program ~sctx ~dir ~source_files ~scope ~cflags_sexp ~output () =
     let cflags_args =
       let contents = Build.contents (Path.relative (Path.build dir) cflags_sexp) in
       Build.map contents ~f:(fun sexp ->
+        let fail s = User_error.raise [ Pp.textf s ] in
         let ast =
           Dune_lang.Parser.parse_string ~mode:Dune_lang.Parser.Mode.Single
             ~fname:cflags_sexp sexp
         in
         match ast with
         | Dune_lang.Ast.Atom (_loc, atom) -> [Dune_lang.Atom.to_string atom]
-        | Template _ -> failwith "'template' not supported in ctypes build flags"
+        | Template _ -> fail "'template' not supported in ctypes c_flags"
         | Quoted_string (_loc, s) -> [s]
         | List (_loc, lst) ->
           List.map lst ~f:(function
             | Dune_lang.Ast.Atom (_loc, atom) -> Dune_lang.Atom.to_string atom
             | Quoted_string (_loc, s) -> s
-            | Template _ -> failwith "'template' not supported in ctypes build flags"
-            | List _ -> failwith "nested lists not supported in ctypes build flags"))
+            | Template _ -> fail "'template' not supported in ctypes c_flags"
+            | List _ -> fail "nested lists not supported in ctypes c_flags"))
     in
     let action =
       let open Build.O in

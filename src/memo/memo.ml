@@ -366,12 +366,22 @@ let get_cached_value_in_current_cycle (dep_node : _ Dep_node.t) =
 module Cached_value = struct
   include M.Cached_value
 
+  let dump_stack_fdecl = Fdecl.create (fun _ -> Dyn.Opaque)
+
   let capture_dep_values ~deps_rev =
     List.rev_map deps_rev ~f:(function Dep_node.T dep_node ->
         ( match get_cached_value_in_current_cycle dep_node with
         | None ->
+          let reason =
+            match dep_node.last_cached_value with
+            | None -> "(no value)"
+            | Some _ -> "(old run)"
+          in
+          Fdecl.get dump_stack_fdecl ();
           Code_error.raise
-            "Attempted to create a cached value based on some stale inputs" []
+            ( "Attempted to create a cached value based on some stale inputs "
+            ^ reason )
+            []
         | Some cv -> Last_dep.T (dep_node, cv.id) ))
 
   let create x ~deps_rev =
@@ -489,6 +499,8 @@ let pp_stack () =
     ++ Pp.chain stack ~f:(fun frame -> Dyn.pp (Stack_frame.to_dyn frame)) )
 
 let dump_stack () = Format.eprintf "%a" Pp.to_fmt (pp_stack ())
+
+let () = Fdecl.set Cached_value.dump_stack_fdecl dump_stack
 
 (** Describes the state of a given sample attempt. The sample attempt starts out
     in [Running] state, accumulates dependencies over time and then transitions

@@ -1764,14 +1764,14 @@ open Exported
 
 let eval_pred = Pred.eval
 
-let process_memcycle exn =
+let process_memcycle (cycle_error : Memo.Cycle_error.t) =
   let cycle =
-    Memo.Cycle_error.get exn
+    Memo.Cycle_error.get cycle_error
     |> List.filter_map ~f:(Memo.Stack_frame.as_instance_of ~of_:build_file_memo)
   in
   match List.last cycle with
   | None ->
-    let frames = Memo.Cycle_error.get exn in
+    let frames = Memo.Cycle_error.get cycle_error in
     Code_error.raise "dependency cycle that does not involve any files"
       [ ("frames", Dyn.Encoder.(list Memo.Stack_frame.to_dyn) frames) ]
   | Some last ->
@@ -1856,7 +1856,7 @@ let process_exn_and_reraise exn =
     Exn_with_backtrace.map exn
       ~f:
         (Dep_path.map ~f:(function
-          | Memo.Cycle_error.E exn -> process_memcycle exn
+          | Memo.Cycle_error.E cycle_error -> process_memcycle cycle_error
           | _ as exn -> exn))
   in
   let build = get_build_system () in

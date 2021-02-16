@@ -122,64 +122,34 @@ end
 
 let close_fd_no_error fd = try Unix.close fd with _ -> ()
 
-module Address = struct
-  type ip =
-    | V4
-    | V6
-
-  type port = int
-
-  type t =
-    | Unix of Path.t
-    | Ip of ip * Unix.inet_addr * port
-
-  let domain = function
-    | Unix _ -> Unix.PF_UNIX
-    | Ip (V4, _, _) -> Unix.PF_INET
-    | Ip (V6, _, _) -> Unix.PF_INET6
-
-  let sockaddr = function
-    | Unix p -> Unix.ADDR_UNIX (Path.to_string p)
-    | Ip (_, addr, port) -> Unix.ADDR_INET (addr, port)
-
-  let of_sockaddr sockaddr =
-    match sockaddr with
-    | Unix.ADDR_UNIX p -> Unix (Path.of_string p)
-    | Unix.ADDR_INET (addr, port) ->
-      let ip =
-        match Unix.domain_of_sockaddr sockaddr with
-        | PF_UNIX -> assert false
-        | PF_INET -> V4
-        | PF_INET6 -> V6
-      in
-      Ip (ip, addr, port)
-end
-
 module Server = struct
   module Transport = struct
     type t =
       { fd : Unix.file_descr
-      ; address : Address.t
+      ; sockaddr : Unix.sockaddr
       ; r_interrupt_accept : Unix.file_descr
       ; w_interrupt_accept : Unix.file_descr
       ; buf : Bytes.t
       }
 
-    let create address ~backlog =
-      let fd = Unix.socket (Address.domain address) Unix.SOCK_STREAM 0 in
+    let create sockaddr ~backlog =
+      let fd =
+        Unix.socket (Unix.domain_of_sockaddr sockaddr) Unix.SOCK_STREAM 0
+      in
       Unix.setsockopt fd Unix.SO_REUSEADDR true;
       Unix.set_nonblock fd;
-      ( match address with
-      | Unix p ->
+      ( match sockaddr with
+      | ADDR_UNIX p ->
+        let p = Path.of_string p in
         Path.unlink_no_err p;
         Path.mkdir_p (Path.parent_exn p)
-      | Ip _ -> () );
-      Unix.bind fd (Address.sockaddr address);
+      | _ -> () );
+      Unix.bind fd sockaddr;
       Unix.listen fd backlog;
       let r_interrupt_accept, w_interrupt_accept = Unix.pipe () in
       Unix.set_nonblock r_interrupt_accept;
       let buf = Bytes.make 1 '0' in
-      { fd; address; r_interrupt_accept; w_interrupt_accept; buf }
+      { fd; sockaddr; r_interrupt_accept; w_interrupt_accept; buf }
 
     let rec accept t =
       match Unix.select [ t.r_interrupt_accept; t.fd ] [] [] (-1.0) with
@@ -207,26 +177,26 @@ module Server = struct
     let stop t =
       let _ = Unix.write t.w_interrupt_accept t.buf 0 1 in
       close_fd_no_error t.fd;
-      match t.address with
-      | Unix p -> Path.unlink_no_err p
-      | Ip _ -> ()
+      match t.sockaddr with
+      | ADDR_UNIX p -> Fpath.unlink_no_err p
+      | _ -> ()
   end
 
   type t =
     { mutable transport : Transport.t option
     ; backlog : int
     ; scheduler : Scheduler.t
-    ; address : Address.t
+    ; sockaddr : Unix.sockaddr
     }
 
-  let create address ~backlog scheduler =
-    { address; backlog; scheduler; transport = None }
+  let create sockaddr ~backlog scheduler =
+    { sockaddr; backlog; scheduler; transport = None }
 
   let serve (t : t) =
     let async = Async.create t.scheduler in
     let+ transport =
       Async.task_exn async ~f:(fun () ->
-          Transport.create t.address ~backlog:t.backlog)
+          Transport.create t.sockaddr ~backlog:t.backlog)
     in
     t.transport <- Some transport;
     let accept () =
@@ -257,24 +227,26 @@ module Server = struct
   let listening_address t =
     match t.transport with
     | None -> Code_error.raise "server not running" []
-    | Some t -> Address.of_sockaddr (Unix.getsockname t.fd)
+    | Some t -> Unix.getsockname t.fd
 end
 
 module Client = struct
   module Transport = struct
     type t =
       { fd : Unix.file_descr
-      ; address : Address.t
+      ; sockaddr : Unix.sockaddr
       }
 
     let close t = close_fd_no_error t.fd
 
-    let create address =
-      let fd = Unix.socket (Address.domain address) Unix.SOCK_STREAM 0 in
-      { address; fd }
+    let create sockaddr =
+      let fd =
+        Unix.socket (Unix.domain_of_sockaddr sockaddr) Unix.SOCK_STREAM 0
+      in
+      { sockaddr; fd }
 
     let connect t =
-      let () = Unix.connect t.fd (Address.sockaddr t.address) in
+      let () = Unix.connect t.fd t.sockaddr in
       t.fd
   end
 
@@ -282,16 +254,16 @@ module Client = struct
     { mutable transport : Transport.t option
     ; async : Async.t
     ; scheduler : Scheduler.t
-    ; address : Address.t
+    ; sockaddr : Unix.sockaddr
     }
 
-  let create address scheduler =
+  let create sockaddr scheduler =
     let async = Async.create scheduler in
-    { address; scheduler; async; transport = None }
+    { sockaddr; scheduler; async; transport = None }
 
   let connect t =
     Async.task_exn t.async ~f:(fun () ->
-        let transport = Transport.create t.address in
+        let transport = Transport.create t.sockaddr in
         t.transport <- Some transport;
         let client = Transport.connect transport in
         let out = Unix.out_channel_of_descr client in

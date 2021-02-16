@@ -201,11 +201,11 @@ end
 
 let%expect_test "csexp server life cycle" =
   let tmp_dir = Temp.create Dir ~prefix:"test." ~suffix:".dune.rpc" in
-  let addr : Csexp_rpc.Address.t =
+  let addr : Unix.sockaddr =
     if Sys.win32 then
-      Ip (V4, Unix.inet_addr_loopback, 0)
+      ADDR_INET (Unix.inet_addr_loopback, 0)
     else
-      Unix (Path.relative tmp_dir "dunerpc.sock")
+      ADDR_UNIX (Path.to_string (Path.relative tmp_dir "dunerpc.sock"))
   in
   let scheduler = Scheduler.create () in
   let client_log = Logger.create ~name:"client" in

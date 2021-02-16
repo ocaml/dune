@@ -29,6 +29,7 @@ module Config : sig
   type t =
     { concurrency : int
     ; terminal_persistence : Terminal_persistence.t
+    ; display : Display.t
     }
 end
 
@@ -44,7 +45,7 @@ val poll :
 
 (** [with_job_slot f] waits for one job slot (as per [-j <jobs] to become
     available and then calls [f]. *)
-val with_job_slot : (unit -> 'a Fiber.t) -> 'a Fiber.t
+val with_job_slot : (Config.t -> 'a Fiber.t) -> 'a Fiber.t
 
 (** Wait for the following process to terminate *)
 val wait_for_process : Pid.t -> Unix.process_status Fiber.t

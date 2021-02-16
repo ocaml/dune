@@ -45,6 +45,7 @@ module Config = struct
   type t =
     { concurrency : int
     ; terminal_persistence : Terminal_persistence.t
+    ; display : Display.t
     }
 end
 
@@ -653,6 +654,7 @@ type status =
 
 type t =
   { original_cwd : string
+  ; config : Config.t
   ; polling : bool
   ; mutable status : status
   ; job_throttle : Fiber.Throttle.t
@@ -682,7 +684,7 @@ let with_job_slot f =
   Fiber.Throttle.run t.job_throttle ~f:(fun () ->
       match t.status with
       | Restarting_build -> raise Cancel_build
-      | Building -> f ()
+      | Building -> f t.config
       | Waiting_for_file_changes _ ->
         (* At this stage, we're not running a build, so we shouldn't be running
            tasks here. *)
@@ -764,6 +766,7 @@ let prepare (config : Config.t) ~polling =
     ; polling
     ; process_watcher
     ; events
+    ; config
     }
   in
   global := Some t;

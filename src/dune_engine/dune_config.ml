@@ -349,4 +349,5 @@ let for_scheduler (t : t) =
   in
   { Scheduler.Config.concurrency
   ; terminal_persistence = t.terminal_persistence
+  ; display = t.display
   }

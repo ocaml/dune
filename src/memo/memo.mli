@@ -357,7 +357,11 @@ module Cell : sig
   val get_async : ('a, 'b, 'a -> 'b Build.t) t -> 'b Build.t
 
   (** Mark this cell as invalid, forcing recomputation of this value. The
-      consumers may be recomputed or not, depending on early cutoff. *)
+      consumers of the value may be recomputed or not, depending on the cell's
+      early cutoff property.
+
+      Note that for the invalidation to take effect, you also need to initiate
+      the next "build run", by calling [restart_current_run] or [reset]. *)
   val invalidate : _ t -> unit
 end
 

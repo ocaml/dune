@@ -602,6 +602,101 @@ module Throttle = struct
           f ())
 end
 
+module Stream = struct
+  module In = struct
+    type nonrec 'a t = unit -> 'a option t
+
+    let create f = f
+
+    let read t = t ()
+
+    let empty () () = return None
+
+    let of_list xs =
+      let xs = ref xs in
+      fun () ->
+        match !xs with
+        | [] -> return None
+        | x :: xs' ->
+          xs := xs';
+          return (Some x)
+
+    let rec filter_map t ~f () =
+      let* next = read t in
+      match next with
+      | None -> return None
+      | Some x -> (
+        match f x with
+        | None -> filter_map t ~f ()
+        | Some y -> return (Some y) )
+
+    let rec sequential_iter t ~f =
+      let* e = t () in
+      match e with
+      | None -> return ()
+      | Some x ->
+        let* () = f x in
+        sequential_iter t ~f
+
+    let parallel_iter t ~f k =
+      let n = ref 1 in
+      let k () =
+        decr n;
+        if !n = 0 then
+          k ()
+        else
+          EC.deref ()
+      in
+      let rec loop t =
+        t () (function
+          | None -> k ()
+          | Some x ->
+            EC.add_refs 1;
+            incr n;
+            EC.apply f x k;
+            loop t)
+      in
+      loop t
+  end
+
+  module Out = struct
+    type nonrec 'a t = 'a option -> unit t
+
+    let create f = f
+
+    let write f x = f x
+
+    let null () _ = return ()
+  end
+
+  let connect i o =
+    let rec go () =
+      let* a = In.read i in
+      let* () = Out.write o a in
+      match a with
+      | None -> return ()
+      | Some _ -> go ()
+    in
+    go ()
+
+  let supply i o =
+    let rec go () =
+      let* a = In.read i in
+      match a with
+      | None -> return ()
+      | Some _ ->
+        let* () = Out.write o a in
+        go ()
+    in
+    go ()
+
+  let pipe () =
+    let mvar = Mvar.create () in
+    let i = In.create (fun () -> Mvar.read mvar) in
+    let o = Out.create (fun x -> Mvar.write mvar x) in
+    (i, o)
+end
+
 type fill = Fill : 'a Ivar.t * 'a -> fill
 
 let run t ~iter =

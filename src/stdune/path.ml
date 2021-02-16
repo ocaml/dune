@@ -1095,26 +1095,11 @@ let is_file t = not (is_directory t)
 
 let rmdir t = Unix.rmdir (to_string t)
 
-let win32_unlink fn =
-  try Unix.unlink fn
-  with Unix.Unix_error (Unix.EACCES, _, _) as e -> (
-    try
-      (* Try removing the read-only attribute *)
-      Unix.chmod fn 0o666;
-      Unix.unlink fn
-    with _ -> raise e )
-
-let unlink_operation =
-  if Sys.win32 then
-    win32_unlink
-  else
-    Unix.unlink
-
-let unlink t = unlink_operation (to_string t)
+let unlink t = Fpath.unlink (to_string t)
 
 let link x y = Unix.link (to_string x) (to_string y)
 
-let unlink_no_err t = try unlink t with _ -> ()
+let unlink_no_err t = Fpath.unlink_no_err (to_string t)
 
 let build_dir_exists () = is_directory build_dir
 
@@ -1164,7 +1149,7 @@ let rec clear_dir dir =
         let fn = Filename.concat dir fn in
         match kind with
         | Unix.S_DIR -> rm_rf_dir fn
-        | _ -> unlink_operation fn)
+        | _ -> Fpath.unlink fn)
 
 and rm_rf_dir path =
   clear_dir path;
@@ -1177,7 +1162,7 @@ let rm_rf ?(allow_external = false) t =
   match Unix.lstat fn with
   | exception Unix.Unix_error (ENOENT, _, _) -> ()
   | { Unix.st_kind = S_DIR; _ } -> rm_rf_dir fn
-  | _ -> unlink_operation fn
+  | _ -> Fpath.unlink fn
 
 let clear_dir dir = clear_dir (to_string dir)
 

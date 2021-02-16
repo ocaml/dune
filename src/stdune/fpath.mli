@@ -13,3 +13,7 @@ type follow_symlink_error =
   | Unix_error of Unix.error
 
 val follow_symlink : string -> (string, follow_symlink_error) result
+
+val unlink : string -> unit
+
+val unlink_no_err : string -> unit

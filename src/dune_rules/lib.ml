@@ -526,6 +526,15 @@ module L = struct
 
   let c_include_flags ts = to_iflags (c_include_paths ts)
 
+  let toplevel_include_paths ts =
+    let with_dlls =
+      List.filter ts ~f:(fun t ->
+          match Lib_info.foreign_dll_files (info t) with
+          | [] -> false
+          | _ -> true)
+    in
+    Path.Set.union (include_paths ts Mode.Byte) (c_include_paths with_dlls)
+
   let compile_and_link_flags ~compile ~link ~mode =
     let params = List.map link ~f:(fun t -> Link_params.get t mode) in
     let dirs =

@@ -98,14 +98,13 @@ module Lib = struct
        ; field_o "instrumentation.backend" (no_loc Lib_name.encode)
            instrumentation_backend
        ]
-    @ ( Sub_system_name.Map.to_list sub_systems
-      |> List.map ~f:(fun (name, info) ->
-             let (module S) = Sub_system_info.get name in
-             match info with
-             | S.T info ->
-               let _ver, sexps = S.encode info in
-               field_l (Sub_system_name.to_string name) sexp sexps
-             | _ -> assert false) )
+    @ Sub_system_name.Map.to_list_map sub_systems ~f:(fun name info ->
+          let (module S) = Sub_system_info.get name in
+          match info with
+          | S.T info ->
+            let _ver, sexps = S.encode info in
+            field_l (Sub_system_name.to_string name) sexp sexps
+          | _ -> assert false)
 
   let decode ~(lang : Vfile.Lang.Instance.t) ~base =
     let open Dune_lang.Decoder in
@@ -371,7 +370,8 @@ let encode ~dune_version { entries; name; version; dir; sections; sites; files }
     =
   let open Dune_lang.Encoder in
   let sections =
-    Section.Map.to_list (Section.Map.map ~f:Path.to_absolute_filename sections)
+    Section.Map.to_list_map sections ~f:(fun k v ->
+        (k, Path.to_absolute_filename v))
   in
   let sites = Section.Site.Map.to_list sites in
   let sexp =
@@ -385,26 +385,24 @@ let encode ~dune_version { entries; name; version; dir; sections; sites; files }
   in
   let list s = Dune_lang.List s in
   let entries =
-    Lib_name.Map.to_list entries
-    |> List.map ~f:(fun (_name, e) ->
-           match e with
-           | Entry.Library lib ->
-             list (Dune_lang.atom "library" :: Lib.encode lib ~package_root:dir)
-           | Deprecated_library_name d ->
-             list
-               ( Dune_lang.atom "deprecated_library_name"
-               :: Deprecated_library_name.encode d )
-           | Hidden_library lib ->
-             Code_error.raise "Dune_package.encode got Hidden_library"
-               [ ("lib", Lib.to_dyn lib) ])
+    Lib_name.Map.to_list_map entries ~f:(fun _name e ->
+        match e with
+        | Entry.Library lib ->
+          list (Dune_lang.atom "library" :: Lib.encode lib ~package_root:dir)
+        | Deprecated_library_name d ->
+          list
+            ( Dune_lang.atom "deprecated_library_name"
+            :: Deprecated_library_name.encode d )
+        | Hidden_library lib ->
+          Code_error.raise "Dune_package.encode got Hidden_library"
+            [ ("lib", Lib.to_dyn lib) ])
   in
   prepend_version ~dune_version (List.concat [ sexp; entries ])
 
 let to_dyn { entries; name; version; dir; sections; sites; files } =
   let open Dyn.Encoder in
   record
-    [ ( "entries"
-      , list Entry.to_dyn (Lib_name.Map.to_list entries |> List.map ~f:snd) )
+    [ ("entries", list Entry.to_dyn (Lib_name.Map.values entries))
     ; ("name", Package.Name.to_dyn name)
     ; ("version", option string version)
     ; ("dir", Path.to_dyn dir)

@@ -104,7 +104,7 @@ let refresh fn =
   refresh_ stats fn
 
 let refresh_and_chmod fn =
-  let stats = Path.stat fn in
+  let stats = Path.lstat fn in
   let () =
     (* We remove write permissions to uniformize behavior regardless of whether
        the cache is activated. No need to be zealous in case the file is not

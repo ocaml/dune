@@ -40,18 +40,24 @@ Nor does the path appear in the sandbox:
           bash alias b (exit 1)
   running b: cat: x: No such file or directory
 
-Bug (cont): surprisingly to me (aalekseyev), the same issue exists when
-the rule is a target-producing rule.
-(isn't this supposed to work because the alias stamp file changes?)
+In fact none of the alias stamp files even change
+when this dependency changes, so alias stamp files are useless here,
+even if we depended on them:
 
   $ echo old-contents > x
-  $ dune build b
-          bash b
-  running b: old-contents
-  $ cat _build/default/b
-  old-contents
-  $ dune build b
+  $ dune build @b &> /dev/null
+  $ md5sum _build/.aliases/default/* > stamp-files-old
+  $ rm -r _build 
+
   $ echo new-contents > x
-  $ dune build b
-  $ cat _build/default/b
-  old-contents
+  $ dune build @b &> /dev/null
+  $ md5sum _build/.aliases/default/* > stamp-files-new
+  $ rm -r _build
+
+  $ cat stamp-files-old
+  ba4d257a2d76880811986a1120e3d1ea  _build/.aliases/default/a-00000000000000000000000000000000
+  d41d8cd98f00b204e9800998ecf8427e  _build/.aliases/default/a-ff67d857b9b4f3d2e7bb31b302aa5bc4
+  9425f8e768d73fcee0cf05928f737277  _build/.aliases/default/b-00000000000000000000000000000000
+  d41d8cd98f00b204e9800998ecf8427e  _build/.aliases/default/b-de1ad9f2f2db598914453ffb73cfb3a2
+
+  $ diff stamp-files-old stamp-files-new

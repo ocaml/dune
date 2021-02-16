@@ -284,12 +284,7 @@ let to_dyn config =
     ; ("cache_trim_size", Dyn.Encoder.int64 config.cache_trim_size)
     ]
 
-let global = Fdecl.create to_dyn
-
-let t () = Fdecl.get global
-
 let init t =
-  Fdecl.set global t;
   Console.Backend.set (Scheduler.Config.Display.console_backend t.display);
   Log.verbose := t.display = Verbose
 

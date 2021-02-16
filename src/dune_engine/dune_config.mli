@@ -85,9 +85,6 @@ val load_config_file : Path.t -> t
     we are not running inside emacs. *)
 val adapt_display : t -> output_is_a_tty:bool -> t
 
-(** The global configuration for the process *)
-val t : unit -> t
-
 (** Initialises the configuration for the process *)
 val init : t -> unit
 

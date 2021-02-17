@@ -20,7 +20,7 @@ let term =
   and+ dump_config =
     Arg.(
       value
-      & opt (some string) None
+      & opt ~vopt:(Some ".") (some string) None
       & info [ "dump-config" ]
           ~doc:
             "Prints the entire content of the merlin configuration for the \
@@ -33,8 +33,8 @@ let term =
       & opt ~vopt:(Some ".") (some string) None
       & info [ "dump-dot-merlin" ]
           ~doc:
-            "Prints a merge of all merlin configuration for the given folder \
-             in the Merlin configuration syntax.")
+            "Prints a coarse merge of all merlin configuration for the given \
+             folder in the Merlin configuration syntax.")
   in
   Common.set_common common ~log_file:No_log_file ~targets:[];
   Scheduler.go ~common (fun () ->

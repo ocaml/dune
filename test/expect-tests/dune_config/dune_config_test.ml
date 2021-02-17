@@ -1,6 +1,8 @@
 open Dune_lang
 open Dune_tests_common
 
+let () = Printexc.record_backtrace false
+
 let parse s =
   let ast =
     Parser.parse_string ~fname:"expect_test" ~mode:Parser.Mode.Single s

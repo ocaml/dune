@@ -1176,9 +1176,19 @@ let touch ?(create = true) p =
     | In_build_dir k ->
       Kind.to_string (Kind.append_local (Fdecl.get Build.build_dir) k)
   in
-  try Unix.utimes p 0.0 0.0
-  with Unix.Unix_error (Unix.ENOENT, _, _) ->
-    if create then Unix.close (Unix.openfile p [ Unix.O_CREAT ] 0o777)
+  let create =
+    if create then
+      fun () ->
+    Unix.close (Unix.openfile p [ Unix.O_CREAT ] 0o777)
+    else
+      Fun.id
+  in
+  try Unix.utimes p 0.0 0.0 with
+  | Unix.Unix_error (Unix.ENOENT, _, _) -> create ()
+  | Unix.Unix_error (Unix.EUNKNOWNERR 0, _, _)
+    when Sys.win32 && not (Sys.file_exists p) ->
+    (* OCaml PR#8857 *)
+    create ()
 
 let compare x y =
   match (x, y) with

@@ -41,6 +41,9 @@ Unreleased
 - Dune no longer automatically create or edit `dune-project` files
   (#4239, fixes #4108, @jeremiedimino)
 
+- Have `dune` communicate the location of the standard library directory to
+  `merlin` (#4211, fixes #4188, @nojb)
+
 2.8.2 (21/01/2021)
 ------------------
 

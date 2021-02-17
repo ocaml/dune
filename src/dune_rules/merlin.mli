@@ -26,6 +26,7 @@ end
 
 val make :
      ?requires:Lib.t list Or_exn.t
+  -> stdlib_dir:Path.t
   -> flags:Ocaml_flags.t
   -> ?preprocess:
        Preprocess.Without_instrumentation.t Preprocess.t Module_name.Per_item.t

@@ -12,6 +12,7 @@ val make :
   -> lint:Preprocess.Without_instrumentation.t Preprocess.Per_module.t
   -> preprocess:Preprocess.Without_instrumentation.t Preprocess.Per_module.t
   -> preprocessor_deps:Dep_conf.t list
+  -> instrumentation_deps:Dep_conf.t list
   -> lib_name:Lib_name.Local.t option
   -> scope:Scope.t
   -> Pp_spec.t

@@ -344,15 +344,21 @@ let cctx (lib : Library.t) ~sctx ~source_modules ~dir ~expander ~scope
   let obj_dir = Library.obj_dir ~dir lib in
   let vimpl = Virtual_rules.impl sctx ~lib ~scope in
   let ctx = Super_context.context sctx in
+  let instrumentation_backend =
+    Lib.DB.instrumentation_backend (Scope.libs scope)
+  in
   let preprocess =
     Preprocess.Per_module.with_instrumentation lib.buildable.preprocess
-      ~instrumentation_backend:
-        (Lib.DB.instrumentation_backend (Scope.libs scope))
+      ~instrumentation_backend
+  in
+  let instrumentation_deps =
+    Preprocess.Per_module.instrumentation_deps lib.buildable.preprocess
+      ~instrumentation_backend
   in
   (* Preprocess before adding the alias module as it doesn't need preprocessing *)
   let pp =
     Preprocessing.make sctx ~dir ~dep_kind ~scope ~preprocess ~expander
-      ~preprocessor_deps:lib.buildable.preprocessor_deps
+      ~preprocessor_deps:lib.buildable.preprocessor_deps ~instrumentation_deps
       ~lint:lib.buildable.lint
       ~lib_name:(Some (snd lib.name))
   in

@@ -3,6 +3,8 @@ unreleased - 2.9 branch
 
 - Add `(enabled_if ...)` to `(mdx ...)` (#4434, @emillon)
 
+- Add support for instrumentation dependencies (#4210, fixes #3983, @nojb)
+
 2.8.5 (28/03/2021)
 ------------------
 

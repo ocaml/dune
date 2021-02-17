@@ -856,39 +856,39 @@ let%expect_test "dynamic cycles with non-uniform cutoff structure" =
     Evaluating count_runs: 2
     Started evaluating cycle_creator_no_cutoff
     Cycling to summit from cycle_creator_no_cutoff...
-    f 0 = Error
-            [ { exn =
-                  "(\"Attempted to create a cached value based on some stale inputs (old run)\",\n\
-                   {})"
-              ; backtrace = ""
-              }
-            ]
-    Memoized function stack:
-       ("cycle_creator_no_cutoff", ())
-    -> ("incrementing_chain_1_no_cutoff", ())
-    -> ("incrementing_chain_2_yes_cutoff", ())
-    -> ("incrementing_chain_3_no_cutoff", ())
-    -> ("incrementing_chain_4_yes_cutoff", ())
-    -> ("incrementing_chain_plus_input", 0) |}];
+    Starting evaluating incrementing_chain_1_no_cutoff
+    Starting evaluating incrementing_chain_2_yes_cutoff
+    Starting evaluating incrementing_chain_3_no_cutoff
+    Starting evaluating incrementing_chain_4_yes_cutoff
+    Started evaluating the summit with input 0
+    Dependency cycle detected:
+    - ("incrementing_chain_plus_input", 2)
+    - called by ("cycle_creator_no_cutoff", ())
+    - called by ("incrementing_chain_1_no_cutoff", ())
+    - called by ("incrementing_chain_2_yes_cutoff", ())
+    - called by ("incrementing_chain_3_no_cutoff", ())
+    - called by ("incrementing_chain_4_yes_cutoff", ())
+    - called by ("incrementing_chain_plus_input", 2)
+    f 0 = Error [ { exn = "Memo.Cycle_error.E(_)"; backtrace = "" } ] |}];
   print_result summit_yes_cutoff 0;
   [%expect
     {|
     Started evaluating cycle_creator_yes_cutoff
     Cycling to summit from cycle_creator_yes_cutoff...
-    f 0 = Error
-            [ { exn =
-                  "(\"Attempted to create a cached value based on some stale inputs (old run)\",\n\
-                   {})"
-              ; backtrace = ""
-              }
-            ]
-    Memoized function stack:
-       ("cycle_creator_yes_cutoff", ())
-    -> ("incrementing_chain_1_yes_cutoff", ())
-    -> ("incrementing_chain_2_no_cutoff", ())
-    -> ("incrementing_chain_3_yes_cutoff", ())
-    -> ("incrementing_chain_4_no_cutoff", ())
-    -> ("incrementing_chain_plus_input", 0) |}]
+    Starting evaluating incrementing_chain_1_yes_cutoff
+    Starting evaluating incrementing_chain_2_no_cutoff
+    Starting evaluating incrementing_chain_3_yes_cutoff
+    Starting evaluating incrementing_chain_4_no_cutoff
+    Started evaluating the summit with input 0
+    Dependency cycle detected:
+    - ("incrementing_chain_plus_input", 2)
+    - called by ("cycle_creator_yes_cutoff", ())
+    - called by ("incrementing_chain_1_yes_cutoff", ())
+    - called by ("incrementing_chain_2_no_cutoff", ())
+    - called by ("incrementing_chain_3_yes_cutoff", ())
+    - called by ("incrementing_chain_4_no_cutoff", ())
+    - called by ("incrementing_chain_plus_input", 2)
+    f 0 = Error [ { exn = "Memo.Cycle_error.E(_)"; backtrace = "" } ] |}]
 
 let print_exns f =
   let res =

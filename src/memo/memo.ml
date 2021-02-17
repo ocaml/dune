@@ -669,13 +669,22 @@ let dep_node (type i o f) (t : (i, o, f) t) inp =
 module Prev_cycle_cache_lookup_result = struct
   type 'a t =
     | Valid of 'a Cached_value.t
-    | Invalid of { old_value : 'a Cached_value.t option }
+    | Invalid of
+        { old_value : 'a Cached_value.t option
+        ; cycle_error : Exn_with_backtrace.t option
+        }
 end
 
 module Changed_or_not = struct
   type t =
-    | Changed
+    | Changed of { cycle_error : Exn_with_backtrace.t option }
     | Unchanged
+end
+
+module Result_or_cycle_error = struct
+  type 'a t =
+    | Result of 'a
+    | Cycle_error of Exn_with_backtrace.t
 end
 
 (* CR-someday aalekseyev: There's a lot of duplication between Exec_sync and
@@ -688,7 +697,7 @@ module rec Exec_sync : sig
   val exec : ('a, 'b, 'a -> 'b) t -> 'a -> 'b
 
   val exec_dep_node_internal :
-    ('a, 'b, 'a -> 'b) Dep_node.t -> 'b Cached_value.t
+    ('a, 'b, 'a -> 'b) Dep_node.t -> 'b Cached_value.t Result_or_cycle_error.t
 end = struct
   module Start_considering_result = struct
     type 'a t =
@@ -710,10 +719,12 @@ end = struct
       match deps with
       | [] -> Changed_or_not.Unchanged
       | Last_dep.T (dep, v_id) :: deps -> (
-        let res = Exec_unknown.exec_dep_node_internal_from_sync dep in
-        match Value_id.equal res.id v_id with
-        | true -> go deps
-        | false -> Changed_or_not.Changed )
+        match Exec_unknown.exec_dep_node_internal_from_sync dep with
+        | Cycle_error exn -> Changed { cycle_error = Some exn }
+        | Result res -> (
+          match Value_id.equal res.id v_id with
+          | true -> go deps
+          | false -> Changed { cycle_error = None } ) )
     in
     go
 
@@ -727,25 +738,29 @@ end = struct
           let from_cache =
             match dep_node.last_cached_value with
             | None ->
-              Prev_cycle_cache_lookup_result.Invalid { old_value = None }
+              Prev_cycle_cache_lookup_result.Invalid
+                { old_value = None; cycle_error = None }
             | Some cv -> (
               let res = deps_changed cv.deps in
               match res with
               | Unchanged ->
                 cv.last_validated_at <- Run.current ();
                 Prev_cycle_cache_lookup_result.Valid cv
-              | Changed ->
+              | Changed { cycle_error } ->
                 dep_node.last_cached_value <- None;
-                Invalid { old_value = Some cv } )
+                Invalid { old_value = Some cv; cycle_error } )
           in
           match from_cache with
           | Valid v -> v
-          | Invalid { old_value } -> (
+          | Invalid { old_value; cycle_error } -> (
             match dep_node.without_state.spec.f with
             | Function.Sync f ->
               let res =
-                Exn_with_backtrace.try_with (fun () ->
-                    f dep_node.without_state.input)
+                match cycle_error with
+                | None ->
+                  Exn_with_backtrace.try_with (fun () ->
+                      f dep_node.without_state.input)
+                | Some exn -> Error exn
               in
               let res =
                 Result.map_error res ~f:(fun exn ->
@@ -817,7 +832,16 @@ end = struct
     let res = consider_dep_node dep_node in
     Value.get_sync_exn res.value
 
-  let exec_dep_node_internal = consider_dep_node
+  let exec_dep_node_internal dep_node =
+    match
+      Exn_with_backtrace.try_with (fun () -> consider_dep_node dep_node)
+    with
+    | Ok res -> Result_or_cycle_error.Result res
+    | Error exn -> (
+      match exn.exn with
+      | Cycle_error.E _ -> Cycle_error exn
+      | _another_exn ->
+        Code_error.raise "[exec_dep_node_internal] got unexpected error" [] )
 
   let exec t inp = exec_dep_node (dep_node t inp)
 end
@@ -828,7 +852,8 @@ and Exec_async : sig
   (** [exec_dep_node_internal]: called when we're validating nodes and checking
       whether or not the user callback is worth running *)
   val exec_dep_node_internal :
-    ('a, 'b, 'a -> 'b Fiber.t) Dep_node.t -> 'b Cached_value.t Fiber.t
+       ('a, 'b, 'a -> 'b Fiber.t) Dep_node.t
+    -> 'b Cached_value.t Result_or_cycle_error.t Fiber.t
 
   (** [exec] and variants thereof *)
   val exec : ('a, 'b, 'a -> 'b Fiber.t) t -> 'a -> 'b Fiber.t
@@ -856,9 +881,14 @@ end = struct
       | [] -> Fiber.return Changed_or_not.Unchanged
       | Last_dep.T (dep, v_id) :: deps -> (
         let* res = Exec_unknown.exec_dep_node_internal dep in
-        match Value_id.equal res.id v_id with
-        | true -> go deps
-        | false -> Fiber.return Changed_or_not.Changed )
+        match res with
+        | Cycle_error exn ->
+          Fiber.return (Changed_or_not.Changed { cycle_error = Some exn })
+        | Result res -> (
+          match Value_id.equal res.id v_id with
+          | true -> go deps
+          | false ->
+            Fiber.return (Changed_or_not.Changed { cycle_error = None }) ) )
     in
     go
 
@@ -871,20 +901,21 @@ end = struct
             match dep_node.last_cached_value with
             | None ->
               Fiber.return
-                (Prev_cycle_cache_lookup_result.Invalid { old_value = None })
+                (Prev_cycle_cache_lookup_result.Invalid
+                   { old_value = None; cycle_error = None })
             | Some cv -> (
               let+ res = deps_changed cv.deps in
               match res with
               | Unchanged ->
                 cv.last_validated_at <- Run.current ();
                 Prev_cycle_cache_lookup_result.Valid cv
-              | Changed ->
+              | Changed { cycle_error } ->
                 dep_node.last_cached_value <- None;
-                Invalid { old_value = Some cv } )
+                Invalid { old_value = Some cv; cycle_error } )
           in
           match from_cache with
           | Valid v -> Fiber.return v
-          | Invalid { old_value } -> (
+          | Invalid { old_value; cycle_error } -> (
             match dep_node.without_state.spec.f with
             | Function.Async f ->
               (* A consequence of using [Fiber.collect_errors] is that memoized
@@ -893,7 +924,11 @@ end = struct
                  [Fiber.with_error_handler], but we don't have access to dune's
                  error reporting mechanism in memo *)
               let+ res =
-                Fiber.collect_errors (fun () -> f dep_node.without_state.input)
+                match cycle_error with
+                | None ->
+                  Fiber.collect_errors (fun () ->
+                      f dep_node.without_state.input)
+                | Some exn -> Fiber.return (Error [ exn ])
               in
               let res =
                 Result.map_error res ~f:(fun exns ->
@@ -963,20 +998,33 @@ end = struct
     let* res = consider_dep_node dep_node in
     Value.get_async_exn res.value
 
-  let exec_dep_node_internal = consider_dep_node
+  let exec_dep_node_internal dep_node =
+    let+ res = Fiber.collect_errors (fun () -> consider_dep_node dep_node) in
+    match res with
+    | Ok res -> Result_or_cycle_error.Result res
+    | Error exns -> (
+      let code_error () =
+        Code_error.raise "[exec_dep_node_internal] got unexpected error" []
+      in
+      match exns with
+      | [ exn ] -> (
+        match exn.exn with
+        | Cycle_error.E _ -> Cycle_error exn
+        | _another_exn -> code_error () )
+      | _not_a_singleton -> code_error () )
 
   let exec t inp = exec_dep_node (dep_node t inp)
 end
 
 and Exec_unknown : sig
   val exec_dep_node_internal_from_sync :
-    ('a, 'b, 'f) Dep_node.t -> 'b Cached_value.t
+    ('a, 'b, 'f) Dep_node.t -> 'b Cached_value.t Result_or_cycle_error.t
 
   val exec_dep_node_internal :
-    ('a, 'b, 'f) Dep_node.t -> 'b Cached_value.t Fiber.t
+    ('a, 'b, 'f) Dep_node.t -> 'b Cached_value.t Result_or_cycle_error.t Fiber.t
 end = struct
   let exec_dep_node_internal (type i o f) (t : (i, o, f) Dep_node.t) :
-      o Cached_value.t Fiber.t =
+      o Cached_value.t Result_or_cycle_error.t Fiber.t =
     match t.without_state.spec.f with
     | Async _ -> Exec_async.exec_dep_node_internal t
     | Sync _ -> Fiber.return (Exec_sync.exec_dep_node_internal t)

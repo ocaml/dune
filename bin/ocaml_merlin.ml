@@ -27,6 +27,14 @@ let term =
              given folder in a user friendly form. This is for testing and \
              debugging purposes only and should not be considered as a stable \
              ouptut.")
+  and+ dump_dot_merlin =
+    Arg.(
+      value
+      & opt ~vopt:(Some ".") (some string) None
+      & info [ "dump-dot-merlin" ]
+          ~doc:
+            "Prints a merge of all merlin configuration for the given folder \
+             in the Merlin configuration syntax.")
   in
   Common.set_common common ~log_file:No_log_file ~targets:[];
   Scheduler.go ~common (fun () ->
@@ -37,9 +45,10 @@ let term =
         Common.workspace_file common |> Option.map ~f:Arg.Path.path
       in
       Dune_rules.Workspace.init ?x ?workspace_file ();
-      ( match dump_config with
-      | Some s -> Dune_rules.Merlin_server.dump s
-      | None -> Dune_rules.Merlin_server.start () )
+      ( match (dump_config, dump_dot_merlin) with
+      | Some s, _ -> Dune_rules.Merlin_server.dump s
+      | None, Some s -> Dune_rules.Merlin_server.dump_dot_merlin s
+      | None, None -> Dune_rules.Merlin_server.start () )
       |> Fiber.return)
 
 let command = (term, info)

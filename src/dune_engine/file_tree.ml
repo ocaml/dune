@@ -512,13 +512,9 @@ end = struct
     let dune_file_absent = (not file_exists) && Option.is_none from_parent in
     if dune_file_absent then
       None
-    else (
-      ignore
-        ( Dune_project.ensure_project_file_exists project
-          : Dune_project.created_or_already_exist );
+    else
       let file = Path.Source.relative path Dune_file.fname in
       Some (Dune_file.load file ~file_exists ~project ~from_parent)
-    )
 
   let contents { Readdir.dirs; files } ~dirs_visited ~project ~path
       ~(dir_status : Sub_dirs.Status.t) =

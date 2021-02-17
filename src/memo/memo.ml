@@ -741,14 +741,17 @@ end = struct
               Prev_cycle_cache_lookup_result.Invalid
                 { old_value = None; cycle_error = None }
             | Some cv -> (
-              let res = deps_changed cv.deps in
-              match res with
-              | Unchanged ->
-                cv.last_validated_at <- Run.current ();
-                Prev_cycle_cache_lookup_result.Valid cv
-              | Changed { cycle_error } ->
-                dep_node.last_cached_value <- None;
-                Invalid { old_value = Some cv; cycle_error } )
+              match Result.is_error cv.value with
+              | true -> Invalid { old_value = None; cycle_error = None }
+              | false -> (
+                let res = deps_changed cv.deps in
+                match res with
+                | Unchanged ->
+                  cv.last_validated_at <- Run.current ();
+                  Prev_cycle_cache_lookup_result.Valid cv
+                | Changed { cycle_error } ->
+                  dep_node.last_cached_value <- None;
+                  Invalid { old_value = Some cv; cycle_error } ) )
           in
           match from_cache with
           | Valid v -> v
@@ -904,14 +907,20 @@ end = struct
                 (Prev_cycle_cache_lookup_result.Invalid
                    { old_value = None; cycle_error = None })
             | Some cv -> (
-              let+ res = deps_changed cv.deps in
-              match res with
-              | Unchanged ->
-                cv.last_validated_at <- Run.current ();
-                Prev_cycle_cache_lookup_result.Valid cv
-              | Changed { cycle_error } ->
-                dep_node.last_cached_value <- None;
-                Invalid { old_value = Some cv; cycle_error } )
+              match Result.is_error cv.value with
+              | true ->
+                Fiber.return
+                  (Prev_cycle_cache_lookup_result.Invalid
+                     { old_value = None; cycle_error = None })
+              | false -> (
+                let+ res = deps_changed cv.deps in
+                match res with
+                | Unchanged ->
+                  cv.last_validated_at <- Run.current ();
+                  Prev_cycle_cache_lookup_result.Valid cv
+                | Changed { cycle_error } ->
+                  dep_node.last_cached_value <- None;
+                  Invalid { old_value = Some cv; cycle_error } ) )
           in
           match from_cache with
           | Valid v -> Fiber.return v

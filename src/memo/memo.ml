@@ -520,7 +520,7 @@ let add_dep_from_caller (type i o f) ~called_from_peek
     (node : (i, o, f) Dep_node.t)
     (sample_attempt_dag_node : Sample_attempt_dag_node.t) =
   match Call_stack.get_call_stack_tip () with
-  | None -> ()
+  | None -> Ok ()
   | Some (Stack_frame_with_state.T caller) -> (
     let running_state_of_caller = caller.running_state in
     let () =
@@ -540,29 +540,35 @@ let add_dep_from_caller (type i o f) ~called_from_peek
     match
       Id.Set.mem running_state_of_caller.deps_so_far.set node.without_state.id
     with
-    | true -> ()
-    | false ->
-      let () =
+    | true -> Ok ()
+    | false -> (
+      let cycle_error =
         match sample_attempt_dag_node with
-        | Finished -> ()
+        | Finished -> None
         | Running node -> (
-          try
+          match
             Dag.add_assuming_missing global_dep_dag
               running_state_of_caller.sample_attempt node
-          with Dag.Cycle cycle ->
-            raise
-              (Cycle_error.E
-                 { stack = Call_stack.get_call_stack_without_state ()
-                 ; cycle = List.map cycle ~f:(fun node -> node.Dag.data)
-                 }) )
+          with
+          | () -> None
+          | exception Dag.Cycle cycle ->
+            Some
+              { Cycle_error.stack = Call_stack.get_call_stack_without_state ()
+              ; cycle = List.map cycle ~f:(fun node -> node.Dag.data)
+              } )
       in
-      running_state_of_caller.deps_so_far <-
-        { set =
-            Id.Set.add running_state_of_caller.deps_so_far.set
-              node.without_state.id
-        ; deps_reversed =
-            Dep_node.T node :: running_state_of_caller.deps_so_far.deps_reversed
-        } )
+      match cycle_error with
+      | None ->
+        running_state_of_caller.deps_so_far <-
+          { set =
+              Id.Set.add running_state_of_caller.deps_so_far.set
+                node.without_state.id
+          ; deps_reversed =
+              Dep_node.T node
+              :: running_state_of_caller.deps_so_far.deps_reversed
+          };
+        Ok ()
+      | Some cycle_error -> Error cycle_error ) )
 
 type ('input, 'output, 'f) t =
   { spec : ('input, 'output, 'f) Spec.t
@@ -671,20 +677,14 @@ module Prev_cycle_cache_lookup_result = struct
     | Valid of 'a Cached_value.t
     | Invalid of
         { old_value : 'a Cached_value.t option
-        ; cycle_error : Exn_with_backtrace.t option
+        ; cycle_error : Cycle_error.t option
         }
 end
 
 module Changed_or_not = struct
   type t =
-    | Changed of { cycle_error : Exn_with_backtrace.t option }
+    | Changed of { cycle_error : Cycle_error.t option }
     | Unchanged
-end
-
-module Result_or_cycle_error = struct
-  type 'a t =
-    | Result of 'a
-    | Cycle_error of Exn_with_backtrace.t
 end
 
 (* CR-someday aalekseyev: There's a lot of duplication between Exec_sync and
@@ -697,7 +697,7 @@ module rec Exec_sync : sig
   val exec : ('a, 'b, 'a -> 'b) t -> 'a -> 'b
 
   val exec_dep_node_internal :
-    ('a, 'b, 'a -> 'b) Dep_node.t -> 'b Cached_value.t Result_or_cycle_error.t
+    ('a, 'b, 'a -> 'b) Dep_node.t -> ('b Cached_value.t, Cycle_error.t) result
 end = struct
   module Start_considering_result = struct
     type 'a t =
@@ -720,8 +720,8 @@ end = struct
       | [] -> Changed_or_not.Unchanged
       | Last_dep.T (dep, v_id) :: deps -> (
         match Exec_unknown.exec_dep_node_internal_from_sync dep with
-        | Cycle_error exn -> Changed { cycle_error = Some exn }
-        | Result res -> (
+        | Error cycle_error -> Changed { cycle_error = Some cycle_error }
+        | Ok res -> (
           match Value_id.equal res.id v_id with
           | true -> go deps
           | false -> Changed { cycle_error = None } ) )
@@ -763,7 +763,8 @@ end = struct
                 | None ->
                   Exn_with_backtrace.try_with (fun () ->
                       f dep_node.without_state.input)
-                | Some exn -> Error exn
+                | Some cycle_error ->
+                  Error (Exn_with_backtrace.capture (Cycle_error.E cycle_error))
               in
               let res =
                 Result.map_error res ~f:(fun exn ->
@@ -826,25 +827,18 @@ end = struct
   let consider_dep_node (dep_node : _ Dep_node.t) =
     let pre_res = start_considering_dep_node dep_node in
     add_dep_from_caller ~called_from_peek:false dep_node
-      (Start_considering_result.sample_attempt_dag_node pre_res);
-    match pre_res with
-    | Done v -> v
-    | Needs_work { sample_attempt = _; work } -> work ()
+      (Start_considering_result.sample_attempt_dag_node pre_res)
+    |> Result.map ~f:(fun () ->
+           match pre_res with
+           | Done v -> v
+           | Needs_work { sample_attempt = _; work } -> work ())
 
   let exec_dep_node dep_node =
-    let res = consider_dep_node dep_node in
-    Value.get_sync_exn res.value
+    match consider_dep_node dep_node with
+    | Ok res -> Value.get_sync_exn res.value
+    | Error cycle_error -> raise (Cycle_error.E cycle_error)
 
-  let exec_dep_node_internal dep_node =
-    match
-      Exn_with_backtrace.try_with (fun () -> consider_dep_node dep_node)
-    with
-    | Ok res -> Result_or_cycle_error.Result res
-    | Error exn -> (
-      match exn.exn with
-      | Cycle_error.E _ -> Cycle_error exn
-      | _another_exn ->
-        Code_error.raise "[exec_dep_node_internal] got unexpected error" [] )
+  let exec_dep_node_internal = consider_dep_node
 
   let exec t inp = exec_dep_node (dep_node t inp)
 end
@@ -856,7 +850,7 @@ and Exec_async : sig
       whether or not the user callback is worth running *)
   val exec_dep_node_internal :
        ('a, 'b, 'a -> 'b Fiber.t) Dep_node.t
-    -> 'b Cached_value.t Result_or_cycle_error.t Fiber.t
+    -> ('b Cached_value.t Fiber.t, Cycle_error.t) result
 
   (** [exec] and variants thereof *)
   val exec : ('a, 'b, 'a -> 'b Fiber.t) t -> 'a -> 'b Fiber.t
@@ -883,11 +877,12 @@ end = struct
       match deps with
       | [] -> Fiber.return Changed_or_not.Unchanged
       | Last_dep.T (dep, v_id) :: deps -> (
-        let* res = Exec_unknown.exec_dep_node_internal dep in
-        match res with
-        | Cycle_error exn ->
-          Fiber.return (Changed_or_not.Changed { cycle_error = Some exn })
-        | Result res -> (
+        match Exec_unknown.exec_dep_node_internal dep with
+        | Error cycle_error ->
+          Fiber.return
+            (Changed_or_not.Changed { cycle_error = Some cycle_error })
+        | Ok res -> (
+          let* res = res in
           match Value_id.equal res.id v_id with
           | true -> go deps
           | false ->
@@ -937,7 +932,11 @@ end = struct
                 | None ->
                   Fiber.collect_errors (fun () ->
                       f dep_node.without_state.input)
-                | Some exn -> Fiber.return (Error [ exn ])
+                | Some cycle_error ->
+                  Fiber.return
+                    (Error
+                       [ Exn_with_backtrace.capture (Cycle_error.E cycle_error)
+                       ])
               in
               let res =
                 Result.map_error res ~f:(fun exns ->
@@ -998,45 +997,36 @@ end = struct
   let consider_dep_node (dep_node : _ Dep_node.t) =
     let pre_res = start_considering_dep_node dep_node in
     add_dep_from_caller ~called_from_peek:false dep_node
-      (Start_considering_result.sample_attempt_dag_node pre_res);
-    match pre_res with
-    | Done v -> Fiber.return v
-    | Needs_work { sample_attempt = _; work } -> work
+      (Start_considering_result.sample_attempt_dag_node pre_res)
+    |> Result.map ~f:(fun () ->
+           match pre_res with
+           | Done v -> Fiber.return v
+           | Needs_work { sample_attempt = _; work } -> work)
 
   let exec_dep_node dep_node =
-    let* res = consider_dep_node dep_node in
-    Value.get_async_exn res.value
+    match consider_dep_node dep_node with
+    | Ok res ->
+      let* res = res in
+      Value.get_async_exn res.Cached_value.value
+    | Error cycle_error -> raise (Cycle_error.E cycle_error)
 
-  let exec_dep_node_internal dep_node =
-    let+ res = Fiber.collect_errors (fun () -> consider_dep_node dep_node) in
-    match res with
-    | Ok res -> Result_or_cycle_error.Result res
-    | Error exns -> (
-      let code_error () =
-        Code_error.raise "[exec_dep_node_internal] got unexpected error" []
-      in
-      match exns with
-      | [ exn ] -> (
-        match exn.exn with
-        | Cycle_error.E _ -> Cycle_error exn
-        | _another_exn -> code_error () )
-      | _not_a_singleton -> code_error () )
+  let exec_dep_node_internal = consider_dep_node
 
   let exec t inp = exec_dep_node (dep_node t inp)
 end
 
 and Exec_unknown : sig
   val exec_dep_node_internal_from_sync :
-    ('a, 'b, 'f) Dep_node.t -> 'b Cached_value.t Result_or_cycle_error.t
+    ('a, 'b, 'f) Dep_node.t -> ('b Cached_value.t, Cycle_error.t) result
 
   val exec_dep_node_internal :
-    ('a, 'b, 'f) Dep_node.t -> 'b Cached_value.t Result_or_cycle_error.t Fiber.t
+    ('a, 'b, 'f) Dep_node.t -> ('b Cached_value.t Fiber.t, Cycle_error.t) result
 end = struct
   let exec_dep_node_internal (type i o f) (t : (i, o, f) Dep_node.t) :
-      o Cached_value.t Result_or_cycle_error.t Fiber.t =
+      (o Cached_value.t Fiber.t, Cycle_error.t) result =
     match t.without_state.spec.f with
     | Async _ -> Exec_async.exec_dep_node_internal t
-    | Sync _ -> Fiber.return (Exec_sync.exec_dep_node_internal t)
+    | Sync _ -> Exec_sync.exec_dep_node_internal t |> Result.map ~f:Fiber.return
 
   let exec_dep_node_internal_from_sync (type i o f) (dep : (i, o, f) Dep_node.t)
       =
@@ -1067,7 +1057,10 @@ let peek_exn (type i o f) (t : (i, o, f) t) inp =
            at all.
 
            We just consider it a bug when [peek_exn] raises. *)
-        add_dep_from_caller ~called_from_peek:true dep_node Finished;
+        let res =
+          add_dep_from_caller ~called_from_peek:true dep_node Finished
+        in
+        assert (Result.is_ok res);
         Value.get_sync_exn cv.value ) )
 
 let get_deps (type i o f) (t : (i, o, f) t) inp =

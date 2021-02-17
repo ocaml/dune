@@ -537,11 +537,30 @@ let%expect_test "error handling and memo - sync" =
 
 let print_result f x =
   let res =
-    try
-      Fiber.run
-        ~iter:(fun () -> raise Exit)
-        (Memo.Build.run (Memo.Build.collect_errors (fun () -> Memo.exec f x)))
-    with exn -> Error [ Exn_with_backtrace.capture exn ]
+    ( try
+        Fiber.run
+          ~iter:(fun () -> raise Exit)
+          (Memo.Build.run (Memo.Build.collect_errors (fun () -> Memo.exec f x)))
+      with exn -> Error [ Exn_with_backtrace.capture exn ] )
+    |> Result.map_error
+         ~f:
+           (List.map
+              ~f:
+                (Exn_with_backtrace.map ~f:(fun exn ->
+                     match exn with
+                     | Memo.Cycle_error.E cycle_error ->
+                       let frames = Memo.Cycle_error.get cycle_error in
+                       printf "Dependency cycle detected:\n";
+                       List.iteri frames ~f:(fun i frame ->
+                           let called_by =
+                             match i with
+                             | 0 -> ""
+                             | _ -> "called by "
+                           in
+                           printf "- %s%s\n" called_by
+                             (Dyn.to_string (Stack_frame.to_dyn frame)));
+                       exn
+                     | _ -> exn)))
   in
   let open Dyn.Encoder in
   Format.printf "f %d = %a@." x Pp.to_fmt
@@ -587,30 +606,42 @@ let%expect_test "error handling and memo - async" =
              ; { exn = "(Failure right)"; backtrace = "" }
              ] |}]
 
-let%expect_test "diamond with non-uniform cutoff structure" =
-  let create ~with_cutoff name f =
-    let output =
-      match with_cutoff with
-      | true -> Memo.Output.Allow_cutoff (module Int)
-      | false -> Simple (module Int)
-    in
-    Memo.create name
-      ~input:(module Unit)
-      ~visibility:Hidden ~output ~doc:"" Async f
-  in
-  let base_counter = ref 0 in
-  let base () =
-    incr base_counter;
-    let result = !base_counter in
-    printf "Evaluating base: %d\n" result;
+(* A test function counting runs. *)
+let count_runs () =
+  let counter = ref 0 in
+  fun () ->
+    incr counter;
+    let result = !counter in
+    printf "Evaluating count_runs: %d\n" result;
     let (_ : Run.t) = Memo.current_run () in
     Build.return result
+
+(* A test function incrementing a given memo. *)
+let increment which which_memo () =
+  printf "Starting evaluating %s\n" which;
+  let+ input = Memo.exec which_memo () in
+  let result = input + 1 in
+  printf "Evaluated %s: %d\n" which result;
+  result
+
+(* Create an async node with or without cutoff. *)
+let create ~with_cutoff name f =
+  let output =
+    match with_cutoff with
+    | true -> Memo.Output.Allow_cutoff (module Int)
+    | false -> Simple (module Int)
   in
-  let base = create ~with_cutoff:true "base" base in
+  Memo.create name
+    ~input:(module Unit)
+    ~visibility:Hidden ~output ~doc:"" Async f
+
+let%expect_test "diamond with non-uniform cutoff structure" =
+  let base = create ~with_cutoff:true "base" (count_runs ()) in
   let length_of_base which () =
+    printf "Starting evaluating %s\n" which;
     let+ base = Memo.exec base () in
     let result = String.length (Int.to_string base) in
-    printf "Evaluating %s: %d\n" which result;
+    printf "Evaluated %s: %d\n" which result;
     result
   in
   let no_cutoff =
@@ -618,12 +649,6 @@ let%expect_test "diamond with non-uniform cutoff structure" =
   in
   let yes_cutoff =
     create ~with_cutoff:true "yes_cutoff" (length_of_base "yes_cutoff")
-  in
-  let increment which which_memo () =
-    let+ input = Memo.exec which_memo () in
-    let result = input + 1 in
-    printf "Evaluating %s: %d\n" which result;
-    result
   in
   let after_no_cutoff =
     create ~with_cutoff:true "after_no_cutoff"
@@ -634,13 +659,14 @@ let%expect_test "diamond with non-uniform cutoff structure" =
       (increment "after_yes_cutoff" yes_cutoff)
   in
   let summit offset =
+    printf "Starting evaluating summit with offset %d\n" offset;
     let+ after_no_cutoff, after_yes_cutoff =
       Memo.Build.both
         (Memo.exec after_no_cutoff ())
         (Memo.exec after_yes_cutoff ())
     in
     let result = after_no_cutoff + after_yes_cutoff + offset in
-    printf "Evaluating summit: %d\n" result;
+    printf "Evaluated summit with offset %d: %d\n" offset result;
     result
   in
   let summit =
@@ -653,24 +679,216 @@ let%expect_test "diamond with non-uniform cutoff structure" =
   print_result summit 0;
   [%expect
     {|
-    Evaluating base: 1
-    Evaluating no_cutoff: 1
-    Evaluating after_no_cutoff: 2
-    Evaluating yes_cutoff: 1
-    Evaluating after_yes_cutoff: 2
-    Evaluating summit: 4
+    Starting evaluating summit with offset 0
+    Starting evaluating after_no_cutoff
+    Starting evaluating no_cutoff
+    Evaluating count_runs: 1
+    Evaluated no_cutoff: 1
+    Evaluated after_no_cutoff: 2
+    Starting evaluating after_yes_cutoff
+    Starting evaluating yes_cutoff
+    Evaluated yes_cutoff: 1
+    Evaluated after_yes_cutoff: 2
+    Evaluated summit with offset 0: 4
     f 0 = Ok 4
+    |}];
+  print_result summit 1;
+  [%expect
+    {|
+    Starting evaluating summit with offset 1
+    Evaluated summit with offset 1: 5
+    f 1 = Ok 5
     |}];
   Memo.restart_current_run ();
   print_result summit 0;
   [%expect
     {|
-    Evaluating base: 2
-    Evaluating yes_cutoff: 1
-    Evaluating no_cutoff: 1
-    Evaluating after_no_cutoff: 2
+    Evaluating count_runs: 2
+    Starting evaluating yes_cutoff
+    Evaluated yes_cutoff: 1
+    Starting evaluating no_cutoff
+    Evaluated no_cutoff: 1
+    Starting evaluating after_no_cutoff
+    Evaluated after_no_cutoff: 2
     f 0 = Ok 4
+    |}];
+  print_result summit 1;
+  [%expect {|
+    f 1 = Ok 5
+    |}];
+  print_result summit 2;
+  [%expect
+    {|
+    Starting evaluating summit with offset 2
+    Evaluated summit with offset 2: 6
+    f 2 = Ok 6
     |}]
+
+(* The test below sets up the following situation:
+
+   - In the initial run, there are no dependency cycles.
+
+   - In all subsequent runs, [first_base_then_summit] gets an additional dynamic
+   dependency and eventually cycles back to itself.
+
+   The dependency chains in the new test have alternating cutoff/no-cutoff
+   structure, to make sure that cycle detection can handle such cases. *)
+let%expect_test "dynamic cycles with non-uniform cutoff structure" =
+  let base = create ~with_cutoff:true "base" (count_runs ()) in
+  let first_base_then_summit which ~summit_fdecl () =
+    printf "Started evaluating %s\n" which;
+    let* base = Memo.exec base () in
+    match base with
+    | 1 ->
+      printf "Evaluated %s: 1\n" which;
+      Build.return 1
+    | input ->
+      let summit = Fdecl.get summit_fdecl in
+      printf "Cycling to summit from %s...\n" which;
+      let+ result = Memo.exec summit input in
+      printf "Miraculously evaluated %s: %d\n" which result;
+      result
+  in
+  let rec incrementing_chain ~end_with_cutoff ~from n =
+    match n with
+    | 0 -> from
+    | _ ->
+      let from =
+        incrementing_chain ~end_with_cutoff:(not end_with_cutoff) ~from (n - 1)
+      in
+      let cutoff =
+        match end_with_cutoff with
+        | false -> "_no_cutoff"
+        | true -> "_yes_cutoff"
+      in
+      let name = "incrementing_chain_" ^ Int.to_string n ^ cutoff in
+      create ~with_cutoff:end_with_cutoff name (increment name from)
+  in
+  let incrementing_chain_plus_input ~end_with_cutoff ~from =
+    let chain =
+      incrementing_chain ~end_with_cutoff:(not end_with_cutoff) ~from 4
+    in
+    let plus_input input =
+      printf "Started evaluating the summit with input %d\n" input;
+      let+ result = Memo.exec chain () in
+      let result = result + input in
+      printf "Evaluated the summit with input %d: %d\n" input result;
+      result
+    in
+    let output =
+      match end_with_cutoff with
+      | true -> Memo.Output.Allow_cutoff (module Int)
+      | false -> Simple (module Int)
+    in
+    Memo.create "incrementing_chain_plus_input"
+      ~input:(module Int)
+      ~visibility:Hidden ~output ~doc:"" Async plus_input
+  in
+  let summit_fdecl = Fdecl.create (fun _ -> Dyn.Opaque) in
+  let cycle_creator_no_cutoff =
+    create ~with_cutoff:false "cycle_creator_no_cutoff"
+      (first_base_then_summit "cycle_creator_no_cutoff" ~summit_fdecl)
+  in
+  let summit_no_cutoff =
+    incrementing_chain_plus_input ~end_with_cutoff:false
+      ~from:cycle_creator_no_cutoff
+  in
+  Fdecl.set summit_fdecl summit_no_cutoff;
+  let summit_fdecl = Fdecl.create (fun _ -> Dyn.Opaque) in
+  let cycle_creator_yes_cutoff =
+    create ~with_cutoff:true "cycle_creator_yes_cutoff"
+      (first_base_then_summit "cycle_creator_yes_cutoff" ~summit_fdecl)
+  in
+  let summit_yes_cutoff =
+    incrementing_chain_plus_input ~end_with_cutoff:true
+      ~from:cycle_creator_yes_cutoff
+  in
+  Fdecl.set summit_fdecl summit_yes_cutoff;
+  print_result summit_no_cutoff 0;
+  [%expect
+    {|
+    Started evaluating the summit with input 0
+    Starting evaluating incrementing_chain_4_yes_cutoff
+    Starting evaluating incrementing_chain_3_no_cutoff
+    Starting evaluating incrementing_chain_2_yes_cutoff
+    Starting evaluating incrementing_chain_1_no_cutoff
+    Started evaluating cycle_creator_no_cutoff
+    Evaluating count_runs: 1
+    Evaluated cycle_creator_no_cutoff: 1
+    Evaluated incrementing_chain_1_no_cutoff: 2
+    Evaluated incrementing_chain_2_yes_cutoff: 3
+    Evaluated incrementing_chain_3_no_cutoff: 4
+    Evaluated incrementing_chain_4_yes_cutoff: 5
+    Evaluated the summit with input 0: 5
+    f 0 = Ok 5 |}];
+  print_result summit_yes_cutoff 0;
+  [%expect
+    {|
+    Started evaluating the summit with input 0
+    Starting evaluating incrementing_chain_4_no_cutoff
+    Starting evaluating incrementing_chain_3_yes_cutoff
+    Starting evaluating incrementing_chain_2_no_cutoff
+    Starting evaluating incrementing_chain_1_yes_cutoff
+    Started evaluating cycle_creator_yes_cutoff
+    Evaluated cycle_creator_yes_cutoff: 1
+    Evaluated incrementing_chain_1_yes_cutoff: 2
+    Evaluated incrementing_chain_2_no_cutoff: 3
+    Evaluated incrementing_chain_3_yes_cutoff: 4
+    Evaluated incrementing_chain_4_no_cutoff: 5
+    Evaluated the summit with input 0: 5
+    f 0 = Ok 5 |}];
+  print_result summit_no_cutoff 2;
+  [%expect
+    {|
+    Started evaluating the summit with input 2
+    Evaluated the summit with input 2: 7
+    f 2 = Ok 7 |}];
+  print_result summit_yes_cutoff 2;
+  [%expect
+    {|
+    Started evaluating the summit with input 2
+    Evaluated the summit with input 2: 7
+    f 2 = Ok 7 |}];
+  Memo.restart_current_run ();
+  print_result summit_no_cutoff 0;
+  [%expect
+    {|
+    Evaluating count_runs: 2
+    Started evaluating cycle_creator_no_cutoff
+    Cycling to summit from cycle_creator_no_cutoff...
+    f 0 = Error
+            [ { exn =
+                  "(\"Attempted to create a cached value based on some stale inputs (old run)\",\n\
+                   {})"
+              ; backtrace = ""
+              }
+            ]
+    Memoized function stack:
+       ("cycle_creator_no_cutoff", ())
+    -> ("incrementing_chain_1_no_cutoff", ())
+    -> ("incrementing_chain_2_yes_cutoff", ())
+    -> ("incrementing_chain_3_no_cutoff", ())
+    -> ("incrementing_chain_4_yes_cutoff", ())
+    -> ("incrementing_chain_plus_input", 0) |}];
+  print_result summit_yes_cutoff 0;
+  [%expect
+    {|
+    Started evaluating cycle_creator_yes_cutoff
+    Cycling to summit from cycle_creator_yes_cutoff...
+    f 0 = Error
+            [ { exn =
+                  "(\"Attempted to create a cached value based on some stale inputs (old run)\",\n\
+                   {})"
+              ; backtrace = ""
+              }
+            ]
+    Memoized function stack:
+       ("cycle_creator_yes_cutoff", ())
+    -> ("incrementing_chain_1_yes_cutoff", ())
+    -> ("incrementing_chain_2_no_cutoff", ())
+    -> ("incrementing_chain_3_yes_cutoff", ())
+    -> ("incrementing_chain_4_no_cutoff", ())
+    -> ("incrementing_chain_plus_input", 0) |}]
 
 let print_exns f =
   let res =

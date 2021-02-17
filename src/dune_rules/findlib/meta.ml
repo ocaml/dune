@@ -203,7 +203,7 @@ let builtins ~stdlib_dir ~version:ocaml_version =
         ; sub "bytecomp" [ "compiler-libs.common" ]
         ; sub "optcomp" [ "compiler-libs.common" ]
         ; sub "toplevel" [ "compiler-libs.bytecomp" ] ~kind:[ Byte ]
-        ; sub "toplevel"
+        ; sub "native-toplevel"
             [ "compiler-libs.optcomp"; "dynlink" ]
             ~kind:[ Native ]
             ~exists_if_ext:(Mode.compiled_lib_ext Native)

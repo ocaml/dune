@@ -105,7 +105,9 @@ let setup_module_rules t =
   let main_ml =
     Action_builder.of_result_map requires_compile ~f:(fun libs ->
         Action_builder.return
-          (let include_dirs = Path.Set.to_list (Lib.L.include_paths libs) in
+          (let include_dirs =
+             Path.Set.to_list (Lib.L.include_paths libs Mode.Byte)
+           in
            let pp_ppx = pp_flags t in
            let pp_dirs = Source.pp_ml t.source ~include_dirs in
            let pp = Pp.seq pp_ppx pp_dirs in

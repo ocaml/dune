@@ -111,7 +111,7 @@ let term =
   let out = Option.map ~f:Path.of_string out in
   Scheduler.go ~common (fun () ->
       let open Fiber.O in
-      let* setup = Import.Main.setup common in
+      let* setup = Memo.Build.run (Import.Main.setup common) in
       let request =
         match targets with
         | [] ->
@@ -120,7 +120,9 @@ let term =
           |> Action_builder.paths
         | _ -> Target.resolve_targets_exn common setup targets |> Target.request
       in
-      let* rules = Build_system.evaluate_rules ~request ~recursive in
+      let* rules =
+        Memo.Build.run (Build_system.evaluate_rules ~request ~recursive)
+      in
       let print oc =
         let ppf = Format.formatter_of_out_channel oc in
         Syntax.print_rules syntax ppf rules;

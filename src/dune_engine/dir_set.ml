@@ -182,8 +182,7 @@ let rec to_dyn =
       ( ( ( match here with
           | true -> [ (".", String "true") ]
           | false -> [] )
-        @ ( String.Map.to_list exceptions
-          |> List.map ~f:(fun (s, t) -> (s, to_dyn t)) )
+        @ String.Map.to_list_map exceptions ~f:(fun s t -> (s, to_dyn t))
         @
         match default with
         | false -> []

@@ -136,6 +136,28 @@ module Common = struct
     Dune_lang.Parser.insert_comments new_csts comments
     |> Format_dune_lang.pp_top_sexps ~version
     |> Format.asprintf "%a@?" Pp.to_fmt
+
+  let ensure_project_file_exists project ~lang_version =
+    let fn = Path.source (Dune_project.file project) in
+    if not (Path.exists fn) then (
+      Console.print
+        [ Pp.textf "Creating %s..." (Path.to_string_maybe_quoted fn) ];
+      Io.write_lines fn ~binary:false
+        (List.concat
+           [ [ sprintf "(lang dune %s)"
+                 (Dune_lang.Syntax.Version.to_string lang_version)
+             ]
+           ; ( match Dune_project.name project with
+             | Anonymous _ -> []
+             | Named s ->
+               [ Dune_lang.to_string
+                   (List
+                      [ Dune_lang.atom "name"
+                      ; Dune_lang.atom_or_quoted_string s
+                      ])
+               ] )
+           ])
+    )
 end
 
 module V1 = struct
@@ -174,7 +196,7 @@ module V1 = struct
       | List (_, l) -> List.exists l ~f:uses_first_dep_var
       | Template x ->
         List.exists x.parts ~f:(function
-          | Dune_lang.Template.Var { name = "<"; _ } -> true
+          | Dune_lang.Template.Pform { name = "<"; _ } -> true
           | _ -> false)
     in
     let rec map_var ~f = function
@@ -185,15 +207,13 @@ module V1 = struct
           { x with
             parts =
               List.map x.parts ~f:(function
-                | Dune_lang.Template.Var v -> f v
+                | Dune_lang.Template.Pform v -> f v
                 | x -> x)
           }
     in
     let upgrade_string s ~loc ~quoted =
       Jbuild_support.String_with_vars.upgrade_to_dune s ~loc ~quoted
         ~allow_first_dep_var:true
-      |> String_with_vars.make |> String_with_vars.encode
-      |> Dune_lang.Ast.add_loc ~loc
     in
     let rec upgrade = function
       | Atom (loc, A s) -> (
@@ -228,8 +248,9 @@ module V1 = struct
           | (Atom (_, A ("preprocess" | "lint")) as field) :: rest ->
             upgrade field
             :: List.map rest ~f:(fun x ->
-                   map_var (upgrade x) ~f:(fun (v : Dune_lang.Template.var) ->
-                       Dune_lang.Template.Var
+                   map_var (upgrade x)
+                     ~f:(fun (v : Dune_lang.Template.Pform.t) ->
+                       Dune_lang.Template.Pform
                          ( if v.name = "<" then
                            { v with name = "input-file" }
                          else
@@ -447,16 +468,16 @@ module V1 = struct
     )
 
   let upgrade todo dir =
-    Dune_project.default_dune_language_version := (1, 0);
+    let lang_version = (1, 0) in
+    Dune_project.default_dune_language_version := lang_version;
     let project = File_tree.Dir.project dir in
     let project_root = Dune_project.root project in
-    ( if project_root = File_tree.Dir.path dir then
-      let (_ : Dune_project.created_or_already_exist) =
-        Dune_project.ensure_project_file_exists project
-      in
+    if project_root = File_tree.Dir.path dir then (
+      ensure_project_file_exists project ~lang_version;
       Package.Name.Map.iter (Dune_project.packages project) ~f:(fun pkg ->
           let fn = Package.opam_file pkg in
-          if Path.exists (Path.source fn) then upgrade_opam_file todo fn) );
+          if Path.exists (Path.source fn) then upgrade_opam_file todo fn)
+    );
     if String.Set.mem (File_tree.Dir.files dir) File_tree.Dune_file.jbuild_fname
     then
       let fn =
@@ -620,10 +641,11 @@ module V2 = struct
 language. Use the (foreign_archives ...) field instead.|}
 
   let upgrade todo dir =
-    Dune_project.default_dune_language_version := (2, 0);
+    let lang_version = (2, 0) in
+    Dune_project.default_dune_language_version := lang_version;
     let project = File_tree.Dir.project dir in
     if Dune_project.root project = File_tree.Dir.path dir then
-      ignore (Dune_project.ensure_project_file_exists project);
+      ensure_project_file_exists project ~lang_version;
     update_project_file todo project;
     upgrade_dune_files todo dir
 end

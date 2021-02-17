@@ -1,7 +1,6 @@
 open! Dune_engine
 open! Stdune
 open Import
-open Action_builder.O
 module SC = Super_context
 
 (* Encoded representation of a set of library names + scope *)
@@ -393,7 +392,7 @@ let get_cookies ~loc ~expander ~lib_name libs =
     | Some lib_name ->
       let library_name = Lib_name.Local.to_string lib_name in
       let bindings =
-        Pform.Map.singleton "library_name" (Values [ String library_name ])
+        Pform.Map.singleton (Var Library_name) [ Value.String library_name ]
       in
       ( Expander.add_bindings expander ~bindings
       , Some ("library-name", (library_name, Lib_name.of_local (loc, lib_name)))
@@ -409,7 +408,7 @@ let get_cookies ~loc ~expander ~lib_name libs =
           | Ppx_deriver { cookies } ->
             List.map
               ~f:(fun { Lib_kind.Ppx_args.Cookie.name; value } ->
-                (name, (Expander.expand_str expander value, Lib.name t)))
+                (name, (Expander.Static.expand_str expander value, Lib.name t)))
               cookies)
       |> (fun l ->
            match library_name_cookie with
@@ -436,7 +435,7 @@ let get_cookies ~loc ~expander ~lib_name libs =
 
 let ppx_driver_and_flags_internal sctx ~loc ~expander ~lib_name ~flags libs =
   let open Result.O in
-  let flags = List.map ~f:(Expander.expand_str expander) flags in
+  let flags = List.map ~f:(Expander.Static.expand_str expander) flags in
   let+ cookies = get_cookies ~loc ~lib_name ~expander libs in
   let sctx = SC.host sctx in
   (ppx_driver_exe sctx libs, flags @ cookies)
@@ -452,7 +451,8 @@ let ppx_driver_and_flags sctx ~lib_name ~expander ~scope ~loc ~flags pps =
   in
   (exe, driver, flags)
 
-let workspace_root_var = String_with_vars.virt_var __POS__ "workspace_root"
+let workspace_root_var =
+  String_with_vars.virt_pform __POS__ (Var Workspace_root)
 
 let promote_correction fn build ~suffix =
   Action_builder.progn
@@ -467,15 +467,18 @@ let chdir action = Action_unexpanded.Chdir (workspace_root_var, action)
 
 let action_for_pp ~dep_kind ~loc ~expander ~action ~src ~target =
   let action = chdir action in
-  let bindings = Pform.Map.input_file (Path.build src) in
+  let bindings =
+    Pform.Map.singleton (Var Input_file) [ Value.Path (Path.build src) ]
+  in
   let expander = Expander.add_bindings expander ~bindings in
   let targets = Targets.Or_forbidden.Forbidden "preprocessing actions" in
   let targets_dir = Option.value ~default:src target |> Path.Build.parent_exn in
   let action =
-    Action_unexpanded.expand action ~loc ~expander ~dep_kind ~targets
-      ~targets_dir
-      (let+ () = Action_builder.path (Path.build src) in
-       Bindings.empty)
+    let expander = Expander.set_dep_kind expander dep_kind in
+    let open Action_builder.With_targets.O in
+    Action_builder.with_no_targets (Action_builder.path (Path.build src))
+    >>> Action_unexpanded.expand action ~loc ~expander ~deps:[] ~targets
+          ~targets_dir
   in
   match target with
   | None -> action
@@ -503,7 +506,7 @@ let setup_dialect_rules sctx ~dir ~dep_kind ~expander (m : Module.t) =
 
 let add_corrected_suffix_binding expander suffix =
   let bindings =
-    Pform.Map.singleton "corrected-suffix" (Values [ String suffix ])
+    Pform.Map.singleton (Var Corrected_suffix) [ Value.String suffix ]
   in
   Expander.add_bindings expander ~bindings
 

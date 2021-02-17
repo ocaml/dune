@@ -48,7 +48,7 @@
 (library
  (name ppx4)
  (public_name foo.ppx4)
- (kind (ppx_rewriter (cookies (germany "lebkuchen") (library-name "%{library_name}"))))
+ (kind (ppx_rewriter (cookies (germany "lebkuchen") (library-name "%{library-name}"))))
  (modules ())
  (libraries driver2))
 

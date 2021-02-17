@@ -70,9 +70,9 @@ module L : sig
 
   val to_iflags : Path.Set.t -> _ Command.Args.t
 
-  val include_paths : ?project:Dune_project.t -> t -> Path.Set.t
+  val include_paths : ?project:Dune_project.t -> t -> Mode.t -> Path.Set.t
 
-  val include_flags : ?project:Dune_project.t -> t -> _ Command.Args.t
+  val include_flags : ?project:Dune_project.t -> t -> Mode.t -> _ Command.Args.t
 
   val c_include_flags : t -> _ Command.Args.t
 

@@ -3,6 +3,52 @@ let on_error = Report_error.report
 open! Stdune
 open Import
 
+module Config = struct
+  include Config
+
+  module Terminal_persistence = struct
+    type t =
+      | Preserve
+      | Clear_on_rebuild
+
+    let all = [ ("preserve", Preserve); ("clear-on-rebuild", Clear_on_rebuild) ]
+  end
+
+  module Display = struct
+    type t =
+      | Progress
+      | Short
+      | Verbose
+      | Quiet
+
+    let all =
+      [ ("progress", Progress)
+      ; ("verbose", Verbose)
+      ; ("short", Short)
+      ; ("quiet", Quiet)
+      ]
+
+    let to_string = function
+      | Progress -> "progress"
+      | Quiet -> "quiet"
+      | Short -> "short"
+      | Verbose -> "verbose"
+
+    let console_backend = function
+      | Progress -> Console.Backend.progress
+      | Short
+      | Verbose
+      | Quiet ->
+        Console.Backend.dumb
+  end
+
+  type t =
+    { concurrency : int
+    ; terminal_persistence : Terminal_persistence.t
+    ; display : Display.t
+    }
+end
+
 type job =
   { pid : Pid.t
   ; ivar : Unix.process_status Fiber.Ivar.t
@@ -61,7 +107,7 @@ end
 (** The event queue *)
 module Event : sig
   type t =
-    | Files_changed
+    | Files_changed of Path.t list
     | Job_completed of job * Unix.process_status
     | Signal of Signal.t
 
@@ -100,7 +146,7 @@ module Event : sig
   with type event := t
 end = struct
   type t =
-    | Files_changed
+    | Files_changed of Path.t list
     | Job_completed of job * Unix.process_status
     | Signal of Signal.t
 
@@ -189,22 +235,21 @@ end = struct
               q.pending_jobs <- q.pending_jobs - 1;
               assert (q.pending_jobs >= 0);
               Job_completed (job, status)
-            | fns ->
+            | fns -> (
               q.files_changed <- [];
-              let only_ignored_files =
-                List.fold_left fns ~init:true ~f:(fun acc fn ->
+              let files =
+                List.filter fns ~f:(fun fn ->
                     let fn = Path.to_absolute_filename fn in
                     if Table.mem q.ignored_files fn then (
                       (* only use ignored record once *)
                       Table.remove q.ignored_files fn;
-                      acc
+                      false
                     ) else
-                      false)
+                      true)
               in
-              if only_ignored_files then
-                loop ()
-              else
-                Files_changed )
+              match files with
+              | [] -> loop ()
+              | _ :: _ -> Files_changed files ) )
       in
       let ev = loop () in
       Mutex.unlock q.mutex;
@@ -609,6 +654,7 @@ type status =
 
 type t =
   { original_cwd : string
+  ; config : Config.t
   ; polling : bool
   ; mutable status : status
   ; job_throttle : Fiber.Throttle.t
@@ -631,10 +677,6 @@ let with_chdir ~dir ~f =
   Sys.chdir (Path.to_string dir);
   protect ~finally:(fun () -> Sys.chdir t.original_cwd) ~f
 
-let set_concurrency n =
-  let t = Fiber.Var.get_exn t_var in
-  Fiber.Throttle.resize t.job_throttle n
-
 exception Cancel_build
 
 let with_job_slot f =
@@ -642,7 +684,7 @@ let with_job_slot f =
   Fiber.Throttle.run t.job_throttle ~f:(fun () ->
       match t.status with
       | Restarting_build -> raise Cancel_build
-      | Building -> f ()
+      | Building -> f t.config
       | Waiting_for_file_changes _ ->
         (* At this stage, we're not running a build, so we shouldn't be running
            tasks here. *)
@@ -681,7 +723,7 @@ let kill_and_wait_for_all_processes t =
   done;
   !saw_signal
 
-let prepare ?(config = Config.default) ~polling () =
+let prepare (config : Config.t) ~polling =
   Log.info
     [ Pp.textf "Workspace root: %s"
         (Path.to_absolute_filename Path.root |> String.maybe_quoted)
@@ -720,14 +762,11 @@ let prepare ?(config = Config.default) ~polling () =
   let t =
     { original_cwd = cwd
     ; status = Building
-    ; job_throttle =
-        Fiber.Throttle.create
-          ( match config.concurrency with
-          | Auto -> 1
-          | Fixed n -> n )
+    ; job_throttle = Fiber.Throttle.create config.concurrency
     ; polling
     ; process_watcher
     ; events
+    ; config
     }
   in
   global := Some t;
@@ -770,7 +809,8 @@ end = struct
       Console.Status_line.refresh ();
       match Event.Queue.next t.events with
       | Job_completed (job, status) -> Fiber.Fill (job.ivar, status)
-      | Files_changed -> (
+      | Files_changed changed_files -> (
+        List.iter changed_files ~f:Fs_notify_memo.invalidate;
         match t.status with
         | Restarting_build ->
           (* We're already cancelling build, so file change events don't matter *)
@@ -813,20 +853,16 @@ end = struct
     | Ok -> res
 end
 
-let go ?config f =
-  let t = prepare ?config ~polling:false () in
+let go config f =
+  let t = prepare config ~polling:false in
   let res = Run_once.run_and_cleanup t f in
   match res with
   | Error (Exn exn) -> Exn_with_backtrace.reraise exn
   | Ok res -> res
   | Error (Got_signal | Never) -> raise Dune_util.Report_error.Already_reported
 
-let maybe_clear_screen ~config =
-  match
-    match config with
-    | Some cfg -> cfg.Config.terminal_persistence
-    | None -> Preserve
-  with
+let maybe_clear_screen (config : Config.t) =
+  match config.terminal_persistence with
   | Clear_on_rebuild -> Console.reset ()
   | Preserve ->
     Console.print_user_message
@@ -837,8 +873,8 @@ let maybe_clear_screen ~config =
          ; Pp.nop
          ])
 
-let poll ?config ~once ~finally () =
-  let t = prepare ?config ~polling:true () in
+let poll (config : Config.t) ~once ~finally =
+  let t = prepare config ~polling:true in
   let watcher = File_watcher.create t.events in
   let rec loop () : Nothing.t Fiber.t =
     t.status <- Building;
@@ -878,7 +914,7 @@ let poll ?config ~once ~finally () =
       let ivar = Fiber.Ivar.create () in
       t.status <- Waiting_for_file_changes ivar;
       let* () = Fiber.Ivar.read ivar in
-      maybe_clear_screen ~config;
+      maybe_clear_screen config;
       loop ()
   in
   let exn, bt =

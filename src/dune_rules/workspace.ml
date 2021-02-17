@@ -19,8 +19,10 @@ module Context = struct
     let equal x y =
       match (x, y) with
       | Native, Native -> true
+      | Native, _
+      | _, Native ->
+        false
       | Named x, Named y -> Context_name.equal x y
-      | _, _ -> false
 
     let t =
       let+ context_name = Context_name.decode in
@@ -32,7 +34,7 @@ module Context = struct
       match x with
       | None -> ts
       | Some t ->
-        if List.mem t ~set:ts then
+        if List.mem ts t ~equal then
           ts
         else
           ts @ [ t ]
@@ -458,7 +460,10 @@ let load ?x ?profile ?instrument_with p =
       if Dune_lexer.eof_reached lb then
         default ?x ?profile ?instrument_with ()
       else
-        parse_contents lb ~f:(fun _lang -> t ?x ?profile ?instrument_with ()))
+        parse_contents lb ~f:(fun lang ->
+            String_with_vars.set_decoding_env
+              (Pform.Env.initial lang.version)
+              (t ?x ?profile ?instrument_with ())))
 
 let default ?x ?profile ?instrument_with () =
   let x = Option.map x ~f:(fun s -> Context.Target.Named s) in

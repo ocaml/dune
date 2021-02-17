@@ -1,0 +1,4 @@
+(library
+ (name csexp_rpc)
+ (synopsis "Threaded client & server that uses csexp for communication")
+ (libraries stdune fiber threads.posix))

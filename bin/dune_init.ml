@@ -1,6 +1,7 @@
 open! Dune_engine
 open! Stdune
 open! Import
+module Dune_file = Dune_rules.Dune_file
 
 (** Because the dune_init utility deals with the addition of stanzas and fields
     to dune projects and files, we need to inspect and manipulate the concrete
@@ -316,7 +317,7 @@ module Component = struct
       |> Cst.concrete (* Package as a list CSTs *) |> List.singleton
 
     let add_to_list_set elem set =
-      if List.mem elem ~set then
+      if List.mem ~equal:Dune_lang.Atom.equal set elem then
         set
       else
         elem :: set

@@ -1,31 +1,36 @@
 open! Stdune
 open Import
 
-let all =
-  [ Installed_libraries.command
-  ; External_lib_deps.command
-  ; Build_cmd.build
-  ; Build_cmd.runtest
-  ; command_alias Build_cmd.runtest "test"
-  ; Clean.command
-  ; Install_uninstall.install
-  ; Install_uninstall.uninstall
-  ; Exec.command
-  ; Subst.command
-  ; Print_rules.command
-  ; Utop.command
-  ; Init.command
-  ; Promote.command
-  ; Printenv.command
-  ; Help.command
-  ; Format_dune_file.command
-  ; Compute.command
-  ; Upgrade.command
-  ; Caching.command
-  ; Describe.command
-  ; Top.command
-  ; Ocaml_merlin.command
-  ]
+let all : _ Term.Group.t list =
+  let terms =
+    [ Installed_libraries.command
+    ; External_lib_deps.command
+    ; Build_cmd.build
+    ; Build_cmd.runtest
+    ; command_alias Build_cmd.runtest "test"
+    ; Clean.command
+    ; Install_uninstall.install
+    ; Install_uninstall.uninstall
+    ; Exec.command
+    ; Subst.command
+    ; Print_rules.command
+    ; Utop.command
+    ; Init.command
+    ; Promote.command
+    ; Printenv.command
+    ; Help.command
+    ; Format_dune_file.command
+    ; Compute.command
+    ; Upgrade.command
+    ; Caching.command
+    ; Describe.command
+    ; Top.command
+    ; Ocaml_merlin.command
+    ]
+    |> List.map ~f:in_group
+  in
+  let groups = [ Ocaml.group ] in
+  terms @ groups
 
 let common_commands_synopsis =
   (* Short reminders for the most used and useful commands *)
@@ -88,7 +93,7 @@ let default =
 let () =
   Colors.setup_err_formatter_colors ();
   try
-    match Term.eval_choice default all ~catch:false with
+    match Term.Group.eval default all ~catch:false with
     | `Error _ -> exit 1
     | _ -> exit 0
   with exn ->

@@ -12,11 +12,13 @@ stubs and js files installed
     "_build/install/default/lib/foo/foo.cmt"
     "_build/install/default/lib/foo/foo.cmx"
     "_build/install/default/lib/foo/foo.cmxa"
-    "_build/install/default/lib/foo/foo.cmxs"
     "_build/install/default/lib/foo/foo.js"
     "_build/install/default/lib/foo/foo.ml"
     "_build/install/default/lib/foo/libfoo_stubs$ext_lib"
     "_build/install/default/lib/foo/opam"
+  ]
+  libexec: [
+    "_build/install/default/lib/foo/foo.cmxs"
   ]
   stublibs: [
     "_build/install/default/lib/stublibs/dllfoo_stubs$ext_dll"
@@ -76,10 +78,12 @@ unwrapped libraries have the correct artifacts
     "_build/install/default/lib/foo/foo.cmti"
     "_build/install/default/lib/foo/foo.cmx"
     "_build/install/default/lib/foo/foo.cmxa"
-    "_build/install/default/lib/foo/foo.cmxs"
     "_build/install/default/lib/foo/foo.ml"
     "_build/install/default/lib/foo/foo.mli"
     "_build/install/default/lib/foo/opam"
+  ]
+  libexec: [
+    "_build/install/default/lib/foo/foo.cmxs"
   ]
 
 wrapped lib with lib interface module
@@ -97,7 +101,6 @@ wrapped lib with lib interface module
     "_build/install/default/lib/foo/foo.cmt"
     "_build/install/default/lib/foo/foo.cmx"
     "_build/install/default/lib/foo/foo.cmxa"
-    "_build/install/default/lib/foo/foo.cmxs"
     "_build/install/default/lib/foo/foo.ml"
     "_build/install/default/lib/foo/foo__.cmi"
     "_build/install/default/lib/foo/foo__.cmt"
@@ -108,6 +111,9 @@ wrapped lib with lib interface module
     "_build/install/default/lib/foo/foo__Bar.cmti"
     "_build/install/default/lib/foo/foo__Bar.cmx"
     "_build/install/default/lib/foo/opam"
+  ]
+  libexec: [
+    "_build/install/default/lib/foo/foo.cmxs"
   ]
 
 wrapped lib without lib interface module
@@ -125,11 +131,13 @@ wrapped lib without lib interface module
     "_build/install/default/lib/foo/foo.cmt"
     "_build/install/default/lib/foo/foo.cmx"
     "_build/install/default/lib/foo/foo.cmxa"
-    "_build/install/default/lib/foo/foo.cmxs"
     "_build/install/default/lib/foo/foo.ml"
     "_build/install/default/lib/foo/foo__Bar.cmi"
     "_build/install/default/lib/foo/foo__Bar.cmt"
     "_build/install/default/lib/foo/foo__Bar.cmti"
     "_build/install/default/lib/foo/foo__Bar.cmx"
     "_build/install/default/lib/foo/opam"
+  ]
+  libexec: [
+    "_build/install/default/lib/foo/foo.cmxs"
   ]

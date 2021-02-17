@@ -1,9 +1,10 @@
-open! Dune_engine
 open! Import
 
 type t =
   | Byte
   | Native
+
+val equal : t -> t -> bool
 
 val compare : t -> t -> Ordering.t
 

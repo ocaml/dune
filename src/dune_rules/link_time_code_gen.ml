@@ -65,19 +65,23 @@ let prvariants buf name preds =
   prlist buf name (Variant.Set.to_list preds) ~f:(fun v ->
       pr buf "%S" (Variant.to_string v))
 
-let public_libs libs =
-  List.filter
+let sorted_public_lib_names libs =
+  List.filter_map
     ~f:(fun lib ->
       let info = Lib.info lib in
       let status = Lib_info.status info in
-      not (Lib_info.Status.is_private status))
+      if Lib_info.Status.is_private status then
+        None
+      else
+        Some (Lib.name lib))
     libs
+  |> List.sort ~compare:Lib_name.compare
 
 let findlib_init_code ~preds ~libs =
   let buf = Buffer.create 1024 in
-  List.iter (public_libs libs) ~f:(fun lib ->
+  List.iter (sorted_public_lib_names libs) ~f:(fun lib ->
       pr buf "Findlib.record_package Findlib.Record_core %S;;"
-        (Lib_name.to_string (Lib.name lib)));
+        (Lib_name.to_string lib));
   prvariants buf "preds" preds;
   pr buf "in";
   pr buf "let preds =";
@@ -200,8 +204,8 @@ let dune_site_plugins_code ~libs ~builtins =
   Variant.Set.iter Findlib.findlib_predicates_set_by_dune ~f:(fun variant ->
       pr buf "   | _, %S -> true" (Variant.to_string variant));
   pr buf "   | _, _ -> false";
-  prlist buf "already_linked_libraries" (public_libs libs) ~f:(fun lib ->
-      pr buf "%S" (Lib_name.to_string (Lib.name lib)));
+  prlist buf "already_linked_libraries" (sorted_public_lib_names libs)
+    ~f:(fun lib -> pr buf "%S" (Lib_name.to_string lib));
   pr buf "open Dune_site_plugins.Private_.Meta_parser";
   prlist buf "builtin_library" (Package.Name.Map.to_list builtins)
     ~f:(fun (name, meta) ->

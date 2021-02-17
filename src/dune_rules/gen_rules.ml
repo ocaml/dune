@@ -114,7 +114,7 @@ end = struct
     | Copy_files { files = glob; _ } ->
       let source_dirs =
         let loc = String_with_vars.loc glob in
-        let src_glob = Expander.expand_str expander glob in
+        let src_glob = Expander.Static.expand_str expander glob in
         if Filename.is_relative src_glob then
           Some
             ( Path.Source.relative src_dir src_glob ~error_loc:loc
@@ -213,7 +213,7 @@ let gen_rules sctx dir_contents cctxs expander
       { Install_conf.section = _; files; package = _; enabled_if = _ } =
     Path.Set.of_list_map files ~f:(fun fb ->
         File_binding.Unexpanded.expand_src ~dir:ctx_dir fb
-          ~f:(Expander.expand_str expander)
+          ~f:(Expander.Static.expand_str expander)
         |> Path.build)
     |> Rules.Produce.Alias.add_deps (Alias.all ~dir:ctx_dir)
   in
@@ -385,7 +385,7 @@ let filter_out_stanzas_from_hidden_packages ~visible_pkgs =
         | _ -> None)
 
 let gen ~contexts ?only_packages conf =
-  let open Fiber.O in
+  let open Memo.Build.O in
   let { Dune_load.dune_files; packages; projects; vcs } = conf in
   let packages = Option.value only_packages ~default:packages in
   let rec sctxs =
@@ -394,10 +394,10 @@ let gen ~contexts ?only_packages conf =
     lazy
       (Context_name.Map.of_list_map_exn contexts ~f:(fun (c : Context.t) ->
            (c.name, Memo.Lazy.Async.create (fun () -> make_sctx c))))
-  and make_sctx (context : Context.t) : _ Fiber.t =
+  and make_sctx (context : Context.t) =
     let host () =
       match context.for_host with
-      | None -> Fiber.return None
+      | None -> Memo.Build.return None
       | Some h ->
         let+ sctx =
           Memo.Lazy.Async.force
@@ -417,7 +417,7 @@ let gen ~contexts ?only_packages conf =
                   dir_conf.stanzas
             })
     in
-    let+ host, stanzas = Fiber.fork_and_join host stanzas in
+    let+ host, stanzas = Memo.Build.fork_and_join host stanzas in
     let sctx =
       Super_context.create ?host ~context ~projects ~packages ~stanzas ()
     in
@@ -425,7 +425,7 @@ let gen ~contexts ?only_packages conf =
   in
   let* sctxs =
     Lazy.force sctxs |> Context_name.Map.to_list
-    |> Fiber.parallel_map ~f:(fun (name, sctx) ->
+    |> Memo.Build.parallel_map ~f:(fun (name, sctx) ->
            let+ sctx = Memo.Lazy.Async.force sctx in
            (name, sctx))
     >>| Context_name.Map.of_list_exn

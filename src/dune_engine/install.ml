@@ -22,6 +22,10 @@ module Dst : sig
   val compare : t -> t -> Ordering.t
 
   val infer : src_basename:string -> Section.t -> t
+
+  include Dune_lang.Conv.S with type t := t
+
+  val to_dyn : t -> Dyn.t
 end = struct
   type t = string
 
@@ -68,6 +72,12 @@ end = struct
         None
       else
         Some s
+
+  let decode = Dune_lang.Decoder.string
+
+  let encode = Dune_lang.Encoder.string
+
+  let to_dyn = Dyn.Encoder.string
 end
 
 module Section_with_site = struct
@@ -104,6 +114,13 @@ module Section_with_site = struct
             >>> pair Package.Name.decode Section.Site.decode
             >>| fun (pkg, site) -> Site { pkg; site } )
         ] )
+
+  let encode =
+    let open Dune_lang.Encoder in
+    function
+    | Section s -> Section.encode s
+    | Site { pkg; site } ->
+      constr "site" (pair Package.Name.encode Section.Site.encode) (pkg, site)
 end
 
 module Section = struct
@@ -196,57 +213,66 @@ module Entry = struct
       else
         Section.compare x.section y.section
 
-  let adjust_dst ~src ~dst ~section =
-    let error var =
-      User_error.raise
-        ~loc:(String_with_vars.Var.loc var)
+  let adjust_dst_gen =
+    let error (source_pform : Dune_lang.Template.Pform.t) =
+      User_error.raise ~loc:source_pform.loc
         [ Pp.textf
             "Because this file is installed in the 'bin' section, you cannot \
-             use the variable %s in its basename."
-            (String_with_vars.Var.describe var)
+             use the %s %s in its basename."
+            (Dune_lang.Template.Pform.describe_kind source_pform)
+            (Dune_lang.Template.Pform.describe source_pform)
         ]
     in
-    let is_source_executable () =
-      let has_ext ext =
-        match String_with_vars.Partial.is_suffix ~suffix:ext src with
-        | Unknown var -> error var
-        | Yes -> true
-        | No -> false
-      in
-      has_ext ".exe" || has_ext ".bc"
-    in
-    let src_basename () =
-      match src with
-      | Expanded s -> Filename.basename s
-      | Unexpanded src -> (
-        match String_with_vars.known_suffix src with
-        | Full s -> Filename.basename s
-        | Partial (var, suffix) -> (
-          match String.rsplit2 ~on:'/' suffix with
-          | Some (_, basename) -> basename
-          | None -> error var ) )
-    in
-    match dst with
-    | Some dst' when Filename.extension dst' = ".exe" -> Dst.explicit dst'
-    | _ ->
-      let dst =
-        match dst with
-        | None -> Dst.infer ~src_basename:(src_basename ()) section
-        | Some dst -> Dst.explicit dst
-      in
-      let is_executable = is_source_executable () in
-      if
-        Sys.win32 && is_executable
-        && Filename.extension (Dst.to_string dst) <> ".exe"
-      then
-        Dst.explicit (Dst.to_string dst ^ ".exe")
-      else
-        dst
+    fun ~(src_suffix : String_with_vars.known_suffix) ~dst ~section ->
+      match dst with
+      | Some dst' when Filename.extension dst' = ".exe" -> Dst.explicit dst'
+      | _ ->
+        let dst =
+          match dst with
+          | None ->
+            let src_basename =
+              match src_suffix with
+              | Full s -> Filename.basename s
+              | Partial { source_pform; suffix } -> (
+                match String.rsplit2 ~on:'/' suffix with
+                | Some (_, basename) -> basename
+                | None -> error source_pform )
+            in
+            Dst.infer ~src_basename section
+          | Some dst -> Dst.explicit dst
+        in
+        let is_executable =
+          let has_ext ext =
+            match src_suffix with
+            | Full s -> String.is_suffix s ~suffix:ext
+            | Partial { source_pform; suffix } ->
+              if String.is_suffix suffix ~suffix:ext then
+                true
+              else if String.is_suffix ext ~suffix then
+                error source_pform
+              else
+                false
+          in
+          has_ext ".exe" || has_ext ".bc"
+        in
+        if
+          Sys.win32 && is_executable
+          && Filename.extension (Dst.to_string dst) <> ".exe"
+        then
+          Dst.explicit (Dst.to_string dst ^ ".exe")
+        else
+          dst
+
+  let adjust_dst ~src ~dst ~section =
+    adjust_dst_gen ~src_suffix:(String_with_vars.known_suffix src) ~dst ~section
+
+  let adjust_dst' ~src ~dst ~section =
+    adjust_dst_gen
+      ~src_suffix:(Full (Path.to_string (Path.build src)))
+      ~dst ~section
 
   let make section ?dst src =
-    let dst =
-      adjust_dst ~src:(Expanded (Path.to_string (Path.build src))) ~dst ~section
-    in
+    let dst = adjust_dst' ~src ~dst ~section in
     { src; dst; section }
 
   let make_with_site section ?dst get_section src =
@@ -254,11 +280,7 @@ module Entry = struct
     | Section_with_site.Section section -> make section ?dst src
     | Site { pkg; site } ->
       let section = get_section ~pkg ~site in
-      let dst =
-        adjust_dst
-          ~src:(Expanded (Path.to_string (Path.build src)))
-          ~dst ~section
-      in
+      let dst = adjust_dst' ~src ~dst ~section in
       let dst = Dst.add_prefix (Section.Site.to_string site) dst in
       let dst_with_pkg_prefix =
         Dst.add_prefix (Package.Name.to_string pkg) dst

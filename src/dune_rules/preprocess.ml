@@ -26,7 +26,7 @@ module Pps_and_flags = struct
     if syntax_version < (1, 10) then
       List.iter
         ~f:(fun flag ->
-          if String_with_vars.has_vars flag then
+          if String_with_vars.has_pforms flag then
             Dune_lang.Syntax.Error.since
               (String_with_vars.loc flag)
               Stanza.syntax (1, 10) ~what:"Using variables in pps flags")
@@ -95,7 +95,15 @@ let decode =
   sum
     [ ("no_preprocessing", return No_preprocessing)
     ; ( "action"
-      , located Action_dune_lang.decode >>| fun (loc, x) -> Action (loc, x) )
+      , let+ loc, x =
+          located
+            (update_var String_with_vars.decoding_env_key
+               ~f:(fun env ->
+                 let env = Option.value_exn env in
+                 Some (Pform.Env.lt_renamed_input_file env))
+               Action_dune_lang.decode)
+        in
+        Action (loc, x) )
     ; ( "pps"
       , let+ loc = loc
         and+ pps, flags = Pps_and_flags.decode in
@@ -150,7 +158,7 @@ let remove_future_syntax (t : 'a t) ~(for_ : Pp_flag_consumer.t) v :
       Action
         ( loc
         , Run
-            ( String_with_vars.make_var loc "bin" ~payload:"ocaml-syntax-shims"
+            ( String_with_vars.make_pform loc (Macro (Bin, "ocaml-syntax-shims"))
             , ( match for_ with
               | Compiler -> [ String_with_vars.make_text loc "-dump-ast" ]
               | Merlin ->
@@ -165,7 +173,7 @@ let remove_future_syntax (t : 'a t) ~(for_ : Pp_flag_consumer.t) v :
                    Hopefully this will be fixed in merlin before that becomes a
                    necessity. *)
                 [] )
-              @ [ String_with_vars.make_var loc "input-file" ] ) )
+              @ [ String_with_vars.make_pform loc (Var Input_file) ] ) )
 
 module Per_module = struct
   module Per_module = Module_name.Per_item

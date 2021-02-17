@@ -1,9 +1,48 @@
 Unreleased
 ----------
 
+- Allow `(package pkg)` in dependencies even if `pkg` is an installed package
+  (#4170, @bobot)
+
 - Fixed a bug that could result in needless recompilation under Windows due to
   case differences in the result of `Sys.getcwd` (observed under `emacs`).
   (#3966, @nojb).
+
+- Fixed absence of executable bit for installed `.cmxs` (#4149, fixes #4148, @bobot)
+
+- Allow `%{version:pkg}` to work for external packages (#4104, @kit-ty-kate)
+
+- Add `(glob_files_rec <dir>/<glob>)` for globbing files recursively (#4176, @jeremiedimino)
+
+- Automatically generate empty `.mli` files for executables and tests (#3768,
+  fixes #3745, @CraigFe)
+
+- Add `ocaml` command subgroup for OCaml related commands such as `utop`, `top`,
+  and `merlin` (#3936, @rgrinberg).
+
+- Do not pass include directories containing native objects when compiling
+  bytecode (#4200, @nojb)
+
+- Detect unknown variables more eagerly (#4184, @jeremiedimino)
+
+- Improve location of variables and macros in error messages (#4205,
+  @jeremiedimino)
+
+- Auto-detect `dune-project` files as `dune` files in Emacs (#4222, @shonfeder)
+
+- Restore compatibility with Coq < 8.10 for coq-lang < 0.3 , document
+  that `(using coq 0.3)` does require Coq 8.10 at least (#4224, fixes
+  #4142, @ejgallego)
+
+- Add a META rule for 'compiler-libs.native-toplevel' (#4175, @altgr)
+
+- No longer call `chmod` on symbolic links (fixes #4195, @dannywillems)
+
+- Dune no longer automatically create or edit `dune-project` files
+  (#4239, fixes #4108, @jeremiedimino)
+
+- Have `dune` communicate the location of the standard library directory to
+  `merlin` (#4211, fixes #4188, @nojb)
 
 2.8.2 (21/01/2021)
 ------------------
@@ -1460,8 +1499,9 @@ Unreleased
   help Windows builds where paths are limited in length (#1511, fixes
   #1497, @diml)
 
-- Fix interpretation of environment variables under `setenv`. Also forbid
-  dynamic environment names or values (#1503, @rgrinberg).
+- Fix interpretation of `%{env:<var>=<default>}` environment variables
+  under `setenv`. Also forbid dynamic environment names or values
+  (#1503, @rgrinberg).
 
 1.4.0 (10/10/2018)
 ------------------
@@ -1508,6 +1548,10 @@ Unreleased
   installed (#1391, @nojb)
 
 - Take argument to self_build_stubs_archive into account. (#1395, @nojb)
+
+- New variable form `%{env:<var>=<default>}` that expands to the environment
+  variable `<var>`, or `<default>` if not found. Example: `%{env:BIN=/usr/bin}`.
+  (#1305, @trefis)
 
 - Fix bad interaction between `env` customization and vendored
   projects: when a vendored project didn't have its own `env` stanza,

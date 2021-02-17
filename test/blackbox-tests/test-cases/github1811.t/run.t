@@ -4,5 +4,5 @@ Check that %{targets} is forbidden in preprocessing actions
   File "dune", line 3, characters 37-47:
   3 |  (preprocess (action (with-stdout-to %{targets} (run cat %{input-file})))))
                                            ^^^^^^^^^^
-  Error: Preprocessing actions must not have targets.
+  Error: You cannot use %{targets} in preprocessing actions.
   [1]

@@ -205,8 +205,8 @@ module Set = struct
 
   include T
 
-  let parallel_iter t ~f = Fiber.parallel_iter_set (module T) t ~f
+  let parallel_iter t ~f = Memo.Build.parallel_iter_set (module T) t ~f
 
   let parallel_iter_files t ~f =
-    paths t |> Fiber.parallel_iter_set (module Path.Set) ~f
+    paths t |> Memo.Build.parallel_iter_set (module Path.Set) ~f
 end

@@ -30,7 +30,7 @@ let term =
   Common.set_common common ~targets:[];
   Scheduler.go ~common (fun () ->
       let open Fiber.O in
-      let* setup = Import.Main.setup common in
+      let* setup = Memo.Build.run (Import.Main.setup common) in
       let sctx =
         Dune_engine.Context_name.Map.find setup.scontexts ctx_name
         |> Option.value_exn
@@ -47,14 +47,18 @@ let term =
       let requires =
         Dune_rules.Lib.closure ~linking:true libs |> Result.ok_exn
       in
-      let include_paths = Dune_rules.Lib.L.include_paths requires in
+      let include_paths =
+        Dune_rules.Lib.L.include_paths requires Dune_engine.Mode.Byte
+      in
       let files = link_deps requires in
-      let* () = do_build (List.map files ~f:(fun f -> Target.File f)) in
+      let* () =
+        Memo.Build.run (do_build (List.map files ~f:(fun f -> Target.File f)))
+      in
       let files_to_load =
         List.filter files ~f:(fun p ->
             let ext = Path.extension p in
-            ext = Dune_rules.Mode.compiled_lib_ext Byte
-            || ext = Dune_rules.Cm_kind.ext Cmo)
+            ext = Dune_engine.Mode.compiled_lib_ext Byte
+            || ext = Dune_engine.Cm_kind.ext Cmo)
       in
       Dune_rules.Toplevel.print_toplevel_init_file ~include_paths ~files_to_load;
       Fiber.return ())

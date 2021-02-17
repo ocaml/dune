@@ -167,10 +167,6 @@ val file_exists : Path.t -> bool t
     [file_exists p] evaluates to [true], and [else_] otherwise. *)
 val if_file_exists : Path.t -> then_:'a t -> else_:'a t -> 'a t
 
-(** [filter_existing_files p] is an action builder which keep only the existing
-    files. The files are not registered as dynamic dependencies. *)
-val filter_existing_files : ('a * Path.Set.t) t -> ('a * Path.Set.t) t
-
 (** Always fail when executed. We pass a function rather than an exception to
     get a proper backtrace *)
 val fail : fail -> _ t
@@ -210,18 +206,25 @@ val static_deps : _ t -> Static_deps.t
 (** Compute static library dependencies of an action builder. *)
 val fold_labeled : _ t -> init:'acc -> f:(label -> 'acc -> 'acc) -> 'acc
 
+(** Returns [Some (x, t)] if the following can be evaluated statically. The
+    returned [t] should be attached to the current action builder to record
+    dependencies and other informations. Otherwise return [None]. *)
+val static_eval : 'a t -> ('a * unit t) option
+
+module Expander : String_with_vars.Expander with type 'a app := 'a t
+
 (** {1 Execution} *)
 
 module Make_exec (Build_deps : sig
-  val build_deps : Dep.Set.t -> unit Fiber.t
+  val build_deps : Dep.Set.t -> unit Memo.Build.t
 end) : sig
   (** Execute an action builder. Returns the result and the set of dynamic
       dependencies discovered during execution. *)
-  val exec : 'a t -> ('a * Dep.Set.t) Fiber.t
+  val exec : 'a t -> ('a * Dep.Set.t) Memo.Build.t
 
   (** Same as [exec] but also builds the static rule dependencies of the action
       builder. *)
-  val build_static_rule_deps_and_exec : 'a t -> ('a * Dep.Set.t) Fiber.t
+  val build_static_rule_deps_and_exec : 'a t -> ('a * Dep.Set.t) Memo.Build.t
 end
 
 (** These functions are experimental and potentially unsafe to use. Each usage
@@ -230,18 +233,18 @@ module Expert : sig
   (** This function "stages" static dependencies and can therefore reduce build
       parallelism: until the outer action builder has been evaluated, the static
       dependencies of the inner action builder are unknown. *)
-  val build : 'a t t -> 'a t
+  val action_builder : 'a t t -> 'a t
 end
 
-(** If you're thinking of using [Process.run] in the fiber, check that: (i) you
-    don't in fact need [Command.run], and that (ii) [Process.run] only reads the
-    declared build rule dependencies. *)
-val fiber : 'a Fiber.t -> 'a t
+(** If you're thinking of using [Process.run] here, check that: (i) you don't in
+    fact need [Command.run], and that (ii) [Process.run] only reads the declared
+    build rule dependencies. *)
+val memo_build : 'a Memo.Build.t -> 'a t
 
-(** If you're thinking of using [Process.run] in the fiber, check that: (i) you
-    don't in fact need [Command.run], and that (ii) [Process.run] only reads the
-    declared build rule dependencies. *)
-val dyn_fiber : 'a Fiber.t t -> 'a t
+(** If you're thinking of using [Process.run] here, check that: (i) you don't in
+    fact need [Command.run], and that (ii) [Process.run] only reads the declared
+    build rule dependencies. *)
+val dyn_memo_build : 'a Memo.Build.t t -> 'a t
 
 (**/**)
 

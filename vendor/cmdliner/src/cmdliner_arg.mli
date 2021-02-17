@@ -1,7 +1,7 @@
 (*---------------------------------------------------------------------------
    Copyright (c) 2011 Daniel C. Bünzli. All rights reserved.
    Distributed under the ISC license, see terms at the end of the file.
-   cmdliner v1.0.4-3-ga5ff0e8
+   cmdliner v1.0.4-24-gb0f156d
   ---------------------------------------------------------------------------*)
 
 (** Command line arguments as terms. *)

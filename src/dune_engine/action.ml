@@ -14,13 +14,15 @@ module Prog = struct
 
     let create ?hint ~context ~program ~loc () = { hint; context; program; loc }
 
-    let raise { context; program; hint; loc } =
+    let user_message { context; program; hint; loc } =
       let hint =
         match program with
         | "refmt" -> Some (Option.value ~default:"opam install reason" hint)
         | _ -> hint
       in
-      Utils.program_not_found ?hint ~loc ~context program
+      Utils.program_not_found_message ?hint ~loc ~context program
+
+    let raise t = raise (User_error.E (user_message t))
 
     let to_dyn { context; program; hint; loc = _ } =
       let open Dyn.Encoder in
@@ -114,41 +116,6 @@ let for_shell t =
       match x with
       | Ok p -> Path.reach p ~from:dir
       | Error e -> e.program)
-
-module Unresolved = struct
-  module Program = struct
-    type t =
-      | This of Path.t
-      | Search of Loc.t option * string
-
-    let of_string ~dir ~loc s =
-      if String.contains s '/' then
-        This (Path.relative dir s)
-      else
-        Search (loc, s)
-  end
-
-  module type Uast =
-    Action_intf.Ast
-      with type program = Program.t
-      with type path = Path.t
-      with type target = Path.Build.t
-      with type string = String.t
-
-  module rec Uast : Uast = Uast
-
-  include Uast
-  include Action_mapper.Make (Uast) (Ast)
-
-  let resolve t ~f =
-    map t ~dir:Path.root
-      ~f_path:(fun ~dir:_ x -> x)
-      ~f_target:(fun ~dir:_ x -> x)
-      ~f_string:(fun ~dir:_ x -> x)
-      ~f_program:(fun ~dir:_ -> function
-        | This p -> Ok p
-        | Search (loc, s) -> Ok (f loc s))
-end
 
 let fold_one_step t ~init:acc ~f =
   match t with

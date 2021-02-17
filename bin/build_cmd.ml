@@ -3,26 +3,20 @@ open Import
 
 let run_build_command ~common ~targets =
   let once () =
-    let open Fiber.O in
-    let* setup = Import.Main.setup common in
-    do_build (targets setup)
+    Memo.Build.run
+      (let open Memo.Build.O in
+      let* setup = Import.Main.setup common in
+      do_build (targets setup))
   in
   if Common.watch common then
     let once () =
       Cached_digest.invalidate_cached_timestamps ();
       once ()
     in
-    Scheduler.poll ~common ~once ~finally:Hooks.End_of_build.run ()
+    Scheduler.poll ~common ~once ~finally:Hooks.End_of_build.run
   else
     Scheduler.go ~common once;
-  match Build_system.get_cache () with
-  | Some { cache = (module Caching : Cache.Caching); _ } ->
-    (* Synchronously wait for the end of the connection with the cache daemon,
-       ensuring all dedup messages have been queued. *)
-    Caching.Cache.teardown Caching.cache;
-    (* Hande all remaining dedup messages. *)
-    Scheduler.wait_for_dune_cache ()
-  | None -> ()
+  Build_system.cache_teardown ()
 
 let runtest =
   let doc = "Run tests." in

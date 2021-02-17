@@ -23,6 +23,9 @@ type status =
           [daemon_info] and [pid]. *)
   | Finished  (** The daemon was run synchronously and exited. *)
 
+val retry :
+  ?message:string -> ?count:int -> (unit -> 'a option) -> ('a, string) result
+
 val daemonize :
      ?workdir:Path.t (** The path to chdir to *)
   -> ?foreground:bool

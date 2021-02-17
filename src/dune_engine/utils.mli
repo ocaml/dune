@@ -13,6 +13,13 @@ val bash_exn : needed_to:string -> Path.t
 val program_not_found :
   ?context:Context_name.t -> ?hint:string -> loc:Loc.t option -> string -> _
 
+val program_not_found_message :
+     ?context:Context_name.t
+  -> ?hint:string
+  -> loc:Loc.t option
+  -> string
+  -> User_message.t
+
 (** Raise an error about a library not found *)
 val library_not_found : ?context:Context_name.t -> ?hint:string -> string -> _
 

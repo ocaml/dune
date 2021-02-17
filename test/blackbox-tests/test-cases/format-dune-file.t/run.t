@@ -171,7 +171,7 @@ Files in OCaml syntax are copied verbatim (but error when passed in stdin).
 
 Non 0 error code:
 
-  $ echo "(" | dune format ; echo $?
+  $ echo "(" | dune format-dune-file ; echo $?
   File "", line 2, characters 0-0:
   Error: unclosed parenthesis at end of input
   1

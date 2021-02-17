@@ -29,22 +29,8 @@ val remove_locs : t -> t
 val expand :
      t
   -> loc:Loc.t
-  -> dep_kind:Lib_deps_info.Kind.t
+  -> deps:Dep_conf.t Bindings.t
   -> targets_dir:Path.Build.t
   -> targets:Targets.Or_forbidden.t
   -> expander:Expander.t
-  -> Path.t Bindings.t Action_builder.t
   -> Action.t Action_builder.With_targets.t
-
-(** This module is exposed only for testing *)
-module Infer : sig
-  module Outcome : sig
-    type t = private
-      { deps : Path.Set.t
-      ; deps_if_exist : Path.Set.t
-      ; targets : Path.Build.Set.t
-      }
-  end
-
-  val infer : Action.t -> Outcome.t
-end

@@ -180,6 +180,10 @@ Dune supports the following variables:
   ``false`` otherwise
 - ``<ext>:<path>`` where ``<ext>`` is one of ``cmo``, ``cmi``, ``cma``,
   ``cmx``, or ``cmxa``. See :ref:`variables-for-artifacts`.
+- ``env:<var>=<default``, which expands to the value of the environment
+  variable ``<var>``, or ``<default>`` if it does not exist.
+  For example, ``%{env:BIN=/usr/bin}``.
+  Available since dune 1.4.0.
 
 In addition, ``(action ...)`` fields support the following special variables:
 
@@ -221,8 +225,9 @@ In addition, ``(action ...)`` fields support the following special variables:
      available
 
 - ``version:<package>`` expands to the version of the given
-  package. Note that this is only supported for packages that are
-  being defined in the current scope. How dune determines the version
+  package. Packages defined in the current scope have priority over the
+  public packages. Public packages that do not install any libraries
+  will not be detected. How dune determines the version
   of a package is described :ref:`here <package-version>`
 - ``read:<path>`` expands to the contents of the given file
 - ``read-lines:<path>`` expands to the list of lines in the given

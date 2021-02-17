@@ -44,7 +44,9 @@ let term =
       & info [ "no-build" ] ~doc:"don't rebuild target before executing")
   and+ args = Arg.(value & pos_right 0 string [] (Arg.info [] ~docv:"ARGS")) in
   Common.set_common common ~targets:[ Arg.Dep.file prog ];
-  let setup = Scheduler.go ~common (fun () -> Import.Main.setup common) in
+  let setup =
+    Scheduler.go ~common (fun () -> Memo.Build.run (Import.Main.setup common))
+  in
   let sctx = Import.Main.find_scontext_exn setup ~name:context in
   let context = Dune_rules.Super_context.context sctx in
   let path_relative_to_build_root p =
@@ -83,7 +85,10 @@ let term =
       match Lazy.force targets with
       | [] -> ()
       | targets ->
-        Scheduler.go ~common (fun () -> do_build targets);
+        Scheduler.go ~common (fun () -> Memo.Build.run (do_build targets));
+        Build_system.cache_teardown ();
+        (* We must manually run the hook because Unix.exec will not run
+           [at_exit] hooks *)
         Hooks.End_of_build.run () );
     match prog_where with
     | `Search prog ->

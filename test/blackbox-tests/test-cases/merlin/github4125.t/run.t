@@ -1,3 +1,15 @@
+We call `$(opam switch show)` so that this test always uses an existing switch
+
+  $ cat >dune-workspace <<EOF
+  > (lang dune 2.0)
+  > (context (default))
+  > (context
+  > (opam
+  >  (name cross)
+  >  (switch $(opam switch show))
+  >  (merlin)))
+  > EOF
+
   $ dune build
 
   $ ls -a _build/cross/.merlin-conf
@@ -5,9 +17,11 @@
   ..
   lib-foo
 
-  $ dune ocaml-merlin --dump-config="$(pwd)"
+  $ dune ocaml-merlin --dump-config="$(pwd)" |
+  > sed 's#'$(opam config var prefix)'#OPAM_PREFIX#'
   Foo
-  ((EXCLUDE_QUERY_DIR)
+  ((STDLIB OPAM_PREFIX/lib/ocaml)
+   (EXCLUDE_QUERY_DIR)
    (B
     $TESTCASE_ROOT/_build/cross/.foo.objs/byte)
    (S

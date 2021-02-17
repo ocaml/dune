@@ -38,6 +38,8 @@ val packages : t -> Package.t Package.Name.Map.t
 
 val host : t -> t
 
+val any_package : t -> Package.Name.t -> Expander.any_package option
+
 val get_site_of_packages :
   t -> pkg:Package.Name.t -> site:Section.Site.t -> Section.t
 

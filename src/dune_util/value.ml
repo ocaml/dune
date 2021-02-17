@@ -46,6 +46,8 @@ let to_path ?error_loc t ~dir =
     p
 
 module L = struct
+  let to_dyn t = Dyn.List (List.map t ~f:to_dyn)
+
   let to_strings t ~dir = List.map t ~f:(to_string ~dir)
 
   let compare_vals ~dir = List.compare ~compare:(compare_vals ~dir)

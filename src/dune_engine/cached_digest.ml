@@ -104,7 +104,7 @@ let refresh fn =
   refresh_ stats fn
 
 let refresh_and_chmod fn =
-  let stats = Path.stat fn in
+  let stats = Path.lstat fn in
   let () =
     (* We remove write permissions to uniformize behavior regardless of whether
        the cache is activated. No need to be zealous in case the file is not
@@ -145,9 +145,13 @@ let peek_file fn =
       ) )
 
 let file fn =
-  match peek_file fn with
-  | None -> refresh fn
-  | Some v -> v
+  let res =
+    match peek_file fn with
+    | None -> refresh fn
+    | Some v -> v
+  in
+  Fs_notify_memo.depend fn;
+  res
 
 let remove fn =
   let cache = Lazy.force cache in

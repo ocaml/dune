@@ -157,6 +157,7 @@ module Context = struct
 
   let coqc_native_flags cctx : _ Command.Args.t =
     match cctx.mode with
+    | Coq_mode.Legacy -> Command.Args.As []
     | Coq_mode.VoOnly ->
       Command.Args.As
         [ "-w"; "-native-compiler-disabled"; "-native-compiler"; "ondemand" ]
@@ -214,7 +215,9 @@ module Context = struct
           List.fold_left theories_deps ~init:theory_dirs ~f:(fun acc lib ->
               let theory_dirs = directories_of_lib ~sctx lib in
               Path.Build.Set.(union acc (of_list theory_dirs))))
-    | Coq_mode.VoOnly -> Or_exn.return Path.Build.Set.empty
+    | Coq_mode.VoOnly
+    | Coq_mode.Legacy ->
+      Or_exn.return Path.Build.Set.empty
 
   let create ~coqc_dir sctx ~dir ~wrapper_name ~theories_deps ~theory_dirs
       (buildable : Buildable.t) =

@@ -29,7 +29,9 @@ module Profile = Dune_rules.Profile
 module Log = Dune_util.Log
 include Common.Let_syntax
 
-let make_cache (config : Config.t) =
+let in_group (t, info) = (Term.Group.Term t, info)
+
+let make_cache (config : Dune_config.t) =
   let make_cache () =
     let command_handler (Cache.Dedup file) =
       match Build_system.get_cache () with
@@ -37,7 +39,7 @@ let make_cache (config : Config.t) =
       | Some caching -> Scheduler.send_dedup caching.cache file
     in
     match config.cache_transport with
-    | Config.Caching.Transport.Direct ->
+    | Dune_config.Caching.Transport.Direct ->
       Log.info [ Pp.text "enable binary cache in direct access mode" ];
       let cache =
         Result.ok_exn
@@ -58,12 +60,12 @@ let make_cache (config : Config.t) =
   in
   Fiber.return
     ( match config.cache_mode with
-    | Config.Caching.Mode.Enabled ->
+    | Dune_config.Caching.Mode.Enabled ->
       Some
         { Build_system.cache = make_cache ()
         ; check_probability = config.cache_check_probability
         }
-    | Config.Caching.Mode.Disabled ->
+    | Dune_config.Caching.Mode.Disabled ->
       Log.info [ Pp.text "disable binary cache" ];
       None )
 
@@ -83,8 +85,8 @@ module Main = struct
       ~ancestor_vcs ()
 
   let setup common =
-    let open Fiber.O in
-    let* caching = make_cache (Common.config common) in
+    let open Memo.Build.O in
+    let* caching = Memo.Build.of_fiber (make_cache (Common.config common)) in
     let* workspace = scan_workspace common in
     let only_packages =
       Option.map (Common.only_packages common)
@@ -126,20 +128,16 @@ end
 
 module Scheduler = struct
   include Dune_engine.Scheduler
-  open Fiber.O
 
   let go ~(common : Common.t) f =
     let config = Common.config common in
-    let f () = Main.set_concurrency config >>= f in
-    Scheduler.go ~config f
+    let config = Dune_config.for_scheduler config in
+    Scheduler.go config f
 
-  let poll ~(common : Common.t) ~once ~finally () =
+  let poll ~(common : Common.t) ~once ~finally =
     let config = Common.config common in
-    let once () =
-      let* () = Main.set_concurrency config in
-      once ()
-    in
-    Scheduler.poll ~config ~once ~finally ()
+    let config = Dune_config.for_scheduler config in
+    Scheduler.poll config ~once ~finally
 end
 
 let restore_cwd_and_execve (common : Common.t) prog argv env =

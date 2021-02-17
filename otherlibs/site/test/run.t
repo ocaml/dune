@@ -9,6 +9,7 @@ Test embedding of sites locations information
   > (lang dune 2.8)
   > (using dune_site 0.1)
   > (name $i)
+  > (version 0.$i)
   > (package (name $i) (sites (share data)))
   > EOF
   > done
@@ -249,6 +250,8 @@ Test compiling an external plugin
   > (generate_sites_module (module sites) (sites e))
   > (plugin (name c-plugins-e) (libraries e) (site (c plugins)))
   > (install (section (site (e data))) (files info.txt))
+  > (rule (alias runtest) (deps (package a) (package b) (package c) (package d) (package e))
+  >   (action (run %{bin:c})))
   > EOF
 
   $ cat >e/e.ml <<EOF
@@ -301,3 +304,59 @@ Test compiling an external plugin
   e: $TESTCASE_ROOT/_install/share/e/data
   info.txt is found: true
   run c: registered:e,b.
+
+  $ OCAMLPATH=_install/lib:$OCAMLPATH dune build @runtest
+             c alias e/runtest
+  run a
+  a: $TESTCASE_ROOT/_build/install/default/share/a/data
+  run c: a linked registered:.
+  sourceroot is "$TESTCASE_ROOT"
+  c: $TESTCASE_ROOT/_build/install/default/share/c/data
+  b is available: true
+  run b
+  b: $TESTCASE_ROOT/_build/install/default/share/b/data
+  info.txt is found: true
+  run e
+  e: $TESTCASE_ROOT/_build/install/default/share/e/data
+  info.txt is found: true
+  run c: registered:e,b.
+
+Test %{version:installed-pkg}
+-----------------------------
+
+  $ for i in f; do
+  >   mkdir -p $i
+  >   cat >$i/dune-project <<EOF
+  > (lang dune 2.8)
+  > (using dune_site 0.1)
+  > (name $i)
+  > (version 0.$i)
+  > (package (name $i) (sites (share data) (lib plugins)))
+  > EOF
+  > done
+
+  $ cat >f/dune <<EOF
+  > (rule
+  >  (target test.target)
+  >  (action
+  >   (with-stdout-to %{target}
+  >    (progn
+  >     (echo "a = %{version:a}\n")
+  >     (echo "e = %{version:e}\n")))))
+  > EOF
+
+  $ OCAMLPATH=_install/lib:$OCAMLPATH dune build --root=f
+  Entering directory 'f'
+  $ cat $(pwd)/f/_build/default/test.target
+  a = 0.a
+  e = 
+
+  $ cat f/dune | sed 's/version:a/version:a.test/' > f/dune.tmp && mv f/dune.tmp f/dune
+  $ OCAMLPATH=_install/lib:$OCAMLPATH dune build --root=f
+  Entering directory 'f'
+  File "dune", line 6, characters 15-32:
+  6 |     (echo "a = %{version:a.test}\n")
+                     ^^^^^^^^^^^^^^^^^
+  Error: Library names are not allowed in this position. Only package names are
+  allowed
+  [1]

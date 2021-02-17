@@ -1,9 +1,5 @@
 Test that version of extensions is compatible with dune_lang version
 
-  $ cat >using-generation/dune-project <<EOF
-  > (lang dune 1.2)
-  > EOF
-
   $ dune build --root version-mismatch
   Entering directory 'version-mismatch'
   File "dune-project", line 2, characters 14-17:
@@ -38,8 +34,16 @@ Test that version of extensions is compatible with dune_lang version
 TODO $ dune build --root version-mismatch-2.5 Should raise an error and
 not a warning as in $ dune build --root version-mismatch
 
-Using fields in dune-project should be generated according to
-the maximum supported version for the chosen dune lang version
-  $ dune build --root using-generation
-  Entering directory 'using-generation'
-  Info: Appending this line to dune-project: (using menhir 1.0)
+Check the error message when using an extension that is not available
+at the current language version:
+  $ dune build --root using-and-dune-lang
+  Entering directory 'using-and-dune-lang'
+  File "dune", line 1, characters 0-5:
+  1 | (mdx)
+      ^^^^^
+  Error: 'mdx' is available only when mdx is enabled in the dune-project file.
+  You must enable it using (using mdx ..) in your dune-project file.
+  Note however that the currently selected version of dune (1.0) does not
+  support this plugin. The first version of this plugin is 0.1 and was
+  introduced in dune 2.4.
+  [1]

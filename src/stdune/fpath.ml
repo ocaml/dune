@@ -53,3 +53,20 @@ let follow_symlink path =
   | Ok None -> Error Not_a_symlink
   | Ok (Some p) -> loop 20 p
   | Error e -> Error (Unix_error e)
+
+let win32_unlink fn =
+  try Unix.unlink fn
+  with Unix.Unix_error (Unix.EACCES, _, _) as e -> (
+    try
+      (* Try removing the read-only attribute *)
+      Unix.chmod fn 0o666;
+      Unix.unlink fn
+    with _ -> raise e )
+
+let unlink =
+  if Stdlib.Sys.win32 then
+    win32_unlink
+  else
+    Unix.unlink
+
+let unlink_no_err t = try unlink t with _ -> ()

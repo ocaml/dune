@@ -86,24 +86,11 @@ module Io = struct
 
   let stdin = terminal (In_chan stdin)
 
-  let null_path =
-    lazy
-      ( if Sys.win32 then
-        "nul"
-      else
-        "/dev/null" )
-
-  let open_null flags = lazy (Unix.openfile (Lazy.force null_path) flags 0o666)
-
-  let null_in = open_null [ Unix.O_RDONLY ]
-
-  let null_out = open_null [ Unix.O_WRONLY ]
-
   let null (type a) (mode : a mode) : a t =
     let fd =
       match mode with
-      | In -> null_in
-      | Out -> null_out
+      | In -> Config.dev_null_in
+      | Out -> Config.dev_null_out
     in
     let channel = lazy (channel_of_descr (Lazy.force fd) mode) in
     { kind = Null; mode; fd; channel; status = Close_after_exec }
@@ -154,7 +141,7 @@ type purpose =
 let io_to_redirection_path (kind : Io.kind) =
   match kind with
   | Terminal -> None
-  | Null -> Some (Lazy.force Io.null_path)
+  | Null -> Some (Path.to_string Config.dev_null)
   | File fn -> Some (Path.to_string fn)
 
 let command_line_enclosers ~dir ~(stdout_to : Io.output Io.t)
@@ -310,8 +297,8 @@ module Fancy = struct
       in
       let targets =
         List.map target_names ~f:Filename.split_extension_after_dot
-        |> String.Map.of_list_multi |> String.Map.to_list
-        |> List.map ~f:(fun (prefix, suffixes) ->
+        |> String.Map.of_list_multi
+        |> String.Map.to_list_map ~f:(fun prefix suffixes ->
                match suffixes with
                | [] -> assert false
                | [ suffix ] -> prefix ^ suffix
@@ -432,7 +419,7 @@ module Exit_status = struct
     | Ok n ->
       if
         Option.is_some output
-        || (display = Config.Display.Short && purpose <> Internal_job)
+        || (display = Scheduler.Config.Display.Short && purpose <> Internal_job)
       then
         Console.print_user_message
           (User_message.make
@@ -462,8 +449,8 @@ let default_env = lazy (Dtemp.add_to_env Env.initial)
 
 let run_internal ?dir ?(stdout_to = Io.stdout) ?(stderr_to = Io.stderr)
     ?(stdin_from = Io.null In) ~env ~purpose fail_mode prog args =
-  Scheduler.with_job_slot (fun () ->
-      let display = (Config.t ()).display in
+  Scheduler.with_job_slot (fun (config : Scheduler.Config.t) ->
+      let display = config.display in
       let dir =
         match dir with
         | None -> dir

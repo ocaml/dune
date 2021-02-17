@@ -44,6 +44,8 @@ Unreleased
 - Have `dune` communicate the location of the standard library directory to
   `merlin` (#4211, fixes #4188, @nojb)
 
+- Add support for instrumentation dependencies (#4210, fixes #3983, @nojb)
+
 2.8.2 (21/01/2021)
 ------------------
 

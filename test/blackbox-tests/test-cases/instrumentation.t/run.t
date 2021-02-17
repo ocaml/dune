@@ -84,14 +84,40 @@ We also check that we can pass arguments to the ppx.
   > EOF
   $ dune build --instrument-with hello
   $ _build/default/main.exe
-  Hello from Spain!
+  Hello from Spain (<none>)!
+
+We also check that we can declare dependencies to the ppx.
+
+  $ mkdir -p input
+  $ cat >dune <<EOF
+  > (data_only_dirs input)
+  > (subdir input (rule (with-stdout-to input (echo "really"))))
+  > (executable
+  >  (name main)
+  >  (modules main)
+  >  (instrumentation (backend hello -place Spain -file input/input) (deps input/input)))
+  > EOF
+  $ dune build --instrument-with hello
+  File "dune", line 6, characters 65-83:
+  6 |  (instrumentation (backend hello -place Spain -file input/input) (deps input/input)))
+                                                                       ^^^^^^^^^^^^^^^^^^
+  Error: 'deps' is only available since version 3.0 of the dune language.
+  Please update your dune-project file to have (lang dune 3.0).
+  [1]
+
+  $ cat >dune-project <<EOF
+  > (lang dune 3.0)
+  > EOF
+  $ dune build --instrument-with hello
+  $ _build/default/main.exe
+  Hello from Spain (really)!
 
 Can also enable with an environment variable.
 
   $ DUNE_INSTRUMENT_WITH=hello dune build
 
   $ _build/default/main.exe
-  Hello from Spain!
+  Hello from Spain (really)!
 
 Instrumentation can also be controlled by using the dune-workspace file.
 
@@ -103,7 +129,7 @@ Instrumentation can also be controlled by using the dune-workspace file.
   $ dune build
 
   $ _build/default/main.exe
-  Hello from Spain!
+  Hello from Spain (really)!
 
 It can also be controlled on a per-context scope.
 
@@ -115,7 +141,7 @@ It can also be controlled on a per-context scope.
   $ dune build
 
   $ _build/coverage/main.exe
-  Hello from Spain!
+  Hello from Spain (really)!
 
 Per-context setting takes precedence over per-workspace setting.
 

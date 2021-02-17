@@ -579,7 +579,8 @@ let lint_module sctx ~dir ~expander ~dep_kind ~lint ~lib_name ~scope =
        Module_name.Per_item.get lint (Module.name source) ~source ~ast)
 
 let make sctx ~dir ~expander ~dep_kind ~lint ~preprocess ~preprocessor_deps
-    ~lib_name ~scope =
+    ~instrumentation_deps ~lib_name ~scope =
+  let preprocessor_deps = preprocessor_deps @ instrumentation_deps in
   let preprocess =
     Module_name.Per_item.map preprocess ~f:(fun pp ->
         Preprocess.remove_future_syntax ~for_:Compiler pp

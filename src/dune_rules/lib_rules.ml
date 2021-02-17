@@ -386,6 +386,7 @@ let library_rules (lib : Library.t) ~cctx ~source_modules ~dir_contents
   let dir = Compilation_context.dir cctx in
   let scope = Compilation_context.scope cctx in
   let requires_compile = Compilation_context.requires_compile cctx in
+  let stdlib_dir = (Compilation_context.context cctx).Context.stdlib_dir in
   let dep_graphs = Dep_rules.rules cctx ~modules in
   Option.iter vimpl ~f:(Virtual_rules.setup_copy_rules_for_impl ~sctx ~dir);
   Check_rules.add_obj_dir sctx ~obj_dir;
@@ -415,8 +416,8 @@ let library_rules (lib : Library.t) ~cctx ~source_modules ~dir_contents
     ; compile_info
     };
   ( cctx
-  , Merlin.make ~requires:requires_compile ~flags ~modules ~preprocess
-      ~libname:(snd lib.name) ~obj_dir
+  , Merlin.make ~requires:requires_compile ~stdlib_dir ~flags ~modules
+      ~preprocess ~libname:(snd lib.name) ~obj_dir
       ~dialects:(Dune_project.dialects (Scope.project scope))
       ~ident:(Lib.Compile.merlin_ident compile_info)
       () )

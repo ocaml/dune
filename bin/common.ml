@@ -86,14 +86,27 @@ let prefix_target common s = common.target_prefix ^ s
 
 let instrument_with t = t.instrument_with
 
-(* To avoid needless recompilations under Windows, where the case of
-   [Sys.getcwd] can vary between different invocations of [dune], normalize to
-   lowercase. *)
-let normalize_path p =
+(* To avoid needless recompilations under Windows, normalize the drive letter to
+   uppercase. *)
+let normalize_path path =
   if Sys.win32 then
-    Path.External.lowercase_ascii p
+    let src = Path.External.to_string path in
+    let is_letter = function
+      | 'a' .. 'z'
+      | 'A' .. 'Z' ->
+        true
+      | _ -> false
+    in
+    if String.length src >= 2 && is_letter src.[0] && src.[1] = ':' then (
+      let dst = Bytes.create (String.length src) in
+      Bytes.set dst 0 (Char.uppercase_ascii src.[0]);
+      Bytes.blit_string ~src ~src_pos:1 ~dst ~dst_pos:1
+        ~len:(String.length src - 1);
+      Path.External.of_string (Bytes.unsafe_to_string dst)
+    ) else
+      path
   else
-    p
+    path
 
 let set_dirs c =
   if c.root.dir <> Filename.current_dir_name then Sys.chdir c.root.dir;

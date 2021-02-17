@@ -542,3 +542,46 @@ The `--prefix` directory should be used to specify the destination.
 If you are using plugins that depends on installed libraries which are not
 dependencies of the executables -- so libraries that need to be loaded at
 runtime -- you must copy the libraries manually to the destination directory.
+
+Querying Merlin configuration
+=============================
+
+Since version 2.8 Dune does not promote ``.merlin`` files to the source
+directories any more. Instead these configurations are stored in the `_build`
+folder and Merlin communicates directly with Dune to obtain its configuration
+via the `ocaml-merlin` subcommand.
+
+Printing the configuration
+--------------------------
+
+It is possible to manually query the generated configuration for debugging
+purposes:
+
+::
+
+    $ dune ocaml-merlin --dump-config
+
+This command will print the distinct configuration of each module present in the
+current directory. This directory must be in a Dune workspace and the project
+must be already built. The configuration will be encoded as a s-expressions, which
+are used to communicate with Merlin.
+
+Printing an approximated ``.merlin``
+------------------------------------
+
+It is also possible to print the configuration of the current folder in the
+Merlin configuration syntax by running the following command:
+
+::
+
+    $ dune ocaml-merlin --dump-dot-merlin > .merlin
+
+In that case only one configuration will be printed which is the result of a
+coarse merge of the configurations of the various modules present in the current
+folder. This folder must be in a Dune workspace and the project must be already
+built. Preprocessing directives and other flags will be commented out and must
+be un-commented afterward.
+
+Both these commands also support an optional argument to specify the target
+directory. This directory must be in a Dune workspace and the project must be
+already built.

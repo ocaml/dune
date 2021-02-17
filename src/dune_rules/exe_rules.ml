@@ -114,13 +114,19 @@ let executables_rules ~sctx ~dir ~expander ~dir_contents ~scope ~compile_info
   Check_rules.add_obj_dir sctx ~obj_dir;
   let ctx = Super_context.context sctx in
   let pp =
+    let instrumentation_backend =
+      Lib.DB.instrumentation_backend (Scope.libs scope)
+    in
     let preprocess =
       Preprocess.Per_module.with_instrumentation exes.buildable.preprocess
-        ~instrumentation_backend:
-          (Lib.DB.instrumentation_backend (Scope.libs scope))
+        ~instrumentation_backend
+    in
+    let instrumentation_deps =
+      Preprocess.Per_module.instrumentation_deps exes.buildable.preprocess
+        ~instrumentation_backend
     in
     Preprocessing.make sctx ~dir ~dep_kind:Required ~scope ~expander ~preprocess
-      ~preprocessor_deps:exes.buildable.preprocessor_deps
+      ~preprocessor_deps:exes.buildable.preprocessor_deps ~instrumentation_deps
       ~lint:exes.buildable.lint ~lib_name:None
   in
   let modules =

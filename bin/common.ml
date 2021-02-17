@@ -1,5 +1,4 @@
 open Stdune
-module Dune_config = Dune_engine.Dune_config
 module Config = Dune_engine.Config
 module Colors = Dune_rules.Colors
 module Clflags = Dune_engine.Clflags
@@ -56,7 +55,7 @@ type t =
   ; store_orig_src_dir : bool
   ; (* Original arguments for the external-lib-deps hint *)
     orig_args : string list
-  ; config : Dune_engine.Dune_config.t
+  ; config : Dune_config.t
   ; default_target : Arg.Dep.t (* For build & runtest only *)
   ; watch : bool
   ; stats_trace_file : string option
@@ -102,7 +101,7 @@ let set_dirs c =
   Path.Build.set_build_dir (Path.Build.Kind.of_string c.build_dir)
 
 let set_common_other ?log_file c ~targets =
-  Dune_engine.Dune_config.init c.config;
+  Dune_config.init c.config;
   Dune_util.Log.init () ?file:log_file;
   Clflags.debug_dep_path := c.debug_dep_path;
   Clflags.debug_findlib := c.debug_findlib;
@@ -422,7 +421,7 @@ module Options_implied_by_dash_p = struct
 end
 
 let display_term =
-  let module Display = Dune_config.Display in
+  let module Display = Dune_engine.Scheduler.Config.Display in
   one_of
     (let+ verbose =
        Arg.(

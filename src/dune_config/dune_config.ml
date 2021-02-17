@@ -1,5 +1,12 @@
-open Import
+open Stdune
 open Dune_lang.Decoder
+module Scheduler = Dune_engine.Scheduler
+module Sandbox_mode = Dune_engine.Sandbox_mode
+module Stanza = Dune_engine.Stanza
+module Config = Dune_engine.Config
+module String_with_vars = Dune_engine.String_with_vars
+module Pform = Dune_engine.Pform
+module Log = Dune_util.Log
 
 (* the configuration file use the same version numbers as dune-project files for
    simplicity *)
@@ -25,36 +32,6 @@ module Terminal_persistence = struct
         match of_string s with
         | Error m -> User_error.raise ~loc [ Pp.text m ]
         | Ok s -> s)
-end
-
-module Display = struct
-  type t =
-    | Progress
-    | Short
-    | Verbose
-    | Quiet
-
-  let all =
-    [ ("progress", Progress)
-    ; ("verbose", Verbose)
-    ; ("short", Short)
-    ; ("quiet", Quiet)
-    ]
-
-  let decode = enum all
-
-  let to_string = function
-    | Progress -> "progress"
-    | Quiet -> "quiet"
-    | Short -> "short"
-    | Verbose -> "verbose"
-
-  let console_backend = function
-    | Progress -> Console.Backend.progress
-    | Short
-    | Verbose
-    | Quiet ->
-      Console.Backend.dumb
 end
 
 module Concurrency = struct
@@ -144,7 +121,7 @@ module type S = sig
   type 'a field
 
   type t =
-    { display : Display.t field
+    { display : Scheduler.Config.Display.t field
     ; concurrency : Concurrency.t field
     ; terminal_persistence : Terminal_persistence.t field
     ; sandboxing_preference : Sandboxing_preference.t field
@@ -202,7 +179,8 @@ let default =
   }
 
 let decode =
-  let+ display = field "display" Display.decode ~default:default.display
+  let+ display =
+    field "display" (enum Scheduler.Config.Display.all) ~default:default.display
   and+ concurrency =
     field "jobs" Concurrency.decode ~default:default.concurrency
   and+ terminal_persistence =
@@ -291,7 +269,9 @@ let adapt_display config ~output_is_a_tty =
 
 let to_dyn config =
   Dyn.Encoder.record
-    [ ("display", Dyn.Encoder.string (Display.to_string config.display))
+    [ ( "display"
+      , Dyn.Encoder.string (Scheduler.Config.Display.to_string config.display)
+      )
     ; ( "concurrency"
       , Dyn.Encoder.string (Concurrency.to_string config.concurrency) )
     ; ( "terminal_persistence"
@@ -311,13 +291,8 @@ let to_dyn config =
     ; ("cache_trim_size", Dyn.Encoder.int64 config.cache_trim_size)
     ]
 
-let global = Fdecl.create to_dyn
-
-let t () = Fdecl.get global
-
 let init t =
-  Fdecl.set global t;
-  Console.Backend.set (Display.console_backend t.display);
+  Console.Backend.set (Scheduler.Config.Display.console_backend t.display);
   Log.verbose := t.display = Verbose
 
 let auto_concurrency =
@@ -376,4 +351,5 @@ let for_scheduler (t : t) =
   in
   { Scheduler.Config.concurrency
   ; terminal_persistence = t.terminal_persistence
+  ; display = t.display
   }

@@ -4,7 +4,10 @@ open Stdune
 open Dune_engine
 
 let config =
-  { Scheduler.Config.concurrency = 1; terminal_persistence = Preserve }
+  { Scheduler.Config.concurrency = 1
+  ; terminal_persistence = Preserve
+  ; display = Short
+  }
 
 let setup =
   lazy

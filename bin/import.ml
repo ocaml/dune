@@ -27,7 +27,6 @@ module Workspace = Dune_rules.Workspace
 module Cached_digest = Dune_engine.Cached_digest
 module Profile = Dune_rules.Profile
 module Log = Dune_util.Log
-module Dune_config = Dune_engine.Dune_config
 include Common.Let_syntax
 
 let in_group (t, info) = (Term.Group.Term t, info)

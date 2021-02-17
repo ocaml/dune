@@ -1,21 +1,6 @@
-open Import
-
 (** Dune configuration (visible to the user) *)
 
-module Display : sig
-  type t =
-    | Progress  (** Single interactive status line *)
-    | Short  (** One line per command *)
-    | Verbose  (** Display all commands fully *)
-    | Quiet  (** Only display errors *)
-
-  val decode : t Dune_lang.Decoder.t
-
-  val all : (string * t) list
-
-  (** The console backend corresponding to the selected display mode *)
-  val console_backend : t -> Console.Backend.t
-end
+open Stdune
 
 module Concurrency : sig
   type t =
@@ -28,7 +13,7 @@ module Concurrency : sig
 end
 
 module Sandboxing_preference : sig
-  type t = Sandbox_mode.t list
+  type t = Dune_engine.Sandbox_mode.t list
 end
 
 module Caching : sig
@@ -67,9 +52,10 @@ module type S = sig
   type 'a field
 
   type t =
-    { display : Display.t field
+    { display : Dune_engine.Scheduler.Config.Display.t field
     ; concurrency : Concurrency.t field
-    ; terminal_persistence : Scheduler.Config.Terminal_persistence.t field
+    ; terminal_persistence :
+        Dune_engine.Scheduler.Config.Terminal_persistence.t field
     ; sandboxing_preference : Sandboxing_preference.t field
     ; cache_mode : Caching.Mode.t field
     ; cache_transport : Caching.Transport.t field
@@ -100,12 +86,9 @@ val load_config_file : Path.t -> t
     we are not running inside emacs. *)
 val adapt_display : t -> output_is_a_tty:bool -> t
 
-(** The global configuration for the process *)
-val t : unit -> t
-
 (** Initialises the configuration for the process *)
 val init : t -> unit
 
 val to_dyn : t -> Dyn.t
 
-val for_scheduler : t -> Scheduler.Config.t
+val for_scheduler : t -> Dune_engine.Scheduler.Config.t

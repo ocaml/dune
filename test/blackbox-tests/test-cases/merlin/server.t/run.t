@@ -2,7 +2,7 @@
   $ dune ocaml-merlin  <<EOF
   > (4:File${#FILE}:$FILE)
   > EOF
-  ((5:ERROR48:Project isn't built. (Try calling `dune build`.)))
+  ((5:ERROR61:No config found for file "main.ml". Try calling `dune build`.))
 
   $ dune build @check
 

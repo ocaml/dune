@@ -3,9 +3,7 @@ open Dune_engine
 open Fiber.O
 open! Dune_tests_common
 
-let () =
-  init ();
-  Config.init { Config.default with display = Quiet }
+let () = init ()
 
 let printf = Printf.printf
 
@@ -116,7 +114,14 @@ let run kind script =
   Path.rm_rf temp_dir;
   Path.mkdir_p temp_dir;
   let vcs = { Vcs.kind; root = temp_dir } in
-  Scheduler.go (fun () -> Fiber.sequential_iter script ~f:(run_action vcs))
+  let config =
+    { Scheduler.Config.concurrency = 1
+    ; terminal_persistence = Preserve
+    ; display = Short
+    }
+  in
+  Scheduler.go config (fun () ->
+      Fiber.sequential_iter script ~f:(run_action vcs))
 
 let script =
   [ Init

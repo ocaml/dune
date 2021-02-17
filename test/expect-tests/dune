@@ -12,6 +12,7 @@
   dune_rules
   fiber
   dune_lang
+  dune_config
   cache
   memo
   ;; This is because of the (implicit_transitive_deps false)

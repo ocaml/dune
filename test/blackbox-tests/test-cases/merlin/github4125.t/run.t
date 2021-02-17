@@ -1,3 +1,15 @@
+We call `$(opam switch show)` so that this test always uses an existing switch
+
+  $ cat >dune-workspace <<EOF
+  > (lang dune 2.0)
+  > (context (default))
+  > (context
+  > (opam
+  >  (name cross)
+  >  (switch $(opam switch show))
+  >  (merlin)))
+  > EOF
+
   $ dune build
 
   $ ls -a _build/cross/.merlin-conf

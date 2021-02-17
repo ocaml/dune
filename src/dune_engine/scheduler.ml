@@ -3,6 +3,52 @@ let on_error = Report_error.report
 open! Stdune
 open Import
 
+module Config = struct
+  include Config
+
+  module Terminal_persistence = struct
+    type t =
+      | Preserve
+      | Clear_on_rebuild
+
+    let all = [ ("preserve", Preserve); ("clear-on-rebuild", Clear_on_rebuild) ]
+  end
+
+  module Display = struct
+    type t =
+      | Progress
+      | Short
+      | Verbose
+      | Quiet
+
+    let all =
+      [ ("progress", Progress)
+      ; ("verbose", Verbose)
+      ; ("short", Short)
+      ; ("quiet", Quiet)
+      ]
+
+    let to_string = function
+      | Progress -> "progress"
+      | Quiet -> "quiet"
+      | Short -> "short"
+      | Verbose -> "verbose"
+
+    let console_backend = function
+      | Progress -> Console.Backend.progress
+      | Short
+      | Verbose
+      | Quiet ->
+        Console.Backend.dumb
+  end
+
+  type t =
+    { concurrency : int
+    ; terminal_persistence : Terminal_persistence.t
+    ; display : Display.t
+    }
+end
+
 type job =
   { pid : Pid.t
   ; ivar : Unix.process_status Fiber.Ivar.t
@@ -608,6 +654,7 @@ type status =
 
 type t =
   { original_cwd : string
+  ; config : Config.t
   ; polling : bool
   ; mutable status : status
   ; job_throttle : Fiber.Throttle.t
@@ -637,7 +684,7 @@ let with_job_slot f =
   Fiber.Throttle.run t.job_throttle ~f:(fun () ->
       match t.status with
       | Restarting_build -> raise Cancel_build
-      | Building -> f ()
+      | Building -> f t.config
       | Waiting_for_file_changes _ ->
         (* At this stage, we're not running a build, so we shouldn't be running
            tasks here. *)
@@ -676,55 +723,7 @@ let kill_and_wait_for_all_processes t =
   done;
   !saw_signal
 
-let auto_concurrency =
-  lazy
-    ( if Sys.win32 then
-      match Env.get Env.initial "NUMBER_OF_PROCESSORS" with
-      | None -> 1
-      | Some s -> ( try int_of_string s with _ -> 1 )
-    else
-      let commands =
-        [ ("nproc", [])
-        ; ("getconf", [ "_NPROCESSORS_ONLN" ])
-        ; ("getconf", [ "NPROCESSORS_ONLN" ])
-        ]
-      in
-      let rec loop = function
-        | [] -> 1
-        | (prog, args) :: rest -> (
-          match Bin.which ~path:(Env.path Env.initial) prog with
-          | None -> loop rest
-          | Some prog -> (
-            let prog = Path.to_string prog in
-            let fdr, fdw = Unix.pipe () ~cloexec:true in
-            match
-              Spawn.spawn ~prog ~argv:(prog :: args)
-                ~stdin:(Lazy.force Config.dev_null_in)
-                ~stdout:fdw
-                ~stderr:(Lazy.force Config.dev_null_out)
-                ()
-            with
-            | exception _ ->
-              Unix.close fdw;
-              Unix.close fdr;
-              loop commands
-            | pid -> (
-              Unix.close fdw;
-              let ic = Unix.in_channel_of_descr fdr in
-              let n =
-                Option.try_with (fun () ->
-                    input_line ic |> String.trim |> int_of_string)
-              in
-              close_in ic;
-              match (n, snd (Unix.waitpid [] (Pid.to_int pid))) with
-              | Some n, WEXITED 0 -> n
-              | _ -> loop rest ) ) )
-      in
-      let n = loop commands in
-      Log.info [ Pp.textf "Auto-detected concurrency: %d" n ];
-      n )
-
-let prepare ?(config = Config.default) ~polling () =
+let prepare (config : Config.t) ~polling =
   Log.info
     [ Pp.textf "Workspace root: %s"
         (Path.to_absolute_filename Path.root |> String.maybe_quoted)
@@ -763,14 +762,11 @@ let prepare ?(config = Config.default) ~polling () =
   let t =
     { original_cwd = cwd
     ; status = Building
-    ; job_throttle =
-        Fiber.Throttle.create
-          ( match config.concurrency with
-          | Auto -> Lazy.force auto_concurrency
-          | Fixed n -> n )
+    ; job_throttle = Fiber.Throttle.create config.concurrency
     ; polling
     ; process_watcher
     ; events
+    ; config
     }
   in
   global := Some t;
@@ -857,20 +853,16 @@ end = struct
     | Ok -> res
 end
 
-let go ?config f =
-  let t = prepare ?config ~polling:false () in
+let go config f =
+  let t = prepare config ~polling:false in
   let res = Run_once.run_and_cleanup t f in
   match res with
   | Error (Exn exn) -> Exn_with_backtrace.reraise exn
   | Ok res -> res
   | Error (Got_signal | Never) -> raise Dune_util.Report_error.Already_reported
 
-let maybe_clear_screen ~config =
-  match
-    match config with
-    | Some cfg -> cfg.Config.terminal_persistence
-    | None -> Preserve
-  with
+let maybe_clear_screen (config : Config.t) =
+  match config.terminal_persistence with
   | Clear_on_rebuild -> Console.reset ()
   | Preserve ->
     Console.print_user_message
@@ -881,8 +873,8 @@ let maybe_clear_screen ~config =
          ; Pp.nop
          ])
 
-let poll ?config ~once ~finally () =
-  let t = prepare ?config ~polling:true () in
+let poll (config : Config.t) ~once ~finally =
+  let t = prepare config ~polling:true in
   let watcher = File_watcher.create t.events in
   let rec loop () : Nothing.t Fiber.t =
     t.status <- Building;
@@ -922,7 +914,7 @@ let poll ?config ~once ~finally () =
       let ivar = Fiber.Ivar.create () in
       t.status <- Waiting_for_file_changes ivar;
       let* () = Fiber.Ivar.read ivar in
-      maybe_clear_screen ~config;
+      maybe_clear_screen config;
       loop ()
   in
   let exn, bt =

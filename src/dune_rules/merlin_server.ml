@@ -31,22 +31,45 @@ module Commands = struct
     | Error _ -> Halt
 end
 
-(* [to_local p] makes absolute path [p] relative to the project's root and
-   optionally removes the build context *)
-let to_local abs_file_path =
-  let error msg = Error msg in
-  let path_opt =
-    String.drop_prefix
-      ~prefix:Path.(to_absolute_filename (of_local Local.root))
-      abs_file_path
+(* [make_relative_to_root p] will check that [Path.root] is a prefix of the
+   absolute path [p] and remove it if that is the case. Under Windows and Cygwin
+   environement both paths are lowarcased before the comparison *)
+let make_relative_to_root p =
+  let prefix = Path.(to_absolute_filename root) in
+  let p = Path.(to_absolute_filename p) in
+  let prefix, p =
+    if Sys.win32 || Sys.cygwin then
+      (String.lowercase_ascii prefix, String.lowercase_ascii p)
+    else
+      (prefix, p)
   in
-  match path_opt with
+  String.drop_prefix ~prefix p
+  (* After dropping the prefix we need to remove the leading path separator *)
+  |> Option.map ~f:(fun s -> String.drop s 1)
+
+(* [to_local p] makes path [p] relative to the project's root. [p] can be: - An
+   absolute path - A path relative to [Path.initial_cwd] *)
+let to_local file_path =
+  let error msg = Error msg in
+
+  (* This ensure the path is absolute. If not it is prefixed with
+     [Path.initial_cwd] *)
+  let abs_file_path = Path.of_filename_relative_to_initial_cwd file_path in
+
+  (* Then we make the path relative to [Path.root] (and not [Path.initial_cwd]) *)
+  match make_relative_to_root abs_file_path with
   | Some path -> (
-    try Ok (Filename.concat "." path |> Path.Local.of_string)
+    try Ok (Path.Local.of_string path)
     with User_error.E mess -> User_message.to_string mess |> error )
   | None ->
-    Printf.sprintf "Path is not in dune workspace %s" abs_file_path |> error
+    Printf.sprintf "Path %S is not in dune workspace (%S)." file_path
+      Path.(to_absolute_filename Path.root)
+    |> error
 
+(* Given a path [p] relative to the workspace root, [get_merlin_files_paths p]
+   navigates to the [_build] directory and reaches this path from the correct
+   context. Then it returns the list of available Merlin configurations for this
+   directory. *)
 let get_merlin_files_paths local_path =
   let workspace = Workspace.workspace () in
   let context =
@@ -89,14 +112,15 @@ let load_merlin_file local_path file =
           Path.Local.parent path )
   in
   let default =
-    Merlin_conf.make_error "Project isn't built. (Try calling `dune build`.)"
+    Printf.sprintf "No config found for file %S. Try calling `dune build`." file
+    |> Merlin_conf.make_error
   in
   Option.value (find_closest local_path) ~default
 
 let print_merlin_conf file =
-  let abs_root, file = Filename.(dirname file, basename file) in
+  let dir, file = Filename.(dirname file, basename file) in
   let answer =
-    match to_local abs_root with
+    match to_local dir with
     | Ok p -> load_merlin_file p file
     | Error s -> Merlin_conf.make_error s
   in

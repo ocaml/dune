@@ -176,22 +176,21 @@ let build_o_files ~sctx ~foreign_sources ~(dir : Path.Build.t) ~expander
               ])
       ]
   in
-  String.Map.to_list foreign_sources
-  |> List.map ~f:(fun (obj, (loc, src)) ->
-         let dst = Path.Build.relative dir (obj ^ ctx.lib_config.ext_obj) in
-         let stubs = src.Foreign.Source.stubs in
-         let extra_flags = include_dir_flags ~expander ~dir src.stubs in
-         let extra_deps =
-           let open Action_builder.O in
-           let+ () = Dep_conf_eval.unnamed stubs.extra_deps ~expander in
-           Command.Args.empty
-         in
-         let include_flags =
-           Command.Args.S [ includes; extra_flags; Dyn extra_deps ]
-         in
-         let build_file =
-           match Foreign.Source.language src with
-           | C -> build_c ~kind:Foreign_language.C
-           | Cxx -> build_c ~kind:Foreign_language.Cxx
-         in
-         build_file ~sctx ~dir ~expander ~include_flags (loc, src, dst))
+  String.Map.to_list_map foreign_sources ~f:(fun obj (loc, src) ->
+      let dst = Path.Build.relative dir (obj ^ ctx.lib_config.ext_obj) in
+      let stubs = src.Foreign.Source.stubs in
+      let extra_flags = include_dir_flags ~expander ~dir src.stubs in
+      let extra_deps =
+        let open Action_builder.O in
+        let+ () = Dep_conf_eval.unnamed stubs.extra_deps ~expander in
+        Command.Args.empty
+      in
+      let include_flags =
+        Command.Args.S [ includes; extra_flags; Dyn extra_deps ]
+      in
+      let build_file =
+        match Foreign.Source.language src with
+        | C -> build_c ~kind:Foreign_language.C
+        | Cxx -> build_c ~kind:Foreign_language.Cxx
+      in
+      build_file ~sctx ~dir ~expander ~include_flags (loc, src, dst))

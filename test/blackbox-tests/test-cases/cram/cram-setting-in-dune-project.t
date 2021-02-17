@@ -1,0 +1,33 @@
+Test the behavior when there are cram stanzas but cram tests are not enabled.
+
+We need a sub-directory, otherwise the inner dune will see this run.t
+file and we enter a loop:
+
+  $ mkdir test
+  $ cd test
+
+  $ cat >dune-project<<EOF
+  > (lang dune 2.8)
+  > EOF
+
+  $ cat >dune<<EOF
+  > (cram)
+  > EOF
+
+  $ cat >run.t<<EOF
+  >   $ echo "Hello, world!"
+  > EOF
+
+With older version of Dune, this would do nothing because of the
+missing (cram enable) in the dune-project file:
+
+  $ dune runtest
+
+Check that once we enable cram tests, the test are indeed being
+executed:
+
+  $ echo "(cram enable)" >> dune-project
+  $ dune runtest
+  File "run.t", line 1, characters 0-0:
+  Error: Files _build/default/run.t and _build/default/run.t.corrected differ.
+  [1]

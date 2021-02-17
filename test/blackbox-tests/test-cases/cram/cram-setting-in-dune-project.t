@@ -22,6 +22,12 @@ With older version of Dune, this would do nothing because of the
 missing (cram enable) in the dune-project file:
 
   $ dune runtest
+  File "dune", line 1, characters 0-6:
+  1 | (cram)
+      ^^^^^^
+  Warning: Cram tests are not enabled in this project.
+  Hint: You can enable cram tests by adding (cram enable) to your dune-project
+  file.
 
 Check that once we enable cram tests, the test are indeed being
 executed:

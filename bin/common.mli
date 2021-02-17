@@ -10,7 +10,7 @@ val capture_outputs : t -> bool
 
 val root : t -> Workspace_root.t
 
-val config : t -> Dune_engine.Dune_config.t
+val config : t -> Dune_config.t
 
 module Only_packages : sig
   type t = private
@@ -62,7 +62,7 @@ val term : t Cmdliner.Term.t
 
 val debug_backtraces : bool Cmdliner.Term.t
 
-val config_term : Dune_engine.Dune_config.t Cmdliner.Term.t
+val config_term : Dune_config.t Cmdliner.Term.t
 
 val display_term : Dune_engine.Scheduler.Config.Display.t option Cmdliner.Term.t
 

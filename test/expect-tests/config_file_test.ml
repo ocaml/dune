@@ -5,9 +5,8 @@ let parse s =
   let ast =
     Parser.parse_string ~fname:"expect_test" ~mode:Parser.Mode.Single s
   in
-  Dune_lang.Decoder.parse Dune_engine.Dune_config.decode Stdune.Univ_map.empty
-    ast
-  |> Dune_engine.Dune_config.to_dyn |> print_dyn
+  Dune_lang.Decoder.parse Dune_config.decode Stdune.Univ_map.empty ast
+  |> Dune_config.to_dyn |> print_dyn
 
 let%expect_test _ =
   parse "(cache-trim-period 2m)";

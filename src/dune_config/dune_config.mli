@@ -1,6 +1,6 @@
-open Import
-
 (** Dune configuration (visible to the user) *)
+
+open Stdune
 
 module Concurrency : sig
   type t =
@@ -13,7 +13,7 @@ module Concurrency : sig
 end
 
 module Sandboxing_preference : sig
-  type t = Sandbox_mode.t list
+  type t = Dune_engine.Sandbox_mode.t list
 end
 
 module Caching : sig
@@ -52,9 +52,10 @@ module type S = sig
   type 'a field
 
   type t =
-    { display : Scheduler.Config.Display.t field
+    { display : Dune_engine.Scheduler.Config.Display.t field
     ; concurrency : Concurrency.t field
-    ; terminal_persistence : Scheduler.Config.Terminal_persistence.t field
+    ; terminal_persistence :
+        Dune_engine.Scheduler.Config.Terminal_persistence.t field
     ; sandboxing_preference : Sandboxing_preference.t field
     ; cache_mode : Caching.Mode.t field
     ; cache_transport : Caching.Transport.t field
@@ -90,4 +91,4 @@ val init : t -> unit
 
 val to_dyn : t -> Dyn.t
 
-val for_scheduler : t -> Scheduler.Config.t
+val for_scheduler : t -> Dune_engine.Scheduler.Config.t

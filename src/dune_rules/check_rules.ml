@@ -10,7 +10,7 @@ let dev_files =
   in
   Predicate.create ~id ~f:(fun p ->
       let ext = Filename.extension p in
-      List.mem ext ~set:exts)
+      List.mem exts ext ~equal:String.equal)
 
 let add_obj_dir sctx ~obj_dir =
   if (Super_context.context sctx).merlin then

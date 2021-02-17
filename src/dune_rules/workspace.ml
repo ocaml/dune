@@ -19,8 +19,10 @@ module Context = struct
     let equal x y =
       match (x, y) with
       | Native, Native -> true
+      | Native, _
+      | _, Native ->
+        false
       | Named x, Named y -> Context_name.equal x y
-      | _, _ -> false
 
     let t =
       let+ context_name = Context_name.decode in
@@ -32,7 +34,7 @@ module Context = struct
       match x with
       | None -> ts
       | Some t ->
-        if List.mem t ~set:ts then
+        if List.mem ts t ~equal then
           ts
         else
           ts @ [ t ]

@@ -971,7 +971,7 @@ end
 
 let instrumentation_backend ?(do_not_fail = false) instrument_with resolve
     libname =
-  if not (List.mem ~set:instrument_with (snd libname)) then
+  if not (List.mem ~equal:Lib_name.equal instrument_with (snd libname)) then
     None
   else
     match

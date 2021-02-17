@@ -232,10 +232,8 @@ module Format = struct
   let all = [ ("sexp", Sexp); ("csexp", Csexp) ]
 
   let arg =
-    Arg.(
-      value
-      & opt (enum all) Sexp
-      & info [ "format" ] ~docv:"FORMAT" ~doc:"Output format.")
+    let doc = Printf.sprintf "$(docv) must be %s" (Arg.doc_alts_enum all) in
+    Arg.(value & opt (enum all) Sexp & info [ "format" ] ~docv:"FORMAT" ~doc)
 end
 
 module Lang = struct

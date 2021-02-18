@@ -3,7 +3,8 @@ CRAM sanitization
   $ dune ocaml-merlin --dump-config=$(pwd)/exe |
   > sed 's#'$(opam config var prefix)'#OPAM_PREFIX#'
   X
-  ((EXCLUDE_QUERY_DIR)
+  ((STDLIB OPAM_PREFIX/lib/ocaml)
+   (EXCLUDE_QUERY_DIR)
    (B OPAM_PREFIX/lib/bytes)
    (B OPAM_PREFIX/lib/findlib)
    (B OPAM_PREFIX/lib/ocaml)
@@ -27,7 +28,8 @@ CRAM sanitization
   $ dune ocaml-merlin --dump-config=$(pwd)/lib |
   > sed 's#'$(opam config var prefix)'#OPAM_PREFIX#'
   File
-  ((EXCLUDE_QUERY_DIR)
+  ((STDLIB OPAM_PREFIX/lib/ocaml)
+   (EXCLUDE_QUERY_DIR)
    (B
     $TESTCASE_ROOT/_build/default/lib/.bar.objs/byte)
    (S
@@ -42,7 +44,8 @@ CRAM sanitization
      'library-name="bar"'"))
    (FLG (-open Bar -w -40)))
   Bar
-  ((EXCLUDE_QUERY_DIR)
+  ((STDLIB OPAM_PREFIX/lib/ocaml)
+   (EXCLUDE_QUERY_DIR)
    (B
     $TESTCASE_ROOT/_build/default/lib/.bar.objs/byte)
    (S
@@ -57,7 +60,8 @@ CRAM sanitization
      'library-name="bar"'"))
    (FLG (-open Bar -w -40)))
   Privmod
-  ((EXCLUDE_QUERY_DIR)
+  ((STDLIB OPAM_PREFIX/lib/ocaml)
+   (EXCLUDE_QUERY_DIR)
    (B OPAM_PREFIX/lib/bytes)
    (B OPAM_PREFIX/lib/findlib)
    (B OPAM_PREFIX/lib/ocaml)
@@ -78,7 +82,8 @@ CRAM sanitization
      'library-name="foo"'"))
    (FLG (-open Foo -w -40)))
   Foo
-  ((EXCLUDE_QUERY_DIR)
+  ((STDLIB OPAM_PREFIX/lib/ocaml)
+   (EXCLUDE_QUERY_DIR)
    (B OPAM_PREFIX/lib/bytes)
    (B OPAM_PREFIX/lib/findlib)
    (B OPAM_PREFIX/lib/ocaml)
@@ -108,7 +113,8 @@ Make sure pp flag is correct and variables are expanded
   $ dune ocaml-merlin --dump-config=$(pwd)/pp-with-expand |
   > sed 's#'$(opam config var prefix)'#OPAM_PREFIX#'
   Foobar
-  ((EXCLUDE_QUERY_DIR)
+  ((STDLIB OPAM_PREFIX/lib/ocaml)
+   (EXCLUDE_QUERY_DIR)
    (B
     $TESTCASE_ROOT/_build/default/pp-with-expand/.foobar.eobjs/byte)
    (S
@@ -124,7 +130,8 @@ Check hash of executables names if more than one
   $ dune ocaml-merlin --dump-config=$(pwd)/exes |
   > sed 's#'$(opam config var prefix)'#OPAM_PREFIX#'
   Y
-  ((EXCLUDE_QUERY_DIR)
+  ((STDLIB OPAM_PREFIX/lib/ocaml)
+   (EXCLUDE_QUERY_DIR)
    (B
     $TESTCASE_ROOT/_build/default/exes/.x.eobjs/byte)
    (S
@@ -137,7 +144,8 @@ Check hash of executables names if more than one
      -short-paths
      -keep-locs)))
   X
-  ((EXCLUDE_QUERY_DIR)
+  ((STDLIB OPAM_PREFIX/lib/ocaml)
+   (EXCLUDE_QUERY_DIR)
    (B
     $TESTCASE_ROOT/_build/default/exes/.x.eobjs/byte)
    (S

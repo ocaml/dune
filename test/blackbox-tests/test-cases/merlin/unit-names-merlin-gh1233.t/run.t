@@ -1,9 +1,11 @@
   $ dune exec ./foo.exe
   42
 
-  $ dune ocaml-merlin --dump-config=$(pwd)
+  $ dune ocaml-merlin --dump-config=$(pwd) |
+  > sed 's#'$(opam config var prefix)'#OPAM_PREFIX#'
   Foo
-  ((EXCLUDE_QUERY_DIR)
+  ((STDLIB OPAM_PREFIX/lib/ocaml)
+   (EXCLUDE_QUERY_DIR)
    (B
     $TESTCASE_ROOT/_build/default/.foo.eobjs/byte)
    (B
@@ -20,9 +22,11 @@
      -short-paths
      -keep-locs)))
 
-  $ dune ocaml-merlin --dump-config=$(pwd)/foo
+  $ dune ocaml-merlin --dump-config=$(pwd)/foo |
+  > sed 's#'$(opam config var prefix)'#OPAM_PREFIX#'
   Bar
-  ((EXCLUDE_QUERY_DIR)
+  ((STDLIB OPAM_PREFIX/lib/ocaml)
+   (EXCLUDE_QUERY_DIR)
    (B
     $TESTCASE_ROOT/_build/default/foo/.foo.objs/byte)
    (S
@@ -37,7 +41,8 @@
      -short-paths
      -keep-locs)))
   Foo
-  ((EXCLUDE_QUERY_DIR)
+  ((STDLIB OPAM_PREFIX/lib/ocaml)
+   (EXCLUDE_QUERY_DIR)
    (B
     $TESTCASE_ROOT/_build/default/foo/.foo.objs/byte)
    (S

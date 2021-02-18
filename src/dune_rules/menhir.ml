@@ -153,14 +153,14 @@ module Run (P : PARAMS) : sig end = struct
             | None -> ()
             | Some text ->
               if
-                List.mem text
-                  ~set:
-                    [ "--depend"
-                    ; "--raw-depend"
-                    ; "--infer"
-                    ; "--infer-write-query"
-                    ; "--infer-read-reply"
-                    ]
+                List.mem ~equal:String.equal
+                  [ "--depend"
+                  ; "--raw-depend"
+                  ; "--infer"
+                  ; "--infer-write-query"
+                  ; "--infer-read-reply"
+                  ]
+                  text
               then
                 User_error.raise ~loc:(String_with_vars.loc sw)
                   [ Pp.textf "The flag %s must not be used in a menhir stanza."

@@ -52,7 +52,8 @@ module Program = struct
       let fn = Path.relative dir (program ^ Bin.exe) in
       Option.some_if (Bin.exists fn) fn
     in
-    if List.mem program ~set:programs_for_which_we_prefer_opt_ext then
+    if List.mem programs_for_which_we_prefer_opt_ext program ~equal:String.equal
+    then
       match exe_path (program ^ ".opt") with
       | None -> exe_path program
       | Some _ as path -> path
@@ -702,7 +703,11 @@ let create ~(kind : Kind.t) ~path ~env ~env_nodes ~name ~merlin ~targets
     );
     Memo.Build.return t
   in
-  let implicit = not (List.mem ~set:targets Workspace.Context.Target.Native) in
+  let implicit =
+    not
+      (List.mem targets ~equal:Workspace.Context.Target.equal
+         Workspace.Context.Target.Native)
+  in
   let* native =
     create_one ~host:host_context ~findlib_toolchain:host_toolchain ~implicit
       ~name ~merlin

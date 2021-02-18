@@ -4,6 +4,8 @@ type t =
   | Byte
   | Native
 
+let equal (x : t) (y : t) = Poly.equal x y
+
 let compare = Poly.compare
 
 let all = [ Byte; Native ]
@@ -43,6 +45,8 @@ let of_cm_kind : Cm_kind.t -> t = function
   | Cmx -> Native
 
 module Dict = struct
+  let mode_equal = equal
+
   type 'a t =
     { byte : 'a
     ; native : 'a
@@ -102,7 +106,9 @@ module Dict = struct
       l
 
     let of_list l =
-      { byte = List.mem Byte ~set:l; native = List.mem Native ~set:l }
+      { byte = List.mem l Byte ~equal:mode_equal
+      ; native = List.mem l Native ~equal:mode_equal
+      }
 
     let encode t = List.map ~f:encode (to_list t)
 

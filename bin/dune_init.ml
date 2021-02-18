@@ -317,7 +317,7 @@ module Component = struct
       |> Cst.concrete (* Package as a list CSTs *) |> List.singleton
 
     let add_to_list_set elem set =
-      if List.mem elem ~set then
+      if List.mem ~equal:Dune_lang.Atom.equal set elem then
         set
       else
         elem :: set

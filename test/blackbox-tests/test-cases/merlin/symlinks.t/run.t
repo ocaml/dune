@@ -25,7 +25,9 @@ Dune ocaml-merlin also accepts paths relative to the current directory
   Foo
 
   $ cd realsrc
-  $ dune ocaml-merlin --dump-config="." --root=".." | head -n 2
+  $ dune ocaml-merlin --dump-config="." --root=".." |
+  > sed 's#'$(opam config var prefix)'#OPAM_PREFIX#' |
+  > head -n 2
   Entering directory '..'
   Foo
-  ((EXCLUDE_QUERY_DIR)
+  ((STDLIB OPAM_PREFIX/lib/ocaml)

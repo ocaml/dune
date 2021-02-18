@@ -17,7 +17,8 @@ module Processed = struct
 
   (* Most of the configuration is shared accros a same lib/exe... *)
   type config =
-    { obj_dirs : Path.Set.t
+    { stdlib_dir : Path.t
+    ; obj_dirs : Path.Set.t
     ; src_dirs : Path.Set.t
     ; flags : string list
     ; extensions : string Ml_kind.Dict.t list
@@ -42,13 +43,14 @@ module Processed = struct
 
   let load_file = Persist.load
 
-  let to_sexp ~pp { obj_dirs; src_dirs; flags; extensions } =
+  let to_sexp ~pp { stdlib_dir; obj_dirs; src_dirs; flags; extensions } =
     let serialize_path = Path.to_absolute_filename in
     let to_atom s = Sexp.Atom s in
     let make_directive tag value = Sexp.List [ Atom tag; value ] in
     let make_directive_of_path tag path =
       make_directive tag (Sexp.Atom (serialize_path path))
     in
+    let stdlib_dir = [ make_directive_of_path "STDLIB" stdlib_dir ] in
     let exclude_query_dir = [ Sexp.List [ Atom "EXCLUDE_QUERY_DIR" ] ] in
     let obj_dirs =
       Path.Set.to_list obj_dirs |> List.map ~f:(make_directive_of_path "B")
@@ -73,7 +75,8 @@ module Processed = struct
           make_directive "SUFFIX" (Sexp.Atom (Printf.sprintf "%s %s" impl intf)))
     in
     Sexp.List
-      (List.concat [ exclude_query_dir; obj_dirs; src_dirs; flags; suffixes ])
+      (List.concat
+         [ stdlib_dir; exclude_query_dir; obj_dirs; src_dirs; flags; suffixes ])
 
   let get { modules; pp_config; config } ~filename =
     let fname = Filename.remove_extension filename |> String.lowercase in
@@ -106,7 +109,8 @@ module Unprocessed = struct
      for it's elaboration via the function [process : Unprocessed.t ... ->
      Processed.t] *)
   type config =
-    { requires : Lib.Set.t
+    { stdlib_dir : Path.t
+    ; requires : Lib.Set.t
     ; flags : string list Action_builder.t
     ; preprocess :
         Preprocess.Without_instrumentation.t Preprocess.t Module_name.Per_item.t
@@ -122,7 +126,7 @@ module Unprocessed = struct
     ; modules : Modules.t
     }
 
-  let make ?(requires = Ok []) ~flags
+  let make ?(requires = Ok []) ~stdlib_dir ~flags
       ?(preprocess = Preprocess.Per_module.no_preprocessing ()) ?libname
       ?(source_dirs = Path.Source.Set.empty) ~modules ~obj_dir ~dialects ~ident
       () =
@@ -146,7 +150,8 @@ module Unprocessed = struct
     in
     let extensions = Dialect.DB.extensions_for_merlin dialects in
     let config =
-      { requires
+      { stdlib_dir
+      ; requires
       ; flags = Action_builder.catch flags ~on_error:[]
       ; preprocess
       ; libname
@@ -235,7 +240,8 @@ module Unprocessed = struct
       { modules
       ; ident = _
       ; config =
-          { extensions
+          { stdlib_dir
+          ; extensions
           ; flags
           ; objs_dirs
           ; source_dirs
@@ -260,7 +266,7 @@ module Unprocessed = struct
         Path.Set.union src_dirs
           (Path.Set.of_list_map ~f:Path.source more_src_dirs)
       in
-      { Processed.src_dirs; obj_dirs; flags; extensions }
+      { Processed.stdlib_dir; src_dirs; obj_dirs; flags; extensions }
     and+ pp_config =
       Module_name.Per_item.map_with_targets preprocess
         ~f:(pp_flags sctx ~expander libname)

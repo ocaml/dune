@@ -157,7 +157,7 @@ module Stanza = struct
     let preprocessing =
       Preprocessing.make sctx ~dir ~expander ~scope ~dep_kind:Required
         ~lib_name:None ~lint:Dune_file.Lint.no_lint ~preprocess
-        ~preprocessor_deps:[]
+        ~preprocessor_deps:[] ~instrumentation_deps:[]
     in
     let compile_info =
       let compiler_libs =

@@ -29,18 +29,16 @@ let term =
              ouptut.")
   in
   Common.set_common common ~log_file:No_log_file ~targets:[];
-  Scheduler.go ~common (fun () ->
-      Dune_engine.File_tree.init ~recognize_jbuilder_projects:true
-        ~ancestor_vcs:None;
-      let x = Common.x common in
-      let workspace_file =
-        Common.workspace_file common |> Option.map ~f:Arg.Path.path
-      in
-      Dune_rules.Workspace.init ?x ?workspace_file ();
-      ( match dump_config with
-      | Some s -> Dune_rules.Merlin_server.dump s
-      | None -> Dune_rules.Merlin_server.start () )
-      |> Fiber.return)
+  Dune_engine.File_tree.init ~recognize_jbuilder_projects:true
+    ~ancestor_vcs:None;
+  let x = Common.x common in
+  let workspace_file =
+    Common.workspace_file common |> Option.map ~f:Arg.Path.path
+  in
+  Dune_rules.Workspace.init ?x ?workspace_file ();
+  match dump_config with
+  | Some s -> Dune_rules.Merlin_server.dump s
+  | None -> Dune_rules.Merlin_server.start ()
 
 let command = (term, info)
 
@@ -72,18 +70,16 @@ module Dump_dot_merlin = struct
                printed. Defaults to the current directory.")
     in
     Common.set_common common ~log_file:No_log_file ~targets:[];
-    Scheduler.go ~common (fun () ->
-        Dune_engine.File_tree.init ~recognize_jbuilder_projects:true
-          ~ancestor_vcs:None;
-        let x = Common.x common in
-        let workspace_file =
-          Common.workspace_file common |> Option.map ~f:Arg.Path.path
-        in
-        Dune_rules.Workspace.init ?x ?workspace_file ();
-        ( match path with
-        | Some s -> Dune_rules.Merlin_server.dump_dot_merlin s
-        | None -> Dune_rules.Merlin_server.dump_dot_merlin "." )
-        |> Fiber.return)
+    Dune_engine.File_tree.init ~recognize_jbuilder_projects:true
+      ~ancestor_vcs:None;
+    let x = Common.x common in
+    let workspace_file =
+      Common.workspace_file common |> Option.map ~f:Arg.Path.path
+    in
+    Dune_rules.Workspace.init ?x ?workspace_file ();
+    match path with
+    | Some s -> Dune_rules.Merlin_server.dump_dot_merlin s
+    | None -> Dune_rules.Merlin_server.dump_dot_merlin "."
 
   let command = (term, info)
 end

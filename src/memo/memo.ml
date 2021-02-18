@@ -1091,7 +1091,9 @@ let peek_exn (type i o f) (t : (i, o, f) t) inp =
         let res =
           add_dep_from_caller ~called_from_peek:true dep_node Finished
         in
-        assert (Result.is_ok res);
+        ( match res with
+        | Ok () -> ()
+        | Error cycle_error -> raise (Cycle_error.E cycle_error) );
         Value.get_sync_exn cv.value ) )
 
 let get_deps (type i o f) (t : (i, o, f) t) inp =

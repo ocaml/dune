@@ -731,3 +731,81 @@ let%expect_test "sequential_iter - stop after first exception" =
   test Fiber.sequential_iter;
   [%expect {|
     Error [ { exn = "(Failure 1)"; backtrace = "" } ] |}]
+
+let%expect_test "Stream: multiple readers is an error" =
+  (* [stream] is so that the first element takes longer to be produced. An
+     implementation supporting multiple readers should still yield the first
+     element before the second. *)
+  let stream =
+    let n = ref 0 in
+    Fiber.Stream.In.create (fun () ->
+        let x = !n in
+        n := x + 1;
+        let+ () =
+          if x = 0 then
+            let* () = long_running_fiber () in
+            long_running_fiber ()
+          else
+            Fiber.return ()
+        in
+        Some ())
+  in
+  Scheduler.run
+    (Fiber.fork_and_join_unit
+       (fun () ->
+         printf "Reader 1 reading\n";
+         let+ _x = Fiber.Stream.In.read stream in
+         printf "Reader 1 done\n")
+       (fun () ->
+         let* () = long_running_fiber () in
+         printf "Reader 2 reading\n";
+         let+ _x = Fiber.Stream.In.read stream in
+         printf "Reader 2 done\n"));
+  [%expect
+    {|
+    Reader 1 reading
+    Reader 2 reading
+    Reader 2 done
+    Reader 1 done |}]
+
+let%expect_test "Stream: multiple writers is an error" =
+  (* [stream] is so that the first element takes longer to be consumed. An
+     implementation supporting multiple writers should still yield the first
+     element before the second. *)
+  let stream =
+    Fiber.Stream.Out.create (function
+      | Some 1 ->
+        let* () = long_running_fiber () in
+        long_running_fiber ()
+      | _ -> Fiber.return ())
+  in
+  Scheduler.run
+    (Fiber.fork_and_join_unit
+       (fun () ->
+         printf "Writer 1 writing\n";
+         let+ _x = Fiber.Stream.Out.write stream (Some 1) in
+         printf "Writer 1 done\n")
+       (fun () ->
+         let* () = long_running_fiber () in
+         printf "Writer 2 writing\n";
+         let+ _x = Fiber.Stream.Out.write stream (Some 2) in
+         printf "Writer 2 done\n"));
+  [%expect
+    {|
+    Writer 1 writing
+    Writer 2 writing
+    Writer 2 done
+    Writer 1 done |}]
+
+let%expect_test "Stream: writing on a closed stream is an error" =
+  Scheduler.run
+    (let out =
+       Fiber.Stream.Out.create (fun x ->
+           print_dyn ((option unit) x);
+           Fiber.return ())
+     in
+     let* () = Fiber.Stream.Out.write out None in
+     Fiber.Stream.Out.write out (Some ()));
+  [%expect {|
+    None
+    Some () |}]

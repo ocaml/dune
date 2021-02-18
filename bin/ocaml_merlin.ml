@@ -45,13 +45,16 @@ let term =
 let command = (term, info)
 
 module Dump_dot_merlin = struct
-  let doc = "Start a merlin configuration server"
+  let doc = "Print Merlin configuration"
 
   let man =
     [ `S "DESCRIPTION"
     ; `P
-        {|$(b,dune ocaml dump-dot-merlin) will attempt to read previously generated configuration,
-        merge them and print it to the standard output in Merlin configuration syntax. The output of this command should always be checked and adapted to the project needs afterward.|}
+        {|$(b,dune ocaml dump-dot-merlin) will attempt to read previously
+        generated configuration in a source folder, merge them and print
+        it to the standard output in Merlin configuration syntax. The
+        output of this command should always be checked and adapted to
+        the project needs afterward.|}
     ; Common.footer
     ]
 
@@ -63,10 +66,10 @@ module Dump_dot_merlin = struct
       Arg.(
         value
         & pos 0 (some string) None
-        & info []
+        & info [] ~docv:"PATH"
             ~doc:
               "The path to the folder of which the configuration should be \
-               printed. Default to the current directory")
+               printed. Defaults to the current directory.")
     in
     Common.set_common common ~log_file:No_log_file ~targets:[];
     Scheduler.go ~common (fun () ->

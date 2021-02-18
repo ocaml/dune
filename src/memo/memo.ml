@@ -766,9 +766,14 @@ end = struct
             match dep_node.last_cached_value with
             | None -> Prev_cycle_cache_lookup_result.Invalid No_value
             | Some cv -> (
-              match Result.is_error cv.value with
-              | true -> Invalid No_value
-              | false -> (
+              match cv.value with
+              | Error _ ->
+                (* For errors, the dependencies are not always recorded
+                   correctly. In particular, dependency cycle errors have
+                   missing deps. Because of this, we can't use [deps_changed] in
+                   this case. *)
+                Invalid No_value
+              | Ok _ -> (
                 let res = deps_changed cv.deps in
                 match res with
                 | Unchanged ->
@@ -929,10 +934,14 @@ end = struct
             | None ->
               Fiber.return (Prev_cycle_cache_lookup_result.Invalid No_value)
             | Some cv -> (
-              match Result.is_error cv.value with
-              | true ->
+              match cv.value with
+              | Error _ ->
+                (* For errors, the dependencies are not always recorded
+                   correctly. In particular, dependency cycle errors have
+                   missing deps. Because of this, we can't use [deps_changed] in
+                   this case. *)
                 Fiber.return (Prev_cycle_cache_lookup_result.Invalid No_value)
-              | false -> (
+              | Ok _ -> (
                 let+ res = deps_changed cv.deps in
                 match res with
                 | Unchanged ->

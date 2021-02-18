@@ -1,6 +1,8 @@
 Unreleased
 ----------
 
+- Make `patdiff` show refined diffs (#4257, fixes #4254, @hakuch)
+
 - Allow `(package pkg)` in dependencies even if `pkg` is an installed package
   (#4170, @bobot)
 

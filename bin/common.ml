@@ -56,6 +56,7 @@ type t =
   ; (* Original arguments for the external-lib-deps hint *)
     orig_args : string list
   ; config : Dune_config.t
+  ; rpc : Dune_rpc_impl.Server.t option
   ; default_target : Arg.Dep.t (* For build & runtest only *)
   ; watch : bool
   ; stats_trace_file : string option
@@ -76,6 +77,8 @@ let root t = t.root
 
 let config t = t.config
 
+let set_config t config = { t with config }
+
 let only_packages t = t.only_packages
 
 let watch t = t.watch
@@ -86,8 +89,11 @@ let prefix_target common s = common.target_prefix ^ s
 
 let instrument_with t = t.instrument_with
 
-(* To avoid needless recompilations under Windows, normalize the drive letter to
-   uppercase. *)
+let rpc t = t.rpc
+
+(* To avoid needless recompilations under Windows, where the case of
+   [Sys.getcwd] can vary between different invocations of [dune], normalize to
+   lowercase. *)
 let normalize_path path =
   if Sys.win32 then
     let src = Path.External.to_string path in
@@ -696,6 +702,12 @@ let term =
   let build_dir = Option.value ~default:default_build_dir build_dir in
   let root = Workspace_root.create ~specified_by_user:root in
   let config = config_of_file config_file in
+  let rpc =
+    if watch then
+      Some (Dune_rpc_impl.Server.create ())
+    else
+      None
+  in
   let config =
     Dune_config.merge config
       { display
@@ -733,6 +745,7 @@ let term =
   ; only_packages
   ; x
   ; config
+  ; rpc
   ; build_dir
   ; no_print_directory
   ; store_orig_src_dir
@@ -743,6 +756,8 @@ let term =
   ; promote_install_files
   ; instrument_with
   }
+
+let set_rpc t rpc = { t with rpc = Some rpc }
 
 let term =
   let+ t, orig_args = Term.with_used_args term in

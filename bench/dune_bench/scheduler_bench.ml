@@ -7,6 +7,7 @@ let config =
   { Scheduler.Config.concurrency = 1
   ; terminal_persistence = Preserve
   ; display = Short
+  ; rpc = None
   }
 
 let setup =

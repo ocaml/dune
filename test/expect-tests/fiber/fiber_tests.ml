@@ -7,27 +7,12 @@ let printf = Printf.printf
 
 let () = init ()
 
-module Scheduler : sig
-  exception Never
+module Scheduler = struct
+  let t = Test_scheduler.create ()
 
-  val yield : unit -> unit Fiber.t
+  let yield () = Test_scheduler.yield t
 
-  val run : 'a Fiber.t -> 'a
-end = struct
-  let suspended = Queue.create ()
-
-  let yield () =
-    let ivar = Fiber.Ivar.create () in
-    Queue.push suspended ivar;
-    Fiber.Ivar.read ivar
-
-  exception Never
-
-  let run t =
-    Fiber.run t ~iter:(fun () ->
-        match Queue.pop suspended with
-        | None -> raise Never
-        | Some e -> Fiber.Fill (e, ()))
+  let run f = Test_scheduler.run t f
 end
 
 let failing_fiber () : unit Fiber.t =
@@ -52,7 +37,7 @@ let backtrace_result dyn_of_ok =
 let test ?(expect_never = false) to_dyn f =
   let never_raised = ref false in
   ( try Scheduler.run f |> to_dyn |> print_dyn
-    with Scheduler.Never -> never_raised := true );
+    with Test_scheduler.Never -> never_raised := true );
   match (!never_raised, expect_never) with
   | false, false ->
     (* We don't raise in this case b/c we assume something else is being tested *)

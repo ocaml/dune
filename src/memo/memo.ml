@@ -300,6 +300,17 @@ module M = struct
   end =
     Running_state
 
+  (* Why do we store a [run] in the [Considering] state?
+
+     Nodes can currently be invalidated and a build run restarted while some
+     computations are still under way (are in the [Considering] state). We could
+     enforce a separation between the computation and invalidation phases, which
+     could make the implementation simpler, but for now we allow the phases to
+     partially overlap. To distinguish "current" computations from "stale" ones,
+     each computation stores the [run] in which it was started. In this way,
+     before subscribing to an [Ivar.t] from the [completion], we can check if it
+     corresponds to the "current" run, and if not, the computation should be
+     restarted. *)
   and State : sig
     type ('a, 'b, 'f) t =
       (* [Considering] marks computations currently being considered (either

@@ -567,16 +567,20 @@ let%expect_test "writing multiple values" =
     reader2: got 1
     () |}]
 
-let%expect_test "Sequence.parallel_iter is indeed parallel" =
-  let test ~iter_function =
-    let rec sequence n =
-      if n = 4 then
-        Fiber.return Fiber.Sequence.Nil
+let stream a b =
+  let n = ref a in
+  Fiber.Stream.In.create (fun () ->
+      if !n > b then
+        Fiber.return None
       else
-        Fiber.return (Fiber.Sequence.Cons (n, sequence (n + 1)))
-    in
+        let x = !n in
+        n := x + 1;
+        Fiber.return (Some x))
+
+let%expect_test "Stream.parallel_iter is indeed parallel" =
+  let test ~iter_function =
     Scheduler.run
-      (iter_function (sequence 1) ~f:(fun n ->
+      (iter_function (stream 1 3) ~f:(fun n ->
            Printf.printf "%d: enter\n" n;
            let* () = long_running_fiber () in
            Printf.printf "%d: leave\n" n;
@@ -585,7 +589,7 @@ let%expect_test "Sequence.parallel_iter is indeed parallel" =
 
   (* The [enter] amd [leave] messages must be interleaved to indicate that the
      calls to [f] are executed in parallel: *)
-  test ~iter_function:Fiber.Sequence.parallel_iter;
+  test ~iter_function:Fiber.Stream.In.parallel_iter;
   [%expect
     {|
     1: enter
@@ -597,7 +601,7 @@ let%expect_test "Sequence.parallel_iter is indeed parallel" =
 
   (* With [sequential_iter] however, The [enter] amd [leave] messages must be
      paired in sequence: *)
-  test ~iter_function:Fiber.Sequence.sequential_iter;
+  test ~iter_function:Fiber.Stream.In.sequential_iter;
   [%expect
     {|
     1: enter
@@ -607,56 +611,50 @@ let%expect_test "Sequence.parallel_iter is indeed parallel" =
     3: enter
     3: leave |}]
 
-let%expect_test "Sequence.*_iter can be finalized" =
+let%expect_test "Stream.*_iter can be finalized" =
   let test ~iter_function =
-    let rec sequence n =
-      if n = 4 then
-        Fiber.return Fiber.Sequence.Nil
-      else
-        Fiber.return (Fiber.Sequence.Cons (n, sequence (n + 1)))
-    in
     Scheduler.run
       (Fiber.finalize
          ~finally:(fun () ->
            Printf.printf "finalized";
            Fiber.return ())
-         (fun () -> iter_function (sequence 1) ~f:(fun _ -> Fiber.return ())))
+         (fun () -> iter_function (stream 1 3) ~f:(fun _ -> Fiber.return ())))
   in
-  test ~iter_function:Fiber.Sequence.sequential_iter;
+  test ~iter_function:Fiber.Stream.In.sequential_iter;
   [%expect {| finalized |}];
 
-  test ~iter_function:Fiber.Sequence.parallel_iter;
+  test ~iter_function:Fiber.Stream.In.parallel_iter;
   [%expect {| finalized |}]
 
-let rec naive_sequence_parallel_iter (t : _ Fiber.Sequence.t) ~f =
-  t >>= function
-  | Nil -> Fiber.return ()
-  | Cons (x, t) ->
+let rec naive_stream_parallel_iter (t : _ Fiber.Stream.In.t) ~f =
+  Fiber.Stream.In.read t >>= function
+  | None -> Fiber.return ()
+  | Some x ->
     Fiber.fork_and_join_unit
       (fun () -> f x)
-      (fun () -> naive_sequence_parallel_iter t ~f)
+      (fun () -> naive_stream_parallel_iter t ~f)
 
-let%expect_test "Sequence.parallel_iter doesn't leak" =
-  (* Check that a naive [parallel_iter] functions on sequences leaks memory,
-     while [Fiber.Sequence.parallel_iter] does not. To do that, we construct a
-     long sequence and iterate over it. At each iteration, we do a full major GC
+let%expect_test "Stream.parallel_iter doesn't leak" =
+  (* Check that a naive [parallel_iter] functions on streams is leaking memory,
+     while [Fiber.Stream.parallel_iter] does not. To do that, we construct a
+     long stream and iterate over it. At each iteration, we do a full major GC
      and count the number of live words. With the naive implementation, we check
      that this number increases while with the right one we check that this
      number is constant.
 
      This test is carefully crafted to avoid creating new live words as we
-     iterate through the sequence. As a result, the only new live words that can
+     iterate through the stream. As a result, the only new live words that can
      appear are because of the iteration function. *)
   let test ~iter_function ~check =
-    let rec sequence n =
-      (* This yield is to ensure that we don't build the whole sequence upfront,
-         which would cause the number of live words to decrease as we iterate
-         through the sequence. *)
-      let* () = Scheduler.yield () in
-      if n = 0 then
-        Fiber.return Fiber.Sequence.Nil
-      else
-        Fiber.return (Fiber.Sequence.Cons ((), sequence (n - 1)))
+    let stream n =
+      let n = ref n in
+      Fiber.Stream.In.create (fun () ->
+          if !n = 0 then
+            Fiber.return None
+          else (
+            decr n;
+            Fiber.return (Some ())
+          ))
     in
     (* We use [-1] as a [None] value to avoid going from [None] to [Some _],
        which would case the number of live words to change *)
@@ -675,18 +673,18 @@ let%expect_test "Sequence.parallel_iter doesn't leak" =
       prev := curr;
       Fiber.return ()
     in
-    Scheduler.run (iter_function (sequence 100) ~f);
+    Scheduler.run (iter_function (stream 100) ~f);
     if !ok then print_string "PASS"
   in
 
   (* Check that the number of live words keeps on increasing because we are
      leaking memory: *)
-  test ~iter_function:naive_sequence_parallel_iter ~check:(fun ~prev ~curr ->
+  test ~iter_function:naive_stream_parallel_iter ~check:(fun ~prev ~curr ->
       prev < curr);
   [%expect {| PASS |}];
 
   (* Check that the number of live words is constant with this iter function: *)
-  test ~iter_function:Fiber.Sequence.parallel_iter ~check:(fun ~prev ~curr ->
+  test ~iter_function:Fiber.Stream.In.parallel_iter ~check:(fun ~prev ~curr ->
       prev = curr);
   [%expect {| PASS |}]
 
@@ -733,3 +731,87 @@ let%expect_test "sequential_iter - stop after first exception" =
   test Fiber.sequential_iter;
   [%expect {|
     Error [ { exn = "(Failure 1)"; backtrace = "" } ] |}]
+
+let%expect_test "Stream: multiple readers is an error" =
+  (* [stream] is so that the first element takes longer to be produced. An
+     implementation supporting multiple readers should still yield the first
+     element before the second. *)
+  let stream =
+    let n = ref 0 in
+    Fiber.Stream.In.create (fun () ->
+        let x = !n in
+        n := x + 1;
+        let+ () =
+          if x = 0 then
+            let* () = long_running_fiber () in
+            long_running_fiber ()
+          else
+            Fiber.return ()
+        in
+        Some ())
+  in
+  Scheduler.run
+    (Fiber.fork_and_join_unit
+       (fun () ->
+         printf "Reader 1 reading\n";
+         let+ _x = Fiber.Stream.In.read stream in
+         printf "Reader 1 done\n")
+       (fun () ->
+         let* () = long_running_fiber () in
+         printf "Reader 2 reading\n";
+         let+ _x = Fiber.Stream.In.read stream in
+         printf "Reader 2 done\n"))
+  [@@expect.uncaught_exn
+    {|
+  ("(\"Fiber.Stream.In: already reading\", {})")
+  Trailing output
+  ---------------
+  Reader 1 reading
+  Reader 2 reading |}]
+
+let%expect_test "Stream: multiple writers is an error" =
+  (* [stream] is so that the first element takes longer to be consumed. An
+     implementation supporting multiple writers should still yield the first
+     element before the second. *)
+  let stream =
+    Fiber.Stream.Out.create (function
+      | Some 1 ->
+        let* () = long_running_fiber () in
+        long_running_fiber ()
+      | _ -> Fiber.return ())
+  in
+  Scheduler.run
+    (Fiber.fork_and_join_unit
+       (fun () ->
+         printf "Writer 1 writing\n";
+         let+ _x = Fiber.Stream.Out.write stream (Some 1) in
+         printf "Writer 1 done\n")
+       (fun () ->
+         let* () = long_running_fiber () in
+         printf "Writer 2 writing\n";
+         let+ _x = Fiber.Stream.Out.write stream (Some 2) in
+         printf "Writer 2 done\n"))
+  [@@expect.uncaught_exn
+    {|
+  ("(\"Fiber.Stream.Out: already writing\", {})")
+  Trailing output
+  ---------------
+  Writer 1 writing
+  Reader 1 done
+  Writer 2 writing |}]
+
+let%expect_test "Stream: writing on a closed stream is an error" =
+  Scheduler.run
+    (let out =
+       Fiber.Stream.Out.create (fun x ->
+           print_dyn ((option unit) x);
+           Fiber.return ())
+     in
+     let* () = Fiber.Stream.Out.write out None in
+     Fiber.Stream.Out.write out (Some ()))
+  [@@expect.uncaught_exn
+    {|
+  ("(\"Fiber.Stream.Out: stream output closed\", {})")
+  Trailing output
+  ---------------
+  None |}]

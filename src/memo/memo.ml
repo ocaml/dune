@@ -310,9 +310,9 @@ module M = struct
      to an [Ivar.t] from the [completion], we could check if it corresponded to
      the current run, and if not, start a new computation.
 
-     With a recent (as of 2021-02-18) refactoring, we believe such zombie
-     computations are no longer possible. The function [currently_considering]
-     now throws a [Code_error] if it encounters a zombie.
+     With better error-handling introduced on 2020-12-09, we believe such zombie
+     computations are no longer possible. Since 2021-02-18, the function
+     [currently_considering] throws a [Code_error] if it encounters a zombie.
 
      Once we have convinced ourselves that there are no zombies out there, we
      can remove the [run] from the [Considering] state. *)

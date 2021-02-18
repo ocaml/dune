@@ -515,7 +515,8 @@ module Sample_attempt_dag_node = struct
     | Finished
 end
 
-(* Add a dependency on the [node] from the caller, if there is one. *)
+(* Add a dependency on the [node] from the caller, if there is one. Returns an
+   [Error] if the new dependency would introduce a dependency cycle. *)
 let add_dep_from_caller (type i o f) ~called_from_peek
     (node : (i, o, f) Dep_node.t)
     (sample_attempt_dag_node : Sample_attempt_dag_node.t) =
@@ -673,18 +674,33 @@ let dep_node (type i o f) (t : (i, o, f) t) inp =
     dep_node
 
 module Prev_cycle_cache_lookup_result = struct
+  type 'a invalid_value =
+    | No_value
+    | Old_value of 'a Cached_value.t
+    | Cycle_error of Cycle_error.t
+
   type 'a t =
     | Valid of 'a Cached_value.t
-    | Invalid of
-        { old_value : 'a Cached_value.t option
-        ; cycle_error : Cycle_error.t option
-        }
+    | Invalid of 'a invalid_value
 end
 
+(* Checking dependencies of a node can lead to one of these outcomes:
+
+   - [Unchanged]: all the dependencies of the current node are up to date and we
+   can therefore skip recomputing the node and can reuse the value computed in
+   the previuos run.
+
+   - [Changed]: one of the dependencies has changed since the previous run and
+   the current node should therefore be recomputed.
+
+   - [Cycle_error _]: one of the dependencies leads to a dependency cycle. In
+   this case, there is no point in recomputing the current node: it's impossible
+   to bring its dependencies up to date! *)
 module Changed_or_not = struct
   type t =
-    | Changed of { cycle_error : Cycle_error.t option }
     | Unchanged
+    | Changed
+    | Cycle_error of Cycle_error.t
 end
 
 (* CR-someday aalekseyev: There's a lot of duplication between Exec_sync and
@@ -720,11 +736,11 @@ end = struct
       | [] -> Changed_or_not.Unchanged
       | Last_dep.T (dep, v_id) :: deps -> (
         match Exec_unknown.exec_dep_node_internal_from_sync dep with
-        | Error cycle_error -> Changed { cycle_error = Some cycle_error }
+        | Error cycle_error -> Cycle_error cycle_error
         | Ok res -> (
           match Value_id.equal res.id v_id with
           | true -> go deps
-          | false -> Changed { cycle_error = None } ) )
+          | false -> Changed ) )
     in
     go
 
@@ -737,33 +753,35 @@ end = struct
       Call_stack.push_sync_frame frame (fun () ->
           let from_cache =
             match dep_node.last_cached_value with
-            | None ->
-              Prev_cycle_cache_lookup_result.Invalid
-                { old_value = None; cycle_error = None }
+            | None -> Prev_cycle_cache_lookup_result.Invalid No_value
             | Some cv -> (
               match Result.is_error cv.value with
-              | true -> Invalid { old_value = None; cycle_error = None }
+              | true -> Invalid No_value
               | false -> (
                 let res = deps_changed cv.deps in
                 match res with
                 | Unchanged ->
                   cv.last_validated_at <- Run.current ();
                   Prev_cycle_cache_lookup_result.Valid cv
-                | Changed { cycle_error } ->
+                | Changed ->
                   dep_node.last_cached_value <- None;
-                  Invalid { old_value = Some cv; cycle_error } ) )
+                  Invalid (Old_value cv)
+                | Cycle_error cycle_error ->
+                  dep_node.last_cached_value <- None;
+                  Invalid (Cycle_error cycle_error) ) )
           in
           match from_cache with
           | Valid v -> v
-          | Invalid { old_value; cycle_error } -> (
+          | Invalid invalid_value -> (
             match dep_node.without_state.spec.f with
             | Function.Sync f ->
               let res =
-                match cycle_error with
-                | None ->
+                match invalid_value with
+                | No_value
+                | Old_value _ ->
                   Exn_with_backtrace.try_with (fun () ->
                       f dep_node.without_state.input)
-                | Some cycle_error ->
+                | Cycle_error cycle_error ->
                   Error (Exn_with_backtrace.capture (Cycle_error.E cycle_error))
               in
               let res =
@@ -777,9 +795,11 @@ end = struct
               in
               let deps_rev = running_state.deps_so_far.deps_reversed in
               let res =
-                match old_value with
-                | None -> Cached_value.create res ~deps_rev
-                | Some old_cv -> (
+                match invalid_value with
+                | No_value
+                | Cycle_error _ ->
+                  Cached_value.create res ~deps_rev
+                | Old_value old_cv -> (
                   match
                     Cached_value.value_changed dep_node old_cv.value res
                   with
@@ -879,14 +899,12 @@ end = struct
       | Last_dep.T (dep, v_id) :: deps -> (
         match Exec_unknown.exec_dep_node_internal dep with
         | Error cycle_error ->
-          Fiber.return
-            (Changed_or_not.Changed { cycle_error = Some cycle_error })
+          Fiber.return (Changed_or_not.Cycle_error cycle_error)
         | Ok res -> (
           let* res = res in
           match Value_id.equal res.id v_id with
           | true -> go deps
-          | false ->
-            Fiber.return (Changed_or_not.Changed { cycle_error = None }) ) )
+          | false -> Fiber.return Changed_or_not.Changed ) )
     in
     go
 
@@ -898,28 +916,27 @@ end = struct
           let* from_cache =
             match dep_node.last_cached_value with
             | None ->
-              Fiber.return
-                (Prev_cycle_cache_lookup_result.Invalid
-                   { old_value = None; cycle_error = None })
+              Fiber.return (Prev_cycle_cache_lookup_result.Invalid No_value)
             | Some cv -> (
               match Result.is_error cv.value with
               | true ->
-                Fiber.return
-                  (Prev_cycle_cache_lookup_result.Invalid
-                     { old_value = None; cycle_error = None })
+                Fiber.return (Prev_cycle_cache_lookup_result.Invalid No_value)
               | false -> (
                 let+ res = deps_changed cv.deps in
                 match res with
                 | Unchanged ->
                   cv.last_validated_at <- Run.current ();
                   Prev_cycle_cache_lookup_result.Valid cv
-                | Changed { cycle_error } ->
+                | Changed ->
                   dep_node.last_cached_value <- None;
-                  Invalid { old_value = Some cv; cycle_error } ) )
+                  Invalid (Old_value cv)
+                | Cycle_error cycle_error ->
+                  dep_node.last_cached_value <- None;
+                  Invalid (Cycle_error cycle_error) ) )
           in
           match from_cache with
           | Valid v -> Fiber.return v
-          | Invalid { old_value; cycle_error } -> (
+          | Invalid invalid_value -> (
             match dep_node.without_state.spec.f with
             | Function.Async f ->
               (* A consequence of using [Fiber.collect_errors] is that memoized
@@ -928,11 +945,12 @@ end = struct
                  [Fiber.with_error_handler], but we don't have access to dune's
                  error reporting mechanism in memo *)
               let+ res =
-                match cycle_error with
-                | None ->
+                match invalid_value with
+                | No_value
+                | Old_value _ ->
                   Fiber.collect_errors (fun () ->
                       f dep_node.without_state.input)
-                | Some cycle_error ->
+                | Cycle_error cycle_error ->
                   Fiber.return
                     (Error
                        [ Exn_with_backtrace.capture (Cycle_error.E cycle_error)
@@ -946,9 +964,11 @@ end = struct
               (* update the output cache with the correct value *)
               let deps_rev = running_state.deps_so_far.deps_reversed in
               let res =
-                match old_value with
-                | None -> Cached_value.create res ~deps_rev
-                | Some old_cv -> (
+                match invalid_value with
+                | No_value
+                | Cycle_error _ ->
+                  Cached_value.create res ~deps_rev
+                | Old_value old_cv -> (
                   match
                     Cached_value.value_changed dep_node old_cv.value res
                   with
@@ -1007,7 +1027,7 @@ end = struct
     match consider_dep_node dep_node with
     | Ok res ->
       let* res = res in
-      Value.get_async_exn res.Cached_value.value
+      Value.get_async_exn res.value
     | Error cycle_error -> raise (Cycle_error.E cycle_error)
 
   let exec_dep_node_internal = consider_dep_node

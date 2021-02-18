@@ -567,51 +567,86 @@ end
 
 module Stream = struct
   module In = struct
-    type nonrec 'a t = unit -> 'a option t
+    (* Invariant: once [read] has returned [None], it always returns [None] *)
+    type nonrec 'a t =
+      { mutable read : unit -> 'a option t
+      ; mutable reading : bool
+      }
 
-    let create f = f
+    let create_unchecked read = { read; reading = false }
 
-    let read t = t ()
+    let create read =
+      let t = { read; reading = false } in
+      let read () =
+        let+ x = read () in
+        if Option.is_none x then t.read <- (fun () -> return None);
+        x
+      in
+      t.read <- read;
+      t
 
-    let empty () () = return None
+    let lock t =
+      if t.reading then Code_error.raise "Fiber.Stream.In: already reading" [];
+      t.reading <- true
+
+    let unlock t = t.reading <- false
+
+    let read t =
+      lock t;
+      let+ x = t.read () in
+      unlock t;
+      x
+
+    let empty () = create_unchecked (fun () -> return None)
 
     let of_list xs =
       let xs = ref xs in
-      fun () ->
-        match !xs with
-        | [] -> return None
-        | x :: xs' ->
-          xs := xs';
-          return (Some x)
+      create_unchecked (fun () ->
+          match !xs with
+          | [] -> return None
+          | x :: xs' ->
+            xs := xs';
+            return (Some x))
 
-    let rec filter_map t ~f () =
-      let* next = read t in
-      match next with
-      | None -> return None
-      | Some x -> (
-        match f x with
-        | None -> filter_map t ~f ()
-        | Some y -> return (Some y) )
+    let filter_map t ~f =
+      let rec read () =
+        t.read () >>= function
+        | None ->
+          unlock t;
+          return None
+        | Some x -> (
+          match f x with
+          | None -> read ()
+          | Some y -> return (Some y) )
+      in
+      lock t;
+      create_unchecked read
 
-    let rec sequential_iter t ~f =
-      let* e = t () in
-      match e with
-      | None -> return ()
-      | Some x ->
-        let* () = f x in
-        sequential_iter t ~f
+    let sequential_iter t ~f =
+      let rec loop t ~f =
+        t.read () >>= function
+        | None ->
+          unlock t;
+          return ()
+        | Some x ->
+          let* () = f x in
+          loop t ~f
+      in
+      lock t;
+      loop t ~f
 
     let parallel_iter t ~f k =
       let n = ref 1 in
       let k () =
         decr n;
-        if !n = 0 then
+        if !n = 0 then (
+          unlock t;
           k ()
-        else
+        ) else
           EC.deref ()
       in
       let rec loop t =
-        t () (function
+        t.read () (function
           | None -> k ()
           | Some x ->
             EC.add_refs 1;
@@ -623,32 +658,64 @@ module Stream = struct
   end
 
   module Out = struct
-    type nonrec 'a t = 'a option -> unit t
+    type nonrec 'a t =
+      { mutable write : 'a option -> unit t
+      ; mutable writing : bool
+      }
 
-    let create f = f
+    let lock t =
+      if t.writing then Code_error.raise "Fiber.Stream.Out: already writing" [];
+      t.writing <- true
 
-    let write f x = f x
+    let unlock t = t.writing <- false
 
-    let null () _ = return ()
+    let create write =
+      let t = { write; writing = false } in
+      let write x =
+        if Option.is_none x then
+          t.write <-
+            (fun _ ->
+              Code_error.raise "Fiber.Stream.Out: stream output closed" []);
+        write x
+      in
+      t.write <- write;
+      t
+
+    let write t x =
+      lock t;
+      let+ () = t.write x in
+      unlock t
+
+    let null () = create (fun _ -> return ())
   end
 
   let connect i o =
+    In.lock i;
+    Out.lock o;
     let rec go () =
-      let* a = In.read i in
-      let* () = Out.write o a in
+      let* a = i.read () in
+      let* () = o.write a in
       match a with
-      | None -> return ()
+      | None ->
+        In.unlock i;
+        Out.unlock o;
+        return ()
       | Some _ -> go ()
     in
     go ()
 
   let supply i o =
+    In.lock i;
+    Out.lock o;
     let rec go () =
-      let* a = In.read i in
+      let* a = i.read () in
       match a with
-      | None -> return ()
+      | None ->
+        In.unlock i;
+        Out.unlock o;
+        return ()
       | Some _ ->
-        let* () = Out.write o a in
+        let* () = o.write a in
         go ()
     in
     go ()

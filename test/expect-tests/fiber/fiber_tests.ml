@@ -760,13 +760,14 @@ let%expect_test "Stream: multiple readers is an error" =
          let* () = long_running_fiber () in
          printf "Reader 2 reading\n";
          let+ _x = Fiber.Stream.In.read stream in
-         printf "Reader 2 done\n"));
-  [%expect
+         printf "Reader 2 done\n"))
+  [@@expect.uncaught_exn
     {|
-    Reader 1 reading
-    Reader 2 reading
-    Reader 2 done
-    Reader 1 done |}]
+  ("(\"Fiber.Stream.In: already reading\", {})")
+  Trailing output
+  ---------------
+  Reader 1 reading
+  Reader 2 reading |}]
 
 let%expect_test "Stream: multiple writers is an error" =
   (* [stream] is so that the first element takes longer to be consumed. An
@@ -789,13 +790,15 @@ let%expect_test "Stream: multiple writers is an error" =
          let* () = long_running_fiber () in
          printf "Writer 2 writing\n";
          let+ _x = Fiber.Stream.Out.write stream (Some 2) in
-         printf "Writer 2 done\n"));
-  [%expect
+         printf "Writer 2 done\n"))
+  [@@expect.uncaught_exn
     {|
-    Writer 1 writing
-    Writer 2 writing
-    Writer 2 done
-    Writer 1 done |}]
+  ("(\"Fiber.Stream.Out: already writing\", {})")
+  Trailing output
+  ---------------
+  Writer 1 writing
+  Reader 1 done
+  Writer 2 writing |}]
 
 let%expect_test "Stream: writing on a closed stream is an error" =
   Scheduler.run
@@ -805,7 +808,10 @@ let%expect_test "Stream: writing on a closed stream is an error" =
            Fiber.return ())
      in
      let* () = Fiber.Stream.Out.write out None in
-     Fiber.Stream.Out.write out (Some ()));
-  [%expect {|
-    None
-    Some () |}]
+     Fiber.Stream.Out.write out (Some ()))
+  [@@expect.uncaught_exn
+    {|
+  ("(\"Fiber.Stream.Out: stream output closed\", {})")
+  Trailing output
+  ---------------
+  None |}]

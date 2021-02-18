@@ -302,15 +302,20 @@ module M = struct
 
   (* Why do we store a [run] in the [Considering] state?
 
-     Nodes can currently be invalidated and a build run restarted while some
-     computations are still under way (are in the [Considering] state). We could
-     enforce a separation between the computation and invalidation phases, which
-     could make the implementation simpler, but for now we allow the phases to
-     partially overlap. To distinguish "current" computations from "stale" ones,
-     each computation stores the [run] in which it was started. In this way,
-     before subscribing to an [Ivar.t] from the [completion], we can check if it
-     corresponds to the "current" run, and if not, the computation should be
-     restarted. *)
+     It used to be possible for a computation to finish with a cycle error and
+     remain in the [Considering] state forever, becoming a "zombie" computation.
+
+     To distinguish between "current" and "zombie" computations, we stored the
+     [run] in which the computation had started. In this way, before subscribing
+     to an [Ivar.t] from the [completion], we could check if it corresponded to
+     the current run, and if not, start a new computation.
+
+     With better error-handling introduced on 2020-12-09, we believe such zombie
+     computations are no longer possible. Since 2021-02-18, the function
+     [currently_considering] throws a [Code_error] if it encounters a zombie.
+
+     Once we have convinced ourselves that there are no zombies out there, we
+     can remove the [run] from the [Considering] state. *)
   and State : sig
     type ('a, 'b, 'f) t =
       (* [Considering] marks computations currently being considered (either
@@ -363,7 +368,8 @@ let currently_considering (v : _ State.t) : _ State.t =
     if Run.is_current run then
       running
     else
-      Not_considering
+      Code_error.raise
+        "A zombie computation is encountered in [currently_considering]" []
 
 let get_cached_value_in_current_cycle (dep_node : _ Dep_node.t) =
   match dep_node.last_cached_value with

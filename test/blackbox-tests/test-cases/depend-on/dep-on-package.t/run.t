@@ -21,7 +21,11 @@
   > EOF
 
   $ cat >b/dune <<'EOF'
-  > (rule (alias runtest) (deps (package a)) (action (bash "cat \"$(ocamlfind query a)\"/a.ml")))
+  > (alias
+  > (name test-deps)
+  > (deps
+  >   (package a)))
+  > (rule (alias runtest) (deps (alias test-deps)) (action (bash "cat \"$(ocamlfind query a)\"/a.ml")))
   > EOF
 
   $ dune build @b/runtest

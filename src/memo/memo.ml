@@ -1137,6 +1137,28 @@ module Async = struct
   type nonrec ('i, 'o) t = ('i, 'o, 'i -> 'o Fiber.t) t
 end
 
+(* There are two approaches to invalidating memoization nodes. Currently, when a
+   node is invalidated by calling [invalidate_dep_node], only the node itself is
+   marked as "changed" (by setting [node.last_cached_value] to [None]). Then,
+   the whole graph is marked as "possibly changed" by calling [Run.restart ()],
+   which in O(1) time makes all [last_validated_at : Run.t] values out of date.
+   In the subsequent computation phase, the whole graph is traversed from top to
+   bottom to discover "actual changes" and recompute all the nodes affected by
+   these changes. One disadvantage of this approach is that the whole graph
+   needs to be traversed even if only a small part of it depends on the set of
+   invalidated nodes.
+
+   An alternative approach is as follows. Whenever the [invalidate_dep_node]
+   function is called, we recursively mark all of its reverse dependencies as
+   "possibly changed". Then, in the computation phase, we only need to traverse
+   the marked part of graph (instead of the whole graph as we do currently). One
+   disadvantage of this approach is that every node needs to store a list of its
+   reverse dependencies, which introduces cyclic memory references and
+   complicates garbage collection.
+
+   Is it worth switching from the current approach to the alternative? It's best
+   to answer this question by benchmarking. This is not urgent but is worth
+   documenting in the code. *)
 let invalidate_dep_node (node : _ Dep_node.t) = node.last_cached_value <- None
 
 module Current_run = struct

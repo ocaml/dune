@@ -93,7 +93,7 @@ module Processed = struct
     else
       s
 
-  let to_dot_merlin pp_configs flags obj_dirs src_dirs extensions =
+  let to_dot_merlin stdlib_dir pp_configs flags obj_dirs src_dirs extensions =
     let serialize_path p =
       Path.to_absolute_filename p |> quote_for_dot_merlin
     in
@@ -102,6 +102,7 @@ module Processed = struct
     let print = Buffer.add_string b in
     Buffer.clear b;
     print "EXCLUDE_QUERY_DIR\n";
+    printf "STDLIB %s\n" (serialize_path stdlib_dir);
     Path.Set.iter obj_dirs ~f:(fun p -> printf "B %s\n" (serialize_path p));
     Path.Set.iter src_dirs ~f:(fun p -> printf "S %s\n" (serialize_path p));
     List.iter extensions ~f:(fun { Ml_kind.Dict.impl; intf } ->
@@ -165,7 +166,8 @@ module Processed = struct
             (fun (acc_pp, acc_obj, acc_src, acc_flags, acc_ext)
                  { modules = _
                  ; pp_config
-                 ; config = { obj_dirs; src_dirs; flags; extensions }
+                 ; config =
+                     { stdlib_dir = _; obj_dirs; src_dirs; flags; extensions }
                  } ->
             ( pp_config :: acc_pp
             , Path.Set.union acc_obj obj_dirs
@@ -173,8 +175,9 @@ module Processed = struct
             , flags :: acc_flags
             , extensions @ acc_ext ))
       in
-      Printf.printf "\n%s\n"
-        (to_dot_merlin pp_configs flags obj_dirs src_dirs extensions)
+      Printf.printf "%s\n"
+        (to_dot_merlin init.config.stdlib_dir pp_configs flags obj_dirs src_dirs
+           extensions)
 end
 
 module Unprocessed = struct

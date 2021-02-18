@@ -1,6 +1,8 @@
 Unreleased
 ----------
 
+- Make `patdiff` show refined diffs (#4257, fixes #4254, @hakuch)
+
 - Fixed a bug that could result in needless recompilation under Windows due to
   case differences in the result of `Sys.getcwd` (observed under `emacs`).
   (#3966, @nojb).

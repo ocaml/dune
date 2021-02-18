@@ -89,16 +89,12 @@ let print ?(skip_trailing_cr = Sys.win32) path1 path2 =
       | Some prog ->
         let* () =
           Process.run ~dir ~env:Env.initial Strict prog
-            [ "-keep-whitespace"
-            ; "-location-style"
-            ; "omake"
-            ; ( if Lazy.force Ansi_color.stderr_supports_color then
-                "-unrefined"
+            ( [ "-keep-whitespace"; "-location-style"; "omake" ]
+            @ ( if Lazy.force Ansi_color.stderr_supports_color then
+                []
               else
-                "-ascii" )
-            ; file1
-            ; file2
-            ]
+                [ "-ascii" ] )
+            @ [ file1; file2 ] )
         in
         (* Use "diff" if "patdiff" reported no differences *)
         normal_diff () )

@@ -78,6 +78,50 @@ module Processed = struct
       (List.concat
          [ stdlib_dir; exclude_query_dir; obj_dirs; src_dirs; flags; suffixes ])
 
+  let quote_for_dot_merlin s =
+    let s =
+      if Sys.win32 then
+        (* We need this hack because merlin unescapes backslashes (except when
+           protected by single quotes). It is only a problem on windows because
+           Filename.quote is using double quotes. *)
+        String.escape_only '\\' s
+      else
+        s
+    in
+    if String.need_quoting s then
+      Filename.quote s
+    else
+      s
+
+  let to_dot_merlin stdlib_dir pp_configs flags obj_dirs src_dirs extensions =
+    let serialize_path p = Path.to_absolute_filename p in
+    let b = Buffer.create 256 in
+    let printf = Printf.bprintf b in
+    let print = Buffer.add_string b in
+    Buffer.clear b;
+    print "EXCLUDE_QUERY_DIR\n";
+    printf "STDLIB %s\n" (serialize_path stdlib_dir);
+    Path.Set.iter obj_dirs ~f:(fun p -> printf "B %s\n" (serialize_path p));
+    Path.Set.iter src_dirs ~f:(fun p -> printf "S %s\n" (serialize_path p));
+    List.iter extensions ~f:(fun { Ml_kind.Dict.impl; intf } ->
+        printf "SUFFIX %s" (Printf.sprintf "%s %s" impl intf));
+
+    (* We print all FLG directives as comments *)
+    List.iter pp_configs
+      ~f:
+        (Module_name.Per_item.fold ~init:() ~f:(fun pp () ->
+             Option.iter pp ~f:(fun { flag; args } ->
+                 printf "# FLG %s\n" (flag ^ " " ^ quote_for_dot_merlin args))));
+
+    List.iter flags ~f:(fun flags ->
+        match flags with
+        | [] -> ()
+        | flags ->
+          print "# FLG";
+          List.iter flags ~f:(fun f -> printf " %s" (quote_for_dot_merlin f));
+          print "\n");
+    Buffer.contents b
+
   let get { modules; pp_config; config } ~filename =
     let fname = Filename.remove_extension filename |> String.lowercase in
     List.find_opt modules ~f:(fun name ->
@@ -101,6 +145,37 @@ module Processed = struct
         ++ Pp.newline
       in
       Format.printf "%a%!" Pp.to_fmt (Pp.concat_map modules ~f:pp_one)
+
+  let print_generic_dot_merlin paths =
+    let configs = List.filter_map paths ~f:load_file in
+    match configs with
+    | [] -> Printf.eprintf "No merlin config found"
+    | init :: tl ->
+      let pp_configs, obj_dirs, src_dirs, flags, extensions =
+        (* We merge what is easy to merge and ignore the rest *)
+        List.fold_left tl
+          ~init:
+            ( [ init.pp_config ]
+            , init.config.obj_dirs
+            , init.config.src_dirs
+            , [ init.config.flags ]
+            , init.config.extensions )
+          ~f:
+            (fun (acc_pp, acc_obj, acc_src, acc_flags, acc_ext)
+                 { modules = _
+                 ; pp_config
+                 ; config =
+                     { stdlib_dir = _; obj_dirs; src_dirs; flags; extensions }
+                 } ->
+            ( pp_config :: acc_pp
+            , Path.Set.union acc_obj obj_dirs
+            , Path.Set.union acc_src src_dirs
+            , flags :: acc_flags
+            , extensions @ acc_ext ))
+      in
+      Printf.printf "%s\n"
+        (to_dot_merlin init.config.stdlib_dir pp_configs flags obj_dirs src_dirs
+           extensions)
 end
 
 module Unprocessed = struct

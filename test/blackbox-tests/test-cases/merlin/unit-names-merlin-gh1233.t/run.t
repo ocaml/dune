@@ -58,20 +58,6 @@
      -keep-locs)))
 
 FIXME : module Foo is not unbound
-  $ ocamlmerlin single errors -filename foo.ml < foo.ml | jq ".value"
-  [
-    {
-      "start": {
-        "line": 1,
-        "col": 10
-      },
-      "end": {
-        "line": 1,
-        "col": 25
-      },
-      "type": "typer",
-      "sub": [],
-      "valid": true,
-      "message": "Unbound module Foo"
-    }
-  ]
+This test is disabled because it depends on root detection and is not reproducible.
+$ ocamlmerlin single errors -filename foo.ml < foo.ml | jq ".value.message"
+"Unbound module Foo"

@@ -28,6 +28,5 @@ Dune ocaml-merlin also accepts paths relative to the current directory
   $ dune ocaml-merlin --dump-config="." --root=".." |
   > sed 's#'$(opam config var prefix)'#OPAM_PREFIX#' |
   > head -n 2
-  Entering directory '..'
   Foo
   ((STDLIB OPAM_PREFIX/lib/ocaml)

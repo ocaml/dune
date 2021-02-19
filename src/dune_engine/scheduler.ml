@@ -125,6 +125,7 @@ module Event : sig
     | Job_completed of job * Unix.process_status
     | Signal of Signal.t
     | Rpc of Fiber.fill
+    | Jobserver of Fiber.fill
 
   module Queue : sig
     type t
@@ -156,6 +157,10 @@ module Event : sig
 
     val register_rpc_started : t -> unit
 
+    val send_jobserver_completed : t -> Fiber.fill -> unit
+
+    val register_jobserver_started : t -> unit
+
     (** Send an event to the main thread. *)
     val send_files_changed : t -> Path.t list -> unit
 
@@ -172,6 +177,7 @@ end = struct
     | Job_completed of job * Unix.process_status
     | Signal of Signal.t
     | Rpc of Fiber.fill
+    | Jobserver of Fiber.fill
 
   module Queue = struct
     type t =
@@ -191,12 +197,15 @@ end = struct
       ; ignored_files : (string, unit) Table.t
       ; mutable pending_jobs : int
       ; mutable pending_rpc : int
+      ; mutable pending_jobserver : int
       ; rpc_completed : Fiber.fill Queue.t
+      ; jobserver_completed : Fiber.fill Queue.t
       }
 
     let create () =
       let jobs_completed = Queue.create () in
       let rpc_completed = Queue.create () in
+      let jobserver_completed = Queue.create () in
       let sync_tasks = Queue.create () in
       let files_changed = [] in
       let signals = Signal.Set.empty in
@@ -205,6 +214,7 @@ end = struct
       let ignored_files = Table.create (module String) 64 in
       let pending_jobs = 0 in
       let pending_rpc = 0 in
+      let pending_jobserver = 0 in
       { jobs_completed
       ; sync_tasks
       ; files_changed
@@ -215,11 +225,16 @@ end = struct
       ; pending_jobs
       ; rpc_completed
       ; pending_rpc
+      ; jobserver_completed
+      ; pending_jobserver
       }
 
     let register_job_started q = q.pending_jobs <- q.pending_jobs + 1
 
     let register_rpc_started q = q.pending_rpc <- q.pending_rpc + 1
+
+    let register_jobserver_started q =
+      q.pending_jobserver <- q.pending_jobserver + 1
 
     let ignore_next_file_change_event q path =
       assert (Path.is_in_source_tree path);
@@ -231,7 +246,8 @@ end = struct
         && Queue.is_empty q.jobs_completed
         && Signal.Set.is_empty q.signals
         && Queue.is_empty q.sync_tasks
-        && Queue.is_empty q.rpc_completed)
+        && Queue.is_empty q.rpc_completed
+        && Queue.is_empty q.jobserver_completed)
 
     let sync_task q =
       match Queue.pop q.sync_tasks with
@@ -260,9 +276,14 @@ end = struct
             match q.files_changed with
             | [] -> (
               match Queue.pop q.jobs_completed with
-              | None ->
-                q.pending_rpc <- q.pending_rpc - 1;
-                Rpc (Queue.pop_exn q.rpc_completed)
+              | None -> (
+                match Queue.pop q.rpc_completed with
+                | Some rpc ->
+                  q.pending_rpc <- q.pending_rpc - 1;
+                  Rpc rpc
+                | None ->
+                  q.pending_jobserver <- q.pending_jobserver - 1;
+                  Jobserver (Queue.pop_exn q.jobserver_completed))
               | Some (job, status) ->
                 q.pending_jobs <- q.pending_jobs - 1;
                 assert (q.pending_jobs >= 0);
@@ -291,6 +312,13 @@ end = struct
       Mutex.lock q.mutex;
       let avail = available q in
       Queue.push q.rpc_completed event;
+      if not avail then Condition.signal q.cond;
+      Mutex.unlock q.mutex
+
+    let send_jobserver_completed q event =
+      Mutex.lock q.mutex;
+      let avail = available q in
+      Queue.push q.jobserver_completed event;
       if not avail then Condition.signal q.cond;
       Mutex.unlock q.mutex
 
@@ -492,6 +520,54 @@ end = struct
     ignore (Thread.create worker_thread pipe : Thread.t);
     ignore (Thread.create buffer_thread () : Thread.t);
     pid
+end
+
+module Jobserver : sig
+  type t
+
+  val create : Event.Queue.t -> Env.t -> t option
+
+  val with_job : t -> f:(unit -> 'a Fiber.t) -> 'a Fiber.t
+end = struct
+  type t =
+    { jobserver : Jobserver.t
+    ; read : Task_queue.t
+    ; write : Task_queue.t
+    }
+
+  let create q env =
+    let open Option.O in
+    let scheduler =
+      let create_thread_safe_ivar () =
+        let ivar = Fiber.Ivar.create () in
+        let fill v =
+          Event.Queue.send_jobserver_completed q (Fiber.Fill (ivar, v))
+        in
+        Event.Queue.register_jobserver_started q;
+        (ivar, fill)
+      in
+      { Task_queue.Scheduler.create_thread_safe_ivar
+      ; spawn_thread = Thread.spawn
+      }
+    in
+    let+ jobserver = Jobserver.of_env env in
+    let read = Task_queue.create scheduler in
+    let write = Task_queue.create scheduler in
+    { jobserver; read; write }
+
+  let with_job { read; write; jobserver } ~f =
+    let open Fiber.O in
+    let* job =
+      Task_queue.task_exn read ~f:(fun () -> Jobserver.wait_next jobserver)
+    in
+    Fiber.finalize f ~finally:(fun () ->
+        let+ res =
+          Task_queue.task write ~f:(fun () -> Jobserver.Job.release job)
+        in
+        match res with
+        | Ok ()
+        | Error _ ->
+          ())
 end
 
 module Process_watcher : sig
@@ -800,6 +876,7 @@ type t =
   ; job_throttle : Fiber.Throttle.t
   ; events : Event.Queue.t
   ; process_watcher : Process_watcher.t
+  ; jobserver : Jobserver.t option Lazy.t
   }
 
 let t_var : t Fiber.Var.t = Fiber.Var.create ()
@@ -821,7 +898,12 @@ exception Cancel_build
 
 let with_job_slot f =
   let t = Fiber.Var.get_exn t_var in
-  Fiber.Throttle.run t.job_throttle ~f:(fun () ->
+  let run =
+    match Lazy.force t.jobserver with
+    | None -> Fiber.Throttle.run t.job_throttle
+    | Some jobserver -> Jobserver.with_job jobserver
+  in
+  run ~f:(fun () ->
       match t.status with
       | Restarting_build -> raise Cancel_build
       | Building -> f t.config
@@ -871,6 +953,7 @@ let prepare (config : Config.t) ~polling ~(handler : Handler.t) =
   let process_watcher = Process_watcher.init events in
   let cwd = Sys.getcwd () in
   let rpc = Rpc0.of_config events config.rpc in
+  let jobserver = lazy (Jobserver.create events Env.initial) in
   let t =
     { original_cwd = cwd
     ; status = Building
@@ -881,6 +964,7 @@ let prepare (config : Config.t) ~polling ~(handler : Handler.t) =
     ; config
     ; rpc
     ; handler
+    ; jobserver
     }
   in
   global := Some t;
@@ -936,7 +1020,9 @@ end = struct
           Process_watcher.killall t.process_watcher Sys.sigkill;
           iter t
         | Waiting_for_file_changes ivar -> Fill (ivar, ()))
-      | Rpc fill -> fill
+      | Jobserver fill
+      | Rpc fill ->
+        fill
       | Signal signal ->
         got_signal signal;
         raise (Abort Got_signal)

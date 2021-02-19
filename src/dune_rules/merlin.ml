@@ -123,7 +123,11 @@ module Processed = struct
     Buffer.contents b
 
   let get { modules; pp_config; config } ~filename =
-    let fname = Filename.remove_extension filename |> String.lowercase in
+    (* We only match the first part of the filename : foo.ml -> foo foo.cppo.ml
+       -> foo *)
+    let fname =
+      String.split_on_char ~sep:'.' filename |> List.hd |> String.lowercase
+    in
     List.find_opt modules ~f:(fun name ->
         let fname' = Module_name.to_string name |> String.lowercase in
         String.equal fname fname')

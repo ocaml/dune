@@ -63,6 +63,8 @@ Unreleased
 - `dune ocaml-merlin` is now able to provide configuration for source files in
   the `_build` directory. (#4274, @voodoos)
 
+- Enable cram tests by default (#4262, @rgrinberg)
+
 2.8.2 (21/01/2021)
 ------------------
 

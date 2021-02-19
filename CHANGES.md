@@ -14,7 +14,8 @@ Unreleased
 
 - Allow `%{version:pkg}` to work for external packages (#4104, @kit-ty-kate)
 
-- Add `(glob_files_rec <dir>/<glob>)` for globbing files recursively (#4176, @jeremiedimino)
+- Add `(glob_files_rec <dir>/<glob>)` for globbing files recursively (#4176,
+  @jeremiedimino)
 
 - Automatically generate empty `.mli` files for executables and tests (#3768,
   fixes #3745, @CraigFe)
@@ -36,7 +37,7 @@ Unreleased
   that `(using coq 0.3)` does require Coq 8.10 at least (#4224, fixes
   #4142, @ejgallego)
 
-- Add a META rule for 'compiler-libs.native-toplevel' (#4175, @altgr)
+- Add a META rule for `compiler-libs.native-toplevel` (#4175, @altgr)
 
 - No longer call `chmod` on symbolic links (fixes #4195, @dannywillems)
 
@@ -48,8 +49,9 @@ Unreleased
 
 - Add support for instrumentation dependencies (#4210, fixes #3983, @nojb)
 
-- Workaround incorrect exception raised by Unix.utimes (OCaml PR#8857) in
-  Path.touch on Windows (#4223, @dra27)
+- Workaround incorrect exception raised by `Unix.utimes` (OCaml PR#8857) in
+  `Path.touch` on Windows. This fixes dune cache in direct mode on Windows.
+  (#4223, @dra27)
 
 - Cleanup temporary files after running `$ dune exec`. (#4260, fixes #4243,
   @rgrinberg)

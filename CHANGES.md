@@ -51,6 +51,9 @@ Unreleased
 - Workaround incorrect exception raised by Unix.utimes (OCaml PR#8857) in
   Path.touch on Windows (#4223, @dra27)
 
+- Cleanup temporary files after running `$ dune exec`. (#4260, fixes #4243,
+  @rgrinberg)
+
 2.8.2 (21/01/2021)
 ------------------
 

@@ -12,6 +12,8 @@ We also add an other promotion that should not be impacted by these changes.
   >  (mode (promote (until-clean))))
   > EOF
 
+  $ mkdir subdir
+
   $ cat >subdir/dune <<EOF
   > (rule
   >  (targets .merlin)

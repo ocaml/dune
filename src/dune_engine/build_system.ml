@@ -42,6 +42,8 @@ end
 module Promoted_to_delete : sig
   val add : Path.t -> unit
 
+  val remove_now : Path.t -> unit
+
   val load : unit -> Path.Set.t
 end = struct
   module P = Dune_util.Persistent.Make (struct
@@ -71,6 +73,10 @@ end = struct
       needs_dumping := false;
       load () |> Path.Set.union !db |> P.dump fn
     )
+
+  let remove_now p =
+    let db = load () in
+    if Path.Set.mem db p then P.dump fn (Path.Set.remove db p)
 
   let () = Hooks.End_of_build.always dump
 end
@@ -947,6 +953,35 @@ end = struct
       Path.Build.Set.to_list source_files_to_ignore
       |> Path.Source.Set.of_list_map ~f:Path.Build.drop_build_context_exn
     in
+
+    (* If a [.merlin] file is present in the [Promoted_to_delete] set but not in
+       the [Source_files_to_ignore] that means the rule that ordered its
+       promotion is no more valid. This would happen when upgrading to Dune 2.8
+       from ealier version without and building uncleaned projects. We delete
+       these leftover files here. *)
+    let merlin_file = ".merlin" in
+    let source_dir = Path.Build.drop_build_context_exn dir in
+    let merlin_in_src = Path.Source.(relative source_dir merlin_file) in
+    let source_files_to_ignore =
+      if
+        Path.Set.mem (Promoted_to_delete.load ()) (Path.source merlin_in_src)
+        && not (Path.Source.Set.mem source_files_to_ignore merlin_in_src)
+      then (
+        let path = Path.source merlin_in_src in
+        Log.info
+          [ Pp.textf "Deleting left-over Merlin file %s.\n"
+              (Path.to_string path)
+          ];
+        (* We immediately remove the file from the promoted database and dump it *)
+        Promoted_to_delete.remove_now path;
+        Path.unlink_no_err path;
+        (* We need to keep ignoring the .merlin file for that build or Dune will
+           attempt to copy it and fail because it has been deleted *)
+        Path.Source.Set.add source_files_to_ignore merlin_in_src
+      ) else
+        source_files_to_ignore
+    in
+
     (* Take into account the source files *)
     let to_copy, source_dirs =
       match context_name with

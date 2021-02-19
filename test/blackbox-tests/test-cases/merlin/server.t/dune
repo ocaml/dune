@@ -11,3 +11,8 @@
  (name main)
  (modules main lib2)
  (libraries mylib mylib3))
+
+(executable
+ (name not-a-module-name)
+ (modules not-a-module-name)
+ (flags :standard -w -24))

@@ -34,3 +34,10 @@ This can be useful when some build scripts copy files from subdirectories.
   > (4:File${#FILE}:$FILE)
   > EOF
   ((?:STDLIB?:OPAM_PREFIX/lib/ocaml)(?:EXCLUDE_QUERY_DIR)(?:B?:$TESTCASE_ROOT/_build/default/.mylib.objs/byte)(?:B?:$TESTCASE_ROOT/_build/default/.mylib3.objs/byte)(?:S?:$TESTCASE_ROOT)(?:FLG(?:-open?:Mylib?:-w?:@1..3@5..28@30..39@43@46..47@49..57@61..62-?:-strict-sequence?:-strict-formats?:-short-paths?:-keep-locs)))
+
+Test of an valid invalid module name
+  $ FILE=not-a-module-name.ml
+  $ dune ocaml-merlin <<EOF | sed -E "s/[[:digit:]]+:/\?:/g" | sed 's#'$(opam config var prefix)'#OPAM_PREFIX#'
+  > (4:File${#FILE}:$FILE)
+  > EOF
+  ((?:STDLIB?:OPAM_PREFIX/lib/ocaml)(?:EXCLUDE_QUERY_DIR)(?:B?:$TESTCASE_ROOT/_build/default/.not-a-module-name.eobjs/byte)(?:S?:$TESTCASE_ROOT)(?:FLG(?:-w?:@1..3@5..28@30..39@43@46..47@49..57@61..62-?:-strict-sequence?:-strict-formats?:-short-paths?:-keep-locs?:-w?:-24)))

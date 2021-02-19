@@ -94,9 +94,7 @@ module Processed = struct
       s
 
   let to_dot_merlin stdlib_dir pp_configs flags obj_dirs src_dirs extensions =
-    let serialize_path p =
-      Path.to_absolute_filename p |> quote_for_dot_merlin
-    in
+    let serialize_path p = Path.to_absolute_filename p in
     let b = Buffer.create 256 in
     let printf = Printf.bprintf b in
     let print = Buffer.add_string b in

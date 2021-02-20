@@ -7,6 +7,7 @@ val init :
      stats:Stats.t option
   -> sandboxing_preference:Sandbox_mode.t list
   -> cache_config:Dune_cache.Config.t
+  -> handler:Build_system.Handler.t option
   -> unit
 
 type build_system =

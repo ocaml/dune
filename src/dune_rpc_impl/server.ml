@@ -78,6 +78,11 @@ module Subscribers = struct
   let empty =
     { build_progress = Session_set.empty; diagnostics = Session_set.empty }
 
+  let get t (which : Subscribe.t) =
+    match which with
+    | Build_progress -> t.build_progress
+    | Diagnostics -> t.diagnostics
+
   let modify t (which : Subscribe.t) ~f =
     match which with
     | Build_progress -> { t with build_progress = f t.build_progress }
@@ -88,15 +93,22 @@ module Subscribers = struct
 
   let remove t which session =
     modify t which ~f:(fun set -> Session_set.remove set session)
+
+  let notify t which ~f =
+    let set = get t which in
+    Fiber.parallel_iter_set (module Session_set) set ~f
 end
 
 type t =
   { config : Run.Config.t
   ; pending_build_jobs : (Dep_conf.t list * Status.t Fiber.Ivar.t) Queue.t
+  ; build_handler : Build_system.Handler.t
   ; pool : Fiber.Pool.t
   ; mutable subscribers : Subscribers.t
   ; mutable clients : Session_set.t
   }
+
+let build_handler t = t.build_handler
 
 let handler (t : t Fdecl.t) : 'a Dune_rpc_server.Handler.t =
   let on_init session (_ : Initialize.Request.t) =
@@ -178,10 +190,10 @@ let handler (t : t Fdecl.t) : 'a Dune_rpc_server.Handler.t =
       match running with
       | false -> Fiber.return ()
       | true ->
-        let errors = [] in
+        let errors = Build_system.errors () in
         Fiber.Pool.task t.pool ~f:(fun () ->
             let events =
-              List.map errors ~f:(fun e ->
+              List.map errors ~f:(fun (e : Build_system.Error.t) ->
                   Diagnostic.Event.Add (diagnostic_of_error e))
             in
             Session.notification session Server_notifications.diagnostic events)
@@ -201,7 +213,49 @@ let handler (t : t Fdecl.t) : 'a Dune_rpc_server.Handler.t =
     let cb = Handler.callback Handler.private_ f in
     Handler.request rpc cb Decl.status
   in
+  let () =
+    let cb =
+      let f () =
+        Build_system.errors ()
+        |> List.map ~f:diagnostic_of_error
+        |> Fiber.return
+      in
+      Handler.callback (Handler.public ~since:(1, 0) ()) f
+    in
+    Handler.request rpc cb Public.Request.diagnostics
+  in
   rpc
+
+let task t f =
+  let* running = Fiber.Pool.running t.pool in
+  if running then
+    Fiber.Pool.task t.pool ~f
+  else
+    Fiber.return ()
+
+let error t errors =
+  let t = Fdecl.get t in
+  task t (fun () ->
+      let events =
+        lazy
+          (List.map errors ~f:(fun (e : Build_system.Handler.error) ->
+               match e with
+               | Add x -> Diagnostic.Event.Add (diagnostic_of_error x)
+               | Remove x -> Remove (diagnostic_of_error x)))
+      in
+      Subscribers.notify t.subscribers Diagnostics ~f:(fun session ->
+          Session.notification session Server_notifications.diagnostic
+            (Lazy.force events)))
+
+let build_progress t ~complete ~remaining =
+  let t = Fdecl.get t in
+  let notification = { Progress.complete; remaining } in
+  task t (fun () ->
+      Subscribers.notify t.subscribers Build_progress ~f:(fun session ->
+          Session.notification session Server_notifications.progress
+            notification))
+
+let build_event _ _ = Fiber.return ()
 
 let create () =
   let t = Fdecl.create Dyn.Encoder.opaque in
@@ -209,14 +263,21 @@ let create () =
   let handler = Dune_rpc_server.make (handler t) in
   let pool = Fiber.Pool.create () in
   let config = Run.Config.Server { handler; backlog = 10; pool } in
-  Fdecl.set t
+  let build_handler =
+    Build_system.Handler.create ~error:(error t)
+      ~build_progress:(build_progress t) ~build_event:(build_event t)
+  in
+  let res =
     { config
     ; pending_build_jobs
     ; subscribers = Subscribers.empty
     ; clients = Session_set.empty
+    ; build_handler
     ; pool
-    };
-  Fdecl.get t
+    }
+  in
+  Fdecl.set t res;
+  res
 
 let config t = t.config
 

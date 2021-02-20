@@ -379,6 +379,34 @@ module type Rule_generator = sig
   val global_rules : Rules.t Memo.Lazy.t
 end
 
+module Handler = struct
+  type event =
+    | Start
+    | Finish
+
+  type error =
+    | Add of Error.t
+    | Remove of Error.t
+
+  type t =
+    { error : error list -> unit Fiber.t
+    ; build_progress : complete:int -> remaining:int -> unit Fiber.t
+    ; build_event : event -> unit Fiber.t
+    }
+
+  let report_progress t ~rule_done ~rule_total =
+    t.build_progress ~complete:rule_total ~remaining:rule_done
+
+  let do_nothing =
+    { error = (fun _ -> Fiber.return ())
+    ; build_progress = (fun ~complete:_ ~remaining:_ -> Fiber.return ())
+    ; build_event = (fun _ -> Fiber.return ())
+    }
+
+  let create ~error ~build_progress ~build_event =
+    { error; build_progress; build_event }
+end
+
 type t =
   { contexts : Build_context.t Context_name.Map.t Memo.Lazy.t
   ; rule_generator : (module Rule_generator)
@@ -386,6 +414,7 @@ type t =
   ; mutable rule_done : int
   ; mutable rule_total : int
   ; mutable errors : Exn_with_backtrace.t list
+  ; handler : Handler.t
   ; promote_source :
          ?chmod:(int -> int)
       -> src:Path.Build.t
@@ -403,6 +432,8 @@ let t = Fdecl.create Dyn.Encoder.opaque
 let set x = Fdecl.set t x
 
 let t () = Fdecl.get t
+
+let errors () = (t ()).errors
 
 let pp_paths set =
   Pp.enumerate (Path.Set.to_list set) ~f:(fun p ->
@@ -1694,7 +1725,7 @@ end = struct
               { rule_digest; dynamic_deps_stages; targets_digest };
             Fiber.return targets_and_digests)
       in
-      let+ () =
+      let* () =
         match (mode, !Clflags.promote) with
         | (Standard | Fallback | Ignore_source_files), _
         | Promote _, Some Never ->
@@ -1773,6 +1804,10 @@ end = struct
                 ))
       in
       t.rule_done <- t.rule_done + 1;
+      let+ () =
+        Handler.report_progress t.handler ~rule_done:t.rule_done
+          ~rule_total:t.rule_done
+      in
       targets_and_digests)
     (* jeremidimino: we need to include the dependencies discovered while
        running the action here. Otherwise, package dependencies are broken in
@@ -2122,6 +2157,7 @@ let prefix_rules (prefix : unit Action_builder.t) ~f =
 module Alias = Alias0
 
 let process_exn_and_reraise exn =
+  let open Fiber.O in
   let exn =
     Exn_with_backtrace.map exn
       ~f:
@@ -2131,14 +2167,28 @@ let process_exn_and_reraise exn =
   in
   let t = t () in
   t.errors <- exn :: t.errors;
+  let+ () = t.handler.error [ Add exn ] in
   Exn_with_backtrace.reraise exn
 
 let run f =
+  let open Fiber.O in
   Hooks.End_of_build.once Promotion.finalize;
   let t = t () in
+  let old_errors = t.errors in
+  t.errors <- [];
+  t.rule_done <- 0;
+  t.rule_total <- 0;
+  let* () =
+    t.handler.error (List.map old_errors ~f:(fun x -> Handler.Remove x))
+  in
   let f () =
-    Memo.Build.run
-      (Memo.Build.with_error_handler f ~on_error:process_exn_and_reraise)
+    let* () = t.handler.build_event Start in
+    let* res =
+      Fiber.with_error_handler ~on_error:process_exn_and_reraise (fun () ->
+          Memo.Build.run (f ()))
+    in
+    let+ () = t.handler.build_event Finish in
+    res
   in
   Fiber.Mutex.with_lock t.build_mutex f
 
@@ -2304,20 +2354,21 @@ let load_dir_and_produce_its_rules ~dir =
 let load_dir ~dir = load_dir_and_produce_its_rules ~dir
 
 let init ~stats ~contexts ~promote_source ~cache_config ~sandboxing_preference
-    ~rule_generator =
+    ~rule_generator ~handler =
   let contexts =
     Memo.lazy_ (fun () ->
         let+ contexts = Memo.Lazy.force contexts in
         Context_name.Map.of_list_map_exn contexts ~f:(fun c ->
             (c.Build_context.name, c)))
   in
-  let t =
+  set
     { contexts
     ; rule_generator
     ; sandboxing_preference = sandboxing_preference @ Sandbox_mode.all
     ; rule_done = 0
     ; rule_total = 0
     ; errors = []
+    ; handler = Option.value handler ~default:Handler.do_nothing
     ; (* This mutable table is safe: it merely maps paths to lazily created
          mutexes. *)
       locks = Table.create (module Path) 32
@@ -2326,12 +2377,6 @@ let init ~stats ~contexts ~promote_source ~cache_config ~sandboxing_preference
     ; stats
     ; cache_config
     }
-  in
-  Hooks.End_of_build.always (fun () ->
-      t.errors <- [];
-      t.rule_done <- 0;
-      t.rule_total <- 0);
-  set t
 
 module Progress = struct
   type t =

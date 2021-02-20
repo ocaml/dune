@@ -26,6 +26,8 @@ val create : unit -> t
 
 val config : t -> Run.Config.t
 
+val build_handler : t -> Dune_engine.Build_system.Handler.t
+
 type pending_build_action =
   | Build of Dune_rules.Dep_conf.t list * Status.t Fiber.Ivar.t
 

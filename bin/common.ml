@@ -181,6 +181,15 @@ let examples = function
     let example_blocks = examples |> List.mapi ~f:block_of_example in
     `Blocks (`S Cmdliner.Manpage.s_examples :: example_blocks)
 
+(* Short reminders for the most used and useful commands *)
+let command_synopsis commands =
+  let format_command c acc =
+    `Noblank :: `P (Printf.sprintf "$(b,dune %s)" c) :: acc
+  in
+  [ `S "SYNOPSIS"
+  ; `Blocks (List.fold_right ~init:[] ~f:format_command commands)
+  ]
+
 let help_secs =
   [ `S copts_sect
   ; `P "These options are common to all commands."

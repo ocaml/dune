@@ -47,20 +47,12 @@
 
 let name = [^ ':' ',' ';' '=']+
 
-rule addresses = parse
-    | eof { [] }
-    | "" { address_plus lexbuf }
-
-and address_plus = parse
+rule address = parse
     | name as name {
         check_colon lexbuf;
-        let parameters = parameters lexbuf in
-        if semi_colon lexbuf then
-          (name, parameters) :: address_plus lexbuf
-        else begin
-          check_eof lexbuf;
-          [(name, parameters)]
-        end
+        let args = parameters lexbuf in
+        check_eof lexbuf;
+        { name ; args }
       }
     | ":" {
         fail lexbuf "empty transport name"
@@ -68,10 +60,6 @@ and address_plus = parse
     | eof {
         fail lexbuf "address expected"
       }
-
-and semi_colon = parse
-    | ";" { true }
-    | "" { false }
 
 and check_eof = parse
     | eof { () }
@@ -135,13 +123,11 @@ and unescape = parse
 {
   let of_string str =
     try
-      Ok (List.map
-        (fun (name, args) -> { name = name; args = args })
-        (addresses (Lexing.from_string str)))
+      Ok (address (Lexing.from_string str))
     with Fail(position, reason) ->
       Error { position ; reason }
 
-  let to_string l =
+  let to_string { name ; args } =
     let buf = Buffer.create 42 in
     let escape = String.iter begin fun ch -> match ch with
       | '0'..'9' | 'A'..'Z' | 'a'..'z'
@@ -154,16 +140,14 @@ and unescape = parse
       | [] -> ()
       | x :: l -> f x; List.iter (fun x -> Buffer.add_char buf ch; f x) l
     in
-    concat ';' begin fun { name = name; args = args } ->
-      Buffer.add_string buf name;
-      Buffer.add_char buf ':';
-      concat ','
-        (fun (k, v) ->
-           Buffer.add_string buf k;
-           Buffer.add_char buf '=';
-           escape v)
-        args
-    end l;
+    Buffer.add_string buf name;
+    Buffer.add_char buf ':';
+    concat ','
+      (fun (k, v) ->
+         Buffer.add_string buf k;
+         Buffer.add_char buf '=';
+         escape v)
+      args;
     Buffer.contents buf
 
 }

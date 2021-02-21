@@ -14,8 +14,8 @@ type error =
   ; reason : string
   }
 
-(** [of_string str] parse [str] and return the list of addresses defined in it. *)
-val of_string : string -> (t list, error) result
+(** [of_string str] parse [str] and return the address in it. *)
+val of_string : string -> (t, error) result
 
 (** [to_string addresses] return a string representation of a list of addresses *)
-val to_string : t list -> string
+val to_string : t -> string

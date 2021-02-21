@@ -30,7 +30,7 @@ module Where = struct
   let of_string s =
     match Dbus_address.of_string s with
     | Error _ -> failwith ("invalid address format " ^ s)
-    | Ok s -> of_dbus (List.hd s)
+    | Ok s -> of_dbus s
 
   let rpc_dir = lazy Path.Build.(relative root "rpc")
 
@@ -69,7 +69,7 @@ module Where = struct
       let host = Unix.string_of_inet_addr host in
       { name = "tcp"; args = [ ("host", host); ("port", port) ] }
 
-  let to_string t = Dbus_address.to_string [ to_dbus t ]
+  let to_string t = Dbus_address.to_string (to_dbus t)
 
   let add_to_env t env =
     let value = to_string t in

@@ -56,7 +56,15 @@ val set_common_other :
     the root the current working directory *)
 val set_dirs : t -> unit
 
+(** [examples \[("description", "dune cmd foo"); ...\]] is an [EXAMPLES] manpage
+    section of enumerated examples illustrating how to run the documented
+    commands. *)
 val examples : (string * string) list -> Cmdliner.Manpage.block
+
+(** [command_syposis subcommands] is a custom [SYNOPSIS] manpage section listing
+    the given [subcommands]. Each subcommand is prefixed with the `dune`
+    top-level command. *)
+val command_synopsis : string list -> Cmdliner.Manpage.block list
 
 val help_secs : Cmdliner.Manpage.block list
 

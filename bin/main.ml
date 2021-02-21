@@ -32,9 +32,9 @@ let all : _ Term.Group.t list =
   let groups = [ Ocaml.group; Rpc.group ] in
   terms @ groups
 
+(* Short reminders for the most used and useful commands *)
 let common_commands_synopsis =
-  (* Short reminders for the most used and useful commands *)
-  let commands =
+  Common.command_synopsis
     [ "build [--watch]"
     ; "runtest [--watch]"
     ; "exec NAME"
@@ -42,13 +42,6 @@ let common_commands_synopsis =
     ; "install"
     ; "init project NAME [PATH] [--libs=l1,l2 --ppx=p1,p2 --inline-tests]"
     ]
-  in
-  let format_command c acc =
-    `Noblank :: `P (Printf.sprintf "$(b,dune %s)" c) :: acc
-  in
-  [ `S "SYNOPSIS"
-  ; `Blocks (List.fold_right ~init:[] ~f:format_command commands)
-  ]
 
 let default =
   let doc = "composable build system for OCaml" in

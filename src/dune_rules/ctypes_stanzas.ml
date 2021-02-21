@@ -3,13 +3,35 @@ open! Stdune
 
 module Buildable = Dune_file.Buildable
 module Library = Dune_file.Library
-module Ctypes = Dune_file.Ctypes
+module Ctypes = Dune_file.Ctypes_library
 
 let osl_pos () = "", 0, 0, 0 ;;
 
-let library_stanza ?(flags=Ocaml_flags.Spec.standard) ?public_name ?(foreign_stubs=[])
-      ?(c_library_flags=Ordered_set_lang.Unexpanded.standard) ~loc ~project ~sub_systems
-      ~dune_version ~name ~modules ~libraries ~wrapped () =
+let buildable ?(flags=Ocaml_flags.Spec.standard) ?(foreign_stubs=[]) ~loc
+      ~libraries ~modules () =
+  let libraries =
+    List.map libraries ~f:(fun library ->
+      Lib_dep.Direct (loc, Lib_name.of_string library))
+  in
+  let modules = List.map modules ~f:Module_name.to_string in
+  { Buildable.loc
+  ; modules = Ordered_set_lang.of_atoms ~loc modules
+  ; modules_without_implementation = Ordered_set_lang.of_atoms ~loc []
+  ; libraries
+  ; foreign_archives= []
+  ; foreign_stubs
+  ; preprocess = Preprocess.Per_module.default ()
+  ; preprocessor_deps = []
+  ; lint = Dune_file.Lint.no_lint
+  ; flags
+  ; js_of_ocaml = Dune_file.Js_of_ocaml.default
+  ; allow_overlapping_dependencies = false
+  }
+
+let library_stanza ?(flags=Ocaml_flags.Spec.standard) ?public_name
+      ?(foreign_stubs=[]) ?(c_library_flags=Ordered_set_lang.Unexpanded.standard)
+      ~loc ~project ~sub_systems ~dynlink ~dune_version ~name ~modules
+      ~libraries ~wrapped () =
   let open Dune_file in
   let visibility =
     match public_name with
@@ -31,27 +53,7 @@ let library_stanza ?(flags=Ocaml_flags.Spec.standard) ?public_name ?(foreign_stu
       Library.Public plib
          *)
   in
-  let buildable =
-    let libraries =
-      List.map libraries ~f:(fun library ->
-        Lib_dep.Direct (loc, Lib_name.of_string library))
-    in
-    let modules = List.map modules ~f:Module_name.to_string in
-    { Buildable.loc
-    ; modules = Ordered_set_lang.of_atoms ~loc modules
-    ; modules_without_implementation = Ordered_set_lang.of_atoms ~loc []
-    ; libraries
-    ; foreign_archives= []
-    ; foreign_stubs
-    ; preprocess = Preprocess.Per_module.default ()
-    ; preprocessor_deps = []
-    ; lint = Lint.no_lint
-    ; flags
-    ; js_of_ocaml = Js_of_ocaml.default
-    ; allow_overlapping_dependencies = false
-    ; ctypes = None;
-    }
-  in
+  let buildable = buildable ~foreign_stubs ~flags ~modules ~libraries ~loc () in
   { Library.name = (loc, Lib_name.of_string name |> Lib_name.to_local_exn)
   ; visibility
   ; synopsis = None
@@ -65,7 +67,7 @@ let library_stanza ?(flags=Ocaml_flags.Spec.standard) ?public_name ?(foreign_stu
   ; wrapped = Lib_info.Inherited.This (Wrapped.Simple wrapped)
   ; optional = false
   ; buildable
-  ; dynlink = Dynlink_supported.of_bool true
+  ; dynlink
   ; project
   ; sub_systems
   ; dune_version
@@ -146,6 +148,9 @@ let c_generated_functions_cout_c ctypes =
 let c_generated_functions_cout_no_ext ctypes =
   sprintf "%s__c_cout_generated_functions" ctypes.Ctypes.external_library_name
 
+let dynlink _ctypes =
+  Dynlink_supported.of_bool true
+
 (* Unlike for [executable] and [rule] generation which have neat convenience
    functions for creating new ones, the machinery for creating new [library]s
    does several passes to populate global data structures.
@@ -154,14 +159,12 @@ let c_generated_functions_cout_no_ext ctypes =
    approach here is to simply do a quasi-lexical expansion of the base library
    config stanza into several additional support library stanzas, right after
    the dune config file parsing is completed. *)
-let library_stanzas ~parsing_context ~project ~sub_systems ~dune_version buildable =
-  let ctypes =
-    match buildable.Buildable.ctypes with
-    | Some ctypes -> ctypes
-    | None -> assert false
+let library_stanzas  ~parsing_context ~project ~ctypes_library:ctypes =
+  let loc = fst ctypes.Ctypes.name in
+  let library_stanza =
+    library_stanza ~loc ~project ~dune_version:ctypes.Ctypes.dune_version
+      ~sub_systems:ctypes.Ctypes.sub_systems ~dynlink:(dynlink ctypes)
   in
-  let loc = buildable.Buildable.loc in
-  let library_stanza = library_stanza ~loc ~project ~sub_systems ~dune_version in
   let type_descriptions =
     library_stanza
       ~name:(type_description_library ctypes)

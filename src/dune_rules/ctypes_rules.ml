@@ -3,13 +3,16 @@ open! Stdune
 
 module Buildable = Dune_file.Buildable
 module Library =  Dune_file.Library
-module Ctypes = Dune_file.Ctypes
+module Ctypes = Dune_file.Ctypes_library
 
-(* This module expands a [(library ... (ctypes ...))] rule into the set of
-   [library], [executable], [rule] rules and .ml files needed to more
+(* This module semantically expands a [(ctypes_library ... )] stanza into
+   [executable] and, [rule] rules and generates .ml files needed to more
    conveniently build OCaml bindings for C libraries.  Aside from perhaps
    providing an '#include "header.h"' line, you should be able to wrap an
    entire C library without writing a single line of C code.
+
+   See also Ctypes_stanzas for the additional lexical expansion of library
+   stanzas needed to complete the picture.
 
    This stanza requires the user to define (and specify) two modules:
 
@@ -120,9 +123,8 @@ let gen_headers headers buf =
    begin match headers with
   | Ctypes.Headers.Include lst ->
     List.iter lst ~f:(fun h -> pr buf "  print_endline \"#include <%s>\";" h)
-  | Preamble s ->
-    (* XXX: escape s *)
-    pr buf "  print_endline \"%s\";" s
+  | Preamble_file s ->
+    pr buf "  print_endline \"#include \"%s\"" s
   end
 
 let type_gen_gen ~headers ~type_description_module =
@@ -199,9 +201,9 @@ let build_c_program ~sctx ~dir ~source_files ~scope ~cflags_sexp ~output () =
     |> Super_context.resolve_program ~loc:None ~dir sctx
   in
   let include_args =
-    (* XXX: need glob dependency *)
+    (* XXX: need glob dependency? *)
     let ocaml_where = Path.to_string ctx.Context.stdlib_dir in
-    (* XXX: need glob dependency *)
+    (* XXX: need glob dependency? *)
     let ctypes_include_dirs =
       let lib =
         let ctypes = Lib_name.of_string "ctypes" in
@@ -209,7 +211,7 @@ let build_c_program ~sctx ~dir ~source_files ~scope ~cflags_sexp ~output () =
         | Ok lib -> lib
         | Error _res ->
           User_error.raise
-            [ Pp.textf "the 'ctypes' library needs to be installed to use the ctypes stanza"]
+            [ Pp.textf "the 'ctypes' library needs to be installed to use the ctypes_library stanza"]
       in
       Lib.L.include_paths [lib]
       |> Path.Set.to_list
@@ -219,7 +221,9 @@ let build_c_program ~sctx ~dir ~source_files ~scope ~cflags_sexp ~output () =
     List.concat_map include_dirs ~f:(fun dir -> ["-I"; dir])
   in
   let deps =
-    List.map source_files ~f:(Path.relative (Path.build dir))
+    List.map source_files ~f:(fun source_file ->
+      let path = Path.build dir in
+      Path.relative path source_file)
     |> Dep.Set.of_files
   in
   let build =
@@ -253,7 +257,8 @@ let build_c_program ~sctx ~dir ~source_files ~scope ~cflags_sexp ~output () =
   in
   Super_context.add_rule sctx ~dir build
 
-let cctx ?(libraries=[]) ~buildable ~dynlink ~loc ~obj_dir ~dir ~scope ~expander ~sctx =
+let cctx ?(libraries=[]) ~buildable ~dynlink ~loc ~obj_dir ~dir ~scope
+      ~modules ~expander ~sctx () =
   let compile_info =
     let dune_version = Scope.project scope |> Dune_project.dune_version in
     Lib.DB.resolve_user_written_deps_for_exes (Scope.libs scope)
@@ -268,31 +273,36 @@ let cctx ?(libraries=[]) ~buildable ~dynlink ~loc ~obj_dir ~dir ~scope ~expander
     ~js_of_ocaml:None
     ~dynlink
     ~package:None
+    ~modules
     ~flags:(Super_context.ocaml_flags sctx ~dir buildable.Buildable.flags)
     ~requires_compile:(Lib.Compile.direct_requires compile_info)
     ~requires_link:(Lib.Compile.requires_link compile_info)
     ~obj_dir
-    ~opaque:Compilation_context.Inherit_from_settings
+    ~opaque:Compilation_context.Inherit_from_settings ()
 
-let executable ?(modules=[]) ~buildable ~loc ~obj_dir ~dynlink ~dir ~sctx ~scope
+let executable ?(modules=[]) ~loc ~obj_dir ~dynlink ~dir ~sctx ~scope
       ~expander ~program ~libraries () =
   let build_dir = Path.build dir in
   let cctx =
     let modules =
-      let name_map =
-        List.map (program :: modules) ~f:(fun name ->
-          let module_name = Module_name.of_string name in
-          let path = Path.relative build_dir (name ^ ".ml") in
-          let impl = Module.File.make Dialect.ocaml path in
-          let source = Module.Source.make ~impl module_name in
-          Module.of_source ~visibility:Visibility.Public
-            ~kind:Module.Kind.Impl source)
-        |> Module.Name_map.of_list_exn
-      in
+      List.map (program :: modules) ~f:(fun name ->
+        let module_name = Module_name.of_string name in
+        let path = Path.relative build_dir (name ^ ".ml") in
+        let impl = Module.File.make Dialect.ocaml path in
+        let source = Module.Source.make ~impl module_name in
+        Module.of_source ~visibility:Visibility.Public
+          ~kind:Module.Kind.Impl source)
+    in
+    let exe_wrapped_modules =
+      let name_map = Module.Name_map.of_list_exn modules in
       Modules.exe_wrapped ~src_dir:dir ~modules:name_map
     in
-    cctx ~buildable ~dir ~loc ~obj_dir ~dynlink ~scope ~sctx ~expander
-      ~modules ~libraries ()
+    let buildable =
+      let names = List.map modules ~f:Module.name in
+      Ctypes_stanzas.buildable ~loc ~libraries ~modules:names ()
+    in
+    cctx ~dir ~buildable ~loc ~obj_dir ~dynlink ~scope ~sctx ~expander
+      ~libraries ~modules:exe_wrapped_modules ()
   in
   let program =
     Exe.Program.{
@@ -318,15 +328,17 @@ let write_osl_to_sexp_file ~sctx ~dir ~filename osl =
   in
   Super_context.add_rule ~loc:Loc.none sctx ~dir build
 
-let gen_rules ~buildable ~dynlink ~loc ~obj_dir ~scope ~expander ~dir ~sctx =
+let gen_rules ~scope ~expander ~dir ~sctx ~ctypes_library:ctypes =
+  let loc = fst ctypes.Ctypes.name in
   let rule = rule ~sctx ~dir in
   let executable =
-    executable ~buildable ~loc ~obj_dir ~dynlink ~dir ~sctx ~scope ~expander
-  in
-  let ctypes =
-    match buildable.Buildable.ctypes with
-    | Some ctypes -> ctypes
-    | None -> assert false
+    let dynlink =
+      let dynlink = Ctypes_stanzas.dynlink ctypes in
+      let ctx = Super_context.context sctx in
+      Dynlink_supported.get dynlink ctx.supports_shared_libraries
+    in
+    let obj_dir = Dune_file.Ctypes_library.obj_dir ~dir ctypes in
+    executable ~loc ~obj_dir ~dynlink ~dir ~sctx ~scope ~expander
   in
   let external_library_name = ctypes.Ctypes.external_library_name in
   let type_description_module = Ctypes_stanzas.type_description_module ctypes in

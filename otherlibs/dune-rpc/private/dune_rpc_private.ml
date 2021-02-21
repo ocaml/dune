@@ -290,7 +290,9 @@ struct
       | Packet.Notification n -> t.on_notification n
       | Response (id, response) -> (
         match Table.find t.requests id with
-        | Some ivar -> Fiber.Ivar.fill ivar response
+        | Some ivar ->
+          Table.remove t.requests id;
+          Fiber.Ivar.fill ivar response
         | None ->
           Code_error.raise "unexpected response"
             [ ("id", Id.to_dyn id); ("response", Response.to_dyn response) ] ))

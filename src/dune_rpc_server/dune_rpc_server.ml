@@ -80,60 +80,65 @@ module H = struct
     ; version : int * int
     }
 
+  let send_log ?payload session ~message =
+    Session.notification session Server_notifications.log
+      { Log.message; payload }
+
   let handle (type a) (t : a t) (session : a Session.t) =
     let open Fiber.O in
     let* message = Fiber.Stream.In.read session.messages in
     match message with
     | None -> session.send None
     | Some init -> (
-      let id, call =
-        match init with
-        | Notification _ ->
-          (* TODO handle invalid request here *)
-          assert false
-        | Request (id, call) -> (id, call)
-      in
-      match Initialize.Request.of_call ~version:t.version call with
-      | Error e -> session.send (Some (Response (id, Error e)))
-      | Ok init ->
-        if Initialize.Request.version init > t.version then
-          let response =
-            let payload =
-              Sexp.record
-                [ ( "supported versions until"
-                  , Conv.to_sexp Version.sexp t.version )
-                ]
-            in
-            Error
-              (Response.Error.create ~payload ~kind:Version_error
-                 ~message:"Unsupported version" ())
-          in
-          session.send (Some (Response (id, response)))
-        else
-          let* a = t.on_init session init in
-          let () =
-            session.state <- Initialized { init; state = a; closed = false }
-          in
-          let* () =
+      match init with
+      | Notification _ ->
+        let* () =
+          send_log session
+            ~message:"Notification unexpected. You must initialize first."
+        in
+        session.send None
+      | Request (id, call) -> (
+        match Initialize.Request.of_call ~version:t.version call with
+        | Error e -> session.send (Some (Response (id, Error e)))
+        | Ok init ->
+          if Initialize.Request.version init > t.version then
             let response =
-              Ok
-                (Initialize.Response.to_response
-                   (Initialize.Response.create ()))
+              let payload =
+                Sexp.record
+                  [ ( "supported versions until"
+                    , Conv.to_sexp Version.sexp t.version )
+                  ]
+              in
+              Error
+                (Response.Error.create ~payload ~kind:Version_error
+                   ~message:"Unsupported version" ())
             in
             session.send (Some (Response (id, response)))
-          in
-          let* () =
-            Fiber.Stream.In.parallel_iter session.messages
-              ~f:(fun (message : Message.t) ->
-                match message with
-                | Notification n -> t.on_notification session n
-                | Request (id, r) ->
-                  let* response = t.on_request session (id, r) in
-                  session.send (Some (Response (id, response))))
-          in
-          let* () = session.send None in
-          let+ () = t.on_terminate session in
-          Session.close session )
+          else
+            let* a = t.on_init session init in
+            let () =
+              session.state <- Initialized { init; state = a; closed = false }
+            in
+            let* () =
+              let response =
+                Ok
+                  (Initialize.Response.to_response
+                     (Initialize.Response.create ()))
+              in
+              session.send (Some (Response (id, response)))
+            in
+            let* () =
+              Fiber.Stream.In.parallel_iter session.messages
+                ~f:(fun (message : Message.t) ->
+                  match message with
+                  | Notification n -> t.on_notification session n
+                  | Request (id, r) ->
+                    let* response = t.on_request session (id, r) in
+                    session.send (Some (Response (id, response))))
+            in
+            let* () = session.send None in
+            let+ () = t.on_terminate session in
+            Session.close session ) )
 
   module Builder = struct
     type info =
@@ -210,21 +215,22 @@ module H = struct
         let version = Initialize.Request.version (Session.initialize session) in
         match Table.find notification_handlers n.method_ with
         | None ->
-          Session.notification session Server_notifications.log
-            { Log.message = "invalid notification"
-            ; payload = Some (Sexp.record [ ("payload", Atom n.method_) ])
-            }
+          send_log session ~message:"invalid notification"
+            ~payload:(Sexp.record [ ("method", Atom n.method_) ])
         | Some [] -> assert false (* not possible *)
         | Some cbs -> (
-          (* TODO extract version from session *)
           match find_cb cbs ~info:(fun (N (cb, _)) -> cb.info) ~version with
           | None ->
-            (* XXX log *)
-            Fiber.return ()
+            send_log session ~message:"No notification matching version."
+              ~payload:(Sexp.record [ ("method", Atom n.method_) ])
           | Some (N (cb, v)) -> (
             match Conv.of_sexp v.req ~version n.params with
-            | Error _ -> (* XXX shall we log? *) Fiber.return ()
-            | Ok v -> cb.f session v ) )
+            | Ok v -> cb.f session v
+            | Error _ ->
+              send_log session ~message:"Invalid notification payload"
+                ~payload:
+                  (Sexp.record
+                     [ ("method", Atom n.method_); ("payload", n.params) ]) ) )
       in
       let on_request session (_id, (n : Call.t)) =
         let version = Initialize.Request.version (Session.initialize session) in

@@ -81,9 +81,6 @@ end = struct
       ; js = None
       ; source_dirs = None
       }
-    | Ctypes_library ctypes_library ->
-      Ctypes_rules.gen_rules ~scope ~dir ~expander ~ctypes_library ~sctx;
-      empty_none
     | Foreign_library lib ->
       Lib_rules.foreign_rules lib ~sctx ~dir ~dir_contents ~expander;
       empty_none

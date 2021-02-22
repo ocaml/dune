@@ -30,7 +30,7 @@ module Lib_deps : sig
 end
 
 
-module Ctypes_library : sig
+module Ctypes : sig
 
   module Build_flags_resolver : sig
     module Vendored : sig
@@ -54,25 +54,19 @@ module Ctypes_library : sig
   module Headers : sig
     type t =
       | Include of string list
-      | Preamble_file of string
+      | Preamble of string
   end
 
   type t =
-    { name : Loc.t * Lib_name.Local.t
-    ; external_library_name : string
+    { external_library_name : string
     ; build_flags_resolver : Build_flags_resolver.t
     ; headers : Headers.t
     ; concurrency : Concurrency_policy.t
     ; type_descriptions : Module_name.t
     ; function_descriptions : Module_name.t
     ; generated_types : Module_name.t
-    ; generated_entry_point : Module_name.t
-    ; dune_version : Dune_lang.Syntax.Version.t
-    ; sub_systems : Sub_system_info.t Sub_system_name.Map.t
-    }
+    ; generated_entry_point : Module_name.t }
   type Stanza.t += T of t
-
-  val obj_dir : dir:Path.Build.t -> t -> Path.Build.t Obj_dir.t
 end
 
 (** [preprocess] and [preprocessor_deps] fields *)
@@ -95,6 +89,7 @@ module Buildable : sig
     ; flags : Ocaml_flags.Spec.t
     ; js_of_ocaml : Js_of_ocaml.t
     ; allow_overlapping_dependencies : bool
+    ; ctypes : Ctypes.t option
     }
 
   (** Check if the buildable has any foreign stubs or archives. *)
@@ -300,6 +295,8 @@ module Executables : sig
     ; forbidden_libraries : (Loc.t * Lib_name.t) list
     ; bootstrap_info : string option
     ; enabled_if : Blang.t
+    ; sub_systems : Sub_system_info.t Sub_system_name.Map.t
+    ; dune_version : Dune_lang.Syntax.Version.t
     }
 
   (** Check if the executables have any foreign stubs or archives. *)
@@ -469,7 +466,6 @@ type Stanza.t +=
   | Cram of Cram_stanza.t
   | Generate_module of Generate_module.t
   | Plugin of Plugin.t
-  | Ctypes_library of Ctypes_library.t
 
 val stanza_package : Stanza.t -> Package.t option
 

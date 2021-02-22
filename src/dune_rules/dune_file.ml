@@ -45,7 +45,7 @@ module Js_of_ocaml = struct
     { flags = Ordered_set_lang.Unexpanded.standard; javascript_files = [] }
 end
 
-module Ctypes_library = struct
+module Ctypes = struct
   module Build_flags_resolver = struct
 
     module Vendored = struct
@@ -94,38 +94,32 @@ module Ctypes_library = struct
   module Headers = struct
     type t =
       | Include of string list
-      | Preamble_file of string
+      | Preamble of string
 
     let decode =
       let include_ =
         let+ s = repeat string in
         Include s
       in
-      let preamble_file =
+      let preamble =
         let+ p = string in
-        Preamble_file p
+        Preamble p
       in
-      sum [ ("include"       , include_)
-          ; ("preamble_file" , preamble_file) ]
+      sum [ ("include"  , include_)
+          ; ("preamble" , preamble) ]
 
     let default = Include []
   end
 
   type t =
-    { name : Loc.t * Lib_name.Local.t
-    ; external_library_name : string
+    { external_library_name : string
     ; build_flags_resolver : Build_flags_resolver.t
     ; headers : Headers.t
     ; concurrency : Concurrency_policy.t
     ; type_descriptions : Module_name.t
     ; function_descriptions : Module_name.t
     ; generated_types       : Module_name.t
-    ; generated_entry_point : Module_name.t
-    ; dune_version : Dune_lang.Syntax.Version.t
-    (* ctypes doesn't do anything special with sub_systems, this is just a way
-       of getting a default sub_systems value required for creating Buildable *)
-    ; sub_systems : Sub_system_info.t Sub_system_name.Map.t
-   }
+    ; generated_entry_point : Module_name.t }
 
   let name = "ctypes"
 
@@ -138,9 +132,7 @@ module Ctypes_library = struct
   let decode =
     let open Dune_lang.Decoder in
     fields
-      (let* dune_version = Dune_lang.Syntax.get_exn Stanza.syntax in
-       let+ external_library_name = field "external_library_name" string
-       and+ name = field  "name" Lib_name.Local.decode_loc
+      (let+ external_library_name = field "external_library_name" string
        and+ build_flags_resolver = field_o "build_flags_resolver" Build_flags_resolver.decode
        and+ headers = field_o "headers" Headers.decode
        and+ concurrency = field_o "concurrency" Concurrency_policy.decode
@@ -148,39 +140,15 @@ module Ctypes_library = struct
        and+ function_descriptions = field "function_descriptions" Module_name.decode
        and+ generated_types       = field "generated_types" Module_name.decode
        and+ generated_entry_point = field "generated_entry_point" Module_name.decode
-       and+ sub_systems =
-         let* () = return () in
-         Sub_system_info.record_parser ()
      in
-     { name
-     ; external_library_name
-     ; build_flags_resolver =
-         Option.value build_flags_resolver ~default:Build_flags_resolver.default
+     { external_library_name
+     ; build_flags_resolver = Option.value build_flags_resolver ~default:Build_flags_resolver.default
      ; headers = Option.value headers ~default:Headers.default
      ; concurrency = Option.value concurrency ~default:Concurrency_policy.default
      ; type_descriptions
      ; function_descriptions
      ; generated_types
-     ; generated_entry_point
-     ; dune_version
-     ; sub_systems })
-
-  let obj_dir ~dir t =
-    (* XXX: fill me out properly *)
-    (* XXX: make sure Ctypes_stanzas.library_stanzas does the same *)
-    (*
-      let private_lib =
-        match t.visibility with
-        | Private (Some _) -> true
-        | Private None
-        | Public _ ->
-          false
-      in
-      let has_private_modules = t.private_modules <> None)
-    *)
-    Obj_dir.make_lib ~dir
-      ~has_private_modules:false
-      ~private_lib:true (snd t.name)
+     ; generated_entry_point })
 
   let () =
     let open Dune_lang.Decoder in
@@ -304,6 +272,7 @@ module Buildable = struct
     ; flags : Ocaml_flags.Spec.t
     ; js_of_ocaml : Js_of_ocaml.t
     ; allow_overlapping_dependencies : bool
+    ; ctypes : Ctypes.t option
     }
 
   let decode ~in_library ~allow_re_export =
@@ -375,6 +344,9 @@ module Buildable = struct
         (multi_field "instrumentation"
            ( Dune_lang.Syntax.since Stanza.syntax (2, 7)
            >>> fields (field "backend" (located Lib_name.decode)) ))
+    and+ ctypes =
+      (field_o "ctypes"
+         (Dune_lang.Syntax.since Ctypes.syntax (0, 1) >>> Ctypes.decode))
     in
     let preprocess =
       let init =
@@ -428,6 +400,7 @@ module Buildable = struct
     ; flags
     ; js_of_ocaml
     ; allow_overlapping_dependencies
+    ; ctypes
     }
 
   let has_foreign t =
@@ -1458,6 +1431,8 @@ module Executables = struct
     ; forbidden_libraries : (Loc.t * Lib_name.t) list
     ; bootstrap_info : string option
     ; enabled_if : Blang.t
+    ; sub_systems : Sub_system_info.t Sub_system_name.Map.t
+    ; dune_version : Dune_lang.Syntax.Version.t
     }
 
   let bootstrap_info_extension =
@@ -1525,6 +1500,9 @@ module Executables = struct
         Dune_lang.Syntax.Version.Infix.(syntax_version >= (2, 6))
       in
       Enabled_if.decode ~allowed_vars ~is_error ~since:(Some (2, 3)) ()
+    and+ sub_systems =
+      let* () = return () in
+      Sub_system_info.record_parser ()
     in
     fun names ~multi ->
       let has_public_name = Names.has_public_name names in
@@ -1582,6 +1560,8 @@ module Executables = struct
       ; forbidden_libraries
       ; bootstrap_info
       ; enabled_if
+      ; dune_version
+      ; sub_systems
       }
 
   let single, multi =
@@ -1895,7 +1875,8 @@ module Tests = struct
 
   let gen_parse names =
     fields
-      (let+ buildable =
+      (let* dune_version = Dune_lang.Syntax.get_exn Stanza.syntax in
+       let+ buildable =
          Buildable.decode ~in_library:false ~allow_re_export:false
        and+ link_flags = Ordered_set_lang.Unexpanded.field "link_flags"
        and+ names = names
@@ -1917,6 +1898,9 @@ module Tests = struct
            ( Dune_lang.Syntax.since Stanza.syntax (2, 0)
            >>> repeat (located Lib_name.decode) )
            ~default:[]
+       and+ sub_systems =
+         let* () = return () in
+         Sub_system_info.record_parser ()
        in
        { exes =
            { Executables.link_flags
@@ -1932,6 +1916,8 @@ module Tests = struct
            ; forbidden_libraries
            ; bootstrap_info = None
            ; enabled_if
+           ; dune_version
+           ; sub_systems
            }
        ; locks
        ; package
@@ -2185,7 +2171,6 @@ type Stanza.t +=
   | Cram of Cram_stanza.t
   | Generate_module of Generate_module.t
   | Plugin of Plugin.t
-  | Ctypes_library of Ctypes_library.t
 
 module Stanzas = struct
   type t = Stanza.t list
@@ -2295,10 +2280,6 @@ module Stanzas = struct
       , let+ () = Dune_lang.Syntax.since Section.dune_site_syntax (0, 1)
         and+ t = Plugin.decode in
         [ Plugin t ] )
-    ; ( "ctypes_library"
-      , let+ () = Dune_lang.Syntax.since Stanza.syntax (2, 8)
-        and+ x = Ctypes_library.decode in
-        [ Ctypes_library x ] )
     ]
 
   let () = Dune_project.Lang.register Stanza.syntax stanzas

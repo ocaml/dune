@@ -170,3 +170,128 @@ let%expect_test _ =
 23 22 21 20 14 13 12 11
 23
 |}]
+
+let%expect_test "creating cycle can succeed on a second attempt" =
+  let dag = Dag.create () in
+  let c1 = Dag.node dag { name = "c1" } in
+  let c2 = Dag.node dag { name = "c2" } in
+  let c3 = Dag.node dag { name = "c3" } in
+  let c4 = Dag.node dag { name = "c4" } in
+  Dag.add_assuming_missing dag c1 c2;
+  Dag.add_assuming_missing dag c2 c3;
+  Dag.add_assuming_missing dag c3 c4;
+  Format.printf "c1 = %a@.\n" dag_pp_mynode c1;
+  Format.printf "c2 = %a@.\n" dag_pp_mynode c2;
+  Format.printf "c3 = %a@.\n" dag_pp_mynode c3;
+  Format.printf "c4 = %a@.\n" dag_pp_mynode c4;
+  [%expect
+    {|
+    c1 = (1: k=1) (c1) [(2: k=1) (c2) [(3: k=1) (c3) [(4: k=2) (c4) []]]]
+
+    c2 = (2: k=1) (c2) [(3: k=1) (c3) [(4: k=2) (c4) []]]
+
+    c3 = (3: k=1) (c3) [(4: k=2) (c4) []]
+
+    c4 = (4: k=2) (c4) []
+  |}];
+  ( match Dag.add_assuming_missing dag c4 c2 with
+  | () -> Format.printf "added :o\n"
+  | exception Cycle _ -> Format.printf "cycle\n" );
+  Format.printf "c1 = %a@.\n" dag_pp_mynode c1;
+  Format.printf "c2 = %a@.\n" dag_pp_mynode c2;
+  Format.printf "c3 = %a@.\n" dag_pp_mynode c3;
+  Format.printf "c4 = %a@.\n" dag_pp_mynode c4;
+  [%expect
+    {|
+    cycle
+    c1 = (1: k=1) (c1) [(2: k=2) (c2) [(3: k=2) (c3) [(4: k=2) (c4) []]]]
+
+    c2 = (2: k=2) (c2) [(3: k=2) (c3) [(4: k=2) (c4) []]]
+
+    c3 = (3: k=2) (c3) [(4: k=2) (c4) []]
+
+    c4 = (4: k=2) (c4) []
+  |}];
+  ( match Dag.add_assuming_missing dag c4 c2 with
+  | () -> Format.printf "added :o\n"
+  | exception Cycle _ -> Format.printf "cycle\n" );
+  Format.printf "c1 = %a@.\n" dag_pp_mynode c1;
+  Format.printf "c2 = %a@.\n" dag_pp_mynode c2;
+  Format.printf "c3 = %a@.\n" dag_pp_mynode c3;
+  Format.printf "c4 = %a@.\n" dag_pp_mynode c4;
+  [%expect
+    {|
+    added :o
+    c1 = (1: k=1) (c1) [(2: k=2) (c2) [(3: k=2) (c3) [(4: k=2) (c4) [
+                                                               (2: k=2) (c2) [
+                                                               (3: k=2) (c3) [
+                                                               (4: k=2) (c4) [
+                                                               (2: k=2) (c2) [
+                                                               (3: k=2) (c3) [
+                                                               (4: k=2) (c4) [
+                                                               (2: k=2) (c2) [
+                                                               (3: k=2) (c3) [
+                                                               (4: k=2) (c4) [
+                                                               (2: k=2) (c2) [
+                                                               (3: k=2) (c3) [
+                                                               (4: k=2) (c4) [
+                                                               (2: k=2) (c2) [
+                                                               (3: k=2) (c3) [
+                                                               (4: k=2) (c4) [
+                                                               (2: k=2) (c2) [
+                                                               ...]]]]]]]]]]]]]]]]]]]]
+
+    c2 = (2: k=2) (c2) [(3: k=2) (c3) [(4: k=2) (c4) [(2: k=2) (c2) [(3: k=2) (c3) [
+                                                                      (4: k=2) (c4) [
+                                                                      (2: k=2) (c2) [
+                                                                      (3: k=2) (c3) [
+                                                                      (4: k=2) (c4) [
+                                                                      (2: k=2) (c2) [
+                                                                      (3: k=2) (c3) [
+                                                                      (4: k=2) (c4) [
+                                                                      (2: k=2) (c2) [
+                                                                      (3: k=2) (c3) [
+                                                                      (4: k=2) (c4) [
+                                                                      (2: k=2) (c2) [
+                                                                      (3: k=2) (c3) [
+                                                                      (4: k=2) (c4) [
+                                                                      (2: k=2) (c2) [
+                                                                      (3: k=2) (c3) [
+                                                                      ...]]]]]]]]]]]]]]]]]]]]
+
+    c3 = (3: k=2) (c3) [(4: k=2) (c4) [(2: k=2) (c2) [(3: k=2) (c3) [(4: k=2) (c4) [
+                                                                      (2: k=2) (c2) [
+                                                                      (3: k=2) (c3) [
+                                                                      (4: k=2) (c4) [
+                                                                      (2: k=2) (c2) [
+                                                                      (3: k=2) (c3) [
+                                                                      (4: k=2) (c4) [
+                                                                      (2: k=2) (c2) [
+                                                                      (3: k=2) (c3) [
+                                                                      (4: k=2) (c4) [
+                                                                      (2: k=2) (c2) [
+                                                                      (3: k=2) (c3) [
+                                                                      (4: k=2) (c4) [
+                                                                      (2: k=2) (c2) [
+                                                                      (3: k=2) (c3) [
+                                                                      (4: k=2) (c4) [
+                                                                      ...]]]]]]]]]]]]]]]]]]]]
+
+    c4 = (4: k=2) (c4) [(2: k=2) (c2) [(3: k=2) (c3) [(4: k=2) (c4) [(2: k=2) (c2) [
+                                                                      (3: k=2) (c3) [
+                                                                      (4: k=2) (c4) [
+                                                                      (2: k=2) (c2) [
+                                                                      (3: k=2) (c3) [
+                                                                      (4: k=2) (c4) [
+                                                                      (2: k=2) (c2) [
+                                                                      (3: k=2) (c3) [
+                                                                      (4: k=2) (c4) [
+                                                                      (2: k=2) (c2) [
+                                                                      (3: k=2) (c3) [
+                                                                      (4: k=2) (c4) [
+                                                                      (2: k=2) (c2) [
+                                                                      (3: k=2) (c3) [
+                                                                      (4: k=2) (c4) [
+                                                                      (2: k=2) (c2) [
+                                                                      ...]]]]]]]]]]]]]]]]]]]]
+  |}]

@@ -14,7 +14,23 @@
     notification
 
     It contains hooks that make it possible to use with any custom scheduler
-    that uses fibers *)
+    that uses fibers
+
+    The API in this version is versioned. When using this library, we expect
+    that the module corresponding to a particular version is used exclusively.
+
+    While we guarantee stability of the API, we reserve the right to:
+
+    - Add optional arguments to functions
+    - Add new fields to records
+    - New variant constructors that will not cause runtime errors in existing
+      user programs.
+
+    This means that you must refrain from re-exporting any values, constructing
+    any records, using any module types as functor arguments, or make non
+    exhaustive matches an error to guarantee compatibility. *)
+
+(* TODO make records private *)
 
 module V1 : sig
   module Sexp : sig

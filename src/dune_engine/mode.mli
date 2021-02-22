@@ -4,6 +4,8 @@ type t =
   | Byte
   | Native
 
+val equal : t -> t -> bool
+
 val compare : t -> t -> Ordering.t
 
 val decode : t Dune_lang.Decoder.t

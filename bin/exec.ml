@@ -85,10 +85,9 @@ let term =
       match Lazy.force targets with
       | [] -> ()
       | targets ->
-        Scheduler.go ~common (fun () -> Memo.Build.run (do_build targets));
-        Build_system.cache_teardown ();
-        (* We must manually run the hook because Unix.exec will not run
-           [at_exit] hooks *)
+        Build_cmd.run_build_command_once ~common
+          ~targets:(fun () -> targets)
+          ~setup:(fun () -> Memo.Build.return ());
         Hooks.End_of_build.run () );
     match prog_where with
     | `Search prog ->

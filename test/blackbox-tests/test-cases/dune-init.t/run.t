@@ -232,7 +232,7 @@ Will not create components with invalid names
              Library names must be non-empty and composed only of the
              following
              characters: 'A'..'Z', 'a'..'z', '_' or '0'..'9'.
-  Usage: dune init [OPTION]... INIT_KIND NAME [PATH]
+  Usage: dune init [OPTION]... COMPONENT NAME [PATH]
   Try `dune init --help' or `dune --help' for more information.
   [1]
   $ test -f ./_test_lib
@@ -241,9 +241,9 @@ Will not create components with invalid names
 Will fail and inform user when invalid component command is given
 
   $ dune init foo blah
-  dune init: INIT_KIND argument: invalid value `foo', expected one of
+  dune init: COMPONENT argument: invalid value `foo', expected one of
              `executable', `library', `project' or `test'
-  Usage: dune init [OPTION]... INIT_KIND NAME [PATH]
+  Usage: dune init [OPTION]... COMPONENT NAME [PATH]
   Try `dune init --help' or `dune --help' for more information.
   [1]
 

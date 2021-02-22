@@ -19,13 +19,20 @@ module Processed : sig
 
   val load_file : Path.t -> t option
 
+  (** [print_file path] reads the configuration at path [path] and print it as a
+      s-expression *)
   val print_file : Path.t -> unit
+
+  (** [print_generic_dot_merlin paths] will merge the given configurations and
+      print the resulting configuration in dot-merlin syntax. *)
+  val print_generic_dot_merlin : Path.t list -> unit
 
   val get : t -> filename:string -> Sexp.t option
 end
 
 val make :
      ?requires:Lib.t list Or_exn.t
+  -> stdlib_dir:Path.t
   -> flags:Ocaml_flags.t
   -> ?preprocess:
        Preprocess.Without_instrumentation.t Preprocess.t Module_name.Per_item.t

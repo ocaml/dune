@@ -33,6 +33,7 @@ val init_build_system :
      ?only_packages:Package.t Package.Name.Map.t
   -> sandboxing_preference:Sandbox_mode.t list
   -> ?caching:Build_system.caching
+  -> ?build_mutex:Fiber.Mutex.t
   -> workspace
   -> build_system Memo.Build.t
 

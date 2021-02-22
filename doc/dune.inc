@@ -153,6 +153,15 @@
  (files   dune-promote.1))
 
 (rule
+ (with-stdout-to dune-rpc.1
+  (run dune rpc --help=groff)))
+
+(install
+ (section man)
+ (package dune)
+ (files   dune-rpc.1))
+
+(rule
  (with-stdout-to dune-rules.1
   (run dune rules --help=groff)))
 

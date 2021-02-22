@@ -19,3 +19,6 @@ val destroy : what -> Path.t -> unit
 (** Delete the contents of a temporary directory without deleting the directory
     itself. *)
 val clear_dir : Path.t -> unit
+
+(** [temp_path ~dir ~prefix ~suffix] generate a temporary path in [dir]. *)
+val temp_path : dir:Path.t -> prefix:string -> suffix:string -> Path.t

@@ -10,6 +10,8 @@ include Stringlike_intf.S with type t := t
 
 val add_suffix : t -> string -> t
 
+val equal : t -> t -> bool
+
 val compare : t -> t -> Ordering.t
 
 val uncapitalize : t -> string

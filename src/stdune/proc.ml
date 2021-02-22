@@ -13,5 +13,6 @@ let restore_cwd_and_execve prog argv ~env =
     | WSTOPPED _ -> assert false
   else (
     ignore (Unix.sigprocmask SIG_SETMASK [] : int list);
+    Stdlib.do_at_exit ();
     Unix.execve prog argv env
   )

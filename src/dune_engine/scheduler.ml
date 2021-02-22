@@ -42,10 +42,20 @@ module Config = struct
         Console.Backend.dumb
   end
 
+  module Rpc = struct
+    type t =
+      | Client
+      | Server of
+          { handler : Dune_rpc_server.t
+          ; backlog : int
+          }
+  end
+
   type t =
     { concurrency : int
     ; terminal_persistence : Terminal_persistence.t
     ; display : Display.t
+    ; rpc : Rpc.t option
     }
 end
 
@@ -102,6 +112,10 @@ module Thread = struct
       fun f x ->
     Lazy.force block_signals;
     Thread.create f x
+
+  let spawn f =
+    let (_ : Thread.t) = create f () in
+    ()
 end
 
 (** The event queue *)
@@ -110,6 +124,7 @@ module Event : sig
     | Files_changed of Path.t list
     | Job_completed of job * Unix.process_status
     | Signal of Signal.t
+    | Rpc of Fiber.fill
 
   module Queue : sig
     type t
@@ -128,11 +143,18 @@ module Event : sig
     (** Ignore the ne next file change event about this file. *)
     val ignore_next_file_change_event : t -> Path.t -> unit
 
+    (** Pending rpc events *)
+    val pending_rpc : t -> int
+
     (** Register the fact that a job was started. *)
     val register_job_started : t -> unit
 
     (** Number of jobs for which the status hasn't been reported yet .*)
     val pending_jobs : t -> int
+
+    val send_rpc_completed : t -> Fiber.fill -> unit
+
+    val register_rpc_started : t -> unit
 
     (** Send an event to the main thread. *)
     val send_files_changed : t -> Path.t list -> unit
@@ -149,6 +171,7 @@ end = struct
     | Files_changed of Path.t list
     | Job_completed of job * Unix.process_status
     | Signal of Signal.t
+    | Rpc of Fiber.fill
 
   module Queue = struct
     type t =
@@ -167,10 +190,13 @@ end = struct
                the build to take the promoted files into account if need be. *)
       ; ignored_files : (string, unit) Table.t
       ; mutable pending_jobs : int
+      ; mutable pending_rpc : int
+      ; rpc_completed : Fiber.fill Queue.t
       }
 
     let create () =
       let jobs_completed = Queue.create () in
+      let rpc_completed = Queue.create () in
       let dedup_pending = Queue.create () in
       let files_changed = [] in
       let signals = Signal.Set.empty in
@@ -178,6 +204,7 @@ end = struct
       let cond = Condition.create () in
       let ignored_files = Table.create (module String) 64 in
       let pending_jobs = 0 in
+      let pending_rpc = 0 in
       { jobs_completed
       ; dedup_pending
       ; files_changed
@@ -186,9 +213,13 @@ end = struct
       ; cond
       ; ignored_files
       ; pending_jobs
+      ; rpc_completed
+      ; pending_rpc
       }
 
     let register_job_started q = q.pending_jobs <- q.pending_jobs + 1
+
+    let register_rpc_started q = q.pending_rpc <- q.pending_rpc + 1
 
     let ignore_next_file_change_event q path =
       assert (Path.is_in_source_tree path);
@@ -199,7 +230,8 @@ end = struct
         ( List.is_empty q.files_changed
         && Queue.is_empty q.jobs_completed
         && Signal.Set.is_empty q.signals
-        && Queue.is_empty q.dedup_pending )
+        && Queue.is_empty q.dedup_pending
+        && Queue.is_empty q.rpc_completed )
 
     let dedup q =
       match Queue.pop q.dedup_pending with
@@ -230,11 +262,15 @@ end = struct
             Signal signal
           | None -> (
             match q.files_changed with
-            | [] ->
-              let job, status = Queue.pop_exn q.jobs_completed in
-              q.pending_jobs <- q.pending_jobs - 1;
-              assert (q.pending_jobs >= 0);
-              Job_completed (job, status)
+            | [] -> (
+              match Queue.pop q.jobs_completed with
+              | None ->
+                q.pending_rpc <- q.pending_rpc - 1;
+                Rpc (Queue.pop_exn q.rpc_completed)
+              | Some (job, status) ->
+                q.pending_jobs <- q.pending_jobs - 1;
+                assert (q.pending_jobs >= 0);
+                Job_completed (job, status) )
             | fns -> (
               q.files_changed <- [];
               let files =
@@ -254,6 +290,13 @@ end = struct
       let ev = loop () in
       Mutex.unlock q.mutex;
       ev
+
+    let send_rpc_completed q event =
+      Mutex.lock q.mutex;
+      let avail = available q in
+      Queue.push q.rpc_completed event;
+      if not avail then Condition.signal q.cond;
+      Mutex.unlock q.mutex
 
     let send_files_changed q files =
       Mutex.lock q.mutex;
@@ -287,6 +330,8 @@ end = struct
       Mutex.unlock q.mutex
 
     let pending_jobs q = q.pending_jobs
+
+    let pending_rpc q = q.pending_rpc
   end
 end
 
@@ -644,6 +689,93 @@ end = struct
   let init q = ignore (Thread.create run q : Thread.t)
 end
 
+module Rpc0 = struct
+  (* This module is called [Rpc0] to avoid conflict with the public [Rpc] module *)
+
+  type cleanup =
+    { symlink : Path.t
+    ; socket : Path.t
+    }
+
+  type t =
+    | Client
+    | Server of
+        { server : Csexp_rpc.Server.t
+        ; handler : Dune_rpc_server.t
+        ; where : Dune_rpc.Where.t
+        ; cleanup : cleanup option
+        }
+
+  module Server = Dune_rpc_server.Make (Csexp_rpc.Session)
+
+  let scheduler q =
+    let create_thread_safe_ivar () =
+      let ivar = Fiber.Ivar.create () in
+      let fill v = Event.Queue.send_rpc_completed q (Fiber.Fill (ivar, v)) in
+      Event.Queue.register_rpc_started q;
+      (ivar, fill)
+    in
+    { Csexp_rpc.Scheduler.create_thread_safe_ivar; spawn_thread = Thread.spawn }
+
+  let delete_cleanup = function
+    | None -> ()
+    | Some { socket; symlink } ->
+      Path.unlink_no_err socket;
+      Path.unlink_no_err symlink
+
+  let where_to_socket = function
+    | `Ip (addr, `Port port) -> Unix.ADDR_INET (addr, port)
+    | `Unix p -> Unix.ADDR_UNIX (Path.to_string p)
+
+  let of_config events rpc =
+    Option.map rpc ~f:(function
+      | Config.Rpc.Client -> Client
+      | Config.Rpc.Server { handler; backlog } ->
+        let where = Dune_rpc.Where.default () in
+        let real_where, cleanup =
+          match where with
+          | `Ip _ -> (where_to_socket where, None)
+          | `Unix symlink ->
+            let socket =
+              let dir =
+                Path.of_string
+                  ( match Xdg.runtime_dir with
+                  | Some p -> p
+                  | None -> Filename.get_temp_dir_name () )
+              in
+              Temp.temp_path ~dir ~prefix:"dune" ~suffix:""
+            in
+            Unix.symlink (Path.to_string socket)
+              (let from = Path.external_ (Path.External.cwd ()) in
+               Path.mkdir_p (Path.parent_exn symlink);
+               Path.reach_for_running ~from symlink);
+            (ADDR_UNIX (Path.to_string socket), Some { socket; symlink })
+        in
+        let server =
+          Csexp_rpc.Server.create real_where ~backlog (scheduler events)
+        in
+        Server { server; handler; where; cleanup })
+
+  let with_rpc_serve t f =
+    match t with
+    | None
+    | Some Client ->
+      f
+    | Some (Server t) ->
+      fun () ->
+        Fiber.fork_and_join_unit
+          (fun () ->
+            Fiber.finalize
+              (fun () ->
+                let open Fiber.O in
+                let* sessions = Csexp_rpc.Server.serve t.server in
+                Server.serve sessions t.handler)
+              ~finally:(fun () ->
+                delete_cleanup t.cleanup;
+                Fiber.return ()))
+          f
+end
+
 type status =
   (* Waiting for file changes to start a new a build *)
   | Waiting_for_file_changes of unit Fiber.Ivar.t
@@ -656,6 +788,7 @@ type t =
   { original_cwd : string
   ; config : Config.t
   ; polling : bool
+  ; rpc : Rpc0.t option
   ; mutable status : status
   ; job_throttle : Fiber.Throttle.t
   ; events : Event.Queue.t
@@ -759,6 +892,7 @@ let prepare (config : Config.t) ~polling =
                 loop (Filename.concat acc "..") (Filename.dirname dir)
             in
             loop ".." (Filename.dirname s) ) ) );
+  let rpc = Rpc0.of_config events config.rpc in
   let t =
     { original_cwd = cwd
     ; status = Building
@@ -767,6 +901,7 @@ let prepare (config : Config.t) ~polling =
     ; process_watcher
     ; events
     ; config
+    ; rpc
     }
   in
   global := Some t;
@@ -803,6 +938,7 @@ end = struct
         false
       | _ -> true )
       && Event.Queue.pending_jobs t.events = 0
+      && Event.Queue.pending_rpc t.events = 0
     then
       raise (Abort Never)
     else (
@@ -829,6 +965,7 @@ end = struct
           Process_watcher.killall t.process_watcher Sys.sigkill;
           iter t
         | Waiting_for_file_changes ivar -> Fill (ivar, ()) )
+      | Rpc fill -> fill
       | Signal signal ->
         got_signal signal;
         raise (Abort Got_signal)
@@ -840,7 +977,8 @@ end = struct
     in
     match Fiber.run fiber ~iter:(fun () -> iter t) with
     | res ->
-      assert ((not t.polling) && Event.Queue.pending_jobs t.events = 0);
+      assert (Event.Queue.pending_jobs t.events = 0);
+      assert (Event.Queue.pending_rpc t.events = 0);
       Ok res
     | exception Abort err -> Error err
     | exception exn -> Error (Exn (Exn_with_backtrace.capture exn))
@@ -855,7 +993,10 @@ end
 
 let go config f =
   let t = prepare config ~polling:false in
-  let res = Run_once.run_and_cleanup t f in
+  let res =
+    let f = Rpc0.with_rpc_serve t.rpc f in
+    Run_once.run_and_cleanup t f
+  in
   match res with
   | Error (Exn exn) -> Exn_with_backtrace.reraise exn
   | Ok res -> res
@@ -876,7 +1017,7 @@ let maybe_clear_screen (config : Config.t) =
 let poll (config : Config.t) ~once ~finally =
   let t = prepare config ~polling:true in
   let watcher = File_watcher.create t.events in
-  let rec loop () : Nothing.t Fiber.t =
+  let rec loop () : unit Fiber.t =
     t.status <- Building;
     let open Fiber.O in
     let* res =
@@ -900,10 +1041,10 @@ let poll (config : Config.t) ~once ~finally =
       (* We just finished a build, so there's no way this was set *)
       assert false
     | Restarting_build -> loop ()
-    | Building ->
+    | Building -> (
       let message =
         match res with
-        | Ok () -> Pp.tag User_message.Style.Success (Pp.verbatim "Success")
+        | Ok _ -> Pp.tag User_message.Style.Success (Pp.verbatim "Success")
         | Error _ -> Pp.tag User_message.Style.Error (Pp.verbatim "Had errors")
       in
       Console.Status_line.set
@@ -915,13 +1056,18 @@ let poll (config : Config.t) ~once ~finally =
       t.status <- Waiting_for_file_changes ivar;
       let* () = Fiber.Ivar.read ivar in
       maybe_clear_screen config;
-      loop ()
+      match res with
+      | Error _
+      | Ok `Continue ->
+        loop ()
+      | Ok `Stop -> Fiber.return () )
   in
+  let run = Rpc0.with_rpc_serve t.rpc loop in
   let exn, bt =
-    match Run_once.run_and_cleanup t loop with
-    | Ok (_ : Nothing.t) ->
+    match Run_once.run_and_cleanup t run with
+    | Ok () ->
       (* Polling mode is an infinite loop. We aren't going to terminate *)
-      .
+      assert false
     | Error (Got_signal | Never) ->
       (Dune_util.Report_error.Already_reported, None)
     | Error (Exn exn_with_bt) -> (exn_with_bt.exn, Some exn_with_bt.backtrace)
@@ -939,3 +1085,36 @@ let send_dedup d =
 let wait_for_process pid =
   let t = Fiber.Var.get_exn t_var in
   wait_for_process t pid
+
+module Rpc = struct
+  let csexp_client p =
+    let t = Fiber.Var.get_exn t_var in
+    Csexp_rpc.Client.create (Rpc0.where_to_socket p) (Rpc0.scheduler t.events)
+
+  let client p init ~on_notification ~f =
+    let open Fiber.O in
+    let c = csexp_client p in
+    let* session = Csexp_rpc.Client.connect c in
+    Drpc_client.connect_raw session init ~on_notification ~f
+
+  let csexp_connect in_ out =
+    let t = Option.value_exn !global in
+    Csexp_rpc.Session.create in_ out (Rpc0.scheduler t.events)
+
+  let add_to_env env =
+    let t = Fiber.Var.get_exn t_var in
+    match t.rpc with
+    | None -> env
+    | Some Client -> env
+    | Some (Server server) -> Dune_rpc.Where.add_to_env server.where env
+
+  let stop () =
+    let t = Fiber.Var.get_exn t_var in
+    match t.rpc with
+    | None
+    | Some Client ->
+      Code_error.raise "rpc not running" []
+    | Some (Server s) ->
+      Csexp_rpc.Server.stop s.server;
+      Fiber.return ()
+end

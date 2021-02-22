@@ -9,6 +9,8 @@ module Context : sig
     type t =
       | Native
       | Named of Context_name.t
+
+    val equal : t -> t -> bool
   end
 
   module Common : sig

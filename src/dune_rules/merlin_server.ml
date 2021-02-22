@@ -132,6 +132,13 @@ let dump s =
     List.iter (get_merlin_files_paths path) ~f:Merlin.Processed.print_file
   | Error mess -> Printf.eprintf "%s\n%!" mess
 
+let dump_dot_merlin s =
+  match to_local s with
+  | Ok path ->
+    let files = get_merlin_files_paths path in
+    Merlin.Processed.print_generic_dot_merlin files
+  | Error mess -> Printf.eprintf "%s\n%!" mess
+
 let start () =
   let rec main () =
     match Commands.read_input stdin with

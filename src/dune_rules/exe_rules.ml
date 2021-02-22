@@ -71,7 +71,7 @@ let o_files sctx ~dir ~expander ~(exes : Executables.t) ~linkages ~dir_contents
       else
         "stubs"
     in
-    if List.mem Exe.Linkage.byte ~set:linkages then
+    if List.mem linkages Exe.Linkage.byte ~equal:Exe.Linkage.equal then
       User_error.raise ~loc:exes.buildable.loc
         [ Pp.textf "Pure bytecode executables cannot contain foreign %s." what ]
         ~hints:
@@ -114,13 +114,19 @@ let executables_rules ~sctx ~dir ~expander ~dir_contents ~scope ~compile_info
   Check_rules.add_obj_dir sctx ~obj_dir;
   let ctx = Super_context.context sctx in
   let pp =
+    let instrumentation_backend =
+      Lib.DB.instrumentation_backend (Scope.libs scope)
+    in
     let preprocess =
       Preprocess.Per_module.with_instrumentation exes.buildable.preprocess
-        ~instrumentation_backend:
-          (Lib.DB.instrumentation_backend (Scope.libs scope))
+        ~instrumentation_backend
+    in
+    let instrumentation_deps =
+      Preprocess.Per_module.instrumentation_deps exes.buildable.preprocess
+        ~instrumentation_backend
     in
     Preprocessing.make sctx ~dir ~dep_kind:Required ~scope ~expander ~preprocess
-      ~preprocessor_deps:exes.buildable.preprocessor_deps
+      ~preprocessor_deps:exes.buildable.preprocessor_deps ~instrumentation_deps
       ~lint:exes.buildable.lint ~lib_name:None
   in
   let modules =
@@ -133,7 +139,7 @@ let executables_rules ~sctx ~dir ~expander ~dir_contents ~scope ~compile_info
         let add_empty_intf =
           let project = Scope.project scope in
           Dune_project.executables_implicit_empty_intf project
-          && List.mem name ~set:executable_names
+          && List.mem executable_names name ~equal:Module_name.equal
           && not (Module.has m ~ml_kind:Intf)
         in
         if add_empty_intf then
@@ -151,7 +157,9 @@ let executables_rules ~sctx ~dir ~expander ~dir_contents ~scope ~compile_info
     let js_of_ocaml =
       let js_of_ocaml = exes.buildable.js_of_ocaml in
       if explicit_js_mode then
-        Option.some_if (List.mem ~set:linkages Exe.Linkage.js) js_of_ocaml
+        Option.some_if
+          (List.mem linkages Exe.Linkage.js ~equal:Exe.Linkage.equal)
+          js_of_ocaml
       else
         Some js_of_ocaml
     in
@@ -159,6 +167,7 @@ let executables_rules ~sctx ~dir ~expander ~dir_contents ~scope ~compile_info
       ~modules ~flags ~requires_link ~requires_compile ~preprocessing:pp
       ~js_of_ocaml ~opaque:Inherit_from_settings ~package:exes.package
   in
+  let stdlib_dir = ctx.Context.stdlib_dir in
   let requires_compile = Compilation_context.requires_compile cctx in
   let preprocess =
     Preprocess.Per_module.with_instrumentation exes.buildable.preprocess
@@ -197,7 +206,8 @@ let executables_rules ~sctx ~dir ~expander ~dir_contents ~scope ~compile_info
       ~promote:exes.promote ~embed_in_plugin_libraries
   in
   ( cctx
-  , Merlin.make ~requires:requires_compile ~flags ~modules ~preprocess ~obj_dir
+  , Merlin.make ~requires:requires_compile ~stdlib_dir ~flags ~modules
+      ~preprocess ~obj_dir
       ~dialects:(Dune_project.dialects (Scope.project scope))
       ~ident:(Lib.Compile.merlin_ident compile_info)
       () )

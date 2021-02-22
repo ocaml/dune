@@ -20,7 +20,7 @@ let term =
   and+ dump_config =
     Arg.(
       value
-      & opt (some string) None
+      & opt ~vopt:(Some ".") (some string) None
       & info [ "dump-config" ]
           ~doc:
             "Prints the entire content of the merlin configuration for the \
@@ -29,17 +29,57 @@ let term =
              ouptut.")
   in
   Common.set_common common ~log_file:No_log_file ~targets:[];
-  Scheduler.go ~common (fun () ->
-      Dune_engine.File_tree.init ~recognize_jbuilder_projects:true
-        ~ancestor_vcs:None;
-      let x = Common.x common in
-      let workspace_file =
-        Common.workspace_file common |> Option.map ~f:Arg.Path.path
-      in
-      Dune_rules.Workspace.init ?x ?workspace_file ();
-      ( match dump_config with
-      | Some s -> Dune_rules.Merlin_server.dump s
-      | None -> Dune_rules.Merlin_server.start () )
-      |> Fiber.return)
+  Dune_engine.File_tree.init ~recognize_jbuilder_projects:true
+    ~ancestor_vcs:None;
+  let x = Common.x common in
+  let workspace_file =
+    Common.workspace_file common |> Option.map ~f:Arg.Path.path
+  in
+  Dune_rules.Workspace.init ?x ?workspace_file ();
+  match dump_config with
+  | Some s -> Dune_rules.Merlin_server.dump s
+  | None -> Dune_rules.Merlin_server.start ()
 
 let command = (term, info)
+
+module Dump_dot_merlin = struct
+  let doc = "Print Merlin configuration"
+
+  let man =
+    [ `S "DESCRIPTION"
+    ; `P
+        {|$(b,dune ocaml dump-dot-merlin) will attempt to read previously
+        generated configuration in a source folder, merge them and print
+        it to the standard output in Merlin configuration syntax. The
+        output of this command should always be checked and adapted to
+        the project needs afterward.|}
+    ; Common.footer
+    ]
+
+  let info = Term.info "dump-dot-merlin" ~doc ~man
+
+  let term =
+    let+ common = Common.term
+    and+ path =
+      Arg.(
+        value
+        & pos 0 (some string) None
+        & info [] ~docv:"PATH"
+            ~doc:
+              "The path to the folder of which the configuration should be \
+               printed. Defaults to the current directory.")
+    in
+    Common.set_common common ~log_file:No_log_file ~targets:[];
+    Dune_engine.File_tree.init ~recognize_jbuilder_projects:true
+      ~ancestor_vcs:None;
+    let x = Common.x common in
+    let workspace_file =
+      Common.workspace_file common |> Option.map ~f:Arg.Path.path
+    in
+    Dune_rules.Workspace.init ?x ?workspace_file ();
+    match path with
+    | Some s -> Dune_rules.Merlin_server.dump_dot_merlin s
+    | None -> Dune_rules.Merlin_server.dump_dot_merlin "."
+
+  let command = (term, info)
+end

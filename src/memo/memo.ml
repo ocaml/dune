@@ -197,17 +197,17 @@ Dag.Make (struct
   type t = Dep_node_without_state.packed
 end)
 
-(** [Value_id] is an identifier allocated every time a node value is computed
-    and found to be different from before.
+(* [Value_id] is an identifier allocated every time a node value is computed and
+   found to be different from before.
 
-    The clients then use [Value_id] to see if the value have changed since the
-    previous value they observed. This means we don't need to run the cutoff
-    comparison at every client.
+   The clients then use [Value_id] to see if the value have changed since the
+   previous value they observed. This means we don't need to run the cutoff
+   comparison at every client.
 
-    There is a downside, though: if the value changes from x to y, and then back
-    to x, then the Value_id changes without the value actually changing, which
-    is a shame. So we should test and see if Value_id is worth keeping or it's
-    better to just evaluate the cutoff multiple times. *)
+   There is a downside, though: if the value changes from x to y, and then back
+   to x, then the Value_id changes without the value actually changing, which is
+   a shame. So we should test and see if Value_id is worth keeping or it's
+   better to just evaluate the cutoff multiple times. *)
 module Value_id : sig
   type t
 
@@ -343,10 +343,38 @@ module M = struct
   end =
     Dep_node
 
-  (* We store the [Value_id] of the last ['b Cache_value.t] value we depended on
-     to support early cutoff. When [Value_id <> Dep_node.last_cached_value.id],
-     the early cutoff fails and the holder of the corresponding [Last_dep] needs
-     to be recomputed. *)
+  (* We store the [Value_id.t] of the last [Cached_value.t] value we depended on
+     to support early cutoff.
+
+     Consider a dependency [T (dep, value_id) : Last_dep.t] of a node [caller].
+
+     If [dep.last_cached_value.id <> value_id] then the early cutoff fails, i.e.
+     the value that the caller had previously used has changed and received a
+     new identifier, which means the caller needs to be recomputed.
+
+     Note that we can achieve the same early cutoff behaviour by switching to
+     storing two runs in each [Cached_value.t] instead of just one:
+
+     - [last_validated_at : Run.t], which we store already, and
+
+     - [last_changed_at : Run.t], which records the run when the value changed
+     last time, with the invariant [last_changed_at <= last_validated_at].
+
+     If [dep.last_changed_at > caller.last_validated_at], then the value has
+     changed since it had been previously used by the caller, and therefore the
+     caller needs to be recomputed. This new condition is equivalent to the
+     above condition [dep.last_cached_value.id <> value_id] but doesn't require
+     storing value identifiers in [Last_dep.t].
+
+     See Section 5.2.2 of "Build Systems a la Carte: Theory and Practice" for
+     more details on this optimisation (it is worth checking out the scenario
+     described in Fig. 7).
+
+     Historical remark: previously [Last_dep.t] stored [Value.t] instead of just
+     the corresponding [Value_id.t], which means we had to compare the current
+     value and the value recorded in [Last_dep] in every run. By switching to
+     storing the [Value_id.t], the (potentially expensive) value comparisons
+     were replaced with cheap comparisons of their integer identifiers. *)
   and Last_dep : sig
     type t = T : ('a, 'b, 'f) Dep_node.t * Value_id.t -> t
   end =

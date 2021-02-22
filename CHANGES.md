@@ -60,6 +60,9 @@ Unreleased
   merlin configuration of a directory (defaulting to the current directory) in
   the Merlin configuration syntax. (#4250, @voodoos)
 
+- `dune ocaml-merlin` is now able to provide configuration for source files in
+  the `_build` directory. (#4274, @voodoos)
+
 2.8.2 (21/01/2021)
 ------------------
 

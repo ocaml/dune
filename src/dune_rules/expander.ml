@@ -456,7 +456,7 @@ let expand_pform_gen ~(context : Context.t) ~bindings ~dir ~source
                 (not lib_exec) || (not Sys.win32)
                 || Filename.extension s = ".exe"
               then
-                Action_builder.return (path p)
+                dep p
               else
                 let p_exe = Path.extend_basename p ~suffix:".exe" in
                 Action_builder.if_file_exists p_exe ~then_:(dep p_exe)

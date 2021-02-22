@@ -79,7 +79,14 @@ module Processed = struct
          [ stdlib_dir; exclude_query_dir; obj_dirs; src_dirs; flags; suffixes ])
 
   let get { modules; pp_config; config } ~filename =
-    let fname = Filename.remove_extension filename |> String.lowercase in
+    (* We only match the first part of the filename : foo.ml -> foo foo.cppo.ml
+       -> foo *)
+    let fname =
+      String.lsplit2 filename ~on:'.'
+      |> Option.map ~f:fst
+      |> Option.value ~default:filename
+      |> String.lowercase
+    in
     List.find_opt modules ~f:(fun name ->
         let fname' = Module_name.to_string name |> String.lowercase in
         String.equal fname fname')

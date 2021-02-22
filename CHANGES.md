@@ -24,6 +24,9 @@ Unreleased
 - Workaround incorrect exception raised by Unix.utimes (OCaml PR#8857) in
   Path.touch on Windows (#4223, @dra27)
 
+- `dune ocaml-merlin` is now able to provide configuration for source files in
+  the `_build` directory. (#4274, @voodoos)
+
 2.8.2 (21/01/2021)
 ------------------
 

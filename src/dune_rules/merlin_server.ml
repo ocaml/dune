@@ -59,7 +59,11 @@ let to_local file_path =
   (* Then we make the path relative to [Path.root] (and not [Path.initial_cwd]) *)
   match make_relative_to_root abs_file_path with
   | Some path -> (
-    try Ok (Path.Local.of_string path)
+    try
+      let path = Path.of_string path in
+      (* If dune ocaml-merlin is called from within the build dir we must remove
+         the build context *)
+      Ok (Path.drop_optional_build_context path |> Path.local_part)
     with User_error.E mess -> User_message.to_string mess |> error )
   | None ->
     Printf.sprintf "Path %S is not in dune workspace (%S)." file_path
@@ -112,7 +116,9 @@ let load_merlin_file local_path file =
           Path.Local.parent path )
   in
   let default =
-    Printf.sprintf "No config found for file %S. Try calling `dune build`." file
+    Printf.sprintf
+      "No config found for file %S in %S. Try calling `dune build`." file
+      (Path.Local.to_string local_path)
     |> Merlin_conf.make_error
   in
   Option.value (find_closest local_path) ~default

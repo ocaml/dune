@@ -280,8 +280,8 @@ There's a few aliases that dune automatically creates for the user
   defined in that directory.
 
 * ``check`` - This alias will build the minimal set of targets required for
-  tooling support. Essentially, this is ``.cmi``, ``.cmt``, ``.cmti``, and
-  ``.merlin`` files.
+  tooling support. Essentially, this is ``.cmi``, ``.cmt``, ``.cmti`` files and
+  Merlin configurations.
 
 Variables for artifacts
 -----------------------
@@ -587,6 +587,16 @@ be un-commented afterward. This feature does not aim at writing exact or correct
 ``.merlin`` files, its sole purpose is to lessen the burden of writing the
 configuration from scratch.
 
-Both these commands also support an optional path to specify the target
-directory. This directory must be in a Dune workspace and the project must have
-already been built.
+Non-standard filenames
+----------------------
+
+Merlin configuration loading is based on filename. That means that if you have
+files which are preprocessed by custom rules before they are built, they should
+respect the following naming convention: the unprocessed file should start with
+the name of the resulting processed file followed by a dot and then the rest
+does not matter. Only the name before the first dot will be used by Dune to
+match with available configurations.
+
+For example, if you use the ``cppo`` preprocessor to generate the file
+``real_module_name.ml`` then the source file could be named
+``real_module_name.cppo.ml``.

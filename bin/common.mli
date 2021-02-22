@@ -12,6 +12,10 @@ val root : t -> Workspace_root.t
 
 val config : t -> Dune_config.t
 
+val rpc : t -> Dune_rpc_impl.Server.t option
+
+val set_config : t -> Dune_config.t -> t
+
 module Only_packages : sig
   type t = private
     { names : Dune_engine.Package.Name.Set.t
@@ -52,7 +56,15 @@ val set_common_other :
     the root the current working directory *)
 val set_dirs : t -> unit
 
+(** [examples \[("description", "dune cmd foo"); ...\]] is an [EXAMPLES] manpage
+    section of enumerated examples illustrating how to run the documented
+    commands. *)
 val examples : (string * string) list -> Cmdliner.Manpage.block
+
+(** [command_syposis subcommands] is a custom [SYNOPSIS] manpage section listing
+    the given [subcommands]. Each subcommand is prefixed with the `dune`
+    top-level command. *)
+val command_synopsis : string list -> Cmdliner.Manpage.block list
 
 val help_secs : Cmdliner.Manpage.block list
 
@@ -80,3 +92,5 @@ module Let_syntax : sig
   val ( and+ ) :
     'a Cmdliner.Term.t -> 'b Cmdliner.Term.t -> ('a * 'b) Cmdliner.Term.t
 end
+
+val set_rpc : t -> Dune_rpc_impl.Server.t -> t

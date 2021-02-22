@@ -92,3 +92,14 @@ let clear_dir dir =
   in
   remove_from_set ~set:tmp_files;
   remove_from_set ~set:tmp_dirs
+
+let temp_path ~dir ~prefix ~suffix =
+  let rnd = Random.State.bits (Lazy.force prng) land 0xFFFFFF in
+  try_times 1000 ~f:(fun _ ->
+      let candidate =
+        Path.relative dir (Printf.sprintf "%s%06x%s" prefix rnd suffix)
+      in
+      if Path.exists candidate then
+        raise Exit
+      else
+        candidate)

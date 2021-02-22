@@ -343,7 +343,7 @@ let auto_concurrency =
       Log.info [ Pp.textf "Auto-detected concurrency: %d" n ];
       n )
 
-let for_scheduler (t : t) =
+let for_scheduler (t : t) rpc =
   let concurrency =
     match t.concurrency with
     | Fixed i -> i
@@ -352,4 +352,5 @@ let for_scheduler (t : t) =
   { Scheduler.Config.concurrency
   ; terminal_persistence = t.terminal_persistence
   ; display = t.display
+  ; rpc
   }

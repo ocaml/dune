@@ -6,6 +6,7 @@ module Stringlike_intf = Dune_util.Stringlike_intf
 module Persistent = Dune_util.Persistent
 module Value = Dune_util.Value
 module Ml_kind = Dune_util.Ml_kind
+module Dune_rpc = Dune_rpc_private
 
 (* To make bug reports usable *)
 let () = Printexc.record_backtrace true

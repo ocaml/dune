@@ -357,6 +357,13 @@ let parallel_iter_set (type a s)
   | 1 -> f (Option.value_exn (S.min_elt t)) k
   | n -> parallel_iter_generic ~n ~iter:(S.iter t) ~f k
 
+let rec repeat_while : 'a. f:('a -> 'a option t) -> init:'a -> unit t =
+ fun ~f ~init ->
+  let* result = f init in
+  match result with
+  | None -> return ()
+  | Some init -> repeat_while ~f ~init
+
 module Var = struct
   include Univ_map.Key
 
@@ -674,7 +681,9 @@ module Stream = struct
       let write x =
         if Option.is_none x then
           t.write <-
-            (fun _ ->
+            (function
+            | None -> return ()
+            | Some _ ->
               Code_error.raise "Fiber.Stream.Out: stream output closed" []);
         write x
       in

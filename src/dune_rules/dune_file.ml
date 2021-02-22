@@ -2200,7 +2200,18 @@ module Stanzas = struct
         [ Deprecated_library_name t ] )
     ; ( "cram"
       , let+ () = Dune_lang.Syntax.since Stanza.syntax (2, 7)
-        and+ t = Cram_stanza.decode in
+        and+ t = Cram_stanza.decode
+        and+ project = Dune_project.get_exn ()
+        and+ loc = loc in
+        if not (Dune_project.cram project) then
+          User_warning.emit ~loc
+            ~is_error:(Dune_project.dune_version project >= (3, 0))
+            [ Pp.text "Cram tests are not enabled in this project." ]
+            ~hints:
+              [ Pp.text
+                  "You can enable cram tests by adding (cram enable) to your \
+                   dune-project file."
+              ];
         [ Cram t ] )
     ; ( "generate_sites_module"
       , let+ () = Dune_lang.Syntax.since Section.dune_site_syntax (0, 1)

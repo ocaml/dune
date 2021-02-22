@@ -126,3 +126,9 @@ understood by dune language."))
  (depends (dune-private-libs (= :version)))
  (synopsis "Embed locations informations inside executable and libraries")
  (description ""))
+
+(package
+ (name dune-rpc)
+ (depends (dune-private-libs (= :version))) ;; TODO temporary
+ (synopsis "Communicate with dune using rpc")
+ (description ""))

@@ -91,4 +91,7 @@ val init : t -> unit
 
 val to_dyn : t -> Dyn.t
 
-val for_scheduler : t -> Dune_engine.Scheduler.Config.t
+val for_scheduler :
+     t
+  -> Dune_engine.Scheduler.Config.Rpc.t option
+  -> Dune_engine.Scheduler.Config.t

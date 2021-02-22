@@ -1,6 +1,8 @@
 Unreleased
 ----------
 
+- Make `patdiff` show refined diffs (#4257, fixes #4254, @hakuch)
+
 - Allow `(package pkg)` in dependencies even if `pkg` is an installed package
   (#4170, @bobot)
 
@@ -12,7 +14,8 @@ Unreleased
 
 - Allow `%{version:pkg}` to work for external packages (#4104, @kit-ty-kate)
 
-- Add `(glob_files_rec <dir>/<glob>)` for globbing files recursively (#4176, @jeremiedimino)
+- Add `(glob_files_rec <dir>/<glob>)` for globbing files recursively (#4176,
+  @jeremiedimino)
 
 - Automatically generate empty `.mli` files for executables and tests (#3768,
   fixes #3745, @CraigFe)
@@ -34,7 +37,7 @@ Unreleased
   that `(using coq 0.3)` does require Coq 8.10 at least (#4224, fixes
   #4142, @ejgallego)
 
-- Add a META rule for 'compiler-libs.native-toplevel' (#4175, @altgr)
+- Add a META rule for `compiler-libs.native-toplevel` (#4175, @altgr)
 
 - No longer call `chmod` on symbolic links (fixes #4195, @dannywillems)
 
@@ -46,8 +49,16 @@ Unreleased
 
 - Add support for instrumentation dependencies (#4210, fixes #3983, @nojb)
 
-- Workaround incorrect exception raised by Unix.utimes (OCaml PR#8857) in
-  Path.touch on Windows (#4223, @dra27)
+- Workaround incorrect exception raised by `Unix.utimes` (OCaml PR#8857) in
+  `Path.touch` on Windows. This fixes dune cache in direct mode on Windows.
+  (#4223, @dra27)
+
+- Cleanup temporary files after running `$ dune exec`. (#4260, fixes #4243,
+  @rgrinberg)
+
+- Add a new subcommand `dune ocaml dump-dot-merlin` that prints a mix of all the
+  merlin configuration of a directory (defaulting to the current directory) in
+  the Merlin configuration syntax. (#4250, @voodoos)
 
 2.8.2 (21/01/2021)
 ------------------

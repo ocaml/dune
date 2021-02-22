@@ -234,6 +234,8 @@ module Throttle : sig
 end
 with type 'a fiber := 'a t
 
+val repeat_while : f:('a -> 'a option t) -> init:'a -> unit t
+
 module Stream : sig
   (** Destructive streams that can be composed to pipelines.
 

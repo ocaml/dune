@@ -156,7 +156,7 @@ let rules ~sctx ~expander ~dir tests =
                 | Some deps ->
                   let deps : unit Action_builder.t =
                     let expander = Super_context.expander sctx ~dir in
-                    fst (Dep_conf_eval.named ~expander deps)
+                    fst (Dep_conf_eval.named ~alias_expansion:Empty ~expander deps)
                   in
                   deps :: acc.deps
               in

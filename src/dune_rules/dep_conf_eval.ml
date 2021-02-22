@@ -17,7 +17,13 @@ let fold_source_dirs dir ~init ~f =
       ~f:(fun dir acc ->
         f (Path.append_source prefix_with (File_tree.Dir.path dir)) acc)
 
-let dep expander = function
+module Alias_expansion = struct
+  type t =
+    | Empty
+    | Stamp_file
+end
+
+let dep ~(alias_expansion : Alias_expansion.t) expander = function
   | File s ->
     Expander.Static.Or_exn.expand_path expander s
     |> Result.map ~f:(fun path ->
@@ -26,15 +32,22 @@ let dep expander = function
   | Alias s ->
     make_alias expander s
     |> Result.map ~f:(fun a ->
-           let+ () = Action_builder.alias a in
-           [])
+      let+ () = Action_builder.alias a in
+      match alias_expansion with
+      | Empty ->
+        []
+      | Stamp_file ->
+        [ Path.build (Alias.stamp_file a) ]
+    )
   | Alias_rec s ->
     make_alias expander s
     |> Result.map ~f:(fun a ->
-           let+ () =
+           let+ stamp_files =
              Build_system.Alias.dep_rec ~loc:(String_with_vars.loc s) a
            in
-           [])
+           match alias_expansion with
+           | Empty -> []
+           | Stamp_file -> stamp_files)
   | Glob_files { glob = s; recursive } ->
     let loc = String_with_vars.loc s in
     let path = Expander.Static.Or_exn.expand_path expander s in
@@ -136,20 +149,20 @@ let unnamed ~expander l =
   let expander = prepare_expander expander in
   List.fold_left l ~init:(Action_builder.return ()) ~f:(fun acc x ->
       let+ () = acc
-      and+ _x = dep expander x in
+      and+ _x = dep ~alias_expansion:Empty expander x in
       ())
 
-let named ~expander l =
+let named ~alias_expansion ~expander l =
   let builders, bindings =
     let expander = prepare_expander expander in
     List.fold_left l ~init:([], Pform.Map.empty)
       ~f:(fun (builders, bindings) x ->
         match x with
-        | Bindings.Unnamed x -> (dep expander x :: builders, bindings)
+        | Bindings.Unnamed x -> (dep ~alias_expansion expander x :: builders, bindings)
         | Named (name, x) ->
           let x =
             Action_builder.memoize ("dep " ^ name)
-              (let+ l = Action_builder.all (List.map x ~f:(dep expander)) in
+              (let+ l = Action_builder.all (List.map x ~f:(dep ~alias_expansion expander)) in
                List.concat l)
           in
           let bindings =

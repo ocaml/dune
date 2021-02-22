@@ -98,13 +98,13 @@ module Alias0 = struct
       let path = Path.Build.append_source ctx_dir (File_tree.Dir.path dir) in
       let fn = stamp_file (make ~dir:path name) in
       let fn = Path.build fn in
-      Action_builder.map2 ~f:( && ) acc
+      Action_builder.map2 ~f:( @ ) acc
         (Action_builder.if_file_exists fn
-           ~then_:(Action_builder.path fn >>> Action_builder.return false)
-           ~else_:(Action_builder.return true))
+           ~then_:(Action_builder.path fn >>> Action_builder.return [ fn ])
+           ~else_:(Action_builder.return []))
     in
     File_tree.Dir.fold dir ~traverse:Sub_dirs.Status.Set.normal_only
-      ~init:(Action_builder.return true)
+      ~init:(Action_builder.return [])
       ~f
 
   let dep_rec t ~loc =
@@ -123,26 +123,27 @@ module Alias0 = struct
         }
     | Some dir ->
       let name = Alias.name t in
-      let+ is_empty = dep_rec_internal ~name ~dir ~ctx_dir in
-      if is_empty && not (is_standard name) then
+      let+ stamp_files = dep_rec_internal ~name ~dir ~ctx_dir in
+      if List.is_empty stamp_files && not (is_standard name) then
         User_error.raise ~loc
           [ Pp.text "This alias is empty."
           ; Pp.textf "Alias %S is not defined in %s or any of its descendants."
               (Alias.Name.to_string name)
               (Path.Source.to_string_maybe_quoted src_dir)
-          ]
+          ];
+      stamp_files
 
   let dep_rec_multi_contexts ~dir:src_dir ~name ~contexts =
     let open Action_builder.O in
     let dir = File_tree.find_dir_specified_on_command_line ~dir:src_dir in
-    let+ is_empty_list =
+    let+ stamp_files =
       Action_builder.all
         (List.map contexts ~f:(fun ctx ->
              let ctx_dir = Context_name.build_dir ctx in
              dep_rec_internal ~name ~dir ~ctx_dir))
     in
-    let is_empty = List.for_all is_empty_list ~f:Fun.id in
-    if is_empty && not (is_standard name) then
+    let stamp_files = List.concat stamp_files in
+    if List.is_empty stamp_files && not (is_standard name) then
       User_error.raise
         [ Pp.textf "Alias %S specified on the command line is empty."
             (Alias.Name.to_string name)

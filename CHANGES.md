@@ -60,6 +60,9 @@ Unreleased
   merlin configuration of a directory (defaulting to the current directory) in
   the Merlin configuration syntax. (#4250, @voodoos)
 
+- Dune will now re-run actions whose dependencies are declared through a chain 
+  of aliases (#4238, @aalekseyev)
+
 2.8.2 (21/01/2021)
 ------------------
 

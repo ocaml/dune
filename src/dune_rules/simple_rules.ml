@@ -213,7 +213,7 @@ let alias sctx ?extra_bindings ~dir ~expander (alias_conf : Alias_conf.t) =
   | true ->
     match alias_conf.action with
     | None ->
-      Dep_conf_eval.named ~expander alias_conf.deps
+      Dep_conf_eval.named ~alias_expansion:Stamp_file ~expander alias_conf.deps
       |> fun (deps, _expander) ->
       let deps =
         Action_builder.map deps ~f:(fun l -> Path.Set.of_list (Bindings.to_list l))
@@ -224,7 +224,9 @@ let alias sctx ?extra_bindings ~dir ~expander (alias_conf : Alias_conf.t) =
          (in #2681 and #2846), but it's actually used by [Test_rules] module.
          We could probably make this less confusing by using [rule] instead. *)
       let action =
-        let builder, expander = Dep_conf_eval.named ~expander alias_conf.deps in
+        let builder, expander =
+          Dep_conf_eval.named ~alias_expansion:Empty ~expander alias_conf.deps
+        in
         let open Action_builder.With_targets.O in
         let+ () = Action_builder.with_no_targets builder
         and+ action =

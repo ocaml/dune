@@ -76,5 +76,11 @@ Now test that including an alias into another alias includes its expansion:
 
   $ echo new-contents > x
   $ dune build @b
+          bash alias b
+  running b: new-contents
 
-^ BUG: we should re-run b here and have aliases "inherit" their expansion
+Still BUG: the path does not appear in the sandbox:
+
+  $ dune build @b --sandbox copy |& grep -v 'cd _build/.sandbox'
+          bash alias b (exit 1)
+  running b: cat: x: No such file or directory

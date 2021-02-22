@@ -124,8 +124,10 @@ module Alias : sig
     -> contexts:Context_name.t list
     -> unit Action_builder.t
 
-  (** Implements [(alias_rec ...)] in dependency specification *)
-  val dep_rec : t -> loc:Loc.t -> unit Action_builder.t
+  (** Implements [(alias_rec ...)] in dependency specification.
+      Returns the list of all contributing alias stamp files , as a proxy
+      for alias expansion. *)
+  val dep_rec : t -> loc:Loc.t -> Path.t list Action_builder.t
 
   (** Implements [@alias] on the command line *)
   val dep_rec_multi_contexts :

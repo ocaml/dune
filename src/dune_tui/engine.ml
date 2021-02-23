@@ -12,11 +12,21 @@ open Notty
    [SIGWINCH] unix signals that indicate that the terminal has been resized are
    sent from the main signal watcher thread in the main Dune scheduler. *)
 
+module Event = struct
+  type t =
+    | Input of Unescape.event
+    | Resize of int * int
+end
+
 type t =
   { buffer : Buffer.t
   ; mutable cursor : (int * int) option
   ; tmachine : Tmachine.t
   ; mutable size : int * int
+  ; mutex : Mutex.t
+  ; cond : Condition.t
+  ; input_pending : Event.t Queue.t
+  ; mutable winch : bool
   }
 
 let size t = t.size
@@ -24,65 +34,39 @@ let size t = t.size
 external get_term_size : Unix.file_descr -> int * int
   = "dune_tui_get_size_from_fd"
 
-module Event : sig
-  type engine = t
+let available { input_pending; winch; _ } =
+  (not (Queue.is_empty input_pending)) || winch
 
-  type t =
-    | Input of Unescape.event
-    | Resize of int * int
+let next ({ mutex; cond; winch; input_pending; _ } as t) =
+  Mutex.lock mutex;
+  while not (available t) do
+    Condition.wait cond mutex
+  done;
+  let ev =
+    if winch then (
+      t.winch <- false;
+      let rows, cols = get_term_size Unix.stdin in
+      t.size <- (rows, cols);
+      Event.Resize (rows, cols)
+    ) else
+      Queue.pop_exn input_pending
+  in
+  Mutex.unlock mutex;
+  ev
 
-  val next : engine -> t
+let send_input t x =
+  Mutex.lock t.mutex;
+  let avail = available t in
+  Queue.push t.input_pending (Input x);
+  if not avail then Condition.signal t.cond;
+  Mutex.unlock t.mutex
 
-  val send_input : Unescape.event -> unit
-
-  val send_winch : unit -> unit
-end
-with type engine := t = struct
-  type t =
-    | Input of Unescape.event
-    | Resize of int * int
-
-  let mutex = Mutex.create ()
-
-  let cond = Condition.create ()
-
-  let input_pending = Queue.create ()
-
-  let winch = ref false
-
-  let available () = (not (Queue.is_empty input_pending)) || !winch
-
-  let next engine =
-    Mutex.lock mutex;
-    while not (available ()) do
-      Condition.wait cond mutex
-    done;
-    let ev =
-      if !winch then (
-        winch := false;
-        let rows, cols = get_term_size Unix.stdin in
-        engine.size <- (rows, cols);
-        Resize (rows, cols)
-      ) else
-        Queue.pop_exn input_pending
-    in
-    Mutex.unlock mutex;
-    ev
-
-  let send_input x =
-    Mutex.lock mutex;
-    let avail = available () in
-    Queue.push input_pending (Input x);
-    if not avail then Condition.signal cond;
-    Mutex.unlock mutex
-
-  let send_winch () =
-    Mutex.lock mutex;
-    let avail = available () in
-    winch := true;
-    if not avail then Condition.signal cond;
-    Mutex.unlock mutex
-end
+let send_winch t =
+  Mutex.lock t.mutex;
+  let avail = available t in
+  t.winch <- true;
+  if not avail then Condition.signal t.cond;
+  Mutex.unlock t.mutex
 
 (* Cleanup when we stop the text user interface *)
 module Cleanup : sig
@@ -94,9 +78,9 @@ end
 module Input : sig
   (* Start the thread watching user input and forwarding it to the [Event]
      module *)
-  val start : unit -> unit
+  val start : t -> unit
 end = struct
-  let read_forever () =
+  let read_forever t =
     let buf_len = 64 * 1024 (* buffer size forthe Unix module *) in
     let buf = Bytes.create buf_len in
     let unescape = Unescape.create () in
@@ -107,11 +91,11 @@ end = struct
         let n = Unix.read Unix.stdin buf 0 buf_len in
         Unescape.input unescape buf 0 n;
         loop ()
-      | #Unescape.event as ev -> Event.send_input ev
+      | #Unescape.event as ev -> send_input t ev
     in
     loop ()
 
-  let start () = ignore (Thread.create read_forever () : Thread.t)
+  let start t = ignore (Thread.create read_forever t : Thread.t)
 end
 
 let update t ~screen ~cursor =
@@ -131,12 +115,16 @@ let start ~main =
     { attr with c_icanon = false; c_echo = false };
   Cleanup.add (fun () ->
       try Unix.tcsetattr Unix.stdin TCSANOW attr with _ -> ());
-  Input.start ();
   let t =
     { buffer = Buffer.create 65536
     ; cursor = None
     ; tmachine = Tmachine.create ~mouse:false ~bpaste:true Cap.ansi
     ; size = get_term_size Unix.stdin
+    ; input_pending = Queue.create ()
+    ; mutex = Mutex.create ()
+    ; cond = Condition.create ()
+    ; winch = false
     }
   in
+  Input.start t;
   ignore (Thread.create main t : Thread.t)

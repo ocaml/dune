@@ -15,15 +15,12 @@ val size : t -> int * int
 val update : t -> screen:image -> cursor:(int * int) option -> unit
 
 module Event : sig
-  type engine
-
   type t =
     | Input of Notty.Unescape.event
     | Resize of int * int
-
-  val next : engine -> t
-
-  (** Indicate that a [SIGWINCH] event was received *)
-  val send_winch : unit -> unit
 end
-with type engine := t
+
+val next : t -> Event.t
+
+(** Indicate that a [SIGWINCH] event was received *)
+val send_winch : t -> unit

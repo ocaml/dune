@@ -107,7 +107,7 @@ let start ~main ~spawn_thread =
   Unix.tcsetattr Unix.stdin TCSANOW
     { attr with c_icanon = false; c_echo = false };
   Cleanup.add (fun () ->
-      try Unix.tcsetattr Unix.stdin TCSANOW attr with _ -> ());
+      try Unix.tcsetattr Unix.stdin TCSANOW attr with Unix.Unix_error _ -> ());
   let t =
     { buffer = Buffer.create 65536
     ; cursor = None

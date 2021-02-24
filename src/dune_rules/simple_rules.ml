@@ -213,16 +213,17 @@ let alias sctx ?extra_bindings ~dir ~expander (alias_conf : Alias_conf.t) =
   | true ->
     match alias_conf.action with
     | None ->
-      Dep_conf_eval.named ~alias_expansion:Stamp_file ~expander alias_conf.deps
-      |> fun (deps, _expander) ->
+      Dep_conf_eval.named0 ~alias_expansion:Stamp_file ~expander alias_conf.deps
+      |> fun (deps, _bindings) ->
       let deps =
-        Action_builder.map deps ~f:(fun l -> Path.Set.of_list (Bindings.to_list l))
+        Action_builder.map deps ~f:(fun l -> Path.Set.of_list ( l))
       in
       Rules.Produce.Alias.add_deps alias ~dyn_deps:(deps) Path.Set.empty
     | Some (action_loc, action) ->
       (* One might think this branch is deprecated in favor of rule with empty deps
          (in #2681 and #2846), but it's actually used by [Test_rules] module.
          We could probably make this less confusing by using [rule] instead. *)
+      let locks = interpret_locks ~expander alias_conf.locks in
       let action =
         let builder, expander =
           Dep_conf_eval.named ~alias_expansion:Empty ~expander alias_conf.deps

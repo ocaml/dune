@@ -528,7 +528,7 @@ let expand t ~loc ~deps:deps_written_by_user ~targets_dir
     ~targets:targets_written_by_user ~expander =
   let open Action_builder.O in
   let deps_builder, expander =
-    Dep_conf_eval.named ~expander deps_written_by_user
+    Dep_conf_eval.named ~expander ~alias_expansion:Empty deps_written_by_user
   in
   let expander =
     match (targets_written_by_user : Targets.Or_forbidden.t) with

@@ -139,7 +139,8 @@ let dep ~(alias_expansion : Alias_expansion.t) expander = function
       (let+ () = Action_builder.dep (Dep.sandbox_config sandbox_config) in
        [])
 
-let dep expander x = Action_builder.of_result (dep expander x)
+let dep ~alias_expansion expander x =
+  Action_builder.of_result (dep ~alias_expansion expander x)
 
 let prepare_expander expander =
   let expander = Expander.set_dep_kind expander Optional in
@@ -152,7 +153,7 @@ let unnamed ~expander l =
       and+ _x = dep ~alias_expansion:Empty expander x in
       ())
 
-let named ~alias_expansion ~expander l =
+let named0 ~alias_expansion ~expander l =
   let builders, bindings =
     let expander = prepare_expander expander in
     List.fold_left l ~init:([], Pform.Map.empty)
@@ -174,10 +175,17 @@ let named ~alias_expansion ~expander l =
   in
   let builder =
     let+ l = Action_builder.all (List.rev builders) in
-    Dune_util.Value.L.paths (List.concat l)
+    (List.concat l)
   in
   let builder = Action_builder.memoize "deps" builder in
-  let bindings = Pform.Map.set bindings (Var Deps) builder in
+  builder, bindings
+
+let named ~alias_expansion ~expander l =
+  let builder, bindings = named0 ~alias_expansion ~expander l in
+  let bindings =
+    Pform.Map.set bindings (Var Deps)
+      (Action_builder.map ~f:Dune_util.Value.L.paths builder)
+  in
   let expander = Expander.add_bindings_full expander ~bindings in
   let builder = Action_builder.ignore builder in
   (builder, expander)

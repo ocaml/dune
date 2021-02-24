@@ -238,12 +238,9 @@ end = struct
              | [] -> assert false
              | [ x ] -> x
              | x :: _ ->
-               let open Pp.O in
-               Console.print
-                 [ Pp.tag User_message.Style.Warning (Pp.text "Warning")
-                   ++ Pp.textf
-                        ": variable %S present multiple times in the output of:"
-                        var
+               User_warning.emit
+                 [ Pp.textf
+                     "variable %S present multiple times in the output of:" var
                  ; Pp.tag User_message.Style.Details
                      (Pp.text
                         (String.concat ~sep:" "

@@ -134,7 +134,7 @@ val build_context : t -> Build_context.t
 
 (** Query where build artifacts should be installed if the user doesn't specify
     an explicit installation directory. *)
-val install_prefix : t -> Path.t Memo.Build.t
+val install_prefix : t -> Path.t Fiber.t
 
 val init_configurator : t -> unit
 

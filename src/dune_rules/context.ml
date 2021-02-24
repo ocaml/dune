@@ -147,83 +147,55 @@ let compare a b = Poly.compare a.name b.name
 
 (** Wrap calls to the opam binary *)
 module Opam : sig
-  (** Read a configuration variable via [opam config var] *)
-  val config_var : env:Env.t -> string -> string option Memo.Build.t
-
   (** Environment for this opam switch *)
   val env :
        env:Env.t
     -> root:string option
     -> switch:string
     -> string Env.Map.t Memo.Build.t
+
+  val opam_binary_exn : unit -> Path.t Memo.Build.t
 end = struct
   let opam =
-    Memo.lazy_ (fun () -> Bin.which ~path:(Env.path Env.initial) "opam")
-
-  let opam_exn () =
-    match Memo.Lazy.force opam with
-    | None -> Utils.program_not_found "opam" ~loc:None
-    | Some fn -> fn
-
-  let version =
     Memo.Lazy.Async.create (fun () ->
-        let opam = opam_exn () in
-        let+ version =
-          Memo.Build.of_fiber
-            (Process.run_capture_line Strict opam
-               [ "--version"; "--color=never" ])
-        in
-        match Scanf.sscanf version "%d.%d.%d" (fun a b c -> (a, b, c)) with
-        | Ok s -> s
-        | Error () ->
-          User_error.raise
-            [ Pp.textf "`%s config --version' returned invalid output:"
-                (Path.to_string_maybe_quoted opam)
-            ; Pp.verbatim version
-            ])
+        match Bin.which ~path:(Env.path Env.initial) "opam" with
+        | None -> Utils.program_not_found "opam" ~loc:None
+        | Some opam -> (
+          let+ version =
+            Memo.Build.of_fiber
+              (Process.run_capture_line Strict opam
+                 [ "--version"; "--color=never" ])
+          in
+          match Scanf.sscanf version "%d.%d.%d" (fun a b c -> (a, b, c)) with
+          | Ok ((a, b, c) as v) ->
+            if v < (2, 0, 0) then
+              User_error.raise
+                [ Pp.textf
+                    "The version of opam installed on your system is too old. \
+                     Dune requires at least version 2.0.0, however version \
+                     %d.%d.%d is installed."
+                    a b c
+                ];
+            opam
+          | Error () ->
+            User_error.raise
+              [ Pp.textf "`%s config --version' returned invalid output:"
+                  (Path.to_string_maybe_quoted opam)
+              ; Pp.verbatim version
+              ] ))
 
-  let config_var =
-    let impl (env, var) =
-      match Memo.Lazy.force opam with
-      | None -> Memo.Build.return None
-      | Some fn -> (
-        Memo.Build.of_fiber
-          (Process.run_capture (Accept Predicate_lang.any) fn ~env
-             [ "config"; "var"; var ])
-        >>| function
-        | Ok s -> Some (String.trim s)
-        | Error _ -> None )
-    in
-    let module Input = struct
-      type t = Env.t * string
-
-      let equal (env_a, var_a) (env_b, var_b) =
-        Env.equal env_a env_b && String.equal var_a var_b
-
-      let hash (env, var) = Hashtbl.hash (Env.hash env, var)
-
-      let to_dyn (env, var) = Dyn.Tuple [ Env.to_dyn env; String var ]
-    end in
-    let memo =
-      Memo.create_hidden "opam-config-var" ~input:(module Input) Async impl
-    in
-    fun ~env var -> Memo.exec memo (env, var)
+  let opam_binary_exn () = Memo.Lazy.Async.force opam
 
   let env =
     let impl (env, root, switch) =
-      let opam = opam_exn () in
-      let* version = Memo.Lazy.Async.force version in
+      let* opam = opam_binary_exn () in
       let args =
         List.concat
           [ [ "config"; "env" ]
           ; ( match root with
             | None -> []
             | Some root -> [ "--root"; root ] )
-          ; [ "--switch"; switch; "--sexp" ]
-          ; ( if version < (2, 0, 0) then
-              []
-            else
-              [ "--set-switch" ] )
+          ; [ "--switch"; switch; "--sexp"; "--set-switch" ]
           ]
       in
       let+ s =
@@ -281,11 +253,12 @@ module Build_environment_kind = struct
     | Cross_compilation_using_findlib_toolchain of Context_name.t
     | Hardcoded_path of string list
     | Opam2_environment of string (* opam switch prefix *)
-    | Opam1_environment
     | Unknown
 
+  let opam_switch_prefix_var_name = "OPAM_SWITCH_PREFIX"
+
   let query ~(kind : Kind.t) ~findlib_toolchain ~env =
-    let opam_prefix = Env.get env "OPAM_SWITCH_PREFIX" in
+    let opam_prefix = Env.get env opam_switch_prefix_var_name in
     match findlib_toolchain with
     | Some s -> Cross_compilation_using_findlib_toolchain s
     | None -> (
@@ -293,7 +266,10 @@ module Build_environment_kind = struct
       | Opam _ -> (
         match opam_prefix with
         | Some s -> Opam2_environment s
-        | None -> Opam1_environment )
+        | None ->
+          (* This is unreachable because we check in [create_for_opam] that opam
+             sets this variable *)
+          assert false )
       | Default -> (
         match Setup.library_path with
         | Some l -> Hardcoded_path l
@@ -504,10 +480,6 @@ let create ~(kind : Kind.t) ~path ~env ~env_nodes ~name ~merlin ~targets
         let p = Path.of_filename_relative_to_initial_cwd opam_prefix in
         let p = Path.relative p "lib" in
         Memo.Build.return [ p ]
-      | Opam1_environment -> (
-        Opam.config_var ~env "lib" >>| function
-        | Some s -> [ Path.of_filename_relative_to_initial_cwd s ]
-        | None -> Utils.program_not_found "opam" ~loc:None )
       | Unknown -> (
         match which "ocamlfind" with
         | Some ocamlfind ->
@@ -750,10 +722,18 @@ let default ~merlin ~env_nodes ~env ~targets ~fdo_target_exe
   create ~kind:Default ~path ~env ~env_nodes ~merlin ~targets ~fdo_target_exe
     ~dynamically_linked_foreign_archives ~instrument_with
 
-let create_for_opam ~root ~env ~env_nodes ~targets ~profile ~switch ~name
+let create_for_opam ~loc ~root ~env ~env_nodes ~targets ~profile ~switch ~name
     ~merlin ~host_context ~host_toolchain ~fdo_target_exe
     ~dynamically_linked_foreign_archives ~instrument_with =
   let* vars = Opam.env ~env ~root ~switch in
+  if not (Env.Map.mem vars Build_environment_kind.opam_switch_prefix_var_name)
+  then
+    User_error.raise ~loc
+      [ Pp.textf
+          "opam doesn't set the environment variable %s. I cannot create an \
+           opam build context without opam setting this variable."
+          Build_environment_kind.opam_switch_prefix_var_name
+      ];
   let path =
     match Env.Map.find vars "PATH" with
     | None -> Env.path env
@@ -835,7 +815,7 @@ end = struct
             ; env = _
             ; toolchain
             ; paths
-            ; loc = _
+            ; loc
             ; fdo_target_exe
             ; dynamically_linked_foreign_archives
             ; instrument_with
@@ -845,7 +825,7 @@ end = struct
         ; merlin
         } ->
       let env = extend_paths ~env paths in
-      create_for_opam ~root ~env_nodes ~env ~profile ~switch ~name ~merlin
+      create_for_opam ~loc ~root ~env_nodes ~env ~profile ~switch ~name ~merlin
         ~targets ~host_context ~host_toolchain:toolchain ~fdo_target_exe
         ~dynamically_linked_foreign_archives ~instrument_with
 
@@ -957,6 +937,14 @@ let map_exe (context : t) =
       | _ -> exe )
 
 let install_prefix t =
-  Memo.Build.map (Opam.config_var ~env:t.env "prefix") ~f:(function
-    | Some x -> Path.of_filename_relative_to_initial_cwd x
-    | None -> Path.parent_exn t.ocaml_bin)
+  let open Fiber.O in
+  let* opam = Memo.Build.run (Opam.opam_binary_exn ()) in
+  Process.run_capture (Accept Predicate_lang.any) opam ~env:t.env
+    [ "config"; "var"; "prefix" ]
+  >>| function
+  | Ok s -> Path.of_filename_relative_to_initial_cwd (String.trim s)
+  | Error _ ->
+    (* jeremiedimino: we should probably be more strict here when we are running
+       in an opam environment. i.e. when [build_environment_kind.query] reports
+       [Opam2_environment]. *)
+    Path.parent_exn t.ocaml_bin

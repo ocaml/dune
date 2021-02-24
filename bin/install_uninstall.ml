@@ -18,7 +18,7 @@ let get_dirs context ~prefix_from_command_line ~libdir_from_command_line =
     Fiber.return (prefix, Some (Path.relative prefix dir))
   | None ->
     let open Fiber.O in
-    let* prefix = Memo.Build.run (Context.install_prefix context) in
+    let* prefix = Context.install_prefix context in
     let libdir =
       match libdir_from_command_line with
       | None -> Memo.Build.run (Context.install_ocaml_libdir context)

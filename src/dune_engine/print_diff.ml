@@ -57,7 +57,8 @@ let print ?(skip_trailing_cr = Sys.win32) path1 path2 =
         args
     in
     let args = args @ files in
-    Format.eprintf "%a@?" Loc.render (Loc.pp loc);
+    Console.print
+      [ Pp.map_tags ~f:(fun Loc -> User_message.Style.Loc) (Loc.pp loc) ];
     let* () = Process.run ~dir ~env:Env.initial Strict path args in
     fallback ()
   in

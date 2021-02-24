@@ -75,28 +75,21 @@ end = struct
   let add = at_exit
 end
 
-module Input : sig
-  (* Start the thread watching user input and forwarding it to the [Event]
-     module *)
-  val start : t -> unit
-end = struct
-  let read_forever t =
-    let buf_len = 64 * 1024 (* buffer size forthe Unix module *) in
-    let buf = Bytes.create buf_len in
-    let unescape = Unescape.create () in
-    let rec loop () =
-      match Unescape.next unescape with
-      | `End -> ()
-      | `Await ->
-        let n = Unix.read Unix.stdin buf 0 buf_len in
-        Unescape.input unescape buf 0 n;
-        loop ()
-      | #Unescape.event as ev -> send_input t ev
-    in
-    loop ()
-
-  let start t = ignore (Thread.create read_forever t : Thread.t)
-end
+(* Watch user input and forwarding it to the [Event] module. *)
+let input_read_forever t =
+  let buf_len = 64 * 1024 (* buffer size forthe Unix module *) in
+  let buf = Bytes.create buf_len in
+  let unescape = Unescape.create () in
+  let rec loop () =
+    match Unescape.next unescape with
+    | `End -> ()
+    | `Await ->
+      let n = Unix.read Unix.stdin buf 0 buf_len in
+      Unescape.input unescape buf 0 n;
+      loop ()
+    | #Unescape.event as ev -> send_input t ev
+  in
+  loop ()
 
 let update t ~screen ~cursor =
   Buffer.clear t.buffer;
@@ -109,7 +102,7 @@ let update t ~screen ~cursor =
   Buffer.output_buffer stdout t.buffer;
   flush stdout
 
-let start ~main =
+let start ~main ~spawn_thread =
   let attr = Unix.tcgetattr Unix.stdin in
   Unix.tcsetattr Unix.stdin TCSANOW
     { attr with c_icanon = false; c_echo = false };
@@ -126,5 +119,5 @@ let start ~main =
     ; winch = false
     }
   in
-  Input.start t;
-  ignore (Thread.create main t : Thread.t)
+  spawn_thread (fun () -> input_read_forever t);
+  spawn_thread (fun () -> main t)

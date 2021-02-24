@@ -238,14 +238,18 @@ end = struct
              | [] -> assert false
              | [ x ] -> x
              | x :: _ ->
-               Format.eprintf
-                 "@{<warning>Warning@}: variable %S present multiple times in \
-                  the output of:\n\
-                  @{<details>%s@}@."
-                 var
-                 (String.concat ~sep:" "
-                    (List.map ~f:String.quote_for_shell
-                       (Path.to_string opam :: args)));
+               let open Pp.O in
+               Console.print
+                 [ Pp.tag User_message.Style.Warning (Pp.text "Warning")
+                   ++ Pp.textf
+                        ": variable %S present multiple times in the output of:"
+                        var
+                 ; Pp.tag User_message.Style.Details
+                     (Pp.text
+                        (String.concat ~sep:" "
+                           (List.map ~f:String.quote_for_shell
+                              (Path.to_string opam :: args))))
+                 ];
                x)
     in
     let module Input = struct

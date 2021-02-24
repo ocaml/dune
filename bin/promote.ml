@@ -32,8 +32,12 @@ let command =
               Path.Source.of_string (Common.prefix_target common fn))
         in
         let on_missing fn =
-          Format.eprintf "@{<warning>Warning@}: Nothing to promote for %s.@."
-            (Path.Source.to_string_maybe_quoted fn)
+          Console.print
+            [ (let open Pp.O in
+              Pp.tag User_message.Style.Warning (Pp.text "Warning")
+              ++ Pp.textf ": Nothing to promote for %s"
+                   (Path.Source.to_string_maybe_quoted fn))
+            ]
         in
         These (files, on_missing) )
   in

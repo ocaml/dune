@@ -39,6 +39,11 @@ end = struct
     | Some path -> mkdir_p path
 end
 
+(* [Promoted_to_delete] is used mostly to implement [dune clean]. It is an
+   imperfect heuristic, in particular it can go wrong if: - the user deletes
+   .to-delete-in-source-tree file - the user edits a previously promoted file
+   with the intention of keeping it in the source tree, or creates a new file
+   with the same name *)
 module Promoted_to_delete : sig
   val add : Path.t -> unit
 
@@ -885,6 +890,40 @@ end = struct
         ~subdir:(Path.Build.basename dir)
   end
 
+  (* TODO: Delete this step after users of dune 2.8 are sufficiently rare. This
+     step is sketchy because it's using the [Promoted_to_delete] database and
+     that can get out of date (see a comment on [Promoted_to_delete]), so we
+     should widen the scope of it too much. *)
+  let delete_stale_dot_merlin_file ~dir ~source_files_to_ignore =
+    (* If a [.merlin] file is present in the [Promoted_to_delete] set but not in
+       the [Source_files_to_ignore] that means the rule that ordered its
+       promotion is no more valid. This would happen when upgrading to Dune 2.8
+       from ealier version without and building uncleaned projects. We delete
+       these leftover files here. *)
+    let merlin_file = ".merlin" in
+    let source_dir = Path.Build.drop_build_context_exn dir in
+    let merlin_in_src = Path.Source.(relative source_dir merlin_file) in
+    let source_files_to_ignore =
+      if
+        Path.Set.mem (Promoted_to_delete.load ()) (Path.source merlin_in_src)
+        && not (Path.Source.Set.mem source_files_to_ignore merlin_in_src)
+      then (
+        let path = Path.source merlin_in_src in
+        Log.info
+          [ Pp.textf "Deleting left-over Merlin file %s.\n"
+              (Path.to_string path)
+          ];
+        (* We immediately remove the file from the promoted database and dump it *)
+        Promoted_to_delete.remove_now path;
+        Path.unlink_no_err path;
+        (* We need to keep ignoring the .merlin file for that build or Dune will
+           attempt to copy it and fail because it has been deleted *)
+        Path.Source.Set.add source_files_to_ignore merlin_in_src
+      ) else
+        source_files_to_ignore
+    in
+    source_files_to_ignore
+
   let load_dir_step2_exn t ~dir =
     let context_name, sub_dir =
       match Dpath.analyse_path dir with
@@ -953,35 +992,9 @@ end = struct
       Path.Build.Set.to_list source_files_to_ignore
       |> Path.Source.Set.of_list_map ~f:Path.Build.drop_build_context_exn
     in
-
-    (* If a [.merlin] file is present in the [Promoted_to_delete] set but not in
-       the [Source_files_to_ignore] that means the rule that ordered its
-       promotion is no more valid. This would happen when upgrading to Dune 2.8
-       from ealier version without and building uncleaned projects. We delete
-       these leftover files here. *)
-    let merlin_file = ".merlin" in
-    let source_dir = Path.Build.drop_build_context_exn dir in
-    let merlin_in_src = Path.Source.(relative source_dir merlin_file) in
     let source_files_to_ignore =
-      if
-        Path.Set.mem (Promoted_to_delete.load ()) (Path.source merlin_in_src)
-        && not (Path.Source.Set.mem source_files_to_ignore merlin_in_src)
-      then (
-        let path = Path.source merlin_in_src in
-        Log.info
-          [ Pp.textf "Deleting left-over Merlin file %s.\n"
-              (Path.to_string path)
-          ];
-        (* We immediately remove the file from the promoted database and dump it *)
-        Promoted_to_delete.remove_now path;
-        Path.unlink_no_err path;
-        (* We need to keep ignoring the .merlin file for that build or Dune will
-           attempt to copy it and fail because it has been deleted *)
-        Path.Source.Set.add source_files_to_ignore merlin_in_src
-      ) else
-        source_files_to_ignore
+      delete_stale_dot_merlin_file ~dir ~source_files_to_ignore
     in
-
     (* Take into account the source files *)
     let to_copy, source_dirs =
       match context_name with

@@ -7,7 +7,10 @@ module Parser = struct
 end
 
 (* The actual latest version is defined in the rpc library. This is because rpc
-   client needs to know the version of dune to use to connect. *)
+   client needs to know the version of dune to use to connect.
+
+   To upgrade the latest version of the dune language, you need to edit the file
+   in the rpc library. *)
 let latest_version = Dune_rpc_private.Version.latest
 
 let since v = (v, `Since v)

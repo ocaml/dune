@@ -300,7 +300,7 @@ let auto_concurrency =
     ( if Sys.win32 then
       match Env.get Env.initial "NUMBER_OF_PROCESSORS" with
       | None -> 1
-      | Some s -> ( try int_of_string s with _ -> 1 )
+      | Some s -> Int.of_string s |> Option.value ~default:1
     else
       let commands =
         [ ("nproc", [])
@@ -330,10 +330,7 @@ let auto_concurrency =
             | pid -> (
               Unix.close fdw;
               let ic = Unix.in_channel_of_descr fdr in
-              let n =
-                Option.try_with (fun () ->
-                    input_line ic |> String.trim |> int_of_string)
-              in
+              let n = input_line ic |> String.trim |> Int.of_string in
               close_in ic;
               match (n, snd (Unix.waitpid [] (Pid.to_int pid))) with
               | Some n, WEXITED 0 -> n

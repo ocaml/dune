@@ -14,6 +14,8 @@ end
 module Linkage : sig
   type t
 
+  val equal : t -> t -> bool
+
   (** Byte compilation, exetension [.bc] *)
   val byte : t
 

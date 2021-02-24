@@ -12,3 +12,6 @@
 
 (rule
  (copy dune-private-libs.opam.template dune-site.opam.template))
+
+(rule
+ (copy dune-private-libs.opam.template dune-rpc.opam.template))

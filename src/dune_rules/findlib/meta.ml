@@ -143,7 +143,7 @@ let archives ?(kind = [ Mode.Byte; Mode.Native ]) name =
     ; (Mode.Byte, plugin, Mode.compiled_lib_ext)
     ; (Mode.Native, plugin, Mode.plugin_ext)
     ] ~f:(fun (k, f, ext) ->
-      if List.mem k ~set:kind then
+      if List.mem kind k ~equal:Mode.equal then
         Some (f (Mode.to_string k) (name ^ ext k))
       else
         None)

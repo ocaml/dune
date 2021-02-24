@@ -474,12 +474,12 @@ Cram Tests
 
 Cram tests are expectation tests written in a shell-like syntax. They are ideal
 for testing binaries. Cram tests are auto discovered from files or directories
-with a ``.t`` extension, so they must be enabled manually in the
-``dune-project`` file:
+with a ``.t`` extension. This is automatically enabled starting from 3.0, for
+older versions, this must be manually enabled in the ``dune-project`` file:
 
 .. code:: scheme
 
-   (lang dune 3.0)
+   (lang dune 2.7)
    (cram enable)
 
 

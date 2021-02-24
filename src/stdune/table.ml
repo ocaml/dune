@@ -102,3 +102,15 @@ let filteri_inplace (type input output) ((module T) : (input, output) t) ~f =
 
 let length (type input output) ((module T) : (input, output) t) =
   T.H.length T.value
+
+module Multi = struct
+  let cons t x v =
+    match find t x with
+    | None -> set t x [ v ]
+    | Some vs -> set t x (v :: vs)
+
+  let find t x =
+    match find t x with
+    | None -> []
+    | Some s -> s
+end

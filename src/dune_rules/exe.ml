@@ -19,6 +19,13 @@ module Linkage = struct
     ; flags : string list
     }
 
+  (* CR-someday aalekseyev: I find the uses of [equal] suspicious: they are used
+     to "inexhaustively match" on linkage modes, which is very brittle. *)
+  let equal x y =
+    Link_mode.equal x.mode y.mode
+    && String.equal x.ext y.ext
+    && List.equal String.equal x.flags y.flags
+
   let byte = { mode = Byte; ext = ".bc"; flags = [] }
 
   let native = { mode = Native; ext = ".exe"; flags = [] }
@@ -37,7 +44,8 @@ module Linkage = struct
 
   let js = { mode = Byte; ext = ".bc.js"; flags = [] }
 
-  let is_plugin t = List.mem t.ext ~set:(List.map ~f:Mode.plugin_ext Mode.all)
+  let is_plugin t =
+    List.mem (List.map ~f:Mode.plugin_ext Mode.all) t.ext ~equal:String.equal
 
   let c_flags = [ "-output-obj" ]
 

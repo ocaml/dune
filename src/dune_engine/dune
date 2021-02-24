@@ -23,7 +23,10 @@
   dune_action_plugin
   dune_util
   build_path_prefix_map
-  dune_section)
+  dune_section
+  dune_rpc_private
+  dune_rpc_server
+  csexp_rpc)
  (synopsis "Internal Dune library, do not use!"))
 
 (ocamllex dune_lexer)

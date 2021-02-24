@@ -346,6 +346,7 @@ type t =
       -> Build_context.t option
       -> unit Fiber.t
   ; locks : (Path.t, Fiber.Mutex.t) Table.t
+  ; build_mutex : Fiber.Mutex.t option
   }
 
 let t = ref None
@@ -1879,11 +1880,19 @@ let do_build ~request =
   let build = get_build_system () in
   build.errors <- [];
   entry_point_async ~f:(fun () ->
-      let+ result, (_ : Dep.Set.t) =
-        Build_request.evaluate_and_wait_for_dynamic_dependencies
-          (Non_memoized request)
+      let t = get_build_system () in
+      let f () =
+        let+ result, (_ : Dep.Set.t) =
+          Build_request.evaluate_and_wait_for_dynamic_dependencies
+            (Non_memoized request)
+        in
+        result
       in
-      result)
+      match t.build_mutex with
+      | None -> f ()
+      | Some m ->
+        Memo.Build.of_fiber
+          (Fiber.Mutex.with_lock m (fun () -> Memo.Build.run (f ()))))
 
 let all_targets () =
   let t = t () in
@@ -2012,7 +2021,8 @@ let load_dir_and_produce_its_rules ~dir =
 
 let load_dir ~dir = load_dir_and_produce_its_rules ~dir
 
-let init ~contexts ~promote_source ?caching ~sandboxing_preference () =
+let init ~contexts ?build_mutex ~promote_source ?caching ~sandboxing_preference
+    () =
   let contexts =
     Context_name.Map.of_list_map_exn contexts ~f:(fun c ->
         (c.Build_context.name, c))
@@ -2053,6 +2063,7 @@ let init ~contexts ~promote_source ?caching ~sandboxing_preference () =
          mutexes. *)
       locks = Table.create (module Path) 32
     ; promote_source
+    ; build_mutex
     }
   in
   Console.Status_line.set (fun () ->

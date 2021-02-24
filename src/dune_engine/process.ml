@@ -445,7 +445,9 @@ module Exit_status = struct
         :: Option.to_list output )
 end
 
-let default_env = lazy (Dtemp.add_to_env Env.initial)
+let add_to_env env = Dtemp.add_to_env env |> Scheduler.Rpc.add_to_env
+
+let default_env = lazy (add_to_env Env.initial)
 
 let run_internal ?dir ?(stdout_to = Io.stdout) ?(stderr_to = Io.stderr)
     ?(stdin_from = Io.null In) ~env ~purpose fail_mode prog args =
@@ -523,7 +525,7 @@ let run_internal ?dir ?(stdout_to = Io.stdout) ?(stderr_to = Io.stderr)
         let env =
           match env with
           | None -> Lazy.force default_env
-          | Some env -> Dtemp.add_to_env env
+          | Some env -> add_to_env env
         in
         fun () ->
           Spawn.spawn () ~prog:prog_str ~argv ~env ~stdout ~stderr ~stdin

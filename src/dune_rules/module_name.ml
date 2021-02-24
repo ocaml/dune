@@ -15,6 +15,8 @@ include Section.Modulelike (struct
   let make s = String.capitalize s
 end)
 
+let equal = String.equal
+
 let compare = String.compare
 
 let add_suffix = ( ^ )

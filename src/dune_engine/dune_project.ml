@@ -442,6 +442,8 @@ let strict_package_deps_default ~(lang : Lang.Instance.t) =
 
 let explicit_js_mode_default ~(lang : Lang.Instance.t) = lang.version >= (2, 0)
 
+let cram_default ~(lang : Lang.Instance.t) = lang.version >= (3, 0)
+
 let format_extension_key =
   Extension.register Format_config.syntax Format_config.dparse_args
     Format_config.to_dyn
@@ -480,6 +482,7 @@ let infer ~dir packages =
   in
   let explicit_js_mode = explicit_js_mode_default ~lang in
   let strict_package_deps = strict_package_deps_default ~lang in
+  let cram = cram_default ~lang in
   let root = dir in
   let file_key = File_key.make ~root ~name in
   { name
@@ -506,7 +509,7 @@ let infer ~dir packages =
   ; explicit_js_mode
   ; format_config = None
   ; strict_package_deps
-  ; cram = false
+  ; cram
   }
 
 module Toggle = struct
@@ -720,7 +723,7 @@ let parse ~dir ~lang ~opam_packages ~file ~dir_status =
         in
         let cram =
           match cram with
-          | None -> false
+          | None -> cram_default ~lang
           | Some t -> Toggle.enabled t
         in
         let root = dir in

@@ -27,6 +27,7 @@ module Workspace = Dune_rules.Workspace
 module Cached_digest = Dune_engine.Cached_digest
 module Profile = Dune_rules.Profile
 module Log = Dune_util.Log
+module Dune_rpc = Dune_rpc_private
 include Common.Let_syntax
 
 let in_group (t, info) = (Term.Group.Term t, info)
@@ -84,7 +85,7 @@ module Main = struct
     scan_workspace ?workspace_file ?x ?profile ?instrument_with ~capture_outputs
       ~ancestor_vcs ()
 
-  let setup common =
+  let setup ?build_mutex common =
     let open Memo.Build.O in
     let* caching = Memo.Build.of_fiber (make_cache (Common.config common)) in
     let* workspace = scan_workspace common in
@@ -123,7 +124,7 @@ module Main = struct
     in
     init_build_system workspace
       ~sandboxing_preference:(Common.config common).sandboxing_preference
-      ?caching ?only_packages
+      ?caching ?build_mutex ?only_packages
 end
 
 module Scheduler = struct
@@ -131,12 +132,14 @@ module Scheduler = struct
 
   let go ~(common : Common.t) f =
     let config = Common.config common in
-    let config = Dune_config.for_scheduler config in
+    let rpc = Common.rpc common |> Option.map ~f:Dune_rpc_impl.Server.config in
+    let config = Dune_config.for_scheduler config rpc in
     Scheduler.go config f
 
   let poll ~(common : Common.t) ~once ~finally =
     let config = Common.config common in
-    let config = Dune_config.for_scheduler config in
+    let rpc = Common.rpc common |> Option.map ~f:Dune_rpc_impl.Server.config in
+    let config = Dune_config.for_scheduler config rpc in
     Scheduler.poll config ~once ~finally
 end
 
@@ -149,8 +152,6 @@ let restore_cwd_and_execve (common : Common.t) prog argv env =
       prog
   in
   Proc.restore_cwd_and_execve prog argv ~env
-
-let do_build targets = Build_system.do_build ~request:(Target.request targets)
 
 (* Adapted from
    https://github.com/ocaml/opam/blob/fbbe93c3f67034da62d28c8666ec6b05e0a9b17c/src/client/opamArg.ml#L759 *)
@@ -168,3 +169,7 @@ let command_alias cmd name =
     ]
   in
   (term, Term.info name ~docs:"COMMAND ALIASES" ~doc ~man)
+
+let do_build targets =
+  let request = Target.request targets in
+  Build_system.do_build ~request

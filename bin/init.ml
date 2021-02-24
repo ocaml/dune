@@ -77,36 +77,65 @@ let print_completion kind name =
 
 let doc = "Initialize dune components"
 
+let synopsis =
+  Common.command_synopsis
+    [ "init proj NAME [PATH] [OPTION]... "
+    ; "init exec NAME [PATH] [OPTION]... "
+    ; "init lib NAME [PATH] [OPTION]... "
+    ; "init test NAME [PATH] [OPTION]... "
+    ]
+
 let man =
-  [ `S "DESCRIPTION"
+  [ `Blocks synopsis
+  ; `S "DESCRIPTION"
   ; `P
-      {|$(b,dune init {library,executable,test,project} NAME [PATH]) initialize
-         a new dune component of the specified kind, named $(b,NAME), with
-         fields determined by the supplied options.|}
-  ; `P
-      {|Any prefix of the component kinds can be supplied, e.g., $(b,dune init
-         proj myproject).|}
+      {|$(b,dune init COMPONENT NAME [PATH] [OPTION]...) initializes a new dune
+        configuration for a component of the kind specified by $(b,COMPONENT),
+        named $(b,NAME), with fields determined by the supplied $(b,OPTION)s.|}
   ; `P
       {|If the optional $(b,PATH) is provided, the component will be created
-         there. Otherwise, it is created in the current working directory.|}
+        there. Otherwise, it is created in the current working directory.|}
   ; `P
-      {|The command can be used to add stanzas to existing dune files as
-         well as for creating new dune files and basic component templates.|}
+      {|The command can be used to add stanzas to existing dune files and for
+        creating new dune files and composing basic component templates.|}
+  ; `P {|Supported $(b,COMPONENT)s:|}
+  ; `I
+      ( "$(b,project)"
+      , {|A project is a predefined composition of components arranged in a
+          standard directory structure. The kind of project initialized is
+          determined by the value of the $(b,--kind) flag and defaults to an
+          executable project, composed of a library, an executable, and a test
+          component.|}
+      )
+  ; `I ("$(b,executable)", {|A binary executable.|})
+  ; `I ("$(b,library)", {|An OCaml library.|})
+  ; `I
+      ( "$(b,test)"
+      , {|A separate test harness. (For inline tests, use the
+        $(b,--inline-tests) flag along with the other component kinds.)|}
+      )
+  ; `P
+      {|Any prefix of the $(b,COMPONENT) kind names can be supplied in place of
+        full name (as illustrated in the synopsis).|}
+  ; `P
+      {|For more details, see https://dune.readthedocs.io/en/stable/usage.html#initializing-components|}
   ; Common.examples
-      [ ( {|Define an executable component named `myexe' in a dune file in the
-            current directory
-           |}
+      [ ( {|Generate a project skeleton for an executable named `myproj' in a
+            new directory named `myproj', depending on the bos library and
+            using inline tests along with ppx_inline_test |}
+        , {|dune init proj myproj --libs bos --ppx ppx_inline_test --inline-tests|}
+        )
+      ; ( {|Configure an executable component named `myexe' in a dune file in the
+            current directory|}
         , {|dune init exe myexe|} )
-      ; ( {|Define a library component named `mylib' in a dune file in the ./src
+      ; ( {|Configure a library component named `mylib' in a dune file in the ./src
             directory depending on the core and cmdliner libraries, the ppx_let
             and ppx_inline_test preprocessors, and declared as using inline
-            tests"
-           |}
-        , {|dune init lib mylib src --libs core,cmdliner --ppx ppx_let,ppx_inline_test --inline-tests"|}
+            tests|}
+        , {|dune init lib mylib src --libs core,cmdliner --ppx ppx_let,ppx_inline_test --inline-tests|}
         )
-      ; ( {|Define a library component named `mytest' in a dune file in the
-            ./test directory that depends on `mylib'"
-           |}
+      ; ( {|Configure a library component named `mytest' in a dune file in the
+            ./test directory that depends on `mylib'|}
         , {|dune init test myexe test --libs mylib|} )
       ]
   ]
@@ -118,7 +147,7 @@ let term =
   and+ kind =
     (* TODO(shonfeder): Replace with nested subcommand once we have support for
        that *)
-    let docv = "INIT_KIND" in
+    let docv = "COMPONENT" in
     Arg.(required & pos 0 (some (enum Kind.commands)) None & info [] ~docv)
   and+ name =
     let docv = "NAME" in

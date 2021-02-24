@@ -171,7 +171,7 @@ let cat_eof ~dest oc lines =
       else
         sprintf "EOF%d" n
     in
-    if List.mem sentinel ~set:lines then
+    if List.mem lines sentinel ~equal:String.equal then
       loop (n + 1)
     else
       sentinel

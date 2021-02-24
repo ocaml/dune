@@ -344,15 +344,21 @@ let cctx (lib : Library.t) ~sctx ~source_modules ~dir ~expander ~scope
   let obj_dir = Library.obj_dir ~dir lib in
   let vimpl = Virtual_rules.impl sctx ~lib ~scope in
   let ctx = Super_context.context sctx in
+  let instrumentation_backend =
+    Lib.DB.instrumentation_backend (Scope.libs scope)
+  in
   let preprocess =
     Preprocess.Per_module.with_instrumentation lib.buildable.preprocess
-      ~instrumentation_backend:
-        (Lib.DB.instrumentation_backend (Scope.libs scope))
+      ~instrumentation_backend
+  in
+  let instrumentation_deps =
+    Preprocess.Per_module.instrumentation_deps lib.buildable.preprocess
+      ~instrumentation_backend
   in
   (* Preprocess before adding the alias module as it doesn't need preprocessing *)
   let pp =
     Preprocessing.make sctx ~dir ~dep_kind ~scope ~preprocess ~expander
-      ~preprocessor_deps:lib.buildable.preprocessor_deps
+      ~preprocessor_deps:lib.buildable.preprocessor_deps ~instrumentation_deps
       ~lint:lib.buildable.lint
       ~lib_name:(Some (snd lib.name))
   in
@@ -386,6 +392,7 @@ let library_rules (lib : Library.t) ~cctx ~source_modules ~dir_contents
   let dir = Compilation_context.dir cctx in
   let scope = Compilation_context.scope cctx in
   let requires_compile = Compilation_context.requires_compile cctx in
+  let stdlib_dir = (Compilation_context.context cctx).Context.stdlib_dir in
   let dep_graphs = Dep_rules.rules cctx ~modules in
   Option.iter vimpl ~f:(Virtual_rules.setup_copy_rules_for_impl ~sctx ~dir);
   Check_rules.add_obj_dir sctx ~obj_dir;
@@ -415,8 +422,8 @@ let library_rules (lib : Library.t) ~cctx ~source_modules ~dir_contents
     ; compile_info
     };
   ( cctx
-  , Merlin.make ~requires:requires_compile ~flags ~modules ~preprocess
-      ~libname:(snd lib.name) ~obj_dir
+  , Merlin.make ~requires:requires_compile ~stdlib_dir ~flags ~modules
+      ~preprocess ~libname:(snd lib.name) ~obj_dir
       ~dialects:(Dune_project.dialects (Scope.project scope))
       ~ident:(Lib.Compile.merlin_ident compile_info)
       () )

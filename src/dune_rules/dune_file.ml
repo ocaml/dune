@@ -242,28 +242,35 @@ module Buildable = struct
         (multi_field "instrumentation"
            ( Dune_lang.Syntax.since Stanza.syntax (2, 7)
            >>> fields
-                 (field "backend"
-                    (let+ libname = located Lib_name.decode
-                     and+ flags =
-                       let* current_ver =
-                         Dune_lang.Syntax.get_exn Stanza.syntax
+                 (let+ backend =
+                    field "backend"
+                      (let+ libname = located Lib_name.decode
+                       and+ flags =
+                         let* current_ver =
+                           Dune_lang.Syntax.get_exn Stanza.syntax
+                         in
+                         let version_check flag =
+                           let ver = (2, 8) in
+                           if current_ver >= ver then
+                             flag
+                           else
+                             let what =
+                               "The possibility to pass arguments to \
+                                instrumentation backends"
+                             in
+                             Dune_lang.Syntax.Error.since
+                               (String_with_vars.loc flag)
+                               Stanza.syntax ver ~what
+                         in
+                         repeat (String_with_vars.decode >>| version_check)
                        in
-                       let version_check flag =
-                         let ver = (2, 8) in
-                         if current_ver >= ver then
-                           flag
-                         else
-                           let what =
-                             "The possibility to pass arguments to \
-                              instrumentation backends"
-                           in
-                           Dune_lang.Syntax.Error.since
-                             (String_with_vars.loc flag)
-                             Stanza.syntax ver ~what
-                       in
-                       repeat (String_with_vars.decode >>| version_check)
-                     in
-                     (libname, flags))) ))
+                       (libname, flags))
+                  and+ deps =
+                    field "deps" ~default:[]
+                      ( Dune_lang.Syntax.since Stanza.syntax (3, 0)
+                      >>> repeat Dep_conf.decode )
+                  in
+                  (backend, deps)) ))
     and+ root_module =
       field_o "root_module"
         (Dune_lang.Syntax.since Stanza.syntax (2, 8) >>> Module_name.decode_loc)
@@ -274,9 +281,9 @@ module Buildable = struct
         Module_name.Per_item.map preprocess ~f:(Preprocess.map ~f)
       in
       List.fold_left instrumentation
-        ~f:(fun accu (instrumentation, flags) ->
+        ~f:(fun accu ((backend, flags), deps) ->
           Preprocess.Per_module.add_instrumentation accu
-            ~loc:loc_instrumentation ~flags instrumentation)
+            ~loc:loc_instrumentation ~flags ~deps backend)
         ~init
     in
     let foreign_stubs =
@@ -2193,7 +2200,18 @@ module Stanzas = struct
         [ Deprecated_library_name t ] )
     ; ( "cram"
       , let+ () = Dune_lang.Syntax.since Stanza.syntax (2, 7)
-        and+ t = Cram_stanza.decode in
+        and+ t = Cram_stanza.decode
+        and+ project = Dune_project.get_exn ()
+        and+ loc = loc in
+        if not (Dune_project.cram project) then
+          User_warning.emit ~loc
+            ~is_error:(Dune_project.dune_version project >= (3, 0))
+            [ Pp.text "Cram tests are not enabled in this project." ]
+            ~hints:
+              [ Pp.text
+                  "You can enable cram tests by adding (cram enable) to your \
+                   dune-project file."
+              ];
         [ Cram t ] )
     ; ( "generate_sites_module"
       , let+ () = Dune_lang.Syntax.since Section.dune_site_syntax (0, 1)

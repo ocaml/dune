@@ -163,6 +163,11 @@ let builtins ~stdlib_dir ~version:ocaml_version =
       | Some a -> a
     in
     let main_modules =
+      let name =
+        String.map name ~f:(function
+          | '-' -> '_'
+          | c -> c)
+      in
       if labels then
         main_modules [ name; name ^ "Labels" ]
       else

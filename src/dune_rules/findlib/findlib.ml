@@ -379,8 +379,7 @@ end = struct
           Lib_info.Source.External
             ( match Vars.get_words t.vars "main_modules" Ps.empty with
             | _ :: _ as modules ->
-              let f s = Module_name.of_string_allow_invalid (Loc.none, s) in
-              Ok (List.map ~f modules)
+              Ok (List.map ~f:Module_name.of_string modules)
             | [] -> (
               match dir_contents with
               | Error e ->

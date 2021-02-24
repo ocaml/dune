@@ -29,7 +29,7 @@ module DB : sig
     -> context:Context.t
     -> installed_libs:Lib.DB.t
     -> modules_of_lib:(dir:Path.Build.t -> name:Lib_name.t -> Modules.t) Fdecl.t
-    -> Dune_load.Dune_file.t list
+    -> Dune_loaded_file.t list
     -> t * Lib.DB.t
 
   val find_by_dir : t -> Path.Build.t -> scope

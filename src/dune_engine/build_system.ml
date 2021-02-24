@@ -893,7 +893,7 @@ end = struct
   (* TODO: Delete this step after users of dune 2.8 are sufficiently rare. This
      step is sketchy because it's using the [Promoted_to_delete] database and
      that can get out of date (see a comment on [Promoted_to_delete]), so we
-     should widen the scope of it too much. *)
+     should not widen the scope of it too much. *)
   let delete_stale_dot_merlin_file ~dir ~source_files_to_ignore =
     (* If a [.merlin] file is present in the [Promoted_to_delete] set but not in
        the [Source_files_to_ignore] that means the rule that ordered its

@@ -69,6 +69,7 @@ module Signal = struct
     | Int
     | Quit
     | Term
+    | Winch
 
   let compare : t -> t -> Ordering.t = Poly.compare
 
@@ -80,12 +81,13 @@ module Signal = struct
     let to_dyn _ = Dyn.opaque
   end)
 
-  let all = [ Int; Quit; Term ]
+  let all = [ Int; Quit; Term; Winch ]
 
   let to_int = function
     | Int -> Sys.sigint
     | Quit -> Sys.sigquit
     | Term -> Sys.sigterm
+    | Winch -> -51
 
   let of_int =
     List.map all ~f:(fun t -> (to_int t, t))
@@ -669,6 +671,7 @@ end = struct
       let signal = wait_signal () in
       Event.Queue.send_signal q signal;
       match signal with
+      | Winch -> ()
       | Int
       | Quit
       | Term ->

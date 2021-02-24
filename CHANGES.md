@@ -65,6 +65,10 @@ Unreleased
 
 - Enable cram tests by default (#4262, @rgrinberg)
 
+- Stop calling `ocamlfind` to determine the library search path or
+  library installation directory. This makes the behavior of Dune
+  simpler and more reproducible (#...., @jeremiedimino)
+
 2.8.2 (21/01/2021)
 ------------------
 

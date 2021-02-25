@@ -51,7 +51,9 @@ module Promoted_to_delete : sig
 
   val remove : Path.t -> unit
 
-  val load : unit -> Path.Set.t
+  val mem : Path.t -> bool
+
+  val get_db : unit -> Path.Set.t
 end = struct
   module P = Dune_util.Persistent.Make (struct
     type t = Path.Set.t
@@ -61,53 +63,50 @@ end = struct
     let version = 1
   end)
 
-  (* [db] is used to accumulate promoted files from rules. It will be merged
-     with the already dumped database and dumped if needed at the end of the
-     build. *)
-  let db = ref Path.Set.empty
-
-  (* [loaded_db] is used to prevent multiple loadings of the existing dumped
-     database and will be merged with [db] and dumped if needed at the end of
-     the build. *)
-  let loaded_db = ref None
-
   let fn = Path.relative Path.build_dir ".to-delete-in-source-tree"
+
+  (* [db] is used to accumulate promoted files from rules. *)
+  let db = lazy (ref (Option.value ~default:Path.Set.empty (P.load fn)))
+
+  let get_db () = !(Lazy.force db)
+
+  let set_db new_db = Lazy.force db := new_db
 
   let needs_dumping = ref false
 
-  let add p =
-    if not (Path.Set.mem !db p) then (
-      needs_dumping := true;
-      db := Path.Set.add !db p
-    )
+  let modify_db f =
+    match f (get_db ()) with
+    | None -> ()
+    | Some new_db ->
+      set_db new_db;
+      needs_dumping := true
 
-  let load () =
-    match !loaded_db with
-    | Some db -> db
-    | None ->
-      let db = Option.value ~default:Path.Set.empty (P.load fn) in
-      loaded_db := Some db;
-      db
+  let add p =
+    modify_db (fun db ->
+        if Path.Set.mem db p then
+          None
+        else
+          Some (Path.Set.add db p))
 
   let remove p =
-    (* Contrary to adding, removing should happen on the already existing db,
-       that is [loaded_db] and not the to-be-merged set [db] *)
-    let db = load () in
-    if Path.Set.mem db p then (
-      needs_dumping := true;
-      loaded_db := Some (Path.Set.remove db p)
-    )
+    modify_db (fun db ->
+        if Path.Set.mem db p then
+          Some (Path.Set.remove db p)
+        else
+          None)
 
   let dump () =
     if !needs_dumping && Path.build_dir_exists () then (
       needs_dumping := false;
-      load () |> Path.Set.union !db |> P.dump fn
+      get_db () |> P.dump fn
     )
+
+  let mem p = Path.Set.mem !(Lazy.force db) p
 
   let () = Hooks.End_of_build.always dump
 end
 
-let files_in_source_tree_to_delete () = Promoted_to_delete.load ()
+let files_in_source_tree_to_delete () = Promoted_to_delete.get_db ()
 
 module Alias0 = struct
   include Alias
@@ -926,7 +925,7 @@ end = struct
     let merlin_in_src = Path.Source.(relative source_dir merlin_file) in
     let source_files_to_ignore =
       if
-        Path.Set.mem (Promoted_to_delete.load ()) (Path.source merlin_in_src)
+        Promoted_to_delete.mem (Path.source merlin_in_src)
         && not (Path.Source.Set.mem source_files_to_ignore merlin_in_src)
       then (
         let path = Path.source merlin_in_src in

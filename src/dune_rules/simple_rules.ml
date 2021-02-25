@@ -113,7 +113,7 @@ let user_rule sctx ?extra_bindings ~dir ~expander (rule : Rule.t) =
       let () =
         let alias = Alias.make alias ~dir in
         Path.Set.singleton (Path.build alias_target)
-        |> Rules.Produce.Alias.add_deps alias
+        |> Rules.Produce.Alias.add_static_deps alias
       in
       add_user_rule sctx ~dir ~rule ~action ~expander
     | Alias_only name ->
@@ -192,7 +192,7 @@ let copy_files sctx ~dir ~expander ~src_dir (def : Copy_files.t) =
   in
   Option.iter def.alias ~f:(fun alias ->
       let alias = Alias.make alias ~dir in
-      Rules.Produce.Alias.add_deps alias targets);
+      Rules.Produce.Alias.add_static_deps alias targets);
   targets
 
 let copy_files sctx ~dir ~expander ~src_dir (def : Copy_files.t) =

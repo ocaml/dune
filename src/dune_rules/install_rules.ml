@@ -757,17 +757,22 @@ let install_rules sctx (package : Package.t) =
     let target_alias =
       Build_system.Alias.package_install ~context ~pkg:package
     in
-    Rules.Produce.Alias.add_deps target_alias files
-      ~dyn_deps:
-        (let+ packages = packages in
-         Package.Id.Set.to_list packages
-         |> Path.Set.of_list_map ~f:(fun (pkg : Package.Id.t) ->
-                let pkg =
-                  let name = Package.Id.name pkg in
-                  Package.Name.Map.find_exn (Super_context.packages sctx) name
-                in
-                Build_system.Alias.package_install ~context ~pkg
-                |> Alias.stamp_file |> Path.build))
+    Rules.Produce.Alias.add_deps target_alias
+      (Action_builder.dyn_deps
+         (let+ packages = packages
+          and+ () = Action_builder.deps (Dep.Set.of_files_set files) in
+          ( ()
+          , Package.Id.Set.to_list packages
+            |> Path.Set.of_list_map ~f:(fun (pkg : Package.Id.t) ->
+                   let pkg =
+                     let name = Package.Id.name pkg in
+                     Package.Name.Map.find_exn
+                       (Super_context.packages sctx)
+                       name
+                   in
+                   Build_system.Alias.package_install ~context ~pkg
+                   |> Alias.stamp_file |> Path.build)
+            |> Dep.Set.of_files_set )))
   in
   let action =
     let install_file =
@@ -831,7 +836,7 @@ let memo =
       let path = Package_paths.build_dir ctx package in
       let install_alias = Alias.install ~dir:path in
       let install_file = Path.relative (Path.build path) install_fn in
-      Rules.Produce.Alias.add_deps install_alias
+      Rules.Produce.Alias.add_static_deps install_alias
         (Path.Set.singleton install_file)
   in
   Memo.create

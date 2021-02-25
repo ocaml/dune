@@ -69,6 +69,9 @@ Unreleased
   library installation directory. This makes the behavior of Dune
   simpler and more reproducible (#...., @jeremiedimino)
 
+- Automatically delete left-over Merlin files when rebuilding for the first time
+  a project previously built with Dune `<= 2.7`. (#4261, @voodoos, @aalekseyev)
+
 2.8.2 (21/01/2021)
 ------------------
 

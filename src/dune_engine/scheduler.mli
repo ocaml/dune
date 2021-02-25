@@ -18,6 +18,7 @@ module Config : sig
       | Short  (** One line per command *)
       | Verbose  (** Display all commands fully *)
       | Quiet  (** Only display errors *)
+      | Tui  (** Shiny *)
 
     val all : (string * t) list
 

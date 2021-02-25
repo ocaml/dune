@@ -20,12 +20,14 @@ module Config = struct
       | Short
       | Verbose
       | Quiet
+      | Tui
 
     let all =
       [ ("progress", Progress)
       ; ("verbose", Verbose)
       ; ("short", Short)
       ; ("quiet", Quiet)
+      ; ("tui", Tui)
       ]
 
     let to_string = function
@@ -33,8 +35,10 @@ module Config = struct
       | Quiet -> "quiet"
       | Short -> "short"
       | Verbose -> "verbose"
+      | Tui -> "tui"
 
     let console_backend = function
+      | Tui -> assert false
       | Progress -> Console.Backend.progress
       | Short
       | Verbose

@@ -83,11 +83,15 @@ module Signal = struct
 
   let all = [ Int; Quit; Term; Winch ]
 
+  external winch_number : unit -> int = "dune_winch_number" [@@noalloc]
+
+  let winch_number = winch_number ()
+
   let to_int = function
     | Int -> Sys.sigint
     | Quit -> Sys.sigquit
     | Term -> Sys.sigterm
-    | Winch -> -51
+    | Winch -> winch_number
 
   let of_int =
     List.map all ~f:(fun t -> (to_int t, t))

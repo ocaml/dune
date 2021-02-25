@@ -2,6 +2,9 @@
 
 (library
  (name dune_engine)
+ (foreign_stubs
+  (language c)
+  (names winch))
  (libraries
   unix
   stdune

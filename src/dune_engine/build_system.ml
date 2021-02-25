@@ -40,10 +40,12 @@ end = struct
 end
 
 (* [Promoted_to_delete] is used mostly to implement [dune clean]. It is an
-   imperfect heuristic, in particular it can go wrong if: - the user deletes
-   .to-delete-in-source-tree file - the user edits a previously promoted file
-   with the intention of keeping it in the source tree, or creates a new file
-   with the same name *)
+   imperfect heuristic, in particular it can go wrong if:
+
+   - the user deletes .to-delete-in-source-tree file
+
+   - the user edits a previously promoted file with the intention of keeping it
+   in the source tree, or creates a new file with the same name *)
 module Promoted_to_delete : sig
   val add : Path.t -> unit
 
@@ -909,7 +911,7 @@ end = struct
         ~subdir:(Path.Build.basename dir)
   end
 
-  (* TODO: Delete this step after users of dune 2.8 are sufficiently rare. This
+  (* TODO: Delete this step after users of dune <2.8 are sufficiently rare. This
      step is sketchy because it's using the [Promoted_to_delete] database and
      that can get out of date (see a comment on [Promoted_to_delete]), so we
      should not widen the scope of it too much. *)

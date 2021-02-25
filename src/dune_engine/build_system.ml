@@ -39,10 +39,21 @@ end = struct
     | Some path -> mkdir_p path
 end
 
+(* [Promoted_to_delete] is used mostly to implement [dune clean]. It is an
+   imperfect heuristic, in particular it can go wrong if:
+
+   - the user deletes .to-delete-in-source-tree file
+
+   - the user edits a previously promoted file with the intention of keeping it
+   in the source tree, or creates a new file with the same name *)
 module Promoted_to_delete : sig
   val add : Path.t -> unit
 
-  val load : unit -> Path.Set.t
+  val remove : Path.t -> unit
+
+  val mem : Path.t -> bool
+
+  val get_db : unit -> Path.Set.t
 end = struct
   module P = Dune_util.Persistent.Make (struct
     type t = Path.Set.t
@@ -52,30 +63,50 @@ end = struct
     let version = 1
   end)
 
-  let db = ref Path.Set.empty
-
   let fn = Path.relative Path.build_dir ".to-delete-in-source-tree"
+
+  (* [db] is used to accumulate promoted files from rules. *)
+  let db = lazy (ref (Option.value ~default:Path.Set.empty (P.load fn)))
+
+  let get_db () = !(Lazy.force db)
+
+  let set_db new_db = Lazy.force db := new_db
 
   let needs_dumping = ref false
 
-  let add p =
-    if not (Path.Set.mem !db p) then (
-      needs_dumping := true;
-      db := Path.Set.add !db p
-    )
+  let modify_db f =
+    match f (get_db ()) with
+    | None -> ()
+    | Some new_db ->
+      set_db new_db;
+      needs_dumping := true
 
-  let load () = Option.value ~default:Path.Set.empty (P.load fn)
+  let add p =
+    modify_db (fun db ->
+        if Path.Set.mem db p then
+          None
+        else
+          Some (Path.Set.add db p))
+
+  let remove p =
+    modify_db (fun db ->
+        if Path.Set.mem db p then
+          Some (Path.Set.remove db p)
+        else
+          None)
 
   let dump () =
     if !needs_dumping && Path.build_dir_exists () then (
       needs_dumping := false;
-      load () |> Path.Set.union !db |> P.dump fn
+      get_db () |> P.dump fn
     )
+
+  let mem p = Path.Set.mem !(Lazy.force db) p
 
   let () = Hooks.End_of_build.always dump
 end
 
-let files_in_source_tree_to_delete () = Promoted_to_delete.load ()
+let files_in_source_tree_to_delete () = Promoted_to_delete.get_db ()
 
 module Alias0 = struct
   include Alias
@@ -879,6 +910,40 @@ end = struct
         ~subdir:(Path.Build.basename dir)
   end
 
+  (* TODO: Delete this step after users of dune <2.8 are sufficiently rare. This
+     step is sketchy because it's using the [Promoted_to_delete] database and
+     that can get out of date (see a comment on [Promoted_to_delete]), so we
+     should not widen the scope of it too much. *)
+  let delete_stale_dot_merlin_file ~dir ~source_files_to_ignore =
+    (* If a [.merlin] file is present in the [Promoted_to_delete] set but not in
+       the [Source_files_to_ignore] that means the rule that ordered its
+       promotion is no more valid. This would happen when upgrading to Dune 2.8
+       from ealier version without and building uncleaned projects. We delete
+       these leftover files here. *)
+    let merlin_file = ".merlin" in
+    let source_dir = Path.Build.drop_build_context_exn dir in
+    let merlin_in_src = Path.Source.(relative source_dir merlin_file) in
+    let source_files_to_ignore =
+      if
+        Promoted_to_delete.mem (Path.source merlin_in_src)
+        && not (Path.Source.Set.mem source_files_to_ignore merlin_in_src)
+      then (
+        let path = Path.source merlin_in_src in
+        Log.info
+          [ Pp.textf "Deleting left-over Merlin file %s.\n"
+              (Path.to_string path)
+          ];
+        (* We remove the file from the promoted database *)
+        Promoted_to_delete.remove path;
+        Path.unlink_no_err path;
+        (* We need to keep ignoring the .merlin file for that build or Dune will
+           attempt to copy it and fail because it has been deleted *)
+        Path.Source.Set.add source_files_to_ignore merlin_in_src
+      ) else
+        source_files_to_ignore
+    in
+    source_files_to_ignore
+
   let load_dir_step2_exn t ~dir =
     let context_name, sub_dir =
       match Dpath.analyse_path dir with
@@ -946,6 +1011,9 @@ end = struct
     let source_files_to_ignore =
       Path.Build.Set.to_list source_files_to_ignore
       |> Path.Source.Set.of_list_map ~f:Path.Build.drop_build_context_exn
+    in
+    let source_files_to_ignore =
+      delete_stale_dot_merlin_file ~dir ~source_files_to_ignore
     in
     (* Take into account the source files *)
     let to_copy, source_dirs =

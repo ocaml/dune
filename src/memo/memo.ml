@@ -1078,11 +1078,12 @@ end = struct
            | Needs_work { sample_attempt = _; work } -> work)
 
   let exec_dep_node dep_node =
-    match consider_dep_node dep_node with
-    | Ok res ->
-      let* res = res in
-      Value.get_async_exn res.value
-    | Error cycle_error -> raise (Cycle_error.E cycle_error)
+    Fiber.of_thunk (fun () ->
+        match consider_dep_node dep_node with
+        | Ok res ->
+          let* res = res in
+          Value.get_async_exn res.value
+        | Error cycle_error -> raise (Cycle_error.E cycle_error))
 
   let exec_dep_node_internal = consider_dep_node
 

@@ -27,6 +27,9 @@ Unreleased
 - `dune ocaml-merlin` is now able to provide configuration for source files in
   the `_build` directory. (#4274, @voodoos)
 
+- Automatically delete left-over Merlin files when rebuilding for the first time
+  a project previously built with Dune `<= 2.7`. (#4261, @voodoos, @aalekseyev)
+
 2.8.2 (21/01/2021)
 ------------------
 

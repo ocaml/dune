@@ -467,7 +467,7 @@ let create ~(kind : Kind.t) ~path ~env ~env_nodes ~name ~merlin ~targets
       | None -> []
       | Some s -> Bin.parse_path s ~sep:ocamlpath_sep
     in
-    let default_findlib_paths () =
+    let default_library_search_path () =
       match Build_environment_kind.query ~kind ~findlib_toolchain ~env with
       | Cross_compilation_using_findlib_toolchain toolchain ->
         let ocamlfind = which_exn "ocamlfind" in
@@ -480,13 +480,8 @@ let create ~(kind : Kind.t) ~path ~env ~env_nodes ~name ~merlin ~targets
         let p = Path.of_filename_relative_to_initial_cwd opam_prefix in
         let p = Path.relative p "lib" in
         Memo.Build.return [ p ]
-      | Unknown -> (
-        match which "ocamlfind" with
-        | Some ocamlfind ->
-          let env = Env.remove env ~var:"OCAMLPATH" in
-          ocamlfind_printconf_path ~env ~ocamlfind ~toolchain:None
-        | None ->
-          Memo.Build.return [ Path.relative (Path.parent_exn dir) "lib" ] )
+      | Unknown ->
+        Memo.Build.return [ Path.relative (Path.parent_exn dir) "lib" ]
     in
     let ocaml_config_ok_exn = function
       | Ok x -> x
@@ -500,7 +495,7 @@ let create ~(kind : Kind.t) ~path ~env ~env_nodes ~name ~merlin ~targets
         User_error.raise ~loc:(Loc.in_file file) [ Pp.text msg ]
     in
     let* default_ocamlpath, (ocaml_config_vars, ocfg) =
-      Memo.Build.fork_and_join default_findlib_paths (fun () ->
+      Memo.Build.fork_and_join default_library_search_path (fun () ->
           let+ lines =
             Memo.Build.of_fiber
               (Process.run_capture_lines ~env Strict ocamlc [ "-config" ])
@@ -885,25 +880,10 @@ module DB = struct
 end
 
 let install_ocaml_libdir t =
-  match (t.kind, t.findlib_toolchain, Setup.library_destdir) with
-  | Default, None, Some d ->
+  match (t.kind, Setup.library_destdir) with
+  | Default, Some d ->
     Memo.Build.return (Some (Path.of_filename_relative_to_initial_cwd d))
-  | _ -> (
-    (* If ocamlfind is present, it has precedence over everything else. *)
-    match t.which "ocamlfind" with
-    | Some fn ->
-      let+ s =
-        Memo.Build.of_fiber
-          (Process.run_capture_line ~env:t.env Strict fn
-             [ "printconf"; "destdir" ])
-      in
-      let s = String.trim s in
-      if String.is_empty s then
-        (* This case happens if ocamlfind doesn't find its configuration file *)
-        None
-      else
-        Some (Path.of_filename_relative_to_initial_cwd s)
-    | None -> Memo.Build.return None )
+  | _ -> Memo.Build.return None
 
 let compiler t (mode : Mode.t) =
   match mode with

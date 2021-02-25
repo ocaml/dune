@@ -19,12 +19,11 @@ let get_dirs context ~prefix_from_command_line ~libdir_from_command_line =
   | None ->
     let open Fiber.O in
     let* prefix = Context.install_prefix context in
-    let libdir =
+    let+ libdir =
       match libdir_from_command_line with
       | None -> Memo.Build.run (Context.install_ocaml_libdir context)
       | Some l -> Fiber.return (Some (Path.relative prefix l))
     in
-    let+ libdir = libdir in
     (prefix, libdir)
 
 let resolve_package_install setup pkg =

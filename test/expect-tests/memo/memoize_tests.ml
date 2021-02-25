@@ -806,6 +806,12 @@ let%expect_test "dynamic cycles with non-uniform cutoff structure" =
       ~from:cycle_creator_yes_cutoff
   in
   Fdecl.set summit_fdecl summit_yes_cutoff;
+  (* This currently causes execution of some side effects in the memoization
+     framework, bringing it into an inconsistent internal state that further
+     results in deadlocks and reappearance of zombie computations. This will be
+     fixed in the next commit. *)
+  let _ = Memo.exec cycle_creator_no_cutoff () in
+  [%expect {| |}];
   print_result summit_no_cutoff 0;
   [%expect
     {|
@@ -814,15 +820,7 @@ let%expect_test "dynamic cycles with non-uniform cutoff structure" =
     Starting evaluating incrementing_chain_3_no_cutoff
     Starting evaluating incrementing_chain_2_yes_cutoff
     Starting evaluating incrementing_chain_1_no_cutoff
-    Started evaluating cycle_creator_no_cutoff
-    Evaluating count_runs: 1
-    Evaluated cycle_creator_no_cutoff: 1
-    Evaluated incrementing_chain_1_no_cutoff: 2
-    Evaluated incrementing_chain_2_yes_cutoff: 3
-    Evaluated incrementing_chain_3_no_cutoff: 4
-    Evaluated incrementing_chain_4_yes_cutoff: 5
-    Evaluated the summit with input 0: 5
-    f 0 = Ok 5 |}];
+    f 0 = Error [ { exn = "Exit"; backtrace = "" } ] |}];
   print_result summit_yes_cutoff 0;
   [%expect
     {|
@@ -832,6 +830,7 @@ let%expect_test "dynamic cycles with non-uniform cutoff structure" =
     Starting evaluating incrementing_chain_2_no_cutoff
     Starting evaluating incrementing_chain_1_yes_cutoff
     Started evaluating cycle_creator_yes_cutoff
+    Evaluating count_runs: 1
     Evaluated cycle_creator_yes_cutoff: 1
     Evaluated incrementing_chain_1_yes_cutoff: 2
     Evaluated incrementing_chain_2_no_cutoff: 3
@@ -843,8 +842,7 @@ let%expect_test "dynamic cycles with non-uniform cutoff structure" =
   [%expect
     {|
     Started evaluating the summit with input 2
-    Evaluated the summit with input 2: 7
-    f 2 = Ok 7 |}];
+    f 2 = Error [ { exn = "Exit"; backtrace = "" } ] |}];
   print_result summit_yes_cutoff 2;
   [%expect
     {|
@@ -855,26 +853,16 @@ let%expect_test "dynamic cycles with non-uniform cutoff structure" =
   print_result summit_no_cutoff 0;
   [%expect
     {|
-    Evaluating count_runs: 2
-    Started evaluating cycle_creator_no_cutoff
-    Cycling to summit from cycle_creator_no_cutoff...
-    Starting evaluating incrementing_chain_1_no_cutoff
-    Starting evaluating incrementing_chain_2_yes_cutoff
-    Starting evaluating incrementing_chain_3_no_cutoff
-    Starting evaluating incrementing_chain_4_yes_cutoff
-    Started evaluating the summit with input 0
-    Dependency cycle detected:
-    - ("incrementing_chain_plus_input", 2)
-    - called by ("cycle_creator_no_cutoff", ())
-    - called by ("incrementing_chain_1_no_cutoff", ())
-    - called by ("incrementing_chain_2_yes_cutoff", ())
-    - called by ("incrementing_chain_3_no_cutoff", ())
-    - called by ("incrementing_chain_4_yes_cutoff", ())
-    - called by ("incrementing_chain_plus_input", 2)
-    f 0 = Error [ { exn = "Memo.Cycle_error.E(_)"; backtrace = "" } ] |}];
+    f 0 = Error
+            [ { exn =
+                  "(\"A zombie computation is encountered in [currently_considering]\", {})"
+              ; backtrace = ""
+              }
+            ] |}];
   print_result summit_yes_cutoff 0;
   [%expect
     {|
+    Evaluating count_runs: 2
     Started evaluating cycle_creator_yes_cutoff
     Cycling to summit from cycle_creator_yes_cutoff...
     Starting evaluating incrementing_chain_1_yes_cutoff
@@ -894,15 +882,12 @@ let%expect_test "dynamic cycles with non-uniform cutoff structure" =
   print_result summit_no_cutoff 2;
   [%expect
     {|
-    Dependency cycle detected:
-    - ("incrementing_chain_plus_input", 2)
-    - called by ("cycle_creator_no_cutoff", ())
-    - called by ("incrementing_chain_1_no_cutoff", ())
-    - called by ("incrementing_chain_2_yes_cutoff", ())
-    - called by ("incrementing_chain_3_no_cutoff", ())
-    - called by ("incrementing_chain_4_yes_cutoff", ())
-    - called by ("incrementing_chain_plus_input", 2)
-    f 2 = Error [ { exn = "Memo.Cycle_error.E(_)"; backtrace = "" } ] |}];
+    f 2 = Error
+            [ { exn =
+                  "(\"A zombie computation is encountered in [currently_considering]\", {})"
+              ; backtrace = ""
+              }
+            ] |}];
   print_result summit_yes_cutoff 2;
   [%expect
     {|
@@ -919,20 +904,12 @@ let%expect_test "dynamic cycles with non-uniform cutoff structure" =
   print_result summit_no_cutoff 0;
   [%expect
     {|
-    Started evaluating the summit with input 0
-    Starting evaluating incrementing_chain_4_yes_cutoff
-    Starting evaluating incrementing_chain_3_no_cutoff
-    Starting evaluating incrementing_chain_2_yes_cutoff
-    Starting evaluating incrementing_chain_1_no_cutoff
-    Started evaluating cycle_creator_no_cutoff
-    Evaluating count_runs: 3
-    Evaluated cycle_creator_no_cutoff: 3
-    Evaluated incrementing_chain_1_no_cutoff: 4
-    Evaluated incrementing_chain_2_yes_cutoff: 5
-    Evaluated incrementing_chain_3_no_cutoff: 6
-    Evaluated incrementing_chain_4_yes_cutoff: 7
-    Evaluated the summit with input 0: 7
-    f 0 = Ok 7 |}];
+    f 0 = Error
+            [ { exn =
+                  "(\"A zombie computation is encountered in [currently_considering]\", {})"
+              ; backtrace = ""
+              }
+            ] |}];
   print_result summit_yes_cutoff 0;
   [%expect
     {|
@@ -942,6 +919,7 @@ let%expect_test "dynamic cycles with non-uniform cutoff structure" =
     Starting evaluating incrementing_chain_2_no_cutoff
     Starting evaluating incrementing_chain_1_yes_cutoff
     Started evaluating cycle_creator_yes_cutoff
+    Evaluating count_runs: 3
     Evaluated cycle_creator_yes_cutoff: 3
     Evaluated incrementing_chain_1_yes_cutoff: 4
     Evaluated incrementing_chain_2_no_cutoff: 5
@@ -952,9 +930,12 @@ let%expect_test "dynamic cycles with non-uniform cutoff structure" =
   print_result summit_no_cutoff 2;
   [%expect
     {|
-    Started evaluating the summit with input 2
-    Evaluated the summit with input 2: 9
-    f 2 = Ok 9 |}];
+    f 2 = Error
+            [ { exn =
+                  "(\"A zombie computation is encountered in [currently_considering]\", {})"
+              ; backtrace = ""
+              }
+            ] |}];
   print_result summit_yes_cutoff 2;
   [%expect
     {|

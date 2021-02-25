@@ -704,12 +704,12 @@ let%expect_test "diamond with non-uniform cutoff structure" =
   [%expect
     {|
     Evaluating count_runs: 2
-    Starting evaluating yes_cutoff
-    Evaluated yes_cutoff: 1
     Starting evaluating no_cutoff
     Evaluated no_cutoff: 1
     Starting evaluating after_no_cutoff
     Evaluated after_no_cutoff: 2
+    Starting evaluating yes_cutoff
+    Evaluated yes_cutoff: 1
     f 0 = Ok 4
     |}];
   print_result summit 1;
@@ -806,6 +806,13 @@ let%expect_test "dynamic cycles with non-uniform cutoff structure" =
       ~from:cycle_creator_yes_cutoff
   in
   Fdecl.set summit_fdecl summit_yes_cutoff;
+  (* Calling [Memo.exec] and then not running the resulting [Fiber.t] used to
+     bring the memoization framework into an inconsistent internal state, due to
+     the eager execution of some internal side effects. That further manifested
+     in deadlocks and reappearance of zombie computations. The problem has now
+     been fixed and so the line below is just a no-op. *)
+  let _ = Memo.exec cycle_creator_no_cutoff () in
+  [%expect {| |}];
   print_result summit_no_cutoff 0;
   [%expect
     {|

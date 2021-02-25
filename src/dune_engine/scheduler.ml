@@ -869,9 +869,9 @@ let prepare (config : Config.t) ~polling =
   Signal_watcher.init events;
   let process_watcher = Process_watcher.init events in
   let cwd = Sys.getcwd () in
-  if cwd <> initial_cwd && not !Clflags.no_print_directory then
-    Printf.eprintf "Entering directory '%s'\n%!"
-      ( match Config.inside_dune with
+  ( if cwd <> initial_cwd && not !Clflags.no_print_directory then
+    let message =
+      match Config.inside_dune with
       | false -> cwd
       | true -> (
         let descendant_simple p ~of_ =
@@ -893,7 +893,9 @@ let prepare (config : Config.t) ~polling =
               else
                 loop (Filename.concat acc "..") (Filename.dirname dir)
             in
-            loop ".." (Filename.dirname s) ) ) );
+            loop ".." (Filename.dirname s) ) )
+    in
+    Console.print [ Pp.verbatim (sprintf "Entering directory '%s'" dir) ] );
   let rpc = Rpc0.of_config events config.rpc in
   let t =
     { original_cwd = cwd

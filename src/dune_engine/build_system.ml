@@ -47,7 +47,7 @@ end
 module Promoted_to_delete : sig
   val add : Path.t -> unit
 
-  val remove_now : Path.t -> unit
+  val remove : Path.t -> unit
 
   val load : unit -> Path.Set.t
 end = struct
@@ -59,7 +59,15 @@ end = struct
     let version = 1
   end)
 
+  (* [db] is used to accumulate promoted files from rules. It will be merged
+     with the already dumped database and dumped if needed at the end of the
+     build. *)
   let db = ref Path.Set.empty
+
+  (* [loaded_db] is used to prevent multiple loadings of the existing dumped
+     database and will be merged with [db] and dumped if needed at the end of
+     the build. *)
+  let loaded_db = ref None
 
   let fn = Path.relative Path.build_dir ".to-delete-in-source-tree"
 
@@ -71,17 +79,28 @@ end = struct
       db := Path.Set.add !db p
     )
 
-  let load () = Option.value ~default:Path.Set.empty (P.load fn)
+  let load () =
+    match !loaded_db with
+    | Some db -> db
+    | None ->
+      let db = Option.value ~default:Path.Set.empty (P.load fn) in
+      loaded_db := Some db;
+      db
+
+  let remove p =
+    (* Contrary to adding, removing should happen on the already existing db,
+       that is [loaded_db] and not the to-be-merged set [db] *)
+    let db = load () in
+    if Path.Set.mem db p then (
+      needs_dumping := true;
+      loaded_db := Some (Path.Set.remove db p)
+    )
 
   let dump () =
     if !needs_dumping && Path.build_dir_exists () then (
       needs_dumping := false;
       load () |> Path.Set.union !db |> P.dump fn
     )
-
-  let remove_now p =
-    let db = load () in
-    if Path.Set.mem db p then P.dump fn (Path.Set.remove db p)
 
   let () = Hooks.End_of_build.always dump
 end
@@ -913,8 +932,8 @@ end = struct
           [ Pp.textf "Deleting left-over Merlin file %s.\n"
               (Path.to_string path)
           ];
-        (* We immediately remove the file from the promoted database and dump it *)
-        Promoted_to_delete.remove_now path;
+        (* We remove the file from the promoted database *)
+        Promoted_to_delete.remove path;
         Path.unlink_no_err path;
         (* We need to keep ignoring the .merlin file for that build or Dune will
            attempt to copy it and fail because it has been deleted *)

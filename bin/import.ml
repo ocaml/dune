@@ -135,11 +135,53 @@ module Scheduler = struct
     let config = Dune_config.for_scheduler config rpc in
     Scheduler.go config f
 
+  let maybe_clear_screen (config : Config.t) =
+    match config.terminal_persistence with
+    | Clear_on_rebuild -> Console.reset ()
+    | Preserve ->
+      Console.print_user_message
+        (User_message.make
+           [ Pp.nop
+           ; Pp.tag User_message.Style.Success
+               (Pp.verbatim "********** NEW BUILD **********")
+           ; Pp.nop
+           ])
+
   let poll ~(common : Common.t) ~once ~finally =
     let config = Common.config common in
     let rpc = Common.rpc common |> Option.map ~f:Dune_rpc_impl.Server.config in
     let config = Dune_config.for_scheduler config rpc in
-    Scheduler.poll config ~once ~finally
+    let build =
+      let on_event config = function
+        | Scheduler.Build.Source_files_changed -> maybe_clear_screen config
+        | New_event -> Console.Status_line.refresh ()
+        | Build_failure ->
+          let status_line =
+            Some
+              (Pp.seq
+                 (* XXX Why do we print "Had errors"? The user simply edited a
+                    file *)
+                 (Pp.tag User_message.Style.Error (Pp.verbatim "Had errors"))
+                 (Pp.verbatim ", killing current build..."))
+          in
+          Console.Status_line.set (Fun.const status_line)
+        | Build_finish res ->
+          let message =
+            match res with
+            | Success ->
+              Pp.tag User_message.Style.Success (Pp.verbatim "Success")
+            | Failure ->
+              Pp.tag User_message.Style.Error (Pp.verbatim "Had errors")
+          in
+          Console.Status_line.set
+            (Fun.const
+               (Some
+                  (Pp.seq message
+                     (Pp.verbatim ", waiting for filesystem changes..."))))
+      in
+      Scheduler.Build.poll ~on_event ~once ~finally
+    in
+    Scheduler.build config build
 end
 
 let restore_cwd_and_execve (common : Common.t) prog argv env =

@@ -19,7 +19,11 @@ let prog = Option.value_exn (Bin.which ~path:(Env.path Env.initial) "true")
 
 let run () = Process.run ~env:Env.initial Strict prog []
 
-let go ~jobs fiber = Scheduler.go { config with concurrency = jobs } fiber
+let go ~jobs fiber =
+  Scheduler.go
+    ~on_event:(fun _ _ -> ())
+    { config with concurrency = jobs }
+    fiber
 
 let%bench_fun "single" =
   Lazy.force setup;

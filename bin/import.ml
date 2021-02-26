@@ -129,12 +129,6 @@ end
 module Scheduler = struct
   include Dune_engine.Scheduler
 
-  let go ~(common : Common.t) f =
-    let config = Common.config common in
-    let rpc = Common.rpc common |> Option.map ~f:Dune_rpc_impl.Server.config in
-    let config = Dune_config.for_scheduler config rpc in
-    Scheduler.go config f
-
   let maybe_clear_screen (config : Config.t) =
     match config.terminal_persistence with
     | Clear_on_rebuild -> Console.reset ()
@@ -147,36 +141,68 @@ module Scheduler = struct
            ; Pp.nop
            ])
 
+  let on_event config = function
+    | Scheduler.Build.Source_files_changed -> maybe_clear_screen config
+    | New_event -> Console.Status_line.refresh ()
+    | Build_interrupted ->
+      let status_line =
+        Some
+          (Pp.seq
+             (* XXX Why do we print "Had errors"? The user simply edited a file *)
+             (Pp.tag User_message.Style.Error (Pp.verbatim "Had errors"))
+             (Pp.verbatim ", killing current build..."))
+      in
+      Console.Status_line.set (Fun.const status_line)
+    | Build_finish res ->
+      let message =
+        match res with
+        | Success -> Pp.tag User_message.Style.Success (Pp.verbatim "Success")
+        | Failure -> Pp.tag User_message.Style.Error (Pp.verbatim "Had errors")
+      in
+      Console.Status_line.set
+        (Fun.const
+           (Some
+              (Pp.seq message
+                 (Pp.verbatim ", waiting for filesystem changes..."))))
+    | Chdir cwd ->
+      if not !Clflags.no_print_directory then
+        let dir =
+          match Dune_engine.Config.inside_dune with
+          | false -> cwd
+          | true -> (
+            let descendant_simple p ~of_ =
+              match String.drop_prefix p ~prefix:of_ with
+              | None
+              | Some "" ->
+                None
+              | Some s -> Some (String.drop s 1)
+            in
+            match descendant_simple cwd ~of_:Fpath.initial_cwd with
+            | Some s -> s
+            | None -> (
+              match descendant_simple Fpath.initial_cwd ~of_:cwd with
+              | None -> cwd
+              | Some s ->
+                let rec loop acc dir =
+                  if dir = Filename.current_dir_name then
+                    acc
+                  else
+                    loop (Filename.concat acc "..") (Filename.dirname dir)
+                in
+                loop ".." (Filename.dirname s) ) )
+        in
+        Console.print [ Pp.verbatim (sprintf "Entering directory '%s'" dir) ]
+
+  let go ~(common : Common.t) f =
+    let config = Common.config common in
+    let rpc = Common.rpc common |> Option.map ~f:Dune_rpc_impl.Server.config in
+    let config = Dune_config.for_scheduler config rpc in
+    Scheduler.go config ~on_event f
+
   let poll ~(common : Common.t) ~once ~finally =
     let config = Common.config common in
     let rpc = Common.rpc common |> Option.map ~f:Dune_rpc_impl.Server.config in
     let config = Dune_config.for_scheduler config rpc in
-    let on_event config = function
-      | Scheduler.Build.Source_files_changed -> maybe_clear_screen config
-      | New_event -> Console.Status_line.refresh ()
-      | Build_interrupted ->
-        let status_line =
-          Some
-            (Pp.seq
-               (* XXX Why do we print "Had errors"? The user simply edited a
-                  file *)
-               (Pp.tag User_message.Style.Error (Pp.verbatim "Had errors"))
-               (Pp.verbatim ", killing current build..."))
-        in
-        Console.Status_line.set (Fun.const status_line)
-      | Build_finish res ->
-        let message =
-          match res with
-          | Success -> Pp.tag User_message.Style.Success (Pp.verbatim "Success")
-          | Failure ->
-            Pp.tag User_message.Style.Error (Pp.verbatim "Had errors")
-        in
-        Console.Status_line.set
-          (Fun.const
-             (Some
-                (Pp.seq message
-                   (Pp.verbatim ", waiting for filesystem changes..."))))
-    in
     Scheduler.poll config ~on_event ~once ~finally
 end
 

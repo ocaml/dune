@@ -35,13 +35,14 @@ end
 
 module Mode : sig
   type t =
-    | Standard  (** Only use this rule if the source files don't exist. *)
-    | Fallback  (** Silently promote the targets to the source tree. *)
+    | Standard
+    | Fallback  (** Only use this rule if the source files don't exist. *)
     | Promote of Promote.t
+        (** Silently promote the targets to the source tree. *)
+    | Ignore_source_files
         (** Just ignore the source files entirely. This is for cases where the
             targets are promoted only in a specific context, such as for
             .install files. *)
-    | Ignore_source_files
 end
 
 module Id : sig

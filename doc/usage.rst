@@ -302,17 +302,24 @@ Finding external libraries
 When a library is not available in the workspace, dune will look it
 up in the installed world, and expect it to be already compiled.
 
-It looks up external libraries using a specific list of search paths. A
-list of search paths is specific to a given build context and is
-determined as follows:
+It looks up external libraries using a specific list of search paths
+and each build context has a specific list of search paths.
 
-#. if the ``ocamlfind`` is present in the ``PATH`` of the context, use each line
-   in the output of ``ocamlfind printconf path`` as a search path
-#. otherwise, if ``opam`` is present in the ``PATH``, use the output of ``opam
-   config var lib``
-#. otherwise, take the directory where ``ocamlc`` was found, and append
-   ``../lib`` to it. For instance if ``ocamlc`` is found in ``/usr/bin``, use
-   ``/usr/lib``
+When running inside an opam environment, Dune will look for installed
+libraries in ``$OPAM_SWITCH_PREFIX/lib``. This includes both opam
+build context configured via the ``dune-workspace`` file and the
+default build context when the variable ``$OPAM_SWITCH_PREFIX`` is
+set.
+
+Otherwise, Dune takes the directory where ``ocamlc`` was found, and
+append `../lib`` to it. For instance if ``ocamlc`` is found in
+``/usr/bin``, Dune looks for installed libraries in ``/usr/lib``.
+
+In addition to the two above rules, Dune always inspect the
+``OCAMLPATH`` environment variable and use the paths defined in this
+variable. ``OCAMLPATH`` always has precedence and can have different
+value in different build contexts. For instance, you can set it
+manually in a specific build context via the ``dune-workspace`` file.
 
 .. _running-tests:
 

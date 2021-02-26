@@ -60,6 +60,20 @@ Unreleased
   merlin configuration of a directory (defaulting to the current directory) in
   the Merlin configuration syntax. (#4250, @voodoos)
 
+- `dune ocaml-merlin` is now able to provide configuration for source files in
+  the `_build` directory. (#4274, @voodoos)
+
+- Enable cram tests by default (#4262, @rgrinberg)
+
+- Drop support for opam 1.x (#4280, @jeremiedimino)
+
+- Stop calling `ocamlfind` to determine the library search path or
+  library installation directory. This makes the behavior of Dune
+  simpler and more reproducible (#4281, @jeremiedimino)
+
+- Automatically delete left-over Merlin files when rebuilding for the first time
+  a project previously built with Dune `<= 2.7`. (#4261, @voodoos, @aalekseyev)
+
 2.8.2 (21/01/2021)
 ------------------
 

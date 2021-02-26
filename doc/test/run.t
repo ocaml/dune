@@ -12,3 +12,4 @@ is fine, but you then need to update the list of such exceptions below.
   ../formatting.rst:.. note:: This section applies only to projects with ``(lang dune 1.x)``.
   ../formatting.rst:In ``(lang dune 1.x)``, no formatting is done by default. This feature is
   ../formatting.rst:(lang dune 2.0)
+  ../tests.rst:   (lang dune 2.7)

@@ -85,56 +85,55 @@ If prefix is passed, the default for libdir is `$prefix/lib`:
   Creating directory install/man/man3
   Copying _build/install/default/man/man3/another-man-page.3 to install/man/man3/another-man-page.3 (executable: false)
 
-If prefix is not passed, libdir defaults to the output of `ocamlfind printconf
-destdir`:
+If prefix is not passed, libdir defaults to the opam-prefix/lib directory:
 
   $ (export OCAMLFIND_DESTDIR=/OCAMLFIND_DESTDIR
   >  dune install --dry-run 2>&1 | dune_cmd sanitize
   >  dune uninstall --dry-run 2>&1 | dune_cmd sanitize)
-  Removing (if it exists) /OCAMLFIND_DESTDIR/foo/META
-  Installing /OCAMLFIND_DESTDIR/foo/META
-  Creating directory /OCAMLFIND_DESTDIR/foo
-  Copying _build/install/default/lib/foo/META to /OCAMLFIND_DESTDIR/foo/META (executable: false)
-  Removing (if it exists) /OCAMLFIND_DESTDIR/foo/dune-package
-  Installing /OCAMLFIND_DESTDIR/foo/dune-package
-  Creating directory /OCAMLFIND_DESTDIR/foo
-  Copying _build/install/default/lib/foo/dune-package to /OCAMLFIND_DESTDIR/foo/dune-package (executable: false)
-  Removing (if it exists) /OCAMLFIND_DESTDIR/foo/foo$ext_lib
-  Installing /OCAMLFIND_DESTDIR/foo/foo$ext_lib
-  Creating directory /OCAMLFIND_DESTDIR/foo
-  Copying _build/install/default/lib/foo/foo$ext_lib to /OCAMLFIND_DESTDIR/foo/foo$ext_lib (executable: false)
-  Removing (if it exists) /OCAMLFIND_DESTDIR/foo/foo.cma
-  Installing /OCAMLFIND_DESTDIR/foo/foo.cma
-  Creating directory /OCAMLFIND_DESTDIR/foo
-  Copying _build/install/default/lib/foo/foo.cma to /OCAMLFIND_DESTDIR/foo/foo.cma (executable: false)
-  Removing (if it exists) /OCAMLFIND_DESTDIR/foo/foo.cmi
-  Installing /OCAMLFIND_DESTDIR/foo/foo.cmi
-  Creating directory /OCAMLFIND_DESTDIR/foo
-  Copying _build/install/default/lib/foo/foo.cmi to /OCAMLFIND_DESTDIR/foo/foo.cmi (executable: false)
-  Removing (if it exists) /OCAMLFIND_DESTDIR/foo/foo.cmt
-  Installing /OCAMLFIND_DESTDIR/foo/foo.cmt
-  Creating directory /OCAMLFIND_DESTDIR/foo
-  Copying _build/install/default/lib/foo/foo.cmt to /OCAMLFIND_DESTDIR/foo/foo.cmt (executable: false)
-  Removing (if it exists) /OCAMLFIND_DESTDIR/foo/foo.cmx
-  Installing /OCAMLFIND_DESTDIR/foo/foo.cmx
-  Creating directory /OCAMLFIND_DESTDIR/foo
-  Copying _build/install/default/lib/foo/foo.cmx to /OCAMLFIND_DESTDIR/foo/foo.cmx (executable: false)
-  Removing (if it exists) /OCAMLFIND_DESTDIR/foo/foo.cmxa
-  Installing /OCAMLFIND_DESTDIR/foo/foo.cmxa
-  Creating directory /OCAMLFIND_DESTDIR/foo
-  Copying _build/install/default/lib/foo/foo.cmxa to /OCAMLFIND_DESTDIR/foo/foo.cmxa (executable: false)
-  Removing (if it exists) /OCAMLFIND_DESTDIR/foo/foo.ml
-  Installing /OCAMLFIND_DESTDIR/foo/foo.ml
-  Creating directory /OCAMLFIND_DESTDIR/foo
-  Copying _build/install/default/lib/foo/foo.ml to /OCAMLFIND_DESTDIR/foo/foo.ml (executable: false)
-  Removing (if it exists) /OCAMLFIND_DESTDIR/foo/opam
-  Installing /OCAMLFIND_DESTDIR/foo/opam
-  Creating directory /OCAMLFIND_DESTDIR/foo
-  Copying _build/install/default/lib/foo/opam to /OCAMLFIND_DESTDIR/foo/opam (executable: false)
-  Removing (if it exists) /OCAMLFIND_DESTDIR/foo/foo.cmxs
-  Installing /OCAMLFIND_DESTDIR/foo/foo.cmxs
-  Creating directory /OCAMLFIND_DESTDIR/foo
-  Copying _build/install/default/lib/foo/foo.cmxs to /OCAMLFIND_DESTDIR/foo/foo.cmxs (executable: true)
+  Removing (if it exists) /OPAM_PREFIX/lib/foo/META
+  Installing /OPAM_PREFIX/lib/foo/META
+  Creating directory /OPAM_PREFIX/lib/foo
+  Copying _build/install/default/lib/foo/META to /OPAM_PREFIX/lib/foo/META (executable: false)
+  Removing (if it exists) /OPAM_PREFIX/lib/foo/dune-package
+  Installing /OPAM_PREFIX/lib/foo/dune-package
+  Creating directory /OPAM_PREFIX/lib/foo
+  Copying _build/install/default/lib/foo/dune-package to /OPAM_PREFIX/lib/foo/dune-package (executable: false)
+  Removing (if it exists) /OPAM_PREFIX/lib/foo/foo$ext_lib
+  Installing /OPAM_PREFIX/lib/foo/foo$ext_lib
+  Creating directory /OPAM_PREFIX/lib/foo
+  Copying _build/install/default/lib/foo/foo$ext_lib to /OPAM_PREFIX/lib/foo/foo$ext_lib (executable: false)
+  Removing (if it exists) /OPAM_PREFIX/lib/foo/foo.cma
+  Installing /OPAM_PREFIX/lib/foo/foo.cma
+  Creating directory /OPAM_PREFIX/lib/foo
+  Copying _build/install/default/lib/foo/foo.cma to /OPAM_PREFIX/lib/foo/foo.cma (executable: false)
+  Removing (if it exists) /OPAM_PREFIX/lib/foo/foo.cmi
+  Installing /OPAM_PREFIX/lib/foo/foo.cmi
+  Creating directory /OPAM_PREFIX/lib/foo
+  Copying _build/install/default/lib/foo/foo.cmi to /OPAM_PREFIX/lib/foo/foo.cmi (executable: false)
+  Removing (if it exists) /OPAM_PREFIX/lib/foo/foo.cmt
+  Installing /OPAM_PREFIX/lib/foo/foo.cmt
+  Creating directory /OPAM_PREFIX/lib/foo
+  Copying _build/install/default/lib/foo/foo.cmt to /OPAM_PREFIX/lib/foo/foo.cmt (executable: false)
+  Removing (if it exists) /OPAM_PREFIX/lib/foo/foo.cmx
+  Installing /OPAM_PREFIX/lib/foo/foo.cmx
+  Creating directory /OPAM_PREFIX/lib/foo
+  Copying _build/install/default/lib/foo/foo.cmx to /OPAM_PREFIX/lib/foo/foo.cmx (executable: false)
+  Removing (if it exists) /OPAM_PREFIX/lib/foo/foo.cmxa
+  Installing /OPAM_PREFIX/lib/foo/foo.cmxa
+  Creating directory /OPAM_PREFIX/lib/foo
+  Copying _build/install/default/lib/foo/foo.cmxa to /OPAM_PREFIX/lib/foo/foo.cmxa (executable: false)
+  Removing (if it exists) /OPAM_PREFIX/lib/foo/foo.ml
+  Installing /OPAM_PREFIX/lib/foo/foo.ml
+  Creating directory /OPAM_PREFIX/lib/foo
+  Copying _build/install/default/lib/foo/foo.ml to /OPAM_PREFIX/lib/foo/foo.ml (executable: false)
+  Removing (if it exists) /OPAM_PREFIX/lib/foo/opam
+  Installing /OPAM_PREFIX/lib/foo/opam
+  Creating directory /OPAM_PREFIX/lib/foo
+  Copying _build/install/default/lib/foo/opam to /OPAM_PREFIX/lib/foo/opam (executable: false)
+  Removing (if it exists) /OPAM_PREFIX/lib/foo/foo.cmxs
+  Installing /OPAM_PREFIX/lib/foo/foo.cmxs
+  Creating directory /OPAM_PREFIX/lib/foo
+  Copying _build/install/default/lib/foo/foo.cmxs to /OPAM_PREFIX/lib/foo/foo.cmxs (executable: true)
   Removing (if it exists) /OPAM_PREFIX/bin/exec
   Installing /OPAM_PREFIX/bin/exec
   Creating directory /OPAM_PREFIX/bin
@@ -151,17 +150,17 @@ destdir`:
   Installing /OPAM_PREFIX/man/man3/another-man-page.3
   Creating directory /OPAM_PREFIX/man/man3
   Copying _build/install/default/man/man3/another-man-page.3 to /OPAM_PREFIX/man/man3/another-man-page.3 (executable: false)
-  Removing (if it exists) /OCAMLFIND_DESTDIR/foo/META
-  Removing (if it exists) /OCAMLFIND_DESTDIR/foo/dune-package
-  Removing (if it exists) /OCAMLFIND_DESTDIR/foo/foo$ext_lib
-  Removing (if it exists) /OCAMLFIND_DESTDIR/foo/foo.cma
-  Removing (if it exists) /OCAMLFIND_DESTDIR/foo/foo.cmi
-  Removing (if it exists) /OCAMLFIND_DESTDIR/foo/foo.cmt
-  Removing (if it exists) /OCAMLFIND_DESTDIR/foo/foo.cmx
-  Removing (if it exists) /OCAMLFIND_DESTDIR/foo/foo.cmxa
-  Removing (if it exists) /OCAMLFIND_DESTDIR/foo/foo.ml
-  Removing (if it exists) /OCAMLFIND_DESTDIR/foo/opam
-  Removing (if it exists) /OCAMLFIND_DESTDIR/foo/foo.cmxs
+  Removing (if it exists) /OPAM_PREFIX/lib/foo/META
+  Removing (if it exists) /OPAM_PREFIX/lib/foo/dune-package
+  Removing (if it exists) /OPAM_PREFIX/lib/foo/foo$ext_lib
+  Removing (if it exists) /OPAM_PREFIX/lib/foo/foo.cma
+  Removing (if it exists) /OPAM_PREFIX/lib/foo/foo.cmi
+  Removing (if it exists) /OPAM_PREFIX/lib/foo/foo.cmt
+  Removing (if it exists) /OPAM_PREFIX/lib/foo/foo.cmx
+  Removing (if it exists) /OPAM_PREFIX/lib/foo/foo.cmxa
+  Removing (if it exists) /OPAM_PREFIX/lib/foo/foo.ml
+  Removing (if it exists) /OPAM_PREFIX/lib/foo/opam
+  Removing (if it exists) /OPAM_PREFIX/lib/foo/foo.cmxs
   Removing (if it exists) /OPAM_PREFIX/bin/exec
   Removing (if it exists) /OPAM_PREFIX/man/a-man-page-with-no-ext
   Removing (if it exists) /OPAM_PREFIX/man/man1/a-man-page.1
@@ -169,8 +168,8 @@ destdir`:
   Removing directory (if empty) /OPAM_PREFIX/man/man3
   Removing directory (if empty) /OPAM_PREFIX/man/man1
   Removing directory (if empty) /OPAM_PREFIX/man
+  Removing directory (if empty) /OPAM_PREFIX/lib/foo
   Removing directory (if empty) /OPAM_PREFIX/bin
-  Removing directory (if empty) /OCAMLFIND_DESTDIR/foo
 
 If only libdir is passed, binaries are installed under prefix/bin and libraries
 in libdir:

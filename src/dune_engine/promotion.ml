@@ -128,8 +128,11 @@ let do_promote db files_to_promote =
           Cached_digest.remove (Path.append_source dir dst));
       File.promote { src; staging; dst };
       List.iter others ~f:(fun (path, _staging) ->
-          Format.eprintf " -> ignored %s.@."
-            (Path.to_string_maybe_quoted (Path.build path)))
+          Console.print
+            [ Pp.textf " -> ignored %s."
+                (Path.to_string_maybe_quoted (Path.build path))
+            ; Pp.newline
+            ])
   in
   match files_to_promote with
   | All ->

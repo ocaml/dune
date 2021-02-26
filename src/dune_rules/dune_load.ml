@@ -1,7 +1,6 @@
 open! Dune_engine
 open! Stdune
 open Import
-module Dune_file = Dune_loaded_file
 
 module Jbuild_plugin : sig
   val create_plugin_wrapper :
@@ -197,7 +196,6 @@ let interpret ~dir ~project ~(dune_file : File_tree.Dune_file.t) =
 
 let load ~ancestor_vcs =
   File_tree.init ~ancestor_vcs ~recognize_jbuilder_projects:false;
-
   let _, vcs, projects =
     let f dir (ancestor_vcs, vcs, projects) =
       let vcs =

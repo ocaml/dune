@@ -20,7 +20,7 @@ val create :
   -> ?host:t
   -> projects:Dune_project.t list
   -> packages:Package.t Package.Name.Map.t
-  -> stanzas:Dune_loaded_file.t list
+  -> stanzas:Dune_file.t list
   -> unit
   -> t
 

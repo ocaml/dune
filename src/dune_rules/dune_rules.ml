@@ -40,4 +40,3 @@ module Ocaml_version = Ocaml_version
 module Lib_dep = Lib_dep
 module Ocamlobjinfo = Ocamlobjinfo
 module Action_unexpanded = Action_unexpanded
-module Dune_loaded_file = Dune_loaded_file

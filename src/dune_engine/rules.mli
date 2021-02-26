@@ -21,8 +21,7 @@ module Dir_rules : sig
 
   module Alias_spec : sig
     type t =
-      { deps : Path.Set.t
-      ; dyn_deps : Path.Set.t Action_builder.t
+      { expansion : unit Action_builder.t
       ; actions : alias_action Appendable_list.t
       }
   end
@@ -67,10 +66,12 @@ module Produce : sig
   module Alias : sig
     type t = Alias.t
 
-    (** [add_deps store alias ?dyn_deps deps] arrange things so that all
-        [dyn_deps] and [deps] are built as part of the build of alias [alias]. *)
-    val add_deps :
-      t -> ?dyn_deps:Path.Set.t Action_builder.t -> Path.Set.t -> unit
+    (** [add_deps store alias deps] arrange things so that all the dependencies
+        registered by [deps] are considered as a part of alias expansion of
+        [alias]. *)
+    val add_deps : t -> unit Action_builder.t -> unit
+
+    val add_static_deps : t -> Path.Set.t -> unit
 
     (** [add_action store alias ~stamp action] arrange things so that [action]
         is executed as part of the build of alias [alias]. [stamp] is any

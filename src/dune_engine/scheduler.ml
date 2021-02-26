@@ -791,8 +791,6 @@ module Handler = struct
     { new_event : Config.t -> unit
     ; build_interrupted : Config.t -> unit
     }
-
-  let no_op = { new_event = (fun _ -> ()); build_interrupted = (fun _ -> ()) }
 end
 
 type t =
@@ -1087,7 +1085,15 @@ let poll config ~on_event ~once ~finally =
   | Some bt -> Exn.raise_with_backtrace exn bt
 
 let go config run =
-  let t = prepare config ~polling:false ~handler:Handler.no_op in
+  let t =
+    prepare config ~polling:false
+      ~handler:
+        { new_event = (fun _ -> ())
+        ; build_interrupted = (fun _ ->
+            (* can't interrupt a build when not in polling mode *)
+            assert false)
+        }
+  in
   Build.go t run
 
 let send_dedup d =

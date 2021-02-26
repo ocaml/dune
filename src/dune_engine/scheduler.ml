@@ -1089,9 +1089,10 @@ let go config run =
     prepare config ~polling:false
       ~handler:
         { new_event = (fun _ -> ())
-        ; build_interrupted = (fun _ ->
-            (* can't interrupt a build when not in polling mode *)
-            assert false)
+        ; build_interrupted =
+            (fun _ ->
+              (* can't interrupt a build when not in polling mode *)
+              assert false)
         }
   in
   Build.go t run

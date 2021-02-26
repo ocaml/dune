@@ -789,10 +789,10 @@ type status =
 module Handler = struct
   type t =
     { new_event : Config.t -> unit
-    ; build_failure : Config.t -> unit
+    ; build_interrupted : Config.t -> unit
     }
 
-  let no_op = { new_event = (fun _ -> ()); build_failure = (fun _ -> ()) }
+  let no_op = { new_event = (fun _ -> ()); build_interrupted = (fun _ -> ()) }
 end
 
 type t =
@@ -801,7 +801,7 @@ type t =
   ; polling : bool
   ; rpc : Rpc0.t option
   ; mutable status : status
-  ; mutable handler : Handler.t
+  ; handler : Handler.t
   ; job_throttle : Fiber.Throttle.t
   ; events : Event.Queue.t
   ; process_watcher : Process_watcher.t
@@ -868,7 +868,7 @@ let kill_and_wait_for_all_processes t =
   done;
   !saw_signal
 
-let prepare (config : Config.t) ~polling =
+let prepare (config : Config.t) ~polling ~handler =
   Log.info
     [ Pp.textf "Workspace root: %s"
         (Path.to_absolute_filename Path.root |> String.maybe_quoted)
@@ -916,7 +916,7 @@ let prepare (config : Config.t) ~polling =
     ; events
     ; config
     ; rpc
-    ; handler = Handler.no_op
+    ; handler
     }
   in
   global := Some t;
@@ -967,7 +967,7 @@ end = struct
           (* We're already cancelling build, so file change events don't matter *)
           iter t
         | Building ->
-          t.handler.build_failure t.config;
+          t.handler.build_interrupted t.config;
           t.status <- Restarting_build;
           Process_watcher.killall t.process_watcher Sys.sigkill;
           iter t
@@ -1004,9 +1004,9 @@ module Build = struct
     | Failure
 
   type event =
-    | Source_files_changed
     | New_event
-    | Build_failure
+    | Source_files_changed
+    | Build_interrupted
     | Build_finish of build_result
 
   let go t run =
@@ -1023,12 +1023,12 @@ end
 
 let poll config ~on_event ~once ~finally =
   let handler : Handler.t =
-    { build_failure = (fun cfg -> on_event cfg (Build_failure : Build.event))
+    { build_interrupted =
+        (fun cfg -> on_event cfg (Build_interrupted : Build.event))
     ; new_event = (fun cfg -> on_event cfg (New_event : Build.event))
     }
   in
-  let t = prepare config ~polling:true in
-  let t = { t with handler } in
+  let t = prepare config ~polling:true ~handler in
   let watcher = File_watcher.create t.events in
   let rec loop () : unit Fiber.t =
     t.status <- Building;
@@ -1087,8 +1087,7 @@ let poll config ~on_event ~once ~finally =
   | Some bt -> Exn.raise_with_backtrace exn bt
 
 let go config run =
-  let t = prepare config ~polling:false in
-  let t = { t with handler = Handler.no_op } in
+  let t = prepare config ~polling:false ~handler:Handler.no_op in
   Build.go t run
 
 let send_dedup d =

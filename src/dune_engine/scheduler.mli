@@ -54,6 +54,7 @@ module Build : sig
     | Source_files_changed
     | Build_interrupted
     | Build_finish of build_result
+    | Chdir of string
 end
 
 (** Runs [once] in a loop, executing [finally] after every iteration, even if
@@ -67,7 +68,11 @@ val poll :
   -> finally:(unit -> unit)
   -> unit
 
-val go : Config.t -> (unit -> 'a Fiber.t) -> 'a
+val go :
+     Config.t
+  -> on_event:(Config.t -> Build.event -> unit)
+  -> (unit -> 'a Fiber.t)
+  -> 'a
 
 (** [with_job_slot f] waits for one job slot (as per [-j <jobs] to become
     available and then calls [f]. *)

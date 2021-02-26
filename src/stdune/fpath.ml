@@ -4,6 +4,8 @@ type mkdir_p =
   | Already_exists
   | Created
 
+let initial_cwd = Stdlib.Sys.getcwd ()
+
 let rec mkdir_p ?(perms = 0o777) t_s =
   if is_root t_s then
     Already_exists

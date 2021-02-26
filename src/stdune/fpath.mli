@@ -17,3 +17,5 @@ val follow_symlink : string -> (string, follow_symlink_error) result
 val unlink : string -> unit
 
 val unlink_no_err : string -> unit
+
+val initial_cwd : string

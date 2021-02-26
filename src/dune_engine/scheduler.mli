@@ -1,6 +1,6 @@
 (** Scheduling *)
-open! Import
 
+open! Import
 open Stdune
 
 module Config : sig
@@ -44,13 +44,27 @@ module Config : sig
     }
 end
 
-(** [go config fiber] runs the fiber until it terminates. *)
+module Build : sig
+  (** A build task producing ['a] after it's finished *)
+  type 'a t
+
+  (** Runs [once] in a loop, executing [finally] after every iteration, even if
+      Fiber.Never was encountered.
+
+      If any source files change in the middle of iteration, it gets canceled. *)
+  val poll :
+       once:(unit -> [ `Continue | `Stop ] Fiber.t)
+    -> finally:(unit -> unit)
+    -> unit t
+
+  (** [go config fiber] runs the fiber until it terminates. *)
+  val go : (unit -> 'a Fiber.t) -> 'a t
+end
+
+val build : Config.t -> 'a Build.t -> 'a
+
 val go : Config.t -> (unit -> 'a Fiber.t) -> 'a
 
-(** Runs [once] in a loop, executing [finally] after every iteration, even if
-    Fiber.Never was encountered.
-
-    If any source files change in the middle of iteration, it gets canceled. *)
 val poll :
      Config.t
   -> once:(unit -> [ `Continue | `Stop ] Fiber.t)

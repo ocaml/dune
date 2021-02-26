@@ -1037,46 +1037,7 @@ module Build = struct
     | Error (Got_signal | Never) ->
       raise Dune_util.Report_error.Already_reported
 
-  let maybe_clear_screen (config : Config.t) =
-    match config.terminal_persistence with
-    | Clear_on_rebuild -> Console.reset ()
-    | Preserve ->
-      Console.print_user_message
-        (User_message.make
-           [ Pp.nop
-           ; Pp.tag User_message.Style.Success
-               (Pp.verbatim "********** NEW BUILD **********")
-           ; Pp.nop
-           ])
-
-  let poll ~once ~finally =
-    let on_event config = function
-      | Source_files_changed -> maybe_clear_screen config
-      | New_event -> Console.Status_line.refresh ()
-      | Build_failure ->
-        let status_line =
-          Some
-            (Pp.seq
-               (* XXX Why do we print "Had errors"? The user simply edited a
-                  file *)
-               (Pp.tag User_message.Style.Error (Pp.verbatim "Had errors"))
-               (Pp.verbatim ", killing current build..."))
-        in
-        Console.Status_line.set (Fun.const status_line)
-      | Build_finish res ->
-        let message =
-          match res with
-          | Success -> Pp.tag User_message.Style.Success (Pp.verbatim "Success")
-          | Failure ->
-            Pp.tag User_message.Style.Error (Pp.verbatim "Had errors")
-        in
-        Console.Status_line.set
-          (Fun.const
-             (Some
-                (Pp.seq message
-                   (Pp.verbatim ", waiting for filesystem changes..."))))
-    in
-    Poll { once; finally; on_event }
+  let poll ~on_event ~once ~finally = Poll { on_event; once; finally }
 
   let run (type a) t (build : a t) : a =
     match build with
@@ -1152,8 +1113,6 @@ let build (type a) config (build : a Build.t) : a =
   Build.run t build
 
 let go config run = build config (Go { run })
-
-let poll config ~once ~finally = build config (Build.poll ~once ~finally)
 
 let send_dedup d =
   let t = Option.value_exn !global in

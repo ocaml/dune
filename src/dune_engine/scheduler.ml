@@ -786,12 +786,22 @@ type status =
   (* Cancellation requested. Build jobs are immediately rejected in this state *)
   | Restarting_build
 
+module Handler = struct
+  type t =
+    { new_event : Config.t -> unit
+    ; build_failure : Config.t -> unit
+    }
+
+  let no_op = { new_event = (fun _ -> ()); build_failure = (fun _ -> ()) }
+end
+
 type t =
   { original_cwd : string
   ; config : Config.t
   ; polling : bool
   ; rpc : Rpc0.t option
   ; mutable status : status
+  ; mutable handler : Handler.t
   ; job_throttle : Fiber.Throttle.t
   ; events : Event.Queue.t
   ; process_watcher : Process_watcher.t
@@ -870,7 +880,7 @@ let prepare (config : Config.t) ~polling =
   let process_watcher = Process_watcher.init events in
   let cwd = Sys.getcwd () in
   ( if cwd <> initial_cwd && not !Clflags.no_print_directory then
-    let message =
+    let dir =
       match Config.inside_dune with
       | false -> cwd
       | true -> (
@@ -906,6 +916,7 @@ let prepare (config : Config.t) ~polling =
     ; events
     ; config
     ; rpc
+    ; handler = Handler.no_op
     }
   in
   global := Some t;
@@ -946,7 +957,7 @@ end = struct
     then
       raise (Abort Never)
     else (
-      Console.Status_line.refresh ();
+      t.handler.new_event t.config;
       match Event.Queue.next t.events with
       | Job_completed (job, status) -> Fiber.Fill (job.ivar, status)
       | Files_changed changed_files -> (
@@ -956,15 +967,7 @@ end = struct
           (* We're already cancelling build, so file change events don't matter *)
           iter t
         | Building ->
-          let status_line =
-            Some
-              (Pp.seq
-                 (* XXX Why do we print "Had errors"? The user simply edited a
-                    file *)
-                 (Pp.tag User_message.Style.Error (Pp.verbatim "Had errors"))
-                 (Pp.verbatim ", killing current build..."))
-          in
-          Console.Status_line.set (Fun.const status_line);
+          t.handler.build_failure t.config;
           t.status <- Restarting_build;
           Process_watcher.killall t.process_watcher Sys.sigkill;
           iter t
@@ -995,92 +998,162 @@ end = struct
     | Ok -> res
 end
 
-let go config f =
-  let t = prepare config ~polling:false in
-  let res =
-    let f = Rpc0.with_rpc_serve t.rpc f in
-    Run_once.run_and_cleanup t f
-  in
-  match res with
-  | Error (Exn exn) -> Exn_with_backtrace.reraise exn
-  | Ok res -> res
-  | Error (Got_signal | Never) -> raise Dune_util.Report_error.Already_reported
+module Build = struct
+  type build_result =
+    | Success
+    | Failure
 
-let maybe_clear_screen (config : Config.t) =
-  match config.terminal_persistence with
-  | Clear_on_rebuild -> Console.reset ()
-  | Preserve ->
-    Console.print_user_message
-      (User_message.make
-         [ Pp.nop
-         ; Pp.tag User_message.Style.Success
-             (Pp.verbatim "********** NEW BUILD **********")
-         ; Pp.nop
-         ])
+  type event =
+    | Source_files_changed
+    | New_event
+    | Build_failure
+    | Build_finish of build_result
 
-let poll (config : Config.t) ~once ~finally =
-  let t = prepare config ~polling:true in
-  let watcher = File_watcher.create t.events in
-  let rec loop () : unit Fiber.t =
-    t.status <- Building;
-    let open Fiber.O in
-    let* res =
-      let+ res =
-        let on_error exn () =
-          match t.status with
-          | Building -> Report_error.report exn
-          | Restarting_build -> ()
-          | Waiting_for_file_changes _ ->
-            (* We are inside a build, so we aren't waiting for a file change
-               event *)
-            assert false
-        in
-        Fiber.fold_errors ~init:() ~on_error once
-      in
-      finally ();
-      res
+  type 'a t =
+    | Go : { run : unit -> 'a Fiber.t } -> 'a t
+    | Poll :
+        { once : unit -> [ `Continue | `Stop ] Fiber.t
+        ; finally : unit -> unit
+        ; on_event : Config.t -> event -> unit
+        }
+        -> unit t
+
+  let to_handler (type a) (t : a t) : Handler.t =
+    match t with
+    | Go _ -> Handler.no_op
+    | Poll p ->
+      { build_failure = (fun cfg -> p.on_event cfg Build_failure)
+      ; new_event = (fun cfg -> p.on_event cfg New_event)
+      }
+
+  let go t run =
+    let res =
+      let f = Rpc0.with_rpc_serve t.rpc run in
+      Run_once.run_and_cleanup t f
     in
-    match t.status with
-    | Waiting_for_file_changes _ ->
-      (* We just finished a build, so there's no way this was set *)
-      assert false
-    | Restarting_build -> loop ()
-    | Building -> (
-      let message =
-        match res with
-        | Ok _ -> Pp.tag User_message.Style.Success (Pp.verbatim "Success")
-        | Error _ -> Pp.tag User_message.Style.Error (Pp.verbatim "Had errors")
-      in
-      Console.Status_line.set
-        (Fun.const
-           (Some
-              (Pp.seq message
-                 (Pp.verbatim ", waiting for filesystem changes..."))));
-      let ivar = Fiber.Ivar.create () in
-      t.status <- Waiting_for_file_changes ivar;
-      let* () = Fiber.Ivar.read ivar in
-      maybe_clear_screen config;
-      match res with
-      | Error _
-      | Ok `Continue ->
-        loop ()
-      | Ok `Stop -> Fiber.return () )
-  in
-  let run = Rpc0.with_rpc_serve t.rpc loop in
-  let exn, bt =
-    match Run_once.run_and_cleanup t run with
-    | Ok () ->
-      (* Polling mode is an infinite loop. We aren't going to terminate *)
-      assert false
+    match res with
+    | Error (Exn exn) -> Exn_with_backtrace.reraise exn
+    | Ok res -> res
     | Error (Got_signal | Never) ->
-      (Dune_util.Report_error.Already_reported, None)
-    | Error (Exn exn_with_bt) -> (exn_with_bt.exn, Some exn_with_bt.backtrace)
+      raise Dune_util.Report_error.Already_reported
+
+  let maybe_clear_screen (config : Config.t) =
+    match config.terminal_persistence with
+    | Clear_on_rebuild -> Console.reset ()
+    | Preserve ->
+      Console.print_user_message
+        (User_message.make
+           [ Pp.nop
+           ; Pp.tag User_message.Style.Success
+               (Pp.verbatim "********** NEW BUILD **********")
+           ; Pp.nop
+           ])
+
+  let poll ~once ~finally =
+    let on_event config = function
+      | Source_files_changed -> maybe_clear_screen config
+      | New_event -> Console.Status_line.refresh ()
+      | Build_failure ->
+        let status_line =
+          Some
+            (Pp.seq
+               (* XXX Why do we print "Had errors"? The user simply edited a
+                  file *)
+               (Pp.tag User_message.Style.Error (Pp.verbatim "Had errors"))
+               (Pp.verbatim ", killing current build..."))
+        in
+        Console.Status_line.set (Fun.const status_line)
+      | Build_finish res ->
+        let message =
+          match res with
+          | Success -> Pp.tag User_message.Style.Success (Pp.verbatim "Success")
+          | Failure ->
+            Pp.tag User_message.Style.Error (Pp.verbatim "Had errors")
+        in
+        Console.Status_line.set
+          (Fun.const
+             (Some
+                (Pp.seq message
+                   (Pp.verbatim ", waiting for filesystem changes..."))))
+    in
+    Poll { once; finally; on_event }
+
+  let run (type a) t (build : a t) : a =
+    match build with
+    | Go { run } -> go t run
+    | Poll { once; finally; on_event } -> (
+      let watcher = File_watcher.create t.events in
+      let rec loop () : unit Fiber.t =
+        t.status <- Building;
+        let open Fiber.O in
+        let* res =
+          let+ res =
+            let on_error exn () =
+              match t.status with
+              | Building -> Report_error.report exn
+              | Restarting_build -> ()
+              | Waiting_for_file_changes _ ->
+                (* We are inside a build, so we aren't waiting for a file change
+                   event *)
+                assert false
+            in
+            Fiber.fold_errors ~init:() ~on_error once
+          in
+          finally ();
+          res
+        in
+        match t.status with
+        | Waiting_for_file_changes _ ->
+          (* We just finished a build, so there's no way this was set *)
+          assert false
+        | Restarting_build -> loop ()
+        | Building -> (
+          on_event t.config
+            (Build_finish
+               ( match res with
+               | Error _ -> Failure
+               | Ok _ -> Success ));
+          let ivar = Fiber.Ivar.create () in
+          t.status <- Waiting_for_file_changes ivar;
+          let* () = Fiber.Ivar.read ivar in
+          on_event t.config Source_files_changed;
+          match res with
+          | Error _
+          | Ok `Continue ->
+            loop ()
+          | Ok `Stop -> Fiber.return () )
+      in
+      let run = Rpc0.with_rpc_serve t.rpc loop in
+      let exn, bt =
+        match Run_once.run_and_cleanup t run with
+        | Ok () ->
+          (* Polling mode is an infinite loop. We aren't going to terminate *)
+          assert false
+        | Error (Got_signal | Never) ->
+          (Dune_util.Report_error.Already_reported, None)
+        | Error (Exn exn_with_bt) ->
+          (exn_with_bt.exn, Some exn_with_bt.backtrace)
+      in
+      ignore (wait_for_process t (File_watcher.pid watcher) : _ Fiber.t);
+      ignore (kill_and_wait_for_all_processes t : saw_signal);
+      match bt with
+      | None -> Exn.raise exn
+      | Some bt -> Exn.raise_with_backtrace exn bt )
+
+  let go run = Go { run }
+end
+
+let build (type a) config (build : a Build.t) : a =
+  let t =
+    let t = prepare config ~polling:true in
+    let handler = Build.to_handler build in
+    { t with handler }
   in
-  ignore (wait_for_process t (File_watcher.pid watcher) : _ Fiber.t);
-  ignore (kill_and_wait_for_all_processes t : saw_signal);
-  match bt with
-  | None -> Exn.raise exn
-  | Some bt -> Exn.raise_with_backtrace exn bt
+  Build.run t build
+
+let go config run = build config (Go { run })
+
+let poll config ~once ~finally = build config (Build.poll ~once ~finally)
 
 let send_dedup d =
   let t = Option.value_exn !global in

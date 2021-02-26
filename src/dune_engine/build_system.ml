@@ -757,21 +757,16 @@ end = struct
                   Alias.Name.install
               in
               Alias.Name.Map.set aliases Alias.Name.default
-                { deps = Path.Set.empty
-                ; dyn_deps =
+                { expansion =
                     (let+ _ =
                        Alias0.dep_rec_internal ~name:default_alias ~dir ~ctx_dir
                      in
-                     Path.Set.empty)
+                     ())
                 ; actions = Appendable_list.empty
                 } )
       in
       Alias.Name.Map.foldi aliases ~init:[]
-        ~f:(fun
-             name
-             { Rules.Dir_rules.Alias_spec.deps; dyn_deps; actions }
-             rules
-           ->
+        ~f:(fun name { Rules.Dir_rules.Alias_spec.expansion; actions } rules ->
           let base_path =
             Path.Build.relative alias_dir (Alias.Name.to_string name)
           in
@@ -795,15 +790,14 @@ end = struct
                 ( rule :: rules
                 , Path.Set.add action_stamp_files (Path.build path) ))
           in
-          let deps = Path.Set.union deps action_stamp_files in
+          let deps = Action_builder.path_set action_stamp_files >>> expansion in
           let path =
             Path.Build.extend_basename base_path ~suffix:Alias0.suffix
           in
           Rule.make ~context:None ~env:None
             (let action =
-               let+ () = Action_builder.path_set deps
-               and+ dyn_deps = Action_builder.dyn_path_set_reuse dyn_deps in
-               let deps = Path.Set.union deps dyn_deps in
+               let+ (), deps = Action_builder.capture_deps deps in
+               let deps = Dep.Set.paths deps in
                Action.with_stdout_to path
                  (Action.digest_files (Path.Set.to_list deps))
              in

@@ -135,7 +135,8 @@ end = struct
 
   let alias ctx m = alias ~dir:(Paths.odocs ctx m)
 
-  let setup_deps ctx m files = Rules.Produce.Alias.add_deps (alias ctx m) files
+  let setup_deps ctx m files =
+    Rules.Produce.Alias.add_static_deps (alias ctx m) files
 end
 
 let odoc_ext = ".odoc"
@@ -484,7 +485,7 @@ let setup_lib_html_rules_def =
     List.iter odocs ~f:(setup_html sctx ~pkg ~requires);
     let html_files = List.map ~f:(fun o -> Path.build o.html_file) odocs in
     let static_html = List.map ~f:Path.build (static_html ctx) in
-    Rules.Produce.Alias.add_deps
+    Rules.Produce.Alias.add_static_deps
       (Dep.html_alias ctx (Lib lib))
       (Path.Set.of_list (List.rev_append static_html html_files))
   in
@@ -541,7 +542,7 @@ let setup_pkg_html_rules_def =
       in
       let html_files = List.map ~f:(fun o -> Path.build o.html_file) odocs in
       let static_html = List.map ~f:Path.build (static_html ctx) in
-      Rules.Produce.Alias.add_deps
+      Rules.Produce.Alias.add_static_deps
         (Dep.html_alias ctx (Pkg pkg))
         (Path.Set.of_list (List.rev_append static_html html_files)))
 
@@ -556,7 +557,7 @@ let setup_package_aliases sctx (pkg : Package.t) =
     let dir = Path.Build.append_source ctx.build_dir pkg_dir in
     Alias.doc ~dir
   in
-  Rules.Produce.Alias.add_deps alias
+  Rules.Produce.Alias.add_static_deps alias
     ( Dep.html_alias ctx (Pkg name)
       :: ( libs_of_pkg sctx ~pkg:name
          |> List.map ~f:(fun lib -> Dep.html_alias ctx (Lib lib)) )
@@ -657,7 +658,7 @@ let init sctx =
   |> Package.Name.Map.iter ~f:(fun (pkg : Package.t) ->
          (* setup @doc to build the correct html for the package *)
          setup_package_aliases sctx pkg);
-  Rules.Produce.Alias.add_deps
+  Rules.Produce.Alias.add_static_deps
     (Alias.private_doc ~dir:ctx.build_dir)
     ( stanzas
     |> List.concat_map ~f:(fun (w : _ Dir_with_dune.t) ->

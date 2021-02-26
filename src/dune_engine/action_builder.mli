@@ -117,6 +117,10 @@ val path_set : Path.Set.t -> unit t
     dependencies of the action produced by the action builder. *)
 val paths_matching : loc:Loc.t -> File_selector.t -> Path.Set.t t
 
+(** Like [paths_matching], but don't return the resulting set. The action
+    dependency is still registered. *)
+val paths_matching_unit : loc:Loc.t -> File_selector.t -> unit t
+
 (** [paths_existing paths] will require as dependencies the files that actually
     exist. *)
 val paths_existing : Path.t list -> unit t
@@ -210,6 +214,8 @@ val fold_labeled : _ t -> init:'acc -> f:(label -> 'acc -> 'acc) -> 'acc
     returned [t] should be attached to the current action builder to record
     dependencies and other informations. Otherwise return [None]. *)
 val static_eval : 'a t -> ('a * unit t) option
+
+val capture_deps : 'a t -> ('a * Dep.Set.t) t
 
 module Expander : String_with_vars.Expander with type 'a app := 'a t
 

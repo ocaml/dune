@@ -123,7 +123,5 @@ let gen_rules sctx t ~dir ~scope =
   Super_context.add_alias_action sctx ~dir ~loc:(Some loc) ~stamp:name
     cinaps_alias
     (Action_builder.with_no_targets action);
-  let stamp_file =
-    Alias.stamp_file cinaps_alias |> Path.build |> Path.Set.singleton
-  in
-  Rules.Produce.Alias.add_deps (Alias.runtest ~dir) stamp_file
+  Rules.Produce.Alias.add_deps (Alias.runtest ~dir)
+    (Action_builder.alias cinaps_alias)

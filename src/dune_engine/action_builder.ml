@@ -27,6 +27,7 @@ module T = struct
     | Memo_build : 'a Memo.Build.t -> 'a t
     | Dyn_memo_build : 'a Memo.Build.t t -> 'a t
     | Build : 'a t t -> 'a t
+    | Capture_deps : 'a t -> ('a * Dep.Set.t) t
 
   and 'a memo =
     { name : string
@@ -89,6 +90,8 @@ let paths ps = Deps (Dep.Set.of_files ps)
 let path_set ps = Deps (Dep.Set.of_files_set ps)
 
 let paths_matching ~loc:_ dir_glob = Paths_glob dir_glob
+
+let paths_matching_unit ~loc:_ dir_glob = ignore (Paths_glob dir_glob)
 
 let dyn_paths paths =
   Dyn_paths
@@ -336,6 +339,7 @@ end = struct
     | Memo_build _ -> Static_deps.empty
     | Dyn_memo_build b -> static_deps b
     | Build b -> static_deps b
+    | Capture_deps b -> static_deps b
 end
 
 let static_deps = Analysis.static_deps
@@ -379,6 +383,7 @@ let fold_labeled (type acc) t ~(init : acc) ~f =
     | Memo_build _ -> acc
     | Dyn_memo_build b -> loop b acc
     | Build b -> loop b acc
+    | Capture_deps b -> loop b acc
   in
   loop t init
 
@@ -492,6 +497,9 @@ struct
         let* b, deps0 = exec b in
         let+ r, deps1 = build_static_rule_deps_and_exec b in
         (r, Dep.Set.union deps0 deps1)
+      | Capture_deps b ->
+        let+ b, deps0 = exec b in
+        ((b, deps0), deps0)
 
     and build_static_rule_deps_and_exec :
         type a. a t -> (a * Dep.Set.t) Memo.Build.t =
@@ -565,6 +573,11 @@ let rec can_eval_statically : type a. a t -> bool = function
        If we find another way to break this cycle we should be able to change
        this code. *)
     false
+  | Capture_deps _ ->
+    (* In principle we can eval [Capture_deps b] statically if we can eval [b]
+       and its deps statically, but we don't have a mechanism for evaluating the
+       deps statically, so we have to answer with constant false here *)
+    false
 
 let static_eval =
   let rec loop : type a. a t -> unit t -> a * unit t =
@@ -609,6 +622,7 @@ let static_eval =
     | Memo_build _ -> assert false
     | Dyn_memo_build _ -> assert false
     | Build _ -> assert false
+    | Capture_deps _ -> assert false
   and loop_many : type a. a list -> a t list -> unit t -> a list * unit t =
    fun acc_res l acc ->
     match l with
@@ -622,3 +636,5 @@ let static_eval =
       Some (loop t (return ()))
     else
       None
+
+let capture_deps b = Capture_deps b

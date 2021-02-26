@@ -969,6 +969,85 @@ let%expect_test "dynamic cycles with non-uniform cutoff structure" =
     Evaluated the summit with input 2: 9
     f 2 = Ok 9 |}]
 
+let%expect_test "deadlocks and zombies when creating a cycle twice" =
+  let fdecl_base = Fdecl.create (fun _ -> Dyn.Opaque) in
+  let cycle_creator =
+    create ~with_cutoff:true "cycle_creator" (fun () ->
+        printf "Started evaluating cycle_creator\n";
+        let base = Fdecl.get fdecl_base in
+        let+ result =
+          let+ bases =
+            Build.of_fiber
+              (Fiber.parallel_map [ (); () ] ~f:(fun () ->
+                   Build.run (Memo.exec base ())))
+          in
+          match bases with
+          | [ base1; base2 ] -> base1 + base2
+          | _ -> assert false
+        in
+        printf "Miraculously evaluated cycle_creator: %d\n" result;
+        result)
+  in
+  let base =
+    create ~with_cutoff:true "base" (fun () ->
+        printf "Started evaluating base\n";
+        let+ result = Memo.exec cycle_creator () in
+        printf "Miraculously evaluated base: %d\n" result;
+        result)
+  in
+  Fdecl.set fdecl_base base;
+  let middle =
+    create ~with_cutoff:true "middle" (fun () ->
+        printf "Started evaluating middle\n";
+        let+ result = Memo.exec base () in
+        printf "Miraculously evaluated middle: %d\n" result;
+        result)
+  in
+  let summit =
+    Memo.create "summit"
+      ~input:(module Int)
+      ~visibility:Hidden
+      ~output:(Simple (module Int))
+      ~doc:"" Async
+      (fun offset ->
+        printf "Started evaluating summit\n";
+        let+ middle = Memo.exec middle () in
+        let result = middle + offset in
+        printf "Miraculously evaluated summit: %d\n" result;
+        result)
+  in
+  print_result summit 0;
+  print_result summit 1;
+  [%expect
+    {|
+    Started evaluating summit
+    Started evaluating middle
+    Started evaluating base
+    Started evaluating cycle_creator
+    f 0 = Error [ { exn = "Exit"; backtrace = "" } ]
+    Started evaluating summit
+    f 1 = Error [ { exn = "Exit"; backtrace = "" } ]
+    |}];
+  Memo.restart_current_run ();
+  print_result summit 0;
+  print_result summit 2;
+  [%expect
+    {|
+    f 0 = Error
+            [ { exn =
+                  "(\"A zombie computation is encountered in [currently_considering]\", {})"
+              ; backtrace = ""
+              }
+            ]
+    Started evaluating summit
+    f 2 = Error
+            [ { exn =
+                  "(\"A zombie computation is encountered in [currently_considering]\", {})"
+              ; backtrace = ""
+              }
+            ]
+    |}]
+
 let print_exns f =
   let res =
     match

@@ -162,26 +162,6 @@ module Caches = struct
   let clear () = List.iter !cleaners ~f:(fun f -> f ())
 end
 
-(* A value calculated during a sample attempt, or an exception with a backtrace
-   if the attempt failed. *)
-module Value = struct
-  type error =
-    | Sync of Exn_with_backtrace.t
-    | Async of Exn_set.t
-
-  type 'a t = ('a, error) Result.t
-
-  let get_sync_exn = function
-    | Ok a -> a
-    | Error (Sync exn) -> Exn_with_backtrace.reraise exn
-    | Error (Async _) -> assert false
-
-  let get_async_exn = function
-    | Ok a -> Fiber.return a
-    | Error (Sync _) -> assert false
-    | Error (Async exns) -> Fiber.reraise_all (Exn_set.to_list exns)
-end
-
 module Dep_node_without_state = struct
   type ('a, 'b, 'f) t =
     { spec : ('a, 'b, 'f) Spec.t
@@ -190,6 +170,75 @@ module Dep_node_without_state = struct
     }
 
   type packed = T : (_, _, _) t -> packed [@@unboxed]
+end
+
+let ser_input (type a) (node : (a, _, _) Dep_node_without_state.t) =
+  let (module Input : Store_intf.Input with type t = a) = node.spec.input in
+  Input.to_dyn node.input
+
+module Stack_frame_without_state = struct
+  open Dep_node_without_state
+
+  type t = Dep_node_without_state.packed
+
+  let name (T t) = Option.map t.spec.info ~f:(fun x -> x.name)
+
+  let input (T t) = ser_input t
+
+  let to_dyn t =
+    Dyn.Tuple
+      [ String
+          ( match name t with
+          | Some name -> name
+          | None -> "<unnamed>" )
+      ; input t
+      ]
+end
+
+module Cycle_error = struct
+  type t =
+    { cycle : Stack_frame_without_state.t list
+    ; stack : Stack_frame_without_state.t list
+    }
+
+  exception E of t
+
+  let get t = t.cycle
+
+  let stack t = t.stack
+end
+
+(* A value calculated during a "sample attempt". A sample attempt can fail for
+   two reasons:
+
+   - [Error]: the user-supplied function that was called to compute the value
+   raised an exception (or a set of exceptions in the [Async] case).
+
+   - [Cancelled]: the attempt was cancelled due to a dependency cycle.
+
+   Note that we plan to make [Cancelled] more general and store the reason for
+   cancellation: a dependency cycle or a request to cancel the current run. *)
+module Value = struct
+  type error =
+    | Sync of Exn_with_backtrace.t
+    | Async of Exn_set.t
+
+  type 'a t =
+    | Ok of 'a
+    | Error of error
+    | Cancelled of { dependency_cycle : Cycle_error.t }
+
+  let get_sync_exn = function
+    | Ok a -> a
+    | Error (Sync exn) -> Exn_with_backtrace.reraise exn
+    | Error (Async _) -> assert false
+    | Cancelled { dependency_cycle } -> raise (Cycle_error.E dependency_cycle)
+
+  let get_async_exn = function
+    | Ok a -> Fiber.return a
+    | Error (Sync _) -> assert false
+    | Error (Async exns) -> Fiber.reraise_all (Exn_set.to_list exns)
+    | Cancelled { dependency_cycle } -> raise (Cycle_error.E dependency_cycle)
 end
 
 module Dag : Dag.S with type value := Dep_node_without_state.packed =
@@ -436,6 +485,16 @@ module Cached_value = struct
     ; id = Value_id.create ()
     }
 
+  (* Dependencies of cancelled computations are not accurate, so we store the
+     empty list of [deps] in this case. In future, it would be better to
+     refactor the code to avoid storing the list altogether in this case. *)
+  let create_cancelled ~dependency_cycle =
+    { deps = []
+    ; value = Cancelled { dependency_cycle }
+    ; last_validated_at = Run.current ()
+    ; id = Value_id.create ()
+    }
+
   let confirm_old_value t ~deps_rev =
     t.last_validated_at <- Run.current ();
     t.deps <- capture_dep_values ~deps_rev;
@@ -444,35 +503,12 @@ module Cached_value = struct
   let value_changed (type a) (node : (_, a, _) Dep_node.t) prev_output
       curr_output =
     match (prev_output, curr_output) with
-    | Error _, _ -> true
-    | _, Error _ -> true
+    | (Value.Error _ | Cancelled _), _ -> true
+    | _, (Value.Error _ | Cancelled _) -> true
     | Ok prev_output, Ok curr_output -> (
       match node.without_state.spec.allow_cutoff with
       | Yes equal -> not (equal prev_output curr_output)
       | No -> true )
-end
-
-let ser_input (type a) (node : (a, _, _) Dep_node_without_state.t) =
-  let (module Input : Store_intf.Input with type t = a) = node.spec.input in
-  Input.to_dyn node.input
-
-module Stack_frame_without_state = struct
-  open Dep_node_without_state
-
-  type t = Dep_node_without_state.packed
-
-  let name (T t) = Option.map t.spec.info ~f:(fun x -> x.name)
-
-  let input (T t) = ser_input t
-
-  let to_dyn t =
-    Dyn.Tuple
-      [ String
-          ( match name t with
-          | Some name -> name
-          | None -> "<unnamed>" )
-      ; input t
-      ]
 end
 
 module Stack_frame_with_state = struct
@@ -491,19 +527,6 @@ module To_open = struct
 end
 
 open To_open
-
-module Cycle_error = struct
-  type t =
-    { cycle : Stack_frame_without_state.t list
-    ; stack : Stack_frame_without_state.t list
-    }
-
-  exception E of t
-
-  let get t = t.cycle
-
-  let stack t = t.stack
-end
 
 let global_dep_dag = Dag.create ()
 
@@ -790,7 +813,25 @@ end = struct
     go
 
   let do_validate (dep_node : _ Dep_node.t) running_state =
-    let res =
+    let compute_value_and_deps_rev () =
+      match dep_node.without_state.spec.f with
+      | Function.Sync f ->
+        let value =
+          match
+            Exn_with_backtrace.try_with (fun () ->
+                f dep_node.without_state.input)
+          with
+          | Ok res -> Value.Ok res
+          | Error exn ->
+            let exn =
+              handle_code_error
+                ~frame:(Dep_node_without_state.T dep_node.without_state) exn
+            in
+            Error (Value.Sync exn)
+        in
+        (value, running_state.Running_state.deps_so_far.deps_reversed)
+    in
+    let cached_value =
       let frame =
         ( T { without_state = dep_node.without_state; running_state }
           : Stack_frame_with_state.t )
@@ -801,11 +842,15 @@ end = struct
             | None -> Prev_cycle_cache_lookup_result.Invalid No_value
             | Some cv -> (
               match cv.value with
+              | Cancelled _dependency_cycle ->
+                (* Dependencies of cancelled computations are not accurate, so
+                   we can't use [deps_changed] in this case. *)
+                Invalid No_value
               | Error _ ->
-                (* For errors, the dependencies are not always recorded
-                   correctly. In particular, dependency cycle errors have
-                   missing deps. Because of this, we can't use [deps_changed] in
-                   this case. *)
+                (* We always recompute errors, so there is no point in checking
+                   if any of their dependencies changed. In principle, we could
+                   introduce "persistent errors" that are recomputed only when
+                   their dependencies have changed. *)
                 Invalid No_value
               | Ok _ -> (
                 let res = deps_changed cv.deps in
@@ -822,45 +867,27 @@ end = struct
           in
           match from_cache with
           | Valid v -> v
-          | Invalid invalid_value -> (
-            match dep_node.without_state.spec.f with
-            | Function.Sync f ->
-              let res =
-                match invalid_value with
-                | No_value
-                | Old_value _ ->
-                  Exn_with_backtrace.try_with (fun () ->
-                      f dep_node.without_state.input)
-                | Cycle_error cycle_error ->
-                  Error (Exn_with_backtrace.capture (Cycle_error.E cycle_error))
-              in
-              let res =
-                Result.map_error res ~f:(fun exn ->
-                    let exn =
-                      handle_code_error
-                        ~frame:(Dep_node_without_state.T dep_node.without_state)
-                        exn
-                    in
-                    Value.Sync exn)
-              in
-              let deps_rev = running_state.deps_so_far.deps_reversed in
-              let res =
-                match invalid_value with
-                | No_value
-                | Cycle_error _ ->
-                  Cached_value.create res ~deps_rev
-                | Old_value old_cv -> (
-                  match
-                    Cached_value.value_changed dep_node old_cv.value res
-                  with
-                  | false -> Cached_value.confirm_old_value ~deps_rev old_cv
-                  | true -> Cached_value.create res ~deps_rev )
-              in
-              dep_node.last_cached_value <- Some res;
-              res ))
+          | Invalid invalid_value ->
+            let cached_value =
+              match invalid_value with
+              | Cycle_error dependency_cycle ->
+                Cached_value.create_cancelled ~dependency_cycle
+              | No_value ->
+                let value, deps_rev = compute_value_and_deps_rev () in
+                Cached_value.create value ~deps_rev
+              | Old_value old_cv -> (
+                let value, deps_rev = compute_value_and_deps_rev () in
+                match
+                  Cached_value.value_changed dep_node old_cv.value value
+                with
+                | true -> Cached_value.create value ~deps_rev
+                | false -> Cached_value.confirm_old_value old_cv ~deps_rev )
+            in
+            dep_node.last_cached_value <- Some cached_value;
+            cached_value)
     in
     dep_node.state <- Not_considering;
-    res
+    cached_value
 
   let newly_considering (dep_node : _ Dep_node.t) =
     let sample_attempt : Dag.node =
@@ -959,7 +986,25 @@ end = struct
     go
 
   let do_validate (dep_node : _ Dep_node.t) ivar running_state =
-    let* res =
+    let compute_value_and_deps_rev () =
+      match dep_node.without_state.spec.f with
+      | Function.Async f ->
+        (* A consequence of using [Fiber.collect_errors] is that memoized
+           functions don't report errors promptly - errors are reported once all
+           child fibers terminate. To fix this, we should use
+           [Fiber.with_error_handler], but we don't have access to dune's error
+           reporting mechanism in memo *)
+        let+ res =
+          Fiber.collect_errors (fun () -> f dep_node.without_state.input)
+        in
+        let value =
+          match res with
+          | Ok res -> Value.Ok res
+          | Error exns -> Error (Value.Async (Exn_set.of_list exns))
+        in
+        (value, running_state.Running_state.deps_so_far.deps_reversed)
+    in
+    let* cached_value =
       Call_stack.push_async_frame
         (T { without_state = dep_node.without_state; running_state })
         (fun () ->
@@ -969,11 +1014,15 @@ end = struct
               Fiber.return (Prev_cycle_cache_lookup_result.Invalid No_value)
             | Some cv -> (
               match cv.value with
+              | Cancelled _dependency_cycle ->
+                (* Dependencies of cancelled computations are not accurate, so
+                   we can't use [deps_changed] in this case. *)
+                Fiber.return (Prev_cycle_cache_lookup_result.Invalid No_value)
               | Error _ ->
-                (* For errors, the dependencies are not always recorded
-                   correctly. In particular, dependency cycle errors have
-                   missing deps. Because of this, we can't use [deps_changed] in
-                   this case. *)
+                (* We always recompute errors, so there is no point in checking
+                   if any of their dependencies changed. In principle, we could
+                   introduce "persistent errors" that are recomputed only when
+                   their dependencies have changed. *)
                 Fiber.return (Prev_cycle_cache_lookup_result.Invalid No_value)
               | Ok _ -> (
                 let+ res = deps_changed cv.deps in
@@ -990,51 +1039,28 @@ end = struct
           in
           match from_cache with
           | Valid v -> Fiber.return v
-          | Invalid invalid_value -> (
-            match dep_node.without_state.spec.f with
-            | Function.Async f ->
-              (* A consequence of using [Fiber.collect_errors] is that memoized
-                 functions don't report errors promptly - errors are reported
-                 once all child fibers terminate. To fix this, we should use
-                 [Fiber.with_error_handler], but we don't have access to dune's
-                 error reporting mechanism in memo *)
-              let+ res =
-                match invalid_value with
-                | No_value
-                | Old_value _ ->
-                  Fiber.collect_errors (fun () ->
-                      f dep_node.without_state.input)
-                | Cycle_error cycle_error ->
-                  Fiber.return
-                    (Error
-                       [ Exn_with_backtrace.capture (Cycle_error.E cycle_error)
-                       ])
-              in
-              let res =
-                Result.map_error res ~f:(fun exns ->
-                    (* this step deduplicates the errors *)
-                    Value.Async (Exn_set.of_list exns))
-              in
-              (* update the output cache with the correct value *)
-              let deps_rev = running_state.deps_so_far.deps_reversed in
-              let res =
-                match invalid_value with
-                | No_value
-                | Cycle_error _ ->
-                  Cached_value.create res ~deps_rev
-                | Old_value old_cv -> (
-                  match
-                    Cached_value.value_changed dep_node old_cv.value res
-                  with
-                  | true -> Cached_value.create res ~deps_rev
-                  | false -> Cached_value.confirm_old_value ~deps_rev old_cv )
-              in
-              dep_node.last_cached_value <- Some res;
-              res ))
+          | Invalid invalid_value ->
+            let+ cached_value =
+              match invalid_value with
+              | Cycle_error dependency_cycle ->
+                Fiber.return (Cached_value.create_cancelled ~dependency_cycle)
+              | No_value ->
+                let+ value, deps_rev = compute_value_and_deps_rev () in
+                Cached_value.create value ~deps_rev
+              | Old_value old_cv -> (
+                let+ value, deps_rev = compute_value_and_deps_rev () in
+                match
+                  Cached_value.value_changed dep_node old_cv.value value
+                with
+                | true -> Cached_value.create value ~deps_rev
+                | false -> Cached_value.confirm_old_value ~deps_rev old_cv )
+            in
+            dep_node.last_cached_value <- Some cached_value;
+            cached_value)
     in
     dep_node.state <- Not_considering;
-    let+ () = Fiber.Ivar.fill ivar res in
-    res
+    let+ () = Fiber.Ivar.fill ivar cached_value in
+    cached_value
 
   let newly_considering (dep_node : _ Dep_node.t) =
     let sample_attempt : Dag.node =

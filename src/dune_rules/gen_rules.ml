@@ -202,7 +202,7 @@ let define_all_alias ~dir ~scope ~js_targets =
       Predicate.create ~id ~f
     in
     File_selector.create ~dir:(Path.build dir) pred
-    |> Action_builder.paths_matching_ ~loc:Loc.none
+    |> Action_builder.paths_matching_unit ~loc:Loc.none
   in
   Rules.Produce.Alias.add_deps (Alias.all ~dir) deps
 

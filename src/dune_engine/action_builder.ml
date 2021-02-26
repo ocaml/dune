@@ -91,7 +91,7 @@ let path_set ps = Deps (Dep.Set.of_files_set ps)
 
 let paths_matching ~loc:_ dir_glob = Paths_glob dir_glob
 
-let paths_matching_ ~loc:_ dir_glob = ignore (Paths_glob dir_glob)
+let paths_matching_unit ~loc:_ dir_glob = ignore (Paths_glob dir_glob)
 
 let dyn_paths paths =
   Dyn_paths

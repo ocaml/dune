@@ -119,7 +119,7 @@ val paths_matching : loc:Loc.t -> File_selector.t -> Path.Set.t t
 
 (** Like [paths_matching], but don't return the resulting set. The action
     depency is still registered. *)
-val paths_matching_ : loc:Loc.t -> File_selector.t -> unit t
+val paths_matching_unit : loc:Loc.t -> File_selector.t -> unit t
 
 (** [paths_existing paths] will require as dependencies the files that actually
     exist. *)

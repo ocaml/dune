@@ -20,7 +20,7 @@ let add_obj_dir sctx ~obj_dir =
     in
     Rules.Produce.Alias.add_deps
       (Alias.check ~dir:(Obj_dir.dir obj_dir))
-      (Action_builder.paths_matching_ ~loc:(Loc.of_pos __POS__) dir_glob)
+      (Action_builder.paths_matching_unit ~loc:(Loc.of_pos __POS__) dir_glob)
 
 let add_files sctx ~dir files =
   if (Super_context.context sctx).merlin then

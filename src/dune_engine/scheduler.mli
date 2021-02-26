@@ -45,9 +45,6 @@ module Config : sig
 end
 
 module Build : sig
-  (** A build task producing ['a] after it's finished *)
-  type 'a t
-
   type build_result =
     | Success
     | Failure
@@ -57,22 +54,18 @@ module Build : sig
     | New_event
     | Build_failure
     | Build_finish of build_result
-
-  (** Runs [once] in a loop, executing [finally] after every iteration, even if
-      Fiber.Never was encountered.
-
-      If any source files change in the middle of iteration, it gets canceled. *)
-  val poll :
-       on_event:(Config.t -> event -> unit)
-    -> once:(unit -> [ `Continue | `Stop ] Fiber.t)
-    -> finally:(unit -> unit)
-    -> unit t
-
-  (** [go config fiber] runs the fiber until it terminates. *)
-  val go : (unit -> 'a Fiber.t) -> 'a t
 end
 
-val build : Config.t -> 'a Build.t -> 'a
+(** Runs [once] in a loop, executing [finally] after every iteration, even if
+    Fiber.Never was encountered.
+
+    If any source files change in the middle of iteration, it gets canceled. *)
+val poll :
+     Config.t
+  -> on_event:(Config.t -> Build.event -> unit)
+  -> once:(unit -> [ `Continue | `Stop ] Fiber.t)
+  -> finally:(unit -> unit)
+  -> unit
 
 val go : Config.t -> (unit -> 'a Fiber.t) -> 'a
 

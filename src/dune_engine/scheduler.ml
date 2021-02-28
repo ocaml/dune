@@ -38,7 +38,9 @@ module Config = struct
       | Tui -> "tui"
 
     let console_backend = function
-      | Tui -> assert false
+      | Tui ->
+        let tui = Dune_tui.create ~on_event:(fun _ -> ()) in
+        Dune_tui.backend tui
       | Progress -> Console.Backend.progress
       | Short
       | Verbose
@@ -73,7 +75,6 @@ module Signal = struct
     | Int
     | Quit
     | Term
-    | Winch
 
   let compare : t -> t -> Ordering.t = Poly.compare
 
@@ -85,17 +86,12 @@ module Signal = struct
     let to_dyn _ = Dyn.opaque
   end)
 
-  let all = [ Int; Quit; Term; Winch ]
-
-  external winch_number : unit -> int = "dune_winch_number" [@@noalloc]
-
-  let winch_number = winch_number ()
+  let all = [ Int; Quit; Term ]
 
   let to_int = function
     | Int -> Sys.sigint
     | Quit -> Sys.sigquit
     | Term -> Sys.sigterm
-    | Winch -> winch_number
 
   let of_int =
     List.map all ~f:(fun t -> (to_int t, t))
@@ -679,7 +675,6 @@ end = struct
       let signal = wait_signal () in
       Event.Queue.send_signal q signal;
       match signal with
-      | Winch -> ()
       | Int
       | Quit
       | Term ->

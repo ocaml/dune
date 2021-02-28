@@ -7,7 +7,7 @@ set -e -o pipefail
 TMP="$(mktemp -d)"
 trap "rm -rf $TMP" EXIT
 
-rm -rf notty
+rm -rf notty notty_unix
 mkdir -p notty/src notty_unix
 
 (

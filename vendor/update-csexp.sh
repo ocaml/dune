@@ -1,6 +1,6 @@
 #!/bin/bash
 
-version=bcf425c65184eef6a8306f33b76c935e67620c77
+version=0e1b2044c8d1ff187c27cec3e46d9cde14892650
 
 set -e -o pipefail
 
@@ -12,7 +12,7 @@ mkdir -p csexp/src
 
 (
     cd $TMP
-    git clone https://github.com/diml/csexp.git
+    git clone https://github.com/ocaml-dune/csexp.git
     cd csexp
     git checkout $version
 )

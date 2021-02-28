@@ -8,7 +8,7 @@ TMP="$(mktemp -d)"
 trap "rm -rf $TMP" EXIT
 
 rm -rf notty
-mkdir -p notty/src
+mkdir -p notty/src notty_unix
 
 (
     cd $TMP
@@ -24,5 +24,10 @@ cp -v $SRC/LICENSE.md notty
 cp -v $SRC/src/notty.{ml,mli} notty/src
 cp -rv $SRC/src/no-uucp notty/src
 
+cp -v $SRC/LICENSE.md notty_unix
+cp -v -R $SRC/src-unix/* notty_unix/
+
 git checkout notty/src/dune
+git checkout notty_unix/dune
+
 git add -A .

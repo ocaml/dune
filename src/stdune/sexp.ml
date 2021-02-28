@@ -1,10 +1,7 @@
 module Array = ArrayLabels
 module List = ListLabels
 module String = StringLabels
-
-type t = Dune_csexp.Csexp.t =
-  | Atom of string
-  | List of t list
+include Dune_csexp.Csexp
 
 let rec to_string = function
   | Atom s -> Escape.quote_if_needed s

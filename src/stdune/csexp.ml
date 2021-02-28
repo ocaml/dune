@@ -1,1 +1,1 @@
-include Dune_csexp.Csexp.Make (Sexp)
+include Dune_csexp.Csexp

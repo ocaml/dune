@@ -4,6 +4,7 @@
  (name dune_rules)
  (libraries
   stdune
+  dune_csexp
   fiber
   memo
   dune_re

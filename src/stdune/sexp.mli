@@ -1,6 +1,6 @@
 (** S-expressions *)
 
-type t =
+type t = Dune_csexp.Csexp.t =
   | Atom of string
   | List of t list
 

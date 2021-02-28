@@ -2,7 +2,7 @@ module Array = ArrayLabels
 module List = ListLabels
 module String = StringLabels
 
-type t =
+type t = Dune_csexp.Csexp.t =
   | Atom of string
   | List of t list
 

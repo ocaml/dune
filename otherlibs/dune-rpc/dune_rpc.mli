@@ -33,11 +33,7 @@
 (* TODO make records private *)
 
 module V1 : sig
-  module Sexp : sig
-    type t =
-      | Atom of string
-      | List of t list
-  end
+  open Dune_csexp (* TODO remove this *)
 
   module Id : sig
     (** Id's for requests, responses, sessions.
@@ -47,7 +43,7 @@ module V1 : sig
 
     type t
 
-    val make : Sexp.t -> t
+    val make : Csexp.t -> t
   end
 
   module Response : sig
@@ -58,7 +54,7 @@ module V1 : sig
         | Version_error
 
       type t =
-        { payload : Sexp.t option
+        { payload : Csexp.t option
         ; message : string
         ; kind : kind
         }
@@ -66,7 +62,7 @@ module V1 : sig
       exception E of t
     end
 
-    type t = (Sexp.t, Error.t) result
+    type t = (Csexp.t, Error.t) result
   end
 
   module Initialize : sig
@@ -105,7 +101,7 @@ module V1 : sig
 
   module Message : sig
     type t =
-      { payload : Sexp.t option
+      { payload : Csexp.t option
       ; message : string
       }
   end
@@ -160,12 +156,12 @@ module V1 : sig
 
       (* [write t x] writes the s-expression when [x] is [Some _], and closes
          the session if [x = None] *)
-      val write : t -> Sexp.t option -> unit Fiber.t
+      val write : t -> Csexp.t option -> unit Fiber.t
 
       (* [read t] attempts to read from [t]. If an s-expression is read, it is
          returned as [Some sexp], otherwise [None] is returned and the session
          is closed. *)
-      val read : t -> Sexp.t option Fiber.t
+      val read : t -> Csexp.t option Fiber.t
     end
   end) : sig
     open S

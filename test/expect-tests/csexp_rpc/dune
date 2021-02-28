@@ -5,6 +5,7 @@
   (pps ppx_expect))
  (libraries
   stdune
+  dune_csexp
   csexp_rpc
   unix
   threads.posix

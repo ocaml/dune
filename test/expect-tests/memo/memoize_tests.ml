@@ -612,13 +612,13 @@ let count_runs () =
   fun () ->
     incr counter;
     let result = !counter in
-    printf "Evaluating count_runs: %d\n" result;
+    printf "Evaluated count_runs: %d\n" result;
     let (_ : Run.t) = Memo.current_run () in
     Build.return result
 
 (* A test function incrementing a given memo. *)
 let increment which which_memo () =
-  printf "Starting evaluating %s\n" which;
+  printf "Started evaluating %s\n" which;
   let+ input = Memo.exec which_memo () in
   let result = input + 1 in
   printf "Evaluated %s: %d\n" which result;
@@ -638,7 +638,7 @@ let create ~with_cutoff name f =
 let%expect_test "diamond with non-uniform cutoff structure" =
   let base = create ~with_cutoff:true "base" (count_runs ()) in
   let length_of_base which () =
-    printf "Starting evaluating %s\n" which;
+    printf "Started evaluating %s\n" which;
     let+ base = Memo.exec base () in
     let result = String.length (Int.to_string base) in
     printf "Evaluated %s: %d\n" which result;
@@ -659,7 +659,7 @@ let%expect_test "diamond with non-uniform cutoff structure" =
       (increment "after_yes_cutoff" yes_cutoff)
   in
   let summit offset =
-    printf "Starting evaluating summit with offset %d\n" offset;
+    printf "Started evaluating summit with offset %d\n" offset;
     let+ after_no_cutoff, after_yes_cutoff =
       Memo.Build.both
         (Memo.exec after_no_cutoff ())
@@ -679,14 +679,14 @@ let%expect_test "diamond with non-uniform cutoff structure" =
   print_result summit 0;
   [%expect
     {|
-    Starting evaluating summit with offset 0
-    Starting evaluating after_no_cutoff
-    Starting evaluating no_cutoff
-    Evaluating count_runs: 1
+    Started evaluating summit with offset 0
+    Started evaluating after_no_cutoff
+    Started evaluating no_cutoff
+    Evaluated count_runs: 1
     Evaluated no_cutoff: 1
     Evaluated after_no_cutoff: 2
-    Starting evaluating after_yes_cutoff
-    Starting evaluating yes_cutoff
+    Started evaluating after_yes_cutoff
+    Started evaluating yes_cutoff
     Evaluated yes_cutoff: 1
     Evaluated after_yes_cutoff: 2
     Evaluated summit with offset 0: 4
@@ -695,7 +695,7 @@ let%expect_test "diamond with non-uniform cutoff structure" =
   print_result summit 1;
   [%expect
     {|
-    Starting evaluating summit with offset 1
+    Started evaluating summit with offset 1
     Evaluated summit with offset 1: 5
     f 1 = Ok 5
     |}];
@@ -703,12 +703,12 @@ let%expect_test "diamond with non-uniform cutoff structure" =
   print_result summit 0;
   [%expect
     {|
-    Evaluating count_runs: 2
-    Starting evaluating no_cutoff
+    Evaluated count_runs: 2
+    Started evaluating no_cutoff
     Evaluated no_cutoff: 1
-    Starting evaluating after_no_cutoff
+    Started evaluating after_no_cutoff
     Evaluated after_no_cutoff: 2
-    Starting evaluating yes_cutoff
+    Started evaluating yes_cutoff
     Evaluated yes_cutoff: 1
     f 0 = Ok 4
     |}];
@@ -719,7 +719,7 @@ let%expect_test "diamond with non-uniform cutoff structure" =
   print_result summit 2;
   [%expect
     {|
-    Starting evaluating summit with offset 2
+    Started evaluating summit with offset 2
     Evaluated summit with offset 2: 6
     f 2 = Ok 6
     |}]
@@ -817,12 +817,12 @@ let%expect_test "dynamic cycles with non-uniform cutoff structure" =
   [%expect
     {|
     Started evaluating the summit with input 0
-    Starting evaluating incrementing_chain_4_yes_cutoff
-    Starting evaluating incrementing_chain_3_no_cutoff
-    Starting evaluating incrementing_chain_2_yes_cutoff
-    Starting evaluating incrementing_chain_1_no_cutoff
+    Started evaluating incrementing_chain_4_yes_cutoff
+    Started evaluating incrementing_chain_3_no_cutoff
+    Started evaluating incrementing_chain_2_yes_cutoff
+    Started evaluating incrementing_chain_1_no_cutoff
     Started evaluating cycle_creator_no_cutoff
-    Evaluating count_runs: 1
+    Evaluated count_runs: 1
     Evaluated cycle_creator_no_cutoff: 1
     Evaluated incrementing_chain_1_no_cutoff: 2
     Evaluated incrementing_chain_2_yes_cutoff: 3
@@ -834,10 +834,10 @@ let%expect_test "dynamic cycles with non-uniform cutoff structure" =
   [%expect
     {|
     Started evaluating the summit with input 0
-    Starting evaluating incrementing_chain_4_no_cutoff
-    Starting evaluating incrementing_chain_3_yes_cutoff
-    Starting evaluating incrementing_chain_2_no_cutoff
-    Starting evaluating incrementing_chain_1_yes_cutoff
+    Started evaluating incrementing_chain_4_no_cutoff
+    Started evaluating incrementing_chain_3_yes_cutoff
+    Started evaluating incrementing_chain_2_no_cutoff
+    Started evaluating incrementing_chain_1_yes_cutoff
     Started evaluating cycle_creator_yes_cutoff
     Evaluated cycle_creator_yes_cutoff: 1
     Evaluated incrementing_chain_1_yes_cutoff: 2
@@ -862,13 +862,13 @@ let%expect_test "dynamic cycles with non-uniform cutoff structure" =
   print_result summit_no_cutoff 0;
   [%expect
     {|
-    Evaluating count_runs: 2
+    Evaluated count_runs: 2
     Started evaluating cycle_creator_no_cutoff
     Cycling to summit from cycle_creator_no_cutoff...
-    Starting evaluating incrementing_chain_1_no_cutoff
-    Starting evaluating incrementing_chain_2_yes_cutoff
-    Starting evaluating incrementing_chain_3_no_cutoff
-    Starting evaluating incrementing_chain_4_yes_cutoff
+    Started evaluating incrementing_chain_1_no_cutoff
+    Started evaluating incrementing_chain_2_yes_cutoff
+    Started evaluating incrementing_chain_3_no_cutoff
+    Started evaluating incrementing_chain_4_yes_cutoff
     Started evaluating the summit with input 0
     Dependency cycle detected:
     - ("incrementing_chain_plus_input", 2)
@@ -884,10 +884,10 @@ let%expect_test "dynamic cycles with non-uniform cutoff structure" =
     {|
     Started evaluating cycle_creator_yes_cutoff
     Cycling to summit from cycle_creator_yes_cutoff...
-    Starting evaluating incrementing_chain_1_yes_cutoff
-    Starting evaluating incrementing_chain_2_no_cutoff
-    Starting evaluating incrementing_chain_3_yes_cutoff
-    Starting evaluating incrementing_chain_4_no_cutoff
+    Started evaluating incrementing_chain_1_yes_cutoff
+    Started evaluating incrementing_chain_2_no_cutoff
+    Started evaluating incrementing_chain_3_yes_cutoff
+    Started evaluating incrementing_chain_4_no_cutoff
     Started evaluating the summit with input 0
     Dependency cycle detected:
     - ("incrementing_chain_plus_input", 2)
@@ -927,12 +927,12 @@ let%expect_test "dynamic cycles with non-uniform cutoff structure" =
   [%expect
     {|
     Started evaluating the summit with input 0
-    Starting evaluating incrementing_chain_4_yes_cutoff
-    Starting evaluating incrementing_chain_3_no_cutoff
-    Starting evaluating incrementing_chain_2_yes_cutoff
-    Starting evaluating incrementing_chain_1_no_cutoff
+    Started evaluating incrementing_chain_4_yes_cutoff
+    Started evaluating incrementing_chain_3_no_cutoff
+    Started evaluating incrementing_chain_2_yes_cutoff
+    Started evaluating incrementing_chain_1_no_cutoff
     Started evaluating cycle_creator_no_cutoff
-    Evaluating count_runs: 3
+    Evaluated count_runs: 3
     Evaluated cycle_creator_no_cutoff: 3
     Evaluated incrementing_chain_1_no_cutoff: 4
     Evaluated incrementing_chain_2_yes_cutoff: 5
@@ -944,10 +944,10 @@ let%expect_test "dynamic cycles with non-uniform cutoff structure" =
   [%expect
     {|
     Started evaluating the summit with input 0
-    Starting evaluating incrementing_chain_4_no_cutoff
-    Starting evaluating incrementing_chain_3_yes_cutoff
-    Starting evaluating incrementing_chain_2_no_cutoff
-    Starting evaluating incrementing_chain_1_yes_cutoff
+    Started evaluating incrementing_chain_4_no_cutoff
+    Started evaluating incrementing_chain_3_yes_cutoff
+    Started evaluating incrementing_chain_2_no_cutoff
+    Started evaluating incrementing_chain_1_yes_cutoff
     Started evaluating cycle_creator_yes_cutoff
     Evaluated cycle_creator_yes_cutoff: 3
     Evaluated incrementing_chain_1_yes_cutoff: 4
@@ -968,6 +968,85 @@ let%expect_test "dynamic cycles with non-uniform cutoff structure" =
     Started evaluating the summit with input 2
     Evaluated the summit with input 2: 9
     f 2 = Ok 9 |}]
+
+let%expect_test "deadlocks and zombies when creating a cycle twice" =
+  let fdecl_base = Fdecl.create (fun _ -> Dyn.Opaque) in
+  let cycle_creator =
+    create ~with_cutoff:true "cycle_creator" (fun () ->
+        printf "Started evaluating cycle_creator\n";
+        let base = Fdecl.get fdecl_base in
+        let+ result =
+          let+ bases =
+            Build.of_fiber
+              (Fiber.parallel_map [ (); () ] ~f:(fun () ->
+                   Build.run (Memo.exec base ())))
+          in
+          match bases with
+          | [ base1; base2 ] -> base1 + base2
+          | _ -> assert false
+        in
+        printf "Miraculously evaluated cycle_creator: %d\n" result;
+        result)
+  in
+  let base =
+    create ~with_cutoff:true "base" (fun () ->
+        printf "Started evaluating base\n";
+        let+ result = Memo.exec cycle_creator () in
+        printf "Miraculously evaluated base: %d\n" result;
+        result)
+  in
+  Fdecl.set fdecl_base base;
+  let middle =
+    create ~with_cutoff:true "middle" (fun () ->
+        printf "Started evaluating middle\n";
+        let+ result = Memo.exec base () in
+        printf "Miraculously evaluated middle: %d\n" result;
+        result)
+  in
+  let summit =
+    Memo.create "summit"
+      ~input:(module Int)
+      ~visibility:Hidden
+      ~output:(Simple (module Int))
+      ~doc:"" Async
+      (fun offset ->
+        printf "Started evaluating summit\n";
+        let+ middle = Memo.exec middle () in
+        let result = middle + offset in
+        printf "Miraculously evaluated summit: %d\n" result;
+        result)
+  in
+  print_result summit 0;
+  print_result summit 1;
+  [%expect
+    {|
+    Started evaluating summit
+    Started evaluating middle
+    Started evaluating base
+    Started evaluating cycle_creator
+    f 0 = Error [ { exn = "Exit"; backtrace = "" } ]
+    Started evaluating summit
+    f 1 = Error [ { exn = "Exit"; backtrace = "" } ]
+    |}];
+  Memo.restart_current_run ();
+  print_result summit 0;
+  print_result summit 2;
+  [%expect
+    {|
+    f 0 = Error
+            [ { exn =
+                  "(\"A zombie computation is encountered in [currently_considering]\", {})"
+              ; backtrace = ""
+              }
+            ]
+    Started evaluating summit
+    f 2 = Error
+            [ { exn =
+                  "(\"A zombie computation is encountered in [currently_considering]\", {})"
+              ; backtrace = ""
+              }
+            ]
+    |}]
 
 let print_exns f =
   let res =

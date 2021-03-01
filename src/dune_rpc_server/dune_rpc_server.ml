@@ -340,9 +340,11 @@ struct
         in
         match res with
         | Ok () -> ()
-        | Error _ ->
-          (* XXX shall we log this? *)
-          ())
+        | Error exns ->
+          Dune_util.Log.info
+            [ Pp.text "fatal error when serving rpc client"
+            ; Pp.concat_map ~sep:Pp.newline exns ~f:Exn_with_backtrace.pp
+            ])
 end
 
 module Handler = H.Builder

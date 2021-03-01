@@ -14,7 +14,7 @@ val protectx : 'a -> f:('a -> 'b) -> finally:('a -> unit) -> 'b
 
 val pp_uncaught : backtrace:string -> Format.formatter -> t -> unit
 
-val pp : Format.formatter -> t -> unit
+val pp : t -> _ Pp.t
 
 val raise_with_backtrace : exn -> Printexc.raw_backtrace -> _
 

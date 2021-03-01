@@ -16,6 +16,8 @@ val reraise : t -> 'a
 
 val pp_uncaught : Format.formatter -> t -> unit
 
+val pp : t -> _ Pp.t
+
 val map : t -> f:(exn -> exn) -> t
 
 val map_and_reraise : t -> f:(exn -> exn) -> 'a

@@ -31,7 +31,7 @@ let pp_uncaught ~backtrace fmt exn =
     "/%s\n| @{<error>Internal error@}: Uncaught exception.\n%s\n\\%s@." line s
     line
 
-let pp fmt exn = Format.pp_print_string fmt (Printexc.to_string exn)
+let pp exn = Pp.text (Printexc.to_string exn)
 
 let raise_with_backtrace = Printexc.raise_with_backtrace
 

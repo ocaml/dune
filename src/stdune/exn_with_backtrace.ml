@@ -17,6 +17,11 @@ let pp_uncaught fmt { exn; backtrace } =
     ~backtrace:(Printexc.raw_backtrace_to_string backtrace)
     fmt exn
 
+let pp { exn; backtrace } =
+  let open Pp.O in
+  Exn.pp exn ++ Pp.newline ++ Pp.text "backtrace:" ++ Pp.newline
+  ++ Pp.text (Printexc.raw_backtrace_to_string backtrace)
+
 let map { exn; backtrace } ~f = { exn = f exn; backtrace }
 
 let map_and_reraise t ~f = reraise (map ~f t)

@@ -1,4 +1,4 @@
 (library
  (name dune_tui)
- (libraries stdune notty notty_unix threads.posix)
+ (libraries stdune notty notty_unix threads.posix lwd)
  (preprocess future_syntax))

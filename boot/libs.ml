@@ -31,6 +31,7 @@ let local_libraries =
   ; ("src/uutf", Some "Uutf", false, None)
   ; ("vendor/notty/src", None, true, None)
   ; ("vendor/notty_unix", None, true, None)
+  ; ("vendor/lwd", None, false, None)
   ; ("src/dune_tui", Some "Dune_tui", false, None)
   ; ("src/csexp_rpc", Some "Csexp_rpc", false, None)
   ; ("src/dune_engine", Some "Dune_engine", false, None)

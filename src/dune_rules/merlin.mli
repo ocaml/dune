@@ -17,7 +17,7 @@ module Processed : sig
   (** Type of "processed" merlin information *)
   type t
 
-  val load_file : Path.t -> t option
+  val load_file : Path.t -> (t, string) result
 
   val print_file : Path.t -> unit
 

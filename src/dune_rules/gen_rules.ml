@@ -410,7 +410,7 @@ let gen ~contexts ?only_packages conf =
       match only_packages with
       | None -> stanzas
       | Some visible_pkgs ->
-        List.map stanzas ~f:(fun (dir_conf : Dune_load.Dune_file.t) ->
+        List.map stanzas ~f:(fun (dir_conf : Dune_file.t) ->
             { dir_conf with
               stanzas =
                 filter_out_stanzas_from_hidden_packages ~visible_pkgs

@@ -449,3 +449,20 @@ module Stanzas : sig
       current [project]. *)
   val parse : file:Path.Source.t -> Dune_project.t -> Dune_lang.Ast.t list -> t
 end
+
+(** A fully evaluated dune file *)
+type t =
+  { dir : Path.Source.t
+  ; project : Dune_project.t
+  ; stanzas : Stanzas.t
+  }
+
+val parse :
+     Dune_lang.Ast.t list
+  -> dir:Path.Source.t
+  -> file:Path.Source.t
+  -> project:Dune_project.t
+  -> t
+
+val fold_stanzas :
+  t list -> init:'acc -> f:(t -> Stanza.t -> 'acc -> 'acc) -> 'acc

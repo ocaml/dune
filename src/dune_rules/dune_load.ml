@@ -2,39 +2,6 @@ open! Dune_engine
 open! Stdune
 open Import
 
-module Dune_file = struct
-  type t =
-    { dir : Path.Source.t
-    ; project : Dune_project.t
-    ; stanzas : Dune_file.Stanzas.t
-    }
-
-  let parse sexps ~dir ~file ~project =
-    let stanzas = Dune_file.Stanzas.parse ~file project sexps in
-    let stanzas =
-      if !Clflags.ignore_promoted_rules then
-        List.filter stanzas ~f:(function
-          | Dune_file.Rule { mode = Rule.Mode.Promote { only = None; _ }; _ }
-          | Dune_file.Menhir.T
-              { mode = Rule.Mode.Promote { only = None; _ }; _ } ->
-            false
-          | _ -> true)
-      else
-        stanzas
-    in
-    { dir; project; stanzas }
-
-  let rec fold_stanzas l ~init ~f =
-    match l with
-    | [] -> init
-    | t :: l -> inner_fold t t.stanzas l ~init ~f
-
-  and inner_fold t inner_list l ~init ~f =
-    match inner_list with
-    | [] -> fold_stanzas l ~init ~f
-    | x :: inner_list -> inner_fold t inner_list l ~init:(f t x init) ~f
-end
-
 module Jbuild_plugin : sig
   val create_plugin_wrapper :
        Context.t
@@ -229,7 +196,6 @@ let interpret ~dir ~project ~(dune_file : File_tree.Dune_file.t) =
 
 let load ~ancestor_vcs =
   File_tree.init ~ancestor_vcs ~recognize_jbuilder_projects:false;
-
   let _, vcs, projects =
     let f dir (ancestor_vcs, vcs, projects) =
       let vcs =

@@ -179,7 +179,7 @@ let lib_src_dirs ~dir_contents =
 (* Stanza *)
 
 let define_all_alias ~dir ~scope ~js_targets =
-  let dyn_deps =
+  let deps =
     let pred =
       let id =
         lazy
@@ -202,9 +202,9 @@ let define_all_alias ~dir ~scope ~js_targets =
       Predicate.create ~id ~f
     in
     File_selector.create ~dir:(Path.build dir) pred
-    |> Action_builder.paths_matching ~loc:Loc.none
+    |> Action_builder.paths_matching_unit ~loc:Loc.none
   in
-  Rules.Produce.Alias.add_deps ~dyn_deps (Alias.all ~dir) Path.Set.empty
+  Rules.Produce.Alias.add_deps (Alias.all ~dir) deps
 
 let gen_rules sctx dir_contents cctxs expander
     { Dir_with_dune.src_dir; ctx_dir; data = stanzas; scope; dune_version = _ }
@@ -215,7 +215,7 @@ let gen_rules sctx dir_contents cctxs expander
         File_binding.Unexpanded.expand_src ~dir:ctx_dir fb
           ~f:(Expander.Static.expand_str expander)
         |> Path.build)
-    |> Rules.Produce.Alias.add_deps (Alias.all ~dir:ctx_dir)
+    |> Rules.Produce.Alias.add_static_deps (Alias.all ~dir:ctx_dir)
   in
   let { For_stanza.merlin = merlins
       ; cctx = cctxs

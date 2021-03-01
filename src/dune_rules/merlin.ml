@@ -379,7 +379,7 @@ let dot_merlin sctx ~dir ~more_src_dirs ~expander (t : Unprocessed.t) =
     >>> Action_builder.create_file merlin_exist );
 
   Path.Set.singleton (Path.build merlin_file)
-  |> Rules.Produce.Alias.add_deps (Alias.check ~dir);
+  |> Rules.Produce.Alias.add_static_deps (Alias.check ~dir);
 
   let merlin = Unprocessed.process t sctx ~more_src_dirs ~expander in
   let action =

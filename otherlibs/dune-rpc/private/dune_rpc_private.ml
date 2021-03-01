@@ -119,7 +119,7 @@ module Error = struct
     iso (record (three target message loc)) to_ from
 end
 
-module Log = struct
+module Message = struct
   type t =
     { payload : Sexp.t option
     ; message : string
@@ -176,12 +176,12 @@ end
 module Server_notifications = struct
   let errors = Decl.notification ~method_:"notify/errors" (Conv.list Error.sexp)
 
-  let abort = Decl.notification ~method_:"notify/abort" Log.sexp
+  let abort = Decl.notification ~method_:"notify/abort" Message.sexp
 
   let promotions =
     Decl.notification ~method_:"notify/promotions" (Conv.list Promotion.sexp)
 
-  let log = Decl.notification ~method_:"notify/log" Log.sexp
+  let log = Decl.notification ~method_:"notify/log" Message.sexp
 end
 
 module Client (S : sig
@@ -236,7 +236,7 @@ struct
     ; mutable next_id : int
     }
 
-  let send t (packet : Message.t option) =
+  let send t (packet : Packet.Query.t option) =
     let sexp =
       Option.map packet ~f:(function
         | Notification p -> Conv.to_sexp (Conv.record Call.fields) p
@@ -289,7 +289,7 @@ struct
 
   let read_packets t packets =
     Fiber.parallel_iter packets ~f:(function
-      | Packet.Notification n -> t.on_notification n
+      | Packet.Reply.Notification n -> t.on_notification n
       | Response (id, response) -> (
         match Table.find t.requests id with
         | Some ivar ->
@@ -301,8 +301,8 @@ struct
 
   module Handler = struct
     type t =
-      { log : Log.t -> unit Fiber.t
-      ; abort : Log.t -> unit Fiber.t
+      { log : Message.t -> unit Fiber.t
+      ; abort : Message.t -> unit Fiber.t
       ; errors : Error.t list -> unit Fiber.t
       ; promotions : Promotion.t list -> unit Fiber.t
       }
@@ -326,7 +326,7 @@ struct
         | None -> Code_error.raise "invalid method from server" []
         | Some v -> v params
 
-    let log { Log.payload; message } =
+    let log { Message.payload; message } =
       ( match payload with
       | None -> Format.eprintf "%s@." message
       | Some payload ->
@@ -337,7 +337,7 @@ struct
 
     let promotions _ = failwith "unexpeted promotion notifications"
 
-    let abort { Log.payload = _; message } =
+    let abort { Message.payload = _; message } =
       failwith ("Fatal error from server: " ^ message)
 
     let default = { abort; log; promotions; errors }
@@ -371,7 +371,9 @@ struct
     let packets () =
       let+ read = Chan.read chan in
       Option.map read ~f:(fun sexp ->
-          match Conv.of_sexp Packet.sexp ~version:initialize.version sexp with
+          match
+            Conv.of_sexp Packet.Reply.sexp ~version:initialize.version sexp
+          with
           | Error e -> raise (Invalid_session e)
           | Ok message -> message)
     in

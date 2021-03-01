@@ -13,9 +13,9 @@ module Session = struct
   module Id = Stdune.Id.Make ()
 
   type 'a t =
-    { messages : Message.t Fiber.Stream.In.t
+    { queries : Packet.Query.t Fiber.Stream.In.t
     ; id : Id.t
-    ; send : Packet.t option -> unit Fiber.t
+    ; send : Packet.Reply.t option -> unit Fiber.t
     ; mutable state : 'a state
     }
 
@@ -39,8 +39,8 @@ module Session = struct
     | Initialized s -> s.init
     | Uninitialized -> Code_error.raise "initialize: request not available" []
 
-  let create ~messages ~send =
-    { messages; send; state = Uninitialized; id = Id.gen () }
+  let create ~queries ~send =
+    { queries; send; state = Uninitialized; id = Id.gen () }
 
   let notification t (decl : _ Decl.notification) n =
     let call =
@@ -66,7 +66,7 @@ module Session = struct
       in
       constr "Initialized" [ record ]
 
-  let to_dyn f { id; state; messages = _; send = _ } =
+  let to_dyn f { id; state; queries = _; send = _ } =
     let open Dyn.Encoder in
     record [ ("id", Id.to_dyn id); ("state", dyn_of_state f state) ]
 end
@@ -84,17 +84,17 @@ module H = struct
     let open Fiber.O in
     let* () =
       Session.notification session Server_notifications.abort
-        { Log.message; payload }
+        { Message.message; payload }
     in
     session.send None
 
   let handle (type a) (t : a t) (session : a Session.t) =
     let open Fiber.O in
-    let* message = Fiber.Stream.In.read session.messages in
-    match message with
+    let* query = Fiber.Stream.In.read session.queries in
+    match query with
     | None -> session.send None
     | Some init -> (
-      match init with
+      match (init : Packet.Query.t) with
       | Notification _ ->
         abort session
           ~message:"Notification unexpected. You must initialize first."
@@ -129,8 +129,8 @@ module H = struct
               session.send (Some (Response (id, response)))
             in
             let* () =
-              Fiber.Stream.In.parallel_iter session.messages
-                ~f:(fun (message : Message.t) ->
+              Fiber.Stream.In.parallel_iter session.queries
+                ~f:(fun (message : Packet.Query.t) ->
                   match message with
                   | Notification n -> t.on_notification session n
                   | Request (id, r) ->
@@ -296,8 +296,8 @@ let make h = Server (H.Builder.to_handler h)
 
 let version (Server h) = h.version
 
-let new_session (Server handler) ~messages ~send =
-  let session = Session.create ~messages ~send in
+let new_session (Server handler) ~queries ~send =
+  let session = Session.create ~queries ~send in
   H.handle handler session
 
 exception Invalid_session of Conv.error
@@ -328,15 +328,15 @@ struct
         let+ res =
           Fiber.collect_errors (fun () ->
               let send packet =
-                Option.map packet ~f:(Conv.to_sexp Packet.sexp)
+                Option.map packet ~f:(Conv.to_sexp Packet.Reply.sexp)
                 |> S.write session
               in
-              let messages =
+              let queries =
                 create_sequence
                   (fun () -> S.read session)
-                  ~version:(version server) Message.sexp
+                  ~version:(version server) Packet.Query.sexp
               in
-              new_session server ~send ~messages)
+              new_session server ~send ~queries)
         in
         match res with
         | Ok () -> ()

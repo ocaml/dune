@@ -103,7 +103,7 @@ module V1 : sig
       | Promotion
   end
 
-  module Log : sig
+  module Message : sig
     type t =
       { payload : Sexp.t option
       ; message : string
@@ -178,10 +178,10 @@ module V1 : sig
       type t
 
       val create :
-           ?log:(Log.t -> unit Fiber.t)
+           ?log:(Message.t -> unit Fiber.t)
         -> ?errors:(Error.t list -> unit Fiber.t)
         -> ?promotions:(Promotion.t list -> unit Fiber.t)
-        -> ?abort:(Log.t -> unit Fiber.t)
+        -> ?abort:(Message.t -> unit Fiber.t)
              (** If [abort] is called, the server has terminated the connection
                  due to a protcol error. This should never be called unless
                  there's a bug. *)

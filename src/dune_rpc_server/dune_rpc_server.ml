@@ -80,9 +80,13 @@ module H = struct
     ; version : int * int
     }
 
-  let send_log ?payload session ~message =
-    Session.notification session Server_notifications.log
-      { Log.message; payload }
+  let abort ?payload session ~message =
+    let open Fiber.O in
+    let* () =
+      Session.notification session Server_notifications.abort
+        { Log.message; payload }
+    in
+    session.send None
 
   let handle (type a) (t : a t) (session : a Session.t) =
     let open Fiber.O in
@@ -92,11 +96,8 @@ module H = struct
     | Some init -> (
       match init with
       | Notification _ ->
-        let* () =
-          send_log session
-            ~message:"Notification unexpected. You must initialize first."
-        in
-        session.send None
+        abort session
+          ~message:"Notification unexpected. You must initialize first."
       | Request (id, call) -> (
         match Initialize.Request.of_call ~version:t.version call with
         | Error e -> session.send (Some (Response (id, Error e)))
@@ -215,19 +216,19 @@ module H = struct
         let version = Initialize.Request.version (Session.initialize session) in
         match Table.find notification_handlers n.method_ with
         | None ->
-          send_log session ~message:"invalid notification"
+          abort session ~message:"invalid notification"
             ~payload:(Sexp.record [ ("method", Atom n.method_) ])
         | Some [] -> assert false (* not possible *)
         | Some cbs -> (
           match find_cb cbs ~info:(fun (N (cb, _)) -> cb.info) ~version with
           | None ->
-            send_log session ~message:"No notification matching version."
+            abort session ~message:"No notification matching version."
               ~payload:(Sexp.record [ ("method", Atom n.method_) ])
           | Some (N (cb, v)) -> (
             match Conv.of_sexp v.req ~version n.params with
             | Ok v -> cb.f session v
             | Error _ ->
-              send_log session ~message:"Invalid notification payload"
+              abort session ~message:"Invalid notification payload"
                 ~payload:
                   (Sexp.record
                      [ ("method", Atom n.method_); ("payload", n.params) ]) ) )

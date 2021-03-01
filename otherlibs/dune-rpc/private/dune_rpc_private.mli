@@ -207,6 +207,7 @@ end) : sig
          ?log:(Log.t -> unit Fiber.t)
       -> ?errors:(Error.t list -> unit Fiber.t)
       -> ?promotions:(Promotion.t list -> unit Fiber.t)
+      -> ?abort:(Log.t -> unit Fiber.t)
       -> unit
       -> t
   end
@@ -276,4 +277,6 @@ module Server_notifications : sig
   val promotions : Promotion.t list Decl.notification
 
   val log : Log.t Decl.notification
+
+  val abort : Log.t Decl.notification
 end

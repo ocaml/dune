@@ -181,6 +181,10 @@ module V1 : sig
            ?log:(Log.t -> unit Fiber.t)
         -> ?errors:(Error.t list -> unit Fiber.t)
         -> ?promotions:(Promotion.t list -> unit Fiber.t)
+        -> ?abort:(Log.t -> unit Fiber.t)
+             (** If [abort] is called, the server has terminated the connection
+                 due to a protcol error. This should never be called unless
+                 there's a bug. *)
         -> unit
         -> t
     end

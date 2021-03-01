@@ -176,6 +176,8 @@ end
 module Server_notifications = struct
   let errors = Decl.notification ~method_:"notify/errors" (Conv.list Error.sexp)
 
+  let abort = Decl.notification ~method_:"notify/abort" Log.sexp
+
   let promotions =
     Decl.notification ~method_:"notify/promotions" (Conv.list Promotion.sexp)
 
@@ -300,6 +302,7 @@ struct
   module Handler = struct
     type t =
       { log : Log.t -> unit Fiber.t
+      ; abort : Log.t -> unit Fiber.t
       ; errors : Error.t list -> unit Fiber.t
       ; promotions : Promotion.t list -> unit Fiber.t
       }
@@ -317,6 +320,7 @@ struct
       add Server_notifications.errors t.errors;
       add Server_notifications.promotions t.promotions;
       add Server_notifications.log t.log;
+      add Server_notifications.abort t.abort;
       fun { Call.method_; params } ->
         match Table.find table method_ with
         | None -> Code_error.raise "invalid method from server" []
@@ -333,9 +337,12 @@ struct
 
     let promotions _ = failwith "unexpeted promotion notifications"
 
-    let default = { log; promotions; errors }
+    let abort { Log.payload = _; message } =
+      failwith ("Fatal error from server: " ^ message)
 
-    let create ?log ?errors ?promotions () =
+    let default = { abort; log; promotions; errors }
+
+    let create ?log ?errors ?promotions ?abort () =
       let t =
         let t = default in
         match log with
@@ -351,6 +358,11 @@ struct
         match errors with
         | None -> t
         | Some errors -> { t with errors }
+      in
+      let t =
+        match abort with
+        | None -> t
+        | Some abort -> { t with abort }
       in
       t
   end

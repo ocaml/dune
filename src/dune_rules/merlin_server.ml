@@ -100,9 +100,9 @@ let load_merlin_file local_path file =
     let result =
       List.find_map file_paths ~f:(fun file_path ->
           if Path.exists file_path then
-            let open Option.O in
-            let* config = Merlin.Processed.load_file file_path in
-            Merlin.Processed.get config ~filename
+            match Merlin.Processed.load_file file_path with
+            | Ok config -> Merlin.Processed.get config ~filename
+            | Error msg -> Some (Merlin_conf.make_error msg)
           else
             None)
     in

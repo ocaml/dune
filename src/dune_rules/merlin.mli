@@ -17,7 +17,7 @@ module Processed : sig
   (** Type of "processed" merlin information *)
   type t
 
-  val load_file : Path.t -> t option
+  val load_file : Path.t -> (t, string) result
 
   (** [print_file path] reads the configuration at path [path] and print it as a
       s-expression *)

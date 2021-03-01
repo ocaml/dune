@@ -5,18 +5,6 @@ open! Dune_engine
 
 open! Stdune
 
-module Dune_file : sig
-  (** A fully evaluated dune file *)
-  type t =
-    { dir : Path.Source.t
-    ; project : Dune_project.t
-    ; stanzas : Dune_file.Stanzas.t
-    }
-
-  val fold_stanzas :
-    t list -> init:'acc -> f:(t -> Stanza.t -> 'acc -> 'acc) -> 'acc
-end
-
 module Dune_files : sig
   (** A partially evaluated dune file. The context's ocamlc is used to evaluate
       dune files in ocaml syntax *)

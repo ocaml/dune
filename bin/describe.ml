@@ -145,7 +145,7 @@ module Crawl = struct
       Dune_load.Dune_files.eval workspace.conf.dune_files ~context
     in
     let exes_and_libs =
-      Dune_load.Dune_file.fold_stanzas dune_files ~init:libs
+      Dune_file.fold_stanzas dune_files ~init:libs
         ~f:(fun dune_file stanza accu ->
           let dir = Path.Build.append_source context.build_dir dune_file.dir in
           match stanza with

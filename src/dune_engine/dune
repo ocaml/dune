@@ -26,6 +26,7 @@
   dune_section
   dune_rpc_private
   dune_rpc_server
+  dune_tui
   csexp_rpc)
  (synopsis "Internal Dune library, do not use!"))
 

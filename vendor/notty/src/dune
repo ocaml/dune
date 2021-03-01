@@ -1,0 +1,8 @@
+(include_subdirs unqualified)
+
+(library
+  (name notty)
+  (synopsis "Declaring terminals")
+  (libraries uutf)
+  (wrapped false)
+  (private_modules notty_grapheme_cluster notty_uucp notty_uucp_data))

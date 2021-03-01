@@ -1,3 +1,7 @@
+external get_sigwinch : unit -> int option = "stdune_get_sigwinch"
+
+let sigwinch = get_sigwinch ()
+
 let name =
   let table =
     let open Sys in
@@ -33,5 +37,8 @@ let name =
   in
   fun n ->
     match List.assoc table n with
-    | None -> Printf.sprintf "%d\n" n
     | Some s -> s
+    | None -> (
+      match sigwinch with
+      | Some n' when n = n' -> "WINCH"
+      | _ -> Printf.sprintf "%d\n" n )

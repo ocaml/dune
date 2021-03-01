@@ -20,12 +20,14 @@ module Config = struct
       | Short
       | Verbose
       | Quiet
+      | Tui
 
     let all =
       [ ("progress", Progress)
       ; ("verbose", Verbose)
       ; ("short", Short)
       ; ("quiet", Quiet)
+      ; ("tui", Tui)
       ]
 
     let to_string = function
@@ -33,8 +35,12 @@ module Config = struct
       | Quiet -> "quiet"
       | Short -> "short"
       | Verbose -> "verbose"
+      | Tui -> "tui"
 
     let console_backend = function
+      | Tui ->
+        let tui = Dune_tui.create ~on_event:(fun _ -> ()) in
+        Dune_tui.backend tui
       | Progress -> Console.Backend.progress
       | Short
       | Verbose

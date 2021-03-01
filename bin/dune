@@ -19,7 +19,8 @@
   dune_csexp
   csexp_rpc
   dune_rpc_impl
-  dune_rpc_private)
+  dune_rpc_private
+  dune_tui)
  (bootstrap_info bootstrap-info))
 
 (rule

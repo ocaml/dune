@@ -335,15 +335,15 @@ module M = struct
 
   and Deps_so_far : sig
     type t =
-      { set : Id.Set.t
-      ; deps_reversed : Dep_node.packed list
+      { mutable set : Id.Set.t
+      ; mutable deps_reversed : Dep_node.packed list
       }
   end =
     Deps_so_far
 
   and Running_state : sig
     type t =
-      { mutable deps_so_far : Deps_so_far.t
+      { deps_so_far : Deps_so_far.t
       ; sample_attempt : Dag.node
       }
   end =
@@ -436,7 +436,8 @@ module Dep_node = M.Dep_node
 module Last_dep = M.Last_dep
 module Deps_so_far = M.Deps_so_far
 
-let no_deps_so_far : Deps_so_far.t = { set = Id.Set.empty; deps_reversed = [] }
+let no_deps_so_far () : Deps_so_far.t =
+  { set = Id.Set.empty; deps_reversed = [] }
 
 let currently_considering (v : _ State.t) : _ State.t =
   match v with
@@ -591,7 +592,6 @@ let add_dep_from_caller (type i o f) ~called_from_peek
   match Call_stack.get_call_stack_tip () with
   | None -> Ok ()
   | Some (Stack_frame_with_state.T caller) -> (
-    let running_state_of_caller = caller.running_state in
     let () =
       match (caller.without_state.spec.f, node.without_state.spec.f) with
       | Async _, Async _ -> ()
@@ -606,9 +606,8 @@ let add_dep_from_caller (type i o f) ~called_from_peek
             ; ("adding", Stack_frame_without_state.to_dyn (T node.without_state))
             ]
     in
-    match
-      Id.Set.mem running_state_of_caller.deps_so_far.set node.without_state.id
-    with
+    let deps_so_far_of_caller = caller.running_state.deps_so_far in
+    match Id.Set.mem deps_so_far_of_caller.set node.without_state.id with
     | true -> Ok ()
     | false -> (
       let cycle_error =
@@ -617,7 +616,7 @@ let add_dep_from_caller (type i o f) ~called_from_peek
         | Running node -> (
           match
             Dag.add_assuming_missing global_dep_dag
-              running_state_of_caller.sample_attempt node
+              caller.running_state.sample_attempt node
           with
           | () -> None
           | exception Dag.Cycle cycle ->
@@ -628,14 +627,10 @@ let add_dep_from_caller (type i o f) ~called_from_peek
       in
       match cycle_error with
       | None ->
-        running_state_of_caller.deps_so_far <-
-          { set =
-              Id.Set.add running_state_of_caller.deps_so_far.set
-                node.without_state.id
-          ; deps_reversed =
-              Dep_node.T node
-              :: running_state_of_caller.deps_so_far.deps_reversed
-          };
+        deps_so_far_of_caller.set <-
+          Id.Set.add deps_so_far_of_caller.set node.without_state.id;
+        deps_so_far_of_caller.deps_reversed <-
+          Dep_node.T node :: deps_so_far_of_caller.deps_reversed;
         Ok ()
       | Some cycle_error -> Error cycle_error ) )
 
@@ -842,7 +837,7 @@ end = struct
         | Cancelled { dependency_cycle } ->
           Error (Cancelled { dependency_cycle }) ) )
 
-  let compute (dep_node : _ Dep_node.t) cache_lookup_error running_state =
+  let compute (dep_node : _ Dep_node.t) cache_lookup_error deps_so_far =
     let compute_value_and_deps_rev () =
       match dep_node.without_state.spec.f with
       | Function.Sync f ->
@@ -859,7 +854,7 @@ end = struct
             in
             Error (Value.Sync exn)
         in
-        (value, running_state.Running_state.deps_so_far.deps_reversed)
+        (value, deps_so_far.Deps_so_far.deps_reversed)
     in
     match cache_lookup_error with
     | Cache_lookup_error.Cancelled { dependency_cycle } ->
@@ -880,7 +875,7 @@ end = struct
       }
     in
     let running_state : Running_state.t =
-      { sample_attempt; deps_so_far = no_deps_so_far }
+      { sample_attempt; deps_so_far = no_deps_so_far () }
     in
     let work () =
       Call_stack.push_sync_frame
@@ -892,7 +887,7 @@ end = struct
             | Error cache_lookup_error ->
               dep_node.last_cached_value <- None;
               let computed_value =
-                compute dep_node cache_lookup_error running_state
+                compute dep_node cache_lookup_error running_state.deps_so_far
               in
               dep_node.last_cached_value <- Some computed_value;
               computed_value
@@ -1010,7 +1005,7 @@ end = struct
         | Cancelled { dependency_cycle } ->
           Error (Cancelled { dependency_cycle }) ) )
 
-  let compute (dep_node : _ Dep_node.t) cache_lookup_error running_state =
+  let compute (dep_node : _ Dep_node.t) cache_lookup_error deps_so_far =
     let compute_value_and_deps_rev () =
       match dep_node.without_state.spec.f with
       | Function.Async f ->
@@ -1027,7 +1022,7 @@ end = struct
           | Ok res -> Value.Ok res
           | Error exns -> Error (Value.Async (Exn_set.of_list exns))
         in
-        (value, running_state.Running_state.deps_so_far.deps_reversed)
+        (value, deps_so_far.Deps_so_far.deps_reversed)
     in
     match cache_lookup_error with
     | Cache_lookup_error.Cancelled { dependency_cycle } ->
@@ -1049,7 +1044,7 @@ end = struct
     in
     let ivar = Fiber.Ivar.create () in
     let running_state : Running_state.t =
-      { sample_attempt; deps_so_far = no_deps_so_far }
+      { sample_attempt; deps_so_far = no_deps_so_far () }
     in
     let work =
       Call_stack.push_async_frame
@@ -1064,7 +1059,7 @@ end = struct
             | Error cache_lookup_error ->
               dep_node.last_cached_value <- None;
               let+ computed_value =
-                compute dep_node cache_lookup_error running_state
+                compute dep_node cache_lookup_error running_state.deps_so_far
               in
               dep_node.last_cached_value <- Some computed_value;
               computed_value

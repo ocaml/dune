@@ -251,6 +251,4 @@ But will fail when we release it, as it will need to run with -p:
   5 |  (with-stdout-to lib2.ml (echo "let _ = {|%{lib-private:lib1:lib1.ml}|}")))
                                                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^
   Error: Library "lib1" not found.
-  Hint: try:
-    dune external-lib-deps --missing --only-packages public_lib2 @install
   [1]

@@ -8,7 +8,6 @@ val make :
      Super_context.t
   -> dir:Path.Build.t
   -> expander:Expander.t
-  -> dep_kind:Lib_deps_info.Kind.t
   -> lint:Preprocess.Without_instrumentation.t Preprocess.Per_module.t
   -> preprocess:Preprocess.Without_instrumentation.t Preprocess.Per_module.t
   -> preprocessor_deps:Dep_conf.t list
@@ -33,8 +32,7 @@ val gen_rules : Super_context.t -> string list -> unit
 val chdir : Action_unexpanded.t -> Action_unexpanded.t
 
 val action_for_pp :
-     dep_kind:Lib_deps_info.Kind.t
-  -> loc:Loc.t
+     loc:Loc.t
   -> expander:Expander.t
   -> action:Action_unexpanded.t
   -> src:Path.Build.t

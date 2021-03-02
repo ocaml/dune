@@ -27,7 +27,7 @@ let term =
   and+ ctx_name =
     Common.context_arg ~doc:{|Select context where to build/run utop.|}
   in
-  Common.set_common common ~targets:[];
+  Common.set_common common;
   Scheduler.go ~common (fun () ->
       let open Fiber.O in
       let* setup = Memo.Build.run (Import.Main.setup common) in

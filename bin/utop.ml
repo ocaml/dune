@@ -19,13 +19,12 @@ let term =
   and+ ctx_name =
     Common.context_arg ~doc:{|Select context where to build/run utop.|}
   and+ args = Arg.(value & pos_right 0 string [] (Arg.info [] ~docv:"ARGS")) in
-  Common.set_dirs common;
+  Common.set_common common;
   if not (Path.is_directory (Path.of_string (Common.prefix_target common dir)))
   then
     User_error.raise
       [ Pp.textf "cannot find directory: %s" (String.maybe_quoted dir) ];
   let utop_target = Arg.Dep.file (Filename.concat dir Utop.utop_exe) in
-  Common.set_common_other common ~targets:[ utop_target ];
   let sctx, utop_path =
     Scheduler.go ~common (fun () ->
         let open Fiber.O in

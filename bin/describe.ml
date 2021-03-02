@@ -302,7 +302,7 @@ let term =
   and+ context_name = Common.context_arg ~doc:"Build context to use."
   and+ format = Format.arg
   and+ lang = Lang.arg in
-  Common.set_common common ~targets:[] ~external_lib_deps_mode:false;
+  Common.set_common common;
   let what = What.parse what ~lang in
   Scheduler.go ~common (fun () ->
       let open Fiber.O in

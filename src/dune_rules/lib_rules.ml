@@ -334,12 +334,6 @@ let setup_build_archives (lib : Dune_file.Library.t) ~cctx
 
 let cctx (lib : Library.t) ~sctx ~source_modules ~dir ~expander ~scope
     ~compile_info =
-  let dep_kind =
-    if lib.optional then
-      Lib_deps_info.Kind.Optional
-    else
-      Required
-  in
   let flags = Super_context.ocaml_flags sctx ~dir lib.buildable.flags in
   let obj_dir = Library.obj_dir ~dir lib in
   let vimpl = Virtual_rules.impl sctx ~lib ~scope in
@@ -357,7 +351,7 @@ let cctx (lib : Library.t) ~sctx ~source_modules ~dir ~expander ~scope
   in
   (* Preprocess before adding the alias module as it doesn't need preprocessing *)
   let pp =
-    Preprocessing.make sctx ~dir ~dep_kind ~scope ~preprocess ~expander
+    Preprocessing.make sctx ~dir ~scope ~preprocess ~expander
       ~preprocessor_deps:lib.buildable.preprocessor_deps ~instrumentation_deps
       ~lint:lib.buildable.lint
       ~lib_name:(Some (snd lib.name))

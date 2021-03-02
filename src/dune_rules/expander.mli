@@ -54,8 +54,6 @@ val set_artifacts_dynamic : t -> bool -> t
 val set_lookup_ml_sources :
   t -> f:(dir:Path.Build.t -> Ml_sources.Artifacts.t) -> t
 
-val set_dep_kind : t -> Lib_deps_info.Kind.t -> t
-
 module Expanding_what : sig
   type t =
     | Nothing_special

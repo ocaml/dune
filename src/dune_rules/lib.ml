@@ -33,19 +33,8 @@ module Error = struct
     | [] -> info
     | _ -> Pp.vbox (Pp.concat ~sep:Pp.cut [ info; Dep_path.Entries.pp dp ])
 
-  let external_lib_deps_hint () =
-    match !Clflags.external_lib_deps_hint with
-    | [] -> []
-    | l ->
-      [ l
-        |> List.map ~f:String.quote_for_shell
-        |> String.concat ~sep:" " |> Utils.pp_command_hint
-      ]
-
   let not_found ~loc ~name =
-    make ~loc
-      [ Pp.textf "Library %S not found." (Lib_name.to_string name) ]
-      ~hints:(external_lib_deps_hint ())
+    make ~loc [ Pp.textf "Library %S not found." (Lib_name.to_string name) ]
 
   let hidden ~loc ~name ~dir ~reason =
     make ~loc
@@ -53,7 +42,6 @@ module Error = struct
           (Path.to_string_maybe_quoted dir)
           reason
       ]
-      ~hints:(external_lib_deps_hint ())
 
   (* diml: it is not very clear what a "default implementation cycle" is *)
   let default_implementation_cycle cycle =
@@ -1650,18 +1638,11 @@ module Compile = struct
     ; requires_link : t list Or_exn.t Lazy.t
     ; pps : t list Or_exn.t
     ; resolved_selects : Resolved_select.t list
-    ; lib_deps_info : Lib_deps_info.t
     ; sub_systems : Sub_system0.Instance.t Lazy.t Sub_system_name.Map.t
     ; merlin_ident : Merlin_ident.t
     }
 
-  let make_lib_deps_info ~user_written_deps ~pps ~kind =
-    Lib_deps_info.merge
-      (Dune_file.Lib_deps.info user_written_deps ~kind)
-      ( List.map pps ~f:(fun (_, pp) -> (pp, kind))
-      |> Lib_name.Map.of_list_reduce ~f:Lib_deps_info.Kind.merge )
-
-  let for_lib resolve ~allow_overlaps db (t : lib) =
+  let for_lib ~allow_overlaps db (t : lib) =
     let requires =
       (* This makes sure that the default implementation belongs to the same
          package before we build the virtual library *)
@@ -1673,25 +1654,6 @@ module Compile = struct
           ()
       in
       t.requires
-    in
-    let lib_deps_info =
-      let pps =
-        let resolve = resolve db in
-        Preprocess.Per_module.pps
-          (Preprocess.Per_module.with_instrumentation
-             (Lib_info.preprocess t.info)
-             ~instrumentation_backend:
-               (instrumentation_backend ~do_not_fail:true db.instrument_with
-                  resolve))
-      in
-      let user_written_deps = Lib_info.user_written_deps t.info in
-      let kind : Lib_deps_info.Kind.t =
-        let enabled = Lib_info.enabled t.info in
-        match enabled with
-        | Normal -> Required
-        | _ -> Optional
-      in
-      make_lib_deps_info ~user_written_deps ~pps ~kind
     in
     let requires_link =
       let db = Option.some_if (not allow_overlaps) db in
@@ -1705,7 +1667,6 @@ module Compile = struct
     ; requires_link
     ; resolved_selects = t.resolved_selects
     ; pps = t.pps
-    ; lib_deps_info
     ; sub_systems = t.sub_systems
     ; merlin_ident
     }
@@ -1717,8 +1678,6 @@ module Compile = struct
   let resolved_selects t = t.resolved_selects
 
   let pps t = t.pps
-
-  let lib_deps_info t = t.lib_deps_info
 
   let merlin_ident t = t.merlin_ident
 
@@ -1791,12 +1750,7 @@ module DB = struct
         | Error e -> (
           match e with
           | Invalid_dune_package why -> Invalid why
-          | Not_found ->
-            if !Clflags.external_lib_deps_mode then
-              let pkg = Findlib.dummy_lib findlib ~name in
-              Found (Dune_package.Lib.info pkg)
-            else
-              Not_found ))
+          | Not_found -> Not_found ))
       ~all:(fun () ->
         Findlib.all_packages findlib |> List.map ~f:Dune_package.Entry.name)
 
@@ -1840,18 +1794,10 @@ module DB = struct
     | None ->
       Code_error.raise "Lib.DB.get_compile_info got library that doesn't exist"
         [ ("name", Lib_name.to_dyn name) ]
-    | Some lib -> Compile.for_lib resolve ~allow_overlaps t lib
+    | Some lib -> Compile.for_lib ~allow_overlaps t lib
 
   let resolve_user_written_deps_for_exes t exes ?(allow_overlaps = false)
-      ?(forbidden_libraries = []) deps ~pps ~dune_version ~optional =
-    let lib_deps_info =
-      Compile.make_lib_deps_info ~user_written_deps:deps ~pps
-        ~kind:
-          ( if optional then
-            Optional
-          else
-            Required )
-    in
+      ?(forbidden_libraries = []) deps ~pps ~dune_version =
     let { Resolve.requires = res
         ; pps
         ; selects = resolved_selects
@@ -1888,7 +1834,6 @@ module DB = struct
     ; requires_link
     ; pps
     ; resolved_selects
-    ; lib_deps_info
     ; sub_systems = Sub_system_name.Map.empty
     ; merlin_ident
     }

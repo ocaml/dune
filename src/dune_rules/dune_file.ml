@@ -110,17 +110,6 @@ module Lib_deps = struct
     t
 
   let of_pps pps = List.map pps ~f:(fun pp -> Lib_dep.direct (Loc.none, pp))
-
-  let info t ~kind =
-    List.concat_map t ~f:(function
-      | Lib_dep.Re_export (_, s)
-      | Direct (_, s) ->
-        [ (s, kind) ]
-      | Select { choices; _ } ->
-        List.concat_map choices ~f:(fun (c : Lib_dep.Select.Choice.t) ->
-            Lib_name.Set.to_list c.required
-            |> List.map ~f:(fun d -> (d, Lib_deps_info.Kind.Optional))))
-    |> Lib_name.Map.of_list_reduce ~f:Lib_deps_info.Kind.merge
 end
 
 let preprocess_fields =

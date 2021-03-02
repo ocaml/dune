@@ -114,12 +114,10 @@ let normalize_path path =
   else
     path
 
-let set_dirs c =
+let set_common ?log_file c =
   if c.root.dir <> Filename.current_dir_name then Sys.chdir c.root.dir;
   Path.set_root (normalize_path (Path.External.cwd ()));
-  Path.Build.set_build_dir (Path.Build.Kind.of_string c.build_dir)
-
-let set_common_other ?log_file c ~targets =
+  Path.Build.set_build_dir (Path.Build.Kind.of_string c.build_dir);
   Dune_config.init c.config;
   Dune_util.Log.init () ?file:log_file;
   Clflags.debug_dep_path := c.debug_dep_path;
@@ -134,21 +132,9 @@ let set_common_other ?log_file c ~targets =
   Clflags.no_print_directory := c.no_print_directory;
   Clflags.store_orig_src_dir := c.store_orig_src_dir;
   Clflags.promote_install_files := c.promote_install_files;
-  Clflags.external_lib_deps_hint :=
-    List.concat
-      [ [ "dune"; "external-lib-deps"; "--missing" ]
-      ; c.orig_args
-      ; List.map ~f:Arg.Dep.to_string_maybe_quoted targets
-      ];
   Clflags.always_show_command_line := c.always_show_command_line;
   Clflags.ignore_promoted_rules := c.ignore_promoted_rules;
   Option.iter ~f:Dune_engine.Stats.enable c.stats_trace_file
-
-let set_common ?log_file ?external_lib_deps_mode c ~targets =
-  Option.iter external_lib_deps_mode ~f:(fun x ->
-      Clflags.external_lib_deps_mode := x);
-  set_dirs c;
-  set_common_other ?log_file c ~targets
 
 let footer =
   `Blocks

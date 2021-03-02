@@ -28,8 +28,6 @@ module Lib_deps : sig
 
   val of_pps : Lib_name.t list -> t
 
-  val info : t -> kind:Lib_deps_info.Kind.t -> Lib_deps_info.t
-
   val decode : for_ -> t Dune_lang.Decoder.t
 end
 

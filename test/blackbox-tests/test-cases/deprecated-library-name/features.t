@@ -95,8 +95,6 @@ that wasn't found:
   1 | (executable (name prog) (libraries a))
                                          ^
   Error: Library "a" not found.
-  Hint: try:
-    dune external-lib-deps --missing c/prog.exe
   [1]
 
 Test that we can migrate top-level libraries

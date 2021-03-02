@@ -107,7 +107,7 @@ let term =
              the given targets.")
   and+ syntax = Syntax.term
   and+ targets = Arg.(value & pos_all dep [] & Arg.info [] ~docv:"TARGET") in
-  Common.set_common common ~targets ~external_lib_deps_mode:true;
+  Common.set_common common;
   let out = Option.map ~f:Path.of_string out in
   Scheduler.go ~common (fun () ->
       let open Fiber.O in

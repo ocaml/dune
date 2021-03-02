@@ -6,7 +6,6 @@ module Super_context = Dune_rules.Super_context
 module Context = Dune_rules.Context
 module Config = Dune_engine.Config
 module Lib_name = Dune_engine.Lib_name
-module Lib_deps_info = Dune_rules.Lib_deps_info
 module Build_system = Dune_engine.Build_system
 module Findlib = Dune_rules.Findlib
 module Package = Dune_engine.Package

@@ -72,11 +72,7 @@ let runtest =
   let term =
     let+ common = Common.term
     and+ dirs = Arg.(value & pos_all string [ "." ] name_) in
-    Common.set_common common
-      ~targets:
-        (List.map dirs ~f:(fun s ->
-             let dir = Path.Local.of_string s in
-             Arg.Dep.alias_rec ~dir Dune_engine.Alias.Name.runtest));
+    Common.set_common common;
     let targets (setup : Import.Main.build_system) =
       List.map dirs ~f:(fun dir ->
           let dir = Path.(relative root) (Common.prefix_target common dir) in
@@ -116,7 +112,7 @@ let build =
       | [] -> [ Common.default_target common ]
       | _ :: _ -> targets
     in
-    Common.set_common common ~targets;
+    Common.set_common common;
     let targets setup = Target.resolve_targets_exn common setup targets in
     run_build_command ~common ~targets
   in

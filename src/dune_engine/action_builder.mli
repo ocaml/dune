@@ -3,9 +3,6 @@
 open! Stdune
 open! Import
 
-(** Type of values allowed to be labeled *)
-type label = ..
-
 type 'a t
 
 include Applicative_intf.S1 with type 'a t := 'a t
@@ -200,15 +197,10 @@ val create_file : Path.Build.t -> Action.t With_targets.t
 (** Merge a list of actions accumulating the sets of their targets. *)
 val progn : Action.t With_targets.t list -> Action.t With_targets.t
 
-val label : label -> unit t
-
 (** {1 Analysis} *)
 
 (** Compute static dependencies of an action builder. *)
 val static_deps : _ t -> Static_deps.t
-
-(** Compute static library dependencies of an action builder. *)
-val fold_labeled : _ t -> init:'acc -> f:(label -> 'acc -> 'acc) -> 'acc
 
 (** Returns [Some (x, t)] if the following can be evaluated statically. The
     returned [t] should be attached to the current action builder to record

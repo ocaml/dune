@@ -125,7 +125,7 @@ let executables_rules ~sctx ~dir ~expander ~dir_contents ~scope ~compile_info
       Preprocess.Per_module.instrumentation_deps exes.buildable.preprocess
         ~instrumentation_backend
     in
-    Preprocessing.make sctx ~dir ~dep_kind:Required ~scope ~expander ~preprocess
+    Preprocessing.make sctx ~dir ~scope ~expander ~preprocess
       ~preprocessor_deps:exes.buildable.preprocessor_deps ~instrumentation_deps
       ~lint:exes.buildable.lint ~lib_name:None
   in
@@ -223,7 +223,7 @@ let compile_info ~scope (exes : Dune_file.Executables.t) =
   Lib.DB.resolve_user_written_deps_for_exes (Scope.libs scope) exes.names
     exes.buildable.libraries ~pps ~dune_version
     ~allow_overlaps:exes.buildable.allow_overlapping_dependencies
-    ~optional:exes.optional ~forbidden_libraries:exes.forbidden_libraries
+    ~forbidden_libraries:exes.forbidden_libraries
 
 let rules ~sctx ~dir ~dir_contents ~scope ~expander
     (exes : Dune_file.Executables.t) =

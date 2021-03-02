@@ -19,5 +19,6 @@ Utop will load libs recursively:
 The message where the library path does not exist is different:
 
   $ dune utop --root nothing-in-root does-not-exist . -- -init ""
+  Entering directory 'nothing-in-root'
   Error: cannot find directory: does-not-exist
   [1]

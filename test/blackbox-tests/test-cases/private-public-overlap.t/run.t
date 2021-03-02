@@ -38,7 +38,6 @@ Unless they introduce private runtime dependencies:
 However, public binaries may accept private dependencies
   $ dune exec --root exes ./publicbin.exe
   Entering directory 'exes'
-  Entering directory 'exes'
 
 Private dependencies shouldn't make the library optional
   $ dune build @install --display short --root optional

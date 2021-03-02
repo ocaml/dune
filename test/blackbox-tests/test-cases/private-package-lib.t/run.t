@@ -157,7 +157,6 @@ Now we make sure such libraries are transitively usable when installed:
   $ export OCAMLPATH=$PWD/_build/install/default/lib
   $ dune exec --root use -- ./run.exe
   Entering directory 'use'
-  Entering directory 'use'
   Using library foo: from library foo secret string
 
 But we cannot use such libraries directly:
@@ -166,7 +165,6 @@ But we cannot use such libraries directly:
   > print_endline ("direct access attempt: " ^ Secret.secret)
   > EOF
   $ dune exec --root use -- ./run.exe
-  Entering directory 'use'
   Entering directory 'use'
   File "run.ml", line 1, characters 43-56:
   1 | print_endline ("direct access attempt: " ^ Secret.secret)

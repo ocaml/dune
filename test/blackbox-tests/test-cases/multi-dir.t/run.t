@@ -61,5 +61,4 @@ Test for (include_subdir unqualified) with (preprocess (action ...))
 
   $ dune exec ./main.exe --root test4 @all
   Entering directory 'test4'
-  Entering directory 'test4'
   print_endline "foo"

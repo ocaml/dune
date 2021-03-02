@@ -54,7 +54,6 @@ module Build : sig
     | Source_files_changed
     | Build_interrupted
     | Build_finish of build_result
-    | Chdir of string
 end
 
 (** Runs [once] in a loop, executing [finally] after every iteration, even if

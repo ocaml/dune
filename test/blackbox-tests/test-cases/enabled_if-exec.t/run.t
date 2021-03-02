@@ -48,7 +48,6 @@ For dune 2.3 -> 2.5 it is a warning
   ocaml_version and context_name variables are allowed in this 'enabled_if'
   field. If you think that project_root should also be allowed, please file an
   issue about it.
-  Entering directory 'forbidden_var'
   bar
 
 For dune >= 2.6 it is an error
@@ -85,6 +84,5 @@ For dune >= 2.7 context_name allowed
   > (lang dune 2.7)
   > EOF
   $ dune exec ./foo.exe --root var_context_name
-  Entering directory 'var_context_name'
   Entering directory 'var_context_name'
   bar

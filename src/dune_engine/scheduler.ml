@@ -971,14 +971,14 @@ module Build = struct
     | Failure
 
   type event =
-    | New_event
+    | Tick
     | Source_files_changed
     | Build_interrupted
     | Build_finish of build_result
 
   let to_handler ~on_event =
     { Handler.build_interrupted = (fun cfg -> on_event cfg Build_interrupted)
-    ; new_event = (fun cfg -> on_event cfg New_event)
+    ; new_event = (fun cfg -> on_event cfg Tick)
     }
 
   let go t run =

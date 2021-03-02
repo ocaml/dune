@@ -50,7 +50,7 @@ module Build : sig
     | Failure
 
   type event =
-    | New_event
+    | Tick
     | Source_files_changed
     | Build_interrupted
     | Build_finish of build_result

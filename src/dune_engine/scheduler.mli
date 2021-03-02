@@ -44,34 +44,36 @@ module Config : sig
     }
 end
 
-module Build : sig
-  type build_result =
-    | Success
-    | Failure
+module Run : sig
+  module Event : sig
+    type build_result =
+      | Success
+      | Failure
 
-  type event =
-    | Tick
-    | Source_files_changed
-    | Build_interrupted
-    | Build_finish of build_result
+    type t =
+      | Tick
+      | Source_files_changed
+      | Build_interrupted
+      | Build_finish of build_result
+  end
+
+  (** Runs [once] in a loop, executing [finally] after every iteration, even if
+      Fiber.Never was encountered.
+
+      If any source files change in the middle of iteration, it gets canceled. *)
+  val poll :
+       Config.t
+    -> on_event:(Config.t -> Event.t -> unit)
+    -> once:(unit -> [ `Continue | `Stop ] Fiber.t)
+    -> finally:(unit -> unit)
+    -> unit
+
+  val go :
+       Config.t
+    -> on_event:(Config.t -> Event.t -> unit)
+    -> (unit -> 'a Fiber.t)
+    -> 'a
 end
-
-(** Runs [once] in a loop, executing [finally] after every iteration, even if
-    Fiber.Never was encountered.
-
-    If any source files change in the middle of iteration, it gets canceled. *)
-val poll :
-     Config.t
-  -> on_event:(Config.t -> Build.event -> unit)
-  -> once:(unit -> [ `Continue | `Stop ] Fiber.t)
-  -> finally:(unit -> unit)
-  -> unit
-
-val go :
-     Config.t
-  -> on_event:(Config.t -> Build.event -> unit)
-  -> (unit -> 'a Fiber.t)
-  -> 'a
 
 (** [with_job_slot f] waits for one job slot (as per [-j <jobs] to become
     available and then calls [f]. *)

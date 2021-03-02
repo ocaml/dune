@@ -401,7 +401,7 @@ let resolve_program t ~dir ?hint ~loc bin =
   Artifacts.Bin.binary ?hint ~loc bin_artifacts bin
 
 let get_installed_binaries stanzas ~(context : Context.t) =
-  let install_dir = Config.local_install_bin_dir ~context:context.name in
+  let install_dir = Local_install_path.bin_dir ~context:context.name in
   let expand_str ~dir sw =
     Expander.Static.With_reduced_var_set.expand_str ~context ~dir sw
   in
@@ -575,7 +575,7 @@ let create ~(context : Context.t) ?host ~projects ~packages ~stanzas () =
             add_in_package_section acc package_name section))
   in
   let env_dune_dir_locations =
-    let install_dir = Config.local_install_dir ~context:context.Context.name in
+    let install_dir = Local_install_path.dir ~context:context.Context.name in
     let install_dir = Path.build install_dir in
     let v =
       Option.value

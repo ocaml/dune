@@ -65,7 +65,7 @@ let term =
       ( ( match prog_where with
         | `Search p ->
           [ Path.Build.relative
-              (Config.local_install_bin_dir ~context:context.name)
+              (Local_install_path.bin_dir ~context:context.name)
               p
             |> Path.build
           ]
@@ -92,7 +92,7 @@ let term =
     match prog_where with
     | `Search prog ->
       let path =
-        Path.build (Config.local_install_bin_dir ~context:context.name)
+        Path.build (Local_install_path.bin_dir ~context:context.name)
         :: context.path
       in
       Bin.which prog ~path

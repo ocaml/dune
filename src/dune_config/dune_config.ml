@@ -3,7 +3,7 @@ open Dune_lang.Decoder
 module Scheduler = Dune_engine.Scheduler
 module Sandbox_mode = Dune_engine.Sandbox_mode
 module Stanza = Dune_engine.Stanza
-module Config = Dune_engine.Config
+module Config = Dune_util.Config
 module String_with_vars = Dune_engine.String_with_vars
 module Pform = Dune_engine.Pform
 module Log = Dune_util.Log

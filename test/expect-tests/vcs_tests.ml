@@ -2,6 +2,7 @@ open Stdune
 open Dune_engine
 open Fiber.O
 open! Dune_tests_common
+module Config = Dune_util.Config
 
 let () = init ()
 

@@ -1,5 +1,5 @@
 open Stdune
-module Config = Dune_engine.Config
+module Config = Dune_util.Config
 module Colors = Dune_rules.Colors
 module Clflags = Dune_engine.Clflags
 module Package = Dune_engine.Package
@@ -155,7 +155,7 @@ let set_common ?log_file c =
        through such an editor will be able to use the "jump to error" feature of
        their editor. *)
     let dir =
-      match Dune_engine.Config.inside_dune with
+      match Config.inside_dune with
       | false -> cwd
       | true -> (
         let descendant_simple p ~of_ =
@@ -501,7 +501,7 @@ let config_of_file = function
   | No_config -> Dune_config.default
   | This fname -> Dune_config.load_config_file fname
   | Default ->
-    if Dune_engine.Config.inside_dune then
+    if Dune_util.Config.inside_dune then
       Dune_config.default
     else
       Dune_config.load_user_config_file ()

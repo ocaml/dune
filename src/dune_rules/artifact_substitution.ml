@@ -66,7 +66,7 @@ let conf_of_context (context : Build_context.t option) =
       | Stdlib -> Some context.stdlib_dir
     in
     let hardcoded_ocaml_path =
-      let install_dir = Config.local_install_dir ~context:context.name in
+      let install_dir = Local_install_path.dir ~context:context.name in
       let install_dir = Path.build (Path.Build.relative install_dir "lib") in
       Hardcoded (install_dir :: context.default_ocamlpath)
     in

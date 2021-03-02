@@ -405,8 +405,14 @@ module Exit_status = struct
   let handle_non_verbose t ~display ~purpose ~output ~prog ~command_line =
     let open Pp.O in
     let show_command =
-      Config.show_full_command_on_error ()
-      || not (outputs_starts_with_location output)
+      let show_full_command_on_error =
+        !Clflags.always_show_command_line
+        || (* We want to show command lines in the CI, but not when running
+              inside dune. Otherwise tests would yield different result whether
+              they are executed locally or in the CI. *)
+        (Config.inside_ci && not Config.inside_dune)
+      in
+      show_full_command_on_error || not (outputs_starts_with_location output)
     in
     let output = parse_output output in
     let _, progname, _ = Fancy.split_prog prog in

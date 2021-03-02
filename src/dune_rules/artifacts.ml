@@ -65,7 +65,7 @@ module Public_libs = struct
     if Lib.is_local lib then
       let package, rest = Lib_name.split (Lib.name lib) in
       let lib_install_dir =
-        Config.local_install_lib_dir ~context:t.context.name ~package
+        Local_install_path.lib_dir ~context:t.context.name ~package
       in
       let lib_install_dir =
         match rest with

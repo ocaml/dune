@@ -386,7 +386,7 @@ end = struct
     let pkg_name = Package.name pkg in
     let ctx = Super_context.context sctx in
     let pkg_root =
-      Config.local_install_lib_dir ~context:ctx.name ~package:pkg_name
+      Local_install_path.lib_dir ~context:ctx.name ~package:pkg_name
     in
     let lib_root lib =
       let subdir =
@@ -530,7 +530,7 @@ end = struct
           ; entries
           ; dir =
               Path.build
-                (Config.local_install_lib_dir ~context:ctx.name ~package:name)
+                (Local_install_path.lib_dir ~context:ctx.name ~package:name)
           ; sections
           ; sites = pkg.sites
           ; files = []
@@ -670,7 +670,7 @@ let symlink_installed_artifacts_to_build_install sctx
     (entries : (Loc.t option * Path.Build.t Install.Entry.t) list)
     ~install_paths =
   let ctx = Super_context.context sctx in
-  let install_dir = Config.local_install_dir ~context:ctx.name in
+  let install_dir = Local_install_path.dir ~context:ctx.name in
   List.map entries ~f:(fun (loc, entry) ->
       let dst =
         let relative =
@@ -845,7 +845,7 @@ let memo =
       in
       Approximation
         ( Dir_set.union_all
-            [ Dir_set.subtree (Config.local_install_dir ~context:context_name)
+            [ Dir_set.subtree (Local_install_path.dir ~context:context_name)
             ; Dir_set.singleton (Package_paths.build_dir ctx pkg)
             ]
         , Thunk (fun () -> Finite (Rules.to_map (Memo.Lazy.force rules))) ))

@@ -243,14 +243,15 @@ let odoc_include_flags ctx pkg requires =
 let setup_html sctx (odoc_file : odoc) ~pkg ~requires =
   let ctx = Super_context.context sctx in
   let deps = Dep.deps ctx pkg requires in
-  let to_remove, dune_keep =
+  let to_remove, dummy =
     match odoc_file.source with
     | Mld -> (odoc_file.html_file, [])
     | Module ->
-      let dune_keep =
-        Action_builder.create_file (odoc_file.html_dir ++ Config.dune_keep_fname)
-      in
-      (odoc_file.html_dir, [ dune_keep ])
+      (* Dummy target so that the bellow rule as at least one target. We do this
+         because we don't know the targets of odoc in this case. The proper way
+         to support this would be to have directory targets. *)
+      let dummy = Action_builder.create_file (odoc_file.html_dir ++ ".dummy") in
+      (odoc_file.html_dir, [ dummy ])
   in
   let open Action_builder.With_targets.O in
   add_rule sctx
@@ -258,11 +259,6 @@ let setup_html sctx (odoc_file : odoc) ~pkg ~requires =
     >>> Action_builder.progn
           ( Action_builder.with_no_targets
               (Action_builder.return
-                 (* Note that we declare no targets apart from [dune_keep]. This
-                    means Dune doesn't know how to build specific documentation
-                    files and that we can't run this rule in a sandbox. To
-                    properly declare targets we would need to support some form
-                    of "dynamic targets" or "target directories". *)
                  (Action.Progn
                     [ Action.Remove_tree to_remove
                     ; Action.Mkdir (Path.build odoc_file.html_dir)
@@ -278,7 +274,7 @@ let setup_html sctx (odoc_file : odoc) ~pkg ~requires =
                ; Dep (Path.build odoc_file.odoc_input)
                ; Hidden_targets [ odoc_file.html_file ]
                ]
-          :: dune_keep ) )
+          :: dummy ) )
 
 let setup_library_odoc_rules cctx (library : Library.t) ~dep_graphs =
   let lib =

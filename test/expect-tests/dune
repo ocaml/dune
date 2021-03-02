@@ -8,6 +8,7 @@
   ocaml_config
   dune_tests_common
   stdune
+  dune_util
   dune_engine
   dune_rules
   fiber

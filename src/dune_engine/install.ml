@@ -185,7 +185,7 @@ module Section = struct
 
     let get_local_location context section package_name =
       (* check that we get the good path *)
-      let install_dir = Config.local_install_dir ~context in
+      let install_dir = Local_install_path.dir ~context in
       let install_dir = Path.build install_dir in
       let paths = make ~package:package_name ~destdir:install_dir () in
       get paths section

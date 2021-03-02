@@ -2,7 +2,6 @@ module Main = Main
 module Context = Context
 module Super_context = Super_context
 module Findlib = Findlib
-module Lib_deps_info = Lib_deps_info
 module Colors = Colors
 module Profile = Profile
 module Workspace = Workspace

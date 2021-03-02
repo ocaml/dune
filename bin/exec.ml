@@ -43,7 +43,7 @@ let term =
       value & flag
       & info [ "no-build" ] ~doc:"don't rebuild target before executing")
   and+ args = Arg.(value & pos_right 0 string [] (Arg.info [] ~docv:"ARGS")) in
-  Common.set_common common ~targets:[ Arg.Dep.file prog ];
+  Common.set_common common;
   let setup =
     Scheduler.go ~common (fun () -> Memo.Build.run (Import.Main.setup common))
   in

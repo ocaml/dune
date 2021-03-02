@@ -29,8 +29,6 @@ dune >= 2.8
   18 |  (libraries bar))
                    ^^^
   Error: Library "bar" in _build/default is hidden (unsatisfied 'enabled_if').
-  Hint: try:
-    dune external-lib-deps --missing ./bar_exe.exe
   [1]
 
 + The actual context

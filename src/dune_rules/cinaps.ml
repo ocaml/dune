@@ -78,7 +78,7 @@ let gen_rules sctx t ~dir ~scope =
   let obj_dir = Obj_dir.make_exe ~dir:cinaps_dir ~name in
   let expander = Super_context.expander sctx ~dir in
   let preprocess =
-    Preprocessing.make sctx ~dir ~expander ~dep_kind:Required
+    Preprocessing.make sctx ~dir ~expander
       ~lint:(Preprocess.Per_module.no_preprocessing ())
       ~preprocess:t.preprocess ~preprocessor_deps:t.preprocessor_deps
       ~instrumentation_deps:[] ~lib_name:None ~scope
@@ -93,7 +93,7 @@ let gen_rules sctx t ~dir ~scope =
       [ (t.loc, name) ]
       (Lib_dep.Direct (loc, Lib_name.of_string "cinaps.runtime") :: t.libraries)
       ~pps:(Preprocess.Per_module.pps t.preprocess)
-      ~dune_version ~optional:false
+      ~dune_version
   in
   let cctx =
     Compilation_context.create () ~super_context:sctx ~expander ~scope ~obj_dir

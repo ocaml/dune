@@ -129,7 +129,6 @@ let dep expander = function
 let dep expander x = Action_builder.of_result (dep expander x)
 
 let prepare_expander expander =
-  let expander = Expander.set_dep_kind expander Optional in
   Expander.set_expanding_what expander Deps_like_field
 
 let unnamed ~expander l =

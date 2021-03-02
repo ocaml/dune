@@ -465,7 +465,7 @@ let promote_correction fn build ~suffix =
 
 let chdir action = Action_unexpanded.Chdir (workspace_root_var, action)
 
-let action_for_pp ~dep_kind ~loc ~expander ~action ~src ~target =
+let action_for_pp ~loc ~expander ~action ~src ~target =
   let action = chdir action in
   let bindings =
     Pform.Map.singleton (Var Input_file) [ Value.Path (Path.build src) ]
@@ -474,7 +474,6 @@ let action_for_pp ~dep_kind ~loc ~expander ~action ~src ~target =
   let targets = Targets.Or_forbidden.Forbidden "preprocessing actions" in
   let targets_dir = Option.value ~default:src target |> Path.Build.parent_exn in
   let action =
-    let expander = Expander.set_dep_kind expander dep_kind in
     let open Action_builder.With_targets.O in
     Action_builder.with_no_targets (Action_builder.path (Path.build src))
     >>> Action_unexpanded.expand action ~loc ~expander ~deps:[] ~targets
@@ -489,7 +488,7 @@ let action_for_pp ~dep_kind ~loc ~expander ~action ~src ~target =
 
 (* Generate rules for the dialect modules in [modules] and return a a new module
    with only OCaml sources *)
-let setup_dialect_rules sctx ~dir ~dep_kind ~expander (m : Module.t) =
+let setup_dialect_rules sctx ~dir ~expander (m : Module.t) =
   let ml = Module.ml_source m in
   Module.iter m ~f:(fun ml_kind f ->
       match Dialect.preprocess f.dialect ml_kind with
@@ -500,8 +499,7 @@ let setup_dialect_rules sctx ~dir ~dep_kind ~expander (m : Module.t) =
           Option.value_exn (Module.file ml ~ml_kind) |> Path.as_in_build_dir_exn
         in
         SC.add_rule sctx ~dir
-          (action_for_pp ~dep_kind ~loc ~expander ~action ~src
-             ~target:(Some dst)));
+          (action_for_pp ~loc ~expander ~action ~src ~target:(Some dst)));
   ml
 
 let add_corrected_suffix_binding expander suffix =
@@ -519,7 +517,7 @@ let driver_flags expander ~flags ~corrected_suffix ~driver_flags ~standard =
   in
   (ppx_flags, args)
 
-let lint_module sctx ~dir ~expander ~dep_kind ~lint ~lib_name ~scope =
+let lint_module sctx ~dir ~expander ~lint ~lib_name ~scope =
   Staged.stage
     (let alias = Alias.lint ~dir in
      let add_alias fn build =
@@ -536,8 +534,7 @@ let lint_module sctx ~dir ~expander ~dep_kind ~lint ~lib_name ~scope =
              Module.iter source ~f:(fun _ (src : Module.File.t) ->
                  let src = Path.as_in_build_dir_exn src.path in
                  add_alias src ~loc:(Some loc)
-                   (action_for_pp ~dep_kind ~loc ~expander ~action ~src
-                      ~target:None))
+                   (action_for_pp ~loc ~expander ~action ~src ~target:None))
          | Pps { loc; pps; flags; staged } ->
            if staged then
              User_error.raise ~loc
@@ -578,7 +575,7 @@ let lint_module sctx ~dir ~expander ~dep_kind ~lint ~lib_name ~scope =
      fun ~(source : Module.t) ~ast ->
        Module_name.Per_item.get lint (Module.name source) ~source ~ast)
 
-let make sctx ~dir ~expander ~dep_kind ~lint ~preprocess ~preprocessor_deps
+let make sctx ~dir ~expander ~lint ~preprocess ~preprocessor_deps
     ~instrumentation_deps ~lib_name ~scope =
   let preprocessor_deps = preprocessor_deps @ instrumentation_deps in
   let preprocess =
@@ -591,14 +588,13 @@ let make sctx ~dir ~expander ~dep_kind ~lint ~preprocess ~preprocessor_deps
     |> Action_builder.memoize "preprocessor deps"
   in
   let lint_module =
-    Staged.unstage
-      (lint_module sctx ~dir ~expander ~dep_kind ~lint ~lib_name ~scope)
+    Staged.unstage (lint_module sctx ~dir ~expander ~lint ~lib_name ~scope)
   in
   Module_name.Per_item.map preprocess ~f:(fun pp ->
       match pp with
       | No_preprocessing ->
         fun m ~lint ->
-          let ast = setup_dialect_rules sctx ~dir ~dep_kind ~expander m in
+          let ast = setup_dialect_rules sctx ~dir ~expander m in
           if lint then lint_module ~ast ~source:m;
           ast
       | Action (loc, action) ->
@@ -606,13 +602,12 @@ let make sctx ~dir ~expander ~dep_kind ~lint ~preprocess ~preprocessor_deps
           let ast =
             pped_module m ~f:(fun _kind src dst ->
                 let action =
-                  action_for_pp ~dep_kind ~loc ~expander ~action ~src
-                    ~target:(Some dst)
+                  action_for_pp ~loc ~expander ~action ~src ~target:(Some dst)
                 in
                 let open Action_builder.With_targets.O in
                 SC.add_rule sctx ~loc ~dir
                   (Action_builder.with_no_targets preprocessor_deps >>> action))
-            |> setup_dialect_rules sctx ~dir ~dep_kind ~expander
+            |> setup_dialect_rules sctx ~dir ~expander
           in
           if lint then lint_module ~ast ~source:m;
           ast
@@ -634,7 +629,7 @@ let make sctx ~dir ~expander ~dep_kind ~lint ~preprocess ~preprocessor_deps
           in
           fun m ~lint ->
             let open Action_builder.With_targets.O in
-            let ast = setup_dialect_rules sctx ~dir ~dep_kind ~expander m in
+            let ast = setup_dialect_rules sctx ~dir ~expander m in
             if lint then lint_module ~ast ~source:m;
             pped_module ast ~f:(fun ml_kind src dst ->
                 SC.add_rule ~sandbox:Sandbox_config.no_special_requirements sctx
@@ -690,7 +685,7 @@ let make sctx ~dir ~expander ~dep_kind ~lint ~preprocess ~preprocessor_deps
           in
           let pp = Some pp_flags in
           fun m ~lint ->
-            let ast = setup_dialect_rules sctx ~dir ~dep_kind ~expander m in
+            let ast = setup_dialect_rules sctx ~dir ~expander m in
             if lint then lint_module ~ast ~source:m;
             Module.set_pp ast pp)
   |> Pp_spec.make

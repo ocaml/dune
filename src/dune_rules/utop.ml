@@ -82,9 +82,9 @@ let setup sctx ~dir =
   in
   let preprocess = Module_name.Per_item.for_all pps in
   let preprocessing =
-    Preprocessing.make sctx ~dir ~expander ~scope ~dep_kind:Required
-      ~lib_name:None ~lint:Dune_file.Lint.no_lint ~preprocess
-      ~preprocessor_deps:[] ~instrumentation_deps:[]
+    Preprocessing.make sctx ~dir ~expander ~scope ~lib_name:None
+      ~lint:Dune_file.Lint.no_lint ~preprocess ~preprocessor_deps:[]
+      ~instrumentation_deps:[]
   in
   let source = source ~dir in
   let obj_dir = Toplevel.Source.obj_dir source in

@@ -199,12 +199,7 @@ end = struct
       ; List.map ~f:(make_entry Lib) install_c_headers
       ]
 
-  let keep_if ~external_lib_deps_mode expander =
-    if external_lib_deps_mode then
-      fun ~scope:_ ->
-    Option.some
-    else
-      fun ~scope stanza ->
+  let keep_if expander ~scope stanza =
     Option.some_if
       ( match (stanza : Stanza.t) with
       | Dune_file.Library lib ->
@@ -232,7 +227,6 @@ end = struct
              Lib.DB.resolve_user_written_deps_for_exes (Scope.libs scope)
                exes.names exes.buildable.libraries ~pps ~dune_version
                ~allow_overlaps:exes.buildable.allow_overlapping_dependencies
-               ~optional:exes.optional
            in
            Result.is_ok (Lib.Compile.direct_requires compile_info) )
       | Coq_stanza.Theory.T d -> Option.is_some d.package
@@ -301,10 +295,6 @@ end = struct
                         entry :: acc
                       else
                         acc))
-    in
-    let keep_if =
-      let external_lib_deps_mode = !Clflags.external_lib_deps_mode in
-      keep_if ~external_lib_deps_mode
     in
     Dir_with_dune.deep_fold stanzas ~init ~f:(fun d stanza acc ->
         let { Dir_with_dune.ctx_dir = dir; scope; _ } = d in

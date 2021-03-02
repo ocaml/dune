@@ -46,7 +46,7 @@ let term =
             "Only print this field. This option can be repeated multiple times \
              to print multiple fields.")
   in
-  Common.set_common common ~targets:[];
+  Common.set_common common;
   Scheduler.go ~common (fun () ->
       let open Fiber.O in
       let* setup = Memo.Build.run (Import.Main.setup common) in

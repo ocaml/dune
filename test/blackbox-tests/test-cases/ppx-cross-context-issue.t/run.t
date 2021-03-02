@@ -9,6 +9,4 @@
   -> required by lib/lib.pp.ml (context cross-environment)
   -> required by alias lib/all (context cross-environment)
   -> required by alias default (context cross-environment)
-  Hint: try:
-    dune external-lib-deps --missing --debug-dependency-path @@default
   [1]

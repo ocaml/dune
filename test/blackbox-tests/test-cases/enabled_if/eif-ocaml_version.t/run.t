@@ -10,6 +10,4 @@ This one is disabled (version too low)
                    ^^^^^^^^^^
   Error: Library "futurecaml" in _build/default is hidden (unsatisfied
   'enabled_if').
-  Hint: try:
-    dune external-lib-deps --missing main2.exe
   [1]

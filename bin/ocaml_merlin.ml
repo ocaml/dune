@@ -28,7 +28,7 @@ let term =
              debugging purposes only and should not be considered as a stable \
              ouptut.")
   in
-  Common.set_common common ~log_file:No_log_file ~targets:[];
+  Common.set_common common ~log_file:No_log_file;
   Dune_engine.File_tree.init ~recognize_jbuilder_projects:true
     ~ancestor_vcs:None;
   let x = Common.x common in
@@ -69,7 +69,7 @@ module Dump_dot_merlin = struct
               "The path to the folder of which the configuration should be \
                printed. Defaults to the current directory.")
     in
-    Common.set_common common ~log_file:No_log_file ~targets:[];
+    Common.set_common common ~log_file:No_log_file;
     Dune_engine.File_tree.init ~recognize_jbuilder_projects:true
       ~ancestor_vcs:None;
     let x = Common.x common in

@@ -155,9 +155,9 @@ module Stanza = struct
     in
     let preprocess = Module_name.Per_item.for_all toplevel.pps in
     let preprocessing =
-      Preprocessing.make sctx ~dir ~expander ~scope ~dep_kind:Required
-        ~lib_name:None ~lint:Dune_file.Lint.no_lint ~preprocess
-        ~preprocessor_deps:[] ~instrumentation_deps:[]
+      Preprocessing.make sctx ~dir ~expander ~scope ~lib_name:None
+        ~lint:Dune_file.Lint.no_lint ~preprocess ~preprocessor_deps:[]
+        ~instrumentation_deps:[]
     in
     let compile_info =
       let compiler_libs =
@@ -167,7 +167,7 @@ module Stanza = struct
         [ (source.loc, source.name) ]
         ( Lib_dep.Direct (source.loc, compiler_libs)
         :: List.map toplevel.libraries ~f:(fun d -> Lib_dep.Direct d) )
-        ~pps ~dune_version ~allow_overlaps:false ~optional:false
+        ~pps ~dune_version ~allow_overlaps:false
     in
     let requires_compile = Lib.Compile.direct_requires compile_info in
     let requires_link = Lib.Compile.requires_link compile_info in

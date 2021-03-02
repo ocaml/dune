@@ -74,6 +74,10 @@ Unreleased
 - Automatically delete left-over Merlin files when rebuilding for the first time
   a project previously built with Dune `<= 2.7`. (#4261, @voodoos, @aalekseyev)
 
+- Remove the `external-lib-deps` command. This command was only
+  approximative and the cost of maintainance was getting too high. We
+  removed it to make room for new more important features
+
 2.8.2 (21/01/2021)
 ------------------
 

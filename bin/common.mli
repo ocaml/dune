@@ -34,27 +34,10 @@ val prefix_target : t -> string -> string
 
 val instrument_with : t -> Dune_engine.Lib_name.t list option
 
-(** [set_common ?log common ~targets ~external_lib_deps_mode] is
-    [set_dirs common] followed by [set_common_other common ~targets]. In
-    general, [set_common] executes sequence of side-effecting actions to
-    initialize Dune's working environment based on the options determined in a
-    [Common.t] record.contents. *)
-val set_common :
-     ?log_file:Dune_util.Log.File.t
-  -> ?external_lib_deps_mode:bool
-  -> t
-  -> targets:Arg.Dep.t list
-  -> unit
-
-(** [set_common_other common ~targets] sets all stateful values dictated by
-    [common], except those accounted for by [set_dirs]. [targets] are used to
-    obtain external library dependency hints, if needed. *)
-val set_common_other :
-  ?log_file:Dune_util.Log.File.t -> t -> targets:Arg.Dep.t list -> unit
-
-(** [set_dirs common] sets the workspace root and build directories, and makes
-    the root the current working directory *)
-val set_dirs : t -> unit
+(** [set_common] executes sequence of side-effecting actions to initialize
+    Dune's working environment based on the options determined in a [Common.t]
+    record.contents. *)
+val set_common : ?log_file:Dune_util.Log.File.t -> t -> unit
 
 (** [examples \[("description", "dune cmd foo"); ...\]] is an [EXAMPLES] manpage
     section of enumerated examples illustrating how to run the documented

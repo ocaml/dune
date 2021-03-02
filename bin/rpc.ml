@@ -25,7 +25,7 @@ let wait_for_server common =
     loop ()
 
 let client_term common f =
-  Common.set_common common ~targets:[] ~external_lib_deps_mode:false;
+  Common.set_common common;
   Scheduler.go ~common (fun () ->
       let where = wait_for_server common in
       f where)

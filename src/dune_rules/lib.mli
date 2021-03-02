@@ -140,8 +140,6 @@ module Compile : sig
   (** Transitive closure of all used ppx rewriters *)
   val pps : t -> L.t Or_exn.t
 
-  val lib_deps_info : t -> Lib_deps_info.t
-
   val merlin_ident : t -> Merlin_ident.t
 
   (** Sub-systems used in this compilation context *)
@@ -225,7 +223,6 @@ module DB : sig
     -> Lib_dep.t list
     -> pps:(Loc.t * Lib_name.t) list
     -> dune_version:Dune_lang.Syntax.Version.t
-    -> optional:bool
     -> Compile.t
 
   val resolve_pps : t -> (Loc.t * Lib_name.t) list -> L.t Or_exn.t

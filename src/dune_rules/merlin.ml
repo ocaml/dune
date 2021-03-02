@@ -283,7 +283,6 @@ module Unprocessed = struct
             Forbidden "preprocessing actions"
           in
           let action = Preprocessing.chdir (Run (exe, args)) in
-          let expander = Expander.set_dep_kind expander Optional in
           Action_unexpanded.expand ~loc ~expander ~deps:[] ~targets ~targets_dir
             action
         in

@@ -1,8 +1,6 @@
 open! Stdune
 open Import
 
-type label = ..
-
 module T = struct
   type 'a t =
     | Pure : 'a -> 'a t
@@ -18,7 +16,6 @@ module T = struct
     | Lines_of : Path.t -> string list t
     | Dyn_paths : ('a * Path.Set.t) t -> 'a t
     | Dyn_deps : ('a * Dep.Set.t) t -> 'a t
-    | Label : label -> unit t
     | Or_exn : 'a Or_exn.t t -> 'a t
     | Fail : fail -> _ t
     | Memo : 'a memo -> 'a t
@@ -74,8 +71,6 @@ let or_exn s = Or_exn s
 let all_unit xs =
   let+ (_ : unit list) = all xs in
   ()
-
-let label map = Label map
 
 let deps d = Deps d
 
@@ -331,7 +326,6 @@ end = struct
       { Static_deps.empty with rule_deps = Dep.Set.of_files [ p ] }
     | Lines_of p ->
       { Static_deps.empty with rule_deps = Dep.Set.of_files [ p ] }
-    | Label _ -> Static_deps.empty
     | Or_exn _ -> Static_deps.empty
     | Fail _ -> Static_deps.empty
     | Memo m -> Memo.exec memo (Input.T m)
@@ -343,49 +337,6 @@ end = struct
 end
 
 let static_deps = Analysis.static_deps
-
-(* We do no memoization in this function because it is currently used only to
-   support the [external-lib-deps] command and so it's not on the critical path. *)
-let fold_labeled (type acc) t ~(init : acc) ~f =
-  let file_exists = Fdecl.get file_exists_fdecl in
-  let rec loop : type a. a t -> acc -> acc =
-   fun t acc ->
-    match t with
-    | Pure _ -> acc
-    | Map (_, a) -> loop a acc
-    | Both (a, b) ->
-      let acc = loop a acc in
-      loop b acc
-    | Seq (a, b) ->
-      let acc = loop a acc in
-      loop b acc
-    | Map2 (_, a, b) ->
-      let acc = loop a acc in
-      loop b acc
-    | All xs -> List.fold_left xs ~init:acc ~f:(fun acc a -> loop a acc)
-    | Paths_for_rule _ -> acc
-    | Paths_glob _ -> acc
-    | Deps _ -> acc
-    | Dyn_paths t -> loop t acc
-    | Dyn_deps t -> loop t acc
-    | Contents _ -> acc
-    | Lines_of _ -> acc
-    | Label r -> f r acc
-    | Or_exn _ -> acc
-    | Fail _ -> acc
-    | If_file_exists (p, then_, else_) ->
-      if file_exists p then
-        loop then_ acc
-      else
-        loop else_ acc
-    | Memo m -> loop m.t acc
-    | Catch (t, _) -> loop t acc
-    | Memo_build _ -> acc
-    | Dyn_memo_build b -> loop b acc
-    | Build b -> loop b acc
-    | Capture_deps b -> loop b acc
-  in
-  loop t init
 
 (* Execution *)
 
@@ -466,7 +417,6 @@ struct
       | Dyn_deps t ->
         let+ (x, dyn_deps), dyn_deps_x = exec t in
         (x, Dep.Set.union dyn_deps dyn_deps_x)
-      | Label _ -> Memo.Build.return ((), Dep.Set.empty)
       | Or_exn e ->
         let+ a, deps = exec e in
         (Result.ok_exn a, deps)
@@ -540,7 +490,6 @@ let rec can_eval_statically : type a. a t -> bool = function
   | Dyn_deps b -> can_eval_statically b
   | Contents _ -> false
   | Lines_of _ -> false
-  | Label _ -> true
   | Or_exn b -> can_eval_statically b
   | Fail _ -> true
   | If_file_exists (_, _, _) -> false
@@ -611,7 +560,6 @@ let static_eval =
       (x, Deps deps >>> acc)
     | Contents _ -> assert false
     | Lines_of _ -> assert false
-    | Label _ -> ((), acc >>> t)
     | Or_exn b ->
       let res, acc = loop b acc in
       (Result.ok_exn res, acc)

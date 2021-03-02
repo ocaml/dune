@@ -30,7 +30,6 @@ type t =
   ; foreign_flags :
       dir:Path.Build.t -> string list Action_builder.t Foreign_language.Dict.t
   ; find_package : Package.Name.t -> any_package option
-  ; dep_kind : Lib_deps_info.Kind.t
   ; expanding_what : Expanding_what.t
   }
 
@@ -56,8 +55,6 @@ let set_bin_artifacts t ~bin_artifacts_host = { t with bin_artifacts_host }
 let set_artifacts_dynamic t artifacts_dynamic = { t with artifacts_dynamic }
 
 let set_lookup_ml_sources t ~f = { t with lookup_artifacts = Some f }
-
-let set_dep_kind t dep_kind = { t with dep_kind }
 
 let set_expanding_what t x = { t with expanding_what = x }
 
@@ -197,10 +194,6 @@ type nonrec expansion_result =
   | Need_full_expander of (t -> Value.t list Action_builder.t)
 
 let static v = Direct (Action_builder.return v)
-
-let lib_dep t ?(dep_kind = t.dep_kind) lib =
-  Action_builder.label
-    (Lib_deps_info.Label (Lib_name.Map.singleton lib dep_kind))
 
 let[@inline never] invalid_use_of_target_variable t
     ~(source : Dune_lang.Template.Pform.t) ~var_multiplicity =
@@ -399,8 +392,6 @@ let expand_pform_gen ~(context : Context.t) ~bindings ~dir ~source
               else
                 t.scope
             in
-            lib_dep t lib
-            >>>
             match
               if lib_private then
                 let open Result.O in
@@ -488,9 +479,9 @@ let expand_pform_gen ~(context : Context.t) ~bindings ~dir ~source
             let lib =
               Lib_name.parse_string_exn (Dune_lang.Template.Pform.loc source, s)
             in
-            let+ () = lib_dep t lib ~dep_kind:Optional in
-            Lib.DB.available (Scope.libs t.scope) lib
-            |> string_of_bool |> string)
+            Action_builder.return
+              ( Lib.DB.available (Scope.libs t.scope) lib
+              |> string_of_bool |> string ))
       | Read ->
         let path = relative ~source dir s in
         Direct (Action_builder.map (Action_builder.contents path) ~f:string)
@@ -546,7 +537,6 @@ let make ~scope ~scope_host ~(context : Context.t) ~lib_artifacts
         Code_error.raise "foreign flags expander is not set"
           [ ("dir", Path.Build.to_dyn dir) ])
   ; find_package
-  ; dep_kind = Required
   ; expanding_what = Nothing_special
   }
 

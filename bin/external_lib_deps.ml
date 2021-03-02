@@ -8,7 +8,7 @@ let man =
   ; `P
       "This subcommand used to print out anapproximate set of external \
        libraries that were required for building a given set of targets, \
-       without running the build. While this feature was useful, over timethe \
+       without running the build. While this feature was useful, over time the \
        quality of approximation had degraded and the cost of maintenance had \
        increased, so we decided to remove it.\n"
   ; `Blocks Common.help_secs

@@ -50,8 +50,10 @@ module Run : sig
       | Success
       | Failure
 
-    type t =
-      | Tick
+    type go = Tick
+
+    type poll =
+      | Go of go
       | Source_files_changed
       | Build_interrupted
       | Build_finish of build_result
@@ -63,14 +65,14 @@ module Run : sig
       If any source files change in the middle of iteration, it gets canceled. *)
   val poll :
        Config.t
-    -> on_event:(Config.t -> Event.t -> unit)
+    -> on_event:(Config.t -> Event.poll -> unit)
     -> once:(unit -> [ `Continue | `Stop ] Fiber.t)
     -> finally:(unit -> unit)
     -> unit
 
   val go :
        Config.t
-    -> on_event:(Config.t -> Event.t -> unit)
+    -> on_event:(Config.t -> Event.go -> unit)
     -> (unit -> 'a Fiber.t)
     -> 'a
 end

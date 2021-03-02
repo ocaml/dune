@@ -141,9 +141,11 @@ module Scheduler = struct
            ; Pp.nop
            ])
 
-  let on_event config = function
+  let on_tick () = Console.Status_line.refresh ()
+
+  let on_event_poll config = function
+    | Scheduler.Run.Event.Go Tick -> on_tick ()
     | Scheduler.Run.Event.Source_files_changed -> maybe_clear_screen config
-    | Tick -> Console.Status_line.refresh ()
     | Build_interrupted ->
       let status_line =
         Some
@@ -169,13 +171,15 @@ module Scheduler = struct
     let config = Common.config common in
     let rpc = Common.rpc common |> Option.map ~f:Dune_rpc_impl.Server.config in
     let config = Dune_config.for_scheduler config rpc in
-    Scheduler.Run.go config ~on_event f
+    Scheduler.Run.go config
+      ~on_event:(fun _ Scheduler.Run.Event.Tick -> on_tick ())
+      f
 
   let poll ~(common : Common.t) ~once ~finally =
     let config = Common.config common in
     let rpc = Common.rpc common |> Option.map ~f:Dune_rpc_impl.Server.config in
     let config = Dune_config.for_scheduler config rpc in
-    Scheduler.Run.poll config ~on_event ~once ~finally
+    Scheduler.Run.poll config ~on_event:on_event_poll ~once ~finally
 end
 
 let restore_cwd_and_execve (common : Common.t) prog argv env =

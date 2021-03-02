@@ -971,14 +971,21 @@ module Run = struct
       | Success
       | Failure
 
-    type t =
-      | Tick
+    type go = Tick
+
+    type poll =
+      | Go of go
       | Source_files_changed
       | Build_interrupted
       | Build_finish of build_result
 
-    let to_handler ~on_event =
+    let to_handler_poll ~on_event =
       { Handler.build_interrupted = (fun cfg -> on_event cfg Build_interrupted)
+      ; new_event = (fun cfg -> on_event cfg (Go Tick))
+      }
+
+    let to_handler_go ~on_event : Handler.t =
+      { Handler.build_interrupted = (fun _ -> assert false)
       ; new_event = (fun cfg -> on_event cfg Tick)
       }
 
@@ -995,7 +1002,7 @@ module Run = struct
   end
 
   let poll config ~on_event ~once ~finally =
-    let handler = Event.to_handler ~on_event in
+    let handler = Event.to_handler_poll ~on_event in
     let t = prepare config ~polling:true ~handler in
     let watcher = File_watcher.create t.events in
     let rec loop () : unit Fiber.t =
@@ -1054,8 +1061,8 @@ module Run = struct
     | None -> Exn.raise exn
     | Some bt -> Exn.raise_with_backtrace exn bt
 
-  let go config ~on_event run =
-    let handler = Event.to_handler ~on_event in
+  let go config ~(on_event : Config.t -> Event.go -> unit) run =
+    let handler = Event.to_handler_go ~on_event in
     let t = prepare config ~polling:false ~handler in
     Event.go t run
 end

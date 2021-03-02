@@ -742,7 +742,6 @@ Testsuite for the (foreign_library ...) stanza.
 
   $ export OCAMLPATH=$PWD/external/install/lib; ./sdune exec ./main.exe --root=some/dir
   Entering directory 'some/dir'
-  Entering directory 'some/dir'
   Answer = 42
 
 ----------------------------------------------------------------------------------

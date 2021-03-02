@@ -91,6 +91,8 @@ let instrument_with t = t.instrument_with
 
 let rpc t = t.rpc
 
+let set_print_directory t b = { t with no_print_directory = not b }
+
 (* To avoid needless recompilations under Windows, where the case of
    [Sys.getcwd] can vary between different invocations of [dune], normalize to
    lowercase. *)
@@ -134,7 +136,50 @@ let set_common ?log_file c =
   Clflags.promote_install_files := c.promote_install_files;
   Clflags.always_show_command_line := c.always_show_command_line;
   Clflags.ignore_promoted_rules := c.ignore_promoted_rules;
-  Option.iter ~f:Dune_engine.Stats.enable c.stats_trace_file
+  Option.iter ~f:Dune_engine.Stats.enable c.stats_trace_file;
+  Dune_util.Log.info
+    [ Pp.textf "Workspace root: %s"
+        (Path.to_absolute_filename Path.root |> String.maybe_quoted)
+    ];
+  let cwd = Path.to_absolute_filename Path.root in
+  if cwd <> Fpath.initial_cwd && not c.no_print_directory then
+    (* Editors such as Emacs parse the output of the build system and interpret
+       filenames in error messages relative to where the build system was
+       started.
+
+       If the build system changes directory, the editor will not be able to
+       correctly locate files. However, such editors also understand messages of
+       the form "Entering directory '<dir>'" that the "make" command prints.
+
+       This is why Dune also prints such a message; this way people running Dune
+       through such an editor will be able to use the "jump to error" feature of
+       their editor. *)
+    let dir =
+      match Dune_engine.Config.inside_dune with
+      | false -> cwd
+      | true -> (
+        let descendant_simple p ~of_ =
+          match String.drop_prefix p ~prefix:of_ with
+          | None
+          | Some "" ->
+            None
+          | Some s -> Some (String.drop s 1)
+        in
+        match descendant_simple cwd ~of_:Fpath.initial_cwd with
+        | Some s -> s
+        | None -> (
+          match descendant_simple Fpath.initial_cwd ~of_:cwd with
+          | None -> cwd
+          | Some s ->
+            let rec loop acc dir =
+              if dir = Filename.current_dir_name then
+                acc
+              else
+                loop (Filename.concat acc "..") (Filename.dirname dir)
+            in
+            loop ".." (Filename.dirname s) ) )
+    in
+    Console.print [ Pp.verbatim (sprintf "Entering directory '%s'" dir) ]
 
 let footer =
   `Blocks

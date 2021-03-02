@@ -28,6 +28,7 @@ let term =
              debugging purposes only and should not be considered as a stable \
              ouptut.")
   in
+  let common = Common.set_print_directory common false in
   Common.set_common common ~log_file:No_log_file;
   Dune_engine.File_tree.init ~recognize_jbuilder_projects:true
     ~ancestor_vcs:None;

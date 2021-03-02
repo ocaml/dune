@@ -11,8 +11,6 @@ module Dune_rpc = Dune_rpc_private
 (* To make bug reports usable *)
 let () = Printexc.record_backtrace true
 
-let initial_cwd = Sys.getcwd ()
-
 let protect = Exn.protect
 
 let protectx = Exn.protectx

@@ -55,6 +55,9 @@ val footer : Cmdliner.Manpage.block
 
 val term : t Cmdliner.Term.t
 
+(** Set whether Dune should print the "Entering directory '<dir>'" message *)
+val set_print_directory : t -> bool -> t
+
 val debug_backtraces : bool Cmdliner.Term.t
 
 val config_term : Dune_config.t Cmdliner.Term.t

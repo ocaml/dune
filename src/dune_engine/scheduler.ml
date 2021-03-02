@@ -790,7 +790,6 @@ module Handler = struct
   type t =
     { new_event : Config.t -> unit
     ; build_interrupted : Config.t -> unit
-    ; chdir : string -> unit
     }
 end
 
@@ -868,17 +867,12 @@ let kill_and_wait_for_all_processes t =
   !saw_signal
 
 let prepare (config : Config.t) ~polling ~(handler : Handler.t) =
-  Log.info
-    [ Pp.textf "Workspace root: %s"
-        (Path.to_absolute_filename Path.root |> String.maybe_quoted)
-    ];
   let events = Event.Queue.create () in
   (* The signal watcher must be initialized first so that signals are blocked in
      all threads. *)
   Signal_watcher.init events;
   let process_watcher = Process_watcher.init events in
   let cwd = Sys.getcwd () in
-  if cwd <> initial_cwd then handler.chdir cwd;
   let rpc = Rpc0.of_config events config.rpc in
   let t =
     { original_cwd = cwd
@@ -981,12 +975,10 @@ module Build = struct
     | Source_files_changed
     | Build_interrupted
     | Build_finish of build_result
-    | Chdir of string
 
-  let to_handler config ~on_event =
+  let to_handler ~on_event =
     { Handler.build_interrupted = (fun cfg -> on_event cfg Build_interrupted)
     ; new_event = (fun cfg -> on_event cfg New_event)
-    ; chdir = (fun path -> on_event config (Chdir path))
     }
 
   let go t run =
@@ -1002,7 +994,7 @@ module Build = struct
 end
 
 let poll config ~on_event ~once ~finally =
-  let handler = Build.to_handler config ~on_event in
+  let handler = Build.to_handler ~on_event in
   let t = prepare config ~polling:true ~handler in
   let watcher = File_watcher.create t.events in
   let rec loop () : unit Fiber.t =
@@ -1062,7 +1054,7 @@ let poll config ~on_event ~once ~finally =
   | Some bt -> Exn.raise_with_backtrace exn bt
 
 let go config ~on_event run =
-  let handler = Build.to_handler config ~on_event in
+  let handler = Build.to_handler ~on_event in
   let t = prepare config ~polling:false ~handler in
 
   Build.go t run

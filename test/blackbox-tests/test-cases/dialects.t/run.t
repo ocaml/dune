@@ -2,7 +2,6 @@ Test the (dialect ...) stanza inside the dune-project file.
 
   $ dune exec --root good ./main.exe
   Entering directory 'good'
-  Entering directory 'good'
 
   $ dune build --root good @fmt
   Entering directory 'good'

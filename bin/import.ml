@@ -164,34 +164,6 @@ module Scheduler = struct
            (Some
               (Pp.seq message
                  (Pp.verbatim ", waiting for filesystem changes..."))))
-    | Chdir cwd ->
-      if not !Clflags.no_print_directory then
-        let dir =
-          match Dune_engine.Config.inside_dune with
-          | false -> cwd
-          | true -> (
-            let descendant_simple p ~of_ =
-              match String.drop_prefix p ~prefix:of_ with
-              | None
-              | Some "" ->
-                None
-              | Some s -> Some (String.drop s 1)
-            in
-            match descendant_simple cwd ~of_:Fpath.initial_cwd with
-            | Some s -> s
-            | None -> (
-              match descendant_simple Fpath.initial_cwd ~of_:cwd with
-              | None -> cwd
-              | Some s ->
-                let rec loop acc dir =
-                  if dir = Filename.current_dir_name then
-                    acc
-                  else
-                    loop (Filename.concat acc "..") (Filename.dirname dir)
-                in
-                loop ".." (Filename.dirname s) ) )
-        in
-        Console.print [ Pp.verbatim (sprintf "Entering directory '%s'" dir) ]
 
   let go ~(common : Common.t) f =
     let config = Common.config common in

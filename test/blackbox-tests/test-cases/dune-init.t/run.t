@@ -304,11 +304,9 @@ Can init and build a new executable project
 
   $ dune exec --root test_exec_proj ./bin/main.exe
   Entering directory 'test_exec_proj'
-  Entering directory 'test_exec_proj'
   Hello, World!
 
   $ dune exec --root test_exec_proj ./test/test_exec_proj.exe
-  Entering directory 'test_exec_proj'
   Entering directory 'test_exec_proj'
   $ rm -rf ./test_exec_proj
 

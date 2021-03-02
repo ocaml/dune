@@ -68,7 +68,7 @@ let term =
   Path.Build.set_build_dir (Path.Build.Kind.of_string Common.default_build_dir);
   Dune_config.init config;
   Log.init_disabled ();
-  Dune_engine.Scheduler.go
+  Dune_engine.Scheduler.Run.go
     ~on_event:(fun _ _ -> ())
     (Dune_config.for_scheduler config None)
     Watermarks.subst

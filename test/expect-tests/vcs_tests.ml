@@ -121,7 +121,7 @@ let run kind script =
     ; rpc = None
     }
   in
-  Scheduler.go
+  Scheduler.Run.go
     ~on_event:(fun _ _ -> ())
     config
     (fun () -> Fiber.sequential_iter script ~f:(run_action vcs))

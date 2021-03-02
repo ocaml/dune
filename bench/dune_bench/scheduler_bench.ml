@@ -20,7 +20,7 @@ let prog = Option.value_exn (Bin.which ~path:(Env.path Env.initial) "true")
 let run () = Process.run ~env:Env.initial Strict prog []
 
 let go ~jobs fiber =
-  Scheduler.go
+  Scheduler.Run.go
     ~on_event:(fun _ _ -> ())
     { config with concurrency = jobs }
     fiber

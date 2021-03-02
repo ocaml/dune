@@ -965,99 +965,100 @@ end = struct
     | Ok -> res
 end
 
-module Build = struct
-  type build_result =
-    | Success
-    | Failure
+module Run = struct
+  module Event = struct
+    type build_result =
+      | Success
+      | Failure
 
-  type event =
-    | Tick
-    | Source_files_changed
-    | Build_interrupted
-    | Build_finish of build_result
+    type t =
+      | Tick
+      | Source_files_changed
+      | Build_interrupted
+      | Build_finish of build_result
 
-  let to_handler ~on_event =
-    { Handler.build_interrupted = (fun cfg -> on_event cfg Build_interrupted)
-    ; new_event = (fun cfg -> on_event cfg Tick)
-    }
+    let to_handler ~on_event =
+      { Handler.build_interrupted = (fun cfg -> on_event cfg Build_interrupted)
+      ; new_event = (fun cfg -> on_event cfg Tick)
+      }
 
-  let go t run =
-    let res =
-      let f = Rpc0.with_rpc_serve t.rpc run in
-      Run_once.run_and_cleanup t f
-    in
-    match res with
-    | Error (Exn exn) -> Exn_with_backtrace.reraise exn
-    | Ok res -> res
-    | Error (Got_signal | Never) ->
-      raise Dune_util.Report_error.Already_reported
-end
-
-let poll config ~on_event ~once ~finally =
-  let handler = Build.to_handler ~on_event in
-  let t = prepare config ~polling:true ~handler in
-  let watcher = File_watcher.create t.events in
-  let rec loop () : unit Fiber.t =
-    t.status <- Building;
-    let open Fiber.O in
-    let* res =
-      let+ res =
-        let on_error exn () =
-          match t.status with
-          | Building -> Report_error.report exn
-          | Restarting_build -> ()
-          | Waiting_for_file_changes _ ->
-            (* We are inside a build, so we aren't waiting for a file change
-               event *)
-            assert false
-        in
-        Fiber.fold_errors ~init:() ~on_error once
+    let go t run =
+      let res =
+        let f = Rpc0.with_rpc_serve t.rpc run in
+        Run_once.run_and_cleanup t f
       in
-      finally ();
-      res
-    in
-    match t.status with
-    | Waiting_for_file_changes _ ->
-      (* We just finished a build, so there's no way this was set *)
-      assert false
-    | Restarting_build -> loop ()
-    | Building -> (
-      on_event t.config
-        (Build_finish
-           ( match res with
-           | Error _ -> Failure
-           | Ok _ -> Success ));
-      let ivar = Fiber.Ivar.create () in
-      t.status <- Waiting_for_file_changes ivar;
-      let* () = Fiber.Ivar.read ivar in
-      on_event t.config Source_files_changed;
       match res with
-      | Error _
-      | Ok `Continue ->
-        loop ()
-      | Ok `Stop -> Fiber.return () )
-  in
-  let run = Rpc0.with_rpc_serve t.rpc loop in
-  let exn, bt =
-    match Run_once.run_and_cleanup t run with
-    | Ok () ->
-      (* Polling mode is an infinite loop. We aren't going to terminate *)
-      assert false
-    | Error (Got_signal | Never) ->
-      (Dune_util.Report_error.Already_reported, None)
-    | Error (Exn exn_with_bt) -> (exn_with_bt.exn, Some exn_with_bt.backtrace)
-  in
-  ignore (wait_for_process t (File_watcher.pid watcher) : _ Fiber.t);
-  ignore (kill_and_wait_for_all_processes t : saw_signal);
-  match bt with
-  | None -> Exn.raise exn
-  | Some bt -> Exn.raise_with_backtrace exn bt
+      | Error (Exn exn) -> Exn_with_backtrace.reraise exn
+      | Ok res -> res
+      | Error (Got_signal | Never) ->
+        raise Dune_util.Report_error.Already_reported
+  end
 
-let go config ~on_event run =
-  let handler = Build.to_handler ~on_event in
-  let t = prepare config ~polling:false ~handler in
+  let poll config ~on_event ~once ~finally =
+    let handler = Event.to_handler ~on_event in
+    let t = prepare config ~polling:true ~handler in
+    let watcher = File_watcher.create t.events in
+    let rec loop () : unit Fiber.t =
+      t.status <- Building;
+      let open Fiber.O in
+      let* res =
+        let+ res =
+          let on_error exn () =
+            match t.status with
+            | Building -> Report_error.report exn
+            | Restarting_build -> ()
+            | Waiting_for_file_changes _ ->
+              (* We are inside a build, so we aren't waiting for a file change
+                 event *)
+              assert false
+          in
+          Fiber.fold_errors ~init:() ~on_error once
+        in
+        finally ();
+        res
+      in
+      match t.status with
+      | Waiting_for_file_changes _ ->
+        (* We just finished a build, so there's no way this was set *)
+        assert false
+      | Restarting_build -> loop ()
+      | Building -> (
+        on_event t.config
+          (Build_finish
+             ( match res with
+             | Error _ -> Failure
+             | Ok _ -> Success ));
+        let ivar = Fiber.Ivar.create () in
+        t.status <- Waiting_for_file_changes ivar;
+        let* () = Fiber.Ivar.read ivar in
+        on_event t.config Source_files_changed;
+        match res with
+        | Error _
+        | Ok `Continue ->
+          loop ()
+        | Ok `Stop -> Fiber.return () )
+    in
+    let run = Rpc0.with_rpc_serve t.rpc loop in
+    let exn, bt =
+      match Run_once.run_and_cleanup t run with
+      | Ok () ->
+        (* Polling mode is an infinite loop. We aren't going to terminate *)
+        assert false
+      | Error (Got_signal | Never) ->
+        (Dune_util.Report_error.Already_reported, None)
+      | Error (Exn exn_with_bt) -> (exn_with_bt.exn, Some exn_with_bt.backtrace)
+    in
+    ignore (wait_for_process t (File_watcher.pid watcher) : _ Fiber.t);
+    ignore (kill_and_wait_for_all_processes t : saw_signal);
+    match bt with
+    | None -> Exn.raise exn
+    | Some bt -> Exn.raise_with_backtrace exn bt
 
-  Build.go t run
+  let go config ~on_event run =
+    let handler = Event.to_handler ~on_event in
+    let t = prepare config ~polling:false ~handler in
+    Event.go t run
+end
 
 let send_dedup d =
   let t = Option.value_exn !global in

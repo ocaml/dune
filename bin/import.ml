@@ -143,7 +143,7 @@ module Scheduler = struct
 
   let on_event config = function
     | Scheduler.Build.Source_files_changed -> maybe_clear_screen config
-    | New_event -> Console.Status_line.refresh ()
+    | Tick -> Console.Status_line.refresh ()
     | Build_interrupted ->
       let status_line =
         Some

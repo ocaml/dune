@@ -76,7 +76,8 @@ Unreleased
 
 - Remove the `external-lib-deps` command. This command was only
   approximative and the cost of maintainance was getting too high. We
-  removed it to make room for new more important features
+  removed it to make room for new more important features (#4298,
+  @jeremiedimino)
 
 2.8.2 (21/01/2021)
 ------------------

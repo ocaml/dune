@@ -129,7 +129,7 @@ module Error : sig
     }
 end
 
-module Log : sig
+module Message : sig
   type t =
     { payload : Sexp.t option
     ; message : string
@@ -204,9 +204,10 @@ end) : sig
     type t
 
     val create :
-         ?log:(Log.t -> unit Fiber.t)
+         ?log:(Message.t -> unit Fiber.t)
       -> ?errors:(Error.t list -> unit Fiber.t)
       -> ?promotions:(Promotion.t list -> unit Fiber.t)
+      -> ?abort:(Message.t -> unit Fiber.t)
       -> unit
       -> t
   end
@@ -226,20 +227,22 @@ end) : sig
     -> 'a Fiber.t
 end
 
-module Message : sig
-  type t =
-    | Request of Request.t
-    | Notification of Call.t
-
-  val sexp : t Conv.value
-end
-
 module Packet : sig
-  type t =
-    | Response of (Id.t * Response.t)
-    | Notification of Call.t
+  module Reply : sig
+    type t =
+      | Response of (Id.t * Response.t)
+      | Notification of Call.t
 
-  val sexp : t Conv.value
+    val sexp : t Conv.value
+  end
+
+  module Query : sig
+    type t =
+      | Request of Request.t
+      | Notification of Call.t
+
+    val sexp : t Conv.value
+  end
 end
 
 module Version : sig
@@ -275,5 +278,7 @@ module Server_notifications : sig
 
   val promotions : Promotion.t list Decl.notification
 
-  val log : Log.t Decl.notification
+  val log : Message.t Decl.notification
+
+  val abort : Message.t Decl.notification
 end

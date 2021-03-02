@@ -1,4 +1,4 @@
 (library
  (name dune_rpc_server)
  (synopsis "Private API to define a dune rpc server")
- (libraries fiber stdune dune_rpc_private))
+ (libraries fiber stdune dune_util dune_rpc_private))

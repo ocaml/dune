@@ -196,45 +196,47 @@ module Initialize = struct
   end
 end
 
-module Message = struct
-  type t =
-    | Request of Request.t
-    | Notification of Call.t
-
-  let sexp =
-    let open Conv in
-    let to_ (id, payload) =
-      match id with
-      | None -> Notification payload
-      | Some id -> Request (id, payload)
-    in
-    let from = function
-      | Request (id, payload) -> (Some id, payload)
-      | Notification payload -> (None, payload)
-    in
-    record
-      (iso
-         (let id = Id.optional_field in
-          both id Call.fields)
-         to_ from)
-end
-
 module Packet = struct
-  type t =
-    | Response of (Id.t * Response.t)
-    | Notification of Call.t
+  module Query = struct
+    type t =
+      | Request of Request.t
+      | Notification of Call.t
 
-  let sexp =
-    let f = function
-      | Either.Left (id, resp) -> Response (id, resp)
-      | Right y -> Notification y
-    in
-    let t = function
-      | Response (id, resp) -> Either.Left (id, resp)
-      | Notification r -> Right r
-    in
-    let open Conv in
-    record (iso (either Response.fields Call.fields) f t)
+    let sexp =
+      let open Conv in
+      let to_ (id, payload) =
+        match id with
+        | None -> Notification payload
+        | Some id -> Request (id, payload)
+      in
+      let from = function
+        | Request (id, payload) -> (Some id, payload)
+        | Notification payload -> (None, payload)
+      in
+      record
+        (iso
+           (let id = Id.optional_field in
+            both id Call.fields)
+           to_ from)
+  end
+
+  module Reply = struct
+    type t =
+      | Response of (Id.t * Response.t)
+      | Notification of Call.t
+
+    let sexp =
+      let f = function
+        | Either.Left (id, resp) -> Response (id, resp)
+        | Right y -> Notification y
+      in
+      let t = function
+        | Response (id, resp) -> Either.Left (id, resp)
+        | Notification r -> Right r
+      in
+      let open Conv in
+      record (iso (either Response.fields Call.fields) f t)
+  end
 end
 
 module Decl = struct

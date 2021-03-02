@@ -103,20 +103,22 @@ module Initialize : sig
   end
 end
 
-module Message : sig
-  type t =
-    | Request of Request.t
-    | Notification of Call.t
-
-  val sexp : t Conv.value
-end
-
 module Packet : sig
-  type t =
-    | Response of (Id.t * Response.t)
-    | Notification of Call.t
+  module Query : sig
+    type t =
+      | Request of Request.t
+      | Notification of Call.t
 
-  val sexp : t Conv.value
+    val sexp : t Conv.value
+  end
+
+  module Reply : sig
+    type t =
+      | Response of (Id.t * Response.t)
+      | Notification of Call.t
+
+    val sexp : t Conv.value
+  end
 end
 
 module Decl : sig

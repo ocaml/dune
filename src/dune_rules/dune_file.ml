@@ -2275,3 +2275,33 @@ let stanza_package = function
     Some package
   | Coq_stanza.Theory.T { package = Some package; _ } -> Some package
   | _ -> None
+
+type t =
+  { dir : Path.Source.t
+  ; project : Dune_project.t
+  ; stanzas : Stanzas.t
+  }
+
+let parse sexps ~dir ~file ~project =
+  let stanzas = Stanzas.parse ~file project sexps in
+  let stanzas =
+    if !Clflags.ignore_promoted_rules then
+      List.filter stanzas ~f:(function
+        | Rule { mode = Rule.Mode.Promote { only = None; _ }; _ }
+        | Menhir.T { mode = Rule.Mode.Promote { only = None; _ }; _ } ->
+          false
+        | _ -> true)
+    else
+      stanzas
+  in
+  { dir; project; stanzas }
+
+let rec fold_stanzas l ~init ~f =
+  match l with
+  | [] -> init
+  | t :: l -> inner_fold t t.stanzas l ~init ~f
+
+and inner_fold t inner_list l ~init ~f =
+  match inner_list with
+  | [] -> fold_stanzas l ~init ~f
+  | x :: inner_list -> inner_fold t inner_list l ~init:(f t x init) ~f

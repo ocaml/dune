@@ -252,7 +252,7 @@ module DB = struct
   let create_from_stanzas ~projects ~projects_by_package ~context
       ~installed_libs ~modules_of_lib stanzas =
     let stanzas, coq_stanzas =
-      Dune_load.Dune_file.fold_stanzas stanzas ~init:([], [])
+      Dune_file.fold_stanzas stanzas ~init:([], [])
         ~f:(fun dune_file stanza (acc, coq_acc) ->
           match stanza with
           | Dune_file.Library lib ->

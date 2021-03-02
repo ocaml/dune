@@ -13,9 +13,9 @@ module Session = struct
   module Id = Stdune.Id.Make ()
 
   type 'a t =
-    { messages : Message.t Fiber.Stream.In.t
+    { queries : Packet.Query.t Fiber.Stream.In.t
     ; id : Id.t
-    ; send : Packet.t option -> unit Fiber.t
+    ; send : Packet.Reply.t option -> unit Fiber.t
     ; mutable state : 'a state
     }
 
@@ -39,8 +39,8 @@ module Session = struct
     | Initialized s -> s.init
     | Uninitialized -> Code_error.raise "initialize: request not available" []
 
-  let create ~messages ~send =
-    { messages; send; state = Uninitialized; id = Id.gen () }
+  let create ~queries ~send =
+    { queries; send; state = Uninitialized; id = Id.gen () }
 
   let notification t (decl : _ Decl.notification) n =
     let call =
@@ -66,7 +66,7 @@ module Session = struct
       in
       constr "Initialized" [ record ]
 
-  let to_dyn f { id; state; messages = _; send = _ } =
+  let to_dyn f { id; state; queries = _; send = _ } =
     let open Dyn.Encoder in
     record [ ("id", Id.to_dyn id); ("state", dyn_of_state f state) ]
 end
@@ -80,60 +80,66 @@ module H = struct
     ; version : int * int
     }
 
+  let abort ?payload session ~message =
+    let open Fiber.O in
+    let* () =
+      Session.notification session Server_notifications.abort
+        { Message.message; payload }
+    in
+    session.send None
+
   let handle (type a) (t : a t) (session : a Session.t) =
     let open Fiber.O in
-    let* message = Fiber.Stream.In.read session.messages in
-    match message with
+    let* query = Fiber.Stream.In.read session.queries in
+    match query with
     | None -> session.send None
     | Some init -> (
-      let id, call =
-        match init with
-        | Notification _ ->
-          (* TODO handle invalid request here *)
-          assert false
-        | Request (id, call) -> (id, call)
-      in
-      match Initialize.Request.of_call ~version:t.version call with
-      | Error e -> session.send (Some (Response (id, Error e)))
-      | Ok init ->
-        if Initialize.Request.version init > t.version then
-          let response =
-            let payload =
-              Sexp.record
-                [ ( "supported versions until"
-                  , Conv.to_sexp Version.sexp t.version )
-                ]
-            in
-            Error
-              (Response.Error.create ~payload ~kind:Version_error
-                 ~message:"Unsupported version" ())
-          in
-          session.send (Some (Response (id, response)))
-        else
-          let* a = t.on_init session init in
-          let () =
-            session.state <- Initialized { init; state = a; closed = false }
-          in
-          let* () =
+      match (init : Packet.Query.t) with
+      | Notification _ ->
+        abort session
+          ~message:"Notification unexpected. You must initialize first."
+      | Request (id, call) -> (
+        match Initialize.Request.of_call ~version:t.version call with
+        | Error e -> session.send (Some (Response (id, Error e)))
+        | Ok init ->
+          if Initialize.Request.version init > t.version then
             let response =
-              Ok
-                (Initialize.Response.to_response
-                   (Initialize.Response.create ()))
+              let payload =
+                Sexp.record
+                  [ ( "supported versions until"
+                    , Conv.to_sexp Version.sexp t.version )
+                  ]
+              in
+              Error
+                (Response.Error.create ~payload ~kind:Version_error
+                   ~message:"Unsupported version" ())
             in
             session.send (Some (Response (id, response)))
-          in
-          let* () =
-            Fiber.Stream.In.parallel_iter session.messages
-              ~f:(fun (message : Message.t) ->
-                match message with
-                | Notification n -> t.on_notification session n
-                | Request (id, r) ->
-                  let* response = t.on_request session (id, r) in
-                  session.send (Some (Response (id, response))))
-          in
-          let* () = session.send None in
-          let+ () = t.on_terminate session in
-          Session.close session )
+          else
+            let* a = t.on_init session init in
+            let () =
+              session.state <- Initialized { init; state = a; closed = false }
+            in
+            let* () =
+              let response =
+                Ok
+                  (Initialize.Response.to_response
+                     (Initialize.Response.create ()))
+              in
+              session.send (Some (Response (id, response)))
+            in
+            let* () =
+              Fiber.Stream.In.parallel_iter session.queries
+                ~f:(fun (message : Packet.Query.t) ->
+                  match message with
+                  | Notification n -> t.on_notification session n
+                  | Request (id, r) ->
+                    let* response = t.on_request session (id, r) in
+                    session.send (Some (Response (id, response))))
+            in
+            let* () = session.send None in
+            let+ () = t.on_terminate session in
+            Session.close session ) )
 
   module Builder = struct
     type info =
@@ -210,21 +216,22 @@ module H = struct
         let version = Initialize.Request.version (Session.initialize session) in
         match Table.find notification_handlers n.method_ with
         | None ->
-          Session.notification session Server_notifications.log
-            { Log.message = "invalid notification"
-            ; payload = Some (Sexp.record [ ("payload", Atom n.method_) ])
-            }
+          abort session ~message:"invalid notification"
+            ~payload:(Sexp.record [ ("method", Atom n.method_) ])
         | Some [] -> assert false (* not possible *)
         | Some cbs -> (
-          (* TODO extract version from session *)
           match find_cb cbs ~info:(fun (N (cb, _)) -> cb.info) ~version with
           | None ->
-            (* XXX log *)
-            Fiber.return ()
+            abort session ~message:"No notification matching version."
+              ~payload:(Sexp.record [ ("method", Atom n.method_) ])
           | Some (N (cb, v)) -> (
             match Conv.of_sexp v.req ~version n.params with
-            | Error _ -> (* XXX shall we log? *) Fiber.return ()
-            | Ok v -> cb.f session v ) )
+            | Ok v -> cb.f session v
+            | Error _ ->
+              abort session ~message:"Invalid notification payload"
+                ~payload:
+                  (Sexp.record
+                     [ ("method", Atom n.method_); ("payload", n.params) ]) ) )
       in
       let on_request session (_id, (n : Call.t)) =
         let version = Initialize.Request.version (Session.initialize session) in
@@ -289,8 +296,8 @@ let make h = Server (H.Builder.to_handler h)
 
 let version (Server h) = h.version
 
-let new_session (Server handler) ~messages ~send =
-  let session = Session.create ~messages ~send in
+let new_session (Server handler) ~queries ~send =
+  let session = Session.create ~queries ~send in
   H.handle handler session
 
 exception Invalid_session of Conv.error
@@ -321,21 +328,23 @@ struct
         let+ res =
           Fiber.collect_errors (fun () ->
               let send packet =
-                Option.map packet ~f:(Conv.to_sexp Packet.sexp)
+                Option.map packet ~f:(Conv.to_sexp Packet.Reply.sexp)
                 |> S.write session
               in
-              let messages =
+              let queries =
                 create_sequence
                   (fun () -> S.read session)
-                  ~version:(version server) Message.sexp
+                  ~version:(version server) Packet.Query.sexp
               in
-              new_session server ~send ~messages)
+              new_session server ~send ~queries)
         in
         match res with
         | Ok () -> ()
-        | Error _ ->
-          (* XXX shall we log this? *)
-          ())
+        | Error exns ->
+          Dune_util.Log.info
+            [ Pp.text "fatal error when serving rpc client"
+            ; Pp.concat_map ~sep:Pp.newline exns ~f:Exn_with_backtrace.pp
+            ])
 end
 
 module Handler = H.Builder

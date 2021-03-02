@@ -11,6 +11,6 @@ module V1 = struct
   module Error = Error
   module Promotion = Promotion
   module Subscribe = Subscribe
-  module Log = Log
+  module Message = Message
   include Public
 end

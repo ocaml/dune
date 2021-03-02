@@ -32,5 +32,6 @@ Welcome to dune's documentation!
    migration
    caching
    toplevel-integration
+   rpc
    goals
    hacking

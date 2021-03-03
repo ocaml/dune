@@ -1,7 +1,7 @@
 module Array = ArrayLabels
 module List = ListLabels
 module String = StringLabels
-include Dune_csexp.Csexp
+include Csexp
 
 let rec to_string = function
   | Atom s -> Escape.quote_if_needed s

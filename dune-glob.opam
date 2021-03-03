@@ -17,6 +17,7 @@ depends: [
 dev-repo: "git+https://github.com/ocaml/dune.git"
 build: [
   ["dune" "subst"] {dev}
+  ["rm" "-rf" "vendor/csexp"]
   [
     "dune"
     "build"

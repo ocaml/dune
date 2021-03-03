@@ -4,5 +4,5 @@
  (synopsis "dune rpc client and protocol")
  (libraries
   stdune
-  dune_csexp
+  csexp
   (re_export dune_rpc_private)))

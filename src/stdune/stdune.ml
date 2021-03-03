@@ -5,7 +5,6 @@ module Bytes = Bytes
 module Char = Char
 module Comparator = Comparator
 module Console = Console
-module Csexp = Csexp
 module Daemonize = Daemonize
 module Either = Either
 module Exn = Exn

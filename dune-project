@@ -141,4 +141,6 @@ understood by dune language."))
 (package
  (name stdune)
  (synopsis "Dune's unstable standard library")
+ (depends
+  (ocaml (>= 4.08.0)))
  (description "This library offers no backwards compatibility guarantees. Use at your own risk."))

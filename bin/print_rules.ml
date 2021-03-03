@@ -40,7 +40,7 @@ let print_rule_makefile ppf (rule : Build_system.Evaluated_rule.t) =
          Format.pp_print_string ppf (Path.to_string p)))
     (List.map ~f:Path.build (Path.Build.Set.to_list rule.targets))
     (fun ppf ->
-      Path.Set.iter (Dep.Set.paths rule.deps) ~f:(fun dep ->
+      Path.Set.iter (Dep.Set.files_approx rule.deps) ~f:(fun dep ->
           Format.fprintf ppf "@ %s" (Path.to_string dep)))
     Pp.to_fmt (Action_to_sh.pp action)
 

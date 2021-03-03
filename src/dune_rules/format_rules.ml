@@ -83,6 +83,5 @@ let gen_rules ~dir =
   let output_dir = Path.Build.relative dir formatted in
   let alias = Alias.fmt ~dir in
   let alias_formatted = Alias.fmt ~dir:output_dir in
-  Alias.stamp_file alias_formatted
-  |> Path.build |> Path.Set.singleton
-  |> Rules.Produce.Alias.add_static_deps alias
+  Rules.Produce.Alias.add_deps alias
+    (Action_builder.dep (Dep.alias alias_formatted))

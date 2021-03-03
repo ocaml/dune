@@ -108,34 +108,32 @@ end
 
 let files_in_source_tree_to_delete () = Promoted_to_delete.get_db ()
 
+let alias_exists_fdecl = Fdecl.create (fun _ -> Dyn.Opaque)
+
 module Alias0 = struct
   include Alias
 
-  let dep t = Action_builder.path (Path.build (stamp_file t))
+  let dep t = Action_builder.dep (Dep.alias t)
 
   let dep_multi_contexts ~dir ~name ~contexts =
     ignore (File_tree.find_dir_specified_on_command_line ~dir);
-    let context_to_stamp_file ctx =
+    let context_to_alias_expansion ctx =
       let ctx_dir = Context_name.build_dir ctx in
       let dir = Path.Build.(append_source ctx_dir dir) in
-      Path.build (stamp_file (make ~dir name))
+      dep (make ~dir name)
     in
-    Action_builder.paths (List.map contexts ~f:context_to_stamp_file)
+    Action_builder.all_unit (List.map contexts ~f:context_to_alias_expansion)
 
   open Action_builder.O
 
   let dep_rec_internal ~name ~dir ~ctx_dir =
     let f dir acc =
       let path = Path.Build.append_source ctx_dir (File_tree.Dir.path dir) in
-      let fn = stamp_file (make ~dir:path name) in
-      let fn = Path.build fn in
-      Action_builder.map2 ~f:( && ) acc
-        (Action_builder.if_file_exists fn
-           ~then_:(Action_builder.path fn >>> Action_builder.return false)
-           ~else_:(Action_builder.return true))
+      Action_builder.map2 ~f:( || ) acc
+        (Action_builder.dep_on_alias_if_exists (make ~dir:path name))
     in
     File_tree.Dir.fold dir ~traverse:Sub_dirs.Status.Set.normal_only
-      ~init:(Action_builder.return true)
+      ~init:(Action_builder.return false)
       ~f
 
   let dep_rec t ~loc =
@@ -154,8 +152,8 @@ module Alias0 = struct
         }
     | Some dir ->
       let name = Alias.name t in
-      let+ is_empty = dep_rec_internal ~name ~dir ~ctx_dir in
-      if is_empty && not (is_standard name) then
+      let+ is_nonempty = dep_rec_internal ~name ~dir ~ctx_dir in
+      if (not is_nonempty) && not (is_standard name) then
         User_error.raise ~loc
           [ Pp.text "This alias is empty."
           ; Pp.textf "Alias %S is not defined in %s or any of its descendants."
@@ -166,14 +164,14 @@ module Alias0 = struct
   let dep_rec_multi_contexts ~dir:src_dir ~name ~contexts =
     let open Action_builder.O in
     let dir = File_tree.find_dir_specified_on_command_line ~dir:src_dir in
-    let+ is_empty_list =
+    let+ is_nonempty_list =
       Action_builder.all
         (List.map contexts ~f:(fun ctx ->
              let ctx_dir = Context_name.build_dir ctx in
              dep_rec_internal ~name ~dir ~ctx_dir))
     in
-    let is_empty = List.for_all is_empty_list ~f:Fun.id in
-    if is_empty && not (is_standard name) then
+    let is_nonempty = List.exists is_nonempty_list ~f:Fun.id in
+    if (not is_nonempty) && not (is_standard name) then
       User_error.raise
         [ Pp.textf "Alias %S specified on the command line is empty."
             (Alias.Name.to_string name)
@@ -197,6 +195,7 @@ module Loaded = struct
     ; rules_produced : Rules.t
     ; rules_here : Rule.t Path.Build.Map.t
     ; rules_of_alias_dir : Rule.t Path.Build.Map.t
+    ; aliases : unit Action_builder.t Alias.Name.Map.t
     }
 
   type t =
@@ -209,6 +208,7 @@ module Loaded = struct
       ; rules_produced = Rules.empty
       ; rules_here = Path.Build.Map.empty
       ; rules_of_alias_dir = Path.Build.Map.empty
+      ; aliases = Alias.Name.Map.empty
       }
 end
 
@@ -664,12 +664,16 @@ let no_rule_found t ~loc fn =
 
 (* +-------------------- Adding rules to the system --------------------+ *)
 
+let build_deps_fdecl = Fdecl.create (fun _ -> Dyn.Opaque)
+
 module rec Load_rules : sig
   val load_dir : dir:Path.t -> Loaded.t
 
   val file_exists : Path.t -> bool
 
   val targets_of : dir:Path.t -> Path.Set.t
+
+  val lookup_alias : Alias.t -> unit Action_builder.t option
 end = struct
   open Load_rules
 
@@ -715,6 +719,21 @@ end = struct
     | Build { rules_here; _ } ->
       Path.Build.Map.keys rules_here |> Path.Set.of_list_map ~f:Path.build
 
+  let lookup_alias alias =
+    match load_dir ~dir:(Path.build (Alias.dir alias)) with
+    | Non_build _ ->
+      Code_error.raise "Alias in a non-build dir"
+        [ ("alias", Alias.to_dyn alias) ]
+    | Build { aliases; _ } -> Alias.Name.Map.find aliases (Alias.name alias)
+
+  let () =
+    Fdecl.set alias_exists_fdecl (fun alias ->
+        Memo.Build.map
+          (Memo.Build.return (lookup_alias alias))
+          ~f:(function
+            | None -> false
+            | Some _ -> true))
+
   let compute_alias_rules ~context_name ~(collected : Rules.Dir_rules.ready)
       ~dir ~sub_dir =
     let alias_dir =
@@ -723,7 +742,7 @@ end = struct
         (Path.Build.relative Dpath.Build.alias_dir context_name)
         sub_dir
     in
-    let alias_rules =
+    let alias_action_rules, alias_expansions =
       let open Action_builder.O in
       let aliases = collected.aliases in
       let aliases =
@@ -754,8 +773,8 @@ end = struct
                 ; actions = Appendable_list.empty
                 } )
       in
-      Alias.Name.Map.foldi aliases ~init:[]
-        ~f:(fun name { Rules.Dir_rules.Alias_spec.expansion; actions } rules ->
+      Alias.Name.Map.fold_mapi aliases ~init:[]
+        ~f:(fun name rules { Rules.Dir_rules.Alias_spec.expansion; actions } ->
           let base_path =
             Path.Build.relative alias_dir (Alias.Name.to_string name)
           in
@@ -779,26 +798,21 @@ end = struct
                 ( rule :: rules
                 , Path.Set.add action_stamp_files (Path.build path) ))
           in
-          let deps = Action_builder.path_set action_stamp_files >>> expansion in
-          let path =
-            Path.Build.extend_basename base_path ~suffix:Alias0.suffix
+          let expansion =
+            expansion
+            >>> Action_builder.memo_build
+                  (Fdecl.get build_deps_fdecl
+                     (Dep.Set.of_files_set action_stamp_files))
           in
-          Rule.make ~context:None ~env:None
-            (let action =
-               let+ (), deps = Action_builder.capture_deps deps in
-               let deps = Dep.Set.paths deps in
-               Action.with_stdout_to path
-                 (Action.digest_files (Path.Set.to_list deps))
-             in
-             Action_builder.with_targets ~targets:[ path ] action)
-          :: rules)
+          (rules, expansion))
     in
     fun ~subdirs_to_keep ->
       let rules_here =
-        compile_rules ~dir:alias_dir ~source_dirs:String.Set.empty alias_rules
+        compile_rules ~dir:alias_dir ~source_dirs:String.Set.empty
+          alias_action_rules
       in
       remove_old_artifacts ~rules_here ~dir:alias_dir ~subdirs_to_keep;
-      rules_here
+      (rules_here, alias_expansions)
 
   let filter_out_fallback_rules ~to_copy rules =
     List.filter rules ~f:(fun (rule : Rule.t) ->
@@ -1081,17 +1095,18 @@ end = struct
     in
     let subdirs_to_keep = Subdir_set.of_dir_set descendants_to_keep in
     remove_old_artifacts ~dir ~rules_here ~subdirs_to_keep;
-    let alias_targets =
-      Option.map ~f:(fun f -> f ~subdirs_to_keep) alias_rules
-    in
-    let rules_of_alias_dir =
-      Option.value ~default:Path.Build.Map.empty alias_targets
+    let alias_rules = Option.map ~f:(fun f -> f ~subdirs_to_keep) alias_rules in
+    let rules_of_alias_dir, aliases =
+      Option.value
+        ~default:(Path.Build.Map.empty, Alias.Name.Map.empty)
+        alias_rules
     in
     Loaded.Build
       { allowed_subdirs = descendants_to_keep
       ; rules_produced
       ; rules_here
       ; rules_of_alias_dir
+      ; aliases
       }
 
   let load_dir_impl t ~dir : Loaded.t =
@@ -1106,6 +1121,7 @@ end = struct
             ; rules_of_alias_dir
             ; rules_produced = _
             ; allowed_subdirs = _
+            ; aliases = _
             } as load ) ->
         Loaded.Build
           { load with
@@ -1178,6 +1194,10 @@ let all_targets t =
               @ Path.Build.Map.keys rules_here )))
 
 module type Rec = sig
+  (** Build all the transitive dependencies of the alias and return the alias
+      expansion. *)
+  val build_alias : Alias.t -> Path.Set.t Memo.Build.t
+
   val build_file_unit : Path.t -> unit Memo.Build.t
 
   val execute_rule : Rule.t -> Dep.Set.t Memo.Build.t
@@ -1212,7 +1232,7 @@ end = struct
 
   let build_deps =
     Dep.Set.parallel_iter ~f:(function
-      | Alias a -> build_file_unit (Path.build (Alias.stamp_file a))
+      | Alias a -> Memo.Build.map (build_alias a) ~f:(fun _ -> ())
       | File f -> build_file_unit f
       | File_selector g -> Pred.build g
       | Universe
@@ -1220,12 +1240,16 @@ end = struct
       | Sandbox_config _ ->
         Memo.Build.return ())
 
+  let () = Fdecl.set build_deps_fdecl build_deps
+
   module Build_exec = Action_builder.Make_exec (struct
     let build_deps = build_deps
 
     let register_action_deps = build_deps
 
     let file_exists = file_exists
+
+    let alias_exists alias = Fdecl.get alias_exists_fdecl alias
   end)
   [@@inlined]
 
@@ -1681,6 +1705,20 @@ end = struct
         | Source -> Memo.Build.return Dep.Set.empty
         | Rule rule -> execute_rule rule)
 
+  let build_alias_impl alias =
+    let on_error exn = Dep_path.reraise exn (Alias alias) in
+    Memo.Build.with_error_handler ~on_error (fun () ->
+        Memo.Build.bind
+          (Memo.Build.return (lookup_alias alias))
+          ~f:(function
+            | None ->
+              let alias_descr = sprintf "alias %s" (Alias.describe alias) in
+              User_error.raise ?loc:(Rule_fn.loc ())
+                [ Pp.textf "No rule found for %s" alias_descr ]
+            | Some alias ->
+              Memo.Build.map (exec_build_request alias) ~f:(fun ((), deps) ->
+                  Dep.Set.eval_paths deps)))
+
   module Pred = struct
     let build_impl g =
       Memo.Build.parallel_iter_set
@@ -1722,7 +1760,7 @@ end = struct
       ~output:(Simple (module Dep.Set))
       ~doc:"Build a file."
       ~input:(module Path)
-      ~visibility:(Public Dpath.decode) Async build_file_impl
+      ~visibility:Hidden Async build_file_impl
 
   let build_file = Memo.exec build_file_memo
 
@@ -1736,6 +1774,19 @@ end = struct
         (fun file -> build_file file >>| ignore)
     in
     fun file -> Memo.exec memo file
+
+  let build_alias_memo =
+    Memo.create "build-alias"
+      ~output:(Simple (module Path.Set))
+      ~doc:"Build an alias."
+      ~input:(module Alias)
+      ~visibility:Hidden Async build_alias_impl
+
+  let () =
+    Fdecl.set Dep.peek_alias_expansion (fun alias ->
+        Memo.peek_exn build_alias_memo alias)
+
+  let build_alias = Memo.exec build_alias_memo
 
   let execute_rule_memo =
     Memo.create_hidden "execute-rule"
@@ -1816,7 +1867,7 @@ let package_deps (pkg : Package.t) files =
            potential race conditions between [Sync] and [Async] functions, e.g.
            by moving this code into a fiber. *)
         let action_deps = peek_deps_exn rule in
-        let action_deps = Dep.Set.paths action_deps in
+        let action_deps = Dep.Set.eval_paths action_deps in
         Path.Set.fold action_deps ~init:acc ~f:loop
       )
   in
@@ -1824,7 +1875,7 @@ let package_deps (pkg : Package.t) files =
   let+ () = Action_builder.paths_for_rule files in
   (* We know that after [Action_builder.paths_for_rule], all transitive
      dependencies of [files] are computed and memoized and so the above call to
-     [peek_deps_exn] is safe. *)
+     [peek_deps_exn] and [Dep.Set.eval_paths] is safe. *)
   Path.Set.fold files ~init:Package.Id.Set.empty ~f:(fun fn acc ->
       match Path.as_in_build_dir fn with
       | None -> acc
@@ -1859,7 +1910,12 @@ let process_exn_and_reraise exn =
 
 let entry_point_async ~f =
   assert_not_in_memoized_function ();
-  Memo.Build.with_error_handler f ~on_error:process_exn_and_reraise
+  match
+    Exn_with_backtrace.try_with (fun () ->
+        Memo.Build.with_error_handler f ~on_error:process_exn_and_reraise)
+  with
+  | Error exn -> process_exn_and_reraise exn
+  | Ok res -> res
 
 let entry_point_sync ~f =
   assert_not_in_memoized_function ();
@@ -1873,6 +1929,7 @@ let do_build ~request =
   let build = get_build_system () in
   build.errors <- [];
   entry_point_async ~f:(fun () ->
+      let request = request () in
       let t = get_build_system () in
       let f () =
         let+ result, _deps = exec_build_request request in
@@ -1913,7 +1970,7 @@ module Evaluated_rule = struct
   include T
 
   let rules_for_deps rules deps =
-    Dep.Set.paths deps
+    Dep.Set.files_approx deps
     |> Path.Set.fold ~init:Set.empty ~f:(fun path acc ->
            match
              Path.as_in_build_dir path
@@ -1933,6 +1990,8 @@ module Eval_action_builder = Action_builder.Make_exec (struct
   let register_action_deps _deps = Memo.Build.return ()
 
   let file_exists = file_exists
+
+  let alias_exists a = Fdecl.get alias_exists_fdecl a
 end)
 
 let evaluate_rules ~recursive ~request =
@@ -1954,7 +2013,7 @@ let evaluate_rules ~recursive ~request =
           in
           rules := Rule.Id.Map.set !rules rule.id rule;
           if recursive then
-            Dep.Set.parallel_iter_files deps ~f:run_dep
+            Dep.Set.parallel_iter_files_approx deps ~f:run_dep
           else
             Memo.Build.return ()
       and run_dep dep =
@@ -1963,7 +2022,7 @@ let evaluate_rules ~recursive ~request =
         | Some rule -> run_rule rule
       in
       let* (), deps = Eval_action_builder.exec request in
-      let+ () = Dep.Set.parallel_iter_files deps ~f:run_dep in
+      let+ () = Dep.Set.parallel_iter_files_approx deps ~f:run_dep in
       let rules =
         Rule.Id.Map.fold !rules ~init:Path.Build.Map.empty ~f:(fun r acc ->
             Path.Build.Set.fold r.targets ~init:acc ~f:(fun fn acc ->

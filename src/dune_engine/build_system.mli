@@ -114,7 +114,7 @@ module Alias : sig
   (** Alias for all the files in [_build/install] that belong to this package *)
   val package_install : context:Build_context.t -> pkg:Package.t -> t
 
-  (** [dep t = Action_builder.path (stamp_file t)] *)
+  (** Depend on the expansion of this alias. *)
   val dep : t -> unit Action_builder.t
 
   (** Implements [@@alias] on the command line *)
@@ -141,7 +141,7 @@ end
     callback. *)
 
 (** Do the actual build *)
-val do_build : request:'a Action_builder.t -> 'a Memo.Build.t
+val do_build : request:(unit -> 'a Action_builder.t) -> 'a Memo.Build.t
 
 (** {2 Other queries} *)
 

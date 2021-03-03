@@ -211,5 +211,4 @@ let command_alias cmd name =
   (term, Term.info name ~docs:"COMMAND ALIASES" ~doc ~man)
 
 let do_build targets =
-  let request = Target.request targets in
-  Build_system.do_build ~request
+  Build_system.do_build ~request:(fun () -> Target.request targets)

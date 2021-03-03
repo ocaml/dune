@@ -2,12 +2,19 @@ open Stdune
 
 let eval_pred = Fdecl.create Dyn.Encoder.opaque
 
+let peek_alias_expansion = Fdecl.create Dyn.Encoder.opaque
+
+let eval_alias_expansion = Fdecl.create Dyn.Encoder.opaque
+
 module Trace = struct
   module Fact = struct
+    type file_fact = string * Digest.t
+
     type t =
       | Env of string * string option
-      | File of (string * Digest.t)
+      | File of file_fact
       | File_selector of Dyn.t * Digest.t
+      | Alias of file_fact list
   end
 
   type t =
@@ -74,7 +81,11 @@ module T = struct
     match t with
     | Env var -> Some (Env (var, Env.get env var))
     | File fn -> Some (File (trace_file fn))
-    | Alias a -> Some (File (trace_file (Path.build (Alias.stamp_file a))))
+    | Alias a ->
+      Some
+        (Alias
+           (Path.Set.to_list_map (Fdecl.get peek_alias_expansion a)
+              ~f:(fun path -> trace_file path)))
     | File_selector dir_glob ->
       let id = File_selector.to_dyn dir_glob
       and file_selector = trace_file_selector dir_glob in
@@ -154,10 +165,23 @@ module Set = struct
 
     let encode t = Dune_lang.Encoder.list encode (to_list t)
 
-    let paths t =
+    let static_paths t =
+      fold t ~init:(Path.Set.empty, [])
+        ~f:(fun d ((acc_paths, acc_aliases) as acc) ->
+          match d with
+          | Alias a -> (acc_paths, a :: acc_aliases)
+          | File f -> (Path.Set.add acc_paths f, acc_aliases)
+          | File_selector g ->
+            (Path.Set.union acc_paths (Fdecl.get eval_pred g), acc_aliases)
+          | Universe
+          | Env _ ->
+            acc
+          | Sandbox_config _ -> acc)
+
+    let eval_paths t =
       fold t ~init:Path.Set.empty ~f:(fun d acc ->
           match d with
-          | Alias a -> Path.Set.add acc (Path.build (Alias.stamp_file a))
+          | Alias a -> Path.Set.union acc (Fdecl.get peek_alias_expansion a)
           | File f -> Path.Set.add acc f
           | File_selector g -> Path.Set.union acc (Fdecl.get eval_pred g)
           | Universe
@@ -201,12 +225,18 @@ module Set = struct
                     Path.Set.add acc (Path.relative path fn))
               in
               add_paths acc paths)
+
+    let source_tree dir =
+      let t = source_tree dir in
+      (t, fst (static_paths t))
   end
 
   include T
 
   let parallel_iter t ~f = Memo.Build.parallel_iter_set (module T) t ~f
 
-  let parallel_iter_files t ~f =
-    paths t |> Memo.Build.parallel_iter_set (module Path.Set) ~f
+  let files_approx t = static_paths t |> fst
+
+  let parallel_iter_files_approx t ~f =
+    static_paths t |> fst |> Memo.Build.parallel_iter_set (module Path.Set) ~f
 end

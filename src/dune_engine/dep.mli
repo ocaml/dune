@@ -26,6 +26,10 @@ val compare : t -> t -> Ordering.t
     necessitates a forward declaration to use in this module. *)
 val eval_pred : (File_selector.t -> Path.Set.t) Fdecl.t
 
+val peek_alias_expansion : (Alias.t -> Path.Set.t) Fdecl.t
+
+val eval_alias_expansion : (Alias.t -> Path.Set.t Memo.Build.t) Fdecl.t
+
 module Trace : sig
   type t
 end
@@ -37,13 +41,23 @@ module Set : sig
 
   val sandbox_config : t -> Sandbox_config.t
 
-  val source_tree : Path.t -> t
+  (** It's weird to return a [Path.t list] here, but the call site needs it and
+      this lets us avoid having to choose between [static_paths] and
+      [eval_paths] both of which seem awkward. *)
+  val source_tree : Path.t -> t * Path.Set.t
 
   val of_files : Path.t list -> t
 
   val of_files_set : Path.Set.t -> t
 
-  val paths : t -> Path.Set.t
+  val static_paths : t -> Path.Set.t * Alias.t list
+
+  (** A pre-condition for calling [eval_paths] is that the current memoized node
+      must have forced the computation of the aliases returned by
+      [static_paths]. *)
+  val eval_paths : t -> Path.Set.t
+
+  val files_approx : t -> Path.Set.t
 
   val encode : t -> Dune_lang.t
 
@@ -53,7 +67,7 @@ module Set : sig
 
   val parallel_iter : t -> f:(elt -> unit Memo.Build.t) -> unit Memo.Build.t
 
-  val parallel_iter_files :
+  val parallel_iter_files_approx :
     t -> f:(Path.t -> unit Memo.Build.t) -> unit Memo.Build.t
 
   val dirs : t -> Path.Set.t

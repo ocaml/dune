@@ -18,7 +18,7 @@ module Entry : sig
 
   type t =
     | Path of Path.t
-    | Alias of Path.t
+    | Alias of Alias.t
     | Library of Lib.t * Implements_via.t option
     | Executables of (Loc.t * string) list
     | Preprocess of Lib_name.t list

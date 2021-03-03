@@ -25,7 +25,7 @@ module Entry = struct
 
   type t =
     | Path of Path.t
-    | Alias of Path.t
+    | Alias of Alias.t
     | Library of Lib.t * Implements_via.t option
     | Executables of (Loc.t * string) list
     | Preprocess of Lib_name.t list
@@ -33,7 +33,7 @@ module Entry = struct
 
   let pp = function
     | Path p -> Pp.text (Dpath.describe_path p)
-    | Alias p -> Pp.textf "alias %s" (Dpath.describe_path p)
+    | Alias a -> Pp.textf "alias %s" (Alias.describe a)
     | Library (lib, via) -> (
       match via with
       | None -> Lib.pp lib

@@ -452,7 +452,7 @@ module M = struct
   and Running_state : sig
     type t =
       { deps_so_far : Dep_node.packed Deps_so_far.t
-      ; sample_attempt : Dag.node
+      ; dag_node : Dag.node
       }
   end =
     Running_state
@@ -675,24 +675,76 @@ let dump_stack () = Format.eprintf "%a" Pp.to_fmt (pp_stack ())
 
 let () = Fdecl.set Cached_value.dump_stack_fdecl dump_stack
 
-(** Describes the state of a given sample attempt. The sample attempt starts out
-    in [Running] state, accumulates dependencies over time and then transitions
-    to [Finished].
+(* An attempt to sample the current value of a node. It's an "attempt" because
+   it can be cancelled due to a dependency cycle.
 
-    We maintain a DAG of running attempts for cycle detection, but finished ones
-    don't need to be in the DAG (although currently they still are, until a run
-    is complete and we throw away the entire DAG). *)
-module Sample_attempt_dag_node = struct
-  type t =
-    | Running of Dag.node
-    | Finished
+   Sample attempts start in a [Running] state, accumulate dependencies over
+   time, and then transition to the [Finished] state.
+
+   To detect cycles, we maintain a DAG of running attempts. Finished attempts do
+   not need to be in the DAG but currently they still are. When a run completes,
+   the entire DAG is garbage collected because we no longer hold any references
+   to its nodes. *)
+module Sample_attempt = struct
+  (* Like [t] but focuses on the [Dag.node] field. *)
+  module Dag_node = struct
+    type t =
+      | Finished
+      | Running of Dag.node
+  end
+
+  type sync
+
+  type async
+
+  type ('a, 's) t =
+    | Finished : 'a -> ('a, _) t
+    | Running_sync :
+        { dag_node : Dag.node
+        ; restore_from_cache : 'a Cache_lookup.Result.t Lazy.t
+        ; compute : 'a Lazy.t
+        }
+        -> ('a, sync) t
+    | Running_async :
+        { dag_node : Dag.node
+        ; restore_from_cache : 'a Cache_lookup.Result.t Once.t
+        ; compute : 'a Once.t
+        }
+        -> ('a, async) t
+
+  let dag_node (type a s) (t : (a, s) t) : Dag_node.t =
+    match t with
+    | Finished _ -> Finished
+    | Running_sync { dag_node; _ }
+    | Running_async { dag_node; _ } ->
+      Running dag_node
+
+  let restore_sync (type a) (t : (a, sync) t) =
+    match t with
+    | Finished cached_value -> Ok cached_value
+    | Running_sync { restore_from_cache; _ } -> Lazy.force restore_from_cache
+
+  let restore_async (type a) (t : (a, async) t) =
+    match t with
+    | Finished cached_value -> Fiber.return (Ok cached_value)
+    | Running_async { restore_from_cache; _ } -> Once.force restore_from_cache
+
+  let compute_sync (type a) (t : (a, sync) t) =
+    match t with
+    | Finished cached_value -> cached_value
+    | Running_sync { compute; _ } -> Lazy.force compute
+
+  let compute_async (type a) (t : (a, async) t) =
+    match t with
+    | Finished cached_value -> Fiber.return cached_value
+    | Running_async { compute; _ } -> Once.force compute
 end
 
 (* Add a dependency on the [dep_node] from the caller, if there is one. Returns
    an [Error] if the new dependency would introduce a dependency cycle. *)
 let add_dep_from_caller (type i o f) ~called_from_peek
     (dep_node : (i, o, f) Dep_node.t)
-    (sample_attempt_dag_node : Sample_attempt_dag_node.t) =
+    (sample_attempt_dag_node : Sample_attempt.Dag_node.t) =
   match Call_stack.get_call_stack_tip () with
   | None -> Ok ()
   | Some (Stack_frame_with_state.T caller) -> (
@@ -726,7 +778,7 @@ let add_dep_from_caller (type i o f) ~called_from_peek
         | Running dag_node -> (
           match
             Dag.add_assuming_missing global_dep_dag
-              caller.running_state.sample_attempt dag_node
+              caller.running_state.dag_node dag_node
           with
           | () -> None
           | exception Dag.Cycle cycle ->
@@ -878,32 +930,6 @@ module rec Exec_sync : sig
   val restore_from_cache_internal :
     ('a, 'b, 'a -> 'b) Dep_node.t -> 'b Cached_value.t Cache_lookup.Result.t
 end = struct
-  module Start_considering_result = struct
-    type 'a t =
-      | Done of 'a
-      | Needs_work of
-          { sample_attempt : Dag.node
-          ; restore_from_cache : 'a Cache_lookup.Result.t Lazy.t
-          ; compute : 'a Lazy.t
-          }
-
-    let sample_attempt_dag_node t : Sample_attempt_dag_node.t =
-      match t with
-      | Done _ -> Finished
-      | Needs_work { sample_attempt; _ } -> Running sample_attempt
-
-    let restore = function
-      | Done cached_value -> Ok cached_value
-      | Needs_work { restore_from_cache; _ } -> Lazy.force restore_from_cache
-
-    let compute = function
-      | Done cached_value -> cached_value
-      | Needs_work { restore_from_cache; compute; _ } -> (
-        match Lazy.force restore_from_cache with
-        | Ok cached_value -> cached_value
-        | Error _ -> Lazy.force compute )
-  end
-
   let restore_from_cache (last_cached_value : _ Cached_value.t option) =
     match last_cached_value with
     | None -> Error Cache_lookup.Failure.Not_found
@@ -959,7 +985,7 @@ end = struct
         | Unchanged ->
           cached_value.last_validated_at <- Run.current ();
           Ok cached_value
-        | Changed -> Error (Cache_lookup.Failure.Out_of_date cached_value)
+        | Changed -> Error (Out_of_date cached_value)
         | Cancelled { dependency_cycle } ->
           Error (Cancelled { dependency_cycle })))
 
@@ -996,13 +1022,13 @@ end = struct
       | false -> Cached_value.confirm_old_value ~deps_rev old_cv)
 
   let newly_considering (dep_node : _ Dep_node.t) =
-    let sample_attempt : Dag.node =
+    let dag_node : Dag.node =
       { info = Dag.create_node_info global_dep_dag
       ; data = Dep_node_without_state.T dep_node.without_state
       }
     in
     let running_state : Running_state.t =
-      { sample_attempt; deps_so_far = Deps_so_far.create () }
+      { dag_node; deps_so_far = Deps_so_far.create () }
     in
     let run_once_in_a_new_stack_frame thunk =
       lazy
@@ -1037,34 +1063,33 @@ end = struct
         ; running = running_state
         ; completion = Sync { restore_from_cache; compute }
         };
-    Start_considering_result.Needs_work
-      { sample_attempt; restore_from_cache; compute }
+    Sample_attempt.Running_sync { dag_node; restore_from_cache; compute }
 
   let start_considering (dep_node : ('a, 'b, 'a -> 'b) Dep_node.t) =
     match currently_considering dep_node.state with
     | Not_considering -> (
       match get_cached_value_in_current_cycle dep_node with
       | None -> newly_considering dep_node
-      | Some cv -> Done cv)
+      | Some cv -> Finished cv )
     | Considering
-        { running = { sample_attempt; deps_so_far = _ }
+        { running = { dag_node; deps_so_far = _ }
         ; completion = Sync { restore_from_cache; compute }
         ; _
         } ->
-      Needs_work { sample_attempt; restore_from_cache; compute }
+      Running_sync { dag_node; restore_from_cache; compute }
 
   let consider_dep_node (dep_node : _ Dep_node.t) =
-    let pre_res = start_considering dep_node in
+    let sample_attempt = start_considering dep_node in
     add_dep_from_caller ~called_from_peek:false dep_node
-      (Start_considering_result.sample_attempt_dag_node pre_res)
-    |> Result.map ~f:(fun () -> pre_res)
+      (Sample_attempt.dag_node sample_attempt)
+    |> Result.map ~f:(fun () -> sample_attempt)
 
   let compute_internal dep_node =
-    Result.map (consider_dep_node dep_node) ~f:Start_considering_result.compute
+    Result.map (consider_dep_node dep_node) ~f:Sample_attempt.compute_sync
 
   let restore_from_cache_internal dep_node =
     match consider_dep_node dep_node with
-    | Ok pre_res -> Start_considering_result.restore pre_res
+    | Ok sample_attempt -> Sample_attempt.restore_sync sample_attempt
     | Error dependency_cycle -> Error (Cancelled { dependency_cycle })
 
   let exec_dep_node dep_node =
@@ -1093,33 +1118,6 @@ and Exec_async : sig
 
   val exec_dep_node : ('a, 'b, 'a -> 'b Fiber.t) Dep_node.t -> 'b Fiber.t
 end = struct
-  module Start_considering_result = struct
-    type 'a t =
-      | Done of 'a
-      | Needs_work of
-          { sample_attempt : Dag.node
-          ; restore_from_cache : 'a Cache_lookup.Result.t Once.t
-          ; compute : 'a Once.t
-          }
-
-    let sample_attempt_dag_node t : Sample_attempt_dag_node.t =
-      match t with
-      | Done _ -> Finished
-      | Needs_work { sample_attempt; _ } -> Running sample_attempt
-
-    let restore = function
-      | Done cached_value -> Fiber.return (Ok cached_value)
-      | Needs_work { restore_from_cache; _ } -> Once.force restore_from_cache
-
-    let compute = function
-      | Done cached_value -> Fiber.return cached_value
-      | Needs_work { restore_from_cache; compute; _ } -> (
-        let* restore_result = Once.force restore_from_cache in
-        match restore_result with
-        | Ok cached_value -> Fiber.return cached_value
-        | Error _ -> Once.force compute )
-  end
-
   let restore_from_cache (last_cached_value : _ Cached_value.t option) =
     match last_cached_value with
     | None -> Fiber.return (Error Cache_lookup.Failure.Not_found)
@@ -1215,13 +1213,13 @@ end = struct
       | false -> Cached_value.confirm_old_value ~deps_rev old_cv)
 
   let newly_considering (dep_node : _ Dep_node.t) =
-    let sample_attempt : Dag.node =
+    let dag_node : Dag.node =
       { info = Dag.create_node_info global_dep_dag
       ; data = Dep_node_without_state.T dep_node.without_state
       }
     in
     let running_state : Running_state.t =
-      { sample_attempt; deps_so_far = Deps_so_far.create () }
+      { dag_node; deps_so_far = Deps_so_far.create () }
     in
     let run_once_in_a_new_stack_frame fiber =
       Once.create
@@ -1257,34 +1255,33 @@ end = struct
         ; running = running_state
         ; completion = Async { restore_from_cache; compute }
         };
-    Start_considering_result.Needs_work
-      { sample_attempt; restore_from_cache; compute }
+    Sample_attempt.Running_async { dag_node; restore_from_cache; compute }
 
   let start_considering (dep_node : _ Dep_node.t) =
     match currently_considering dep_node.state with
     | Not_considering -> (
       match get_cached_value_in_current_cycle dep_node with
       | None -> newly_considering dep_node
-      | Some cv -> Done cv)
+      | Some cv -> Finished cv )
     | Considering
-        { running = { sample_attempt; deps_so_far = _ }
+        { running = { dag_node; deps_so_far = _ }
         ; completion = Async { restore_from_cache; compute }
         ; _
         } ->
-      Needs_work { sample_attempt; restore_from_cache; compute }
+      Running_async { dag_node; restore_from_cache; compute }
 
   let consider_dep_node (dep_node : _ Dep_node.t) =
-    let pre_res = start_considering dep_node in
+    let sample_attempt = start_considering dep_node in
     add_dep_from_caller ~called_from_peek:false dep_node
-      (Start_considering_result.sample_attempt_dag_node pre_res)
-    |> Result.map ~f:(fun () -> pre_res)
+      (Sample_attempt.dag_node sample_attempt)
+    |> Result.map ~f:(fun () -> sample_attempt)
 
   let compute_internal (dep_node : _ Dep_node.t) =
-    Result.map (consider_dep_node dep_node) ~f:Start_considering_result.compute
+    Result.map (consider_dep_node dep_node) ~f:Sample_attempt.compute_async
 
   let restore_from_cache_internal (dep_node : _ Dep_node.t) =
     match consider_dep_node dep_node with
-    | Ok pre_res -> Start_considering_result.restore pre_res
+    | Ok sample_attempt -> Sample_attempt.restore_async sample_attempt
     | Error dependency_cycle ->
       Fiber.return (Error (Cache_lookup.Failure.Cancelled { dependency_cycle }))
 

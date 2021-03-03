@@ -337,11 +337,91 @@ module Deps_so_far = struct
     | Compute_started { deps_reversed } -> deps_reversed
 end
 
+module Cache_lookup = struct
+  (* Looking up a value cached in a previous run can fail in three possible
+     ways:
+
+     - [Not_found]: either the value has never been computed before, or the last
+     computation attempt failed.
+
+     - [Out_of_date]: we found a value computed in a previous run but it is out
+     of date because one of its dependencies changed; we return the old value so
+     that it can be compared with a new one to support the early cutoff.
+
+     - [Cancelled _]: the cache lookup has been cancelled because of a
+     dependency cycle. This outcome indicates that a dependency cycle has been
+     introduced in the current run. If a cycle existed in a previous run, the
+     outcome would have been [Not_found] instead. *)
+  module Failure = struct
+    type 'a t =
+      | Not_found
+      | Out_of_date of 'a
+      | Cancelled of { dependency_cycle : Cycle_error.t }
+  end
+
+  module Result = struct
+    type 'a t = ('a, 'a Failure.t) result
+  end
+end
+
+module Once = struct
+  module Sync = struct
+    type 'a state =
+      | Not_forced of (unit -> 'a)
+      | Forced of 'a
+
+    type 'a t = { mutable state : 'a state }
+
+    let create thunk = { state = Not_forced thunk }
+
+    let force t =
+      match t.state with
+      | Forced result -> result
+      | Not_forced thunk ->
+        let result = thunk () in
+        t.state <- Forced result;
+        result
+  end
+
+  module Async = struct
+    type 'a state =
+      | Not_forced of 'a Fiber.t
+      | Forced of 'a Fiber.Ivar.t
+
+    type 'a t = { mutable state : 'a state }
+
+    let create fiber = { state = Not_forced fiber }
+
+    let force t =
+      match t.state with
+      | Forced ivar ->
+        let+ res = Fiber.Ivar.read ivar in
+        res
+      | Not_forced fiber ->
+        let ivar = Fiber.Ivar.create () in
+        t.state <- Forced ivar;
+        let* result = fiber in
+        let+ () = Fiber.Ivar.fill ivar result in
+        result
+  end
+end
+
 module M = struct
   module rec Completion : sig
+    type 'a sync =
+      { restore_from_cache : 'a Cached_value.t Cache_lookup.Result.t Once.Sync.t
+      ; compute : 'a Cached_value.t Once.Sync.t
+      }
+
+    type 'a async =
+      { restore_from_cache :
+          'a Cached_value.t Cache_lookup.Result.t Once.Async.t
+      ; compute : 'a Cached_value.t Once.Async.t
+      }
+
     type ('a, 'b, 'f) t =
-      | Sync : ('a, 'b, 'a -> 'b) t
-      | Async : 'b Cached_value.t Fiber.Ivar.t -> ('a, 'b, 'a -> 'b Fiber.t) t
+      | Sync : 'b sync -> ('a, 'b, 'a -> 'b) t
+      | Async : 'b async -> ('a, 'b, 'a -> 'b Fiber.t) t
   end =
     Completion
 
@@ -650,6 +730,9 @@ let add_dep_from_caller (type i o f) ~called_from_peek
               , Stack_frame_without_state.to_dyn (T dep_node.without_state) )
             ]
     in
+    (* Format.printf "add_dep_from_caller: %s -> %s\n" (Option.value_exn
+       caller.without_state.spec.info).name (Option.value_exn
+       node.without_state.spec.info).name; *)
     let deps_so_far_of_caller = caller.running_state.deps_so_far in
     match
       Id.Map.mem deps_so_far_of_caller.added_to_dag dep_node.without_state.id
@@ -667,8 +750,11 @@ let add_dep_from_caller (type i o f) ~called_from_peek
             Dag.add_assuming_missing global_dep_dag
               caller.running_state.sample_attempt dag_node
           with
-          | () -> None
+          | () ->
+            (* Format.printf ">> added\n"; *)
+            None
           | exception Dag.Cycle cycle ->
+            (* Format.printf ">> cycle\n"; *)
             Some
               { Cycle_error.stack = Call_stack.get_call_stack_without_state ()
               ; cycle = List.map cycle ~f:(fun dag_node -> dag_node.Dag.data)
@@ -783,26 +869,6 @@ let dep_node (type i o f) (t : (i, o, f) t) inp =
     Store.set t.cache inp dep_node;
     dep_node
 
-(* Looking up a value cached in a previous run can fail in three possible ways:
-
-   - [Not_found]: either the value has never been computed before, or the last
-   computation attempt failed.
-
-   - [Out_of_date]: we found a value computed in a previous run but it is out of
-   date because one of its dependencies changed; we return the old value so that
-   it can be compared with a new one to support the early cutoff.
-
-   - [Cancelled _]: the cache lookup has been cancelled because of a dependency
-   cycle. This outcome indicates that a dependency cycle has been introduced in
-   the current run. If a cycle existed in a previous run, the outcome would have
-   been [Not_found] instead. *)
-module Cache_lookup_failure = struct
-  type 'a t =
-    | Not_found
-    | Out_of_date of 'a Cached_value.t
-    | Cancelled of { dependency_cycle : Cycle_error.t }
-end
-
 (* Checking dependencies of a node can lead to one of these outcomes:
 
    - [Unchanged]: all the dependencies of the current node are up to date and we
@@ -831,27 +897,43 @@ module rec Exec_sync : sig
 
   val exec : ('a, 'b, 'a -> 'b) t -> 'a -> 'b
 
-  val exec_dep_node_internal :
+  val compute_internal :
     ('a, 'b, 'a -> 'b) Dep_node.t -> ('b Cached_value.t, Cycle_error.t) result
+
+  val restore_from_cache_internal :
+       ('a, 'b, 'a -> 'b) Dep_node.t
+    -> ('b Cached_value.t Cache_lookup.Result.t, Cycle_error.t) result
 end = struct
   module Start_considering_result = struct
     type 'a t =
-      | Done of 'a Cached_value.t
+      | Done of 'a
       | Needs_work of
           { sample_attempt : Dag.node
-                (** [work] must be called to force the value to be computed. *)
-          ; work : unit -> 'a Cached_value.t
+          ; restore_from_cache : 'a Cache_lookup.Result.t Once.Sync.t
+          ; compute : 'a Once.Sync.t
           }
 
     let sample_attempt_dag_node t : Sample_attempt_dag_node.t =
       match t with
       | Done _ -> Finished
       | Needs_work { sample_attempt; _ } -> Running sample_attempt
+
+    let restore = function
+      | Done cached_value -> Ok cached_value
+      | Needs_work { restore_from_cache; _ } ->
+        Once.Sync.force restore_from_cache
+
+    let compute = function
+      | Done cached_value -> cached_value
+      | Needs_work { restore_from_cache; compute; _ } -> (
+        match Once.Sync.force restore_from_cache with
+        | Ok cached_value -> cached_value
+        | Error _ -> Once.Sync.force compute )
   end
 
   let restore_from_cache (last_cached_value : _ Cached_value.t option) =
     match last_cached_value with
-    | None -> Error Cache_lookup_failure.Not_found
+    | None -> Error Cache_lookup.Failure.Not_found
     | Some cached_value -> (
       match cached_value.value with
       | Cancelled _dependency_cycle ->
@@ -870,16 +952,35 @@ end = struct
             match deps with
             | [] -> Changed_or_not.Unchanged
             | Last_dep.T (dep, v_id) :: deps -> (
-              match Exec_unknown.exec_dep_node_internal_from_sync dep with
-              | Error dependency_cycle -> Cancelled { dependency_cycle }
-              | Ok cached_value -> (
-                (* Note that [cached_value.value] will be [Cancelled _] if [dep]
-                   itself doesn't introduce a dependency cycle but one of its
-                   transitive dependencies does. In this case, the value [id]
-                   will be new, so we will take the [false] branch. *)
-                match Value_id.equal cached_value.id v_id with
-                | true -> go deps
-                | false -> Changed))
+              match dep.without_state.spec.allow_cutoff with
+              | No -> (
+                (* If [dep] has no cutoff, it is sufficient to check whether it
+                   is up to date. If not, we must recompute [last_cached_value]. *)
+                match
+                  Exec_unknown.restore_from_cache_internal_from_sync dep
+                with
+                | Error dependency_cycle -> Cancelled { dependency_cycle }
+                | Ok res -> (
+                  match res with
+                  | Ok _cached_value -> go deps
+                  | Error (Cancelled { dependency_cycle }) ->
+                    Cancelled { dependency_cycle }
+                  | Error (Not_found | Out_of_date _) -> Changed ) )
+              | Yes _equal -> (
+                (* If [dep] has a cutoff predicate, it is not sufficient to
+                   check whether it is up to date: even if it isn't, after we
+                   recompute it, the resulting [Value_id] may remain unchanged,
+                   allowing us to skip recomputing [last_cached_value]. *)
+                match Exec_unknown.compute_internal_from_sync dep with
+                | Error dependency_cycle -> Cancelled { dependency_cycle }
+                | Ok cached_value -> (
+                  (* Note that [cached_value.value] will be [Cancelled _] if
+                     [dep] itself doesn't introduce a dependency cycle but one
+                     of its transitive dependencies does. In this case, the
+                     value [id] will be new, so we will take the [false] branch. *)
+                  match Value_id.equal cached_value.id v_id with
+                  | true -> go deps
+                  | false -> Changed ) ) )
           in
           go cached_value.deps
         in
@@ -887,7 +988,7 @@ end = struct
         | Unchanged ->
           cached_value.last_validated_at <- Run.current ();
           Ok cached_value
-        | Changed -> Error (Out_of_date cached_value)
+        | Changed -> Error (Cache_lookup.Failure.Out_of_date cached_value)
         | Cancelled { dependency_cycle } ->
           Error (Cancelled { dependency_cycle })))
 
@@ -912,12 +1013,12 @@ end = struct
         (value, Deps_so_far.get_compute_deps_rev deps_so_far)
     in
     match cache_lookup_failure with
-    | Cache_lookup_failure.Cancelled { dependency_cycle } ->
+    | Cache_lookup.Failure.Cancelled { dependency_cycle } ->
       Cached_value.create_cancelled ~dependency_cycle
     | Not_found ->
       let value, deps_rev = compute_value_and_deps_rev () in
       Cached_value.create value ~deps_rev
-    | Out_of_date old_cv -> (
+    | Out_of_date (old_cv : _ Cached_value.t) -> (
       let value, deps_rev = compute_value_and_deps_rev () in
       match Cached_value.value_changed dep_node old_cv.value value with
       | true -> Cached_value.create value ~deps_rev
@@ -932,61 +1033,70 @@ end = struct
     let running_state : Running_state.t =
       { sample_attempt; deps_so_far = Deps_so_far.create () }
     in
-    let work () =
-      Call_stack.push_sync_frame
-        (T { without_state = dep_node.without_state; running_state })
-        (fun () ->
-          let new_cached_value =
-            match restore_from_cache dep_node.last_cached_value with
-            | Ok cached_value -> cached_value
-            | Error cache_lookup_failure ->
-              dep_node.last_cached_value <- None;
-              let computed_value =
-                compute dep_node cache_lookup_failure running_state.deps_so_far
+    let restore_from_cache =
+      Once.Sync.create (fun () ->
+          Call_stack.push_sync_frame
+            (T { without_state = dep_node.without_state; running_state })
+            (fun () -> restore_from_cache dep_node.last_cached_value))
+    in
+    let compute =
+      Once.Sync.create (fun () ->
+          Call_stack.push_sync_frame
+            (T { without_state = dep_node.without_state; running_state })
+            (fun () ->
+              let new_cached_value =
+                match Once.Sync.force restore_from_cache with
+                | Ok cached_value -> cached_value
+                | Error cache_lookup_failure ->
+                  dep_node.last_cached_value <- None;
+                  let computed_value =
+                    compute dep_node cache_lookup_failure
+                      running_state.deps_so_far
+                  in
+                  dep_node.last_cached_value <- Some computed_value;
+                  computed_value
               in
-              dep_node.last_cached_value <- Some computed_value;
-              computed_value
-          in
-          dep_node.state <- Not_considering;
-          new_cached_value)
+              dep_node.state <- Not_considering;
+              new_cached_value))
     in
     dep_node.state <-
       Considering
-        { run = Run.current (); running = running_state; completion = Sync };
-    Start_considering_result.Needs_work { sample_attempt; work }
+        { run = Run.current ()
+        ; running = running_state
+        ; completion = Sync { restore_from_cache; compute }
+        };
+    Start_considering_result.Needs_work
+      { sample_attempt; restore_from_cache; compute }
 
-  let start_considering_dep_node (dep_node : ('a, 'b, 'a -> 'b) Dep_node.t) =
+  let start_considering (dep_node : ('a, 'b, 'a -> 'b) Dep_node.t) =
     match currently_considering dep_node.state with
     | Not_considering -> (
       match get_cached_value_in_current_cycle dep_node with
       | None -> newly_considering dep_node
       | Some cv -> Done cv)
     | Considering
-        { running = { sample_attempt; deps_so_far = _ }; completion = Sync; _ }
-      ->
-      Needs_work
-        { sample_attempt
-        ; work =
-            (fun () ->
-              (* dependency cycle, should be caught by [add_dep_from_caller] *)
-              assert false)
-        }
+        { running = { sample_attempt; deps_so_far = _ }
+        ; completion = Sync { restore_from_cache; compute }
+        ; _
+        } ->
+      Needs_work { sample_attempt; restore_from_cache; compute }
 
   let consider_dep_node (dep_node : _ Dep_node.t) =
-    let pre_res = start_considering_dep_node dep_node in
+    let pre_res = start_considering dep_node in
     add_dep_from_caller ~called_from_peek:false dep_node
       (Start_considering_result.sample_attempt_dag_node pre_res)
-    |> Result.map ~f:(fun () ->
-           match pre_res with
-           | Done v -> v
-           | Needs_work { sample_attempt = _; work } -> work ())
+    |> Result.map ~f:(fun () -> pre_res)
+
+  let compute_internal dep_node =
+    Result.map (consider_dep_node dep_node) ~f:Start_considering_result.compute
+
+  let restore_from_cache_internal dep_node =
+    Result.map (consider_dep_node dep_node) ~f:Start_considering_result.restore
 
   let exec_dep_node dep_node =
-    match consider_dep_node dep_node with
+    match compute_internal dep_node with
     | Ok res -> Value.get_sync_exn res.value
     | Error cycle_error -> raise (Cycle_error.E cycle_error)
-
-  let exec_dep_node_internal = consider_dep_node
 
   let exec t inp = exec_dep_node (dep_node t inp)
 end
@@ -994,11 +1104,15 @@ end
 and Exec_async : sig
   (** Two kinds of recursive calls: *)
 
-  (** [exec_dep_node_internal]: called when we're validating nodes and checking
+  (** [compute_internal]: called when we're validating nodes and checking
       whether or not the user callback is worth running *)
-  val exec_dep_node_internal :
+  val compute_internal :
        ('a, 'b, 'a -> 'b Fiber.t) Dep_node.t
     -> ('b Cached_value.t Fiber.t, Cycle_error.t) result
+
+  val restore_from_cache_internal :
+       ('a, 'b, 'a -> 'b Fiber.t) Dep_node.t
+    -> ('b Cached_value.t Cache_lookup.Result.t Fiber.t, Cycle_error.t) result
 
   (** [exec] and variants thereof *)
   val exec : ('a, 'b, 'a -> 'b Fiber.t) t -> 'a -> 'b Fiber.t
@@ -1007,52 +1121,87 @@ and Exec_async : sig
 end = struct
   module Start_considering_result = struct
     type 'a t =
-      | Done of 'a Cached_value.t
+      | Done of 'a
       | Needs_work of
           { sample_attempt : Dag.node
-                (** [work] must be called to force the value to be computed. *)
-          ; work : 'a Cached_value.t Fiber.t
+          ; restore_from_cache : 'a Cache_lookup.Result.t Once.Async.t
+          ; compute : 'a Once.Async.t
           }
 
     let sample_attempt_dag_node t : Sample_attempt_dag_node.t =
       match t with
       | Done _ -> Finished
       | Needs_work { sample_attempt; _ } -> Running sample_attempt
+
+    let restore = function
+      | Done cached_value -> Fiber.return (Ok cached_value)
+      | Needs_work { restore_from_cache; _ } ->
+        Once.Async.force restore_from_cache
+
+    let compute = function
+      | Done cached_value -> Fiber.return cached_value
+      | Needs_work { restore_from_cache; compute; _ } -> (
+        let* restore_result = Once.Async.force restore_from_cache in
+        match restore_result with
+        | Ok cached_value -> Fiber.return cached_value
+        | Error _ -> Once.Async.force compute )
   end
+
+  let _ = Exec_unknown.restore_from_cache_internal
 
   let restore_from_cache (last_cached_value : _ Cached_value.t option) =
     match last_cached_value with
-    | None -> Fiber.return (Error Cache_lookup_failure.Not_found)
+    | None -> Fiber.return (Error Cache_lookup.Failure.Not_found)
     | Some cached_value -> (
       match cached_value.value with
       | Cancelled _dependency_cycle ->
         (* Dependencies of cancelled computations are not accurate, so we can't
            use [deps_changed] in this case. *)
-        Fiber.return (Error Cache_lookup_failure.Not_found)
+        Fiber.return (Error Cache_lookup.Failure.Not_found)
       | Error _ ->
         (* We always recompute errors, so there is no point in checking if any
            of their dependencies changed. In principle, we could introduce
            "persistent errors" that are recomputed only when their dependencies
            have changed. *)
-        Fiber.return (Error Cache_lookup_failure.Not_found)
+        Fiber.return (Error Cache_lookup.Failure.Not_found)
       | Ok _ -> (
         let+ deps_changed =
           let rec go deps =
             match deps with
             | [] -> Fiber.return Changed_or_not.Unchanged
             | Last_dep.T (dep, v_id) :: deps -> (
-              match Exec_unknown.exec_dep_node_internal dep with
-              | Error dependency_cycle ->
-                Fiber.return (Changed_or_not.Cancelled { dependency_cycle })
-              | Ok cached_value -> (
-                let* cached_value = cached_value in
-                (* Note that [cached_value.value] will be [Cancelled _] if [dep]
-                   itself doesn't introduce a dependency cycle but one of its
-                   transitive dependencies does. In this case, the value [id]
-                   will be new, so we will take the [false] branch. *)
-                match Value_id.equal cached_value.id v_id with
-                | true -> go deps
-                | false -> Fiber.return Changed_or_not.Changed))
+              match dep.without_state.spec.allow_cutoff with
+              | No -> (
+                (* If [dep] has no cutoff, it is sufficient to check whether it
+                   is up to date. If not, we must recompute [last_cached_value]. *)
+                match Exec_unknown.restore_from_cache_internal dep with
+                | Error dependency_cycle ->
+                  Fiber.return (Changed_or_not.Cancelled { dependency_cycle })
+                | Ok res -> (
+                  let* res = res in
+                  match res with
+                  | Ok _cached_value -> go deps
+                  | Error (Cancelled { dependency_cycle }) ->
+                    Fiber.return (Changed_or_not.Cancelled { dependency_cycle })
+                  | Error (Not_found | Out_of_date _) ->
+                    Fiber.return Changed_or_not.Changed ) )
+              | Yes _equal -> (
+                (* If [dep] has a cutoff predicate, it is not sufficient to
+                   check whether it is up to date: even if it isn't, after we
+                   recompute it, the resulting [Value_id] may remain unchanged,
+                   allowing us to skip recomputing [last_cached_value]. *)
+                match Exec_unknown.compute_internal dep with
+                | Error dependency_cycle ->
+                  Fiber.return (Changed_or_not.Cancelled { dependency_cycle })
+                | Ok cached_value -> (
+                  let* cached_value = cached_value in
+                  (* Note that [cached_value.value] will be [Cancelled _] if
+                     [dep] itself doesn't introduce a dependency cycle but one
+                     of its transitive dependencies does. In this case, the
+                     value [id] will be new, so we will take the [false] branch. *)
+                  match Value_id.equal cached_value.id v_id with
+                  | true -> go deps
+                  | false -> Fiber.return Changed_or_not.Changed ) ) )
           in
           go cached_value.deps
         in
@@ -1060,7 +1209,7 @@ end = struct
         | Unchanged ->
           cached_value.last_validated_at <- Run.current ();
           Ok cached_value
-        | Changed -> Error (Cache_lookup_failure.Out_of_date cached_value)
+        | Changed -> Error (Cache_lookup.Failure.Out_of_date cached_value)
         | Cancelled { dependency_cycle } ->
           Error (Cancelled { dependency_cycle })))
 
@@ -1085,12 +1234,12 @@ end = struct
         (value, Deps_so_far.get_compute_deps_rev deps_so_far)
     in
     match cache_lookup_failure with
-    | Cache_lookup_failure.Cancelled { dependency_cycle } ->
+    | Cache_lookup.Failure.Cancelled { dependency_cycle } ->
       Fiber.return (Cached_value.create_cancelled ~dependency_cycle)
     | Not_found ->
       let+ value, deps_rev = compute_value_and_deps_rev () in
       Cached_value.create value ~deps_rev
-    | Out_of_date old_cv -> (
+    | Out_of_date (old_cv : _ Cached_value.t) -> (
       let+ value, deps_rev = compute_value_and_deps_rev () in
       match Cached_value.value_changed dep_node old_cv.value value with
       | true -> Cached_value.create value ~deps_rev
@@ -1102,41 +1251,46 @@ end = struct
       ; data = Dep_node_without_state.T dep_node.without_state
       }
     in
-    let ivar = Fiber.Ivar.create () in
     let running_state : Running_state.t =
       { sample_attempt; deps_so_far = Deps_so_far.create () }
     in
-    let work =
-      Call_stack.push_async_frame
-        (T { without_state = dep_node.without_state; running_state })
-        (fun () ->
-          let* new_cached_value =
-            let* restore_result =
-              restore_from_cache dep_node.last_cached_value
-            in
-            match restore_result with
-            | Ok cached_value -> Fiber.return cached_value
-            | Error cache_lookup_failure ->
-              dep_node.last_cached_value <- None;
-              let+ computed_value =
-                compute dep_node cache_lookup_failure running_state.deps_so_far
-              in
-              dep_node.last_cached_value <- Some computed_value;
-              computed_value
-          in
-          dep_node.state <- Not_considering;
-          let+ () = Fiber.Ivar.fill ivar new_cached_value in
-          new_cached_value)
+    let restore_from_cache =
+      Once.Async.create
+        (Call_stack.push_async_frame
+           (T { without_state = dep_node.without_state; running_state })
+           (fun () -> restore_from_cache dep_node.last_cached_value))
+    in
+    let compute =
+      Once.Async.create
+        (Call_stack.push_async_frame
+           (T { without_state = dep_node.without_state; running_state })
+           (fun () ->
+             let+ new_cached_value =
+               let* restore_result = Once.Async.force restore_from_cache in
+               match restore_result with
+               | Ok cached_value -> Fiber.return cached_value
+               | Error cache_lookup_failure ->
+                 dep_node.last_cached_value <- None;
+                 let+ computed_value =
+                   compute dep_node cache_lookup_failure
+                     running_state.deps_so_far
+                 in
+                 dep_node.last_cached_value <- Some computed_value;
+                 computed_value
+             in
+             dep_node.state <- Not_considering;
+             new_cached_value))
     in
     dep_node.state <-
       Considering
         { run = Run.current ()
         ; running = running_state
-        ; completion = Async ivar
+        ; completion = Async { restore_from_cache; compute }
         };
-    Start_considering_result.Needs_work { sample_attempt; work }
+    Start_considering_result.Needs_work
+      { sample_attempt; restore_from_cache; compute }
 
-  let start_considering_dep_node (dep_node : _ Dep_node.t) =
+  let start_considering (dep_node : _ Dep_node.t) =
     match currently_considering dep_node.state with
     | Not_considering -> (
       match get_cached_value_in_current_cycle dep_node with
@@ -1144,51 +1298,72 @@ end = struct
       | Some cv -> Done cv)
     | Considering
         { running = { sample_attempt; deps_so_far = _ }
-        ; completion = Async ivar
+        ; completion = Async { restore_from_cache; compute }
         ; _
         } ->
-      Needs_work { sample_attempt; work = Fiber.Ivar.read ivar }
+      Needs_work { sample_attempt; restore_from_cache; compute }
 
   let consider_dep_node (dep_node : _ Dep_node.t) =
-    let pre_res = start_considering_dep_node dep_node in
+    let pre_res = start_considering dep_node in
     add_dep_from_caller ~called_from_peek:false dep_node
       (Start_considering_result.sample_attempt_dag_node pre_res)
-    |> Result.map ~f:(fun () ->
-           match pre_res with
-           | Done v -> Fiber.return v
-           | Needs_work { sample_attempt = _; work } -> work)
+    |> Result.map ~f:(fun () -> pre_res)
+
+  let compute_internal (dep_node : _ Dep_node.t) =
+    Result.map (consider_dep_node dep_node) ~f:Start_considering_result.compute
+
+  let restore_from_cache_internal (dep_node : _ Dep_node.t) =
+    Result.map (consider_dep_node dep_node) ~f:Start_considering_result.restore
 
   let exec_dep_node dep_node =
     Fiber.of_thunk (fun () ->
-        match consider_dep_node dep_node with
+        match compute_internal dep_node with
         | Ok res ->
           let* res = res in
           Value.get_async_exn res.value
         | Error cycle_error -> raise (Cycle_error.E cycle_error))
 
-  let exec_dep_node_internal = consider_dep_node
-
   let exec t inp = exec_dep_node (dep_node t inp)
 end
 
 and Exec_unknown : sig
-  val exec_dep_node_internal_from_sync :
+  val compute_internal_from_sync :
     ('a, 'b, 'f) Dep_node.t -> ('b Cached_value.t, Cycle_error.t) result
 
-  val exec_dep_node_internal :
+  val compute_internal :
     ('a, 'b, 'f) Dep_node.t -> ('b Cached_value.t Fiber.t, Cycle_error.t) result
+
+  val restore_from_cache_internal :
+       ('a, 'b, 'f) Dep_node.t
+    -> ('b Cached_value.t Cache_lookup.Result.t Fiber.t, Cycle_error.t) result
+
+  val restore_from_cache_internal_from_sync :
+       ('a, 'b, 'f) Dep_node.t
+    -> ('b Cached_value.t Cache_lookup.Result.t, Cycle_error.t) result
 end = struct
-  let exec_dep_node_internal (type i o f) (t : (i, o, f) Dep_node.t) :
+  let compute_internal (type i o f) (t : (i, o, f) Dep_node.t) :
       (o Cached_value.t Fiber.t, Cycle_error.t) result =
     match t.without_state.spec.f with
-    | Async _ -> Exec_async.exec_dep_node_internal t
-    | Sync _ -> Exec_sync.exec_dep_node_internal t |> Result.map ~f:Fiber.return
+    | Async _ -> Exec_async.compute_internal t
+    | Sync _ -> Exec_sync.compute_internal t |> Result.map ~f:Fiber.return
 
-  let exec_dep_node_internal_from_sync (type i o f) (dep : (i, o, f) Dep_node.t)
-      =
+  let restore_from_cache_internal (type i o f) (t : (i, o, f) Dep_node.t) :
+      (o Cached_value.t Cache_lookup.Result.t Fiber.t, Cycle_error.t) result =
+    match t.without_state.spec.f with
+    | Async _ -> Exec_async.restore_from_cache_internal t
+    | Sync _ ->
+      Exec_sync.restore_from_cache_internal t |> Result.map ~f:Fiber.return
+
+  let compute_internal_from_sync (type i o f) (dep : (i, o, f) Dep_node.t) =
     match dep.without_state.spec.f with
     | Async _ -> Code_error.raise "sync computation depends on async" []
-    | Sync _ -> Exec_sync.exec_dep_node_internal dep
+    | Sync _ -> Exec_sync.compute_internal dep
+
+  let restore_from_cache_internal_from_sync (type i o f)
+      (dep : (i, o, f) Dep_node.t) =
+    match dep.without_state.spec.f with
+    | Async _ -> Code_error.raise "sync computation depends on async" []
+    | Sync _ -> Exec_sync.restore_from_cache_internal dep
 end
 
 let exec (type i o f) (t : (i, o, f) t) =

@@ -749,7 +749,6 @@ let%expect_test "diamond with non-uniform cutoff structure" =
     Evaluated base: 2
     Started evaluating no_cutoff
     Evaluated no_cutoff: 1
-    Started evaluating after_no_cutoff
     Evaluated after_no_cutoff: 2
     Started evaluating yes_cutoff
     Evaluated yes_cutoff: 1
@@ -910,10 +909,8 @@ let%expect_test "dynamic cycles with non-uniform cutoff structure" =
     Evaluated base: 2
     Started evaluating cycle_creator_no_cutoff
     Cycling to summit from cycle_creator_no_cutoff...
-    Started evaluating incrementing_chain_1_no_cutoff
-    Started evaluating incrementing_chain_2_yes_cutoff
-    Started evaluating incrementing_chain_3_no_cutoff
     Started evaluating incrementing_chain_4_yes_cutoff
+    Started evaluating incrementing_chain_3_no_cutoff
     Started evaluating the summit with input 0
     Dependency cycle detected:
     - ("incrementing_chain_plus_input", 2)
@@ -930,10 +927,10 @@ let%expect_test "dynamic cycles with non-uniform cutoff structure" =
     Started evaluating cycle_creator_yes_cutoff
     Cycling to summit from cycle_creator_yes_cutoff...
     Started evaluating incrementing_chain_1_yes_cutoff
-    Started evaluating incrementing_chain_2_no_cutoff
     Started evaluating incrementing_chain_3_yes_cutoff
-    Started evaluating incrementing_chain_4_no_cutoff
+    Started evaluating incrementing_chain_2_no_cutoff
     Started evaluating the summit with input 0
+    Started evaluating incrementing_chain_4_no_cutoff
     Dependency cycle detected:
     - ("incrementing_chain_plus_input", 2)
     - called by ("cycle_creator_yes_cutoff", ())

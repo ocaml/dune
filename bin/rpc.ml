@@ -42,16 +42,18 @@ module Init = struct
           let+ () = Csexp_rpc.Session.write t read in
           Option.map read ~f:(fun (_ : Sexp.t) -> ()))
     in
-    Fiber.fork_and_join_unit
-      (fun () -> forward session stdio)
-      (fun () -> forward stdio session)
+    Fiber.finalize
+      (fun () ->
+        Fiber.fork_and_join_unit
+          (fun () -> forward session stdio)
+          (fun () -> forward stdio session))
+      ~finally:(fun () ->
+        Csexp_rpc.Client.stop c;
+        Fiber.return ())
 
   let term =
     let+ (common : Common.t) = Common.term in
-    client_term common (fun where ->
-        let open Fiber.O in
-        let* () = connect where in
-        Dune_engine.Scheduler.Rpc.stop ())
+    client_term common connect
 
   let man = [ `Blocks Common.help_secs ]
 

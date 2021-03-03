@@ -131,6 +131,12 @@ understood by dune language."))
 
 (package
  (name dune-rpc)
- (depends (dune-private-libs (= :version))) ;; TODO temporary
+ (depends (stdune (= :version)))
  (synopsis "Communicate with dune using rpc")
  (description ""))
+
+(package
+ (name stdune)
+ (depends (dune-private-libs (= :version)))
+ (synopsis "Dune's unstable standard library")
+ (description "This library offers no backwards compatibility guarantees. Use at your own risk."))

@@ -136,7 +136,7 @@ understood by dune language."))
  (name dune-rpc)
  (depends (stdune (= :version)))
  (synopsis "Communicate with dune using rpc")
- (description ""))
+ (description "Library to connect and control a running dune instance"))
 
 (package
  (name stdune)

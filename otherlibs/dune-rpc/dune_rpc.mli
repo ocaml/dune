@@ -33,8 +33,6 @@
 (* TODO make records private *)
 
 module V1 : sig
-  open Dune_csexp (* TODO remove this *)
-
   module Id : sig
     (** Id's for requests, responses, sessions.
 

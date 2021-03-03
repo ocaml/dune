@@ -65,6 +65,7 @@ executable was built.
 (package
  (name dune-private-libs)
  (depends
+  (csexp (>= 1.4.0))
   (ocaml (>= 4.08)))
  (synopsis "Private libraries of Dune")
  (description "\
@@ -99,6 +100,7 @@ Among other things, dune-configurator allows one to:
  (name dune-action-plugin)
  (depends
   dune-glob
+  (csexp (>= 1.4.0))
   (ppx_expect :with-test)
   (dune-private-libs (= :version)))
  (synopsis "[experimental] API for writing dynamic Dune actions")

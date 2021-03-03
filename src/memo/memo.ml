@@ -365,58 +365,37 @@ module Cache_lookup = struct
 end
 
 module Once = struct
-  module Sync = struct
-    type 'a state =
-      | Not_forced of (unit -> 'a)
-      | Forced of 'a
+  type 'a state =
+    | Not_forced of 'a Fiber.t
+    | Forced of 'a Fiber.Ivar.t
 
-    type 'a t = { mutable state : 'a state }
+  type 'a t = { mutable state : 'a state }
 
-    let create thunk = { state = Not_forced thunk }
+  let create fiber = { state = Not_forced fiber }
 
-    let force t =
-      match t.state with
-      | Forced result -> result
-      | Not_forced thunk ->
-        let result = thunk () in
-        t.state <- Forced result;
-        result
-  end
-
-  module Async = struct
-    type 'a state =
-      | Not_forced of 'a Fiber.t
-      | Forced of 'a Fiber.Ivar.t
-
-    type 'a t = { mutable state : 'a state }
-
-    let create fiber = { state = Not_forced fiber }
-
-    let force t =
-      match t.state with
-      | Forced ivar ->
-        let+ res = Fiber.Ivar.read ivar in
-        res
-      | Not_forced fiber ->
-        let ivar = Fiber.Ivar.create () in
-        t.state <- Forced ivar;
-        let* result = fiber in
-        let+ () = Fiber.Ivar.fill ivar result in
-        result
-  end
+  let force t =
+    match t.state with
+    | Forced ivar ->
+      let+ res = Fiber.Ivar.read ivar in
+      res
+    | Not_forced fiber ->
+      let ivar = Fiber.Ivar.create () in
+      t.state <- Forced ivar;
+      let* result = fiber in
+      let+ () = Fiber.Ivar.fill ivar result in
+      result
 end
 
 module M = struct
   module rec Completion : sig
     type 'a sync =
-      { restore_from_cache : 'a Cached_value.t Cache_lookup.Result.t Once.Sync.t
-      ; compute : 'a Cached_value.t Once.Sync.t
+      { restore_from_cache : 'a Cached_value.t Cache_lookup.Result.t Lazy.t
+      ; compute : 'a Cached_value.t Lazy.t
       }
 
     type 'a async =
-      { restore_from_cache :
-          'a Cached_value.t Cache_lookup.Result.t Once.Async.t
-      ; compute : 'a Cached_value.t Once.Async.t
+      { restore_from_cache : 'a Cached_value.t Cache_lookup.Result.t Once.t
+      ; compute : 'a Cached_value.t Once.t
       }
 
     type ('a, 'b, 'f) t =
@@ -909,8 +888,8 @@ end = struct
       | Done of 'a
       | Needs_work of
           { sample_attempt : Dag.node
-          ; restore_from_cache : 'a Cache_lookup.Result.t Once.Sync.t
-          ; compute : 'a Once.Sync.t
+          ; restore_from_cache : 'a Cache_lookup.Result.t Lazy.t
+          ; compute : 'a Lazy.t
           }
 
     let sample_attempt_dag_node t : Sample_attempt_dag_node.t =
@@ -920,15 +899,14 @@ end = struct
 
     let restore = function
       | Done cached_value -> Ok cached_value
-      | Needs_work { restore_from_cache; _ } ->
-        Once.Sync.force restore_from_cache
+      | Needs_work { restore_from_cache; _ } -> Lazy.force restore_from_cache
 
     let compute = function
       | Done cached_value -> cached_value
       | Needs_work { restore_from_cache; compute; _ } -> (
-        match Once.Sync.force restore_from_cache with
+        match Lazy.force restore_from_cache with
         | Ok cached_value -> cached_value
-        | Error _ -> Once.Sync.force compute )
+        | Error _ -> Lazy.force compute )
   end
 
   let restore_from_cache (last_cached_value : _ Cached_value.t option) =
@@ -1034,30 +1012,30 @@ end = struct
       { sample_attempt; deps_so_far = Deps_so_far.create () }
     in
     let restore_from_cache =
-      Once.Sync.create (fun () ->
-          Call_stack.push_sync_frame
-            (T { without_state = dep_node.without_state; running_state })
-            (fun () -> restore_from_cache dep_node.last_cached_value))
+      lazy
+        (Call_stack.push_sync_frame
+           (T { without_state = dep_node.without_state; running_state })
+           (fun () -> restore_from_cache dep_node.last_cached_value))
     in
     let compute =
-      Once.Sync.create (fun () ->
-          Call_stack.push_sync_frame
-            (T { without_state = dep_node.without_state; running_state })
-            (fun () ->
-              let new_cached_value =
-                match Once.Sync.force restore_from_cache with
-                | Ok cached_value -> cached_value
-                | Error cache_lookup_failure ->
-                  dep_node.last_cached_value <- None;
-                  let computed_value =
-                    compute dep_node cache_lookup_failure
-                      running_state.deps_so_far
-                  in
-                  dep_node.last_cached_value <- Some computed_value;
-                  computed_value
-              in
-              dep_node.state <- Not_considering;
-              new_cached_value))
+      lazy
+        (Call_stack.push_sync_frame
+           (T { without_state = dep_node.without_state; running_state })
+           (fun () ->
+             let new_cached_value =
+               match Lazy.force restore_from_cache with
+               | Ok cached_value -> cached_value
+               | Error cache_lookup_failure ->
+                 dep_node.last_cached_value <- None;
+                 let computed_value =
+                   compute dep_node cache_lookup_failure
+                     running_state.deps_so_far
+                 in
+                 dep_node.last_cached_value <- Some computed_value;
+                 computed_value
+             in
+             dep_node.state <- Not_considering;
+             new_cached_value))
     in
     dep_node.state <-
       Considering
@@ -1124,8 +1102,8 @@ end = struct
       | Done of 'a
       | Needs_work of
           { sample_attempt : Dag.node
-          ; restore_from_cache : 'a Cache_lookup.Result.t Once.Async.t
-          ; compute : 'a Once.Async.t
+          ; restore_from_cache : 'a Cache_lookup.Result.t Once.t
+          ; compute : 'a Once.t
           }
 
     let sample_attempt_dag_node t : Sample_attempt_dag_node.t =
@@ -1135,16 +1113,15 @@ end = struct
 
     let restore = function
       | Done cached_value -> Fiber.return (Ok cached_value)
-      | Needs_work { restore_from_cache; _ } ->
-        Once.Async.force restore_from_cache
+      | Needs_work { restore_from_cache; _ } -> Once.force restore_from_cache
 
     let compute = function
       | Done cached_value -> Fiber.return cached_value
       | Needs_work { restore_from_cache; compute; _ } -> (
-        let* restore_result = Once.Async.force restore_from_cache in
+        let* restore_result = Once.force restore_from_cache in
         match restore_result with
         | Ok cached_value -> Fiber.return cached_value
-        | Error _ -> Once.Async.force compute )
+        | Error _ -> Once.force compute )
   end
 
   let _ = Exec_unknown.restore_from_cache_internal
@@ -1255,18 +1232,18 @@ end = struct
       { sample_attempt; deps_so_far = Deps_so_far.create () }
     in
     let restore_from_cache =
-      Once.Async.create
+      Once.create
         (Call_stack.push_async_frame
            (T { without_state = dep_node.without_state; running_state })
            (fun () -> restore_from_cache dep_node.last_cached_value))
     in
     let compute =
-      Once.Async.create
+      Once.create
         (Call_stack.push_async_frame
            (T { without_state = dep_node.without_state; running_state })
            (fun () ->
              let+ new_cached_value =
-               let* restore_result = Once.Async.force restore_from_cache in
+               let* restore_result = Once.force restore_from_cache in
                match restore_result with
                | Ok cached_value -> Fiber.return cached_value
                | Error cache_lookup_failure ->

@@ -1,7 +1,7 @@
 (*---------------------------------------------------------------------------
    Copyright (c) 2011 Daniel C. Bünzli. All rights reserved.
    Distributed under the ISC license, see terms at the end of the file.
-   cmdliner v1.0.4-24-gb0f156d
+   cmdliner v1.0.4-27-gb4f5656
   ---------------------------------------------------------------------------*)
 
 module Manpage = Cmdliner_manpage
@@ -331,7 +331,7 @@ module Term = struct
         let err = Cmdliner_base.err_no_sub_command in
         let sibling_terms = List.map snd choices in
         let ei = Cmdliner_info.eval ~env
-            (Sub_command { term = main ; path ; main ; sibling_terms}) in
+            (Sub_command { path ; main ; sibling_terms}) in
         let help, version, ei = add_stdopts ei in
         let term_args = Cmdliner_info.(term_args @@ eval_term ei) in
         let args = remove_exec argv in
@@ -348,23 +348,22 @@ module Term = struct
     | Error (`Invalid_command (maybe, path, choices, hints)) ->
         let err = Cmdliner_base.err_unknown ~kind:"command" maybe ~hints in
         let sibling_terms = List.map snd choices in
-        let ei = Cmdliner_info.eval ~env
-            (Sub_command { term = main ; path ; main ; sibling_terms})
+        let ei =
+          Cmdliner_info.eval ~env (Sub_command { path ; main ; sibling_terms})
         in
         Cmdliner_msg.pp_err_usage err_ppf ei ~err_lines:false ~err;
         `Error `Parse
     | Error (`Ambiguous (cmd, path, ambs)) ->
         let err = Cmdliner_base.err_ambiguous ~kind:"command" cmd ~ambs in
         let sibling_terms = List.map snd choices in
-        let ei = Cmdliner_info.eval ~env
-            (Sub_command { term = main ; path ; main ; sibling_terms})
-        in
+        let ei =
+          Cmdliner_info.eval ~env (Sub_command { path ; main ; sibling_terms}) in
         Cmdliner_msg.pp_err_usage err_ppf ei ~err_lines:false ~err;
         `Error `Parse
     | Ok (((_, f), info), sibling_terms, path, args) ->
         let sibling_terms = List.map snd sibling_terms in
         let ei = Cmdliner_info.eval ~env
-            (Sub_command { main ; term = info ; path ; sibling_terms }) in
+            (Sub_command { main ; path ; sibling_terms }) in
         let ei, res = term_eval ~catch ei f args in
         do_result help_ppf err_ppf ei res
   end

@@ -1,7 +1,7 @@
 (*---------------------------------------------------------------------------
    Copyright (c) 2011 Daniel C. Bünzli. All rights reserved.
    Distributed under the ISC license, see terms at the end of the file.
-   cmdliner v1.0.4-24-gb0f156d
+   cmdliner v1.0.4-27-gb4f5656
   ---------------------------------------------------------------------------*)
 
 (** Terms, argument, env vars information.
@@ -114,10 +114,7 @@ type eval
 type eval_kind =
 | Simple of term
 | Main of { term : term ; choices : term list }
-| Sub_command of { term : term;
-                   (** is [term] is from a group, [path] are the ancestors
-                        direct with the direct parent *)
-                   path : term list;
+| Sub_command of { path : term list;
                    main : term;
                    sibling_terms : term list }
 

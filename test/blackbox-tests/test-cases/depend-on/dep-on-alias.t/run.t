@@ -31,7 +31,7 @@
   running b: new-contents
 ^ dune does re-run the action when a dependency declared 
 via an alias changes.
-But BUG: the path does not appear in the sandbox:
+And the path does appear in the sandbox:
   $ dune build @b --sandbox copy |& grep -v 'cd _build/.sandbox'
           bash alias b
   running b: new-contents
@@ -65,7 +65,7 @@ Now test that including an alias into another alias includes its expansion:
   $ dune build @b
           bash alias b
   running b: new-contents
-Still BUG: the path does not appear in the sandbox:
+The path still does appear in the sandbox:
   $ dune build @b --sandbox copy |& grep -v 'cd _build/.sandbox'
           bash alias b
   running b: new-contents

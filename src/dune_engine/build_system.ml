@@ -1232,6 +1232,8 @@ and Exported : sig
   (** Exported to inspect memoization cycles. *)
   val build_file_memo :
     (Path.t, Dep.Set.t, Path.t -> Dep.Set.t Memo.Build.t) Memo.t
+  val build_alias_memo :
+    (Alias.t, Path.Set.t, Alias.t -> Path.Set.t Memo.Build.t) Memo.t
 end = struct
   open Used_recursively
 
@@ -1818,10 +1820,20 @@ open Exported
 
 let eval_pred = Pred.eval
 
+let get_human_readable_info stack_frame =
+  match Memo.Stack_frame.as_instance_of ~of_:build_file_memo stack_frame with
+  | Some p ->
+    Some (Pp.verbatim (Path.to_string_maybe_quoted p))
+  | None ->
+    match Memo.Stack_frame.as_instance_of ~of_:build_alias_memo stack_frame with
+    | Some alias ->
+      Some (Pp.verbatim ("alias " ^ Alias.describe alias))
+    | None -> None
+
 let process_memcycle (cycle_error : Memo.Cycle_error.t) =
   let cycle =
     Memo.Cycle_error.get cycle_error
-    |> List.filter_map ~f:(Memo.Stack_frame.as_instance_of ~of_:build_file_memo)
+    |> List.filter_map ~f:get_human_readable_info
   in
   match List.last cycle with
   | None ->
@@ -1838,7 +1850,7 @@ let process_memcycle (cycle_error : Memo.Cycle_error.t) =
     in
     User_error.raise
       [ Pp.text "Dependency cycle between the following files:"
-      ; Pp.chain cycle ~f:(fun p -> Pp.verbatim (Path.to_string_maybe_quoted p))
+      ; Pp.chain cycle ~f:(fun p -> p)
       ]
 
 let set_packages f =
@@ -1919,12 +1931,7 @@ let process_exn_and_reraise exn =
 
 let entry_point_async ~f =
   assert_not_in_memoized_function ();
-  match
-    Exn_with_backtrace.try_with (fun () ->
-        Memo.Build.with_error_handler f ~on_error:process_exn_and_reraise)
-  with
-  | Error exn -> process_exn_and_reraise exn
-  | Ok res -> res
+  Memo.Build.with_error_handler f ~on_error:process_exn_and_reraise
 
 let entry_point_sync ~f =
   assert_not_in_memoized_function ();

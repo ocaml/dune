@@ -6,9 +6,9 @@ the second run of dune.
 
   $ dune build @package-cycle
   Error: Dependency cycle between the following files:
-     _build/.aliases/default/b/.b-files-00000000000000000000000000000000
-  -> _build/.aliases/default/a/.a-files-00000000000000000000000000000000
-  -> _build/.aliases/default/b/.b-files-00000000000000000000000000000000
+     alias a/.a-files
+  -> alias b/.b-files
+  -> alias a/.a-files
   [1]
 
   $ dune build @simple-repro-case
@@ -42,6 +42,10 @@ error message.
 
   $ echo 'val x : unit' > indirect/c.mli
   $ dune build @indirect-deps
+  File "indirect/dune", line 6, characters 0-43:
+  6 | (alias
+  7 |  (name indirect-deps)
+  8 |  (deps a.exe))
   Error: dependency cycle between modules in _build/default/indirect:
      A
   -> C

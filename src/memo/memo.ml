@@ -538,6 +538,7 @@ module M = struct
     Last_dep
 end
 
+module Completion = M.Completion
 module State = M.State
 module Running_state = M.Running_state
 module Dep_node = M.Dep_node
@@ -701,14 +702,12 @@ module Sample_attempt = struct
     | Finished : 'a -> ('a, _) t
     | Running_sync :
         { dag_node : Dag.node
-        ; restore_from_cache : 'a Cache_lookup.Result.t Lazy.t
-        ; compute : 'a Lazy.t
+        ; completion : 'a Completion.sync
         }
         -> ('a, sync) t
     | Running_async :
         { dag_node : Dag.node
-        ; restore_from_cache : 'a Cache_lookup.Result.t Once.t
-        ; compute : 'a Once.t
+        ; completion : 'a Completion.async
         }
         -> ('a, async) t
 
@@ -722,22 +721,23 @@ module Sample_attempt = struct
   let restore_sync (type a) (t : (a, sync) t) =
     match t with
     | Finished cached_value -> Ok cached_value
-    | Running_sync { restore_from_cache; _ } -> Lazy.force restore_from_cache
+    | Running_sync { completion; _ } -> Lazy.force completion.restore_from_cache
 
   let restore_async (type a) (t : (a, async) t) =
     match t with
     | Finished cached_value -> Fiber.return (Ok cached_value)
-    | Running_async { restore_from_cache; _ } -> Once.force restore_from_cache
+    | Running_async { completion; _ } ->
+      Once.force completion.restore_from_cache
 
   let compute_sync (type a) (t : (a, sync) t) =
     match t with
     | Finished cached_value -> cached_value
-    | Running_sync { compute; _ } -> Lazy.force compute
+    | Running_sync { completion; _ } -> Lazy.force completion.compute
 
   let compute_async (type a) (t : (a, async) t) =
     match t with
     | Finished cached_value -> Fiber.return cached_value
-    | Running_async { compute; _ } -> Once.force compute
+    | Running_async { completion; _ } -> Once.force completion.compute
 end
 
 (* Add a dependency on the [dep_node] from the caller, if there is one. Returns
@@ -1057,13 +1057,14 @@ end = struct
             dep_node.state <- Not_considering;
             cached_value)
     in
+    let completion : _ Completion.sync = { restore_from_cache; compute } in
     dep_node.state <-
       Considering
         { run = Run.current ()
         ; running = running_state
-        ; completion = Sync { restore_from_cache; compute }
+        ; completion = Sync completion
         };
-    Sample_attempt.Running_sync { dag_node; restore_from_cache; compute }
+    Sample_attempt.Running_sync { dag_node; completion }
 
   let start_considering (dep_node : ('a, 'b, 'a -> 'b) Dep_node.t) =
     match currently_considering dep_node.state with
@@ -1073,10 +1074,10 @@ end = struct
       | Some cv -> Finished cv )
     | Considering
         { running = { dag_node; deps_so_far = _ }
-        ; completion = Sync { restore_from_cache; compute }
+        ; completion = Sync completion
         ; _
         } ->
-      Running_sync { dag_node; restore_from_cache; compute }
+      Running_sync { dag_node; completion }
 
   let consider_dep_node (dep_node : _ Dep_node.t) =
     let sample_attempt = start_considering dep_node in
@@ -1249,13 +1250,14 @@ end = struct
             dep_node.state <- Not_considering;
             cached_value)
     in
+    let completion : _ Completion.async = { restore_from_cache; compute } in
     dep_node.state <-
       Considering
         { run = Run.current ()
         ; running = running_state
-        ; completion = Async { restore_from_cache; compute }
+        ; completion = Async completion
         };
-    Sample_attempt.Running_async { dag_node; restore_from_cache; compute }
+    Sample_attempt.Running_async { dag_node; completion }
 
   let start_considering (dep_node : _ Dep_node.t) =
     match currently_considering dep_node.state with
@@ -1265,10 +1267,10 @@ end = struct
       | Some cv -> Finished cv )
     | Considering
         { running = { dag_node; deps_so_far = _ }
-        ; completion = Async { restore_from_cache; compute }
+        ; completion = Async completion
         ; _
         } ->
-      Running_async { dag_node; restore_from_cache; compute }
+      Running_async { dag_node; completion }
 
   let consider_dep_node (dep_node : _ Dep_node.t) =
     let sample_attempt = start_considering dep_node in

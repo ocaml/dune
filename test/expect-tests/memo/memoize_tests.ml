@@ -1121,6 +1121,7 @@ let%expect_test "Nested nodes with cutoff are recomputed unnecessarily (sync)" =
   in
   print_result_sync summit 0;
   print_result_sync summit 1;
+  (* In the first run, everything is OK. *)
   [%expect
     {|
     Started evaluating summit
@@ -1143,6 +1144,8 @@ let%expect_test "Nested nodes with cutoff are recomputed unnecessarily (sync)" =
   Memo.restart_current_run ();
   print_result_sync summit 0;
   print_result_sync summit 2;
+  (* In the second run, we recompute [base] three times and [middle] twice,
+     instead of just once. *)
   [%expect
     {|
     Started evaluating counter
@@ -1201,6 +1204,7 @@ let%expect_test "Nested nodes with cutoff are recomputed unnecessarily (async)"
   in
   print_result summit 0;
   print_result summit 1;
+  (* In the first run, everything is OK. *)
   [%expect
     {|
     Started evaluating summit
@@ -1223,6 +1227,8 @@ let%expect_test "Nested nodes with cutoff are recomputed unnecessarily (async)"
   Memo.restart_current_run ();
   print_result summit 0;
   print_result summit 2;
+  (* In the second run, we recompute [base] three times and [middle] twice,
+     instead of just once. *)
   [%expect
     {|
     Started evaluating counter

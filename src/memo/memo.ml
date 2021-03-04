@@ -637,11 +637,11 @@ open To_open
 let global_dep_dag = Dag.create ()
 
 module Call_stack = struct
-  (* fiber context variable keys *)
-  let call_stack_key = Fiber.Var.create ()
+  (* The variable holding the call stack for the current context. *)
+  let call_stack_var = Fiber.Var.create ()
 
   let get_call_stack () =
-    Fiber.Var.get call_stack_key |> Option.value ~default:[]
+    Fiber.Var.get call_stack_var |> Option.value ~default:[]
 
   let get_call_stack_without_state () =
     get_call_stack ()
@@ -655,12 +655,12 @@ module Call_stack = struct
 
   let push_async_frame (frame : Stack_frame_with_state.t) f =
     let stack = get_call_stack () in
-    Fiber.Var.set call_stack_key (frame :: stack) (fun () ->
+    Fiber.Var.set call_stack_var (frame :: stack) (fun () ->
         Implicit_output.forbid_async f)
 
   let push_sync_frame (frame : Stack_frame_with_state.t) f =
     let stack = get_call_stack () in
-    Fiber.Var.set_sync call_stack_key (frame :: stack) (fun () ->
+    Fiber.Var.set_sync call_stack_var (frame :: stack) (fun () ->
         Implicit_output.forbid_sync f)
 end
 
@@ -959,9 +959,10 @@ end = struct
                   Exec_unknown.restore_from_cache_internal_from_sync dep
                 in
                 match restore_result with
-                | Ok _cached_value -> go deps
-                | Error (Cancelled { dependency_cycle }) ->
-                  Cancelled { dependency_cycle }
+                | Ok _cached_value -> assert false
+                (* go deps *)
+                | Error (Cancelled { dependency_cycle = _ }) ->
+                  assert false (* Cancelled { dependency_cycle } *)
                 | Error (Not_found | Out_of_date _) -> Changed )
               | Yes _equal -> (
                 (* If [dep] has a cutoff predicate, it is not sufficient to
@@ -988,6 +989,10 @@ end = struct
         | Changed -> Error (Out_of_date cached_value)
         | Cancelled { dependency_cycle } ->
           Error (Cancelled { dependency_cycle })))
+
+  let _ = Exec_unknown.restore_from_cache_internal
+
+  let _ = Exec_unknown.restore_from_cache_internal_from_sync
 
   let compute (dep_node : _ Dep_node.t) cache_lookup_failure deps_so_far =
     Deps_so_far.start_compute deps_so_far;
@@ -1050,6 +1055,7 @@ end = struct
           | Ok cached_value -> cached_value
           | Error cache_lookup_failure ->
             dep_node.last_cached_value <- None;
+            Deps_so_far.reset running_state.deps_so_far;
             let cached_value =
               compute dep_node cache_lookup_failure running_state.deps_so_far
             in
@@ -1214,6 +1220,8 @@ end = struct
       | false -> Cached_value.confirm_old_value ~deps_rev old_cv)
 
   let newly_considering (dep_node : _ Dep_node.t) =
+    (* Format.printf "newly_considering in %s\n" (Option.value_exn
+       dep_node.without_state.spec.info).name; *)
     let dag_node : Dag.node =
       { info = Dag.create_node_info global_dep_dag
       ; data = Dep_node_without_state.T dep_node.without_state
@@ -1230,6 +1238,8 @@ end = struct
     in
     let restore_from_cache =
       run_once_in_a_new_stack_frame (fun () ->
+          (* Format.printf "newly_considering: started restore_from_cache in
+             %s\n" (Option.value_exn dep_node.without_state.spec.info).name; *)
           let+ restore_result = restore_from_cache dep_node.last_cached_value in
           ( match restore_result with
           | Ok _ -> dep_node.state <- Not_considering
@@ -1243,6 +1253,9 @@ end = struct
           | Ok cached_value -> Fiber.return cached_value
           | Error cache_lookup_failure ->
             dep_node.last_cached_value <- None;
+            (* Format.printf "newly_considering: started compute in %s\n"
+               (Option.value_exn dep_node.without_state.spec.info).name; *)
+            Deps_so_far.reset running_state.deps_so_far;
             let+ cached_value =
               compute dep_node cache_lookup_failure running_state.deps_so_far
             in

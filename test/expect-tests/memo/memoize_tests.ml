@@ -747,6 +747,7 @@ let%expect_test "diamond with non-uniform cutoff structure" =
     {|
     Started evaluating base
     Evaluated base: 2
+    Started evaluating after_no_cutoff
     Started evaluating no_cutoff
     Evaluated no_cutoff: 1
     Evaluated after_no_cutoff: 2
@@ -907,6 +908,8 @@ let%expect_test "dynamic cycles with non-uniform cutoff structure" =
     {|
     Started evaluating base
     Evaluated base: 2
+    Started evaluating incrementing_chain_2_yes_cutoff
+    Started evaluating incrementing_chain_1_no_cutoff
     Started evaluating cycle_creator_no_cutoff
     Cycling to summit from cycle_creator_no_cutoff...
     Started evaluating incrementing_chain_4_yes_cutoff
@@ -1091,7 +1094,7 @@ let%expect_test "deadlocks and zombies when creating a cycle twice" =
             ]
     |}]
 
-let%expect_test "Nested nodes with cutoff are recomputed unnecessarily (sync)" =
+let%expect_test "Nested nodes with cutoff are recomputed optimally (sync)" =
   let counter =
     create_sync ~with_cutoff:false "counter" (count_runs_sync "counter")
   in
@@ -1147,21 +1150,14 @@ let%expect_test "Nested nodes with cutoff are recomputed unnecessarily (sync)" =
   Memo.restart_current_run ();
   evaluate_and_print_sync summit 0;
   evaluate_and_print_sync summit 2;
-  (* In the second run, we recompute [base] three times and [middle] twice,
-     instead of just once. *)
+  (* In the second run, we don't recompute [base] three times as we did before. *)
   [%expect
     {|
-    Started evaluating counter
-    Evaluated counter: 2
-    Started evaluating base
-    Evaluated base: 2
-    Started evaluating middle
-    Started evaluating base
-    Evaluated base: 2
-    Evaluated middle: 2
     Started evaluating summit
     Started evaluating middle
     Started evaluating base
+    Started evaluating counter
+    Evaluated counter: 2
     Evaluated base: 2
     Evaluated middle: 2
     Evaluated summit: 2
@@ -1175,8 +1171,7 @@ let%expect_test "Nested nodes with cutoff are recomputed unnecessarily (sync)" =
     f 2 = Ok 4
     |}]
 
-let%expect_test "Nested nodes with cutoff are recomputed unnecessarily (async)"
-    =
+let%expect_test "Nested nodes with cutoff are recomputed optimally (async)" =
   let counter = create ~with_cutoff:false "counter" (count_runs "counter") in
   let summit =
     Memo.create "summit"
@@ -1230,21 +1225,14 @@ let%expect_test "Nested nodes with cutoff are recomputed unnecessarily (async)"
   Memo.restart_current_run ();
   evaluate_and_print summit 0;
   evaluate_and_print summit 2;
-  (* In the second run, we recompute [base] three times and [middle] twice,
-     instead of just once. *)
+  (* In the second run, we don't recompute [base] three times as we did before. *)
   [%expect
     {|
-    Started evaluating counter
-    Evaluated counter: 2
-    Started evaluating base
-    Evaluated middle: 2
-    Started evaluating middle
-    Started evaluating base
-    Evaluated middle: 2
-    Evaluated middle: 2
     Started evaluating summit
     Started evaluating middle
     Started evaluating base
+    Started evaluating counter
+    Evaluated counter: 2
     Evaluated middle: 2
     Evaluated middle: 2
     Evaluated summit: 2

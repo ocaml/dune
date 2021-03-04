@@ -1,3 +1,5 @@
 (library
  (name csexp)
- (public_name dune-private-libs.csexp))
+ ;; note that this library is deleted in release mode so that the one from opam
+ ;; is used
+ (public_name stdune.csexp))

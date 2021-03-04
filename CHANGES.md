@@ -30,6 +30,9 @@ Unreleased
 - Automatically delete left-over Merlin files when rebuilding for the first time
   a project previously built with Dune `<= 2.7`. (#4261, @voodoos, @aalekseyev)
 
+- Fix `ppx.exe` being compiled for the wrong target when cross-compiling
+  (#3751, fixes #3698, @toots)
+
 2.8.2 (21/01/2021)
 ------------------
 

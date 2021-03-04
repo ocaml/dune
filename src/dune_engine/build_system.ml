@@ -195,7 +195,7 @@ module Loaded = struct
     ; rules_produced : Rules.t
     ; rules_here : Rule.t Path.Build.Map.t
     ; rules_of_alias_dir : Rule.t Path.Build.Map.t
-    ; aliases : unit Action_builder.t Alias.Name.Map.t
+    ; aliases : (Loc.t * unit Action_builder.t) list Alias.Name.Map.t
     }
 
   type t =
@@ -673,7 +673,7 @@ module rec Load_rules : sig
 
   val targets_of : dir:Path.t -> Path.Set.t
 
-  val lookup_alias : Alias.t -> unit Action_builder.t option
+  val lookup_alias : Alias.t -> (Loc.t * unit Action_builder.t) list option
 end = struct
   open Load_rules
 
@@ -765,16 +765,19 @@ end = struct
                   Alias.Name.install
               in
               Alias.Name.Map.set aliases Alias.Name.default
-                { expansion =
-                    (let+ _ =
-                       Alias0.dep_rec_internal ~name:default_alias ~dir ~ctx_dir
-                     in
-                     ())
+                { expansions =
+                    Appendable_list.singleton
+                      ( Loc.none
+                      , let+ _ =
+                          Alias0.dep_rec_internal ~name:default_alias ~dir
+                            ~ctx_dir
+                        in
+                        () )
                 ; actions = Appendable_list.empty
                 } )
       in
       Alias.Name.Map.fold_mapi aliases ~init:[]
-        ~f:(fun name rules { Rules.Dir_rules.Alias_spec.expansion; actions } ->
+        ~f:(fun name rules { Rules.Dir_rules.Alias_spec.expansions; actions } ->
           let base_path =
             Path.Build.relative alias_dir (Alias.Name.to_string name)
           in
@@ -798,13 +801,15 @@ end = struct
                 ( rule :: rules
                 , Path.Set.add action_stamp_files (Path.build path) ))
           in
-          let expansion =
-            expansion
-            >>> Action_builder.memo_build
-                  (Fdecl.get build_deps_fdecl
-                     (Dep.Set.of_files_set action_stamp_files))
+          let expansions =
+            Appendable_list.to_list expansions
+            @ [ ( Loc.none
+                , Action_builder.memo_build
+                    (Fdecl.get build_deps_fdecl
+                       (Dep.Set.of_files_set action_stamp_files)) )
+              ]
           in
-          (rules, expansion))
+          (rules, expansions))
     in
     fun ~subdirs_to_keep ->
       let rules_here =
@@ -1511,7 +1516,7 @@ end = struct
                 let sandboxed path : Path.Build.t =
                   Path.Build.append_local sandbox_dir (Path.Build.local path)
                 in
-                Dep.Set.dirs deps
+                Dep.Set.eval_dirs deps
                 |> Path.Set.iter ~f:(fun path ->
                        match Path.as_in_build_dir path with
                        | None -> Fs.assert_exists ~loc path
@@ -1706,18 +1711,22 @@ end = struct
         | Rule rule -> execute_rule rule)
 
   let build_alias_impl alias =
-    let on_error exn = Dep_path.reraise exn (Alias alias) in
-    Memo.Build.with_error_handler ~on_error (fun () ->
-        Memo.Build.bind
-          (Memo.Build.return (lookup_alias alias))
-          ~f:(function
-            | None ->
-              let alias_descr = sprintf "alias %s" (Alias.describe alias) in
-              User_error.raise ?loc:(Rule_fn.loc ())
-                [ Pp.textf "No rule found for %s" alias_descr ]
-            | Some alias ->
-              Memo.Build.map (exec_build_request alias) ~f:(fun ((), deps) ->
-                  Dep.Set.eval_paths deps)))
+    Memo.Build.bind
+      (Memo.Build.return (lookup_alias alias))
+      ~f:(function
+        | None ->
+          let alias_descr = sprintf "alias %s" (Alias.describe alias) in
+          User_error.raise ?loc:(Rule_fn.loc ())
+            [ Pp.textf "No rule found for %s" alias_descr ]
+        | Some alias_definitions ->
+          Memo.Build.map
+            (Memo.Build.parallel_map alias_definitions
+               ~f:(fun (loc, definition) ->
+                 let on_error exn = Dep_path.reraise exn (Alias (loc, alias)) in
+                 Memo.Build.with_error_handler ~on_error (fun () ->
+                     Memo.Build.map (exec_build_request definition)
+                       ~f:(fun ((), deps) -> Dep.Set.eval_paths deps))))
+            ~f:(fun l -> Path.Set.union_all l))
 
   module Pred = struct
     let build_impl g =

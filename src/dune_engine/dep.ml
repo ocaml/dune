@@ -189,10 +189,13 @@ module Set = struct
             acc
           | Sandbox_config _ -> acc)
 
-    let dirs t =
+    let eval_dirs t =
       fold t ~init:Path.Set.empty ~f:(fun f acc ->
           match f with
-          | Alias a -> Path.Set.add acc (Path.build (Alias.stamp_file_dir a))
+          | Alias a ->
+            Path.Set.union acc
+              (Path.Set.map (Fdecl.get peek_alias_expansion a) ~f:(fun x ->
+                   Path.parent_exn x))
           | File_selector g -> Path.Set.add acc (File_selector.dir g)
           | File f -> Path.Set.add acc (Path.parent_exn f)
           | Universe

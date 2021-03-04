@@ -14,15 +14,15 @@ module Dir_rules = struct
 
   module Alias_spec = struct
     type t =
-      { expansion : unit Action_builder.t
+      { expansions : (Loc.t * unit Action_builder.t) Appendable_list.t
       ; actions : alias_action Appendable_list.t
       }
 
     let empty =
-      { expansion = Action_builder.return (); actions = Appendable_list.empty }
+      { expansions = Appendable_list.empty; actions = Appendable_list.empty }
 
     let union x y =
-      { expansion = Action_builder.O.( >>> ) x.expansion y.expansion
+      { expansions = Appendable_list.( @ ) x.expansions y.expansions
       ; actions = Appendable_list.( @ ) x.actions y.actions
       }
   end
@@ -154,16 +154,22 @@ module Produce = struct
          Path.Build.Map.singleton dir
            (Dir_rules.Nonempty.singleton (Alias { name; spec })))
 
-    let add_deps t expansion =
-      alias t { expansion; actions = Appendable_list.empty }
+    let add_deps t ?(loc = Loc.none) expansion =
+      alias t
+        { expansions = Appendable_list.singleton (loc, expansion)
+        ; actions = Appendable_list.empty
+        }
 
-    let add_static_deps t deps =
+    let add_static_deps t ?(loc = Loc.none) deps =
       let expansion = Action_builder.deps (Dep.Set.of_files_set deps) in
-      alias t { expansion; actions = Appendable_list.empty }
+      alias t
+        { expansions = Appendable_list.singleton (loc, expansion)
+        ; actions = Appendable_list.empty
+        }
 
     let add_action t ~context ~env ~loc ?(locks = []) ~stamp action =
       alias t
-        { expansion = Action_builder.return ()
+        { expansions = Appendable_list.empty
         ; actions =
             Appendable_list.singleton
               ( { stamp = Digest.generic stamp

@@ -33,8 +33,8 @@
 via an alias changes.
 But BUG: the path does not appear in the sandbox:
   $ dune build @b --sandbox copy |& grep -v 'cd _build/.sandbox'
-          bash alias b (exit 1)
-  running b: cat: x: No such file or directory
+          bash alias b
+  running b: new-contents
 Now test that including an alias into another alias includes its expansion:
   $ cat >dune <<EOF
   > (alias
@@ -67,5 +67,5 @@ Now test that including an alias into another alias includes its expansion:
   running b: new-contents
 Still BUG: the path does not appear in the sandbox:
   $ dune build @b --sandbox copy |& grep -v 'cd _build/.sandbox'
-          bash alias b (exit 1)
-  running b: cat: x: No such file or directory
+          bash alias b
+  running b: new-contents

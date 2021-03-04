@@ -214,7 +214,7 @@ let alias sctx ?extra_bindings ~dir ~expander (alias_conf : Alias_conf.t) =
     match alias_conf.action with
     | None ->
       let builder, _expander = Dep_conf_eval.named ~expander alias_conf.deps in
-      Rules.Produce.Alias.add_deps alias builder
+      Rules.Produce.Alias.add_deps alias ?loc builder
     | Some (action_loc, action) ->
       let locks = interpret_locks ~expander alias_conf.locks in
       let action =

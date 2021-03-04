@@ -70,5 +70,5 @@ module Set : sig
   val parallel_iter_files_approx :
     t -> f:(Path.t -> unit Memo.Build.t) -> unit Memo.Build.t
 
-  val dirs : t -> Path.Set.t
+  val eval_dirs : t -> Path.Set.t
 end

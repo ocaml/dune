@@ -1260,6 +1260,109 @@ let%expect_test "Nested nodes with cutoff are recomputed unnecessarily (async)"
     f 2 = Ok 4
     |}]
 
+let%expect_test "Demonstrate the existence of phantom dependencies" =
+  let counter = ref 0 in
+  let const_8 =
+    create ~with_cutoff:false "base" (fun () ->
+        printf "Started evaluating base\n";
+        let result = 8 in
+        printf "Evaluated base: %d\n" result;
+        Build.return result)
+  in
+  let cell = Memo.cell const_8 () in
+  let summit =
+    Memo.create "summit"
+      ~input:(module Int)
+      ~visibility:Hidden
+      ~output:(Simple (module Int))
+      ~doc:"" Async
+      (fun offset ->
+        printf "Started evaluating summit\n";
+        let middle =
+          create ~with_cutoff:false "middle" (fun () ->
+              printf "Started evaluating middle\n";
+              incr counter;
+              let+ result =
+                match !counter with
+                | 1 ->
+                  printf "Depending on the cell!\n";
+                  Memo.Cell.get_async cell
+                | _ -> Build.return 0
+              in
+              printf "Evaluated middle: %d\n" result;
+              result)
+        in
+        let+ middle = Memo.exec middle () in
+        let result = middle + offset in
+        printf "Evaluated summit: %d\n" result;
+        result)
+  in
+  evaluate_and_print summit 0;
+  [%expect
+    {|
+    Started evaluating summit
+    Started evaluating middle
+    Depending on the cell!
+    Started evaluating base
+    Evaluated base: 8
+    Evaluated middle: 8
+    Evaluated summit: 8
+    f 0 = Ok 8
+    |}];
+  Memo.restart_current_run ();
+  evaluate_and_print summit 0;
+  [%expect {| f 0 = Ok 8 |}];
+  Memo.Cell.invalidate cell;
+  Memo.restart_current_run ();
+  evaluate_and_print summit 0;
+  [%expect
+    {|
+    Started evaluating base
+    Evaluated base: 8
+    Started evaluating middle
+    Evaluated middle: 0
+    Started evaluating summit
+    Started evaluating middle
+    Evaluated middle: 0
+    Evaluated summit: 0
+    f 0 = Ok 0 |}];
+  Memo.Cell.invalidate cell;
+  Memo.restart_current_run ();
+  evaluate_and_print summit 0;
+  (* The output below is unexpected: the cell is no longer a dependency of the
+     [middle] node yet it still somehow invalidated the result. The reason is
+     that the cell is a "phantom" dependency: we started checking whether the
+     dependencies of [middle] were up to date, found that they were not, but
+     still registered the dependency, and then recomputed [middle], keeping the
+     phantom dependency. *)
+  [%expect
+    {|
+    Started evaluating base
+    Evaluated base: 8
+    Started evaluating middle
+    Evaluated middle: 0
+    Started evaluating summit
+    Started evaluating middle
+    Evaluated middle: 0
+    Evaluated summit: 0
+    f 0 = Ok 0 |}];
+  Memo.Cell.invalidate cell;
+  Memo.restart_current_run ();
+  evaluate_and_print summit 0;
+  (* Note that phantom dependencies are persistent: we keep re-checking and
+     re-registering them. *)
+  [%expect
+    {|
+    Started evaluating base
+    Evaluated base: 8
+    Started evaluating middle
+    Evaluated middle: 0
+    Started evaluating summit
+    Started evaluating middle
+    Evaluated middle: 0
+    Evaluated summit: 0
+    f 0 = Ok 0 |}]
+
 let print_exns f =
   let res =
     match

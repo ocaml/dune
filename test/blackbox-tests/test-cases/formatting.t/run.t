@@ -157,7 +157,7 @@ But a helpful message is displayed.
 
   $ cp lang2/partial/dune-project lang2/partial/dune-project.bak
   $ echo '(using fmt 1.0)' >> lang2/partial/dune-project
-  $ dune build @fmt
+  $ dune build @lang2/partial/fmt
   File "lang2/partial/dune-project", line 5, characters 0-15:
   5 | (using fmt 1.0)
       ^^^^^^^^^^^^^^^
@@ -170,7 +170,7 @@ But a helpful message is displayed.
 Sometimes, the suggestion is to just remove the configuration.
 
   $ echo '(using fmt 1.2)' >> lang2/default/dune-project
-  $ dune build @fmt
+  $ dune build @lang2/partial/fmt
   File "lang2/default/dune-project", line 2, characters 0-15:
   2 | (using fmt 1.2)
       ^^^^^^^^^^^^^^^

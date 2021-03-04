@@ -6,9 +6,9 @@ Check that .bc.js rule is generated only if js mode is used.
   [1]
 
   $ dune build --display short b.bc.js
-   js_of_ocaml .js/stdlib/std_exit.cmo.js
    js_of_ocaml b.bc.runtime.js
       ocamldep .b.eobjs/b.ml.d
+   js_of_ocaml .js/stdlib/std_exit.cmo.js
         ocamlc .b.eobjs/byte/b.{cmi,cmo,cmt}
    js_of_ocaml .js/stdlib/stdlib.cma.js
    js_of_ocaml .b.eobjs/byte/b.cmo.js
@@ -35,8 +35,8 @@ specify js mode (#1940).
 
   $ dune clean
   $ dune build --display short @@all 2>&1 | grep js_of_ocaml
-   js_of_ocaml .js/stdlib/std_exit.cmo.js
    js_of_ocaml b.bc.runtime.js
+   js_of_ocaml .js/stdlib/std_exit.cmo.js
    js_of_ocaml e.bc.runtime.js
    js_of_ocaml .js/stdlib/stdlib.cma.js
    js_of_ocaml .b.eobjs/byte/b.cmo.js
@@ -49,9 +49,9 @@ Check that building a JS-enabled executable that depends on a library works.
 
   $ dune clean
   $ dune build --display short e.bc.js
-   js_of_ocaml .js/stdlib/std_exit.cmo.js
    js_of_ocaml e.bc.runtime.js
       ocamldep .e.eobjs/e.ml.d
+   js_of_ocaml .js/stdlib/std_exit.cmo.js
         ocamlc .foo.objs/byte/foo.{cmi,cmo,cmt}
       ocamldep .foo.objs/c.ml.d
    js_of_ocaml .js/stdlib/stdlib.cma.js

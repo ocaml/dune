@@ -53,13 +53,6 @@ module Expander = String_with_vars.Make_expander (T)
 include T
 open O
 
-(* We use forward declarations to pass the top-level [file_exists] function to
-   avoid cyclic dependencies between modules. *)
-let file_exists_fdecl = Fdecl.create Dyn.Encoder.opaque
-
-let set_file_system_accessors ~file_exists =
-  Fdecl.set file_exists_fdecl file_exists
-
 let ignore x = Map (Fun.const (), x)
 
 let map2 x y ~f = Map2 (f, x, y)
@@ -277,67 +270,6 @@ let progn ts =
   let+ actions = With_targets.all ts in
   Action.Progn actions
 
-(* Analysis *)
-
-module rec Analysis : sig
-  val static_deps : _ t -> Static_deps.t
-end = struct
-  module Input = struct
-    type t = T : _ memo -> t
-
-    let equal (T x) (T y) = Type_eq.Id.equal x.id y.id
-
-    let hash (T m) = Type_eq.Id.hash m.id
-
-    let to_dyn (T m) = Dyn.String m.name
-  end
-
-  let memo =
-    Memo.create_hidden "Action_builder.static_deps"
-      ~input:(module Input)
-      Sync
-      (fun (T m) -> Analysis.static_deps m.t)
-
-  let rec static_deps : type a. a t -> Static_deps.t =
-   fun t ->
-    let file_exists = Fdecl.get file_exists_fdecl in
-    match t with
-    | Pure _ -> Static_deps.empty
-    | Map (_, t) -> static_deps t
-    | Both (x, y) -> Static_deps.union (static_deps x) (static_deps y)
-    | Seq (x, y) -> Static_deps.union (static_deps x) (static_deps y)
-    | Map2 (_, x, y) -> Static_deps.union (static_deps x) (static_deps y)
-    | All xs -> Static_deps.union_map ~f:static_deps xs
-    | Deps deps -> { Static_deps.empty with action_deps = deps }
-    | Paths_for_rule fns ->
-      { Static_deps.empty with rule_deps = Dep.Set.of_files_set fns }
-    | Paths_glob g ->
-      { Static_deps.empty with
-        action_deps = Dep.Set.singleton (Dep.file_selector g)
-      }
-    | If_file_exists (p, then_, else_) ->
-      if file_exists p then
-        static_deps then_
-      else
-        static_deps else_
-    | Dyn_paths t -> static_deps t
-    | Dyn_deps t -> static_deps t
-    | Contents p ->
-      { Static_deps.empty with rule_deps = Dep.Set.of_files [ p ] }
-    | Lines_of p ->
-      { Static_deps.empty with rule_deps = Dep.Set.of_files [ p ] }
-    | Or_exn _ -> Static_deps.empty
-    | Fail _ -> Static_deps.empty
-    | Memo m -> Memo.exec memo (Input.T m)
-    | Catch (t, _) -> static_deps t
-    | Memo_build _ -> Static_deps.empty
-    | Dyn_memo_build b -> static_deps b
-    | Build b -> static_deps b
-    | Capture_deps b -> static_deps b
-end
-
-let static_deps = Analysis.static_deps
-
 (* Execution *)
 
 module Expert = struct
@@ -350,12 +282,14 @@ let dyn_memo_build f = Dyn_memo_build f
 
 module Make_exec (Build_deps : sig
   val build_deps : Dep.Set.t -> unit Memo.Build.t
+
+  val register_action_deps : Dep.Set.t -> unit Memo.Build.t
+
+  val file_exists : Path.t -> bool
 end) =
 struct
   module rec Execution : sig
     val exec : 'a t -> ('a * Dep.Set.t) Memo.Build.t
-
-    val build_static_rule_deps_and_exec : 'a t -> ('a * Dep.Set.t) Memo.Build.t
   end = struct
     module Function = struct
       type 'a input = 'a memo
@@ -373,56 +307,65 @@ struct
 
     module Poly_memo = Memo.Poly.Async (Function)
 
-    let file_exists x = Fdecl.get file_exists_fdecl x
-
     let eval_pred x = Fdecl.get Dep.eval_pred x
 
     open Memo.Build.O
 
-    let rec exec : type a. a t -> (a * Dep.Set.t) Memo.Build.t =
-     fun t ->
-      match t with
+    let rec exec : type a. a t -> (a * Dep.Set.t) Memo.Build.t = function
       | Pure x -> Memo.Build.return (x, Dep.Set.empty)
       | Map (f, a) ->
-        let+ a, dyn_deps_a = exec a in
-        (f a, dyn_deps_a)
+        let+ a, deps_a = exec a in
+        (f a, deps_a)
       | Both (a, b) ->
-        let+ (a, dyn_deps_a), (b, dyn_deps_b) =
+        let+ (a, deps_a), (b, deps_b) =
           Memo.Build.fork_and_join (fun () -> exec a) (fun () -> exec b)
         in
-        ((a, b), Dep.Set.union dyn_deps_a dyn_deps_b)
+        ((a, b), Dep.Set.union deps_a deps_b)
       | Seq (a, b) ->
-        let+ ((), dyn_deps_a), (b, dyn_deps_b) =
+        let+ ((), deps_a), (b, deps_b) =
           Memo.Build.fork_and_join (fun () -> exec a) (fun () -> exec b)
         in
-        (b, Dep.Set.union dyn_deps_a dyn_deps_b)
+        (b, Dep.Set.union deps_a deps_b)
       | Map2 (f, a, b) ->
-        let+ (a, dyn_deps_a), (b, dyn_deps_b) =
+        let+ (a, deps_a), (b, deps_b) =
           Memo.Build.fork_and_join (fun () -> exec a) (fun () -> exec b)
         in
-        (f a b, Dep.Set.union dyn_deps_a dyn_deps_b)
+        (f a b, Dep.Set.union deps_a deps_b)
       | All xs ->
         let+ res = Memo.Build.parallel_map xs ~f:exec in
         let res, deps = List.split res in
         (res, Dep.Set.union_all deps)
-      | Deps _ -> Memo.Build.return ((), Dep.Set.empty)
-      | Paths_for_rule _ -> Memo.Build.return ((), Dep.Set.empty)
+      | Deps deps ->
+        let+ () = Build_deps.register_action_deps deps in
+        ((), deps)
+      | Paths_for_rule ps ->
+        let+ () = Build_deps.build_deps (Dep.Set.of_files_set ps) in
+        ((), Dep.Set.empty)
       | Paths_glob g ->
-        Memo.Build.return ((eval_pred g : Path.Set.t), Dep.Set.empty)
-      | Contents p -> Memo.Build.return (Io.read_file p, Dep.Set.empty)
-      | Lines_of p -> Memo.Build.return (Io.lines_of_file p, Dep.Set.empty)
+        let ps = eval_pred g in
+        let+ () = Build_deps.register_action_deps (Dep.Set.of_files_set ps) in
+        (ps, Dep.Set.singleton (Dep.file_selector g))
+      | Contents p ->
+        let+ () = Build_deps.build_deps (Dep.Set.singleton (Dep.file p)) in
+        (Io.read_file p, Dep.Set.empty)
+      | Lines_of p ->
+        let+ () = Build_deps.build_deps (Dep.Set.singleton (Dep.file p)) in
+        (Io.lines_of_file p, Dep.Set.empty)
       | Dyn_paths t ->
-        let+ (x, paths), dyn_deps = exec t in
-        (x, Dep.Set.add_paths dyn_deps paths)
+        let* (x, paths), deps_x = exec t in
+        let deps = Dep.Set.of_files_set paths in
+        let+ () = Build_deps.register_action_deps deps in
+        (x, Dep.Set.union deps deps_x)
       | Dyn_deps t ->
-        let+ (x, dyn_deps), dyn_deps_x = exec t in
-        (x, Dep.Set.union dyn_deps dyn_deps_x)
+        let* (x, deps), deps_x = exec t in
+        let+ () = Build_deps.register_action_deps deps in
+        (x, Dep.Set.union deps deps_x)
       | Or_exn e ->
         let+ a, deps = exec e in
         (Result.ok_exn a, deps)
       | Fail { fail } -> fail ()
       | If_file_exists (p, then_, else_) ->
-        if file_exists p then
+        if Build_deps.file_exists p then
           exec then_
         else
           exec else_
@@ -435,7 +378,10 @@ struct
         match res with
         | Ok r -> r
         | Error r -> (r, Dep.Set.empty) )
-      | Memo m -> Poly_memo.eval m
+      | Memo m ->
+        let* res, deps = Poly_memo.eval m in
+        let+ () = Build_deps.register_action_deps deps in
+        (res, deps)
       | Memo_build f ->
         let+ f = f in
         (f, Dep.Set.empty)
@@ -445,19 +391,11 @@ struct
         (f, deps)
       | Build b ->
         let* b, deps0 = exec b in
-        let+ r, deps1 = build_static_rule_deps_and_exec b in
+        let+ r, deps1 = exec b in
         (r, Dep.Set.union deps0 deps1)
       | Capture_deps b ->
         let+ b, deps0 = exec b in
         ((b, deps0), deps0)
-
-    and build_static_rule_deps_and_exec :
-        type a. a t -> (a * Dep.Set.t) Memo.Build.t =
-     fun t ->
-      let { Static_deps.rule_deps; action_deps } = static_deps t in
-      let* () = Build_deps.build_deps rule_deps in
-      let+ x, deps = exec t in
-      (x, Dep.Set.union action_deps deps)
   end
 
   include Execution

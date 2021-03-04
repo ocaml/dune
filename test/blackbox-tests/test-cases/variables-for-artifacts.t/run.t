@@ -209,19 +209,19 @@ The following test checks that the variables can be used in the (action) field
 of a (rule).
 
   $ ./sdune build --display short _build/default/my.cmxs
-      ocamldep .dummy.objs/x3.ml.d
         ocamlc .plugin.objs/byte/plugin.{cmi,cmo,cmt}
       ocamldep .plugin.objs/x1.ml.d
       ocamldep .plugin.objs/x2.ml.d
-        ocamlc .dummy.objs/byte/dummy.{cmi,cmo,cmt}
+      ocamldep .dummy.objs/x3.ml.d
       ocamlopt .plugin.objs/native/plugin.{cmx,o}
         ocamlc .plugin.objs/byte/plugin__X1.{cmi,cmo,cmt}
         ocamlc .plugin.objs/byte/plugin__X2.{cmi,cmo,cmt}
-        ocamlc .dummy.objs/byte/dummy__X3.{cmi,cmo,cmt}
+        ocamlc .dummy.objs/byte/dummy.{cmi,cmo,cmt}
       ocamlopt .plugin.objs/native/plugin__X1.{cmx,o}
       ocamlopt .plugin.objs/native/plugin__X2.{cmx,o}
-      ocamlopt .dummy.objs/native/dummy__X3.{cmx,o}
+        ocamlc .dummy.objs/byte/dummy__X3.{cmi,cmo,cmt}
       ocamlopt plugin.{a,cmxa}
+      ocamlopt .dummy.objs/native/dummy__X3.{cmx,o}
       ocamlopt my.cmxs
 
 The following (failing) test shows that the variables cannot yet be used in the (deps)

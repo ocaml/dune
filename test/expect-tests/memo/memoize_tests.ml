@@ -1297,8 +1297,7 @@ let%expect_test "Test that there are no phantom dependencies" =
   Memo.Cell.invalidate cell;
   Memo.restart_current_run ();
   evaluate_and_print summit 0;
-  (* Note that we no longer depend on the [cell]. The corresponding message is
-     printed twice due to the known performance issue with nested nodes. *)
+  (* Note that we no longer depend on the [cell]. *)
   [%expect
     {|
     base = 8

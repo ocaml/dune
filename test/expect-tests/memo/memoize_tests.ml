@@ -535,6 +535,25 @@ let%expect_test "error handling and memo - sync" =
     f 42 = Error "(Failure 42)"
     f 42 = Error "(Failure 42)" |}]
 
+let process_error =
+  List.map
+    ~f:
+      (Exn_with_backtrace.map ~f:(fun exn ->
+           match exn with
+           | Memo.Cycle_error.E cycle_error ->
+             let frames = Memo.Cycle_error.get cycle_error in
+             printf "Dependency cycle detected:\n";
+             List.iteri frames ~f:(fun i frame ->
+                 let called_by =
+                   match i with
+                   | 0 -> ""
+                   | _ -> "called by "
+                 in
+                 printf "- %s%s\n" called_by
+                   (Dyn.to_string (Stack_frame.to_dyn frame)));
+             exn
+           | _ -> exn))
+
 let print_result f x =
   let res =
     ( try
@@ -542,25 +561,18 @@ let print_result f x =
           ~iter:(fun () -> raise Exit)
           (Memo.Build.run (Memo.Build.collect_errors (fun () -> Memo.exec f x)))
       with exn -> Error [ Exn_with_backtrace.capture exn ] )
-    |> Result.map_error
-         ~f:
-           (List.map
-              ~f:
-                (Exn_with_backtrace.map ~f:(fun exn ->
-                     match exn with
-                     | Memo.Cycle_error.E cycle_error ->
-                       let frames = Memo.Cycle_error.get cycle_error in
-                       printf "Dependency cycle detected:\n";
-                       List.iteri frames ~f:(fun i frame ->
-                           let called_by =
-                             match i with
-                             | 0 -> ""
-                             | _ -> "called by "
-                           in
-                           printf "- %s%s\n" called_by
-                             (Dyn.to_string (Stack_frame.to_dyn frame)));
-                       exn
-                     | _ -> exn)))
+    |> Result.map_error ~f:process_error
+  in
+  let open Dyn.Encoder in
+  Format.printf "f %d = %a@." x Pp.to_fmt
+    (Dyn.pp (Result.to_dyn int (list Exn_with_backtrace.to_dyn) res))
+
+let print_result_sync f x =
+  let res =
+    ( match Memo.exec f x with
+    | res -> Ok res
+    | exception exn -> Error [ Exn_with_backtrace.capture exn ] )
+    |> Result.map_error ~f:process_error
   in
   let open Dyn.Encoder in
   Format.printf "f %d = %a@." x Pp.to_fmt
@@ -607,14 +619,26 @@ let%expect_test "error handling and memo - async" =
              ] |}]
 
 (* A test function counting runs. *)
-let count_runs () =
+let count_runs name =
   let counter = ref 0 in
   fun () ->
+    printf "Started evaluating %s\n" name;
     incr counter;
     let result = !counter in
-    printf "Evaluated count_runs: %d\n" result;
     let (_ : Run.t) = Memo.current_run () in
+    printf "Evaluated %s: %d\n" name result;
     Build.return result
+
+(* Like [count_runs] but synchronous. *)
+let count_runs_sync name =
+  let counter = ref 0 in
+  fun () ->
+    printf "Started evaluating %s\n" name;
+    incr counter;
+    let result = !counter in
+    let (_ : Run.t) = Memo.current_run () in
+    printf "Evaluated %s: %d\n" name result;
+    result
 
 (* A test function incrementing a given memo. *)
 let increment which which_memo () =
@@ -635,8 +659,19 @@ let create ~with_cutoff name f =
     ~input:(module Unit)
     ~visibility:Hidden ~output ~doc:"" Async f
 
+(* Create a sync node with or without cutoff. *)
+let create_sync ~with_cutoff name f =
+  let output =
+    match with_cutoff with
+    | true -> Memo.Output.Allow_cutoff (module Int)
+    | false -> Simple (module Int)
+  in
+  Memo.create name
+    ~input:(module Unit)
+    ~visibility:Hidden ~output ~doc:"" Sync f
+
 let%expect_test "diamond with non-uniform cutoff structure" =
-  let base = create ~with_cutoff:true "base" (count_runs ()) in
+  let base = create ~with_cutoff:true "base" (count_runs "base") in
   let length_of_base which () =
     printf "Started evaluating %s\n" which;
     let+ base = Memo.exec base () in
@@ -682,7 +717,8 @@ let%expect_test "diamond with non-uniform cutoff structure" =
     Started evaluating summit with offset 0
     Started evaluating after_no_cutoff
     Started evaluating no_cutoff
-    Evaluated count_runs: 1
+    Started evaluating base
+    Evaluated base: 1
     Evaluated no_cutoff: 1
     Evaluated after_no_cutoff: 2
     Started evaluating after_yes_cutoff
@@ -703,7 +739,8 @@ let%expect_test "diamond with non-uniform cutoff structure" =
   print_result summit 0;
   [%expect
     {|
-    Evaluated count_runs: 2
+    Started evaluating base
+    Evaluated base: 2
     Started evaluating no_cutoff
     Evaluated no_cutoff: 1
     Started evaluating after_no_cutoff
@@ -736,7 +773,7 @@ let%expect_test "diamond with non-uniform cutoff structure" =
    The dependency chains in the new test have alternating cutoff/no-cutoff
    structure, to make sure that cycle detection can handle such cases. *)
 let%expect_test "dynamic cycles with non-uniform cutoff structure" =
-  let base = create ~with_cutoff:true "base" (count_runs ()) in
+  let base = create ~with_cutoff:true "base" (count_runs "base") in
   let first_base_then_summit which ~summit_fdecl () =
     printf "Started evaluating %s\n" which;
     let* base = Memo.exec base () in
@@ -822,7 +859,8 @@ let%expect_test "dynamic cycles with non-uniform cutoff structure" =
     Started evaluating incrementing_chain_2_yes_cutoff
     Started evaluating incrementing_chain_1_no_cutoff
     Started evaluating cycle_creator_no_cutoff
-    Evaluated count_runs: 1
+    Started evaluating base
+    Evaluated base: 1
     Evaluated cycle_creator_no_cutoff: 1
     Evaluated incrementing_chain_1_no_cutoff: 2
     Evaluated incrementing_chain_2_yes_cutoff: 3
@@ -862,7 +900,8 @@ let%expect_test "dynamic cycles with non-uniform cutoff structure" =
   print_result summit_no_cutoff 0;
   [%expect
     {|
-    Evaluated count_runs: 2
+    Started evaluating base
+    Evaluated base: 2
     Started evaluating cycle_creator_no_cutoff
     Cycling to summit from cycle_creator_no_cutoff...
     Started evaluating incrementing_chain_1_no_cutoff
@@ -932,7 +971,8 @@ let%expect_test "dynamic cycles with non-uniform cutoff structure" =
     Started evaluating incrementing_chain_2_yes_cutoff
     Started evaluating incrementing_chain_1_no_cutoff
     Started evaluating cycle_creator_no_cutoff
-    Evaluated count_runs: 3
+    Started evaluating base
+    Evaluated base: 3
     Evaluated cycle_creator_no_cutoff: 3
     Evaluated incrementing_chain_1_no_cutoff: 4
     Evaluated incrementing_chain_2_yes_cutoff: 5
@@ -1046,6 +1086,167 @@ let%expect_test "deadlocks and zombies when creating a cycle twice" =
               ; backtrace = ""
               }
             ]
+    |}]
+
+let%expect_test "Nested nodes with cutoff are recomputed unnecessarily (sync)" =
+  let counter =
+    create_sync ~with_cutoff:false "counter" (count_runs_sync "counter")
+  in
+  let summit =
+    Memo.create "summit"
+      ~input:(module Int)
+      ~visibility:Hidden
+      ~output:(Simple (module Int))
+      ~doc:"" Sync
+      (fun offset ->
+        printf "Started evaluating summit\n";
+        let middle =
+          create_sync ~with_cutoff:false "middle" (fun () ->
+              printf "Started evaluating middle\n";
+              let base =
+                create_sync ~with_cutoff:false "base" (fun () ->
+                    printf "Started evaluating base\n";
+                    let result = Memo.exec counter () in
+                    printf "Evaluated base: %d\n" result;
+                    result)
+              in
+              let result = Memo.exec base () in
+              printf "Evaluated middle: %d\n" result;
+              result)
+        in
+        let middle = Memo.exec middle () in
+        let result = middle + offset in
+        printf "Evaluated summit: %d\n" result;
+        result)
+  in
+  print_result_sync summit 0;
+  print_result_sync summit 1;
+  [%expect
+    {|
+    Started evaluating summit
+    Started evaluating middle
+    Started evaluating base
+    Started evaluating counter
+    Evaluated counter: 1
+    Evaluated base: 1
+    Evaluated middle: 1
+    Evaluated summit: 1
+    f 0 = Ok 1
+    Started evaluating summit
+    Started evaluating middle
+    Started evaluating base
+    Evaluated base: 1
+    Evaluated middle: 1
+    Evaluated summit: 2
+    f 1 = Ok 2
+    |}];
+  Memo.restart_current_run ();
+  print_result_sync summit 0;
+  print_result_sync summit 2;
+  [%expect
+    {|
+    Started evaluating counter
+    Evaluated counter: 2
+    Started evaluating base
+    Evaluated base: 2
+    Started evaluating middle
+    Started evaluating base
+    Evaluated base: 2
+    Evaluated middle: 2
+    Started evaluating summit
+    Started evaluating middle
+    Started evaluating base
+    Evaluated base: 2
+    Evaluated middle: 2
+    Evaluated summit: 2
+    f 0 = Ok 2
+    Started evaluating summit
+    Started evaluating middle
+    Started evaluating base
+    Evaluated base: 2
+    Evaluated middle: 2
+    Evaluated summit: 4
+    f 2 = Ok 4
+    |}]
+
+let%expect_test "Nested nodes with cutoff are recomputed unnecessarily (async)"
+    =
+  let counter = create ~with_cutoff:false "counter" (count_runs "counter") in
+  let summit =
+    Memo.create "summit"
+      ~input:(module Int)
+      ~visibility:Hidden
+      ~output:(Simple (module Int))
+      ~doc:"" Async
+      (fun offset ->
+        printf "Started evaluating summit\n";
+        let middle =
+          create ~with_cutoff:false "middle" (fun () ->
+              printf "Started evaluating middle\n";
+              let base =
+                create ~with_cutoff:false "base" (fun () ->
+                    printf "Started evaluating base\n";
+                    let+ result = Memo.exec counter () in
+                    printf "Evaluated middle: %d\n" result;
+                    result)
+              in
+              let+ result = Memo.exec base () in
+              printf "Evaluated middle: %d\n" result;
+              result)
+        in
+        let+ middle = Memo.exec middle () in
+        let result = middle + offset in
+        printf "Evaluated summit: %d\n" result;
+        result)
+  in
+  print_result summit 0;
+  print_result summit 1;
+  [%expect
+    {|
+    Started evaluating summit
+    Started evaluating middle
+    Started evaluating base
+    Started evaluating counter
+    Evaluated counter: 1
+    Evaluated middle: 1
+    Evaluated middle: 1
+    Evaluated summit: 1
+    f 0 = Ok 1
+    Started evaluating summit
+    Started evaluating middle
+    Started evaluating base
+    Evaluated middle: 1
+    Evaluated middle: 1
+    Evaluated summit: 2
+    f 1 = Ok 2
+    |}];
+  Memo.restart_current_run ();
+  print_result summit 0;
+  print_result summit 2;
+  [%expect
+    {|
+    Started evaluating counter
+    Evaluated counter: 2
+    Started evaluating base
+    Evaluated middle: 2
+    Started evaluating middle
+    Started evaluating base
+    Evaluated middle: 2
+    Evaluated middle: 2
+    Started evaluating summit
+    Started evaluating middle
+    Started evaluating base
+    Evaluated middle: 2
+    Evaluated middle: 2
+    Evaluated summit: 2
+    f 0 = Ok 2
+    Started evaluating summit
+    Started evaluating middle
+    Started evaluating base
+    Evaluated middle: 2
+    Evaluated middle: 2
+    Evaluated summit: 4
+    f 2 = Ok 4
     |}]
 
 let print_exns f =

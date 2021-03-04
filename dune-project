@@ -80,7 +80,7 @@ no stability guarantee.
 (package
  (name dune-configurator)
  (depends
-  (ocaml (>= 4.03.0))
+  (ocaml (>= 4.04.0))
   result
   (csexp (>= 1.3.0)))
  (synopsis "Helper library for gathering system configuration")

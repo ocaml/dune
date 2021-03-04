@@ -122,7 +122,7 @@ module T = struct
     | Sandbox_config config ->
       pair string sandbox_config ("Sandbox_config", config)
 
-  let to_dyn _ = Dyn.opaque
+  let to_dyn t = Dyn.String (Dune_lang.to_string (encode t))
 end
 
 include T

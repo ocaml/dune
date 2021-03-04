@@ -1285,9 +1285,11 @@ let%expect_test "Demonstrate the existence of phantom dependencies" =
               let+ result =
                 match !counter with
                 | 1 ->
-                  printf "Depending on the cell!\n";
+                  printf "*** Depending on the cell ***\n";
                   Memo.Cell.get_async cell
-                | _ -> Build.return 0
+                | _ ->
+                  printf "*** Not depending on the cell ***\n";
+                  Build.return 0
               in
               printf "Evaluated middle: %d\n" result;
               result)
@@ -1302,7 +1304,7 @@ let%expect_test "Demonstrate the existence of phantom dependencies" =
     {|
     Started evaluating summit
     Started evaluating middle
-    Depending on the cell!
+    *** Depending on the cell ***
     Started evaluating base
     Evaluated base: 8
     Evaluated middle: 8
@@ -1311,18 +1313,23 @@ let%expect_test "Demonstrate the existence of phantom dependencies" =
     |}];
   Memo.restart_current_run ();
   evaluate_and_print summit 0;
+  (* No recomputation is needed since the [cell] is up to date. *)
   [%expect {| f 0 = Ok 8 |}];
   Memo.Cell.invalidate cell;
   Memo.restart_current_run ();
   evaluate_and_print summit 0;
+  (* Note that we no longer depend on the [cell]. The corresponding message is
+     printed twice due to the known performance issue with nested nodes. *)
   [%expect
     {|
     Started evaluating base
     Evaluated base: 8
     Started evaluating middle
+    *** Not depending on the cell ***
     Evaluated middle: 0
     Started evaluating summit
     Started evaluating middle
+    *** Not depending on the cell ***
     Evaluated middle: 0
     Evaluated summit: 0
     f 0 = Ok 0 |}];
@@ -1340,9 +1347,11 @@ let%expect_test "Demonstrate the existence of phantom dependencies" =
     Started evaluating base
     Evaluated base: 8
     Started evaluating middle
+    *** Not depending on the cell ***
     Evaluated middle: 0
     Started evaluating summit
     Started evaluating middle
+    *** Not depending on the cell ***
     Evaluated middle: 0
     Evaluated summit: 0
     f 0 = Ok 0 |}];
@@ -1356,9 +1365,11 @@ let%expect_test "Demonstrate the existence of phantom dependencies" =
     Started evaluating base
     Evaluated base: 8
     Started evaluating middle
+    *** Not depending on the cell ***
     Evaluated middle: 0
     Started evaluating summit
     Started evaluating middle
+    *** Not depending on the cell ***
     Evaluated middle: 0
     Evaluated summit: 0
     f 0 = Ok 0 |}]

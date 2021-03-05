@@ -66,7 +66,7 @@ executable was built.
  (name dune-private-libs)
  (depends
   (csexp (>= 1.4.0))
-  (stdune (= :version))
+  (stdune-unstable (= :version))
   (ocaml (>= 4.08)))
  (synopsis "Private libraries of Dune")
  (description "\
@@ -103,7 +103,7 @@ Among other things, dune-configurator allows one to:
   dune-glob
   (csexp (>= 1.4.0))
   (ppx_expect :with-test)
-  (stdune (= :version))
+  (stdune-unstable (= :version))
   (dune-private-libs (= :version)))
  (synopsis "[experimental] API for writing dynamic Dune actions")
  (description "\
@@ -119,7 +119,7 @@ execution of the action.
 (package
  (name dune-glob)
  (depends
-  (stdune (= :version))
+  (stdune-unstable (= :version))
   (dune-private-libs (= :version)))
  (synopsis "Glob string matching language supported by dune")
  (description "\
@@ -134,12 +134,12 @@ understood by dune language."))
 
 (package
  (name dune-rpc)
- (depends (stdune (= :version)))
+ (depends (stdune-unstable (= :version)))
  (synopsis "Communicate with dune using rpc")
  (description "Library to connect and control a running dune instance"))
 
 (package
- (name stdune)
+ (name stdune-unstable)
  (synopsis "Dune's unstable standard library")
  (depends
   (ocaml (>= 4.08.0)))

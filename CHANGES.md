@@ -33,6 +33,10 @@ Unreleased
 - Fix `ppx.exe` being compiled for the wrong target when cross-compiling
   (#3751, fixes #3698, @toots)
 
+- `dune top` correctly escapes the generated toplevel directives, and make it
+  easier for `dune top` to locate C stubs associated to concerned libraries.
+  (#4242, fixes #4231, @nojb)
+
 2.8.2 (21/01/2021)
 ------------------
 

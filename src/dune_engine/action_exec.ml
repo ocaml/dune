@@ -50,7 +50,7 @@ module Dynamic_dep = struct
   module Set = struct
     include O.Set
 
-    let to_dep_set t = t |> to_list |> Dep.Set.of_list_map ~f:to_dep
+    let to_dep_set t = to_list_map t ~f:to_dep |> Dep.Set.of_list
 
     let of_DAP_dep_set ~working_dir t =
       t |> DAP.Dependency.Set.to_list
@@ -59,7 +59,7 @@ module Dynamic_dep = struct
 end
 
 module Exec_result = struct
-  type t = { dynamic_deps_stages : Dynamic_dep.Set.t List.t }
+  type t = { dynamic_deps_stages : (Dynamic_dep.Set.t * Dep.Facts.t) List.t }
 end
 
 type done_or_more_deps =
@@ -75,7 +75,7 @@ type exec_context =
   ; context : Build_context.t option
   ; purpose : Process.purpose
   ; rule_loc : Loc.t
-  ; build_deps : Dep.Set.t -> unit Fiber.t
+  ; build_deps : Dep.Set.t -> Dep.Facts.t Fiber.t
   }
 
 type exec_environment =
@@ -479,8 +479,10 @@ let exec_until_all_deps_ready ~ectx ~eenv t =
     match result with
     | Done -> Fiber.return ()
     | Need_more_deps (relative_deps, deps_to_build) ->
-      stages := deps_to_build :: !stages;
-      let* () = ectx.build_deps (Dynamic_dep.Set.to_dep_set deps_to_build) in
+      let* fact_map =
+        ectx.build_deps (Dynamic_dep.Set.to_dep_set deps_to_build)
+      in
+      stages := (deps_to_build, fact_map) :: !stages;
       let eenv =
         { eenv with
           prepared_dependencies =

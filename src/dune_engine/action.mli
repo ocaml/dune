@@ -97,7 +97,7 @@ val sandbox :
      t
   -> sandboxed:(Path.Build.t -> Path.Build.t)
   -> mode:Sandbox_mode.some
-  -> deps:Dep.Set.t
+  -> deps:Dep.Fact.t Dep.Map.t
   -> t
 
 type is_useful =

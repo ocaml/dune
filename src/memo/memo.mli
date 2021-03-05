@@ -47,6 +47,13 @@ module Build : sig
     -> f:('a -> unit t)
     -> unit t
 
+  module Make_map_traversals (Map : Map.S) : sig
+    val parallel_iter : 'a Map.t -> f:(Map.key -> 'a -> unit t) -> unit t
+
+    val parallel_map : 'a Map.t -> f:(Map.key -> 'a -> 'b t) -> 'b Map.t t
+  end
+  [@@inline always]
+
   (** The bellow functions will eventually disappear and are only exported for
       the transition to the memo monad *)
 

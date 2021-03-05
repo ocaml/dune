@@ -61,10 +61,10 @@ Build some more targets.
 Have a look at one of the metadata files and its size. If the rule digest changes,
 make sure to increment [rule_digest_version] in [build_system.ml].
 
-  $ cat $PWD/.xdg-cache/dune/db/meta/v4/95/95be12ef67548c59c691567564f2c158
-  ((8:metadata)(5:files(16:default/target_b32:8a53bfae3829b48866079fa7f2d97781)))
+  $ cat $PWD/.xdg-cache/dune/db/meta/v4/93/933bff97f056d2d7db4c1876dd35a253
+  ((8:metadata)(5:files(16:default/target_a32:5637dd9730e430c7477f52d46de3909c)))
 
-  $ dune_cmd stat size $PWD/.xdg-cache/dune/db/meta/v4/95/95be12ef67548c59c691567564f2c158
+  $ dune_cmd stat size $PWD/.xdg-cache/dune/db/meta/v4/93/933bff97f056d2d7db4c1876dd35a253
   79
 
 Trimming the cache at this point should not remove anything, as all

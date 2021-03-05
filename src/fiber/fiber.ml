@@ -51,6 +51,8 @@ module Execution_context : sig
      context. It should be called when creating forks.*)
   val apply : ('a -> 'b t) -> 'a -> 'b t
 
+  val apply2 : ('a -> 'b -> 'c t) -> 'a -> 'b -> 'c t
+
   (* Add [n] references to the current execution context *)
   val add_refs : int -> unit
 
@@ -195,6 +197,11 @@ end = struct
     let backup = !current in
     (try f x k with
     | exn -> forward_error exn);
+    current := backup
+
+  let apply2 f x y k =
+    let backup = !current in
+    (try f x y k with exn -> forward_error exn);
     current := backup
 
   let reraise_all exns =
@@ -359,6 +366,55 @@ let parallel_iter_set (type a s)
   | 0 -> k ()
   | 1 -> f (Option.value_exn (S.min_elt t)) k
   | n -> parallel_iter_generic ~n ~iter:(S.iter t) ~f k
+
+module Make_map_traversals (Map : Map.S) = struct
+  let parallel_iter t ~f k =
+    match Map.cardinal t with
+    | 0 -> k ()
+    | 1 -> Map.iteri t ~f:(fun x y -> EC.apply2 f x y k)
+    | n ->
+      EC.add_refs (n - 1);
+      let left_over = ref n in
+      let k () =
+        decr left_over;
+        if !left_over = 0 then
+          k ()
+        else
+          EC.deref ()
+      in
+      Map.iteri t ~f:(fun x y -> EC.apply2 f x y k)
+
+  let parallel_map t ~f k =
+    match Map.cardinal t with
+    | 0 -> k Map.empty
+    | 1 ->
+      Map.iteri t ~f:(fun x y ->
+          f x y (fun x -> k (Map.mapi t ~f:(fun _ _ -> x))))
+    | n ->
+      EC.add_refs (n - 1);
+      let left_over = ref n in
+      let cell = ref None in
+      let k (refs : _ option ref Map.t) =
+        k (Map.mapi refs ~f:(fun _ r -> Option.value_exn !r))
+      in
+      let refs =
+        Map.mapi t ~f:(fun x y ->
+            let res = ref None in
+            EC.apply2 f x y (fun z ->
+                res := Some z;
+                decr left_over;
+                if !left_over = 0 then
+                  Option.iter !cell ~f:k
+                else
+                  EC.deref ());
+            res)
+      in
+      if !left_over = 0 then
+        k refs
+      else
+        cell := Some refs
+end
+[@@inline always]
 
 let rec repeat_while : 'a. f:('a -> 'a option t) -> init:'a -> unit t =
  fun ~f ~init ->

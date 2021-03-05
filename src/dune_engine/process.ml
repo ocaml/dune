@@ -1,6 +1,9 @@
 open! Stdune
 open Import
 open Fiber.O
+module Json = Chrome_trace.Json
+module Event = Chrome_trace.Event
+module Timestamp = Event.Timestamp
 
 type ('a, 'b) failure_mode =
   | Strict : ('a, 'a) failure_mode
@@ -451,6 +454,24 @@ let add_to_env env = Dtemp.add_to_env env |> Scheduler.Rpc.add_to_env
 
 let default_env = lazy (add_to_env Env.initial)
 
+let report_process_start stats ~id ~prog ~args =
+  let common =
+    let name = Filename.basename prog in
+    let ts = Timestamp.now () in
+    Event.common_fields ~cat:[ "process" ] ~name ~ts ()
+  in
+  let args =
+    [ ("process_args", `List (List.map args ~f:(fun arg -> `String arg))) ]
+  in
+  let event = Event.async (Int id) ~args Start common in
+  Stats.emit stats event;
+  common
+
+let report_process_end stats common ~id =
+  let common = Event.set_ts common (Timestamp.now ()) in
+  let event = Event.async (Int id) End common in
+  Stats.emit stats event
+
 let run_internal ?dir ?(stdout_to = Io.stdout) ?(stderr_to = Io.stderr)
     ?(stdin_from = Io.null In) ~env ~purpose fail_mode prog args =
   Scheduler.with_job_slot (fun (config : Scheduler.Config.t) ->
@@ -530,19 +551,25 @@ let run_internal ?dir ?(stdout_to = Io.stdout) ?(stderr_to = Io.stderr)
           | Some env -> add_to_env env
         in
         fun () ->
-          Spawn.spawn () ~prog:prog_str ~argv ~env ~stdout ~stderr ~stdin
+          let event_common =
+            Option.map config.stats
+              ~f:(report_process_start ~id ~prog:prog_str ~args)
+          in
+          ( event_common
+          , Spawn.spawn () ~prog:prog_str ~argv ~env ~stdout ~stderr ~stdin )
       in
-      let pid =
+      let event_common, pid =
         match dir with
         | None -> run ()
         | Some dir -> Scheduler.with_chdir ~dir ~f:run
       in
       Io.release stdout_to;
       Io.release stderr_to;
-      let+ exit_status =
-        Stats.with_process ~program:prog_str ~args
-          (Scheduler.wait_for_process pid)
-      in
+      let+ exit_status = Scheduler.wait_for_process pid in
+      (match (event_common, config.stats) with
+      | Some common, Some stats -> report_process_end stats common ~id
+      | None, None -> ()
+      | _, _ -> assert false);
       Option.iter response_file ~f:Path.unlink;
       let output =
         match output_filename with

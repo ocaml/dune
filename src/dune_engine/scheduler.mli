@@ -32,6 +32,7 @@ module Config : sig
     { concurrency : int
     ; display : Display.t
     ; rpc : Rpc.t option
+    ; stats : Stats.t option
     }
 end
 

@@ -63,6 +63,7 @@ type t =
   ; always_show_command_line : bool
   ; promote_install_files : bool
   ; instrument_with : Dune_engine.Lib_name.t list option
+  ; stats : Stats.t option
   }
 
 let workspace_file t = t.workspace_file
@@ -90,6 +91,8 @@ let prefix_target common s = common.target_prefix ^ s
 let instrument_with t = t.instrument_with
 
 let rpc t = t.rpc
+
+let stats t = t.stats
 
 let set_print_directory t b = { t with no_print_directory = not b }
 
@@ -136,7 +139,6 @@ let set_common ?log_file c =
   Clflags.promote_install_files := c.promote_install_files;
   Clflags.always_show_command_line := c.always_show_command_line;
   Clflags.ignore_promoted_rules := c.ignore_promoted_rules;
-  Option.iter ~f:Dune_engine.Stats.enable c.stats_trace_file;
   Dune_util.Log.info
     [ Pp.textf "Workspace root: %s"
         (Path.to_absolute_filename Path.root |> String.maybe_quoted)
@@ -767,6 +769,12 @@ let term =
     Dune_config.adapt_display config
       ~output_is_a_tty:(Lazy.force Ansi_color.stderr_supports_color)
   in
+  let stats =
+    Option.map stats_trace_file ~f:(fun f ->
+        let stats = Stats.create (Out (open_out f)) in
+        at_exit (fun () -> Stats.close stats);
+        stats)
+  in
   { debug_dep_path
   ; debug_findlib
   ; debug_backtraces
@@ -795,6 +803,7 @@ let term =
   ; always_show_command_line
   ; promote_install_files
   ; instrument_with
+  ; stats
   }
 
 let set_rpc t rpc = { t with rpc = Some rpc }

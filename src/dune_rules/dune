@@ -13,6 +13,8 @@
   dune_glob
   ocaml_config
   dune_action_plugin
+  chrome_trace
+  stats
   dune_util
   dune_meta_parser
   dune_section

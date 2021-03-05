@@ -56,7 +56,7 @@ let scan_workspace ?workspace_file ?x ?(capture_outputs = true) ?profile
         ]);
   { contexts; conf; env }
 
-let init_build_system ?only_packages ~sandboxing_preference ?caching
+let init_build_system ?stats ?only_packages ~sandboxing_preference ?caching
     ?build_mutex w =
   let open Fiber.O in
   Build_system.reset ();
@@ -66,7 +66,7 @@ let init_build_system ?only_packages ~sandboxing_preference ?caching
     let dst = Path.source dst in
     Artifact_substitution.copy_file ?chmod ~src ~dst ~conf ()
   in
-  Build_system.init ~sandboxing_preference ~promote_source
+  Build_system.init ~stats ~sandboxing_preference ~promote_source
     ~contexts:(List.map ~f:Context.build_context w.contexts)
     ?caching ?build_mutex ();
   List.iter w.contexts ~f:Context.init_configurator;

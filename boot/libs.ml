@@ -21,11 +21,12 @@ let local_libraries =
   ; ("otherlibs/dune-glob/src", Some "Dune_glob", false, None)
   ; ("src/ocaml-config", Some "Ocaml_config", false, None)
   ; ("otherlibs/action-plugin/src", Some "Dune_action_plugin", false, None)
+  ; ("src/chrome_trace", Some "Chrome_trace", false, None)
+  ; ("src/stats", Some "Stats", false, None)
   ; ("src/meta_parser", Some "Dune_meta_parser", false, None)
   ; ("src/section", Some "Dune_section", false, None)
   ; ("vendor/build_path_prefix_map/src", Some "Build_path_prefix_map", false,
     None)
-  ; ("src/catapult", Some "Catapult", false, None)
   ; ("src/jbuild_support", Some "Jbuild_support", false, None)
   ; ("otherlibs/dune-rpc/private", Some "Dune_rpc_private", false, None)
   ; ("src/dune_rpc_server", Some "Dune_rpc_server", false, None)

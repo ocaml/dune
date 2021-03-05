@@ -38,7 +38,6 @@ module Build_context = Build_context
 module Build_system = Build_system
 module Cram_test = Cram_test
 module Clflags = Clflags
-module Stats = Stats
 module Include_stanza = Include_stanza
 module Response_file = Response_file
 module Dep_path = Dep_path

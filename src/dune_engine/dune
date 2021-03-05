@@ -18,7 +18,8 @@
   cache
   dune_glob
   ocaml_config
-  catapult
+  chrome_trace
+  stats
   jbuild_support
   dune_action_plugin
   dune_util

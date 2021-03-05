@@ -47,6 +47,7 @@ module Config = struct
     { concurrency : int
     ; display : Display.t
     ; rpc : Rpc.t option
+    ; stats : Stats.t option
     }
 end
 
@@ -122,7 +123,7 @@ module Event : sig
 
     type event
 
-    val create : unit -> t
+    val create : Stats.t option -> t
 
     (** Return the next event. File changes event are always flattened and
         returned first. *)
@@ -183,9 +184,10 @@ end = struct
       ; mutable pending_jobs : int
       ; mutable pending_rpc : int
       ; rpc_completed : Fiber.fill Queue.t
+      ; stats : Stats.t option
       }
 
-    let create () =
+    let create stats =
       let jobs_completed = Queue.create () in
       let rpc_completed = Queue.create () in
       let sync_tasks = Queue.create () in
@@ -206,6 +208,7 @@ end = struct
       ; pending_jobs
       ; rpc_completed
       ; pending_rpc
+      ; stats
       }
 
     let register_job_started q = q.pending_jobs <- q.pending_jobs + 1
@@ -234,7 +237,7 @@ end = struct
     let rec flush_sync_tasks q = if sync_task q then flush_sync_tasks q
 
     let next q =
-      Stats.record ();
+      Option.iter q.stats ~f:Stats.record_gc_and_fd;
       Mutex.lock q.mutex;
       let rec loop () =
         while not (available q) do
@@ -853,7 +856,7 @@ let kill_and_wait_for_all_processes t =
   !saw_signal
 
 let prepare (config : Config.t) ~polling ~(handler : Handler.t) =
-  let events = Event.Queue.create () in
+  let events = Event.Queue.create config.stats in
   (* The signal watcher must be initialized first so that signals are blocked in
      all threads. *)
   Signal_watcher.init events;

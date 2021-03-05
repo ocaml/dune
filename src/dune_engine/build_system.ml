@@ -369,6 +369,7 @@ type t =
       -> unit Fiber.t
   ; locks : (Path.t, Fiber.Mutex.t) Table.t
   ; build_mutex : Fiber.Mutex.t option
+  ; stats : Stats.t option
   }
 
 let t = ref None
@@ -1388,6 +1389,17 @@ end = struct
     in
     Digest.generic trace
 
+  let report_evaluated_rule build_system =
+    Option.iter build_system.stats ~f:(fun stats ->
+        let module Event = Chrome_trace.Event in
+        let event =
+          let args = [ ("value", `Int build_system.rule_total) ] in
+          let ts = Event.Timestamp.now () in
+          let common = Event.common_fields ~name:"evaluated_rules" ~ts () in
+          Event.counter common args
+        in
+        Stats.emit stats event)
+
   let execute_rule_impl rule =
     let t = t () in
     let { Rule.id = _; dir; env = _; context; mode; locks; action; info = _ } =
@@ -1400,7 +1412,7 @@ end = struct
     Memo.Build.of_reproducible_fiber
       (let open Fiber.O in
       let build_deps deps = Memo.Build.run (build_deps deps) in
-      Stats.new_evaluated_rule ();
+      report_evaluated_rule t;
       Fs.mkdir_p dir;
       let env = Rule.effective_env rule in
       let loc = Rule.loc rule in
@@ -2131,8 +2143,8 @@ let load_dir_and_produce_its_rules ~dir =
 
 let load_dir ~dir = load_dir_and_produce_its_rules ~dir
 
-let init ~contexts ?build_mutex ~promote_source ?caching ~sandboxing_preference
-    () =
+let init ~stats ~contexts ?build_mutex ~promote_source ?caching
+    ~sandboxing_preference () =
   let contexts =
     Context_name.Map.of_list_map_exn contexts ~f:(fun c ->
         (c.Build_context.name, c))
@@ -2174,6 +2186,7 @@ let init ~contexts ?build_mutex ~promote_source ?caching ~sandboxing_preference
       locks = Table.create (module Path) 32
     ; promote_source
     ; build_mutex
+    ; stats
     }
   in
   Console.Status_line.set (fun () ->

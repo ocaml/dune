@@ -1232,6 +1232,7 @@ and Exported : sig
   (** Exported to inspect memoization cycles. *)
   val build_file_memo :
     (Path.t, Dep.Set.t, Path.t -> Dep.Set.t Memo.Build.t) Memo.t
+
   val build_alias_memo :
     (Alias.t, Path.Set.t, Alias.t -> Path.Set.t Memo.Build.t) Memo.t
 end = struct
@@ -1822,13 +1823,11 @@ let eval_pred = Pred.eval
 
 let get_human_readable_info stack_frame =
   match Memo.Stack_frame.as_instance_of ~of_:build_file_memo stack_frame with
-  | Some p ->
-    Some (Pp.verbatim (Path.to_string_maybe_quoted p))
-  | None ->
+  | Some p -> Some (Pp.verbatim (Path.to_string_maybe_quoted p))
+  | None -> (
     match Memo.Stack_frame.as_instance_of ~of_:build_alias_memo stack_frame with
-    | Some alias ->
-      Some (Pp.verbatim ("alias " ^ Alias.describe alias))
-    | None -> None
+    | Some alias -> Some (Pp.verbatim ("alias " ^ Alias.describe alias))
+    | None -> None )
 
 let process_memcycle (cycle_error : Memo.Cycle_error.t) =
   let cycle =

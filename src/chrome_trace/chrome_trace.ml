@@ -259,6 +259,8 @@ module Event = struct
         }
     | Metadata of metadata
 
+  let phase s = ("ph", Json.String s)
+
   let common_fields { name; cat; ts; tts; pid; tid; cname } =
     let fields =
       [ ("name", Json.String name)
@@ -313,22 +315,18 @@ module Event = struct
         ; ("args", Json.Object [ ("sort_index", Json.Int sort_index) ])
         ]
     in
-    ("ph", Json.String "M") :: fields
+    phase "M" :: fields
 
   let to_json_fields : t -> (string * Json.t) list = function
     | Counter (common, args, id) -> (
       let fields = common_fields common in
-      let fields =
-        ("ph", Json.String "C") :: ("args", Json.Object args) :: fields
-      in
+      let fields = phase "C" :: ("args", Json.Object args) :: fields in
       match id with
       | None -> fields
       | Some id -> Id.field id :: fields )
     | Duration_start (common, args, id) -> (
       let fields = common_fields common in
-      let fields =
-        ("ph", Json.String "B") :: ("args", Json.Object args) :: fields
-      in
+      let fields = phase "B" :: ("args", Json.Object args) :: fields in
       match id with
       | None -> fields
       | Some id -> Id.field id :: fields )
@@ -337,7 +335,7 @@ module Event = struct
         [ ("tid", Json.Int tid)
         ; ("pid", Int pid)
         ; ("ts", Json.Float ts)
-        ; ("ph", String "E")
+        ; phase "E"
         ]
       in
       match args with
@@ -345,9 +343,7 @@ module Event = struct
       | Some args -> ("args", Json.Object args) :: fields )
     | Complete { common; dur; args; tdur } -> (
       let fields = common_fields common in
-      let fields =
-        ("ph", Json.String "X") :: ("dur", Timestamp.to_json dur) :: fields
-      in
+      let fields = phase "X" :: ("dur", Timestamp.to_json dur) :: fields in
       let fields =
         match tdur with
         | None -> fields
@@ -358,7 +354,7 @@ module Event = struct
       | Some args -> ("args", Json.Object args) :: fields )
     | Instant (common, scope, args) -> (
       let fields = common_fields common in
-      let fields = ("ph", Json.String "i") :: fields in
+      let fields = phase "i" :: fields in
       let fields =
         match scope with
         | None -> fields
@@ -378,7 +374,7 @@ module Event = struct
             | Instant -> "n"
             | End -> "e"
           in
-          ("ph", Json.String s)
+          phase s
         in
         ph :: fields
       in
@@ -407,7 +403,7 @@ module Event = struct
             in
             ("O", Some (Json.Object [ ("snapshot", Json.Object args) ]))
         in
-        let fields = ("ph", Json.String ph) :: fields in
+        let fields = phase ph :: fields in
         match args with
         | None -> fields
         | Some args -> ("args", args) :: fields

@@ -86,6 +86,9 @@ Unreleased
   easier for `dune top` to locate C stubs associated to concerned libraries.
   (#4242, fixes #4231, @nojb)
 
+- It is now possible to define action dependencies through a chain
+  of aliases. (#4303, @aalekseyev)
+
 2.8.2 (21/01/2021)
 ------------------
 

@@ -25,7 +25,7 @@ let local_libraries =
   ; ("src/section", Some "Dune_section", false, None)
   ; ("vendor/build_path_prefix_map/src", Some "Build_path_prefix_map", false,
     None)
-  ; ("src/catapult", Some "Catapult", false, None)
+  ; ("src/chrome_trace", Some "Chrome_trace", false, None)
   ; ("src/jbuild_support", Some "Jbuild_support", false, None)
   ; ("otherlibs/dune-rpc/private", Some "Dune_rpc_private", false, None)
   ; ("src/dune_rpc_server", Some "Dune_rpc_server", false, None)

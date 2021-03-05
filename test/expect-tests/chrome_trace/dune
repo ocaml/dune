@@ -1,10 +1,10 @@
 (library
- (name dune_catapult_tests)
+ (name chrome_trace_tests)
  (inline_tests)
  (libraries
   dune_tests_common
   stdune
-  catapult
+  chrome_trace
   ;; This is because of the (implicit_transitive_deps false)
   ;; in dune-project
   ppx_expect.config

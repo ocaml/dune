@@ -41,30 +41,30 @@ let new_evaluated_rule () = incr evaluated_rules
 
 let () = Hooks.End_of_build.always (fun () -> evaluated_rules := 0)
 
-let catapult = ref None
+let trace = ref None
 
 let record () =
-  Option.iter !catapult ~f:(fun reporter ->
-      Catapult.emit_gc_counters reporter;
-      Catapult.emit_counter reporter "evaluated-rules"
-        [ ("value", Catapult.Json.Int !evaluated_rules) ];
+  Option.iter !trace ~f:(fun reporter ->
+      Chrome_trace.emit_gc_counters reporter;
+      Chrome_trace.emit_counter reporter "evaluated-rules"
+        [ ("value", Chrome_trace.Json.Int !evaluated_rules) ];
       match Fd_count.get () with
       | Unknown -> ()
       | This fds ->
-        Catapult.emit_counter reporter "fds"
-          [ ("value", Catapult.Json.Int fds) ])
+        Chrome_trace.emit_counter reporter "fds"
+          [ ("value", Chrome_trace.Json.Int fds) ])
 
 let enable path =
-  let reporter = Catapult.make path in
-  catapult := Some reporter;
-  at_exit (fun () -> Catapult.close reporter)
+  let reporter = Chrome_trace.make path in
+  trace := Some reporter;
+  at_exit (fun () -> Chrome_trace.close reporter)
 
 let with_process ~program ~args fiber =
-  match !catapult with
+  match !trace with
   | None -> fiber
   | Some reporter ->
     let open Fiber.O in
-    let event = Catapult.on_process_start reporter ~program ~args in
+    let event = Chrome_trace.on_process_start reporter ~program ~args in
     let+ result = fiber in
-    Catapult.on_process_end reporter event;
+    Chrome_trace.on_process_end reporter event;
     result

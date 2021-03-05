@@ -7,21 +7,21 @@ let buf = Buffer.create 0
 
 let time = ref 0.
 
-let c = Catapult.fake time buf
+let c = Chrome_trace.fake time buf
 
 let () = time := 10.
 
 let e =
-  Catapult.on_process_start c ~program:"/path/to/program"
+  Chrome_trace.on_process_start c ~program:"/path/to/program"
     ~args:[ "arg1"; "arg2" ]
 
 let () = time := 30.
 
-let () = Catapult.on_process_end c e
+let () = Chrome_trace.on_process_end c e
 
-let () = Catapult.emit_gc_counters c
+let () = Chrome_trace.emit_gc_counters c
 
-let () = Catapult.close c
+let () = Chrome_trace.close c
 
 let buffer_lines () = String.split_lines (Buffer.contents buf)
 

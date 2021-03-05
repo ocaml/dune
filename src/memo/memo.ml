@@ -302,6 +302,7 @@ module Deps_so_far = struct
     | Compute_not_started
     | Compute_started of { deps_reversed : 'node list }
 
+  (* Some of the [added_to_dag] nodes also need to be added to [compute_deps]. *)
   type status = { added_to_compute_deps : bool }
 
   type 'node t =
@@ -314,15 +315,19 @@ module Deps_so_far = struct
 
   let start_compute t = t.compute_deps <- Compute_started { deps_reversed = [] }
 
-  let add_compute_dep t node_id node =
-    match (t.compute_deps, Id.Map.find t.added_to_dag node_id) with
-    | Compute_not_started, _ -> ()
-    | _, Some { added_to_compute_deps } when added_to_compute_deps -> ()
-    | Compute_started { deps_reversed }, _ ->
-      t.compute_deps <-
-        Compute_started { deps_reversed = node :: deps_reversed };
-      t.added_to_dag <-
-        Id.Map.set t.added_to_dag node_id { added_to_compute_deps = true }
+  (* Add a new dependency [node] to [added_to_dag] and also to [compute_deps] if
+     [Compute_started] and the dependency hasn't been added before. *)
+  let add_dep t node_id node =
+    t.added_to_dag <-
+      Id.Map.update t.added_to_dag node_id ~f:(fun status ->
+          match (t.compute_deps, status) with
+          | Compute_not_started, _ -> Some { added_to_compute_deps = false }
+          | _, Some { added_to_compute_deps } when added_to_compute_deps ->
+            status
+          | Compute_started { deps_reversed }, _ ->
+            t.compute_deps <-
+              Compute_started { deps_reversed = node :: deps_reversed };
+            Some { added_to_compute_deps = true })
 
   let get_compute_deps_rev t =
     match t.compute_deps with
@@ -629,7 +634,7 @@ let add_dep_from_caller (type i o f) ~called_from_peek
     (sample_attempt_dag_node : Sample_attempt_dag_node.t) =
   match Call_stack.get_call_stack_tip () with
   | None -> Ok ()
-  | Some (Stack_frame_with_state.T caller) ->
+  | Some (Stack_frame_with_state.T caller) -> (
     let () =
       match (caller.without_state.spec.f, dep_node.without_state.spec.f) with
       | Async _, Async _ -> ()
@@ -646,42 +651,35 @@ let add_dep_from_caller (type i o f) ~called_from_peek
             ]
     in
     let deps_so_far_of_caller = caller.running_state.deps_so_far in
-    let result =
-      match
-        Id.Map.mem deps_so_far_of_caller.added_to_dag dep_node.without_state.id
-      with
-      | true -> Ok ()
-      | false -> (
-        let cycle_error =
-          match sample_attempt_dag_node with
-          | Finished -> None
-          | Running dag_node -> (
-            match
-              Dag.add_assuming_missing global_dep_dag
-                caller.running_state.sample_attempt dag_node
-            with
-            | () -> None
-            | exception Dag.Cycle cycle ->
-              Some
-                { Cycle_error.stack = Call_stack.get_call_stack_without_state ()
-                ; cycle = List.map cycle ~f:(fun dag_node -> dag_node.Dag.data)
-                } )
-        in
-        match cycle_error with
-        | None ->
-          deps_so_far_of_caller.added_to_dag <-
-            Id.Map.add_exn deps_so_far_of_caller.added_to_dag
-              dep_node.without_state.id
-              { added_to_compute_deps = false };
-          Ok ()
-        | Some cycle_error -> Error cycle_error )
-    in
-    ( match result with
-    | Ok () ->
-      Deps_so_far.add_compute_dep deps_so_far_of_caller
-        dep_node.without_state.id (Dep_node.T dep_node)
-    | Error _ -> () );
-    result
+    match
+      Id.Map.mem deps_so_far_of_caller.added_to_dag dep_node.without_state.id
+    with
+    | true ->
+      Deps_so_far.add_dep deps_so_far_of_caller dep_node.without_state.id
+        (Dep_node.T dep_node);
+      Ok ()
+    | false -> (
+      let cycle_error =
+        match sample_attempt_dag_node with
+        | Finished -> None
+        | Running dag_node -> (
+          match
+            Dag.add_assuming_missing global_dep_dag
+              caller.running_state.sample_attempt dag_node
+          with
+          | () -> None
+          | exception Dag.Cycle cycle ->
+            Some
+              { Cycle_error.stack = Call_stack.get_call_stack_without_state ()
+              ; cycle = List.map cycle ~f:(fun dag_node -> dag_node.Dag.data)
+              } )
+      in
+      match cycle_error with
+      | None ->
+        Deps_so_far.add_dep deps_so_far_of_caller dep_node.without_state.id
+          (Dep_node.T dep_node);
+        Ok ()
+      | Some cycle_error -> Error cycle_error ) )
 
 type ('input, 'output, 'f) t =
   { spec : ('input, 'output, 'f) Spec.t

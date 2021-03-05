@@ -183,9 +183,15 @@ module Event = struct
 
   type args = (string * Json.t) list
 
-  type id =
-    | Int of int
-    | String of string
+  module Id = struct
+    type t =
+      | Int of int
+      | String of string
+
+    let to_json = function
+      | Int i -> Json.Int i
+      | String s -> Json.String s
+  end
 
   type object_kind =
     | New
@@ -221,8 +227,8 @@ module Event = struct
 
   (* TODO support flow, samples, referemces, memory dumps *)
   type t =
-    | Counter of common * args * id option
-    | Duration_start of common * args * id option
+    | Counter of common * args * Id.t option
+    | Duration_start of common * args * Id.t option
     | Duration_end of
         { pid : int
         ; tid : int
@@ -240,13 +246,13 @@ module Event = struct
         { common : common
         ; async_kind : async_kind
         ; scope : string option
-        ; id : id
+        ; id : Id.t
         ; args : args option
         }
     | Object of
         { common : common
         ; object_kind : object_kind
-        ; id : id
+        ; id : Id.t
         ; scope : string option
         }
     | Metadata of metadata
@@ -268,10 +274,6 @@ module Event = struct
     match tts with
     | None -> fields
     | Some tts -> ("tts", Timestamp.to_json tts) :: fields
-
-  let json_of_id = function
-    | Int i -> Json.Int i
-    | String s -> Json.String s
 
   let json_of_scope = function
     | Global -> Json.String "g"
@@ -319,7 +321,7 @@ module Event = struct
       in
       match id with
       | None -> fields
-      | Some id -> ("id", json_of_id id) :: fields )
+      | Some id -> ("id", Id.to_json id) :: fields )
     | Duration_start (common, args, id) -> (
       let fields = common_fields common in
       let fields =
@@ -327,7 +329,7 @@ module Event = struct
       in
       match id with
       | None -> fields
-      | Some id -> ("id", json_of_id id) :: fields )
+      | Some id -> ("id", Id.to_json id) :: fields )
     | Duration_end { pid; tid; ts; args } -> (
       let fields =
         [ ("tid", Json.Int tid)
@@ -365,7 +367,7 @@ module Event = struct
       | Some args -> ("args", Json.Object args) :: fields )
     | Async { common; async_kind; scope; id; args } -> (
       let fields = common_fields common in
-      let fields = ("id", json_of_id id) :: fields in
+      let fields = ("id", Id.to_json id) :: fields in
       let fields =
         let ph =
           let s =
@@ -388,7 +390,7 @@ module Event = struct
       | Some args -> ("args", Json.Object args) :: fields )
     | Object { common; object_kind; id; scope } -> (
       let fields = common_fields common in
-      let fields = ("id", json_of_id id) :: fields in
+      let fields = ("id", Id.to_json id) :: fields in
       let fields =
         let ph, args =
           match object_kind with
@@ -416,7 +418,7 @@ module Event = struct
   let to_json t = Json.Object (to_json_fields t)
 end
 
-type event = Event.id * string
+type event = Event.Id.t * string
 
 let emit_counter t key values =
   let time = t.get_time () in
@@ -445,7 +447,7 @@ let emit_gc_counters t =
 let next_id t =
   let r = t.next_id in
   t.next_id <- r + 1;
-  Event.Int r
+  Event.Id.Int r
 
 let on_process_start t ~program ~args =
   let name = Filename.basename program in

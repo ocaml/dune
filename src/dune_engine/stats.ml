@@ -46,10 +46,13 @@ let catapult = ref None
 let record () =
   Option.iter !catapult ~f:(fun reporter ->
       Catapult.emit_gc_counters reporter;
-      Catapult.emit_counter reporter "evaluated-rules" !evaluated_rules;
+      Catapult.emit_counter reporter "evaluated-rules"
+        [ ("value", Catapult.Json.Int !evaluated_rules) ];
       match Fd_count.get () with
-      | This fds -> Catapult.emit_counter reporter "fds" fds
-      | Unknown -> ())
+      | Unknown -> ()
+      | This fds ->
+        Catapult.emit_counter reporter "fds"
+          [ ("value", Catapult.Json.Int fds) ])
 
 let enable path =
   let reporter = Catapult.make path in

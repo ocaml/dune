@@ -75,7 +75,8 @@ let term =
             User_error.raise
               [ Pp.text "Environment is not defined in install dirs" ] )
       in
-      Memo.Build.run (Build_system.do_build ~request) >>| function
+      Memo.Build.run (Build_system.do_build ~request:(fun () -> request))
+      >>| function
       | [ (_, env) ] -> Format.printf "%a" (pp ~fields) env
       | l ->
         List.iter l ~f:(fun (name, env) ->

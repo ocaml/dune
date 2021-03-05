@@ -145,8 +145,6 @@ let to_dyn { dir; name } =
   let open Dyn in
   Record [ ("dir", Path.Build.to_dyn dir); ("name", Name.to_dyn name) ]
 
-let suffix = "-" ^ String.make 32 '0'
-
 let name t = t.name
 
 let dir t = t.dir
@@ -156,9 +154,6 @@ let stamp_file_dir t =
   Path.Build.append_local Dpath.Build.alias_dir local
 
 let fully_qualified_name t = Path.Build.relative t.dir (Name.to_string t.name)
-
-let stamp_file t =
-  Path.Build.relative (stamp_file_dir t) (Name.to_string t.name ^ suffix)
 
 (* This mutable table is safe: it's modified only at the top level. *)
 let standard_aliases = Table.create (module Name) 7
@@ -190,3 +185,28 @@ let fmt = make_standard (Name.of_string "fmt")
 let encode { dir; name } =
   let open Dune_lang.Encoder in
   record [ ("dir", Dpath.encode (Path.build dir)); ("name", Name.encode name) ]
+
+let get_ctx (path : Path.Build.t) =
+  match Path.Build.extract_first_component path with
+  | None -> None
+  | Some (name, sub) -> (
+    match Context_name.of_string_opt name with
+    | None -> None
+    | Some ctx -> Some (ctx, Path.Source.of_local sub) )
+
+let describe alias =
+  match get_ctx alias.dir with
+  | None ->
+    sprintf "invalid-alias %s"
+      (Path.Build.to_string (fully_qualified_name alias))
+  | Some (ctx, dir_in_context) ->
+    let ctx_suffix name =
+      if Context_name.is_default name then
+        ""
+      else
+        sprintf " (context %s)" (Context_name.to_string name)
+    in
+    sprintf "%s%s"
+      (Path.Source.to_string_maybe_quoted
+         (Path.Source.relative dir_in_context (Name.to_string alias.name)))
+      (ctx_suffix ctx)

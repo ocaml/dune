@@ -199,7 +199,7 @@ let rec is_dynamic = function
 
 let prepare_managed_paths ~link ~sandboxed deps =
   let steps =
-    Path.Set.fold (Dep.Set.paths deps) ~init:[] ~f:(fun path acc ->
+    Path.Set.fold (Dep.Set.eval_paths deps) ~init:[] ~f:(fun path acc ->
         match Path.as_in_build_dir path with
         | None ->
           (* This can actually raise if we try to sandbox the "copy from source

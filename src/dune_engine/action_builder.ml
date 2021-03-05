@@ -11,6 +11,7 @@ module T = struct
     | Map2 : ('a -> 'b -> 'c) * 'a t * 'b t -> 'c t
     | Paths_for_rule : Path.Set.t -> unit t
     | Paths_glob : File_selector.t -> Path.Set.t t
+    | Dep_on_alias_if_exists : Alias.t -> bool t
     | If_file_exists : Path.t * 'a t * 'a t -> 'a t
     | Contents : Path.t -> string t
     | Lines_of : Path.t -> string list t
@@ -152,9 +153,9 @@ let of_result_map res ~f =
 let memoize name t = Memo { name; id = Type_eq.Id.create (); t }
 
 let source_tree ~dir =
-  let dep_set = Dep.Set.source_tree dir in
+  let dep_set, file_set = Dep.Set.source_tree dir in
   let+ () = deps dep_set in
-  Dep.Set.paths dep_set
+  file_set
 
 (* CR-someday amokhov: The set of targets is accumulated using information from
    multiple sources by calling [Path.Build.Set.union] and hence occasionally
@@ -286,6 +287,8 @@ module Make_exec (Build_deps : sig
   val register_action_deps : Dep.Set.t -> unit Memo.Build.t
 
   val file_exists : Path.t -> bool
+
+  val alias_exists : Alias.t -> bool Memo.Build.t
 end) =
 struct
   module rec Execution : sig
@@ -396,6 +399,14 @@ struct
       | Capture_deps b ->
         let+ b, deps0 = exec b in
         ((b, deps0), deps0)
+      | Dep_on_alias_if_exists alias -> (
+        let* definition = Build_deps.alias_exists alias in
+        match definition with
+        | false -> Memo.Build.return (false, Dep.Set.empty)
+        | true ->
+          let deps = Dep.Set.singleton (Dep.alias alias) in
+          let+ () = Build_deps.register_action_deps deps in
+          (true, deps) )
   end
 
   include Execution
@@ -465,6 +476,7 @@ let rec can_eval_statically : type a. a t -> bool = function
        and its deps statically, but we don't have a mechanism for evaluating the
        deps statically, so we have to answer with constant false here *)
     false
+  | Dep_on_alias_if_exists _ -> false
 
 let static_eval =
   let rec loop : type a. a t -> unit t -> a * unit t =
@@ -509,6 +521,7 @@ let static_eval =
     | Dyn_memo_build _ -> assert false
     | Build _ -> assert false
     | Capture_deps _ -> assert false
+    | Dep_on_alias_if_exists _ -> assert false
   and loop_many : type a. a list -> a t list -> unit t -> a list * unit t =
    fun acc_res l acc ->
     match l with
@@ -524,3 +537,7 @@ let static_eval =
       None
 
 let capture_deps b = Capture_deps b
+
+let dyn_memo_build_deps t = dyn_deps (dyn_memo_build t)
+
+let dep_on_alias_if_exists t = Dep_on_alias_if_exists t

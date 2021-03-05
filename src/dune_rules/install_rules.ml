@@ -753,16 +753,15 @@ let install_rules sctx (package : Package.t) =
           and+ () = Action_builder.deps (Dep.Set.of_files_set files) in
           ( ()
           , Package.Id.Set.to_list packages
-            |> Path.Set.of_list_map ~f:(fun (pkg : Package.Id.t) ->
+            |> Dep.Set.of_list_map ~f:(fun (pkg : Package.Id.t) ->
                    let pkg =
                      let name = Package.Id.name pkg in
                      Package.Name.Map.find_exn
                        (Super_context.packages sctx)
                        name
                    in
-                   Build_system.Alias.package_install ~context ~pkg
-                   |> Alias.stamp_file |> Path.build)
-            |> Dep.Set.of_files_set )))
+                   Build_system.Alias.package_install ~context ~pkg |> Dep.alias)
+          )))
   in
   let action =
     let install_file =

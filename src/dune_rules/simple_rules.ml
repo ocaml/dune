@@ -210,30 +210,27 @@ let alias sctx ?extra_bindings ~dir ~expander (alias_conf : Alias_conf.t) =
   let loc = Some alias_conf.loc in
   match Expander.eval_blang expander alias_conf.enabled_if with
   | false -> Alias_rules.add_empty sctx ~loc ~alias ~stamp
-  | true ->
-    let locks = interpret_locks ~expander alias_conf.locks in
-    let action =
-      let builder, expander = Dep_conf_eval.named ~expander alias_conf.deps in
-      let open Action_builder.With_targets.O in
-      let+ () = Action_builder.with_no_targets builder
-      and+ action =
-        match alias_conf.action with
-        | None ->
-          let builder, _expander =
-            Dep_conf_eval.named ~expander alias_conf.deps
-          in
-          let open Action_builder.With_targets.O in
-          let+ () = Action_builder.with_no_targets builder in
-          Action.empty
-        | Some (loc, action) ->
+  | true -> (
+    match alias_conf.action with
+    | None ->
+      let builder, _expander = Dep_conf_eval.named ~expander alias_conf.deps in
+      Rules.Produce.Alias.add_deps alias ?loc builder
+    | Some (action_loc, action) ->
+      let locks = interpret_locks ~expander alias_conf.locks in
+      let action =
+        let builder, expander = Dep_conf_eval.named ~expander alias_conf.deps in
+        let open Action_builder.With_targets.O in
+        let+ () = Action_builder.with_no_targets builder
+        and+ action =
           let expander =
             match extra_bindings with
             | None -> expander
             | Some bindings -> Expander.add_bindings expander ~bindings
           in
-          Action_unexpanded.expand action ~loc ~expander ~deps:alias_conf.deps
-            ~targets:(Forbidden "aliases") ~targets_dir:dir
+          Action_unexpanded.expand action ~loc:action_loc ~expander
+            ~deps:alias_conf.deps ~targets:(Forbidden "aliases")
+            ~targets_dir:dir
+        in
+        action
       in
-      action
-    in
-    Alias_rules.add sctx ~loc ~stamp ~locks action ~alias
+      Alias_rules.add sctx ~loc ~stamp ~locks action ~alias )

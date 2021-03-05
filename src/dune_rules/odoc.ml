@@ -553,11 +553,13 @@ let setup_package_aliases sctx (pkg : Package.t) =
     let dir = Path.Build.append_source ctx.build_dir pkg_dir in
     Alias.doc ~dir
   in
-  Rules.Produce.Alias.add_static_deps alias
-    ( Dep.html_alias ctx (Pkg name)
-      :: ( libs_of_pkg sctx ~pkg:name
-         |> List.map ~f:(fun lib -> Dep.html_alias ctx (Lib lib)) )
-    |> Path.Set.of_list_map ~f:(fun f -> Path.build (Alias.stamp_file f)) )
+  Rules.Produce.Alias.add_deps alias
+    (Action_builder.deps
+       ( Dep.html_alias ctx (Pkg name)
+         :: ( libs_of_pkg sctx ~pkg:name
+            |> List.map ~f:(fun lib -> Dep.html_alias ctx (Lib lib)) )
+       |> Dune_engine.Dep.Set.of_list_map ~f:(fun f -> Dune_engine.Dep.alias f)
+       ))
 
 let entry_modules_by_lib sctx lib =
   let info = Lib.Local.info lib in
@@ -654,22 +656,23 @@ let init sctx =
   |> Package.Name.Map.iter ~f:(fun (pkg : Package.t) ->
          (* setup @doc to build the correct html for the package *)
          setup_package_aliases sctx pkg);
-  Rules.Produce.Alias.add_static_deps
+  Rules.Produce.Alias.add_deps
     (Alias.private_doc ~dir:ctx.build_dir)
-    ( stanzas
-    |> List.concat_map ~f:(fun (w : _ Dir_with_dune.t) ->
-           List.filter_map w.data ~f:(function
-             | Dune_file.Library (l : Dune_file.Library.t) -> (
-               match l.visibility with
-               | Public _ -> None
-               | Private _ ->
-                 let scope = SC.find_scope_by_dir sctx w.ctx_dir in
-                 Library.best_name l
-                 |> Lib.DB.find_even_when_hidden (Scope.libs scope)
-                 |> Option.value_exn |> Lib.Local.of_lib_exn |> Option.some )
-             | _ -> None))
-    |> Path.Set.of_list_map ~f:(fun (lib : Lib.Local.t) ->
-           Lib lib |> Dep.html_alias ctx |> Alias.stamp_file |> Path.build) )
+    (Action_builder.deps
+       ( stanzas
+       |> List.concat_map ~f:(fun (w : _ Dir_with_dune.t) ->
+              List.filter_map w.data ~f:(function
+                | Dune_file.Library (l : Dune_file.Library.t) -> (
+                  match l.visibility with
+                  | Public _ -> None
+                  | Private _ ->
+                    let scope = SC.find_scope_by_dir sctx w.ctx_dir in
+                    Library.best_name l
+                    |> Lib.DB.find_even_when_hidden (Scope.libs scope)
+                    |> Option.value_exn |> Lib.Local.of_lib_exn |> Option.some )
+                | _ -> None))
+       |> Dune_engine.Dep.Set.of_list_map ~f:(fun (lib : Lib.Local.t) ->
+              Lib lib |> Dep.html_alias ctx |> Dune_engine.Dep.alias) ))
 
 let gen_rules sctx ~dir:_ rest =
   match rest with

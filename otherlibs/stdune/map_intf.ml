@@ -119,6 +119,9 @@ module type S = sig
 
   val mapi : 'a t -> f:(key -> 'a -> 'b) -> 'b t
 
+  val fold_mapi :
+    'a t -> init:'acc -> f:(key -> 'acc -> 'a -> 'acc * 'b) -> 'acc * 'b t
+
   val filter_map : 'a t -> f:('a -> 'b option) -> 'b t
 
   val filter_mapi : 'a t -> f:(key -> 'a -> 'b option) -> 'b t

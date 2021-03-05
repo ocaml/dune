@@ -170,6 +170,16 @@ module Make (Key : Key) : S with type key = Key.t = struct
 
   let mapi t ~f = mapi t ~f
 
+  let fold_mapi t ~init ~f =
+    let acc = ref init in
+    let result =
+      mapi t ~f:(fun i x ->
+          let new_acc, y = f i !acc x in
+          acc := new_acc;
+          y)
+    in
+    (!acc, result)
+
   let filter_mapi t ~f =
     merge t empty ~f:(fun key data _always_none ->
         match data with

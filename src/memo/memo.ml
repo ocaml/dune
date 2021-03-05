@@ -293,8 +293,7 @@ let _ = Value_id.to_dyn
 
    Once we move to the [compute] step, we start accumulating actual dependencies
    of the value in [compute_deps]. The list of dependencies is stored in the
-   reversed order for efficient updates. Note that we do not remove duplicates
-   from this list.
+   reversed order for efficient updates.
 
    After the [compute] step has finished, [compute_deps] are stored in the
    resulting [Cached_value.t]. *)
@@ -303,15 +302,27 @@ module Deps_so_far = struct
     | Compute_not_started
     | Compute_started of { deps_reversed : 'node list }
 
+  type status = { added_to_compute_deps : bool }
+
   type 'node t =
-    { mutable added_to_dag : Id.Set.t
+    { mutable added_to_dag : status Id.Map.t
     ; mutable compute_deps : 'node deps
     }
 
   let create () =
-    { added_to_dag = Id.Set.empty; compute_deps = Compute_not_started }
+    { added_to_dag = Id.Map.empty; compute_deps = Compute_not_started }
 
   let start_compute t = t.compute_deps <- Compute_started { deps_reversed = [] }
+
+  let add_compute_dep t node_id node =
+    match (t.compute_deps, Id.Map.find t.added_to_dag node_id) with
+    | Compute_not_started, _ -> ()
+    | _, Some { added_to_compute_deps } when added_to_compute_deps -> ()
+    | Compute_started { deps_reversed }, _ ->
+      t.compute_deps <-
+        Compute_started { deps_reversed = node :: deps_reversed };
+      t.added_to_dag <-
+        Id.Map.set t.added_to_dag node_id { added_to_compute_deps = true }
 
   let get_compute_deps_rev t =
     match t.compute_deps with
@@ -637,7 +648,7 @@ let add_dep_from_caller (type i o f) ~called_from_peek
     let deps_so_far_of_caller = caller.running_state.deps_so_far in
     let result =
       match
-        Id.Set.mem deps_so_far_of_caller.added_to_dag dep_node.without_state.id
+        Id.Map.mem deps_so_far_of_caller.added_to_dag dep_node.without_state.id
       with
       | true -> Ok ()
       | false -> (
@@ -659,18 +670,17 @@ let add_dep_from_caller (type i o f) ~called_from_peek
         match cycle_error with
         | None ->
           deps_so_far_of_caller.added_to_dag <-
-            Id.Set.add deps_so_far_of_caller.added_to_dag
-              dep_node.without_state.id;
+            Id.Map.add_exn deps_so_far_of_caller.added_to_dag
+              dep_node.without_state.id
+              { added_to_compute_deps = false };
           Ok ()
         | Some cycle_error -> Error cycle_error )
     in
-    ( match (result, deps_so_far_of_caller.compute_deps) with
-    | Ok (), Compute_started { deps_reversed } ->
-      deps_so_far_of_caller.compute_deps <-
-        Compute_started { deps_reversed = Dep_node.T dep_node :: deps_reversed }
-    | Ok (), Compute_not_started
-    | Error _, _ ->
-      () );
+    ( match result with
+    | Ok () ->
+      Deps_so_far.add_compute_dep deps_so_far_of_caller
+        dep_node.without_state.id (Dep_node.T dep_node)
+    | Error _ -> () );
     result
 
 type ('input, 'output, 'f) t =

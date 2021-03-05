@@ -726,70 +726,6 @@ let dump_stack () = Format.eprintf "%a" Pp.to_fmt (pp_stack ())
 
 let () = Fdecl.set Cached_value.dump_stack_fdecl dump_stack
 
-(* An attempt to sample the current value of a node. It's an "attempt" because
-   it can be cancelled due to a dependency cycle.
-
-   Sample attempts start in a [Running] state, accumulate dependencies over
-   time, and then transition to the [Finished] state.
-
-   To detect cycles, we maintain a DAG of running attempts. Finished attempts do
-   not need to be in the DAG but currently they still are. When a run completes,
-   the entire DAG is garbage collected because we no longer hold any references
-   to its nodes. *)
-module Sample_attempt = struct
-  (* Like [t] but focuses on the [Dag.node] field. *)
-  module Dag_node = struct
-    type t =
-      | Finished
-      | Running of Dag.node
-  end
-
-  type sync
-
-  type async
-
-  type ('a, 's) t =
-    | Finished : 'a -> ('a, _) t
-    | Running_sync :
-        { dag_node : Dag.node
-        ; completion : 'a Completion.sync
-        }
-        -> ('a, sync) t
-    | Running_async :
-        { dag_node : Dag.node
-        ; completion : 'a Completion.async
-        }
-        -> ('a, async) t
-
-  let dag_node (type a s) (t : (a, s) t) : Dag_node.t =
-    match t with
-    | Finished _ -> Finished
-    | Running_sync { dag_node; _ }
-    | Running_async { dag_node; _ } ->
-      Running dag_node
-
-  let restore_sync (type a) (t : (a, sync) t) =
-    match t with
-    | Finished cached_value -> Ok cached_value
-    | Running_sync { completion; _ } -> Lazy.force completion.restore_from_cache
-
-  let restore_async (type a) (t : (a, async) t) =
-    match t with
-    | Finished cached_value -> Fiber.return (Ok cached_value)
-    | Running_async { completion; _ } ->
-      Once.force completion.restore_from_cache
-
-  let compute_sync (type a) (t : (a, sync) t) =
-    match t with
-    | Finished cached_value -> cached_value
-    | Running_sync { completion; _ } -> Lazy.force completion.compute
-
-  let compute_async (type a) (t : (a, async) t) =
-    match t with
-    | Finished cached_value -> Fiber.return cached_value
-    | Running_async { completion; _ } -> Once.force completion.compute
-end
-
 (* Add a dependency on the [dep_node] from the caller, if there is one. Returns
    an [Error] if the new dependency would introduce a dependency cycle. *)
 let add_dep_from_caller (type i o f) ~called_from_peek
@@ -825,7 +761,6 @@ let add_dep_from_caller (type i o f) ~called_from_peek
         match sample_attempt with
         | Finished _ -> None
         | Running { dag_node; _ } -> (
-          (* TODO: Due to [Deps_so_far.reset], we can now add an edge twice. *)
           match
             Dag.add_assuming_missing global_dep_dag
               caller.running_state.dag_node dag_node
@@ -1099,9 +1034,6 @@ end = struct
           | Ok cached_value -> cached_value
           | Error cache_lookup_failure ->
             dep_node.last_cached_value <- None;
-            (* Reset [Deps_so_far] when recomputing the value, to clear all the
-               "phantom" dependencies accumulated in [restore_from_cache]. *)
-            Deps_so_far.reset running_state.deps_so_far;
             let cached_value =
               compute dep_node cache_lookup_failure running_state.deps_so_far
             in
@@ -1293,9 +1225,6 @@ end = struct
           | Ok cached_value -> Fiber.return cached_value
           | Error cache_lookup_failure ->
             dep_node.last_cached_value <- None;
-            (* Reset [Deps_so_far] when recomputing the value, to clear all the
-               "phantom" dependencies accumulated in [restore_from_cache]. *)
-            Deps_so_far.reset running_state.deps_so_far;
             let+ cached_value =
               compute dep_node cache_lookup_failure running_state.deps_so_far
             in

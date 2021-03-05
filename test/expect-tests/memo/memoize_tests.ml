@@ -1300,8 +1300,6 @@ let%expect_test "Test that there are no phantom dependencies" =
   (* Note that we no longer depend on the [cell]. *)
   [%expect
     {|
-    base = 8
-    *** middle does not depend on base ***
     Started evaluating summit
     *** middle does not depend on base ***
     Evaluated summit: 0

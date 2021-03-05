@@ -303,7 +303,7 @@ module Deps_so_far = struct
     | Compute_started of { deps_reversed : 'node list }
 
   (* Some of the [added_to_dag] nodes also need to be added to [compute_deps]. *)
-  type status = { added_to_compute_deps : bool }
+  type status = { added_to_compute_deps : bool } [@@unboxed]
 
   type 'node t =
     { mutable added_to_dag : status Id.Map.t

@@ -4,9 +4,9 @@ let external_libraries = [ "unix"; "threads.posix" ]
 
 let local_libraries =
   [ ("vendor/csexp/src", Some "Csexp", false, None)
-  ; ("otherlibs/stdune/dune_filesystem_stubs", Some "Dune_filesystem_stubs",
-    false, None)
-  ; ("otherlibs/stdune", Some "Stdune", false, None)
+  ; ("otherlibs/stdune-unstable/dune_filesystem_stubs",
+    Some "Dune_filesystem_stubs", false, None)
+  ; ("otherlibs/stdune-unstable", Some "Stdune", false, None)
   ; ("src/dune_lang", Some "Dune_lang", false, None)
   ; ("vendor/incremental-cycles/src", Some "Incremental_cycles", false, None)
   ; ("src/dag", Some "Dag", false, None)

@@ -1,5 +1,22 @@
-(** Output trace data to a file in catapult format. This format is compatible
-    with [chrome://tracing]. *)
+(** Output trace data to a file in Chrome's trace_event format. This format is
+    compatible with chrome trace viewer [chrome://tracing].
+
+    Trace viewer is a part of the catapult project
+    (https://github.com/catapult-project/catapult/blob/master/tracing/README.md).
+
+    The trace format is documented at:
+    https://docs.google.com/document/d/1CvAClvFfyA5R-PhYUmn5OOQtYMH4h6I0nSsKchNAySU/preview *)
+
+module Json : sig
+  (** Simplifies JSON type *)
+  type t =
+    | Int of int
+    | Float of float
+    | String of string
+    | Array of t list
+    | Bool of bool
+    | Object of (string * t) list
+end
 
 (** The (mutable) state of reporters. It is basically an output channel. *)
 type t
@@ -25,7 +42,7 @@ val on_process_start : t -> program:string -> args:string list -> event
 val on_process_end : t -> event -> unit
 
 (** Emit a counter event. This is measuring the value of an integer variable. *)
-val emit_counter : t -> string -> int -> unit
+val emit_counter : t -> string -> (string * Json.t) list -> unit
 
 (** Emit counter events for GC stats. *)
 val emit_gc_counters : t -> unit

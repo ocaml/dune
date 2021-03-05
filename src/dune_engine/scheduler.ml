@@ -138,7 +138,7 @@ module Event : sig
     val next : t -> event
 
     (** Handle all enqueued deduplications. *)
-    val flush_dedup : t -> unit
+    val flush_sync_tasks : t -> unit
 
     (** Ignore the ne next file change event about this file. *)
     val ignore_next_file_change_event : t -> Path.t -> unit
@@ -163,7 +163,7 @@ module Event : sig
 
     val send_signal : t -> Signal.t -> unit
 
-    val send_dedup : t -> Cache.caching -> Cache.File.t -> unit
+    val send_sync_task : t -> (unit -> unit) -> unit
   end
   with type event := t
 end = struct
@@ -176,7 +176,7 @@ end = struct
   module Queue = struct
     type t =
       { jobs_completed : (job * Unix.process_status) Queue.t
-      ; dedup_pending : (Cache.caching * Cache.File.t) Queue.t
+      ; sync_tasks : (unit -> unit) Queue.t
       ; mutable files_changed : Path.t list
       ; mutable signals : Signal.Set.t
       ; mutex : Mutex.t
@@ -197,7 +197,7 @@ end = struct
     let create () =
       let jobs_completed = Queue.create () in
       let rpc_completed = Queue.create () in
-      let dedup_pending = Queue.create () in
+      let sync_tasks = Queue.create () in
       let files_changed = [] in
       let signals = Signal.Set.empty in
       let mutex = Mutex.create () in
@@ -206,7 +206,7 @@ end = struct
       let pending_jobs = 0 in
       let pending_rpc = 0 in
       { jobs_completed
-      ; dedup_pending
+      ; sync_tasks
       ; files_changed
       ; signals
       ; mutex
@@ -230,21 +230,17 @@ end = struct
         ( List.is_empty q.files_changed
         && Queue.is_empty q.jobs_completed
         && Signal.Set.is_empty q.signals
-        && Queue.is_empty q.dedup_pending
+        && Queue.is_empty q.sync_tasks
         && Queue.is_empty q.rpc_completed )
 
-    let dedup q =
-      match Queue.pop q.dedup_pending with
+    let sync_task q =
+      match Queue.pop q.sync_tasks with
       | None -> false
-      | Some pending ->
-        let (module Caching : Cache.Caching), (file : Cache.File.t) = pending in
-        ( match Cached_digest.peek_file (Path.build file.path) with
-        | None -> ()
-        | Some d when not (Digest.equal d file.digest) -> ()
-        | _ -> Caching.Cache.deduplicate Caching.cache file );
+      | Some task ->
+        task ();
         true
 
-    let rec flush_dedup q = if dedup q then flush_dedup q
+    let rec flush_sync_tasks q = if sync_task q then flush_sync_tasks q
 
     let next q =
       Stats.record ();
@@ -253,7 +249,7 @@ end = struct
         while not (available q) do
           Condition.wait q.cond q.mutex
         done;
-        if dedup q then
+        if sync_task q then
           loop ()
         else
           match Signal.Set.choose q.signals with
@@ -319,13 +315,10 @@ end = struct
       if not avail then Condition.signal q.cond;
       Mutex.unlock q.mutex
 
-    (* FIXME: this is really not ideal, but we pack the Caching in the event all
-       the way through since Scheduler cannot read it directly from the build
-       system because of circular dependencies. *)
-    let send_dedup q caching file =
+    let send_sync_task q f =
       Mutex.lock q.mutex;
       let avail = available q in
-      Queue.push q.dedup_pending (caching, file);
+      Queue.push q.sync_tasks f;
       if not avail then Condition.signal q.cond;
       Mutex.unlock q.mutex
 
@@ -844,7 +837,7 @@ let global = ref None
 
 let wait_for_dune_cache () =
   let t = Option.value_exn !global in
-  Event.Queue.flush_dedup t.events
+  Event.Queue.flush_sync_tasks t.events
 
 let got_signal signal =
   if !Log.verbose then
@@ -1067,9 +1060,9 @@ module Run = struct
     Event.go t run
 end
 
-let send_dedup d =
+let send_sync_task d =
   let t = Option.value_exn !global in
-  Event.Queue.send_dedup t.events d
+  Event.Queue.send_sync_task t.events d
 
 let wait_for_process pid =
   let t = Fiber.Var.get_exn t_var in

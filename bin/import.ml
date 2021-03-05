@@ -37,7 +37,13 @@ let make_cache (config : Dune_config.t) =
     let command_handler (Cache.Dedup file) =
       match Build_system.get_cache () with
       | None -> Code_error.raise "deduplication message and no caching" []
-      | Some caching -> Scheduler.send_dedup caching.cache file
+      | Some caching ->
+        Scheduler.send_sync_task (fun () ->
+            let (module Caching : Cache.Caching) = caching.cache in
+            match Cached_digest.peek_file (Path.build file.path) with
+            | None -> ()
+            | Some d when not (Digest.equal d file.digest) -> ()
+            | _ -> Caching.Cache.deduplicate Caching.cache file)
     in
     match config.cache_transport with
     | Dune_config.Caching.Transport.Direct ->

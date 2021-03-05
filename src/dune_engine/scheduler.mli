@@ -99,8 +99,8 @@ val running_jobs_count : unit -> int
 (** Execute the given callback with current directory temporarily changed *)
 val with_chdir : dir:Path.t -> f:(unit -> 'a) -> 'a
 
-(** Notify the scheduler of a file to deduplicate from another thread *)
-val send_dedup : Cache.caching -> Cache.File.t -> unit
+(** Send a task that will run in the scheduler thread *)
+val send_sync_task : (unit -> unit) -> unit
 
 module Rpc : sig
   (** Rpc related functions *)

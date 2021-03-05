@@ -597,6 +597,10 @@ let currently_considering (v : _ State.t) : _ State.t =
     if Run.is_current run then
       running
     else
+      (* TODO: A computation can only become zombie if [restore_from_cache]
+         finished unsuccessfully. What's wrong with simply starting the
+         [compute] if we do reach a zombie? That seems to be harmless and
+         eliminates a non-trivial (and possibly incorrect) assumption. *)
       Code_error.raise
         "A zombie computation is encountered in [currently_considering]" []
 
@@ -821,6 +825,7 @@ let add_dep_from_caller (type i o f) ~called_from_peek
         match sample_attempt with
         | Finished _ -> None
         | Running { dag_node; _ } -> (
+          (* TODO: Due to [Deps_so_far.reset], we can now add an edge twice. *)
           match
             Dag.add_assuming_missing global_dep_dag
               caller.running_state.dag_node dag_node

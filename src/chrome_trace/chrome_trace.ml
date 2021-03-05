@@ -1,4 +1,6 @@
-open Stdune
+module List = ListLabels
+module String = StringLabels
+open Printf
 
 module Json = struct
   type t =

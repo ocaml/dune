@@ -282,9 +282,10 @@ end
 
 let _ = Value_id.to_dyn
 
-(* Dependencies of a value discovered so far.
+(* Dependencies of a value accumulated so far. All of them are added to the DAG
+   of sample attempts to detect cycles.
 
-   We start discovering dependencies during the [restore_from_cache] step. Some
+   We start accumulating dependencies during the [restore_from_cache] step. Some
    of them may turn out to be "phantom", i.e. we used to depend on them but do
    not depend on them anymore. This happens when the [restore_from_cache] step
    fails and we fall back to recomputing the value, which can lead to a new set
@@ -295,8 +296,8 @@ let _ = Value_id.to_dyn
    reversed order for efficient updates. Note that we do not remove duplicates
    from this list.
 
-   We add all dependencies (i.e. discovered during both the [restore_from_cache]
-   and [compute] steps) to the DAG of sample attempts to detect cycles. *)
+   After the [compute] step has finished, [compute_deps] are stored in the
+   resulting [Cached_value.t]. *)
 module Deps_so_far = struct
   type 'node deps =
     | Compute_not_started

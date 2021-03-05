@@ -191,6 +191,8 @@ module Event = struct
     let to_json = function
       | Int i -> Json.Int i
       | String s -> Json.String s
+
+    let field id = ("id", to_json id)
   end
 
   type object_kind =
@@ -321,7 +323,7 @@ module Event = struct
       in
       match id with
       | None -> fields
-      | Some id -> ("id", Id.to_json id) :: fields )
+      | Some id -> Id.field id :: fields )
     | Duration_start (common, args, id) -> (
       let fields = common_fields common in
       let fields =
@@ -329,7 +331,7 @@ module Event = struct
       in
       match id with
       | None -> fields
-      | Some id -> ("id", Id.to_json id) :: fields )
+      | Some id -> Id.field id :: fields )
     | Duration_end { pid; tid; ts; args } -> (
       let fields =
         [ ("tid", Json.Int tid)
@@ -367,7 +369,7 @@ module Event = struct
       | Some args -> ("args", Json.Object args) :: fields )
     | Async { common; async_kind; scope; id; args } -> (
       let fields = common_fields common in
-      let fields = ("id", Id.to_json id) :: fields in
+      let fields = Id.field id :: fields in
       let fields =
         let ph =
           let s =
@@ -390,7 +392,7 @@ module Event = struct
       | Some args -> ("args", Json.Object args) :: fields )
     | Object { common; object_kind; id; scope } -> (
       let fields = common_fields common in
-      let fields = ("id", Id.to_json id) :: fields in
+      let fields = Id.field id :: fields in
       let fields =
         let ph, args =
           match object_kind with

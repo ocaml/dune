@@ -282,6 +282,61 @@ end
 
 let _ = Value_id.to_dyn
 
+(* Dependencies of a value accumulated so far. All of them are added to the DAG
+   of sample attempts to detect cycles.
+
+   We start accumulating dependencies during the [restore_from_cache] step. Some
+   of them may turn out to be "phantom", i.e. we used to depend on them but do
+   not depend on them anymore. This happens when the [restore_from_cache] step
+   fails and we fall back to recomputing the value, which can lead to a new set
+   of dependencies.
+
+   Once we move to the [compute] step, we start accumulating actual dependencies
+   of the value in [compute_deps]. The list of dependencies is stored in the
+   reversed order for efficient updates.
+
+   After the [compute] step has finished, [compute_deps] are stored in the
+   resulting [Cached_value.t]. *)
+module Deps_so_far = struct
+  type 'node deps =
+    | Compute_not_started
+    | Compute_started of { deps_reversed : 'node list }
+
+  (* Some of the [added_to_dag] nodes also need to be added to [compute_deps]. *)
+  type status = { added_to_compute_deps : bool } [@@unboxed]
+
+  type 'node t =
+    { mutable added_to_dag : status Id.Map.t
+    ; mutable compute_deps : 'node deps
+    }
+
+  let create () =
+    { added_to_dag = Id.Map.empty; compute_deps = Compute_not_started }
+
+  let start_compute t = t.compute_deps <- Compute_started { deps_reversed = [] }
+
+  (* Add a new dependency [node] to [added_to_dag] and also to [compute_deps] if
+     [Compute_started] and the dependency hasn't been added before. *)
+  let add_dep t node_id node =
+    t.added_to_dag <-
+      Id.Map.update t.added_to_dag node_id ~f:(fun status ->
+          match (t.compute_deps, status) with
+          | Compute_not_started, _ -> Some { added_to_compute_deps = false }
+          | _, Some { added_to_compute_deps } when added_to_compute_deps ->
+            status
+          | Compute_started { deps_reversed }, _ ->
+            t.compute_deps <-
+              Compute_started { deps_reversed = node :: deps_reversed };
+            Some { added_to_compute_deps = true })
+
+  let get_compute_deps_rev t =
+    match t.compute_deps with
+    | Compute_not_started ->
+      Code_error.raise
+        "get_compute_deps_rev called in the Compute_not_started state" []
+    | Compute_started { deps_reversed } -> deps_reversed
+end
+
 module M = struct
   module rec Completion : sig
     type ('a, 'b, 'f) t =
@@ -333,25 +388,9 @@ module M = struct
   end =
     Cached_value
 
-  and Deps_so_far : sig
-    type t =
-      { mutable set : Id.Set.t
-      ; mutable deps_reversed : Dep_node.packed list
-      }
-
-    val create : unit -> t
-  end = struct
-    type t =
-      { mutable set : Id.Set.t
-      ; mutable deps_reversed : Dep_node.packed list
-      }
-
-    let create () : Deps_so_far.t = { set = Id.Set.empty; deps_reversed = [] }
-  end
-
   and Running_state : sig
     type t =
-      { deps_so_far : Deps_so_far.t
+      { deps_so_far : Dep_node.packed Deps_so_far.t
       ; sample_attempt : Dag.node
       }
   end =
@@ -442,7 +481,6 @@ module State = M.State
 module Running_state = M.Running_state
 module Dep_node = M.Dep_node
 module Last_dep = M.Last_dep
-module Deps_so_far = M.Deps_so_far
 
 let currently_considering (v : _ State.t) : _ State.t =
   match v with
@@ -589,16 +627,16 @@ module Sample_attempt_dag_node = struct
     | Finished
 end
 
-(* Add a dependency on the [node] from the caller, if there is one. Returns an
-   [Error] if the new dependency would introduce a dependency cycle. *)
+(* Add a dependency on the [dep_node] from the caller, if there is one. Returns
+   an [Error] if the new dependency would introduce a dependency cycle. *)
 let add_dep_from_caller (type i o f) ~called_from_peek
-    (node : (i, o, f) Dep_node.t)
+    (dep_node : (i, o, f) Dep_node.t)
     (sample_attempt_dag_node : Sample_attempt_dag_node.t) =
   match Call_stack.get_call_stack_tip () with
   | None -> Ok ()
   | Some (Stack_frame_with_state.T caller) -> (
     let () =
-      match (caller.without_state.spec.f, node.without_state.spec.f) with
+      match (caller.without_state.spec.f, dep_node.without_state.spec.f) with
       | Async _, Async _ -> ()
       | Async _, Sync _ -> ()
       | Sync _, Sync _ -> ()
@@ -608,34 +646,38 @@ let add_dep_from_caller (type i o f) ~called_from_peek
             "[Memo.add_dep_from_caller ~called_from_peek:false] Synchronous \
              functions are not allowed to depend on asynchronous ones."
             [ ("stack", Call_stack.get_call_stack_as_dyn ())
-            ; ("adding", Stack_frame_without_state.to_dyn (T node.without_state))
+            ; ( "adding"
+              , Stack_frame_without_state.to_dyn (T dep_node.without_state) )
             ]
     in
     let deps_so_far_of_caller = caller.running_state.deps_so_far in
-    match Id.Set.mem deps_so_far_of_caller.set node.without_state.id with
-    | true -> Ok ()
+    match
+      Id.Map.mem deps_so_far_of_caller.added_to_dag dep_node.without_state.id
+    with
+    | true ->
+      Deps_so_far.add_dep deps_so_far_of_caller dep_node.without_state.id
+        (Dep_node.T dep_node);
+      Ok ()
     | false -> (
       let cycle_error =
         match sample_attempt_dag_node with
         | Finished -> None
-        | Running node -> (
+        | Running dag_node -> (
           match
             Dag.add_assuming_missing global_dep_dag
-              caller.running_state.sample_attempt node
+              caller.running_state.sample_attempt dag_node
           with
           | () -> None
           | exception Dag.Cycle cycle ->
             Some
               { Cycle_error.stack = Call_stack.get_call_stack_without_state ()
-              ; cycle = List.map cycle ~f:(fun node -> node.Dag.data)
+              ; cycle = List.map cycle ~f:(fun dag_node -> dag_node.Dag.data)
               } )
       in
       match cycle_error with
       | None ->
-        deps_so_far_of_caller.set <-
-          Id.Set.add deps_so_far_of_caller.set node.without_state.id;
-        deps_so_far_of_caller.deps_reversed <-
-          Dep_node.T node :: deps_so_far_of_caller.deps_reversed;
+        Deps_so_far.add_dep deps_so_far_of_caller dep_node.without_state.id
+          (Dep_node.T dep_node);
         Ok ()
       | Some cycle_error -> Error cycle_error ) )
 
@@ -850,6 +892,7 @@ end = struct
           Error (Cancelled { dependency_cycle }) ) )
 
   let compute (dep_node : _ Dep_node.t) cache_lookup_failure deps_so_far =
+    Deps_so_far.start_compute deps_so_far;
     let compute_value_and_deps_rev () =
       match dep_node.without_state.spec.f with
       | Function.Sync f ->
@@ -866,7 +909,7 @@ end = struct
             in
             Error (Value.Sync exn)
         in
-        (value, deps_so_far.Deps_so_far.deps_reversed)
+        (value, Deps_so_far.get_compute_deps_rev deps_so_far)
     in
     match cache_lookup_failure with
     | Cache_lookup_failure.Cancelled { dependency_cycle } ->
@@ -1022,6 +1065,7 @@ end = struct
           Error (Cancelled { dependency_cycle }) ) )
 
   let compute (dep_node : _ Dep_node.t) cache_lookup_failure deps_so_far =
+    Deps_so_far.start_compute deps_so_far;
     let compute_value_and_deps_rev () =
       match dep_node.without_state.spec.f with
       | Function.Async f ->
@@ -1038,7 +1082,7 @@ end = struct
           | Ok res -> Value.Ok res
           | Error exns -> Error (Value.Async (Exn_set.of_list exns))
         in
-        (value, deps_so_far.Deps_so_far.deps_reversed)
+        (value, Deps_so_far.get_compute_deps_rev deps_so_far)
     in
     match cache_lookup_failure with
     | Cache_lookup_failure.Cancelled { dependency_cycle } ->

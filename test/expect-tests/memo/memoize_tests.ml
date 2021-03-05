@@ -1262,7 +1262,7 @@ let%expect_test "Nested nodes with cutoff are recomputed unnecessarily (async)"
 
 (* In addition to its direct purpose, this test also: (i) demonstrates what
    happens in the presence of non-determinism; and (ii) tests cell invalidation. *)
-let%expect_test "Demonstrate the existence of phantom dependencies" =
+let%expect_test "Test that there are no phantom dependencies" =
   let counter = ref 0 in
   let const_8 =
     create ~with_cutoff:false "base" (fun () ->
@@ -1324,33 +1324,10 @@ let%expect_test "Demonstrate the existence of phantom dependencies" =
   Memo.Cell.invalidate cell;
   Memo.restart_current_run ();
   evaluate_and_print summit 0;
-  (* The output below is unexpected: the cell is no longer a dependency of the
-     [middle] node yet it still somehow invalidated the result. The reason is
-     that the cell is a "phantom" dependency: we started checking whether the
-     dependencies of [middle] were up to date, found that they were not, but
-     still registered the dependency, and then recomputed [middle], keeping the
-     phantom dependency. *)
-  [%expect
-    {|
-    base = 8
-    *** middle does not depend on base ***
-    Started evaluating summit
-    *** middle does not depend on base ***
-    Evaluated summit: 0
-    f 0 = Ok 0 |}];
-  Memo.Cell.invalidate cell;
-  Memo.restart_current_run ();
-  evaluate_and_print summit 0;
-  (* Note that phantom dependencies are persistent: we keep re-checking and
-     re-registering them. *)
-  [%expect
-    {|
-    base = 8
-    *** middle does not depend on base ***
-    Started evaluating summit
-    *** middle does not depend on base ***
-    Evaluated summit: 0
-    f 0 = Ok 0 |}]
+  (* Nothing is recomputed, since the result no longer depends on the cell. In
+     the past, the cell remained as a "phantom dependency", which caused
+     unnecessary recomputations. *)
+  [%expect {| f 0 = Ok 0 |}]
 
 let print_exns f =
   let res =

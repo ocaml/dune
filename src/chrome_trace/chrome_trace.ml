@@ -284,35 +284,37 @@ module Event = struct
     | Process -> Json.String "p"
     | Thread -> Json.String "t"
 
+  let args_field fields = ("args", Json.Object fields)
+
   let json_fields_of_metadata m =
     let fields =
       match m with
       | Process_name { pid; name } ->
         [ ("name", Json.String "thread_name")
         ; ("pid", Int pid)
-        ; ("args", Json.Object [ ("name", Json.String name) ])
+        ; args_field [ ("name", Json.String name) ]
         ]
       | Process_labels { pid; labels } ->
         [ ("name", Json.String "process_labels")
         ; ("pid", Int pid)
-        ; ("args", Json.Object [ ("labels", Json.String labels) ])
+        ; args_field [ ("labels", Json.String labels) ]
         ]
       | Thread_name { tid; pid; name } ->
         [ ("name", Json.String "process_name")
         ; ("pid", Int pid)
         ; ("tid", Int tid)
-        ; ("args", Json.Object [ ("name", Json.String name) ])
+        ; args_field [ ("name", Json.String name) ]
         ]
       | Process_sort_index { pid; sort_index } ->
         [ ("name", Json.String "process_sort_index")
         ; ("pid", Int pid)
-        ; ("args", Json.Object [ ("sort_index", Json.Int sort_index) ])
+        ; args_field [ ("sort_index", Json.Int sort_index) ]
         ]
       | Thread_sort_index { pid; sort_index; tid } ->
         [ ("name", Json.String "thread_sort_index")
         ; ("pid", Int pid)
         ; ("tid", Int tid)
-        ; ("args", Json.Object [ ("sort_index", Json.Int sort_index) ])
+        ; args_field [ ("sort_index", Json.Int sort_index) ]
         ]
     in
     phase "M" :: fields
@@ -320,13 +322,13 @@ module Event = struct
   let to_json_fields : t -> (string * Json.t) list = function
     | Counter (common, args, id) -> (
       let fields = common_fields common in
-      let fields = phase "C" :: ("args", Json.Object args) :: fields in
+      let fields = phase "C" :: args_field args :: fields in
       match id with
       | None -> fields
       | Some id -> Id.field id :: fields )
     | Duration_start (common, args, id) -> (
       let fields = common_fields common in
-      let fields = phase "B" :: ("args", Json.Object args) :: fields in
+      let fields = phase "B" :: args_field args :: fields in
       match id with
       | None -> fields
       | Some id -> Id.field id :: fields )
@@ -340,7 +342,7 @@ module Event = struct
       in
       match args with
       | None -> fields
-      | Some args -> ("args", Json.Object args) :: fields )
+      | Some args -> args_field args :: fields )
     | Complete { common; dur; args; tdur } -> (
       let fields = common_fields common in
       let fields = phase "X" :: ("dur", Timestamp.to_json dur) :: fields in
@@ -351,7 +353,7 @@ module Event = struct
       in
       match args with
       | None -> fields
-      | Some args -> ("args", Json.Object args) :: fields )
+      | Some args -> args_field args :: fields )
     | Instant (common, scope, args) -> (
       let fields = common_fields common in
       let fields = phase "i" :: fields in
@@ -362,7 +364,7 @@ module Event = struct
       in
       match args with
       | None -> fields
-      | Some args -> ("args", Json.Object args) :: fields )
+      | Some args -> args_field args :: fields )
     | Async { common; async_kind; scope; id; args } -> (
       let fields = common_fields common in
       let fields = Id.field id :: fields in
@@ -385,7 +387,7 @@ module Event = struct
       in
       match args with
       | None -> fields
-      | Some args -> ("args", Json.Object args) :: fields )
+      | Some args -> args_field args :: fields )
     | Object { common; object_kind; id; scope } -> (
       let fields = common_fields common in
       let fields = Id.field id :: fields in
@@ -401,12 +403,12 @@ module Event = struct
               | Some cat ->
                 ("cat", Json.String (String.concat ~sep:"," cat)) :: args
             in
-            ("O", Some (Json.Object [ ("snapshot", Json.Object args) ]))
+            ("O", Some [ ("snapshot", Json.Object args) ])
         in
         let fields = phase ph :: fields in
         match args with
         | None -> fields
-        | Some args -> ("args", args) :: fields
+        | Some args -> args_field args :: fields
       in
       match scope with
       | None -> fields

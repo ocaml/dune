@@ -83,33 +83,10 @@ type t =
   { print : string -> unit
   ; close : unit -> unit
   ; get_time : unit -> Timestamp.t
-  ; gc_stat : unit -> Gc.stat
   ; buffer : Buffer.t
   ; mutable after_first_event : bool
   ; mutable next_id : int
   }
-
-let fake_gc_stat =
-  let init_gc = Gc.quick_stat () in
-  { init_gc with
-    Gc.minor_words = 0.
-  ; promoted_words = 0.
-  ; major_words = 0.
-  ; minor_collections = 0
-  ; major_collections = 0
-  ; heap_words = 0
-  ; heap_chunks = 0
-  ; live_words = 0
-  ; live_blocks = 0
-  ; free_words = 0
-  ; free_blocks = 0
-  ; largest_free = 0
-  ; fragments = 0
-  ; compactions = 0
-  ; top_heap_words = 0
-  ; stack_size = 0
-  }
-  [@ocaml.warning "-23"]
 
 (* all fields of record used *)
 
@@ -117,16 +94,8 @@ let fake time_ref buf =
   let print s = Buffer.add_string buf s in
   let close () = () in
   let get_time () = Timestamp.of_float_seconds !time_ref in
-  let gc_stat () = fake_gc_stat in
   let buffer = Buffer.create 1024 in
-  { print
-  ; close
-  ; get_time
-  ; gc_stat
-  ; after_first_event = false
-  ; next_id = 0
-  ; buffer
-  }
+  { print; close; get_time; after_first_event = false; next_id = 0; buffer }
 
 let close { print; close; _ } =
   print "]\n";
@@ -137,16 +106,8 @@ let make path =
   let print s = Stdlib.output_string channel s in
   let close () = Stdlib.close_out channel in
   let get_time () = Timestamp.of_float_seconds (Unix.gettimeofday ()) in
-  let gc_stat () = Gc.stat () in
   let buffer = Buffer.create 1024 in
-  { print
-  ; close
-  ; get_time
-  ; gc_stat
-  ; after_first_event = false
-  ; next_id = 0
-  ; buffer
-  }
+  { print; close; get_time; after_first_event = false; next_id = 0; buffer }
 
 let next_leading_char t =
   match t.after_first_event with
@@ -397,30 +358,6 @@ end
 type event = Event.Id.t * string
 
 let emit t event = printf t "%s" (Json.to_string (Event.to_json event))
-
-let emit_counter t key values =
-  let time = t.get_time () in
-  let event =
-    let common = Event.common ~name:key ~pid:0 ~tid:0 ~ts:time () in
-    Event.Counter (common, values, None)
-  in
-  printf t "%s" (Json.to_string (Event.to_json event))
-
-let emit_gc_counters t =
-  let stat = t.gc_stat () in
-  emit_counter t "gc"
-    [ ("live_words", Json.Int stat.live_words)
-    ; ("free_words", Int stat.free_words)
-    ; ("stack_size", Int stat.stack_size)
-    ; ("heap_words", Int stat.heap_words)
-    ; ("top_heap_words", Int stat.top_heap_words)
-    ; ("minor_words", Float stat.minor_words)
-    ; ("major_words", Float stat.major_words)
-    ; ("promoted_words", Float stat.promoted_words)
-    ; ("compactions", Int stat.compactions)
-    ; ("major_collections", Int stat.major_collections)
-    ; ("minor_collections", Int stat.minor_collections)
-    ]
 
 let next_id t =
   let r = t.next_id in

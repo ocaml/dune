@@ -79,6 +79,3 @@ val on_process_start : t -> program:string -> args:string list -> event
 
 (** Capture the current time and output a complete event. *)
 val on_process_end : t -> event -> unit
-
-(** Emit counter events for GC stats. *)
-val emit_gc_counters : t -> unit

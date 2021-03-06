@@ -261,6 +261,11 @@ module Event = struct
 
   let phase s = ("ph", Json.String s)
 
+  let add_field_opt to_field field fields =
+    match field with
+    | None -> fields
+    | Some f -> to_field f :: fields
+
   let common_fields { name; cat; ts; tts; pid; tid; cname } =
     let fields =
       [ ("name", Json.String name)
@@ -271,13 +276,9 @@ module Event = struct
       ]
     in
     let fields =
-      match cname with
-      | None -> fields
-      | Some cname -> ("cname", String cname) :: fields
+      add_field_opt (fun cname -> ("cname", Json.String cname)) cname fields
     in
-    match tts with
-    | None -> fields
-    | Some tts -> ("tts", Timestamp.to_json tts) :: fields
+    add_field_opt (fun tts -> ("tts", Timestamp.to_json tts)) tts fields
 
   let json_of_scope = function
     | Global -> Json.String "g"
@@ -310,19 +311,15 @@ module Event = struct
     phase "M" :: fields
 
   let to_json_fields : t -> (string * Json.t) list = function
-    | Counter (common, args, id) -> (
+    | Counter (common, args, id) ->
       let fields = common_fields common in
       let fields = phase "C" :: args_field args :: fields in
-      match id with
-      | None -> fields
-      | Some id -> Id.field id :: fields )
-    | Duration_start (common, args, id) -> (
+      add_field_opt Id.field id fields
+    | Duration_start (common, args, id) ->
       let fields = common_fields common in
       let fields = phase "B" :: args_field args :: fields in
-      match id with
-      | None -> fields
-      | Some id -> Id.field id :: fields )
-    | Duration_end { pid; tid; ts; args } -> (
+      add_field_opt Id.field id fields
+    | Duration_end { pid; tid; ts; args } ->
       let fields =
         [ ("tid", Json.Int tid)
         ; ("pid", Int pid)
@@ -330,32 +327,22 @@ module Event = struct
         ; phase "E"
         ]
       in
-      match args with
-      | None -> fields
-      | Some args -> args_field args :: fields )
-    | Complete { common; dur; args; tdur } -> (
+      add_field_opt args_field args fields
+    | Complete { common; dur; args; tdur } ->
       let fields = common_fields common in
       let fields = phase "X" :: ("dur", Timestamp.to_json dur) :: fields in
       let fields =
-        match tdur with
-        | None -> fields
-        | Some tdur -> ("tdur", Timestamp.to_json tdur) :: fields
+        add_field_opt (fun tdur -> ("tdur", Timestamp.to_json tdur)) tdur fields
       in
-      match args with
-      | None -> fields
-      | Some args -> args_field args :: fields )
-    | Instant (common, scope, args) -> (
+      add_field_opt args_field args fields
+    | Instant (common, scope, args) ->
       let fields = common_fields common in
       let fields = phase "i" :: fields in
       let fields =
-        match scope with
-        | None -> fields
-        | Some s -> ("s", json_of_scope s) :: fields
+        add_field_opt (fun s -> ("s", json_of_scope s)) scope fields
       in
-      match args with
-      | None -> fields
-      | Some args -> args_field args :: fields )
-    | Async { common; async_kind; scope; id; args } -> (
+      add_field_opt args_field args fields
+    | Async { common; async_kind; scope; id; args } ->
       let fields = common_fields common in
       let fields = Id.field id :: fields in
       let fields =
@@ -371,14 +358,10 @@ module Event = struct
         ph :: fields
       in
       let fields =
-        match scope with
-        | None -> fields
-        | Some s -> ("scope", Json.String s) :: fields
+        add_field_opt (fun s -> ("scope", Json.String s)) scope fields
       in
-      match args with
-      | None -> fields
-      | Some args -> args_field args :: fields )
-    | Object { common; object_kind; id; scope } -> (
+      add_field_opt args_field args fields
+    | Object { common; object_kind; id; scope } ->
       let fields = common_fields common in
       let fields = Id.field id :: fields in
       let fields =
@@ -387,22 +370,17 @@ module Event = struct
           | New -> ("N", None)
           | Destroy -> ("D", None)
           | Snapshot { cat; args } ->
-            let args =
-              match cat with
-              | None -> args
-              | Some cat ->
-                ("cat", Json.String (String.concat ~sep:"," cat)) :: args
+            let snapshot =
+              add_field_opt
+                (fun cat -> ("cat", Json.String (String.concat ~sep:"," cat)))
+                cat args
             in
-            ("O", Some [ ("snapshot", Json.Object args) ])
+            ("O", Some [ ("snapshot", Json.Object snapshot) ])
         in
         let fields = phase ph :: fields in
-        match args with
-        | None -> fields
-        | Some args -> args_field args :: fields
+        add_field_opt args_field args fields
       in
-      match scope with
-      | None -> fields
-      | Some s -> ("scope", Json.String s) :: fields )
+      add_field_opt (fun s -> ("scope", Json.String s)) scope fields
     | Metadata m -> json_fields_of_metadata m
 
   let to_json t = Json.Object (to_json_fields t)

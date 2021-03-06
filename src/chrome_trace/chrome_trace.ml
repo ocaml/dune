@@ -64,11 +64,15 @@ module Timestamp : sig
 
   val to_json : t -> Json.t
 
-  val of_float : float -> t
+  val now : unit -> t
+
+  val of_float_seconds : float -> t
 end = struct
   type t = float
 
-  let of_float x = x
+  let now () = Unix.gettimeofday ()
+
+  let of_float_seconds x = x
 
   let to_json f =
     let n = int_of_float @@ (f *. 1_000_000.) in
@@ -112,7 +116,7 @@ let fake_gc_stat =
 let fake time_ref buf =
   let print s = Buffer.add_string buf s in
   let close () = () in
-  let get_time () = Timestamp.of_float !time_ref in
+  let get_time () = Timestamp.of_float_seconds !time_ref in
   let gc_stat () = fake_gc_stat in
   let buffer = Buffer.create 1024 in
   { print
@@ -132,7 +136,7 @@ let make path =
   let channel = Stdlib.open_out path in
   let print s = Stdlib.output_string channel s in
   let close () = Stdlib.close_out channel in
-  let get_time () = Timestamp.of_float (Unix.gettimeofday ()) in
+  let get_time () = Timestamp.of_float_seconds (Unix.gettimeofday ()) in
   let gc_stat () = Gc.stat () in
   let buffer = Buffer.create 1024 in
   { print
@@ -157,6 +161,8 @@ let printf t format_string =
 
 module Event = struct
   [@@@ocaml.warning "-37"]
+
+  module Timestamp = Timestamp
 
   type common =
     { name : string
@@ -384,9 +390,13 @@ module Event = struct
     | Metadata m -> json_fields_of_metadata m
 
   let to_json t = Json.Object (to_json_fields t)
+
+  let counter ?id common args = Counter (common, args, id)
 end
 
 type event = Event.Id.t * string
+
+let emit t event = printf t "%s" (Json.to_string (Event.to_json event))
 
 let emit_counter t key values =
   let time = t.get_time () in

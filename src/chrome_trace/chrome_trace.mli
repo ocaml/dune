@@ -18,6 +18,42 @@ module Json : sig
     | Object of (string * t) list
 end
 
+module Event : sig
+  type t
+
+  module Timestamp : sig
+    type t
+
+    val of_float_seconds : float -> t
+
+    val now : unit -> t
+  end
+
+  module Id : sig
+    type t =
+      | Int of int
+      | String of string
+  end
+
+  type common
+
+  val common :
+       ?tts:Timestamp.t
+    -> ?cname:string
+    -> ?cat:string list
+    -> ts:Timestamp.t
+    -> name:string
+    -> pid:int
+    -> tid:int
+    -> unit
+    -> common
+
+  type args = (string * Json.t) list
+
+  (** Create a counter event *)
+  val counter : ?id:Id.t -> common -> args -> t
+end
+
 (** The (mutable) state of reporters. It is basically an output channel. *)
 type t
 
@@ -32,6 +68,9 @@ val fake : float ref -> Buffer.t -> t
 (** Output trailing data to make the underlying file valid JSON, and close it. *)
 val close : t -> unit
 
+(** Emity an event *)
+val emit : t -> Event.t -> unit
+
 type event
 
 (** Prepare data related to the processus. This will capture the current time to
@@ -40,9 +79,6 @@ val on_process_start : t -> program:string -> args:string list -> event
 
 (** Capture the current time and output a complete event. *)
 val on_process_end : t -> event -> unit
-
-(** Emit a counter event. This is measuring the value of an integer variable. *)
-val emit_counter : t -> string -> (string * Json.t) list -> unit
 
 (** Emit counter events for GC stats. *)
 val emit_gc_counters : t -> unit

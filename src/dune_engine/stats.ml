@@ -46,13 +46,27 @@ let trace = ref None
 let record () =
   Option.iter !trace ~f:(fun reporter ->
       Chrome_trace.emit_gc_counters reporter;
-      Chrome_trace.emit_counter reporter "evaluated-rules"
-        [ ("value", Chrome_trace.Json.Int !evaluated_rules) ];
+      let now = Chrome_trace.Event.Timestamp.now () in
+      let event =
+        let args = [ ("value", Chrome_trace.Json.Int !evaluated_rules) ] in
+        let common =
+          Chrome_trace.Event.common ~name:"evaluated_rules" ~ts:now ~pid:0
+            ~tid:0 ()
+        in
+        Chrome_trace.Event.counter common args
+      in
+      Chrome_trace.emit reporter event;
       match Fd_count.get () with
       | Unknown -> ()
       | This fds ->
-        Chrome_trace.emit_counter reporter "fds"
-          [ ("value", Chrome_trace.Json.Int fds) ])
+        let event =
+          let args = [ ("value", Chrome_trace.Json.Int fds) ] in
+          let common =
+            Chrome_trace.Event.common ~name:"fds" ~ts:now ~pid:0 ~tid:0 ()
+          in
+          Chrome_trace.Event.counter common args
+        in
+        Chrome_trace.emit reporter event)
 
 let enable path =
   let reporter = Chrome_trace.make path in

@@ -288,34 +288,24 @@ module Event = struct
 
   let json_fields_of_metadata m =
     let fields =
+      let common pid name = [ ("name", Json.String name); ("pid", Int pid) ] in
       match m with
       | Process_name { pid; name } ->
-        [ ("name", Json.String "thread_name")
-        ; ("pid", Int pid)
-        ; args_field [ ("name", Json.String name) ]
-        ]
+        args_field [ ("name", Json.String name) ] :: common pid "thread_name"
       | Process_labels { pid; labels } ->
-        [ ("name", Json.String "process_labels")
-        ; ("pid", Int pid)
-        ; args_field [ ("labels", Json.String labels) ]
-        ]
+        args_field [ ("labels", Json.String labels) ]
+        :: common pid "process_labels"
       | Thread_name { tid; pid; name } ->
-        [ ("name", Json.String "process_name")
-        ; ("pid", Int pid)
-        ; ("tid", Int tid)
-        ; args_field [ ("name", Json.String name) ]
-        ]
+        ("tid", Int tid)
+        :: args_field [ ("name", Json.String name) ]
+        :: common pid "process_name"
       | Process_sort_index { pid; sort_index } ->
-        [ ("name", Json.String "process_sort_index")
-        ; ("pid", Int pid)
-        ; args_field [ ("sort_index", Json.Int sort_index) ]
-        ]
+        args_field [ ("sort_index", Json.Int sort_index) ]
+        :: common pid "process_sort_index"
       | Thread_sort_index { pid; sort_index; tid } ->
-        [ ("name", Json.String "thread_sort_index")
-        ; ("pid", Int pid)
-        ; ("tid", Int tid)
-        ; args_field [ ("sort_index", Json.Int sort_index) ]
-        ]
+        ("tid", Int tid)
+        :: args_field [ ("sort_index", Json.Int sort_index) ]
+        :: common pid "thread_sort_index"
     in
     phase "M" :: fields
 

@@ -31,7 +31,7 @@ let%expect_test _ =
   [%expect
     {|
 [{"args":{"process_args":["arg1","arg2"]},"ph":"b","id":0,"name":"program","cat":"process","ts":10000000,"pid":0,"tid":0}
-,{"ph":"b","id":0,"name":"program","cat":"process","ts":30000000,"pid":0,"tid":0}
+,{"ph":"e","id":0,"name":"program","cat":"process","ts":30000000,"pid":0,"tid":0}
 ,{"ph":"C","args":{"live_words":0,"free_words":0,"stack_size":0,"heap_words":0,"top_heap_words":0,"minor_words":0.,"major_words":0.,"promoted_words":0.,"compactions":0,"major_collections":0,"minor_collections":0},"name":"gc","cat":"","ts":30000000,"pid":0,"tid":0}
 ]
 |}]

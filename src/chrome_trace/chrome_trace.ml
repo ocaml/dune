@@ -442,6 +442,6 @@ let on_process_end t (id, name) =
     let common =
       Event.common ~cat:[ "process" ] ~name ~pid:0 ~tid:0 ~ts:time ()
     in
-    Event.Async { common; async_kind = Start; scope = None; id; args = None }
+    Event.Async { common; async_kind = End; scope = None; id; args = None }
   in
   printf t "%s" (Json.to_string (Event.to_json event))

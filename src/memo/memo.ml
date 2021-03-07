@@ -599,10 +599,6 @@ let currently_considering (v : _ State.t) : _ State.t =
     if Run.is_current run then
       running
     else
-      (* TODO: A computation can only become zombie if [restore_from_cache]
-         finished unsuccessfully. What's wrong with simply starting the
-         [compute] if we do reach a zombie? That seems to be harmless and
-         eliminates a non-trivial (and possibly incorrect) assumption. *)
       Code_error.raise
         "A zombie computation is encountered in [currently_considering]" []
 

@@ -1312,6 +1312,93 @@ let%expect_test "Test that there are no phantom dependencies" =
      unnecessary recomputations. *)
   [%expect {| f 0 = Ok 0 |}]
 
+let%expect_test "Abandoned node with no cutoff is not a zombie" =
+  let count_runs = count_runs "base" in
+  let base () = create ~with_cutoff:false "base" count_runs in
+  let last_base = ref None in
+  let captured_base = ref None in
+  let middle =
+    Memo.create "middle"
+      ~input:(module Unit)
+      ~visibility:Hidden
+      ~output:(Simple (module Int))
+      ~doc:"" Async
+      (fun () ->
+        printf "Started evaluating middle\n";
+        let base = base () in
+        last_base := Some base;
+        let+ result = Memo.exec base () in
+        printf "Evaluated middle: %d\n" result;
+        result)
+  in
+  let summit =
+    Memo.create "summit"
+      ~input:(module Int)
+      ~visibility:Hidden
+      ~output:(Simple (module Int))
+      ~doc:"" Async
+      (fun input ->
+        printf "Started evaluating summit\n";
+        let* middle = Memo.exec middle () in
+        let+ result =
+          match middle with
+          | 1 ->
+            printf "*** Captured last base ***\n";
+            captured_base := !last_base;
+            Memo.exec (Option.value_exn !captured_base) ()
+          | 2 ->
+            printf "*** Abandoned captured base ***\n";
+            Build.return input
+          | _ ->
+            printf "*** Recalled captured base ***\n";
+            Memo.exec (Option.value_exn !captured_base) ()
+        in
+        printf "Evaluated summit: %d\n" result;
+        result)
+  in
+  evaluate_and_print summit 0;
+  [%expect
+    {|
+    Started evaluating summit
+    Started evaluating middle
+    Started evaluating base
+    Evaluated base: 1
+    Evaluated middle: 1
+    *** Captured last base ***
+    Evaluated summit: 1
+    f 0 = Ok 1
+    |}];
+  Memo.restart_current_run ();
+  evaluate_and_print summit 0;
+  [%expect
+    {|
+    Started evaluating summit
+    Started evaluating middle
+    Started evaluating base
+    Evaluated base: 2
+    Evaluated middle: 2
+    *** Abandoned captured base ***
+    Evaluated summit: 0
+    f 0 = Ok 0
+    |}];
+  Memo.restart_current_run ();
+  evaluate_and_print summit 0;
+  [%expect
+    {|
+    Started evaluating summit
+    Started evaluating middle
+    Started evaluating base
+    Evaluated base: 3
+    Evaluated middle: 3
+    *** Recalled captured base ***
+    f 0 = Error
+            [ { exn =
+                  "(\"A zombie computation is encountered in [currently_considering]\", {})"
+              ; backtrace = ""
+              }
+            ]
+    |}]
+
 let print_exns f =
   let res =
     match

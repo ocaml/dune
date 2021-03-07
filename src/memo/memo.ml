@@ -599,8 +599,7 @@ let currently_considering (v : _ State.t) : _ State.t =
     if Run.is_current run then
       running
     else
-      Code_error.raise
-        "A zombie computation is encountered in [currently_considering]" []
+      Not_considering
 
 let get_cached_value_in_current_cycle (dep_node : _ Dep_node.t) =
   match dep_node.last_cached_value with

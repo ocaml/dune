@@ -1079,19 +1079,13 @@ let%expect_test "deadlocks and zombies when creating a cycle twice" =
   evaluate_and_print summit 2;
   [%expect
     {|
-    f 0 = Error
-            [ { exn =
-                  "(\"A zombie computation is encountered in [currently_considering]\", {})"
-              ; backtrace = ""
-              }
-            ]
     Started evaluating summit
-    f 2 = Error
-            [ { exn =
-                  "(\"A zombie computation is encountered in [currently_considering]\", {})"
-              ; backtrace = ""
-              }
-            ]
+    Started evaluating middle
+    Started evaluating base
+    Started evaluating cycle_creator
+    f 0 = Error [ { exn = "Exit"; backtrace = "" } ]
+    Started evaluating summit
+    f 2 = Error [ { exn = "Exit"; backtrace = "" } ]
     |}]
 
 let%expect_test "Nested nodes with cutoff are recomputed optimally (sync)" =
@@ -1391,12 +1385,8 @@ let%expect_test "Abandoned node with no cutoff is not a zombie" =
     Evaluated base: 3
     Evaluated middle: 3
     *** Recalled captured base ***
-    f 0 = Error
-            [ { exn =
-                  "(\"A zombie computation is encountered in [currently_considering]\", {})"
-              ; backtrace = ""
-              }
-            ]
+    Evaluated summit: 1
+    f 0 = Ok 1
     |}]
 
 let print_exns f =

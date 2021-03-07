@@ -1,5 +1,5 @@
-Unreleased
-----------
+2.8.3 (07/03/2021)
+------------------
 
 - Make `patdiff` show refined diffs (#4257, fixes #4254, @hakuch)
 

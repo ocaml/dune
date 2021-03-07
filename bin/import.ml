@@ -177,7 +177,8 @@ module Scheduler = struct
   let go ~(common : Common.t) f =
     let config = Common.config common in
     let rpc = Common.rpc common |> Option.map ~f:Dune_rpc_impl.Server.config in
-    let config = Dune_config.for_scheduler config rpc in
+    let stats = Common.stats common in
+    let config = Dune_config.for_scheduler config rpc stats in
     Scheduler.Run.go config
       ~on_event:(fun _ Scheduler.Run.Event.Tick -> on_tick ())
       f
@@ -185,7 +186,7 @@ module Scheduler = struct
   let poll ~(common : Common.t) ~once ~finally =
     let dune_config = Common.config common in
     let rpc = Common.rpc common |> Option.map ~f:Dune_rpc_impl.Server.config in
-    let config = Dune_config.for_scheduler dune_config rpc in
+    let config = Dune_config.for_scheduler dune_config rpc stats in
     Scheduler.Run.poll config
       ~on_event:(on_event_poll dune_config)
       ~once ~finally

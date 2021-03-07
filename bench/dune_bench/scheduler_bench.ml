@@ -3,7 +3,12 @@
 open Stdune
 open Dune_engine
 
-let config = { Scheduler.Config.concurrency = 1; display = Short; rpc = None }
+let config =
+  { Scheduler.Config.concurrency = 1
+  ; display = Short
+  ; rpc = None
+  ; stats = None
+  }
 
 let setup =
   lazy

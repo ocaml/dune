@@ -47,6 +47,7 @@ module Config = struct
     { concurrency : int
     ; display : Display.t
     ; rpc : Rpc.t option
+    ; stats : Chrome_trace.t option
     }
 end
 
@@ -122,7 +123,7 @@ module Event : sig
 
     type event
 
-    val create : unit -> t
+    val create : Chrome_trace.t option -> t
 
     (** Return the next event. File changes event are always flattened and
         returned first. *)
@@ -183,9 +184,10 @@ end = struct
       ; mutable pending_jobs : int
       ; mutable pending_rpc : int
       ; rpc_completed : Fiber.fill Queue.t
+      ; stats : Chrome_trace.t option
       }
 
-    let create () =
+    let create stats =
       let jobs_completed = Queue.create () in
       let rpc_completed = Queue.create () in
       let sync_tasks = Queue.create () in
@@ -206,6 +208,7 @@ end = struct
       ; pending_jobs
       ; rpc_completed
       ; pending_rpc
+      ; stats
       }
 
     let register_job_started q = q.pending_jobs <- q.pending_jobs + 1
@@ -233,8 +236,79 @@ end = struct
 
     let rec flush_sync_tasks q = if sync_task q then flush_sync_tasks q
 
+    module Fd_count = struct
+      type t =
+        | Unknown
+        | This of int
+
+      let try_to_use_lsof () =
+        (* note: we do not use the Process module here, because it would create
+           a circular dependency *)
+        let temp = Temp.create File ~prefix:"dune." ~suffix:".lsof" in
+        let stdout =
+          Unix.openfile
+            (Path.to_absolute_filename temp)
+            [ O_WRONLY; O_CREAT; O_TRUNC; O_SHARE_DELETE ]
+            0o666
+        in
+        let prog = "/usr/sbin/lsof" in
+        let argv = [ prog; "-w"; "-p"; string_of_int (Unix.getpid ()) ] in
+        let pid = Spawn.spawn ~prog ~argv ~stdout () in
+        Unix.close stdout;
+        match Unix.waitpid [] (Pid.to_int pid) with
+        | _, Unix.WEXITED 0 ->
+          let num_lines = List.length (Io.input_lines (Io.open_in temp)) in
+          This (num_lines - 1)
+        (* the output contains a header line *)
+        | _ -> Unknown
+
+      let get () =
+        match Sys.readdir "/proc/self/fd" with
+        | exception _ -> (
+          match try_to_use_lsof () with
+          | exception _ -> Unknown
+          | value -> value )
+        | files -> This (Array.length files - 1 (* -1 for the dirfd *))
+    end
+
+    let record_stats stats =
+      let module Event = Chrome_trace.Event in
+      let module Json = Chrome_trace.Json in
+      let ts = Event.Timestamp.now () in
+      let pid = 0 in
+      let tid = 0 in
+      let () =
+        let common = Event.common ~name:"gc" ~ts ~pid ~tid () in
+        let args =
+          let stat = Gc.stat () in
+          [ ("live_words", Json.Int stat.live_words)
+          ; ("free_words", Int stat.free_words)
+          ; ("stack_size", Int stat.stack_size)
+          ; ("heap_words", Int stat.heap_words)
+          ; ("top_heap_words", Int stat.top_heap_words)
+          ; ("minor_words", Float stat.minor_words)
+          ; ("major_words", Float stat.major_words)
+          ; ("promoted_words", Float stat.promoted_words)
+          ; ("compactions", Int stat.compactions)
+          ; ("major_collections", Int stat.major_collections)
+          ; ("minor_collections", Int stat.minor_collections)
+          ]
+        in
+        let event = Event.counter common args in
+        Chrome_trace.emit stats event
+      in
+      match Fd_count.get () with
+      | Unknown -> ()
+      | This fds ->
+        let event =
+          let args = [ ("value", Json.Int fds) ] in
+          let common = Event.common ~name:"fds" ~ts ~pid ~tid () in
+          Event.counter common args
+        in
+        Chrome_trace.emit stats event
+
     let next q =
-      Stats.record ();
+      Option.iter q.stats ~f:record_stats;
       Mutex.lock q.mutex;
       let rec loop () =
         while not (available q) do
@@ -853,7 +927,7 @@ let kill_and_wait_for_all_processes t =
   !saw_signal
 
 let prepare (config : Config.t) ~polling ~(handler : Handler.t) =
-  let events = Event.Queue.create () in
+  let events = Event.Queue.create config.stats in
   (* The signal watcher must be initialized first so that signals are blocked in
      all threads. *)
   Signal_watcher.init events;

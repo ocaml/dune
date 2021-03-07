@@ -1,4 +1,4 @@
 (library
  (name dune_config)
- (libraries stdune xdg dune_lang cache dune_engine dune_util)
+ (libraries stdune xdg dune_lang cache dune_engine chrome_trace dune_util)
  (synopsis "Internal Dune library, do not use!"))

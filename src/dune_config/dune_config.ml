@@ -349,10 +349,10 @@ let auto_concurrency =
       Log.info [ Pp.textf "Auto-detected concurrency: %d" n ];
       n)
 
-let for_scheduler (t : t) rpc =
+let for_scheduler (t : t) rpc stats =
   let concurrency =
     match t.concurrency with
     | Fixed i -> i
     | Auto -> Lazy.force auto_concurrency
   in
-  { Scheduler.Config.concurrency; display = t.display; rpc }
+  { Scheduler.Config.concurrency; display = t.display; rpc; stats }

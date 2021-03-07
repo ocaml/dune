@@ -32,6 +32,7 @@ module Config : sig
     { concurrency : int
     ; display : Display.t
     ; rpc : Rpc.t option
+    ; stats : Chrome_trace.t option
     }
 end
 

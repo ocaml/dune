@@ -368,24 +368,26 @@ end
    of ['a Lazy.t] but for asynchronous computations. *)
 module Once = struct
   type 'a state =
-    | Not_forced of 'a Fiber.t
+    | Not_forced of (unit -> 'a Fiber.t)
     | Forced of 'a Fiber.Ivar.t
 
   type 'a t = { mutable state : 'a state }
 
-  let create fiber = { state = Not_forced fiber }
+  let create thunk = { state = Not_forced thunk }
 
   let force t =
     match t.state with
     | Forced ivar ->
       let+ res = Fiber.Ivar.read ivar in
       res
-    | Not_forced fiber ->
+    | Not_forced thunk ->
       let ivar = Fiber.Ivar.create () in
       t.state <- Forced ivar;
-      let* result = fiber in
+      let* result = thunk () in
       let+ () = Fiber.Ivar.fill ivar result in
       result
+
+  let and_then t ~f = create (fun () -> Fiber.bind (force t) ~f)
 end
 
 (* An attempt to sample the current value of a node. It's an "attempt" because
@@ -1014,32 +1016,33 @@ end = struct
     let running_state : Running_state.t =
       { dag_node; deps_so_far = Deps_so_far.create () }
     in
-    let run_once_in_a_new_stack_frame thunk =
-      lazy
-        (Call_stack.push_sync_frame
-           (T { without_state = dep_node.without_state; running_state })
-           thunk)
+    let frame : Stack_frame_with_state.t =
+      T { without_state = dep_node.without_state; running_state }
     in
     let restore_from_cache =
-      run_once_in_a_new_stack_frame (fun () ->
-          let restore_result = restore_from_cache dep_node.last_cached_value in
-          ( match restore_result with
-          | Ok _ -> dep_node.state <- Not_considering
-          | Error _ -> () );
-          restore_result)
+      lazy
+        (Call_stack.push_sync_frame frame (fun () ->
+             let restore_result =
+               restore_from_cache dep_node.last_cached_value
+             in
+             ( match restore_result with
+             | Ok _ -> dep_node.state <- Not_considering
+             | Error _ -> () );
+             restore_result))
     in
     let compute =
-      run_once_in_a_new_stack_frame (fun () ->
-          match Lazy.force restore_from_cache with
-          | Ok cached_value -> cached_value
-          | Error cache_lookup_failure ->
-            dep_node.last_cached_value <- None;
-            let cached_value =
-              compute dep_node cache_lookup_failure running_state.deps_so_far
-            in
-            dep_node.last_cached_value <- Some cached_value;
-            dep_node.state <- Not_considering;
-            cached_value)
+      lazy
+        ( match Lazy.force restore_from_cache with
+        | Ok cached_value -> cached_value
+        | Error cache_lookup_failure ->
+          Call_stack.push_sync_frame frame (fun () ->
+              dep_node.last_cached_value <- None;
+              let cached_value =
+                compute dep_node cache_lookup_failure running_state.deps_so_far
+              in
+              dep_node.last_cached_value <- Some cached_value;
+              dep_node.state <- Not_considering;
+              cached_value) )
     in
     let completion : _ Sample_attempt.Completion.Sync.t =
       { restore_from_cache; compute }
@@ -1204,33 +1207,32 @@ end = struct
     let running_state : Running_state.t =
       { dag_node; deps_so_far = Deps_so_far.create () }
     in
-    let run_once_in_a_new_stack_frame fiber =
-      Once.create
-        (Call_stack.push_async_frame
-           (T { without_state = dep_node.without_state; running_state })
-           fiber)
+    let frame : Stack_frame_with_state.t =
+      T { without_state = dep_node.without_state; running_state }
     in
     let restore_from_cache =
-      run_once_in_a_new_stack_frame (fun () ->
-          let+ restore_result = restore_from_cache dep_node.last_cached_value in
-          ( match restore_result with
-          | Ok _ -> dep_node.state <- Not_considering
-          | Error _ -> () );
-          restore_result)
+      Once.create (fun () ->
+          Call_stack.push_async_frame frame (fun () ->
+              let+ restore_result =
+                restore_from_cache dep_node.last_cached_value
+              in
+              ( match restore_result with
+              | Ok _ -> dep_node.state <- Not_considering
+              | Error _ -> () );
+              restore_result))
     in
     let compute =
-      run_once_in_a_new_stack_frame (fun () ->
-          let* restore_result = Once.force restore_from_cache in
-          match restore_result with
-          | Ok cached_value -> Fiber.return cached_value
-          | Error cache_lookup_failure ->
-            dep_node.last_cached_value <- None;
-            let+ cached_value =
-              compute dep_node cache_lookup_failure running_state.deps_so_far
-            in
-            dep_node.last_cached_value <- Some cached_value;
-            dep_node.state <- Not_considering;
-            cached_value)
+      Once.and_then restore_from_cache ~f:(function
+        | Ok cached_value -> Fiber.return cached_value
+        | Error cache_lookup_failure ->
+          Call_stack.push_async_frame frame (fun () ->
+              dep_node.last_cached_value <- None;
+              let+ cached_value =
+                compute dep_node cache_lookup_failure running_state.deps_so_far
+              in
+              dep_node.last_cached_value <- Some cached_value;
+              dep_node.state <- Not_considering;
+              cached_value))
     in
     let completion : _ Sample_attempt.Completion.Async.t =
       { restore_from_cache; compute }

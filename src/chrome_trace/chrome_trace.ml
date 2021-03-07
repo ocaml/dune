@@ -355,6 +355,8 @@ module Event = struct
 
   let counter ?id common args = Counter (common, args, id)
 
+  let complete ?tdur ?args ~dur common = Complete { common; tdur; dur; args }
+
   let async ?scope ?args id async common =
     Async { common; args; scope; id; async }
 end

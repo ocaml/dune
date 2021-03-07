@@ -61,6 +61,9 @@ module Event : sig
     | End
 
   val async : ?scope:string -> ?args:args -> Id.t -> async -> common -> t
+
+  val complete :
+    ?tdur:Timestamp.t -> ?args:args -> dur:Timestamp.t -> common -> t
 end
 
 (** The (mutable) state of reporters. It is basically an output channel. *)

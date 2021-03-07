@@ -85,7 +85,6 @@ type t =
   ; get_time : unit -> Timestamp.t
   ; buffer : Buffer.t
   ; mutable after_first_event : bool
-  ; mutable next_id : int
   }
 
 (* all fields of record used *)
@@ -95,7 +94,7 @@ let fake time_ref buf =
   let close () = () in
   let get_time () = Timestamp.of_float_seconds !time_ref in
   let buffer = Buffer.create 1024 in
-  { print; close; get_time; after_first_event = false; next_id = 0; buffer }
+  { print; close; get_time; after_first_event = false; buffer }
 
 let close { print; close; _ } =
   print "]\n";
@@ -107,7 +106,7 @@ let make path =
   let close () = Stdlib.close_out channel in
   let get_time () = Timestamp.of_float_seconds (Unix.gettimeofday ()) in
   let buffer = Buffer.create 1024 in
-  { print; close; get_time; after_first_event = false; next_id = 0; buffer }
+  { print; close; get_time; after_first_event = false; buffer }
 
 let next_leading_char t =
   match t.after_first_event with
@@ -138,12 +137,14 @@ module Event = struct
   let common ?tts ?cname ?(cat = []) ~ts ~name ~pid ~tid () =
     { tts; cname; cat; ts; pid; tid; name }
 
+  let set_ts t ts = { t with ts }
+
   type scope =
     | Global
     | Process
     | Thread
 
-  type async_kind =
+  type async =
     | Start
     | Instant
     | End
@@ -213,7 +214,7 @@ module Event = struct
     | Instant of common * scope option * args option
     | Async of
         { common : common
-        ; async_kind : async_kind
+        ; async : async
         ; scope : string option
         ; id : Id.t
         ; args : args option
@@ -309,13 +310,13 @@ module Event = struct
         add_field_opt (fun s -> ("s", json_of_scope s)) scope fields
       in
       add_field_opt args_field args fields
-    | Async { common; async_kind; scope; id; args } ->
+    | Async { common; async; scope; id; args } ->
       let fields = common_fields common in
       let fields = Id.field id :: fields in
       let fields =
         let ph =
           let s =
-            match async_kind with
+            match async with
             | Start -> "b"
             | Instant -> "n"
             | End -> "e"
@@ -353,42 +354,9 @@ module Event = struct
   let to_json t = Json.Object (to_json_fields t)
 
   let counter ?id common args = Counter (common, args, id)
+
+  let async ?scope ?args id async common =
+    Async { common; args; scope; id; async }
 end
 
-type event = Event.Id.t * string
-
 let emit t event = printf t "%s" (Json.to_string (Event.to_json event))
-
-let next_id t =
-  let r = t.next_id in
-  t.next_id <- r + 1;
-  Event.Id.Int r
-
-let on_process_start t ~program ~args =
-  let name = Filename.basename program in
-  let id = next_id t in
-  let time = t.get_time () in
-  let event =
-    let common =
-      Event.common ~cat:[ "process" ] ~name ~pid:0 ~tid:0 ~ts:time ()
-    in
-    let args =
-      [ ( "process_args"
-        , Json.Array (List.map args ~f:(fun arg -> Json.String arg)) )
-      ]
-    in
-    Event.Async
-      { common; async_kind = Start; scope = None; id; args = Some args }
-  in
-  printf t "%s" (Json.to_string (Event.to_json event));
-  (id, name)
-
-let on_process_end t (id, name) =
-  let time = t.get_time () in
-  let event =
-    let common =
-      Event.common ~cat:[ "process" ] ~name ~pid:0 ~tid:0 ~ts:time ()
-    in
-    Event.Async { common; async_kind = End; scope = None; id; args = None }
-  in
-  printf t "%s" (Json.to_string (Event.to_json event))

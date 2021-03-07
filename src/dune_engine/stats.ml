@@ -1,4 +1,7 @@
 open Stdune
+module Json = Chrome_trace.Json
+module Event = Chrome_trace.Event
+module Timestamp = Event.Timestamp
 
 module Fd_count = struct
   type t =
@@ -37,6 +40,8 @@ end
 
 let evaluated_rules = ref 0
 
+let id = ref 0
+
 let new_evaluated_rule () = incr evaluated_rules
 
 let () = Hooks.End_of_build.always (fun () -> evaluated_rules := 0)
@@ -45,14 +50,14 @@ let trace = ref None
 
 let record () =
   Option.iter !trace ~f:(fun reporter ->
-      let ts = Chrome_trace.Event.Timestamp.now () in
+      let ts = Event.Timestamp.now () in
       let pid = 0 in
       let tid = 0 in
       let () =
-        let common = Chrome_trace.Event.common ~name:"gc" ~ts ~pid ~tid () in
+        let common = Event.common ~name:"gc" ~ts ~pid ~tid () in
         let args =
           let stat = Gc.stat () in
-          [ ("live_words", Chrome_trace.Json.Int stat.live_words)
+          [ ("live_words", Json.Int stat.live_words)
           ; ("free_words", Int stat.free_words)
           ; ("stack_size", Int stat.stack_size)
           ; ("heap_words", Int stat.heap_words)
@@ -65,16 +70,14 @@ let record () =
           ; ("minor_collections", Int stat.minor_collections)
           ]
         in
-        let event = Chrome_trace.Event.counter common args in
+        let event = Event.counter common args in
         Chrome_trace.emit reporter event
       in
       let () =
         let event =
-          let args = [ ("value", Chrome_trace.Json.Int !evaluated_rules) ] in
-          let common =
-            Chrome_trace.Event.common ~name:"evaluated_rules" ~ts ~pid ~tid ()
-          in
-          Chrome_trace.Event.counter common args
+          let args = [ ("value", Json.Int !evaluated_rules) ] in
+          let common = Event.common ~name:"evaluated_rules" ~ts ~pid ~tid () in
+          Event.counter common args
         in
         Chrome_trace.emit reporter event
       in
@@ -82,9 +85,9 @@ let record () =
       | Unknown -> ()
       | This fds ->
         let event =
-          let args = [ ("value", Chrome_trace.Json.Int fds) ] in
-          let common = Chrome_trace.Event.common ~name:"fds" ~ts ~pid ~tid () in
-          Chrome_trace.Event.counter common args
+          let args = [ ("value", Json.Int fds) ] in
+          let common = Event.common ~name:"fds" ~ts ~pid ~tid () in
+          Event.counter common args
         in
         Chrome_trace.emit reporter event)
 
@@ -98,7 +101,26 @@ let with_process ~program ~args fiber =
   | None -> fiber
   | Some reporter ->
     let open Fiber.O in
-    let event = Chrome_trace.on_process_start reporter ~program ~args in
+    incr id;
+    let id = Event.Id.Int !id in
+    let common =
+      let name = Filename.basename program in
+      let ts = Timestamp.now () in
+      Event.common ~cat:[ "process" ] ~name ~pid:0 ~tid:0 ~ts ()
+    in
+    let () =
+      let args =
+        [ ( "process_args"
+          , Json.Array (List.map args ~f:(fun arg -> Json.String arg)) )
+        ]
+      in
+      let event = Event.async id ~args Start common in
+      Chrome_trace.emit reporter event
+    in
     let+ result = fiber in
-    Chrome_trace.on_process_end reporter event;
+    let common = Event.set_ts common (Timestamp.now ()) in
+    let () =
+      let event = Event.async id End common in
+      Chrome_trace.emit reporter event
+    in
     result

@@ -48,10 +48,19 @@ module Event : sig
     -> unit
     -> common
 
+  val set_ts : common -> Timestamp.t -> common
+
   type args = (string * Json.t) list
 
   (** Create a counter event *)
   val counter : ?id:Id.t -> common -> args -> t
+
+  type async =
+    | Start
+    | Instant
+    | End
+
+  val async : ?scope:string -> ?args:args -> Id.t -> async -> common -> t
 end
 
 (** The (mutable) state of reporters. It is basically an output channel. *)
@@ -70,12 +79,3 @@ val close : t -> unit
 
 (** Emity an event *)
 val emit : t -> Event.t -> unit
-
-type event
-
-(** Prepare data related to the processus. This will capture the current time to
-    compute the start and duration. *)
-val on_process_start : t -> program:string -> args:string list -> event
-
-(** Capture the current time and output a complete event. *)
-val on_process_end : t -> event -> unit

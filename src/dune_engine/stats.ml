@@ -3,26 +3,9 @@ module Json = Chrome_trace.Json
 module Event = Chrome_trace.Event
 module Timestamp = Event.Timestamp
 
-let evaluated_rules = ref 0
-
 let id = ref 0
 
-let () = Hooks.End_of_build.always (fun () -> evaluated_rules := 0)
-
 let trace = ref None
-
-let new_evaluated_rule () =
-  incr evaluated_rules;
-  Option.iter !trace ~f:(fun reporter ->
-      let event =
-        let args = [ ("value", Json.Int !evaluated_rules) ] in
-        let ts = Event.Timestamp.now () in
-        let pid = 0 in
-        let tid = 0 in
-        let common = Event.common ~name:"evaluated_rules" ~ts ~pid ~tid () in
-        Event.counter common args
-      in
-      Chrome_trace.emit reporter event)
 
 let with_process ~program ~args fiber =
   match !trace with

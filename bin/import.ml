@@ -128,7 +128,8 @@ module Main = struct
                   ];
               vendored || included))
     in
-    init_build_system workspace
+    let stats = Common.stats common in
+    init_build_system workspace ?stats
       ~sandboxing_preference:(Common.config common).sandboxing_preference
       ?caching ?build_mutex ?only_packages
 end

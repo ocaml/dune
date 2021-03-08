@@ -23,6 +23,8 @@
  (name dune)
  ; The "depends" and "build" field are written in dune.opam.template
  (conflicts
+  (merlin (< 3.4.0))
+  (ocaml-lsp-server (< 1.3.0))
   (dune-configurator (< 2.3.0))
   (odoc (< 1.3.0))
   (dune-release (< 1.3.0))
@@ -63,6 +65,8 @@ executable was built.
 (package
  (name dune-private-libs)
  (depends
+  (csexp (>= 1.4.0))
+  (stdune-unstable (= :version))
   (ocaml (>= 4.08)))
  (synopsis "Private libraries of Dune")
  (description "\
@@ -78,7 +82,7 @@ no stability guarantee.
 (package
  (name dune-configurator)
  (depends
-  (ocaml (>= 4.03.0))
+  (ocaml (>= 4.04.0))
   result
   (csexp (>= 1.3.0)))
  (synopsis "Helper library for gathering system configuration")
@@ -97,7 +101,9 @@ Among other things, dune-configurator allows one to:
  (name dune-action-plugin)
  (depends
   dune-glob
+  (csexp (>= 1.4.0))
   (ppx_expect :with-test)
+  (stdune-unstable (= :version))
   (dune-private-libs (= :version)))
  (synopsis "[experimental] API for writing dynamic Dune actions")
  (description "\
@@ -113,6 +119,7 @@ execution of the action.
 (package
  (name dune-glob)
  (depends
+  (stdune-unstable (= :version))
   (dune-private-libs (= :version)))
  (synopsis "Glob string matching language supported by dune")
  (description "\
@@ -124,3 +131,16 @@ understood by dune language."))
  (depends (dune-private-libs (= :version)))
  (synopsis "Embed locations informations inside executable and libraries")
  (description ""))
+
+(package
+ (name dune-rpc)
+ (depends (stdune-unstable (= :version)))
+ (synopsis "Communicate with dune using rpc")
+ (description "Library to connect and control a running dune instance"))
+
+(package
+ (name stdune-unstable)
+ (synopsis "Dune's unstable standard library")
+ (depends
+  (ocaml (>= 4.08.0)))
+ (description "This library offers no backwards compatibility guarantees. Use at your own risk."))

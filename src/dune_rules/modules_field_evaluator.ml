@@ -96,23 +96,23 @@ let find_errors ~modules ~intf_only ~virtual_modules ~private_modules
         let ( !? ) = Option.is_some in
         with_property private_ (add_if impl_vmodule Private_impl_of_vmodule)
         @@ with_property intf_only
-             ( add_if has_impl Spurious_module_intf
-             ++ add_if impl_vmodule Vmodule_impl_intf_only_exclusion )
+             (add_if has_impl Spurious_module_intf
+             ++ add_if impl_vmodule Vmodule_impl_intf_only_exclusion)
         @@ with_property virtual_
-             ( add_if has_impl Spurious_module_virtual
+             (add_if has_impl Spurious_module_virtual
              ++ add_if !?intf_only Virt_intf_overlap
-             ++ add_if !?private_ Private_virt_module )
+             ++ add_if !?private_ Private_virt_module)
         @@ with_property modules
-             ( add_if
-                 ( (not !?private_)
-                 && (not allow_new_public_modules)
-                 && not impl_vmodule )
-                 Forbidden_new_public_module
+             (add_if
+                ((not !?private_)
+                && (not allow_new_public_modules)
+                && not impl_vmodule)
+                Forbidden_new_public_module
              ++ add_if
                   ((not has_impl) && (not !?intf_only) && not !?virtual_)
                   Missing_intf_only
              ++ add_if (impl_vmodule && not has_impl) Vmodule_impl_missing_impl
-             ++ add_if (impl_vmodule && has_intf) Vmodule_impls_with_own_intf )
+             ++ add_if (impl_vmodule && has_intf) Vmodule_impls_with_own_intf)
         @@ acc)
   in
   let unimplemented_virt_modules =
@@ -207,10 +207,10 @@ let check_invalid_module_listing ~(buildable : Buildable.t) ~intf_only ~modules
       [ Pp.text "This is not possible." ];
     print
       [ Pp.text "These modules are declared virtual, but are missing." ]
-      ( unimplemented_virt_modules |> Module_name.Set.to_list
-      |> List.map ~f:(fun name -> (buildable.loc, name)) )
+      (unimplemented_virt_modules |> Module_name.Set.to_list
+      |> List.map ~f:(fun name -> (buildable.loc, name)))
       [ Pp.text "You must provide an implementation for all of these modules." ];
-    ( if missing_intf_only <> [] then
+    (if missing_intf_only <> [] then
       match Ordered_set_lang.loc buildable.modules_without_implementation with
       | None ->
         User_error.raise ~loc:buildable.loc
@@ -234,7 +234,7 @@ let check_invalid_module_listing ~(buildable : Buildable.t) ~intf_only ~modules
               "The following modules must be listed here as they don't have an \
                implementation:"
           ; line_list missing_intf_only
-          ] );
+          ]);
     print
       [ Pp.text
           "The following modules have an implementation, they cannot be listed \
@@ -250,7 +250,7 @@ let check_invalid_module_listing ~(buildable : Buildable.t) ~intf_only ~modules
   )
 
 let eval ~modules:(all_modules : Module.Source.t Module_name.Map.t)
-    ~buildable:(conf : Buildable.t) ~private_modules ~kind =
+    ~buildable:(conf : Buildable.t) ~private_modules ~kind ~src_dir =
   (* Fake modules are modules that do not exist but it doesn't matter because
      they are only removed from a set (for jbuild file compatibility) *)
   let fake_modules = ref Module_name.Map.empty in
@@ -313,4 +313,8 @@ let eval ~modules:(all_modules : Module.Source.t Module_name.Map.t)
         in
         Module.of_source m ~kind ~visibility)
   in
-  all_modules
+  match conf.root_module with
+  | None -> all_modules
+  | Some (_, name) ->
+    let module_ = Module.generated_root ~src_dir name in
+    Module_name.Map.set all_modules name module_

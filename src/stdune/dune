@@ -1,8 +1,0 @@
-(library
- (name stdune)
- (public_name dune-private-libs.stdune)
- (synopsis "[Internal] Standard library of Dune")
- (libraries unix dune_csexp dune_filesystem_stubs)
- (foreign_stubs
-  (language c)
-  (names fcntl_stubs)))

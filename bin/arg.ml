@@ -50,14 +50,16 @@ module Dep = struct
       in
       let s = String_with_vars.make_text Loc.none (String.drop s pos) in
       Some
-        ( if recursive then
+        (if recursive then
           Dep_conf.Alias_rec s
         else
-          Dep_conf.Alias s )
+          Dep_conf.Alias s)
 
   let dep_parser =
     Dune_lang.Syntax.set Stanza.syntax (Active Stanza.latest_version)
-      Dep_conf.decode
+      (String_with_vars.set_decoding_env
+         (Pform.Env.initial Stanza.latest_version)
+         Dep_conf.decode)
 
   let parser s =
     match parse_alias s with
@@ -69,7 +71,7 @@ module Dep = struct
              ~mode:Dune_lang.Parser.Mode.Single s)
       with
       | x -> `Ok x
-      | exception User_error.E msg -> `Error (User_message.to_string msg) )
+      | exception User_error.E msg -> `Error (User_message.to_string msg))
 
   let string_of_alias ~recursive sv =
     let prefix =
@@ -124,3 +126,5 @@ let bytes =
 let context_name : Context_name.t conv = conv Context_name.conv
 
 let lib_name = conv Dune_engine.Lib_name.conv
+
+let version = pair ~sep:'.' int int

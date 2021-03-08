@@ -51,6 +51,29 @@ module Stat = struct
   let () = register name of_args run
 end
 
+module Wait_for_fs_clock_to_advance = struct
+  let name = "wait-for-fs-clock-to-advance"
+
+  let of_args = function
+    | [] -> ()
+    | _ -> raise (Arg.Bad ("Usage: dune_cmd " ^ name))
+
+  let run () =
+    let fn = "." ^ name ^ ".tmp" in
+    let fstime () =
+      Unix.close (Unix.openfile fn [ O_WRONLY; O_CREAT; O_TRUNC ] 0o644);
+      let t = (Unix.stat fn).st_ctime in
+      Unix.unlink fn;
+      t
+    in
+    let t = fstime () in
+    while fstime () <= t do
+      Unix.sleepf 0.01
+    done
+
+  let () = register name of_args run
+end
+
 module Cat = struct
   type t = File of Path.t
 
@@ -101,7 +124,7 @@ module Sanitizer = struct
           | None -> (
             match (var, Configurator.ocaml_config_var config "system") with
             | "ext_exe", Some "Win32" -> Some (".exe", var)
-            | _ -> None ))
+            | _ -> None))
     in
     let re =
       Re.(
@@ -135,6 +158,37 @@ module Sanitizer = struct
         loop ()
     in
     loop ()
+
+  let () = register name of_args run
+end
+
+module Count_lines = struct
+  type t =
+    | Stdin
+    | File of Path.t
+
+  let name = "count-lines"
+
+  let count_lines ic =
+    let rec loop n =
+      match input_line ic with
+      | exception End_of_file -> n
+      | _line -> loop (n + 1)
+    in
+    loop 0
+
+  let of_args = function
+    | [] -> Stdin
+    | [ file ] -> File (Path.of_filename_relative_to_initial_cwd file)
+    | _ -> raise (Arg.Bad "Usage: dune_arg count-lines <file>")
+
+  let run t =
+    let n =
+      match t with
+      | Stdin -> count_lines stdin
+      | File p -> Io.with_file_in p ~binary:false ~f:count_lines
+    in
+    Printf.printf "%d\n%!" n
 
   let () = register name of_args run
 end

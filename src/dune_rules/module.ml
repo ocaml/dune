@@ -29,6 +29,7 @@ module Kind = struct
     | Alias
     | Impl_vmodule
     | Wrapped_compat
+    | Root
 
   let to_string = function
     | Intf_only -> "intf_only"
@@ -37,6 +38,7 @@ module Kind = struct
     | Alias -> "alias"
     | Impl_vmodule -> "impl_vmodule"
     | Wrapped_compat -> "wrapped_compat"
+    | Root -> "root"
 
   let to_dyn t = Dyn.Encoder.string (to_string t)
 
@@ -51,12 +53,14 @@ module Kind = struct
       ; ("alias", Alias)
       ; ("impl_vmodule", Impl_vmodule)
       ; ("wrapped_compat", Wrapped_compat)
+      ; ("root", Root)
       ]
 
   let has_impl = function
     | Alias
     | Impl_vmodule
     | Wrapped_compat
+    | Root
     | Impl ->
       true
     | Intf_only
@@ -79,13 +83,13 @@ module Source = struct
       ]
 
   let make ?impl ?intf name =
-    ( match (impl, intf) with
+    (match (impl, intf) with
     | None, None ->
       Code_error.raise "Module.Source.make called with no files"
         [ ("name", Module_name.to_dyn name) ]
     | Some _, _
     | _, Some _ ->
-      () );
+      ());
     let files = Ml_kind.Dict.make ~impl ~intf in
     { name; files }
 
@@ -101,6 +105,14 @@ module Source = struct
     | None, Some x ->
       x
 
+  let add_file t ml_kind file =
+    if has t ~ml_kind then
+      Code_error.raise "Attempted to add a duplicate file to module"
+        [ ("module", to_dyn t); ("file", File.to_dyn file) ];
+    match ml_kind with
+    | Ml_kind.Impl -> { t with files = { t.files with impl = Some file } }
+    | Intf -> { t with files = { t.files with intf = Some file } }
+
   let src_dir t = Path.parent_exn (choose_file t).path
 
   let map_files t ~f =
@@ -111,7 +123,7 @@ end
 type t =
   { source : Source.t
   ; obj_name : Module_name.Unique.t
-  ; pp : string list Build.t option
+  ; pp : string list Action_builder.t option
   ; visibility : Visibility.t
   ; kind : Kind.t
   }
@@ -123,7 +135,7 @@ let kind t = t.kind
 let pp_flags t = t.pp
 
 let of_source ?obj_name ~visibility ~(kind : Kind.t) (source : Source.t) =
-  ( match (kind, visibility) with
+  (match (kind, visibility) with
   | (Alias | Impl_vmodule | Virtual | Wrapped_compat), Visibility.Public
   | (Impl | Intf_only), _ ->
     ()
@@ -132,8 +144,8 @@ let of_source ?obj_name ~visibility ~(kind : Kind.t) (source : Source.t) =
       [ ("name", Module_name.to_dyn source.name)
       ; ("kind", Kind.to_dyn kind)
       ; ("visibility", Visibility.to_dyn visibility)
-      ] );
-  ( match (kind, source.files.impl, source.files.intf) with
+      ]);
+  (match (kind, source.files.impl, source.files.intf) with
   | (Alias | Impl_vmodule | Impl | Wrapped_compat), None, _
   | (Alias | Impl_vmodule | Wrapped_compat), Some _, Some _
   | (Intf_only | Virtual), Some _, _
@@ -145,7 +157,7 @@ let of_source ?obj_name ~visibility ~(kind : Kind.t) (source : Source.t) =
       ; ("intf", (option File.to_dyn) source.files.intf)
       ; ("impl", (option File.to_dyn) source.files.impl)
       ]
-  | _, _, _ -> () );
+  | _, _, _ -> ());
   let obj_name =
     match obj_name with
     | Some s -> s
@@ -174,6 +186,10 @@ let iter t ~f =
 
 let with_wrapper t ~main_module_name =
   { t with obj_name = Module_name.wrap t.source.name ~with_:main_module_name }
+
+let add_file t kind file =
+  let source = Source.add_file t.source kind file in
+  { t with source }
 
 let map_files t ~f =
   let source =
@@ -248,6 +264,7 @@ let encode
     match kind with
     | Kind.Impl when has_impl -> None
     | Intf_only when not has_impl -> None
+    | Root
     | Wrapped_compat
     | Impl_vmodule
     | Alias
@@ -333,6 +350,11 @@ let generated_alias ~src_dir name =
   let src_dir = Path.build src_dir in
   let t = generated ~src_dir name in
   { t with kind = Alias }
+
+let generated_root ~src_dir name =
+  let src_dir = Path.build src_dir in
+  let t = generated ~src_dir name in
+  { t with kind = Root; visibility = Private }
 
 let of_source ~visibility ~kind source = of_source ~visibility ~kind source
 

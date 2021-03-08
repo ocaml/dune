@@ -10,10 +10,6 @@ let debug_dep_path = ref false
 
 let debug_artifact_substitution = ref false
 
-let external_lib_deps_hint = ref []
-
-let external_lib_deps_mode = ref false
-
 let capture_outputs = ref true
 
 let debug_backtraces = Dune_util.Report_error.report_backtraces
@@ -35,3 +31,5 @@ let always_show_command_line = ref false
 let promote_install_files = ref false
 
 let ignore_promoted_rules = ref false
+
+let only_packages = ref None

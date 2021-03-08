@@ -35,13 +35,14 @@ end
 
 module Mode : sig
   type t =
-    | Standard  (** Only use this rule if the source files don't exist. *)
-    | Fallback  (** Silently promote the targets to the source tree. *)
+    | Standard
+    | Fallback  (** Only use this rule if the source files don't exist. *)
     | Promote of Promote.t
+        (** Silently promote the targets to the source tree. *)
+    | Ignore_source_files
         (** Just ignore the source files entirely. This is for cases where the
             targets are promoted only in a specific context, such as for
             .install files. *)
-    | Ignore_source_files
 end
 
 module Id : sig
@@ -58,7 +59,7 @@ type t = private
   { id : Id.t
   ; context : Build_context.t option
   ; env : Env.t option
-  ; action : Action.t Build.With_targets.t
+  ; action : Action.t Action_builder.With_targets.t
   ; mode : Mode.t
   ; locks : Path.t list
   ; info : Info.t
@@ -80,10 +81,10 @@ val make :
   -> env:Env.t option
   -> ?locks:Path.t list
   -> ?info:Info.t
-  -> Action.t Build.With_targets.t
+  -> Action.t Action_builder.With_targets.t
   -> t
 
-val with_prefix : t -> build:unit Build.t -> t
+val with_prefix : t -> build:unit Action_builder.t -> t
 
 val loc : t -> Loc.t
 

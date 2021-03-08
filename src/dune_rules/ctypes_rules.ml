@@ -161,7 +161,7 @@ let write_c_types_includer_module ~sctx ~dir ~filename ~type_description_module
     Buffer.contents buf
   in
   Super_context.add_rule ~loc:Loc.none sctx ~dir
-    (Build.write_file path contents)
+    (Action_builder.write_file path contents)
 
 let write_entry_point_module ~sctx ~dir ~filename ~function_description_module
       ~c_generated_functions_module ~c_types_includer_module =
@@ -176,7 +176,7 @@ let write_entry_point_module ~sctx ~dir ~filename ~function_description_module
     Buffer.contents buf
   in
   Super_context.add_rule ~loc:Loc.none sctx ~dir
-    (Build.write_file path contents)
+    (Action_builder.write_file path contents)
 
 let discover_gen ~external_library_name:lib ~cflags_sexp ~c_library_flags_sexp =
   let buf = Buffer.create 1024 in
@@ -201,13 +201,14 @@ let discover_gen ~external_library_name:lib ~cflags_sexp ~c_library_flags_sexp =
   pr buf "  )";
   Buffer.contents buf
 
-let write_discover_script ~filename ~sctx ~dir ~external_library_name ~cflags_sexp
-      ~c_library_flags_sexp =
+let write_discover_script ~filename ~sctx ~dir ~external_library_name
+      ~cflags_sexp ~c_library_flags_sexp =
   let path = Path.Build.relative dir filename in
   let script =
     discover_gen ~external_library_name ~cflags_sexp ~c_library_flags_sexp
   in
-  Super_context.add_rule ~loc:Loc.none sctx ~dir (Build.write_file path script)
+  Super_context.add_rule ~loc:Loc.none sctx ~dir
+    (Action_builder.write_file path script)
 
 let gen_headers headers buf =
   let pr buf fmt = Printf.bprintf buf (fmt ^^ "\n") in
@@ -258,13 +259,14 @@ let write_type_gen_script ~headers ~dir ~filename ~sctx
       ~type_description_module =
   let path = Path.Build.relative dir filename in
   let script = type_gen_gen ~headers ~type_description_module in
-  Super_context.add_rule ~loc:Loc.none sctx ~dir (Build.write_file path script)
+  Super_context.add_rule ~loc:Loc.none sctx ~dir
+    (Action_builder.write_file path script)
 
 let write_function_gen_script ~headers ~sctx ~dir ~name
       ~function_description_module ~concurrency =
   let path = Path.Build.relative dir (name ^ ".ml") in
   let script = function_gen_gen ~concurrency ~headers ~function_description_module in
-  Super_context.add_rule ~loc:Loc.none sctx ~dir (Build.write_file path script)
+  Super_context.add_rule ~loc:Loc.none sctx ~dir (Action_builder.write_file path script)
 
 let rule ?(deps=[]) ?stdout_to ?(args=[]) ?(targets=[]) ~exe ~sctx ~dir () =
   let build =
@@ -304,7 +306,7 @@ let build_c_program ~sctx ~dir ~source_files ~scope ~cflags_sexp ~output () =
           User_error.raise
             [ Pp.textf "the 'ctypes' library needs to be installed to use the ctypes stanza"]
       in
-      Lib.L.include_paths [lib]
+      Lib.L.include_paths [lib] Mode.Native
       |> Path.Set.to_list
       |> List.map ~f:Path.to_string
     in
@@ -317,8 +319,8 @@ let build_c_program ~sctx ~dir ~source_files ~scope ~cflags_sexp ~output () =
   in
   let build =
     let cflags_args =
-      let contents = Build.contents (Path.relative (Path.build dir) cflags_sexp) in
-      Build.map contents ~f:(fun sexp ->
+      let contents = Action_builder.contents (Path.relative (Path.build dir) cflags_sexp) in
+      Action_builder.map contents ~f:(fun sexp ->
         let fail s = User_error.raise [ Pp.textf s ] in
         let ast =
           Dune_lang.Parser.parse_string ~mode:Dune_lang.Parser.Mode.Single
@@ -336,13 +338,13 @@ let build_c_program ~sctx ~dir ~source_files ~scope ~cflags_sexp ~output () =
             | List _ -> fail "nested lists not supported in ctypes c_flags"))
     in
     let action =
-      let open Build.O in
-      Build.deps deps
-      >>> Build.map cflags_args ~f:(fun cflags_args ->
+      let open Action_builder.O in
+      Action_builder.deps deps
+      >>> Action_builder.map cflags_args ~f:(fun cflags_args ->
         let args = cflags_args @ include_args @ source_files @ ["-o"; output] in
         Action.run exe args)
     in
-    Build.with_targets action ~targets:[Path.Build.relative dir output]
+    Action_builder.with_targets action ~targets:[Path.Build.relative dir output]
   in
   Super_context.add_rule sctx ~dir build
 
@@ -353,8 +355,7 @@ let cctx_with_substitutions ?flags ?(libraries=[]) ~modules ~dir ~loc ~scope ~cc
       [ (loc, "ctypes") ]
       (List.map libraries ~f:(fun lib ->
          Lib_dep.Direct (loc, Lib_name.of_string lib)))
-      ~dune_version ~optional:false
-      ~pps:[]
+      ~dune_version ~pps:[]
   in
   let modules = modules_of_list ~dir ~modules in
   let module Cctx = Compilation_context in
@@ -363,7 +364,6 @@ let cctx_with_substitutions ?flags ?(libraries=[]) ~modules ~dir ~loc ~scope ~cc
     ~scope:(Cctx.scope cctx)
     ~expander:(Cctx.expander cctx)
     ~js_of_ocaml:(Cctx.js_of_ocaml cctx)
-    ~dynlink:(Cctx.dynlink cctx)
     ~package:(Cctx.package cctx)
     ~flags:(match flags with
       | Some flags -> flags
@@ -413,7 +413,7 @@ let write_osl_to_sexp_file ~sctx ~dir ~filename osl =
       in
       Dune_lang.to_string encoded
     in
-    Build.write_file path sexp
+    Action_builder.write_file path sexp
   in
   Super_context.add_rule ~loc:Loc.none sctx ~dir build
 

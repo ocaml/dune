@@ -1,22 +1,22 @@
   $ env OCAMLFIND_CONF=$PWD/etc/findlib.conf dune build --display short -x foo file @install --promote-install-files
-        ocamlc lib/.p.objs/byte/p.{cmi,cmo,cmt} [default.foo]
-      ocamldep bin/.blah.eobjs/blah.ml.d [default.foo]
-        ocamlc lib/.p.objs/byte/p.{cmi,cmo,cmt}
       ocamldep bin/.blah.eobjs/blah.ml.d
-      ocamlopt lib/.p.objs/native/p.{cmx,o} [default.foo]
-        ocamlc lib/p.cma [default.foo]
+        ocamlc lib/.p.objs/byte/p.{cmi,cmo,cmt}
+      ocamldep bin/.blah.eobjs/blah.ml.d [default.foo]
+        ocamlc lib/.p.objs/byte/p.{cmi,cmo,cmt} [default.foo]
       ocamlopt lib/.p.objs/native/p.{cmx,o}
-      ocamlopt lib/p.{a,cmxa} [default.foo]
-      ocamlopt lib/p.{a,cmxa}
-        ocamlc bin/.blah.eobjs/byte/blah.{cmi,cmo,cmt} [default.foo]
-      ocamlopt lib/p.cmxs [default.foo]
         ocamlc bin/.blah.eobjs/byte/blah.{cmi,cmo,cmt}
-      ocamlopt bin/.blah.eobjs/native/blah.{cmx,o} [default.foo]
+      ocamlopt lib/.p.objs/native/p.{cmx,o} [default.foo]
+        ocamlc bin/.blah.eobjs/byte/blah.{cmi,cmo,cmt} [default.foo]
+        ocamlc lib/p.cma [default.foo]
+      ocamlopt lib/p.{a,cmxa}
       ocamlopt bin/.blah.eobjs/native/blah.{cmx,o}
-      ocamlopt bin/blah.exe [default.foo]
+      ocamlopt lib/p.{a,cmxa} [default.foo]
+      ocamlopt bin/.blah.eobjs/native/blah.{cmx,o} [default.foo]
       ocamlopt bin/blah.exe
-          blah file [default.foo]
+      ocamlopt lib/p.cmxs [default.foo]
+      ocamlopt bin/blah.exe [default.foo]
           blah file
+          blah file [default.foo]
   $ cat _build/default.foo/file
   42
   $ ls *.install
@@ -32,8 +32,10 @@
     "_build/install/default.foo/lib/p/p.cmt" {"../../foo-sysroot/lib/p/p.cmt"}
     "_build/install/default.foo/lib/p/p.cmx" {"../../foo-sysroot/lib/p/p.cmx"}
     "_build/install/default.foo/lib/p/p.cmxa" {"../../foo-sysroot/lib/p/p.cmxa"}
-    "_build/install/default.foo/lib/p/p.cmxs" {"../../foo-sysroot/lib/p/p.cmxs"}
     "_build/install/default.foo/lib/p/p.ml" {"../../foo-sysroot/lib/p/p.ml"}
+  ]
+  libexec: [
+    "_build/install/default.foo/lib/p/p.cmxs" {"../../foo-sysroot/lib/p/p.cmxs"}
   ]
   bin: [
     "_build/install/default.foo/bin/blah" {"../foo-sysroot/bin/blah"}

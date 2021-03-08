@@ -34,6 +34,7 @@ module Stanza : sig
     ; menhir_flags : Ordered_set_lang.Unexpanded.t
     ; odoc : Odoc.t
     ; coq : Ordered_set_lang.Unexpanded.t
+    ; format_config : Format_config.t option
     }
 
   type pattern =

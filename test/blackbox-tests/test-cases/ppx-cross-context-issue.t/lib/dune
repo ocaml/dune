@@ -1,0 +1,3 @@
+(library 
+ (name foolib)
+ (preprocess (pps fooppx)))

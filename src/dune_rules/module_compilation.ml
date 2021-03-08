@@ -24,7 +24,7 @@ let opens modules m =
   | Some (m : Module.t) -> As [ "-open"; Module_name.to_string (Module.name m) ]
 
 let other_cm_files ~opaque ~(cm_kind : Cm_kind.t) ~dep_graph ~obj_dir m =
-  let open Build.O in
+  let open Action_builder.O in
   let+ deps = Dep_graph.deps_of dep_graph m in
   List.concat_map deps ~f:(fun m ->
       let deps =
@@ -43,7 +43,7 @@ let copy_interface ~sctx ~dir ~obj_dir m =
     && Obj_dir.need_dedicated_public_dir obj_dir
   then
     SC.add_rule sctx ~dir
-      (Build.symlink
+      (Action_builder.symlink
          ~src:(Path.build (Obj_dir.Module.cm_file_exn obj_dir m ~kind:Cmi))
          ~dst:(Obj_dir.Module.cm_public_file_exn obj_dir m ~kind:Cmi))
 
@@ -54,8 +54,15 @@ let build_cm cctx ~dep_graphs ~precompiled_cmi ~cm_kind (m : Module.t) ~phase =
   let ctx = SC.context sctx in
   let stdlib = CC.stdlib cctx in
   let mode = Mode.of_cm_kind cm_kind in
-  let dynlink = CC.dynlink cctx in
-  let sandbox = CC.sandbox cctx in
+  let sandbox =
+    let default = CC.sandbox cctx in
+    match Module.kind m with
+    | Root ->
+      (* This is need to guarantee that no local modules shadow the modules
+         referenced by the root module *)
+      Sandbox_config.needs_sandboxing
+    | _ -> default
+  in
   (let open Option.O in
   let* compiler = Result.to_option (Context.compiler ctx mode) in
   let ml_kind = Cm_kind.source cm_kind in
@@ -95,7 +102,7 @@ let build_cm cctx ~dep_graphs ~precompiled_cmi ~cm_kind (m : Module.t) ~phase =
           , [] )
         | Cmi, _, _ ->
           copy_interface ~dir ~obj_dir ~sctx m;
-          ([], [], []) )
+          ([], [], []))
   in
   let other_targets =
     match cm_kind with
@@ -105,7 +112,7 @@ let build_cm cctx ~dep_graphs ~precompiled_cmi ~cm_kind (m : Module.t) ~phase =
       | Some Fdo.Emit -> other_targets
       | Some Fdo.All
       | None ->
-        obj :: other_targets )
+        obj :: other_targets)
     | Cmi
     | Cmo ->
       other_targets
@@ -113,7 +120,8 @@ let build_cm cctx ~dep_graphs ~precompiled_cmi ~cm_kind (m : Module.t) ~phase =
   let dep_graph = Ml_kind.Dict.get dep_graphs ml_kind in
   let opaque = CC.opaque cctx in
   let other_cm_files =
-    Build.dyn_paths_unit (other_cm_files ~opaque ~cm_kind ~dep_graph ~obj_dir m)
+    Action_builder.dyn_paths_unit
+      (other_cm_files ~opaque ~cm_kind ~dep_graph ~obj_dir m)
   in
   let other_targets, cmt_args =
     match cm_kind with
@@ -142,7 +150,7 @@ let build_cm cctx ~dep_graphs ~precompiled_cmi ~cm_kind (m : Module.t) ~phase =
     match Module.pp_flags m with
     | None -> flags
     | Some pp ->
-      let open Build.O in
+      let open Action_builder.O in
       let+ flags = flags
       and+ pp_flags = pp in
       flags @ pp_flags
@@ -164,33 +172,31 @@ let build_cm cctx ~dep_graphs ~precompiled_cmi ~cm_kind (m : Module.t) ~phase =
       src
   in
   let modules = Compilation_context.modules cctx in
+  let obj_dirs =
+    Obj_dir.all_obj_dirs obj_dir ~mode
+    |> List.concat_map ~f:(fun p ->
+           [ Command.Args.A "-I"; Path (Path.build p) ])
+  in
   SC.add_rule sctx ~sandbox ~dir
-    (let open Build.With_targets.O in
-    Build.with_no_targets (Build.paths extra_deps)
-    >>> Build.with_no_targets other_cm_files
+    (let open Action_builder.With_targets.O in
+    Action_builder.with_no_targets (Action_builder.paths extra_deps)
+    >>> Action_builder.with_no_targets other_cm_files
     >>> Command.run ~dir:(Path.build dir) (Ok compiler)
           [ Command.Args.dyn flags
           ; cmt_args
-          ; Command.Args.S
-              ( Obj_dir.all_obj_dirs obj_dir ~mode
-              |> List.concat_map ~f:(fun p ->
-                     [ Command.Args.A "-I"; Path (Path.build p) ]) )
+          ; Command.Args.S obj_dirs
           ; Cm_kind.Dict.get (CC.includes cctx) cm_kind
           ; As extra_args
-          ; ( if dynlink || cm_kind <> Cmx then
-              Command.Args.empty
-            else
-              A "-nodynlink" )
           ; A "-no-alias-deps"
           ; opaque_arg
           ; As (Fdo.phase_flags phase)
           ; opens modules m
           ; As
-              ( match stdlib with
+              (match stdlib with
               | None -> []
               | Some _ ->
                 (* XXX why aren't these just normal library flags? *)
-                [ "-nopervasives"; "-nostdlib" ] )
+                [ "-nopervasives"; "-nostdlib" ])
           ; A "-o"
           ; Target output
           ; A "-c"
@@ -207,7 +213,7 @@ let build_module ~dep_graphs ?(precompiled_cmi = false) cctx m =
     Ocaml_version.supports_split_at_emit ctx.version
     || Ocaml_config.is_dev_version ctx.ocaml_config
   in
-  ( match (ctx.fdo_target_exe, can_split) with
+  (match (ctx.fdo_target_exe, can_split) with
   | None, _ ->
     build_cm cctx m ~dep_graphs ~precompiled_cmi ~cm_kind:Cmx ~phase:None
   | Some _, false ->
@@ -218,7 +224,7 @@ let build_module ~dep_graphs ?(precompiled_cmi = false) cctx m =
       ~phase:(Some Fdo.Compile);
     Fdo.opt_rule cctx m;
     build_cm cctx m ~dep_graphs ~precompiled_cmi ~cm_kind:Cmx
-      ~phase:(Some Fdo.Emit) );
+      ~phase:(Some Fdo.Emit));
   if not precompiled_cmi then
     build_cm cctx m ~dep_graphs ~precompiled_cmi ~cm_kind:Cmi ~phase:None;
   let obj_dir = CC.obj_dir cctx in
@@ -242,8 +248,8 @@ let ocamlc_i ?(flags = []) ~deps cctx (m : Module.t) ~output =
   let src = Option.value_exn (Module.file m ~ml_kind:Impl) in
   let sandbox = Compilation_context.sandbox cctx in
   let cm_deps =
-    Build.dyn_paths_unit
-      (let open Build.O in
+    Action_builder.dyn_paths_unit
+      (let open Action_builder.O in
       let+ deps = Ml_kind.Dict.get deps Impl in
       List.concat_map deps ~f:(fun m ->
           [ Path.build (Obj_dir.Module.cm_file_exn obj_dir m ~kind:Cmi) ]))
@@ -251,10 +257,10 @@ let ocamlc_i ?(flags = []) ~deps cctx (m : Module.t) ~output =
   let ocaml_flags = Ocaml_flags.get (CC.flags cctx) Mode.Byte in
   let modules = Compilation_context.modules cctx in
   SC.add_rule sctx ~sandbox ~dir
-    (Build.With_targets.add ~targets:[ output ]
-       (let open Build.With_targets.O in
-       Build.with_no_targets cm_deps
-       >>> Build.With_targets.map
+    (Action_builder.With_targets.add ~targets:[ output ]
+       (let open Action_builder.With_targets.O in
+       Action_builder.with_no_targets cm_deps
+       >>> Action_builder.With_targets.map
              ~f:(Action.with_stdout_to output)
              (Command.run (Ok ctx.ocamlc) ~dir:(Path.build ctx.build_dir)
                 [ Command.Args.dyn ocaml_flags
@@ -283,43 +289,71 @@ let ocamlc_i ?(flags = []) ~deps cctx (m : Module.t) ~output =
    `-open` option of the compiler. This module is called the alias module and is
    implicitly generated by Dune.*)
 
-let build_alias_module ~loc ~alias_module ~cctx =
+let alias_source modules =
+  let alias new_name old_name =
+    sprintf "module %s = %s"
+      (Module_name.to_string new_name)
+      (Module_name.to_string old_name)
+  in
+  let main_module_name = Modules.main_module_name modules |> Option.value_exn in
+  let aliased_modules = Modules.for_alias modules in
+  Module_name.Map.values aliased_modules
+  |> List.map ~f:(fun (m : Module.t) ->
+         let name = Module.name m in
+         let obj_name_as_module =
+           Module.obj_name m |> Module_name.Unique.to_name ~loc:Loc.none
+         in
+         sprintf "(** @canonical %s.%s *)\n%s\n"
+           (Module_name.to_string main_module_name)
+           (Module_name.to_string name)
+           (alias name obj_name_as_module))
+  |> String.concat ~sep:"\n\n"
+
+let build_alias_module ~alias_module ~cctx =
   let sctx = Compilation_context.super_context cctx in
   let file = Option.value_exn (Module.file alias_module ~ml_kind:Impl) in
   let modules = Compilation_context.modules cctx in
-  let alias_file () =
-    let main_module_name =
-      Modules.main_module_name modules |> Option.value_exn
-    in
-    Modules.for_alias modules |> Module_name.Map.values
-    |> List.map ~f:(fun (m : Module.t) ->
-           let name = Module_name.to_string (Module.name m) in
-           let obj_name_as_module =
-             Module.obj_name m
-             |> Module_name.Unique.to_name ~loc
-             |> Module_name.to_string
-           in
-           sprintf "(** @canonical %s.%s *)\nmodule %s = %s\n"
-             (Module_name.to_string main_module_name)
-             name name obj_name_as_module)
-    |> String.concat ~sep:"\n"
-  in
+  let alias_file () = alias_source modules in
   let dir = Compilation_context.dir cctx in
-  Super_context.add_rule ~loc sctx ~dir
-    ( Build.delayed alias_file
-    |> Build.write_file_dyn (Path.as_in_build_dir_exn file) );
+  Super_context.add_rule ~loc:Loc.none sctx ~dir
+    (Action_builder.delayed alias_file
+    |> Action_builder.write_file_dyn (Path.as_in_build_dir_exn file));
   let cctx = Compilation_context.for_alias_module cctx in
   build_module cctx alias_module
     ~dep_graphs:(Dep_graph.Ml_kind.dummy alias_module)
+
+let root_source entries =
+  let b = Buffer.create 128 in
+  List.iter entries ~f:(fun name ->
+      Printf.bprintf b "module %s = %s\n"
+        (Module_name.to_string name)
+        (Module_name.to_string name));
+  Buffer.contents b
+
+let build_root_module root_module ~entries ~cctx =
+  let sctx = Compilation_context.super_context cctx in
+  let file = Option.value_exn (Module.file root_module ~ml_kind:Impl) in
+  let dir = Compilation_context.dir cctx in
+  let root_file = Result.map entries ~f:root_source in
+  Super_context.add_rule ~loc:Loc.none sctx ~dir
+    (let target = Path.as_in_build_dir_exn file in
+     Action_builder.With_targets.of_result_map root_file ~targets:[ target ]
+       ~f:(Action_builder.write_file target));
+  build_module cctx root_module
+    ~dep_graphs:(Dep_graph.Ml_kind.dummy root_module)
 
 let build_all cctx ~dep_graphs =
   let for_wrapped_compat = lazy (Compilation_context.for_wrapped_compat cctx) in
   let modules = Compilation_context.modules cctx in
   Modules.iter_no_vlib modules ~f:(fun m ->
       match Module.kind m with
+      | Root ->
+        let cctx = Compilation_context.for_root_module cctx in
+        let entries = Compilation_context.root_module_entries cctx in
+        build_root_module m ~entries ~cctx
       | Alias ->
         let cctx = Compilation_context.for_alias_module cctx in
-        build_alias_module ~loc:Loc.none ~alias_module:m ~cctx
+        build_alias_module ~alias_module:m ~cctx
       | Wrapped_compat ->
         let cctx = Lazy.force for_wrapped_compat in
         build_module cctx ~dep_graphs m

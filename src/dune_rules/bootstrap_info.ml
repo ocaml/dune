@@ -42,14 +42,14 @@ let rule sctx compile (exes : Dune_file.Executables.t) () =
                         [ Path.Source.to_dyn
                             (Path.Build.drop_build_context_exn dir)
                         ; Dyn.Encoder.option Module_name.to_dyn
-                            ( match Lib_info.main_module_name info with
+                            (match Lib_info.main_module_name info with
                             | From _ -> None
-                            | This x -> x )
-                        ; ( match
-                              Dir_contents.get sctx ~dir |> Dir_contents.dirs
-                            with
+                            | This x -> x)
+                        ; (match
+                             Dir_contents.get sctx ~dir |> Dir_contents.dirs
+                           with
                           | _ :: _ :: _ -> Dyn.Bool true
-                          | _ -> Dyn.Bool false )
+                          | _ -> Dyn.Bool false)
                         ; Dyn.Encoder.option Module_name.to_dyn
                             special_builtin_support
                         ])))
@@ -58,6 +58,6 @@ let rule sctx compile (exes : Dune_file.Executables.t) () =
 let gen_rules sctx (exes : Dune_file.Executables.t) ~dir compile =
   Option.iter exes.bootstrap_info ~f:(fun fname ->
       Super_context.add_rule sctx ~loc:exes.buildable.loc ~dir
-        (Build.write_file_dyn
+        (Action_builder.write_file_dyn
            (Path.Build.relative dir fname)
-           (Build.delayed (rule sctx compile exes))))
+           (Action_builder.delayed (rule sctx compile exes))))

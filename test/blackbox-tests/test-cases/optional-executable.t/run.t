@@ -26,8 +26,6 @@ Test optional executable
   3 |  (libraries does-not-exist)
                   ^^^^^^^^^^^^^^
   Error: Library "does-not-exist" not found.
-  Hint: try:
-    dune external-lib-deps --missing @all
   [1]
 
   $ dune build @run-x
@@ -35,8 +33,6 @@ Test optional executable
   3 |  (libraries does-not-exist)
                   ^^^^^^^^^^^^^^
   Error: Library "does-not-exist" not found.
-  Hint: try:
-    dune external-lib-deps --missing @run-x
   [1]
 
 Reproduction case for a bug in dune < 2.4 where all executables where
@@ -55,6 +51,4 @@ The following command should fail because the executable is not optional:
   3 |  (libraries does-not-exist))
                   ^^^^^^^^^^^^^^
   Error: Library "does-not-exist" not found.
-  Hint: try:
-    dune external-lib-deps --missing @install
   [1]

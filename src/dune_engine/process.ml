@@ -20,7 +20,7 @@ let map_result : type a b. (a, b) failure_mode -> int -> f:(unit -> a) -> b =
   | Accept _ -> (
     match t with
     | 0 -> Ok (f ())
-    | n -> Error n )
+    | n -> Error n)
 
 module Io = struct
   type input = Input
@@ -86,24 +86,11 @@ module Io = struct
 
   let stdin = terminal (In_chan stdin)
 
-  let null_path =
-    lazy
-      ( if Sys.win32 then
-        "nul"
-      else
-        "/dev/null" )
-
-  let open_null flags = lazy (Unix.openfile (Lazy.force null_path) flags 0o666)
-
-  let null_in = open_null [ Unix.O_RDONLY ]
-
-  let null_out = open_null [ Unix.O_WRONLY ]
-
   let null (type a) (mode : a mode) : a t =
     let fd =
       match mode with
-      | In -> null_in
-      | Out -> null_out
+      | In -> Config.dev_null_in
+      | Out -> Config.dev_null_out
     in
     let channel = lazy (channel_of_descr (Lazy.force fd) mode) in
     { kind = Null; mode; fd; channel; status = Close_after_exec }
@@ -154,7 +141,7 @@ type purpose =
 let io_to_redirection_path (kind : Io.kind) =
   match kind with
   | Terminal -> None
-  | Null -> Some (Lazy.force Io.null_path)
+  | Null -> Some (Path.to_string Config.dev_null)
   | File fn -> Some (Path.to_string fn)
 
 let command_line_enclosers ~dir ~(stdout_to : Io.output Io.t)
@@ -261,9 +248,10 @@ module Fancy = struct
     | [] -> []
     | "-o" :: fn :: rest ->
       Pp.verbatim "-o"
-      :: Pp.tag
-           (User_message.Style.Ansi_styles Ansi_color.Style.[ bold; fg_green ])
-           (Pp.verbatim (String.quote_for_shell fn))
+      ::
+      Pp.tag
+        (User_message.Style.Ansi_styles Ansi_color.Style.[ bold; fg_green ])
+        (Pp.verbatim (String.quote_for_shell fn))
       :: colorize_args rest
     | x :: rest -> Pp.verbatim (String.quote_for_shell x) :: colorize_args rest
 
@@ -302,7 +290,7 @@ module Fancy = struct
           | Install (ctx, name) ->
             split_paths
               (("install " ^ Path.Source.to_string name) :: targets_acc)
-              (add_ctx ctx ctxs_acc) rest )
+              (add_ctx ctx ctxs_acc) rest)
       in
       let targets = Path.Build.Set.to_list targets in
       let target_names, contexts =
@@ -310,8 +298,8 @@ module Fancy = struct
       in
       let targets =
         List.map target_names ~f:Filename.split_extension_after_dot
-        |> String.Map.of_list_multi |> String.Map.to_list
-        |> List.map ~f:(fun (prefix, suffixes) ->
+        |> String.Map.of_list_multi
+        |> String.Map.to_list_map ~f:(fun prefix suffixes ->
                match suffixes with
                | [] -> assert false
                | [ suffix ] -> prefix ^ suffix
@@ -325,10 +313,10 @@ module Fancy = struct
         let open Pp.O in
         pp ++ Pp.char ' '
         ++ Pp.tag User_message.Style.Details
-             ( Pp.char '['
+             (Pp.char '['
              ++ Pp.concat_map l ~sep:(Pp.char ',') ~f:(fun ctx ->
                     Pp.verbatim (Context_name.to_string ctx))
-             ++ Pp.char ']' ) )
+             ++ Pp.char ']'))
 end
 
 let gen_id =
@@ -390,11 +378,12 @@ module Exit_status = struct
         | Signaled signame -> sprintf "got signal %s" signame
       in
       fail
-        ( Pp.tag User_message.Style.Kwd (Pp.verbatim "Command")
-          ++ Pp.space ++ pp_id id ++ Pp.space ++ Pp.text msg ++ Pp.char ':'
-        :: Pp.tag User_message.Style.Prompt (Pp.char '$')
-           ++ Pp.char ' ' ++ command_line
-        :: Option.to_list output )
+        (Pp.tag User_message.Style.Kwd (Pp.verbatim "Command")
+         ++ Pp.space ++ pp_id id ++ Pp.space ++ Pp.text msg ++ Pp.char ':'
+         ::
+         Pp.tag User_message.Style.Prompt (Pp.char '$')
+         ++ Pp.char ' ' ++ command_line
+         :: Option.to_list output)
 
   (* Check if the command output starts with a location, ignoring ansi escape
      sequences *)
@@ -409,8 +398,8 @@ module Exit_status = struct
         | '\027' -> (
           match String.index_from s pos 'm' with
           | None -> false
-          | Some pos -> loop s (pos + 1) len prefix )
-        | c' -> c = c' && loop s (pos + 1) len rest )
+          | Some pos -> loop s (pos + 1) len prefix)
+        | c' -> c = c' && loop s (pos + 1) len rest)
     in
     fun output ->
       loop output 0 (String.length output) [ 'F'; 'i'; 'l'; 'e'; ' ' ]
@@ -418,8 +407,14 @@ module Exit_status = struct
   let handle_non_verbose t ~display ~purpose ~output ~prog ~command_line =
     let open Pp.O in
     let show_command =
-      Config.show_full_command_on_error ()
-      || not (outputs_starts_with_location output)
+      let show_full_command_on_error =
+        !Clflags.always_show_command_line
+        || (* We want to show command lines in the CI, but not when running
+              inside dune. Otherwise tests would yield different result whether
+              they are executed locally or in the CI. *)
+        (Config.inside_ci && not Config.inside_dune)
+      in
+      show_full_command_on_error || not (outputs_starts_with_location output)
     in
     let output = parse_output output in
     let _, progname, _ = Fancy.split_prog prog in
@@ -432,14 +427,14 @@ module Exit_status = struct
     | Ok n ->
       if
         Option.is_some output
-        || (display = Config.Display.Short && purpose <> Internal_job)
+        || (display = Scheduler.Config.Display.Short && purpose <> Internal_job)
       then
         Console.print_user_message
           (User_message.make
-             ( if show_command then
+             (if show_command then
                progname_and_purpose Ok :: Option.to_list output
              else
-               Option.to_list output ));
+               Option.to_list output));
       n
     | Error err ->
       let msg =
@@ -452,18 +447,21 @@ module Exit_status = struct
         | Signaled signame -> sprintf "(got signal %s)" signame
       in
       fail
-        ( progname_and_purpose Error ++ Pp.char ' '
-          ++ Pp.tag User_message.Style.Error (Pp.verbatim msg)
-        :: Pp.tag User_message.Style.Details (Pp.verbatim command_line)
-        :: Option.to_list output )
+        (progname_and_purpose Error ++ Pp.char ' '
+         ++ Pp.tag User_message.Style.Error (Pp.verbatim msg)
+         ::
+         Pp.tag User_message.Style.Details (Pp.verbatim command_line)
+         :: Option.to_list output)
 end
 
-let default_env = lazy (Dtemp.add_to_env Env.initial)
+let add_to_env env = Dtemp.add_to_env env |> Scheduler.Rpc.add_to_env
+
+let default_env = lazy (add_to_env Env.initial)
 
 let run_internal ?dir ?(stdout_to = Io.stdout) ?(stderr_to = Io.stderr)
     ?(stdin_from = Io.null In) ~env ~purpose fail_mode prog args =
-  Scheduler.with_job_slot (fun () ->
-      let display = (Config.t ()).display in
+  Scheduler.with_job_slot (fun (config : Scheduler.Config.t) ->
+      let display = config.display in
       let dir =
         match dir with
         | None -> dir
@@ -536,7 +534,7 @@ let run_internal ?dir ?(stdout_to = Io.stdout) ?(stderr_to = Io.stderr)
         let env =
           match env with
           | None -> Lazy.force default_env
-          | Some env -> Dtemp.add_to_env env
+          | Some env -> add_to_env env
         in
         fun () ->
           Spawn.spawn () ~prog:prog_str ~argv ~env ~stdout ~stderr ~stdin
@@ -628,4 +626,4 @@ let run_capture_line ?dir ?stderr_to ?stdin_from ?env ?(purpose = Internal_job)
             ; Pp.vbox
                 (Pp.concat_map l ~sep:Pp.cut ~f:(fun line ->
                      Pp.seq (Pp.verbatim "> ") (Pp.verbatim line)))
-            ] ))
+            ]))

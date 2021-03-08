@@ -7,4 +7,4 @@ val gen :
      contexts:Context.t list
   -> ?only_packages:Package.t Package.Name.Map.t
   -> Dune_load.conf
-  -> Super_context.t Context_name.Map.t Fiber.t
+  -> Super_context.t Context_name.Map.t Memo.Build.t

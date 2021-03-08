@@ -1,7 +1,7 @@
 (*---------------------------------------------------------------------------
    Copyright (c) 2011 Daniel C. Bünzli. All rights reserved.
    Distributed under the ISC license, see terms at the end of the file.
-   cmdliner v1.0.2-18-gac44bb7
+   cmdliner v1.0.4-27-gb4f5656
   ---------------------------------------------------------------------------*)
 
 let rev_compare n0 n1 = compare n1 n0
@@ -60,10 +60,13 @@ let term_info_subst ei = function
 
 let invocation ?(sep = ' ') ei = match Cmdliner_info.eval_kind ei with
 | `Simple | `Multiple_main -> term_name (Cmdliner_info.eval_main ei)
+| `Multiple_group
 | `Multiple_sub ->
-    strf "%s%c%s"
-      Cmdliner_info.(term_name @@ eval_main ei) sep
-      Cmdliner_info.(term_name @@ eval_term ei)
+    let sep = String.make 1 sep in
+    Cmdliner_info.eval_terms_rev ei
+    |> List.rev_map Cmdliner_info.term_name
+    |> String.concat sep
+    |> strf "%s"
 
 let plain_invocation ei = invocation ei
 let invocation ?sep ei = esc @@ invocation ?sep ei
@@ -81,6 +84,7 @@ let synopsis_pos_arg a =
 
 let synopsis ei = match Cmdliner_info.eval_kind ei with
 | `Multiple_main -> strf "$(b,%s) $(i,COMMAND) ..." @@ invocation ei
+| `Multiple_group
 | `Simple | `Multiple_sub ->
     let rev_cli_order (a0, _) (a1, _) =
       Cmdliner_info.rev_arg_pos_cli_order a0 a1
@@ -97,6 +101,7 @@ let synopsis ei = match Cmdliner_info.eval_kind ei with
 
 let cmd_docs ei = match Cmdliner_info.eval_kind ei with
 | `Simple | `Multiple_sub -> []
+| `Multiple_group
 | `Multiple_main ->
     let add_cmd acc t =
       let cmd = strf "$(b,%s)" @@ term_name t in
@@ -146,7 +151,7 @@ let arg_to_man_item ~errs ~subst ~buf a =
   | Cmdliner_info.Val v ->
       match Lazy.force v with
       | "" -> strf "%s" (or_env ~value:false a)
-      | v -> strf "absent=%s%s" v (or_env ~value:true a)
+      | v -> strf "absent=%s%s" (esc v) (or_env ~value:true a)
   in
   let optvopt = match Cmdliner_info.arg_opt_kind a with
   | Cmdliner_info.Opt_vopt v -> strf "default=%s" v
@@ -170,7 +175,7 @@ let arg_docs ~errs ~subst ~buf ei =
     | true, true -> (* optional by name *)
         let key names =
           let k = List.hd (List.sort rev_compare names) in
-          let k = Cmdliner_base.lowercase k in
+          let k = String.lowercase_ascii k in
           if k.[1] = '-' then String.sub k 1 (String.length k - 1) else k
         in
         compare
@@ -178,8 +183,8 @@ let arg_docs ~errs ~subst ~buf ei =
           (key @@ Cmdliner_info.arg_opt_names a1)
     | false, false -> (* positional by variable *)
         compare
-          (Cmdliner_base.lowercase @@ Cmdliner_info.arg_docv a0)
-          (Cmdliner_base.lowercase @@ Cmdliner_info.arg_docv a1)
+          (String.lowercase_ascii @@ Cmdliner_info.arg_docv a0)
+          (String.lowercase_ascii @@ Cmdliner_info.arg_docv a1)
     | true, false -> -1 (* positional first *)
     | false, true -> 1  (* optional after *)
   in
@@ -310,8 +315,8 @@ let text ~errs ei =
 
 let title ei =
   let main = Cmdliner_info.eval_main ei in
-  let exec = Cmdliner_base.capitalize (Cmdliner_info.term_name main) in
-  let name = Cmdliner_base.uppercase (invocation ~sep:'-' ei) in
+  let exec = String.capitalize_ascii (Cmdliner_info.term_name main) in
+  let name = String.uppercase_ascii (invocation ~sep:'-' ei) in
   let center_header = esc @@ strf "%s Manual" exec in
   let left_footer =
     let version = match Cmdliner_info.term_version main with

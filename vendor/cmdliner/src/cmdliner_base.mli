@@ -1,16 +1,10 @@
 (*---------------------------------------------------------------------------
    Copyright (c) 2011 Daniel C. Bünzli. All rights reserved.
    Distributed under the ISC license, see terms at the end of the file.
-   cmdliner v1.0.2-18-gac44bb7
+   cmdliner v1.0.4-27-gb4f5656
   ---------------------------------------------------------------------------*)
 
 (** A few helpful base definitions. *)
-
-(** {1:str String helpers} *)
-
-val lowercase : string -> string
-val uppercase : string -> string
-val capitalize : string -> string
 
 (** {1:fmt Formatting helpers} *)
 
@@ -26,6 +20,7 @@ val err_ambiguous : kind:string -> string -> ambs:string list -> string
 val err_unknown : ?hints:string list -> kind:string -> string -> string
 val err_multi_def :
   kind:string -> string -> ('b -> string) -> 'b -> 'b -> string
+ val err_no_sub_command : string
 
 (** {1:conv Textual OCaml value converters} *)
 

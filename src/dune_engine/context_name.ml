@@ -1,4 +1,4 @@
-open Stdune
+open Import
 
 module T =
   Interned.Make
@@ -44,7 +44,7 @@ include (
       else
         Some (make name)
   end) :
-    Stringlike_intf.S with type t := t )
+    Stringlike_intf.S with type t := t)
 
 let target t ~toolchain =
   make (sprintf "%s.%s" (to_string t) (to_string toolchain))

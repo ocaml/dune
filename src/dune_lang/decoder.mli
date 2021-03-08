@@ -74,6 +74,12 @@ val get_all : (Univ_map.t, _) parser
 
 val set_many : Univ_map.t -> ('a, 'k) parser -> ('a, 'k) parser
 
+val update_var :
+     'a Univ_map.Key.t
+  -> f:('a option -> 'a option)
+  -> ('b, 'k) parser
+  -> ('b, 'k) parser
+
 (** Return the location of the list currently being parsed. *)
 val loc : (Loc.t, _) parser
 
@@ -101,7 +107,7 @@ val until_keyword :
   string -> before:'a t -> after:'b t -> ('a list * 'b option) t
 
 (** What is currently being parsed. The second argument is the atom at the
-    beginnig of the list when inside a [sum ...] or [field ...]. *)
+    beginning of the list when inside a [sum ...] or [field ...]. *)
 type kind =
   | Values of Loc.t * string option
   | Fields of Loc.t * string option
@@ -241,7 +247,7 @@ val field_o_b :
 (** A field that can appear multiple times *)
 val multi_field : string -> 'a t -> 'a list fields_parser
 
-(** Treat the remainig fields as a list of sum values *)
+(** Treat the remaining fields as a list of sum values *)
 val leftover_fields_as_sums : (string * 'a t) list -> 'a list fields_parser
 
 (** Default value for [on_dup]. It fails with an appropriate error message. *)

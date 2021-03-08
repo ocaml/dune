@@ -11,20 +11,21 @@ BIN := ./dune.exe
 TEST_DEPS := \
 bisect_ppx \
 cinaps \
-coq \
+coq-native \
+"coq>=8.12.1" \
 core_bench \
 "csexp>=1.3.0" \
 js_of_ocaml \
 js_of_ocaml-compiler \
-"mdx=1.6.0" \
+mdx \
 menhir \
-merlin \
+"merlin>=3.4.0" \
 ocamlfind \
-ocamlformat.0.15.0 \
+ocamlformat.0.17.0 \
 "odoc>=1.5.0" \
 "ppx_expect>=v0.14" \
 ppx_inline_test \
-"ppxlib.0.13.0" \
+ppxlib \
 result \
 "utop>=2.6.0"
 
@@ -65,7 +66,7 @@ dev-switch:
 	opam update
 # Ensuring that either a dev switch already exists or a new one is created
 	[[ $(shell opam switch show) == $(shell pwd) ]] || \
-		opam switch create -y . 4.10.0 --deps-only --with-test
+		opam switch create -y . 4.11.1 --deps-only --with-test
 	opam install -y $(TEST_DEPS) $(DEV_DEPS)
 
 test: $(BIN)
@@ -105,7 +106,7 @@ distclean: clean
 	rm -f src/dune_rules/setup.ml
 
 doc:
-	cd doc && sphinx-build . _build
+	sphinx-build doc doc/_build
 
 livedoc:
 	cd doc && sphinx-autobuild . _build \
@@ -126,9 +127,15 @@ dune: $(BIN)
 	$(BIN) $(RUN_ARGS)
 
 .PHONY: default install uninstall reinstall clean test doc dev-switch
-.PHONY: promote accept-corrections opam-release dune check fmt
+.PHONY: promote accept-corrections release opam-release dune check fmt
 
-opam-release:
+# Use this target to make sure that we always run the in source dune when making
+# the release
+opam-release: dev
+	$(BIN) exec -- $(MAKE) dune-release
+
+dune-release:
+	dune-release tag
 	dune-release distrib --skip-build --skip-lint --skip-tests -n dune
 # See https://github.com/ocamllabs/dune-release/issues/206
 	DUNE_RELEASE_DELEGATE=github-dune-release-delegate dune-release publish distrib --verbose -n dune

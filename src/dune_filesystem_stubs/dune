@@ -1,7 +1,0 @@
-(library
- (name dune_filesystem_stubs)
- (public_name dune-private-libs.filesystem_stubs)
- (libraries)
- (foreign_stubs
-  (language c)
-  (names readdir)))

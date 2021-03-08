@@ -5,10 +5,10 @@
 
   $ dune runtest --root plural
   Entering directory 'plural'
-  regular_test alias runtest
-  regular test
   regular_test2 alias runtest
   regular test2
+  regular_test alias runtest
+  regular test
   $ dune runtest --root generated
   Entering directory 'generated'
   File "generated.expected", line 1, characters 0-0:

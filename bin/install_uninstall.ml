@@ -1,6 +1,9 @@
 open Stdune
 open Import
 
+let print_line fmt =
+  Printf.ksprintf (fun s -> Console.print [ Pp.verbatim s ]) fmt
+
 let interpret_destdir ~destdir path =
   match destdir with
   | None -> path
@@ -15,13 +18,12 @@ let get_dirs context ~prefix_from_command_line ~libdir_from_command_line =
     Fiber.return (prefix, Some (Path.relative prefix dir))
   | None ->
     let open Fiber.O in
-    let* prefix = Memo.Lazy.Async.force context.Context.install_prefix in
-    let libdir =
+    let* prefix = Context.install_prefix context in
+    let+ libdir =
       match libdir_from_command_line with
-      | None -> Context.install_ocaml_libdir context
+      | None -> Memo.Build.run (Context.install_ocaml_libdir context)
       | Some l -> Fiber.return (Some (Path.relative prefix l))
     in
-    let+ libdir = libdir in
     (prefix, libdir)
 
 let resolve_package_install setup pkg =
@@ -34,12 +36,12 @@ let resolve_package_install setup pkg =
       ~hints:
         (User_message.did_you_mean pkg
            ~candidates:
-             ( Package.Name.Map.keys setup.conf.packages
-             |> List.map ~f:Package.Name.to_string ))
+             (Package.Name.Map.keys setup.conf.packages
+             |> List.map ~f:Package.Name.to_string))
 
 let print_unix_error f =
-  try f ()
-  with Unix.Unix_error (e, _, _) ->
+  try f () with
+  | Unix.Unix_error (e, _, _) ->
     User_message.prerr (User_error.make [ Pp.text (Unix.error_message e) ])
 
 module Special_file = struct
@@ -68,7 +70,7 @@ module type File_operations = sig
     -> executable:bool
     -> special_file:Special_file.t option
     -> package:Package.Name.t
-    -> conf:Dune_engine.Artifact_substitution.conf
+    -> conf:Dune_rules.Artifact_substitution.conf
     -> unit Fiber.t
 
   val mkdir_p : Path.t -> unit
@@ -84,21 +86,20 @@ end
 
 module File_ops_dry_run : File_operations = struct
   let copy_file ~src ~dst ~executable ~special_file:_ ~package:_ ~conf:_ =
-    Format.printf "Copying %s to %s (executable: %b)\n"
+    print_line "Copying %s to %s (executable: %b)"
       (Path.to_string_maybe_quoted src)
       (Path.to_string_maybe_quoted dst)
       executable;
     Fiber.return ()
 
   let mkdir_p path =
-    Format.printf "Creating directory %s\n" (Path.to_string_maybe_quoted path)
+    print_line "Creating directory %s" (Path.to_string_maybe_quoted path)
 
   let remove_if_exists path =
-    Format.printf "Removing (if it exists) %s\n"
-      (Path.to_string_maybe_quoted path)
+    print_line "Removing (if it exists) %s" (Path.to_string_maybe_quoted path)
 
   let remove_dir_if_empty path =
-    Format.printf "Removing directory (if empty) %s\n"
+    print_line "Removing directory (if empty) %s"
       (Path.to_string_maybe_quoted path)
 end
 
@@ -130,15 +131,15 @@ module File_ops_real (W : Workspace) : File_operations = struct
       match
         let open Option.O in
         let* package = Package.Name.Map.find workspace.conf.packages package in
-        get_vcs package.path
+        Package.dir package |> get_vcs
       with
       | None -> plain_copy ()
       | Some vcs ->
         let open Fiber.O in
-        let+ version = Dune_engine.Vcs.describe vcs in
+        let+ version = Memo.Build.run (Dune_engine.Vcs.describe vcs) in
         let ppf = Format.formatter_of_out_channel oc in
         print ppf ~version;
-        Format.pp_print_flush ppf () )
+        Format.pp_print_flush ppf ())
 
   let process_meta ic =
     let lb = Lexing.from_channel ic in
@@ -152,7 +153,8 @@ module File_ops_real (W : Workspace) : File_operations = struct
               raise_notrace Exit)
         in
         false
-      with Exit -> true
+      with
+      | Exit -> true
     in
     if not need_more_versions then
       No_version_needed
@@ -232,7 +234,7 @@ module File_ops_real (W : Workspace) : File_operations = struct
           Format.pp_close_box ppf ())
 
   let copy_file ~src ~dst ~executable ~special_file ~package
-      ~(conf : Dune_engine.Artifact_substitution.conf) =
+      ~(conf : Dune_rules.Artifact_substitution.conf) =
     let chmod =
       if executable then
         fun _ ->
@@ -253,12 +255,12 @@ module File_ops_real (W : Workspace) : File_operations = struct
           copy_special_file ~src ~package ~ic ~oc
             ~f:(process_dune_package ~get_location:conf.get_location)
         | None ->
-          Dune_engine.Artifact_substitution.copy ~conf ~input_file:src
+          Dune_rules.Artifact_substitution.copy ~conf ~input_file:src
             ~input:(input ic) ~output:(output oc))
 
   let remove_if_exists dst =
     if Path.exists dst then (
-      Printf.eprintf "Deleting %s\n%!" (Path.to_string_maybe_quoted dst);
+      print_line "Deleting %s" (Path.to_string_maybe_quoted dst);
       print_unix_error (fun () -> Path.unlink dst)
     )
 
@@ -266,7 +268,7 @@ module File_ops_real (W : Workspace) : File_operations = struct
     if Path.exists dir then
       match Path.readdir_unsorted dir with
       | Ok [] ->
-        Printf.eprintf "Deleting empty directory %s\n%!"
+        print_line "Deleting empty directory %s"
           (Path.to_string_maybe_quoted dir);
         print_unix_error (fun () -> Path.rmdir dir)
       | Error e ->
@@ -308,17 +310,13 @@ let file_operations ~dry_run ~workspace : (module File_operations) =
   if dry_run then
     (module File_ops_dry_run)
   else
-    ( module File_ops_real (struct
+    (module File_ops_real (struct
       let workspace = workspace
-    end) )
+    end))
 
 let package_is_vendored (pkg : Dune_engine.Package.t) =
-  match Dune_engine.File_tree.find_dir pkg.path with
-  | None -> assert false
-  | Some d -> (
-    match Dune_engine.File_tree.Dir.status d with
-    | Vendored -> true
-    | _ -> false )
+  let dir = Package.dir pkg in
+  Dune_engine.File_tree.is_vendored dir
 
 let install_uninstall ~what =
   let doc = sprintf "%s packages." (String.capitalize what) in
@@ -380,10 +378,10 @@ let install_uninstall ~what =
               "Select context to install from. By default, install files from \
                all defined contexts.")
     and+ sections = Sections.term in
-    Common.set_common ~log_file:No_log_file common ~targets:[];
+    Common.set_common ~log_file:No_log_file common;
     Scheduler.go ~common (fun () ->
         let open Fiber.O in
-        let* workspace = Import.Main.scan_workspace common in
+        let* workspace = Memo.Build.run (Import.Main.scan_workspace common) in
         let contexts =
           match context with
           | None -> workspace.contexts
@@ -397,7 +395,8 @@ let install_uninstall ~what =
                 if package_is_vendored pkg then
                   acc
                 else
-                  pkg.name :: acc)
+                  let name = Package.name pkg in
+                  name :: acc)
             |> List.rev
           | l -> l
         in
@@ -421,9 +420,9 @@ let install_uninstall ~what =
                   Pp.text (Path.to_string p))
             ]
             ~hints:[ Pp.text "try running: dune build @install" ];
-        ( match
-            (contexts, prefix_from_command_line, libdir_from_command_line)
-          with
+        (match
+           (contexts, prefix_from_command_line, libdir_from_command_line)
+         with
         | _ :: _ :: _, Some _, _
         | _ :: _ :: _, _, Some _ ->
           User_error.raise
@@ -431,12 +430,11 @@ let install_uninstall ~what =
                 "Cannot specify --prefix or --libdir when installing into \
                  multiple contexts!"
             ]
-        | _ -> () );
+        | _ -> ());
         let module CMap = Map.Make (Context) in
         let install_files_by_context =
           CMap.of_list_multi install_files
-          |> CMap.to_list
-          |> List.map ~f:(fun (context, install_files) ->
+          |> CMap.to_list_map ~f:(fun context install_files ->
                  let entries_per_package =
                    List.map install_files ~f:(fun (package, install_file) ->
                        let entries = Install.load_install_file install_file in
@@ -469,9 +467,9 @@ let install_uninstall ~what =
         let+ () =
           let mandir =
             Option.map ~f:Path.of_string
-              ( match mandir with
+              (match mandir with
               | Some _ -> mandir
-              | None -> Dune_rules.Setup.mandir )
+              | None -> Dune_rules.Setup.mandir)
           in
           Fiber.sequential_iter install_files_by_context
             ~f:(fun (context, entries_per_package) ->
@@ -480,7 +478,7 @@ let install_uninstall ~what =
                   ~libdir_from_command_line
               in
               let conf =
-                Dune_engine.Artifact_substitution.conf_for_install ~relocatable
+                Dune_rules.Artifact_substitution.conf_for_install ~relocatable
                   ~default_ocamlpath:context.default_ocamlpath
                   ~stdlib_dir:context.stdlib_dir ~prefix ~libdir ~mandir
               in
@@ -499,7 +497,7 @@ let install_uninstall ~what =
                       let dir = Path.parent_exn dst in
                       if what = "install" then (
                         Ops.remove_if_exists dst;
-                        Printf.eprintf "Installing %s\n%!"
+                        print_line "Installing %s"
                           (Path.to_string_maybe_quoted dst);
                         Ops.mkdir_p dir;
                         let executable =

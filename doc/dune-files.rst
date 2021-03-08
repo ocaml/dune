@@ -12,7 +12,7 @@ contents of all configuration files read by Dune and looks like:
 
 .. code:: scheme
 
-   (lang dune 2.8)
+   (lang dune 3.0)
 
 Additionally, they can contains the following stanzas.
 
@@ -35,7 +35,7 @@ Sets the version of the project:
 
     (version <version>)
 
-.. _implicit-transitive-deps:
+.. _implicit_transitive_deps:
 
 implicit_transitive_deps
 ------------------------
@@ -90,6 +90,24 @@ executables on a per project basis:
 Starting from dune 2.0, dune mangles compilation units of executables by
 default. However, this can still be turned off using ``(wrapped_executables
 false)``
+
+.. _executables_implicit_empty_intf:
+
+executables_implicit_empty_intf
+-------------------------------
+
+By default, executables defined via ``(executables(s) ...)`` or ``(test(s)
+...)`` stanzas are compiled with the interface file provided (e.g. ``.mli`` or
+``rei``). Since these modules cannot be used as library dependencies, it's
+common to give them empty interface files to strengthen the compiler's ability
+to detect unused values in these modules.
+
+Starting from dune 2.9, an option is available to automatically generate empty
+interface files for executables and tests that don't already have them:
+
+.. code:: scheme
+
+    (executables_implicit_empty_intf true)
 
 .. _explicit-js-mode:
 
@@ -284,6 +302,23 @@ language: The syntax is as a list of the following elements:
         | (name (<logop> (<stage> | <constr>)*))
 
    dep-specification = dep+
+
+.. _always-add-cflags:
+
+use_standard_c_and_cxx_flags
+----------------------------
+
+Since Dune 2.8, it is possible to deactivate the systematic prepending of flags
+coming from ``ocamlc -config`` to the C compiler command line. This is done
+adding the following field to the ``dune-project`` file:
+
+.. code:: scheme
+
+    (use_standard_c_and_cxx_flags true)
+
+In this mode, dune will populate the ``:standard`` set of C flags with the
+content of ``ocamlc_cflags`` and  ``ocamlc_cppflags``. These flags can be
+completed or overridden using the :ref:`ordered-set-language`.
 
 dune
 ====
@@ -505,6 +540,11 @@ to use the :ref:`include_subdirs` stanza.
   configured through options using ``(inline_tests <options>)``. See
   :ref:`inline_tests` for a reference of corresponding options.
 
+- ``(root_module <module>)`` this field instructs dune to generate a module that
+  will contain module aliases for every library specified in dependencies. This
+  is useful whenever a library is shadowed by a local module. The library may
+  then still be accessible via this root module
+
 Note that when binding C libraries, dune doesn't provide special support for
 tools such as ``pkg-config``, however it integrates easily with
 :ref:`configurator` by
@@ -611,6 +651,9 @@ binary at the same place as where ``ocamlc`` was found.
 Executables can also be linked as object or shared object files. See
 `linking modes`_ for more information.
 
+Starting from dune 2.9, it's possible to automatically generate empty interface
+files for executables. See `executables_implicit_empty_intf`_.
+
 ``<optional-fields>`` are:
 
 - ``(public_name <public-name>)`` specifies that the executable should be
@@ -643,6 +686,10 @@ Executables can also be linked as object or shared object files. See
   here will be ignored and cannot be used inside the executable described by
   the current stanza. It is interpreted in the same way as the ``(modules
   ...)`` field of `library`_
+
+- ``(root_module <module>)`` specifies a ``root_module`` that collects all
+  dependencies specified in ``libraries``. See the documentation for
+  ``root_module`` in the library stanza.
 
 - ``(modes (<modes>))`` sets the `linking modes`_. The default is
   ``(exe)``. Before 2.0, it used to be ``(byte exe)``.
@@ -1072,14 +1119,7 @@ Where ``<optional-fields>`` are:
   names that are attached to the package. Where ``:standard`` refers to all the
   ``.mld`` files in the stanza's directory.
 
-The ``index.mld`` file (specified as ``index`` in ``mld_files``) is treated
-specially by dune. This will be the file used to generate the entry page for the
-package. This is the page that will be linked from the main package listing. If
-you omit writing an ``index.mld``, dune will generate one with the entry modules
-for your package. But this generated will not be installed.
-
-All mld files attached to a package will be included in the generated
-``.install`` file for that package, and hence will be installed by opam.
+For more information, see :ref:`documentation`.
 
 .. _alias-stanza:
 
@@ -1325,6 +1365,9 @@ running dune runtest you can use the following stanza:
     (libraries alcotest mylib)
     (action (run %{test} -e)))
 
+Starting from dune 2.9, it's possible to automatically generate empty interface
+files for test executables. See `executables_implicit_empty_intf`_.
+
 test
 ----
 
@@ -1395,6 +1438,9 @@ Fields supported in ``<settings>`` are:
 
 - ``(coq (flags <flags>))``. This allows to pass options to Coq, see
   :ref:`coq-theory` for more details.
+
+- ``(formatting <settings>)``. This allows to set auto-formatting in the current
+  directory subtree, see :ref:`formatting`.
 
 .. _dune-subdirs:
 
@@ -1595,12 +1641,17 @@ This will enable support for the ``coq.theory`` stanza in the current project. I
 language version is absent, dune will automatically add this line with the
 latest Coq version to the project file once a ``(coq.theory ...)`` stanza is used anywhere.
 
-The supported Coq language versions are ``0.1``, and ``0.2`` which
-adds support for the ``theories`` field. We don't provide any
-guarantees with respect to stability yet, however, as implementation
-of features progresses, we hope reach ``1.0`` soon. The ``1.0``
-version will commit to a stable set of functionality; all the features
-below are expected to reach 1.0 unchanged or minimally modified.
+The supported Coq language versions are:
+
+- ``0.1``: basic Coq theory support,
+- ``0.2``: support for the ``theories`` field, and composition of theories in the same scope,
+- ``0.3``: support for ``(mode native)``, requires Coq >= 8.10.
+
+Guarantees with respect to stability are not provided yet,
+however, as implementation of features progresses, we hope to reach
+``1.0`` soon. The ``1.0`` version will commit to a stable set of
+functionality; all the features below are expected to reach ``1.0``
+unchanged or minimally modified.
 
 The basic form for defining Coq libraries is very similar to the OCaml form:
 
@@ -1613,6 +1664,7 @@ The basic form for defining Coq libraries is very similar to the OCaml form:
      (modules <ordered_set_lang>)
      (libraries <ocaml_libraries>)
      (flags <coq_flags>)
+     (mode <coq_native_mode>)
      (theories <coq_theories>))
 
 The stanza will build all ``.v`` files on the given directory. The semantics of fields is:
@@ -1641,7 +1693,9 @@ The stanza will build all ``.v`` files on the given directory. The semantics of 
   customary in the make-based Coq package ecosystem. For
   compatibility, we also install under the ``user-contrib`` prefix the
   ``.cmxs`` files appearing in ``<ocaml_libraries>``,
-- ``<coq_flags>`` will be passed to ``coqc`` as command-line options,
+- ``<coq_flags>`` will be passed to ``coqc`` as command-line
+  options. ``:standard`` is taken from the value set in the ``(coq (flags <flags>))``
+  field in ``env`` profile. See :ref:`dune-env` for more information.
 - the path to installed locations of ``<ocaml_libraries>`` will be passed to
   ``coqdep`` and ``coqc`` using Coq's ``-I`` flag; this allows for a Coq
   theory to depend on a ML plugin,
@@ -1654,6 +1708,18 @@ The stanza will build all ``.v`` files on the given directory. The semantics of 
   composition with the Coq's standard library is supported, but in
   this case the ``Coq`` prefix will be made available in a qualified
   way. Since Coq's lang version ``0.2``.
+- you can enable the production of Coq's native compiler object files
+  by setting ``<coq_native_mode>`` to ``native``, this will pass
+  ``-native-compiler on`` to Coq and install the corresponding object
+  files under ``.coq-native`` when in ``release`` profile. The regular
+  ``dev`` profile will skip native compilation to make the build
+  faster. Since Coq's lang version ``0.3``. Note that the support for
+  native compute is **experimental**, and requires Coq >= 8.12.1;
+  moreover, depending libraries *must* be built with ``(mode native)``
+  too for this to work; also Coq must be configured to support native
+  compilation. Note that Dune will explicitly disable output of native
+  compilation objects when ``(mode vo)`` even if the default Coq's
+  configure flag enabled it. This will be improved in the future.
 
 Recursive qualification of modules
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -1714,7 +1780,7 @@ process. This is done using the ``coq.extraction`` stanza:
 - ``(prelude <name>)`` refers to the Coq source that contains the extraction
   commands.
 
-- ``(extraced_modules <names>)`` is an exhaustive list of OCaml modules
+- ``(extracted_modules <names>)`` is an exhaustive list of OCaml modules
   extracted.
 
 - ``<optional-fields>`` are ``flags``, ``theories``, and ``libraries``. All of
@@ -1797,15 +1863,15 @@ present, and which libraries it will load.
 - ``(optional)`` will not declare the plugin if the libraries are not available
 
 The loading of the plugin is done using the facilities generated by
-:ref:`generate_module`
+:ref:`generate_sites_module`
 
-.. _generate_module:
+.. _generate_sites_module:
 
-generate_module (since 2.8)
----------------------------
+generate_sites_module (since 2.8)
+---------------------------------
 
 Dune proposes some facilities for dealing with :ref:`sites` in a program. The
-``generate_module`` stanza will generate code for looking up the correct locations
+``generate_sites_module`` stanza will generate code for looking up the correct locations
 of the sites directories and for loading plugins. It works after installation
 with or without the relocation mode, inside dune rules, when using dune exec.
 For promotion it works only if the generated modules are only in the executable (or
@@ -1813,7 +1879,7 @@ library statically linked) promoted; generated modules in plugins will not work.
 
 .. code:: lisp
 
-   (generate_module
+   (generate_sites_module
     (module <name>)
     <facilities>)
 
@@ -1884,10 +1950,10 @@ a typical ``dune-workspace`` file looks like:
 
 .. code:: scheme
 
-    (lang dune 2.8)
-    (context (opam (switch 4.02.3)))
-    (context (opam (switch 4.03.0)))
-    (context (opam (switch 4.04.0)))
+    (lang dune 3.0)
+    (context (opam (switch 4.07.1)))
+    (context (opam (switch 4.08.1)))
+    (context (opam (switch 4.11.1)))
 
 The rest of this section describe the stanzas available.
 
@@ -1896,7 +1962,7 @@ containing exactly:
 
 .. code:: scheme
 
-    (lang dune 2.8)
+    (lang dune 3.0)
     (context default)
 
 This allows you to use an empty ``dune-workspace`` file to mark the root of your

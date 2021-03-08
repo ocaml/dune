@@ -60,11 +60,10 @@ module Crawl = struct
         :: acc)
 
   let executables sctx ~project ~dir exes =
-    let first_exe = snd (List.hd exes.Dune_file.Executables.names) in
-    let obj_dir = Dune_file.Executables.obj_dir exes ~dir in
-    let modules_ =
+    let modules_, obj_dir =
+      let first_exe = snd (List.hd exes.Dune_file.Executables.names) in
       Dir_contents.get sctx ~dir |> Dir_contents.ocaml
-      |> Ml_sources.modules_of_executables ~first_exe ~obj_dir
+      |> Ml_sources.modules_and_obj_dir ~for_:(Exe { first_exe })
     in
     let obj_dir = Obj_dir.of_local obj_dir in
     let modules_ = modules ~obj_dir modules_ in
@@ -103,7 +102,7 @@ module Crawl = struct
         if Lib.is_local lib then
           Dir_contents.get sctx ~dir:(Path.as_in_build_dir_exn src_dir)
           |> Dir_contents.ocaml
-          |> Ml_sources.modules_of_library ~name
+          |> Ml_sources.modules ~for_:(Library name)
           |> modules ~obj_dir
         else
           []
@@ -141,19 +140,19 @@ module Crawl = struct
       |> Lib.Set.to_list
       |> List.filter_map ~f:(library sctx)
     in
-    let open Fiber.O in
+    let open Memo.Build.O in
     let+ dune_files =
       Dune_load.Dune_files.eval workspace.conf.dune_files ~context
     in
     let exes_and_libs =
-      Dune_load.Dune_file.fold_stanzas dune_files ~init:libs
+      Dune_file.fold_stanzas dune_files ~init:libs
         ~f:(fun dune_file stanza accu ->
           let dir = Path.Build.append_source context.build_dir dune_file.dir in
           match stanza with
           | Dune_file.Executables exes -> (
             match executables sctx ~project:dune_file.project ~dir exes with
             | None -> accu
-            | Some exes -> exes :: accu )
+            | Some exes -> exes :: accu)
           | _ -> accu)
     in
     Dyn.List exes_and_libs
@@ -222,7 +221,7 @@ module What = struct
   let describe t setup context =
     match t with
     | Workspace -> Crawl.workspace setup context
-    | Opam_files -> Fiber.return (Opam_files.get ())
+    | Opam_files -> Memo.Build.return (Opam_files.get ())
 end
 
 module Format = struct
@@ -233,10 +232,8 @@ module Format = struct
   let all = [ ("sexp", Sexp); ("csexp", Csexp) ]
 
   let arg =
-    Arg.(
-      value
-      & opt (enum all) Sexp
-      & info [ "format" ] ~docv:"FORMAT" ~doc:"Output format.")
+    let doc = Printf.sprintf "$(docv) must be %s" (Arg.doc_alts_enum all) in
+    Arg.(value & opt (enum all) Sexp & info [ "format" ] ~docv:"FORMAT" ~doc)
 end
 
 module Lang = struct
@@ -265,12 +262,16 @@ module Lang = struct
        if v = (0, 1) then
          `Ok v
        else
-         `Error
-           ( true
-           , "Only --lang 0.1 is available at the moment as this command is \
+         let msg =
+           let pp =
+             "Only --lang 0.1 is available at the moment as this command is \
               not yet stabilised. If you would like to release a software that \
               relies on the output of 'dune describe', please open a ticket on \
-              https://github.com/ocaml/dune." )
+              https://github.com/ocaml/dune." |> Pp.text
+           in
+           Stdlib.Format.asprintf "%a" Pp.to_fmt pp
+         in
+         `Error (true, msg)
 end
 
 let print_as_sexp dyn =
@@ -283,7 +284,11 @@ let print_as_sexp dyn =
     |> Dune_lang.Ast.add_loc ~loc:Loc.none
     |> Dune_lang.Cst.concrete
   in
-  Dune_engine.Format_dune_lang.pp_top_sexps Stdlib.Format.std_formatter [ cst ]
+  let version =
+    Dune_lang.Syntax.greatest_supported_version Dune_engine.Stanza.syntax
+  in
+  Pp.to_fmt Stdlib.Format.std_formatter
+    (Dune_engine.Format_dune_lang.pp_top_sexps ~version [ cst ])
 
 let term =
   let+ common = Common.term
@@ -297,15 +302,15 @@ let term =
   and+ context_name = Common.context_arg ~doc:"Build context to use."
   and+ format = Format.arg
   and+ lang = Lang.arg in
-  Common.set_common common ~targets:[] ~external_lib_deps_mode:false;
+  Common.set_common common;
   let what = What.parse what ~lang in
   Scheduler.go ~common (fun () ->
       let open Fiber.O in
-      let* setup = Import.Main.setup common in
+      let* setup = Memo.Build.run (Import.Main.setup common) in
       let context =
         Import.Main.find_context_exn setup.workspace ~name:context_name
       in
-      let+ res = What.describe what setup context in
+      let+ res = Memo.Build.run (What.describe what setup context) in
       match format with
       | Csexp -> Csexp.to_channel stdout (Sexp.of_dyn res)
       | Sexp -> print_as_sexp res)

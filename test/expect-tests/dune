@@ -8,10 +8,12 @@
   ocaml_config
   dune_tests_common
   stdune
+  dune_util
   dune_engine
   dune_rules
   fiber
   dune_lang
+  dune_config
   cache
   memo
   ;; This is because of the (implicit_transitive_deps false)

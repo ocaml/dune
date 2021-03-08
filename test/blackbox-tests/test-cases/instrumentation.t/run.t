@@ -1,5 +1,6 @@
   $ cat >dune-project <<EOF
   > (lang dune 2.7)
+  > (wrapped_executables false)
   > EOF
 
 "Hello" is an instrumentation backend that instruments by printing "Hello,
@@ -18,7 +19,7 @@ Dune!" at the beginning of the module.
   > EOF
 
   $ cat >mylib.ml <<EOF
-  > let f () = print_endline "Mylib"
+  > let f () = ()
   > EOF
 
   $ cat >main.ml <<EOF
@@ -30,16 +31,14 @@ message.
 
   $ dune build
   $ _build/default/main.exe
-  Mylib
 
 This should print the instrumentation message twice, once for "main" and once
 for "mylib":
 
   $ dune build --instrument-with hello
   $ _build/default/main.exe
-  Hello, Dune!
-  Hello, Dune!
-  Mylib
+  Hello from Mylib!
+  Hello from Main!
 
 An empty file:
 
@@ -61,14 +60,64 @@ We rebuild with instrumentation via the CLI.
 We get the message.
 
   $ _build/default/main.exe
-  Hello, Dune!
+  Hello from Main!
+
+We also check that we can pass arguments to the ppx.
+
+  $ cat >dune <<EOF
+  > (executable
+  >  (name main)
+  >  (modules main)
+  >  (instrumentation (backend hello -place Spain)))
+  > EOF
+  $ dune build --instrument-with hello
+  File "dune", line 4, characters 33-39:
+  4 |  (instrumentation (backend hello -place Spain)))
+                                       ^^^^^^
+  Error: The possibility to pass arguments to instrumentation backends is only
+  available since version 2.8 of the dune language. Please update your
+  dune-project file to have (lang dune 2.8).
+  [1]
+
+  $ cat >dune-project <<EOF
+  > (lang dune 2.8)
+  > EOF
+  $ dune build --instrument-with hello
+  $ _build/default/main.exe
+  Hello from Spain (<none>)!
+
+We also check that we can declare dependencies to the ppx.
+
+  $ mkdir -p input
+  $ cat >dune <<EOF
+  > (data_only_dirs input)
+  > (subdir input (rule (with-stdout-to input (echo "really"))))
+  > (executable
+  >  (name main)
+  >  (modules main)
+  >  (instrumentation (backend hello -place Spain -file input/input) (deps input/input)))
+  > EOF
+  $ dune build --instrument-with hello
+  File "dune", line 6, characters 65-83:
+  6 |  (instrumentation (backend hello -place Spain -file input/input) (deps input/input)))
+                                                                       ^^^^^^^^^^^^^^^^^^
+  Error: 'deps' is only available since version 3.0 of the dune language.
+  Please update your dune-project file to have (lang dune 3.0).
+  [1]
+
+  $ cat >dune-project <<EOF
+  > (lang dune 3.0)
+  > EOF
+  $ dune build --instrument-with hello
+  $ _build/default/main.exe
+  Hello from Spain (really)!
 
 Can also enable with an environment variable.
 
   $ DUNE_INSTRUMENT_WITH=hello dune build
 
   $ _build/default/main.exe
-  Hello, Dune!
+  Hello from Spain (really)!
 
 Instrumentation can also be controlled by using the dune-workspace file.
 
@@ -80,7 +129,7 @@ Instrumentation can also be controlled by using the dune-workspace file.
   $ dune build
 
   $ _build/default/main.exe
-  Hello, Dune!
+  Hello from Spain (really)!
 
 It can also be controlled on a per-context scope.
 
@@ -92,7 +141,7 @@ It can also be controlled on a per-context scope.
   $ dune build
 
   $ _build/coverage/main.exe
-  Hello, Dune!
+  Hello from Spain (really)!
 
 Per-context setting takes precedence over per-workspace setting.
 
@@ -119,6 +168,7 @@ Next, we check the backend can be used when it is installed.
   > EOF
   $ cat >installed/dune-project <<EOF
   > (lang dune 2.7)
+  > (wrapped_executables false)
   > EOF
   $ cat >installed/dune <<EOF
   > (executable
@@ -130,4 +180,4 @@ Next, we check the backend can be used when it is installed.
   $ OCAMLPATH=$PWD/_install/lib dune build --root installed
   Entering directory 'installed'
   $ installed/_build/default/main.exe
-  Hello, Dune!
+  Hello from Main!

@@ -25,9 +25,9 @@ module Files = struct
 
   let diff_action { src; corrected; deps = _ } =
     let src = Path.build src in
-    let open Build.O in
-    let+ () = Build.path src
-    and+ () = Build.path (Path.build corrected) in
+    let open Action_builder.O in
+    let+ () = Action_builder.path src
+    and+ () = Action_builder.path (Path.build corrected) in
     Action.diff ~optional:false src corrected
 end
 
@@ -50,9 +50,9 @@ module Deps = struct
     | Error (_, msg) -> Error msg
 
   let read (files : Files.t) =
-    let open Build.O in
+    let open Action_builder.O in
     let path = Path.build files.deps in
-    let+ content = Build.contents path in
+    let+ content = Action_builder.contents path in
     match parse content with
     | Ok deps -> deps
     | Error msg ->
@@ -83,7 +83,7 @@ module Deps = struct
     let dirs, files = dirs_and_files ~dir t_list in
     let dep_set = Dep.Set.of_files files in
     List.fold_left dirs ~init:dep_set ~f:(fun acc dir ->
-        Dep.Set.union acc (Dep.Set.source_tree dir))
+        Dep.Set.union acc (fst (Dep.Set.source_tree dir)))
 end
 
 module Prelude = struct
@@ -133,8 +133,8 @@ let syntax =
   Dune_lang.Syntax.create ~name ~desc [ ((0, 1), `Since (2, 4)) ]
 
 let default_files =
-  let has_extention ext s = String.equal ext (Filename.extension s) in
-  Predicate_lang.Glob.of_pred (has_extention ".md")
+  let has_extension ext s = String.equal ext (Filename.extension s) in
+  Predicate_lang.Glob.of_pred (has_extension ".md")
 
 let decode =
   let open Dune_lang.Decoder in
@@ -181,9 +181,9 @@ let gen_rules_for_single_file stanza ~sctx ~dir ~expander ~mdx_prog src =
   Super_context.add_rule sctx ~loc ~dir (Deps.rule ~dir ~mdx_prog files);
   (* Add the rule for generating the .corrected file using ocaml-mdx test *)
   let mdx_action =
-    let open Build.With_targets.O in
-    let deps = Build.map (Deps.read files) ~f:(Deps.to_dep_set ~dir) in
-    let dyn_deps = Build.map deps ~f:(fun d -> ((), d)) in
+    let open Action_builder.With_targets.O in
+    let deps = Action_builder.map (Deps.read files) ~f:(Deps.to_dep_set ~dir) in
+    let dyn_deps = Action_builder.map deps ~f:(fun d -> ((), d)) in
     let pkg_deps =
       stanza.packages
       |> List.map ~f:(fun (loc, pkg) ->
@@ -193,18 +193,18 @@ let gen_rules_for_single_file stanza ~sctx ~dir ~expander ~mdx_prog src =
     let prelude_args =
       List.concat_map stanza.preludes ~f:(Prelude.to_args ~dir)
     in
-    Build.(with_no_targets (Dep_conf_eval.unnamed ~expander pkg_deps))
-    >>> Build.with_no_targets (Build.dyn_deps dyn_deps)
+    Action_builder.(with_no_targets (Dep_conf_eval.unnamed ~expander pkg_deps))
+    >>> Action_builder.with_no_targets (Action_builder.dyn_deps dyn_deps)
     >>> Command.run ~dir:(Path.build dir) mdx_prog
-          ( [ Command.Args.A "test" ] @ prelude_args
-          @ [ A "-o"; Target files.corrected; Dep (Path.build files.src) ] )
+          ([ Command.Args.A "test" ] @ prelude_args
+          @ [ A "-o"; Target files.corrected; Dep (Path.build files.src) ])
   in
   Super_context.add_rule sctx ~loc ~dir mdx_action;
   (* Attach the diff action to the @runtest for the src and corrected files *)
   let diff_action = Files.diff_action files in
   Super_context.add_alias_action sctx (Alias.runtest ~dir) ~loc:(Some loc) ~dir
     ~stamp:("mdx", files.src)
-    (Build.with_no_targets diff_action)
+    (Action_builder.with_no_targets diff_action)
 
 (** Generates the rules for a given mdx stanza *)
 let gen_rules t ~sctx ~dir ~expander =

@@ -84,7 +84,6 @@ type t = private
   ; findlib_toolchain : Context_name.t option  (** Misc *)
   ; default_ocamlpath : Path.t list
   ; arch_sixtyfour : bool
-  ; install_prefix : Path.t Memo.Lazy.Async.t
   ; ocaml_config : Ocaml_config.t
   ; ocaml_config_vars : Ocaml_config.Vars.t
   ; version : Ocaml_version.t
@@ -94,6 +93,7 @@ type t = private
         (** Given a program name, e.g. ["ocaml"], find the path to a preferred
             executable in PATH, e.g. [Some "/path/to/ocaml.opt.exe"]. *)
   ; lib_config : Lib_config.t
+  ; build_context : Build_context.t
   }
 
 val equal : t -> t -> bool
@@ -107,7 +107,7 @@ val to_dyn_concise : t -> Dyn.t
 (** Compare the context names *)
 val compare : t -> t -> Ordering.t
 
-val install_ocaml_libdir : t -> Path.t option Fiber.t
+val install_ocaml_libdir : t -> Path.t option Memo.Build.t
 
 (** Return the compiler needed for this compilation mode *)
 val compiler : t -> Mode.t -> Action.Prog.t
@@ -130,12 +130,16 @@ val lib_config : t -> Lib_config.t
     the host build context. Otherwise, it just returns [exe]. *)
 val map_exe : t -> Path.t -> Path.t
 
-val to_build_context : t -> Build_context.t
+val build_context : t -> Build_context.t
+
+(** Query where build artifacts should be installed if the user doesn't specify
+    an explicit installation directory. *)
+val install_prefix : t -> Path.t Fiber.t
 
 val init_configurator : t -> unit
 
 module DB : sig
   val get : Path.Build.t -> t
 
-  val all : unit -> t list Fiber.t
+  val all : unit -> t list Memo.Build.t
 end

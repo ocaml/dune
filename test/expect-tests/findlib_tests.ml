@@ -1,6 +1,6 @@
-open Dune_engine
+open Stdune
 open Dune_rules
-open Import
+open Dune_engine
 open Dune_tests_common
 
 let () = init ()

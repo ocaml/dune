@@ -19,14 +19,16 @@ module Js_of_ocaml : sig
   val default : t
 end
 
+type for_ =
+  | Executable
+  | Library of Wrapped.t option
+
 module Lib_deps : sig
   type nonrec t = Lib_dep.t list
 
   val of_pps : Lib_name.t list -> t
 
-  val info : t -> kind:Lib_deps_info.Kind.t -> Lib_deps_info.t
-
-  val decode : allow_re_export:bool -> t Dune_lang.Decoder.t
+  val decode : for_ -> t Dune_lang.Decoder.t
 end
 
 
@@ -71,8 +73,8 @@ end
 
 (** [preprocess] and [preprocessor_deps] fields *)
 val preprocess_fields :
-  ( Preprocess.Without_instrumentation.t Preprocess.Per_module.t
-  * Dep_conf.t list )
+  (Preprocess.Without_instrumentation.t Preprocess.Per_module.t
+  * Dep_conf.t list)
   Dune_lang.Decoder.fields_parser
 
 module Buildable : sig
@@ -90,6 +92,7 @@ module Buildable : sig
     ; js_of_ocaml : Js_of_ocaml.t
     ; allow_overlapping_dependencies : bool
     ; ctypes : Ctypes.t option
+    ; root_module : (Loc.t * Module_name.t) option
     }
 
   (** Check if the buildable has any foreign stubs or archives. *)
@@ -435,7 +438,7 @@ module Deprecated_library_name : sig
 end
 
 (** Stanza which generate a module for getting information from dune *)
-module Generate_module : sig
+module Generate_sites_module : sig
   type t =
     { loc : Loc.t
     ; module_ : Module_name.t  (** name of the module to generate *)
@@ -464,7 +467,7 @@ type Stanza.t +=
   | Library_redirect of Library_redirect.Local.t
   | Deprecated_library_name of Deprecated_library_name.t
   | Cram of Cram_stanza.t
-  | Generate_module of Generate_module.t
+  | Generate_sites_module of Generate_sites_module.t
   | Plugin of Plugin.t
 
 val stanza_package : Stanza.t -> Package.t option
@@ -494,3 +497,20 @@ module Stanzas : sig
       current [project]. *)
   val parse : file:Path.Source.t -> Dune_project.t -> Dune_lang.Ast.t list -> t
 end
+
+(** A fully evaluated dune file *)
+type t =
+  { dir : Path.Source.t
+  ; project : Dune_project.t
+  ; stanzas : Stanzas.t
+  }
+
+val parse :
+     Dune_lang.Ast.t list
+  -> dir:Path.Source.t
+  -> file:Path.Source.t
+  -> project:Dune_project.t
+  -> t
+
+val fold_stanzas :
+  t list -> init:'acc -> f:(t -> Stanza.t -> 'acc -> 'acc) -> 'acc

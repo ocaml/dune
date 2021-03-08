@@ -1,8 +1,9 @@
 (** [Ordered_set_lang.t] is a sexp-based representation for an ordered list of
     strings, with some set like operations. *)
-open! Stdune
 
+open! Stdune
 open Dune_engine
+open Import
 
 type t
 
@@ -68,8 +69,7 @@ module Unexpanded : sig
 
   val has_special_forms : t -> bool
 
-  (** List of files needed to expand this set *)
-  val files : t -> f:(String_with_vars.t -> Path.t) -> Path.Set.t
+  val has_standard : t -> bool
 
   (** Expand [t] using with the given file contents. [file_contents] is a map
       from filenames to their parsed contents. Every [(:include fn)] in [t] is
@@ -78,9 +78,8 @@ module Unexpanded : sig
   val expand :
        t
     -> dir:Path.t
-    -> files_contents:Dune_lang.Ast.t Path.Map.t
-    -> f:(String_with_vars.t -> Value.t list)
-    -> expanded
+    -> f:Value.t list Action_builder.t String_with_vars.expander
+    -> expanded Action_builder.t
 
   type position =
     | Pos

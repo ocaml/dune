@@ -3,17 +3,27 @@
 open Stdune
 open Dune_engine
 
+let config =
+  { Scheduler.Config.concurrency = 1
+  ; terminal_persistence = Preserve
+  ; display = Short
+  ; rpc = None
+  }
+
 let setup =
   lazy
-    ( Path.set_root (Path.External.cwd ());
-      Path.Build.set_build_dir (Path.Build.Kind.of_string "_build") )
+    (Path.set_root (Path.External.cwd ());
+     Path.Build.set_build_dir (Path.Build.Kind.of_string "_build"))
 
 let prog = Option.value_exn (Bin.which ~path:(Env.path Env.initial) "true")
 
 let run () = Process.run ~env:Env.initial Strict prog []
 
 let go ~jobs fiber =
-  Scheduler.go fiber ~config:{ Config.default with concurrency = Fixed jobs }
+  Scheduler.Run.go
+    ~on_event:(fun _ _ -> ())
+    { config with concurrency = jobs }
+    fiber
 
 let%bench_fun "single" =
   Lazy.force setup;

@@ -1,0 +1,7 @@
+(library
+ (name dune_filesystem_stubs)
+ (public_name stdune-unstable.filesystem_stubs)
+ (libraries)
+ (foreign_stubs
+  (language c)
+  (names readdir)))

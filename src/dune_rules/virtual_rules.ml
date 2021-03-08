@@ -37,7 +37,7 @@ let setup_copy_rules_for_impl ~sctx ~dir vimpl =
   let vlib_obj_dir = Lib.obj_dir vlib in
   let add_rule = Super_context.add_rule sctx ~dir in
   let copy_to_obj_dir ~src ~dst =
-    add_rule ~loc:(Loc.of_pos __POS__) (Build.symlink ~src ~dst)
+    add_rule ~loc:(Loc.of_pos __POS__) (Action_builder.symlink ~src ~dst)
   in
   let { Lib_config.has_native; ext_obj; _ } = ctx.lib_config in
   let { Mode.Dict.byte; native } =
@@ -50,13 +50,13 @@ let setup_copy_rules_for_impl ~sctx ~dir vimpl =
   in
   let copy_objs src =
     copy_obj_file src Cmi;
-    ( if
-      Module.visibility src = Public
-      && Obj_dir.need_dedicated_public_dir impl_obj_dir
+    (if
+     Module.visibility src = Public
+     && Obj_dir.need_dedicated_public_dir impl_obj_dir
     then
       let dst = Obj_dir.Module.cm_public_file_exn impl_obj_dir src ~kind:Cmi in
       let src = Obj_dir.Module.cm_public_file_exn vlib_obj_dir src ~kind:Cmi in
-      copy_to_obj_dir ~src ~dst );
+      copy_to_obj_dir ~src ~dst);
     if Module.has src ~ml_kind:Impl then (
       if byte then copy_obj_file src Cmo;
       if native then (
@@ -116,7 +116,7 @@ let impl sctx ~(lib : Dune_file.Library.t) ~scope =
                 Pp_spec.make preprocess (Super_context.context sctx).version
               in
               Dir_contents.ocaml dir_contents
-              |> Ml_sources.modules_of_library ~name
+              |> Ml_sources.modules ~for_:(Library name)
               |> Modules.map_user_written ~f:(Pp_spec.pped_module pp_spec)
             in
             let foreign_objects =

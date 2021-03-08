@@ -5,8 +5,8 @@ module Modules_group = Modules
 
 module Modules = struct
   type t =
-    { libraries : Modules.t Lib_name.Map.t
-    ; executables : Modules.t String.Map.t
+    { libraries : (Modules.t * Path.Build.t Obj_dir.t) Lib_name.Map.t
+    ; executables : (Modules.t * Path.Build.t Obj_dir.t) String.Map.t
     ; (* Map from modules to the buildable they are part of *)
       rev_map : Buildable.t Module_name.Map.t
     }
@@ -20,11 +20,11 @@ module Modules = struct
   let make (libs, exes) =
     let libraries =
       match
-        Lib_name.Map.of_list_map libs ~f:(fun (lib, m) ->
-            (Library.best_name lib, m))
+        Lib_name.Map.of_list_map libs ~f:(fun (lib, m, obj_dir) ->
+            (Library.best_name lib, (m, obj_dir)))
       with
       | Ok x -> x
-      | Error (name, _, (lib2, _)) ->
+      | Error (name, _, (lib2, _, _)) ->
         User_error.raise ~loc:lib2.buildable.loc
           [ Pp.textf "Library %S appears for the second time in this directory"
               (Lib_name.to_string name)
@@ -32,11 +32,11 @@ module Modules = struct
     in
     let executables =
       match
-        String.Map.of_list_map exes ~f:(fun (exes, m) ->
-            (snd (List.hd exes.Executables.names), m))
+        String.Map.of_list_map exes ~f:(fun (exes, m, obj_dir) ->
+            (snd (List.hd exes.Executables.names), (m, obj_dir)))
       with
       | Ok x -> x
-      | Error (name, _, (exes2, _)) ->
+      | Error (name, _, (exes2, _, _)) ->
         User_error.raise ~loc:exes2.buildable.loc
           [ Pp.textf
               "Executable %S appears for the second time in this directory" name
@@ -49,8 +49,8 @@ module Modules = struct
               (Module.name m, buildable) :: acc)
         in
         List.rev_append
-          (List.concat_map libs ~f:(fun (l, m) -> by_name l.buildable m))
-          (List.concat_map exes ~f:(fun (e, m) -> by_name e.buildable m))
+          (List.concat_map libs ~f:(fun (l, m, _) -> by_name l.buildable m))
+          (List.concat_map exes ~f:(fun (e, m, _) -> by_name e.buildable m))
       in
       match Module_name.Map.of_list rev_modules with
       | Ok x -> x
@@ -93,14 +93,13 @@ module Artifacts = struct
 
   let make (d : _ Dir_with_dune.t) ~lib_config (libs, exes) =
     let libraries =
-      List.fold_left
-        ~f:(fun libraries (lib, _) ->
+      List.fold_left ~init:Lib_name.Map.empty libs
+        ~f:(fun libraries (lib, _, _) ->
           let name = Lib_name.of_local lib.Library.name in
           let info =
             Dune_file.Library.to_lib_info lib ~dir:d.ctx_dir ~lib_config
           in
           Lib_name.Map.add_exn libraries name info)
-        ~init:Lib_name.Map.empty libs
     in
     let modules =
       let by_name modules obj_dir =
@@ -108,15 +107,11 @@ module Artifacts = struct
             Module_name.Map.add_exn modules (Module.name m) (obj_dir, m))
       in
       let init =
-        List.fold_left ~init:Module_name.Map.empty
-          ~f:(fun modules (e, m) ->
-            by_name modules (Executables.obj_dir ~dir:d.ctx_dir e) m)
-          exes
+        List.fold_left exes ~init:Module_name.Map.empty
+          ~f:(fun modules (_, m, obj_dir) -> by_name modules obj_dir m)
       in
-      List.fold_left ~init
-        ~f:(fun modules (l, m) ->
-          by_name modules (Library.obj_dir ~dir:d.ctx_dir l) m)
-        libs
+      List.fold_left libs ~init ~f:(fun modules (_, m, obj_dir) ->
+          by_name modules obj_dir m)
     in
     { libraries; modules }
 end
@@ -154,7 +149,7 @@ let modules_of_files ~dialects ~dir ~files =
                let module_ = make_module dialect name fn in
                match ml_kind with
                | Impl -> Left module_
-               | Intf -> Right module_ ) ))
+               | Intf -> Right module_)))
   in
   let parse_one_set (files : (Module_name.t * Module.File.t) list) =
     match Module_name.Map.of_list files with
@@ -174,16 +169,17 @@ let modules_of_files ~dialects ~dir ~files =
   Module_name.Map.merge impls intfs ~f:(fun name impl intf ->
       Some (Module.Source.make name ?impl ?intf))
 
-let modules_of_library t ~name =
-  let map = (Memo.Lazy.force t.modules).libraries in
-  Lib_name.Map.find_exn map name
+type for_ =
+  | Library of Lib_name.t
+  | Exe of { first_exe : string }
 
-let modules_of_executables t ~obj_dir ~first_exe =
-  let map = (Memo.Lazy.force t.modules).executables in
-  (* we need to relocate the alias module to its own directory. *)
-  let src_dir = Path.build (Obj_dir.obj_dir obj_dir) in
-  String.Map.find_exn map first_exe
-  |> Modules_group.relocate_alias_module ~src_dir
+let modules_and_obj_dir t ~for_ =
+  let modules = Memo.Lazy.force t.modules in
+  match for_ with
+  | Library name -> Lib_name.Map.find_exn modules.libraries name
+  | Exe { first_exe } -> String.Map.find_exn modules.executables first_exe
+
+let modules t ~for_ = fst (modules_and_obj_dir t ~for_)
 
 let lookup_module (t : t) name =
   let modules = Memo.Lazy.force t.modules in
@@ -197,7 +193,7 @@ let virtual_modules lookup_vlib vlib =
     | Local ->
       let src_dir = Lib_info.src_dir info |> Path.as_in_build_dir_exn in
       let t = lookup_vlib ~dir:src_dir in
-      modules_of_library t ~name:(Lib.name vlib)
+      modules t ~for_:(Library (Lib.name vlib))
   in
   let existing_virtual_modules = Modules_group.virtual_module_names modules in
   let allow_new_public_modules =
@@ -210,7 +206,8 @@ let virtual_modules lookup_vlib vlib =
 let make_lib_modules (d : _ Dir_with_dune.t) ~lookup_vlib ~(lib : Library.t)
     ~modules =
   let src_dir = d.ctx_dir in
-  let kind, main_module_name, wrapped =
+  let open Result.O in
+  let+ kind, main_module_name, wrapped =
     match lib.implements with
     | None ->
       (* In the two following pattern matching, we can only get [From _] if
@@ -232,7 +229,7 @@ let make_lib_modules (d : _ Dir_with_dune.t) ~lookup_vlib ~(lib : Library.t)
         | None -> Exe_or_normal_lib
         | Some virtual_modules -> Virtual { virtual_modules }
       in
-      (kind, main_module_name, wrapped)
+      Ok (kind, main_module_name, wrapped)
     | Some _ ->
       assert (Option.is_none lib.virtual_modules);
       let resolved =
@@ -241,26 +238,19 @@ let make_lib_modules (d : _ Dir_with_dune.t) ~lookup_vlib ~(lib : Library.t)
         (* can't happen because this library is defined using the current stanza *)
         |> Option.value_exn
       in
-      (* diml: this [Result.ok_exn] means that if the user writes an invalid
-         [implements] field, we will get an error immediately even if the
-         library is not built. We should change this to carry the [Or_exn.t] a
-         bit longer. *)
-      let vlib =
-        Result.ok_exn
-          (* This [Option.value_exn] is correct because the above
-             [lib.implements] is [Some _] and this [lib] variable correspond to
-             the same library. *)
-          (Option.value_exn (Lib.implements resolved))
+      let* vlib =
+        (* This [Option.value_exn] is correct because the above [lib.implements]
+           is [Some _] and this [lib] variable correspond to the same library. *)
+        Option.value_exn (Lib.implements resolved)
       in
       let kind : Modules_field_evaluator.kind =
         Implementation (virtual_modules lookup_vlib vlib)
       in
-      let main_module_name, wrapped =
-        Result.ok_exn
-          (let open Result.O in
-          let* main_module_name = Lib.main_module_name resolved in
-          let+ wrapped = Lib.wrapped resolved in
-          (main_module_name, Option.value_exn wrapped))
+      let+ main_module_name, wrapped =
+        let open Result.O in
+        let* main_module_name = Lib.main_module_name resolved in
+        let+ wrapped = Lib.wrapped resolved in
+        (main_module_name, Option.value_exn wrapped)
       in
       (kind, main_module_name, wrapped)
   in
@@ -268,6 +258,7 @@ let make_lib_modules (d : _ Dir_with_dune.t) ~lookup_vlib ~(lib : Library.t)
     Modules_field_evaluator.eval ~modules ~buildable:lib.buildable ~kind
       ~private_modules:
         (Option.value ~default:Ordered_set_lang.standard lib.private_modules)
+      ~src_dir
   in
   let stdlib = lib.stdlib in
   let implements = Option.is_some lib.implements in
@@ -279,23 +270,40 @@ let libs_and_exes (d : _ Dir_with_dune.t) ~lookup_vlib ~modules =
   List.filter_partition_map d.data ~f:(fun stanza ->
       match (stanza : Stanza.t) with
       | Library lib ->
-        let modules = make_lib_modules d ~lookup_vlib ~modules ~lib in
-        Left (lib, modules)
+        let modules =
+          (* diml: this [Result.ok_exn] means that if the user writes an invalid
+             [implements] field, we will get an error immediately even if the
+             library is not built. We should change this to carry the [Or_exn.t]
+             a bit longer. *)
+          Result.ok_exn (make_lib_modules d ~lookup_vlib ~modules ~lib)
+        in
+        let obj_dir = Library.obj_dir lib ~dir:d.ctx_dir in
+        Left (lib, modules, obj_dir)
       | Executables exes
       | Tests { exes; _ } ->
+        let src_dir = d.ctx_dir in
         let modules =
-          Modules_field_evaluator.eval ~modules ~buildable:exes.buildable
-            ~kind:Modules_field_evaluator.Exe_or_normal_lib
-            ~private_modules:Ordered_set_lang.standard
-        in
-        let modules =
+          let modules =
+            Modules_field_evaluator.eval ~modules ~buildable:exes.buildable
+              ~kind:Modules_field_evaluator.Exe_or_normal_lib
+              ~private_modules:Ordered_set_lang.standard ~src_dir
+          in
           let project = Scope.project d.scope in
           if Dune_project.wrapped_executables project then
-            Modules_group.exe_wrapped ~src_dir:d.ctx_dir ~modules
+            Modules_group.exe_wrapped ~src_dir ~modules
           else
             Modules_group.exe_unwrapped modules
         in
-        Right (exes, modules)
+        let obj_dir = Dune_file.Executables.obj_dir ~dir:src_dir exes in
+        let modules =
+          let src_dir = Path.build (Obj_dir.obj_dir obj_dir) in
+          (* We need to relocate the source of the alias module to its own
+             directory for executables. This module always has the same name for
+             executables, therefore it might collide with ether alias modules if
+             there are multiple executable stanzas in the same directory *)
+          Modules_group.relocate_alias_module modules ~src_dir
+        in
+        Right (exes, modules, obj_dir)
       | _ -> Skip)
 
 let check_no_qualified (loc, include_subdirs) =

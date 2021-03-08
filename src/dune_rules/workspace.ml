@@ -19,8 +19,10 @@ module Context = struct
     let equal x y =
       match (x, y) with
       | Native, Native -> true
+      | Native, _
+      | _, Native ->
+        false
       | Named x, Named y -> Context_name.equal x y
-      | _, _ -> false
 
     let t =
       let+ context_name = Context_name.decode in
@@ -32,7 +34,7 @@ module Context = struct
       match x with
       | None -> ts
       | Some t ->
-        if List.mem t ~set:ts then
+        if List.mem ts t ~equal then
           ts
         else
           ts @ [ t ]
@@ -135,8 +137,8 @@ module Context = struct
               ]
         in
         field "paths" ~default:[]
-          ( Dune_lang.Syntax.since Stanza.syntax (1, 12)
-          >>> map ~f (repeat (pair (located string) Ordered_set_lang.decode)) )
+          (Dune_lang.Syntax.since Stanza.syntax (1, 12)
+          >>> map ~f (repeat (pair (located string) Ordered_set_lang.decode)))
       and+ instrument_with =
         field ~default:instrument_with "instrument_with"
           (Dune_lang.Syntax.since syntax (2, 7) >>> repeat Lib_name.decode)
@@ -206,7 +208,7 @@ module Context = struct
               ; Pp.text
                   "Please specify a context name manually with the (name ..) \
                    field"
-              ] )
+              ])
       in
       let base = { base with targets = Target.add base.targets x; name } in
       { base; switch; root; merlin }
@@ -288,9 +290,10 @@ module Context = struct
   let all_names t =
     let n = name t in
     n
-    :: List.filter_map (targets t) ~f:(function
-         | Native -> None
-         | Named s -> Some (Context_name.target n ~toolchain:s))
+    ::
+    List.filter_map (targets t) ~f:(function
+      | Native -> None
+      | Named s -> Some (Context_name.target n ~toolchain:s))
 
   let default ?x ?profile ?instrument_with () =
     Default
@@ -458,7 +461,10 @@ let load ?x ?profile ?instrument_with p =
       if Dune_lexer.eof_reached lb then
         default ?x ?profile ?instrument_with ()
       else
-        parse_contents lb ~f:(fun _lang -> t ?x ?profile ?instrument_with ()))
+        parse_contents lb ~f:(fun lang ->
+            String_with_vars.set_decoding_env
+              (Pform.Env.initial lang.version)
+              (t ?x ?profile ?instrument_with ())))
 
 let default ?x ?profile ?instrument_with () =
   let x = Option.map x ~f:(fun s -> Context.Target.Named s) in
@@ -488,7 +494,20 @@ module DB = struct
   end
 end
 
-let init ?x ?profile ?instrument_with ?path () =
+let init ?x ?profile ?instrument_with ?workspace_file () =
+  let path : Path.t option =
+    match workspace_file with
+    | None ->
+      let p = Path.of_string filename in
+      Option.some_if (Path.exists p) p
+    | Some p ->
+      if not (Path.exists p) then
+        User_error.raise
+          [ Pp.textf "Workspace file %s does not exist"
+              (Path.to_string_maybe_quoted p)
+          ];
+      Some p
+  in
   Memo.Run.Fdecl.set DB.Settings.t
     { DB.Settings.x; profile; instrument_with; path }
 

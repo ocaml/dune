@@ -34,14 +34,13 @@ let print_rule_makefile ppf (rule : Build_system.Evaluated_rule.t) =
       ; Action.for_shell rule.action
       ]
   in
-  let eval_pred = Build_system.eval_pred in
   Format.fprintf ppf
     "@[<hov 2>@{<makefile-stuff>%a:%t@}@]@,@<0>\t@{<makefile-action>%a@}@,@,"
     (Format.pp_print_list ~pp_sep:Format.pp_print_space (fun ppf p ->
          Format.pp_print_string ppf (Path.to_string p)))
     (List.map ~f:Path.build (Path.Build.Set.to_list rule.targets))
     (fun ppf ->
-      Path.Set.iter (Dep.Set.paths rule.deps ~eval_pred) ~f:(fun dep ->
+      Path.Set.iter (Dep.Set.files_approx rule.deps) ~f:(fun dep ->
           Format.fprintf ppf "@ %s" (Path.to_string dep)))
     Pp.to_fmt (Action_to_sh.pp action)
 
@@ -56,13 +55,12 @@ let print_rule_sexp ppf (rule : Build_system.Evaluated_rule.t) =
          [ [ ("deps", Dep.Set.encode rule.deps)
            ; ( "targets"
              , paths
-                 ( Path.Build.Set.to_list rule.targets
-                 |> Path.set_of_build_paths_list ) )
+                 (Path.Build.Set.to_list rule.targets
+                 |> Path.set_of_build_paths_list) )
            ]
-         ; ( match rule.context with
+         ; (match rule.context with
            | None -> []
-           | Some c -> [ ("context", Dune_engine.Context_name.encode c.name) ]
-           )
+           | Some c -> [ ("context", Dune_engine.Context_name.encode c.name) ])
          ; [ ("action", sexp_of_action rule.action) ]
          ])
   in
@@ -107,22 +105,23 @@ let term =
             "Print all rules needed to build the transitive dependencies of \
              the given targets.")
   and+ syntax = Syntax.term
-  and+ targets = Arg.(value & pos_all string [] & Arg.info [] ~docv:"TARGET") in
-  let targets = List.map ~f:Arg.Dep.file targets in
-  Common.set_common common ~targets ~external_lib_deps_mode:true;
+  and+ targets = Arg.(value & pos_all dep [] & Arg.info [] ~docv:"TARGET") in
+  Common.set_common common;
   let out = Option.map ~f:Path.of_string out in
   Scheduler.go ~common (fun () ->
       let open Fiber.O in
-      let* setup = Import.Main.setup common in
+      let* setup = Memo.Build.run (Import.Main.setup common) in
       let request =
         match targets with
         | [] ->
           Build_system.all_targets ()
           |> Path.Build.Set.fold ~init:[] ~f:(fun p acc -> Path.build p :: acc)
-          |> Build.paths
+          |> Action_builder.paths
         | _ -> Target.resolve_targets_exn common setup targets |> Target.request
       in
-      let* rules = Build_system.evaluate_rules ~request ~recursive in
+      let* rules =
+        Memo.Build.run (Build_system.evaluate_rules ~request ~recursive)
+      in
       let print oc =
         let ppf = Format.formatter_of_out_channel oc in
         Syntax.print_rules syntax ppf rules;

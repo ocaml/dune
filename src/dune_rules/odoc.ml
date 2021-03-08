@@ -2,7 +2,7 @@ open! Dune_engine
 open! Stdune
 open Import
 open Dune_file
-open Build.O
+open Action_builder.O
 module SC = Super_context
 
 let ( ++ ) = Path.Build.relative
@@ -93,14 +93,31 @@ module Paths = struct
   let toplevel_index ctx = html_root ctx ++ "index.html"
 end
 
-module Dep = struct
+module Dep : sig
+  (** [html_alias ctx target] returns the alias that depends on all html targets
+      produced by odoc for [target] *)
+  val html_alias : Context.t -> target -> Alias.t
+
+  (** [deps ctx pkg libraries] returns all odoc dependencies of [libraries]. If
+      [libraries] are all part of a package [pkg], then the odoc dependencies of
+      the package are also returned*)
+  val deps :
+       Context.t
+    -> Package.Name.t option
+    -> (Lib.t list, exn) result
+    -> unit Action_builder.t
+
+  (*** [setup_deps ctx target odocs] Adds [odocs] as dependencies for [target].
+    These dependencies may be used using the [deps] function *)
+  val setup_deps : Context.t -> target -> Path.Set.t -> unit
+end = struct
   let html_alias ctx m = Alias.doc ~dir:(Paths.html ctx m)
 
   let alias = Alias.make (Alias.Name.of_string ".odoc-all")
 
   let deps ctx pkg requires =
-    Build.of_result_map requires ~f:(fun libs ->
-        Build.deps
+    Action_builder.of_result_map requires ~f:(fun libs ->
+        Action_builder.deps
           (let init =
              match pkg with
              | Some p ->
@@ -118,9 +135,8 @@ module Dep = struct
 
   let alias ctx m = alias ~dir:(Paths.odocs ctx m)
 
-  (* let static_deps t lib = Build_system.Alias.dep (alias t lib) *)
-
-  let setup_deps ctx m files = Rules.Produce.Alias.add_deps (alias ctx m) files
+  let setup_deps ctx m files =
+    Rules.Produce.Alias.add_static_deps (alias ctx m) files
 end
 
 let odoc_ext = ".odoc"
@@ -156,7 +172,7 @@ let odoc_base_flags sctx build_dir =
   | Nonfatal -> S []
 
 let module_deps (m : Module.t) ~obj_dir ~(dep_graphs : Dep_graph.Ml_kind.t) =
-  Build.dyn_paths_unit
+  Action_builder.dyn_paths_unit
     (let+ deps =
        if Module.has m ~ml_kind:Intf then
          Dep_graph.deps_of dep_graphs.intf m
@@ -169,10 +185,10 @@ let module_deps (m : Module.t) ~obj_dir ~(dep_graphs : Dep_graph.Ml_kind.t) =
 let compile_module sctx ~obj_dir (m : Module.t) ~includes:(file_deps, iflags)
     ~dep_graphs ~pkg_or_lnu =
   let odoc_file = Obj_dir.Module.odoc obj_dir m in
-  let open Build.With_targets.O in
+  let open Action_builder.With_targets.O in
   add_rule sctx
-    ( Build.with_no_targets file_deps
-    >>> Build.with_no_targets (module_deps m ~obj_dir ~dep_graphs)
+    (Action_builder.with_no_targets file_deps
+    >>> Action_builder.with_no_targets (module_deps m ~obj_dir ~dep_graphs)
     >>>
     let doc_dir = Path.build (Obj_dir.odoc_dir obj_dir) in
     Command.run ~dir:doc_dir (odoc sctx)
@@ -185,7 +201,7 @@ let compile_module sctx ~obj_dir (m : Module.t) ~includes:(file_deps, iflags)
       ; A "-o"
       ; Target odoc_file
       ; Dep (Path.build (Obj_dir.Module.cmti_file obj_dir m))
-      ] );
+      ]);
   (m, odoc_file)
 
 let compile_mld sctx (m : Mld.t) ~includes ~doc_dir ~pkg =
@@ -227,42 +243,39 @@ let odoc_include_flags ctx pkg requires =
 let setup_html sctx (odoc_file : odoc) ~pkg ~requires =
   let ctx = Super_context.context sctx in
   let deps = Dep.deps ctx pkg requires in
-  let to_remove, dune_keep =
+  let to_remove, dummy =
     match odoc_file.source with
     | Mld -> (odoc_file.html_file, [])
     | Module ->
-      let dune_keep =
-        Build.create_file (odoc_file.html_dir ++ Config.dune_keep_fname)
-      in
-      (odoc_file.html_dir, [ dune_keep ])
+      (* Dummy target so that the bellow rule as at least one target. We do this
+         because we don't know the targets of odoc in this case. The proper way
+         to support this would be to have directory targets. *)
+      let dummy = Action_builder.create_file (odoc_file.html_dir ++ ".dummy") in
+      (odoc_file.html_dir, [ dummy ])
   in
-  let open Build.With_targets.O in
+  let open Action_builder.With_targets.O in
   add_rule sctx
-    ( Build.with_no_targets deps
-    >>> Build.progn
-          ( Build.with_no_targets
-              (Build.return
-                 (* Note that we declare no targets apart from [dune_keep]. This
-                    means Dune doesn't know how to build specific documentation
-                    files and that we can't run this rule in a sandbox. To
-                    properly declare targets we would need to support some form
-                    of "dynamic targets" or "target directories". *)
-                 (Action.Progn
-                    [ Action.Remove_tree to_remove
-                    ; Action.Mkdir (Path.build odoc_file.html_dir)
-                    ]))
-          :: Command.run
-               ~dir:(Path.build (Paths.html_root ctx))
-               (odoc sctx)
-               [ A "html"
-               ; odoc_base_flags sctx odoc_file.odoc_input
-               ; odoc_include_flags ctx pkg requires
-               ; A "-o"
-               ; Path (Path.build (Paths.html_root ctx))
-               ; Dep (Path.build odoc_file.odoc_input)
-               ; Hidden_targets [ odoc_file.html_file ]
-               ]
-          :: dune_keep ) )
+    (Action_builder.with_no_targets deps
+    >>> Action_builder.progn
+          (Action_builder.with_no_targets
+             (Action_builder.return
+                (Action.Progn
+                   [ Action.Remove_tree to_remove
+                   ; Action.Mkdir (Path.build odoc_file.html_dir)
+                   ]))
+           ::
+           Command.run
+             ~dir:(Path.build (Paths.html_root ctx))
+             (odoc sctx)
+             [ A "html"
+             ; odoc_base_flags sctx odoc_file.odoc_input
+             ; odoc_include_flags ctx pkg requires
+             ; A "-o"
+             ; Path (Path.build (Paths.html_root ctx))
+             ; Dep (Path.build odoc_file.odoc_input)
+             ; Hidden_targets [ odoc_file.html_file ]
+             ]
+           :: dummy))
 
 let setup_library_odoc_rules cctx (library : Library.t) ~dep_graphs =
   let lib =
@@ -347,7 +360,7 @@ let setup_toplevel_index_rule sctx =
       list_items
   in
   let ctx = Super_context.context sctx in
-  add_rule sctx (Build.write_file (Paths.toplevel_index ctx) html)
+  add_rule sctx (Action_builder.write_file (Paths.toplevel_index ctx) html)
 
 let libs_of_pkg sctx ~pkg =
   SC.lib_entries_of_package sctx pkg
@@ -372,8 +385,8 @@ let create_odoc ctx ~target odoc_input =
   | Lib _ ->
     let html_dir =
       html_base
-      ++ ( Path.Build.basename odoc_input
-         |> Filename.chop_extension |> Stdune.String.capitalize )
+      ++ (Path.Build.basename odoc_input
+         |> Filename.chop_extension |> Stdune.String.capitalize)
     in
     { odoc_input
     ; html_dir
@@ -386,10 +399,10 @@ let create_odoc ctx ~target odoc_input =
     ; html_file =
         html_base
         ++ sprintf "%s.html"
-             ( Path.Build.basename odoc_input
+             (Path.Build.basename odoc_input
              |> Filename.chop_extension
              |> String.drop_prefix ~prefix:"page-"
-             |> Option.value_exn )
+             |> Option.value_exn)
     ; source = Mld
     }
 
@@ -436,7 +449,7 @@ let odocs sctx target =
     let modules =
       let name = Lib_info.name info in
       Dir_contents.get sctx ~dir |> Dir_contents.ocaml
-      |> Ml_sources.modules_of_library ~name
+      |> Ml_sources.modules ~for_:(Library name)
     in
     let obj_dir = Lib_info.obj_dir info in
     Modules.fold_no_vlib modules ~init:[] ~f:(fun m acc ->
@@ -469,7 +482,7 @@ let setup_lib_html_rules_def =
     List.iter odocs ~f:(setup_html sctx ~pkg ~requires);
     let html_files = List.map ~f:(fun o -> Path.build o.html_file) odocs in
     let static_html = List.map ~f:Path.build (static_html ctx) in
-    Rules.Produce.Alias.add_deps
+    Rules.Produce.Alias.add_static_deps
       (Dep.html_alias ctx (Lib lib))
       (Path.Set.of_list (List.rev_append static_html html_files))
   in
@@ -526,7 +539,7 @@ let setup_pkg_html_rules_def =
       in
       let html_files = List.map ~f:(fun o -> Path.build o.html_file) odocs in
       let static_html = List.map ~f:Path.build (static_html ctx) in
-      Rules.Produce.Alias.add_deps
+      Rules.Produce.Alias.add_static_deps
         (Dep.html_alias ctx (Pkg pkg))
         (Path.Set.of_list (List.rev_append static_html html_files)))
 
@@ -535,22 +548,27 @@ let setup_pkg_html_rules sctx ~pkg ~libs =
 
 let setup_package_aliases sctx (pkg : Package.t) =
   let ctx = Super_context.context sctx in
+  let name = Package.name pkg in
   let alias =
-    let dir = Path.Build.append_source ctx.build_dir pkg.Package.path in
+    let pkg_dir = Package.dir pkg in
+    let dir = Path.Build.append_source ctx.build_dir pkg_dir in
     Alias.doc ~dir
   in
   Rules.Produce.Alias.add_deps alias
-    ( Dep.html_alias ctx (Pkg pkg.name)
-      :: ( libs_of_pkg sctx ~pkg:pkg.name
-         |> List.map ~f:(fun lib -> Dep.html_alias ctx (Lib lib)) )
-    |> Path.Set.of_list_map ~f:(fun f -> Path.build (Alias.stamp_file f)) )
+    (Action_builder.deps
+       (Dep.html_alias ctx (Pkg name)
+        ::
+        (libs_of_pkg sctx ~pkg:name
+        |> List.map ~f:(fun lib -> Dep.html_alias ctx (Lib lib)))
+       |> Dune_engine.Dep.Set.of_list_map ~f:(fun f -> Dune_engine.Dep.alias f)
+       ))
 
 let entry_modules_by_lib sctx lib =
   let info = Lib.Local.info lib in
   let dir = Lib_info.src_dir info in
   let name = Lib.name (Lib.Local.to_lib lib) in
   Dir_contents.get sctx ~dir |> Dir_contents.ocaml
-  |> Ml_sources.modules_of_library ~name
+  |> Ml_sources.modules ~for_:(Library name)
   |> Modules.entry_modules
 
 let entry_modules sctx ~pkg =
@@ -569,7 +587,7 @@ let default_index ~pkg entry_modules =
          let lib = Lib.Local.to_lib lib in
          Printf.bprintf b "{1 Library %s}\n" (Lib_name.to_string (Lib.name lib));
          Buffer.add_string b
-           ( match modules with
+           (match modules with
            | [ x ] ->
              sprintf
                "The entry point of this library is the module:\n{!module-%s}.\n"
@@ -578,13 +596,13 @@ let default_index ~pkg entry_modules =
              sprintf
                "This library exposes the following toplevel modules:\n\
                 {!modules:%s}\n"
-               ( modules
+               (modules
                |> List.filter ~f:(fun m ->
                       Module.visibility m = Visibility.Public)
                |> List.sort ~compare:(fun x y ->
                       Module_name.compare (Module.name x) (Module.name y))
                |> List.map ~f:(fun m -> Module_name.to_string (Module.name m))
-               |> String.concat ~sep:" " ) ));
+               |> String.concat ~sep:" ")));
   Buffer.contents b
 
 let setup_package_odoc_rules_def =
@@ -618,14 +636,15 @@ let setup_package_odoc_rules_def =
           let gen_mld = Paths.gen_mld_dir ctx pkg ++ "index.mld" in
           let entry_modules = entry_modules sctx in
           add_rule sctx
-            (Build.write_file gen_mld (default_index ~pkg entry_modules));
+            (Action_builder.write_file gen_mld
+               (default_index ~pkg entry_modules));
           String.Map.set mlds "index" gen_mld
       in
       let odocs =
         List.map (String.Map.values mlds) ~f:(fun mld ->
             compile_mld sctx (Mld.create mld) ~pkg
               ~doc_dir:(Paths.odocs ctx (Pkg pkg))
-              ~includes:(Build.return []))
+              ~includes:(Action_builder.return []))
       in
       Dep.setup_deps ctx (Pkg pkg) (Path.set_of_build_paths_list odocs))
 
@@ -641,20 +660,21 @@ let init sctx =
          setup_package_aliases sctx pkg);
   Rules.Produce.Alias.add_deps
     (Alias.private_doc ~dir:ctx.build_dir)
-    ( stanzas
-    |> List.concat_map ~f:(fun (w : _ Dir_with_dune.t) ->
-           List.filter_map w.data ~f:(function
-             | Dune_file.Library (l : Dune_file.Library.t) -> (
-               match l.visibility with
-               | Public _ -> None
-               | Private _ ->
-                 let scope = SC.find_scope_by_dir sctx w.ctx_dir in
-                 Library.best_name l
-                 |> Lib.DB.find_even_when_hidden (Scope.libs scope)
-                 |> Option.value_exn |> Lib.Local.of_lib_exn |> Option.some )
-             | _ -> None))
-    |> Path.Set.of_list_map ~f:(fun (lib : Lib.Local.t) ->
-           Lib lib |> Dep.html_alias ctx |> Alias.stamp_file |> Path.build) )
+    (Action_builder.deps
+       (stanzas
+       |> List.concat_map ~f:(fun (w : _ Dir_with_dune.t) ->
+              List.filter_map w.data ~f:(function
+                | Dune_file.Library (l : Dune_file.Library.t) -> (
+                  match l.visibility with
+                  | Public _ -> None
+                  | Private _ ->
+                    let scope = SC.find_scope_by_dir sctx w.ctx_dir in
+                    Library.best_name l
+                    |> Lib.DB.find_even_when_hidden (Scope.libs scope)
+                    |> Option.value_exn |> Lib.Local.of_lib_exn |> Option.some)
+                | _ -> None))
+       |> Dune_engine.Dep.Set.of_list_map ~f:(fun (lib : Lib.Local.t) ->
+              Lib lib |> Dep.html_alias ctx |> Dune_engine.Dep.alias)))
 
 let gen_rules sctx ~dir:_ rest =
   match rest with
@@ -698,5 +718,7 @@ let gen_rules sctx ~dir:_ rest =
     Option.iter
       (Package.Name.Map.find (SC.packages sctx)
          (Package.Name.of_string lib_unique_name_or_pkg))
-      ~f:(fun pkg -> setup_pkg_html_rules pkg.name)
+      ~f:(fun pkg ->
+        let name = Package.name pkg in
+        setup_pkg_html_rules name)
   | _ -> ()

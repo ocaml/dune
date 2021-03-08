@@ -180,7 +180,7 @@ end = struct
                   match Path.stat (Path.source path) with
                   | exception _ -> (false, File.dummy)
                   | { st_kind = S_DIR; _ } as st -> (true, File.of_stats st)
-                  | _ -> (false, File.dummy) )
+                  | _ -> (false, File.dummy))
                 | _ -> (false, File.dummy)
               in
               if is_directory then
@@ -427,10 +427,10 @@ end = struct
       | Ignored -> None
       | Status status ->
         Some
-          ( match (parent_status, status) with
+          (match (parent_status, status) with
           | Data_only, _ -> Data_only
           | Vendored, Normal -> Vendored
-          | _, _ -> status )
+          | _, _ -> status)
 
     let make_subdir ~dir_status ~virtual_ path =
       let sub_dir_as_t = find_dir_raw path in
@@ -512,13 +512,9 @@ end = struct
     let dune_file_absent = (not file_exists) && Option.is_none from_parent in
     if dune_file_absent then
       None
-    else (
-      ignore
-        ( Dune_project.ensure_project_file_exists project
-          : Dune_project.created_or_already_exist );
+    else
       let file = Path.Source.relative path Dune_file.fname in
       Some (Dune_file.load file ~file_exists ~project ~from_parent)
-    )
 
   let contents { Readdir.dirs; files } ~dirs_visited ~project ~path
       ~(dir_status : Sub_dirs.Status.t) =
@@ -564,7 +560,7 @@ end = struct
     let project =
       match
         Dune_project.load ~dir:path ~files:readdir.files
-          ~infer_from_opam_files:true
+          ~infer_from_opam_files:true ~dir_status
       with
       | None -> Dune_project.anonymous ~dir:path
       | Some p -> p
@@ -618,7 +614,8 @@ end = struct
         else
           Option.value
             (Dune_project.load ~dir:path ~files:readdir.files
-               ~infer_from_opam_files:settings.recognize_jbuilder_projects)
+               ~infer_from_opam_files:settings.recognize_jbuilder_projects
+               ~dir_status)
             ~default:parent_dir.project
       in
       let vcs = get_vcs ~default:parent_dir.vcs ~readdir ~path in
@@ -664,7 +661,7 @@ let rec nearest_dir t = function
     | Some _ ->
       let path = Path.Source.relative (Dir0.path t) comp in
       let dir = Option.value_exn (find_dir path) in
-      nearest_dir dir components )
+      nearest_dir dir components)
 
 let nearest_dir path =
   let components = Path.Source.explode path in
@@ -751,10 +748,10 @@ module Dir = struct
                    None
                  else
                    Some
-                     ( if String.Set.mem files fname then
+                     (if String.Set.mem files fname then
                        Ok test
                      else
-                       Error (Missing_run_t test) ))
+                       Error (Missing_run_t test)))
       in
       file_tests @ dir_tests
 end
@@ -781,3 +778,8 @@ let find_dir_specified_on_command_line ~dir =
       [ Pp.textf "Don't know about directory %s specified on the command line!"
           (Path.Source.to_string_maybe_quoted dir)
       ]
+
+let is_vendored dir =
+  match find_dir dir with
+  | None -> false
+  | Some d -> Dir.status d = Vendored

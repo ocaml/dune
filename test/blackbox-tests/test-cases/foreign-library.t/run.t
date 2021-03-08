@@ -715,9 +715,9 @@ Testsuite for the (foreign_library ...) stanza.
   Installing install/lib/external_library/extlib.cmt
   Installing install/lib/external_library/extlib.cmx
   Installing install/lib/external_library/extlib.cmxa
-  Installing install/lib/external_library/extlib.cmxs
   Installing install/lib/external_library/extlib.ml
   Installing install/lib/external_library/opam
+  Installing install/lib/external_library/extlib.cmxs
 
   $ echo "(lang dune 2.1)" > some/dir/dune-project
   $ cat >some/dir/dune <<EOF
@@ -741,7 +741,6 @@ Testsuite for the (foreign_library ...) stanza.
   > EOF
 
   $ export OCAMLPATH=$PWD/external/install/lib; ./sdune exec ./main.exe --root=some/dir
-  Entering directory 'some/dir'
   Entering directory 'some/dir'
   Answer = 42
 
@@ -768,8 +767,6 @@ Testsuite for the (foreign_library ...) stanza.
   4 |  (include_dirs (lib answer) (lib unknown_lib))
                                        ^^^^^^^^^^^
   Error: Library "unknown_lib" not found.
-  Hint: try:
-    dune external-lib-deps --missing some/dir/main.exe
   [1]
 
 ----------------------------------------------------------------------------------

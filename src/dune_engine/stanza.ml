@@ -6,7 +6,12 @@ module Parser = struct
   type nonrec t = string * t list Dune_lang.Decoder.t
 end
 
-let latest_version = (2, 8)
+(* The actual latest version is defined in the rpc library. This is because rpc
+   client needs to know the version of dune to use to connect.
+
+   To upgrade the latest version of the dune language, you need to edit the file
+   in the rpc library. *)
+let latest_version = Dune_rpc_private.Version.latest
 
 let since v = (v, `Since v)
 
@@ -15,4 +20,5 @@ let all_minors (major, minor) =
 
 let syntax =
   Dune_lang.Syntax.create ~name:"dune" ~desc:"the dune language"
-    (all_minors (1, 12) @ all_minors latest_version)
+    (List.concat
+       [ all_minors (1, 12); all_minors (2, 9); all_minors latest_version ])

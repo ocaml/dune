@@ -2,39 +2,6 @@ open! Dune_engine
 open! Stdune
 open Import
 
-module Dune_file = struct
-  type t =
-    { dir : Path.Source.t
-    ; project : Dune_project.t
-    ; stanzas : Dune_file.Stanzas.t
-    }
-
-  let parse sexps ~dir ~file ~project =
-    let stanzas = Dune_file.Stanzas.parse ~file project sexps in
-    let stanzas =
-      if !Clflags.ignore_promoted_rules then
-        List.filter stanzas ~f:(function
-          | Dune_file.Rule { mode = Rule.Mode.Promote { only = None; _ }; _ }
-          | Dune_file.Menhir.T
-              { mode = Rule.Mode.Promote { only = None; _ }; _ } ->
-            false
-          | _ -> true)
-      else
-        stanzas
-    in
-    { dir; project; stanzas }
-
-  let rec fold_stanzas l ~init ~f =
-    match l with
-    | [] -> init
-    | t :: l -> inner_fold t t.stanzas l ~init ~f
-
-  and inner_fold t inner_list l ~init ~f =
-    match inner_list with
-    | [] -> fold_stanzas l ~init ~f
-    | x :: inner_list -> inner_fold t inner_list l ~init:(f t x init) ~f
-end
-
 module Jbuild_plugin : sig
   val create_plugin_wrapper :
        Context.t
@@ -164,13 +131,14 @@ module Dune_files = struct
     Path.build path |> Path.parent |> Option.iter ~f:Path.mkdir_p
 
   let eval dune_files ~(context : Context.t) =
-    let open Fiber.O in
+    let open Memo.Build.O in
     let static, dynamic =
       List.partition_map dune_files ~f:(function
         | Literal x -> Left x
         | Script { script; from_parent } -> Right (script, from_parent))
     in
-    Fiber.parallel_map dynamic ~f:(fun ({ dir; file; project }, from_parent) ->
+    Memo.Build.parallel_map dynamic
+      ~f:(fun ({ dir; file; project }, from_parent) ->
         let generated_dune_file =
           Path.Build.append_source
             (Path.Build.relative generated_dune_files_dir
@@ -192,7 +160,9 @@ module Dune_files = struct
         in
         let ocaml = Action.Prog.ok_exn context.ocaml in
         let* () =
-          Process.run Strict ~dir:(Path.source dir) ~env:context.env ocaml args
+          Memo.Build.of_fiber
+            (Process.run Strict ~dir:(Path.source dir) ~env:context.env ocaml
+               args)
         in
         if not (Path.exists (Path.build generated_dune_file)) then
           User_error.raise
@@ -200,10 +170,10 @@ module Dune_files = struct
                 (Path.Source.to_string_maybe_quoted file)
             ; Pp.textf "Did you forgot to call [Jbuild_plugin.V*.send]?"
             ];
-        Fiber.return
-          ( Dune_lang.Parser.load (Path.build generated_dune_file) ~mode:Many
+        Memo.Build.return
+          (Dune_lang.Parser.load (Path.build generated_dune_file) ~mode:Many
           |> List.rev_append from_parent
-          |> Dune_file.parse ~dir ~file ~project ))
+          |> Dune_file.parse ~dir ~file ~project))
     >>| fun dynamic -> static @ dynamic
 end
 
@@ -226,7 +196,6 @@ let interpret ~dir ~project ~(dune_file : File_tree.Dune_file.t) =
 
 let load ~ancestor_vcs =
   File_tree.init ~ancestor_vcs ~recognize_jbuilder_projects:false;
-
   let _, vcs, projects =
     let f dir (ancestor_vcs, vcs, projects) =
       let vcs =

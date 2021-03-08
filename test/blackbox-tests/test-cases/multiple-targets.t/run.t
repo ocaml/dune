@@ -11,9 +11,9 @@
   > EOF
 
   $ dune build a
-  File "dune", line 3, characters 28-36:
+  File "dune", line 3, characters 26-36:
   3 |   (action (with-stdout-to %{targets} (echo "hola"))))
-                                  ^^^^^^^^
+                                ^^^^^^^^^^
   Error: Variable %{targets} expands to 2 values, however a single value is
   expected here. Please quote this atom.
   [1]
@@ -47,9 +47,9 @@ to get a better error message:
   > EOF
 
   $ dune build a
-  File "dune", line 3, characters 31-38:
+  File "dune", line 3, characters 29-38:
   3 |   (action (bash "echo hola > %{target}")))
-                                     ^^^^^^^
+                                   ^^^^^^^^^
   Error: You can only use the variable %{target} if you defined the list of
   targets using the field [target] (not [targets])
   [1]
@@ -81,9 +81,9 @@ to get a better error message:
   > EOF
 
   $ dune build a
-  File "dune", line 3, characters 31-38:
+  File "dune", line 3, characters 29-38:
   3 |   (action (bash "echo hola > %{target}")))
-                                     ^^^^^^^
+                                   ^^^^^^^^^
   Error: You can only use the variable %{target} if you defined the list of
   targets using the field [target] (not [targets])
   [1]
@@ -97,9 +97,9 @@ to get a better error message:
   > EOF
 
   $ dune build a
-  File "dune", line 3, characters 31-39:
+  File "dune", line 3, characters 29-39:
   3 |   (action (bash "echo hola > %{targets}")))
-                                     ^^^^^^^^
+                                   ^^^^^^^^^^
   Error: You can only use the variable %{targets} if you defined the list of
   targets using the field [targets] (not [target])
   [1]

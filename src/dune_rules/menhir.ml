@@ -1,7 +1,7 @@
 open! Dune_engine
 open Import
 open! No_io
-open! Build.O
+open! Action_builder.O
 module SC = Super_context
 
 (* This module interprets [(menhir ...)] stanzas -- that is, it provides build
@@ -74,10 +74,10 @@ module Run (P : PARAMS) : sig end = struct
   let targets m ~cmly =
     let base = [ m ^ ".ml"; m ^ ".mli" ] in
     List.map ~f:(Path.Build.relative dir)
-      ( if cmly then
+      (if cmly then
         (m ^ ".cmly") :: base
       else
-        base )
+        base)
 
   let sources ms = List.map ~f:source ms
 
@@ -111,10 +111,11 @@ module Run (P : PARAMS) : sig end = struct
 
   (* [menhir args] generates a Menhir command line (a build action). *)
 
-  let menhir (args : 'a args) : Action.t Build.With_targets.t =
+  let menhir (args : 'a args) : Action.t Action_builder.With_targets.t =
     Command.run ~dir:(Path.build build_dir) menhir_binary args
 
-  let rule ?(mode = stanza.mode) : Action.t Build.With_targets.t -> unit =
+  let rule ?(mode = stanza.mode) :
+      Action.t Action_builder.With_targets.t -> unit =
     SC.add_rule sctx ~dir ~mode ~loc:stanza.loc
 
   let expand_flags flags = Super_context.menhir_flags sctx ~dir ~expander ~flags
@@ -152,14 +153,14 @@ module Run (P : PARAMS) : sig end = struct
             | None -> ()
             | Some text ->
               if
-                List.mem text
-                  ~set:
-                    [ "--depend"
-                    ; "--raw-depend"
-                    ; "--infer"
-                    ; "--infer-write-query"
-                    ; "--infer-read-reply"
-                    ]
+                List.mem ~equal:String.equal
+                  [ "--depend"
+                  ; "--raw-depend"
+                  ; "--infer"
+                  ; "--infer-write-query"
+                  ; "--infer-read-reply"
+                  ]
+                  text
               then
                 User_error.raise ~loc:(String_with_vars.loc sw)
                   [ Pp.textf "The flag %s must not be used in a menhir stanza."
@@ -251,7 +252,7 @@ module Run (P : PARAMS) : sig end = struct
             | Some "--cmly" -> (only_tokens, true)
             | Some _
             | None ->
-              acc ))
+              acc))
     in
     if ocaml_type_inference_disabled || not stanza.infer then
       process1 base stanza ~cmly

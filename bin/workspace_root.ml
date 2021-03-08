@@ -66,7 +66,7 @@ let find () =
             { candidate with
               ancestor_vcs = Some { kind; root = Path.of_string dir }
             }
-          | None -> candidate )
+          | None -> candidate)
       in
       cont counter ~candidate dir ~to_cwd
   and cont counter ~candidate ~to_cwd dir =
@@ -87,7 +87,7 @@ let create ~specified_by_user =
   match specified_by_user with
   | Some dn -> make Explicit dn
   | None ->
-    if Config.inside_dune then
+    if Dune_util.Config.inside_dune then
       make Cwd "."
     else
       find ()

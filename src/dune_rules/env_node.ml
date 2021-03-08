@@ -1,5 +1,5 @@
 open! Dune_engine
-open Stdune
+open Import
 
 module Odoc = struct
   type warnings = Dune_env.Stanza.Odoc.warnings =
@@ -17,13 +17,15 @@ type t =
   { scope : Scope.t
   ; local_binaries : File_binding.Expanded.t list Memo.Lazy.t
   ; ocaml_flags : Ocaml_flags.t Memo.Lazy.t
-  ; foreign_flags : string list Build.t Foreign_language.Dict.t Memo.Lazy.t
+  ; foreign_flags :
+      string list Action_builder.t Foreign_language.Dict.t Memo.Lazy.t
   ; external_env : Env.t Memo.Lazy.t
   ; bin_artifacts : Artifacts.Bin.t Memo.Lazy.t
   ; inline_tests : Dune_env.Stanza.Inline_tests.t Memo.Lazy.t
-  ; menhir_flags : string list Build.t Memo.Lazy.t
+  ; menhir_flags : string list Action_builder.t Memo.Lazy.t
   ; odoc : Odoc.t Memo.Lazy.t
   ; coq : Coq.t Memo.Lazy.t
+  ; format_config : Format_config.t Memo.Lazy.t
   }
 
 let scope t = t.scope
@@ -42,6 +44,11 @@ let inline_tests t = Memo.Lazy.force t.inline_tests
 
 let menhir_flags t = Memo.Lazy.force t.menhir_flags
 
+let format_config t = Memo.Lazy.force t.format_config
+
+let set_format_config t format_config =
+  { t with format_config = Memo.Lazy.of_val format_config }
+
 let odoc t = Memo.Lazy.force t.odoc
 
 let coq t = Memo.Lazy.force t.coq
@@ -53,9 +60,19 @@ let make ~dir ~inherit_from ~scope ~config_stanza ~profile ~expander
   let inherited ~field ~root extend =
     Memo.lazy_ (fun () ->
         extend
-          ( match inherit_from with
+          (match inherit_from with
           | None -> root
-          | Some t -> field (Memo.Lazy.force t) ))
+          | Some t -> field (Memo.Lazy.force t)))
+  in
+  let inherited_if_absent ~field ~root f_absent =
+    Memo.lazy_ (fun () ->
+        match root with
+        | None ->
+          f_absent
+            (match inherit_from with
+            | None -> None
+            | Some t -> Some (field (Memo.Lazy.force t)))
+        | Some x -> x)
   in
   let local_binaries =
     inherited ~field:local_binaries ~root:[] (fun binaries ->
@@ -63,10 +80,9 @@ let make ~dir ~inherit_from ~scope ~config_stanza ~profile ~expander
         @ List.map config.binaries
             ~f:
               (File_binding.Unexpanded.expand ~dir ~f:(fun template ->
-                   Expander.expand
+                   Expander.Static.expand_str
                      (Memo.Lazy.force expander_for_artifacts)
-                     ~mode:Single ~template
-                   |> Value.to_string ~dir:(Path.build dir))))
+                     template)))
   in
   let external_env =
     inherited ~field:external_env ~root:default_env (fun env ->
@@ -101,22 +117,20 @@ let make ~dir ~inherit_from ~scope ~config_stanza ~profile ~expander
     | { inline_tests = None; _ } ->
       inherited ~field:inline_tests Fun.id
         ~root:
-          ( if Profile.is_inline_test profile then
+          (if Profile.is_inline_test profile then
             Enabled
           else
-            Disabled )
+            Disabled)
   in
   let foreign_flags =
-    inherited ~field:foreign_flags
-      ~root:(Foreign_language.Dict.map ~f:Build.return default_context_flags)
-      (fun flags ->
+    inherited ~field:foreign_flags ~root:default_context_flags (fun flags ->
         let expander = Expander.set_dir (Memo.Lazy.force expander) ~dir in
         Foreign_language.Dict.mapi config.foreign_flags ~f:(fun ~language f ->
             let standard = Foreign_language.Dict.get flags language in
             Expander.expand_and_eval_set expander f ~standard))
   in
   let menhir_flags =
-    inherited ~field:menhir_flags ~root:(Build.return []) (fun flags ->
+    inherited ~field:menhir_flags ~root:(Action_builder.return []) (fun flags ->
         let expander = Expander.set_dir (Memo.Lazy.force expander) ~dir in
         Expander.expand_and_eval_set expander config.menhir_flags
           ~standard:flags)
@@ -131,6 +145,16 @@ let make ~dir ~inherit_from ~scope ~config_stanza ~profile ~expander
         { warnings = Option.value config.odoc.warnings ~default:warnings })
   in
   let coq = inherited ~field:coq ~root:config.coq (fun x -> x) in
+  let format_config =
+    inherited_if_absent ~field:format_config ~root:config.format_config
+      (function
+      | None ->
+        Code_error.raise
+          "format config should always have a default value taken from the \
+           project root"
+          []
+      | Some x -> x)
+  in
   { scope
   ; ocaml_flags
   ; foreign_flags
@@ -141,4 +165,5 @@ let make ~dir ~inherit_from ~scope ~config_stanza ~profile ~expander
   ; menhir_flags
   ; odoc
   ; coq
+  ; format_config
   }

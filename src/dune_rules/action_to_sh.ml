@@ -91,9 +91,18 @@ let simplify act =
       :: acc
     | No_infer act -> loop act acc
     | Pipe (outputs, l) -> Pipe (List.map ~f:block l, outputs) :: acc
-    | Format_dune_file (src, dst) ->
+    | Format_dune_file (ver, src, dst) ->
       Redirect_out
-        ([ Run ("dune", [ "format-dune-file"; src ]) ], Stdout, File dst)
+        ( [ Run
+              ( "dune"
+              , [ "format-dune-file"
+                ; "--dune-version"
+                ; Dune_lang.Syntax.Version.to_string ver
+                ; src
+                ] )
+          ]
+        , Stdout
+        , File dst )
       :: acc
   and block act =
     match List.rev (loop act []) with
@@ -126,8 +135,8 @@ and pp = function
   | Run (prog, args) ->
     Pp.hovbox ~indent:2
       (Pp.concat
-         ( quote prog
-         :: List.concat_map args ~f:(fun arg -> [ Pp.space; quote arg ]) ))
+         (quote prog
+          :: List.concat_map args ~f:(fun arg -> [ Pp.space; quote arg ])))
   | Chdir dir ->
     Pp.hovbox ~indent:2 (Pp.concat [ Pp.verbatim "cd"; Pp.space; quote dir ])
   | Setenv (k, v) -> Pp.concat [ Pp.verbatim k; Pp.verbatim "="; quote v ]
@@ -139,8 +148,8 @@ and pp = function
          [ body
          ; Pp.space
          ; Pp.verbatim
-             ( match inputs with
-             | Stdin -> "<" )
+             (match inputs with
+             | Stdin -> "<")
          ; Pp.space
          ; quote src
          ])
@@ -151,15 +160,15 @@ and pp = function
          [ body
          ; Pp.space
          ; Pp.verbatim
-             ( match outputs with
+             (match outputs with
              | Stdout -> ">"
              | Stderr -> "2>"
-             | Outputs -> "&>" )
+             | Outputs -> "&>")
          ; Pp.space
          ; quote
-             ( match dest with
+             (match dest with
              | Dev_null -> "/dev/null"
-             | File fn -> fn )
+             | File fn -> fn)
          ])
   | Pipe (l, outputs) -> (
     let first_pipe, end_ =
@@ -177,7 +186,7 @@ and pp = function
            ; Pp.verbatim first_pipe
            ; Pp.concat ~sep:(Pp.verbatim " | ") (List.map l ~f:block)
            ; Pp.verbatim end_
-           ]) )
+           ]))
 
 let rec pp_seq = function
   | [] -> Pp.verbatim "true"

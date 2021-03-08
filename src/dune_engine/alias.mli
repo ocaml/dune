@@ -71,9 +71,6 @@ val check : dir:Path.Build.t -> t
 
 val fmt : dir:Path.Build.t -> t
 
-(** Return the underlying stamp file *)
-val stamp_file : t -> Path.Build.t
-
 val is_standard : Name.t -> bool
 
-val suffix : string
+val describe : t -> string

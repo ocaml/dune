@@ -148,13 +148,10 @@ the command line. When no targets are specified, ``dune`` builds the
 Resolution
 ----------
 
-All targets that dune knows how to build live in the ``_build``
-directory.  Although, some are sometimes copied to the source tree for
-the need of external tools. These includes:
-
-- ``.merlin`` files
-- ``<package>.install`` files (when either ``-p`` or
-  ``--promote-install-files`` is passed on the command line)
+All targets that dune knows how to build live in the ``_build`` directory.
+Although, some are sometimes copied to the source tree for the need of external
+tools. These includes ``<package>.install`` files when either ``-p`` or
+``--promote-install-files`` is passed on the command line.
 
 As a result, if you want to ask ``dune`` to produce a particular ``.exe``
 file you would have to type:
@@ -283,8 +280,8 @@ There's a few aliases that dune automatically creates for the user
   defined in that directory.
 
 * ``check`` - This alias will build the minimal set of targets required for
-  tooling support. Essentially, this is ``.cmi``, ``.cmt``, ``.cmti``, and
-  ``.merlin`` files.
+  tooling support. Essentially, this is ``.cmi``, ``.cmt``, ``.cmti`` files and
+  Merlin configurations.
 
 Variables for artifacts
 -----------------------
@@ -305,17 +302,24 @@ Finding external libraries
 When a library is not available in the workspace, dune will look it
 up in the installed world, and expect it to be already compiled.
 
-It looks up external libraries using a specific list of search paths. A
-list of search paths is specific to a given build context and is
-determined as follows:
+It looks up external libraries using a specific list of search paths
+and each build context has a specific list of search paths.
 
-#. if the ``ocamlfind`` is present in the ``PATH`` of the context, use each line
-   in the output of ``ocamlfind printconf path`` as a search path
-#. otherwise, if ``opam`` is present in the ``PATH``, use the output of ``opam
-   config var lib``
-#. otherwise, take the directory where ``ocamlc`` was found, and append
-   ``../lib`` to it. For instance if ``ocamlc`` is found in ``/usr/bin``, use
-   ``/usr/lib``
+When running inside an opam environment, Dune will look for installed
+libraries in ``$OPAM_SWITCH_PREFIX/lib``. This includes both opam
+build context configured via the ``dune-workspace`` file and the
+default build context when the variable ``$OPAM_SWITCH_PREFIX`` is
+set.
+
+Otherwise, Dune takes the directory where ``ocamlc`` was found, and
+append `../lib`` to it. For instance if ``ocamlc`` is found in
+``/usr/bin``, Dune looks for installed libraries in ``/usr/lib``.
+
+In addition to the two above rules, Dune always inspect the
+``OCAMLPATH`` environment variable and use the paths defined in this
+variable. ``OCAMLPATH`` always has precedence and can have different
+value in different build contexts. For instance, you can set it
+manually in a specific build context via the ``dune-workspace`` file.
 
 .. _running-tests:
 
@@ -545,3 +549,61 @@ The `--prefix` directory should be used to specify the destination.
 If you are using plugins that depends on installed libraries which are not
 dependencies of the executables -- so libraries that need to be loaded at
 runtime -- you must copy the libraries manually to the destination directory.
+
+Querying Merlin configuration
+=============================
+
+Since version 2.8 Dune does not promote ``.merlin`` files to the source
+directories any more. Instead these configurations are stored in the `_build`
+folder and Merlin communicates directly with Dune to obtain its configuration
+via the `ocaml-merlin` subcommand. The Merlin configuration is now stanza
+specific allowing finer control. The following commands are not needed for
+normal use of Dune and Merlin but can provide insightful informations when
+debugging or configuring non-standard projects.
+
+Printing the configuration
+--------------------------
+
+It is possible to manually query the generated configuration for debugging
+purposes:
+
+::
+
+    $ dune ocaml-merlin --dump-config
+
+This command will print the distinct configuration of each module present in the
+current directory. This directory must be in a Dune workspace and the project
+must be already built. The configuration will be encoded as a s-expressions, which
+are used to communicate with Merlin.
+
+Printing an approximated ``.merlin``
+------------------------------------
+
+It is also possible to print the configuration of the current folder in the
+Merlin configuration syntax by running the following command:
+
+::
+
+    $ dune ocaml dump-dot-merlin > .merlin
+
+In that case only one configuration will be printed which is the result of a
+coarse merge of the configurations of the various modules present in the current
+folder. This folder must be in a Dune workspace and the project must be already
+built. Preprocessing directives and other flags will be commented out and must
+be un-commented afterward. This feature does not aim at writing exact or correct
+``.merlin`` files, its sole purpose is to lessen the burden of writing the
+configuration from scratch.
+
+Non-standard filenames
+----------------------
+
+Merlin configuration loading is based on filename. That means that if you have
+files which are preprocessed by custom rules before they are built, they should
+respect the following naming convention: the unprocessed file should start with
+the name of the resulting processed file followed by a dot and then the rest
+does not matter. Only the name before the first dot will be used by Dune to
+match with available configurations.
+
+For example, if you use the ``cppo`` preprocessor to generate the file
+``real_module_name.ml`` then the source file could be named
+``real_module_name.cppo.ml``.

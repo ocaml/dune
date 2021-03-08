@@ -25,7 +25,7 @@ module Entry = struct
 
   type t =
     | Path of Path.t
-    | Alias of Path.t
+    | Alias of (Loc.t * Alias.t)
     | Library of Lib.t * Implements_via.t option
     | Executables of (Loc.t * string) list
     | Preprocess of Lib_name.t list
@@ -33,12 +33,19 @@ module Entry = struct
 
   let pp = function
     | Path p -> Pp.text (Dpath.describe_path p)
-    | Alias p -> Pp.textf "alias %s" (Dpath.describe_path p)
+    | Alias (loc, a) ->
+      let loc_suffix =
+        if Loc.is_none loc then
+          ""
+        else
+          " in " ^ Loc.to_file_colon_line loc
+      in
+      Pp.textf "alias %s%s" (Alias.describe a) loc_suffix
     | Library (lib, via) -> (
       match via with
       | None -> Lib.pp lib
       | Some via ->
-        Pp.concat ~sep:Pp.space [ Lib.pp lib; Implements_via.pp via ] )
+        Pp.concat ~sep:Pp.space [ Lib.pp lib; Implements_via.pp via ])
     | Executables [ (loc, name) ] ->
       Pp.textf "executable %s in %s" name (Loc.to_file_colon_line loc)
     | Executables names ->
@@ -67,6 +74,12 @@ end
 
 exception E of exn * Entry.t list
 
+let () =
+  Memo.unwrap_exn :=
+    function
+    | E (exn, _) -> exn
+    | exn -> exn
+
 let prepend_exn exn entry =
   match exn with
   | E (exn, entries) -> E (exn, entry :: entries)
@@ -75,15 +88,42 @@ let prepend_exn exn entry =
 let reraise exn entry =
   Exn_with_backtrace.map_and_reraise exn ~f:(fun exn -> prepend_exn exn entry)
 
+let is_loc_none loc =
+  match loc with
+  | None -> true
+  | Some loc -> Loc.is_none loc
+
+let recover_loc (entries : Entry.t list) =
+  match entries with
+  (* In principle it makes sense to recover loc for more than just aliases, but
+     for the sake of preserving behavior we're minimizing the effect of this
+     feature, in particular to avoid overlap with [Rule_fn.loc ()] in
+     build_system.ml, which serves a similar purpose. *)
+  | Alias (loc, _) :: _ -> Some loc
+  | _ -> None
+
+let augment_user_error_loc entries exn =
+  match exn with
+  | User_error.E msg ->
+    if is_loc_none msg.loc then
+      match recover_loc entries with
+      | None -> exn
+      | Some loc -> User_error.E { msg with loc = Some loc }
+    else
+      exn
+  | _ -> exn
+
 let unwrap_exn = function
-  | E (exn, entries) -> (exn, Some entries)
+  | E (exn, entries) ->
+    let exn = augment_user_error_loc entries exn in
+    (exn, Some entries)
   | exn -> (exn, None)
 
 let map ~f = function
   | E (exn, entries) -> (
     match f exn with
     | E (exn, entries') -> E (exn, entries' @ entries)
-    | exn -> E (exn, entries) )
+    | exn -> E (exn, entries))
   | exn -> f exn
 
 let () =

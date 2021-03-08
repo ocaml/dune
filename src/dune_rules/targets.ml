@@ -46,7 +46,7 @@ let decode_static =
   and+ targets = repeat String_with_vars.decode in
   if syntax_version < (1, 3) then
     List.iter targets ~f:(fun target ->
-        if String_with_vars.has_vars target then
+        if String_with_vars.has_pforms target then
           Dune_lang.Syntax.Error.since
             (String_with_vars.loc target)
             Stanza.syntax (1, 3) ~what:"Using variables in the targets field");

@@ -72,6 +72,14 @@ Note the name mangling convention in the META file:
 We want to see mangled names in the dune-package file as well:
 
   $ cat _build/install/default/lib/foo/dune-package | grep __private__
+     __private__/secret/secret.ml
+     __private__/secret/.public_cmi/secret.cmi
+     __private__/secret/secret.cmx
+     __private__/secret/.public_cmi/secret.cmt
+     __private__/secret/secret.cma
+     __private__/secret/secret.cmxa
+     __private__/secret/secret.a))
+   (libexec (bar/foo.cmxs __private__/secret/secret.cmxs)))
    (requires foo.__private__.secret)
    (name foo.__private__.secret)
     (byte __private__/secret/secret.cma)
@@ -90,8 +98,8 @@ hidden.
     "_build/install/default/lib/foo/__private__/secret/secret.cma" {"__private__/secret/secret.cma"}
     "_build/install/default/lib/foo/__private__/secret/secret.cmx" {"__private__/secret/secret.cmx"}
     "_build/install/default/lib/foo/__private__/secret/secret.cmxa" {"__private__/secret/secret.cmxa"}
-    "_build/install/default/lib/foo/__private__/secret/secret.cmxs" {"__private__/secret/secret.cmxs"}
     "_build/install/default/lib/foo/__private__/secret/secret.ml" {"__private__/secret/secret.ml"}
+    "_build/install/default/lib/foo/__private__/secret/secret.cmxs" {"__private__/secret/secret.cmxs"}
 
 We make sure that executables can use the secret library like they can use any other private library
 
@@ -149,7 +157,6 @@ Now we make sure such libraries are transitively usable when installed:
   $ export OCAMLPATH=$PWD/_build/install/default/lib
   $ dune exec --root use -- ./run.exe
   Entering directory 'use'
-  Entering directory 'use'
   Using library foo: from library foo secret string
 
 But we cannot use such libraries directly:
@@ -158,7 +165,6 @@ But we cannot use such libraries directly:
   > print_endline ("direct access attempt: " ^ Secret.secret)
   > EOF
   $ dune exec --root use -- ./run.exe
-  Entering directory 'use'
   Entering directory 'use'
   File "run.ml", line 1, characters 43-56:
   1 | print_endline ("direct access attempt: " ^ Secret.secret)

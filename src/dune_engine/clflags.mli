@@ -6,11 +6,6 @@ val debug_dep_path : bool ref
 (** Debug the findlib implementation *)
 val debug_findlib : bool ref
 
-(** The command line for "Hint: try: dune external-lib-deps ..." *)
-val external_lib_deps_hint : string list ref
-
-val external_lib_deps_mode : bool ref
-
 (** Capture the output of sub-commands *)
 val capture_outputs : bool ref
 
@@ -52,3 +47,6 @@ val promote_install_files : bool ref
 
 (** Wether we are ignorimg rules with [(mode promote)] *)
 val ignore_promoted_rules : bool ref
+
+(** Packages passed by --only-packages or -p *)
+val only_packages : Package.Name.Set.t option ref

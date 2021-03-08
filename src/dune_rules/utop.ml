@@ -63,7 +63,7 @@ let libs_and_ppx_under_dir sctx ~db ~dir =
                 | Normal -> (lib :: acc, pps)
               else
                 (acc, pps)
-              (* external lib with a name matching our private name *) )
+              (* external lib with a name matching our private name *))
           | _ -> (acc, pps))))
   |> Option.value ~default:([], [])
 
@@ -82,9 +82,9 @@ let setup sctx ~dir =
   in
   let preprocess = Module_name.Per_item.for_all pps in
   let preprocessing =
-    Preprocessing.make sctx ~dir ~expander ~scope ~dep_kind:Required
-      ~lib_name:None ~lint:Dune_file.Lint.no_lint ~preprocess
-      ~preprocessor_deps:[]
+    Preprocessing.make sctx ~dir ~expander ~scope ~lib_name:None
+      ~lint:Dune_file.Lint.no_lint ~preprocess ~preprocessor_deps:[]
+      ~instrumentation_deps:[]
   in
   let source = source ~dir in
   let obj_dir = Toplevel.Source.obj_dir source in
@@ -109,8 +109,8 @@ let setup sctx ~dir =
     Compilation_context.create () ~super_context:sctx ~expander ~scope ~obj_dir
       ~modules ~opaque:(Explicit false)
       ~requires_link:(lazy requires)
-      ~requires_compile:requires ~flags ~js_of_ocaml:None ~dynlink:false
-      ~package:None ~preprocessing
+      ~requires_compile:requires ~flags ~js_of_ocaml:None ~package:None
+      ~preprocessing
   in
   let toplevel = Toplevel.make ~cctx ~source ~preprocess:pps in
   Toplevel.setup_rules toplevel

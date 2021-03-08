@@ -17,19 +17,19 @@ let rules (t : Dune_file.Tests.t) ~sctx ~dir ~scope ~expander ~dir_contents =
       `Regular
   in
   List.iter t.exes.names ~f:(fun (loc, s) ->
-      let test_var_name = "test" in
+      let test_pform = Pform.Var Test in
       let run_action =
         match t.action with
         | Some a -> a
         | None ->
-          Action_unexpanded.Run (String_with_vars.make_var loc test_var_name, [])
+          Action_unexpanded.Run (String_with_vars.make_pform loc test_pform, [])
       in
       let extra_bindings =
         let test_exe = s ^ ".exe" in
         let test_exe_path =
           Expander.map_exe expander (Path.relative (Path.build dir) test_exe)
         in
-        Pform.Map.singleton test_var_name (Values [ Path test_exe_path ])
+        Pform.Map.singleton test_pform [ Value.Path test_exe_path ]
       in
       let add_alias ~loc ~action ~locks =
         let alias =
@@ -64,6 +64,6 @@ let rules (t : Dune_file.Tests.t) ~sctx ~dir ~scope ~expander ~dir_contents =
         in
         add_alias ~loc ~action:(Diff diff) ~locks:t.locks;
         ignore
-          ( Simple_rules.user_rule sctx rule ~extra_bindings ~dir ~expander
-            : Path.Build.Set.t ));
+          (Simple_rules.user_rule sctx rule ~extra_bindings ~dir ~expander
+            : Path.Build.Set.t));
   Exe_rules.rules t.exes ~sctx ~dir ~scope ~expander ~dir_contents

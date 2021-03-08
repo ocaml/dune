@@ -12,7 +12,7 @@ let man =
 let info = Term.info "printenv" ~doc ~man
 
 let dump sctx ~dir =
-  let open Build.O in
+  let open Action_builder.O in
   let+ env = Super_context.dump_env sctx ~dir in
   ((Super_context.context sctx).name, env)
 
@@ -27,9 +27,13 @@ let pp ppf ~fields sexps =
         | _ -> false
       in
       if do_print then
+        let version =
+          Dune_lang.Syntax.greatest_supported_version Dune_engine.Stanza.syntax
+        in
         Dune_lang.Ast.add_loc sexp ~loc:Loc.none
         |> Dune_lang.Cst.concrete |> List.singleton
-        |> Format.fprintf ppf "%a@?" Dune_engine.Format_dune_lang.pp_top_sexps)
+        |> Dune_engine.Format_dune_lang.pp_top_sexps ~version
+        |> Format.fprintf ppf "%a@?" Pp.to_fmt)
 
 let term =
   let+ common = Common.term
@@ -42,15 +46,15 @@ let term =
             "Only print this field. This option can be repeated multiple times \
              to print multiple fields.")
   in
-  Common.set_common common ~targets:[];
+  Common.set_common common;
   Scheduler.go ~common (fun () ->
       let open Fiber.O in
-      let* setup = Import.Main.setup common in
+      let* setup = Memo.Build.run (Import.Main.setup common) in
       let dir = Path.of_string dir in
       let checked = Util.check_path setup.workspace.contexts dir in
       let request =
-        Build.all
-          ( match checked with
+        Action_builder.all
+          (match checked with
           | In_build_dir (ctx, _) ->
             let sctx =
               Dune_engine.Context_name.Map.find_exn setup.scontexts ctx.name
@@ -69,9 +73,10 @@ let term =
               [ Pp.text "Environment is not defined for external paths" ]
           | In_install_dir _ ->
             User_error.raise
-              [ Pp.text "Environment is not defined in install dirs" ] )
+              [ Pp.text "Environment is not defined in install dirs" ])
       in
-      Build_system.do_build ~request >>| function
+      Memo.Build.run (Build_system.do_build ~request:(fun () -> request))
+      >>| function
       | [ (_, env) ] -> Format.printf "%a" (pp ~fields) env
       | l ->
         List.iter l ~f:(fun (name, env) ->

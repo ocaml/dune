@@ -9,13 +9,13 @@ as well as the foo.{cmi,cmo,cmt} files.
   > (
   >   cd $1
   >   dune build @check
-  >   find _build \( -name '*.cm*' -o -name .merlin \) | awk -F/ '{ print $NF }' | LANG=C sort
+  >   find _build \( -name '*.cm*' -o -name '.merlin-conf' \) | awk -F/ '{ print $NF }' | LANG=C sort
   > )
 
 Test the property for executables:
 
   $ build_check_and_list_interesting_files_in exe
-  .merlin
+  .merlin-conf
   foo.cmi
   foo.cmo
   foo.cmt
@@ -23,7 +23,7 @@ Test the property for executables:
 Test the property for libraries:
 
   $ build_check_and_list_interesting_files_in lib
-  .merlin
+  .merlin-conf
   foo.cmi
   foo.cmo
   foo.cmt

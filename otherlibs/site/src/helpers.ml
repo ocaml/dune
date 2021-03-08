@@ -57,7 +57,7 @@ module Hardcoded_ocaml_path = struct
 
   let t =
     lazy
-      ( match eval Dune_site_data.hardcoded_ocamlpath with
+      (match eval Dune_site_data.hardcoded_ocamlpath with
       | None -> None
       | Some "relocatable" -> Relocatable
       | Some s -> (
@@ -65,14 +65,14 @@ module Hardcoded_ocaml_path = struct
         match l with
         | "hardcoded" :: l -> Hardcoded l
         | [ "findlibconfig"; p ] -> Findlib_config p
-        | _ -> invalid_arg "dune error: hardcoded_ocamlpath parsing error" ) )
+        | _ -> invalid_arg "dune error: hardcoded_ocamlpath parsing error"))
 end
 
 let relocatable =
   lazy
-    ( match Lazy.force Hardcoded_ocaml_path.t with
+    (match Lazy.force Hardcoded_ocaml_path.t with
     | Relocatable -> true
-    | _ -> false )
+    | _ -> false)
 
 let prefix =
   lazy
@@ -103,7 +103,7 @@ let sourceroot local =
   | Some _ as x -> x
   | None ->
     (* None if the binary is executed from _build but not by dune, which should
-       not happend *)
+       not happen *)
     Sys.getenv_opt "DUNE_SOURCEROOT"
 
 let ocamlpath =
@@ -126,6 +126,6 @@ let ocamlpath =
 
 let stdlib =
   lazy
-    ( match eval Dune_site_data.stdlib_dir with
+    (match eval Dune_site_data.stdlib_dir with
     | None -> Sys.getenv "DUNE_OCAML_STDLIB"
-    | Some s -> s )
+    | Some s -> s)

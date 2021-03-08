@@ -301,7 +301,7 @@ module Module = struct
     | Local_as_path _ -> Path.relative dir name
     | External _ -> Path.relative dir name
 
-  let path_of_build (type path) (t : path t) (dir : path) =
+  let path_of_build (type path) (t : path t) (dir : path) : Path.t =
     match t with
     | Local _ -> Path.build dir
     | Local_as_path _ -> dir
@@ -384,9 +384,9 @@ module Module = struct
   let cmti_file t m =
     let ext =
       Ml_kind.cmt_ext
-        ( match Module.file m ~ml_kind:Intf with
+        (match Module.file m ~ml_kind:Intf with
         | None -> Impl
-        | Some _ -> Intf )
+        | Some _ -> Intf)
     in
     obj_file t m ~kind:Cmi ~ext
 

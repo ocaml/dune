@@ -134,38 +134,74 @@ let archive p s = rule "archive" [ Pos p ] Set s
 
 let plugin p s = rule "plugin" [ Pos p ] Set s
 
-let archives name =
-  [ archive "byte" (name ^ Mode.compiled_lib_ext Byte)
-  ; archive "native" (name ^ Mode.compiled_lib_ext Native)
-  ; plugin "byte" (name ^ Mode.compiled_lib_ext Byte)
-  ; plugin "native" (name ^ Mode.plugin_ext Native)
-  ]
+let exists_if s = rule "exists_if" [] Set s
+
+let archives ?(kind = [ Mode.Byte; Mode.Native ]) name =
+  List.filter_map
+    [ (Mode.Byte, archive, Mode.compiled_lib_ext)
+    ; (Mode.Native, archive, Mode.compiled_lib_ext)
+    ; (Mode.Byte, plugin, Mode.compiled_lib_ext)
+    ; (Mode.Native, plugin, Mode.plugin_ext)
+    ] ~f:(fun (k, f, ext) ->
+      if List.mem kind k ~equal:Mode.equal then
+        Some (f (Mode.to_string k) (name ^ ext k))
+      else
+        None)
+
+(* fake entry we use to pass down the list of toplevel modules for root_module *)
+let main_modules names =
+  List.map ~f:String.capitalize_ascii names
+  |> String.concat ~sep:" " |> rule "main_modules" [] Set
 
 let builtins ~stdlib_dir ~version:ocaml_version =
   let version = version "[distributed with Ocaml]" in
-  let simple name ?dir ?archive_name deps =
+  let simple name ?(labels = false) ?dir ?archive_name ?kind ?exists_if_ext deps
+      =
     let archive_name =
       match archive_name with
       | None -> name
       | Some a -> a
     in
+    let main_modules =
+      let name =
+        String.map name ~f:(function
+          | '-' -> '_'
+          | c -> c)
+      in
+      if labels then
+        main_modules [ name; name ^ "Labels" ]
+      else
+        main_modules [ name ]
+    in
     let name = Lib_name.of_string name in
-    let archives = archives archive_name in
+    let archives = archives archive_name ?kind in
+    let main_modules = main_modules in
     { name = Some name
     ; entries =
-        requires deps :: version
+        requires deps
         ::
-        ( match dir with
-        | None -> archives
-        | Some d -> directory d :: archives )
+        version
+        ::
+        main_modules
+        ::
+        (match dir with
+        | None -> []
+        | Some d -> [ directory d ])
+        @ (match exists_if_ext with
+          | None -> []
+          | Some ext -> [ exists_if (archive_name ^ ext) ])
+        @ archives
     }
   in
   let dummy name =
-    { name = Some (Lib_name.of_string name); entries = [ version ] }
+    { name = Some (Lib_name.of_string name)
+    ; entries = [ version; main_modules [ name ] ]
+    }
   in
   let compiler_libs =
-    let sub name deps =
-      Package (simple name deps ~archive_name:("ocaml" ^ name))
+    let sub name ?kind ?exists_if_ext deps =
+      Package
+        (simple name deps ~archive_name:("ocaml" ^ name) ?kind ?exists_if_ext)
     in
     { name = Some (Lib_name.of_string "compiler-libs")
     ; entries =
@@ -175,13 +211,17 @@ let builtins ~stdlib_dir ~version:ocaml_version =
         ; sub "common" []
         ; sub "bytecomp" [ "compiler-libs.common" ]
         ; sub "optcomp" [ "compiler-libs.common" ]
-        ; sub "toplevel" [ "compiler-libs.bytecomp" ]
+        ; sub "toplevel" [ "compiler-libs.bytecomp" ] ~kind:[ Byte ]
+        ; sub "native-toplevel"
+            [ "compiler-libs.optcomp"; "dynlink" ]
+            ~kind:[ Native ]
+            ~exists_if_ext:(Mode.compiled_lib_ext Native)
         ]
     }
   in
   let stdlib = dummy "stdlib" in
   let str = simple "str" [] ~dir:"+" in
-  let unix = simple "unix" [] ~dir:"+" in
+  let unix = simple ~labels:true "unix" [] ~dir:"+" in
   let bigarray =
     if
       Ocaml_version.stdlib_includes_bigarray ocaml_version
@@ -200,6 +240,7 @@ let builtins ~stdlib_dir ~version:ocaml_version =
     { name = Some (Lib_name.of_string "threads")
     ; entries =
         [ version
+        ; main_modules [ "thread" ]
         ; requires ~preds:[ Pos "mt"; Pos "mt_vm" ] [ "threads.vm" ]
         ; requires ~preds:[ Pos "mt"; Pos "mt_posix" ] [ "threads.posix" ]
         ; directory "+"
@@ -219,6 +260,7 @@ let builtins ~stdlib_dir ~version:ocaml_version =
     { name = Some (Lib_name.of_string "num")
     ; entries =
         [ requires [ "num.core" ]
+        ; main_modules [ "num" ]
         ; version
         ; Package (simple "core" [] ~dir:"+" ~archive_name:"nums")
         ]
@@ -272,9 +314,9 @@ let string_of_action = function
 
 let pp_predicate p =
   Pp.verbatim
-    ( match p with
+    (match p with
     | Pos p -> p
-    | Neg p -> "-" ^ p )
+    | Neg p -> "-" ^ p)
 
 let pp_print_text s =
   let open Pp.O in

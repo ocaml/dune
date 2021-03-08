@@ -12,7 +12,7 @@ module Dir_rules : sig
 
   type alias_action =
     { stamp : Digest.t
-    ; action : Action.t Build.With_targets.t
+    ; action : Action.t Action_builder.With_targets.t
     ; locks : Path.t list
     ; context : Build_context.t
     ; env : Env.t option
@@ -21,8 +21,7 @@ module Dir_rules : sig
 
   module Alias_spec : sig
     type t =
-      { deps : Path.Set.t
-      ; dyn_deps : Path.Set.t Build.t
+      { expansions : (Loc.t * unit Action_builder.t) Appendable_list.t
       ; actions : alias_action Appendable_list.t
       }
   end
@@ -67,9 +66,12 @@ module Produce : sig
   module Alias : sig
     type t = Alias.t
 
-    (** [add_deps store alias ?dyn_deps deps] arrange things so that all
-        [dyn_deps] and [deps] are built as part of the build of alias [alias]. *)
-    val add_deps : t -> ?dyn_deps:Path.Set.t Build.t -> Path.Set.t -> unit
+    (** [add_deps store alias deps] arrange things so that all the dependencies
+        registered by [deps] are considered as a part of alias expansion of
+        [alias]. *)
+    val add_deps : t -> ?loc:Stdune.Loc.t -> unit Action_builder.t -> unit
+
+    val add_static_deps : t -> ?loc:Stdune.Loc.t -> Path.Set.t -> unit
 
     (** [add_action store alias ~stamp action] arrange things so that [action]
         is executed as part of the build of alias [alias]. [stamp] is any
@@ -81,7 +83,7 @@ module Produce : sig
       -> loc:Loc.t option
       -> ?locks:Path.t list
       -> stamp:_
-      -> Action.t Build.With_targets.t
+      -> Action.t Action_builder.With_targets.t
       -> unit
   end
 end
@@ -93,8 +95,6 @@ val empty : t
 val union : t -> t -> t
 
 val produce_dir : dir:Path.Build.t -> Dir_rules.t -> unit
-
-val produce_dir' : dir:Path.t -> Dir_rules.t -> unit
 
 val produce : t -> unit
 

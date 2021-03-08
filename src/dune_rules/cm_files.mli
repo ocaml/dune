@@ -10,12 +10,13 @@ type t
 val make :
      obj_dir:Path.Build.t Obj_dir.t
   -> modules:Modules.t
-  -> top_sorted_modules:Module.t list Build.t
+  -> top_sorted_modules:Module.t list Action_builder.t
   -> ext_obj:string
   -> t
 
 val unsorted_objects_and_cms : t -> mode:Mode.t -> Path.t list
 
-val top_sorted_cms : t -> mode:Mode.t -> Path.t list Build.t
+val top_sorted_cms : t -> mode:Mode.t -> Path.t list Action_builder.t
 
-val top_sorted_objects_and_cms : t -> mode:Mode.t -> Path.t list Build.t
+val top_sorted_objects_and_cms :
+  t -> mode:Mode.t -> Path.t list Action_builder.t

@@ -8,9 +8,12 @@ module Fd_count = struct
   let try_to_use_lsof () =
     (* note: we do not use the Process module here, because it would create a
        circular dependency *)
-    let temp = Filename.temp_file "dune" ".lsof" in
+    let temp = Temp.create File ~prefix:"dune." ~suffix:".lsof" in
     let stdout =
-      Unix.openfile temp [ O_WRONLY; O_CREAT; O_TRUNC; O_SHARE_DELETE ] 0o666
+      Unix.openfile
+        (Path.to_absolute_filename temp)
+        [ O_WRONLY; O_CREAT; O_TRUNC; O_SHARE_DELETE ]
+        0o666
     in
     let prog = "/usr/sbin/lsof" in
     let argv = [ prog; "-w"; "-p"; string_of_int (Unix.getpid ()) ] in
@@ -18,7 +21,7 @@ module Fd_count = struct
     Unix.close stdout;
     match Unix.waitpid [] (Pid.to_int pid) with
     | _, Unix.WEXITED 0 ->
-      let num_lines = List.length (Io.input_lines (open_in temp)) in
+      let num_lines = List.length (Io.input_lines (Io.open_in temp)) in
       This (num_lines - 1)
     (* the output contains a header line *)
     | _ -> Unknown
@@ -28,7 +31,7 @@ module Fd_count = struct
     | exception _ -> (
       match try_to_use_lsof () with
       | exception _ -> Unknown
-      | value -> value )
+      | value -> value)
     | files -> This (Array.length files - 1 (* -1 for the dirfd *))
 end
 
@@ -43,10 +46,13 @@ let catapult = ref None
 let record () =
   Option.iter !catapult ~f:(fun reporter ->
       Catapult.emit_gc_counters reporter;
-      Catapult.emit_counter reporter "evaluated-rules" !evaluated_rules;
+      Catapult.emit_counter reporter "evaluated-rules"
+        [ ("value", Catapult.Json.Int !evaluated_rules) ];
       match Fd_count.get () with
-      | This fds -> Catapult.emit_counter reporter "fds" fds
-      | Unknown -> ())
+      | Unknown -> ()
+      | This fds ->
+        Catapult.emit_counter reporter "fds"
+          [ ("value", Catapult.Json.Int fds) ])
 
 let enable path =
   let reporter = Catapult.make path in

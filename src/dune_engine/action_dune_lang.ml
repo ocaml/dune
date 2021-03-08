@@ -11,7 +11,7 @@ type target = String_with_vars.t
 module String_with_vars = struct
   include String_with_vars
 
-  let is_dev_null = String_with_vars.is_var ~name:"null"
+  let is_dev_null t = String_with_vars.is_pform t (Var Dev_null)
 end
 
 module type Uast =
@@ -23,9 +23,10 @@ module type Uast =
 
 module rec Uast : Uast = Uast
 
-include Action_ast.Make (String_with_vars) (String_with_vars) (String_with_vars)
-          (String_with_vars)
-          (Uast)
+include
+  Action_ast.Make (String_with_vars) (String_with_vars) (String_with_vars)
+    (String_with_vars)
+    (Uast)
 module Mapper = Action_mapper.Make (Uast) (Uast)
 
 (* In [Action_exec] we rely on one-to-one mapping between the cwd-relative paths

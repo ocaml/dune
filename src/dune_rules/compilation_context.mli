@@ -35,7 +35,6 @@ val create :
   -> opaque:opaque
   -> ?stdlib:Ocaml_stdlib.t
   -> js_of_ocaml:Dune_file.Js_of_ocaml.t option
-  -> dynlink:bool
   -> package:Package.t option
   -> ?vimpl:Vimpl.t
   -> ?modes:Dune_file.Mode_conf.Set.Details.t Mode.Dict.t
@@ -78,8 +77,6 @@ val stdlib : t -> Ocaml_stdlib.t option
 
 val js_of_ocaml : t -> Dune_file.Js_of_ocaml.t option
 
-val dynlink : t -> bool
-
 val sandbox : t -> Sandbox_config.t
 
 val package : t -> Package.t option
@@ -90,6 +87,8 @@ val modes : t -> Mode.Dict.Set.t
 
 val for_wrapped_compat : t -> t
 
+val for_root_module : t -> t
+
 val for_module_generated_at_link_time :
   t -> requires:Lib.t list Or_exn.t -> module_:Module.t -> t
 
@@ -99,3 +98,5 @@ val for_plugin_executable :
 val bin_annot : t -> bool
 
 val without_bin_annot : t -> t
+
+val root_module_entries : t -> Module_name.t list Or_exn.t

@@ -15,7 +15,7 @@ let include_dir_flags ~expander ~dir (stubs : Foreign.Stubs.t) =
          let loc, include_dir =
            match (include_dir : Foreign.Stubs.Include_dir.t) with
            | Dir dir ->
-             (String_with_vars.loc dir, Expander.expand_path expander dir)
+             (String_with_vars.loc dir, Expander.Static.expand_path expander dir)
            | Lib (loc, lib_name) -> (loc, lib_dir loc lib_name)
          in
          let dep_args =
@@ -69,27 +69,61 @@ let include_dir_flags ~expander ~dir (stubs : Foreign.Stubs.t) =
                           (Dep.file_selector
                              (File_selector.create ~dir Predicate.true_))
                       in
-                      Command.Args.Hidden_deps deps :: args)) )
+                      Command.Args.Hidden_deps deps :: args)))
          in
          Command.Args.S [ A "-I"; Path include_dir; dep_args ]))
 
 let build_c ~kind ~sctx ~dir ~expander ~include_flags (loc, src, dst) =
   let ctx = Super_context.context sctx in
-  let flags =
-    let ctx_flags =
-      match kind with
-      | Foreign_language.C ->
-        let cfg = ctx.ocaml_config in
+  let project = Super_context.find_scope_by_dir sctx dir |> Scope.project in
+  let use_standard_flags = Dune_project.use_standard_c_and_cxx_flags project in
+  let base_flags =
+    let cfg = ctx.ocaml_config in
+    match kind with
+    | Foreign_language.C -> (
+      match use_standard_flags with
+      | None
+      | Some false ->
+        (* In dune < 2.8 flags from ocamlc_config are always added *)
         List.concat
           [ Ocaml_config.ocamlc_cflags cfg
           ; Ocaml_config.ocamlc_cppflags cfg
           ; Fdo.c_flags ctx
           ]
-      | Foreign_language.Cxx -> Fdo.cxx_flags ctx
-    in
+      | Some true -> Fdo.c_flags ctx)
+    | Foreign_language.Cxx -> Fdo.cxx_flags ctx
+  in
+  let with_user_and_std_flags =
     let flags = Foreign.Source.flags src in
+    (* DUNE3 will have [use_standard_c_and_cxx_flags] enabled by default. To
+       guide users toward this change we emit a warning when dune_lang is >=
+       1.8, [use_standard_c_and_cxx_flags] is not specified in the
+       [dune-project] file (thus defaulting to [true]), the [:standard] set of
+       flags has been overridden and we are not in a vendored project *)
+    let has_standard = Ordered_set_lang.Unexpanded.has_standard flags in
+    let is_vendored =
+      match Path.Build.drop_build_context dir with
+      | Some src_dir -> Dune_engine.File_tree.is_vendored src_dir
+      | None -> false
+    in
+    if
+      Dune_project.dune_version project >= (2, 8)
+      && Option.is_none use_standard_flags
+      && (not is_vendored) && not has_standard
+    then
+      User_warning.emit ~loc
+        [ Pp.text
+            "The flag set for these foreign sources overrides the `:standard` \
+             set of flags. However the flags in this standard set are still \
+             added to the compiler arguments by Dune. This might cause \
+             unexpected issues. You can disable this warning by defining the \
+             option `(use_standard_c_and_cxx_flags <bool>)` in your \
+             `dune-project` file. Setting this option to `true` will \
+             effectively prevent Dune from silently adding c-flags to the \
+             compiler arguments which is the new recommended behaviour."
+        ];
     Super_context.foreign_flags sctx ~dir ~expander ~flags ~language:kind
-    |> Build.map ~f:(List.append ctx_flags)
+    |> Action_builder.map ~f:(List.append base_flags)
   in
   let output_param =
     match ctx.lib_config.ccomp_type with
@@ -108,11 +142,11 @@ let build_c ~kind ~sctx ~dir ~expander ~include_flags (loc, src, dst) =
         produced in the current directory *)
      Command.run ~dir:(Path.build dir)
        (Super_context.resolve_program ~loc:None ~dir sctx c_compiler)
-       ( [ Command.Args.dyn flags
-         ; S [ A "-I"; Path ctx.stdlib_dir ]
-         ; include_flags
-         ]
-       @ output_param @ [ A "-c"; Dep src ] ));
+       ([ Command.Args.dyn with_user_and_std_flags
+        ; S [ A "-I"; Path ctx.stdlib_dir ]
+        ; include_flags
+        ]
+       @ output_param @ [ A "-c"; Dep src ]));
   dst
 
 (* TODO: [requires] is a confusing name, probably because it's too general: it
@@ -142,22 +176,21 @@ let build_o_files ~sctx ~foreign_sources ~(dir : Path.Build.t) ~expander
               ])
       ]
   in
-  String.Map.to_list foreign_sources
-  |> List.map ~f:(fun (obj, (loc, src)) ->
-         let dst = Path.Build.relative dir (obj ^ ctx.lib_config.ext_obj) in
-         let stubs = src.Foreign.Source.stubs in
-         let extra_flags = include_dir_flags ~expander ~dir src.stubs in
-         let extra_deps =
-           let open Build.O in
-           let+ () = Dep_conf_eval.unnamed stubs.extra_deps ~expander in
-           Command.Args.empty
-         in
-         let include_flags =
-           Command.Args.S [ includes; extra_flags; Dyn extra_deps ]
-         in
-         let build_file =
-           match Foreign.Source.language src with
-           | C -> build_c ~kind:Foreign_language.C
-           | Cxx -> build_c ~kind:Foreign_language.Cxx
-         in
-         build_file ~sctx ~dir ~expander ~include_flags (loc, src, dst))
+  String.Map.to_list_map foreign_sources ~f:(fun obj (loc, src) ->
+      let dst = Path.Build.relative dir (obj ^ ctx.lib_config.ext_obj) in
+      let stubs = src.Foreign.Source.stubs in
+      let extra_flags = include_dir_flags ~expander ~dir src.stubs in
+      let extra_deps =
+        let open Action_builder.O in
+        let+ () = Dep_conf_eval.unnamed stubs.extra_deps ~expander in
+        Command.Args.empty
+      in
+      let include_flags =
+        Command.Args.S [ includes; extra_flags; Dyn extra_deps ]
+      in
+      let build_file =
+        match Foreign.Source.language src with
+        | C -> build_c ~kind:Foreign_language.C
+        | Cxx -> build_c ~kind:Foreign_language.Cxx
+      in
+      build_file ~sctx ~dir ~expander ~include_flags (loc, src, dst))

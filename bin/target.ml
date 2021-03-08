@@ -1,7 +1,7 @@
 open Stdune
 module Log = Dune_util.Log
 module Context = Dune_rules.Context
-module Build = Dune_engine.Build
+module Action_builder = Dune_engine.Action_builder
 module Build_system = Dune_engine.Build_system
 
 type t =
@@ -13,18 +13,18 @@ type resolve_input =
   | Dep of Arg.Dep.t
 
 let request targets =
-  List.fold_left targets ~init:(Build.return ()) ~f:(fun acc target ->
-      let open Build.O in
+  List.fold_left targets ~init:(Action_builder.return ()) ~f:(fun acc target ->
+      let open Action_builder.O in
       acc
       >>>
       match target with
-      | File path -> Build.path path
+      | File path -> Action_builder.path path
       | Alias { Alias.name; recursive; dir; contexts } ->
         let contexts = List.map ~f:Dune_rules.Context.name contexts in
-        ( if recursive then
+        (if recursive then
           Build_system.Alias.dep_rec_multi_contexts
         else
-          Build_system.Alias.dep_multi_contexts )
+          Build_system.Alias.dep_multi_contexts)
           ~dir ~name ~contexts)
 
 let target_hint (_setup : Dune_rules.Main.build_system) path =
@@ -88,11 +88,11 @@ let resolve_path path ~(setup : Dune_rules.Main.build_system) =
               None)
       with
       | [] -> can't_build path
-      | l -> Ok l ) )
+      | l -> Ok l))
   | In_build_dir (_ctx, src) -> (
     match as_source_dir src with
     | Some res -> Ok res
-    | None -> build () )
+    | None -> build ())
   | In_install_dir _ -> build ()
 
 let expand_path common ~(setup : Dune_rules.Main.build_system) ctx sv =
@@ -108,7 +108,8 @@ let expand_path common ~(setup : Dune_rules.Main.build_system) ctx sv =
     Dune_rules.Dir_contents.add_sources_to_expander sctx expander
   in
   Path.relative Path.root
-    (Common.prefix_target common (Dune_rules.Expander.expand_str expander sv))
+    (Common.prefix_target common
+       (Dune_rules.Expander.Static.expand_str expander sv))
 
 let resolve_alias common ~recursive sv ~(setup : Dune_rules.Main.build_system) =
   match Dune_engine.String_with_vars.text_only sv with

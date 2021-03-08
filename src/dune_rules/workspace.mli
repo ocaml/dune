@@ -9,6 +9,8 @@ module Context : sig
     type t =
       | Native
       | Named of Context_name.t
+
+    val equal : t -> t -> bool
   end
 
   module Common : sig
@@ -80,7 +82,7 @@ val init :
      ?x:Context_name.t
   -> ?profile:Profile.t
   -> ?instrument_with:Lib_name.t list
-  -> ?path:Path.t
+  -> ?workspace_file:Path.t
   -> unit
   -> unit
 

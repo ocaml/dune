@@ -120,8 +120,8 @@ let exec_run ~ectx ~eenv prog args =
 
 let exec_run_dynamic_client ~ectx ~eenv prog args =
   validate_context_and_prog ectx.context prog;
-  let run_arguments_fn = Filename.temp_file "" ".run_in_dune" in
-  let response_fn = Filename.temp_file "" ".response" in
+  let run_arguments_fn = Temp.create File ~prefix:"dune." ~suffix:".run" in
+  let response_fn = Temp.create File ~prefix:"dune." ~suffix:".response" in
   let run_arguments =
     let targets =
       let to_relative path =
@@ -133,10 +133,15 @@ let exec_run_dynamic_client ~ectx ~eenv prog args =
     DAP.Run_arguments.
       { prepared_dependencies = eenv.prepared_dependencies; targets }
   in
-  Io.String_path.write_file run_arguments_fn
-    (DAP.Run_arguments.serialize run_arguments);
+  Io.write_file run_arguments_fn (DAP.Run_arguments.serialize run_arguments);
   let env =
-    let value = DAP.Greeting.(serialize { run_arguments_fn; response_fn }) in
+    let value =
+      DAP.Greeting.(
+        serialize
+          { run_arguments_fn = Path.to_absolute_filename run_arguments_fn
+          ; response_fn = Path.to_absolute_filename response_fn
+          })
+    in
     Env.add eenv.env ~var:DAP.run_by_dune_env_variable ~value
   in
   let+ () =
@@ -144,10 +149,10 @@ let exec_run_dynamic_client ~ectx ~eenv prog args =
       ~stderr_to:eenv.stderr_to ~stdin_from:eenv.stdin_from
       ~purpose:ectx.purpose prog args
   in
-  let response = Io.String_path.read_file response_fn in
-  Stdune.Path.(
-    unlink_no_err (of_string run_arguments_fn);
-    unlink_no_err (of_string response_fn));
+  let response = Io.read_file response_fn in
+  Path.(
+    unlink_no_err run_arguments_fn;
+    unlink_no_err response_fn);
   let prog_name = Stdune.Path.reach ~from:eenv.working_dir prog in
   match DAP.Response.deserialize response with
   | Error _ when String.is_empty response ->
@@ -219,7 +224,7 @@ let rec exec t ~ectx ~eenv =
     Io.copy_file ~src ~dst ();
     Fiber.return Done
   | Symlink (src, dst) ->
-    ( if Sys.win32 then
+    (if Sys.win32 then
       let dst = Path.build dst in
       Io.copy_file ~src ~dst ()
     else
@@ -239,7 +244,7 @@ let rec exec t ~ectx ~eenv =
           Unix.unlink dst;
           Unix.symlink src dst
         )
-      | exception _ -> Unix.symlink src dst );
+      | exception _ -> Unix.symlink src dst);
     Fiber.return Done
   | Copy_and_add_line_directive (src, dst) ->
     Io.with_file_in src ~f:(fun ic ->
@@ -292,8 +297,8 @@ let rec exec t ~ectx ~eenv =
   | Diff ({ optional; file1; file2; mode } as diff) ->
     let remove_intermediate_file () =
       if optional then
-        try Path.unlink (Path.build file2)
-        with Unix.Unix_error (ENOENT, _, _) -> ()
+        try Path.unlink (Path.build file2) with
+        | Unix.Unix_error (ENOENT, _, _) -> ()
     in
     if Diff.eq_files diff then (
       remove_intermediate_file ();
@@ -317,7 +322,7 @@ let rec exec t ~ectx ~eenv =
               Print_diff.print file1 (Path.build file2)
                 ~skip_trailing_cr:(mode = Text && Sys.win32))
           ~finally:(fun () ->
-            ( match optional with
+            (match optional with
             | false ->
               (* Promote if in the source tree or not a target. The second case
                  means that the diffing have been done with the empty file *)
@@ -341,7 +346,7 @@ let rec exec t ~ectx ~eenv =
                           (Path.extract_build_context_dir_maybe_sandboxed file1)))
                   ~correction_file:file2
               else
-                remove_intermediate_file () );
+                remove_intermediate_file ());
             Fiber.return ())
       in
       Done
@@ -359,8 +364,8 @@ let rec exec t ~ectx ~eenv =
     Fiber.return Done
   | No_infer t -> exec t ~ectx ~eenv
   | Pipe (outputs, l) -> exec_pipe ~ectx ~eenv outputs l
-  | Format_dune_file (src, dst) ->
-    Format_dune_lang.format_file ~input:(Some src)
+  | Format_dune_file (version, src, dst) ->
+    Format_dune_lang.format_file ~version ~input:(Some src)
       ~output:(Some (Path.build dst));
     Fiber.return Done
   | Cram script ->
@@ -418,7 +423,7 @@ and exec_list ts ~ectx ~eenv =
     in
     match done_or_deps with
     | Need_more_deps _ as need -> Fiber.return need
-    | Done -> exec_list rest ~ectx ~eenv )
+    | Done -> exec_list rest ~ectx ~eenv)
 
 and exec_pipe outputs ts ~ectx ~eenv =
   let tmp_file () =
@@ -449,7 +454,7 @@ and exec_pipe outputs ts ~ectx ~eenv =
       Dtemp.destroy File in_;
       match done_or_deps with
       | Need_more_deps _ as need -> Fiber.return need
-      | Done -> loop ~in_:out ts )
+      | Done -> loop ~in_:out ts)
   in
   match ts with
   | [] -> assert false
@@ -464,7 +469,7 @@ and exec_pipe outputs ts ~ectx ~eenv =
     let* done_or_deps = redirect_out t1 ~ectx ~eenv outputs out in
     match done_or_deps with
     | Need_more_deps _ as need -> Fiber.return need
-    | Done -> loop ~in_:out ts )
+    | Done -> loop ~in_:out ts)
 
 let exec_until_all_deps_ready ~ectx ~eenv t =
   let open DAP in

@@ -5,7 +5,7 @@ module Id = Id.Make ()
 module Dir_rules = struct
   type alias_action =
     { stamp : Digest.t
-    ; action : Action.t Build.With_targets.t
+    ; action : Action.t Action_builder.With_targets.t
     ; locks : Path.t list
     ; context : Build_context.t
     ; env : Env.t option
@@ -14,20 +14,15 @@ module Dir_rules = struct
 
   module Alias_spec = struct
     type t =
-      { deps : Path.Set.t
-      ; dyn_deps : Path.Set.t Build.t
+      { expansions : (Loc.t * unit Action_builder.t) Appendable_list.t
       ; actions : alias_action Appendable_list.t
       }
 
     let empty =
-      { deps = Path.Set.empty
-      ; dyn_deps = Build.return Path.Set.empty
-      ; actions = Appendable_list.empty
-      }
+      { expansions = Appendable_list.empty; actions = Appendable_list.empty }
 
     let union x y =
-      { deps = Path.Set.union x.deps y.deps
-      ; dyn_deps = Build.map2 x.dyn_deps y.dyn_deps ~f:Path.Set.union
+      { expansions = Appendable_list.( @ ) x.expansions y.expansions
       ; actions = Appendable_list.( @ ) x.actions y.actions
       }
   end
@@ -61,7 +56,7 @@ module Dir_rules = struct
     }
 
   let consume t =
-    let data = List.map ~f:snd (Id.Map.to_list t) in
+    let data = Id.Map.values t in
     let rules =
       List.filter_map data ~f:(function
         | Rule rule -> Some rule
@@ -159,23 +154,32 @@ module Produce = struct
          Path.Build.Map.singleton dir
            (Dir_rules.Nonempty.singleton (Alias { name; spec })))
 
-    let add_deps t ?(dyn_deps = Build.return Path.Set.empty) deps =
-      alias t { deps; dyn_deps; actions = Appendable_list.empty }
+    let add_deps t ?(loc = Loc.none) expansion =
+      alias t
+        { expansions = Appendable_list.singleton (loc, expansion)
+        ; actions = Appendable_list.empty
+        }
+
+    let add_static_deps t ?(loc = Loc.none) deps =
+      let expansion = Action_builder.deps (Dep.Set.of_files_set deps) in
+      alias t
+        { expansions = Appendable_list.singleton (loc, expansion)
+        ; actions = Appendable_list.empty
+        }
 
     let add_action t ~context ~env ~loc ?(locks = []) ~stamp action =
       alias t
-        { deps = Path.Set.empty
-        ; dyn_deps = Build.return Path.Set.empty
+        { expansions = Appendable_list.empty
         ; actions =
             Appendable_list.singleton
-              ( { stamp = Digest.generic stamp
-                ; action
-                ; locks
-                ; context
-                ; loc
-                ; env
-                }
-                : Dir_rules.alias_action )
+              ({ stamp = Digest.generic stamp
+               ; action
+               ; locks
+               ; context
+               ; loc
+               ; env
+               }
+                : Dir_rules.alias_action)
         }
   end
 end
@@ -184,10 +188,6 @@ let produce_dir ~dir rules =
   match Dir_rules.Nonempty.create rules with
   | None -> ()
   | Some rules -> produce (Path.Build.Map.singleton dir rules)
-
-let produce_dir' ~dir rules =
-  let dir = Path.as_in_build_dir_exn dir in
-  produce_dir ~dir rules
 
 let collect_opt f = Memo.Implicit_output.collect_sync implicit_output f
 
@@ -224,4 +224,4 @@ let find t p =
   | Some p -> (
     match Path.Build.Map.find t p with
     | Some dir_rules -> (dir_rules : Dir_rules.Nonempty.t :> Dir_rules.t)
-    | None -> Dir_rules.empty )
+    | None -> Dir_rules.empty)

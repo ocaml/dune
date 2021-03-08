@@ -7,6 +7,10 @@ module Dst : sig
   type t
 
   val to_string : t -> string
+
+  include Dune_lang.Conv.S with type t := t
+
+  val to_dyn : t -> Dyn.t
 end
 
 (** Location for installation, containing the sections relative to the current
@@ -23,7 +27,7 @@ module Section_with_site : sig
 
   (* val parse_string : string -> (t, string) Result.t *)
 
-  val decode : t Dune_lang.Decoder.t
+  include Dune_lang.Conv.S with type t := t
 
   val to_dyn : t -> Dyn.t
 end
@@ -72,10 +76,7 @@ module Entry : sig
     }
 
   val adjust_dst :
-       src:string String_with_vars.Partial.t
-    -> dst:string option
-    -> section:Section.t
-    -> Dst.t
+    src:String_with_vars.t -> dst:string option -> section:Section.t -> Dst.t
 
   val make : Section.t -> ?dst:string -> Path.Build.t -> Path.Build.t t
 

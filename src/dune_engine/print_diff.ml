@@ -8,7 +8,7 @@ let resolve_link ~dir path file =
   | Error Not_a_symlink -> file
   | Error Max_depth_exceeded ->
     User_error.raise
-      [ Pp.textf "Unable to resolve symlink %s. Max recrusion depth exceeded"
+      [ Pp.textf "Unable to resolve symlink %s. Max recursion depth exceeded"
           (Path.to_string path)
       ]
   | Error (Unix_error _) ->
@@ -40,7 +40,7 @@ let print ?(skip_trailing_cr = Sys.win32) path1 path2 =
       match which "git" with
       | Some path ->
         ( path
-        , [ "diff"; "--no-index"; "--color=always"; "-u" ]
+        , [ "--no-pager"; "diff"; "--no-index"; "--color=always"; "-u" ]
         , "--ignore-cr-at-eol"
         , List.map
             ~f:(fun (path, file) -> resolve_link ~dir path file)
@@ -48,7 +48,7 @@ let print ?(skip_trailing_cr = Sys.win32) path1 path2 =
       | None -> (
         match which "diff" with
         | Some path -> (path, [ "-u" ], "--strip-trailing-cr", [ file1; file2 ])
-        | None -> fallback () )
+        | None -> fallback ())
     in
     let args =
       if skip_trailing_cr then
@@ -57,7 +57,8 @@ let print ?(skip_trailing_cr = Sys.win32) path1 path2 =
         args
     in
     let args = args @ files in
-    Format.eprintf "%a@?" Loc.render (Loc.pp loc);
+    Console.print
+      [ Pp.map_tags ~f:(fun Loc -> User_message.Style.Loc) (Loc.pp loc) ];
     let* () = Process.run ~dir ~env:Env.initial Strict path args in
     fallback ()
   in
@@ -73,12 +74,12 @@ let print ?(skip_trailing_cr = Sys.win32) path1 path2 =
     let* () = Process.run ~dir ~env:Env.initial Strict sh [ arg; cmd ] in
     User_error.raise
       [ Pp.textf "command reported no differences: %s"
-          ( if Path.is_root dir then
+          (if Path.is_root dir then
             cmd
           else
             sprintf "cd %s && %s"
               (String.quote_for_shell (Path.to_string dir))
-              cmd )
+              cmd)
       ]
   | None -> (
     if Config.inside_dune then
@@ -89,16 +90,12 @@ let print ?(skip_trailing_cr = Sys.win32) path1 path2 =
       | Some prog ->
         let* () =
           Process.run ~dir ~env:Env.initial Strict prog
-            [ "-keep-whitespace"
-            ; "-location-style"
-            ; "omake"
-            ; ( if Lazy.force Ansi_color.stderr_supports_color then
-                "-unrefined"
+            ([ "-keep-whitespace"; "-location-style"; "omake" ]
+            @ (if Lazy.force Ansi_color.stderr_supports_color then
+                []
               else
-                "-ascii" )
-            ; file1
-            ; file2
-            ]
+                [ "-ascii" ])
+            @ [ file1; file2 ])
         in
         (* Use "diff" if "patdiff" reported no differences *)
-        normal_diff () )
+        normal_diff ())

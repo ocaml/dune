@@ -1,0 +1,3 @@
+(library
+ (name test_scheduler)
+ (libraries stdune fiber))

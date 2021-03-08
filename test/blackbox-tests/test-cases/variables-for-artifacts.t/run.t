@@ -60,16 +60,16 @@ The next test tries to build a module that does not exist.
   > EOF
   $ ./sdune build --root ex1 @t
   Entering directory 'ex1'
-  File "dune", line 3, characters 9-17:
+  File "dune", line 3, characters 7-17:
   3 |  (deps %{cmo:foo}))
-               ^^^^^^^^
+             ^^^^^^^^^^
   Error: Module Foo does not exist.
   [1]
 
 Command line version; note that the error message is slightly different.
 
   $ ./sdune build %{cmo:xxxx}
-  File "command line", line 1, characters 2-11:
+  File "command line", line 1, characters 0-11:
   Error: Module Xxxx does not exist.
   [1]
 
@@ -101,16 +101,16 @@ This test tries to build a non-existent .cma.
   > EOF
   $ ./sdune build --root ex2 @t
   Entering directory 'ex2'
-  File "dune", line 3, characters 9-17:
+  File "dune", line 3, characters 7-17:
   3 |  (deps %{cma:bar}))
-               ^^^^^^^^
+             ^^^^^^^^^^
   Error: Library bar does not exist.
   [1]
 
 Command line version.
 
   $ ./sdune build %{cma:bar_}
-  File "command line", line 1, characters 2-11:
+  File "command line", line 1, characters 0-11:
   Error: Library bar_ does not exist.
   [1]
 
@@ -192,7 +192,7 @@ Command line version.
 This test checks error handling.
 
   $ ./sdune build %{cma:../x}
-  File "command line", line 1, characters 2-11:
+  File "command line", line 1, characters 0-11:
   Error: Library x does not exist.
   [1]
 
@@ -209,19 +209,19 @@ The following test checks that the variables can be used in the (action) field
 of a (rule).
 
   $ ./sdune build --display short _build/default/my.cmxs
-      ocamldep .dummy.objs/x3.ml.d
         ocamlc .plugin.objs/byte/plugin.{cmi,cmo,cmt}
       ocamldep .plugin.objs/x1.ml.d
       ocamldep .plugin.objs/x2.ml.d
-        ocamlc .dummy.objs/byte/dummy.{cmi,cmo,cmt}
+      ocamldep .dummy.objs/x3.ml.d
       ocamlopt .plugin.objs/native/plugin.{cmx,o}
         ocamlc .plugin.objs/byte/plugin__X1.{cmi,cmo,cmt}
         ocamlc .plugin.objs/byte/plugin__X2.{cmi,cmo,cmt}
-        ocamlc .dummy.objs/byte/dummy__X3.{cmi,cmo,cmt}
+        ocamlc .dummy.objs/byte/dummy.{cmi,cmo,cmt}
       ocamlopt .plugin.objs/native/plugin__X1.{cmx,o}
       ocamlopt .plugin.objs/native/plugin__X2.{cmx,o}
-      ocamlopt .dummy.objs/native/dummy__X3.{cmx,o}
+        ocamlc .dummy.objs/byte/dummy__X3.{cmi,cmo,cmt}
       ocamlopt plugin.{a,cmxa}
+      ocamlopt .dummy.objs/native/dummy__X3.{cmx,o}
       ocamlopt my.cmxs
 
 The following (failing) test shows that the variables cannot yet be used in the (deps)
@@ -237,8 +237,22 @@ field of a (rule).
   > EOF
   $ ./sdune build --root deps-fail t
   Entering directory 'deps-fail'
-  File "dune", line 3, characters 9-16:
+  File "dune", line 3, characters 7-16:
   3 |  (deps %{cmo:x2})
-               ^^^^^^^
-  Error: %{cmo:..} isn't allowed in this position
+             ^^^^^^^^^
+  Error: %{cmo:..} isn't allowed in this position.
+  [1]
+
+The above restriction also applies to other stanzas. Any stanzas that introduces
+new files for Dir_contents, for example copy_files:
+
+  $ cat > deps-fail/dune << EOF
+  > (copy_files "%{cmo:x2}")
+  > EOF
+  $ ./sdune build --root deps-fail t
+  Entering directory 'deps-fail'
+  File "dune", line 1, characters 13-22:
+  1 | (copy_files "%{cmo:x2}")
+                   ^^^^^^^^^
+  Error: %{cmo:..} isn't allowed in this position.
   [1]

@@ -3,6 +3,8 @@ open! Dune_engine
 
 open! Import
 
+val requires : ?preds:Meta.predicate list -> Lib_name.Set.t -> Meta.entry
+
 (** Generate the meta for a package containing some libraries *)
 val gen :
      package:Package.t

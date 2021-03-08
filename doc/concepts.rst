@@ -140,8 +140,7 @@ Dune supports the following variables:
   the value of ``workspace_root`` is not constant and depends on
   whether your project is vendored or not
 -  ``CC`` is the C compiler command line (list made of the compiler
-   name followed by its flags) that was used to compile OCaml in the
-   current build context
+   name followed by its flags) that will be used to compile foreign code. For more details about its content see :ref:`this section <flags-flow>`.
 -  ``CXX`` is the C++ compiler command line being used in the
    current build context
 -  ``ocaml_bin`` is the path where ``ocamlc`` lives
@@ -181,6 +180,10 @@ Dune supports the following variables:
   ``false`` otherwise
 - ``<ext>:<path>`` where ``<ext>`` is one of ``cmo``, ``cmi``, ``cma``,
   ``cmx``, or ``cmxa``. See :ref:`variables-for-artifacts`.
+- ``env:<var>=<default``, which expands to the value of the environment
+  variable ``<var>``, or ``<default>`` if it does not exist.
+  For example, ``%{env:BIN=/usr/bin}``.
+  Available since dune 1.4.0.
 
 In addition, ``(action ...)`` fields support the following special variables:
 
@@ -222,8 +225,9 @@ In addition, ``(action ...)`` fields support the following special variables:
      available
 
 - ``version:<package>`` expands to the version of the given
-  package. Note that this is only supported for packages that are
-  being defined in the current scope. How dune determines the version
+  package. Packages defined in the current scope have priority over the
+  public packages. Public packages that do not install any libraries
+  will not be detected. How dune determines the version
   of a package is described :ref:`here <package-version>`
 - ``read:<path>`` expands to the contents of the given file
 - ``read-lines:<path>`` expands to the list of lines in the given
@@ -357,7 +361,7 @@ following syntax:
 
    (re_export foo)
 
-For insance:
+For instance:
 
 .. code:: scheme
 
@@ -507,8 +511,8 @@ introduced in 4.08, allowing the user to define custom let operators.
 
 Note that this feature is implemented by the third-party
 `ocaml-syntax-shims project
-<https://github.com/ocaml-ppx/ocaml-syntax-shims>`, so if you use this
-feature you must also declare a dependency on this package.
+<https://github.com/ocaml-ppx/ocaml-syntax-shims>`_, so if you use
+this feature you must also declare a dependency on this package.
 
 .. _preprocessor-deps:
 
@@ -1177,6 +1181,10 @@ Here is a complete list of supported subfields:
 - ``flags`` are passed when compiling source files. This field is specified
   using the :ref:`ordered-set-language`, where the ``:standard`` value comes
   from the environment settings ``c_flags`` and ``cxx_flags``, respectively.
+  Note that, for C stubs, Dune unconditionally adds the flags present in the
+  fields ``ocamlc_cflags`` and ``ocamlc_cppflags`` of the OCaml config to the
+  compiler command line. This behavior can be disabled since Dune 2.8 via the
+  ``dune-project`` option :ref:`always-add-cflags`.
 - ``include_dirs`` are tracked as dependencies and passed to the compiler
   via the ``-I`` flag. You can use :ref:`variables` in this field, and
   refer to a library source directory using the ``(lib library-name)`` syntax.
@@ -1239,3 +1247,24 @@ foreign archive is a bit like a foreign library, hence the name of the stanza.
 Foreign archives are particularly useful when embedding a library written in
 a foreign language and/or built with another build system. See
 :ref:`foreign-sandboxing` for more details.
+
+.. _flags-flow:
+
+Flags
+-----
+
+Depending on the :ref:`always-add-cflags` option, the base `:standard` set of
+flags for C will contain only ``ocamlc_cflags`` or both ``ocamlc_cflags`` and
+``ocamlc_cppflags``.
+
+There are multiple levels where one can declare custom flags (using the
+:ref:`ordered-set-language`), and each level inherits the flags of the previous
+one in its `:standard` set:
+
+- In the global `env` definition of a `dune-workspace` file
+- In the per-context `env` definitions in a `dune-workspace` file
+- In the env definition of a `dune` file
+- In a `foreign_` field of an executable or a library
+
+The ``%{cc}`` :ref:`variable <variables>` will contain the flags from the first
+three levels only.

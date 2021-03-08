@@ -77,6 +77,12 @@ val parallel_map : 'a list -> f:('a -> 'b t) -> 'b list t
 (** Iter over a list in parallel. *)
 val parallel_iter : 'a list -> f:('a -> unit t) -> unit t
 
+val parallel_iter_set :
+     (module Set.S with type elt = 'a and type t = 's)
+  -> 's
+  -> f:('a -> unit t)
+  -> unit t
+
 (** {1 Local storage} *)
 
 (** Variables local to a fiber *)
@@ -141,6 +147,9 @@ val collect_errors :
 (** [finalize f ~finally] runs [finally] after [f ()] has terminated, whether it
     fails or succeeds. *)
 val finalize : (unit -> 'a t) -> finally:(unit -> unit t) -> 'a t
+
+(** [reraise_all exns] re-raises all [exns] to the current error handler *)
+val reraise_all : Exn_with_backtrace.t list -> 'a t
 
 (** {1 Synchronization} *)
 
@@ -225,31 +234,83 @@ module Throttle : sig
 end
 with type 'a fiber := 'a t
 
-module Sequence : sig
-  type 'a fiber = 'a t
+val repeat_while : f:('a -> 'a option t) -> init:'a -> unit t
 
-  type 'a t = 'a node fiber
+module Stream : sig
+  (** Destructive streams that can be composed to pipelines.
 
-  and 'a node =
-    | Nil
-    | Cons of 'a * 'a t
+      Streams can be finite or infinite. Streams have no storage and can only
+      have one writer and/or one reader at any given time. If you'd like to
+      access a stream concurrently, you need to protect it via a mutex.
 
-  val sequential_iter : 'a t -> f:('a -> unit fiber) -> unit fiber
+      Trying to access the same side of a stream concurrently will result in an
+      error. *)
 
-  (** [parallel_iter t ~f] is the same as:
+  type 'a fiber
 
-      {[
-        let rec loop t ~f =
-          t >>= function
-          | Nil -> return ()
-          | Cons (x, t) ->
-            fork_and_join_unit (fun () -> f x) (fun () -> loop t ~f)
-      ]}
+  module In : sig
+    (** Stream inputs.
 
-      except that if the sequence is infinite, the above code would leak memory
-      while [parallel_iter] does not. This function can typically be used to
-      process a sequence of events. *)
-  val parallel_iter : 'a t -> f:('a -> unit fiber) -> unit fiber
+        A [In.t] value represents the side of a stream where values can be read
+        from. A stream input can only be consumed by one fiber at a time. Trying
+        to access a stream input concurrently will result in an exception.
+
+        When passing a stream input through one of the transformation functions
+        such as {!filter_map} or iteration function, the original stream input
+        can no longer be used for another purpose. *)
+    type 'a t
+
+    (** Create a stream that is fed from a generator function. Every time a
+        value is requested, this function is called to produce a new value. If
+        the function raises, the stream will no longer be usable. *)
+    val create : (unit -> 'a option fiber) -> 'a t
+
+    (** Create a stream that yields elements from the given list in order. *)
+    val of_list : 'a list -> 'a t
+
+    (** The empty stream. *)
+    val empty : unit -> 'a t
+
+    (** Consumes and returns the next element from the stream. Once the stream
+        is exhausted, [read] always returns [None]. *)
+    val read : 'a t -> 'a option fiber
+
+    val filter_map : 'a t -> f:('a -> 'b option) -> 'b t
+
+    val sequential_iter : 'a t -> f:('a -> unit fiber) -> unit fiber
+
+    val parallel_iter : 'a t -> f:('a -> unit fiber) -> unit fiber
+  end
+
+  module Out : sig
+    (** Stream outputs.
+
+        A [Out.t] value represents the side of a stream where values can be
+        pushed to. Only one value can be pushed at a time. Trying to push two
+        values concurrently will result in an error. *)
+    type 'a t
+
+    (** Create a stream output. The callback is the consumer for values pushed
+        to the stream. *)
+    val create : ('a option -> unit fiber) -> 'a t
+
+    val write : 'a t -> 'a option -> unit fiber
+
+    val null : unit -> 'a t
+  end
+
+  (** [connect i o] reads from [i] and writes to [o]. Closes [o] when [i] is
+      exhausted. Returned fiber terminates when [i] is exhausted *)
+  val connect : 'a In.t -> 'a Out.t -> unit fiber
+
+  (** [supply i o] like [connect i o] but does not close [o] once [i] is
+      exhausted, allowing more values to be pused to [o]. Returned fiber
+      terminates when [i] is exhausted*)
+  val supply : 'a In.t -> 'a Out.t -> unit fiber
+
+  (** [pipe ()] returns [(i, o)] where values pushed through [o] can be read
+      through [i]. *)
+  val pipe : unit -> 'a In.t * 'a Out.t
 end
 with type 'a fiber := 'a t
 

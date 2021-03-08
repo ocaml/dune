@@ -51,9 +51,9 @@ end = struct
     ; cctx = cons_maybe x.cctx acc.cctx
     ; source_dirs = cons_maybe x.source_dirs acc.source_dirs
     ; js =
-        ( match x.js with
+        (match x.js with
         | None -> acc.js
-        | Some js -> List.rev_append acc.js js )
+        | Some js -> List.rev_append acc.js js)
     }
 
   let rev t =
@@ -114,11 +114,11 @@ end = struct
     | Copy_files { files = glob; _ } ->
       let source_dirs =
         let loc = String_with_vars.loc glob in
-        let src_glob = Expander.expand_str expander glob in
+        let src_glob = Expander.Static.expand_str expander glob in
         if Filename.is_relative src_glob then
           Some
-            ( Path.Source.relative src_dir src_glob ~error_loc:loc
-            |> Path.Source.parent_exn )
+            (Path.Source.relative src_dir src_glob ~error_loc:loc
+            |> Path.Source.parent_exn)
         else
           None
       in
@@ -153,15 +153,18 @@ end
  * See: https://github.com/ocaml/dune/pull/1354#issuecomment-427922592 *)
 
 let with_format sctx ~dir ~f =
-  Super_context.find_scope_by_dir sctx dir
-  |> Scope.project |> Dune_project.format_config |> Option.iter ~f
+  let f config = if not (Format_config.is_empty config) then f config in
+  Super_context.format_config sctx ~dir |> f
 
 let gen_format_rules sctx ~expander ~output_dir =
   let scope = Super_context.find_scope_by_dir sctx output_dir in
   let project = Scope.project scope in
   let dialects = Dune_project.dialects project in
+  let version = Dune_project.dune_version project in
   with_format sctx ~dir:output_dir
-    ~f:(Format_rules.gen_rules_output sctx ~dialects ~expander ~output_dir)
+    ~f:
+      (Format_rules.gen_rules_output sctx ~version ~dialects ~expander
+         ~output_dir)
 
 (* This is used to determine the list of source directories to give to Merlin.
    This serves the same purpose as [Merlin.lib_src_dirs] and has a similar
@@ -176,7 +179,7 @@ let lib_src_dirs ~dir_contents =
 (* Stanza *)
 
 let define_all_alias ~dir ~scope ~js_targets =
-  let dyn_deps =
+  let deps =
     let pred =
       let id =
         lazy
@@ -199,9 +202,9 @@ let define_all_alias ~dir ~scope ~js_targets =
       Predicate.create ~id ~f
     in
     File_selector.create ~dir:(Path.build dir) pred
-    |> Build.paths_matching ~loc:Loc.none
+    |> Action_builder.paths_matching_unit ~loc:Loc.none
   in
-  Rules.Produce.Alias.add_deps ~dyn_deps (Alias.all ~dir) Path.Set.empty
+  Rules.Produce.Alias.add_deps (Alias.all ~dir) deps
 
 let gen_rules sctx dir_contents cctxs expander
     { Dir_with_dune.src_dir; ctx_dir; data = stanzas; scope; dune_version = _ }
@@ -210,9 +213,9 @@ let gen_rules sctx dir_contents cctxs expander
       { Install_conf.section = _; files; package = _; enabled_if = _ } =
     Path.Set.of_list_map files ~f:(fun fb ->
         File_binding.Unexpanded.expand_src ~dir:ctx_dir fb
-          ~f:(Expander.expand_str expander)
+          ~f:(Expander.Static.expand_str expander)
         |> Path.build)
-    |> Rules.Produce.Alias.add_deps (Alias.all ~dir:ctx_dir)
+    |> Rules.Produce.Alias.add_static_deps (Alias.all ~dir:ctx_dir)
   in
   let { For_stanza.merlin = merlins
       ; cctx = cctxs
@@ -222,26 +225,11 @@ let gen_rules sctx dir_contents cctxs expander
     For_stanza.of_stanzas stanzas ~cctxs ~sctx ~src_dir ~ctx_dir ~scope
       ~dir_contents ~expander ~files_to_install
   in
-  let allow_approx_merlin =
-    let dune_project = Scope.project scope in
-    let status =
-      let open Option.O in
-      let+ src_dir = File_tree.find_dir src_dir in
-      File_tree.Dir.status src_dir
-    in
-    let dir_is_vendored =
-      match status with
-      | Some Vendored -> true
-      | _ -> false
-    in
-    dir_is_vendored || Dune_project.allow_approx_merlin dune_project
-  in
-  Option.iter (Merlin.merge_all ~allow_approx_merlin merlins) ~f:(fun m ->
+  List.iter merlins ~f:(fun merlin ->
       let more_src_dirs =
-        lib_src_dirs ~dir_contents |> List.rev_append source_dirs
+        lib_src_dirs ~dir_contents |> List.rev_append (src_dir :: source_dirs)
       in
-      Merlin.add_rules sctx ~dir:ctx_dir ~more_src_dirs ~expander
-        (Merlin.add_source_dir m src_dir));
+      Merlin.add_rules sctx ~dir:ctx_dir ~more_src_dirs ~expander merlin);
   List.iter stanzas ~f:(fun stanza ->
       match (stanza : Stanza.t) with
       | Menhir.T m when Expander.eval_blang expander m.enabled_if -> (
@@ -260,17 +248,17 @@ let gen_rules sctx dir_contents cctxs expander
             List.map (Menhir_rules.targets m) ~f:(Path.Build.relative ctx_dir)
           in
           Super_context.add_rule sctx ~dir:ctx_dir
-            ( Build.fail
-                { fail =
-                    (fun () ->
-                      User_error.raise ~loc:m.loc
-                        [ Pp.text
-                            "I can't determine what library/executable the \
-                             files produced by this stanza are part of."
-                        ])
-                }
-            |> Build.with_targets ~targets )
-        | Some cctx -> Menhir_rules.gen_rules cctx m ~dir:ctx_dir )
+            (Action_builder.fail
+               { fail =
+                   (fun () ->
+                     User_error.raise ~loc:m.loc
+                       [ Pp.text
+                           "I can't determine what library/executable the \
+                            files produced by this stanza are part of."
+                       ])
+               }
+            |> Action_builder.with_targets ~targets)
+        | Some cctx -> Menhir_rules.gen_rules cctx m ~dir:ctx_dir)
       | Coq_stanza.Theory.T m when Expander.eval_blang expander m.enabled_if ->
         Coq_rules.setup_rules ~sctx ~dir:ctx_dir ~dir_contents m
         |> Super_context.add_rules ~dir:ctx_dir sctx
@@ -311,26 +299,28 @@ let gen_rules ~sctx ~dir components : Build_system.extra_sub_directories_to_keep
       (* Dummy rule to prevent dune from deleting this file. See comment
          attached to [write_dot_dune_dir] in context.ml *)
       Super_context.add_rule sctx ~dir
-        (Build.write_file (Path.Build.relative dir "configurator") "");
+        (Action_builder.write_file (Path.Build.relative dir "configurator") "");
+      (* Add rules for C compiler detection *)
+      Cxx_rules.rules ~sctx ~dir;
       These String.Set.empty
     | ".js" :: rest -> (
       Jsoo_rules.setup_separate_compilation_rules sctx rest;
       match rest with
       | [] -> All
-      | _ -> These String.Set.empty )
+      | _ -> These String.Set.empty)
     | "_doc" :: rest -> (
       Odoc.gen_rules sctx rest ~dir;
       match rest with
       | [] -> All
-      | _ -> These String.Set.empty )
+      | _ -> These String.Set.empty)
     | ".ppx" :: rest -> (
       Preprocessing.gen_rules sctx rest;
       match rest with
       | [] -> All
-      | _ -> These String.Set.empty )
+      | _ -> These String.Set.empty)
     | comps ->
       let subdirs = [ ".formatted"; ".bin"; ".utop" ] in
-      ( match List.last comps with
+      (match List.last comps with
       | Some ".formatted" ->
         let expander = Super_context.expander sctx ~dir in
         gen_format_rules sctx ~expander ~output_dir:dir
@@ -341,7 +331,8 @@ let gen_rules ~sctx ~dir components : Build_system.extra_sub_directories_to_keep
                let loc = File_binding.Expanded.src_loc t in
                let src = Path.build (File_binding.Expanded.src t) in
                let dst = File_binding.Expanded.dst_path t ~dir in
-               Super_context.add_rule sctx ~loc ~dir (Build.symlink ~src ~dst))
+               Super_context.add_rule sctx ~loc ~dir
+                 (Action_builder.symlink ~src ~dst))
       | _ -> (
         match File_tree.find_dir (Path.Build.drop_build_context_exn dir) with
         | None ->
@@ -359,9 +350,9 @@ let gen_rules ~sctx ~dir components : Build_system.extra_sub_directories_to_keep
             let cctxs = gen_rules sctx dir_contents [] ~source_dir ~dir in
             List.iter subs ~f:(fun dc ->
                 ignore
-                  ( gen_rules sctx dir_contents cctxs ~source_dir
-                      ~dir:(Dir_contents.dir dc)
-                    : _ list )) ) ) );
+                  (gen_rules sctx dir_contents cctxs ~source_dir
+                     ~dir:(Dir_contents.dir dc)
+                    : _ list)))));
       These (String.Set.of_list subdirs)
   in
   let subdirs_to_keep3 =
@@ -379,7 +370,9 @@ let filter_out_stanzas_from_hidden_packages ~visible_pkgs =
       let include_stanza =
         match Dune_file.stanza_package stanza with
         | None -> true
-        | Some package -> Package.Name.Map.mem visible_pkgs package.name
+        | Some package ->
+          let name = Package.name package in
+          Package.Name.Map.mem visible_pkgs name
       in
       if include_stanza then
         Some stanza
@@ -392,46 +385,55 @@ let filter_out_stanzas_from_hidden_packages ~visible_pkgs =
         | _ -> None)
 
 let gen ~contexts ?only_packages conf =
-  let open Fiber.O in
+  let open Memo.Build.O in
   let { Dune_load.dune_files; packages; projects; vcs } = conf in
   let packages = Option.value only_packages ~default:packages in
-  (* CR-soon amokhov: this mutable table is safe because [Ivar]s are created,
-     read and filled in the same memoization node (the one that calls [gen]). We
-     better rewrite this code using async memoized functions for clarity. *)
-  let sctxs = Table.create (module Context_name) 4 in
-  List.iter contexts ~f:(fun c ->
-      Table.add_exn sctxs c.Context.name (Fiber.Ivar.create ()));
-  let make_sctx (context : Context.t) : _ Fiber.t =
+  let rec sctxs =
+    (* This lazy is just here for the need of [let rec]. We force it straight
+       away, so it is safe regarding [Memo]. *)
+    lazy
+      (Context_name.Map.of_list_map_exn contexts ~f:(fun (c : Context.t) ->
+           (c.name, Memo.Lazy.Async.create (fun () -> make_sctx c))))
+  and make_sctx (context : Context.t) =
     let host () =
       match context.for_host with
-      | None -> Fiber.return None
-      | Some h -> Fiber.Ivar.read (Table.find_exn sctxs h.name) >>| Option.some
+      | None -> Memo.Build.return None
+      | Some h ->
+        let+ sctx =
+          Memo.Lazy.Async.force
+            (Context_name.Map.find_exn (Lazy.force sctxs) h.name)
+        in
+        Some sctx
     in
     let stanzas () =
       let+ stanzas = Dune_load.Dune_files.eval ~context dune_files in
       match only_packages with
       | None -> stanzas
       | Some visible_pkgs ->
-        List.map stanzas ~f:(fun (dir_conf : Dune_load.Dune_file.t) ->
+        List.map stanzas ~f:(fun (dir_conf : Dune_file.t) ->
             { dir_conf with
               stanzas =
                 filter_out_stanzas_from_hidden_packages ~visible_pkgs
                   dir_conf.stanzas
             })
     in
-    let* host, stanzas = Fiber.fork_and_join host stanzas in
+    let+ host, stanzas = Memo.Build.fork_and_join host stanzas in
     let sctx =
-      Super_context.create ?host ~context ~projects ~packages ~stanzas
+      Super_context.create ?host ~context ~projects ~packages ~stanzas ()
     in
-    let+ () = Fiber.Ivar.fill (Table.find_exn sctxs context.name) sctx in
-    (context.name, sctx)
+    sctx
   in
-  let* contexts = Fiber.parallel_map contexts ~f:make_sctx in
-  let sctxs = Context_name.Map.of_list_exn contexts in
+  let* sctxs =
+    Lazy.force sctxs |> Context_name.Map.to_list
+    |> Memo.Build.parallel_map ~f:(fun (name, sctx) ->
+           let+ sctx = Memo.Lazy.Async.force sctx in
+           (name, sctx))
+    >>| Context_name.Map.of_list_exn
+  in
   let () =
     Build_system.set_packages (fun path ->
         let open Option.O in
-        Option.value ~default:Package.Name.Set.empty
+        Option.value ~default:Package.Id.Set.empty
           (let* ctx_name, _ = Path.Build.extract_build_context path in
            let* ctx_name = Context_name.of_string_opt ctx_name in
            let* sctx = Context_name.Map.find sctxs ctx_name in

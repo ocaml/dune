@@ -58,3 +58,9 @@ module Build : sig
 
   val is_alias_stamp_file : t -> bool
 end
+
+module External : sig
+  val encode : Path.External.t Dune_lang.Encoder.t
+
+  val decode : Path.External.t Dune_lang.Decoder.t
+end

@@ -30,7 +30,7 @@ module Unexpanded : sig
        t
     -> section:Install.Section.t
     -> expand:(String_with_vars.t -> string)
-    -> expand_partial:(String_with_vars.t -> string String_with_vars.Partial.t)
+    -> expand_partial:(String_with_vars.t -> String_with_vars.t)
     -> Install.Dst.t
 
   module L : sig

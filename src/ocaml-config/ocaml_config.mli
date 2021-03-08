@@ -187,4 +187,6 @@ end
 
 val to_list : t -> (string * Value.t) list
 
+val by_name : t -> string -> Value.t option
+
 val is_dev_version : t -> bool

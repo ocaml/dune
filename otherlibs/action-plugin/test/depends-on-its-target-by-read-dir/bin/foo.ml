@@ -1,8 +1,6 @@
 open Dune_action_plugin.V1
 module Glob = Dune_glob.V1
 
-let contains equal list elem = List.find list (equal elem) |> Option.is_some
-
 let action =
   let open Dune_action_plugin.V1.O in
   let+ _ =

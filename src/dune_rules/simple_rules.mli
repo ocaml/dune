@@ -12,7 +12,7 @@ module Alias_rules : sig
     -> stamp:'a
     -> loc:Loc.t option
     -> locks:Path.t list
-    -> Action.t Build.With_targets.t
+    -> Action.t Action_builder.With_targets.t
     -> unit
 
   val add_empty :
@@ -26,7 +26,7 @@ end
 (** Interpret a [(rule ...)] stanza and return the targets it produces. *)
 val user_rule :
      Super_context.t
-  -> ?extra_bindings:Pform.Map.t
+  -> ?extra_bindings:Value.t list Pform.Map.t
   -> dir:Path.Build.t
   -> expander:Expander.t
   -> Rule.t
@@ -44,7 +44,7 @@ val copy_files :
 (** Interpret an [(alias ...)] stanza. *)
 val alias :
      Super_context.t
-  -> ?extra_bindings:Pform.Map.t
+  -> ?extra_bindings:Value.t list Pform.Map.t
   -> dir:Path.Build.t
   -> expander:Expander.t
   -> Alias_conf.t

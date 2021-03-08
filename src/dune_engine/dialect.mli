@@ -1,4 +1,4 @@
-open! Stdune
+open! Import
 
 (** Dialects
 
@@ -50,6 +50,10 @@ module DB : sig
   val find_by_name : t -> string -> dialect option
 
   val find_by_extension : t -> string -> (dialect * Ml_kind.t) option
+
+  val fold : t -> init:'a -> f:(dialect -> 'a -> 'a) -> 'a
+
+  val extensions_for_merlin : t -> string Ml_kind.Dict.t list
 
   val to_dyn : t -> Dyn.t
 

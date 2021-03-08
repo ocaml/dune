@@ -19,10 +19,7 @@ Can init a public library
 
 Can build the public library
 
-  $ (cd _test_lib_dir && touch test_lib.opam && dune build 2>&1 | sed "s/(lang dune .*)/(lang dune <version>)/")
-  Info: Creating file dune-project with this contents:
-  | (lang dune <version>)
-  | (name test_lib)
+  $ (cd _test_lib_dir && touch test_lib.opam && dune build)
   $ cat ./_test_lib_dir/dune
   (library
    (public_name test_lib)
@@ -70,10 +67,7 @@ Can init a public executable
 
 Can build an executable
 
-  $ (cd _test_bin_dir && touch test_bin.opam && dune build 2>&1 | sed "s/(lang dune .*)/(lang dune <version>)/")
-  Info: Creating file dune-project with this contents:
-  | (lang dune <version>)
-  | (name test_bin)
+  $ (cd _test_bin_dir && touch test_bin.opam && dune build)
 
 Can run the created executable
 
@@ -150,10 +144,7 @@ Can init a library and dependent executable in a combo project
 
 Can build the combo project
 
-  $ (cd _test_lib_exe_dir && touch test_bin.opam && dune build 2>&1 | sed "s/(lang dune .*)/(lang dune <version>)/")
-  Info: Creating file dune-project with this contents:
-  | (lang dune <version>)
-  | (name test_bin)
+  $ (cd _test_lib_exe_dir && touch test_bin.opam && dune build)
 
 Can run the combo project
 
@@ -183,10 +174,7 @@ Can add multiple libraries in the same directory
 
 Can build the multiple library project
 
-  $ (cd _test_lib && touch test_lib1.opam && dune build 2>&1 | sed "s/(lang dune .*)/(lang dune <version>)/")
-  Info: Creating file dune-project with this contents:
-  | (lang dune <version>)
-  | (name test_lib1)
+  $ (cd _test_lib && touch test_lib1.opam && dune build)
 
 Clan up the multiple library project
 
@@ -239,11 +227,12 @@ Comments in dune files are preserved
 Will not create components with invalid names
 
   $ dune init lib invalid-component-name ./_test_lib
-  dune: NAME argument: invalid component name `invalid-component-name'
-        Library names must be non-empty and composed only of the
-        following
-        characters: 'A'..'Z', 'a'..'z', '_' or '0'..'9'.
-  Usage: dune init [OPTION]... INIT_KIND NAME [PATH]
+  dune init: NAME argument: invalid component name
+             `invalid-component-name'
+             Library names must be non-empty and composed only of the
+             following
+             characters: 'A'..'Z', 'a'..'z', '_' or '0'..'9'.
+  Usage: dune init [OPTION]... COMPONENT NAME [PATH]
   Try `dune init --help' or `dune --help' for more information.
   [1]
   $ test -f ./_test_lib
@@ -252,9 +241,9 @@ Will not create components with invalid names
 Will fail and inform user when invalid component command is given
 
   $ dune init foo blah
-  dune: INIT_KIND argument: invalid value `foo', expected one of `executable',
-        `library', `project' or `test'
-  Usage: dune init [OPTION]... INIT_KIND NAME [PATH]
+  dune init: COMPONENT argument: invalid value `foo', expected one of
+             `executable', `library', `project' or `test'
+  Usage: dune init [OPTION]... COMPONENT NAME [PATH]
   Try `dune init --help' or `dune --help' for more information.
   [1]
 
@@ -313,16 +302,11 @@ Can init and build a new executable project
   dune
   test_exec_proj.ml
 
-  $ dune exec --root test_exec_proj ./bin/main.exe 2>&1 | sed "s/(lang dune .*)/(lang dune <version>)/"
-  Entering directory 'test_exec_proj'
-  Info: Creating file dune-project with this contents:
-  | (lang dune <version>)
-  | (name test_exec_proj)
+  $ dune exec --root test_exec_proj ./bin/main.exe
   Entering directory 'test_exec_proj'
   Hello, World!
 
   $ dune exec --root test_exec_proj ./test/test_exec_proj.exe
-  Entering directory 'test_exec_proj'
   Entering directory 'test_exec_proj'
   $ rm -rf ./test_exec_proj
 
@@ -341,11 +325,8 @@ Can init and build a new library project
   dune
   test_lib_proj.ml
 
-  $ dune build --root test_lib_proj @install --display short 2>&1 | sed "s/(lang dune .*)/(lang dune <version>)/"
+  $ dune build --root test_lib_proj @install --display short
   Entering directory 'test_lib_proj'
-  Info: Creating file dune-project with this contents:
-  | (lang dune <version>)
-  | (name test_lib_proj)
         ocamlc lib/.test_lib_proj.objs/byte/test_lib_proj.{cmi,cmo,cmt}
       ocamlopt lib/.test_lib_proj.objs/native/test_lib_proj.{cmx,o}
         ocamlc lib/test_lib_proj.cma
@@ -354,7 +335,7 @@ Can init and build a new library project
 
   $ dune runtest --root test_lib_proj --display short
   Entering directory 'test_lib_proj'
-        ocamlc test/.test_lib_proj.eobjs/byte/dune__exe__Test_lib_proj.{cmi,cmo,cmt}
+        ocamlc test/.test_lib_proj.eobjs/byte/dune__exe__Test_lib_proj.{cmi,cmti}
       ocamlopt test/.test_lib_proj.eobjs/native/dune__exe__Test_lib_proj.{cmx,o}
       ocamlopt test/test_lib_proj.exe
   test_lib_proj alias test/runtest

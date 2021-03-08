@@ -38,8 +38,8 @@ module Select = struct
                in
                if
                  not
-                   ( String.is_prefix file ~prefix
-                   && String.is_suffix file ~suffix )
+                   (String.is_prefix file ~prefix
+                   && String.is_suffix file ~suffix)
                then
                  User_error.raise ~loc:loc_file
                    [ Pp.textf
@@ -111,31 +111,21 @@ let direct x = Direct x
 
 let re_export x = Re_export x
 
-let to_lib_names = function
-  | Direct (_, s)
-  | Re_export (_, s) ->
-    [ s ]
-  | Select s ->
-    List.fold_left s.choices ~init:Lib_name.Set.empty
-      ~f:(fun acc (x : Select.Choice.t) ->
-        Lib_name.Set.union acc (Lib_name.Set.union x.required x.forbidden))
-    |> Lib_name.Set.to_list
-
 let decode ~allow_re_export =
   let open Dune_lang.Decoder in
   let+ loc, t =
     located
-      ( sum ~force_parens:true
-          [ ( "re_export"
-            , let+ () = Dune_lang.Syntax.since Stanza.syntax (2, 0)
-              and+ loc, name = located Lib_name.decode in
-              Re_export (loc, name) )
-          ; ( "select"
-            , let+ select = Select.decode in
-              Select select )
-          ]
+      (sum ~force_parens:true
+         [ ( "re_export"
+           , let+ () = Dune_lang.Syntax.since Stanza.syntax (2, 0)
+             and+ loc, name = located Lib_name.decode in
+             Re_export (loc, name) )
+         ; ( "select"
+           , let+ select = Select.decode in
+             Select select )
+         ]
       <|> let+ loc, name = located Lib_name.decode in
-          Direct (loc, name) )
+          Direct (loc, name))
   in
   match t with
   | Re_export _ when not allow_re_export ->

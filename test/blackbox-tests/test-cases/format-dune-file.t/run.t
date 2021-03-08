@@ -52,8 +52,17 @@ it gets wrapped.
   $ echo '(library (name dune) (libraries unix stdune fiber xdg dune_re threads opam_file_format dune_lang ocaml_config which_program) (synopsis "Internal Dune library, do not use!") (preprocess  (action (run %{project_root}/src/let-syntax/pp.exe %{input-file}))))' | dune format-dune-file
   (library
    (name dune)
-   (libraries unix stdune fiber xdg dune_re threads opam_file_format dune_lang
-     ocaml_config which_program)
+   (libraries
+    unix
+    stdune
+    fiber
+    xdg
+    dune_re
+    threads
+    opam_file_format
+    dune_lang
+    ocaml_config
+    which_program)
    (synopsis "Internal Dune library, do not use!")
    (preprocess
     (action
@@ -162,7 +171,7 @@ Files in OCaml syntax are copied verbatim (but error when passed in stdin).
 
 Non 0 error code:
 
-  $ echo "(" | dune format ; echo $?
+  $ echo "(" | dune format-dune-file ; echo $?
   File "", line 2, characters 0-0:
   Error: unclosed parenthesis at end of input
   1

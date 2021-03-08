@@ -19,13 +19,16 @@ bug-reports: "https://github.com/ocaml/dune/issues"
 depends: [
   "dune" {>= "2.8"}
   "dune-glob"
+  "csexp" {>= "1.4.0"}
   "ppx_expect" {with-test}
+  "stdune-unstable" {= version}
   "dune-private-libs" {= version}
   "odoc" {with-doc}
 ]
 dev-repo: "git+https://github.com/ocaml/dune.git"
 build: [
   ["dune" "subst"] {dev}
+  ["rm" "-rf" "vendor/csexp"]
   [
     "dune"
     "build"

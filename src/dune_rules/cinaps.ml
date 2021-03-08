@@ -1,7 +1,7 @@
 open! Dune_engine
 open Import
 open! No_io
-open Build.O
+open Action_builder.O
 
 type t =
   { loc : Loc.t
@@ -30,9 +30,7 @@ let decode =
        field "files" Predicate_lang.Glob.decode ~default:Predicate_lang.any
      and+ preprocess, preprocessor_deps = Dune_file.preprocess_fields
      and+ libraries =
-       field "libraries"
-         (Dune_file.Lib_deps.decode ~allow_re_export:false)
-         ~default:[]
+       field "libraries" (Dune_file.Lib_deps.decode Executable) ~default:[]
      and+ flags = Ocaml_flags.Spec.decode in
      { loc; files; libraries; preprocess; preprocessor_deps; flags })
 
@@ -80,10 +78,10 @@ let gen_rules sctx t ~dir ~scope =
   let obj_dir = Obj_dir.make_exe ~dir:cinaps_dir ~name in
   let expander = Super_context.expander sctx ~dir in
   let preprocess =
-    Preprocessing.make sctx ~dir ~expander ~dep_kind:Required
+    Preprocessing.make sctx ~dir ~expander
       ~lint:(Preprocess.Per_module.no_preprocessing ())
       ~preprocess:t.preprocess ~preprocessor_deps:t.preprocessor_deps
-      ~lib_name:None ~scope
+      ~instrumentation_deps:[] ~lib_name:None ~scope
   in
   let modules =
     Modules.singleton_exe module_
@@ -95,7 +93,7 @@ let gen_rules sctx t ~dir ~scope =
       [ (t.loc, name) ]
       (Lib_dep.Direct (loc, Lib_name.of_string "cinaps.runtime") :: t.libraries)
       ~pps:(Preprocess.Per_module.pps t.preprocess)
-      ~dune_version ~optional:false
+      ~dune_version
   in
   let cctx =
     Compilation_context.create () ~super_context:sctx ~expander ~scope ~obj_dir
@@ -103,7 +101,7 @@ let gen_rules sctx t ~dir ~scope =
       ~requires_compile:(Lib.Compile.direct_requires compile_info)
       ~requires_link:(Lib.Compile.requires_link compile_info)
       ~flags:(Ocaml_flags.of_list [ "-w"; "-24" ])
-      ~js_of_ocaml:None ~dynlink:false ~package:None
+      ~js_of_ocaml:None ~package:None
   in
   Exe.build_and_link cctx
     ~program:{ name; main_module_name; loc }
@@ -112,20 +110,18 @@ let gen_rules sctx t ~dir ~scope =
   let action =
     let module A = Action in
     let cinaps_exe = Path.build cinaps_exe in
-    let+ () = Build.path cinaps_exe in
+    let+ () = Action_builder.path cinaps_exe in
     A.chdir (Path.build dir)
       (A.progn
-         ( A.run (Ok cinaps_exe) [ "-diff-cmd"; "-" ]
-         :: List.map cinapsed_files ~f:(fun fn ->
-                A.diff ~optional:true (Path.build fn)
-                  (Path.Build.extend_basename fn ~suffix:".cinaps-corrected"))
-         ))
+         (A.run (Ok cinaps_exe) [ "-diff-cmd"; "-" ]
+          ::
+          List.map cinapsed_files ~f:(fun fn ->
+              A.diff ~optional:true (Path.build fn)
+                (Path.Build.extend_basename fn ~suffix:".cinaps-corrected"))))
   in
   let cinaps_alias = alias ~dir in
   Super_context.add_alias_action sctx ~dir ~loc:(Some loc) ~stamp:name
     cinaps_alias
-    (Build.with_no_targets action);
-  let stamp_file =
-    Alias.stamp_file cinaps_alias |> Path.build |> Path.Set.singleton
-  in
-  Rules.Produce.Alias.add_deps (Alias.runtest ~dir) stamp_file
+    (Action_builder.with_no_targets action);
+  Rules.Produce.Alias.add_deps (Alias.runtest ~dir)
+    (Action_builder.alias cinaps_alias)

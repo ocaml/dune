@@ -1,6 +1,34 @@
-This test demonstrates that -ppx is missing when two stanzas are in the same
-dune file, but require different ppx specifications
+This test demonstrates that -ppx is no more missing when two stanzas are
+in the same dune file, but require different ppx specifications
 
   $ dune build @all --profile release
-  $ cat .merlin | grep "^FLG"
-  FLG -open Usesppx1 -w -40 -open Usesppx2 -w -40
+  $ dune ocaml-merlin --dump-config=$(pwd) |
+  > sed 's#'$(opam config var prefix)'#OPAM_PREFIX#'
+  Usesppx1
+  ((STDLIB OPAM_PREFIX/lib/ocaml)
+   (EXCLUDE_QUERY_DIR)
+   (B
+    $TESTCASE_ROOT/_build/default/.usesppx1.objs/byte)
+   (S
+    $TESTCASE_ROOT)
+   (FLG
+    (-ppx
+     "$TESTCASE_ROOT/_build/default/.ppx/c152d6ca3c7e1d83471ffdf48bf729ae/ppx.exe
+     --as-ppx
+     --cookie
+     'library-name="usesppx1"'"))
+   (FLG (-open Usesppx1 -w -40)))
+  Usesppx2
+  ((STDLIB OPAM_PREFIX/lib/ocaml)
+   (EXCLUDE_QUERY_DIR)
+   (B
+    $TESTCASE_ROOT/_build/default/.usesppx2.objs/byte)
+   (S
+    $TESTCASE_ROOT)
+   (FLG
+    (-ppx
+     "$TESTCASE_ROOT/_build/default/.ppx/d7394c27c5e0f7ad7ab1110d6b092c05/ppx.exe
+     --as-ppx
+     --cookie
+     'library-name="usesppx2"'"))
+   (FLG (-open Usesppx2 -w -40)))

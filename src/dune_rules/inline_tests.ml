@@ -6,57 +6,7 @@ module SC = Super_context
 
 module Backend = struct
   module M = struct
-    module Info = struct
-      let name = Sub_system_name.make "inline_tests.backend"
-
-      type t =
-        { loc : Loc.t
-        ; runner_libraries : (Loc.t * Lib_name.t) list
-        ; flags : Ordered_set_lang.Unexpanded.t
-        ; generate_runner : (Loc.t * Action_unexpanded.t) option
-        ; extends : (Loc.t * Lib_name.t) list
-        }
-
-      type Sub_system_info.t += T of t
-
-      let loc t = t.loc
-
-      (* The syntax of the driver sub-system is part of the main dune syntax, so
-         we simply don't create a new one.
-
-         If we wanted to make the ppx system an extension, then we would create
-         a new one. *)
-      let syntax = Stanza.syntax
-
-      open Dune_lang.Decoder
-
-      let decode =
-        fields
-          (let+ loc = loc
-           and+ runner_libraries =
-             field "runner_libraries"
-               (repeat (located Lib_name.decode))
-               ~default:[]
-           and+ flags = Ordered_set_lang.Unexpanded.field "flags"
-           and+ generate_runner =
-             field_o "generate_runner" (located Action_dune_lang.decode)
-           and+ extends =
-             field "extends" (repeat (located Lib_name.decode)) ~default:[]
-           in
-           { loc; runner_libraries; flags; generate_runner; extends })
-
-      let encode t =
-        let open Dune_lang.Encoder in
-        let lib (_loc, x) = Lib_name.encode x in
-        ( (1, 0)
-        , record_fields
-          @@ [ field_l "runner_libraries" lib t.runner_libraries
-             ; field_i "flags" Ordered_set_lang.Unexpanded.encode t.flags
-             ; field_o "generate_runner" Action_dune_lang.encode
-                 (Option.map t.generate_runner ~f:snd)
-             ; field_l "extends" lib t.extends
-             ] )
-    end
+    module Info = Inline_tests_info.Backend
 
     type t =
       { info : Info.t
@@ -120,88 +70,8 @@ end
 
 include Sub_system.Register_end_point (struct
   module Backend = Backend
-
-  module Mode_conf = struct
-    module T = struct
-      type t =
-        | Byte
-        | Javascript
-        | Native
-        | Best
-
-      let compare (a : t) b = Poly.compare a b
-
-      let to_dyn _ = Dyn.opaque
-    end
-
-    include T
-    open Dune_lang.Decoder
-
-    let decode =
-      enum
-        [ ("byte", Byte)
-        ; ("js", Javascript)
-        ; ("native", Native)
-        ; ("best", Best)
-        ]
-
-    module O = Comparable.Make (T)
-
-    module Set = struct
-      include O.Set
-
-      let decode = repeat decode >>| of_list
-
-      let default = of_list [ Best ]
-    end
-  end
-
-  module Info = struct
-    let name = Sub_system_name.make "inline_tests"
-
-    type t =
-      { loc : Loc.t
-      ; deps : Dep_conf.t list
-      ; modes : Mode_conf.Set.t
-      ; flags : Ordered_set_lang.Unexpanded.t
-      ; executable : Ocaml_flags.Spec.t
-      ; backend : (Loc.t * Lib_name.t) option
-      ; libraries : (Loc.t * Lib_name.t) list
-      }
-
-    type Sub_system_info.t += T of t
-
-    let loc t = t.loc
-
-    let backends t = Option.map t.backend ~f:(fun x -> [ x ])
-
-    let syntax = Stanza.syntax
-
-    open Dune_lang.Decoder
-
-    let decode =
-      fields
-        (let+ loc = loc
-         and+ deps = field "deps" (repeat Dep_conf.decode) ~default:[]
-         and+ flags = Ordered_set_lang.Unexpanded.field "flags"
-         and+ executable =
-           field "executable" ~default:Ocaml_flags.Spec.standard
-             ( Dune_lang.Syntax.since Stanza.syntax (2, 8)
-             >>> fields Ocaml_flags.Spec.decode )
-         and+ backend = field_o "backend" (located Lib_name.decode)
-         and+ libraries =
-           field "libraries" (repeat (located Lib_name.decode)) ~default:[]
-         and+ modes =
-           field "modes"
-             (Dune_lang.Syntax.since syntax (1, 11) >>> Mode_conf.Set.decode)
-             ~default:Mode_conf.Set.default
-         in
-         { loc; deps; flags; executable; backend; libraries; modes })
-
-    (* We don't use this at the moment, but we could implement it for debugging
-       purposes *)
-    let encode _t = assert false
-  end
+  module Mode_conf = Inline_tests_info.Mode_conf
+  module Info = Inline_tests_info.Tests
 
   let gen_rules c ~(info : Info.t) ~backends =
     let { Sub_system.Library_compilation_context.super_context = sctx
@@ -231,10 +101,6 @@ include Sub_system.Register_end_point (struct
       Module.generated ~src_dir name
     in
     let modules = Modules.singleton_exe main_module in
-    let bindings =
-      Pform.Map.singleton "library-name"
-        (Values [ String (Lib_name.Local.to_string (snd lib.name)) ])
-    in
     let expander = Super_context.expander sctx ~dir in
     let runner_libs =
       let open Result.O in
@@ -248,7 +114,7 @@ include Sub_system.Register_end_point (struct
       let* more_libs =
         Result.List.map info.libraries ~f:(Lib.DB.resolve (Scope.libs scope))
       in
-      Lib.closure ~linking:true ((lib :: libs) @ more_libs)
+      Lib.closure ~linking:true (lib :: libs @ more_libs)
     in
     (* Generate the runner file *)
     SC.add_rule sctx ~dir ~loc
@@ -257,31 +123,28 @@ include Sub_system.Register_end_point (struct
          |> Option.value_exn |> Path.as_in_build_dir_exn
        in
        let files ml_kind =
-         Pform.Var.Values
-           (Value.L.paths
-              (List.filter_map source_modules ~f:(Module.file ~ml_kind)))
+         Value.L.paths
+           (List.filter_map source_modules ~f:(Module.file ~ml_kind))
        in
        let bindings =
          Pform.Map.of_list_exn
-           [ ("impl-files", files Impl); ("intf-files", files Intf) ]
+           [ (Var Impl_files, files Impl); (Var Intf_files, files Intf) ]
        in
        let expander = Expander.add_bindings expander ~bindings in
        let action =
-         let open Build.With_targets.O in
+         let open Action_builder.With_targets.O in
          let+ actions =
-           Build.With_targets.all
+           Action_builder.With_targets.all
              (List.filter_map backends ~f:(fun (backend : Backend.t) ->
                   Option.map backend.info.generate_runner
                     ~f:(fun (loc, action) ->
-                      Action_unexpanded.expand action ~loc ~expander
-                        ~dep_kind:Required
+                      Action_unexpanded.expand action ~loc ~expander ~deps:[]
                         ~targets:(Forbidden "inline test generators")
-                        ~targets_dir:dir
-                        (Build.return Bindings.empty))))
+                        ~targets_dir:dir)))
          in
          Action.with_stdout_to target (Action.progn actions)
        in
-       Build.With_targets.add ~targets:[ target ] action);
+       Action_builder.With_targets.add ~targets:[ target ] action);
     let cctx =
       let package = Dune_file.Library.package lib in
       let flags =
@@ -292,8 +155,7 @@ include Sub_system.Register_end_point (struct
       Compilation_context.create () ~super_context:sctx ~expander ~scope
         ~obj_dir ~modules ~opaque:(Explicit false) ~requires_compile:runner_libs
         ~requires_link:(lazy runner_libs)
-        ~flags ~js_of_ocaml:(Some lib.buildable.js_of_ocaml) ~dynlink:false
-        ~package
+        ~flags ~js_of_ocaml:(Some lib.buildable.js_of_ocaml) ~package
     in
     let linkages =
       let modes =
@@ -312,19 +174,25 @@ include Sub_system.Register_end_point (struct
     Exe.build_and_link cctx
       ~program:{ name; main_module_name = Module.name main_module; loc }
       ~linkages
-      ~link_args:(Build.return (Command.Args.A "-linkall"))
+      ~link_args:(Action_builder.return (Command.Args.A "-linkall"))
       ~promote:None;
     let flags =
       let flags =
         List.map backends ~f:(fun backend -> backend.Backend.info.flags)
         @ [ info.flags ]
       in
+      let bindings =
+        Pform.Map.singleton (Var Library_name)
+          [ Value.String (Lib_name.Local.to_string (snd lib.name)) ]
+      in
       let expander = Expander.add_bindings expander ~bindings in
-      let open Build.O in
+      let open Action_builder.O in
       let+ l =
         List.map flags
-          ~f:(Expander.expand_and_eval_set expander ~standard:(Build.return []))
-        |> Build.all
+          ~f:
+            (Expander.expand_and_eval_set expander
+               ~standard:(Action_builder.return []))
+        |> Action_builder.all
       in
       Command.Args.As (List.concat l)
     in
@@ -358,18 +226,21 @@ include Sub_system.Register_end_point (struct
                ( Super_context.resolve_program ~dir sctx ~loc:(Some loc) runner
                , Dep exe )
            in
-           let open Build.With_targets.O in
-           Build.with_no_targets (Dep_conf_eval.unnamed info.deps ~expander)
-           >>> Build.with_no_targets (Build.paths source_files)
-           >>> Build.progn
-                 ( Command.run exe ~dir:(Path.build dir)
-                     [ runner_args; Dyn flags ]
-                 :: List.map source_files ~f:(fun fn ->
-                        Build.With_targets.return
-                          (Action.diff ~optional:true fn
-                             (Path.Build.extend_basename
-                                (Path.as_in_build_dir_exn fn)
-                                ~suffix:".corrected"))) )))
+           let open Action_builder.With_targets.O in
+           Action_builder.with_no_targets
+             (Dep_conf_eval.unnamed info.deps ~expander)
+           >>> Action_builder.with_no_targets
+                 (Action_builder.paths source_files)
+           >>> Action_builder.progn
+                 (Command.run exe ~dir:(Path.build dir)
+                    [ runner_args; Dyn flags ]
+                  ::
+                  List.map source_files ~f:(fun fn ->
+                      Action_builder.With_targets.return
+                        (Action.diff ~optional:true fn
+                           (Path.Build.extend_basename
+                              (Path.as_in_build_dir_exn fn)
+                              ~suffix:".corrected"))))))
 end)
 
 let linkme = ()

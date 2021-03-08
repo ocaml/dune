@@ -12,6 +12,7 @@ type t =
   ; c_compiler : string
   ; stdlib_dir : string
   ; ccomp_type : string
+  ; c_libraries : string list
   ; ocamlc_config : Ocaml_config.Vars.t
   ; ocamlc_config_cmd : string
   }
@@ -310,16 +311,21 @@ let read_dot_dune_configurator_file ~build_dir =
 
 let fill_in_fields_that_depends_on_ocamlc_config t =
   let get = ocaml_config_var_exn t in
-  let c_compiler =
+  let get_flags var =
+    get var |> String.trim |> Flags.extract_blank_separated_words
+  in
+  let c_compiler, c_libraries =
     match Ocaml_config.Vars.find t.ocamlc_config "c_compiler" with
-    | Some c_comp -> c_comp ^ " " ^ get "ocamlc_cflags"
-    | None -> get "bytecomp_c_compiler"
+    | Some c_comp ->
+      (c_comp ^ " " ^ get "ocamlc_cflags", get_flags "native_c_libraries")
+    | None -> (get "bytecomp_c_compiler", get_flags "bytecomp_c_libraries")
   in
   { t with
     ext_obj = get "ext_obj"
   ; c_compiler
   ; stdlib_dir = get "standard_library"
   ; ccomp_type = get "ccomp_type"
+  ; c_libraries
   }
 
 let create_from_inside_dune ~dest_dir ~log ~build_dir ~name =
@@ -344,6 +350,7 @@ let create_from_inside_dune ~dest_dir ~log ~build_dir ~name =
     ; c_compiler = ""
     ; stdlib_dir = ""
     ; ccomp_type = ""
+    ; c_libraries = []
     }
 
 let create ?dest_dir ?ocamlc ?(log = ignore) name =
@@ -372,6 +379,7 @@ let create ?dest_dir ?ocamlc ?(log = ignore) name =
       ; c_compiler = ""
       ; stdlib_dir = ""
       ; ccomp_type = ""
+      ; c_libraries = []
       ; ocamlc_config = Ocaml_config.Vars.of_list_exn []
       ; ocamlc_config_cmd
       }
@@ -410,12 +418,13 @@ let compile_and_link_c_prog t ?(c_flags = []) ?(link_flags = []) code =
   let ok =
     if need_to_compile_and_link_separately t then
       run_ok (c_flags @ [ "-I"; t.stdlib_dir; "-c"; c_fname ])
-      && run_ok ("-o" :: exe_fname :: obj_fname :: link_flags)
+      && run_ok ("-o" :: exe_fname :: obj_fname :: t.c_libraries @ link_flags)
     else
       run_ok
         (List.concat
            [ c_flags
            ; [ "-I"; t.stdlib_dir; "-o"; exe_fname; c_fname ]
+           ; t.c_libraries
            ; link_flags
            ])
   in
@@ -436,7 +445,11 @@ let compile_c_prog t ?(c_flags = []) code =
   let ok =
     Process.run_command_ok t ~dir
       (Process.command_args t.c_compiler
-         (c_flags @ [ "-I"; t.stdlib_dir; "-o"; obj_fname; "-c"; c_fname ]))
+         (c_flags
+         @ "-I"
+           ::
+           t.stdlib_dir :: "-o" :: obj_fname :: "-c" :: c_fname :: t.c_libraries
+         ))
   in
   if ok then
     Ok obj_fname
@@ -616,9 +629,9 @@ let which t prog =
   logf t "which: %s" prog;
   let x = Find_in_path.which prog in
   logf t "-> %s"
-    ( match x with
+    (match x with
     | None -> "not found"
-    | Some fn -> "found: " ^ quote_if_needed fn );
+    | Some fn -> "found: " ^ quote_if_needed fn);
   x
 
 module Pkg_config = struct
@@ -670,9 +683,9 @@ module Pkg_config = struct
             sprintf "%s/opt/%s/lib/pkgconfig" (quote_if_needed prefix) package
           in
           Option.some_if
-            ( match Sys.is_directory p with
+            (match Sys.is_directory p with
             | s -> s
-            | exception Sys_error _ -> false )
+            | exception Sys_error _ -> false)
             p
         in
         new_pkg_config_path >>| fun new_pkg_config_path ->
@@ -725,12 +738,12 @@ let main ?(args = []) ~name f =
   let dest_dir = ref None in
   let args =
     Arg.align
-      ( [ ("-verbose", Arg.Set verbose, " be verbose")
-        ; ( "-dest-dir"
-          , Arg.String (fun s -> dest_dir := Some s)
-          , "DIR save temporary files to this directory" )
-        ]
-      @ args )
+      ([ ("-verbose", Arg.Set verbose, " be verbose")
+       ; ( "-dest-dir"
+         , Arg.String (fun s -> dest_dir := Some s)
+         , "DIR save temporary files to this directory" )
+       ]
+      @ args)
   in
   let anon s = raise (Arg.Bad (sprintf "don't know what to do with %s" s)) in
   let usage = sprintf "%s [OPTIONS]" (Filename.basename Sys.executable_name) in
@@ -741,18 +754,19 @@ let main ?(args = []) ~name f =
     let t =
       create_from_inside_dune ~dest_dir:!dest_dir
         ~log:
-          ( if !verbose then
+          (if !verbose then
             prerr_endline
           else
-            log )
+            log)
         ~build_dir ~name
     in
     f t
-  with exn -> (
+  with
+  | exn -> (
     let bt = Printexc.get_raw_backtrace () in
     List.iter (List.rev !log_db) ~f:(eprintf "%s\n");
     match exn with
     | Fatal_error msg ->
       eprintf "Error: %s\n%!" msg;
       exit 1
-    | _ -> Exn.raise_with_backtrace exn bt )
+    | _ -> Exn.raise_with_backtrace exn bt)

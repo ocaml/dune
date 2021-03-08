@@ -1,5 +1,5 @@
 open Stdune
-module Config = Dune_engine.Config
+module Config = Dune_util.Config
 module Colors = Dune_rules.Colors
 module Clflags = Dune_engine.Clflags
 module Package = Dune_engine.Package
@@ -15,11 +15,23 @@ end
 
 open Let_syntax
 
-module Only_packages = struct
+module Only_packages : sig
+  type t = private
+    { names : Dune_engine.Package.Name.Set.t
+    ; command_line_option : string
+    }
+
+  val create :
+    names:Dune_engine.Package.Name.Set.t -> command_line_option:string -> t
+end = struct
   type t =
     { names : Dune_engine.Package.Name.Set.t
     ; command_line_option : string
     }
+
+  let create ~names ~command_line_option =
+    Clflags.only_packages := Some names;
+    { names; command_line_option }
 end
 
 type t =
@@ -43,7 +55,8 @@ type t =
   ; store_orig_src_dir : bool
   ; (* Original arguments for the external-lib-deps hint *)
     orig_args : string list
-  ; config : Dune_engine.Config.t
+  ; config : Dune_config.t
+  ; rpc : Dune_rpc_impl.Server.t option
   ; default_target : Arg.Dep.t (* For build & runtest only *)
   ; watch : bool
   ; stats_trace_file : string option
@@ -64,6 +77,8 @@ let root t = t.root
 
 let config t = t.config
 
+let set_config t config = { t with config }
+
 let only_packages t = t.only_packages
 
 let watch t = t.watch
@@ -74,13 +89,38 @@ let prefix_target common s = common.target_prefix ^ s
 
 let instrument_with t = t.instrument_with
 
-let set_dirs c =
-  if c.root.dir <> Filename.current_dir_name then Sys.chdir c.root.dir;
-  Path.set_root (Path.External.cwd ());
-  Path.Build.set_build_dir (Path.Build.Kind.of_string c.build_dir)
+let rpc t = t.rpc
 
-let set_common_other ?log_file c ~targets =
-  Config.init c.config;
+let set_print_directory t b = { t with no_print_directory = not b }
+
+(* To avoid needless recompilations under Windows, where the case of
+   [Sys.getcwd] can vary between different invocations of [dune], normalize to
+   lowercase. *)
+let normalize_path path =
+  if Sys.win32 then
+    let src = Path.External.to_string path in
+    let is_letter = function
+      | 'a' .. 'z'
+      | 'A' .. 'Z' ->
+        true
+      | _ -> false
+    in
+    if String.length src >= 2 && is_letter src.[0] && src.[1] = ':' then (
+      let dst = Bytes.create (String.length src) in
+      Bytes.set dst 0 (Char.uppercase_ascii src.[0]);
+      Bytes.blit_string ~src ~src_pos:1 ~dst ~dst_pos:1
+        ~len:(String.length src - 1);
+      Path.External.of_string (Bytes.unsafe_to_string dst)
+    ) else
+      path
+  else
+    path
+
+let set_common ?log_file c =
+  if c.root.dir <> Filename.current_dir_name then Sys.chdir c.root.dir;
+  Path.set_root (normalize_path (Path.External.cwd ()));
+  Path.Build.set_build_dir (Path.Build.Kind.of_string c.build_dir);
+  Dune_config.init c.config;
   Dune_util.Log.init () ?file:log_file;
   Clflags.debug_dep_path := c.debug_dep_path;
   Clflags.debug_findlib := c.debug_findlib;
@@ -94,21 +134,52 @@ let set_common_other ?log_file c ~targets =
   Clflags.no_print_directory := c.no_print_directory;
   Clflags.store_orig_src_dir := c.store_orig_src_dir;
   Clflags.promote_install_files := c.promote_install_files;
-  Clflags.external_lib_deps_hint :=
-    List.concat
-      [ [ "dune"; "external-lib-deps"; "--missing" ]
-      ; c.orig_args
-      ; List.map ~f:Arg.Dep.to_string_maybe_quoted targets
-      ];
   Clflags.always_show_command_line := c.always_show_command_line;
   Clflags.ignore_promoted_rules := c.ignore_promoted_rules;
-  Option.iter ~f:Dune_engine.Stats.enable c.stats_trace_file
+  Option.iter ~f:Dune_engine.Stats.enable c.stats_trace_file;
+  Dune_util.Log.info
+    [ Pp.textf "Workspace root: %s"
+        (Path.to_absolute_filename Path.root |> String.maybe_quoted)
+    ];
+  let cwd = Path.to_absolute_filename Path.root in
+  if cwd <> Fpath.initial_cwd && not c.no_print_directory then
+    (* Editors such as Emacs parse the output of the build system and interpret
+       filenames in error messages relative to where the build system was
+       started.
 
-let set_common ?log_file ?external_lib_deps_mode c ~targets =
-  Option.iter external_lib_deps_mode ~f:(fun x ->
-      Clflags.external_lib_deps_mode := x);
-  set_dirs c;
-  set_common_other ?log_file c ~targets
+       If the build system changes directory, the editor will not be able to
+       correctly locate files. However, such editors also understand messages of
+       the form "Entering directory '<dir>'" that the "make" command prints.
+
+       This is why Dune also prints such a message; this way people running Dune
+       through such an editor will be able to use the "jump to error" feature of
+       their editor. *)
+    let dir =
+      match Config.inside_dune with
+      | false -> cwd
+      | true -> (
+        let descendant_simple p ~of_ =
+          match String.drop_prefix p ~prefix:of_ with
+          | None
+          | Some "" ->
+            None
+          | Some s -> Some (String.drop s 1)
+        in
+        match descendant_simple cwd ~of_:Fpath.initial_cwd with
+        | Some s -> s
+        | None -> (
+          match descendant_simple Fpath.initial_cwd ~of_:cwd with
+          | None -> cwd
+          | Some s ->
+            let rec loop acc dir =
+              if dir = Filename.current_dir_name then
+                acc
+              else
+                loop (Filename.concat acc "..") (Filename.dirname dir)
+            in
+            loop ".." (Filename.dirname s)))
+    in
+    Console.print [ Pp.verbatim (sprintf "Entering directory '%s'" dir) ]
 
 let footer =
   `Blocks
@@ -117,6 +188,12 @@ let footer =
     ]
 
 let copts_sect = "COMMON OPTIONS"
+
+let debug_backtraces =
+  Arg.(
+    value & flag
+    & info [ "debug-backtraces" ] ~docs:copts_sect
+        ~doc:{|Always print exception backtraces.|})
 
 let examples = function
   | [] -> `Blocks []
@@ -134,6 +211,15 @@ let examples = function
     in
     let example_blocks = examples |> List.mapi ~f:block_of_example in
     `Blocks (`S Cmdliner.Manpage.s_examples :: example_blocks)
+
+(* Short reminders for the most used and useful commands *)
+let command_synopsis commands =
+  let format_command c acc =
+    `Noblank :: `P (Printf.sprintf "$(b,dune %s)" c) :: acc
+  in
+  [ `S "SYNOPSIS"
+  ; `Blocks (List.fold_right ~init:[] ~f:format_command commands)
+  ]
 
 let help_secs =
   [ `S copts_sect
@@ -184,12 +270,12 @@ let build_info =
              , ver_string (B.Statically_linked_library.version lib) ))
       |> List.sort ~compare:Poly.compare
     in
-    ( match libs with
+    (match libs with
     | [] -> ()
     | _ ->
       pr "statically linked libraries:";
       let longest = String.longest_map libs ~f:fst in
-      List.iter libs ~f:(fun (name, v) -> pr "- %-*s %s" longest name v) );
+      List.iter libs ~f:(fun (name, v) -> pr "- %-*s %s" longest name v));
     exit 0
   )
 
@@ -345,7 +431,7 @@ module Options_implied_by_dash_p = struct
                       build a particular $(b,<package>.install) target.|})
       in
       Option.map names ~f:(fun names ->
-          { Only_packages.names; command_line_option = "only-packages" })
+          Only_packages.create ~names ~command_line_option:"only-packages")
     in
     { t with only_packages }
 
@@ -368,7 +454,7 @@ module Options_implied_by_dash_p = struct
     { release_options with
       only_packages =
         Option.map pkgs ~f:(fun names ->
-            { Only_packages.names; command_line_option = List.hd args })
+            Only_packages.create ~names ~command_line_option:(List.hd args))
     }
 
   let term =
@@ -394,6 +480,7 @@ module Options_implied_by_dash_p = struct
 end
 
 let display_term =
+  let module Display = Dune_engine.Scheduler.Config.Display in
   one_of
     (let+ verbose =
        Arg.(
@@ -401,35 +488,33 @@ let display_term =
          & info [ "verbose" ] ~docs:copts_sect
              ~doc:"Same as $(b,--display verbose)")
      in
-     Option.some_if verbose Config.Display.Verbose)
+     Option.some_if verbose Display.Verbose)
     Arg.(
       value
-      & opt (some (enum Config.Display.all)) None
+      & opt (some (enum Display.all)) None
       & info [ "display" ] ~docs:copts_sect ~docv:"MODE"
           ~doc:
             {|Control the display mode of Dune.
          See $(b,dune-config\(5\)) for more details.|})
 
 let config_of_file = function
-  | No_config -> Config.default
-  | This fname -> Config.load_config_file fname
+  | No_config -> Dune_config.default
+  | This fname -> Dune_config.load_config_file fname
   | Default ->
-    if Config.inside_dune then
-      Config.default
+    if Dune_util.Config.inside_dune then
+      Dune_config.default
     else
-      Config.load_user_config_file ()
+      Dune_config.load_user_config_file ()
 
 let term =
   let docs = copts_sect in
   let+ concurrency =
+    let module Concurrency = Dune_config.Concurrency in
     let arg =
       Arg.conv
         ( (fun s ->
-            Result.map_error (Dune_engine.Config.Concurrency.of_string s)
-              ~f:(fun s -> `Msg s))
-        , fun pp x ->
-            Format.pp_print_string pp
-              (Dune_engine.Config.Concurrency.to_string x) )
+            Result.map_error (Concurrency.of_string s) ~f:(fun s -> `Msg s))
+        , fun pp x -> Format.pp_print_string pp (Concurrency.to_string x) )
     in
     Arg.(
       value
@@ -475,11 +560,7 @@ let term =
     Arg.(
       value & flag
       & info [ "debug-findlib" ] ~docs ~doc:{|Debug the findlib sub-system.|})
-  and+ debug_backtraces =
-    Arg.(
-      value & flag
-      & info [ "debug-backtraces" ] ~docs
-          ~doc:{|Always print exception backtraces.|})
+  and+ debug_backtraces = debug_backtraces
   and+ debug_artifact_substitution =
     Arg.(
       value & flag
@@ -487,14 +568,19 @@ let term =
           [ "debug-artifact-substitution" ]
           ~docs ~doc:"Print debugging info about artifact substitution")
   and+ terminal_persistence =
+    let modes = Dune_engine.Scheduler.Config.Terminal_persistence.all in
+    let doc =
+      let f s = fst s |> Printf.sprintf "$(b,%s)" in
+      Printf.sprintf
+        {|Changes how the log of build results are displayed to the
+          console between rebuilds while in $(b,--watch) mode. Supported modes:
+          %s.|}
+        (List.map ~f modes |> String.concat ~sep:", ")
+    in
     Arg.(
       value
-      & opt (some (enum Config.Terminal_persistence.all)) None
-      & info [ "terminal-persistence" ] ~docs ~docv:"MODE"
-          ~doc:
-            {|
-         Changes how the log of build results are displayed to the
-         console between rebuilds while in --watch mode. |})
+      & opt (some (enum modes)) None
+      & info [ "terminal-persistence" ] ~docs ~docv:"MODE" ~doc)
   and+ display = display_term
   and+ no_buffer =
     let doc =
@@ -604,18 +690,18 @@ let term =
   and+ cache_mode =
     let doc =
       Printf.sprintf "Activate binary cache (%s). Default is `%s'."
-        (Arg.doc_alts_enum Config.Caching.Mode.all)
-        (Config.Caching.Mode.to_string Config.default.cache_mode)
+        (Arg.doc_alts_enum Dune_config.Caching.Mode.all)
+        (Dune_config.Caching.Mode.to_string Dune_config.default.cache_mode)
     in
     Arg.(
       value
-      & opt (some (enum Config.Caching.Mode.all)) None
+      & opt (some (enum Dune_config.Caching.Mode.all)) None
       & info [ "cache" ] ~docs ~env:(Arg.env_var ~doc "DUNE_CACHE") ~doc)
   and+ cache_transport =
     let doc = "Binary cache protocol" in
     Arg.(
       value
-      & opt (some (enum Config.Caching.Transport.all)) None
+      & opt (some (enum Dune_config.Caching.Transport.all)) None
       & info [ "cache-transport" ] ~docs
           ~env:(Arg.env_var ~doc "DUNE_CACHE_TRANSPORT")
           ~doc)
@@ -623,7 +709,7 @@ let term =
     let doc = "Binary cache duplication mode" in
     Arg.(
       value
-      & opt (some (enum Config.Caching.Duplication.all)) None
+      & opt (some (enum Dune_config.Caching.Duplication.all)) None
       & info [ "cache-duplication" ] ~docs
           ~env:(Arg.env_var ~doc "DUNE_CACHE_DUPLICATION")
           ~doc)
@@ -633,7 +719,7 @@ let term =
     in
     Arg.(
       value
-      & opt float Config.default.cache_check_probability
+      & opt float Dune_config.default.cache_check_probability
       & info
           [ "cache-check-probability" ]
           ~docs
@@ -656,8 +742,14 @@ let term =
   let build_dir = Option.value ~default:default_build_dir build_dir in
   let root = Workspace_root.create ~specified_by_user:root in
   let config = config_of_file config_file in
+  let rpc =
+    if watch then
+      Some (Dune_rpc_impl.Server.create ())
+    else
+      None
+  in
   let config =
-    Config.merge config
+    Dune_config.merge config
       { display
       ; concurrency
       ; sandboxing_preference =
@@ -672,7 +764,7 @@ let term =
       }
   in
   let config =
-    Config.adapt_display config
+    Dune_config.adapt_display config
       ~output_is_a_tty:(Lazy.force Ansi_color.stderr_supports_color)
   in
   { debug_dep_path
@@ -693,6 +785,7 @@ let term =
   ; only_packages
   ; x
   ; config
+  ; rpc
   ; build_dir
   ; no_print_directory
   ; store_orig_src_dir
@@ -703,6 +796,8 @@ let term =
   ; promote_install_files
   ; instrument_with
   }
+
+let set_rpc t rpc = { t with rpc = Some rpc }
 
 let term =
   let+ t, orig_args = Term.with_used_args term in

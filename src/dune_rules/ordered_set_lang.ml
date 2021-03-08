@@ -1,5 +1,6 @@
 open! Stdune
 open! Dune_engine
+open Import
 
 module Ast = struct
   [@@@warning "-37"]
@@ -75,7 +76,7 @@ module Parse = struct
             ]
         | _ when s.[0] = ':' ->
           User_error.raise ~loc [ Pp.textf "undefined symbol %s" s ]
-        | _ -> elt )
+        | _ -> elt)
       | List (_, Atom (loc, A s) :: _) -> (
         match s with
         | ":include" -> inc
@@ -85,7 +86,7 @@ module Parse = struct
                 "This atom must be quoted because it is the first element of a \
                  list and doesn't start with - or:"
             ]
-        | _ -> enter (many []) )
+        | _ -> enter (many []))
       | List _ -> enter (many [])
     and many acc =
       peek >>= function
@@ -293,19 +294,6 @@ module Unexpanded = struct
     in
     Dune_lang.Decoder.field name decode ~default:standard
 
-  let files t ~f =
-    let rec loop acc (ast : ast) =
-      let open Ast in
-      match ast with
-      | Element _
-      | Standard ->
-        acc
-      | Include fn -> Path.Set.add acc (f fn)
-      | Union l -> List.fold_left l ~init:acc ~f:loop
-      | Diff (l, r) -> loop (loop acc l) r
-    in
-    loop Path.Set.empty t.ast
-
   let has_special_forms t =
     let rec loop (t : ast) =
       let open Ast in
@@ -316,6 +304,17 @@ module Unexpanded = struct
       | Element _ -> false
       | Union l -> List.exists l ~f:loop
       | Diff (l, r) -> loop l || loop r
+    in
+    loop t.ast
+
+  let has_standard t =
+    let rec loop ast =
+      match ast with
+      | Ast.Standard -> true
+      | Ast.Element _ -> false
+      | Ast.Union l -> List.exists ~f:loop l
+      | Ast.Diff (l, r) -> loop l || loop r
+      | Ast.Include _ -> false
     in
     loop t.ast
 
@@ -343,40 +342,48 @@ module Unexpanded = struct
     in
     loop t.ast Pos init
 
-  let expand t ~dir ~files_contents ~(f : String_with_vars.t -> Value.t list) =
+  let expand t ~dir
+      ~(f : Value.t list Action_builder.t String_with_vars.expander) =
+    let open Action_builder.O in
     let context = t.context in
+    let expand_template ~mode sw =
+      Action_builder.Expander.expand sw ~mode ~dir ~f
+    in
     let f_elems s =
       let loc = String_with_vars.loc s in
+      let+ l = expand_template s ~mode:Many in
       Ast.union
-        (List.map (f s) ~f:(fun s -> Ast.Element (loc, Value.to_string ~dir s)))
+        (List.map l ~f:(fun s -> Ast.Element (loc, Value.to_string ~dir s)))
     in
-    let rec expand (t : ast) : ast_expanded =
+    let rec expand ~allow_include (t : ast) : ast_expanded Action_builder.t =
       let open Ast in
       match t with
       | Element s -> f_elems s
-      | Standard -> Standard
+      | Standard -> Action_builder.return Standard
       | Include fn ->
-        let sexp =
-          let path =
-            match f fn with
-            | [ x ] -> Value.to_path ~dir x
-            | _ ->
-              User_error.raise ~loc:(String_with_vars.loc fn)
-                [ Pp.text
-                    "An unquoted templated expanded to more than one value. A \
-                     file path is expected in this position."
-                ]
-          in
-          Path.Map.find_exn files_contents path
-        in
-        let open Dune_lang.Decoder in
-        parse
-          (Parse.without_include ~elt:(String_with_vars.decode >>| f_elems))
-          context sexp
-      | Union l -> Union (List.map l ~f:expand)
-      | Diff (l, r) -> Diff (expand l, expand r)
+        let loc = String_with_vars.loc fn in
+        if not allow_include then
+          User_error.raise ~loc [ Pp.text "(:include ...) is not allowed here" ]
+        else
+          Action_builder.Expert.action_builder
+            (let+ sexp =
+               Action_builder.Expert.action_builder
+                 (let+ path = expand_template fn ~mode:Single in
+                  let path = Value.to_path path ?error_loc:(Some loc) ~dir in
+                  Action_builder.read_sexp path)
+             in
+             let t = Dune_lang.Decoder.parse decode context sexp in
+             expand t.ast ~allow_include:false)
+      | Union l ->
+        let+ l = Action_builder.all (List.map l ~f:(expand ~allow_include)) in
+        Union l
+      | Diff (l, r) ->
+        let+ l = expand l ~allow_include
+        and+ r = expand r ~allow_include in
+        Diff (l, r)
     in
-    { t with ast = expand t.ast }
+    let+ ast = expand t.ast ~allow_include:true in
+    { t with ast }
 end
 
 module Unordered_string = Unordered (String)

@@ -34,6 +34,5 @@ First we create an external library and implementation
 Then we make sure that it works fine.
   $ env OCAMLPATH=lib1/_build/install/default/lib: dune exec --root exe ./bar.exe
   Entering directory 'exe'
-  Entering directory 'exe'
   lib1: 42
 

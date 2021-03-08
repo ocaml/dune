@@ -7,7 +7,12 @@ dune-project
 
   $ dune build @install --root using-mdx/
   Entering directory 'using-mdx'
-  Info: Appending this line to dune-project: (using mdx 0.1)
+  File "dune", line 1, characters 0-5:
+  1 | (mdx)
+      ^^^^^
+  Error: 'mdx' is available only when mdx is enabled in the dune-project file.
+  You must enable it using (using mdx 0.1) in your dune-project file.
+  [1]
 
 It also requires dune lang 2.4 or higher
 
@@ -54,7 +59,7 @@ Dune does not fail if the `packages` are not available at evaluation time
 
   $ cd local-package-unrelated && dune build -p unrelated-package; cd ../
 
-Dune fails if the `packages` are not avaliable at execution time
+Dune fails if the `packages` are not available at execution time
 
   $ cd local-package-unrelated && dune runtest -p unrelated-package; cd ../
   File "dune", line 3, characters 11-14:

@@ -27,6 +27,10 @@ val info : t -> Path.t Lib_info.t
 
 val main_module_name : t -> Module_name.t option Or_exn.t
 
+val entry_module_names : t -> Module_name.t list Or_exn.t
+
+val src_dirs : t -> Path.Set.t
+
 val wrapped : t -> Wrapped.t option Or_exn.t
 
 (** [is_impl lib] returns [true] if the library is an implementation of a
@@ -35,6 +39,8 @@ val is_impl : t -> bool
 
 (** Direct library dependencies of this library *)
 val requires : t -> t list Or_exn.t
+
+val ppx_runtime_deps : t -> t list Or_exn.t
 
 (** A unique integer identifier. It is only unique for the duration of the
     process *)
@@ -66,11 +72,15 @@ module L : sig
 
   val to_iflags : Path.Set.t -> _ Command.Args.t
 
-  val include_paths : ?project:Dune_project.t -> t -> Path.Set.t
+  val include_paths : ?project:Dune_project.t -> t -> Mode.t -> Path.Set.t
 
-  val include_flags : ?project:Dune_project.t -> t -> _ Command.Args.t
+  val include_flags : ?project:Dune_project.t -> t -> Mode.t -> _ Command.Args.t
+
+  val c_include_paths : t -> Path.Set.t
 
   val c_include_flags : t -> _ Command.Args.t
+
+  val toplevel_include_paths : t -> Path.Set.t
 
   val compile_and_link_flags :
     compile:t -> link:t -> mode:Link_mode.t -> _ Command.Args.t
@@ -115,6 +125,8 @@ type sub_system = ..
 module Compile : sig
   type t
 
+  type lib
+
   (** Return the list of dependencies needed for linking this library/exe *)
   val requires_link : t -> L.t Or_exn.t Lazy.t
 
@@ -134,11 +146,12 @@ module Compile : sig
   (** Transitive closure of all used ppx rewriters *)
   val pps : t -> L.t Or_exn.t
 
-  val lib_deps_info : t -> Lib_deps_info.t
+  val merlin_ident : t -> Merlin_ident.t
 
   (** Sub-systems used in this compilation context *)
   val sub_systems : t -> sub_system list
 end
+with type lib := t
 
 (** {1 Library name resolution} *)
 
@@ -176,6 +189,7 @@ module DB : sig
     -> resolve:(Lib_name.t -> Resolve_result.t)
     -> projects_by_package:Dune_project.t Package.Name.Map.t
     -> all:(unit -> Lib_name.t list)
+    -> modules_of_lib:(dir:Path.Build.t -> name:Lib_name.t -> Modules.t) Fdecl.t
     -> lib_config:Lib_config.t
     -> unit
     -> t
@@ -215,7 +229,6 @@ module DB : sig
     -> Lib_dep.t list
     -> pps:(Loc.t * Lib_name.t) list
     -> dune_version:Dune_lang.Syntax.Version.t
-    -> optional:bool
     -> Compile.t
 
   val resolve_pps : t -> (Loc.t * Lib_name.t) list -> L.t Or_exn.t
@@ -261,20 +274,8 @@ module Sub_system : sig
     (** Get the instance of the subsystem for this library *)
     val get : lib -> M.t option
   end
-
-  val public_info : lib -> Sub_system_info.t Sub_system_name.Map.t
 end
 with type lib := t
-
-(** {1 Dependencies for META files} *)
-
-module Meta : sig
-  val requires : t -> Lib_name.Set.t
-
-  val ppx_runtime_deps : t -> Lib_name.Set.t
-
-  val ppx_runtime_deps_for_deprecated_method : t -> Lib_name.Set.t
-end
 
 val to_dune_lib :
      t

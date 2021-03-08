@@ -36,9 +36,9 @@ them could cause a dependency cycle (also, most of them make no sense in [dst] a
   > EOF
 
   $ dune build @install
-  File "dune", line 3, characters 27-42:
+  File "dune", line 3, characters 25-42:
   3 |   (files (foobar.txt as "%{env:FOO=foobar}/foo.txt"))
-                                 ^^^^^^^^^^^^^^^
+                               ^^^^^^^^^^^^^^^^^
   Error: %{env:..} isn't allowed in this position.
   [1]
 
@@ -65,11 +65,11 @@ extension of [src]:
   > EOF
 
   $ dune build @install
-  File "dune", line 3, characters 12-31:
+  File "dune", line 3, characters 10-31:
   3 |   (files (%{env:FOO=foobar.txt} as foo.txt))
-                  ^^^^^^^^^^^^^^^^^^^
+                ^^^^^^^^^^^^^^^^^^^^^
   Error: Because this file is installed in the 'bin' section, you cannot use
-  the variable %{env:..} in its basename.
+  the macro %{env:..} in its basename.
   [1]
 
 This is fine if the destination extension is already .exe:
@@ -104,11 +104,11 @@ Exe basename needs to be fully known if dst is missing though:
   > EOF
 
   $ dune build @install
-  File "dune", line 3, characters 11-26:
+  File "dune", line 3, characters 9-26:
   3 |   (files %{env:FOO=foobar}.txt)
-                 ^^^^^^^^^^^^^^^
+               ^^^^^^^^^^^^^^^^^
   Error: Because this file is installed in the 'bin' section, you cannot use
-  the variable %{env:..} in its basename.
+  the macro %{env:..} in its basename.
   [1]
 
 When basename is fully known, all is well:

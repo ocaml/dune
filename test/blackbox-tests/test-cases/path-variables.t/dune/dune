@@ -3,12 +3,3 @@
 (alias
   (name test-dep)
   (action (cat %{dep:generated-file})))
-
-(alias
-  (name test-path)
-  (action
-    (chdir
-      sub-tree/dir
-      (progn
-        (echo "%{path:file-that-does-not-exist}\n")
-        (echo "%{path:.}\n")))))

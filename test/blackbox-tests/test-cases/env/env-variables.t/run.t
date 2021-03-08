@@ -4,13 +4,11 @@ They can be set from the workspace:
 
   $ dune exec --root precedence ./printenv.exe VARIABLE_FROM_WORKSPACE
   Entering directory 'precedence'
-  Entering directory 'precedence'
   VARIABLE_FROM_WORKSPACE=value1
 
 From a (context) stanza in the workspace:
 
   $ dune exec --root precedence ./printenv.exe VARIABLE_FROM_CONTEXT
-  Entering directory 'precedence'
   Entering directory 'precedence'
   VARIABLE_FROM_CONTEXT=value2
 
@@ -18,7 +16,6 @@ When a variable is set from both a context and a global one, the context one is
 used.
 
   $ dune exec --root precedence ./printenv.exe VARIABLE_FROM_BOTH
-  Entering directory 'precedence'
   Entering directory 'precedence'
   VARIABLE_FROM_BOTH=from_workspace
 

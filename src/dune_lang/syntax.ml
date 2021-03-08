@@ -32,7 +32,7 @@ module Version = struct
       match Scanf.sscanf s "%u.%u" (fun a b -> (a, b)) with
       | Ok s -> s
       | Error () ->
-        User_error.raise ~loc [ Pp.text "Atom of the form NNN.NNN expected" ] )
+        User_error.raise ~loc [ Pp.text "Atom of the form NNN.NNN expected" ])
     | sexp -> User_error.raise ~loc:(Ast.loc sexp) [ Pp.text "Atom expected" ]
 
   let can_read ~parser_version:(parser_major, parser_minor)
@@ -76,7 +76,7 @@ module Supported_versions = struct
           | Some minor_map -> add_minor minor_map
           | None -> add_minor Int.Map.empty))
 
-  let remove_uncompatible_versions lang_ver =
+  let remove_incompatible_versions lang_ver =
     Int.Map.filter_map ~f:(fun minors ->
         let minors =
           Int.Map.filter minors ~f:(fun min_lang -> lang_ver >= min_lang)
@@ -90,7 +90,7 @@ module Supported_versions = struct
     (major, minor)
 
   let greatest_supported_version_for_dune_lang t ~dune_lang_ver =
-    let compat = remove_uncompatible_versions dune_lang_ver t in
+    let compat = remove_incompatible_versions dune_lang_ver t in
     greatest_supported_version compat
 
   let get_min_lang_ver t (major, minor) =
@@ -104,23 +104,22 @@ module Supported_versions = struct
     | Some t -> (
       match Int.Map.find t minor with
       | Some min_lang_ver -> lang_ver >= min_lang_ver
-      | None -> false )
+      | None -> false)
 
   let supported_ranges lang_ver (t : t) =
-    let compat = remove_uncompatible_versions lang_ver t in
-    Int.Map.to_list compat
-    |> List.map ~f:(fun (major, minors) ->
-           let max_minor, _ = Option.value_exn (Int.Map.max_binding minors) in
-           let lower_bound =
-             (* Map 0.0 to 0.1 since 0.0 is not a valid version number *)
-             if major = 0 then
-               (0, 1)
-             else
-               (major, 0)
-           in
-           let upper_bound = (major, max_minor) in
-           assert (lower_bound <= upper_bound);
-           (lower_bound, upper_bound))
+    let compat = remove_incompatible_versions lang_ver t in
+    Int.Map.to_list_map compat ~f:(fun major minors ->
+        let max_minor, _ = Option.value_exn (Int.Map.max_binding minors) in
+        let lower_bound =
+          (* Map 0.0 to 0.1 since 0.0 is not a valid version number *)
+          if major = 0 then
+            (0, 1)
+          else
+            (major, 0)
+        in
+        let upper_bound = (major, max_minor) in
+        assert (lower_bound <= upper_bound);
+        (lower_bound, upper_bound))
 end
 
 type t =
@@ -133,7 +132,7 @@ type t =
 
 and key =
   | Active of Version.t
-  | Disabled of
+  | Inactive of
       { lang : t
       ; dune_lang_ver : Version.t
       }
@@ -150,7 +149,7 @@ let to_dyn { name; desc; key = _; supported_versions; experimental } =
 module Key = struct
   type nonrec t = key =
     | Active of Version.t
-    | Disabled of
+    | Inactive of
         { lang : t
         ; dune_lang_ver : Version.t
         }
@@ -159,7 +158,7 @@ module Key = struct
     let open Dyn.Encoder in
     function
     | Active v -> Version.to_dyn v
-    | Disabled { lang; dune_lang_ver } ->
+    | Inactive { lang; dune_lang_ver } ->
       record
         [ ("lang", to_dyn lang)
         ; ("dune_lang_ver", Version.to_dyn dune_lang_ver)
@@ -193,53 +192,74 @@ module Error = struct
 
   let deleted_in ?(extra_info = "") loc t ?(repl = []) ver ~what =
     User_error.raise ~loc
-      ( Pp.concat
-          [ Pp.textf "%s was deleted in version %s of %s." what
-              (Version.to_string ver) t.desc
-          ; ( if extra_info = "" then
-              Pp.nop
-            else
-              Pp.space )
-          ; Pp.text extra_info
-          ]
-      :: repl )
+      (Pp.concat
+         [ Pp.textf "%s was deleted in version %s of %s." what
+             (Version.to_string ver) t.desc
+         ; (if extra_info = "" then
+             Pp.nop
+           else
+             Pp.space)
+         ; Pp.text extra_info
+         ]
+       :: repl)
 
-  let disabled loc t ~dune_lang_ver ~what =
-    let min_lang_version, min_dune_version =
-      let major, major_map =
-        Option.value_exn (Int.Map.min_binding t.supported_versions)
-      in
-      let minor, lang = Option.value_exn (Int.Map.min_binding major_map) in
-      ((major, minor), lang)
+  let inactive loc t ~dune_lang_ver ~what =
+    let greatest_supported_version =
+      Supported_versions.greatest_supported_version_for_dune_lang ~dune_lang_ver
+        t.supported_versions
     in
     User_error.raise ~loc
-      [ Pp.textf
-          "%s is available only when %s is enabled in the dune-project file. \
-           It cannot be enabled automatically because the currently selected \
-           version of dune (%s) does not support this plugin.\n\
-           You must enable it using (using %s ..) in your dune-project file. \
-           The first version of this plugin %s was introduced in dune %s."
-          what t.name
-          (Version.to_string dune_lang_ver)
-          t.name
-          (Version.to_string min_lang_version)
-          (Version.to_string min_dune_version)
-      ]
+      ([ Pp.textf
+           "%s is available only when %s is enabled in the dune-project file. \
+            You must enable it using (using %s %s) in your dune-project file."
+           what t.name t.name
+           (match greatest_supported_version with
+           | Some v -> Version.to_string v
+           | None -> "..")
+       ]
+      @
+      if t.experimental then
+        [ Pp.textf
+            "Note however that %s is experimental and might change without \
+             notice in the future."
+            t.name
+        ]
+      else
+        match greatest_supported_version with
+        | None ->
+          let min_lang_version, min_dune_version =
+            let major, major_map =
+              Option.value_exn (Int.Map.min_binding t.supported_versions)
+            in
+            let minor, lang =
+              Option.value_exn (Int.Map.min_binding major_map)
+            in
+            ((major, minor), lang)
+          in
+          [ Pp.textf
+              "Note however that the currently selected version of dune (%s) \
+               does not support this plugin. The first version of this plugin \
+               is %s and was introduced in dune %s."
+              (Version.to_string dune_lang_ver)
+              (Version.to_string min_lang_version)
+              (Version.to_string min_dune_version)
+          ]
+        | Some _ -> [])
 end
 
 module Warning = struct
   let deprecated_in ?(extra_info = "") loc t ?(repl = []) ver ~what =
     User_warning.emit ~loc
-      ( Pp.concat
-          [ Pp.textf "%s was deprecated in version %s of %s." what
-              (Version.to_string ver) t.desc
-          ; ( if extra_info = "" then
-              Pp.nop
-            else
-              Pp.space )
-          ; Pp.text extra_info
-          ]
-      :: repl )
+      (Pp.concat
+         [ Pp.textf "%s was deprecated in version %s of %s." what
+             (Version.to_string ver) t.desc
+         ; (if extra_info = "" then
+             Pp.nop
+           else
+             Pp.space)
+         ; Pp.text extra_info
+         ]
+       :: repl)
 end
 
 let create ?(experimental = false) ~name ~desc supported_versions =
@@ -268,10 +288,10 @@ let check_supported ~dune_lang_ver t (loc, ver) =
       Supported_versions.supported_ranges dune_lang_ver t.supported_versions
     in
     let supported =
-      ( if List.is_empty l then
+      (if List.is_empty l then
         Pp.textf "There are no supported versions of this extension in %s."
       else
-        Pp.textf "Supported versions of this extension in %s:" )
+        Pp.textf "Supported versions of this extension in %s:")
         (dune_ver_text dune_lang_ver)
     in
     let message =
@@ -293,10 +313,6 @@ let greatest_supported_version t =
   Option.value_exn
     (Supported_versions.greatest_supported_version t.supported_versions)
 
-let greatest_supported_version_for_dune_lang t ~dune_lang_ver =
-  Supported_versions.greatest_supported_version_for_dune_lang
-    t.supported_versions ~dune_lang_ver
-
 let key t = t.key
 
 let experimental t = t.experimental
@@ -316,9 +332,9 @@ let desc () =
 let get_exn t =
   get t.key >>= function
   | Some (Active x) -> return x
-  | Some (Disabled { dune_lang_ver; lang }) ->
+  | Some (Inactive { dune_lang_ver; lang }) ->
     let* loc, what = desc () in
-    Error.disabled loc lang ~what ~dune_lang_ver
+    Error.inactive loc lang ~what ~dune_lang_ver
   | None ->
     let+ context = get_all in
     Code_error.raise "Syntax identifier is unset"

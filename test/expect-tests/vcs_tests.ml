@@ -2,10 +2,9 @@ open Stdune
 open Dune_engine
 open Fiber.O
 open! Dune_tests_common
+module Config = Dune_util.Config
 
-let () =
-  init ();
-  Config.init { Config.default with display = Quiet }
+let () = init ()
 
 let printf = Printf.printf
 
@@ -33,11 +32,11 @@ let run (vcs : Vcs.t) args =
         , match args with
           | [ "tag"; s; "-u"; _ ] -> [ "tag"; "-a"; s; "-m"; s ]
           | [ "commit"; "-m"; msg; "-u"; _ ] -> [ "commit"; "-m"; msg ]
-          | _ -> args ) )
+          | _ -> args ))
   in
   printf "$ %s\n"
-    ( List.map (prog_str :: args) ~f:String.quote_for_shell
-    |> String.concat ~sep:" " );
+    (List.map (prog_str :: args) ~f:String.quote_for_shell
+    |> String.concat ~sep:" ");
   Process.run Strict (Lazy.force prog) real_args
     ~env:
       ((* One of the reasons to set GIT_DIR to override any GIT_DIR set by the
@@ -57,28 +56,28 @@ type action =
 
 let run_action (vcs : Vcs.t) action =
   match action with
-  | Init -> run vcs [ "init" ]
+  | Init -> run vcs [ "init"; "-q" ]
   | Add fn -> run vcs [ "add"; fn ]
   | Commit -> (
     match vcs.kind with
     | Git -> run vcs [ "commit"; "-m"; "commit message" ]
-    | Hg -> run vcs [ "commit"; "-m"; "commit message"; "-u"; "toto" ] )
+    | Hg -> run vcs [ "commit"; "-m"; "commit message"; "-u"; "toto" ])
   | Write (fn, s) ->
     printf "$ echo %S > %s\n" s fn;
     Io.write_file (Path.relative (Lazy.force temp_dir) fn) s;
     Fiber.return ()
   | Describe expected ->
     printf "$ %s describe [...]\n"
-      ( match vcs.kind with
+      (match vcs.kind with
       | Git -> "git"
-      | Hg -> "hg" );
+      | Hg -> "hg");
     Memo.reset ();
     let vcs =
       match vcs.kind with
       | Hg when not has_hg -> { vcs with kind = Git }
       | _ -> vcs
     in
-    Vcs.describe vcs >>| fun s ->
+    Memo.Build.run (Vcs.describe vcs) >>| fun s ->
     let processed =
       String.split s ~on:'-'
       |> List.map ~f:(fun s ->
@@ -109,14 +108,24 @@ let run_action (vcs : Vcs.t) action =
   | Tag s -> (
     match vcs.kind with
     | Git -> run vcs [ "tag"; "-a"; s; "-m"; s ]
-    | Hg -> run vcs [ "tag"; s; "-u"; "toto" ] )
+    | Hg -> run vcs [ "tag"; s; "-u"; "toto" ])
 
 let run kind script =
   let (lazy temp_dir) = temp_dir in
   Path.rm_rf temp_dir;
   Path.mkdir_p temp_dir;
   let vcs = { Vcs.kind; root = temp_dir } in
-  Scheduler.go (fun () -> Fiber.sequential_iter script ~f:(run_action vcs))
+  let config =
+    { Scheduler.Config.concurrency = 1
+    ; terminal_persistence = Preserve
+    ; display = Short
+    ; rpc = None
+    }
+  in
+  Scheduler.Run.go
+    ~on_event:(fun _ _ -> ())
+    config
+    (fun () -> Fiber.sequential_iter script ~f:(run_action vcs))
 
 let script =
   [ Init
@@ -147,7 +156,7 @@ let%expect_test _ =
   run Git script;
   [%expect
     {|
-$ git init
+$ git init -q
 $ echo "-" > a
 $ git add a
 $ git commit -m 'commit message'
@@ -190,7 +199,7 @@ let%expect_test _ =
   run Hg script;
   [%expect
     {|
-$ hg init
+$ hg init -q
 $ echo "-" > a
 $ hg add a
 $ hg commit -m 'commit message' -u toto

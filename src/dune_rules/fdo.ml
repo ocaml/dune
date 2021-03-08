@@ -84,7 +84,7 @@ module Mode = struct
               "Failed to parse environment variable: %s=%s\n\
                Permitted values: if-exists always never\n\
                Default: %s" var v (to_string default)
-          ] )
+          ])
 end
 
 let get_profile =
@@ -152,7 +152,7 @@ let opt_rule cctx m =
        ; Hidden_targets [ linear_fdo ]
        ; Dep (Path.build linear)
        ; As (ocamlfdo_flags ctx)
-       ; Dyn (Build.delayed flags)
+       ; Dyn (Action_builder.delayed flags)
        ])
 
 module Linker_script = struct
@@ -179,7 +179,7 @@ module Linker_script = struct
          [ A "linker-script"
          ; A "-o"
          ; Target linker_script_path
-         ; Dyn (Build.delayed flags)
+         ; Dyn (Action_builder.delayed flags)
          ; A "-q"
          ; As (ocamlfdo_linker_script_flags ctx)
          ]);
@@ -192,8 +192,8 @@ module Linker_script = struct
     | Some fdo_target_exe ->
       if
         Path.equal name fdo_target_exe
-        && ( Ocaml_version.supports_function_sections ctx.version
-           || Ocaml_config.is_dev_version ctx.ocaml_config )
+        && (Ocaml_version.supports_function_sections ctx.version
+           || Ocaml_config.is_dev_version ctx.ocaml_config)
       then
         Some (linker_script_rule cctx fdo_target_exe)
       else

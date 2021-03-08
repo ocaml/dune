@@ -18,7 +18,7 @@ type client =
 
 let default_port_file () =
   let runtime_dir =
-    match Sys.getenv_opt "XDG_RUNTIME_DIR" with
+    match Xdg.runtime_dir with
     | Some p -> Path.relative (Path.of_string p) "dune-cache-daemon"
     | None ->
       (* The runtime directory is 0700 owned by the user for security reasons.
@@ -37,11 +37,12 @@ let check_port_file ?(close = true) p =
   match Result.try_with (fun () -> Unix.openfile p [ Unix.O_RDONLY ] 0o600) with
   | Result.Ok fd ->
     let f () =
-      retry (fun () ->
+      Daemonize.retry (fun () ->
           match Fcntl.lock_get fd Fcntl.Write with
           | None -> Some None
           | Some (Fcntl.Read, pid) -> Some (Some pid)
           | Some (Fcntl.Write, _) -> None)
+      |> Result.map_error ~f:(fun m -> Failure m)
       >>| Option.map ~f:(fun pid ->
               let buf = Bytes.make max_port_size ' ' in
               let read = Unix.read fd buf 0 max_port_size in
@@ -170,12 +171,12 @@ let client_thread (events, (client : client)) =
             Log.info
               [ Pp.textf "%s: command error: %s" (peer_name client.peer) e ];
             handle client
-          | Result.Ok client -> handle client )
+          | Result.Ok client -> handle client)
       in
       handle client
     and finally () =
-      ( try Unix.shutdown client.fd Unix.SHUTDOWN_ALL
-        with Unix.Unix_error (Unix.ENOTCONN, _, _) -> () );
+      (try Unix.shutdown client.fd Unix.SHUTDOWN_ALL with
+      | Unix.Unix_error (Unix.ENOTCONN, _, _) -> ());
       Unix.close client.fd;
       Evt.sync (Evt.send events (Client_left client.fd))
     in
@@ -184,7 +185,8 @@ let client_thread (events, (client : client)) =
       Log.info [ Pp.textf "%s: ended" (peer_name client.peer) ]
     | Sys_error msg ->
       Log.info [ Pp.textf "%s: ended: %s" (peer_name client.peer) msg ]
-  with Code_error.E e as exn ->
+  with
+  | Code_error.E e as exn ->
     Log.info
       [ (let open Pp.O in
         Pp.textf "%s: fatal error: " (peer_name client.peer)
@@ -216,12 +218,12 @@ let run ?(port_f = ignore) ?(port = 0) daemon =
   in
   let rec accept_thread sock =
     let rec accept () =
-      try Unix.accept sock
-      with Unix.Unix_error (Unix.EINTR, _, _) -> (accept [@tailcall]) ()
+      try Unix.accept sock with
+      | Unix.Unix_error (Unix.EINTR, _, _) -> (accept [@tailcall]) ()
     in
     let fd, peer = accept () in
-    ( try Evt.sync (Evt.send daemon.events (New_client (fd, peer)))
-      with Unix.Unix_error (Unix.EBADF, _, _) -> () );
+    (try Evt.sync (Evt.send daemon.events (New_client (fd, peer))) with
+    | Unix.Unix_error (Unix.EBADF, _, _) -> ());
     (accept_thread [@tailcall]) sock
   in
   let f () =
@@ -265,7 +267,7 @@ let run ?(port_f = ignore) ?(port = 0) daemon =
           Unix.close fd
         | _ -> Log.info [ Pp.text "stop" ]
       in
-      ( match Evt.sync (Evt.receive daemon.events) with
+      (match Evt.sync (Evt.receive daemon.events) with
       | Stop -> stop ()
       | New_client (fd, peer) -> (
         let output = Unix.out_channel_of_descr fd
@@ -282,14 +284,14 @@ let run ?(port_f = ignore) ?(port = 0) daemon =
             ; version
             ; common_metadata = []
             ; cache =
-                ( match
-                    Cache.Local.make ?root:daemon.root
-                      ~duplication_mode:Cache.Duplication_mode.Hardlink
-                      ~command_handler:(client_handle version output)
-                      ()
-                  with
+                (match
+                   Cache.Local.make ?root:daemon.root
+                     ~duplication_mode:Cache.Duplication_mode.Hardlink
+                     ~command_handler:(client_handle version output)
+                     ()
+                 with
                 | Result.Ok m -> m
-                | Result.Error e -> User_error.raise [ Pp.textf "%s" e ] )
+                | Result.Error e -> User_error.raise [ Pp.textf "%s" e ])
             }
           in
           let tid = Thread.create client_thread (daemon.events, client) in
@@ -301,11 +303,11 @@ let run ?(port_f = ignore) ?(port = 0) daemon =
           daemon.clients <- clients
         with
         | Result.Ok () -> ()
-        | Result.Error msg -> Log.info [ Pp.textf "reject client: %s" msg ] )
+        | Result.Error msg -> Log.info [ Pp.textf "reject client: %s" msg ])
       | Client_left fd ->
         daemon.clients <- Clients.remove daemon.clients fd;
         if daemon.config.exit_no_client && Clients.is_empty daemon.clients then
-          stop () );
+          stop ());
       if Option.is_some daemon.socket then (handle [@tailcall]) ()
     in
     handle ()
@@ -333,7 +335,7 @@ let daemon ~root ~config started =
   in
   ignore (Thread.sigmask Unix.SIG_BLOCK signals);
   ignore (Thread.create signals_handler ());
-  try run ~port_f:started daemon
-  with Error s ->
+  try run ~port_f:started daemon with
+  | Error s ->
     Printf.fprintf stderr "%s: fatal error: %s\n%!" Sys.argv.(0) s;
     exit 1

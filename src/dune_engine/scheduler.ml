@@ -3,6 +3,62 @@ let on_error = Report_error.report
 open! Stdune
 open Import
 
+module Config = struct
+  include Config
+
+  module Terminal_persistence = struct
+    type t =
+      | Preserve
+      | Clear_on_rebuild
+
+    let all = [ ("preserve", Preserve); ("clear-on-rebuild", Clear_on_rebuild) ]
+  end
+
+  module Display = struct
+    type t =
+      | Progress
+      | Short
+      | Verbose
+      | Quiet
+
+    let all =
+      [ ("progress", Progress)
+      ; ("verbose", Verbose)
+      ; ("short", Short)
+      ; ("quiet", Quiet)
+      ]
+
+    let to_string = function
+      | Progress -> "progress"
+      | Quiet -> "quiet"
+      | Short -> "short"
+      | Verbose -> "verbose"
+
+    let console_backend = function
+      | Progress -> Console.Backend.progress
+      | Short
+      | Verbose
+      | Quiet ->
+        Console.Backend.dumb
+  end
+
+  module Rpc = struct
+    type t =
+      | Client
+      | Server of
+          { handler : Dune_rpc_server.t
+          ; backlog : int
+          }
+  end
+
+  type t =
+    { concurrency : int
+    ; terminal_persistence : Terminal_persistence.t
+    ; display : Display.t
+    ; rpc : Rpc.t option
+    }
+end
+
 type job =
   { pid : Pid.t
   ; ivar : Unix.process_status Fiber.Ivar.t
@@ -56,177 +112,227 @@ module Thread = struct
       fun f x ->
     Lazy.force block_signals;
     Thread.create f x
+
+  let spawn f =
+    let (_ : Thread.t) = create f () in
+    ()
 end
 
 (** The event queue *)
 module Event : sig
   type t =
-    | Files_changed
+    | Files_changed of Path.t list
     | Job_completed of job * Unix.process_status
     | Signal of Signal.t
+    | Rpc of Fiber.fill
 
-  (** Return the next event. File changes event are always flattened and
-      returned first. *)
-  val next : unit -> t
+  module Queue : sig
+    type t
 
-  (** Handle all enqueued deduplications. *)
-  val flush_dedup : unit -> unit
+    type event
 
-  (** Ignore the ne next file change event about this file. *)
-  val ignore_next_file_change_event : Path.t -> unit
+    val create : unit -> t
 
-  (** Register the fact that a job was started. *)
-  val register_job_started : unit -> unit
+    (** Return the next event. File changes event are always flattened and
+        returned first. *)
+    val next : t -> event
 
-  (** Number of jobs for which the status hasn't been reported yet .*)
-  val pending_jobs : unit -> int
+    (** Handle all enqueued deduplications. *)
+    val flush_sync_tasks : t -> unit
 
-  (** Send an event to the main thread. *)
-  val send_files_changed : Path.t list -> unit
+    (** Ignore the ne next file change event about this file. *)
+    val ignore_next_file_change_event : t -> Path.t -> unit
 
-  val send_job_completed : job -> Unix.process_status -> unit
+    (** Pending rpc events *)
+    val pending_rpc : t -> int
 
-  val send_signal : Signal.t -> unit
+    (** Register the fact that a job was started. *)
+    val register_job_started : t -> unit
 
-  val send_dedup : Cache.caching -> Cache.File.t -> unit
+    (** Number of jobs for which the status hasn't been reported yet .*)
+    val pending_jobs : t -> int
+
+    val send_rpc_completed : t -> Fiber.fill -> unit
+
+    val register_rpc_started : t -> unit
+
+    (** Send an event to the main thread. *)
+    val send_files_changed : t -> Path.t list -> unit
+
+    val send_job_completed : t -> job -> Unix.process_status -> unit
+
+    val send_signal : t -> Signal.t -> unit
+
+    val send_sync_task : t -> (unit -> unit) -> unit
+  end
+  with type event := t
 end = struct
   type t =
-    | Files_changed
+    | Files_changed of Path.t list
     | Job_completed of job * Unix.process_status
     | Signal of Signal.t
+    | Rpc of Fiber.fill
 
-  let jobs_completed = Queue.create ()
+  module Queue = struct
+    type t =
+      { jobs_completed : (job * Unix.process_status) Queue.t
+      ; sync_tasks : (unit -> unit) Queue.t
+      ; mutable files_changed : Path.t list
+      ; mutable signals : Signal.Set.t
+      ; mutex : Mutex.t
+      ; cond : Condition.t
+            (* CR-soon amokhov: The way we handle "ignored files" using this
+               mutable table is fragile and also wrong. We use [ignored_files]
+               for the [(mode promote)] feature: if a file is promoted, we call
+               [ignore_next_file_change_event] so that the upcoming file-change
+               event does not invalidate the current build. However, instead of
+               ignoring the events, we should merely postpone them and restart
+               the build to take the promoted files into account if need be. *)
+      ; ignored_files : (string, unit) Table.t
+      ; mutable pending_jobs : int
+      ; mutable pending_rpc : int
+      ; rpc_completed : Fiber.fill Queue.t
+      }
 
-  let dedup_pending = Queue.create ()
+    let create () =
+      let jobs_completed = Queue.create () in
+      let rpc_completed = Queue.create () in
+      let sync_tasks = Queue.create () in
+      let files_changed = [] in
+      let signals = Signal.Set.empty in
+      let mutex = Mutex.create () in
+      let cond = Condition.create () in
+      let ignored_files = Table.create (module String) 64 in
+      let pending_jobs = 0 in
+      let pending_rpc = 0 in
+      { jobs_completed
+      ; sync_tasks
+      ; files_changed
+      ; signals
+      ; mutex
+      ; cond
+      ; ignored_files
+      ; pending_jobs
+      ; rpc_completed
+      ; pending_rpc
+      }
 
-  let files_changed = ref []
+    let register_job_started q = q.pending_jobs <- q.pending_jobs + 1
 
-  let signals = ref Signal.Set.empty
+    let register_rpc_started q = q.pending_rpc <- q.pending_rpc + 1
 
-  let mutex = Mutex.create ()
+    let ignore_next_file_change_event q path =
+      assert (Path.is_in_source_tree path);
+      Table.set q.ignored_files (Path.to_absolute_filename path) ()
 
-  let cond = Condition.create ()
+    let available q =
+      not
+        (List.is_empty q.files_changed
+        && Queue.is_empty q.jobs_completed
+        && Signal.Set.is_empty q.signals
+        && Queue.is_empty q.sync_tasks
+        && Queue.is_empty q.rpc_completed)
 
-  (* CR-soon amokhov: The way we handle "ignored files" using this mutable table
-     is fragile and also wrong. We use [ignored_files] for the [(mode promote)]
-     feature: if a file is promoted, we call [ignore_next_file_change_event] so
-     that the upcoming file-change event does not invalidate the current build.
-     However, instead of ignoring the events, we should merely postpone them and
-     restart the build to take the promoted files into account if need be. *)
-  let ignored_files = String.Table.create 64
+    let sync_task q =
+      match Queue.pop q.sync_tasks with
+      | None -> false
+      | Some task ->
+        task ();
+        true
 
-  let pending_jobs = ref 0
+    let rec flush_sync_tasks q = if sync_task q then flush_sync_tasks q
 
-  let register_job_started () = incr pending_jobs
+    let next q =
+      Stats.record ();
+      Mutex.lock q.mutex;
+      let rec loop () =
+        while not (available q) do
+          Condition.wait q.cond q.mutex
+        done;
+        if sync_task q then
+          loop ()
+        else
+          match Signal.Set.choose q.signals with
+          | Some signal ->
+            q.signals <- Signal.Set.remove q.signals signal;
+            Signal signal
+          | None -> (
+            match q.files_changed with
+            | [] -> (
+              match Queue.pop q.jobs_completed with
+              | None ->
+                q.pending_rpc <- q.pending_rpc - 1;
+                Rpc (Queue.pop_exn q.rpc_completed)
+              | Some (job, status) ->
+                q.pending_jobs <- q.pending_jobs - 1;
+                assert (q.pending_jobs >= 0);
+                Job_completed (job, status))
+            | fns -> (
+              q.files_changed <- [];
+              let files =
+                List.filter fns ~f:(fun fn ->
+                    let fn = Path.to_absolute_filename fn in
+                    if Table.mem q.ignored_files fn then (
+                      (* only use ignored record once *)
+                      Table.remove q.ignored_files fn;
+                      false
+                    ) else
+                      true)
+              in
+              match files with
+              | [] -> loop ()
+              | _ :: _ -> Files_changed files))
+      in
+      let ev = loop () in
+      Mutex.unlock q.mutex;
+      ev
 
-  let ignore_next_file_change_event path =
-    assert (Path.is_in_source_tree path);
-    String.Table.set ignored_files (Path.to_absolute_filename path) ()
+    let send_rpc_completed q event =
+      Mutex.lock q.mutex;
+      let avail = available q in
+      Queue.push q.rpc_completed event;
+      if not avail then Condition.signal q.cond;
+      Mutex.unlock q.mutex
 
-  let available () =
-    not
-      ( List.is_empty !files_changed
-      && Queue.is_empty jobs_completed
-      && Signal.Set.is_empty !signals
-      && Queue.is_empty dedup_pending )
+    let send_files_changed q files =
+      Mutex.lock q.mutex;
+      let avail = available q in
+      q.files_changed <- List.rev_append files q.files_changed;
+      if not avail then Condition.signal q.cond;
+      Mutex.unlock q.mutex
 
-  let dedup () =
-    match Queue.pop dedup_pending with
-    | None -> false
-    | Some pending ->
-      let (module Caching : Cache.Caching), (file : Cache.File.t) = pending in
-      ( match Cached_digest.peek_file (Path.build file.path) with
-      | None -> ()
-      | Some d when not (Digest.equal d file.digest) -> ()
-      | _ -> Caching.Cache.deduplicate Caching.cache file );
-      true
+    let send_job_completed q job status =
+      Mutex.lock q.mutex;
+      let avail = available q in
+      Queue.push q.jobs_completed (job, status);
+      if not avail then Condition.signal q.cond;
+      Mutex.unlock q.mutex
 
-  let rec flush_dedup () = if dedup () then flush_dedup ()
+    let send_signal q signal =
+      Mutex.lock q.mutex;
+      let avail = available q in
+      q.signals <- Signal.Set.add q.signals signal;
+      if not avail then Condition.signal q.cond;
+      Mutex.unlock q.mutex
 
-  let next () =
-    Stats.record ();
-    Mutex.lock mutex;
-    let rec loop () =
-      while not (available ()) do
-        Condition.wait cond mutex
-      done;
-      if dedup () then
-        loop ()
-      else
-        match Signal.Set.choose !signals with
-        | Some signal ->
-          signals := Signal.Set.remove !signals signal;
-          Signal signal
-        | None -> (
-          match !files_changed with
-          | [] ->
-            let job, status = Queue.pop_exn jobs_completed in
-            decr pending_jobs;
-            Job_completed (job, status)
-          | fns ->
-            files_changed := [];
-            let only_ignored_files =
-              List.fold_left fns ~init:true ~f:(fun acc fn ->
-                  let fn = Path.to_absolute_filename fn in
-                  if String.Table.mem ignored_files fn then (
-                    (* only use ignored record once *)
-                    String.Table.remove ignored_files fn;
-                    acc
-                  ) else
-                    false)
-            in
-            if only_ignored_files then
-              loop ()
-            else
-              Files_changed )
-    in
-    let ev = loop () in
-    Mutex.unlock mutex;
-    ev
+    let send_sync_task q f =
+      Mutex.lock q.mutex;
+      let avail = available q in
+      Queue.push q.sync_tasks f;
+      if not avail then Condition.signal q.cond;
+      Mutex.unlock q.mutex
 
-  let send_files_changed files =
-    Mutex.lock mutex;
-    let avail = available () in
-    files_changed := List.rev_append files !files_changed;
-    if not avail then Condition.signal cond;
-    Mutex.unlock mutex
+    let pending_jobs q = q.pending_jobs
 
-  let send_job_completed job status =
-    Mutex.lock mutex;
-    let avail = available () in
-    Queue.push jobs_completed (job, status);
-    if not avail then Condition.signal cond;
-    Mutex.unlock mutex
-
-  let send_signal signal =
-    Mutex.lock mutex;
-    let avail = available () in
-    signals := Signal.Set.add !signals signal;
-    if not avail then Condition.signal cond;
-    Mutex.unlock mutex
-
-  (* FIXME: this is really not ideal, but we pack the Caching in the event all
-     the way through since Scheduler cannot read it directly from the build
-     system because of circular dependencies. *)
-  let send_dedup caching file =
-    Mutex.lock mutex;
-    let avail = available () in
-    Queue.push dedup_pending (caching, file);
-    if not avail then Condition.signal cond;
-    Mutex.unlock mutex
-
-  let pending_jobs () = !pending_jobs
+    let pending_rpc q = q.pending_rpc
+  end
 end
-
-let running_jobs_count = Event.pending_jobs
-
-let ignore_for_watch = Event.ignore_next_file_change_event
 
 module File_watcher : sig
   type t
 
   (** Create a new file watcher. *)
-  val create : unit -> t
+  val create : Event.Queue.t -> t
 
   (** Pid of the external file watcher process *)
   val pid : t -> Pid.t
@@ -294,13 +400,13 @@ end = struct
          | None ->
            User_error.raise
              [ Pp.text
-                 ( if Sys.linux then
+                 (if Sys.linux then
                    "Please install inotifywait to enable watch mode. If \
                     inotifywait is unavailable, fswatch may also be used but \
                     will result in a worse experience."
                  else
-                   "Please install fswatch to enable watch mode." )
-             ] ))
+                   "Please install fswatch to enable watch mode.")
+             ]))
 
   let buffering_time = 0.5 (* seconds *)
 
@@ -321,11 +427,11 @@ end = struct
     for i = 0 to buffer.size - 1 do
       let c = Bytes.get buffer.data i in
       if c = '\n' || c = '\r' then (
-        ( if !line_start < i then
+        (if !line_start < i then
           let line =
             Bytes.sub_string buffer.data ~pos:!line_start ~len:(i - !line_start)
           in
-          lines := line :: !lines );
+          lines := line :: !lines);
         line_start := i + 1
       )
     done;
@@ -343,7 +449,7 @@ end = struct
     Unix.close w;
     (r, pid)
 
-  let create () =
+  let create q =
     let files_changed = ref [] in
     let event_mtx = Mutex.create () in
     let event_cv = Condition.create () in
@@ -378,7 +484,7 @@ end = struct
       let files = !files_changed in
       files_changed := [];
       Mutex.unlock event_mtx;
-      Event.send_files_changed files;
+      Event.Queue.send_files_changed q files;
       Thread.delay buffering_time;
       buffer_thread ()
     in
@@ -390,107 +496,109 @@ end
 
 module Process_watcher : sig
   (** Initialize the process watcher thread. *)
-  val init : unit -> unit
+  type t
+
+  val init : Event.Queue.t -> t
 
   (** Register a new running job. *)
-  val register_job : job -> unit
+  val register_job : t -> job -> unit
 
   (** Send the following signal to all running processes. *)
-  val killall : int -> unit
+  val killall : t -> int -> unit
 end = struct
-  let mutex = Mutex.create ()
+  type process_state =
+    | Running of job
+    | Zombie of Unix.process_status
 
-  let something_is_running_cv = Condition.create ()
+  (* This mutable table is safe: it does not interact with the state we track in
+     the build system. *)
+  type t =
+    { mutex : Mutex.t
+    ; something_is_running : Condition.t
+    ; table : (Pid.t, process_state) Table.t
+    ; events : Event.Queue.t
+    ; mutable running_count : int
+    }
 
   module Process_table : sig
-    val add : job -> unit
+    val add : t -> job -> unit
 
-    val remove : pid:Pid.t -> Unix.process_status -> unit
+    val remove : t -> pid:Pid.t -> Unix.process_status -> unit
 
-    val running_count : unit -> int
+    val running_count : t -> int
 
-    val iter : f:(job -> unit) -> unit
+    val iter : t -> f:(job -> unit) -> unit
   end = struct
-    type process_state =
-      | Running of job
-      | Zombie of Unix.process_status
-
-    (* This mutable table is safe: it does not interact with the state we track
-       in the build system. *)
-    (* Invariant: [!running_count] is equal to the number of [Running _] values
-       in [table]. *)
-    let table = Table.create (module Pid) 128
-
-    let running_count = ref 0
-
-    let add job =
-      match Table.find table job.pid with
+    let add t job =
+      match Table.find t.table job.pid with
       | None ->
-        Table.set table job.pid (Running job);
-        incr running_count;
-        if !running_count = 1 then Condition.signal something_is_running_cv
+        Table.set t.table job.pid (Running job);
+        t.running_count <- t.running_count + 1;
+        if t.running_count = 1 then Condition.signal t.something_is_running
       | Some (Zombie status) ->
-        Table.remove table job.pid;
-        Event.send_job_completed job status
+        Table.remove t.table job.pid;
+        Event.Queue.send_job_completed t.events job status
       | Some (Running _) -> assert false
 
-    let remove ~pid status =
-      match Table.find table pid with
-      | None -> Table.set table pid (Zombie status)
+    let remove t ~pid status =
+      match Table.find t.table pid with
+      | None -> Table.set t.table pid (Zombie status)
       | Some (Running job) ->
-        decr running_count;
-        Table.remove table pid;
-        Event.send_job_completed job status
+        t.running_count <- t.running_count - 1;
+        Table.remove t.table pid;
+        Event.Queue.send_job_completed t.events job status
       | Some (Zombie _) -> assert false
 
-    let iter ~f =
-      Table.iter table ~f:(fun data ->
+    let iter t ~f =
+      Table.iter t.table ~f:(fun data ->
           match data with
           | Running job -> f job
           | Zombie _ -> ())
 
-    let running_count () = !running_count
+    let running_count t = t.running_count
   end
 
-  let register_job job =
-    Event.register_job_started ();
-    Mutex.lock mutex;
-    Process_table.add job;
-    Mutex.unlock mutex
+  let register_job t job =
+    Event.Queue.register_job_started t.events;
+    Mutex.lock t.mutex;
+    Process_table.add t job;
+    Mutex.unlock t.mutex
 
-  let killall signal =
-    Mutex.lock mutex;
-    Process_table.iter ~f:(fun job ->
-        try Unix.kill (Pid.to_int job.pid) signal with Unix.Unix_error _ -> ());
-    Mutex.unlock mutex
+  let killall t signal =
+    Mutex.lock t.mutex;
+    Process_table.iter t ~f:(fun job ->
+        try Unix.kill (Pid.to_int job.pid) signal with
+        | Unix.Unix_error _ -> ());
+    Mutex.unlock t.mutex
 
   exception Finished of job * Unix.process_status
 
-  let wait_nonblocking_win32 () =
+  let wait_nonblocking_win32 t =
     try
-      Process_table.iter ~f:(fun job ->
+      Process_table.iter t ~f:(fun job ->
           let pid, status = Unix.waitpid [ WNOHANG ] (Pid.to_int job.pid) in
           if pid <> 0 then raise_notrace (Finished (job, status)));
       false
-    with Finished (job, status) ->
+    with
+    | Finished (job, status) ->
       (* We need to do the [Unix.waitpid] and remove the process while holding
          the lock, otherwise the pid might be reused in between. *)
-      Process_table.remove ~pid:job.pid status;
+      Process_table.remove t ~pid:job.pid status;
       true
 
-  let wait_win32 () =
-    while not (wait_nonblocking_win32 ()) do
-      Mutex.unlock mutex;
-      ignore (Unix.select [] [] [] 0.001);
-      Mutex.lock mutex
+  let wait_win32 t =
+    while not (wait_nonblocking_win32 t) do
+      Mutex.unlock t.mutex;
+      Thread.delay 0.001;
+      Mutex.lock t.mutex
     done
 
-  let wait_unix () =
-    Mutex.unlock mutex;
+  let wait_unix t =
+    Mutex.unlock t.mutex;
     let pid, status = Unix.wait () in
-    Mutex.lock mutex;
+    Mutex.lock t.mutex;
     let pid = Pid.of_int pid in
-    Process_table.remove ~pid status
+    Process_table.remove t ~pid status
 
   let wait =
     if Sys.win32 then
@@ -498,22 +606,30 @@ end = struct
     else
       wait_unix
 
-  let run () =
-    Mutex.lock mutex;
+  let run t =
+    Mutex.lock t.mutex;
     while true do
-      while Process_table.running_count () = 0 do
-        Condition.wait something_is_running_cv mutex
+      while Process_table.running_count t = 0 do
+        Condition.wait t.something_is_running t.mutex
       done;
-      wait ()
+      wait t
     done
 
-  let init = lazy (ignore (Thread.create run () : Thread.t))
-
-  let init () = Lazy.force init
+  let init events =
+    let t =
+      { mutex = Mutex.create ()
+      ; something_is_running = Condition.create ()
+      ; table = Table.create (module Pid) 128
+      ; events
+      ; running_count = 0
+      }
+    in
+    ignore (Thread.create run t : Thread.t);
+    t
 end
 
 module Signal_watcher : sig
-  val init : unit -> unit
+  val init : Event.Queue.t -> unit
 end = struct
   let signos = List.map Signal.all ~f:Signal.to_int
 
@@ -541,12 +657,12 @@ end = struct
       Staged.stage (fun () ->
           Thread.wait_signal signos |> Signal.of_int |> Option.value_exn)
 
-  let run () =
+  let run q =
     let last_exit_signals = Queue.create () in
     let wait_signal = Staged.unstage (signal_waiter ()) in
     while true do
       let signal = wait_signal () in
-      Event.send_signal signal;
+      Event.Queue.send_signal q signal;
       match signal with
       | Int
       | Quit
@@ -565,37 +681,165 @@ end = struct
         if n = 3 then sys_exit 1
     done
 
-  let init = lazy (ignore (Thread.create run () : Thread.t))
+  let init q = ignore (Thread.create run q : Thread.t)
+end
 
-  let init () = Lazy.force init
+module Rpc0 = struct
+  (* This module is called [Rpc0] to avoid conflict with the public [Rpc] module *)
+
+  type cleanup =
+    { symlink : Path.t
+    ; socket : Path.t
+    }
+
+  type t =
+    | Client
+    | Server of
+        { server : Csexp_rpc.Server.t
+        ; handler : Dune_rpc_server.t
+        ; where : Dune_rpc.Where.t
+        ; cleanup : cleanup option
+        }
+
+  module Server = Dune_rpc_server.Make (Csexp_rpc.Session)
+
+  let scheduler q =
+    let create_thread_safe_ivar () =
+      let ivar = Fiber.Ivar.create () in
+      let fill v = Event.Queue.send_rpc_completed q (Fiber.Fill (ivar, v)) in
+      Event.Queue.register_rpc_started q;
+      (ivar, fill)
+    in
+    { Csexp_rpc.Scheduler.create_thread_safe_ivar; spawn_thread = Thread.spawn }
+
+  let delete_cleanup = function
+    | None -> ()
+    | Some { socket; symlink } ->
+      Path.unlink_no_err socket;
+      Path.unlink_no_err symlink
+
+  let where_to_socket = function
+    | `Ip (addr, `Port port) -> Unix.ADDR_INET (addr, port)
+    | `Unix p -> Unix.ADDR_UNIX (Path.to_string p)
+
+  let of_config events rpc =
+    Option.map rpc ~f:(function
+      | Config.Rpc.Client -> Client
+      | Config.Rpc.Server { handler; backlog } ->
+        let where = Dune_rpc.Where.default () in
+        let real_where, cleanup =
+          match where with
+          | `Ip _ -> (where_to_socket where, None)
+          | `Unix symlink ->
+            let socket =
+              let dir =
+                Path.of_string
+                  (match Xdg.runtime_dir with
+                  | Some p -> p
+                  | None -> Filename.get_temp_dir_name ())
+              in
+              Temp.temp_path ~dir ~prefix:"dune" ~suffix:""
+            in
+            Unix.symlink (Path.to_string socket)
+              (let from = Path.external_ (Path.External.cwd ()) in
+               Path.mkdir_p (Path.parent_exn symlink);
+               Path.reach_for_running ~from symlink);
+            let cleanup = Some { socket; symlink } in
+            at_exit (fun () -> delete_cleanup cleanup);
+            (ADDR_UNIX (Path.to_string socket), cleanup)
+        in
+        let server =
+          Csexp_rpc.Server.create real_where ~backlog (scheduler events)
+        in
+        Server { server; handler; where; cleanup })
+
+  let with_rpc_serve t f =
+    match t with
+    | None
+    | Some Client ->
+      f
+    | Some (Server t) ->
+      fun () ->
+        Fiber.fork_and_join_unit
+          (fun () ->
+            Fiber.finalize
+              (fun () ->
+                let open Fiber.O in
+                let* sessions = Csexp_rpc.Server.serve t.server in
+                Server.serve sessions t.handler)
+              ~finally:(fun () ->
+                delete_cleanup t.cleanup;
+                Fiber.return ()))
+          f
+end
+
+type status =
+  (* Waiting for file changes to start a new a build *)
+  | Waiting_for_file_changes of unit Fiber.Ivar.t
+  (* Running a build *)
+  | Building
+  (* Cancellation requested. Build jobs are immediately rejected in this state *)
+  | Restarting_build
+
+module Handler = struct
+  type t =
+    { new_event : Config.t -> unit
+    ; build_interrupted : Config.t -> unit
+    }
 end
 
 type t =
   { original_cwd : string
-  ; mutable job_throttle : Fiber.Throttle.t
+  ; config : Config.t
+  ; polling : bool
+  ; rpc : Rpc0.t option
+  ; mutable status : status
+  ; handler : Handler.t
+  ; job_throttle : Fiber.Throttle.t
+  ; events : Event.Queue.t
+  ; process_watcher : Process_watcher.t
   }
 
 let t_var : t Fiber.Var.t = Fiber.Var.create ()
 
+let running_jobs_count () =
+  let t = Fiber.Var.get_exn t_var in
+  Event.Queue.pending_jobs t.events
+
+let ignore_for_watch p =
+  let t = Fiber.Var.get_exn t_var in
+  Event.Queue.ignore_next_file_change_event t.events p
+
 let with_chdir ~dir ~f =
   let t = Fiber.Var.get_exn t_var in
   Sys.chdir (Path.to_string dir);
-  protectx () ~finally:(fun () -> Sys.chdir t.original_cwd) ~f
+  protect ~finally:(fun () -> Sys.chdir t.original_cwd) ~f
 
-let set_concurrency n =
-  let t = Fiber.Var.get_exn t_var in
-  Fiber.Throttle.resize t.job_throttle n
+exception Cancel_build
 
 let with_job_slot f =
   let t = Fiber.Var.get_exn t_var in
-  Fiber.Throttle.run t.job_throttle ~f
+  Fiber.Throttle.run t.job_throttle ~f:(fun () ->
+      match t.status with
+      | Restarting_build -> raise Cancel_build
+      | Building -> f t.config
+      | Waiting_for_file_changes _ ->
+        (* At this stage, we're not running a build, so we shouldn't be running
+           tasks here. *)
+        assert false)
 
-let wait_for_process pid =
+(* We use this version privately in this module whenever we can pass the
+   scheduler explicitly *)
+let wait_for_process t pid =
   let ivar = Fiber.Ivar.create () in
-  Process_watcher.register_job { pid; ivar };
+  Process_watcher.register_job t.process_watcher { pid; ivar };
   Fiber.Ivar.read ivar
 
-let wait_for_dune_cache () = Event.flush_dedup ()
+let global = ref None
+
+let wait_for_dune_cache () =
+  let t = Option.value_exn !global in
+  Event.Queue.flush_sync_tasks t.events
 
 let got_signal signal =
   if !Log.verbose then
@@ -605,14 +849,11 @@ type saw_signal =
   | Ok
   | Got_signal
 
-let kill_and_wait_for_all_processes t () =
-  (* Re-create the throttle so that we don't keep old ivars from one run to the
-     next *)
-  t.job_throttle <- Fiber.Throttle.create (Fiber.Throttle.size t.job_throttle);
-  Process_watcher.killall Sys.sigkill;
+let kill_and_wait_for_all_processes t =
+  Process_watcher.killall t.process_watcher Sys.sigkill;
   let saw_signal = ref Ok in
-  while Event.pending_jobs () > 0 do
-    match Event.next () with
+  while Event.Queue.pending_jobs t.events > 0 do
+    match Event.Queue.next t.events with
     | Signal signal ->
       got_signal signal;
       saw_signal := Got_signal
@@ -620,56 +861,32 @@ let kill_and_wait_for_all_processes t () =
   done;
   !saw_signal
 
-let prepare ?(config = Config.default) () =
-  Log.info
-    [ Pp.textf "Workspace root: %s"
-        (Path.to_absolute_filename Path.root |> String.maybe_quoted)
-    ];
+let prepare (config : Config.t) ~polling ~(handler : Handler.t) =
+  let events = Event.Queue.create () in
   (* The signal watcher must be initialized first so that signals are blocked in
      all threads. *)
-  Signal_watcher.init ();
-  Process_watcher.init ();
+  Signal_watcher.init events;
+  let process_watcher = Process_watcher.init events in
   let cwd = Sys.getcwd () in
-  if cwd <> initial_cwd && not !Clflags.no_print_directory then
-    Printf.eprintf "Entering directory '%s'\n%!"
-      ( if Config.inside_dune then
-        let descendant_simple p ~of_ =
-          match String.drop_prefix p ~prefix:of_ with
-          | None
-          | Some "" ->
-            None
-          | Some s -> Some (String.drop s 1)
-        in
-        match descendant_simple cwd ~of_:initial_cwd with
-        | Some s -> s
-        | None -> (
-          match descendant_simple initial_cwd ~of_:cwd with
-          | None -> cwd
-          | Some s ->
-            let rec loop acc dir =
-              if dir = Filename.current_dir_name then
-                acc
-              else
-                loop (Filename.concat acc "..") (Filename.dirname dir)
-            in
-            loop ".." (Filename.dirname s) )
-      else
-        cwd );
+  let rpc = Rpc0.of_config events config.rpc in
   let t =
     { original_cwd = cwd
-    ; job_throttle =
-        Fiber.Throttle.create
-          ( match config.concurrency with
-          | Auto -> 1
-          | Fixed n -> n )
+    ; status = Building
+    ; job_throttle = Fiber.Throttle.create config.concurrency
+    ; polling
+    ; process_watcher
+    ; events
+    ; config
+    ; rpc
+    ; handler
     }
   in
+  global := Some t;
   t
 
 module Run_once : sig
   type run_error =
     | Got_signal
-    | Files_changed
     | Never
     | Exn of Exn_with_backtrace.t
 
@@ -678,21 +895,46 @@ module Run_once : sig
 end = struct
   type run_error =
     | Got_signal
-    | Files_changed
     | Never
     | Exn of Exn_with_backtrace.t
 
   exception Abort of run_error
 
-  let iter () =
-    let count = Event.pending_jobs () in
-    if count = 0 then
+  (** This function is the heart of the scheduler. It makes progress in
+      executing fibers by doing the following:
+
+      - notifying completed jobs
+      - starting cancellations
+      - terminating the scheduler on signals *)
+  let rec iter (t : t) =
+    if
+      (match t.status with
+      | Waiting_for_file_changes _ ->
+        (* In polling mode, there are no pending jobs while we are waiting for
+           file changes *)
+        false
+      | _ -> true)
+      && Event.Queue.pending_jobs t.events = 0
+      && Event.Queue.pending_rpc t.events = 0
+    then
       raise (Abort Never)
     else (
-      Console.Status_line.refresh ();
-      match Event.next () with
+      t.handler.new_event t.config;
+      match Event.Queue.next t.events with
       | Job_completed (job, status) -> Fiber.Fill (job.ivar, status)
-      | Files_changed -> raise (Abort Files_changed)
+      | Files_changed changed_files -> (
+        List.iter changed_files ~f:Fs_notify_memo.invalidate;
+        match t.status with
+        | Restarting_build ->
+          (* We're already cancelling build, so file change events don't matter *)
+          iter t
+        | Building ->
+          t.handler.build_interrupted t.config;
+          t.status <- Restarting_build;
+          Process_watcher.killall t.process_watcher Sys.sigkill;
+          iter t
+        | Waiting_for_file_changes ivar -> Fill (ivar, ()))
+      | Rpc fill -> fill
       | Signal signal ->
         got_signal signal;
         raise (Abort Got_signal)
@@ -702,105 +944,161 @@ end = struct
     let fiber =
       Fiber.Var.set t_var t (fun () -> Fiber.with_error_handler f ~on_error)
     in
-    match Fiber.run fiber ~iter with
+    match Fiber.run fiber ~iter:(fun () -> iter t) with
     | res ->
-      assert (Event.pending_jobs () = 0);
+      assert (Event.Queue.pending_jobs t.events = 0);
+      assert (Event.Queue.pending_rpc t.events = 0);
       Ok res
     | exception Abort err -> Error err
     | exception exn -> Error (Exn (Exn_with_backtrace.capture exn))
 
   let run_and_cleanup t f =
     let res = run t f in
-    let status_line =
-      match res with
-      | Error Files_changed ->
-        Some
-          (Pp.seq
-             (Pp.tag User_message.Style.Error (Pp.verbatim "Had errors"))
-             (Pp.verbatim ", killing current build..."))
-      | _ -> None
-    in
-    Console.Status_line.set (Fun.const status_line);
-    match kill_and_wait_for_all_processes t () with
+    Console.Status_line.set (Fun.const None);
+    match kill_and_wait_for_all_processes t with
     | Got_signal -> Error Got_signal
     | Ok -> res
 end
 
-let go ?config f =
-  let t = prepare ?config () in
-  let res = Run_once.run_and_cleanup t f in
-  match res with
-  | Error (Exn exn) -> Exn_with_backtrace.reraise exn
-  | Ok res -> res
-  | Error (Got_signal | Never) -> raise Dune_util.Report_error.Already_reported
-  | Error Files_changed ->
-    Code_error.raise
-      "Scheduler.go: files changed even though we're running without \
-       filesystem watcher"
-      []
+module Run = struct
+  module Event = struct
+    type build_result =
+      | Success
+      | Failure
 
-type exit_or_continue =
-  | Exit
-  | Continue
+    type go = Tick
 
-let maybe_clear_screen ~config =
-  match
-    match config with
-    | Some cfg -> cfg.Config.terminal_persistence
-    | None -> Preserve
-  with
-  | Clear_on_rebuild -> Console.reset ()
-  | Preserve ->
-    Console.print_user_message
-      (User_message.make
-         [ Pp.nop
-         ; Pp.tag User_message.Style.Success
-             (Pp.verbatim "********** NEW BUILD **********")
-         ; Pp.nop
-         ])
+    type poll =
+      | Go of go
+      | Source_files_changed
+      | Build_interrupted
+      | Build_finish of build_result
 
-let poll ?config ~once ~finally () =
-  let t = prepare ?config () in
-  let watcher = File_watcher.create () in
-  let block_waiting_for_changes () =
-    match Event.next () with
-    | Job_completed _ -> assert false
-    | Files_changed -> Continue
-    | Signal signal ->
-      got_signal signal;
-      Exit
-  in
-  let wait msg =
-    Console.Status_line.set_temporarily
-      (fun () ->
-        Some (Pp.seq msg (Pp.verbatim ", waiting for filesystem changes...")))
-      (fun () ->
-        let res = block_waiting_for_changes () in
-        maybe_clear_screen ~config;
-        res)
-  in
-  let rec loop () =
-    let res = Run_once.run_and_cleanup t once in
-    finally ();
-    match res with
-    | Ok () ->
-      wait (Pp.tag User_message.Style.Success (Pp.verbatim "Success"))
-      |> after_wait
-    | Error Got_signal -> (Dune_util.Report_error.Already_reported, None)
-    | Error Never ->
-      wait (Pp.tag User_message.Style.Error (Pp.verbatim "Had errors"))
-      |> after_wait
-    | Error Files_changed -> loop ()
-    | Error (Exn exn_with_bt) -> (exn_with_bt.exn, Some exn_with_bt.backtrace)
-  and after_wait = function
-    | Exit -> (Dune_util.Report_error.Already_reported, None)
-    | Continue -> loop ()
-  in
-  let exn, bt = loop () in
-  ignore (wait_for_process (File_watcher.pid watcher) : _ Fiber.t);
-  ignore (kill_and_wait_for_all_processes t () : saw_signal);
-  match bt with
-  | None -> Exn.raise exn
-  | Some bt -> Exn.raise_with_backtrace exn bt
+    let to_handler_poll ~on_event =
+      { Handler.build_interrupted = (fun cfg -> on_event cfg Build_interrupted)
+      ; new_event = (fun cfg -> on_event cfg (Go Tick))
+      }
 
-let send_dedup = Event.send_dedup
+    let to_handler_go ~on_event : Handler.t =
+      { Handler.build_interrupted = (fun _ -> assert false)
+      ; new_event = (fun cfg -> on_event cfg Tick)
+      }
+
+    let go t run =
+      let res =
+        let f = Rpc0.with_rpc_serve t.rpc run in
+        Run_once.run_and_cleanup t f
+      in
+      match res with
+      | Error (Exn exn) -> Exn_with_backtrace.reraise exn
+      | Ok res -> res
+      | Error (Got_signal | Never) ->
+        raise Dune_util.Report_error.Already_reported
+  end
+
+  let poll config ~on_event ~once ~finally =
+    let handler = Event.to_handler_poll ~on_event in
+    let t = prepare config ~polling:true ~handler in
+    let watcher = File_watcher.create t.events in
+    let rec loop () : unit Fiber.t =
+      t.status <- Building;
+      let open Fiber.O in
+      let* res =
+        let+ res =
+          let on_error exn () =
+            match t.status with
+            | Building -> Report_error.report exn
+            | Restarting_build -> ()
+            | Waiting_for_file_changes _ ->
+              (* We are inside a build, so we aren't waiting for a file change
+                 event *)
+              assert false
+          in
+          Fiber.fold_errors ~init:() ~on_error once
+        in
+        finally ();
+        res
+      in
+      match t.status with
+      | Waiting_for_file_changes _ ->
+        (* We just finished a build, so there's no way this was set *)
+        assert false
+      | Restarting_build -> loop ()
+      | Building -> (
+        on_event t.config
+          (Build_finish
+             (match res with
+             | Error _ -> Failure
+             | Ok _ -> Success));
+        let ivar = Fiber.Ivar.create () in
+        t.status <- Waiting_for_file_changes ivar;
+        let* () = Fiber.Ivar.read ivar in
+        on_event t.config Source_files_changed;
+        match res with
+        | Error _
+        | Ok `Continue ->
+          loop ()
+        | Ok `Stop -> Fiber.return ())
+    in
+    let run = Rpc0.with_rpc_serve t.rpc loop in
+    let exn, bt =
+      match Run_once.run_and_cleanup t run with
+      | Ok () ->
+        (* Polling mode is an infinite loop. We aren't going to terminate *)
+        assert false
+      | Error (Got_signal | Never) ->
+        (Dune_util.Report_error.Already_reported, None)
+      | Error (Exn exn_with_bt) -> (exn_with_bt.exn, Some exn_with_bt.backtrace)
+    in
+    ignore (wait_for_process t (File_watcher.pid watcher) : _ Fiber.t);
+    ignore (kill_and_wait_for_all_processes t : saw_signal);
+    match bt with
+    | None -> Exn.raise exn
+    | Some bt -> Exn.raise_with_backtrace exn bt
+
+  let go config ~(on_event : Config.t -> Event.go -> unit) run =
+    let handler = Event.to_handler_go ~on_event in
+    let t = prepare config ~polling:false ~handler in
+    Event.go t run
+end
+
+let send_sync_task d =
+  let t = Option.value_exn !global in
+  Event.Queue.send_sync_task t.events d
+
+let wait_for_process pid =
+  let t = Fiber.Var.get_exn t_var in
+  wait_for_process t pid
+
+module Rpc = struct
+  let csexp_client p =
+    let t = Fiber.Var.get_exn t_var in
+    Csexp_rpc.Client.create (Rpc0.where_to_socket p) (Rpc0.scheduler t.events)
+
+  let client p init ~on_notification ~f =
+    let open Fiber.O in
+    let c = csexp_client p in
+    let* session = Csexp_rpc.Client.connect c in
+    Drpc_client.connect_raw session init ~on_notification ~f
+
+  let csexp_connect in_ out =
+    let t = Option.value_exn !global in
+    Csexp_rpc.Session.create in_ out (Rpc0.scheduler t.events)
+
+  let add_to_env env =
+    let t = Fiber.Var.get_exn t_var in
+    match t.rpc with
+    | None -> env
+    | Some Client -> env
+    | Some (Server server) -> Dune_rpc.Where.add_to_env server.where env
+
+  let stop () =
+    let t = Fiber.Var.get_exn t_var in
+    match t.rpc with
+    | None
+    | Some Client ->
+      Code_error.raise "rpc not running" []
+    | Some (Server s) ->
+      Csexp_rpc.Server.stop s.server;
+      Fiber.return ()
+end

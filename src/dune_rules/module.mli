@@ -23,6 +23,7 @@ module Kind : sig
     | Alias
     | Impl_vmodule
     | Wrapped_compat
+    | Root
 
   include Dune_lang.Conv.S with type t := t
 end
@@ -55,7 +56,7 @@ val name : t -> Module_name.t
 
 val source : t -> ml_kind:Ml_kind.t -> File.t option
 
-val pp_flags : t -> string list Build.t option
+val pp_flags : t -> string list Action_builder.t option
 
 val file : t -> ml_kind:Ml_kind.t -> Path.t option
 
@@ -68,10 +69,12 @@ val has : t -> ml_kind:Ml_kind.t -> bool
 (** Prefix the object name with the library name. *)
 val with_wrapper : t -> main_module_name:Module_name.t -> t
 
+val add_file : t -> Ml_kind.t -> File.t -> t
+
 val map_files : t -> f:(Ml_kind.t -> File.t -> File.t) -> t
 
 (** Set preprocessing flags *)
-val set_pp : t -> string list Build.t option -> t
+val set_pp : t -> string list Action_builder.t option -> t
 
 val wrapped_compat : t -> t
 
@@ -132,3 +135,5 @@ val generated : src_dir:Path.t -> Module_name.t -> t
 
 (** Represent the generated alias module. *)
 val generated_alias : src_dir:Path.Build.t -> Module_name.t -> t
+
+val generated_root : src_dir:Path.Build.t -> Module_name.t -> t

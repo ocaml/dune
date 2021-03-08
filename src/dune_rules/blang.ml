@@ -1,5 +1,6 @@
 open! Dune_engine
 open! Stdune
+open Import
 
 module Op = struct
   type t =
@@ -48,7 +49,7 @@ let rec eval t ~dir ~f =
     | _ ->
       let loc = String_with_vars.loc sw in
       User_error.raise ~loc
-        [ Pp.text "This value must be either true or false" ] )
+        [ Pp.text "This value must be either true or false" ])
   | And xs -> List.for_all ~f:(eval ~f ~dir) xs
   | Or xs -> List.exists ~f:(eval ~f ~dir) xs
   | Compare (op, x, y) ->
@@ -70,40 +71,27 @@ let rec to_dyn =
 let ops =
   [ ("=", Op.Eq); (">=", Gte); ("<=", Lt); (">", Gt); ("<", Lt); ("<>", Neq) ]
 
-let decode =
+let decode_gen decode_string =
   let open Dune_lang.Decoder in
   let ops =
     List.map ops ~f:(fun (name, op) ->
         ( name
-        , let+ x = String_with_vars.decode
-          and+ y = String_with_vars.decode in
+        , let+ x = decode_string
+          and+ y = decode_string in
           Compare (op, x, y) ))
   in
   let decode =
     fix (fun t ->
         sum ~force_parens:true
-          ( ("or", repeat t >>| fun x -> Or x)
-          :: ("and", repeat t >>| fun x -> And x)
-          :: ops )
-        <|> let+ v = String_with_vars.decode in
+          (("or", repeat t >>| fun x -> Or x)
+           :: ("and", repeat t >>| fun x -> And x) :: ops)
+        <|> let+ v = decode_string in
             Expr v)
   in
   let+ () = Dune_lang.Syntax.since Stanza.syntax (1, 1)
   and+ decode = decode in
   decode
 
-let rec fold_vars t ~init ~f =
-  match t with
-  | Const _ -> init
-  | Expr sw -> String_with_vars.fold_vars sw ~init ~f
-  | And l
-  | Or l ->
-    fold_vars_list l ~init ~f
-  | Compare (_, x, y) ->
-    String_with_vars.fold_vars y ~f
-      ~init:(String_with_vars.fold_vars x ~f ~init)
+let decode = decode_gen String_with_vars.decode
 
-and fold_vars_list ts ~init ~f =
-  match ts with
-  | [] -> init
-  | t :: ts -> fold_vars_list ts ~f ~init:(fold_vars t ~init ~f)
+let decode_manually f = decode_gen (String_with_vars.decode_manually f)

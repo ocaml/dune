@@ -182,7 +182,7 @@ end = struct
               [ Pp.textf "`%s config --version' returned invalid output:"
                   (Path.to_string_maybe_quoted opam)
               ; Pp.verbatim version
-              ] ))
+              ]))
 
   let opam_binary_exn () = Memo.Lazy.Async.force opam
 
@@ -192,9 +192,9 @@ end = struct
       let args =
         List.concat
           [ [ "config"; "env" ]
-          ; ( match root with
+          ; (match root with
             | None -> []
-            | Some root -> [ "--root"; root ] )
+            | Some root -> [ "--root"; root ])
           ; [ "--switch"; switch; "--sexp"; "--set-switch" ]
           ]
       in
@@ -269,14 +269,14 @@ module Build_environment_kind = struct
         | None ->
           (* This is unreachable because we check in [create_for_opam] that opam
              sets this variable *)
-          assert false )
+          assert false)
       | Default -> (
         match Setup.library_path with
         | Some l -> Hardcoded_path l
         | None -> (
           match opam_prefix with
           | Some s -> Opam2_environment s
-          | None -> Unknown ) ) )
+          | None -> Unknown)))
 end
 
 let ocamlfind_printconf_path ~env ~ocamlfind ~toolchain =
@@ -388,11 +388,11 @@ let create ~(kind : Kind.t) ~path ~env ~env_nodes ~name ~merlin ~targets
            contents of the variable, but "ocamlfind printconf conf" still prints
            the configuration file set at the configuration time of ocamlfind,
            sigh... *)
-        ( match Env.get env "OCAMLFIND_CONF" with
+        (match Env.get env "OCAMLFIND_CONF" with
         | Some s -> Memo.Build.return s
         | None ->
           Memo.Build.of_fiber
-            (Process.run_capture_line ~env Strict fn [ "printconf"; "conf" ]) )
+            (Process.run_capture_line ~env Strict fn [ "printconf"; "conf" ]))
         >>| Path.of_filename_relative_to_initial_cwd)
   in
   let create_one ~(name : Context_name.t) ~implicit ~findlib_toolchain ~host
@@ -427,7 +427,7 @@ let create ~(kind : Kind.t) ~path ~env ~env_nodes ~name ~merlin ~targets
       | None -> (
         match which "ocamlc" with
         | Some x -> x
-        | None -> prog_not_found_in_path "ocamlc" )
+        | None -> prog_not_found_in_path "ocamlc")
     in
     let dir = Path.parent_exn ocamlc in
     let get_ocaml_tool prog =
@@ -444,7 +444,7 @@ let create ~(kind : Kind.t) ~path ~env ~env_nodes ~name ~merlin ~targets
           in
           Error
             (Action.Prog.Not_found.create ~context:name ~program:prog ~loc:None
-               ~hint ()) )
+               ~hint ()))
     in
     let build_dir = Context_name.build_dir name in
     let ocamlpath =
@@ -461,7 +461,7 @@ let create ~(kind : Kind.t) ~path ~env ~env_nodes ~name ~merlin ~targets
           | None, None -> None
           | Some s, None -> Some s
           | None, Some _ -> None
-          | Some x, Some y -> Option.some_if (x <> y) x )
+          | Some x, Some y -> Option.some_if (x <> y) x)
       with
       | None -> []
       | Some s -> Bin.parse_path s ~sep:ocamlpath_sep
@@ -500,12 +500,12 @@ let create ~(kind : Kind.t) ~path ~env ~env_nodes ~name ~merlin ~targets
               (Process.run_capture_lines ~env Strict ocamlc [ "-config" ])
           in
           ocaml_config_ok_exn
-            ( match Ocaml_config.Vars.of_lines lines with
+            (match Ocaml_config.Vars.of_lines lines with
             | Ok vars ->
               let open Result.O in
               let+ ocfg = Ocaml_config.make vars in
               (vars, ocfg)
-            | Error msg -> Error (Ocamlc_config, msg) ))
+            | Error msg -> Error (Ocamlc_config, msg)))
     in
     let findlib_paths = ocamlpath @ default_ocamlpath in
     let version = Ocaml_version.of_ocaml_config ocfg in
@@ -764,7 +764,7 @@ end = struct
         match contexts with
         | [ x ] -> Some x
         | [] -> assert false (* checked by workspace *)
-        | _ :: _ -> assert false )
+        | _ :: _ -> assert false)
       (* target cannot be host *)
     in
     let env_nodes =
@@ -913,7 +913,7 @@ let map_exe (context : t) =
       match Path.extract_build_context_dir exe with
       | Some (dir, exe) when Path.equal dir (Path.build context.build_dir) ->
         Path.append_source (Path.build host.build_dir) exe
-      | _ -> exe )
+      | _ -> exe)
 
 let install_prefix t =
   let open Fiber.O in

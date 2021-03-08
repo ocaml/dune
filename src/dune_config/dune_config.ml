@@ -51,7 +51,7 @@ module Concurrency = struct
         if n >= 1 then
           Ok (Fixed n)
         else
-          error )
+          error)
 
   let decode =
     plain_string (fun ~loc s ->
@@ -109,9 +109,10 @@ module Caching = struct
 
     let all =
       ("auto", None)
-      :: List.map
-           ~f:(fun (name, mode) -> (name, Some mode))
-           Cache.Duplication_mode.all
+      ::
+      List.map
+        ~f:(fun (name, mode) -> (name, Some mode))
+        Cache.Duplication_mode.all
 
     let decode = enum all
   end
@@ -159,15 +160,15 @@ let merge t (partial : Partial.t) =
 
 let default =
   { display =
-      ( if Config.inside_dune then
+      (if Config.inside_dune then
         Quiet
       else
-        Progress )
+        Progress)
   ; concurrency =
-      ( if Config.inside_dune then
+      (if Config.inside_dune then
         Fixed 1
       else
-        Auto )
+        Auto)
   ; terminal_persistence = Terminal_persistence.Preserve
   ; sandboxing_preference = []
   ; cache_mode = Disabled
@@ -203,8 +204,8 @@ let decode =
       ~default:default.cache_check_probability
   and+ cache_duplication =
     field "cache-duplication"
-      ( Dune_lang.Syntax.since Stanza.syntax (2, 1)
-      >>> Caching.Duplication.decode )
+      (Dune_lang.Syntax.since Stanza.syntax (2, 1)
+      >>> Caching.Duplication.decode)
       ~default:default.cache_duplication
   and+ cache_trim_period =
     field "cache-trim-period" Dune_lang.Decoder.duration
@@ -297,7 +298,7 @@ let init t =
 
 let auto_concurrency =
   lazy
-    ( if Sys.win32 then
+    (if Sys.win32 then
       match Env.get Env.initial "NUMBER_OF_PROCESSORS" with
       | None -> 1
       | Some s -> Int.of_string s |> Option.value ~default:1
@@ -334,11 +335,11 @@ let auto_concurrency =
               close_in ic;
               match (n, snd (Unix.waitpid [] (Pid.to_int pid))) with
               | Some n, WEXITED 0 -> n
-              | _ -> loop rest ) ) )
+              | _ -> loop rest)))
       in
       let n = loop commands in
       Log.info [ Pp.textf "Auto-detected concurrency: %d" n ];
-      n )
+      n)
 
 let for_scheduler (t : t) rpc =
   let concurrency =

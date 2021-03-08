@@ -41,10 +41,10 @@ module Where = struct
   let default : unit -> t =
     let s =
       lazy
-        ( if Sys.win32 then
+        (if Sys.win32 then
           `Ip (Unix.inet_addr_of_string "0.0.0.0", `Port default_port)
         else
-          `Unix (Path.build (Path.Build.relative (Lazy.force rpc_dir) fname)) )
+          `Unix (Path.build (Path.Build.relative (Lazy.force rpc_dir) fname)))
     in
     fun () -> Lazy.force s
 
@@ -58,9 +58,9 @@ module Where = struct
       | true ->
         let stat = Unix.stat (Path.to_string path) in
         Some
-          ( match stat.st_kind with
+          (match stat.st_kind with
           | Unix.S_SOCK -> `Unix path
-          | _ -> of_string (Io.read_file path) ) )
+          | _ -> of_string (Io.read_file path)))
 
   let to_dbus : t -> Dbus_address.t = function
     | `Unix p -> { name = "unix"; args = [ ("path", Path.to_string p) ] }
@@ -252,9 +252,9 @@ struct
 
   let request_untyped t (id, req) =
     let ivar = Fiber.Ivar.create () in
-    ( match Table.add t.requests id ivar with
+    (match Table.add t.requests id ivar with
     | Ok () -> ()
-    | Error _ -> Code_error.raise "duplicate id" [ ("id", Id.to_dyn id) ] );
+    | Error _ -> Code_error.raise "duplicate id" [ ("id", Id.to_dyn id) ]);
     let* () = send t (Some (Request (id, req))) in
     Fiber.Ivar.read ivar
 
@@ -279,7 +279,7 @@ struct
       | Error e ->
         (* XXX we need to handle this better *)
         Code_error.raise "response not matched by decl"
-          [ ("e", Conv.dyn_of_error e) ] )
+          [ ("e", Conv.dyn_of_error e) ])
 
   let notification t (decl : _ Decl.notification) n =
     let call =
@@ -297,7 +297,7 @@ struct
           Fiber.Ivar.fill ivar response
         | None ->
           Code_error.raise "unexpected response"
-            [ ("id", Id.to_dyn id); ("response", Response.to_dyn response) ] ))
+            [ ("id", Id.to_dyn id); ("response", Response.to_dyn response) ]))
 
   module Handler = struct
     type t =
@@ -327,10 +327,10 @@ struct
         | Some v -> v params
 
     let log { Message.payload; message } =
-      ( match payload with
+      (match payload with
       | None -> Format.eprintf "%s@." message
       | Some payload ->
-        Format.eprintf "%s: %s@." message (Sexp.to_string payload) );
+        Format.eprintf "%s: %s@." message (Sexp.to_string payload));
       Fiber.return ()
 
     let errors _ = failwith "unexpect errors notifications"

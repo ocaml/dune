@@ -226,12 +226,12 @@ module With_targets = struct
 
   let of_result_map res ~f ~targets =
     add ~targets
-      ( match res with
+      (match res with
       | Ok x -> f x
       | Error e ->
         { build = Fail { fail = (fun () -> raise e) }
         ; targets = Path.Build.Set.empty
-        } )
+        })
 
   let memoize name t = { build = memoize name t.build; targets = t.targets }
 end
@@ -380,7 +380,7 @@ struct
         in
         match res with
         | Ok r -> r
-        | Error r -> (r, Dep.Set.empty) )
+        | Error r -> (r, Dep.Set.empty))
       | Memo m ->
         let* res, deps = Poly_memo.eval m in
         let+ () = Build_deps.register_action_deps deps in
@@ -406,7 +406,7 @@ struct
         | true ->
           let deps = Dep.Set.singleton (Dep.alias alias) in
           let+ () = Build_deps.register_action_deps deps in
-          (true, deps) )
+          (true, deps))
   end
 
   include Execution
@@ -516,7 +516,9 @@ let static_eval =
     | Fail { fail } -> fail ()
     | If_file_exists (_, _, _) -> assert false
     | Memo _ -> assert false
-    | Catch (t, v) -> ( try loop t acc with _ -> (v, return ()) )
+    | Catch (t, v) -> (
+      try loop t acc with
+      | _ -> (v, return ()))
     | Memo_build _ -> assert false
     | Dyn_memo_build _ -> assert false
     | Build _ -> assert false

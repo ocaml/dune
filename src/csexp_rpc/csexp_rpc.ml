@@ -109,7 +109,7 @@ module Session = struct
         | Error _
         | Ok None ->
           Async.stop t.reader;
-          None )
+          None)
     in
     if debug then Format.eprintf "<< %s@." (string_of_packet res);
     res
@@ -118,7 +118,7 @@ module Session = struct
     if debug then Format.eprintf ">> %s@." (string_of_packet sexp);
     Async.task_exn t.writer
       ~f:
-        ( match sexp with
+        (match sexp with
         | Some sexp ->
           fun () ->
             Csexp.to_channel t.out_channel sexp;
@@ -129,10 +129,12 @@ module Session = struct
           | Socket ->
             fun () ->
               let fd = Unix.descr_of_out_channel t.out_channel in
-              Unix.shutdown fd Unix.SHUTDOWN_SEND ) )
+              Unix.shutdown fd Unix.SHUTDOWN_SEND))
 end
 
-let close_fd_no_error fd = try Unix.close fd with _ -> ()
+let close_fd_no_error fd =
+  try Unix.close fd with
+  | _ -> ()
 
 module Server = struct
   module Transport = struct
@@ -150,12 +152,12 @@ module Server = struct
       in
       Unix.setsockopt fd Unix.SO_REUSEADDR true;
       Unix.set_nonblock fd;
-      ( match sockaddr with
+      (match sockaddr with
       | ADDR_UNIX p ->
         let p = Path.of_string p in
         Path.unlink_no_err p;
         Path.mkdir_p (Path.parent_exn p)
-      | _ -> () );
+      | _ -> ());
       Unix.bind fd sockaddr;
       Unix.listen fd backlog;
       let r_interrupt_accept, w_interrupt_accept = Unix.pipe () in

@@ -284,7 +284,7 @@ end = struct
               { acc with
                 deps =
                   { acc.deps with static = Path.Set.add acc.deps.static fn }
-              } ) )
+              } ))
         | None
         | (exception User_error.E _) ->
           let x = Action_builder.memoize "dep" x in
@@ -381,7 +381,7 @@ end = struct
             | In_path ->
               Artifacts.Bin.binary ~loc:(Some loc)
                 (Expander.artifacts env.expander)
-                s )
+                s)
         in
         let prog = Result.map prog ~f:(Expander.map_exe env.expander) in
         let args = Value.L.to_strings ~dir args in
@@ -542,9 +542,9 @@ let expand t ~loc ~deps:deps_written_by_user ~targets_dir
         ~bindings:
           (Pform.Map.singleton
              (Var
-                ( match multiplicity with
+                (match multiplicity with
                 | One -> Target
-                | Multiple -> Targets ))
+                | Multiple -> Targets))
              (Action_builder.return
                 (Value.L.paths (List.map targets ~f:Path.build))))
   in

@@ -32,7 +32,7 @@ module Version = struct
       match Scanf.sscanf s "%u.%u" (fun a b -> (a, b)) with
       | Ok s -> s
       | Error () ->
-        User_error.raise ~loc [ Pp.text "Atom of the form NNN.NNN expected" ] )
+        User_error.raise ~loc [ Pp.text "Atom of the form NNN.NNN expected" ])
     | sexp -> User_error.raise ~loc:(Ast.loc sexp) [ Pp.text "Atom expected" ]
 
   let can_read ~parser_version:(parser_major, parser_minor)
@@ -104,7 +104,7 @@ module Supported_versions = struct
     | Some t -> (
       match Int.Map.find t minor with
       | Some min_lang_ver -> lang_ver >= min_lang_ver
-      | None -> false )
+      | None -> false)
 
   let supported_ranges lang_ver (t : t) =
     let compat = remove_incompatible_versions lang_ver t in
@@ -192,16 +192,16 @@ module Error = struct
 
   let deleted_in ?(extra_info = "") loc t ?(repl = []) ver ~what =
     User_error.raise ~loc
-      ( Pp.concat
-          [ Pp.textf "%s was deleted in version %s of %s." what
-              (Version.to_string ver) t.desc
-          ; ( if extra_info = "" then
-              Pp.nop
-            else
-              Pp.space )
-          ; Pp.text extra_info
-          ]
-      :: repl )
+      (Pp.concat
+         [ Pp.textf "%s was deleted in version %s of %s." what
+             (Version.to_string ver) t.desc
+         ; (if extra_info = "" then
+             Pp.nop
+           else
+             Pp.space)
+         ; Pp.text extra_info
+         ]
+       :: repl)
 
   let inactive loc t ~dune_lang_ver ~what =
     let greatest_supported_version =
@@ -209,14 +209,14 @@ module Error = struct
         t.supported_versions
     in
     User_error.raise ~loc
-      ( [ Pp.textf
-            "%s is available only when %s is enabled in the dune-project file. \
-             You must enable it using (using %s %s) in your dune-project file."
-            what t.name t.name
-            ( match greatest_supported_version with
-            | Some v -> Version.to_string v
-            | None -> ".." )
-        ]
+      ([ Pp.textf
+           "%s is available only when %s is enabled in the dune-project file. \
+            You must enable it using (using %s %s) in your dune-project file."
+           what t.name t.name
+           (match greatest_supported_version with
+           | Some v -> Version.to_string v
+           | None -> "..")
+       ]
       @
       if t.experimental then
         [ Pp.textf
@@ -244,22 +244,22 @@ module Error = struct
               (Version.to_string min_lang_version)
               (Version.to_string min_dune_version)
           ]
-        | Some _ -> [] )
+        | Some _ -> [])
 end
 
 module Warning = struct
   let deprecated_in ?(extra_info = "") loc t ?(repl = []) ver ~what =
     User_warning.emit ~loc
-      ( Pp.concat
-          [ Pp.textf "%s was deprecated in version %s of %s." what
-              (Version.to_string ver) t.desc
-          ; ( if extra_info = "" then
-              Pp.nop
-            else
-              Pp.space )
-          ; Pp.text extra_info
-          ]
-      :: repl )
+      (Pp.concat
+         [ Pp.textf "%s was deprecated in version %s of %s." what
+             (Version.to_string ver) t.desc
+         ; (if extra_info = "" then
+             Pp.nop
+           else
+             Pp.space)
+         ; Pp.text extra_info
+         ]
+       :: repl)
 end
 
 let create ?(experimental = false) ~name ~desc supported_versions =
@@ -288,10 +288,10 @@ let check_supported ~dune_lang_ver t (loc, ver) =
       Supported_versions.supported_ranges dune_lang_ver t.supported_versions
     in
     let supported =
-      ( if List.is_empty l then
+      (if List.is_empty l then
         Pp.textf "There are no supported versions of this extension in %s."
       else
-        Pp.textf "Supported versions of this extension in %s:" )
+        Pp.textf "Supported versions of this extension in %s:")
         (dune_ver_text dune_lang_ver)
     in
     let message =

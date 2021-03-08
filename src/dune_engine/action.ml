@@ -86,10 +86,10 @@ module For_shell = struct
 
   module rec Ast : Ast = Ast
 
-  include Action_ast.Make (String_with_sexp) (String_with_sexp)
-            (String_with_sexp)
-            (String_with_sexp)
-            (Ast)
+  include
+    Action_ast.Make (String_with_sexp) (String_with_sexp) (String_with_sexp)
+      (String_with_sexp)
+      (Ast)
 end
 
 module Relativise = Action_mapper.Make (Ast) (For_shell.Ast)

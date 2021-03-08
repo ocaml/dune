@@ -27,7 +27,7 @@ module Commands = struct
       | List [ Atom "File"; Atom path ] -> File path
       | sexp ->
         let msg = Printf.sprintf "Bad input: %s" (Sexp.to_string sexp) in
-        Unknown msg )
+        Unknown msg)
     | Error _ -> Halt
 end
 
@@ -64,7 +64,8 @@ let to_local file_path =
       (* If dune ocaml-merlin is called from within the build dir we must remove
          the build context *)
       Ok (Path.drop_optional_build_context path |> Path.local_part)
-    with User_error.E mess -> User_message.to_string mess |> error )
+    with
+    | User_error.E mess -> User_message.to_string mess |> error)
   | None ->
     Printf.sprintf "Path %S is not in dune workspace (%S)." file_path
       Path.(to_absolute_filename Path.root)
@@ -110,10 +111,10 @@ let load_merlin_file local_path file =
     | Some p -> Some p
     | None ->
       Option.bind ~f:find_closest
-        ( if Path.Local.is_root path then
+        (if Path.Local.is_root path then
           None
         else
-          Path.Local.parent path )
+          Path.Local.parent path)
   in
   let default =
     Printf.sprintf

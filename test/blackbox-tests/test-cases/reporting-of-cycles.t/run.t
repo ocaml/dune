@@ -58,8 +58,8 @@ cryptic and can involve unrelated files:
   $ echo 'val xx : B.t' >> indirect/c.mli
   $ dune build @indirect-deps
   Error: Dependency cycle between the following files:
-     _build/default/indirect/.a.eobjs/b.impl.all-deps
+     _build/default/indirect/.a.eobjs/a.impl.all-deps
+  -> _build/default/indirect/.a.eobjs/b.impl.all-deps
   -> _build/default/indirect/.a.eobjs/c.intf.all-deps
   -> _build/default/indirect/.a.eobjs/a.impl.all-deps
-  -> _build/default/indirect/.a.eobjs/b.impl.all-deps
   [1]

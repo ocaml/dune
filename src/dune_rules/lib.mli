@@ -40,6 +40,8 @@ val is_impl : t -> bool
 (** Direct library dependencies of this library *)
 val requires : t -> t list Or_exn.t
 
+val ppx_runtime_deps : t -> t list Or_exn.t
+
 (** A unique integer identifier. It is only unique for the duration of the
     process *)
 module Id : sig
@@ -274,16 +276,6 @@ module Sub_system : sig
   end
 end
 with type lib := t
-
-(** {1 Dependencies for META files} *)
-
-module Meta : sig
-  val requires : t -> Lib_name.Set.t
-
-  val ppx_runtime_deps : t -> Lib_name.Set.t
-
-  val ppx_runtime_deps_for_deprecated_method : t -> Lib_name.Set.t
-end
 
 val to_dune_lib :
      t

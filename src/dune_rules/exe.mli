@@ -57,6 +57,19 @@ val build_and_link_many :
   -> Compilation_context.t
   -> unit
 
+(* [link_many] is like [build_and_link_many], but it allows you to share
+   modules between executables without requiring an intermediate library. *)
+val link_many :
+     ?link_args:Command.Args.static Command.Args.t Build.t
+  -> ?o_files:Path.t list
+  -> ?embed_in_plugin_libraries:(Loc.t * Lib_name.t) list
+  -> dep_graphs:Dep_graph.t Ml_kind.Dict.t
+  -> programs:Program.t list
+  -> linkages:Linkage.t list
+  -> promote:Rule.Promote.t option
+  -> Compilation_context.t
+  -> unit
+
 val exe_path :
      Compilation_context.t
   -> program:Program.t

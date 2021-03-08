@@ -12,33 +12,6 @@ module Dune_file = struct
   let parse sexps ~dir ~file ~project =
     let stanzas = Dune_file.Stanzas.parse ~file project sexps in
     let stanzas =
-      let maybe_expand_ctypes ~dune_version ~sub_systems stanza buildable =
-        match buildable.Dune_file.Buildable.ctypes with
-        | None -> [stanza]
-        | Some _ctypes ->
-          let libs =
-            Ctypes_stanzas.library_stanzas
-              ~parsing_context:(Dune_project.parsing_context project)
-              ~project ~dune_version ~sub_systems
-              buildable
-          in
-          stanza :: (List.map libs ~f:(fun l -> Dune_file.Library l))
-      in
-      List.concat_map stanzas ~f:(fun stanza ->
-        match stanza with
-        | Dune_file.Executables exes ->
-          maybe_expand_ctypes
-            ~sub_systems:exes.Dune_file.Executables.sub_systems
-            ~dune_version:exes.Dune_file.Executables.dune_version
-            stanza exes.Dune_file.Executables.buildable
-        | Dune_file.Library lib ->
-          maybe_expand_ctypes
-            ~sub_systems:lib.Dune_file.Library.sub_systems
-            ~dune_version:lib.Dune_file.Library.dune_version
-            stanza lib.Dune_file.Library.buildable
-        | _ -> [stanza])
-    in
-    let stanzas =
       if !Clflags.ignore_promoted_rules then
         List.filter stanzas ~f:(function
           | Dune_file.Rule { mode = Rule.Mode.Promote { only = None; _ }; _ }

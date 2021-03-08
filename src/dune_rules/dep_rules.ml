@@ -50,7 +50,8 @@ let deps_of_module cctx ~ml_kind m =
       | None -> Modules.compat_for_exn modules m
     in
     Build.return (List.singleton interface_module)
-  | _ -> Ocamldep.deps_of ~cctx ~ml_kind m
+  | _ ->
+    Ocamldep.deps_of ~cctx ~ml_kind m
 
 let deps_of_vlib_module cctx ~ml_kind m =
   let vimpl = Option.value_exn (Compilation_context.vimpl cctx) in
@@ -89,8 +90,9 @@ let rec deps_of cctx ~ml_kind (m : Modules.Sourced_module.t) =
     let skip_if_source_absent f m =
       if Module.has m ~ml_kind then
         f m
-      else
+      else begin
         Build.return []
+      end
     in
     match m with
     | Imported_from_vlib m ->

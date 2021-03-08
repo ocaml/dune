@@ -162,7 +162,7 @@ end = struct
           | Executables { buildable; _ } | Library { buildable; _ } ->
             let ctypes_generated_ml_and_c_files =
               match buildable.ctypes with
-              | Some ctypes -> Ctypes_stanzas.generated_ml_and_c_files ctypes
+              | Some ctypes -> Ctypes_rules.Stanza_util.generated_ml_and_c_files ctypes
               | None -> []
             in
             ctypes_generated_ml_and_c_files @ buildable_select_deps buildable

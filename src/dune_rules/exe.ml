@@ -237,5 +237,37 @@ let build_and_link_many ~programs ~linkages ~promote ?link_args ?o_files
 
 let build_and_link ~program = build_and_link_many ~programs:[ program ]
 
+let link_many ?link_args ?o_files ?(embed_in_plugin_libraries=[]) ~dep_graphs
+      ~programs ~linkages ~promote cctx =
+  let dep_graphs : Dep_graph.t Ml_kind.Dict.t = dep_graphs in
+  let modules = Compilation_context.modules cctx in
+  let link_time_code_gen = Link_time_code_gen.handle_special_libs cctx in
+  List.iter programs ~f:(fun { Program.name; main_module_name; loc } ->
+      let cm_files =
+        let sctx = CC.super_context cctx in
+        let ctx = SC.context sctx in
+        let obj_dir = CC.obj_dir cctx in
+        let top_sorted_modules =
+          let main = Option.value_exn (Modules.find modules main_module_name) in
+          Dep_graph.top_closed_implementations dep_graphs.impl [ main ]
+        in
+        Cm_files.make ~obj_dir ~modules ~top_sorted_modules
+          ~ext_obj:ctx.lib_config.ext_obj
+      in
+      List.iter linkages ~f:(fun linkage ->
+          if linkage = Linkage.js then
+            link_js ~name ~cm_files ~promote cctx
+          else
+            let link_time_code_gen =
+              if Linkage.is_plugin linkage then
+                Link_time_code_gen.handle_special_libs
+                  (CC.for_plugin_executable cctx ~embed_in_plugin_libraries)
+              else
+                link_time_code_gen
+            in
+            link_exe cctx ~loc ~name ~linkage ~cm_files ~link_time_code_gen
+              ~promote ?link_args ?o_files))
+
+
 let exe_path cctx ~(program : Program.t) ~linkage =
   exe_path_from_name cctx ~name:program.name ~linkage

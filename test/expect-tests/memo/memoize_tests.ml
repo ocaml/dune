@@ -1306,7 +1306,7 @@ let%expect_test "Test that there are no phantom dependencies" =
      unnecessary recomputations. *)
   [%expect {| f 0 = Ok 0 |}]
 
-let%expect_test "Abandoned node with no cutoff is handled correctly" =
+let%expect_test "Abandoned node with no cutoff is recomputed" =
   let count_runs = count_runs "base" in
   let which_base = ref 0 in
   let base () =
@@ -1387,7 +1387,9 @@ let%expect_test "Abandoned node with no cutoff is handled correctly" =
   Memo.restart_current_run ();
   evaluate_and_print summit 0;
   (* We will now attempt to force [compute] of a stale computation but this is
-     handled correctly by restarting the computation. *)
+     handled correctly by restarting the computation. Note that this causes an
+     additional increment of the counter, thus leading to an inconsisten value
+     of base observed by middlle (3) and summit (4) nodes. *)
   [%expect
     {|
     Started evaluating summit
@@ -1397,8 +1399,10 @@ let%expect_test "Abandoned node with no cutoff is handled correctly" =
     Evaluated base: 3
     Evaluated middle: 3
     *** Recalled captured base ***
-    Evaluated summit: 1
-    f 0 = Ok 1
+    Started evaluating base
+    Evaluated base: 4
+    Evaluated summit: 4
+    f 0 = Ok 4
     |}]
 
 let print_exns f =

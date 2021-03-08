@@ -939,7 +939,10 @@ end = struct
                   Exec_unknown.restore_from_cache_internal_from_sync dep
                 in
                 match restore_result with
-                | Ok _cached_value -> go deps
+                | Ok cached_value -> (
+                  match Value_id.equal cached_value.id v_id with
+                  | true -> go deps
+                  | false -> Changed )
                 | Error (Cancelled { dependency_cycle }) ->
                   Cancelled { dependency_cycle }
                 | Error (Not_found | Out_of_date _) -> Changed )
@@ -1125,7 +1128,10 @@ end = struct
                   Exec_unknown.restore_from_cache_internal dep
                 in
                 match restore_result with
-                | Ok _cached_value -> go deps
+                | Ok cached_value -> (
+                  match Value_id.equal cached_value.id v_id with
+                  | true -> go deps
+                  | false -> Fiber.return Changed_or_not.Changed )
                 | Error (Cancelled { dependency_cycle }) ->
                   Fiber.return (Changed_or_not.Cancelled { dependency_cycle })
                 | Error (Not_found | Out_of_date _) ->

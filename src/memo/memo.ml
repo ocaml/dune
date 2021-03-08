@@ -942,10 +942,10 @@ end = struct
                 | Ok cached_value -> (
                   match Value_id.equal cached_value.id v_id with
                   | true -> go deps
-                  | false -> Changed )
+                  | false -> Changed)
                 | Error (Cancelled { dependency_cycle }) ->
                   Cancelled { dependency_cycle }
-                | Error (Not_found | Out_of_date _) -> Changed )
+                | Error (Not_found | Out_of_date _) -> Changed)
               | Yes _equal -> (
                 (* If [dep] has a cutoff predicate, it is not sufficient to
                    check whether it is up to date: even if it isn't, after we
@@ -960,7 +960,7 @@ end = struct
                      value [id] will be new, so we will take the [false] branch. *)
                   match Value_id.equal cached_value.id v_id with
                   | true -> go deps
-                  | false -> Changed ) ) )
+                  | false -> Changed)))
           in
           go cached_value.deps
         in
@@ -1022,14 +1022,14 @@ end = struct
              let restore_result =
                restore_from_cache dep_node.last_cached_value
              in
-             ( match restore_result with
+             (match restore_result with
              | Ok _ -> dep_node.state <- Not_considering
-             | Error _ -> () );
+             | Error _ -> ());
              restore_result))
     in
     let compute =
       lazy
-        ( match Lazy.force restore_from_cache with
+        (match Lazy.force restore_from_cache with
         | Ok cached_value -> cached_value
         | Error cache_lookup_failure ->
           Call_stack.push_sync_frame frame (fun () ->
@@ -1039,7 +1039,7 @@ end = struct
               in
               dep_node.last_cached_value <- Some cached_value;
               dep_node.state <- Not_considering;
-              cached_value) )
+              cached_value))
     in
     let completion : _ Sample_attempt.Completion.Sync.t =
       { restore_from_cache; compute }
@@ -1057,7 +1057,7 @@ end = struct
     | Not_considering -> (
       match get_cached_value_in_current_cycle dep_node with
       | None -> newly_considering dep_node
-      | Some cv -> Finished cv )
+      | Some cv -> Finished cv)
     | Considering
         { running = { dag_node; deps_so_far = _ }
         ; completion = Sync completion
@@ -1131,11 +1131,11 @@ end = struct
                 | Ok cached_value -> (
                   match Value_id.equal cached_value.id v_id with
                   | true -> go deps
-                  | false -> Fiber.return Changed_or_not.Changed )
+                  | false -> Fiber.return Changed_or_not.Changed)
                 | Error (Cancelled { dependency_cycle }) ->
                   Fiber.return (Changed_or_not.Cancelled { dependency_cycle })
                 | Error (Not_found | Out_of_date _) ->
-                  Fiber.return Changed_or_not.Changed )
+                  Fiber.return Changed_or_not.Changed)
               | Yes _equal -> (
                 (* If [dep] has a cutoff predicate, it is not sufficient to
                    check whether it is up to date: even if it isn't, after we
@@ -1152,7 +1152,7 @@ end = struct
                      value [id] will be new, so we will take the [false] branch. *)
                   match Value_id.equal cached_value.id v_id with
                   | true -> go deps
-                  | false -> Fiber.return Changed_or_not.Changed ) ) )
+                  | false -> Fiber.return Changed_or_not.Changed)))
           in
           go cached_value.deps
         in
@@ -1214,9 +1214,9 @@ end = struct
               let+ restore_result =
                 restore_from_cache dep_node.last_cached_value
               in
-              ( match restore_result with
+              (match restore_result with
               | Ok _ -> dep_node.state <- Not_considering
-              | Error _ -> () );
+              | Error _ -> ());
               restore_result))
     in
     let compute =
@@ -1248,7 +1248,7 @@ end = struct
     | Not_considering -> (
       match get_cached_value_in_current_cycle dep_node with
       | None -> newly_considering dep_node
-      | Some cv -> Finished cv )
+      | Some cv -> Finished cv)
     | Considering
         { running = { dag_node; deps_so_far = _ }
         ; completion = Async completion

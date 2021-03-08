@@ -201,7 +201,8 @@ end = struct
 
   let apply2 f x y k =
     let backup = !current in
-    (try f x y k with exn -> forward_error exn);
+    (try f x y k with
+    | exn -> forward_error exn);
     current := backup
 
   let reraise_all exns =

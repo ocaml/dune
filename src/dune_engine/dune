@@ -19,6 +19,7 @@
   dune_glob
   ocaml_config
   catapult
+  task_queue
   jbuild_support
   dune_action_plugin
   dune_util

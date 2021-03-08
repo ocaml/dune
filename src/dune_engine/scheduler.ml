@@ -710,7 +710,9 @@ module Rpc0 = struct
       Event.Queue.register_rpc_started q;
       (ivar, fill)
     in
-    { Csexp_rpc.Scheduler.create_thread_safe_ivar; spawn_thread = Thread.spawn }
+    { Task_queue.Scheduler.create_thread_safe_ivar
+    ; spawn_thread = Thread.spawn
+    }
 
   let delete_cleanup = function
     | None -> ()

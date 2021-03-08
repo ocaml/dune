@@ -1,3 +1,9 @@
+2.8.4 (08/03/2021)
+------------------
+
+- Fix crash when META file for `compiler-libs.toplevel` is present
+  (@jeremiedimino, #4249)
+
 2.8.3 (07/03/2021)
 ------------------
 

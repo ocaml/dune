@@ -319,6 +319,12 @@ struct
 
     let merge_facts = Build_deps.merge_facts
 
+    (* Used to build files that we need now, for instance for [contents] or
+       [line_of], but are not dependency of the action that is being computed. *)
+    let build_deps_that_are_not_action_deps deps =
+      let+ _deps = Build_deps.build_deps deps in
+      ()
+
     let rec exec : type a. a t -> (a * Build_deps.fact Dep.Map.t) Memo.Build.t =
       function
       | Pure x -> Memo.Build.return (x, Dep.Map.empty)
@@ -348,16 +354,22 @@ struct
         let+ deps = Build_deps.register_action_deps deps in
         ((), deps)
       | Paths_for_rule ps ->
-        let+ _deps = Build_deps.build_deps (Dep.Set.of_files_set ps) in
+        let+ () =
+          build_deps_that_are_not_action_deps (Dep.Set.of_files_set ps)
+        in
         ((), Dep.Map.empty)
       | Paths_glob g ->
         let+ ps, fact = Build_deps.register_action_dep_pred g in
         (ps, Dep.Map.singleton (Dep.file_selector g) fact)
       | Contents p ->
-        let+ _deps = Build_deps.build_deps (Dep.Set.singleton (Dep.file p)) in
+        let+ () =
+          build_deps_that_are_not_action_deps (Dep.Set.singleton (Dep.file p))
+        in
         (Io.read_file p, Dep.Map.empty)
       | Lines_of p ->
-        let+ _deps = Build_deps.build_deps (Dep.Set.singleton (Dep.file p)) in
+        let+ () =
+          build_deps_that_are_not_action_deps (Dep.Set.singleton (Dep.file p))
+        in
         (Io.lines_of_file p, Dep.Map.empty)
       | Dyn_paths t ->
         let* (x, paths), deps_x = exec t in

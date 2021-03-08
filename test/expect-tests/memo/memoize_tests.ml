@@ -1388,8 +1388,8 @@ let%expect_test "Abandoned node with no cutoff is recomputed" =
   evaluate_and_print summit 0;
   (* We will now attempt to force [compute] of a stale computation but this is
      handled correctly by restarting the computation. Note that this causes an
-     additional increment of the counter, thus leading to an inconsisten value
-     of base observed by middlle (3) and summit (4) nodes. *)
+     additional increment of the counter, thus leading to an inconsistent value
+     of [base] observed by the [middle] (3) and [summit] (4) nodes. *)
   [%expect
     {|
     Started evaluating summit

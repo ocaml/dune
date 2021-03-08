@@ -368,34 +368,41 @@ end
    of ['a Lazy.t] but for asynchronous computations. *)
 module Once = struct
   type 'a state =
-    | Not_forced of (unit -> 'a Fiber.t)
+    | Not_forced of { must_not_raise : unit -> 'a Fiber.t }
     | Forced of 'a Fiber.Ivar.t
 
   type 'a t = { mutable state : 'a state }
 
-  let create thunk = { state = Not_forced thunk }
+  (* If a given thunk does in fact raise an exception, forcing it will propagate
+     the exception to the first caller, and leave all subsequent callers stuck,
+     forever waiting for the unfilled [Ivar.t]. *)
+  let create ~must_not_raise = { state = Not_forced { must_not_raise } }
 
+  (* Note that side effects of the shared fiber will happen only when the fiber
+     returned by [force t] is executed. *)
   let force t =
-    match t.state with
-    | Forced ivar ->
-      let+ res = Fiber.Ivar.read ivar in
-      res
-    | Not_forced thunk ->
-      let ivar = Fiber.Ivar.create () in
-      t.state <- Forced ivar;
-      let* result = thunk () in
-      let+ () = Fiber.Ivar.fill ivar result in
-      result
+    Fiber.of_thunk (fun () ->
+        match t.state with
+        | Forced ivar ->
+          let+ res = Fiber.Ivar.read ivar in
+          res
+        | Not_forced { must_not_raise } ->
+          let ivar = Fiber.Ivar.create () in
+          t.state <- Forced ivar;
+          let* result = must_not_raise () in
+          let+ () = Fiber.Ivar.fill ivar result in
+          result)
 
-  (* Almost a monadic bind but [f] returns a [Fiber.t], not a [t]. *)
-  let and_then t ~f = create (fun () -> Fiber.bind (force t) ~f)
+  (* Like a monadic bind but [f_must_not_raise] returns a [Fiber.t], not a [t]. *)
+  let and_then t ~f_must_not_raise =
+    create ~must_not_raise:(fun () -> Fiber.bind (force t) ~f:f_must_not_raise)
 end
 
 (* An attempt to sample the current value of a node. It's an "attempt" because
-   it can be cancelled due to a dependency cycle.
+   it can fail due to a dependency cycle.
 
    A sample attempt begins its life in the [Running] state. Multiple readers can
-   concurrently subscribe to the (possibly future) result of the attempt using
+   concurrently subscribe to the (possibly future) [result] of the attempt using
    the [restore] and [compute] functions. If the attempt succeeds, it goes to
    the [Finished] state.
 
@@ -404,14 +411,15 @@ end
    there until the end of the current run. When the run completes, the DAG is
    garbage collected because we no longer hold any references to its nodes. *)
 module Sample_attempt = struct
-  type ('a, 'c) t =
+  (* ['r] will be instantiated to ['a Result.Sync.t] or ['a Result.Async.t]. *)
+  type ('a, 'r) t =
     | Finished of 'a
     | Running of
         { dag_node : Dag.node
-        ; completion : 'c
+        ; result : 'r
         }
 
-  module Completion = struct
+  module Result = struct
     module Sync = struct
       type 'a t =
         { restore_from_cache : 'a Cache_lookup.Result.t Lazy.t
@@ -420,11 +428,11 @@ module Sample_attempt = struct
 
       let restore = function
         | Finished cached_value -> Ok cached_value
-        | Running { completion; _ } -> Lazy.force completion.restore_from_cache
+        | Running { result; _ } -> Lazy.force result.restore_from_cache
 
       let compute = function
         | Finished cached_value -> cached_value
-        | Running { completion; _ } -> Lazy.force completion.compute
+        | Running { result; _ } -> Lazy.force result.compute
     end
 
     module Async = struct
@@ -435,26 +443,26 @@ module Sample_attempt = struct
 
       let restore = function
         | Finished cached_value -> Fiber.return (Ok cached_value)
-        | Running { completion; _ } -> Once.force completion.restore_from_cache
+        | Running { result; _ } -> Once.force result.restore_from_cache
 
       let compute = function
         | Finished cached_value -> Fiber.return cached_value
-        | Running { completion; _ } -> Once.force completion.compute
+        | Running { result; _ } -> Once.force result.compute
     end
   end
 end
 
 module M = struct
-  module rec Completion : sig
+  module rec Sample_attempt_result : sig
     type ('a, 'b, 'f) t =
       | Sync :
-          'b Cached_value.t Sample_attempt.Completion.Sync.t
+          'b Cached_value.t Sample_attempt.Result.Sync.t
           -> ('a, 'b, 'a -> 'b) t
       | Async :
-          'b Cached_value.t Sample_attempt.Completion.Async.t
+          'b Cached_value.t Sample_attempt.Result.Async.t
           -> ('a, 'b, 'a -> 'b Fiber.t) t
   end =
-    Completion
+    Sample_attempt_result
 
   and Cached_value : sig
     type 'a t =
@@ -517,14 +525,14 @@ module M = struct
 
      To distinguish between "current" and "stale" computations, we store the
      [run] in which the computation had started. In this way, before subscribing
-     to the [completion] of a sample attempt, we can check if it corresponds to
-     the current run, and if not, restart the attempt from scratch. This is what
-     the function [currently_considering] does.
+     to a [sample_attempt_result], we can check if it corresponds to the current
+     run, and if not, restart the sample attempt from scratch. This is what the
+     function [currently_considering] does.
 
      Once all stale computations have been restarted, we should hold no more
-     references to the corresponding [completion]s, allowing them to be garbage
-     collected. Note that some stale computations may never be restarted, e.g.
-     if the corresponding references are kept behind an inactive conditional. *)
+     references to the corresponding [sample_attempt_result]s, allowing them to
+     be garbage collected. Note: some stale computations may never be restarted,
+     e.g. if they end up getting forever stuck behind an inactive conditional. *)
   and State : sig
     type ('a, 'b, 'f) t =
       (* [Considering] marks computations currently being considered, i.e. whose
@@ -533,7 +541,7 @@ module M = struct
       | Considering of
           { run : Run.t
           ; running : Running_state.t
-          ; completion : ('a, 'b, 'f) Completion.t
+          ; sample_attempt_result : ('a, 'b, 'f) Sample_attempt_result.t
           }
   end =
     State
@@ -1041,16 +1049,16 @@ end = struct
               dep_node.state <- Not_considering;
               cached_value))
     in
-    let completion : _ Sample_attempt.Completion.Sync.t =
+    let result : _ Sample_attempt.Result.Sync.t =
       { restore_from_cache; compute }
     in
     dep_node.state <-
       Considering
         { run = Run.current ()
         ; running = running_state
-        ; completion = Sync completion
+        ; sample_attempt_result = Sync result
         };
-    Sample_attempt.Running { dag_node; completion }
+    Sample_attempt.Running { dag_node; result }
 
   let start_considering (dep_node : ('a, 'b, 'a -> 'b) Dep_node.t) =
     match currently_considering dep_node.state with
@@ -1060,10 +1068,10 @@ end = struct
       | Some cv -> Finished cv)
     | Considering
         { running = { dag_node; deps_so_far = _ }
-        ; completion = Sync completion
+        ; sample_attempt_result = Sync result
         ; _
         } ->
-      Running { dag_node; completion }
+      Running { dag_node; result }
 
   let consider (dep_node : _ Dep_node.t) =
     let sample_attempt = start_considering dep_node in
@@ -1071,11 +1079,11 @@ end = struct
     |> Result.map ~f:(fun () -> sample_attempt)
 
   let compute_internal dep_node =
-    Result.map (consider dep_node) ~f:Sample_attempt.Completion.Sync.compute
+    Result.map (consider dep_node) ~f:Sample_attempt.Result.Sync.compute
 
   let restore_from_cache_internal dep_node =
     match consider dep_node with
-    | Ok sample_attempt -> Sample_attempt.Completion.Sync.restore sample_attempt
+    | Ok sample_attempt -> Sample_attempt.Result.Sync.restore sample_attempt
     | Error dependency_cycle -> Error (Cancelled { dependency_cycle })
 
   let exec_dep_node dep_node =
@@ -1209,7 +1217,7 @@ end = struct
       T { without_state = dep_node.without_state; running_state }
     in
     let restore_from_cache =
-      Once.create (fun () ->
+      Once.create ~must_not_raise:(fun () ->
           Call_stack.push_async_frame frame (fun () ->
               let+ restore_result =
                 restore_from_cache dep_node.last_cached_value
@@ -1220,7 +1228,7 @@ end = struct
               restore_result))
     in
     let compute =
-      Once.and_then restore_from_cache ~f:(function
+      Once.and_then restore_from_cache ~f_must_not_raise:(function
         | Ok cached_value -> Fiber.return cached_value
         | Error cache_lookup_failure ->
           Call_stack.push_async_frame frame (fun () ->
@@ -1232,16 +1240,16 @@ end = struct
               dep_node.state <- Not_considering;
               cached_value))
     in
-    let completion : _ Sample_attempt.Completion.Async.t =
+    let result : _ Sample_attempt.Result.Async.t =
       { restore_from_cache; compute }
     in
     dep_node.state <-
       Considering
         { run = Run.current ()
         ; running = running_state
-        ; completion = Async completion
+        ; sample_attempt_result = Async result
         };
-    Sample_attempt.Running { dag_node; completion }
+    Sample_attempt.Running { dag_node; result }
 
   let start_considering (dep_node : _ Dep_node.t) =
     match currently_considering dep_node.state with
@@ -1251,10 +1259,10 @@ end = struct
       | Some cv -> Finished cv)
     | Considering
         { running = { dag_node; deps_so_far = _ }
-        ; completion = Async completion
+        ; sample_attempt_result = Async result
         ; _
         } ->
-      Running { dag_node; completion }
+      Running { dag_node; result }
 
   let consider (dep_node : _ Dep_node.t) =
     let sample_attempt = start_considering dep_node in
@@ -1262,12 +1270,11 @@ end = struct
     |> Result.map ~f:(fun () -> sample_attempt)
 
   let compute_internal (dep_node : _ Dep_node.t) =
-    Result.map (consider dep_node) ~f:Sample_attempt.Completion.Async.compute
+    Result.map (consider dep_node) ~f:Sample_attempt.Result.Async.compute
 
   let restore_from_cache_internal (dep_node : _ Dep_node.t) =
     match consider dep_node with
-    | Ok sample_attempt ->
-      Sample_attempt.Completion.Async.restore sample_attempt
+    | Ok sample_attempt -> Sample_attempt.Result.Async.restore sample_attempt
     | Error dependency_cycle ->
       Fiber.return (Error (Cache_lookup.Failure.Cancelled { dependency_cycle }))
 

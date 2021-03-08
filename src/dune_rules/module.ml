@@ -249,10 +249,6 @@ module Obj_map = struct
 
     let to_dyn = to_dyn
   end)
-
-  let top_closure =
-    let module T = Top_closure.Make (Module_name.Unique.Set) (Monad.Id) in
-    fun t -> T.top_closure ~key:obj_name ~deps:(find_exn t)
 end
 
 let encode

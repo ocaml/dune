@@ -21,16 +21,28 @@ let deps_of t (m : Module.t) =
       ; ("m", Module.to_dyn m)
       ]
 
+module Top_closure = struct
+  module Action_builder = struct
+    include Action_builder
+
+    let ( >>= ) t f = Action_builder.Expert.action_builder (map t ~f)
+
+    module O = struct
+      include O
+
+      let ( let* ) = ( >>= )
+    end
+  end
+
+  include Top_closure.Make (Module_name.Unique.Set) (Action_builder)
+end
+
 let top_closed t modules =
-  let+ per_module =
-    Module.Obj_map.to_list t.per_module
-    |> List.map ~f:(fun (unit, deps) ->
-           let+ deps = deps in
-           (unit, deps))
-    |> Action_builder.all
+  let+ res =
+    Top_closure.top_closure modules ~key:Module.obj_name
+      ~deps:(Module.Obj_map.find_exn t.per_module)
   in
-  let per_module = Module.Obj_map.of_list_exn per_module in
-  match Module.Obj_map.top_closure per_module modules with
+  match res with
   | Ok modules -> modules
   | Error cycle ->
     User_error.raise

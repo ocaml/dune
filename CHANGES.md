@@ -89,6 +89,9 @@ Unreleased
 - It is now possible to define action dependencies through a chain
   of aliases. (#4303, @aalekseyev)
 
+- If an .ml file is not used by an executable, Dune no longer report
+  parsing error in this file (#...., @jeremiedimino)
+
 2.8.2 (21/01/2021)
 ------------------
 

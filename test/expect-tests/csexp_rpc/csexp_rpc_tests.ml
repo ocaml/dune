@@ -221,9 +221,9 @@ let%expect_test "csexp server life cycle" =
         let* () = Session.write client (Some (List [ Atom "from client" ])) in
         log "written";
         let* response = Session.read client in
-        ( match response with
+        (match response with
         | None -> log "no response"
-        | Some sexp -> log "received %s" (Csexp.to_string sexp) );
+        | Some sexp -> log "received %s" (Csexp.to_string sexp));
         let+ () = Session.write client None in
         log "closed";
         Server.stop server)

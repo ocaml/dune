@@ -192,7 +192,7 @@ let get_ctx (path : Path.Build.t) =
   | Some (name, sub) -> (
     match Context_name.of_string_opt name with
     | None -> None
-    | Some ctx -> Some (ctx, Path.Source.of_local sub) )
+    | Some ctx -> Some (ctx, Path.Source.of_local sub))
 
 let describe alias =
   match get_ctx alias.dir with

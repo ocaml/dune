@@ -91,8 +91,8 @@ let findlib_init_code ~preds ~libs =
   Buffer.contents buf
 
 let build_info_code cctx ~libs ~api_version =
-  ( match api_version with
-  | Lib_info.Special_builtin_support.Build_info.V1 -> () );
+  (match api_version with
+  | Lib_info.Special_builtin_support.Build_info.V1 -> ());
   (* [placeholders] is a mapping from source path to variable names. For each
      binding [(p, v)], we will generate the following code:
 
@@ -123,7 +123,7 @@ let build_info_code cctx ~libs ~api_version =
       | None ->
         let var = gen_placeholder_var () in
         placeholders := Path.Source.Map.set !placeholders p var;
-        var )
+        var)
   in
   let version_of_package (p : Package.t) =
     match p.version with
@@ -152,7 +152,7 @@ let build_info_code cctx ~libs ~api_version =
               let p =
                 Path.drop_build_context_exn (Obj_dir.dir (Lib.obj_dir lib))
               in
-              placeholder p ) ))
+              placeholder p) ))
   in
   let context = CC.context cctx in
   let ocaml_version = Ocaml_version.of_ocaml_config context.ocaml_config in
@@ -253,7 +253,8 @@ let handle_special_libs cctx =
               ~precompiled_cmi:true
           in
           process_libs libs
-            ~to_link_rev:(LM.Lib lib :: Module (obj_dir, module_) :: to_link_rev)
+            ~to_link_rev:
+              (LM.Lib lib :: Module (obj_dir, module_) :: to_link_rev)
             ~force_linkall
         | Findlib_dynload ->
           (* If findlib.dynload is linked, we stores in the binary the packages
@@ -281,7 +282,8 @@ let handle_special_libs cctx =
               ~requires ~precompiled_cmi:false
           in
           process_libs libs
-            ~to_link_rev:(LM.Module (obj_dir, module_) :: Lib lib :: to_link_rev)
+            ~to_link_rev:
+              (LM.Module (obj_dir, module_) :: Lib lib :: to_link_rev)
             ~force_linkall:true
         | Configurator _ ->
           process_libs libs
@@ -302,7 +304,8 @@ let handle_special_libs cctx =
               ~precompiled_cmi:true
           in
           process_libs libs
-            ~to_link_rev:(LM.Lib lib :: Module (obj_dir, module_) :: to_link_rev)
-            ~force_linkall ) )
+            ~to_link_rev:
+              (LM.Lib lib :: Module (obj_dir, module_) :: to_link_rev)
+            ~force_linkall))
   in
   process_libs all_libs ~to_link_rev:[] ~force_linkall:false

@@ -129,14 +129,14 @@ let%expect_test "call private method" =
   let client client =
     printfn "client: sending request";
     let* resp = Client.request client decl 5 in
-    ( match resp with
+    (match resp with
     | Error _ -> assert false
-    | Ok s -> printfn "client: result %d" s );
+    | Ok s -> printfn "client: result %d" s);
     printfn "client: sending invalid request";
     let* resp = Client.request client decl 0 in
-    ( match resp with
+    (match resp with
     | Error e -> printfn "client: error %s" e.message
-    | Ok _ -> assert false );
+    | Ok _ -> assert false);
     Fiber.return ()
   in
   let init =
@@ -168,9 +168,9 @@ let%expect_test "versioning public methods" =
   let client client =
     printfn "client: sending request";
     let* resp = Client.request client decl 0 in
-    ( match resp with
+    (match resp with
     | Error e -> printfn "client: error %s" e.message
-    | Ok _ -> assert false );
+    | Ok _ -> assert false);
     Fiber.return ()
   in
   let init =
@@ -209,9 +209,9 @@ let%expect_test "versioning public methods" =
   let client client =
     printfn "client: sending request";
     let* resp = Client.request client decl (10, None) in
-    ( match resp with
+    (match resp with
     | Error _ -> assert false
-    | Ok x -> printfn "client: %d" x );
+    | Ok x -> printfn "client: %d" x);
     let+ resp = Client.request client decl (10, Some 20) in
     match resp with
     | Error e -> printfn "client: error %s" e.message

@@ -79,7 +79,7 @@ let decode_manually f =
             | exception User_error.E msg
               when Pform.Env.syntax_version env < (3, 0) ->
               (* Before dune 3.0, unknown variable errors were delayed *)
-              Error (v, msg) ))
+              Error (v, msg)))
     }
 
 let decode = decode_manually Pform.Env.parse
@@ -273,10 +273,10 @@ module Make_expander (A : Applicative_intf.S1) :
                | None -> part
                | Some v ->
                  Text
-                   ( if t.quoted then
+                   (if t.quoted then
                      Value.L.concat v ~dir
                    else
-                     Value.to_string ~dir (Mode.value Single v ~source) ) )))
+                     Value.to_string ~dir (Mode.value Single v ~source)))))
     in
     let commit_text acc_text acc =
       let s = concat_rev acc_text in
@@ -331,7 +331,7 @@ let encode t =
                       (Dune_lang.Template.Pform.describe source)
                   ]
               | Success { name; payload } ->
-                Pform { loc = source.loc; name; payload } ))
+                Pform { loc = source.loc; name; payload }))
       }
 
 let to_dyn t = Dune_lang.to_dyn (encode t)

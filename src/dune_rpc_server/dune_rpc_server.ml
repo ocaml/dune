@@ -139,7 +139,7 @@ module H = struct
             in
             let* () = session.send None in
             let+ () = t.on_terminate session in
-            Session.close session ) )
+            Session.close session))
 
   module Builder = struct
     type info =
@@ -205,7 +205,7 @@ module H = struct
               &&
               match until with
               | None -> true
-              | Some until -> version <= until ))
+              | Some until -> version <= until))
       in
       let no_method_version_error ~method_ ~infos:_ =
         let payload = Sexp.record [ ("method", Atom method_) ] in
@@ -231,7 +231,7 @@ module H = struct
               abort session ~message:"Invalid notification payload"
                 ~payload:
                   (Sexp.record
-                     [ ("method", Atom n.method_); ("payload", n.params) ]) ) )
+                     [ ("method", Atom n.method_); ("payload", n.params) ])))
       in
       let on_request session (_id, (n : Call.t)) =
         let version = Initialize.Request.version (Session.initialize session) in
@@ -270,7 +270,7 @@ module H = struct
                 in
                 Error
                   (Response.Error.create ~kind:Code_error
-                     ~message:"server error" ~payload ()) ) ) )
+                     ~message:"server error" ~payload ()))))
       in
       { on_request; on_notification; on_init; version; on_terminate }
 

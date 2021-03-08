@@ -129,8 +129,8 @@ let mcompcycle =
 
 let%expect_test _ =
   counter := 0;
-  try run_memo mcompcycle 5 |> ignore
-  with Cycle_error.E err ->
+  try run_memo mcompcycle 5 |> ignore with
+  | Cycle_error.E err ->
     let cycle =
       Cycle_error.get err
       |> List.filter_map ~f:(Memo.Stack_frame.as_instance_of ~of_:mcompcycle)
@@ -571,7 +571,8 @@ let evaluate_and_print f x =
       Fiber.run
         ~iter:(fun () -> raise Exit)
         (Memo.Build.run (Memo.Build.collect_errors (fun () -> Memo.exec f x)))
-    with exn -> Error [ Exn_with_backtrace.capture exn ]
+    with
+    | exn -> Error [ Exn_with_backtrace.capture exn ]
   in
   print_result x res
 

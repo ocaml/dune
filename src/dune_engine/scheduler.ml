@@ -227,11 +227,11 @@ end = struct
 
     let available q =
       not
-        ( List.is_empty q.files_changed
+        (List.is_empty q.files_changed
         && Queue.is_empty q.jobs_completed
         && Signal.Set.is_empty q.signals
         && Queue.is_empty q.sync_tasks
-        && Queue.is_empty q.rpc_completed )
+        && Queue.is_empty q.rpc_completed)
 
     let sync_task q =
       match Queue.pop q.sync_tasks with
@@ -266,7 +266,7 @@ end = struct
               | Some (job, status) ->
                 q.pending_jobs <- q.pending_jobs - 1;
                 assert (q.pending_jobs >= 0);
-                Job_completed (job, status) )
+                Job_completed (job, status))
             | fns -> (
               q.files_changed <- [];
               let files =
@@ -281,7 +281,7 @@ end = struct
               in
               match files with
               | [] -> loop ()
-              | _ :: _ -> Files_changed files ) )
+              | _ :: _ -> Files_changed files))
       in
       let ev = loop () in
       Mutex.unlock q.mutex;
@@ -400,13 +400,13 @@ end = struct
          | None ->
            User_error.raise
              [ Pp.text
-                 ( if Sys.linux then
+                 (if Sys.linux then
                    "Please install inotifywait to enable watch mode. If \
                     inotifywait is unavailable, fswatch may also be used but \
                     will result in a worse experience."
                  else
-                   "Please install fswatch to enable watch mode." )
-             ] ))
+                   "Please install fswatch to enable watch mode.")
+             ]))
 
   let buffering_time = 0.5 (* seconds *)
 
@@ -427,11 +427,11 @@ end = struct
     for i = 0 to buffer.size - 1 do
       let c = Bytes.get buffer.data i in
       if c = '\n' || c = '\r' then (
-        ( if !line_start < i then
+        (if !line_start < i then
           let line =
             Bytes.sub_string buffer.data ~pos:!line_start ~len:(i - !line_start)
           in
-          lines := line :: !lines );
+          lines := line :: !lines);
         line_start := i + 1
       )
     done;
@@ -567,7 +567,8 @@ end = struct
   let killall t signal =
     Mutex.lock t.mutex;
     Process_table.iter t ~f:(fun job ->
-        try Unix.kill (Pid.to_int job.pid) signal with Unix.Unix_error _ -> ());
+        try Unix.kill (Pid.to_int job.pid) signal with
+        | Unix.Unix_error _ -> ());
     Mutex.unlock t.mutex
 
   exception Finished of job * Unix.process_status
@@ -578,7 +579,8 @@ end = struct
           let pid, status = Unix.waitpid [ WNOHANG ] (Pid.to_int job.pid) in
           if pid <> 0 then raise_notrace (Finished (job, status)));
       false
-    with Finished (job, status) ->
+    with
+    | Finished (job, status) ->
       (* We need to do the [Unix.waitpid] and remove the process while holding
          the lock, otherwise the pid might be reused in between. *)
       Process_table.remove t ~pid:job.pid status;
@@ -732,9 +734,9 @@ module Rpc0 = struct
             let socket =
               let dir =
                 Path.of_string
-                  ( match Xdg.runtime_dir with
+                  (match Xdg.runtime_dir with
                   | Some p -> p
-                  | None -> Filename.get_temp_dir_name () )
+                  | None -> Filename.get_temp_dir_name ())
               in
               Temp.temp_path ~dir ~prefix:"dune" ~suffix:""
             in
@@ -906,12 +908,12 @@ end = struct
       - terminating the scheduler on signals *)
   let rec iter (t : t) =
     if
-      ( match t.status with
+      (match t.status with
       | Waiting_for_file_changes _ ->
         (* In polling mode, there are no pending jobs while we are waiting for
            file changes *)
         false
-      | _ -> true )
+      | _ -> true)
       && Event.Queue.pending_jobs t.events = 0
       && Event.Queue.pending_rpc t.events = 0
     then
@@ -931,7 +933,7 @@ end = struct
           t.status <- Restarting_build;
           Process_watcher.killall t.process_watcher Sys.sigkill;
           iter t
-        | Waiting_for_file_changes ivar -> Fill (ivar, ()) )
+        | Waiting_for_file_changes ivar -> Fill (ivar, ()))
       | Rpc fill -> fill
       | Signal signal ->
         got_signal signal;
@@ -1025,9 +1027,9 @@ module Run = struct
       | Building -> (
         on_event t.config
           (Build_finish
-             ( match res with
+             (match res with
              | Error _ -> Failure
-             | Ok _ -> Success ));
+             | Ok _ -> Success));
         let ivar = Fiber.Ivar.create () in
         t.status <- Waiting_for_file_changes ivar;
         let* () = Fiber.Ivar.read ivar in
@@ -1036,7 +1038,7 @@ module Run = struct
         | Error _
         | Ok `Continue ->
           loop ()
-        | Ok `Stop -> Fiber.return () )
+        | Ok `Stop -> Fiber.return ())
     in
     let run = Rpc0.with_rpc_serve t.rpc loop in
     let exn, bt =

@@ -45,10 +45,10 @@ let run_build_command_once ~(common : Common.t) ~targets ~setup =
 
 let run_build_command ~(common : Common.t) ~targets =
   let setup () = make_setup common in
-  ( if Common.watch common then
+  (if Common.watch common then
     run_build_command_poll
   else
-    run_build_command_once )
+    run_build_command_once)
     ~setup ~common ~targets;
   Build_system.cache_teardown ()
 

@@ -177,7 +177,7 @@ let set_common ?log_file c =
               else
                 loop (Filename.concat acc "..") (Filename.dirname dir)
             in
-            loop ".." (Filename.dirname s) ) )
+            loop ".." (Filename.dirname s)))
     in
     Console.print [ Pp.verbatim (sprintf "Entering directory '%s'" dir) ]
 
@@ -270,12 +270,12 @@ let build_info =
              , ver_string (B.Statically_linked_library.version lib) ))
       |> List.sort ~compare:Poly.compare
     in
-    ( match libs with
+    (match libs with
     | [] -> ()
     | _ ->
       pr "statically linked libraries:";
       let longest = String.longest_map libs ~f:fst in
-      List.iter libs ~f:(fun (name, v) -> pr "- %-*s %s" longest name v) );
+      List.iter libs ~f:(fun (name, v) -> pr "- %-*s %s" longest name v));
     exit 0
   )
 

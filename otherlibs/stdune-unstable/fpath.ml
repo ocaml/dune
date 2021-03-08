@@ -31,10 +31,10 @@ let resolve_link path =
   | link ->
     Ok
       (Some
-         ( if Filename.is_relative link then
+         (if Filename.is_relative link then
            Filename.concat (Filename.dirname path) link
          else
-           link ))
+           link))
 
 type follow_symlink_error =
   | Not_a_symlink
@@ -57,13 +57,14 @@ let follow_symlink path =
   | Error e -> Error (Unix_error e)
 
 let win32_unlink fn =
-  try Unix.unlink fn
-  with Unix.Unix_error (Unix.EACCES, _, _) as e -> (
+  try Unix.unlink fn with
+  | Unix.Unix_error (Unix.EACCES, _, _) as e -> (
     try
       (* Try removing the read-only attribute *)
       Unix.chmod fn 0o666;
       Unix.unlink fn
-    with _ -> raise e )
+    with
+    | _ -> raise e)
 
 let unlink =
   if Stdlib.Sys.win32 then
@@ -71,4 +72,6 @@ let unlink =
   else
     Unix.unlink
 
-let unlink_no_err t = try unlink t with _ -> ()
+let unlink_no_err t =
+  try unlink t with
+  | _ -> ()

@@ -80,7 +80,7 @@ let obj_files x ~wrapper_name ~mode ~obj_dir ~obj_files_mode =
     match obj_files_mode with
     | Build Vo -> [ x.name ^ ".vo"; "." ^ x.name ^ ".aux"; x.name ^ ".glob" ]
     | Build Vos -> [ x.name ^ ".vos" ]
-    | Install -> [ x.name ^ ".vo"; x.name ^ ".vos" ]
+    | Install -> [ x.name ^ ".vo" ]
   in
   List.map obj_files ~f:(fun fname ->
       (Path.Build.relative vo_dir fname, Filename.concat install_vo_dir fname))

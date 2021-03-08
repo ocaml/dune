@@ -36,7 +36,5 @@
   Error: System error: "./thy2/.a.aux: Permission denied"
   
   -> required by thy2/a.vos
-  -> required by install lib/coq/user-contrib/thy2/a.vos
-  -> required by cplugin.install
-  -> required by alias all
+  -> required by alias thy2/all
   [1]

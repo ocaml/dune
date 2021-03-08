@@ -24,12 +24,4 @@ At the moment, this doesn't work; dune still try to parse ml files
 that are not used:
 
   $ dune exec ./x.exe
-  File "y.ml", line 1, characters 0-2:
-  1 | (* unclosed comment
-      ^^
-  Error: Comment not terminated
-  File "z.ml", line 1, characters 0-2:
-  1 | (* unclosed comment
-      ^^
-  Error: Comment not terminated
-  [1]
+  Hello, world!

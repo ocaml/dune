@@ -1272,6 +1272,8 @@ end = struct
   module Build_exec = Action_builder.Make_exec (struct
     type fact = Dep.Fact.t
 
+    let merge_facts = Dep.Facts.union
+
     let build_deps = build_deps
 
     let register_action_deps = build_deps
@@ -2041,6 +2043,8 @@ module Rule_top_closure = Top_closure.Make (Rule.Id.Set) (Monad.Id)
 (* Evaluate a rule without building the action dependencies *)
 module Eval_action_builder = Action_builder.Make_exec (struct
   type fact = unit
+
+  let merge_facts = Dep.Set.union
 
   let build_deps deps =
     let+ _facts = build_deps deps in

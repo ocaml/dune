@@ -206,6 +206,8 @@ module Expander : String_with_vars.Expander with type 'a app := 'a t
 module Make_exec (Build_deps : sig
   type fact
 
+  val merge_facts : fact Dep.Map.t -> fact Dep.Map.t -> fact Dep.Map.t
+
   (** Wait until the given set of dependencies is built *)
   val build_deps : Dep.Set.t -> fact Dep.Map.t Memo.Build.t
 

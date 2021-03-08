@@ -283,6 +283,8 @@ let dyn_memo_build f = Dyn_memo_build f
 module Make_exec (Build_deps : sig
   type fact
 
+  val merge_facts : fact Dep.Map.t -> fact Dep.Map.t -> fact Dep.Map.t
+
   val build_deps : Dep.Set.t -> fact Dep.Map.t Memo.Build.t
 
   val register_action_deps : Dep.Set.t -> fact Dep.Map.t Memo.Build.t
@@ -315,7 +317,7 @@ struct
     module Poly_memo = Memo.Poly.Async (Function)
     open Memo.Build.O
 
-    let merge_facts a b = Dep.Map.union a b ~f:(fun _ a _ -> Some a)
+    let merge_facts = Build_deps.merge_facts
 
     let rec exec : type a. a t -> (a * Build_deps.fact Dep.Map.t) Memo.Build.t =
       function

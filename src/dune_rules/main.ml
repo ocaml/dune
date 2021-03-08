@@ -1,7 +1,7 @@
 open! Dune_engine
 open! Stdune
 open Import
-open Memo.Build.O
+open Fiber.O
 
 let () = Inline_tests.linkme
 
@@ -47,7 +47,7 @@ let scan_workspace ?workspace_file ?x ?(capture_outputs = true) ?profile
   let env = setup_env ~capture_outputs in
   let conf = Dune_load.load ~ancestor_vcs in
   let () = Workspace.init ?x ?profile ?instrument_with ?workspace_file () in
-  let+ contexts = Context.DB.all () in
+  let+ contexts = Memo.Build.run (Context.DB.all ()) in
   List.iter contexts ~f:(fun (ctx : Context.t) ->
       let open Pp.O in
       Log.info
@@ -58,6 +58,7 @@ let scan_workspace ?workspace_file ?x ?(capture_outputs = true) ?profile
 
 let init_build_system ?only_packages ~sandboxing_preference ?caching
     ?build_mutex w =
+  let open Fiber.O in
   Build_system.reset ();
   let promote_source ?chmod ~src ~dst ctx =
     let conf = Artifact_substitution.conf_of_context ctx in
@@ -69,7 +70,7 @@ let init_build_system ?only_packages ~sandboxing_preference ?caching
     ~contexts:(List.map ~f:Context.build_context w.contexts)
     ?caching ?build_mutex ();
   List.iter w.contexts ~f:Context.init_configurator;
-  let+ scontexts = Gen_rules.gen w.conf ~contexts:w.contexts ?only_packages in
+  let+ scontexts = Gen_rules.init w.conf ~contexts:w.contexts ?only_packages in
   { workspace = w; scontexts }
 
 let find_context_exn t ~name =

@@ -2,6 +2,7 @@ open! Dune_engine
 open! Stdune
 open Import
 open! No_io
+open Memo.Build.O
 module Buildable = Dune_file.Buildable
 module Library = Dune_file.Library
 module Mode_conf = Dune_file.Mode_conf
@@ -336,7 +337,7 @@ let cctx (lib : Library.t) ~sctx ~source_modules ~dir ~expander ~scope
     ~compile_info =
   let flags = Super_context.ocaml_flags sctx ~dir lib.buildable.flags in
   let obj_dir = Library.obj_dir ~dir lib in
-  let vimpl = Virtual_rules.impl sctx ~lib ~scope in
+  let+ vimpl = Virtual_rules.impl sctx ~lib ~scope in
   let ctx = Super_context.context sctx in
   let instrumentation_backend =
     Lib.DB.instrumentation_backend (Scope.libs scope)
@@ -391,7 +392,7 @@ let library_rules (lib : Library.t) ~cctx ~source_modules ~dir_contents
   Option.iter vimpl ~f:(Virtual_rules.setup_copy_rules_for_impl ~sctx ~dir);
   Check_rules.add_obj_dir sctx ~obj_dir;
   gen_wrapped_compat_modules lib cctx;
-  Module_compilation.build_all cctx ~dep_graphs;
+  let* () = Module_compilation.build_all cctx ~dep_graphs in
   let expander = Super_context.expander sctx ~dir in
   let preprocess =
     Preprocess.Per_module.with_instrumentation lib.buildable.preprocess
@@ -407,14 +408,16 @@ let library_rules (lib : Library.t) ~cctx ~source_modules ~dir_contents
         ~dir_contents ~vlib_stubs_o_files
   in
   Odoc.setup_library_odoc_rules cctx lib ~dep_graphs;
-  Sub_system.gen_rules
-    { super_context = sctx
-    ; dir
-    ; stanza = lib
-    ; scope
-    ; source_modules
-    ; compile_info
-    };
+  let+ () =
+    Sub_system.gen_rules
+      { super_context = sctx
+      ; dir
+      ; stanza = lib
+      ; scope
+      ; source_modules
+      ; compile_info
+      }
+  in
   ( cctx
   , Merlin.make ~requires:requires_compile ~stdlib_dir ~flags ~modules
       ~preprocess ~libname:(snd lib.name) ~obj_dir
@@ -422,18 +425,17 @@ let library_rules (lib : Library.t) ~cctx ~source_modules ~dir_contents
       ~ident:(Lib.Compile.merlin_ident compile_info)
       () )
 
-let rules (lib : Library.t) ~sctx ~dir_contents ~dir ~expander ~scope :
-    Compilation_context.t * Merlin.t =
+let rules (lib : Library.t) ~sctx ~dir_contents ~dir ~expander ~scope =
   let compile_info =
     Lib.DB.get_compile_info (Scope.libs scope) (Library.best_name lib)
       ~allow_overlaps:lib.buildable.allow_overlapping_dependencies
   in
   let f () =
-    let source_modules =
+    let* source_modules =
       Dir_contents.ocaml dir_contents
-      |> Ml_sources.modules ~for_:(Library (Library.best_name lib))
+      >>| Ml_sources.modules ~for_:(Library (Library.best_name lib))
     in
-    let cctx =
+    let* cctx =
       cctx lib ~sctx ~source_modules ~dir ~scope ~expander ~compile_info
     in
     library_rules lib ~cctx ~source_modules ~dir_contents ~compile_info

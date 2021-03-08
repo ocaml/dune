@@ -11,7 +11,7 @@ type t
 
 val modules_of_lib :
   (* to avoid a cycle with [Dir_contents] *)
-  (t -> dir:Path.Build.t -> name:Lib_name.t -> Modules.t) Fdecl.t
+  (t -> dir:Path.Build.t -> name:Lib_name.t -> Modules.t Memo.Build.t) Fdecl.t
 
 val to_dyn : t -> Dyn.t
 

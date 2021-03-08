@@ -240,7 +240,7 @@ field of a (rule).
   File "dune", line 3, characters 7-16:
   3 |  (deps %{cmo:x2})
              ^^^^^^^^^
-  Error: %{cmo:..} isn't allowed in this position.
+  Error: Module X2 does not exist.
   [1]
 
 The above restriction also applies to other stanzas. Any stanzas that introduces

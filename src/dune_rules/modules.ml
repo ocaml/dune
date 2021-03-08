@@ -619,8 +619,6 @@ let compat_for_exn t m =
     Module_name.Map.find modules (Module.name m) |> Option.value_exn
   | Impl _ -> Code_error.raise "wrapped compat not supported for vlib" []
 
-let iter_no_vlib t ~f = fold_no_vlib t ~init:() ~f:(fun x () -> f x)
-
 let rec for_alias = function
   | Stdlib _
   | Singleton _

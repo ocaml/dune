@@ -15,7 +15,7 @@ end
 
 type t
 
-val setup_rules : t -> unit
+val setup_rules : t -> unit Memo.Build.t
 
 val make :
      cctx:Compilation_context.t
@@ -31,5 +31,5 @@ module Stanza : sig
        sctx:Super_context.t
     -> dir:Path.Build.t
     -> toplevel:Dune_file.Toplevel.t
-    -> unit
+    -> unit Memo.Build.t
 end

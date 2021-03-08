@@ -117,20 +117,24 @@ let setup_module_rules t =
   Super_context.add_rule sctx ~dir main_ml
 
 let setup_rules t =
+  let open Memo.Build.O in
   let linkage = Exe.Linkage.custom (Compilation_context.context t.cctx) in
   let program = Source.program t.source in
   let sctx = Compilation_context.super_context t.cctx in
-  Exe.build_and_link t.cctx ~program ~linkages:[ linkage ]
-    ~link_args:
-      (Action_builder.return
-         (Command.Args.As [ "-linkall"; "-warn-error"; "-31" ]))
-    ~promote:None;
+  let* () =
+    Exe.build_and_link t.cctx ~program ~linkages:[ linkage ]
+      ~link_args:
+        (Action_builder.return
+           (Command.Args.As [ "-linkall"; "-warn-error"; "-31" ]))
+      ~promote:None
+  in
   let src = Exe.exe_path t.cctx ~program ~linkage in
   let dir = Source.stanza_dir t.source in
   let dst = Path.Build.relative dir (Path.Build.basename src) in
   Super_context.add_rule sctx ~dir ~loc:t.source.loc
     (Action_builder.symlink ~src:(Path.build src) ~dst);
-  setup_module_rules t
+  setup_module_rules t;
+  Memo.Build.return ()
 
 let print_toplevel_init_file ~include_paths ~files_to_load =
   let includes = Path.Set.to_list include_paths in

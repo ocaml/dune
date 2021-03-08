@@ -7,7 +7,6 @@ let restore_cwd_and_execve prog argv ~env =
       Unix.create_process_env prog argv env Unix.stdin Unix.stdout Unix.stderr
     in
     match snd (Unix.waitpid [] pid) with
-    | WEXITED 0 -> ()
     | WEXITED n -> exit n
     | WSIGNALED _ -> exit 255
     | WSTOPPED _ -> assert false

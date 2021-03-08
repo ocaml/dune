@@ -160,7 +160,7 @@ module Dune_files = struct
         in
         let ocaml = Action.Prog.ok_exn context.ocaml in
         let* () =
-          Memo.Build.of_fiber
+          Memo.Build.unsafe_of_fiber
             (Process.run Strict ~dir:(Path.source dir) ~env:context.env ocaml
                args)
         in

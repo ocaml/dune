@@ -7,7 +7,7 @@ module Build : sig
 
   val run : 'a t -> 'a Fiber.t
 
-  val of_fiber : 'a Fiber.t -> 'a t
+  val unsafe_of_fiber : 'a Fiber.t -> 'a t
 
   val return : 'a -> 'a t
 
@@ -20,7 +20,11 @@ module Build : sig
 
     val ( let* ) : 'a t -> ('a -> 'b t) -> 'b t
 
+    val ( and* ) : 'a t -> 'b t -> ('a * 'b) t
+
     val ( let+ ) : 'a t -> ('a -> 'b) -> 'b t
+
+    val ( and+ ) : 'a t -> 'b t -> ('a * 'b) t
   end
 
   val map : 'a t -> f:('a -> 'b) -> 'b t
@@ -349,6 +353,38 @@ val lazy_async :
   -> (unit -> 'a Build.t)
   -> 'a Lazy.Async.t
 
+module Implicit_output : sig
+  type 'o t
+
+  (** [produce] and [produce_opt] are used by effectful functions to produce
+      output. *)
+  val produce : 'o t -> 'o -> unit
+
+  val produce_opt : 'o t -> 'o option -> unit
+
+  (** [collect*] and [forbid*] take a potentially effectful function (one which
+      may produce some implicit output) and turn it into a pure one (with
+      explicit output if any) *)
+  val collect_async : 'o t -> (unit -> 'a Build.t) -> ('a * 'o option) Build.t
+
+  val collect_sync : 'o t -> (unit -> 'a) -> 'a * 'o option
+
+  val forbid_async : (unit -> 'a Build.t) -> 'a Build.t
+
+  val forbid_sync : (unit -> 'a) -> 'a
+
+  module type Implicit_output = sig
+    type t
+
+    val name : string
+
+    val union : t -> t -> t
+  end
+
+  (** Register a new type of implicit output. *)
+  val add : (module Implicit_output with type t = 'o) -> 'o t
+end
+
 module With_implicit_output : sig
   type ('i, 'o, 'f) t
 
@@ -381,8 +417,6 @@ module Cell : sig
 end
 
 val cell : ('a, 'b, 'f) t -> 'a -> ('a, 'b, 'f) Cell.t
-
-module Implicit_output = Implicit_output
 
 (** Memoization of polymorphic functions. When using both [Sync] and [Async]
     modules, the provided [id] function must be injective, i.e. there must be a
@@ -424,3 +458,7 @@ module Poly : sig
 end
 
 val unwrap_exn : (exn -> exn) ref
+
+(** If [true], this module will record the location of [Lazy.t] values. This is
+    a bit expensive to compute, but it helps debugging. *)
+val track_locations_of_lazy_values : bool ref

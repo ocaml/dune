@@ -122,23 +122,27 @@ let dep_prog = function
   | Ok p -> Action_builder.path p
   | Error _ -> Action_builder.return ()
 
-let prog_and_args ?(dir = Path.root) prog args =
-  let open Action_builder.With_targets.O in
-  Action_builder.with_no_targets (dep_prog prog)
-  >>> Action_builder.With_targets.map (expand ~dir args) ~f:(fun args ->
-          (prog, args))
-
 let run ~dir ?stdout_to prog args =
-  Action_builder.With_targets.map (prog_and_args ~dir prog args)
-    ~f:(fun (prog, args) ->
-      let action : Action.t = Run (prog, args) in
-      let action =
-        match stdout_to with
-        | None -> action
-        | Some path -> Redirect_out (Stdout, path, action)
-      in
-      Action.Chdir (dir, action))
-  |> Action_builder.With_targets.add ~targets:(Option.to_list stdout_to)
+  Action_builder.With_targets.add ~targets:(Option.to_list stdout_to)
+    (let open Action_builder.With_targets.O in
+    let+ () = Action_builder.with_no_targets (dep_prog prog)
+    and+ args = expand ~dir args in
+    let action = Action.run prog args in
+    let action =
+      match stdout_to with
+      | None -> action
+      | Some path -> Action.with_stdout_to path action
+    in
+    Action.chdir dir action)
+
+let run' ~dir prog args =
+  let open Action_builder.O in
+  let+ () = dep_prog prog
+  and+ args =
+    Action_builder.dyn_deps
+      (Action_builder.delayed (fun () -> expand_static_exn ~dir (S args)))
+  in
+  Action.chdir dir (Action.run prog args)
 
 let quote_args =
   let rec loop quote = function

@@ -10,17 +10,19 @@ let run_build_command_poll ~(common : Common.t) ~targets ~setup =
   let open Fiber.O in
   let once () =
     Cached_digest.invalidate_cached_timestamps ();
-    let* setup = Memo.Build.run (setup ()) in
+    let* setup = setup () in
     match
       match
         let open Option.O in
         let* rpc = Common.rpc common in
         Dune_rpc_impl.Server.pending_build_action rpc
       with
-      | None -> `Build (targets setup, None)
+      | None -> `Build ((fun () -> targets setup), None)
       | Some Shutdown -> `Shutdown
       | Some (Build (targets, ivar)) ->
-        `Build (Target.resolve_targets_exn common setup targets, Some ivar)
+        `Build
+          ( (fun () -> Target.resolve_targets_exn common setup targets)
+          , Some ivar )
     with
     | `Shutdown -> Fiber.return `Stop
     | `Build (targets, ivar) ->
@@ -29,17 +31,24 @@ let run_build_command_poll ~(common : Common.t) ~targets ~setup =
         | None -> Fiber.return ()
         | Some ivar -> Fiber.Ivar.fill ivar Accepted
       in
-      let+ () = Memo.Build.run (do_build targets) in
+      let+ () =
+        Build_system.run (fun () ->
+            let open Memo.Build.O in
+            let* targets = targets () in
+            Build_system.build (Target.request targets))
+      in
       `Continue
   in
   Scheduler.poll ~common ~once ~finally:Hooks.End_of_build.run
 
 let run_build_command_once ~(common : Common.t) ~targets ~setup =
+  let open Fiber.O in
   let once () =
-    let open Fiber.O in
-    let* setup = Memo.Build.run (setup ()) in
-    let targets = targets setup in
-    Memo.Build.run (do_build targets)
+    let* setup = setup () in
+    Build_system.run (fun () ->
+        let open Memo.Build.O in
+        let* targets = targets setup in
+        Build_system.build (Target.request targets))
   in
   Scheduler.go ~common once
 
@@ -74,11 +83,12 @@ let runtest =
     and+ dirs = Arg.(value & pos_all string [ "." ] name_) in
     Common.set_common common;
     let targets (setup : Import.Main.build_system) =
-      List.map dirs ~f:(fun dir ->
-          let dir = Path.(relative root) (Common.prefix_target common dir) in
-          Target.Alias
-            (Alias.in_dir ~name:Dune_engine.Alias.Name.runtest ~recursive:true
-               ~contexts:setup.workspace.contexts dir))
+      Memo.Build.return
+      @@ List.map dirs ~f:(fun dir ->
+             let dir = Path.(relative root) (Common.prefix_target common dir) in
+             Target.Alias
+               (Alias.in_dir ~name:Dune_engine.Alias.Name.runtest
+                  ~recursive:true ~contexts:setup.workspace.contexts dir))
     in
     run_build_command ~common ~targets
   in

@@ -689,6 +689,10 @@ module Dir = struct
   let sub_dir_as_t (s : sub_dir) =
     (Memo.Cell.get_sync s.sub_dir_as_t |> Option.value_exn).dir
 
+  let sub_dirs (t : t) =
+    String.Map.to_list_map t.contents.sub_dirs ~f:(fun basename s ->
+        (basename, sub_dir_as_t s))
+
   let fold_sub_dirs (t : t) ~init ~f =
     String.Map.foldi t.contents.sub_dirs ~init ~f:(fun basename s acc ->
         f ~basename (sub_dir_as_t s) acc)

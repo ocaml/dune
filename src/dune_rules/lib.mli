@@ -27,9 +27,9 @@ val info : t -> Path.t Lib_info.t
 
 val main_module_name : t -> Module_name.t option Or_exn.t
 
-val entry_module_names : t -> Module_name.t list Or_exn.t
+val entry_module_names : t -> Module_name.t list Or_exn.t Memo.Build.t
 
-val src_dirs : t -> Path.Set.t
+val src_dirs : t -> Path.Set.t Memo.Build.t
 
 val wrapped : t -> Wrapped.t option Or_exn.t
 
@@ -62,7 +62,7 @@ val hash : t -> int
 
 (** The list of files that will be read by the compiler when linking an
     executable against this library *)
-val link_deps : t -> Link_mode.t -> Path.t list
+val link_deps : t -> Link_mode.t -> Path.t list Memo.Build.t
 
 (** Operations on list of libraries *)
 module L : sig
@@ -83,7 +83,10 @@ module L : sig
   val toplevel_include_paths : t -> Path.Set.t
 
   val compile_and_link_flags :
-    compile:t -> link:t -> mode:Link_mode.t -> _ Command.Args.t
+       compile:t
+    -> link:t
+    -> mode:Link_mode.t
+    -> Command.Args.dynamic Command.Args.t
 
   val jsoo_runtime_files : t -> Path.t list
 
@@ -111,7 +114,10 @@ module Lib_and_module : sig
     val of_libs : lib list -> t
 
     val link_flags :
-      t -> lib_config:Lib_config.t -> mode:Link_mode.t -> _ Command.Args.t
+         t
+      -> lib_config:Lib_config.t
+      -> mode:Link_mode.t
+      -> Command.Args.dynamic Command.Args.t
   end
 end
 with type lib := t
@@ -149,7 +155,7 @@ module Compile : sig
   val merlin_ident : t -> Merlin_ident.t
 
   (** Sub-systems used in this compilation context *)
-  val sub_systems : t -> sub_system list
+  val sub_systems : t -> sub_system list Memo.Build.t
 end
 with type lib := t
 
@@ -189,7 +195,8 @@ module DB : sig
     -> resolve:(Lib_name.t -> Resolve_result.t)
     -> projects_by_package:Dune_project.t Package.Name.Map.t
     -> all:(unit -> Lib_name.t list)
-    -> modules_of_lib:(dir:Path.Build.t -> name:Lib_name.t -> Modules.t) Fdecl.t
+    -> modules_of_lib:
+         (dir:Path.Build.t -> name:Lib_name.t -> Modules.t Memo.Build.t) Fdecl.t
     -> lib_config:Lib_config.t
     -> unit
     -> t
@@ -262,17 +269,17 @@ module Sub_system : sig
 
     val instantiate :
          resolve:(Loc.t * Lib_name.t -> lib Or_exn.t)
-      -> get:(loc:Loc.t -> lib -> t option)
+      -> get:(loc:Loc.t -> lib -> t option Memo.Build.t)
       -> lib
       -> Info.t
-      -> t
+      -> t Memo.Build.t
 
     val public_info : (t -> Info.t Or_exn.t) option
   end
 
   module Register (M : S) : sig
     (** Get the instance of the subsystem for this library *)
-    val get : lib -> M.t option
+    val get : lib -> M.t option Memo.Build.t
   end
 end
 with type lib := t
@@ -282,7 +289,7 @@ val to_dune_lib :
   -> modules:Modules.t
   -> foreign_objects:Path.t list
   -> dir:Path.t
-  -> Dune_package.Lib.t Or_exn.t
+  -> Dune_package.Lib.t Or_exn.t Memo.Build.t
 
 (** Local libraries *)
 module Local : sig

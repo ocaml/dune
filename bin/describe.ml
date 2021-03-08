@@ -32,6 +32,7 @@ let info = Term.info "describe" ~doc ~man
 module Crawl = struct
   open Dune_rules
   open Dune_engine
+  open Memo.Build.O
 
   let uid_of_library lib =
     Digest.generic
@@ -60,10 +61,10 @@ module Crawl = struct
         :: acc)
 
   let executables sctx ~project ~dir exes =
-    let modules_, obj_dir =
+    let+ modules_, obj_dir =
       let first_exe = snd (List.hd exes.Dune_file.Executables.names) in
-      Dir_contents.get sctx ~dir |> Dir_contents.ocaml
-      |> Ml_sources.modules_and_obj_dir ~for_:(Exe { first_exe })
+      Dir_contents.get sctx ~dir >>= Dir_contents.ocaml
+      >>| Ml_sources.modules_and_obj_dir ~for_:(Exe { first_exe })
     in
     let obj_dir = Obj_dir.of_local obj_dir in
     let modules_ = modules ~obj_dir modules_ in
@@ -92,20 +93,20 @@ module Crawl = struct
 
   let library sctx lib =
     match Lib.requires lib with
-    | Error _ -> None
+    | Error _ -> Memo.Build.return None
     | Ok requires ->
       let name = Lib.name lib in
       let info = Lib.info lib in
       let src_dir = Lib_info.src_dir info in
       let obj_dir = Lib_info.obj_dir info in
-      let modules_ =
+      let+ modules_ =
         if Lib.is_local lib then
           Dir_contents.get sctx ~dir:(Path.as_in_build_dir_exn src_dir)
-          |> Dir_contents.ocaml
-          |> Ml_sources.modules ~for_:(Library name)
-          |> modules ~obj_dir
+          >>= Dir_contents.ocaml
+          >>| Ml_sources.modules ~for_:(Library name)
+          >>| modules ~obj_dir
         else
-          []
+          Memo.Build.return []
       in
       let include_dirs = Obj_dir.all_cmis obj_dir in
       Some
@@ -132,30 +133,33 @@ module Crawl = struct
           Super_context.find_scope_by_project sctx project
           |> Scope.libs |> Lib.DB.all |> Lib.Set.union libs)
     in
-    let libs =
+    let* libs =
       Lib.Set.fold libs ~init:libs ~f:(fun lib libs ->
           match Lib.requires lib with
           | Error _ -> libs
           | Ok requires -> Lib.Set.of_list requires |> Lib.Set.union libs)
       |> Lib.Set.to_list
-      |> List.filter_map ~f:(library sctx)
+      |> Memo.Build.parallel_map ~f:(library sctx)
+      >>| List.filter_map ~f:Fun.id
     in
     let open Memo.Build.O in
-    let+ dune_files =
+    let* dune_files =
       Dune_load.Dune_files.eval workspace.conf.dune_files ~context
     in
-    let exes_and_libs =
-      Dune_file.fold_stanzas dune_files ~init:libs
-        ~f:(fun dune_file stanza accu ->
-          let dir = Path.Build.append_source context.build_dir dune_file.dir in
-          match stanza with
-          | Dune_file.Executables exes -> (
-            match executables sctx ~project:dune_file.project ~dir exes with
-            | None -> accu
-            | Some exes -> exes :: accu)
-          | _ -> accu)
+    let* exes =
+      Memo.Build.parallel_map dune_files ~f:(fun (dune_file : Dune_file.t) ->
+          Memo.Build.parallel_map dune_file.stanzas ~f:(fun stanza ->
+              let dir =
+                Path.Build.append_source context.build_dir dune_file.dir
+              in
+              match stanza with
+              | Dune_file.Executables exes ->
+                executables sctx ~project:dune_file.project ~dir exes
+              | _ -> Memo.Build.return None)
+          >>| List.filter_map ~f:Fun.id)
+      >>| List.concat
     in
-    Dyn.List exes_and_libs
+    Memo.Build.return (Dyn.List (exes @ libs))
 end
 
 module Opam_files = struct
@@ -306,7 +310,7 @@ let term =
   let what = What.parse what ~lang in
   Scheduler.go ~common (fun () ->
       let open Fiber.O in
-      let* setup = Memo.Build.run (Import.Main.setup common) in
+      let* setup = Import.Main.setup common in
       let context =
         Import.Main.find_context_exn setup.workspace ~name:context_name
       in

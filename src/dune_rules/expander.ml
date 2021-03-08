@@ -26,7 +26,8 @@ type t =
   ; c_compiler : string
   ; context : Context.t
   ; artifacts_dynamic : bool
-  ; lookup_artifacts : (dir:Path.Build.t -> Ml_sources.Artifacts.t) option
+  ; lookup_artifacts :
+      (dir:Path.Build.t -> Ml_sources.Artifacts.t Memo.Build.t) option
   ; foreign_flags :
       dir:Path.Build.t -> string list Action_builder.t Foreign_language.Dict.t
   ; find_package : Package.Name.t -> any_package option
@@ -137,7 +138,7 @@ let expand_artifact ~source t a s =
     let does_not_exist ~loc ~what name =
       User_error.raise ~loc [ Pp.textf "%s %s does not exist." what name ]
     in
-    let artifacts = lookup ~dir in
+    let* artifacts = Action_builder.memo_build (lookup ~dir) in
     match a with
     | Pform.Artifact.Mod kind -> (
       let name =
@@ -354,9 +355,8 @@ let expand_pform_gen ~(context : Context.t) ~bindings ~dir ~source
         Need_full_expander
           (fun t ->
             if t.artifacts_dynamic then
-              Action_builder.Expert.action_builder
-                (Action_builder.delayed (fun () ->
-                     expand_artifact ~source t a s))
+              let* () = Action_builder.return () in
+              expand_artifact ~source t a s
             else
               expand_artifact ~source t a s)
       | Path_no_dep ->

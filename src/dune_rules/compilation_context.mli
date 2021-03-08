@@ -99,4 +99,4 @@ val bin_annot : t -> bool
 
 val without_bin_annot : t -> t
 
-val root_module_entries : t -> Module_name.t list Or_exn.t
+val root_module_entries : t -> Module_name.t list Or_exn.t Memo.Build.t

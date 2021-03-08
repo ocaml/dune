@@ -14,10 +14,10 @@ module type S = sig
   (** Create an instance of the sub-system *)
   val instantiate :
        resolve:(Loc.t * Lib_name.t -> Lib.t Or_exn.t)
-    -> get:(loc:Loc.t -> Lib.t -> t option)
+    -> get:(loc:Loc.t -> Lib.t -> t option Memo.Build.t)
     -> Lib.t
     -> Info.t
-    -> t
+    -> t Memo.Build.t
 end
 
 (** A backend, for implementors of the sub-system *)
@@ -43,10 +43,10 @@ end
 module type Registered_backend = sig
   type t
 
-  val get : Lib.t -> t option
+  val get : Lib.t -> t option Memo.Build.t
 
   (** Resolve a backend name *)
-  val resolve : Lib.DB.t -> Loc.t * Lib_name.t -> t Or_exn.t
+  val resolve : Lib.DB.t -> Loc.t * Lib_name.t -> t Or_exn.t Memo.Build.t
 
   module Selection_error : sig
     type nonrec t =
@@ -69,7 +69,7 @@ module type Registered_backend = sig
        ?written_by_user:t list
     -> extends:(t -> t list Or_exn.t)
     -> Lib.t list
-    -> (t list, Selection_error.t) result
+    -> (t list, Selection_error.t) result Memo.Build.t
 
   (** Choose a backend by either using the ones written by the user or by
       scanning the dependencies.
@@ -79,7 +79,7 @@ module type Registered_backend = sig
        ?written_by_user:t list
     -> replaces:(t -> t list Or_exn.t)
     -> Lib.t list
-    -> (t, Selection_error.t) result
+    -> (t, Selection_error.t) result Memo.Build.t
 end
 
 (* This is probably what we'll give to plugins *)
@@ -114,5 +114,5 @@ module type End_point = sig
        Library_compilation_context.t
     -> info:Info.t
     -> backends:Backend.t list
-    -> unit
+    -> unit Memo.Build.t
 end

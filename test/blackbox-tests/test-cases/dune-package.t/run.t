@@ -12,17 +12,13 @@
     (META
      dune-package
      opam
-     x.ml
-     a.ml
-     a__X.cmi
-     a__X.cmx
-     a__X.cmt
-     a.cmi
-     a.cmx
-     a.cmt
-     a.cma
-     a.cmxa
-     a$ext_lib
+     byte_only/z.ml
+     byte_only/d.ml
+     byte_only/d__Z.cmi
+     byte_only/d__Z.cmt
+     byte_only/d.cmi
+     byte_only/d.cmt
+     byte_only/d.cma
      b/c/y.mli
      b/c/y.ml
      b/c/c.ml
@@ -36,14 +32,18 @@
      b/c/c.cma
      b/c/c.cmxa
      b/c/c$ext_lib
-     byte_only/z.ml
-     byte_only/d.ml
-     byte_only/d__Z.cmi
-     byte_only/d__Z.cmt
-     byte_only/d.cmi
-     byte_only/d.cmt
-     byte_only/d.cma))
-   (libexec (a.cmxs b/c/c.cmxs)))
+     x.ml
+     a.ml
+     a__X.cmi
+     a__X.cmx
+     a__X.cmt
+     a.cmi
+     a.cmx
+     a.cmt
+     a.cma
+     a.cmxa
+     a$ext_lib))
+   (libexec (b/c/c.cmxs a.cmxs)))
   (library
    (name a)
    (kind normal)

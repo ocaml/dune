@@ -30,14 +30,13 @@ module Backend = struct
     let extends t = t.extends
 
     let instantiate ~resolve ~get lib (info : Info.t) =
-      { info
-      ; lib
-      ; runner_libraries = Result.List.map info.runner_libraries ~f:resolve
-      ; extends =
-          (let open Result.O in
-          Result.List.map info.extends ~f:(fun ((loc, name) as x) ->
-              let* lib = resolve x in
-              match get ~loc lib with
+      let open Memo.Build.O in
+      let+ extends =
+        Memo.Build.parallel_map info.extends ~f:(fun ((loc, name) as x) ->
+            match resolve x with
+            | Error _ as err -> Memo.Build.return err
+            | Ok lib -> (
+              get ~loc lib >>| function
               | None ->
                 Error
                   (User_error.E
@@ -46,6 +45,12 @@ module Backend = struct
                             (desc ~plural:false)
                         ]))
               | Some t -> Ok t))
+        >>| Result.List.all
+      in
+      { info
+      ; lib
+      ; runner_libraries = Result.List.map info.runner_libraries ~f:resolve
+      ; extends
       }
 
     let public_info t =
@@ -74,6 +79,7 @@ include Sub_system.Register_end_point (struct
   module Info = Inline_tests_info.Tests
 
   let gen_rules c ~(info : Info.t) ~backends =
+    let open Memo.Build.O in
     let { Sub_system.Library_compilation_context.super_context = sctx
         ; dir
         ; stanza = lib
@@ -171,11 +177,13 @@ include Sub_system.Register_end_point (struct
           | Byte -> Exe.Linkage.byte
           | Javascript -> Exe.Linkage.js)
     in
-    Exe.build_and_link cctx
-      ~program:{ name; main_module_name = Module.name main_module; loc }
-      ~linkages
-      ~link_args:(Action_builder.return (Command.Args.A "-linkall"))
-      ~promote:None;
+    let* () =
+      Exe.build_and_link cctx
+        ~program:{ name; main_module_name = Module.name main_module; loc }
+        ~linkages
+        ~link_args:(Action_builder.return (Command.Args.A "-linkall"))
+        ~promote:None
+    in
     let flags =
       let flags =
         List.map backends ~f:(fun backend -> backend.Backend.info.flags)
@@ -240,7 +248,8 @@ include Sub_system.Register_end_point (struct
                         (Action.diff ~optional:true fn
                            (Path.Build.extend_basename
                               (Path.as_in_build_dir_exn fn)
-                              ~suffix:".corrected"))))))
+                              ~suffix:".corrected"))))));
+    Memo.Build.return ()
 end)
 
 let linkme = ()

@@ -37,7 +37,7 @@ module Dir : sig
 
   val file_paths : t -> Path.Source.Set.t
 
-  val fold_sub_dirs : t -> init:'a -> f:(basename:string -> t -> 'a -> 'a) -> 'a
+  val sub_dirs : t -> (string * t) list
 
   val fold_dune_files :
        t

@@ -27,7 +27,7 @@ let man =
 
 let info = Term.info "rules" ~doc ~man
 
-let print_rule_makefile ppf (rule : Build_system.Evaluated_rule.t) =
+let print_rule_makefile ppf (rule : Build_system.For_command_line.Rule.t) =
   let action =
     Action.For_shell.Progn
       [ Mkdir (Path.to_string (Path.build rule.dir))
@@ -40,11 +40,11 @@ let print_rule_makefile ppf (rule : Build_system.Evaluated_rule.t) =
          Format.pp_print_string ppf (Path.to_string p)))
     (List.map ~f:Path.build (Path.Build.Set.to_list rule.targets))
     (fun ppf ->
-      Path.Set.iter (Dep.Set.files_approx rule.deps) ~f:(fun dep ->
+      Path.Set.iter rule.expanded_deps ~f:(fun dep ->
           Format.fprintf ppf "@ %s" (Path.to_string dep)))
     Pp.to_fmt (Action_to_sh.pp action)
 
-let print_rule_sexp ppf (rule : Build_system.Evaluated_rule.t) =
+let print_rule_sexp ppf (rule : Build_system.For_command_line.Rule.t) =
   let sexp_of_action action =
     Action.for_shell action |> Action.For_shell.encode
   in
@@ -110,25 +110,28 @@ let term =
   let out = Option.map ~f:Path.of_string out in
   Scheduler.go ~common (fun () ->
       let open Fiber.O in
-      let* setup = Memo.Build.run (Import.Main.setup common) in
-      let request =
-        match targets with
-        | [] ->
-          Build_system.all_targets ()
-          |> Path.Build.Set.fold ~init:[] ~f:(fun p acc -> Path.build p :: acc)
-          |> Action_builder.paths
-        | _ -> Target.resolve_targets_exn common setup targets |> Target.request
-      in
-      let* rules =
-        Memo.Build.run (Build_system.evaluate_rules ~request ~recursive)
-      in
-      let print oc =
-        let ppf = Format.formatter_of_out_channel oc in
-        Syntax.print_rules syntax ppf rules;
-        Fiber.return ()
-      in
-      match out with
-      | None -> print stdout
-      | Some fn -> Io.with_file_out fn ~f:print)
+      let* setup = Import.Main.setup common in
+      Build_system.run (fun () ->
+          let open Memo.Build.O in
+          let* request =
+            match targets with
+            | [] ->
+              Build_system.all_targets ()
+              >>| Path.Build.Set.fold ~init:[] ~f:(fun p acc ->
+                      Path.build p :: acc)
+              >>| Action_builder.paths
+            | _ ->
+              Target.resolve_targets_exn common setup targets >>| Target.request
+          in
+          let+ rules =
+            Build_system.For_command_line.evaluate_rules ~request ~recursive
+          in
+          let print oc =
+            let ppf = Format.formatter_of_out_channel oc in
+            Syntax.print_rules syntax ppf rules
+          in
+          match out with
+          | None -> print stdout
+          | Some fn -> Io.with_file_out fn ~f:print))
 
 let command = (term, info)

@@ -52,7 +52,7 @@ val set_bin_artifacts : t -> bin_artifacts_host:Artifacts.Bin.t -> t
 val set_artifacts_dynamic : t -> bool -> t
 
 val set_lookup_ml_sources :
-  t -> f:(dir:Path.Build.t -> Ml_sources.Artifacts.t) -> t
+  t -> f:(dir:Path.Build.t -> Ml_sources.Artifacts.t Memo.Build.t) -> t
 
 module Expanding_what : sig
   type t =

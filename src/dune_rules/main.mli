@@ -26,7 +26,7 @@ val scan_workspace :
   -> ?instrument_with:Lib_name.t list
   -> ancestor_vcs:Vcs.t option
   -> unit
-  -> workspace Memo.Build.t
+  -> workspace Fiber.t
 
 (** Load dune files and initializes the build system *)
 val init_build_system :
@@ -35,7 +35,7 @@ val init_build_system :
   -> ?caching:Build_system.caching
   -> ?build_mutex:Fiber.Mutex.t
   -> workspace
-  -> build_system Memo.Build.t
+  -> build_system Fiber.t
 
 val find_context_exn : workspace -> name:Context_name.t -> Context.t
 

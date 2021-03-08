@@ -92,8 +92,8 @@ module Main = struct
       ~ancestor_vcs ()
 
   let setup ?build_mutex common =
-    let open Memo.Build.O in
-    let* caching = Memo.Build.of_fiber (make_cache (Common.config common)) in
+    let open Fiber.O in
+    let* caching = make_cache (Common.config common) in
     let* workspace = scan_workspace common in
     let only_packages =
       Option.map (Common.only_packages common)
@@ -215,6 +215,3 @@ let command_alias cmd name =
     ]
   in
   (term, Term.info name ~docs:"COMMAND ALIASES" ~doc ~man)
-
-let do_build targets =
-  Build_system.do_build ~request:(fun () -> Target.request targets)

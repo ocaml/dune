@@ -50,6 +50,8 @@ module Id : sig
 
   val compare : t -> t -> Ordering.t
 
+  val dummy : t
+
   module Map : Map.S with type key = t
 
   module Set : Set.S with type elt = t

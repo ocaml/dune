@@ -226,7 +226,10 @@ let for_plugin_executable t ~embed_in_plugin_libraries =
 
 let without_bin_annot t = { t with bin_annot = false }
 
-let root_module_entries t : Module_name.t list Or_exn.t =
-  let open Result.O in
-  let* requires = t.requires_compile in
-  Result.List.concat_map requires ~f:Lib.entry_module_names
+let root_module_entries t : Module_name.t list Or_exn.t Memo.Build.t =
+  match t.requires_compile with
+  | Error _ as err -> Memo.Build.return err
+  | Ok requires ->
+    Memo.Build.map
+      (Memo.Build.parallel_map requires ~f:Lib.entry_module_names)
+      ~f:(Result.List.concat_map ~f:Fun.id)

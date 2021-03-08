@@ -68,6 +68,7 @@ module Spawn = Spawn
 module Seq = Seq
 module Temp = Temp
 module Queue = Queue
+module Caller_id = Caller_id
 
 external reraise : exn -> _ = "%reraise"
 

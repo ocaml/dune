@@ -12,15 +12,6 @@ Include variants and implementation information in dune-package
     (META
      dune-package
      opam
-     vlib/vmod.mli
-     vlib/vlib.ml
-     vlib/vlib__Vmod.cmi
-     vlib/vlib__Vmod.cmti
-     vlib/vlib.cmi
-     vlib/vlib.cmx
-     vlib/vlib.cmo
-     vlib/vlib$ext_obj
-     vlib/vlib.cmt
      impl/vmod.ml
      impl/vlib__impl__.ml
      impl/vlib__Vmod.cmi
@@ -31,7 +22,16 @@ Include variants and implementation information in dune-package
      impl/vlib__impl__.cmt
      impl/impl.cma
      impl/impl.cmxa
-     impl/impl$ext_lib))
+     impl/impl$ext_lib
+     vlib/vmod.mli
+     vlib/vlib.ml
+     vlib/vlib__Vmod.cmi
+     vlib/vlib__Vmod.cmti
+     vlib/vlib.cmi
+     vlib/vlib.cmx
+     vlib/vlib.cmo
+     vlib/vlib$ext_obj
+     vlib/vlib.cmt))
    (libexec (impl/impl.cmxs)))
   (library
    (name foo.impl)

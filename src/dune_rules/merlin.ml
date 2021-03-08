@@ -345,15 +345,22 @@ module Unprocessed = struct
       } sctx ~more_src_dirs ~expander =
     let open Action_builder.With_targets.O in
     let+ config =
-      let+ flags = Action_builder.with_no_targets flags in
-      let src_dirs, obj_dirs =
-        Lib.Set.fold requires
-          ~init:(Path.set_of_source_paths source_dirs, objs_dirs)
-          ~f:(fun (lib : Lib.t) (src_dirs, obj_dirs) ->
-            let more_src_dirs = Lib.src_dirs lib in
-            ( Path.Set.union src_dirs more_src_dirs
-            , let public_cmi_dir = Obj_dir.public_cmi_dir (Lib.obj_dir lib) in
-              Path.Set.add obj_dirs public_cmi_dir ))
+      let+ flags = Action_builder.with_no_targets flags
+      and+ src_dirs, obj_dirs =
+        Action_builder.with_no_targets
+          (Action_builder.memo_build
+             (let open Memo.Build.O in
+             Memo.Build.parallel_map (Lib.Set.to_list requires) ~f:(fun lib ->
+                 let+ dirs = Lib.src_dirs lib in
+                 (lib, dirs))
+             >>| List.fold_left
+                   ~init:(Path.set_of_source_paths source_dirs, objs_dirs)
+                   ~f:(fun (src_dirs, obj_dirs) (lib, more_src_dirs) ->
+                     ( Path.Set.union src_dirs more_src_dirs
+                     , let public_cmi_dir =
+                         Obj_dir.public_cmi_dir (Lib.obj_dir lib)
+                       in
+                       Path.Set.add obj_dirs public_cmi_dir ))))
       in
       let src_dirs =
         Path.Set.union src_dirs

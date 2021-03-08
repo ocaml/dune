@@ -199,6 +199,18 @@ let collect_unit f =
   let (), rules = collect f in
   rules
 
+let collect_async_opt f = Memo.Implicit_output.collect_async implicit_output f
+
+let collect_async f =
+  let open Memo.Build.O in
+  let+ result, out = collect_async_opt f in
+  (result, Option.value out ~default:T.empty)
+
+let collect_async_unit f =
+  let open Memo.Build.O in
+  let+ (), rules = collect_async f in
+  rules
+
 let to_map x = (x : t :> Dir_rules.t Path.Build.Map.t)
 
 let map t ~f =

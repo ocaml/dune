@@ -1,7 +1,6 @@
 open! Dune_engine
 open Import
 open! No_io
-open Action_builder.O
 
 type t =
   { loc : Loc.t
@@ -40,6 +39,7 @@ let () =
     (return [ (name, decode >>| fun x -> [ T x ]) ])
 
 let gen_rules sctx t ~dir ~scope =
+  let open Memo.Build.O in
   let loc = t.loc in
   let cinaps_dir = Path.Build.relative dir ("." ^ name) in
   let main_module_name = Module_name.of_string name in
@@ -103,11 +103,14 @@ let gen_rules sctx t ~dir ~scope =
       ~flags:(Ocaml_flags.of_list [ "-w"; "-24" ])
       ~js_of_ocaml:None ~package:None
   in
-  Exe.build_and_link cctx
-    ~program:{ name; main_module_name; loc }
-    ~linkages:[ Exe.Linkage.native_or_custom (Super_context.context sctx) ]
-    ~promote:None;
+  let+ () =
+    Exe.build_and_link cctx
+      ~program:{ name; main_module_name; loc }
+      ~linkages:[ Exe.Linkage.native_or_custom (Super_context.context sctx) ]
+      ~promote:None
+  in
   let action =
+    let open Action_builder.O in
     let module A = Action in
     let cinaps_exe = Path.build cinaps_exe in
     let+ () = Action_builder.path cinaps_exe in

@@ -83,7 +83,7 @@ module Deps = struct
     let dirs, files = dirs_and_files ~dir t_list in
     let dep_set = Dep.Set.of_files files in
     List.fold_left dirs ~init:dep_set ~f:(fun acc dir ->
-        Dep.Set.union acc (fst (Dep.Set.source_tree dir)))
+        Dep.Set.union acc (Dep.Set.source_tree dir))
 end
 
 module Prelude = struct

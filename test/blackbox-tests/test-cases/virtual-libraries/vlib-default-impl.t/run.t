@@ -30,6 +30,15 @@ Check that default implementation data is installed in the dune package file.
     (META
      dune-package
      opam
+     x.mli
+     a.ml
+     a__X.cmi
+     a__X.cmti
+     a.cmi
+     a.cmx
+     a.cmo
+     a$ext_obj
+     a.cmt
      default-impl/x.ml
      default-impl/a__a_default__.ml
      default-impl/a__X.cmi
@@ -40,16 +49,7 @@ Check that default implementation data is installed in the dune package file.
      default-impl/a__a_default__.cmt
      default-impl/a_default.cma
      default-impl/a_default.cmxa
-     default-impl/a_default$ext_lib
-     x.mli
-     a.ml
-     a__X.cmi
-     a__X.cmti
-     a.cmi
-     a.cmx
-     a.cmo
-     a$ext_obj
-     a.cmt))
+     default-impl/a_default$ext_lib))
    (libexec (default-impl/a_default.cmxs)))
   (library
    (name a)

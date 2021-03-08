@@ -254,8 +254,8 @@ end)
    comparison at every client.
 
    There is a downside, though: if the value changes from x to y, and then back
-   to x, then the Value_id changes without the value actually changing, which is
-   a shame. So we should test and see if Value_id is worth keeping or it's
+   to x, then the [Value_id] changes without the value actually changing, which
+   is a shame. So we should test and see if [Value_id] is worth keeping or it's
    better to just evaluate the cutoff multiple times. *)
 module Value_id : sig
   type t
@@ -387,6 +387,7 @@ module Once = struct
       let+ () = Fiber.Ivar.fill ivar result in
       result
 
+  (* Almost a monadic bind but [f] returns a [Fiber.t], not a [t]. *)
   let and_then t ~f = create (fun () -> Fiber.bind (force t) ~f)
 end
 
@@ -509,26 +510,25 @@ module M = struct
   (* Why do we store a [run] in the [Considering] state?
 
      It is possible for a computation to remain in the [Considering] state after
-     the current run is complete. This happens when the [restore_from_cache]
-     attempt fails, and the parent node recreates all dependencies from scratch
-     in the subsequent [compute] attempt. We call the computations that become
-     stuck in the [Considering] state "zombie computations".
+     the current run is complete. This happens if the [restore_from_cache] step
+     fails, and the parent node recreates all dependencies from scratch in the
+     subsequent [compute] step. We call computations that become stuck in the
+     [Considering] state "stale computations".
 
-     To distinguish between "current" and "zombie" computations, we store the
+     To distinguish between "current" and "stale" computations, we store the
      [run] in which the computation had started. In this way, before subscribing
-     to the [completion] of a sample attempt, we can check if it corresponded to
-     the current run, and if not, start throw a [Code_error], since we believe
-     that zombie computations should be unreachable.
+     to the [completion] of a sample attempt, we can check if it corresponds to
+     the current run, and if not, restart the attempt from scratch. This is what
+     the function [currently_considering] does.
 
-     Once we have convinced ourselves that there are no zombies out there, we
-     can remove the [run] from the [Considering] state. *)
+     Once all stale computations have been restarted, we should hold no more
+     references to the corresponding [completion]s, allowing them to be garbage
+     collected. Note that some stale computations may never be restarted, e.g.
+     if the corresponding references are kept behind an inactive conditional. *)
   and State : sig
     type ('a, 'b, 'f) t =
       (* [Considering] marks computations currently being considered, i.e. whose
-         result we currently attempt to restore from the cache or recompute.
-         Zombie computations may remain in the [Considering] state from the
-         prevoius runs, therefore only [Considering] constructors with the value
-         of [run] equal to [Run.current ()] should be taken into account. *)
+         result we currently attempt to restore from the cache or recompute. *)
       | Not_considering
       | Considering of
           { run : Run.t
@@ -939,10 +939,9 @@ end = struct
                   Exec_unknown.restore_from_cache_internal_from_sync dep
                 in
                 match restore_result with
-                | Ok _cached_value -> assert false
-                (* go deps *)
-                | Error (Cancelled { dependency_cycle = _ }) ->
-                  assert false (* Cancelled { dependency_cycle } *)
+                | Ok _cached_value -> go deps
+                | Error (Cancelled { dependency_cycle }) ->
+                  Cancelled { dependency_cycle }
                 | Error (Not_found | Out_of_date _) -> Changed )
               | Yes _equal -> (
                 (* If [dep] has a cutoff predicate, it is not sufficient to
@@ -1063,18 +1062,16 @@ end = struct
         } ->
       Running { dag_node; completion }
 
-  let consider_dep_node (dep_node : _ Dep_node.t) =
+  let consider (dep_node : _ Dep_node.t) =
     let sample_attempt = start_considering dep_node in
     add_dep_from_caller ~called_from_peek:false dep_node sample_attempt
     |> Result.map ~f:(fun () -> sample_attempt)
 
   let compute_internal dep_node =
-    Result.map
-      (consider_dep_node dep_node)
-      ~f:Sample_attempt.Completion.Sync.compute
+    Result.map (consider dep_node) ~f:Sample_attempt.Completion.Sync.compute
 
   let restore_from_cache_internal dep_node =
-    match consider_dep_node dep_node with
+    match consider dep_node with
     | Ok sample_attempt -> Sample_attempt.Completion.Sync.restore sample_attempt
     | Error dependency_cycle -> Error (Cancelled { dependency_cycle })
 
@@ -1253,18 +1250,16 @@ end = struct
         } ->
       Running { dag_node; completion }
 
-  let consider_dep_node (dep_node : _ Dep_node.t) =
+  let consider (dep_node : _ Dep_node.t) =
     let sample_attempt = start_considering dep_node in
     add_dep_from_caller ~called_from_peek:false dep_node sample_attempt
     |> Result.map ~f:(fun () -> sample_attempt)
 
   let compute_internal (dep_node : _ Dep_node.t) =
-    Result.map
-      (consider_dep_node dep_node)
-      ~f:Sample_attempt.Completion.Async.compute
+    Result.map (consider dep_node) ~f:Sample_attempt.Completion.Async.compute
 
   let restore_from_cache_internal (dep_node : _ Dep_node.t) =
-    match consider_dep_node dep_node with
+    match consider dep_node with
     | Ok sample_attempt ->
       Sample_attempt.Completion.Async.restore sample_attempt
     | Error dependency_cycle ->

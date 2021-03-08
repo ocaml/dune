@@ -1015,7 +1015,7 @@ let%expect_test "dynamic cycles with non-uniform cutoff structure" =
     Evaluated the summit with input 2: 9
     f 2 = Ok 9 |}]
 
-let%expect_test "deadlocks and zombies when creating a cycle twice" =
+let%expect_test "deadlocks when creating a cycle twice" =
   let fdecl_base = Fdecl.create (fun _ -> Dyn.Opaque) in
   let cycle_creator =
     create ~with_cutoff:true "cycle_creator" (fun () ->
@@ -1306,10 +1306,15 @@ let%expect_test "Test that there are no phantom dependencies" =
      unnecessary recomputations. *)
   [%expect {| f 0 = Ok 0 |}]
 
-let%expect_test "Abandoned node with no cutoff is not a zombie" =
+let%expect_test "Abandoned node with no cutoff is handled correctly" =
   let count_runs = count_runs "base" in
-  let base () = create ~with_cutoff:false "base" count_runs in
-  let last_base = ref None in
+  let which_base = ref 0 in
+  let base () =
+    incr which_base;
+    printf "Created base #%d\n" !which_base;
+    create ~with_cutoff:false "base" count_runs
+  in
+  let last_created_base = ref None in
   let captured_base = ref None in
   let middle =
     Memo.create "middle"
@@ -1320,7 +1325,7 @@ let%expect_test "Abandoned node with no cutoff is not a zombie" =
       (fun () ->
         printf "Started evaluating middle\n";
         let base = base () in
-        last_base := Some base;
+        last_created_base := Some base;
         let+ result = Memo.exec base () in
         printf "Evaluated middle: %d\n" result;
         result)
@@ -1338,7 +1343,7 @@ let%expect_test "Abandoned node with no cutoff is not a zombie" =
           match middle with
           | 1 ->
             printf "*** Captured last base ***\n";
-            captured_base := !last_base;
+            captured_base := !last_created_base;
             Memo.exec (Option.value_exn !captured_base) ()
           | 2 ->
             printf "*** Abandoned captured base ***\n";
@@ -1355,6 +1360,7 @@ let%expect_test "Abandoned node with no cutoff is not a zombie" =
     {|
     Started evaluating summit
     Started evaluating middle
+    Created base #1
     Started evaluating base
     Evaluated base: 1
     Evaluated middle: 1
@@ -1368,6 +1374,7 @@ let%expect_test "Abandoned node with no cutoff is not a zombie" =
     {|
     Started evaluating summit
     Started evaluating middle
+    Created base #2
     Started evaluating base
     Evaluated base: 2
     Evaluated middle: 2
@@ -1375,12 +1382,17 @@ let%expect_test "Abandoned node with no cutoff is not a zombie" =
     Evaluated summit: 0
     f 0 = Ok 0
     |}];
+  (* At this point, [captured_base] is a stale computation: [restore_from_cache]
+     failed but [compute] never started. *)
   Memo.restart_current_run ();
   evaluate_and_print summit 0;
+  (* We will now attempt to force [compute] of a stale computation but this is
+     handled correctly by restarting the computation. *)
   [%expect
     {|
     Started evaluating summit
     Started evaluating middle
+    Created base #3
     Started evaluating base
     Evaluated base: 3
     Evaluated middle: 3

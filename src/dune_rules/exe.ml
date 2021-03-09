@@ -213,71 +213,54 @@ let link_js ~name ~cm_files ~promote cctx =
   Jsoo_rules.build_exe cctx ~js_of_ocaml ~src ~cm:top_sorted_cms
     ~flags:(Command.Args.dyn flags) ~promote
 
-let build_and_link_many ~programs ~linkages ~promote ?link_args ?o_files
-    ?(embed_in_plugin_libraries = []) cctx =
-  let modules = Compilation_context.modules cctx in
-  let dep_graphs = Dep_rules.rules cctx ~modules in
-  Module_compilation.build_all cctx ~dep_graphs;
-  let link_time_code_gen = Link_time_code_gen.handle_special_libs cctx in
-  List.iter programs ~f:(fun { Program.name; main_module_name; loc } ->
-      let cm_files =
-        let sctx = CC.super_context cctx in
-        let ctx = SC.context sctx in
-        let obj_dir = CC.obj_dir cctx in
-        let top_sorted_modules =
-          let main = Option.value_exn (Modules.find modules main_module_name) in
-          Dep_graph.top_closed_implementations dep_graphs.impl [ main ]
-        in
-        Cm_files.make ~obj_dir ~modules ~top_sorted_modules
-          ~ext_obj:ctx.lib_config.ext_obj
-      in
-      List.iter linkages ~f:(fun linkage ->
-          if linkage = Linkage.js then
-            link_js ~name ~cm_files ~promote cctx
-          else
-            let link_time_code_gen =
-              if Linkage.is_plugin linkage then
-                Link_time_code_gen.handle_special_libs
-                  (CC.for_plugin_executable cctx ~embed_in_plugin_libraries)
-              else
-                link_time_code_gen
-            in
-            link_exe cctx ~loc ~name ~linkage ~cm_files ~link_time_code_gen
-              ~promote ?link_args ?o_files))
-
-let build_and_link ~program = build_and_link_many ~programs:[ program ]
-
 let link_many ?link_args ?o_files ?(embed_in_plugin_libraries=[]) ~dep_graphs
       ~programs ~linkages ~promote cctx =
   let dep_graphs : Dep_graph.t Ml_kind.Dict.t = dep_graphs in
   let modules = Compilation_context.modules cctx in
   let link_time_code_gen = Link_time_code_gen.handle_special_libs cctx in
   List.iter programs ~f:(fun { Program.name; main_module_name; loc } ->
-      let cm_files =
-        let sctx = CC.super_context cctx in
-        let ctx = SC.context sctx in
-        let obj_dir = CC.obj_dir cctx in
-        let top_sorted_modules =
-          let main = Option.value_exn (Modules.find modules main_module_name) in
+    let cm_files =
+      let sctx = CC.super_context cctx in
+      let ctx = SC.context sctx in
+      let obj_dir = CC.obj_dir cctx in
+      let top_sorted_modules =
+        match Modules.find modules main_module_name with
+        | None ->
+          (* XXX: make this a nicer error *)
+          failwith (Printf.sprintf "module %s not found in compilation context"
+                      (Module_name.to_string main_module_name))
+        | Some main ->
           Dep_graph.top_closed_implementations dep_graphs.impl [ main ]
-        in
-        Cm_files.make ~obj_dir ~modules ~top_sorted_modules
-          ~ext_obj:ctx.lib_config.ext_obj
       in
-      List.iter linkages ~f:(fun linkage ->
-          if linkage = Linkage.js then
-            link_js ~name ~cm_files ~promote cctx
+      Cm_files.make ~obj_dir ~modules ~top_sorted_modules
+        ~ext_obj:ctx.lib_config.ext_obj
+    in
+    List.iter linkages ~f:(fun linkage ->
+      if linkage = Linkage.js then
+        link_js ~name ~cm_files ~promote cctx
+      else
+        let link_time_code_gen =
+          if Linkage.is_plugin linkage then
+            Link_time_code_gen.handle_special_libs
+              (CC.for_plugin_executable cctx ~embed_in_plugin_libraries)
           else
-            let link_time_code_gen =
-              if Linkage.is_plugin linkage then
-                Link_time_code_gen.handle_special_libs
-                  (CC.for_plugin_executable cctx ~embed_in_plugin_libraries)
-              else
-                link_time_code_gen
-            in
-            link_exe cctx ~loc ~name ~linkage ~cm_files ~link_time_code_gen
-              ~promote ?link_args ?o_files))
+            link_time_code_gen
+        in
+        link_exe cctx ~loc ~name ~linkage ~cm_files ~link_time_code_gen
+          ~promote ?link_args ?o_files))
 
+let build_and_link_many ?link_args ?o_files ?(embed_in_plugin_libraries = [])
+      ~programs ~linkages ~promote cctx =
+  let modules = Compilation_context.modules cctx in
+  let dep_graphs = Dep_rules.rules cctx ~modules in
+  Module_compilation.build_all cctx ~dep_graphs;
+  link_many ?link_args ?o_files ~embed_in_plugin_libraries ~dep_graphs
+    ~programs ~linkages ~promote cctx
+
+let build_and_link ?link_args ?o_files ?(embed_in_plugin_libraries = [])
+      ~program =
+  build_and_link_many ?link_args ?o_files ~embed_in_plugin_libraries
+    ~programs:[program]
 
 let exe_path cctx ~(program : Program.t) ~linkage =
   exe_path_from_name cctx ~name:program.name ~linkage

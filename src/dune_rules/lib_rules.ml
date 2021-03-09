@@ -439,8 +439,10 @@ let rules (lib : Library.t) ~sctx ~dir_contents ~dir ~expander ~scope :
     let () =
       let buildable = lib.Library.buildable in
       Option.iter buildable.Buildable.ctypes ~f:(fun _ctypes ->
-        let loc, _name =  lib.Library.name in
-        Ctypes_rules.gen_rules ~cctx ~buildable ~loc ~sctx ~scope ~dir)
+        let _loc, _name =  lib.Library.name in
+        ()
+        (*Ctypes_rules.gen_rules ~cctx ~buildable ~loc ~sctx ~scope ~dir*)
+      )
     in
     library_rules lib ~cctx ~source_modules ~dir_contents ~compile_info
   in

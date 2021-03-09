@@ -39,26 +39,6 @@ end
 
 (** Build and link one or more executables *)
 
-val build_and_link :
-     program:Program.t
-  -> linkages:Linkage.t list
-  -> promote:Rule.Promote.t option
-  -> ?link_args:Command.Args.static Command.Args.t Action_builder.t
-  -> ?o_files:Path.t list
-  -> ?embed_in_plugin_libraries:(Loc.t * Lib_name.t) list
-  -> Compilation_context.t
-  -> unit
-
-val build_and_link_many :
-     programs:Program.t list
-  -> linkages:Linkage.t list
-  -> promote:Rule.Promote.t option
-  -> ?link_args:Command.Args.static Command.Args.t Action_builder.t
-  -> ?o_files:Path.t list
-  -> ?embed_in_plugin_libraries:(Loc.t * Lib_name.t) list
-  -> Compilation_context.t
-  -> unit
-
 (* [link_many] is like [build_and_link_many], but it allows you to share
    modules between executables without requiring an intermediate library. *)
 val link_many :
@@ -66,6 +46,26 @@ val link_many :
   -> ?o_files:Path.t list
   -> ?embed_in_plugin_libraries:(Loc.t * Lib_name.t) list
   -> dep_graphs:Dep_graph.t Import.Ml_kind.Dict.t
+  -> programs:Program.t list
+  -> linkages:Linkage.t list
+  -> promote:Rule.Promote.t option
+  -> Compilation_context.t
+  -> unit
+
+val build_and_link :
+     ?link_args:Command.Args.static Command.Args.t Action_builder.t
+  -> ?o_files:Path.t list
+  -> ?embed_in_plugin_libraries:(Loc.t * Lib_name.t) list
+  -> program:Program.t
+  -> linkages:Linkage.t list
+  -> promote:Rule.Promote.t option
+  -> Compilation_context.t
+  -> unit
+
+val build_and_link_many :
+     ?link_args:Command.Args.static Command.Args.t Action_builder.t
+  -> ?o_files:Path.t list
+  -> ?embed_in_plugin_libraries:(Loc.t * Lib_name.t) list
   -> programs:Program.t list
   -> linkages:Linkage.t list
   -> promote:Rule.Promote.t option

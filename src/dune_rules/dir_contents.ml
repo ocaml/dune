@@ -162,7 +162,7 @@ end = struct
             @ (match buildable.ctypes with
               | None -> []
               | Some ctypes ->
-                Ctypes_rules.Stanza_util.generated_ml_and_c_files ctypes)
+                Ctypes_rules.generated_ml_and_c_files ctypes)
           | _ -> [])
       |> String.Set.of_list
     in

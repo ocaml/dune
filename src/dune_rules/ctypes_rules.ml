@@ -5,11 +5,13 @@ module Buildable = Dune_file.Buildable
 module Library =  Dune_file.Library
 module Ctypes = Dune_file.Ctypes
 
-(* This module expands a [(library ... (ctypes ...))] rule into the set of
-   [library], [executable], [rule] rules and .ml files needed to more
-   conveniently build OCaml bindings for C libraries.  Aside from perhaps
-   providing an '#include "header.h"' line, you should be able to wrap an
-   entire C library without writing a single line of C code.
+(* This module expands either a (library ... (ctypes_stubgen ...)) rule
+   or an (executables ... (ctypes_stubgen ...)) rule into the generated
+   set of .ml files needed to conveniently build OCaml bindings for C
+   libraries.
+
+   Aside from perhaps providing an '#include "header.h"' line, you should be
+   able to wrap an entire C library without writing a single line of C code.
 
    This stanza requires the user to define (and specify) two modules:
 
@@ -53,28 +55,23 @@ module Stanza_util = struct
 
   let sprintf = Printf.sprintf
 
+  let discover_script ctypes =
+    sprintf "%s__ctypes_discover" ctypes.Ctypes.external_library_name
+
+  let type_gen_script ctypes =
+    sprintf "%s__type_gen" ctypes.Ctypes.external_library_name
+
+  let function_gen_script ctypes =
+    sprintf "%s__function_gen" ctypes.Ctypes.external_library_name
+
   let type_description_module ctypes =
     ctypes.Ctypes.type_descriptions
-
-  let type_description_library ctypes =
-    type_description_module ctypes
-    |> Module_name.to_string
-    |> String.lowercase
 
   let function_description_module ctypes =
     ctypes.Ctypes.function_descriptions
 
-  let function_description_library ctypes =
-    function_description_module ctypes
-    |> Module_name.to_string
-    |> String.lowercase
-
   let entry_module ctypes =
     ctypes.Ctypes.generated_entry_point
-(*
-     let entry_library ctypes =
-     entry_module ctypes |> Module_name.to_string |> String.lowercase
-  *)
 
   let cflags_sexp ctypes =
     sprintf "%s__c_flags.sexp" ctypes.Ctypes.external_library_name
@@ -90,6 +87,8 @@ module Stanza_util = struct
     sprintf "%s__c_generated_functions" ctypes.Ctypes.external_library_name
     |> Module_name.of_string
 
+  (* This includer module is simply some glue to instantiate the Types functor
+     that the user provides in the type description module. *)
   let c_types_includer_module ctypes =
     ctypes.Ctypes.generated_types
 
@@ -102,17 +101,21 @@ module Stanza_util = struct
   let c_generated_functions_cout_c ctypes =
     sprintf "%s__c_cout_generated_functions.c" ctypes.Ctypes.external_library_name
 
+  let _libraries_needed_for_ctypes () =
+    ["ctypes"; "ctypes.foreign"; "ctypes.stubs"]
+
   let generated_modules ctypes =
-    List.map ~f:Module_name.to_string
-      [ c_generated_functions_module ctypes
-      ; c_generated_types_module ctypes
-      ; c_types_includer_module ctypes ]
-      (*
-      ; entry_module ctypes ] *)
+    [ type_gen_script ctypes |> Module_name.of_string
+    ; function_gen_script ctypes |> Module_name.of_string
+    ; c_generated_functions_module ctypes
+    ; c_generated_types_module ctypes
+    ; c_types_includer_module ctypes
+    ; entry_module ctypes ]
 
   let generated_ml_and_c_files ctypes =
     let ml_files =
       generated_modules ctypes
+      |> List.map ~f:Module_name.to_string
       |> List.map ~f:String.lowercase
       |> List.map ~f:(fun m -> m ^ ".ml")
     in
@@ -122,9 +125,7 @@ module Stanza_util = struct
     ml_files @ c_files
 end
 
-let osl_pos () = "", 0, 0, 0
-
-let sprintf = Printf.sprintf
+let generated_ml_and_c_files = Stanza_util.generated_ml_and_c_files
 
 let ml_of_module_name mn =
   Module_name.to_string mn ^ ".ml"
@@ -145,9 +146,7 @@ let modules_of_list ~dir ~modules =
     Module.Name_map.of_list_exn modules
   in
   Modules.exe_unwrapped name_map
-  (*
-  Modules.exe_wrapped ~src_dir:dir ~modules:name_map
-     *)
+  (* Modules.exe_wrapped ~src_dir:dir ~modules:name_map *)
 
 let write_c_types_includer_module ~sctx ~dir ~filename ~type_description_module
       ~c_generated_types_module =
@@ -348,7 +347,8 @@ let build_c_program ~sctx ~dir ~source_files ~scope ~cflags_sexp ~output () =
   in
   Super_context.add_rule sctx ~dir build
 
-let cctx_with_substitutions ?flags ?(libraries=[]) ~modules ~dir ~loc ~scope ~cctx =
+let cctx_with_substitutions ?(libraries=[]) ~modules ~dir
+      ~loc ~scope ~cctx =
   let compile_info =
     let dune_version = Scope.project scope |> Dune_project.dune_version in
     Lib.DB.resolve_user_written_deps_for_exes (Scope.libs scope)
@@ -365,40 +365,32 @@ let cctx_with_substitutions ?flags ?(libraries=[]) ~modules ~dir ~loc ~scope ~cc
     ~expander:(Cctx.expander cctx)
     ~js_of_ocaml:(Cctx.js_of_ocaml cctx)
     ~package:(Cctx.package cctx)
-    ~flags:(match flags with
-      | Some flags -> flags
-      | None -> Cctx.flags cctx)
+    ~flags:(Cctx.flags cctx)
     ~requires_compile:(Lib.Compile.direct_requires compile_info)
     ~requires_link:(Lib.Compile.requires_link compile_info)
     ~obj_dir:(Cctx.obj_dir cctx)
     ~opaque:(Cctx.Explicit (Cctx.opaque cctx))
     ~modules ()
 
-let executable ?flags ?libraries ?(modules=[]) ~scope ~loc ~dir ~cctx program =
+let program_of_module_and_dir ~dir program =
+  let build_dir = Path.build dir in
+  Exe.Program.{
+    name = program;
+    main_module_name = Module_name.of_string program;
+    loc = Loc.in_file (Path.relative build_dir program)
+  }
+
+let exe_build_and_link ?libraries ?(modules=[]) ~scope ~loc ~dir ~cctx program =
   let cctx =
-    cctx_with_substitutions ?flags ?libraries ~modules:(program :: modules)
-      ~loc ~scope ~dir ~cctx
+    cctx_with_substitutions ?libraries ~loc ~scope ~dir ~cctx
+      ~modules:(program :: modules)
   in
-  let program =
-    let build_dir = Path.build dir in
-    Exe.Program.{
-      name = program;
-      main_module_name = Module_name.of_string program;
-      loc = Loc.in_file (Path.relative build_dir program)
-    }
-  in
+  let program = program_of_module_and_dir ~dir program in
   Exe.build_and_link ~program ~linkages:[Exe.Linkage.native]
     ~promote:None cctx
 
-let executable_with_shared_cctx ~dir ~shared_cctx ~dep_graphs program =
-  let program =
-    let build_dir = Path.build dir in
-    Exe.Program.{
-      name = program;
-      main_module_name = Module_name.of_string program;
-      loc = Loc.in_file (Path.relative build_dir program)
-    }
-  in
+let exe_link_only ~dir ~shared_cctx ~dep_graphs program =
+  let program = program_of_module_and_dir ~dir program in
   Exe.link_many ~programs:[program] ~linkages:[Exe.Linkage.native]
     ~dep_graphs ~promote:None shared_cctx
 
@@ -417,24 +409,14 @@ let write_osl_to_sexp_file ~sctx ~dir ~filename osl =
   in
   Super_context.add_rule ~loc:Loc.none sctx ~dir build
 
-let gen_rules ~cctx ~buildable ~loc ~scope ~dir ~sctx =
-  let ctypes =
-    match buildable.Buildable.ctypes with
-    | Some ctypes -> ctypes
-    | None -> assert false
-  in
+let gen_rules ~dep_graphs ~cctx ~buildable ~loc ~scope ~dir ~sctx =
+  let ctypes = Option.value_exn buildable.Buildable.ctypes in
   let external_library_name = ctypes.Ctypes.external_library_name in
-  let discover_script = sprintf "%s__ctypes_discover" external_library_name in
-  let type_gen_script = sprintf "%s__type_gen" external_library_name in
-  let function_gen_script = sprintf "%s__function_gen" external_library_name in
   let type_description_module = Stanza_util.type_description_module ctypes in
   let function_description_module = Stanza_util.function_description_module ctypes in
-  (* This includer module is simply some glue to instantiate the Types functor
-     that the user provides in the type description module. *)
   let c_types_includer_module = Stanza_util.c_types_includer_module ctypes in
   let c_generated_types_module = Stanza_util.c_generated_types_module ctypes in
   let rule = rule ~sctx ~dir in
-  let executable = executable ~scope ~loc ~dir ~cctx in
   let () =
     write_c_types_includer_module
       ~sctx ~dir
@@ -447,7 +429,8 @@ let gen_rules ~cctx ~buildable ~loc ~scope ~dir ~sctx =
      if it's an external system library.  The user could also tell us what
      they are, if the library is vendored.
 
-     https://dune.readthedocs.io/en/stable/quick-start.html#defining-a-library-with-c-stubs-using-pkg-config *)
+     https://dune.readthedocs.io/en/stable/quick-start.html#defining-a-library-with-c-stubs-using-pkg-config
+  *)
   let c_library_flags_sexp = Stanza_util.c_library_flags_sexp ctypes in
   let cflags_sexp = Stanza_util.cflags_sexp ctypes in
   let () =
@@ -459,43 +442,20 @@ let gen_rules ~cctx ~buildable ~loc ~scope ~dir ~sctx =
         c_library_flags
     | Pkg_config ->
       let cflags_sexp = Stanza_util.cflags_sexp ctypes in
+      let discover_script = Stanza_util.discover_script ctypes in
       write_discover_script
         ~sctx ~dir ~filename:(discover_script ^ ".ml") ~cflags_sexp
         ~c_library_flags_sexp ~external_library_name;
-      executable ~libraries:["dune.configurator"] discover_script;
+      exe_build_and_link ~scope ~loc ~dir ~cctx ~libraries:["dune.configurator"]
+        discover_script;
       rule
         ~targets:[cflags_sexp; c_library_flags_sexp]
         ~exe:(discover_script ^ ".exe")
         ()
   in
+  let generated_entry_module = Stanza_util.entry_module ctypes in
   let headers = ctypes.Ctypes.headers in
-  let executable_with_shared_cctx =
-    let shared_cctx =
-      let flags =
-        (* ctypes stubgen emits ocaml code with warnings which can make
-           compilation impossible if you're in warnings-as-errors mode;
-           disable the warnings *)
-        Ocaml_flags.of_list ["-w"; "-27"; "-w"; "-9"]
-      in
-      cctx_with_substitutions
-        ~cctx ~dir ~loc ~scope ~flags
-        ~libraries:["ctypes"; "ctypes.foreign"; "ctypes.stubs"]
-        ~modules:[ function_gen_script
-                 ; type_gen_script
-                 ; Module_name.to_string type_description_module
-                 ; Module_name.to_string function_description_module
-                 ; Module_name.to_string c_types_includer_module
-                 ; Module_name.to_string c_generated_types_module
-                 ]
-    in
-    (* Process the build rules once, to avoid bombing out on duplicate rules
-       errors when building executables that share modules between them. *)
-    let dep_graphs =
-      Dep_rules.rules shared_cctx ~modules:(Compilation_context.modules shared_cctx)
-    in
-    let () = Module_compilation.build_all shared_cctx ~dep_graphs in
-    executable_with_shared_cctx ~dir ~shared_cctx ~dep_graphs
-  in
+  let exe_link_only = exe_link_only ~dir ~shared_cctx:cctx ~dep_graphs in
   (* Type_gen produces a .c file, taking your type description module above
      as an input.
      The .c file is compiled into an .exe.
@@ -512,10 +472,11 @@ let gen_rules ~cctx ~buildable ~loc ~scope ~dir ~sctx =
     let c_generated_types_cout_exe =
       Stanza_util.c_generated_types_cout_exe ctypes
     in
+    let type_gen_script = Stanza_util.type_gen_script ctypes in
     write_type_gen_script ~headers ~sctx ~dir
       ~filename:(type_gen_script ^ ".ml")
       ~type_description_module;
-    executable_with_shared_cctx type_gen_script;
+    exe_link_only type_gen_script;
     rule
       ~stdout_to:c_generated_types_cout_c
       ~exe:(type_gen_script ^ ".exe")
@@ -538,10 +499,11 @@ let gen_rules ~cctx ~buildable ~loc ~scope ~dir ~sctx =
     let c_generated_functions_cout_c =
       Stanza_util.c_generated_functions_cout_c ctypes
     in
+    let function_gen_script = Stanza_util.function_gen_script ctypes in
     write_function_gen_script ~headers ~sctx ~dir
       ~name:function_gen_script ~function_description_module
       ~concurrency:ctypes.Ctypes.concurrency;
-    executable_with_shared_cctx function_gen_script;
+    exe_link_only function_gen_script;
     rule
       ~stdout_to:c_generated_functions_cout_c
       ~exe:(function_gen_script ^ ".exe")
@@ -554,16 +516,11 @@ let gen_rules ~cctx ~buildable ~loc ~scope ~dir ~sctx =
       ~args:["ml"; stubs_prefix]
       ()
   in
-  (*
   (* The entry point module binds the instantiated Types and Functions functors
      to the entry point module name the user specified. *)
-  let () =
-    write_entry_point_module
-      ~sctx ~dir
-      ~filename:(Stanza_util.entry_module ctypes |> ml_of_module_name)
-      ~function_description_module:(Stanza_util.function_description_module ctypes)
-      ~c_generated_functions_module:(Stanza_util.c_generated_functions_module ctypes)
-      ~c_types_includer_module
-  in
-     *)
-  ()
+  write_entry_point_module
+    ~sctx ~dir
+    ~filename:(generated_entry_module |> ml_of_module_name)
+    ~function_description_module:(Stanza_util.function_description_module ctypes)
+    ~c_generated_functions_module:(Stanza_util.c_generated_functions_module ctypes)
+    ~c_types_includer_module

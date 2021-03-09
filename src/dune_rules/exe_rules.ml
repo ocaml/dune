@@ -203,18 +203,30 @@ let executables_rules ~sctx ~dir ~expander ~dir_contents ~scope ~compile_info
         ~requires_compile
     in
     Check_rules.add_files sctx ~dir o_files;
-    Exe.build_and_link_many cctx ~programs ~linkages ~link_args ~o_files
-      ~promote:exes.promote ~embed_in_plugin_libraries
-  in
-  let () =
-    let buildable = exes.Executables.buildable in
-    Option.iter buildable.Buildable.ctypes ~f:(fun _ctypes ->
-      let loc =
-        match exes.Executables.names with
-        | hd :: _ -> fst hd
-        | [] -> assert false
-      in
-      Ctypes_rules.gen_rules ~cctx ~buildable ~loc ~sctx ~scope ~dir)
+    begin
+      let buildable = exes.Executables.buildable in
+      match buildable.Buildable.ctypes with
+      | None ->
+        Exe.build_and_link_many cctx ~programs ~linkages ~link_args ~o_files
+          ~promote:exes.promote ~embed_in_plugin_libraries
+      | Some _ctypes ->
+        (* Ctypes stubgen builds utility .exe files that need to share modules
+           with this compilation context.  To support that, we extract the
+           one-time run bits from [Exe.build_and_link_many] and run them here,
+           then pass that to the [Exe.link_many] call here as well as the
+           Ctypes_rules.  This dance is done to avoid triggering duplicate rule
+           exceptions. *)
+        let dep_graphs =
+          Dep_rules.rules cctx ~modules:(Compilation_context.modules cctx)
+        in
+        let () =
+          let loc = fst (List.hd exes.Executables.names) in
+          Ctypes_rules.gen_rules ~dep_graphs ~cctx ~buildable ~loc ~sctx ~scope ~dir
+        in
+        let () = Module_compilation.build_all cctx ~dep_graphs in
+        Exe.link_many ~programs ~dep_graphs ~linkages ~link_args ~o_files
+          ~promote:exes.promote ~embed_in_plugin_libraries cctx
+    end
   in
   ( cctx
   , Merlin.make ~requires:requires_compile ~stdlib_dir ~flags ~modules

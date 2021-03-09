@@ -28,3 +28,8 @@ let get t =
   match t.state with
   | Unset -> Code_error.raise "Fdecl.get: not set" []
   | Set x -> x
+
+let to_dyn t =
+  match t.state with
+  | Unset -> Dyn.Encoder.constr "Unset" []
+  | Set a -> Dyn.Encoder.constr "Set" [ t.to_dyn a ]

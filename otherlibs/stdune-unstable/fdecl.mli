@@ -18,3 +18,5 @@ val set_idempotent : equal:('a -> 'a -> bool) -> 'a t -> 'a -> unit
 (** [get t] returns the [x] if [set comp x] was called. Raises if [set] has not
     been called yet. *)
 val get : 'a t -> 'a
+
+val to_dyn : 'a t -> Dyn.t

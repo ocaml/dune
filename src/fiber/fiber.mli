@@ -83,6 +83,14 @@ val parallel_iter_set :
   -> f:('a -> unit t)
   -> unit t
 
+(** Provide efficient parallel iter/map functions for maps. *)
+module Make_map_traversals (Map : Map.S) : sig
+  val parallel_iter : 'a Map.t -> f:(Map.key -> 'a -> unit t) -> unit t
+
+  val parallel_map : 'a Map.t -> f:(Map.key -> 'a -> 'b t) -> 'b Map.t t
+end
+[@@inline always]
+
 (** {1 Local storage} *)
 
 (** Variables local to a fiber *)

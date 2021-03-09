@@ -26,20 +26,75 @@ val compare : t -> t -> Ordering.t
     necessitates a forward declaration to use in this module. *)
 val eval_pred : (File_selector.t -> Path.Set.t) Fdecl.t
 
-val peek_alias_expansion : (Alias.t -> Path.Set.t) Fdecl.t
+module Map : sig
+  type dep := t
 
-val eval_alias_expansion : (Alias.t -> Path.Set.t Memo.Build.t) Fdecl.t
+  include Map.S with type key := t
 
-module Trace : sig
+  val sandbox_config : _ t -> Sandbox_config.t
+
+  val has_universe : _ t -> bool
+
+  val parallel_map :
+    'a t -> f:(dep -> 'a -> 'b Memo.Build.t) -> 'b t Memo.Build.t
+end
+
+module Fact : sig
+  (** A fact about the world. For instance:
+
+      - file [p] has digest [d]
+
+      - alias [a] expands to the given set of files, with their digests
+
+      You can think of a [Dep.t] as the "label" of a fact. *)
+
   type t
+
+  val nothing : t
+
+  val file : Path.t -> Digest.t -> t
+
+  val alias : Alias.t -> Digest.t Path.Map.t -> t
+
+  val file_selector : File_selector.t -> Digest.t Path.Map.t -> t
+end
+
+module Facts : sig
+  (* There is an invariant that is not currently enforced: the value correspond
+     to the key. For instance we can't have [Map.find (File f) = File_selector
+     _] *)
+  type t = Fact.t Map.t
+
+  val empty : t
+
+  val union : t -> t -> t
+
+  (** Return all the paths, expanding aliases *)
+  val paths : t -> Digest.t Path.Map.t
+
+  val dirs : t -> Path.Set.t
+
+  val digest : t -> sandbox_mode:Sandbox_mode.t -> env:Env.t -> Digest.t
 end
 
 module Set : sig
-  include Set.S with type elt = t
+  type dep := t
 
-  val has_universe : t -> bool
+  type t = unit Map.t
 
-  val sandbox_config : t -> Sandbox_config.t
+  val empty : t
+
+  val singleton : dep -> t
+
+  val add : t -> dep -> t
+
+  val union : t -> t -> t
+
+  val union_map : 'a list -> f:('a -> t) -> t
+
+  val of_list : dep list -> t
+
+  val of_list_map : 'a list -> f:('a -> dep) -> t
 
   (** It's weird to return a [Path.t list] here, but the call site needs it and
       this lets us avoid having to choose between [static_paths] and
@@ -52,23 +107,12 @@ module Set : sig
 
   val static_paths : t -> Path.Set.t * Alias.t list
 
-  (** A pre-condition for calling [eval_paths] is that the current memoized node
-      must have forced the computation of the aliases returned by
-      [static_paths]. *)
-  val eval_paths : t -> Path.Set.t
-
   val files_approx : t -> Path.Set.t
 
   val encode : t -> Dune_lang.t
 
-  val trace : t -> sandbox_mode:Sandbox_mode.t -> env:Env.t -> Trace.t
-
   val add_paths : t -> Path.Set.t -> t
-
-  val parallel_iter : t -> f:(elt -> unit Memo.Build.t) -> unit Memo.Build.t
 
   val parallel_iter_files_approx :
     t -> f:(Path.t -> unit Memo.Build.t) -> unit Memo.Build.t
-
-  val eval_dirs : t -> Path.Set.t
 end

@@ -61,7 +61,7 @@ Build some more targets.
 Dune stores the result of rule execution in a store keyed by "rule
 digests". If the way such rule digests are computed changes, we could
 end up in a situation where the same hash means something different
-before and after the change, which is bad. To reduce the rist, we
+before and after the change, which is bad. To reduce the risk, we
 inject a version number into rule digests.
 
 If you see the bellow test breaking, then you probably accidentally

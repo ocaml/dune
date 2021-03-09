@@ -372,7 +372,9 @@ module Make_map_traversals (Map : Map.S) = struct
   let parallel_iter t ~f k =
     match Map.cardinal t with
     | 0 -> k ()
-    | 1 -> Map.iteri t ~f:(fun x y -> EC.apply2 f x y k)
+    | 1 ->
+      let x, y = Map.choose t |> Option.value_exn in
+      f x y k
     | n ->
       EC.add_refs (n - 1);
       let left_over = ref n in
@@ -389,8 +391,8 @@ module Make_map_traversals (Map : Map.S) = struct
     match Map.cardinal t with
     | 0 -> k Map.empty
     | 1 ->
-      Map.iteri t ~f:(fun x y ->
-          f x y (fun x -> k (Map.mapi t ~f:(fun _ _ -> x))))
+      let x, y = Map.choose t |> Option.value_exn in
+      f x y (fun y -> k (Map.singleton x y))
     | n ->
       EC.add_refs (n - 1);
       let left_over = ref n in

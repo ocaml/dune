@@ -340,6 +340,8 @@ let is_impl t = Option.is_some t.implements
 
 let requires t = t.requires
 
+let ppx_runtime_deps t = t.ppx_runtime_deps
+
 let obj_dir t = Lib_info.obj_dir t.info
 
 let is_local t =
@@ -1642,8 +1644,6 @@ let closure l ~linking =
     Resolve.compile_closure_with_overlap_checks None l ~forbidden_libraries
       ~stack
 
-let closure_exn l ~linking = Result.ok_exn (closure l ~linking)
-
 module Compile = struct
   module Resolved_select = Resolved_select
 
@@ -1873,29 +1873,6 @@ module DB = struct
 
   let instrumentation_backend t libname =
     instrumentation_backend t.instrument_with (resolve t) libname
-end
-
-(* META files *)
-
-module Meta = struct
-  let to_names = Lib_name.Set.of_list_map ~f:(fun t -> t.name)
-
-  (* For the deprecated method, we need to put all the runtime dependencies of
-     the transitive closure.
-
-     We need to do this because [ocamlfind ocamlc -package ppx_foo] will not
-     look for the transitive dependencies of [foo], and the runtime dependencies
-     might be attached to a dependency of [foo] rather than [foo] itself.
-
-     Sigh... *)
-  let ppx_runtime_deps_for_deprecated_method t =
-    closure_exn [ t ] ~linking:false
-    |> List.concat_map ~f:(fun lib -> Result.ok_exn lib.ppx_runtime_deps)
-    |> to_names
-
-  let requires t = to_names (Result.ok_exn t.requires)
-
-  let ppx_runtime_deps t = to_names (Result.ok_exn t.ppx_runtime_deps)
 end
 
 let to_dune_lib ({ info; _ } as lib) ~modules ~foreign_objects ~dir =

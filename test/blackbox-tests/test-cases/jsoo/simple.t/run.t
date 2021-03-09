@@ -4,17 +4,17 @@ Compilation using jsoo
   > sed s,^\ *$(ocamlc -config-var c_compiler),\ \ C_COMPILER,g
    js_of_ocaml bin/technologic.bc.runtime.js
       ocamldep bin/.technologic.eobjs/technologic.ml.d
-      ocamldep bin/.technologic.eobjs/z.ml.d
    js_of_ocaml .js/stdlib/std_exit.cmo.js
     C_COMPILER lib/stubs.o
       ocamldep lib/.x.objs/x.ml.d
         ocamlc lib/.x.objs/byte/x__.{cmi,cmo,cmt}
       ocamldep lib/.x.objs/y.ml.d
-   js_of_ocaml .js/js_of_ocaml/js_of_ocaml.cma.js
-   js_of_ocaml .js/stdlib/stdlib.cma.js
+      ocamldep bin/.technologic.eobjs/z.ml.d
     ocamlmklib lib/dllx_stubs.so,lib/libx_stubs.a
       ocamlopt lib/.x.objs/native/x__.{cmx,o}
         ocamlc lib/.x.objs/byte/x__Y.{cmi,cmo,cmt}
+   js_of_ocaml .js/js_of_ocaml/js_of_ocaml.cma.js
+   js_of_ocaml .js/stdlib/stdlib.cma.js
       ocamlopt lib/.x.objs/native/x__Y.{cmx,o}
         ocamlc lib/.x.objs/byte/x.{cmi,cmo,cmt}
       ocamlopt lib/.x.objs/native/x.{cmx,o}

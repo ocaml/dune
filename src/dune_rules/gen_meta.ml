@@ -88,8 +88,24 @@ let gen_lib pub_name lib ~path ~version =
     | Ppx_deriver _ ->
       [ Pos "ppx_driver" ]
   in
-  let lib_deps = Lib.Meta.requires lib in
-  let ppx_rt_deps = Lib.Meta.ppx_runtime_deps lib in
+  let to_names = Lib_name.Set.of_list_map ~f:Lib.name in
+  let lib_deps = Lib.requires lib |> Result.ok_exn |> to_names in
+  let ppx_rt_deps = Lib.ppx_runtime_deps lib |> Result.ok_exn |> to_names in
+  let ppx_runtime_deps_for_deprecated_method =
+    (* For the deprecated method, we need to put all the runtime dependencies of
+       the transitive closure.
+
+       We need to do this because [ocamlfind ocamlc -package ppx_foo] will not
+       look for the transitive dependencies of [foo], and the runtime
+       dependencies might be attached to a dependency of [foo] rather than [foo]
+       itself.
+
+       Sigh... *)
+    Lib.closure [ lib ] ~linking:false
+    |> Result.ok_exn
+    |> List.concat_map ~f:(fun lib -> Result.ok_exn (Lib.ppx_runtime_deps lib))
+    |> to_names
+  in
   List.concat
     [ version
     ; [ description desc; requires ~preds lib_deps ]
@@ -115,7 +131,7 @@ let gen_lib pub_name lib ~path ~version =
                  preprocessors"
             ; Comment "and normal dependencies"
             ; requires ~preds:[ no_ppx_driver ]
-                (Lib.Meta.ppx_runtime_deps_for_deprecated_method lib)
+                ppx_runtime_deps_for_deprecated_method
             ]
           ; (match kind with
             | Normal -> assert false

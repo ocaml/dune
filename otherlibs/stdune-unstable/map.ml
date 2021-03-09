@@ -33,7 +33,8 @@ module Make (Key : Key) : S with type key = Key.t = struct
         (update t key ~f:(function
           | None -> Some v
           | Some e -> raise_notrace (M.Found e)))
-    with M.Found e -> Error e
+    with
+    | M.Found e -> Error e
 
   let remove t k = remove k t
 
@@ -85,7 +86,7 @@ module Make (Key : Key) : S with type key = Key.t = struct
       | (k, v) :: l -> (
         match find acc k with
         | None -> loop (set acc k v) l
-        | Some v_old -> Error (k, v_old, v) )
+        | Some v_old -> Error (k, v_old, v))
     in
     fun l -> loop empty l
 
@@ -110,7 +111,7 @@ module Make (Key : Key) : S with type key = Key.t = struct
               | _ -> false)
         with
         | x :: y :: _ -> Error (k, x, y)
-        | _ -> assert false )
+        | _ -> assert false)
 
   let of_list_map_exn t ~f =
     match of_list_map t ~f with
@@ -144,6 +145,13 @@ module Make (Key : Key) : S with type key = Key.t = struct
   let of_list_multi l =
     List.fold_left (List.rev l) ~init:empty ~f:(fun acc (key, data) ->
         add_multi acc key data)
+
+  let of_list_unit =
+    let rec loop acc = function
+      | [] -> acc
+      | k :: l -> loop (set acc k ()) l
+    in
+    fun l -> loop empty l
 
   let keys t = foldi t ~init:[] ~f:(fun k _ l -> k :: l) |> List.rev
 
@@ -203,7 +211,7 @@ module Make (Key : Key) : S with type key = Key.t = struct
               if f t ~of_ then
                 None
               else
-                not_subset () ))
+                not_subset ()))
     with
     | (_ : _ t) -> true
     | exception Exit -> false
@@ -226,9 +234,9 @@ module Make (Key : Key) : S with type key = Key.t = struct
       | entries ->
         update t k ~f:(fun v ->
             Some
-              ( match v with
+              (match v with
               | None -> entries
-              | Some x -> List.append x entries ))
+              | Some x -> List.append x entries))
   end
 
   exception Found of Key.t

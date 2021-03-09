@@ -259,12 +259,12 @@ end = struct
   let t =
     (* This [lazy] is safe: it does not call any memoized functions. *)
     lazy
-      ( match P.load file with
+      (match P.load file with
       | Some t -> t
       (* This mutable table is safe: it's only used by [execute_rule_impl] to
          decide whether to rebuild a rule or not; [execute_rule_impl] ensures
          that the targets are produced deterministically. *)
-      | None -> Path.Table.create 1024 )
+      | None -> Path.Table.create 1024)
 
   let dump () =
     if !needs_dumping && Path.build_dir_exists () then (
@@ -419,11 +419,11 @@ let set_vcs vcs =
       match with_repositories with
       | Result.Ok cache ->
         let cache =
-          ( module struct
+          (module struct
             let cache = cache
 
             module Cache = Caching.Cache
-          end : Cache.Caching )
+          end : Cache.Caching)
         in
         Some { caching with cache }
       | Result.Error e ->
@@ -450,7 +450,7 @@ let get_dir_triage t ~dir =
   | External _ ->
     Dir_triage.Known
       (Non_build
-         ( match Path.readdir_unsorted dir with
+         (match Path.readdir_unsorted dir with
          | Error Unix.ENOENT -> Path.Set.empty
          | Error m ->
            User_warning.emit
@@ -458,15 +458,15 @@ let get_dir_triage t ~dir =
              ; Pp.textf "Reason: %s" (Unix.error_message m)
              ];
            Path.Set.empty
-         | Ok filenames -> Path.Set.of_listing ~dir ~filenames ))
+         | Ok filenames -> Path.Set.of_listing ~dir ~filenames))
   | Build (Regular Root) ->
     let allowed_subdirs =
       Subdir_set.to_dir_set
         (Subdir_set.of_list
-           ( ( [ Dpath.Build.alias_dir; Dpath.Build.install_dir ]
-             |> List.map ~f:Path.Build.basename )
-           @ ( Context_name.Map.keys t.contexts
-             |> List.map ~f:Context_name.to_string ) ))
+           (([ Dpath.Build.alias_dir; Dpath.Build.install_dir ]
+            |> List.map ~f:Path.Build.basename)
+           @ (Context_name.Map.keys t.contexts
+             |> List.map ~f:Context_name.to_string)))
     in
     Dir_triage.Known (Loaded.no_rules ~allowed_subdirs)
   | Build (Install Root) ->
@@ -519,13 +519,13 @@ let report_rule_conflict fn (rule' : Rule.t) (rule : Rule.t) =
     ; Pp.textf "- %s" (describe_rule rule)
     ]
     ~hints:
-      ( match (rule.info, rule'.info) with
+      (match (rule.info, rule'.info) with
       | Source_file_copy, _
       | _, Source_file_copy ->
         [ Pp.textf "rm -f %s"
             (Path.to_string_maybe_quoted (Path.drop_optional_build_context fn))
         ]
-      | _ -> [] )
+      | _ -> [])
 
 (* This contains the targets of the actions that are being executed. On exit, we
    need to delete them as they might contain garbage *)
@@ -537,15 +537,15 @@ let () =
       pending_targets := Path.Build.Set.empty;
       Path.Build.Set.iter fns ~f:(fun p -> Path.unlink_no_err (Path.build p)))
 
-let compute_targets_digest targets =
+let compute_targets_digests targets =
   match
     Path.Build.Set.to_list_map targets ~f:(fun target ->
-        Cached_digest.file (Path.build target))
+        (target, Cached_digest.file (Path.build target)))
   with
-  | l -> Some (Digest.generic l)
+  | l -> Some l
   | exception (Unix.Unix_error _ | Sys_error _) -> None
 
-let compute_targets_digest_or_raise_error ~loc targets =
+let compute_targets_digests_or_raise_error ~loc targets =
   let remove_write_permissions =
     (* Remove write permissions on targets. A first theoretical reason is that
        the build process should be a computational graph and targets should not
@@ -579,7 +579,7 @@ let compute_targets_digest_or_raise_error ~loc targets =
         | exception (Unix.Unix_error _ | Sys_error _) -> (good, fn :: bad))
   in
   match bad with
-  | [] -> (List.rev good, Digest.generic (List.rev_map ~f:snd good))
+  | [] -> List.rev good
   | missing ->
     User_error.raise ~loc
       [ Pp.textf "Rule failed to generate the following targets:"
@@ -610,7 +610,7 @@ let remove_old_artifacts ~dir ~rules_here ~(subdirs_to_keep : Subdir_set.t) =
             match subdirs_to_keep with
             | All -> ()
             | These set ->
-              if not (String.Set.mem set fn) then Path.rm_rf (Path.build path) )
+              if not (String.Set.mem set fn) then Path.rm_rf (Path.build path))
           | _ -> Path.unlink (Path.build path))
 
 let no_rule_found t ~loc fn =
@@ -711,7 +711,7 @@ end = struct
     | Build { rules_here; _ } -> (
       match Path.as_in_build_dir fn with
       | None -> false
-      | Some fn -> Path.Build.Map.mem rules_here fn )
+      | Some fn -> Path.Build.Map.mem rules_here fn)
 
   let targets_of ~dir =
     match load_dir ~dir with
@@ -774,7 +774,7 @@ end = struct
                         in
                         () )
                 ; actions = Appendable_list.empty
-                } )
+                })
       in
       Alias.Name.Map.fold_mapi aliases ~init:[]
         ~f:(fun name rules { Rules.Dir_rules.Alias_spec.expansions; actions } ->
@@ -805,8 +805,10 @@ end = struct
             Appendable_list.to_list expansions
             @ [ ( Loc.none
                 , Action_builder.memo_build
-                    (Fdecl.get build_deps_fdecl
-                       (Dep.Set.of_files_set action_stamp_files)) )
+                    (Memo.Build.map
+                       (Fdecl.get build_deps_fdecl
+                          (Dep.Set.of_files_set action_stamp_files))
+                       ~f:(fun _facts -> ())) )
               ]
           in
           (rules, expansions))
@@ -1053,17 +1055,17 @@ end = struct
     in
     (* Compile the rules and cleanup stale artifacts *)
     let rules =
-      ( match to_copy with
+      (match to_copy with
       | None -> []
       | Some (ctx_dir, source_files) ->
-        create_copy_rules ~ctx_dir ~non_target_source_files:source_files )
+        create_copy_rules ~ctx_dir ~non_target_source_files:source_files)
       @ rules
     in
     let rules_here = compile_rules ~dir ~source_dirs rules in
     let allowed_by_parent =
       Generated_directory_restrictions.allowed_by_parent ~dir
     in
-    ( match allowed_by_parent with
+    (match allowed_by_parent with
     | Unrestricted -> ()
     | Restricted restriction -> (
       match Path.Build.Map.find (Rules.to_map rules_produced) dir with
@@ -1074,7 +1076,7 @@ end = struct
             "Generated rules in a directory not allowed by the parent"
             [ ("dir", Path.Build.to_dyn dir)
             ; ("rules", Rules.Dir_rules.to_dyn rules)
-            ] ) );
+            ]));
     let rules_generated_in =
       Rules.to_map rules_produced
       |> Path.Build.Map.foldi ~init:Dir_set.empty ~f:(fun p _ acc ->
@@ -1122,17 +1124,17 @@ end = struct
       match load_dir ~dir:(Path.build dir') with
       | Non_build _ -> Code_error.raise "Can only forward to a build dir" []
       | Build
-          ( { rules_here = _
-            ; rules_of_alias_dir
-            ; rules_produced = _
-            ; allowed_subdirs = _
-            ; aliases = _
-            } as load ) ->
+          ({ rules_here = _
+           ; rules_of_alias_dir
+           ; rules_produced = _
+           ; allowed_subdirs = _
+           ; aliases = _
+           } as load) ->
         Loaded.Build
           { load with
             rules_here = rules_of_alias_dir
           ; rules_of_alias_dir = Path.Build.Map.empty
-          } )
+          })
 
   let load_dir =
     let load_dir_impl dir = load_dir_impl (t ()) ~dir in
@@ -1160,8 +1162,8 @@ let get_rule fn =
       | Build { rules_here; _ } -> Path.Build.Map.find rules_here fn)
 
 type rule_or_source =
-  | Source
-  | Rule of Rule.t
+  | Source of Digest.t
+  | Rule of Path.Build.t * Rule.t
 
 let get_rule_or_source t path =
   let dir = Path.parent_exn path in
@@ -1169,12 +1171,12 @@ let get_rule_or_source t path =
     let rules = load_dir_and_get_buildable_targets ~dir in
     let path = Path.as_in_build_dir_exn path in
     match Path.Build.Map.find rules path with
-    | Some rule -> Rule rule
+    | Some rule -> Rule (path, rule)
     | None ->
       let loc = Rule_fn.loc () in
       no_rule_found t ~loc path
   else if Path.exists path then
-    Source
+    Source (Cached_digest.file path)
   else
     let loc = Rule_fn.loc () in
     User_error.raise ?loc
@@ -1195,22 +1197,27 @@ let all_targets t =
           | Non_build _ -> acc
           | Build { rules_here; rules_of_alias_dir; _ } ->
             List.fold_left ~init:acc ~f:Path.Build.Set.add
-              ( Path.Build.Map.keys rules_of_alias_dir
-              @ Path.Build.Map.keys rules_here )))
+              (Path.Build.Map.keys rules_of_alias_dir
+              @ Path.Build.Map.keys rules_here)))
+
+type rule_execution_result =
+  { deps : Dep.Fact.t Dep.Map.t
+  ; targets : Digest.t Path.Build.Map.t
+  }
 
 module type Rec = sig
   (** Build all the transitive dependencies of the alias and return the alias
       expansion. *)
-  val build_alias : Alias.t -> Path.Set.t Memo.Build.t
+  val build_alias : Alias.t -> Digest.t Path.Map.t Memo.Build.t
 
-  val build_file_unit : Path.t -> unit Memo.Build.t
+  val build_file : Path.t -> Digest.t Memo.Build.t
 
-  val execute_rule : Rule.t -> Dep.Set.t Memo.Build.t
+  val execute_rule : Rule.t -> rule_execution_result Memo.Build.t
 
   module Pred : sig
     val eval : File_selector.t -> Path.Set.t
 
-    val build : File_selector.t -> unit Memo.Build.t
+    val build : File_selector.t -> Digest.t Path.Map.t Memo.Build.t
   end
 end
 
@@ -1222,38 +1229,67 @@ module rec Used_recursively : Rec = Exported
 and Exported : sig
   include Rec
 
-  val exec_build_request : 'a Action_builder.t -> ('a * Dep.Set.t) Memo.Build.t
+  val exec_build_request :
+    'a Action_builder.t -> ('a * Dep.Fact.t Dep.Map.t) Memo.Build.t
 
-  val build_deps : Dep.Set.t -> unit Memo.Build.t
+  (** Build a set of dependencies and return their digest *)
+  val build_deps : Dep.Set.t -> Dep.Fact.t Dep.Map.t Memo.Build.t
 
   (** For [package_deps] *)
-  val peek_deps_exn : Rule.t -> Dep.Set.t
+  val peek_deps_exn : Rule.t -> Dep.Fact.t Dep.Map.t
 
   (** Exported to inspect memoization cycles. *)
   val build_file_memo :
-    (Path.t, Dep.Set.t, Path.t -> Dep.Set.t Memo.Build.t) Memo.t
+    (Path.t, Digest.t, Path.t -> Digest.t Memo.Build.t) Memo.t
 
   val build_alias_memo :
-    (Alias.t, Path.Set.t, Alias.t -> Path.Set.t Memo.Build.t) Memo.t
+    ( Alias.t
+    , Digest.t Path.Map.t
+    , Alias.t -> Digest.t Path.Map.t Memo.Build.t )
+    Memo.t
 end = struct
   open Used_recursively
 
-  let build_deps =
-    Dep.Set.parallel_iter ~f:(function
-      | Alias a -> Memo.Build.map (build_alias a) ~f:(fun _ -> ())
-      | File f -> build_file_unit f
-      | File_selector g -> Pred.build g
-      | Universe
-      | Env _
-      | Sandbox_config _ ->
-        Memo.Build.return ())
+  (* [build_dep] turns a [Dep.t] which is a description of a dependency into a
+     fact about the world. To do that, it needs to do some building. *)
+  let build_dep : Dep.t -> Dep.Fact.t Memo.Build.t = function
+    | Alias a ->
+      let+ digests = build_alias a in
+      (* Fact: alias [a] expand to the set of files with their digest [digests] *)
+      Dep.Fact.alias a digests
+    | File f ->
+      let+ digest = build_file f in
+      (* Fact: file [f] has digest [digest] *)
+      Dep.Fact.file f digest
+    | File_selector g ->
+      let+ digests = Pred.build g in
+      (* Fact: file selector [g] expands to the set of files with their digest
+         [digests] *)
+      Dep.Fact.file_selector g digests
+    | Universe
+    | Env _
+    | Sandbox_config _ ->
+      (* Facts about these dependencies are constructed in [Dep.Facts.digest]. *)
+      Memo.Build.return Dep.Fact.nothing
+
+  let build_deps deps =
+    Dep.Map.parallel_map deps ~f:(fun dep () -> build_dep dep)
 
   let () = Fdecl.set build_deps_fdecl build_deps
 
   module Build_exec = Action_builder.Make_exec (struct
+    type fact = Dep.Fact.t
+
+    let merge_facts = Dep.Facts.union
+
     let build_deps = build_deps
 
     let register_action_deps = build_deps
+
+    let register_action_dep_pred g =
+      let+ digests = Pred.build g in
+      ( Path.Map.keys digests |> Path.Set.of_list
+      , Dep.Fact.file_selector g digests )
 
     let file_exists = file_exists
 
@@ -1273,17 +1309,17 @@ end = struct
         | Some Symlink ->
           if Sandbox_mode.Set.mem config Sandbox_mode.copy then
             Some
-              ( if Sys.win32 then
+              (if Sys.win32 then
                 Sandbox_mode.copy
               else
-                Sandbox_mode.symlink )
+                Sandbox_mode.symlink)
           else
             User_error.raise ~loc
               [ Pp.text
                   "This rule requires sandboxing with symlinks, but that won't \
                    work on Windows."
               ]
-        | _ -> Some preference )
+        | _ -> Some preference)
     in
     match
       List.find_map sandboxing_preference ~f:evaluate_sandboxing_preference
@@ -1312,25 +1348,22 @@ end = struct
     | exception Unix.Unix_error ((ENOENT | ENOTDIR), _, _) -> (
       match Unix.unlink dst with
       | exception Unix.Unix_error (ENOENT, _, _) -> ()
-      | () -> () )
+      | () -> ())
 
   (* The current version of the rule digest scheme. We should increment it when
      making any changes to the scheme, to avoid collisions. *)
-  let rule_digest_version = 1
+  let rule_digest_version = 2
 
   let compute_rule_digest (rule : Rule.t) ~deps ~action ~sandbox_mode =
     let env = Rule.effective_env rule in
     let trace =
       ( rule_digest_version (* Update when changing the rule digest scheme. *)
-      , Dep.Set.trace deps ~sandbox_mode ~env
+      , Dep.Facts.digest deps ~sandbox_mode ~env
       , Path.Build.Set.to_list_map rule.action.targets ~f:Path.Build.to_string
       , Option.map rule.context ~f:(fun c -> c.name)
       , Action.for_shell action )
     in
     Digest.generic trace
-
-  let compute_dependencies_digest deps ~sandbox_mode ~env =
-    Dep.Set.trace deps ~sandbox_mode ~env |> (Digest.generic : Dep.Trace.t -> _)
 
   let execute_rule_impl rule =
     let t = t () in
@@ -1352,7 +1385,7 @@ end = struct
       let sandbox_mode =
         match Action.is_useful_to_sandbox action with
         | Clearly_not ->
-          let config = Dep.Set.sandbox_config deps in
+          let config = Dep.Map.sandbox_config deps in
           if Sandbox_config.mem config Sandbox_mode.none then
             Sandbox_mode.none
           else
@@ -1364,14 +1397,14 @@ end = struct
               ]
         | Maybe ->
           select_sandbox_mode ~loc
-            (Dep.Set.sandbox_config deps)
+            (Dep.Map.sandbox_config deps)
             ~sandboxing_preference:t.sandboxing_preference
       in
       let always_rerun =
         let force_rerun =
           !Clflags.force
           && Path.Build.Set.exists targets ~f:Dpath.Build.is_alias_stamp_file
-        and depends_on_universe = Dep.Set.has_universe deps in
+        and depends_on_universe = Dep.Map.has_universe deps in
         force_rerun || depends_on_universe
       in
       let rule_digest = compute_rule_digest rule ~deps ~action ~sandbox_mode in
@@ -1392,47 +1425,56 @@ end = struct
         always_rerun || is_action_dynamic
         || Action.is_useful_to_memoize action = Clearly_not
       in
+      (* We don't need to digest names here, as these are already part of the
+         rule digest. *)
+      let digest_of_targets_digests l = Digest.generic (List.map l ~f:snd) in
       (* Here we determine if we need to rerun the action based on information
-         stored in Trace_db. *)
-      let* rule_need_rerun =
+         stored in Trace_db. If it does, [targets_digests] is [None], otherwise
+         it is [Some l] where [l] is the list of targets with their digests. *)
+      let* (targets_digests : (Path.Build.t * Digest.t) list option) =
         if always_rerun then
-          Fiber.return true
+          Fiber.return None
         else
           (* [prev_trace] will be [None] if rule is run for the first time. *)
           let prev_trace = Trace_db.get (Path.build head_target) in
-          let rule_or_targets_changed =
+          let prev_trace_and_targets_digests =
             match prev_trace with
-            | None -> true
+            | None -> None
             | Some prev_trace -> (
-              prev_trace.rule_digest <> rule_digest
-              ||
-              (* [targets_digest] will be [None] if not all targets were build. *)
-              match compute_targets_digest targets with
-              | None -> true
-              | Some targets_digest ->
-                prev_trace.targets_digest <> targets_digest )
+              if prev_trace.rule_digest <> rule_digest then
+                None
+              else
+                (* [targets_digest] will be [None] if not all targets were
+                   build. *)
+                match compute_targets_digests targets with
+                | None -> None
+                | Some targets_digests ->
+                  if
+                    Digest.equal prev_trace.targets_digest
+                      (digest_of_targets_digests targets_digests)
+                  then
+                    Some (prev_trace, targets_digests)
+                  else
+                    None)
           in
-          if rule_or_targets_changed then
-            Fiber.return true
-          else
-            let prev_trace = Option.value_exn prev_trace in
+          match prev_trace_and_targets_digests with
+          | None -> Fiber.return None
+          | Some (prev_trace, targets_digests) ->
             (* CR-someday aalekseyev: If there's a change at one of the last
                stages, we still re-run all the previous stages, which is a bit
                of a waste. We could remember what stage needs re-running and
                only re-run that (and later stages). *)
             let rec loop stages =
               match stages with
-              | [] -> Fiber.return false
+              | [] -> Fiber.return (Some targets_digests)
               | (deps, old_digest) :: rest ->
                 let deps = Action_exec.Dynamic_dep.Set.to_dep_set deps in
-                let* () = build_deps deps in
-                let new_digest =
-                  compute_dependencies_digest deps ~sandbox_mode ~env
-                in
+                let* deps = build_deps deps in
+                let new_digest = Dep.Facts.digest deps ~sandbox_mode ~env in
                 if old_digest = new_digest then
                   loop rest
                 else
-                  Fiber.return true
+                  Fiber.return None
             in
             loop prev_trace.dynamic_deps_stages
       in
@@ -1441,10 +1483,10 @@ end = struct
             let sandbox_suffix = rule_digest |> Digest.to_string in
             (Path.Build.relative sandbox_dir sandbox_suffix, mode))
       in
-      let* () =
-        match rule_need_rerun with
-        | false -> Fiber.return ()
-        | true ->
+      let* targets_digests =
+        match targets_digests with
+        | Some x -> Fiber.return x
+        | None -> (
           let from_cache =
             match (do_not_memoize, t.caching) with
             | true, _
@@ -1462,7 +1504,7 @@ end = struct
                       (Digest.to_string rule_digest)
                       msg
                   ];
-                None )
+                None)
           and cache_checking =
             match t.caching with
             | Some { check_probability; _ } ->
@@ -1481,34 +1523,33 @@ end = struct
               let retrieve (file : Cache.File.t) =
                 let retrieved = Caching.Cache.retrieve Caching.cache file in
                 Cached_digest.set retrieved file.digest;
-                file.digest
+                (file.path, file.digest)
               in
-              match
-                let digests = List.map files ~f:retrieve in
-                Trace_db.set (Path.build head_target)
-                  (* We do not cache dynamic actions so [dynamic_deps_stages] is
-                     always an empty list here. *)
-                  { rule_digest
-                  ; targets_digest = Digest.generic digests
-                  ; dynamic_deps_stages = []
-                  }
-              with
+              match List.map files ~f:retrieve with
               | exception Unix.(Unix_error (ENOENT, _, f)) ->
                 Log.info
                   [ Pp.textf "missing data file for cached rule %s: %s"
                       (Digest.to_string rule_digest)
                       f
                   ];
-                false
+                None
               | exception Sys_error m ->
                 Log.info [ Pp.textf "error retrieving data file: %s" m ];
-                false
-              | () -> true )
-            | _ -> false
+                None
+              | targets_digests ->
+                Trace_db.set (Path.build head_target)
+                  (* We do not cache dynamic actions so [dynamic_deps_stages] is
+                     always an empty list here. *)
+                  { rule_digest
+                  ; targets_digest = digest_of_targets_digests targets_digests
+                  ; dynamic_deps_stages = []
+                  };
+                Some targets_digests)
+            | _ -> None
           in
-          if pulled_from_cache then
-            Fiber.return ()
-          else
+          match pulled_from_cache with
+          | Some x -> Fiber.return x
+          | None ->
             let () = remove_targets () in
             pending_targets := Path.Build.Set.union targets !pending_targets;
             let sandboxed, action =
@@ -1519,7 +1560,7 @@ end = struct
                 let sandboxed path : Path.Build.t =
                   Path.Build.append_local sandbox_dir (Path.Build.local path)
                 in
-                Dep.Set.eval_dirs deps
+                Dep.Facts.dirs deps
                 |> Path.Set.iter ~f:(fun path ->
                        match Path.as_in_build_dir path with
                        | None -> Fs.assert_exists ~loc path
@@ -1546,9 +1587,10 @@ end = struct
             Option.iter sandbox ~f:(fun (p, _mode) -> Path.rm_rf (Path.build p));
             (* All went well, these targets are no longer pending *)
             pending_targets := Path.Build.Set.diff !pending_targets targets;
-            let targets, targets_digest =
-              compute_targets_digest_or_raise_error ~loc targets
+            let targets_digests =
+              compute_targets_digests_or_raise_error ~loc targets
             in
+            let targets_digest = digest_of_targets_digests targets_digests in
             let () =
               (* Check cache. We don't check for missing file in the cache,
                  since the file list is part of the rule hash this really never
@@ -1559,7 +1601,7 @@ end = struct
                    collision *)
                 let data_are_ok =
                   match
-                    List.for_all2 targets cached
+                    List.for_all2 targets_digests cached
                       ~f:(fun (target, _) (c : Cache.File.t) ->
                         Path.Build.equal target c.path)
                   with
@@ -1570,19 +1612,19 @@ end = struct
                   let open Pp.O in
                   let pp x l ~f =
                     Pp.box ~indent:2
-                      ( Pp.verbatim x
+                      (Pp.verbatim x
                       ++ Dyn.pp
                            (Dyn.Encoder.list Path.Build.to_dyn (List.map l ~f))
                       )
                   in
                   User_warning.emit
                     [ Pp.text "unexpected list of targets in the cache"
-                    ; pp "expected: " targets ~f:fst
+                    ; pp "expected: " targets_digests ~f:fst
                     ; pp "got:      " cached ~f:(fun (c : Cache.File.t) ->
                           c.path)
                     ]
                 else
-                  List.iter2 targets cached
+                  List.iter2 targets_digests cached
                     ~f:(fun (_, digest) (c : Cache.File.t) ->
                       if not (Digest.equal digest c.digest) then
                         User_warning.emit
@@ -1614,19 +1656,19 @@ end = struct
                   let+ _, i = get_vcs () |> List.findi ~f in
                   i
                 in
-                Caching.Cache.promote Caching.cache targets rule_digest []
-                  ~repository ~duplication:None
+                Caching.Cache.promote Caching.cache targets_digests rule_digest
+                  [] ~repository ~duplication:None
                 |> Result.map_error ~f:report |> ignore
               | _ -> ()
             in
             let dynamic_deps_stages =
-              List.map exec_result.dynamic_deps_stages ~f:(fun deps ->
-                  ( deps
-                  , Action_exec.Dynamic_dep.Set.to_dep_set deps
-                    |> compute_dependencies_digest ~sandbox_mode ~env ))
+              List.map exec_result.dynamic_deps_stages
+                ~f:(fun (deps, fact_map) ->
+                  (deps, Dep.Facts.digest fact_map ~sandbox_mode ~env))
             in
             Trace_db.set (Path.build head_target)
-              { rule_digest; dynamic_deps_stages; targets_digest }
+              { rule_digest; dynamic_deps_stages; targets_digest };
+            targets_digests)
       in
       let+ () =
         match (mode, !Clflags.promote) with
@@ -1696,22 +1738,31 @@ end = struct
                      the source tree to be writable by the user, so we
                      explicitly set the user writable bit. *)
                   let chmod n = n lor 0o200 in
-                  t.promote_source ~src:path ~dst ~chmod context ))
+                  t.promote_source ~src:path ~dst ~chmod context))
       in
-      t.rule_done <- t.rule_done + 1)
+      t.rule_done <- t.rule_done + 1;
+      targets_digests)
     (* jeremidimino: we need to include the dependencies discovered while
        running the action here. Otherwise, package dependencies are broken in
        the presence of dynamic actions *)
-    >>> Memo.Build.return deps
+    >>=
+    fun targets_digests ->
+    Memo.Build.return
+      { deps; targets = Path.Build.Map.of_list_exn targets_digests }
 
-  (* a rule can have multiple files, but rule.run_rule may only be called once *)
+  (* a rule can have multiple files, but rule.run_rule may only be called once.
+
+     [build_file_impl] returns both the set of dependencies of the file as well
+     as its digest. *)
   let build_file_impl path =
     let t = t () in
     let on_error exn = Dep_path.reraise exn (Path path) in
     Memo.Build.with_error_handler ~on_error (fun () ->
         match get_rule_or_source t path with
-        | Source -> Memo.Build.return Dep.Set.empty
-        | Rule rule -> execute_rule rule)
+        | Source digest -> Memo.Build.return digest
+        | Rule (path, rule) ->
+          let+ { deps = _; targets } = execute_rule rule in
+          Path.Build.Map.find_exn targets path)
 
   let build_alias_impl alias =
     Memo.Build.bind
@@ -1728,14 +1779,26 @@ end = struct
                  let on_error exn = Dep_path.reraise exn (Alias (loc, alias)) in
                  Memo.Build.with_error_handler ~on_error (fun () ->
                      Memo.Build.map (exec_build_request definition)
-                       ~f:(fun ((), deps) -> Dep.Set.eval_paths deps))))
-            ~f:(fun l -> Path.Set.union_all l))
+                       ~f:(fun ((), facts) -> Dep.Facts.paths facts))))
+            ~f:(fun l ->
+              List.fold_left l ~init:Path.Map.empty
+                ~f:(Path.Map.union ~f:(fun _ x _ -> Some x))))
+
+  module Digest_path_map = struct
+    type t = Digest.t Path.Map.t
+
+    let to_dyn = Path.Map.to_dyn Digest.to_dyn
+
+    let equal = Path.Map.equal ~equal:Digest.equal
+  end
 
   module Pred = struct
     let build_impl g =
-      Memo.Build.parallel_iter_set
-        (module Path.Set)
-        (Pred.eval g) ~f:build_file_unit
+      let paths = Pred.eval g |> Path.Set.to_list in
+      Memo.Build.parallel_map paths ~f:(fun p ->
+          let+ d = build_file p in
+          (p, d))
+      >>| Path.Map.of_list_exn
 
     let eval_impl g =
       let dir = File_selector.dir g in
@@ -1763,40 +1826,25 @@ end = struct
       Memo.exec
         (Memo.create "build-pred" ~doc:"build a predicate"
            ~input:(module File_selector)
-           ~output:(Allow_cutoff (module Unit))
+           ~output:(Allow_cutoff (module Digest_path_map))
            ~visibility:Hidden Async build_impl)
   end
 
   let build_file_memo =
     Memo.create "build-file"
-      ~output:(Simple (module Dep.Set))
+      ~output:(Allow_cutoff (module Digest))
       ~doc:"Build a file."
       ~input:(module Path)
       ~visibility:Hidden Async build_file_impl
 
   let build_file = Memo.exec build_file_memo
 
-  let build_file_unit =
-    let memo =
-      Memo.create "build-file-unit"
-        ~output:(Allow_cutoff (module Unit))
-        ~doc:"Build a file."
-        ~input:(module Path)
-        ~visibility:(Public Dpath.decode) Async
-        (fun file -> build_file file >>| ignore)
-    in
-    fun file -> Memo.exec memo file
-
   let build_alias_memo =
     Memo.create "build-alias"
-      ~output:(Simple (module Path.Set))
+      ~output:(Allow_cutoff (module Digest_path_map))
       ~doc:"Build an alias."
       ~input:(module Alias)
       ~visibility:Hidden Async build_alias_impl
-
-  let () =
-    Fdecl.set Dep.peek_alias_expansion (fun alias ->
-        Memo.peek_exn build_alias_memo alias)
 
   let build_alias = Memo.exec build_alias_memo
 
@@ -1807,7 +1855,9 @@ end = struct
 
   let execute_rule = Memo.exec execute_rule_memo
 
-  let peek_deps_exn rule = Memo.peek_exn execute_rule_memo rule
+  let peek_deps_exn rule =
+    let { deps; targets = _ } = Memo.peek_exn execute_rule_memo rule in
+    deps
 
   let () =
     Fdecl.set Rule_fn.loc_decl (fun () ->
@@ -1827,7 +1877,7 @@ let get_human_readable_info stack_frame =
   | None -> (
     match Memo.Stack_frame.as_instance_of ~of_:build_alias_memo stack_frame with
     | Some alias -> Some (Pp.verbatim ("alias " ^ Alias.describe alias))
-    | None -> None )
+    | None -> None)
 
 let process_memcycle (cycle_error : Memo.Cycle_error.t) =
   let cycle =
@@ -1887,15 +1937,15 @@ let package_deps (pkg : Package.t) files =
            potential race conditions between [Sync] and [Async] functions, e.g.
            by moving this code into a fiber. *)
         let action_deps = peek_deps_exn rule in
-        let action_deps = Dep.Set.eval_paths action_deps in
-        Path.Set.fold action_deps ~init:acc ~f:loop
+        let action_deps = Dep.Facts.paths action_deps in
+        Path.Map.foldi action_deps ~init:acc ~f:(fun p _ -> loop p)
       )
   in
   let open Action_builder.O in
   let+ () = Action_builder.paths_for_rule files in
   (* We know that after [Action_builder.paths_for_rule], all transitive
      dependencies of [files] are computed and memoized and so the above call to
-     [peek_deps_exn] and [Dep.Set.eval_paths] is safe. *)
+     [peek_deps_exn] is safe. *)
   Path.Set.fold files ~init:Package.Id.Set.empty ~f:(fun fn acc ->
       match Path.as_in_build_dir fn with
       | None -> acc
@@ -2000,9 +2050,17 @@ module Rule_top_closure = Top_closure.Make (Rule.Id.Set) (Monad.Id)
 
 (* Evaluate a rule without building the action dependencies *)
 module Eval_action_builder = Action_builder.Make_exec (struct
-  let build_deps = build_deps
+  type fact = unit
 
-  let register_action_deps _deps = Memo.Build.return ()
+  let merge_facts = Dep.Set.union
+
+  let build_deps deps =
+    let+ _facts = build_deps deps in
+    deps
+
+  let register_action_deps deps = Memo.Build.return deps
+
+  let register_action_dep_pred g = Memo.Build.return (Pred.eval g, ())
 
   let file_exists = file_exists
 
@@ -2079,11 +2137,11 @@ let init ~contexts ?build_mutex ~promote_source ?caching ~sandboxing_preference
     let open Result.O in
     let res =
       let+ cache = Caching.Cache.set_build_dir Caching.cache Path.build_dir in
-      ( module struct
+      (module struct
         module Cache = Caching.Cache
 
         let cache = cache
-      end : Cache.Caching )
+      end : Cache.Caching)
     in
     match res with
     | Result.Ok cache -> Some { v with cache }

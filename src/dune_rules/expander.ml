@@ -116,7 +116,7 @@ let expand_version { scope; _ } ~source s =
             "Package %S doesn't exist in the current project and isn't \
              installed either."
             s
-        ] )
+        ])
 
 let isn't_allowed_in_this_position_message ~source =
   User_error.make ~loc:source.Dune_lang.Template.Pform.loc
@@ -153,7 +153,7 @@ let expand_artifact ~source t a s =
       | Some (t, m) -> (
         match Obj_dir.Module.cm_file t m ~kind with
         | None -> Action_builder.return [ Value.String "" ]
-        | Some path -> dep (Path.build path) ) )
+        | Some path -> dep (Path.build path)))
     | Lib mode -> (
       let name =
         Lib_name.parse_string_exn (Dune_lang.Template.Pform.loc source, name)
@@ -169,7 +169,7 @@ let expand_artifact ~source t a s =
           (List.map archives ~f:(fun fn ->
                let fn = Path.build fn in
                let+ () = Action_builder.path fn in
-               Value.Path fn)) ) )
+               Value.Path fn))))
 
 let cc t =
   let cc = t.foreign_flags ~dir:t.dir in
@@ -218,7 +218,7 @@ let[@inline never] invalid_use_of_target_variable t
       assert (multiplicity <> var_multiplicity);
       Targets.Multiplicity.check_variable_matches_field ~loc:source.loc
         ~field:multiplicity ~variable:var_multiplicity;
-      assert false )
+      assert false)
 
 let expand_pform_gen ~(context : Context.t) ~bindings ~dir ~source
     (pform : Pform.t) : expansion_result =
@@ -256,18 +256,18 @@ let expand_pform_gen ~(context : Context.t) ~bindings ~dir ~source
       | Ocamlopt -> static (get_prog context.ocamlopt)
       | Make ->
         static
-          ( match context.which "make" with
+          (match context.which "make" with
           | None ->
             Utils.program_not_found ~context:context.name
               ~loc:(Some (Dune_lang.Template.Pform.loc source))
               "make"
-          | Some p -> path p )
+          | Some p -> path p)
       | Cpp -> static (strings (c_compiler_and_flags context @ [ "-E" ]))
       | Pa_cpp ->
         static
           (strings
-             ( c_compiler_and_flags context
-             @ [ "-undef"; "-traditional"; "-x"; "c"; "-E" ] ))
+             (c_compiler_and_flags context
+             @ [ "-undef"; "-traditional"; "-x"; "c"; "-E" ]))
       | Arch_sixtyfour ->
         static (string (string_of_bool context.arch_sixtyfour))
       | Ocaml_bin_dir -> static [ Dir context.ocaml_bin ]
@@ -284,10 +284,10 @@ let expand_pform_gen ~(context : Context.t) ~bindings ~dir ~source
         static
           (string
              (Mode.plugin_ext
-                ( if Ocaml_config.natdynlink_supported context.ocaml_config then
+                (if Ocaml_config.natdynlink_supported context.ocaml_config then
                   Mode.Native
                 else
-                  Mode.Byte )))
+                  Mode.Byte)))
       | Profile -> static (string (Profile.to_string context.profile))
       | Workspace_root -> static [ Value.Dir (Path.build context.build_dir) ]
       | Context_name -> static (string (Context_name.to_string context.name))
@@ -312,13 +312,12 @@ let expand_pform_gen ~(context : Context.t) ~bindings ~dir ~source
       | Ccomp_type ->
         static
           (string
-             (Ocaml_config.Ccomp_type.to_string context.lib_config.ccomp_type))
-      )
+             (Ocaml_config.Ccomp_type.to_string context.lib_config.ccomp_type)))
     | Macro (macro, s) -> (
       match macro with
       | Ocaml_config ->
         static
-          ( match Ocaml_config.by_name context.ocaml_config s with
+          (match Ocaml_config.by_name context.ocaml_config s with
           | None ->
             User_error.raise
               ~loc:(Dune_lang.Template.Pform.loc source)
@@ -329,7 +328,7 @@ let expand_pform_gen ~(context : Context.t) ~bindings ~dir ~source
             | Int x -> string (string_of_int x)
             | String x -> string x
             | Words x -> strings x
-            | Prog_and_args x -> strings (x.prog :: x.args) ) )
+            | Prog_and_args x -> strings (x.prog :: x.args)))
       | Env ->
         Need_full_expander
           (fun t ->
@@ -347,7 +346,7 @@ let expand_pform_gen ~(context : Context.t) ~bindings ~dir ~source
                 string v
               | None ->
                 Action_builder.return
-                  (string (Option.value ~default (Env.get t.env var))) ))
+                  (string (Option.value ~default (Env.get t.env var)))))
       | Version ->
         Need_full_expander
           (fun t -> Action_builder.return (expand_version t ~source s))
@@ -371,10 +370,10 @@ let expand_pform_gen ~(context : Context.t) ~bindings ~dir ~source
         Need_full_expander
           (fun t ->
             dep
-              ( Artifacts.Bin.binary
-                  ~loc:(Some (Dune_lang.Template.Pform.loc source))
-                  t.bin_artifacts_host s
-              |> Action.Prog.ok_exn ))
+              (Artifacts.Bin.binary
+                 ~loc:(Some (Dune_lang.Template.Pform.loc source))
+                 t.bin_artifacts_host s
+              |> Action.Prog.ok_exn))
       | Lib { lib_exec; lib_private } ->
         Need_full_expander
           (fun t ->
@@ -418,18 +417,18 @@ let expand_pform_gen ~(context : Context.t) ~bindings ~dir ~source
                                to libraries within the same project. The \
                                current project's name is %S, but the reference \
                                is to %s."
-                              ( if lib_exec then
+                              (if lib_exec then
                                 "exec"
                               else
-                                "" )
+                                "")
                               (Dune_project.Name.to_string_hum
                                  (Dune_project.name current_project))
-                              ( match referenced_project with
+                              (match referenced_project with
                               | None -> "an external library"
                               | Some project ->
                                 Dune_project.name project
                                 |> Dune_project.Name.to_string_hum
-                                |> String.quoted )
+                                |> String.quoted)
                           ]))
               else
                 let artifacts =
@@ -454,7 +453,7 @@ let expand_pform_gen ~(context : Context.t) ~bindings ~dir ~source
                   ~else_:(dep p)
             | Error e ->
               raise
-                ( match lib_private with
+                (match lib_private with
                 | true -> e
                 | false ->
                   if Lib.DB.available (Scope.libs scope) lib then
@@ -466,13 +465,13 @@ let expand_pform_gen ~(context : Context.t) ~bindings ~dir ~source
                               \"lib%s\" expands to the file's installation \
                               path which is not defined for private libraries."
                              (Lib_name.to_string lib)
-                             ( if lib_exec then
+                             (if lib_exec then
                                "exec"
                              else
-                               "" )
+                               "")
                          ])
                   else
-                    e ))
+                    e))
       | Lib_available ->
         Need_full_expander
           (fun t ->
@@ -480,8 +479,8 @@ let expand_pform_gen ~(context : Context.t) ~bindings ~dir ~source
               Lib_name.parse_string_exn (Dune_lang.Template.Pform.loc source, s)
             in
             Action_builder.return
-              ( Lib.DB.available (Scope.libs t.scope) lib
-              |> string_of_bool |> string ))
+              (Lib.DB.available (Scope.libs t.scope) lib
+              |> string_of_bool |> string))
       | Read ->
         let path = relative ~source dir s in
         Direct (Action_builder.map (Action_builder.contents path) ~f:string)
@@ -490,7 +489,7 @@ let expand_pform_gen ~(context : Context.t) ~bindings ~dir ~source
         Direct (Action_builder.map (Action_builder.lines_of path) ~f:strings)
       | Read_strings ->
         let path = relative ~source dir s in
-        Direct (Action_builder.map (Action_builder.strings path) ~f:strings) ) )
+        Direct (Action_builder.map (Action_builder.strings path) ~f:strings)))
 
 (* Make sure to delay exceptions *)
 let expand_pform_gen ~context ~bindings ~dir ~source pform =
@@ -501,8 +500,8 @@ let expand_pform_gen ~context ~bindings ~dir ~source pform =
   | Need_full_expander f ->
     Need_full_expander
       (fun t ->
-        try f t
-        with User_error.E _ as exn ->
+        try f t with
+        | User_error.E _ as exn ->
           Action_builder.fail { fail = (fun () -> reraise exn) })
 
 let expand_pform t ~source pform =
@@ -580,7 +579,7 @@ module Static = struct
       | Direct v -> (
         match Action_builder.static_eval v with
         | Some (v, _) -> Some v
-        | None -> None )
+        | None -> None)
       | Need_full_expander _ -> None
 
     let expand_pform ~context ~dir ~source pform =

@@ -25,7 +25,6 @@ module T = struct
     | Memo_build : 'a Memo.Build.t -> 'a t
     | Dyn_memo_build : 'a Memo.Build.t t -> 'a t
     | Build : 'a t t -> 'a t
-    | Capture_deps : 'a t -> ('a * Dep.Set.t) t
 
   and 'a memo =
     { name : string
@@ -226,12 +225,12 @@ module With_targets = struct
 
   let of_result_map res ~f ~targets =
     add ~targets
-      ( match res with
+      (match res with
       | Ok x -> f x
       | Error e ->
         { build = Fail { fail = (fun () -> raise e) }
         ; targets = Path.Build.Set.empty
-        } )
+        })
 
   let memoize name t = { build = memoize name t.build; targets = t.targets }
 end
@@ -282,9 +281,16 @@ let memo_build f = Memo_build f
 let dyn_memo_build f = Dyn_memo_build f
 
 module Make_exec (Build_deps : sig
-  val build_deps : Dep.Set.t -> unit Memo.Build.t
+  type fact
 
-  val register_action_deps : Dep.Set.t -> unit Memo.Build.t
+  val merge_facts : fact Dep.Map.t -> fact Dep.Map.t -> fact Dep.Map.t
+
+  val build_deps : Dep.Set.t -> fact Dep.Map.t Memo.Build.t
+
+  val register_action_deps : Dep.Set.t -> fact Dep.Map.t Memo.Build.t
+
+  val register_action_dep_pred :
+    File_selector.t -> (Path.Set.t * fact) Memo.Build.t
 
   val file_exists : Path.t -> bool
 
@@ -292,12 +298,12 @@ module Make_exec (Build_deps : sig
 end) =
 struct
   module rec Execution : sig
-    val exec : 'a t -> ('a * Dep.Set.t) Memo.Build.t
+    val exec : 'a t -> ('a * Build_deps.fact Dep.Map.t) Memo.Build.t
   end = struct
     module Function = struct
       type 'a input = 'a memo
 
-      type 'a output = 'a * Dep.Set.t
+      type 'a output = 'a * Build_deps.fact Dep.Map.t
 
       let name = "exec-memo"
 
@@ -309,13 +315,19 @@ struct
     end
 
     module Poly_memo = Memo.Poly.Async (Function)
-
-    let eval_pred x = Fdecl.get Dep.eval_pred x
-
     open Memo.Build.O
 
-    let rec exec : type a. a t -> (a * Dep.Set.t) Memo.Build.t = function
-      | Pure x -> Memo.Build.return (x, Dep.Set.empty)
+    let merge_facts = Build_deps.merge_facts
+
+    (* Used to build files that we need now, for instance for [contents] or
+       [line_of], but are not dependency of the action that is being computed. *)
+    let build_deps_that_are_not_action_deps deps =
+      let+ _deps = Build_deps.build_deps deps in
+      ()
+
+    let rec exec : type a. a t -> (a * Build_deps.fact Dep.Map.t) Memo.Build.t =
+      function
+      | Pure x -> Memo.Build.return (x, Dep.Map.empty)
       | Map (f, a) ->
         let+ a, deps_a = exec a in
         (f a, deps_a)
@@ -323,46 +335,51 @@ struct
         let+ (a, deps_a), (b, deps_b) =
           Memo.Build.fork_and_join (fun () -> exec a) (fun () -> exec b)
         in
-        ((a, b), Dep.Set.union deps_a deps_b)
+        ((a, b), merge_facts deps_a deps_b)
       | Seq (a, b) ->
         let+ ((), deps_a), (b, deps_b) =
           Memo.Build.fork_and_join (fun () -> exec a) (fun () -> exec b)
         in
-        (b, Dep.Set.union deps_a deps_b)
+        (b, merge_facts deps_a deps_b)
       | Map2 (f, a, b) ->
         let+ (a, deps_a), (b, deps_b) =
           Memo.Build.fork_and_join (fun () -> exec a) (fun () -> exec b)
         in
-        (f a b, Dep.Set.union deps_a deps_b)
+        (f a b, merge_facts deps_a deps_b)
       | All xs ->
         let+ res = Memo.Build.parallel_map xs ~f:exec in
         let res, deps = List.split res in
-        (res, Dep.Set.union_all deps)
+        (res, List.fold_left deps ~init:Dep.Map.empty ~f:merge_facts)
       | Deps deps ->
-        let+ () = Build_deps.register_action_deps deps in
+        let+ deps = Build_deps.register_action_deps deps in
         ((), deps)
       | Paths_for_rule ps ->
-        let+ () = Build_deps.build_deps (Dep.Set.of_files_set ps) in
-        ((), Dep.Set.empty)
+        let+ () =
+          build_deps_that_are_not_action_deps (Dep.Set.of_files_set ps)
+        in
+        ((), Dep.Map.empty)
       | Paths_glob g ->
-        let ps = eval_pred g in
-        let+ () = Build_deps.register_action_deps (Dep.Set.of_files_set ps) in
-        (ps, Dep.Set.singleton (Dep.file_selector g))
+        let+ ps, fact = Build_deps.register_action_dep_pred g in
+        (ps, Dep.Map.singleton (Dep.file_selector g) fact)
       | Contents p ->
-        let+ () = Build_deps.build_deps (Dep.Set.singleton (Dep.file p)) in
-        (Io.read_file p, Dep.Set.empty)
+        let+ () =
+          build_deps_that_are_not_action_deps (Dep.Set.singleton (Dep.file p))
+        in
+        (Io.read_file p, Dep.Map.empty)
       | Lines_of p ->
-        let+ () = Build_deps.build_deps (Dep.Set.singleton (Dep.file p)) in
-        (Io.lines_of_file p, Dep.Set.empty)
+        let+ () =
+          build_deps_that_are_not_action_deps (Dep.Set.singleton (Dep.file p))
+        in
+        (Io.lines_of_file p, Dep.Map.empty)
       | Dyn_paths t ->
         let* (x, paths), deps_x = exec t in
         let deps = Dep.Set.of_files_set paths in
-        let+ () = Build_deps.register_action_deps deps in
-        (x, Dep.Set.union deps deps_x)
+        let+ deps = Build_deps.register_action_deps deps in
+        (x, merge_facts deps deps_x)
       | Dyn_deps t ->
         let* (x, deps), deps_x = exec t in
-        let+ () = Build_deps.register_action_deps deps in
-        (x, Dep.Set.union deps deps_x)
+        let+ deps = Build_deps.register_action_deps deps in
+        (x, merge_facts deps deps_x)
       | Or_exn e ->
         let+ a, deps = exec e in
         (Result.ok_exn a, deps)
@@ -380,14 +397,11 @@ struct
         in
         match res with
         | Ok r -> r
-        | Error r -> (r, Dep.Set.empty) )
-      | Memo m ->
-        let* res, deps = Poly_memo.eval m in
-        let+ () = Build_deps.register_action_deps deps in
-        (res, deps)
+        | Error r -> (r, Dep.Map.empty))
+      | Memo m -> Poly_memo.eval m
       | Memo_build f ->
         let+ f = f in
-        (f, Dep.Set.empty)
+        (f, Dep.Map.empty)
       | Dyn_memo_build f ->
         let* f, deps = exec f in
         let+ f = f in
@@ -395,18 +409,15 @@ struct
       | Build b ->
         let* b, deps0 = exec b in
         let+ r, deps1 = exec b in
-        (r, Dep.Set.union deps0 deps1)
-      | Capture_deps b ->
-        let+ b, deps0 = exec b in
-        ((b, deps0), deps0)
+        (r, merge_facts deps0 deps1)
       | Dep_on_alias_if_exists alias -> (
         let* definition = Build_deps.alias_exists alias in
         match definition with
-        | false -> Memo.Build.return (false, Dep.Set.empty)
+        | false -> Memo.Build.return (false, Dep.Map.empty)
         | true ->
           let deps = Dep.Set.singleton (Dep.alias alias) in
-          let+ () = Build_deps.register_action_deps deps in
-          (true, deps) )
+          let+ deps = Build_deps.register_action_deps deps in
+          (true, deps))
   end
 
   include Execution
@@ -471,11 +482,6 @@ let rec can_eval_statically : type a. a t -> bool = function
        If we find another way to break this cycle we should be able to change
        this code. *)
     false
-  | Capture_deps _ ->
-    (* In principle we can eval [Capture_deps b] statically if we can eval [b]
-       and its deps statically, but we don't have a mechanism for evaluating the
-       deps statically, so we have to answer with constant false here *)
-    false
   | Dep_on_alias_if_exists _ -> false
 
 let static_eval =
@@ -516,11 +522,12 @@ let static_eval =
     | Fail { fail } -> fail ()
     | If_file_exists (_, _, _) -> assert false
     | Memo _ -> assert false
-    | Catch (t, v) -> ( try loop t acc with _ -> (v, return ()) )
+    | Catch (t, v) -> (
+      try loop t acc with
+      | _ -> (v, return ()))
     | Memo_build _ -> assert false
     | Dyn_memo_build _ -> assert false
     | Build _ -> assert false
-    | Capture_deps _ -> assert false
     | Dep_on_alias_if_exists _ -> assert false
   and loop_many : type a. a list -> a t list -> unit t -> a list * unit t =
    fun acc_res l acc ->
@@ -535,8 +542,6 @@ let static_eval =
       Some (loop t (return ()))
     else
       None
-
-let capture_deps b = Capture_deps b
 
 let dyn_memo_build_deps t = dyn_deps (dyn_memo_build t)
 

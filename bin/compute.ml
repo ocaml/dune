@@ -39,9 +39,9 @@ let term =
              Fiber.return
                (`Result
                  (Dyn.String
-                    ( Dune_lang.Syntax.greatest_supported_version
-                        Dune_engine.Stanza.syntax
-                    |> Dune_lang.Syntax.Version.to_string )))
+                    (Dune_lang.Syntax.greatest_supported_version
+                       Dune_engine.Stanza.syntax
+                    |> Dune_lang.Syntax.Version.to_string)))
            | "list", None -> Fiber.return `List
            | "list", Some _ ->
              Fiber.return (`Error "'list' doesn't take an argument")

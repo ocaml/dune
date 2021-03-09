@@ -178,14 +178,18 @@ let builtins ~stdlib_dir ~version:ocaml_version =
     let main_modules = main_modules in
     { name = Some name
     ; entries =
-        requires deps :: version :: main_modules
+        requires deps
         ::
-        ( match dir with
+        version
+        ::
+        main_modules
+        ::
+        (match dir with
         | None -> []
-        | Some d -> [ directory d ] )
-        @ ( match exists_if_ext with
+        | Some d -> [ directory d ])
+        @ (match exists_if_ext with
           | None -> []
-          | Some ext -> [ exists_if (archive_name ^ ext) ] )
+          | Some ext -> [ exists_if (archive_name ^ ext) ])
         @ archives
     }
   in
@@ -310,9 +314,9 @@ let string_of_action = function
 
 let pp_predicate p =
   Pp.verbatim
-    ( match p with
+    (match p with
     | Pos p -> p
-    | Neg p -> "-" ^ p )
+    | Neg p -> "-" ^ p)
 
 let pp_print_text s =
   let open Pp.O in

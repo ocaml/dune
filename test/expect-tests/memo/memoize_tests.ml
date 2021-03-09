@@ -129,8 +129,8 @@ let mcompcycle =
 
 let%expect_test _ =
   counter := 0;
-  try run_memo mcompcycle 5 |> ignore
-  with Cycle_error.E err ->
+  try run_memo mcompcycle 5 |> ignore with
+  | Cycle_error.E err ->
     let cycle =
       Cycle_error.get err
       |> List.filter_map ~f:(Memo.Stack_frame.as_instance_of ~of_:mcompcycle)
@@ -571,7 +571,8 @@ let evaluate_and_print f x =
       Fiber.run
         ~iter:(fun () -> raise Exit)
         (Memo.Build.run (Memo.Build.collect_errors (fun () -> Memo.exec f x)))
-    with exn -> Error [ Exn_with_backtrace.capture exn ]
+    with
+    | exn -> Error [ Exn_with_backtrace.capture exn ]
   in
   print_result x res
 
@@ -746,9 +747,9 @@ let%expect_test "diamond with non-uniform cutoff structure" =
     {|
     Started evaluating base
     Evaluated base: 2
+    Started evaluating after_no_cutoff
     Started evaluating no_cutoff
     Evaluated no_cutoff: 1
-    Started evaluating after_no_cutoff
     Evaluated after_no_cutoff: 2
     Started evaluating yes_cutoff
     Evaluated yes_cutoff: 1
@@ -907,12 +908,12 @@ let%expect_test "dynamic cycles with non-uniform cutoff structure" =
     {|
     Started evaluating base
     Evaluated base: 2
+    Started evaluating incrementing_chain_2_yes_cutoff
+    Started evaluating incrementing_chain_1_no_cutoff
     Started evaluating cycle_creator_no_cutoff
     Cycling to summit from cycle_creator_no_cutoff...
-    Started evaluating incrementing_chain_1_no_cutoff
-    Started evaluating incrementing_chain_2_yes_cutoff
-    Started evaluating incrementing_chain_3_no_cutoff
     Started evaluating incrementing_chain_4_yes_cutoff
+    Started evaluating incrementing_chain_3_no_cutoff
     Started evaluating the summit with input 0
     Dependency cycle detected:
     - ("incrementing_chain_plus_input", 2)
@@ -929,10 +930,10 @@ let%expect_test "dynamic cycles with non-uniform cutoff structure" =
     Started evaluating cycle_creator_yes_cutoff
     Cycling to summit from cycle_creator_yes_cutoff...
     Started evaluating incrementing_chain_1_yes_cutoff
-    Started evaluating incrementing_chain_2_no_cutoff
     Started evaluating incrementing_chain_3_yes_cutoff
-    Started evaluating incrementing_chain_4_no_cutoff
+    Started evaluating incrementing_chain_2_no_cutoff
     Started evaluating the summit with input 0
+    Started evaluating incrementing_chain_4_no_cutoff
     Dependency cycle detected:
     - ("incrementing_chain_plus_input", 2)
     - called by ("cycle_creator_yes_cutoff", ())
@@ -1014,7 +1015,7 @@ let%expect_test "dynamic cycles with non-uniform cutoff structure" =
     Evaluated the summit with input 2: 9
     f 2 = Ok 9 |}]
 
-let%expect_test "deadlocks and zombies when creating a cycle twice" =
+let%expect_test "deadlocks when creating a cycle twice" =
   let fdecl_base = Fdecl.create (fun _ -> Dyn.Opaque) in
   let cycle_creator =
     create ~with_cutoff:true "cycle_creator" (fun () ->
@@ -1078,22 +1079,16 @@ let%expect_test "deadlocks and zombies when creating a cycle twice" =
   evaluate_and_print summit 2;
   [%expect
     {|
-    f 0 = Error
-            [ { exn =
-                  "(\"A zombie computation is encountered in [currently_considering]\", {})"
-              ; backtrace = ""
-              }
-            ]
     Started evaluating summit
-    f 2 = Error
-            [ { exn =
-                  "(\"A zombie computation is encountered in [currently_considering]\", {})"
-              ; backtrace = ""
-              }
-            ]
+    Started evaluating middle
+    Started evaluating base
+    Started evaluating cycle_creator
+    f 0 = Error [ { exn = "Exit"; backtrace = "" } ]
+    Started evaluating summit
+    f 2 = Error [ { exn = "Exit"; backtrace = "" } ]
     |}]
 
-let%expect_test "Nested nodes with cutoff are recomputed unnecessarily (sync)" =
+let%expect_test "Nested nodes with cutoff are recomputed optimally (sync)" =
   let counter =
     create_sync ~with_cutoff:false "counter" (count_runs_sync "counter")
   in
@@ -1149,21 +1144,14 @@ let%expect_test "Nested nodes with cutoff are recomputed unnecessarily (sync)" =
   Memo.restart_current_run ();
   evaluate_and_print_sync summit 0;
   evaluate_and_print_sync summit 2;
-  (* In the second run, we recompute [base] three times and [middle] twice,
-     instead of just once. *)
+  (* In the second run, we don't recompute [base] three times as we did before. *)
   [%expect
     {|
-    Started evaluating counter
-    Evaluated counter: 2
-    Started evaluating base
-    Evaluated base: 2
-    Started evaluating middle
-    Started evaluating base
-    Evaluated base: 2
-    Evaluated middle: 2
     Started evaluating summit
     Started evaluating middle
     Started evaluating base
+    Started evaluating counter
+    Evaluated counter: 2
     Evaluated base: 2
     Evaluated middle: 2
     Evaluated summit: 2
@@ -1177,8 +1165,7 @@ let%expect_test "Nested nodes with cutoff are recomputed unnecessarily (sync)" =
     f 2 = Ok 4
     |}]
 
-let%expect_test "Nested nodes with cutoff are recomputed unnecessarily (async)"
-    =
+let%expect_test "Nested nodes with cutoff are recomputed optimally (async)" =
   let counter = create ~with_cutoff:false "counter" (count_runs "counter") in
   let summit =
     Memo.create "summit"
@@ -1232,21 +1219,14 @@ let%expect_test "Nested nodes with cutoff are recomputed unnecessarily (async)"
   Memo.restart_current_run ();
   evaluate_and_print summit 0;
   evaluate_and_print summit 2;
-  (* In the second run, we recompute [base] three times and [middle] twice,
-     instead of just once. *)
+  (* In the second run, we don't recompute [base] three times as we did before. *)
   [%expect
     {|
-    Started evaluating counter
-    Evaluated counter: 2
-    Started evaluating base
-    Evaluated middle: 2
-    Started evaluating middle
-    Started evaluating base
-    Evaluated middle: 2
-    Evaluated middle: 2
     Started evaluating summit
     Started evaluating middle
     Started evaluating base
+    Started evaluating counter
+    Evaluated counter: 2
     Evaluated middle: 2
     Evaluated middle: 2
     Evaluated summit: 2
@@ -1311,12 +1291,9 @@ let%expect_test "Test that there are no phantom dependencies" =
   Memo.Cell.invalidate cell;
   Memo.restart_current_run ();
   evaluate_and_print summit 0;
-  (* Note that we no longer depend on the [cell]. The corresponding message is
-     printed twice due to the known performance issue with nested nodes. *)
+  (* Note that we no longer depend on the [cell]. *)
   [%expect
     {|
-    base = 8
-    *** middle does not depend on base ***
     Started evaluating summit
     *** middle does not depend on base ***
     Evaluated summit: 0
@@ -1328,6 +1305,105 @@ let%expect_test "Test that there are no phantom dependencies" =
      the past, the cell remained as a "phantom dependency", which caused
      unnecessary recomputations. *)
   [%expect {| f 0 = Ok 0 |}]
+
+let%expect_test "Abandoned node with no cutoff is recomputed" =
+  let count_runs = count_runs "base" in
+  let which_base = ref 0 in
+  let base () =
+    incr which_base;
+    printf "Created base #%d\n" !which_base;
+    create ~with_cutoff:false "base" count_runs
+  in
+  let last_created_base = ref None in
+  let captured_base = ref None in
+  let middle =
+    Memo.create "middle"
+      ~input:(module Unit)
+      ~visibility:Hidden
+      ~output:(Simple (module Int))
+      ~doc:"" Async
+      (fun () ->
+        printf "Started evaluating middle\n";
+        let base = base () in
+        last_created_base := Some base;
+        let+ result = Memo.exec base () in
+        printf "Evaluated middle: %d\n" result;
+        result)
+  in
+  let summit =
+    Memo.create "summit"
+      ~input:(module Int)
+      ~visibility:Hidden
+      ~output:(Simple (module Int))
+      ~doc:"" Async
+      (fun input ->
+        printf "Started evaluating summit\n";
+        let* middle = Memo.exec middle () in
+        let+ result =
+          match middle with
+          | 1 ->
+            printf "*** Captured last base ***\n";
+            captured_base := !last_created_base;
+            Memo.exec (Option.value_exn !captured_base) ()
+          | 2 ->
+            printf "*** Abandoned captured base ***\n";
+            Build.return input
+          | _ ->
+            printf "*** Recalled captured base ***\n";
+            Memo.exec (Option.value_exn !captured_base) ()
+        in
+        printf "Evaluated summit: %d\n" result;
+        result)
+  in
+  evaluate_and_print summit 0;
+  [%expect
+    {|
+    Started evaluating summit
+    Started evaluating middle
+    Created base #1
+    Started evaluating base
+    Evaluated base: 1
+    Evaluated middle: 1
+    *** Captured last base ***
+    Evaluated summit: 1
+    f 0 = Ok 1
+    |}];
+  Memo.restart_current_run ();
+  evaluate_and_print summit 0;
+  [%expect
+    {|
+    Started evaluating summit
+    Started evaluating middle
+    Created base #2
+    Started evaluating base
+    Evaluated base: 2
+    Evaluated middle: 2
+    *** Abandoned captured base ***
+    Evaluated summit: 0
+    f 0 = Ok 0
+    |}];
+  (* At this point, [captured_base] is a stale computation: [restore_from_cache]
+     failed but [compute] never started. *)
+  Memo.restart_current_run ();
+  evaluate_and_print summit 0;
+  (* We will now attempt to force [compute] of a stale computation but this is
+     handled correctly by restarting the computation. Note that this causes an
+     additional increment of the counter, thus leading to an inconsistent value
+     of [base] observed by the [middle] (3) and [summit] (4) nodes. *)
+  [%expect
+    {|
+    Started evaluating summit
+    Started evaluating middle
+    Created base #3
+    Started evaluating base
+    Evaluated base: 3
+    Evaluated middle: 3
+    *** Recalled captured base ***
+    Started evaluating base
+    Evaluated base: 4
+    Evaluated summit: 4
+    f 0 = Ok 4
+    |}]
 
 let print_exns f =
   let res =

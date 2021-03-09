@@ -113,8 +113,8 @@ module Tests = struct
        and+ flags = Ordered_set_lang.Unexpanded.field "flags"
        and+ executable =
          field "executable" ~default:Ocaml_flags.Spec.standard
-           ( Dune_lang.Syntax.since Stanza.syntax (2, 8)
-           >>> fields Ocaml_flags.Spec.decode )
+           (Dune_lang.Syntax.since Stanza.syntax (2, 8)
+           >>> fields Ocaml_flags.Spec.decode)
        and+ backend = field_o "backend" (located Lib_name.decode)
        and+ libraries =
          field "libraries" (repeat (located Lib_name.decode)) ~default:[]

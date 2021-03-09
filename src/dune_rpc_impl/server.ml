@@ -127,10 +127,10 @@ let handler (t : t Fdecl.t) : 'a Dune_rpc_server.Handler.t =
   let () =
     let unsubscribe session (sub : Subscribe.t) =
       let t = Fdecl.get t in
-      ( match sub with
+      (match sub with
       | Promotion ->
         t.promotion_subs <- Session_set.remove t.promotion_subs session
-      | Error -> t.error_subs <- Session_set.remove t.error_subs session );
+      | Error -> t.error_subs <- Session_set.remove t.error_subs session);
       Fiber.return ()
     in
     let cb = Handler.callback' (Handler.public ~since:(1, 0) ()) unsubscribe in
@@ -139,10 +139,10 @@ let handler (t : t Fdecl.t) : 'a Dune_rpc_server.Handler.t =
   let () =
     let subscribe session (sub : Subscribe.t) =
       let t = Fdecl.get t in
-      ( match sub with
+      (match sub with
       | Promotion ->
         t.promotion_subs <- Session_set.add t.promotion_subs session
-      | Error -> t.error_subs <- Session_set.add t.error_subs session );
+      | Error -> t.error_subs <- Session_set.add t.error_subs session);
       Fiber.return ()
     in
     let cb = Handler.callback' (Handler.public ~since:(1, 0) ()) subscribe in

@@ -172,14 +172,14 @@ module Produce = struct
         { expansions = Appendable_list.empty
         ; actions =
             Appendable_list.singleton
-              ( { stamp = Digest.generic stamp
-                ; action
-                ; locks
-                ; context
-                ; loc
-                ; env
-                }
-                : Dir_rules.alias_action )
+              ({ stamp = Digest.generic stamp
+               ; action
+               ; locks
+               ; context
+               ; loc
+               ; env
+               }
+                : Dir_rules.alias_action)
         }
   end
 end
@@ -224,4 +224,4 @@ let find t p =
   | Some p -> (
     match Path.Build.Map.find t p with
     | Some dir_rules -> (dir_rules : Dir_rules.Nonempty.t :> Dir_rules.t)
-    | None -> Dir_rules.empty )
+    | None -> Dir_rules.empty)

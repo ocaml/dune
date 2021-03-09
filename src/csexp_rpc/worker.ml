@@ -31,7 +31,7 @@ let run t =
     | Stopped -> (
       match Queue.pop t.work with
       | None -> t.state <- Finished
-      | Some job -> do_work job )
+      | Some job -> do_work job)
     | Finished -> ()
     | Running -> (
       match Queue.pop t.work with
@@ -40,7 +40,7 @@ let run t =
         while Queue.is_empty t.work && is_running t do
           Condition.wait t.work_available t.mutex
         done;
-        loop () )
+        loop ())
   and do_work job =
     Mutex.unlock t.mutex;
     job ();

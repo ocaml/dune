@@ -48,7 +48,8 @@ let%expect_test _ =
   try
     Dag.add_assuming_missing dag node41 node;
     print_endline "no cycle"
-  with Dag.Cycle cycle ->
+  with
+  | Dag.Cycle cycle ->
     let cycle = List.map cycle ~f:name in
     List.map ~f:Pp.text cycle |> Pp.concat ~sep:Pp.space |> print;
     [%expect
@@ -86,12 +87,12 @@ let cycle_test variant =
   let _n1 = node d 1 in
   let n2 = node d 2 in
   let n3 = node d 3 in
-  ( (* the two variants are equivalent, but they end up taking a different code
-       path when producing the cycle for some reason (or at least they did in
-       2019-03) *)
-  match variant with
+  (* the two variants are equivalent, but they end up taking a different code
+     path when producing the cycle for some reason (or at least they did in
+     2019-03) *)
+  (match variant with
   | `a -> add d n2 n3
-  | `b -> () );
+  | `b -> ());
   let n4 = node d 4 in
   add d n3 n4;
   let n5 = node d 5 in
@@ -194,9 +195,9 @@ let%expect_test "creating a cycle can succeed on the second attempt" =
 
     c4 = (4: k=2) (c4) []
   |}];
-  ( match Dag.add_assuming_missing dag c4 c2 with
+  (match Dag.add_assuming_missing dag c4 c2 with
   | () -> Format.printf "added :o\n"
-  | exception Cycle _ -> Format.printf "cycle\n" );
+  | exception Cycle _ -> Format.printf "cycle\n");
   Format.printf "c1 = %a@.\n" dag_pp_mynode c1;
   Format.printf "c2 = %a@.\n" dag_pp_mynode c2;
   Format.printf "c3 = %a@.\n" dag_pp_mynode c3;
@@ -214,9 +215,9 @@ let%expect_test "creating a cycle can succeed on the second attempt" =
 
     c4 = (4: k=2) (c4) []
   |}];
-  ( match Dag.add_assuming_missing dag c4 c2 with
+  (match Dag.add_assuming_missing dag c4 c2 with
   | () -> Format.printf "added :o\n"
-  | exception Cycle _ -> Format.printf "cycle\n" );
+  | exception Cycle _ -> Format.printf "cycle\n");
   Format.printf "c1 = %a@.\n" dag_pp_mynode c1;
   (* The output is truncated at depth 20. *)
   [%expect

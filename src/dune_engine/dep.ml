@@ -2,27 +2,6 @@ open Stdune
 
 let eval_pred = Fdecl.create Dyn.Encoder.opaque
 
-let peek_alias_expansion = Fdecl.create Dyn.Encoder.opaque
-
-let eval_alias_expansion = Fdecl.create Dyn.Encoder.opaque
-
-module Trace = struct
-  module Fact = struct
-    type file_fact = string * Digest.t
-
-    type t =
-      | Env of string * string option
-      | File of file_fact
-      | File_selector of Dyn.t * Digest.t
-      | Alias of file_fact list
-  end
-
-  type t =
-    { sandbox_mode : Sandbox_mode.t
-    ; facts : Fact.t list
-    }
-end
-
 module T = struct
   type t =
     | Env of Env.Var.t
@@ -63,39 +42,6 @@ module T = struct
     | _, Universe -> Gt
     | Sandbox_config x, Sandbox_config y -> Sandbox_config.compare x y
 
-  let trace_file fn = (Path.to_string fn, Cached_digest.file fn)
-
-  let rec trace_file_selector =
-    Memo.exec
-      (Memo.create "trace-file-selctor"
-         ~doc:"Calculate trace of a file selector"
-         ~input:(module File_selector)
-         ~output:(Allow_cutoff (module Digest))
-         ~visibility:Hidden Sync
-         (fun dir_glob ->
-           Digest.generic
-             ( Fdecl.get eval_pred dir_glob
-             |> Path.Set.fold ~init:[] ~f:(fun f acc -> trace_file f :: acc) )))
-
-  and trace t ~sandbox_mode ~env : Trace.Fact.t Option.t =
-    match t with
-    | Env var -> Some (Env (var, Env.get env var))
-    | File fn -> Some (File (trace_file fn))
-    | Alias a ->
-      Some
-        (Alias
-           (Path.Set.to_list_map (Fdecl.get peek_alias_expansion a)
-              ~f:(fun path -> trace_file path)))
-    | File_selector dir_glob ->
-      let id = File_selector.to_dyn dir_glob
-      and file_selector = trace_file_selector dir_glob in
-      Some (File_selector (id, file_selector))
-    | Universe -> None
-    | Sandbox_config config ->
-      assert (Sandbox_config.mem config sandbox_mode);
-      (* recorded globally for the whole dep set *)
-      None
-
   let encode t =
     let open Dune_lang.Encoder in
     let sandbox_mode (mode : Sandbox_mode.t) =
@@ -127,116 +73,187 @@ end
 
 include T
 module O = Comparable.Make (T)
-module Map = O.Map
 
-module Set = struct
-  module T = struct
-    include O.Set
+module Map = struct
+  include O.Map
+  include Memo.Build.Make_map_traversals (O.Map)
 
-    let has_universe t = mem t Universe
+  let sandbox_config t =
+    foldi t ~init:Sandbox_config.no_special_requirements ~f:(fun x _ acc ->
+        match x with
+        | File_selector _
+        | Env _
+        | File _
+        | Alias _
+        | Universe ->
+          acc
+        | Sandbox_config config -> Sandbox_config.inter acc config)
 
-    let sandbox_config t =
-      fold t ~init:Sandbox_config.no_special_requirements ~f:(fun x acc ->
-          match x with
-          | File_selector _
-          | Env _
-          | File _
-          | Alias _
-          | Universe ->
-            acc
-          | Sandbox_config config -> Sandbox_config.inter acc config)
+  let has_universe t = mem t Universe
+end
 
-    let of_files = List.fold_left ~init:empty ~f:(fun acc f -> add acc (file f))
+module Fact = struct
+  type t =
+    | Nothing
+    | File of Path.t * Digest.t
+    | File_selector of Dyn.t * Digest.t Path.Map.t
+    | Alias of Digest.t Path.Map.t
 
-    let of_files_set =
-      Path.Set.fold ~init:empty ~f:(fun f acc -> add acc (file f))
+  module Stable_for_digest = struct
+    type file = string * Digest.t
 
-    let trace t ~sandbox_mode ~env =
-      let facts =
-        fold t ~init:[] ~f:(fun dep acc ->
-            match trace ~sandbox_mode ~env dep with
-            | None -> acc
-            | Some fact -> fact :: acc)
-      in
-      { Trace.facts; sandbox_mode }
-
-    let add_paths t paths =
-      Path.Set.fold paths ~init:t ~f:(fun p set -> add set (File p))
-
-    let encode t = Dune_lang.Encoder.list encode (to_list t)
-
-    let static_paths t =
-      fold t ~init:(Path.Set.empty, [])
-        ~f:(fun d ((acc_paths, acc_aliases) as acc) ->
-          match d with
-          | Alias a -> (acc_paths, a :: acc_aliases)
-          | File f -> (Path.Set.add acc_paths f, acc_aliases)
-          | File_selector g ->
-            (Path.Set.union acc_paths (Fdecl.get eval_pred g), acc_aliases)
-          | Universe
-          | Env _ ->
-            acc
-          | Sandbox_config _ -> acc)
-
-    let eval_paths t =
-      fold t ~init:Path.Set.empty ~f:(fun d acc ->
-          match d with
-          | Alias a -> Path.Set.union acc (Fdecl.get peek_alias_expansion a)
-          | File f -> Path.Set.add acc f
-          | File_selector g -> Path.Set.union acc (Fdecl.get eval_pred g)
-          | Universe
-          | Env _ ->
-            acc
-          | Sandbox_config _ -> acc)
-
-    let eval_dirs t =
-      fold t ~init:Path.Set.empty ~f:(fun f acc ->
-          match f with
-          | Alias a ->
-            Path.Set.union acc
-              (Path.Set.map (Fdecl.get peek_alias_expansion a) ~f:(fun x ->
-                   Path.parent_exn x))
-          | File_selector g -> Path.Set.add acc (File_selector.dir g)
-          | File f -> Path.Set.add acc (Path.parent_exn f)
-          | Universe
-          | Env _ ->
-            acc
-          | Sandbox_config _ -> acc)
-
-    (* This is to force the rules to be loaded for directories without files
-       when depending on [(source_tree x)]. Otherwise, we wouldn't clean up
-       stale directories in directories that contain no file. *)
-    let dir_without_files_dep dir =
-      file_selector (File_selector.create ~dir Predicate.false_)
-
-    let source_tree dir =
-      let prefix_with, dir = Path.extract_build_context_dir_exn dir in
-      match File_tree.find_dir dir with
-      | None -> empty
-      | Some dir ->
-        File_tree.Dir.fold dir ~init:empty ~traverse:Sub_dirs.Status.Set.all
-          ~f:(fun dir acc ->
-            let files = File_tree.Dir.files dir in
-            let path =
-              Path.append_source prefix_with (File_tree.Dir.path dir)
-            in
-            match String.Set.is_empty files with
-            | true -> add acc (dir_without_files_dep path)
-            | false ->
-              let paths =
-                String.Set.fold files ~init:Path.Set.empty ~f:(fun fn acc ->
-                    Path.Set.add acc (Path.relative path fn))
-              in
-              add_paths acc paths)
-
-    let source_tree dir =
-      let t = source_tree dir in
-      (t, fst (static_paths t))
+    type t =
+      | Env of string * string option
+      | File of file
+      | File_selector of Dyn.t * file list
+      | Alias of file list
   end
 
-  include T
+  let nothing = Nothing
 
-  let parallel_iter t ~f = Memo.Build.parallel_iter_set (module T) t ~f
+  let file fn digest = File (fn, digest)
+
+  let file_selector fs digests =
+    let id = File_selector.to_dyn fs in
+    File_selector (id, digests)
+
+  let alias _alias files = Alias files
+end
+
+module Facts = struct
+  type t = Fact.t Map.t
+
+  let empty = Map.empty
+
+  let union a b =
+    Map.union a b ~f:(fun _ a b ->
+        assert (a = b);
+        Some a)
+
+  let paths t =
+    Map.fold t ~init:Path.Map.empty ~f:(fun fact acc ->
+        match (fact : Fact.t) with
+        | Nothing -> acc
+        | File (p, d) -> Path.Map.set acc p d
+        | File_selector (_, ps)
+        | Alias ps ->
+          Path.Map.union acc ps ~f:(fun _ a _ -> Some a))
+
+  let dirs t =
+    Map.fold t ~init:Path.Set.empty ~f:(fun fact acc ->
+        match (fact : Fact.t) with
+        | Nothing -> acc
+        | File (p, _) -> Path.Set.add acc (Path.parent_exn p)
+        | File_selector (_, ps)
+        | Alias ps ->
+          Path.Set.union acc
+            (Path.Map.to_list_map ps ~f:(fun x _ -> Path.parent_exn x)
+            |> Path.Set.of_list))
+
+  let digest t ~sandbox_mode ~env =
+    let facts =
+      let file (p, d) = (Path.to_string p, d) in
+      Map.foldi t ~init:[]
+        ~f:(fun dep fact acc : Fact.Stable_for_digest.t list ->
+          match dep with
+          | Env var -> Env (var, Env.get env var) :: acc
+          | Universe -> acc
+          | Sandbox_config config ->
+            assert (Sandbox_config.mem config sandbox_mode);
+            (* recorded globally for the whole dep set, see bellow *)
+            acc
+          | File _
+          | File_selector _
+          | Alias _ -> (
+            match (fact : Fact.t) with
+            | Nothing -> acc
+            | File (p, d) -> File (file (p, d)) :: acc
+            | File_selector (id, ps) ->
+              File_selector
+                ( id
+                , Path.Map.to_list_map ps ~f:(fun p d -> (Path.to_string p, d))
+                )
+              :: acc
+            | Alias ps ->
+              Alias
+                (Path.Map.to_list_map ps ~f:(fun p d -> (Path.to_string p, d)))
+              :: acc))
+    in
+    Digest.generic (sandbox_mode, facts)
+end
+
+module Set = struct
+  include O.Map
+
+  type t = unit Map.t
+
+  let singleton dep = singleton dep ()
+
+  let add t x = add_exn t x ()
+
+  let of_list = Map.of_list_unit
+
+  let of_list_map l ~f = Map.of_list_unit (List.map l ~f:(fun x -> f x))
+
+  let to_list = keys
+
+  let of_files = List.fold_left ~init:empty ~f:(fun acc f -> add acc (file f))
+
+  let of_files_set =
+    Path.Set.fold ~init:empty ~f:(fun f acc -> add acc (file f))
+
+  let union = union ~f:(fun _ () () -> Some ())
+
+  let union_map l ~f =
+    List.fold_left ~init:empty l ~f:(fun acc x ->
+        let s = f x in
+        union acc s)
+
+  let add_paths t paths =
+    Path.Set.fold paths ~init:t ~f:(fun p set -> add set (File p))
+
+  let encode t = Dune_lang.Encoder.list encode (to_list t)
+
+  let static_paths t =
+    foldi t ~init:(Path.Set.empty, [])
+      ~f:(fun d _ ((acc_paths, acc_aliases) as acc) ->
+        match d with
+        | Alias a -> (acc_paths, a :: acc_aliases)
+        | File f -> (Path.Set.add acc_paths f, acc_aliases)
+        | File_selector g ->
+          (Path.Set.union acc_paths (Fdecl.get eval_pred g), acc_aliases)
+        | Universe
+        | Env _ ->
+          acc
+        | Sandbox_config _ -> acc)
+
+  (* This is to force the rules to be loaded for directories without files when
+     depending on [(source_tree x)]. Otherwise, we wouldn't clean up stale
+     directories in directories that contain no file. *)
+  let dir_without_files_dep dir =
+    file_selector (File_selector.create ~dir Predicate.false_)
+
+  let source_tree dir =
+    let prefix_with, dir = Path.extract_build_context_dir_exn dir in
+    match File_tree.find_dir dir with
+    | None -> empty
+    | Some dir ->
+      File_tree.Dir.fold dir ~init:empty ~traverse:Sub_dirs.Status.Set.all
+        ~f:(fun dir acc ->
+          let files = File_tree.Dir.files dir in
+          let path = Path.append_source prefix_with (File_tree.Dir.path dir) in
+          match String.Set.is_empty files with
+          | true -> add acc (dir_without_files_dep path)
+          | false ->
+            let paths =
+              String.Set.fold files ~init:Path.Set.empty ~f:(fun fn acc ->
+                  Path.Set.add acc (Path.relative path fn))
+            in
+            add_paths acc paths)
+
+  let source_tree dir =
+    let t = source_tree dir in
+    (t, fst (static_paths t))
 
   let files_approx t = static_paths t |> fst
 

@@ -57,8 +57,8 @@ module Fields = struct
       let payload =
         [ ( "unparsed"
           , Sexp.List
-              ( String.Map.to_list s
-              |> List.map ~f:(fun (k, v) -> Sexp.List [ Sexp.Atom k; v ]) ) )
+              (String.Map.to_list s
+              |> List.map ~f:(fun (k, v) -> Sexp.List [ Sexp.Atom k; v ])) )
         ]
       in
       raise_of_sexp ~payload "unexpected fields"
@@ -85,7 +85,7 @@ module Fields = struct
       with
       | Error (s, _, _) ->
         raise_of_sexp "duplicate fields" ~payload:[ ("field", Atom s) ]
-      | Ok s -> Unparsed s )
+      | Ok s -> Unparsed s)
 
   let optional (Unparsed t) name =
     match String.Map.find t name with
@@ -101,8 +101,8 @@ module Fields = struct
 
   let to_sexp (Unparsed t) : Sexp.t =
     List
-      ( String.Map.to_list t
-      |> List.map ~f:(fun (k, v) -> Sexp.List [ Atom k; v ]) )
+      (String.Map.to_list t
+      |> List.map ~f:(fun (k, v) -> Sexp.List [ Atom k; v ]))
 end
 
 type values = Sexp.t
@@ -194,7 +194,7 @@ let int =
       | Atom s -> (
         match Int.of_string s with
         | None -> raise_of_sexp "unable to read int"
-        | Some i -> i ))
+        | Some i -> i))
     , fun s -> Atom (Int.to_string s) )
 
 let unit =
@@ -225,7 +225,7 @@ let to_sexp : 'a. ('a, values) t -> 'a -> Sexp.t =
       | Optional t -> (
         match a with
         | None -> Fields.empty
-        | Some a -> Fields.of_field name (loop t a) ) )
+        | Some a -> Fields.of_field name (loop t a)))
     | Iso (t, _, from) -> loop t (from a)
     | Both (x, y) ->
       let x = loop x (fst a) in
@@ -234,7 +234,7 @@ let to_sexp : 'a. ('a, values) t -> 'a -> Sexp.t =
     | Either (x, y) -> (
       match a with
       | Left a -> loop x a
-      | Right a -> loop y a )
+      | Right a -> loop y a)
     | Sum (_, constr) ->
       let (Case (a, constr)) = constr a in
       let arg = loop constr.arg a in
@@ -251,7 +251,7 @@ let to_sexp : 'a. ('a, values) t -> 'a -> Sexp.t =
       | None ->
         let open Dyn.Encoder in
         Code_error.raise "enum does not include this value"
-          [ ("valid values", list (fun (x, _) -> string x) choices) ] )
+          [ ("valid values", list (fun (x, _) -> string x) choices) ])
   in
   loop t a
 
@@ -277,14 +277,14 @@ let of_sexp : 'a. ('a, values) t -> version:int * int -> Sexp.t -> 'a =
      | List t -> (
        match ctx with
        | List xs -> (List.map xs ~f:(fun x -> discard_values (loop t x)), Values)
-       | Atom _ -> raise_of_sexp "expected list" )
+       | Atom _ -> raise_of_sexp "expected list")
      | Pair (x, y) -> (
        match ctx with
        | List [ a; b ] ->
          let a, Values = loop x a in
          let b, Values = loop y b in
          ((a, b), Values)
-       | _ -> raise_of_sexp "expected field entry" )
+       | _ -> raise_of_sexp "expected field entry")
      | Record (r : (a, fields) t) ->
        let (fields : Fields.t) = Fields.of_sexp ctx in
        let a, Fields f = loop r fields in
@@ -305,15 +305,16 @@ let of_sexp : 'a. ('a, values) t -> version:int * int -> Sexp.t -> 'a =
              let a, Values = loop v f in
              Some a
          in
-         (t, Fields rest) )
+         (t, Fields rest))
      | Either (x, y) -> (
        try
          (* TODO share computation somehow *)
          let a, x = loop x ctx in
          (Left a, x)
-       with Of_sexp _ ->
+       with
+       | Of_sexp _ ->
          let a, y = loop y ctx in
-         (Right a, y) )
+         (Right a, y))
      | Iso (t, f, _) ->
        let a, k = loop t ctx in
        (f a, k)
@@ -334,15 +335,15 @@ let of_sexp : 'a. ('a, values) t -> version:int * int -> Sexp.t -> 'a =
                  None)
          with
          | None -> raise_of_sexp "invalid constructor name"
-         | Some p -> p )
-       | _ -> raise_of_sexp "expected constructor" )
+         | Some p -> p)
+       | _ -> raise_of_sexp "expected constructor")
      | Enum choices -> (
        match ctx with
        | List _ -> raise_of_sexp "expected list"
        | Atom a -> (
          match List.assoc choices a with
          | None -> raise_of_sexp "unable to read enum"
-         | Some s -> (s, Values) ) )
+         | Some s -> (s, Values)))
   in
   discard_values (loop t sexp)
 

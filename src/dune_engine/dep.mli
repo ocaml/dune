@@ -40,6 +40,14 @@ module Map : sig
 end
 
 module Fact : sig
+  (** A fact about the world. For instance:
+
+      - file [p] has digest [d]
+
+      - alias [a] expands to the given set of files, with their digests
+
+      You can think of a [Dep.t] as the "label" of a fact. *)
+
   type t
 
   val nothing : t

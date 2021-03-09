@@ -58,13 +58,21 @@ Build some more targets.
 
   $ dune build target_a target_b
 
-Have a look at one of the metadata files and its size. If the rule digest changes,
-make sure to increment [rule_digest_version] in [build_system.ml].
+Dune stores the result of rule execution in a store keyed by "rule
+digests". If the way such rule digests are computed changes, we could
+end up in a situation where the same hash means something different
+before and after the change, which is bad. To reduce the rist, we
+inject a version number into rule digests.
 
-  $ cat $PWD/.xdg-cache/dune/db/meta/v4/93/933bff97f056d2d7db4c1876dd35a253
-  ((8:metadata)(5:files(16:default/target_a32:5637dd9730e430c7477f52d46de3909c)))
+If you see the bellow test breaking, then you probably accidentally
+changed the way the digest is computed and you should increase this
+version number. This number is stored in the [rule_digest_version]
+variable in [build_system.ml].
 
-  $ dune_cmd stat size $PWD/.xdg-cache/dune/db/meta/v4/93/933bff97f056d2d7db4c1876dd35a253
+  $ cat $PWD/.xdg-cache/dune/db/meta/v4/70/70e20e84ad3f1df3a3b6e2fabcc6465b
+  ((8:metadata)(5:files(16:default/target_b32:8a53bfae3829b48866079fa7f2d97781)))
+
+  $ dune_cmd stat size $PWD/.xdg-cache/dune/db/meta/v4/70/70e20e84ad3f1df3a3b6e2fabcc6465b
   79
 
 Trimming the cache at this point should not remove anything, as all

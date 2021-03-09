@@ -1250,22 +1250,30 @@ and Exported : sig
 end = struct
   open Used_recursively
 
+  (* [build_dep] turns a [Dep.t] which is a description of a dependency into a
+     fact about the world. To do that, it needs to do some building. *)
+  let build_dep : Dep.t -> Dep.Fact.t Memo.Build.t = function
+    | Alias a ->
+      let+ digests = build_alias a in
+      (* Fact: alias [a] expand to the set of files with their digest [digests] *)
+      Dep.Fact.alias a digests
+    | File f ->
+      let+ digest = build_file f in
+      (* Fact: file [f] has digest [digest] *)
+      Dep.Fact.file f digest
+    | File_selector g ->
+      let+ digests = Pred.build g in
+      (* Fact: file selector [g] expands to the set of files with their digest
+         [digests] *)
+      Dep.Fact.file_selector g digests
+    | Universe
+    | Env _
+    | Sandbox_config _ ->
+      (* Facts about these dependencies are constructed in [Dep.Facts.digest]. *)
+      Memo.Build.return Dep.Fact.nothing
+
   let build_deps deps =
-    Dep.Map.parallel_map deps ~f:(fun (dep : Dep.t) () ->
-        match dep with
-        | Alias a ->
-          let+ digests = build_alias a in
-          Dep.Fact.alias a digests
-        | File f ->
-          let+ digest = build_file f in
-          Dep.Fact.file f digest
-        | File_selector g ->
-          let+ digests = Pred.build g in
-          Dep.Fact.file_selector g digests
-        | Universe
-        | Env _
-        | Sandbox_config _ ->
-          Memo.Build.return Dep.Fact.nothing)
+    Dep.Map.parallel_map deps ~f:(fun dep () -> build_dep dep)
 
   let () = Fdecl.set build_deps_fdecl build_deps
 

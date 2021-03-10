@@ -568,10 +568,10 @@ let run_internal ?dir ?(stdout_to = Io.stdout) ?(stderr_to = Io.stderr)
       Io.release stdout_to;
       Io.release stderr_to;
       let+ exit_status = Scheduler.wait_for_process pid in
-      ( match (event_common, config.stats) with
+      (match (event_common, config.stats) with
       | Some common, Some stats -> report_process_end stats common ~id
       | None, None -> ()
-      | _, _ -> assert false );
+      | _, _ -> assert false);
       Option.iter response_file ~f:Path.unlink;
       let output =
         match output_filename with

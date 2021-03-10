@@ -266,14 +266,15 @@ module Event = struct
         :: common pid "process_labels"
       | Thread_name { tid; pid; name } ->
         ("tid", Int tid)
-        :: args_field [ ("name", Json.String name) ]
-        :: common pid "process_name"
+        ::
+        args_field [ ("name", Json.String name) ] :: common pid "process_name"
       | Process_sort_index { pid; sort_index } ->
         args_field [ ("sort_index", Json.Int sort_index) ]
         :: common pid "process_sort_index"
       | Thread_sort_index { pid; sort_index; tid } ->
         ("tid", Int tid)
-        :: args_field [ ("sort_index", Json.Int sort_index) ]
+        ::
+        args_field [ ("sort_index", Json.Int sort_index) ]
         :: common pid "thread_sort_index"
     in
     phase "M" :: fields

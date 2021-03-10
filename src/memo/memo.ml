@@ -76,6 +76,31 @@ module Output = struct
   type 'o t =
     | Simple of (module Output_simple with type t = 'o)
     | Allow_cutoff of (module Output_allow_cutoff with type t = 'o)
+
+  let simple (type a) ?to_dyn () =
+    let to_dyn = Option.value to_dyn ~default:(fun _ -> Dyn.Opaque) in
+    Simple
+      (module struct
+        type t = a
+
+        let to_dyn = to_dyn
+      end)
+
+  let allow_cutoff (type a) ?to_dyn ~(equal : a -> a -> bool) =
+    let to_dyn = Option.value to_dyn ~default:(fun _ -> Dyn.Opaque) in
+    Allow_cutoff
+      (module struct
+        type t = a
+
+        let to_dyn = to_dyn
+
+        let equal = equal
+      end)
+
+  let create ?cutoff ?to_dyn () =
+    match cutoff with
+    | None -> simple ?to_dyn ()
+    | Some equal -> allow_cutoff ?to_dyn ~equal
 end
 
 module Visibility = struct
@@ -857,33 +882,24 @@ let create (type i) name ?doc ~input:(module Input : Input with type t = i)
   let input = (module Input : Store_intf.Input with type t = i) in
   create_with_cache name ~cache ?doc ~input ~visibility ~output typ f
 
-let create_hidden (type output) name ?doc ~input typ impl =
-  let module O = struct
-    type t = output
+let create_hidden name ?doc ~input typ impl =
+  create ~output:(Output.simple ()) ~visibility:Hidden name ?doc ~input typ impl
 
-    let to_dyn (_ : t) = Dyn.Opaque
-  end in
-  create
-    ~output:(Simple (module O))
-    ~visibility:Hidden name ?doc ~input typ impl
+let make_dep_node ~spec ~input : _ Dep_node.t =
+  let dep_node_without_state : _ Dep_node_without_state.t =
+    { id = Id.gen (); input; spec }
+  in
+  { without_state = dep_node_without_state
+  ; last_cached_value = None
+  ; state = Not_considering
+  }
 
-module Exec = struct
-  let make_dep_node ~spec ~state ~last_cached_value ~input : _ Dep_node.t =
-    let dep_node_without_state : _ Dep_node_without_state.t =
-      { id = Id.gen (); input; spec }
-    in
-    { without_state = dep_node_without_state; last_cached_value; state }
-end
-
-let dep_node (type i o f) (t : (i, o, f) t) inp =
-  match Store.find t.cache inp with
+let dep_node (type i o f) (t : (i, o, f) t) input =
+  match Store.find t.cache input with
   | Some dep_node -> dep_node
   | None ->
-    let dep_node =
-      Exec.make_dep_node ~spec:t.spec ~input:inp ~state:Not_considering
-        ~last_cached_value:None
-    in
-    Store.set t.cache inp dep_node;
+    let dep_node = make_dep_node ~spec:t.spec ~input in
+    Store.set t.cache input dep_node;
     dep_node
 
 (* Checking dependencies of a node can lead to one of these outcomes:
@@ -1453,17 +1469,14 @@ module Lazy_id = Stdune.Id.Make ()
 module With_implicit_output = struct
   type ('i, 'o, 'f) t = 'f
 
-  let create (type i o f io) name ?doc ~input ~visibility
+  let create (type i o f) name ?doc ~input ~visibility
       ~output:(module O : Output_simple with type t = o) ~implicit_output
       (typ : (i, o, f) Function.Type.t) (impl : f) =
     let output =
-      Output.Simple
-        (module struct
-          type t = o * io option
-
-          let to_dyn ((o, _io) : t) =
-            Dyn.List [ O.to_dyn o; Dyn.String "<implicit output is opaque>" ]
-        end)
+      Output.simple
+        ~to_dyn:(fun (o, _io) ->
+          Dyn.List [ O.to_dyn o; Dyn.String "<implicit output is opaque>" ])
+        ()
     in
     match typ with
     | Function.Type.Sync ->
@@ -1509,50 +1522,30 @@ let cell t inp = dep_node t inp
 module Implicit_output = Implicit_output
 module Store = Store_intf
 
-let lazy_cell (type a) ?(cutoff = ( == )) f =
-  let module Output = struct
-    type t = a
-
-    let to_dyn _ = Dyn.Opaque
-
-    let equal = cutoff
-  end in
+let lazy_cell ?cutoff ?to_dyn f =
+  let output = Output.create ?cutoff ?to_dyn () in
   let visibility = Visibility.Hidden in
   let f = Function.of_type Function.Type.Sync f in
   let spec =
-    Spec.create ~info:None
-      ~input:(module Unit)
-      ~output:(Allow_cutoff (module Output))
-      ~visibility ~f
+    Spec.create ~info:None ~input:(module Unit) ~output ~visibility ~f
   in
-  Exec.make_dep_node ~spec ~state:Not_considering ~last_cached_value:None
-    ~input:()
+  make_dep_node ~spec ~input:()
 
-let lazy_ ?(cutoff = ( == )) f =
-  let cell = lazy_cell ~cutoff f in
+let lazy_ ?cutoff ?to_dyn f =
+  let cell = lazy_cell ?cutoff ?to_dyn f in
   fun () -> Cell.get_sync cell
 
-let lazy_async_cell (type a) ?(cutoff = ( == )) f =
-  let module Output = struct
-    type t = a
-
-    let to_dyn _ = Dyn.Opaque
-
-    let equal = cutoff
-  end in
+let lazy_async_cell ?cutoff ?to_dyn f =
+  let output = Output.create ?cutoff ?to_dyn () in
   let visibility = Visibility.Hidden in
   let f = Function.of_type Function.Type.Async f in
   let spec =
-    Spec.create ~info:None
-      ~input:(module Unit)
-      ~output:(Allow_cutoff (module Output))
-      ~visibility ~f
+    Spec.create ~info:None ~input:(module Unit) ~output ~visibility ~f
   in
-  Exec.make_dep_node ~spec ~state:Not_considering ~last_cached_value:None
-    ~input:()
+  make_dep_node ~spec ~input:()
 
-let lazy_async ?(cutoff = ( == )) f =
-  let cell = lazy_async_cell ~cutoff f in
+let lazy_async ?cutoff ?to_dyn f =
+  let cell = lazy_async_cell ?cutoff ?to_dyn f in
   fun () -> Cell.get_async cell
 
 module Lazy = struct
@@ -1589,14 +1582,9 @@ module Run = struct
     type nonrec 'a t = 'a Fdecl.t Lazy.t
 
     let create to_dyn =
-      let cell =
-        lazy_cell
-          ~cutoff:(fun _ _ -> false)
-          (fun () ->
-            let (_ : Run.t) = current_run () in
-            Fdecl.create to_dyn)
-      in
-      fun () -> Cell.get_sync cell
+      lazy_ ~to_dyn:Fdecl.to_dyn (fun () ->
+          let (_ : Run.t) = current_run () in
+          Fdecl.create to_dyn)
 
     let set t x = Fdecl.set (Lazy.force t) x
 

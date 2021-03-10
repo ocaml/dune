@@ -313,7 +313,8 @@ module Lazy : sig
 
   val bind : 'a t -> f:('a -> 'b t) -> 'b t
 
-  val create : ?cutoff:('a -> 'a -> bool) -> (unit -> 'a) -> 'a t
+  val create :
+    ?cutoff:('a -> 'a -> bool) -> ?to_dyn:('a -> Dyn.t) -> (unit -> 'a) -> 'a t
 
   val of_val : 'a -> 'a t
 
@@ -324,7 +325,11 @@ module Lazy : sig
 
     val of_val : 'a -> 'a t
 
-    val create : ?cutoff:('a -> 'a -> bool) -> (unit -> 'a Build.t) -> 'a t
+    val create :
+         ?cutoff:('a -> 'a -> bool)
+      -> ?to_dyn:('a -> Dyn.t)
+      -> (unit -> 'a Build.t)
+      -> 'a t
 
     val force : 'a t -> 'a Build.t
 
@@ -332,10 +337,17 @@ module Lazy : sig
   end
 end
 
-val lazy_ : ?cutoff:('a -> 'a -> bool) -> (unit -> 'a) -> 'a Lazy.t
+val lazy_ :
+     ?cutoff:('a -> 'a -> bool)
+  -> ?to_dyn:('a -> Dyn.t)
+  -> (unit -> 'a)
+  -> 'a Lazy.t
 
 val lazy_async :
-  ?cutoff:('a -> 'a -> bool) -> (unit -> 'a Build.t) -> 'a Lazy.Async.t
+     ?cutoff:('a -> 'a -> bool)
+  -> ?to_dyn:('a -> Dyn.t)
+  -> (unit -> 'a Build.t)
+  -> 'a Lazy.Async.t
 
 module With_implicit_output : sig
   type ('i, 'o, 'f) t

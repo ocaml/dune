@@ -2147,7 +2147,7 @@ let load_dir_and_produce_its_rules ~dir =
 
 let load_dir ~dir = load_dir_and_produce_its_rules ~dir
 
-let init ?stats ~contexts ?build_mutex ~promote_source ?caching
+let init ~stats ~contexts ?build_mutex ~promote_source ?caching
     ~sandboxing_preference () =
   let contexts =
     Context_name.Map.of_list_map_exn contexts ~f:(fun c ->

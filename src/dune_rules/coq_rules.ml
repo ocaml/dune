@@ -220,7 +220,7 @@ module Context = struct
               let+ theory_dirs = directories_of_lib ~sctx lib in
               Path.Build.Set.of_list theory_dirs)
         in
-        Ok (Path.Build.Set.union_all (theory_dirs :: l)) )
+        Ok (Path.Build.Set.union_all (theory_dirs :: l)))
     | Coq_mode.VoOnly
     | Coq_mode.Legacy ->
       Memo.Build.return (Ok Path.Build.Set.empty)

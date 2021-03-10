@@ -247,14 +247,13 @@ let make_lib_modules (d : _ Dir_with_dune.t) ~lookup_vlib ~(lib : Library.t)
               let+ wrapped = Lib.wrapped resolved in
               (main_module_name, Option.value_exn wrapped)
             in
-            (kind, main_module_name, wrapped)) )
+            (kind, main_module_name, wrapped)))
   in
   Result.map res ~f:(fun (kind, main_module_name, wrapped) ->
       let modules =
         Modules_field_evaluator.eval ~modules ~buildable:lib.buildable ~kind
           ~private_modules:
-            (Option.value ~default:Ordered_set_lang.standard
-               lib.private_modules)
+            (Option.value ~default:Ordered_set_lang.standard lib.private_modules)
           ~src_dir
       in
       let stdlib = lib.stdlib in

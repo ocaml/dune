@@ -145,8 +145,8 @@ end = struct
           | Menhir.T menhir -> Memo.Build.return (Menhir_rules.targets menhir)
           | Rule rule ->
             Memo.Build.return
-              ( Simple_rules.user_rule sctx rule ~dir ~expander
-              |> Path.Build.Set.to_list_map ~f:Path.Build.basename )
+              (Simple_rules.user_rule sctx rule ~dir ~expander
+              |> Path.Build.Set.to_list_map ~f:Path.Build.basename)
           | Copy_files def ->
             let+ ps =
               Simple_rules.copy_files sctx def ~src_dir ~dir ~expander

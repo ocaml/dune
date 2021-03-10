@@ -703,7 +703,7 @@ let gen_rules sctx ~dir:_ rest =
     let packages = Super_context.packages sctx in
     match Package.Name.Map.find packages pkg with
     | None -> Memo.Build.return ()
-    | Some _ -> setup_package_odoc_rules sctx ~pkg )
+    | Some _ -> setup_package_odoc_rules sctx ~pkg)
   | "_odoc" :: "lib" :: lib :: _ -> (
     let lib, lib_db = Scope_key.of_string sctx lib in
     (* diml: why isn't [None] some kind of error here? *)
@@ -714,7 +714,7 @@ let gen_rules sctx ~dir:_ rest =
          rules for this library *)
       let info = Lib.info lib in
       let dir = Lib_info.src_dir info in
-      Build_system.load_dir ~dir )
+      Build_system.load_dir ~dir)
   | "_html" :: lib_unique_name_or_pkg :: _ ->
     (* TODO we can be a better with the error handling in the case where
        lib_unique_name_or_pkg is neither a valid pkg or lnu *)
@@ -737,7 +737,7 @@ let gen_rules sctx ~dir:_ rest =
         | None ->
           setup_lib_html_rules sctx lib
             ~requires:(Lib.closure ~linking:false [ Lib.Local.to_lib lib ])
-        | Some pkg -> setup_pkg_html_rules pkg )
+        | Some pkg -> setup_pkg_html_rules pkg)
     and+ () =
       match
         Package.Name.Map.find (SC.packages sctx)

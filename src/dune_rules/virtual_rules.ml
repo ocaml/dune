@@ -131,4 +131,4 @@ let impl sctx ~(lib : Dune_file.Library.t) ~scope =
           in
           Memo.Build.return (modules, foreign_objects)
       in
-      Some (Vimpl.make ~impl:lib ~vlib ~vlib_modules ~vlib_foreign_objects) )
+      Some (Vimpl.make ~impl:lib ~vlib ~vlib_modules ~vlib_foreign_objects))

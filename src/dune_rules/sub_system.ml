@@ -50,7 +50,7 @@ module Register_backend (M : Backend) = struct
                 [ Pp.textf "%s is not %s %s" (Lib_name.to_string name)
                     M.desc_article (M.desc ~plural:false)
                 ]))
-      | Some t -> Ok t )
+      | Some t -> Ok t)
 
   module Selection_error = struct
     type t =
@@ -92,10 +92,10 @@ module Register_backend (M : Backend) = struct
 
   let written_by_user_or_scan ~written_by_user ~to_scan =
     let open Memo.Build.O in
-    ( match written_by_user with
+    (match written_by_user with
     | Some l -> Memo.Build.return l
     | None ->
-      Memo.Build.parallel_map to_scan ~f:get >>| List.filter_map ~f:Fun.id )
+      Memo.Build.parallel_map to_scan ~f:get >>| List.filter_map ~f:Fun.id)
     >>| function
     | [] -> Error No_backend_found
     | l -> Ok l

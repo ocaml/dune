@@ -77,7 +77,8 @@ module Output = struct
     | Simple of (module Output_simple with type t = 'o)
     | Allow_cutoff of (module Output_allow_cutoff with type t = 'o)
 
-  let simple (type a) ~to_dyn =
+  let simple (type a) ?to_dyn () =
+    let to_dyn = Option.value to_dyn ~default:(fun _ -> Dyn.Opaque) in
     Simple
       (module struct
         type t = a
@@ -85,7 +86,8 @@ module Output = struct
         let to_dyn = to_dyn
       end)
 
-  let allow_cutoff (type a) ~(equal : a -> a -> bool) ~to_dyn =
+  let allow_cutoff (type a) ?to_dyn ~(equal : a -> a -> bool) =
+    let to_dyn = Option.value to_dyn ~default:(fun _ -> Dyn.Opaque) in
     Allow_cutoff
       (module struct
         type t = a
@@ -96,10 +98,9 @@ module Output = struct
       end)
 
   let create ?cutoff ?to_dyn () =
-    let to_dyn = Option.value to_dyn ~default:(fun _ -> Dyn.Opaque) in
     match cutoff with
-    | None -> simple ~to_dyn
-    | Some equal -> allow_cutoff ~equal ~to_dyn
+    | None -> simple ?to_dyn ()
+    | Some equal -> allow_cutoff ?to_dyn ~equal
 end
 
 module Visibility = struct
@@ -881,15 +882,8 @@ let create (type i) name ?doc ~input:(module Input : Input with type t = i)
   let input = (module Input : Store_intf.Input with type t = i) in
   create_with_cache name ~cache ?doc ~input ~visibility ~output typ f
 
-let create_hidden (type output) name ?doc ~input typ impl =
-  let module O = struct
-    type t = output
-
-    let to_dyn (_ : t) = Dyn.Opaque
-  end in
-  create
-    ~output:(Simple (module O))
-    ~visibility:Hidden name ?doc ~input typ impl
+let create_hidden name ?doc ~input typ impl =
+  create ~output:(Output.simple ()) ~visibility:Hidden name ?doc ~input typ impl
 
 let make_dep_node ~spec ~input : _ Dep_node.t =
   let dep_node_without_state : _ Dep_node_without_state.t =
@@ -1475,17 +1469,14 @@ module Lazy_id = Stdune.Id.Make ()
 module With_implicit_output = struct
   type ('i, 'o, 'f) t = 'f
 
-  let create (type i o f io) name ?doc ~input ~visibility
+  let create (type i o f) name ?doc ~input ~visibility
       ~output:(module O : Output_simple with type t = o) ~implicit_output
       (typ : (i, o, f) Function.Type.t) (impl : f) =
     let output =
-      Output.Simple
-        (module struct
-          type t = o * io option
-
-          let to_dyn ((o, _io) : t) =
-            Dyn.List [ O.to_dyn o; Dyn.String "<implicit output is opaque>" ]
-        end)
+      Output.simple
+        ~to_dyn:(fun (o, _io) ->
+          Dyn.List [ O.to_dyn o; Dyn.String "<implicit output is opaque>" ])
+        ()
     in
     match typ with
     | Function.Type.Sync ->

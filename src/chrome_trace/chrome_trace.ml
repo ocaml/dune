@@ -79,34 +79,39 @@ end = struct
     Json.Int n
 end
 
+type dst =
+  | Out of out_channel
+  | Custom of
+      { write : string -> unit
+      ; close : unit -> unit
+      }
+
 type t =
   { print : string -> unit
   ; close : unit -> unit
-  ; get_time : unit -> Timestamp.t
   ; buffer : Buffer.t
   ; mutable after_first_event : bool
   }
 
 (* all fields of record used *)
 
-let fake time_ref buf =
-  let print s = Buffer.add_string buf s in
-  let close () = () in
-  let get_time () = Timestamp.of_float_seconds !time_ref in
-  let buffer = Buffer.create 1024 in
-  { print; close; get_time; after_first_event = false; buffer }
-
 let close { print; close; _ } =
   print "]\n";
   close ()
 
-let make path =
-  let channel = Stdlib.open_out path in
-  let print s = Stdlib.output_string channel s in
-  let close () = Stdlib.close_out channel in
-  let get_time () = Timestamp.of_float_seconds (Unix.gettimeofday ()) in
+let make dst =
+  let print =
+    match dst with
+    | Out out -> Stdlib.output_string out
+    | Custom c -> c.write
+  in
+  let close =
+    match dst with
+    | Out out -> fun () -> Stdlib.close_out out
+    | Custom c -> c.close
+  in
   let buffer = Buffer.create 1024 in
-  { print; close; get_time; after_first_event = false; buffer }
+  { print; close; after_first_event = false; buffer }
 
 let next_leading_char t =
   match t.after_first_event with

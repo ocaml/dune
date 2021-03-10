@@ -69,13 +69,14 @@ end
 (** The (mutable) state of reporters. It is basically an output channel. *)
 type t
 
-(** Create a reporter: open a trace file and further events will be logged into
-    it. It is necessary to call [close] on the reporter to make the file valid. *)
-val make : string -> t
+type dst =
+  | Out of out_channel
+  | Custom of
+      { write : string -> unit
+      ; close : unit -> unit
+      }
 
-(** Return a fake reporter that reads time in a reference and writes JSON
-    objects to a buffer. *)
-val fake : float ref -> Buffer.t -> t
+val make : dst -> t
 
 (** Output trailing data to make the underlying file valid JSON, and close it. *)
 val close : t -> unit

@@ -771,7 +771,7 @@ let term =
   in
   let stats =
     Option.map stats_trace_file ~f:(fun f ->
-        let stats = Chrome_trace.make f in
+        let stats = Chrome_trace.make (Out (open_out f)) in
         at_exit (fun () -> Chrome_trace.close stats);
         stats)
   in

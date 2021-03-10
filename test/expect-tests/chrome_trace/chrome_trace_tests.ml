@@ -5,13 +5,10 @@ let () = init ()
 
 let buf = Buffer.create 0
 
-let time = ref 0.
-
-let c = Chrome_trace.fake time buf
-
-let () = time := 10.
-
-let () = time := 30.
+let c =
+  let write s = Buffer.add_string buf s in
+  let close () = () in
+  Chrome_trace.make (Custom { write; close })
 
 let () = Chrome_trace.close c
 

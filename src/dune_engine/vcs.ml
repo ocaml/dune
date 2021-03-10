@@ -61,7 +61,7 @@ let git, hg =
   (get "git", get "hg")
 
 let select git hg t =
-  Memo.Build.unsafe_of_fiber
+  Memo.Build.of_reproducible_fiber
     (match t.kind with
     | Git -> git t
     | Hg -> hg t)

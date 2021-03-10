@@ -7,7 +7,12 @@ module Build : sig
 
   val run : 'a t -> 'a Fiber.t
 
-  val unsafe_of_fiber : 'a Fiber.t -> 'a t
+  (** [of_reproducible_fiber fiber] injects a fiber into the build monad. This
+      module assumes that the given fiber is "reproducible", i.e. that executing
+      it multiple times will always yield the same result.
+
+      It is however up to the user to ensure this property. *)
+  val of_reproducible_fiber : 'a Fiber.t -> 'a t
 
   val return : 'a -> 'a t
 

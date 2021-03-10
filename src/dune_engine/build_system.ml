@@ -1397,7 +1397,7 @@ end = struct
     let targets = action.targets in
     let head_target = Path.Build.Set.choose_exn targets in
     let* action, deps = exec_build_request rule.action.build in
-    Memo.Build.unsafe_of_fiber
+    Memo.Build.of_reproducible_fiber
       (let open Fiber.O in
       let build_deps deps = Memo.Build.run (build_deps deps) in
       Stats.new_evaluated_rule ();

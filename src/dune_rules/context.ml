@@ -162,7 +162,7 @@ end = struct
         | None -> Utils.program_not_found "opam" ~loc:None
         | Some opam -> (
           let+ version =
-            Memo.Build.unsafe_of_fiber
+            Memo.Build.of_reproducible_fiber
               (Process.run_capture_line Strict opam
                  [ "--version"; "--color=never" ])
           in
@@ -199,7 +199,8 @@ end = struct
           ]
       in
       let+ s =
-        Memo.Build.unsafe_of_fiber (Process.run_capture ~env Strict opam args)
+        Memo.Build.of_reproducible_fiber
+          (Process.run_capture ~env Strict opam args)
       in
       Dune_lang.Parser.parse_string ~fname:"<opam output>" ~mode:Single s
       |> Dune_lang.Decoder.(
@@ -287,7 +288,7 @@ let ocamlfind_printconf_path ~env ~ocamlfind ~toolchain =
     | Some s -> "-toolchain" :: Context_name.to_string s :: args
   in
   let+ l =
-    Memo.Build.unsafe_of_fiber
+    Memo.Build.of_reproducible_fiber
       (Process.run_capture_lines ~env Strict ocamlfind args)
   in
   List.map l ~f:Path.of_filename_relative_to_initial_cwd
@@ -392,7 +393,7 @@ let create ~(kind : Kind.t) ~path ~env ~env_nodes ~name ~merlin ~targets
         (match Env.get env "OCAMLFIND_CONF" with
         | Some s -> Memo.Build.return s
         | None ->
-          Memo.Build.unsafe_of_fiber
+          Memo.Build.of_reproducible_fiber
             (Process.run_capture_line ~env Strict fn [ "printconf"; "conf" ]))
         >>| Path.of_filename_relative_to_initial_cwd)
   in
@@ -497,7 +498,7 @@ let create ~(kind : Kind.t) ~path ~env ~env_nodes ~name ~merlin ~targets
     let* default_ocamlpath, (ocaml_config_vars, ocfg) =
       Memo.Build.fork_and_join default_library_search_path (fun () ->
           let+ lines =
-            Memo.Build.unsafe_of_fiber
+            Memo.Build.of_reproducible_fiber
               (Process.run_capture_lines ~env Strict ocamlc [ "-config" ])
           in
           ocaml_config_ok_exn

@@ -17,7 +17,7 @@ module Build = struct
 
   let run = Fun.id
 
-  let unsafe_of_fiber = Fun.id
+  let of_reproducible_fiber = Fun.id
 end
 
 let unwrap_exn = ref Fun.id

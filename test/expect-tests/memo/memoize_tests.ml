@@ -1023,7 +1023,7 @@ let%expect_test "deadlocks when creating a cycle twice" =
         let base = Fdecl.get fdecl_base in
         let+ result =
           let+ bases =
-            Build.unsafe_of_fiber
+            Build.of_reproducible_fiber
               (Fiber.parallel_map [ (); () ] ~f:(fun () ->
                    Build.run (Memo.exec base ())))
           in

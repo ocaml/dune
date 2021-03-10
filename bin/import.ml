@@ -187,6 +187,7 @@ module Scheduler = struct
   let poll ~(common : Common.t) ~once ~finally =
     let dune_config = Common.config common in
     let rpc = Common.rpc common |> Option.map ~f:Dune_rpc_impl.Server.config in
+    let stats = Common.stats common in
     let config = Dune_config.for_scheduler dune_config rpc stats in
     Scheduler.Run.poll config
       ~on_event:(on_event_poll dune_config)

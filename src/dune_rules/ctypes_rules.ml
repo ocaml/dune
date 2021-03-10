@@ -102,7 +102,7 @@ module Stanza_util = struct
     sprintf "%s__c_cout_generated_functions.c" ctypes.Ctypes.external_library_name
 
   let _libraries_needed_for_ctypes () =
-    ["ctypes"; "ctypes.foreign"; "ctypes.stubs"]
+    ["ctypes"; "ctypes.stubs"]
 
   let generated_modules ctypes =
     [ type_gen_script ctypes |> Module_name.of_string

@@ -275,10 +275,8 @@ end = struct
       let module Event = Chrome_trace.Event in
       let module Json = Chrome_trace.Json in
       let ts = Event.Timestamp.now () in
-      let pid = 0 in
-      let tid = 0 in
       let () =
-        let common = Event.common ~name:"gc" ~ts ~pid ~tid () in
+        let common = Event.common ~name:"gc" ~ts () in
         let args =
           let stat = Gc.stat () in
           [ ("live_words", Json.Int stat.live_words)
@@ -302,7 +300,7 @@ end = struct
       | This fds ->
         let event =
           let args = [ ("value", Json.Int fds) ] in
-          let common = Event.common ~name:"fds" ~ts ~pid ~tid () in
+          let common = Event.common ~name:"fds" ~ts () in
           Event.counter common args
         in
         Chrome_trace.emit stats event

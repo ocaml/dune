@@ -139,7 +139,7 @@ module Event = struct
     ; cname : string option
     }
 
-  let common ?tts ?cname ?(cat = []) ~ts ~name ~pid ~tid () =
+  let common ?tts ?cname ?(cat = []) ?(pid = 0) ?(tid = 0) ~ts ~name () =
     { tts; cname; cat; ts; pid; tid; name }
 
   let set_ts t ts = { t with ts }

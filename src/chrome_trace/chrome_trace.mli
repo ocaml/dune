@@ -41,10 +41,10 @@ module Event : sig
        ?tts:Timestamp.t
     -> ?cname:string
     -> ?cat:string list
+    -> ?pid:int
+    -> ?tid:int
     -> ts:Timestamp.t
     -> name:string
-    -> pid:int
-    -> tid:int
     -> unit
     -> common
 

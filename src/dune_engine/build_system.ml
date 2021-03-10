@@ -1397,9 +1397,7 @@ end = struct
             [ ("value", Chrome_trace.Json.Int build_system.rule_total) ]
           in
           let ts = Event.Timestamp.now () in
-          let pid = 0 in
-          let tid = 0 in
-          let common = Event.common ~name:"evaluated_rules" ~ts ~pid ~tid () in
+          let common = Event.common ~name:"evaluated_rules" ~ts () in
           Event.counter common args
         in
         Chrome_trace.emit stats event)

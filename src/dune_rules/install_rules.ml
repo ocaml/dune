@@ -242,64 +242,59 @@ end = struct
   let stanzas_to_entries sctx =
     let ctx = Super_context.context sctx in
     let stanzas = Super_context.stanzas sctx in
-    let init =
-      Super_context.packages sctx
-      |> Package.Name.Map.map ~f:(fun (pkg : Package.t) ->
-             let init =
-               let deprecated_meta_and_dune_files =
-                 List.concat_map
-                   (Package.Name.Map.to_list pkg.deprecated_package_names)
-                   ~f:(fun (name, _) ->
-                     let meta_file =
-                       Package_paths.deprecated_meta_file ctx pkg name
-                     in
-                     let dune_package_file =
-                       Package_paths.deprecated_dune_package_file ctx pkg name
-                     in
-                     [ ( None
-                       , Install.Entry.make Lib_root meta_file
-                           ~dst:
-                             (Package.Name.to_string name
-                             ^ "/" ^ Findlib.meta_fn) )
-                     ; ( None
-                       , Install.Entry.make Lib_root dune_package_file
-                           ~dst:
-                             (Package.Name.to_string name
-                             ^ "/" ^ Dune_package.fn) )
-                     ])
-               in
-               let meta_file = Package_paths.meta_file ctx pkg in
-               let dune_package_file =
-                 Package_paths.dune_package_file ctx pkg
-               in
-               (None, Install.Entry.make Lib meta_file ~dst:Findlib.meta_fn)
-               ::
-               ( None
-               , Install.Entry.make Lib dune_package_file ~dst:Dune_package.fn
-               )
-               ::
-               (if not pkg.has_opam_file then
-                 deprecated_meta_and_dune_files
-               else
-                 let opam_file = Package_paths.opam_file ctx pkg in
-                 (None, Install.Entry.make Lib opam_file ~dst:"opam")
-                 :: deprecated_meta_and_dune_files)
-             in
-             let pkg_dir = Package.dir pkg in
-             match File_tree.find_dir pkg_dir with
-             | None -> init
-             | Some dir ->
-               let pkg_dir = Path.Build.append_source ctx.build_dir pkg_dir in
-               File_tree.Dir.files dir
-               |> String.Set.fold ~init ~f:(fun fn acc ->
-                      if is_odig_doc_file fn then
-                        let odig_file = Path.Build.relative pkg_dir fn in
-                        let entry = (None, Install.Entry.make Doc odig_file) in
-                        entry :: acc
-                      else
-                        acc))
-    in
-    let l =
+    let+ init =
+      Package.Name.Map_traversals.parallel_map (Super_context.packages sctx)
+        ~f:(fun _name (pkg : Package.t) ->
+          let init =
+            let deprecated_meta_and_dune_files =
+              List.concat_map
+                (Package.Name.Map.to_list pkg.deprecated_package_names)
+                ~f:(fun (name, _) ->
+                  let meta_file =
+                    Package_paths.deprecated_meta_file ctx pkg name
+                  in
+                  let dune_package_file =
+                    Package_paths.deprecated_dune_package_file ctx pkg name
+                  in
+                  [ ( None
+                    , Install.Entry.make Lib_root meta_file
+                        ~dst:
+                          (Package.Name.to_string name ^ "/" ^ Findlib.meta_fn)
+                    )
+                  ; ( None
+                    , Install.Entry.make Lib_root dune_package_file
+                        ~dst:
+                          (Package.Name.to_string name ^ "/" ^ Dune_package.fn)
+                    )
+                  ])
+            in
+            let meta_file = Package_paths.meta_file ctx pkg in
+            let dune_package_file = Package_paths.dune_package_file ctx pkg in
+            (None, Install.Entry.make Lib meta_file ~dst:Findlib.meta_fn)
+            ::
+            (None, Install.Entry.make Lib dune_package_file ~dst:Dune_package.fn)
+            ::
+            (if not pkg.has_opam_file then
+              deprecated_meta_and_dune_files
+            else
+              let opam_file = Package_paths.opam_file ctx pkg in
+              (None, Install.Entry.make Lib opam_file ~dst:"opam")
+              :: deprecated_meta_and_dune_files)
+          in
+          let pkg_dir = Package.dir pkg in
+          File_tree.find_dir pkg_dir >>| function
+          | None -> init
+          | Some dir ->
+            let pkg_dir = Path.Build.append_source ctx.build_dir pkg_dir in
+            File_tree.Dir.files dir
+            |> String.Set.fold ~init ~f:(fun fn acc ->
+                   if is_odig_doc_file fn then
+                     let odig_file = Path.Build.relative pkg_dir fn in
+                     let entry = (None, Install.Entry.make Doc odig_file) in
+                     entry :: acc
+                   else
+                     acc))
+    and+ l =
       Dir_with_dune.deep_fold stanzas ~init:[] ~f:(fun d stanza acc ->
           let named_entries =
             let { Dir_with_dune.ctx_dir = dir; scope; _ } = d in
@@ -357,13 +352,21 @@ end = struct
               Some (name, entries)
           in
           named_entries :: acc)
+      |> Memo.Build.parallel_map ~f:Fun.id
     in
-    let+ l = Memo.Build.parallel_map l ~f:Fun.id in
     List.fold_left l ~init ~f:(fun acc named_entries ->
         match named_entries with
         | None -> acc
         | Some (name, entries) ->
           Package.Name.Map.Multi.add_all acc name entries)
+    |> Package.Name.Map.map ~f:(fun entries ->
+           (* Sort entries so that the ordering in [dune-package] is independant
+              of Dune's current implementation. *)
+           (* jeremiedimino: later on, we group this list by section and sort
+              each section. It feels like we should just do this here once and
+              for all. *)
+           List.sort entries ~compare:(fun (_, a) (_, b) ->
+               Install.Entry.compare a b))
 
   let stanzas_to_entries =
     let memo =

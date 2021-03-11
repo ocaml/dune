@@ -144,14 +144,22 @@ let peek_file fn =
         x.digest
       ))
 
-let file fn =
+let source_or_external_file fn =
+  let open Memo.Build.O in
+  assert (not (Path.is_in_build_dir fn));
   let res =
     match peek_file fn with
     | None -> refresh fn
     | Some v -> v
   in
-  Fs_notify_memo.depend fn;
+  let+ () = Fs_notify_memo.depend fn in
   res
+
+let build_file fn =
+  let fn = Path.build fn in
+  match peek_file fn with
+  | None -> refresh fn
+  | Some v -> v
 
 let remove fn =
   let cache = Lazy.force cache in

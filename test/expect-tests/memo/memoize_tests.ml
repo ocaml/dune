@@ -4,6 +4,14 @@ module Caml_lazy = Lazy
 open Memo
 open Dune_tests_common
 
+module Scheduler = struct
+  let t = Test_scheduler.create ()
+
+  let yield () = Test_scheduler.yield t
+
+  let run f = Test_scheduler.run t f
+end
+
 let () = init ()
 
 let string_fn_create name =
@@ -17,9 +25,9 @@ let int_fn_create name =
     ~visibility:(Public Dune_lang.Decoder.int) Async
 
 (* to run a computation *)
-let run f v = Fiber.run ~iter:(fun () -> assert false) (Memo.Build.run (f v))
+let run m = Scheduler.run (Memo.Build.run m)
 
-let run_memo f v = run (Memo.exec f) v
+let run_memo f v = run (Memo.exec f v)
 
 (* the trivial dependencies are simply the identity function *)
 let compdep x = Memo.Build.return (x ^ x)
@@ -189,85 +197,39 @@ let%expect_test _ =
     2001
   |}]
 
-let sync_int_fn_create name =
-  Memo.create name
-    ~input:(module Int)
-    ~visibility:(Public Dune_lang.Decoder.int) Sync
-
-let counter = ref 0
-
-let sync_fib =
-  let mfib = Fdecl.create Dyn.Encoder.opaque in
-  let compfib x =
-    let mfib = Memo.exec (Fdecl.get mfib) in
-    counter := !counter + 1;
-    if x <= 1 then
-      x
-    else
-      mfib (x - 1) + mfib (x - 2)
-  in
-  let fn =
-    sync_int_fn_create "sync-fib" ~output:(Allow_cutoff (module Int)) compfib
-  in
-  Fdecl.set mfib fn;
-  fn
-
-let%expect_test _ =
-  Format.printf "%d@." (Memo.exec sync_fib 2000);
-  Format.printf "%d@." !counter;
-  Format.printf "%d@." (Memo.exec sync_fib 1800);
-  Format.printf "%d@." !counter;
-  [%expect
-    {|
-    2406280077793834213
-    2001
-    3080005411477819488
-    2001
-  |}]
-
 let make_f name f ~input ~output =
   Memo.create name ~input ~visibility:Hidden ~output:(Allow_cutoff output)
-    ~doc:"" Sync f
+    ~doc:"" Async f
 
 let id =
   let f =
-    make_f "id" (fun s -> s) ~input:(module String) ~output:(module String)
+    make_f "id" Memo.Build.return ~input:(module String) ~output:(module String)
   in
   Memo.exec f
 
 module Test_lazy (Lazy : sig
   type 'a t
 
-  val create : (unit -> 'a) -> 'a t
+  val create : (unit -> 'a Memo.Build.t) -> 'a t
 
-  val force : 'a t -> 'a
+  val force : 'a t -> 'a Memo.Build.t
 end) =
 struct
-  module Lazy_string = struct
-    type t = string Lazy.t
-
-    let to_dyn s =
-      ignore (Lazy.force s);
-      Dyn.Encoder.string "opaque"
-
-    let equal x y = String.equal (Lazy.force x) (Lazy.force y)
-
-    let hash s = String.hash (Lazy.force s)
-  end
-
   let lazy_memo =
     let f =
-      make_f "lazy_memo"
-        (fun s -> Lazy.create (fun () -> id ("lazy: " ^ s)))
+      Memo.create_hidden "lazy_memo"
         ~input:(module String)
-        ~output:(module Lazy_string)
+        Async
+        (fun s -> Memo.Build.return (Lazy.create (fun () -> id ("lazy: " ^ s))))
     in
     Memo.exec f
 
   let f1_def, f1 =
     let f =
       make_f "f1"
-        (fun s -> "f1: " ^ Lazy.force (lazy_memo s))
+        (fun s ->
+          let+ s = lazy_memo s >>= Lazy.force in
+          "f1: " ^ s)
         ~input:(module String)
         ~output:(module String)
     in
@@ -276,13 +238,19 @@ struct
   let f2_def, f2 =
     let f =
       make_f "f2"
-        (fun s -> "f2: " ^ Lazy.force (lazy_memo s))
+        (fun s ->
+          let+ s = lazy_memo s >>= Lazy.force in
+          "f2: " ^ s)
         ~input:(module String)
         ~output:(module String)
     in
     (f, Memo.exec f)
 
-  let run () = (f1 "foo", f2 "foo")
+  let run () =
+    run
+      (let* x = f1 "foo" in
+       let* y = f2 "foo" in
+       Memo.Build.return (x, y))
 
   let deps () =
     let open Dyn.Encoder in
@@ -291,9 +259,11 @@ struct
 end
 
 module Builtin_lazy = Test_lazy (struct
-  include Caml_lazy
+  type 'a t = 'a Memo.Build.t Stdlib.Lazy.t
 
-  let create = from_fun
+  let create = Stdlib.Lazy.from_fun
+
+  let force = Stdlib.Lazy.force
 end)
 
 let%expect_test _ =
@@ -303,18 +273,20 @@ let%expect_test _ =
   |}]
 
 let%expect_test _ =
-  (* Bug: dependency on [lazy] is only registered by one of the dependants. This
-     means we should never use [lazy] together with [Memo]. We can use
-     [Memo.lazy_] though (see below) *)
+  (* This used to be a bug with sync lazy when they were supported. The
+     dependency on [lazy] was only registered by one of the dependants. This
+     meant we could never use [lazy] together with [Memo].
+
+     Now that we only have async memos, we can freely mix lazy and [Memo]. *)
   Builtin_lazy.deps () |> print_dyn;
   [%expect
     {|
-      (Some [ (Some "lazy_memo", "foo") ],
+      (Some [ (Some "lazy_memo", "foo"); (Some "id", "lazy: foo") ],
       Some [ (Some "lazy_memo", "foo"); (Some "id", "lazy: foo") ])
     |}]
 
 module Memo_lazy = Test_lazy (struct
-  include Memo.Lazy
+  include Memo.Lazy.Async
 
   (* Here we hide the optional argument [cutoff] of [Memo.Lazy.create]. *)
   let create f = create f
@@ -340,17 +312,18 @@ let depends_on_run =
   Memo.create "foobar" ~doc:"foo123"
     ~input:(module Unit)
     ~output:(Allow_cutoff (module Unit))
-    ~visibility:Hidden Sync
+    ~visibility:Hidden Async
     (fun () ->
       let (_ : Memo.Run.t) = Memo.current_run () in
-      print_endline "running foobar")
+      print_endline "running foobar";
+      Memo.Build.return ())
 
 let%expect_test _ =
-  Memo.exec depends_on_run ();
-  Memo.exec depends_on_run ();
+  run (Memo.exec depends_on_run ());
+  run (Memo.exec depends_on_run ());
   print_endline "resetting memo";
   Memo.reset ();
-  Memo.exec depends_on_run ();
+  run (Memo.exec depends_on_run ());
   [%expect {|
     running foobar
     resetting memo
@@ -359,17 +332,17 @@ let%expect_test _ =
 (* Tests for Memo.Cell *)
 
 let%expect_test _ =
-  let f x = "*" ^ x in
+  let f x = Memo.Build.return ("*" ^ x) in
   let memo =
     Memo.create "for-cell"
       ~input:(module String)
       ~visibility:(Public Dune_lang.Decoder.string)
       ~output:(Allow_cutoff (module String))
-      ~doc:"" Sync f
+      ~doc:"" Async f
   in
   let cell = Memo.cell memo "foobar" in
-  print_endline (Cell.get_sync cell);
-  print_endline (Cell.get_sync cell);
+  print_endline (run (Cell.get_async cell));
+  print_endline (run (Cell.get_async cell));
   [%expect {|
     *foobar
     *foobar |}]
@@ -379,44 +352,48 @@ let printf = Printf.printf
 let%expect_test "fib linked list" =
   let module Element = struct
     type t =
-      { prev_cell : (int, t, int -> t) Memo.Cell.t
+      { prev_cell : (int, t, int -> t Memo.Build.t) Memo.Cell.t
       ; value : int
-      ; next_cell : (int, t, int -> t) Memo.Cell.t
+      ; next_cell : (int, t, int -> t Memo.Build.t) Memo.Cell.t
       }
 
     let to_dyn t = Dyn.Int t.value
   end in
-  let force cell : Element.t = Memo.Cell.get_sync cell in
+  let force cell : Element.t Memo.Build.t = Memo.Cell.get_async cell in
   let memo_fdecl = Fdecl.create Dyn.Encoder.opaque in
   let compute_element x =
     let memo = Fdecl.get memo_fdecl in
     printf "computing %d\n" x;
     let prev_cell = Memo.cell memo (x - 1) in
-    let value =
+    let+ value =
       if x < 1 then
-        0
+        Memo.Build.return 0
       else if x = 1 then
-        1
+        Memo.Build.return 1
       else
-        (force prev_cell).value + (force (force prev_cell).prev_cell).value
+        let* x = force prev_cell
+        and* y = force prev_cell in
+        let+ z = force y.prev_cell in
+        x.value + z.value
     in
     { Element.next_cell = Memo.cell memo (x + 1); prev_cell; value }
   in
   let memo =
     Memo.create "fib"
       ~input:(module Int)
-      ~visibility:Hidden Sync
+      ~visibility:Hidden Async
       ~output:(Simple (module Element))
       compute_element ~doc:""
   in
   Fdecl.set memo_fdecl memo;
-  let fourth = Memo.exec memo 4 in
+  let fourth = run (Memo.exec memo 4) in
   printf "4th: %d\n" fourth.value;
-  printf "next: %d\n" (force fourth.next_cell).value;
-  let seventh = Memo.exec memo 7 in
+  printf "next: %d\n" (run (force fourth.next_cell)).value;
+  let seventh = run (Memo.exec memo 7) in
   printf "7th: %d\n" seventh.value;
-  printf "prev: %d\n" (force seventh.prev_cell).value;
-  printf "prev: %d\n" (force (force seventh.prev_cell).prev_cell).value;
+  printf "prev: %d\n" (run (force seventh.prev_cell)).value;
+  printf "prev: %d\n"
+    (run (force seventh.prev_cell >>= fun x -> force x.prev_cell)).value;
   [%expect
     {|
     computing 4
@@ -473,11 +450,11 @@ let%expect_test "Memo.Poly.Async" =
   let (s1 : string Function.input) = S (Type_eq.Id.create (), "hi") in
   let (s2 : string Function.input) = S (Type_eq.Id.create (), "hi again") in
   let run_int i =
-    let res = run M.eval i in
+    let res = run (M.eval i) in
     Dyn.to_string (Dyn.List (List.map res ~f:Int.to_dyn))
   in
   let run_string s =
-    let res = run M.eval s in
+    let res = run (M.eval s) in
     Dyn.to_string (Dyn.List (List.map res ~f:String.to_dyn))
   in
   printf "----- First-time calls -----\n";
@@ -534,37 +511,6 @@ let print_result arg res =
   Format.printf "f %d = %a@." arg Pp.to_fmt
     (Dyn.pp (Result.to_dyn int (list Exn_with_backtrace.to_dyn) res))
 
-let%expect_test "error handling and memo - sync" =
-  let f =
-    sync_int_fn_create "sync f"
-      ~output:(Allow_cutoff (module Int))
-      (fun x ->
-        printf "Calling f %d\n" x;
-        if x = 42 then
-          failwith "42"
-        else
-          x)
-  in
-  let test x =
-    let res =
-      Result.try_with (fun () -> Memo.exec f x)
-      |> Result.map_error ~f:(fun exn -> [ Exn_with_backtrace.capture exn ])
-    in
-    print_result x res
-  in
-  test 20;
-  test 20;
-  test 42;
-  test 42;
-  [%expect
-    {|
-    Calling f 20
-    f 20 = Ok 20
-    f 20 = Ok 20
-    Calling f 42
-    f 42 = Error [ { exn = "(Failure 42)"; backtrace = "" } ]
-    f 42 = Error [ { exn = "(Failure 42)"; backtrace = "" } ] |}]
-
 let evaluate_and_print f x =
   let res =
     try
@@ -584,7 +530,7 @@ let evaluate_and_print_sync f x =
   in
   print_result x res
 
-let%expect_test "error handling and memo - async" =
+let%expect_test "error handling and memo" =
   let f =
     int_fn_create "async f"
       ~output:(Allow_cutoff (module Int))
@@ -634,17 +580,6 @@ let count_runs name =
     let (_ : Run.t) = Memo.current_run () in
     printf "Evaluated %s: %d\n" name result;
     Build.return result
-
-(* Like [count_runs] but synchronous. *)
-let count_runs_sync name =
-  let counter = ref 0 in
-  fun () ->
-    printf "Started evaluating %s\n" name;
-    incr counter;
-    let result = !counter in
-    let (_ : Run.t) = Memo.current_run () in
-    printf "Evaluated %s: %d\n" name result;
-    result
 
 (* A test function incrementing a given memo. *)
 let increment which which_memo () =
@@ -1088,84 +1023,7 @@ let%expect_test "deadlocks when creating a cycle twice" =
     f 2 = Error [ { exn = "Exit"; backtrace = "" } ]
     |}]
 
-let%expect_test "Nested nodes with cutoff are recomputed optimally (sync)" =
-  let counter =
-    create_sync ~with_cutoff:false "counter" (count_runs_sync "counter")
-  in
-  let summit =
-    Memo.create "summit"
-      ~input:(module Int)
-      ~visibility:Hidden
-      ~output:(Simple (module Int))
-      ~doc:"" Sync
-      (fun offset ->
-        printf "Started evaluating summit\n";
-        let middle =
-          create_sync ~with_cutoff:false "middle" (fun () ->
-              printf "Started evaluating middle\n";
-              let base =
-                create_sync ~with_cutoff:false "base" (fun () ->
-                    printf "Started evaluating base\n";
-                    let result = Memo.exec counter () in
-                    printf "Evaluated base: %d\n" result;
-                    result)
-              in
-              let result = Memo.exec base () in
-              printf "Evaluated middle: %d\n" result;
-              result)
-        in
-        let middle = Memo.exec middle () in
-        let result = middle + offset in
-        printf "Evaluated summit: %d\n" result;
-        result)
-  in
-  evaluate_and_print_sync summit 0;
-  evaluate_and_print_sync summit 1;
-  (* In the first run, everything is OK. *)
-  [%expect
-    {|
-    Started evaluating summit
-    Started evaluating middle
-    Started evaluating base
-    Started evaluating counter
-    Evaluated counter: 1
-    Evaluated base: 1
-    Evaluated middle: 1
-    Evaluated summit: 1
-    f 0 = Ok 1
-    Started evaluating summit
-    Started evaluating middle
-    Started evaluating base
-    Evaluated base: 1
-    Evaluated middle: 1
-    Evaluated summit: 2
-    f 1 = Ok 2
-    |}];
-  Memo.restart_current_run ();
-  evaluate_and_print_sync summit 0;
-  evaluate_and_print_sync summit 2;
-  (* In the second run, we don't recompute [base] three times as we did before. *)
-  [%expect
-    {|
-    Started evaluating summit
-    Started evaluating middle
-    Started evaluating base
-    Started evaluating counter
-    Evaluated counter: 2
-    Evaluated base: 2
-    Evaluated middle: 2
-    Evaluated summit: 2
-    f 0 = Ok 2
-    Started evaluating summit
-    Started evaluating middle
-    Started evaluating base
-    Evaluated base: 2
-    Evaluated middle: 2
-    Evaluated summit: 4
-    f 2 = Ok 4
-    |}]
-
-let%expect_test "Nested nodes with cutoff are recomputed optimally (async)" =
+let%expect_test "Nested nodes with cutoff are recomputed optimally" =
   let counter = create ~with_cutoff:false "counter" (count_runs "counter") in
   let summit =
     Memo.create "summit"
@@ -1463,17 +1321,17 @@ let%expect_test "error handling and duplicate sync exceptions" =
       (fun x -> Fdecl.get f_impl x)
   in
   let fail =
-    sync_int_fn_create "test8: fail"
+    int_fn_create "test8: fail"
       ~output:(Allow_cutoff (module Unit))
       (fun _x -> failwith "42")
   in
   let forward_fail =
-    sync_int_fn_create "test8: forward fail"
+    int_fn_create "test8: forward fail"
       ~output:(Allow_cutoff (module Unit))
       (fun x -> Memo.exec fail x)
   in
   let forward_fail2 =
-    sync_int_fn_create "test8: forward fail2"
+    int_fn_create "test8: forward fail2"
       ~output:(Allow_cutoff (module Unit))
       (fun x -> Memo.exec fail x)
   in
@@ -1481,8 +1339,8 @@ let%expect_test "error handling and duplicate sync exceptions" =
       printf "Calling f %d\n" x;
 
       match x with
-      | 0 -> Memo.Build.return (Memo.exec forward_fail x)
-      | 1 -> Memo.Build.return (Memo.exec forward_fail2 x)
+      | 0 -> Memo.exec forward_fail x
+      | 1 -> Memo.exec forward_fail2 x
       | _ ->
         Memo.Build.fork_and_join_unit
           (fun () -> Memo.exec f (x - 1))

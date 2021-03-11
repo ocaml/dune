@@ -89,4 +89,4 @@ val init :
 (** Default name of workspace files *)
 val filename : string
 
-val workspace : unit -> t
+val workspace : unit -> t Memo.Build.t

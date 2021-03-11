@@ -63,7 +63,6 @@ let ensure_at_most_one_dynamic_run ~loc action =
     | Rename _
     | Remove_tree _
     | Mkdir _
-    | Digest_files _
     | Diff _
     | Merge_files_into _
     | Cram _

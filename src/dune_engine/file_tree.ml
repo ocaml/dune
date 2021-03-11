@@ -1,5 +1,6 @@
 open! Stdune
 open Import
+open Memo.Build.O
 
 module File = struct
   module T = struct
@@ -287,7 +288,7 @@ module Dir0 = struct
     ; sub_dir_as_t :
         ( Path.Source.t
         , t Output.t option
-        , Path.Source.t -> t Output.t option )
+        , Path.Source.t -> t Output.t option Memo.Build.t )
         Memo.Cell.t
     }
 
@@ -395,17 +396,17 @@ let init ~ancestor_vcs ~recognize_jbuilder_projects =
   Settings.set { ancestor_vcs; recognize_jbuilder_projects }
 
 module rec Memoized : sig
-  val root : unit -> Dir0.t
+  val root : unit -> Dir0.t Memo.Build.t
 
   (* Not part of the interface. Only necessary to call recursively *)
   val find_dir_raw :
        Path.Source.t
     -> ( Path.Source.t
        , Dir0.t Output.t option
-       , Path.Source.t -> Dir0.t Output.t option )
+       , Path.Source.t -> Dir0.t Output.t option Memo.Build.t )
        Memo.Cell.t
 
-  val find_dir : Path.Source.t -> Dir0.t option
+  val find_dir : Path.Source.t -> Dir0.t option Memo.Build.t
 end = struct
   open Memoized
 
@@ -501,13 +502,16 @@ end = struct
       else
         String.Set.mem files Dune_file.fname
     in
-    let from_parent =
-      let open Option.O in
-      let* parent = Path.Source.parent path in
-      let* parent = find_dir parent in
-      let* dune_file = parent.contents.dune_file in
-      let dir_basename = Path.Source.basename path in
-      Sub_dirs.Dir_map.descend dune_file.plain.for_subdirs dir_basename
+    let+ from_parent =
+      match Path.Source.parent path with
+      | None -> Memo.Build.return None
+      | Some parent ->
+        let+ parent = find_dir parent in
+        let open Option.O in
+        let* parent = parent in
+        let* dune_file = parent.contents.dune_file in
+        let dir_basename = Path.Source.basename path in
+        Sub_dirs.Dir_map.descend dune_file.plain.for_subdirs dir_basename
     in
     let dune_file_absent = (not file_exists) && Option.is_none from_parent in
     if dune_file_absent then
@@ -522,7 +526,7 @@ end = struct
       let settings = Settings.get () in
       settings.recognize_jbuilder_projects
     in
-    let dune_file =
+    let+ dune_file =
       dune_file ~dir_status ~recognize_jbuilder_projects ~files ~project ~path
     in
     let sub_dirs = Dune_file.sub_dirs dune_file in
@@ -569,61 +573,71 @@ end = struct
       get_vcs ~default:settings.ancestor_vcs ~path:Path.Source.root ~readdir
     in
     let dirs_visited = Dirs_visited.singleton path in
-    let contents, visited =
+    let+ contents, visited =
       contents readdir ~dirs_visited ~project ~path ~dir_status
     in
     let dir = Dir0.create ~project ~path ~status:dir_status ~contents ~vcs in
     { Output.dir; visited }
 
-  let find_dir_raw_impl path : Dir0.t Output.t option =
+  let find_dir_raw_impl path : Dir0.t Output.t option Memo.Build.t =
     match Path.Source.parent path with
-    | None -> Some (root ())
-    | Some parent_dir ->
-      let open Option.O in
-      let* { Output.dir = parent_dir; visited = dirs_visited } =
-        Memo.Cell.get_sync (find_dir_raw parent_dir)
-      in
-      let* dir_status, virtual_ =
-        let basename = Path.Source.basename path in
-        let+ sub_dir = String.Map.find parent_dir.contents.sub_dirs basename in
-        let status =
-          let status = sub_dir.sub_dir_status in
-          if
-            Dune_project.cram parent_dir.project
-            && Cram_test.is_cram_suffix basename
-          then
-            Sub_dirs.Status.Data_only
-          else
-            status
+    | None ->
+      let+ root = root () in
+      Some root
+    | Some parent_dir -> (
+      let* parent = Memo.Cell.get_async (find_dir_raw parent_dir) in
+      match
+        let open Option.O in
+        let* { Output.dir = parent_dir; visited = dirs_visited } = parent in
+        let* dir_status, virtual_ =
+          let basename = Path.Source.basename path in
+          let+ sub_dir =
+            String.Map.find parent_dir.contents.sub_dirs basename
+          in
+          let status =
+            let status = sub_dir.sub_dir_status in
+            if
+              Dune_project.cram parent_dir.project
+              && Cram_test.is_cram_suffix basename
+            then
+              Sub_dirs.Status.Data_only
+            else
+              status
+          in
+          (status, sub_dir.virtual_)
         in
-        (status, sub_dir.virtual_)
-      in
-      let dirs_visited = Dirs_visited.Per_fn.find dirs_visited path in
-      let settings = Settings.get () in
-      let readdir =
-        if virtual_ then
-          Readdir.empty
-        else
-          match Readdir.of_source_path path with
-          | Ok dir -> dir
-          | Error _ -> Readdir.empty
-      in
-      let project =
-        if dir_status = Data_only then
-          parent_dir.project
-        else
-          Option.value
-            (Dune_project.load ~dir:path ~files:readdir.files
-               ~infer_from_opam_files:settings.recognize_jbuilder_projects
-               ~dir_status)
-            ~default:parent_dir.project
-      in
-      let vcs = get_vcs ~default:parent_dir.vcs ~readdir ~path in
-      let contents, visited =
-        contents readdir ~dirs_visited ~project ~path ~dir_status
-      in
-      let dir = Dir0.create ~project ~path ~status:dir_status ~contents ~vcs in
-      Some { Output.dir; visited }
+        Some (parent_dir, dirs_visited, dir_status, virtual_)
+      with
+      | None -> Memo.Build.return None
+      | Some (parent_dir, dirs_visited, dir_status, virtual_) ->
+        let dirs_visited = Dirs_visited.Per_fn.find dirs_visited path in
+        let settings = Settings.get () in
+        let readdir =
+          if virtual_ then
+            Readdir.empty
+          else
+            match Readdir.of_source_path path with
+            | Ok dir -> dir
+            | Error _ -> Readdir.empty
+        in
+        let project =
+          if dir_status = Data_only then
+            parent_dir.project
+          else
+            Option.value
+              (Dune_project.load ~dir:path ~files:readdir.files
+                 ~infer_from_opam_files:settings.recognize_jbuilder_projects
+                 ~dir_status)
+              ~default:parent_dir.project
+        in
+        let vcs = get_vcs ~default:parent_dir.vcs ~readdir ~path in
+        let* contents, visited =
+          contents readdir ~dirs_visited ~project ~path ~dir_status
+        in
+        let dir =
+          Dir0.create ~project ~path ~status:dir_status ~contents ~vcs
+        in
+        Memo.Build.return (Some { Output.dir; visited }))
 
   let find_dir_raw =
     let module Output = struct
@@ -637,16 +651,16 @@ end = struct
       Memo.create "find-dir-raw" ~doc:"get file tree"
         ~input:(module Path.Source)
         ~output:(Simple (module Output))
-        ~visibility:Memo.Visibility.Hidden Sync find_dir_raw_impl
+        ~visibility:Memo.Visibility.Hidden Async find_dir_raw_impl
     in
     Memo.cell memo
 
   let find_dir p =
-    let open Option.O in
-    let+ { Output.dir; visited = _ } = Memo.Cell.get_sync (find_dir_raw p) in
-    dir
+    Memo.Cell.get_async (find_dir_raw p) >>| function
+    | Some { Output.dir; visited = _ } -> Some dir
+    | None -> None
 
-  let root () = Option.value_exn (find_dir Path.Source.root)
+  let root () = find_dir Path.Source.root >>| Option.value_exn
 end
 
 let root () = Memoized.root ()
@@ -654,74 +668,64 @@ let root () = Memoized.root ()
 let find_dir path = Memoized.find_dir path
 
 let rec nearest_dir t = function
-  | [] -> t
+  | [] -> Memo.Build.return t
   | comp :: components -> (
     match String.Map.find (Dir0.sub_dirs t) comp with
-    | None -> t
-    | Some _ ->
+    | None -> Memo.Build.return t
+    | Some _ -> (
       let path = Path.Source.relative (Dir0.path t) comp in
-      let dir = Option.value_exn (find_dir path) in
-      nearest_dir dir components)
+      find_dir path >>= function
+      | None -> assert false
+      | Some dir -> nearest_dir dir components))
 
 let nearest_dir path =
   let components = Path.Source.explode path in
-  nearest_dir (root ()) components
+  let* root = root () in
+  nearest_dir root components
 
-let nearest_vcs path = Dir0.vcs (nearest_dir path)
+let nearest_vcs path = nearest_dir path >>| Dir0.vcs
 
 let files_of path =
-  match find_dir path with
+  find_dir path >>| function
   | None -> Path.Source.Set.empty
   | Some dir ->
     Dir0.files dir |> String.Set.to_list
     |> Path.Source.Set.of_list_map ~f:(Path.Source.relative path)
 
 let file_exists path =
-  match find_dir (Path.Source.parent_exn path) with
+  find_dir (Path.Source.parent_exn path) >>| function
   | None -> false
   | Some dir -> String.Set.mem (Dir0.files dir) (Path.Source.basename path)
 
-let dir_exists path = Option.is_some (find_dir path)
+let dir_exists path = find_dir path >>| Option.is_some
 
 module Dir = struct
   include Dir0
 
   let sub_dir_as_t (s : sub_dir) =
-    (Memo.Cell.get_sync s.sub_dir_as_t |> Option.value_exn).dir
+    let+ t = Memo.Cell.get_async s.sub_dir_as_t in
+    (Option.value_exn t).dir
 
-  let sub_dirs (t : t) =
-    String.Map.to_list_map t.contents.sub_dirs ~f:(fun basename s ->
-        (basename, sub_dir_as_t s))
+  module Make_map_reduce (M : Memo.Build) (Outcome : Monoid) = struct
+    open M.O
 
-  let fold_sub_dirs (t : t) ~init ~f =
-    String.Map.foldi t.contents.sub_dirs ~init ~f:(fun basename s acc ->
-        f ~basename (sub_dir_as_t s) acc)
-
-  let fold_dune_files (type acc) t ~(init : acc) ~f =
-    let rec loop ~basename dir (acc : acc) : acc =
-      let init =
-        match dune_file dir with
-        | None -> acc
-        | Some dune_file -> f ~basename dir dune_file acc
-      in
-      fold_sub_dirs dir ~init ~f:(fun ~basename ->
-          loop ~basename:(Some basename))
-    in
-    let basename = Path.Source.basename_opt t.path in
-    loop ~basename t init
-
-  let rec fold t ~traverse ~init:acc ~f =
-    let must_traverse = Sub_dirs.Status.Map.find traverse t.status in
-    match must_traverse with
-    | false -> acc
-    | true ->
-      let acc = f t acc in
-      fold_sub_dirs t ~init:acc ~f:(fun ~basename:_ t acc ->
-          fold t ~traverse ~init:acc ~f)
+    let rec map_reduce t ~traverse ~f =
+      let must_traverse = Sub_dirs.Status.Map.find traverse t.status in
+      match must_traverse with
+      | false -> M.return Outcome.empty
+      | true ->
+        let+ here = f t
+        and+ in_sub_dirs =
+          M.List.map (String.Map.values t.contents.sub_dirs) ~f:(fun s ->
+              let* t = M.memo_build (sub_dir_as_t s) in
+              map_reduce t ~traverse ~f)
+        in
+        List.fold_left in_sub_dirs ~init:here ~f:Outcome.combine
+  end
 
   let cram_tests (t : t) =
     match Dune_project.cram t.project with
-    | false -> []
+    | false -> Memo.Build.return []
     | true ->
       let file_tests =
         String.Set.to_list t.contents.files
@@ -731,51 +735,59 @@ module Dir = struct
                else
                  None)
       in
-      let dir_tests =
-        String.Map.to_list t.contents.sub_dirs
-        |> List.filter_map ~f:(fun (name, sub_dir) ->
-               match Cram_test.is_cram_suffix name with
-               | false -> None
-               | true ->
-                 let contents =
-                   (Memo.Cell.get_sync sub_dir.sub_dir_as_t |> Option.value_exn)
-                     .dir
-                 in
-                 let dir = contents.path in
-                 let fname = "run.t" in
-                 let test =
-                   let file = Path.Source.relative dir fname in
-                   Cram_test.Dir { file; dir }
-                 in
-                 let files = contents.contents.files in
-                 if String.Set.is_empty files then
-                   None
-                 else
-                   Some
-                     (if String.Set.mem files fname then
-                       Ok test
-                     else
-                       Error (Missing_run_t test)))
+      let+ dir_tests =
+        Memo.Build.parallel_map (String.Map.to_list t.contents.sub_dirs)
+          ~f:(fun (name, sub_dir) ->
+            match Cram_test.is_cram_suffix name with
+            | false -> Memo.Build.return None
+            | true ->
+              let+ t =
+                Memo.Cell.get_async sub_dir.sub_dir_as_t >>| Option.value_exn
+              in
+              let contents = t.dir in
+              let dir = contents.path in
+              let fname = "run.t" in
+              let test =
+                let file = Path.Source.relative dir fname in
+                Cram_test.Dir { file; dir }
+              in
+              let files = contents.contents.files in
+              if String.Set.is_empty files then
+                None
+              else
+                Some
+                  (if String.Set.mem files fname then
+                    Ok test
+                  else
+                    Error (Missing_run_t test)))
+        >>| List.filter_map ~f:Fun.id
       in
       file_tests @ dir_tests
 end
 
-let fold_with_progress ~traverse ~init ~f =
-  let root = root () in
-  let nb_path_visited = ref 0 in
-  Console.Status_line.set (fun () ->
-      Some (Pp.textf "Scanned %i directories" !nb_path_visited));
-  let res =
-    Dir.fold root ~traverse ~init ~f:(fun dir acc ->
-        incr nb_path_visited;
-        if !nb_path_visited mod 100 = 0 then Console.Status_line.refresh ();
-        f dir acc)
-  in
-  Console.Status_line.set (Fun.const None);
-  res
+module Make_map_reduce_with_progress (M : Memo.Build) (Outcome : Monoid) =
+struct
+  open M.O
+  include Dir.Make_map_reduce (M) (Outcome)
 
+  let map_reduce ~traverse ~f =
+    let* root = M.memo_build (root ()) in
+    let nb_path_visited = ref 0 in
+    Console.Status_line.set (fun () ->
+        Some (Pp.textf "Scanned %i directories" !nb_path_visited));
+    let+ res =
+      map_reduce root ~traverse ~f:(fun dir ->
+          incr nb_path_visited;
+          if !nb_path_visited mod 100 = 0 then Console.Status_line.refresh ();
+          f dir)
+    in
+    Console.Status_line.set (Fun.const None);
+    res
+end
+
+(* jeremiedimino: it feels like this should go in the bin/ directory *)
 let find_dir_specified_on_command_line ~dir =
-  match find_dir dir with
+  find_dir dir >>| function
   | Some dir -> dir
   | None ->
     User_error.raise
@@ -784,6 +796,6 @@ let find_dir_specified_on_command_line ~dir =
       ]
 
 let is_vendored dir =
-  match find_dir dir with
+  find_dir dir >>| function
   | None -> false
   | Some d -> Dir.status d = Vendored

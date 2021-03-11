@@ -7,7 +7,12 @@ module Bin : sig
 
   (** A named artifact that is looked up in the PATH if not found in the tree If
       the name is an absolute path, it is used as it. *)
-  val binary : t -> ?hint:string -> loc:Loc.t option -> string -> Action.Prog.t
+  val binary :
+       t
+    -> ?hint:string
+    -> loc:Loc.t option
+    -> string
+    -> Action.Prog.t Memo.Build.t
 
   val add_binaries : t -> dir:Path.Build.t -> File_binding.Expanded.t list -> t
 

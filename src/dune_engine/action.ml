@@ -144,7 +144,6 @@ let fold_one_step t ~init:acc ~f =
   | Rename _
   | Remove_tree _
   | Mkdir _
-  | Digest_files _
   | Diff _
   | Merge_files_into _
   | Cram _
@@ -193,7 +192,6 @@ let rec is_dynamic = function
   | Remove_tree _
   | Diff _
   | Mkdir _
-  | Digest_files _
   | Merge_files_into _
   | Cram _
   | Format_dune_file _ ->
@@ -283,7 +281,6 @@ let is_useful_to distribute memoize =
     | Remove_tree _ -> false
     | Diff _ -> distribute
     | Mkdir _ -> false
-    | Digest_files _ -> distribute
     | Merge_files_into _ -> distribute
     | Cram _
     | Run _ ->

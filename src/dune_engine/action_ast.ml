@@ -256,8 +256,6 @@ struct
     | Rename (x, y) -> List [ atom "rename"; target x; target y ]
     | Remove_tree x -> List [ atom "remove-tree"; target x ]
     | Mkdir x -> List [ atom "mkdir"; path x ]
-    | Digest_files paths ->
-      List [ atom "digest-files"; List (List.map paths ~f:path) ]
     | Diff { optional; file1; file2; mode = Binary } ->
       assert (not optional);
       List [ atom "cmp"; path file1; target file2 ]
@@ -329,8 +327,6 @@ struct
   let remove_tree path = Remove_tree path
 
   let mkdir path = Mkdir path
-
-  let digest_files files = Digest_files files
 
   let diff ?(optional = false) ?(mode = Diff.Mode.Text) file1 file2 =
     Diff { optional; file1; file2; mode }

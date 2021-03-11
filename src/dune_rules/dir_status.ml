@@ -83,9 +83,10 @@ module DB = struct
       | None -> Memo.Build.return No_group
       | Some parent_dir -> get ~dir:parent_dir >>| current_group parent_dir
     in
-    match
-      Option.bind (Path.Build.drop_build_context dir) ~f:File_tree.find_dir
-    with
+    (match Path.Build.drop_build_context dir with
+    | None -> Memo.Build.return None
+    | Some dir -> File_tree.find_dir dir)
+    >>= function
     | None -> (
       let+ enclosing_group = enclosing_group ~dir in
       match enclosing_group with

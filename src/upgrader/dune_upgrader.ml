@@ -652,10 +652,6 @@ language. Use the (foreign_archives ...) field instead.|}
     upgrade_dune_files todo dir
 end
 
-let fold_on_project_roots ~f ~init =
-  File_tree.fold_with_progress ~traverse:Sub_dirs.Status.Set.normal_only ~init
-    ~f
-
 let detect_project_version project dir =
   let in_tree = String.Set.mem (File_tree.Dir.files dir) in
   Dune_project.default_dune_language_version := (0, 1);
@@ -673,16 +669,25 @@ let detect_project_version project dir =
     else
       Jbuild_project
 
-let detect_and_add_project_version dir acc =
-  let project = File_tree.Dir.project dir in
-  let detected_version = detect_project_version project dir in
-  (dir, detected_version) :: acc
-
 let upgrade () =
+  let open Fiber.O in
   let rec aux last =
     let todo = { to_rename_and_edit = []; to_edit = [] } in
-    let current_versions =
-      fold_on_project_roots ~init:[] ~f:detect_and_add_project_version
+    let* current_versions =
+      Memo.Build.run
+        (let module M =
+           File_tree.Make_map_reduce_with_progress
+             (Memo.Build)
+             (Monoid.Appendable_list (struct
+               type t = File_tree.Dir.t * project_version
+             end))
+         in
+        M.map_reduce ~traverse:Sub_dirs.Status.Set.normal_only ~f:(fun dir ->
+            let project = File_tree.Dir.project dir in
+            let detected_version = detect_project_version project dir in
+            Memo.Build.return
+              (Appendable_list.singleton (dir, detected_version))))
+      >>| Appendable_list.to_list
     in
     let v1_updates = ref false in
     let v2_updates = ref false in
@@ -725,7 +730,7 @@ let upgrade () =
       (* We reset thje memoization as a simple way to refresh the File_tree *)
       Memo.reset ();
       aux true
-    ) else if !v2_updates then
+    ) else if !v2_updates then (
       Console.print
         [ Pp.textf
             "\n\
@@ -736,6 +741,9 @@ let upgrade () =
              to complete the migration:\n\
              %s"
             V2.todo_log
-        ]
+        ];
+      Fiber.return ()
+    ) else
+      Fiber.return ()
   in
   aux false

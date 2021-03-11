@@ -345,20 +345,18 @@ let add_alias_action t alias ~dir ~loc ?locks action =
 let build_dir_is_vendored build_dir =
   match Path.Build.drop_build_context build_dir with
   | Some src_dir -> Dune_engine.File_tree.is_vendored src_dir
-  | None -> false
+  | None -> Memo.Build.return false
 
 let ocaml_flags t ~dir (spec : Ocaml_flags.Spec.t) =
   let* expander = Env_tree.expander t.env_tree ~dir in
-  let+ flags =
+  let* flags =
     let+ ocaml_flags = get_node t.env_tree ~dir >>= Env_node.ocaml_flags in
     Ocaml_flags.make ~spec ~default:ocaml_flags
       ~eval:(Expander.expand_and_eval_set expander)
   in
-  let dir_is_vendored = build_dir_is_vendored dir in
-  if dir_is_vendored then
-    Ocaml_flags.with_vendored_warnings flags
-  else
-    flags
+  build_dir_is_vendored dir >>| function
+  | true -> Ocaml_flags.with_vendored_warnings flags
+  | false -> flags
 
 let foreign_flags t ~dir ~expander ~flags ~language =
   let ccg = Context.cc_g t.context in
@@ -416,7 +414,7 @@ let dump_env t ~dir =
 
 let resolve_program t ~dir ?hint ~loc bin =
   let t = t.env_tree in
-  let+ bin_artifacts = Env_tree.bin_artifacts_host t ~dir in
+  let* bin_artifacts = Env_tree.bin_artifacts_host t ~dir in
   Artifacts.Bin.binary ?hint ~loc bin_artifacts bin
 
 let get_installed_binaries stanzas ~(context : Context.t) =

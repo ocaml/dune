@@ -10,6 +10,8 @@ module Make (M : Monad_intf.Basic) = struct
 
     let ( >>| ) t f = map t ~f
 
+    let ( >>> ) a b = bind a ~f:(fun () -> b)
+
     let ( let+ ) t f = map t ~f
 
     let ( and+ ) x y =

@@ -6,5 +6,6 @@
   opam_file_format
   dune_lang
   jbuild_support
-  dune_engine)
+  dune_engine
+  fiber)
  (synopsis "Internal Dune library, do not use!"))

@@ -1,6 +1,7 @@
 open! Dune_engine
 open! Stdune
 open Import
+open Memo.Build.O
 
 module Bin = struct
   type t =
@@ -12,12 +13,12 @@ module Bin = struct
 
   let binary t ?hint ~loc name =
     if not (Filename.is_relative name) then
-      Ok (Path.of_filename_relative_to_initial_cwd name)
+      Memo.Build.return (Ok (Path.of_filename_relative_to_initial_cwd name))
     else
       match String.Map.find t.local_bins name with
-      | Some path -> Ok (Path.build path)
+      | Some path -> Memo.Build.return (Ok (Path.build path))
       | None -> (
-        match t.context.which name with
+        t.context.which name >>| function
         | Some p -> Ok p
         | None ->
           Error

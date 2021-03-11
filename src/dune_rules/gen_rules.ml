@@ -291,8 +291,7 @@ let gen_rules sctx dir_contents cctxs ~source_dir ~dir :
   let* expander =
     let+ expander = Super_context.expander sctx ~dir in
     Dir_contents.add_sources_to_expander sctx expander
-  in
-  let tests = File_tree.Dir.cram_tests source_dir in
+  and* tests = File_tree.Dir.cram_tests source_dir in
   let* () = Cram_rules.rules ~sctx ~expander ~dir tests in
   match Super_context.stanzas_in sctx ~dir with
   | Some d -> gen_rules sctx dir_contents cctxs expander d
@@ -354,7 +353,8 @@ let gen_rules ~sctx ~dir components =
               Super_context.add_rule sctx ~loc ~dir
                 (Action_builder.symlink ~src ~dst))
         | _ -> (
-          match File_tree.find_dir (Path.Build.drop_build_context_exn dir) with
+          File_tree.find_dir (Path.Build.drop_build_context_exn dir)
+          >>= function
           | None ->
             (* We get here when [dir] is a generated directory, such as [.utop]
                or [.foo.objs]. *)

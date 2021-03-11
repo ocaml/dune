@@ -42,7 +42,6 @@ module Make (Src : Action_intf.Ast) (Dst : Action_intf.Ast) = struct
     | Rename (x, y) -> Rename (f_target ~dir x, f_target ~dir y)
     | Remove_tree x -> Remove_tree (f_target ~dir x)
     | Mkdir x -> Mkdir (f_path ~dir x)
-    | Digest_files x -> Digest_files (List.map x ~f:(f_path ~dir))
     | Diff ({ file1; file2; _ } as diff) ->
       Diff { diff with file1 = f_path ~dir file1; file2 = f_target ~dir file2 }
     | Merge_files_into (sources, extras, target) ->

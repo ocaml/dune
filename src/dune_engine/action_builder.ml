@@ -381,7 +381,7 @@ struct
         let+ ps, fact = Build_deps.register_action_dep_pred g in
         (ps, Dep.Map.singleton (Dep.file_selector g) fact)
       | Source_tree dir ->
-        let deps, paths = Dep.Set.source_tree_with_file_set dir in
+        let* deps, paths = Dep.Set.source_tree_with_file_set dir in
         let+ deps = Build_deps.register_action_deps deps in
         (paths, deps)
       | Contents p ->
@@ -477,7 +477,7 @@ let rec can_eval_statically : type a. a t -> bool = function
   | Deps _ -> true
   | Dyn_paths b -> can_eval_statically b
   | Dyn_deps b -> can_eval_statically b
-  | Source_tree _ -> true
+  | Source_tree _ -> false
   | Contents _ -> false
   | Lines_of _ -> false
   | Or_exn b -> can_eval_statically b
@@ -546,9 +546,7 @@ let static_eval =
     | Dyn_deps b ->
       let (x, deps), acc = loop b acc in
       (x, Deps deps >>> acc)
-    | Source_tree dir ->
-      let deps, paths = Dep.Set.source_tree_with_file_set dir in
-      (paths, Deps deps >>> acc)
+    | Source_tree _ -> assert false
     | Contents _ -> assert false
     | Lines_of _ -> assert false
     | Or_exn b ->
@@ -584,3 +582,7 @@ let static_eval =
 let dyn_memo_build_deps t = dyn_deps (dyn_memo_build t)
 
 let dep_on_alias_if_exists t = Dep_on_alias_if_exists t
+
+module List = struct
+  let map l ~f = all (List.map l ~f)
+end

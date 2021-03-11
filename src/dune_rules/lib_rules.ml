@@ -268,7 +268,7 @@ let build_shared lib ~native_archives ~sctx ~dir ~flags =
           (Action_builder.paths (List.map ~f:Path.build native_archives))
         >>> build
       in
-      Super_context.add_rule sctx build ~dir)
+      Super_context.add_rule sctx build ~dir ~loc:lib.buildable.loc)
 
 let setup_build_archives (lib : Dune_file.Library.t) ~cctx
     ~(dep_graphs : Dep_graph.Ml_kind.t) ~expander =
@@ -303,6 +303,7 @@ let setup_build_archives (lib : Dune_file.Library.t) ~cctx
                   let dst = Path.Build.relative (Obj_dir.dir obj_dir) fname in
                   Super_context.add_rule sctx
                     ~dir:(Compilation_context.dir cctx)
+                    ~loc:lib.buildable.loc
                     (Action_builder.copy ~src ~dst)))
   in
   let top_sorted_modules =
@@ -339,7 +340,8 @@ let setup_build_archives (lib : Dune_file.Library.t) ~cctx
         in
         Memo.Build.Option.iter action_with_targets
           ~f:(fun action_with_targets ->
-            action_with_targets >>= Super_context.add_rule sctx ~dir))
+            action_with_targets
+            >>= Super_context.add_rule sctx ~dir ~loc:lib.buildable.loc))
   in
   Memo.Build.if_
     (Dynlink_supported.By_the_os.get natdynlink_supported && modes.native)

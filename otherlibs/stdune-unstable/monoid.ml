@@ -115,6 +115,19 @@ module Product (A : Monoid_intf.Basic) (B : Monoid_intf.Basic) :
   let combine (a1, b1) (a2, b2) = (A.combine a1 a2, B.combine b1 b2)
 end)
 
+module Product3
+    (A : Monoid_intf.Basic)
+    (B : Monoid_intf.Basic)
+    (C : Monoid_intf.Basic) : Monoid_intf.S with type t = A.t * B.t * C.t =
+Make (struct
+  type t = A.t * B.t * C.t
+
+  let empty = (A.empty, B.empty, C.empty)
+
+  let combine (a1, b1, c1) (a2, b2, c2) =
+    (A.combine a1 a2, B.combine b1 b2, C.combine c1 c2)
+end)
+
 module Function (A : sig
   type t
 end)

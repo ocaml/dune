@@ -42,7 +42,8 @@ module Args : sig
       arguments of type [string list] and a set of dependencies of type
       [Dep.Set.t], or fail. You can use the constructor [Expand] to specify the
       meaning directly, which is sometimes useful, e.g. for memoization. *)
-  type expand = dir:Path.t -> (string list * Dep.Set.t, fail) result
+  type expand =
+    dir:Path.t -> (string list * Dep.Set.t, fail) result Memo.Build.t
 
   type _ t =
     | A : string -> _ t
@@ -58,7 +59,7 @@ module Args : sig
     | Hidden_targets : Path.Build.t list -> dynamic t
     | Dyn : static t Action_builder.t -> dynamic t
     | Fail : fail -> _ t
-    | Expand : expand -> _ t
+    | Expand : expand -> dynamic t
 
   (** Create dynamic command line arguments. *)
   val dyn : string list Action_builder.t -> dynamic t
@@ -70,7 +71,7 @@ module Args : sig
       expression. Use this function when the same subexpression appears in
       multiple [Command.Args.t] expressions to share both the time and memory
       required for the computation. *)
-  val memo : static t -> _ t
+  val memo : static t -> dynamic t
 end
 
 (* TODO: Using list in [dynamic t list] complicates the API unnecessarily: we

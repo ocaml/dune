@@ -11,27 +11,27 @@ Include variants and implementation information in dune-package
    (lib
     (META
      dune-package
-     opam
-     impl/vmod.ml
-     impl/vlib__impl__.ml
-     impl/vlib__Vmod.cmi
-     impl/vlib__Vmod.cmx
-     impl/vlib__Vmod.cmt
-     impl/vlib__impl__.cmi
-     impl/vlib__impl__.cmx
-     impl/vlib__impl__.cmt
+     impl/impl$ext_lib
      impl/impl.cma
      impl/impl.cmxa
-     impl/impl$ext_lib
-     vlib/vmod.mli
+     impl/vlib__Vmod.cmi
+     impl/vlib__Vmod.cmt
+     impl/vlib__Vmod.cmx
+     impl/vlib__impl__.cmi
+     impl/vlib__impl__.cmt
+     impl/vlib__impl__.cmx
+     impl/vlib__impl__.ml
+     impl/vmod.ml
+     opam
+     vlib/vlib.cmi
+     vlib/vlib.cmo
+     vlib/vlib.cmt
+     vlib/vlib.cmx
      vlib/vlib.ml
+     vlib/vlib$ext_obj
      vlib/vlib__Vmod.cmi
      vlib/vlib__Vmod.cmti
-     vlib/vlib.cmi
-     vlib/vlib.cmx
-     vlib/vlib.cmo
-     vlib/vlib$ext_obj
-     vlib/vlib.cmt))
+     vlib/vmod.mli))
    (libexec (impl/impl.cmxs)))
   (library
    (name foo.impl)

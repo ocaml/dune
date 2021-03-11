@@ -59,6 +59,12 @@ end) : Monoid_intf.S with type t = M.t
 module Product (A : Monoid_intf.Basic) (B : Monoid_intf.Basic) :
   Monoid_intf.S with type t = A.t * B.t
 
+(** Same as [Product] but for 3 monoids. *)
+module Product3
+    (A : Monoid_intf.Basic)
+    (B : Monoid_intf.Basic)
+    (C : Monoid_intf.Basic) : Monoid_intf.S with type t = A.t * B.t * C.t
+
 (** Functions that return a monoid form the following monoid:
 
     - empty = fun _ -> M.empty

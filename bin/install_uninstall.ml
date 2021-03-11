@@ -113,6 +113,7 @@ module File_ops_real (W : Workspace) : File_operations = struct
     | Need_version of (Format.formatter -> version:string -> unit)
 
   let copy_special_file ~src ~package ~ic ~oc ~f =
+    let open Fiber.O in
     let plain_copy () =
       seek_in ic 0;
       Io.copy_channels ic oc;
@@ -128,11 +129,10 @@ module File_ops_real (W : Workspace) : File_operations = struct
       plain_copy ()
     | No_version_needed -> plain_copy ()
     | Need_version print -> (
-      match
-        let open Option.O in
-        let* package = Package.Name.Map.find workspace.conf.packages package in
-        Package.dir package |> get_vcs
-      with
+      (match Package.Name.Map.find workspace.conf.packages package with
+      | None -> Fiber.return None
+      | Some package -> Memo.Build.run (get_vcs (Package.dir package)))
+      >>= function
       | None -> plain_copy ()
       | Some vcs ->
         let open Fiber.O in
@@ -316,7 +316,7 @@ let file_operations ~dry_run ~workspace : (module File_operations) =
 
 let package_is_vendored (pkg : Dune_engine.Package.t) =
   let dir = Package.dir pkg in
-  Dune_engine.File_tree.is_vendored dir
+  Memo.Build.run (Dune_engine.File_tree.is_vendored dir)
 
 let install_uninstall ~what =
   let doc = sprintf "%s packages." (String.capitalize what) in
@@ -387,18 +387,16 @@ let install_uninstall ~what =
           | None -> workspace.contexts
           | Some name -> [ Import.Main.find_context_exn workspace ~name ]
         in
-        let pkgs =
+        let* pkgs =
           match pkgs with
           | [] ->
-            Package.Name.Map.fold workspace.conf.packages ~init:[]
-              ~f:(fun pkg acc ->
-                if package_is_vendored pkg then
-                  acc
-                else
-                  let name = Package.name pkg in
-                  name :: acc)
-            |> List.rev
-          | l -> l
+            Fiber.parallel_map (Package.Name.Map.values workspace.conf.packages)
+              ~f:(fun pkg ->
+                package_is_vendored pkg >>| function
+                | true -> None
+                | false -> Some (Package.name pkg))
+            >>| List.filter_map ~f:Fun.id
+          | l -> Fiber.return l
         in
         let install_files, missing_install_files =
           List.concat_map pkgs ~f:(fun pkg ->

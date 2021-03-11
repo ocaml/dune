@@ -3,8 +3,8 @@ module type Basic = Monoid_intf.Basic
 module type Monoid = Monoid_intf.Monoid
 
 (** This functor extends the basic definition of a monoid by adding a convenient
-    operator synonym [( @ ) = combine], as well as derived functions [reduce],
-    [map_reduce] and [times]. *)
+    operator synonym [( @ ) = combine], as well as derived functions [reduce]
+    and [map_reduce]. *)
 module Make (M : Basic) : Monoid with type t = M.t
 
 (** The monoid you get with [empty = false] and [combine = ( || )]. *)
@@ -53,12 +53,6 @@ end) : Monoid with type t = M.t
 
 (** The product of monoids where pairs are combined component-wise. *)
 module Product (A : Basic) (B : Basic) : Monoid with type t = A.t * B.t
-
-(** Flip the order of arguments to [combine]:
-
-    - empty = M.empty
-    - combine x y = M.combine y x *)
-module Dual (M : Basic) : Monoid with type t = M.t
 
 (** Functions that return a monoid form the following monoid:
 

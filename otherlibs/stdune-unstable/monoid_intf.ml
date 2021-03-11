@@ -17,7 +17,7 @@ end
 
 (** This module type extends the basic definition of a monoid by adding a
     convenient operator synonym [( @ ) = combine], as well as derived functions
-    [reduce], [map_reduce] and [times]. *)
+    [reduce] and [map_reduce]. *)
 module type Monoid = sig
   include Basic
 
@@ -29,14 +29,4 @@ module type Monoid = sig
   val reduce : t list -> t
 
   val map_reduce : f:('a -> t) -> 'a list -> t
-
-  (** Combine a given value with itself [n] times, assuming [n >= 0]. This is a
-      generalisation of multiplication and exponentiation.
-
-      - times t ~n:0 = empty
-      - times t ~n:1 = t
-      - times t ~n   = times t ~n:(n-1) @ t
-
-      Complexity: O(log n). *)
-  val times : t -> n:int -> t
 end

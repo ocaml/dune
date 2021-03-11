@@ -13,43 +13,6 @@ module Make (M : Basic) : Monoid with type t = M.t = struct
 
   let map_reduce ~f =
     List.fold_left ~init:empty ~f:(fun acc a -> combine acc (f a))
-
-  (* To compute [times t ~n] using only O(log n) operations, we can use the
-     "repeated squaring" algorithm, where to compute [times t ~n:(2k)] we first
-     compute [times t ~n:k] and then "square" the result, i.e. combine it with
-     itself. This algorithm relies on the associativity property of monoids, to
-     change the order in which operations are performed from
-
-     (((t @ t) @ t) @ t) @ t
-
-     as in the specification of [times t ~n:5], to
-
-     ((t @ t) @ (t @ t)) @ t
-
-     where the work done to compute the term [t @ t] can be shared, i.e.:
-
-     let t2 = t @ t in let t4 = t2 @ t2 in t4 @ t
-
-     This ability to reassociate parentheses is key to the usefulness of
-     monoids. Let's see what happens if we try to reassociate parentheses when
-     the operation @ is subtraction, which is not associative:
-
-     (((1 - 1) - 1) - 1) - 1 = -3
-
-     but
-
-     ((1 - 1) - (1 - 1)) - 1 = -1
-
-     Fortunately, many common operations are associative. *)
-  let rec times t ~n =
-    let open O in
-    match n with
-    | negative when negative < 0 -> failwith "exponent cannot be negative"
-    | 0 -> empty
-    | even when even mod 2 = 0 ->
-      let t = times t ~n:(even / 2) in
-      t @ t
-    | odd -> times t ~n:(odd - 1) @ t
 end
 
 module Exists = Make (struct
@@ -141,14 +104,6 @@ Make (struct
   let empty = (A.empty, B.empty)
 
   let combine (a1, b1) (a2, b2) = (A.combine a1 a2, B.combine b1 b2)
-end)
-
-module Dual (M : Basic) : Monoid with type t = M.t = Make (struct
-  type t = M.t
-
-  let empty = M.empty
-
-  let combine x y = M.combine y x
 end)
 
 module Function (A : sig

@@ -42,6 +42,15 @@ module Mul (M : sig
   val ( * ) : t -> t -> t
 end) : Monoid with type t = M.t
 
+(** The union monoid with [empty = M.empty] and [combine = M.union]. *)
+module Union (M : sig
+  type t
+
+  val empty : t
+
+  val union : t -> t -> t
+end) : Monoid with type t = M.t
+
 (** The product of monoids where pairs are combined component-wise. *)
 module Product (A : Basic) (B : Basic) : Monoid with type t = A.t * B.t
 

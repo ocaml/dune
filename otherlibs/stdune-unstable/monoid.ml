@@ -122,6 +122,18 @@ end) : Monoid with type t = M.t = Make (struct
   let combine = ( * )
 end)
 
+module Union (M : sig
+  type t
+
+  val empty : t
+
+  val union : t -> t -> t
+end) : Monoid with type t = M.t = Make (struct
+  include M
+
+  let combine = union
+end)
+
 module Product (A : Basic) (B : Basic) : Monoid with type t = A.t * B.t =
 Make (struct
   type t = A.t * B.t

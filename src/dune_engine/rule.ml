@@ -41,11 +41,7 @@ module Mode = struct
     | Ignore_source_files
 end
 
-module Id = struct
-  include Id.Make ()
-
-  let dummy = gen ()
-end
+module Id = Id.Make ()
 
 module T = struct
   type t =

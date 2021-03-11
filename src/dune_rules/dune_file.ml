@@ -297,6 +297,7 @@ module Buildable = struct
         Foreign.Stubs.make ~loc ~language ~names ~flags :: foreign_stubs
     in
     let+ loc = loc
+    and+ project = Dune_project.get_exn ()
     and+ preprocess, preprocessor_deps = preprocess_fields
     and+ lint = field "lint" Lint.decode ~default:Lint.default
     and+ foreign_stubs =
@@ -394,6 +395,15 @@ module Buildable = struct
       foreign_stubs
       |> add_stubs C ~loc:c_names_loc ~names:c_names ~flags:c_flags
       |> add_stubs Cxx ~loc:cxx_names_loc ~names:cxx_names ~flags:cxx_flags
+    in
+    let foreign_stubs =
+      match ctypes with
+      | None -> foreign_stubs
+      | Some ctypes ->
+        Ctypes_stubs.add ~loc
+          ~parsing_context:(Dune_project.parsing_context project)
+          ~external_library_name:ctypes.Ctypes.external_library_name
+          ~add_stubs ~foreign_stubs
     in
     let foreign_archives = Option.value ~default:[] foreign_archives in
     let foreign_archives =

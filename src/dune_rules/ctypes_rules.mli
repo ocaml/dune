@@ -1,7 +1,9 @@
 open! Dune_engine
 open Import
 
-val generated_ml_and_c_files : Dune_file.Ctypes.t -> string list
+module Ctypes = Dune_file.Ctypes
+
+val generated_ml_and_c_files : Ctypes.t -> string list
 
 val gen_rules :
      dep_graphs : Dep_graph.t Ml_kind.Dict.t

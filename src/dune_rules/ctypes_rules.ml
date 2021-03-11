@@ -74,7 +74,8 @@ module Stanza_util = struct
     ctypes.Ctypes.generated_entry_point
 
   let cflags_sexp ctypes =
-    sprintf "%s__c_flags.sexp" ctypes.Ctypes.external_library_name
+    Ctypes_stubs.cflags_sexp
+      ~external_library_name:ctypes.Ctypes.external_library_name
 
   let c_library_flags_sexp ctypes =
     sprintf "%s__c_library_flags.sexp" ctypes.Ctypes.external_library_name

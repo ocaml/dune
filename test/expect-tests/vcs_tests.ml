@@ -116,11 +116,7 @@ let run kind script =
   Path.mkdir_p temp_dir;
   let vcs = { Vcs.kind; root = temp_dir } in
   let config =
-    { Scheduler.Config.concurrency = 1
-    ; terminal_persistence = Preserve
-    ; display = Short
-    ; rpc = None
-    }
+    { Scheduler.Config.concurrency = 1; display = Short; rpc = None }
   in
   Scheduler.Run.go
     ~on_event:(fun _ _ -> ())

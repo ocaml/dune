@@ -4,14 +4,6 @@ open! Import
 open Stdune
 
 module Config : sig
-  module Terminal_persistence : sig
-    type t =
-      | Preserve
-      | Clear_on_rebuild
-
-    val all : (string * t) list
-  end
-
   module Display : sig
     type t =
       | Progress  (** Single interactive status line *)
@@ -38,7 +30,6 @@ module Config : sig
 
   type t =
     { concurrency : int
-    ; terminal_persistence : Terminal_persistence.t
     ; display : Display.t
     ; rpc : Rpc.t option
     }

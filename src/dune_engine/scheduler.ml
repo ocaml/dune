@@ -6,14 +6,6 @@ open Import
 module Config = struct
   include Config
 
-  module Terminal_persistence = struct
-    type t =
-      | Preserve
-      | Clear_on_rebuild
-
-    let all = [ ("preserve", Preserve); ("clear-on-rebuild", Clear_on_rebuild) ]
-  end
-
   module Display = struct
     type t =
       | Progress
@@ -53,7 +45,6 @@ module Config = struct
 
   type t =
     { concurrency : int
-    ; terminal_persistence : Terminal_persistence.t
     ; display : Display.t
     ; rpc : Rpc.t option
     }

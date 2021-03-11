@@ -13,7 +13,11 @@ module Log = Dune_util.Log
 let syntax = Stanza.syntax
 
 module Terminal_persistence = struct
-  include Scheduler.Config.Terminal_persistence
+  type t =
+    | Preserve
+    | Clear_on_rebuild
+
+  let all = [ ("preserve", Preserve); ("clear-on-rebuild", Clear_on_rebuild) ]
 
   let of_string = function
     | "preserve" -> Ok Preserve
@@ -23,9 +27,13 @@ module Terminal_persistence = struct
         "invalid terminal-persistence value, must be 'preserve' or \
          'clear-on-rebuild'"
 
-  let to_string = function
-    | Preserve -> "preserve"
-    | Clear_on_rebuild -> "clear-on-rebuild"
+  let to_string s =
+    List.find_map all ~f:(fun (t, s') ->
+        if s = s' then
+          Some t
+        else
+          None)
+    |> Option.value_exn
 
   let decode =
     plain_string (fun ~loc s ->
@@ -347,8 +355,4 @@ let for_scheduler (t : t) rpc =
     | Fixed i -> i
     | Auto -> Lazy.force auto_concurrency
   in
-  { Scheduler.Config.concurrency
-  ; terminal_persistence = t.terminal_persistence
-  ; display = t.display
-  ; rpc
-  }
+  { Scheduler.Config.concurrency; display = t.display; rpc }

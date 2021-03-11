@@ -36,7 +36,8 @@ let buffer_lines () = String.split_lines (Buffer.contents buf)
 let%expect_test _ =
   Format.printf "%a@." Pp.to_fmt
     (Pp.vbox (Pp.concat_map (buffer_lines ()) ~sep:Pp.cut ~f:Pp.verbatim));
-  [%expect {|
+  [%expect
+    {|
 [{"args":{"foo":"bar"},"ph":"X","dur":1000000,"name":"foo","cat":"","ts":500000,"pid":0,"tid":0}
 ,{"ph":"C","args":{"bar":250},"name":"cnt","cat":"","ts":500000,"pid":0,"tid":0}
 ,{"args":{"foo":100},"ph":"b","id":"foo","name":"async","cat":"","ts":500000,"pid":0,"tid":0}

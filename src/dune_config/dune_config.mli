@@ -48,14 +48,21 @@ module Caching : sig
   end
 end
 
+module Terminal_persistence : sig
+  type t =
+    | Preserve
+    | Clear_on_rebuild
+
+  val all : (string * t) list
+end
+
 module type S = sig
   type 'a field
 
   type t =
     { display : Dune_engine.Scheduler.Config.Display.t field
     ; concurrency : Concurrency.t field
-    ; terminal_persistence :
-        Dune_engine.Scheduler.Config.Terminal_persistence.t field
+    ; terminal_persistence : Terminal_persistence.t field
     ; sandboxing_preference : Sandboxing_preference.t field
     ; cache_mode : Caching.Mode.t field
     ; cache_transport : Caching.Transport.t field

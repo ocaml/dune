@@ -1,6 +1,7 @@
 open! Dune_engine
 open Import
 open Dune_file
+open Memo.Build.O
 module Modules_group = Modules
 
 module Modules = struct
@@ -117,14 +118,12 @@ module Artifacts = struct
 end
 
 type t =
-  { modules : Modules.t Memo.Lazy.t
+  { modules : Modules.t
   ; artifacts : Artifacts.t Memo.Lazy.t
   }
 
 let empty =
-  { modules = Memo.Lazy.of_val Modules.empty
-  ; artifacts = Memo.Lazy.of_val Artifacts.empty
-  }
+  { modules = Modules.empty; artifacts = Memo.Lazy.of_val Artifacts.empty }
 
 let artifacts t = Memo.Lazy.force t.artifacts
 
@@ -174,25 +173,22 @@ type for_ =
   | Exe of { first_exe : string }
 
 let modules_and_obj_dir t ~for_ =
-  let modules = Memo.Lazy.force t.modules in
   match for_ with
-  | Library name -> Lib_name.Map.find_exn modules.libraries name
-  | Exe { first_exe } -> String.Map.find_exn modules.executables first_exe
+  | Library name -> Lib_name.Map.find_exn t.modules.libraries name
+  | Exe { first_exe } -> String.Map.find_exn t.modules.executables first_exe
 
-let modules t ~for_ = fst (modules_and_obj_dir t ~for_)
+let modules t ~for_ = modules_and_obj_dir t ~for_ |> fst
 
-let lookup_module (t : t) name =
-  let modules = Memo.Lazy.force t.modules in
-  Module_name.Map.find modules.rev_map name
+let lookup_module (t : t) name = Module_name.Map.find t.modules.rev_map name
 
 let virtual_modules lookup_vlib vlib =
   let info = Lib.info vlib in
-  let modules =
+  let+ modules =
     match Option.value_exn (Lib_info.virtual_ info) with
-    | External modules -> modules
+    | External modules -> Memo.Build.return modules
     | Local ->
       let src_dir = Lib_info.src_dir info |> Path.as_in_build_dir_exn in
-      let t = lookup_vlib ~dir:src_dir in
+      let+ t = lookup_vlib ~dir:src_dir in
       modules t ~for_:(Library (Lib.name vlib))
   in
   let existing_virtual_modules = Modules_group.virtual_module_names modules in
@@ -206,8 +202,8 @@ let virtual_modules lookup_vlib vlib =
 let make_lib_modules (d : _ Dir_with_dune.t) ~lookup_vlib ~(lib : Library.t)
     ~modules =
   let src_dir = d.ctx_dir in
-  let open Result.O in
-  let+ kind, main_module_name, wrapped =
+  let+ res =
+    let open Result.O in
     match lib.implements with
     | None ->
       (* In the two following pattern matching, we can only get [From _] if
@@ -229,8 +225,8 @@ let make_lib_modules (d : _ Dir_with_dune.t) ~lookup_vlib ~(lib : Library.t)
         | None -> Exe_or_normal_lib
         | Some virtual_modules -> Virtual { virtual_modules }
       in
-      Ok (kind, main_module_name, wrapped)
-    | Some _ ->
+      Memo.Build.return (Ok (kind, main_module_name, wrapped))
+    | Some _ -> (
       assert (Option.is_none lib.virtual_modules);
       let resolved =
         let name = Library.best_name lib in
@@ -238,47 +234,46 @@ let make_lib_modules (d : _ Dir_with_dune.t) ~lookup_vlib ~(lib : Library.t)
         (* can't happen because this library is defined using the current stanza *)
         |> Option.value_exn
       in
-      let* vlib =
-        (* This [Option.value_exn] is correct because the above [lib.implements]
-           is [Some _] and this [lib] variable correspond to the same library. *)
-        Option.value_exn (Lib.implements resolved)
-      in
-      let kind : Modules_field_evaluator.kind =
-        Implementation (virtual_modules lookup_vlib vlib)
-      in
-      let+ main_module_name, wrapped =
-        let open Result.O in
-        let* main_module_name = Lib.main_module_name resolved in
-        let+ wrapped = Lib.wrapped resolved in
-        (main_module_name, Option.value_exn wrapped)
-      in
-      (kind, main_module_name, wrapped)
+      (* This [Option.value_exn] is correct because the above [lib.implements]
+         is [Some _] and this [lib] variable correspond to the same library. *)
+      match Option.value_exn (Lib.implements resolved) with
+      | Error _ as err -> Memo.Build.return err
+      | Ok vlib ->
+        Memo.Build.map (virtual_modules lookup_vlib vlib) ~f:(fun impl ->
+            let kind : Modules_field_evaluator.kind = Implementation impl in
+            let+ main_module_name, wrapped =
+              let open Result.O in
+              let* main_module_name = Lib.main_module_name resolved in
+              let+ wrapped = Lib.wrapped resolved in
+              (main_module_name, Option.value_exn wrapped)
+            in
+            (kind, main_module_name, wrapped)))
   in
-  let modules =
-    Modules_field_evaluator.eval ~modules ~buildable:lib.buildable ~kind
-      ~private_modules:
-        (Option.value ~default:Ordered_set_lang.standard lib.private_modules)
-      ~src_dir
-  in
-  let stdlib = lib.stdlib in
-  let implements = Option.is_some lib.implements in
-  let _loc, lib_name = lib.name in
-  Modules_group.lib ~stdlib ~implements ~lib_name ~src_dir ~modules
-    ~main_module_name ~wrapped
+  Result.map res ~f:(fun (kind, main_module_name, wrapped) ->
+      let modules =
+        Modules_field_evaluator.eval ~modules ~buildable:lib.buildable ~kind
+          ~private_modules:
+            (Option.value ~default:Ordered_set_lang.standard lib.private_modules)
+          ~src_dir
+      in
+      let stdlib = lib.stdlib in
+      let implements = Option.is_some lib.implements in
+      let _loc, lib_name = lib.name in
+      Modules_group.lib ~stdlib ~implements ~lib_name ~src_dir ~modules
+        ~main_module_name ~wrapped)
 
 let libs_and_exes (d : _ Dir_with_dune.t) ~lookup_vlib ~modules =
-  List.filter_partition_map d.data ~f:(fun stanza ->
+  Memo.Build.parallel_map d.data ~f:(fun stanza ->
       match (stanza : Stanza.t) with
       | Library lib ->
-        let modules =
-          (* diml: this [Result.ok_exn] means that if the user writes an invalid
-             [implements] field, we will get an error immediately even if the
-             library is not built. We should change this to carry the [Or_exn.t]
-             a bit longer. *)
-          Result.ok_exn (make_lib_modules d ~lookup_vlib ~modules ~lib)
-        in
+        let+ modules = make_lib_modules d ~lookup_vlib ~modules ~lib in
+        (* jeremiedimino: this [Result.ok_exn] means that if the user writes an
+           invalid [implements] field, we will get an error immediately even if
+           the library is not built. We should change this to carry the
+           [Or_exn.t] a bit longer. *)
+        let modules = Result.ok_exn modules in
         let obj_dir = Library.obj_dir lib ~dir:d.ctx_dir in
-        Left (lib, modules, obj_dir)
+        List.Left (lib, modules, obj_dir)
       | Executables exes
       | Tests { exes; _ } ->
         let src_dir = d.ctx_dir in
@@ -303,8 +298,9 @@ let libs_and_exes (d : _ Dir_with_dune.t) ~lookup_vlib ~modules =
              there are multiple executable stanzas in the same directory *)
           Modules_group.relocate_alias_module modules ~src_dir
         in
-        Right (exes, modules, obj_dir)
-      | _ -> Skip)
+        Memo.Build.return (List.Right (exes, modules, obj_dir))
+      | _ -> Memo.Build.return List.Skip)
+  >>| List.filter_partition_map ~f:Fun.id
 
 let check_no_qualified (loc, include_subdirs) =
   if include_subdirs = Dune_file.Include_subdirs.Include Qualified then
@@ -313,29 +309,28 @@ let check_no_qualified (loc, include_subdirs) =
 
 let make (d : _ Dir_with_dune.t) ~lib_config ~loc ~lookup_vlib ~include_subdirs
     ~dirs =
-  let libs_and_exes =
-    Memo.lazy_ (fun () ->
-        check_no_qualified include_subdirs;
-        let modules =
-          let dialects = Dune_project.dialects (Scope.project d.scope) in
-          List.fold_left dirs ~init:Module_name.Map.empty
-            ~f:(fun acc ((dir : Path.Build.t), _local, files) ->
-              let modules = modules_of_files ~dialects ~dir ~files in
-              Module_name.Map.union acc modules ~f:(fun name x y ->
-                  User_error.raise ~loc
-                    [ Pp.textf "Module %S appears in several directories:"
-                        (Module_name.to_string name)
-                    ; Pp.textf "- %s"
-                        (Path.to_string_maybe_quoted (Module.Source.src_dir x))
-                    ; Pp.textf "- %s"
-                        (Path.to_string_maybe_quoted (Module.Source.src_dir y))
-                    ; Pp.text "This is not allowed, please rename one of them."
-                    ]))
-        in
-        libs_and_exes d ~lookup_vlib ~modules)
+  let+ libs_and_exes =
+    check_no_qualified include_subdirs;
+    let modules =
+      let dialects = Dune_project.dialects (Scope.project d.scope) in
+      List.fold_left dirs ~init:Module_name.Map.empty
+        ~f:(fun acc ((dir : Path.Build.t), _local, files) ->
+          let modules = modules_of_files ~dialects ~dir ~files in
+          Module_name.Map.union acc modules ~f:(fun name x y ->
+              User_error.raise ~loc
+                [ Pp.textf "Module %S appears in several directories:"
+                    (Module_name.to_string name)
+                ; Pp.textf "- %s"
+                    (Path.to_string_maybe_quoted (Module.Source.src_dir x))
+                ; Pp.textf "- %s"
+                    (Path.to_string_maybe_quoted (Module.Source.src_dir y))
+                ; Pp.text "This is not allowed, please rename one of them."
+                ]))
+    in
+    libs_and_exes d ~lookup_vlib ~modules
   in
-  let modules = Memo.Lazy.map ~f:Modules.make libs_and_exes in
+  let modules = Modules.make libs_and_exes in
   let artifacts =
-    Memo.Lazy.map ~f:(Artifacts.make ~lib_config d) libs_and_exes
+    Memo.lazy_ (fun () -> Artifacts.make ~lib_config d libs_and_exes)
   in
   { modules; artifacts }

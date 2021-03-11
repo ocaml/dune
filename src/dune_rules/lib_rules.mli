@@ -17,4 +17,4 @@ val rules :
   -> dir:Path.Build.t
   -> expander:Expander.t
   -> scope:Scope.t
-  -> Compilation_context.t * Merlin.t
+  -> (Compilation_context.t * Merlin.t) Memo.Build.t

@@ -4,6 +4,7 @@ open Import
 open Dune_file
 open! No_io
 module SC = Super_context
+open Memo.Build.O
 
 module Alias_rules = struct
   let stamp ~deps ~action ~extra_bindings =
@@ -174,7 +175,7 @@ let copy_files sctx ~dir ~expander ~src_dir (def : Copy_files.t) =
       let context = Context.DB.get dir in
       Path.Build.append_source context.build_dir src_in_src |> Path.build
   in
-  let files =
+  let+ files =
     Build_system.eval_pred (File_selector.create ~dir:src_in_build pred)
   in
   let targets =
@@ -198,7 +199,7 @@ let copy_files sctx ~dir ~expander ~src_dir (def : Copy_files.t) =
   if Expander.eval_blang expander def.enabled_if then
     copy_files sctx ~dir ~expander ~src_dir def
   else
-    Path.Set.empty
+    Memo.Build.return Path.Set.empty
 
 let alias sctx ?extra_bindings ~dir ~expander (alias_conf : Alias_conf.t) =
   let alias = Alias.make ~dir alias_conf.name in

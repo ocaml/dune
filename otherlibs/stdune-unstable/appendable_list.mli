@@ -9,4 +9,6 @@ val singleton : 'a -> 'a t
 
 val ( @ ) : 'a t -> 'a t -> 'a t
 
+val concat : 'a t list -> 'a t
+
 val to_list : 'a t -> 'a list

@@ -1,4 +1,5 @@
 open! Dune_engine
+open Memo.Build.O
 
 (* This file is licensed under The MIT License *)
 (* (c) MINES ParisTech 2018-2019               *)
@@ -203,21 +204,26 @@ module Context = struct
   let directories_of_lib ~sctx lib =
     let name = Coq_lib.name lib in
     let dir = Coq_lib.src_root lib in
-    let dir_contents = Dir_contents.get sctx ~dir in
+    let+ dir_contents = Dir_contents.get sctx ~dir in
     let coq_sources = Dir_contents.coq dir_contents in
     Coq_sources.directories coq_sources ~name
 
   let setup_native_theory_includes ~sctx ~mode
       ~(theories_deps : Coq_lib.t list Or_exn.t) ~theory_dirs =
     match mode with
-    | Coq_mode.Native ->
-      Result.map theories_deps ~f:(fun theories_deps ->
-          List.fold_left theories_deps ~init:theory_dirs ~f:(fun acc lib ->
-              let theory_dirs = directories_of_lib ~sctx lib in
-              Path.Build.Set.(union acc (of_list theory_dirs))))
+    | Coq_mode.Native -> (
+      match theories_deps with
+      | Error _ as err -> Memo.Build.return err
+      | Ok theories_deps ->
+        let+ l =
+          Memo.Build.parallel_map theories_deps ~f:(fun lib ->
+              let+ theory_dirs = directories_of_lib ~sctx lib in
+              Path.Build.Set.of_list theory_dirs)
+        in
+        Ok (Path.Build.Set.union_all (theory_dirs :: l)))
     | Coq_mode.VoOnly
     | Coq_mode.Legacy ->
-      Or_exn.return Path.Build.Set.empty
+      Memo.Build.return (Ok Path.Build.Set.empty)
 
   let create ~coqc_dir sctx ~dir ~wrapper_name ~theories_deps ~theory_dirs
       (buildable : Buildable.t) =
@@ -235,7 +241,7 @@ module Context = struct
       Lib.DB.resolve lib_db (Loc.none, Lib_name.of_string "coq.kernel")
       |> Result.map ~f:(fun lib -> Util.coq_nativelib_cmi_dirs [ lib ])
     in
-    let native_theory_includes =
+    let+ native_theory_includes =
       setup_native_theory_includes ~sctx ~mode ~theories_deps ~theory_dirs
     in
     let build_dir = (Super_context.context sctx).build_dir in
@@ -395,7 +401,7 @@ let setup_rule cctx ~source_rule coq_module =
 let coq_modules_of_theory ~sctx lib =
   let name = Coq_lib.name lib in
   let dir = Coq_lib.src_root lib in
-  let dir_contents = Dir_contents.get sctx ~dir in
+  let+ dir_contents = Dir_contents.get sctx ~dir in
   let coq_sources = Dir_contents.coq dir_contents in
   Coq_sources.library coq_sources ~name
 
@@ -403,9 +409,13 @@ let source_rule ~sctx theories =
   (* sources for depending libraries coqdep requires all the files to be in the
      tree to produce correct dependencies, including those of dependencies *)
   Action_builder.of_result_map theories ~f:(fun theories ->
-      List.concat_map theories ~f:(coq_modules_of_theory ~sctx)
-      |> List.rev_map ~f:(fun m -> Path.build (Coq_module.source m))
-      |> Action_builder.paths)
+      Action_builder.dyn_paths_unit
+        (Action_builder.memo_build
+           (let+ l =
+              Memo.Build.parallel_map theories ~f:(coq_modules_of_theory ~sctx)
+            in
+            List.concat l
+            |> List.rev_map ~f:(fun m -> Path.build (Coq_module.source m)))))
 
 let setup_rules ~sctx ~dir ~dir_contents (s : Theory.t) =
   let name = snd s.name in
@@ -415,7 +425,7 @@ let setup_rules ~sctx ~dir ~dir_contents (s : Theory.t) =
 
   let coq_dir_contents = Dir_contents.coq dir_contents in
 
-  let cctx =
+  let+ cctx =
     let wrapper_name = Coq_lib.wrapper theory in
     let theories_deps = Coq_lib.DB.requires coq_lib_db theory in
     let theory_dirs = Coq_sources.directories coq_dir_contents ~name in
@@ -477,12 +487,12 @@ let coq_plugins_install_rules ~scope ~package ~dst_dir (s : Theory.t) =
 
 let install_rules ~sctx ~dir s =
   match s with
-  | { Theory.package = None; _ } -> []
+  | { Theory.package = None; _ } -> Memo.Build.return []
   | { Theory.package = Some package; buildable; _ } ->
     let mode = select_native_mode ~sctx ~buildable in
     let loc = s.buildable.loc in
     let scope = SC.find_scope_by_dir sctx dir in
-    let dir_contents = Dir_contents.get sctx ~dir in
+    let+ dir_contents = Dir_contents.get sctx ~dir in
     let name = snd s.name in
     (* This must match the wrapper prefix for now to remain compatible *)
     let dst_suffix = Coq_lib_name.dir (snd s.name) in
@@ -536,10 +546,10 @@ let coqpp_rules ~sctx ~dir (s : Coqpp.t) =
     let build_dir = (Super_context.context sctx).build_dir in
     Command.run ~dir:(Path.build build_dir) coqpp args
   in
-  List.map ~f:mlg_rule s.modules
+  Memo.Build.return (List.map ~f:mlg_rule s.modules)
 
 let extraction_rules ~sctx ~dir ~dir_contents (s : Extraction.t) =
-  let cctx =
+  let+ cctx =
     let wrapper_name = "DuneExtraction" in
     let theories_deps =
       let scope = SC.find_scope_by_dir sctx dir in

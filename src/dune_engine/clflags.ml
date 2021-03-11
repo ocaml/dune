@@ -12,7 +12,9 @@ let debug_artifact_substitution = ref false
 
 let capture_outputs = ref true
 
-let debug_backtraces = Dune_util.Report_error.report_backtraces
+let debug_backtraces b =
+  Dune_util.Report_error.report_backtraces b;
+  Memo.track_locations_of_lazy_values := b
 
 let diff_command = ref None
 

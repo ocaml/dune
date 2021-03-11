@@ -47,7 +47,7 @@ val build_and_link :
   -> ?o_files:Path.t list
   -> ?embed_in_plugin_libraries:(Loc.t * Lib_name.t) list
   -> Compilation_context.t
-  -> unit
+  -> unit Memo.Build.t
 
 val build_and_link_many :
      programs:Program.t list
@@ -57,7 +57,7 @@ val build_and_link_many :
   -> ?o_files:Path.t list
   -> ?embed_in_plugin_libraries:(Loc.t * Lib_name.t) list
   -> Compilation_context.t
-  -> unit
+  -> unit Memo.Build.t
 
 val exe_path :
      Compilation_context.t

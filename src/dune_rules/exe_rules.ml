@@ -1,7 +1,7 @@
 open! Dune_engine
 open Import
 open! No_io
-open Action_builder.O
+open Memo.Build.O
 module Executables = Dune_file.Executables
 
 let first_exe (exes : Executables.t) = snd (List.hd exes.names)
@@ -106,10 +106,10 @@ let executables_rules ~sctx ~dir ~expander ~dir_contents ~scope ~compile_info
     ~embed_in_plugin_libraries (exes : Dune_file.Executables.t) =
   (* Use "eobjs" rather than "objs" to avoid a potential conflict with a library
      of the same name *)
-  let modules, obj_dir =
+  let* modules, obj_dir =
     let first_exe = first_exe exes in
     Dir_contents.ocaml dir_contents
-    |> Ml_sources.modules_and_obj_dir ~for_:(Exe { first_exe })
+    >>| Ml_sources.modules_and_obj_dir ~for_:(Exe { first_exe })
   in
   Check_rules.add_obj_dir sctx ~obj_dir;
   let ctx = Super_context.context sctx in
@@ -174,7 +174,8 @@ let executables_rules ~sctx ~dir ~expander ~dir_contents ~scope ~compile_info
       ~instrumentation_backend:
         (Lib.DB.instrumentation_backend (Scope.libs scope))
   in
-  let () =
+  let+ () =
+    let open Action_builder.O in
     (* Building an archive for foreign stubs, we link the corresponding object
        files directly to improve perf. *)
     let link_args =

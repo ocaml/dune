@@ -243,9 +243,10 @@ module T = struct
 
          {[ This kind of expression is not allowed as right-hand side of `let
          rec' }] *)
-      mutable sub_systems : Sub_system0.Instance.t Lazy.t Sub_system_name.Map.t
-    ; modules : Modules.t Lazy.t option
-    ; src_dirs : Path.Set.t Lazy.t
+      mutable sub_systems :
+        Sub_system0.Instance.t Memo.Lazy.Async.t Sub_system_name.Map.t
+    ; modules : Modules.t Memo.Lazy.Async.t option
+    ; src_dirs : Path.Set.t Memo.Lazy.Async.t
     }
 
   let compare (x : t) (y : t) = Id.compare x.unique_id y.unique_id
@@ -313,7 +314,8 @@ type db =
   ; all : Lib_name.t list Lazy.t
   ; lib_config : Lib_config.t
   ; instrument_with : Lib_name.t list
-  ; modules_of_lib : (dir:Path.Build.t -> name:Lib_name.t -> Modules.t) Fdecl.t
+  ; modules_of_lib :
+      (dir:Path.Build.t -> name:Lib_name.t -> Modules.t Memo.Build.t) Fdecl.t
   ; projects_by_package : Dune_project.t Package.Name.Map.t
   }
 
@@ -361,13 +363,16 @@ let main_module_name t =
 
 let entry_module_names t =
   match Lib_info.entry_modules t.info with
-  | External d -> d
-  | Local ->
-    Ok
-      (Option.value_exn t.modules |> Lazy.force |> Modules.entry_modules
-     |> List.map ~f:Module.name)
+  | External d -> Memo.Build.return d
+  | Local -> (
+    match t.modules with
+    | None -> assert false
+    | Some m ->
+      let open Memo.Build.O in
+      let+ m = Memo.Lazy.Async.force m in
+      Ok (Modules.entry_modules m |> List.map ~f:Module.name))
 
-let src_dirs t = Lazy.force t.src_dirs
+let src_dirs t = Memo.Lazy.Async.force t.src_dirs
 
 let wrapped t =
   let wrapped = Lib_info.wrapped t.info in
@@ -403,6 +408,7 @@ module Link_params = struct
     }
 
   let get (t : lib) (mode : Link_mode.t) =
+    let open Memo.Build.O in
     let lib_files = Lib_info.foreign_archives t.info
     and dll_files = Lib_info.foreign_dll_files t.info in
     (* OCaml library archives [*.cma] and [*.cmxa] are directly listed in the
@@ -411,13 +417,17 @@ module Link_params = struct
     (* Foreign archives [lib*.a] and [dll*.so] and native archives [lib*.a] are
        declared as hidden dependencies, and appropriate [-I] flags are provided
        separately to help the linker locate them. *)
-    let hidden_deps =
+    let+ hidden_deps =
       match mode with
-      | Byte -> dll_files
-      | Byte_with_stubs_statically_linked_in -> lib_files
+      | Byte -> Memo.Build.return dll_files
+      | Byte_with_stubs_statically_linked_in -> Memo.Build.return lib_files
       | Native ->
-        let native_archives =
-          let modules = Option.map t.modules ~f:Lazy.force in
+        let+ native_archives =
+          let+ modules =
+            match t.modules with
+            | None -> Memo.Build.return None
+            | Some m -> Memo.Lazy.Async.force m >>| Option.some
+          in
           Lib_info.eval_native_archives_exn t.info ~modules
         in
         List.rev_append native_archives lib_files
@@ -465,7 +475,8 @@ module Link_params = struct
 end
 
 let link_deps t mode =
-  let x = Link_params.get t mode in
+  let open Memo.Build.O in
+  let+ x = Link_params.get t mode in
   List.rev_append x.hidden_deps x.deps
 
 module L = struct
@@ -539,22 +550,27 @@ module L = struct
     Path.Set.union (include_paths ts Mode.Byte) (c_include_paths with_dlls)
 
   let compile_and_link_flags ~compile ~link ~mode =
-    let params = List.map link ~f:(fun t -> Link_params.get t mode) in
-    let dirs =
-      let dirs =
-        Path.Set.union
-          (include_paths compile (Link_mode.mode mode))
-          (c_include_paths link)
+    Command.Args.Dyn
+      (let open Action_builder.O in
+      let+ params =
+        Action_builder.memo_build
+          (Memo.Build.parallel_map link ~f:(fun t -> Link_params.get t mode))
       in
-      List.fold_left params ~init:dirs ~f:(fun acc (p : Link_params.t) ->
-          List.fold_left p.include_dirs ~init:acc ~f:Path.Set.add)
-    in
-    Command.Args.S
-      (to_iflags dirs
-       ::
-       List.map params ~f:(fun (p : Link_params.t) ->
-           Command.Args.S
-             [ Deps p.deps; Hidden_deps (Dep.Set.of_files p.hidden_deps) ]))
+      let dirs =
+        let dirs =
+          Path.Set.union
+            (include_paths compile (Link_mode.mode mode))
+            (c_include_paths link)
+        in
+        List.fold_left params ~init:dirs ~f:(fun acc (p : Link_params.t) ->
+            List.fold_left p.include_dirs ~init:acc ~f:Path.Set.add)
+      in
+      Command.Args.S
+        (to_iflags dirs
+         ::
+         List.map params ~f:(fun (p : Link_params.t) ->
+             Command.Args.S
+               [ Deps p.deps; Hidden_deps (Dep.Set.of_files p.hidden_deps) ])))
 
   let jsoo_runtime_files ts =
     List.concat_map ts ~f:(fun t -> Lib_info.jsoo_runtime t.info)
@@ -584,34 +600,40 @@ module Lib_and_module = struct
     type nonrec t = t list
 
     let link_flags ts ~(lib_config : Lib_config.t) ~mode =
-      Command.Args.S
-        (List.map ts ~f:(function
-          | Lib t ->
-            let p = Link_params.get t mode in
-            Command.Args.S
-              (Deps p.deps
-               ::
-               Hidden_deps (Dep.Set.of_files p.hidden_deps)
-               ::
-               List.map p.include_dirs ~f:(fun dir ->
-                   Command.Args.S [ A "-I"; Path dir ]))
-          | Module (obj_dir, m) ->
-            Command.Args.S
-              (Dep
-                 (Obj_dir.Module.cm_file_exn obj_dir m
-                    ~kind:(Mode.cm_kind (Link_mode.mode mode)))
-               ::
-               (match mode with
-               | Native ->
-                 [ Command.Args.Hidden_deps
-                     (Dep.Set.of_files
-                        [ Obj_dir.Module.o_file_exn obj_dir m
-                            ~ext_obj:lib_config.ext_obj
-                        ])
-                 ]
-               | Byte
-               | Byte_with_stubs_statically_linked_in ->
-                 []))))
+      let open Action_builder.O in
+      Command.Args.Dyn
+        (let+ l =
+           Action_builder.all
+             (List.map ts ~f:(function
+               | Lib t ->
+                 let+ p = Action_builder.memo_build (Link_params.get t mode) in
+                 Command.Args.S
+                   (Deps p.deps
+                    ::
+                    Hidden_deps (Dep.Set.of_files p.hidden_deps)
+                    ::
+                    List.map p.include_dirs ~f:(fun dir ->
+                        Command.Args.S [ A "-I"; Path dir ]))
+               | Module (obj_dir, m) ->
+                 Action_builder.return
+                   (Command.Args.S
+                      (Dep
+                         (Obj_dir.Module.cm_file_exn obj_dir m
+                            ~kind:(Mode.cm_kind (Link_mode.mode mode)))
+                       ::
+                       (match mode with
+                       | Native ->
+                         [ Command.Args.Hidden_deps
+                             (Dep.Set.of_files
+                                [ Obj_dir.Module.o_file_exn obj_dir m
+                                    ~ext_obj:lib_config.ext_obj
+                                ])
+                         ]
+                       | Byte
+                       | Byte_with_stubs_statically_linked_in ->
+                         [])))))
+         in
+         Command.Args.S l)
 
     let of_libs l = List.map l ~f:(fun x -> Lib x)
   end
@@ -631,10 +653,10 @@ module Sub_system = struct
 
     val instantiate :
          resolve:(Loc.t * Lib_name.t -> lib Or_exn.t)
-      -> get:(loc:Loc.t -> lib -> t option)
+      -> get:(loc:Loc.t -> lib -> t option Memo.Build.t)
       -> lib
       -> Info.t
-      -> t
+      -> t Memo.Build.t
 
     val public_info : (t -> Info.t Or_exn.t) option
   end
@@ -644,7 +666,7 @@ module Sub_system = struct
 
     val for_instance : t Sub_system0.s
 
-    val get : lib -> t option
+    val get : lib -> t option Memo.Build.t
   end
 
   (* This mutable table is safe under the assumption that subsystems are
@@ -653,11 +675,16 @@ module Sub_system = struct
 
   module Register (M : S) = struct
     let get lib =
-      Option.map (Sub_system_name.Map.find lib.sub_systems M.Info.name)
-        ~f:(fun (lazy (Sub_system0.Instance.T ((module X), t))) ->
-          match X.T t with
-          | M.T t -> t
-          | _ -> assert false)
+      let open Memo.Build.O in
+      match Sub_system_name.Map.find lib.sub_systems M.Info.name with
+      | None -> Memo.Build.return None
+      | Some sub -> (
+        let+ (Sub_system0.Instance.T ((module X), t)) =
+          Memo.Lazy.Async.force sub
+        in
+        match X.T t with
+        | M.T t -> Some t
+        | _ -> assert false)
 
     let () =
       let module M = struct
@@ -672,6 +699,7 @@ module Sub_system = struct
   end
 
   let instantiate name info lib ~resolve =
+    let open Memo.Build.O in
     let impl = Option.value_exn (Sub_system_name.Table.get all name) in
     let (module M : S') = impl in
     match info with
@@ -685,19 +713,19 @@ module Sub_system = struct
         else
           M.get lib'
       in
-      Sub_system0.Instance.T
-        (M.for_instance, M.instantiate ~resolve ~get lib info)
+      let+ inst = M.instantiate ~resolve ~get lib info in
+      Sub_system0.Instance.T (M.for_instance, inst)
     | _ -> assert false
 
   let public_info lib =
-    try
-      Ok
-        (Sub_system_name.Map.filter_map lib.sub_systems ~f:(fun (lazy inst) ->
-             let (Sub_system0.Instance.T ((module M), t)) = inst in
-             Option.map M.public_info ~f:(fun f ->
-                 M.Info.T (Result.ok_exn (f t)))))
-    with
-    | User_error.E _ as exn -> Error exn
+    let open Memo.Build.O in
+    let module M = Memo.Build.Make_map_traversals (Sub_system_name.Map) in
+    M.parallel_map lib.sub_systems ~f:(fun _name inst ->
+        let+ (Sub_system0.Instance.T ((module M), t)) =
+          Memo.Lazy.Async.force inst
+        in
+        Option.map M.public_info ~f:(fun f -> M.Info.T (Result.ok_exn (f t))))
+    >>| Sub_system_name.Map.filter_map ~f:Fun.id
 end
 
 (* Library name resolution and transitive closure *)
@@ -1166,17 +1194,24 @@ end = struct
     let modules =
       match Path.as_in_build_dir (Lib_info.src_dir info) with
       | None -> None
-      | Some dir -> Some (lazy (Fdecl.get db.modules_of_lib ~dir ~name))
+      | Some dir ->
+        Some
+          (Memo.lazy_async (fun () -> Fdecl.get db.modules_of_lib ~dir ~name))
     in
     let src_dirs =
-      lazy
-        (let obj_dir = Lib_info.obj_dir info in
-         match Path.is_managed (Obj_dir.byte_dir obj_dir) with
-         | false -> Path.Set.singleton src_dir
-         | true ->
-           let (lazy modules) = Option.value_exn modules in
-           Path.Set.map ~f:Path.drop_optional_build_context
-             (Modules.source_dirs modules))
+      let open Memo.Build.O in
+      Memo.Lazy.Async.create (fun () ->
+          let obj_dir = Lib_info.obj_dir info in
+          match Path.is_managed (Obj_dir.byte_dir obj_dir) with
+          | false -> Memo.Build.return (Path.Set.singleton src_dir)
+          | true ->
+            let+ modules =
+              match modules with
+              | None -> assert false
+              | Some m -> Memo.Lazy.Async.force m
+            in
+            Path.Set.map ~f:Path.drop_optional_build_context
+              (Modules.source_dirs modules))
     in
     let t =
       { info
@@ -1200,7 +1235,8 @@ end = struct
     t.sub_systems <-
       Lib_info.sub_systems info
       |> Sub_system_name.Map.mapi ~f:(fun name info ->
-             lazy (Sub_system.instantiate name info t ~resolve));
+             Memo.Lazy.Async.create (fun () ->
+                 Sub_system.instantiate name info t ~resolve));
     let res =
       let hidden =
         match hidden with
@@ -1652,7 +1688,8 @@ module Compile = struct
     ; requires_link : t list Or_exn.t Lazy.t
     ; pps : t list Or_exn.t
     ; resolved_selects : Resolved_select.t list
-    ; sub_systems : Sub_system0.Instance.t Lazy.t Sub_system_name.Map.t
+    ; sub_systems :
+        Sub_system0.Instance.t Memo.Lazy.Async.t Sub_system_name.Map.t
     ; merlin_ident : Merlin_ident.t
     }
 
@@ -1697,7 +1734,11 @@ module Compile = struct
 
   let sub_systems t =
     Sub_system_name.Map.values t.sub_systems
-    |> List.map ~f:(fun (lazy (Sub_system0.Instance.T ((module M), t))) ->
+    |> Memo.Build.parallel_map ~f:(fun sub_system ->
+           let open Memo.Build.O in
+           let+ (Sub_system0.Instance.T ((module M), t)) =
+             Memo.Lazy.Async.force sub_system
+           in
            M.T t)
 end
 
@@ -1904,34 +1945,34 @@ let to_dune_lib ({ info; _ } as lib) ~modules ~foreign_objects ~dir =
       let+ field = field in
       Some (loc, mangled_name field)
   in
-  let open Result.O in
-  let+ implements =
-    use_public_name ~info_field:(Lib_info.implements info)
-      ~lib_field:(implements lib)
-  and+ default_implementation =
-    use_public_name
-      ~info_field:(Lib_info.default_implementation info)
-      ~lib_field:(Option.map ~f:Lazy.force lib.default_implementation)
-  and+ ppx_runtime_deps = lib.ppx_runtime_deps
-  and+ main_module_name = main_module_name lib
-  and+ requires = lib.requires
-  and+ re_exports = lib.re_exports
-  and+ sub_systems = Sub_system.public_info lib in
-  let ppx_runtime_deps = add_loc ppx_runtime_deps in
-  let requires =
-    List.map requires ~f:(fun lib ->
-        if List.exists re_exports ~f:(fun r -> r = lib) then
-          Lib_dep.Re_export (loc, mangled_name lib)
-        else
-          Direct (loc, mangled_name lib))
-  in
-  let name = mangled_name lib in
-  let info =
-    Lib_info.for_dune_package info ~name ~ppx_runtime_deps ~requires
-      ~foreign_objects ~obj_dir ~implements ~default_implementation ~sub_systems
-      ~modules
-  in
-  Dune_package.Lib.of_dune_lib ~info ~modules ~main_module_name
+  Memo.Build.map (Sub_system.public_info lib) ~f:(fun sub_systems ->
+      let open Result.O in
+      let+ implements =
+        use_public_name ~info_field:(Lib_info.implements info)
+          ~lib_field:(implements lib)
+      and+ default_implementation =
+        use_public_name
+          ~info_field:(Lib_info.default_implementation info)
+          ~lib_field:(Option.map ~f:Lazy.force lib.default_implementation)
+      and+ ppx_runtime_deps = lib.ppx_runtime_deps
+      and+ main_module_name = main_module_name lib
+      and+ requires = lib.requires
+      and+ re_exports = lib.re_exports in
+      let ppx_runtime_deps = add_loc ppx_runtime_deps in
+      let requires =
+        List.map requires ~f:(fun lib ->
+            if List.exists re_exports ~f:(fun r -> r = lib) then
+              Lib_dep.Re_export (loc, mangled_name lib)
+            else
+              Direct (loc, mangled_name lib))
+      in
+      let name = mangled_name lib in
+      let info =
+        Lib_info.for_dune_package info ~name ~ppx_runtime_deps ~requires
+          ~foreign_objects ~obj_dir ~implements ~default_implementation
+          ~sub_systems ~modules
+      in
+      Dune_package.Lib.of_dune_lib ~info ~modules ~main_module_name)
 
 module Local : sig
   type t = private lib

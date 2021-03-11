@@ -39,8 +39,6 @@ val singleton_exe : Module.t -> t
 
 val fold_no_vlib : t -> init:'acc -> f:(Module.t -> 'acc -> 'acc) -> 'acc
 
-val iter_no_vlib : t -> f:(Module.t -> unit) -> unit
-
 val exe_unwrapped : Module.Name_map.t -> t
 
 val exe_wrapped : src_dir:Path.Build.t -> modules:Module.Name_map.t -> t

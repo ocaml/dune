@@ -28,27 +28,30 @@ let term =
   let sctx, utop_path =
     Scheduler.go ~common (fun () ->
         let open Fiber.O in
-        let* setup = Memo.Build.run (Import.Main.setup common) in
-        let context =
-          Import.Main.find_context_exn setup.workspace ~name:ctx_name
-        in
-        let sctx = Import.Main.find_scontext_exn setup ~name:ctx_name in
-        let setup =
-          { setup with
-            workspace = { setup.workspace with contexts = [ context ] }
-          }
-        in
-        let target =
-          match Target.resolve_target common ~setup utop_target with
-          | Error _ ->
-            User_error.raise
-              [ Pp.textf "no library is defined in %s" (String.maybe_quoted dir)
-              ]
-          | Ok [ File target ] -> target
-          | Ok _ -> assert false
-        in
-        let+ () = Memo.Build.run (do_build [ File target ]) in
-        (sctx, Path.to_string target))
+        let* setup = Import.Main.setup common in
+        Build_system.run (fun () ->
+            let open Memo.Build.O in
+            let context =
+              Import.Main.find_context_exn setup.workspace ~name:ctx_name
+            in
+            let sctx = Import.Main.find_scontext_exn setup ~name:ctx_name in
+            let setup =
+              { setup with
+                workspace = { setup.workspace with contexts = [ context ] }
+              }
+            in
+            let* target =
+              Target.resolve_target common ~setup utop_target >>| function
+              | Error _ ->
+                User_error.raise
+                  [ Pp.textf "no library is defined in %s"
+                      (String.maybe_quoted dir)
+                  ]
+              | Ok [ File target ] -> target
+              | Ok _ -> assert false
+            in
+            let+ () = Build_system.build (Target.request [ File target ]) in
+            (sctx, Path.to_string target)))
   in
   Hooks.End_of_build.run ();
   restore_cwd_and_execve common utop_path (utop_path :: args)

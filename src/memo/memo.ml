@@ -2,12 +2,22 @@ open! Stdune
 open Fiber.O
 module Function = Function
 
+let track_locations_of_lazy_values = ref false
+
 module Build = struct
   include Fiber
 
+  module O = struct
+    include Fiber.O
+
+    let ( and* ) a b = fork_and_join (fun () -> a) (fun () -> b)
+
+    let ( and+ ) = ( and* )
+  end
+
   let run = Fun.id
 
-  let of_fiber = Fun.id
+  let of_reproducible_fiber = Fun.id
 end
 
 let unwrap_exn = ref Fun.id
@@ -152,6 +162,18 @@ module Spec = struct
       | None -> String.Table.set by_name info.name (T t))
 
   let create (type o) ~info ~input ~visibility ~(output : o Output.t) ~f =
+    let info =
+      match info with
+      | None when !track_locations_of_lazy_values ->
+        Option.map
+          (Caller_id.get ~skip:[ __FILE__ ])
+          ~f:(fun loc ->
+            let name =
+              sprintf "lazy value created at %s" (Loc.to_file_colon_line loc)
+            in
+            { Function.Info.name; doc = None })
+      | _ -> info
+    in
     let (output : (module Output_simple with type t = o)), allow_cutoff =
       match output with
       | Simple (module Output) -> ((module Output), Allow_cutoff.No)

@@ -139,9 +139,8 @@ end = struct
     in
     let add_deps f { static; dyn } =
       f (remove_targets static)
-      >>> Action_builder.Expert.action_builder
-            (let+ set = dyn in
-             f (remove_targets set))
+      >>> let* set = dyn in
+          f (remove_targets set)
     in
     Action_builder.with_targets_set ~targets
       (let+ () = add_deps Action_builder.path_set deps

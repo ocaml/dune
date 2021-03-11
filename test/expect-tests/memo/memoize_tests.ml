@@ -702,9 +702,9 @@ let%expect_test "diamond with non-uniform cutoff structure" =
   let summit offset =
     printf "Started evaluating summit with offset %d\n" offset;
     let+ after_no_cutoff, after_yes_cutoff =
-      Memo.Build.both
-        (Memo.exec after_no_cutoff ())
-        (Memo.exec after_yes_cutoff ())
+      let* x = Memo.exec after_no_cutoff () in
+      let+ y = Memo.exec after_yes_cutoff () in
+      (x, y)
     in
     let result = after_no_cutoff + after_yes_cutoff + offset in
     printf "Evaluated summit with offset %d: %d\n" offset result;
@@ -1023,7 +1023,7 @@ let%expect_test "deadlocks when creating a cycle twice" =
         let base = Fdecl.get fdecl_base in
         let+ result =
           let+ bases =
-            Build.of_fiber
+            Build.of_reproducible_fiber
               (Fiber.parallel_map [ (); () ] ~f:(fun () ->
                    Build.run (Memo.exec base ())))
           in

@@ -3,6 +3,7 @@ module Log = Dune_util.Log
 module Context = Dune_rules.Context
 module Action_builder = Dune_engine.Action_builder
 module Build_system = Dune_engine.Build_system
+open Memo.Build.O
 
 type t =
   | File of Path.t
@@ -30,7 +31,7 @@ let request targets =
 let target_hint (_setup : Dune_rules.Main.build_system) path =
   assert (Path.is_managed path);
   let sub_dir = Option.value ~default:path (Path.parent path) in
-  let candidates = Path.Build.Set.to_list (Build_system.all_targets ()) in
+  let+ candidates = Build_system.all_targets () >>| Path.Build.Set.to_list in
   let candidates =
     if Path.is_in_build_dir path then
       List.map ~f:Path.build candidates
@@ -54,7 +55,10 @@ let target_hint (_setup : Dune_rules.Main.build_system) path =
 
 let resolve_path path ~(setup : Dune_rules.Main.build_system) =
   let checked = Util.check_path setup.workspace.contexts path in
-  let can't_build path = Error (target_hint setup path) in
+  let can't_build path =
+    let+ hint = target_hint setup path in
+    Error hint
+  in
   let as_source_dir src =
     if Dune_engine.File_tree.dir_exists src then
       Some
@@ -66,32 +70,30 @@ let resolve_path path ~(setup : Dune_rules.Main.build_system) =
       None
   in
   let build () =
-    if Build_system.is_target path then
-      Ok [ File path ]
-    else
-      can't_build path
+    Build_system.is_target path >>= function
+    | true -> Memo.Build.return (Ok [ File path ])
+    | false -> can't_build path
   in
   match checked with
-  | External _ -> Ok [ File path ]
+  | External _ -> Memo.Build.return (Ok [ File path ])
   | In_source_dir src -> (
     match as_source_dir src with
-    | Some res -> Ok res
+    | Some res -> Memo.Build.return (Ok res)
     | None -> (
-      match
-        List.filter_map setup.workspace.contexts ~f:(fun ctx ->
-            let path =
-              Path.append_source (Path.build ctx.Context.build_dir) src
-            in
-            if Build_system.is_target path then
-              Some (File path)
-            else
-              None)
-      with
+      Memo.Build.parallel_map setup.workspace.contexts ~f:(fun ctx ->
+          let path =
+            Path.append_source (Path.build ctx.Context.build_dir) src
+          in
+          Build_system.is_target path >>| function
+          | true -> Some (File path)
+          | false -> None)
+      >>| List.filter_map ~f:Fun.id
+      >>= function
       | [] -> can't_build path
-      | l -> Ok l))
+      | l -> Memo.Build.return (Ok l)))
   | In_build_dir (_ctx, src) -> (
     match as_source_dir src with
-    | Some res -> Ok res
+    | Some res -> Memo.Build.return (Ok res)
     | None -> build ())
   | In_install_dir _ -> build ()
 
@@ -107,9 +109,11 @@ let expand_path common ~(setup : Dune_rules.Main.build_system) ctx sv =
   let expander =
     Dune_rules.Dir_contents.add_sources_to_expander sctx expander
   in
-  Path.relative Path.root
-    (Common.prefix_target common
-       (Dune_rules.Expander.Static.expand_str expander sv))
+  let+ s, _deps =
+    Build_system.For_command_line.eval_build_request
+      (Dune_rules.Expander.expand_str expander sv)
+  in
+  Path.relative Path.root (Common.prefix_target common s)
 
 let resolve_alias common ~recursive sv ~(setup : Dune_rules.Main.build_system) =
   match Dune_engine.String_with_vars.text_only sv with
@@ -123,32 +127,36 @@ let resolve_alias common ~recursive sv ~(setup : Dune_rules.Main.build_system) =
 
 let resolve_target common ~setup = function
   | Dune_rules.Dep_conf.Alias sv as dep ->
-    Result.map_error
-      ~f:(fun hints -> (dep, hints))
-      (resolve_alias common ~recursive:false sv ~setup)
+    Memo.Build.return
+      (Result.map_error
+         ~f:(fun hints -> (dep, hints))
+         (resolve_alias common ~recursive:false sv ~setup))
   | Alias_rec sv as dep ->
-    Result.map_error
-      ~f:(fun hints -> (dep, hints))
-      (resolve_alias common ~recursive:true sv ~setup)
+    Memo.Build.return
+      (Result.map_error
+         ~f:(fun hints -> (dep, hints))
+         (resolve_alias common ~recursive:true sv ~setup))
   | File sv as dep ->
     let f ctx =
-      let path = expand_path common ~setup ctx sv in
-      Result.map_error ~f:(fun hints -> (dep, hints)) (resolve_path path ~setup)
+      let* path = expand_path common ~setup ctx sv in
+      resolve_path path ~setup
+      >>| Result.map_error ~f:(fun hints -> (dep, hints))
     in
-    Result.List.concat_map ~f setup.workspace.contexts
-  | dep -> Error (dep, [])
+    Memo.Build.parallel_map setup.workspace.contexts ~f
+    >>| Result.List.concat_map ~f:Fun.id
+  | dep -> Memo.Build.return (Error (dep, []))
 
 let resolve_targets_mixed common setup user_targets =
   match user_targets with
-  | [] -> []
+  | [] -> Memo.Build.return []
   | _ ->
-    let targets =
-      List.map user_targets ~f:(function
+    let+ targets =
+      Memo.Build.parallel_map user_targets ~f:(function
         | Dep d -> resolve_target common ~setup d
         | Path p ->
-          Result.map_error
-            ~f:(fun hints -> (Arg.Dep.file (Path.to_string p), hints))
-            (resolve_path p ~setup))
+          resolve_path p ~setup
+          >>| Result.map_error ~f:(fun hints ->
+                  (Arg.Dep.file (Path.to_string p), hints)))
     in
     let config = Common.config common in
     if config.display = Verbose then
@@ -170,11 +178,11 @@ let resolve_targets common (setup : Dune_rules.Main.build_system) user_targets =
 
 let resolve_targets_exn common setup user_targets =
   resolve_targets common setup user_targets
-  |> List.concat_map ~f:(function
-       | Error (dep, hints) ->
-         User_error.raise
-           [ Pp.textf "Don't know how to build %s"
-               (Arg.Dep.to_string_maybe_quoted dep)
-           ]
-           ~hints
-       | Ok targets -> targets)
+  >>| List.concat_map ~f:(function
+        | Error (dep, hints) ->
+          User_error.raise
+            [ Pp.textf "Don't know how to build %s"
+                (Arg.Dep.to_string_maybe_quoted dep)
+            ]
+            ~hints
+        | Ok targets -> targets)

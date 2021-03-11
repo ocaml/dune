@@ -27,7 +27,7 @@ val get_ppx_driver :
   -> (Loc.t * Lib_name.t) list
   -> (Path.Build.t * string list) Or_exn.t
 
-val gen_rules : Super_context.t -> string list -> unit
+val gen_rules : Super_context.t -> string list -> unit Memo.Build.t
 
 val chdir : Action_unexpanded.t -> Action_unexpanded.t
 

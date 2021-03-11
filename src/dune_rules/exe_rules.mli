@@ -10,4 +10,4 @@ val rules :
   -> scope:Scope.t
   -> expander:Expander.t
   -> Dune_file.Executables.t
-  -> Compilation_context.t * Merlin.t
+  -> (Compilation_context.t * Merlin.t) Memo.Build.t

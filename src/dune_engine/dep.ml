@@ -1,7 +1,5 @@
 open Stdune
 
-let eval_pred = Fdecl.create Dyn.Encoder.opaque
-
 module T = struct
   type t =
     | Env of Env.Var.t
@@ -214,26 +212,13 @@ module Set = struct
 
   let encode t = Dune_lang.Encoder.list encode (to_list t)
 
-  let static_paths t =
-    foldi t ~init:(Path.Set.empty, [])
-      ~f:(fun d _ ((acc_paths, acc_aliases) as acc) ->
-        match d with
-        | Alias a -> (acc_paths, a :: acc_aliases)
-        | File f -> (Path.Set.add acc_paths f, acc_aliases)
-        | File_selector g ->
-          (Path.Set.union acc_paths (Fdecl.get eval_pred g), acc_aliases)
-        | Universe
-        | Env _ ->
-          acc
-        | Sandbox_config _ -> acc)
-
   (* This is to force the rules to be loaded for directories without files when
      depending on [(source_tree x)]. Otherwise, we wouldn't clean up stale
      directories in directories that contain no file. *)
   let dir_without_files_dep dir =
     file_selector (File_selector.create ~dir Predicate.false_)
 
-  let source_tree dir =
+  let source_tree_gen dir ~empty ~add_empty_dir ~add_paths =
     let prefix_with, dir = Path.extract_build_context_dir_exn dir in
     match File_tree.find_dir dir with
     | None -> empty
@@ -243,7 +228,7 @@ module Set = struct
           let files = File_tree.Dir.files dir in
           let path = Path.append_source prefix_with (File_tree.Dir.path dir) in
           match String.Set.is_empty files with
-          | true -> add acc (dir_without_files_dep path)
+          | true -> add_empty_dir acc path
           | false ->
             let paths =
               String.Set.fold files ~init:Path.Set.empty ~f:(fun fn acc ->
@@ -251,12 +236,14 @@ module Set = struct
             in
             add_paths acc paths)
 
-  let source_tree dir =
-    let t = source_tree dir in
-    (t, fst (static_paths t))
+  let source_tree =
+    source_tree_gen ~empty ~add_paths ~add_empty_dir:(fun t dir ->
+        add t (dir_without_files_dep dir))
 
-  let files_approx t = static_paths t |> fst
-
-  let parallel_iter_files_approx t ~f =
-    static_paths t |> fst |> Memo.Build.parallel_iter_set (module Path.Set) ~f
+  let source_tree_with_file_set =
+    source_tree_gen ~empty:(empty, Path.Set.empty)
+      ~add_paths:(fun (deps, paths) more_paths ->
+        (add_paths deps more_paths, Path.Set.union paths more_paths))
+      ~add_empty_dir:(fun (deps, paths) dir ->
+        (add deps (dir_without_files_dep dir), paths))
 end

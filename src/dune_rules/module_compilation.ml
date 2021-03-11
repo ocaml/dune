@@ -343,20 +343,25 @@ let build_root_module root_module ~entries ~cctx =
     ~dep_graphs:(Dep_graph.Ml_kind.dummy root_module)
 
 let build_all cctx ~dep_graphs =
+  let open Memo.Build.O in
   let for_wrapped_compat = lazy (Compilation_context.for_wrapped_compat cctx) in
   let modules = Compilation_context.modules cctx in
-  Modules.iter_no_vlib modules ~f:(fun m ->
+  Memo.Build.parallel_iter
+    (Modules.fold_no_vlib modules ~init:[] ~f:(fun x acc -> x :: acc))
+    ~f:(fun m ->
       match Module.kind m with
       | Root ->
         let cctx = Compilation_context.for_root_module cctx in
-        let entries = Compilation_context.root_module_entries cctx in
+        let+ entries = Compilation_context.root_module_entries cctx in
         build_root_module m ~entries ~cctx
       | Alias ->
         let cctx = Compilation_context.for_alias_module cctx in
-        build_alias_module ~alias_module:m ~cctx
+        build_alias_module ~alias_module:m ~cctx;
+        Memo.Build.return ()
       | Wrapped_compat ->
         let cctx = Lazy.force for_wrapped_compat in
-        build_module cctx ~dep_graphs m
+        build_module cctx ~dep_graphs m;
+        Memo.Build.return ()
       | _ ->
         let cctx =
           if Modules.is_stdlib_alias modules m then
@@ -366,4 +371,5 @@ let build_all cctx ~dep_graphs =
           else
             cctx
         in
-        build_module cctx ~dep_graphs m)
+        build_module cctx ~dep_graphs m;
+        Memo.Build.return ())

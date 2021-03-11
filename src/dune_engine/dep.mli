@@ -22,10 +22,6 @@ val sandbox_config : Sandbox_config.t -> t
 
 val compare : t -> t -> Ordering.t
 
-(** The evaluation of file predicates is done by the build_system. This
-    necessitates a forward declaration to use in this module. *)
-val eval_pred : (File_selector.t -> Path.Set.t) Fdecl.t
-
 module Map : sig
   type dep := t
 
@@ -92,27 +88,31 @@ module Set : sig
 
   val union_map : 'a list -> f:('a -> t) -> t
 
+  val to_list : t -> dep list
+
   val of_list : dep list -> t
 
   val of_list_map : 'a list -> f:('a -> dep) -> t
 
-  (** It's weird to return a [Path.t list] here, but the call site needs it and
-      this lets us avoid having to choose between [static_paths] and
-      [eval_paths] both of which seem awkward. *)
-  val source_tree : Path.t -> t * Path.Set.t
+  (** Return dependencies on all source files under a certain source directory.
+
+      Dependency on a source_tree requires special care for empty directory, so
+      you should use this function rather than manually traverse the source
+      tree. *)
+  val source_tree : Path.t -> t
+
+  (** Same as [source_tree] but also return the set of files as a set. Because
+      of the special care for empty directories, the set of dependencies
+      returned contains dependencies other than [File]. So exracting the set of
+      files from the dependency set is a bit awkward. This is why this function
+      exist. *)
+  val source_tree_with_file_set : Path.t -> t * Path.Set.t
 
   val of_files : Path.t list -> t
 
   val of_files_set : Path.Set.t -> t
 
-  val static_paths : t -> Path.Set.t * Alias.t list
-
-  val files_approx : t -> Path.Set.t
-
   val encode : t -> Dune_lang.t
 
   val add_paths : t -> Path.Set.t -> t
-
-  val parallel_iter_files_approx :
-    t -> f:(Path.t -> unit Memo.Build.t) -> unit Memo.Build.t
 end

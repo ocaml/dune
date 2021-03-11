@@ -920,12 +920,7 @@ let map_exe (context : t) =
 let install_prefix t =
   let open Fiber.O in
   let* opam = Memo.Build.run (Opam.opam_binary_exn ()) in
-  Process.run_capture (Accept Predicate_lang.any) opam ~env:t.env
-    [ "config"; "var"; "prefix" ]
-  >>| function
-  | Ok s -> Path.of_filename_relative_to_initial_cwd (String.trim s)
-  | Error _ ->
-    (* jeremiedimino: we should probably be more strict here when we are running
-       in an opam environment. i.e. when [build_environment_kind.query] reports
-       [Opam2_environment]. *)
-    Path.parent_exn t.ocaml_bin
+  let+ s =
+    Process.run_capture Strict opam ~env:t.env [ "config"; "var"; "prefix" ]
+  in
+  Path.of_filename_relative_to_initial_cwd (String.trim s)

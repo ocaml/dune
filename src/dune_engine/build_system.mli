@@ -90,7 +90,7 @@ val set_vcs : Vcs.t list -> unit Fiber.t
 val prefix_rules :
   unit Action_builder.t -> f:(unit -> 'a Memo.Build.t) -> 'a Memo.Build.t
 
-(** [eval_pred t \[glob\]] returns the list of files in [File_selector.dir glob]
+(** [eval_pred \[glob\]] returns the list of files in [File_selector.dir glob]
     that matches [File_selector.predicate glob]. The list of files includes the
     list of targets. *)
 val eval_pred : File_selector.t -> Path.Set.t Memo.Build.t

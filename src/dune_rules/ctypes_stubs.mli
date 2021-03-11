@@ -6,6 +6,8 @@ open! Stdune
 
 val cflags_sexp : external_library_name:string -> string
 
+val c_library_flags : external_library_name:string -> string
+
 val c_generated_functions_cout_no_ext : external_library_name:string -> string
 
 val add :

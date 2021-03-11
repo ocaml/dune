@@ -103,6 +103,27 @@ let with_empty_intf ~sctx ~dir module_ =
   Super_context.add_rule sctx ~dir rule;
   Module.add_file module_ Ml_kind.Intf (Module.File.make Dialect.ocaml name)
 
+let ctypes_cclib_flags ~standard ~scope ~expander exes =
+  let buildable = exes.Executables.buildable in
+  match buildable.Buildable.ctypes with
+  | None -> standard
+  | Some ctypes ->
+    let ctypes_c_library_flags =
+      let path_to_sexp_file =
+        Ctypes_stubs.c_library_flags
+          ~external_library_name:ctypes.Dune_file.Ctypes.external_library_name
+      in
+      let parsing_context =
+        let project = Scope.project scope in
+        Dune_project.parsing_context project
+      in
+      Ordered_set_lang.Unexpanded.include_single
+        ~context:parsing_context ~pos:("", 0, 0, 0)
+        path_to_sexp_file
+    in
+    Expander.expand_and_eval_set expander ctypes_c_library_flags
+      ~standard
+
 let executables_rules ~sctx ~dir ~expander ~dir_contents ~scope ~compile_info
     ~embed_in_plugin_libraries (exes : Dune_file.Executables.t) =
   (* Use "eobjs" rather than "objs" to avoid a potential conflict with a library
@@ -179,13 +200,15 @@ let executables_rules ~sctx ~dir ~expander ~dir_contents ~scope ~compile_info
     (* Building an archive for foreign stubs, we link the corresponding object
        files directly to improve perf. *)
     let link_args =
+      let standard = Action_builder.return [] in
       let link_flags =
         let link_deps = Dep_conf_eval.unnamed ~expander exes.link_deps in
         link_deps
         >>> Expander.expand_and_eval_set expander exes.link_flags
-              ~standard:(Action_builder.return [])
+              ~standard
       in
-      let+ flags = link_flags in
+      let+ flags = link_flags
+      and+ ctypes_cclib_flags = ctypes_cclib_flags ~scope ~standard ~expander exes in
       Command.Args.S
         [ Command.Args.As flags
         ; Command.Args.S
@@ -194,8 +217,10 @@ let executables_rules ~sctx ~dir ~expander ~dir_contents ~scope ~compile_info
                exes.buildable.foreign_archives |> List.map ~f:snd
              in
              List.map foreign_archives ~f:(fun archive ->
-                 let lib = Foreign.Archive.lib_file ~archive ~dir ~ext_lib in
-                 Command.Args.S [ A "-cclib"; Dep (Path.build lib) ]))
+               let lib = Foreign.Archive.lib_file ~archive ~dir ~ext_lib in
+               Command.Args.S [ A "-cclib"; Dep (Path.build lib) ]))
+        ; Command.Args.As
+            (List.concat_map ctypes_cclib_flags ~f:(fun f -> ["-cclib"; f]))
         ]
     in
     let o_files =
@@ -243,8 +268,13 @@ let compile_info ~scope (exes : Dune_file.Executables.t) =
          ~instrumentation_backend:
            (Lib.DB.instrumentation_backend (Scope.libs scope)))
   in
+  let ctypes_libraries =
+    if Option.is_none exes.buildable.ctypes then []
+    else Ctypes_rules.libraries_needed_for_ctypes ~loc:Loc.none
+  in
+  let libraries = exes.buildable.libraries @ ctypes_libraries in
   Lib.DB.resolve_user_written_deps_for_exes (Scope.libs scope) exes.names
-    exes.buildable.libraries ~pps ~dune_version
+    libraries ~pps ~dune_version
     ~allow_overlaps:exes.buildable.allow_overlapping_dependencies
     ~forbidden_libraries:exes.forbidden_libraries
 

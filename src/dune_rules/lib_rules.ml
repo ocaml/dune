@@ -373,7 +373,7 @@ let cctx (lib : Library.t) ~sctx ~source_modules ~dir ~expander ~scope
     ?stdlib:lib.stdlib ~package ?vimpl ~modes
 
 let library_rules (lib : Library.t) ~cctx ~source_modules ~dir_contents
-    ~compile_info =
+    ~compile_info ~dep_graphs =
   (* Preprocess before adding the alias module as it doesn't need preprocessing *)
   let source_modules =
     Modules.fold_user_written source_modules ~init:[] ~f:(fun m acc -> m :: acc)
@@ -387,7 +387,6 @@ let library_rules (lib : Library.t) ~cctx ~source_modules ~dir_contents
   let scope = Compilation_context.scope cctx in
   let requires_compile = Compilation_context.requires_compile cctx in
   let stdlib_dir = (Compilation_context.context cctx).Context.stdlib_dir in
-  let dep_graphs = Dep_rules.rules cctx ~modules in
   Option.iter vimpl ~f:(Virtual_rules.setup_copy_rules_for_impl ~sctx ~dir);
   Check_rules.add_obj_dir sctx ~obj_dir;
   gen_wrapped_compat_modules lib cctx;
@@ -436,19 +435,23 @@ let rules (lib : Library.t) ~sctx ~dir_contents ~dir ~expander ~scope :
     let cctx =
       cctx lib ~sctx ~source_modules ~dir ~scope ~expander ~compile_info
     in
+    let dep_graphs =
+      Dep_rules.rules cctx ~modules:(Compilation_context.modules cctx)
+    in
     let () =
       let buildable = lib.Library.buildable in
       Option.iter buildable.Buildable.ctypes ~f:(fun _ctypes ->
-        let _loc, _name =  lib.Library.name in
-        ()
-        (*Ctypes_rules.gen_rules ~cctx ~buildable ~loc ~sctx ~scope ~dir*)
-      )
+        Ctypes_rules.gen_rules
+          ~loc:(fst lib.Library.name)
+          ~cctx ~dep_graphs ~buildable ~sctx ~scope ~dir)
     in
     library_rules lib ~cctx ~source_modules ~dir_contents ~compile_info
+      ~dep_graphs
   in
   Buildable_rules.gen_select_rules sctx compile_info ~dir;
   let cctx, merlin =
     Buildable_rules.with_lib_deps
       (Super_context.context sctx) compile_info ~dir ~f
+
   in
   cctx, merlin

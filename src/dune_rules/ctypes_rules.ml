@@ -102,8 +102,13 @@ module Stanza_util = struct
   let c_generated_functions_cout_c ctypes =
     sprintf "%s__c_cout_generated_functions.c" ctypes.Ctypes.external_library_name
 
-  let _libraries_needed_for_ctypes () =
-    ["ctypes"; "ctypes.stubs"]
+  let lib_deps_of_strings ~loc lst =
+    List.map lst ~f:(fun lib ->
+      Lib_dep.Direct (loc, Lib_name.of_string lib))
+
+  let libraries_needed_for_ctypes ~loc =
+    let libraries = ["ctypes"; "ctypes.stubs"] in
+    lib_deps_of_strings ~loc libraries
 
   let generated_modules ctypes =
     [ type_gen_script ctypes |> Module_name.of_string
@@ -127,6 +132,8 @@ module Stanza_util = struct
 end
 
 let generated_ml_and_c_files = Stanza_util.generated_ml_and_c_files
+
+let libraries_needed_for_ctypes = Stanza_util.libraries_needed_for_ctypes
 
 let ml_of_module_name mn =
   Module_name.to_string mn ^ ".ml"
@@ -354,8 +361,7 @@ let cctx_with_substitutions ?(libraries=[]) ~modules ~dir
     let dune_version = Scope.project scope |> Dune_project.dune_version in
     Lib.DB.resolve_user_written_deps_for_exes (Scope.libs scope)
       [ (loc, "ctypes") ]
-      (List.map libraries ~f:(fun lib ->
-         Lib_dep.Direct (loc, Lib_name.of_string lib)))
+      (Stanza_util.lib_deps_of_strings ~loc libraries)
       ~dune_version ~pps:[]
   in
   let modules = modules_of_list ~dir ~modules in

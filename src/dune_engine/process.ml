@@ -351,7 +351,7 @@ module Exit_status = struct
      included in the error message from the command. *)
   let fail paragraphs = raise (User_error.E (User_message.make paragraphs))
 
-  let handle_verbose t ~ok_codes ~id ~output ~command_line =
+  let handle_verbose t ~id ~output ~command_line =
     let open Pp.O in
     let output = parse_output output in
     match t with
@@ -363,13 +363,6 @@ module Exit_status = struct
                  ++ pp_id id ++ Pp.char ':'
                ; output
                ]));
-      if not (ok_codes n) then
-        User_warning.emit
-          [ Pp.tag User_message.Style.Kwd (Pp.verbatim "Command")
-            ++ Pp.space ++ pp_id id
-            ++ Pp.textf
-                 " exited with code %d, but I'm ignoring it, hope that's OK." n
-          ];
       n
     | Error err ->
       let msg =
@@ -570,7 +563,7 @@ let run_internal ?dir ?(stdout_to = Io.stdout) ?(stderr_to = Io.stderr)
       match (display, exit_status, output) with
       | (Quiet | Progress), Ok n, "" -> n (* Optimisation for the common case *)
       | Verbose, _, _ ->
-        Exit_status.handle_verbose exit_status ~ok_codes ~id
+        Exit_status.handle_verbose exit_status ~id
           ~command_line:fancy_command_line ~output
       | _ ->
         Exit_status.handle_non_verbose exit_status ~prog:prog_str ~command_line

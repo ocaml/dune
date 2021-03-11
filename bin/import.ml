@@ -136,8 +136,8 @@ end
 module Scheduler = struct
   include Dune_engine.Scheduler
 
-  let maybe_clear_screen (config : Config.t) =
-    match config.terminal_persistence with
+  let maybe_clear_screen (dune_config : Dune_config.t) =
+    match dune_config.terminal_persistence with
     | Clear_on_rebuild -> Console.reset ()
     | Preserve ->
       Console.print_user_message
@@ -150,9 +150,9 @@ module Scheduler = struct
 
   let on_tick () = Console.Status_line.refresh ()
 
-  let on_event_poll config = function
+  let on_event_poll dune_config _config = function
     | Scheduler.Run.Event.Go Tick -> on_tick ()
-    | Scheduler.Run.Event.Source_files_changed -> maybe_clear_screen config
+    | Scheduler.Run.Event.Source_files_changed -> maybe_clear_screen dune_config
     | Build_interrupted ->
       let status_line =
         Some
@@ -183,10 +183,12 @@ module Scheduler = struct
       f
 
   let poll ~(common : Common.t) ~once ~finally =
-    let config = Common.config common in
+    let dune_config = Common.config common in
     let rpc = Common.rpc common |> Option.map ~f:Dune_rpc_impl.Server.config in
-    let config = Dune_config.for_scheduler config rpc in
-    Scheduler.Run.poll config ~on_event:on_event_poll ~once ~finally
+    let config = Dune_config.for_scheduler dune_config rpc in
+    Scheduler.Run.poll config
+      ~on_event:(on_event_poll dune_config)
+      ~once ~finally
 end
 
 let restore_cwd_and_execve (common : Common.t) prog argv env =

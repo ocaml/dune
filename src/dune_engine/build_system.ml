@@ -1965,7 +1965,6 @@ let process_exn_and_reraise exn =
 let run f =
   Hooks.End_of_build.once Promotion.finalize;
   let t = get_build_system () in
-  t.errors <- [];
   let f () =
     Memo.Build.run
       (Memo.Build.with_error_handler f ~on_error:process_exn_and_reraise)

@@ -1,8 +1,4 @@
-module type Basic = Monoid_intf.Basic
-
-module type Monoid = Monoid_intf.Monoid
-
-module Make (M : Basic) : Monoid with type t = M.t = struct
+module Make (M : Monoid_intf.Basic) : Monoid_intf.S with type t = M.t = struct
   include M
 
   module O = struct
@@ -41,7 +37,7 @@ end)
 
 module List (M : sig
   type t
-end) : Monoid with type t = M.t list = Make (struct
+end) : Monoid_intf.S with type t = M.t list = Make (struct
   type t = M.t list
 
   let empty = []
@@ -49,7 +45,7 @@ end) : Monoid with type t = M.t list = Make (struct
   let combine = ( @ )
 end)
 
-module Unit : Monoid with type t = Unit.t = Make (struct
+module Unit : Monoid_intf.S with type t = Unit.t = Make (struct
   include Unit
 
   let empty = ()
@@ -63,7 +59,7 @@ module Add (M : sig
   val zero : t
 
   val ( + ) : t -> t -> t
-end) : Monoid with type t = M.t = Make (struct
+end) : Monoid_intf.S with type t = M.t = Make (struct
   include M
 
   let empty = zero
@@ -77,7 +73,7 @@ module Mul (M : sig
   val one : t
 
   val ( * ) : t -> t -> t
-end) : Monoid with type t = M.t = Make (struct
+end) : Monoid_intf.S with type t = M.t = Make (struct
   include M
 
   let empty = one
@@ -91,14 +87,14 @@ module Union (M : sig
   val empty : t
 
   val union : t -> t -> t
-end) : Monoid with type t = M.t = Make (struct
+end) : Monoid_intf.S with type t = M.t = Make (struct
   include M
 
   let combine = union
 end)
 
-module Product (A : Basic) (B : Basic) : Monoid with type t = A.t * B.t =
-Make (struct
+module Product (A : Monoid_intf.Basic) (B : Monoid_intf.Basic) :
+  Monoid_intf.S with type t = A.t * B.t = Make (struct
   type t = A.t * B.t
 
   let empty = (A.empty, B.empty)
@@ -109,7 +105,7 @@ end)
 module Function (A : sig
   type t
 end)
-(M : Basic) : Monoid with type t = A.t -> M.t = Make (struct
+(M : Monoid_intf.Basic) : Monoid_intf.S with type t = A.t -> M.t = Make (struct
   type t = A.t -> M.t
 
   let empty _ = M.empty
@@ -119,7 +115,7 @@ end)
 
 module Endofunction (A : sig
   type t
-end) : Monoid with type t = A.t -> A.t = Make (struct
+end) : Monoid_intf.S with type t = A.t -> A.t = Make (struct
   type t = A.t -> A.t
 
   let empty x = x

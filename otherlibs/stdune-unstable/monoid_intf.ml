@@ -18,7 +18,7 @@ end
 (** This module type extends the basic definition of a monoid by adding a
     convenient operator synonym [( @ ) = combine], as well as derived functions
     [reduce] and [map_reduce]. *)
-module type Monoid = sig
+module type S = sig
   include Basic
 
   module O : sig

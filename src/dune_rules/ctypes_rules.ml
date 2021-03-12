@@ -525,3 +525,23 @@ let gen_rules ~dep_graphs ~cctx ~buildable ~loc ~scope ~dir ~sctx =
     ~function_description_module:(Stanza_util.function_description_module ctypes)
     ~c_generated_functions_module:(Stanza_util.c_generated_functions_module ctypes)
     ~c_types_includer_module
+
+let ctypes_cclib_flags ~standard ~scope ~expander ~buildable =
+  match buildable.Buildable.ctypes with
+  | None -> standard
+  | Some ctypes ->
+    let ctypes_c_library_flags =
+      let path_to_sexp_file =
+        Ctypes_stubs.c_library_flags
+          ~external_library_name:ctypes.Dune_file.Ctypes.external_library_name
+      in
+      let parsing_context =
+        let project = Scope.project scope in
+        Dune_project.parsing_context project
+      in
+      Ordered_set_lang.Unexpanded.include_single
+        ~context:parsing_context ~pos:("", 0, 0, 0)
+        path_to_sexp_file
+    in
+    Expander.expand_and_eval_set expander ctypes_c_library_flags
+      ~standard

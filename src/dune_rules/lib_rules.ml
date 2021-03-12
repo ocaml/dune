@@ -17,7 +17,7 @@ let msvc_hack_cclibs =
 
 (* Build an OCaml library. *)
 let build_lib (lib : Library.t) ~native_archives ~sctx ~expander ~flags ~dir
-    ~mode ~cm_files =
+    ~mode ~cm_files ~scope =
   let ctx = Super_context.context sctx in
   Result.iter (Context.compiler ctx mode) ~f:(fun compiler ->
       let target = Library.archive lib ~dir ~ext:(Mode.compiled_lib_ext mode) in
@@ -42,13 +42,16 @@ let build_lib (lib : Library.t) ~native_archives ~sctx ~expander ~flags ~dir
         Action_builder.paths (Cm_files.unsorted_objects_and_cms cm_files ~mode)
       in
       let ocaml_flags = Ocaml_flags.get flags mode in
+      let standard = Action_builder.return [] in
       let cclibs =
-        Expander.expand_and_eval_set expander lib.c_library_flags
-          ~standard:(Action_builder.return [])
+        Expander.expand_and_eval_set expander lib.c_library_flags ~standard
       in
       let library_flags =
-        Expander.expand_and_eval_set expander lib.library_flags
-          ~standard:(Action_builder.return [])
+        Expander.expand_and_eval_set expander lib.library_flags ~standard
+      in
+      let ctypes_cclib_flags =
+        Ctypes_rules.ctypes_cclib_flags ~scope ~standard ~expander
+          ~buildable:lib.buildable
       in
       Super_context.add_rule ~dir sctx ~loc:lib.buildable.loc
         (let open Action_builder.With_targets.O in
@@ -76,6 +79,9 @@ let build_lib (lib : Library.t) ~native_archives ~sctx ~expander ~flags ~dir
                   (match mode with
                   | Byte -> []
                   | Native -> native_archives)
+              ; Dyn
+                  (Action_builder.map ctypes_cclib_flags ~f:(fun x ->
+                     Command.quote_args "-cclib" (map_cclibs x)))
               ]))
 
 let gen_wrapped_compat_modules (lib : Library.t) cctx =
@@ -268,7 +274,7 @@ let build_shared lib ~native_archives ~sctx ~dir ~flags =
       Super_context.add_rule sctx build ~dir)
 
 let setup_build_archives (lib : Dune_file.Library.t) ~cctx
-    ~(dep_graphs : Dep_graph.Ml_kind.t) ~expander =
+    ~(dep_graphs : Dep_graph.Ml_kind.t) ~expander ~scope =
   let obj_dir = Compilation_context.obj_dir cctx in
   let flags = Compilation_context.flags cctx in
   let modules = Compilation_context.modules cctx in
@@ -317,7 +323,7 @@ let setup_build_archives (lib : Dune_file.Library.t) ~cctx
    in
    Mode.Dict.Set.iter modes ~f:(fun mode ->
        build_lib lib ~native_archives ~dir ~sctx ~expander ~flags ~mode
-         ~cm_files));
+         ~cm_files ~scope));
   (* Build *.cma.js *)
   if modes.byte then
     Super_context.add_rules sctx ~dir
@@ -398,7 +404,7 @@ let library_rules (lib : Library.t) ~cctx ~source_modules ~dir_contents
         (Lib.DB.instrumentation_backend (Scope.libs scope))
   in
   if not (Library.is_virtual lib) then
-    setup_build_archives lib ~cctx ~dep_graphs ~expander;
+    setup_build_archives lib ~cctx ~dep_graphs ~expander ~scope;
   let () =
     let vlib_stubs_o_files = Vimpl.vlib_stubs_o_files vimpl in
     if Library.has_foreign lib || List.is_non_empty vlib_stubs_o_files then

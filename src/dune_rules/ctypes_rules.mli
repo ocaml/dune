@@ -3,15 +3,21 @@ open Import
 
 module Ctypes = Dune_file.Ctypes
 
-
 val generated_ml_and_c_files : Ctypes.t -> string list
 
 val gen_rules :
-     dep_graphs : Dep_graph.t Ml_kind.Dict.t
-  -> cctx : Compilation_context.t
-  -> buildable : Dune_file.Buildable.t
-  -> loc : Loc.t
-  -> scope : Scope.t
-  -> dir : Path.Build.t
-  -> sctx : Super_context.t
+     dep_graphs:Dep_graph.t Ml_kind.Dict.t
+  -> cctx:Compilation_context.t
+  -> buildable:Dune_file.Buildable.t
+  -> loc:Loc.t
+  -> scope:Scope.t
+  -> dir:Path.Build.t
+  -> sctx:Super_context.t
   -> unit
+
+val ctypes_cclib_flags :
+    standard:string list Action_builder.t
+  -> scope:Scope.t
+  -> expander:Expander.t
+  -> buildable:Dune_file.Buildable.t
+  -> string list Action_builder.t

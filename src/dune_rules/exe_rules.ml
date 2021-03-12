@@ -103,27 +103,6 @@ let with_empty_intf ~sctx ~dir module_ =
   Super_context.add_rule sctx ~dir rule;
   Module.add_file module_ Ml_kind.Intf (Module.File.make Dialect.ocaml name)
 
-let ctypes_cclib_flags ~standard ~scope ~expander exes =
-  let buildable = exes.Executables.buildable in
-  match buildable.Buildable.ctypes with
-  | None -> standard
-  | Some ctypes ->
-    let ctypes_c_library_flags =
-      let path_to_sexp_file =
-        Ctypes_stubs.c_library_flags
-          ~external_library_name:ctypes.Dune_file.Ctypes.external_library_name
-      in
-      let parsing_context =
-        let project = Scope.project scope in
-        Dune_project.parsing_context project
-      in
-      Ordered_set_lang.Unexpanded.include_single
-        ~context:parsing_context ~pos:("", 0, 0, 0)
-        path_to_sexp_file
-    in
-    Expander.expand_and_eval_set expander ctypes_c_library_flags
-      ~standard
-
 let executables_rules ~sctx ~dir ~expander ~dir_contents ~scope ~compile_info
     ~embed_in_plugin_libraries (exes : Dune_file.Executables.t) =
   (* Use "eobjs" rather than "objs" to avoid a potential conflict with a library
@@ -208,7 +187,10 @@ let executables_rules ~sctx ~dir ~expander ~dir_contents ~scope ~compile_info
               ~standard
       in
       let+ flags = link_flags
-      and+ ctypes_cclib_flags = ctypes_cclib_flags ~scope ~standard ~expander exes in
+      and+ ctypes_cclib_flags =
+        Ctypes_rules.ctypes_cclib_flags ~scope ~standard ~expander
+          ~buildable:exes.buildable
+      in
       Command.Args.S
         [ Command.Args.As flags
         ; Command.Args.S
@@ -216,11 +198,16 @@ let executables_rules ~sctx ~dir ~expander ~dir_contents ~scope ~compile_info
              let foreign_archives =
                exes.buildable.foreign_archives |> List.map ~f:snd
              in
+             (* XXX: don't these need the msvc hack being done in lib_rules? *)
+             (* XXX: also the Command.quote_args being done in lib_rules? *)
              List.map foreign_archives ~f:(fun archive ->
                let lib = Foreign.Archive.lib_file ~archive ~dir ~ext_lib in
                Command.Args.S [ A "-cclib"; Dep (Path.build lib) ]))
+        (* XXX: don't these need the msvc hack being done in lib_rules? *)
+        (* XXX: also the Command.quote_args being done in lib_rules? *)
         ; Command.Args.As
-            (List.concat_map ctypes_cclib_flags ~f:(fun f -> ["-cclib"; f]))
+            (List.concat_map ctypes_cclib_flags ~f:(fun f ->
+               ["-cclib"; f]))
         ]
     in
     let o_files =

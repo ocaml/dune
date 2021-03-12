@@ -138,7 +138,7 @@ let record_gc_and_fd stats =
   let module Json = Chrome_trace.Json in
   let ts = Event.Timestamp.now () in
   let () =
-    let common = Event.common ~name:"gc" ~ts () in
+    let common = Event.common_fields ~name:"gc" ~ts () in
     let args =
       let stat = Gc.stat () in
       [ ("live_words", `Int stat.live_words)
@@ -162,7 +162,7 @@ let record_gc_and_fd stats =
   | This fds ->
     let event =
       let args = [ ("value", `Int fds) ] in
-      let common = Event.common ~name:"fds" ~ts () in
+      let common = Event.common_fields ~name:"fds" ~ts () in
       Event.counter common args
     in
     emit stats event

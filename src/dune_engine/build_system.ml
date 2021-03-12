@@ -1395,7 +1395,7 @@ end = struct
         let event =
           let args = [ ("value", `Int build_system.rule_total) ] in
           let ts = Event.Timestamp.now () in
-          let common = Event.common ~name:"evaluated_rules" ~ts () in
+          let common = Event.common_fields ~name:"evaluated_rules" ~ts () in
           Event.counter common args
         in
         Stats.emit stats event)

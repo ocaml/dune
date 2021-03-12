@@ -37,7 +37,7 @@ module Event = struct
 
   module Timestamp = Timestamp
 
-  type common =
+  type common_fields =
     { name : string
     ; cat : string list
     ; ts : Timestamp.t
@@ -47,7 +47,7 @@ module Event = struct
     ; cname : string option
     }
 
-  let common ?tts ?cname ?(cat = []) ?(pid = 0) ?(tid = 0) ~ts ~name () =
+  let common_fields ?tts ?cname ?(cat = []) ?(pid = 0) ?(tid = 0) ~ts ~name () =
     { tts; cname; cat; ts; pid; tid; name }
 
   let set_ts t ts = { t with ts }
@@ -110,8 +110,8 @@ module Event = struct
 
   (* TODO support flow, samples, referemces, memory dumps *)
   type t =
-    | Counter of common * args * Id.t option
-    | Duration_start of common * args * Id.t option
+    | Counter of common_fields * args * Id.t option
+    | Duration_start of common_fields * args * Id.t option
     | Duration_end of
         { pid : int
         ; tid : int
@@ -119,21 +119,21 @@ module Event = struct
         ; args : args option
         }
     | Complete of
-        { common : common
+        { common : common_fields
         ; args : args option
         ; dur : Timestamp.t
         ; tdur : Timestamp.t option
         }
-    | Instant of common * scope option * args option
+    | Instant of common_fields * scope option * args option
     | Async of
-        { common : common
+        { common : common_fields
         ; async : async
         ; scope : string option
         ; id : Id.t
         ; args : args option
         }
     | Object of
-        { common : common
+        { common : common_fields
         ; object_kind : object_kind
         ; id : Id.t
         ; scope : string option
@@ -147,7 +147,7 @@ module Event = struct
     | None -> fields
     | Some f -> to_field f :: fields
 
-  let common_fields { name; cat; ts; tts; pid; tid; cname } =
+  let json_fields_of_common_fields { name; cat; ts; tts; pid; tid; cname } =
     let fields =
       [ ("name", `String name)
       ; ("cat", `String (String.concat ~sep:"," cat))
@@ -192,11 +192,11 @@ module Event = struct
 
   let to_json_fields : t -> (string * Json.t) list = function
     | Counter (common, args, id) ->
-      let fields = common_fields common in
+      let fields = json_fields_of_common_fields common in
       let fields = phase "C" :: args_field args :: fields in
       add_field_opt Id.field id fields
     | Duration_start (common, args, id) ->
-      let fields = common_fields common in
+      let fields = json_fields_of_common_fields common in
       let fields = phase "B" :: args_field args :: fields in
       add_field_opt Id.field id fields
     | Duration_end { pid; tid; ts; args } ->
@@ -205,21 +205,21 @@ module Event = struct
       in
       add_field_opt args_field args fields
     | Complete { common; dur; args; tdur } ->
-      let fields = common_fields common in
+      let fields = json_fields_of_common_fields common in
       let fields = phase "X" :: ("dur", Timestamp.to_json dur) :: fields in
       let fields =
         add_field_opt (fun tdur -> ("tdur", Timestamp.to_json tdur)) tdur fields
       in
       add_field_opt args_field args fields
     | Instant (common, scope, args) ->
-      let fields = common_fields common in
+      let fields = json_fields_of_common_fields common in
       let fields = phase "i" :: fields in
       let fields =
         add_field_opt (fun s -> ("s", json_of_scope s)) scope fields
       in
       add_field_opt args_field args fields
     | Async { common; async; scope; id; args } ->
-      let fields = common_fields common in
+      let fields = json_fields_of_common_fields common in
       let fields = Id.field id :: fields in
       let fields =
         let ph =
@@ -236,7 +236,7 @@ module Event = struct
       let fields = add_field_opt (fun s -> ("scope", `String s)) scope fields in
       add_field_opt args_field args fields
     | Object { common; object_kind; id; scope } ->
-      let fields = common_fields common in
+      let fields = json_fields_of_common_fields common in
       let fields = Id.field id :: fields in
       let fields =
         let ph, args =

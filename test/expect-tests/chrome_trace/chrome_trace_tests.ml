@@ -18,12 +18,18 @@ let () =
     [ Event.complete
         ~dur:(Timestamp.of_float_seconds 1.)
         ~args:[ ("foo", `String "bar") ]
-        (Event.common ~ts:(Timestamp.of_float_seconds 0.5) ~name:"foo" ())
+        (Event.common_fields
+           ~ts:(Timestamp.of_float_seconds 0.5)
+           ~name:"foo" ())
     ; Event.counter
-        (Event.common ~ts:(Timestamp.of_float_seconds 0.5) ~name:"cnt" ())
+        (Event.common_fields
+           ~ts:(Timestamp.of_float_seconds 0.5)
+           ~name:"cnt" ())
         [ ("bar", `Int 250) ]
     ; Event.async (Id.String "foo") Event.Start
-        (Event.common ~ts:(Timestamp.of_float_seconds 0.5) ~name:"async" ())
+        (Event.common_fields
+           ~ts:(Timestamp.of_float_seconds 0.5)
+           ~name:"async" ())
         ~args:[ ("foo", `Int 100) ]
     ]
   in

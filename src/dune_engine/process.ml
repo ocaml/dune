@@ -458,7 +458,7 @@ let report_process_start stats ~id ~prog ~args =
   let common =
     let name = Filename.basename prog in
     let ts = Timestamp.now () in
-    Event.common ~cat:[ "process" ] ~name ~ts ()
+    Event.common_fields ~cat:[ "process" ] ~name ~ts ()
   in
   let args =
     [ ("process_args", `List (List.map args ~f:(fun arg -> `String arg))) ]

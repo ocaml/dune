@@ -16,6 +16,8 @@ module Json : sig
     | Array of t list
     | Bool of bool
     | Object of (string * t) list
+
+  val to_string : t -> string
 end
 
 module Event : sig
@@ -64,22 +66,6 @@ module Event : sig
 
   val complete :
     ?tdur:Timestamp.t -> ?args:args -> dur:Timestamp.t -> common -> t
+
+  val to_json : t -> Json.t
 end
-
-(** The (mutable) state of reporters. It is basically an output channel. *)
-type t
-
-type dst =
-  | Out of out_channel
-  | Custom of
-      { write : string -> unit
-      ; close : unit -> unit
-      }
-
-val make : dst -> t
-
-(** Output trailing data to make the underlying file valid JSON, and close it. *)
-val close : t -> unit
-
-(** Emity an event *)
-val emit : t -> Event.t -> unit

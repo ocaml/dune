@@ -19,6 +19,7 @@
   dune_glob
   ocaml_config
   chrome_trace
+  stats
   jbuild_support
   dune_action_plugin
   dune_util

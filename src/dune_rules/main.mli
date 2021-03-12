@@ -30,7 +30,7 @@ val scan_workspace :
 
 (** Load dune files and initializes the build system *)
 val init_build_system :
-     ?stats:Chrome_trace.t
+     ?stats:Stats.t
   -> ?only_packages:Package.t Package.Name.Map.t
   -> sandboxing_preference:Sandbox_mode.t list
   -> ?caching:Build_system.caching

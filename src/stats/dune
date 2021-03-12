@@ -1,0 +1,3 @@
+(library
+ (name stats)
+ (libraries stdune chrome_trace))

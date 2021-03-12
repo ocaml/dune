@@ -79,51 +79,6 @@ end = struct
     Json.Int n
 end
 
-type dst =
-  | Out of out_channel
-  | Custom of
-      { write : string -> unit
-      ; close : unit -> unit
-      }
-
-type t =
-  { print : string -> unit
-  ; close : unit -> unit
-  ; buffer : Buffer.t
-  ; mutable after_first_event : bool
-  }
-
-(* all fields of record used *)
-
-let close { print; close; _ } =
-  print "]\n";
-  close ()
-
-let make dst =
-  let print =
-    match dst with
-    | Out out -> Stdlib.output_string out
-    | Custom c -> c.write
-  in
-  let close =
-    match dst with
-    | Out out -> fun () -> Stdlib.close_out out
-    | Custom c -> c.close
-  in
-  let buffer = Buffer.create 1024 in
-  { print; close; after_first_event = false; buffer }
-
-let next_leading_char t =
-  match t.after_first_event with
-  | true -> ','
-  | false ->
-    t.after_first_event <- true;
-    '['
-
-let printf t format_string =
-  let c = next_leading_char t in
-  Printf.ksprintf t.print ("%c" ^^ format_string ^^ "\n") c
-
 module Event = struct
   [@@@ocaml.warning "-37"]
 
@@ -366,5 +321,3 @@ module Event = struct
   let async ?scope ?args id async common =
     Async { common; args; scope; id; async }
 end
-
-let emit t event = printf t "%s" (Json.to_string (Event.to_json event))

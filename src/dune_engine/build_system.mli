@@ -14,7 +14,7 @@ type caching =
 
 (** Initializes the build system. This must be called first. *)
 val init :
-     stats:Chrome_trace.t option
+     stats:Stats.t option
   -> contexts:Build_context.t list
   -> ?build_mutex:Fiber.Mutex.t
   -> promote_source:

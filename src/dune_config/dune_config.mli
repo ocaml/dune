@@ -101,5 +101,5 @@ val to_dyn : t -> Dyn.t
 val for_scheduler :
      t
   -> Dune_engine.Scheduler.Config.Rpc.t option
-  -> Chrome_trace.t option
+  -> Stats.t option
   -> Dune_engine.Scheduler.Config.t

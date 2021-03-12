@@ -466,13 +466,13 @@ let report_process_start stats ~id ~prog ~args =
     ]
   in
   let event = Event.async (Int id) ~args Start common in
-  Chrome_trace.emit stats event;
+  Stats.emit stats event;
   common
 
 let report_process_end stats common ~id =
   let common = Event.set_ts common (Timestamp.now ()) in
   let event = Event.async (Int id) End common in
-  Chrome_trace.emit stats event
+  Stats.emit stats event
 
 let run_internal ?dir ?(stdout_to = Io.stdout) ?(stderr_to = Io.stderr)
     ?(stdin_from = Io.null In) ~env ~purpose fail_mode prog args =

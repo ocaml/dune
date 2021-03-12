@@ -63,7 +63,7 @@ type t =
   ; always_show_command_line : bool
   ; promote_install_files : bool
   ; instrument_with : Dune_engine.Lib_name.t list option
-  ; stats : Chrome_trace.t option
+  ; stats : Stats.t option
   }
 
 let workspace_file t = t.workspace_file
@@ -771,8 +771,8 @@ let term =
   in
   let stats =
     Option.map stats_trace_file ~f:(fun f ->
-        let stats = Chrome_trace.make (Out (open_out f)) in
-        at_exit (fun () -> Chrome_trace.close stats);
+        let stats = Stats.create (Out (open_out f)) in
+        at_exit (fun () -> Stats.close stats);
         stats)
   in
   { debug_dep_path

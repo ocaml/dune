@@ -16,7 +16,7 @@ val rpc : t -> Dune_rpc_impl.Server.t option
 
 val set_config : t -> Dune_config.t -> t
 
-val stats : t -> Chrome_trace.t option
+val stats : t -> Stats.t option
 
 module Only_packages : sig
   type t = private

@@ -8,7 +8,7 @@ let buf = Buffer.create 0
 let c =
   let write s = Buffer.add_string buf s in
   let close () = () in
-  Chrome_trace.make (Custom { write; close })
+  Stats.create (Custom { write; close })
 
 let () =
   let module Event = Chrome_trace.Event in
@@ -28,8 +28,8 @@ let () =
         ~args:[ ("foo", Int 100) ]
     ]
   in
-  List.iter events ~f:(Chrome_trace.emit c);
-  Chrome_trace.close c
+  List.iter events ~f:(Stats.emit c);
+  Stats.close c
 
 let buffer_lines () = String.split_lines (Buffer.contents buf)
 

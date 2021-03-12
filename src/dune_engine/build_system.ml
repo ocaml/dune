@@ -369,7 +369,7 @@ type t =
       -> unit Fiber.t
   ; locks : (Path.t, Fiber.Mutex.t) Table.t
   ; build_mutex : Fiber.Mutex.t option
-  ; stats : Chrome_trace.t option
+  ; stats : Stats.t option
   }
 
 let t = ref None
@@ -1400,7 +1400,7 @@ end = struct
           let common = Event.common ~name:"evaluated_rules" ~ts () in
           Event.counter common args
         in
-        Chrome_trace.emit stats event)
+        Stats.emit stats event)
 
   let execute_rule_impl rule =
     let t = t () in

@@ -71,6 +71,57 @@ module Session = struct
     record [ ("id", Id.to_dyn id); ("state", dyn_of_state f state) ]
 end
 
+type message_kind =
+  | Request of Dune_rpc_private.Id.t
+  | Notification
+
+type stage =
+  | Start
+  | Stop
+
+module Event = Chrome_trace.Event
+
+let async_kind_of_stage = function
+  | Start -> Event.Start
+  | Stop -> Event.End
+
+type event_kind =
+  | Session of stage
+  | Message of
+      { kind : message_kind
+      ; meth_ : string
+      ; stage : stage
+      }
+
+let session_event stats id (event_kind : event_kind) =
+  Option.iter stats ~f:(fun stats ->
+      let event =
+        let kind, name, args =
+          match event_kind with
+          | Session stage -> (async_kind_of_stage stage, "rpc_session", None)
+          | Message { kind; meth_; stage } ->
+            let args =
+              match kind with
+              | Notification -> None
+              | Request id ->
+                let id = Dune_rpc_private.Id.to_sexp id in
+                let rec to_json : Sexp.t -> Chrome_trace.Json.t = function
+                  | Atom s -> `String s
+                  | List s -> `List (List.map s ~f:to_json)
+                in
+                Some [ ("request_id", to_json id) ]
+            in
+            (async_kind_of_stage stage, meth_, args)
+        in
+        let common =
+          let ts = Event.Timestamp.now () in
+          Event.common_fields ~ts ~name ()
+        in
+        let id = Event.Id.Int (Session.Id.to_int id) in
+        Event.async ?args id kind common
+      in
+      Stats.emit stats event)
+
 module H = struct
   type 'a t =
     { on_request : 'a Session.t -> Request.t -> Response.t Fiber.t
@@ -88,7 +139,7 @@ module H = struct
     in
     session.send None
 
-  let handle (type a) (t : a t) (session : a Session.t) =
+  let handle (type a) (t : a t) stats (session : a Session.t) =
     let open Fiber.O in
     let* query = Fiber.Stream.In.read session.queries in
     match query with
@@ -131,10 +182,27 @@ module H = struct
             let* () =
               Fiber.Stream.In.parallel_iter session.queries
                 ~f:(fun (message : Packet.Query.t) ->
+                  let meth_ =
+                    match message with
+                    | Notification c
+                    | Request (_, c) ->
+                      c.method_
+                  in
                   match message with
-                  | Notification n -> t.on_notification session n
+                  | Notification n ->
+                    let kind = Notification in
+                    session_event stats session.id
+                      (Message { kind; meth_; stage = Start });
+                    let+ () = t.on_notification session n in
+                    session_event stats session.id
+                      (Message { kind; meth_; stage = Stop })
                   | Request (id, r) ->
+                    let kind = Request id in
+                    session_event stats session.id
+                      (Message { kind; meth_; stage = Start });
                     let* response = t.on_request session (id, r) in
+                    session_event stats session.id
+                      (Message { kind; meth_; stage = Stop });
                     session.send (Some (Response (id, response))))
             in
             let* () = session.send None in
@@ -296,35 +364,12 @@ let make h = Server (H.Builder.to_handler h)
 
 let version (Server h) = h.version
 
-type event_kind =
-  | Start
-  | Stop
-
-let session_event stats id event_kind =
-  Option.iter stats ~f:(fun stats ->
-      let event =
-        let module Event = Chrome_trace.Event in
-        let common =
-          let ts = Event.Timestamp.now () in
-          let name = "rpc_session" in
-          Event.common_fields ~ts ~name ()
-        in
-        let id = Event.Id.Int (Session.Id.to_int id) in
-        let kind =
-          match event_kind with
-          | Start -> Event.Start
-          | Stop -> End
-        in
-        Event.async id kind common
-      in
-      Stats.emit stats event)
-
-let new_session (Server handler) ~queries ~send =
+let new_session (Server handler) stats ~queries ~send =
   let session = Session.create ~queries ~send in
   object
     method id = session.id
 
-    method start = H.handle handler session
+    method start = H.handle handler stats session
   end
 
 exception Invalid_session of Conv.error
@@ -362,12 +407,12 @@ struct
               (fun () -> S.read session)
               ~version:(version server) Packet.Query.sexp
           in
-          new_session server ~queries ~send
+          new_session server stats ~queries ~send
         in
         let id = session#id in
-        session_event stats id Start;
+        session_event stats id (Session Start);
         let+ res = Fiber.collect_errors (fun () -> session#start) in
-        session_event stats id Stop;
+        session_event stats id (Session Stop);
         match res with
         | Ok () -> ()
         | Error exns ->

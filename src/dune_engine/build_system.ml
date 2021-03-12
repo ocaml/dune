@@ -1393,9 +1393,7 @@ end = struct
     Option.iter build_system.stats ~f:(fun stats ->
         let module Event = Chrome_trace.Event in
         let event =
-          let args =
-            [ ("value", Chrome_trace.Json.Int build_system.rule_total) ]
-          in
+          let args = [ ("value", `Int build_system.rule_total) ] in
           let ts = Event.Timestamp.now () in
           let common = Event.common ~name:"evaluated_rules" ~ts () in
           Event.counter common args

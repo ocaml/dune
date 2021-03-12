@@ -10,15 +10,15 @@ module Json = struct
 
   let rec to_buf t buf =
     match t with
-    | String s -> quote_string_to_buf s buf
-    | Int i -> Buffer.add_string buf (string_of_int i)
-    | Float f -> Buffer.add_string buf (string_of_float f)
-    | Bool b -> Buffer.add_string buf (string_of_bool b)
-    | Array l ->
+    | `String s -> quote_string_to_buf s buf
+    | `Int i -> Buffer.add_string buf (string_of_int i)
+    | `Float f -> Buffer.add_string buf (string_of_float f)
+    | `Bool b -> Buffer.add_string buf (string_of_bool b)
+    | `List l ->
       Buffer.add_char buf '[';
       array_body_to_buf l buf;
       Buffer.add_char buf ']'
-    | Object o ->
+    | `Assoc o ->
       Buffer.add_char buf '{';
       object_body_to_buf o buf;
       Buffer.add_char buf '}'
@@ -141,17 +141,17 @@ let record_gc_and_fd stats =
     let common = Event.common ~name:"gc" ~ts () in
     let args =
       let stat = Gc.stat () in
-      [ ("live_words", Json.Int stat.live_words)
-      ; ("free_words", Int stat.free_words)
-      ; ("stack_size", Int stat.stack_size)
-      ; ("heap_words", Int stat.heap_words)
-      ; ("top_heap_words", Int stat.top_heap_words)
-      ; ("minor_words", Float stat.minor_words)
-      ; ("major_words", Float stat.major_words)
-      ; ("promoted_words", Float stat.promoted_words)
-      ; ("compactions", Int stat.compactions)
-      ; ("major_collections", Int stat.major_collections)
-      ; ("minor_collections", Int stat.minor_collections)
+      [ ("live_words", `Int stat.live_words)
+      ; ("free_words", `Int stat.free_words)
+      ; ("stack_size", `Int stat.stack_size)
+      ; ("heap_words", `Int stat.heap_words)
+      ; ("top_heap_words", `Int stat.top_heap_words)
+      ; ("minor_words", `Float stat.minor_words)
+      ; ("major_words", `Float stat.major_words)
+      ; ("promoted_words", `Float stat.promoted_words)
+      ; ("compactions", `Int stat.compactions)
+      ; ("major_collections", `Int stat.major_collections)
+      ; ("minor_collections", `Int stat.minor_collections)
       ]
     in
     let event = Event.counter common args in
@@ -161,7 +161,7 @@ let record_gc_and_fd stats =
   | Unknown -> ()
   | This fds ->
     let event =
-      let args = [ ("value", Json.Int fds) ] in
+      let args = [ ("value", `Int fds) ] in
       let common = Event.common ~name:"fds" ~ts () in
       Event.counter common args
     in

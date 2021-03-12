@@ -14,18 +14,17 @@ let () =
   let module Event = Chrome_trace.Event in
   let module Id = Event.Id in
   let module Timestamp = Event.Timestamp in
-  let open Chrome_trace.Json in
   let events =
     [ Event.complete
         ~dur:(Timestamp.of_float_seconds 1.)
-        ~args:[ ("foo", String "bar") ]
+        ~args:[ ("foo", `String "bar") ]
         (Event.common ~ts:(Timestamp.of_float_seconds 0.5) ~name:"foo" ())
     ; Event.counter
         (Event.common ~ts:(Timestamp.of_float_seconds 0.5) ~name:"cnt" ())
-        [ ("bar", Int 250) ]
+        [ ("bar", `Int 250) ]
     ; Event.async (Id.String "foo") Event.Start
         (Event.common ~ts:(Timestamp.of_float_seconds 0.5) ~name:"async" ())
-        ~args:[ ("foo", Int 100) ]
+        ~args:[ ("foo", `Int 100) ]
     ]
   in
   List.iter events ~f:(Stats.emit c);

@@ -461,9 +461,7 @@ let report_process_start stats ~id ~prog ~args =
     Event.common ~cat:[ "process" ] ~name ~ts ()
   in
   let args =
-    [ ( "process_args"
-      , Json.Array (List.map args ~f:(fun arg -> Json.String arg)) )
-    ]
+    [ ("process_args", `List (List.map args ~f:(fun arg -> `String arg))) ]
   in
   let event = Event.async (Int id) ~args Start common in
   Stats.emit stats event;

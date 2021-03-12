@@ -3,12 +3,13 @@ module String = StringLabels
 
 module Json = struct
   type t =
-    | Int of int
-    | Float of float
-    | String of string
-    | Array of t list
-    | Bool of bool
-    | Object of (string * t) list
+    [ `Int of int
+    | `Float of float
+    | `String of string
+    | `List of t list
+    | `Bool of bool
+    | `Assoc of (string * t) list
+    ]
 end
 
 module Timestamp : sig
@@ -28,7 +29,7 @@ end = struct
 
   let to_json f =
     let n = int_of_float @@ (f *. 1_000_000.) in
-    Json.Int n
+    `Int n
 end
 
 module Event = struct
@@ -69,8 +70,8 @@ module Event = struct
       | String of string
 
     let to_json = function
-      | Int i -> Json.Int i
-      | String s -> Json.String s
+      | Int i -> `Int i
+      | String s -> `String s
 
     let field id = ("id", to_json id)
   end
@@ -139,7 +140,7 @@ module Event = struct
         }
     | Metadata of metadata
 
-  let phase s = ("ph", Json.String s)
+  let phase s = ("ph", `String s)
 
   let add_field_opt to_field field fields =
     match field with
@@ -148,45 +149,43 @@ module Event = struct
 
   let common_fields { name; cat; ts; tts; pid; tid; cname } =
     let fields =
-      [ ("name", Json.String name)
-      ; ("cat", String (String.concat ~sep:"," cat))
+      [ ("name", `String name)
+      ; ("cat", `String (String.concat ~sep:"," cat))
       ; ("ts", Timestamp.to_json ts)
-      ; ("pid", Int pid)
-      ; ("tid", Int tid)
+      ; ("pid", `Int pid)
+      ; ("tid", `Int tid)
       ]
     in
     let fields =
-      add_field_opt (fun cname -> ("cname", Json.String cname)) cname fields
+      add_field_opt (fun cname -> ("cname", `String cname)) cname fields
     in
     add_field_opt (fun tts -> ("tts", Timestamp.to_json tts)) tts fields
 
   let json_of_scope = function
-    | Global -> Json.String "g"
-    | Process -> Json.String "p"
-    | Thread -> Json.String "t"
+    | Global -> `String "g"
+    | Process -> `String "p"
+    | Thread -> `String "t"
 
-  let args_field fields = ("args", Json.Object fields)
+  let args_field fields = ("args", `Assoc fields)
 
   let json_fields_of_metadata m =
     let fields =
-      let common pid name = [ ("name", Json.String name); ("pid", Int pid) ] in
+      let common pid name = [ ("name", `String name); ("pid", `Int pid) ] in
       match m with
       | Process_name { pid; name } ->
-        args_field [ ("name", Json.String name) ] :: common pid "thread_name"
+        args_field [ ("name", `String name) ] :: common pid "thread_name"
       | Process_labels { pid; labels } ->
-        args_field [ ("labels", Json.String labels) ]
-        :: common pid "process_labels"
+        args_field [ ("labels", `String labels) ] :: common pid "process_labels"
       | Thread_name { tid; pid; name } ->
-        ("tid", Int tid)
-        ::
-        args_field [ ("name", Json.String name) ] :: common pid "process_name"
+        ("tid", `Int tid)
+        :: args_field [ ("name", `String name) ] :: common pid "process_name"
       | Process_sort_index { pid; sort_index } ->
-        args_field [ ("sort_index", Json.Int sort_index) ]
+        args_field [ ("sort_index", `Int sort_index) ]
         :: common pid "process_sort_index"
       | Thread_sort_index { pid; sort_index; tid } ->
-        ("tid", Int tid)
+        ("tid", `Int tid)
         ::
-        args_field [ ("sort_index", Json.Int sort_index) ]
+        args_field [ ("sort_index", `Int sort_index) ]
         :: common pid "thread_sort_index"
     in
     phase "M" :: fields
@@ -202,11 +201,7 @@ module Event = struct
       add_field_opt Id.field id fields
     | Duration_end { pid; tid; ts; args } ->
       let fields =
-        [ ("tid", Json.Int tid)
-        ; ("pid", Int pid)
-        ; ("ts", Json.Float ts)
-        ; phase "E"
-        ]
+        [ ("tid", `Int tid); ("pid", `Int pid); ("ts", `Float ts); phase "E" ]
       in
       add_field_opt args_field args fields
     | Complete { common; dur; args; tdur } ->
@@ -238,9 +233,7 @@ module Event = struct
         in
         ph :: fields
       in
-      let fields =
-        add_field_opt (fun s -> ("scope", Json.String s)) scope fields
-      in
+      let fields = add_field_opt (fun s -> ("scope", `String s)) scope fields in
       add_field_opt args_field args fields
     | Object { common; object_kind; id; scope } ->
       let fields = common_fields common in
@@ -253,18 +246,18 @@ module Event = struct
           | Snapshot { cat; args } ->
             let snapshot =
               add_field_opt
-                (fun cat -> ("cat", Json.String (String.concat ~sep:"," cat)))
+                (fun cat -> ("cat", `String (String.concat ~sep:"," cat)))
                 cat args
             in
-            ("O", Some [ ("snapshot", Json.Object snapshot) ])
+            ("O", Some [ ("snapshot", `Assoc snapshot) ])
         in
         let fields = phase ph :: fields in
         add_field_opt args_field args fields
       in
-      add_field_opt (fun s -> ("scope", Json.String s)) scope fields
+      add_field_opt (fun s -> ("scope", `String s)) scope fields
     | Metadata m -> json_fields_of_metadata m
 
-  let to_json t = Json.Object (to_json_fields t)
+  let to_json t = `Assoc (to_json_fields t)
 
   let counter ?id common args = Counter (common, args, id)
 

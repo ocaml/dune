@@ -10,12 +10,13 @@
 module Json : sig
   (** Simplifies JSON type *)
   type t =
-    | Int of int
-    | Float of float
-    | String of string
-    | Array of t list
-    | Bool of bool
-    | Object of (string * t) list
+    [ `Int of int
+    | `Float of float
+    | `String of string
+    | `List of t list
+    | `Bool of bool
+    | `Assoc of (string * t) list
+    ]
 end
 
 module Event : sig

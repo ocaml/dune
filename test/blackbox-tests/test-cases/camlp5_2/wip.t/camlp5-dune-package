@@ -23,14 +23,14 @@
      (obj_name base__Applicative_intf)
      (visibility public)
      (impl))
-
     ))
+ (camlp5.driver)
 )
 
 
 (library
  (name camlp5.pa_r)
- (kind ppx_rewriter) ; TODO: change?
+ (kind camlp5_rewriter) ; TODO: change?
  (archives
   (byte pa_r.cma)
   (native pa_r.cmxa))
@@ -59,7 +59,7 @@
 
 (library
  (name camlp5.pr_r)
- (kind ppx_rewriter) ; TODO: change?
+ (kind camlp5_rewriter) ; TODO: change?
  (archives
   (byte pr_r.cma)
   (native pr_r.cmxa))
@@ -68,16 +68,57 @@
   (native pr_r.cmxs))
 
  (native_archives pr_r.a)
- ;(requires base ppxlib)
-
- ;(ppx_runtime_deps ppx_compare.runtime-lib)
- ;(main_module_name Ppx_compare_expander)
  (modes byte native)
- ;(modules)
  (modules
   (singleton
      (name Pr_r)
      (obj_name Pr_r)
+     (visibility public)
+     (impl)
+     (intf)
+  )
+ )
+)
+
+(library
+ (name camlp5.pr_o)
+ (kind camlp5_rewriter) ; TODO: change?
+ (archives
+  (byte pr_o.cma)
+  (native pr_o.cmxa))
+ (plugins
+  (byte pr_o.cma)
+  (native pr_o.cmxs))
+
+ (native_archives pr_o.a)
+ (modes byte native)
+ (modules
+  (singleton
+     (name Pr_o)
+     (obj_name Pr_o)
+     (visibility public)
+     (impl)
+     (intf)
+  )
+ )
+)
+
+(library
+ (name camlp5.pr_dump)
+ (kind camlp5_rewriter) ; TODO: change?
+ (archives
+  (byte pr_dump.cma)
+  (native pr_dump.cmxa))
+ (plugins
+  (byte pr_dump.cma)
+  (native pr_dump.cmxs))
+
+ (native_archives pr_dump.a)
+ (modes byte native)
+ (modules
+  (singleton
+     (name Pr_dump)
+     (obj_name Pr_dump)
      (visibility public)
      (impl)
      (intf)

@@ -296,8 +296,11 @@ let make h = Server (H.Builder.to_handler h)
 
 let version (Server h) = h.version
 
-let new_session (Server handler) stats ~queries ~send =
-  let session = Session.create ~queries ~send in
+type event_kind =
+  | Start
+  | Stop
+
+let session_event stats id event_kind =
   Option.iter stats ~f:(fun stats ->
       let event =
         let module Event = Chrome_trace.Event in
@@ -306,11 +309,23 @@ let new_session (Server handler) stats ~queries ~send =
           let name = "rpc_session" in
           Event.common_fields ~ts ~name ()
         in
-        let id = Event.Id.Int (Session.Id.to_int session.id) in
-        Event.async id Event.Start common
+        let id = Event.Id.Int (Session.Id.to_int id) in
+        let kind =
+          match event_kind with
+          | Start -> Event.Start
+          | Stop -> End
+        in
+        Event.async id kind common
       in
-      Stats.emit stats event);
-  H.handle handler session
+      Stats.emit stats event)
+
+let new_session (Server handler) ~queries ~send =
+  let session = Session.create ~queries ~send in
+  object
+    method id = session.id
+
+    method start = H.handle handler session
+  end
 
 exception Invalid_session of Conv.error
 
@@ -337,19 +352,22 @@ struct
 
   let serve sessions stats server =
     Fiber.Stream.In.parallel_iter sessions ~f:(fun session ->
-        let+ res =
-          Fiber.collect_errors (fun () ->
-              let send packet =
-                Option.map packet ~f:(Conv.to_sexp Packet.Reply.sexp)
-                |> S.write session
-              in
-              let queries =
-                create_sequence
-                  (fun () -> S.read session)
-                  ~version:(version server) Packet.Query.sexp
-              in
-              new_session server stats ~send ~queries)
+        let session =
+          let send packet =
+            Option.map packet ~f:(Conv.to_sexp Packet.Reply.sexp)
+            |> S.write session
+          in
+          let queries =
+            create_sequence
+              (fun () -> S.read session)
+              ~version:(version server) Packet.Query.sexp
+          in
+          new_session server ~queries ~send
         in
+        let id = session#id in
+        session_event stats id Start;
+        let+ res = Fiber.collect_errors (fun () -> session#start) in
+        session_event stats id Stop;
         match res with
         | Ok () -> ()
         | Error exns ->

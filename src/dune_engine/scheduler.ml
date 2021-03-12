@@ -694,6 +694,7 @@ module Rpc0 = struct
         { server : Csexp_rpc.Server.t
         ; handler : Dune_rpc_server.t
         ; where : Dune_rpc.Where.t
+        ; stats : Stats.t option
         ; cleanup : cleanup option
         }
 
@@ -718,7 +719,7 @@ module Rpc0 = struct
     | `Ip (addr, `Port port) -> Unix.ADDR_INET (addr, port)
     | `Unix p -> Unix.ADDR_UNIX (Path.to_string p)
 
-  let of_config events rpc =
+  let of_config events stats rpc =
     Option.map rpc ~f:(function
       | Config.Rpc.Client -> Client
       | Config.Rpc.Server { handler; backlog } ->
@@ -747,7 +748,7 @@ module Rpc0 = struct
         let server =
           Csexp_rpc.Server.create real_where ~backlog (scheduler events)
         in
-        Server { server; handler; where; cleanup })
+        Server { server; handler; where; cleanup; stats })
 
   let with_rpc_serve t f =
     match t with
@@ -762,7 +763,7 @@ module Rpc0 = struct
               (fun () ->
                 let open Fiber.O in
                 let* sessions = Csexp_rpc.Server.serve t.server in
-                Server.serve sessions t.handler)
+                Server.serve sessions t.stats t.handler)
               ~finally:(fun () ->
                 delete_cleanup t.cleanup;
                 Fiber.return ()))
@@ -872,7 +873,7 @@ let prepare (config : Config.t) ~polling ~(handler : Handler.t) =
   Signal_watcher.init events;
   let process_watcher = Process_watcher.init events in
   let cwd = Sys.getcwd () in
-  let rpc = Rpc0.of_config events config.rpc in
+  let rpc = Rpc0.of_config events config.stats config.rpc in
   let t =
     { original_cwd = cwd
     ; status = Building

@@ -3,7 +3,6 @@ open Import
 
 module Ctypes = Dune_file.Ctypes
 
-val libraries_needed_for_ctypes : loc:Loc.t -> Lib_dep.t list
 
 val generated_ml_and_c_files : Ctypes.t -> string list
 

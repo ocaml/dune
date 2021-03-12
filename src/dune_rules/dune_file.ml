@@ -396,6 +396,13 @@ module Buildable = struct
       |> add_stubs C ~loc:c_names_loc ~names:c_names ~flags:c_flags
       |> add_stubs Cxx ~loc:cxx_names_loc ~names:cxx_names ~flags:cxx_flags
     in
+    let libraries =
+      let ctypes_libraries =
+        if Option.is_none ctypes then []
+        else Ctypes_stubs.libraries_needed_for_ctypes ~loc:Loc.none
+      in
+      libraries @ ctypes_libraries
+    in
     let foreign_stubs =
       match ctypes with
       | None -> foreign_stubs

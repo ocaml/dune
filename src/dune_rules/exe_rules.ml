@@ -268,13 +268,8 @@ let compile_info ~scope (exes : Dune_file.Executables.t) =
          ~instrumentation_backend:
            (Lib.DB.instrumentation_backend (Scope.libs scope)))
   in
-  let ctypes_libraries =
-    if Option.is_none exes.buildable.ctypes then []
-    else Ctypes_rules.libraries_needed_for_ctypes ~loc:Loc.none
-  in
-  let libraries = exes.buildable.libraries @ ctypes_libraries in
   Lib.DB.resolve_user_written_deps_for_exes (Scope.libs scope) exes.names
-    libraries ~pps ~dune_version
+    exes.buildable.libraries ~pps ~dune_version
     ~allow_overlaps:exes.buildable.allow_overlapping_dependencies
     ~forbidden_libraries:exes.forbidden_libraries
 

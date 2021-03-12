@@ -106,10 +106,6 @@ module Stanza_util = struct
     List.map lst ~f:(fun lib ->
       Lib_dep.Direct (loc, Lib_name.of_string lib))
 
-  let libraries_needed_for_ctypes ~loc =
-    let libraries = ["ctypes"; "ctypes.stubs"] in
-    lib_deps_of_strings ~loc libraries
-
   let generated_modules ctypes =
     [ type_gen_script ctypes |> Module_name.of_string
     ; function_gen_script ctypes |> Module_name.of_string
@@ -132,8 +128,6 @@ module Stanza_util = struct
 end
 
 let generated_ml_and_c_files = Stanza_util.generated_ml_and_c_files
-
-let libraries_needed_for_ctypes = Stanza_util.libraries_needed_for_ctypes
 
 let ml_of_module_name mn =
   Module_name.to_string mn ^ ".ml"

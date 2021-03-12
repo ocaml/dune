@@ -10,6 +10,8 @@ val c_library_flags : external_library_name:string -> string
 
 val c_generated_functions_cout_no_ext : external_library_name:string -> string
 
+val libraries_needed_for_ctypes : loc:Loc.t -> Lib_dep.t list
+
 val add :
      loc:Loc.t
   -> parsing_context:Univ_map.t

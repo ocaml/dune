@@ -296,8 +296,20 @@ let make h = Server (H.Builder.to_handler h)
 
 let version (Server h) = h.version
 
-let new_session (Server handler) ~queries ~send =
+let new_session (Server handler) stats ~queries ~send =
   let session = Session.create ~queries ~send in
+  Option.iter stats ~f:(fun stats ->
+      let event =
+        let module Event = Chrome_trace.Event in
+        let common =
+          let ts = Event.Timestamp.now () in
+          let name = "rpc_session" in
+          Event.common_fields ~ts ~name ()
+        in
+        let id = Event.Id.Int (Session.Id.to_int session.id) in
+        Event.async id Event.Start common
+      in
+      Stats.emit stats event);
   H.handle handler session
 
 exception Invalid_session of Conv.error
@@ -323,7 +335,7 @@ end) =
 struct
   open Fiber.O
 
-  let serve sessions server =
+  let serve sessions stats server =
     Fiber.Stream.In.parallel_iter sessions ~f:(fun session ->
         let+ res =
           Fiber.collect_errors (fun () ->
@@ -336,7 +348,7 @@ struct
                   (fun () -> S.read session)
                   ~version:(version server) Packet.Query.sexp
               in
-              new_session server ~send ~queries)
+              new_session server stats ~send ~queries)
         in
         match res with
         | Ok () -> ()

@@ -73,7 +73,7 @@ let test ?(on_notification = fun _ -> assert false) ~client ~handler ~init () =
           Chan.write client_chan None)
     in
     let server () =
-      let+ () = Drpc.serve sessions (Dune_rpc_server.make handler) in
+      let+ () = Drpc.serve sessions None (Dune_rpc_server.make handler) in
       printfn "server: finished."
     in
     Fiber.parallel_iter [ connect; client; server ] ~f:(fun f -> f ())

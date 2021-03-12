@@ -16,8 +16,6 @@ module Json : sig
     | Array of t list
     | Bool of bool
     | Object of (string * t) list
-
-  val to_string : t -> string
 end
 
 module Event : sig

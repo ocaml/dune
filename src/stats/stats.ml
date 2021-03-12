@@ -1,6 +1,56 @@
 open Stdune
-module Json = Chrome_trace.Json
 module Event = Chrome_trace.Event
+
+module Json = struct
+  include Chrome_trace.Json
+
+  let quote_string_to_buf s buf =
+    (* TODO: escaping is wrong here, in particular for control characters *)
+    Buffer.add_string buf (sprintf "%S" s)
+
+  let rec to_buf t buf =
+    match t with
+    | String s -> quote_string_to_buf s buf
+    | Int i -> Buffer.add_string buf (string_of_int i)
+    | Float f -> Buffer.add_string buf (string_of_float f)
+    | Bool b -> Buffer.add_string buf (string_of_bool b)
+    | Array l ->
+      Buffer.add_char buf '[';
+      array_body_to_buf l buf;
+      Buffer.add_char buf ']'
+    | Object o ->
+      Buffer.add_char buf '{';
+      object_body_to_buf o buf;
+      Buffer.add_char buf '}'
+
+  and array_body_to_buf t buf =
+    match t with
+    | [] -> ()
+    | [ x ] -> to_buf x buf
+    | x :: xs ->
+      to_buf x buf;
+      Buffer.add_char buf ',';
+      array_body_to_buf xs buf
+
+  and object_body_to_buf t buf =
+    match t with
+    | [] -> ()
+    | [ (x, y) ] ->
+      quote_string_to_buf x buf;
+      Buffer.add_char buf ':';
+      to_buf y buf
+    | (x, y) :: xs ->
+      quote_string_to_buf x buf;
+      Buffer.add_char buf ':';
+      to_buf y buf;
+      Buffer.add_char buf ',';
+      object_body_to_buf xs buf
+
+  let to_string t =
+    let buf = Buffer.create 0 in
+    to_buf t buf;
+    Buffer.contents buf
+end
 
 type dst =
   | Out of out_channel

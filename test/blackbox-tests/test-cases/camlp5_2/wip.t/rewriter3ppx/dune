@@ -1,5 +1,0 @@
-(library
- (name librewriter3)
- (modules lib)
- (preprocess
-  (pps ppxlib.metaquot)))

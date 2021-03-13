@@ -205,21 +205,28 @@ let link_camlp5_rewriter ~program ~libs cctx =
   let ctx = SC.context sctx in
   let dir = CC.dir cctx in
 
+  (* TODO: make linkage configurable? *)
   let linkage = Linkage.native in
   let exe = exe_path_from_name cctx ~name ~linkage in
   SC.add_rule sctx ~loc ~dir
     ~mode:Standard
-    (let prefix = Action_builder.return () in
-     let open Action_builder.With_targets.O in
-     (* Comment  *)
-     let myargs =
-      let names = List.map libs ~f:(fun l -> Lib_name.to_string @@ Lib.name l) in
-      Action_builder.return ["-package"; String.concat ~sep:"," names]
-     in
-     let mkcamlp5 = SC.resolve_program sctx ~dir ~loc:(Some loc) "mkcamlp5" in
+    ( let myargs =
+        let modules = Compilation_context.modules cctx in
+        let obj_dir = CC.obj_dir cctx in
+        let top_sorted_modules = Action_builder.return [] in
+        let cm_files = Cm_files.make ~obj_dir ~modules ~top_sorted_modules
+          ~ext_obj:ctx.lib_config.ext_obj in
+        let open Action_builder.O in
+        let+ top_sorted_cms = Cm_files.top_sorted_cms cm_files ~mode:Mode.Byte in
+        List.concat_map libs ~f:(fun l ->
+          if Lib.is_local l
+          then List.map ~f:Path.to_string top_sorted_cms
+          else [ "-package"; Lib_name.to_string @@ Lib.name l]
+        )
+      in
+      let mkcamlp5 = SC.resolve_program sctx ~dir ~loc:(Some loc) "mkcamlp5.opt" in
 
-     Action_builder.with_no_targets prefix
-     >>> Command.run ~dir:(Path.build ctx.build_dir)
+      Command.run ~dir:(Path.build ctx.build_dir)
            mkcamlp5
            [ Command.Args.dyn myargs
            ; A "-o"

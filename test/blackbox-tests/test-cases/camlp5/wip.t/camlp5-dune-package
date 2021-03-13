@@ -30,7 +30,7 @@
 
 (library
  (name camlp5.pa_r)
- (kind camlp5_rewriter) ; TODO: change?
+ (kind camlp5_rewriter)
  (archives
   (byte pa_r.cma)
   (native pa_r.cmxa))
@@ -39,12 +39,7 @@
   (native pa_r.cmxs))
 
  (native_archives pa_r.a)
- ;(requires base ppxlib)
-
- ;(ppx_runtime_deps ppx_compare.runtime-lib)
- ;(main_module_name Ppx_compare_expander)
  (modes byte native)
- ;(modules)
  (modules
   (singleton
      (name Pa_r)
@@ -52,9 +47,91 @@
      (visibility public)
      (impl)
      (intf)
-  )
- )
-)
+  ) ) )
+
+(library
+ (name camlp5.pa_o)
+ (kind camlp5_rewriter)
+ (archives
+  (byte pa_o.cma)
+  (native pa_o.cmxa))
+ (plugins
+  (byte pa_o.cma)
+  (native pa_o.cmxs))
+
+ (native_archives pa_o.a)
+ (modes byte native)
+ (modules
+  (singleton
+     (name Pa_o)
+     (obj_name Pa_o)
+     (visibility public)
+     (impl)
+     (intf)
+  ) ) )
+
+(library
+ (name camlp5.extend)
+ (kind camlp5_rewriter)
+ (archives
+  (byte pa_extend.cmo)
+  (native pa_extend.cmx))
+ ;(plugins
+ ; (byte pa_extend.cma)
+ ; (native pa_extend.cmxs))
+
+ (native_archives pa_extend.o)
+ (modes byte native)
+ (modules
+  (singleton
+     (name Pa_extend)
+     (obj_name Pa_extend)
+     (visibility public)
+     (impl)
+     (intf)
+  ) ) )
+
+(library
+ (name camlp5.quotations)
+ (kind camlp5_rewriter)
+ (archives
+  (byte q_MLast.cmo)
+  (native q_MLast.cmx))
+ ;(plugins
+ ; (byte pa_extend.cma)
+ ; (native pa_extend.cmxs))
+
+ (native_archives q_MLast.o)
+ (modes byte native)
+ (modules
+  (singleton
+     (name Q_MLast)
+     (obj_name Q_MLast)
+     (visibility public)
+     (impl)
+     (intf)
+  ) ) )
+
+(library
+ (name camlp5.extfold)
+ (kind camlp5_rewriter)
+ (archives
+  (byte pa_extfold.cmo)
+  (native pa_extfold.cmx))
+ ;(plugins
+ ; (byte pa_extend.cma)
+ ; (native pa_extend.cmxs))
+
+ (native_archives pa_extfold.o)
+ (modes byte native)
+ (modules
+  (singleton
+     (name pa_extfold)
+     (obj_name pa_extfold)
+     (visibility public)
+     (impl)
+     (intf)
+  ) ) )
 
 
 (library

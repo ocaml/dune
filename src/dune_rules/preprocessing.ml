@@ -48,8 +48,9 @@ end = struct
 
     let of_libs libs =
       let pps =
-        (let compare a b = Lib_name.compare (Lib.name a) (Lib.name b) in
-         List.sort libs ~compare)
+        libs
+        (* |> (let compare a b = Lib_name.compare (Lib.name a) (Lib.name b) in
+            List.sort ~compare)  *)
         |> List.map ~f:Lib.name
       in
       let project =
@@ -146,12 +147,8 @@ module Driver = struct
       open Dune_lang.Decoder
 
       let decode =
-        (* return () >>= fun () ->
-          let () = Format.printf "\n%s tries to decode...(%s %d)\n" "ppx.driver" __FILE__ __LINE__ in *)
         fields
-          (* ~trace:true *)
-          (let+ () = (print_endline "HERR"; return ())
-           and+ loc = loc
+          (let+ loc = loc
            and+ flags = Ordered_set_lang.Unexpanded.field "flags"
            and+ as_ppx_flags =
              Ordered_set_lang.Unexpanded.field "as_ppx_flags"
@@ -161,7 +158,6 @@ module Driver = struct
            and+ replaces =
              field "replaces" (repeat (located Lib_name.decode)) ~default:[]
            in
-           Format.printf "PPX parsed something...\n";
            { loc; flags; as_ppx_flags; lint_flags; main; replaces })
 
       let encode t =
@@ -464,8 +460,7 @@ let ppx_exe sctx ~key =
 
 let camlp5_exe sctx ~key =
   let build_dir = (Super_context.context sctx).build_dir in
-  (* Path.Build.relative build_dir (".camlp5/" ^ key ^ "/rewriter.exe") *)
-  Path.Build.relative build_dir (".camlp5/" ^ key ^ "/ppx.exe")
+  Path.Build.relative build_dir (".camlp5/" ^ key ^ "/rewriter.exe")
 
 let build_ppx_driver sctx ~scope ~target ~pps ~pp_names =
   let open Memo.Build.O in
@@ -518,7 +513,6 @@ let build_ppx_driver sctx ~scope ~target ~pps ~pp_names =
       ~modules ~flags ~requires_compile ~requires_link ~opaque ~js_of_ocaml:None
       ~package:None ~bin_annot:false ()
   in
-  Format.printf "%s %d\n%!" __FILE__ __LINE__;
   Exe.build_and_link ~program ~linkages cctx ~promote:None
 
 
@@ -990,7 +984,6 @@ let make sctx ~dir ~expander ~lint ~preprocess ~preprocessor_deps
           fun m ~lint:_ ->
             let ast = setup_dialect_rules sctx ~dir ~expander m in
             Module.set_pp ast pp
-
 
         | Pps { loc; pps; flags; _ }  -> (
           let dash_ppx_flag =

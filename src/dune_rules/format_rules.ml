@@ -72,11 +72,18 @@ let gen_rules_output sctx (config : Format_config.t) ~version ~dialects
         >>> Preprocessing.action_for_pp ~loc ~expander ~action ~src
               ~target:(Some output)
     in
-    Option.iter formatter ~f:(fun arr ->
-        Super_context.add_rule sctx ~mode:Standard ~loc ~dir arr;
-        add_diff sctx loc alias_formatted ~dir ~input:(Path.build input) ~output)
+    Memo.Build.Option.iter formatter ~f:(fun arr ->
+        let open Memo.Build.O in
+        Super_context.add_rule sctx ~mode:Standard ~loc ~dir arr
+        >>> add_diff sctx loc alias_formatted ~dir ~input:(Path.build input)
+              ~output)
   in
-  File_tree.files_of source_dir |> Path.Source.Set.iter ~f:setup_formatting;
+  let open Memo.Build.O in
+  let+ () =
+    Path.Source.Set.fold (File_tree.files_of source_dir)
+      ~init:(Memo.Build.return ()) ~f:(fun file acc ->
+        acc >>> setup_formatting file)
+  in
   Rules.Produce.Alias.add_static_deps alias_formatted Path.Set.empty
 
 let gen_rules ~dir =

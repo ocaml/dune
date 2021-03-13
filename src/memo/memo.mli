@@ -38,6 +38,8 @@ module Build : sig
 
   val both : 'a t -> 'b t -> ('a * 'b) t
 
+  val if_ : bool -> unit t -> unit t
+
   val sequential_map : 'a list -> f:('a -> 'b t) -> 'b list t
 
   val sequential_iter : 'a list -> f:('a -> unit t) -> unit t
@@ -81,6 +83,14 @@ module Build : sig
   val finalize : (unit -> 'a t) -> finally:(unit -> unit t) -> 'a t
 
   val reraise_all : Exn_with_backtrace.t list -> 'a t
+
+  module Option : sig
+    val iter : 'a option -> f:('a -> unit t) -> unit t
+  end
+
+  module Result : sig
+    val iter : ('a, _) result -> f:('a -> unit t) -> unit t
+  end
 end
 
 type ('input, 'output, 'f) t
@@ -172,6 +182,8 @@ module Output : sig
   type 'o t =
     | Simple of (module Output_simple with type t = 'o)
     | Allow_cutoff of (module Output_allow_cutoff with type t = 'o)
+
+  val simple : ?to_dyn:('a -> Dyn.t) -> unit -> 'a t
 end
 
 module type Input = sig

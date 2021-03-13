@@ -84,8 +84,10 @@ end = struct
       ; source_dirs = None
       }
     | Foreign_library lib ->
-      Lib_rules.foreign_rules lib ~sctx ~dir ~dir_contents ~expander;
-      Memo.Build.return empty_none
+      let+ () =
+        Lib_rules.foreign_rules lib ~sctx ~dir ~dir_contents ~expander
+      in
+      empty_none
     | Executables exes when Expander.eval_blang expander exes.enabled_if ->
       Option.iter exes.install_conf ~f:files_to_install;
       let+ cctx, merlin =
@@ -102,8 +104,8 @@ end = struct
       ; source_dirs = None
       }
     | Alias alias ->
-      Simple_rules.alias sctx alias ~dir ~expander;
-      Memo.Build.return empty_none
+      let+ () = Simple_rules.alias sctx alias ~dir ~expander in
+      empty_none
     | Tests tests ->
       let+ cctx, merlin =
         Test_rules.rules tests ~sctx ~dir ~scope ~expander ~dir_contents
@@ -129,14 +131,14 @@ end = struct
       files_to_install i;
       Memo.Build.return empty_none
     | Plugin p ->
-      Plugin_rules.setup_rules ~sctx ~dir p;
-      Memo.Build.return empty_none
+      let+ () = Plugin_rules.setup_rules ~sctx ~dir p in
+      empty_none
     | Cinaps.T cinaps ->
       let+ () = Cinaps.gen_rules sctx cinaps ~dir ~scope in
       empty_none
     | Mdx.T mdx ->
-      Mdx.gen_rules ~sctx ~dir ~expander mdx;
-      Memo.Build.return empty_none
+      let+ () = Mdx.gen_rules ~sctx ~dir ~expander mdx in
+      empty_none
     | _ -> Memo.Build.return empty_none
 
   let of_stanzas stanzas ~cctxs ~sctx ~src_dir ~ctx_dir ~scope ~dir_contents
@@ -156,8 +158,8 @@ end
  * See: https://github.com/ocaml/dune/pull/1354#issuecomment-427922592 *)
 
 let with_format sctx ~dir ~f =
-  let f config = if not (Format_config.is_empty config) then f config in
-  Super_context.format_config sctx ~dir |> f
+  let* config = Super_context.format_config sctx ~dir in
+  Memo.Build.if_ (not (Format_config.is_empty config)) (f config)
 
 let gen_format_rules sctx ~expander ~output_dir =
   let scope = Super_context.find_scope_by_dir sctx output_dir in
@@ -228,16 +230,18 @@ let gen_rules sctx dir_contents cctxs expander
     For_stanza.of_stanzas stanzas ~cctxs ~sctx ~src_dir ~ctx_dir ~scope
       ~dir_contents ~expander ~files_to_install
   in
-  List.iter merlins ~f:(fun merlin ->
-      let more_src_dirs =
-        lib_src_dirs ~dir_contents |> List.rev_append (src_dir :: source_dirs)
-      in
-      Merlin.add_rules sctx ~dir:ctx_dir ~more_src_dirs ~expander merlin);
+  let* () =
+    Memo.Build.sequential_iter merlins ~f:(fun merlin ->
+        let more_src_dirs =
+          lib_src_dirs ~dir_contents |> List.rev_append (src_dir :: source_dirs)
+        in
+        Merlin.add_rules sctx ~dir:ctx_dir ~more_src_dirs ~expander merlin)
+  in
   let+ () =
     Memo.Build.parallel_iter stanzas ~f:(fun stanza ->
         match (stanza : Stanza.t) with
         | Menhir.T m when Expander.eval_blang expander m.enabled_if -> (
-          let+ ml_sources = Dir_contents.ocaml dir_contents in
+          let* ml_sources = Dir_contents.ocaml dir_contents in
           match
             List.find_map (Menhir_rules.module_names m) ~f:(fun name ->
                 Option.bind (Ml_sources.lookup_module ml_sources name)
@@ -266,13 +270,13 @@ let gen_rules sctx dir_contents cctxs expander
         | Coq_stanza.Theory.T m when Expander.eval_blang expander m.enabled_if
           ->
           Coq_rules.setup_rules ~sctx ~dir:ctx_dir ~dir_contents m
-          >>| Super_context.add_rules ~dir:ctx_dir sctx
+          >>= Super_context.add_rules ~dir:ctx_dir sctx
         | Coq_stanza.Extraction.T m ->
           Coq_rules.extraction_rules ~sctx ~dir:ctx_dir ~dir_contents m
-          >>| Super_context.add_rules ~dir:ctx_dir sctx
+          >>= Super_context.add_rules ~dir:ctx_dir sctx
         | Coq_stanza.Coqpp.T m ->
           Coq_rules.coqpp_rules ~sctx ~dir:ctx_dir m
-          >>| Super_context.add_rules ~dir:ctx_dir sctx
+          >>= Super_context.add_rules ~dir:ctx_dir sctx
         | _ -> Memo.Build.return ())
   in
   define_all_alias ~dir:ctx_dir ~scope ~js_targets;
@@ -280,9 +284,12 @@ let gen_rules sctx dir_contents cctxs expander
 
 let gen_rules sctx dir_contents cctxs ~source_dir ~dir :
     (Loc.t * Compilation_context.t) list Memo.Build.t =
-  with_format sctx ~dir ~f:(fun _ -> Format_rules.gen_rules ~dir);
-  let expander =
-    let expander = Super_context.expander sctx ~dir in
+  let* () =
+    with_format sctx ~dir ~f:(fun _ ->
+        Memo.Build.return (Format_rules.gen_rules ~dir))
+  in
+  let* expander =
+    let+ expander = Super_context.expander sctx ~dir in
     Dir_contents.add_sources_to_expander sctx expander
   in
   (let tests = File_tree.Dir.cram_tests source_dir in
@@ -296,25 +303,28 @@ let gen_rules sctx dir_contents cctxs ~source_dir ~dir :
 
 let gen_rules ~sctx ~dir components =
   let module S = Build_system.Subdir_set in
-  Opam_create.add_rules sctx ~dir;
-  Install_rules.meta_and_dune_package_rules sctx ~dir;
+  let* () = Opam_create.add_rules sctx ~dir
+  and* () = Install_rules.meta_and_dune_package_rules sctx ~dir in
   let+ subdirs_to_keep1 = Install_rules.gen_rules sctx ~dir
   and+ (subdirs_to_keep2 : Build_system.extra_sub_directories_to_keep) =
     match components with
     | ".dune" :: _ ->
       (* Dummy rule to prevent dune from deleting this file. See comment
          attached to [write_dot_dune_dir] in context.ml *)
-      Super_context.add_rule sctx ~dir
-        (Action_builder.write_file (Path.Build.relative dir "configurator") "");
+      let+ () =
+        Super_context.add_rule sctx ~dir
+          (Action_builder.write_file
+             (Path.Build.relative dir "configurator")
+             "")
+      in
       (* Add rules for C compiler detection *)
       Cxx_rules.rules ~sctx ~dir;
-      Memo.Build.return (S.These String.Set.empty)
-    | ".js" :: rest ->
-      Jsoo_rules.setup_separate_compilation_rules sctx rest;
-      Memo.Build.return
-        (match rest with
-        | [] -> S.All
-        | _ -> S.These String.Set.empty)
+      S.These String.Set.empty
+    | ".js" :: rest -> (
+      let+ () = Jsoo_rules.setup_separate_compilation_rules sctx rest in
+      match rest with
+      | [] -> S.All
+      | _ -> S.These String.Set.empty)
     | "_doc" :: rest -> (
       let+ () = Odoc.gen_rules sctx rest ~dir in
       match rest with
@@ -330,19 +340,19 @@ let gen_rules ~sctx ~dir components =
       let+ () =
         match List.last comps with
         | Some ".formatted" ->
-          let expander = Super_context.expander sctx ~dir in
-          gen_format_rules sctx ~expander ~output_dir:dir;
-          Memo.Build.return ()
+          let* expander = Super_context.expander sctx ~dir in
+          gen_format_rules sctx ~expander ~output_dir:dir
         | Some ".bin" ->
           let src_dir = Path.Build.parent_exn dir in
-          Super_context.local_binaries sctx ~dir:src_dir
-          |> List.iter ~f:(fun t ->
-                 let loc = File_binding.Expanded.src_loc t in
-                 let src = Path.build (File_binding.Expanded.src t) in
-                 let dst = File_binding.Expanded.dst_path t ~dir in
-                 Super_context.add_rule sctx ~loc ~dir
-                   (Action_builder.symlink ~src ~dst));
-          Memo.Build.return ()
+          let* local_binaries =
+            Super_context.local_binaries sctx ~dir:src_dir
+          in
+          Memo.Build.sequential_iter local_binaries ~f:(fun t ->
+              let loc = File_binding.Expanded.src_loc t in
+              let src = Path.build (File_binding.Expanded.src t) in
+              let dst = File_binding.Expanded.dst_path t ~dir in
+              Super_context.add_rule sctx ~loc ~dir
+                (Action_builder.symlink ~src ~dst))
         | _ -> (
           match File_tree.find_dir (Path.Build.drop_build_context_exn dir) with
           | None ->

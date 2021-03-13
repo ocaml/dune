@@ -380,7 +380,6 @@ module Unprocessed = struct
 end
 
 let dot_merlin sctx ~dir ~more_src_dirs ~expander (t : Unprocessed.t) =
-  let open Action_builder.With_targets.O in
   let merlin_exist = Merlin_ident.merlin_exists_path dir t.ident in
   let merlin_file = Merlin_ident.merlin_file_path dir t.ident in
 
@@ -391,10 +390,14 @@ let dot_merlin sctx ~dir ~more_src_dirs ~expander (t : Unprocessed.t) =
 
      Currently dune doesn't support declaring a dependency only on the existence
      of a file, so we have to use this trick. *)
-  SC.add_rule sctx ~dir
-    (Action_builder.with_no_targets
-       (Action_builder.path (Path.build merlin_file))
-    >>> Action_builder.create_file merlin_exist);
+  let open Memo.Build.O in
+  let* () =
+    SC.add_rule sctx ~dir
+      (let open Action_builder.With_targets.O in
+      Action_builder.with_no_targets
+        (Action_builder.path (Path.build merlin_file))
+      >>> Action_builder.create_file merlin_exist)
+  in
 
   Path.Set.singleton (Path.build merlin_file)
   |> Rules.Produce.Alias.add_static_deps (Alias.check ~dir);
@@ -407,7 +410,7 @@ let dot_merlin sctx ~dir ~more_src_dirs ~expander (t : Unprocessed.t) =
   SC.add_rule sctx ~dir action
 
 let add_rules sctx ~dir ~more_src_dirs ~expander merlin =
-  if (SC.context sctx).merlin then
-    dot_merlin sctx ~more_src_dirs ~expander ~dir merlin
+  Memo.Build.if_ (SC.context sctx).merlin
+    (dot_merlin sctx ~more_src_dirs ~expander ~dir merlin)
 
 include Unprocessed

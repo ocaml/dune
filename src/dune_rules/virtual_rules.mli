@@ -2,7 +2,7 @@ open! Dune_engine
 open Stdune
 
 val setup_copy_rules_for_impl :
-  sctx:Super_context.t -> dir:Path.Build.t -> Vimpl.t -> unit
+  sctx:Super_context.t -> dir:Path.Build.t -> Vimpl.t -> unit Memo.Build.t
 
 val impl :
      Super_context.t

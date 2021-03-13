@@ -62,7 +62,8 @@ val file : t -> ml_kind:Ml_kind.t -> Path.t option
 
 val obj_name : t -> Module_name.Unique.t
 
-val iter : t -> f:(Ml_kind.t -> File.t -> unit) -> unit
+val iter :
+  t -> f:(Ml_kind.t -> File.t -> unit Memo.Build.t) -> unit Memo.Build.t
 
 val has : t -> ml_kind:Ml_kind.t -> bool
 

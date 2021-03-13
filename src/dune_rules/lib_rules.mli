@@ -8,7 +8,7 @@ val foreign_rules :
   -> expander:Expander.t
   -> dir:Path.Build.t
   -> dir_contents:Dir_contents.t
-  -> unit
+  -> unit Memo.Build.t
 
 val rules :
      Library.t

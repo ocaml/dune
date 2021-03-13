@@ -63,40 +63,49 @@ let rule_kind ~(rule : Rule.t)
     | Some target -> Alias_with_targets (alias, target))
 
 let add_user_rule sctx ~dir ~(rule : Rule.t) ~action ~expander =
+  let* locks =
+    Memo.Build.sequential_map (interpret_locks ~expander rule.locks) ~f:Fun.id
+  in
   SC.add_rule_get_targets
     sctx
     (* user rules may have extra requirements, in which case they will be
        specified as a part of rule.deps, which will be correctly taken care of
        by the action builder *)
     ~sandbox:Sandbox_config.no_special_requirements ~dir ~mode:rule.mode
-    ~loc:rule.loc
-    ~locks:(interpret_locks ~expander rule.locks)
-    action
+    ~loc:rule.loc ~locks action
 
 let user_rule sctx ?extra_bindings ~dir ~expander (rule : Rule.t) =
   match Expander.eval_blang expander rule.enabled_if with
-  | false ->
-    Option.iter rule.alias ~f:(fun name ->
-        let alias = Alias.make ~dir name in
-        let action = Some (snd rule.action) in
-        let stamp = Alias_rules.stamp ~deps:rule.deps ~action ~extra_bindings in
-        Alias_rules.add_empty sctx ~alias ~loc:(Some rule.loc) ~stamp);
-    Path.Build.Set.empty
+  | false -> (
+    match rule.alias with
+    | None -> Memo.Build.return Path.Build.Set.empty
+    | Some name ->
+      let alias = Alias.make ~dir name in
+      let action = Some (snd rule.action) in
+      let stamp = Alias_rules.stamp ~deps:rule.deps ~action ~extra_bindings in
+      let+ () = Alias_rules.add_empty sctx ~alias ~loc:(Some rule.loc) ~stamp in
+      Path.Build.Set.empty)
   | true -> (
-    let targets : Targets.Or_forbidden.t =
-      Targets
-        (match rule.targets with
-        | Infer -> Infer
-        | Static { targets; multiplicity } ->
-          let targets =
-            List.concat_map targets ~f:(fun target ->
+    let* (targets : Targets.Or_forbidden.t) =
+      match rule.targets with
+      | Infer -> Memo.Build.return (Targets.Or_forbidden.Targets Infer)
+      | Static { targets; multiplicity } ->
+        let+ targets =
+          let+ targets =
+            Memo.Build.sequential_map targets ~f:(fun target ->
                 let error_loc = String_with_vars.loc target in
                 (match multiplicity with
-                | One -> [ Expander.Static.expand expander ~mode:Single target ]
+                | One ->
+                  let+ expanded =
+                    Expander.Static.expand expander ~mode:Single target
+                  in
+                  [ expanded ]
                 | Multiple -> Expander.Static.expand expander ~mode:Many target)
-                |> List.map ~f:(check_filename ~dir ~error_loc))
+                >>| List.map ~f:(check_filename ~dir ~error_loc))
           in
-          Static { multiplicity; targets })
+          List.concat targets
+        in
+        Targets.Or_forbidden.Targets (Static { multiplicity; targets })
     in
     let expander =
       match extra_bindings with
@@ -122,14 +131,20 @@ let user_rule sctx ?extra_bindings ~dir ~expander (rule : Rule.t) =
         let action = Some (snd rule.action) in
         Alias_rules.stamp ~deps:rule.deps ~extra_bindings ~action
       in
-      let locks = interpret_locks ~expander rule.locks in
-      Alias_rules.add sctx ~alias ~stamp ~loc:(Some rule.loc) action ~locks;
+      let* locks =
+        Memo.Build.sequential_map
+          (interpret_locks ~expander rule.locks)
+          ~f:Fun.id
+      in
+      let+ () =
+        Alias_rules.add sctx ~alias ~stamp ~loc:(Some rule.loc) action ~locks
+      in
       Path.Build.Set.empty)
 
 let copy_files sctx ~dir ~expander ~src_dir (def : Copy_files.t) =
   let loc = String_with_vars.loc def.files in
-  let glob_in_src =
-    let src_glob = Expander.Static.expand_str expander def.files in
+  let* glob_in_src =
+    let+ src_glob = Expander.Static.expand_str expander def.files in
     if Filename.is_relative src_glob then
       Path.Source.relative src_dir src_glob ~error_loc:loc |> Path.source
     else
@@ -175,11 +190,16 @@ let copy_files sctx ~dir ~expander ~src_dir (def : Copy_files.t) =
       let context = Context.DB.get dir in
       Path.Build.append_source context.build_dir src_in_src |> Path.build
   in
-  let+ files =
+  let* files =
     Build_system.eval_pred (File_selector.create ~dir:src_in_build pred)
   in
-  let targets =
-    Path.Set.map files ~f:(fun file_src ->
+  (* CR-someday amokhov: We currently traverse the [files] twice: first, to
+     sequentially add the corresponding rules, and then to convert to [targets].
+     Instead, we could do only one traversal and generate rules in parallel. *)
+  let+ () =
+    Path.Set.fold files ~init:(Memo.Build.return ()) ~f:(fun file_src acc ->
+        acc
+        >>>
         let basename = Path.basename file_src in
         let file_dst = Path.Build.relative dir basename in
         SC.add_rule sctx ~loc ~dir ~mode:def.mode
@@ -187,7 +207,12 @@ let copy_files sctx ~dir ~expander ~src_dir (def : Copy_files.t) =
              Action_builder.copy_and_add_line_directive
            else
              Action_builder.copy)
-             ~src:file_src ~dst:file_dst);
+             ~src:file_src ~dst:file_dst))
+  in
+  let targets =
+    Path.Set.map files ~f:(fun file_src ->
+        let basename = Path.basename file_src in
+        let file_dst = Path.Build.relative dir basename in
         Path.build file_dst)
   in
   Option.iter def.alias ~f:(fun alias ->
@@ -214,9 +239,14 @@ let alias sctx ?extra_bindings ~dir ~expander (alias_conf : Alias_conf.t) =
     match alias_conf.action with
     | None ->
       let builder, _expander = Dep_conf_eval.named ~expander alias_conf.deps in
-      Rules.Produce.Alias.add_deps alias ?loc builder
+      Rules.Produce.Alias.add_deps alias ?loc builder;
+      Memo.Build.return ()
     | Some (action_loc, action) ->
-      let locks = interpret_locks ~expander alias_conf.locks in
+      let* locks =
+        Memo.Build.sequential_map
+          (interpret_locks ~expander alias_conf.locks)
+          ~f:Fun.id
+      in
       let action =
         let builder, expander = Dep_conf_eval.named ~expander alias_conf.deps in
         let open Action_builder.With_targets.O in

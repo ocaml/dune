@@ -20,7 +20,7 @@ let msvc_hack_cclibs =
 let build_lib (lib : Library.t) ~native_archives ~sctx ~expander ~flags ~dir
     ~mode ~cm_files =
   let ctx = Super_context.context sctx in
-  Result.iter (Context.compiler ctx mode) ~f:(fun compiler ->
+  Memo.Build.Result.iter (Context.compiler ctx mode) ~f:(fun compiler ->
       let target = Library.archive lib ~dir ~ext:(Mode.compiled_lib_ext mode) in
       let stubs_flags =
         List.concat_map (Library.foreign_archives lib) ~f:(fun archive ->
@@ -88,7 +88,10 @@ let gen_wrapped_compat_modules (lib : Library.t) cctx =
       | Simple _ -> assert false
       | Yes_with_transition r -> r)
   in
-  Module_name.Map.iteri wrapped_compat ~f:(fun name m ->
+  Module_name.Map.foldi wrapped_compat ~init:(Memo.Build.return ())
+    ~f:(fun name m acc ->
+      acc
+      >>>
       let main_module_name =
         match Library.main_module_name lib with
         | This (Some mmn) -> Module_name.to_string mmn
@@ -156,10 +159,13 @@ let ocamlmklib ~loc ~c_library_flags ~sctx ~dir ~expander ~o_files ~archive_name
         [ static_target; dynamic_target ]
       else
         [ static_target ])
-  else (
+  else
+    let open Memo.Build.O in
     (* Build the static target only by passing the [-custom] flag. *)
-    build ~sandbox:Sandbox_config.no_special_requirements ~custom:true
-      [ static_target ];
+    let* () =
+      build ~sandbox:Sandbox_config.no_special_requirements ~custom:true
+        [ static_target ]
+    in
     (* The second rule (below) may fail on some platforms, but the build will
        succeed as long as the resulting dynamic library isn't actually needed
        (the rule will not fire in that case). We can't tell ocamlmklib to build
@@ -171,10 +177,9 @@ let ocamlmklib ~loc ~c_library_flags ~sctx ~dir ~expander ~o_files ~archive_name
        "optional targets", allowing us to run [ocamlmklib] with the [-failsafe]
        flag, which always produces the static target and sometimes produces the
        dynamic target too. *)
-    if ctx.dynamically_linked_foreign_archives then
-      build ~sandbox:Sandbox_config.needs_sandboxing ~custom:false
-        [ dynamic_target ]
-  )
+    Memo.Build.if_ ctx.dynamically_linked_foreign_archives
+      (build ~sandbox:Sandbox_config.needs_sandboxing ~custom:false
+         [ dynamic_target ])
 
 (* Build a static and a dynamic archive for a foreign library. Note that the
    dynamic archive can't be built on some platforms, in which case the rule that
@@ -182,14 +187,14 @@ let ocamlmklib ~loc ~c_library_flags ~sctx ~dir ~expander ~o_files ~archive_name
 let foreign_rules (library : Foreign.Library.t) ~sctx ~expander ~dir
     ~dir_contents =
   let archive_name = library.archive_name in
-  let o_files =
+  let* o_files =
     let foreign_sources =
       Dir_contents.foreign_sources dir_contents
       |> Foreign_sources.for_archive ~archive_name
     in
     Foreign_rules.build_o_files ~sctx ~dir ~expander ~requires:(Result.ok [])
       ~dir_contents ~foreign_sources
-    |> List.map ~f:Path.build
+    |> Memo.Build.sequential_map ~f:(Memo.Build.map ~f:Path.build)
   in
   Check_rules.add_files sctx ~dir o_files;
   ocamlmklib ~archive_name ~loc:library.stubs.loc
@@ -200,7 +205,7 @@ let foreign_rules (library : Foreign.Library.t) ~sctx ~expander ~dir
 let build_stubs lib ~cctx ~dir ~expander ~requires ~dir_contents
     ~vlib_stubs_o_files =
   let sctx = Compilation_context.super_context cctx in
-  let lib_o_files =
+  let* lib_o_files =
     let foreign_sources =
       let foreign_sources = Dir_contents.foreign_sources dir_contents in
       let name = Library.best_name lib in
@@ -208,11 +213,11 @@ let build_stubs lib ~cctx ~dir ~expander ~requires ~dir_contents
     in
     Foreign_rules.build_o_files ~sctx ~dir ~expander ~requires ~dir_contents
       ~foreign_sources
-    |> List.map ~f:Path.build
+    |> Memo.Build.sequential_map ~f:(Memo.Build.map ~f:Path.build)
   in
   Check_rules.add_files sctx ~dir lib_o_files;
   match vlib_stubs_o_files @ lib_o_files with
-  | [] -> ()
+  | [] -> Memo.Build.return ()
   | o_files ->
     let ctx = Super_context.context sctx in
     let lib_name = Lib_name.Local.to_string (snd lib.name) in
@@ -227,7 +232,7 @@ let build_stubs lib ~cctx ~dir ~expander ~requires ~dir_contents
 
 let build_shared lib ~native_archives ~sctx ~dir ~flags =
   let ctx = Super_context.context sctx in
-  Result.iter ctx.ocamlopt ~f:(fun ocamlopt ->
+  Memo.Build.Result.iter ctx.ocamlopt ~f:(fun ocamlopt ->
       let ext_lib = ctx.lib_config.ext_lib in
       let src =
         let ext = Mode.compiled_lib_ext Native in
@@ -278,28 +283,31 @@ let setup_build_archives (lib : Dune_file.Library.t) ~cctx
   let ctx = Compilation_context.context cctx in
   let { Lib_config.ext_obj; natdynlink_supported; _ } = ctx.lib_config in
   let impl_only = Modules.impl_only modules in
-  Modules.exit_module modules
-  |> Option.iter ~f:(fun m ->
-         (* These files needs to be alongside stdlib.cma as the compiler
-            implicitly adds this module. *)
-         [ (Cm_kind.Cmx, Cm_kind.ext Cmx)
-         ; (Cmo, Cm_kind.ext Cmo)
-         ; (Cmx, ext_obj)
-         ]
-         |> List.iter ~f:(fun (kind, ext) ->
-                let src =
-                  Path.build (Obj_dir.Module.obj_file obj_dir m ~kind ~ext)
-                in
-                let obj_name = Module.obj_name m in
-                let fname =
-                  Module_name.Unique.artifact_filename obj_name ~ext
-                in
-                (* XXX we should get the directory from the dir of the cma file
-                   explicitly *)
-                let dst = Path.Build.relative (Obj_dir.dir obj_dir) fname in
-                Super_context.add_rule sctx
-                  ~dir:(Compilation_context.dir cctx)
-                  (Action_builder.copy ~src ~dst)));
+  let open Memo.Build.O in
+  let* () =
+    Modules.exit_module modules
+    |> Memo.Build.Option.iter ~f:(fun m ->
+           (* These files needs to be alongside stdlib.cma as the compiler
+              implicitly adds this module. *)
+           [ (Cm_kind.Cmx, Cm_kind.ext Cmx)
+           ; (Cmo, Cm_kind.ext Cmo)
+           ; (Cmx, ext_obj)
+           ]
+           |> Memo.Build.sequential_iter ~f:(fun (kind, ext) ->
+                  let src =
+                    Path.build (Obj_dir.Module.obj_file obj_dir m ~kind ~ext)
+                  in
+                  let obj_name = Module.obj_name m in
+                  let fname =
+                    Module_name.Unique.artifact_filename obj_name ~ext
+                  in
+                  (* XXX we should get the directory from the dir of the cma
+                     file explicitly *)
+                  let dst = Path.Build.relative (Obj_dir.dir obj_dir) fname in
+                  Super_context.add_rule sctx
+                    ~dir:(Compilation_context.dir cctx)
+                    (Action_builder.copy ~src ~dst)))
+  in
   let top_sorted_modules =
     Dep_graph.top_closed_implementations dep_graphs.impl impl_only
   in
@@ -313,31 +321,38 @@ let setup_build_archives (lib : Dune_file.Library.t) ~cctx
     let lib_info = Library.to_lib_info lib ~dir ~lib_config in
     Lib_info.eval_native_archives_exn lib_info ~modules:(Some modules)
   in
-  (let cm_files =
-     Cm_files.make ~obj_dir ~ext_obj ~modules ~top_sorted_modules
-   in
-   Mode.Dict.Set.iter modes ~f:(fun mode ->
-       build_lib lib ~native_archives ~dir ~sctx ~expander ~flags ~mode
-         ~cm_files));
+  let cm_files = Cm_files.make ~obj_dir ~ext_obj ~modules ~top_sorted_modules in
+  let* () =
+    Mode.Dict.Set.iter_sequentially modes ~f:(fun mode ->
+        build_lib lib ~native_archives ~dir ~sctx ~expander ~flags ~mode
+          ~cm_files)
+  in
   (* Build *.cma.js *)
-  if modes.byte then
-    Super_context.add_rules sctx ~dir
-      (let src =
-         Library.archive lib ~dir ~ext:(Mode.compiled_lib_ext Mode.Byte)
+  let* () =
+    Memo.Build.if_ modes.byte
+      (let* action_with_targets =
+         let src =
+           Library.archive lib ~dir ~ext:(Mode.compiled_lib_ext Mode.Byte)
+         in
+         let target =
+           Path.Build.relative (Obj_dir.obj_dir obj_dir)
+             (Path.Build.basename src)
+           |> Path.Build.extend_basename ~suffix:".js"
+         in
+         Jsoo_rules.build_cm cctx ~js_of_ocaml ~src ~target
        in
-       let target =
-         Path.Build.relative (Obj_dir.obj_dir obj_dir) (Path.Build.basename src)
-         |> Path.Build.extend_basename ~suffix:".js"
-       in
-       Jsoo_rules.build_cm cctx ~js_of_ocaml ~src ~target);
-  if Dynlink_supported.By_the_os.get natdynlink_supported && modes.native then
-    build_shared ~native_archives ~sctx lib ~dir ~flags
+       Memo.Build.Option.iter action_with_targets
+         ~f:(Super_context.add_rule sctx ~dir))
+  in
+  Memo.Build.if_
+    (Dynlink_supported.By_the_os.get natdynlink_supported && modes.native)
+    (build_shared ~native_archives ~sctx lib ~dir ~flags)
 
 let cctx (lib : Library.t) ~sctx ~source_modules ~dir ~expander ~scope
     ~compile_info =
-  let flags = Super_context.ocaml_flags sctx ~dir lib.buildable.flags in
+  let* flags = Super_context.ocaml_flags sctx ~dir lib.buildable.flags in
   let obj_dir = Library.obj_dir ~dir lib in
-  let+ vimpl = Virtual_rules.impl sctx ~lib ~scope in
+  let* vimpl = Virtual_rules.impl sctx ~lib ~scope in
   let ctx = Super_context.context sctx in
   let instrumentation_backend =
     Lib.DB.instrumentation_backend (Scope.libs scope)
@@ -351,7 +366,7 @@ let cctx (lib : Library.t) ~sctx ~source_modules ~dir ~expander ~scope
       ~instrumentation_backend
   in
   (* Preprocess before adding the alias module as it doesn't need preprocessing *)
-  let pp =
+  let+ pp =
     Preprocessing.make sctx ~dir ~scope ~preprocess ~expander
       ~preprocessor_deps:lib.buildable.preprocessor_deps ~instrumentation_deps
       ~lint:lib.buildable.lint
@@ -389,25 +404,32 @@ let library_rules (lib : Library.t) ~cctx ~source_modules ~dir_contents
   let requires_compile = Compilation_context.requires_compile cctx in
   let stdlib_dir = (Compilation_context.context cctx).Context.stdlib_dir in
   let dep_graphs = Dep_rules.rules cctx ~modules in
-  Option.iter vimpl ~f:(Virtual_rules.setup_copy_rules_for_impl ~sctx ~dir);
+  let* () =
+    Memo.Build.Option.iter vimpl
+      ~f:(Virtual_rules.setup_copy_rules_for_impl ~sctx ~dir)
+  in
   Check_rules.add_obj_dir sctx ~obj_dir;
-  gen_wrapped_compat_modules lib cctx;
+  let* () = gen_wrapped_compat_modules lib cctx in
   let* () = Module_compilation.build_all cctx ~dep_graphs in
-  let expander = Super_context.expander sctx ~dir in
+  let* expander = Super_context.expander sctx ~dir in
   let preprocess =
     Preprocess.Per_module.with_instrumentation lib.buildable.preprocess
       ~instrumentation_backend:
         (Lib.DB.instrumentation_backend (Scope.libs scope))
   in
-  if not (Library.is_virtual lib) then
-    setup_build_archives lib ~cctx ~dep_graphs ~expander;
-  let () =
-    let vlib_stubs_o_files = Vimpl.vlib_stubs_o_files vimpl in
-    if Library.has_foreign lib || List.is_non_empty vlib_stubs_o_files then
-      build_stubs lib ~cctx ~dir ~expander ~requires:requires_compile
-        ~dir_contents ~vlib_stubs_o_files
+  let* () =
+    Memo.Build.if_
+      (not (Library.is_virtual lib))
+      (setup_build_archives lib ~cctx ~dep_graphs ~expander)
   in
-  Odoc.setup_library_odoc_rules cctx lib ~dep_graphs;
+  let* () =
+    let vlib_stubs_o_files = Vimpl.vlib_stubs_o_files vimpl in
+    Memo.Build.if_
+      (Library.has_foreign lib || List.is_non_empty vlib_stubs_o_files)
+      (build_stubs lib ~cctx ~dir ~expander ~requires:requires_compile
+         ~dir_contents ~vlib_stubs_o_files)
+  in
+  let* () = Odoc.setup_library_odoc_rules cctx lib ~dep_graphs in
   let+ () =
     Sub_system.gen_rules
       { super_context = sctx

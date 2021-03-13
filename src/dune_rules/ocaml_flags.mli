@@ -21,8 +21,8 @@ val make :
   -> eval:
        (   Ordered_set_lang.Unexpanded.t
         -> standard:string list Action_builder.t
-        -> string list Action_builder.t)
-  -> t
+        -> string list Action_builder.t Memo.Build.t)
+  -> t Memo.Build.t
 
 val default : dune_version:Dune_lang.Syntax.Version.t -> profile:Profile.t -> t
 

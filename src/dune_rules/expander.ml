@@ -29,7 +29,8 @@ type t =
   ; lookup_artifacts :
       (dir:Path.Build.t -> Ml_sources.Artifacts.t Memo.Build.t) option
   ; foreign_flags :
-      dir:Path.Build.t -> string list Action_builder.t Foreign_language.Dict.t
+         dir:Path.Build.t
+      -> string list Action_builder.t Foreign_language.Dict.t Memo.Build.t
   ; find_package : Package.Name.t -> any_package option
   ; expanding_what : Expanding_what.t
   }
@@ -173,10 +174,10 @@ let expand_artifact ~source t a s =
                Value.Path fn))))
 
 let cc t =
-  let cc = t.foreign_flags ~dir:t.dir in
-  Foreign_language.Dict.map cc ~f:(fun cc ->
-      let+ flags = cc in
-      strings (t.c_compiler :: flags))
+  Memo.Build.map (t.foreign_flags ~dir:t.dir) ~f:(fun cc ->
+      Foreign_language.Dict.map cc ~f:(fun cc ->
+          let+ flags = cc in
+          strings (t.c_compiler :: flags)))
 
 let get_prog = function
   | Ok p -> path p
@@ -192,7 +193,7 @@ let relative ~source d s =
 
 type nonrec expansion_result =
   | Direct of Value.t list Action_builder.t
-  | Need_full_expander of (t -> Value.t list Action_builder.t)
+  | Need_full_expander of (t -> Value.t list Action_builder.t Memo.Build.t)
 
 let static v = Direct (Action_builder.return v)
 
@@ -306,10 +307,14 @@ let expand_pform_gen ~(context : Context.t) ~bindings ~dir ~source
       | Project_root ->
         Need_full_expander
           (fun t ->
-            Action_builder.return
-              [ Value.Dir (Path.build (Scope.root t.scope)) ])
-      | Cc -> Need_full_expander (fun t -> (cc t).c)
-      | Cxx -> Need_full_expander (fun t -> (cc t).cxx)
+            Memo.Build.return
+              (Action_builder.return
+                 [ Value.Dir (Path.build (Scope.root t.scope)) ]))
+      | Cc ->
+        Need_full_expander (fun t -> Memo.Build.map (cc t) ~f:(fun cc -> cc.c))
+      | Cxx ->
+        Need_full_expander
+          (fun t -> Memo.Build.map (cc t) ~f:(fun cc -> cc.cxx))
       | Ccomp_type ->
         static
           (string
@@ -340,40 +345,49 @@ let expand_pform_gen ~(context : Context.t) ~bindings ~dir ~source
                     (Dune_lang.Template.Pform.describe source)
                 ]
                 ~hints:[ Pp.text "the syntax is %{env:VAR=DEFAULT-VALUE}" ]
-            | Some (var, default) -> (
-              match Env.Var.Map.find t.local_env var with
-              | Some v ->
-                let+ v = v in
-                string v
-              | None ->
-                Action_builder.return
-                  (string (Option.value ~default (Env.get t.env var)))))
+            | Some (var, default) ->
+              Memo.Build.return
+                (match Env.Var.Map.find t.local_env var with
+                | Some v ->
+                  let+ v = v in
+                  string v
+                | None ->
+                  Action_builder.return
+                    (string (Option.value ~default (Env.get t.env var)))))
       | Version ->
         Need_full_expander
-          (fun t -> Action_builder.return (expand_version t ~source s))
+          (fun t ->
+            Memo.Build.return
+              (Action_builder.return (expand_version t ~source s)))
       | Artifact a ->
         Need_full_expander
           (fun t ->
-            if t.artifacts_dynamic then
-              let* () = Action_builder.return () in
-              expand_artifact ~source t a s
-            else
-              expand_artifact ~source t a s)
+            Memo.Build.return
+              (if t.artifacts_dynamic then
+                let* () = Action_builder.return () in
+                expand_artifact ~source t a s
+              else
+                expand_artifact ~source t a s))
       | Path_no_dep ->
         (* This case is for %{path-no-dep:...} which was only allowed inside
            jbuild files *)
         assert false
       | Exe ->
-        Need_full_expander (fun t -> dep (map_exe t (relative ~source t.dir s)))
-      | Dep -> Need_full_expander (fun t -> dep (relative ~source t.dir s))
+        Need_full_expander
+          (fun t ->
+            Memo.Build.return (dep (map_exe t (relative ~source t.dir s))))
+      | Dep ->
+        Need_full_expander
+          (fun t -> Memo.Build.return (dep (relative ~source t.dir s)))
       | Bin ->
         Need_full_expander
           (fun t ->
-            dep
-              (Artifacts.Bin.binary
-                 ~loc:(Some (Dune_lang.Template.Pform.loc source))
-                 t.bin_artifacts_host s
-              |> Action.Prog.ok_exn))
+            Memo.Build.return
+              (dep
+                 (Artifacts.Bin.binary
+                    ~loc:(Some (Dune_lang.Template.Pform.loc source))
+                    t.bin_artifacts_host s
+                 |> Action.Prog.ok_exn)))
       | Lib { lib_exec; lib_private } ->
         Need_full_expander
           (fun t ->
@@ -446,11 +460,12 @@ let expand_pform_gen ~(context : Context.t) ~bindings ~dir ~source
                 (not lib_exec) || (not Sys.win32)
                 || Filename.extension s = ".exe"
               then
-                dep p
+                Memo.Build.return (dep p)
               else
                 let p_exe = Path.extend_basename p ~suffix:".exe" in
-                Action_builder.if_file_exists p_exe ~then_:(dep p_exe)
-                  ~else_:(dep p)
+                Memo.Build.return
+                  (Action_builder.if_file_exists p_exe ~then_:(dep p_exe)
+                     ~else_:(dep p))
             | Error e ->
               raise
                 (match lib_private with
@@ -478,9 +493,10 @@ let expand_pform_gen ~(context : Context.t) ~bindings ~dir ~source
             let lib =
               Lib_name.parse_string_exn (Dune_lang.Template.Pform.loc source, s)
             in
-            Action_builder.return
-              (Lib.DB.available (Scope.libs t.scope) lib
-              |> string_of_bool |> string))
+            Memo.Build.return
+              (Action_builder.return
+                 (Lib.DB.available (Scope.libs t.scope) lib
+                 |> string_of_bool |> string)))
       | Read ->
         let path = relative ~source dir s in
         Direct (Action_builder.map (Action_builder.contents path) ~f:string)
@@ -502,14 +518,15 @@ let expand_pform_gen ~context ~bindings ~dir ~source pform =
       (fun t ->
         try f t with
         | User_error.E _ as exn ->
-          Action_builder.fail { fail = (fun () -> reraise exn) })
+          Memo.Build.return
+            (Action_builder.fail { fail = (fun () -> reraise exn) }))
 
 let expand_pform t ~source pform =
   match
     expand_pform_gen ~context:t.context ~bindings:t.bindings ~dir:t.dir ~source
       pform
   with
-  | Direct v -> v
+  | Direct v -> Memo.Build.return v
   | Need_full_expander f -> f t
 
 let expand t ~mode template =
@@ -540,16 +557,21 @@ let make ~scope ~scope_host ~(context : Context.t) ~lib_artifacts
   }
 
 let expand_path t sw =
-  let+ v = expand t ~mode:Single sw in
-  Value.to_path v ~error_loc:(String_with_vars.loc sw) ~dir:(Path.build t.dir)
+  Memo.Build.map (expand t ~mode:Single sw) ~f:(fun expanded ->
+      let+ v = expanded in
+      Value.to_path v ~error_loc:(String_with_vars.loc sw)
+        ~dir:(Path.build t.dir))
 
 let expand_str t sw =
-  let+ v = expand t ~mode:Single sw in
-  Value.to_string v ~dir:(Path.build t.dir)
+  Memo.Build.map (expand t ~mode:Single sw) ~f:(fun expanded ->
+      let+ v = expanded in
+      Value.to_string v ~dir:(Path.build t.dir))
 
 module Static = struct
   let expand_pform t ~source pform =
-    match Action_builder.static_eval (expand_pform t ~source pform) with
+    let open Memo.Build.O in
+    let+ expand_pform = expand_pform t ~source pform in
+    match Action_builder.static_eval expand_pform with
     | Some (v, _) -> v
     | None -> isn't_allowed_in_this_position ~source
 
@@ -558,12 +580,13 @@ module Static = struct
       ~f:(expand_pform t)
 
   let expand_path t sw =
-    let v = expand t ~mode:Single sw in
-    Value.to_path v ~error_loc:(String_with_vars.loc sw) ~dir:(Path.build t.dir)
+    Memo.Build.map (expand t ~mode:Single sw) ~f:(fun expanded ->
+        Value.to_path expanded ~error_loc:(String_with_vars.loc sw)
+          ~dir:(Path.build t.dir))
 
   let expand_str t sw =
-    let v = expand t ~mode:Single sw in
-    Value.to_string v ~dir:(Path.build t.dir)
+    Memo.Build.map (expand t ~mode:Single sw) ~f:(fun expanded ->
+        Value.to_string expanded ~dir:(Path.build t.dir))
 
   module Or_exn = struct
     let expand_path t sw = Result.try_with (fun () -> expand_path t sw)
@@ -573,17 +596,21 @@ module Static = struct
 
   module With_reduced_var_set = struct
     let expand_pform_opt ~(context : Context.t) ~dir ~source pform =
-      match
-        expand_pform_gen ~context ~bindings:Pform.Map.empty ~dir ~source pform
-      with
-      | Direct v -> (
-        match Action_builder.static_eval v with
-        | Some (v, _) -> Some v
-        | None -> None)
-      | Need_full_expander _ -> None
+      Memo.Build.return
+        (match
+           expand_pform_gen ~context ~bindings:Pform.Map.empty ~dir ~source
+             pform
+         with
+        | Direct v -> (
+          match Action_builder.static_eval v with
+          | Some (v, _) -> Some v
+          | None -> None)
+        | Need_full_expander _ -> None)
 
     let expand_pform ~context ~dir ~source pform =
-      match expand_pform_opt ~context ~dir ~source pform with
+      let open Memo.Build.O in
+      let+ expand_pform_opt = expand_pform_opt ~context ~dir ~source pform in
+      match expand_pform_opt with
       | Some v -> v
       | None -> isn't_allowed_in_this_position ~source
 
@@ -592,12 +619,13 @@ module Static = struct
         ~f:(expand_pform ~context ~dir)
 
     let expand_path ~context ~dir sw =
-      let v = expand ~context ~dir ~mode:Single sw in
-      Value.to_path v ~error_loc:(String_with_vars.loc sw) ~dir:(Path.build dir)
+      Memo.Build.map (expand ~context ~dir ~mode:Single sw) ~f:(fun expanded ->
+          Value.to_path expanded ~error_loc:(String_with_vars.loc sw)
+            ~dir:(Path.build dir))
 
     let expand_str ~context ~dir sw =
-      let v = expand ~context ~dir ~mode:Single sw in
-      Value.to_string v ~dir:(Path.build dir)
+      Memo.Build.map (expand ~context ~dir ~mode:Single sw) ~f:(fun expanded ->
+          Value.to_string expanded ~dir:(Path.build dir))
 
     let expand_str_partial ~context ~dir sw =
       String_with_vars.expand_as_much_as_possible sw ~dir:(Path.build dir)
@@ -607,14 +635,17 @@ end
 
 let expand_and_eval_set t set ~standard =
   let dir = Path.build (dir t) in
-  let+ standard =
-    if Ordered_set_lang.Unexpanded.has_special_forms set then
-      standard
-    else
-      Action_builder.return []
-  and+ set = Ordered_set_lang.Unexpanded.expand set ~dir ~f:(expand_pform t) in
-  Ordered_set_lang.eval set ~standard ~eq:String.equal ~parse:(fun ~loc:_ s ->
-      s)
+  Memo.Build.map
+    (Ordered_set_lang.Unexpanded.expand set ~dir ~f:(expand_pform t))
+    ~f:(fun expanded ->
+      let+ standard =
+        if Ordered_set_lang.Unexpanded.has_special_forms set then
+          standard
+        else
+          Action_builder.return []
+      and+ set = expanded in
+      Ordered_set_lang.eval set ~standard ~eq:String.equal
+        ~parse:(fun ~loc:_ s -> s))
 
 let eval_blang t = function
   | Blang.Const x -> x (* common case *)

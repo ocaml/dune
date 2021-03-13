@@ -38,26 +38,33 @@ module Unexpanded = struct
     ; dst = Some (String_with_vars.make_text locd dst)
     }
 
-  let expand_src t ~dir ~f = Path.Build.relative dir (f t.src)
+  let expand_src t ~dir ~f =
+    let open Memo.Build.O in
+    let+ f = f t.src in
+    Path.Build.relative dir f
 
   let destination_relative_to_install_path t ~section ~expand ~expand_partial =
     let dst = Option.map ~f:expand t.dst in
     Install.Entry.adjust_dst ~section ~src:(expand_partial t.src) ~dst
 
   let expand t ~dir ~f =
-    let f sw = (String_with_vars.loc sw, f sw) in
-    let src =
-      let loc, expanded = f t.src in
+    let open Memo.Build.O in
+    let f sw =
+      let+ f = f sw in
+      (String_with_vars.loc sw, f)
+    in
+    let* src =
+      let+ loc, expanded = f t.src in
       (loc, Path.Build.relative dir expanded)
     in
-    { src
-    ; dst =
-        (let f sw =
-           let loc, p = f sw in
-           (loc, p)
-         in
-         Option.map ~f t.dst)
-    }
+    let+ dst =
+      match t.dst with
+      | None -> Memo.Build.return None
+      | Some dst ->
+        let+ loc, p = f dst in
+        Some (loc, p)
+    in
+    { src; dst }
 
   module L = struct
     let decode_file =

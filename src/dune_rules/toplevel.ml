@@ -132,9 +132,8 @@ let setup_rules t =
   let dir = Source.stanza_dir t.source in
   let dst = Path.Build.relative dir (Path.Build.basename src) in
   Super_context.add_rule sctx ~dir ~loc:t.source.loc
-    (Action_builder.symlink ~src:(Path.build src) ~dst);
-  setup_module_rules t;
-  Memo.Build.return ()
+    (Action_builder.symlink ~src:(Path.build src) ~dst)
+  >>> setup_module_rules t
 
 let print_toplevel_init_file ~include_paths ~files_to_load =
   let includes = Path.Set.to_list include_paths in
@@ -145,8 +144,9 @@ let print_toplevel_init_file ~include_paths ~files_to_load =
 
 module Stanza = struct
   let setup ~sctx ~dir ~(toplevel : Dune_file.Toplevel.t) =
+    let open Memo.Build.O in
     let source = Source.of_stanza ~dir ~toplevel in
-    let expander = Super_context.expander sctx ~dir in
+    let* expander = Super_context.expander sctx ~dir in
     let scope = Super_context.find_scope_by_dir sctx dir in
     let dune_version = Scope.project scope |> Dune_project.dune_version in
     let pps =
@@ -158,7 +158,7 @@ module Stanza = struct
       | No_preprocessing -> []
     in
     let preprocess = Module_name.Per_item.for_all toplevel.pps in
-    let preprocessing =
+    let* preprocessing =
       Preprocessing.make sctx ~dir ~expander ~scope ~lib_name:None
         ~lint:Dune_file.Lint.no_lint ~preprocess ~preprocessor_deps:[]
         ~instrumentation_deps:[]

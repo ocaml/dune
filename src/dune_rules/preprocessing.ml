@@ -299,11 +299,7 @@ module DriverP5 = struct
 
       type t =
         { loc : Loc.t
-        (* ; flags : Ordered_set_lang.Unexpanded.t *)
-        (* ; as_ppx_flags : Ordered_set_lang.Unexpanded.t *)
-        (* ; lint_flags : Ordered_set_lang.Unexpanded.t *)
         ; main : string
-        (* ; replaces : (Loc.t * Lib_name.t) list *)
         }
 
       type Sub_system_info.t += T of t
@@ -321,28 +317,16 @@ module DriverP5 = struct
 
       let decode =
         fields (* ~trace:true *)
-          (let+ () = (print_endline "HERR"; return ())
-           and+ loc = loc
-           (* and+ flags = Ordered_set_lang.Unexpanded.field "flags"
-           and+ as_ppx_flags =
-             Ordered_set_lang.Unexpanded.field "as_ppx_flags"
-               ~check:(Dune_lang.Syntax.since syntax (1, 2)) *)
-           (* and+ lint_flags = Ordered_set_lang.Unexpanded.field "lint_flags" *)
+          (let+ loc = loc
            and+ main = return "main_dummy"
-           (* and+ replaces =
-             field "replaces" (repeat (located Lib_name.decode)) ~default:[] *)
            in
-           Format.printf "Camlp5 parsed something...\n";
            { loc;  main; })
 
       let encode t =
         let open Dune_lang.Encoder in
-        (* let lib (_loc, name) = Lib_name.encode name in *)
         ( (1, 0)
         , record_fields
-          @@ [ field "main" string t.main
-
-             ] )
+          @@ [ field "main" string t.main ] )
     end
 
     (* The [lib] field is lazy so that we don't need to fill it for hardcoded
@@ -410,10 +394,6 @@ module DriverP5 = struct
               ]))
 
   let select libs ~loc =
-    Format.printf "select: %s %d\n%!" __FILE__ __LINE__;
-    Format.printf "  libs='%a'\n%!"
-      Pp.to_fmt (Dyn.pp @@  (Dyn.Encoder.list Lib.to_dyn)  libs);
-
     let open Memo.Build.O in
     select_replaceable_backend libs ~replaces >>| function
     | Ok _ as x -> x
@@ -568,17 +548,9 @@ let build_camlp5_driver sctx ~scope ~target ~pps ~pp_names =
       ~modules ~flags ~requires_compile ~requires_link ~opaque ~js_of_ocaml:None
       ~package:None ~bin_annot:false ()
   in
-  Format.printf "%s %d\n%!" __FILE__ __LINE__;
-  (* Here we shoudl call no-ocamlfind and not ppx shit *)
-  Format.printf "program = %s\n%!" program.Exe.Program.name;
-  (* Exe.build_and_link ~program ~linkages cctx ~promote:None *)
   Exe.link_camlp5_rewriter ~program ~libs:(Result.value ~default:[] pps) cctx
 
-
-(* let (_) = build_camlp5_driver *)
-
 let get_rules sctx key =
-  Format.printf "get_rules: key='%s' %s %d\n%!" key __FILE__ __LINE__;
   let exe = ppx_exe sctx ~key in
   let pp_names, scope =
     match Digest.from_hex key with
@@ -607,7 +579,6 @@ let get_rules sctx key =
   build_ppx_driver sctx ~scope ~pps ~pp_names ~target:exe
 
 let get_rules_camlp5 sctx key =
-  Format.printf "get_rules_camlp5: key='%s' %s %d\n%!" key __FILE__ __LINE__;
   let exe = camlp5_exe sctx ~key in
   let pp_names, scope =
     match Digest.from_hex key with
@@ -636,21 +607,16 @@ let get_rules_camlp5 sctx key =
   build_camlp5_driver sctx ~scope ~pps ~pp_names ~target:exe
 
 let gen_rules_ppx sctx components =
-  Format.printf "gen_rules_ppx: %s %d, components.length=%d\n%!" __FILE__ __LINE__ (List.length components);
   match components with
   | [ key ] -> get_rules sctx key
   | _ -> Memo.Build.return ()
 
 let gen_rules_camlp5 sctx components =
-  Format.printf "gen_rules_camlp5: %s %d, components.length=%d\n%!" __FILE__ __LINE__ (List.length components);
   match components with
-  | [ key ] ->
-    Format.printf "key: %s \n%!" key;
-    get_rules_camlp5 sctx key
+  | [ key ] -> get_rules_camlp5 sctx key
   | _ -> Memo.Build.return ()
 
 let ppx_driver_exe sctx libs =
-  Format.printf "ppx_driver_exe: %s %d \n%!" __FILE__ __LINE__;
   let key = Digest.to_string (Key.Decoded.of_libs libs |> Key.encode) in
   (* Make sure to compile ppx.exe for the compiling host. See: #2252, #2286 and
      #3698 *)
@@ -658,12 +624,11 @@ let ppx_driver_exe sctx libs =
   ppx_exe sctx ~key
 
 let camlp5_driver_exe sctx libs =
-  Format.printf "camlp5_driver_exe: %s %d \n%!" __FILE__ __LINE__;
   let key = Digest.to_string (Key.Decoded.of_libs libs |> Key.encode) in
+  let sctx = SC.host sctx in
   camlp5_exe sctx ~key
 
 let get_cookies ~loc ~expander ~lib_name libs =
-  Format.printf "get_cookies\n%!";
   let expander, library_name_cookie =
     match lib_name with
     | None -> (expander, None)
@@ -978,7 +943,7 @@ let make sctx ~dir ~expander ~lint ~preprocess ~preprocessor_deps
                   ~f:String.quote_for_shell
                 |> String.concat ~sep:" "
               in
-              [ "-ppx"; command ])
+              [ "-pp"; command ])
           in
           let pp = Some dash_ppx_flag in
           fun m ~lint:_ ->

@@ -12,12 +12,12 @@ See https://stackoverflow.com/a/3618308/1065436
 $ dune build  rewriter1/rewriter1.exe 3>&1 1>&2 2>&3 3>&-  | sed '/Interface topdirs.cmi occurs in several directories/d'
 $ dune build bin/test1.exe
 $ dune exec bin/test1.exe
-  $ dune build  rewriter3ppx/librewriter3.cma --verbose
-  $ dune build  rewriter3ppx/lib3.cma --verbose
+$ dune build  rewriter3ppx/librewriter3.cma --verbose
+ $ dune build  rewriter3ppx/lib3.cma --verbose
 $ dune exec rewriter1/rewriter1.exe bin/test1.ml
 $ dune exec rewriter1/rewriter1.exe bin/test1.ml | ocaml -stdin
   $ dune build rewriter2/librewriter2.cmxa
-  $ dune build rewriter2/lib2.cmxa
+$ dune build rewriter2/lib2.cmxa
 $ dune build rewriter2/lib2.cmxa #--verbose #--debug-backtraces
 
 

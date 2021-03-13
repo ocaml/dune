@@ -229,6 +229,7 @@ let link_camlp5_rewriter ~program ~libs cctx =
       Command.run ~dir:(Path.build ctx.build_dir)
            mkcamlp5
            [ Command.Args.dyn myargs
+           (* ; A "-verbose" *)
            ; A "-o"
            ; Target exe
            ])

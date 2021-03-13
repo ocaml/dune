@@ -58,8 +58,6 @@ module Unexpanded : sig
 
   val of_strings : pos:string * int * int * int -> string list -> t
 
-  val standard_with_of_strings : pos:string * int * int * int -> string list -> t
-
   val include_single : context:Univ_map.t -> pos:string * int * int * int -> string -> t
 
   val field :

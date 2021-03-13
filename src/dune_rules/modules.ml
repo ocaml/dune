@@ -110,8 +110,8 @@ module Stdlib = struct
     Module_name.Map.values t.modules
     |> List.filter ~f:(fun m -> Some (Module.name m) <> t.exit_module)
 
-  let find t module_name =
-   Module_name.Map.find t.modules module_name
+  let find t =
+   Module_name.Map.find t.modules
 
   let find_dep t ~of_ name =
     let of_name = Module.name of_ in

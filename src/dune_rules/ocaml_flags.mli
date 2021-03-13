@@ -13,8 +13,6 @@ module Spec : sig
   val decode : t Dune_lang.Decoder.fields_parser
 
   val standard : t
-
-  val of_unexpanded_ordered_set_lang : Ordered_set_lang.Unexpanded.t -> t
 end
 
 val make :

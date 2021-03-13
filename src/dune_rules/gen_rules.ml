@@ -321,7 +321,7 @@ let gen_rules ~sctx ~dir components =
       | [] -> S.All
       | _ -> S.These String.Set.empty)
     | ".ppx" :: rest -> (
-      let+ () = Preprocessing.gen_rules sctx rest in
+      let+ () = Preprocessing.gen_rules_ppx sctx rest in
       match rest with
       | [] -> S.All
       | _ -> S.These String.Set.empty)

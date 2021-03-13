@@ -146,8 +146,12 @@ module Driver = struct
       open Dune_lang.Decoder
 
       let decode =
+        (* return () >>= fun () ->
+          let () = Format.printf "\n%s tries to decode...(%s %d)\n" "ppx.driver" __FILE__ __LINE__ in *)
         fields
-          (let+ loc = loc
+          (* ~trace:true *)
+          (let+ () = (print_endline "HERR"; return ())
+           and+ loc = loc
            and+ flags = Ordered_set_lang.Unexpanded.field "flags"
            and+ as_ppx_flags =
              Ordered_set_lang.Unexpanded.field "as_ppx_flags"
@@ -157,6 +161,7 @@ module Driver = struct
            and+ replaces =
              field "replaces" (repeat (located Lib_name.decode)) ~default:[]
            in
+           Format.printf "PPX parsed something...\n";
            { loc; flags; as_ppx_flags; lint_flags; main; replaces })
 
       let encode t =
@@ -298,11 +303,11 @@ module DriverP5 = struct
 
       type t =
         { loc : Loc.t
-        ; flags : Ordered_set_lang.Unexpanded.t
-        ; as_ppx_flags : Ordered_set_lang.Unexpanded.t
-        ; lint_flags : Ordered_set_lang.Unexpanded.t
+        (* ; flags : Ordered_set_lang.Unexpanded.t *)
+        (* ; as_ppx_flags : Ordered_set_lang.Unexpanded.t *)
+        (* ; lint_flags : Ordered_set_lang.Unexpanded.t *)
         ; main : string
-        ; replaces : (Loc.t * Lib_name.t) list
+        (* ; replaces : (Loc.t * Lib_name.t) list *)
         }
 
       type Sub_system_info.t += T of t
@@ -319,29 +324,28 @@ module DriverP5 = struct
       open Dune_lang.Decoder
 
       let decode =
-        fields
-          (let+ loc = loc
-           and+ flags = Ordered_set_lang.Unexpanded.field "flags"
+        fields (* ~trace:true *)
+          (let+ () = (print_endline "HERR"; return ())
+           and+ loc = loc
+           (* and+ flags = Ordered_set_lang.Unexpanded.field "flags"
            and+ as_ppx_flags =
              Ordered_set_lang.Unexpanded.field "as_ppx_flags"
-               ~check:(Dune_lang.Syntax.since syntax (1, 2))
-           and+ lint_flags = Ordered_set_lang.Unexpanded.field "lint_flags"
-           and+ main = field "main" string
-           and+ replaces =
-             field "replaces" (repeat (located Lib_name.decode)) ~default:[]
+               ~check:(Dune_lang.Syntax.since syntax (1, 2)) *)
+           (* and+ lint_flags = Ordered_set_lang.Unexpanded.field "lint_flags" *)
+           and+ main = return "main_dummy"
+           (* and+ replaces =
+             field "replaces" (repeat (located Lib_name.decode)) ~default:[] *)
            in
-           { loc; flags; as_ppx_flags; lint_flags; main; replaces })
+           Format.printf "Camlp5 parsed something...\n";
+           { loc;  main; })
 
       let encode t =
         let open Dune_lang.Encoder in
-        let lib (_loc, name) = Lib_name.encode name in
+        (* let lib (_loc, name) = Lib_name.encode name in *)
         ( (1, 0)
         , record_fields
-          @@ [ field_i "flags" Ordered_set_lang.Unexpanded.encode t.flags
-             ; field_i "lint_flags" Ordered_set_lang.Unexpanded.encode
-                 t.lint_flags
-             ; field "main" string t.main
-             ; field_l "replaces" lib t.replaces
+          @@ [ field "main" string t.main
+
              ] )
     end
 
@@ -369,38 +373,19 @@ module DriverP5 = struct
 
     let replaces t = t.replaces
 
-    let instantiate ~resolve ~get lib (info : Info.t) =
-      let open Memo.Build.O in
-      let+ replaces =
-        Memo.Build.parallel_map info.replaces ~f:(fun ((loc, name) as x) ->
-            match resolve x with
-            | Error _ as err -> Memo.Build.return err
-            | Ok lib -> (
-              get ~loc lib >>| function
-              | None ->
-                Error
-                  (User_error.E
-                     (User_error.make ~loc
-                        [ Pp.textf "%S is not a %s" (Lib_name.to_string name)
-                            (desc ~plural:false)
-                        ]))
-              | Some t -> Ok t))
-        >>| Result.List.all
-      in
-      { info; lib; replaces }
+    let instantiate ~resolve:_ ~get:_ lib (info : Info.t) : t Memo.Build.t =
+      Memo.Build.return
+      { info
+      ; lib
+      ; replaces = Result.ok []
+      }
 
     let public_info t =
       (
       let open Result.O in
-      let+ replaces = t.replaces in
+      let+ _replaces = t.replaces in
       { Info.loc = t.info.loc
-      ; flags = t.info.flags
-      ; as_ppx_flags = t.info.as_ppx_flags
-      ; lint_flags = t.info.lint_flags
       ; main = t.info.main
-      ; replaces =
-          List.map2 t.info.replaces replaces ~f:(fun (loc, _) t ->
-              (loc, Lib.name t.lib))
       }
       ) |> (fun x ->
         assert (Result.is_ok x); x)
@@ -423,7 +408,7 @@ module DriverP5 = struct
         (User_error.E
            (User_error.make
               ~loc:(Loc.in_file (Path.build path))
-              [ Pp.textf "Failed to create on-demand ppx rewriter for %s; %s"
+              [ Pp.textf "Failed to create on-demand camlp5 rewriter for %s; %s"
                   (String.enumerate_and (List.map pps ~f:Lib_name.to_string))
                   (String.uncapitalize msg)
               ]))
@@ -479,7 +464,8 @@ let ppx_exe sctx ~key =
 
 let camlp5_exe sctx ~key =
   let build_dir = (Super_context.context sctx).build_dir in
-  Path.Build.relative build_dir (".camlp5/" ^ key ^ "/rewriter.exe")
+  (* Path.Build.relative build_dir (".camlp5/" ^ key ^ "/rewriter.exe") *)
+  Path.Build.relative build_dir (".camlp5/" ^ key ^ "/ppx.exe")
 
 let build_ppx_driver sctx ~scope ~target ~pps ~pp_names =
   let open Memo.Build.O in
@@ -536,9 +522,10 @@ let build_ppx_driver sctx ~scope ~target ~pps ~pp_names =
   Exe.build_and_link ~program ~linkages cctx ~promote:None
 
 
+
 let build_camlp5_driver sctx ~scope ~target ~pps ~pp_names =
   let open Memo.Build.O in
-  let ctx = SC.context sctx in
+  let _ctx = SC.context sctx in
   let* driver_and_libs =
     (match Result.bind pps ~f:(Lib.closure ~linking:true) with
     | Error _ as err -> Memo.Build.return err
@@ -568,7 +555,7 @@ let build_camlp5_driver sctx ~scope ~target ~pps ~pp_names =
     ( Action_builder.of_result_map driver_and_libs ~f:(fun (driver, _) ->
           Action_builder.return (sprintf "let () = %s ()\n" driver.info.main))
     |> Action_builder.write_file_dyn ml_source );
-  let linkages = [ Exe.Linkage.native_or_custom ctx ] in
+  (* let linkages = [ Exe.Linkage.native_or_custom ctx ] in *)
   let program : Exe.Program.t =
     { name = Filename.remove_extension (Path.Build.basename target)
     ; main_module_name
@@ -588,9 +575,13 @@ let build_camlp5_driver sctx ~scope ~target ~pps ~pp_names =
       ~package:None ~bin_annot:false ()
   in
   Format.printf "%s %d\n%!" __FILE__ __LINE__;
-  Exe.build_and_link ~program ~linkages cctx ~promote:None
+  (* Here we shoudl call no-ocamlfind and not ppx shit *)
+  Format.printf "program = %s\n%!" program.Exe.Program.name;
+  (* Exe.build_and_link ~program ~linkages cctx ~promote:None *)
+  Exe.link_camlp5_rewriter ~program ~libs:(Result.value ~default:[] pps) cctx
 
-let (_) = build_camlp5_driver
+
+(* let (_) = build_camlp5_driver *)
 
 let get_rules sctx key =
   Format.printf "get_rules: key='%s' %s %d\n%!" key __FILE__ __LINE__;
@@ -621,13 +612,51 @@ let get_rules sctx key =
   in
   build_ppx_driver sctx ~scope ~pps ~pp_names ~target:exe
 
-let gen_rules sctx components =
-  Format.printf "gen_rules: %s %d\n%!" __FILE__ __LINE__;
+let get_rules_camlp5 sctx key =
+  Format.printf "get_rules_camlp5: key='%s' %s %d\n%!" key __FILE__ __LINE__;
+  let exe = camlp5_exe sctx ~key in
+  let pp_names, scope =
+    match Digest.from_hex key with
+    | None ->
+      User_error.raise
+        [ Pp.textf "invalid ppx key for %s"
+            (Path.Build.to_string_maybe_quoted exe)
+        ]
+    | Some key ->
+      let { Key.Decoded.pps; project_root } = Key.decode key in
+      let scope =
+        let dir =
+          match project_root with
+          | None -> (Super_context.context sctx).build_dir
+          | Some dir ->
+            Path.Build.append_source (Super_context.context sctx).build_dir dir
+        in
+        Super_context.find_scope_by_dir sctx dir
+      in
+      (pps, scope)
+  in
+  let pps =
+    let lib_db = Scope.libs scope in
+    List.map pp_names ~f:(fun x -> (Loc.none, x)) |> Lib.DB.resolve_pps lib_db
+  in
+  build_camlp5_driver sctx ~scope ~pps ~pp_names ~target:exe
+
+let gen_rules_ppx sctx components =
+  Format.printf "gen_rules_ppx: %s %d, components.length=%d\n%!" __FILE__ __LINE__ (List.length components);
   match components with
   | [ key ] -> get_rules sctx key
   | _ -> Memo.Build.return ()
 
+let gen_rules_camlp5 sctx components =
+  Format.printf "gen_rules_camlp5: %s %d, components.length=%d\n%!" __FILE__ __LINE__ (List.length components);
+  match components with
+  | [ key ] ->
+    Format.printf "key: %s \n%!" key;
+    get_rules_camlp5 sctx key
+  | _ -> Memo.Build.return ()
+
 let ppx_driver_exe sctx libs =
+  Format.printf "ppx_driver_exe: %s %d \n%!" __FILE__ __LINE__;
   let key = Digest.to_string (Key.Decoded.of_libs libs |> Key.encode) in
   (* Make sure to compile ppx.exe for the compiling host. See: #2252, #2286 and
      #3698 *)
@@ -635,10 +664,12 @@ let ppx_driver_exe sctx libs =
   ppx_exe sctx ~key
 
 let camlp5_driver_exe sctx libs =
+  Format.printf "camlp5_driver_exe: %s %d \n%!" __FILE__ __LINE__;
   let key = Digest.to_string (Key.Decoded.of_libs libs |> Key.encode) in
   camlp5_exe sctx ~key
 
 let get_cookies ~loc ~expander ~lib_name libs =
+  Format.printf "get_cookies\n%!";
   let expander, library_name_cookie =
     match lib_name with
     | None -> (expander, None)
@@ -656,6 +687,10 @@ let get_cookies ~loc ~expander ~lib_name libs =
           let info = Lib.info t in
           let kind = Lib_info.kind info in
           match kind with
+          | Camlp5_rewriter ->
+            Format.printf "Camlp5_rewriter gotten with lib-name=%s \n%!"
+              (Dyn.to_string @@ Lib_name.to_dyn @@  Lib_info.name info);
+              []
           | Normal -> []
           | Ppx_rewriter { cookies }
           | Ppx_deriver { cookies } ->
@@ -694,9 +729,11 @@ let ppx_driver_and_flags_internal sctx ~loc ~expander ~lib_name ~flags libs =
   (ppx_driver_exe sctx libs, flags @ cookies)
 
 let camlp5_driver_and_flags_internal sctx ~loc ~expander ~lib_name ~flags libs =
+  let _ = loc in
+  let _ = lib_name in
   let open Result.O in
   let flags = List.map ~f:(Expander.Static.expand_str expander) flags in
-  let+ cookies = get_cookies ~loc ~lib_name ~expander libs in
+  let+ cookies = Result.return [] in
   let sctx = SC.host sctx in
   (camlp5_driver_exe sctx libs, flags @ cookies)
 
@@ -929,16 +966,12 @@ let make sctx ~dir ~expander ~lint ~preprocess ~preprocessor_deps
           let dash_ppx_flag =
             Action_builder.memoize "camlp5 command"
               (let* () = Action_builder.return () in
-              let* exe, driver, flags =
+              let* exe, _driver, flags =
                 camlp5_driver_and_flags sctx ~expander ~loc ~scope ~flags
                    ~lib_name pps
               in
               let+ () = Action_builder.path (Path.build exe)
               and+ () = preprocessor_deps
-              and+ driver_flags =
-                Expander.expand_and_eval_set expander driver.info.as_ppx_flags
-                  ~standard:(Action_builder.return [  ])
-                  (* FIXME *)
               in
               let command =
                 List.map
@@ -946,7 +979,6 @@ let make sctx ~dir ~expander ~lint ~preprocess ~preprocessor_deps
                       [ [ Path.reach (Path.build exe)
                             ~from:(Path.build (SC.context sctx).build_dir)
                         ]
-                      ; driver_flags
                       ; flags
                       ])
                   ~f:String.quote_for_shell
@@ -1000,7 +1032,18 @@ let get_ppx_driver sctx ~loc ~expander ~scope ~lib_name ~flags pps =
   let* libs = Lib.DB.resolve_pps (Scope.libs scope) pps in
   ppx_driver_and_flags_internal sctx ~loc ~expander ~lib_name ~flags libs
 
+
 let ppx_exe sctx ~scope pp =
   let open Result.O in
   let+ libs = Lib.DB.resolve_pps (Scope.libs scope) [ (Loc.none, pp) ] in
   ppx_driver_exe sctx libs
+
+let get_camlp5_driver sctx ~loc ~expander ~scope ~lib_name ~flags pps =
+  let open Result.O in
+  let* libs = Lib.DB.resolve_pps (Scope.libs scope) pps in
+  camlp5_driver_and_flags_internal sctx ~loc ~expander ~lib_name ~flags libs
+
+let camlp5_exe sctx ~scope pp =
+  let open Result.O in
+  let+ libs = Lib.DB.resolve_pps (Scope.libs scope) [ (Loc.none, pp) ] in
+  camlp5_driver_exe sctx libs

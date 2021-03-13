@@ -198,6 +198,35 @@ let link_exe ~loc ~name ~(linkage : Linkage.t) ~cm_files ~link_time_code_gen
            ; Dyn link_args
            ])
 
+let link_camlp5_rewriter ~program ~libs cctx =
+  let loc = program.Program.loc in
+  let name = program.Program.name in
+  let sctx = CC.super_context cctx in
+  let ctx = SC.context sctx in
+  let dir = CC.dir cctx in
+
+  let linkage = Linkage.native in
+  let exe = exe_path_from_name cctx ~name ~linkage in
+  SC.add_rule sctx ~loc ~dir
+    ~mode:Standard
+    (let prefix = Action_builder.return () in
+     let open Action_builder.With_targets.O in
+     (* Comment  *)
+     let myargs =
+      let names = List.map libs ~f:(fun l -> Lib_name.to_string @@ Lib.name l) in
+      Action_builder.return ["-package"; String.concat ~sep:"," names]
+     in
+     let mkcamlp5 = SC.resolve_program sctx ~dir ~loc:(Some loc) "mkcamlp5" in
+
+     Action_builder.with_no_targets prefix
+     >>> Command.run ~dir:(Path.build ctx.build_dir)
+           mkcamlp5
+           [ Command.Args.dyn myargs
+           ; A "-o"
+           ; Target exe
+           ])
+    |> Memo.Build.return
+
 let link_js ~name ~cm_files ~promote cctx =
   let sctx = CC.super_context cctx in
   let expander = CC.expander cctx in
@@ -245,6 +274,7 @@ let build_and_link_many ~programs ~linkages ~promote ?link_args ?o_files
             in
             link_exe cctx ~loc ~name ~linkage ~cm_files ~link_time_code_gen
               ~promote ?link_args ?o_files))
+
 
 let build_and_link ~program = build_and_link_many ~programs:[ program ]
 

@@ -83,6 +83,7 @@ let gen_lib pub_name lib ~path ~version =
   in
   let preds =
     match kind with
+    | Camlp5_rewriter -> failwith (Printf.sprintf "not imlemented %s %d" __FILE__ __LINE__)
     | Normal -> []
     | Ppx_rewriter _
     | Ppx_deriver _ ->
@@ -117,8 +118,9 @@ let gen_lib pub_name lib ~path ~version =
             "This is what dune uses to find out the runtime dependencies of"
         ; Comment "a preprocessor"
         ; ppx_runtime_deps ppx_rt_deps
-        ])
-    ; (match kind with
+        ] )
+    ; ( match kind with
+      | Camlp5_rewriter -> failwith (Printf.sprintf "not imlemented %s %d" __FILE__ __LINE__)
       | Normal -> []
       | Ppx_rewriter _
       | Ppx_deriver _ ->
@@ -133,7 +135,8 @@ let gen_lib pub_name lib ~path ~version =
             ; requires ~preds:[ no_ppx_driver ]
                 ppx_runtime_deps_for_deprecated_method
             ]
-          ; (match kind with
+          ; ( match kind with
+            | Camlp5_rewriter -> failwith (Printf.sprintf "not imlemented %s %d" __FILE__ __LINE__)
             | Normal -> assert false
             | Ppx_rewriter _ ->
               [ rule "ppx"

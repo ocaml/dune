@@ -79,48 +79,50 @@ type stage =
   | Start
   | Stop
 
-module Event = Chrome_trace.Event
+module Event = struct
+  module Event = Chrome_trace.Event
 
-let async_kind_of_stage = function
-  | Start -> Event.Start
-  | Stop -> Event.End
+  let async_kind_of_stage = function
+    | Start -> Event.Start
+    | Stop -> Event.End
 
-type event_kind =
-  | Session of stage
-  | Message of
-      { kind : message_kind
-      ; meth_ : string
-      ; stage : stage
-      }
+  type t =
+    | Session of stage
+    | Message of
+        { kind : message_kind
+        ; meth_ : string
+        ; stage : stage
+        }
 
-let session_event stats id (event_kind : event_kind) =
-  Option.iter stats ~f:(fun stats ->
-      let event =
-        let kind, name, args =
-          match event_kind with
-          | Session stage -> (async_kind_of_stage stage, "rpc_session", None)
-          | Message { kind; meth_; stage } ->
-            let args =
-              match kind with
-              | Notification -> None
-              | Request id ->
-                let id = Dune_rpc_private.Id.to_sexp id in
-                let rec to_json : Sexp.t -> Chrome_trace.Json.t = function
-                  | Atom s -> `String s
-                  | List s -> `List (List.map s ~f:to_json)
-                in
-                Some [ ("request_id", to_json id) ]
-            in
-            (async_kind_of_stage stage, meth_, args)
+  let emit t stats id =
+    Option.iter stats ~f:(fun stats ->
+        let event =
+          let kind, name, args =
+            match t with
+            | Session stage -> (async_kind_of_stage stage, "rpc_session", None)
+            | Message { kind; meth_; stage } ->
+              let args =
+                match kind with
+                | Notification -> None
+                | Request id ->
+                  let id = Dune_rpc_private.Id.to_sexp id in
+                  let rec to_json : Sexp.t -> Chrome_trace.Json.t = function
+                    | Atom s -> `String s
+                    | List s -> `List (List.map s ~f:to_json)
+                  in
+                  Some [ ("request_id", to_json id) ]
+              in
+              (async_kind_of_stage stage, meth_, args)
+          in
+          let common =
+            let ts = Event.Timestamp.now () in
+            Event.common_fields ~ts ~name ()
+          in
+          let id = Event.Id.Int (Session.Id.to_int id) in
+          Event.async ?args id kind common
         in
-        let common =
-          let ts = Event.Timestamp.now () in
-          Event.common_fields ~ts ~name ()
-        in
-        let id = Event.Id.Int (Session.Id.to_int id) in
-        Event.async ?args id kind common
-      in
-      Stats.emit stats event)
+        Stats.emit stats event)
+end
 
 module H = struct
   type 'a t =
@@ -191,18 +193,22 @@ module H = struct
                   match message with
                   | Notification n ->
                     let kind = Notification in
-                    session_event stats session.id
-                      (Message { kind; meth_; stage = Start });
+                    Event.emit
+                      (Message { kind; meth_; stage = Start })
+                      stats session.id;
                     let+ () = t.on_notification session n in
-                    session_event stats session.id
+                    Event.emit
                       (Message { kind; meth_; stage = Stop })
+                      stats session.id
                   | Request (id, r) ->
                     let kind = Request id in
-                    session_event stats session.id
-                      (Message { kind; meth_; stage = Start });
+                    Event.emit
+                      (Message { kind; meth_; stage = Start })
+                      stats session.id;
                     let* response = t.on_request session (id, r) in
-                    session_event stats session.id
-                      (Message { kind; meth_; stage = Stop });
+                    Event.emit
+                      (Message { kind; meth_; stage = Stop })
+                      stats session.id;
                     session.send (Some (Response (id, response))))
             in
             let* () = session.send None in
@@ -410,9 +416,9 @@ struct
           new_session server stats ~queries ~send
         in
         let id = session#id in
-        session_event stats id (Session Start);
+        Event.emit (Session Start) stats id;
         let+ res = Fiber.collect_errors (fun () -> session#start) in
-        session_event stats id (Session Stop);
+        Event.emit (Session Stop) stats id;
         match res with
         | Ok () -> ()
         | Error exns ->

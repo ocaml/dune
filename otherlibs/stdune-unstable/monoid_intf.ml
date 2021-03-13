@@ -1,5 +1,7 @@
 (** A type of values with an associative operation and an identity element, for
-    example, integers with addition and zero. *)
+    example, integers with addition and zero.
+
+    This module type is accessible as [Stdune.Monoid.Basic] outside of [Stdune]. *)
 module type Basic = sig
   type t
 
@@ -17,7 +19,9 @@ end
 
 (** This module type extends the basic definition of a monoid by adding a
     convenient operator synonym [( @ ) = combine], as well as derived functions
-    [reduce] and [map_reduce]. *)
+    [reduce] and [map_reduce].
+
+    This module type is accessible as just [Stdune.Monoid] outside of [Stdune]. *)
 module type S = sig
   include Basic
 

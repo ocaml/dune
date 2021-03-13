@@ -1,4 +1,6 @@
-module Make (M : Monoid_intf.Basic) : Monoid_intf.S with type t = M.t = struct
+module type Basic = Monoid_intf.Basic
+
+module Make (M : Basic) : Monoid_intf.S with type t = M.t = struct
   include M
 
   module O = struct
@@ -10,6 +12,7 @@ module Make (M : Monoid_intf.Basic) : Monoid_intf.S with type t = M.t = struct
   let map_reduce ~f =
     List.fold_left ~init:empty ~f:(fun acc a -> combine acc (f a))
 end
+[@@inlined always]
 
 module Exists = Make (struct
   type t = bool

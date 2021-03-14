@@ -44,7 +44,6 @@ end = struct
     | Normal
     | Ppx_deriver _ -> []
     | Camlp5_rewriter ->
-        (* failwith (Printf.sprintf "not implemented %s %d" __FILE__ __LINE__) *)
         let name = Dune_file.Library.best_name lib in
         [ Preprocessing.camlp5_exe sctx ~scope name |> Result.ok_exn ]
     | Ppx_rewriter _ ->

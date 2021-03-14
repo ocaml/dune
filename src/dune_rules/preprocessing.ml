@@ -48,6 +48,11 @@ end = struct
 
     let of_libs libs =
       let pps =
+        (* FIXME: Tricky place.
+          For camlp5 order of ocamlfind package matters, even more: the same package can be loaded
+          twice and sometimes  it is a preferred way to go. There I disabled autosorting
+          of packages because it breaks everything. No idea what consiquences are...
+        *)
         libs
         (* |> (let compare a b = Lib_name.compare (Lib.name a) (Lib.name b) in
             List.sort ~compare)  *)
@@ -299,7 +304,6 @@ module DriverP5 = struct
 
       type t =
         { loc : Loc.t
-        ; main : string
         }
 
       type Sub_system_info.t += T of t
@@ -316,23 +320,17 @@ module DriverP5 = struct
       open Dune_lang.Decoder
 
       let decode =
-        fields (* ~trace:true *)
+        fields
           (let+ loc = loc
-           and+ main = return "main_dummy"
            in
-           { loc;  main; })
+           { loc })
 
-      let encode t =
+      let encode _ =
         let open Dune_lang.Encoder in
         ( (1, 0)
-        , record_fields
-          @@ [ field "main" string t.main ] )
+        , record_fields [])
     end
 
-    (* The [lib] field is lazy so that we don't need to fill it for hardcoded
-       [t] values used to implement the jbuild style handling of drivers.
-
-       See [Jbuild_driver] below for details. *)
     type t =
       { info : Info.t
       ; lib : Lib.t
@@ -365,7 +363,6 @@ module DriverP5 = struct
       let open Result.O in
       let+ _replaces = t.replaces in
       { Info.loc = t.info.loc
-      ; main = t.info.main
       }
       ) |> (fun x ->
         assert (Result.is_ok x); x)
@@ -520,16 +517,7 @@ let build_camlp5_driver sctx ~scope ~target ~pps ~pp_names =
     Module_name.of_string_allow_invalid (Loc.none, "_ppx")
   in
   let module_ = Module.generated ~src_dir:(Path.build dir) main_module_name in
-  let ml_source =
-    Module.file ~ml_kind:Impl module_
-    |> Option.value_exn |> Path.as_in_build_dir_exn
-  in
-  let add_rule ~sandbox = SC.add_rule ~sandbox sctx ~dir in
-  add_rule ~sandbox:Sandbox_config.default
-    ( Action_builder.of_result_map driver_and_libs ~f:(fun (driver, _) ->
-          Action_builder.return (sprintf "let () = %s ()\n" driver.info.main))
-    |> Action_builder.write_file_dyn ml_source );
-  (* let linkages = [ Exe.Linkage.native_or_custom ctx ] in *)
+
   let program : Exe.Program.t =
     { name = Filename.remove_extension (Path.Build.basename target)
     ; main_module_name
@@ -541,9 +529,13 @@ let build_camlp5_driver sctx ~scope ~target ~pps ~pp_names =
     let expander = Super_context.expander sctx ~dir in
     let requires_compile = Result.map driver_and_libs ~f:snd in
     let requires_link = lazy requires_compile in
-    let flags = Ocaml_flags.of_list [ "-g"; "-w"; "-24" ] in
+    let flags = Ocaml_flags.of_list [  ] in
     let opaque = Compilation_context.Explicit false in
     let modules = Modules.singleton_exe module_ in
+      (* FIXME: at the moment we do not need main module for camlp5 because
+          external executable `mkcamlp5` cares about that.
+          But for now I don't understand how to create modules of empty list
+      *)
     Compilation_context.create ~super_context:sctx ~scope ~expander ~obj_dir
       ~modules ~flags ~requires_compile ~requires_link ~opaque ~js_of_ocaml:None
       ~package:None ~bin_annot:false ()

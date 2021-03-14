@@ -8,11 +8,6 @@
   %{bin:dune_cmd}
   (package dune)))
 
-(subdir
- camlp5
- (cram
-  (alias runtest-camlp5)))
-
 (cram
  (applies_to :whole_subtree)
  (deps

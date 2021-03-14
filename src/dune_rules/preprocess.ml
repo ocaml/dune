@@ -240,7 +240,7 @@ module Per_module = struct
           in
           let staged = false in
           Pps { loc; pps; flags = flags'; staged }
-        | Camlp5 _ -> failwith "not implemented"
+        | Camlp5 _ -> failwith "Instrumentalization for Camlp5 is not implemented."
         | Pps { loc; pps; flags; staged } ->
           let pps =
             With_instrumentation.Instrumentation_backend (libname, deps) :: pps

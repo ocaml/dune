@@ -283,7 +283,6 @@ let build_and_link_many ~programs ~linkages ~promote ?link_args ?o_files
             link_exe cctx ~loc ~name ~linkage ~cm_files ~link_time_code_gen
               ~promote ?link_args ?o_files))
 
-
 let build_and_link ~program = build_and_link_many ~programs:[ program ]
 
 let exe_path cctx ~(program : Program.t) ~linkage =

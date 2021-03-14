@@ -119,22 +119,9 @@ let gen_lib pub_name lib ~path ~version =
             "This is what dune uses to find out the runtime dependencies of"
         ; Comment "a preprocessor"
         ; ppx_runtime_deps ppx_rt_deps
-        ] )
-    ; ( match kind with
-      | Camlp5_rewriter ->
-        List.concat
-          [ match kind with
-            | Camlp5_rewriter -> []
-              (* failwith (Printf.sprintf "not imlemented %s %d" __FILE__ __LINE__) *)
-              (* [ rule "archive"
-                  [ Pos "syntax"; Pos "preprocessor"; Pos "native" ]
-                  Set "./ppx.exe --as-ppx"
-              (* ; rule "library_kind" [] Set "ppx_rewriter" *)
-              ] *)
-            | Normal
-            | Ppx_rewriter _
-            | Ppx_deriver _ -> []
-          ]
+        ])
+    ; (match kind with
+      | Camlp5_rewriter
       | Normal -> []
       | Ppx_rewriter _
       | Ppx_deriver _ ->

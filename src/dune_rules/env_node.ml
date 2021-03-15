@@ -53,6 +53,8 @@ let odoc t = Memo.Lazy.Async.force t.odoc
 
 let coq t = Memo.Lazy.Async.force t.coq
 
+module Foreign_language_Dict_App = Foreign_language.Dict.Applicative (Memo.Build)
+
 let make ~dir ~inherit_from ~scope ~config_stanza ~profile ~expander
     ~expander_for_artifacts ~default_context_flags ~default_env
     ~default_bin_artifacts =
@@ -61,7 +63,7 @@ let make ~dir ~inherit_from ~scope ~config_stanza ~profile ~expander
   let inherited ~field ~root extend =
     Memo.lazy_async (fun () ->
         (match inherit_from with
-        | None -> root
+        | None -> Memo.Build.return root
         | Some t -> Memo.Lazy.Async.force t >>= field)
         >>= extend)
   in
@@ -78,16 +80,17 @@ let make ~dir ~inherit_from ~scope ~config_stanza ~profile ~expander
         | Some x -> Memo.Build.return x)
   in
   let local_binaries =
-    inherited ~field:local_binaries ~root:(Memo.Build.return [])
-      (fun binaries ->
-        let+ expander_for_artifacts =
-          Memo.Lazy.Async.force expander_for_artifacts
-        in
-        binaries
-        @ List.map config.binaries
+    inherited ~field:local_binaries ~root:[] (fun binaries ->
+        let+ expanded =
+          Memo.Build.sequential_map config.binaries
             ~f:
               (File_binding.Unexpanded.expand ~dir ~f:(fun template ->
-                   Expander.Static.expand_str expander_for_artifacts template)))
+                   let* expander_for_artifacts =
+                     Memo.Lazy.Async.force expander_for_artifacts
+                   in
+                   Expander.Static.expand_str expander_for_artifacts template))
+        in
+        binaries @ expanded)
   in
   let external_env =
     inherited ~field:external_env ~root:default_env (fun env ->
@@ -112,9 +115,8 @@ let make ~dir ~inherit_from ~scope ~config_stanza ~profile ~expander
       let dune_version = Dune_project.dune_version project in
       Ocaml_flags.default ~profile ~dune_version
     in
-    inherited ~field:ocaml_flags ~root:(Memo.Build.return default_ocaml_flags)
-      (fun flags ->
-        let+ expander = Memo.Lazy.Async.force expander in
+    inherited ~field:ocaml_flags ~root:default_ocaml_flags (fun flags ->
+        let* expander = Memo.Lazy.Async.force expander in
         let expander = Expander.set_dir expander ~dir in
         Ocaml_flags.make ~spec:config.flags ~default:flags
           ~eval:(Expander.expand_and_eval_set expander))
@@ -125,25 +127,23 @@ let make ~dir ~inherit_from ~scope ~config_stanza ~profile ~expander
     | { inline_tests = None; _ } ->
       inherited ~field:inline_tests Memo.Build.return
         ~root:
-          (Memo.Build.return
-             (if Profile.is_inline_test profile then
-               Dune_env.Stanza.Inline_tests.Enabled
-             else
-               Disabled))
+          (if Profile.is_inline_test profile then
+            Dune_env.Stanza.Inline_tests.Enabled
+          else
+            Disabled)
   in
   let foreign_flags =
     inherited ~field:foreign_flags ~root:default_context_flags (fun flags ->
-        let+ expander = Memo.Lazy.Async.force expander in
+        let* expander = Memo.Lazy.Async.force expander in
         let expander = Expander.set_dir expander ~dir in
-        Foreign_language.Dict.mapi config.foreign_flags ~f:(fun ~language f ->
+        Foreign_language_Dict_App.traversei config.foreign_flags
+          ~f:(fun ~language f ->
             let standard = Foreign_language.Dict.get flags language in
             Expander.expand_and_eval_set expander f ~standard))
   in
   let menhir_flags =
-    inherited ~field:menhir_flags
-      ~root:(Memo.Build.return (Action_builder.return []))
-      (fun flags ->
-        let+ expander = Memo.Lazy.Async.force expander in
+    inherited ~field:menhir_flags ~root:(Action_builder.return []) (fun flags ->
+        let* expander = Memo.Lazy.Async.force expander in
         let expander = Expander.set_dir expander ~dir in
         Expander.expand_and_eval_set expander config.menhir_flags
           ~standard:flags)
@@ -152,15 +152,13 @@ let make ~dir ~inherit_from ~scope ~config_stanza ~profile ~expander
     let open Odoc in
     let root =
       (* DUNE3: Enable for dev profile in the future *)
-      Memo.Build.return { warnings = Nonfatal }
+      { warnings = Nonfatal }
     in
     inherited ~field:odoc ~root (fun { warnings } ->
         Memo.Build.return
           { warnings = Option.value config.odoc.warnings ~default:warnings })
   in
-  let coq =
-    inherited ~field:coq ~root:(Memo.Build.return config.coq) Memo.Build.return
-  in
+  let coq = inherited ~field:coq ~root:config.coq Memo.Build.return in
   let format_config =
     inherited_if_absent ~field:format_config ~root:config.format_config
       (function

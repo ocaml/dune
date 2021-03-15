@@ -142,7 +142,7 @@ let link_exe ~loc ~name ~(linkage : Linkage.t) ~cm_files ~link_time_code_gen
   let top_sorted_cms = Cm_files.top_sorted_cms cm_files ~mode in
   let fdo_linker_script = Fdo.Linker_script.create cctx (Path.build exe) in
   let open Memo.Build.O in
-  let+ action_with_targets =
+  let* action_with_targets =
     let ocaml_flags = Ocaml_flags.get (CC.flags cctx) mode in
     let prefix =
       Cm_files.top_sorted_objects_and_cms cm_files ~mode
@@ -210,7 +210,8 @@ let link_js ~name ~cm_files ~promote cctx =
     CC.js_of_ocaml cctx |> Option.value ~default:Dune_file.Js_of_ocaml.default
   in
   let src = exe_path_from_name cctx ~name ~linkage:Linkage.byte in
-  let flags =
+  let open Memo.Build.O in
+  let* flags =
     Expander.expand_and_eval_set expander js_of_ocaml.flags
       ~standard:(Action_builder.return (Jsoo_rules.standard sctx))
   in
@@ -222,9 +223,9 @@ let build_and_link_many ~programs ~linkages ~promote ?link_args ?o_files
     ?(embed_in_plugin_libraries = []) cctx =
   let open Memo.Build.O in
   let modules = Compilation_context.modules cctx in
-  let dep_graphs = Dep_rules.rules cctx ~modules in
-  let* () = Module_compilation.build_all cctx ~dep_graphs in
-  let* link_time_code_gen = Link_time_code_gen.handle_special_libs cctx in
+  let* dep_graphs = Dep_rules.rules cctx ~modules in
+  let* () = Module_compilation.build_all cctx ~dep_graphs
+  and* link_time_code_gen = Link_time_code_gen.handle_special_libs cctx in
   Memo.Build.sequential_iter programs
     ~f:(fun { Program.name; main_module_name; loc } ->
       let cm_files =
@@ -240,7 +241,7 @@ let build_and_link_many ~programs ~linkages ~promote ?link_args ?o_files
       in
       Memo.Build.sequential_iter linkages ~f:(fun linkage ->
           if linkage = Linkage.js then
-            Memo.Build.return (link_js ~name ~cm_files ~promote cctx)
+            link_js ~name ~cm_files ~promote cctx
           else
             let* link_time_code_gen =
               match Linkage.is_plugin linkage with

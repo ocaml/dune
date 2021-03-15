@@ -38,12 +38,13 @@ let gen_rules_output sctx (config : Format_config.t) ~version ~dialects
       let input = Path.build input in
       match Path.Source.basename file with
       | "dune" when Format_config.includes config Dune ->
-        Option.some
-        @@ Action_builder.with_targets ~targets:[ output ]
-        @@
-        let open Action_builder.O in
-        let+ () = Action_builder.path input in
-        Action.format_dune_file ~version input output
+        Some
+          (Memo.Build.return
+             (Action_builder.with_targets ~targets:[ output ]
+             @@
+             let open Action_builder.O in
+             let+ () = Action_builder.path input in
+             Action.format_dune_file ~version input output))
       | _ ->
         let ext = Path.Source.extension file in
         let open Option.O in
@@ -67,14 +68,16 @@ let gen_rules_output sctx (config : Format_config.t) ~version ~dialects
           | [] -> Action_builder.return ()
           | extra_deps -> depend_on_files extra_deps
         in
-        let open Action_builder.With_targets.O in
-        Action_builder.with_no_targets extra_deps
-        >>> Preprocessing.action_for_pp ~loc ~expander ~action ~src
-              ~target:(Some output)
+        Memo.Build.map
+          (Preprocessing.action_for_pp ~loc ~expander ~action ~src
+             ~target:(Some output)) ~f:(fun action_pp ->
+            let open Action_builder.With_targets.O in
+            Action_builder.with_no_targets extra_deps >>> action_pp)
     in
-    Memo.Build.Option.iter formatter ~f:(fun arr ->
+    Memo.Build.Option.iter formatter ~f:(fun action ->
         let open Memo.Build.O in
-        Super_context.add_rule sctx ~mode:Standard ~loc ~dir arr
+        let* action = action in
+        Super_context.add_rule sctx ~mode:Standard ~loc ~dir action
         >>> add_diff sctx loc alias_formatted ~dir ~input:(Path.build input)
               ~output)
   in

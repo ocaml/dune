@@ -138,7 +138,7 @@ val expand_and_eval_set :
   -> standard:string list Action_builder.t
   -> string list Action_builder.t Memo.Build.t
 
-val eval_blang : t -> Blang.t -> bool
+val eval_blang : t -> Blang.t -> bool Memo.Build.t
 
 val map_exe : t -> Path.t -> Path.t
 

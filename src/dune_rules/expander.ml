@@ -648,7 +648,7 @@ let expand_and_eval_set t set ~standard =
         ~parse:(fun ~loc:_ s -> s))
 
 let eval_blang t = function
-  | Blang.Const x -> x (* common case *)
+  | Blang.Const x -> Memo.Build.return x (* common case *)
   | blang -> Blang.eval blang ~dir:(Path.build t.dir) ~f:(Static.expand_pform t)
 
 let find_package t pkg = t.find_package pkg

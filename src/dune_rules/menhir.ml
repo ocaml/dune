@@ -201,13 +201,13 @@ end = struct
       in
       Module.of_source ~visibility:Public ~kind:Impl source
     in
-    let mock_module =
+    let* mock_module =
       Pp_spec.pp_module_as
         (Compilation_context.preprocessing cctx)
         name mock_module ~lint:false
     in
     let cctx = Compilation_context.without_bin_annot cctx in
-    let deps = Dep_rules.for_module cctx mock_module in
+    let* deps = Dep_rules.for_module cctx mock_module in
     let* () =
       Module_compilation.ocamlc_i ~deps cctx mock_module
         ~output:(inferred_mli base)

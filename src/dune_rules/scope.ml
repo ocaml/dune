@@ -17,6 +17,9 @@ let libs t = t.db
 
 let coq_libs t = t.coq_db
 
+module Path_source_map_traversal =
+  Memo.Build.Make_map_traversals (Path.Source.Map)
+
 module DB = struct
   type scope = t
 
@@ -52,48 +55,50 @@ module DB = struct
       | Deprecated_library_name of Dune_file.Deprecated_library_name.t
   end
 
-  let create_db_from_stanzas ~parent ~lib_config ~modules_of_lib stanzas =
-    let map : Found_or_redirect.t Lib_name.Map.t =
-      List.map stanzas ~f:(fun stanza ->
+  let create_db_from_stanzas ~parent ~lib_config ~modules_of_lib
+      ~projects_by_package stanzas =
+    let open Memo.Build.O in
+    let+ (map : Found_or_redirect.t Lib_name.Map.t) =
+      Memo.Build.sequential_map stanzas ~f:(fun stanza ->
           match (stanza : Library_related_stanza.t) with
           | Library_redirect s ->
             let old_public_name = Lib_name.of_local s.old_name in
-            Found_or_redirect.redirect old_public_name s.new_public_name
+            Memo.Build.return
+              (Found_or_redirect.redirect old_public_name s.new_public_name)
           | Deprecated_library_name s ->
             let old_public_name =
               Dune_file.Deprecated_library_name.old_public_name s
             in
-            Found_or_redirect.redirect old_public_name s.new_public_name
+            Memo.Build.return
+              (Found_or_redirect.redirect old_public_name s.new_public_name)
           | Library (dir, (conf : Dune_file.Library.t)) ->
-            let info =
-              Dune_file.Library.to_lib_info conf ~dir ~lib_config
-              |> Lib_info.of_local
-            in
+            let+ info = Dune_file.Library.to_lib_info conf ~dir ~lib_config in
+            let info = Lib_info.of_local info in
             (Dune_file.Library.best_name conf, Found_or_redirect.found info))
-      |> Lib_name.Map.of_list_reducei
-           ~f:(fun name (v1 : Found_or_redirect.t) v2 ->
-             let res =
-               match (v1, v2) with
-               | Found info1, Found info2 ->
-                 Error (Lib_info.loc info1, Lib_info.loc info2)
-               | Found info, Redirect (loc, _)
-               | Redirect (loc, _), Found info ->
-                 Error (loc, Lib_info.loc info)
-               | Redirect (loc1, lib1), Redirect (loc2, lib2) ->
-                 if Lib_name.equal lib1 lib2 then
-                   Ok v1
-                 else
-                   Error (loc1, loc2)
-             in
-             match res with
-             | Ok x -> x
-             | Error (loc1, loc2) ->
-               User_error.raise
-                 [ Pp.textf "Library %s is defined twice:"
-                     (Lib_name.to_string name)
-                 ; Pp.textf "- %s" (Loc.to_file_colon_line loc1)
-                 ; Pp.textf "- %s" (Loc.to_file_colon_line loc2)
-                 ])
+      >>| Lib_name.Map.of_list_reducei
+            ~f:(fun name (v1 : Found_or_redirect.t) v2 ->
+              let res =
+                match (v1, v2) with
+                | Found info1, Found info2 ->
+                  Error (Lib_info.loc info1, Lib_info.loc info2)
+                | Found info, Redirect (loc, _)
+                | Redirect (loc, _), Found info ->
+                  Error (loc, Lib_info.loc info)
+                | Redirect (loc1, lib1), Redirect (loc2, lib2) ->
+                  if Lib_name.equal lib1 lib2 then
+                    Ok v1
+                  else
+                    Error (loc1, loc2)
+              in
+              match res with
+              | Ok x -> x
+              | Error (loc1, loc2) ->
+                User_error.raise
+                  [ Pp.textf "Library %s is defined twice:"
+                      (Lib_name.to_string name)
+                  ; Pp.textf "- %s" (Loc.to_file_colon_line loc1)
+                  ; Pp.textf "- %s" (Loc.to_file_colon_line loc2)
+                  ])
     in
     Lib.DB.create () ~parent:(Some parent)
       ~resolve:(fun name ->
@@ -102,7 +107,7 @@ module DB = struct
         | Some (Redirect lib) -> Lib.DB.Resolve_result.redirect None lib
         | Some (Found lib) -> Lib.DB.Resolve_result.found lib)
       ~all:(fun () -> Lib_name.Map.keys map)
-      ~modules_of_lib ~lib_config
+      ~modules_of_lib ~lib_config ~projects_by_package
 
   (* This function is linear in the depth of [dir] in the worst case, so if it
      shows up in the profile we should memoize it. *)
@@ -213,19 +218,26 @@ module DB = struct
           Some (stanza, coq_stanzas))
     in
     let lib_config = Context.lib_config context in
-    Path.Source.Map.merge projects_by_dir stanzas_by_project_dir
-      ~f:(fun _dir project stanzas ->
-        let project = Option.value_exn project in
-        let stanzas, coq_stanzas = Option.value stanzas ~default:([], []) in
-        let db =
+    let projects_and_stanzas_by_dir =
+      Path.Source.Map.merge projects_by_dir stanzas_by_project_dir
+        ~f:(fun _dir project stanzas ->
+          let project = Option.value_exn project in
+          let stanzas, coq_stanzas = Option.value stanzas ~default:([], []) in
+          let root =
+            Path.Build.append_source context.build_dir
+              (Dune_project.root project)
+          in
+          Some (project, stanzas, coq_stanzas, root))
+    in
+    Path_source_map_traversal.parallel_map projects_and_stanzas_by_dir
+      ~f:(fun _dir (project, stanzas, coq_stanzas, root) ->
+        let open Memo.Build.O in
+        let+ db =
           create_db_from_stanzas stanzas ~parent:public_libs ~modules_of_lib
             ~projects_by_package ~lib_config
         in
         let coq_db = Coq_lib.DB.create_from_coqlib_stanzas coq_stanzas in
-        let root =
-          Path.Build.append_source context.build_dir (Dune_project.root project)
-        in
-        Some { project; db; coq_db; root })
+        { project; db; coq_db; root })
 
   let create ~projects_by_package ~context ~installed_libs ~modules_of_lib
       ~projects stanzas coq_stanzas =
@@ -235,7 +247,8 @@ module DB = struct
       public_libs t ~installed_libs ~lib_config ~projects_by_package
         ~modules_of_lib stanzas
     in
-    let by_dir =
+    let open Memo.Build.O in
+    let+ by_dir =
       scopes_by_dir context ~projects ~projects_by_package ~public_libs
         ~modules_of_lib stanzas coq_stanzas
     in

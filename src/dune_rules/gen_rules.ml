@@ -24,7 +24,7 @@ module For_stanza : sig
     -> scope:Scope.t
     -> dir_contents:Dir_contents.t
     -> expander:Expander.t
-    -> files_to_install:(Install_conf.t -> unit)
+    -> files_to_install:(Install_conf.t -> unit Memo.Build.t)
     -> ( Merlin.t list
        , (Loc.t * Compilation_context.t) list
        , Path.Build.t list
@@ -88,21 +88,27 @@ end = struct
         Lib_rules.foreign_rules lib ~sctx ~dir ~dir_contents ~expander
       in
       empty_none
-    | Executables exes when Expander.eval_blang expander exes.enabled_if ->
-      Option.iter exes.install_conf ~f:files_to_install;
-      let+ cctx, merlin =
-        Exe_rules.rules exes ~sctx ~dir ~scope ~expander ~dir_contents
-      in
-      { merlin = Some merlin
-      ; cctx = Some (exes.buildable.loc, cctx)
-      ; js =
-          Some
-            (List.concat_map exes.names ~f:(fun (_, exe) ->
-                 List.map
-                   [ exe ^ ".bc.js"; exe ^ ".bc.runtime.js" ]
-                   ~f:(Path.Build.relative dir)))
-      ; source_dirs = None
-      }
+    | Executables exes -> (
+      let* enabled = Expander.eval_blang expander exes.enabled_if in
+      match enabled with
+      | false -> Memo.Build.return empty_none
+      | true ->
+        let* () =
+          Memo.Build.Option.iter exes.install_conf ~f:files_to_install
+        in
+        let+ cctx, merlin =
+          Exe_rules.rules exes ~sctx ~dir ~scope ~expander ~dir_contents
+        in
+        { merlin = Some merlin
+        ; cctx = Some (exes.buildable.loc, cctx)
+        ; js =
+            Some
+              (List.concat_map exes.names ~f:(fun (_, exe) ->
+                   List.map
+                     [ exe ^ ".bc.js"; exe ^ ".bc.runtime.js" ]
+                     ~f:(Path.Build.relative dir)))
+        ; source_dirs = None
+        })
     | Alias alias ->
       let+ () = Simple_rules.alias sctx alias ~dir ~expander in
       empty_none
@@ -116,9 +122,9 @@ end = struct
       ; source_dirs = None
       }
     | Copy_files { files = glob; _ } ->
-      let source_dirs =
+      let+ source_dirs =
         let loc = String_with_vars.loc glob in
-        let src_glob = Expander.Static.expand_str expander glob in
+        let+ src_glob = Expander.Static.expand_str expander glob in
         if Filename.is_relative src_glob then
           Some
             (Path.Source.relative src_dir src_glob ~error_loc:loc
@@ -126,10 +132,10 @@ end = struct
         else
           None
       in
-      Memo.Build.return { merlin = None; cctx = None; js = None; source_dirs }
+      { merlin = None; cctx = None; js = None; source_dirs }
     | Install i ->
-      files_to_install i;
-      Memo.Build.return empty_none
+      let+ () = files_to_install i in
+      empty_none
     | Plugin p ->
       let+ () = Plugin_rules.setup_rules ~sctx ~dir p in
       empty_none
@@ -216,10 +222,13 @@ let gen_rules sctx dir_contents cctxs expander
     =
   let files_to_install
       { Install_conf.section = _; files; package = _; enabled_if = _ } =
-    Path.Set.of_list_map files ~f:(fun fb ->
-        File_binding.Unexpanded.expand_src ~dir:ctx_dir fb
-          ~f:(Expander.Static.expand_str expander)
-        |> Path.build)
+    let+ expnaded =
+      Memo.Build.sequential_map files ~f:(fun fb ->
+          File_binding.Unexpanded.expand_src ~dir:ctx_dir fb
+            ~f:(Expander.Static.expand_str expander)
+          >>| Path.build)
+    in
+    Path.Set.of_list expnaded
     |> Rules.Produce.Alias.add_static_deps (Alias.all ~dir:ctx_dir)
   in
   let* { For_stanza.merlin = merlins
@@ -240,37 +249,45 @@ let gen_rules sctx dir_contents cctxs expander
   let+ () =
     Memo.Build.parallel_iter stanzas ~f:(fun stanza ->
         match (stanza : Stanza.t) with
-        | Menhir.T m when Expander.eval_blang expander m.enabled_if -> (
-          let* ml_sources = Dir_contents.ocaml dir_contents in
-          match
-            List.find_map (Menhir_rules.module_names m) ~f:(fun name ->
-                Option.bind (Ml_sources.lookup_module ml_sources name)
-                  ~f:(fun buildable ->
-                    List.find_map cctxs ~f:(fun (loc, cctx) ->
-                        Option.some_if (Loc.equal loc buildable.loc) cctx)))
-          with
-          | None ->
-            (* This happens often when passing a [-p ...] option that hides a
-               library *)
-            let targets =
-              List.map (Menhir_rules.targets m) ~f:(Path.Build.relative ctx_dir)
-            in
-            Super_context.add_rule sctx ~dir:ctx_dir
-              (Action_builder.fail
-                 { fail =
-                     (fun () ->
-                       User_error.raise ~loc:m.loc
-                         [ Pp.text
-                             "I can't determine what library/executable the \
-                              files produced by this stanza are part of."
-                         ])
-                 }
-              |> Action_builder.with_targets ~targets)
-          | Some cctx -> Menhir_rules.gen_rules cctx m ~dir:ctx_dir)
-        | Coq_stanza.Theory.T m when Expander.eval_blang expander m.enabled_if
-          ->
-          Coq_rules.setup_rules ~sctx ~dir:ctx_dir ~dir_contents m
-          >>= Super_context.add_rules ~dir:ctx_dir sctx
+        | Menhir.T m -> (
+          let* enabled = Expander.eval_blang expander m.enabled_if in
+          match enabled with
+          | false -> Memo.Build.return ()
+          | true -> (
+            let* ml_sources = Dir_contents.ocaml dir_contents in
+            match
+              List.find_map (Menhir_rules.module_names m) ~f:(fun name ->
+                  Option.bind (Ml_sources.lookup_module ml_sources name)
+                    ~f:(fun buildable ->
+                      List.find_map cctxs ~f:(fun (loc, cctx) ->
+                          Option.some_if (Loc.equal loc buildable.loc) cctx)))
+            with
+            | None ->
+              (* This happens often when passing a [-p ...] option that hides a
+                 library *)
+              let targets =
+                List.map (Menhir_rules.targets m)
+                  ~f:(Path.Build.relative ctx_dir)
+              in
+              Super_context.add_rule sctx ~dir:ctx_dir
+                (Action_builder.fail
+                   { fail =
+                       (fun () ->
+                         User_error.raise ~loc:m.loc
+                           [ Pp.text
+                               "I can't determine what library/executable the \
+                                files produced by this stanza are part of."
+                           ])
+                   }
+                |> Action_builder.with_targets ~targets)
+            | Some cctx -> Menhir_rules.gen_rules cctx m ~dir:ctx_dir))
+        | Coq_stanza.Theory.T m -> (
+          let* enabled = Expander.eval_blang expander m.enabled_if in
+          match enabled with
+          | false -> Memo.Build.return ()
+          | true ->
+            Coq_rules.setup_rules ~sctx ~dir:ctx_dir ~dir_contents m
+            >>= Super_context.add_rules ~dir:ctx_dir sctx)
         | Coq_stanza.Extraction.T m ->
           Coq_rules.extraction_rules ~sctx ~dir:ctx_dir ~dir_contents m
           >>= Super_context.add_rules ~dir:ctx_dir sctx
@@ -292,8 +309,8 @@ let gen_rules sctx dir_contents cctxs ~source_dir ~dir :
     let+ expander = Super_context.expander sctx ~dir in
     Dir_contents.add_sources_to_expander sctx expander
   in
-  (let tests = File_tree.Dir.cram_tests source_dir in
-   Cram_rules.rules ~sctx ~expander ~dir tests);
+  let tests = File_tree.Dir.cram_tests source_dir in
+  let* () = Cram_rules.rules ~sctx ~expander ~dir tests in
   match Super_context.stanzas_in sctx ~dir with
   | Some d -> gen_rules sctx dir_contents cctxs expander d
   | None ->
@@ -311,14 +328,14 @@ let gen_rules ~sctx ~dir components =
     | ".dune" :: _ ->
       (* Dummy rule to prevent dune from deleting this file. See comment
          attached to [write_dot_dune_dir] in context.ml *)
-      let+ () =
+      let* () =
         Super_context.add_rule sctx ~dir
           (Action_builder.write_file
              (Path.Build.relative dir "configurator")
              "")
       in
       (* Add rules for C compiler detection *)
-      Cxx_rules.rules ~sctx ~dir;
+      let+ () = Cxx_rules.rules ~sctx ~dir in
       S.These String.Set.empty
     | ".js" :: rest -> (
       let+ () = Jsoo_rules.setup_separate_compilation_rules sctx rest in
@@ -443,11 +460,8 @@ let init ~contexts ?only_packages conf =
                        dir_conf.stanzas
                  })
          in
-         let+ host, stanzas = Memo.Build.fork_and_join host stanzas in
-         let sctx =
-           Super_context.create ?host ~context ~projects ~packages ~stanzas ()
-         in
-         sctx
+         let* host, stanzas = Memo.Build.fork_and_join host stanzas in
+         Super_context.create ?host ~context ~projects ~packages ~stanzas ()
        in
        Lazy.force sctxs |> Context_name.Map.to_list
        |> Memo.Build.parallel_map ~f:(fun (name, sctx) ->

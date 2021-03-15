@@ -125,7 +125,8 @@ let build_cm cctx ~(js_of_ocaml : Dune_file.Js_of_ocaml.t) ~src ~target =
   let expander = Compilation_context.expander cctx in
   if separate_compilation_enabled sctx then
     let spec = Command.Args.Dep (Path.build src) in
-    let flags =
+    let open Memo.Build.O in
+    let* flags =
       Expander.expand_and_eval_set expander js_of_ocaml.flags
         ~standard:(Action_builder.return (standard sctx))
     in

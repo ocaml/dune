@@ -54,6 +54,10 @@ val bind : 'a t -> f:('a -> 'b t) -> 'b t
 
 val both : 'a t -> 'b t -> ('a * 'b) t
 
+(** Execute a list of fibers in sequence. We use the short name to conform with
+    the [Applicative] interface.*)
+val all : 'a t list -> 'a list t
+
 val sequential_map : 'a list -> f:('a -> 'b t) -> 'b list t
 
 val sequential_iter : 'a list -> f:('a -> unit t) -> unit t

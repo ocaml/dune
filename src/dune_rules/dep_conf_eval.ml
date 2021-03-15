@@ -5,7 +5,8 @@ open Dep_conf
 
 let make_alias expander s =
   let loc = String_with_vars.loc s in
-  Expander.expand_path expander s >>| Alias.of_user_written_path ~loc
+  Memo.Build.map (Expander.expand_path expander s) ~f:(fun expanded ->
+      expanded >>| Alias.of_user_written_path ~loc)
 
 let fold_source_dirs dir ~init ~f =
   let prefix_with, dir = Path.extract_build_context_dir_exn dir in
@@ -18,135 +19,158 @@ let fold_source_dirs dir ~init ~f =
 
 let dep expander = function
   | File s ->
-    let* path = Expander.expand_path expander s in
-    let+ () = Action_builder.path path in
-    [ path ]
+    Memo.Build.map (Expander.expand_path expander s) ~f:(fun path ->
+        let* path = path in
+        let+ () = Action_builder.path path in
+        [ path ])
   | Alias s ->
-    let* a = make_alias expander s in
-    let+ () = Action_builder.alias a in
-    []
+    Memo.Build.map (make_alias expander s) ~f:(fun alias ->
+        let* a = alias in
+        let+ () = Action_builder.alias a in
+        [])
   | Alias_rec s ->
-    let* a = make_alias expander s in
-    let+ () = Build_system.Alias.dep_rec ~loc:(String_with_vars.loc s) a in
-    []
+    Memo.Build.map (make_alias expander s) ~f:(fun alias ->
+        let* a = alias in
+        let+ () = Build_system.Alias.dep_rec ~loc:(String_with_vars.loc s) a in
+        [])
   | Glob_files { glob = s; recursive } ->
     let loc = String_with_vars.loc s in
-    let* path = Expander.expand_path expander s in
-    let pred = Glob.of_string_exn loc (Path.basename path) |> Glob.to_pred in
-    let dir = Path.parent_exn path in
-    let add_dir dir acc =
-      let+ paths =
-        Action_builder.paths_matching ~loc (File_selector.create ~dir pred)
-      and+ acc = acc in
-      Path.Set.fold paths ~init:acc ~f:(fun p acc -> p :: acc)
-    in
-    let+ files =
-      let init = Action_builder.return [] in
-      if recursive then
-        fold_source_dirs dir ~init ~f:add_dir
-      else
-        add_dir dir init
-    in
-    List.rev files
-  | Source_tree s ->
-    let* path = Expander.expand_path expander s in
-    Action_builder.map ~f:Path.Set.to_list
-      (Action_builder.source_tree ~dir:path)
-  | Package p ->
-    let* pkg = Expander.expand_str expander p in
-    let+ () =
-      let pkg = Package.Name.of_string pkg in
-      let context = Expander.context expander in
-      match Expander.find_package expander pkg with
-      | Some (Local pkg) ->
-        Action_builder.alias
-          (Build_system.Alias.package_install
-             ~context:(Context.build_context context)
-             ~pkg)
-      | Some (Installed pkg) ->
-        let version =
-          Dune_project.dune_version @@ Scope.project @@ Expander.scope expander
+    Memo.Build.map (Expander.expand_path expander s) ~f:(fun path ->
+        let* path = path in
+        let pred =
+          Glob.of_string_exn loc (Path.basename path) |> Glob.to_pred
         in
-        if version < (2, 9) then
-          Action_builder.fail
-            { fail =
-                (fun () ->
-                  let loc = String_with_vars.loc p in
-                  User_error.raise ~loc
-                    [ Pp.textf
-                        "Dependency on an installed package requires at least \
-                         (lang dune 2.9)"
-                    ])
-            }
-        else
-          let files =
-            List.concat_map
-              ~f:(fun (s, l) ->
-                let dir = Section.Map.find_exn pkg.sections s in
-                List.map l ~f:(fun d ->
-                    Path.relative dir (Install.Dst.to_string d)))
-              pkg.files
-          in
-          Action_builder.paths files
-      | None ->
-        Action_builder.fail
-          { fail =
-              (fun () ->
-                let loc = String_with_vars.loc p in
-                User_error.raise ~loc
-                  [ Pp.textf "Package %s does not exist"
-                      (Package.Name.to_string pkg)
-                  ])
-          }
-    in
-    []
+        let dir = Path.parent_exn path in
+        let add_dir dir acc =
+          let+ paths =
+            Action_builder.paths_matching ~loc (File_selector.create ~dir pred)
+          and+ acc = acc in
+          Path.Set.fold paths ~init:acc ~f:(fun p acc -> p :: acc)
+        in
+        let+ files =
+          let init = Action_builder.return [] in
+          if recursive then
+            fold_source_dirs dir ~init ~f:add_dir
+          else
+            add_dir dir init
+        in
+        List.rev files)
+  | Source_tree s ->
+    Memo.Build.map (Expander.expand_path expander s) ~f:(fun path ->
+        let* path = path in
+        Action_builder.map ~f:Path.Set.to_list
+          (Action_builder.source_tree ~dir:path))
+  | Package p ->
+    Memo.Build.map (Expander.expand_str expander p) ~f:(fun pkg ->
+        let* pkg = pkg in
+        let+ () =
+          let pkg = Package.Name.of_string pkg in
+          let context = Expander.context expander in
+          match Expander.find_package expander pkg with
+          | Some (Local pkg) ->
+            Action_builder.alias
+              (Build_system.Alias.package_install
+                 ~context:(Context.build_context context)
+                 ~pkg)
+          | Some (Installed pkg) ->
+            let version =
+              Dune_project.dune_version @@ Scope.project
+              @@ Expander.scope expander
+            in
+            if version < (2, 9) then
+              Action_builder.fail
+                { fail =
+                    (fun () ->
+                      let loc = String_with_vars.loc p in
+                      User_error.raise ~loc
+                        [ Pp.textf
+                            "Dependency on an installed package requires at \
+                             least (lang dune 2.9)"
+                        ])
+                }
+            else
+              let files =
+                List.concat_map
+                  ~f:(fun (s, l) ->
+                    let dir = Section.Map.find_exn pkg.sections s in
+                    List.map l ~f:(fun d ->
+                        Path.relative dir (Install.Dst.to_string d)))
+                  pkg.files
+              in
+              Action_builder.paths files
+          | None ->
+            Action_builder.fail
+              { fail =
+                  (fun () ->
+                    let loc = String_with_vars.loc p in
+                    User_error.raise ~loc
+                      [ Pp.textf "Package %s does not exist"
+                          (Package.Name.to_string pkg)
+                      ])
+              }
+        in
+        [])
   | Universe ->
-    let+ () = Action_builder.dep Dep.universe in
-    []
+    Memo.Build.return
+      (let+ () = Action_builder.dep Dep.universe in
+       [])
   | Env_var var_sw ->
-    let* var = Expander.expand_str expander var_sw in
-    let+ () = Action_builder.env_var var in
-    []
+    Memo.Build.map (Expander.expand_str expander var_sw) ~f:(fun var ->
+        let* var = var in
+        let+ () = Action_builder.env_var var in
+        [])
   | Sandbox_config sandbox_config ->
-    let+ () = Action_builder.dep (Dep.sandbox_config sandbox_config) in
-    []
+    Memo.Build.return
+      (let+ () = Action_builder.dep (Dep.sandbox_config sandbox_config) in
+       [])
 
 let prepare_expander expander =
   Expander.set_expanding_what expander Deps_like_field
 
 let unnamed ~expander l =
   let expander = prepare_expander expander in
-  List.fold_left l ~init:(Action_builder.return ()) ~f:(fun acc x ->
-      let+ () = acc
-      and+ _x = dep expander x in
-      ())
+  List.fold_left l
+    ~init:(Memo.Build.return (Action_builder.return ()))
+    ~f:(fun acc x ->
+      Memo.Build.bind acc ~f:(fun acc ->
+          Memo.Build.map (dep expander x) ~f:(fun dep ->
+              let+ () = acc
+              and+ _x = dep in
+              ())))
 
 let named ~expander l =
-  let builders, bindings =
-    let expander = prepare_expander expander in
-    List.fold_left l ~init:([], Pform.Map.empty)
-      ~f:(fun (builders, bindings) x ->
-        match x with
-        | Bindings.Unnamed x -> (dep expander x :: builders, bindings)
-        | Named (name, x) ->
-          let x =
-            Action_builder.memoize ("dep " ^ name)
-              (let+ l = Action_builder.all (List.map x ~f:(dep expander)) in
-               List.concat l)
-          in
-          let bindings =
-            Pform.Map.set bindings (Var (User_var name))
-              (let+ paths = x in
-               Dune_util.Value.L.paths paths)
-          in
-          (x :: builders, bindings))
-  in
-  let builder =
-    let+ l = Action_builder.all (List.rev builders) in
-    Dune_util.Value.L.paths (List.concat l)
-  in
-  let builder = Action_builder.memoize "deps" builder in
-  let bindings = Pform.Map.set bindings (Var Deps) builder in
-  let expander = Expander.add_bindings_full expander ~bindings in
-  let builder = Action_builder.ignore builder in
-  (builder, expander)
+  Memo.Build.map
+    (let expander = prepare_expander expander in
+     List.fold_left l
+       ~init:(Memo.Build.return ([], Pform.Map.empty))
+       ~f:(fun acc x ->
+         Memo.Build.bind acc ~f:(fun (builders, bindings) ->
+             match x with
+             | Bindings.Unnamed x ->
+               Memo.Build.map (dep expander x) ~f:(fun dep ->
+                   (dep :: builders, bindings))
+             | Named (name, x) ->
+               Memo.Build.map
+                 (Memo.Build.sequential_map x ~f:(dep expander))
+                 ~f:(fun list ->
+                   let x =
+                     Action_builder.memoize ("dep " ^ name)
+                       (let+ l = Action_builder.all list in
+                        List.concat l)
+                   in
+                   let bindings =
+                     Pform.Map.set bindings (Var (User_var name))
+                       (let+ paths = x in
+                        Dune_util.Value.L.paths paths)
+                   in
+                   (x :: builders, bindings)))))
+    ~f:(fun (builders, bindings) ->
+      let builder =
+        let+ l = Action_builder.all (List.rev builders) in
+        Dune_util.Value.L.paths (List.concat l)
+      in
+      let builder = Action_builder.memoize "deps" builder in
+      let bindings = Pform.Map.set bindings (Var Deps) builder in
+      let expander = Expander.add_bindings_full expander ~bindings in
+      let builder = Action_builder.ignore builder in
+      (builder, expander))

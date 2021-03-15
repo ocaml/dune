@@ -124,35 +124,43 @@ include Sub_system.Register_end_point (struct
     in
     (* Generate the runner file *)
     let* () =
-      SC.add_rule sctx ~dir ~loc
-        (let target =
-           Module.file main_module ~ml_kind:Impl
-           |> Option.value_exn |> Path.as_in_build_dir_exn
-         in
-         let files ml_kind =
-           Value.L.paths
-             (List.filter_map source_modules ~f:(Module.file ~ml_kind))
-         in
-         let bindings =
-           Pform.Map.of_list_exn
-             [ (Var Impl_files, files Impl); (Var Intf_files, files Intf) ]
-         in
-         let expander = Expander.add_bindings expander ~bindings in
-         let action =
-           let open Action_builder.With_targets.O in
-           let+ actions =
-             Action_builder.With_targets.all
-               (List.filter_map backends ~f:(fun (backend : Backend.t) ->
-                    Option.map backend.info.generate_runner
-                      ~f:(fun (loc, action) ->
-                        Action_unexpanded.expand action ~loc ~expander ~deps:[]
-                          ~targets:(Forbidden "inline test generators")
-                          ~targets_dir:dir)))
-           in
-           Action.with_stdout_to target (Action.progn actions)
-         in
-         Action_builder.With_targets.add ~targets:[ target ] action)
+      let* action_with_targets =
+        let target =
+          Module.file main_module ~ml_kind:Impl
+          |> Option.value_exn |> Path.as_in_build_dir_exn
+        in
+        let files ml_kind =
+          Value.L.paths
+            (List.filter_map source_modules ~f:(Module.file ~ml_kind))
+        in
+        let bindings =
+          Pform.Map.of_list_exn
+            [ (Var Impl_files, files Impl); (Var Intf_files, files Intf) ]
+        in
+        let expander = Expander.add_bindings expander ~bindings in
+        let+ parts =
+          Memo.Build.sequential_map backends ~f:(fun (backend : Backend.t) ->
+              match backend.info.generate_runner with
+              | None -> Memo.Build.return None
+              | Some (loc, action) ->
+                let+ action =
+                  Action_unexpanded.expand action ~loc ~expander ~deps:[]
+                    ~targets:(Forbidden "inline test generators")
+                    ~targets_dir:dir
+                in
+                Some action)
+        in
+        let action =
+          let open Action_builder.With_targets.O in
+          let parts = List.filter_map parts ~f:Fun.id in
+          let+ actions = Action_builder.With_targets.all parts in
+          Action.with_stdout_to target (Action.progn actions)
+        in
+        Action_builder.With_targets.add ~targets:[ target ] action
+      in
+      SC.add_rule sctx ~dir ~loc action_with_targets
     in
+
     let* cctx =
       let package = Dune_file.Library.package lib in
       let+ ocaml_flags = Super_context.ocaml_flags sctx ~dir info.executable in
@@ -183,7 +191,7 @@ include Sub_system.Register_end_point (struct
         ~link_args:(Action_builder.return (Command.Args.A "-linkall"))
         ~promote:None
     in
-    let flags =
+    let* flags =
       let flags =
         List.map backends ~f:(fun backend -> backend.Backend.info.flags)
         @ [ info.flags ]
@@ -193,14 +201,14 @@ include Sub_system.Register_end_point (struct
           [ Value.String (Lib_name.Local.to_string (snd lib.name)) ]
       in
       let expander = Expander.add_bindings expander ~bindings in
-      let open Action_builder.O in
-      let+ l =
-        List.map flags
+      let+ flags =
+        Memo.Build.sequential_map flags
           ~f:
             (Expander.expand_and_eval_set expander
                ~standard:(Action_builder.return []))
-        |> Action_builder.all
       in
+      let open Action_builder.O in
+      let+ l = Action_builder.all flags in
       Command.Args.As (List.concat l)
     in
     let source_files = List.concat_map source_modules ~f:Module.sources in
@@ -236,10 +244,10 @@ include Sub_system.Register_end_point (struct
             in
             (prog, Command.Args.Dep exe)
         in
+        let* unnamed_dep_conf = Dep_conf_eval.unnamed info.deps ~expander in
         let action_with_targets =
           let open Action_builder.With_targets.O in
-          Action_builder.with_no_targets
-            (Dep_conf_eval.unnamed info.deps ~expander)
+          Action_builder.with_no_targets unnamed_dep_conf
           >>> Action_builder.with_no_targets (Action_builder.paths source_files)
           >>> Action_builder.progn
                 (Command.run exe ~dir:(Path.build dir)

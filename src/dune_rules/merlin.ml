@@ -263,7 +263,7 @@ module Unprocessed = struct
       s
 
   let pp_flag_of_action ~expander ~loc ~action :
-      Processed.pp_flag option Action_builder.With_targets.t =
+      Processed.pp_flag option Action_builder.With_targets.t Memo.Build.t =
     match (action : Action_dune_lang.t) with
     | Run (exe, args) -> (
       let args =
@@ -275,9 +275,10 @@ module Unprocessed = struct
           None
       in
       match args with
-      | None -> Action_builder.With_targets.return None
+      | None -> Memo.Build.return (Action_builder.With_targets.return None)
       | Some args ->
-        let action =
+        let open Memo.Build.O in
+        let+ action =
           let targets_dir = Expander.dir expander in
           let targets : Targets.Or_forbidden.t =
             Forbidden "preprocessing actions"
@@ -302,10 +303,10 @@ module Unprocessed = struct
           | Chdir (_, Run (exe, args)) -> pp_of_action exe args
           | Chdir (_, Chdir (_, Run (exe, args))) -> pp_of_action exe args
           | _ -> None))
-    | _ -> Action_builder.With_targets.return None
+    | _ -> Memo.Build.return (Action_builder.With_targets.return None)
 
   let pp_flags sctx ~expander libname preprocess :
-      Processed.pp_flag option Action_builder.With_targets.t =
+      Processed.pp_flag option Action_builder.With_targets.t Memo.Build.t =
     let scope = Expander.scope expander in
     match
       Preprocess.remove_future_syntax preprocess ~for_:Merlin
@@ -313,21 +314,26 @@ module Unprocessed = struct
     with
     | Action (loc, (action : Action_dune_lang.t)) ->
       pp_flag_of_action ~expander ~loc ~action
-    | No_preprocessing -> Action_builder.With_targets.return None
+    | No_preprocessing ->
+      Memo.Build.return (Action_builder.With_targets.return None)
     | Pps { loc; pps; flags; staged = _ } -> (
-      match
+      let open Memo.Build.O in
+      let* res =
         Preprocessing.get_ppx_driver sctx ~loc ~expander ~lib_name:libname
           ~flags ~scope pps
-      with
-      | Error _exn -> Action_builder.With_targets.return None
+      in
+      match res with
+      | Error _exn ->
+        Memo.Build.return (Action_builder.With_targets.return None)
       | Ok (exe, flags) ->
         let args =
           Path.to_absolute_filename (Path.build exe) :: "--as-ppx" :: flags
           |> List.map ~f:quote_if_needed
           |> String.concat ~sep:" "
         in
-        Action_builder.With_targets.return
-          (Some Processed.{ flag = "-ppx"; args }))
+        Memo.Build.return
+          (Action_builder.With_targets.return
+             (Some Processed.{ flag = "-ppx"; args })))
 
   let process
       { modules
@@ -343,8 +349,8 @@ module Unprocessed = struct
           ; libname
           }
       } sctx ~more_src_dirs ~expander =
-    let open Action_builder.With_targets.O in
-    let+ config =
+    let config =
+      let open Action_builder.With_targets.O in
       let+ flags = Action_builder.with_no_targets flags
       and+ src_dirs, obj_dirs =
         Action_builder.with_no_targets
@@ -367,10 +373,15 @@ module Unprocessed = struct
           (Path.Set.of_list_map ~f:Path.source more_src_dirs)
       in
       { Processed.stdlib_dir; src_dirs; obj_dirs; flags; extensions }
-    and+ pp_config =
-      Module_name.Per_item.map_with_targets preprocess
+    in
+    let open Memo.Build.O in
+    let+ pp_config =
+      Module_name.Per_item.map_with_targets_build preprocess
         ~f:(pp_flags sctx ~expander libname)
     in
+    let open Action_builder.With_targets.O in
+    let+ config = config
+    and+ pp_config = pp_config in
     let modules =
       (* And copy for each module the resulting pp flags *)
       Modules.fold_no_vlib modules ~init:[] ~f:(fun m acc ->
@@ -402,7 +413,7 @@ let dot_merlin sctx ~dir ~more_src_dirs ~expander (t : Unprocessed.t) =
   Path.Set.singleton (Path.build merlin_file)
   |> Rules.Produce.Alias.add_static_deps (Alias.check ~dir);
 
-  let merlin = Unprocessed.process t sctx ~more_src_dirs ~expander in
+  let* merlin = Unprocessed.process t sctx ~more_src_dirs ~expander in
   let action =
     Action_builder.With_targets.write_file_dyn merlin_file
       (Action_builder.With_targets.map ~f:Processed.Persist.to_string merlin)

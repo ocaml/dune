@@ -75,7 +75,8 @@ let add_user_rule sctx ~dir ~(rule : Rule.t) ~action ~expander =
     ~loc:rule.loc ~locks action
 
 let user_rule sctx ?extra_bindings ~dir ~expander (rule : Rule.t) =
-  match Expander.eval_blang expander rule.enabled_if with
+  let* enabled = Expander.eval_blang expander rule.enabled_if in
+  match enabled with
   | false -> (
     match rule.alias with
     | None -> Memo.Build.return Path.Build.Set.empty
@@ -112,7 +113,7 @@ let user_rule sctx ?extra_bindings ~dir ~expander (rule : Rule.t) =
       | None -> expander
       | Some bindings -> Expander.add_bindings expander ~bindings
     in
-    let action =
+    let* action =
       Action_unexpanded.expand (snd rule.action) ~loc:(fst rule.action)
         ~expander ~deps:rule.deps ~targets ~targets_dir:dir
     in
@@ -221,10 +222,10 @@ let copy_files sctx ~dir ~expander ~src_dir (def : Copy_files.t) =
   targets
 
 let copy_files sctx ~dir ~expander ~src_dir (def : Copy_files.t) =
-  if Expander.eval_blang expander def.enabled_if then
-    copy_files sctx ~dir ~expander ~src_dir def
-  else
-    Memo.Build.return Path.Set.empty
+  let* enabled = Expander.eval_blang expander def.enabled_if in
+  match enabled with
+  | true -> copy_files sctx ~dir ~expander ~src_dir def
+  | false -> Memo.Build.return Path.Set.empty
 
 let alias sctx ?extra_bindings ~dir ~expander (alias_conf : Alias_conf.t) =
   let alias = Alias.make ~dir alias_conf.name in
@@ -233,34 +234,37 @@ let alias sctx ?extra_bindings ~dir ~expander (alias_conf : Alias_conf.t) =
     Alias_rules.stamp ~deps:alias_conf.deps ~extra_bindings ~action
   in
   let loc = Some alias_conf.loc in
-  match Expander.eval_blang expander alias_conf.enabled_if with
+  let* enabled = Expander.eval_blang expander alias_conf.enabled_if in
+  match enabled with
   | false -> Alias_rules.add_empty sctx ~loc ~alias ~stamp
   | true -> (
     match alias_conf.action with
     | None ->
-      let builder, _expander = Dep_conf_eval.named ~expander alias_conf.deps in
-      Rules.Produce.Alias.add_deps alias ?loc builder;
-      Memo.Build.return ()
+      let+ builder, _expander = Dep_conf_eval.named ~expander alias_conf.deps in
+      Rules.Produce.Alias.add_deps alias ?loc builder
     | Some (action_loc, action) ->
       let* locks =
         Memo.Build.sequential_map
           (interpret_locks ~expander alias_conf.locks)
           ~f:Fun.id
       in
-      let action =
-        let builder, expander = Dep_conf_eval.named ~expander alias_conf.deps in
-        let open Action_builder.With_targets.O in
-        let+ () = Action_builder.with_no_targets builder
-        and+ action =
-          let expander =
-            match extra_bindings with
-            | None -> expander
-            | Some bindings -> Expander.add_bindings expander ~bindings
-          in
+      let* action =
+        let* builder, expander =
+          Dep_conf_eval.named ~expander alias_conf.deps
+        in
+        let expander =
+          match extra_bindings with
+          | None -> expander
+          | Some bindings -> Expander.add_bindings expander ~bindings
+        in
+        let+ expanded_action =
           Action_unexpanded.expand action ~loc:action_loc ~expander
             ~deps:alias_conf.deps ~targets:(Forbidden "aliases")
             ~targets_dir:dir
         in
+        let open Action_builder.With_targets.O in
+        let+ () = Action_builder.with_no_targets builder
+        and+ action = expanded_action in
         action
       in
       Alias_rules.add sctx ~loc ~stamp ~locks action ~alias)

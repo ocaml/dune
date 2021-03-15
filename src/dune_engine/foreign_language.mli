@@ -56,6 +56,10 @@ module Dict : sig
   val merge : 'a t -> 'b t -> f:('a -> 'b -> 'c) -> 'c t
 
   val get : 'a t -> language -> 'a
+
+  module Applicative (A : Applicative_intf.S1) : sig
+    val traversei : 'a t -> f:(language:language -> 'a -> 'b A.t) -> 'b t A.t
+  end
 end
 with type language := t
 

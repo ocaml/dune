@@ -271,6 +271,8 @@ let sequential_iter l ~f =
   in
   loop l
 
+let all = sequential_map ~f:Fun.id
+
 type ('a, 'b) fork_and_join_state =
   | Nothing_yet
   | Got_a of 'a

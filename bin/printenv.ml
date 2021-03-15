@@ -12,9 +12,10 @@ let man =
 let info = Term.info "printenv" ~doc ~man
 
 let dump sctx ~dir =
-  let open Action_builder.O in
-  let+ env = Super_context.dump_env sctx ~dir in
-  ((Super_context.context sctx).name, env)
+  Memo.Build.map (Super_context.dump_env sctx ~dir) ~f:(fun env ->
+      let open Action_builder.O in
+      let+ env = env in
+      ((Super_context.context sctx).name, env))
 
 let pp ppf ~fields sexps =
   let fields = String.Set.of_list fields in
@@ -59,7 +60,10 @@ let term =
             let sctx =
               Dune_engine.Context_name.Map.find_exn setup.scontexts ctx.name
             in
-            [ dump sctx ~dir:(Path.as_in_build_dir_exn dir) ]
+            [ Action_builder.memo_build
+                (dump sctx ~dir:(Path.as_in_build_dir_exn dir))
+              |> Action_builder.bind ~f:Fun.id
+            ]
           | In_source_dir dir ->
             Dune_engine.Context_name.Map.values setup.scontexts
             |> List.map ~f:(fun sctx ->
@@ -67,7 +71,8 @@ let term =
                      Path.Build.append_source
                        (Super_context.context sctx).build_dir dir
                    in
-                   dump sctx ~dir)
+                   Action_builder.memo_build (dump sctx ~dir)
+                   |> Action_builder.bind ~f:Fun.id)
           | External _ ->
             User_error.raise
               [ Pp.text "Environment is not defined for external paths" ]

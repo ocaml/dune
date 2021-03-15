@@ -105,13 +105,13 @@ let expand_path common ~(setup : Dune_rules.Main.build_system) ctx sv =
     Path.Build.relative ctx.Context.build_dir
       (String.concat ~sep:Filename.dir_sep (Common.root common).to_cwd)
   in
-  let expander = Dune_rules.Super_context.expander sctx ~dir in
+  let* expander = Dune_rules.Super_context.expander sctx ~dir in
   let expander =
     Dune_rules.Dir_contents.add_sources_to_expander sctx expander
   in
   let+ s, _deps =
-    Build_system.For_command_line.eval_build_request
-      (Dune_rules.Expander.expand_str expander sv)
+    Dune_rules.Expander.expand_str expander sv
+    >>= Build_system.For_command_line.eval_build_request
   in
   Path.relative Path.root (Common.prefix_target common s)
 

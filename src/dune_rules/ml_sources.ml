@@ -93,11 +93,12 @@ module Artifacts = struct
   let lookup_library { libraries; modules = _ } = Lib_name.Map.find libraries
 
   let make (d : _ Dir_with_dune.t) ~lib_config (libs, exes) =
-    let libraries =
-      List.fold_left ~init:Lib_name.Map.empty libs
+    let+ libraries =
+      List.fold_left ~init:(Memo.Build.return Lib_name.Map.empty) libs
         ~f:(fun libraries (lib, _, _) ->
+          let* libraries = libraries in
           let name = Lib_name.of_local lib.Library.name in
-          let info =
+          let+ info =
             Dune_file.Library.to_lib_info lib ~dir:d.ctx_dir ~lib_config
           in
           Lib_name.Map.add_exn libraries name info)
@@ -119,13 +120,15 @@ end
 
 type t =
   { modules : Modules.t
-  ; artifacts : Artifacts.t Memo.Lazy.t
+  ; artifacts : Artifacts.t Memo.Lazy.Async.t
   }
 
 let empty =
-  { modules = Modules.empty; artifacts = Memo.Lazy.of_val Artifacts.empty }
+  { modules = Modules.empty
+  ; artifacts = Memo.Lazy.Async.of_val Artifacts.empty
+  }
 
-let artifacts t = Memo.Lazy.force t.artifacts
+let artifacts t = Memo.Lazy.Async.force t.artifacts
 
 let modules_of_files ~dialects ~dir ~files =
   let dir = Path.build dir in
@@ -331,6 +334,6 @@ let make (d : _ Dir_with_dune.t) ~lib_config ~loc ~lookup_vlib ~include_subdirs
   in
   let modules = Modules.make libs_and_exes in
   let artifacts =
-    Memo.lazy_ (fun () -> Artifacts.make ~lib_config d libs_and_exes)
+    Memo.lazy_async (fun () -> Artifacts.make ~lib_config d libs_and_exes)
   in
   { modules; artifacts }

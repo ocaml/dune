@@ -12,7 +12,7 @@ open Stdune
     doesn't happen by mistake. *)
 
 val gen_select_rules :
-  Super_context.t -> dir:Path.Build.t -> Lib.Compile.t -> unit
+  Super_context.t -> dir:Path.Build.t -> Lib.Compile.t -> unit Memo.Build.t
 
 (** Generate the rules for the [(select ...)] forms in library dependencies *)
 val with_lib_deps :

@@ -43,11 +43,11 @@ let build_lib (lib : Library.t) ~native_archives ~sctx ~expander ~flags ~dir
         Action_builder.paths (Cm_files.unsorted_objects_and_cms cm_files ~mode)
       in
       let ocaml_flags = Ocaml_flags.get flags mode in
-      let cclibs =
+      let open Memo.Build.O in
+      let* cclibs =
         Expander.expand_and_eval_set expander lib.c_library_flags
           ~standard:(Action_builder.return [])
-      in
-      let library_flags =
+      and* library_flags =
         Expander.expand_and_eval_set expander lib.library_flags
           ~standard:(Action_builder.return [])
       in
@@ -120,12 +120,13 @@ let ocamlmklib ~loc ~c_library_flags ~sctx ~dir ~expander ~o_files ~archive_name
     Foreign.Archive.Name.lib_file archive_name ~dir ~ext_lib
   in
   let build ~custom ~sandbox targets =
+    let open Memo.Build.O in
+    let* cclibs_args =
+      Expander.expand_and_eval_set expander c_library_flags
+        ~standard:(Action_builder.return [])
+    in
     Super_context.add_rule sctx ~sandbox ~dir ~loc
-      (let cclibs_args =
-         Expander.expand_and_eval_set expander c_library_flags
-           ~standard:(Action_builder.return [])
-       in
-       let ctx = Super_context.context sctx in
+      (let ctx = Super_context.context sctx in
        Command.run ~dir:(Path.build ctx.build_dir) ctx.ocamlmklib
          [ A "-g"
          ; (if custom then
@@ -316,9 +317,9 @@ let setup_build_archives (lib : Dune_file.Library.t) ~cctx
      [Obj_dir]. That's fragile and will break if the layout of the object
      directory changes *)
   let dir = Obj_dir.dir obj_dir in
-  let native_archives =
+  let* native_archives =
     let lib_config = ctx.lib_config in
-    let lib_info = Library.to_lib_info lib ~dir ~lib_config in
+    let+ lib_info = Library.to_lib_info lib ~dir ~lib_config in
     Lib_info.eval_native_archives_exn lib_info ~modules:(Some modules)
   in
   let cm_files = Cm_files.make ~obj_dir ~ext_obj ~modules ~top_sorted_modules in
@@ -366,14 +367,14 @@ let cctx (lib : Library.t) ~sctx ~source_modules ~dir ~expander ~scope
       ~instrumentation_backend
   in
   (* Preprocess before adding the alias module as it doesn't need preprocessing *)
-  let+ pp =
+  let* pp =
     Preprocessing.make sctx ~dir ~scope ~preprocess ~expander
       ~preprocessor_deps:lib.buildable.preprocessor_deps ~instrumentation_deps
       ~lint:lib.buildable.lint
       ~lib_name:(Some (snd lib.name))
   in
-  let modules =
-    Modules.map_user_written source_modules ~f:(Pp_spec.pp_module pp)
+  let+ modules =
+    Modules.map_user_written source_modules ~f:(fun m -> Pp_spec.pp_module pp m)
   in
   let modules = Vimpl.impl_modules vimpl modules in
   let requires_compile = Lib.Compile.direct_requires compile_info in
@@ -403,15 +404,15 @@ let library_rules (lib : Library.t) ~cctx ~source_modules ~dir_contents
   let scope = Compilation_context.scope cctx in
   let requires_compile = Compilation_context.requires_compile cctx in
   let stdlib_dir = (Compilation_context.context cctx).Context.stdlib_dir in
-  let dep_graphs = Dep_rules.rules cctx ~modules in
-  let* () =
+  let* dep_graphs = Dep_rules.rules cctx ~modules
+  and* () =
     Memo.Build.Option.iter vimpl
       ~f:(Virtual_rules.setup_copy_rules_for_impl ~sctx ~dir)
   in
   Check_rules.add_obj_dir sctx ~obj_dir;
-  let* () = gen_wrapped_compat_modules lib cctx in
-  let* () = Module_compilation.build_all cctx ~dep_graphs in
-  let* expander = Super_context.expander sctx ~dir in
+  let* () = gen_wrapped_compat_modules lib cctx
+  and* () = Module_compilation.build_all cctx ~dep_graphs
+  and* expander = Super_context.expander sctx ~dir in
   let preprocess =
     Preprocess.Per_module.with_instrumentation lib.buildable.preprocess
       ~instrumentation_backend:
@@ -462,7 +463,7 @@ let rules (lib : Library.t) ~sctx ~dir_contents ~dir ~expander ~scope =
     in
     library_rules lib ~cctx ~source_modules ~dir_contents ~compile_info
   in
-  Buildable_rules.gen_select_rules sctx compile_info ~dir;
+  let* () = Buildable_rules.gen_select_rules sctx compile_info ~dir in
   Buildable_rules.with_lib_deps
     (Super_context.context sctx)
     compile_info ~dir ~f

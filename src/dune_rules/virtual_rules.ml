@@ -126,7 +126,8 @@ let impl sctx ~(lib : Dune_file.Library.t) ~scope =
             in
             Dir_contents.ocaml dir_contents
             >>| Ml_sources.modules ~for_:(Library name)
-            >>| Modules.map_user_written ~f:(Pp_spec.pped_module pp_spec)
+            >>= Modules.map_user_written ~f:(fun m ->
+                    Memo.Build.return (Pp_spec.pped_module pp_spec m))
           in
           let foreign_objects =
             let ext_obj = (Super_context.context sctx).lib_config.ext_obj in

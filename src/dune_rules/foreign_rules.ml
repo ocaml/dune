@@ -190,10 +190,13 @@ let build_o_files ~sctx ~foreign_sources ~(dir : Path.Build.t) ~expander
       let dst = Path.Build.relative dir (obj ^ ctx.lib_config.ext_obj) in
       let stubs = src.Foreign.Source.stubs in
       let open Memo.Build.O in
-      let* extra_flags = include_dir_flags ~expander ~dir src.stubs in
+      let* extra_flags = include_dir_flags ~expander ~dir src.stubs
+      and* unnamed_dep_conf =
+        Dep_conf_eval.unnamed stubs.extra_deps ~expander
+      in
       let extra_deps =
         let open Action_builder.O in
-        let+ () = Dep_conf_eval.unnamed stubs.extra_deps ~expander in
+        let+ () = unnamed_dep_conf in
         Command.Args.empty
       in
       let include_flags =

@@ -38,6 +38,10 @@ module Build : sig
 
   val both : 'a t -> 'b t -> ('a * 'b) t
 
+  (** This uses a sequential implementation. We use the short name to conform
+      with the [Applicative] interface. *)
+  val all : 'a t list -> 'a list t
+
   val if_ : bool -> unit t -> unit t
 
   val sequential_map : 'a list -> f:('a -> 'b t) -> 'b list t

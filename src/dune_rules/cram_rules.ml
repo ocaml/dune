@@ -42,7 +42,8 @@ let missing_run_t (error : Cram_test.t) =
 let test_rule ~sctx ~expander ~dir (spec : effective)
     (test : (Cram_test.t, File_tree.Dir.error) result) =
   let module Alias_rules = Simple_rules.Alias_rules in
-  let enabled = Expander.eval_blang expander (Blang.And spec.enabled_if) in
+  let open Memo.Build.O in
+  let* enabled = Expander.eval_blang expander (Blang.And spec.enabled_if) in
   let loc = Some spec.loc in
   let aliases = Alias.Name.Set.to_list_map spec.alias ~f:(Alias.make ~dir) in
   let test_name =
@@ -54,13 +55,13 @@ let test_rule ~sctx ~expander ~dir (spec : effective)
   match test with
   | Error (Missing_run_t test) ->
     (* We error out on invalid tests even if they are disabled. *)
-    List.iter aliases ~f:(fun alias ->
+    Memo.Build.sequential_iter aliases ~f:(fun alias ->
         Alias_rules.add sctx ~alias ~stamp:(stamp_no_rule ()) ~loc ~locks:[]
           (missing_run_t test))
   | Ok test -> (
     match enabled with
     | false ->
-      List.iter aliases ~f:(fun alias ->
+      Memo.Build.sequential_iter aliases ~f:(fun alias ->
           Alias_rules.add_empty sctx ~alias ~loc ~stamp:(stamp_no_rule ()))
     | true ->
       let prefix_with, _ = Path.Build.extract_build_context_dir_exn dir in
@@ -98,7 +99,7 @@ let test_rule ~sctx ~expander ~dir (spec : effective)
         action
       in
       let cram = Action_builder.with_no_targets cram in
-      List.iter aliases ~f:(fun alias ->
+      Memo.Build.sequential_iter aliases ~f:(fun alias ->
           Alias_rules.add sctx ~alias ~stamp ~loc cram ~locks:[]))
 
 let rules ~sctx ~expander ~dir tests =
@@ -125,22 +126,24 @@ let rules ~sctx ~expander ~dir tests =
     | None -> acc
     | Some dir -> collect_whole_subtree [ acc ] dir
   in
-  List.iter tests ~f:(fun test ->
+  Memo.Build.sequential_iter tests ~f:(fun test ->
       let name =
         match test with
         | Ok test -> Cram_test.name test
         | Error (File_tree.Dir.Missing_run_t test) -> Cram_test.name test
       in
-      let effective =
+      let open Memo.Build.O in
+      let* effective =
         let init =
           let alias =
             Alias.Name.of_string name
             |> Alias.Name.Set.add empty_effective.alias
           in
-          { empty_effective with alias }
+          Memo.Build.return { empty_effective with alias }
         in
         List.fold_left stanzas ~init
           ~f:(fun acc (dir, (spec : Cram_stanza.t)) ->
+            let* acc = acc in
             match
               match spec.applies_to with
               | Whole_subtree -> true
@@ -148,15 +151,16 @@ let rules ~sctx ~expander ~dir tests =
                 Predicate_lang.Glob.exec pred
                   ~standard:Predicate_lang.Glob.true_ name
             with
-            | false -> acc
+            | false -> Memo.Build.return acc
             | true ->
-              let deps =
+              let+ deps =
                 match spec.deps with
-                | None -> acc.deps
+                | None -> Memo.Build.return acc.deps
                 | Some deps ->
-                  let deps : unit Action_builder.t =
-                    let expander = Super_context.expander sctx ~dir in
-                    fst (Dep_conf_eval.named ~expander deps)
+                  let+ (deps : unit Action_builder.t) =
+                    let* expander = Super_context.expander sctx ~dir in
+                    let+ named_dep_conf = Dep_conf_eval.named ~expander deps in
+                    fst named_dep_conf
                   in
                   deps :: acc.deps
               in
@@ -178,8 +182,7 @@ let rules ~sctx ~expander ~dir tests =
       match !Clflags.only_packages with
       | None -> test_rule ()
       | Some only ->
-        if
-          Package.Name.Set.is_empty effective.packages
-          || Package.Name.Set.(not (is_empty (inter only effective.packages)))
-        then
-          test_rule ())
+        Memo.Build.if_
+          (Package.Name.Set.is_empty effective.packages
+          || Package.Name.Set.(not (is_empty (inter only effective.packages))))
+          (test_rule ()))

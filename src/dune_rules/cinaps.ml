@@ -67,25 +67,29 @@ let gen_rules sctx t ~dir ~scope =
              None)
   in
   (* Ask cinaps to produce a .ml file to build *)
-  Super_context.add_rule sctx ~loc:t.loc ~dir
-    (Command.run ~dir:(Path.build dir)
-       (Super_context.resolve_program sctx ~dir ~loc:(Some loc) name
-          ~hint:"opam install cinaps")
-       [ A "-staged"
-       ; Target cinaps_ml
-       ; Deps (List.map cinapsed_files ~f:Path.build)
-       ]);
+  let* prog =
+    Super_context.resolve_program sctx ~dir ~loc:(Some loc) name
+      ~hint:"opam install cinaps"
+  in
+  let* () =
+    Super_context.add_rule sctx ~loc:t.loc ~dir
+      (Command.run ~dir:(Path.build dir) prog
+         [ A "-staged"
+         ; Target cinaps_ml
+         ; Deps (List.map cinapsed_files ~f:Path.build)
+         ])
+  in
   let obj_dir = Obj_dir.make_exe ~dir:cinaps_dir ~name in
-  let expander = Super_context.expander sctx ~dir in
-  let preprocess =
+  let* expander = Super_context.expander sctx ~dir in
+  let* preprocess =
     Preprocessing.make sctx ~dir ~expander
       ~lint:(Preprocess.Per_module.no_preprocessing ())
       ~preprocess:t.preprocess ~preprocessor_deps:t.preprocessor_deps
       ~instrumentation_deps:[] ~lib_name:None ~scope
   in
-  let modules =
+  let* modules =
     Modules.singleton_exe module_
-    |> Modules.map_user_written ~f:(Pp_spec.pp_module preprocess)
+    |> Modules.map_user_written ~f:(fun m -> Pp_spec.pp_module preprocess m)
   in
   let dune_version = Scope.project scope |> Dune_project.dune_version in
   let compile_info =
@@ -103,7 +107,7 @@ let gen_rules sctx t ~dir ~scope =
       ~flags:(Ocaml_flags.of_list [ "-w"; "-24" ])
       ~js_of_ocaml:None ~package:None
   in
-  let+ () =
+  let* () =
     Exe.build_and_link cctx
       ~program:{ name; main_module_name; loc }
       ~linkages:[ Exe.Linkage.native_or_custom (Super_context.context sctx) ]
@@ -123,8 +127,10 @@ let gen_rules sctx t ~dir ~scope =
                 (Path.Build.extend_basename fn ~suffix:".cinaps-corrected"))))
   in
   let cinaps_alias = alias ~dir in
-  Super_context.add_alias_action sctx ~dir ~loc:(Some loc) ~stamp:name
-    cinaps_alias
-    (Action_builder.with_no_targets action);
+  let+ () =
+    Super_context.add_alias_action sctx ~dir ~loc:(Some loc) ~stamp:name
+      cinaps_alias
+      (Action_builder.with_no_targets action)
+  in
   Rules.Produce.Alias.add_deps (Alias.runtest ~dir)
     (Action_builder.alias cinaps_alias)

@@ -91,31 +91,33 @@ let get_profile =
   (* The dependency on the existence of profile file in source should be
      detected automatically by Memo. *)
   let f (ctx : Context.t) =
-    Memo.Build.return
-      (let path = ctx.fdo_target_exe |> Option.value_exn |> fdo_profile in
-       let profile_exists =
-         Memo.lazy_ (fun () ->
-             path |> Path.as_in_source_tree
-             |> Option.map ~f:File_tree.file_exists
-             |> Option.value ~default:false)
-       in
-       let use_profile =
-         match Mode.of_context ctx with
-         | If_exists -> Memo.Lazy.force profile_exists
-         | Always ->
-           if Memo.Lazy.force profile_exists then
-             true
-           else
-             User_error.raise
-               [ Pp.textf "%s=%s but profile file %s does not exist." Mode.var
-                   (Mode.to_string Always) (Path.to_string path)
-               ]
-         | Never -> false
-       in
-       if use_profile then
-         Some path
-       else
-         None)
+    let path = ctx.fdo_target_exe |> Option.value_exn |> fdo_profile in
+    let profile_exists =
+      Memo.lazy_async (fun () ->
+          path |> Path.as_in_source_tree
+          |> Option.map ~f:File_tree.file_exists
+          |> Option.value ~default:false
+          |> Memo.Build.return)
+    in
+    let open Memo.Build.O in
+    let+ use_profile =
+      match Mode.of_context ctx with
+      | If_exists -> Memo.Lazy.Async.force profile_exists
+      | Always -> (
+        let+ profile_exists = Memo.Lazy.Async.force profile_exists in
+        match profile_exists with
+        | true -> true
+        | false ->
+          User_error.raise
+            [ Pp.textf "%s=%s but profile file %s does not exist." Mode.var
+                (Mode.to_string Always) (Path.to_string path)
+            ])
+      | Never -> Memo.Build.return false
+    in
+    if use_profile then
+      Some path
+    else
+      None
   in
   let memo =
     Memo.create_hidden Mode.var

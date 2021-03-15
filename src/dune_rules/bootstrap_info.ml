@@ -57,7 +57,7 @@ let rule sctx compile (exes : Dune_file.Executables.t) () =
           ]))
 
 let gen_rules sctx (exes : Dune_file.Executables.t) ~dir compile =
-  Option.iter exes.bootstrap_info ~f:(fun fname ->
+  Memo.Build.Option.iter exes.bootstrap_info ~f:(fun fname ->
       Super_context.add_rule sctx ~loc:exes.buildable.loc ~dir
         (Action_builder.write_file_dyn
            (Path.Build.relative dir fname)

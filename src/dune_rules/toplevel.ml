@@ -25,7 +25,8 @@ module Source = struct
   let obj_dir { dir; name; _ } = Obj_dir.make_exe ~dir ~name
 
   let modules t pp =
-    main_module t |> Pp_spec.pp_module pp |> Modules.singleton_exe
+    let open Memo.Build.O in
+    main_module t |> Pp_spec.pp_module pp >>| Modules.singleton_exe
 
   let make ~dir ~loc ~main ~name = { dir; main; name; loc }
 
@@ -73,10 +74,12 @@ let pp_flags t =
   let expander = Compilation_context.expander t.cctx in
   match t.preprocess with
   | Pps { loc; pps; flags; staged = _ } -> (
-    match
+    let open Memo.Build.O in
+    let+ res =
       Preprocessing.get_ppx_driver sctx ~loc ~expander ~lib_name:None ~flags
         ~scope pps
-    with
+    in
+    match res with
     | Error _exn -> Pp.nop
     | Ok (exe, flags) ->
       let ppx =
@@ -95,7 +98,7 @@ let pp_flags t =
   | Action _
   | Future_syntax _ ->
     assert false (* Error in parsing *)
-  | No_preprocessing -> Pp.nop
+  | No_preprocessing -> Memo.Build.return Pp.nop
 
 let setup_module_rules t =
   let dir = Compilation_context.dir t.cctx in
@@ -104,14 +107,14 @@ let setup_module_rules t =
   let requires_compile = Compilation_context.requires_compile t.cctx in
   let main_ml =
     Action_builder.of_result_map requires_compile ~f:(fun libs ->
-        Action_builder.return
-          (let include_dirs =
-             Path.Set.to_list (Lib.L.include_paths libs Mode.Byte)
-           in
-           let pp_ppx = pp_flags t in
-           let pp_dirs = Source.pp_ml t.source ~include_dirs in
-           let pp = Pp.seq pp_ppx pp_dirs in
-           Format.asprintf "%a@." Pp.to_fmt pp))
+        let include_dirs =
+          Path.Set.to_list (Lib.L.include_paths libs Mode.Byte)
+        in
+        let open Action_builder.O in
+        let+ pp_ppx = Action_builder.memo_build (pp_flags t) in
+        let pp_dirs = Source.pp_ml t.source ~include_dirs in
+        let pp = Pp.seq pp_ppx pp_dirs in
+        Format.asprintf "%a@." Pp.to_fmt pp)
     |> Action_builder.write_file_dyn path
   in
   Super_context.add_rule sctx ~dir main_ml
@@ -182,12 +185,11 @@ module Stanza = struct
         (Ocaml_flags.default ~dune_version ~profile)
         [ "-w"; "-24" ]
     in
+    let* modules = Source.modules source preprocessing in
     let cctx =
       Compilation_context.create () ~super_context:sctx ~scope ~obj_dir
-        ~expander
-        ~modules:(Source.modules source preprocessing)
-        ~opaque:(Explicit false) ~requires_compile ~requires_link ~flags
-        ~js_of_ocaml:None ~package:None ~preprocessing
+        ~expander ~modules ~opaque:(Explicit false) ~requires_compile
+        ~requires_link ~flags ~js_of_ocaml:None ~package:None ~preprocessing
     in
     let resolved = make ~cctx ~source ~preprocess:toplevel.pps in
     setup_rules resolved

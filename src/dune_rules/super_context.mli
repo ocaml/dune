@@ -22,7 +22,7 @@ val create :
   -> packages:Package.t Package.Name.Map.t
   -> stanzas:Dune_file.t list
   -> unit
-  -> t
+  -> t Memo.Build.t
 
 val context : t -> Context.t
 

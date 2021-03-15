@@ -12,4 +12,4 @@ val gen_rules :
   -> Dune_file.Executables.t
   -> dir:Path.Build.t
   -> Lib.Compile.t
-  -> unit
+  -> unit Memo.Build.t

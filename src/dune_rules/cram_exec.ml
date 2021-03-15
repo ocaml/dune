@@ -284,7 +284,7 @@ let rewrite_paths build_path_prefix_map ~parent_script ~command_script s =
 
 let sanitize ~parent_script cram_to_output :
     (block_result * metadata_entry * string) Cram_lexer.block list =
-  List.map cram_to_output ~f:(fun t ->
+  List.map cram_to_output ~f:(fun (t : (block_result * _) Cram_lexer.block) ->
       match t with
       | Cram_lexer.Comment t -> Cram_lexer.Comment t
       | Command

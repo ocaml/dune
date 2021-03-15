@@ -1,4 +1,6 @@
-module type S1_base = sig
+(** This module type is accessible as just [Stdune.Applicative.Basic] outside of
+    [Stdune]. *)
+module type Basic = sig
   type 'a t
 
   val return : 'a -> 'a t
@@ -8,8 +10,10 @@ module type S1_base = sig
   val both : 'a t -> 'b t -> ('a * 'b) t
 end
 
-module type S1 = sig
-  include S1_base
+(** This module type is accessible as just [Stdune.Applicative] outside of
+    [Stdune]. *)
+module type S = sig
+  include Basic
 
   val all : 'a t list -> 'a list t
 

@@ -2026,13 +2026,7 @@ end = struct
   end
 
   module Rule_top_closure =
-    Top_closure.Make
-      (Non_evaluated_rule.Id.Set)
-      (struct
-        include Memo.Build
-
-        let ( >>= ) = O.( >>= )
-      end)
+    Top_closure.Make (Non_evaluated_rule.Id.Set) (Memo.Build)
 
   (* Evaluate a rule without building the action dependencies *)
   module Eval_action_builder = Action_builder.Make_exec (struct

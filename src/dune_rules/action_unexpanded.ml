@@ -26,7 +26,7 @@ module Action_expander : sig
 
      In addition to this, it embeds an expander for easily expanding templates. *)
 
-  include Applicative_intf.S1
+  include Applicative
 
   (* Disable targets/dependencies inference detection *)
   val no_infer : 'a t -> 'a t

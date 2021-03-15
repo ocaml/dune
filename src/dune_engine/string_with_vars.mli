@@ -121,7 +121,6 @@ end
 
 include Expander with type 'a app := 'a
 
-module Make_expander (A : Applicative_intf.S1) :
-  Expander with type 'a app := 'a A.t
+module Make_expander (A : Applicative) : Expander with type 'a app := 'a A.t
 
 val remove_locs : t -> t

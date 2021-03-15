@@ -8,4 +8,4 @@ val hash : ('a -> int) -> 'a t -> int
 
 val to_dyn : ('a -> Dyn.t) -> 'a t Dyn.Encoder.t
 
-include Monad_intf.S1 with type 'a t := 'a t
+include Monad_intf.S with type 'a t := 'a t

@@ -1,7 +1,10 @@
+module type Basic = Monoid_intf.Basic
+
 (** This functor extends the basic definition of a monoid by adding a convenient
     operator synonym [( @ ) = combine], as well as derived functions [reduce]
     and [map_reduce]. *)
-module Make (M : Monoid_intf.Basic) : Monoid_intf.S with type t = M.t
+module Make (M : Basic) : Monoid_intf.S with type t = M.t
+[@@inlined always]
 
 (** The monoid you get with [empty = false] and [combine = ( || )]. *)
 module Exists : Monoid_intf.S with type t = bool

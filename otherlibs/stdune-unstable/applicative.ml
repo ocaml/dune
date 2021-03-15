@@ -1,4 +1,6 @@
-module Make (A : Applicative_intf.S1_base) = struct
+module type Basic = Applicative_intf.Basic
+
+module Make (A : Applicative_intf.Basic) = struct
   include A
 
   module O = struct
@@ -21,6 +23,7 @@ module Make (A : Applicative_intf.S1_base) = struct
       and+ xs = all xs in
       x :: xs
 end
+[@@inlined always]
 
 module Id = struct
   include Make (struct

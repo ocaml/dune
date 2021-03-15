@@ -60,9 +60,6 @@ module Lexbuf = Lexbuf
 module Scanf = Scanf
 module Sys = Sys
 module Pid = Pid
-module Applicative_intf = Applicative_intf
-module Monad_intf = Monad_intf
-module Monoid_intf = Monoid_intf
 module Applicative = Applicative
 module Top_closure_intf = Top_closure_intf
 module Top_closure = Top_closure
@@ -71,6 +68,12 @@ module Seq = Seq
 module Temp = Temp
 module Queue = Queue
 module Caller_id = Caller_id
+
+module type Applicative = Applicative_intf.S
+
+module type Monad = Monad_intf.S
+
+module type Monoid = Monoid_intf.S
 
 external reraise : exn -> _ = "%reraise"
 

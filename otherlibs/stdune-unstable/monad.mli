@@ -1,5 +1,8 @@
 (** Monad signatures *)
 
-module Make (M : Monad_intf.S1_base) : Monad_intf.S1 with type 'a t := 'a M.t
+module type Basic = Monad_intf.Basic
 
-module Id : Monad_intf.S1 with type 'a t = 'a
+module Make (M : Basic) : Monad_intf.S with type 'a t := 'a M.t
+[@@inlined always]
+
+module Id : Monad_intf.S with type 'a t = 'a

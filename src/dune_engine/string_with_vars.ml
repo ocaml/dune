@@ -225,8 +225,8 @@ module type Expander = sig
     t -> dir:Path.t -> f:Value.t list option app expander -> t app
 end
 
-module Make_expander (A : Applicative_intf.S1) :
-  Expander with type 'a app := 'a A.t = struct
+module Make_expander (A : Applicative) : Expander with type 'a app := 'a A.t =
+struct
   open A.O
 
   let expand :

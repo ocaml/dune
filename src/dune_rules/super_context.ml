@@ -113,46 +113,42 @@ end = struct
       | _ -> None)
 
   let get_impl t dir =
-    Memo.Build.return
-      ((* We recompute the scope on every recursive call, even though it should
-          be unchanged. If this becomes a problem, we can memoize [find_by_dir]. *)
-       let scope = Scope.DB.find_by_dir t.scopes dir in
-       let inherit_from =
-         if Path.Build.equal dir (Scope.root scope) then
-           let format_config =
-             Dune_project.format_config (Scope.project scope)
-           in
-           Memo.lazy_async (fun () ->
-               let+ default_env = Memo.Lazy.Async.force t.default_env in
-               Env_node.set_format_config default_env format_config)
-         else
-           match Path.Build.parent dir with
-           | None ->
-             Code_error.raise
-               "Super_context.Env.get called on invalid directory"
-               [ ("dir", Path.Build.to_dyn dir) ]
-           | Some parent -> Memo.lazy_async (fun () -> get_node t ~dir:parent)
-       in
-       let config_stanza = get_env_stanza t ~dir in
-       let project = Scope.project scope in
-       let default_context_flags = default_context_flags t.context ~project in
-       let expander_for_artifacts =
-         Memo.lazy_async (fun () ->
-             let+ external_env = external_env t ~dir in
-             expander_for_artifacts ~scope ~root_expander:t.root_expander
-               ~external_env ~dir)
-       in
-       let expander =
-         Memo.lazy_async (fun () ->
-             let* expander_for_artifacts =
-               Memo.Lazy.Async.force expander_for_artifacts
-             in
-             extend_expander t ~dir ~expander_for_artifacts)
-       in
-       Env_node.make ~dir ~scope ~config_stanza
-         ~inherit_from:(Some inherit_from) ~profile:t.context.profile ~expander
-         ~expander_for_artifacts ~default_context_flags
-         ~default_env:t.context_env ~default_bin_artifacts:t.bin_artifacts)
+    (* We recompute the scope on every recursive call, even though it should be
+       unchanged. If this becomes a problem, we can memoize [find_by_dir]. *)
+    let scope = Scope.DB.find_by_dir t.scopes dir in
+    let inherit_from =
+      if Path.Build.equal dir (Scope.root scope) then
+        let format_config = Dune_project.format_config (Scope.project scope) in
+        Memo.lazy_async (fun () ->
+            let+ default_env = Memo.Lazy.Async.force t.default_env in
+            Env_node.set_format_config default_env format_config)
+      else
+        match Path.Build.parent dir with
+        | None ->
+          Code_error.raise "Super_context.Env.get called on invalid directory"
+            [ ("dir", Path.Build.to_dyn dir) ]
+        | Some parent -> Memo.lazy_async (fun () -> get_node t ~dir:parent)
+    in
+    let config_stanza = get_env_stanza t ~dir in
+    let project = Scope.project scope in
+    let default_context_flags = default_context_flags t.context ~project in
+    let expander_for_artifacts =
+      Memo.lazy_async (fun () ->
+          let+ external_env = external_env t ~dir in
+          expander_for_artifacts ~scope ~root_expander:t.root_expander
+            ~external_env ~dir)
+    in
+    let expander =
+      Memo.lazy_async (fun () ->
+          let* expander_for_artifacts =
+            Memo.Lazy.Async.force expander_for_artifacts
+          in
+          extend_expander t ~dir ~expander_for_artifacts)
+    in
+    Env_node.make ~dir ~scope ~config_stanza ~inherit_from:(Some inherit_from)
+      ~profile:t.context.profile ~expander ~expander_for_artifacts
+      ~default_context_flags ~default_env:t.context_env
+      ~default_bin_artifacts:t.bin_artifacts
 
   (* Here we jump through some hoops to construct [t] as well as create a
      memoization table that has access to [t] and is used in [t.get_node].
@@ -189,7 +185,8 @@ end = struct
           Memo.exec
             (Memo.create_hidden "env-nodes-memo"
                ~input:(module Path.Build)
-               Async (get_impl env_tree))
+               Async
+               (fun path -> Memo.Build.return (get_impl env_tree path)))
 
         let env_tree () = env_tree
       end

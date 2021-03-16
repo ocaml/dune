@@ -31,28 +31,26 @@ let generate_and_compile_module cctx ~precompiled_cmi ~name ~lib ~code ~requires
          wrapped library with a single module *)
       Module.with_wrapper gen_module ~main_module_name
   in
-  match module_ with
-  | Error _ -> Memo.Build.return module_
-  | Ok module_ as ok_module ->
-    let open Memo.Build.O in
-    let* () =
-      SC.add_rule ~dir sctx
-        (let ml =
-           Module.file module_ ~ml_kind:Impl
-           |> Option.value_exn |> Path.as_in_build_dir_exn
-         in
-         Action_builder.write_file_dyn ml code)
-    in
-    let cctx =
-      Compilation_context.for_module_generated_at_link_time cctx ~requires
-        ~module_
-    in
-    let+ () =
-      Module_compilation.build_module
-        ~dep_graphs:(Dep_graph.Ml_kind.dummy module_)
-        ~precompiled_cmi cctx module_
-    in
-    ok_module
+  Result.map module_ ~f:(fun module_ ->
+      let open Memo.Build.O in
+      let* () =
+        SC.add_rule ~dir sctx
+          (let ml =
+             Module.file module_ ~ml_kind:Impl
+             |> Option.value_exn |> Path.as_in_build_dir_exn
+           in
+           Action_builder.write_file_dyn ml code)
+      in
+      let cctx =
+        Compilation_context.for_module_generated_at_link_time cctx ~requires
+          ~module_
+      in
+      let+ () =
+        Module_compilation.build_module
+          ~dep_graphs:(Dep_graph.Ml_kind.dummy module_)
+          ~precompiled_cmi cctx module_
+      in
+      module_)
 
 let pr buf fmt = Printf.bprintf buf (fmt ^^ "\n")
 
@@ -233,7 +231,6 @@ let dune_site_plugins_code ~libs ~builtins =
   Buffer.contents buf
 
 let handle_special_libs cctx =
-  let open Memo.Build.O in
   match CC.requires_link cctx with
   | Error _ as error -> Memo.Build.return error
   | Ok all_libs ->
@@ -241,6 +238,7 @@ let handle_special_libs cctx =
     let sctx = CC.super_context cctx in
     let ctx = Super_context.context sctx in
     let module LM = Lib.Lib_and_module in
+    let open Memo.Build.O in
     let rec process_libs ~to_link_rev ~force_linkall libs =
       match libs with
       | [] ->
@@ -254,17 +252,17 @@ let handle_special_libs cctx =
         | Some special -> (
           match special with
           | Build_info { data_module; api_version } -> (
-            let* module_ =
+            match
               generate_and_compile_module cctx ~name:data_module ~lib
                 ~code:
                   (Action_builder.return
                      (build_info_code cctx ~libs:all_libs ~api_version))
                 ~requires:(Ok [ lib ])
                 ~precompiled_cmi:true
-            in
-            match module_ with
+            with
             | Error _ as error -> Memo.Build.return error
             | Ok module_ ->
+              let* module_ = module_ in
               process_libs libs
                 ~to_link_rev:
                   (LM.Lib lib :: Module (obj_dir, module_) :: to_link_rev)
@@ -273,19 +271,19 @@ let handle_special_libs cctx =
             (* If findlib.dynload is linked, we stores in the binary the
                packages linked by linking just after findlib.dynload a module
                containing the info *)
-            let requires =
-              (* This shouldn't fail since findlib.dynload depends on dynlink
-                 and findlib. That's why it's ok to use a dummy location. *)
-              let db = SC.public_libs sctx in
+            match
               let open Result.O in
-              let+ dynlink =
-                Lib.DB.resolve db (Loc.none, Lib_name.of_string "dynlink")
-              and+ findlib =
-                Lib.DB.resolve db (Loc.none, Lib_name.of_string "findlib")
+              let requires =
+                (* This shouldn't fail since findlib.dynload depends on dynlink
+                   and findlib. That's why it's ok to use a dummy location. *)
+                let db = SC.public_libs sctx in
+                let+ dynlink =
+                  Lib.DB.resolve db (Loc.none, Lib_name.of_string "dynlink")
+                and+ findlib =
+                  Lib.DB.resolve db (Loc.none, Lib_name.of_string "findlib")
+                in
+                [ dynlink; findlib ]
               in
-              [ dynlink; findlib ]
-            in
-            let* module_ =
               generate_and_compile_module cctx ~lib
                 ~name:(Module_name.of_string "findlib_initl")
                 ~code:
@@ -294,10 +292,10 @@ let handle_special_libs cctx =
                         ~preds:Findlib.findlib_predicates_set_by_dune
                         ~libs:all_libs))
                 ~requires ~precompiled_cmi:false
-            in
-            match module_ with
+            with
             | Error _ as error -> Memo.Build.return error
             | Ok module_ ->
+              let* module_ = module_ in
               process_libs libs
                 ~to_link_rev:
                   (LM.Module (obj_dir, module_) :: Lib lib :: to_link_rev)
@@ -307,7 +305,7 @@ let handle_special_libs cctx =
               ~to_link_rev:(LM.Lib lib :: to_link_rev)
               ~force_linkall
           | Dune_site { data_module; plugins } -> (
-            let* module_ =
+            match
               let code =
                 if plugins then
                   Action_builder.return
@@ -319,10 +317,10 @@ let handle_special_libs cctx =
               generate_and_compile_module cctx ~name:data_module ~lib ~code
                 ~requires:(Ok [ lib ])
                 ~precompiled_cmi:true
-            in
-            match module_ with
+            with
             | Error _ as error -> Memo.Build.return error
             | Ok module_ ->
+              let* module_ = module_ in
               process_libs libs
                 ~to_link_rev:
                   (LM.Lib lib :: Module (obj_dir, module_) :: to_link_rev)

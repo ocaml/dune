@@ -95,12 +95,11 @@ let make ~dir ~inherit_from ~scope ~config_stanza ~profile ~expander
         let env, have_binaries =
           (Env.extend_env env config.env_vars, List.is_non_empty config.binaries)
         in
-        Memo.Build.return
-          (if have_binaries then
-            let dir = Utils.local_bin dir |> Path.build in
-            Env.cons_path env ~dir
-          else
-            env))
+        if have_binaries then
+          let dir = Utils.local_bin dir |> Path.build in
+          Memo.Build.return (Env.cons_path env ~dir)
+        else
+          Memo.Build.return env)
   in
   let bin_artifacts =
     inherited ~field:bin_artifacts ~root:default_bin_artifacts (fun binaries ->

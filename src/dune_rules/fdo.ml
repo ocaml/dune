@@ -178,7 +178,6 @@ module Linker_script = struct
     let open Memo.Build.O in
     let flags () =
       let open Command.Args in
-      let* () = Memo.Build.return () in
       let+ get_profile = get_profile ctx in
       match get_profile with
       | Some fdo_profile_path -> S [ A "-fdo-profile"; Dep fdo_profile_path ]

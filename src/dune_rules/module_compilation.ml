@@ -62,152 +62,150 @@ let build_cm cctx ~dep_graphs ~precompiled_cmi ~cm_kind (m : Module.t) ~phase =
       Sandbox_config.needs_sandboxing
     | _ -> default
   in
-  Memo.Build.Option.iter ~f:Fun.id
-    (let open Option.O in
-    let* compiler = Result.to_option (Context.compiler ctx mode) in
-    let ml_kind = Cm_kind.source cm_kind in
-    let+ src = Module.file m ~ml_kind in
-    let dst = Obj_dir.Module.cm_file_exn obj_dir m ~kind:cm_kind in
-    let obj =
-      Obj_dir.Module.obj_file obj_dir m ~kind:Cmx ~ext:ctx.lib_config.ext_obj
-    in
-    let linear =
-      Obj_dir.Module.obj_file obj_dir m ~kind:Cmx ~ext:Fdo.linear_ext
-    in
-    let linear_fdo =
-      Obj_dir.Module.obj_file obj_dir m ~kind:Cmx ~ext:Fdo.linear_fdo_ext
-    in
-    let open Memo.Build.O in
-    let* extra_args, extra_deps, other_targets =
-      if precompiled_cmi then
-        Memo.Build.return (force_read_cmi src, [], [])
-      else
-        (* If we're compiling an implementation, then the cmi is present *)
-        let public_vlib_module = Module.kind m = Impl_vmodule in
-        match phase with
-        | Some Fdo.Emit -> Memo.Build.return ([], [], [])
-        | Some Fdo.Compile
-        | Some Fdo.All
-        | None -> (
-          match (cm_kind, Module.file m ~ml_kind:Intf, public_vlib_module) with
-          (* If there is no mli, [ocamlY -c file.ml] produces both the .cmY and
-             .cmi. We choose to use ocamlc to produce the cmi and to produce the
-             cmx we have to wait to avoid race conditions. *)
-          | Cmo, None, false ->
-            let+ () = copy_interface ~dir ~obj_dir ~sctx m in
-            ([], [], [ Obj_dir.Module.cm_file_exn obj_dir m ~kind:Cmi ])
-          | Cmo, None, true
-          | (Cmo | Cmx), _, _ ->
-            Memo.Build.return
-              ( force_read_cmi src
-              , [ Path.build (Obj_dir.Module.cm_file_exn obj_dir m ~kind:Cmi) ]
-              , [] )
-          | Cmi, _, _ ->
-            let+ () = copy_interface ~dir ~obj_dir ~sctx m in
-            ([], [], []))
-    in
-    let other_targets =
-      match cm_kind with
-      | Cmx -> (
-        match phase with
-        | Some Fdo.Compile -> linear :: other_targets
-        | Some Fdo.Emit -> other_targets
-        | Some Fdo.All
-        | None ->
-          obj :: other_targets)
-      | Cmi
-      | Cmo ->
-        other_targets
-    in
-    let dep_graph = Ml_kind.Dict.get dep_graphs ml_kind in
-    let opaque = CC.opaque cctx in
-    let other_cm_files =
-      Action_builder.dyn_paths_unit
-        (other_cm_files ~opaque ~cm_kind ~dep_graph ~obj_dir m)
-    in
-    let other_targets, cmt_args =
-      match cm_kind with
-      | Cmx -> (other_targets, Command.Args.empty)
-      | Cmi
-      | Cmo ->
-        if Compilation_context.bin_annot cctx then
-          let fn =
-            Option.value_exn (Obj_dir.Module.cmt_file obj_dir m ~ml_kind)
-          in
-          (fn :: other_targets, A "-bin-annot")
-        else
-          (other_targets, Command.Args.empty)
-    in
-    let opaque_arg =
-      let intf_only = cm_kind = Cmi && not (Module.has m ~ml_kind:Impl) in
-      if
-        opaque
-        || (intf_only && Ocaml_version.supports_opaque_for_mli ctx.version)
-      then
-        Command.Args.A "-opaque"
-      else
-        Command.Args.empty
-    in
-    let dir = ctx.build_dir in
-    let flags =
-      let flags = Ocaml_flags.get (CC.flags cctx) mode in
-      match Module.pp_flags m with
-      | None -> flags
-      | Some pp ->
-        let open Action_builder.O in
-        let+ flags = flags
-        and+ pp_flags = pp in
-        flags @ pp_flags
-    in
-    let output =
+  (let open Option.O in
+  let* compiler = Result.to_option (Context.compiler ctx mode) in
+  let ml_kind = Cm_kind.source cm_kind in
+  let+ src = Module.file m ~ml_kind in
+  let dst = Obj_dir.Module.cm_file_exn obj_dir m ~kind:cm_kind in
+  let obj =
+    Obj_dir.Module.obj_file obj_dir m ~kind:Cmx ~ext:ctx.lib_config.ext_obj
+  in
+  let linear =
+    Obj_dir.Module.obj_file obj_dir m ~kind:Cmx ~ext:Fdo.linear_ext
+  in
+  let linear_fdo =
+    Obj_dir.Module.obj_file obj_dir m ~kind:Cmx ~ext:Fdo.linear_fdo_ext
+  in
+  let open Memo.Build.O in
+  let* extra_args, extra_deps, other_targets =
+    if precompiled_cmi then
+      Memo.Build.return (force_read_cmi src, [], [])
+    else
+      (* If we're compiling an implementation, then the cmi is present *)
+      let public_vlib_module = Module.kind m = Impl_vmodule in
       match phase with
-      | Some Fdo.Compile -> dst
-      | Some Fdo.Emit -> obj
-      | Some Fdo.All
-      | None ->
-        dst
-    in
-    let src =
-      match phase with
-      | Some Fdo.Emit -> Path.build linear_fdo
+      | Some Fdo.Emit -> Memo.Build.return ([], [], [])
       | Some Fdo.Compile
       | Some Fdo.All
+      | None -> (
+        match (cm_kind, Module.file m ~ml_kind:Intf, public_vlib_module) with
+        (* If there is no mli, [ocamlY -c file.ml] produces both the .cmY and
+           .cmi. We choose to use ocamlc to produce the cmi and to produce the
+           cmx we have to wait to avoid race conditions. *)
+        | Cmo, None, false ->
+          let+ () = copy_interface ~dir ~obj_dir ~sctx m in
+          ([], [], [ Obj_dir.Module.cm_file_exn obj_dir m ~kind:Cmi ])
+        | Cmo, None, true
+        | (Cmo | Cmx), _, _ ->
+          Memo.Build.return
+            ( force_read_cmi src
+            , [ Path.build (Obj_dir.Module.cm_file_exn obj_dir m ~kind:Cmi) ]
+            , [] )
+        | Cmi, _, _ ->
+          let+ () = copy_interface ~dir ~obj_dir ~sctx m in
+          ([], [], []))
+  in
+  let other_targets =
+    match cm_kind with
+    | Cmx -> (
+      match phase with
+      | Some Fdo.Compile -> linear :: other_targets
+      | Some Fdo.Emit -> other_targets
+      | Some Fdo.All
       | None ->
-        src
-    in
-    let modules = Compilation_context.modules cctx in
-    let obj_dirs =
-      Obj_dir.all_obj_dirs obj_dir ~mode
-      |> List.concat_map ~f:(fun p ->
-             [ Command.Args.A "-I"; Path (Path.build p) ])
-    in
-    SC.add_rule sctx ~sandbox ~dir
-      (let open Action_builder.With_targets.O in
-      Action_builder.with_no_targets (Action_builder.paths extra_deps)
-      >>> Action_builder.with_no_targets other_cm_files
-      >>> Command.run ~dir:(Path.build dir) (Ok compiler)
-            [ Command.Args.dyn flags
-            ; cmt_args
-            ; Command.Args.S obj_dirs
-            ; Cm_kind.Dict.get (CC.includes cctx) cm_kind
-            ; As extra_args
-            ; A "-no-alias-deps"
-            ; opaque_arg
-            ; As (Fdo.phase_flags phase)
-            ; opens modules m
-            ; As
-                (match stdlib with
-                | None -> []
-                | Some _ ->
-                  (* XXX why aren't these just normal library flags? *)
-                  [ "-nopervasives"; "-nostdlib" ])
-            ; A "-o"
-            ; Target output
-            ; A "-c"
-            ; Command.Ml_kind.flag ml_kind
-            ; Dep src
-            ; Hidden_targets other_targets
-            ]))
+        obj :: other_targets)
+    | Cmi
+    | Cmo ->
+      other_targets
+  in
+  let dep_graph = Ml_kind.Dict.get dep_graphs ml_kind in
+  let opaque = CC.opaque cctx in
+  let other_cm_files =
+    Action_builder.dyn_paths_unit
+      (other_cm_files ~opaque ~cm_kind ~dep_graph ~obj_dir m)
+  in
+  let other_targets, cmt_args =
+    match cm_kind with
+    | Cmx -> (other_targets, Command.Args.empty)
+    | Cmi
+    | Cmo ->
+      if Compilation_context.bin_annot cctx then
+        let fn =
+          Option.value_exn (Obj_dir.Module.cmt_file obj_dir m ~ml_kind)
+        in
+        (fn :: other_targets, A "-bin-annot")
+      else
+        (other_targets, Command.Args.empty)
+  in
+  let opaque_arg =
+    let intf_only = cm_kind = Cmi && not (Module.has m ~ml_kind:Impl) in
+    if opaque || (intf_only && Ocaml_version.supports_opaque_for_mli ctx.version)
+    then
+      Command.Args.A "-opaque"
+    else
+      Command.Args.empty
+  in
+  let dir = ctx.build_dir in
+  let flags =
+    let flags = Ocaml_flags.get (CC.flags cctx) mode in
+    match Module.pp_flags m with
+    | None -> flags
+    | Some pp ->
+      let open Action_builder.O in
+      let+ flags = flags
+      and+ pp_flags = pp in
+      flags @ pp_flags
+  in
+  let output =
+    match phase with
+    | Some Fdo.Compile -> dst
+    | Some Fdo.Emit -> obj
+    | Some Fdo.All
+    | None ->
+      dst
+  in
+  let src =
+    match phase with
+    | Some Fdo.Emit -> Path.build linear_fdo
+    | Some Fdo.Compile
+    | Some Fdo.All
+    | None ->
+      src
+  in
+  let modules = Compilation_context.modules cctx in
+  let obj_dirs =
+    Obj_dir.all_obj_dirs obj_dir ~mode
+    |> List.concat_map ~f:(fun p ->
+           [ Command.Args.A "-I"; Path (Path.build p) ])
+  in
+  SC.add_rule sctx ~sandbox ~dir
+    (let open Action_builder.With_targets.O in
+    Action_builder.with_no_targets (Action_builder.paths extra_deps)
+    >>> Action_builder.with_no_targets other_cm_files
+    >>> Command.run ~dir:(Path.build dir) (Ok compiler)
+          [ Command.Args.dyn flags
+          ; cmt_args
+          ; Command.Args.S obj_dirs
+          ; Cm_kind.Dict.get (CC.includes cctx) cm_kind
+          ; As extra_args
+          ; A "-no-alias-deps"
+          ; opaque_arg
+          ; As (Fdo.phase_flags phase)
+          ; opens modules m
+          ; As
+              (match stdlib with
+              | None -> []
+              | Some _ ->
+                (* XXX why aren't these just normal library flags? *)
+                [ "-nopervasives"; "-nostdlib" ])
+          ; A "-o"
+          ; Target output
+          ; A "-c"
+          ; Command.Ml_kind.flag ml_kind
+          ; Dep src
+          ; Hidden_targets other_targets
+          ]))
+  |> Memo.Build.Option.iter ~f:Fun.id
 
 let build_module ~dep_graphs ?(precompiled_cmi = false) cctx m =
   let open Memo.Build.O in

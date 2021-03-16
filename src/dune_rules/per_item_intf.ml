@@ -29,9 +29,4 @@ module type S = sig
        'a t
     -> f:('a -> 'b Action_builder.With_targets.t)
     -> 'b t Action_builder.With_targets.t
-
-  val map_with_targets_build :
-       'a t
-    -> f:('a -> 'b Action_builder.With_targets.t Memo.Build.t)
-    -> 'b t Action_builder.With_targets.t Memo.Build.t
 end

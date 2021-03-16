@@ -55,8 +55,7 @@ module DB = struct
       | Deprecated_library_name of Dune_file.Deprecated_library_name.t
   end
 
-  let create_db_from_stanzas ~parent ~lib_config ~modules_of_lib
-      ~projects_by_package stanzas =
+  let create_db_from_stanzas ~parent ~lib_config ~modules_of_lib stanzas =
     let map : Found_or_redirect.t Lib_name.Map.t =
       List.map stanzas ~f:(fun stanza ->
           match (stanza : Library_related_stanza.t) with
@@ -106,7 +105,7 @@ module DB = struct
         | Some (Redirect lib) -> Lib.DB.Resolve_result.redirect None lib
         | Some (Found lib) -> Lib.DB.Resolve_result.found lib)
       ~all:(fun () -> Lib_name.Map.keys map)
-      ~modules_of_lib ~lib_config ~projects_by_package
+      ~modules_of_lib ~lib_config
 
   (* This function is linear in the depth of [dir] in the worst case, so if it
      shows up in the profile we should memoize it. *)

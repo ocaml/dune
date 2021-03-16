@@ -362,6 +362,7 @@ let build_root_module root_module ~entries ~cctx =
 
 let build_all cctx ~dep_graphs =
   let open Memo.Build.O in
+  (* CR amokhov: Remove this lazy if possible. *)
   let for_wrapped_compat = lazy (Compilation_context.for_wrapped_compat cctx) in
   let modules = Compilation_context.modules cctx in
   Memo.Build.parallel_iter

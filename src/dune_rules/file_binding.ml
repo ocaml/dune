@@ -41,13 +41,8 @@ module Unexpanded = struct
   let expand_src t ~dir ~f = Path.Build.relative dir (f t.src)
 
   let destination_relative_to_install_path t ~section ~expand ~expand_partial =
-    let src = expand_partial t.src
-    and dst =
-      match t.dst with
-      | None -> None
-      | Some dst -> Some (expand dst)
-    in
-    Install.Entry.adjust_dst ~section ~src ~dst
+    let dst = Option.map ~f:expand t.dst in
+    Install.Entry.adjust_dst ~section ~src:(expand_partial t.src) ~dst
 
   let expand_build t ~dir ~f =
     let open Memo.Build.O in

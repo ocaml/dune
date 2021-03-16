@@ -47,9 +47,7 @@ end
 
 (* This functor is where [(menhir ...)] stanzas are desugared. *)
 
-module Run (P : PARAMS) : sig
-  val gen_rules : unit -> unit Memo.Build.t
-end = struct
+module Run (P : PARAMS) = struct
   open P
 
   (* [sctx] is the "super context", while [context] is the "context". Both store

@@ -201,7 +201,7 @@ let executables_rules ~sctx ~dir ~expander ~dir_contents ~scope ~compile_info
     let* o_files =
       o_files sctx ~dir ~expander ~exes ~linkages ~dir_contents
         ~requires_compile
-      |> Memo.Build.sequential_map ~f:Fun.id
+      |> Memo.Build.all
     in
     Check_rules.add_files sctx ~dir o_files;
     Exe.build_and_link_many cctx ~programs ~linkages ~link_args ~o_files
@@ -234,8 +234,8 @@ let rules ~sctx ~dir ~dir_contents ~scope ~expander
     executables_rules exes ~sctx ~dir ~dir_contents ~scope ~expander
       ~compile_info ~embed_in_plugin_libraries:exes.embed_in_plugin_libraries
   in
-  let* () = Buildable_rules.gen_select_rules sctx compile_info ~dir
-  and* () = Bootstrap_info.gen_rules sctx exes ~dir compile_info in
+  let* () = Buildable_rules.gen_select_rules sctx compile_info ~dir in
+  let* () = Bootstrap_info.gen_rules sctx exes ~dir compile_info in
   Buildable_rules.with_lib_deps
     (Super_context.context sctx)
     compile_info ~dir ~f

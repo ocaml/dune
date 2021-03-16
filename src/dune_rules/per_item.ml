@@ -43,12 +43,4 @@ module Make (Key : Map.Key) : Per_item_intf.S with type key = Key.t = struct
     let l = Array.to_list values in
     let+ new_values = List.map l ~f |> Action_builder.With_targets.all in
     { map; values = Array.of_list new_values }
-
-  let map_with_targets_build { map; values } ~f =
-    let open Memo.Build.O in
-    let values = Array.to_list values in
-    let+ new_values = Memo.Build.sequential_map values ~f in
-    let open Action_builder.With_targets.O in
-    let+ new_values = Action_builder.With_targets.all new_values in
-    { map; values = Array.of_list new_values }
 end

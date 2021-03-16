@@ -403,15 +403,15 @@ let library_rules (lib : Library.t) ~cctx ~source_modules ~dir_contents
   let scope = Compilation_context.scope cctx in
   let requires_compile = Compilation_context.requires_compile cctx in
   let stdlib_dir = (Compilation_context.context cctx).Context.stdlib_dir in
-  let* dep_graphs = Dep_rules.rules cctx ~modules
-  and* () =
+  let* dep_graphs = Dep_rules.rules cctx ~modules in
+  let* () =
     Memo.Build.Option.iter vimpl
       ~f:(Virtual_rules.setup_copy_rules_for_impl ~sctx ~dir)
   in
   Check_rules.add_obj_dir sctx ~obj_dir;
-  let* () = gen_wrapped_compat_modules lib cctx
-  and* () = Module_compilation.build_all cctx ~dep_graphs
-  and* expander = Super_context.expander sctx ~dir in
+  let* () = gen_wrapped_compat_modules lib cctx in
+  let* () = Module_compilation.build_all cctx ~dep_graphs in
+  let* expander = Super_context.expander sctx ~dir in
   let preprocess =
     Preprocess.Per_module.with_instrumentation lib.buildable.preprocess
       ~instrumentation_backend:

@@ -92,8 +92,8 @@ end = struct
     |> Expander.set_bin_artifacts ~bin_artifacts_host
 
   let expander t ~dir =
-    let* node = get_node t ~dir
-    and* external_env = external_env t ~dir in
+    let* node = get_node t ~dir in
+    let* external_env = external_env t ~dir in
     let scope = Env_node.scope node in
     let expander_for_artifacts =
       expander_for_artifacts ~scope ~external_env ~root_expander:t.root_expander
@@ -375,8 +375,8 @@ let foreign_flags t ~dir ~expander ~flags ~language =
 let menhir_flags t ~dir ~expander ~flags =
   let t = t.env_tree in
   let+ default = get_node t ~dir >>= Env_node.menhir_flags in
-  let flags = Expander.expand_and_eval_set expander flags ~standard:default in
-  Action_builder.memoize "menhir flags" flags
+  Action_builder.memoize "menhir flags"
+    (Expander.expand_and_eval_set expander flags ~standard:default)
 
 let local_binaries t ~dir = get_node t.env_tree ~dir >>= Env_node.local_binaries
 
@@ -388,9 +388,9 @@ let format_config t ~dir = get_node t.env_tree ~dir >>= Env_node.format_config
 
 let dump_env t ~dir =
   let t = t.env_tree in
-  let+ ocaml_flags = get_node t ~dir >>= Env_node.ocaml_flags
-  and+ foreign_flags = get_node t ~dir >>= Env_node.foreign_flags
-  and+ menhir_flags = get_node t ~dir >>= Env_node.menhir_flags in
+  let* ocaml_flags = get_node t ~dir >>= Env_node.ocaml_flags in
+  let* foreign_flags = get_node t ~dir >>= Env_node.foreign_flags in
+  let+ menhir_flags = get_node t ~dir >>= Env_node.menhir_flags in
   let open Action_builder.O in
   let+ o_dump = Ocaml_flags.dump ocaml_flags
   and+ c_dump =

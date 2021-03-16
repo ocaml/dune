@@ -592,8 +592,7 @@ module Static = struct
       | Need_full_expander _ -> None
 
     let expand_pform ~context ~dir ~source pform =
-      let expand_pform_opt = expand_pform_opt ~context ~dir ~source pform in
-      match expand_pform_opt with
+      match expand_pform_opt ~context ~dir ~source pform with
       | Some v -> v
       | None -> isn't_allowed_in_this_position ~source
 

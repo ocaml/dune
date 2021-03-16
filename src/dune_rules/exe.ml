@@ -133,7 +133,7 @@ let exe_path_from_name cctx ~name ~(linkage : Linkage.t) =
 
 let link_exe ~loc ~name ~(linkage : Linkage.t) ~cm_files ~link_time_code_gen
     ~promote ?(link_args = Action_builder.return Command.Args.empty)
-    ?(o_files = []) cctx : _ Memo.Build.t =
+    ?(o_files = []) cctx =
   let sctx = CC.super_context cctx in
   let ctx = SC.context sctx in
   let dir = CC.dir cctx in

@@ -271,19 +271,19 @@ let handle_special_libs cctx =
             (* If findlib.dynload is linked, we stores in the binary the
                packages linked by linking just after findlib.dynload a module
                containing the info *)
-            match
+            let requires =
+              (* This shouldn't fail since findlib.dynload depends on dynlink
+                 and findlib. That's why it's ok to use a dummy location. *)
+              let db = SC.public_libs sctx in
               let open Result.O in
-              let requires =
-                (* This shouldn't fail since findlib.dynload depends on dynlink
-                   and findlib. That's why it's ok to use a dummy location. *)
-                let db = SC.public_libs sctx in
-                let+ dynlink =
-                  Lib.DB.resolve db (Loc.none, Lib_name.of_string "dynlink")
-                and+ findlib =
-                  Lib.DB.resolve db (Loc.none, Lib_name.of_string "findlib")
-                in
-                [ dynlink; findlib ]
+              let+ dynlink =
+                Lib.DB.resolve db (Loc.none, Lib_name.of_string "dynlink")
+              and+ findlib =
+                Lib.DB.resolve db (Loc.none, Lib_name.of_string "findlib")
               in
+              [ dynlink; findlib ]
+            in
+            match
               generate_and_compile_module cctx ~lib
                 ~name:(Module_name.of_string "findlib_initl")
                 ~code:
@@ -295,6 +295,7 @@ let handle_special_libs cctx =
             with
             | Error _ as error -> Memo.Build.return error
             | Ok module_ ->
+              let open Memo.Build.O in
               let* module_ = module_ in
               process_libs libs
                 ~to_link_rev:
@@ -305,15 +306,15 @@ let handle_special_libs cctx =
               ~to_link_rev:(LM.Lib lib :: to_link_rev)
               ~force_linkall
           | Dune_site { data_module; plugins } -> (
+            let code =
+              if plugins then
+                Action_builder.return
+                  (dune_site_plugins_code ~libs:all_libs
+                     ~builtins:(Findlib.builtins ctx.Context.findlib))
+              else
+                Action_builder.return (dune_site_code ())
+            in
             match
-              let code =
-                if plugins then
-                  Action_builder.return
-                    (dune_site_plugins_code ~libs:all_libs
-                       ~builtins:(Findlib.builtins ctx.Context.findlib))
-                else
-                  Action_builder.return (dune_site_code ())
-              in
               generate_and_compile_module cctx ~name:data_module ~lib ~code
                 ~requires:(Ok [ lib ])
                 ~precompiled_cmi:true

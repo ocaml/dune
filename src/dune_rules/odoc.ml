@@ -323,9 +323,7 @@ let setup_library_odoc_rules cctx (library : Library.t) ~dep_graphs =
         compiled :: acc)
   in
   let open Memo.Build.O in
-  let+ modules_and_odoc_files =
-    Memo.Build.sequential_map modules_and_odoc_files ~f:Fun.id
-  in
+  let+ modules_and_odoc_files = Memo.Build.all modules_and_odoc_files in
   Dep.setup_deps ctx (Lib local_lib)
     (Path.Set.of_list_map modules_and_odoc_files ~f:(fun (_, p) -> Path.build p))
 

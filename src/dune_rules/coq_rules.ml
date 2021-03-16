@@ -365,13 +365,14 @@ let coqc_rule (cctx : _ Context.t) ~file_flags coq_module =
     ; Command.Args.Dep (Path.build source)
     ]
   in
-  let coq_flags = Context.coq_flags cctx in
   let open Action_builder.With_targets.O in
   (* The way we handle the transitive dependencies of .vo files is not safe for
      sandboxing *)
   Action_builder.with_no_targets
     (Action_builder.dep (Dep.sandbox_config Sandbox_config.no_sandboxing))
-  >>> Context.coqc cctx (Command.Args.dyn coq_flags :: file_flags)
+  >>>
+  let coq_flags = Context.coq_flags cctx in
+  Context.coqc cctx (Command.Args.dyn coq_flags :: file_flags)
 
 module Module_rule = struct
   type t =
@@ -381,6 +382,7 @@ module Module_rule = struct
 end
 
 let setup_rule cctx ~source_rule coq_module =
+  let open Action_builder.With_targets.O in
   if coq_debug then
     Format.eprintf "gen_rule coq_module: %a@\n%!" Pp.to_fmt
       (Dyn.pp (Coq_module.to_dyn coq_module));
@@ -392,12 +394,11 @@ let setup_rule cctx ~source_rule coq_module =
   (* Process coqdep and generate rules *)
   let deps_of = deps_of ~dir:cctx.dir ~boot_type:cctx.boot_type coq_module in
 
-  let coqc_rule = coqc_rule cctx ~file_flags coq_module in
   (* Rules for the files *)
   { Module_rule.coqdep = coqdep_rule
   ; coqc =
-      (let open Action_builder.With_targets.O in
-      Action_builder.with_no_targets deps_of >>> coqc_rule)
+      Action_builder.with_no_targets deps_of
+      >>> coqc_rule cctx ~file_flags coq_module
   }
 
 let coq_modules_of_theory ~sctx lib =

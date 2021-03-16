@@ -60,9 +60,8 @@ let term =
             let sctx =
               Dune_engine.Context_name.Map.find_exn setup.scontexts ctx.name
             in
-            [ Action_builder.memo_build
+            [ Action_builder.memo_build_join
                 (dump sctx ~dir:(Path.as_in_build_dir_exn dir))
-              |> Action_builder.bind ~f:Fun.id
             ]
           | In_source_dir dir ->
             Dune_engine.Context_name.Map.values setup.scontexts
@@ -71,8 +70,7 @@ let term =
                      Path.Build.append_source
                        (Super_context.context sctx).build_dir dir
                    in
-                   Action_builder.memo_build (dump sctx ~dir)
-                   |> Action_builder.bind ~f:Fun.id)
+                   Action_builder.memo_build_join (dump sctx ~dir))
           | External _ ->
             User_error.raise
               [ Pp.text "Environment is not defined for external paths" ]

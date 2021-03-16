@@ -53,8 +53,6 @@ let odoc t = Memo.Lazy.Async.force t.odoc
 
 let coq t = Memo.Lazy.Async.force t.coq
 
-module Foreign_language_Dict_App = Foreign_language.Dict.Applicative (Memo.Build)
-
 let make ~dir ~inherit_from ~scope ~config_stanza ~profile ~expander
     ~expander_for_artifacts ~default_context_flags ~default_env
     ~default_bin_artifacts =
@@ -84,8 +82,8 @@ let make ~dir ~inherit_from ~scope ~config_stanza ~profile ~expander
         let+ expanded =
           Memo.Build.sequential_map config.binaries
             ~f:
-              (File_binding.Unexpanded.expand ~dir ~f:(fun template ->
-                   let* expander_for_artifacts =
+              (File_binding.Unexpanded.expand_build ~dir ~f:(fun template ->
+                   let+ expander_for_artifacts =
                      Memo.Lazy.Async.force expander_for_artifacts
                    in
                    Expander.Static.expand_str expander_for_artifacts template))
@@ -116,7 +114,7 @@ let make ~dir ~inherit_from ~scope ~config_stanza ~profile ~expander
       Ocaml_flags.default ~profile ~dune_version
     in
     inherited ~field:ocaml_flags ~root:default_ocaml_flags (fun flags ->
-        let* expander = Memo.Lazy.Async.force expander in
+        let+ expander = Memo.Lazy.Async.force expander in
         let expander = Expander.set_dir expander ~dir in
         Ocaml_flags.make ~spec:config.flags ~default:flags
           ~eval:(Expander.expand_and_eval_set expander))
@@ -134,16 +132,15 @@ let make ~dir ~inherit_from ~scope ~config_stanza ~profile ~expander
   in
   let foreign_flags =
     inherited ~field:foreign_flags ~root:default_context_flags (fun flags ->
-        let* expander = Memo.Lazy.Async.force expander in
+        let+ expander = Memo.Lazy.Async.force expander in
         let expander = Expander.set_dir expander ~dir in
-        Foreign_language_Dict_App.traversei config.foreign_flags
-          ~f:(fun ~language f ->
+        Foreign_language.Dict.mapi config.foreign_flags ~f:(fun ~language f ->
             let standard = Foreign_language.Dict.get flags language in
             Expander.expand_and_eval_set expander f ~standard))
   in
   let menhir_flags =
     inherited ~field:menhir_flags ~root:(Action_builder.return []) (fun flags ->
-        let* expander = Memo.Lazy.Async.force expander in
+        let+ expander = Memo.Lazy.Async.force expander in
         let expander = Expander.set_dir expander ~dir in
         Expander.expand_and_eval_set expander config.menhir_flags
           ~standard:flags)

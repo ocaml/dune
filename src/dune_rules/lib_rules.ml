@@ -43,11 +43,11 @@ let build_lib (lib : Library.t) ~native_archives ~sctx ~expander ~flags ~dir
         Action_builder.paths (Cm_files.unsorted_objects_and_cms cm_files ~mode)
       in
       let ocaml_flags = Ocaml_flags.get flags mode in
-      let open Memo.Build.O in
-      let* cclibs =
+      let cclibs =
         Expander.expand_and_eval_set expander lib.c_library_flags
           ~standard:(Action_builder.return [])
-      and* library_flags =
+      in
+      let library_flags =
         Expander.expand_and_eval_set expander lib.library_flags
           ~standard:(Action_builder.return [])
       in
@@ -120,13 +120,12 @@ let ocamlmklib ~loc ~c_library_flags ~sctx ~dir ~expander ~o_files ~archive_name
     Foreign.Archive.Name.lib_file archive_name ~dir ~ext_lib
   in
   let build ~custom ~sandbox targets =
-    let open Memo.Build.O in
-    let* cclibs_args =
-      Expander.expand_and_eval_set expander c_library_flags
-        ~standard:(Action_builder.return [])
-    in
     Super_context.add_rule sctx ~sandbox ~dir ~loc
-      (let ctx = Super_context.context sctx in
+      (let cclibs_args =
+         Expander.expand_and_eval_set expander c_library_flags
+           ~standard:(Action_builder.return [])
+       in
+       let ctx = Super_context.context sctx in
        Command.run ~dir:(Path.build ctx.build_dir) ctx.ocamlmklib
          [ A "-g"
          ; (if custom then
@@ -317,9 +316,9 @@ let setup_build_archives (lib : Dune_file.Library.t) ~cctx
      [Obj_dir]. That's fragile and will break if the layout of the object
      directory changes *)
   let dir = Obj_dir.dir obj_dir in
-  let* native_archives =
+  let native_archives =
     let lib_config = ctx.lib_config in
-    let+ lib_info = Library.to_lib_info lib ~dir ~lib_config in
+    let lib_info = Library.to_lib_info lib ~dir ~lib_config in
     Lib_info.eval_native_archives_exn lib_info ~modules:(Some modules)
   in
   let cm_files = Cm_files.make ~obj_dir ~ext_obj ~modules ~top_sorted_modules in
@@ -331,7 +330,7 @@ let setup_build_archives (lib : Dune_file.Library.t) ~cctx
   (* Build *.cma.js *)
   let* () =
     Memo.Build.if_ modes.byte
-      (let* action_with_targets =
+      (let action_with_targets =
          let src =
            Library.archive lib ~dir ~ext:(Mode.compiled_lib_ext Mode.Byte)
          in
@@ -342,8 +341,8 @@ let setup_build_archives (lib : Dune_file.Library.t) ~cctx
          in
          Jsoo_rules.build_cm cctx ~js_of_ocaml ~src ~target
        in
-       Memo.Build.Option.iter action_with_targets
-         ~f:(Super_context.add_rule sctx ~dir))
+       Memo.Build.Option.iter action_with_targets ~f:(fun action_with_targets ->
+           action_with_targets >>= Super_context.add_rule sctx ~dir))
   in
   Memo.Build.if_
     (Dynlink_supported.By_the_os.get natdynlink_supported && modes.native)

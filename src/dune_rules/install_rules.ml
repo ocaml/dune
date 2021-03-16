@@ -90,7 +90,7 @@ end = struct
     let loc = lib.buildable.loc in
     let ctx = Super_context.context sctx in
     let lib_config = ctx.lib_config in
-    let* info = Dune_file.Library.to_lib_info lib ~dir ~lib_config in
+    let info = Dune_file.Library.to_lib_info lib ~dir ~lib_config in
     let obj_dir = Lib_info.obj_dir info in
     let make_entry section ?sub_dir ?dst fn =
       ( Some loc
@@ -200,20 +200,17 @@ end = struct
       ]
 
   let keep_if expander ~scope stanza =
-    let+ enabled =
-      match (stanza : Stanza.t) with
+    Option.some_if
+      (match (stanza : Stanza.t) with
       | Dune_file.Library lib ->
-        Memo.Build.return
-          ((not lib.optional)
-          || Lib.DB.available (Scope.libs scope)
-               (Dune_file.Library.best_name lib))
-      | Dune_file.Documentation _ -> Memo.Build.return true
+        (not lib.optional)
+        || Lib.DB.available (Scope.libs scope) (Dune_file.Library.best_name lib)
+      | Dune_file.Documentation _ -> true
       | Dune_file.Install { enabled_if; _ } ->
         Expander.eval_blang expander enabled_if
-      | Dune_file.Plugin _ -> Memo.Build.return true
+      | Dune_file.Plugin _ -> true
       | Dune_file.Executables ({ install_conf = Some _; _ } as exes) ->
-        let+ enalbed = Expander.eval_blang expander exes.enabled_if in
-        enalbed
+        Expander.eval_blang expander exes.enabled_if
         && ((not exes.optional)
            ||
            let compile_info =
@@ -232,10 +229,9 @@ end = struct
                ~allow_overlaps:exes.buildable.allow_overlapping_dependencies
            in
            Result.is_ok (Lib.Compile.direct_requires compile_info))
-      | Coq_stanza.Theory.T d -> Memo.Build.return (Option.is_some d.package)
-      | _ -> Memo.Build.return false
-    in
-    Option.some_if enabled stanza
+      | Coq_stanza.Theory.T d -> Option.is_some d.package
+      | _ -> false)
+      stanza
 
   let is_odig_doc_file fn =
     List.exists [ "README"; "LICENSE"; "CHANGE"; "HISTORY" ] ~f:(fun prefix ->
@@ -306,8 +302,8 @@ end = struct
           let named_entries =
             let { Dir_with_dune.ctx_dir = dir; scope; _ } = d in
             let* expander = Super_context.expander sctx ~dir in
-            let* stanza_and_package =
-              let+ stanza = keep_if expander stanza ~scope in
+            let stanza_and_package =
+              let stanza = keep_if expander stanza ~scope in
               let open Option.O in
               let* stanza = stanza in
               let+ package = Dune_file.stanza_package stanza in
@@ -325,15 +321,16 @@ end = struct
                       ~f:(Expander.Static.expand_str expander)
                   in
                   let section = i.section in
-                  Memo.Build.sequential_map i.files ~f:(fun unexpanded ->
-                      let+ fb = path_expander unexpanded in
-                      let loc = File_binding.Expanded.src_loc fb in
-                      let src = File_binding.Expanded.src fb in
-                      let dst = File_binding.Expanded.dst fb in
-                      ( Some loc
-                      , Install.Entry.make_with_site section
-                          (Super_context.get_site_of_packages sctx)
-                          src ?dst ))
+                  Memo.Build.return
+                    (List.map i.files ~f:(fun unexpanded ->
+                         let fb = path_expander unexpanded in
+                         let loc = File_binding.Expanded.src_loc fb in
+                         let src = File_binding.Expanded.src fb in
+                         let dst = File_binding.Expanded.dst fb in
+                         ( Some loc
+                         , Install.Entry.make_with_site section
+                             (Super_context.get_site_of_packages sctx)
+                             src ?dst )))
                 | Dune_file.Library lib ->
                   let sub_dir = Dune_file.Library.sub_dir lib in
                   let* dir_contents = Dir_contents.get sctx ~dir in

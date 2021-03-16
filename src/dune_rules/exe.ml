@@ -210,8 +210,7 @@ let link_js ~name ~cm_files ~promote cctx =
     CC.js_of_ocaml cctx |> Option.value ~default:Dune_file.Js_of_ocaml.default
   in
   let src = exe_path_from_name cctx ~name ~linkage:Linkage.byte in
-  let open Memo.Build.O in
-  let* flags =
+  let flags =
     Expander.expand_and_eval_set expander js_of_ocaml.flags
       ~standard:(Action_builder.return (Jsoo_rules.standard sctx))
   in

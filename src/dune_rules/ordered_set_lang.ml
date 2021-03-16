@@ -330,50 +330,38 @@ module Unexpanded = struct
       Action_builder.Expander.expand sw ~mode ~dir ~f
     in
     let f_elems s =
-      Memo.Build.map (expand_template s ~mode:Many) ~f:(fun expanded ->
-          let loc = String_with_vars.loc s in
-          let+ l = expanded in
-          Ast.union
-            (List.map l ~f:(fun s -> Ast.Element (loc, Value.to_string ~dir s))))
+      let loc = String_with_vars.loc s in
+      let+ l = expand_template s ~mode:Many in
+      Ast.union
+        (List.map l ~f:(fun s -> Ast.Element (loc, Value.to_string ~dir s)))
     in
-    let rec expand ~allow_include (t : ast) :
-        ast_expanded Action_builder.t Memo.Build.t =
+    let rec expand ~allow_include (t : ast) : ast_expanded Action_builder.t =
       let open Ast in
       match t with
       | Element s -> f_elems s
-      | Standard -> Memo.Build.return (Action_builder.return Standard)
+      | Standard -> Action_builder.return Standard
       | Include fn ->
         let loc = String_with_vars.loc fn in
         if not allow_include then
           User_error.raise ~loc [ Pp.text "(:include ...) is not allowed here" ]
         else
-          Memo.Build.map (expand_template fn ~mode:Single) ~f:(fun expanded ->
-              let* sexp =
-                let* path = (expanded : Value.t Action_builder.t) in
-                let path = Value.to_path path ?error_loc:(Some loc) ~dir in
-                Action_builder.read_sexp path
-              in
-              let t = Dune_lang.Decoder.parse decode context sexp in
-              let* res =
-                Action_builder.memo_build (expand t.ast ~allow_include:false)
-              in
-              res)
+          let* sexp =
+            let* path = expand_template fn ~mode:Single in
+            let path = Value.to_path path ?error_loc:(Some loc) ~dir in
+            Action_builder.read_sexp path
+          in
+          let t = Dune_lang.Decoder.parse decode context sexp in
+          expand t.ast ~allow_include:false
       | Union l ->
-        Memo.Build.map
-          (Memo.Build.sequential_map l ~f:(expand ~allow_include))
-          ~f:(fun l ->
-            let+ l = Action_builder.all l in
-            Union l)
+        let+ l = Action_builder.all (List.map l ~f:(expand ~allow_include)) in
+        Union l
       | Diff (l, r) ->
-        Memo.Build.bind (expand l ~allow_include) ~f:(fun l ->
-            Memo.Build.map (expand r ~allow_include) ~f:(fun r ->
-                let+ l = l
-                and+ r = r in
-                Diff (l, r)))
+        let+ l = expand l ~allow_include
+        and+ r = expand r ~allow_include in
+        Diff (l, r)
     in
-    Memo.Build.map (expand t.ast ~allow_include:true) ~f:(fun expanded ->
-        let+ ast = expanded in
-        { t with ast })
+    let+ ast = expand t.ast ~allow_include:true in
+    { t with ast }
 end
 
 module Unordered_string = Unordered (String)

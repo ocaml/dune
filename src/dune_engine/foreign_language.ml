@@ -65,12 +65,6 @@ module Dict = struct
     add t k (f v)
 
   let merge t1 t2 ~f = { c = f t1.c t2.c; cxx = f t1.cxx t2.cxx }
-
-  module Applicative (A : Applicative_intf.S1) = struct
-    let traversei { c; cxx } ~f =
-      A.both (f ~language:C c) (f ~language:Cxx cxx)
-      |> A.map ~f:(fun (c, cxx) -> { c; cxx })
-  end
 end
 
 let header_extension = ".h"

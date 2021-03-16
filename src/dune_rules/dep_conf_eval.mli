@@ -4,8 +4,7 @@ open! Stdune
 open! Dune_engine
 
 (** Evaluates unnamed dependency specifications. *)
-val unnamed :
-  expander:Expander.t -> Dep_conf.t list -> unit Action_builder.t Memo.Build.t
+val unnamed : expander:Expander.t -> Dep_conf.t list -> unit Action_builder.t
 
 (** Evaluates named dependency specifications. Return the action build that
     register dependencies as well as an expander that can be used to expand to
@@ -13,4 +12,4 @@ val unnamed :
 val named :
      expander:Expander.t
   -> Dep_conf.t Bindings.t
-  -> (unit Action_builder.t * Expander.t) Memo.Build.t
+  -> unit Action_builder.t * Expander.t

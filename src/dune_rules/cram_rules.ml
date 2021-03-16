@@ -42,8 +42,7 @@ let missing_run_t (error : Cram_test.t) =
 let test_rule ~sctx ~expander ~dir (spec : effective)
     (test : (Cram_test.t, File_tree.Dir.error) result) =
   let module Alias_rules = Simple_rules.Alias_rules in
-  let open Memo.Build.O in
-  let* enabled = Expander.eval_blang expander (Blang.And spec.enabled_if) in
+  let enabled = Expander.eval_blang expander (Blang.And spec.enabled_if) in
   let loc = Some spec.loc in
   let aliases = Alias.Name.Set.to_list_map spec.alias ~f:(Alias.make ~dir) in
   let test_name =
@@ -158,9 +157,8 @@ let rules ~sctx ~expander ~dir tests =
                 | None -> Memo.Build.return acc.deps
                 | Some deps ->
                   let+ (deps : unit Action_builder.t) =
-                    let* expander = Super_context.expander sctx ~dir in
-                    let+ named_dep_conf = Dep_conf_eval.named ~expander deps in
-                    fst named_dep_conf
+                    let+ expander = Super_context.expander sctx ~dir in
+                    fst (Dep_conf_eval.named ~expander deps)
                   in
                   deps :: acc.deps
               in

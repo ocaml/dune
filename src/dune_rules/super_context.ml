@@ -353,7 +353,7 @@ let build_dir_is_vendored build_dir =
 let ocaml_flags t ~dir (spec : Ocaml_flags.Spec.t) =
   let* expander = Env_tree.expander t.env_tree ~dir in
   let+ flags =
-    let* ocaml_flags = get_node t.env_tree ~dir >>= Env_node.ocaml_flags in
+    let+ ocaml_flags = get_node t.env_tree ~dir >>= Env_node.ocaml_flags in
     Ocaml_flags.make ~spec ~default:ocaml_flags
       ~eval:(Expander.expand_and_eval_set expander)
   in
@@ -365,21 +365,20 @@ let ocaml_flags t ~dir (spec : Ocaml_flags.Spec.t) =
 
 let foreign_flags t ~dir ~expander ~flags ~language =
   let ccg = Context.cc_g t.context in
-  let* default = get_node t.env_tree ~dir >>= Env_node.foreign_flags in
+  let+ default = get_node t.env_tree ~dir >>= Env_node.foreign_flags in
   let name = Foreign_language.proper_name language in
-  let+ flags =
+  let flags =
     let default = Foreign_language.Dict.get default language in
-    let+ c = Expander.expand_and_eval_set expander flags ~standard:default in
     let open Action_builder.O in
-    let+ l = c in
+    let+ l = Expander.expand_and_eval_set expander flags ~standard:default in
     l @ ccg
   in
   Action_builder.memoize (sprintf "%s flags" name) flags
 
 let menhir_flags t ~dir ~expander ~flags =
   let t = t.env_tree in
-  let* default = get_node t ~dir >>= Env_node.menhir_flags in
-  let+ flags = Expander.expand_and_eval_set expander flags ~standard:default in
+  let+ default = get_node t ~dir >>= Env_node.menhir_flags in
+  let flags = Expander.expand_and_eval_set expander flags ~standard:default in
   Action_builder.memoize "menhir flags" flags
 
 let local_binaries t ~dir = get_node t.env_tree ~dir >>= Env_node.local_binaries
@@ -423,13 +422,11 @@ let get_installed_binaries stanzas ~(context : Context.t) =
   let expand_str_partial ~dir sw =
     Expander.Static.With_reduced_var_set.expand_str_partial ~context ~dir sw
   in
-  Dir_with_dune.deep_fold stanzas ~init:(Memo.Build.return Path.Build.Set.empty)
+  Dir_with_dune.deep_fold stanzas ~init:Path.Build.Set.empty
     ~f:(fun d stanza acc ->
-      let* acc = acc in
       let binaries_from_install files =
-        List.fold_left files ~init:(Memo.Build.return acc) ~f:(fun acc fb ->
-            let* acc = acc in
-            let+ p =
+        List.fold_left files ~init:acc ~f:(fun acc fb ->
+            let p =
               File_binding.Unexpanded.destination_relative_to_install_path fb
                 ~section:Bin
                 ~expand:(expand_str ~dir:d.ctx_dir)
@@ -467,8 +464,8 @@ let get_installed_binaries stanzas ~(context : Context.t) =
         if available then
           binaries_from_install files
         else
-          Memo.Build.return acc
-      | _ -> Memo.Build.return acc)
+          acc
+      | _ -> acc)
 
 let create_lib_entries_by_package ~public_libs stanzas =
   Dir_with_dune.deep_fold stanzas ~init:[] ~f:(fun d stanza acc ->
@@ -522,7 +519,7 @@ let create ~(context : Context.t) ?host ~projects ~packages ~stanzas () =
     Lib.DB.create_from_findlib context.findlib ~lib_config ~projects_by_package
   in
   let modules_of_lib_for_scope = Fdecl.create Dyn.Encoder.opaque in
-  let* scopes, public_libs =
+  let scopes, public_libs =
     Scope.DB.create_from_stanzas ~projects ~projects_by_package ~context
       ~installed_libs ~modules_of_lib:modules_of_lib_for_scope stanzas
   in
@@ -541,8 +538,8 @@ let create ~(context : Context.t) ?host ~projects ~packages ~stanzas () =
     Path.Build.Map.of_list_map_exn stanzas ~f:(fun stanzas ->
         (stanzas.Dir_with_dune.ctx_dir, stanzas))
   in
-  let+ artifacts =
-    let+ local_bins = get_installed_binaries ~context stanzas in
+  let artifacts =
+    let local_bins = get_installed_binaries ~context stanzas in
     Artifacts.create context ~public_libs ~local_bins
   in
   let any_package = any_package_aux ~packages ~context in

@@ -35,8 +35,7 @@ module Action_expander : sig
 
   val set_env : var:string -> value:string t -> (value:string -> 'a) t -> 'a t
 
-  val run :
-    'a t -> expander:Expander.t -> 'a Action_builder.With_targets.t Memo.Build.t
+  val run : 'a t -> expander:Expander.t -> 'a Action_builder.With_targets.t
 
   (* String with vars expansion *)
   module E : sig
@@ -90,30 +89,25 @@ end = struct
     ; dir : Path.Build.t
     }
 
-  type 'a t = env -> collector -> ('a Action_builder.t * collector) Memo.Build.t
+  type 'a t = env -> collector -> 'a Action_builder.t * collector
 
-  let return x _env acc = Memo.Build.return (Action_builder.return x, acc)
+  let return x _env acc = (Action_builder.return x, acc)
 
   let map t ~f env acc =
-    let open Memo.Build.O in
-    let+ b, acc = t env acc in
+    let b, acc = t env acc in
     (Action_builder.map b ~f, acc)
 
   let both a b env acc =
-    let open Memo.Build.O in
-    let* a, acc = a env acc in
-    let+ b, acc = b env acc in
+    let a, acc = a env acc in
+    let b, acc = b env acc in
     (Action_builder.both a b, acc)
 
   let all =
-    let open Memo.Build.O in
     let rec loop res l env acc =
       match l with
-      | [] ->
-        Memo.Build.return
-          (Action_builder.map (Action_builder.all res) ~f:List.rev, acc)
+      | [] -> (Action_builder.map (Action_builder.all res) ~f:List.rev, acc)
       | t :: l ->
-        let* x, acc = t env acc in
+        let x, acc = t env acc in
         loop (x :: res) l env acc
     in
     fun l env acc -> loop [] l env acc
@@ -124,10 +118,9 @@ end = struct
     in
     let acc = { targets = Path.Build.Set.empty; deps; deps_if_exist = deps } in
     let env = { expander; infer = true; dir = Expander.dir expander } in
-    let open Memo.Build.O in
-    let+ b, acc = t env acc in
+    let b, acc = t env acc in
     let { targets; deps; deps_if_exist } = acc in
-    let open Action_builder.O in
+
     (* A file can be inferred as both a dependency and a target, for instance:
 
        {[ (progn (copy a b) (copy b c)) ]} *)
@@ -174,17 +167,15 @@ end = struct
     t { env with dir } acc
 
   let set_env ~var ~value t env acc =
-    let open Memo.Build.O in
-    let* value, acc = value env acc in
+    let value, acc = value env acc in
     let value = Action_builder.memoize "env var" value in
     let env =
       { env with
         expander = Expander.set_local_env_var env.expander ~var ~value
       }
     in
-    let+ f, acc = t env acc in
+    let f, acc = t env acc in
     let b =
-      let open Action_builder.O in
       let+ f = f
       and+ value = value in
       f ~value
@@ -192,8 +183,7 @@ end = struct
     (b, acc)
 
   let no_infer t env acc =
-    let open Memo.Build.O in
-    let+ x, _acc = t { env with infer = false } acc in
+    let x, _acc = t { env with infer = false } acc in
     (x, acc)
 
   module O = struct
@@ -202,9 +192,8 @@ end = struct
     let ( and+ ) = both
 
     let ( >>> ) a b env acc =
-      let open Memo.Build.O in
-      let* a, acc = a env acc in
-      let+ b, acc = b env acc in
+      let a, acc = a env acc in
+      let b, acc = b env acc in
       (Action_builder.O.( >>> ) a b, acc)
   end
 
@@ -220,20 +209,17 @@ end = struct
           ~f:(Expander.expand_pform env.expander)
 
       let expand_path env sw =
-        Memo.Build.map (expand env ~mode:Single sw) ~f:(fun expanded ->
-            let+ v = expanded in
-            Value.to_path v ~error_loc:(String_with_vars.loc sw)
-              ~dir:(Path.build env.dir))
+        let+ v = expand env ~mode:Single sw in
+        Value.to_path v ~error_loc:(String_with_vars.loc sw)
+          ~dir:(Path.build env.dir)
 
       let expand_string env sw =
-        Memo.Build.map (expand env ~mode:Single sw) ~f:(fun expanded ->
-            let+ v = expanded in
-            Value.to_string v ~dir:(Path.build env.dir))
+        let+ v = expand env ~mode:Single sw in
+        Value.to_string v ~dir:(Path.build env.dir)
 
       let expand_strings env sw =
-        Memo.Build.map (expand env ~mode:Many sw) ~f:(fun expanded ->
-            let+ v = expanded in
-            Value.L.to_strings v ~dir:(Path.build env.dir))
+        let+ v = expand env ~mode:Many sw in
+        Value.L.to_strings v ~dir:(Path.build env.dir)
 
       module Static = struct
         let expand env ~mode template =
@@ -241,15 +227,13 @@ end = struct
             ~f:(Expander.Static.expand_pform env.expander)
 
         let expand_path env sw =
-          Memo.Build.map (expand env ~mode:Single sw) ~f:(fun expanded ->
-              let v = expanded in
-              Value.to_path v ~error_loc:(String_with_vars.loc sw)
-                ~dir:(Path.build env.dir))
+          let v = expand env ~mode:Single sw in
+          Value.to_path v ~error_loc:(String_with_vars.loc sw)
+            ~dir:(Path.build env.dir)
 
         let expand_string env sw =
-          Memo.Build.map (expand env ~mode:Single sw) ~f:(fun expanded ->
-              let v = expanded in
-              Value.to_string v ~dir:(Path.build env.dir))
+          let v = expand env ~mode:Single sw in
+          Value.to_string v ~dir:(Path.build env.dir)
 
         module Or_exn = struct
           let expand_path env sw =
@@ -265,39 +249,23 @@ end = struct
       let map_exe = Expander.map_exe
     end
 
-    let string sw env acc =
-      let open Memo.Build.O in
-      let+ string = Expander.expand_string env sw in
-      (string, acc)
+    let string sw env acc = (Expander.expand_string env sw, acc)
 
-    let strings sw env acc =
-      let open Memo.Build.O in
-      let+ strings = Expander.expand_strings env sw in
-      (strings, acc)
+    let strings sw env acc = (Expander.expand_strings env sw, acc)
 
     let fail exn acc =
-      Memo.Build.return
-        (Action_builder.fail { fail = (fun () -> raise exn) }, acc)
+      (Action_builder.fail { fail = (fun () -> raise exn) }, acc)
 
     let static_string sw ~f env acc =
-      let open Memo.Build.O in
       match Expander.Static.Or_exn.expand_string env sw with
-      | Ok s ->
-        let* s = s in
-        f s env acc
+      | Ok s -> f s env acc
       | Error exn -> fail exn acc
 
-    let path sw env acc =
-      let open Memo.Build.O in
-      let+ path = Expander.expand_path env sw in
-      (path, acc)
+    let path sw env acc = (Expander.expand_path env sw, acc)
 
     let static_path sw ~f env acc =
-      let open Memo.Build.O in
       match Expander.Static.Or_exn.expand_path env sw with
-      | Ok s ->
-        let* s = s in
-        f s env acc
+      | Ok s -> f s env acc
       | Error exn -> fail exn acc
 
     let register_dep x ~f env acc =
@@ -333,17 +301,14 @@ end = struct
             } )
 
     let dep sw env acc =
-      let open Memo.Build.O in
-      let+ fn = Expander.expand_path env sw in
+      let fn = Expander.expand_path env sw in
       register_dep fn ~f:Option.some env acc
 
     let dep_if_exists sw env acc =
-      let open Memo.Build.O in
-      let+ fn = Expander.expand_path env sw in
+      let fn = Expander.expand_path env sw in
       if not env.infer then
         (fn, acc)
       else
-        let open Action_builder.O in
         match Action_builder.static_eval fn with
         | Some (fn, fn_builder) ->
           ( fn_builder >>> Action_builder.return fn
@@ -369,44 +334,36 @@ end = struct
 
     let consume_file sw env acc =
       if not env.infer then
-        Memo.Build.map (path sw env acc) ~f:(fun (b, acc) ->
-            let b =
-              let+ p = b in
-              as_in_build_dir p ~what:"File" ~loc:(loc sw)
-            in
-            (b, acc))
+        let b, acc = path sw env acc in
+        let b =
+          let+ p = b in
+          as_in_build_dir p ~what:"File" ~loc:(loc sw)
+        in
+        (b, acc)
       else
         static_path sw env acc ~f:(fun p _env acc ->
             let p = as_in_build_dir p ~what:"File" ~loc:(loc sw) in
-            Memo.Build.return
-              ( Action_builder.return p
-              , { acc with targets = Path.Build.Set.remove acc.targets p } ))
+            ( Action_builder.return p
+            , { acc with targets = Path.Build.Set.remove acc.targets p } ))
 
     let target sw env acc =
-      let open Memo.Build.O in
       if not env.infer then
-        let+ path = Expander.expand_path env sw in
-        let open Action_builder.O in
-        ( (let+ p = path in
+        ( (let+ p = Expander.expand_path env sw in
            as_in_build_dir ~what:"Target" ~loc:(loc sw) p)
         , acc )
       else
         match Expander.Static.Or_exn.expand_path env sw with
         | Error exn -> fail exn acc
-        | Ok path ->
-          let+ p = path in
+        | Ok p ->
           let p = as_in_build_dir ~what:"Target" ~loc:(loc sw) p in
           ( Action_builder.return p
           , { acc with targets = Path.Build.Set.add acc.targets p } )
 
     let prog_and_args sw env acc =
-      let open Memo.Build.O in
-      let+ b =
+      let b =
         let dir = Path.build env.dir in
         let loc = loc sw in
-        let+ expanded = Expander.expand env sw ~mode:At_least_one in
-        let open Action_builder.O in
-        let+ prog, args = expanded in
+        let+ prog, args = Expander.expand env sw ~mode:At_least_one in
         let prog =
           match prog with
           | Value.Dir p ->
@@ -572,8 +529,8 @@ let rec expand (t : Action_dune_lang.t) : Action.t Action_expander.t =
 
 let expand t ~loc ~deps:deps_written_by_user ~targets_dir
     ~targets:targets_written_by_user ~expander =
-  let open Memo.Build.O in
-  let* deps_builder, expander =
+  let open Action_builder.O in
+  let deps_builder, expander =
     Dep_conf_eval.named ~expander deps_written_by_user
   in
   let expander =
@@ -597,7 +554,7 @@ let expand t ~loc ~deps:deps_written_by_user ~targets_dir
   let expander =
     Expander.set_expanding_what expander (User_action targets_written_by_user)
   in
-  let+ { Action_builder.With_targets.build; targets } =
+  let { Action_builder.With_targets.build; targets } =
     Action_expander.run (expand t) ~expander
   in
   let pp_path_build target =
@@ -629,7 +586,6 @@ let expand t ~loc ~deps:deps_written_by_user ~targets_dir
           ; Pp.enumerate (Path.Build.Set.to_list targets) ~f:pp_path_build
           ]);
   let build =
-    let open Action_builder.O in
     let+ () = deps_builder
     and+ action = build in
     let dir = Path.build (Expander.dir expander) in

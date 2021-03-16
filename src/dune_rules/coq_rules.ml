@@ -124,7 +124,7 @@ module Context = struct
 
   let coq_flags t =
     let standard = standard_coq_flags in
-    let* standard =
+    let standard =
       Expander.expand_and_eval_set t.expander t.profile_flags ~standard
     in
     Expander.expand_and_eval_set t.expander t.buildable.flags ~standard
@@ -365,7 +365,7 @@ let coqc_rule (cctx : _ Context.t) ~file_flags coq_module =
     ; Command.Args.Dep (Path.build source)
     ]
   in
-  let+ coq_flags = Context.coq_flags cctx in
+  let coq_flags = Context.coq_flags cctx in
   let open Action_builder.With_targets.O in
   (* The way we handle the transitive dependencies of .vo files is not safe for
      sandboxing *)
@@ -392,7 +392,7 @@ let setup_rule cctx ~source_rule coq_module =
   (* Process coqdep and generate rules *)
   let deps_of = deps_of ~dir:cctx.dir ~boot_type:cctx.boot_type coq_module in
 
-  let+ coqc_rule = coqc_rule cctx ~file_flags coq_module in
+  let coqc_rule = coqc_rule cctx ~file_flags coq_module in
   (* Rules for the files *)
   { Module_rule.coqdep = coqdep_rule
   ; coqc =
@@ -427,7 +427,7 @@ let setup_rules ~sctx ~dir ~dir_contents (s : Theory.t) =
 
   let coq_dir_contents = Dir_contents.coq dir_contents in
 
-  let* cctx =
+  let+ cctx =
     let wrapper_name = Coq_lib.wrapper theory in
     let theories_deps = Coq_lib.DB.requires coq_lib_db theory in
     let theory_dirs = Coq_sources.directories coq_dir_contents ~name in
@@ -448,11 +448,10 @@ let setup_rules ~sctx ~dir ~dir_contents (s : Theory.t) =
     in
     source_rule ~sctx theories
   in
-  Memo.Build.sequential_map coq_modules ~f:(fun m ->
+  List.concat_map coq_modules ~f:(fun m ->
       let cctx = Context.for_module cctx m in
-      let+ { Module_rule.coqc; coqdep } = setup_rule cctx ~source_rule m in
+      let { Module_rule.coqc; coqdep } = setup_rule cctx ~source_rule m in
       [ coqc; coqdep ])
-  >>| List.concat
 
 (******************************************************************************)
 (* Install rules *)
@@ -552,7 +551,7 @@ let coqpp_rules ~sctx ~dir (s : Coqpp.t) =
   List.map ~f:mlg_rule s.modules
 
 let extraction_rules ~sctx ~dir ~dir_contents (s : Extraction.t) =
-  let* cctx =
+  let+ cctx =
     let wrapper_name = "DuneExtraction" in
     let theories_deps =
       let scope = SC.find_scope_by_dir sctx dir in
@@ -575,6 +574,6 @@ let extraction_rules ~sctx ~dir ~dir_contents (s : Extraction.t) =
     let open Action_builder.O in
     theories >>> Action_builder.path (Path.build (Coq_module.source coq_module))
   in
-  let+ { Module_rule.coqc; coqdep } = setup_rule cctx ~source_rule coq_module in
+  let { Module_rule.coqc; coqdep } = setup_rule cctx ~source_rule coq_module in
   let coqc = Action_builder.With_targets.add coqc ~targets:ml_targets in
   [ coqdep; coqc ]

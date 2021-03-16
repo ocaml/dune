@@ -63,20 +63,18 @@ let rule_kind ~(rule : Rule.t)
     | Some target -> Alias_with_targets (alias, target))
 
 let add_user_rule sctx ~dir ~(rule : Rule.t) ~action ~expander =
-  let* locks =
-    Memo.Build.sequential_map (interpret_locks ~expander rule.locks) ~f:Fun.id
-  in
   SC.add_rule_get_targets
     sctx
     (* user rules may have extra requirements, in which case they will be
        specified as a part of rule.deps, which will be correctly taken care of
        by the action builder *)
     ~sandbox:Sandbox_config.no_special_requirements ~dir ~mode:rule.mode
-    ~loc:rule.loc ~locks action
+    ~loc:rule.loc
+    ~locks:(interpret_locks ~expander rule.locks)
+    action
 
 let user_rule sctx ?extra_bindings ~dir ~expander (rule : Rule.t) =
-  let* enabled = Expander.eval_blang expander rule.enabled_if in
-  match enabled with
+  match Expander.eval_blang expander rule.enabled_if with
   | false -> (
     match rule.alias with
     | None -> Memo.Build.return Path.Build.Set.empty
@@ -87,33 +85,27 @@ let user_rule sctx ?extra_bindings ~dir ~expander (rule : Rule.t) =
       let+ () = Alias_rules.add_empty sctx ~alias ~loc:(Some rule.loc) ~stamp in
       Path.Build.Set.empty)
   | true -> (
-    let* (targets : Targets.Or_forbidden.t) =
-      match rule.targets with
-      | Infer -> Memo.Build.return (Targets.Or_forbidden.Targets Infer)
-      | Static { targets; multiplicity } ->
-        let+ targets =
-          let+ targets =
-            Memo.Build.sequential_map targets ~f:(fun target ->
+    let targets : Targets.Or_forbidden.t =
+      Targets
+        (match rule.targets with
+        | Infer -> Infer
+        | Static { targets; multiplicity } ->
+          let targets =
+            List.concat_map targets ~f:(fun target ->
                 let error_loc = String_with_vars.loc target in
                 (match multiplicity with
-                | One ->
-                  let+ expanded =
-                    Expander.Static.expand expander ~mode:Single target
-                  in
-                  [ expanded ]
+                | One -> [ Expander.Static.expand expander ~mode:Single target ]
                 | Multiple -> Expander.Static.expand expander ~mode:Many target)
-                >>| List.map ~f:(check_filename ~dir ~error_loc))
+                |> List.map ~f:(check_filename ~dir ~error_loc))
           in
-          List.concat targets
-        in
-        Targets.Or_forbidden.Targets (Static { multiplicity; targets })
+          Static { multiplicity; targets })
     in
     let expander =
       match extra_bindings with
       | None -> expander
       | Some bindings -> Expander.add_bindings expander ~bindings
     in
-    let* action =
+    let action =
       Action_unexpanded.expand (snd rule.action) ~loc:(fst rule.action)
         ~expander ~deps:rule.deps ~targets ~targets_dir:dir
     in
@@ -132,11 +124,7 @@ let user_rule sctx ?extra_bindings ~dir ~expander (rule : Rule.t) =
         let action = Some (snd rule.action) in
         Alias_rules.stamp ~deps:rule.deps ~extra_bindings ~action
       in
-      let* locks =
-        Memo.Build.sequential_map
-          (interpret_locks ~expander rule.locks)
-          ~f:Fun.id
-      in
+      let locks = interpret_locks ~expander rule.locks in
       let+ () =
         Alias_rules.add sctx ~alias ~stamp ~loc:(Some rule.loc) action ~locks
       in
@@ -144,8 +132,8 @@ let user_rule sctx ?extra_bindings ~dir ~expander (rule : Rule.t) =
 
 let copy_files sctx ~dir ~expander ~src_dir (def : Copy_files.t) =
   let loc = String_with_vars.loc def.files in
-  let* glob_in_src =
-    let+ src_glob = Expander.Static.expand_str expander def.files in
+  let glob_in_src =
+    let src_glob = Expander.Static.expand_str expander def.files in
     if Filename.is_relative src_glob then
       Path.Source.relative src_dir src_glob ~error_loc:loc |> Path.source
     else
@@ -222,10 +210,10 @@ let copy_files sctx ~dir ~expander ~src_dir (def : Copy_files.t) =
   targets
 
 let copy_files sctx ~dir ~expander ~src_dir (def : Copy_files.t) =
-  let* enabled = Expander.eval_blang expander def.enabled_if in
-  match enabled with
-  | true -> copy_files sctx ~dir ~expander ~src_dir def
-  | false -> Memo.Build.return Path.Set.empty
+  if Expander.eval_blang expander def.enabled_if then
+    copy_files sctx ~dir ~expander ~src_dir def
+  else
+    Memo.Build.return Path.Set.empty
 
 let alias sctx ?extra_bindings ~dir ~expander (alias_conf : Alias_conf.t) =
   let alias = Alias.make ~dir alias_conf.name in
@@ -234,37 +222,30 @@ let alias sctx ?extra_bindings ~dir ~expander (alias_conf : Alias_conf.t) =
     Alias_rules.stamp ~deps:alias_conf.deps ~extra_bindings ~action
   in
   let loc = Some alias_conf.loc in
-  let* enabled = Expander.eval_blang expander alias_conf.enabled_if in
-  match enabled with
+  match Expander.eval_blang expander alias_conf.enabled_if with
   | false -> Alias_rules.add_empty sctx ~loc ~alias ~stamp
   | true -> (
     match alias_conf.action with
     | None ->
-      let+ builder, _expander = Dep_conf_eval.named ~expander alias_conf.deps in
-      Rules.Produce.Alias.add_deps alias ?loc builder
+      let builder, _expander = Dep_conf_eval.named ~expander alias_conf.deps in
+      Rules.Produce.Alias.add_deps alias ?loc builder;
+      Memo.Build.return ()
     | Some (action_loc, action) ->
-      let* locks =
-        Memo.Build.sequential_map
-          (interpret_locks ~expander alias_conf.locks)
-          ~f:Fun.id
-      in
-      let* action =
-        let* builder, expander =
-          Dep_conf_eval.named ~expander alias_conf.deps
-        in
-        let expander =
-          match extra_bindings with
-          | None -> expander
-          | Some bindings -> Expander.add_bindings expander ~bindings
-        in
-        let+ expanded_action =
+      let locks = interpret_locks ~expander alias_conf.locks in
+      let action =
+        let builder, expander = Dep_conf_eval.named ~expander alias_conf.deps in
+        let open Action_builder.With_targets.O in
+        let+ () = Action_builder.with_no_targets builder
+        and+ action =
+          let expander =
+            match extra_bindings with
+            | None -> expander
+            | Some bindings -> Expander.add_bindings expander ~bindings
+          in
           Action_unexpanded.expand action ~loc:action_loc ~expander
             ~deps:alias_conf.deps ~targets:(Forbidden "aliases")
             ~targets_dir:dir
         in
-        let open Action_builder.With_targets.O in
-        let+ () = Action_builder.with_no_targets builder
-        and+ action = expanded_action in
         action
       in
       Alias_rules.add sctx ~loc ~stamp ~locks action ~alias)

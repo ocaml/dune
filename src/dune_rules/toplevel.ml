@@ -74,12 +74,10 @@ let pp_flags t =
   let expander = Compilation_context.expander t.cctx in
   match t.preprocess with
   | Pps { loc; pps; flags; staged = _ } -> (
-    let open Memo.Build.O in
-    let+ res =
+    match
       Preprocessing.get_ppx_driver sctx ~loc ~expander ~lib_name:None ~flags
         ~scope pps
-    in
-    match res with
+    with
     | Error _exn -> Pp.nop
     | Ok (exe, flags) ->
       let ppx =
@@ -98,7 +96,7 @@ let pp_flags t =
   | Action _
   | Future_syntax _ ->
     assert false (* Error in parsing *)
-  | No_preprocessing -> Memo.Build.return Pp.nop
+  | No_preprocessing -> Pp.nop
 
 let setup_module_rules t =
   let dir = Compilation_context.dir t.cctx in
@@ -107,14 +105,14 @@ let setup_module_rules t =
   let requires_compile = Compilation_context.requires_compile t.cctx in
   let main_ml =
     Action_builder.of_result_map requires_compile ~f:(fun libs ->
-        let include_dirs =
-          Path.Set.to_list (Lib.L.include_paths libs Mode.Byte)
-        in
-        let open Action_builder.O in
-        let+ pp_ppx = Action_builder.memo_build (pp_flags t) in
-        let pp_dirs = Source.pp_ml t.source ~include_dirs in
-        let pp = Pp.seq pp_ppx pp_dirs in
-        Format.asprintf "%a@." Pp.to_fmt pp)
+        Action_builder.return
+          (let include_dirs =
+             Path.Set.to_list (Lib.L.include_paths libs Mode.Byte)
+           in
+           let pp_ppx = pp_flags t in
+           let pp_dirs = Source.pp_ml t.source ~include_dirs in
+           let pp = Pp.seq pp_ppx pp_dirs in
+           Format.asprintf "%a@." Pp.to_fmt pp))
     |> Action_builder.write_file_dyn path
   in
   Super_context.add_rule sctx ~dir main_ml

@@ -38,22 +38,18 @@ module Unexpanded = struct
     ; dst = Some (String_with_vars.make_text locd dst)
     }
 
-  let expand_src t ~dir ~f =
-    let open Memo.Build.O in
-    let+ f = f t.src in
-    Path.Build.relative dir f
+  let expand_src t ~dir ~f = Path.Build.relative dir (f t.src)
 
   let destination_relative_to_install_path t ~section ~expand ~expand_partial =
-    let open Memo.Build.O in
-    let+ src = expand_partial t.src
-    and+ dst =
+    let src = expand_partial t.src
+    and dst =
       match t.dst with
-      | None -> Memo.Build.return None
-      | Some dst -> expand dst >>| Option.some
+      | None -> None
+      | Some dst -> Some (expand dst)
     in
     Install.Entry.adjust_dst ~section ~src ~dst
 
-  let expand t ~dir ~f =
+  let expand_build t ~dir ~f =
     let open Memo.Build.O in
     let f sw =
       let+ f = f sw in
@@ -71,6 +67,22 @@ module Unexpanded = struct
         Some (loc, p)
     in
     { src; dst }
+
+  (* CR-someday amokhov: Get rid of code duplication with [expand_build]. *)
+  let expand t ~dir ~f =
+    let f sw = (String_with_vars.loc sw, f sw) in
+    let src =
+      let loc, expanded = f t.src in
+      (loc, Path.Build.relative dir expanded)
+    in
+    { src
+    ; dst =
+        (let f sw =
+           let loc, p = f sw in
+           (loc, p)
+         in
+         Option.map ~f t.dst)
+    }
 
   module L = struct
     let decode_file =

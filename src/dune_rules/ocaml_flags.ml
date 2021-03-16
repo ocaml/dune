@@ -103,17 +103,13 @@ let default ~dune_version ~profile =
   }
 
 let make ~spec ~default ~eval =
-  let open Memo.Build.O in
-  let f name x standard =
-    let+ eval = eval x ~standard in
-    Action_builder.memoize name eval
-  in
-  let+ common = f "common flags" spec.common default.common
-  and+ byte = f "ocamlc flags" spec.specific.byte default.specific.byte
-  and+ native =
-    f "ocamlopt flags" spec.specific.native default.specific.native
-  in
-  { common; specific = { byte; native } }
+  let f name x standard = Action_builder.memoize name (eval x ~standard) in
+  { common = f "common flags" spec.common default.common
+  ; specific =
+      { byte = f "ocamlc flags" spec.specific.byte default.specific.byte
+      ; native = f "ocamlopt flags" spec.specific.native default.specific.native
+      }
+  }
 
 let get t mode =
   let+ common = t.common

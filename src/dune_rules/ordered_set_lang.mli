@@ -73,7 +73,7 @@ module Unexpanded : sig
        t
     -> dir:Path.t
     -> f:Value.t list Action_builder.t String_with_vars.expander
-    -> expanded Action_builder.t Memo.Build.t
+    -> expanded Action_builder.t
 
   type position =
     | Pos

@@ -102,8 +102,7 @@ val fold_pforms :
   -> f:(source:Dune_lang.Template.Pform.t -> Pform.t -> 'a -> 'a)
   -> 'a
 
-type 'a expander =
-  source:Dune_lang.Template.Pform.t -> Pform.t -> 'a Memo.Build.t
+type 'a expander = source:Dune_lang.Template.Pform.t -> Pform.t -> 'a
 
 module type Expander = sig
   type 'a app
@@ -112,16 +111,12 @@ module type Expander = sig
       returns [None] for any variable (no substitution was found), then this
       function will raise. *)
   val expand :
-       t
-    -> mode:'a Mode.t
-    -> dir:Path.t
-    -> f:Value.t list app expander
-    -> 'a app Memo.Build.t
+    t -> mode:'a Mode.t -> dir:Path.t -> f:Value.t list app expander -> 'a app
 
   (** [expand_as_much_as_possible] expands all variables for which [f] returns
       [None] and left other unexpanded. *)
   val expand_as_much_as_possible :
-    t -> dir:Path.t -> f:Value.t list option app expander -> t app Memo.Build.t
+    t -> dir:Path.t -> f:Value.t list option app expander -> t app
 end
 
 include Expander with type 'a app := 'a

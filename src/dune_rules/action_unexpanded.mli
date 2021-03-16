@@ -33,4 +33,4 @@ val expand :
   -> targets_dir:Path.Build.t
   -> targets:Targets.Or_forbidden.t
   -> expander:Expander.t
-  -> Action.t Action_builder.With_targets.t Memo.Build.t
+  -> Action.t Action_builder.With_targets.t

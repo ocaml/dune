@@ -178,8 +178,7 @@ let fold_pforms =
   in
   fun t ~init ~f -> loop t.parts init f
 
-type 'a expander =
-  source:Dune_lang.Template.Pform.t -> Pform.t -> 'a Memo.Build.t
+type 'a expander = source:Dune_lang.Template.Pform.t -> Pform.t -> 'a
 
 type yes_no_unknown =
   | Yes
@@ -220,14 +219,10 @@ module type Expander = sig
   type 'a app
 
   val expand :
-       t
-    -> mode:'a Mode.t
-    -> dir:Path.t
-    -> f:Value.t list app expander
-    -> 'a app Memo.Build.t
+    t -> mode:'a Mode.t -> dir:Path.t -> f:Value.t list app expander -> 'a app
 
   val expand_as_much_as_possible :
-    t -> dir:Path.t -> f:Value.t list option app expander -> t app Memo.Build.t
+    t -> dir:Path.t -> f:Value.t list option app expander -> t app
 end
 
 module Make_expander (A : Applicative) : Expander with type 'a app := 'a A.t =
@@ -236,78 +231,69 @@ struct
 
   let expand :
         'a.    t -> mode:'a Mode.t -> dir:Path.t -> f:Value.t list A.t expander
-        -> 'a A.t Memo.Build.t =
+        -> 'a A.t =
    fun t ~mode ~dir ~f ->
     match t.parts with
     (* Optimizations for some common cases *)
-    | [] -> Memo.Build.return (A.return (Mode.string mode ""))
-    | [ Text s ] -> Memo.Build.return (A.return (Mode.string mode s))
+    | [] -> A.return (Mode.string mode "")
+    | [ Text s ] -> A.return (Mode.string mode s)
     | [ Pform (source, p) ] when not t.quoted ->
-      Memo.Build.map (f ~source p) ~f:(fun f ->
-          let+ v = f in
-          Mode.value mode v ~source)
+      let+ v = f ~source p in
+      Mode.value mode v ~source
     | _ ->
-      Memo.Build.map
-        (Memo.Build.sequential_map t.parts ~f:(function
-          | Text s -> Memo.Build.return (A.return s)
-          | Error (_, msg) ->
-            (* The [let+ () = A.return () in ...] is to delay the error until
-               the evaluation of the applicative *)
-            Memo.Build.return
-              (let+ () = A.return () in
-               raise (User_error.E msg))
-          | Pform (source, p) ->
-            Memo.Build.map (f ~source p) ~f:(fun f ->
-                let+ v = f in
-                if t.quoted then
-                  Value.L.concat v ~dir
-                else
-                  Value.to_string ~dir (Mode.value Single v ~source))))
-        ~f:(fun chunks ->
-          let+ chunks = A.all chunks in
-          Mode.string mode (String.concat chunks ~sep:""))
+      let+ chunks =
+        A.all
+          (List.map t.parts ~f:(function
+            | Text s -> A.return s
+            | Error (_, msg) ->
+              (* The [let+ () = A.return () in ...] is to delay the error until
+                 the evaluation of the applicative *)
+              let+ () = A.return () in
+              raise (User_error.E msg)
+            | Pform (source, p) ->
+              let+ v = f ~source p in
+              if t.quoted then
+                Value.L.concat v ~dir
+              else
+                Value.to_string ~dir (Mode.value Single v ~source)))
+      in
+      Mode.string mode (String.concat chunks ~sep:"")
 
-  let expand_as_much_as_possible :
-         t
-      -> dir:Path.t
-      -> f:Value.t list option A.t expander
-      -> t A.t Memo.Build.t =
-   fun t ~dir ~f ->
-    Memo.Build.map
-      (Memo.Build.sequential_map t.parts ~f:(fun part ->
-           match part with
-           | Text _
-           | Error _ ->
-             Memo.Build.return (A.return part)
-           | Pform (source, p) ->
-             Memo.Build.map (f ~source p) ~f:(fun f ->
-                 let+ v = f in
-                 match v with
-                 | None -> part
-                 | Some v ->
-                   Text
-                     (if t.quoted then
-                       Value.L.concat v ~dir
-                     else
-                       Value.to_string ~dir (Mode.value Single v ~source)))))
-      ~f:(fun parts ->
-        let+ parts = A.all parts in
-        let commit_text acc_text acc =
-          let s = concat_rev acc_text in
-          if s = "" then
-            acc
-          else
-            Text s :: acc
-        in
-        (* This pass merges all consecutive [Text] constructors *)
-        let rec loop acc_text acc items =
-          match items with
-          | [] -> List.rev (commit_text acc_text acc)
-          | Text s :: items -> loop (s :: acc_text) acc items
-          | it :: items -> loop [] (it :: commit_text acc_text acc) items
-        in
-        let parts = loop [] [] parts in
-        { t with parts })
+  let expand_as_much_as_possible t ~dir ~f =
+    let+ parts =
+      A.all
+        (List.map t.parts ~f:(fun part ->
+             match part with
+             | Text _
+             | Error _ ->
+               A.return part
+             | Pform (source, p) -> (
+               let+ v = f ~source p in
+               match v with
+               | None -> part
+               | Some v ->
+                 Text
+                   (if t.quoted then
+                     Value.L.concat v ~dir
+                   else
+                     Value.to_string ~dir (Mode.value Single v ~source)))))
+    in
+    let commit_text acc_text acc =
+      let s = concat_rev acc_text in
+      if s = "" then
+        acc
+      else
+        Text s :: acc
+    in
+    (* This pass merges all consecutive [Text] constructors *)
+    let rec loop acc_text acc items =
+      match items with
+      | [] -> List.rev (commit_text acc_text acc)
+      | Text s :: items -> loop (s :: acc_text) acc items
+      | it :: items -> loop [] (it :: commit_text acc_text acc) items
+    in
+    let parts = loop [] [] parts in
+    { t with parts }
 end
 
 include Make_expander (Applicative.Id)

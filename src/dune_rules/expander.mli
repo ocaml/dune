@@ -80,52 +80,41 @@ val expand :
      t
   -> mode:'a String_with_vars.Mode.t
   -> String_with_vars.t
-  -> 'a Action_builder.t Memo.Build.t
+  -> 'a Action_builder.t
 
-val expand_path :
-  t -> String_with_vars.t -> Path.t Action_builder.t Memo.Build.t
+val expand_path : t -> String_with_vars.t -> Path.t Action_builder.t
 
-val expand_str : t -> String_with_vars.t -> string Action_builder.t Memo.Build.t
+val expand_str : t -> String_with_vars.t -> string Action_builder.t
 
 val expand_pform : t -> Value.t list Action_builder.t String_with_vars.expander
 
 module Static : sig
-  val expand :
-       t
-    -> mode:'a String_with_vars.Mode.t
-    -> String_with_vars.t
-    -> 'a Memo.Build.t
+  val expand : t -> mode:'a String_with_vars.Mode.t -> String_with_vars.t -> 'a
 
-  val expand_path : t -> String_with_vars.t -> Path.t Memo.Build.t
+  val expand_path : t -> String_with_vars.t -> Path.t
 
-  val expand_str : t -> String_with_vars.t -> string Memo.Build.t
+  val expand_str : t -> String_with_vars.t -> string
 
   val expand_pform : t -> Value.t list String_with_vars.expander
 
   module With_reduced_var_set : sig
     val expand_path :
-         context:Context.t
-      -> dir:Path.Build.t
-      -> String_with_vars.t
-      -> Path.t Memo.Build.t
+      context:Context.t -> dir:Path.Build.t -> String_with_vars.t -> Path.t
 
     val expand_str :
-         context:Context.t
-      -> dir:Path.Build.t
-      -> String_with_vars.t
-      -> string Memo.Build.t
+      context:Context.t -> dir:Path.Build.t -> String_with_vars.t -> string
 
     val expand_str_partial :
          context:Context.t
       -> dir:Path.Build.t
       -> String_with_vars.t
-      -> String_with_vars.t Memo.Build.t
+      -> String_with_vars.t
   end
 
   module Or_exn : sig
-    val expand_path : t -> String_with_vars.t -> Path.t Memo.Build.t Or_exn.t
+    val expand_path : t -> String_with_vars.t -> Path.t Or_exn.t
 
-    val expand_str : t -> String_with_vars.t -> string Memo.Build.t Or_exn.t
+    val expand_str : t -> String_with_vars.t -> string Or_exn.t
   end
 end
 
@@ -136,9 +125,9 @@ val expand_and_eval_set :
      t
   -> Ordered_set_lang.Unexpanded.t
   -> standard:string list Action_builder.t
-  -> string list Action_builder.t Memo.Build.t
+  -> string list Action_builder.t
 
-val eval_blang : t -> Blang.t -> bool Memo.Build.t
+val eval_blang : t -> Blang.t -> bool
 
 val map_exe : t -> Path.t -> Path.t
 

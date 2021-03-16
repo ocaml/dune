@@ -279,6 +279,8 @@ let progn ts =
 
 let memo_build f = Memo_build f
 
+let memo_build_join f = Memo_build f |> bind ~f:Fun.id
+
 let dyn_memo_build f = Dyn_memo_build f
 
 module Make_exec (Build_deps : sig

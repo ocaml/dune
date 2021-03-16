@@ -174,20 +174,17 @@ let executables_rules ~sctx ~dir ~expander ~dir_contents ~scope ~compile_info
       ~instrumentation_backend:
         (Lib.DB.instrumentation_backend (Scope.libs scope))
   in
-  let* expanded_link_flags =
-    Expander.expand_and_eval_set expander exes.link_flags
-      ~standard:(Action_builder.return [])
-  in
   let+ () =
     (* Building an archive for foreign stubs, we link the corresponding object
        files directly to improve perf. *)
-    let* link_args =
-      let+ link_flags =
-        let+ link_deps = Dep_conf_eval.unnamed ~expander exes.link_deps in
-        let open Action_builder.O in
-        link_deps >>> expanded_link_flags
-      in
+    let link_args =
       let open Action_builder.O in
+      let link_flags =
+        let link_deps = Dep_conf_eval.unnamed ~expander exes.link_deps in
+        link_deps
+        >>> Expander.expand_and_eval_set expander exes.link_flags
+              ~standard:(Action_builder.return [])
+      in
       let+ flags = link_flags in
       Command.Args.S
         [ Command.Args.As flags
@@ -200,7 +197,8 @@ let executables_rules ~sctx ~dir ~expander ~dir_contents ~scope ~compile_info
                  let lib = Foreign.Archive.lib_file ~archive ~dir ~ext_lib in
                  Command.Args.S [ A "-cclib"; Dep (Path.build lib) ]))
         ]
-    and* o_files =
+    in
+    let* o_files =
       o_files sctx ~dir ~expander ~exes ~linkages ~dir_contents
         ~requires_compile
       |> Memo.Build.sequential_map ~f:Fun.id

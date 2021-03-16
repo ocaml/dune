@@ -110,8 +110,8 @@ let expand_path common ~(setup : Dune_rules.Main.build_system) ctx sv =
     Dune_rules.Dir_contents.add_sources_to_expander sctx expander
   in
   let+ s, _deps =
-    Dune_rules.Expander.expand_str expander sv
-    >>= Build_system.For_command_line.eval_build_request
+    Build_system.For_command_line.eval_build_request
+      (Dune_rules.Expander.expand_str expander sv)
   in
   Path.relative Path.root (Common.prefix_target common s)
 

@@ -47,6 +47,7 @@ module T = struct
       | None -> "none"
       | Some Copy -> "copy"
       | Some Symlink -> "symlink"
+      | Some Hardlink -> "hardlink"
     in
     let sandbox_config (config : Sandbox_config.t) =
       list

@@ -33,6 +33,7 @@ module Make (Src : Action_intf.Ast) (Dst : Action_intf.Ast) = struct
     | Cat x -> Cat (f_path ~dir x)
     | Copy (x, y) -> Copy (f_path ~dir x, f_target ~dir y)
     | Symlink (x, y) -> Symlink (f_path ~dir x, f_target ~dir y)
+    | Hardlink (x, y) -> Hardlink (f_path ~dir x, f_target ~dir y)
     | Copy_and_add_line_directive (x, y) ->
       Copy_and_add_line_directive (f_path ~dir x, f_target ~dir y)
     | System x -> System (f_string ~dir x)

@@ -247,6 +247,7 @@ struct
     | Cat x -> List [ atom "cat"; path x ]
     | Copy (x, y) -> List [ atom "copy"; path x; target y ]
     | Symlink (x, y) -> List [ atom "symlink"; path x; target y ]
+    | Hardlink (x, y) -> List [ atom "hardlink"; path x; target y ]
     | Copy_and_add_line_directive (x, y) ->
       List [ atom "copy#"; path x; target y ]
     | System x -> List [ atom "system"; string x ]

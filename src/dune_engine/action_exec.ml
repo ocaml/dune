@@ -246,6 +246,16 @@ let rec exec t ~ectx ~eenv =
         )
       | exception _ -> Unix.symlink src dst);
     Fiber.return Done
+  | Hardlink (src, dst) ->
+    (if Sys.win32 then
+      let dst = Path.build dst in
+      Io.copy_file ~src ~dst ()
+    else
+      let src = Path.to_string src in
+      let dst = Path.Build.to_string dst in
+      Unix.unlink dst;
+      Unix.link src dst);
+    Fiber.return Done
   | Copy_and_add_line_directive (src, dst) ->
     Io.with_file_in src ~f:(fun ic ->
         Path.build dst

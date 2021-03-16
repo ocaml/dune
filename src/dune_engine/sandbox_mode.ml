@@ -3,6 +3,7 @@ open! Stdune
 type some =
   | Symlink
   | Copy
+  | Hardlink
 
 let compare_some a b =
   match (a, b) with
@@ -10,6 +11,9 @@ let compare_some a b =
   | Symlink, _ -> Lt
   | _, Symlink -> Gt
   | Copy, Copy -> Eq
+  | Copy, _ -> Lt
+  | _, Copy -> Gt
+  | Hardlink, Hardlink -> Eq
 
 type t = some option
 
@@ -29,6 +33,7 @@ module Dict = struct
     { none : 'a
     ; symlink : 'a
     ; copy : 'a
+    ; hardlink : 'a
     }
 
   let compare compare x y =
@@ -39,16 +44,22 @@ module Dict = struct
       | Gt -> Gt
     in
     compare_k x.none y.none (fun () ->
-        compare_k x.symlink y.symlink (fun () -> compare x.copy y.copy))
+        compare_k x.symlink y.symlink (fun () ->
+            compare_k x.copy y.copy (fun () -> compare x.hardlink y.hardlink)))
 
   let of_func (f : key -> _) =
-    { none = f None; symlink = f (Some Symlink); copy = f (Some Copy) }
+    { none = f None
+    ; symlink = f (Some Symlink)
+    ; copy = f (Some Copy)
+    ; hardlink = f (Some Hardlink)
+    }
 
-  let get { none; symlink; copy } (key : key) =
+  let get { none; symlink; copy; hardlink } (key : key) =
     match key with
     | None -> none
     | Some Copy -> copy
     | Some Symlink -> symlink
+    | Some Hardlink -> hardlink
 end
 
 module Set = struct
@@ -73,6 +84,7 @@ module Set = struct
     { none = x.none && y.none
     ; copy = x.copy && y.copy
     ; symlink = x.symlink && y.symlink
+    ; hardlink = x.hardlink && y.hardlink
     }
 end
 
@@ -85,15 +97,19 @@ let symlink = Some Symlink
 
 let copy = Some Copy
 
-let error = Error "invalid sandboxing mode, must be 'none', 'symlink' or 'copy'"
+let error =
+  Error
+    "invalid sandboxing mode, must be 'none', 'symlink', 'copy' or 'hardlink'"
 
 let of_string = function
   | "none" -> Ok None
-  | "symlink" -> Ok (Some Symlink : t)
+  | "symlink" -> Ok (Some Symlink)
   | "copy" -> Ok (Some Copy)
+  | "hardlink" -> Ok (Some Hardlink)
   | _ -> error
 
 let to_string = function
   | None -> "none"
   | Some Symlink -> "symlink"
   | Some Copy -> "copy"
+  | Some Hardlink -> "hardlink"

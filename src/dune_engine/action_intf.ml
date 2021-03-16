@@ -36,6 +36,7 @@ module type Ast = sig
     | Cat of path
     | Copy of path * target
     | Symlink of path * target
+    | Hardlink of path * target
     | Copy_and_add_line_directive of path * target
     | System of string
     | Bash of string

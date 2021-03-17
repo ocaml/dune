@@ -247,14 +247,17 @@ let rec exec t ~ectx ~eenv =
       | exception _ -> Unix.symlink src dst);
     Fiber.return Done
   | Hardlink (src, dst) ->
-    (if Sys.win32 then
-      let dst = Path.build dst in
-      Io.copy_file ~src ~dst ()
-    else
+    (match Sys.win32 with
+    | true -> Io.copy_file ~src ~dst:(Path.build dst) ()
+    | false -> (
       let src = Path.to_string src in
       let dst = Path.Build.to_string dst in
-      Unix.unlink dst;
-      Unix.link src dst);
+      try Unix.link src dst with
+      | Unix.Unix_error (Unix.EEXIST, _, _) ->
+        (* CR amokhov: Maybe this should be an error? Not sure why we delete the
+           target in the symlink case. *)
+        Unix.unlink dst;
+        Unix.link src dst));
     Fiber.return Done
   | Copy_and_add_line_directive (src, dst) ->
     Io.with_file_in src ~f:(fun ic ->

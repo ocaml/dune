@@ -1326,23 +1326,28 @@ end = struct
   let select_sandbox_mode (config : Sandbox_config.t) ~loc
       ~sandboxing_preference =
     let evaluate_sandboxing_preference preference =
+      let use_copy_on_windows mode =
+        match Sandbox_mode.Set.mem config Sandbox_mode.copy with
+        | true ->
+          Some
+            (if Sys.win32 then
+              Sandbox_mode.copy
+            else
+              mode)
+        | false ->
+          User_error.raise ~loc
+            [ Pp.textf
+                "This rule requires sandboxing with %ss, but that won't work \
+                 on Windows."
+                (Sandbox_mode.to_string mode)
+            ]
+      in
       match Sandbox_mode.Set.mem config preference with
       | false -> None
       | true -> (
         match preference with
-        | Some Symlink ->
-          if Sandbox_mode.Set.mem config Sandbox_mode.copy then
-            Some
-              (if Sys.win32 then
-                Sandbox_mode.copy
-              else
-                Sandbox_mode.symlink)
-          else
-            User_error.raise ~loc
-              [ Pp.text
-                  "This rule requires sandboxing with symlinks, but that won't \
-                   work on Windows."
-              ]
+        | Some Symlink -> use_copy_on_windows Sandbox_mode.symlink
+        | Some Hardlink -> use_copy_on_windows Sandbox_mode.hardlink
         | _ -> Some preference)
     in
     match

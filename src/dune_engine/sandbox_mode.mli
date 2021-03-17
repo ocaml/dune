@@ -59,6 +59,8 @@ val symlink : t
 
 val copy : t
 
+val hardlink : t
+
 val of_string : string -> (t, string) Result.t
 
 val to_string : t -> string

@@ -42,19 +42,13 @@ module T = struct
 
   let encode t =
     let open Dune_lang.Encoder in
-    let sandbox_mode (mode : Sandbox_mode.t) =
-      match mode with
-      | None -> "none"
-      | Some Copy -> "copy"
-      | Some Symlink -> "symlink"
-      | Some Hardlink -> "hardlink"
-    in
     let sandbox_config (config : Sandbox_config.t) =
       list
         (fun x -> x)
         (List.filter_map Sandbox_mode.all ~f:(fun mode ->
              if not (Sandbox_config.mem config mode) then
-               Some (pair string string ("disallow", sandbox_mode mode))
+               Some
+                 (pair string string ("disallow", Sandbox_mode.to_string mode))
              else
                None))
     in

@@ -217,24 +217,25 @@ let prepare_managed_paths ~link ~sandboxed deps =
   Progn steps
 
 let link_function ~(mode : Sandbox_mode.some) : path -> target -> t =
-  let win32_error what mode =
+  let win32_error mode =
+    let mode = Sandbox_mode.to_string (Some mode) in
     Code_error.raise
       (sprintf
-         "Don't have %s on win32, but [%s] sandboxing mode was selected. To \
-          use emulation via copy, the [Copy] sandboxing mode should be \
+         "Don't have %ss on win32, but [%s] sandboxing mode was selected. To \
+          use emulation via copy, the [copy] sandboxing mode should be \
           selected."
-         what mode)
+         mode mode)
       []
   in
   match mode with
   | Symlink -> (
     match Sys.win32 with
-    | true -> win32_error "symlinks" "Symlink"
+    | true -> win32_error mode
     | false -> fun a b -> Symlink (a, b))
   | Copy -> fun a b -> Copy (a, b)
   | Hardlink -> (
     match Sys.win32 with
-    | true -> win32_error "hardlinks" "Hardlink"
+    | true -> win32_error mode
     | false -> fun a b -> Hardlink (a, b))
 
 let maybe_sandbox_path f p =

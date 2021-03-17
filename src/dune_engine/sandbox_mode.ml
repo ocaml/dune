@@ -89,13 +89,15 @@ module Set = struct
 end
 
 (* these should be listed in the default order of preference *)
-let all = [ None; Some Symlink; Some Copy ]
+let all = [ None; Some Symlink; Some Copy; Some Hardlink ]
 
 let none = None
 
 let symlink = Some Symlink
 
 let copy = Some Copy
+
+let hardlink = Some Hardlink
 
 let error =
   Error

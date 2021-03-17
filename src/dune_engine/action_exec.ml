@@ -247,6 +247,9 @@ let rec exec t ~ectx ~eenv =
       | exception _ -> Unix.symlink src dst);
     Fiber.return Done
   | Hardlink (src, dst) ->
+    (* CR-someday amokhov: Instead of always falling back to copying, we could
+       detect if hardlinking works on Windows and if yes, use it. We do this in
+       the Dune cache implementation, so we can share some code. *)
     (match Sys.win32 with
     | true -> Io.copy_file ~src ~dst:(Path.build dst) ()
     | false -> (
@@ -263,8 +266,6 @@ let rec exec t ~ectx ~eenv =
       let dst = Path.Build.to_string dst in
       try Unix.link src dst with
       | Unix.Unix_error (Unix.EEXIST, _, _) ->
-        (* CR amokhov: Maybe this should be an error? Not sure why we delete the
-           target in the symlink case. *)
         Unix.unlink dst;
         Unix.link src dst));
     Fiber.return Done

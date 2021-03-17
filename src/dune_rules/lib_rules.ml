@@ -177,9 +177,9 @@ let ocamlmklib ~loc ~c_library_flags ~sctx ~dir ~expander ~o_files ~archive_name
        "optional targets", allowing us to run [ocamlmklib] with the [-failsafe]
        flag, which always produces the static target and sometimes produces the
        dynamic target too. *)
-    Memo.Build.if_ ctx.dynamically_linked_foreign_archives
-      (build ~sandbox:Sandbox_config.needs_sandboxing ~custom:false
-         [ dynamic_target ])
+    Memo.Build.if_ ctx.dynamically_linked_foreign_archives (fun () ->
+        build ~sandbox:Sandbox_config.needs_sandboxing ~custom:false
+          [ dynamic_target ])
 
 (* Build a static and a dynamic archive for a foreign library. Note that the
    dynamic archive can't be built on some platforms, in which case the rule that
@@ -329,24 +329,25 @@ let setup_build_archives (lib : Dune_file.Library.t) ~cctx
   in
   (* Build *.cma.js *)
   let* () =
-    Memo.Build.if_ modes.byte
-      (let action_with_targets =
-         let src =
-           Library.archive lib ~dir ~ext:(Mode.compiled_lib_ext Mode.Byte)
-         in
-         let target =
-           Path.Build.relative (Obj_dir.obj_dir obj_dir)
-             (Path.Build.basename src)
-           |> Path.Build.extend_basename ~suffix:".js"
-         in
-         Jsoo_rules.build_cm cctx ~js_of_ocaml ~src ~target
-       in
-       Memo.Build.Option.iter action_with_targets ~f:(fun action_with_targets ->
-           action_with_targets >>= Super_context.add_rule sctx ~dir))
+    Memo.Build.if_ modes.byte (fun () ->
+        let action_with_targets =
+          let src =
+            Library.archive lib ~dir ~ext:(Mode.compiled_lib_ext Mode.Byte)
+          in
+          let target =
+            Path.Build.relative (Obj_dir.obj_dir obj_dir)
+              (Path.Build.basename src)
+            |> Path.Build.extend_basename ~suffix:".js"
+          in
+          Jsoo_rules.build_cm cctx ~js_of_ocaml ~src ~target
+        in
+        Memo.Build.Option.iter action_with_targets
+          ~f:(fun action_with_targets ->
+            action_with_targets >>= Super_context.add_rule sctx ~dir))
   in
   Memo.Build.if_
     (Dynlink_supported.By_the_os.get natdynlink_supported && modes.native)
-    (build_shared ~native_archives ~sctx lib ~dir ~flags)
+    (fun () -> build_shared ~native_archives ~sctx lib ~dir ~flags)
 
 let cctx (lib : Library.t) ~sctx ~source_modules ~dir ~expander ~scope
     ~compile_info =
@@ -420,14 +421,15 @@ let library_rules (lib : Library.t) ~cctx ~source_modules ~dir_contents
   let* () =
     Memo.Build.if_
       (not (Library.is_virtual lib))
-      (setup_build_archives lib ~cctx ~dep_graphs ~expander)
+      (fun () -> setup_build_archives lib ~cctx ~dep_graphs ~expander)
   in
   let* () =
     let vlib_stubs_o_files = Vimpl.vlib_stubs_o_files vimpl in
     Memo.Build.if_
       (Library.has_foreign lib || List.is_non_empty vlib_stubs_o_files)
-      (build_stubs lib ~cctx ~dir ~expander ~requires:requires_compile
-         ~dir_contents ~vlib_stubs_o_files)
+      (fun () ->
+        build_stubs lib ~cctx ~dir ~expander ~requires:requires_compile
+          ~dir_contents ~vlib_stubs_o_files)
   in
   let* () = Odoc.setup_library_odoc_rules cctx lib ~dep_graphs in
   let+ () =

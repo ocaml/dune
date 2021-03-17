@@ -42,7 +42,7 @@ module Build : sig
       with the [Applicative] interface. *)
   val all : 'a t list -> 'a list t
 
-  val if_ : bool -> unit t -> unit t
+  val if_ : bool -> (unit -> unit t) -> unit t
 
   val sequential_map : 'a list -> f:('a -> 'b t) -> 'b list t
 

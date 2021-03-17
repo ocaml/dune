@@ -136,49 +136,50 @@ let build_cm cctx ~(js_of_ocaml : Dune_file.Js_of_ocaml.t) ~src ~target =
     None
 
 let setup_separate_compilation_rules sctx components =
-  Memo.Build.if_
-    (separate_compilation_enabled sctx)
-    (match components with
-    | []
-    | _ :: _ :: _ ->
-      Memo.Build.return ()
-    | [ pkg ] -> (
-      let pkg = Lib_name.parse_string_exn (Loc.none, pkg) in
-      let ctx = SC.context sctx in
-      match Lib.DB.find (SC.installed_libs sctx) pkg with
-      | None -> Memo.Build.return ()
-      | Some pkg ->
-        let info = Lib.info pkg in
-        let lib_name = Lib_name.to_string (Lib.name pkg) in
-        let archives =
-          let archives = (Lib_info.archives info).byte in
-          (* Special case for the stdlib because it is not referenced in the
-             META *)
-          match lib_name with
-          | "stdlib" ->
-            let archive =
-              let stdlib_dir = (Lib.lib_config pkg).stdlib_dir in
-              Path.relative stdlib_dir
-            in
-            archive "stdlib.cma" :: archive "std_exit.cmo" :: archives
-          | _ -> archives
-        in
-        Memo.Build.sequential_iter archives ~f:(fun fn ->
-            let name = Path.basename fn in
-            let target = in_build_dir ~ctx [ lib_name; sprintf "%s.js" name ] in
-            let spec =
-              let src_dir = Lib_info.src_dir info in
-              let src = Path.relative src_dir name in
-              Command.Args.Dep src
-            in
-            let dir = in_build_dir ~ctx [ lib_name ] in
-            let open Memo.Build.O in
-            let* action_with_targets =
-              js_of_ocaml_rule sctx ~sub_command:Compile ~dir
-                ~flags:(As (standard sctx))
-                ~spec ~target
-            in
-            SC.add_rule sctx ~dir action_with_targets)))
+  Memo.Build.if_ (separate_compilation_enabled sctx) (fun () ->
+      match components with
+      | []
+      | _ :: _ :: _ ->
+        Memo.Build.return ()
+      | [ pkg ] -> (
+        let pkg = Lib_name.parse_string_exn (Loc.none, pkg) in
+        let ctx = SC.context sctx in
+        match Lib.DB.find (SC.installed_libs sctx) pkg with
+        | None -> Memo.Build.return ()
+        | Some pkg ->
+          let info = Lib.info pkg in
+          let lib_name = Lib_name.to_string (Lib.name pkg) in
+          let archives =
+            let archives = (Lib_info.archives info).byte in
+            (* Special case for the stdlib because it is not referenced in the
+               META *)
+            match lib_name with
+            | "stdlib" ->
+              let archive =
+                let stdlib_dir = (Lib.lib_config pkg).stdlib_dir in
+                Path.relative stdlib_dir
+              in
+              archive "stdlib.cma" :: archive "std_exit.cmo" :: archives
+            | _ -> archives
+          in
+          Memo.Build.sequential_iter archives ~f:(fun fn ->
+              let name = Path.basename fn in
+              let target =
+                in_build_dir ~ctx [ lib_name; sprintf "%s.js" name ]
+              in
+              let spec =
+                let src_dir = Lib_info.src_dir info in
+                let src = Path.relative src_dir name in
+                Command.Args.Dep src
+              in
+              let dir = in_build_dir ~ctx [ lib_name ] in
+              let open Memo.Build.O in
+              let* action_with_targets =
+                js_of_ocaml_rule sctx ~sub_command:Compile ~dir
+                  ~flags:(As (standard sctx))
+                  ~spec ~target
+              in
+              SC.add_rule sctx ~dir action_with_targets)))
 
 let build_exe cc ~js_of_ocaml ~src ~(cm : Path.t list Action_builder.t) ~flags
     ~promote =

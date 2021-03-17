@@ -183,4 +183,4 @@ let rules ~sctx ~expander ~dir tests =
         Memo.Build.if_
           (Package.Name.Set.is_empty effective.packages
           || Package.Name.Set.(not (is_empty (inter only effective.packages))))
-          (test_rule ()))
+          test_rule)

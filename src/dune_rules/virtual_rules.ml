@@ -54,24 +54,24 @@ let setup_copy_rules_for_impl ~sctx ~dir vimpl =
     >>> Memo.Build.if_
           (Module.visibility src = Public
           && Obj_dir.need_dedicated_public_dir impl_obj_dir)
-          (let dst =
-             Obj_dir.Module.cm_public_file_exn impl_obj_dir src ~kind:Cmi
-           in
-           let src =
-             Obj_dir.Module.cm_public_file_exn vlib_obj_dir src ~kind:Cmi
-           in
-           copy_to_obj_dir ~src ~dst)
-    >>> Memo.Build.if_
-          (Module.has src ~ml_kind:Impl)
-          (Memo.Build.if_ byte (copy_obj_file src Cmo)
-          >>> Memo.Build.if_ native
-                (copy_obj_file src Cmx
-                >>>
-                let object_file dir =
-                  Obj_dir.Module.o_file_exn dir src ~ext_obj
-                in
-                copy_to_obj_dir ~src:(object_file vlib_obj_dir)
-                  ~dst:(object_file impl_obj_dir)))
+          (fun () ->
+            let dst =
+              Obj_dir.Module.cm_public_file_exn impl_obj_dir src ~kind:Cmi
+            in
+            let src =
+              Obj_dir.Module.cm_public_file_exn vlib_obj_dir src ~kind:Cmi
+            in
+            copy_to_obj_dir ~src ~dst)
+    >>> Memo.Build.if_ (Module.has src ~ml_kind:Impl) (fun () ->
+            Memo.Build.if_ byte (fun () -> copy_obj_file src Cmo)
+            >>> Memo.Build.if_ native (fun () ->
+                    copy_obj_file src Cmx
+                    >>>
+                    let object_file dir =
+                      Obj_dir.Module.o_file_exn dir src ~ext_obj
+                    in
+                    copy_to_obj_dir ~src:(object_file vlib_obj_dir)
+                      ~dst:(object_file impl_obj_dir)))
   in
   let vlib_modules = Vimpl.vlib_modules vimpl in
   Modules.fold_no_vlib vlib_modules ~init:(Memo.Build.return ())

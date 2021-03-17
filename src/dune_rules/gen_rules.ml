@@ -159,7 +159,7 @@ end
 
 let with_format sctx ~dir ~f =
   let* config = Super_context.format_config sctx ~dir in
-  Memo.Build.if_ (not (Format_config.is_empty config)) (f config)
+  Memo.Build.if_ (not (Format_config.is_empty config)) (fun () -> f config)
 
 let gen_format_rules sctx ~expander ~output_dir =
   let scope = Super_context.find_scope_by_dir sctx output_dir in

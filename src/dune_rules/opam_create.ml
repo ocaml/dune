@@ -276,8 +276,7 @@ let add_rule sctx ~project ~pkg =
 let add_rules sctx ~dir =
   let open Memo.Build.O in
   let project = Super_context.find_scope_by_dir sctx dir |> Scope.project in
-  Memo.Build.if_
-    (Dune_project.generate_opam_files project)
-    (let packages = Dune_project.packages project in
-     Package.Name.Map.fold packages ~init:(Memo.Build.return ())
-       ~f:(fun (pkg : Package.t) acc -> acc >>> add_rule sctx ~project ~pkg))
+  Memo.Build.if_ (Dune_project.generate_opam_files project) (fun () ->
+      let packages = Dune_project.packages project in
+      Package.Name.Map.fold packages ~init:(Memo.Build.return ())
+        ~f:(fun (pkg : Package.t) acc -> acc >>> add_rule sctx ~project ~pkg))

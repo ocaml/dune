@@ -605,7 +605,9 @@ let make sctx ~dir ~expander ~lint ~preprocess ~preprocessor_deps
         fun m ~lint ->
           let open Memo.Build.O in
           let* ast = setup_dialect_rules sctx ~dir ~expander m in
-          let+ () = Memo.Build.if_ lint (lint_module ~ast ~source:m) in
+          let+ () =
+            Memo.Build.if_ lint (fun () -> lint_module ~ast ~source:m)
+          in
           ast
       | Action (loc, action) ->
         fun m ~lint ->
@@ -620,7 +622,9 @@ let make sctx ~dir ~expander ~lint ~preprocess ~preprocessor_deps
                   Action_builder.with_no_targets preprocessor_deps >>> action))
             >>= setup_dialect_rules sctx ~dir ~expander
           in
-          let+ () = Memo.Build.if_ lint (lint_module ~ast ~source:m) in
+          let+ () =
+            Memo.Build.if_ lint (fun () -> lint_module ~ast ~source:m)
+          in
           ast
       | Pps { loc; pps; flags; staged } ->
         if not staged then
@@ -642,7 +646,9 @@ let make sctx ~dir ~expander ~lint ~preprocess ~preprocessor_deps
           fun m ~lint ->
             let open Memo.Build.O in
             let* ast = setup_dialect_rules sctx ~dir ~expander m in
-            let* () = Memo.Build.if_ lint (lint_module ~ast ~source:m) in
+            let* () =
+              Memo.Build.if_ lint (fun () -> lint_module ~ast ~source:m)
+            in
             pped_module ast ~f:(fun ml_kind src dst ->
                 SC.add_rule ~sandbox:Sandbox_config.no_special_requirements sctx
                   ~loc ~dir
@@ -698,7 +704,9 @@ let make sctx ~dir ~expander ~lint ~preprocess ~preprocessor_deps
           fun m ~lint ->
             let open Memo.Build.O in
             let* ast = setup_dialect_rules sctx ~dir ~expander m in
-            let+ () = Memo.Build.if_ lint (lint_module ~ast ~source:m) in
+            let+ () =
+              Memo.Build.if_ lint (fun () -> lint_module ~ast ~source:m)
+            in
             Module.set_pp ast pp)
   |> Pp_spec.make
 

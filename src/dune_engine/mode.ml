@@ -116,7 +116,8 @@ module Dict = struct
 
     let iter_sequentially t ~f =
       let open Memo.Build.O in
-      Memo.Build.if_ t.byte (f Byte) >>> Memo.Build.if_ t.native (f Native)
+      Memo.Build.if_ t.byte (fun () -> f Byte)
+      >>> Memo.Build.if_ t.native (fun () -> f Native)
   end
 
   module List = struct

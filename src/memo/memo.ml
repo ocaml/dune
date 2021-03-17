@@ -9,7 +9,7 @@ module Build = struct
 
   let if_ x y =
     match x with
-    | true -> y
+    | true -> y ()
     | false -> return ()
 
   module O = struct

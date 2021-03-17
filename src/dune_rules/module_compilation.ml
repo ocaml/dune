@@ -41,10 +41,11 @@ let copy_interface ~sctx ~dir ~obj_dir m =
   Memo.Build.if_
     (Module.visibility m <> Visibility.Private
     && Obj_dir.need_dedicated_public_dir obj_dir)
-    (SC.add_rule sctx ~dir
-       (Action_builder.symlink
-          ~src:(Path.build (Obj_dir.Module.cm_file_exn obj_dir m ~kind:Cmi))
-          ~dst:(Obj_dir.Module.cm_public_file_exn obj_dir m ~kind:Cmi)))
+    (fun () ->
+      SC.add_rule sctx ~dir
+        (Action_builder.symlink
+           ~src:(Path.build (Obj_dir.Module.cm_file_exn obj_dir m ~kind:Cmi))
+           ~dst:(Obj_dir.Module.cm_public_file_exn obj_dir m ~kind:Cmi)))
 
 let build_cm cctx ~dep_graphs ~precompiled_cmi ~cm_kind (m : Module.t) ~phase =
   let sctx = CC.super_context cctx in
@@ -232,8 +233,8 @@ let build_module ~dep_graphs ?(precompiled_cmi = false) cctx m =
             ~phase:(Some Fdo.Emit)
   in
   let* () =
-    Memo.Build.if_ (not precompiled_cmi)
-      (build_cm cctx m ~dep_graphs ~precompiled_cmi ~cm_kind:Cmi ~phase:None)
+    Memo.Build.if_ (not precompiled_cmi) (fun () ->
+        build_cm cctx m ~dep_graphs ~precompiled_cmi ~cm_kind:Cmi ~phase:None)
   in
   let obj_dir = CC.obj_dir cctx in
   match Obj_dir.Module.cm_file obj_dir m ~kind:Cm_kind.Cmo with

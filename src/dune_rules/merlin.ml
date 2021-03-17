@@ -410,7 +410,7 @@ let dot_merlin sctx ~dir ~more_src_dirs ~expander (t : Unprocessed.t) =
   SC.add_rule sctx ~dir action
 
 let add_rules sctx ~dir ~more_src_dirs ~expander merlin =
-  Memo.Build.if_ (SC.context sctx).merlin
-    (dot_merlin sctx ~more_src_dirs ~expander ~dir merlin)
+  Memo.Build.if_ (SC.context sctx).merlin (fun () ->
+      dot_merlin sctx ~more_src_dirs ~expander ~dir merlin)
 
 include Unprocessed

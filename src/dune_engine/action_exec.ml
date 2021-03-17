@@ -254,18 +254,20 @@ let rec exec t ~ectx ~eenv =
     | true -> Io.copy_file ~src ~dst:(Path.build dst) ()
     | false -> (
       let rec follow_symlinks name =
-        let stats = Unix.lstat name in
-        match stats.st_kind with
-        | S_LNK ->
-          let link_name = Unix.readlink name in
+        match Unix.readlink name with
+        | link_name ->
           let name = Filename.concat (Filename.dirname name) link_name in
           follow_symlinks name
-        | _ -> name
+        | exception Unix.Unix_error (Unix.EINVAL, _, _) -> name
       in
       let src = follow_symlinks (Path.to_string src) in
       let dst = Path.Build.to_string dst in
       try Unix.link src dst with
       | Unix.Unix_error (Unix.EEXIST, _, _) ->
+        (* CR-someday amokhov: Investigate why we need to occasionally clear the
+           destination (we also do this in the symlink case above). Perhaps, the
+           list of dependencies may have duplicates? If yes, it may be better to
+           filter out the duplicates first. *)
         Unix.unlink dst;
         Unix.link src dst));
     Fiber.return Done

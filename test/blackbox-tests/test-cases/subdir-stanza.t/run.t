@@ -118,3 +118,19 @@ Include stanzas within subdir stanzas
   $ dune build --root . a/hello.txt
   $ cat _build/default/a/hello.txt
   Hello!
+
+
+  $ echo "(lang dune 2.5)" > dune-project
+  $ cat >dune <<EOF
+  > (rule (with-stdout-to foo.txt (echo "bar")))
+  > (subdir /absolute/path/to/bar
+  >  (rule (with-stdout-to foo.txt (echo "bar"))))
+  > EOF
+  $ dune build ./foo.txt ./bar/foo.txt
+  File "dune", line 2, characters 8-29:
+  2 | (subdir /absolute/path/to/bar
+              ^^^^^^^^^^^^^^^^^^^^^
+  Error: invalid sub-directory path "/absolute/path/to/bar"
+  Hint: subdirectory path must be relative
+  [1]
+

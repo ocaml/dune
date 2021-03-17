@@ -188,9 +188,15 @@ module Dir_map = struct
   let merge_all = List.fold_left ~f:merge ~init:empty
 end
 
-let descedant_path =
+let descendant_path =
   Dune_lang.Decoder.plain_string (fun ~loc fn ->
-      Path.Local.parse_string_exn ~loc fn |> Path.Local.explode)
+    if Filename.is_relative fn then
+      Path.Local.parse_string_exn ~loc fn |> Path.Local.explode
+    else
+      let msg = [ Pp.textf "invalid sub-directory path %S" fn ] in
+      let hints = [ Pp.textf "subdirectory path must be relative" ]
+      in
+      User_error.raise ~loc ~hints msg)
 
 let strict_subdir field_name =
   let open Dune_lang.Decoder in
@@ -263,7 +269,7 @@ let decode =
   in
   let rec subdir () =
     let* () = Dune_lang.Syntax.since Stanza.syntax (2, 5) in
-    let* subdir = descedant_path in
+    let* subdir = descendant_path in
     let+ node = fields (decode ~allow_ignored_subdirs:false) in
     Dir_map.make_at_path subdir node
   and decode ~allow_ignored_subdirs =

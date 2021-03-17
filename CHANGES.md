@@ -94,6 +94,8 @@ Unreleased
 
 - Add support for sandboxing using hard links (#4360, @snowleopard)
 
+- Fix dune crash when `subdir` is an absolute path (#4366, @anmonteiro)
+
 2.8.2 (21/01/2021)
 ------------------
 

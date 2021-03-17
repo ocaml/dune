@@ -194,7 +194,7 @@ let descendant_path =
         Path.Local.parse_string_exn ~loc fn |> Path.Local.explode
       else
         let msg = [ Pp.textf "invalid sub-directory path %S" fn ] in
-        let hints = [ Pp.textf "subdirectory path must be relative" ] in
+        let hints = [ Pp.textf "sub-directory path must be relative" ] in
         User_error.raise ~loc ~hints msg)
 
 let strict_subdir field_name =

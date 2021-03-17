@@ -131,6 +131,6 @@ Include stanzas within subdir stanzas
   2 | (subdir /absolute/path/to/bar
               ^^^^^^^^^^^^^^^^^^^^^
   Error: invalid sub-directory path "/absolute/path/to/bar"
-  Hint: subdirectory path must be relative
+  Hint: sub-directory path must be relative
   [1]
 

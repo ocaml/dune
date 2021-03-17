@@ -250,7 +250,16 @@ let rec exec t ~ectx ~eenv =
     (match Sys.win32 with
     | true -> Io.copy_file ~src ~dst:(Path.build dst) ()
     | false -> (
-      let src = Path.to_string src in
+      let rec follow_symlinks name =
+        let stats = Unix.lstat name in
+        match stats.st_kind with
+        | S_LNK ->
+          let link_name = Unix.readlink name in
+          let name = Filename.concat (Filename.dirname name) link_name in
+          follow_symlinks name
+        | _ -> name
+      in
+      let src = follow_symlinks (Path.to_string src) in
       let dst = Path.Build.to_string dst in
       try Unix.link src dst with
       | Unix.Unix_error (Unix.EEXIST, _, _) ->

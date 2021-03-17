@@ -136,6 +136,7 @@ let fold_one_step t ~init:acc ~f =
   | Cat _
   | Copy _
   | Symlink _
+  | Hardlink _
   | Copy_and_add_line_directive _
   | System _
   | Bash _
@@ -185,6 +186,7 @@ let rec is_dynamic = function
   | Cat _
   | Copy _
   | Symlink _
+  | Hardlink _
   | Copy_and_add_line_directive _
   | Write_file _
   | Rename _
@@ -215,18 +217,26 @@ let prepare_managed_paths ~link ~sandboxed deps =
   Progn steps
 
 let link_function ~(mode : Sandbox_mode.some) : path -> target -> t =
+  let win32_error mode =
+    let mode = Sandbox_mode.to_string (Some mode) in
+    Code_error.raise
+      (sprintf
+         "Don't have %ss on win32, but [%s] sandboxing mode was selected. To \
+          use emulation via copy, the [copy] sandboxing mode should be \
+          selected."
+         mode mode)
+      []
+  in
   match mode with
-  | Symlink ->
-    if Sys.win32 then
-      Code_error.raise
-        "Don't have symlinks on win32, but [Symlink] sandboxing mode was \
-         selected. To use emulation via copy, the [Copy] sandboxing mode \
-         should be selected."
-        []
-    else
-      fun a b ->
-    Symlink (a, b)
+  | Symlink -> (
+    match Sys.win32 with
+    | true -> win32_error mode
+    | false -> fun a b -> Symlink (a, b))
   | Copy -> fun a b -> Copy (a, b)
+  | Hardlink -> (
+    match Sys.win32 with
+    | true -> win32_error mode
+    | false -> fun a b -> Hardlink (a, b))
 
 let maybe_sandbox_path f p =
   match Path.as_in_build_dir p with
@@ -266,6 +276,7 @@ let is_useful_to distribute memoize =
     | Cat _ -> memoize
     | Copy _ -> memoize
     | Symlink _ -> false
+    | Hardlink _ -> false
     | Copy_and_add_line_directive _ -> memoize
     | Write_file _ -> distribute
     | Rename _ -> memoize

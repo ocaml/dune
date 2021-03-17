@@ -64,15 +64,16 @@ end up in a situation where the same hash means something different
 before and after the change, which is bad. To reduce the risk, we
 inject a version number into rule digests.
 
-If you see the bellow test breaking, then you probably accidentally
+If you see the below test breaking, then you probably accidentally
 changed the way the digest is computed and you should increase this
 version number. This number is stored in the [rule_digest_version]
 variable in [build_system.ml].
 
-  $ cat $PWD/.xdg-cache/dune/db/meta/v4/70/70e20e84ad3f1df3a3b6e2fabcc6465b
-  ((8:metadata)(5:files(16:default/target_b32:8a53bfae3829b48866079fa7f2d97781)))
+  $ (cd "$PWD/.xdg-cache/dune/db/meta/v4"; grep -rws . -e 'metadata' | sort)
+  ./a5/a5577fffaa751cd2aa8b2345ac11119a:((8:metadata)(5:files(16:default/target_a32:5637dd9730e430c7477f52d46de3909c)))
+  ./c5/c5af296726141def07847e5510a680c6:((8:metadata)(5:files(16:default/target_b32:8a53bfae3829b48866079fa7f2d97781)))
 
-  $ dune_cmd stat size $PWD/.xdg-cache/dune/db/meta/v4/70/70e20e84ad3f1df3a3b6e2fabcc6465b
+  $ dune_cmd stat size "$PWD/.xdg-cache/dune/db/meta/v4/a5/a5577fffaa751cd2aa8b2345ac11119a"
   79
 
 Trimming the cache at this point should not remove anything, as all

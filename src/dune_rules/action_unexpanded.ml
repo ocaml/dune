@@ -453,6 +453,10 @@ let rec expand (t : Action_dune_lang.t) : Action.t Action_expander.t =
     let+ x = E.dep x
     and+ y = E.target y in
     O.Symlink (x, y)
+  | Hardlink (x, y) ->
+    let+ x = E.dep x
+    and+ y = E.target y in
+    O.Hardlink (x, y)
   | Copy_and_add_line_directive (x, y) ->
     let+ x = E.dep x
     and+ y = E.target y in

@@ -10,6 +10,7 @@ open! Stdune
 type some =
   | Symlink
   | Copy
+  | Hardlink
 
 type t = some option
 
@@ -24,6 +25,7 @@ module Dict : sig
     { none : 'a
     ; symlink : 'a
     ; copy : 'a
+    ; hardlink : 'a
     }
 
   val compare : ('a -> 'a -> Ordering.t) -> 'a t -> 'a t -> Ordering.t
@@ -56,6 +58,8 @@ val none : t
 val symlink : t
 
 val copy : t
+
+val hardlink : t
 
 val of_string : string -> (t, string) Result.t
 

@@ -92,6 +92,8 @@ Unreleased
 - If an .ml file is not used by an executable, Dune no longer report
   parsing error in this file (#...., @jeremiedimino)
 
+- Add support for sandboxing using hard links (#4360, @snowleopard)
+
 2.8.2 (21/01/2021)
 ------------------
 

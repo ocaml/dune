@@ -55,6 +55,7 @@ let ensure_at_most_one_dynamic_run ~loc action =
     | Cat _
     | Copy _
     | Symlink _
+    | Hardlink _
     | Copy_and_add_line_directive _
     | System _
     | Bash _

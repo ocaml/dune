@@ -190,13 +190,12 @@ end
 
 let descendant_path =
   Dune_lang.Decoder.plain_string (fun ~loc fn ->
-    if Filename.is_relative fn then
-      Path.Local.parse_string_exn ~loc fn |> Path.Local.explode
-    else
-      let msg = [ Pp.textf "invalid sub-directory path %S" fn ] in
-      let hints = [ Pp.textf "subdirectory path must be relative" ]
-      in
-      User_error.raise ~loc ~hints msg)
+      if Filename.is_relative fn then
+        Path.Local.parse_string_exn ~loc fn |> Path.Local.explode
+      else
+        let msg = [ Pp.textf "invalid sub-directory path %S" fn ] in
+        let hints = [ Pp.textf "subdirectory path must be relative" ] in
+        User_error.raise ~loc ~hints msg)
 
 let strict_subdir field_name =
   let open Dune_lang.Decoder in

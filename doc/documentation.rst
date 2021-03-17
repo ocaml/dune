@@ -48,7 +48,7 @@ Documentation for private libraries may also be built with:
 
   $ dune build @doc-private
 
-But this libraries will not be in the main html listing above, since they do not
+But these libraries will not be in the main html listing above, since they do not
 belong to any particular package. But the generated html will still be found in
 ``_build/default/_doc/_html/<library>``.
 

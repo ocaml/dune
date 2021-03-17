@@ -336,11 +336,11 @@ let add_rule_get_targets t ?sandbox ?mode ?locks ?loc ~dir build =
 let add_rules t ?sandbox ~dir builds =
   Memo.Build.parallel_iter builds ~f:(add_rule t ?sandbox ~dir)
 
-let add_alias_action t alias ~dir ~loc ?locks ~stamp action =
+let add_alias_action t alias ~dir ~loc ?locks action =
   let+ env = get_node t.env_tree ~dir >>= Env_node.external_env in
   Rules.Produce.Alias.add_action
     ~context:(Context.build_context t.context)
-    ~env:(Some env) alias ~loc ?locks ~stamp action
+    ~env:(Some env) alias ~loc ?locks action
 
 let build_dir_is_vendored build_dir =
   match Path.Build.drop_build_context build_dir with

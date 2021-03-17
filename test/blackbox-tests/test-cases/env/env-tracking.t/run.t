@@ -21,7 +21,4 @@ But if there is a dependency, the alias gets rebuilt:
 This only happens for tracked variables:
 
   $ dune build @with_dep
-             a alias with_dep
-  X is not set
-  Y is not set
   $ Y=y dune build @with_dep

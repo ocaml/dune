@@ -293,6 +293,10 @@ module Fancy = struct
           | Install (ctx, name) ->
             split_paths
               (("install " ^ Path.Source.to_string name) :: targets_acc)
+              (add_ctx ctx ctxs_acc) rest
+          | Anonymous_action ctx ->
+            split_paths
+              ("(internal)" :: targets_acc)
               (add_ctx ctx ctxs_acc) rest)
       in
       let targets = Path.Build.Set.to_list targets in

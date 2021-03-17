@@ -106,3 +106,5 @@ let path env =
   match get env "PATH" with
   | None -> []
   | Some s -> Bin.parse_path s
+
+let to_map t = t.vars

@@ -141,13 +141,13 @@ include Sub_system.Register_end_point (struct
          let action =
            let open Action_builder.With_targets.O in
            let+ actions =
-             Action_builder.With_targets.all
-               (List.filter_map backends ~f:(fun (backend : Backend.t) ->
-                    Option.map backend.info.generate_runner
-                      ~f:(fun (loc, action) ->
-                        Action_unexpanded.expand action ~loc ~expander ~deps:[]
-                          ~targets:(Forbidden "inline test generators")
-                          ~targets_dir:dir)))
+             Action_builder.with_no_targets
+               (Action_builder.all
+                  (List.filter_map backends ~f:(fun (backend : Backend.t) ->
+                       Option.map backend.info.generate_runner
+                         ~f:(fun (loc, action) ->
+                           Action_unexpanded.expand_no_targets action ~loc
+                             ~expander ~deps:[] ~what:"inline test generators"))))
            in
            Action.with_stdout_to target (Action.progn actions)
          in
@@ -200,7 +200,7 @@ include Sub_system.Register_end_point (struct
                ~standard:(Action_builder.return []))
         |> Action_builder.all
       in
-      Command.Args.As (List.concat l)
+      List.concat l
     in
     let source_files = List.concat_map source_modules ~f:Module.sources in
     Memo.Build.parallel_iter_set
@@ -223,36 +223,44 @@ include Sub_system.Register_end_point (struct
             None
           | Javascript -> Some "node"
         in
-        let* exe, runner_args =
-          let exe =
-            Path.build (Path.Build.relative inline_test_dir (name ^ ext))
-          in
-          match custom_runner with
-          | None -> Memo.Build.return (Ok exe, Command.Args.empty)
-          | Some runner ->
-            let+ prog =
-              Super_context.resolve_program ~dir sctx ~loc:(Some loc) runner
-            in
-            (prog, Command.Args.Dep exe)
-        in
-        let action_with_targets =
-          let open Action_builder.With_targets.O in
-          Action_builder.with_no_targets
-            (Dep_conf_eval.unnamed info.deps ~expander)
-          >>> Action_builder.with_no_targets (Action_builder.paths source_files)
-          >>> Action_builder.progn
-                (Command.run exe ~dir:(Path.build dir)
-                   [ runner_args; Dyn flags ]
-                 ::
-                 List.map source_files ~f:(fun fn ->
-                     Action_builder.With_targets.return
-                       (Action.diff ~optional:true fn
-                          (Path.Build.extend_basename
-                             (Path.as_in_build_dir_exn fn)
-                             ~suffix:".corrected"))))
-        in
         SC.add_alias_action sctx ~dir ~loc:(Some info.loc) (Alias.runtest ~dir)
-          ~stamp:("ppx-runner", name, mode) action_with_targets)
+          (let exe =
+             Path.build (Path.Build.relative inline_test_dir (name ^ ext))
+           in
+           let open Action_builder.O in
+           let+ () = Dep_conf_eval.unnamed info.deps ~expander
+           and+ () = Action_builder.paths source_files
+           and+ () = Action_builder.path exe
+           and+ action =
+             match custom_runner with
+             | None ->
+               let+ flags = flags in
+               Action.run (Ok exe) flags
+             | Some runner -> (
+               let* prog =
+                 Action_builder.memo_build
+                   (Super_context.resolve_program ~dir sctx ~loc:(Some loc)
+                      runner)
+               and* flags = flags in
+               let action =
+                 Action.run prog
+                   (Path.reach exe ~from:(Path.build dir) :: flags)
+               in
+               (* jeremiedimino: it feels like this pattern should be pushed
+                  into [resolve_program] directly *)
+               match prog with
+               | Error _ -> Action_builder.return action
+               | Ok p -> Action_builder.path p >>> Action_builder.return action)
+           in
+           let run_tests = Action.chdir (Path.build dir) action in
+           Action.progn
+             (run_tests
+              ::
+              List.map source_files ~f:(fun fn ->
+                  Action.diff ~optional:true fn
+                    (Path.Build.extend_basename
+                       (Path.as_in_build_dir_exn fn)
+                       ~suffix:".corrected")))))
 end)
 
 let linkme = ()

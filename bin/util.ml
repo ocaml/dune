@@ -45,5 +45,6 @@ let check_path contexts =
       match Dune_engine.Dpath.analyse_target path with
       | Other _ -> internal_path ()
       | Alias (_, _) -> internal_path ()
+      | Anonymous_action _ -> internal_path ()
       | Install (name, src) -> In_install_dir (context_exn name, src)
       | Regular (name, src) -> In_build_dir (context_exn name, src))

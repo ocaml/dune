@@ -10,7 +10,8 @@ module Expanding_what = struct
   type t =
     | Nothing_special
     | Deps_like_field
-    | User_action of Targets.Or_forbidden.t
+    | User_action of Path.Build.t Targets.t
+    | User_action_without_targets of { what : string }
 end
 
 type t =
@@ -64,7 +65,8 @@ let map_exe t p =
   match t.expanding_what with
   | Deps_like_field -> p
   | Nothing_special
-  | User_action _ ->
+  | User_action _
+  | User_action_without_targets _ ->
     Context.map_exe t.context p
 
 let extend_env t ~env =
@@ -203,20 +205,20 @@ let[@inline never] invalid_use_of_target_variable t
   | Nothing_special
   | Deps_like_field ->
     isn't_allowed_in_this_position ~source
+  | User_action_without_targets { what } ->
+    User_error.raise ~loc:source.loc
+      [ Pp.textf "You cannot use %s in %s."
+          (Dune_lang.Template.Pform.describe source)
+          what
+      ]
   | User_action targets -> (
     match targets with
-    | Targets Infer ->
+    | Infer ->
       User_error.raise ~loc:source.loc
         [ Pp.textf "You cannot use %s with inferred rules."
             (Dune_lang.Template.Pform.describe source)
         ]
-    | Forbidden context ->
-      User_error.raise ~loc:source.loc
-        [ Pp.textf "You cannot use %s in %s."
-            (Dune_lang.Template.Pform.describe source)
-            context
-        ]
-    | Targets (Static { targets = _; multiplicity }) ->
+    | Static { targets = _; multiplicity } ->
       assert (multiplicity <> var_multiplicity);
       Targets.Multiplicity.check_variable_matches_field ~loc:source.loc
         ~field:multiplicity ~variable:var_multiplicity;

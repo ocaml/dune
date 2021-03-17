@@ -8,6 +8,5 @@
   -> required by public/b.vo
   -> required by install lib/coq/user-contrib/public/b.vo
   -> required by public.install
-  -> required by alias default
-  -> required by alias default
+  -> required by alias default in dune:1
   [1]

@@ -10,20 +10,9 @@ module Dir_rules : sig
 
   val union : t -> t -> t
 
-  type alias_action =
-    { stamp : Digest.t
-    ; action : Action.t Action_builder.With_targets.t
-    ; locks : Path.t list
-    ; context : Build_context.t
-    ; env : Env.t option
-    ; loc : Loc.t option
-    }
-
   module Alias_spec : sig
-    type t =
-      { expansions : (Loc.t * unit Action_builder.t) Appendable_list.t
-      ; actions : alias_action Appendable_list.t
-      }
+    type t = { expansions : (Loc.t * unit Action_builder.t) Appendable_list.t }
+    [@@unboxed]
   end
 
   (** A ready to process view of the rules of a directory *)
@@ -82,8 +71,7 @@ module Produce : sig
       -> env:Env.t option
       -> loc:Loc.t option
       -> ?locks:Path.t list
-      -> stamp:_
-      -> Action.t Action_builder.With_targets.t
+      -> Action.t Action_builder.t
       -> unit
   end
 end

@@ -34,12 +34,6 @@ type 'a t =
   | Static of 'a Static.t
   | Infer
 
-module Or_forbidden = struct
-  type nonrec t =
-    | Forbidden of string
-    | Targets of Path.Build.t t
-end
-
 let decode_static =
   let open Dune_lang.Decoder in
   let+ syntax_version = Dune_lang.Syntax.get_exn Stanza.syntax

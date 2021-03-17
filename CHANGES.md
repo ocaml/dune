@@ -96,6 +96,21 @@ Unreleased
 
 - Fix dune crash when `subdir` is an absolute path (#4366, @anmonteiro)
 
+- Changed the implementation of actions attached to aliases, as in
+  `(rule (alias runtest) (action (run ./test)))`. A visible result for
+  users is that such actions are not memoized for longer. For
+  instance:
+  ```
+  $ echo '(rule (alias runtest) (action (echo "X=%{env:X=0}\n")))` > dune
+  $ X=1 dune runtest
+  X=1
+  $ X=2 dune runtest
+  X=2
+  $ X=1 dune runtest
+  ```
+  Previously, Dune would have re-executed the action again at the last
+  line. Now it remembers the result of the first execution.
+
 2.8.2 (21/01/2021)
 ------------------
 

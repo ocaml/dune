@@ -9,6 +9,19 @@ module T = struct
     | Universe
     | Sandbox_config of Sandbox_config.t
 
+  module Stable_for_digest = struct
+    type t =
+      | Env of string
+      | File of string
+      | Alias of
+          { dir : string
+          ; name : string
+          }
+      | File_selector of Dyn.t
+      | Universe
+      | Sandbox_config of Sandbox_config.t
+  end
+
   let env e = Env e
 
   let file f = File f
@@ -188,6 +201,8 @@ module Set = struct
 
   let of_list_map l ~f = Map.of_list_unit (List.map l ~f:(fun x -> f x))
 
+  let fold t ~init ~f = Map.foldi t ~init ~f:(fun k () acc -> f k acc)
+
   let to_list = keys
 
   let of_files = List.fold_left ~init:empty ~f:(fun acc f -> add acc (file f))
@@ -241,4 +256,20 @@ module Set = struct
         (add_paths deps more_paths, Path.Set.union paths more_paths))
       ~add_empty_dir:(fun (deps, paths) dir ->
         (add deps (dir_without_files_dep dir), paths))
+
+  let digest t =
+    foldi t ~init:[] ~f:(fun dep _value acc : Stable_for_digest.t list ->
+        match dep with
+        | Env var -> Env var :: acc
+        | Universe -> Universe :: acc
+        | Sandbox_config config -> Sandbox_config config :: acc
+        | File p -> File (Path.to_string p) :: acc
+        | File_selector fs -> File_selector (File_selector.to_dyn fs) :: acc
+        | Alias a ->
+          Alias
+            { dir = Path.Build.to_string (Alias.dir a)
+            ; name = Alias.Name.to_string (Alias.name a)
+            }
+          :: acc)
+    |> Digest.generic
 end

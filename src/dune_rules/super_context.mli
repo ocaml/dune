@@ -136,8 +136,7 @@ val add_alias_action :
   -> dir:Path.Build.t
   -> loc:Loc.t option
   -> ?locks:Path.t list
-  -> stamp:_
-  -> Action.t Action_builder.With_targets.t
+  -> Action.t Action_builder.t
   -> unit Memo.Build.t
 
 (** [resolve_program t ?hint name] resolves a program. [name] is looked up in

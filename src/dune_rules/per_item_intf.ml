@@ -25,8 +25,6 @@ module type S = sig
 
   val exists : 'a t -> f:('a -> bool) -> bool
 
-  val map_with_targets :
-       'a t
-    -> f:('a -> 'b Action_builder.With_targets.t)
-    -> 'b t Action_builder.With_targets.t
+  val map_action_builder :
+    'a t -> f:('a -> 'b Action_builder.t) -> 'b t Action_builder.t
 end

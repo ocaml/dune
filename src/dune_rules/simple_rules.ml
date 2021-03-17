@@ -7,19 +7,13 @@ module SC = Super_context
 open Memo.Build.O
 
 module Alias_rules = struct
-  let stamp ~deps ~action ~extra_bindings =
-    ( "user-alias"
-    , Bindings.map ~f:Dep_conf.remove_locs deps
-    , Option.map ~f:Action_unexpanded.remove_locs action
-    , Option.map extra_bindings ~f:Pform.Map.to_list )
-
-  let add sctx ~alias ~stamp ~loc ~locks build =
+  let add sctx ~alias ~loc ~locks build =
     let dir = Alias.dir alias in
-    SC.add_alias_action sctx alias ~dir ~loc ~locks ~stamp build
+    SC.add_alias_action sctx alias ~dir ~loc ~locks build
 
-  let add_empty sctx ~loc ~alias ~stamp =
-    let action = Action_builder.With_targets.return Action.empty in
-    add sctx ~loc ~alias ~stamp action ~locks:[]
+  let add_empty sctx ~loc ~alias =
+    let action = Action_builder.return Action.empty in
+    add sctx ~loc ~alias action ~locks:[]
 end
 
 let interpret_locks ~expander =
@@ -80,25 +74,22 @@ let user_rule sctx ?extra_bindings ~dir ~expander (rule : Rule.t) =
     | None -> Memo.Build.return Path.Build.Set.empty
     | Some name ->
       let alias = Alias.make ~dir name in
-      let action = Some (snd rule.action) in
-      let stamp = Alias_rules.stamp ~deps:rule.deps ~action ~extra_bindings in
-      let+ () = Alias_rules.add_empty sctx ~alias ~loc:(Some rule.loc) ~stamp in
+      let+ () = Alias_rules.add_empty sctx ~alias ~loc:(Some rule.loc) in
       Path.Build.Set.empty)
   | true -> (
-    let targets : Targets.Or_forbidden.t =
-      Targets
-        (match rule.targets with
-        | Infer -> Infer
-        | Static { targets; multiplicity } ->
-          let targets =
-            List.concat_map targets ~f:(fun target ->
-                let error_loc = String_with_vars.loc target in
-                (match multiplicity with
-                | One -> [ Expander.Static.expand expander ~mode:Single target ]
-                | Multiple -> Expander.Static.expand expander ~mode:Many target)
-                |> List.map ~f:(check_filename ~dir ~error_loc))
-          in
-          Static { multiplicity; targets })
+    let targets : _ Targets.t =
+      match rule.targets with
+      | Infer -> Infer
+      | Static { targets; multiplicity } ->
+        let targets =
+          List.concat_map targets ~f:(fun target ->
+              let error_loc = String_with_vars.loc target in
+              (match multiplicity with
+              | One -> [ Expander.Static.expand expander ~mode:Single target ]
+              | Multiple -> Expander.Static.expand expander ~mode:Many target)
+              |> List.map ~f:(check_filename ~dir ~error_loc))
+        in
+        Static { multiplicity; targets }
     in
     let expander =
       match extra_bindings with
@@ -120,13 +111,9 @@ let user_rule sctx ?extra_bindings ~dir ~expander (rule : Rule.t) =
       add_user_rule sctx ~dir ~rule ~action ~expander
     | Alias_only name ->
       let alias = Alias.make ~dir name in
-      let stamp =
-        let action = Some (snd rule.action) in
-        Alias_rules.stamp ~deps:rule.deps ~extra_bindings ~action
-      in
       let locks = interpret_locks ~expander rule.locks in
       let+ () =
-        Alias_rules.add sctx ~alias ~stamp ~loc:(Some rule.loc) action ~locks
+        Alias_rules.add sctx ~alias ~loc:(Some rule.loc) action.build ~locks
       in
       Path.Build.Set.empty)
 
@@ -218,13 +205,9 @@ let copy_files sctx ~dir ~expander ~src_dir (def : Copy_files.t) =
 
 let alias sctx ?extra_bindings ~dir ~expander (alias_conf : Alias_conf.t) =
   let alias = Alias.make ~dir alias_conf.name in
-  let stamp =
-    let action = Option.map ~f:snd alias_conf.action in
-    Alias_rules.stamp ~deps:alias_conf.deps ~extra_bindings ~action
-  in
   let loc = Some alias_conf.loc in
   match Expander.eval_blang expander alias_conf.enabled_if with
-  | false -> Alias_rules.add_empty sctx ~loc ~alias ~stamp
+  | false -> Alias_rules.add_empty sctx ~loc ~alias
   | true -> (
     match alias_conf.action with
     | None ->
@@ -235,18 +218,17 @@ let alias sctx ?extra_bindings ~dir ~expander (alias_conf : Alias_conf.t) =
       let locks = interpret_locks ~expander alias_conf.locks in
       let action =
         let builder, expander = Dep_conf_eval.named ~expander alias_conf.deps in
-        let open Action_builder.With_targets.O in
-        let+ () = Action_builder.with_no_targets builder
+        let open Action_builder.O in
+        let+ () = builder
         and+ action =
           let expander =
             match extra_bindings with
             | None -> expander
             | Some bindings -> Expander.add_bindings expander ~bindings
           in
-          Action_unexpanded.expand action ~loc:action_loc ~expander
-            ~deps:alias_conf.deps ~targets:(Forbidden "aliases")
-            ~targets_dir:dir
+          Action_unexpanded.expand_no_targets action ~loc:action_loc ~expander
+            ~deps:alias_conf.deps ~what:"aliases"
         in
         action
       in
-      Alias_rules.add sctx ~loc ~stamp ~locks action ~alias)
+      Alias_rules.add sctx ~loc ~locks action ~alias)

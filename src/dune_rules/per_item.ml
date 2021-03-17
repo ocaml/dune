@@ -38,9 +38,9 @@ module Make (Key : Map.Key) : Per_item_intf.S with type key = Key.t = struct
 
   let is_constant t = Array.length t.values = 1
 
-  let map_with_targets { map; values } ~f =
-    let open Action_builder.With_targets.O in
+  let map_action_builder { map; values } ~f =
+    let open Action_builder.O in
     let l = Array.to_list values in
-    let+ new_values = List.map l ~f |> Action_builder.With_targets.all in
+    let+ new_values = List.map l ~f |> Action_builder.all in
     { map; values = Array.of_list new_values }
 end

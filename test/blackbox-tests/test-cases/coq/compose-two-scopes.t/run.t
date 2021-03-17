@@ -7,6 +7,5 @@
   -> required by b/b.vo
   -> required by install lib/coq/user-contrib/b/b.vo
   -> required by cvendor.install
-  -> required by alias default
-  -> required by alias default
+  -> required by alias default in dune:1
   [1]

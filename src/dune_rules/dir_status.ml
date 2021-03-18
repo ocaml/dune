@@ -70,23 +70,25 @@ let check_no_module_consumer stanzas =
 module DB = struct
   type nonrec t =
     { stanzas_per_dir : Dune_file.Stanzas.t Dir_with_dune.t Path.Build.Map.t
-    ; fn : (Path.Build.t, t) Memo.Sync.t
+    ; fn : (Path.Build.t, t) Memo.Async.t
     }
 
   let stanzas_in db ~dir = Path.Build.Map.find db.stanzas_per_dir dir
 
   let get db ~dir =
+    let open Memo.Build.O in
     let get ~dir = Memo.exec db.fn dir in
     let enclosing_group ~dir =
       match Path.Build.parent dir with
-      | None -> No_group
-      | Some parent_dir -> current_group parent_dir (get ~dir:parent_dir)
+      | None -> Memo.Build.return No_group
+      | Some parent_dir -> get ~dir:parent_dir >>| current_group parent_dir
     in
     match
       Option.bind (Path.Build.drop_build_context dir) ~f:File_tree.find_dir
     with
     | None -> (
-      match enclosing_group ~dir with
+      let+ enclosing_group = enclosing_group ~dir in
+      match enclosing_group with
       | No_group -> Generated
       | Group_root group_root ->
         Is_component_of_a_group_but_not_the_root { stanzas = None; group_root })
@@ -98,22 +100,25 @@ module DB = struct
       match stanzas_in db ~dir with
       | None -> (
         if build_dir_is_project_root then
-          Source_only ft_dir
+          Memo.Build.return (Source_only ft_dir)
         else
-          match enclosing_group ~dir with
+          let+ enclosing_group = enclosing_group ~dir in
+          match enclosing_group with
           | No_group -> Source_only ft_dir
           | Group_root group_root ->
             Is_component_of_a_group_but_not_the_root
               { stanzas = None; group_root })
       | Some d -> (
         match get_include_subdirs d.data with
-        | Some (loc, Include mode) -> Group_root (ft_dir, (loc, mode), d)
-        | Some (_, No) -> Standalone (ft_dir, d)
+        | Some (loc, Include mode) ->
+          Memo.Build.return (T.Group_root (ft_dir, (loc, mode), d))
+        | Some (_, No) -> Memo.Build.return (Standalone (ft_dir, d))
         | None -> (
           if build_dir_is_project_root then
-            Standalone (ft_dir, d)
+            Memo.Build.return (Standalone (ft_dir, d))
           else
-            match enclosing_group ~dir with
+            let+ enclosing_group = enclosing_group ~dir in
+            match enclosing_group with
             | Group_root group_root ->
               check_no_module_consumer d.data;
               Is_component_of_a_group_but_not_the_root
@@ -135,12 +140,12 @@ module DB = struct
                 ~input:(module Path.Build)
                 ~visibility:Hidden
                 ~output:(Simple (module T))
-                ~doc:"Get a directory status." Sync Fn.get
+                ~doc:"Get a directory status." Async Fn.get
           }
       end
 
       and Fn : sig
-        val get : Path.Build.t -> T.t
+        val get : Path.Build.t -> T.t Memo.Build.t
       end = struct
         let get dir = get Res.t ~dir
       end

@@ -204,7 +204,8 @@ end = struct
   let collect_group sctx ~ft_dir ~dir =
     let dir_status_db = Super_context.dir_status_db sctx in
     let rec walk ft_dir ~dir ~local =
-      match Dir_status.DB.get dir_status_db ~dir with
+      let* status = Dir_status.DB.get dir_status_db ~dir in
+      match status with
       | Is_component_of_a_group_but_not_the_root { stanzas = d; group_root = _ }
         ->
         let+ a, b =
@@ -241,7 +242,8 @@ end = struct
     let dir_status_db = Super_context.dir_status_db sctx in
     let ctx = Super_context.context sctx in
     let lib_config = (Super_context.context sctx).lib_config in
-    match Dir_status.DB.get dir_status_db ~dir with
+    let* status = Dir_status.DB.get dir_status_db ~dir in
+    match status with
     | Is_component_of_a_group_but_not_the_root { group_root; stanzas = _ } ->
       Memo.Build.return (See_above group_root)
     | Generated

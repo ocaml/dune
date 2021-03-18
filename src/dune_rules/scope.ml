@@ -17,9 +17,6 @@ let libs t = t.db
 
 let coq_libs t = t.coq_db
 
-module Path_source_map_traversal =
-  Memo.Build.Make_map_traversals (Path.Source.Map)
-
 module DB = struct
   type scope = t
 

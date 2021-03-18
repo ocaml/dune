@@ -305,8 +305,8 @@ let gen_rules ~sctx ~dir components =
   let module S = Build_system.Subdir_set in
   let* () = Opam_create.add_rules sctx ~dir in
   let* () = Install_rules.meta_and_dune_package_rules sctx ~dir in
-  let* subdirs_to_keep1 = Install_rules.gen_rules sctx ~dir in
-  let+ (subdirs_to_keep2 : Build_system.extra_sub_directories_to_keep) =
+  let+ subdirs_to_keep1 = Install_rules.gen_rules sctx ~dir
+  and+ (subdirs_to_keep2 : Build_system.extra_sub_directories_to_keep) =
     match components with
     | ".dune" :: _ ->
       (* Dummy rule to prevent dune from deleting this file. See comment

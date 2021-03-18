@@ -63,7 +63,7 @@ let programs ~modules ~(exes : Executables.t) =
 let o_files sctx ~dir ~expander ~(exes : Executables.t) ~linkages ~dir_contents
     ~requires_compile =
   if not (Executables.has_foreign exes) then
-    []
+    Memo.Build.return []
   else
     let what =
       if List.is_empty exes.buildable.Dune_file.Buildable.foreign_stubs then
@@ -79,14 +79,17 @@ let o_files sctx ~dir ~expander ~(exes : Executables.t) ~linkages ~dir_contents
               "If you only need to build a native executable use \"(modes \
                exe)\"."
           ];
-    let foreign_sources =
-      let foreign_sources = Dir_contents.foreign_sources dir_contents in
+    let* foreign_sources =
+      let+ foreign_sources = Dir_contents.foreign_sources dir_contents in
       let first_exe = first_exe exes in
       Foreign_sources.for_exes foreign_sources ~first_exe
     in
-    Foreign_rules.build_o_files ~sctx ~dir ~expander ~requires:requires_compile
-      ~dir_contents ~foreign_sources
-    |> List.map ~f:(Memo.Build.map ~f:Path.build)
+    let+ o_files =
+      Foreign_rules.build_o_files ~sctx ~dir ~expander
+        ~requires:requires_compile ~dir_contents ~foreign_sources
+      |> Memo.Build.all
+    in
+    List.map o_files ~f:Path.build
 
 let with_empty_intf ~sctx ~dir module_ =
   let name =
@@ -201,7 +204,6 @@ let executables_rules ~sctx ~dir ~expander ~dir_contents ~scope ~compile_info
     let* o_files =
       o_files sctx ~dir ~expander ~exes ~linkages ~dir_contents
         ~requires_compile
-      |> Memo.Build.all
     in
     Check_rules.add_files sctx ~dir o_files;
     Exe.build_and_link_many cctx ~programs ~linkages ~link_args ~o_files

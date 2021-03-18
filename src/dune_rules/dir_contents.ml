@@ -17,9 +17,10 @@ type t =
   { kind : kind
   ; dir : Path.Build.t
   ; text_files : String.Set.t
-  ; foreign_sources : Foreign_sources.t Memo.Lazy.t
-  ; mlds : (Dune_file.Documentation.t * Path.Build.t list) list Memo.Lazy.t
-  ; coq : Coq_sources.t Memo.Lazy.t
+  ; foreign_sources : Foreign_sources.t Memo.Lazy.Async.t
+  ; mlds :
+      (Dune_file.Documentation.t * Path.Build.t list) list Memo.Lazy.Async.t
+  ; coq : Coq_sources.t Memo.Lazy.Async.t
   ; ml : Ml_sources.t Memo.Lazy.Async.t
   }
 
@@ -33,9 +34,9 @@ let empty kind ~dir =
   ; dir
   ; text_files = String.Set.empty
   ; ml = Memo.Lazy.Async.of_val Ml_sources.empty
-  ; mlds = Memo.Lazy.of_val []
-  ; foreign_sources = Memo.Lazy.of_val Foreign_sources.empty
-  ; coq = Memo.Lazy.of_val Coq_sources.empty
+  ; mlds = Memo.Lazy.Async.of_val []
+  ; foreign_sources = Memo.Lazy.Async.of_val Foreign_sources.empty
+  ; coq = Memo.Lazy.Async.of_val Coq_sources.empty
   }
 
 type gen_rules_result =
@@ -44,7 +45,7 @@ type gen_rules_result =
 
 let dir t = t.dir
 
-let coq t = Memo.Lazy.force t.coq
+let coq t = Memo.Lazy.Async.force t.coq
 
 let ocaml t = Memo.Lazy.Async.force t.ml
 
@@ -60,10 +61,10 @@ let dirs t =
 
 let text_files t = t.text_files
 
-let foreign_sources t = Memo.Lazy.force t.foreign_sources
+let foreign_sources t = Memo.Lazy.Async.force t.foreign_sources
 
 let mlds t (doc : Documentation.t) =
-  let map = Memo.Lazy.force t.mlds in
+  let+ map = Memo.Lazy.Async.force t.mlds in
   match
     List.find_map map ~f:(fun (doc', x) ->
         Option.some_if (Loc.equal doc.loc doc'.loc) x)
@@ -80,16 +81,17 @@ let mlds t (doc : Documentation.t) =
 let build_mlds_map (d : _ Dir_with_dune.t) ~files =
   let dir = d.ctx_dir in
   let mlds =
-    Memo.lazy_ (fun () ->
+    Memo.lazy_async (fun () ->
         String.Set.fold files ~init:String.Map.empty ~f:(fun fn acc ->
             match String.lsplit2 fn ~on:'.' with
             | Some (s, "mld") -> String.Map.set acc s fn
-            | _ -> acc))
+            | _ -> acc)
+        |> Memo.Build.return)
   in
-  List.filter_map d.data ~f:(function
+  Memo.Build.sequential_map d.data ~f:(function
     | Documentation doc ->
-      let mlds =
-        let mlds = Memo.Lazy.force mlds in
+      let+ mlds =
+        let+ mlds = Memo.Lazy.Async.force mlds in
         Ordered_set_lang.Unordered_string.eval doc.mld_files
           ~key:(fun x -> x)
           ~parse:(fun ~loc s ->
@@ -104,7 +106,8 @@ let build_mlds_map (d : _ Dir_with_dune.t) ~files =
           ~standard:mlds
       in
       Some (doc, List.map (String.Map.values mlds) ~f:(Path.Build.relative dir))
-    | _ -> None)
+    | _ -> Memo.Build.return None)
+  >>| List.filter_map ~f:Fun.id
 
 module rec Load : sig
   val get : Super_context.t -> dir:Path.Build.t -> t Memo.Build.t
@@ -268,14 +271,16 @@ end = struct
             ; dir
             ; text_files = files
             ; ml
-            ; mlds = Memo.lazy_ (fun () -> build_mlds_map d ~files)
+            ; mlds = Memo.lazy_async (fun () -> build_mlds_map d ~files)
             ; foreign_sources =
-                Memo.lazy_ (fun () ->
+                Memo.lazy_async (fun () ->
                     Foreign_sources.make d ~lib_config:ctx.lib_config
-                      ~include_subdirs ~dirs)
+                      ~include_subdirs ~dirs
+                    |> Memo.Build.return)
             ; coq =
-                Memo.lazy_ (fun () ->
-                    Coq_sources.of_dir d ~include_subdirs ~dirs)
+                Memo.lazy_async (fun () ->
+                    Coq_sources.of_dir d ~include_subdirs ~dirs
+                    |> Memo.Build.return)
             }
         ; rules
         ; subdirs = Path.Build.Map.empty
@@ -300,12 +305,14 @@ end = struct
               ~dirs)
       in
       let foreign_sources =
-        Memo.lazy_ (fun () ->
+        Memo.lazy_async (fun () ->
             Foreign_sources.make d ~include_subdirs ~lib_config:ctx.lib_config
-              ~dirs)
+              ~dirs
+            |> Memo.Build.return)
       in
       let coq =
-        Memo.lazy_ (fun () -> Coq_sources.of_dir d ~dirs ~include_subdirs)
+        Memo.lazy_async (fun () ->
+            Coq_sources.of_dir d ~dirs ~include_subdirs |> Memo.Build.return)
       in
       let subdirs =
         List.map subdirs ~f:(fun (dir, _local, files) ->
@@ -314,7 +321,7 @@ end = struct
             ; text_files = files
             ; ml
             ; foreign_sources
-            ; mlds = Memo.lazy_ (fun () -> build_mlds_map d ~files)
+            ; mlds = Memo.lazy_async (fun () -> build_mlds_map d ~files)
             ; coq
             })
       in
@@ -324,7 +331,7 @@ end = struct
         ; text_files = files
         ; ml
         ; foreign_sources
-        ; mlds = Memo.lazy_ (fun () -> build_mlds_map d ~files)
+        ; mlds = Memo.lazy_async (fun () -> build_mlds_map d ~files)
         ; coq
         }
       in

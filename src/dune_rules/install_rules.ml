@@ -58,21 +58,24 @@ end = struct
     let virtual_library = Option.is_some (Lib_info.virtual_ lib) in
     let { Lib_config.ext_obj; _ } = lib_config in
     let archives = Lib_info.archives lib in
-    let+ modules =
+    let* modules =
       let+ ml_sources = Dir_contents.ocaml dir_contents in
       Some (Ml_sources.modules ml_sources ~for_:(Library (Lib_info.name lib)))
+    in
+    let+ foreign_archives =
+      if virtual_library then
+        let+ foreign_sources = Dir_contents.foreign_sources dir_contents in
+        let name = Lib_info.name lib in
+        let files = Foreign_sources.for_lib foreign_sources ~name in
+        Foreign.Sources.object_files files ~dir ~ext_obj
+      else
+        Memo.Build.return (Lib_info.foreign_archives lib)
     in
     List.concat_map
       ~f:(List.map ~f:(fun f -> (Section.Lib, f)))
       [ archives.byte
       ; archives.native
-      ; (if virtual_library then
-          let foreign_sources = Dir_contents.foreign_sources dir_contents in
-          let name = Lib_info.name lib in
-          let files = Foreign_sources.for_lib foreign_sources ~name in
-          Foreign.Sources.object_files files ~dir ~ext_obj
-        else
-          Lib_info.foreign_archives lib)
+      ; foreign_archives
       ; Lib_info.eval_native_archives_exn lib ~modules
       ; Lib_info.jsoo_runtime lib
       ]
@@ -338,8 +341,8 @@ end = struct
                 | Coq_stanza.Theory.T coqlib ->
                   Coq_rules.install_rules ~sctx ~dir coqlib
                 | Dune_file.Documentation d ->
-                  let+ dc = Dir_contents.get sctx ~dir in
-                  let mlds = Dir_contents.mlds dc d in
+                  let* dc = Dir_contents.get sctx ~dir in
+                  let+ mlds = Dir_contents.mlds dc d in
                   List.map mlds ~f:(fun mld ->
                       ( None
                       , Install.Entry.make
@@ -448,12 +451,15 @@ end = struct
             let obj_dir = Lib.Local.obj_dir lib in
             let lib = Lib.Local.to_lib lib in
             let name = Lib.name lib in
-            let foreign_objects =
+            let* foreign_objects =
               (* We are writing the list of .o files to dune-package, but we
                  actually only install them for virtual libraries. See
                  [Lib_archives.make] *)
               let dir = Obj_dir.obj_dir obj_dir in
-              Dir_contents.foreign_sources dir_contents
+              let+ foreign_sources =
+                Dir_contents.foreign_sources dir_contents
+              in
+              foreign_sources
               |> Foreign_sources.for_lib ~name
               |> Foreign.Sources.object_files ~dir
                    ~ext_obj:ctx.lib_config.ext_obj

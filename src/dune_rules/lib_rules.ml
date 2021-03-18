@@ -188,9 +188,9 @@ let foreign_rules (library : Foreign.Library.t) ~sctx ~expander ~dir
     ~dir_contents =
   let archive_name = library.archive_name in
   let* o_files =
-    let foreign_sources =
+    let* foreign_sources =
       Dir_contents.foreign_sources dir_contents
-      |> Foreign_sources.for_archive ~archive_name
+      >>| Foreign_sources.for_archive ~archive_name
     in
     Foreign_rules.build_o_files ~sctx ~dir ~expander ~requires:(Result.ok [])
       ~dir_contents ~foreign_sources
@@ -206,8 +206,8 @@ let build_stubs lib ~cctx ~dir ~expander ~requires ~dir_contents
     ~vlib_stubs_o_files =
   let sctx = Compilation_context.super_context cctx in
   let* lib_o_files =
-    let foreign_sources =
-      let foreign_sources = Dir_contents.foreign_sources dir_contents in
+    let* foreign_sources =
+      let+ foreign_sources = Dir_contents.foreign_sources dir_contents in
       let name = Library.best_name lib in
       Foreign_sources.for_lib foreign_sources ~name
     in

@@ -204,8 +204,8 @@ module Context = struct
   let directories_of_lib ~sctx lib =
     let name = Coq_lib.name lib in
     let dir = Coq_lib.src_root lib in
-    let+ dir_contents = Dir_contents.get sctx ~dir in
-    let coq_sources = Dir_contents.coq dir_contents in
+    let* dir_contents = Dir_contents.get sctx ~dir in
+    let+ coq_sources = Dir_contents.coq dir_contents in
     Coq_sources.directories coq_sources ~name
 
   let setup_native_theory_includes ~sctx ~mode
@@ -404,8 +404,8 @@ let setup_rule cctx ~source_rule coq_module =
 let coq_modules_of_theory ~sctx lib =
   let name = Coq_lib.name lib in
   let dir = Coq_lib.src_root lib in
-  let+ dir_contents = Dir_contents.get sctx ~dir in
-  let coq_sources = Dir_contents.coq dir_contents in
+  let* dir_contents = Dir_contents.get sctx ~dir in
+  let+ coq_sources = Dir_contents.coq dir_contents in
   Coq_sources.library coq_sources ~name
 
 let source_rule ~sctx theories =
@@ -426,7 +426,7 @@ let setup_rules ~sctx ~dir ~dir_contents (s : Theory.t) =
   let coq_lib_db = Scope.coq_libs scope in
   let theory = Coq_lib.DB.resolve coq_lib_db s.name |> Result.ok_exn in
 
-  let coq_dir_contents = Dir_contents.coq dir_contents in
+  let* coq_dir_contents = Dir_contents.coq dir_contents in
 
   let+ cctx =
     let wrapper_name = Coq_lib.wrapper theory in
@@ -495,7 +495,7 @@ let install_rules ~sctx ~dir s =
     let mode = select_native_mode ~sctx ~buildable in
     let loc = s.buildable.loc in
     let scope = SC.find_scope_by_dir sctx dir in
-    let+ dir_contents = Dir_contents.get sctx ~dir in
+    let* dir_contents = Dir_contents.get sctx ~dir in
     let name = snd s.name in
     (* This must match the wrapper prefix for now to remain compatible *)
     let dst_suffix = Coq_lib_name.dir (snd s.name) in
@@ -525,8 +525,8 @@ let install_rules ~sctx ~dir s =
            orig_file) *)
         Install.Entry.make Section.Lib_root ~dst:(to_dst dst_file) orig_file )
     in
-    Dir_contents.coq dir_contents
-    |> Coq_sources.library ~name
+    let+ coq_sources = Dir_contents.coq dir_contents in
+    coq_sources |> Coq_sources.library ~name
     |> List.concat_map ~f:(fun (vfile : Coq_module.t) ->
            let obj_files =
              Coq_module.obj_files ~wrapper_name ~mode ~obj_dir:dir
@@ -552,7 +552,7 @@ let coqpp_rules ~sctx ~dir (s : Coqpp.t) =
   List.map ~f:mlg_rule s.modules
 
 let extraction_rules ~sctx ~dir ~dir_contents (s : Extraction.t) =
-  let+ cctx =
+  let* cctx =
     let wrapper_name = "DuneExtraction" in
     let theories_deps =
       let scope = SC.find_scope_by_dir sctx dir in
@@ -563,8 +563,8 @@ let extraction_rules ~sctx ~dir ~dir_contents (s : Extraction.t) =
     Context.create sctx ~coqc_dir:dir ~dir ~wrapper_name ~theories_deps
       ~theory_dirs s.buildable
   in
-  let coq_module =
-    let coq = Dir_contents.coq dir_contents in
+  let+ coq_module =
+    let+ coq = Dir_contents.coq dir_contents in
     Coq_sources.extract coq s
   in
   let ml_targets =

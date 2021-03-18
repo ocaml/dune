@@ -217,7 +217,7 @@ let compile_mld sctx (m : Mld.t) ~includes ~doc_dir ~pkg =
   let odoc_file = Mld.odoc_file m ~doc_dir in
   let odoc_input = Mld.odoc_input m in
   let* odoc = odoc sctx in
-  let* odoc_base_flags = odoc_base_flags sctx odoc_file in
+  let* odoc_base_flags = odoc_base_flags sctx odoc_input in
   let+ () =
     add_rule sctx
       (Command.run ~dir:(Path.build doc_dir) odoc

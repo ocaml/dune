@@ -323,8 +323,8 @@ let setup_build_archives (lib : Dune_file.Library.t) ~cctx
     Mode.Dict.Set.iter_concurrently modes ~f:(fun mode ->
         build_lib lib ~native_archives ~dir ~sctx ~expander ~flags ~mode
           ~cm_files)
-  (* Build *.cma.js *)
   and* () =
+    (* Build *.cma.js *)
     Memo.Build.if_ modes.byte (fun () ->
         let action_with_targets =
           let src =
@@ -434,7 +434,8 @@ let library_rules (lib : Library.t) ~cctx ~source_modules ~dir_contents
   let preprocess =
     Preprocess.Per_module.with_instrumentation lib.buildable.preprocess
       ~instrumentation_backend:
-        (Lib.DB.instrumentation_backend (Scope.libs scope)) in
+        (Lib.DB.instrumentation_backend (Scope.libs scope))
+  in
   ( cctx
   , Merlin.make ~requires:requires_compile ~stdlib_dir ~flags ~modules
       ~preprocess ~libname:(snd lib.name) ~obj_dir

@@ -71,7 +71,7 @@ echo "Testing the current branch ($CURRENT_BRANCH)"
 run_test current
 
 echo "Main branch" >> _perf/main
-echo "=============" >> _perf/main
+echo "===========" >> _perf/main
 git checkout main
 echo "Testing main"
 run_test main

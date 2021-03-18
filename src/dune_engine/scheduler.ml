@@ -1,4 +1,6 @@
-let on_error = Report_error.report
+let on_error e =
+  Report_error.report e;
+  Fiber.return ()
 
 open! Stdune
 open Import
@@ -999,16 +1001,17 @@ module Run = struct
       let open Fiber.O in
       let* res =
         let+ res =
-          let on_error exn () =
-            match t.status with
+          let on_error exn =
+            (match t.status with
             | Building -> Report_error.report exn
             | Restarting_build -> ()
             | Waiting_for_file_changes _ ->
               (* We are inside a build, so we aren't waiting for a file change
                  event *)
-              assert false
+              assert false);
+            Fiber.return ()
           in
-          Fiber.fold_errors ~init:() ~on_error once
+          Fiber.map_reduce_errors (module Monoid.Unit) ~on_error once
         in
         finally ();
         res

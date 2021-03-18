@@ -144,18 +144,13 @@ with type 'a fiber := 'a t
     It is guaranteed that after the fiber has returned a value, [on_error] will
     never be called. *)
 val with_error_handler :
-  (unit -> 'a t) -> on_error:(Exn_with_backtrace.t -> unit) -> 'a t
+  (unit -> 'a t) -> on_error:(Exn_with_backtrace.t -> unit t) -> 'a t
 
-(** [fold_errors f ~init ~on_error] calls [on_error] for every exception raised
-    during the execution of [f]. This include exceptions raised when calling
-    [f ()] or during the execution of fibers after [f ()] has returned.
-
-    Exceptions raised by [on_error] are passed on to the parent error handler. *)
-val fold_errors :
-     (unit -> 'a t)
-  -> init:'b
-  -> on_error:(Exn_with_backtrace.t -> 'b -> 'b)
-  -> ('a, 'b) Result.t t
+val map_reduce_errors :
+     (module Monoid with type t = 'a)
+  -> on_error:(Exn_with_backtrace.t -> 'a t)
+  -> (unit -> 'b t)
+  -> ('b, 'a) result t
 
 (** [collect_errors f] is:
     [fold_errors f ~init:\[\] ~on_error:(fun e l -> e :: l)] *)

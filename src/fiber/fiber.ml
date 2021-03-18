@@ -67,7 +67,7 @@ module Execution_context : sig
   (* Set the current error handler. [on_error] is called in the current
      execution context. *)
   val set_error_handler :
-    on_error:(Exn_with_backtrace.t -> unit) -> ('a -> 'b t) -> 'a -> 'b t
+    on_error:(Exn_with_backtrace.t -> unit t) -> ('a -> 'b t) -> 'a -> 'b t
 
   val vars : unit -> Univ_map.t
 
@@ -90,7 +90,6 @@ end = struct
 
   and 'a on_release_exec =
     { k : ('a, unit) result k
-    ; mutable result : ('a, unit) result
     ; mutable ref_count : int
     }
 
@@ -103,8 +102,10 @@ end = struct
     ; ctx : t
     }
 
-  let current =
-    ref { on_error = None; vars = Univ_map.empty; on_release = Do_nothing }
+  let create () =
+    { on_error = None; vars = Univ_map.empty; on_release = Do_nothing }
+
+  let current = ref (create ())
 
   let add_refs n =
     let t = !current in
@@ -112,22 +113,7 @@ end = struct
     | Do_nothing -> ()
     | Exec r -> r.ref_count <- r.ref_count + n
 
-  let rec deref t =
-    match t.on_release with
-    | Do_nothing -> ()
-    | Exec r ->
-      let n = r.ref_count - 1 in
-      assert (n >= 0);
-      r.ref_count <- n;
-      if n = 0 then (
-        current := r.k.ctx;
-        (* We need to call [safe_run_k] as we might be the in handler of the
-           [try...with] block inside [apply] and so we are no more in a
-           [try...with] blocks *)
-        safe_run_k r.k.run r.result
-      )
-
-  and safe_run_k : type a. (a -> unit) -> a -> unit =
+  let rec safe_run_k : type a. (a -> unit) -> a -> unit =
    fun k x ->
     try k x with
     | exn -> forward_error exn
@@ -135,35 +121,53 @@ end = struct
   and forward_exn_with_bt t exn =
     match t.on_error with
     | None -> Exn_with_backtrace.reraise exn
-    | Some { ctx; run } -> (
+    | Some { ctx; run } ->
       current := ctx;
-      try run exn with
-      | exn ->
-        let exn = Exn_with_backtrace.capture exn in
-        forward_exn_with_bt ctx exn)
+      safe_run_k run exn
 
   and forward_error exn =
     let exn = Exn_with_backtrace.capture exn in
-    let t = !current in
-    forward_exn_with_bt t exn;
-    deref t
+    forward_exn_with_bt !current exn
+
+  let deref t =
+    match t.on_release with
+    | Do_nothing -> ()
+    | Exec r ->
+      r.ref_count <- r.ref_count - 1;
+      if r.ref_count = 0 then (
+        current := r.k.ctx;
+        (* We need to call [safe_run_k] as we might be the in handler of the
+           [try...with] block inside [apply] and so we are no more in a
+           [try...with] blocks *)
+        safe_run_k r.k.run (Error ())
+      ) else
+        assert (r.ref_count > 0)
+
+  let deref_finalize k x =
+    match !current.on_release with
+    | Do_nothing -> ()
+    | Exec r ->
+      r.ref_count <- r.ref_count - 1;
+      assert (r.ref_count = 0);
+      current := r.k.ctx;
+      (* We need to call [safe_run_k] as we might be the in handler of the
+         [try...with] block inside [apply] and so we are no more in a
+         [try...with] blocks *)
+      safe_run_k k x
 
   let deref () = deref !current
 
   let wait_errors f k =
     let t = !current in
-    let on_release =
-      { k = { ctx = t; run = k }; ref_count = 1; result = Error () }
-    in
+    let on_release = { k = { ctx = t; run = k }; ref_count = 1 } in
     let child = { t with on_release = Exec on_release } in
     current := child;
-    f () (fun x ->
-        on_release.result <- Ok x;
-        deref ())
+    f () (fun x -> deref_finalize k (Ok x))
 
   let set_error_handler ~on_error f x k =
     let t = !current in
-    let on_error = Some { run = on_error; ctx = t } in
+    let run exn = on_error exn deref in
+    let on_error = Some { run; ctx = t } in
     current := { t with on_error };
     f x (fun x ->
         current := t;
@@ -207,17 +211,15 @@ end = struct
 
   let reraise_all exns =
     let backup = !current in
-    List.iter exns ~f:(forward_exn_with_bt backup);
-    current := backup;
-    deref ()
+    add_refs (List.length exns - 1);
+    List.iter exns ~f:(forward_exn_with_bt backup)
 
   let new_run f =
     let backup = !current in
     Exn.protect
       ~finally:(fun () -> current := backup)
       ~f:(fun () ->
-        current :=
-          { on_error = None; vars = Univ_map.empty; on_release = Do_nothing };
+        current := create ();
         f ())
 end
 
@@ -453,18 +455,27 @@ let with_error_handler f ~on_error k = EC.set_error_handler ~on_error f () k
 
 let wait_errors f k = EC.wait_errors f k
 
-let fold_errors f ~init ~on_error =
-  let acc = ref init in
-  let on_error exn = acc := on_error exn !acc in
+let map_reduce_errors (type a) (module M : Monoid with type t = a) ~on_error f =
+  let acc = ref M.empty in
+  let on_error exn =
+    let+ m = on_error exn in
+    acc := M.combine !acc m
+  in
   wait_errors (fun () -> with_error_handler ~on_error f) >>| function
   | Ok _ as ok -> ok
   | Error () -> Error !acc
 
 let collect_errors f =
-  let+ res = fold_errors f ~init:[] ~on_error:(fun e l -> e :: l) in
+  let module Exns = Monoid.Appendable_list (Exn_with_backtrace) in
+  let+ res =
+    map_reduce_errors
+      (module Exns)
+      f
+      ~on_error:(fun e -> return (Appendable_list.singleton e))
+  in
   match res with
   | Ok x -> Ok x
-  | Error l -> Error (List.rev l)
+  | Error l -> Error (Appendable_list.to_list l)
 
 let reraise_all = function
   | [] -> never

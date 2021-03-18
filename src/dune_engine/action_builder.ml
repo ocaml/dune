@@ -385,13 +385,14 @@ struct
         | false -> exec else_)
       | Catch (t, on_error) -> (
         let+ res =
-          Memo.Build.fold_errors ~init:on_error
-            ~on_error:(fun _ x -> x)
+          Memo.Build.map_reduce_errors
+            (module Monoid.Unit)
+            ~on_error:(fun _ -> Memo.Build.return ())
             (fun () -> exec t)
         in
         match res with
         | Ok r -> r
-        | Error r -> (r, Dep.Map.empty))
+        | Error () -> (on_error, Dep.Map.empty))
       | Memo m -> Poly_memo.eval m
       | Memo_build f ->
         let+ f = f in

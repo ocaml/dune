@@ -76,13 +76,13 @@ module Build : sig
       the transition to the memo monad *)
 
   val with_error_handler :
-    (unit -> 'a t) -> on_error:(Exn_with_backtrace.t -> unit) -> 'a t
+    (unit -> 'a t) -> on_error:(Exn_with_backtrace.t -> unit t) -> 'a t
 
-  val fold_errors :
-       (unit -> 'a t)
-    -> init:'b
-    -> on_error:(Exn_with_backtrace.t -> 'b -> 'b)
-    -> ('a, 'b) Result.t t
+  val map_reduce_errors :
+       (module Monoid with type t = 'a)
+    -> on_error:(Exn_with_backtrace.t -> 'a t)
+    -> (unit -> 'b t)
+    -> ('b, 'a) result t
 
   val collect_errors :
     (unit -> 'a t) -> ('a, Exn_with_backtrace.t list) Result.t t

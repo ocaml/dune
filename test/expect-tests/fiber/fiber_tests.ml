@@ -161,7 +161,7 @@ Error [ { exn = "Exit"; backtrace = "" } ]
 |}]
 
 let log_error (e : Exn_with_backtrace.t) =
-  Printf.printf "raised %s\n" (Printexc.to_string e.exn)
+  Fiber.return (Printf.printf "raised %s\n" (Printexc.to_string e.exn))
 
 let%expect_test _ =
   test (backtrace_result unit)
@@ -194,7 +194,9 @@ let%expect_test _ =
 let%expect_test "collect errors inside with_error_handler" =
   test (backtrace_result unit) ~expect_never:true
     (Fiber.with_error_handler
-       ~on_error:(fun _ -> print_endline "captured the error")
+       ~on_error:(fun _ ->
+         print_endline "captured the error";
+         Fiber.return ())
        (fun () ->
          let* res = Fiber.collect_errors (fun () -> raise (Failure "")) in
          match res with
@@ -229,13 +231,14 @@ let%expect_test _ =
     (Fiber.fork_and_join
        (fun () ->
          let log_error by (e : Exn_with_backtrace.t) =
-           Printf.printf "%s: raised %s\n" by (Printexc.to_string e.exn)
+           Printf.printf "%s: raised %s\n" by (Printexc.to_string e.exn);
+           Fiber.return ()
          in
          Fiber.with_error_handler ~on_error:(log_error "outer") (fun () ->
              Fiber.fork_and_join failing_fiber (fun () ->
                  Fiber.with_error_handler
                    ~on_error:(fun e ->
-                     log_error "inner" e;
+                     let+ () = log_error "inner" e in
                      raise Exit)
                    failing_fiber)))
        long_running_fiber);
@@ -314,7 +317,8 @@ let%expect_test "finalize" =
         Fiber.with_error_handler
           (fun () -> raise Exit)
           ~on_error:(fun exn_with_bt ->
-            printf "exn: %s\n%!" (Printexc.to_string exn_with_bt.exn)))
+            printf "exn: %s\n%!" (Printexc.to_string exn_with_bt.exn);
+            Fiber.return ()))
   in
   test unit fiber ~expect_never:true;
   [%expect {|
@@ -377,7 +381,8 @@ let%expect_test "sequential_iter error handling" =
                 else
                   Fiber.return (Printf.printf "count: %d\n" x)))
           ~on_error:(fun exn_with_bt ->
-            printf "exn: %s\n%!" (Printexc.to_string exn_with_bt.exn)))
+            printf "exn: %s\n%!" (Printexc.to_string exn_with_bt.exn);
+            Fiber.return ()))
   in
   test unit fiber ~expect_never:true;
   [%expect

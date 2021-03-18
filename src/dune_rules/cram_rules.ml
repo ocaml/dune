@@ -54,13 +54,13 @@ let test_rule ~sctx ~expander ~dir (spec : effective)
   match test with
   | Error (Missing_run_t test) ->
     (* We error out on invalid tests even if they are disabled. *)
-    Memo.Build.sequential_iter aliases ~f:(fun alias ->
+    Memo.Build.parallel_iter aliases ~f:(fun alias ->
         Alias_rules.add sctx ~alias ~stamp:(stamp_no_rule ()) ~loc ~locks:[]
           (missing_run_t test))
   | Ok test -> (
     match enabled with
     | false ->
-      Memo.Build.sequential_iter aliases ~f:(fun alias ->
+      Memo.Build.parallel_iter aliases ~f:(fun alias ->
           Alias_rules.add_empty sctx ~alias ~loc ~stamp:(stamp_no_rule ()))
     | true ->
       let prefix_with, _ = Path.Build.extract_build_context_dir_exn dir in
@@ -98,7 +98,7 @@ let test_rule ~sctx ~expander ~dir (spec : effective)
         action
       in
       let cram = Action_builder.with_no_targets cram in
-      Memo.Build.sequential_iter aliases ~f:(fun alias ->
+      Memo.Build.parallel_iter aliases ~f:(fun alias ->
           Alias_rules.add sctx ~alias ~stamp ~loc cram ~locks:[]))
 
 let rules ~sctx ~expander ~dir tests =
@@ -125,7 +125,7 @@ let rules ~sctx ~expander ~dir tests =
     | None -> acc
     | Some dir -> collect_whole_subtree [ acc ] dir
   in
-  Memo.Build.sequential_iter tests ~f:(fun test ->
+  Memo.Build.parallel_iter tests ~f:(fun test ->
       let name =
         match test with
         | Ok test -> Cram_test.name test
@@ -142,7 +142,6 @@ let rules ~sctx ~expander ~dir tests =
         in
         List.fold_left stanzas ~init
           ~f:(fun acc (dir, (spec : Cram_stanza.t)) ->
-            let* acc = acc in
             match
               match spec.applies_to with
               | Whole_subtree -> true
@@ -150,8 +149,9 @@ let rules ~sctx ~expander ~dir tests =
                 Predicate_lang.Glob.exec pred
                   ~standard:Predicate_lang.Glob.true_ name
             with
-            | false -> Memo.Build.return acc
+            | false -> acc
             | true ->
+              let* acc = acc in
               let+ deps =
                 match spec.deps with
                 | None -> Memo.Build.return acc.deps

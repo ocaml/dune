@@ -88,7 +88,7 @@ module Dict : sig
 
     val of_list : mode list -> t
 
-    val iter_sequentially :
+    val iter_concurrently :
       t -> f:(mode -> unit Memo.Build.t) -> unit Memo.Build.t
   end
 end

@@ -107,6 +107,14 @@ module Obj_map : sig
 end
 with type module_ := t
 
+module Obj_map_traversals : sig
+  val parallel_iter :
+    'a Obj_map.t -> f:(t -> 'a -> unit Memo.Build.t) -> unit Memo.Build.t
+
+  val parallel_map :
+    'a Obj_map.t -> f:(t -> 'a -> 'b Memo.Build.t) -> 'b Obj_map.t Memo.Build.t
+end
+
 val sources : t -> Path.t list
 
 val visibility : t -> Visibility.t

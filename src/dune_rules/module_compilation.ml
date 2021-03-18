@@ -212,13 +212,12 @@ let build_module ~dep_graphs ?(precompiled_cmi = false) cctx m =
   let open Memo.Build.O in
   let* () =
     build_cm cctx m ~dep_graphs ~precompiled_cmi ~cm_kind:Cmo ~phase:None
-  in
-  let ctx = CC.context cctx in
-  let can_split =
-    Ocaml_version.supports_split_at_emit ctx.version
-    || Ocaml_config.is_dev_version ctx.ocaml_config
-  in
-  let* () =
+  and* () =
+    let ctx = CC.context cctx in
+    let can_split =
+      Ocaml_version.supports_split_at_emit ctx.version
+      || Ocaml_config.is_dev_version ctx.ocaml_config
+    in
     match (ctx.fdo_target_exe, can_split) with
     | None, _ ->
       build_cm cctx m ~dep_graphs ~precompiled_cmi ~cm_kind:Cmx ~phase:None
@@ -231,8 +230,7 @@ let build_module ~dep_graphs ?(precompiled_cmi = false) cctx m =
       >>> Fdo.opt_rule cctx m
       >>> build_cm cctx m ~dep_graphs ~precompiled_cmi ~cm_kind:Cmx
             ~phase:(Some Fdo.Emit)
-  in
-  let* () =
+  and* () =
     Memo.Build.if_ (not precompiled_cmi) (fun () ->
         build_cm cctx m ~dep_graphs ~precompiled_cmi ~cm_kind:Cmi ~phase:None)
   in
@@ -363,7 +361,6 @@ let build_root_module root_module ~entries ~cctx =
 
 let build_all cctx ~dep_graphs =
   let open Memo.Build.O in
-  (* CR amokhov: Remove this lazy if possible. *)
   let for_wrapped_compat = lazy (Compilation_context.for_wrapped_compat cctx) in
   let modules = Compilation_context.modules cctx in
   Memo.Build.parallel_iter

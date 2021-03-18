@@ -72,8 +72,7 @@ let make ~dir ~inherit_from ~scope ~config_stanza ~profile ~expander
           match inherit_from with
           | None -> f_absent None
           | Some t ->
-            let* t = Memo.Lazy.Async.force t in
-            let* field = field t in
+            let* field = Memo.Lazy.Async.force t >>= field in
             f_absent (Some field))
         | Some x -> Memo.Build.return x)
   in
@@ -82,7 +81,7 @@ let make ~dir ~inherit_from ~scope ~config_stanza ~profile ~expander
         let+ expanded =
           Memo.Build.sequential_map config.binaries
             ~f:
-              (File_binding.Unexpanded.expand_build ~dir ~f:(fun template ->
+              (File_binding.Unexpanded.expand ~dir ~f:(fun template ->
                    let+ expander_for_artifacts =
                      Memo.Lazy.Async.force expander_for_artifacts
                    in

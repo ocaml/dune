@@ -44,7 +44,7 @@ module Unexpanded = struct
     let dst = Option.map ~f:expand t.dst in
     Install.Entry.adjust_dst ~section ~src:(expand_partial t.src) ~dst
 
-  let expand_build t ~dir ~f =
+  let expand t ~dir ~f =
     let open Memo.Build.O in
     let f sw =
       let+ f = f sw in
@@ -63,8 +63,11 @@ module Unexpanded = struct
     in
     { src; dst }
 
-  (* CR-someday amokhov: Get rid of code duplication with [expand_build]. *)
-  let expand t ~dir ~f =
+  (* CR-someday amokhov: The function below is almost the same as [expand] but
+     factoring out the common functionality might make it more complicated, so
+     I'm not doing this for now. This function has only one remaining use site
+     and is likely to disappear with further "monadification". *)
+  let expand_pure t ~dir ~f =
     let f sw = (String_with_vars.loc sw, f sw) in
     let src =
       let loc, expanded = f t.src in

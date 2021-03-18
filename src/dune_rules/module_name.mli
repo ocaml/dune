@@ -71,6 +71,14 @@ val wrap : t -> with_:t -> Unique.t
 
 module Map : Map.S with type key = t
 
+module Map_traversals : sig
+  val parallel_iter :
+    'a Map.t -> f:(t -> 'a -> unit Memo.Build.t) -> unit Memo.Build.t
+
+  val parallel_map :
+    'a Map.t -> f:(t -> 'a -> 'b Memo.Build.t) -> 'b Map.t Memo.Build.t
+end
+
 module Set : sig
   include Set.S with type elt = t
 

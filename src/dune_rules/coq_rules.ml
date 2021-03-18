@@ -241,11 +241,9 @@ module Context = struct
       Lib.DB.resolve lib_db (Loc.none, Lib_name.of_string "coq.kernel")
       |> Result.map ~f:(fun lib -> Util.coq_nativelib_cmi_dirs [ lib ])
     in
-    let* native_theory_includes =
+    let+ native_theory_includes =
       setup_native_theory_includes ~sctx ~mode ~theories_deps ~theory_dirs
-    in
-    let build_dir = (Super_context.context sctx).build_dir in
-    let+ coqdep = rr "coqdep"
+    and+ coqdep = rr "coqdep"
     and+ coqc = rr "coqc"
     and+ profile_flags = Super_context.coq sctx ~dir in
     { coqdep
@@ -259,7 +257,7 @@ module Context = struct
     ; ml_flags
     ; scope
     ; boot_type = Bootstrap.No_boot
-    ; build_dir
+    ; build_dir = (Super_context.context sctx).build_dir
     ; profile_flags
     ; mode
     ; native_includes

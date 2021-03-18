@@ -58,11 +58,10 @@ end = struct
     let virtual_library = Option.is_some (Lib_info.virtual_ lib) in
     let { Lib_config.ext_obj; _ } = lib_config in
     let archives = Lib_info.archives lib in
-    let* modules =
+    let+ modules =
       let+ ml_sources = Dir_contents.ocaml dir_contents in
       Some (Ml_sources.modules ml_sources ~for_:(Library (Lib_info.name lib)))
-    in
-    let+ foreign_archives =
+    and+ foreign_archives =
       if virtual_library then
         let+ foreign_sources = Dir_contents.foreign_sources dir_contents in
         let name = Lib_info.name lib in
@@ -320,7 +319,7 @@ end = struct
                 | Dune_file.Install i
                 | Dune_file.Executables { install_conf = Some i; _ } ->
                   let path_expander =
-                    File_binding.Unexpanded.expand ~dir
+                    File_binding.Unexpanded.expand_pure ~dir
                       ~f:(Expander.Static.expand_str expander)
                   in
                   let section = i.section in
@@ -464,8 +463,7 @@ end = struct
               |> Foreign.Sources.object_files ~dir
                    ~ext_obj:ctx.lib_config.ext_obj
               |> List.map ~f:Path.build
-            in
-            let* modules =
+            and* modules =
               Dir_contents.ocaml dir_contents
               >>| Ml_sources.modules ~for_:(Library name)
             in
@@ -663,10 +661,8 @@ end = struct
     let deprecated_packages =
       Package.Name.Map.of_list_multi deprecated_packages
     in
-    Package.Name.Map.foldi pkg.deprecated_package_names
-      ~init:(Memo.Build.return ()) ~f:(fun name _ acc ->
-        acc
-        >>>
+    Package.Name.Map_traversals.parallel_iter pkg.deprecated_package_names
+      ~f:(fun name _loc ->
         let meta = Package_paths.deprecated_meta_file ctx pkg name in
         Super_context.add_rule sctx ~dir:ctx.build_dir
           ((let meta =
@@ -686,9 +682,9 @@ end = struct
 
   let meta_and_dune_package_rules_impl (project, sctx) =
     Dune_project.packages project
-    |> Package.Name.Map.fold ~init:(Memo.Build.return ())
-         ~f:(fun (pkg : Package.t) acc ->
-           acc >>> gen_dune_package sctx pkg >>> gen_meta_file sctx pkg)
+    |> Package.Name.Map_traversals.parallel_iter
+         ~f:(fun _name (pkg : Package.t) ->
+           gen_dune_package sctx pkg >>> gen_meta_file sctx pkg)
 
   let meta_and_dune_package_rules_memo =
     let module Project_and_super_context = struct
@@ -722,7 +718,7 @@ let symlink_installed_artifacts_to_build_install sctx
     ~install_paths =
   let ctx = Super_context.context sctx in
   let install_dir = Local_install_path.dir ~context:ctx.name in
-  Memo.Build.sequential_map entries ~f:(fun (loc, entry) ->
+  Memo.Build.parallel_map entries ~f:(fun (loc, entry) ->
       let dst =
         let relative =
           Install.Entry.relative_installed_path entry ~paths:install_paths

@@ -1,5 +1,6 @@
 open! Dune_engine
 open! Import
+open Memo.Build.O
 
 let transitive_deps_contents modules =
   List.map modules ~f:(fun m -> Module_name.to_string (Module.name m))
@@ -23,20 +24,19 @@ let ooi_deps cctx ~vlib_obj_map ~(ml_kind : Ml_kind.t) (m : Module.t) =
     Ocamlobjinfo.rules ~dir ~ctx ~unit
   in
   let add_rule = Super_context.add_rule sctx ~dir in
-  let open Memo.Build.O in
-  let* () = add_rule write in
   let read =
-    let open Action_builder.O in
     Action_builder.memoize "ocamlobjinfo"
-      (let+ (ooi : Ocamlobjinfo.t) = read in
-       Module_name.Unique.Set.to_list ooi.intf
-       |> List.filter_map ~f:(fun dep ->
-              if Module.obj_name m = dep then
-                None
-              else
-                Module_name.Unique.Map.find vlib_obj_map dep))
+      (let open Action_builder.O in
+      let+ (ooi : Ocamlobjinfo.t) = read in
+      Module_name.Unique.Set.to_list ooi.intf
+      |> List.filter_map ~f:(fun dep ->
+             if Module.obj_name m = dep then
+               None
+             else
+               Module_name.Unique.Map.find vlib_obj_map dep))
   in
-  let+ () =
+  let+ () = add_rule write
+  and+ () =
     add_rule
       (let target = Obj_dir.Module.dep obj_dir (Transitive (m, ml_kind)) in
        Action_builder.map read ~f:transitive_deps_contents
@@ -76,7 +76,6 @@ let deps_of_vlib_module cctx ~ml_kind m =
       Obj_dir.Module.dep obj_dir (Transitive (m, ml_kind))
     in
     let sctx = Compilation_context.super_context cctx in
-    let open Memo.Build.O in
     let+ () =
       Super_context.add_rule sctx ~dir (Action_builder.symlink ~src ~dst)
     in
@@ -109,21 +108,20 @@ let rec deps_of cctx ~ml_kind (m : Modules.Sourced_module.t) =
       | Intf -> deps_of cctx ~ml_kind (Imported_from_vlib m)
       | Impl -> deps_of cctx ~ml_kind (Normal m))
 
-let dict_of_func f =
-  let open Memo.Build.O in
+let dict_of_func_concurrently f =
   let+ impl = f ~ml_kind:Ml_kind.Impl
   and+ intf = f ~ml_kind:Ml_kind.Intf in
   Ml_kind.Dict.make ~impl ~intf
 
-let for_module cctx module_ = dict_of_func (deps_of cctx (Normal module_))
+let for_module cctx module_ =
+  dict_of_func_concurrently (deps_of cctx (Normal module_))
 
 let rules cctx ~modules =
   match Modules.as_singleton modules with
   | Some m -> Memo.Build.return (Dep_graph.Ml_kind.dummy m)
   | None ->
     let dir = Compilation_context.dir cctx in
-    dict_of_func (fun ~ml_kind ->
-        let open Memo.Build.O in
+    dict_of_func_concurrently (fun ~ml_kind ->
         let+ per_module =
           Modules.obj_map_build modules ~f:(deps_of cctx ~ml_kind)
         in

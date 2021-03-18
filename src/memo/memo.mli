@@ -39,8 +39,11 @@ module Build : sig
   val both : 'a t -> 'b t -> ('a * 'b) t
 
   (** This uses a sequential implementation. We use the short name to conform
-      with the [Applicative] interface. *)
+      with the [Applicative] interface. See [all_concurrently] for the version
+      with concurrency. *)
   val all : 'a t list -> 'a list t
+
+  val all_concurrently : 'a t list -> 'a list t
 
   val if_ : bool -> (unit -> unit t) -> unit t
 

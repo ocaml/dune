@@ -225,7 +225,7 @@ let build_and_link_many ~programs ~linkages ~promote ?link_args ?o_files
   let* dep_graphs = Dep_rules.rules cctx ~modules in
   let* () = Module_compilation.build_all cctx ~dep_graphs
   and* link_time_code_gen = Link_time_code_gen.handle_special_libs cctx in
-  Memo.Build.sequential_iter programs
+  Memo.Build.parallel_iter programs
     ~f:(fun { Program.name; main_module_name; loc } ->
       let cm_files =
         let sctx = CC.super_context cctx in
@@ -238,7 +238,7 @@ let build_and_link_many ~programs ~linkages ~promote ?link_args ?o_files
         Cm_files.make ~obj_dir ~modules ~top_sorted_modules
           ~ext_obj:ctx.lib_config.ext_obj
       in
-      Memo.Build.sequential_iter linkages ~f:(fun linkage ->
+      Memo.Build.parallel_iter linkages ~f:(fun linkage ->
           if linkage = Linkage.js then
             link_js ~name ~cm_files ~promote cctx
           else

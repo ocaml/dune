@@ -20,13 +20,13 @@ module Unexpanded : sig
 
   val make : src:Loc.t * string -> dst:Loc.t * string -> t
 
-  val expand_build :
+  val expand :
        t
     -> dir:Path.Build.t
     -> f:(String_with_vars.t -> string Memo.Build.t)
     -> Expanded.t Memo.Build.t
 
-  val expand :
+  val expand_pure :
     t -> dir:Path.Build.t -> f:(String_with_vars.t -> string) -> Expanded.t
 
   val expand_src :

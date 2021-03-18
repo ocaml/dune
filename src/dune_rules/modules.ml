@@ -23,9 +23,6 @@ module Common = struct
   end
 end
 
-module Module_name_map_traversals =
-  Memo.Build.Make_map_traversals (Module_name.Map)
-
 module Stdlib = struct
   type t =
     { modules : Module.Name_map.t
@@ -81,7 +78,7 @@ module Stdlib = struct
   let traverse t ~f =
     let open Memo.Build.O in
     let+ modules =
-      Module_name_map_traversals.parallel_map t.modules ~f:(fun _ -> f)
+      Module_name.Map_traversals.parallel_map t.modules ~f:(fun _ -> f)
     in
     { t with modules }
 
@@ -675,7 +672,7 @@ let rec map_user_written t ~f =
     let+ res = f m in
     Singleton res
   | Unwrapped m ->
-    let+ res = Module_name_map_traversals.parallel_map m ~f:(fun _ -> f) in
+    let+ res = Module_name.Map_traversals.parallel_map m ~f:(fun _ -> f) in
     Unwrapped res
   | Stdlib w ->
     let+ res = Stdlib.traverse w ~f in
@@ -688,7 +685,7 @@ let rec map_user_written t ~f =
        ; wrapped = _
        } as w) ->
     let+ modules =
-      Module_name_map_traversals.parallel_map modules ~f:(fun _ -> f)
+      Module_name.Map_traversals.parallel_map modules ~f:(fun _ -> f)
     in
     Wrapped { w with modules }
   | Impl t ->
@@ -737,14 +734,11 @@ let rec obj_map : 'a. t -> f:(Sourced_module.t -> 'a) -> 'a Module.Obj_map.t =
         | _, Some (Imported_from_vlib _ | Impl_of_virtual_module _) ->
           assert false)
 
-module Module_obj_map_traversals =
-  Memo.Build.Make_map_traversals (Module.Obj_map)
-
 let obj_map_build :
       'a.    t -> f:(Sourced_module.t -> 'a Memo.Build.t)
       -> 'a Module.Obj_map.t Memo.Build.t =
  fun t ~f ->
-  Module_obj_map_traversals.parallel_map (obj_map t ~f) ~f:(fun _ x -> x)
+  Module.Obj_map_traversals.parallel_map (obj_map t ~f) ~f:(fun _ x -> x)
 
 let entry_modules t =
   List.filter

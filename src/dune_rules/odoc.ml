@@ -267,8 +267,8 @@ let setup_html sctx (odoc_file : odoc) ~pkg ~requires =
       (odoc_file.html_dir, [ dummy ])
   in
   let open Memo.Build.O in
-  let* odoc = odoc sctx in
-  let* odoc_base_flags = odoc_base_flags sctx odoc_file.odoc_input in
+  let* odoc = odoc sctx
+  and* odoc_base_flags = odoc_base_flags sctx odoc_file.odoc_input in
   add_rule sctx
     (let open Action_builder.With_targets.O in
     Action_builder.with_no_targets deps
@@ -323,7 +323,9 @@ let setup_library_odoc_rules cctx (library : Library.t) ~dep_graphs =
         compiled :: acc)
   in
   let open Memo.Build.O in
-  let+ modules_and_odoc_files = Memo.Build.all modules_and_odoc_files in
+  let+ modules_and_odoc_files =
+    Memo.Build.all_concurrently modules_and_odoc_files
+  in
   Dep.setup_deps ctx (Lib local_lib)
     (Path.Set.of_list_map modules_and_odoc_files ~f:(fun (_, p) -> Path.build p))
 
@@ -561,7 +563,7 @@ let setup_pkg_html_rules_def =
       and+ pkg_odocs =
         let* pkg_odocs = odocs sctx (Pkg pkg) in
         let+ () =
-          Memo.Build.sequential_iter pkg_odocs
+          Memo.Build.parallel_iter pkg_odocs
             ~f:(setup_html sctx ~pkg:(Some pkg) ~requires)
         in
         pkg_odocs
@@ -679,7 +681,7 @@ let setup_package_odoc_rules_def =
           String.Map.set mlds "index" gen_mld
       in
       let+ odocs =
-        Memo.Build.sequential_map (String.Map.values mlds) ~f:(fun mld ->
+        Memo.Build.parallel_map (String.Map.values mlds) ~f:(fun mld ->
             compile_mld sctx (Mld.create mld) ~pkg
               ~doc_dir:(Paths.odocs ctx (Pkg pkg))
               ~includes:(Action_builder.return []))

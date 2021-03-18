@@ -125,10 +125,9 @@ let build_c ~kind ~sctx ~dir ~expander ~include_flags (loc, src, dst) =
         ];
     Super_context.foreign_flags sctx ~dir ~expander ~flags ~language:kind
     >>| Action_builder.map ~f:(List.append base_flags)
-  in
-  let c_compiler = Ocaml_config.c_compiler ctx.ocaml_config in
-  let* c_compiler =
-    Super_context.resolve_program ~loc:None ~dir sctx c_compiler
+  and* c_compiler =
+    Super_context.resolve_program ~loc:None ~dir sctx
+      (Ocaml_config.c_compiler ctx.ocaml_config)
   in
   let output_param =
     match ctx.lib_config.ccomp_type with

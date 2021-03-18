@@ -78,9 +78,7 @@ let gen_rules sctx t ~dir ~scope =
          ; Target cinaps_ml
          ; Deps (List.map cinapsed_files ~f:Path.build)
          ])
-  in
-  let obj_dir = Obj_dir.make_exe ~dir:cinaps_dir ~name in
-  let* expander = Super_context.expander sctx ~dir in
+  and* expander = Super_context.expander sctx ~dir in
   let* preprocess =
     Preprocessing.make sctx ~dir ~expander
       ~lint:(Preprocess.Per_module.no_preprocessing ())
@@ -99,6 +97,7 @@ let gen_rules sctx t ~dir ~scope =
       ~pps:(Preprocess.Per_module.pps t.preprocess)
       ~dune_version
   in
+  let obj_dir = Obj_dir.make_exe ~dir:cinaps_dir ~name in
   let cctx =
     Compilation_context.create () ~super_context:sctx ~expander ~scope ~obj_dir
       ~modules ~opaque:(Explicit false)

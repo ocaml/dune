@@ -114,10 +114,11 @@ module Dict = struct
 
     let is_empty t = not (t.byte || t.native)
 
-    let iter_sequentially t ~f =
+    let iter_concurrently t ~f =
       let open Memo.Build.O in
-      Memo.Build.if_ t.byte (fun () -> f Byte)
-      >>> Memo.Build.if_ t.native (fun () -> f Native)
+      let+ () = Memo.Build.if_ t.byte (fun () -> f Byte)
+      and+ () = Memo.Build.if_ t.native (fun () -> f Native) in
+      ()
   end
 
   module List = struct

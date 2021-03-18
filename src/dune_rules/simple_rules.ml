@@ -182,13 +182,14 @@ let copy_files sctx ~dir ~expander ~src_dir (def : Copy_files.t) =
   let* files =
     Build_system.eval_pred (File_selector.create ~dir:src_in_build pred)
   in
-  (* CR-someday amokhov: We currently traverse the [files] twice: first, to
-     sequentially add the corresponding rules, and then to convert to [targets].
-     Instead, we could do only one traversal and generate rules in parallel. *)
+  (* CR-someday amokhov: We currently traverse the set [files] twice: first, to
+     add the corresponding rules, and then to convert the files to [targets]. To
+     do only one traversal we need [Memo.Build.parallel_map_set]. *)
   let+ () =
-    Path.Set.fold files ~init:(Memo.Build.return ()) ~f:(fun file_src acc ->
-        acc
-        >>>
+    Memo.Build.parallel_iter_set
+      (module Path.Set)
+      files
+      ~f:(fun file_src ->
         let basename = Path.basename file_src in
         let file_dst = Path.Build.relative dir basename in
         SC.add_rule sctx ~loc ~dir ~mode:def.mode

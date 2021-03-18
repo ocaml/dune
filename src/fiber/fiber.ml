@@ -344,6 +344,8 @@ let parallel_map l ~f k =
             else
               EC.deref ()))
 
+let all_concurrently = parallel_map ~f:Fun.id
+
 let[@inline always] parallel_iter_generic ~n ~iter ~f k =
   EC.add_refs (n - 1);
   let left_over = ref n in

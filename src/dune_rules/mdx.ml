@@ -181,28 +181,32 @@ let gen_rules_for_single_file stanza ~sctx ~dir ~expander ~mdx_prog src =
   let open Memo.Build.O in
   let* () =
     Super_context.add_rule sctx ~loc ~dir (Deps.rule ~dir ~mdx_prog files)
-  in
-  (* Add the rule for generating the .corrected file using ocaml-mdx test *)
-  let mdx_action =
-    let open Action_builder.With_targets.O in
-    let deps = Action_builder.map (Deps.read files) ~f:(Deps.to_dep_set ~dir) in
-    let dyn_deps = Action_builder.map deps ~f:(fun d -> ((), d)) in
-    let pkg_deps =
-      stanza.packages
-      |> List.map ~f:(fun (loc, pkg) ->
-             Dep_conf.Package
-               (Package.Name.to_string pkg |> String_with_vars.make_text loc))
+  and* () =
+    (* Add the rule for generating the .corrected file using ocaml-mdx test *)
+    let mdx_action =
+      let open Action_builder.With_targets.O in
+      let deps =
+        Action_builder.map (Deps.read files) ~f:(Deps.to_dep_set ~dir)
+      in
+      let dyn_deps = Action_builder.map deps ~f:(fun d -> ((), d)) in
+      let pkg_deps =
+        stanza.packages
+        |> List.map ~f:(fun (loc, pkg) ->
+               Dep_conf.Package
+                 (Package.Name.to_string pkg |> String_with_vars.make_text loc))
+      in
+      let prelude_args =
+        List.concat_map stanza.preludes ~f:(Prelude.to_args ~dir)
+      in
+      Action_builder.(
+        with_no_targets (Dep_conf_eval.unnamed ~expander pkg_deps))
+      >>> Action_builder.with_no_targets (Action_builder.dyn_deps dyn_deps)
+      >>> Command.run ~dir:(Path.build dir) mdx_prog
+            ([ Command.Args.A "test" ] @ prelude_args
+            @ [ A "-o"; Target files.corrected; Dep (Path.build files.src) ])
     in
-    let prelude_args =
-      List.concat_map stanza.preludes ~f:(Prelude.to_args ~dir)
-    in
-    Action_builder.(with_no_targets (Dep_conf_eval.unnamed ~expander pkg_deps))
-    >>> Action_builder.with_no_targets (Action_builder.dyn_deps dyn_deps)
-    >>> Command.run ~dir:(Path.build dir) mdx_prog
-          ([ Command.Args.A "test" ] @ prelude_args
-          @ [ A "-o"; Target files.corrected; Dep (Path.build files.src) ])
+    Super_context.add_rule sctx ~loc ~dir mdx_action
   in
-  let* () = Super_context.add_rule sctx ~loc ~dir mdx_action in
   (* Attach the diff action to the @runtest for the src and corrected files *)
   let diff_action = Files.diff_action files in
   Super_context.add_alias_action sctx (Alias.runtest ~dir) ~loc:(Some loc) ~dir
@@ -217,5 +221,5 @@ let gen_rules t ~sctx ~dir ~expander =
     Super_context.resolve_program sctx ~dir ~loc:(Some t.loc)
       ~hint:"opam install mdx" "ocaml-mdx"
   in
-  Memo.Build.sequential_iter files_to_mdx
+  Memo.Build.parallel_iter files_to_mdx
     ~f:(gen_rules_for_single_file t ~sctx ~dir ~expander ~mdx_prog)

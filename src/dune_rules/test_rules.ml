@@ -18,7 +18,7 @@ let rules (t : Dune_file.Tests.t) ~sctx ~dir ~scope ~expander ~dir_contents =
   in
   let open Memo.Build.O in
   let* () =
-    Memo.Build.sequential_iter t.exes.names ~f:(fun (loc, s) ->
+    Memo.Build.parallel_iter t.exes.names ~f:(fun (loc, s) ->
         let test_pform = Pform.Var Test in
         let run_action =
           match t.action with

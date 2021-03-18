@@ -334,7 +334,7 @@ let add_rule_get_targets t ?sandbox ?mode ?locks ?loc ~dir build =
   rule.action.targets
 
 let add_rules t ?sandbox ~dir builds =
-  Memo.Build.sequential_iter builds ~f:(add_rule t ?sandbox ~dir)
+  Memo.Build.parallel_iter builds ~f:(add_rule t ?sandbox ~dir)
 
 let add_alias_action t alias ~dir ~loc ?locks ~stamp action =
   let+ env = get_node t.env_tree ~dir >>= Env_node.external_env in
@@ -388,9 +388,9 @@ let format_config t ~dir = get_node t.env_tree ~dir >>= Env_node.format_config
 
 let dump_env t ~dir =
   let t = t.env_tree in
-  let* ocaml_flags = get_node t ~dir >>= Env_node.ocaml_flags in
-  let* foreign_flags = get_node t ~dir >>= Env_node.foreign_flags in
-  let+ menhir_flags = get_node t ~dir >>= Env_node.menhir_flags in
+  let+ ocaml_flags = get_node t ~dir >>= Env_node.ocaml_flags
+  and+ foreign_flags = get_node t ~dir >>= Env_node.foreign_flags
+  and+ menhir_flags = get_node t ~dir >>= Env_node.menhir_flags in
   let open Action_builder.O in
   let+ o_dump = Ocaml_flags.dump ocaml_flags
   and+ c_dump =

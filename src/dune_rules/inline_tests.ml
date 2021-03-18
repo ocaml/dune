@@ -152,8 +152,7 @@ include Sub_system.Register_end_point (struct
            Action.with_stdout_to target (Action.progn actions)
          in
          Action_builder.With_targets.add ~targets:[ target ] action)
-    in
-    let* cctx =
+    and* cctx =
       let package = Dune_file.Library.package lib in
       let+ ocaml_flags = Super_context.ocaml_flags sctx ~dir info.executable in
       let flags = Ocaml_flags.append_common ocaml_flags [ "-w"; "-24"; "-g" ] in
@@ -204,10 +203,10 @@ include Sub_system.Register_end_point (struct
       Command.Args.As (List.concat l)
     in
     let source_files = List.concat_map source_modules ~f:Module.sources in
-    Mode_conf.Set.fold info.modes ~init:(Memo.Build.return ())
-      ~f:(fun (mode : Mode_conf.t) acc ->
-        acc
-        >>>
+    Memo.Build.parallel_iter_set
+      (module Mode_conf.Set)
+      info.modes
+      ~f:(fun (mode : Mode_conf.t) ->
         let ext =
           match mode with
           | Native

@@ -88,7 +88,7 @@ let build_mlds_map (d : _ Dir_with_dune.t) ~files =
             | _ -> acc)
         |> Memo.Build.return)
   in
-  Memo.Build.sequential_map d.data ~f:(function
+  Memo.Build.parallel_map d.data ~f:(function
     | Documentation doc ->
       let+ mlds =
         let+ mlds = Memo.Lazy.Async.force mlds in

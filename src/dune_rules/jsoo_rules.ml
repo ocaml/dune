@@ -162,7 +162,7 @@ let setup_separate_compilation_rules sctx components =
               archive "stdlib.cma" :: archive "std_exit.cmo" :: archives
             | _ -> archives
           in
-          Memo.Build.sequential_iter archives ~f:(fun fn ->
+          Memo.Build.parallel_iter archives ~f:(fun fn ->
               let name = Path.basename fn in
               let target =
                 in_build_dir ~ctx [ lib_name; sprintf "%s.js" name ]

@@ -88,10 +88,7 @@ let gen_wrapped_compat_modules (lib : Library.t) cctx =
       | Simple _ -> assert false
       | Yes_with_transition r -> r)
   in
-  Module_name.Map.foldi wrapped_compat ~init:(Memo.Build.return ())
-    ~f:(fun name m acc ->
-      acc
-      >>>
+  Module_name.Map_traversals.parallel_iter wrapped_compat ~f:(fun name m ->
       let main_module_name =
         match Library.main_module_name lib with
         | This (Some mmn) -> Module_name.to_string mmn
@@ -194,7 +191,7 @@ let foreign_rules (library : Foreign.Library.t) ~sctx ~expander ~dir
     in
     Foreign_rules.build_o_files ~sctx ~dir ~expander ~requires:(Result.ok [])
       ~dir_contents ~foreign_sources
-    |> Memo.Build.sequential_map ~f:(Memo.Build.map ~f:Path.build)
+    |> Memo.Build.parallel_map ~f:(Memo.Build.map ~f:Path.build)
   in
   Check_rules.add_files sctx ~dir o_files;
   ocamlmklib ~archive_name ~loc:library.stubs.loc
@@ -213,7 +210,7 @@ let build_stubs lib ~cctx ~dir ~expander ~requires ~dir_contents
     in
     Foreign_rules.build_o_files ~sctx ~dir ~expander ~requires ~dir_contents
       ~foreign_sources
-    |> Memo.Build.sequential_map ~f:(Memo.Build.map ~f:Path.build)
+    |> Memo.Build.parallel_map ~f:(Memo.Build.map ~f:Path.build)
   in
   Check_rules.add_files sctx ~dir lib_o_files;
   match vlib_stubs_o_files @ lib_o_files with
@@ -293,7 +290,7 @@ let setup_build_archives (lib : Dune_file.Library.t) ~cctx
            ; (Cmo, Cm_kind.ext Cmo)
            ; (Cmx, ext_obj)
            ]
-           |> Memo.Build.sequential_iter ~f:(fun (kind, ext) ->
+           |> Memo.Build.parallel_iter ~f:(fun (kind, ext) ->
                   let src =
                     Path.build (Obj_dir.Module.obj_file obj_dir m ~kind ~ext)
                   in
@@ -323,12 +320,11 @@ let setup_build_archives (lib : Dune_file.Library.t) ~cctx
   in
   let cm_files = Cm_files.make ~obj_dir ~ext_obj ~modules ~top_sorted_modules in
   let* () =
-    Mode.Dict.Set.iter_sequentially modes ~f:(fun mode ->
+    Mode.Dict.Set.iter_concurrently modes ~f:(fun mode ->
         build_lib lib ~native_archives ~dir ~sctx ~expander ~flags ~mode
           ~cm_files)
-  in
   (* Build *.cma.js *)
-  let* () =
+  and* () =
     Memo.Build.if_ modes.byte (fun () ->
         let action_with_targets =
           let src =
@@ -351,9 +347,9 @@ let setup_build_archives (lib : Dune_file.Library.t) ~cctx
 
 let cctx (lib : Library.t) ~sctx ~source_modules ~dir ~expander ~scope
     ~compile_info =
-  let* flags = Super_context.ocaml_flags sctx ~dir lib.buildable.flags in
+  let* flags = Super_context.ocaml_flags sctx ~dir lib.buildable.flags
+  and* vimpl = Virtual_rules.impl sctx ~lib ~scope in
   let obj_dir = Library.obj_dir ~dir lib in
-  let* vimpl = Virtual_rules.impl sctx ~lib ~scope in
   let ctx = Super_context.context sctx in
   let instrumentation_backend =
     Lib.DB.instrumentation_backend (Scope.libs scope)
@@ -374,7 +370,7 @@ let cctx (lib : Library.t) ~sctx ~source_modules ~dir ~expander ~scope
       ~lib_name:(Some (snd lib.name))
   in
   let+ modules =
-    Modules.map_user_written source_modules ~f:(fun m -> Pp_spec.pp_module pp m)
+    Modules.map_user_written source_modules ~f:(Pp_spec.pp_module pp)
   in
   let modules = Vimpl.impl_modules vimpl modules in
   let requires_compile = Lib.Compile.direct_requires compile_info in
@@ -404,35 +400,28 @@ let library_rules (lib : Library.t) ~cctx ~source_modules ~dir_contents
   let scope = Compilation_context.scope cctx in
   let requires_compile = Compilation_context.requires_compile cctx in
   let stdlib_dir = (Compilation_context.context cctx).Context.stdlib_dir in
-  let* dep_graphs = Dep_rules.rules cctx ~modules in
-  let* () =
+  let* dep_graphs = Dep_rules.rules cctx ~modules
+  and* () =
     Memo.Build.Option.iter vimpl
       ~f:(Virtual_rules.setup_copy_rules_for_impl ~sctx ~dir)
   in
   Check_rules.add_obj_dir sctx ~obj_dir;
-  let* () = gen_wrapped_compat_modules lib cctx in
-  let* () = Module_compilation.build_all cctx ~dep_graphs in
-  let* expander = Super_context.expander sctx ~dir in
-  let preprocess =
-    Preprocess.Per_module.with_instrumentation lib.buildable.preprocess
-      ~instrumentation_backend:
-        (Lib.DB.instrumentation_backend (Scope.libs scope))
-  in
-  let* () =
+  let* () = gen_wrapped_compat_modules lib cctx
+  and* () = Module_compilation.build_all cctx ~dep_graphs
+  and* expander = Super_context.expander sctx ~dir in
+  let+ () =
     Memo.Build.if_
       (not (Library.is_virtual lib))
       (fun () -> setup_build_archives lib ~cctx ~dep_graphs ~expander)
-  in
-  let* () =
+  and+ () =
     let vlib_stubs_o_files = Vimpl.vlib_stubs_o_files vimpl in
     Memo.Build.if_
       (Library.has_foreign lib || List.is_non_empty vlib_stubs_o_files)
       (fun () ->
         build_stubs lib ~cctx ~dir ~expander ~requires:requires_compile
           ~dir_contents ~vlib_stubs_o_files)
-  in
-  let* () = Odoc.setup_library_odoc_rules cctx lib ~dep_graphs in
-  let+ () =
+  and+ () = Odoc.setup_library_odoc_rules cctx lib ~dep_graphs
+  and+ () =
     Sub_system.gen_rules
       { super_context = sctx
       ; dir
@@ -442,6 +431,10 @@ let library_rules (lib : Library.t) ~cctx ~source_modules ~dir_contents
       ; compile_info
       }
   in
+  let preprocess =
+    Preprocess.Per_module.with_instrumentation lib.buildable.preprocess
+      ~instrumentation_backend:
+        (Lib.DB.instrumentation_backend (Scope.libs scope)) in
   ( cctx
   , Merlin.make ~requires:requires_compile ~stdlib_dir ~flags ~modules
       ~preprocess ~libname:(snd lib.name) ~obj_dir

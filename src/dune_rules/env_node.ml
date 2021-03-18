@@ -42,7 +42,8 @@ let bin_artifacts t = Memo.Lazy.Async.force t.bin_artifacts
 
 let inline_tests t = Memo.Lazy.Async.force t.inline_tests
 
-let menhir_flags t = Memo.Lazy.Async.force t.menhir_flags
+let menhir_flags t =
+  Memo.Lazy.Async.force t.menhir_flags |> Action_builder.memo_build_join
 
 let format_config t = Memo.Lazy.Async.force t.format_config
 
@@ -137,7 +138,10 @@ let make ~dir ~inherit_from ~scope ~config_stanza ~profile ~expander
             Expander.expand_and_eval_set expander f ~standard))
   in
   let menhir_flags =
-    inherited ~field:menhir_flags ~root:(Action_builder.return []) (fun flags ->
+    inherited
+      ~field:(fun t -> Memo.Build.return (menhir_flags t))
+      ~root:(Action_builder.return [])
+      (fun flags ->
         let+ expander = Memo.Lazy.Async.force expander in
         let expander = Expander.set_dir expander ~dir in
         Expander.expand_and_eval_set expander config.menhir_flags

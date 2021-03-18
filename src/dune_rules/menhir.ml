@@ -177,7 +177,7 @@ module Run (P : PARAMS) = struct
 
   let process3 base ~cmly (stanza : stanza) : unit Memo.Build.t =
     let open Memo.Build.O in
-    let* expanded_flags = expand_flags stanza.flags in
+    let expanded_flags = expand_flags stanza.flags in
     (* 1. A first invocation of Menhir creates a mock [.ml] file. *)
     let* () =
       menhir
@@ -229,7 +229,7 @@ module Run (P : PARAMS) = struct
 
   let process1 base ~cmly (stanza : stanza) : unit Memo.Build.t =
     let open Memo.Build.O in
-    let* expanded_flags = expand_flags stanza.flags in
+    let expanded_flags = expand_flags stanza.flags in
     menhir
       [ Command.Args.dyn expanded_flags
       ; Deps (sources stanza.modules)

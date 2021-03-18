@@ -94,7 +94,7 @@ let build_c ~kind ~sctx ~dir ~expander ~include_flags (loc, src, dst) =
     | Foreign_language.Cxx -> Fdo.cxx_flags ctx
   in
   let open Memo.Build.O in
-  let* with_user_and_std_flags =
+  let with_user_and_std_flags =
     let flags = Foreign.Source.flags src in
     (* DUNE3 will have [use_standard_c_and_cxx_flags] enabled by default. To
        guide users toward this change we emit a warning when dune_lang is >=
@@ -124,8 +124,9 @@ let build_c ~kind ~sctx ~dir ~expander ~include_flags (loc, src, dst) =
              compiler arguments which is the new recommended behaviour."
         ];
     Super_context.foreign_flags sctx ~dir ~expander ~flags ~language:kind
-    >>| Action_builder.map ~f:(List.append base_flags)
-  and* c_compiler =
+    |> Action_builder.map ~f:(List.append base_flags)
+  in
+  let* c_compiler =
     Super_context.resolve_program ~loc:None ~dir sctx
       (Ocaml_config.c_compiler ctx.ocaml_config)
   in

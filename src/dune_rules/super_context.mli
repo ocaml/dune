@@ -71,14 +71,14 @@ val foreign_flags :
   -> expander:Expander.t
   -> flags:Ordered_set_lang.Unexpanded.t
   -> language:Foreign_language.t
-  -> string list Action_builder.t Memo.Build.t
+  -> string list Action_builder.t
 
 val menhir_flags :
      t
   -> dir:Path.Build.t
   -> expander:Expander.t
   -> flags:Ordered_set_lang.Unexpanded.t
-  -> string list Action_builder.t Memo.Build.t
+  -> string list Action_builder.t
 
 (** Binaries that are symlinked in the associated .bin directory of [dir]. This
     associated directory is [Path.relative dir ".bin"] *)
@@ -95,8 +95,7 @@ val coq : t -> dir:Path.Build.t -> Env_node.Coq.t Memo.Build.t
 val format_config : t -> dir:Path.Build.t -> Format_config.t Memo.Build.t
 
 (** Dump a directory environment in a readable form *)
-val dump_env :
-  t -> dir:Path.Build.t -> Dune_lang.t list Action_builder.t Memo.Build.t
+val dump_env : t -> dir:Path.Build.t -> Dune_lang.t list Action_builder.t
 
 val find_scope_by_dir : t -> Path.Build.t -> Scope.t
 

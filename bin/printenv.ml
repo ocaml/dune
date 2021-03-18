@@ -12,11 +12,9 @@ let man =
 let info = Term.info "printenv" ~doc ~man
 
 let dump sctx ~dir =
-  Memo.Build.map (Super_context.dump_env sctx ~dir) ~f:(fun env ->
-      let open Action_builder.O in
-      let+ env = env in
-      ((Super_context.context sctx).name, env))
-  |> Action_builder.memo_build_join
+  let open Action_builder.O in
+  let+ env = Super_context.dump_env sctx ~dir in
+  ((Super_context.context sctx).name, env)
 
 let pp ppf ~fields sexps =
   let fields = String.Set.of_list fields in

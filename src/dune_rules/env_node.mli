@@ -49,7 +49,7 @@ val odoc : t -> Odoc.t Memo.Build.t
 
 val coq : t -> Coq.t Memo.Build.t
 
-val menhir_flags : t -> string list Action_builder.t Memo.Build.t
+val menhir_flags : t -> string list Action_builder.t
 
 val format_config : t -> Format_config.t Memo.Build.t
 

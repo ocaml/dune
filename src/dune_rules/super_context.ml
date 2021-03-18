@@ -362,11 +362,14 @@ let ocaml_flags t ~dir (spec : Ocaml_flags.Spec.t) =
 
 let foreign_flags t ~dir ~expander ~flags ~language =
   let ccg = Context.cc_g t.context in
-  let+ default = get_node t.env_tree ~dir >>= Env_node.foreign_flags in
+  let default =
+    get_node t.env_tree ~dir >>= Env_node.foreign_flags >>| fun dict ->
+    Foreign_language.Dict.get dict language
+  in
+  let open Action_builder.O in
   let name = Foreign_language.proper_name language in
   let flags =
-    let default = Foreign_language.Dict.get default language in
-    let open Action_builder.O in
+    let* default = Action_builder.memo_build default in
     let+ l = Expander.expand_and_eval_set expander flags ~standard:default in
     l @ ccg
   in
@@ -374,7 +377,9 @@ let foreign_flags t ~dir ~expander ~flags ~language =
 
 let menhir_flags t ~dir ~expander ~flags =
   let t = t.env_tree in
-  let+ default = get_node t ~dir >>= Env_node.menhir_flags in
+  let default =
+    get_node t ~dir >>| Env_node.menhir_flags |> Action_builder.memo_build_join
+  in
   Action_builder.memoize "menhir flags"
     (Expander.expand_and_eval_set expander flags ~standard:default)
 
@@ -388,19 +393,22 @@ let format_config t ~dir = get_node t.env_tree ~dir >>= Env_node.format_config
 
 let dump_env t ~dir =
   let t = t.env_tree in
-  let+ ocaml_flags = get_node t ~dir >>= Env_node.ocaml_flags
-  and+ foreign_flags = get_node t ~dir >>= Env_node.foreign_flags
-  and+ menhir_flags = get_node t ~dir >>= Env_node.menhir_flags in
+  let ocaml_flags = get_node t ~dir >>= Env_node.ocaml_flags in
+  let foreign_flags = get_node t ~dir >>= Env_node.foreign_flags in
+  let menhir_flags = get_node t ~dir >>| Env_node.menhir_flags in
   let open Action_builder.O in
-  let+ o_dump = Ocaml_flags.dump ocaml_flags
+  let+ o_dump =
+    let* ocaml_flags = Action_builder.memo_build ocaml_flags in
+    Ocaml_flags.dump ocaml_flags
   and+ c_dump =
+    let* foreign_flags = Action_builder.memo_build foreign_flags in
     let+ c_flags = foreign_flags.c
     and+ cxx_flags = foreign_flags.cxx in
     List.map
       ~f:Dune_lang.Encoder.(pair string (list string))
       [ ("c_flags", c_flags); ("cxx_flags", cxx_flags) ]
   and+ menhir_dump =
-    let+ flags = menhir_flags in
+    let+ flags = Action_builder.memo_build_join menhir_flags in
     [ ("menhir_flags", flags) ]
     |> List.map ~f:Dune_lang.Encoder.(pair string (list string))
   in

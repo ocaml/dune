@@ -20,6 +20,11 @@ module List (M : sig
   type t
 end) : Monoid_intf.S with type t = M.t list
 
+(** The list monoid with [empty = \[\]] and [combine = ( @ )]. *)
+module Appendable_list (M : sig
+  type t
+end) : Monoid_intf.S with type t = M.t Appendable_list.t
+
 (** The trivial monoid with [empty = ()] and [combine () () = ()]. *)
 module Unit : Monoid_intf.S with type t = Unit.t
 

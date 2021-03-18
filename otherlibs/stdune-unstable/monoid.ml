@@ -48,6 +48,16 @@ end) : Monoid_intf.S with type t = M.t list = Make (struct
   let combine = ( @ )
 end)
 
+module Appendable_list (M : sig
+  type t
+end) : Monoid_intf.S with type t = M.t Appendable_list.t = Make (struct
+  type t = M.t Appendable_list.t
+
+  let empty = Appendable_list.empty
+
+  let combine = Appendable_list.( @ )
+end)
+
 module Unit : Monoid_intf.S with type t = Unit.t = Make (struct
   include Unit
 

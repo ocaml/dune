@@ -805,3 +805,46 @@ let%expect_test "Stream: writing on a closed stream is an error" =
   Trailing output
   ---------------
   None |}]
+
+module Pool = Fiber.Pool
+
+let%expect_test "start & stop pool" =
+  Scheduler.run
+    (let pool = Pool.create () in
+     Pool.stop pool);
+  [%expect {| |}]
+
+let%expect_test "run 2 tasks" =
+  Scheduler.run
+    (let pool = Pool.create () in
+     let task n () =
+       printf "task %d\n" n;
+       Fiber.return ()
+     in
+     let tasks () =
+       Fiber.parallel_iter [ 1; 2 ] ~f:(fun n -> Pool.task pool ~f:(task n))
+     in
+     Fiber.fork_and_join_unit
+       (fun () -> Pool.run pool)
+       (fun () ->
+         let* () = tasks () in
+         Pool.stop pool));
+  [%expect {|
+    task 1
+    task 2 |}]
+
+let%expect_test "raise exception" =
+  Scheduler.run
+    (let pool = Pool.create () in
+     let* () = Pool.task pool ~f:(fun () -> raise Exit) in
+     Fiber.fork_and_join_unit
+       (fun () ->
+         let+ res = Fiber.collect_errors (fun () -> Pool.run pool) in
+         match res with
+         | Ok _ -> assert false
+         | Error [ e ] ->
+           assert (e.exn = Exit);
+           print_endline "Caught Exit"
+         | _ -> assert false)
+       (fun () -> Pool.stop pool));
+  [%expect {| Caught Exit |}]

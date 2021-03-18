@@ -332,6 +332,39 @@ module Stream : sig
 end
 with type 'a fiber := 'a t
 
+module Pool : sig
+  (** Pool is used to submit asynchronous tasks without waiting for their
+      completion. *)
+  type t
+
+  type 'a fiber
+
+  (** Create a new pool. *)
+  val create : unit -> t
+
+  (** [running pool] returns whether it's possible to submit tasks to [pool] *)
+  val running : t -> bool fiber
+
+  (** [task pool ~f] submit [f] to be done in [pool]. Errors raised [pool] will
+      not be raised in the current fiber, but inside the [Pool.run] fiber.
+
+      If [running pool] returns [false], this function will raise a
+      [Code_error]. *)
+  val task : t -> f:(unit -> unit fiber) -> unit fiber
+
+  (** [stop pool] stops the pool from receiving new tasks. After this function
+      is called, [task pool ~f] will fail to submit new tasks.
+
+      Note that stopping the pool does not prevent already queued tasks from
+      running. *)
+  val stop : t -> unit fiber
+
+  (** [run pool] Runs all tasks submitted to [pool] in parallel. Errors raised
+      by such tasks must be caught here.*)
+  val run : t -> unit fiber
+end
+with type 'a fiber := 'a t
+
 (** {1 Running fibers} *)
 
 type fill = Fill : 'a Ivar.t * 'a -> fill

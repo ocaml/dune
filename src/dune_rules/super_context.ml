@@ -101,7 +101,7 @@ end = struct
     in
     let+ expander = extend_expander t ~dir ~expander_for_artifacts in
     Expander.set_foreign_flags expander ~f:(fun ~dir ->
-        get_node t ~dir >>= Env_node.foreign_flags)
+        get_node t ~dir >>| Env_node.foreign_flags)
 
   let get_env_stanza t ~dir =
     Option.value ~default:Dune_env.Stanza.empty
@@ -363,7 +363,7 @@ let ocaml_flags t ~dir (spec : Ocaml_flags.Spec.t) =
 let foreign_flags t ~dir ~expander ~flags ~language =
   let ccg = Context.cc_g t.context in
   let default =
-    get_node t.env_tree ~dir >>= Env_node.foreign_flags >>| fun dict ->
+    get_node t.env_tree ~dir >>| Env_node.foreign_flags >>| fun dict ->
     Foreign_language.Dict.get dict language
   in
   let open Action_builder.O in
@@ -394,7 +394,7 @@ let format_config t ~dir = get_node t.env_tree ~dir >>= Env_node.format_config
 let dump_env t ~dir =
   let t = t.env_tree in
   let ocaml_flags = get_node t ~dir >>= Env_node.ocaml_flags in
-  let foreign_flags = get_node t ~dir >>= Env_node.foreign_flags in
+  let foreign_flags = get_node t ~dir >>| Env_node.foreign_flags in
   let menhir_flags = get_node t ~dir >>| Env_node.menhir_flags in
   let open Action_builder.O in
   let+ o_dump =

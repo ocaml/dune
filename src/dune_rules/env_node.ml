@@ -17,8 +17,7 @@ type t =
   { scope : Scope.t
   ; local_binaries : File_binding.Expanded.t list Memo.Lazy.Async.t
   ; ocaml_flags : Ocaml_flags.t Memo.Lazy.Async.t
-  ; foreign_flags :
-      string list Action_builder.t Foreign_language.Dict.t Memo.Lazy.Async.t
+  ; foreign_flags : string list Action_builder.t Foreign_language.Dict.t
   ; external_env : Env.t Memo.Lazy.Async.t
   ; bin_artifacts : Artifacts.Bin.t Memo.Lazy.Async.t
   ; inline_tests : Dune_env.Stanza.Inline_tests.t Memo.Lazy.Async.t
@@ -34,7 +33,7 @@ let local_binaries t = Memo.Lazy.Async.force t.local_binaries
 
 let ocaml_flags t = Memo.Lazy.Async.force t.ocaml_flags
 
-let foreign_flags t = Memo.Lazy.Async.force t.foreign_flags
+let foreign_flags t = t.foreign_flags
 
 let external_env t = Memo.Lazy.Async.force t.external_env
 
@@ -129,13 +128,22 @@ let make ~dir ~inherit_from ~scope ~config_stanza ~profile ~expander
           else
             Disabled)
   in
+  let foreign_flags lang =
+    let field t =
+      Memo.Build.return (Foreign_language.Dict.get t.foreign_flags lang)
+    in
+    Action_builder.memo_build_join
+      (Memo.Lazy.Async.force
+         (inherited ~field
+            ~root:(Foreign_language.Dict.get default_context_flags lang)
+            (fun flags ->
+              let+ expander = Memo.Lazy.Async.force expander in
+              let expander = Expander.set_dir expander ~dir in
+              let f = Foreign_language.Dict.get config.foreign_flags lang in
+              Expander.expand_and_eval_set expander f ~standard:flags)))
+  in
   let foreign_flags =
-    inherited ~field:foreign_flags ~root:default_context_flags (fun flags ->
-        let+ expander = Memo.Lazy.Async.force expander in
-        let expander = Expander.set_dir expander ~dir in
-        Foreign_language.Dict.mapi config.foreign_flags ~f:(fun ~language f ->
-            let standard = Foreign_language.Dict.get flags language in
-            Expander.expand_and_eval_set expander f ~standard))
+    Foreign_language.Dict.make ~c:(foreign_flags C) ~cxx:(foreign_flags Cxx)
   in
   let menhir_flags =
     inherited

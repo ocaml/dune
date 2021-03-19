@@ -38,8 +38,7 @@ val ocaml_flags : t -> Ocaml_flags.t Memo.Build.t
 
 val inline_tests : t -> Dune_env.Stanza.Inline_tests.t Memo.Build.t
 
-val foreign_flags :
-  t -> string list Action_builder.t Foreign_language.Dict.t Memo.Build.t
+val foreign_flags : t -> string list Action_builder.t Foreign_language.Dict.t
 
 val local_binaries : t -> File_binding.Expanded.t list Memo.Build.t
 

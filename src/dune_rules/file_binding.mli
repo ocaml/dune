@@ -26,7 +26,7 @@ module Unexpanded : sig
     -> f:(String_with_vars.t -> string Memo.Build.t)
     -> Expanded.t Memo.Build.t
 
-  val expand_pure :
+  val expand_static :
     t -> dir:Path.Build.t -> f:(String_with_vars.t -> string) -> Expanded.t
 
   val expand_src :

@@ -67,7 +67,7 @@ module Unexpanded = struct
      factoring out the common functionality might make it more complicated, so
      I'm not doing this for now. This function has only one remaining use site
      and is likely to disappear with further "monadification". *)
-  let expand_pure t ~dir ~f =
+  let expand_static t ~dir ~f =
     let f sw = (String_with_vars.loc sw, f sw) in
     let src =
       let loc, expanded = f t.src in

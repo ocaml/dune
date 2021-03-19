@@ -312,13 +312,13 @@ let expand_pform_gen ~(context : Context.t) ~bindings ~dir ~source
       | Cc ->
         Need_full_expander
           (fun t ->
-            Memo.Build.map (cc t) ~f:(fun cc -> cc.c)
-            |> Action_builder.memo_build_join)
+            let* cc = Action_builder.memo_build (cc t) in
+            cc.c)
       | Cxx ->
         Need_full_expander
           (fun t ->
-            Memo.Build.map (cc t) ~f:(fun cc -> cc.cxx)
-            |> Action_builder.memo_build_join)
+            let* cc = Action_builder.memo_build (cc t) in
+            cc.cxx)
       | Ccomp_type ->
         static
           (string

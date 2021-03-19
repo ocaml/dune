@@ -107,6 +107,10 @@ module Where : sig
     | `Ip of Unix.inet_addr * [ `Port of int ]
     ]
 
+  val rpc_dir : Path.Build.t Lazy.t
+
+  val of_string : string -> t
+
   val get : unit -> t option
 
   val to_string : t -> string
@@ -245,6 +249,12 @@ module type S = sig
     -> Initialize.Request.t
     -> f:(t -> 'a fiber)
     -> 'a fiber
+
+  val connect_persistent :
+       chan
+    -> on_connect:(unit -> ('a * Initialize.Request.t * Handler.t option) fiber)
+    -> on_connected:('a -> t -> unit fiber)
+    -> unit fiber
 end
 
 module Client (S : sig
@@ -285,6 +295,27 @@ module Client (S : sig
     val read : t -> Sexp.t option Fiber.t
   end
 end) : S with type 'a fiber := 'a S.Fiber.t and type chan := S.Chan.t
+
+module Persistent : sig
+  module In : sig
+    (** The type of incoming packets when hosting multiple connections in
+        sequence over a single channel *)
+    type t =
+      | New_connection
+      | Packet of Csexp.t
+      | Close_connection
+
+    val sexp : t Conv.value
+  end
+
+  module Out : sig
+    type t =
+      | Packet of Sexp.t
+      | Close_connection
+
+    val sexp : t Conv.value
+  end
+end
 
 module Packet : sig
   module Reply : sig

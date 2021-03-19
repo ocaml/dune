@@ -408,6 +408,12 @@ module type S = sig
     -> Initialize.Request.t
     -> f:(t -> 'a fiber)
     -> 'a fiber
+
+  val connect_persistent :
+       chan
+    -> on_connect:(unit -> ('a * Initialize.Request.t * Handler.t option) fiber)
+    -> on_connected:('a -> t -> unit fiber)
+    -> unit fiber
 end
 
 module Client (S : sig
@@ -452,6 +458,44 @@ struct
   open S
   open Fiber.O
 
+  module Chan = struct
+    type t =
+      { read : unit -> Sexp.t option Fiber.t
+      ; write : Sexp.t option -> unit Fiber.t
+      ; mutable closed_read : bool
+      ; mutable closed_write : bool
+      }
+
+    let make read write =
+      { read; write; closed_read = false; closed_write = false }
+
+    let of_chan c =
+      { read = (fun () -> Chan.read c)
+      ; write = (fun s -> Chan.write c s)
+      ; closed_read = false
+      ; closed_write = false
+      }
+
+    let write t s =
+      match s with
+      | Some _ -> t.write s
+      | None ->
+        if t.closed_write then
+          Fiber.return ()
+        else (
+          t.closed_write <- true;
+          t.write None
+        )
+
+    let close_read t = t.closed_read <- true
+
+    let read t =
+      if t.closed_read then
+        Fiber.return None
+      else
+        t.read ()
+  end
+
   exception Invalid_session of Conv.error
 
   type t =
@@ -460,7 +504,42 @@ struct
     ; on_notification : Call.t -> unit Fiber.t
     ; initialize : Initialize.Request.t
     ; mutable next_id : int
+    ; mutable running : bool
     }
+
+  (* When the client is terminated via this function, the session is considered
+     to be dead without a way to recover. *)
+  let terminate t =
+    match t.running with
+    | false -> Fiber.return ()
+    | true ->
+      t.running <- false;
+      let ivars = ref [] in
+      Table.filteri_inplace t.requests ~f:(fun ~key:_ ~data:ivar ->
+          ivars := ivar :: !ivars;
+          false);
+      let ivars () =
+        Fiber.return
+          (match !ivars with
+          | [] -> None
+          | x :: xs ->
+            ivars := xs;
+            Some x)
+      in
+      Fiber.fork_and_join_unit
+        (fun () -> Chan.write t.chan None)
+        (fun () ->
+          Fiber.parallel_iter ivars ~f:(fun ivar ->
+              let error =
+                Response.Error.create ~kind:Code_error
+                  ~message:"connection terminated" ()
+              in
+              Fiber.Ivar.fill ivar (Error error)))
+
+  let terminate_with_error t message info =
+    Fiber.fork_and_join_unit
+      (fun () -> terminate t)
+      (fun () -> Code_error.raise message info)
 
   let send t (packet : Packet.Query.t option) =
     let sexp =
@@ -474,15 +553,23 @@ struct
 
   let create ~chan ~initialize ~on_notification =
     let requests = Table.create (module Id) 16 in
-    { chan; requests; on_notification; next_id = 0; initialize }
+    { chan; requests; on_notification; next_id = 0; initialize; running = true }
 
   let request_untyped t (id, req) =
-    let ivar = Fiber.Ivar.create () in
-    (match Table.add t.requests id ivar with
-    | Ok () -> ()
-    | Error _ -> Code_error.raise "duplicate id" [ ("id", Id.to_dyn id) ]);
-    let* () = send t (Some (Request (id, req))) in
-    Fiber.Ivar.read ivar
+    match t.running with
+    | false ->
+      let err =
+        Response.Error.create ~message:"connection terminated" ~kind:Code_error
+          ()
+      in
+      Fiber.return (Error err)
+    | true ->
+      let ivar = Fiber.Ivar.create () in
+      (match Table.add t.requests id ivar with
+      | Ok () -> ()
+      | Error _ -> Code_error.raise "duplicate id" [ ("id", Id.to_dyn id) ]);
+      let* () = send t (Some (Request (id, req))) in
+      Fiber.Ivar.read ivar
 
   let request ?id t (decl : _ Decl.request) req =
     let id =
@@ -496,34 +583,44 @@ struct
     let req =
       { Call.params = Conv.to_sexp decl.req req; method_ = decl.method_ }
     in
-    let+ res = request_untyped t (id, req) in
+    let* res = request_untyped t (id, req) in
     match res with
-    | Error e -> Error e
+    | Error e -> Fiber.return (Error e)
     | Ok res -> (
       match Conv.of_sexp decl.resp ~version:t.initialize.version res with
-      | Ok s -> Ok s
+      | Ok s -> Fiber.return (Ok s)
       | Error e ->
-        (* XXX we need to handle this better *)
-        Code_error.raise "response not matched by decl"
+        terminate_with_error t "response not matched by decl"
           [ ("e", Conv.dyn_of_error e) ])
 
   let notification t (decl : _ Decl.notification) n =
-    let call =
-      { Call.params = Conv.to_sexp decl.req n; method_ = decl.method_ }
-    in
-    send t (Some (Notification call))
+    match t.running with
+    | false ->
+      let err =
+        Response.Error.create ~message:"connection terminated" ~kind:Code_error
+          ()
+      in
+      raise (Response.Error.E err)
+    | true ->
+      let call =
+        { Call.params = Conv.to_sexp decl.req n; method_ = decl.method_ }
+      in
+      send t (Some (Notification call))
 
   let read_packets t packets =
-    Fiber.parallel_iter packets ~f:(function
-      | Packet.Reply.Notification n -> t.on_notification n
-      | Response (id, response) -> (
-        match Table.find t.requests id with
-        | Some ivar ->
-          Table.remove t.requests id;
-          Fiber.Ivar.fill ivar response
-        | None ->
-          Code_error.raise "unexpected response"
-            [ ("id", Id.to_dyn id); ("response", Response.to_dyn response) ]))
+    let* () =
+      Fiber.parallel_iter packets ~f:(function
+        | Packet.Reply.Notification n -> t.on_notification n
+        | Response (id, response) -> (
+          match Table.find t.requests id with
+          | Some ivar ->
+            Table.remove t.requests id;
+            Fiber.Ivar.fill ivar response
+          | None ->
+            terminate_with_error t "unexpected response"
+              [ ("id", Id.to_dyn id); ("response", Response.to_dyn response) ]))
+    in
+    terminate t
 
   module Handler = struct
     type t =
@@ -633,4 +730,60 @@ struct
       Handler.on_notification handler ~version:initialize.version
     in
     connect_raw chan initialize ~f ~on_notification
+
+  let connect_persistent chan ~on_connect ~on_connected =
+    let chan = Chan.of_chan chan in
+    let packets () =
+      let+ read = Chan.read chan in
+      Option.map read ~f:(fun sexp ->
+          match Conv.of_sexp Persistent.In.sexp sexp ~version:(0, 0) with
+          | Ok m -> m
+          | Error e -> raise (Invalid_session e))
+    in
+    let make_chan packets =
+      let read () =
+        let+ packet = packets () in
+        match (packet : Persistent.In.t option) with
+        | None
+        | Some Close_connection ->
+          None
+        | Some (Packet csexp) -> Some csexp
+        | Some New_connection ->
+          Code_error.raise "Unexpected new connection." []
+      in
+      let write p =
+        let packet =
+          match p with
+          | Some p -> Persistent.Out.Packet p
+          | None -> Close_connection
+        in
+        let sexp = Conv.to_sexp Persistent.Out.sexp packet in
+        Chan.write chan (Some sexp)
+      in
+      Chan.make read write
+    in
+    let rec loop () =
+      let* packet = packets () in
+      match packet with
+      | Some New_connection ->
+        let* a, init, handler = on_connect () in
+        let chan = make_chan packets in
+        let* () = connect ?handler chan init ~f:(on_connected a) in
+        Chan.close_read chan;
+        loop ()
+      | Some Close_connection -> loop ()
+      | None -> Fiber.return ()
+      | Some (Packet p) ->
+        Code_error.raise "Expected new connection"
+          [ ("received", Sexp.to_dyn p) ]
+    in
+    loop ()
+
+  let connect_raw chan init ~on_notification ~f =
+    let chan = Chan.of_chan chan in
+    connect_raw chan init ~on_notification ~f
+
+  let connect ?handler chan init ~f =
+    let chan = Chan.of_chan chan in
+    connect ?handler chan init ~f
 end

@@ -51,5 +51,11 @@ module V1 = struct
       -> Initialize.t
       -> f:(t -> 'a fiber)
       -> 'a fiber
+
+    val connect_persistent :
+         chan
+      -> on_connect:(unit -> ('a * Initialize.t * Handler.t option) fiber)
+      -> on_connected:('a -> t -> unit fiber)
+      -> unit fiber
   end
 end

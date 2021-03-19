@@ -32,6 +32,10 @@ val csexp_client : t -> Dune_rpc.Where.t -> Csexp_rpc.Client.t
     [$ dune rpc init] *)
 val csexp_connect : t -> in_channel -> out_channel -> Csexp_rpc.Session.t
 
+val client_address : unit -> Path.Build.t
+
+val csexp_server : t -> Dune_rpc.Where.t -> Csexp_rpc.Server.t
+
 val client :
      t
   -> Dune_rpc.Where.t

@@ -294,6 +294,10 @@ module Stream : sig
     val sequential_iter : 'a t -> f:('a -> unit fiber) -> unit fiber
 
     val parallel_iter : 'a t -> f:('a -> unit fiber) -> unit fiber
+
+    val append : 'a t -> 'a t -> 'a t
+
+    val cons : 'a -> 'a t -> 'a t
   end
 
   module Out : sig

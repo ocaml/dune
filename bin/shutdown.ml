@@ -7,7 +7,8 @@ let send_shutdown cli =
 
 let on_notification _ = Fiber.return ()
 
-let exec run where =
+let exec common run =
+  let where = Rpc.wait_for_server common in
   Dune_rpc_impl.Run.client run where
     (Dune_rpc_private.Initialize.Request.create
        ~id:(Dune_rpc_private.Id.make (Sexp.Atom "shutdown_cmd")))

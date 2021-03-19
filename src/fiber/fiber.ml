@@ -694,6 +694,23 @@ module Stream = struct
 
     let empty () = create_unchecked (fun () -> return None)
 
+    let concat (type a) (xs : a t list) =
+      let remains = ref xs in
+      let rec go () =
+        match !remains with
+        | [] -> return None
+        | x :: xs -> (
+          let* v = read x in
+          match v with
+          | Some v -> return (Some v)
+          | None ->
+            remains := xs;
+            go ())
+      in
+      create go
+
+    let append x y = concat [ x; y ]
+
     let of_list xs =
       let xs = ref xs in
       create_unchecked (fun () ->
@@ -702,6 +719,8 @@ module Stream = struct
           | x :: xs' ->
             xs := xs';
             return (Some x))
+
+    let cons a t = concat [ of_list [ a ]; t ]
 
     let filter_map t ~f =
       let rec read () =

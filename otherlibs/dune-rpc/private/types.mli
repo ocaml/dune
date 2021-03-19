@@ -105,6 +105,27 @@ module Initialize : sig
   end
 end
 
+module Persistent : sig
+  module In : sig
+    type t =
+      | New_connection
+      | Packet of Csexp.t
+      | Close_connection
+
+    val sexp : t Conv.value
+
+    val to_dyn : t -> Dyn.t
+  end
+
+  module Out : sig
+    type t =
+      | Packet of Sexp.t
+      | Close_connection
+
+    val sexp : t Conv.value
+  end
+end
+
 module Packet : sig
   module Query : sig
     type t =

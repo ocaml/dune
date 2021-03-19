@@ -52,7 +52,8 @@ val for_alias : t -> Module.Name_map.t
 
 val fold_user_written : t -> f:(Module.t -> 'acc -> 'acc) -> init:'acc -> 'acc
 
-val map_user_written : t -> f:(Module.t -> Module.t) -> t
+val map_user_written :
+  t -> f:(Module.t -> Module.t Memo.Build.t) -> t Memo.Build.t
 
 (** Returns all the compatibility modules. *)
 val wrapped_compat : t -> Module.Name_map.t
@@ -65,6 +66,11 @@ module Sourced_module : sig
 end
 
 val obj_map : t -> f:(Sourced_module.t -> 'a) -> 'a Module.Obj_map.t
+
+val obj_map_build :
+     t
+  -> f:(Sourced_module.t -> 'a Memo.Build.t)
+  -> 'a Module.Obj_map.t Memo.Build.t
 
 (** List of entry modules visible to users of the library. For wrapped
     libraries, this is always one module. For unwrapped libraries, this could be

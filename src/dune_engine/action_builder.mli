@@ -253,6 +253,9 @@ end
     build rule dependencies. *)
 val memo_build : 'a Memo.Build.t -> 'a t
 
+(** Like [memo_build] but collapses the two levels of [t]. *)
+val memo_build_join : 'a t Memo.Build.t -> 'a t
+
 (** If you're thinking of using [Process.run] here, check that: (i) you don't in
     fact need [Command.run], and that (ii) [Process.run] only reads the declared
     build rule dependencies. *)

@@ -48,27 +48,34 @@ let setup_copy_rules_for_impl ~sctx ~dir vimpl =
     let dst = Obj_dir.Module.cm_file_exn impl_obj_dir m ~kind in
     copy_to_obj_dir ~src ~dst
   in
+  let open Memo.Build.O in
   let copy_objs src =
-    copy_obj_file src Cmi;
-    (if
-     Module.visibility src = Public
-     && Obj_dir.need_dedicated_public_dir impl_obj_dir
-    then
-      let dst = Obj_dir.Module.cm_public_file_exn impl_obj_dir src ~kind:Cmi in
-      let src = Obj_dir.Module.cm_public_file_exn vlib_obj_dir src ~kind:Cmi in
-      copy_to_obj_dir ~src ~dst);
-    if Module.has src ~ml_kind:Impl then (
-      if byte then copy_obj_file src Cmo;
-      if native then (
-        copy_obj_file src Cmx;
-        let object_file dir = Obj_dir.Module.o_file_exn dir src ~ext_obj in
-        copy_to_obj_dir ~src:(object_file vlib_obj_dir)
-          ~dst:(object_file impl_obj_dir)
-      )
-    )
+    copy_obj_file src Cmi
+    >>> Memo.Build.if_
+          (Module.visibility src = Public
+          && Obj_dir.need_dedicated_public_dir impl_obj_dir)
+          (fun () ->
+            let dst =
+              Obj_dir.Module.cm_public_file_exn impl_obj_dir src ~kind:Cmi
+            in
+            let src =
+              Obj_dir.Module.cm_public_file_exn vlib_obj_dir src ~kind:Cmi
+            in
+            copy_to_obj_dir ~src ~dst)
+    >>> Memo.Build.if_ (Module.has src ~ml_kind:Impl) (fun () ->
+            Memo.Build.if_ byte (fun () -> copy_obj_file src Cmo)
+            >>> Memo.Build.if_ native (fun () ->
+                    copy_obj_file src Cmx
+                    >>>
+                    let object_file dir =
+                      Obj_dir.Module.o_file_exn dir src ~ext_obj
+                    in
+                    copy_to_obj_dir ~src:(object_file vlib_obj_dir)
+                      ~dst:(object_file impl_obj_dir)))
   in
   let vlib_modules = Vimpl.vlib_modules vimpl in
-  Modules.fold_no_vlib vlib_modules ~init:() ~f:(fun m () -> copy_objs m)
+  Modules.fold_no_vlib vlib_modules ~init:(Memo.Build.return ())
+    ~f:(fun m acc -> acc >>> copy_objs m)
 
 let impl sctx ~(lib : Dune_file.Library.t) ~scope =
   let open Memo.Build.O in
@@ -119,16 +126,18 @@ let impl sctx ~(lib : Dune_file.Library.t) ~scope =
             in
             Dir_contents.ocaml dir_contents
             >>| Ml_sources.modules ~for_:(Library name)
-            >>| Modules.map_user_written ~f:(Pp_spec.pped_module pp_spec)
+            >>= Modules.map_user_written ~f:(fun m ->
+                    Memo.Build.return (Pp_spec.pped_module pp_spec m))
           in
-          let foreign_objects =
+          let+ foreign_objects =
             let ext_obj = (Super_context.context sctx).lib_config.ext_obj in
             let dir = Obj_dir.obj_dir (Lib.Local.obj_dir vlib) in
-            Dir_contents.foreign_sources dir_contents
+            let+ foreign_sources = Dir_contents.foreign_sources dir_contents in
+            foreign_sources
             |> Foreign_sources.for_lib ~name
             |> Foreign.Sources.object_files ~ext_obj ~dir
             |> List.map ~f:Path.build
           in
-          Memo.Build.return (modules, foreign_objects)
+          (modules, foreign_objects)
       in
       Some (Vimpl.make ~impl:lib ~vlib ~vlib_modules ~vlib_foreign_objects))

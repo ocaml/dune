@@ -7,6 +7,11 @@ let track_locations_of_lazy_values = ref false
 module Build = struct
   include Fiber
 
+  let if_ x y =
+    match x with
+    | true -> y ()
+    | false -> return ()
+
   module O = struct
     include Fiber.O
 
@@ -18,6 +23,20 @@ module Build = struct
   let run = Fun.id
 
   let of_reproducible_fiber = Fun.id
+
+  module Option = struct
+    let iter option ~f =
+      match option with
+      | None -> return ()
+      | Some a -> f a
+  end
+
+  module Result = struct
+    let iter result ~f =
+      match result with
+      | Error _ -> return ()
+      | Ok a -> f a
+  end
 end
 
 let unwrap_exn = ref Fun.id

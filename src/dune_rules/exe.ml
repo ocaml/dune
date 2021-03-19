@@ -141,62 +141,67 @@ let link_exe ~loc ~name ~(linkage : Linkage.t) ~cm_files ~link_time_code_gen
   let exe = exe_path_from_name cctx ~name ~linkage in
   let top_sorted_cms = Cm_files.top_sorted_cms cm_files ~mode in
   let fdo_linker_script = Fdo.Linker_script.create cctx (Path.build exe) in
+  let open Memo.Build.O in
+  let* action_with_targets =
+    let ocaml_flags = Ocaml_flags.get (CC.flags cctx) mode in
+    let prefix =
+      Cm_files.top_sorted_objects_and_cms cm_files ~mode
+      |> Action_builder.dyn_paths_unit
+    in
+    let+ fdo_linker_script_flags = Fdo.Linker_script.flags fdo_linker_script in
+    let open Action_builder.With_targets.O in
+    (* NB. Below we take care to pass [link_args] last on the command-line for
+       the following reason: [link_args] contains the list of foreign libraries
+       being linked into the executable; on some systems (eg Linux), the linker
+       discards symbols of libraries passed on the command-line if those symbols
+       have not yet been referenced when the library is processed (even if they
+       are referenced by objects coming later on the command-line). In
+       particular, this can cause the link operation to fail if some of the
+       symbols in the foreign libraries are referenced only from foreign stubs
+       (which are in [o_files]) if [o_files] appears after [link_args].
+
+       While this fix works, more principled solutions should be explored:
+
+       - Having foreign stubs declare dependencies on foreign libraries
+       explicitly in the dune file.
+
+       - Implicitly declaring a dependency of all foreign stubs on all foreign
+       libraries.
+
+       In each case, we could then pass the argument in dependency order, which
+       would provide a better fix for this issue. *)
+    Action_builder.with_no_targets prefix
+    >>> Command.run ~dir:(Path.build ctx.build_dir)
+          (Context.compiler ctx mode)
+          [ Command.Args.dyn ocaml_flags
+          ; A "-o"
+          ; Target exe
+          ; As linkage.flags
+          ; Command.of_result_map link_time_code_gen
+              ~f:(fun { Link_time_code_gen.to_link; force_linkall } ->
+                S
+                  [ As
+                      (if force_linkall then
+                        [ "-linkall" ]
+                      else
+                        [])
+                  ; Lib.Lib_and_module.L.link_flags to_link
+                      ~lib_config:ctx.lib_config ~mode:linkage.mode
+                  ])
+          ; Deps o_files
+          ; Dyn
+              (Action_builder.map top_sorted_cms ~f:(fun x ->
+                   Command.Args.Deps x))
+          ; fdo_linker_script_flags
+          ; Dyn link_args
+          ]
+  in
   SC.add_rule sctx ~loc ~dir
     ~mode:
       (match promote with
       | None -> Standard
       | Some p -> Promote p)
-    (let ocaml_flags = Ocaml_flags.get (CC.flags cctx) mode in
-     let prefix =
-       Cm_files.top_sorted_objects_and_cms cm_files ~mode
-       |> Action_builder.dyn_paths_unit
-     in
-     let open Action_builder.With_targets.O in
-     (* NB. Below we take care to pass [link_args] last on the command-line for
-        the following reason: [link_args] contains the list of foreign libraries
-        being linked into the executable; on some systems (eg Linux), the linker
-        discards symbols of libraries passed on the command-line if those
-        symbols have not yet been referenced when the library is processed (even
-        if they are referenced by objects coming later on the command-line). In
-        particular, this can cause the link operation to fail if some of the
-        symbols in the foreign libraries are referenced only from foreign stubs
-        (which are in [o_files]) if [o_files] appears after [link_args].
-
-        While this fix works, more principled solutions should be explored:
-
-        - Having foreign stubs declare dependencies on foreign libraries
-        explicitly in the dune file.
-
-        - Implicitly declaring a dependency of all foreign stubs on all foreign
-        libraries.
-
-        In each case, we could then pass the argument in dependency order, which
-        would provide a better fix for this issue. *)
-     Action_builder.with_no_targets prefix
-     >>> Command.run ~dir:(Path.build ctx.build_dir)
-           (Context.compiler ctx mode)
-           [ Command.Args.dyn ocaml_flags
-           ; A "-o"
-           ; Target exe
-           ; As linkage.flags
-           ; Command.of_result_map link_time_code_gen
-               ~f:(fun { Link_time_code_gen.to_link; force_linkall } ->
-                 S
-                   [ As
-                       (if force_linkall then
-                         [ "-linkall" ]
-                       else
-                         [])
-                   ; Lib.Lib_and_module.L.link_flags to_link
-                       ~lib_config:ctx.lib_config ~mode:linkage.mode
-                   ])
-           ; Deps o_files
-           ; Dyn
-               (Action_builder.map top_sorted_cms ~f:(fun x ->
-                    Command.Args.Deps x))
-           ; Fdo.Linker_script.flags fdo_linker_script
-           ; Dyn link_args
-           ])
+    action_with_targets
 
 let link_js ~name ~cm_files ~promote cctx =
   let sctx = CC.super_context cctx in
@@ -217,10 +222,11 @@ let build_and_link_many ~programs ~linkages ~promote ?link_args ?o_files
     ?(embed_in_plugin_libraries = []) cctx =
   let open Memo.Build.O in
   let modules = Compilation_context.modules cctx in
-  let dep_graphs = Dep_rules.rules cctx ~modules in
-  let+ () = Module_compilation.build_all cctx ~dep_graphs in
-  let link_time_code_gen = Link_time_code_gen.handle_special_libs cctx in
-  List.iter programs ~f:(fun { Program.name; main_module_name; loc } ->
+  let* dep_graphs = Dep_rules.rules cctx ~modules in
+  let* () = Module_compilation.build_all cctx ~dep_graphs
+  and* link_time_code_gen = Link_time_code_gen.handle_special_libs cctx in
+  Memo.Build.parallel_iter programs
+    ~f:(fun { Program.name; main_module_name; loc } ->
       let cm_files =
         let sctx = CC.super_context cctx in
         let ctx = SC.context sctx in
@@ -232,16 +238,16 @@ let build_and_link_many ~programs ~linkages ~promote ?link_args ?o_files
         Cm_files.make ~obj_dir ~modules ~top_sorted_modules
           ~ext_obj:ctx.lib_config.ext_obj
       in
-      List.iter linkages ~f:(fun linkage ->
+      Memo.Build.parallel_iter linkages ~f:(fun linkage ->
           if linkage = Linkage.js then
             link_js ~name ~cm_files ~promote cctx
           else
-            let link_time_code_gen =
-              if Linkage.is_plugin linkage then
+            let* link_time_code_gen =
+              match Linkage.is_plugin linkage with
+              | false -> Memo.Build.return link_time_code_gen
+              | true ->
                 Link_time_code_gen.handle_special_libs
                   (CC.for_plugin_executable cctx ~embed_in_plugin_libraries)
-              else
-                link_time_code_gen
             in
             link_exe cctx ~loc ~name ~linkage ~cm_files ~link_time_code_gen
               ~promote ?link_args ?o_files))

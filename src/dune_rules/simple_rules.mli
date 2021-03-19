@@ -13,14 +13,14 @@ module Alias_rules : sig
     -> loc:Loc.t option
     -> locks:Path.t list
     -> Action.t Action_builder.With_targets.t
-    -> unit
+    -> unit Memo.Build.t
 
   val add_empty :
        Super_context.t
     -> loc:Stdune.Loc.t option
     -> alias:Alias.t
     -> stamp:'a
-    -> unit
+    -> unit Memo.Build.t
 end
 
 (** Interpret a [(rule ...)] stanza and return the targets it produces. *)
@@ -30,7 +30,7 @@ val user_rule :
   -> dir:Path.Build.t
   -> expander:Expander.t
   -> Rule.t
-  -> Path.Build.Set.t
+  -> Path.Build.Set.t Memo.Build.t
 
 (** Interpret a [(copy_files ...)] stanza and return the targets it produces. *)
 val copy_files :
@@ -48,4 +48,4 @@ val alias :
   -> dir:Path.Build.t
   -> expander:Expander.t
   -> Alias_conf.t
-  -> unit
+  -> unit Memo.Build.t

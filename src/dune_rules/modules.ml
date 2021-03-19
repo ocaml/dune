@@ -75,6 +75,13 @@ module Stdlib = struct
 
   let map t ~f = { t with modules = Module_name.Map.map t.modules ~f }
 
+  let traverse t ~f =
+    let open Memo.Build.O in
+    let+ modules =
+      Module_name.Map_traversals.parallel_map t.modules ~f:(fun _ -> f)
+    in
+    { t with modules }
+
   let lib_interface t = Module_name.Map.find t.modules t.main_module_name
 
   (* Returns [true] is a special module, i.e. one whose compilation unit name is
@@ -659,10 +666,17 @@ let rec fold_user_written t ~f ~init =
   | Impl { impl; vlib = _ } -> fold_user_written impl ~f ~init
 
 let rec map_user_written t ~f =
+  let open Memo.Build.O in
   match t with
-  | Singleton m -> Singleton (f m)
-  | Unwrapped m -> Unwrapped (Module_name.Map.map m ~f)
-  | Stdlib w -> Stdlib (Stdlib.map w ~f)
+  | Singleton m ->
+    let+ res = f m in
+    Singleton res
+  | Unwrapped m ->
+    let+ res = Module_name.Map_traversals.parallel_map m ~f:(fun _ -> f) in
+    Unwrapped res
+  | Stdlib w ->
+    let+ res = Stdlib.traverse w ~f in
+    Stdlib res
   | Wrapped
       ({ modules
        ; alias_module = _
@@ -670,9 +684,13 @@ let rec map_user_written t ~f =
        ; wrapped_compat = _
        ; wrapped = _
        } as w) ->
-    let modules = Module_name.Map.map modules ~f in
+    let+ modules =
+      Module_name.Map_traversals.parallel_map modules ~f:(fun _ -> f)
+    in
     Wrapped { w with modules }
-  | Impl t -> Impl { t with vlib = map_user_written t.vlib ~f }
+  | Impl t ->
+    let+ vlib = map_user_written t.vlib ~f in
+    Impl { t with vlib }
 
 let version_installed t ~install_dir =
   let f = Module.set_src_dir ~src_dir:install_dir in
@@ -715,6 +733,12 @@ let rec obj_map : 'a. t -> f:(Sourced_module.t -> 'a) -> 'a Module.Obj_map.t =
         | Some (Imported_from_vlib _ | Impl_of_virtual_module _), _
         | _, Some (Imported_from_vlib _ | Impl_of_virtual_module _) ->
           assert false)
+
+let obj_map_build :
+      'a.    t -> f:(Sourced_module.t -> 'a Memo.Build.t)
+      -> 'a Module.Obj_map.t Memo.Build.t =
+ fun t ~f ->
+  Module.Obj_map_traversals.parallel_map (obj_map t ~f) ~f:(fun _ x -> x)
 
 let entry_modules t =
   List.filter

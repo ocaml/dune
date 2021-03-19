@@ -9,7 +9,7 @@ val build_module :
   -> ?precompiled_cmi:bool
   -> Compilation_context.t
   -> Module.t
-  -> unit
+  -> unit Memo.Build.t
 
 val ocamlc_i :
      ?flags:string list
@@ -17,7 +17,7 @@ val ocamlc_i :
   -> Compilation_context.t
   -> Module.t
   -> output:Path.Build.t
-  -> unit
+  -> unit Memo.Build.t
 
 val build_all :
   Compilation_context.t -> dep_graphs:Dep_graph.Ml_kind.t -> unit Memo.Build.t

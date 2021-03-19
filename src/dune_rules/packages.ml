@@ -20,8 +20,8 @@ let mlds_by_package_def =
       Memo.Build.parallel_map stanzas ~f:(fun (w : _ Dir_with_dune.t) ->
           Memo.Build.parallel_map w.data ~f:(function
             | Documentation d ->
-              let+ dc = Dir_contents.get sctx ~dir:w.ctx_dir in
-              let mlds = Dir_contents.mlds dc d in
+              let* dc = Dir_contents.get sctx ~dir:w.ctx_dir in
+              let+ mlds = Dir_contents.mlds dc d in
               let name = Package.name d.package in
               Some (name, mlds)
             | _ -> Memo.Build.return None)

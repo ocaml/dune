@@ -13,4 +13,4 @@ val gen_rules_output :
   -> dialects:Dialect.DB.t
   -> expander:Expander.t
   -> output_dir:Path.Build.t
-  -> unit
+  -> unit Memo.Build.t

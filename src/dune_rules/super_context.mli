@@ -62,7 +62,8 @@ val internal_lib_names : t -> Lib_name.Set.t
 
 (** Compute the ocaml flags based on the directory environment and a buildable
     stanza *)
-val ocaml_flags : t -> dir:Path.Build.t -> Ocaml_flags.Spec.t -> Ocaml_flags.t
+val ocaml_flags :
+  t -> dir:Path.Build.t -> Ocaml_flags.Spec.t -> Ocaml_flags.t Memo.Build.t
 
 val foreign_flags :
      t
@@ -81,16 +82,17 @@ val menhir_flags :
 
 (** Binaries that are symlinked in the associated .bin directory of [dir]. This
     associated directory is [Path.relative dir ".bin"] *)
-val local_binaries : t -> dir:Path.Build.t -> File_binding.Expanded.t list
+val local_binaries :
+  t -> dir:Path.Build.t -> File_binding.Expanded.t list Memo.Build.t
 
 (** odoc config in the corresponding [(env)] stanza. *)
-val odoc : t -> dir:Path.Build.t -> Env_node.Odoc.t
+val odoc : t -> dir:Path.Build.t -> Env_node.Odoc.t Memo.Build.t
 
 (** coq config in the corresponding [(env)] stanza. *)
-val coq : t -> dir:Path.Build.t -> Env_node.Coq.t
+val coq : t -> dir:Path.Build.t -> Env_node.Coq.t Memo.Build.t
 
 (** Formatting settings in the corresponding [(env)] stanza. *)
-val format_config : t -> dir:Path.Build.t -> Format_config.t
+val format_config : t -> dir:Path.Build.t -> Format_config.t Memo.Build.t
 
 (** Dump a directory environment in a readable form *)
 val dump_env : t -> dir:Path.Build.t -> Dune_lang.t list Action_builder.t
@@ -109,7 +111,7 @@ val add_rule :
   -> ?loc:Loc.t
   -> dir:Path.Build.t
   -> Action.t Action_builder.With_targets.t
-  -> unit
+  -> unit Memo.Build.t
 
 val add_rule_get_targets :
      t
@@ -119,14 +121,14 @@ val add_rule_get_targets :
   -> ?loc:Loc.t
   -> dir:Path.Build.t
   -> Action.t Action_builder.With_targets.t
-  -> Path.Build.Set.t
+  -> Path.Build.Set.t Memo.Build.t
 
 val add_rules :
      t
   -> ?sandbox:Sandbox_config.t
   -> dir:Path.Build.t
   -> Action.t Action_builder.With_targets.t list
-  -> unit
+  -> unit Memo.Build.t
 
 val add_alias_action :
      t
@@ -136,7 +138,7 @@ val add_alias_action :
   -> ?locks:Path.t list
   -> stamp:_
   -> Action.t Action_builder.With_targets.t
-  -> unit
+  -> unit Memo.Build.t
 
 (** [resolve_program t ?hint name] resolves a program. [name] is looked up in
     the workspace, if it is not found in the tree is is looked up in the PATH.
@@ -151,9 +153,9 @@ val resolve_program :
   -> ?hint:string
   -> loc:Loc.t option
   -> string
-  -> Action.Prog.t
+  -> Action.Prog.t Memo.Build.t
 
-val expander : t -> dir:Path.Build.t -> Expander.t
+val expander : t -> dir:Path.Build.t -> Expander.t Memo.Build.t
 
 val dir_status_db : t -> Dir_status.DB.t
 

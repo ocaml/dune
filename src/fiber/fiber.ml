@@ -271,6 +271,8 @@ let sequential_iter l ~f =
   in
   loop l
 
+let all = sequential_map ~f:Fun.id
+
 type ('a, 'b) fork_and_join_state =
   | Nothing_yet
   | Got_a of 'a
@@ -341,6 +343,8 @@ let parallel_map l ~f k =
               k (list_of_option_array results)
             else
               EC.deref ()))
+
+let all_concurrently = parallel_map ~f:Fun.id
 
 let[@inline always] parallel_iter_generic ~n ~iter ~f k =
   EC.add_refs (n - 1);

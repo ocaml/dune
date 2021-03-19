@@ -261,7 +261,8 @@ let add_rule sctx ~project ~pkg =
   let mode =
     Rule.Mode.Promote { lifetime = Unlimited; into = None; only = None }
   in
-  Super_context.add_rule sctx ~mode ~dir opam_rule;
+  let open Memo.Build.O in
+  let+ () = Super_context.add_rule sctx ~mode ~dir opam_rule in
   let aliases =
     [ Alias.install ~dir
     ; Alias.runtest ~dir
@@ -274,7 +275,7 @@ let add_rule sctx ~project ~pkg =
 
 let add_rules sctx ~dir =
   let project = Super_context.find_scope_by_dir sctx dir |> Scope.project in
-  if Dune_project.generate_opam_files project then
-    Dune_project.packages project
-    |> Package.Name.Map.iter ~f:(fun (pkg : Package.t) ->
-           add_rule sctx ~project ~pkg)
+  Memo.Build.if_ (Dune_project.generate_opam_files project) (fun () ->
+      let packages = Dune_project.packages project in
+      Package.Name.Map_traversals.parallel_iter packages
+        ~f:(fun _name (pkg : Package.t) -> add_rule sctx ~project ~pkg))

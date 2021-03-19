@@ -70,7 +70,8 @@ let libs_and_ppx_under_dir sctx ~db ~dir =
 let libs_under_dir sctx ~db ~dir = fst (libs_and_ppx_under_dir sctx ~db ~dir)
 
 let setup sctx ~dir =
-  let expander = Super_context.expander sctx ~dir in
+  let open Memo.Build.O in
+  let* expander = Super_context.expander sctx ~dir in
   let scope = Super_context.find_scope_by_dir sctx dir in
   let db = Scope.libs scope in
   let libs, pps = libs_and_ppx_under_dir sctx ~db ~dir:(Path.build dir) in
@@ -81,7 +82,7 @@ let setup sctx ~dir =
       Preprocess.Pps { loc = Loc.none; pps; flags = []; staged = false }
   in
   let preprocess = Module_name.Per_item.for_all pps in
-  let preprocessing =
+  let* preprocessing =
     Preprocessing.make sctx ~dir ~expander ~scope ~lib_name:None
       ~lint:Dune_file.Lint.no_lint ~preprocess ~preprocessor_deps:[]
       ~instrumentation_deps:[]
@@ -89,7 +90,7 @@ let setup sctx ~dir =
   let source = source ~dir in
   let obj_dir = Toplevel.Source.obj_dir source in
   let loc = Toplevel.Source.loc source in
-  let modules = Toplevel.Source.modules source preprocessing in
+  let* modules = Toplevel.Source.modules source preprocessing in
   let requires =
     let open Result.O in
     (loc, Lib_name.of_string "utop")

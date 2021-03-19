@@ -108,14 +108,17 @@ end = struct
 end
 
 let pped_module m ~f =
+  let open Memo.Build.O in
   let pped = Module.pped m in
-  Module.iter m ~f:(fun ml_kind file ->
-      let pp_path =
-        Module.file pped ~ml_kind |> Option.value_exn
-        |> Path.as_in_build_dir_exn
-      in
-      let file = Path.as_in_build_dir_exn file.path in
-      f ml_kind file pp_path);
+  let+ () =
+    Module.iter m ~f:(fun ml_kind file ->
+        let pp_path =
+          Module.file pped ~ml_kind |> Option.value_exn
+          |> Path.as_in_build_dir_exn
+        in
+        let file = Path.as_in_build_dir_exn file.path in
+        f ml_kind file pp_path)
+  in
   pped
 
 module Driver = struct
@@ -321,10 +324,12 @@ let build_ppx_driver sctx ~scope ~target ~pps ~pp_names =
     |> Option.value_exn |> Path.as_in_build_dir_exn
   in
   let add_rule ~sandbox = SC.add_rule ~sandbox sctx ~dir in
-  add_rule ~sandbox:Sandbox_config.default
-    (Action_builder.of_result_map driver_and_libs ~f:(fun (driver, _) ->
-         Action_builder.return (sprintf "let () = %s ()\n" driver.info.main))
-    |> Action_builder.write_file_dyn ml_source);
+  let* () =
+    add_rule ~sandbox:Sandbox_config.default
+      (Action_builder.of_result_map driver_and_libs ~f:(fun (driver, _) ->
+           Action_builder.return (sprintf "let () = %s ()\n" driver.info.main))
+      |> Action_builder.write_file_dyn ml_source)
+  in
   let linkages = [ Exe.Linkage.native_or_custom ctx ] in
   let program : Exe.Program.t =
     { name = Filename.remove_extension (Path.Build.basename target)
@@ -333,8 +338,8 @@ let build_ppx_driver sctx ~scope ~target ~pps ~pp_names =
     }
   in
   let obj_dir = Obj_dir.for_pp ~dir in
-  let cctx =
-    let expander = Super_context.expander sctx ~dir in
+  let* cctx =
+    let+ expander = Super_context.expander sctx ~dir in
     let requires_compile = Result.map driver_and_libs ~f:snd in
     let requires_link = lazy requires_compile in
     let flags = Ocaml_flags.of_list [ "-g"; "-w"; "-24" ] in
@@ -491,17 +496,20 @@ let action_for_pp ~loc ~expander ~action ~src ~target =
 (* Generate rules for the dialect modules in [modules] and return a a new module
    with only OCaml sources *)
 let setup_dialect_rules sctx ~dir ~expander (m : Module.t) =
+  let open Memo.Build.O in
   let ml = Module.ml_source m in
-  Module.iter m ~f:(fun ml_kind f ->
-      match Dialect.preprocess f.dialect ml_kind with
-      | None -> ()
-      | Some (loc, action) ->
-        let src = Path.as_in_build_dir_exn f.path in
-        let dst =
-          Option.value_exn (Module.file ml ~ml_kind) |> Path.as_in_build_dir_exn
-        in
-        SC.add_rule sctx ~dir
-          (action_for_pp ~loc ~expander ~action ~src ~target:(Some dst)));
+  let+ () =
+    Module.iter m ~f:(fun ml_kind f ->
+        Memo.Build.Option.iter (Dialect.preprocess f.dialect ml_kind)
+          ~f:(fun (loc, action) ->
+            let src = Path.as_in_build_dir_exn f.path in
+            let dst =
+              Option.value_exn (Module.file ml ~ml_kind)
+              |> Path.as_in_build_dir_exn
+            in
+            SC.add_rule sctx ~dir
+              (action_for_pp ~loc ~expander ~action ~src ~target:(Some dst))))
+  in
   ml
 
 let add_corrected_suffix_binding expander suffix =
@@ -523,7 +531,8 @@ let lint_module sctx ~dir ~expander ~lint ~lib_name ~scope =
      in
      let lint =
        Module_name.Per_item.map lint ~f:(function
-         | Preprocess.No_preprocessing -> fun ~source:_ ~ast:_ -> ()
+         | Preprocess.No_preprocessing ->
+           fun ~source:_ ~ast:_ -> Memo.Build.return ()
          | Future_syntax loc ->
            User_error.raise ~loc
              [ Pp.text "'compat' cannot be used as a linter" ]
@@ -576,7 +585,6 @@ let lint_module sctx ~dir ~expander ~lint ~lib_name ~scope =
 
 let make sctx ~dir ~expander ~lint ~preprocess ~preprocessor_deps
     ~instrumentation_deps ~lib_name ~scope =
-  let open Action_builder.O in
   let preprocessor_deps = preprocessor_deps @ instrumentation_deps in
   let preprocess =
     Module_name.Per_item.map preprocess ~f:(fun pp ->
@@ -590,16 +598,21 @@ let make sctx ~dir ~expander ~lint ~preprocess ~preprocessor_deps
   let lint_module =
     Staged.unstage (lint_module sctx ~dir ~expander ~lint ~lib_name ~scope)
   in
+  let open Action_builder.O in
   Module_name.Per_item.map preprocess ~f:(fun pp ->
       match pp with
       | No_preprocessing ->
         fun m ~lint ->
-          let ast = setup_dialect_rules sctx ~dir ~expander m in
-          if lint then lint_module ~ast ~source:m;
+          let open Memo.Build.O in
+          let* ast = setup_dialect_rules sctx ~dir ~expander m in
+          let+ () =
+            Memo.Build.if_ lint (fun () -> lint_module ~ast ~source:m)
+          in
           ast
       | Action (loc, action) ->
         fun m ~lint ->
-          let ast =
+          let open Memo.Build.O in
+          let* ast =
             pped_module m ~f:(fun _kind src dst ->
                 let action =
                   action_for_pp ~loc ~expander ~action ~src ~target:(Some dst)
@@ -607,12 +620,14 @@ let make sctx ~dir ~expander ~lint ~preprocess ~preprocessor_deps
                 SC.add_rule sctx ~loc ~dir
                   (let open Action_builder.With_targets.O in
                   Action_builder.with_no_targets preprocessor_deps >>> action))
-            |> setup_dialect_rules sctx ~dir ~expander
+            >>= setup_dialect_rules sctx ~dir ~expander
           in
-          if lint then lint_module ~ast ~source:m;
+          let+ () =
+            Memo.Build.if_ lint (fun () -> lint_module ~ast ~source:m)
+          in
           ast
       | Pps { loc; pps; flags; staged } ->
-        if not staged then (
+        if not staged then
           let corrected_suffix = ".ppx-corrected" in
           let driver_and_flags =
             Action_builder.memoize "ppx driver and flags"
@@ -629,8 +644,11 @@ let make sctx ~dir ~expander ~lint ~preprocess ~preprocessor_deps
                (exe, ppx_flags, flags))
           in
           fun m ~lint ->
-            let ast = setup_dialect_rules sctx ~dir ~expander m in
-            if lint then lint_module ~ast ~source:m;
+            let open Memo.Build.O in
+            let* ast = setup_dialect_rules sctx ~dir ~expander m in
+            let* () =
+              Memo.Build.if_ lint (fun () -> lint_module ~ast ~source:m)
+            in
             pped_module ast ~f:(fun ml_kind src dst ->
                 SC.add_rule ~sandbox:Sandbox_config.no_special_requirements sctx
                   ~loc ~dir
@@ -638,7 +656,8 @@ let make sctx ~dir ~expander ~lint ~preprocess ~preprocessor_deps
                      (Path.as_in_build_dir_exn
                         (Option.value_exn (Module.file m ~ml_kind)))
                      (Action_builder.with_targets ~targets:[ dst ]
-                        (preprocessor_deps
+                        (let open Action_builder.O in
+                        preprocessor_deps
                         >>> let* exe, flags, args = driver_and_flags in
                             let dir =
                               Path.build (Super_context.context sctx).build_dir
@@ -652,7 +671,7 @@ let make sctx ~dir ~expander ~lint ~preprocess ~preprocessor_deps
                               ; Dep (Path.build src)
                               ; As flags
                               ]))))
-        ) else
+        else
           let dash_ppx_flag =
             Action_builder.memoize "ppx command"
               (let* () = Action_builder.return () in
@@ -666,6 +685,7 @@ let make sctx ~dir ~expander ~lint ~preprocess ~preprocessor_deps
                  Expander.expand_and_eval_set expander driver.info.as_ppx_flags
                    ~standard:(Action_builder.return [ "--as-ppx" ])
                in
+               let driver_flags = driver_flags in
                let command =
                  List.map
                    (List.concat
@@ -682,8 +702,11 @@ let make sctx ~dir ~expander ~lint ~preprocess ~preprocessor_deps
           in
           let pp = Some dash_ppx_flag in
           fun m ~lint ->
-            let ast = setup_dialect_rules sctx ~dir ~expander m in
-            if lint then lint_module ~ast ~source:m;
+            let open Memo.Build.O in
+            let* ast = setup_dialect_rules sctx ~dir ~expander m in
+            let+ () =
+              Memo.Build.if_ lint (fun () -> lint_module ~ast ~source:m)
+            in
             Module.set_pp ast pp)
   |> Pp_spec.make
 

@@ -1,7 +1,6 @@
 open! Dune_engine
 open! Stdune
 open Import
-open Action_builder.O
 module CC = Compilation_context
 module SC = Super_context
 
@@ -74,18 +73,21 @@ let deps_of ~cctx ~ml_kind unit =
   let parse_module_names = parse_module_names ~modules in
   let all_deps_file = dep (Transitive (unit, ml_kind)) in
   let ocamldep_output = dep (Immediate source) in
-  SC.add_rule sctx ~dir
-    (let flags =
-       Option.value (Module.pp_flags unit) ~default:(Action_builder.return [])
-     in
-     Command.run context.ocamldep
-       ~dir:(Path.build context.build_dir)
-       [ A "-modules"
-       ; Command.Args.dyn flags
-       ; Command.Ml_kind.flag ml_kind
-       ; Dep (Module.File.path source)
-       ]
-       ~stdout_to:ocamldep_output);
+  let open Memo.Build.O in
+  let* () =
+    SC.add_rule sctx ~dir
+      (let flags =
+         Option.value (Module.pp_flags unit) ~default:(Action_builder.return [])
+       in
+       Command.run context.ocamldep
+         ~dir:(Path.build context.build_dir)
+         [ A "-modules"
+         ; Command.Args.dyn flags
+         ; Command.Ml_kind.flag ml_kind
+         ; Dep (Module.File.path source)
+         ]
+         ~stdout_to:ocamldep_output)
+  in
   let build_paths dependencies =
     let dependency_file_path m =
       let ml_kind m =
@@ -103,6 +105,7 @@ let deps_of ~cctx ~ml_kind unit =
     List.filter_map dependencies ~f:dependency_file_path
   in
   let action =
+    let open Action_builder.O in
     let paths =
       let+ lines = Action_builder.lines_of (Path.build ocamldep_output) in
       lines
@@ -120,7 +123,7 @@ let deps_of ~cctx ~ml_kind unit =
        in
        Action.Merge_files_into (sources, extras, all_deps_file))
   in
-  SC.add_rule sctx ~dir action;
+  let+ () = SC.add_rule sctx ~dir action in
   let all_deps_file = Path.build all_deps_file in
   Action_builder.memoize
     (Path.to_string all_deps_file)

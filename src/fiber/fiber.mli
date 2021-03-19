@@ -54,6 +54,10 @@ val bind : 'a t -> f:('a -> 'b t) -> 'b t
 
 val both : 'a t -> 'b t -> ('a * 'b) t
 
+(** Execute a list of fibers in sequence. We use the short name to conform with
+    the [Applicative] interface.*)
+val all : 'a t list -> 'a list t
+
 val sequential_map : 'a list -> f:('a -> 'b t) -> 'b list t
 
 val sequential_iter : 'a list -> f:('a -> unit t) -> unit t
@@ -73,6 +77,12 @@ val fork_and_join_unit : (unit -> unit t) -> (unit -> 'a t) -> 'a t
 
 (** Map a list in parallel. *)
 val parallel_map : 'a list -> f:('a -> 'b t) -> 'b list t
+
+(* CR-someday amokhov: For discoverability and fast code completion it would be
+   better to name functions [foo_sequentially] rather than [sequential_foo]. *)
+
+(** Like [all] but executes the fibers concurrently. *)
+val all_concurrently : 'a t list -> 'a list t
 
 (** Iter over a list in parallel. *)
 val parallel_iter : 'a list -> f:('a -> unit t) -> unit t

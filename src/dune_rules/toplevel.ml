@@ -25,7 +25,8 @@ module Source = struct
   let obj_dir { dir; name; _ } = Obj_dir.make_exe ~dir ~name
 
   let modules t pp =
-    main_module t |> Pp_spec.pp_module pp |> Modules.singleton_exe
+    let open Memo.Build.O in
+    main_module t |> Pp_spec.pp_module pp >>| Modules.singleton_exe
 
   let make ~dir ~loc ~main ~name = { dir; main; name; loc }
 
@@ -132,9 +133,8 @@ let setup_rules t =
   let dir = Source.stanza_dir t.source in
   let dst = Path.Build.relative dir (Path.Build.basename src) in
   Super_context.add_rule sctx ~dir ~loc:t.source.loc
-    (Action_builder.symlink ~src:(Path.build src) ~dst);
-  setup_module_rules t;
-  Memo.Build.return ()
+    (Action_builder.symlink ~src:(Path.build src) ~dst)
+  >>> setup_module_rules t
 
 let print_toplevel_init_file ~include_paths ~files_to_load =
   let includes = Path.Set.to_list include_paths in
@@ -145,8 +145,9 @@ let print_toplevel_init_file ~include_paths ~files_to_load =
 
 module Stanza = struct
   let setup ~sctx ~dir ~(toplevel : Dune_file.Toplevel.t) =
+    let open Memo.Build.O in
     let source = Source.of_stanza ~dir ~toplevel in
-    let expander = Super_context.expander sctx ~dir in
+    let* expander = Super_context.expander sctx ~dir in
     let scope = Super_context.find_scope_by_dir sctx dir in
     let dune_version = Scope.project scope |> Dune_project.dune_version in
     let pps =
@@ -158,7 +159,7 @@ module Stanza = struct
       | No_preprocessing -> []
     in
     let preprocess = Module_name.Per_item.for_all toplevel.pps in
-    let preprocessing =
+    let* preprocessing =
       Preprocessing.make sctx ~dir ~expander ~scope ~lib_name:None
         ~lint:Dune_file.Lint.no_lint ~preprocess ~preprocessor_deps:[]
         ~instrumentation_deps:[]
@@ -182,12 +183,11 @@ module Stanza = struct
         (Ocaml_flags.default ~dune_version ~profile)
         [ "-w"; "-24" ]
     in
+    let* modules = Source.modules source preprocessing in
     let cctx =
       Compilation_context.create () ~super_context:sctx ~scope ~obj_dir
-        ~expander
-        ~modules:(Source.modules source preprocessing)
-        ~opaque:(Explicit false) ~requires_compile ~requires_link ~flags
-        ~js_of_ocaml:None ~package:None ~preprocessing
+        ~expander ~modules ~opaque:(Explicit false) ~requires_compile
+        ~requires_link ~flags ~js_of_ocaml:None ~package:None ~preprocessing
     in
     let resolved = make ~cctx ~source ~preprocess:toplevel.pps in
     setup_rules resolved

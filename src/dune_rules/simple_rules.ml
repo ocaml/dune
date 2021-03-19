@@ -75,13 +75,15 @@ let add_user_rule sctx ~dir ~(rule : Rule.t) ~action ~expander =
 
 let user_rule sctx ?extra_bindings ~dir ~expander (rule : Rule.t) =
   match Expander.eval_blang expander rule.enabled_if with
-  | false ->
-    Option.iter rule.alias ~f:(fun name ->
-        let alias = Alias.make ~dir name in
-        let action = Some (snd rule.action) in
-        let stamp = Alias_rules.stamp ~deps:rule.deps ~action ~extra_bindings in
-        Alias_rules.add_empty sctx ~alias ~loc:(Some rule.loc) ~stamp);
-    Path.Build.Set.empty
+  | false -> (
+    match rule.alias with
+    | None -> Memo.Build.return Path.Build.Set.empty
+    | Some name ->
+      let alias = Alias.make ~dir name in
+      let action = Some (snd rule.action) in
+      let stamp = Alias_rules.stamp ~deps:rule.deps ~action ~extra_bindings in
+      let+ () = Alias_rules.add_empty sctx ~alias ~loc:(Some rule.loc) ~stamp in
+      Path.Build.Set.empty)
   | true -> (
     let targets : Targets.Or_forbidden.t =
       Targets
@@ -123,7 +125,9 @@ let user_rule sctx ?extra_bindings ~dir ~expander (rule : Rule.t) =
         Alias_rules.stamp ~deps:rule.deps ~extra_bindings ~action
       in
       let locks = interpret_locks ~expander rule.locks in
-      Alias_rules.add sctx ~alias ~stamp ~loc:(Some rule.loc) action ~locks;
+      let+ () =
+        Alias_rules.add sctx ~alias ~stamp ~loc:(Some rule.loc) action ~locks
+      in
       Path.Build.Set.empty)
 
 let copy_files sctx ~dir ~expander ~src_dir (def : Copy_files.t) =
@@ -175,11 +179,17 @@ let copy_files sctx ~dir ~expander ~src_dir (def : Copy_files.t) =
       let context = Context.DB.get dir in
       Path.Build.append_source context.build_dir src_in_src |> Path.build
   in
-  let+ files =
+  let* files =
     Build_system.eval_pred (File_selector.create ~dir:src_in_build pred)
   in
-  let targets =
-    Path.Set.map files ~f:(fun file_src ->
+  (* CR-someday amokhov: We currently traverse the set [files] twice: first, to
+     add the corresponding rules, and then to convert the files to [targets]. To
+     do only one traversal we need [Memo.Build.parallel_map_set]. *)
+  let+ () =
+    Memo.Build.parallel_iter_set
+      (module Path.Set)
+      files
+      ~f:(fun file_src ->
         let basename = Path.basename file_src in
         let file_dst = Path.Build.relative dir basename in
         SC.add_rule sctx ~loc ~dir ~mode:def.mode
@@ -187,7 +197,12 @@ let copy_files sctx ~dir ~expander ~src_dir (def : Copy_files.t) =
              Action_builder.copy_and_add_line_directive
            else
              Action_builder.copy)
-             ~src:file_src ~dst:file_dst);
+             ~src:file_src ~dst:file_dst))
+  in
+  let targets =
+    Path.Set.map files ~f:(fun file_src ->
+        let basename = Path.basename file_src in
+        let file_dst = Path.Build.relative dir basename in
         Path.build file_dst)
   in
   Option.iter def.alias ~f:(fun alias ->
@@ -214,7 +229,8 @@ let alias sctx ?extra_bindings ~dir ~expander (alias_conf : Alias_conf.t) =
     match alias_conf.action with
     | None ->
       let builder, _expander = Dep_conf_eval.named ~expander alias_conf.deps in
-      Rules.Produce.Alias.add_deps alias ?loc builder
+      Rules.Produce.Alias.add_deps alias ?loc builder;
+      Memo.Build.return ()
     | Some (action_loc, action) ->
       let locks = interpret_locks ~expander alias_conf.locks in
       let action =

@@ -29,7 +29,8 @@ type t =
   ; lookup_artifacts :
       (dir:Path.Build.t -> Ml_sources.Artifacts.t Memo.Build.t) option
   ; foreign_flags :
-      dir:Path.Build.t -> string list Action_builder.t Foreign_language.Dict.t
+         dir:Path.Build.t
+      -> string list Action_builder.t Foreign_language.Dict.t Memo.Build.t
   ; find_package : Package.Name.t -> any_package option
   ; expanding_what : Expanding_what.t
   }
@@ -173,10 +174,10 @@ let expand_artifact ~source t a s =
                Value.Path fn))))
 
 let cc t =
-  let cc = t.foreign_flags ~dir:t.dir in
-  Foreign_language.Dict.map cc ~f:(fun cc ->
-      let+ flags = cc in
-      strings (t.c_compiler :: flags))
+  Memo.Build.map (t.foreign_flags ~dir:t.dir) ~f:(fun cc ->
+      Foreign_language.Dict.map cc ~f:(fun cc ->
+          let+ flags = cc in
+          strings (t.c_compiler :: flags)))
 
 let get_prog = function
   | Ok p -> path p
@@ -308,8 +309,16 @@ let expand_pform_gen ~(context : Context.t) ~bindings ~dir ~source
           (fun t ->
             Action_builder.return
               [ Value.Dir (Path.build (Scope.root t.scope)) ])
-      | Cc -> Need_full_expander (fun t -> (cc t).c)
-      | Cxx -> Need_full_expander (fun t -> (cc t).cxx)
+      | Cc ->
+        Need_full_expander
+          (fun t ->
+            let* cc = Action_builder.memo_build (cc t) in
+            cc.c)
+      | Cxx ->
+        Need_full_expander
+          (fun t ->
+            let* cc = Action_builder.memo_build (cc t) in
+            cc.cxx)
       | Ccomp_type ->
         static
           (string

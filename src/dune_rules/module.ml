@@ -182,7 +182,8 @@ let file t ~(ml_kind : Ml_kind.t) = source t ~ml_kind |> Option.map ~f:File.path
 let obj_name t = t.obj_name
 
 let iter t ~f =
-  Ml_kind.Dict.iteri t.source.files ~f:(fun kind -> Option.iter ~f:(f kind))
+  Memo.Build.parallel_iter Ml_kind.all ~f:(fun kind ->
+      Memo.Build.Option.iter (Ml_kind.Dict.get t.source.files kind) ~f:(f kind))
 
 let with_wrapper t ~main_module_name =
   { t with obj_name = Module_name.wrap t.source.name ~with_:main_module_name }
@@ -250,6 +251,8 @@ module Obj_map = struct
     let to_dyn = to_dyn
   end)
 end
+
+module Obj_map_traversals = Memo.Build.Make_map_traversals (Obj_map)
 
 let encode
     ({ source = { name; files = _ }; obj_name; pp = _; visibility; kind } as t)

@@ -93,6 +93,7 @@ let build_c ~kind ~sctx ~dir ~expander ~include_flags (loc, src, dst) =
       | Some true -> Fdo.c_flags ctx)
     | Foreign_language.Cxx -> Fdo.cxx_flags ctx
   in
+  let open Memo.Build.O in
   let with_user_and_std_flags =
     let flags = Foreign.Source.flags src in
     (* DUNE3 will have [use_standard_c_and_cxx_flags] enabled by default. To
@@ -125,28 +126,33 @@ let build_c ~kind ~sctx ~dir ~expander ~include_flags (loc, src, dst) =
     Super_context.foreign_flags sctx ~dir ~expander ~flags ~language:kind
     |> Action_builder.map ~f:(List.append base_flags)
   in
+  let* c_compiler =
+    Super_context.resolve_program ~loc:None ~dir sctx
+      (Ocaml_config.c_compiler ctx.ocaml_config)
+  in
   let output_param =
     match ctx.lib_config.ccomp_type with
     | Msvc -> [ Command.Args.Concat ("", [ A "/Fo"; Target dst ]) ]
     | Other _ -> [ A "-o"; Target dst ]
   in
-  Super_context.add_rule sctx ~loc
-    ~dir
-      (* With sandboxing we get errors like: bar.c:2:19: fatal error: foo.cxx:
-         No such file or directory #include "foo.cxx". (These errors happen only
-         when compiling c files.) *)
-    ~sandbox:Sandbox_config.no_sandboxing
-    (let src = Path.build (Foreign.Source.path src) in
-     let c_compiler = Ocaml_config.c_compiler ctx.ocaml_config in
-     (* We have to execute the rule in the library directory as the .o is
-        produced in the current directory *)
-     Command.run ~dir:(Path.build dir)
-       (Super_context.resolve_program ~loc:None ~dir sctx c_compiler)
-       ([ Command.Args.dyn with_user_and_std_flags
-        ; S [ A "-I"; Path ctx.stdlib_dir ]
-        ; include_flags
-        ]
-       @ output_param @ [ A "-c"; Dep src ]));
+  let+ () =
+    Super_context.add_rule sctx ~loc
+      ~dir
+        (* With sandboxing we get errors like: bar.c:2:19: fatal error: foo.cxx:
+           No such file or directory #include "foo.cxx". (These errors happen
+           only when compiling c files.) *)
+      ~sandbox:Sandbox_config.no_sandboxing
+      (let src = Path.build (Foreign.Source.path src) in
+
+       (* We have to execute the rule in the library directory as the .o is
+          produced in the current directory *)
+       Command.run ~dir:(Path.build dir) c_compiler
+         ([ Command.Args.dyn with_user_and_std_flags
+          ; S [ A "-I"; Path ctx.stdlib_dir ]
+          ; include_flags
+          ]
+         @ output_param @ [ A "-c"; Dep src ]))
+  in
   dst
 
 (* TODO: [requires] is a confusing name, probably because it's too general: it

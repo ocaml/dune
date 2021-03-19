@@ -18,6 +18,14 @@ module Name : sig
   include Stringlike_intf.S with type t := t
 
   val of_opam_file_basename : string -> t option
+
+  module Map_traversals : sig
+    val parallel_iter :
+      'a Map.t -> f:(t -> 'a -> unit Memo.Build.t) -> unit Memo.Build.t
+
+    val parallel_map :
+      'a Map.t -> f:(t -> 'a -> 'b Memo.Build.t) -> 'b Map.t Memo.Build.t
+  end
 end
 
 module Id : sig

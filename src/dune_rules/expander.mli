@@ -38,7 +38,7 @@ val set_foreign_flags :
      t
   -> f:
        (   dir:Path.Build.t
-        -> string list Action_builder.t Foreign_language.Dict.t)
+        -> string list Action_builder.t Foreign_language.Dict.t Memo.Build.t)
   -> t
 
 val set_local_env_var : t -> var:string -> value:string Action_builder.t -> t

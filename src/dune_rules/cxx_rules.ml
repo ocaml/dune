@@ -19,7 +19,8 @@ CCOMP
 let rules ~sctx ~dir =
   let file = Path.Build.relative dir Cxx_flags.preprocessed_filename in
   let ocfg = (Super_context.context sctx).ocaml_config in
-  let prog =
+  let open Memo.Build.O in
+  let* prog =
     Super_context.resolve_program sctx ~dir ~loc:None
       (Ocaml_config.c_compiler ocfg)
   in

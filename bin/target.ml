@@ -105,7 +105,7 @@ let expand_path common ~(setup : Dune_rules.Main.build_system) ctx sv =
     Path.Build.relative ctx.Context.build_dir
       (String.concat ~sep:Filename.dir_sep (Common.root common).to_cwd)
   in
-  let expander = Dune_rules.Super_context.expander sctx ~dir in
+  let* expander = Dune_rules.Super_context.expander sctx ~dir in
   let expander =
     Dune_rules.Dir_contents.add_sources_to_expander sctx expander
   in

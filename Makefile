@@ -70,7 +70,7 @@ dev-switch:
 	opam install -y $(TEST_DEPS) $(DEV_DEPS)
 
 test: $(BIN)
-	$(BIN) runtest
+	$(BIN) runtest test/expect-tests/dune_rpc
 
 test-windows: $(BIN)
 	$(BIN) build @runtest-windows

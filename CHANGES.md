@@ -1,6 +1,8 @@
 Unreleased
 ----------
 
+- Fixes `dune exec` not adding .exe on Windows (#4371, fixes #3322, @MisterDA)
+
 - Allow multiple cinaps stanzas in the same directory (#4460, @rgrinberg)
 
 - Fix `$ dune subst` in empty git repositories (#4441, fixes #3619, @rgrinberg)

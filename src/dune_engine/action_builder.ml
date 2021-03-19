@@ -84,8 +84,6 @@ let dyn_deps x = Dyn_deps x
 
 let path p = Deps (Dep.Set.singleton (Dep.file p))
 
-let goal t = Goal t
-
 let paths ps = Deps (Dep.Set.of_files ps)
 
 let path_set ps = Deps (Dep.Set.of_files_set ps)
@@ -277,6 +275,8 @@ let progn ts =
   let open With_targets.O in
   let+ actions = With_targets.all ts in
   Action.Progn actions
+
+let goal t = Goal t
 
 (* Execution *)
 

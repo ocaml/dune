@@ -220,7 +220,7 @@ val static_eval : 'a t -> ('a * unit t) option
 (** [goal t] ignores all facts that have been accumulated about the dependencies
     of [t]. For example, [goal (path p)] declares that a path [p] contributes to
     the "goal" of the resulting action builder, which means [p] must be built,
-    but the content of [p] is irrelevant. *)
+    but the contents of [p] is irrelevant. *)
 val goal : 'a t -> 'a t
 
 module Expander : String_with_vars.Expander with type 'a app := 'a t

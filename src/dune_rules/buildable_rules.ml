@@ -18,9 +18,8 @@ let gen_select_rules t ~dir compile_info =
 let with_lib_deps (t : Context.t) compile_info ~dir ~f =
   let prefix =
     if t.merlin then
-      Merlin_ident.merlin_exists_path dir
-        (Lib.Compile.merlin_ident compile_info)
-      |> Path.build |> Action_builder.path
+      Merlin_ident.merlin_file_path dir (Lib.Compile.merlin_ident compile_info)
+      |> Path.build |> Action_builder.path |> Action_builder.goal
     else
       Action_builder.return ()
   in

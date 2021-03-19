@@ -380,24 +380,7 @@ module Unprocessed = struct
 end
 
 let dot_merlin sctx ~dir ~more_src_dirs ~expander (t : Unprocessed.t) =
-  let merlin_exist = Merlin_ident.merlin_exists_path dir t.ident in
   let merlin_file = Merlin_ident.merlin_file_path dir t.ident in
-
-  (* We make the compilation of .ml/.mli files depend on the existence of
-     .merlin so that they are always generated, however the command themselves
-     don't read the merlin file, so we don't want to declare a dependency on the
-     contents of the .merlin file.
-
-     Currently dune doesn't support declaring a dependency only on the existence
-     of a file, so we have to use this trick. *)
-  let open Memo.Build.O in
-  let* () =
-    SC.add_rule sctx ~dir
-      (let open Action_builder.With_targets.O in
-      Action_builder.with_no_targets
-        (Action_builder.path (Path.build merlin_file))
-      >>> Action_builder.create_file merlin_exist)
-  in
 
   Path.Set.singleton (Path.build merlin_file)
   |> Rules.Produce.Alias.add_static_deps (Alias.check ~dir);

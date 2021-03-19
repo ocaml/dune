@@ -25,6 +25,7 @@ module T = struct
     | Deps : Dep.Set.t -> unit t
     | Memo_build : 'a Memo.Build.t -> 'a t
     | Dyn_memo_build : 'a Memo.Build.t t -> 'a t
+    | Goal : 'a t -> 'a t
 
   and 'a memo =
     { name : string
@@ -82,6 +83,8 @@ let dep d = Deps (Dep.Set.singleton d)
 let dyn_deps x = Dyn_deps x
 
 let path p = Deps (Dep.Set.singleton (Dep.file p))
+
+let goal t = Goal t
 
 let paths ps = Deps (Dep.Set.of_files ps)
 
@@ -409,6 +412,9 @@ struct
           let deps = Dep.Set.singleton (Dep.alias alias) in
           let+ deps = Build_deps.register_action_deps deps in
           (true, deps))
+      | Goal t ->
+        let+ a, (_irrelevant_for_goals : Build_deps.fact Dep.Map.t) = exec t in
+        (a, Dep.Map.empty)
   end
 
   include Execution
@@ -474,6 +480,7 @@ let rec can_eval_statically : type a. a t -> bool = function
        this code. *)
     false
   | Dep_on_alias_if_exists _ -> false
+  | Goal t -> can_eval_statically t
 
 let static_eval =
   let rec loop : type a. a t -> unit t -> a * unit t =
@@ -522,6 +529,7 @@ let static_eval =
     | Dyn_memo_build _ -> assert false
     | Bind _ -> assert false
     | Dep_on_alias_if_exists _ -> assert false
+    | Goal t -> loop t acc
   and loop_many : type a. a list -> a t list -> unit t -> a list * unit t =
    fun acc_res l acc ->
     match l with

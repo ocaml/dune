@@ -13,8 +13,6 @@ module Decl : sig
 
   val build : (string list, Status.t) request
 
-  val ping : (unit, unit) request
-
   val shutdown : unit notification
 
   module Status : sig

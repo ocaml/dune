@@ -27,8 +27,6 @@ module Decl = struct
 
   let build = Decl.request ~method_:"build" Conv.(list string) Status.sexp
 
-  let ping = Decl.request ~method_:"ping" Conv.unit Conv.unit
-
   let shutdown = Decl.notification ~method_:"shutdown" Conv.unit
 
   module Status = struct
@@ -92,7 +90,7 @@ let handler (t : t Fdecl.t) : 'a Dune_rpc_server.Handler.t =
   let () =
     Handler.request rpc
       (Handler.callback (Handler.public ~since:(1, 0) ()) Fiber.return)
-      Decl.ping
+      Public.Request.ping
   in
   let () =
     let build targets =

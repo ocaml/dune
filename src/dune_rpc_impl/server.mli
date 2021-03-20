@@ -29,7 +29,6 @@ val build_mutex : t -> Fiber.Mutex.t
 val config : t -> Dune_engine.Scheduler.Config.Rpc.t
 
 type pending_build_action =
-  | Shutdown
   | Build of Dune_rules.Dep_conf.t list * Status.t Fiber.Ivar.t
 
 val pending_build_action : t -> pending_build_action option

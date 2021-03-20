@@ -769,13 +769,19 @@ module Rpc0 = struct
           f
 end
 
+type waiting_for_file_changes =
+  | Shutdown_requested
+  | Files_changed
+
 type status =
   (* Waiting for file changes to start a new a build *)
-  | Waiting_for_file_changes of unit Fiber.Ivar.t
+  | Waiting_for_file_changes of waiting_for_file_changes Fiber.Ivar.t
   (* Running a build *)
   | Building
   (* Cancellation requested. Build jobs are immediately rejected in this state *)
   | Restarting_build
+  (* Shut down requested. No new new builds will start *)
+  | Shutting_down
 
 module Handler = struct
   type t =
@@ -818,7 +824,9 @@ let with_job_slot f =
   Fiber.Throttle.run t.job_throttle ~f:(fun () ->
       match t.status with
       | Restarting_build -> raise Cancel_build
-      | Building -> f t.config
+      | Shutting_down
+      | Building ->
+        f t.config
       | Waiting_for_file_changes _ ->
         (* At this stage, we're not running a build, so we shouldn't be running
            tasks here. *)
@@ -921,6 +929,7 @@ end = struct
       | Files_changed changed_files -> (
         List.iter changed_files ~f:Fs_notify_memo.invalidate;
         match t.status with
+        | Shutting_down
         | Restarting_build ->
           (* We're already cancelling build, so file change events don't matter *)
           iter t
@@ -929,7 +938,7 @@ end = struct
           t.status <- Restarting_build;
           Process_watcher.killall t.process_watcher Sys.sigkill;
           iter t
-        | Waiting_for_file_changes ivar -> Fill (ivar, ()))
+        | Waiting_for_file_changes ivar -> Fill (ivar, Files_changed))
       | Rpc fill -> fill
       | Signal signal ->
         got_signal signal;
@@ -1004,7 +1013,9 @@ module Run = struct
           let on_error exn =
             (match t.status with
             | Building -> Report_error.report exn
-            | Restarting_build -> ()
+            | Shutting_down
+            | Restarting_build ->
+              ()
             | Waiting_for_file_changes _ ->
               (* We are inside a build, so we aren't waiting for a file change
                  event *)
@@ -1020,6 +1031,7 @@ module Run = struct
       | Waiting_for_file_changes _ ->
         (* We just finished a build, so there's no way this was set *)
         assert false
+      | Shutting_down -> Fiber.return ()
       | Restarting_build -> loop ()
       | Building -> (
         on_event t.config
@@ -1029,29 +1041,32 @@ module Run = struct
              | Ok _ -> Success));
         let ivar = Fiber.Ivar.create () in
         t.status <- Waiting_for_file_changes ivar;
-        let* () = Fiber.Ivar.read ivar in
-        on_event t.config Source_files_changed;
-        match res with
-        | Error _
-        | Ok `Continue ->
-          loop ()
-        | Ok `Stop -> Fiber.return ())
+        let* next = Fiber.Ivar.read ivar in
+        match next with
+        | Shutdown_requested -> Fiber.return ()
+        | Files_changed -> (
+          on_event t.config Source_files_changed;
+          match res with
+          | Error _
+          | Ok `Continue ->
+            loop ()
+          | Ok `Stop -> Fiber.return ()))
     in
     let run = Rpc0.with_rpc_serve t.rpc loop in
-    let exn, bt =
+    let result =
       match Run_once.run_and_cleanup t run with
-      | Ok () ->
-        (* Polling mode is an infinite loop. We aren't going to terminate *)
-        assert false
+      | Ok () -> Result.Ok ()
       | Error (Got_signal | Never) ->
-        (Dune_util.Report_error.Already_reported, None)
-      | Error (Exn exn_with_bt) -> (exn_with_bt.exn, Some exn_with_bt.backtrace)
+        Error (Dune_util.Report_error.Already_reported, None)
+      | Error (Exn exn_with_bt) ->
+        Error (exn_with_bt.exn, Some exn_with_bt.backtrace)
     in
     ignore (wait_for_process t (File_watcher.pid watcher) : _ Fiber.t);
     ignore (kill_and_wait_for_all_processes t : saw_signal);
-    match bt with
-    | None -> Exn.raise exn
-    | Some bt -> Exn.raise_with_backtrace exn bt
+    match result with
+    | Ok () -> ()
+    | Error (exn, None) -> Exn.raise exn
+    | Error (exn, Some bt) -> Exn.raise_with_backtrace exn bt
 
   let go config ~(on_event : Config.t -> Event.go -> unit) run =
     let handler = Event.to_handler_go ~on_event in
@@ -1099,3 +1114,15 @@ module Rpc = struct
       Csexp_rpc.Server.stop s.server;
       Fiber.return ()
 end
+
+let shutdown () =
+  let open Fiber.O in
+  let* () = Rpc.stop () in
+  let t = Fiber.Var.get_exn t_var in
+  let fill_file_changes =
+    match t.status with
+    | Waiting_for_file_changes ivar -> Fiber.Ivar.fill ivar Shutdown_requested
+    | _ -> Fiber.return ()
+  in
+  t.status <- Shutting_down;
+  fill_file_changes

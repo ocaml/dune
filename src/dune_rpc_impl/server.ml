@@ -12,9 +12,7 @@ module Status = struct
   let sexp = Conv.enum [ ("Accepted", Accepted); ("Rejected", Rejected) ]
 end
 
-type pending_build_action =
-  | Shutdown
-  | Build of Dep_conf.t list * Status.t Fiber.Ivar.t
+type pending_build_action = Build of Dep_conf.t list * Status.t Fiber.Ivar.t
 
 (* TODO un-copy-paste from dune/bin/arg.ml *)
 let dep_parser =
@@ -68,7 +66,6 @@ type t =
   ; pending_build_jobs : (Dep_conf.t list * Status.t Fiber.Ivar.t) Queue.t
   ; mutable promotion_subs : Session_set.t
   ; mutable error_subs : Session_set.t
-  ; mutable pending_shutdown : bool
   ; mutable clients : Session_set.t
   }
 
@@ -118,7 +115,6 @@ let handler (t : t Fdecl.t) : 'a Dune_rpc_server.Handler.t =
         cancel_pending_jobs ()
     in
     let shutdown () =
-      (Fdecl.get t).pending_shutdown <- true;
       Fiber.fork_and_join_unit cancel_pending_jobs
         Dune_engine.Scheduler.shutdown
     in
@@ -176,7 +172,6 @@ let create () =
     { config
     ; build_mutex
     ; pending_build_jobs
-    ; pending_shutdown = false
     ; promotion_subs = Session_set.empty
     ; error_subs = Session_set.empty
     ; clients = Session_set.empty
@@ -190,8 +185,5 @@ let build_mutex t = t.build_mutex
 let config t = t.config
 
 let pending_build_action t =
-  if t.pending_shutdown then
-    Some Shutdown
-  else
-    Queue.pop t.pending_build_jobs
-    |> Option.map ~f:(fun (targets, ivar) -> Build (targets, ivar))
+  Queue.pop t.pending_build_jobs
+  |> Option.map ~f:(fun (targets, ivar) -> Build (targets, ivar))

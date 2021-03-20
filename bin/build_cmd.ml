@@ -11,33 +11,24 @@ let run_build_command_poll ~(common : Common.t) ~targets ~setup =
   let once () =
     Cached_digest.invalidate_cached_timestamps ();
     let* setup = setup () in
-    match
+    let* targets =
       match
         let open Option.O in
         let* rpc = Common.rpc common in
         Dune_rpc_impl.Server.pending_build_action rpc
       with
-      | None -> `Build ((fun () -> targets setup), None)
-      | Some Shutdown -> `Shutdown
+      | None -> Fiber.return (fun () -> targets setup)
       | Some (Build (targets, ivar)) ->
-        `Build
-          ( (fun () -> Target.resolve_targets_exn common setup targets)
-          , Some ivar )
-    with
-    | `Shutdown -> Fiber.return `Stop
-    | `Build (targets, ivar) ->
-      let* () =
-        match ivar with
-        | None -> Fiber.return ()
-        | Some ivar -> Fiber.Ivar.fill ivar Accepted
-      in
-      let+ () =
-        Build_system.run (fun () ->
-            let open Memo.Build.O in
-            let* targets = targets () in
-            Build_system.build (Target.request targets))
-      in
-      `Continue
+        let+ () = Fiber.Ivar.fill ivar Accepted in
+        fun () -> Target.resolve_targets_exn common setup targets
+    in
+    let+ () =
+      Build_system.run (fun () ->
+          let open Memo.Build.O in
+          let* targets = targets () in
+          Build_system.build (Target.request targets))
+    in
+    `Continue
   in
   Scheduler.poll ~common ~once ~finally:Hooks.End_of_build.run
 

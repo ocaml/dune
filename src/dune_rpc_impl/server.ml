@@ -86,7 +86,10 @@ let handler (t : t Fdecl.t) : 'a Dune_rpc_server.Handler.t =
     t.error_subs <- Session_set.remove t.error_subs session;
     Fiber.return ()
   in
-  let rpc = Handler.create ~on_terminate ~on_init ~version:(1, 0) () in
+  let rpc =
+    Handler.create ~on_terminate ~on_init
+      ~version:Dune_rpc_private.Version.latest ()
+  in
   let () =
     Handler.request rpc
       (Handler.callback (Handler.public ~since:(1, 0) ()) Fiber.return)

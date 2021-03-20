@@ -160,6 +160,8 @@ end
 module Public = struct
   module Request = struct
     type ('a, 'b) t = ('a, 'b) Decl.request
+
+    let ping = Decl.request ~method_:"ping" Conv.unit Conv.unit
   end
 
   module Notification = struct

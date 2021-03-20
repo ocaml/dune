@@ -116,6 +116,8 @@ module V1 : sig
 
   module Request : sig
     type ('a, 'b) t
+
+    val ping : (unit, unit) t
   end
 
   (** Functor to create a client implementation *)

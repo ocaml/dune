@@ -258,6 +258,8 @@ module Public : sig
 
   module Request : sig
     type ('a, 'b) t = ('a, 'b) Decl.request
+
+    val ping : (unit, unit) t
   end
 
   module Notification : sig

@@ -119,7 +119,8 @@ let handler (t : t Fdecl.t) : 'a Dune_rpc_server.Handler.t =
     in
     let shutdown () =
       (Fdecl.get t).pending_shutdown <- true;
-      cancel_pending_jobs ()
+      Fiber.fork_and_join_unit cancel_pending_jobs
+        Dune_engine.Scheduler.shutdown
     in
     Handler.notification rpc
       (Handler.callback Handler.private_ shutdown)

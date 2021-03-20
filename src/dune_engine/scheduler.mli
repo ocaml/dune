@@ -54,7 +54,10 @@ module Run : sig
   (** Runs [once] in a loop, executing [finally] after every iteration, even if
       Fiber.Never was encountered.
 
-      If any source files change in the middle of iteration, it gets canceled. *)
+      If any source files change in the middle of iteration, it gets canceled.
+
+      If [shutdown] is called, no new builds will be queued after the current
+      one finishes. *)
   val poll :
        Config.t
     -> on_event:(Config.t -> Event.poll -> unit)
@@ -93,6 +96,10 @@ val with_chdir : dir:Path.t -> f:(unit -> 'a) -> 'a
 
 (** Send a task that will run in the scheduler thread *)
 val send_sync_task : (unit -> unit) -> unit
+
+(** Do not restart the build after the current one finishes and stop accepting
+    new RPC clients. Only works for [poll] *)
+val shutdown : unit -> unit Fiber.t
 
 module Rpc : sig
   (** Rpc related functions *)

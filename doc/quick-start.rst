@@ -149,7 +149,7 @@ Write this ``dune`` file at the root of your project:
      (dev
       (flags (:standard -w +42)))
      (release
-      (flags (:standard -O3))))
+      (ocamlopt_flags (:standard -O3))))
 
 `dev` and `release` correspond to build profiles. The build profile
 can be selected from the command line with ``--profile foo`` or from a

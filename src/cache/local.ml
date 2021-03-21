@@ -176,17 +176,20 @@ let deduplicate cache (file : File.t) =
   match cache.duplication_mode with
   | Copy -> ()
   | Hardlink -> (
-    let path = Path.Build.to_string file.path in
-    let path_in_cache = file_path cache file.digest |> Path.to_string in
-    let tmpname = Path.Build.to_string (Path.Build.of_string ".dedup") in
-    cache.info [ Pp.textf "deduplicate %s from %s" path path_in_cache ];
-    let rm p = try Unix.unlink p with _ -> () in
+    let path = Path.build file.path in
+    let path_in_cache = file_path cache file.digest in
+    let tmpname = Path.build (Path.Build.of_string ".dedup") in
+    cache.info
+      [ Pp.textf "deduplicate %s from %s" (Path.to_string path)
+          (Path.to_string path_in_cache)
+      ];
     try
-      rm tmpname;
-      Unix.link path_in_cache tmpname;
-      Unix.rename tmpname path
-    with Unix.Unix_error (e, syscall, _) ->
-      rm tmpname;
+      Path.unlink_no_err tmpname;
+      Path.link path_in_cache tmpname;
+      Path.rename tmpname path
+    with
+    | Unix.Unix_error (e, syscall, _) ->
+      Path.unlink_no_err tmpname;
       cache.warn
         [ Pp.textf "error handling dune-cache command: %s: %s" syscall
             (Unix.error_message e)
@@ -201,11 +204,11 @@ let promote_sync cache paths key metadata ~repository ~duplication =
   let open Result.O in
   let* repo =
     match repository with
+    | None -> Result.Ok None
     | Some idx -> (
       match List.nth cache.repositories idx with
       | None -> Result.Error (Printf.sprintf "repository out of range: %i" idx)
-      | repo -> Result.Ok repo )
-    | None -> Result.Ok None
+      | repo -> Result.Ok repo)
   in
   let metadata =
     apply
@@ -219,7 +222,7 @@ let promote_sync cache paths key metadata ~repository ~duplication =
   let promote (path, expected_digest) =
     let* abs_path = make_path cache (Path.Build.local path) in
     cache.info [ Pp.textf "promote %s" (Path.to_string abs_path) ];
-    let stat = Unix.lstat (Path.to_string abs_path) in
+    let stat = Path.lstat abs_path in
     let* stat =
       if stat.st_kind = S_REG then
         Result.Ok stat
@@ -267,12 +270,11 @@ let promote_sync cache paths key metadata ~repository ~duplication =
         Result.Ok (Already_promoted { path; digest = effective_digest })
       | false ->
         Path.mkdir_p (Path.parent_exn in_the_cache);
-        let dest = Path.to_string in_the_cache in
         (* Move the temporary file to the cache. *)
-        Unix.rename (Path.to_string tmp) dest;
+        Path.rename tmp in_the_cache;
         (* Remove write permissions, making the cache entry immutable. We assume
            that users do not modify the files in the cache. *)
-        Unix.chmod dest (stat.st_perm land 0o555);
+        Path.chmod in_the_cache ~mode:(stat.st_perm land 0o555);
         Result.Ok (Promoted { path; digest = effective_digest })
   in
   let+ promoted = Result.List.map ~f:promote paths in

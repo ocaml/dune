@@ -338,7 +338,7 @@ let search cache key =
 
 let set_build_dir cache p = Result.Ok { cache with build_root = Some p }
 
-let teardown cache = Path.rm_rf ~allow_external:true cache.temp_dir
+let teardown cache = Temp.destroy Dir cache.temp_dir
 
 let hint _ _ = Result.Ok ()
 

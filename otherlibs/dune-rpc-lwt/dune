@@ -1,0 +1,3 @@
+(library
+ (name dune_rpc_lwt)
+ (libraries stdune csexp dune_rpc lwt lwt.unix))

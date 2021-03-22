@@ -151,6 +151,49 @@ module Subscribe : sig
     | Promotion
 end
 
+module type S = sig
+  type t
+
+  type 'a fiber
+
+  type chan
+
+  val request :
+       ?id:Id.t
+    -> t
+    -> ('a, 'b) Decl.request
+    -> 'a
+    -> ('b, Response.Error.t) result fiber
+
+  val notification : t -> 'a Decl.notification -> 'a -> unit fiber
+
+  module Handler : sig
+    type t
+
+    val create :
+         ?log:(Message.t -> unit fiber)
+      -> ?errors:(Error.t list -> unit fiber)
+      -> ?promotions:(Promotion.t list -> unit fiber)
+      -> ?abort:(Message.t -> unit fiber)
+      -> unit
+      -> t
+  end
+
+  val connect_raw :
+       chan
+    -> Initialize.Request.t
+    -> on_notification:(Call.t -> unit fiber)
+    -> f:(t -> 'a fiber)
+    -> 'a fiber
+
+  val connect :
+       ?handler:Handler.t
+    -> chan
+    -> Initialize.Request.t
+    -> f:(t -> 'a fiber)
+    -> 'a fiber
+end
+
 module Client (S : sig
   module Fiber : sig
     type 'a t
@@ -188,46 +231,7 @@ module Client (S : sig
 
     val read : t -> Sexp.t option Fiber.t
   end
-end) : sig
-  open S
-
-  type t
-
-  val request :
-       ?id:Id.t
-    -> t
-    -> ('a, 'b) Decl.request
-    -> 'a
-    -> ('b, Response.Error.t) result Fiber.t
-
-  val notification : t -> 'a Decl.notification -> 'a -> unit Fiber.t
-
-  module Handler : sig
-    type t
-
-    val create :
-         ?log:(Message.t -> unit Fiber.t)
-      -> ?errors:(Error.t list -> unit Fiber.t)
-      -> ?promotions:(Promotion.t list -> unit Fiber.t)
-      -> ?abort:(Message.t -> unit Fiber.t)
-      -> unit
-      -> t
-  end
-
-  val connect_raw :
-       Chan.t
-    -> Initialize.Request.t
-    -> on_notification:(Call.t -> unit Fiber.t)
-    -> f:(t -> 'a Fiber.t)
-    -> 'a Fiber.t
-
-  val connect :
-       ?handler:Handler.t
-    -> Chan.t
-    -> Initialize.Request.t
-    -> f:(t -> 'a Fiber.t)
-    -> 'a Fiber.t
-end
+end) : S with type 'a fiber := 'a S.Fiber.t and type chan := S.Chan.t
 
 module Packet : sig
   module Reply : sig

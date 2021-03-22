@@ -121,6 +121,52 @@ module V1 : sig
     val ping : (unit, unit) t
   end
 
+  module type S = sig
+    (** Rpc client *)
+
+    type t
+
+    type 'a fiber
+
+    type chan
+
+    module Handler : sig
+      type t
+
+      val create :
+           ?log:(Message.t -> unit fiber)
+        -> ?errors:(Error.t list -> unit fiber)
+        -> ?promotions:(Promotion.t list -> unit fiber)
+        -> ?abort:(Message.t -> unit fiber)
+             (** If [abort] is called, the server has terminated the connection
+                 due to a protcol error. This should never be called unless
+                 there's a bug. *)
+        -> unit
+        -> t
+    end
+
+    (** [request ?id client decl req] send a request [req] specified by [decl]
+        to [client]. If [id] is [None], it will be automatically generated. *)
+    val request :
+         ?id:Id.t
+      -> t
+      -> ('a, 'b) Request.t
+      -> 'a
+      -> ('b, Response.Error.t) result fiber
+
+    val notification : t -> 'a Notification.t -> 'a -> unit fiber
+
+    (** [connect ?on_handler session init ~f] connect to [session], initialize
+        with [init] and call [f] once the client is initialized. [handler] is
+        called for some notifications sent to [session] *)
+    val connect :
+         ?handler:Handler.t
+      -> chan
+      -> Initialize.t
+      -> f:(t -> 'a fiber)
+      -> 'a fiber
+  end
+
   (** Functor to create a client implementation *)
   module Client (S : sig
     module Fiber : sig
@@ -164,47 +210,5 @@ module V1 : sig
          is closed. *)
       val read : t -> Csexp.t option Fiber.t
     end
-  end) : sig
-    open S
-
-    (** Rpc client *)
-
-    type t
-
-    module Handler : sig
-      type t
-
-      val create :
-           ?log:(Message.t -> unit Fiber.t)
-        -> ?errors:(Error.t list -> unit Fiber.t)
-        -> ?promotions:(Promotion.t list -> unit Fiber.t)
-        -> ?abort:(Message.t -> unit Fiber.t)
-             (** If [abort] is called, the server has terminated the connection
-                 due to a protcol error. This should never be called unless
-                 there's a bug. *)
-        -> unit
-        -> t
-    end
-
-    (** [request ?id client decl req] send a request [req] specified by [decl]
-        to [client]. If [id] is [None], it will be automatically generated. *)
-    val request :
-         ?id:Id.t
-      -> t
-      -> ('a, 'b) Request.t
-      -> 'a
-      -> ('b, Response.Error.t) result Fiber.t
-
-    val notification : t -> 'a Notification.t -> 'a -> unit Fiber.t
-
-    (** [connect ?on_handler session init ~f] connect to [session], initialize
-        with [init] and call [f] once the client is initialized. [handler] is
-        called for some notifications sent to [session] *)
-    val connect :
-         ?handler:Handler.t
-      -> Chan.t
-      -> Initialize.t
-      -> f:(t -> 'a Fiber.t)
-      -> 'a Fiber.t
-  end
+  end) : S with type 'a fiber := 'a S.Fiber.t and type chan := S.Chan.t
 end

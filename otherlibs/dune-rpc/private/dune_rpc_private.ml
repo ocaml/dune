@@ -186,6 +186,49 @@ module Server_notifications = struct
   let log = Decl.notification ~method_:"notify/log" Message.sexp
 end
 
+module type S = sig
+  type t
+
+  type 'a fiber
+
+  type chan
+
+  val request :
+       ?id:Id.t
+    -> t
+    -> ('a, 'b) Decl.request
+    -> 'a
+    -> ('b, Response.Error.t) result fiber
+
+  val notification : t -> 'a Decl.notification -> 'a -> unit fiber
+
+  module Handler : sig
+    type t
+
+    val create :
+         ?log:(Message.t -> unit fiber)
+      -> ?errors:(Error.t list -> unit fiber)
+      -> ?promotions:(Promotion.t list -> unit fiber)
+      -> ?abort:(Message.t -> unit fiber)
+      -> unit
+      -> t
+  end
+
+  val connect_raw :
+       chan
+    -> Initialize.Request.t
+    -> on_notification:(Call.t -> unit fiber)
+    -> f:(t -> 'a fiber)
+    -> 'a fiber
+
+  val connect :
+       ?handler:Handler.t
+    -> chan
+    -> Initialize.Request.t
+    -> f:(t -> 'a fiber)
+    -> 'a fiber
+end
+
 module Client (S : sig
   module Fiber : sig
     type 'a t

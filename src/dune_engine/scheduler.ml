@@ -823,10 +823,10 @@ let with_job_slot f =
   let t = Fiber.Var.get_exn t_var in
   Fiber.Throttle.run t.job_throttle ~f:(fun () ->
       match t.status with
-      | Restarting_build -> raise Cancel_build
-      | Shutting_down
-      | Building ->
-        f t.config
+      | Restarting_build
+      | Shutting_down ->
+        raise Cancel_build
+      | Building -> f t.config
       | Waiting_for_file_changes _ ->
         (* At this stage, we're not running a build, so we shouldn't be running
            tasks here. *)

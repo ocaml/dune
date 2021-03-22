@@ -97,8 +97,8 @@ val with_chdir : dir:Path.t -> f:(unit -> 'a) -> 'a
 (** Send a task that will run in the scheduler thread *)
 val send_sync_task : (unit -> unit) -> unit
 
-(** Do not restart the build after the current one finishes and stop accepting
-    new RPC clients. Only works for [poll] *)
+(** Start the shutdown sequence. Among other things, it causes Dune to cancel
+    the current build and stop accepting RPC clients. *)
 val shutdown : unit -> unit Fiber.t
 
 module Rpc : sig

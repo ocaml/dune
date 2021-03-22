@@ -111,6 +111,7 @@ module V1 : sig
 
     val unsubscribe : Subscribe.t t
 
+    (** Request dune to shutdown. The current build job will be cancelled. *)
     val shutdown : unit t
   end
 

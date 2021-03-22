@@ -90,7 +90,7 @@ module Output = struct
         let to_dyn = to_dyn
       end)
 
-  let allow_cutoff (type a) ?to_dyn ~(equal : a -> a -> bool) =
+  let allow_cutoff (type a) ?to_dyn ~(equal : a -> a -> bool) () =
     let to_dyn = Option.value to_dyn ~default:(fun _ -> Dyn.Opaque) in
     Allow_cutoff
       (module struct
@@ -104,7 +104,7 @@ module Output = struct
   let create ?cutoff ?to_dyn () =
     match cutoff with
     | None -> simple ?to_dyn ()
-    | Some equal -> allow_cutoff ?to_dyn ~equal
+    | Some equal -> allow_cutoff ?to_dyn ~equal ()
 end
 
 module Visibility = struct

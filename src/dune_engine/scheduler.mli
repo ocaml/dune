@@ -56,8 +56,8 @@ module Run : sig
 
       If any source files change in the middle of iteration, it gets canceled.
 
-      If [shutdown] is called, no new builds will be queued after the current
-      one finishes. *)
+      If [shutdown] is called, the current build will be canceled and new builds
+      will not start. *)
   val poll :
        Config.t
     -> on_event:(Config.t -> Event.poll -> unit)

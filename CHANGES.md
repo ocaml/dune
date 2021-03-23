@@ -98,7 +98,7 @@ Unreleased
 
 - Changed the implementation of actions attached to aliases, as in
   `(rule (alias runtest) (action (run ./test)))`. A visible result for
-  users is that such actions are not memoized for longer. For
+  users is that such actions are now memoized for longer. For
   instance:
   ```
   $ echo '(rule (alias runtest) (action (echo "X=%{env:X=0}\n")))` > dune

@@ -1,6 +1,18 @@
 open! Stdune
 open Import
 
+module Action_desc = struct
+  type nonrec t =
+    { context : Build_context.t option
+    ; env : Env.t option
+    ; action : Action.t
+    ; locks : Path.t list
+    ; loc : Loc.t option
+    ; dir : Path.Build.t
+    ; alias : Alias.Name.t option
+    }
+end
+
 module T = struct
   type 'a t =
     | Pure : 'a -> 'a t
@@ -26,6 +38,8 @@ module T = struct
     | Memo_build : 'a Memo.Build.t -> 'a t
     | Dyn_memo_build : 'a Memo.Build.t t -> 'a t
     | Goal : 'a t -> 'a t
+    | Action : Action_desc.t t -> unit t
+    | Action_stdout : Action_desc.t t -> string t
 
   and 'a memo =
     { name : string
@@ -161,6 +175,10 @@ let of_result_map res ~f =
 let memoize name t = Memo { name; id = Type_eq.Id.create (); t }
 
 let source_tree ~dir = Source_tree dir
+
+let action t = Action t
+
+let action_stdout t = Action_stdout t
 
 (* CR-someday amokhov: The set of targets is accumulated using information from
    multiple sources by calling [Path.Build.Set.union] and hence occasionally
@@ -301,6 +319,12 @@ module Make_exec (Build_deps : sig
   val file_exists : Path.t -> bool Memo.Build.t
 
   val alias_exists : Alias.t -> bool Memo.Build.t
+
+  val execute_action :
+    observing_facts:fact Dep.Map.t -> Action_desc.t -> unit Memo.Build.t
+
+  val execute_action_stdout :
+    observing_facts:fact Dep.Map.t -> Action_desc.t -> string Memo.Build.t
 end) =
 struct
   module rec Execution : sig
@@ -416,6 +440,14 @@ struct
       | Goal t ->
         let+ a, (_irrelevant_for_goals : Build_deps.fact Dep.Map.t) = exec t in
         (a, Dep.Map.empty)
+      | Action t ->
+        let* act, facts = exec t in
+        let+ () = Build_deps.execute_action ~observing_facts:facts act in
+        ((), Dep.Map.empty)
+      | Action_stdout t ->
+        let* act, facts = exec t in
+        let+ s = Build_deps.execute_action_stdout ~observing_facts:facts act in
+        (s, Dep.Map.empty)
   end
 
   include Execution
@@ -482,6 +514,8 @@ let rec can_eval_statically : type a. a t -> bool = function
     false
   | Dep_on_alias_if_exists _ -> false
   | Goal t -> can_eval_statically t
+  | Action _ -> false
+  | Action_stdout _ -> false
 
 let static_eval =
   let rec loop : type a. a t -> unit t -> a * unit t =
@@ -531,6 +565,8 @@ let static_eval =
     | Bind _ -> assert false
     | Dep_on_alias_if_exists _ -> assert false
     | Goal t -> loop t acc
+    | Action _ -> assert false
+    | Action_stdout _ -> assert false
   and loop_many : type a. a list -> a t list -> unit t -> a list * unit t =
    fun acc_res l acc ->
     match l with

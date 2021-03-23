@@ -25,13 +25,5 @@ type 'a t =
   | Static of 'a Static.t
   | Infer
 
-module Or_forbidden : sig
-  (** In some situations, actions may not have targets. [Forbidden _] is used to
-      denote that *)
-  type nonrec t =
-    | Forbidden of string
-    | Targets of Path.Build.t t
-end
-
 (** target or targets with field with the correct multiplicity *)
 val field : String_with_vars.t t Dune_lang.Decoder.fields_parser

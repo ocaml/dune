@@ -94,6 +94,8 @@ module Set : sig
 
   val of_list_map : 'a list -> f:('a -> dep) -> t
 
+  val fold : t -> init:'a -> f:(dep -> 'a -> 'a) -> 'a
+
   (** Return dependencies on all source files under a certain source directory.
 
       Dependency on a source_tree requires special care for empty directory, so
@@ -115,4 +117,6 @@ module Set : sig
   val encode : t -> Dune_lang.t
 
   val add_paths : t -> Path.Set.t -> t
+
+  val digest : t -> Digest.t
 end

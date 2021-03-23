@@ -37,7 +37,6 @@ let missing_run_t (error : Cram_test.t) =
                 (Path.Source.to_string dir)
             ])
     }
-  |> Action_builder.with_no_targets
 
 let test_rule ~sctx ~expander ~dir (spec : effective)
     (test : (Cram_test.t, File_tree.Dir.error) result) =
@@ -45,23 +44,16 @@ let test_rule ~sctx ~expander ~dir (spec : effective)
   let enabled = Expander.eval_blang expander (Blang.And spec.enabled_if) in
   let loc = Some spec.loc in
   let aliases = Alias.Name.Set.to_list_map spec.alias ~f:(Alias.make ~dir) in
-  let test_name =
-    match test with
-    | Ok t -> Cram_test.name t
-    | Error (Missing_run_t t) -> Cram_test.name t
-  in
-  let stamp_no_rule () = (Path.Build.to_dyn dir, "no-cram-rules", test_name) in
   match test with
   | Error (Missing_run_t test) ->
     (* We error out on invalid tests even if they are disabled. *)
     Memo.Build.parallel_iter aliases ~f:(fun alias ->
-        Alias_rules.add sctx ~alias ~stamp:(stamp_no_rule ()) ~loc ~locks:[]
-          (missing_run_t test))
+        Alias_rules.add sctx ~alias ~loc ~locks:[] (missing_run_t test))
   | Ok test -> (
     match enabled with
     | false ->
       Memo.Build.parallel_iter aliases ~f:(fun alias ->
-          Alias_rules.add_empty sctx ~alias ~loc ~stamp:(stamp_no_rule ()))
+          Alias_rules.add_empty sctx ~alias ~loc)
     | true ->
       let prefix_with, _ = Path.Build.extract_build_context_dir_exn dir in
       let script =
@@ -77,9 +69,6 @@ let test_rule ~sctx ~expander ~dir (spec : effective)
               ; file2 = Path.Build.extend_basename script ~suffix:".corrected"
               }
           ]
-      in
-      let stamp =
-        (Path.Build.to_dyn dir, Action.for_shell action, Cram_test.name test)
       in
       let cram =
         let open Action_builder.O in
@@ -97,9 +86,8 @@ let test_rule ~sctx ~expander ~dir (spec : effective)
         in
         action
       in
-      let cram = Action_builder.with_no_targets cram in
       Memo.Build.parallel_iter aliases ~f:(fun alias ->
-          Alias_rules.add sctx ~alias ~stamp ~loc cram ~locks:[]))
+          Alias_rules.add sctx ~alias ~loc cram ~locks:[]))
 
 let rules ~sctx ~expander ~dir tests =
   let stanzas =

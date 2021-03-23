@@ -263,7 +263,7 @@ module Unprocessed = struct
       s
 
   let pp_flag_of_action ~expander ~loc ~action :
-      Processed.pp_flag option Action_builder.With_targets.t =
+      Processed.pp_flag option Action_builder.t =
     match (action : Action_dune_lang.t) with
     | Run (exe, args) -> (
       let args =
@@ -275,16 +275,12 @@ module Unprocessed = struct
           None
       in
       match args with
-      | None -> Action_builder.With_targets.return None
+      | None -> Action_builder.return None
       | Some args ->
         let action =
-          let targets_dir = Expander.dir expander in
-          let targets : Targets.Or_forbidden.t =
-            Forbidden "preprocessing actions"
-          in
           let action = Preprocessing.chdir (Run (exe, args)) in
-          Action_unexpanded.expand ~loc ~expander ~deps:[] ~targets ~targets_dir
-            action
+          Action_unexpanded.expand_no_targets ~loc ~expander ~deps:[]
+            ~what:"preprocessing actions" action
         in
         let pp_of_action exe args =
           match exe with
@@ -297,15 +293,15 @@ module Unprocessed = struct
             in
             Some Processed.{ flag = "-pp"; args }
         in
-        Action_builder.With_targets.map action ~f:(function
+        Action_builder.map action ~f:(function
           | Run (exe, args) -> pp_of_action exe args
           | Chdir (_, Run (exe, args)) -> pp_of_action exe args
           | Chdir (_, Chdir (_, Run (exe, args))) -> pp_of_action exe args
           | _ -> None))
-    | _ -> Action_builder.With_targets.return None
+    | _ -> Action_builder.return None
 
   let pp_flags sctx ~expander libname preprocess :
-      Processed.pp_flag option Action_builder.With_targets.t =
+      Processed.pp_flag option Action_builder.t =
     let scope = Expander.scope expander in
     match
       Preprocess.remove_future_syntax preprocess ~for_:Merlin
@@ -313,21 +309,20 @@ module Unprocessed = struct
     with
     | Action (loc, (action : Action_dune_lang.t)) ->
       pp_flag_of_action ~expander ~loc ~action
-    | No_preprocessing -> Action_builder.With_targets.return None
+    | No_preprocessing -> Action_builder.return None
     | Pps { loc; pps; flags; staged = _ } -> (
       match
         Preprocessing.get_ppx_driver sctx ~loc ~expander ~lib_name:libname
           ~flags ~scope pps
       with
-      | Error _exn -> Action_builder.With_targets.return None
+      | Error _exn -> Action_builder.return None
       | Ok (exe, flags) ->
         let args =
           Path.to_absolute_filename (Path.build exe) :: "--as-ppx" :: flags
           |> List.map ~f:quote_if_needed
           |> String.concat ~sep:" "
         in
-        Action_builder.With_targets.return
-          (Some Processed.{ flag = "-ppx"; args }))
+        Action_builder.return (Some Processed.{ flag = "-ppx"; args }))
 
   let process
       { modules
@@ -343,24 +338,23 @@ module Unprocessed = struct
           ; libname
           }
       } sctx ~more_src_dirs ~expander =
-    let open Action_builder.With_targets.O in
+    let open Action_builder.O in
     let+ config =
-      let+ flags = Action_builder.with_no_targets flags
+      let+ flags = flags
       and+ src_dirs, obj_dirs =
-        Action_builder.with_no_targets
-          (Action_builder.memo_build
-             (let open Memo.Build.O in
-             Memo.Build.parallel_map (Lib.Set.to_list requires) ~f:(fun lib ->
-                 let+ dirs = Lib.src_dirs lib in
-                 (lib, dirs))
-             >>| List.fold_left
-                   ~init:(Path.set_of_source_paths source_dirs, objs_dirs)
-                   ~f:(fun (src_dirs, obj_dirs) (lib, more_src_dirs) ->
-                     ( Path.Set.union src_dirs more_src_dirs
-                     , let public_cmi_dir =
-                         Obj_dir.public_cmi_dir (Lib.obj_dir lib)
-                       in
-                       Path.Set.add obj_dirs public_cmi_dir ))))
+        Action_builder.memo_build
+          (let open Memo.Build.O in
+          Memo.Build.parallel_map (Lib.Set.to_list requires) ~f:(fun lib ->
+              let+ dirs = Lib.src_dirs lib in
+              (lib, dirs))
+          >>| List.fold_left
+                ~init:(Path.set_of_source_paths source_dirs, objs_dirs)
+                ~f:(fun (src_dirs, obj_dirs) (lib, more_src_dirs) ->
+                  ( Path.Set.union src_dirs more_src_dirs
+                  , let public_cmi_dir =
+                      Obj_dir.public_cmi_dir (Lib.obj_dir lib)
+                    in
+                    Path.Set.add obj_dirs public_cmi_dir )))
       in
       let src_dirs =
         Path.Set.union src_dirs
@@ -368,7 +362,7 @@ module Unprocessed = struct
       in
       { Processed.stdlib_dir; src_dirs; obj_dirs; flags; extensions }
     and+ pp_config =
-      Module_name.Per_item.map_with_targets preprocess
+      Module_name.Per_item.map_action_builder preprocess
         ~f:(pp_flags sctx ~expander libname)
     in
     let modules =
@@ -388,7 +382,8 @@ let dot_merlin sctx ~dir ~more_src_dirs ~expander (t : Unprocessed.t) =
   let merlin = Unprocessed.process t sctx ~more_src_dirs ~expander in
   let action =
     Action_builder.With_targets.write_file_dyn merlin_file
-      (Action_builder.With_targets.map ~f:Processed.Persist.to_string merlin)
+      (Action_builder.with_no_targets
+         (Action_builder.map ~f:Processed.Persist.to_string merlin))
   in
   SC.add_rule sctx ~dir action
 

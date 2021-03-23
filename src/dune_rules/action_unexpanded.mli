@@ -31,6 +31,16 @@ val expand :
   -> loc:Loc.t
   -> deps:Dep_conf.t Bindings.t
   -> targets_dir:Path.Build.t
-  -> targets:Targets.Or_forbidden.t
+  -> targets:Path.Build.t Targets.t
   -> expander:Expander.t
   -> Action.t Action_builder.With_targets.t
+
+(** [what] as the same meaning as the argument of
+    [Expander.Expanding_what.User_action_without_targets] *)
+val expand_no_targets :
+     t
+  -> loc:Loc.t
+  -> deps:Dep_conf.t Bindings.t
+  -> expander:Expander.t
+  -> what:string
+  -> Action.t Action_builder.t

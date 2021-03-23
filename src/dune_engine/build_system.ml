@@ -194,7 +194,6 @@ module Loaded = struct
     { allowed_subdirs : Path.Unspecified.w Dir_set.t
     ; rules_produced : Rules.t
     ; rules_here : Rule.t Path.Build.Map.t
-    ; rules_of_alias_dir : Rule.t Path.Build.Map.t
     ; aliases : (Loc.t * unit Action_builder.t) list Alias.Name.Map.t
     }
 
@@ -207,7 +206,6 @@ module Loaded = struct
       { allowed_subdirs
       ; rules_produced = Rules.empty
       ; rules_here = Path.Build.Map.empty
-      ; rules_of_alias_dir = Path.Build.Map.empty
       ; aliases = Alias.Name.Map.empty
       }
 end
@@ -215,7 +213,6 @@ end
 module Dir_triage = struct
   type t =
     | Known of Loaded.t
-    | Alias_dir_of of Path.Build.t
     | Need_step2
 end
 
@@ -467,7 +464,7 @@ let get_dir_triage t ~dir =
     let allowed_subdirs =
       Subdir_set.to_dir_set
         (Subdir_set.of_list
-           (([ Dpath.Build.alias_dir; Dpath.Build.install_dir ]
+           (([ Dpath.Build.anonymous_actions_dir; Dpath.Build.install_dir ]
             |> List.map ~f:Path.Build.basename)
            @ (Context_name.Map.keys t.contexts
              |> List.map ~f:Context_name.to_string)))
@@ -480,9 +477,10 @@ let get_dir_triage t ~dir =
       |> Subdir_set.of_list |> Subdir_set.to_dir_set
     in
     Dir_triage.Known (Loaded.no_rules ~allowed_subdirs)
-  | Build (Alias p) ->
+  | Build (Anonymous_action p) ->
     let build_dir = Dpath.Target_dir.build_dir p in
-    Alias_dir_of build_dir
+    Code_error.raise "Called get_dir_triage on an anonymous action directory"
+      [ ("dir", Path.Build.to_dyn build_dir) ]
   | Build (Invalid _) ->
     Dir_triage.Known (Loaded.no_rules ~allowed_subdirs:Dir_set.empty)
   | Build (Install (With_context _))
@@ -617,6 +615,24 @@ let remove_old_artifacts ~dir ~rules_here ~(subdirs_to_keep : Subdir_set.t) =
               if not (String.Set.mem set fn) then Path.rm_rf (Path.build path))
           | _ -> Path.unlink (Path.build path))
 
+(* We don't remove files in there as we don't know upfront if they are stale or
+   not. *)
+let remove_old_sub_dirs_in_anonymous_actions_dir ~dir
+    ~(subdirs_to_keep : Subdir_set.t) =
+  match Path.readdir_unsorted_with_kinds (Path.build dir) with
+  | exception _ -> ()
+  | Error _ -> ()
+  | Ok files ->
+    List.iter files ~f:(fun (fn, kind) ->
+        let path = Path.Build.relative dir fn in
+        match kind with
+        | Unix.S_DIR -> (
+          match subdirs_to_keep with
+          | All -> ()
+          | These set ->
+            if not (String.Set.mem set fn) then Path.rm_rf (Path.build path))
+        | _ -> ())
+
 let no_rule_found t ~loc fn =
   let fail fn ~loc =
     User_error.raise ?loc
@@ -665,10 +681,13 @@ let no_rule_found t ~loc fn =
             (Context_name.to_string ctx)
         ]
         ~hints:(hints ctx)
+  | Anonymous_action _ ->
+    (* We never lookup such actions by target name, so this should be
+       unreachable *)
+    Code_error.raise ?loc "Build_system.no_rule_found got anonymous action path"
+      [ ("fn", Path.Build.to_dyn fn) ]
 
 (* +-------------------- Adding rules to the system --------------------+ *)
-
-let build_deps_fdecl = Fdecl.create (fun _ -> Dyn.Opaque)
 
 module rec Load_rules : sig
   val load_dir : dir:Path.t -> Loaded.t Memo.Build.t
@@ -737,92 +756,42 @@ end = struct
         | None -> false
         | Some _ -> true)
 
-  let compute_alias_rules ~context_name ~(collected : Rules.Dir_rules.ready)
-      ~dir ~sub_dir =
-    let alias_dir =
-      let context_name = Context_name.to_string context_name in
-      Path.Build.append_source
-        (Path.Build.relative Dpath.Build.alias_dir context_name)
-        sub_dir
-    in
-    let alias_action_rules, alias_expansions =
-      let open Action_builder.O in
-      let aliases = collected.aliases in
-      let aliases =
-        if Alias.Name.Map.mem aliases Alias.Name.default then
-          aliases
-        else
-          match Path.Build.extract_build_context_dir dir with
+  let compute_alias_expansions ~(collected : Rules.Dir_rules.ready) ~dir =
+    let open Action_builder.O in
+    let aliases = collected.aliases in
+    let aliases =
+      if Alias.Name.Map.mem aliases Alias.Name.default then
+        aliases
+      else
+        match Path.Build.extract_build_context_dir dir with
+        | None -> aliases
+        | Some (ctx_dir, src_dir) -> (
+          match File_tree.find_dir src_dir with
           | None -> aliases
-          | Some (ctx_dir, src_dir) -> (
-            match File_tree.find_dir src_dir with
-            | None -> aliases
-            | Some dir ->
-              let default_alias =
-                let dune_version =
-                  File_tree.Dir.project dir |> Dune_project.dune_version
-                in
-                if dune_version >= (2, 0) then
-                  Alias.Name.all
-                else
-                  Alias.Name.install
+          | Some dir ->
+            let default_alias =
+              let dune_version =
+                File_tree.Dir.project dir |> Dune_project.dune_version
               in
-              Alias.Name.Map.set aliases Alias.Name.default
-                { expansions =
-                    Appendable_list.singleton
-                      ( Loc.none
-                      , let+ _ =
-                          Alias0.dep_rec_internal ~name:default_alias ~dir
-                            ~ctx_dir
-                        in
-                        () )
-                ; actions = Appendable_list.empty
-                })
-      in
-      Alias.Name.Map.fold_mapi aliases ~init:[]
-        ~f:(fun name rules { Rules.Dir_rules.Alias_spec.expansions; actions } ->
-          let base_path =
-            Path.Build.relative alias_dir (Alias.Name.to_string name)
-          in
-          let rules, action_stamp_files =
-            List.fold_left (Appendable_list.to_list actions)
-              ~init:(rules, Path.Set.empty)
-              ~f:(fun
-                   (rules, action_stamp_files)
-                   { Rules.Dir_rules.stamp; action; locks; context; loc; env }
-                 ->
-                let path =
-                  Path.Build.extend_basename base_path
-                    ~suffix:("-" ^ Digest.to_string stamp)
-                in
-                let rule =
-                  Rule.make ~locks ~context:(Some context) ~env
-                    ~info:(Rule.Info.of_loc_opt loc)
-                    (Action_builder.progn
-                       [ action; Action_builder.create_file path ])
-                in
-                ( rule :: rules
-                , Path.Set.add action_stamp_files (Path.build path) ))
-          in
-          let expansions =
-            Appendable_list.to_list expansions
-            @ [ ( Loc.none
-                , Action_builder.memo_build
-                    (Memo.Build.map
-                       (Fdecl.get build_deps_fdecl
-                          (Dep.Set.of_files_set action_stamp_files))
-                       ~f:(fun _facts -> ())) )
-              ]
-          in
-          (rules, expansions))
+              if dune_version >= (2, 0) then
+                Alias.Name.all
+              else
+                Alias.Name.install
+            in
+            Alias.Name.Map.set aliases Alias.Name.default
+              { expansions =
+                  Appendable_list.singleton
+                    ( Loc.none
+                    , let+ _ =
+                        Alias0.dep_rec_internal ~name:default_alias ~dir
+                          ~ctx_dir
+                      in
+                      () )
+              })
     in
-    fun ~subdirs_to_keep ->
-      let rules_here =
-        compile_rules ~dir:alias_dir ~source_dirs:String.Set.empty
-          alias_action_rules
-      in
-      remove_old_artifacts ~rules_here ~dir:alias_dir ~subdirs_to_keep;
-      (rules_here, alias_expansions)
+    Alias.Name.Map.map aliases
+      ~f:(fun { Rules.Dir_rules.Alias_spec.expansions } ->
+        Appendable_list.to_list expansions)
 
   let filter_out_fallback_rules ~to_copy rules =
     List.filter rules ~f:(fun (rule : Rule.t) ->
@@ -891,6 +860,7 @@ end = struct
       match Dpath.analyse_target dir with
       | Install _
       | Alias _
+      | Anonymous_action _
       | Other _ ->
         None
       | Regular (_ctx, sub_dir) -> File_tree.find_dir sub_dir
@@ -957,6 +927,7 @@ end = struct
       | Build (Install (ctx, path)) -> (Context_or_install.Install ctx, path)
       | Build (Regular (ctx, path)) -> (Context_or_install.Context ctx, path)
       | Build (Alias _)
+      | Build (Anonymous_action _)
       | Build (Other _)
       | Source _
       | External _ ->
@@ -985,11 +956,12 @@ end = struct
     in
     let collected = Rules.Dir_rules.consume rules in
     let rules = collected.rules in
-    let alias_rules =
+    let aliases =
       match context_name with
-      | Context context_name ->
-        Some (compute_alias_rules ~context_name ~collected ~dir ~sub_dir)
-      | Install _ -> None
+      | Context _ -> compute_alias_expansions ~collected ~dir
+      | Install _ ->
+        (* There are no aliases in the [_build/install] directory *)
+        Alias.Name.Map.empty
     in
     let file_tree_dir =
       match context_name with
@@ -1109,18 +1081,16 @@ end = struct
     in
     let subdirs_to_keep = Subdir_set.of_dir_set descendants_to_keep in
     remove_old_artifacts ~dir ~rules_here ~subdirs_to_keep;
-    let alias_rules = Option.map ~f:(fun f -> f ~subdirs_to_keep) alias_rules in
-    let rules_of_alias_dir, aliases =
-      Option.value
-        ~default:(Path.Build.Map.empty, Alias.Name.Map.empty)
-        alias_rules
-    in
+    remove_old_sub_dirs_in_anonymous_actions_dir
+      ~dir:
+        (Path.Build.append_local Dpath.Build.anonymous_actions_dir
+           (Path.Build.local dir))
+      ~subdirs_to_keep;
     Memo.Build.return
       (Loaded.Build
          { allowed_subdirs = descendants_to_keep
          ; rules_produced
          ; rules_here
-         ; rules_of_alias_dir
          ; aliases
          })
 
@@ -1128,21 +1098,6 @@ end = struct
     match get_dir_triage t ~dir with
     | Known l -> Memo.Build.return l
     | Need_step2 -> load_dir_step2_exn t ~dir
-    | Alias_dir_of dir' -> (
-      load_dir ~dir:(Path.build dir') >>| function
-      | Non_build _ -> Code_error.raise "Can only forward to a build dir" []
-      | Build
-          ({ rules_here = _
-           ; rules_of_alias_dir
-           ; rules_produced = _
-           ; allowed_subdirs = _
-           ; aliases = _
-           } as load) ->
-        Loaded.Build
-          { load with
-            rules_here = rules_of_alias_dir
-          ; rules_of_alias_dir = Path.Build.Map.empty
-          })
 
   let load_dir =
     let load_dir_impl dir = load_dir_impl (t ()) ~dir in
@@ -1205,10 +1160,9 @@ let all_targets t =
                     (File_tree.Dir.path dir)))
           >>| function
           | Non_build _ -> acc
-          | Build { rules_here; rules_of_alias_dir; _ } ->
+          | Build { rules_here; _ } ->
             List.fold_left ~init:acc ~f:Path.Build.Set.add
-              (Path.Build.Map.keys rules_of_alias_dir
-              @ Path.Build.Map.keys rules_here)))
+              (Path.Build.Map.keys rules_here)))
 
 let expand_alias_gen alias ~eval_build_request ~paths_of_facts ~paths_union_all
     =
@@ -1238,7 +1192,19 @@ module type Rec = sig
 
   val build_file : Path.t -> Digest.t Memo.Build.t
 
+  val build_deps : Dep.Set.t -> Dep.Facts.t Memo.Build.t
+
   val execute_rule : Rule.t -> rule_execution_result Memo.Build.t
+
+  val execute_action :
+       observing_facts:Dep.Facts.t
+    -> Action_builder.Action_desc.t
+    -> unit Memo.Build.t
+
+  val execute_action_stdout :
+       observing_facts:Dep.Facts.t
+    -> Action_builder.Action_desc.t
+    -> string Memo.Build.t
 
   module Pred : sig
     val eval : File_selector.t -> Path.Set.t Memo.Build.t
@@ -1297,8 +1263,6 @@ end = struct
   let build_deps deps =
     Dep.Map.parallel_map deps ~f:(fun dep () -> build_dep dep)
 
-  let () = Fdecl.set build_deps_fdecl build_deps
-
   module Build_exec = Action_builder.Make_exec (struct
     type fact = Dep.Fact.t
 
@@ -1318,6 +1282,10 @@ end = struct
     let file_exists = file_exists
 
     let alias_exists alias = Fdecl.get alias_exists_fdecl alias
+
+    let execute_action = execute_action
+
+    let execute_action_stdout = execute_action_stdout
   end)
   [@@inlined]
 
@@ -1405,13 +1373,26 @@ end = struct
         in
         Stats.emit stats event)
 
-  let execute_rule_impl rule =
+  type rule_kind =
+    | Normal_rule
+    | Anonymous_action
+    | Anonymous_action_attached_to_alias
+
+  let execute_rule_impl ~rule_kind rule =
     let t = t () in
-    let { Rule.id = _; dir; env = _; context; mode; locks; action; info = _ } =
+    let { Rule.id = _
+        ; dir
+        ; env = _
+        ; context
+        ; mode
+        ; locks
+        ; action = _
+        ; info = _
+        } =
       rule
     in
-    start_rule t rule;
-    let targets = action.targets in
+    if rule_kind = Normal_rule then start_rule t rule;
+    let targets = rule.action.targets in
     let head_target = Path.Build.Set.choose_exn targets in
     let* action, deps = exec_build_request rule.action.build in
     Memo.Build.of_reproducible_fiber
@@ -1441,11 +1422,28 @@ end = struct
             ~sandboxing_preference:t.sandboxing_preference
       in
       let always_rerun =
-        let force_rerun =
-          !Clflags.force
-          && Path.Build.Set.exists targets ~f:Dpath.Build.is_alias_stamp_file
-        and depends_on_universe = Dep.Map.has_universe deps in
-        force_rerun || depends_on_universe
+        let is_test =
+          (* jeremiedimino: what about:
+
+             {v (rule (alias runtest) (targets x) (action ...)) v}
+
+             These will be treated as [Normal_rule], and the bellow match means
+             that [--force] will have no effect on them. Is that what we want?
+
+             The doc says:
+
+             -f, --force Force actions associated to aliases to be re-executed
+             even if their dependencies haven't changed.
+
+             So it seems to me that such rules should be re-executed. TBC *)
+          match rule_kind with
+          | Normal_rule
+          | Anonymous_action ->
+            false
+          | Anonymous_action_attached_to_alias -> true
+        in
+        let force_rerun = !Clflags.force && is_test in
+        force_rerun || Dep.Map.has_universe deps
       in
       let rule_digest = compute_rule_digest rule ~deps ~action ~sandbox_mode in
       let () =
@@ -1780,7 +1778,7 @@ end = struct
                   let chmod n = n lor 0o200 in
                   t.promote_source ~src:path ~dst ~chmod context))
       in
-      t.rule_done <- t.rule_done + 1;
+      if rule_kind = Normal_rule then t.rule_done <- t.rule_done + 1;
       targets_digests)
     (* jeremidimino: we need to include the dependencies discovered while
        running the action here. Otherwise, package dependencies are broken in
@@ -1789,6 +1787,170 @@ end = struct
     fun targets_digests ->
     Memo.Build.return
       { deps; targets = Path.Build.Map.of_list_exn targets_digests }
+
+  module Action_desc = struct
+    type t =
+      { action : Action_builder.Action_desc.t
+      ; deps : Dep.Set.t
+      ; capture_stdout : bool
+      ; digest : Digest.t
+      }
+
+    let equal a b = Digest.equal a.digest b.digest
+
+    let hash t = Digest.hash t.digest
+
+    let to_dyn t : Dyn.t =
+      Record
+        [ ("digest", Digest.to_dyn t.digest)
+        ; ("loc", Dyn.Encoder.option Loc.to_dyn t.action.loc)
+        ]
+  end
+
+  let execute_action_generic_stage2_impl
+      { Action_desc.action = act; deps; capture_stdout; digest } =
+    let target =
+      let dir =
+        Path.Build.append_local Dpath.Build.anonymous_actions_dir
+          (Path.Build.local act.dir)
+      in
+      let d = Digest.to_string digest in
+      let basename =
+        match act.alias with
+        | None -> d
+        | Some a -> Alias.Name.to_string a ^ "-" ^ d
+      in
+      Path.Build.relative dir basename
+    in
+    let action =
+      if capture_stdout then
+        Action.with_stdout_to target act.action
+      else
+        Action.progn [ act.action; Action.with_stdout_to target Action.empty ]
+    in
+    let rule =
+      let { Action_builder.Action_desc.context
+          ; env
+          ; action = _
+          ; locks
+          ; loc
+          ; dir = _
+          ; alias = _
+          } =
+        act
+      in
+      Rule.make ~context ~env ~locks
+        ~info:
+          (match loc with
+          | Some loc -> From_dune_file loc
+          | None -> Internal)
+        (Action_builder.with_targets ~targets:[ target ]
+           (let open Action_builder.O in
+           let+ () = Action_builder.deps deps in
+           action))
+    in
+    let+ { deps = _; targets = _ } =
+      execute_rule_impl rule
+        ~rule_kind:
+          (match act.alias with
+          | None -> Anonymous_action
+          | Some _ -> Anonymous_action_attached_to_alias)
+    in
+    target
+
+  let execute_action_generic_stage2_memo =
+    Memo.create_hidden "execute-action"
+      ~input:(module Action_desc)
+      Async execute_action_generic_stage2_impl
+
+  let execute_action_generic ~observing_facts act ~capture_stdout =
+    (* We memoize the execution of anonymous actions, both via the persisetent
+       mechanism for not re-running build rules between invocations of [dune
+       build] and via [Memo]. The former is done by producing a normal build
+       rule on the fly for the anonymous action.
+
+       Memoizing such actions via [Memo] doesn't feel super useful given that we
+       expect a given anonymous action to be executed only once in a given
+       build. And so persistent mechanism should be enough.
+
+       However, if it does happen that two code paths try to execute the same
+       anonymous action, then we need to be sure it is not executed twice. This
+       is because the build rule we produce on the fly creates a file whose name
+       only depend on the action. If the two execution could run concurrently,
+       then they would both try to create the same file. So in this regard, we
+       use [Memo] mostly for synchronisation purposes. *)
+    (* Here we "forget" the facts about the world. We do that to make the input
+       of the memoized function smaller. If we passed the whole [original_facts]
+       as input, then we would end up memoizing one entry per set of facts. This
+       could use a lot of memory. For instance, if we used [action_stdout] for
+       the calls to [ocamldep], then Dune would remember the whole history of
+       calls to [ocamldep] for each OCaml source file. *)
+    let deps = Dep.Map.map observing_facts ~f:ignore in
+    (* Shadow [observing_facts] to make sure we don't use it again. *)
+    let observing_facts = () in
+    ignore observing_facts;
+    let digest =
+      let { Action_builder.Action_desc.context
+          ; env
+          ; action
+          ; locks
+          ; loc
+          ; dir
+          ; alias
+          } =
+        act
+      in
+      let env =
+        Option.map env ~f:(fun env ->
+            (* Here we restrict the environment to only the variables we depend
+               on, so that we don't re-execute all actions when some irrelevant
+               environment variable changes.
+
+               Ideally, we would pass this restricted environment to the
+               external command, however that might be tedious to do in
+               practice. See this ticket for a longer discussion about the
+               management of the environment:
+               https://github.com/ocaml/dune/issues/4382 *)
+            Dep.Set.fold deps ~init:Env.Map.empty ~f:(fun dep acc ->
+                match dep with
+                | Env var -> Env.Map.set acc var (Env.get env var)
+                | _ -> acc)
+            |> Env.Map.to_list)
+      in
+      Digest.generic
+        ( Option.map context ~f:(fun c ->
+              (* Only looking at the context name is fishy, but it is in line
+                 with what we do for build rules. *)
+              Context_name.to_string c.name)
+        , env
+        , Dep.Set.digest deps
+        , Action.for_shell action
+        , List.map locks ~f:Path.to_string
+        , loc
+        , dir
+        , alias
+        , capture_stdout )
+    in
+    (* It might seem superfluous to memoize the execution here, given that a
+       given anonymous action will typically only appear once during a given
+       build. However, it is possible that two code paths try to execute the
+       exact same anonymous action, and so would end up trying to create the
+       same file. Using [Memo.create] serves as a synchronisation point to share
+       the execution and avoid such a race condition. *)
+    Memo.exec execute_action_generic_stage2_memo
+      { action = act; deps; capture_stdout; digest }
+
+  let execute_action ~observing_facts act =
+    let+ _target =
+      execute_action_generic ~observing_facts act ~capture_stdout:false
+    in
+    ()
+
+  let execute_action_stdout ~observing_facts act =
+    let+ target =
+      execute_action_generic ~observing_facts act ~capture_stdout:true
+    in
+    Io.read_file (Path.build target)
 
   (* a rule can have multiple files, but rule.run_rule may only be called once.
 
@@ -1877,7 +2039,8 @@ end = struct
   let execute_rule_memo =
     Memo.create_hidden "execute-rule"
       ~input:(module Rule)
-      Async execute_rule_impl
+      Async
+      (execute_rule_impl ~rule_kind:Normal_rule)
 
   let execute_rule = Memo.exec execute_rule_memo
 
@@ -1885,8 +2048,15 @@ end = struct
     Fdecl.set Rule_fn.loc_decl (fun () ->
         let stack = Memo.get_call_stack () in
         List.find_map stack ~f:(fun frame ->
-            Memo.Stack_frame.as_instance_of frame ~of_:execute_rule_memo)
-        |> Option.map ~f:Rule.loc)
+            match
+              Memo.Stack_frame.as_instance_of frame ~of_:execute_rule_memo
+            with
+            | Some r -> Some (Rule.loc r)
+            | None ->
+              Option.bind
+                (Memo.Stack_frame.as_instance_of frame
+                   ~of_:execute_action_generic_stage2_memo) ~f:(fun x ->
+                  x.action.loc)))
 end
 
 open Exported
@@ -2052,6 +2222,16 @@ end = struct
     let file_exists = file_exists
 
     let alias_exists a = Fdecl.get alias_exists_fdecl a
+
+    let execute_action ~observing_facts:_ _act =
+      (* We don't need to execute this action to compute the final action. *)
+      (* jeremiedimino: but maybe we should capture it somehow, it seems
+         relevant to display in the output of [dune rules] *)
+      Memo.Build.return ()
+
+    let execute_action_stdout ~observing_facts:deps act =
+      let* facts = build_deps deps in
+      execute_action_stdout ~observing_facts:facts act
   end)
 
   let eval_build_request = Eval_action_builder.exec

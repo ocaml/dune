@@ -31,12 +31,12 @@ val gen_rules : Super_context.t -> string list -> unit Memo.Build.t
 
 val chdir : Action_unexpanded.t -> Action_unexpanded.t
 
-val action_for_pp :
+val action_for_pp_with_target :
      loc:Loc.t
   -> expander:Expander.t
   -> action:Action_unexpanded.t
   -> src:Path.Build.t
-  -> target:Path.Build.t option
+  -> target:Path.Build.t
   -> Action.t Action_builder.With_targets.t
 
 val ppx_exe :

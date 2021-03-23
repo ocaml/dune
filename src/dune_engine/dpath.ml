@@ -2,15 +2,17 @@ open Stdune
 
 let install_dir_basename = "install"
 
-let alias_dir_basename = ".aliases"
+let anonymous_actions_dir_basename = ".actions"
 
 let install_dir = Path.Build.(relative root) install_dir_basename
 
-let alias_dir = Path.Build.(relative root) alias_dir_basename
+let anonymous_actions_dir =
+  Path.Build.(relative root) anonymous_actions_dir_basename
 
 type target_kind =
   | Regular of Context_name.t * Path.Source.t
   | Alias of Context_name.t * Path.Source.t
+  | Anonymous_action of Context_name.t
   | Install of Context_name.t * Path.Source.t
   | Other of Path.Build.t
 
@@ -26,7 +28,7 @@ module Target_dir = struct
 
   type t =
     | Install of context_related
-    | Alias of context_related
+    | Anonymous_action of context_related
     | Regular of context_related
     | Invalid of Path.Build.t
 
@@ -36,12 +38,12 @@ module Target_dir = struct
     match Path.Build.extract_first_component fn with
     | None -> Regular Root
     | Some (name, sub) -> (
-      if name = alias_dir_basename then
+      if name = anonymous_actions_dir_basename then
         match Path.Local.split_first_component sub with
-        | None -> Alias Root
+        | None -> Anonymous_action Root
         | Some (ctx, fn) ->
           let ctx = Context_name.of_string ctx in
-          Alias (With_context (ctx, Path.Source.of_local fn))
+          Anonymous_action (With_context (ctx, Path.Source.of_local fn))
       else if name = install_dir_basename then
         match Path.Local.split_first_component sub with
         | None -> Install Root
@@ -60,20 +62,27 @@ type 'build path_kind =
   | External of Path.External.t
   | Build of 'build
 
+let is_digest s = String.length s = 32
+
 let analyse_target (fn as original_fn) : target_kind =
   match Target_dir.of_target fn with
   | Invalid _
-  | Alias Root
   | Install Root
-  | Regular Root ->
+  | Regular Root
+  | Anonymous_action Root ->
     Other fn
   | Install (With_context (ctx, src_dir)) -> Install (ctx, src_dir)
   | Regular (With_context (ctx, src_dir)) -> Regular (ctx, src_dir)
-  | Alias (With_context (ctx, fn)) -> (
-    match String.rsplit2 (Path.Source.basename fn) ~on:'-' with
-    | None -> assert false
-    | Some (basename, digest) ->
-      if String.length digest = 32 then
+  | Anonymous_action (With_context (ctx, fn)) -> (
+    let basename = Path.Source.basename fn in
+    match String.rsplit2 basename ~on:'-' with
+    | None ->
+      if is_digest basename then
+        Anonymous_action ctx
+      else
+        Other original_fn
+    | Some (basename, suffix) ->
+      if is_digest suffix then
         Alias (ctx, Path.Source.relative (Path.Source.parent_exn fn) basename)
       else
         Other original_fn)
@@ -88,6 +97,7 @@ let describe_target fn =
   match analyse_target fn with
   | Alias (ctx, p) ->
     sprintf "alias %s%s" (Path.Source.to_string_maybe_quoted p) (ctx_suffix ctx)
+  | Anonymous_action ctx -> sprintf "<internal-action>%s" (ctx_suffix ctx)
   | Install (ctx, p) ->
     sprintf "install %s%s"
       (Path.Source.to_string_maybe_quoted p)
@@ -170,12 +180,7 @@ module Build = struct
 
   let install_dir = install_dir
 
-  let alias_dir = alias_dir
-
-  let is_alias_stamp_file =
-    let prefix = Path.Build.basename alias_dir ^ "/" in
-    fun s ->
-      String.is_prefix (Path.Local.to_string (Path.Build.local s)) ~prefix
+  let anonymous_actions_dir = anonymous_actions_dir
 end
 
 module External = struct

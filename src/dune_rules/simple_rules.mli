@@ -9,17 +9,15 @@ module Alias_rules : sig
   val add :
        Super_context.t
     -> alias:Alias.t
-    -> stamp:'a
     -> loc:Loc.t option
     -> locks:Path.t list
-    -> Action.t Action_builder.With_targets.t
+    -> Action.t Action_builder.t
     -> unit Memo.Build.t
 
   val add_empty :
        Super_context.t
     -> loc:Stdune.Loc.t option
     -> alias:Alias.t
-    -> stamp:'a
     -> unit Memo.Build.t
 end
 

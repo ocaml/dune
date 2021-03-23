@@ -462,6 +462,15 @@ let workspace_root_var =
   String_with_vars.virt_pform __POS__ (Var Workspace_root)
 
 let promote_correction fn build ~suffix =
+  let open Action_builder.O in
+  let+ act = build in
+  Action.progn
+    [ act
+    ; Action.diff ~optional:true (Path.build fn)
+        (Path.Build.extend_basename fn ~suffix)
+    ]
+
+let promote_correction_with_target fn build ~suffix =
   Action_builder.progn
     [ build
     ; Action_builder.with_no_targets
@@ -472,26 +481,22 @@ let promote_correction fn build ~suffix =
 
 let chdir action = Action_unexpanded.Chdir (workspace_root_var, action)
 
-let action_for_pp ~loc ~expander ~action ~src ~target =
+let action_for_pp ~loc ~expander ~action ~src =
   let action = chdir action in
   let bindings =
     Pform.Map.singleton (Var Input_file) [ Value.Path (Path.build src) ]
   in
   let expander = Expander.add_bindings expander ~bindings in
-  let targets = Targets.Or_forbidden.Forbidden "preprocessing actions" in
-  let targets_dir = Option.value ~default:src target |> Path.Build.parent_exn in
-  let action =
-    let open Action_builder.With_targets.O in
-    Action_builder.with_no_targets (Action_builder.path (Path.build src))
-    >>> Action_unexpanded.expand action ~loc ~expander ~deps:[] ~targets
-          ~targets_dir
-  in
-  match target with
-  | None -> action
-  | Some dst ->
-    Action_builder.With_targets.map
-      ~f:(Action.with_stdout_to dst)
-      (Action_builder.With_targets.add ~targets:[ dst ] action)
+  let open Action_builder.O in
+  Action_builder.path (Path.build src)
+  >>> Action_unexpanded.expand_no_targets action ~loc ~expander ~deps:[]
+        ~what:"preprocessing actions"
+
+let action_for_pp_with_target ~loc ~expander ~action ~src ~target =
+  let action = action_for_pp ~loc ~expander ~action ~src in
+  Action_builder.With_targets.map
+    ~f:(Action.with_stdout_to target)
+    (Action_builder.with_targets ~targets:[ target ] action)
 
 (* Generate rules for the dialect modules in [modules] and return a a new module
    with only OCaml sources *)
@@ -508,7 +513,7 @@ let setup_dialect_rules sctx ~dir ~expander (m : Module.t) =
               |> Path.as_in_build_dir_exn
             in
             SC.add_rule sctx ~dir
-              (action_for_pp ~loc ~expander ~action ~src ~target:(Some dst))))
+              (action_for_pp_with_target ~loc ~expander ~action ~src ~target:dst)))
   in
   ml
 
@@ -526,9 +531,7 @@ let lint_module sctx ~dir ~expander ~lint ~lib_name ~scope =
   let open Action_builder.O in
   Staged.stage
     (let alias = Alias.lint ~dir in
-     let add_alias fn build =
-       SC.add_alias_action sctx alias build ~dir ~stamp:("lint", lib_name, fn)
-     in
+     let add_alias build = SC.add_alias_action sctx alias build ~dir in
      let lint =
        Module_name.Per_item.map lint ~f:(function
          | Preprocess.No_preprocessing ->
@@ -540,8 +543,8 @@ let lint_module sctx ~dir ~expander ~lint ~lib_name ~scope =
            fun ~source ~ast:_ ->
              Module.iter source ~f:(fun _ (src : Module.File.t) ->
                  let src = Path.as_in_build_dir_exn src.path in
-                 add_alias src ~loc:(Some loc)
-                   (action_for_pp ~loc ~expander ~action ~src ~target:None))
+                 add_alias ~loc:(Some loc)
+                   (action_for_pp ~loc ~expander ~action ~src))
          | Pps { loc; pps; flags; staged } ->
            if staged then
              User_error.raise ~loc
@@ -563,22 +566,21 @@ let lint_module sctx ~dir ~expander ~lint ~lib_name ~scope =
            in
            fun ~source ~ast ->
              Module.iter ast ~f:(fun ml_kind src ->
-                 add_alias src.path ~loc:None
+                 add_alias ~loc:None
                    (promote_correction ~suffix:corrected_suffix
                       (Path.as_in_build_dir_exn
                          (Option.value_exn (Module.file source ~ml_kind)))
-                      (Action_builder.with_no_targets
-                         (let* exe, flags, args = driver_and_flags in
-                          let dir =
-                            Path.build (Super_context.context sctx).build_dir
-                          in
-                          Command.run' ~dir
-                            (Ok (Path.build exe))
-                            [ As args
-                            ; Command.Ml_kind.ppx_driver_flag ml_kind
-                            ; Dep src.path
-                            ; As flags
-                            ])))))
+                      (let* exe, flags, args = driver_and_flags in
+                       let dir =
+                         Path.build (Super_context.context sctx).build_dir
+                       in
+                       Command.run' ~dir
+                         (Ok (Path.build exe))
+                         [ As args
+                         ; Command.Ml_kind.ppx_driver_flag ml_kind
+                         ; Dep src.path
+                         ; As flags
+                         ]))))
      in
      fun ~(source : Module.t) ~ast ->
        Module_name.Per_item.get lint (Module.name source) ~source ~ast)
@@ -615,7 +617,8 @@ let make sctx ~dir ~expander ~lint ~preprocess ~preprocessor_deps
           let* ast =
             pped_module m ~f:(fun _kind src dst ->
                 let action =
-                  action_for_pp ~loc ~expander ~action ~src ~target:(Some dst)
+                  action_for_pp_with_target ~loc ~expander ~action ~src
+                    ~target:dst
                 in
                 SC.add_rule sctx ~loc ~dir
                   (let open Action_builder.With_targets.O in
@@ -652,7 +655,7 @@ let make sctx ~dir ~expander ~lint ~preprocess ~preprocessor_deps
             pped_module ast ~f:(fun ml_kind src dst ->
                 SC.add_rule ~sandbox:Sandbox_config.no_special_requirements sctx
                   ~loc ~dir
-                  (promote_correction ~suffix:corrected_suffix
+                  (promote_correction_with_target ~suffix:corrected_suffix
                      (Path.as_in_build_dir_exn
                         (Option.value_exn (Module.file m ~ml_kind)))
                      (Action_builder.with_targets ~targets:[ dst ]

@@ -527,6 +527,32 @@ let rec expand (t : Action_dune_lang.t) : Action.t Action_expander.t =
     let+ script = E.dep script in
     O.Cram script
 
+let pp_path_build target = Pp.text (Dpath.describe_path (Path.build target))
+
+let expand_no_targets t ~loc ~deps:deps_written_by_user ~expander ~what =
+  let open Action_builder.O in
+  let deps_builder, expander =
+    Dep_conf_eval.named ~expander deps_written_by_user
+  in
+  let expander =
+    Expander.set_expanding_what expander (User_action_without_targets { what })
+  in
+  let { Action_builder.With_targets.build; targets } =
+    Action_expander.run (expand t) ~expander
+  in
+  if not (Path.Build.Set.is_empty targets) then
+    User_error.raise ~loc
+      [ Pp.textf
+          "%s must not have targets, however I inferred that these files will \
+           be created by this action:"
+          (String.capitalize what)
+      ; Pp.enumerate (Path.Build.Set.to_list targets) ~f:pp_path_build
+      ];
+  let+ () = deps_builder
+  and+ action = build in
+  let dir = Path.build (Expander.dir expander) in
+  Action.Chdir (dir, action)
+
 let expand t ~loc ~deps:deps_written_by_user ~targets_dir
     ~targets:targets_written_by_user ~expander =
   let open Action_builder.O in
@@ -534,13 +560,9 @@ let expand t ~loc ~deps:deps_written_by_user ~targets_dir
     Dep_conf_eval.named ~expander deps_written_by_user
   in
   let expander =
-    match (targets_written_by_user : Targets.Or_forbidden.t) with
-    | Targets Infer
-    | Forbidden _ ->
-      (* TODO jeremiedimino: the error message used to be better when someone
-         was using %{target} in an [(alias ...)] stanza. *)
-      expander
-    | Targets (Static { targets; multiplicity }) ->
+    match (targets_written_by_user : _ Targets.t) with
+    | Infer -> expander
+    | Static { targets; multiplicity } ->
       Expander.add_bindings_full expander
         ~bindings:
           (Pform.Map.singleton
@@ -557,25 +579,11 @@ let expand t ~loc ~deps:deps_written_by_user ~targets_dir
   let { Action_builder.With_targets.build; targets } =
     Action_expander.run (expand t) ~expander
   in
-  let pp_path_build target =
-    Pp.text (Dpath.describe_path (Path.build target))
-  in
   let targets =
-    match (targets_written_by_user : Targets.Or_forbidden.t) with
-    | Targets Infer -> targets
-    | Targets (Static { targets = targets'; multiplicity = _ }) ->
+    match (targets_written_by_user : _ Targets.t) with
+    | Infer -> targets
+    | Static { targets = targets'; multiplicity = _ } ->
       Path.Build.Set.union targets (Path.Build.Set.of_list targets')
-    | Forbidden context ->
-      if Path.Build.Set.is_empty targets then
-        targets
-      else
-        User_error.raise ~loc
-          [ Pp.textf
-              "%s must not have targets, however I inferred that these files \
-               will be created by this action:"
-              (String.capitalize context)
-          ; Pp.enumerate (Path.Build.Set.to_list targets) ~f:pp_path_build
-          ]
   in
   Path.Build.Set.iter targets ~f:(fun target ->
       if Path.Build.( <> ) (Path.Build.parent_exn target) targets_dir then

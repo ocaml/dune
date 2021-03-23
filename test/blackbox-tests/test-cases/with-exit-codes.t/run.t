@@ -20,6 +20,10 @@
         ocamlc .exit.eobjs/byte/dune__exe__Exit.{cmi,cmo,cmt}
       ocamlopt .exit.eobjs/native/dune__exe__Exit.{cmx,o}
       ocamlopt exit.exe
+  File "dune", line 5, characters 0-75:
+  5 | (rule
+  6 |  (alias a)
+  7 |  (action (with-accepted-exit-codes 0 (run ./exit.exe 1))))
           exit alias a (exit 1)
   (cd _build/default && ./exit.exe 1)
   [1]
@@ -46,6 +50,10 @@
           exit alias c
 
   $ dune build --display=short --root . @d
+  File "dune", line 14, characters 0-84:
+  14 | (rule
+  15 |  (alias d)
+  16 |  (action (with-accepted-exit-codes (or 4 5 6) (run ./exit.exe 7))))
           exit alias d (exit 7)
   (cd _build/default && ./exit.exe 7)
   [1]

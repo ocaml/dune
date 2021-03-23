@@ -210,6 +210,53 @@ val create_file : Path.Build.t -> Action.t With_targets.t
 (** Merge a list of actions accumulating the sets of their targets. *)
 val progn : Action.t With_targets.t list -> Action.t With_targets.t
 
+module Action_desc : sig
+  (* jeremiedimino: this type correspond to a subset of [Rule.t]. We should
+     eventually share the code. *)
+  type nonrec t =
+    { context : Build_context.t option
+    ; env : Env.t option
+    ; action : Action.t
+    ; locks : Path.t list
+    ; loc : Loc.t option
+    ; dir : Path.Build.t
+          (** Directory the action is attached to. This is the directory where
+              the outcome of the action will be cached. *)
+    ; alias : Alias.Name.t option  (** For better error messages *)
+    }
+end
+
+(** Execute an action. You can think of [action t] as a convenient way of
+    declaring an anonymous build rule and depending on its outcome. While the
+    return type is [unit], the action might fail. So the outcome here is success
+    or failure. This function is commonly used for attaching tests to an alias.
+
+    Note that any dependency declared in [t] is treated as a dependency of the
+    action returned by [t], rather than the action currently being computed.
+    More precisely, in the following code:
+
+    {[
+      let+ () = Action_builder.path p1
+      and+ () =
+        Action_builder.action
+          (let+ () = Action_builder.path p2 in
+           act2)
+      in
+      act1
+    ]}
+
+    Dune assumes that:
+
+    - [act1] will read [p1]
+    - [act2] will read [p2]
+
+    When passing [--force] to Dune, these are exactly the actions that will be
+    re-executed. *)
+val action : Action_desc.t t -> unit t
+
+(** Same as [action], but captures the output of the action. *)
+val action_stdout : Action_desc.t t -> string t
+
 (** {1 Analysis} *)
 
 (** Returns [Some (x, t)] if the following can be evaluated statically. The
@@ -248,6 +295,12 @@ module Make_exec (Build_deps : sig
 
   (** Check whether an alias is defined. *)
   val alias_exists : Alias.t -> bool Memo.Build.t
+
+  val execute_action :
+    observing_facts:fact Dep.Map.t -> Action_desc.t -> unit Memo.Build.t
+
+  val execute_action_stdout :
+    observing_facts:fact Dep.Map.t -> Action_desc.t -> string Memo.Build.t
 end) : sig
   (** Execute an action builder. Returns the result and the trace of the
       dependencies. *)

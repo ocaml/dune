@@ -149,10 +149,6 @@ let name t = t.name
 
 let dir t = t.dir
 
-let stamp_file_dir t =
-  let local = Path.Build.local t.dir in
-  Path.Build.append_local Dpath.Build.alias_dir local
-
 let fully_qualified_name t = Path.Build.relative t.dir (Name.to_string t.name)
 
 (* This mutable table is safe: it's modified only at the top level. *)

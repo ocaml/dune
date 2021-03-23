@@ -3,28 +3,14 @@ open! Stdune
 module Id = Id.Make ()
 
 module Dir_rules = struct
-  type alias_action =
-    { stamp : Digest.t
-    ; action : Action.t Action_builder.With_targets.t
-    ; locks : Path.t list
-    ; context : Build_context.t
-    ; env : Env.t option
-    ; loc : Loc.t option
-    }
-
   module Alias_spec = struct
-    type t =
-      { expansions : (Loc.t * unit Action_builder.t) Appendable_list.t
-      ; actions : alias_action Appendable_list.t
-      }
+    type t = { expansions : (Loc.t * unit Action_builder.t) Appendable_list.t }
+    [@@unboxed]
 
-    let empty =
-      { expansions = Appendable_list.empty; actions = Appendable_list.empty }
+    let empty = { expansions = Appendable_list.empty }
 
     let union x y =
-      { expansions = Appendable_list.( @ ) x.expansions y.expansions
-      ; actions = Appendable_list.( @ ) x.actions y.actions
-      }
+      { expansions = Appendable_list.( @ ) x.expansions y.expansions }
   end
 
   type alias =
@@ -155,32 +141,25 @@ module Produce = struct
            (Dir_rules.Nonempty.singleton (Alias { name; spec })))
 
     let add_deps t ?(loc = Loc.none) expansion =
-      alias t
-        { expansions = Appendable_list.singleton (loc, expansion)
-        ; actions = Appendable_list.empty
-        }
+      alias t { expansions = Appendable_list.singleton (loc, expansion) }
 
     let add_static_deps t ?(loc = Loc.none) deps =
       let expansion = Action_builder.deps (Dep.Set.of_files_set deps) in
-      alias t
-        { expansions = Appendable_list.singleton (loc, expansion)
-        ; actions = Appendable_list.empty
-        }
+      alias t { expansions = Appendable_list.singleton (loc, expansion) }
 
-    let add_action t ~context ~env ~loc ?(locks = []) ~stamp action =
-      alias t
-        { expansions = Appendable_list.empty
-        ; actions =
-            Appendable_list.singleton
-              ({ stamp = Digest.generic stamp
-               ; action
-               ; locks
-               ; context
-               ; loc
-               ; env
-               }
-                : Dir_rules.alias_action)
-        }
+    let add_action t ~context ~env ~loc ?(locks = []) action =
+      add_deps t ?loc
+        (Action_builder.action
+           (let open Action_builder.O in
+           let+ action = action in
+           { Action_builder.Action_desc.context = Some context
+           ; env
+           ; action
+           ; locks
+           ; loc
+           ; dir = Alias.dir t
+           ; alias = Some (Alias.name t)
+           }))
   end
 end
 

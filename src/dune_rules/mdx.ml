@@ -210,8 +210,7 @@ let gen_rules_for_single_file stanza ~sctx ~dir ~expander ~mdx_prog src =
   (* Attach the diff action to the @runtest for the src and corrected files *)
   let diff_action = Files.diff_action files in
   Super_context.add_alias_action sctx (Alias.runtest ~dir) ~loc:(Some loc) ~dir
-    ~stamp:("mdx", files.src)
-    (Action_builder.with_no_targets diff_action)
+    diff_action
 
 (** Generates the rules for a given mdx stanza *)
 let gen_rules t ~sctx ~dir ~expander =

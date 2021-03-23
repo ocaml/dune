@@ -9,6 +9,7 @@ BIN := ./dune.exe
 # Dependencies used for testing dune, when developed locally and
 # when tested in CI
 TEST_DEPS := \
+lwt \
 bisect_ppx \
 cinaps \
 coq-native \

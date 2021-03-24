@@ -2398,12 +2398,15 @@ let init ~stats ~contexts ?build_mutex ~promote_source ?caching
     ; stats
     }
   in
+  let open Fiber.O in
+  let* scheduler = Scheduler.t () in
   Console.Status_line.set (fun () ->
       Some
         (Pp.verbatim
            (sprintf "Done: %u/%u (jobs: %u)" t.rule_done t.rule_total
-              (Scheduler.running_jobs_count ()))));
-  set t
+              (Scheduler.running_jobs_count scheduler))));
+  set t;
+  Fiber.return ()
 
 let cache_teardown () =
   match get_cache () with

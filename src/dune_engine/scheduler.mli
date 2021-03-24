@@ -72,6 +72,11 @@ module Run : sig
     -> 'a
 end
 
+type t
+
+(** Get the instance of the scheduler that runs the current fiber. *)
+val t : unit -> t Fiber.t
+
 (** [with_job_slot f] waits for one job slot (as per [-j <jobs] to become
     available and then calls [f]. *)
 val with_job_slot : (Config.t -> 'a Fiber.t) -> 'a Fiber.t
@@ -89,7 +94,7 @@ val wait_for_dune_cache : unit -> unit
 val ignore_for_watch : Path.t -> unit
 
 (** Number of jobs currently running in the background *)
-val running_jobs_count : unit -> int
+val running_jobs_count : t -> int
 
 (** Execute the given callback with current directory temporarily changed *)
 val with_chdir : dir:Path.t -> f:(unit -> 'a) -> 'a

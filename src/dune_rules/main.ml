@@ -66,9 +66,11 @@ let init_build_system ?stats ?only_packages ~sandboxing_preference ?caching
     let dst = Path.source dst in
     Artifact_substitution.copy_file ?chmod ~src ~dst ~conf ()
   in
-  Build_system.init ~stats ~sandboxing_preference ~promote_source
-    ~contexts:(List.map ~f:Context.build_context w.contexts)
-    ?caching ?build_mutex ();
+  let* () =
+    Build_system.init ~stats ~sandboxing_preference ~promote_source
+      ~contexts:(List.map ~f:Context.build_context w.contexts)
+      ?caching ?build_mutex ()
+  in
   List.iter w.contexts ~f:Context.init_configurator;
   let+ scontexts = Gen_rules.init w.conf ~contexts:w.contexts ?only_packages in
   { workspace = w; scontexts }

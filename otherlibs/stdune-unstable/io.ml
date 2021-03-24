@@ -88,18 +88,25 @@ struct
     else
       Stdlib.open_in fn
 
-  let open_out ?(binary = true) p =
+  let open_out ?(binary = true) ?(perm = 0o666) p =
     let fn = Path.to_string p in
-    if binary then
-      Stdlib.open_out_bin fn
-    else
-      Stdlib.open_out fn
+    let flags : Stdlib.open_flag list =
+      [ Open_wronly
+      ; Open_creat
+      ; Open_trunc
+      ; (if binary then
+          Open_binary
+        else
+          Open_text)
+      ]
+    in
+    Stdlib.open_out_gen flags perm fn
 
   let with_file_in ?binary fn ~f =
     Exn.protectx (open_in ?binary fn) ~finally:close_in ~f
 
-  let with_file_out ?binary p ~f =
-    Exn.protectx (open_out ?binary p) ~finally:close_out ~f
+  let with_file_out ?binary ?perm p ~f =
+    Exn.protectx (open_out ?binary ?perm p) ~finally:close_out ~f
 
   let with_lexbuf_from_file fn ~f =
     with_file_in fn ~f:(fun ic ->
@@ -185,11 +192,11 @@ struct
   let zero_strings_of_file fn =
     with_file_in fn ~f:input_zero_separated ~binary:true
 
-  let write_file ?binary fn data =
-    with_file_out ?binary fn ~f:(fun oc -> output_string oc data)
+  let write_file ?binary ?perm fn data =
+    with_file_out ?binary ?perm fn ~f:(fun oc -> output_string oc data)
 
-  let write_lines ?binary fn lines =
-    with_file_out ?binary fn ~f:(fun oc ->
+  let write_lines ?binary ?perm fn lines =
+    with_file_out ?binary ?perm fn ~f:(fun oc ->
         List.iter
           ~f:(fun line ->
             output_string oc line;

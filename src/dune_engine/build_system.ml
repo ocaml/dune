@@ -1362,7 +1362,7 @@ end = struct
 
   (* The current version of the rule digest scheme. We should increment it when
      making any changes to the scheme, to avoid collisions. *)
-  let rule_digest_version = 3
+  let rule_digest_version = 4
 
   let compute_rule_digest (rule : Rule.t) ~deps ~action ~sandbox_mode =
     let env = Rule.effective_env rule in

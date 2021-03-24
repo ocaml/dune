@@ -56,21 +56,21 @@ let gen_rules sctx t ~dir ~scope =
     File_tree.files_of (Path.Build.drop_build_context_exn dir)
     >>| Path.Source.Set.to_list
     >>| List.filter_map ~f:(fun p ->
-           if
-             Predicate_lang.Glob.exec t.files (Path.Source.basename p)
-               ~standard:Predicate_lang.any
-           then
-             Some
-               (Path.Build.append_source (Super_context.context sctx).build_dir
-                  p)
-           else
-             None)
-  (* Ask cinaps to produce a .ml file to build *)
+            if
+              Predicate_lang.Glob.exec t.files (Path.Source.basename p)
+                ~standard:Predicate_lang.any
+            then
+              Some
+                (Path.Build.append_source (Super_context.context sctx).build_dir
+                   p)
+            else
+              None)
   and* prog =
     Super_context.resolve_program sctx ~dir ~loc:(Some loc) name
       ~hint:"opam install cinaps"
   in
   let* () =
+    (* Ask cinaps to produce a .ml file to build *)
     Super_context.add_rule sctx ~loc:t.loc ~dir
       (Command.run ~dir:(Path.build dir) prog
          [ A "-staged"

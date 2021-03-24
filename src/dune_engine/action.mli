@@ -11,6 +11,14 @@ module Inputs : module type of struct
   include Action_intf.Inputs
 end
 
+module File_perm : sig
+  include module type of struct
+    include Action_intf.File_perm
+  end
+
+  val to_unix_perm : t -> int
+end
+
 (** result of the lookup of a program, the path to it or information about the
     failure and possibly a hint how to fix it *)
 module Prog : sig

@@ -98,14 +98,14 @@ module Io = struct
     let channel = lazy (channel_of_descr (Lazy.force fd) mode) in
     { kind = Null; mode; fd; channel; status = Close_after_exec }
 
-  let file : type a. _ -> a mode -> a t =
-   fun fn mode ->
+  let file : type a. _ -> ?perm:int -> a mode -> a t =
+   fun fn ?(perm = 0o666) mode ->
     let flags =
       match mode with
       | Out -> [ Unix.O_WRONLY; O_CREAT; O_TRUNC; O_SHARE_DELETE ]
       | In -> [ O_RDONLY; O_SHARE_DELETE ]
     in
-    let fd = lazy (Unix.openfile (Path.to_string fn) flags 0o666) in
+    let fd = lazy (Unix.openfile (Path.to_string fn) flags perm) in
     let channel = lazy (channel_of_descr (Lazy.force fd) mode) in
     { kind = File fn; mode; fd; channel; status = Close_after_exec }
 

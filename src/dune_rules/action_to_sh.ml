@@ -36,6 +36,11 @@ let cat fn = Run ("cat", [ fn ])
 
 let mkdir p = Run ("mkdir", [ "-p"; p ])
 
+let interpret_perm (perm : Action.File_perm.t) fn acc =
+  match perm with
+  | Normal -> acc
+  | Executable -> Run ("chmod", [ "+x"; fn ]) :: acc
+
 let simplify act =
   let rec loop (act : Action.For_shell.t) acc =
     match act with
@@ -44,8 +49,8 @@ let simplify act =
     | Dynamic_run (prog, args) -> Run (prog, args) :: acc
     | Chdir (p, act) -> loop act (Chdir p :: mkdir p :: acc)
     | Setenv (k, v, act) -> loop act (Setenv (k, v) :: acc)
-    | Redirect_out (outputs, fn, act) ->
-      Redirect_out (block act, outputs, File fn) :: acc
+    | Redirect_out (outputs, fn, perm, act) ->
+      interpret_perm perm fn (Redirect_out (block act, outputs, File fn) :: acc)
     | Redirect_in (inputs, fn, act) ->
       Redirect_in (block act, inputs, fn) :: acc
     | Ignore (outputs, act) ->
@@ -66,7 +71,8 @@ let simplify act =
       :: acc
     | System x -> Sh x :: acc
     | Bash x -> Run ("bash", [ "-e"; "-u"; "-o"; "pipefail"; "-c"; x ]) :: acc
-    | Write_file (x, y) -> Redirect_out (echo y, Stdout, File x) :: acc
+    | Write_file (x, perm, y) ->
+      interpret_perm perm x (Redirect_out (echo y, Stdout, File x) :: acc)
     | Rename (x, y) -> Run ("mv", [ x; y ]) :: acc
     | Remove_tree x -> Run ("rm", [ "-rf"; x ]) :: acc
     | Mkdir x -> mkdir x :: acc

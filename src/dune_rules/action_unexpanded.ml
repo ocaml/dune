@@ -425,10 +425,10 @@ let rec expand (t : Action_dune_lang.t) : Action.t Action_expander.t =
         A.set_env ~var ~value:(E.string value)
           (let+ t = expand t in
            fun ~value -> O.Setenv (var, value, t)))
-  | Redirect_out (outputs, fn, t) ->
+  | Redirect_out (outputs, fn, perm, t) ->
     let+ fn = E.target fn
     and+ t = expand t in
-    O.Redirect_out (outputs, fn, t)
+    O.Redirect_out (outputs, fn, perm, t)
   | Redirect_in (inputs, fn, t) ->
     let+ fn = E.dep fn
     and+ t = expand t in
@@ -468,10 +468,10 @@ let rec expand (t : Action_dune_lang.t) : Action.t Action_expander.t =
   | Bash x ->
     let+ x = E.string x in
     O.Bash x
-  | Write_file (fn, s) ->
+  | Write_file (fn, perm, s) ->
     let+ fn = E.target fn
     and+ s = E.string s in
-    O.Write_file (fn, s)
+    O.Write_file (fn, perm, s)
   | Rename (x, _) ->
     (* [Rename] is not part of the syntax so this case is not reachable. The
        reason it is not exposed to the user is because we can't easily decide

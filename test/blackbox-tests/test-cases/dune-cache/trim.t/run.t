@@ -70,10 +70,10 @@ version number. This number is stored in the [rule_digest_version]
 variable in [build_system.ml].
 
   $ (cd "$PWD/.xdg-cache/dune/db/meta/v4"; grep -rws . -e 'metadata' | sort)
-  ./a5/a5577fffaa751cd2aa8b2345ac11119a:((8:metadata)(5:files(16:default/target_a32:5637dd9730e430c7477f52d46de3909c)))
-  ./c5/c5af296726141def07847e5510a680c6:((8:metadata)(5:files(16:default/target_b32:8a53bfae3829b48866079fa7f2d97781)))
+  ./06/061fb516fd28c9a632c573f380b8a120:((8:metadata)(5:files(16:default/target_a32:5637dd9730e430c7477f52d46de3909c)))
+  ./50/50148ac6fcde0b35e357cbd120131dbc:((8:metadata)(5:files(16:default/target_b32:8a53bfae3829b48866079fa7f2d97781)))
 
-  $ dune_cmd stat size "$PWD/.xdg-cache/dune/db/meta/v4/a5/a5577fffaa751cd2aa8b2345ac11119a"
+  $ dune_cmd stat size "$PWD/.xdg-cache/dune/db/meta/v4/06/061fb516fd28c9a632c573f380b8a120"
   79
 
 Trimming the cache at this point should not remove anything, as all

@@ -44,7 +44,7 @@ let ensure_at_most_one_dynamic_run ~loc action =
     | Dynamic_run _ -> true
     | Chdir (_, t)
     | Setenv (_, _, t)
-    | Redirect_out (_, _, t)
+    | Redirect_out (_, _, _, t)
     | Redirect_in (_, _, t)
     | Ignore (_, t)
     | With_accepted_exit_codes (_, t)

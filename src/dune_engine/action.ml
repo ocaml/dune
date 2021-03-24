@@ -3,6 +3,14 @@ open Import
 module Outputs = Action_ast.Outputs
 module Inputs = Action_ast.Inputs
 
+module File_perm = struct
+  include Action_intf.File_perm
+
+  let to_unix_perm = function
+    | Normal -> 0o666
+    | Executable -> 0o777
+end
+
 module Prog = struct
   module Not_found = struct
     type t =
@@ -121,7 +129,7 @@ let fold_one_step t ~init:acc ~f =
   match t with
   | Chdir (_, t)
   | Setenv (_, _, t)
-  | Redirect_out (_, _, t)
+  | Redirect_out (_, _, _, t)
   | Redirect_in (_, _, t)
   | Ignore (_, t)
   | With_accepted_exit_codes (_, t)
@@ -169,7 +177,7 @@ let rec is_dynamic = function
   | Dynamic_run _ -> true
   | Chdir (_, t)
   | Setenv (_, _, t)
-  | Redirect_out (_, _, t)
+  | Redirect_out (_, _, _, t)
   | Redirect_in (_, _, t)
   | Ignore (_, t)
   | With_accepted_exit_codes (_, t)
@@ -261,7 +269,7 @@ let is_useful_to distribute memoize =
     match t with
     | Chdir (_, t) -> loop t
     | Setenv (_, _, t) -> loop t
-    | Redirect_out (_, _, t) -> memoize || loop t
+    | Redirect_out (_, _, _, t) -> memoize || loop t
     | Redirect_in (_, _, t) -> loop t
     | Ignore (_, t)
     | With_accepted_exit_codes (_, t)

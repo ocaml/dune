@@ -37,7 +37,7 @@ module Io : sig
       input from the file. The returned channel can only be used by a single
       call to {!run}. If you want to use it multiple times, you need to use
       [clone]. *)
-  val file : Path.t -> 'a mode -> 'a t
+  val file : Path.t -> ?perm:int -> 'a mode -> 'a t
 
   (** Call this when you no longer need this redirection *)
   val release : 'a t -> unit

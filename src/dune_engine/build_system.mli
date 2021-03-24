@@ -26,7 +26,7 @@ val init :
   -> ?caching:caching
   -> sandboxing_preference:Sandbox_mode.t list
   -> unit
-  -> unit
+  -> unit Fiber.t
 
 val reset : unit -> unit
 

@@ -517,14 +517,15 @@ let workspace =
     let { DB.Settings.path; profile; instrument_with; x } =
       Memo.Run.Fdecl.get DB.Settings.t
     in
-    match path with
-    | None -> default ?x ?profile ?instrument_with ()
-    | Some p -> load ?x ?profile ?instrument_with p
+    Memo.Build.return
+      (match path with
+      | None -> default ?x ?profile ?instrument_with ()
+      | Some p -> load ?x ?profile ?instrument_with p)
   in
   let memo =
     Memo.create "workspaces-db" ~doc:"get all workspaces" ~visibility:Hidden
       ~input:(module Unit)
       ~output:(Allow_cutoff (module T))
-      Sync f
+      Async f
   in
   Memo.exec memo

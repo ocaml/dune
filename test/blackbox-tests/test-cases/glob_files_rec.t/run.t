@@ -26,11 +26,11 @@ Leave a/b2/c empty to make sure we don't choke on empty dirs.
 
   $ dune build @x
           bash alias x
-  foo/x.txt
-  foo/a/x.txt
   foo/a/b1/c/x.txt
   foo/a/b1/c/y.txt
   foo/a/b3/x.txt
+  foo/a/x.txt
+  foo/x.txt
 
   $ find . -name \*.txt | dune_cmd count-lines
   10

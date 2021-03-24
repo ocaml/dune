@@ -44,7 +44,6 @@ module type Ast = sig
     | Rename of target * target
     | Remove_tree of target
     | Mkdir of path
-    | Digest_files of path list
     | Diff of (path, target) Diff.t
     | Merge_files_into of path list * string list * target
     | No_infer of t
@@ -107,8 +106,6 @@ module type Helpers = sig
   val remove_tree : target -> t
 
   val mkdir : path -> t
-
-  val digest_files : path list -> t
 
   val diff : ?optional:bool -> ?mode:Diff.Mode.t -> path -> target -> t
 

@@ -18,6 +18,8 @@ module type S = sig
 
     val ( >>= ) : 'a t -> ('a -> 'b t) -> 'b t
 
+    val ( >>> ) : unit t -> 'a t -> 'a t
+
     val ( let+ ) : 'a t -> ('a -> 'b) -> 'b t
 
     val ( and+ ) : 'a t -> 'b t -> ('a * 'b) t

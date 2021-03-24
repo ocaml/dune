@@ -16,13 +16,13 @@ Reproduction case for #1549: too many parentheses in installed .dune files
     (META
      dune-package
      opam
-     simple_tests.ml
-     simple_tests.cmi
-     simple_tests.cmx
-     simple_tests.cmt
+     simple_tests$ext_lib
      simple_tests.cma
+     simple_tests.cmi
+     simple_tests.cmt
+     simple_tests.cmx
      simple_tests.cmxa
-     simple_tests$ext_lib))
+     simple_tests.ml))
    (libexec (simple_tests.cmxs)))
   (library
    (name dune_inline_tests)

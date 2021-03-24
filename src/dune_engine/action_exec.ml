@@ -310,15 +310,6 @@ let rec exec t ~ectx ~eenv =
       Code_error.raise "Action_exec.exec: mkdir on non build dir"
         [ ("path", Path.to_dyn path) ];
     Fiber.return Done
-  | Digest_files paths ->
-    let s =
-      let data =
-        List.map paths ~f:(fun fn -> (Path.to_string fn, Cached_digest.file fn))
-      in
-      Digest.generic data
-    in
-    let+ () = exec_echo eenv.stdout_to (Digest.to_string_raw s) in
-    Done
   | Diff ({ optional; file1; file2; mode } as diff) ->
     let remove_intermediate_file () =
       if optional then

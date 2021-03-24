@@ -86,6 +86,10 @@ val all : 'a t list -> 'a list t
 
 val all_unit : unit t list -> unit t
 
+module List : sig
+  val map : 'a list -> f:('a -> 'b t) -> 'b list t
+end
+
 (** Delay a static computation until the description is evaluated *)
 val delayed : (unit -> 'a) -> 'a t
 

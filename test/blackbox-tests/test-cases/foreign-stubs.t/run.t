@@ -117,7 +117,11 @@ Testsuite for the (foreign_stubs ...) field.
   > EOF
 
   $ ./sdune build 2>&1 | dune_cmd sanitize
-  File "dune", line 1, characters 0-0:
+  File "dune", line 1, characters 0-87:
+  1 | (library
+  2 |  (name foo)
+  3 |  (foreign_stubs (language c) (names foo))
+  4 |  (foreign_archives bar))
   Error: No rule found for libbar$ext_lib
 
 ----------------------------------------------------------------------------------

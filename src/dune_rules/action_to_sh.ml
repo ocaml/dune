@@ -70,7 +70,6 @@ let simplify act =
     | Rename (x, y) -> Run ("mv", [ x; y ]) :: acc
     | Remove_tree x -> Run ("rm", [ "-rf"; x ]) :: acc
     | Mkdir x -> mkdir x :: acc
-    | Digest_files _ -> Run ("echo", []) :: acc
     | Diff { optional; file1; file2; mode = Binary } ->
       assert (not optional);
       Run ("cmp", [ file1; file2 ]) :: acc

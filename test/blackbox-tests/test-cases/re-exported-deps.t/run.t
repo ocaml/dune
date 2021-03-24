@@ -17,29 +17,29 @@ transtive deps expressed in the dune-package
   (files
    (lib
     (META
-     dune-package
-     ccc/ccc.ml
-     ccc/ccc.cmi
-     ccc/ccc.cmx
-     ccc/ccc.cmt
-     ccc/ccc.cma
-     ccc/ccc.cmxa
-     ccc/ccc$ext_lib
-     bbb/bbb.ml
-     bbb/bbb.cmi
-     bbb/bbb.cmx
-     bbb/bbb.cmt
-     bbb/bbb.cma
-     bbb/bbb.cmxa
-     bbb/bbb$ext_lib
-     aaa/aaa.ml
-     aaa/aaa.cmi
-     aaa/aaa.cmx
-     aaa/aaa.cmt
+     aaa/aaa$ext_lib
      aaa/aaa.cma
+     aaa/aaa.cmi
+     aaa/aaa.cmt
+     aaa/aaa.cmx
      aaa/aaa.cmxa
-     aaa/aaa$ext_lib))
-   (libexec (ccc/ccc.cmxs bbb/bbb.cmxs aaa/aaa.cmxs)))
+     aaa/aaa.ml
+     bbb/bbb$ext_lib
+     bbb/bbb.cma
+     bbb/bbb.cmi
+     bbb/bbb.cmt
+     bbb/bbb.cmx
+     bbb/bbb.cmxa
+     bbb/bbb.ml
+     ccc/ccc$ext_lib
+     ccc/ccc.cma
+     ccc/ccc.cmi
+     ccc/ccc.cmt
+     ccc/ccc.cmx
+     ccc/ccc.cmxa
+     ccc/ccc.ml
+     dune-package))
+   (libexec (aaa/aaa.cmxs bbb/bbb.cmxs ccc/ccc.cmxs)))
   (library
    (name pkg.aaa)
    (kind normal)

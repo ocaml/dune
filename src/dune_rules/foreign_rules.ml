@@ -1,5 +1,13 @@
 open! Dune_engine
 open! Stdune
+open Action_builder.O
+
+module File_tree_map_reduce =
+  File_tree.Dir.Make_map_reduce
+    (Action_builder)
+    (Monoid.Appendable_list (struct
+      type t = Command.Args.static Command.Args.t
+    end))
 
 (* Compute command line flags for the [include_dirs] field of [Foreign.Stubs.t]
    and track all files in specified directories as [Hidden_deps] dependencies. *)
@@ -48,28 +56,34 @@ let include_dir_flags ~expander ~dir (stubs : Foreign.Stubs.t) =
                     (File_selector.create ~dir:include_dir Predicate.true_))
              in
              Command.Args.Hidden_deps deps
-           | Some (build_dir, source_dir) -> (
-             (* This branch corresponds to a source directory. We track its
-                contents recursively. *)
-             match File_tree.find_dir source_dir with
-             | None ->
-               User_error.raise ~loc
-                 [ Pp.textf "Include directory %S does not exist."
-                     (Path.reach ~from:(Path.build dir) include_dir)
-                 ]
-             | Some dir ->
-               Command.Args.S
-                 (File_tree.Dir.fold dir ~traverse:Sub_dirs.Status.Set.all
-                    ~init:[] ~f:(fun t args ->
-                      let dir =
-                        Path.append_source build_dir (File_tree.Dir.path t)
-                      in
-                      let deps =
-                        Dep.Set.singleton
-                          (Dep.file_selector
-                             (File_selector.create ~dir Predicate.true_))
-                      in
-                      Command.Args.Hidden_deps deps :: args)))
+           | Some (build_dir, source_dir) ->
+             Command.Args.Dyn
+               ((* This branch corresponds to a source directory. We track its
+                   contents recursively. *)
+                Action_builder.memo_build (File_tree.find_dir source_dir)
+                >>= function
+                | None ->
+                  User_error.raise ~loc
+                    [ Pp.textf "Include directory %S does not exist."
+                        (Path.reach ~from:(Path.build dir) include_dir)
+                    ]
+                | Some dir ->
+                  let+ l =
+                    File_tree_map_reduce.map_reduce dir
+                      ~traverse:Sub_dirs.Status.Set.all ~f:(fun t ->
+                        let dir =
+                          Path.append_source build_dir (File_tree.Dir.path t)
+                        in
+                        let deps =
+                          Dep.Set.singleton
+                            (Dep.file_selector
+                               (File_selector.create ~dir Predicate.true_))
+                        in
+                        Action_builder.return
+                          (Appendable_list.singleton
+                             (Command.Args.Hidden_deps deps)))
+                  in
+                  Command.Args.S (Appendable_list.to_list l))
          in
          Command.Args.S [ A "-I"; Path include_dir; dep_args ]))
 
@@ -94,7 +108,7 @@ let build_c ~kind ~sctx ~dir ~expander ~include_flags (loc, src, dst) =
     | Foreign_language.Cxx -> Fdo.cxx_flags ctx
   in
   let open Memo.Build.O in
-  let with_user_and_std_flags =
+  let* with_user_and_std_flags =
     let flags = Foreign.Source.flags src in
     (* DUNE3 will have [use_standard_c_and_cxx_flags] enabled by default. To
        guide users toward this change we emit a warning when dune_lang is >=
@@ -102,10 +116,10 @@ let build_c ~kind ~sctx ~dir ~expander ~include_flags (loc, src, dst) =
        [dune-project] file (thus defaulting to [true]), the [:standard] set of
        flags has been overridden and we are not in a vendored project *)
     let has_standard = Ordered_set_lang.Unexpanded.has_standard flags in
-    let is_vendored =
+    let+ is_vendored =
       match Path.Build.drop_build_context dir with
       | Some src_dir -> Dune_engine.File_tree.is_vendored src_dir
-      | None -> false
+      | None -> Memo.Build.return false
     in
     if
       Dune_project.dune_version project >= (2, 8)
@@ -125,8 +139,7 @@ let build_c ~kind ~sctx ~dir ~expander ~include_flags (loc, src, dst) =
         ];
     Super_context.foreign_flags sctx ~dir ~expander ~flags ~language:kind
     |> Action_builder.map ~f:(List.append base_flags)
-  in
-  let* c_compiler =
+  and* c_compiler =
     Super_context.resolve_program ~loc:None ~dir sctx
       (Ocaml_config.c_compiler ctx.ocaml_config)
   in

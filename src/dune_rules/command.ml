@@ -7,7 +7,8 @@ module Args0 = struct
 
   type dynamic = Dynamic
 
-  type expand = dir:Path.t -> (string list * Dep.Set.t, fail) result
+  type expand =
+    dir:Path.t -> (string list * Dep.Set.t, fail) result Memo.Build.t
 
   (* Debugging tip: if you changed this file and Dune got broken in a weird way
      it's probably because of the [Fail] constructor. *)
@@ -25,7 +26,7 @@ module Args0 = struct
     | Hidden_targets : Path.Build.t list -> dynamic t
     | Dyn : static t Action_builder.t -> dynamic t
     | Fail : fail -> _ t
-    | Expand : expand -> _ t
+    | Expand : expand -> dynamic t
 
   let dyn args = Dyn (Action_builder.map args ~f:(fun x -> As x))
 
@@ -56,12 +57,6 @@ let expand_static ~dir t =
       static_deps := Dep.Set.union !static_deps l;
       []
     | Fail f -> raise (Fail f)
-    | Expand f -> (
-      match f ~dir with
-      | Error e -> raise (Fail e)
-      | Ok (args, deps) ->
-        static_deps := Dep.Set.union !static_deps deps;
-        args)
   in
   match loop_static t with
   | exception Fail fail -> Error fail
@@ -110,7 +105,8 @@ let expand ~dir ts =
       Action_builder.with_targets ~targets:fns (Action_builder.return [])
     | Expand f ->
       Action_builder.with_no_targets
-        (match f ~dir with
+        (let open Action_builder.O in
+        Action_builder.memo_build (f ~dir) >>= function
         | Error e -> Action_builder.fail e
         | Ok (args, deps) ->
           let open Action_builder.O in
@@ -169,8 +165,8 @@ module Args = struct
     let memo =
       Memo.create_hidden "Command.Args.memo"
         ~input:(module Path)
-        Sync
-        (fun dir -> expand_static ~dir t)
+        Async
+        (fun dir -> Memo.Build.return (expand_static ~dir t))
     in
     Expand (fun ~dir -> Memo.exec memo dir)
 end

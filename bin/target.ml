@@ -60,14 +60,14 @@ let resolve_path path ~(setup : Dune_rules.Main.build_system) =
     Error hint
   in
   let as_source_dir src =
-    if Dune_engine.File_tree.dir_exists src then
+    Dune_engine.File_tree.dir_exists src >>| function
+    | true ->
       Some
         [ Alias
             (Alias.in_dir ~name:Dune_engine.Alias.Name.default ~recursive:true
                ~contexts:setup.workspace.contexts path)
         ]
-    else
-      None
+    | false -> None
   in
   let build () =
     Build_system.is_target path >>= function
@@ -77,7 +77,7 @@ let resolve_path path ~(setup : Dune_rules.Main.build_system) =
   match checked with
   | External _ -> Memo.Build.return (Ok [ File path ])
   | In_source_dir src -> (
-    match as_source_dir src with
+    as_source_dir src >>= function
     | Some res -> Memo.Build.return (Ok res)
     | None -> (
       Memo.Build.parallel_map setup.workspace.contexts ~f:(fun ctx ->
@@ -92,7 +92,7 @@ let resolve_path path ~(setup : Dune_rules.Main.build_system) =
       | [] -> can't_build path
       | l -> Memo.Build.return (Ok l)))
   | In_build_dir (_ctx, src) -> (
-    match as_source_dir src with
+    as_source_dir src >>= function
     | Some res -> Memo.Build.return (Ok res)
     | None -> build ())
   | In_install_dir _ -> build ()

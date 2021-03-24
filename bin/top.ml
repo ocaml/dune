@@ -45,7 +45,7 @@ let term =
           in
           let scope = Super_context.find_scope_by_dir sctx dir in
           let db = Dune_rules.Scope.libs scope in
-          let libs =
+          let* libs =
             Dune_rules.Utop.libs_under_dir sctx ~db ~dir:(Path.build dir)
           in
           let requires =

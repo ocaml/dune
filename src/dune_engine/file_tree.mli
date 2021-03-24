@@ -29,7 +29,7 @@ module Dir : sig
 
   type error = Missing_run_t of Cram_test.t
 
-  val cram_tests : t -> (Cram_test.t, error) result list
+  val cram_tests : t -> (Cram_test.t, error) result list Memo.Build.t
 
   val path : t -> Path.Source.t
 
@@ -37,13 +37,21 @@ module Dir : sig
 
   val file_paths : t -> Path.Source.Set.t
 
-  val sub_dirs : t -> (string * t) list
+  type sub_dir
 
-  val fold_dune_files :
-       t
-    -> init:'acc
-    -> f:(basename:string option -> t -> Dune_file.t -> 'acc -> 'acc)
-    -> 'acc
+  val sub_dirs : t -> sub_dir String.Map.t
+
+  val sub_dir_as_t : sub_dir -> t Memo.Build.t
+
+  module Make_map_reduce (M : Memo.Build) (Outcome : Monoid) : sig
+    (** Traverse sub-directories recursively, pass them to [f] and combine
+        intermediate results into a single one via [M.combine]. *)
+    val map_reduce :
+         t
+      -> traverse:Sub_dirs.Status.Set.t
+      -> f:(t -> Outcome.t M.t)
+      -> Outcome.t M.t
+  end
 
   val sub_dir_paths : t -> Path.Source.Set.t
 
@@ -52,9 +60,6 @@ module Dir : sig
   val vcs : t -> Vcs.t option
 
   val status : t -> Sub_dirs.Status.t
-
-  val fold :
-    t -> traverse:Sub_dirs.Status.Set.t -> init:'a -> f:(t -> 'a -> 'a) -> 'a
 
   (** Return the contents of the dune (or jbuild) file in this directory *)
   val dune_file : t -> Dune_file.t option
@@ -71,32 +76,36 @@ end
     set once per dune process *)
 val init : ancestor_vcs:Vcs.t option -> recognize_jbuilder_projects:bool -> unit
 
-val root : unit -> Dir.t
+val root : unit -> Dir.t Memo.Build.t
 
-(** Traverse starting from the root and report progress in the status line *)
-val fold_with_progress :
-  traverse:Sub_dirs.Status.Set.t -> init:'a -> f:(Dir.t -> 'a -> 'a) -> 'a
+module Make_map_reduce_with_progress (M : Memo.Build) (Outcome : Monoid) : sig
+  (** Traverse starting from the root and report progress in the status line *)
+  val map_reduce :
+       traverse:Sub_dirs.Status.Set.t
+    -> f:(Dir.t -> Outcome.t M.t)
+    -> Outcome.t M.t
+end
 
-val find_dir : Path.Source.t -> Dir.t option
+val find_dir : Path.Source.t -> Dir.t option Memo.Build.t
 
 (** [nearest_dir t fn] returns the directory with the longest path that is an
     ancestor of [fn]. *)
-val nearest_dir : Path.Source.t -> Dir.t
+val nearest_dir : Path.Source.t -> Dir.t Memo.Build.t
 
 (** [nearest_vcs t fn] returns the version control system with the longest root
     path that is an ancestor of [fn]. *)
 
-val nearest_vcs : Path.Source.t -> Vcs.t option
+val nearest_vcs : Path.Source.t -> Vcs.t option Memo.Build.t
 
-val files_of : Path.Source.t -> Path.Source.Set.t
+val files_of : Path.Source.t -> Path.Source.Set.t Memo.Build.t
 
 (** [true] iff the path is a directory *)
-val dir_exists : Path.Source.t -> bool
+val dir_exists : Path.Source.t -> bool Memo.Build.t
 
 (** [true] iff the path is a vendored directory *)
-val is_vendored : Path.Source.t -> bool
+val is_vendored : Path.Source.t -> bool Memo.Build.t
 
 (** [true] iff the path is a file *)
-val file_exists : Path.Source.t -> bool
+val file_exists : Path.Source.t -> bool Memo.Build.t
 
-val find_dir_specified_on_command_line : dir:Path.Source.t -> Dir.t
+val find_dir_specified_on_command_line : dir:Path.Source.t -> Dir.t Memo.Build.t

@@ -1,6 +1,7 @@
 open! Dune_engine
 open! Stdune
 open Import
+open Fiber.O
 
 module Merlin_conf = struct
   type t = Sexp.t
@@ -76,7 +77,7 @@ let to_local file_path =
    context. Then it returns the list of available Merlin configurations for this
    directory. *)
 let get_merlin_files_paths local_path =
-  let workspace = Workspace.workspace () in
+  let+ workspace = Memo.Build.run (Workspace.workspace ()) in
   let context =
     Option.value ~default:Context_name.default workspace.merlin_context
   in
@@ -97,7 +98,7 @@ let load_merlin_file local_path file =
      and its parents *)
   let rec find_closest path =
     let filename = String.lowercase_ascii file in
-    let file_paths = get_merlin_files_paths path in
+    let* file_paths = get_merlin_files_paths path in
     let result =
       List.find_map file_paths ~f:(fun file_path ->
           if Path.exists file_path then
@@ -108,13 +109,16 @@ let load_merlin_file local_path file =
             None)
     in
     match result with
-    | Some p -> Some p
-    | None ->
-      Option.bind ~f:find_closest
-        (if Path.Local.is_root path then
+    | Some p -> Fiber.return (Some p)
+    | None -> (
+      match
+        if Path.Local.is_root path then
           None
         else
-          Path.Local.parent path)
+          Path.Local.parent path
+      with
+      | None -> Fiber.return None
+      | Some dir -> find_closest dir)
   in
   let default =
     Printf.sprintf
@@ -122,35 +126,41 @@ let load_merlin_file local_path file =
       (Path.Local.to_string local_path)
     |> Merlin_conf.make_error
   in
-  Option.value (find_closest local_path) ~default
+  find_closest local_path >>| function
+  | None -> default
+  | Some x -> x
 
 let print_merlin_conf file =
   let dir, file = Filename.(dirname file, basename file) in
-  let answer =
+  let+ answer =
     match to_local dir with
     | Ok p -> load_merlin_file p file
-    | Error s -> Merlin_conf.make_error s
+    | Error s -> Fiber.return (Merlin_conf.make_error s)
   in
   Merlin_conf.to_stdout answer
 
 let dump s =
   match to_local s with
   | Ok path ->
-    List.iter (get_merlin_files_paths path) ~f:Merlin.Processed.print_file
-  | Error mess -> Printf.eprintf "%s\n%!" mess
+    get_merlin_files_paths path >>| List.iter ~f:Merlin.Processed.print_file
+  | Error mess ->
+    Printf.eprintf "%s\n%!" mess;
+    Fiber.return ()
 
 let dump_dot_merlin s =
   match to_local s with
   | Ok path ->
-    let files = get_merlin_files_paths path in
+    let+ files = get_merlin_files_paths path in
     Merlin.Processed.print_generic_dot_merlin files
-  | Error mess -> Printf.eprintf "%s\n%!" mess
+  | Error mess ->
+    Printf.eprintf "%s\n%!" mess;
+    Fiber.return ()
 
 let start () =
   let rec main () =
     match Commands.read_input stdin with
     | File path ->
-      print_merlin_conf path;
+      let* () = print_merlin_conf path in
       main ()
     | Unknown msg ->
       Merlin_conf.to_stdout (Merlin_conf.make_error msg);

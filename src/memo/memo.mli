@@ -1,9 +1,22 @@
 open! Stdune
 
+type 'a build
+
+module type Build = sig
+  include Monad
+
+  module List : sig
+    val map : 'a list -> f:('a -> 'b t) -> 'b list t
+  end
+
+  val memo_build : 'a build -> 'a t
+end
+
+(* This should eventually be just [Module Build : Build] *)
 module Build : sig
   (** The build monad *)
 
-  type 'a t
+  include Build with type 'a t = 'a build
 
   val run : 'a t -> 'a Fiber.t
 
@@ -15,26 +28,6 @@ module Build : sig
   val of_reproducible_fiber : 'a Fiber.t -> 'a t
 
   val return : 'a -> 'a t
-
-  module O : sig
-    val ( >>> ) : unit t -> 'a t -> 'a t
-
-    val ( >>= ) : 'a t -> ('a -> 'b t) -> 'b t
-
-    val ( >>| ) : 'a t -> ('a -> 'b) -> 'b t
-
-    val ( let* ) : 'a t -> ('a -> 'b t) -> 'b t
-
-    val ( and* ) : 'a t -> 'b t -> ('a * 'b) t
-
-    val ( let+ ) : 'a t -> ('a -> 'b) -> 'b t
-
-    val ( and+ ) : 'a t -> 'b t -> ('a * 'b) t
-  end
-
-  val map : 'a t -> f:('a -> 'b) -> 'b t
-
-  val bind : 'a t -> f:('a -> 'b t) -> 'b t
 
   val both : 'a t -> 'b t -> ('a * 'b) t
 
@@ -102,8 +95,12 @@ end
 
 type ('input, 'output, 'f) t
 
+(* Temporary type to forbid use of sync memo until we have simplified the
+   implementation. *)
+type 'a forbidden
+
 module Sync : sig
-  type nonrec ('i, 'o) t = ('i, 'o, 'i -> 'o) t
+  type nonrec ('i, 'o) t = ('i, 'o, ('i -> 'o) forbidden) t
 end
 
 module Async : sig
@@ -151,7 +148,7 @@ val restart_current_run : unit -> unit
 module Function : sig
   module Type : sig
     type ('a, 'b, 'f) t =
-      | Sync : ('a, 'b, 'a -> 'b) t
+      | Sync : ('a, 'b, ('a -> 'b) forbidden) t
       | Async : ('a, 'b, 'a -> 'b Build.t) t
   end
 
@@ -277,7 +274,7 @@ val create_hidden :
     value, failing if the value has not yet been computed. We do not expose
     [peek] because the [None] case is hard to reason about, and currently there
     are no use-cases for it. *)
-val peek_exn : ('i, 'o, _) t -> 'i -> 'o
+val peek_exn : ('i, 'o, _) t -> 'i -> 'o forbidden
 
 (** Execute a memoized function *)
 val exec : (_, _, 'f) t -> 'f
@@ -342,7 +339,11 @@ module Lazy : sig
   val bind : 'a t -> f:('a -> 'b t) -> 'b t
 
   val create :
-    ?cutoff:('a -> 'a -> bool) -> ?to_dyn:('a -> Dyn.t) -> (unit -> 'a) -> 'a t
+    (   ?cutoff:('a -> 'a -> bool)
+     -> ?to_dyn:('a -> Dyn.t)
+     -> (unit -> 'a)
+     -> 'a t)
+    forbidden
 
   val of_val : 'a -> 'a t
 
@@ -366,10 +367,11 @@ module Lazy : sig
 end
 
 val lazy_ :
-     ?cutoff:('a -> 'a -> bool)
-  -> ?to_dyn:('a -> Dyn.t)
-  -> (unit -> 'a)
-  -> 'a Lazy.t
+  (   ?cutoff:('a -> 'a -> bool)
+   -> ?to_dyn:('a -> Dyn.t)
+   -> (unit -> 'a)
+   -> 'a Lazy.t)
+  forbidden
 
 val lazy_async :
      ?cutoff:('a -> 'a -> bool)
@@ -431,7 +433,7 @@ module Cell : sig
 
   val input : ('a, _, _) t -> 'a
 
-  val get_sync : ('a, 'b, 'a -> 'b) t -> 'b
+  val get_sync : (('a, 'b, 'a -> 'b) t -> 'b) forbidden
 
   val get_async : ('a, 'b, 'a -> 'b Build.t) t -> 'b Build.t
 
@@ -460,7 +462,7 @@ module Poly : sig
 
     val id : 'a input -> 'a Type_eq.Id.t
   end) : sig
-    val eval : 'a Function.input -> 'a Function.output
+    val eval : ('a Function.input -> 'a Function.output) forbidden
   end
 
   (** Memoization of functions of type ['a input -> 'a output Build.t]. *)

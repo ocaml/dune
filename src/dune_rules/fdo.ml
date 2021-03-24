@@ -94,10 +94,9 @@ let get_profile =
     let path = ctx.fdo_target_exe |> Option.value_exn |> fdo_profile in
     let profile_exists =
       Memo.lazy_async (fun () ->
-          path |> Path.as_in_source_tree
-          |> Option.map ~f:File_tree.file_exists
-          |> Option.value ~default:false
-          |> Memo.Build.return)
+          match Path.as_in_source_tree path with
+          | None -> Memo.Build.return false
+          | Some path -> File_tree.file_exists path)
     in
     let open Memo.Build.O in
     let+ use_profile =

@@ -2,6 +2,7 @@ open! Dune_engine
 open! Stdune
 open Import
 open! No_io
+open Memo.Build.O
 
 let exe_name = "utop"
 
@@ -22,59 +23,90 @@ let source ~dir =
 
 let is_utop_dir dir = Path.Build.basename dir = utop_dir_basename
 
-let libs_and_ppx_under_dir sctx ~db ~dir =
-  (let open Option.O in
-  let* dir = Path.drop_build_context dir in
-  let+ dir = File_tree.find_dir dir in
-  File_tree.Dir.fold_dune_files dir ~init:([], [])
-    ~f:(fun ~basename:_ dir _dune_file (acc, pps) ->
-      let dir =
-        Path.Build.append_source (Super_context.context sctx).build_dir
-          (File_tree.Dir.path dir)
-      in
-      match Super_context.stanzas_in sctx ~dir with
-      | None -> (acc, pps)
-      | Some (d : _ Dir_with_dune.t) ->
-        List.fold_left d.data ~init:(acc, pps) ~f:(fun (acc, pps) -> function
-          | Dune_file.Library l -> (
-            match
-              Lib.DB.resolve_when_exists db
-                (l.buildable.loc, Dune_file.Library.best_name l)
-            with
-            | None
-            | Some (Error _) ->
-              (acc, pps)
-              (* library is defined but outside our scope or is disabled *)
-            | Some (Ok lib) ->
-              (* still need to make sure that it's not coming from an external
-                 source *)
-              let info = Lib.info lib in
-              let src_dir = Lib_info.src_dir info in
-              (* Only select libraries that are not implementations.
-                 Implementations are selected using the default implementation
-                 feature. *)
-              let not_impl = Option.is_none (Lib_info.implements info) in
-              if not_impl && Path.is_descendant ~of_:(Path.build dir) src_dir
-              then
-                match Lib_info.kind info with
-                | Lib_kind.Ppx_rewriter _
-                | Ppx_deriver _ ->
-                  (lib :: acc, (Lib_info.loc info, Lib_info.name info) :: pps)
-                | Normal -> (lib :: acc, pps)
-              else
-                (acc, pps)
-              (* external lib with a name matching our private name *))
-          | _ -> (acc, pps))))
-  |> Option.value ~default:([], [])
+module Libs_and_ppxs =
+  Monoid.Product
+    (Monoid.Appendable_list (struct
+      type t = Lib.t
+    end))
+    (Monoid.Appendable_list (struct
+      type t = Loc.t * Lib_name.t
+    end))
 
-let libs_under_dir sctx ~db ~dir = fst (libs_and_ppx_under_dir sctx ~db ~dir)
+module File_tree_map_reduce =
+  File_tree.Dir.Make_map_reduce (Memo.Build) (Libs_and_ppxs)
+
+let libs_and_ppx_under_dir sctx ~db ~dir =
+  (match Path.drop_build_context dir with
+  | None -> Memo.Build.return None
+  | Some dir -> File_tree.find_dir dir)
+  >>= function
+  | None -> Memo.Build.return ([], [])
+  | Some dir ->
+    File_tree_map_reduce.map_reduce dir
+      ~traverse:{ data_only = false; vendored = true; normal = true }
+      ~f:(fun dir ->
+        let dir =
+          Path.Build.append_source (Super_context.context sctx).build_dir
+            (File_tree.Dir.path dir)
+        in
+        match Super_context.stanzas_in sctx ~dir with
+        | None -> Memo.Build.return Libs_and_ppxs.empty
+        | Some (d : _ Dir_with_dune.t) ->
+          Memo.Build.return
+          @@ List.fold_left d.data ~init:Libs_and_ppxs.empty
+               ~f:(fun (acc, pps) -> function
+               | Dune_file.Library l -> (
+                 match
+                   Lib.DB.resolve_when_exists db
+                     (l.buildable.loc, Dune_file.Library.best_name l)
+                 with
+                 | None
+                 | Some (Error _) ->
+                   (acc, pps)
+                   (* library is defined but outside our scope or is disabled *)
+                 | Some (Ok lib) ->
+                   (* still need to make sure that it's not coming from an
+                      external source *)
+                   let info = Lib.info lib in
+                   let src_dir = Lib_info.src_dir info in
+                   (* Only select libraries that are not implementations.
+                      Implementations are selected using the default
+                      implementation feature. *)
+                   let not_impl = Option.is_none (Lib_info.implements info) in
+                   if
+                     not_impl
+                     && Path.is_descendant ~of_:(Path.build dir) src_dir
+                   then
+                     match Lib_info.kind info with
+                     | Lib_kind.Ppx_rewriter _
+                     | Ppx_deriver _ ->
+                       ( Appendable_list.( @ )
+                           (Appendable_list.singleton lib)
+                           acc
+                       , Appendable_list.( @ )
+                           (Appendable_list.singleton
+                              (Lib_info.loc info, Lib_info.name info))
+                           pps )
+                     | Normal ->
+                       ( Appendable_list.( @ )
+                           (Appendable_list.singleton lib)
+                           acc
+                       , pps )
+                   else
+                     (acc, pps)
+                   (* external lib with a name matching our private name *))
+               | _ -> (acc, pps)))
+    >>| fun (libs, pps) ->
+    (Appendable_list.to_list libs, Appendable_list.to_list pps)
+
+let libs_under_dir sctx ~db ~dir = libs_and_ppx_under_dir sctx ~db ~dir >>| fst
 
 let setup sctx ~dir =
   let open Memo.Build.O in
   let* expander = Super_context.expander sctx ~dir in
   let scope = Super_context.find_scope_by_dir sctx dir in
   let db = Scope.libs scope in
-  let libs, pps = libs_and_ppx_under_dir sctx ~db ~dir:(Path.build dir) in
+  let* libs, pps = libs_and_ppx_under_dir sctx ~db ~dir:(Path.build dir) in
   let pps =
     if List.is_empty pps then
       Preprocess.No_preprocessing

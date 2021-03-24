@@ -262,8 +262,7 @@ module Set = struct
           | File f -> Path.Set.add acc f
           | File_selector fs ->
             assert (
-              File_selector.equal fs
-                (File_selector.create ~dir Predicate.false_));
+              Predicate.equal (File_selector.predicate fs) Predicate.false_);
             acc
           | _ -> assert false)
     in

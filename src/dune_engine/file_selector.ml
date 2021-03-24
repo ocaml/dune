@@ -7,6 +7,8 @@ type t =
 
 let dir t = t.dir
 
+let predicate t = t.predicate
+
 let compare x y =
   match Path.compare x.dir y.dir with
   | (Ordering.Lt | Gt) as a -> a

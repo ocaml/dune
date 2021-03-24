@@ -18,5 +18,3 @@
 
 (rule
  (copy dune-private-libs.opam.template stdune-unstable.opam.template))
-
-(env (_ (ocamlopt_flags :standard -inline 100)))

@@ -95,14 +95,6 @@ end
 
 type ('input, 'output, 'f) t
 
-(* Temporary type to forbid use of sync memo until we have simplified the
-   implementation. *)
-type 'a forbidden
-
-module Sync : sig
-  type nonrec ('i, 'o) t = ('i, 'o, ('i -> 'o) forbidden) t
-end
-
 module Async : sig
   type nonrec ('i, 'o) t = ('i, 'o, 'i -> 'o Build.t) t
 end
@@ -147,9 +139,7 @@ val restart_current_run : unit -> unit
 
 module Function : sig
   module Type : sig
-    type ('a, 'b, 'f) t =
-      | Sync : ('a, 'b, ('a -> 'b) forbidden) t
-      | Async : ('a, 'b, 'a -> 'b Build.t) t
+    type ('a, 'b, 'f) t = Async : ('a, 'b, 'a -> 'b Build.t) t
   end
 
   module Info : sig
@@ -270,12 +260,6 @@ val create_hidden :
   -> 'f
   -> ('i, 'o, 'f) t
 
-(** The call [peek_exn t i] registers a dependency on [t i] and returns its
-    value, failing if the value has not yet been computed. We do not expose
-    [peek] because the [None] case is hard to reason about, and currently there
-    are no use-cases for it. *)
-val peek_exn : ('i, 'o, _) t -> 'i -> 'o forbidden
-
 (** Execute a memoized function *)
 val exec : (_, _, 'f) t -> 'f
 
@@ -312,16 +296,16 @@ module Run : sig
 
     (** [set t x] sets the value that is returned by [get t] to [x]. Raises if
         [set] was already called. *)
-    val set : 'a t -> 'a -> unit
+    val set : 'a t -> 'a -> unit Build.t
 
     (** [get t] returns the [x] if [set comp x] was called. Raises if [set] has
         not been called yet. *)
-    val get : 'a t -> 'a
+    val get : 'a t -> 'a Build.t
   end
 end
 
 (** Introduces a dependency on the current build run. *)
-val current_run : unit -> Run.t
+val current_run : unit -> Run.t Build.t
 
 (** Return the list of registered functions *)
 val registered_functions : unit -> Function.Info.t list
@@ -330,25 +314,6 @@ val registered_functions : unit -> Function.Info.t list
 val function_info : string -> Function.Info.t
 
 module Lazy : sig
-  type +'a t
-
-  val map : 'a t -> f:('a -> 'b) -> 'b t
-
-  val map2 : 'a t -> 'b t -> f:('a -> 'b -> 'c) -> 'c t
-
-  val bind : 'a t -> f:('a -> 'b t) -> 'b t
-
-  val create :
-    (   ?cutoff:('a -> 'a -> bool)
-     -> ?to_dyn:('a -> Dyn.t)
-     -> (unit -> 'a)
-     -> 'a t)
-    forbidden
-
-  val of_val : 'a -> 'a t
-
-  val force : 'a t -> 'a
-
   module Async : sig
     type 'a t
 
@@ -365,13 +330,6 @@ module Lazy : sig
     val map : 'a t -> f:('a -> 'b) -> 'b t
   end
 end
-
-val lazy_ :
-  (   ?cutoff:('a -> 'a -> bool)
-   -> ?to_dyn:('a -> Dyn.t)
-   -> (unit -> 'a)
-   -> 'a Lazy.t)
-  forbidden
 
 val lazy_async :
      ?cutoff:('a -> 'a -> bool)
@@ -433,8 +391,6 @@ module Cell : sig
 
   val input : ('a, _, _) t -> 'a
 
-  val get_sync : (('a, 'b, 'a -> 'b) t -> 'b) forbidden
-
   val get_async : ('a, 'b, 'a -> 'b Build.t) t -> 'b Build.t
 
   (** Mark this cell as invalid, forcing recomputation of this value. The
@@ -444,27 +400,10 @@ end
 
 val cell : ('a, 'b, 'f) t -> 'a -> ('a, 'b, 'f) Cell.t
 
-(** Memoization of polymorphic functions. When using both [Sync] and [Async]
-    modules, the provided [id] function must be injective, i.e. there must be a
-    one-to-one correspondence between [input]s and their [id]s. *)
+(** Memoization of polymorphic functions. The provided [id] function must be
+    injective, i.e. there must be a one-to-one correspondence between [input]s
+    and their [id]s. *)
 module Poly : sig
-  (** Memoization of functions of type ['a input -> 'a output]. *)
-  module Sync (Function : sig
-    type 'a input
-
-    type 'a output
-
-    val name : string
-
-    val eval : 'a input -> 'a output
-
-    val to_dyn : _ input -> Dyn.t
-
-    val id : 'a input -> 'a Type_eq.Id.t
-  end) : sig
-    val eval : ('a Function.input -> 'a Function.output) forbidden
-  end
-
   (** Memoization of functions of type ['a input -> 'a output Build.t]. *)
   module Async (Function : sig
     type 'a input

@@ -314,9 +314,8 @@ let depends_on_run =
     ~output:(Allow_cutoff (module Unit))
     ~visibility:Hidden Async
     (fun () ->
-      let (_ : Memo.Run.t) = Memo.current_run () in
-      print_endline "running foobar";
-      Memo.Build.return ())
+      let+ (_ : Memo.Run.t) = Memo.current_run () in
+      print_endline "running foobar")
 
 let%expect_test _ =
   run (Memo.exec depends_on_run ());
@@ -577,9 +576,9 @@ let count_runs name =
     printf "Started evaluating %s\n" name;
     incr counter;
     let result = !counter in
-    let (_ : Run.t) = Memo.current_run () in
+    let+ (_ : Run.t) = Memo.current_run () in
     printf "Evaluated %s: %d\n" name result;
-    Build.return result
+    result
 
 (* A test function incrementing a given memo. *)
 let increment which which_memo () =
@@ -599,17 +598,6 @@ let create ~with_cutoff name f =
   Memo.create name
     ~input:(module Unit)
     ~visibility:Hidden ~output ~doc:"" Async f
-
-(* Create a sync node with or without cutoff. *)
-let create_sync ~with_cutoff name f =
-  let output =
-    match with_cutoff with
-    | true -> Memo.Output.Allow_cutoff (module Int)
-    | false -> Simple (module Int)
-  in
-  Memo.create name
-    ~input:(module Unit)
-    ~visibility:Hidden ~output ~doc:"" Sync f
 
 let%expect_test "diamond with non-uniform cutoff structure" =
   let base = create ~with_cutoff:true "base" (count_runs "base") in

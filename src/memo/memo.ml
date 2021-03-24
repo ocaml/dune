@@ -4,8 +4,6 @@ module Function = Function
 
 let track_locations_of_lazy_values = ref false
 
-type 'a forbidden = 'a
-
 type 'a build = 'a Fiber.t
 
 module type Build = sig
@@ -52,40 +50,6 @@ module Build = struct
 end
 
 let unwrap_exn = ref Fun.id
-
-module Code_error_with_memo_backtrace = struct
-  (* A single memo frame and the OCaml frames it called which lead to the error *)
-  type frame =
-    { ocaml : string
-    ; memo : Dyn.t
-    }
-
-  type t =
-    { exn : Code_error.t
-    ; reverse_backtrace : frame list
-    ; (* [outer_call_stack] is a trick to capture some of the information that's
-         lost by the async memo error handler. It can be safely ignored by the
-         sync error handler. *)
-      outer_call_stack : Dyn.t
-    }
-
-  type exn += E of t
-
-  let frame_to_dyn { ocaml; memo } =
-    Dyn.Record [ ("ocaml", Dyn.String ocaml); ("memo", memo) ]
-
-  let to_dyn { exn; reverse_backtrace; outer_call_stack } =
-    Dyn.Record
-      [ ("exn", Code_error.to_dyn exn)
-      ; ("backtrace", Dyn.Encoder.list frame_to_dyn (List.rev reverse_backtrace))
-      ; ("outer_call_stack", outer_call_stack)
-      ]
-
-  let () =
-    Printexc.register_printer (function
-      | E t -> Some (Dyn.to_string (to_dyn t))
-      | _ -> None)
-end
 
 module Allow_cutoff = struct
   type 'o t =
@@ -297,24 +261,15 @@ end
    Note that we plan to make [Cancelled] more general and store the reason for
    cancellation: a dependency cycle or a request to cancel the current run. *)
 module Value = struct
-  type error =
-    | Sync of Exn_with_backtrace.t
-    | Async of Exn_set.t
+  type error = Async of Exn_set.t
 
   type 'a t =
     | Ok of 'a
     | Error of error
     | Cancelled of { dependency_cycle : Cycle_error.t }
 
-  let get_sync_exn = function
-    | Ok a -> a
-    | Error (Sync exn) -> Exn_with_backtrace.reraise exn
-    | Error (Async _) -> assert false
-    | Cancelled { dependency_cycle } -> raise (Cycle_error.E dependency_cycle)
-
   let get_async_exn = function
     | Ok a -> Fiber.return a
-    | Error (Sync _) -> assert false
     | Error (Async exns) -> Fiber.reraise_all (Exn_set.to_list exns)
     | Cancelled { dependency_cycle } -> raise (Cycle_error.E dependency_cycle)
 end
@@ -498,21 +453,6 @@ module Sample_attempt = struct
         }
 
   module Result = struct
-    module Sync = struct
-      type 'a t =
-        { restore_from_cache : 'a Cache_lookup.Result.t Lazy.t
-        ; compute : 'a Lazy.t
-        }
-
-      let restore = function
-        | Finished cached_value -> Ok cached_value
-        | Running { result; _ } -> Lazy.force result.restore_from_cache
-
-      let compute = function
-        | Finished cached_value -> cached_value
-        | Running { result; _ } -> Lazy.force result.compute
-    end
-
     module Async = struct
       type 'a t =
         { restore_from_cache : 'a Cache_lookup.Result.t Once.t
@@ -533,9 +473,6 @@ end
 module M = struct
   module rec Sample_attempt_result : sig
     type ('a, 'b, 'f) t =
-      | Sync :
-          'b Cached_value.t Sample_attempt.Result.Sync.t
-          -> ('a, 'b, 'a -> 'b) t
       | Async :
           'b Cached_value.t Sample_attempt.Result.Async.t
           -> ('a, 'b, 'a -> 'b Fiber.t) t
@@ -781,20 +718,12 @@ module Call_stack = struct
     |> List.map ~f:(fun (Stack_frame_with_state.T t) ->
            Dep_node_without_state.T t.without_state)
 
-  let get_call_stack_as_dyn () =
-    Dyn.Encoder.list Stack_frame.to_dyn (get_call_stack ())
-
   let get_call_stack_tip () = List.hd_opt (get_call_stack ())
 
   let push_async_frame (frame : Stack_frame_with_state.t) f =
     let stack = get_call_stack () in
     Fiber.Var.set call_stack_var (frame :: stack) (fun () ->
         Implicit_output.forbid_async f)
-
-  let push_sync_frame (frame : Stack_frame_with_state.t) f =
-    let stack = get_call_stack () in
-    Fiber.Var.set_sync call_stack_var (frame :: stack) (fun () ->
-        Implicit_output.forbid_sync f)
 end
 
 let pp_stack () =
@@ -811,26 +740,11 @@ let () = Fdecl.set Cached_value.dump_stack_fdecl dump_stack
 
 (* Add a dependency on the [dep_node] from the caller, if there is one. Returns
    an [Error] if the new dependency would introduce a dependency cycle. *)
-let add_dep_from_caller (type i o f) ~called_from_peek
-    (dep_node : (i, o, f) Dep_node.t) (sample_attempt : _ Sample_attempt.t) =
+let add_dep_from_caller (type i o f) (dep_node : (i, o, f) Dep_node.t)
+    (sample_attempt : _ Sample_attempt.t) =
   match Call_stack.get_call_stack_tip () with
   | None -> Ok ()
   | Some (Stack_frame_with_state.T caller) -> (
-    let () =
-      match (caller.without_state.spec.f, dep_node.without_state.spec.f) with
-      | Async _, Async _ -> ()
-      | Async _, Sync _ -> ()
-      | Sync _, Sync _ -> ()
-      | Sync _, Async _ ->
-        if not called_from_peek then
-          Code_error.raise
-            "[Memo.add_dep_from_caller ~called_from_peek:false] Synchronous \
-             functions are not allowed to depend on asynchronous ones."
-            [ ("stack", Call_stack.get_call_stack_as_dyn ())
-            ; ( "adding"
-              , Stack_frame_without_state.to_dyn (T dep_node.without_state) )
-            ]
-    in
     let deps_so_far_of_caller = caller.running_state.deps_so_far in
     match
       Id.Map.mem deps_so_far_of_caller.added_to_dag dep_node.without_state.id
@@ -878,37 +792,6 @@ module Stack_frame = struct
     | Some Type_eq.T -> Some t.input
     | None -> None
 end
-
-let handle_code_error ~frame (exn : Exn_with_backtrace.t) : Exn_with_backtrace.t
-    =
-  let code_error (e : Code_error_with_memo_backtrace.t) =
-    let bt = exn.backtrace in
-    let { Code_error_with_memo_backtrace.exn
-        ; reverse_backtrace
-        ; outer_call_stack = _
-        } =
-      e
-    in
-    Code_error_with_memo_backtrace.E
-      { exn
-      ; reverse_backtrace =
-          { ocaml = Printexc.raw_backtrace_to_string bt
-          ; memo = Stack_frame.to_dyn frame
-          }
-          :: reverse_backtrace
-      ; outer_call_stack = Call_stack.get_call_stack_as_dyn ()
-      }
-  in
-  Exn_with_backtrace.map exn ~f:(fun exn ->
-      match exn with
-      | Code_error.E exn ->
-        code_error
-          { Code_error_with_memo_backtrace.exn
-          ; reverse_backtrace = []
-          ; outer_call_stack = Dyn.String "<n/a>"
-          }
-      | Code_error_with_memo_backtrace.E e -> code_error e
-      | another_exn -> another_exn)
 
 let create_with_cache (type i o f) name ~cache ?doc ~input ~visibility ~output
     (typ : (i, o, f) Function.Type.t) (f : f) =
@@ -978,190 +861,7 @@ end
    Exec_async. We should reduce the duplication, but there are ideas in the air
    of getting rid of "Sync" memoization entirely, so I'm not investing effort
    into that. *)
-module rec Exec_sync : sig
-  val restore_from_cache_internal :
-    ('a, 'b, 'a -> 'b) Dep_node.t -> 'b Cached_value.t Cache_lookup.Result.t
-
-  val compute_internal :
-    ('a, 'b, 'a -> 'b) Dep_node.t -> ('b Cached_value.t, Cycle_error.t) result
-
-  val exec_dep_node : ('a, 'b, 'a -> 'b) Dep_node.t -> 'b
-end = struct
-  let restore_from_cache (last_cached_value : _ Cached_value.t option) =
-    match last_cached_value with
-    | None -> Error Cache_lookup.Failure.Not_found
-    | Some cached_value -> (
-      match cached_value.value with
-      | Cancelled _dependency_cycle ->
-        (* Dependencies of cancelled computations are not accurate, so we can't
-           use [deps_changed] in this case. *)
-        Error Not_found
-      | Error _ ->
-        (* We always recompute errors, so there is no point in checking if any
-           of their dependencies changed. In principle, we could introduce
-           "persistent errors" that are recomputed only when their dependencies
-           have changed. *)
-        Error Not_found
-      | Ok _ -> (
-        let deps_changed =
-          let rec go deps =
-            match deps with
-            | [] -> Changed_or_not.Unchanged
-            | Last_dep.T (dep, v_id) :: deps -> (
-              match dep.without_state.spec.allow_cutoff with
-              | No -> (
-                (* If [dep] has no cutoff, it is sufficient to check whether it
-                   is up to date. If not, we must recompute [last_cached_value]. *)
-                let restore_result =
-                  Exec_unknown.restore_from_cache_internal_from_sync dep
-                in
-                match restore_result with
-                | Ok cached_value -> (
-                  match Value_id.equal cached_value.id v_id with
-                  | true -> go deps
-                  | false -> Changed)
-                | Error (Cancelled { dependency_cycle }) ->
-                  Cancelled { dependency_cycle }
-                | Error (Not_found | Out_of_date _) -> Changed)
-              | Yes _equal -> (
-                (* If [dep] has a cutoff predicate, it is not sufficient to
-                   check whether it is up to date: even if it isn't, after we
-                   recompute it, the resulting [Value_id] may remain unchanged,
-                   allowing us to skip recomputing [last_cached_value]. *)
-                match Exec_unknown.compute_internal_from_sync dep with
-                | Error dependency_cycle -> Cancelled { dependency_cycle }
-                | Ok cached_value -> (
-                  (* Note that [cached_value.value] will be [Cancelled _] if
-                     [dep] itself doesn't introduce a dependency cycle but one
-                     of its transitive dependencies does. In this case, the
-                     value [id] will be new, so we will take the [false] branch. *)
-                  match Value_id.equal cached_value.id v_id with
-                  | true -> go deps
-                  | false -> Changed)))
-          in
-          go cached_value.deps
-        in
-        match deps_changed with
-        | Unchanged ->
-          cached_value.last_validated_at <- Run.current ();
-          Ok cached_value
-        | Changed -> Error (Out_of_date cached_value)
-        | Cancelled { dependency_cycle } ->
-          Error (Cancelled { dependency_cycle })))
-
-  let compute (dep_node : _ Dep_node.t) cache_lookup_failure deps_so_far =
-    Deps_so_far.start_compute deps_so_far;
-    let compute_value_and_deps_rev () =
-      match dep_node.without_state.spec.f with
-      | Function.Sync f ->
-        let value =
-          match
-            Exn_with_backtrace.try_with (fun () ->
-                f dep_node.without_state.input)
-          with
-          | Ok res -> Value.Ok res
-          | Error exn ->
-            let exn =
-              handle_code_error
-                ~frame:(Dep_node_without_state.T dep_node.without_state) exn
-            in
-            Error (Value.Sync exn)
-        in
-        (value, Deps_so_far.get_compute_deps_rev deps_so_far)
-    in
-    match cache_lookup_failure with
-    | Cache_lookup.Failure.Cancelled { dependency_cycle } ->
-      Cached_value.create_cancelled ~dependency_cycle
-    | Not_found ->
-      let value, deps_rev = compute_value_and_deps_rev () in
-      Cached_value.create value ~deps_rev
-    | Out_of_date (old_cv : _ Cached_value.t) -> (
-      let value, deps_rev = compute_value_and_deps_rev () in
-      match Cached_value.value_changed dep_node old_cv.value value with
-      | true -> Cached_value.create value ~deps_rev
-      | false -> Cached_value.confirm_old_value ~deps_rev old_cv)
-
-  let newly_considering (dep_node : _ Dep_node.t) =
-    let dag_node : Dag.node =
-      { info = Dag.create_node_info global_dep_dag
-      ; data = Dep_node_without_state.T dep_node.without_state
-      }
-    in
-    let running_state : Running_state.t =
-      { dag_node; deps_so_far = Deps_so_far.create () }
-    in
-    let frame : Stack_frame_with_state.t =
-      T { without_state = dep_node.without_state; running_state }
-    in
-    let restore_from_cache =
-      lazy
-        (Call_stack.push_sync_frame frame (fun () ->
-             let restore_result =
-               restore_from_cache dep_node.last_cached_value
-             in
-             (match restore_result with
-             | Ok _ -> dep_node.state <- Not_considering
-             | Error _ -> ());
-             restore_result))
-    in
-    let compute =
-      lazy
-        (match Lazy.force restore_from_cache with
-        | Ok cached_value -> cached_value
-        | Error cache_lookup_failure ->
-          Call_stack.push_sync_frame frame (fun () ->
-              dep_node.last_cached_value <- None;
-              let cached_value =
-                compute dep_node cache_lookup_failure running_state.deps_so_far
-              in
-              dep_node.last_cached_value <- Some cached_value;
-              dep_node.state <- Not_considering;
-              cached_value))
-    in
-    let result : _ Sample_attempt.Result.Sync.t =
-      { restore_from_cache; compute }
-    in
-    dep_node.state <-
-      Considering
-        { run = Run.current ()
-        ; running = running_state
-        ; sample_attempt_result = Sync result
-        };
-    Sample_attempt.Running { dag_node; result }
-
-  let start_considering (dep_node : ('a, 'b, 'a -> 'b) Dep_node.t) =
-    match currently_considering dep_node.state with
-    | Not_considering -> (
-      match get_cached_value_in_current_cycle dep_node with
-      | None -> newly_considering dep_node
-      | Some cv -> Finished cv)
-    | Considering
-        { running = { dag_node; deps_so_far = _ }
-        ; sample_attempt_result = Sync result
-        ; _
-        } ->
-      Running { dag_node; result }
-
-  let consider (dep_node : _ Dep_node.t) =
-    let sample_attempt = start_considering dep_node in
-    add_dep_from_caller ~called_from_peek:false dep_node sample_attempt
-    |> Result.map ~f:(fun () -> sample_attempt)
-
-  let compute_internal dep_node =
-    Result.map (consider dep_node) ~f:Sample_attempt.Result.Sync.compute
-
-  let restore_from_cache_internal dep_node =
-    match consider dep_node with
-    | Ok sample_attempt -> Sample_attempt.Result.Sync.restore sample_attempt
-    | Error dependency_cycle -> Error (Cancelled { dependency_cycle })
-
-  let exec_dep_node dep_node =
-    match compute_internal dep_node with
-    | Ok res -> Value.get_sync_exn res.value
-    | Error cycle_error -> raise (Cycle_error.E cycle_error)
-end
-
-and Exec_async : sig
+module rec Exec_async : sig
   (* [restore_from_cache_internal] and [compute_internal] are called when we are
      attempting to restore the value from the cache, recursively. *)
   val restore_from_cache_internal :
@@ -1335,7 +1035,7 @@ end = struct
 
   let consider (dep_node : _ Dep_node.t) =
     let sample_attempt = start_considering dep_node in
-    add_dep_from_caller ~called_from_peek:false dep_node sample_attempt
+    add_dep_from_caller dep_node sample_attempt
     |> Result.map ~f:(fun () -> sample_attempt)
 
   let compute_internal (dep_node : _ Dep_node.t) =
@@ -1357,71 +1057,26 @@ end = struct
 end
 
 and Exec_unknown : sig
-  val compute_internal_from_sync :
-    ('a, 'b, 'f) Dep_node.t -> ('b Cached_value.t, Cycle_error.t) result
-
   val compute_internal :
     ('a, 'b, 'f) Dep_node.t -> ('b Cached_value.t Fiber.t, Cycle_error.t) result
 
   val restore_from_cache_internal :
     ('a, 'b, 'f) Dep_node.t -> 'b Cached_value.t Cache_lookup.Result.t Fiber.t
-
-  val restore_from_cache_internal_from_sync :
-    ('a, 'b, 'f) Dep_node.t -> 'b Cached_value.t Cache_lookup.Result.t
 end = struct
   let compute_internal (type i o f) (t : (i, o, f) Dep_node.t) :
       (o Cached_value.t Fiber.t, Cycle_error.t) result =
     match t.without_state.spec.f with
     | Async _ -> Exec_async.compute_internal t
-    | Sync _ -> Exec_sync.compute_internal t |> Result.map ~f:Fiber.return
 
   let restore_from_cache_internal (type i o f) (t : (i, o, f) Dep_node.t) :
       o Cached_value.t Cache_lookup.Result.t Fiber.t =
     match t.without_state.spec.f with
     | Async _ -> Exec_async.restore_from_cache_internal t
-    | Sync _ -> Fiber.return (Exec_sync.restore_from_cache_internal t)
-
-  let compute_internal_from_sync (type i o f) (dep : (i, o, f) Dep_node.t) =
-    match dep.without_state.spec.f with
-    | Async _ -> Code_error.raise "sync computation depends on async" []
-    | Sync _ -> Exec_sync.compute_internal dep
-
-  let restore_from_cache_internal_from_sync (type i o f)
-      (dep : (i, o, f) Dep_node.t) =
-    match dep.without_state.spec.f with
-    | Async _ -> Code_error.raise "sync computation depends on async" []
-    | Sync _ -> Exec_sync.restore_from_cache_internal dep
 end
 
 let exec (type i o f) (t : (i, o, f) t) =
   match t.spec.f with
   | Function.Async _ -> (fun i -> Exec_async.exec_dep_node (dep_node t i) : f)
-  | Function.Sync _ -> (fun i -> Exec_sync.exec_dep_node (dep_node t i) : f)
-
-let peek_exn (type i o f) (t : (i, o, f) t) inp =
-  match Store.find t.cache inp with
-  | None -> Code_error.raise "[peek_exn] got a never-forced cell" []
-  | Some dep_node -> (
-    match currently_considering dep_node.state with
-    | Considering _ ->
-      Code_error.raise "[peek_exn] got a currently-considering cell" []
-    | Not_considering -> (
-      match get_cached_value_in_current_cycle dep_node with
-      | None -> Code_error.raise "[peek_exn] got a non-evaluated cell" []
-      | Some cv ->
-        (* Not adding any dependency in the [None] cases sounds somewhat wrong,
-           but adding a full dependency is also wrong (the thing doesn't depend
-           on the value), and it's unclear that None can be reasonably handled
-           at all.
-
-           We just consider it a bug when [peek_exn] raises. *)
-        let res =
-          add_dep_from_caller ~called_from_peek:true dep_node (Finished ())
-        in
-        (match res with
-        | Ok () -> ()
-        | Error cycle_error -> raise (Cycle_error.E cycle_error));
-        Value.get_sync_exn cv.value))
 
 let get_deps (type i o f) (t : (i, o, f) t) inp =
   match Store.find t.cache inp with
@@ -1446,8 +1101,7 @@ let call name input =
   let input = Dune_lang.Decoder.parse spec.decode Univ_map.empty input in
   let+ output =
     (match spec.f with
-    | Function.Async f -> f
-    | Function.Sync f -> fun x -> Fiber.return (f x))
+    | Function.Async f -> f)
       input
   in
   Output.to_dyn output
@@ -1468,10 +1122,6 @@ let registered_functions () =
 let function_info name = get_func name |> function_info_of_spec
 
 let get_call_stack = Call_stack.get_call_stack_without_state
-
-module Sync = struct
-  type nonrec ('i, 'o) t = ('i, 'o, 'i -> 'o) t
-end
 
 module Async = struct
   type nonrec ('i, 'o) t = ('i, 'o, 'i -> 'o Fiber.t) t
@@ -1502,13 +1152,13 @@ end
 let invalidate_dep_node (node : _ Dep_node.t) = node.last_cached_value <- None
 
 module Current_run = struct
-  let f () = Run.current ()
+  let f () = Run.current () |> Build.return
 
   let memo =
     create "current-run"
       ~input:(module Unit)
       ~output:(Simple (module Run))
-      ~visibility:Hidden Sync f
+      ~visibility:Hidden Async f
 
   let exec () = exec memo ()
 
@@ -1532,16 +1182,6 @@ module With_implicit_output = struct
         ()
     in
     match typ with
-    | Function.Type.Sync ->
-      let memo =
-        create name ?doc ~input ~visibility ~output Sync (fun i ->
-            Implicit_output.collect_sync implicit_output (fun () -> impl i))
-      in
-      (fun input ->
-         let res, output = exec memo input in
-         Implicit_output.produce_opt implicit_output output;
-         res
-        : f)
     | Function.Type.Async ->
       let memo =
         create name ?doc ~input ~visibility ~output Async (fun i ->
@@ -1561,9 +1201,6 @@ module Cell = struct
 
   let input (t : (_, _, _) t) = t.without_state.input
 
-  let get_sync (type a b) (dep_node : (a, b, a -> b) Dep_node.t) =
-    Exec_sync.exec_dep_node dep_node
-
   let get_async (type a b) (dep_node : (a, b, a -> b Fiber.t) Dep_node.t) =
     Exec_async.exec_dep_node dep_node
 
@@ -1574,19 +1211,6 @@ let cell t inp = dep_node t inp
 
 module Implicit_output = Implicit_output
 module Store = Store_intf
-
-let lazy_cell ?cutoff ?to_dyn f =
-  let output = Output.create ?cutoff ?to_dyn () in
-  let visibility = Visibility.Hidden in
-  let f = Function.of_type Function.Type.Sync f in
-  let spec =
-    Spec.create ~info:None ~input:(module Unit) ~output ~visibility ~f
-  in
-  make_dep_node ~spec ~input:()
-
-let lazy_ ?cutoff ?to_dyn f =
-  let cell = lazy_cell ?cutoff ?to_dyn f in
-  fun () -> Cell.get_sync cell
 
 let lazy_async_cell ?cutoff ?to_dyn f =
   let output = Output.create ?cutoff ?to_dyn () in
@@ -1602,20 +1226,6 @@ let lazy_async ?cutoff ?to_dyn f =
   fun () -> Cell.get_async cell
 
 module Lazy = struct
-  type 'a t = unit -> 'a
-
-  let of_val x () = x
-
-  let create = lazy_
-
-  let force f = f ()
-
-  let map x ~f = create (fun () -> f (force x))
-
-  let map2 x y ~f = create (fun () -> f (x ()) (y ()))
-
-  let bind x ~f = create (fun () -> force (f (force x)))
-
   module Async = struct
     type 'a t = unit -> 'a Fiber.t
 
@@ -1632,16 +1242,16 @@ end
 module Run = struct
   module Fdecl = struct
     (* [Lazy.t] is the simplest way to create a node in the memoization dag. *)
-    type nonrec 'a t = 'a Fdecl.t Lazy.t
+    type nonrec 'a t = 'a Fdecl.t Lazy.Async.t
 
     let create to_dyn =
-      lazy_ ~to_dyn:Fdecl.to_dyn (fun () ->
-          let (_ : Run.t) = current_run () in
+      lazy_async ~to_dyn:Fdecl.to_dyn (fun () ->
+          let+ (_ : Run.t) = current_run () in
           Fdecl.create to_dyn)
 
-    let set t x = Fdecl.set (Lazy.force t) x
+    let set t x = Lazy.Async.force t >>| fun value -> Fdecl.set value x
 
-    let get t = Fdecl.get (Lazy.force t)
+    let get t = Lazy.Async.force t >>| Fdecl.get
   end
 
   include Run
@@ -1687,23 +1297,6 @@ module Poly = struct
              provided Function.id returns different ids for the same input."
             [ ("Function.name", Dyn.String name) ]
         | Some Type_eq.T -> res)
-  end
-
-  module Sync (Function : sig
-    include Function_interface
-
-    val eval : 'a input -> 'a output
-  end) =
-  struct
-    open Function
-    include Mono (Function)
-
-    let impl = function
-      | K input -> V (id input, eval input)
-
-    let memo = create_hidden name ~input:(module Key) Sync impl
-
-    let eval x = get ~value:(exec memo (K x)) ~input_with_matching_id:x
   end
 
   module Async (Function : sig

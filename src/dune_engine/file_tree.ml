@@ -365,7 +365,7 @@ module Settings : sig
 
   val set : t -> unit
 
-  val get : unit -> t
+  val get : unit -> t Memo.Build.t
 end = struct
   type t =
     { ancestor_vcs : Vcs.t option
@@ -388,7 +388,7 @@ end = struct
   let set x = Fdecl.set_idempotent ~equal t x
 
   let get () =
-    let (_ : Memo.Run.t) = Memo.current_run () in
+    let+ (_ : Memo.Run.t) = Memo.current_run () in
     Fdecl.get t
 end
 
@@ -522,8 +522,8 @@ end = struct
 
   let contents { Readdir.dirs; files } ~dirs_visited ~project ~path
       ~(dir_status : Sub_dirs.Status.t) =
-    let recognize_jbuilder_projects =
-      let settings = Settings.get () in
+    let* recognize_jbuilder_projects =
+      let+ settings = Settings.get () in
       settings.recognize_jbuilder_projects
     in
     let+ dune_file =
@@ -548,7 +548,7 @@ end = struct
     | Some kind -> Some { Vcs.kind; root = Path.(append_source root) path }
 
   let root () =
-    let settings = Settings.get () in
+    let* settings = Settings.get () in
     let path = Path.Source.root in
     let dir_status : Sub_dirs.Status.t = Normal in
     let readdir =
@@ -611,7 +611,7 @@ end = struct
       | None -> Memo.Build.return None
       | Some (parent_dir, dirs_visited, dir_status, virtual_) ->
         let dirs_visited = Dirs_visited.Per_fn.find dirs_visited path in
-        let settings = Settings.get () in
+        let* settings = Settings.get () in
         let readdir =
           if virtual_ then
             Readdir.empty

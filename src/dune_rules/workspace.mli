@@ -84,7 +84,7 @@ val init :
   -> ?instrument_with:Lib_name.t list
   -> ?workspace_file:Path.t
   -> unit
-  -> unit
+  -> unit Memo.Build.t
 
 (** Default name of workspace files *)
 val filename : string

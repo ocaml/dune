@@ -512,15 +512,15 @@ let init ?x ?profile ?instrument_with ?workspace_file () =
     { DB.Settings.x; profile; instrument_with; path }
 
 let workspace =
+  let open Memo.Build.O in
   let f () =
-    let (_ : Memo.Run.t) = Memo.current_run () in
-    let { DB.Settings.path; profile; instrument_with; x } =
+    let+ (_ : Memo.Run.t) = Memo.current_run ()
+    and+ { DB.Settings.path; profile; instrument_with; x } =
       Memo.Run.Fdecl.get DB.Settings.t
     in
-    Memo.Build.return
-      (match path with
-      | None -> default ?x ?profile ?instrument_with ()
-      | Some p -> load ?x ?profile ?instrument_with p)
+    match path with
+    | None -> default ?x ?profile ?instrument_with ()
+    | Some p -> load ?x ?profile ?instrument_with p
   in
   let memo =
     Memo.create "workspaces-db" ~doc:"get all workspaces" ~visibility:Hidden

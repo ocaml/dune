@@ -2398,11 +2398,19 @@ let init ~stats ~contexts ?build_mutex ~promote_source ?caching
     ; stats
     }
   in
-  Console.Status_line.set (fun () ->
-      Some
-        (Pp.verbatim
-           (sprintf "Done: %u/%u (jobs: %u)" t.rule_done t.rule_total
-              (Scheduler.running_jobs_count ()))));
+  let scheduler = Scheduler.t () in
+  Console.Status_line.set (
+    let r = ref 0 in
+    (fun () ->
+       if !r > 0 then assert false;
+       incr r;
+    Some
+      (Pp.verbatim
+         (sprintf
+            "Done: %u/%u (jobs: %u)"
+            t.rule_done
+            t.rule_total
+            (Scheduler.running_jobs_count scheduler)))));
   set t
 
 let cache_teardown () =

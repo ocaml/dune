@@ -804,8 +804,10 @@ type t =
 
 let t_var : t Fiber.Var.t = Fiber.Var.create ()
 
-let running_jobs_count () =
-  let t = Fiber.Var.get_exn t_var in
+let t () =
+  Fiber.Var.get_exn t_var
+
+let running_jobs_count t =
   Event.Queue.pending_jobs t.events
 
 let ignore_for_watch p =

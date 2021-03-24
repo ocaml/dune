@@ -12,6 +12,8 @@ module Scheduler = struct
 
   let yield () = Test_scheduler.yield t
 
+  let yield_gen ~do_in_scheduler = Test_scheduler.yield_gen t ~do_in_scheduler
+
   let run f = Test_scheduler.run t f
 end
 
@@ -853,3 +855,35 @@ let%expect_test "raise exception" =
          | _ -> assert false)
        (fun () -> Pool.stop pool));
   [%expect {| Caught Exit |}]
+
+let%expect_test "execution context in [iter] in [Fiber.run]" =
+  (* This shows that the execution context in effect while running the [iter] callback of
+     [Fiber.run] is not reflecting the variables set in that fiber.
+     This is not really a property we care about. Instead, reading variables outside of
+     a fiber should probably be disallowed altogether. *)
+  let var = Fiber.Var.create () in
+  let read_var () =
+    match Fiber.Var.get var with
+    | None -> "<unset>"
+    | Some s -> s
+  in
+  let print s =
+    Printf.printf "%s: %s\n" s (read_var ())
+  in
+  Scheduler.run (
+    Fiber.fork_and_join_unit
+      (fun () -> Fiber.Var.set var "a" (fun () ->
+         print "fiber-a";
+         Scheduler.yield_gen ~do_in_scheduler:(fun () -> print "branch-a")))
+      (fun () -> Fiber.Var.set var "b" (fun () ->
+         print "fiber-b";
+         Scheduler.yield_gen ~do_in_scheduler:(fun () -> print "branch-b"))));
+  [%expect {|
+    fiber-a: a
+    fiber-b: b
+    branch-a: <unset>
+    branch-b: <unset> |}];
+  Scheduler.run (Fiber.Var.set var "x" (fun () ->
+         Scheduler.yield_gen ~do_in_scheduler:(fun () -> print "value")));
+  [%expect {|
+    value: <unset> |}]

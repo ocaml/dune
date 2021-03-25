@@ -19,6 +19,8 @@ let%expect_test "run and connect" =
             ; "--root"
             ; root_dir
             ; "-w"
+            ; "--file-watcher"
+            ; "manual"
             ; "@install"
            |] )
      in

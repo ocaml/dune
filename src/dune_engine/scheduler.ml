@@ -1002,10 +1002,18 @@ module Run = struct
         raise Dune_util.Report_error.Already_reported
   end
 
-  let poll config ~on_event ~once ~finally =
+  type file_watcher =
+    | Detect_external
+    | No_watcher
+
+  let poll config ~file_watcher ~on_event ~once ~finally =
     let handler = Event.to_handler_poll ~on_event in
     let t = prepare config ~polling:true ~handler in
-    let watcher = File_watcher.create t.events in
+    let watcher =
+      match file_watcher with
+      | No_watcher -> None
+      | Detect_external -> Some (File_watcher.create t.events)
+    in
     let rec loop () : unit Fiber.t =
       t.status <- Building;
       let open Fiber.O in
@@ -1062,7 +1070,8 @@ module Run = struct
       | Error (Exn exn_with_bt) ->
         Error (exn_with_bt.exn, Some exn_with_bt.backtrace)
     in
-    ignore (wait_for_process t (File_watcher.pid watcher) : _ Fiber.t);
+    Option.iter watcher ~f:(fun watcher ->
+        ignore (wait_for_process t (File_watcher.pid watcher) : _ Fiber.t));
     ignore (kill_and_wait_for_all_processes t : saw_signal);
     match result with
     | Ok () -> ()

@@ -51,6 +51,10 @@ module Run : sig
       | Build_finish of build_result
   end
 
+  type file_watcher =
+    | Detect_external
+    | No_watcher
+
   (** Runs [once] in a loop, executing [finally] after every iteration, even if
       Fiber.Never was encountered.
 
@@ -60,6 +64,7 @@ module Run : sig
       will not start. *)
   val poll :
        Config.t
+    -> file_watcher:file_watcher
     -> on_event:(Config.t -> Event.poll -> unit)
     -> once:(unit -> [ `Continue | `Stop ] Fiber.t)
     -> finally:(unit -> unit)

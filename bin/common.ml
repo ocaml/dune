@@ -64,6 +64,7 @@ type t =
   ; promote_install_files : bool
   ; instrument_with : Dune_engine.Lib_name.t list option
   ; stats : Stats.t option
+  ; file_watcher : Dune_engine.Scheduler.Run.file_watcher
   }
 
 let workspace_file t = t.workspace_file
@@ -83,6 +84,8 @@ let set_config t config = { t with config }
 let only_packages t = t.only_packages
 
 let watch t = t.watch
+
+let file_watcher t = t.file_watcher
 
 let default_target t = t.default_target
 
@@ -740,6 +743,21 @@ let term =
       & info [ "instrument-with" ] ~docs
           ~env:(Arg.env_var ~doc "DUNE_INSTRUMENT_WITH")
           ~docv:"BACKENDS" ~doc)
+  and+ file_watcher =
+    let doc =
+      {|Mechanism to detect changes in the source. Automatic to make dune run an
+        external program to detect changes. Manual to notify dune that files
+        have changed manually."|}
+    in
+    Arg.(
+      value
+      & opt
+          (enum
+             [ ("automatic", Dune_engine.Scheduler.Run.Detect_external)
+             ; ("manual", No_watcher)
+             ])
+          Detect_external
+      & info [ "file-watcher" ] ~doc)
   in
   let build_dir = Option.value ~default:default_build_dir build_dir in
   let root = Workspace_root.create ~specified_by_user:root in
@@ -804,6 +822,7 @@ let term =
   ; promote_install_files
   ; instrument_with
   ; stats
+  ; file_watcher
   }
 
 let set_rpc t rpc = { t with rpc = Some rpc }

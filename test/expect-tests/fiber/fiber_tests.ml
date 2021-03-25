@@ -877,10 +877,8 @@ let%expect_test "execution context preservation in iter callback" =
     | 3 -> Fiber.Fill (ivar3, ())
     | _ -> assert false
   in
-  (* BUG: [iter] should always be executed in the same execution context, and so
-     should always observe the same value for [var]. *)
   Fiber.run fiber ~iter;
   [%expect {|
     0: var = None
-    1: var = Some 1
-    2: var = Some 2 |}]
+    1: var = None
+    2: var = None |}]

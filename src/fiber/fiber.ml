@@ -872,7 +872,10 @@ let run t ~iter =
         | Some res -> res
         | None ->
           let (Fill (ivar, v)) = iter () in
-          Ivar.fill ivar v ignore;
+          (* We use [EC.apply] so that the current execution context is
+             restored, ensuring that [iter] always run in the same execution
+             context. *)
+          EC.apply (fun () -> Ivar.fill ivar v) () ignore;
           loop ()
       in
       loop ())

@@ -854,9 +854,10 @@ module Exec : sig
      type, convenient for external usage. *)
   val exec_dep_node : ('i, 'o) Dep_node.t -> 'o Fiber.t
 end = struct
-  let rec restore_from_cache (type o)
-      (last_cached_value : o Cached_value.t option) :
-      o Cached_value.t Cache_lookup.Result.t Fiber.t =
+  let rec restore_from_cache :
+            'o.    'o Cached_value.t option
+            -> 'o Cached_value.t Cache_lookup.Result.t Fiber.t =
+   fun last_cached_value ->
     match last_cached_value with
     | None -> Fiber.return (Error Cache_lookup.Failure.Not_found)
     | Some cached_value -> (
@@ -919,7 +920,11 @@ end = struct
         | Cancelled { dependency_cycle } ->
           Error (Cancelled { dependency_cycle })))
 
-  and compute (dep_node : _ Dep_node.t) cache_lookup_failure deps_so_far =
+  and compute :
+        'i 'o.    ('i, 'o) Dep_node.t
+        -> 'o Cached_value.t Cache_lookup.Failure.t
+        -> Dep_node.packed Deps_so_far.t -> 'o Cached_value.t Fiber.t =
+   fun dep_node cache_lookup_failure deps_so_far ->
     Deps_so_far.start_compute deps_so_far;
     let compute_value_and_deps_rev () =
       (* A consequence of using [Fiber.collect_errors] is that memoized
@@ -950,7 +955,9 @@ end = struct
       | true -> Cached_value.create value ~deps_rev
       | false -> Cached_value.confirm_old_value ~deps_rev old_cv)
 
-  and newly_considering (dep_node : _ Dep_node.t) =
+  and newly_considering :
+        'i 'o. ('i, 'o) Dep_node.t -> 'o Cached_value.t Sample_attempt.t =
+   fun dep_node ->
     let dag_node : Dag.node =
       { info = Dag.create_node_info global_dep_dag
       ; data = Dep_node_without_state.T dep_node.without_state
@@ -995,7 +1002,9 @@ end = struct
         };
     Sample_attempt.Running { dag_node; result }
 
-  and start_considering (dep_node : _ Dep_node.t) =
+  and start_considering :
+        'i 'o. ('i, 'o) Dep_node.t -> 'o Cached_value.t Sample_attempt.t =
+   fun dep_node ->
     match currently_considering dep_node.state with
     | Not_considering -> (
       match get_cached_value_in_current_cycle dep_node with

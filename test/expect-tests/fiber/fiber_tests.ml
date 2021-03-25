@@ -870,14 +870,16 @@ let%expect_test "execution context in [iter] in [Fiber.run]" =
   let print s =
     Printf.printf "%s: %s\n" s (read_var ())
   in
-  Scheduler.run (
-    Fiber.fork_and_join_unit
-      (fun () -> Fiber.Var.set var "a" (fun () ->
-         print "fiber-a";
-         Scheduler.yield_gen ~do_in_scheduler:(fun () -> print "branch-a")))
-      (fun () -> Fiber.Var.set var "b" (fun () ->
-         print "fiber-b";
-         Scheduler.yield_gen ~do_in_scheduler:(fun () -> print "branch-b"))));
+  let fiber =
+    let* () = Scheduler.yield_gen ~do_in_scheduler:(fun () -> print "0"; ()) in
+    Fiber.Var.set var "1" (fun () ->
+      let* () = Scheduler.yield_gen ~do_in_scheduler:(fun () -> print "1"; ()) in
+      Fiber.Var.set var "2" (fun () ->
+        let* () = Scheduler.yield_gen ~do_in_scheduler:(fun () -> print "2"; ()) in
+        Fiber.return ()
+      ))
+  in
+  Scheduler.run fiber;
   [%expect {|
     fiber-a: a
     fiber-b: b

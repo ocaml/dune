@@ -881,10 +881,9 @@ let%expect_test "execution context in [iter] in [Fiber.run]" =
   in
   Scheduler.run fiber;
   [%expect {|
-    fiber-a: a
-    fiber-b: b
-    branch-a: <unset>
-    branch-b: <unset> |}];
+    0: <unset>
+    1: <unset>
+    2: <unset> |}];
   Scheduler.run (Fiber.Var.set var "x" (fun () ->
          Scheduler.yield_gen ~do_in_scheduler:(fun () -> print "value")));
   [%expect {|

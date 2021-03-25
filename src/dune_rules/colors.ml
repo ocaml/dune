@@ -43,13 +43,15 @@ let mark_open_tag s =
       ""
 
 let setup_err_formatter_colors () =
-  let open Format in
-  if Lazy.force Ansi_color.stderr_supports_color then
-    List.iter [ err_formatter; Dune_util.Report_error.ppf ] ~f:(fun ppf ->
-        let funcs = (pp_get_formatter_tag_functions ppf () [@warning "-3"]) in
-        pp_set_mark_tags ppf true;
-        pp_set_formatter_tag_functions ppf
-          { funcs with
-            mark_close_tag = (fun _ -> Ansi_color.Style.escape_sequence [])
-          ; mark_open_tag
-          } [@warning "-3"])
+  if Lazy.force Ansi_color.stderr_supports_color then (
+    let open Format in
+    let funcs =
+      (pp_get_formatter_tag_functions err_formatter () [@warning "-3"])
+    in
+    pp_set_mark_tags err_formatter true;
+    pp_set_formatter_tag_functions err_formatter
+      { funcs with
+        mark_close_tag = (fun _ -> Ansi_color.Style.escape_sequence [])
+      ; mark_open_tag
+      } [@warning "-3"]
+  )

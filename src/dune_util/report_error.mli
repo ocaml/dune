@@ -26,7 +26,3 @@ exception Already_reported
 
 (** Clear the list of already reported errors. *)
 val clear_reported : unit -> unit
-
-(**/**)
-
-val ppf : Format.formatter

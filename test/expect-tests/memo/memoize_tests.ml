@@ -272,11 +272,13 @@ let%expect_test _ =
   |}]
 
 let%expect_test _ =
-  (* This used to be a bug with sync lazy when they were supported. The
-     dependency on [lazy] was only registered by one of the dependants. This
-     meant we could never use [lazy] together with [Memo].
+  (* This test used to demonstrate a bug due to a bad interaction between [lazy]
+     and synchronous memoized functions. The dependency on [lazy] was only
+     registered by one of the dependants below, which meant we couldn't safely
+     use [lazy] together with [Memo].
 
-     Now that we only have async memos, we can freely mix lazy and [Memo]. *)
+     Now that [Memo] doesn't support memoization of synchronous functions
+     anymore, we can freely mix [lazy] and [Memo]. *)
   Builtin_lazy.deps () |> print_dyn;
   [%expect
     {|
@@ -415,7 +417,7 @@ module Function = struct
 
   type 'a output = 'a list
 
-  let name = "memo-poly-async"
+  let name = "memo-poly"
 
   let id (type a) (x : a input) : a Type_eq.Id.t =
     match x with
@@ -1256,11 +1258,11 @@ let print_exns f =
   Format.printf "%a@." Pp.to_fmt
     (Dyn.pp (Result.to_dyn unit (list Exn.to_dyn) res))
 
-let%expect_test "error handling and async diamond" =
+let%expect_test "error handling with diamonds" =
   Printexc.record_backtrace true;
   let f_impl = Fdecl.create Dyn.Encoder.opaque in
   let f =
-    int_fn_create "async-error-diamond: f"
+    int_fn_create "error-diamond: f"
       ~output:(Allow_cutoff (module Unit))
       (fun x -> Fdecl.get f_impl x)
   in
@@ -1289,11 +1291,11 @@ let%expect_test "error handling and async diamond" =
     Error [ "(Failure \"reached 0\")" ]
     |}]
 
-let%expect_test "error handling and duplicate sync exceptions" =
+let%expect_test "error handling and duplicate exceptions" =
   Printexc.record_backtrace true;
   let f_impl = Fdecl.create Dyn.Encoder.opaque in
   let f =
-    int_fn_create "test8: async-duplicate-sync-exception: f"
+    int_fn_create "test8: duplicate-exception: f"
       ~output:(Allow_cutoff (module Unit))
       (fun x -> Fdecl.get f_impl x)
   in

@@ -132,28 +132,17 @@ end = struct
   let deref t =
     match t.on_release with
     | Do_nothing -> ()
-    | Exec r ->
-      r.ref_count <- r.ref_count - 1;
-      if r.ref_count = 0 then (
+    | Exec r -> (
+      let ref_count = r.ref_count - 1 in
+      r.ref_count <- ref_count;
+      match ref_count with
+      | 0 ->
         current := r.k.ctx;
         (* We need to call [safe_run_k] as we might be the in handler of the
            [try...with] block inside [apply] and so we are no more in a
            [try...with] blocks *)
         safe_run_k r.k.run (Error ())
-      ) else
-        assert (r.ref_count > 0)
-
-  let deref_finalize k x =
-    match !current.on_release with
-    | Do_nothing -> ()
-    | Exec r ->
-      r.ref_count <- r.ref_count - 1;
-      assert (r.ref_count = 0);
-      current := r.k.ctx;
-      (* We need to call [safe_run_k] as we might be the in handler of the
-         [try...with] block inside [apply] and so we are no more in a
-         [try...with] blocks *)
-      safe_run_k k x
+      | _ -> assert (ref_count > 0))
 
   let deref () = deref !current
 
@@ -162,7 +151,12 @@ end = struct
     let on_release = { k = { ctx = t; run = k }; ref_count = 1 } in
     let child = { t with on_release = Exec on_release } in
     current := child;
-    f () (fun x -> deref_finalize k (Ok x))
+    f () (fun x ->
+        let ref_count = on_release.ref_count - 1 in
+        on_release.ref_count <- ref_count;
+        assert (ref_count = 0);
+        current := t;
+        k (Ok x))
 
   let set_error_handler ~on_error f x k =
     let t = !current in

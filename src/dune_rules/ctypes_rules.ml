@@ -338,10 +338,19 @@ let build_c_program ~sctx ~dir ~source_files ~scope ~cflags_sexp ~output () =
             | Template _ -> fail "'template' not supported in ctypes c_flags"
             | List _ -> fail "nested lists not supported in ctypes c_flags"))
     in
+    let absolute_path_hack p =
+      (* These normal path builder things construct relative paths like
+         _build/default/your/project/file.c but before dune runs gcc it
+         actually cds into _build/default, which fails, so we turn them
+         into absolutes to hack around it. *)
+      Path.relative (Path.build dir) p |> Path.to_absolute_filename
+    in
     let action =
       let open Action_builder.O in
       Action_builder.deps deps
       >>> Action_builder.map cflags_args ~f:(fun cflags_args ->
+        let source_files = List.map source_files ~f:absolute_path_hack in
+        let output = absolute_path_hack output in
         let args = cflags_args @ include_args @ source_files @ ["-o"; output] in
         Action.run exe args)
     in

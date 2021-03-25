@@ -49,7 +49,7 @@ let get_flags var =
     Memo.create_hidden var
       ~doc:(sprintf "parse %s environment variable in context" var)
       ~input:(module Context)
-      Async f
+      f
   in
   Memo.exec memo
 
@@ -93,7 +93,7 @@ let get_profile =
   let f (ctx : Context.t) =
     let path = ctx.fdo_target_exe |> Option.value_exn |> fdo_profile in
     let profile_exists =
-      Memo.lazy_async (fun () ->
+      Memo.lazy_ (fun () ->
           match Path.as_in_source_tree path with
           | None -> Memo.Build.return false
           | Some path -> File_tree.file_exists path)
@@ -101,9 +101,9 @@ let get_profile =
     let open Memo.Build.O in
     let+ use_profile =
       match Mode.of_context ctx with
-      | If_exists -> Memo.Lazy.Async.force profile_exists
+      | If_exists -> Memo.Lazy.force profile_exists
       | Always -> (
-        let+ profile_exists = Memo.Lazy.Async.force profile_exists in
+        let+ profile_exists = Memo.Lazy.force profile_exists in
         match profile_exists with
         | true -> true
         | false ->
@@ -124,7 +124,7 @@ let get_profile =
         (sprintf "use profile based on %s environment variable in context"
            Mode.var)
       ~input:(module Context)
-      Async f
+      f
   in
   Memo.exec memo
 

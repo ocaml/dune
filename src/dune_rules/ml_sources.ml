@@ -119,15 +119,13 @@ end
 
 type t =
   { modules : Modules.t
-  ; artifacts : Artifacts.t Memo.Lazy.Async.t
+  ; artifacts : Artifacts.t Memo.Lazy.t
   }
 
 let empty =
-  { modules = Modules.empty
-  ; artifacts = Memo.Lazy.Async.of_val Artifacts.empty
-  }
+  { modules = Modules.empty; artifacts = Memo.Lazy.of_val Artifacts.empty }
 
-let artifacts t = Memo.Lazy.Async.force t.artifacts
+let artifacts t = Memo.Lazy.force t.artifacts
 
 let modules_of_files ~dialects ~dir ~files =
   let dir = Path.build dir in
@@ -333,7 +331,7 @@ let make (d : _ Dir_with_dune.t) ~lib_config ~loc ~lookup_vlib ~include_subdirs
   in
   let modules = Modules.make libs_and_exes in
   let artifacts =
-    Memo.lazy_async (fun () ->
+    Memo.lazy_ (fun () ->
         Memo.Build.return (Artifacts.make ~lib_config d libs_and_exes))
   in
   { modules; artifacts }

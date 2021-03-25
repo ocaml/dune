@@ -382,7 +382,7 @@ end = struct
                let to_dyn _ = Dyn.Opaque
              end))
         "stanzas-to-entries" ~doc:"install entries for all packages"
-        ~visibility:Hidden Async stanzas_to_entries
+        ~visibility:Hidden stanzas_to_entries
     in
     Memo.exec memo
 end
@@ -705,8 +705,7 @@ end = struct
       ~input:(module Project_and_super_context)
       ~visibility:Hidden
       ~output:(module Unit)
-      ~implicit_output:Rules.implicit_output Async
-      meta_and_dune_package_rules_impl
+      ~implicit_output:Rules.implicit_output meta_and_dune_package_rules_impl
 
   let meta_and_dune_package_rules sctx ~dir =
     let project = Scope.project (Super_context.find_scope_by_dir sctx dir) in
@@ -889,13 +888,13 @@ let memo =
     ~input:(module Sctx_and_package)
     ~output:(Simple (module Rules_scheme))
     "install-rules-and-pkg-entries" ~doc:"install rules and package entries"
-    ~visibility:Hidden Async
+    ~visibility:Hidden
     (fun (sctx, pkg) ->
       Memo.Build.return
         (let ctx = Super_context.context sctx in
          let context_name = ctx.name in
          let rules =
-           Memo.lazy_async (fun () ->
+           Memo.lazy_ (fun () ->
                Rules.collect_async_unit (fun () ->
                    let+ () = install_rules sctx pkg in
                    install_alias ctx pkg))
@@ -907,7 +906,7 @@ let memo =
                ]
            , Thunk
                (fun () ->
-                 let+ rules = Memo.Lazy.Async.force rules in
+                 let+ rules = Memo.Lazy.force rules in
                  Scheme.Finite (Rules.to_map rules)) )))
 
 let scheme sctx pkg = Memo.exec memo (sctx, pkg)
@@ -916,7 +915,7 @@ let scheme_per_ctx_memo =
   Memo.create
     ~input:(module Super_context.As_memo_key)
     ~output:(Memo.Output.simple ()) "install-rule-scheme"
-    ~doc:"install rules scheme" ~visibility:Hidden Async
+    ~doc:"install rules scheme" ~visibility:Hidden
     (fun sctx ->
       let packages = Package.Name.Map.values (Super_context.packages sctx) in
       let* schemes = Memo.Build.sequential_map packages ~f:(scheme sctx) in
@@ -955,6 +954,6 @@ let packages =
 
              let equal = Path.Build.Map.equal ~equal:Package.Id.Set.equal
            end))
-      Async f
+      f
   in
   fun sctx -> Memo.exec memo sctx

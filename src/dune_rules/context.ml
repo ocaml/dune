@@ -157,7 +157,7 @@ module Opam : sig
   val opam_binary_exn : unit -> Path.t Memo.Build.t
 end = struct
   let opam =
-    Memo.Lazy.Async.create (fun () ->
+    Memo.Lazy.create (fun () ->
         match Bin.which ~path:(Env.path Env.initial) "opam" with
         | None -> Utils.program_not_found "opam" ~loc:None
         | Some opam -> (
@@ -184,7 +184,7 @@ end = struct
               ; Pp.verbatim version
               ]))
 
-  let opam_binary_exn () = Memo.Lazy.Async.force opam
+  let opam_binary_exn () = Memo.Lazy.force opam
 
   let env =
     let impl (env, root, switch) =
@@ -236,7 +236,7 @@ end = struct
         Dyn.Tuple
           [ Env.to_dyn env; Dyn.Encoder.(option string root); String switch ]
     end in
-    let memo = Memo.create_hidden "opam-env" ~input:(module Input) Async impl in
+    let memo = Memo.create_hidden "opam-env" ~input:(module Input) impl in
     fun ~env ~root ~switch -> Memo.exec memo (env, root, switch)
 end
 
@@ -375,7 +375,7 @@ let create ~(kind : Kind.t) ~path ~env ~env_nodes ~name ~merlin ~targets
       (sprintf "which-memo-for-%s" (Context_name.to_string name))
       ~input:(module Program.Name)
       ~output:(Allow_cutoff (module Program.Which_path))
-      ~visibility:Hidden Async
+      ~visibility:Hidden
       (fun p -> Memo.Build.return (Program.which ~path p))
   in
   let which = Memo.exec which_memo in
@@ -385,7 +385,7 @@ let create ~(kind : Kind.t) ~path ~env ~env_nodes ~name ~merlin ~targets
     | Some x -> x
   in
   let findlib_config_path =
-    Memo.lazy_async ~cutoff:Path.equal (fun () ->
+    Memo.lazy_ ~cutoff:Path.equal (fun () ->
         let* fn = which_exn "ocamlfind" in
         (* When OCAMLFIND_CONF is set, "ocamlfind printconf" does print the
            contents of the variable, but "ocamlfind printconf conf" still prints
@@ -404,7 +404,7 @@ let create ~(kind : Kind.t) ~path ~env ~env_nodes ~name ~merlin ~targets
       match findlib_toolchain with
       | None -> Memo.Build.return None
       | Some toolchain ->
-        let+ path = Memo.Lazy.Async.force findlib_config_path in
+        let+ path = Memo.Lazy.force findlib_config_path in
         let toolchain = Context_name.to_string toolchain in
         let context = Context_name.to_string name in
         Some (Findlib.Config.load path ~toolchain ~context)
@@ -835,7 +835,7 @@ end = struct
     Memo.create "instantiate-context" ~doc:"instantiate contexts"
       ~input:(module Context_name)
       ~output:(Simple (module T_list))
-      ~visibility:Memo.Visibility.Hidden Async instantiate_impl
+      ~visibility:Memo.Visibility.Hidden instantiate_impl
 
   let instantiate name = Memo.exec memo name
 end
@@ -854,7 +854,7 @@ module DB = struct
       Memo.create "build-contexts" ~doc:"all build contexts"
         ~input:(module Unit)
         ~output:(Simple (module T_list))
-        ~visibility:Memo.Visibility.Hidden Async impl
+        ~visibility:Memo.Visibility.Hidden impl
     in
     Memo.exec memo
 
@@ -863,7 +863,7 @@ module DB = struct
       Memo.create "context-db-get" ~doc:"get context from db"
         ~input:(module Context_name)
         ~output:(Simple (module T))
-        ~visibility:Hidden Async
+        ~visibility:Hidden
         (fun name ->
           let+ contexts = all () in
           List.find_exn contexts ~f:(fun c -> Context_name.equal name c.name))

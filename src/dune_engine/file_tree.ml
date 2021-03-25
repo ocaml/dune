@@ -285,11 +285,7 @@ module Dir0 = struct
   and sub_dir =
     { sub_dir_status : Sub_dirs.Status.t
     ; virtual_ : bool
-    ; sub_dir_as_t :
-        ( Path.Source.t
-        , t Output.t option
-        , Path.Source.t -> t Output.t option Memo.Build.t )
-        Memo.Cell.t
+    ; sub_dir_as_t : (Path.Source.t, t Output.t option) Memo.Cell.t
     }
 
   type error = Missing_run_t of Cram_test.t
@@ -400,11 +396,7 @@ module rec Memoized : sig
 
   (* Not part of the interface. Only necessary to call recursively *)
   val find_dir_raw :
-       Path.Source.t
-    -> ( Path.Source.t
-       , Dir0.t Output.t option
-       , Path.Source.t -> Dir0.t Output.t option Memo.Build.t )
-       Memo.Cell.t
+    Path.Source.t -> (Path.Source.t, Dir0.t Output.t option) Memo.Cell.t
 
   val find_dir : Path.Source.t -> Dir0.t option Memo.Build.t
 end = struct
@@ -585,7 +577,7 @@ end = struct
       let+ root = root () in
       Some root
     | Some parent_dir -> (
-      let* parent = Memo.Cell.get_async (find_dir_raw parent_dir) in
+      let* parent = Memo.Cell.read (find_dir_raw parent_dir) in
       match
         let open Option.O in
         let* { Output.dir = parent_dir; visited = dirs_visited } = parent in
@@ -651,12 +643,12 @@ end = struct
       Memo.create "find-dir-raw" ~doc:"get file tree"
         ~input:(module Path.Source)
         ~output:(Simple (module Output))
-        ~visibility:Memo.Visibility.Hidden Async find_dir_raw_impl
+        ~visibility:Memo.Visibility.Hidden find_dir_raw_impl
     in
     Memo.cell memo
 
   let find_dir p =
-    Memo.Cell.get_async (find_dir_raw p) >>| function
+    Memo.Cell.read (find_dir_raw p) >>| function
     | Some { Output.dir; visited = _ } -> Some dir
     | None -> None
 
@@ -703,7 +695,7 @@ module Dir = struct
   include Dir0
 
   let sub_dir_as_t (s : sub_dir) =
-    let+ t = Memo.Cell.get_async s.sub_dir_as_t in
+    let+ t = Memo.Cell.read s.sub_dir_as_t in
     (Option.value_exn t).dir
 
   module Make_map_reduce (M : Memo.Build) (Outcome : Monoid) = struct
@@ -742,7 +734,7 @@ module Dir = struct
             | false -> Memo.Build.return None
             | true ->
               let+ t =
-                Memo.Cell.get_async sub_dir.sub_dir_as_t >>| Option.value_exn
+                Memo.Cell.read sub_dir.sub_dir_as_t >>| Option.value_exn
               in
               let contents = t.dir in
               let dir = contents.path in

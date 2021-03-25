@@ -526,6 +526,6 @@ let workspace =
     Memo.create "workspaces-db" ~doc:"get all workspaces" ~visibility:Hidden
       ~input:(module Unit)
       ~output:(Allow_cutoff (module T))
-      Async f
+      f
   in
   Memo.exec memo

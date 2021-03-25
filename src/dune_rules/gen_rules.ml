@@ -419,14 +419,14 @@ let init ~contexts ?only_packages conf =
             straight away, so it is safe regarding [Memo]. *)
          lazy
            (Context_name.Map.of_list_map_exn contexts ~f:(fun (c : Context.t) ->
-                (c.name, Memo.Lazy.Async.create (fun () -> make_sctx c))))
+                (c.name, Memo.Lazy.create (fun () -> make_sctx c))))
        and make_sctx (context : Context.t) =
          let host () =
            match context.for_host with
            | None -> Memo.Build.return None
            | Some h ->
              let+ sctx =
-               Memo.Lazy.Async.force
+               Memo.Lazy.force
                  (Context_name.Map.find_exn (Lazy.force sctxs) h.name)
              in
              Some sctx
@@ -448,7 +448,7 @@ let init ~contexts ?only_packages conf =
        in
        Lazy.force sctxs |> Context_name.Map.to_list
        |> Memo.Build.parallel_map ~f:(fun (name, sctx) ->
-              let+ sctx = Memo.Lazy.Async.force sctx in
+              let+ sctx = Memo.Lazy.force sctx in
               (name, sctx))
        >>| Context_name.Map.of_list_exn)
   in

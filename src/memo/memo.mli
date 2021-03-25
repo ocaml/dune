@@ -93,15 +93,11 @@ module Build : sig
   end
 end
 
-type ('input, 'output, 'f) t
-
-module Async : sig
-  type nonrec ('i, 'o) t = ('i, 'o, 'i -> 'o Build.t) t
-end
+type ('input, 'output) t
 
 (** A stack frame within a computation. *)
 module Stack_frame : sig
-  type ('input, 'output, 'f) memo = ('input, 'output, 'f) t
+  type ('input, 'output) memo = ('input, 'output) t
 
   type t
 
@@ -113,7 +109,7 @@ module Stack_frame : sig
 
   (** Checks if the stack frame is a frame of the given memoized function and if
       so, returns [Some i] where [i] is the argument of the function. *)
-  val as_instance_of : t -> of_:('input, _, _) memo -> 'input option
+  val as_instance_of : t -> of_:('input, _) memo -> 'input option
 end
 
 module Cycle_error : sig
@@ -221,9 +217,8 @@ val create_with_store :
   -> input:(module Store.Input with type t = 'i)
   -> visibility:'i Visibility.t
   -> output:'o Output.t
-  -> ('i, 'o, 'f) Function.Type.t
-  -> 'f
-  -> ('i, 'o, 'f) t
+  -> ('i -> 'o Fiber.t)
+  -> ('i, 'o) t
 
 (** [create name ~doc ~input ~visibility ~output f_type f] creates a memoized
     version of [f]. The result of [f] for a given input is cached, so that the
@@ -248,27 +243,25 @@ val create :
   -> input:(module Input with type t = 'i)
   -> visibility:'i Visibility.t
   -> output:'o Output.t
-  -> ('i, 'o, 'f) Function.Type.t
-  -> 'f
-  -> ('i, 'o, 'f) t
+  -> ('i -> 'o Build.t)
+  -> ('i, 'o) t
 
 val create_hidden :
      string
   -> ?doc:string
   -> input:(module Input with type t = 'i)
-  -> ('i, 'o, 'f) Function.Type.t
-  -> 'f
-  -> ('i, 'o, 'f) t
+  -> ('i -> 'o Build.t)
+  -> ('i, 'o) t
 
 (** Execute a memoized function *)
-val exec : (_, _, 'f) t -> 'f
+val exec : ('i, 'o) t -> 'i -> 'o Build.t
 
 (** After running a memoization function with a given name and input, it is
     possible to query which dependencies that function used during execution by
     calling [get_deps] with the name and input used during execution.
 
     Returns [None] if the dependencies were not computed yet. *)
-val get_deps : ('i, _, _) t -> 'i -> (string option * Dyn.t) list option
+val get_deps : ('i, _) t -> 'i -> (string option * Dyn.t) list option
 
 (** Print the memoized call stack during execution. This is useful for debugging
     purposes. *)
@@ -314,28 +307,26 @@ val registered_functions : unit -> Function.Info.t list
 val function_info : string -> Function.Info.t
 
 module Lazy : sig
-  module Async : sig
-    type 'a t
+  type 'a t
 
-    val of_val : 'a -> 'a t
+  val of_val : 'a -> 'a t
 
-    val create :
-         ?cutoff:('a -> 'a -> bool)
-      -> ?to_dyn:('a -> Dyn.t)
-      -> (unit -> 'a Build.t)
-      -> 'a t
+  val create :
+       ?cutoff:('a -> 'a -> bool)
+    -> ?to_dyn:('a -> Dyn.t)
+    -> (unit -> 'a Build.t)
+    -> 'a t
 
-    val force : 'a t -> 'a Build.t
+  val force : 'a t -> 'a Build.t
 
-    val map : 'a t -> f:('a -> 'b) -> 'b t
-  end
+  val map : 'a t -> f:('a -> 'b) -> 'b t
 end
 
-val lazy_async :
+val lazy_ :
      ?cutoff:('a -> 'a -> bool)
   -> ?to_dyn:('a -> Dyn.t)
   -> (unit -> 'a Build.t)
-  -> 'a Lazy.Async.t
+  -> 'a Lazy.t
 
 module Implicit_output : sig
   type 'o t
@@ -370,7 +361,7 @@ module Implicit_output : sig
 end
 
 module With_implicit_output : sig
-  type ('i, 'o, 'f) t
+  type ('i, 'o) t
 
   val create :
        string
@@ -379,26 +370,25 @@ module With_implicit_output : sig
     -> visibility:'i Visibility.t
     -> output:(module Output_simple with type t = 'o)
     -> implicit_output:'io Implicit_output.t
-    -> ('i, 'o, 'f) Function.Type.t
-    -> 'f
-    -> ('i, 'o, 'f) t
+    -> ('i -> 'o Build.t)
+    -> ('i, 'o) t
 
-  val exec : (_, _, 'f) t -> 'f
+  val exec : ('i, 'o) t -> 'i -> 'o Build.t
 end
 
 module Cell : sig
-  type ('a, 'b, 'f) t
+  type ('i, 'o) t
 
-  val input : ('a, _, _) t -> 'a
+  val input : ('i, _) t -> 'i
 
-  val get_async : ('a, 'b, 'a -> 'b Build.t) t -> 'b Build.t
+  val read : ('i, 'o) t -> 'o Build.t
 
   (** Mark this cell as invalid, forcing recomputation of this value. The
       consumers may be recomputed or not, depending on early cutoff. *)
   val invalidate : _ t -> unit
 end
 
-val cell : ('a, 'b, 'f) t -> 'a -> ('a, 'b, 'f) Cell.t
+val cell : ('i, 'o) t -> 'i -> ('i, 'o) Cell.t
 
 (** Memoization of polymorphic functions. The provided [id] function must be
     injective, i.e. there must be a one-to-one correspondence between [input]s

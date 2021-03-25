@@ -244,9 +244,9 @@ module T = struct
          {[ This kind of expression is not allowed as right-hand side of `let
          rec' }] *)
       mutable sub_systems :
-        Sub_system0.Instance.t Memo.Lazy.Async.t Sub_system_name.Map.t
-    ; modules : Modules.t Memo.Lazy.Async.t option
-    ; src_dirs : Path.Set.t Memo.Lazy.Async.t
+        Sub_system0.Instance.t Memo.Lazy.t Sub_system_name.Map.t
+    ; modules : Modules.t Memo.Lazy.t option
+    ; src_dirs : Path.Set.t Memo.Lazy.t
     }
 
   let compare (x : t) (y : t) = Id.compare x.unique_id y.unique_id
@@ -369,10 +369,10 @@ let entry_module_names t =
     | None -> assert false
     | Some m ->
       let open Memo.Build.O in
-      let+ m = Memo.Lazy.Async.force m in
+      let+ m = Memo.Lazy.force m in
       Ok (Modules.entry_modules m |> List.map ~f:Module.name))
 
-let src_dirs t = Memo.Lazy.Async.force t.src_dirs
+let src_dirs t = Memo.Lazy.force t.src_dirs
 
 let wrapped t =
   let wrapped = Lib_info.wrapped t.info in
@@ -426,7 +426,7 @@ module Link_params = struct
           let+ modules =
             match t.modules with
             | None -> Memo.Build.return None
-            | Some m -> Memo.Lazy.Async.force m >>| Option.some
+            | Some m -> Memo.Lazy.force m >>| Option.some
           in
           Lib_info.eval_native_archives_exn t.info ~modules
         in
@@ -679,9 +679,7 @@ module Sub_system = struct
       match Sub_system_name.Map.find lib.sub_systems M.Info.name with
       | None -> Memo.Build.return None
       | Some sub -> (
-        let+ (Sub_system0.Instance.T ((module X), t)) =
-          Memo.Lazy.Async.force sub
-        in
+        let+ (Sub_system0.Instance.T ((module X), t)) = Memo.Lazy.force sub in
         match X.T t with
         | M.T t -> Some t
         | _ -> assert false)
@@ -721,9 +719,7 @@ module Sub_system = struct
     let open Memo.Build.O in
     let module M = Memo.Build.Make_map_traversals (Sub_system_name.Map) in
     M.parallel_map lib.sub_systems ~f:(fun _name inst ->
-        let+ (Sub_system0.Instance.T ((module M), t)) =
-          Memo.Lazy.Async.force inst
-        in
+        let+ (Sub_system0.Instance.T ((module M), t)) = Memo.Lazy.force inst in
         Option.map M.public_info ~f:(fun f -> M.Info.T (Result.ok_exn (f t))))
     >>| Sub_system_name.Map.filter_map ~f:Fun.id
 end
@@ -1195,12 +1191,11 @@ end = struct
       match Path.as_in_build_dir (Lib_info.src_dir info) with
       | None -> None
       | Some dir ->
-        Some
-          (Memo.lazy_async (fun () -> Fdecl.get db.modules_of_lib ~dir ~name))
+        Some (Memo.lazy_ (fun () -> Fdecl.get db.modules_of_lib ~dir ~name))
     in
     let src_dirs =
       let open Memo.Build.O in
-      Memo.Lazy.Async.create (fun () ->
+      Memo.Lazy.create (fun () ->
           let obj_dir = Lib_info.obj_dir info in
           match Path.is_managed (Obj_dir.byte_dir obj_dir) with
           | false -> Memo.Build.return (Path.Set.singleton src_dir)
@@ -1208,7 +1203,7 @@ end = struct
             let+ modules =
               match modules with
               | None -> assert false
-              | Some m -> Memo.Lazy.Async.force m
+              | Some m -> Memo.Lazy.force m
             in
             Path.Set.map ~f:Path.drop_optional_build_context
               (Modules.source_dirs modules))
@@ -1235,7 +1230,7 @@ end = struct
     t.sub_systems <-
       Lib_info.sub_systems info
       |> Sub_system_name.Map.mapi ~f:(fun name info ->
-             Memo.Lazy.Async.create (fun () ->
+             Memo.Lazy.create (fun () ->
                  Sub_system.instantiate name info t ~resolve));
     let res =
       let hidden =
@@ -1688,8 +1683,7 @@ module Compile = struct
     ; requires_link : t list Or_exn.t Lazy.t
     ; pps : t list Or_exn.t
     ; resolved_selects : Resolved_select.t list
-    ; sub_systems :
-        Sub_system0.Instance.t Memo.Lazy.Async.t Sub_system_name.Map.t
+    ; sub_systems : Sub_system0.Instance.t Memo.Lazy.t Sub_system_name.Map.t
     ; merlin_ident : Merlin_ident.t
     }
 
@@ -1737,7 +1731,7 @@ module Compile = struct
     |> Memo.Build.parallel_map ~f:(fun sub_system ->
            let open Memo.Build.O in
            let+ (Sub_system0.Instance.T ((module M), t)) =
-             Memo.Lazy.Async.force sub_system
+             Memo.Lazy.force sub_system
            in
            M.T t)
 end

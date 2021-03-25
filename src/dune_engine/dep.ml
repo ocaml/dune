@@ -1,4 +1,5 @@
 open Stdune
+open Memo.Build.O
 
 module T = struct
   type t =
@@ -191,7 +192,15 @@ end
 module Set = struct
   include O.Map
 
-  type t = unit Map.t
+  module T = Monoid.Make (struct
+    type t = unit Map.t
+
+    let empty = empty
+
+    let combine = union ~f:(fun _ () () -> Some ())
+  end)
+
+  include T
 
   let singleton dep = singleton dep ()
 
@@ -210,12 +219,9 @@ module Set = struct
   let of_files_set =
     Path.Set.fold ~init:empty ~f:(fun f acc -> add acc (file f))
 
-  let union = union ~f:(fun _ () () -> Some ())
+  let union = combine
 
-  let union_map l ~f =
-    List.fold_left ~init:empty l ~f:(fun acc x ->
-        let s = f x in
-        union acc s)
+  let union_map l ~f = map_reduce ~f l
 
   let add_paths t paths =
     Path.Set.fold paths ~init:t ~f:(fun p set -> add set (File p))
@@ -228,34 +234,39 @@ module Set = struct
   let dir_without_files_dep dir =
     file_selector (File_selector.create ~dir Predicate.false_)
 
-  let source_tree_gen dir ~empty ~add_empty_dir ~add_paths =
+  module File_tree_map_reduce = File_tree.Dir.Make_map_reduce (Memo.Build) (T)
+
+  let source_tree dir =
     let prefix_with, dir = Path.extract_build_context_dir_exn dir in
-    match File_tree.find_dir dir with
-    | None -> empty
+    File_tree.find_dir dir >>= function
+    | None -> Memo.Build.return empty
     | Some dir ->
-      File_tree.Dir.fold dir ~init:empty ~traverse:Sub_dirs.Status.Set.all
-        ~f:(fun dir acc ->
+      File_tree_map_reduce.map_reduce dir ~traverse:Sub_dirs.Status.Set.all
+        ~f:(fun dir ->
           let files = File_tree.Dir.files dir in
           let path = Path.append_source prefix_with (File_tree.Dir.path dir) in
           match String.Set.is_empty files with
-          | true -> add_empty_dir acc path
+          | true -> Memo.Build.return (singleton (dir_without_files_dep path))
           | false ->
             let paths =
               String.Set.fold files ~init:Path.Set.empty ~f:(fun fn acc ->
                   Path.Set.add acc (Path.relative path fn))
             in
-            add_paths acc paths)
+            Memo.Build.return (add_paths empty paths))
 
-  let source_tree =
-    source_tree_gen ~empty ~add_paths ~add_empty_dir:(fun t dir ->
-        add t (dir_without_files_dep dir))
-
-  let source_tree_with_file_set =
-    source_tree_gen ~empty:(empty, Path.Set.empty)
-      ~add_paths:(fun (deps, paths) more_paths ->
-        (add_paths deps more_paths, Path.Set.union paths more_paths))
-      ~add_empty_dir:(fun (deps, paths) dir ->
-        (add deps (dir_without_files_dep dir), paths))
+  let source_tree_with_file_set dir =
+    let+ t = source_tree dir in
+    let paths =
+      foldi t ~init:Path.Set.empty ~f:(fun dep () acc ->
+          match dep with
+          | File f -> Path.Set.add acc f
+          | File_selector fs ->
+            assert (
+              Predicate.equal (File_selector.predicate fs) Predicate.false_);
+            acc
+          | _ -> assert false)
+    in
+    (t, paths)
 
   let digest t =
     foldi t ~init:[] ~f:(fun dep _value acc : Stable_for_digest.t list ->

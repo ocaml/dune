@@ -7,14 +7,17 @@ let make_alias expander s =
   let loc = String_with_vars.loc s in
   Expander.expand_path expander s >>| Alias.of_user_written_path ~loc
 
-let fold_source_dirs dir ~init ~f =
+module File_tree_map_reduce =
+  File_tree.Dir.Make_map_reduce (Action_builder) (Monoid.Union (Path.Set))
+
+let collect_source_files_recursively dir ~f =
   let prefix_with, dir = Path.extract_build_context_dir_exn dir in
-  match File_tree.find_dir dir with
-  | None -> init
+  Action_builder.memo_build (File_tree.find_dir dir) >>= function
+  | None -> Action_builder.return Path.Set.empty
   | Some dir ->
-    File_tree.Dir.fold dir ~init ~traverse:Sub_dirs.Status.Set.all
-      ~f:(fun dir acc ->
-        f (Path.append_source prefix_with (File_tree.Dir.path dir)) acc)
+    File_tree_map_reduce.map_reduce dir ~traverse:Sub_dirs.Status.Set.all
+      ~f:(fun dir ->
+        f (Path.append_source prefix_with (File_tree.Dir.path dir)))
 
 let dep expander = function
   | File s ->
@@ -34,20 +37,16 @@ let dep expander = function
     let* path = Expander.expand_path expander s in
     let pred = Glob.of_string_exn loc (Path.basename path) |> Glob.to_pred in
     let dir = Path.parent_exn path in
-    let add_dir dir acc =
-      let+ paths =
-        Action_builder.paths_matching ~loc (File_selector.create ~dir pred)
-      and+ acc = acc in
-      Path.Set.fold paths ~init:acc ~f:(fun p acc -> p :: acc)
+    let files_in dir =
+      Action_builder.paths_matching ~loc (File_selector.create ~dir pred)
     in
     let+ files =
-      let init = Action_builder.return [] in
       if recursive then
-        fold_source_dirs dir ~init ~f:add_dir
+        collect_source_files_recursively dir ~f:files_in
       else
-        add_dir dir init
+        files_in dir
     in
-    List.rev files
+    Path.Set.to_list files
   | Source_tree s ->
     let* path = Expander.expand_path expander s in
     Action_builder.map ~f:Path.Set.to_list

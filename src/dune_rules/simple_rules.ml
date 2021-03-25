@@ -144,9 +144,9 @@ let copy_files sctx ~dir ~expander ~src_dir (def : Copy_files.t) =
   let pred =
     Path.basename glob_in_src |> Glob.of_string_exn loc |> Glob.to_pred
   in
-  let exists =
+  let* exists =
     match Path.as_in_source_tree src_in_src with
-    | None -> Path.exists src_in_src
+    | None -> Memo.Build.return (Path.exists src_in_src)
     | Some src_in_src -> File_tree.dir_exists src_in_src
   in
   if not exists then
@@ -159,11 +159,11 @@ let copy_files sctx ~dir ~expander ~src_dir (def : Copy_files.t) =
            <dir> is not the current directory."
       ];
   (* add rules *)
-  let src_in_build =
+  let* src_in_build =
     match Path.as_in_source_tree src_in_src with
-    | None -> src_in_src
+    | None -> Memo.Build.return src_in_src
     | Some src_in_src ->
-      let context = Context.DB.get dir in
+      let+ context = Context.DB.get dir in
       Path.Build.append_source context.build_dir src_in_src |> Path.build
   in
   let* files =

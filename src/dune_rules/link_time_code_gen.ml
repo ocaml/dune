@@ -96,6 +96,7 @@ let findlib_init_code ~preds ~libs =
   Buffer.contents buf
 
 let build_info_code cctx ~libs ~api_version =
+  let open Memo.Build.O in
   (match api_version with
   | Lib_info.Special_builtin_support.Build_info.V1 -> ());
   (* [placeholders] is a mapping from source path to variable names. For each
@@ -111,7 +112,7 @@ let build_info_code cctx ~libs ~api_version =
       s
   in
   let placeholder p =
-    match File_tree.nearest_vcs p with
+    Memo.Build.memo_build (File_tree.nearest_vcs p) >>| function
     | None -> "None"
     | Some vcs -> (
       let p =
@@ -132,32 +133,34 @@ let build_info_code cctx ~libs ~api_version =
   in
   let version_of_package (p : Package.t) =
     match p.version with
-    | Some v -> sprintf "Some %S" v
+    | Some v -> Memo.Build.return (sprintf "Some %S" v)
     | None -> placeholder (Package.dir p)
   in
-  let version =
+  let* version =
     match Compilation_context.package cctx with
     | Some p -> version_of_package p
     | None ->
       let p = Path.Build.drop_build_context_exn (CC.dir cctx) in
       placeholder p
   in
-  let libs =
-    List.map libs ~f:(fun lib ->
-        ( Lib.name lib
-        , match Lib_info.version (Lib.info lib) with
-          | Some v -> sprintf "Some %S" v
+  let* libs =
+    Memo.Build.List.map libs ~f:(fun lib ->
+        let+ v =
+          match Lib_info.version (Lib.info lib) with
+          | Some v -> Memo.Build.return (sprintf "Some %S" v)
           | None -> (
             match Lib_info.status (Lib.info lib) with
             | Installed_private
             | Installed ->
-              "None"
+              Memo.Build.return "None"
             | Public (_, p) -> version_of_package p
             | Private _ ->
               let p =
                 Path.drop_build_context_exn (Obj_dir.dir (Lib.obj_dir lib))
               in
-              placeholder p) ))
+              placeholder p)
+        in
+        (Lib.name lib, v))
   in
   let context = CC.context cctx in
   let ocaml_version = Ocaml_version.of_ocaml_config context.ocaml_config in
@@ -190,7 +193,7 @@ let build_info_code cctx ~libs ~api_version =
   pr buf "";
   prlist buf "statically_linked_libraries" libs ~f:(fun (name, v) ->
       pr buf "%S, %s" (Lib_name.to_string name) v);
-  Buffer.contents buf
+  Memo.Build.return (Buffer.contents buf)
 
 let dune_site_code () =
   let buf = Buffer.create 5000 in
@@ -255,7 +258,7 @@ let handle_special_libs cctx =
             match
               generate_and_compile_module cctx ~name:data_module ~lib
                 ~code:
-                  (Action_builder.return
+                  (Action_builder.memo_build
                      (build_info_code cctx ~libs:all_libs ~api_version))
                 ~requires:(Ok [ lib ])
                 ~precompiled_cmi:true

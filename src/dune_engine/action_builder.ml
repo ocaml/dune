@@ -242,10 +242,10 @@ module With_targets = struct
       in
       { build = All (List.rev build); targets }
 
-  let write_file_dyn fn s =
+  let write_file_dyn ?(perm = Action.File_perm.Normal) fn s =
     add ~targets:[ fn ]
       (let+ s = s in
-       Action.Write_file (fn, s))
+       Action.Write_file (fn, perm, s))
 
   let of_result_map res ~f ~targets =
     add ~targets
@@ -267,13 +267,13 @@ let with_targets_set build ~targets : _ With_targets.t = { build; targets }
 let with_no_targets build : _ With_targets.t =
   { build; targets = Path.Build.Set.empty }
 
-let write_file fn s =
-  with_targets ~targets:[ fn ] (return (Action.Write_file (fn, s)))
+let write_file ?(perm = Action.File_perm.Normal) fn s =
+  with_targets ~targets:[ fn ] (return (Action.Write_file (fn, perm, s)))
 
-let write_file_dyn fn s =
+let write_file_dyn ?(perm = Action.File_perm.Normal) fn s =
   with_targets ~targets:[ fn ]
     (let+ s = s in
-     Action.Write_file (fn, s))
+     Action.Write_file (fn, perm, s))
 
 let copy ~src ~dst =
   with_targets ~targets:[ dst ] (path src >>> return (Action.Copy (src, dst)))
@@ -285,9 +285,9 @@ let copy_and_add_line_directive ~src ~dst =
 let symlink ~src ~dst =
   with_targets ~targets:[ dst ] (path src >>> return (Action.Symlink (src, dst)))
 
-let create_file fn =
+let create_file ?(perm = Action.File_perm.Normal) fn =
   with_targets ~targets:[ fn ]
-    (return (Action.Redirect_out (Stdout, fn, Action.empty)))
+    (return (Action.Redirect_out (Stdout, fn, perm, Action.empty)))
 
 let progn ts =
   let open With_targets.O in
@@ -381,7 +381,7 @@ struct
         let+ ps, fact = Build_deps.register_action_dep_pred g in
         (ps, Dep.Map.singleton (Dep.file_selector g) fact)
       | Source_tree dir ->
-        let deps, paths = Dep.Set.source_tree_with_file_set dir in
+        let* deps, paths = Dep.Set.source_tree_with_file_set dir in
         let+ deps = Build_deps.register_action_deps deps in
         (paths, deps)
       | Contents p ->
@@ -477,7 +477,7 @@ let rec can_eval_statically : type a. a t -> bool = function
   | Deps _ -> true
   | Dyn_paths b -> can_eval_statically b
   | Dyn_deps b -> can_eval_statically b
-  | Source_tree _ -> true
+  | Source_tree _ -> false
   | Contents _ -> false
   | Lines_of _ -> false
   | Or_exn b -> can_eval_statically b
@@ -546,9 +546,7 @@ let static_eval =
     | Dyn_deps b ->
       let (x, deps), acc = loop b acc in
       (x, Deps deps >>> acc)
-    | Source_tree dir ->
-      let deps, paths = Dep.Set.source_tree_with_file_set dir in
-      (paths, Deps deps >>> acc)
+    | Source_tree _ -> assert false
     | Contents _ -> assert false
     | Lines_of _ -> assert false
     | Or_exn b ->
@@ -584,3 +582,7 @@ let static_eval =
 let dyn_memo_build_deps t = dyn_deps (dyn_memo_build t)
 
 let dep_on_alias_if_exists t = Dep_on_alias_if_exists t
+
+module List = struct
+  let map l ~f = all (List.map l ~f)
+end

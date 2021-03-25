@@ -89,7 +89,7 @@ type t = private
   ; version : Ocaml_version.t
   ; stdlib_dir : Path.t
   ; supports_shared_libraries : Dynlink_supported.By_the_os.t
-  ; which : string -> Path.t option
+  ; which : string -> Path.t option Memo.Build.t
         (** Given a program name, e.g. ["ocaml"], find the path to a preferred
             executable in PATH, e.g. [Some "/path/to/ocaml.opt.exe"]. *)
   ; lib_config : Lib_config.t
@@ -139,7 +139,7 @@ val install_prefix : t -> Path.t Fiber.t
 val init_configurator : t -> unit
 
 module DB : sig
-  val get : Path.Build.t -> t
+  val get : Path.Build.t -> t Memo.Build.t
 
   val all : unit -> t list Memo.Build.t
 end

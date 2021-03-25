@@ -363,24 +363,25 @@ end = struct
       let b =
         let dir = Path.build env.dir in
         let loc = loc sw in
-        let+ prog, args = Expander.expand env sw ~mode:At_least_one in
-        let prog =
+        let* prog, args = Expander.expand env sw ~mode:At_least_one in
+        let+ prog =
           match prog with
           | Value.Dir p ->
             User_error.raise ~loc
               [ Pp.textf "%s is a directory and cannot be used as an executable"
                   (Path.to_string_maybe_quoted p)
               ]
-          | Path p -> Ok p
+          | Path p -> Action_builder.return (Ok p)
           | String s -> (
             match Filename.analyze_program_name s with
             | Relative_to_current_dir
             | Absolute ->
-              Ok (Path.relative dir s)
+              Action_builder.return (Ok (Path.relative dir s))
             | In_path ->
-              Artifacts.Bin.binary ~loc:(Some loc)
-                (Expander.artifacts env.expander)
-                s)
+              Action_builder.memo_build
+                (Artifacts.Bin.binary ~loc:(Some loc)
+                   (Expander.artifacts env.expander)
+                   s))
         in
         let prog = Result.map prog ~f:(Expander.map_exe env.expander) in
         let args = Value.L.to_strings ~dir args in
@@ -424,10 +425,10 @@ let rec expand (t : Action_dune_lang.t) : Action.t Action_expander.t =
         A.set_env ~var ~value:(E.string value)
           (let+ t = expand t in
            fun ~value -> O.Setenv (var, value, t)))
-  | Redirect_out (outputs, fn, t) ->
+  | Redirect_out (outputs, fn, perm, t) ->
     let+ fn = E.target fn
     and+ t = expand t in
-    O.Redirect_out (outputs, fn, t)
+    O.Redirect_out (outputs, fn, perm, t)
   | Redirect_in (inputs, fn, t) ->
     let+ fn = E.dep fn
     and+ t = expand t in
@@ -467,10 +468,10 @@ let rec expand (t : Action_dune_lang.t) : Action.t Action_expander.t =
   | Bash x ->
     let+ x = E.string x in
     O.Bash x
-  | Write_file (fn, s) ->
+  | Write_file (fn, perm, s) ->
     let+ fn = E.target fn
     and+ s = E.string s in
-    O.Write_file (fn, s)
+    O.Write_file (fn, perm, s)
   | Rename (x, _) ->
     (* [Rename] is not part of the syntax so this case is not reachable. The
        reason it is not exposed to the user is because we can't easily decide
@@ -497,9 +498,6 @@ let rec expand (t : Action_dune_lang.t) : Action.t Action_expander.t =
                   [ Dune_lang.unsafe_atom_of_string "mkdir"; Dpath.encode path ]))
         ];
     O.Mkdir path
-  | Digest_files l ->
-    let+ l = A.all (List.map l ~f:E.dep) in
-    O.Digest_files l
   | Diff { optional; file1; file2; mode } ->
     let+ file1 = E.dep_if_exists file1
     and+ file2 =

@@ -194,29 +194,57 @@ let interpret ~dir ~project ~(dune_file : File_tree.Dune_file.t) =
     Dune_files.Script { script = { dir; project; file }; from_parent = static }
   | Plain -> Literal (Dune_file.parse static ~dir ~file ~project)
 
+module Vcses_projects_and_dune_files =
+  Monoid.Product3
+    (Monoid.Appendable_list (struct
+      type t = Vcs.t
+    end))
+    (Monoid.Appendable_list (struct
+      type t = Dune_project.t
+    end))
+    (Monoid.Appendable_list (struct
+      type t = Path.Source.t * Dune_project.t * File_tree.Dune_file.t
+    end))
+
+module File_tree_map_reduce =
+  File_tree.Make_map_reduce_with_progress
+    (Memo.Build)
+    (Vcses_projects_and_dune_files)
+
 let load ~ancestor_vcs =
+  let open Fiber.O in
   File_tree.init ~ancestor_vcs ~recognize_jbuilder_projects:false;
-  let _, vcs, projects =
-    let f dir (ancestor_vcs, vcs, projects) =
-      let vcs =
-        match File_tree.Dir.vcs dir with
-        | Some repository -> Path.Map.set vcs repository.root repository
-        | None -> vcs
-      in
-      let p = File_tree.Dir.project dir in
-      if Path.Source.equal (File_tree.Dir.path dir) (Dune_project.root p) then
-        (ancestor_vcs, vcs, p :: projects)
-      else
-        (ancestor_vcs, vcs, projects)
-    and vcs =
-      match ancestor_vcs with
-      | Some vcs -> Path.Map.of_list_exn [ (Path.root, vcs) ]
-      | None -> Path.Map.empty
-    in
-    File_tree.fold_with_progress
-      ~traverse:{ data_only = false; vendored = true; normal = true }
-      ~init:(ancestor_vcs, vcs, []) ~f
+  let+ vcs, projects, dune_files =
+    Memo.Build.run
+      (let f dir : Vcses_projects_and_dune_files.t Memo.Build.t =
+         let path = File_tree.Dir.path dir in
+         let vcs =
+           match File_tree.Dir.vcs dir with
+           | Some vcs when Path.equal vcs.root (Path.source path) ->
+             Appendable_list.singleton vcs
+           | _ -> Appendable_list.empty
+         in
+         let project = File_tree.Dir.project dir in
+         let projects =
+           if Path.Source.equal path (Dune_project.root project) then
+             Appendable_list.singleton project
+           else
+             Appendable_list.empty
+         in
+         let dune_files =
+           match File_tree.Dir.dune_file dir with
+           | None -> Appendable_list.empty
+           | Some d -> Appendable_list.singleton (path, project, d)
+         in
+         Memo.Build.return (vcs, projects, dune_files)
+       in
+       File_tree_map_reduce.map_reduce ~traverse:Sub_dirs.Status.Set.all ~f)
   in
+  let vcs =
+    Appendable_list.to_list vcs
+    |> Path.Map.of_list_map_exn ~f:(fun vcs -> (vcs.Vcs.root, vcs))
+  in
+  let projects = Appendable_list.to_list projects in
   let packages =
     List.fold_left projects ~init:Package.Name.Map.empty
       ~f:(fun acc (p : Dune_project.t) ->
@@ -236,11 +264,7 @@ let load ~ancestor_vcs =
                 ]))
   in
   let dune_files =
-    File_tree.Dir.fold_dune_files (File_tree.root ()) ~init:[]
-      ~f:(fun ~basename:_ dir dune_file dune_files ->
-        let path = File_tree.Dir.path dir in
-        let project = File_tree.Dir.project dir in
-        let dune_file = interpret ~dir:path ~project ~dune_file in
-        dune_file :: dune_files)
+    List.map (Appendable_list.to_list dune_files)
+      ~f:(fun (dir, project, dune_file) -> interpret ~dir ~project ~dune_file)
   in
   { dune_files; packages; projects; vcs = Path.Map.values vcs }

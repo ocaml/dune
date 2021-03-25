@@ -259,13 +259,13 @@ let expand_pform_gen ~(context : Context.t) ~bindings ~dir ~source
       | Ocamlc -> static (path context.ocamlc)
       | Ocamlopt -> static (get_prog context.ocamlopt)
       | Make ->
-        static
-          (match context.which "make" with
-          | None ->
-            Utils.program_not_found ~context:context.name
-              ~loc:(Some (Dune_lang.Template.Pform.loc source))
-              "make"
-          | Some p -> path p)
+        Direct
+          (Action_builder.memo_build (context.which "make") >>| function
+           | None ->
+             Utils.program_not_found ~context:context.name
+               ~loc:(Some (Dune_lang.Template.Pform.loc source))
+               "make"
+           | Some p -> path p)
       | Cpp -> static (strings (c_compiler_and_flags context @ [ "-E" ]))
       | Pa_cpp ->
         static
@@ -380,11 +380,13 @@ let expand_pform_gen ~(context : Context.t) ~bindings ~dir ~source
       | Bin ->
         Need_full_expander
           (fun t ->
-            dep
-              (Artifacts.Bin.binary
-                 ~loc:(Some (Dune_lang.Template.Pform.loc source))
-                 t.bin_artifacts_host s
-              |> Action.Prog.ok_exn))
+            let* prog =
+              Action_builder.memo_build
+                (Artifacts.Bin.binary
+                   ~loc:(Some (Dune_lang.Template.Pform.loc source))
+                   t.bin_artifacts_host s)
+            in
+            dep (Action.Prog.ok_exn prog))
       | Lib { lib_exec; lib_private } ->
         Need_full_expander
           (fun t ->

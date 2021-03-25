@@ -95,7 +95,7 @@ module T = struct
     ; version : Ocaml_version.t
     ; stdlib_dir : Path.t
     ; supports_shared_libraries : Dynlink_supported.By_the_os.t
-    ; which : string -> Path.t option
+    ; which : string -> Path.t option Memo.Build.t
     ; lib_config : Lib_config.t
     ; build_context : Build_context.t
     }
@@ -375,17 +375,18 @@ let create ~(kind : Kind.t) ~path ~env ~env_nodes ~name ~merlin ~targets
       (sprintf "which-memo-for-%s" (Context_name.to_string name))
       ~input:(module Program.Name)
       ~output:(Allow_cutoff (module Program.Which_path))
-      ~visibility:Hidden Sync (Program.which ~path)
+      ~visibility:Hidden Async
+      (fun p -> Memo.Build.return (Program.which ~path p))
   in
   let which = Memo.exec which_memo in
   let which_exn x =
-    match which x with
+    which x >>| function
     | None -> prog_not_found_in_path x
     | Some x -> x
   in
   let findlib_config_path =
     Memo.lazy_async ~cutoff:Path.equal (fun () ->
-        let fn = which_exn "ocamlfind" in
+        let* fn = which_exn "ocamlfind" in
         (* When OCAMLFIND_CONF is set, "ocamlfind printconf" does print the
            contents of the variable, but "ocamlfind printconf conf" still prints
            the configuration file set at the configuration time of ocamlfind,
@@ -409,31 +410,34 @@ let create ~(kind : Kind.t) ~path ~env ~env_nodes ~name ~merlin ~targets
         Some (Findlib.Config.load path ~toolchain ~context)
     in
     let get_tool_using_findlib_config prog =
-      let open Option.O in
-      let* conf = findlib_config in
-      let* s = Findlib.Config.get conf prog in
-      match Filename.analyze_program_name s with
-      | In_path -> which s
-      | Relative_to_current_dir ->
-        User_error.raise
-          [ Pp.textf
-              "The effective Findlib configuration specifies the relative path \
-               %S for the program %S. This is currently not supported."
-              s prog
-          ]
-      | Absolute -> Some (Path.of_filename_relative_to_initial_cwd s)
+      match
+        Option.bind findlib_config ~f:(fun conf -> Findlib.Config.get conf prog)
+      with
+      | None -> Memo.Build.return None
+      | Some s -> (
+        match Filename.analyze_program_name s with
+        | In_path -> which s
+        | Relative_to_current_dir ->
+          User_error.raise
+            [ Pp.textf
+                "The effective Findlib configuration specifies the relative \
+                 path %S for the program %S. This is currently not supported."
+                s prog
+            ]
+        | Absolute ->
+          Memo.Build.return (Some (Path.of_filename_relative_to_initial_cwd s)))
     in
-    let ocamlc =
-      match get_tool_using_findlib_config "ocamlc" with
-      | Some x -> x
+    let* ocamlc =
+      get_tool_using_findlib_config "ocamlc" >>= function
+      | Some x -> Memo.Build.return x
       | None -> (
-        match which "ocamlc" with
+        which "ocamlc" >>| function
         | Some x -> x
         | None -> prog_not_found_in_path "ocamlc")
     in
     let dir = Path.parent_exn ocamlc in
     let get_ocaml_tool prog =
-      match get_tool_using_findlib_config prog with
+      get_tool_using_findlib_config prog >>| function
       | Some x -> Ok x
       | None -> (
         match Program.best_path dir prog with
@@ -471,7 +475,7 @@ let create ~(kind : Kind.t) ~path ~env ~env_nodes ~name ~merlin ~targets
     let default_library_search_path () =
       match Build_environment_kind.query ~kind ~findlib_toolchain ~env with
       | Cross_compilation_using_findlib_toolchain toolchain ->
-        let ocamlfind = which_exn "ocamlfind" in
+        let* ocamlfind = which_exn "ocamlfind" in
         let env = Env.remove env ~var:"OCAMLPATH" in
         ocamlfind_printconf_path ~env ~ocamlfind ~toolchain:(Some toolchain)
       | Hardcoded_path l ->
@@ -578,7 +582,7 @@ let create ~(kind : Kind.t) ~path ~env ~env_nodes ~name ~merlin ~targets
     let stdlib_dir = Path.of_string (Ocaml_config.standard_library ocfg) in
     let natdynlink_supported = Ocaml_config.natdynlink_supported ocfg in
     let arch_sixtyfour = Ocaml_config.word_size ocfg = 64 in
-    let ocamlopt = get_ocaml_tool "ocamlopt" in
+    let* ocamlopt = get_ocaml_tool "ocamlopt" in
     let lib_config =
       { Lib_config.has_native = Result.is_ok ocamlopt
       ; ext_obj = Ocaml_config.ext_obj ocfg
@@ -601,13 +605,15 @@ let create ~(kind : Kind.t) ~path ~env ~env_nodes ~name ~merlin ~targets
     in
     if Option.is_some fdo_target_exe then
       check_fdo_support lib_config.has_native ocfg ~name;
-    let ocaml =
+    let* ocaml =
       let program = "ocaml" in
-      match which program with
+      which program >>| function
       | Some s -> Ok s
       | None ->
         Error (Action.Prog.Not_found.create ~context:name ~program ~loc:None ())
-    in
+    and* ocamldep = get_ocaml_tool "ocamldep"
+    and* ocamlmklib = get_ocaml_tool "ocamlmklib"
+    and* ocamlobjinfo = get_ocaml_tool "ocamlobjinfo" in
     let ocaml_bin = dir in
     let supports_shared_libraries =
       Ocaml_config.supports_shared_libraries ocfg
@@ -640,9 +646,9 @@ let create ~(kind : Kind.t) ~path ~env ~env_nodes ~name ~merlin ~targets
       ; ocaml
       ; ocamlc
       ; ocamlopt
-      ; ocamldep = get_ocaml_tool "ocamldep"
-      ; ocamlmklib = get_ocaml_tool "ocamlmklib"
-      ; ocamlobjinfo = get_ocaml_tool "ocamlobjinfo"
+      ; ocamldep
+      ; ocamlmklib
+      ; ocamlobjinfo
       ; env
       ; findlib = Findlib.create ~paths:findlib_paths ~lib_config
       ; findlib_toolchain
@@ -753,7 +759,7 @@ module rec Instantiate : sig
 end = struct
   let instantiate_impl name : t list Memo.Build.t =
     let env = Memo.Run.Fdecl.get Global.env in
-    let workspace = Workspace.workspace () in
+    let* workspace = Workspace.workspace () in
     let context =
       List.find_exn workspace.contexts ~f:(fun ctx ->
           Context_name.equal (Workspace.Context.name ctx) name)
@@ -834,40 +840,32 @@ end = struct
   let instantiate name = Memo.exec memo name
 end
 
-module Create = struct
-  let call () =
-    let workspace = Workspace.workspace () in
-    let+ contexts =
-      Memo.Build.parallel_map workspace.contexts ~f:(fun c ->
-          Instantiate.instantiate (Workspace.Context.name c))
-    in
-    List.concat contexts
-
-  let memo =
-    Memo.create "create-contexts" ~doc:"create contexts"
-      ~input:(module Unit)
-      ~output:(Simple (module T_list))
-      ~visibility:Memo.Visibility.Hidden Async call
-end
-
 module DB = struct
-  let all = Memo.exec Create.memo
+  let all =
+    let impl () =
+      let* workspace = Workspace.workspace () in
+      let+ contexts =
+        Memo.Build.parallel_map workspace.contexts ~f:(fun c ->
+            Instantiate.instantiate (Workspace.Context.name c))
+      in
+      List.concat contexts
+    in
+    let memo =
+      Memo.create "build-contexts" ~doc:"all build contexts"
+        ~input:(module Unit)
+        ~output:(Simple (module T_list))
+        ~visibility:Memo.Visibility.Hidden Async impl
+    in
+    Memo.exec memo
 
   let get =
     let memo =
       Memo.create "context-db-get" ~doc:"get context from db"
         ~input:(module Context_name)
         ~output:(Simple (module T))
-        ~visibility:Hidden Sync
+        ~visibility:Hidden Async
         (fun name ->
-          (* CR-someday amokhov: Here we assume that [get] is called after the
-             asynchronously running function [Create.memo] has completed. It
-             would be better to statically guarantee the completion. Note that
-             moving this code into a fiber was ruled out because it would
-             require any functions that need the context to go inside the fiber
-             too. @rgrinberg and @diml decided that it would be too large and
-             possibly undesirable refactoring. Any other options? *)
-          let contexts = Memo.peek_exn Create.memo () in
+          let+ contexts = all () in
           List.find_exn contexts ~f:(fun c -> Context_name.equal name c.name))
     in
     fun dir ->

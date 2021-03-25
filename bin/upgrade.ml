@@ -19,6 +19,6 @@ let term =
   Scheduler.go ~common (fun () ->
       Dune_engine.File_tree.init ~recognize_jbuilder_projects:true
         ~ancestor_vcs:None;
-      Dune_upgrader.upgrade () |> Fiber.return)
+      Dune_upgrader.upgrade ())
 
 let command = (term, info)

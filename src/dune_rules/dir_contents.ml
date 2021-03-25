@@ -227,8 +227,10 @@ end = struct
         Memo.Build.return Appendable_list.empty
     and walk_children ft_dir ~dir ~local =
       let+ l =
-        Memo.Build.parallel_map (File_tree.Dir.sub_dirs ft_dir)
+        Memo.Build.parallel_map
+          (File_tree.Dir.sub_dirs ft_dir |> String.Map.to_list)
           ~f:(fun (basename, ft_dir) ->
+            let* ft_dir = File_tree.Dir.sub_dir_as_t ft_dir in
             let dir = Path.Build.relative dir basename in
             let local = basename :: local in
             walk ft_dir ~dir ~local)

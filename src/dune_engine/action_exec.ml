@@ -203,14 +203,16 @@ let rec exec t ~ectx ~eenv =
   | Chdir (dir, t) -> exec t ~ectx ~eenv:{ eenv with working_dir = dir }
   | Setenv (var, value, t) ->
     exec t ~ectx ~eenv:{ eenv with env = Env.add eenv.env ~var ~value }
-  | Redirect_out (Stdout, fn, Echo s) ->
-    Io.write_file (Path.build fn) (String.concat s ~sep:" ");
+  | Redirect_out (Stdout, fn, perm, Echo s) ->
+    let perm = Action.File_perm.to_unix_perm perm in
+    Io.write_file (Path.build fn) (String.concat s ~sep:" ") ~perm;
     Fiber.return Done
-  | Redirect_out (outputs, fn, t) ->
+  | Redirect_out (outputs, fn, perm, t) ->
     let fn = Path.build fn in
-    redirect_out t ~ectx ~eenv outputs fn
+    redirect_out t ~ectx ~eenv outputs ~perm fn
   | Redirect_in (inputs, fn, t) -> redirect_in t ~ectx ~eenv inputs fn
-  | Ignore (outputs, t) -> redirect_out t ~ectx ~eenv outputs Config.dev_null
+  | Ignore (outputs, t) ->
+    redirect_out t ~ectx ~eenv ~perm:Normal outputs Config.dev_null
   | Progn ts -> exec_list ts ~ectx ~eenv
   | Echo strs ->
     let+ () = exec_echo eenv.stdout_to (String.concat strs ~sep:" ") in
@@ -294,8 +296,9 @@ let rec exec t ~ectx ~eenv =
         [ "-e"; "-u"; "-o"; "pipefail"; "-c"; cmd ]
     in
     Done
-  | Write_file (fn, s) ->
-    Io.write_file (Path.build fn) s;
+  | Write_file (fn, perm, s) ->
+    let perm = Action.File_perm.to_unix_perm perm in
+    Io.write_file (Path.build fn) s ~perm;
     Fiber.return Done
   | Rename (src, dst) ->
     Unix.rename (Path.Build.to_string src) (Path.Build.to_string dst);
@@ -310,15 +313,6 @@ let rec exec t ~ectx ~eenv =
       Code_error.raise "Action_exec.exec: mkdir on non build dir"
         [ ("path", Path.to_dyn path) ];
     Fiber.return Done
-  | Digest_files paths ->
-    let s =
-      let data =
-        List.map paths ~f:(fun fn -> (Path.to_string fn, Cached_digest.file fn))
-      in
-      Digest.generic data
-    in
-    let+ () = exec_echo eenv.stdout_to (Digest.to_string_raw s) in
-    Done
   | Diff ({ optional; file1; file2; mode } as diff) ->
     let remove_intermediate_file () =
       if optional then
@@ -402,8 +396,8 @@ let rec exec t ~ectx ~eenv =
     in
     Done
 
-and redirect_out t ~ectx ~eenv outputs fn =
-  redirect t ~ectx ~eenv ~out:(outputs, fn) ()
+and redirect_out t ~ectx ~eenv ~perm outputs fn =
+  redirect t ~ectx ~eenv ~out:(outputs, fn, perm) ()
 
 and redirect_in t ~ectx ~eenv inputs fn =
   redirect t ~ectx ~eenv ~in_:(inputs, fn) ()
@@ -419,8 +413,11 @@ and redirect t ~ectx ~eenv ?in_ ?out () =
   let stdout_to, stderr_to, release_out =
     match out with
     | None -> (eenv.stdout_to, eenv.stderr_to, ignore)
-    | Some (outputs, fn) ->
-      let out = Process.Io.file fn Process.Io.Out in
+    | Some (outputs, fn, perm) ->
+      let out =
+        Process.Io.file fn Process.Io.Out
+          ~perm:(Action.File_perm.to_unix_perm perm)
+      in
       let stdout_to, stderr_to =
         match outputs with
         | Stdout -> (out, eenv.stderr_to)
@@ -474,7 +471,7 @@ and exec_pipe outputs ts ~ectx ~eenv =
         let eenv =
           { eenv with stderr_to = Process.Io.multi_use eenv.stderr_to }
         in
-        redirect t ~ectx ~eenv ~in_:(Stdin, in_) ~out:(Stdout, out) ()
+        redirect t ~ectx ~eenv ~in_:(Stdin, in_) ~out:(Stdout, out, Normal) ()
       in
       Dtemp.destroy File in_;
       match done_or_deps with
@@ -491,7 +488,7 @@ and exec_pipe outputs ts ~ectx ~eenv =
       | Stdout -> { eenv with stderr_to = Process.Io.multi_use eenv.stderr_to }
       | Stderr -> { eenv with stdout_to = Process.Io.multi_use eenv.stdout_to }
     in
-    let* done_or_deps = redirect_out t1 ~ectx ~eenv outputs out in
+    let* done_or_deps = redirect_out t1 ~ectx ~eenv ~perm:Normal outputs out in
     match done_or_deps with
     | Need_more_deps _ as need -> Fiber.return need
     | Done -> loop ~in_:out ts)

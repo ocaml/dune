@@ -52,26 +52,25 @@ let gen_rules sctx t ~dir ~scope =
   in
   let cinaps_exe = Path.Build.relative cinaps_dir (name ^ ".exe") in
   (* Files checked by cinaps *)
-  let cinapsed_files =
+  let* cinapsed_files =
     File_tree.files_of (Path.Build.drop_build_context_exn dir)
-    |> Path.Source.Set.to_list
-    |> List.filter_map ~f:(fun p ->
-           if
-             Predicate_lang.Glob.exec t.files (Path.Source.basename p)
-               ~standard:Predicate_lang.any
-           then
-             Some
-               (Path.Build.append_source (Super_context.context sctx).build_dir
-                  p)
-           else
-             None)
-  in
-  (* Ask cinaps to produce a .ml file to build *)
-  let* prog =
+    >>| Path.Source.Set.to_list
+    >>| List.filter_map ~f:(fun p ->
+            if
+              Predicate_lang.Glob.exec t.files (Path.Source.basename p)
+                ~standard:Predicate_lang.any
+            then
+              Some
+                (Path.Build.append_source (Super_context.context sctx).build_dir
+                   p)
+            else
+              None)
+  and* prog =
     Super_context.resolve_program sctx ~dir ~loc:(Some loc) name
       ~hint:"opam install cinaps"
   in
   let* () =
+    (* Ask cinaps to produce a .ml file to build *)
     Super_context.add_rule sctx ~loc:t.loc ~dir
       (Command.run ~dir:(Path.build dir) prog
          [ A "-staged"

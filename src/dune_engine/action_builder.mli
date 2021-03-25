@@ -39,7 +39,8 @@ module With_targets : sig
 
   val map2 : 'a t -> 'b t -> f:('a -> 'b -> 'c) -> 'c t
 
-  val write_file_dyn : Path.Build.t -> string t -> Action.t t
+  val write_file_dyn :
+    ?perm:Action.File_perm.t -> Path.Build.t -> string t -> Action.t t
 
   val all : 'a t list -> 'a list t
 
@@ -85,6 +86,10 @@ val ignore : 'a t -> unit t
 val all : 'a t list -> 'a list t
 
 val all_unit : unit t list -> unit t
+
+module List : sig
+  val map : 'a list -> f:('a -> 'b t) -> 'b list t
+end
 
 (** Delay a static computation until the description is evaluated *)
 val delayed : (unit -> 'a) -> 'a t
@@ -194,9 +199,14 @@ val of_result_map : 'a Or_exn.t -> f:('a -> 'b t) -> 'b t
 val memoize : string -> 'a t -> 'a t
 
 (** Create a file with the given contents. *)
-val write_file : Path.Build.t -> string -> Action.t With_targets.t
+val write_file :
+  ?perm:Action.File_perm.t -> Path.Build.t -> string -> Action.t With_targets.t
 
-val write_file_dyn : Path.Build.t -> string t -> Action.t With_targets.t
+val write_file_dyn :
+     ?perm:Action.File_perm.t
+  -> Path.Build.t
+  -> string t
+  -> Action.t With_targets.t
 
 val copy : src:Path.t -> dst:Path.Build.t -> Action.t With_targets.t
 
@@ -205,7 +215,8 @@ val copy_and_add_line_directive :
 
 val symlink : src:Path.t -> dst:Path.Build.t -> Action.t With_targets.t
 
-val create_file : Path.Build.t -> Action.t With_targets.t
+val create_file :
+  ?perm:Action.File_perm.t -> Path.Build.t -> Action.t With_targets.t
 
 (** Merge a list of actions accumulating the sets of their targets. *)
 val progn : Action.t With_targets.t list -> Action.t With_targets.t

@@ -164,8 +164,9 @@ end
 
 module Opam_files = struct
   let get () =
-    let project =
-      Dune_engine.File_tree.root () |> Dune_engine.File_tree.Dir.project
+    let open Memo.Build.O in
+    let+ project =
+      Dune_engine.File_tree.root () >>| Dune_engine.File_tree.Dir.project
     in
     let packages =
       Dune_project.packages project |> Dune_engine.Package.Name.Map.values
@@ -225,7 +226,7 @@ module What = struct
   let describe t setup context =
     match t with
     | Workspace -> Crawl.workspace setup context
-    | Opam_files -> Memo.Build.return (Opam_files.get ())
+    | Opam_files -> Opam_files.get ()
 end
 
 module Format = struct

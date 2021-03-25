@@ -55,8 +55,8 @@ let rules (t : Dune_file.Tests.t) ~sctx ~dir ~scope ~expander ~dir_contents =
             ; deps = Bindings.empty
             ; action =
                 ( loc
-                , Action_unexpanded.Redirect_out (Stdout, diff.file2, run_action)
-                )
+                , Action_unexpanded.Redirect_out
+                    (Stdout, diff.file2, Normal, run_action) )
             ; mode = Standard
             ; locks = t.locks
             ; loc

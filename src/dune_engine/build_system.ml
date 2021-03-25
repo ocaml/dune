@@ -5,20 +5,22 @@ open Memo.Build.O
 let () = Hooks.End_of_build.always Memo.reset
 
 module Fs : sig
-  val mkdir_p : Path.Build.t -> unit
+  val mkdir_p : Path.Build.t -> unit Memo.Build.t
 
   (** Creates directory if inside build path, otherwise asserts that directory
       exists. *)
-  val mkdir_p_or_check_exists : loc:Loc.t -> Path.t -> unit
+  val mkdir_p_or_check_exists : loc:Loc.t -> Path.t -> unit Memo.Build.t
 
-  val assert_exists : loc:Loc.t -> Path.t -> unit
+  val assert_exists : loc:Loc.t -> Path.t -> unit Memo.Build.t
 end = struct
   let mkdir_p_def =
     Memo.create "mkdir_p" ~doc:"mkdir_p"
       ~input:(module Path.Build)
       ~output:(Simple (module Unit))
-      ~visibility:Hidden Sync
-      (fun p -> Path.mkdir_p (Path.build p))
+      ~visibility:Hidden Async
+      (fun p ->
+        Path.mkdir_p (Path.build p);
+        Memo.Build.return ())
 
   let mkdir_p = Memo.exec mkdir_p_def
 
@@ -26,12 +28,15 @@ end = struct
     Memo.create "assert_path_exists" ~doc:"Path.exists"
       ~input:(module Path)
       ~output:(Simple (module Bool))
-      ~visibility:Hidden Sync Path.exists
+      ~visibility:Hidden Async
+      (fun p -> Memo.Build.return (Path.exists p))
 
   let assert_exists ~loc path =
-    if not (Memo.exec assert_exists_def path) then
+    Memo.exec assert_exists_def path >>| function
+    | false ->
       User_error.raise ~loc
         [ Pp.textf "%S does not exist" (Path.to_string_maybe_quoted path) ]
+    | true -> ()
 
   let mkdir_p_or_check_exists ~loc path =
     match Path.as_in_build_dir path with
@@ -125,22 +130,22 @@ module Alias0 = struct
     Action_builder.all_unit (List.map contexts ~f:context_to_alias_expansion)
 
   open Action_builder.O
+  module File_tree_map_reduce =
+    File_tree.Dir.Make_map_reduce (Action_builder) (Monoid.Exists)
 
   let dep_rec_internal ~name ~dir ~ctx_dir =
-    let f dir acc =
+    let f dir =
       let path = Path.Build.append_source ctx_dir (File_tree.Dir.path dir) in
-      Action_builder.map2 ~f:( || ) acc
-        (Action_builder.dep_on_alias_if_exists (make ~dir:path name))
+      Action_builder.dep_on_alias_if_exists (make ~dir:path name)
     in
-    File_tree.Dir.fold dir ~traverse:Sub_dirs.Status.Set.normal_only
-      ~init:(Action_builder.return false)
-      ~f
+    File_tree_map_reduce.map_reduce dir
+      ~traverse:Sub_dirs.Status.Set.normal_only ~f
 
   let dep_rec t ~loc =
     let ctx_dir, src_dir =
       Path.Build.extract_build_context_dir_exn (Alias.dir t)
     in
-    match File_tree.find_dir src_dir with
+    Action_builder.memo_build (File_tree.find_dir src_dir) >>= function
     | None ->
       Action_builder.fail
         { fail =
@@ -163,7 +168,10 @@ module Alias0 = struct
 
   let dep_rec_multi_contexts ~dir:src_dir ~name ~contexts =
     let open Action_builder.O in
-    let dir = File_tree.find_dir_specified_on_command_line ~dir:src_dir in
+    let* dir =
+      Action_builder.memo_build
+        (File_tree.find_dir_specified_on_command_line ~dir:src_dir)
+    in
     let+ is_nonempty_list =
       Action_builder.all
         (List.map contexts ~f:(fun ctx ->
@@ -446,20 +454,21 @@ let get_cache () =
 let get_dir_triage t ~dir =
   match Dpath.analyse_dir dir with
   | Source dir ->
-    Dir_triage.Known
-      (Non_build (Path.set_of_source_paths (File_tree.files_of dir)))
+    let+ files = File_tree.files_of dir in
+    Dir_triage.Known (Non_build (Path.set_of_source_paths files))
   | External _ ->
-    Dir_triage.Known
-      (Non_build
-         (match Path.readdir_unsorted dir with
-         | Error Unix.ENOENT -> Path.Set.empty
-         | Error m ->
-           User_warning.emit
-             [ Pp.textf "Unable to read %s" (Path.to_string_maybe_quoted dir)
-             ; Pp.textf "Reason: %s" (Unix.error_message m)
-             ];
-           Path.Set.empty
-         | Ok filenames -> Path.Set.of_listing ~dir ~filenames))
+    Memo.Build.return
+    @@ Dir_triage.Known
+         (Non_build
+            (match Path.readdir_unsorted dir with
+            | Error Unix.ENOENT -> Path.Set.empty
+            | Error m ->
+              User_warning.emit
+                [ Pp.textf "Unable to read %s" (Path.to_string_maybe_quoted dir)
+                ; Pp.textf "Reason: %s" (Unix.error_message m)
+                ];
+              Path.Set.empty
+            | Ok filenames -> Path.Set.of_listing ~dir ~filenames))
   | Build (Regular Root) ->
     let allowed_subdirs =
       Subdir_set.to_dir_set
@@ -469,37 +478,38 @@ let get_dir_triage t ~dir =
            @ (Context_name.Map.keys t.contexts
              |> List.map ~f:Context_name.to_string)))
     in
-    Dir_triage.Known (Loaded.no_rules ~allowed_subdirs)
+    Memo.Build.return @@ Dir_triage.Known (Loaded.no_rules ~allowed_subdirs)
   | Build (Install Root) ->
     let allowed_subdirs =
       Context_name.Map.keys t.contexts
       |> List.map ~f:Context_name.to_string
       |> Subdir_set.of_list |> Subdir_set.to_dir_set
     in
-    Dir_triage.Known (Loaded.no_rules ~allowed_subdirs)
+    Memo.Build.return @@ Dir_triage.Known (Loaded.no_rules ~allowed_subdirs)
   | Build (Anonymous_action p) ->
     let build_dir = Dpath.Target_dir.build_dir p in
     Code_error.raise "Called get_dir_triage on an anonymous action directory"
       [ ("dir", Path.Build.to_dyn build_dir) ]
   | Build (Invalid _) ->
-    Dir_triage.Known (Loaded.no_rules ~allowed_subdirs:Dir_set.empty)
+    Memo.Build.return
+    @@ Dir_triage.Known (Loaded.no_rules ~allowed_subdirs:Dir_set.empty)
   | Build (Install (With_context _))
   | Build (Regular (With_context _)) ->
-    Need_step2
+    Memo.Build.return @@ Dir_triage.Need_step2
 
 let describe_rule (rule : Rule.t) =
   match rule.info with
   | From_dune_file { start; _ } ->
     start.pos_fname ^ ":" ^ string_of_int start.pos_lnum
   | Internal -> "<internal location>"
-  | Source_file_copy -> "file present in source tree"
+  | Source_file_copy _ -> "file present in source tree"
 
 let report_rule_src_dir_conflict dir fn (rule : Rule.t) =
   let loc =
     match rule.info with
     | From_dune_file loc -> loc
     | Internal
-    | Source_file_copy ->
+    | Source_file_copy _ ->
       let dir =
         match Path.Build.drop_build_context dir with
         | None -> Path.build dir
@@ -522,8 +532,8 @@ let report_rule_conflict fn (rule' : Rule.t) (rule : Rule.t) =
     ]
     ~hints:
       (match (rule.info, rule'.info) with
-      | Source_file_copy, _
-      | _, Source_file_copy ->
+      | Source_file_copy _, _
+      | _, Source_file_copy _ ->
         [ Pp.textf "rm -f %s"
             (Path.to_string_maybe_quoted (Path.drop_optional_build_context fn))
         ]
@@ -541,14 +551,15 @@ let () =
 
 let compute_targets_digests targets =
   match
-    Path.Build.Set.to_list_map targets ~f:(fun target ->
-        (target, Cached_digest.file (Path.build target)))
+    List.map (Path.Build.Set.to_list targets) ~f:(fun target ->
+        (target, Cached_digest.build_file target))
   with
   | l -> Some l
   | exception (Unix.Unix_error _ | Sys_error _) -> None
 
 let compute_targets_digests_or_raise_error ~loc targets =
-  let remove_write_permissions =
+  let open Fiber.O in
+  let+ remove_write_permissions =
     (* Remove write permissions on targets. A first theoretical reason is that
        the build process should be a computational graph and targets should not
        change state once built. A very practical reason is that enabling the
@@ -557,13 +568,13 @@ let compute_targets_digests_or_raise_error ~loc targets =
     (* FIXME: searching the dune version for each single target seems way
        suboptimal. This information could probably be stored in rules directly. *)
     if Path.Build.Set.is_empty targets then
-      false
+      Fiber.return false
     else
       let _, src_dir =
         Path.Build.extract_build_context_dir_exn
           (Path.Build.Set.choose_exn targets)
       in
-      let dir = File_tree.nearest_dir src_dir in
+      let+ dir = Memo.Build.run (File_tree.nearest_dir src_dir) in
       let version = File_tree.Dir.project dir |> Dune_project.dune_version in
       version >= (2, 4)
   in
@@ -709,7 +720,7 @@ end = struct
         (* There's an [assert false] in [prepare_managed_paths] that blows up if
            we try to sandbox this. *)
           ~sandbox:Sandbox_config.no_sandboxing build ~context:None ~env:None
-          ~info:Source_file_copy)
+          ~info:(Source_file_copy path))
 
   let compile_rules ~dir ~source_dirs rules =
     List.concat_map rules ~f:(fun rule ->
@@ -757,16 +768,15 @@ end = struct
         | Some _ -> true)
 
   let compute_alias_expansions ~(collected : Rules.Dir_rules.ready) ~dir =
-    let open Action_builder.O in
     let aliases = collected.aliases in
-    let aliases =
+    let+ aliases =
       if Alias.Name.Map.mem aliases Alias.Name.default then
-        aliases
+        Memo.Build.return aliases
       else
         match Path.Build.extract_build_context_dir dir with
-        | None -> aliases
+        | None -> Memo.Build.return aliases
         | Some (ctx_dir, src_dir) -> (
-          match File_tree.find_dir src_dir with
+          File_tree.find_dir src_dir >>| function
           | None -> aliases
           | Some dir ->
             let default_alias =
@@ -782,7 +792,8 @@ end = struct
               { expansions =
                   Appendable_list.singleton
                     ( Loc.none
-                    , let+ _ =
+                    , let open Action_builder.O in
+                      let+ _ =
                         Alias0.dep_rec_internal ~name:default_alias ~dir
                           ~ctx_dir
                       in
@@ -850,7 +861,7 @@ end = struct
       | Restricted of Path.Unspecified.w Dir_set.t Memo.Lazy.Async.t
 
     (** Used by the child to ask about the restrictions placed by the parent. *)
-    val allowed_by_parent : dir:Path.Build.t -> restriction
+    val allowed_by_parent : dir:Path.Build.t -> restriction Memo.Build.t
   end = struct
     type restriction =
       | Unrestricted
@@ -862,16 +873,17 @@ end = struct
       | Alias _
       | Anonymous_action _
       | Other _ ->
-        None
+        Memo.Build.return None
       | Regular (_ctx, sub_dir) -> File_tree.find_dir sub_dir
 
     let source_subdirs_of_build_dir ~dir =
-      match corresponding_source_dir ~dir with
+      corresponding_source_dir ~dir >>| function
       | None -> String.Set.empty
       | Some dir -> File_tree.Dir.sub_dir_names dir
 
-    let allowed_dirs ~dir ~subdir : restriction =
-      if String.Set.mem (source_subdirs_of_build_dir ~dir) subdir then
+    let allowed_dirs ~dir ~subdir : restriction Memo.Build.t =
+      let+ subdirs = source_subdirs_of_build_dir ~dir in
+      if String.Set.mem subdirs subdir then
         Unrestricted
       else
         Restricted
@@ -956,16 +968,15 @@ end = struct
     in
     let collected = Rules.Dir_rules.consume rules in
     let rules = collected.rules in
-    let aliases =
+    let* aliases =
       match context_name with
       | Context _ -> compute_alias_expansions ~collected ~dir
       | Install _ ->
         (* There are no aliases in the [_build/install] directory *)
-        Alias.Name.Map.empty
-    in
-    let file_tree_dir =
+        Memo.Build.return Alias.Name.Map.empty
+    and* file_tree_dir =
       match context_name with
-      | Install _ -> None
+      | Install _ -> Memo.Build.return None
       | Context _ -> File_tree.find_dir sub_dir
     in
     (* Compute the set of targets and the set of source files that must not be
@@ -1038,7 +1049,7 @@ end = struct
       @ rules
     in
     let rules_here = compile_rules ~dir ~source_dirs rules in
-    let allowed_by_parent =
+    let* allowed_by_parent =
       Generated_directory_restrictions.allowed_by_parent ~dir
     in
     let* () =
@@ -1095,7 +1106,7 @@ end = struct
          })
 
   let load_dir_impl t ~dir : Loaded.t Memo.Build.t =
-    match get_dir_triage t ~dir with
+    get_dir_triage t ~dir >>= function
     | Known l -> Memo.Build.return l
     | Need_step2 -> load_dir_step2_exn t ~dir
 
@@ -1140,29 +1151,31 @@ let get_rule_or_source t path =
       let loc = Rule_fn.loc () in
       no_rule_found t ~loc path
   else if Path.exists path then
-    Memo.Build.return (Source (Cached_digest.file path))
+    let+ d = Cached_digest.source_or_external_file path in
+    Source d
   else
     let loc = Rule_fn.loc () in
     User_error.raise ?loc
       [ Pp.textf "File unavailable: %s" (Path.to_string_maybe_quoted path) ]
 
+module File_tree_map_reduce =
+  File_tree.Dir.Make_map_reduce (Memo.Build) (Monoid.Union (Path.Build.Set))
+
 let all_targets t =
-  let root = File_tree.root () in
-  Context_name.Map.fold t.contexts
-    ~init:(Memo.Build.return Path.Build.Set.empty) ~f:(fun ctx acc ->
-      File_tree.Dir.fold root ~traverse:Sub_dirs.Status.Set.all ~init:acc
-        ~f:(fun dir acc ->
-          let* acc = acc in
+  let* root = File_tree.root () in
+  Memo.Build.parallel_map (Context_name.Map.values t.contexts) ~f:(fun ctx ->
+      File_tree_map_reduce.map_reduce root ~traverse:Sub_dirs.Status.Set.all
+        ~f:(fun dir ->
           load_dir
             ~dir:
               (Path.build
                  (Path.Build.append_source ctx.Build_context.build_dir
                     (File_tree.Dir.path dir)))
           >>| function
-          | Non_build _ -> acc
+          | Non_build _ -> Path.Build.Set.empty
           | Build { rules_here; _ } ->
-            List.fold_left ~init:acc ~f:Path.Build.Set.add
-              (Path.Build.Map.keys rules_here)))
+            Path.Build.Set.of_list (Path.Build.Map.keys rules_here)))
+  >>| Path.Build.Set.union_all
 
 let expand_alias_gen alias ~eval_build_request ~paths_of_facts ~paths_union_all
     =
@@ -1349,7 +1362,7 @@ end = struct
 
   (* The current version of the rule digest scheme. We should increment it when
      making any changes to the scheme, to avoid collisions. *)
-  let rule_digest_version = 3
+  let rule_digest_version = 4
 
   let compute_rule_digest (rule : Rule.t) ~deps ~action ~sandbox_mode =
     let env = Rule.effective_env rule in
@@ -1388,6 +1401,7 @@ end = struct
         ; locks
         ; action = _
         ; info = _
+        ; loc
         } =
       rule
     in
@@ -1399,9 +1413,8 @@ end = struct
       (let open Fiber.O in
       let build_deps deps = Memo.Build.run (build_deps deps) in
       report_evaluated_rule t;
-      Fs.mkdir_p dir;
+      let* () = Memo.Build.run (Fs.mkdir_p dir) in
       let env = Rule.effective_env rule in
-      let loc = Rule.loc rule in
       let is_action_dynamic = Action.is_dynamic action in
       let sandbox_mode =
         match Action.is_useful_to_sandbox action with
@@ -1590,26 +1603,35 @@ end = struct
           | None ->
             let () = remove_targets () in
             pending_targets := Path.Build.Set.union targets !pending_targets;
-            let sandboxed, action =
+            let* sandboxed, action =
               match sandbox with
-              | None -> (None, action)
+              | None -> Fiber.return (None, action)
               | Some (sandbox_dir, sandbox_mode) ->
                 Path.rm_rf (Path.build sandbox_dir);
                 let sandboxed path : Path.Build.t =
                   Path.Build.append_local sandbox_dir (Path.Build.local path)
                 in
-                Dep.Facts.dirs deps
-                |> Path.Set.iter ~f:(fun path ->
-                       match Path.as_in_build_dir path with
-                       | None -> Fs.assert_exists ~loc path
-                       | Some path -> Fs.mkdir_p (sandboxed path));
-                Fs.mkdir_p (sandboxed dir);
+                let* () =
+                  Fiber.parallel_iter_set
+                    (module Path.Set)
+                    (Dep.Facts.dirs deps)
+                    ~f:(fun path ->
+                      Memo.Build.run
+                        (match Path.as_in_build_dir path with
+                        | None -> Fs.assert_exists ~loc path
+                        | Some path -> Fs.mkdir_p (sandboxed path)))
+                in
+                let+ () = Memo.Build.run (Fs.mkdir_p (sandboxed dir)) in
                 ( Some sandboxed
                 , Action.sandbox action ~sandboxed ~mode:sandbox_mode ~deps )
+            and* () =
+              let chdirs = Action.chdirs action in
+              Fiber.parallel_iter_set
+                (module Path.Set)
+                chdirs
+                ~f:(fun p -> Memo.Build.run (Fs.mkdir_p_or_check_exists ~loc p))
             in
-            let chdirs = Action.chdirs action in
-            Path.Set.iter chdirs ~f:Fs.(mkdir_p_or_check_exists ~loc);
-            let+ exec_result =
+            let* exec_result =
               with_locks t locks ~f:(fun () ->
                   let copy_files_from_sandbox sandboxed =
                     Path.Build.Set.iter targets ~f:(fun target ->
@@ -1625,7 +1647,7 @@ end = struct
             Option.iter sandbox ~f:(fun (p, _mode) -> Path.rm_rf (Path.build p));
             (* All went well, these targets are no longer pending *)
             pending_targets := Path.Build.Set.diff !pending_targets targets;
-            let targets_digests =
+            let* targets_digests =
               compute_targets_digests_or_raise_error ~loc targets
             in
             let targets_digest = digest_of_targets_digests targets_digests in
@@ -1672,7 +1694,7 @@ end = struct
                           ])
               | _ -> ()
             in
-            let () =
+            let* () =
               (* Promote *)
               match t.caching with
               | Some { cache = (module Caching : Cache.Caching); _ }
@@ -1686,8 +1708,8 @@ end = struct
                   Log.info
                     [ Pp.textf "promotion failed for %s: %s" targets msg ]
                 in
-                let repository =
-                  let dir = Rule.find_source_dir rule in
+                let+ repository =
+                  let+ dir = Memo.Build.run (Rule.find_source_dir rule) in
                   let open Option.O in
                   let* vcs = File_tree.Dir.vcs dir in
                   let f found = Path.equal found.Vcs.root vcs.Vcs.root in
@@ -1697,7 +1719,7 @@ end = struct
                 Caching.Cache.promote Caching.cache targets_digests rule_digest
                   [] ~repository ~duplication:None
                 |> Result.map_error ~f:report |> ignore
-              | _ -> ()
+              | _ -> Fiber.return ()
             in
             let dynamic_deps_stages =
               List.map exec_result.dynamic_deps_stages
@@ -1706,7 +1728,7 @@ end = struct
             in
             Trace_db.set (Path.build head_target)
               { rule_digest; dynamic_deps_stages; targets_digest };
-            targets_digests)
+            Fiber.return targets_digests)
       in
       let+ () =
         match (mode, !Clflags.promote) with
@@ -1728,7 +1750,7 @@ end = struct
               in
               match consider_for_promotion with
               | false -> Fiber.return ()
-              | true -> (
+              | true ->
                 let in_source_tree = Path.Build.drop_build_context_exn path in
                 let in_source_tree =
                   match into with
@@ -1740,9 +1762,9 @@ end = struct
                          dir ~error_loc:loc)
                       (Path.Source.basename in_source_tree)
                 in
-                let () =
+                let* () =
                   let dir = Path.Source.parent_exn in_source_tree in
-                  match File_tree.find_dir dir with
+                  Memo.Build.run (File_tree.find_dir dir) >>| function
                   | Some _ -> ()
                   | None ->
                     let loc =
@@ -1761,13 +1783,20 @@ end = struct
                 in
                 let dst = in_source_tree in
                 let in_source_tree = Path.source in_source_tree in
-                match
-                  Path.exists in_source_tree
-                  && Cached_digest.file (Path.build path)
-                     = Cached_digest.file in_source_tree
-                with
-                | true -> Fiber.return ()
-                | false ->
+                let* is_up_to_date =
+                  if not (Path.exists in_source_tree) then
+                    Fiber.return false
+                  else
+                    let in_build_dir_digest = Cached_digest.build_file path in
+                    let+ in_source_tree_digest =
+                      Memo.Build.run
+                        (Cached_digest.source_or_external_file in_source_tree)
+                    in
+                    in_build_dir_digest = in_source_tree_digest
+                in
+                if is_up_to_date then
+                  Fiber.return ()
+                else (
                   if lifetime = Until_clean then
                     Promoted_to_delete.add in_source_tree;
                   Scheduler.ignore_for_watch in_source_tree;
@@ -1776,7 +1805,8 @@ end = struct
                      the source tree to be writable by the user, so we
                      explicitly set the user writable bit. *)
                   let chmod n = n lor 0o200 in
-                  t.promote_source ~src:path ~dst ~chmod context))
+                  t.promote_source ~src:path ~dst ~chmod context
+                ))
       in
       if rule_kind = Normal_rule then t.rule_done <- t.rule_done + 1;
       targets_digests)

@@ -7,7 +7,7 @@ module Info : sig
   type t =
     | From_dune_file of Loc.t
     | Internal
-    | Source_file_copy
+    | Source_file_copy of Path.Source.t
 
   val of_loc_opt : Loc.t option -> t
 end
@@ -63,6 +63,7 @@ type t = private
   ; mode : Mode.t
   ; locks : Path.t list
   ; info : Info.t
+  ; loc : Loc.t
   ; (* Directory where all the targets are produced. *) dir : Path.Build.t
   }
 
@@ -93,4 +94,4 @@ val effective_env : t -> Env.t
 (** [find_source_dir rule] is the closest source directory corresponding to
     rule.dir. Eg. [src/dune] for a rule with dir
     [_build/default/src/dune/.dune.objs]. *)
-val find_source_dir : t -> File_tree.Dir.t
+val find_source_dir : t -> File_tree.Dir.t Memo.Build.t

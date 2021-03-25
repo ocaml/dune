@@ -4,6 +4,20 @@ module Function = Function
 
 let track_locations_of_lazy_values = ref false
 
+type 'a forbidden = 'a
+
+type 'a build = 'a Fiber.t
+
+module type Build = sig
+  include Monad
+
+  module List : sig
+    val map : 'a list -> f:('a -> 'b t) -> 'b list t
+  end
+
+  val memo_build : 'a build -> 'a t
+end
+
 module Build = struct
   include Fiber
 
@@ -11,14 +25,6 @@ module Build = struct
     match x with
     | true -> y ()
     | false -> return ()
-
-  module O = struct
-    include Fiber.O
-
-    let ( and* ) a b = fork_and_join (fun () -> a) (fun () -> b)
-
-    let ( and+ ) = ( and* )
-  end
 
   let run = Fun.id
 
@@ -37,6 +43,12 @@ module Build = struct
       | Error _ -> return ()
       | Ok a -> f a
   end
+
+  module List = struct
+    let map = parallel_map
+  end
+
+  let memo_build = Fun.id
 end
 
 let unwrap_exn = ref Fun.id

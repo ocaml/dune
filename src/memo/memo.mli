@@ -207,9 +207,9 @@ val create_with_store :
   -> ('i -> 'o Fiber.t)
   -> ('i, 'o) t
 
-(** [create name ~doc ~input ~visibility ~output f_type f] creates a memoized
-    version of [f]. The result of [f] for a given input is cached, so that the
-    second time [exec t x] is called, the previous result is re-used if
+(** [create name ~doc ~input ~visibility ~output f] creates a memoized version
+    of [f : 'i -> 'o Build.t]. The result of [f] for a given input is cached, so
+    that the second time [exec t x] is called, the previous result is re-used if
     possible.
 
     [exec t x] tracks what calls to other memoized function [f x] performs. When
@@ -218,9 +218,6 @@ val create_with_store :
 
     Running the computation may raise [Memo.Cycle_error.E] if a cycle is
     detected.
-
-    Both simple functions (synchronous) and functions returning fibers
-    (asynchronous ones) can be memoized, and the flavor is selected by [f_type].
 
     [visibility] determines whether the function is user-facing or internal and
     if it's user-facing then how to parse the values written by the user. *)

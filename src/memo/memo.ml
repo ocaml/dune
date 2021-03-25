@@ -473,8 +473,8 @@ end
 
 module M = struct
   module rec Cached_value : sig
-    type 'a t =
-      { value : 'a Value.t
+    type 'o t =
+      { value : 'o Value.t
       ; (* The value id, used to check that the value is the same. *)
         id : Value_id.t
       ; (* When was last computed or confirmed unchanged *)
@@ -489,8 +489,8 @@ module M = struct
 
            Note that [deps] should be listed in the order in which they were
            depended on to avoid recomputations of the dependencies that are no
-           longer relevant (see an example below). [Async] functions induce a
-           partial (rather than a total) order on dependencies, and so [deps]
+           longer relevant (see an example below). Asynchronous functions induce
+           a partial (rather than a total) order on dependencies, and so [deps]
            should be a linearisation of this partial order. It is also worth
            noting that the problem only occurs with dynamic dependencies,
            because static dependencies can never become irrelevant.
@@ -542,14 +542,14 @@ module M = struct
      be garbage collected. Note: some stale computations may never be restarted,
      e.g. if they end up getting forever stuck behind an inactive conditional. *)
   and State : sig
-    type 'a t =
+    type 'o t =
       (* [Considering] marks computations currently being considered, i.e. whose
          result we currently attempt to restore from the cache or recompute. *)
       | Not_considering
       | Considering of
           { run : Run.t
           ; running : Running_state.t
-          ; sample_attempt_result : 'a Cached_value.t Sample_attempt.Result.t
+          ; sample_attempt_result : 'o Cached_value.t Sample_attempt.Result.t
           }
   end =
     State
@@ -1129,8 +1129,6 @@ module Current_run = struct
 end
 
 let current_run () = Current_run.exec ()
-
-module Lazy_id = Stdune.Id.Make ()
 
 module With_implicit_output = struct
   type ('i, 'o) t = 'i -> 'o Fiber.t

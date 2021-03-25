@@ -26,7 +26,7 @@ let%expect_test "run and connect" =
      in
      let rpc =
        let+ () = Lwt_unix.sleep 0.5 in
-       Lwt_process.open_process_full
+       Lwt_process.open_process
          ("dune", [| "dune"; "rpc"; "init"; "--root"; root_dir |])
      in
      let client =

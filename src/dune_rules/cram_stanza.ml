@@ -27,6 +27,7 @@ type t =
   ; alias : Alias.Name.t option
   ; deps : Dep_conf.t Bindings.t option
   ; enabled_if : Blang.t
+  ; locks : String_with_vars.t list
   ; package : Package.t option
   }
 
@@ -38,9 +39,14 @@ let decode =
      and+ alias = field_o "alias" Alias.Name.decode
      and+ deps = field_o "deps" (Bindings.decode Dep_conf.decode)
      and+ enabled_if = Enabled_if.decode ~allowed_vars:Any ~since:None ()
+     and+ locks =
+       field "locks"
+         (Dune_lang.Syntax.since Stanza.syntax (2, 9)
+         >>> repeat String_with_vars.decode)
+         ~default:[]
      and+ package =
        Stanza_common.Pkg.field_opt
          ~check:(Dune_lang.Syntax.since Stanza.syntax (2, 8))
          ()
      in
-     { loc; alias; deps; enabled_if; applies_to; package })
+     { loc; alias; deps; enabled_if; locks; applies_to; package })

@@ -10,6 +10,7 @@ type effective =
   ; alias : Alias.Name.Set.t
   ; deps : unit Action_builder.t list
   ; enabled_if : Blang.t list
+  ; locks : Path.Set.t
   ; packages : Package.Name.Set.t
   }
 
@@ -17,6 +18,7 @@ let empty_effective =
   { loc = Loc.none
   ; alias = Alias.Name.Set.singleton Alias.Name.runtest
   ; enabled_if = [ Blang.true_ ]
+  ; locks = Path.Set.empty
   ; deps = []
   ; packages = Package.Name.Set.empty
   }
@@ -86,8 +88,9 @@ let test_rule ~sctx ~expander ~dir (spec : effective)
         in
         action
       in
+      let locks = Path.Set.to_list spec.locks in
       Memo.Build.parallel_iter aliases ~f:(fun alias ->
-          Alias_rules.add sctx ~alias ~loc cram ~locks:[]))
+          Alias_rules.add sctx ~alias ~loc cram ~locks))
 
 let rules ~sctx ~expander ~dir tests =
   let stanzas =
@@ -162,7 +165,17 @@ let rules ~sctx ~expander ~dir tests =
                 | Some (p : Package.t) ->
                   Package.Name.Set.add acc.packages (Package.Id.name p.id)
               in
-              { acc with enabled_if; deps; alias; packages })
+              let locks =
+                (* Locks must be relative to the cram stanza directory and not
+                   the individual tests direcories *)
+                List.fold_left ~init:acc.locks
+                  ~f:(fun acc lock ->
+                    Expander.Static.expand_str expander lock
+                    |> Path.relative (Path.build dir)
+                    |> Path.Set.add acc)
+                  spec.locks
+              in
+              { acc with enabled_if; locks; deps; alias; packages })
       in
       let test_rule () = test_rule ~sctx ~expander ~dir effective test in
       Only_packages.get () >>= function

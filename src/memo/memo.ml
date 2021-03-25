@@ -850,8 +850,8 @@ module Changed_or_not = struct
 end
 
 module Exec : sig
-  (* [exec_dep_node] is a variant of [compute_internal] but with a simpler type,
-     convenient for external usage. *)
+  (* [exec_dep_node] is a variant of [consider_and_compute] but with a simpler
+     type, convenient for external usage. *)
   val exec_dep_node : ('i, 'o) Dep_node.t -> 'o Fiber.t
 end = struct
   let rec restore_from_cache (type o)
@@ -881,7 +881,7 @@ end = struct
               | No -> (
                 (* If [dep] has no cutoff, it is sufficient to check whether it
                    is up to date. If not, we must recompute [last_cached_value]. *)
-                let* restore_result = restore_from_cache_internal dep in
+                let* restore_result = consider_and_restore_from_cache dep in
                 match restore_result with
                 | Ok cached_value -> (
                   match Value_id.equal cached_value.id v_id with
@@ -896,7 +896,7 @@ end = struct
                    check whether it is up to date: even if it isn't, after we
                    recompute it, the resulting [Value_id] may remain unchanged,
                    allowing us to skip recomputing [last_cached_value]. *)
-                match compute_internal dep with
+                match consider_and_compute dep with
                 | Error dependency_cycle ->
                   Fiber.return (Changed_or_not.Cancelled { dependency_cycle })
                 | Ok cached_value -> (
@@ -1008,17 +1008,20 @@ end = struct
         } ->
       Running { dag_node; result }
 
-  and consider (dep_node : _ Dep_node.t) =
+  and consider :
+        'i 'o.    ('i, 'o) Dep_node.t
+        -> ('o Cached_value.t Sample_attempt.t, Cycle_error.t) result =
+   fun dep_node ->
     let sample_attempt = start_considering dep_node in
     add_dep_from_caller dep_node sample_attempt
     |> Result.map ~f:(fun () -> sample_attempt)
 
-  and compute_internal :
+  and consider_and_compute :
         'i 'o.    ('i, 'o) Dep_node.t
         -> ('o Cached_value.t Fiber.t, Cycle_error.t) result =
    fun dep_node -> Result.map (consider dep_node) ~f:Sample_attempt.compute
 
-  and restore_from_cache_internal :
+  and consider_and_restore_from_cache :
         'i 'o.    ('i, 'o) Dep_node.t
         -> 'o Cached_value.t Cache_lookup.Result.t Fiber.t =
    fun dep_node ->
@@ -1029,7 +1032,7 @@ end = struct
 
   let exec_dep_node dep_node =
     Fiber.of_thunk (fun () ->
-        match compute_internal dep_node with
+        match consider_and_compute dep_node with
         | Ok res ->
           let* res = res in
           Value.get_exn res.value

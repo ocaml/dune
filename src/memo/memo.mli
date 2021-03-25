@@ -384,26 +384,23 @@ end
 
 val cell : ('i, 'o) t -> 'i -> ('i, 'o) Cell.t
 
-(** Memoization of polymorphic functions. The provided [id] function must be
-    injective, i.e. there must be a one-to-one correspondence between [input]s
-    and their [id]s. *)
-module Poly : sig
-  (** Memoization of functions of type ['a input -> 'a output Build.t]. *)
-  module Async (Function : sig
-    type 'a input
+(** Memoization of polymorphic functions ['a input -> 'a output Build.t]. The
+    provided [id] function must be injective, i.e. there must be a one-to-one
+    correspondence between [input]s and their [id]s. *)
+module Poly (Function : sig
+  type 'a input
 
-    type 'a output
+  type 'a output
 
-    val name : string
+  val name : string
 
-    val eval : 'a input -> 'a output Build.t
+  val eval : 'a input -> 'a output Build.t
 
-    val to_dyn : _ input -> Dyn.t
+  val to_dyn : _ input -> Dyn.t
 
-    val id : 'a input -> 'a Type_eq.Id.t
-  end) : sig
-    val eval : 'a Function.input -> 'a Function.output Build.t
-  end
+  val id : 'a input -> 'a Type_eq.Id.t
+end) : sig
+  val eval : 'a Function.input -> 'a Function.output Build.t
 end
 
 val unwrap_exn : (exn -> exn) ref

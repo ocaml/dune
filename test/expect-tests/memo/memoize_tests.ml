@@ -441,8 +441,8 @@ module Function = struct
     | S (_, x) -> x
 end
 
-let%expect_test "Memo.Poly.Async" =
-  let module M = Memo.Poly.Async (Function) in
+let%expect_test "Memo.Poly" =
+  let module M = Memo.Poly (Function) in
   let (i1 : int Function.input) = I (Type_eq.Id.create (), 1) in
   let (i2 : int Function.input) = I (Type_eq.Id.create (), 2) in
   let (s1 : string Function.input) = S (Type_eq.Id.create (), "hi") in

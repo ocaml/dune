@@ -344,7 +344,7 @@ struct
       let eval m = Execution.exec m.t
     end
 
-    module Poly_memo = Memo.Poly.Async (Function)
+    module Memo_poly = Memo.Poly (Function)
     open Memo.Build.O
 
     let merge_facts = Build_deps.merge_facts
@@ -417,7 +417,7 @@ struct
         match res with
         | Ok r -> r
         | Error () -> (on_error, Dep.Map.empty))
-      | Memo m -> Poly_memo.eval m
+      | Memo m -> Memo_poly.eval m
       | Memo_build f ->
         let+ f = f in
         (f, Dep.Map.empty)

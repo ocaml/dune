@@ -713,7 +713,7 @@ module Call_stack = struct
 
   let get_call_stack_tip () = List.hd_opt (get_call_stack ())
 
-  let push_async_frame (frame : Stack_frame_with_state.t) f =
+  let push_frame (frame : Stack_frame_with_state.t) f =
     let stack = get_call_stack () in
     Fiber.Var.set call_stack_var (frame :: stack) (fun () ->
         Implicit_output.forbid_async f)
@@ -971,7 +971,7 @@ end = struct
     in
     let restore_from_cache =
       Once.create ~must_not_raise:(fun () ->
-          Call_stack.push_async_frame frame (fun () ->
+          Call_stack.push_frame frame (fun () ->
               let+ restore_result =
                 restore_from_cache dep_node.last_cached_value
               in
@@ -984,7 +984,7 @@ end = struct
       Once.and_then restore_from_cache ~f_must_not_raise:(function
         | Ok cached_value -> Fiber.return cached_value
         | Error cache_lookup_failure ->
-          Call_stack.push_async_frame frame (fun () ->
+          Call_stack.push_frame frame (fun () ->
               dep_node.last_cached_value <- None;
               let+ cached_value =
                 compute dep_node cache_lookup_failure running_state.deps_so_far
@@ -1213,39 +1213,38 @@ module Run = struct
   include Run
 end
 
-module Poly = struct
-  module type Function_interface = sig
-    type 'a input
+module Poly (Function : sig
+  type 'a input
 
-    type 'a output
+  type 'a output
 
-    val name : string
+  val name : string
 
-    val id : 'a input -> 'a Type_eq.Id.t
+  val id : 'a input -> 'a Type_eq.Id.t
 
-    val to_dyn : _ input -> Dyn.t
+  val to_dyn : _ input -> Dyn.t
+
+  val eval : 'a input -> 'a output Fiber.t
+end) =
+struct
+  open Function
+
+  module Key = struct
+    type t = T : _ input -> t
+
+    let to_dyn (T t) = to_dyn t
+
+    let hash (T t) = Type_eq.Id.hash (id t)
+
+    let equal (T x) (T y) = Type_eq.Id.equal (id x) (id y)
   end
 
-  module Mono (F : Function_interface) = struct
-    open F
+  module Value = struct
+    type t = T : ('a Type_eq.Id.t * 'a output) -> t
 
-    type key = K : 'a input -> key
-
-    module Key = struct
-      type t = key
-
-      let to_dyn (K t) = to_dyn t
-
-      let hash (K t) = Type_eq.Id.hash (id t)
-
-      let equal (K x) (K y) = Type_eq.Id.equal (id x) (id y)
-    end
-
-    type value = V : ('a Type_eq.Id.t * 'a output) -> value
-
-    let get (type a) ~value ~(input_with_matching_id : a input) : a output =
+    let get (type a) ~(input_with_matching_id : a input) value : a output =
       match value with
-      | V (id_v, res) -> (
+      | T (id_v, res) -> (
         match Type_eq.Id.same id_v (id input_with_matching_id) with
         | None ->
           Code_error.raise
@@ -1255,24 +1254,13 @@ module Poly = struct
         | Some Type_eq.T -> res)
   end
 
-  module Async (Function : sig
-    include Function_interface
+  let memo =
+    create_hidden name
+      ~input:(module Key)
+      (function
+        | Key.T input -> eval input >>| fun v -> Value.T (id input, v))
 
-    val eval : 'a input -> 'a output Fiber.t
-  end) =
-  struct
-    open Function
-    include Mono (Function)
-
-    let impl = function
-      | K input -> Fiber.map (eval input) ~f:(fun v -> V (id input, v))
-
-    let memo = create_hidden name ~input:(module Key) impl
-
-    let eval x =
-      Fiber.map (exec memo (K x)) ~f:(fun value ->
-          get ~value ~input_with_matching_id:x)
-  end
+  let eval x = exec memo (Key.T x) >>| Value.get ~input_with_matching_id:x
 end
 
 let should_clear_caches =

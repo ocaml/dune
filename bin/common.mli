@@ -30,6 +30,8 @@ val only_packages : t -> Only_packages.t option
 
 val watch : t -> bool
 
+val file_watcher : t -> Dune_engine.Scheduler.Run.file_watcher
+
 val default_target : t -> Arg.Dep.t
 
 val prefix_target : t -> string -> string

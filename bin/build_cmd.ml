@@ -30,7 +30,8 @@ let run_build_command_poll ~(common : Common.t) ~targets ~setup =
     in
     `Continue
   in
-  Scheduler.poll ~common ~once ~finally:Hooks.End_of_build.run
+  let file_watcher = Common.file_watcher common in
+  Scheduler.poll ~file_watcher ~common ~once ~finally:Hooks.End_of_build.run
 
 let run_build_command_once ~(common : Common.t) ~targets ~setup =
   let open Fiber.O in

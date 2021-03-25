@@ -105,7 +105,10 @@ let%expect_test "invalid client version" =
   ( "{ payload = Some [ [ \"supported versions until\"; [ \"2\"; \"0\" ] ] ]\
    \n; message = \"Unsupported version\"\
    \n; kind = Version_error\
-   \n}") |}]
+   \n}")
+  Trailing output
+  ---------------
+  server: finished. |}]
 
 let%expect_test "call private method" =
   let decl = Decl.request ~method_:"double" Conv.int Conv.int in

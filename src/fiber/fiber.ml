@@ -35,16 +35,9 @@ module Execution_context : sig
     (* Create a continuation that captures the current execution context *)
     val create : ('a -> unit) -> 'a t
 
-    (* Restart a suspended fiber. [run] doesn't preserve the current execution
-       context and should always be called last. *)
-    val run : 'a t -> 'a -> unit
+    (* Enqueue the restarting of a suspended fiber. *)
+    val enqueue : 'a t -> 'a -> unit
   end
-
-  (* Execute the current continuation, making sure to forward errors to the
-     current execution context. This function doesn't preserve the current
-     execution context. It should be used to execute the current continuation
-     before calling [K.run] *)
-  val safe_run_k : ('a -> unit) -> 'a -> unit
 
   (* Execute a function returning a fiber, passing any raised exception to the
      current execution context. This function preserve the current execution
@@ -75,9 +68,7 @@ module Execution_context : sig
 
   val set_vars_sync : Univ_map.t -> ('a -> 'b) -> 'a -> 'b
 
-  (* Execute a callback with a fresh execution context. For the toplevel
-     [Fiber.run] function. *)
-  val new_run : (unit -> 'a) -> 'a
+  val run : 'a t -> iter:(unit -> unit t) -> 'a
 
   val reraise_all : Exn_with_backtrace.t list -> unit
 end = struct
@@ -86,6 +77,7 @@ end = struct
           (* This handler must never raise *)
     ; vars : Univ_map.t
     ; on_release : on_release
+    ; jobs : job Queue.t
     }
 
   and 'a on_release_exec =
@@ -102,10 +94,26 @@ end = struct
     ; ctx : t
     }
 
+  and job = Job : 'a k * 'a -> job
+
   let create () =
-    { on_error = None; vars = Univ_map.empty; on_release = Do_nothing }
+    { on_error = None
+    ; vars = Univ_map.empty
+    ; on_release = Do_nothing
+    ; jobs = Queue.create ()
+    }
 
   let current = ref (create ())
+
+  module K = struct
+    type 'a t = 'a k
+
+    let create run = { run; ctx = !current }
+
+    let enqueue k x =
+      assert (k.ctx.jobs == !current.jobs);
+      Queue.push k.ctx.jobs (Job (k, x))
+  end
 
   let add_refs n =
     let t = !current in
@@ -113,21 +121,17 @@ end = struct
     | Do_nothing -> ()
     | Exec r -> r.ref_count <- r.ref_count + n
 
-  let rec safe_run_k : type a. (a -> unit) -> a -> unit =
-   fun k x ->
-    try k x with
-    | exn -> forward_error exn
-
-  and forward_exn_with_bt t exn =
+  let rec forward_exn_with_backtrace t exn =
     match t.on_error with
     | None -> Exn_with_backtrace.reraise exn
-    | Some { ctx; run } ->
+    | Some { ctx; run } -> (
       current := ctx;
-      safe_run_k run exn
+      try run exn with
+      | exn -> forward_error exn)
 
   and forward_error exn =
     let exn = Exn_with_backtrace.capture exn in
-    forward_exn_with_bt !current exn
+    forward_exn_with_backtrace !current exn
 
   let deref t =
     match t.on_release with
@@ -137,11 +141,10 @@ end = struct
       r.ref_count <- ref_count;
       match ref_count with
       | 0 ->
-        current := r.k.ctx;
-        (* We need to call [safe_run_k] as we might be the in handler of the
-           [try...with] block inside [apply] and so we are no more in a
-           [try...with] blocks *)
-        safe_run_k r.k.run (Error ())
+        (* Here we might be at an arbitrary place in the code at an arbitrary
+           stack depth, so it is best to enqueue the job for running the rhs of
+           [wait_errors]. *)
+        K.enqueue r.k (Error ())
       | _ -> assert (ref_count > 0))
 
   let deref () = deref !current
@@ -181,16 +184,6 @@ end = struct
     current := { t with vars };
     Exn.protect ~finally:(fun () -> current := t) ~f:(fun () -> f x)
 
-  module K = struct
-    type 'a t = 'a k
-
-    let create run = { run; ctx = !current }
-
-    let run { run; ctx } x =
-      current := ctx;
-      safe_run_k run x
-  end
-
   let apply f x k =
     let backup = !current in
     (try f x k with
@@ -206,15 +199,44 @@ end = struct
   let reraise_all exns =
     let backup = !current in
     add_refs (List.length exns - 1);
-    List.iter exns ~f:(forward_exn_with_bt backup)
+    List.iter exns ~f:(forward_exn_with_backtrace backup)
 
-  let new_run f =
+  let rec run_jobs jobs =
+    (* We put the [try..with] around the [while] loop to avoid setting up an
+       exception handler at each iteration of the loop. *)
+    try
+      while not (Queue.is_empty jobs) do
+        let (Job ({ run; ctx }, x)) = Queue.pop_exn jobs in
+        current := ctx;
+        run x
+      done
+    with
+    | exn ->
+      forward_error exn;
+      run_jobs jobs
+
+  let run fiber ~iter =
     let backup = !current in
     Exn.protect
       ~finally:(fun () -> current := backup)
       ~f:(fun () ->
-        current := create ();
-        f ())
+        let t = create () in
+        current := t;
+        let result = ref None in
+        apply (fun () -> fiber) () (fun x -> result := Some x);
+        run_jobs t.jobs;
+        let rec loop () =
+          match !result with
+          | Some res -> res
+          | None ->
+            iter () ignore;
+            run_jobs t.jobs;
+            (* We restore the current execution context so that [iter] always
+               observe the same execution context. *)
+            current := t;
+            loop ()
+        in
+        loop ())
 end
 
 module EC = Execution_context
@@ -453,15 +475,18 @@ let with_error_handler f ~on_error k = EC.set_error_handler ~on_error f () k
 
 let wait_errors f k = EC.wait_errors f k
 
-let map_reduce_errors (type a) (module M : Monoid with type t = a) ~on_error f =
+let map_reduce_errors (type a) (module M : Monoid with type t = a) ~on_error f k
+    =
   let acc = ref M.empty in
   let on_error exn =
     let+ m = on_error exn in
     acc := M.combine !acc m
   in
-  wait_errors (fun () -> with_error_handler ~on_error f) >>| function
-  | Ok _ as ok -> ok
-  | Error () -> Error !acc
+  wait_errors
+    (fun () -> with_error_handler ~on_error f)
+    (function
+      | Ok _ as ok -> k ok
+      | Error () -> k (Error !acc))
 
 let collect_errors f =
   let module Exns = Monoid.Appendable_list (Exn_with_backtrace) in
@@ -511,8 +536,8 @@ module Ivar = struct
     | Full _ -> failwith "Fiber.Ivar.fill"
     | Empty q ->
       t.state <- Full x;
-      EC.safe_run_k k ();
-      Queue.iter q ~f:(fun k -> K.run k x)
+      Queue.iter q ~f:(fun k -> K.enqueue k x);
+      k ()
 
   let read t k =
     match t.state with
@@ -556,8 +581,8 @@ module Mvar = struct
         k v
       | Some (v', w) ->
         t.value <- Some v';
-        EC.safe_run_k k v;
-        K.run w ())
+        K.enqueue w ();
+        k v)
 
   let write t x k =
     match t.value with
@@ -568,8 +593,8 @@ module Mvar = struct
         t.value <- Some x;
         k ()
       | Some r ->
-        EC.safe_run_k k ();
-        K.run r x)
+        K.enqueue r x;
+        k ())
 end
 
 module Mutex = struct
@@ -593,8 +618,8 @@ module Mutex = struct
       t.locked <- false;
       k ()
     | Some next ->
-      EC.safe_run_k k ();
-      K.run next ()
+      K.enqueue next ();
+      k ()
 
   let with_lock t f =
     let* () = lock t in
@@ -858,18 +883,6 @@ end
 type fill = Fill : 'a Ivar.t * 'a -> fill
 
 let run t ~iter =
-  EC.new_run (fun () ->
-      let result = ref None in
-      EC.apply (fun () -> t) () (fun x -> result := Some x);
-      let rec loop () =
-        match !result with
-        | Some res -> res
-        | None ->
-          let (Fill (ivar, v)) = iter () in
-          (* We use [EC.apply] so that the current execution context is
-             restored, ensuring that [iter] always run in the same execution
-             context. *)
-          EC.apply (fun () -> Ivar.fill ivar v) () ignore;
-          loop ()
-      in
-      loop ())
+  EC.run t ~iter:(fun () ->
+      let (Fill (ivar, v)) = iter () in
+      Ivar.fill ivar v)

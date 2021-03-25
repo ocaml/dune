@@ -47,6 +47,24 @@ let test ?(expect_never = false) to_dyn f =
     print_endline "[FAIL] expected Never to be raised but it wasn't"
   | true, false -> print_endline "[FAIL] unexpected Never raised"
 
+let%expect_test "basics" =
+  test unit (Fiber.return ());
+  [%expect {| () |}];
+
+  test unit
+    (let* () = Fiber.return () in
+     Fiber.return ());
+  [%expect {| () |}];
+
+  test unit
+    (let* () = Scheduler.yield () in
+     Fiber.return ());
+  [%expect {| () |}]
+
+let%expect_test "collect_errors" =
+  test (backtrace_result unit) (Fiber.collect_errors (fun () -> raise Exit));
+  [%expect {| Error [ { exn = "Exit"; backtrace = "" } ] |}]
+
 let%expect_test "reraise_all" =
   let exns =
     let exn = Exn_with_backtrace.capture Exit in
@@ -792,7 +810,6 @@ let%expect_test "Stream: multiple writers is an error" =
   Trailing output
   ---------------
   Writer 1 writing
-  Reader 1 done
   Writer 2 writing |}]
 
 let%expect_test "Stream: writing on a closed stream is an error" =
@@ -917,8 +934,5 @@ let%expect_test "stack usage with consecutive Ivar.fill" =
        Stack usage for n = 0:    %d words\n\
        Stack usage for n = 1000: %d words\n"
       n0 n1000;
-  [%expect
-    {|
-    [FAIL]
-    Stack usage for n = 0:    20 words
-    Stack usage for n = 1000: 8020 words |}]
+  [%expect {|
+    [PASS] |}]

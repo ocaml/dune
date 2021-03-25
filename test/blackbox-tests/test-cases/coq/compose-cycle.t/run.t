@@ -6,7 +6,6 @@
   - b
   - a
   - b
-  -> required by a/a.v.d
   -> required by a/a.vo
   -> required by install lib/coq/user-contrib/a/a.vo
   -> required by ccycle.install
@@ -18,7 +17,6 @@
   - a
   - b
   - a
-  -> required by b/b.v.d
   -> required by b/b.vo
   -> required by install lib/coq/user-contrib/b/b.vo
   -> required by ccycle.install

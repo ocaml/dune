@@ -65,17 +65,16 @@ let term =
      | `List ->
        let fns = Memo.registered_functions () in
        let longest =
-         String.longest_map fns ~f:(fun info -> info.Memo.Function.Info.name)
+         String.longest_map fns ~f:(fun info -> info.Memo.Info.name)
        in
-       List.iter fns ~f:(fun { Memo.Function.Info.name; doc } ->
+       List.iter fns ~f:(fun { Memo.Info.name; doc } ->
            Printf.printf "%-*s" longest name;
            Option.iter doc ~f:(Printf.printf ": %s");
            Printf.printf "\n");
        flush stdout;
        `Ok ()
-     | `Show_doc fn ->
-       let info = Memo.function_info fn in
-       let name = info.name in
+     | `Show_doc name ->
+       let info = Memo.function_info ~name in
        Printf.printf "%s\n%s\n" name (String.make (String.length name) '=');
        Option.iter info.doc ~f:(Printf.printf "%s\n");
        `Ok ()

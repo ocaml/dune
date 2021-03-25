@@ -133,19 +133,6 @@ val reset : unit -> unit
     clear the memoization cache. *)
 val restart_current_run : unit -> unit
 
-module Function : sig
-  module Type : sig
-    type ('a, 'b, 'f) t = Async : ('a, 'b, 'a -> 'b Build.t) t
-  end
-
-  module Info : sig
-    type t =
-      { name : string
-      ; doc : string option
-      }
-  end
-end
-
 module type Output_simple = sig
   type t
 
@@ -300,11 +287,18 @@ end
 (** Introduces a dependency on the current build run. *)
 val current_run : unit -> Run.t Build.t
 
+module Info : sig
+  type t =
+    { name : string
+    ; doc : string option
+    }
+end
+
 (** Return the list of registered functions *)
-val registered_functions : unit -> Function.Info.t list
+val registered_functions : unit -> Info.t list
 
 (** Lookup function's info *)
-val function_info : string -> Function.Info.t
+val function_info : name:string -> Info.t
 
 module Lazy : sig
   type 'a t

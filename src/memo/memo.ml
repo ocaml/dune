@@ -1,6 +1,5 @@
 open! Stdune
 open Fiber.O
-module Function = Function
 
 let track_locations_of_lazy_values = ref false
 
@@ -125,9 +124,16 @@ end)
 
 module Exn_set = Exn_comparable.Set
 
+module Info = struct
+  type t =
+    { name : string
+    ; doc : string option
+    }
+end
+
 module Spec = struct
   type ('i, 'o) t =
-    { info : Function.Info.t option
+    { info : Info.t option
     ; input : (module Store_intf.Input with type t = 'i)
     ; output : (module Output_simple with type t = 'o)
     ; allow_cutoff : 'o Allow_cutoff.t
@@ -166,7 +172,7 @@ module Spec = struct
             let name =
               sprintf "lazy value created at %s" (Loc.to_file_colon_line loc)
             in
-            { Function.Info.name; doc = None })
+            { Info.name; doc = None })
       | _ -> info
     in
     let (output : (module Output_simple with type t = o)), allow_cutoff =
@@ -1085,10 +1091,9 @@ let registered_functions () =
   |> Seq.fold_left
        ~f:(fun xs x -> List.cons (function_info_of_spec x) xs)
        ~init:[]
-  |> List.sort ~compare:(fun x y ->
-         String.compare x.Function.Info.name y.Function.Info.name)
+  |> List.sort ~compare:(fun x y -> String.compare x.Info.name y.Info.name)
 
-let function_info name = get_func name |> function_info_of_spec
+let function_info ~name = get_func name |> function_info_of_spec
 
 let get_call_stack = Call_stack.get_call_stack_without_state
 

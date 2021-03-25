@@ -853,3 +853,34 @@ let%expect_test "raise exception" =
          | _ -> assert false)
        (fun () -> Pool.stop pool));
   [%expect {| Caught Exit |}]
+
+let%expect_test "execution context preservation in iter callback" =
+  let ivar1 = Fiber.Ivar.create () in
+  let ivar2 = Fiber.Ivar.create () in
+  let ivar3 = Fiber.Ivar.create () in
+  let var = Fiber.Var.create () in
+  let step = ref 0 in
+  let fiber =
+    let* () = Fiber.Ivar.read ivar1 in
+    Fiber.Var.set var 1 (fun () ->
+        let* () = Fiber.Ivar.read ivar2 in
+        Fiber.Var.set var 2 (fun () -> Fiber.Ivar.read ivar3))
+  in
+  let iter () =
+    let v = Fiber.Var.get var in
+    Printf.printf "%d: var = %s\n" !step
+      (Dyn.to_string (Dyn.Encoder.(option int) v));
+    incr step;
+    match !step with
+    | 1 -> Fiber.Fill (ivar1, ())
+    | 2 -> Fiber.Fill (ivar2, ())
+    | 3 -> Fiber.Fill (ivar3, ())
+    | _ -> assert false
+  in
+  (* BUG: [iter] should always be executed in the same execution context, and so
+     should always observe the same value for [var]. *)
+  Fiber.run fiber ~iter;
+  [%expect {|
+    0: var = None
+    1: var = Some 1
+    2: var = Some 2 |}]

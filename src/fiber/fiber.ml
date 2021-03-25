@@ -1,6 +1,6 @@
 open! Stdune
 
-type 'a t = ('a -> unit) -> unit
+type ('a, 'ctx) fiber = 'ctx -> ('a -> unit) -> unit
 
 (* This module tries to enforce the following invariants:
 
@@ -28,58 +28,64 @@ type 'a t = ('a -> unit) -> unit
 let of_thunk f k = f () k
 
 module Execution_context : sig
+  type t
+
+  type nonrec 'a fiber = ('a, t) fiber
+
   module K : sig
     (* Represent a suspended fiber *)
     type 'a t
 
+    type ctx
+
     (* Create a continuation that captures the current execution context *)
-    val create : ('a -> unit) -> 'a t
+    val create : ctx -> ('a -> unit) -> 'a t
 
     (* Restart a suspended fiber. [run] doesn't preserve the current execution
        context and should always be called last. *)
     val run : 'a t -> 'a -> unit
   end
+  with type ctx := t
 
   (* Execute the current continuation, making sure to forward errors to the
      current execution context. This function doesn't preserve the current
      execution context. It should be used to execute the current continuation
      before calling [K.run] *)
-  val safe_run_k : ('a -> unit) -> 'a -> unit
+  val safe_run_k : t -> ('a -> unit) -> 'a -> unit
 
   (* Execute a function returning a fiber, passing any raised exception to the
      current execution context. This function preserve the current execution
      context. It should be called when creating forks.*)
-  val apply : ('a -> 'b t) -> 'a -> 'b t
+  val apply : ('a -> 'b fiber) -> 'a -> 'b fiber
 
-  val apply2 : ('a -> 'b -> 'c t) -> 'a -> 'b -> 'c t
+  val vars : t -> Univ_map.t
+
+  val apply2 : ('a -> 'b -> 'c fiber) -> 'a -> 'b -> 'c fiber
 
   (* Add [n] references to the current execution context *)
-  val add_refs : int -> unit
+  val add_refs : t -> int -> unit
 
   (* Decrese the reference count of the current execution context *)
-  val deref : unit -> unit
+  val deref : t -> unit
 
   (* [wait_errors f] executes [f ()] inside a new execution contexts. Returns a
      fiber that terminates when all the fiber in the sub-context have
      terminated. *)
-  val wait_errors : (unit -> 'a t) -> ('a, unit) result t
+  val wait_errors : (unit -> 'a fiber) -> ('a, unit) result fiber
 
   (* Set the current error handler. [on_error] is called in the current
      execution context. *)
   val set_error_handler :
-    on_error:(Exn_with_backtrace.t -> unit t) -> ('a -> 'b t) -> 'a -> 'b t
+       on_error:(Exn_with_backtrace.t -> unit fiber)
+    -> ('a -> 'b fiber)
+    -> 'a
+    -> 'b fiber
 
-  val vars : unit -> Univ_map.t
+  val set_vars : Univ_map.t -> ('a -> 'b fiber) -> 'a -> 'b fiber
 
-  val set_vars : Univ_map.t -> ('a -> 'b t) -> 'a -> 'b t
+  val create : unit -> t
 
-  val set_vars_sync : Univ_map.t -> ('a -> 'b) -> 'a -> 'b
-
-  (* Execute a callback with a fresh execution context. For the toplevel
-     [Fiber.run] function. *)
-  val new_run : (unit -> 'a) -> 'a
-
-  val reraise_all : Exn_with_backtrace.t list -> unit
+  val reraise_all : t -> Exn_with_backtrace.t list -> unit
 end = struct
   type t =
     { on_error : Exn_with_backtrace.t k option
@@ -102,181 +108,150 @@ end = struct
     ; ctx : t
     }
 
+  type nonrec 'a fiber = ('a, t) fiber
+
+  let vars t = t.vars
+
   let create () =
     { on_error = None; vars = Univ_map.empty; on_release = Do_nothing }
 
-  let current = ref (create ())
-
-  let add_refs n =
-    let t = !current in
+  let add_refs t n =
     match t.on_release with
     | Do_nothing -> ()
     | Exec r -> r.ref_count <- r.ref_count + n
 
-  let rec safe_run_k : type a. (a -> unit) -> a -> unit =
-   fun k x ->
+  let rec safe_run_k : type a. t -> (a -> unit) -> a -> unit =
+   fun t k x ->
     try k x with
-    | exn -> forward_error exn
+    | exn -> forward_error t exn
 
   and forward_exn_with_bt t exn =
     match t.on_error with
     | None -> Exn_with_backtrace.reraise exn
-    | Some { ctx; run } ->
-      current := ctx;
-      safe_run_k run exn
+    | Some { ctx; run } -> safe_run_k ctx run exn
 
-  and forward_error exn =
+  and forward_error t exn =
     let exn = Exn_with_backtrace.capture exn in
-    forward_exn_with_bt !current exn
+    forward_exn_with_bt t exn
 
   let deref t =
     match t.on_release with
     | Do_nothing -> ()
     | Exec r ->
       r.ref_count <- r.ref_count - 1;
-      if r.ref_count = 0 then (
-        current := r.k.ctx;
+      if r.ref_count = 0 then
         (* We need to call [safe_run_k] as we might be the in handler of the
            [try...with] block inside [apply] and so we are no more in a
            [try...with] blocks *)
-        safe_run_k r.k.run (Error ())
-      ) else
+        safe_run_k r.k.ctx r.k.run (Error ())
+      else
         assert (r.ref_count > 0)
 
-  let deref_finalize k x =
-    match !current.on_release with
+  let deref_finalize t k x =
+    match t.on_release with
     | Do_nothing -> ()
     | Exec r ->
       r.ref_count <- r.ref_count - 1;
       assert (r.ref_count = 0);
-      current := r.k.ctx;
       (* We need to call [safe_run_k] as we might be the in handler of the
          [try...with] block inside [apply] and so we are no more in a
          [try...with] blocks *)
-      safe_run_k k x
+      safe_run_k r.k.ctx k x
 
-  let deref () = deref !current
-
-  let wait_errors f k =
-    let t = !current in
+  let wait_errors f t k =
     let on_release = { k = { ctx = t; run = k }; ref_count = 1 } in
     let child = { t with on_release = Exec on_release } in
-    current := child;
-    f () (fun x -> deref_finalize k (Ok x))
+    f () child (fun x -> deref_finalize child k (Ok x))
 
-  let set_error_handler ~on_error f x k =
-    let t = !current in
-    let run exn = on_error exn deref in
+  let set_error_handler :
+        'a 'b.    on_error:(Exn_with_backtrace.t -> unit fiber)
+        -> ('a -> 'b fiber) -> 'a -> 'b fiber =
+   fun ~on_error f x t k ->
+    let run exn = on_error exn t (fun () -> deref t) in
     let on_error = Some { run; ctx = t } in
-    current := { t with on_error };
-    f x (fun x ->
-        current := t;
-        k x)
+    f x { t with on_error } (fun x -> k x)
 
-  let vars () = !current.vars
-
-  let set_vars vars f x k =
-    let t = !current in
-    current := { t with vars };
-    f x (fun x ->
-        current := t;
-        k x)
-
-  let set_vars_sync (type b) vars f x : b =
-    let t = !current in
-    current := { t with vars };
-    Exn.protect ~finally:(fun () -> current := t) ~f:(fun () -> f x)
+  let set_vars : 'a 'b. Univ_map.t -> ('a -> 'b fiber) -> 'a -> 'b fiber =
+   fun vars f x ctx k -> f x { ctx with vars } (fun x -> k x)
 
   module K = struct
     type 'a t = 'a k
 
-    let create run = { run; ctx = !current }
+    let create t run = { run; ctx = t }
 
-    let run { run; ctx } x =
-      current := ctx;
-      safe_run_k run x
+    let run { run; ctx } x = safe_run_k ctx run x
   end
 
-  let apply f x k =
-    let backup = !current in
-    (try f x k with
-    | exn -> forward_error exn);
-    current := backup
+  let apply f x ctx k =
+    try f x ctx k with
+    | exn -> forward_error ctx exn
 
-  let apply2 f x y k =
-    let backup = !current in
-    (try f x y k with
-    | exn -> forward_error exn);
-    current := backup
+  let apply2 f x y ctx k =
+    try f x y ctx k with
+    | exn -> forward_error ctx exn
 
-  let reraise_all exns =
-    let backup = !current in
-    add_refs (List.length exns - 1);
-    List.iter exns ~f:(forward_exn_with_bt backup)
-
-  let new_run f =
-    let backup = !current in
-    Exn.protect
-      ~finally:(fun () -> current := backup)
-      ~f:(fun () ->
-        current := create ();
-        f ())
+  let reraise_all t exns =
+    add_refs t (List.length exns - 1);
+    List.iter exns ~f:(forward_exn_with_bt t)
 end
 
 module EC = Execution_context
 module K = EC.K
 
-let return x k = k x
+type 'a t = 'a EC.fiber
 
-let never _ = ()
+let return x _ k = k x
+
+let never _ _ = ()
 
 type ('a, 'b) fork_and_join_state =
   | Nothing_yet
   | Got_a of 'a
   | Got_b of 'b
 
-let fork_and_join fa fb k =
+let fork_and_join : 'a 'b. (unit -> 'a t) -> (unit -> 'b t) -> ('a * 'b) t =
+ fun fa fb ctx k ->
   let state = ref Nothing_yet in
-  EC.add_refs 1;
-  EC.apply fa () (fun a ->
+  EC.add_refs ctx 1;
+  EC.apply fa () ctx (fun a ->
       match !state with
       | Nothing_yet ->
         state := Got_a a;
-        EC.deref ()
+        EC.deref ctx
       | Got_a _ -> assert false
       | Got_b b -> k (a, b));
-  fb () (fun b ->
+  fb () ctx (fun b ->
       match !state with
       | Nothing_yet ->
         state := Got_b b;
-        EC.deref ()
+        EC.deref ctx
       | Got_a a -> k (a, b)
       | Got_b _ -> assert false)
 
-let fork_and_join_unit fa fb k =
+let fork_and_join_unit fa fb ctx k =
   let state = ref Nothing_yet in
-  EC.add_refs 1;
-  EC.apply fa () (fun () ->
+  EC.add_refs ctx 1;
+  EC.apply fa () ctx (fun () ->
       match !state with
       | Nothing_yet ->
         state := Got_a ();
-        EC.deref ()
+        EC.deref ctx
       | Got_a _ -> assert false
       | Got_b b -> k b);
-  fb () (fun b ->
+  fb () ctx (fun b ->
       match !state with
       | Nothing_yet ->
         state := Got_b b;
-        EC.deref ()
+        EC.deref ctx
       | Got_a () -> k b
       | Got_b _ -> assert false)
 
 module O = struct
-  let ( >>> ) a b k = a (fun () -> b k)
+  let ( >>> ) a b ctx k = a ctx (fun () -> b ctx k)
 
-  let ( >>= ) t f k = t (fun x -> f x k)
+  let ( >>= ) t f ctx k = t ctx (fun x -> f x ctx k)
 
-  let ( >>| ) t f k = t (fun x -> k (f x))
+  let ( >>| ) t f ctx k = t ctx (fun x -> k (f x))
 
   let ( let+ ) = ( >>| )
 
@@ -332,79 +307,80 @@ let list_of_option_array =
   in
   fun a -> loop a (Array.length a) []
 
-let parallel_map l ~f k =
+let parallel_map l ~f ctx k =
   match l with
   | [] -> k []
-  | [ x ] -> f x (fun x -> k [ x ])
+  | [ x ] -> f x ctx (fun x -> k [ x ])
   | _ ->
     let n = List.length l in
-    EC.add_refs (n - 1);
+    EC.add_refs ctx (n - 1);
     let left_over = ref n in
     let results = Array.make n None in
     List.iteri l ~f:(fun i x ->
-        EC.apply f x (fun y ->
+        EC.apply f x ctx (fun y ->
             results.(i) <- Some y;
             decr left_over;
             if !left_over = 0 then
               k (list_of_option_array results)
             else
-              EC.deref ()))
+              EC.deref ctx))
 
 let all_concurrently = parallel_map ~f:Fun.id
 
-let[@inline always] parallel_iter_generic ~n ~iter ~f k =
-  EC.add_refs (n - 1);
+let[@inline always] parallel_iter_generic ~n ~iter ~f ctx k =
+  EC.add_refs ctx (n - 1);
   let left_over = ref n in
   let k () =
     decr left_over;
     if !left_over = 0 then
       k ()
     else
-      EC.deref ()
+      EC.deref ctx
   in
-  iter ~f:(fun x -> EC.apply f x k)
+  iter ~f:(fun x -> EC.apply f x ctx k)
 
-let parallel_iter l ~f k =
+let parallel_iter l ~f ctx k =
   match l with
   | [] -> k ()
-  | [ x ] -> f x k
-  | _ -> parallel_iter_generic ~n:(List.length l) ~iter:(List.iter l) ~f k
+  | [ x ] -> f x ctx k
+  | _ -> parallel_iter_generic ~n:(List.length l) ~iter:(List.iter l) ~f ctx k
 
 let parallel_iter_set (type a s)
-    (module S : Set.S with type elt = a and type t = s) t ~(f : a -> unit t) k =
+    (module S : Set.S with type elt = a and type t = s) t ~(f : a -> unit t) ctx
+    k =
   let len = S.cardinal t in
   match len with
   | 0 -> k ()
-  | 1 -> f (Option.value_exn (S.min_elt t)) k
-  | n -> parallel_iter_generic ~n ~iter:(S.iter t) ~f k
+  | 1 -> f (Option.value_exn (S.min_elt t)) ctx k
+  | n -> parallel_iter_generic ~n ~iter:(S.iter t) ~f ctx k
 
 module Make_map_traversals (Map : Map.S) = struct
-  let parallel_iter t ~f k =
+  let parallel_iter t ~f ctx k =
     match Map.cardinal t with
     | 0 -> k ()
     | 1 ->
       let x, y = Map.choose t |> Option.value_exn in
-      f x y k
+      f x y ctx k
     | n ->
-      EC.add_refs (n - 1);
+      EC.add_refs ctx (n - 1);
       let left_over = ref n in
       let k () =
         decr left_over;
         if !left_over = 0 then
           k ()
         else
-          EC.deref ()
+          EC.deref ctx
       in
-      Map.iteri t ~f:(fun x y -> EC.apply2 f x y k)
+      Map.iteri t ~f:(fun x y -> EC.apply2 f x y ctx k)
 
-  let parallel_map t ~f k =
+  let parallel_map t ~f ctx k =
     match Map.cardinal t with
     | 0 -> k Map.empty
     | 1 ->
       let x, y = Map.choose t |> Option.value_exn in
-      f x y (fun y -> k (Map.singleton x y))
+      f x y ctx (fun y -> k (Map.singleton x y))
     | n ->
-      EC.add_refs (n - 1);
+      EC.add_refs ctx (n - 1);
       let left_over = ref n in
       let cell = ref None in
       let k (refs : _ option ref Map.t) =
@@ -413,13 +389,13 @@ module Make_map_traversals (Map : Map.S) = struct
       let refs =
         Map.mapi t ~f:(fun x y ->
             let res = ref None in
-            EC.apply2 f x y (fun z ->
+            EC.apply2 f x y ctx (fun z ->
                 res := Some z;
                 decr left_over;
                 if !left_over = 0 then
                   Option.iter !cell ~f:k
                 else
-                  EC.deref ());
+                  EC.deref ctx);
             res)
       in
       if !left_over = 0 then
@@ -439,18 +415,21 @@ let rec repeat_while : 'a. f:('a -> 'a option t) -> init:'a -> unit t =
 module Var = struct
   include Univ_map.Key
 
-  let get var = Univ_map.find (EC.vars ()) var
+  let get var ctx k =
+    let vars = EC.vars ctx in
+    k (Univ_map.find vars var)
 
-  let get_exn var = Univ_map.find_exn (EC.vars ()) var
+  let get_exn var ctx k =
+    let vars = EC.vars ctx in
+    k (Univ_map.find_exn vars var)
 
-  let set_sync var x f = EC.set_vars_sync (Univ_map.set (EC.vars ()) var x) f ()
+  let set var x f ctx k =
+    let vars = EC.vars ctx in
+    EC.set_vars (Univ_map.set vars var x) f () ctx k
 
-  let set var x f k = EC.set_vars (Univ_map.set (EC.vars ()) var x) f () k
-
-  let unset_sync var f =
-    EC.set_vars_sync (Univ_map.remove (EC.vars ()) var) f ()
-
-  let unset var f k = EC.set_vars (Univ_map.remove (EC.vars ()) var) f () k
+  let unset var f ctx k =
+    let vars = EC.vars ctx in
+    EC.set_vars (Univ_map.remove vars var) f () ctx k
 
   let create () = create ~name:"var" (fun _ -> Dyn.Encoder.string "var")
 end
@@ -481,12 +460,11 @@ let collect_errors f =
   | Ok x -> Ok x
   | Error l -> Error (Appendable_list.to_list l)
 
-let reraise_all = function
+let reraise_all l =
+  match l with
   | [] -> never
   | [ exn ] -> Exn_with_backtrace.reraise exn
-  | exns ->
-    EC.reraise_all exns;
-    never
+  | exns -> fun ctx _ -> EC.reraise_all ctx exns
 
 let finalize f ~finally =
   let* res1 = collect_errors f in
@@ -512,20 +490,20 @@ module Ivar = struct
 
   let create () = { state = Empty (Queue.create ()) }
 
-  let fill t x k =
+  let fill t x ctx k =
     match t.state with
     | Full _ -> failwith "Fiber.Ivar.fill"
     | Empty q ->
       t.state <- Full x;
-      EC.safe_run_k k ();
+      EC.safe_run_k ctx k ();
       Queue.iter q ~f:(fun k -> K.run k x)
 
-  let read t k =
+  let read t ctx k =
     match t.state with
     | Full x -> k x
-    | Empty q -> Queue.push q (K.create k)
+    | Empty q -> Queue.push q (K.create ctx k)
 
-  let peek t k =
+  let peek t _ k =
     k
       (match t.state with
       | Full x -> Some x
@@ -552,9 +530,9 @@ module Mvar = struct
   let create_full x =
     { value = Some x; writers = Queue.create (); readers = Queue.create () }
 
-  let read t k =
+  let read t ctx k =
     match t.value with
-    | None -> Queue.push t.readers (K.create k)
+    | None -> Queue.push t.readers (K.create ctx k)
     | Some v -> (
       match Queue.pop t.writers with
       | None ->
@@ -562,19 +540,19 @@ module Mvar = struct
         k v
       | Some (v', w) ->
         t.value <- Some v';
-        EC.safe_run_k k v;
+        EC.safe_run_k ctx k v;
         K.run w ())
 
-  let write t x k =
+  let write t x ctx k =
     match t.value with
-    | Some _ -> Queue.push t.writers (x, K.create k)
+    | Some _ -> Queue.push t.writers (x, K.create ctx k)
     | None -> (
       match Queue.pop t.readers with
       | None ->
         t.value <- Some x;
         k ()
       | Some r ->
-        EC.safe_run_k k ();
+        EC.safe_run_k ctx k ();
         K.run r x)
 end
 
@@ -584,22 +562,22 @@ module Mutex = struct
     ; mutable waiters : unit K.t Queue.t
     }
 
-  let lock t k =
+  let lock t ctx k =
     if t.locked then
-      Queue.push t.waiters (K.create k)
+      Queue.push t.waiters (K.create ctx k)
     else (
       t.locked <- true;
       k ()
     )
 
-  let unlock t k =
+  let unlock t ctx k =
     assert t.locked;
     match Queue.pop t.waiters with
     | None ->
       t.locked <- false;
       k ()
     | Some next ->
-      EC.safe_run_k k ();
+      EC.safe_run_k ctx k ();
       K.run next ()
 
   let with_lock t f =
@@ -723,7 +701,7 @@ module Stream = struct
       lock t;
       loop t ~f
 
-    let parallel_iter t ~f k =
+    let parallel_iter t ~f ctx k =
       let n = ref 1 in
       let k () =
         decr n;
@@ -731,15 +709,15 @@ module Stream = struct
           unlock t;
           k ()
         ) else
-          EC.deref ()
+          EC.deref ctx
       in
       let rec loop t =
-        t.read () (function
+        t.read () ctx (function
           | None -> k ()
           | Some x ->
-            EC.add_refs 1;
+            EC.add_refs ctx 1;
             incr n;
-            EC.apply f x k;
+            EC.apply f x ctx k;
             loop t)
       in
       loop t
@@ -831,18 +809,18 @@ module Pool = struct
     ; mutable status : status
     }
 
-  let running t k =
+  let running t _ctx k =
     match t.status with
     | Open -> k true
     | Closed -> k false
 
   let create () = { mvar = Mvar.create (); status = Open }
 
-  let task t ~f k =
+  let task t ~f ctx k =
     match t.status with
     | Closed ->
       Code_error.raise "pool is closed. new tasks may not be submitted" []
-    | Open -> Mvar.write t.mvar (Task f) k
+    | Open -> Mvar.write t.mvar (Task f) ctx k
 
   let stream t =
     Stream.In.create (fun () ->
@@ -851,12 +829,12 @@ module Pool = struct
         | Done -> None
         | Task task -> Some task)
 
-  let stop t k =
+  let stop t ctx k =
     match t.status with
     | Closed -> k ()
     | Open ->
       t.status <- Closed;
-      Mvar.write t.mvar Done k
+      Mvar.write t.mvar Done ctx k
 
   let run t = stream t |> Stream.In.parallel_iter ~f:(fun task -> task ())
 end
@@ -864,18 +842,17 @@ end
 type fill = Fill : 'a Ivar.t * 'a -> fill
 
 let run t ~iter =
-  EC.new_run (fun () ->
-      let result = ref None in
-      EC.apply (fun () -> t) () (fun x -> result := Some x);
-      let rec loop () =
-        match !result with
-        | Some res -> res
-        | None ->
-          let (Fill (ivar, v)) = iter () in
-          (* We use [EC.apply] so that the current execution context is
-             restored, ensuring that [iter] always run in the same execution
-             context. *)
-          EC.apply (fun () -> Ivar.fill ivar v) () ignore;
-          loop ()
-      in
-      loop ())
+  let ctx = EC.create () in
+  let result = ref None in
+  EC.apply (fun () -> t) () ctx (fun x -> result := Some x);
+  let rec loop () =
+    match !result with
+    | Some res -> res
+    | None ->
+      let (Fill (ivar, v)) = iter () in
+      (* We use [EC.apply] so that the current execution context is restored,
+         ensuring that [iter] always run in the same execution context. *)
+      EC.apply (fun () -> Ivar.fill ivar v) () ctx ignore;
+      loop ()
+  in
+  loop ()

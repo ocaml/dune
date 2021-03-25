@@ -211,17 +211,17 @@ module Caches = struct
 end
 
 module Dep_node_without_state = struct
-  type ('a, 'b) t =
-    { spec : ('a, 'b) Spec.t
-    ; input : 'a
+  type ('i, 'o) t =
+    { spec : ('i, 'o) Spec.t
+    ; input : 'i
     ; id : Id.t
     }
 
   type packed = T : (_, _) t -> packed [@@unboxed]
 end
 
-let ser_input (type a) (node : (a, _) Dep_node_without_state.t) =
-  let (module Input : Store_intf.Input with type t = a) = node.spec.input in
+let ser_input (type i) (node : (i, _) Dep_node_without_state.t) =
+  let (module Input : Store_intf.Input with type t = i) = node.spec.input in
   Input.to_dyn node.input
 
 module Stack_frame_without_state = struct
@@ -849,20 +849,14 @@ module Changed_or_not = struct
     | Cancelled of { dependency_cycle : Cycle_error.t }
 end
 
-module rec Exec_async : sig
-  (* [restore_from_cache_internal] and [compute_internal] are called when we are
-     attempting to restore the value from the cache, recursively. *)
-  val restore_from_cache_internal :
-    ('i, 'o) Dep_node.t -> 'o Cached_value.t Cache_lookup.Result.t Fiber.t
-
-  val compute_internal :
-    ('i, 'o) Dep_node.t -> ('o Cached_value.t Fiber.t, Cycle_error.t) result
-
+module Exec : sig
   (* [exec_dep_node] is a variant of [compute_internal] but with a simpler type,
      convenient for external usage. *)
   val exec_dep_node : ('i, 'o) Dep_node.t -> 'o Fiber.t
 end = struct
-  let restore_from_cache (last_cached_value : _ Cached_value.t option) =
+  let rec restore_from_cache (type o)
+      (last_cached_value : o Cached_value.t option) :
+      o Cached_value.t Cache_lookup.Result.t Fiber.t =
     match last_cached_value with
     | None -> Fiber.return (Error Cache_lookup.Failure.Not_found)
     | Some cached_value -> (
@@ -887,9 +881,7 @@ end = struct
               | No -> (
                 (* If [dep] has no cutoff, it is sufficient to check whether it
                    is up to date. If not, we must recompute [last_cached_value]. *)
-                let* restore_result =
-                  Exec_unknown.restore_from_cache_internal dep
-                in
+                let* restore_result = restore_from_cache_internal dep in
                 match restore_result with
                 | Ok cached_value -> (
                   match Value_id.equal cached_value.id v_id with
@@ -904,7 +896,7 @@ end = struct
                    check whether it is up to date: even if it isn't, after we
                    recompute it, the resulting [Value_id] may remain unchanged,
                    allowing us to skip recomputing [last_cached_value]. *)
-                match Exec_unknown.compute_internal dep with
+                match compute_internal dep with
                 | Error dependency_cycle ->
                   Fiber.return (Changed_or_not.Cancelled { dependency_cycle })
                 | Ok cached_value -> (
@@ -927,7 +919,7 @@ end = struct
         | Cancelled { dependency_cycle } ->
           Error (Cancelled { dependency_cycle })))
 
-  let compute (dep_node : _ Dep_node.t) cache_lookup_failure deps_so_far =
+  and compute (dep_node : _ Dep_node.t) cache_lookup_failure deps_so_far =
     Deps_so_far.start_compute deps_so_far;
     let compute_value_and_deps_rev () =
       (* A consequence of using [Fiber.collect_errors] is that memoized
@@ -958,7 +950,7 @@ end = struct
       | true -> Cached_value.create value ~deps_rev
       | false -> Cached_value.confirm_old_value ~deps_rev old_cv)
 
-  let newly_considering (dep_node : _ Dep_node.t) =
+  and newly_considering (dep_node : _ Dep_node.t) =
     let dag_node : Dag.node =
       { info = Dag.create_node_info global_dep_dag
       ; data = Dep_node_without_state.T dep_node.without_state
@@ -1003,7 +995,7 @@ end = struct
         };
     Sample_attempt.Running { dag_node; result }
 
-  let start_considering (dep_node : _ Dep_node.t) =
+  and start_considering (dep_node : _ Dep_node.t) =
     match currently_considering dep_node.state with
     | Not_considering -> (
       match get_cached_value_in_current_cycle dep_node with
@@ -1016,15 +1008,20 @@ end = struct
         } ->
       Running { dag_node; result }
 
-  let consider (dep_node : _ Dep_node.t) =
+  and consider (dep_node : _ Dep_node.t) =
     let sample_attempt = start_considering dep_node in
     add_dep_from_caller dep_node sample_attempt
     |> Result.map ~f:(fun () -> sample_attempt)
 
-  let compute_internal (dep_node : _ Dep_node.t) =
-    Result.map (consider dep_node) ~f:Sample_attempt.compute
+  and compute_internal :
+        'i 'o.    ('i, 'o) Dep_node.t
+        -> ('o Cached_value.t Fiber.t, Cycle_error.t) result =
+   fun dep_node -> Result.map (consider dep_node) ~f:Sample_attempt.compute
 
-  let restore_from_cache_internal (dep_node : _ Dep_node.t) =
+  and restore_from_cache_internal :
+        'i 'o.    ('i, 'o) Dep_node.t
+        -> 'o Cached_value.t Cache_lookup.Result.t Fiber.t =
+   fun dep_node ->
     match consider dep_node with
     | Ok sample_attempt -> Sample_attempt.restore sample_attempt
     | Error dependency_cycle ->
@@ -1039,23 +1036,7 @@ end = struct
         | Error cycle_error -> raise (Cycle_error.E cycle_error))
 end
 
-and Exec_unknown : sig
-  val compute_internal :
-    ('i, 'o) Dep_node.t -> ('o Cached_value.t Fiber.t, Cycle_error.t) result
-
-  val restore_from_cache_internal :
-    ('i, 'o) Dep_node.t -> 'o Cached_value.t Cache_lookup.Result.t Fiber.t
-end = struct
-  let compute_internal (type i o) (t : (i, o) Dep_node.t) :
-      (o Cached_value.t Fiber.t, Cycle_error.t) result =
-    Exec_async.compute_internal t
-
-  let restore_from_cache_internal (type i o) (t : (i, o) Dep_node.t) :
-      o Cached_value.t Cache_lookup.Result.t Fiber.t =
-    Exec_async.restore_from_cache_internal t
-end
-
-let exec (type i o) (t : (i, o) t) i = Exec_async.exec_dep_node (dep_node t i)
+let exec (type i o) (t : (i, o) t) i = Exec.exec_dep_node (dep_node t i)
 
 let get_deps (type i o) (t : (i, o) t) inp =
   match Store.find t.cache inp with
@@ -1168,7 +1149,7 @@ module Cell = struct
   let input (t : (_, _) t) = t.without_state.input
 
   let read (type i o) (dep_node : (i, o) Dep_node.t) =
-    Exec_async.exec_dep_node dep_node
+    Exec.exec_dep_node dep_node
 
   let invalidate = invalidate_dep_node
 end

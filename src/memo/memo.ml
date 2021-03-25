@@ -716,7 +716,7 @@ module Call_stack = struct
   let push_frame (frame : Stack_frame_with_state.t) f =
     let stack = get_call_stack () in
     Fiber.Var.set call_stack_var (frame :: stack) (fun () ->
-        Implicit_output.forbid_async f)
+        Implicit_output.forbid f)
 end
 
 let pp_stack () =
@@ -1143,7 +1143,7 @@ module With_implicit_output = struct
     in
     let memo =
       create name ?doc ~input ~visibility ~output (fun i ->
-          Implicit_output.collect_async implicit_output (fun () -> impl i))
+          Implicit_output.collect implicit_output (fun () -> impl i))
     in
     fun input ->
       Fiber.map (exec memo input) ~f:(fun (res, output) ->

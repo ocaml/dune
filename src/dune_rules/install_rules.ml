@@ -895,7 +895,7 @@ let memo =
          let context_name = ctx.name in
          let rules =
            Memo.lazy_ (fun () ->
-               Rules.collect_async_unit (fun () ->
+               Rules.collect_unit (fun () ->
                    let+ () = install_rules sctx pkg in
                    install_alias ctx pkg))
          in

@@ -402,7 +402,8 @@ let pp_paths set =
 
 let set_rule_generators ~init ~gen_rules =
   let t = t () in
-  let (), init_rules = Rules.collect init in
+  let open Fiber.O in
+  let+ init_rules = Memo.Build.run (Rules.collect_unit init) in
   Fdecl.set t.init_rules init_rules;
   Fdecl.set t.gen_rules gen_rules
 
@@ -957,8 +958,7 @@ end = struct
             [ ("context_name", Context_or_install.to_dyn context_name) ]
         | Some f -> f
       in
-      Rules.collect_async (fun () ->
-          gen_rules ~dir (Path.Source.explode sub_dir))
+      Rules.collect (fun () -> gen_rules ~dir (Path.Source.explode sub_dir))
     in
     let rules =
       let dir = Path.build dir in
@@ -2155,7 +2155,7 @@ let package_deps (pkg : Package.t) files =
   loop_files (Path.Set.to_list files)
 
 let prefix_rules (prefix : unit Action_builder.t) ~f =
-  let+ res, rules = Rules.collect_async f in
+  let+ res, rules = Rules.collect f in
   Rules.produce (Rules.map_rules rules ~f:(Rule.with_prefix ~build:prefix));
   res
 

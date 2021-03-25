@@ -258,7 +258,7 @@ end = struct
     | Standalone (ft_dir, d) ->
       let include_subdirs = (Loc.none, Include_subdirs.No) in
       let+ files, rules =
-        Rules.collect_async_opt (fun () -> load_text_files sctx ft_dir d)
+        Rules.collect_opt (fun () -> load_text_files sctx ft_dir d)
       in
       let dirs = [ (dir, [], files) ] in
       let ml =
@@ -295,7 +295,7 @@ end = struct
         (loc, Dune_file.Include_subdirs.Include qualif_mode)
       in
       let+ (files, (subdirs : (Path.Build.t * _ * _) list)), rules =
-        Rules.collect_async_opt (fun () ->
+        Rules.collect_opt (fun () ->
             Memo.Build.fork_and_join
               (fun () -> load_text_files sctx ft_dir d)
               (fun () -> collect_group sctx ~ft_dir ~dir))

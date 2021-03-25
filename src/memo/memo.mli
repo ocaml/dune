@@ -328,16 +328,12 @@ module Implicit_output : sig
 
   val produce_opt : 'o t -> 'o option -> unit
 
-  (** [collect*] and [forbid*] take a potentially effectful function (one which
+  (** [collect] and [forbid] take a potentially effectful function (one which
       may produce some implicit output) and turn it into a pure one (with
-      explicit output if any) *)
-  val collect_async : 'o t -> (unit -> 'a Build.t) -> ('a * 'o option) Build.t
+      explicit output if any). *)
+  val collect : 'o t -> (unit -> 'a Build.t) -> ('a * 'o option) Build.t
 
-  val collect_sync : 'o t -> (unit -> 'a) -> 'a * 'o option
-
-  val forbid_async : (unit -> 'a Build.t) -> 'a Build.t
-
-  val forbid_sync : (unit -> 'a) -> 'a
+  val forbid : (unit -> 'a Build.t) -> 'a Build.t
 
   module type Implicit_output = sig
     type t

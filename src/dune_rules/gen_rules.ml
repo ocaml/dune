@@ -468,14 +468,17 @@ let init ~contexts ?only_packages conf =
             (Path.Build.Map.find map path)
             ~default:Package.Id.Set.empty)
   in
-  Build_system.set_rule_generators
-    ~init:(fun () -> Context_name.Map.iter sctxs ~f:Odoc.init)
-    ~gen_rules:(function
-      | Install ctx ->
-        Option.map (Context_name.Map.find sctxs ctx) ~f:(fun sctx ~dir _ ->
-            Install_rules.gen_rules sctx ~dir)
-      | Context ctx ->
-        Context_name.Map.find sctxs ctx
-        |> Option.map ~f:(fun sctx -> gen_rules ~sctx));
+  let* () =
+    Build_system.set_rule_generators
+      ~init:(fun () ->
+        Context_name.Map.iter sctxs ~f:Odoc.init |> Memo.Build.return)
+      ~gen_rules:(function
+        | Install ctx ->
+          Option.map (Context_name.Map.find sctxs ctx) ~f:(fun sctx ~dir _ ->
+              Install_rules.gen_rules sctx ~dir)
+        | Context ctx ->
+          Context_name.Map.find sctxs ctx
+          |> Option.map ~f:(fun sctx -> gen_rules ~sctx))
+  in
   let+ () = Build_system.set_vcs vcs in
   sctxs

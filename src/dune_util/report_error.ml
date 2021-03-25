@@ -69,10 +69,6 @@ let report_backtraces b = report_backtraces_flag := b
 
 let clear_reported () = reported := Digest.Set.empty
 
-let buf = Buffer.create 128
-
-let ppf = Format.formatter_of_buffer buf
-
 let report ?(extra = fun _ -> None) { Exn_with_backtrace.exn; backtrace } =
   match exn with
   | Already_reported -> ()

@@ -24,6 +24,8 @@ module Session : sig
 
   val compare : 'a t -> 'a t -> Ordering.t
 
+  val request_close : 'a t -> unit Fiber.t
+
   val to_dyn : ('a -> Dyn.t) -> 'a t -> Dyn.t
 end
 

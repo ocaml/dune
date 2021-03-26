@@ -48,6 +48,8 @@ module Session = struct
     in
     t.send (Some (Notification call))
 
+  let request_close t = t.send None
+
   let close t =
     match t.state with
     | Uninitialized -> assert false
@@ -211,7 +213,7 @@ module H = struct
                       stats session.id;
                     session.send (Some (Response (id, response))))
             in
-            let* () = session.send None in
+            let* () = Session.request_close session in
             let+ () = t.on_terminate session in
             Session.close session))
 

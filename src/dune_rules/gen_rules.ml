@@ -419,14 +419,14 @@ let init ~contexts ?only_packages conf =
             straight away, so it is safe regarding [Memo]. *)
          lazy
            (Context_name.Map.of_list_map_exn contexts ~f:(fun (c : Context.t) ->
-                (c.name, Memo.Lazy.Async.create (fun () -> make_sctx c))))
+                (c.name, Memo.Lazy.create (fun () -> make_sctx c))))
        and make_sctx (context : Context.t) =
          let host () =
            match context.for_host with
            | None -> Memo.Build.return None
            | Some h ->
              let+ sctx =
-               Memo.Lazy.Async.force
+               Memo.Lazy.force
                  (Context_name.Map.find_exn (Lazy.force sctxs) h.name)
              in
              Some sctx
@@ -448,7 +448,7 @@ let init ~contexts ?only_packages conf =
        in
        Lazy.force sctxs |> Context_name.Map.to_list
        |> Memo.Build.parallel_map ~f:(fun (name, sctx) ->
-              let+ sctx = Memo.Lazy.Async.force sctx in
+              let+ sctx = Memo.Lazy.force sctx in
               (name, sctx))
        >>| Context_name.Map.of_list_exn)
   in
@@ -468,14 +468,17 @@ let init ~contexts ?only_packages conf =
             (Path.Build.Map.find map path)
             ~default:Package.Id.Set.empty)
   in
-  Build_system.set_rule_generators
-    ~init:(fun () -> Context_name.Map.iter sctxs ~f:Odoc.init)
-    ~gen_rules:(function
-      | Install ctx ->
-        Option.map (Context_name.Map.find sctxs ctx) ~f:(fun sctx ~dir _ ->
-            Install_rules.gen_rules sctx ~dir)
-      | Context ctx ->
-        Context_name.Map.find sctxs ctx
-        |> Option.map ~f:(fun sctx -> gen_rules ~sctx));
+  let* () =
+    Build_system.set_rule_generators
+      ~init:(fun () ->
+        Context_name.Map.iter sctxs ~f:Odoc.init |> Memo.Build.return)
+      ~gen_rules:(function
+        | Install ctx ->
+          Option.map (Context_name.Map.find sctxs ctx) ~f:(fun sctx ~dir _ ->
+              Install_rules.gen_rules sctx ~dir)
+        | Context ctx ->
+          Context_name.Map.find sctxs ctx
+          |> Option.map ~f:(fun sctx -> gen_rules ~sctx))
+  in
   let+ () = Build_system.set_vcs vcs in
   sctxs

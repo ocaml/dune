@@ -108,6 +108,15 @@
  (files   dune-installed-libraries.1))
 
 (rule
+ (with-stdout-to dune-internal.1
+  (run dune internal --help=groff)))
+
+(install
+ (section man)
+ (package dune)
+ (files   dune-internal.1))
+
+(rule
  (with-stdout-to dune-ocaml.1
   (run dune ocaml --help=groff)))
 

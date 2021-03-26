@@ -74,6 +74,8 @@ module P = Persistent.Make (struct
   let name = "TO-PROMOTE"
 
   let version = 2
+
+  let to_dyn = Dyn.Encoder.list File.to_dyn
 end)
 
 let db_file = Path.relative Path.build_dir ".to-promote"

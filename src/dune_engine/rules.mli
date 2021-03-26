@@ -92,18 +92,11 @@ val is_subset : t -> of_:t -> bool
 
 val map_rules : t -> f:(Rule.t -> Rule.t) -> t
 
-val collect : (unit -> 'a) -> 'a * t
+val collect : (unit -> 'a Memo.Build.t) -> ('a * t) Memo.Build.t
 
-val collect_unit : (unit -> unit) -> t
+val collect_opt : (unit -> 'a Memo.Build.t) -> ('a * t option) Memo.Build.t
 
-val collect_opt : (unit -> 'a) -> 'a * t option
-
-val collect_async : (unit -> 'a Memo.Build.t) -> ('a * t) Memo.Build.t
-
-val collect_async_opt :
-  (unit -> 'a Memo.Build.t) -> ('a * t option) Memo.Build.t
-
-val collect_async_unit : (unit -> unit Memo.Build.t) -> t Memo.Build.t
+val collect_unit : (unit -> unit Memo.Build.t) -> t Memo.Build.t
 
 (** returns [Dir_rules.empty] for non-build paths *)
 val find : t -> Path.t -> Dir_rules.t

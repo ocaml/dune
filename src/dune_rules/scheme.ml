@@ -20,8 +20,7 @@ module Evaluated : sig
 
   val empty : unit -> 'a t
 
-  val restrict :
-    Path.Build.w Dir_set.t -> 'a t Memo.Lazy.Async.t -> 'a t Memo.Build.t
+  val restrict : Path.Build.w Dir_set.t -> 'a t Memo.Lazy.t -> 'a t Memo.Build.t
 
   val finite : union_rules:('a -> 'a -> 'a) -> 'a Path.Build.Map.t -> 'a t
 
@@ -29,17 +28,17 @@ module Evaluated : sig
     'a t -> dir:Path.Build.t -> ('a option * String.Set.t) Memo.Build.t
 end = struct
   type 'rules t =
-    { by_child : 'rules t Memo.Lazy.Async.t String.Map.t
-    ; rules_here : 'rules option Memo.Lazy.Async.t
+    { by_child : 'rules t Memo.Lazy.t String.Map.t
+    ; rules_here : 'rules option Memo.Lazy.t
     }
 
   let empty () =
-    { by_child = String.Map.empty; rules_here = Memo.Lazy.Async.of_val None }
+    { by_child = String.Map.empty; rules_here = Memo.Lazy.of_val None }
 
   let descend t dir =
     match String.Map.find t.by_child dir with
     | None -> Memo.Build.return (empty ())
-    | Some res -> Memo.Lazy.Async.force res
+    | Some res -> Memo.Lazy.force res
 
   let union_option ~f a b =
     match (a, b) with
@@ -52,26 +51,26 @@ end = struct
     { by_child =
         String.Map.union x.by_child y.by_child ~f:(fun _key data1 data2 ->
             Some
-              (Memo.Lazy.Async.create (fun () ->
-                   let+ x = Memo.Lazy.Async.force data1
-                   and+ y = Memo.Lazy.Async.force data2 in
+              (Memo.Lazy.create (fun () ->
+                   let+ x = Memo.Lazy.force data1
+                   and+ y = Memo.Lazy.force data2 in
                    union ~union_rules x y)))
     ; rules_here =
-        Memo.lazy_async (fun () ->
-            let+ x = Memo.Lazy.Async.force x.rules_here
-            and+ y = Memo.Lazy.Async.force y.rules_here in
+        Memo.lazy_ (fun () ->
+            let+ x = Memo.Lazy.force x.rules_here
+            and+ y = Memo.Lazy.force y.rules_here in
             union_option x y ~f:union_rules)
     }
 
-  let rec restrict (dirs : Path.Local.w Dir_set.t) (t : _ Memo.Lazy.Async.t) :
+  let rec restrict (dirs : Path.Local.w Dir_set.t) (t : _ Memo.Lazy.t) :
       _ t Memo.Build.t =
     let rules_here =
       if Dir_set.here dirs then
-        Memo.Lazy.Async.create (fun () ->
-            let* t = Memo.Lazy.Async.force t in
-            Memo.Lazy.Async.force t.rules_here)
+        Memo.Lazy.create (fun () ->
+            let* t = Memo.Lazy.force t in
+            Memo.Lazy.force t.rules_here)
       else
-        Memo.Lazy.Async.of_val None
+        Memo.Lazy.of_val None
     in
     let+ by_child =
       match Dir_set.default dirs with
@@ -79,16 +78,16 @@ end = struct
         (* This is forcing the lazy potentially too early if the directory the
            user is interested in is not actually in the set. We're not fully
            committed to supporting this case though, anyway. *)
-        let+ t = Memo.Lazy.Async.force t in
+        let+ t = Memo.Lazy.force t in
         String.Map.mapi t.by_child ~f:(fun dir v ->
-            Memo.lazy_async (fun () -> restrict (Dir_set.descend dirs dir) v))
+            Memo.lazy_ (fun () -> restrict (Dir_set.descend dirs dir) v))
       | false ->
         Memo.Build.return
           (String.Map.mapi (Dir_set.exceptions dirs) ~f:(fun dir v ->
-               Memo.lazy_async (fun () ->
+               Memo.lazy_ (fun () ->
                    restrict v
-                     (Memo.lazy_async (fun () ->
-                          let* t = Memo.Lazy.Async.force t in
+                     (Memo.lazy_ (fun () ->
+                          let* t = Memo.Lazy.force t in
                           descend t dir)))))
     in
     { rules_here; by_child }
@@ -99,11 +98,11 @@ end = struct
     let rec go = function
       | [] ->
         { by_child = String.Map.empty
-        ; rules_here = Memo.Lazy.Async.of_val (Some rules)
+        ; rules_here = Memo.Lazy.of_val (Some rules)
         }
       | x :: xs ->
-        { by_child = String.Map.singleton x (Memo.Lazy.Async.of_val (go xs))
-        ; rules_here = Memo.Lazy.Async.of_val None
+        { by_child = String.Map.singleton x (Memo.Lazy.of_val (go xs))
+        ; rules_here = Memo.Lazy.of_val None
         }
     in
     go (Path.Build.explode path)
@@ -119,7 +118,7 @@ end = struct
       | x :: dir -> descend t x >>= loop dir
     in
     let* t = loop (Path.Build.explode dir) t in
-    let+ rules = Memo.Lazy.Async.force t.rules_here in
+    let+ rules = Memo.Lazy.force t.rules_here in
     (rules, String.Set.of_list (String.Map.keys t.by_child))
 end
 
@@ -142,8 +141,7 @@ let evaluate ~union_rules =
           [ ("inner", Dir_set.to_dyn paths); ("outer", Dir_set.to_dyn env) ]
       else
         let paths = Dir_set.inter paths env in
-        Evaluated.restrict paths
-          (Memo.lazy_async (fun () -> loop ~env:paths rules))
+        Evaluated.restrict paths (Memo.lazy_ (fun () -> loop ~env:paths rules))
     | Finite rules ->
       let violations =
         List.filter (Path.Build.Map.keys rules) ~f:(fun p ->

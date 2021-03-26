@@ -34,7 +34,7 @@ module Env_tree : sig
        context:Context.t
     -> host_env_tree:t option
     -> scopes:Scope.DB.t
-    -> default_env:Env_node.t Memo.Lazy.Async.t
+    -> default_env:Env_node.t Memo.Lazy.t
     -> stanzas_per_dir:Stanza.t list Dir_with_dune.t Path.Build.Map.t
     -> root_expander:Expander.t
     -> bin_artifacts:Artifacts.Bin.t
@@ -51,7 +51,7 @@ end = struct
     { context : Context.t
     ; context_env : Env.t  (** context env with additional variables *)
     ; scopes : Scope.DB.t
-    ; default_env : Env_node.t Memo.Lazy.Async.t
+    ; default_env : Env_node.t Memo.Lazy.t
     ; stanzas_per_dir : Stanza.t list Dir_with_dune.t Path.Build.Map.t
     ; host : t option
     ; root_expander : Expander.t
@@ -119,29 +119,29 @@ end = struct
     let inherit_from =
       if Path.Build.equal dir (Scope.root scope) then
         let format_config = Dune_project.format_config (Scope.project scope) in
-        Memo.lazy_async (fun () ->
-            let+ default_env = Memo.Lazy.Async.force t.default_env in
+        Memo.lazy_ (fun () ->
+            let+ default_env = Memo.Lazy.force t.default_env in
             Env_node.set_format_config default_env format_config)
       else
         match Path.Build.parent dir with
         | None ->
           Code_error.raise "Super_context.Env.get called on invalid directory"
             [ ("dir", Path.Build.to_dyn dir) ]
-        | Some parent -> Memo.lazy_async (fun () -> get_node t ~dir:parent)
+        | Some parent -> Memo.lazy_ (fun () -> get_node t ~dir:parent)
     in
     let config_stanza = get_env_stanza t ~dir in
     let project = Scope.project scope in
     let default_context_flags = default_context_flags t.context ~project in
     let expander_for_artifacts =
-      Memo.lazy_async (fun () ->
+      Memo.lazy_ (fun () ->
           let+ external_env = external_env t ~dir in
           expander_for_artifacts ~scope ~root_expander:t.root_expander
             ~external_env ~dir)
     in
     let expander =
-      Memo.lazy_async (fun () ->
+      Memo.lazy_ (fun () ->
           let* expander_for_artifacts =
-            Memo.Lazy.Async.force expander_for_artifacts
+            Memo.Lazy.force expander_for_artifacts
           in
           extend_expander t ~dir ~expander_for_artifacts)
     in
@@ -185,7 +185,6 @@ end = struct
           Memo.exec
             (Memo.create_hidden "env-nodes-memo"
                ~input:(module Path.Build)
-               Async
                (fun path -> Memo.Build.return (get_impl env_tree path)))
 
         let env_tree () = env_tree
@@ -221,7 +220,7 @@ type t =
   ; dir_status_db : Dir_status.DB.t
   ; (* Env node that represents the environment configured for the workspace. It
        is used as default at the root of every project in the workspace. *)
-    default_env : Env_node.t Memo.Lazy.Async.t
+    default_env : Env_node.t Memo.Lazy.t
   ; projects_by_key : Dune_project.t Dune_project.File_key.Map.t
   }
 
@@ -626,18 +625,18 @@ let create ~(context : Context.t) ?host ~projects ~packages ~stanzas () =
         ~value:env_dune_dir_locations
   in
   let default_env =
-    Memo.lazy_async (fun () ->
+    Memo.lazy_ (fun () ->
         let make ~inherit_from ~config_stanza =
           let dir = context.build_dir in
           let scope = Scope.DB.find_by_dir scopes dir in
           let project = Scope.project scope in
           let default_context_flags = default_context_flags context ~project in
           let expander_for_artifacts =
-            Memo.lazy_async (fun () ->
+            Memo.lazy_ (fun () ->
                 Code_error.raise
                   "[expander_for_artifacts] in [default_env] is undefined" [])
           in
-          let expander = Memo.Lazy.Async.of_val root_expander in
+          let expander = Memo.Lazy.of_val root_expander in
           Env_node.make ~dir ~scope ~inherit_from ~config_stanza
             ~profile:context.profile ~expander ~expander_for_artifacts
             ~default_context_flags ~default_env:context_env
@@ -647,7 +646,7 @@ let create ~(context : Context.t) ?host ~projects ~packages ~stanzas () =
           (make ~config_stanza:context.env_nodes.context
              ~inherit_from:
                (Some
-                  (Memo.lazy_async (fun () ->
+                  (Memo.lazy_ (fun () ->
                        Memo.Build.return
                          (make ~inherit_from:None
                             ~config_stanza:context.env_nodes.workspace))))))

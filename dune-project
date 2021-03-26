@@ -139,6 +139,15 @@ understood by dune language."))
  (description "Library to connect and control a running dune instance"))
 
 (package
+ (name dune-rpc-lwt)
+ (depends
+  (dune-rpc (= :version))
+  (stdune-unstable (= :version))
+  lwt)
+ (synopsis "Communicate with dune using rpc and Lwt")
+ (description "Specialization of dune-rpc to Lwt"))
+
+(package
  (name stdune-unstable)
  (synopsis "Dune's unstable standard library")
  (depends

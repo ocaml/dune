@@ -69,14 +69,14 @@ end
 
     [init] can generate rules in any directory, so it's always called. *)
 val set_rule_generators :
-     init:(unit -> unit)
+     init:(unit -> unit Memo.Build.t)
   -> gen_rules:
        (   Context_or_install.t
         -> (   dir:Path.Build.t
             -> string list
             -> extra_sub_directories_to_keep Memo.Build.t)
            option)
-  -> unit
+  -> unit Fiber.t
 
 (** Set the list of VCS repositiories contained in the source tree *)
 val set_vcs : Vcs.t list -> unit Fiber.t

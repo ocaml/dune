@@ -15,6 +15,8 @@ module Id = struct
 
   let make s = s
 
+  let to_sexp t = t
+
   let sexp = Conv.sexp
 
   let gen f = Conv.field "id" (f sexp)

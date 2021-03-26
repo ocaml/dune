@@ -62,7 +62,7 @@ let term =
           `This_rel (path_relative_to_build_root prog)
       in
       let targets =
-        Memo.Lazy.Async.create (fun () ->
+        Memo.Lazy.create (fun () ->
             let open Memo.Build.O in
             (match prog_where with
             | `Search p ->
@@ -89,7 +89,7 @@ let term =
           else
             Build_system.run (fun () ->
                 let open Memo.Build.O in
-                Memo.Lazy.Async.force targets >>= function
+                Memo.Lazy.force targets >>= function
                 | [] -> Memo.Build.return ()
                 | targets ->
                   let+ () = Build_system.build (Target.request targets) in
@@ -128,7 +128,7 @@ let term =
       in
       match (real_prog, no_rebuild) with
       | None, true -> (
-        Memo.Build.run (Memo.Lazy.Async.force targets) >>= function
+        Memo.Build.run (Memo.Lazy.force targets) >>= function
         | [] ->
           let* hints = hints () in
           User_error.raise ~hints [ Pp.textf "Program %S not found!" prog ]

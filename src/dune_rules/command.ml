@@ -165,7 +165,6 @@ module Args = struct
     let memo =
       Memo.create_hidden "Command.Args.memo"
         ~input:(module Path)
-        Async
         (fun dir -> Memo.Build.return (expand_static ~dir t))
     in
     Expand (fun ~dir -> Memo.exec memo dir)

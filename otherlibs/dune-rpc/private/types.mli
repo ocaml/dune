@@ -17,6 +17,8 @@ module Id : sig
 
   val equal : t -> t -> bool
 
+  val to_sexp : t -> Sexp.t
+
   module Set : Set.S with type elt = t
 end
 

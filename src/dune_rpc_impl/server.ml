@@ -115,8 +115,14 @@ let handler (t : t Fdecl.t) : 'a Dune_rpc_server.Handler.t =
         cancel_pending_jobs ()
     in
     let shutdown () =
-      Fiber.fork_and_join_unit cancel_pending_jobs
-        Dune_engine.Scheduler.shutdown
+      let t = Fdecl.get t in
+      let terminate_sessions () =
+        Fiber.fork_and_join_unit cancel_pending_jobs (fun () ->
+            Fiber.parallel_iter_set
+              (module Session_set)
+              t.clients ~f:Session.request_close)
+      in
+      Fiber.fork_and_join_unit terminate_sessions Dune_engine.Scheduler.shutdown
     in
     Handler.notification rpc
       (Handler.callback Handler.private_ shutdown)

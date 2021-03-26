@@ -93,23 +93,11 @@ module Build : sig
   end
 end
 
-type ('input, 'output, 'f) t
-
-(* Temporary type to forbid use of sync memo until we have simplified the
-   implementation. *)
-type 'a forbidden
-
-module Sync : sig
-  type nonrec ('i, 'o) t = ('i, 'o, ('i -> 'o) forbidden) t
-end
-
-module Async : sig
-  type nonrec ('i, 'o) t = ('i, 'o, 'i -> 'o Build.t) t
-end
+type ('input, 'output) t
 
 (** A stack frame within a computation. *)
 module Stack_frame : sig
-  type ('input, 'output, 'f) memo = ('input, 'output, 'f) t
+  type ('input, 'output) memo = ('input, 'output) t
 
   type t
 
@@ -121,7 +109,7 @@ module Stack_frame : sig
 
   (** Checks if the stack frame is a frame of the given memoized function and if
       so, returns [Some i] where [i] is the argument of the function. *)
-  val as_instance_of : t -> of_:('input, _, _) memo -> 'input option
+  val as_instance_of : t -> of_:('input, _) memo -> 'input option
 end
 
 module Cycle_error : sig
@@ -144,21 +132,6 @@ val reset : unit -> unit
 (** Notify the memoization system that the build system has restarted but do not
     clear the memoization cache. *)
 val restart_current_run : unit -> unit
-
-module Function : sig
-  module Type : sig
-    type ('a, 'b, 'f) t =
-      | Sync : ('a, 'b, ('a -> 'b) forbidden) t
-      | Async : ('a, 'b, 'a -> 'b Build.t) t
-  end
-
-  module Info : sig
-    type t =
-      { name : string
-      ; doc : string option
-      }
-  end
-end
 
 module type Output_simple = sig
   type t
@@ -231,13 +204,12 @@ val create_with_store :
   -> input:(module Store.Input with type t = 'i)
   -> visibility:'i Visibility.t
   -> output:'o Output.t
-  -> ('i, 'o, 'f) Function.Type.t
-  -> 'f
-  -> ('i, 'o, 'f) t
+  -> ('i -> 'o Fiber.t)
+  -> ('i, 'o) t
 
-(** [create name ~doc ~input ~visibility ~output f_type f] creates a memoized
-    version of [f]. The result of [f] for a given input is cached, so that the
-    second time [exec t x] is called, the previous result is re-used if
+(** [create name ~doc ~input ~visibility ~output f] creates a memoized version
+    of [f : 'i -> 'o Build.t]. The result of [f] for a given input is cached, so
+    that the second time [exec t x] is called, the previous result is re-used if
     possible.
 
     [exec t x] tracks what calls to other memoized function [f x] performs. When
@@ -247,9 +219,6 @@ val create_with_store :
     Running the computation may raise [Memo.Cycle_error.E] if a cycle is
     detected.
 
-    Both simple functions (synchronous) and functions returning fibers
-    (asynchronous ones) can be memoized, and the flavor is selected by [f_type].
-
     [visibility] determines whether the function is user-facing or internal and
     if it's user-facing then how to parse the values written by the user. *)
 val create :
@@ -258,33 +227,25 @@ val create :
   -> input:(module Input with type t = 'i)
   -> visibility:'i Visibility.t
   -> output:'o Output.t
-  -> ('i, 'o, 'f) Function.Type.t
-  -> 'f
-  -> ('i, 'o, 'f) t
+  -> ('i -> 'o Build.t)
+  -> ('i, 'o) t
 
 val create_hidden :
      string
   -> ?doc:string
   -> input:(module Input with type t = 'i)
-  -> ('i, 'o, 'f) Function.Type.t
-  -> 'f
-  -> ('i, 'o, 'f) t
-
-(** The call [peek_exn t i] registers a dependency on [t i] and returns its
-    value, failing if the value has not yet been computed. We do not expose
-    [peek] because the [None] case is hard to reason about, and currently there
-    are no use-cases for it. *)
-val peek_exn : ('i, 'o, _) t -> 'i -> 'o forbidden
+  -> ('i -> 'o Build.t)
+  -> ('i, 'o) t
 
 (** Execute a memoized function *)
-val exec : (_, _, 'f) t -> 'f
+val exec : ('i, 'o) t -> 'i -> 'o Build.t
 
 (** After running a memoization function with a given name and input, it is
     possible to query which dependencies that function used during execution by
     calling [get_deps] with the name and input used during execution.
 
     Returns [None] if the dependencies were not computed yet. *)
-val get_deps : ('i, _, _) t -> 'i -> (string option * Dyn.t) list option
+val get_deps : ('i, _) t -> 'i -> (string option * Dyn.t) list option
 
 (** Print the memoized call stack during execution. This is useful for debugging
     purposes. *)
@@ -312,72 +273,51 @@ module Run : sig
 
     (** [set t x] sets the value that is returned by [get t] to [x]. Raises if
         [set] was already called. *)
-    val set : 'a t -> 'a -> unit
+    val set : 'a t -> 'a -> unit Build.t
 
     (** [get t] returns the [x] if [set comp x] was called. Raises if [set] has
         not been called yet. *)
-    val get : 'a t -> 'a
+    val get : 'a t -> 'a Build.t
   end
 end
 
 (** Introduces a dependency on the current build run. *)
-val current_run : unit -> Run.t
+val current_run : unit -> Run.t Build.t
+
+module Info : sig
+  type t =
+    { name : string
+    ; doc : string option
+    }
+end
 
 (** Return the list of registered functions *)
-val registered_functions : unit -> Function.Info.t list
+val registered_functions : unit -> Info.t list
 
 (** Lookup function's info *)
-val function_info : string -> Function.Info.t
+val function_info : name:string -> Info.t
 
 module Lazy : sig
-  type +'a t
-
-  val map : 'a t -> f:('a -> 'b) -> 'b t
-
-  val map2 : 'a t -> 'b t -> f:('a -> 'b -> 'c) -> 'c t
-
-  val bind : 'a t -> f:('a -> 'b t) -> 'b t
-
-  val create :
-    (   ?cutoff:('a -> 'a -> bool)
-     -> ?to_dyn:('a -> Dyn.t)
-     -> (unit -> 'a)
-     -> 'a t)
-    forbidden
+  type 'a t
 
   val of_val : 'a -> 'a t
 
-  val force : 'a t -> 'a
+  val create :
+       ?cutoff:('a -> 'a -> bool)
+    -> ?to_dyn:('a -> Dyn.t)
+    -> (unit -> 'a Build.t)
+    -> 'a t
 
-  module Async : sig
-    type 'a t
+  val force : 'a t -> 'a Build.t
 
-    val of_val : 'a -> 'a t
-
-    val create :
-         ?cutoff:('a -> 'a -> bool)
-      -> ?to_dyn:('a -> Dyn.t)
-      -> (unit -> 'a Build.t)
-      -> 'a t
-
-    val force : 'a t -> 'a Build.t
-
-    val map : 'a t -> f:('a -> 'b) -> 'b t
-  end
+  val map : 'a t -> f:('a -> 'b) -> 'b t
 end
 
 val lazy_ :
-  (   ?cutoff:('a -> 'a -> bool)
-   -> ?to_dyn:('a -> Dyn.t)
-   -> (unit -> 'a)
-   -> 'a Lazy.t)
-  forbidden
-
-val lazy_async :
      ?cutoff:('a -> 'a -> bool)
   -> ?to_dyn:('a -> Dyn.t)
   -> (unit -> 'a Build.t)
-  -> 'a Lazy.Async.t
+  -> 'a Lazy.t
 
 module Implicit_output : sig
   type 'o t
@@ -388,16 +328,12 @@ module Implicit_output : sig
 
   val produce_opt : 'o t -> 'o option -> unit
 
-  (** [collect*] and [forbid*] take a potentially effectful function (one which
+  (** [collect] and [forbid] take a potentially effectful function (one which
       may produce some implicit output) and turn it into a pure one (with
-      explicit output if any) *)
-  val collect_async : 'o t -> (unit -> 'a Build.t) -> ('a * 'o option) Build.t
+      explicit output if any). *)
+  val collect : 'o t -> (unit -> 'a Build.t) -> ('a * 'o option) Build.t
 
-  val collect_sync : 'o t -> (unit -> 'a) -> 'a * 'o option
-
-  val forbid_async : (unit -> 'a Build.t) -> 'a Build.t
-
-  val forbid_sync : (unit -> 'a) -> 'a
+  val forbid : (unit -> 'a Build.t) -> 'a Build.t
 
   module type Implicit_output = sig
     type t
@@ -412,7 +348,7 @@ module Implicit_output : sig
 end
 
 module With_implicit_output : sig
-  type ('i, 'o, 'f) t
+  type ('i, 'o) t
 
   val create :
        string
@@ -421,66 +357,43 @@ module With_implicit_output : sig
     -> visibility:'i Visibility.t
     -> output:(module Output_simple with type t = 'o)
     -> implicit_output:'io Implicit_output.t
-    -> ('i, 'o, 'f) Function.Type.t
-    -> 'f
-    -> ('i, 'o, 'f) t
+    -> ('i -> 'o Build.t)
+    -> ('i, 'o) t
 
-  val exec : (_, _, 'f) t -> 'f
+  val exec : ('i, 'o) t -> 'i -> 'o Build.t
 end
 
 module Cell : sig
-  type ('a, 'b, 'f) t
+  type ('i, 'o) t
 
-  val input : ('a, _, _) t -> 'a
+  val input : ('i, _) t -> 'i
 
-  val get_sync : (('a, 'b, 'a -> 'b) t -> 'b) forbidden
-
-  val get_async : ('a, 'b, 'a -> 'b Build.t) t -> 'b Build.t
+  val read : (_, 'o) t -> 'o Build.t
 
   (** Mark this cell as invalid, forcing recomputation of this value. The
       consumers may be recomputed or not, depending on early cutoff. *)
   val invalidate : _ t -> unit
 end
 
-val cell : ('a, 'b, 'f) t -> 'a -> ('a, 'b, 'f) Cell.t
+val cell : ('i, 'o) t -> 'i -> ('i, 'o) Cell.t
 
-(** Memoization of polymorphic functions. When using both [Sync] and [Async]
-    modules, the provided [id] function must be injective, i.e. there must be a
-    one-to-one correspondence between [input]s and their [id]s. *)
-module Poly : sig
-  (** Memoization of functions of type ['a input -> 'a output]. *)
-  module Sync (Function : sig
-    type 'a input
+(** Memoization of polymorphic functions ['a input -> 'a output Build.t]. The
+    provided [id] function must be injective, i.e. there must be a one-to-one
+    correspondence between [input]s and their [id]s. *)
+module Poly (Function : sig
+  type 'a input
 
-    type 'a output
+  type 'a output
 
-    val name : string
+  val name : string
 
-    val eval : 'a input -> 'a output
+  val eval : 'a input -> 'a output Build.t
 
-    val to_dyn : _ input -> Dyn.t
+  val to_dyn : _ input -> Dyn.t
 
-    val id : 'a input -> 'a Type_eq.Id.t
-  end) : sig
-    val eval : ('a Function.input -> 'a Function.output) forbidden
-  end
-
-  (** Memoization of functions of type ['a input -> 'a output Build.t]. *)
-  module Async (Function : sig
-    type 'a input
-
-    type 'a output
-
-    val name : string
-
-    val eval : 'a input -> 'a output Build.t
-
-    val to_dyn : _ input -> Dyn.t
-
-    val id : 'a input -> 'a Type_eq.Id.t
-  end) : sig
-    val eval : 'a Function.input -> 'a Function.output Build.t
-  end
+  val id : 'a input -> 'a Type_eq.Id.t
+end) : sig
+  val eval : 'a Function.input -> 'a Function.output Build.t
 end
 
 val unwrap_exn : (exn -> exn) ref

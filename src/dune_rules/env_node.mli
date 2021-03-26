@@ -19,12 +19,12 @@ type t
 
 val make :
      dir:Path.Build.t
-  -> inherit_from:t Memo.Lazy.Async.t option
+  -> inherit_from:t Memo.Lazy.t option
   -> scope:Scope.t
   -> config_stanza:Dune_env.Stanza.t
   -> profile:Profile.t
-  -> expander:Expander.t Memo.Lazy.Async.t
-  -> expander_for_artifacts:Expander.t Memo.Lazy.Async.t
+  -> expander:Expander.t Memo.Lazy.t
+  -> expander_for_artifacts:Expander.t Memo.Lazy.t
   -> default_context_flags:string list Action_builder.t Foreign_language.Dict.t
   -> default_env:Env.t
   -> default_bin_artifacts:Artifacts.Bin.t

@@ -17,7 +17,7 @@ end = struct
     Memo.create "mkdir_p" ~doc:"mkdir_p"
       ~input:(module Path.Build)
       ~output:(Simple (module Unit))
-      ~visibility:Hidden Async
+      ~visibility:Hidden
       (fun p ->
         Path.mkdir_p (Path.build p);
         Memo.Build.return ())
@@ -28,7 +28,7 @@ end = struct
     Memo.create "assert_path_exists" ~doc:"Path.exists"
       ~input:(module Path)
       ~output:(Simple (module Bool))
-      ~visibility:Hidden Async
+      ~visibility:Hidden
       (fun p -> Memo.Build.return (Path.exists p))
 
   let assert_exists ~loc path =
@@ -66,6 +66,8 @@ end = struct
     let name = "PROMOTED-TO-DELETE"
 
     let version = 1
+
+    let to_dyn = Path.Set.to_dyn
   end)
 
   let fn = Path.relative Path.build_dir ".to-delete-in-source-tree"
@@ -244,6 +246,16 @@ end = struct
       ; dynamic_deps_stages : (Action_exec.Dynamic_dep.Set.t * Digest.t) list
       ; targets_digest : Digest.t
       }
+
+    let to_dyn { rule_digest; dynamic_deps_stages; targets_digest } =
+      Dyn.Record
+        [ ("rule_digest", Digest.to_dyn rule_digest)
+        ; ( "dynamic_deps_stages"
+          , Dyn.Encoder.list
+              (Dyn.Encoder.pair Action_exec.Dynamic_dep.Set.to_dyn Digest.to_dyn)
+              dynamic_deps_stages )
+        ; ("targets_digest", Digest.to_dyn targets_digest)
+        ]
   end
 
   (* Keyed by the first target of the rule. *)
@@ -251,12 +263,16 @@ end = struct
 
   let file = Path.relative Path.build_dir ".db"
 
+  let to_dyn = Path.Table.to_dyn Entry.to_dyn
+
   module P = Dune_util.Persistent.Make (struct
     type nonrec t = t
 
     let name = "INCREMENTAL-DB"
 
     let version = 4
+
+    let to_dyn = to_dyn
   end)
 
   let needs_dumping = ref false
@@ -402,7 +418,8 @@ let pp_paths set =
 
 let set_rule_generators ~init ~gen_rules =
   let t = t () in
-  let (), init_rules = Rules.collect init in
+  let open Fiber.O in
+  let+ init_rules = Memo.Build.run (Rules.collect_unit init) in
   Fdecl.set t.init_rules init_rules;
   Fdecl.set t.gen_rules gen_rules
 
@@ -858,14 +875,14 @@ end = struct
   module Generated_directory_restrictions : sig
     type restriction =
       | Unrestricted
-      | Restricted of Path.Unspecified.w Dir_set.t Memo.Lazy.Async.t
+      | Restricted of Path.Unspecified.w Dir_set.t Memo.Lazy.t
 
     (** Used by the child to ask about the restrictions placed by the parent. *)
     val allowed_by_parent : dir:Path.Build.t -> restriction Memo.Build.t
   end = struct
     type restriction =
       | Unrestricted
-      | Restricted of Path.Unspecified.w Dir_set.t Memo.Lazy.Async.t
+      | Restricted of Path.Unspecified.w Dir_set.t Memo.Lazy.t
 
     let corresponding_source_dir ~dir =
       match Dpath.analyse_target dir with
@@ -887,7 +904,7 @@ end = struct
         Unrestricted
       else
         Restricted
-          (Memo.Lazy.Async.create (fun () ->
+          (Memo.Lazy.create (fun () ->
                load_dir ~dir:(Path.build dir) >>| function
                | Non_build _ -> Dir_set.just_the_root
                | Build { allowed_subdirs; _ } ->
@@ -957,8 +974,7 @@ end = struct
             [ ("context_name", Context_or_install.to_dyn context_name) ]
         | Some f -> f
       in
-      Rules.collect_async (fun () ->
-          gen_rules ~dir (Path.Source.explode sub_dir))
+      Rules.collect (fun () -> gen_rules ~dir (Path.Source.explode sub_dir))
     in
     let rules =
       let dir = Path.build dir in
@@ -1059,7 +1075,7 @@ end = struct
         match Path.Build.Map.find (Rules.to_map rules_produced) dir with
         | None -> Memo.Build.return ()
         | Some rules ->
-          let+ restriction = Memo.Lazy.Async.force restriction in
+          let+ restriction = Memo.Lazy.force restriction in
           if not (Dir_set.here restriction) then
             Code_error.raise
               "Generated rules in a directory not allowed by the parent"
@@ -1081,7 +1097,7 @@ end = struct
            generated granddescendant directories. (rules that attempt to do so
            may run into the [allowed_by_parent] check or will be simply ignored) *)
         Memo.Build.return Dir_set.empty
-      | Restricted restriction -> Memo.Lazy.Async.force restriction
+      | Restricted restriction -> Memo.Lazy.force restriction
     in
     let descendants_to_keep =
       Dir_set.union_all
@@ -1115,7 +1131,7 @@ end = struct
     let memo =
       Memo.create_hidden "load-dir" ~doc:"load dir"
         ~input:(module Path)
-        Async load_dir_impl
+        load_dir_impl
     in
     fun ~dir -> Memo.exec memo dir
 end
@@ -1240,14 +1256,9 @@ and Exported : sig
   val execute_rule : Rule.t -> rule_execution_result Memo.Build.t
 
   (** Exported to inspect memoization cycles. *)
-  val build_file_memo :
-    (Path.t, Digest.t, Path.t -> Digest.t Memo.Build.t) Memo.t
+  val build_file_memo : (Path.t, Digest.t) Memo.t
 
-  val build_alias_memo :
-    ( Alias.t
-    , Digest.t Path.Map.t
-    , Alias.t -> Digest.t Path.Map.t Memo.Build.t )
-    Memo.t
+  val build_alias_memo : (Alias.t, Digest.t Path.Map.t) Memo.t
 end = struct
   open Used_recursively
 
@@ -1891,7 +1902,7 @@ end = struct
   let execute_action_generic_stage2_memo =
     Memo.create_hidden "execute-action"
       ~input:(module Action_desc)
-      Async execute_action_generic_stage2_impl
+      execute_action_generic_stage2_impl
 
   let execute_action_generic ~observing_facts act ~capture_stdout =
     (* We memoize the execution of anonymous actions, both via the persisetent
@@ -2036,7 +2047,7 @@ end = struct
       Memo.create "eval-pred" ~doc:"Evaluate a predicate in a directory"
         ~input:(module File_selector)
         ~output:(Allow_cutoff (module Path.Set))
-        ~visibility:Hidden Async eval_impl
+        ~visibility:Hidden eval_impl
 
     let eval = Memo.exec eval_memo
 
@@ -2045,7 +2056,7 @@ end = struct
         (Memo.create "build-pred" ~doc:"build a predicate"
            ~input:(module File_selector)
            ~output:(Allow_cutoff (module Digest_path_map))
-           ~visibility:Hidden Async build_impl)
+           ~visibility:Hidden build_impl)
   end
 
   let build_file_memo =
@@ -2053,7 +2064,7 @@ end = struct
       ~output:(Allow_cutoff (module Digest))
       ~doc:"Build a file."
       ~input:(module Path)
-      ~visibility:Hidden Async build_file_impl
+      ~visibility:Hidden build_file_impl
 
   let build_file = Memo.exec build_file_memo
 
@@ -2062,14 +2073,13 @@ end = struct
       ~output:(Allow_cutoff (module Digest_path_map))
       ~doc:"Build an alias."
       ~input:(module Alias)
-      ~visibility:Hidden Async build_alias_impl
+      ~visibility:Hidden build_alias_impl
 
   let build_alias = Memo.exec build_alias_memo
 
   let execute_rule_memo =
     Memo.create_hidden "execute-rule"
       ~input:(module Rule)
-      Async
       (execute_rule_impl ~rule_kind:Normal_rule)
 
   let execute_rule = Memo.exec execute_rule_memo
@@ -2161,7 +2171,7 @@ let package_deps (pkg : Package.t) files =
   loop_files (Path.Set.to_list files)
 
 let prefix_rules (prefix : unit Action_builder.t) ~f =
-  let+ res, rules = Rules.collect_async f in
+  let+ res, rules = Rules.collect f in
   Rules.produce (Rules.map_rules rules ~f:(Rule.with_prefix ~build:prefix));
   res
 
@@ -2275,7 +2285,6 @@ end = struct
       let memo =
         Memo.create_hidden "expand-alias"
           ~input:(module Alias)
-          Async
           (fun alias ->
             expand_alias_gen alias ~eval_build_request
               ~paths_of_facts:Expand.deps ~paths_union_all:Path.Set.union_all)
@@ -2299,7 +2308,6 @@ end = struct
     let memo =
       Memo.create_hidden "evaluate-rule"
         ~input:(module Non_evaluated_rule)
-        Async
         (fun rule ->
           let* action, deps = eval_build_request rule.action.build in
           let* expanded_deps = Expand.deps deps in

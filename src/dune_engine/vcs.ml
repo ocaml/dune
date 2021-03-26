@@ -110,7 +110,7 @@ let make_fun name ~output ~doc ~git ~hg =
   let memo =
     Memo.create name ~doc
       ~input:(module T)
-      ~output ~visibility:(Public decode) Async (select git hg)
+      ~output ~visibility:(Public decode) (select git hg)
   in
   Staged.stage (Memo.exec memo)
 

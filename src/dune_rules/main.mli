@@ -43,4 +43,4 @@ val find_context_exn : workspace -> name:Context_name.t -> Context.t
 val find_scontext_exn : build_system -> name:Context_name.t -> Super_context.t
 
 (** Setup the environment *)
-val setup_env : capture_outputs:bool -> Env.t
+val setup_env : capture_outputs:bool -> Env.t Fiber.t

@@ -29,7 +29,7 @@ let%expect_test "run and connect" =
        Lwt_process.open_process
          ("dune", [| "dune"; "rpc"; "init"; "--root"; root_dir |])
      in
-     let client =
+     let run_client =
        let* rpc = rpc in
        let chan = (rpc#stdout, rpc#stdin) in
        Client.connect chan initialize ~f:(fun t ->
@@ -41,32 +41,38 @@ let%expect_test "run and connect" =
              print_endline "received ping. shutting down.";
              Client.notification t Notification.shutdown ())
      in
-     let rpc =
+     let run_rpc =
        let* rpc = rpc in
        let+ res = rpc#status in
        match res with
        | WEXITED i -> printfn "rpc init finished with %i" i
        | _ -> assert false
      in
-     let build =
+     let run_build =
        let+ res = build#status in
        match res with
        | WEXITED i -> printfn "dune build finished with %i" i
        | _ -> assert false
      in
-     Lwt.catch
+     Lwt.finalize
        (fun () ->
-         let+ () =
-           Lwt_unix.with_timeout 3.0 (fun () ->
-               let+ _ = Lwt.all [ client; rpc; build ] in
-               ())
-         in
-         print_endline "success")
-       (fun exn ->
-         (match exn with
-         | Lwt_unix.Timeout -> print_endline "timeout"
-         | _ -> ());
-         Lwt.return_unit));
+         Lwt.catch
+           (fun () ->
+             let+ () =
+               Lwt_unix.with_timeout 3.0 (fun () ->
+                   let+ _ = Lwt.all [ run_client; run_rpc; run_build ] in
+                   ())
+             in
+             print_endline "success")
+           (fun exn ->
+             (match exn with
+             | Lwt_unix.Timeout -> print_endline "timeout"
+             | _ -> ());
+             Lwt.return_unit))
+       (fun () ->
+         let+ rpc = rpc in
+         rpc#terminate;
+         build#terminate));
   [%expect
     {|
     started session

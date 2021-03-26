@@ -111,6 +111,9 @@ Unreleased
   Previously, Dune would have re-executed the action again at the last
   line. Now it remembers the result of the first execution.
 
+- Fix a bug where dune would always re-run all actions that produce symlinks,
+  even if their dependencies did not change. (#4405, @aalekseyev)
+
 2.8.2 (21/01/2021)
 ------------------
 

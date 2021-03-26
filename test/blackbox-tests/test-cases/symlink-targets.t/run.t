@@ -16,7 +16,6 @@ Test demonstrating the handling of actions that produce symlinks.
 # targets were changed.
 
   $ dune build ./b --display=short
-          bash b
 
 
   $ echo a-v2 > a

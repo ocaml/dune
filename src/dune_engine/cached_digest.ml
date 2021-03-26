@@ -109,10 +109,16 @@ let refresh_and_chmod fn =
     (* We remove write permissions to uniformize behavior regardless of whether
        the cache is activated. No need to be zealous in case the file is not
        cached anyway. See issue #3311. *)
-    if Cache.cachable stats.st_kind then
-      Path.chmod ~stats:(Some stats) ~mode:0o222 ~op:`Remove fn
+    if Cache.cachable stats.st_kind
+    then Path.chmod ~stats:(Some stats) ~mode:0o222 ~op:`Remove fn
+  in
+  let stats =
+    match stats.st_kind with
+    | S_LNK -> Path.stat fn
+    | _ -> stats
   in
   refresh_ stats fn
+;;
 
 let peek_file fn =
   let cache = Lazy.force cache in

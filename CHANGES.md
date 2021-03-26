@@ -3,6 +3,9 @@
 
 - Fixed absence of executable bit for installed `.cmxs` (#4149, fixes #4148, @bobot)
 
+- Fix a race in Dune cache. It was particularly easy to hit this race when using
+  the cache on Windows (#4406, fixes #4167, @snowleopard)
+
 2.8.4 (08/03/2021)
 ------------------
 

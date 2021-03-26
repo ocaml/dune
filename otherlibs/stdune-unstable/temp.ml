@@ -93,6 +93,7 @@ let clear_dir dir =
   remove_from_set ~set:tmp_files;
   remove_from_set ~set:tmp_dirs
 
+(* CR-someday amokhov: Throw a meaningful exception when [try_times 1000] fails. *)
 let temp_path ~dir ~prefix ~suffix =
   let rnd = Random.State.bits (Lazy.force prng) land 0xFFFFFF in
   try_times 1000 ~f:(fun _ ->
@@ -103,3 +104,11 @@ let temp_path ~dir ~prefix ~suffix =
         raise Exit
       else
         candidate)
+
+let with_temp_path ~dir ~prefix ~suffix ~f =
+  match temp_path ~dir ~prefix ~suffix with
+  | exception e -> f (Error e)
+  | temp_path ->
+    let result = f (Ok temp_path) in
+    Path.unlink_no_err temp_path;
+    result

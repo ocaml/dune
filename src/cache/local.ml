@@ -235,47 +235,48 @@ let promote_sync cache paths key metadata ~repository ~duplication =
        [duplication] setting) of the promoted file in a temporary directory to
        correctly handle the situation when the file is modified or deleted
        during the promotion process. *)
-    let tmp =
-      let dst = Path.relative cache.temp_dir "data" in
-      if Path.exists dst then Path.unlink dst;
-      duplicate ~duplication cache ~src:abs_path ~dst;
-      dst
-    in
-    let effective_digest = Digest.file_with_stats tmp (Path.stat tmp) in
-    if Digest.compare effective_digest expected_digest != Ordering.Eq then (
-      let message =
-        Printf.sprintf "digest mismatch: %s != %s"
-          (Digest.to_string effective_digest)
-          (Digest.to_string expected_digest)
-      in
-      cache.info [ Pp.text message ];
-      Result.Error message
-    ) else
-      let in_the_cache = file_path cache effective_digest in
-      (* CR-someday: we assume that if the file with [effective_digest] exists
-         in the file storage, then its content matches the digest, i.e. the user
-         never modifies it. In principle, we could add a consistency check but
-         this would have a non-negligible performance cost. A good compromise
-         seems to be to add a "paranoid" mode to Dune cache where we always
-         check file contents for consistency with the expected digest, so one
-         could enable it when needed. In the paranoid mode, we could furthermore
-         check for a digest collision via [Io.compare_files in_the_cache tmp]. *)
-      match Path.exists in_the_cache with
-      | true ->
-        (* We no longer need the temporary file. *)
-        Path.unlink tmp;
-        (* Update the timestamp of the existing cache entry, moving it to the
-           back of the trimming queue. *)
-        Path.touch in_the_cache;
-        Result.Ok (Already_promoted { path; digest = effective_digest })
-      | false ->
-        Path.mkdir_p (Path.parent_exn in_the_cache);
-        (* Move the temporary file to the cache. *)
-        Path.rename tmp in_the_cache;
-        (* Remove write permissions, making the cache entry immutable. We assume
-           that users do not modify the files in the cache. *)
-        Path.chmod in_the_cache ~mode:(stat.st_perm land 0o555);
-        Result.Ok (Promoted { path; digest = effective_digest })
+    Temp.with_temp_path ~dir:cache.temp_dir ~prefix:"temp" ~suffix:"data"
+      ~f:(function
+      | Error _exn ->
+        let message = "Failed to create a temp path" in
+        cache.info [ Pp.text message ];
+        Result.Error message
+      | Ok tmp -> (
+        duplicate ~duplication cache ~src:abs_path ~dst:tmp;
+        let effective_digest = Digest.file_with_stats tmp (Path.stat tmp) in
+        if Digest.compare effective_digest expected_digest != Ordering.Eq then (
+          let message =
+            Printf.sprintf "digest mismatch: %s != %s"
+              (Digest.to_string effective_digest)
+              (Digest.to_string expected_digest)
+          in
+          cache.info [ Pp.text message ];
+          Result.Error message
+        ) else
+          let in_the_cache = file_path cache effective_digest in
+          (* CR-someday: we assume that if the file with [effective_digest]
+             exists in the file storage, then its content matches the digest,
+             i.e. the user never modifies it. In principle, we could add a
+             consistency check but this would have a non-negligible performance
+             cost. A good compromise seems to be to add a "paranoid" mode to
+             Dune cache where we always check file contents for consistency with
+             the expected digest, so one could enable it when needed. In the
+             paranoid mode, we could furthermore check for a digest collision
+             via [Io.compare_files in_the_cache tmp]. *)
+          match Path.exists in_the_cache with
+          | true ->
+            (* Update the timestamp of the existing cache entry, moving it to
+               the back of the trimming queue. *)
+            Path.touch in_the_cache;
+            Result.Ok (Already_promoted { path; digest = effective_digest })
+          | false ->
+            Path.mkdir_p (Path.parent_exn in_the_cache);
+            (* Move the temporary file to the cache. *)
+            Path.rename tmp in_the_cache;
+            (* Remove write permissions, making the cache entry immutable. We
+               assume that users do not modify the files in the cache. *)
+            Path.chmod in_the_cache ~mode:(stat.st_perm land 0o555);
+            Result.Ok (Promoted { path; digest = effective_digest })))
   in
   let+ promoted = Result.List.map ~f:promote paths in
   let metadata_path = metadata_path cache key

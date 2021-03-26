@@ -20,5 +20,16 @@ val destroy : what -> Path.t -> unit
     itself. *)
 val clear_dir : Path.t -> unit
 
-(** [temp_path ~dir ~prefix ~suffix] generate a temporary path in [dir]. *)
+(** [temp_path ~dir ~prefix ~suffix] generate a temporary path in [dir]. The
+    base name of the temporary file is formed by concatenating [prefix], then a
+    suitably chosen integer number, then [suffix]. *)
 val temp_path : dir:Path.t -> prefix:string -> suffix:string -> Path.t
+
+(** Like [temp_path], but passes the temporary [Path.t] to the callback [f], and
+    then deletes it when [f] completes. *)
+val with_temp_path :
+     dir:Path.t
+  -> prefix:string
+  -> suffix:string
+  -> f:((Path.t, exn) result -> 'a)
+  -> 'a

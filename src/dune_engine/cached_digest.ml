@@ -16,12 +16,30 @@ type t =
 
 let db_file = Path.relative Path.build_dir ".digest-db"
 
+let dyn_of_file { digest; timestamp; size; permissions; stats_checked } =
+  Dyn.Record
+    [ ("digest", Digest.to_dyn digest)
+    ; ("timestamp", Float timestamp)
+    ; ("size", Int size)
+    ; ("permissions", Int permissions)
+    ; ("stats_checked", Int stats_checked)
+    ]
+
+let to_dyn { checked_key; max_timestamp; table } =
+  Dyn.Record
+    [ ("checked_key", Int checked_key)
+    ; ("max_timestamp", Float max_timestamp)
+    ; ("table", Path.Table.to_dyn dyn_of_file table)
+    ]
+
 module P = Persistent.Make (struct
   type nonrec t = t
 
   let name = "DIGEST-DB"
 
   let version = 4
+
+  let to_dyn = to_dyn
 end)
 
 let needs_dumping = ref false

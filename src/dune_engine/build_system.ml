@@ -66,6 +66,8 @@ end = struct
     let name = "PROMOTED-TO-DELETE"
 
     let version = 1
+
+    let to_dyn = Path.Set.to_dyn
   end)
 
   let fn = Path.relative Path.build_dir ".to-delete-in-source-tree"
@@ -244,6 +246,16 @@ end = struct
       ; dynamic_deps_stages : (Action_exec.Dynamic_dep.Set.t * Digest.t) list
       ; targets_digest : Digest.t
       }
+
+    let to_dyn { rule_digest; dynamic_deps_stages; targets_digest } =
+      Dyn.Record
+        [ ("rule_digest", Digest.to_dyn rule_digest)
+        ; ( "dynamic_deps_stages"
+          , Dyn.Encoder.list
+              (Dyn.Encoder.pair Action_exec.Dynamic_dep.Set.to_dyn Digest.to_dyn)
+              dynamic_deps_stages )
+        ; ("targets_digest", Digest.to_dyn targets_digest)
+        ]
   end
 
   (* Keyed by the first target of the rule. *)
@@ -251,12 +263,16 @@ end = struct
 
   let file = Path.relative Path.build_dir ".db"
 
+  let to_dyn = Path.Table.to_dyn Entry.to_dyn
+
   module P = Dune_util.Persistent.Make (struct
     type nonrec t = t
 
     let name = "INCREMENTAL-DB"
 
     let version = 4
+
+    let to_dyn = to_dyn
   end)
 
   let needs_dumping = ref false

@@ -114,6 +114,9 @@ Unreleased
 - Fix a bug where dune would always re-run all actions that produce symlinks,
   even if their dependencies did not change. (#4405, @aalekseyev)
 
+- Fix a race in Dune cache. It was particularly easy to hit this race when using
+  the cache on Windows (#4406, fixes #4167, @snowleopard)
+
 2.8.2 (21/01/2021)
 ------------------
 

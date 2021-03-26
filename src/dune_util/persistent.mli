@@ -18,6 +18,16 @@ module type Desc = sig
   val name : string
 
   val version : int
+
+  val to_dyn : t -> Dyn.t
+end
+
+type data = private ..
+
+module type Desc_with_data = sig
+  include Desc
+
+  type data += T of t
 end
 
 (** Create a pair of functions to write/read a persistent value to/from a file.
@@ -33,4 +43,16 @@ module Make (D : Desc) : sig
   val dump : Path.t -> D.t -> unit
 
   val load : Path.t -> D.t option
+
+  type data += T of D.t
 end
+
+(** {1 Generic API} *)
+
+(** The following functions allow to load an arbitrary persistent file without
+    knowing its type. As long as this type of file has been registered via
+    [Make], Dune will know how to read it. *)
+
+type t = T : (module Desc with type t = 'a) * 'a -> t
+
+val load_exn : Path.t -> t

@@ -37,6 +37,8 @@ module Processed = struct
     let name = "merlin-conf"
 
     let version = 2
+
+    let to_dyn _ = Dyn.String "Use [dune ocaml dump-dot-merlin] instead"
   end
 
   module Persist = Dune_util.Persistent.Make (D)

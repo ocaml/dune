@@ -9,7 +9,7 @@ Test the "dune internal dump" command.
   ; table =
       map
         { In_source_tree "x" :
-            { digest = digest "\18461\1934\169d\158\195\131\208\235\1565h\003"
+            { digest = digest "b83631c134a9649ec383d0eb9c356803"
             ; timestamp = -
             ; size = 0
             ; permissions = 436

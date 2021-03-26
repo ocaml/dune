@@ -12,9 +12,6 @@ Test demonstrating the handling of actions that produce symlinks.
   $ cat _build/default/b
   a
 
-# BUG: Dune re-runs the action even though neiter its dependencies, nor its
-# targets were changed.
-
   $ dune build ./b --display=short
 
 

@@ -1,14 +1,18 @@
 (library
- (name dune_rpc_tests)
- (modules dune_rpc_tests)
- (inline_tests)
+ (name dune_rpc_lwt_tests)
+ (inline_tests
+  (deps
+   (package dune)))
  (libraries
-  ocaml_config
-  dune_rpc_private
-  dune_rpc_server
+  dune_rpc
+  csexp_rpc
+  unix
+  dune_engine
+  csexp
   stdune
-  test_scheduler
-  fiber
+  lwt
+  lwt.unix
+  dune_rpc_lwt
   ;; This is because of the (implicit_transitive_deps false)
   ;; in dune-project
   ppx_expect.config

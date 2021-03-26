@@ -102,9 +102,6 @@ val ignore_for_watch : Path.t -> unit
 (** Number of jobs currently running in the background *)
 val running_jobs_count : t -> int
 
-(** Execute the given callback with current directory temporarily changed *)
-val with_chdir : dir:Path.t -> f:(unit -> 'a) -> 'a
-
 (** Send a task that will run in the scheduler thread *)
 val send_sync_task : (unit -> unit) -> unit
 

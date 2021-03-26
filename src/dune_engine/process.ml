@@ -543,7 +543,7 @@ let run_internal ?dir ?(stdout_to = Io.stdout) ?(stderr_to = Io.stderr)
           (Some fn, get stdout_to, get stderr_to)
         | _ -> (None, stdout_to, stderr_to)
       in
-      let run =
+      let event_common, pid =
         (* Output.fd might create the file with Unix.openfile. We need to make
            sure to call it before doing the chdir as the path might be relative. *)
         let stdout = Io.fd stdout_to in
@@ -554,22 +554,20 @@ let run_internal ?dir ?(stdout_to = Io.stdout) ?(stderr_to = Io.stderr)
           | None -> Lazy.force default_env
           | Some env -> add_to_env env
         in
-        fun () ->
-          let event_common =
-            Option.map config.stats
-              ~f:(report_process_start ~id ~prog:prog_str ~args)
-          in
-          let env = Env.to_unix env |> Spawn.Env.of_list in
-          let pid =
-            Spawn.spawn () ~prog:prog_str ~argv ~env ~stdout ~stderr ~stdin
-            |> Pid.of_int
-          in
-          (event_common, pid)
-      in
-      let event_common, pid =
-        match dir with
-        | None -> run ()
-        | Some dir -> Scheduler.with_chdir ~dir ~f:run
+        let event_common =
+          Option.map config.stats
+            ~f:(report_process_start ~id ~prog:prog_str ~args)
+        in
+        let env = Env.to_unix env |> Spawn.Env.of_list in
+        let pid =
+          Spawn.spawn () ~prog:prog_str ~argv ~env ~stdout ~stderr ~stdin
+            ~cwd:
+              (match dir with
+              | None -> Inherit
+              | Some dir -> Path (Path.to_string dir))
+          |> Pid.of_int
+        in
+        (event_common, pid)
       in
       Io.release stdout_to;
       Io.release stderr_to;

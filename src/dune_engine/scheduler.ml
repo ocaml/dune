@@ -798,8 +798,7 @@ module Handler = struct
 end
 
 type t =
-  { original_cwd : string
-  ; config : Config.t
+  { config : Config.t
   ; polling : bool
   ; rpc : Rpc0.t option
   ; mutable status : status
@@ -818,11 +817,6 @@ let running_jobs_count t = Event.Queue.pending_jobs t.events
 let ignore_for_watch p =
   let t = Fiber.Var.get_exn t_var in
   Event.Queue.ignore_next_file_change_event t.events p
-
-let with_chdir ~dir ~f =
-  let t = Fiber.Var.get_exn t_var in
-  Sys.chdir (Path.to_string dir);
-  protect ~finally:(fun () -> Sys.chdir t.original_cwd) ~f
 
 exception Cancel_build
 
@@ -878,11 +872,9 @@ let prepare (config : Config.t) ~polling ~(handler : Handler.t) =
      all threads. *)
   Signal_watcher.init events;
   let process_watcher = Process_watcher.init events in
-  let cwd = Sys.getcwd () in
   let rpc = Rpc0.of_config events config.stats config.rpc in
   let t =
-    { original_cwd = cwd
-    ; status = Building
+    { status = Building
     ; job_throttle = Fiber.Throttle.create config.concurrency
     ; polling
     ; process_watcher

@@ -559,8 +559,12 @@ let run_internal ?dir ?(stdout_to = Io.stdout) ?(stderr_to = Io.stderr)
             Option.map config.stats
               ~f:(report_process_start ~id ~prog:prog_str ~args)
           in
-          ( event_common
-          , Spawn.spawn () ~prog:prog_str ~argv ~env ~stdout ~stderr ~stdin )
+          let env = Env.to_unix env |> Spawn.Env.of_list in
+          let pid =
+            Spawn.spawn () ~prog:prog_str ~argv ~env ~stdout ~stderr ~stdin
+            |> Pid.of_int
+          in
+          (event_common, pid)
       in
       let event_common, pid =
         match dir with

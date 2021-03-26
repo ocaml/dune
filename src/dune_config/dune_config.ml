@@ -341,7 +341,7 @@ let auto_concurrency =
               let ic = Unix.in_channel_of_descr fdr in
               let n = input_line ic |> String.trim |> Int.of_string in
               close_in ic;
-              match (n, snd (Unix.waitpid [] (Pid.to_int pid))) with
+              match (n, snd (Unix.waitpid [] pid)) with
               | Some n, WEXITED 0 -> n
               | _ -> loop rest)))
       in

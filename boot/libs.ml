@@ -23,6 +23,7 @@ let local_libraries =
   ; ("src/ocaml-config", Some "Ocaml_config", false, None)
   ; ("otherlibs/action-plugin/src", Some "Dune_action_plugin", false, None)
   ; ("src/chrome_trace", Some "Chrome_trace", false, None)
+  ; ("vendor/spawn/src", Some "Spawn", false, None)
   ; ("src/stats", Some "Stats", false, None)
   ; ("src/meta_parser", Some "Dune_meta_parser", false, None)
   ; ("src/section", Some "Dune_section", false, None)

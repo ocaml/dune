@@ -6,7 +6,7 @@
 external sys_exit : int -> 'a = "caml_sys_exit"
 
 let restore_cwd_and_execve prog argv ~env =
-  let env = Env.to_unix env in
+  let env = Env.to_unix env |> Array.of_list in
   let argv = Array.of_list argv in
   Sys.chdir (Path.External.to_string Path.External.initial_cwd);
   if Sys.win32 then

@@ -809,7 +809,7 @@ let make_dep_node ~spec ~input : _ Dep_node.t =
   ; state = Not_considering
   }
 
-let dep_node (type i o) (t : (i, o) t) input =
+let dep_node (t : (_, _) t) input =
   match Store.find t.cache input with
   | Some dep_node -> dep_node
   | None ->
@@ -1154,13 +1154,12 @@ module Cell = struct
 
   let input (t : (_, _) t) = t.without_state.input
 
-  let read (type i o) (dep_node : (i, o) Dep_node.t) =
-    Exec.exec_dep_node dep_node
+  let read = Exec.exec_dep_node
 
   let invalidate = invalidate_dep_node
 end
 
-let cell t inp = dep_node t inp
+let cell = dep_node
 
 module Implicit_output = Implicit_output
 module Store = Store_intf

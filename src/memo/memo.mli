@@ -368,7 +368,7 @@ module Cell : sig
 
   val input : ('i, _) t -> 'i
 
-  val read : ('i, 'o) t -> 'o Build.t
+  val read : (_, 'o) t -> 'o Build.t
 
   (** Mark this cell as invalid, forcing recomputation of this value. The
       consumers may be recomputed or not, depending on early cutoff. *)

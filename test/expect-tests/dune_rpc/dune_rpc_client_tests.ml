@@ -49,6 +49,7 @@ let%expect_test "run and connect" =
        | _ -> assert false
      in
      let run_build =
+       let* _ = run_rpc in
        let+ res = build#status in
        match res with
        | WEXITED i -> printfn "dune build finished with %i" i

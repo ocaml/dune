@@ -17,12 +17,12 @@ let () = init ()
 let string_fn_create name =
   Memo.create name
     ~input:(module String)
-    ~visibility:(Public Dune_lang.Decoder.string) Async
+    ~visibility:(Public Dune_lang.Decoder.string)
 
 let int_fn_create name =
   Memo.create name
     ~input:(module Int)
-    ~visibility:(Public Dune_lang.Decoder.int) Async
+    ~visibility:(Public Dune_lang.Decoder.int)
 
 (* to run a computation *)
 let run m = Scheduler.run (Memo.Build.run m)
@@ -199,7 +199,7 @@ let%expect_test _ =
 
 let make_f name f ~input ~output =
   Memo.create name ~input ~visibility:Hidden ~output:(Allow_cutoff output)
-    ~doc:"" Async f
+    ~doc:"" f
 
 let id =
   let f =
@@ -219,7 +219,6 @@ struct
     let f =
       Memo.create_hidden "lazy_memo"
         ~input:(module String)
-        Async
         (fun s -> Memo.Build.return (Lazy.create (fun () -> id ("lazy: " ^ s))))
     in
     Memo.exec f
@@ -273,11 +272,13 @@ let%expect_test _ =
   |}]
 
 let%expect_test _ =
-  (* This used to be a bug with sync lazy when they were supported. The
-     dependency on [lazy] was only registered by one of the dependants. This
-     meant we could never use [lazy] together with [Memo].
+  (* This test used to demonstrate a bug due to a bad interaction between [lazy]
+     and synchronous memoized functions. The dependency on [lazy] was only
+     registered by one of the dependants below, which meant we couldn't safely
+     use [lazy] together with [Memo].
 
-     Now that we only have async memos, we can freely mix lazy and [Memo]. *)
+     Now that [Memo] doesn't support memoization of synchronous functions
+     anymore, we can freely mix [lazy] and [Memo]. *)
   Builtin_lazy.deps () |> print_dyn;
   [%expect
     {|
@@ -286,7 +287,7 @@ let%expect_test _ =
     |}]
 
 module Memo_lazy = Test_lazy (struct
-  include Memo.Lazy.Async
+  include Memo.Lazy
 
   (* Here we hide the optional argument [cutoff] of [Memo.Lazy.create]. *)
   let create f = create f
@@ -312,11 +313,10 @@ let depends_on_run =
   Memo.create "foobar" ~doc:"foo123"
     ~input:(module Unit)
     ~output:(Allow_cutoff (module Unit))
-    ~visibility:Hidden Async
+    ~visibility:Hidden
     (fun () ->
-      let (_ : Memo.Run.t) = Memo.current_run () in
-      print_endline "running foobar";
-      Memo.Build.return ())
+      let+ (_ : Memo.Run.t) = Memo.current_run () in
+      print_endline "running foobar")
 
 let%expect_test _ =
   run (Memo.exec depends_on_run ());
@@ -338,11 +338,11 @@ let%expect_test _ =
       ~input:(module String)
       ~visibility:(Public Dune_lang.Decoder.string)
       ~output:(Allow_cutoff (module String))
-      ~doc:"" Async f
+      ~doc:"" f
   in
   let cell = Memo.cell memo "foobar" in
-  print_endline (run (Cell.get_async cell));
-  print_endline (run (Cell.get_async cell));
+  print_endline (run (Cell.read cell));
+  print_endline (run (Cell.read cell));
   [%expect {|
     *foobar
     *foobar |}]
@@ -352,14 +352,14 @@ let printf = Printf.printf
 let%expect_test "fib linked list" =
   let module Element = struct
     type t =
-      { prev_cell : (int, t, int -> t Memo.Build.t) Memo.Cell.t
+      { prev_cell : (int, t) Memo.Cell.t
       ; value : int
-      ; next_cell : (int, t, int -> t Memo.Build.t) Memo.Cell.t
+      ; next_cell : (int, t) Memo.Cell.t
       }
 
     let to_dyn t = Dyn.Int t.value
   end in
-  let force cell : Element.t Memo.Build.t = Memo.Cell.get_async cell in
+  let force cell : Element.t Memo.Build.t = Memo.Cell.read cell in
   let memo_fdecl = Fdecl.create Dyn.Encoder.opaque in
   let compute_element x =
     let memo = Fdecl.get memo_fdecl in
@@ -381,7 +381,7 @@ let%expect_test "fib linked list" =
   let memo =
     Memo.create "fib"
       ~input:(module Int)
-      ~visibility:Hidden Async
+      ~visibility:Hidden
       ~output:(Simple (module Element))
       compute_element ~doc:""
   in
@@ -417,7 +417,7 @@ module Function = struct
 
   type 'a output = 'a list
 
-  let name = "memo-poly-async"
+  let name = "memo-poly"
 
   let id (type a) (x : a input) : a Type_eq.Id.t =
     match x with
@@ -443,8 +443,8 @@ module Function = struct
     | S (_, x) -> x
 end
 
-let%expect_test "Memo.Poly.Async" =
-  let module M = Memo.Poly.Async (Function) in
+let%expect_test "Memo.Poly" =
+  let module M = Memo.Poly (Function) in
   let (i1 : int Function.input) = I (Type_eq.Id.create (), 1) in
   let (i2 : int Function.input) = I (Type_eq.Id.create (), 2) in
   let (s1 : string Function.input) = S (Type_eq.Id.create (), "hi") in
@@ -522,17 +522,9 @@ let evaluate_and_print f x =
   in
   print_result x res
 
-let evaluate_and_print_sync f x =
-  let res =
-    match Memo.exec f x with
-    | res -> Ok res
-    | exception exn -> Error [ Exn_with_backtrace.capture exn ]
-  in
-  print_result x res
-
 let%expect_test "error handling and memo" =
   let f =
-    int_fn_create "async f"
+    int_fn_create "f"
       ~output:(Allow_cutoff (module Int))
       (fun x ->
         printf "Calling f %d\n" x;
@@ -577,9 +569,9 @@ let count_runs name =
     printf "Started evaluating %s\n" name;
     incr counter;
     let result = !counter in
-    let (_ : Run.t) = Memo.current_run () in
+    let+ (_ : Run.t) = Memo.current_run () in
     printf "Evaluated %s: %d\n" name result;
-    Build.return result
+    result
 
 (* A test function incrementing a given memo. *)
 let increment which which_memo () =
@@ -589,27 +581,14 @@ let increment which which_memo () =
   printf "Evaluated %s: %d\n" which result;
   result
 
-(* Create an async node with or without cutoff. *)
+(* Create a memoization node with or without cutoff. *)
 let create ~with_cutoff name f =
   let output =
     match with_cutoff with
     | true -> Memo.Output.Allow_cutoff (module Int)
     | false -> Simple (module Int)
   in
-  Memo.create name
-    ~input:(module Unit)
-    ~visibility:Hidden ~output ~doc:"" Async f
-
-(* Create a sync node with or without cutoff. *)
-let create_sync ~with_cutoff name f =
-  let output =
-    match with_cutoff with
-    | true -> Memo.Output.Allow_cutoff (module Int)
-    | false -> Simple (module Int)
-  in
-  Memo.create name
-    ~input:(module Unit)
-    ~visibility:Hidden ~output ~doc:"" Sync f
+  Memo.create name ~input:(module Unit) ~visibility:Hidden ~output ~doc:"" f
 
 let%expect_test "diamond with non-uniform cutoff structure" =
   let base = create ~with_cutoff:true "base" (count_runs "base") in
@@ -650,7 +629,7 @@ let%expect_test "diamond with non-uniform cutoff structure" =
       ~input:(module Int)
       ~visibility:Hidden
       ~output:(Simple (module Int))
-      ~doc:"" Async summit
+      ~doc:"" summit
   in
   evaluate_and_print summit 0;
   [%expect
@@ -762,7 +741,7 @@ let%expect_test "dynamic cycles with non-uniform cutoff structure" =
     in
     Memo.create "incrementing_chain_plus_input"
       ~input:(module Int)
-      ~visibility:Hidden ~output ~doc:"" Async plus_input
+      ~visibility:Hidden ~output ~doc:"" plus_input
   in
   let summit_fdecl = Fdecl.create (fun _ -> Dyn.Opaque) in
   let cycle_creator_no_cutoff =
@@ -989,7 +968,7 @@ let%expect_test "deadlocks when creating a cycle twice" =
       ~input:(module Int)
       ~visibility:Hidden
       ~output:(Simple (module Int))
-      ~doc:"" Async
+      ~doc:""
       (fun offset ->
         printf "Started evaluating summit\n";
         let+ middle = Memo.exec middle () in
@@ -1030,7 +1009,7 @@ let%expect_test "Nested nodes with cutoff are recomputed optimally" =
       ~input:(module Int)
       ~visibility:Hidden
       ~output:(Simple (module Int))
-      ~doc:"" Async
+      ~doc:""
       (fun offset ->
         printf "Started evaluating summit\n";
         let middle =
@@ -1114,7 +1093,7 @@ let%expect_test "Test that there are no phantom dependencies" =
       ~input:(module Int)
       ~visibility:Hidden
       ~output:(Simple (module Int))
-      ~doc:"" Async
+      ~doc:""
       (fun offset ->
         printf "Started evaluating summit\n";
         let middle =
@@ -1123,7 +1102,7 @@ let%expect_test "Test that there are no phantom dependencies" =
               match !counter with
               | 1 ->
                 printf "*** middle depends on base ***\n";
-                Memo.Cell.get_async cell
+                Memo.Cell.read cell
               | _ ->
                 printf "*** middle does not depend on base ***\n";
                 Build.return 0)
@@ -1179,7 +1158,7 @@ let%expect_test "Abandoned node with no cutoff is recomputed" =
       ~input:(module Unit)
       ~visibility:Hidden
       ~output:(Simple (module Int))
-      ~doc:"" Async
+      ~doc:""
       (fun () ->
         printf "Started evaluating middle\n";
         let base = base () in
@@ -1193,7 +1172,7 @@ let%expect_test "Abandoned node with no cutoff is recomputed" =
       ~input:(module Int)
       ~visibility:Hidden
       ~output:(Simple (module Int))
-      ~doc:"" Async
+      ~doc:""
       (fun input ->
         printf "Started evaluating summit\n";
         let* middle = Memo.exec middle () in
@@ -1279,11 +1258,11 @@ let print_exns f =
   Format.printf "%a@." Pp.to_fmt
     (Dyn.pp (Result.to_dyn unit (list Exn.to_dyn) res))
 
-let%expect_test "error handling and async diamond" =
+let%expect_test "error handling with diamonds" =
   Printexc.record_backtrace true;
   let f_impl = Fdecl.create Dyn.Encoder.opaque in
   let f =
-    int_fn_create "async-error-diamond: f"
+    int_fn_create "error-diamond: f"
       ~output:(Allow_cutoff (module Unit))
       (fun x -> Fdecl.get f_impl x)
   in
@@ -1312,11 +1291,11 @@ let%expect_test "error handling and async diamond" =
     Error [ "(Failure \"reached 0\")" ]
     |}]
 
-let%expect_test "error handling and duplicate sync exceptions" =
+let%expect_test "error handling and duplicate exceptions" =
   Printexc.record_backtrace true;
   let f_impl = Fdecl.create Dyn.Encoder.opaque in
   let f =
-    int_fn_create "test8: async-duplicate-sync-exception: f"
+    int_fn_create "test8: duplicate-exception: f"
       ~output:(Allow_cutoff (module Unit))
       (fun x -> Fdecl.get f_impl x)
   in

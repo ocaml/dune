@@ -70,7 +70,7 @@ let check_no_module_consumer stanzas =
 module DB = struct
   type nonrec t =
     { stanzas_per_dir : Dune_file.Stanzas.t Dir_with_dune.t Path.Build.Map.t
-    ; fn : (Path.Build.t, t) Memo.Async.t
+    ; fn : (Path.Build.t, t) Memo.t
     }
 
   let stanzas_in db ~dir = Path.Build.Map.find db.stanzas_per_dir dir
@@ -141,7 +141,7 @@ module DB = struct
                 ~input:(module Path.Build)
                 ~visibility:Hidden
                 ~output:(Simple (module T))
-                ~doc:"Get a directory status." Async Fn.get
+                ~doc:"Get a directory status." Fn.get
           }
       end
 

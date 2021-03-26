@@ -14,7 +14,7 @@ let mlds_by_package_def =
     ~implicit_output:Rules.implicit_output ~doc:"mlds by package"
     ~input:(module Super_context.As_memo_key)
     ~output:(module Output)
-    ~visibility:Hidden Async
+    ~visibility:Hidden
     (fun sctx ->
       let stanzas = Super_context.stanzas sctx in
       Memo.Build.parallel_map stanzas ~f:(fun (w : _ Dir_with_dune.t) ->

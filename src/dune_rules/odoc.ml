@@ -518,7 +518,7 @@ let setup_lib_html_rules_def =
     ~doc:"setup html rules for library" ~implicit_output:Rules.implicit_output
     ~input:(module Input)
     ~output:(module Unit)
-    ~visibility:Hidden Async f
+    ~visibility:Hidden f
 
 let setup_lib_html_rules sctx lib ~requires =
   Memo.With_implicit_output.exec setup_lib_html_rules_def (sctx, lib, requires)
@@ -551,7 +551,7 @@ let setup_pkg_html_rules_def =
     ~output:(module Unit)
     ~implicit_output:Rules.implicit_output ~doc:"setup odoc package html rules"
     ~input:(module Input)
-    ~visibility:Hidden Async
+    ~visibility:Hidden
     (fun (sctx, pkg, (libs : Lib.Local.t list)) ->
       let requires =
         let libs = (libs :> Lib.t list) in
@@ -661,7 +661,7 @@ let setup_package_odoc_rules_def =
     ~output:(module Unit)
     ~implicit_output:Rules.implicit_output ~doc:"setup odoc package rules"
     ~input:(module Input)
-    ~visibility:Hidden Async
+    ~visibility:Hidden
     (fun (sctx, pkg) ->
       let* mlds = Packages.mlds sctx pkg in
       let mlds = check_mlds_no_dupes ~pkg ~mlds in

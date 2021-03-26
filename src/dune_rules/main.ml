@@ -39,14 +39,17 @@ let setup_env ~capture_outputs =
     in
     Env.add env ~var:"INSIDE_DUNE" ~value:"1"
   in
-  Memo.Run.Fdecl.set Global.env env;
+  let+ () = Memo.Build.run (Memo.Run.Fdecl.set Global.env env) in
   env
 
 let scan_workspace ?workspace_file ?x ?(capture_outputs = true) ?profile
     ?instrument_with ~ancestor_vcs () =
-  let env = setup_env ~capture_outputs in
+  let* env = setup_env ~capture_outputs in
   let* conf = Dune_load.load ~ancestor_vcs in
-  let () = Workspace.init ?x ?profile ?instrument_with ?workspace_file () in
+  let* () =
+    Memo.Build.run
+      (Workspace.init ?x ?profile ?instrument_with ?workspace_file ())
+  in
   let+ contexts = Memo.Build.run (Context.DB.all ()) in
   List.iter contexts ~f:(fun (ctx : Context.t) ->
       let open Pp.O in

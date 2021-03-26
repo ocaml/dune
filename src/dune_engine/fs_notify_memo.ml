@@ -5,7 +5,7 @@ let memo =
   Memo.create "fs_notify" ~doc:"fs notify"
     ~input:(module Path)
     ~output:(Simple (module Unit))
-    ~visibility:Hidden Async
+    ~visibility:Hidden
     (fun _path -> Memo.Build.return ())
 
 let depend p = Memo.exec memo p

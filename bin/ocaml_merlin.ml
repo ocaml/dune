@@ -37,7 +37,10 @@ let term =
       let workspace_file =
         Common.workspace_file common |> Option.map ~f:Arg.Path.path
       in
-      Dune_rules.Workspace.init ?x ?workspace_file ();
+      let open Fiber.O in
+      let* () =
+        Memo.Build.run (Dune_rules.Workspace.init ?x ?workspace_file ())
+      in
       match dump_config with
       | Some s -> Dune_rules.Merlin_server.dump s
       | None -> Dune_rules.Merlin_server.start ())
@@ -79,7 +82,10 @@ module Dump_dot_merlin = struct
         let workspace_file =
           Common.workspace_file common |> Option.map ~f:Arg.Path.path
         in
-        Dune_rules.Workspace.init ?x ?workspace_file ();
+        let open Fiber.O in
+        let* () =
+          Memo.Build.run (Dune_rules.Workspace.init ?x ?workspace_file ())
+        in
         match path with
         | Some s -> Dune_rules.Merlin_server.dump_dot_merlin s
         | None -> Dune_rules.Merlin_server.dump_dot_merlin ".")

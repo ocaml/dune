@@ -237,8 +237,11 @@ let promote_sync cache paths key metadata ~repository ~duplication =
        during the promotion process. *)
     Temp.with_temp_path ~dir:cache.temp_dir ~prefix:"temp" ~suffix:"data"
       ~f:(function
-      | Error _exn ->
-        let message = "Failed to create a temp path" in
+      | Error exn ->
+        let message =
+          sprintf "Failed to create a temp file: %s"
+            (Exn.to_dyn exn |> Dyn.to_string)
+        in
         cache.info [ Pp.text message ];
         Result.Error message
       | Ok tmp -> (

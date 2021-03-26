@@ -608,78 +608,6 @@ module Running_state = M.Running_state
 module Dep_node = M.Dep_node
 module Last_dep = M.Last_dep
 
-let currently_considering (v : _ State.t) : _ State.t =
-  match v with
-  | Not_considering -> Not_considering
-  | Considering { run; _ } as running ->
-    if Run.is_current run then
-      running
-    else
-      Not_considering
-
-let get_cached_value_in_current_cycle (dep_node : _ Dep_node.t) =
-  match dep_node.last_cached_value with
-  | None -> None
-  | Some cv ->
-    if Run.is_current cv.last_validated_at then
-      Some cv
-    else
-      None
-
-module Cached_value = struct
-  include M.Cached_value
-
-  let dump_stack_fdecl = Fdecl.create (fun _ -> Dyn.Opaque)
-
-  let capture_dep_values ~deps_rev =
-    List.rev_map deps_rev ~f:(function Dep_node.T dep_node ->
-        (match get_cached_value_in_current_cycle dep_node with
-        | None ->
-          let reason =
-            match dep_node.last_cached_value with
-            | None -> "(no value)"
-            | Some _ -> "(old run)"
-          in
-          Fdecl.get dump_stack_fdecl ();
-          Code_error.raise
-            ("Attempted to create a cached value based on some stale inputs "
-           ^ reason)
-            []
-        | Some cv -> Last_dep.T (dep_node, cv.id)))
-
-  let create x ~deps_rev =
-    { deps = capture_dep_values ~deps_rev
-    ; value = x
-    ; last_validated_at = Run.current ()
-    ; id = Value_id.create ()
-    }
-
-  (* Dependencies of cancelled computations are not accurate, so we store the
-     empty list of [deps] in this case. In future, it would be better to
-     refactor the code to avoid storing the list altogether in this case. *)
-  let create_cancelled ~dependency_cycle =
-    { deps = []
-    ; value = Cancelled { dependency_cycle }
-    ; last_validated_at = Run.current ()
-    ; id = Value_id.create ()
-    }
-
-  let confirm_old_value t ~deps_rev =
-    t.last_validated_at <- Run.current ();
-    t.deps <- capture_dep_values ~deps_rev;
-    t
-
-  let value_changed (type o) (node : (_, o) Dep_node.t) prev_output curr_output
-      =
-    match (prev_output, curr_output) with
-    | (Value.Error _ | Cancelled _), _ -> true
-    | _, (Value.Error _ | Cancelled _) -> true
-    | Ok prev_output, Ok curr_output -> (
-      match node.without_state.spec.allow_cutoff with
-      | Yes equal -> not (equal prev_output curr_output)
-      | No -> true)
-end
-
 module Stack_frame_with_state = struct
   type ('i, 'o) unpacked =
     { without_state : ('i, 'o) Dep_node_without_state.t
@@ -729,7 +657,66 @@ let pp_stack () =
 
 let dump_stack () = Format.eprintf "%a" Pp.to_fmt (pp_stack ())
 
-let () = Fdecl.set Cached_value.dump_stack_fdecl dump_stack
+let get_cached_value_in_current_cycle (dep_node : _ Dep_node.t) =
+  match dep_node.last_cached_value with
+  | None -> None
+  | Some cv ->
+    if Run.is_current cv.last_validated_at then
+      Some cv
+    else
+      None
+
+module Cached_value = struct
+  include M.Cached_value
+
+  let capture_dep_values ~deps_rev =
+    List.rev_map deps_rev ~f:(function Dep_node.T dep_node ->
+        (match get_cached_value_in_current_cycle dep_node with
+        | None ->
+          let reason =
+            match dep_node.last_cached_value with
+            | None -> "(no value)"
+            | Some _ -> "(old run)"
+          in
+          dump_stack ();
+          Code_error.raise
+            ("Attempted to create a cached value based on some stale inputs "
+           ^ reason)
+            []
+        | Some cv -> Last_dep.T (dep_node, cv.id)))
+
+  let create x ~deps_rev =
+    { deps = capture_dep_values ~deps_rev
+    ; value = x
+    ; last_validated_at = Run.current ()
+    ; id = Value_id.create ()
+    }
+
+  (* Dependencies of cancelled computations are not accurate, so we store the
+     empty list of [deps] in this case. In future, it would be better to
+     refactor the code to avoid storing the list altogether in this case. *)
+  let create_cancelled ~dependency_cycle =
+    { deps = []
+    ; value = Cancelled { dependency_cycle }
+    ; last_validated_at = Run.current ()
+    ; id = Value_id.create ()
+    }
+
+  let confirm_old_value t ~deps_rev =
+    t.last_validated_at <- Run.current ();
+    t.deps <- capture_dep_values ~deps_rev;
+    t
+
+  let value_changed (type o) (node : (_, o) Dep_node.t) prev_output curr_output
+      =
+    match (prev_output, curr_output) with
+    | (Value.Error _ | Cancelled _), _ -> true
+    | _, (Value.Error _ | Cancelled _) -> true
+    | Ok prev_output, Ok curr_output -> (
+      match node.without_state.spec.allow_cutoff with
+      | Yes equal -> not (equal prev_output curr_output)
+      | No -> true)
+end
 
 (* Add a dependency on the [dep_node] from the caller, if there is one. Returns
    an [Error] if the new dependency would introduce a dependency cycle. *)
@@ -854,6 +841,15 @@ module Exec : sig
      type, convenient for external usage. *)
   val exec_dep_node : ('i, 'o) Dep_node.t -> 'o Fiber.t
 end = struct
+  let currently_considering (v : _ State.t) : _ State.t =
+    match v with
+    | Not_considering -> Not_considering
+    | Considering { run; _ } as running ->
+      if Run.is_current run then
+        running
+      else
+        Not_considering
+
   let rec restore_from_cache :
             'o.    'o Cached_value.t option
             -> 'o Cached_value.t Cache_lookup.Result.t Fiber.t =

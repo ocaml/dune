@@ -442,7 +442,7 @@ end = struct
     let prog = Path.to_absolute_filename prog in
     let argv = prog :: args in
     let r, w = Unix.pipe () in
-    let pid = Spawn.spawn () ~prog ~argv ~stdout:w in
+    let pid = Spawn.spawn () ~prog ~argv ~stdout:w |> Pid.of_int in
     Unix.close w;
     (r, pid)
 

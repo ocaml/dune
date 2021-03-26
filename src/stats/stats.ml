@@ -115,7 +115,7 @@ module Fd_count = struct
     in
     let prog = "/usr/sbin/lsof" in
     let argv = [ prog; "-w"; "-p"; string_of_int (Unix.getpid ()) ] in
-    let pid = Spawn.spawn ~prog ~argv ~stdout () in
+    let pid = Spawn.spawn ~prog ~argv ~stdout () |> Pid.of_int in
     Unix.close stdout;
     match Unix.waitpid [] (Pid.to_int pid) with
     | _, Unix.WEXITED 0 ->

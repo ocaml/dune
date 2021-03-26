@@ -25,7 +25,7 @@ val vars : t -> Var.Set.t
 (** The environment when the process started *)
 val initial : t
 
-val to_unix : t -> string array
+val to_unix : t -> string list
 
 val get : t -> Var.t -> string option
 

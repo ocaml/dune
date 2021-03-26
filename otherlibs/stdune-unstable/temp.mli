@@ -25,8 +25,9 @@ val clear_dir : Path.t -> unit
     suitably chosen integer number, then [suffix]. *)
 val temp_path : dir:Path.t -> prefix:string -> suffix:string -> Path.t
 
-(** Like [temp_path], but passes the temporary [Path.t] to the callback [f], and
-    then deletes it when [f] completes. *)
+(** Like [temp_path], but passes the temporary file to the callback [f], and
+    makes sure the temporary file is deleted when [f] completes. If [f] raises
+    an exception, the exception is reraised (and the file is still deleted). *)
 val with_temp_path :
      dir:Path.t
   -> prefix:string

@@ -109,6 +109,6 @@ let with_temp_path ~dir ~prefix ~suffix ~f =
   match temp_path ~dir ~prefix ~suffix with
   | exception e -> f (Error e)
   | temp_path ->
-    let result = f (Ok temp_path) in
-    Path.unlink_no_err temp_path;
-    result
+    Exn.protect
+      ~f:(fun () -> f (Ok temp_path))
+      ~finally:(fun () -> Path.unlink_no_err temp_path)

@@ -1,6 +1,8 @@
 module Style : sig
   type t
 
+  val to_dyn : t -> Dyn.t
+
   val fg_default : t
 
   val fg_black : t

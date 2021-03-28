@@ -167,25 +167,23 @@ let handler (t : t Fdecl.t) : 'a Dune_rpc_server.Handler.t =
   rpc
 
 let create () =
-  let fdecl = Fdecl.create Dyn.Encoder.opaque in
+  let t = Fdecl.create Dyn.Encoder.opaque in
   let pending_build_jobs = Queue.create () in
-  let handler = Dune_rpc_server.make (handler fdecl) in
+  let handler = Dune_rpc_server.make (handler t) in
   let pool = Fiber.Pool.create () in
   let config =
     Dune_engine.Scheduler.Config.Rpc.Server { handler; backlog = 10; pool }
   in
   let build_mutex = Fiber.Mutex.create () in
-  let t =
+  Fdecl.set t
     { config
     ; build_mutex
     ; pending_build_jobs
     ; promotion_subs = Session_set.empty
     ; error_subs = Session_set.empty
     ; clients = Session_set.empty
-    }
-  in
-  Fdecl.set fdecl t;
-  t
+    };
+  Fdecl.get t
 
 let build_mutex t = t.build_mutex
 

@@ -41,6 +41,7 @@ module Config = struct
       | Client
       | Server of
           { handler : Dune_rpc_server.t
+          ; pool : Fiber.Pool.t
           ; backlog : int
           }
   end
@@ -694,6 +695,7 @@ module Rpc0 = struct
         { server : Csexp_rpc.Server.t
         ; handler : Dune_rpc_server.t
         ; scheduler : Csexp_rpc.Scheduler.t
+        ; pool : Fiber.Pool.t
         ; where : Dune_rpc.Where.t
         ; stats : Stats.t option
         ; cleanup : cleanup option
@@ -723,7 +725,7 @@ module Rpc0 = struct
   let of_config events stats rpc =
     Option.map rpc ~f:(function
       | Config.Rpc.Client -> Client
-      | Config.Rpc.Server { handler; backlog } ->
+      | Config.Rpc.Server { handler; backlog; pool } ->
         let where = Dune_rpc.Where.default () in
         let real_where, cleanup =
           match where with
@@ -748,7 +750,7 @@ module Rpc0 = struct
         in
         let scheduler = scheduler events in
         let server = Csexp_rpc.Server.create real_where ~backlog scheduler in
-        Server { server; handler; where; cleanup; scheduler; stats })
+        Server { server; handler; where; cleanup; scheduler; stats; pool })
 
   let with_rpc_serve t f =
     match t with
@@ -757,17 +759,21 @@ module Rpc0 = struct
       f
     | Some (Server t) ->
       fun () ->
-        Fiber.fork_and_join_unit
-          (fun () ->
-            Fiber.finalize
-              (fun () ->
-                let open Fiber.O in
-                let* sessions = Csexp_rpc.Server.serve t.server in
-                Server.serve sessions t.stats t.handler)
-              ~finally:(fun () ->
-                delete_cleanup t.cleanup;
-                Fiber.return ()))
-          f
+        let run_server () =
+          Fiber.finalize
+            (fun () ->
+              let open Fiber.O in
+              Fiber.fork_and_join_unit
+                (fun () ->
+                  let* sessions = Csexp_rpc.Server.serve t.server in
+                  let* () = Server.serve sessions t.stats t.handler in
+                  Fiber.Pool.stop t.pool)
+                (fun () -> Fiber.Pool.run t.pool))
+            ~finally:(fun () ->
+              delete_cleanup t.cleanup;
+              Fiber.return ())
+        in
+        Fiber.fork_and_join_unit run_server f
 end
 
 type waiting_for_file_changes =

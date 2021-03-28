@@ -24,6 +24,7 @@ module Config : sig
       | Client
       | Server of
           { handler : Dune_rpc_server.t
+          ; pool : Fiber.Pool.t
           ; backlog : int
           }
   end

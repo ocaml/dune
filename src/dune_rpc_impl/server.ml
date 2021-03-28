@@ -170,8 +170,9 @@ let create () =
   let fdecl = Fdecl.create Dyn.Encoder.opaque in
   let pending_build_jobs = Queue.create () in
   let handler = Dune_rpc_server.make (handler fdecl) in
+  let pool = Fiber.Pool.create () in
   let config =
-    Dune_engine.Scheduler.Config.Rpc.Server { handler; backlog = 10 }
+    Dune_engine.Scheduler.Config.Rpc.Server { handler; backlog = 10; pool }
   in
   let build_mutex = Fiber.Mutex.create () in
   let t =

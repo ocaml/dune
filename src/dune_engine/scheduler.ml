@@ -693,6 +693,7 @@ module Rpc0 = struct
     | Server of
         { server : Csexp_rpc.Server.t
         ; handler : Dune_rpc_server.t
+        ; scheduler : Csexp_rpc.Scheduler.t
         ; where : Dune_rpc.Where.t
         ; stats : Stats.t option
         ; cleanup : cleanup option
@@ -745,10 +746,9 @@ module Rpc0 = struct
             at_exit (fun () -> delete_cleanup cleanup);
             (ADDR_UNIX (Path.to_string socket), cleanup)
         in
-        let server =
-          Csexp_rpc.Server.create real_where ~backlog (scheduler events)
-        in
-        Server { server; handler; where; cleanup; stats })
+        let scheduler = scheduler events in
+        let server = Csexp_rpc.Server.create real_where ~backlog scheduler in
+        Server { server; handler; where; cleanup; scheduler; stats })
 
   let with_rpc_serve t f =
     match t with

@@ -32,11 +32,21 @@ let%expect_test "reproduce #2664" =
   for i = 1 to 20 do
     f (string_of_int i)
   done;
-  let pp =
-    Buffer.contents b |> Ansi_color.parse
-    |> dyn_of_pp (Dyn.Encoder.list Ansi_color.Style.to_dyn)
-    |> Dyn.pp
+  let string_with_ansi_colors = Buffer.contents b in
+  let pp = Ansi_color.parse string_with_ansi_colors in
+  let ansi_colors_from_pp =
+    let b = Buffer.create 16 in
+    let ppf = Format.formatter_of_buffer b in
+    Staged.unstage (Ansi_color.make_printer (lazy true) ppf) pp;
+    Buffer.contents b
   in
+  printfn "Original : %S" string_with_ansi_colors;
+  printfn "From PP  : %S" ansi_colors_from_pp;
+  [%expect
+    {|
+    Original : "\027[34m1\027[39m\027[34m2\027[39m\027[34m3\027[39m\027[34m4\027[39m\027[34m5\027[39m\027[34m6\027[39m\027[34m7\027[39m\027[34m8\027[39m\027[34m9\027[39m\027[34m10\027[39m\027[34m11\027[39m\027[34m12\027[39m\027[34m13\027[39m\027[34m14\027[39m\027[34m15\027[39m\027[34m16\027[39m\027[34m17\027[39m\027[34m18\027[39m\027[34m19\027[39m\027[34m20\027[39m"
+    From PP  : "\027[34m1\027[0m\027[34m2\027[0m\027[34m3\027[0m\027[34m4\027[0m\027[34m5\027[0m\027[34m6\027[0m\027[34m7\027[0m\027[34m8\027[0m\027[34m9\027[0m\027[34m10\027[0m\027[34m11\027[0m\027[34m12\027[0m\027[34m13\027[0m\027[34m14\027[0m\027[34m15\027[0m\027[34m16\027[0m\027[34m17\027[0m\027[34m18\027[0m\027[34m19\027[0m\027[34m20\027[0m" |}];
+  let pp = dyn_of_pp (Dyn.Encoder.list Ansi_color.Style.to_dyn) pp |> Dyn.pp in
   Format.printf "%a@.%!" Pp.to_fmt pp;
   [%expect
     {|

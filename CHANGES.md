@@ -1,6 +1,9 @@
 Unreleased
 ----------
 
+- Improve interpretation of ansi escape sequence when spawning processes (#4408,
+  fixes #2665, @rgrinberg)
+
 - Allow `(package pkg)` in dependencies even if `pkg` is an installed package
   (#4170, @bobot)
 

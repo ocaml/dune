@@ -172,3 +172,40 @@ val to_fmt_with_tags :
   -> 'a t
   -> tag_handler:(Format.formatter -> 'a -> 'a t -> unit)
   -> unit
+
+(** {1 Injection} *)
+
+(** Inject a classic formatter in a document.
+
+    Disclaimer: this function is to meant to help using [Pp] in existing code
+    that already use the [Format] module without having to port everything to
+    [Pp]. It is not meant as the normal way to create [Pp.t] values. *)
+val of_fmt : (Format.formatter -> 'a -> unit) -> 'a -> _ t
+
+(** {1 Ast} *)
+
+module Ast : sig
+  (** Stable representation useful for serialization *)
+  type 'a t =
+    | Nop
+    | Seq of 'a t * 'a t
+    | Concat of 'a t * 'a t list
+    | Box of int * 'a t
+    | Vbox of int * 'a t
+    | Hbox of 'a t
+    | Hvbox of int * 'a t
+    | Hovbox of int * 'a t
+    | Verbatim of string
+    | Char of char
+    | Break of (string * int * string) * (string * int * string)
+    | Newline
+    | Text of string
+    | Tag of 'a * 'a t
+end
+
+(** [of_ast t] [Ast.t] to [Pp.t] *)
+val of_ast : 'a Ast.t -> 'a t
+
+(** [to_ast t] will try to convert [t] to [Ast.t]. When [t] contains values
+    constructed with [of_fmt], this function will fail and return [Error ()] *)
+val to_ast : 'a t -> ('a Ast.t, unit) result

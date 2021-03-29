@@ -6,6 +6,24 @@ end
 
 module String = StringLabels
 
+module Ast = struct
+  type +'a t =
+    | Nop
+    | Seq of 'a t * 'a t
+    | Concat of 'a t * 'a t list
+    | Box of int * 'a t
+    | Vbox of int * 'a t
+    | Hbox of 'a t
+    | Hvbox of int * 'a t
+    | Hovbox of int * 'a t
+    | Verbatim of string
+    | Char of char
+    | Break of (string * int * string) * (string * int * string)
+    | Newline
+    | Text of string
+    | Tag of 'a * 'a t
+end
+
 type +'a t =
   | Nop
   | Seq of 'a t * 'a t
@@ -21,6 +39,44 @@ type +'a t =
   | Newline
   | Text of string
   | Tag of 'a * 'a t
+  | Format of (Format.formatter -> unit)
+
+let rec of_ast : 'a. 'a Ast.t -> 'a t = function
+  | Nop -> Nop
+  | Seq (x, y) -> Seq (of_ast x, of_ast y)
+  | Concat (x, y) -> Concat (of_ast x, List.map ~f:of_ast y)
+  | Box (x, y) -> Box (x, of_ast y)
+  | Vbox (x, y) -> Vbox (x, of_ast y)
+  | Hbox x -> Hbox (of_ast x)
+  | Hvbox (x, y) -> Hvbox (x, of_ast y)
+  | Hovbox (x, y) -> Hovbox (x, of_ast y)
+  | Verbatim s -> Verbatim s
+  | Char c -> Char c
+  | Break (x, y) -> Break (x, y)
+  | Newline -> Newline
+  | Text s -> Text s
+  | Tag (a, x) -> Tag (a, of_ast x)
+
+let to_ast x =
+  let rec to_ast : 'a t -> 'a Ast.t = function
+    | Nop -> Nop
+    | Seq (x, y) -> Seq (to_ast x, to_ast y)
+    | Concat (x, y) -> Concat (to_ast x, List.map ~f:(fun x -> to_ast x) y)
+    | Box (x, y) -> Box (x, to_ast y)
+    | Vbox (x, y) -> Vbox (x, to_ast y)
+    | Hbox x -> Hbox (to_ast x)
+    | Hvbox (x, y) -> Hvbox (x, to_ast y)
+    | Hovbox (x, y) -> Hovbox (x, to_ast y)
+    | Verbatim s -> Verbatim s
+    | Char c -> Char c
+    | Break (x, y) -> Break (x, y)
+    | Newline -> Newline
+    | Tag (a, x) -> Tag (a, to_ast x)
+    | Text s -> Text s
+    | Format _ -> raise_notrace Exit
+  in
+  try Ok (to_ast x) with
+  | Exit -> Error ()
 
 let rec map_tags t ~f =
   match t with
@@ -34,6 +90,7 @@ let rec map_tags t ~f =
   | Hovbox (indent, t) -> Hovbox (indent, map_tags t ~f)
   | (Verbatim _ | Char _ | Break _ | Newline | Text _) as t -> t
   | Tag (tag, t) -> Tag (f tag, map_tags t ~f)
+  | Format f -> Format f
 
 let rec filter_map_tags t ~f =
   match t with
@@ -52,6 +109,7 @@ let rec filter_map_tags t ~f =
     match f tag with
     | None -> t
     | Some tag -> Tag (tag, t))
+  | Format f -> Format f
 
 module Render = struct
   open Format
@@ -94,6 +152,7 @@ module Render = struct
     | Newline -> pp_force_newline ppf ()
     | Text s -> pp_print_text ppf s
     | Tag (tag, t) -> tag_handler ppf tag t
+    | Format f -> f ppf
 end
 
 let to_fmt_with_tags = Render.render
@@ -174,3 +233,5 @@ let chain l ~f =
 module O = struct
   let ( ++ ) = seq
 end
+
+let of_fmt f x = Format (fun ppf -> f ppf x)

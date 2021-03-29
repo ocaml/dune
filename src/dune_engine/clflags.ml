@@ -10,6 +10,8 @@ let debug_dep_path = ref false
 
 let debug_artifact_substitution = ref false
 
+let debug_digests = ref false
+
 let capture_outputs = ref true
 
 let debug_backtraces b =

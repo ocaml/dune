@@ -39,6 +39,7 @@ type t =
   ; debug_findlib : bool
   ; debug_backtraces : bool
   ; debug_artifact_substitution : bool
+  ; debug_digests : bool
   ; profile : Profile.t option
   ; workspace_file : Arg.Path.t option
   ; root : Workspace_root.t
@@ -132,6 +133,7 @@ let set_common ?log_file c =
   Clflags.debug_findlib := c.debug_findlib;
   Clflags.debug_backtraces c.debug_backtraces;
   Clflags.debug_artifact_substitution := c.debug_artifact_substitution;
+  Clflags.debug_digests := c.debug_digests;
   Clflags.capture_outputs := c.capture_outputs;
   Clflags.diff_command := c.diff_command;
   Clflags.promote := c.promote;
@@ -572,6 +574,11 @@ let term =
       & info
           [ "debug-artifact-substitution" ]
           ~docs ~doc:"Print debugging info about artifact substitution")
+  and+ debug_digests =
+    Arg.(
+      value & flag
+      & info [ "debug-digests" ] ~docs
+          ~doc:"Explain why Dune decides to re-digest some files")
   and+ terminal_persistence =
     let modes = Dune_config.Terminal_persistence.all in
     let doc =
@@ -797,6 +804,7 @@ let term =
   ; debug_findlib
   ; debug_backtraces
   ; debug_artifact_substitution
+  ; debug_digests
   ; profile
   ; capture_outputs = not no_buffer
   ; workspace_file

@@ -882,3 +882,43 @@ let%expect_test "execution context preservation in iter callback" =
     0: var = None
     1: var = None
     2: var = None |}]
+
+let%expect_test "stack usage with consecutive Ivar.fill" =
+  let stack_size () = (Gc.stat ()).stack_size in
+  let rec loop acc prev n =
+    if n = 0 then
+      (acc, prev)
+    else
+      let next = Fiber.Ivar.create () in
+      let fiber =
+        let* () = Fiber.Ivar.read prev in
+        Fiber.Ivar.fill next ()
+      in
+      loop (fiber :: acc) next (n - 1)
+  in
+  let stack_usage n =
+    let first = Fiber.Ivar.create () in
+    let fibers, final = loop [] first n in
+    let* () = Fiber.parallel_iter fibers ~f:Fun.id
+    and* n =
+      let init = stack_size () in
+      let+ () = Fiber.Ivar.read final in
+      stack_size () - init
+    and* () = Fiber.Ivar.fill first () in
+    Fiber.return n
+  in
+  let n0 = Scheduler.run (stack_usage 0) in
+  let n1000 = Scheduler.run (stack_usage 1000) in
+  if n0 = n1000 then
+    printf "[PASS]"
+  else
+    printf
+      "[FAIL]\n\
+       Stack usage for n = 0:    %d words\n\
+       Stack usage for n = 1000: %d words\n"
+      n0 n1000;
+  [%expect
+    {|
+    [FAIL]
+    Stack usage for n = 0:    20 words
+    Stack usage for n = 1000: 8020 words |}]

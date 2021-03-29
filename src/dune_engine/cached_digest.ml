@@ -117,11 +117,14 @@ let refresh_ stats fn =
   set_with_stat fn digest stats;
   digest
 
-let refresh fn =
+let refresh_internal fn =
   let stats = Path.stat fn in
   refresh_ stats fn
 
+let refresh fn = refresh_internal (Path.build fn)
+
 let refresh_and_chmod fn =
+  let fn = Path.build fn in
   let stats = Path.lstat fn in
   let () =
     (* We remove write permissions to uniformize behavior regardless of whether
@@ -172,15 +175,14 @@ let source_or_external_file fn =
   assert (not (Path.is_in_build_dir fn));
   let res =
     match peek_file fn with
-    | None -> refresh fn
+    | None -> refresh_internal fn
     | Some v -> v
   in
   let+ () = Fs_notify_memo.depend fn in
   res
 
 let build_file fn =
-  let fn = Path.build fn in
-  match peek_file fn with
+  match peek_file (Path.build fn) with
   | None -> refresh fn
   | Some v -> v
 

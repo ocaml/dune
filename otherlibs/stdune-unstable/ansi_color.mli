@@ -81,6 +81,9 @@ module Style : sig
   val escape_sequence : t list -> string
 end
 
+val make_printer :
+  bool Lazy.t -> Format.formatter -> (Style.t list Pp.t -> unit) Staged.t
+
 (** Print to [Format.std_formatter] *)
 val print : Style.t list Pp.t -> unit
 

@@ -11,7 +11,9 @@ There's a combination of 3 options:
 
 Our test checks each of the above with an internal and external library.
 
-  $ ./test.exe
+  $ ./test.exe |
+  > sed -e 's,^ls:.*foo/\*\.a.*No such file or directory.*$,ls: .../foo/*.a: No such file or directory,g' |
+  > sed -e 's,^\[[1-2]\]$,[1/2],g'
   # mli_only_wrapped_stubs
   -> creating dune-project
   # build the library and see if .a is present
@@ -119,8 +121,8 @@ Our test checks each of the above with an internal and external library.
    (modules ()))
   % dune build --root . @install
   % ls _build/install/default/lib/foo/*.a
-  ls: _build/install/default/lib/foo/*.a: No such file or directory
-  [1]
+  ls: .../foo/*.a: No such file or directory
+  [1/2]
   
   # create a dummy executable to test
   -> creating dune
@@ -239,8 +241,8 @@ Our test checks each of the above with an internal and external library.
    (modules ()))
   % dune build --root . @install
   % ls _build/install/default/lib/foo/*.a
-  ls: _build/install/default/lib/foo/*.a: No such file or directory
-  [1]
+  ls: .../foo/*.a: No such file or directory
+  [1/2]
   
   # create a dummy executable to test
   -> creating dune

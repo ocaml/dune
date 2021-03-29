@@ -37,6 +37,24 @@ module Style = struct
 
   let fg_bright_white = "97"
 
+  let fg_all =
+    [ fg_black
+    ; fg_green
+    ; fg_yellow
+    ; fg_blue
+    ; fg_magenta
+    ; fg_cyan
+    ; fg_white
+    ; fg_bright_black
+    ; fg_bright_red
+    ; fg_bright_green
+    ; fg_bright_yellow
+    ; fg_bright_blue
+    ; fg_bright_magenta
+    ; fg_bright_cyan
+    ; fg_bright_white
+    ]
+
   let bg_black = "40"
 
   let bg_red = "41"
@@ -181,6 +199,9 @@ let parse_line str styles =
               |> String.split ~on:';'
               |> List.fold_left ~init:(List.rev styles) ~f:(fun styles s ->
                      match s with
+                     | "39" ->
+                       List.filter styles ~f:(fun s ->
+                           not (List.mem Style.fg_all s ~equal:String.equal))
                      | "0" -> []
                      | _ -> s :: styles)
               |> List.rev

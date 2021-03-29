@@ -1,16 +1,8 @@
 Unreleased
 ----------
 
-- Make `patdiff` show refined diffs (#4257, fixes #4254, @hakuch)
-
 - Allow `(package pkg)` in dependencies even if `pkg` is an installed package
   (#4170, @bobot)
-
-- Fixed a bug that could result in needless recompilation under Windows due to
-  case differences in the result of `Sys.getcwd` (observed under `emacs`).
-  (#3966, @nojb).
-
-- Fixed absence of executable bit for installed `.cmxs` (#4149, fixes #4148, @bobot)
 
 - Allow `%{version:pkg}` to work for external packages (#4104, @kit-ty-kate)
 
@@ -23,9 +15,6 @@ Unreleased
 - Add `ocaml` command subgroup for OCaml related commands such as `utop`, `top`,
   and `merlin` (#3936, @rgrinberg).
 
-- Do not pass include directories containing native objects when compiling
-  bytecode (#4200, @nojb)
-
 - Detect unknown variables more eagerly (#4184, @jeremiedimino)
 
 - Improve location of variables and macros in error messages (#4205,
@@ -33,25 +22,10 @@ Unreleased
 
 - Auto-detect `dune-project` files as `dune` files in Emacs (#4222, @shonfeder)
 
-- Restore compatibility with Coq < 8.10 for coq-lang < 0.3 , document
-  that `(using coq 0.3)` does require Coq 8.10 at least (#4224, fixes
-  #4142, @ejgallego)
-
-- Add a META rule for `compiler-libs.native-toplevel` (#4175, @altgr)
-
-- No longer call `chmod` on symbolic links (fixes #4195, @dannywillems)
-
 - Dune no longer automatically create or edit `dune-project` files
   (#4239, fixes #4108, @jeremiedimino)
 
-- Have `dune` communicate the location of the standard library directory to
-  `merlin` (#4211, fixes #4188, @nojb)
-
 - Add support for instrumentation dependencies (#4210, fixes #3983, @nojb)
-
-- Workaround incorrect exception raised by `Unix.utimes` (OCaml PR#8857) in
-  `Path.touch` on Windows. This fixes dune cache in direct mode on Windows.
-  (#4223, @dra27)
 
 - Cleanup temporary files after running `$ dune exec`. (#4260, fixes #4243,
   @rgrinberg)
@@ -59,9 +33,6 @@ Unreleased
 - Add a new subcommand `dune ocaml dump-dot-merlin` that prints a mix of all the
   merlin configuration of a directory (defaulting to the current directory) in
   the Merlin configuration syntax. (#4250, @voodoos)
-
-- `dune ocaml-merlin` is now able to provide configuration for source files in
-  the `_build` directory. (#4274, @voodoos)
 
 - Enable cram tests by default (#4262, @rgrinberg)
 
@@ -71,20 +42,10 @@ Unreleased
   library installation directory. This makes the behavior of Dune
   simpler and more reproducible (#4281, @jeremiedimino)
 
-- Automatically delete left-over Merlin files when rebuilding for the first time
-  a project previously built with Dune `<= 2.7`. (#4261, @voodoos, @aalekseyev)
-
 - Remove the `external-lib-deps` command. This command was only
   approximative and the cost of maintainance was getting too high. We
   removed it to make room for new more important features (#4298,
   @jeremiedimino)
-
-- Fix `ppx.exe` being compiled for the wrong target when cross-compiling
-  (#3751, fixes #3698, @toots)
-
-- `dune top` correctly escapes the generated toplevel directives, and make it
-  easier for `dune top` to locate C stubs associated to concerned libraries.
-  (#4242, fixes #4231, @nojb)
 
 - It is now possible to define action dependencies through a chain
   of aliases. (#4303, @aalekseyev)
@@ -114,8 +75,59 @@ Unreleased
 - Fix a bug where dune would always re-run all actions that produce symlinks,
   even if their dependencies did not change. (#4405, @aalekseyev)
 
+2.8.5 (28/03/2021)
+------------------
+
+- Fixed absence of executable bit for installed `.cmxs` (#4149, fixes #4148, @bobot)
+
 - Fix a race in Dune cache. It was particularly easy to hit this race when using
   the cache on Windows (#4406, fixes #4167, @snowleopard)
+
+2.8.4 (08/03/2021)
+------------------
+
+- Fix crash when META file for `compiler-libs.toplevel` is present
+  (@jeremiedimino, #4249)
+
+2.8.3 (07/03/2021)
+------------------
+
+- Make `patdiff` show refined diffs (#4257, fixes #4254, @hakuch)
+
+- Fixed a bug that could result in needless recompilation under Windows due to
+  case differences in the result of `Sys.getcwd` (observed under `emacs`).
+  (#3966, @nojb).
+
+- Restore compatibility with Coq < 8.10 for coq-lang < 0.3 , document
+  that `(using coq 0.3)` does require Coq 8.10 at least (#4224, fixes
+  #4142, @ejgallego)
+
+- Add a META rule for `compiler-libs.native-toplevel` (#4175, @altgr)
+
+- No longer call `chmod` on symbolic links (fixes #4195, @dannywillems)
+
+- Have `dune` communicate the location of the standard library directory to
+  `merlin` (#4211, fixes #4188, @nojb)
+
+- Workaround incorrect exception raised by `Unix.utimes` (OCaml PR#8857) in
+  `Path.touch` on Windows. This fixes dune cache in direct mode on Windows.
+  (#4223, @dra27)
+
+- `dune ocaml-merlin` is now able to provide configuration for source files in
+  the `_build` directory. (#4274, @voodoos)
+
+- Automatically delete left-over Merlin files when rebuilding for the first time
+  a project previously built with Dune `<= 2.7`. (#4261, @voodoos, @aalekseyev)
+
+- Fix `ppx.exe` being compiled for the wrong target when cross-compiling
+  (#3751, fixes #3698, @toots)
+
+- `dune top` correctly escapes the generated toplevel directives, and make it
+  easier for `dune top` to locate C stubs associated to concerned libraries.
+  (#4242, fixes #4231, @nojb)
+
+- Do not pass include directories containing native objects when compiling
+  bytecode (#4200, @nojb)
 
 2.8.2 (21/01/2021)
 ------------------

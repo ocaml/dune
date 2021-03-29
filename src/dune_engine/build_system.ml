@@ -603,10 +603,10 @@ let compute_targets_digests_or_raise_error ~loc targets =
   in
   let good, bad =
     Path.Build.Set.fold targets ~init:([], []) ~f:(fun target (good, bad) ->
-        let fn = Path.build target in
-        match refresh fn with
+        match refresh target with
         | digest -> ((target, digest) :: good, bad)
-        | exception (Unix.Unix_error _ | Sys_error _) -> (good, fn :: bad))
+        | exception (Unix.Unix_error _ | Sys_error _) ->
+          (good, Path.build target :: bad))
   in
   match bad with
   | [] -> List.rev good

@@ -11,9 +11,3 @@ Test the --debug-digests command line option
   ; old_stats = XXX
   ; new_stats = XXX
   }
-
-Note: we use the flag --wait-for-filesystem-clock to make this test
-more reproducible. Without it, Dune might drop some entries or not
-depending on whether the time lap between targets being produced and
-dune saving the digest cache is smaller than the file system
-granularity.

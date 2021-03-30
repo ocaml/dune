@@ -19,20 +19,10 @@ module Config : sig
     val console_backend : t -> Console.Backend.t
   end
 
-  module Rpc : sig
-    type t =
-      | Client
-      | Server of
-          { handler : Dune_rpc_server.t
-          ; pool : Fiber.Pool.t
-          ; backlog : int
-          }
-  end
-
   type t =
     { concurrency : int
     ; display : Display.t
-    ; rpc : Rpc.t option
+    ; rpc : Dune_rpc.Where.t option
     ; stats : Stats.t option
     }
 end
@@ -43,10 +33,8 @@ module Run : sig
       | Success
       | Failure
 
-    type go = Tick
-
-    type poll =
-      | Go of go
+    type t =
+      | Tick
       | Source_files_changed
       | Build_interrupted
       | Build_finish of build_result
@@ -63,17 +51,12 @@ module Run : sig
 
       If [shutdown] is called, the current build will be canceled and new builds
       will not start. *)
-  val poll :
-       Config.t
-    -> file_watcher:file_watcher
-    -> on_event:(Config.t -> Event.poll -> unit)
-    -> once:(unit -> [ `Continue | `Stop ] Fiber.t)
-    -> finally:(unit -> unit)
-    -> unit
+  val poll : (unit -> [ `Continue | `Stop ] Fiber.t) -> unit Fiber.t
 
   val go :
        Config.t
-    -> on_event:(Config.t -> Event.go -> unit)
+    -> ?file_watcher:file_watcher
+    -> on_event:(Config.t -> Event.t -> unit)
     -> (unit -> 'a Fiber.t)
     -> 'a
 end
@@ -109,34 +92,9 @@ val send_sync_task : (unit -> unit) -> unit
     the current build and stop accepting RPC clients. *)
 val shutdown : unit -> unit Fiber.t
 
-module Rpc : sig
-  (** Rpc related functions *)
+(** Scheduler to create [Csexp_rpc] sessions *)
+val csexp_scheduler : unit -> Csexp_rpc.Scheduler.t
 
-  (** [csexp_client path f] connects to [path] and calls [f] with the connected
-      session.
-
-      This is needed for implementing low level functions such as
-      [$ dune rpc init] *)
-  val csexp_client : Dune_rpc.Where.t -> Csexp_rpc.Client.t
-
-  (** [csexp_connect i o] creates a session where requests are read from [i] and
-      responses are written to [o].
-
-      This is needed for implementing low level functions such as
-      [$ dune rpc init] *)
-  val csexp_connect : in_channel -> out_channel -> Csexp_rpc.Session.t
-
-  val client :
-       Dune_rpc.Where.t
-    -> Dune_rpc.Initialize.Request.t
-    -> on_notification:(Dune_rpc.Call.t -> unit Fiber.t)
-    -> f:(Drpc_client.t -> 'a Fiber.t)
-    -> 'a Fiber.t
-
-  (** [add_to_env] Sets DUNE_RPC to the socket where rpc is listening *)
-  val add_to_env : Env.t -> Env.t
-
-  (** Stop accepting new rpc connections. Fiber returns when all existing
-      connetions terminate *)
-  val stop : unit -> unit Fiber.t
-end
+(** [add_to_env env] adds to [env] the environment variable that describes where
+    the current RPC server is listening (if it's running) *)
+val add_to_env : Env.t -> Env.t

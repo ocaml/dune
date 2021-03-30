@@ -29,14 +29,18 @@ let client_term common f =
   Common.set_common common;
   Scheduler.go ~common (fun () ->
       let where = wait_for_server common in
-      f where)
+      let stats = Common.stats common in
+      let run =
+        Dune_rpc_impl.Run.of_config Client (Scheduler.csexp_scheduler ()) stats
+      in
+      f run where)
 
 module Init = struct
-  let connect where =
-    let c = Dune_engine.Scheduler.Rpc.csexp_client where in
+  let connect run where =
+    let c = Dune_rpc_impl.Run.csexp_client run where in
     let open Fiber.O in
     let* session = Csexp_rpc.Client.connect c in
-    let stdio = Dune_engine.Scheduler.Rpc.csexp_connect stdin stdout in
+    let stdio = Dune_rpc_impl.Run.csexp_connect run stdin stdout in
     let forward f t =
       Fiber.repeat_while ~init:() ~f:(fun () ->
           let* read = Csexp_rpc.Session.read f in
@@ -78,7 +82,7 @@ module Test = struct
     | List s -> List (List.map ~f:of_dune_lang s)
     | Template _ -> Atom (Dune_lang.to_string s)
 
-  let connect where =
+  let connect run where =
     let lexbuf = Lexing.from_channel stdin in
     let input =
       Dune_lang.Parser.parse ~mode:Many lexbuf
@@ -86,7 +90,7 @@ module Test = struct
              let sexp = Dune_lang.Ast.remove_locs ast in
              of_dune_lang sexp)
     in
-    let c = Dune_engine.Scheduler.Rpc.csexp_client where in
+    let c = Dune_rpc_impl.Run.csexp_client run where in
     let open Fiber.O in
     let* session = Csexp_rpc.Client.connect c in
     let i () =
@@ -113,10 +117,10 @@ module Test = struct
   let term =
     let+ (common : Common.t) = Common.term in
     let common = Common.set_rpc common (Dune_rpc_impl.Server.create ()) in
-    client_term common (fun where ->
+    client_term common (fun run where ->
         let open Fiber.O in
-        let* () = connect where in
-        Dune_engine.Scheduler.Rpc.stop ())
+        let* () = connect run where in
+        Dune_rpc_impl.Run.stop ())
 
   let man =
     [ `S "DESCRIPTION"
@@ -134,10 +138,10 @@ end
 module Status = struct
   let term =
     let+ (common : Common.t) = Common.term in
-    client_term common @@ fun where ->
+    client_term common @@ fun run where ->
     printfn "Server is listening on %s" (Dune_rpc.Where.to_string where);
     printfn "ID's of connected clients (include this one):";
-    Scheduler.Rpc.client where
+    Dune_rpc_impl.Run.client run where
       (Dune_rpc.Initialize.Request.create
          ~id:(Dune_rpc.Id.make (Sexp.Atom "status")))
       ~on_notification:(fun _ -> assert false)

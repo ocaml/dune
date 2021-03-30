@@ -152,10 +152,8 @@ module Scheduler = struct
            ; Pp.nop
            ])
 
-  let on_tick () = Console.Status_line.refresh ()
-
-  let on_event_poll dune_config _config = function
-    | Scheduler.Run.Event.Go Tick -> on_tick ()
+  let on_event dune_config _config = function
+    | Scheduler.Run.Event.Tick -> Console.Status_line.refresh ()
     | Scheduler.Run.Event.Source_files_changed -> maybe_clear_screen dune_config
     | Build_interrupted ->
       let status_line =
@@ -179,22 +177,37 @@ module Scheduler = struct
                  (Pp.verbatim ", waiting for filesystem changes..."))))
 
   let go ~(common : Common.t) f =
-    let config = Common.config common in
-    let rpc = Common.rpc common |> Option.map ~f:Dune_rpc_impl.Server.config in
-    let stats = Common.stats common in
-    let config = Dune_config.for_scheduler config rpc stats in
-    Scheduler.Run.go config
-      ~on_event:(fun _ Scheduler.Run.Event.Tick -> on_tick ())
-      f
-
-  let poll ~(common : Common.t) ~once ~finally =
     let dune_config = Common.config common in
-    let rpc = Common.rpc common |> Option.map ~f:Dune_rpc_impl.Server.config in
     let stats = Common.stats common in
-    let config = Dune_config.for_scheduler dune_config rpc stats in
-    Scheduler.Run.poll config
-      ~on_event:(on_event_poll dune_config)
-      ~once ~finally
+    let config = Dune_config.for_scheduler dune_config None stats in
+    Scheduler.Run.go config ~on_event:(on_event dune_config) f
+
+  let poll ~(common : Common.t) ~every ~finally =
+    let dune_config = Common.config common in
+    let stats = Common.stats common in
+    let rpc_where = Some (Dune_rpc_private.Where.default ()) in
+    let config = Dune_config.for_scheduler dune_config rpc_where stats in
+    let file_watcher = Common.file_watcher common in
+    let run =
+      let run () =
+        Scheduler.Run.poll (fun () ->
+            Fiber.finalize every ~finally:(fun () -> Fiber.return (finally ())))
+      in
+      match Common.rpc common with
+      | None -> run
+      | Some rpc ->
+        fun () ->
+          Fiber.fork_and_join_unit
+            (fun () ->
+              let rpc_config = Dune_rpc_impl.Server.config rpc in
+              let scheduler = Scheduler.csexp_scheduler () in
+              let rpc =
+                Dune_rpc_impl.Run.of_config rpc_config scheduler config.stats
+              in
+              Dune_rpc_impl.Run.run rpc)
+            run
+    in
+    Scheduler.Run.go config ~file_watcher ~on_event:(on_event dune_config) run
 end
 
 let restore_cwd_and_execve (common : Common.t) prog argv env =

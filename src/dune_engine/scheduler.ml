@@ -36,20 +36,10 @@ module Config = struct
         Console.Backend.dumb
   end
 
-  module Rpc = struct
-    type t =
-      | Client
-      | Server of
-          { handler : Dune_rpc_server.t
-          ; pool : Fiber.Pool.t
-          ; backlog : int
-          }
-  end
-
   type t =
     { concurrency : int
     ; display : Display.t
-    ; rpc : Rpc.t option
+    ; rpc : Dune_rpc.Where.t option
     ; stats : Stats.t option
     }
 end
@@ -681,101 +671,6 @@ end = struct
   let init q = ignore (Thread.create run q : Thread.t)
 end
 
-module Rpc0 = struct
-  (* This module is called [Rpc0] to avoid conflict with the public [Rpc] module *)
-
-  type cleanup =
-    { symlink : Path.t
-    ; socket : Path.t
-    }
-
-  type t =
-    | Client
-    | Server of
-        { server : Csexp_rpc.Server.t
-        ; handler : Dune_rpc_server.t
-        ; scheduler : Csexp_rpc.Scheduler.t
-        ; pool : Fiber.Pool.t
-        ; where : Dune_rpc.Where.t
-        ; stats : Stats.t option
-        ; cleanup : cleanup option
-        }
-
-  module Server = Dune_rpc_server.Make (Csexp_rpc.Session)
-
-  let scheduler q =
-    let create_thread_safe_ivar () =
-      let ivar = Fiber.Ivar.create () in
-      let fill v = Event.Queue.send_rpc_completed q (Fiber.Fill (ivar, v)) in
-      Event.Queue.register_rpc_started q;
-      (ivar, fill)
-    in
-    { Csexp_rpc.Scheduler.create_thread_safe_ivar; spawn_thread = Thread.spawn }
-
-  let delete_cleanup = function
-    | None -> ()
-    | Some { socket; symlink } ->
-      Path.unlink_no_err socket;
-      Path.unlink_no_err symlink
-
-  let where_to_socket = function
-    | `Ip (addr, `Port port) -> Unix.ADDR_INET (addr, port)
-    | `Unix p -> Unix.ADDR_UNIX (Path.to_string p)
-
-  let of_config events stats rpc =
-    Option.map rpc ~f:(function
-      | Config.Rpc.Client -> Client
-      | Config.Rpc.Server { handler; backlog; pool } ->
-        let where = Dune_rpc.Where.default () in
-        let real_where, cleanup =
-          match where with
-          | `Ip _ -> (where_to_socket where, None)
-          | `Unix symlink ->
-            let socket =
-              let dir =
-                Path.of_string
-                  (match Xdg.runtime_dir with
-                  | Some p -> p
-                  | None -> Filename.get_temp_dir_name ())
-              in
-              Temp.temp_path ~dir ~prefix:"dune" ~suffix:""
-            in
-            Unix.symlink (Path.to_string socket)
-              (let from = Path.external_ (Path.External.cwd ()) in
-               Path.mkdir_p (Path.parent_exn symlink);
-               Path.reach_for_running ~from symlink);
-            let cleanup = Some { socket; symlink } in
-            at_exit (fun () -> delete_cleanup cleanup);
-            (ADDR_UNIX (Path.to_string socket), cleanup)
-        in
-        let scheduler = scheduler events in
-        let server = Csexp_rpc.Server.create real_where ~backlog scheduler in
-        Server { server; handler; where; cleanup; scheduler; stats; pool })
-
-  let with_rpc_serve t f =
-    match t with
-    | None
-    | Some Client ->
-      f
-    | Some (Server t) ->
-      fun () ->
-        let run_server () =
-          Fiber.finalize
-            (fun () ->
-              let open Fiber.O in
-              Fiber.fork_and_join_unit
-                (fun () ->
-                  let* sessions = Csexp_rpc.Server.serve t.server in
-                  let* () = Server.serve sessions t.stats t.handler in
-                  Fiber.Pool.stop t.pool)
-                (fun () -> Fiber.Pool.run t.pool))
-            ~finally:(fun () ->
-              delete_cleanup t.cleanup;
-              Fiber.return ())
-        in
-        Fiber.fork_and_join_unit run_server f
-end
-
 type waiting_for_file_changes =
   | Shutdown_requested
   | Files_changed
@@ -791,21 +686,29 @@ type status =
   | Shutting_down
 
 module Handler = struct
-  type t =
-    { new_event : Config.t -> unit
-    ; build_interrupted : Config.t -> unit
-    }
+  module Event = struct
+    type build_result =
+      | Success
+      | Failure
+
+    type t =
+      | Tick
+      | Source_files_changed
+      | Build_interrupted
+      | Build_finish of build_result
+  end
+
+  type t = Config.t -> Event.t -> unit
 end
 
 type t =
   { config : Config.t
-  ; polling : bool
-  ; rpc : Rpc0.t option
   ; mutable status : status
   ; handler : Handler.t
   ; job_throttle : Fiber.Throttle.t
   ; events : Event.Queue.t
   ; process_watcher : Process_watcher.t
+  ; csexp_scheduler : Csexp_rpc.Scheduler.t Lazy.t
   }
 
 let t_var : t Fiber.Var.t = Fiber.Var.create ()
@@ -866,22 +769,34 @@ let kill_and_wait_for_all_processes t =
   done;
   !saw_signal
 
-let prepare (config : Config.t) ~polling ~(handler : Handler.t) =
+let prepare (config : Config.t) ~(handler : Handler.t) =
   let events = Event.Queue.create config.stats in
   (* The signal watcher must be initialized first so that signals are blocked in
      all threads. *)
   Signal_watcher.init events;
   let process_watcher = Process_watcher.init events in
-  let rpc = Rpc0.of_config events config.stats config.rpc in
+  let csexp_scheduler =
+    lazy
+      (let create_thread_safe_ivar () =
+         let ivar = Fiber.Ivar.create () in
+         let fill v =
+           Event.Queue.send_rpc_completed events (Fiber.Fill (ivar, v))
+         in
+         Event.Queue.register_rpc_started events;
+         (ivar, fill)
+       in
+       { Csexp_rpc.Scheduler.create_thread_safe_ivar
+       ; spawn_thread = Thread.spawn
+       })
+  in
   let t =
     { status = Building
     ; job_throttle = Fiber.Throttle.create config.concurrency
-    ; polling
     ; process_watcher
     ; events
     ; config
-    ; rpc
     ; handler
+    ; csexp_scheduler
     }
   in
   global := Some t;
@@ -922,7 +837,7 @@ end = struct
     then
       raise (Abort Never)
     else (
-      t.handler.new_event t.config;
+      t.handler t.config Tick;
       match Event.Queue.next t.events with
       | Job_completed (job, status) -> Fiber.Fill (job.ivar, status)
       | Files_changed changed_files -> (
@@ -933,7 +848,7 @@ end = struct
           (* We're already cancelling build, so file change events don't matter *)
           iter t
         | Building ->
-          t.handler.build_interrupted t.config;
+          t.handler t.config Build_interrupted;
           t.status <- Restarting_build;
           Process_watcher.killall t.process_watcher Sys.sigkill;
           iter t
@@ -965,74 +880,32 @@ end = struct
 end
 
 module Run = struct
-  module Event = struct
-    type build_result =
-      | Success
-      | Failure
-
-    type go = Tick
-
-    type poll =
-      | Go of go
-      | Source_files_changed
-      | Build_interrupted
-      | Build_finish of build_result
-
-    let to_handler_poll ~on_event =
-      { Handler.build_interrupted = (fun cfg -> on_event cfg Build_interrupted)
-      ; new_event = (fun cfg -> on_event cfg (Go Tick))
-      }
-
-    let to_handler_go ~on_event : Handler.t =
-      { Handler.build_interrupted = (fun _ -> assert false)
-      ; new_event = (fun cfg -> on_event cfg Tick)
-      }
-
-    let go t run =
-      let res =
-        let f = Rpc0.with_rpc_serve t.rpc run in
-        Run_once.run_and_cleanup t f
-      in
-      match res with
-      | Error (Exn exn) -> Exn_with_backtrace.reraise exn
-      | Ok res -> res
-      | Error (Got_signal | Never) ->
-        raise Dune_util.Report_error.Already_reported
-  end
-
   type file_watcher =
     | Detect_external
     | No_watcher
 
-  let poll config ~file_watcher ~on_event ~once ~finally =
-    let handler = Event.to_handler_poll ~on_event in
-    let t = prepare config ~polling:true ~handler in
-    let watcher =
-      match file_watcher with
-      | No_watcher -> None
-      | Detect_external -> Some (File_watcher.create t.events)
-    in
+  module Event = Handler.Event
+
+  let poll step =
+    let open Fiber.O in
+    let* t = t () in
     let rec loop () : unit Fiber.t =
       t.status <- Building;
       let open Fiber.O in
       let* res =
-        let+ res =
-          let on_error exn =
-            (match t.status with
-            | Building -> Report_error.report exn
-            | Shutting_down
-            | Restarting_build ->
-              ()
-            | Waiting_for_file_changes _ ->
-              (* We are inside a build, so we aren't waiting for a file change
-                 event *)
-              assert false);
-            Fiber.return ()
-          in
-          Fiber.map_reduce_errors (module Monoid.Unit) ~on_error once
+        let on_error exn =
+          (match t.status with
+          | Building -> Report_error.report exn
+          | Shutting_down
+          | Restarting_build ->
+            ()
+          | Waiting_for_file_changes _ ->
+            (* We are inside a build, so we aren't waiting for a file change
+               event *)
+            assert false);
+          Fiber.return ()
         in
-        finally ();
-        res
+        Fiber.map_reduce_errors (module Monoid.Unit) ~on_error step
       in
       match t.status with
       | Waiting_for_file_changes _ ->
@@ -1041,7 +914,7 @@ module Run = struct
       | Shutting_down -> Fiber.return ()
       | Restarting_build -> loop ()
       | Building -> (
-        on_event t.config
+        t.handler t.config
           (Build_finish
              (match res with
              | Error _ -> Failure
@@ -1052,17 +925,26 @@ module Run = struct
         match next with
         | Shutdown_requested -> Fiber.return ()
         | Files_changed -> (
-          on_event t.config Source_files_changed;
+          t.handler t.config Source_files_changed;
           match res with
           | Error _
           | Ok `Continue ->
             loop ()
           | Ok `Stop -> Fiber.return ()))
     in
-    let run = Rpc0.with_rpc_serve t.rpc loop in
+    loop ()
+
+  let go config ?(file_watcher = No_watcher)
+      ~(on_event : Config.t -> Handler.Event.t -> unit) run =
+    let t = prepare config ~handler:on_event in
+    let watcher =
+      match file_watcher with
+      | No_watcher -> None
+      | Detect_external -> Some (File_watcher.create t.events)
+    in
     let result =
       match Run_once.run_and_cleanup t run with
-      | Ok () -> Result.Ok ()
+      | Ok a -> Result.Ok a
       | Error (Got_signal | Never) ->
         Error (Dune_util.Report_error.Already_reported, None)
       | Error (Exn exn_with_bt) ->
@@ -1072,14 +954,9 @@ module Run = struct
         ignore (wait_for_process t (File_watcher.pid watcher) : _ Fiber.t));
     ignore (kill_and_wait_for_all_processes t : saw_signal);
     match result with
-    | Ok () -> ()
+    | Ok a -> a
     | Error (exn, None) -> Exn.raise exn
     | Error (exn, Some bt) -> Exn.raise_with_backtrace exn bt
-
-  let go config ~(on_event : Config.t -> Event.go -> unit) run =
-    let handler = Event.to_handler_go ~on_event in
-    let t = prepare config ~polling:false ~handler in
-    Event.go t run
 end
 
 let send_sync_task d =
@@ -1090,42 +967,7 @@ let wait_for_process pid =
   let t = Fiber.Var.get_exn t_var in
   wait_for_process t pid
 
-module Rpc = struct
-  let csexp_client p =
-    let t = Fiber.Var.get_exn t_var in
-    Csexp_rpc.Client.create (Rpc0.where_to_socket p) (Rpc0.scheduler t.events)
-
-  let client p init ~on_notification ~f =
-    let open Fiber.O in
-    let c = csexp_client p in
-    let* session = Csexp_rpc.Client.connect c in
-    Drpc_client.connect_raw session init ~on_notification ~f
-
-  let csexp_connect in_ out =
-    let t = Option.value_exn !global in
-    Csexp_rpc.Session.create in_ out (Rpc0.scheduler t.events)
-
-  let add_to_env env =
-    let t = Fiber.Var.get_exn t_var in
-    match t.rpc with
-    | None -> env
-    | Some Client -> env
-    | Some (Server server) -> Dune_rpc.Where.add_to_env server.where env
-
-  let stop () =
-    let t = Fiber.Var.get_exn t_var in
-    match t.rpc with
-    | None
-    | Some Client ->
-      Code_error.raise "rpc not running" []
-    | Some (Server s) ->
-      Csexp_rpc.Server.stop s.server;
-      Fiber.return ()
-end
-
 let shutdown () =
-  let open Fiber.O in
-  let* () = Rpc.stop () in
   let t = Fiber.Var.get_exn t_var in
   let fill_file_changes =
     match t.status with
@@ -1134,3 +976,13 @@ let shutdown () =
   in
   t.status <- Shutting_down;
   fill_file_changes
+
+let csexp_scheduler () =
+  let t = Fiber.Var.get_exn t_var in
+  Lazy.force t.csexp_scheduler
+
+let add_to_env env =
+  let t = Fiber.Var.get_exn t_var in
+  match t.config.rpc with
+  | None -> env
+  | Some where -> Dune_rpc.Where.add_to_env where env

@@ -100,6 +100,6 @@ val to_dyn : t -> Dyn.t
 
 val for_scheduler :
      t
-  -> Dune_engine.Scheduler.Config.Rpc.t option
+  -> Dune_rpc_private.Where.t option
   -> Stats.t option
   -> Dune_engine.Scheduler.Config.t

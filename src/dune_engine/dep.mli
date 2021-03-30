@@ -52,17 +52,19 @@ module Fact : sig
 
   module Files : sig
     (** A group of files for which we cache the digest of the whole group. *)
-    type t = private
-      { files : Digest.t Path.Map.t
-      ; dirs : Path.Set.t  (** Directories of [files] *)
-      ; digest : Digest.t  (** Stable digest of [files] *)
-      }
+    type t
 
     val make : Digest.t Path.Map.t -> t
 
     val to_dyn : t -> Dyn.t
 
     val equal : t -> t -> bool
+
+    (** Return all the paths in this file group *)
+    val paths : t -> Digest.t Path.Map.t
+
+    (** Create a new [t] from a list of [t] and a list of files *)
+    val group : t list -> Digest.t Path.Map.t -> t
   end
 
   (** [digest] is assumed to be the [digest_paths expansion]. *)
@@ -84,6 +86,11 @@ module Facts : sig
 
   (** Return all the paths, expanding aliases *)
   val paths : t -> Digest.t Path.Map.t
+
+  (** Create a single [Fact.Files.t] from all the paths contained in a list of
+      fact maps. Does so while preserving as much sharing as possible with the
+      original [Files.t]. *)
+  val group_paths_as_fact_files : t list -> Fact.Files.t
 
   val dirs : t -> Path.Set.t
 

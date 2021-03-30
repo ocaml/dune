@@ -1193,21 +1193,18 @@ let all_targets t =
             Path.Build.Set.of_list (Path.Build.Map.keys rules_here)))
   >>| Path.Build.Set.union_all
 
-let expand_alias_gen alias ~eval_build_request ~paths_of_facts ~paths_union_all
-    =
+let expand_alias_gen alias ~eval_build_request =
   lookup_alias alias >>= function
   | None ->
     let alias_descr = sprintf "alias %s" (Alias.describe alias) in
     User_error.raise ?loc:(Rule_fn.loc ())
       [ Pp.textf "No rule found for %s" alias_descr ]
   | Some alias_definitions ->
-    Memo.Build.map
-      (Memo.Build.parallel_map alias_definitions ~f:(fun (loc, definition) ->
-           let on_error exn = Dep_path.reraise exn (Alias (loc, alias)) in
-           Memo.Build.with_error_handler ~on_error (fun () ->
-               let* (), facts = eval_build_request definition in
-               paths_of_facts facts)))
-      ~f:paths_union_all
+    Memo.Build.parallel_map alias_definitions ~f:(fun (loc, definition) ->
+        let on_error exn = Dep_path.reraise exn (Alias (loc, alias)) in
+        Memo.Build.with_error_handler ~on_error (fun () ->
+            let+ (), facts = eval_build_request definition in
+            facts))
 
 type rule_execution_result =
   { deps : Dep.Fact.t Dep.Map.t
@@ -1299,9 +1296,9 @@ end = struct
     let register_action_deps = build_deps
 
     let register_action_dep_pred g =
-      let+ digests = Pred.build g in
-      ( Path.Map.keys digests.files |> Path.Set.of_list
-      , Dep.Fact.file_selector g digests )
+      let+ files = Pred.build g in
+      ( Path.Map.keys (Dep.Fact.Files.paths files) |> Path.Set.of_list
+      , Dep.Fact.file_selector g files )
 
     let file_exists = file_exists
 
@@ -2008,14 +2005,8 @@ end = struct
           Path.Build.Map.find_exn targets path)
 
   let build_alias_impl alias =
-    let+ files =
-      expand_alias_gen alias ~eval_build_request:exec_build_request
-        ~paths_of_facts:(fun facts -> Memo.Build.return (Dep.Facts.paths facts))
-        ~paths_union_all:(fun l ->
-          List.fold_left l ~init:Path.Map.empty
-            ~f:(Path.Map.union ~f:(fun _ x _ -> Some x)))
-    in
-    Dep.Fact.Files.make files
+    let+ l = expand_alias_gen alias ~eval_build_request:exec_build_request in
+    Dep.Facts.group_paths_as_fact_files l
 
   module Pred = struct
     let build_impl g =
@@ -2283,8 +2274,9 @@ end = struct
         Memo.create_hidden "expand-alias"
           ~input:(module Alias)
           (fun alias ->
-            expand_alias_gen alias ~eval_build_request
-              ~paths_of_facts:Expand.deps ~paths_union_all:Path.Set.union_all)
+            let* l = expand_alias_gen alias ~eval_build_request in
+            let deps = List.fold_left l ~init:Dep.Set.empty ~f:Dep.Set.union in
+            Expand.deps deps)
       in
       Memo.exec memo
 

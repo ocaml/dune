@@ -116,6 +116,8 @@ module Fact = struct
 
     let equal a b = Digest.equal a.digest b.digest
 
+    let paths t = t.files
+
     let make files =
       { files
       ; dirs =
@@ -125,6 +127,40 @@ module Fact = struct
           Digest.generic
             (Path.Map.to_list_map files ~f:(fun p d -> (Path.to_string p, d)))
       }
+
+    let empty = lazy (make Path.Map.empty)
+
+    let group ts files =
+      let ts =
+        if Path.Map.is_empty files then
+          ts
+        else
+          make files :: ts
+      in
+      (* Sort and de-dup so that the result is resilient to code changes *)
+      let ts =
+        List.filter_map ts ~f:(fun t ->
+            if Path.Map.is_empty t.files then
+              None
+            else
+              Some (t.digest, t))
+        |> Digest.Map.of_list_reduce ~f:(fun t _ -> t)
+        |> Digest.Map.values
+      in
+      match ts with
+      | [] -> Lazy.force empty
+      | [ t ] -> t
+      | t :: l ->
+        { files =
+            List.fold_left l ~init:t.files ~f:(fun acc t ->
+                Path.Map.union t.files acc ~f:(fun _ d1 d2 ->
+                    assert (Digest.equal d1 d2);
+                    Some d1))
+        ; dirs =
+            List.fold_left l ~init:t.dirs ~f:(fun acc t ->
+                Path.Set.union t.dirs acc)
+        ; digest = Digest.generic (List.map ts ~f:(fun t -> t.digest))
+        }
   end
 
   type t =
@@ -172,6 +208,19 @@ module Facts = struct
         | File_selector (_, ps)
         | Alias ps ->
           Path.Map.union acc ps.files ~f:(fun _ a _ -> Some a))
+
+  let group_paths_as_fact_files ts =
+    let fact_files, paths =
+      List.fold_left ts ~init:([], Path.Map.empty) ~f:(fun acc t ->
+          Map.fold t ~init:acc ~f:(fun fact ((acc_ff, acc_paths) as acc) ->
+              match (fact : Fact.t) with
+              | Nothing -> acc
+              | File (p, d) -> (acc_ff, Path.Map.set acc_paths p d)
+              | File_selector (_, ps)
+              | Alias ps ->
+                (ps :: acc_ff, acc_paths)))
+    in
+    Fact.Files.group fact_files paths
 
   let dirs t =
     Map.fold t ~init:Path.Set.empty ~f:(fun fact acc ->

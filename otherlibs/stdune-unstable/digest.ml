@@ -2,6 +2,7 @@ type t = string
 
 module D = Stdlib.Digest
 module Set = String.Set
+module Map = String.Map
 
 let hash = Hashtbl.hash
 

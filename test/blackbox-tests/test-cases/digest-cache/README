@@ -1,0 +1,7 @@
+This directory has various tests for the digest cache of Dune.
+
+In most of the tests, we use --wait-for-filesystem-clock to make the
+tests more reproducible. Without it, Dune might drop some entries or
+not depending on whether the time lap between targets being produced
+and dune saving the digest cache is smaller than the file system
+granularity.

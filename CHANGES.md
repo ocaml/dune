@@ -75,6 +75,9 @@ Unreleased
 - Fix a bug where dune would always re-run all actions that produce symlinks,
   even if their dependencies did not change. (#4405, @aalekseyev)
 
+- Fix a bug that was causing Dune to re-hash generated files more
+  often than necessary (#4419, @jeremiedimino)
+
 2.8.5 (28/03/2021)
 ------------------
 

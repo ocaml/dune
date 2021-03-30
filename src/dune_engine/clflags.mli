@@ -15,6 +15,9 @@ val debug_backtraces : bool -> unit
 (** Print debug info about artifact substitution *)
 val debug_artifact_substitution : bool ref
 
+(** Print debug info for cached digests *)
+val debug_digests : bool ref
+
 (** Command to use to diff things *)
 val diff_command : string option ref
 

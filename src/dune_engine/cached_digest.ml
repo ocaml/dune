@@ -1,10 +1,33 @@
 open Import
 
+(* The reduced set of file stats this module inspects to decide whether a file
+   changed or not *)
+module Reduced_stats = struct
+  type t =
+    { mtime : float
+    ; size : int
+    ; perm : Unix.file_perm
+    }
+
+  let to_dyn { mtime; size; perm } =
+    Dyn.Record
+      [ ("mtime", Float mtime); ("size", Int size); ("perm", Int perm) ]
+
+  let of_unix_stats (stats : Unix.stats) =
+    { mtime = stats.st_mtime; size = stats.st_size; perm = stats.st_perm }
+
+  let compare a b =
+    match Float.compare a.mtime b.mtime with
+    | (Lt | Gt) as x -> x
+    | Eq -> (
+      match Int.compare a.size b.size with
+      | (Lt | Gt) as x -> x
+      | Eq -> Int.compare a.perm b.perm)
+end
+
 type file =
   { mutable digest : Digest.t
-  ; mutable timestamp : float
-  ; mutable size : int
-  ; mutable permissions : Unix.file_perm
+  ; mutable stats : Reduced_stats.t
   ; mutable stats_checked : int
   }
 
@@ -16,12 +39,10 @@ type t =
 
 let db_file = Path.relative Path.build_dir ".digest-db"
 
-let dyn_of_file { digest; timestamp; size; permissions; stats_checked } =
+let dyn_of_file { digest; stats; stats_checked } =
   Dyn.Record
     [ ("digest", Digest.to_dyn digest)
-    ; ("timestamp", Float timestamp)
-    ; ("size", Int size)
-    ; ("permissions", Int permissions)
+    ; ("stats", Reduced_stats.to_dyn stats)
     ; ("stats_checked", Int stats_checked)
     ]
 
@@ -37,7 +58,7 @@ module P = Persistent.Make (struct
 
   let name = "DIGEST-DB"
 
-  let version = 4
+  let version = 5
 
   let to_dyn = to_dyn
 end)
@@ -70,11 +91,18 @@ let delete_very_recent_entries () =
   | Lt -> ()
   | Eq
   | Gt ->
-    Path.Table.filteri_inplace cache.table ~f:(fun ~key:_ ~data ->
-        match Float.compare data.timestamp now with
+    Path.Table.filteri_inplace cache.table ~f:(fun ~key:fn ~data ->
+        match Float.compare data.stats.mtime now with
         | Lt -> true
         | Gt
         | Eq ->
+          if !Clflags.debug_digests then
+            Console.print
+              [ Pp.textf
+                  "Dropping cached digest for %s because it has exactly the \
+                   same mtime as the file system clock."
+                  (Path.to_string_maybe_quoted fn)
+              ];
           false)
 
 let dump () =
@@ -97,15 +125,12 @@ let set_max_timestamp cache (stat : Unix.stats) =
 
 let set_with_stat fn digest stat =
   let cache = Lazy.force cache in
-  let permissions = stat.Unix.st_perm in
   needs_dumping := true;
   set_max_timestamp cache stat;
   Path.Table.set cache.table fn
     { digest
-    ; timestamp = stat.st_mtime
+    ; stats = Reduced_stats.of_unix_stats stat
     ; stats_checked = cache.checked_key
-    ; size = stat.st_size
-    ; permissions
     }
 
 let set fn digest =
@@ -148,43 +173,54 @@ let peek_file fn =
     Some
       (if x.stats_checked = cache.checked_key then
         x.digest
-      else (
-        needs_dumping := true;
-        let stat = Path.stat fn in
-        let dirty = ref false in
-        set_max_timestamp cache stat;
-        if stat.st_mtime <> x.timestamp then (
-          dirty := true;
-          x.timestamp <- stat.st_mtime
-        );
-        if stat.st_perm <> x.permissions then (
-          dirty := true;
-          x.permissions <- stat.st_perm
-        );
-        if stat.st_size <> x.size then (
-          dirty := true;
-          x.size <- stat.st_size
-        );
-        if !dirty then x.digest <- Digest.file_with_stats fn stat;
-        x.stats_checked <- cache.checked_key;
-        x.digest
-      ))
+      else
+        let stats = Path.stat fn in
+        let reduced_stats = Reduced_stats.of_unix_stats stats in
+        match Reduced_stats.compare x.stats reduced_stats with
+        | Eq ->
+          (* Even though we're modifying the [stats_checked] field, we don't
+             need to set [needs_dumping := true] here. This is because
+             [checked_key] is incremented every time we load from disk, which
+             makes it so that [stats_checked < checked_key] for all entries
+             after loading, regardless of whether we save the new value here or
+             not. *)
+          x.stats_checked <- cache.checked_key;
+          x.digest
+        | Gt
+        | Lt ->
+          let digest = Digest.file_with_stats fn stats in
+          if !Clflags.debug_digests then
+            Console.print
+              [ Pp.textf "Re-digested file %s because its stats changed:"
+                  (Path.to_string_maybe_quoted fn)
+              ; Dyn.pp
+                  (Dyn.Record
+                     [ ("old_digest", Digest.to_dyn x.digest)
+                     ; ("new_digest", Digest.to_dyn digest)
+                     ; ("old_stats", Reduced_stats.to_dyn x.stats)
+                     ; ("new_stats", Reduced_stats.to_dyn reduced_stats)
+                     ])
+              ];
+          needs_dumping := true;
+          set_max_timestamp cache stats;
+          x.digest <- digest;
+          x.stats <- reduced_stats;
+          x.stats_checked <- cache.checked_key;
+          digest)
+
+let peek_or_refresh_file fn =
+  match peek_file fn with
+  | None -> refresh_internal fn
+  | Some v -> v
 
 let source_or_external_file fn =
   let open Memo.Build.O in
   assert (not (Path.is_in_build_dir fn));
-  let res =
-    match peek_file fn with
-    | None -> refresh_internal fn
-    | Some v -> v
-  in
+  let res = peek_or_refresh_file fn in
   let+ () = Fs_notify_memo.depend fn in
   res
 
-let build_file fn =
-  match peek_file (Path.build fn) with
-  | None -> refresh fn
-  | Some v -> v
+let build_file fn = peek_or_refresh_file (Path.build fn)
 
 let remove fn =
   let cache = Lazy.force cache in

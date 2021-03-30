@@ -78,7 +78,7 @@ let gen_rules_output sctx (config : Format_config.t) ~version ~dialects
   in
   let open Memo.Build.O in
   let+ () =
-    File_tree.files_of source_dir
+    Source_tree.files_of source_dir
     >>= Memo.Build.parallel_iter_set
           (module Path.Source.Set)
           ~f:setup_formatting

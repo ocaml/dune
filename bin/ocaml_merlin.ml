@@ -31,7 +31,7 @@ let term =
   let common = Common.set_print_directory common false in
   Common.set_common common ~log_file:No_log_file;
   Scheduler.go ~common (fun () ->
-      Dune_engine.File_tree.init ~recognize_jbuilder_projects:true
+      Dune_engine.Source_tree.init ~recognize_jbuilder_projects:true
         ~ancestor_vcs:None;
       let x = Common.x common in
       let workspace_file =
@@ -76,7 +76,7 @@ module Dump_dot_merlin = struct
     in
     Common.set_common common ~log_file:No_log_file;
     Scheduler.go ~common (fun () ->
-        Dune_engine.File_tree.init ~recognize_jbuilder_projects:true
+        Dune_engine.Source_tree.init ~recognize_jbuilder_projects:true
           ~ancestor_vcs:None;
         let x = Common.x common in
         let workspace_file =

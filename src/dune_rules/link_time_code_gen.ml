@@ -112,7 +112,7 @@ let build_info_code cctx ~libs ~api_version =
       s
   in
   let placeholder p =
-    Memo.Build.memo_build (File_tree.nearest_vcs p) >>| function
+    Memo.Build.memo_build (Source_tree.nearest_vcs p) >>| function
     | None -> "None"
     | Some vcs -> (
       let p =

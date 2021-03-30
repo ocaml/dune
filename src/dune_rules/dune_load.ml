@@ -184,12 +184,12 @@ type conf =
   ; vcs : Vcs.t list
   }
 
-let interpret ~dir ~project ~(dune_file : File_tree.Dune_file.t) =
-  let file = File_tree.Dune_file.path dune_file in
+let interpret ~dir ~project ~(dune_file : Source_tree.Dune_file.t) =
+  let file = Source_tree.Dune_file.path dune_file in
   let static =
-    File_tree.Dune_file.get_static_sexp_and_possibly_destroy dune_file
+    Source_tree.Dune_file.get_static_sexp_and_possibly_destroy dune_file
   in
-  match File_tree.Dune_file.kind dune_file with
+  match Source_tree.Dune_file.kind dune_file with
   | Ocaml_script ->
     Dune_files.Script { script = { dir; project; file }; from_parent = static }
   | Plain -> Literal (Dune_file.parse static ~dir ~file ~project)
@@ -203,28 +203,28 @@ module Vcses_projects_and_dune_files =
       type t = Dune_project.t
     end))
     (Monoid.Appendable_list (struct
-      type t = Path.Source.t * Dune_project.t * File_tree.Dune_file.t
+      type t = Path.Source.t * Dune_project.t * Source_tree.Dune_file.t
     end))
 
-module File_tree_map_reduce =
-  File_tree.Make_map_reduce_with_progress
+module Source_tree_map_reduce =
+  Source_tree.Make_map_reduce_with_progress
     (Memo.Build)
     (Vcses_projects_and_dune_files)
 
 let load ~ancestor_vcs =
   let open Fiber.O in
-  File_tree.init ~ancestor_vcs ~recognize_jbuilder_projects:false;
+  Source_tree.init ~ancestor_vcs ~recognize_jbuilder_projects:false;
   let+ vcs, projects, dune_files =
     Memo.Build.run
       (let f dir : Vcses_projects_and_dune_files.t Memo.Build.t =
-         let path = File_tree.Dir.path dir in
+         let path = Source_tree.Dir.path dir in
          let vcs =
-           match File_tree.Dir.vcs dir with
+           match Source_tree.Dir.vcs dir with
            | Some vcs when Path.equal vcs.root (Path.source path) ->
              Appendable_list.singleton vcs
            | _ -> Appendable_list.empty
          in
-         let project = File_tree.Dir.project dir in
+         let project = Source_tree.Dir.project dir in
          let projects =
            if Path.Source.equal path (Dune_project.root project) then
              Appendable_list.singleton project
@@ -232,13 +232,13 @@ let load ~ancestor_vcs =
              Appendable_list.empty
          in
          let dune_files =
-           match File_tree.Dir.dune_file dir with
+           match Source_tree.Dir.dune_file dir with
            | None -> Appendable_list.empty
            | Some d -> Appendable_list.singleton (path, project, d)
          in
          Memo.Build.return (vcs, projects, dune_files)
        in
-       File_tree_map_reduce.map_reduce ~traverse:Sub_dirs.Status.Set.all ~f)
+       Source_tree_map_reduce.map_reduce ~traverse:Sub_dirs.Status.Set.all ~f)
   in
   let vcs =
     Appendable_list.to_list vcs

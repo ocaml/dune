@@ -123,7 +123,7 @@ module Alias0 = struct
   let dep t = Action_builder.dep (Dep.alias t)
 
   let dep_multi_contexts ~dir ~name ~contexts =
-    ignore (File_tree.find_dir_specified_on_command_line ~dir);
+    ignore (Source_tree.find_dir_specified_on_command_line ~dir);
     let context_to_alias_expansion ctx =
       let ctx_dir = Context_name.build_dir ctx in
       let dir = Path.Build.(append_source ctx_dir dir) in
@@ -132,22 +132,22 @@ module Alias0 = struct
     Action_builder.all_unit (List.map contexts ~f:context_to_alias_expansion)
 
   open Action_builder.O
-  module File_tree_map_reduce =
-    File_tree.Dir.Make_map_reduce (Action_builder) (Monoid.Exists)
+  module Source_tree_map_reduce =
+    Source_tree.Dir.Make_map_reduce (Action_builder) (Monoid.Exists)
 
   let dep_rec_internal ~name ~dir ~ctx_dir =
     let f dir =
-      let path = Path.Build.append_source ctx_dir (File_tree.Dir.path dir) in
+      let path = Path.Build.append_source ctx_dir (Source_tree.Dir.path dir) in
       Action_builder.dep_on_alias_if_exists (make ~dir:path name)
     in
-    File_tree_map_reduce.map_reduce dir
+    Source_tree_map_reduce.map_reduce dir
       ~traverse:Sub_dirs.Status.Set.normal_only ~f
 
   let dep_rec t ~loc =
     let ctx_dir, src_dir =
       Path.Build.extract_build_context_dir_exn (Alias.dir t)
     in
-    Action_builder.memo_build (File_tree.find_dir src_dir) >>= function
+    Action_builder.memo_build (Source_tree.find_dir src_dir) >>= function
     | None ->
       Action_builder.fail
         { fail =
@@ -172,7 +172,7 @@ module Alias0 = struct
     let open Action_builder.O in
     let* dir =
       Action_builder.memo_build
-        (File_tree.find_dir_specified_on_command_line ~dir:src_dir)
+        (Source_tree.find_dir_specified_on_command_line ~dir:src_dir)
     in
     let+ is_nonempty_list =
       Action_builder.all
@@ -471,7 +471,7 @@ let get_cache () =
 let get_dir_triage t ~dir =
   match Dpath.analyse_dir dir with
   | Source dir ->
-    let+ files = File_tree.files_of dir in
+    let+ files = Source_tree.files_of dir in
     Dir_triage.Known (Non_build (Path.set_of_source_paths files))
   | External _ ->
     Memo.Build.return
@@ -591,8 +591,8 @@ let compute_targets_digests_or_raise_error ~loc targets =
         Path.Build.extract_build_context_dir_exn
           (Path.Build.Set.choose_exn targets)
       in
-      let+ dir = Memo.Build.run (File_tree.nearest_dir src_dir) in
-      let version = File_tree.Dir.project dir |> Dune_project.dune_version in
+      let+ dir = Memo.Build.run (Source_tree.nearest_dir src_dir) in
+      let version = Source_tree.Dir.project dir |> Dune_project.dune_version in
       version >= (2, 4)
   in
   let refresh =
@@ -793,12 +793,12 @@ end = struct
         match Path.Build.extract_build_context_dir dir with
         | None -> Memo.Build.return aliases
         | Some (ctx_dir, src_dir) -> (
-          File_tree.find_dir src_dir >>| function
+          Source_tree.find_dir src_dir >>| function
           | None -> aliases
           | Some dir ->
             let default_alias =
               let dune_version =
-                File_tree.Dir.project dir |> Dune_project.dune_version
+                Source_tree.Dir.project dir |> Dune_project.dune_version
               in
               if dune_version >= (2, 0) then
                 Alias.Name.all
@@ -891,12 +891,12 @@ end = struct
       | Anonymous_action _
       | Other _ ->
         Memo.Build.return None
-      | Regular (_ctx, sub_dir) -> File_tree.find_dir sub_dir
+      | Regular (_ctx, sub_dir) -> Source_tree.find_dir sub_dir
 
     let source_subdirs_of_build_dir ~dir =
       corresponding_source_dir ~dir >>| function
       | None -> String.Set.empty
-      | Some dir -> File_tree.Dir.sub_dir_names dir
+      | Some dir -> Source_tree.Dir.sub_dir_names dir
 
     let allowed_dirs ~dir ~subdir : restriction Memo.Build.t =
       let+ subdirs = source_subdirs_of_build_dir ~dir in
@@ -990,10 +990,10 @@ end = struct
       | Install _ ->
         (* There are no aliases in the [_build/install] directory *)
         Memo.Build.return Alias.Name.Map.empty
-    and* file_tree_dir =
+    and* source_tree_dir =
       match context_name with
       | Install _ -> Memo.Build.return None
-      | Context _ -> File_tree.find_dir sub_dir
+      | Context _ -> Source_tree.find_dir sub_dir
     in
     (* Compute the set of targets and the set of source files that must not be
        copied *)
@@ -1030,10 +1030,10 @@ end = struct
         (* This condition is [true] because of [get_dir_status] *)
         assert (Context_name.Map.mem t.contexts context_name);
         let files, subdirs =
-          match file_tree_dir with
+          match source_tree_dir with
           | None -> (Path.Source.Set.empty, String.Set.empty)
           | Some dir ->
-            (File_tree.Dir.file_paths dir, File_tree.Dir.sub_dir_names dir)
+            (Source_tree.Dir.file_paths dir, Source_tree.Dir.sub_dir_names dir)
         in
         let files = Path.Source.Set.diff files source_files_to_ignore in
         if Path.Source.Set.is_empty files then
@@ -1174,19 +1174,19 @@ let get_rule_or_source t path =
     User_error.raise ?loc
       [ Pp.textf "File unavailable: %s" (Path.to_string_maybe_quoted path) ]
 
-module File_tree_map_reduce =
-  File_tree.Dir.Make_map_reduce (Memo.Build) (Monoid.Union (Path.Build.Set))
+module Source_tree_map_reduce =
+  Source_tree.Dir.Make_map_reduce (Memo.Build) (Monoid.Union (Path.Build.Set))
 
 let all_targets t =
-  let* root = File_tree.root () in
+  let* root = Source_tree.root () in
   Memo.Build.parallel_map (Context_name.Map.values t.contexts) ~f:(fun ctx ->
-      File_tree_map_reduce.map_reduce root ~traverse:Sub_dirs.Status.Set.all
+      Source_tree_map_reduce.map_reduce root ~traverse:Sub_dirs.Status.Set.all
         ~f:(fun dir ->
           load_dir
             ~dir:
               (Path.build
                  (Path.Build.append_source ctx.Build_context.build_dir
-                    (File_tree.Dir.path dir)))
+                    (Source_tree.Dir.path dir)))
           >>| function
           | Non_build _ -> Path.Build.Set.empty
           | Build { rules_here; _ } ->
@@ -1719,7 +1719,7 @@ end = struct
                 let+ repository =
                   let+ dir = Memo.Build.run (Rule.find_source_dir rule) in
                   let open Option.O in
-                  let* vcs = File_tree.Dir.vcs dir in
+                  let* vcs = Source_tree.Dir.vcs dir in
                   let f found = Path.equal found.Vcs.root vcs.Vcs.root in
                   let+ _, i = get_vcs () |> List.findi ~f in
                   i
@@ -1772,7 +1772,7 @@ end = struct
                 in
                 let* () =
                   let dir = Path.Source.parent_exn in_source_tree in
-                  Memo.Build.run (File_tree.find_dir dir) >>| function
+                  Memo.Build.run (Source_tree.find_dir dir) >>| function
                   | Some _ -> ()
                   | None ->
                     let loc =

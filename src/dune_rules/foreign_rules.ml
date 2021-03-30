@@ -2,8 +2,8 @@ open! Dune_engine
 open! Stdune
 open Action_builder.O
 
-module File_tree_map_reduce =
-  File_tree.Dir.Make_map_reduce
+module Source_tree_map_reduce =
+  Source_tree.Dir.Make_map_reduce
     (Action_builder)
     (Monoid.Appendable_list (struct
       type t = Command.Args.static Command.Args.t
@@ -60,7 +60,7 @@ let include_dir_flags ~expander ~dir (stubs : Foreign.Stubs.t) =
              Command.Args.Dyn
                ((* This branch corresponds to a source directory. We track its
                    contents recursively. *)
-                Action_builder.memo_build (File_tree.find_dir source_dir)
+                Action_builder.memo_build (Source_tree.find_dir source_dir)
                 >>= function
                 | None ->
                   User_error.raise ~loc
@@ -69,10 +69,10 @@ let include_dir_flags ~expander ~dir (stubs : Foreign.Stubs.t) =
                     ]
                 | Some dir ->
                   let+ l =
-                    File_tree_map_reduce.map_reduce dir
+                    Source_tree_map_reduce.map_reduce dir
                       ~traverse:Sub_dirs.Status.Set.all ~f:(fun t ->
                         let dir =
-                          Path.append_source build_dir (File_tree.Dir.path t)
+                          Path.append_source build_dir (Source_tree.Dir.path t)
                         in
                         let deps =
                           Dep.Set.singleton
@@ -118,7 +118,7 @@ let build_c ~kind ~sctx ~dir ~expander ~include_flags (loc, src, dst) =
     let has_standard = Ordered_set_lang.Unexpanded.has_standard flags in
     let+ is_vendored =
       match Path.Build.drop_build_context dir with
-      | Some src_dir -> Dune_engine.File_tree.is_vendored src_dir
+      | Some src_dir -> Dune_engine.Source_tree.is_vendored src_dir
       | None -> Memo.Build.return false
     in
     if

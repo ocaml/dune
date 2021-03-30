@@ -60,7 +60,7 @@ let resolve_path path ~(setup : Dune_rules.Main.build_system) =
     Error hint
   in
   let as_source_dir src =
-    Dune_engine.File_tree.dir_exists src >>| function
+    Dune_engine.Source_tree.dir_exists src >>| function
     | true ->
       Some
         [ Alias

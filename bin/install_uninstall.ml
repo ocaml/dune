@@ -106,7 +106,7 @@ end
 module File_ops_real (W : Workspace) : File_operations = struct
   open W
 
-  let get_vcs p = Dune_engine.File_tree.nearest_vcs p
+  let get_vcs p = Dune_engine.Source_tree.nearest_vcs p
 
   type load_special_file_result =
     | No_version_needed
@@ -316,7 +316,7 @@ let file_operations ~dry_run ~workspace : (module File_operations) =
 
 let package_is_vendored (pkg : Dune_engine.Package.t) =
   let dir = Package.dir pkg in
-  Memo.Build.run (Dune_engine.File_tree.is_vendored dir)
+  Memo.Build.run (Dune_engine.Source_tree.is_vendored dir)
 
 let install_uninstall ~what =
   let doc = sprintf "%s packages." (String.capitalize what) in

@@ -94,4 +94,4 @@ val effective_env : t -> Env.t
 (** [find_source_dir rule] is the closest source directory corresponding to
     rule.dir. Eg. [src/dune] for a rule with dir
     [_build/default/src/dune/.dune.objs]. *)
-val find_source_dir : t -> File_tree.Dir.t Memo.Build.t
+val find_source_dir : t -> Source_tree.Dir.t Memo.Build.t

@@ -343,7 +343,7 @@ let add_alias_action t alias ~dir ~loc ?locks action =
 
 let build_dir_is_vendored build_dir =
   match Path.Build.drop_build_context build_dir with
-  | Some src_dir -> Dune_engine.File_tree.is_vendored src_dir
+  | Some src_dir -> Dune_engine.Source_tree.is_vendored src_dir
   | None -> Memo.Build.return false
 
 let ocaml_flags t ~dir (spec : Ocaml_flags.Spec.t) =

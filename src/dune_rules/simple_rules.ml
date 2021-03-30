@@ -147,7 +147,7 @@ let copy_files sctx ~dir ~expander ~src_dir (def : Copy_files.t) =
   let* exists =
     match Path.as_in_source_tree src_in_src with
     | None -> Memo.Build.return (Path.exists src_in_src)
-    | Some src_in_src -> File_tree.dir_exists src_in_src
+    | Some src_in_src -> Source_tree.dir_exists src_in_src
   in
   if not exists then
     User_error.raise ~loc

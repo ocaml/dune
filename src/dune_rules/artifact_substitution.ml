@@ -51,7 +51,7 @@ type conf =
   }
 
 let conf_of_context (context : Build_context.t option) =
-  let get_vcs = File_tree.nearest_vcs in
+  let get_vcs = Source_tree.nearest_vcs in
   match context with
   | None ->
     { get_vcs
@@ -70,7 +70,7 @@ let conf_of_context (context : Build_context.t option) =
       let install_dir = Path.build (Path.Build.relative install_dir "lib") in
       Hardcoded (install_dir :: context.default_ocamlpath)
     in
-    { get_vcs = File_tree.nearest_vcs
+    { get_vcs = Source_tree.nearest_vcs
     ; get_location
     ; get_config_path
     ; hardcoded_ocaml_path
@@ -78,7 +78,7 @@ let conf_of_context (context : Build_context.t option) =
 
 let conf_for_install ~relocatable ~default_ocamlpath ~stdlib_dir ~prefix ~libdir
     ~mandir =
-  let get_vcs = File_tree.nearest_vcs in
+  let get_vcs = Source_tree.nearest_vcs in
   let hardcoded_ocaml_path =
     if relocatable then
       Relocatable prefix

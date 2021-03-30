@@ -32,22 +32,22 @@ module Libs_and_ppxs =
       type t = Loc.t * Lib_name.t
     end))
 
-module File_tree_map_reduce =
-  File_tree.Dir.Make_map_reduce (Memo.Build) (Libs_and_ppxs)
+module Source_tree_map_reduce =
+  Source_tree.Dir.Make_map_reduce (Memo.Build) (Libs_and_ppxs)
 
 let libs_and_ppx_under_dir sctx ~db ~dir =
   (match Path.drop_build_context dir with
   | None -> Memo.Build.return None
-  | Some dir -> File_tree.find_dir dir)
+  | Some dir -> Source_tree.find_dir dir)
   >>= function
   | None -> Memo.Build.return ([], [])
   | Some dir ->
-    File_tree_map_reduce.map_reduce dir
+    Source_tree_map_reduce.map_reduce dir
       ~traverse:{ data_only = false; vendored = true; normal = true }
       ~f:(fun dir ->
         let dir =
           Path.Build.append_source (Super_context.context sctx).build_dir
-            (File_tree.Dir.path dir)
+            (Source_tree.Dir.path dir)
         in
         match Super_context.stanzas_in sctx ~dir with
         | None -> Memo.Build.return Libs_and_ppxs.empty

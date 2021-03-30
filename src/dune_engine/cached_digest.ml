@@ -160,17 +160,28 @@ let refresh fn = refresh_internal (Path.build fn)
 let refresh_and_chmod fn =
   let fn = Path.build fn in
   let stats = Path.lstat fn in
-  let () =
-    (* We remove write permissions to uniformize behavior regardless of whether
-       the cache is activated. No need to be zealous in case the file is not
-       cached anyway. See issue #3311. *)
-    if Cache.cachable stats.st_kind then
-      Path.chmod ~stats:(Some stats) ~mode:0o222 ~op:`Remove fn
-  in
   let stats =
     match stats.st_kind with
-    | S_LNK -> Path.stat fn
-    | _ -> stats
+    | S_LNK ->
+      (* If the path is a symbolic link, we don't try to remove write
+         permissions. For two reasons:
+
+         - if the destination was not a build path (i.e. in the build
+         directory), then it would definitely be wrong to do so
+
+         - if it is in the build directory, then we expect that the rule
+         producing this file will have taken core of chmodding it *)
+      Path.stat fn
+    | _ -> (
+      match Cache.cachable stats.st_kind with
+      | true ->
+        (* We remove write permissions to uniformize behavior regardless of
+           whether the cache is activated. No need to be zealous in case the
+           file is not cached anyway. See issue #3311. *)
+        let perm = stats.st_perm land lnot 0o222 in
+        Path.chmod ~stats:(Some stats) ~mode:perm ~op:`Set fn;
+        { stats with st_perm = perm }
+      | false -> stats)
   in
   refresh_ stats fn
 

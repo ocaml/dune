@@ -84,8 +84,17 @@ let get_current_filesystem_time () =
   Io.write_file special_path "<dummy>";
   (Path.stat special_path).st_mtime
 
+let wait_for_fs_clock_to_advance () =
+  let t = get_current_filesystem_time () in
+  while get_current_filesystem_time () <= t do
+    (* This is a blocking wait but we don't care too much. This code is only
+       used in the test suite. *)
+    Unix.sleepf 0.01
+  done
+
 let delete_very_recent_entries () =
   let cache = Lazy.force cache in
+  if !Clflags.wait_for_filesystem_clock then wait_for_fs_clock_to_advance ();
   let now = get_current_filesystem_time () in
   match Float.compare cache.max_timestamp now with
   | Lt -> ()

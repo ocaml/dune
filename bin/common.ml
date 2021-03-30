@@ -40,6 +40,7 @@ type t =
   ; debug_backtraces : bool
   ; debug_artifact_substitution : bool
   ; debug_digests : bool
+  ; wait_for_filesystem_clock : bool
   ; profile : Profile.t option
   ; workspace_file : Arg.Path.t option
   ; root : Workspace_root.t
@@ -134,6 +135,7 @@ let set_common ?log_file c =
   Clflags.debug_backtraces c.debug_backtraces;
   Clflags.debug_artifact_substitution := c.debug_artifact_substitution;
   Clflags.debug_digests := c.debug_digests;
+  Clflags.wait_for_filesystem_clock := c.wait_for_filesystem_clock;
   Clflags.capture_outputs := c.capture_outputs;
   Clflags.diff_command := c.diff_command;
   Clflags.promote := c.promote;
@@ -765,6 +767,19 @@ let term =
              ])
           Detect_external
       & info [ "file-watcher" ] ~doc)
+  and+ wait_for_filesystem_clock =
+    Arg.(
+      value & flag
+      & info
+          [ "wait-for-filesystem-clock" ]
+          ~doc:
+            "Dune digest file contents for better incrementally. These digests \
+             are themselves cached. In some cases, Dune needs to drop some \
+             digest cache entries in order for things to be reliable. This \
+             option makes Dune wait for the file system clock to advance so \
+             that it doesn't need to drop anything. You should probably not \
+             care about this option, it is mostly useful for Dune velopers to \
+             make Dune tests of the digest cache more reproducible.")
   in
   let build_dir = Option.value ~default:default_build_dir build_dir in
   let root = Workspace_root.create ~specified_by_user:root in
@@ -805,6 +820,7 @@ let term =
   ; debug_backtraces
   ; debug_artifact_substitution
   ; debug_digests
+  ; wait_for_filesystem_clock
   ; profile
   ; capture_outputs = not no_buffer
   ; workspace_file

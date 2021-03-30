@@ -8,7 +8,7 @@ let make_setup common =
 
 let run_build_command_poll ~(common : Common.t) ~targets ~setup =
   let open Fiber.O in
-  let once () =
+  let every () =
     Cached_digest.invalidate_cached_timestamps ();
     let* setup = setup () in
     let* targets =
@@ -30,8 +30,7 @@ let run_build_command_poll ~(common : Common.t) ~targets ~setup =
     in
     `Continue
   in
-  let file_watcher = Common.file_watcher common in
-  Scheduler.poll ~file_watcher ~common ~once ~finally:Hooks.End_of_build.run
+  Scheduler.poll ~common ~every ~finally:Hooks.End_of_build.run
 
 let run_build_command_once ~(common : Common.t) ~targets ~setup =
   let open Fiber.O in

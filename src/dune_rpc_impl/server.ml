@@ -91,7 +91,7 @@ module Subscribers = struct
 end
 
 type t =
-  { config : Dune_engine.Scheduler.Config.Rpc.t
+  { config : Run.Config.t
   ; build_mutex : Fiber.Mutex.t
   ; pending_build_jobs : (Dep_conf.t list * Status.t Fiber.Ivar.t) Queue.t
   ; pool : Fiber.Pool.t
@@ -153,7 +153,10 @@ let handler (t : t Fdecl.t) : 'a Dune_rpc_server.Handler.t =
               (module Session_set)
               t.clients ~f:Session.request_close)
       in
-      Fiber.fork_and_join_unit terminate_sessions Dune_engine.Scheduler.shutdown
+      let shutdown () =
+        Fiber.fork_and_join_unit Dune_engine.Scheduler.shutdown Run.stop
+      in
+      Fiber.fork_and_join_unit terminate_sessions shutdown
     in
     Handler.notification rpc
       (Handler.callback Handler.private_ shutdown)
@@ -206,9 +209,7 @@ let create () =
   let pending_build_jobs = Queue.create () in
   let handler = Dune_rpc_server.make (handler t) in
   let pool = Fiber.Pool.create () in
-  let config =
-    Dune_engine.Scheduler.Config.Rpc.Server { handler; backlog = 10; pool }
-  in
+  let config = Run.Config.Server { handler; backlog = 10; pool } in
   let build_mutex = Fiber.Mutex.create () in
   Fdecl.set t
     { config

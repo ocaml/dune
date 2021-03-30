@@ -454,7 +454,7 @@ module Exit_status = struct
          :: Option.to_list output)
 end
 
-let add_to_env env = Dtemp.add_to_env env |> Scheduler.Rpc.add_to_env
+let add_to_env env = Dtemp.add_to_env env |> Scheduler.add_to_env
 
 let default_env = lazy (add_to_env Env.initial)
 

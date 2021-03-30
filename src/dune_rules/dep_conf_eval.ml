@@ -7,17 +7,17 @@ let make_alias expander s =
   let loc = String_with_vars.loc s in
   Expander.expand_path expander s >>| Alias.of_user_written_path ~loc
 
-module File_tree_map_reduce =
-  File_tree.Dir.Make_map_reduce (Action_builder) (Monoid.Union (Path.Set))
+module Source_tree_map_reduce =
+  Source_tree.Dir.Make_map_reduce (Action_builder) (Monoid.Union (Path.Set))
 
 let collect_source_files_recursively dir ~f =
   let prefix_with, dir = Path.extract_build_context_dir_exn dir in
-  Action_builder.memo_build (File_tree.find_dir dir) >>= function
+  Action_builder.memo_build (Source_tree.find_dir dir) >>= function
   | None -> Action_builder.return Path.Set.empty
   | Some dir ->
-    File_tree_map_reduce.map_reduce dir ~traverse:Sub_dirs.Status.Set.all
+    Source_tree_map_reduce.map_reduce dir ~traverse:Sub_dirs.Status.Set.all
       ~f:(fun dir ->
-        f (Path.append_source prefix_with (File_tree.Dir.path dir)))
+        f (Path.append_source prefix_with (Source_tree.Dir.path dir)))
 
 let dep expander = function
   | File s ->

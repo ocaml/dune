@@ -282,11 +282,11 @@ end = struct
               :: deprecated_meta_and_dune_files)
           in
           let pkg_dir = Package.dir pkg in
-          File_tree.find_dir pkg_dir >>| function
+          Source_tree.find_dir pkg_dir >>| function
           | None -> init
           | Some dir ->
             let pkg_dir = Path.Build.append_source ctx.build_dir pkg_dir in
-            File_tree.Dir.files dir
+            Source_tree.Dir.files dir
             |> String.Set.fold ~init ~f:(fun fn acc ->
                    if is_odig_doc_file fn then
                      let odig_file = Path.Build.relative pkg_dir fn in

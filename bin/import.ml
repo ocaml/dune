@@ -115,7 +115,7 @@ module Main = struct
           ~f:(fun pkg ->
             let+ vendored =
               let dir = Package.dir pkg in
-              Memo.Build.run (Dune_engine.File_tree.is_vendored dir)
+              Memo.Build.run (Dune_engine.Source_tree.is_vendored dir)
             in
             let name = Package.name pkg in
             let included = Package.Name.Set.mem names name in

@@ -141,4 +141,4 @@ let effective_env t =
 
 let find_source_dir rule =
   let _, src_dir = Path.Build.extract_build_context_dir_exn rule.dir in
-  File_tree.nearest_dir src_dir
+  Source_tree.nearest_dir src_dir

@@ -96,7 +96,7 @@ let get_profile =
       Memo.lazy_ (fun () ->
           match Path.as_in_source_tree path with
           | None -> Memo.Build.return false
-          | Some path -> File_tree.file_exists path)
+          | Some path -> Source_tree.file_exists path)
     in
     let open Memo.Build.O in
     let+ use_profile =

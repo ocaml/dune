@@ -53,7 +53,7 @@ let gen_rules sctx t ~dir ~scope =
   let cinaps_exe = Path.Build.relative cinaps_dir (name ^ ".exe") in
   (* Files checked by cinaps *)
   let* cinapsed_files =
-    File_tree.files_of (Path.Build.drop_build_context_exn dir)
+    Source_tree.files_of (Path.Build.drop_build_context_exn dir)
     >>| Path.Source.Set.to_list
     >>| List.filter_map ~f:(fun p ->
             if

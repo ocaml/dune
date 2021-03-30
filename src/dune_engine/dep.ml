@@ -300,17 +300,20 @@ module Set = struct
   let dir_without_files_dep dir =
     file_selector (File_selector.create ~dir Predicate.false_)
 
-  module File_tree_map_reduce = File_tree.Dir.Make_map_reduce (Memo.Build) (T)
+  module Source_tree_map_reduce =
+    Source_tree.Dir.Make_map_reduce (Memo.Build) (T)
 
   let source_tree dir =
     let prefix_with, dir = Path.extract_build_context_dir_exn dir in
-    File_tree.find_dir dir >>= function
+    Source_tree.find_dir dir >>= function
     | None -> Memo.Build.return empty
     | Some dir ->
-      File_tree_map_reduce.map_reduce dir ~traverse:Sub_dirs.Status.Set.all
+      Source_tree_map_reduce.map_reduce dir ~traverse:Sub_dirs.Status.Set.all
         ~f:(fun dir ->
-          let files = File_tree.Dir.files dir in
-          let path = Path.append_source prefix_with (File_tree.Dir.path dir) in
+          let files = Source_tree.Dir.files dir in
+          let path =
+            Path.append_source prefix_with (Source_tree.Dir.path dir)
+          in
           match String.Set.is_empty files with
           | true -> Memo.Build.return (singleton (dir_without_files_dep path))
           | false ->

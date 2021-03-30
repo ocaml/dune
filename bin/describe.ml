@@ -166,7 +166,7 @@ module Opam_files = struct
   let get () =
     let open Memo.Build.O in
     let+ project =
-      Dune_engine.File_tree.root () >>| Dune_engine.File_tree.Dir.project
+      Dune_engine.Source_tree.root () >>| Dune_engine.Source_tree.Dir.project
     in
     let packages =
       Dune_project.packages project |> Dune_engine.Package.Name.Map.values

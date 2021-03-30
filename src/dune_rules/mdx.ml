@@ -161,7 +161,9 @@ let () =
 let files_to_mdx t ~sctx ~dir =
   let open Memo.Build.O in
   let src_dir = Path.Build.drop_build_context_exn dir in
-  let+ src_dir_files = File_tree.files_of src_dir >>| Path.Source.Set.to_list in
+  let+ src_dir_files =
+    Source_tree.files_of src_dir >>| Path.Source.Set.to_list
+  in
   let must_mdx src_path =
     let file = Path.Source.basename src_path in
     Predicate_lang.Glob.exec t.files ~standard:default_files file

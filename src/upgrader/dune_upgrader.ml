@@ -164,7 +164,9 @@ module V1 = struct
   open Common
 
   let rename_basename base =
-    match String.drop_prefix base ~prefix:File_tree.Dune_file.jbuild_fname with
+    match
+      String.drop_prefix base ~prefix:Source_tree.Dune_file.jbuild_fname
+    with
     | None -> base
     | Some suffix -> "dune" ^ suffix
 
@@ -472,19 +474,22 @@ module V1 = struct
   let upgrade todo dir =
     let lang_version = (1, 0) in
     Dune_project.default_dune_language_version := lang_version;
-    let project = File_tree.Dir.project dir in
+    let project = Source_tree.Dir.project dir in
     let project_root = Dune_project.root project in
-    if project_root = File_tree.Dir.path dir then (
+    if project_root = Source_tree.Dir.path dir then (
       ensure_project_file_exists project ~lang_version;
       Package.Name.Map.iter (Dune_project.packages project) ~f:(fun pkg ->
           let fn = Package.opam_file pkg in
           if Path.exists (Path.source fn) then upgrade_opam_file todo fn)
     );
-    if String.Set.mem (File_tree.Dir.files dir) File_tree.Dune_file.jbuild_fname
+    if
+      String.Set.mem
+        (Source_tree.Dir.files dir)
+        Source_tree.Dune_file.jbuild_fname
     then
       let fn =
-        Path.Source.relative (File_tree.Dir.path dir)
-          File_tree.Dune_file.jbuild_fname
+        Path.Source.relative (Source_tree.Dir.path dir)
+          Source_tree.Dune_file.jbuild_fname
       in
       if Io.with_lexbuf_from_file (Path.source fn) ~f:Dune_lexer.is_script then
         User_warning.emit
@@ -600,9 +605,10 @@ module V2 = struct
     todo.to_edit <- (fn, new_file_contents) :: todo.to_edit
 
   let upgrade_dune_files todo dir =
-    if String.Set.mem (File_tree.Dir.files dir) File_tree.Dune_file.fname then
-      let path = File_tree.Dir.path dir in
-      let fn = Path.Source.relative path File_tree.Dune_file.fname in
+    if String.Set.mem (Source_tree.Dir.files dir) Source_tree.Dune_file.fname
+    then
+      let path = Source_tree.Dir.path dir in
+      let fn = Path.Source.relative path Source_tree.Dune_file.fname in
       if Io.with_lexbuf_from_file (Path.source fn) ~f:Dune_lexer.is_script then
         User_warning.emit
           ~loc:(Loc.in_file (Path.source fn))
@@ -645,17 +651,17 @@ language. Use the (foreign_archives ...) field instead.|}
   let upgrade todo dir =
     let lang_version = (2, 0) in
     Dune_project.default_dune_language_version := lang_version;
-    let project = File_tree.Dir.project dir in
-    if Dune_project.root project = File_tree.Dir.path dir then
+    let project = Source_tree.Dir.project dir in
+    if Dune_project.root project = Source_tree.Dir.path dir then
       ensure_project_file_exists project ~lang_version;
     update_project_file todo project;
     upgrade_dune_files todo dir
 end
 
 let detect_project_version project dir =
-  let in_tree = String.Set.mem (File_tree.Dir.files dir) in
+  let in_tree = String.Set.mem (Source_tree.Dir.files dir) in
   Dune_project.default_dune_language_version := (0, 1);
-  if in_tree File_tree.Dune_file.jbuild_fname then
+  if in_tree Source_tree.Dune_file.jbuild_fname then
     Jbuild_project
   else
     let project_dune_version = Dune_project.dune_version project in
@@ -664,7 +670,7 @@ let detect_project_version project dir =
       Dune2_project
     else if project_dune_version >= (1, 0) then
       Dune1_project
-    else if in_tree File_tree.Dune_file.fname then
+    else if in_tree Source_tree.Dune_file.fname then
       Dune1_project
     else
       Jbuild_project
@@ -676,14 +682,14 @@ let upgrade () =
     let* current_versions =
       Memo.Build.run
         (let module M =
-           File_tree.Make_map_reduce_with_progress
+           Source_tree.Make_map_reduce_with_progress
              (Memo.Build)
              (Monoid.Appendable_list (struct
-               type t = File_tree.Dir.t * project_version
+               type t = Source_tree.Dir.t * project_version
              end))
          in
         M.map_reduce ~traverse:Sub_dirs.Status.Set.normal_only ~f:(fun dir ->
-            let project = File_tree.Dir.project dir in
+            let project = Source_tree.Dir.project dir in
             let detected_version = detect_project_version project dir in
             Memo.Build.return
               (Appendable_list.singleton (dir, detected_version))))
@@ -696,7 +702,7 @@ let upgrade () =
         [ Pp.textf "Project in dir %s will be upgraded to dune %s." dir ver ]
     in
     List.iter current_versions ~f:(fun (dir, version) ->
-        let d = Path.Source.to_string_maybe_quoted (File_tree.Dir.path dir) in
+        let d = Path.Source.to_string_maybe_quoted (Source_tree.Dir.path dir) in
         match version with
         | Jbuild_project ->
           log_update d "v1";
@@ -727,7 +733,7 @@ let upgrade () =
     if !v1_updates && not last then (
       (* Run the upgrader again to update new v1 projects to v2 No more than one
          additional upgrade should be needed *)
-      (* We reset thje memoization as a simple way to refresh the File_tree *)
+      (* We reset thje memoization as a simple way to refresh the Source_tree *)
       Memo.reset ();
       aux true
     ) else if !v2_updates then (

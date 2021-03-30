@@ -6,12 +6,12 @@ open Dune_file
 open! No_io
 open Memo.Build.O
 
-let loc_of_dune_file ft_dir =
+let loc_of_dune_file st_dir =
   Loc.in_file
     (Path.source
-       (match File_tree.Dir.dune_file ft_dir with
-       | Some d -> File_tree.Dune_file.path d
-       | None -> Path.Source.relative (File_tree.Dir.path ft_dir) "_unknown_"))
+       (match Source_tree.Dir.dune_file st_dir with
+       | Some d -> Source_tree.Dune_file.path d
+       | None -> Path.Source.relative (Source_tree.Dir.path st_dir) "_unknown_"))
 
 type t =
   { kind : kind
@@ -121,7 +121,7 @@ end = struct
     Expander.set_lookup_ml_sources expander ~f
 
   (* As a side-effect, setup user rules and copy_files rules. *)
-  let load_text_files sctx ft_dir
+  let load_text_files sctx st_dir
       { Dir_with_dune.ctx_dir = dir
       ; src_dir
       ; scope = _
@@ -169,7 +169,7 @@ end = struct
           | _ -> Memo.Build.return [])
       >>| fun l -> String.Set.of_list (List.concat l)
     in
-    String.Set.union generated_files (File_tree.Dir.files ft_dir)
+    String.Set.union generated_files (Source_tree.Dir.files st_dir)
 
   type result0_here =
     { t : t
@@ -200,9 +200,9 @@ end = struct
     let* t = Load.get sctx ~dir in
     Memo.Lazy.force t.ml
 
-  let collect_group sctx ~ft_dir ~dir =
+  let collect_group sctx ~st_dir ~dir =
     let dir_status_db = Super_context.dir_status_db sctx in
-    let rec walk ft_dir ~dir ~local =
+    let rec walk st_dir ~dir ~local =
       let* status = Dir_status.DB.get dir_status_db ~dir in
       match status with
       | Is_component_of_a_group_but_not_the_root { stanzas = d; group_root = _ }
@@ -212,11 +212,11 @@ end = struct
             (fun () ->
               let+ files =
                 match d with
-                | None -> Memo.Build.return (File_tree.Dir.files ft_dir)
-                | Some d -> load_text_files sctx ft_dir d
+                | None -> Memo.Build.return (Source_tree.Dir.files st_dir)
+                | Some d -> load_text_files sctx st_dir d
               in
               Appendable_list.singleton (dir, List.rev local, files))
-            (fun () -> walk_children ft_dir ~dir ~local)
+            (fun () -> walk_children st_dir ~dir ~local)
         in
         Appendable_list.( @ ) a b
       | Generated
@@ -224,19 +224,19 @@ end = struct
       | Standalone _
       | Group_root _ ->
         Memo.Build.return Appendable_list.empty
-    and walk_children ft_dir ~dir ~local =
+    and walk_children st_dir ~dir ~local =
       let+ l =
         Memo.Build.parallel_map
-          (File_tree.Dir.sub_dirs ft_dir |> String.Map.to_list)
-          ~f:(fun (basename, ft_dir) ->
-            let* ft_dir = File_tree.Dir.sub_dir_as_t ft_dir in
+          (Source_tree.Dir.sub_dirs st_dir |> String.Map.to_list)
+          ~f:(fun (basename, st_dir) ->
+            let* st_dir = Source_tree.Dir.sub_dir_as_t st_dir in
             let dir = Path.Build.relative dir basename in
             let local = basename :: local in
-            walk ft_dir ~dir ~local)
+            walk st_dir ~dir ~local)
       in
       Appendable_list.concat l
     in
-    let+ l = walk_children ft_dir ~dir ~local:[] in
+    let+ l = walk_children st_dir ~dir ~local:[] in
     Appendable_list.to_list l
 
   let get0_impl (sctx, dir) : result0 Memo.Build.t =
@@ -255,16 +255,16 @@ end = struct
            ; rules = None
            ; subdirs = Path.Build.Map.empty
            })
-    | Standalone (ft_dir, d) ->
+    | Standalone (st_dir, d) ->
       let include_subdirs = (Loc.none, Include_subdirs.No) in
       let+ files, rules =
-        Rules.collect_opt (fun () -> load_text_files sctx ft_dir d)
+        Rules.collect_opt (fun () -> load_text_files sctx st_dir d)
       in
       let dirs = [ (dir, [], files) ] in
       let ml =
         Memo.lazy_ (fun () ->
             let lookup_vlib = lookup_vlib sctx in
-            let loc = loc_of_dune_file ft_dir in
+            let loc = loc_of_dune_file st_dir in
             Ml_sources.make d ~lib_config ~loc ~include_subdirs ~lookup_vlib
               ~dirs)
       in
@@ -288,8 +288,8 @@ end = struct
         ; rules
         ; subdirs = Path.Build.Map.empty
         }
-    | Group_root (ft_dir, qualif_mode, d) ->
-      let loc = loc_of_dune_file ft_dir in
+    | Group_root (st_dir, qualif_mode, d) ->
+      let loc = loc_of_dune_file st_dir in
       let include_subdirs =
         let loc, qualif_mode = qualif_mode in
         (loc, Dune_file.Include_subdirs.Include qualif_mode)
@@ -297,8 +297,8 @@ end = struct
       let+ (files, (subdirs : (Path.Build.t * _ * _) list)), rules =
         Rules.collect_opt (fun () ->
             Memo.Build.fork_and_join
-              (fun () -> load_text_files sctx ft_dir d)
-              (fun () -> collect_group sctx ~ft_dir ~dir))
+              (fun () -> load_text_files sctx st_dir d)
+              (fun () -> collect_group sctx ~st_dir ~dir))
       in
       let dirs = (dir, [], files) :: subdirs in
       let ml =

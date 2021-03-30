@@ -39,7 +39,7 @@ let missing_run_t (error : Cram_test.t) =
     }
 
 let test_rule ~sctx ~expander ~dir (spec : effective)
-    (test : (Cram_test.t, File_tree.Dir.error) result) =
+    (test : (Cram_test.t, Source_tree.Dir.error) result) =
   let module Alias_rules = Simple_rules.Alias_rules in
   let enabled = Expander.eval_blang expander (Blang.And spec.enabled_if) in
   let loc = Some spec.loc in
@@ -117,7 +117,7 @@ let rules ~sctx ~expander ~dir tests =
       let name =
         match test with
         | Ok test -> Cram_test.name test
-        | Error (File_tree.Dir.Missing_run_t test) -> Cram_test.name test
+        | Error (Source_tree.Dir.Missing_run_t test) -> Cram_test.name test
       in
       let open Memo.Build.O in
       let* effective =

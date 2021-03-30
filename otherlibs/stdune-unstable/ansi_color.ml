@@ -89,6 +89,26 @@ module Style = struct
 
   let bg_bright_white = "107"
 
+  let bg_all =
+    [ bg_black
+    ; bg_red
+    ; bg_green
+    ; bg_yellow
+    ; bg_blue
+    ; bg_magenta
+    ; bg_cyan
+    ; bg_white
+    ; bg_default
+    ; bg_bright_black
+    ; bg_bright_red
+    ; bg_bright_green
+    ; bg_bright_yellow
+    ; bg_bright_blue
+    ; bg_bright_magenta
+    ; bg_bright_cyan
+    ; bg_bright_white
+    ]
+
   let bold = "1"
 
   let dim = "2"
@@ -202,6 +222,9 @@ let parse_line str styles =
                      | "39" ->
                        List.filter styles ~f:(fun s ->
                            not (List.mem Style.fg_all s ~equal:String.equal))
+                     | "49" ->
+                       List.filter styles ~f:(fun s ->
+                           not (List.mem Style.bg_all s ~equal:String.equal))
                      | "0" -> []
                      | _ -> s :: styles)
               |> List.rev

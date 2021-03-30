@@ -8,7 +8,7 @@ type what =
   | Dir
   | File
 
-(** Create a temporary file or directory inside an existing directory*)
+(** Create a temporary file or directory inside an existing directory. *)
 val temp_in_dir :
   ?perms:int -> what -> dir:Path.t -> prefix:string -> suffix:string -> Path.t
 

@@ -60,8 +60,8 @@ let trim ~trimmed_size ~size =
   let open Result.O in
   match
     let* cache =
-      (* CR-someday amokhov: The [Hadrlink] duplication mode is chosen
-         artitrarily here, instead of respecting the corresponding configuration
+      (* CR-someday amokhov: The [Hardlink] duplication mode is chosen
+         arbitrarily here, instead of respecting the corresponding configuration
          setting, because the mode doesn't matter for the trimmer. It would be
          better to refactor the code to avoid such arbitrary choices. *)
       Cache.Local.make ~duplication_mode:Cache.Duplication_mode.Hardlink
@@ -123,7 +123,7 @@ let term =
      and+ root =
        Arg.(
          value
-         & opt path_conv (Cache.Local.default_root ())
+         & opt path_conv (Dune_cache_storage.Layout.default_root_path ())
          & info ~docv:"PATH" [ "root" ] ~doc:"Root of the dune cache")
      and+ trimmed_size =
        Arg.(
@@ -140,9 +140,18 @@ let term =
      let config = Dune_config.(superpose default) config in
      match mode with
      | Some Start ->
+       (* CR-soon amokhov: Right now, types [Dune_config.Caching.Duplication.t]
+          and [Dune_cache_storage.Mode.t] are the same. They will be unified
+          after removing the cache daemon and adapting the configuration format. *)
        let config =
          { Cache_daemon.exit_no_client
-         ; duplication_mode = config.cache_duplication
+         ; duplication_mode =
+             (match
+                (config.cache_duplication : Dune_cache_storage.Mode.t option)
+              with
+             | None -> None
+             | Some Hardlink -> Some Hardlink
+             | Some Copy -> Some Copy)
          }
        in
        `Ok (start ~config ~foreground ~port_path ~root ~display)

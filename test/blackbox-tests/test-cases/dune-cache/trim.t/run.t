@@ -47,12 +47,12 @@ the current digests for both files match those computed by Jenga.
   ./5e/5e5bb3a0ec0e689e19a59c3ee3d7fca8:content
   ./62/6274851067c88e9990e912be27cce386:content
 
-Move all current v4 entries to v3 to test trimming of old versions of cache.
+Move all current entries to v3 to test trimming of old versions of cache.
 
   $ mkdir "$PWD/.xdg-cache/dune/db/files/v3"
   $ mkdir "$PWD/.xdg-cache/dune/db/meta/v3"
   $ mv "$PWD/.xdg-cache/dune/db/files/v4"/* "$PWD/.xdg-cache/dune/db/files/v3"
-  $ mv "$PWD/.xdg-cache/dune/db/meta/v4"/* "$PWD/.xdg-cache/dune/db/meta/v3"
+  $ mv "$PWD/.xdg-cache/dune/db/meta/v5"/* "$PWD/.xdg-cache/dune/db/meta/v3"
 
 Build some more targets.
 
@@ -64,20 +64,22 @@ end up in a situation where the same hash means something different
 before and after the change, which is bad. To reduce the risk, we
 inject a version number into rule digests.
 
-If you see the below test breaking, then you probably accidentally
-changed the way the digest is computed and you should increase this
-version number. This number is stored in the [rule_digest_version]
-variable in [build_system.ml].
+If you see the test below breaking, this means you changed the metadata format
+or the way that digests are computed and you should increment the corresponding
+version number. This number is stored in the [rule_digest_version] variable in
+[build_system.ml]. You may also need to change the versioning in [layout.ml] in
+the [dune_cache_storage] library and make sure that the cache trimmer treats new
+and old cache entries uniformly.
 
-  $ (cd "$PWD/.xdg-cache/dune/db/meta/v4"; grep -rws . -e 'metadata' | sort)
-  ./06/061fb516fd28c9a632c573f380b8a120:((8:metadata)(5:files(16:default/target_a32:5637dd9730e430c7477f52d46de3909c)))
-  ./50/50148ac6fcde0b35e357cbd120131dbc:((8:metadata)(5:files(16:default/target_b32:8a53bfae3829b48866079fa7f2d97781)))
+  $ (cd "$PWD/.xdg-cache/dune/db/meta/v5"; grep -rws . -e 'metadata' | sort)
+  ./06/061fb516fd28c9a632c573f380b8a120:((8:metadata)(5:files(8:target_a32:5637dd9730e430c7477f52d46de3909c)))
+  ./50/50148ac6fcde0b35e357cbd120131dbc:((8:metadata)(5:files(8:target_b32:8a53bfae3829b48866079fa7f2d97781)))
 
-  $ dune_cmd stat size "$PWD/.xdg-cache/dune/db/meta/v4/06/061fb516fd28c9a632c573f380b8a120"
-  79
+  $ dune_cmd stat size "$PWD/.xdg-cache/dune/db/meta/v5/06/061fb516fd28c9a632c573f380b8a120"
+  70
 
-Trimming the cache at this point should not remove anything, as all
-files are still hard-linked in the build directory.
+Trimming the cache at this point should not remove anything because all file
+entries are still hard-linked from the build directory.
 
   $ dune cache trim --trimmed-size 1B
   Freed 0 bytes
@@ -86,11 +88,12 @@ files are still hard-linked in the build directory.
   $ dune_cmd stat hardlinks _build/default/target_b
   2
 
-If we unlink one file in the build tree, it can be reclaimed when trimming.
+If we unlink a file in the build tree, then the corresponding file entry will be
+trimmed.
 
   $ rm -f _build/default/target_a _build/default/beacon_a _build/default/beacon_b
   $ dune cache trim --trimmed-size 1B
-  Freed 88 bytes
+  Freed 79 bytes
   $ dune build target_a target_b
   $ dune_cmd stat hardlinks _build/default/target_a
   2
@@ -113,7 +116,7 @@ target_a:
   $ dune_cmd wait-for-fs-clock-to-advance
   $ rm -f _build/default/beacon_a _build/default/target_a
   $ dune cache trim --trimmed-size 1B
-  Freed 88 bytes
+  Freed 79 bytes
   $ dune build target_a target_b
   $ dune_cmd stat hardlinks _build/default/target_a
   2
@@ -131,7 +134,7 @@ When a cache entry becomes unused, its ctime is modified and will determine the 
   $ dune_cmd wait-for-fs-clock-to-advance
   $ rm -f _build/default/beacon_b _build/default/target_b
   $ dune cache trim --trimmed-size 1B
-  Freed 88 bytes
+  Freed 79 bytes
   $ dune build target_a target_b
   $ dune_cmd stat hardlinks _build/default/target_a
   2
@@ -163,4 +166,4 @@ they are part of the same rule.
   $ dune build multi_a multi_b
   $ rm -f _build/default/multi_a _build/default/multi_b
   $ dune cache trim --trimmed-size 1B
-  Freed 141 bytes
+  Freed 123 bytes

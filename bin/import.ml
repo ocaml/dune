@@ -32,57 +32,12 @@ include Common.Let_syntax
 
 let in_group (t, info) = (Term.Group.Term t, info)
 
-let make_cache (config : Dune_config.t) =
-  let make_cache () =
-    let command_handler (Cache.Dedup file) =
-      match Build_system.get_cache () with
-      | None -> Code_error.raise "deduplication message and no caching" []
-      | Some caching ->
-        Scheduler.send_sync_task (fun () ->
-            let (module Caching : Cache.Caching) = caching.cache in
-            match Cached_digest.peek_file (Path.build file.path) with
-            | None -> ()
-            | Some d when not (Digest.equal d file.digest) -> ()
-            | _ -> Caching.Cache.deduplicate Caching.cache file)
-    in
-    match config.cache_transport with
-    | Dune_config.Caching.Transport.Direct ->
-      Log.info [ Pp.text "enable binary cache in direct access mode" ];
-      let cache =
-        Result.ok_exn
-          (Result.map_error
-             ~f:(fun s -> User_error.E (User_error.make [ Pp.text s ]))
-             (Cache.Local.make ?duplication_mode:config.cache_duplication
-                ~command_handler ()))
-      in
-      Cache.make_caching (module Cache.Local) cache
-    | Daemon ->
-      Log.info [ Pp.text "enable binary cache in daemon mode" ];
-      let cache =
-        Result.ok_exn
-          (Cache.Client.make ?duplication_mode:config.cache_duplication
-             ~command_handler ())
-      in
-      Cache.make_caching (module Cache.Client) cache
-  in
-  Fiber.return
-    (match config.cache_mode with
-    | Dune_config.Caching.Mode.Enabled ->
-      Some
-        { Build_system.cache = make_cache ()
-        ; check_probability = config.cache_check_probability
-        }
-    | Dune_config.Caching.Mode.Disabled ->
-      Log.info [ Pp.text "disable binary cache" ];
-      None)
-
 module Main = struct
   include Dune_rules.Main
 
-  let setup common config =
+  let setup common (config : Dune_config.t) =
     let open Fiber.O in
-    let* caching = make_cache config
-    and* conf = Memo.Build.run (Dune_rules.Dune_load.load ())
+    let* conf = Memo.Build.run (Dune_rules.Dune_load.load ())
     and* contexts = Memo.Build.run (Context.DB.all ()) in
     let stats = Common.stats common in
     List.iter contexts ~f:(fun (ctx : Context.t) ->
@@ -91,8 +46,25 @@ module Main = struct
           [ Pp.box ~indent:1
               (Pp.text "Dune context:" ++ Pp.cut ++ Dyn.pp (Context.to_dyn ctx))
           ]);
+    (* CR-soon amokhov: Right now, types [Dune_config.Caching.Duplication.t] and
+       [Dune_cache_storage.Mode.t] are the same. They will be unified after
+       removing the cache daemon and adapting the configuration format. *)
+    let cache_config =
+      match config.cache_mode with
+      | Disabled -> Dune_cache.Config.Disabled
+      | Enabled ->
+        Enabled
+          { storage_mode =
+              (match config.cache_duplication with
+              | None
+              | Some Hardlink ->
+                Dune_cache_storage.Mode.Hardlink
+              | Some Copy -> Copy)
+          ; check_probability = config.cache_check_probability
+          }
+    in
     init_build_system ~stats ~sandboxing_preference:config.sandboxing_preference
-      ~caching ~conf ~contexts
+      ~cache_config ~conf ~contexts
 end
 
 module Scheduler = struct

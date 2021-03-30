@@ -2,39 +2,41 @@ type what =
   | Dir
   | File
 
-let try_times n ~f =
+let prng = lazy (Random.State.make_self_init ())
+
+let try_paths n ~dir ~prefix ~suffix ~f =
   assert (n > 0);
   let rec loop n =
+    let path =
+      let rnd = Random.State.bits (Lazy.force prng) land 0xFFFFFF in
+      Path.relative dir (Printf.sprintf "%s%06x%s" prefix rnd suffix)
+    in
     if n = 1 then
-      f n
+      f path
     else
-      match f n with
+      match f path with
       | exception _ -> loop (n - 1)
       | r -> r
   in
   loop n
 
-let prng = lazy (Random.State.make_self_init ())
-
-let temp_file_name ~temp_dir ~prefix ~suffix =
-  let rnd = Random.State.bits (Lazy.force prng) land 0xFFFFFF in
-  Filename.concat temp_dir (Printf.sprintf "%s%06x%s" prefix rnd suffix)
-
 let tmp_files = ref Path.Set.empty
 
 let tmp_dirs = ref Path.Set.empty
 
-let create_temp_file ?(perms = 0o600) name =
-  Unix.close (Unix.openfile name [ O_WRONLY; Unix.O_CREAT; Unix.O_EXCL ] perms)
+let create_temp_file ?(perms = 0o600) path =
+  let file = Path.to_string path in
+  Unix.close (Unix.openfile file [ O_WRONLY; Unix.O_CREAT; Unix.O_EXCL ] perms)
 
 let destroy = function
   | Dir -> Path.rm_rf ~allow_external:true
   | File -> Path.unlink_no_err
 
-let create_temp_dir ?perms name =
-  match Fpath.mkdir_p ?perms name with
+let create_temp_dir ?perms path =
+  let dir = Path.to_string path in
+  match Fpath.mkdir_p ?perms dir with
   | Created -> ()
-  | Already_exists -> raise (Unix.Unix_error (ENOENT, "mkdir", name))
+  | Already_exists -> raise (Unix.Unix_error (ENOENT, "mkdir", dir))
 
 let set = function
   | Dir -> tmp_dirs
@@ -58,22 +60,19 @@ let () =
 let temp_in_dir ?perms what ~dir ~prefix ~suffix =
   let path =
     let create = create ?perms what in
-    try_times 1000 ~f:(fun _ ->
-        let name = temp_file_name ~temp_dir:dir ~prefix ~suffix in
-        create name;
-        name)
-    |> Path.of_string
+    try_paths 1000 ~dir ~prefix ~suffix ~f:(fun path ->
+        create path;
+        path)
   in
   let set = set what in
   set := Path.Set.add !set path;
   path
 
 let create ?perms what ~prefix ~suffix =
-  let dir = Filename.get_temp_dir_name () in
+  let dir =
+    Filename.get_temp_dir_name () |> Path.of_filename_relative_to_initial_cwd
+  in
   temp_in_dir ?perms what ~dir ~prefix ~suffix
-
-let temp_in_dir ?perms what ~dir =
-  temp_in_dir ?perms what ~dir:(Path.to_absolute_filename dir)
 
 let destroy what fn =
   destroy what fn;
@@ -93,16 +92,10 @@ let clear_dir dir =
   remove_from_set ~set:tmp_files;
   remove_from_set ~set:tmp_dirs
 
-let temp_path ~dir ~prefix ~suffix =
-  let rnd = Random.State.bits (Lazy.force prng) land 0xFFFFFF in
-  try_times 1000 ~f:(fun _ ->
-      let candidate =
-        Path.relative dir (Printf.sprintf "%s%06x%s" prefix rnd suffix)
-      in
-      if Path.exists candidate then
-        raise Exit
-      else
-        candidate)
+let temp_path =
+  try_paths 1000 ~f:(fun candidate ->
+      if Path.exists candidate then raise Exit;
+      candidate)
 
 let with_temp_path ~dir ~prefix ~suffix ~f =
   match temp_path ~dir ~prefix ~suffix with

@@ -100,11 +100,38 @@ module Map = struct
 end
 
 module Fact = struct
+  module Files = struct
+    type t =
+      { files : Digest.t Path.Map.t
+      ; dirs : Path.Set.t
+      ; digest : Digest.t
+      }
+
+    let to_dyn { files; dirs; digest } =
+      Dyn.Record
+        [ ("files", Path.Map.to_dyn Digest.to_dyn files)
+        ; ("dirs", Path.Set.to_dyn dirs)
+        ; ("digest", Digest.to_dyn digest)
+        ]
+
+    let equal a b = Digest.equal a.digest b.digest
+
+    let make files =
+      { files
+      ; dirs =
+          Path.Map.foldi files ~init:Path.Set.empty ~f:(fun fn _ acc ->
+              Path.Set.add acc (Path.parent_exn fn))
+      ; digest =
+          Digest.generic
+            (Path.Map.to_list_map files ~f:(fun p d -> (Path.to_string p, d)))
+      }
+  end
+
   type t =
     | Nothing
     | File of Path.t * Digest.t
-    | File_selector of Dyn.t * Digest.t Path.Map.t
-    | Alias of Digest.t Path.Map.t
+    | File_selector of Dyn.t * Files.t
+    | Alias of Files.t
 
   module Stable_for_digest = struct
     type file = string * Digest.t
@@ -112,17 +139,17 @@ module Fact = struct
     type t =
       | Env of string * string option
       | File of file
-      | File_selector of Dyn.t * file list
-      | Alias of file list
+      | File_selector of Dyn.t * Digest.t
+      | Alias of Digest.t
   end
 
   let nothing = Nothing
 
   let file fn digest = File (fn, digest)
 
-  let file_selector fs digests =
+  let file_selector fs files =
     let id = File_selector.to_dyn fs in
-    File_selector (id, digests)
+    File_selector (id, files)
 
   let alias _alias files = Alias files
 end
@@ -144,7 +171,7 @@ module Facts = struct
         | File (p, d) -> Path.Map.set acc p d
         | File_selector (_, ps)
         | Alias ps ->
-          Path.Map.union acc ps ~f:(fun _ a _ -> Some a))
+          Path.Map.union acc ps.files ~f:(fun _ a _ -> Some a))
 
   let dirs t =
     Map.fold t ~init:Path.Set.empty ~f:(fun fact acc ->
@@ -153,9 +180,7 @@ module Facts = struct
         | File (p, _) -> Path.Set.add acc (Path.parent_exn p)
         | File_selector (_, ps)
         | Alias ps ->
-          Path.Set.union acc
-            (Path.Map.to_list_map ps ~f:(fun x _ -> Path.parent_exn x)
-            |> Path.Set.of_list))
+          Path.Set.union acc ps.dirs)
 
   let digest t ~sandbox_mode ~env =
     let facts =
@@ -175,16 +200,8 @@ module Facts = struct
             match (fact : Fact.t) with
             | Nothing -> acc
             | File (p, d) -> File (file (p, d)) :: acc
-            | File_selector (id, ps) ->
-              File_selector
-                ( id
-                , Path.Map.to_list_map ps ~f:(fun p d -> (Path.to_string p, d))
-                )
-              :: acc
-            | Alias ps ->
-              Alias
-                (Path.Map.to_list_map ps ~f:(fun p d -> (Path.to_string p, d)))
-              :: acc))
+            | File_selector (id, ps) -> File_selector (id, ps.digest) :: acc
+            | Alias ps -> Alias ps.digest :: acc))
     in
     Digest.generic (sandbox_mode, facts)
 end

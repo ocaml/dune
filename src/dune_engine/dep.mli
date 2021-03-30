@@ -50,9 +50,26 @@ module Fact : sig
 
   val file : Path.t -> Digest.t -> t
 
-  val alias : Alias.t -> Digest.t Path.Map.t -> t
+  module Files : sig
+    (** A group of files for which we cache the digest of the whole group. *)
+    type t = private
+      { files : Digest.t Path.Map.t
+      ; dirs : Path.Set.t  (** Directories of [files] *)
+      ; digest : Digest.t  (** Stable digest of [files] *)
+      }
 
-  val file_selector : File_selector.t -> Digest.t Path.Map.t -> t
+    val make : Digest.t Path.Map.t -> t
+
+    val to_dyn : t -> Dyn.t
+
+    val equal : t -> t -> bool
+  end
+
+  (** [digest] is assumed to be the [digest_paths expansion]. *)
+  val alias : Alias.t -> Files.t -> t
+
+  (** [digest] is assumed to be the [digest_paths expansion]. *)
+  val file_selector : File_selector.t -> Files.t -> t
 end
 
 module Facts : sig

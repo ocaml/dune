@@ -1217,7 +1217,7 @@ type rule_execution_result =
 module type Rec = sig
   (** Build all the transitive dependencies of the alias and return the alias
       expansion. *)
-  val build_alias : Alias.t -> Digest.t Path.Map.t Memo.Build.t
+  val build_alias : Alias.t -> Dep.Fact.Files.t Memo.Build.t
 
   val build_file : Path.t -> Digest.t Memo.Build.t
 
@@ -1238,7 +1238,7 @@ module type Rec = sig
   module Pred : sig
     val eval : File_selector.t -> Path.Set.t Memo.Build.t
 
-    val build : File_selector.t -> Digest.t Path.Map.t Memo.Build.t
+    val build : File_selector.t -> Dep.Fact.Files.t Memo.Build.t
   end
 end
 
@@ -1258,7 +1258,7 @@ and Exported : sig
   (** Exported to inspect memoization cycles. *)
   val build_file_memo : (Path.t, Digest.t) Memo.t
 
-  val build_alias_memo : (Alias.t, Digest.t Path.Map.t) Memo.t
+  val build_alias_memo : (Alias.t, Dep.Fact.Files.t) Memo.t
 end = struct
   open Used_recursively
 
@@ -1300,7 +1300,7 @@ end = struct
 
     let register_action_dep_pred g =
       let+ digests = Pred.build g in
-      ( Path.Map.keys digests |> Path.Set.of_list
+      ( Path.Map.keys digests.files |> Path.Set.of_list
       , Dep.Fact.file_selector g digests )
 
     let file_exists = file_exists
@@ -2008,27 +2008,24 @@ end = struct
           Path.Build.Map.find_exn targets path)
 
   let build_alias_impl alias =
-    expand_alias_gen alias ~eval_build_request:exec_build_request
-      ~paths_of_facts:(fun facts -> Memo.Build.return (Dep.Facts.paths facts))
-      ~paths_union_all:(fun l ->
-        List.fold_left l ~init:Path.Map.empty
-          ~f:(Path.Map.union ~f:(fun _ x _ -> Some x)))
-
-  module Digest_path_map = struct
-    type t = Digest.t Path.Map.t
-
-    let to_dyn = Path.Map.to_dyn Digest.to_dyn
-
-    let equal = Path.Map.equal ~equal:Digest.equal
-  end
+    let+ files =
+      expand_alias_gen alias ~eval_build_request:exec_build_request
+        ~paths_of_facts:(fun facts -> Memo.Build.return (Dep.Facts.paths facts))
+        ~paths_union_all:(fun l ->
+          List.fold_left l ~init:Path.Map.empty
+            ~f:(Path.Map.union ~f:(fun _ x _ -> Some x)))
+    in
+    Dep.Fact.Files.make files
 
   module Pred = struct
     let build_impl g =
       let* paths = Pred.eval g in
-      Memo.Build.parallel_map (Path.Set.to_list paths) ~f:(fun p ->
-          let+ d = build_file p in
-          (p, d))
-      >>| Path.Map.of_list_exn
+      let+ files =
+        Memo.Build.parallel_map (Path.Set.to_list paths) ~f:(fun p ->
+            let+ d = build_file p in
+            (p, d))
+      in
+      Dep.Fact.Files.make (Path.Map.of_list_exn files)
 
     let eval_impl g =
       let dir = File_selector.dir g in
@@ -2055,7 +2052,7 @@ end = struct
       Memo.exec
         (Memo.create "build-pred" ~doc:"build a predicate"
            ~input:(module File_selector)
-           ~output:(Allow_cutoff (module Digest_path_map))
+           ~output:(Allow_cutoff (module Dep.Fact.Files))
            ~visibility:Hidden build_impl)
   end
 
@@ -2070,7 +2067,7 @@ end = struct
 
   let build_alias_memo =
     Memo.create "build-alias"
-      ~output:(Allow_cutoff (module Digest_path_map))
+      ~output:(Allow_cutoff (module Dep.Fact.Files))
       ~doc:"Build an alias."
       ~input:(module Alias)
       ~visibility:Hidden build_alias_impl

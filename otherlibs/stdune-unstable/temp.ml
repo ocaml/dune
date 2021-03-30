@@ -74,8 +74,6 @@ let create ?perms what ~prefix ~suffix =
   in
   temp_in_dir ?perms what ~dir ~prefix ~suffix
 
-let temp_in_dir ?perms what ~dir = temp_in_dir ?perms what ~dir
-
 let destroy what fn =
   destroy what fn;
   let set = set what in

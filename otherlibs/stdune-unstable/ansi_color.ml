@@ -218,15 +218,16 @@ let parse_line str styles =
               String.sub str ~pos:seq_start ~len:(seq_end - seq_start)
               |> String.split ~on:';'
               |> List.fold_left ~init:(List.rev styles) ~f:(fun styles s ->
-                     match s with
-                     | "39" ->
+                     if s = Style.fg_default then
                        List.filter styles ~f:(fun s ->
                            not (List.mem Style.fg_all s ~equal:String.equal))
-                     | "49" ->
+                     else if s = Style.bg_default then
                        List.filter styles ~f:(fun s ->
                            not (List.mem Style.bg_all s ~equal:String.equal))
-                     | "0" -> []
-                     | _ -> s :: styles)
+                     else if s = "0" then
+                       []
+                     else
+                       s :: styles)
               |> List.rev
           in
           loop styles (seq_end + 1) acc)

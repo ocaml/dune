@@ -264,6 +264,10 @@ let capture ctx state =
   let f t = result ctx (t ctx state) in
   (f, [])
 
+let lazy_ t =
+  let+ f = capture in
+  lazy (f t)
+
 let end_of_list (Values (loc, cstr, _)) =
   match cstr with
   | None ->

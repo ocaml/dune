@@ -104,3 +104,7 @@ end
 val filename : string
 
 val workspace : unit -> t Memo.Build.t
+
+(** Same as [workspace ()] except that if there are errors related to fields
+    other than the ones of [config], they are not reported. *)
+val workspace_config : unit -> Dune_config.t Memo.Build.t

@@ -156,14 +156,14 @@ let set_common ?log_file c =
      can interpret errors in the workspace file. *)
   print_entering_message c;
   Dune_rules.Workspace.Clflags.set c.workspace_config;
-  let workspace =
+  let config =
     (* Here we make the assumption that this computation doesn't yield. *)
     Fiber.run
-      (Memo.Build.run (Dune_rules.Workspace.workspace ()))
+      (Memo.Build.run (Dune_rules.Workspace.workspace_config ()))
       ~iter:(fun () -> assert false)
   in
   let config =
-    Dune_config.adapt_display workspace.config
+    Dune_config.adapt_display config
       ~output_is_a_tty:(Lazy.force Ansi_color.stderr_supports_color)
   in
   Dune_config.init config;

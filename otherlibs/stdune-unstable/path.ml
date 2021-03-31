@@ -142,7 +142,7 @@ end = struct
 
   let cwd () = make (Sys.getcwd ())
 
-  let initial_cwd = cwd ()
+  let initial_cwd = make Fpath.initial_cwd
 
   let as_local t =
     let s = to_string t in

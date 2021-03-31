@@ -113,6 +113,17 @@ module External : sig
   val mkdir_p : ?perms:int -> t -> unit
 end
 
+module Permissions : sig
+  (** Write permissions. *)
+  val write : int
+
+  (** Add [mode] permissions to a given mask. *)
+  val add : mode:int -> int -> int
+
+  (** Remove [mode] permissions from a given mask. *)
+  val remove : mode:int -> int -> int
+end
+
 module Build : sig
   type w
 
@@ -172,16 +183,9 @@ module Build : sig
 
   val of_local : Local.t -> t
 
-  (** Modify permissions of a given path. [op] is [`Set] by default, which sets
-      the permissions exactly to [mode], while [`Add] adds [mode] to the current
-      permissions and [`Remove] removes them. [path] will be [stat]'ed in the
-      [`Add] and [`Remove] cases to determine the current permissions, unless
-      the already computed stats are passed to save a system call. *)
-  val chmod :
-       mode:int
-    -> ?op:[ `Set | `Add of Unix.stats option | `Remove of Unix.stats option ]
-    -> t
-    -> unit
+  (** Set permissions for a given path. You can use the [Permissions] module if
+      you need to modify existing permissions in a non-trivial way. *)
+  val chmod : t -> mode:int -> unit
 end
 
 type t = private
@@ -381,16 +385,9 @@ val string_of_file_kind : Unix.file_kind -> string
     oldpath. *)
 val rename : t -> t -> unit
 
-(** Modify permissions of a given path. [op] is [`Set] by default, which sets
-    the permissions exactly to [mode], while [`Add] adds [mode] to the current
-    permissions and [`Remove] removes them. [path] will be [stat]'ed in the
-    [`Add] and [`Remove] cases to determine the current permissions, unless the
-    already computed stats are passed to save a system call. *)
-val chmod :
-     mode:int
-  -> ?op:[ `Set | `Add of Unix.stats option | `Remove of Unix.stats option ]
-  -> t
-  -> unit
+(** Set permissions for a given path. You can use the [Permissions] module if
+    you need to modify existing permissions in a non-trivial way. *)
+val chmod : t -> mode:int -> unit
 
 (** Attempts to resolve a symlink. Returns [None] if the path isn't a symlink *)
 val follow_symlink : t -> (t, Fpath.follow_symlink_error) result

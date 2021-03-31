@@ -179,7 +179,7 @@ let refresh_and_chmod fn =
            whether the cache is activated. No need to be zealous in case the
            file is not cached anyway. See issue #3311. *)
         let perm = stats.st_perm land lnot 0o222 in
-        Path.chmod ~stats:(Some stats) ~mode:perm ~op:`Set fn;
+        Path.chmod ~mode:perm fn;
         { stats with st_perm = perm }
       | false -> stats)
   in

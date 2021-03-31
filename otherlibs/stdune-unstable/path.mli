@@ -176,11 +176,10 @@ module Build : sig
       the permissions exactly to [mode], while [`Add] adds [mode] to the current
       permissions and [`Remove] removes them. [path] will be [stat]'ed in the
       [`Add] and [`Remove] cases to determine the current permissions, unless
-      the already computed stats are passed as [stats] to save a system call. *)
+      the already computed stats are passed to save a system call. *)
   val chmod :
        mode:int
-    -> ?stats:Unix.stats option
-    -> ?op:[ `Add | `Remove | `Set ]
+    -> ?op:[ `Set | `Add of Unix.stats option | `Remove of Unix.stats option ]
     -> t
     -> unit
 end
@@ -386,11 +385,10 @@ val rename : t -> t -> unit
     the permissions exactly to [mode], while [`Add] adds [mode] to the current
     permissions and [`Remove] removes them. [path] will be [stat]'ed in the
     [`Add] and [`Remove] cases to determine the current permissions, unless the
-    already computed stats are passed as [stats] to save a system call. *)
+    already computed stats are passed to save a system call. *)
 val chmod :
      mode:int
-  -> ?stats:Unix.stats option
-  -> ?op:[ `Add | `Remove | `Set ]
+  -> ?op:[ `Set | `Add of Unix.stats option | `Remove of Unix.stats option ]
   -> t
   -> unit
 

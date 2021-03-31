@@ -610,20 +610,20 @@ module Kind = struct
     | External x -> External (External.relative x (Local.to_string y))
 end
 
-let chmod_generic ~mode ?(stats = None) ?(op = `Set) path =
+let chmod_generic ~mode ?(op = `Set) path =
   let mode =
     match op with
     | `Set -> mode
-    | `Add
-    | `Remove -> (
+    | `Add stats
+    | `Remove stats -> (
       let stats =
         match stats with
         | Some stats -> stats
         | None -> Unix.stat path
       in
       match op with
-      | `Add -> stats.st_perm lor mode
-      | `Remove -> stats.st_perm land lnot mode
+      | `Add _ -> stats.st_perm lor mode
+      | `Remove _ -> stats.st_perm land lnot mode
       | `Set -> assert false)
   in
   Unix.chmod path mode
@@ -723,8 +723,7 @@ module Build = struct
 
   let of_local t = t
 
-  let chmod ~mode ?stats ?op path =
-    chmod_generic ~mode ?stats ?op (to_string path)
+  let chmod ~mode ?op path = chmod_generic ~mode ?op (to_string path)
 
   module Kind = Kind
 end
@@ -1300,8 +1299,7 @@ let string_of_file_kind = function
 let rename old_path new_path =
   Sys.rename (to_string old_path) (to_string new_path)
 
-let chmod ~mode ?stats ?op path =
-  chmod_generic ~mode ?stats ?op (to_string path)
+let chmod ~mode ?op path = chmod_generic ~mode ?op (to_string path)
 
 let follow_symlink path =
   Fpath.follow_symlink (to_string path) |> Result.map ~f:of_string

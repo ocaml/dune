@@ -40,6 +40,10 @@ module Duplication_mode = struct
   let to_string = function
     | Copy -> "copy"
     | Hardlink -> "hardlink"
+
+  let to_dyn = function
+    | Copy -> Dyn.Variant ("Copy", [])
+    | Hardlink -> Dyn.Variant ("Hardlink", [])
 end
 
 module type Cache = sig

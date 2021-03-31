@@ -26,8 +26,8 @@ let wait_for_server common =
 
 let client_term common f =
   let common = Common.set_print_directory common false in
-  Common.set_common common;
-  Scheduler.go ~common (fun () ->
+  let config = Common.set_common common in
+  Scheduler.go ~common ~config (fun () ->
       let where = wait_for_server common in
       let stats = Common.stats common in
       let run =

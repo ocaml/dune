@@ -75,19 +75,35 @@ end
 
 include S with type 'a field = 'a
 
-module Partial : S with type 'a field := 'a option
+module Partial : sig
+  include S with type 'a field := 'a option
 
-val decode : t Dune_lang.Decoder.t
+  val empty : t
 
-val merge : t -> Partial.t -> t
+  val superpose : t -> t -> t
+
+  val to_dyn : t -> Dyn.t
+end
+
+val decode : Partial.t Dune_lang.Decoder.t
+
+(** Decode the same fields as the one accepted in the configuration file, but
+    coming from the [dune-workspace] file. The main difference is that we
+    started accepting such parameters in the [dune-workspace] file starting from
+    Dune 3.0.0, so the version checks are different. *)
+val decode_fields_of_workspace_file : Partial.t Dune_lang.Decoder.fields_parser
+
+val superpose : t -> Partial.t -> t
 
 val default : t
 
 val user_config_file : Path.t
 
-val load_user_config_file : unit -> t
+(** We return a [Partial.t] here so that the result can easily be merged with
+    other sources of configurations. *)
+val load_user_config_file : unit -> Partial.t
 
-val load_config_file : Path.t -> t
+val load_config_file : Path.t -> Partial.t
 
 (** Set display mode to [Quiet] if it is [Progress], the output is not a tty and
     we are not running inside emacs. *)
@@ -97,6 +113,10 @@ val adapt_display : t -> output_is_a_tty:bool -> t
 val init : t -> unit
 
 val to_dyn : t -> Dyn.t
+
+val hash : t -> int
+
+val equal : t -> t -> bool
 
 val for_scheduler :
      t

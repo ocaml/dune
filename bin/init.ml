@@ -209,7 +209,7 @@ let term =
       & opt (some (enum Component.Options.Project.Pkg.commands)) None
       & info [ "pkg" ] ~docv ~doc)
   in
-  Common.set_common common_term;
+  let _config = Common.set_common common_term in
   let open Component in
   let context = Init_context.make path in
   let common : Options.Common.t = { name; libraries; pps } in

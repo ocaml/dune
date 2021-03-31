@@ -97,13 +97,14 @@ let resolve_path path ~(setup : Dune_rules.Main.build_system) =
     | None -> build ())
   | In_install_dir _ -> build ()
 
-let expand_path common ~(setup : Dune_rules.Main.build_system) ctx sv =
+let expand_path (root : Workspace_root.t)
+    ~(setup : Dune_rules.Main.build_system) ctx sv =
   let sctx =
     Dune_engine.Context_name.Map.find_exn setup.scontexts (Context.name ctx)
   in
   let dir =
     Path.Build.relative ctx.Context.build_dir
-      (String.concat ~sep:Filename.dir_sep (Common.root common).to_cwd)
+      (String.concat ~sep:Filename.dir_sep root.to_cwd)
   in
   let* expander = Dune_rules.Super_context.expander sctx ~dir in
   let expander =
@@ -113,32 +114,31 @@ let expand_path common ~(setup : Dune_rules.Main.build_system) ctx sv =
     Build_system.For_command_line.eval_build_request
       (Dune_rules.Expander.expand_str expander sv)
   in
-  Path.relative Path.root (Common.prefix_target common s)
+  Path.relative Path.root (root.reach_from_root_prefix ^ s)
 
-let resolve_alias common ~recursive sv ~(setup : Dune_rules.Main.build_system) =
+let resolve_alias root ~recursive sv ~(setup : Dune_rules.Main.build_system) =
   match Dune_engine.String_with_vars.text_only sv with
   | Some s ->
     Ok
       [ Alias
-          (Alias.of_string common ~recursive s
-             ~contexts:setup.workspace.contexts)
+          (Alias.of_string root ~recursive s ~contexts:setup.workspace.contexts)
       ]
   | None -> Error [ Pp.text "alias cannot contain variables" ]
 
-let resolve_target common ~setup = function
+let resolve_target root ~setup = function
   | Dune_rules.Dep_conf.Alias sv as dep ->
     Memo.Build.return
       (Result.map_error
          ~f:(fun hints -> (dep, hints))
-         (resolve_alias common ~recursive:false sv ~setup))
+         (resolve_alias root ~recursive:false sv ~setup))
   | Alias_rec sv as dep ->
     Memo.Build.return
       (Result.map_error
          ~f:(fun hints -> (dep, hints))
-         (resolve_alias common ~recursive:true sv ~setup))
+         (resolve_alias root ~recursive:true sv ~setup))
   | File sv as dep ->
     let f ctx =
-      let* path = expand_path common ~setup ctx sv in
+      let* path = expand_path root ~setup ctx sv in
       resolve_path path ~setup
       >>| Result.map_error ~f:(fun hints -> (dep, hints))
     in
@@ -146,19 +146,18 @@ let resolve_target common ~setup = function
     >>| Result.List.concat_map ~f:Fun.id
   | dep -> Memo.Build.return (Error (dep, []))
 
-let resolve_targets_mixed common setup user_targets =
+let resolve_targets_mixed root (config : Dune_config.t) setup user_targets =
   match user_targets with
   | [] -> Memo.Build.return []
   | _ ->
     let+ targets =
       Memo.Build.parallel_map user_targets ~f:(function
-        | Dep d -> resolve_target common ~setup d
+        | Dep d -> resolve_target root ~setup d
         | Path p ->
           resolve_path p ~setup
           >>| Result.map_error ~f:(fun hints ->
                   (Arg.Dep.file (Path.to_string p), hints)))
     in
-    let config = Common.config common in
     if config.display = Verbose then
       Log.info
         [ Pp.text "Actual targets:"
@@ -172,12 +171,13 @@ let resolve_targets_mixed common setup user_targets =
         ];
     targets
 
-let resolve_targets common (setup : Dune_rules.Main.build_system) user_targets =
+let resolve_targets root config (setup : Dune_rules.Main.build_system)
+    user_targets =
   List.map ~f:(fun dep -> Dep dep) user_targets
-  |> resolve_targets_mixed common setup
+  |> resolve_targets_mixed root config setup
 
-let resolve_targets_exn common setup user_targets =
-  resolve_targets common setup user_targets
+let resolve_targets_exn root config setup user_targets =
+  resolve_targets root config setup user_targets
   >>| List.concat_map ~f:(function
         | Error (dep, hints) ->
           User_error.raise

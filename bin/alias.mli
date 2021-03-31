@@ -15,7 +15,7 @@ val in_dir :
   -> t
 
 val of_string :
-     Common.t
+     Workspace_root.t
   -> recursive:bool
   -> string
   -> contexts:Dune_rules.Context.t list

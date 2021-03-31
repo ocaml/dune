@@ -106,11 +106,11 @@ let term =
              the given targets.")
   and+ syntax = Syntax.term
   and+ targets = Arg.(value & pos_all dep [] & Arg.info [] ~docv:"TARGET") in
-  Common.set_common common;
+  let config = Common.set_common common in
   let out = Option.map ~f:Path.of_string out in
-  Scheduler.go ~common (fun () ->
+  Scheduler.go ~common ~config (fun () ->
       let open Fiber.O in
-      let* setup = Import.Main.setup common in
+      let* setup = Import.Main.setup common config in
       Build_system.run (fun () ->
           let open Memo.Build.O in
           let* request =
@@ -121,7 +121,9 @@ let term =
                       Path.build p :: acc)
               >>| Action_builder.paths
             | _ ->
-              Target.resolve_targets_exn common setup targets >>| Target.request
+              Target.resolve_targets_exn (Common.root common) config setup
+                targets
+              >>| Target.request
           in
           let+ rules =
             Build_system.For_command_line.evaluate_rules ~request ~recursive

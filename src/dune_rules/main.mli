@@ -19,14 +19,7 @@ val package_install_file :
 
 (** Scan the source tree and discover the overall layout of the workspace. *)
 val scan_workspace :
-     ?workspace_file:Path.t
-  -> ?x:Context_name.t
-  -> ?capture_outputs:bool
-  -> ?profile:Profile.t
-  -> ?instrument_with:Lib_name.t list
-  -> ancestor_vcs:Vcs.t option
-  -> unit
-  -> workspace Fiber.t
+  capture_outputs:bool -> ancestor_vcs:Vcs.t option -> unit -> workspace Fiber.t
 
 (** Load dune files and initializes the build system *)
 val init_build_system :

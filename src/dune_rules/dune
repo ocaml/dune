@@ -19,7 +19,8 @@
   dune_meta_parser
   dune_section
   build_path_prefix_map
-  dune_engine)
+  dune_engine
+  dune_config)
  (synopsis "Internal Dune library, do not use!"))
 
 (ocamllex ocamlobjinfo cram_lexer)

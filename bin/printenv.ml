@@ -46,10 +46,10 @@ let term =
             "Only print this field. This option can be repeated multiple times \
              to print multiple fields.")
   in
-  Common.set_common common;
-  Scheduler.go ~common (fun () ->
+  let config = Common.set_common common in
+  Scheduler.go ~common ~config (fun () ->
       let open Fiber.O in
-      let* setup = Import.Main.setup common in
+      let* setup = Import.Main.setup common config in
       let dir = Path.of_string dir in
       let checked = Util.check_path setup.workspace.contexts dir in
       let request =

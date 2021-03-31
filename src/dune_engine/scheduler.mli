@@ -13,7 +13,7 @@ module Config : sig
 
     val all : (string * t) list
 
-    val to_string : t -> string
+    val to_dyn : t -> Dyn.t
 
     (** The console backend corresponding to the selected display mode *)
     val console_backend : t -> Console.Backend.t

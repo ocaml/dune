@@ -18,7 +18,7 @@ let term =
   and+ file =
     Arg.(required & pos 0 (some Arg.path) None & Arg.info [] ~docv:"FILE")
   in
-  Common.set_common common;
+  let _config = Common.set_common common in
   let (Persistent.T ((module D), data)) =
     Persistent.load_exn (Arg.Path.path file)
   in

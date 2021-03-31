@@ -80,20 +80,13 @@ module Main = struct
   include Dune_rules.Main
 
   let scan_workspace (common : Common.t) =
-    let workspace_file =
-      Common.workspace_file common |> Option.map ~f:Arg.Path.path
-    in
-    let x = Common.x common in
-    let profile = Common.profile common in
-    let instrument_with = Common.instrument_with common in
     let capture_outputs = Common.capture_outputs common in
     let ancestor_vcs = (Common.root common).ancestor_vcs in
-    scan_workspace ?workspace_file ?x ?profile ?instrument_with ~capture_outputs
-      ~ancestor_vcs ()
+    scan_workspace ~capture_outputs ~ancestor_vcs ()
 
-  let setup ?build_mutex common =
+  let setup ?build_mutex common config =
     let open Fiber.O in
-    let* caching = make_cache (Common.config common) in
+    let* caching = make_cache config in
     let* workspace = scan_workspace common in
     let* only_packages =
       match Common.only_packages common with
@@ -133,8 +126,8 @@ module Main = struct
     in
     let stats = Common.stats common in
     init_build_system workspace ?stats
-      ~sandboxing_preference:(Common.config common).sandboxing_preference
-      ?caching ?build_mutex ?only_packages
+      ~sandboxing_preference:config.sandboxing_preference ?caching ?build_mutex
+      ?only_packages
 end
 
 module Scheduler = struct
@@ -176,14 +169,12 @@ module Scheduler = struct
               (Pp.seq message
                  (Pp.verbatim ", waiting for filesystem changes..."))))
 
-  let go ~(common : Common.t) f =
-    let dune_config = Common.config common in
+  let go ~(common : Common.t) ~config:dune_config f =
     let stats = Common.stats common in
     let config = Dune_config.for_scheduler dune_config None stats in
     Scheduler.Run.go config ~on_event:(on_event dune_config) f
 
-  let poll ~(common : Common.t) ~every ~finally =
-    let dune_config = Common.config common in
+  let poll ~(common : Common.t) ~config:dune_config ~every ~finally =
     let stats = Common.stats common in
     let rpc_where = Some (Dune_rpc_private.Where.default ()) in
     let config = Dune_config.for_scheduler dune_config rpc_where stats in

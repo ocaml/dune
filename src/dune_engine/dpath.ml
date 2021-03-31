@@ -74,18 +74,21 @@ let analyse_target (fn as original_fn) : target_kind =
   | Install (With_context (ctx, src_dir)) -> Install (ctx, src_dir)
   | Regular (With_context (ctx, src_dir)) -> Regular (ctx, src_dir)
   | Anonymous_action (With_context (ctx, fn)) -> (
-    let basename = Path.Source.basename fn in
-    match String.rsplit2 basename ~on:'-' with
-    | None ->
-      if is_digest basename then
-        Anonymous_action ctx
-      else
-        Other original_fn
-    | Some (basename, suffix) ->
-      if is_digest suffix then
-        Alias (ctx, Path.Source.relative (Path.Source.parent_exn fn) basename)
-      else
-        Other original_fn)
+    if Path.Source.is_root fn then
+      Other original_fn
+    else
+      let basename = Path.Source.basename fn in
+      match String.rsplit2 basename ~on:'-' with
+      | None ->
+        if is_digest basename then
+          Anonymous_action ctx
+        else
+          Other original_fn
+      | Some (basename, suffix) ->
+        if is_digest suffix then
+          Alias (ctx, Path.Source.relative (Path.Source.parent_exn fn) basename)
+        else
+          Other original_fn)
 
 let describe_target fn =
   let ctx_suffix name =

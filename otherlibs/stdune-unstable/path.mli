@@ -164,7 +164,7 @@ module Build : sig
     val of_string : string -> t
   end
 
-  (** set the build directory. Can only be called once and must be done before
+  (** Set the build directory. Can only be called once and must be done before
       paths are converted to strings elsewhere. *)
   val set_build_dir : Kind.t -> unit
 
@@ -172,7 +172,17 @@ module Build : sig
 
   val of_local : Local.t -> t
 
-  val chmod : mode:int -> ?op:[ `Add | `Remove | `Set ] -> t -> unit
+  (** Modify permissions of a given path. [op] is [`Set] by default, which sets
+      the permissions exactly to [mode], while [`Add] adds [mode] to the current
+      permissions and [`Remove] removes them. [path] will be [stat]'ed in the
+      [`Add] and [`Remove] cases to determine the current permissions, unless
+      the already computed stats are passed as [stats] to save a system call. *)
+  val chmod :
+       mode:int
+    -> ?stats:Unix.stats option
+    -> ?op:[ `Add | `Remove | `Set ]
+    -> t
+    -> unit
 end
 
 type t = private
@@ -372,10 +382,10 @@ val string_of_file_kind : Unix.file_kind -> string
     oldpath. *)
 val rename : t -> t -> unit
 
-(** Set permissions on the designed files. [op] is [`Set] by default, which sets
-    the permissions exactly to [mode], while [`Add] will add the given [mode] to
-    the current permissions and [`Remove] remove them. [path] will be stat'd in
-    the `Add and `Remove case to determine the current permission, unless the
+(** Modify permissions of a given path. [op] is [`Set] by default, which sets
+    the permissions exactly to [mode], while [`Add] adds [mode] to the current
+    permissions and [`Remove] removes them. [path] will be [stat]'ed in the
+    [`Add] and [`Remove] cases to determine the current permissions, unless the
     already computed stats are passed as [stats] to save a system call. *)
 val chmod :
      mode:int

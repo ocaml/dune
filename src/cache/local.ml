@@ -278,7 +278,10 @@ let promote_sync cache paths key metadata ~repository ~duplication =
             Path.rename tmp in_the_cache;
             (* Remove write permissions, making the cache entry immutable. We
                assume that users do not modify the files in the cache. *)
-            Path.chmod in_the_cache ~mode:(stat.st_perm land 0o555);
+            Path.chmod in_the_cache
+              ~mode:
+                (Path.Permissions.remove ~mode:Path.Permissions.write
+                   stat.st_perm);
             Result.Ok (Promoted { path; digest = effective_digest })))
   in
   let+ promoted = Result.List.map ~f:promote paths in

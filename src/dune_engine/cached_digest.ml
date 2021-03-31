@@ -178,8 +178,10 @@ let refresh_and_chmod fn =
         (* We remove write permissions to uniformize behavior regardless of
            whether the cache is activated. No need to be zealous in case the
            file is not cached anyway. See issue #3311. *)
-        let perm = stats.st_perm land lnot 0o222 in
-        Path.chmod ~stats:(Some stats) ~mode:perm ~op:`Set fn;
+        let perm =
+          Path.Permissions.remove ~mode:Path.Permissions.write stats.st_perm
+        in
+        Path.chmod ~mode:perm fn;
         { stats with st_perm = perm }
       | false -> stats)
   in

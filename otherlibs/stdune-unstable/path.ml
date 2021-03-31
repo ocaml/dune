@@ -921,13 +921,11 @@ let basename t =
   | In_build_dir p -> Local.basename p
   | In_source_tree s -> Local.basename s
   | External s -> External.basename s
-;;
 
 let is_a_root = function
   | In_build_dir p -> Local.is_root p
   | In_source_tree s -> Local.is_root s
   | External s -> External.is_root s
-;;
 
 let basename_opt = basename_opt ~is_root:is_a_root ~basename
 

@@ -6,9 +6,12 @@ open Dune_lang.Decoder
    simplicity *)
 let syntax = Stanza.syntax
 
-let env_field =
-  field "env" ~default:Dune_env.Stanza.empty
-    (Dune_lang.Syntax.since syntax (1, 1) >>> Dune_env.Stanza.decode)
+let env_field, env_field_lazy =
+  let make f g =
+    field "env" ~default:(f Dune_env.Stanza.empty)
+      (g (Dune_lang.Syntax.since syntax (1, 1) >>> Dune_env.Stanza.decode))
+  in
+  (make Fun.id Fun.id, make Lazy.from_val lazy_)
 
 module Context = struct
   module Target = struct
@@ -91,11 +94,11 @@ module Context = struct
         let name, _ = Path.split_extension file in
         "-fdo-" ^ Path.basename name
 
-    let t ~profile ~instrument_with =
+    let t =
       let+ env = env_field
       and+ targets =
         field "targets" (repeat Target.t) ~default:[ Target.Native ]
-      and+ profile = field "profile" Profile.decode ~default:profile
+      and+ profile = field_o "profile" Profile.decode
       and+ host_context =
         field_o "host"
           (Dune_lang.Syntax.since syntax (1, 10) >>> Context_name.decode)
@@ -140,30 +143,35 @@ module Context = struct
           (Dune_lang.Syntax.since Stanza.syntax (1, 12)
           >>> map ~f (repeat (pair (located string) Ordered_set_lang.decode)))
       and+ instrument_with =
-        field ~default:instrument_with "instrument_with"
+        field_o "instrument_with"
           (Dune_lang.Syntax.since syntax (2, 7) >>> repeat Lib_name.decode)
       and+ loc = loc in
-      Option.iter host_context ~f:(fun _ ->
-          match targets with
-          | [ Target.Native ] -> ()
-          | _ ->
-            User_error.raise ~loc
-              [ Pp.text
-                  "`targets` and `host` options cannot be used in the same \
-                   context."
-              ]);
-      { targets
-      ; profile
-      ; loc
-      ; env
-      ; name = Context_name.default
-      ; host_context
-      ; toolchain
-      ; paths
-      ; fdo_target_exe
-      ; dynamically_linked_foreign_archives
-      ; instrument_with
-      }
+      fun ~profile_default ~instrument_with_default ->
+        let profile = Option.value profile ~default:profile_default in
+        let instrument_with =
+          Option.value instrument_with ~default:instrument_with_default
+        in
+        Option.iter host_context ~f:(fun _ ->
+            match targets with
+            | [ Target.Native ] -> ()
+            | _ ->
+              User_error.raise ~loc
+                [ Pp.text
+                    "`targets` and `host` options cannot be used in the same \
+                     context."
+                ]);
+        { targets
+        ; profile
+        ; loc
+        ; env
+        ; name = Context_name.default
+        ; host_context
+        ; toolchain
+        ; paths
+        ; fdo_target_exe
+        ; dynamically_linked_foreign_archives
+        ; instrument_with
+        }
   end
 
   module Opam = struct
@@ -189,29 +197,31 @@ module Context = struct
       && Option.equal String.equal root t.root
       && Bool.equal merlin t.merlin
 
-    let t ~profile ~instrument_with ~x =
+    let t =
       let+ loc_switch, switch = field "switch" (located string)
       and+ name = field_o "name" Context_name.decode
       and+ root = field_o "root" string
       and+ merlin = field_b "merlin"
-      and+ base = Common.t ~profile ~instrument_with in
-      let name =
-        match name with
-        | Some s -> s
-        | None -> (
-          let name = switch ^ Common.fdo_suffix base in
-          match Context_name.of_string_opt name with
+      and+ base = Common.t in
+      fun ~profile_default ~instrument_with_default ~x ->
+        let base = base ~profile_default ~instrument_with_default in
+        let name =
+          match name with
           | Some s -> s
-          | None ->
-            User_error.raise ~loc:loc_switch
-              [ Pp.textf "Generated context name %S is invalid" name
-              ; Pp.text
-                  "Please specify a context name manually with the (name ..) \
-                   field"
-              ])
-      in
-      let base = { base with targets = Target.add base.targets x; name } in
-      { base; switch; root; merlin }
+          | None -> (
+            let name = switch ^ Common.fdo_suffix base in
+            match Context_name.of_string_opt name with
+            | Some s -> s
+            | None ->
+              User_error.raise ~loc:loc_switch
+                [ Pp.textf "Generated context name %S is invalid" name
+                ; Pp.text
+                    "Please specify a context name manually with the (name ..) \
+                     field"
+                ])
+        in
+        let base = { base with targets = Target.add base.targets x; name } in
+        { base; switch; root; merlin }
   end
 
   module Default = struct
@@ -219,22 +229,24 @@ module Context = struct
 
     let to_dyn = Common.to_dyn
 
-    let t ~profile ~instrument_with ~x =
-      let+ common = Common.t ~profile ~instrument_with
+    let t =
+      let+ common = Common.t
       and+ name =
         field_o "name"
           ( Dune_lang.Syntax.since syntax (1, 10) >>= fun () ->
             Context_name.decode )
       in
-      let default =
-        (* TODO proper error handling with locs *)
-        let name =
-          Context_name.to_string common.name ^ Common.fdo_suffix common
+      fun ~profile_default ~instrument_with_default ~x ->
+        let common = common ~profile_default ~instrument_with_default in
+        let default =
+          (* TODO proper error handling with locs *)
+          let name =
+            Context_name.to_string common.name ^ Common.fdo_suffix common
+          in
+          Context_name.parse_string_exn (Loc.none, name)
         in
-        Context_name.parse_string_exn (Loc.none, name)
-      in
-      let name = Option.value ~default name in
-      { common with targets = Target.add common.targets x; name }
+        let name = Option.value ~default name in
+        { common with targets = Target.add common.targets x; name }
 
     let equal = Common.equal
   end
@@ -266,13 +278,16 @@ module Context = struct
     | Opam { base = { host_context; _ }; _ } ->
       host_context
 
-  let t ~profile ~instrument_with ~x =
+  let t =
     sum
       [ ( "default"
-        , fields (Default.t ~profile ~instrument_with ~x) >>| fun x -> Default x
-        )
+        , let+ f = fields Default.t in
+          fun ~profile_default ~instrument_with_default ~x ->
+            Default (f ~profile_default ~instrument_with_default ~x) )
       ; ( "opam"
-        , fields (Opam.t ~profile ~instrument_with ~x) >>| fun x -> Opam x )
+        , let+ f = fields Opam.t in
+          fun ~profile_default ~instrument_with_default ~x ->
+            Opam (f ~profile_default ~instrument_with_default ~x) )
       ]
 
   let env = function
@@ -438,7 +453,24 @@ let create_final_config ~config_from_config_file ~config_from_command_line
   Dune_config.default ++ config_from_config_file ++ config_from_workspace_file
   ++ config_from_command_line
 
-let t clflags =
+(* We load the configuration it two steps:
+
+   - step1: we eagerly interpret all the bits that are common to the workspace
+   file and the user configuration file. The other fields are left under a lazy
+
+   - step2: we force the interpretation of the rest of the fields
+
+   We do that so that we can load only the general configuration part at Dune's
+   initialisation time, and report errors that are more specific to OCaml later
+   on *)
+module Step1 = struct
+  type nonrec t =
+    { t : t Lazy.t
+    ; config : Dune_config.t
+    }
+end
+
+let step1 clflags =
   let { Clflags.x
       ; profile = cl_profile
       ; instrument_with = cl_instrument_with
@@ -449,71 +481,85 @@ let t clflags =
     clflags
   in
   let x = Option.map x ~f:(fun s -> Context.Target.Named s) in
+  let superpose_with_command_line cl field =
+    let+ x = field in
+    lazy (Option.value cl ~default:(Lazy.force x))
+  in
   let* () = Dune_lang.Versioned_file.no_more_lang
-  and+ env = env_field
+  and+ env = env_field_lazy
   and+ profile =
-    let+ default = field "profile" Profile.decode ~default:Profile.default in
-    Option.value cl_profile ~default
+    superpose_with_command_line cl_profile
+      (field "profile" (lazy_ Profile.decode) ~default:(lazy Profile.default))
   and+ instrument_with =
-    let+ default =
-      field "instrument_with"
-        (Dune_lang.Syntax.since Stanza.syntax (2, 7) >>> repeat Lib_name.decode)
-        ~default:[]
-    in
-    Option.value cl_instrument_with ~default
+    superpose_with_command_line cl_instrument_with
+      (field "instrument_with"
+         (lazy_
+            (Dune_lang.Syntax.since Stanza.syntax (2, 7)
+            >>> repeat Lib_name.decode))
+         ~default:(lazy []))
   and+ config_from_workspace_file =
     Dune_config.decode_fields_of_workspace_file
   in
-  let+ contexts =
-    multi_field "context" (Context.t ~profile ~instrument_with ~x)
-  in
+  let+ contexts = multi_field "context" (lazy_ Context.t) in
   let config =
     create_final_config ~config_from_workspace_file ~config_from_config_file
       ~config_from_command_line
   in
-  let defined_names = ref Context_name.Set.empty in
-  let merlin_context =
-    List.fold_left contexts ~init:None ~f:(fun acc ctx ->
-        let name = Context.name ctx in
-        if Context_name.Set.mem !defined_names name then
-          User_error.raise ~loc:(Context.loc ctx)
-            [ Pp.textf "second definition of build context %S"
-                (Context_name.to_string name)
-            ];
-        defined_names :=
-          Context_name.Set.union !defined_names
-            (Context_name.Set.of_list (Context.all_names ctx));
-        match (ctx, acc) with
-        | Opam { merlin = true; _ }, Some _ ->
-          User_error.raise ~loc:(Context.loc ctx)
-            [ Pp.text "you can only have one context for merlin" ]
-        | Opam { merlin = true; _ }, None -> Some name
-        | _ -> acc)
+  let t =
+    lazy
+      (let profile = Lazy.force profile in
+       let instrument_with = Lazy.force instrument_with in
+       let contexts =
+         List.map contexts ~f:(fun f ->
+             Lazy.force f ~profile_default:profile
+               ~instrument_with_default:instrument_with ~x)
+       in
+       let env = Lazy.force env in
+       let defined_names = ref Context_name.Set.empty in
+       let merlin_context =
+         List.fold_left contexts ~init:None ~f:(fun acc ctx ->
+             let name = Context.name ctx in
+             if Context_name.Set.mem !defined_names name then
+               User_error.raise ~loc:(Context.loc ctx)
+                 [ Pp.textf "second definition of build context %S"
+                     (Context_name.to_string name)
+                 ];
+             defined_names :=
+               Context_name.Set.union !defined_names
+                 (Context_name.Set.of_list (Context.all_names ctx));
+             match (ctx, acc) with
+             | Opam { merlin = true; _ }, Some _ ->
+               User_error.raise ~loc:(Context.loc ctx)
+                 [ Pp.text "you can only have one context for merlin" ]
+             | Opam { merlin = true; _ }, None -> Some name
+             | _ -> acc)
+       in
+       let contexts =
+         match contexts with
+         | [] ->
+           [ Context.default ~x ~profile:(Some profile)
+               ~instrument_with:(Some instrument_with)
+           ]
+         | _ -> contexts
+       in
+       let merlin_context =
+         match merlin_context with
+         | Some _ -> merlin_context
+         | None ->
+           if
+             List.exists contexts ~f:(function
+               | Context.Default _ -> true
+               | _ -> false)
+           then
+             Some Context_name.default
+           else
+             None
+       in
+       { merlin_context; contexts = top_sort (List.rev contexts); env; config })
   in
-  let contexts =
-    match contexts with
-    | [] ->
-      [ Context.default ~x ~profile:(Some profile)
-          ~instrument_with:(Some instrument_with)
-      ]
-    | _ -> contexts
-  in
-  let merlin_context =
-    match merlin_context with
-    | Some _ -> merlin_context
-    | None ->
-      if
-        List.exists contexts ~f:(function
-          | Context.Default _ -> true
-          | _ -> false)
-      then
-        Some Context_name.default
-      else
-        None
-  in
-  { merlin_context; contexts = top_sort (List.rev contexts); env; config }
+  { Step1.t; config }
 
-let t clflags = fields (t clflags)
+let step1 clflags = fields (step1 clflags)
 
 let default clflags =
   let { Clflags.x
@@ -536,19 +582,23 @@ let default clflags =
   ; config
   }
 
-let load clflags p =
+let default_step1 clflags =
+  let t = default clflags in
+  { Step1.t = lazy t; config = t.config }
+
+let load_step1 clflags p =
   Io.with_lexbuf_from_file p ~f:(fun lb ->
       if Dune_lexer.eof_reached lb then
-        default clflags
+        default_step1 clflags
       else
         parse_contents lb ~f:(fun lang ->
             String_with_vars.set_decoding_env
               (Pform.Env.initial lang.version)
-              (t clflags)))
+              (step1 clflags)))
 
 let filename = "dune-workspace"
 
-let workspace =
+let workspace_step1 =
   let open Memo.Build.O in
   let f () =
     let clflags = Clflags.t () in
@@ -574,11 +624,26 @@ let workspace =
     in
     let clflags = { clflags with workspace_file } in
     match workspace_file with
-    | None -> default clflags
-    | Some p -> load clflags p
+    | None -> default_step1 clflags
+    | Some p -> load_step1 clflags p
+  in
+  let memo = Memo.create_hidden "workspaces-internal" ~input:(module Unit) f in
+  Memo.exec memo
+
+let workspace_config () =
+  let open Memo.Build.O in
+  let+ step1 = workspace_step1 () in
+  step1.config
+
+let workspace =
+  let open Memo.Build.O in
+  let f () =
+    let+ step1 = workspace_step1 () in
+    Lazy.force step1.t
   in
   let memo =
-    Memo.create "workspaces-db" ~doc:"get all workspaces" ~visibility:Hidden
+    Memo.create "workspace" ~doc:"Return the workspace configuration"
+      ~visibility:Hidden
       ~input:(module Unit)
       ~output:(Allow_cutoff (module T))
       f

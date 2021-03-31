@@ -7,20 +7,27 @@ let parse s =
   let ast =
     Parser.parse_string ~fname:"expect_test" ~mode:Parser.Mode.Single s
   in
-  Dune_lang.Decoder.parse Dune_config.decode Stdune.Univ_map.empty ast
+  let decode =
+    Dune_lang.Syntax.set Dune_engine.Stanza.syntax
+      (Active (3, 0))
+      Dune_config.decode
+  in
+  Dune_lang.Decoder.parse decode Stdune.Univ_map.empty ast
+  |> Dune_config.(superpose default)
   |> Dune_config.to_dyn |> print_dyn
 
 let%expect_test _ =
   parse "(cache-trim-period 2m)";
   [%expect
     {|
-{ display = "quiet"
-; concurrency = "1"
-; terminal_persistence = "preserve"
+{ display = Quiet
+; concurrency = Fixed 1
+; terminal_persistence = Preserve
 ; sandboxing_preference = []
-; cache_mode = "disabled"
-; cache_transport = "daemon"
+; cache_mode = Disabled
+; cache_transport = Daemon
 ; cache_check_probability = 0.
+; cache_duplication = None
 ; cache_trim_period = 120
 ; cache_trim_size = 10000000000
 }
@@ -58,13 +65,14 @@ let%expect_test _ =
   parse "(cache-trim-size 2kB)";
   [%expect
     {|
-{ display = "quiet"
-; concurrency = "1"
-; terminal_persistence = "preserve"
+{ display = Quiet
+; concurrency = Fixed 1
+; terminal_persistence = Preserve
 ; sandboxing_preference = []
-; cache_mode = "disabled"
-; cache_transport = "daemon"
+; cache_mode = Disabled
+; cache_transport = Daemon
 ; cache_check_probability = 0.
+; cache_duplication = None
 ; cache_trim_period = 600
 ; cache_trim_size = 2000
 }

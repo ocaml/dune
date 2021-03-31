@@ -24,6 +24,10 @@ module Version : sig
 
   val compare : t -> t -> Ordering.t
 
+  val min : t -> t -> t
+
+  val max : t -> t -> t
+
   module Infix : Comparator.OPS with type t = t
 end
 

@@ -22,11 +22,11 @@ module Config = struct
       ; ("quiet", Quiet)
       ]
 
-    let to_string = function
-      | Progress -> "progress"
-      | Quiet -> "quiet"
-      | Short -> "short"
-      | Verbose -> "verbose"
+    let to_dyn = function
+      | Progress -> Dyn.Variant ("Progress", [])
+      | Quiet -> Variant ("Quiet", [])
+      | Short -> Variant ("Short", [])
+      | Verbose -> Variant ("Verbose", [])
 
     let console_backend = function
       | Progress -> Console.Backend.progress

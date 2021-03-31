@@ -295,7 +295,7 @@ module Context = struct
       | Native -> None
       | Named s -> Some (Context_name.target n ~toolchain:s))
 
-  let default ?x ?profile ?instrument_with () =
+  let default ~x ~profile ~instrument_with =
     Default
       { loc = Loc.of_pos __POS__
       ; targets = [ Option.value x ~default:Target.Native ]
@@ -316,35 +316,76 @@ module T = struct
     { merlin_context : Context_name.t option
     ; contexts : Context.t list
     ; env : Dune_env.Stanza.t
+    ; config : Dune_config.t
     }
 
-  let to_dyn { merlin_context; contexts; env } =
+  let to_dyn { merlin_context; contexts; env; config } =
     let open Dyn.Encoder in
     record
       [ ("merlin_context", option Context_name.to_dyn merlin_context)
       ; ("contexts", list Context.to_dyn contexts)
       ; ("env", Dune_env.Stanza.to_dyn env)
+      ; ("config", Dune_config.to_dyn config)
       ]
 
-  let equal { merlin_context; contexts; env } w =
+  let equal { merlin_context; contexts; env; config } w =
     Option.equal Context_name.equal merlin_context w.merlin_context
     && List.equal Context.equal contexts w.contexts
     && Dune_env.Stanza.equal env w.env
+    && Dune_config.equal config w.config
 end
 
 include T
 
-let hash { merlin_context; contexts; env } =
-  Tuple.T3.hash
-    (Option.hash Context_name.hash)
-    (List.hash Context.hash) Dune_env.Stanza.hash
-    (merlin_context, contexts, env)
+let hash { merlin_context; contexts; env; config } =
+  Hashtbl.hash
+    ( Option.hash Context_name.hash merlin_context
+    , List.hash Context.hash contexts
+    , Dune_env.Stanza.hash env
+    , Dune_config.hash config )
 
 include Dune_lang.Versioned_file.Make (struct
   type t = unit
 end)
 
 let () = Lang.register syntax ()
+
+module Clflags = struct
+  type t =
+    { x : Context_name.t option
+    ; profile : Profile.t option
+    ; instrument_with : Lib_name.t list option
+    ; workspace_file : Path.t option
+    ; config_from_command_line : Dune_config.Partial.t
+    ; config_from_config_file : Dune_config.Partial.t
+    }
+
+  let to_dyn
+      { x
+      ; profile
+      ; instrument_with
+      ; workspace_file
+      ; config_from_command_line
+      ; config_from_config_file
+      } =
+    let open Dyn.Encoder in
+    record
+      [ ("x", option Context_name.to_dyn x)
+      ; ("profile", option Profile.to_dyn profile)
+      ; ("instrument_with", option (list Lib_name.to_dyn) instrument_with)
+      ; ("workspace_file", option Path.to_dyn workspace_file)
+      ; ( "config_from_command_line"
+        , Dune_config.Partial.to_dyn config_from_command_line )
+      ; ( "config_from_config_file"
+        , Dune_config.Partial.to_dyn config_from_config_file )
+      ]
+
+  let t = Fdecl.create to_dyn
+
+  let set v = Fdecl.set t v
+
+  let t () = Fdecl.get t
+end
 
 let bad_configuration_check map =
   let find_exn loc name host =
@@ -391,21 +432,44 @@ let top_sort contexts =
   | Ok topo_contexts -> topo_contexts
   | Error _ -> assert false
 
-let t ?x ?profile:cmdline_profile ?instrument_with:cmdline_instrument_with () =
-  let* () = Dune_lang.Versioned_file.no_more_lang in
-  let* env = env_field in
-  let* profile = field "profile" Profile.decode ~default:Profile.default in
-  let profile = Option.value cmdline_profile ~default:profile in
-  let* instrument_with =
-    field "instrument_with"
-      (Dune_lang.Syntax.since Stanza.syntax (2, 7) >>> repeat Lib_name.decode)
-      ~default:[]
+let create_final_config ~config_from_config_file ~config_from_command_line
+    ~config_from_workspace_file =
+  let ( ++ ) = Dune_config.superpose in
+  Dune_config.default ++ config_from_config_file ++ config_from_workspace_file
+  ++ config_from_command_line
+
+let t clflags =
+  let { Clflags.x
+      ; profile = cl_profile
+      ; instrument_with = cl_instrument_with
+      ; workspace_file = _
+      ; config_from_command_line
+      ; config_from_config_file
+      } =
+    clflags
   in
-  let instrument_with =
-    Option.value cmdline_instrument_with ~default:instrument_with
+  let x = Option.map x ~f:(fun s -> Context.Target.Named s) in
+  let* () = Dune_lang.Versioned_file.no_more_lang
+  and+ env = env_field
+  and+ profile =
+    let+ default = field "profile" Profile.decode ~default:Profile.default in
+    Option.value cl_profile ~default
+  and+ instrument_with =
+    let+ default =
+      field "instrument_with"
+        (Dune_lang.Syntax.since Stanza.syntax (2, 7) >>> repeat Lib_name.decode)
+        ~default:[]
+    in
+    Option.value cl_instrument_with ~default
+  and+ config_from_workspace_file =
+    Dune_config.decode_fields_of_workspace_file
   in
   let+ contexts =
     multi_field "context" (Context.t ~profile ~instrument_with ~x)
+  in
+  let config =
+    create_final_config ~config_from_workspace_file ~config_from_config_file
+      ~config_from_command_line
   in
   let defined_names = ref Context_name.Set.empty in
   let merlin_context =
@@ -428,7 +492,10 @@ let t ?x ?profile:cmdline_profile ?instrument_with:cmdline_instrument_with () =
   in
   let contexts =
     match contexts with
-    | [] -> [ Context.default ?x ~profile ~instrument_with () ]
+    | [] ->
+      [ Context.default ~x ~profile:(Some profile)
+          ~instrument_with:(Some instrument_with)
+      ]
     | _ -> contexts
   in
   let merlin_context =
@@ -444,83 +511,71 @@ let t ?x ?profile:cmdline_profile ?instrument_with:cmdline_instrument_with () =
       else
         None
   in
-  { merlin_context; contexts = top_sort (List.rev contexts); env }
+  { merlin_context; contexts = top_sort (List.rev contexts); env; config }
 
-let t ?x ?profile ?instrument_with () =
-  fields (t ?x ?profile ?instrument_with ())
+let t clflags = fields (t clflags)
 
-let default ?x ?profile ?instrument_with () =
+let default clflags =
+  let { Clflags.x
+      ; profile
+      ; instrument_with
+      ; workspace_file = _
+      ; config_from_command_line
+      ; config_from_config_file
+      } =
+    clflags
+  in
+  let x = Option.map x ~f:(fun s -> Context.Target.Named s) in
+  let config =
+    create_final_config ~config_from_config_file ~config_from_command_line
+      ~config_from_workspace_file:Dune_config.Partial.empty
+  in
   { merlin_context = Some Context_name.default
-  ; contexts = [ Context.default ?x ?profile ?instrument_with () ]
+  ; contexts = [ Context.default ~x ~profile ~instrument_with ]
   ; env = Dune_env.Stanza.empty
+  ; config
   }
 
-let load ?x ?profile ?instrument_with p =
-  let x = Option.map x ~f:(fun s -> Context.Target.Named s) in
+let load clflags p =
   Io.with_lexbuf_from_file p ~f:(fun lb ->
       if Dune_lexer.eof_reached lb then
-        default ?x ?profile ?instrument_with ()
+        default clflags
       else
         parse_contents lb ~f:(fun lang ->
             String_with_vars.set_decoding_env
               (Pform.Env.initial lang.version)
-              (t ?x ?profile ?instrument_with ())))
-
-let default ?x ?profile ?instrument_with () =
-  let x = Option.map x ~f:(fun s -> Context.Target.Named s) in
-  default ?x ?profile ?instrument_with ()
+              (t clflags)))
 
 let filename = "dune-workspace"
-
-module DB = struct
-  module Settings = struct
-    type t =
-      { x : Context_name.t option
-      ; profile : Profile.t option
-      ; instrument_with : Lib_name.t list option
-      ; path : Path.t option
-      }
-
-    let to_dyn { x; profile; instrument_with; path } =
-      let open Dyn.Encoder in
-      record
-        [ ("x", option Context_name.to_dyn x)
-        ; ("profile", option Profile.to_dyn profile)
-        ; ("instrument_with", option (list Lib_name.to_dyn) instrument_with)
-        ; ("path", option Path.to_dyn path)
-        ]
-
-    let t = Memo.Run.Fdecl.create to_dyn
-  end
-end
-
-let init ?x ?profile ?instrument_with ?workspace_file () =
-  let path : Path.t option =
-    match workspace_file with
-    | None ->
-      let p = Path.of_string filename in
-      Option.some_if (Path.exists p) p
-    | Some p ->
-      if not (Path.exists p) then
-        User_error.raise
-          [ Pp.textf "Workspace file %s does not exist"
-              (Path.to_string_maybe_quoted p)
-          ];
-      Some p
-  in
-  Memo.Run.Fdecl.set DB.Settings.t
-    { DB.Settings.x; profile; instrument_with; path }
 
 let workspace =
   let open Memo.Build.O in
   let f () =
-    let+ (_ : Memo.Run.t) = Memo.current_run ()
-    and+ { DB.Settings.path; profile; instrument_with; x } =
-      Memo.Run.Fdecl.get DB.Settings.t
+    let clflags = Clflags.t () in
+    let path_exists p =
+      (* jeremiedimino: this is meh, we need a better Fs API *)
+      let+ () = Dune_engine.Fs_notify_memo.depend p in
+      Path.exists p
     in
-    match path with
-    | None -> default ?x ?profile ?instrument_with ()
-    | Some p -> load ?x ?profile ?instrument_with p
+    let+ workspace_file =
+      match clflags.workspace_file with
+      | None ->
+        let p = Path.of_string filename in
+        let+ exists = path_exists p in
+        Option.some_if exists p
+      | Some p -> (
+        path_exists p >>| function
+        | false ->
+          User_error.raise
+            [ Pp.textf "Workspace file %s does not exist"
+                (Path.to_string_maybe_quoted p)
+            ]
+        | true -> Some p)
+    in
+    let clflags = { clflags with workspace_file } in
+    match workspace_file with
+    | None -> default clflags
+    | Some p -> load clflags p
   in
   let memo =
     Memo.create "workspaces-db" ~doc:"get all workspaces" ~visibility:Hidden

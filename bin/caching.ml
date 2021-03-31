@@ -94,7 +94,7 @@ let path_conv =
 
 let term =
   Term.ret
-  @@ let+ config = Common.config_term
+  @@ let+ config = Common.config_from_config_file
      and+ mode =
        Arg.(
          value
@@ -137,6 +137,7 @@ let term =
          & opt (some bytes) None
          & info ~docv:"BYTES" [ "size" ] ~doc:"size to trim the cache to")
      and+ display = Common.display_term in
+     let config = Dune_config.(superpose default) config in
      match mode with
      | Some Start ->
        let config =

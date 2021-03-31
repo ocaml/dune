@@ -27,13 +27,9 @@ module Terminal_persistence = struct
         "invalid terminal-persistence value, must be 'preserve' or \
          'clear-on-rebuild'"
 
-  let to_string s =
-    List.find_map all ~f:(fun (t, s') ->
-        if s = s' then
-          Some t
-        else
-          None)
-    |> Option.value_exn
+  let to_dyn = function
+    | Preserve -> Dyn.Variant ("Preserve", [])
+    | Clear_on_rebuild -> Dyn.Variant ("Clear_on_rebuild", [])
 
   let decode =
     plain_string (fun ~loc s ->
@@ -70,6 +66,10 @@ module Concurrency = struct
   let to_string = function
     | Auto -> "auto"
     | Fixed n -> string_of_int n
+
+  let to_dyn = function
+    | Auto -> Dyn.Variant ("Auto", [])
+    | Fixed n -> Dyn.Variant ("Fixed", [ Int n ])
 end
 
 module Sandboxing_preference = struct
@@ -95,6 +95,10 @@ module Caching = struct
       | Enabled -> "enabled"
       | Disabled -> "disabled"
 
+    let to_dyn = function
+      | Enabled -> Dyn.Variant ("Enabled", [])
+      | Disabled -> Dyn.Variant ("Disabled", [])
+
     let decode = enum all
   end
 
@@ -103,9 +107,9 @@ module Caching = struct
       | Daemon
       | Direct
 
-    let to_string = function
-      | Daemon -> "daemon"
-      | Direct -> "direct"
+    let to_dyn = function
+      | Daemon -> Dyn.Variant ("Daemon", [])
+      | Direct -> Variant ("Direct", [])
 
     let all = [ ("daemon", Daemon); ("direct", Direct) ]
 
@@ -123,6 +127,8 @@ module Caching = struct
         Cache.Duplication_mode.all
 
     let decode = enum all
+
+    let to_dyn = Cache.Duplication_mode.to_dyn
   end
 end
 
@@ -143,28 +149,125 @@ module type S = sig
     }
 end
 
+module Make_superpose
+    (A : S)
+    (B : S)
+    (C : S) (Merge_field : sig
+      val merge_field : 'a A.field -> 'a B.field -> 'a C.field
+    end) =
+struct
+  let field = Merge_field.merge_field
+
+  let superpose (a : A.t) (b : B.t) : C.t =
+    { display = field a.display b.display
+    ; concurrency = field a.concurrency b.concurrency
+    ; terminal_persistence = field a.terminal_persistence b.terminal_persistence
+    ; sandboxing_preference =
+        field a.sandboxing_preference b.sandboxing_preference
+    ; cache_mode = field a.cache_mode b.cache_mode
+    ; cache_transport = field a.cache_transport b.cache_transport
+    ; cache_check_probability =
+        field a.cache_check_probability b.cache_check_probability
+    ; cache_duplication = field a.cache_duplication b.cache_duplication
+    ; cache_trim_period = field a.cache_trim_period b.cache_trim_period
+    ; cache_trim_size = field a.cache_trim_size b.cache_trim_size
+    }
+end
+
+module Make_to_dyn
+    (M : S) (To_dyn : sig
+      val field : ('a -> Dyn.t) -> 'a M.field -> Dyn.t
+    end) =
+struct
+  open To_dyn
+
+  let to_dyn
+      { M.display
+      ; concurrency
+      ; terminal_persistence
+      ; sandboxing_preference
+      ; cache_mode
+      ; cache_transport
+      ; cache_check_probability
+      ; cache_duplication
+      ; cache_trim_period
+      ; cache_trim_size
+      } =
+    Dyn.Encoder.record
+      [ ("display", field Scheduler.Config.Display.to_dyn display)
+      ; ("concurrency", field Concurrency.to_dyn concurrency)
+      ; ( "terminal_persistence"
+        , field Terminal_persistence.to_dyn terminal_persistence )
+      ; ( "sandboxing_preference"
+        , field (Dyn.Encoder.list Sandbox_mode.to_dyn) sandboxing_preference )
+      ; ("cache_mode", field Caching.Mode.to_dyn cache_mode)
+      ; ("cache_transport", field Caching.Transport.to_dyn cache_transport)
+      ; ( "cache_check_probability"
+        , field Dyn.Encoder.float cache_check_probability )
+      ; ( "cache_duplication"
+        , field
+            (Dyn.Encoder.option Caching.Duplication.to_dyn)
+            cache_duplication )
+      ; ("cache_trim_period", field Dyn.Encoder.int cache_trim_period)
+      ; ("cache_trim_size", field Dyn.Encoder.int64 cache_trim_size)
+      ]
+end
+
 module rec M : (S with type 'a field = 'a) = M
 
 include M
 
-module rec Partial : (S with type 'a field := 'a option) = Partial
+module Partial = struct
+  module rec M : (S with type 'a field = 'a option) = M
 
-let merge t (partial : Partial.t) =
-  let field from_t from_partial = Option.value from_partial ~default:from_t in
-  { display = field t.display partial.display
-  ; concurrency = field t.concurrency partial.concurrency
-  ; terminal_persistence =
-      field t.terminal_persistence partial.terminal_persistence
-  ; sandboxing_preference =
-      field t.sandboxing_preference partial.sandboxing_preference
-  ; cache_mode = field t.cache_mode partial.cache_mode
-  ; cache_transport = field t.cache_transport partial.cache_transport
-  ; cache_check_probability =
-      field t.cache_check_probability partial.cache_check_probability
-  ; cache_duplication = field t.cache_duplication partial.cache_duplication
-  ; cache_trim_period = field t.cache_trim_period partial.cache_trim_period
-  ; cache_trim_size = field t.cache_trim_size partial.cache_trim_size
-  }
+  include M
+
+  let empty =
+    { display = None
+    ; concurrency = None
+    ; terminal_persistence = None
+    ; sandboxing_preference = None
+    ; cache_mode = None
+    ; cache_transport = None
+    ; cache_check_probability = None
+    ; cache_trim_period = None
+    ; cache_trim_size = None
+    ; cache_duplication = None
+    }
+
+  include
+    Make_superpose (M) (M) (M)
+      (struct
+        let merge_field a b =
+          match b with
+          | Some _ -> b
+          | None -> a
+      end)
+
+  include
+    Make_to_dyn
+      (M)
+      (struct
+        let field f = Dyn.Encoder.option f
+      end)
+end
+
+include
+  Make_superpose (M) (Partial) (M)
+    (struct
+      let merge_field a b = Option.value b ~default:a
+    end)
+
+include
+  Make_to_dyn
+    (M)
+    (struct
+      let field f = f
+    end)
+
+let hash = Hashtbl.hash
+
+let equal a b = Poly.equal a b
 
 let default =
   { display =
@@ -187,42 +290,31 @@ let default =
   ; cache_duplication = None
   }
 
-let decode =
-  let+ display =
-    field "display" (enum Scheduler.Config.Display.all) ~default:default.display
-  and+ concurrency =
-    field "jobs" Concurrency.decode ~default:default.concurrency
+let decode_generic ~min_dune_version =
+  let check min_ver =
+    let ver = Dune_lang.Syntax.Version.max min_ver min_dune_version in
+    Dune_lang.Syntax.since Stanza.syntax ver
+  in
+  let field_o n v d = field_o n (check v >>> d) in
+  let+ display = field_o "display" (1, 0) (enum Scheduler.Config.Display.all)
+  and+ concurrency = field_o "jobs" (1, 0) Concurrency.decode
   and+ terminal_persistence =
-    field "terminal-persistence" Terminal_persistence.decode
-      ~default:default.terminal_persistence
+    field_o "terminal-persistence" (1, 0) Terminal_persistence.decode
   and+ sandboxing_preference =
-    field "sandboxing_preference" Sandboxing_preference.decode
-      ~default:default.sandboxing_preference
-  and+ cache_mode =
-    field "cache"
-      (Dune_lang.Syntax.since Stanza.syntax (2, 0) >>> Caching.Mode.decode)
-      ~default:default.cache_mode
+    field_o "sandboxing_preference" (1, 0) Sandboxing_preference.decode
+  and+ cache_mode = field_o "cache" (2, 0) Caching.Mode.decode
   and+ cache_transport =
-    field "cache-transport"
-      (Dune_lang.Syntax.since Stanza.syntax (2, 0) >>> Caching.Transport.decode)
-      ~default:default.cache_transport
+    field_o "cache-transport" (2, 0) Caching.Transport.decode
   and+ cache_check_probability =
-    field "cache-check-probability"
-      (Dune_lang.Syntax.since Stanza.syntax (2, 7) >>> Dune_lang.Decoder.float)
-      ~default:default.cache_check_probability
+    field_o "cache-check-probability" (2, 7) Dune_lang.Decoder.float
   and+ cache_duplication =
-    field "cache-duplication"
-      (Dune_lang.Syntax.since Stanza.syntax (2, 1)
-      >>> Caching.Duplication.decode)
-      ~default:default.cache_duplication
+    field_o "cache-duplication" (2, 1) Caching.Duplication.decode
   and+ cache_trim_period =
-    field "cache-trim-period" Dune_lang.Decoder.duration
-      ~default:default.cache_trim_period
+    field_o "cache-trim-period" (2, 0) Dune_lang.Decoder.duration
   and+ cache_trim_size =
-    field "cache-trim-size" Dune_lang.Decoder.bytes_unit
-      ~default:default.cache_trim_size
-  and+ () = Dune_lang.Versioned_file.no_more_lang in
-  { display
+    field_o "cache-trim-size" (2, 0) Dune_lang.Decoder.bytes_unit
+  in
+  { Partial.display
   ; concurrency
   ; terminal_persistence
   ; sandboxing_preference
@@ -234,7 +326,13 @@ let decode =
   ; cache_trim_size
   }
 
-let decode = fields decode
+let decode =
+  fields
+    (let+ partial = decode_generic ~min_dune_version:(1, 0)
+     and+ () = Dune_lang.Versioned_file.no_more_lang in
+     partial)
+
+let decode_fields_of_workspace_file = decode_generic ~min_dune_version:(3, 0)
 
 let user_config_file =
   Path.relative
@@ -255,7 +353,7 @@ let load_user_config_file () =
   if Path.exists user_config_file then
     load_config_file user_config_file
   else
-    default
+    Partial.empty
 
 let adapt_display config ~output_is_a_tty =
   (* Progress isn't meaningful if inside a terminal (or emacs), so reset the
@@ -275,30 +373,6 @@ let adapt_display config ~output_is_a_tty =
     { config with terminal_persistence = Terminal_persistence.Preserve }
   else
     config
-
-let to_dyn config =
-  Dyn.Encoder.record
-    [ ( "display"
-      , Dyn.Encoder.string (Scheduler.Config.Display.to_string config.display)
-      )
-    ; ( "concurrency"
-      , Dyn.Encoder.string (Concurrency.to_string config.concurrency) )
-    ; ( "terminal_persistence"
-      , Dyn.Encoder.string
-          (Terminal_persistence.to_string config.terminal_persistence) )
-    ; ( "sandboxing_preference"
-      , (Dyn.Encoder.list Dyn.Encoder.string)
-          (List.map ~f:Sandbox_mode.to_string config.sandboxing_preference) )
-    ; ( "cache_mode"
-      , Dyn.Encoder.string (Caching.Mode.to_string config.cache_mode) )
-    ; ( "cache_transport"
-      , Dyn.Encoder.string (Caching.Transport.to_string config.cache_transport)
-      )
-    ; ( "cache_check_probability"
-      , Dyn.Encoder.float config.cache_check_probability )
-    ; ("cache_trim_period", Dyn.Encoder.int config.cache_trim_period)
-    ; ("cache_trim_size", Dyn.Encoder.int64 config.cache_trim_size)
-    ]
 
 let init t =
   Console.Backend.set (Scheduler.Config.Display.console_backend t.display);

@@ -81,6 +81,9 @@ Unreleased
 - Fix a bug that was causing Dune to re-hash generated files more
   often than necessary (#4419, @jeremiedimino)
 
+- Fields allowed in the config file are now also allowed in the
+  workspace file (#4426, @jeremiedimino)
+
 2.8.5 (28/03/2021)
 ------------------
 

@@ -29,10 +29,10 @@ let term =
   and+ ctx_name =
     Common.context_arg ~doc:{|Select context where to build/run utop.|}
   in
-  Common.set_common common;
-  Scheduler.go ~common (fun () ->
+  let config = Common.set_common common in
+  Scheduler.go ~common ~config (fun () ->
       let open Fiber.O in
-      let* setup = Import.Main.setup common in
+      let* setup = Import.Main.setup common config in
       Build_system.run (fun () ->
           let open Memo.Build.O in
           let sctx =

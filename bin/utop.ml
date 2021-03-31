@@ -19,16 +19,16 @@ let term =
   and+ ctx_name =
     Common.context_arg ~doc:{|Select context where to build/run utop.|}
   and+ args = Arg.(value & pos_right 0 string [] (Arg.info [] ~docv:"ARGS")) in
-  Common.set_common common;
+  let config = Common.set_common common in
   if not (Path.is_directory (Path.of_string (Common.prefix_target common dir)))
   then
     User_error.raise
       [ Pp.textf "cannot find directory: %s" (String.maybe_quoted dir) ];
   let utop_target = Arg.Dep.file (Filename.concat dir Utop.utop_exe) in
   let sctx, utop_path =
-    Scheduler.go ~common (fun () ->
+    Scheduler.go ~common ~config (fun () ->
         let open Fiber.O in
-        let* setup = Import.Main.setup common in
+        let* setup = Import.Main.setup common config in
         Build_system.run (fun () ->
             let open Memo.Build.O in
             let context =
@@ -41,7 +41,8 @@ let term =
               }
             in
             let* target =
-              Target.resolve_target common ~setup utop_target >>| function
+              Target.resolve_target (Common.root common) ~setup utop_target
+              >>| function
               | Error _ ->
                 User_error.raise
                   [ Pp.textf "no library is defined in %s"

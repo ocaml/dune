@@ -43,10 +43,10 @@ let term =
       value & flag
       & info [ "no-build" ] ~doc:"don't rebuild target before executing")
   and+ args = Arg.(value & pos_right 0 string [] (Arg.info [] ~docv:"ARGS")) in
-  Common.set_common common;
-  Scheduler.go ~common (fun () ->
+  let config = Common.set_common common in
+  Scheduler.go ~common ~config (fun () ->
       let open Fiber.O in
-      let* setup = Import.Main.setup common in
+      let* setup = Import.Main.setup common config in
       let sctx = Import.Main.find_scontext_exn setup ~name:context in
       let context = Dune_rules.Super_context.context sctx in
       let path_relative_to_build_root p =
@@ -77,7 +77,7 @@ let term =
             | `This_abs p when Path.is_in_build_dir p -> [ p ]
             | `This_abs _ -> [])
             |> List.map ~f:(fun p -> Target.Path p)
-            |> Target.resolve_targets_mixed common setup
+            |> Target.resolve_targets_mixed (Common.root common) config setup
             >>| List.concat_map ~f:(function
                   | Ok targets -> targets
                   | Error _ -> []))

@@ -29,11 +29,11 @@ let term =
          & info [] ~docv:"INPUT"
              ~doc:"Use $(docv) as the input to the function.")
      in
-     Common.set_common common;
+     let config = Common.set_common common in
      let action =
-       Scheduler.go ~common (fun () ->
+       Scheduler.go ~common ~config (fun () ->
            let open Fiber.O in
-           let* _setup = Import.Main.setup common in
+           let* _setup = Import.Main.setup common config in
            match (fn, inp) with
            | "latest-lang-version", None ->
              Fiber.return

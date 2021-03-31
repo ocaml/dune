@@ -39,6 +39,20 @@ module Version = struct
       ~data_version:(data_major, data_minor) =
     let open Int.Infix in
     parser_major = data_major && parser_minor >= data_minor
+
+  let min a b =
+    match compare a b with
+    | Lt
+    | Eq ->
+      a
+    | Gt -> b
+
+  let max a b =
+    match compare a b with
+    | Lt
+    | Eq ->
+      b
+    | Gt -> a
 end
 
 module Supported_versions = struct

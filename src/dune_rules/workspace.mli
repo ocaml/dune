@@ -65,11 +65,19 @@ end
 
 (** Representation of a workspace. The list of context is topologically sorted,
     i.e. a context always comes before the contexts where it is used as host
-    context. *)
+    context.
+
+    The various field aggregate all of, by order of precedence:
+
+    - the command line arguments
+    - the contents of the workspace file
+    - the contehts of the user configuration file
+    - the default values *)
 type t = private
   { merlin_context : Context_name.t option
   ; contexts : Context.t list
   ; env : Dune_env.Stanza.t
+  ; config : Dune_config.t
   }
 
 val equal : t -> t -> bool
@@ -78,13 +86,19 @@ val to_dyn : t -> Dyn.t
 
 val hash : t -> int
 
-val init :
-     ?x:Context_name.t
-  -> ?profile:Profile.t
-  -> ?instrument_with:Lib_name.t list
-  -> ?workspace_file:Path.t
-  -> unit
-  -> unit Memo.Build.t
+module Clflags : sig
+  type t =
+    { x : Context_name.t option
+    ; profile : Profile.t option
+    ; instrument_with : Lib_name.t list option
+    ; workspace_file : Path.t option
+    ; config_from_command_line : Dune_config.Partial.t
+    ; config_from_config_file : Dune_config.Partial.t
+    }
+
+  (** This must be called exactly once *)
+  val set : t -> unit
+end
 
 (** Default name of workspace files *)
 val filename : string

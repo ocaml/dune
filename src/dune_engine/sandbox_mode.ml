@@ -115,3 +115,9 @@ let to_string = function
   | Some Symlink -> "symlink"
   | Some Copy -> "copy"
   | Some Hardlink -> "hardlink"
+
+let to_dyn =
+  Dyn.Encoder.option (function
+    | Symlink -> Dyn.Variant ("Symlink", [])
+    | Copy -> Dyn.Variant ("Copy", [])
+    | Hardlink -> Dyn.Variant ("Hardlink", []))

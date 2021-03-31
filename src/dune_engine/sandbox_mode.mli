@@ -64,3 +64,5 @@ val hardlink : t
 val of_string : string -> (t, string) Result.t
 
 val to_string : t -> string
+
+val to_dyn : t -> Dyn.t

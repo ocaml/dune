@@ -42,14 +42,9 @@ let setup_env ~capture_outputs =
   let+ () = Memo.Build.run (Memo.Run.Fdecl.set Global.env env) in
   env
 
-let scan_workspace ?workspace_file ?x ?(capture_outputs = true) ?profile
-    ?instrument_with ~ancestor_vcs () =
+let scan_workspace ~capture_outputs ~ancestor_vcs () =
   let* env = setup_env ~capture_outputs in
   let* conf = Dune_load.load ~ancestor_vcs in
-  let* () =
-    Memo.Build.run
-      (Workspace.init ?x ?profile ?instrument_with ?workspace_file ())
-  in
   let+ contexts = Memo.Build.run (Context.DB.all ()) in
   List.iter contexts ~f:(fun (ctx : Context.t) ->
       let open Pp.O in

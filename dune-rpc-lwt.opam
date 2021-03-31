@@ -12,6 +12,7 @@ depends: [
   "dune" {>= "2.8"}
   "dune-rpc" {= version}
   "stdune-unstable" {= version}
+  "csexp" {>= "1.4.0"}
   "lwt"
   "odoc" {with-doc}
 ]

@@ -113,6 +113,17 @@ module External : sig
   val mkdir_p : ?perms:int -> t -> unit
 end
 
+module Permissions : sig
+  (** Write permissions. *)
+  val write : int
+
+  (** Add [mode] permissions to a given mask. *)
+  val add : mode:int -> int -> int
+
+  (** Remove [mode] permissions from a given mask. *)
+  val remove : mode:int -> int -> int
+end
+
 module Build : sig
   type w
 
@@ -164,7 +175,7 @@ module Build : sig
     val of_string : string -> t
   end
 
-  (** set the build directory. Can only be called once and must be done before
+  (** Set the build directory. Can only be called once and must be done before
       paths are converted to strings elsewhere. *)
   val set_build_dir : Kind.t -> unit
 
@@ -172,7 +183,9 @@ module Build : sig
 
   val of_local : Local.t -> t
 
-  val chmod : mode:int -> ?op:[ `Add | `Remove | `Set ] -> t -> unit
+  (** Set permissions for a given path. You can use the [Permissions] module if
+      you need to modify existing permissions in a non-trivial way. *)
+  val chmod : t -> mode:int -> unit
 end
 
 type t = private
@@ -372,17 +385,9 @@ val string_of_file_kind : Unix.file_kind -> string
     oldpath. *)
 val rename : t -> t -> unit
 
-(** Set permissions on the designed files. [op] is [`Set] by default, which sets
-    the permissions exactly to [mode], while [`Add] will add the given [mode] to
-    the current permissions and [`Remove] remove them. [path] will be stat'd in
-    the `Add and `Remove case to determine the current permission, unless the
-    already computed stats are passed as [stats] to save a system call. *)
-val chmod :
-     mode:int
-  -> ?stats:Unix.stats option
-  -> ?op:[ `Add | `Remove | `Set ]
-  -> t
-  -> unit
+(** Set permissions for a given path. You can use the [Permissions] module if
+    you need to modify existing permissions in a non-trivial way. *)
+val chmod : t -> mode:int -> unit
 
 (** Attempts to resolve a symlink. Returns [None] if the path isn't a symlink *)
 val follow_symlink : t -> (t, Fpath.follow_symlink_error) result

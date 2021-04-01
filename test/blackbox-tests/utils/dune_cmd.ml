@@ -8,6 +8,35 @@ let register name of_args run =
       let t = of_args args in
       run t)
 
+module Echo = struct
+  let name = "echo"
+
+  let of_args args = args
+
+  let run l = print_endline (String.concat ~sep:" " l)
+
+  let () = register name of_args run
+end
+
+module Wait_for_file_to_appear = struct
+  type t = { file : Path.t }
+
+  let name = "wait-for-file-to-appear"
+
+  let of_args = function
+    | [ file ] ->
+      let file = Path.of_filename_relative_to_initial_cwd file in
+      { file }
+    | _ -> raise (Arg.Bad (sprintf "1 argument must be provided"))
+
+  let run { file } =
+    while not (Path.exists file) do
+      Unix.sleepf 0.01
+    done
+
+  let () = register name of_args run
+end
+
 module Stat = struct
   type data =
     | Hardlinks

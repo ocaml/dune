@@ -136,6 +136,8 @@ Unreleased
 - Remove `dune compute`. It was broken and unused (#4540,
   @jeremiedimino)
 
+- Add `(enabled_if ...)` to `(mdx ...)` (#4434, @emillon)
+
 2.9.0 (unreleased)
 ------------------
 

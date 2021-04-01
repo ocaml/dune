@@ -123,7 +123,10 @@ type t =
   ; files : Predicate_lang.Glob.t
   ; packages : (Loc.t * Package.Name.t) list
   ; preludes : Prelude.t list
+  ; enabled_if : Blang.t
   }
+
+let enabled_if t = t.enabled_if
 
 type Stanza.t += T of t
 
@@ -144,8 +147,11 @@ let decode =
        field "files" Predicate_lang.Glob.decode ~default:default_files
      and+ packages =
        field ~default:[] "packages" (repeat (located Package.Name.decode))
-     and+ preludes = field ~default:[] "preludes" (repeat Prelude.decode) in
-     { loc; files; packages; preludes })
+     and+ preludes = field ~default:[] "preludes" (repeat Prelude.decode)
+     and+ enabled_if =
+       Enabled_if.decode ~allowed_vars:Any ~since:(Some (2, 9)) ()
+     in
+     { loc; files; packages; preludes; enabled_if })
 
 let () =
   let open Dune_lang.Decoder in

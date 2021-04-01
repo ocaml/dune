@@ -1,55 +1,63 @@
 open! Dune_engine
 open! Stdune
 
-module Buildable = Dune_file.Buildable
-module Library =  Dune_file.Library
-module Ctypes = Dune_file.Ctypes
+(* This module expands either a (library ... (ctypes ...)) rule or an
+   (executables ... (ctypes ...)) rule into the generated set of .ml and .c
+   files needed to conveniently write OCaml bindings for C libraries.
 
-(* This module expands either a (library ... (ctypes_stubgen ...)) rule
-   or an (executables ... (ctypes_stubgen ...)) rule into the generated
-   set of .ml files needed to conveniently build OCaml bindings for C
-   libraries.
-
-   Aside from perhaps providing an '#include "header.h"' line, you should be
+   Aside from perhaps providing an "header.h" include line, you should be
    able to wrap an entire C library without writing a single line of C code.
 
-   This stanza requires the user to define (and specify) two modules:
+   This stanza requires the user to specify the names of 4 modules:
 
-   (1) A "Type Descriptions" .ml file with the following top-level module:
+    (type_descriptions Type_descriptions)
+    (generated_types Types_generated)
+    (function_descriptions Function_descriptions)
+    (generated_entry_point C))
+
+   The user must also implement two of the modules:
+
+   (1) $type_descriptions.ml musth ave the following top-level functor:
 
     module Types (T : Ctypes.TYPE) = struct
       (* put calls to Ctypes.TYPE.constant and Ctypes.TYPE.typedef here
          to wrap C constants and structs *)
     end
 
-   (2) A 'Function Descriptions' .ml file with the following top-level module:
+   (2) $function_descriptions.ml must have the following two definitions:
+
+    modules Types = $generated_types
 
     module Functions (F : Ctypes.FOREIGN) = struct
       (* put calls to F.foreign here to wrap C functions *)
     end
 
-   The instantiated functor that was defined in 'Types' can be accessed from
-   the Function Descriptions module as Library_name__c_types.
-
-   e.g. module Types = Library_name__c_types
-
-   Once the above two modules are provided, the ctypes stanza will:
-   - generate a types/data generator
+   Once the above modules are provided, the ctypes stanza will:
+   - generate a types generator
    - generate a functions generator
-   - set up a discovery program to query pkg-config for compile and link flags
+   - set up a discovery program to query pkg-config for compile and link flags,
+     if you decided to use pkg-config instead of vendored c-flags
    - use the types/data and functions modules you filled in with a functor
-   to tie everything into your library.
+     to tie everything into your library.
 
-   The result of using a ctypes stanza is that it will introduce into your
-   project a library that provides interfaces to all of the types and functions
-   you described earlier, with the rather involved compilation and linking
-   details handled for you.
+   The user must also specify the name of a final "Entry point" output module
+   ($generated_entry_point) that will be generated and added to your executable
+   or library.  Suggest calling it "C" and accessing the instantiated functors
+   from your project as C.Types and C.Functions.
 
    It may help to view a real world example of all of the boilerplate that is
    being replaced by a [ctypes] stanza:
 
    https://github.com/mbacarella/mpg123/blob/077a72d922931eb46d4b4e5842b0426fa3c161b5/c/dune
+
+   This implementation is not, however, a naive translation of the boilerplate
+   above.  This module uses dune internal features to simplify the stub
+   generation.  As a result, there are no intermediate libraries (or packages).
 *)
+
+module Buildable = Dune_file.Buildable
+module Library =  Dune_file.Library
+module Ctypes = Dune_file.Ctypes
 
 module Stanza_util = struct
 

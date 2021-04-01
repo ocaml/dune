@@ -138,7 +138,7 @@ module Ctypes = struct
        and+ concurrency = field_o "concurrency" Concurrency_policy.decode
        and+ type_descriptions = field "type_descriptions" Module_name.decode
        and+ function_descriptions = field "function_descriptions" Module_name.decode
-       and+ generated_types       = field "generated_types" Module_name.decode
+       and+ generated_types       = field_o "generated_types" Module_name.decode
        and+ generated_entry_point = field "generated_entry_point" Module_name.decode
      in
      { external_library_name
@@ -147,7 +147,7 @@ module Ctypes = struct
      ; concurrency = Option.value concurrency ~default:Concurrency_policy.default
      ; type_descriptions
      ; function_descriptions
-     ; generated_types
+     ; generated_types = Option.value generated_types ~default:(Module_name.of_string "Types_generated")
      ; generated_entry_point })
 
   let () =

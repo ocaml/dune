@@ -16,10 +16,8 @@
     (external_library_name examplelib)
     (build_flags_resolver
       (vendored
-        (c_flags "-Ivendor")
-        (c_library_flags ())))
+        (c_flags "-Ivendor")))
     (headers (include "example.h"))
     (type_descriptions Type_descriptions)
-    (generated_types Types_generated)
     (function_descriptions Function_descriptions)
     (generated_entry_point C)))

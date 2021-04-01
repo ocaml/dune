@@ -1,3 +1,5 @@
+Test the behaviour of Dune querying git when the repo has no commit.
+
 Create a repository with no HEAD commit:
 
   $ git init --quiet
@@ -12,6 +14,8 @@ Create a repository with no HEAD commit:
   >  (libraries dune-build-info)
   >  (promote (until-clean)))
   > EOF
+
+At the moment Dune fails, which is bad:
 
   $ dune exec ./main.exe 2>&1 | sed 's/.*\/git/{{ git }}/; s/> .*.output/> {{ output_file }}/g' 
            git (internal) (exit 128)

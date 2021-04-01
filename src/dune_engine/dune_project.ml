@@ -144,7 +144,6 @@ type t =
   ; implicit_transitive_deps : bool
   ; wrapped_executables : bool
   ; executables_implicit_empty_intf : bool
-  ; dune_version : Dune_lang.Syntax.Version.t
   ; generate_opam_files : bool
   ; use_standard_c_and_cxx_flags : bool option
   ; file_key : File_key.t
@@ -153,6 +152,7 @@ type t =
   ; format_config : Format_config.t option
   ; strict_package_deps : bool
   ; cram : bool
+  ; execution_parameters : Execution_parameters.t
   }
 
 let equal = ( == )
@@ -183,6 +183,10 @@ let dialects t = t.dialects
 
 let explicit_js_mode t = t.explicit_js_mode
 
+let execution_parameters t = t.execution_parameters
+
+let dune_version t = Execution_parameters.dune_version t.execution_parameters
+
 let to_dyn
     { name
     ; root
@@ -196,7 +200,6 @@ let to_dyn
     ; implicit_transitive_deps
     ; wrapped_executables
     ; executables_implicit_empty_intf
-    ; dune_version
     ; generate_opam_files
     ; use_standard_c_and_cxx_flags
     ; file_key
@@ -205,6 +208,7 @@ let to_dyn
     ; format_config
     ; strict_package_deps
     ; cram
+    ; execution_parameters
     } =
   let open Dyn.Encoder in
   record
@@ -219,7 +223,6 @@ let to_dyn
     ; ("implicit_transitive_deps", bool implicit_transitive_deps)
     ; ("wrapped_executables", bool wrapped_executables)
     ; ("executables_implicit_empty_intf", bool executables_implicit_empty_intf)
-    ; ("dune_version", Dune_lang.Syntax.Version.to_dyn dune_version)
     ; ("generate_opam_files", bool generate_opam_files)
     ; ("use_standard_c_and_cxx_flags", option bool use_standard_c_and_cxx_flags)
     ; ("file_key", string file_key)
@@ -228,6 +231,7 @@ let to_dyn
     ; ("format_config", option Format_config.to_dyn format_config)
     ; ("strict_package_deps", bool strict_package_deps)
     ; ("cram", bool cram)
+    ; ("execution_parameters", Execution_parameters.to_dyn execution_parameters)
     ]
 
 let find_extension_args t key = Univ_map.find t.extension_args key
@@ -451,7 +455,7 @@ let format_extension_key =
 let format_config t =
   let ext = find_extension_args t format_extension_key in
   let dune_lang = t.format_config in
-  let version = t.dune_version in
+  let version = dune_version t in
   Format_config.of_config ~ext ~dune_lang ~version
 
 let default_name ~dir ~(packages : Package.t Package.Name.Map.t) =
@@ -497,7 +501,6 @@ let infer ~dir packages =
   ; project_file
   ; extension_args
   ; parsing_context
-  ; dune_version = lang.version
   ; generate_opam_files = false
   ; use_standard_c_and_cxx_flags =
       (if lang.version < (3, 0) then
@@ -510,6 +513,7 @@ let infer ~dir packages =
   ; format_config = None
   ; strict_package_deps
   ; cram
+  ; execution_parameters = Execution_parameters.make ~dune_version:lang.version
   }
 
 module Toggle = struct
@@ -764,7 +768,6 @@ let parse ~dir ~lang ~opam_packages ~file ~dir_status =
         ; implicit_transitive_deps
         ; wrapped_executables
         ; executables_implicit_empty_intf
-        ; dune_version
         ; generate_opam_files
         ; use_standard_c_and_cxx_flags
         ; dialects
@@ -772,6 +775,7 @@ let parse ~dir ~lang ~opam_packages ~file ~dir_status =
         ; format_config
         ; strict_package_deps
         ; cram
+        ; execution_parameters = Execution_parameters.make ~dune_version
         }))
 
 let load_dune_project ~dir opam_packages ~dir_status =
@@ -805,8 +809,6 @@ let load ~dir ~files ~infer_from_opam_files ~dir_status =
          (Package.Name.Map.map opam_packages ~f:(fun (_loc, p) -> Lazy.force p)))
   else
     None
-
-let dune_version t = t.dune_version
 
 let set_parsing_context t parser =
   Dune_lang.Decoder.set_many t.parsing_context parser

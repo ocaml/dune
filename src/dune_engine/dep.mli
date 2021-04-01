@@ -87,6 +87,8 @@ module Facts : sig
   (** Return all the paths, expanding aliases *)
   val paths : t -> Digest.t Path.Map.t
 
+  val paths_without_expanding_aliases : t -> Digest.t Path.Map.t
+
   (** Create a single [Fact.Files.t] from all the paths contained in a list of
       fact maps. Does so while preserving as much sharing as possible with the
       original [Files.t]. *)

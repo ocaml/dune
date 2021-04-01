@@ -207,7 +207,7 @@ let rec is_dynamic = function
 
 let prepare_managed_paths ~link ~sandboxed deps =
   let steps =
-    Path.Map.foldi (Dep.Facts.paths deps) ~init:[] ~f:(fun path _ acc ->
+    Path.Map.foldi deps ~init:[] ~f:(fun path _ acc ->
         match Path.as_in_build_dir path with
         | None ->
           (* This can actually raise if we try to sandbox the "copy from source

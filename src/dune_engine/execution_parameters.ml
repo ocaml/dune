@@ -16,3 +16,5 @@ let to_dyn { dune_version } =
 
 let should_remove_write_permissions_on_generated_files t =
   t.dune_version >= (2, 4)
+
+let should_expand_aliases_when_sandboxing t = t.dune_version >= (3, 0)

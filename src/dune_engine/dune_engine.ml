@@ -45,6 +45,7 @@ module Predicate = Predicate
 module File_selector = File_selector
 module Action_mapper = Action_mapper
 module Action_intf = Action_intf
+module Action_to_sh = Action_to_sh
 module Diff = Diff
 module Scheduler = Scheduler
 module Hooks = Hooks

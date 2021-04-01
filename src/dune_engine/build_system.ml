@@ -364,6 +364,16 @@ type caching =
   ; check_probability : float
   }
 
+module Error = struct
+  type t = Exn_with_backtrace.t
+
+  let message (t : t) =
+    let exn, _ = Dep_path.unwrap_exn t.exn in
+    match exn with
+    | User_error.E msg -> msg
+    | e -> User_message.make [ Pp.text (Printexc.to_string e) ]
+end
+
 type t =
   { contexts : Build_context.t Context_name.Map.t
   ; init_rules : Rules.t Fdecl.t

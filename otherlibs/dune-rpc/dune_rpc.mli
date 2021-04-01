@@ -76,25 +76,58 @@ module V1 : sig
       }
   end
 
-  module Error : sig
-    type t =
-      { target : string option
-      ; message : string
-      ; loc : Loc.t option
-      }
+  module Diagnostic : sig
+    type severity =
+      | Error
+      | Warning
+
+    module Promotion : sig
+      type t =
+        { in_build : string
+        ; in_source : string
+        }
+    end
+
+    type t
+
+    val loc : t -> Loc.t option
+
+    val message : t -> unit Stdune.Pp.t
+
+    val severity : t -> severity option
+
+    val promotion : t -> Promotion.t list
+
+    val targets : t -> string list
+
+    module Event : sig
+      type nonrec t =
+        | Add of t
+        | Remove of t
+    end
   end
 
-  module Promotion : sig
+  module Build : sig
+    module Event : sig
+      type t =
+        | Start
+        | Finish
+        | Fail
+        | Interrupt
+    end
+  end
+
+  module Progress : sig
     type t =
-      { in_build : string
-      ; in_source : string
+      { complete : int
+      ; remaining : int
       }
   end
 
   module Subscribe : sig
     type t =
-      | Error
-      | Promotion
+      | Diagnostics
+      | Build_progress
   end
 
   module Message : sig
@@ -119,6 +152,8 @@ module V1 : sig
     type ('a, 'b) t
 
     val ping : (unit, unit) t
+
+    val diagnostics : (unit, Diagnostic.t list) t
   end
 
   module type S = sig
@@ -135,8 +170,12 @@ module V1 : sig
 
       val create :
            ?log:(Message.t -> unit fiber)
-        -> ?errors:(Error.t list -> unit fiber)
-        -> ?promotions:(Promotion.t list -> unit fiber)
+        -> ?diagnostic:(Diagnostic.Event.t list -> unit fiber)
+             (** Called whenever diagnostics are added or removed. When
+                 subscribing to diagnostics, this function will immediately be
+                 called with the current set of diagnostics. *)
+        -> ?build_event:(Build.Event.t -> unit fiber)
+        -> ?build_progress:(Progress.t -> unit fiber)
         -> ?abort:(Message.t -> unit fiber)
              (** If [abort] is called, the server has terminated the connection
                  due to a protcol error. This should never be called unless

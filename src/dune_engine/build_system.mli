@@ -12,6 +12,13 @@ type caching =
   ; check_probability : float
   }
 
+module Error : sig
+  (** Errors when building a target *)
+  type t
+
+  val message : t -> User_message.t
+end
+
 (** Initializes the build system. This must be called first. *)
 val init :
      stats:Stats.t option

@@ -3,6 +3,7 @@ open Fiber.O
 open Dune_rpc_server
 open Dune_rpc_private
 module Dep_conf = Dune_rules.Dep_conf
+module Build_system = Dune_engine.Build_system
 
 module Status = struct
   type t =
@@ -13,6 +14,14 @@ module Status = struct
 end
 
 type pending_build_action = Build of Dep_conf.t list * Status.t Fiber.Ivar.t
+
+let diagnostic_of_error : Build_system.Error.t -> Dune_rpc_private.Diagnostic.t
+    =
+ fun m ->
+  let message = Build_system.Error.message m in
+  let loc = message.loc in
+  let message = Pp.map_tags (Pp.concat message.paragraphs) ~f:(fun _ -> ()) in
+  { severity = None; targets = []; message; loc; promotion = [] }
 
 (* TODO un-copy-paste from dune/bin/arg.ml *)
 let dep_parser =
@@ -60,12 +69,33 @@ end)
 
 module Session_set = Session_comparable.Set
 
+module Subscribers = struct
+  type t =
+    { build_progress : Session_set.t
+    ; diagnostics : Session_set.t
+    }
+
+  let empty =
+    { build_progress = Session_set.empty; diagnostics = Session_set.empty }
+
+  let modify t (which : Subscribe.t) ~f =
+    match which with
+    | Build_progress -> { t with build_progress = f t.build_progress }
+    | Diagnostics -> { t with diagnostics = f t.diagnostics }
+
+  let add t which session =
+    modify t which ~f:(fun set -> Session_set.add set session)
+
+  let remove t which session =
+    modify t which ~f:(fun set -> Session_set.remove set session)
+end
+
 type t =
   { config : Dune_engine.Scheduler.Config.Rpc.t
   ; build_mutex : Fiber.Mutex.t
   ; pending_build_jobs : (Dep_conf.t list * Status.t Fiber.Ivar.t) Queue.t
-  ; mutable promotion_subs : Session_set.t
-  ; mutable error_subs : Session_set.t
+  ; pool : Fiber.Pool.t
+  ; mutable subscribers : Subscribers.t
   ; mutable clients : Session_set.t
   }
 
@@ -78,9 +108,10 @@ let handler (t : t Fdecl.t) : 'a Dune_rpc_server.Handler.t =
   in
   let on_terminate session =
     let t = Fdecl.get t in
-    t.clients <- Session_set.remove t.clients session;
-    t.promotion_subs <- Session_set.remove t.promotion_subs session;
-    t.error_subs <- Session_set.remove t.error_subs session;
+    t.subscribers <-
+      [ Subscribe.Diagnostics; Build_progress ]
+      |> List.fold_left ~init:t.subscribers ~f:(fun acc which ->
+             Subscribers.remove acc which session);
     Fiber.return ()
   in
   let rpc =
@@ -131,10 +162,7 @@ let handler (t : t Fdecl.t) : 'a Dune_rpc_server.Handler.t =
   let () =
     let unsubscribe session (sub : Subscribe.t) =
       let t = Fdecl.get t in
-      (match sub with
-      | Promotion ->
-        t.promotion_subs <- Session_set.remove t.promotion_subs session
-      | Error -> t.error_subs <- Session_set.remove t.error_subs session);
+      t.subscribers <- Subscribers.remove t.subscribers sub session;
       Fiber.return ()
     in
     let cb = Handler.callback' (Handler.public ~since:(1, 0) ()) unsubscribe in
@@ -143,11 +171,18 @@ let handler (t : t Fdecl.t) : 'a Dune_rpc_server.Handler.t =
   let () =
     let subscribe session (sub : Subscribe.t) =
       let t = Fdecl.get t in
-      (match sub with
-      | Promotion ->
-        t.promotion_subs <- Session_set.add t.promotion_subs session
-      | Error -> t.error_subs <- Session_set.add t.error_subs session);
-      Fiber.return ()
+      t.subscribers <- Subscribers.add t.subscribers sub session;
+      let* running = Fiber.Pool.running t.pool in
+      match running with
+      | false -> Fiber.return ()
+      | true ->
+        let errors = [] in
+        Fiber.Pool.task t.pool ~f:(fun () ->
+            let events =
+              List.map errors ~f:(fun e ->
+                  Diagnostic.Event.Add (diagnostic_of_error e))
+            in
+            Session.notification session Server_notifications.diagnostic events)
     in
     let cb = Handler.callback' (Handler.public ~since:(1, 0) ()) subscribe in
     Handler.notification rpc cb Public.Notification.subscribe
@@ -179,9 +214,9 @@ let create () =
     { config
     ; build_mutex
     ; pending_build_jobs
-    ; promotion_subs = Session_set.empty
-    ; error_subs = Session_set.empty
+    ; subscribers = Subscribers.empty
     ; clients = Session_set.empty
+    ; pool
     };
   Fdecl.get t
 

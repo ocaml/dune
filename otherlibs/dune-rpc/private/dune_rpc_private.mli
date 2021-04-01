@@ -117,17 +117,63 @@ module Where : sig
 end
 
 module Loc : sig
-  type t =
+  type t = Stdune.Loc.t =
     { start : Lexing.position
     ; stop : Lexing.position
     }
 end
 
-module Error : sig
+module Diagnostic : sig
+  type severity =
+    | Error
+    | Warning
+
+  module Promotion : sig
+    type t =
+      { in_build : string
+      ; in_source : string
+      }
+  end
+
   type t =
-    { target : string option
-    ; message : string
+    { targets : string list
+    ; message : unit Pp.t
     ; loc : Loc.t option
+    ; severity : severity option
+    ; promotion : Promotion.t list
+    }
+
+  val loc : t -> Loc.t option
+
+  val message : t -> unit Pp.t
+
+  val severity : t -> severity option
+
+  val promotion : t -> Promotion.t list
+
+  val targets : t -> string list
+
+  module Event : sig
+    type nonrec t =
+      | Add of t
+      | Remove of t
+  end
+end
+
+module Build : sig
+  module Event : sig
+    type t =
+      | Start
+      | Finish
+      | Fail
+      | Interrupt
+  end
+end
+
+module Progress : sig
+  type t =
+    { complete : int
+    ; remaining : int
     }
 end
 
@@ -138,17 +184,10 @@ module Message : sig
     }
 end
 
-module Promotion : sig
-  type t =
-    { in_build : string
-    ; in_source : string
-    }
-end
-
 module Subscribe : sig
   type t =
-    | Error
-    | Promotion
+    | Diagnostics
+    | Build_progress
 end
 
 module type S = sig
@@ -172,8 +211,9 @@ module type S = sig
 
     val create :
          ?log:(Message.t -> unit fiber)
-      -> ?errors:(Error.t list -> unit fiber)
-      -> ?promotions:(Promotion.t list -> unit fiber)
+      -> ?diagnostic:(Diagnostic.Event.t list -> unit fiber)
+      -> ?build_event:(Build.Event.t -> unit fiber)
+      -> ?build_progress:(Progress.t -> unit fiber)
       -> ?abort:(Message.t -> unit fiber)
       -> unit
       -> t
@@ -266,6 +306,8 @@ module Public : sig
     type ('a, 'b) t = ('a, 'b) Decl.request
 
     val ping : (unit, unit) t
+
+    val diagnostics : (unit, Diagnostic.t list) t
   end
 
   module Notification : sig
@@ -282,9 +324,9 @@ end
 module Server_notifications : sig
   (** Notification sent from server to client *)
 
-  val errors : Error.t list Decl.notification
+  val diagnostic : Diagnostic.Event.t list Decl.notification
 
-  val promotions : Promotion.t list Decl.notification
+  val progress : Progress.t Decl.notification
 
   val log : Message.t Decl.notification
 

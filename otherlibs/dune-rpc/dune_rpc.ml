@@ -8,8 +8,9 @@ module V1 = struct
   module Call = Call
   module Client = Client
   module Loc = Loc
-  module Error = Error
-  module Promotion = Promotion
+  module Diagnostic = Diagnostic
+  module Build = Build
+  module Progress = Progress
   module Subscribe = Subscribe
   module Message = Message
   include Public
@@ -26,8 +27,9 @@ module V1 = struct
 
       val create :
            ?log:(Message.t -> unit fiber)
-        -> ?errors:(Error.t list -> unit fiber)
-        -> ?promotions:(Promotion.t list -> unit fiber)
+        -> ?diagnostic:(Diagnostic.Event.t list -> unit fiber)
+        -> ?build_event:(Build.Event.t -> unit fiber)
+        -> ?build_progress:(Progress.t -> unit fiber)
         -> ?abort:(Message.t -> unit fiber)
         -> unit
         -> t

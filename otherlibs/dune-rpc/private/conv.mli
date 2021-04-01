@@ -14,11 +14,16 @@ val int : (int, values) t
 
 val unit : (unit, values) t
 
+val char : (char, values) t
+
 val string : (string, values) t
 
 val list : ('a, values) t -> ('a list, values) t
 
 val pair : ('a, values) t -> ('b, values) t -> ('a * 'b, values) t
+
+val triple :
+  ('a, values) t -> ('b, values) t -> ('c, values) t -> ('a * 'b * 'c, values) t
 
 val enum : (string * 'a) list -> ('a, values) t
 
@@ -49,6 +54,14 @@ val four :
   -> ('c, fields) t
   -> ('d, fields) t
   -> ('a * 'b * 'c * 'd, fields) t
+
+val five :
+     ('a, fields) t
+  -> ('b, fields) t
+  -> ('c, fields) t
+  -> ('d, fields) t
+  -> ('e, fields) t
+  -> ('a * 'b * 'c * 'd * 'e, fields) t
 
 val record : ('a, fields) t -> ('a, values) t
 
@@ -89,3 +102,5 @@ val to_sexp : ('a, values) t -> 'a -> Sexp.t
 
 val of_sexp :
   ('a, values) t -> version:int * int -> Sexp.t -> ('a, error) result
+
+val fdecl : ('a, 'k) t Fdecl.t -> ('a, 'k) t

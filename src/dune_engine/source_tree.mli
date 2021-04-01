@@ -109,3 +109,7 @@ val is_vendored : Path.Source.t -> bool Memo.Build.t
 val file_exists : Path.Source.t -> bool Memo.Build.t
 
 val find_dir_specified_on_command_line : dir:Path.Source.t -> Dir.t Memo.Build.t
+
+(** Return the execution parameters for the following directory *)
+val execution_parameters_of_dir :
+  Path.Source.t -> Execution_parameters.t Memo.Build.t

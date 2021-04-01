@@ -675,6 +675,20 @@ let nearest_dir path =
   let* root = root () in
   nearest_dir root components
 
+let execution_parameters_of_dir =
+  let f path =
+    let+ dir = nearest_dir path in
+    Dune_project.execution_parameters (Dir0.project dir)
+  in
+  let memo =
+    Memo.create "execution-parameters-of-dir"
+      ~doc:"Return the execution parameters of a given directory"
+      ~input:(module Path.Source)
+      ~output:(Allow_cutoff (module Execution_parameters))
+      ~visibility:Hidden f
+  in
+  Memo.exec memo
+
 let nearest_vcs path = nearest_dir path >>| Dir0.vcs
 
 let files_of path =

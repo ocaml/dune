@@ -209,6 +209,16 @@ module Facts = struct
         | Alias ps ->
           Path.Map.union acc ps.files ~f:(fun _ a _ -> Some a))
 
+  let paths_without_expanding_aliases t =
+    Map.fold t ~init:Path.Map.empty ~f:(fun fact acc ->
+        match (fact : Fact.t) with
+        | Nothing
+        | Alias _ ->
+          acc
+        | File (p, d) -> Path.Map.set acc p d
+        | File_selector (_, ps) ->
+          Path.Map.union acc ps.files ~f:(fun _ a _ -> Some a))
+
   let group_paths_as_fact_files ts =
     let fact_files, paths =
       List.fold_left ts ~init:([], Path.Map.empty) ~f:(fun acc t ->

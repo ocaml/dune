@@ -1638,6 +1638,15 @@ end = struct
                         | Some path -> Fs.mkdir_p (sandboxed path)))
                 in
                 let+ () = Memo.Build.run (Fs.mkdir_p (sandboxed dir)) in
+                let deps =
+                  if
+                    Execution_parameters.should_expand_aliases_when_sandboxing
+                      exec_params
+                  then
+                    Dep.Facts.paths deps
+                  else
+                    Dep.Facts.paths_without_expanding_aliases deps
+                in
                 ( Some sandboxed
                 , Action.sandbox action ~sandboxed ~mode:sandbox_mode ~deps )
             and* () =

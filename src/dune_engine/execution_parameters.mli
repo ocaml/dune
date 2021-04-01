@@ -28,3 +28,5 @@ val make : dune_version:Dune_lang.Syntax.Version.t -> t
 val dune_version : t -> Dune_lang.Syntax.Version.t
 
 val should_remove_write_permissions_on_generated_files : t -> bool
+
+val should_expand_aliases_when_sandboxing : t -> bool

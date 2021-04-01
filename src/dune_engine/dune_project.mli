@@ -168,3 +168,5 @@ val strict_package_deps : t -> bool
 val cram : t -> bool
 
 val info : t -> Package.Info.t
+
+val execution_parameters : t -> Execution_parameters.t

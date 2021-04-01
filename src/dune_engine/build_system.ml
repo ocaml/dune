@@ -584,9 +584,8 @@ let compute_targets_digests targets =
   | l -> Some l
   | exception (Unix.Unix_error _ | Sys_error _) -> None
 
-let compute_targets_digests_or_raise_error ~loc targets =
-  let open Fiber.O in
-  let+ remove_write_permissions =
+let compute_targets_digests_or_raise_error exec_params ~loc targets =
+  let remove_write_permissions =
     (* Remove write permissions on targets. A first theoretical reason is that
        the build process should be a computational graph and targets should not
        change state once built. A very practical reason is that enabling the
@@ -595,15 +594,10 @@ let compute_targets_digests_or_raise_error ~loc targets =
     (* FIXME: searching the dune version for each single target seems way
        suboptimal. This information could probably be stored in rules directly. *)
     if Path.Build.Set.is_empty targets then
-      Fiber.return false
+      false
     else
-      let _, src_dir =
-        Path.Build.extract_build_context_dir_exn
-          (Path.Build.Set.choose_exn targets)
-      in
-      let+ dir = Memo.Build.run (Source_tree.nearest_dir src_dir) in
-      let version = Source_tree.Dir.project dir |> Dune_project.dune_version in
-      version >= (2, 4)
+      Execution_parameters.should_remove_write_permissions_on_generated_files
+        exec_params
   in
   let refresh =
     if remove_write_permissions then
@@ -1426,7 +1420,11 @@ end = struct
     if rule_kind = Normal_rule then start_rule t rule;
     let targets = rule.action.targets in
     let head_target = Path.Build.Set.choose_exn targets in
-    let* action, deps = exec_build_request rule.action.build in
+    let* action, deps = exec_build_request rule.action.build
+    and* exec_params =
+      Source_tree.execution_parameters_of_dir
+        (Path.Build.drop_build_context_exn dir)
+    in
     Memo.Build.of_reproducible_fiber
       (let open Fiber.O in
       let build_deps deps = Memo.Build.run (build_deps deps) in
@@ -1665,8 +1663,8 @@ end = struct
             Option.iter sandbox ~f:(fun (p, _mode) -> Path.rm_rf (Path.build p));
             (* All went well, these targets are no longer pending *)
             pending_targets := Path.Build.Set.diff !pending_targets targets;
-            let* targets_digests =
-              compute_targets_digests_or_raise_error ~loc targets
+            let targets_digests =
+              compute_targets_digests_or_raise_error exec_params ~loc targets
             in
             let targets_digest = digest_of_targets_digests targets_digests in
             let () =

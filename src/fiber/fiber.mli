@@ -373,3 +373,20 @@ type fill = Fill : 'a Ivar.t * 'a -> fill
     the scheduler, it should block waiting for an event and return an ivar to
     fill. *)
 val run : 'a t -> iter:(unit -> fill) -> 'a
+
+(** Fiber-friendly versions of [Temp.with_temp_path] and [Temp.with_temp_dir]. *)
+module Temp : sig
+  val with_temp_path :
+       dir:Path.t
+    -> prefix:string
+    -> suffix:string
+    -> f:(Path.t Or_exn.t -> 'a t)
+    -> 'a t
+
+  val with_temp_dir :
+       parent_dir:Path.t
+    -> prefix:string
+    -> suffix:string
+    -> f:(Path.t Or_exn.t -> 'a t)
+    -> 'a t
+end

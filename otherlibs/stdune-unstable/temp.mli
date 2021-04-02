@@ -32,5 +32,36 @@ val with_temp_path :
      dir:Path.t
   -> prefix:string
   -> suffix:string
-  -> f:((Path.t, exn) result -> 'a)
+  -> f:(Path.t Or_exn.t -> 'a)
   -> 'a
+
+(** Like [with_temp_path], but creates a temporary directory. *)
+val with_temp_dir :
+     parent_dir:Path.t
+  -> prefix:string
+  -> suffix:string
+  -> f:(Path.t Or_exn.t -> 'a)
+  -> 'a
+
+(** Versions of [with_temp_path] and [with_temp_dir] that are suitable for use
+    in a concurrency monad. See [Fiber.Temp] for a [Fiber.t] instantiation. *)
+module Monad (M : sig
+  type 'a t
+
+  (** Like [Exn.protect] but lifted to [M]. *)
+  val protect : f:(unit -> 'a t) -> finally:(unit -> unit) -> 'a t
+end) : sig
+  val with_temp_path :
+       dir:Path.t
+    -> prefix:string
+    -> suffix:string
+    -> f:(Path.t Or_exn.t -> 'a M.t)
+    -> 'a M.t
+
+  val with_temp_dir :
+       parent_dir:Path.t
+    -> prefix:string
+    -> suffix:string
+    -> f:(Path.t Or_exn.t -> 'a M.t)
+    -> 'a M.t
+end

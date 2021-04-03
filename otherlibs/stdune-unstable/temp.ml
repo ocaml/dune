@@ -97,10 +97,40 @@ let temp_path =
       if Path.exists candidate then raise Exit;
       candidate)
 
-let with_temp_path ~dir ~prefix ~suffix ~f =
-  match temp_path ~dir ~prefix ~suffix with
-  | exception e -> f (Error e)
-  | temp_path ->
-    Exn.protect
-      ~f:(fun () -> f (Ok temp_path))
-      ~finally:(fun () -> Path.unlink_no_err temp_path)
+let temp_dir ~parent_dir ~prefix ~suffix =
+  try_paths 1000 ~dir:parent_dir ~prefix ~suffix ~f:(fun candidate ->
+      create_temp_dir candidate;
+      candidate)
+
+module Monad (M : sig
+  type 'a t
+
+  val protect : f:(unit -> 'a t) -> finally:(unit -> unit) -> 'a t
+end) =
+struct
+  let with_temp_path ~dir ~prefix ~suffix ~f =
+    match temp_path ~dir ~prefix ~suffix with
+    | exception e -> f (Error e)
+    | temp_path ->
+      M.protect
+        ~f:(fun () -> f (Ok temp_path))
+        ~finally:(fun () -> Path.unlink_no_err temp_path)
+
+  let with_temp_dir ~parent_dir ~prefix ~suffix ~f =
+    match temp_dir ~parent_dir ~prefix ~suffix with
+    | exception e -> f (Error e)
+    | temp_dir ->
+      M.protect
+        ~f:(fun () -> f (Ok temp_dir))
+        ~finally:(fun () -> Path.rm_rf ~allow_external:true temp_dir)
+end
+
+module Id = Monad (struct
+  type 'a t = 'a
+
+  let protect = Exn.protect
+end)
+
+let with_temp_path = Id.with_temp_path
+
+let with_temp_dir = Id.with_temp_dir

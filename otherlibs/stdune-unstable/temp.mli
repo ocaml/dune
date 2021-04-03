@@ -44,7 +44,7 @@ val with_temp_dir :
   -> 'a
 
 (** Versions of [with_temp_path] and [with_temp_dir] that are suitable for use
-    in a concurrency monad. See [Fiber.Temp] for a [Fiber.t] instantiation. *)
+    with concurrency monads. *)
 module Monad (M : sig
   type 'a t
 

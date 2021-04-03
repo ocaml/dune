@@ -886,9 +886,3 @@ let run t ~iter =
   EC.run t ~iter:(fun () ->
       let (Fill (ivar, v)) = iter () in
       Ivar.fill ivar v)
-
-module Temp = Temp.Monad (struct
-  type nonrec 'a t = 'a t
-
-  let protect ~f ~finally = finalize f ~finally:(fun () -> finally () |> return)
-end)

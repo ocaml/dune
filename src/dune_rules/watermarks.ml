@@ -180,48 +180,51 @@ module Dune_project = struct
 
   let subst t ~map ~version =
     let s =
-      let replace_text start_ofs stop_ofs repl =
-        sprintf "%s%s%s"
-          (String.sub t.contents ~pos:0 ~len:start_ofs)
-          repl
-          (String.sub t.contents ~pos:stop_ofs
-             ~len:(String.length t.contents - stop_ofs))
-      in
-      match t.version with
-      | Some v ->
-        (* There is a [version] field, overwrite its argument *)
-        replace_text v.loc_of_arg.start.pos_cnum v.loc_of_arg.stop.pos_cnum
-          (Dune_lang.to_string (Dune_lang.atom_or_quoted_string version))
-      | None ->
-        let version_field =
-          Dune_lang.to_string
-            (List
-               [ Dune_lang.atom "version"
-               ; Dune_lang.atom_or_quoted_string version
-               ])
-          ^ "\n"
+      match version with
+      | None -> t.contents
+      | Some version -> (
+        let replace_text start_ofs stop_ofs repl =
+          sprintf "%s%s%s"
+            (String.sub t.contents ~pos:0 ~len:start_ofs)
+            repl
+            (String.sub t.contents ~pos:stop_ofs
+               ~len:(String.length t.contents - stop_ofs))
         in
-        let ofs =
-          ref
-            (match t.name with
-            | Some { loc; _ } ->
-              (* There is no [version] field but there is a [name] one, add the
-                 version after it *)
-              loc.stop.pos_cnum
-            | None ->
-              (* If all else fails, add the [version] field after the first line
-                 of the file *)
-              0)
-        in
-        let len = String.length t.contents in
-        while !ofs < len && t.contents.[!ofs] <> '\n' do
-          incr ofs
-        done;
-        if !ofs < len && t.contents.[!ofs] = '\n' then (
-          incr ofs;
-          replace_text !ofs !ofs version_field
-        ) else
-          replace_text !ofs !ofs ("\n" ^ version_field)
+        match t.version with
+        | Some v ->
+          (* There is a [version] field, overwrite its argument *)
+          replace_text v.loc_of_arg.start.pos_cnum v.loc_of_arg.stop.pos_cnum
+            (Dune_lang.to_string (Dune_lang.atom_or_quoted_string version))
+        | None ->
+          let version_field =
+            Dune_lang.to_string
+              (List
+                 [ Dune_lang.atom "version"
+                 ; Dune_lang.atom_or_quoted_string version
+                 ])
+            ^ "\n"
+          in
+          let ofs =
+            ref
+              (match t.name with
+              | Some { loc; _ } ->
+                (* There is no [version] field but there is a [name] one, add
+                   the version after it *)
+                loc.stop.pos_cnum
+              | None ->
+                (* If all else fails, add the [version] field after the first
+                   line of the file *)
+                0)
+          in
+          let len = String.length t.contents in
+          while !ofs < len && t.contents.[!ofs] <> '\n' do
+            incr ofs
+          done;
+          if !ofs < len && t.contents.[!ofs] = '\n' then (
+            incr ofs;
+            replace_text !ofs !ofs version_field
+          ) else
+            replace_text !ofs !ofs ("\n" ^ version_field))
     in
     let s = Option.value (subst_string s ~map filename) ~default:s in
     if s <> t.contents then Io.write_file filename s
@@ -230,6 +233,8 @@ end
 let make_watermark_map ~commit ~version ~dune_project ~info =
   let dune_project = Dune_project.project dune_project in
   let version_num =
+    let open Option.O in
+    let+ version = version in
     Option.value ~default:version (String.drop_prefix version ~prefix:"v")
   in
   let name = Dune_project.name dune_project in
@@ -250,11 +255,18 @@ let make_watermark_map ~commit ~version ~dune_project ~info =
     | Some (Package.Source_kind.Url url) -> Ok url
     | None -> Error (sprintf "variable dev-repo not found in dune-project file")
   in
+  let make_version = function
+    | Some s -> Ok s
+    | None -> Error "repository does not contain any version information"
+  in
   String.Map.of_list_exn
     [ ("NAME", Ok (Dune_project.Name.to_string_hum name))
-    ; ("VERSION", Ok version)
-    ; ("VERSION_NUM", Ok version_num)
-    ; ("VCS_COMMIT_ID", Ok commit)
+    ; ("VERSION", make_version version)
+    ; ("VERSION_NUM", make_version version_num)
+    ; ( "VCS_COMMIT_ID"
+      , match commit with
+        | None -> Error "repositroy does not contain any commits"
+        | Some s -> Ok s )
     ; ( "PKG_MAINTAINER"
       , make_separated "maintainer" ", " @@ Package.Info.maintainers info )
     ; ("PKG_AUTHORS", make_separated "authors" ", " @@ Package.Info.authors info)

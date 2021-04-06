@@ -13,12 +13,12 @@ let try_paths n ~dir ~prefix ~suffix ~f =
       let rnd = Random.State.bits (Lazy.force prng) land 0xFFFFFF in
       Path.relative dir (Printf.sprintf "%s%06x%s" prefix rnd suffix)
     in
-    if n = 1 then
-      try f path with
-      | Retry -> Code_error.raise "try_paths failed to find a good candidate" []
-    else
-      try f path with
-      | Retry -> loop (n - 1)
+    try f path with
+    | Retry ->
+      if n = 1 then
+        Code_error.raise "try_paths failed to find a good candidate" []
+      else
+        loop (n - 1)
   in
   loop n
 

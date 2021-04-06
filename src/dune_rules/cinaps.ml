@@ -125,7 +125,7 @@ let gen_rules sctx t ~dir ~scope =
                 (Path.Build.extend_basename fn ~suffix:".cinaps-corrected"))))
   in
   let cinaps_alias = alias ~dir in
-  let+ () =
+  let* () =
     Super_context.add_alias_action sctx ~dir ~loc:(Some loc) cinaps_alias action
   in
   Rules.Produce.Alias.add_deps (Alias.runtest ~dir)

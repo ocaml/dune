@@ -115,7 +115,7 @@ let%expect_test _ =
 let stack = ref []
 
 let dump_stack v =
-  let s = get_call_stack () in
+  let* s = get_call_stack () in
   stack := s;
   Memo.Build.return v
 

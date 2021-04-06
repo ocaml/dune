@@ -462,10 +462,6 @@ module Exit_status = struct
          :: Option.to_list output)
 end
 
-let add_to_env env = Dtemp.add_to_env env |> Scheduler.add_to_env
-
-let default_env = lazy (add_to_env Env.initial)
-
 let report_process_start stats ~id ~prog ~args =
   let common =
     let name = Filename.basename prog in
@@ -485,7 +481,8 @@ let report_process_end stats common ~id =
   Stats.emit stats event
 
 let run_internal ?dir ?(stdout_to = Io.stdout) ?(stderr_to = Io.stderr)
-    ?(stdin_from = Io.null In) ~env ~purpose fail_mode prog args =
+    ?(stdin_from = Io.null In) ?(env = Env.initial) ~purpose fail_mode prog args
+    =
   Scheduler.with_job_slot (fun (config : Scheduler.Config.t) ->
       let display = config.display in
       let dir =
@@ -579,9 +576,7 @@ let run_internal ?dir ?(stdout_to = Io.stdout) ?(stderr_to = Io.stderr)
         let stderr = Io.fd stderr_to in
         let stdin = Io.fd stdin_from in
         let env =
-          match env with
-          | None -> Lazy.force default_env
-          | Some env -> add_to_env env
+          env |> Dtemp.add_to_env |> Scheduler.Config.add_to_env config
         in
         let event_common =
           Option.map config.stats
@@ -651,7 +646,7 @@ let run_internal ?dir ?(stdout_to = Io.stdout) ?(stderr_to = Io.stderr)
 let run ?dir ?stdout_to ?stderr_to ?stdin_from ?env ?(purpose = Internal_job)
     fail_mode prog args =
   let+ run =
-    run_internal ?dir ?stdout_to ?stderr_to ?stdin_from ~env ~purpose fail_mode
+    run_internal ?dir ?stdout_to ?stderr_to ?stdin_from ?env ~purpose fail_mode
       prog args
   in
   map_result fail_mode run ~f:ignore
@@ -660,7 +655,7 @@ let run_capture_gen ?dir ?stderr_to ?stdin_from ?env ?(purpose = Internal_job)
     fail_mode prog args ~f =
   let fn = Temp.create File ~prefix:"dune" ~suffix:".output" in
   let+ run =
-    run_internal ?dir ~stdout_to:(Io.file fn Io.Out) ?stderr_to ?stdin_from ~env
+    run_internal ?dir ~stdout_to:(Io.file fn Io.Out) ?stderr_to ?stdin_from ?env
       ~purpose fail_mode prog args
   in
   map_result fail_mode run ~f:(fun () ->

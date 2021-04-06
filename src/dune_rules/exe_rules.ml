@@ -114,7 +114,7 @@ let executables_rules ~sctx ~dir ~expander ~dir_contents ~scope ~compile_info
     Dir_contents.ocaml dir_contents
     >>| Ml_sources.modules_and_obj_dir ~for_:(Exe { first_exe })
   in
-  Check_rules.add_obj_dir sctx ~obj_dir;
+  let* () = Check_rules.add_obj_dir sctx ~obj_dir in
   let ctx = Super_context.context sctx in
   let* pp =
     let instrumentation_backend =
@@ -205,7 +205,7 @@ let executables_rules ~sctx ~dir ~expander ~dir_contents ~scope ~compile_info
       o_files sctx ~dir ~expander ~exes ~linkages ~dir_contents
         ~requires_compile
     in
-    Check_rules.add_files sctx ~dir o_files;
+    let* () = Check_rules.add_files sctx ~dir o_files in
     Exe.build_and_link_many cctx ~programs ~linkages ~link_args ~o_files
       ~promote:exes.promote ~embed_in_plugin_libraries
   in

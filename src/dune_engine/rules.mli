@@ -50,7 +50,7 @@ module Produce : sig
       The call to [load_dir ~dir:a] from [gen_rules ~dir:b] declares a directory
       dependency from [b] to [a]. There must be no cyclic directory
       dependencies. *)
-  val rule : Rule.t -> unit
+  val rule : Rule.t -> unit Memo.Build.t
 
   module Alias : sig
     type t = Alias.t
@@ -58,9 +58,11 @@ module Produce : sig
     (** [add_deps store alias deps] arrange things so that all the dependencies
         registered by [deps] are considered as a part of alias expansion of
         [alias]. *)
-    val add_deps : t -> ?loc:Stdune.Loc.t -> unit Action_builder.t -> unit
+    val add_deps :
+      t -> ?loc:Stdune.Loc.t -> unit Action_builder.t -> unit Memo.Build.t
 
-    val add_static_deps : t -> ?loc:Stdune.Loc.t -> Path.Set.t -> unit
+    val add_static_deps :
+      t -> ?loc:Stdune.Loc.t -> Path.Set.t -> unit Memo.Build.t
 
     (** [add_action store alias ~stamp action] arrange things so that [action]
         is executed as part of the build of alias [alias]. [stamp] is any
@@ -72,7 +74,7 @@ module Produce : sig
       -> loc:Loc.t option
       -> ?locks:Path.t list
       -> Action.t Action_builder.t
-      -> unit
+      -> unit Memo.Build.t
   end
 end
 
@@ -82,11 +84,11 @@ val empty : t
 
 val union : t -> t -> t
 
-val produce_dir : dir:Path.Build.t -> Dir_rules.t -> unit
+val produce_dir : dir:Path.Build.t -> Dir_rules.t -> unit Memo.Build.t
 
-val produce : t -> unit
+val produce : t -> unit Memo.Build.t
 
-val produce_opt : t option -> unit
+val produce_opt : t option -> unit Memo.Build.t
 
 val is_subset : t -> of_:t -> bool
 

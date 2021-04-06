@@ -103,7 +103,7 @@ let user_rule sctx ?extra_bindings ~dir ~expander (rule : Rule.t) =
     match rule_kind ~rule ~action with
     | No_alias -> add_user_rule sctx ~dir ~rule ~action ~expander
     | Alias_with_targets (alias, alias_target) ->
-      let () =
+      let* () =
         let alias = Alias.make alias ~dir in
         Path.Set.singleton (Path.build alias_target)
         |> Rules.Produce.Alias.add_static_deps alias
@@ -172,7 +172,7 @@ let copy_files sctx ~dir ~expander ~src_dir (def : Copy_files.t) =
   (* CR-someday amokhov: We currently traverse the set [files] twice: first, to
      add the corresponding rules, and then to convert the files to [targets]. To
      do only one traversal we need [Memo.Build.parallel_map_set]. *)
-  let+ () =
+  let* () =
     Memo.Build.parallel_iter_set
       (module Path.Set)
       files
@@ -192,9 +192,11 @@ let copy_files sctx ~dir ~expander ~src_dir (def : Copy_files.t) =
         let file_dst = Path.Build.relative dir basename in
         Path.build file_dst)
   in
-  Option.iter def.alias ~f:(fun alias ->
-      let alias = Alias.make alias ~dir in
-      Rules.Produce.Alias.add_static_deps alias targets);
+  let+ () =
+    Memo.Build.Option.iter def.alias ~f:(fun alias ->
+        let alias = Alias.make alias ~dir in
+        Rules.Produce.Alias.add_static_deps alias targets)
+  in
   targets
 
 let copy_files sctx ~dir ~expander ~src_dir (def : Copy_files.t) =
@@ -212,8 +214,7 @@ let alias sctx ?extra_bindings ~dir ~expander (alias_conf : Alias_conf.t) =
     match alias_conf.action with
     | None ->
       let builder, _expander = Dep_conf_eval.named ~expander alias_conf.deps in
-      Rules.Produce.Alias.add_deps alias ?loc builder;
-      Memo.Build.return ()
+      Rules.Produce.Alias.add_deps alias ?loc builder
     | Some (action_loc, action) ->
       let locks = interpret_locks ~expander alias_conf.locks in
       let action =

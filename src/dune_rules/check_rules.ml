@@ -21,9 +21,13 @@ let add_obj_dir sctx ~obj_dir =
     Rules.Produce.Alias.add_deps
       (Alias.check ~dir:(Obj_dir.dir obj_dir))
       (Action_builder.paths_matching_unit ~loc:(Loc.of_pos __POS__) dir_glob)
+  else
+    Memo.Build.return ()
 
 let add_files sctx ~dir files =
   if (Super_context.context sctx).merlin then
     let alias = Alias.check ~dir in
     let files = Path.Set.of_list files in
     Rules.Produce.Alias.add_static_deps alias files
+  else
+    Memo.Build.return ()

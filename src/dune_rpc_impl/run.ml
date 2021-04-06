@@ -113,7 +113,8 @@ let csexp_connect t in_ out =
   Csexp_rpc.Session.create in_ out csexp_scheduler
 
 let stop () =
-  let t = Fiber.Var.get_exn t_var in
+  let open Fiber.O in
+  let* t = Fiber.Var.get_exn t_var in
   match t with
   | Client _ -> Code_error.raise "rpc not running" []
   | Server s ->

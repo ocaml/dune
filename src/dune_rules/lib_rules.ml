@@ -193,7 +193,7 @@ let foreign_rules (library : Foreign.Library.t) ~sctx ~expander ~dir
       ~dir_contents ~foreign_sources
     |> Memo.Build.parallel_map ~f:(Memo.Build.map ~f:Path.build)
   in
-  Check_rules.add_files sctx ~dir o_files;
+  let* () = Check_rules.add_files sctx ~dir o_files in
   ocamlmklib ~archive_name ~loc:library.stubs.loc
     ~c_library_flags:Ordered_set_lang.Unexpanded.standard ~sctx ~dir ~expander
     ~o_files ~build_targets_together:false
@@ -212,7 +212,7 @@ let build_stubs lib ~cctx ~dir ~expander ~requires ~dir_contents
       ~foreign_sources
     |> Memo.Build.parallel_map ~f:(Memo.Build.map ~f:Path.build)
   in
-  Check_rules.add_files sctx ~dir lib_o_files;
+  let* () = Check_rules.add_files sctx ~dir lib_o_files in
   match vlib_stubs_o_files @ lib_o_files with
   | [] -> Memo.Build.return ()
   | o_files ->
@@ -407,7 +407,7 @@ let library_rules (lib : Library.t) ~cctx ~source_modules ~dir_contents
     Memo.Build.Option.iter vimpl
       ~f:(Virtual_rules.setup_copy_rules_for_impl ~sctx ~dir)
   in
-  Check_rules.add_obj_dir sctx ~obj_dir;
+  let* () = Check_rules.add_obj_dir sctx ~obj_dir in
   let* () = gen_wrapped_compat_modules lib cctx
   and* () = Module_compilation.build_all cctx ~dep_graphs
   and* expander = Super_context.expander sctx ~dir in

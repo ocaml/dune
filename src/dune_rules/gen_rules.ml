@@ -24,7 +24,7 @@ module For_stanza : sig
     -> scope:Scope.t
     -> dir_contents:Dir_contents.t
     -> expander:Expander.t
-    -> files_to_install:(Install_conf.t -> unit)
+    -> files_to_install:(Install_conf.t -> unit Memo.Build.t)
     -> ( Merlin.t list
        , (Loc.t * Compilation_context.t) list
        , Path.Build.t list
@@ -89,7 +89,7 @@ end = struct
       in
       empty_none
     | Executables exes when Expander.eval_blang expander exes.enabled_if ->
-      Option.iter exes.install_conf ~f:files_to_install;
+      let* () = Memo.Build.Option.iter exes.install_conf ~f:files_to_install in
       let+ cctx, merlin =
         Exe_rules.rules exes ~sctx ~dir ~scope ~expander ~dir_contents
       in
@@ -128,8 +128,8 @@ end = struct
       in
       Memo.Build.return { merlin = None; cctx = None; js = None; source_dirs }
     | Install i ->
-      files_to_install i;
-      Memo.Build.return empty_none
+      let+ () = files_to_install i in
+      empty_none
     | Plugin p ->
       let+ () = Plugin_rules.setup_rules ~sctx ~dir p in
       empty_none
@@ -237,7 +237,7 @@ let gen_rules sctx dir_contents cctxs expander
         in
         Merlin.add_rules sctx ~dir:ctx_dir ~more_src_dirs ~expander merlin)
   in
-  let+ () =
+  let* () =
     Memo.Build.parallel_iter stanzas ~f:(fun stanza ->
         match (stanza : Stanza.t) with
         | Menhir.T m when Expander.eval_blang expander m.enabled_if -> (
@@ -279,15 +279,12 @@ let gen_rules sctx dir_contents cctxs expander
           >>= Super_context.add_rules ~dir:ctx_dir sctx
         | _ -> Memo.Build.return ())
   in
-  define_all_alias ~dir:ctx_dir ~scope ~js_targets;
+  let+ () = define_all_alias ~dir:ctx_dir ~scope ~js_targets in
   cctxs
 
 let gen_rules sctx dir_contents cctxs ~source_dir ~dir :
     (Loc.t * Compilation_context.t) list Memo.Build.t =
-  let* () =
-    with_format sctx ~dir ~f:(fun _ ->
-        Memo.Build.return (Format_rules.gen_rules ~dir))
-  in
+  let* () = with_format sctx ~dir ~f:(fun _ -> Format_rules.gen_rules ~dir) in
   let* expander =
     let+ expander = Super_context.expander sctx ~dir in
     Dir_contents.add_sources_to_expander sctx expander
@@ -296,9 +293,11 @@ let gen_rules sctx dir_contents cctxs ~source_dir ~dir :
   match Super_context.stanzas_in sctx ~dir with
   | Some d -> gen_rules sctx dir_contents cctxs expander d
   | None ->
-    define_all_alias ~dir ~js_targets:[]
-      ~scope:(Super_context.find_scope_by_dir sctx dir);
-    Memo.Build.return []
+    let+ () =
+      define_all_alias ~dir ~js_targets:[]
+        ~scope:(Super_context.find_scope_by_dir sctx dir)
+    in
+    []
 
 let gen_rules ~sctx ~dir components =
   let module S = Build_system.Subdir_set in
@@ -471,7 +470,7 @@ let init ~contexts ~only_packages conf =
   let+ () =
     Build_system.set_rule_generators
       ~init:(fun () ->
-        Context_name.Map.iter sctxs ~f:Odoc.init |> Memo.Build.return)
+        Memo.Build.parallel_iter (Context_name.Map.values sctxs) ~f:Odoc.init)
       ~gen_rules:(function
         | Install ctx ->
           Option.map (Context_name.Map.find sctxs ctx) ~f:(fun sctx ~dir _ ->

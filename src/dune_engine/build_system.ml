@@ -1122,18 +1122,18 @@ type rule_or_source =
 let get_rule_or_source t path =
   let dir = Path.parent_exn path in
   if Path.is_strict_descendant_of_build_dir dir then
-    let+ rules = load_dir_and_get_buildable_targets ~dir in
+    let* rules = load_dir_and_get_buildable_targets ~dir in
     let path = Path.as_in_build_dir_exn path in
     match Path.Build.Map.find rules path with
-    | Some rule -> Rule (path, rule)
+    | Some rule -> Memo.Build.return (Rule (path, rule))
     | None ->
-      let loc = Rule_fn.loc () in
+      let+ loc = Rule_fn.loc () in
       no_rule_found t ~loc path
   else if Path.exists path then
     let+ d = Cached_digest.source_or_external_file path in
     Source d
   else
-    let loc = Rule_fn.loc () in
+    let+ loc = Rule_fn.loc () in
     User_error.raise ?loc
       [ Pp.textf "File unavailable: %s" (Path.to_string_maybe_quoted path) ]
 
@@ -1159,9 +1159,9 @@ let all_targets t =
 let expand_alias_gen alias ~eval_build_request =
   lookup_alias alias >>= function
   | None ->
+    let+ loc = Rule_fn.loc () in
     let alias_descr = sprintf "alias %s" (Alias.describe alias) in
-    User_error.raise ?loc:(Rule_fn.loc ())
-      [ Pp.textf "No rule found for %s" alias_descr ]
+    User_error.raise ?loc [ Pp.textf "No rule found for %s" alias_descr ]
   | Some alias_definitions ->
     Memo.Build.parallel_map alias_definitions ~f:(fun (loc, definition) ->
         let on_error exn = Dep_path.reraise exn (Alias (loc, alias)) in
@@ -1776,7 +1776,7 @@ end = struct
                 else (
                   if lifetime = Until_clean then
                     Promoted_to_delete.add in_source_tree;
-                  Scheduler.ignore_for_watch in_source_tree;
+                  let* () = Scheduler.ignore_for_watch in_source_tree in
                   (* The file in the build directory might be read-only if it
                      comes from the shared cache. However, we want the file in
                      the source tree to be writable by the user, so we
@@ -2043,7 +2043,7 @@ end = struct
 
   let () =
     Fdecl.set Rule_fn.loc_decl (fun () ->
-        let stack = Memo.get_call_stack () in
+        let+ stack = Memo.get_call_stack () in
         List.find_map stack ~f:(fun frame ->
             match
               Memo.Stack_frame.as_instance_of frame ~of_:execute_rule_memo
@@ -2128,8 +2128,10 @@ let package_deps (pkg : Package.t) files =
   loop_files (Path.Set.to_list files)
 
 let prefix_rules (prefix : unit Action_builder.t) ~f =
-  let+ res, rules = Rules.collect f in
-  Rules.produce (Rules.map_rules rules ~f:(Rule.with_prefix ~build:prefix));
+  let* res, rules = Rules.collect f in
+  let+ () =
+    Rules.produce (Rules.map_rules rules ~f:(Rule.with_prefix ~build:prefix))
+  in
   res
 
 module Alias = Alias0
@@ -2310,8 +2312,8 @@ end = struct
 end
 
 let load_dir_and_produce_its_rules ~dir =
-  load_dir ~dir >>| function
-  | Non_build _ -> ()
+  load_dir ~dir >>= function
+  | Non_build _ -> Memo.Build.return ()
   | Build loaded -> Rules.produce loaded.rules_produced
 
 let load_dir ~dir = load_dir_and_produce_its_rules ~dir

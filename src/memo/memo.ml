@@ -632,30 +632,30 @@ module Call_stack = struct
   let call_stack_var = Fiber.Var.create ()
 
   let get_call_stack () =
-    Fiber.Var.get call_stack_var |> Option.value ~default:[]
+    Fiber.Var.get call_stack_var >>| Option.value ~default:[]
 
   let get_call_stack_without_state () =
     get_call_stack ()
-    |> List.map ~f:(fun (Stack_frame_with_state.T t) ->
-           Dep_node_without_state.T t.without_state)
+    >>| List.map ~f:(fun (Stack_frame_with_state.T t) ->
+            Dep_node_without_state.T t.without_state)
 
-  let get_call_stack_tip () = List.hd_opt (get_call_stack ())
+  let get_call_stack_tip () = get_call_stack () >>| List.hd_opt
 
   let push_frame (frame : Stack_frame_with_state.t) f =
-    let stack = get_call_stack () in
+    let* stack = get_call_stack () in
     Fiber.Var.set call_stack_var (frame :: stack) (fun () ->
         Implicit_output.forbid f)
 end
 
 let pp_stack () =
   let open Pp.O in
-  let stack = Call_stack.get_call_stack () in
+  let+ stack = Call_stack.get_call_stack () in
   Pp.vbox
     (Pp.box (Pp.text "Memoized function stack:")
     ++ Pp.cut
     ++ Pp.chain stack ~f:(fun frame -> Dyn.pp (Stack_frame.to_dyn frame)))
 
-let dump_stack () = Format.eprintf "%a" Pp.to_fmt (pp_stack ())
+let dump_stack () = pp_stack () >>| Format.eprintf "%a" Pp.to_fmt
 
 let get_cached_value_in_current_cycle (dep_node : _ Dep_node.t) =
   match dep_node.last_cached_value with
@@ -678,7 +678,6 @@ module Cached_value = struct
             | None -> "(no value)"
             | Some _ -> "(old run)"
           in
-          dump_stack ();
           Code_error.raise
             ("Attempted to create a cached value based on some stale inputs "
            ^ reason)
@@ -722,8 +721,9 @@ end
    an [Error] if the new dependency would introduce a dependency cycle. *)
 let add_dep_from_caller (type i o) (dep_node : (i, o) Dep_node.t)
     (sample_attempt : _ Sample_attempt.t) =
-  match Call_stack.get_call_stack_tip () with
-  | None -> Ok ()
+  let* caller = Call_stack.get_call_stack_tip () in
+  match caller with
+  | None -> Fiber.return (Ok ())
   | Some (Stack_frame_with_state.T caller) -> (
     let deps_so_far_of_caller = caller.running_state.deps_so_far in
     match
@@ -732,7 +732,7 @@ let add_dep_from_caller (type i o) (dep_node : (i, o) Dep_node.t)
     | true ->
       Deps_so_far.add_dep deps_so_far_of_caller dep_node.without_state.id
         (Dep_node.T dep_node);
-      Ok ()
+      Fiber.return (Ok ())
     | false -> (
       let cycle_error =
         match sample_attempt with
@@ -744,17 +744,16 @@ let add_dep_from_caller (type i o) (dep_node : (i, o) Dep_node.t)
           with
           | () -> None
           | exception Dag.Cycle cycle ->
-            Some
-              { Cycle_error.stack = Call_stack.get_call_stack_without_state ()
-              ; cycle = List.map cycle ~f:(fun dag_node -> dag_node.Dag.data)
-              })
+            Some (List.map cycle ~f:(fun dag_node -> dag_node.Dag.data)))
       in
       match cycle_error with
       | None ->
         Deps_so_far.add_dep deps_so_far_of_caller dep_node.without_state.id
           (Dep_node.T dep_node);
-        Ok ()
-      | Some cycle_error -> Error cycle_error))
+        Fiber.return (Ok ())
+      | Some cycle ->
+        let+ stack = Call_stack.get_call_stack_without_state () in
+        Error { Cycle_error.stack; cycle }))
 
 type ('input, 'output) t =
   { spec : ('input, 'output) Spec.t
@@ -893,7 +892,8 @@ end = struct
                    check whether it is up to date: even if it isn't, after we
                    recompute it, the resulting [Value_id] may remain unchanged,
                    allowing us to skip recomputing [last_cached_value]. *)
-                match consider_and_compute dep with
+                consider_and_compute dep
+                >>= function
                 | Error dependency_cycle ->
                   Fiber.return (Changed_or_not.Cancelled { dependency_cycle })
                 | Ok cached_value -> (
@@ -1015,29 +1015,29 @@ end = struct
 
   and consider :
         'i 'o.    ('i, 'o) Dep_node.t
-        -> ('o Cached_value.t Sample_attempt.t, Cycle_error.t) result =
+        -> ('o Cached_value.t Sample_attempt.t, Cycle_error.t) result Fiber.t =
    fun dep_node ->
     let sample_attempt = start_considering dep_node in
     add_dep_from_caller dep_node sample_attempt
-    |> Result.map ~f:(fun () -> sample_attempt)
+    >>| Result.map ~f:(fun () -> sample_attempt)
 
   and consider_and_compute :
         'i 'o.    ('i, 'o) Dep_node.t
-        -> ('o Cached_value.t Fiber.t, Cycle_error.t) result =
-   fun dep_node -> Result.map (consider dep_node) ~f:Sample_attempt.compute
+        -> ('o Cached_value.t Fiber.t, Cycle_error.t) result Fiber.t =
+   fun dep_node -> consider dep_node >>| Result.map ~f:Sample_attempt.compute
 
   and consider_and_restore_from_cache :
         'i 'o.    ('i, 'o) Dep_node.t
         -> 'o Cached_value.t Cache_lookup.Result.t Fiber.t =
    fun dep_node ->
-    match consider dep_node with
+    consider dep_node >>= function
     | Ok sample_attempt -> Sample_attempt.restore sample_attempt
     | Error dependency_cycle ->
       Fiber.return (Error (Cache_lookup.Failure.Cancelled { dependency_cycle }))
 
   let exec_dep_node dep_node =
     Fiber.of_thunk (fun () ->
-        match consider_and_compute dep_node with
+        consider_and_compute dep_node >>= function
         | Ok res ->
           let* res = res in
           Value.get_exn res.value
@@ -1142,9 +1142,9 @@ module With_implicit_output = struct
           Implicit_output.collect implicit_output (fun () -> impl i))
     in
     fun input ->
-      Fiber.map (exec memo input) ~f:(fun (res, output) ->
-          Implicit_output.produce_opt implicit_output output;
-          res)
+      let* res, output = exec memo input in
+      let+ () = Implicit_output.produce_opt implicit_output output in
+      res
 
   let exec t = t
 end

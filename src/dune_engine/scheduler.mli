@@ -25,6 +25,10 @@ module Config : sig
     ; rpc : Dune_rpc.Where.t option
     ; stats : Stats.t option
     }
+
+  (** [add_to_env env] adds to [env] the environment variable that describes
+      where the current RPC server is listening (if it's running) *)
+  val add_to_env : t -> Env.t -> Env.t
 end
 
 module Run : sig
@@ -80,7 +84,7 @@ val wait_for_dune_cache : unit -> unit
 
     This is used with promoted files that are copied back to the source tree
     after generation *)
-val ignore_for_watch : Path.t -> unit
+val ignore_for_watch : Path.t -> unit Fiber.t
 
 (** Number of jobs currently running in the background *)
 val running_jobs_count : t -> int
@@ -93,8 +97,4 @@ val send_sync_task : (unit -> unit) -> unit
 val shutdown : unit -> unit Fiber.t
 
 (** Scheduler to create [Csexp_rpc] sessions *)
-val csexp_scheduler : unit -> Csexp_rpc.Scheduler.t
-
-(** [add_to_env env] adds to [env] the environment variable that describes where
-    the current RPC server is listening (if it's running) *)
-val add_to_env : Env.t -> Env.t
+val csexp_scheduler : unit -> Csexp_rpc.Scheduler.t Fiber.t

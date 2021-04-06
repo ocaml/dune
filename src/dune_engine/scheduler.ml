@@ -4,6 +4,7 @@ let on_error e =
 
 open! Stdune
 open Import
+open Fiber.O
 
 module Config = struct
   include Config
@@ -42,6 +43,11 @@ module Config = struct
     ; rpc : Dune_rpc.Where.t option
     ; stats : Stats.t option
     }
+
+  let add_to_env t env =
+    match t.rpc with
+    | None -> env
+    | Some where -> Dune_rpc.Where.add_to_env where env
 end
 
 type job =
@@ -711,20 +717,22 @@ type t =
   ; csexp_scheduler : Csexp_rpc.Scheduler.t Lazy.t
   }
 
-let t_var : t Fiber.Var.t = Fiber.Var.create ()
+let t : t Fiber.Var.t = Fiber.Var.create ()
 
-let t () = Fiber.return (Fiber.Var.get_exn t_var)
+let set x f = Fiber.Var.set t x f
+
+let t () = Fiber.Var.get_exn t
 
 let running_jobs_count t = Event.Queue.pending_jobs t.events
 
 let ignore_for_watch p =
-  let t = Fiber.Var.get_exn t_var in
+  let+ t = t () in
   Event.Queue.ignore_next_file_change_event t.events p
 
 exception Cancel_build
 
 let with_job_slot f =
-  let t = Fiber.Var.get_exn t_var in
+  let* t = t () in
   Fiber.Throttle.run t.job_throttle ~f:(fun () ->
       match t.status with
       | Restarting_build
@@ -860,9 +868,7 @@ end = struct
     )
 
   let run t f : _ result =
-    let fiber =
-      Fiber.Var.set t_var t (fun () -> Fiber.with_error_handler f ~on_error)
-    in
+    let fiber = set t (fun () -> Fiber.with_error_handler f ~on_error) in
     match Fiber.run fiber ~iter:(fun () -> iter t) with
     | res ->
       assert (Event.Queue.pending_jobs t.events = 0);
@@ -887,11 +893,9 @@ module Run = struct
   module Event = Handler.Event
 
   let poll step =
-    let open Fiber.O in
     let* t = t () in
     let rec loop () : unit Fiber.t =
       t.status <- Building;
-      let open Fiber.O in
       let* res =
         let on_error exn =
           (match t.status with
@@ -964,11 +968,11 @@ let send_sync_task d =
   Event.Queue.send_sync_task t.events d
 
 let wait_for_process pid =
-  let t = Fiber.Var.get_exn t_var in
+  let* t = t () in
   wait_for_process t pid
 
 let shutdown () =
-  let t = Fiber.Var.get_exn t_var in
+  let* t = t () in
   let fill_file_changes =
     match t.status with
     | Waiting_for_file_changes ivar -> Fiber.Ivar.fill ivar Shutdown_requested
@@ -978,11 +982,5 @@ let shutdown () =
   fill_file_changes
 
 let csexp_scheduler () =
-  let t = Fiber.Var.get_exn t_var in
+  let+ t = t () in
   Lazy.force t.csexp_scheduler
-
-let add_to_env env =
-  let t = Fiber.Var.get_exn t_var in
-  match t.config.rpc with
-  | None -> env
-  | Some where -> Dune_rpc.Where.add_to_env where env

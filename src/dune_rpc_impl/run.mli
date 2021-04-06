@@ -15,7 +15,7 @@ end
 
 type t
 
-val t : unit -> t
+val t : unit -> t Fiber.t
 
 val of_config : Config.t -> Csexp_rpc.Scheduler.t -> Stats.t option -> t
 

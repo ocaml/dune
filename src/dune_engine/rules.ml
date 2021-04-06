@@ -165,7 +165,7 @@ end
 
 let produce_dir ~dir rules =
   match Dir_rules.Nonempty.create rules with
-  | None -> ()
+  | None -> Memo.Build.return ()
   | Some rules -> produce (Path.Build.Map.singleton dir rules)
 
 let collect_opt f = Memo.Implicit_output.collect implicit_output f

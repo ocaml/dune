@@ -324,19 +324,19 @@ let make_rule t ?sandbox ?mode ?locks ?loc ~dir build =
     ~env:(Some env) build
 
 let add_rule t ?sandbox ?mode ?locks ?loc ~dir build =
-  let+ rule = make_rule t ?sandbox ?mode ?locks ?loc ~dir build in
+  let* rule = make_rule t ?sandbox ?mode ?locks ?loc ~dir build in
   Rules.Produce.rule rule
 
 let add_rule_get_targets t ?sandbox ?mode ?locks ?loc ~dir build =
-  let+ rule = make_rule t ?sandbox ?mode ?locks ?loc ~dir build in
-  Rules.Produce.rule rule;
+  let* rule = make_rule t ?sandbox ?mode ?locks ?loc ~dir build in
+  let+ () = Rules.Produce.rule rule in
   rule.action.targets
 
 let add_rules t ?sandbox ~dir builds =
   Memo.Build.parallel_iter builds ~f:(add_rule t ?sandbox ~dir)
 
 let add_alias_action t alias ~dir ~loc ?locks action =
-  let+ env = get_node t.env_tree ~dir >>= Env_node.external_env in
+  let* env = get_node t.env_tree ~dir >>= Env_node.external_env in
   Rules.Produce.Alias.add_action
     ~context:(Context.build_context t.context)
     ~env:(Some env) alias ~loc ?locks action

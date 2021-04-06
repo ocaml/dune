@@ -131,11 +131,7 @@ module Var : sig
       {[ set v x (get_exn v >>| fun y -> x = y) ]} *)
   val set : 'a t -> 'a -> (unit -> 'b fiber) -> 'b fiber
 
-  val set_sync : 'a t -> 'a -> (unit -> 'b) -> 'b
-
   val unset : 'a t -> (unit -> 'b fiber) -> 'b fiber
-
-  val unset_sync : 'a t -> (unit -> 'b) -> 'b
 end
 with type 'a fiber := 'a t
 

@@ -66,8 +66,6 @@ module Execution_context : sig
 
   val set_vars : Univ_map.t -> ('a -> 'b t) -> 'a -> 'b t
 
-  val set_vars_sync : Univ_map.t -> ('a -> 'b) -> 'a -> 'b
-
   val run : 'a t -> iter:(unit -> unit t) -> 'a
 
   val reraise_all : Exn_with_backtrace.t list -> unit
@@ -178,11 +176,6 @@ end = struct
     f x (fun x ->
         current := t;
         k x)
-
-  let set_vars_sync (type b) vars f x : b =
-    let t = !current in
-    current := { t with vars };
-    Exn.protect ~finally:(fun () -> current := t) ~f:(fun () -> f x)
 
   let apply f x k =
     let backup = !current in
@@ -459,12 +452,7 @@ module Var = struct
 
   let get_exn var = Univ_map.find_exn (EC.vars ()) var
 
-  let set_sync var x f = EC.set_vars_sync (Univ_map.set (EC.vars ()) var x) f ()
-
   let set var x f k = EC.set_vars (Univ_map.set (EC.vars ()) var x) f () k
-
-  let unset_sync var f =
-    EC.set_vars_sync (Univ_map.remove (EC.vars ()) var) f ()
 
   let unset var f k = EC.set_vars (Univ_map.remove (EC.vars ()) var) f () k
 

@@ -40,7 +40,7 @@ let run_build_command_once ~(common : Common.t) ~config ~targets ~setup =
   Scheduler.go ~common ~config once
 
 let run_build_command ~(common : Common.t) ~config ~targets =
-  let setup () = Import.Main.setup common config in
+  let setup () = Import.Main.setup () in
   (if Common.watch common then
     run_build_command_poll
   else

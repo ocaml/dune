@@ -18,7 +18,7 @@ let preprocessed_filename = "ccomp"
 let ccomp_type dir =
   let open Action_builder.O in
   let filepath =
-    Path.Build.(relative (relative dir ".dune") preprocessed_filename)
+    Path.Build.(relative (relative dir ".dune/ccomp") preprocessed_filename)
   in
   let+ ccomp = Action_builder.contents (Path.build filepath) in
   match String.trim ccomp with

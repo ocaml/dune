@@ -10,24 +10,28 @@ type build_system =
   ; scontexts : Super_context.t Context_name.Map.t
   }
 
-let init_build_system ~stats ~sandboxing_preference ~cache_config ~conf
-    ~contexts =
-  let open Fiber.O in
-  Build_system.reset ();
+let init ~stats ~sandboxing_preference ~cache_config =
   let promote_source ?chmod ~src ~dst ctx =
     let conf = Artifact_substitution.conf_of_context ctx in
     let src = Path.build src in
     let dst = Path.source dst in
     Artifact_substitution.copy_file ?chmod ~src ~dst ~conf ()
   in
-  let* () =
-    Build_system.init ~stats ~sandboxing_preference ~promote_source
-      ~contexts:(List.map ~f:Context.build_context contexts)
-      ~cache_config ()
-  in
-  List.iter contexts ~f:Context.init_configurator;
-  let+ scontexts = Gen_rules.init () in
-  { conf; contexts; scontexts }
+  Build_system.init ~stats ~sandboxing_preference ~promote_source
+    ~contexts:
+      (Memo.lazy_ (fun () ->
+           let open Memo.Build.O in
+           let+ contexts = Context.DB.all () in
+           List.map contexts ~f:Context.build_context))
+    ~cache_config
+    ~rule_generator:(module Gen_rules)
+
+let get () =
+  let open Memo.Build.O in
+  let* conf = Dune_load.load () in
+  let* contexts = Context.DB.all () in
+  let* scontexts = Memo.Lazy.force Super_context.all in
+  Memo.Build.return { conf; contexts; scontexts }
 
 let find_context_exn t ~name =
   match List.find t.contexts ~f:(fun c -> Context_name.equal c.name name) with

@@ -29,6 +29,7 @@ module Utop = Utop
 module Setup = Setup
 module Meta = Meta
 module Toplevel = Toplevel
+module Global = Global
 
 (* Only for tests *)
 module Scheme = Scheme

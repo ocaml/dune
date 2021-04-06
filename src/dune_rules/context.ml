@@ -758,7 +758,7 @@ module rec Instantiate : sig
   val instantiate : Context_name.t -> t list Memo.Build.t
 end = struct
   let instantiate_impl name : t list Memo.Build.t =
-    let* env = Memo.Run.Fdecl.get Global.env in
+    let env = Global.env () in
     let* workspace = Workspace.workspace () in
     let context =
       List.find_exn workspace.contexts ~f:(fun ctx ->

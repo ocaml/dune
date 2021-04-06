@@ -1188,23 +1188,7 @@ module Lazy = struct
   let map t ~f = create (fun () -> Fiber.map ~f (t ()))
 end
 
-module Run = struct
-  module Fdecl = struct
-    (* [Lazy.t] is the simplest way to create a node in the memoization dag. *)
-    type nonrec 'a t = 'a Fdecl.t Lazy.t
-
-    let create to_dyn =
-      lazy_ ~to_dyn:Fdecl.to_dyn (fun () ->
-          let+ (_ : Run.t) = current_run () in
-          Fdecl.create to_dyn)
-
-    let set t x = Lazy.force t >>| fun value -> Fdecl.set value x
-
-    let get t = Lazy.force t >>| Fdecl.get
-  end
-
-  include Run
-end
+module Run = Run
 
 module Poly (Function : sig
   type 'a input

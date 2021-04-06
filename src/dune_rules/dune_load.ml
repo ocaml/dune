@@ -208,26 +208,25 @@ module Source_tree_map_reduce =
     (Projects_and_dune_files)
 
 let load () =
-  let open Fiber.O in
+  let open Memo.Build.O in
   let+ projects, dune_files =
-    Memo.Build.run
-      (let f dir : Projects_and_dune_files.t Memo.Build.t =
-         let path = Source_tree.Dir.path dir in
-         let project = Source_tree.Dir.project dir in
-         let projects =
-           if Path.Source.equal path (Dune_project.root project) then
-             Appendable_list.singleton project
-           else
-             Appendable_list.empty
-         in
-         let dune_files =
-           match Source_tree.Dir.dune_file dir with
-           | None -> Appendable_list.empty
-           | Some d -> Appendable_list.singleton (path, project, d)
-         in
-         Memo.Build.return (projects, dune_files)
-       in
-       Source_tree_map_reduce.map_reduce ~traverse:Sub_dirs.Status.Set.all ~f)
+    let f dir : Projects_and_dune_files.t Memo.Build.t =
+      let path = Source_tree.Dir.path dir in
+      let project = Source_tree.Dir.project dir in
+      let projects =
+        if Path.Source.equal path (Dune_project.root project) then
+          Appendable_list.singleton project
+        else
+          Appendable_list.empty
+      in
+      let dune_files =
+        match Source_tree.Dir.dune_file dir with
+        | None -> Appendable_list.empty
+        | Some d -> Appendable_list.singleton (path, project, d)
+      in
+      Memo.Build.return (projects, dune_files)
+    in
+    Source_tree_map_reduce.map_reduce ~traverse:Sub_dirs.Status.Set.all ~f
   in
   let projects = Appendable_list.to_list projects in
   let packages =

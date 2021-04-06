@@ -178,6 +178,7 @@ let set_common ?log_file ?(recognize_jbuilder_projects = false) c =
          (Dune_engine.Execution_parameters.builtin_default
          |> Dune_rules.Workspace.update_execution_parameters w)
     |> S.set_recognize_jbuilder_projects recognize_jbuilder_projects);
+  Dune_rules.Global.init ~capture_outputs:c.capture_outputs;
   Clflags.debug_dep_path := c.debug_dep_path;
   Clflags.debug_findlib := c.debug_findlib;
   Clflags.debug_backtraces c.debug_backtraces;

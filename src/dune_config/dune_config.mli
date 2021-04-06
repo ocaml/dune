@@ -70,6 +70,7 @@ module type S = sig
     ; cache_duplication : Caching.Duplication.t field
     ; cache_trim_period : int field
     ; cache_trim_size : int64 field
+    ; swallow_stdout_on_success : bool field
     }
 end
 

@@ -148,7 +148,7 @@ let print_entering_message c =
     in
     Console.print [ Pp.verbatim (sprintf "Entering directory '%s'" dir) ]
 
-let set_common ?log_file c =
+let set_common ?log_file ?(recognize_jbuilder_projects = false) c =
   if c.root.dir <> Filename.current_dir_name then Sys.chdir c.root.dir;
   Path.set_root (normalize_path (Path.External.cwd ()));
   Path.Build.set_build_dir (Path.Build.Kind.of_string c.build_dir);
@@ -168,6 +168,16 @@ let set_common ?log_file c =
   in
   Dune_config.init config;
   Dune_util.Log.init () ?file:log_file;
+  Dune_engine.Source_tree.init
+    (let open Memo.Build.O in
+    let module S = Dune_engine.Source_tree.Settings in
+    let+ w = Dune_rules.Workspace.workspace () in
+    S.builtin_default
+    |> S.set_ancestor_vcs c.root.ancestor_vcs
+    |> S.set_execution_parameters
+         (Dune_engine.Execution_parameters.builtin_default
+         |> Dune_rules.Workspace.update_execution_parameters w)
+    |> S.set_recognize_jbuilder_projects recognize_jbuilder_projects);
   Clflags.debug_dep_path := c.debug_dep_path;
   Clflags.debug_findlib := c.debug_findlib;
   Clflags.debug_backtraces c.debug_backtraces;
@@ -606,6 +616,12 @@ let shared_with_config_file =
           ~docs
           ~env:(Arg.env_var ~doc "DUNE_CACHE_CHECK_PROBABILITY")
           ~doc)
+  and+ swallow_stdout_on_success =
+    Arg.(
+      value & flag
+      & info
+          [ "swallow-stdout-on-success" ]
+          ~doc:"Swallow the output of an action when it succeeds.")
   in
   { Dune_config.Partial.display
   ; concurrency
@@ -617,6 +633,7 @@ let shared_with_config_file =
   ; cache_duplication
   ; cache_trim_period = None
   ; cache_trim_size = None
+  ; swallow_stdout_on_success = Option.some_if swallow_stdout_on_success true
   }
 
 let term =

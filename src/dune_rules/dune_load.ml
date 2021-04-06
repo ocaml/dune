@@ -211,9 +211,8 @@ module Source_tree_map_reduce =
     (Memo.Build)
     (Vcses_projects_and_dune_files)
 
-let load ~ancestor_vcs =
+let load () =
   let open Fiber.O in
-  Source_tree.init ~ancestor_vcs ~recognize_jbuilder_projects:false;
   let+ vcs, projects, dune_files =
     Memo.Build.run
       (let f dir : Vcses_projects_and_dune_files.t Memo.Build.t =

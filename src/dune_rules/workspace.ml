@@ -649,3 +649,7 @@ let workspace =
       f
   in
   Memo.exec memo
+
+let update_execution_parameters t ep =
+  Execution_parameters.set_swallow_stdout_on_success
+    t.config.swallow_stdout_on_success ep

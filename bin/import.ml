@@ -81,8 +81,7 @@ module Main = struct
 
   let scan_workspace (common : Common.t) =
     let capture_outputs = Common.capture_outputs common in
-    let ancestor_vcs = (Common.root common).ancestor_vcs in
-    scan_workspace ~capture_outputs ~ancestor_vcs ()
+    scan_workspace ~capture_outputs ()
 
   let setup ?build_mutex common config =
     let open Fiber.O in

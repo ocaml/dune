@@ -70,11 +70,27 @@ module Dir : sig
   val to_dyn : t -> Dyn.t
 end
 
-(** [set source ~ancestor_vcs ~recognize_jbuilder_projects] set the root, the
-    default VCS, and if jbuilder project will be recognized. It must be called
-    before all other calls to the file tree. All of these settings can only be
-    set once per dune process *)
-val init : ancestor_vcs:Vcs.t option -> recognize_jbuilder_projects:bool -> unit
+module Settings : sig
+  (** Global source tree settings. *)
+  type t
+
+  val builtin_default : t
+
+  (** The default vcs. If there is no vcs at the root of the workspace, then
+      this is the vcs that will be used for the root. *)
+  val set_ancestor_vcs : Vcs.t option -> t -> t
+
+  (** Whether we recognise jbuilder projects. This is only set to [true] by the
+      upgrader. *)
+  val set_recognize_jbuilder_projects : bool -> t -> t
+
+  (** The default execution parameters. *)
+  val set_execution_parameters : Execution_parameters.t -> t -> t
+end
+
+(** Set the global settings for this module. This function must be called
+    exactly once at the beginning of the process. *)
+val init : Settings.t Memo.Build.t -> unit
 
 val root : unit -> Dir.t Memo.Build.t
 

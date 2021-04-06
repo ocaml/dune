@@ -1421,7 +1421,7 @@ end = struct
     let targets = rule.action.targets in
     let head_target = Path.Build.Set.choose_exn targets in
     let* action, deps = exec_build_request rule.action.build
-    and* exec_params =
+    and* execution_parameters =
       Source_tree.execution_parameters_of_dir
         (Path.Build.drop_build_context_exn dir)
     in
@@ -1641,7 +1641,7 @@ end = struct
                 let deps =
                   if
                     Execution_parameters.should_expand_aliases_when_sandboxing
-                      exec_params
+                      execution_parameters
                   then
                     Dep.Facts.paths deps
                   else
@@ -1664,7 +1664,7 @@ end = struct
                   in
                   let+ exec_result =
                     Action_exec.exec ~context ~env ~targets ~rule_loc:loc
-                      ~build_deps action
+                      ~build_deps ~execution_parameters action
                   in
                   Option.iter sandboxed ~f:copy_files_from_sandbox;
                   exec_result)
@@ -1673,7 +1673,8 @@ end = struct
             (* All went well, these targets are no longer pending *)
             pending_targets := Path.Build.Set.diff !pending_targets targets;
             let targets_digests =
-              compute_targets_digests_or_raise_error exec_params ~loc targets
+              compute_targets_digests_or_raise_error execution_parameters ~loc
+                targets
             in
             let targets_digest = digest_of_targets_digests targets_digests in
             let () =

@@ -29,10 +29,11 @@ let term =
              ouptut.")
   in
   let common = Common.set_print_directory common false in
-  let config = Common.set_common common ~log_file:No_log_file in
+  let config =
+    Common.set_common common ~log_file:No_log_file
+      ~recognize_jbuilder_projects:true
+  in
   Scheduler.go ~common ~config (fun () ->
-      Dune_engine.Source_tree.init ~recognize_jbuilder_projects:true
-        ~ancestor_vcs:None;
       match dump_config with
       | Some s -> Dune_rules.Merlin_server.dump s
       | None -> Dune_rules.Merlin_server.start ())
@@ -66,10 +67,11 @@ module Dump_dot_merlin = struct
               "The path to the folder of which the configuration should be \
                printed. Defaults to the current directory.")
     in
-    let config = Common.set_common common ~log_file:No_log_file in
+    let config =
+      Common.set_common common ~log_file:No_log_file
+        ~recognize_jbuilder_projects:true
+    in
     Scheduler.go ~common ~config (fun () ->
-        Dune_engine.Source_tree.init ~recognize_jbuilder_projects:true
-          ~ancestor_vcs:None;
         match path with
         | Some s -> Dune_rules.Merlin_server.dump_dot_merlin s
         | None -> Dune_rules.Merlin_server.dump_dot_merlin ".")

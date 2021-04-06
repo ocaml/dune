@@ -15,10 +15,7 @@ let info = Term.info "upgrade" ~doc ~man
 
 let term =
   let+ common = Common.term in
-  let config = Common.set_common common in
-  Scheduler.go ~common ~config (fun () ->
-      Dune_engine.Source_tree.init ~recognize_jbuilder_projects:true
-        ~ancestor_vcs:None;
-      Dune_upgrader.upgrade ())
+  let config = Common.set_common common ~recognize_jbuilder_projects:true in
+  Scheduler.go ~common ~config (fun () -> Dune_upgrader.upgrade ())
 
 let command = (term, info)

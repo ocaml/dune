@@ -37,7 +37,12 @@ module Io = struct
   type kind =
     | File of Path.t
     | Null
-    | Terminal
+    | Terminal of
+        { swallow_on_success : bool
+              (* This argument makes no sense for inputs, but it seems annoying
+                 to change, especially as this code is meant to change again in
+                 #4435. *)
+        }
 
   type status =
     | Keep_open
@@ -74,20 +79,23 @@ module Io = struct
     ; mutable status : status
     }
 
-  let terminal ch =
+  let terminal ch ~swallow_on_success =
     let fd = descr_of_channel ch in
-    { kind = Terminal
+    { kind = Terminal { swallow_on_success }
     ; mode = mode_of_channel ch
     ; fd = lazy fd
     ; channel = lazy ch
     ; status = Keep_open
     }
 
-  let stdout = terminal (Out_chan stdout)
+  let stdout_swallow_on_success =
+    terminal (Out_chan stdout) ~swallow_on_success:true
 
-  let stderr = terminal (Out_chan stderr)
+  let stdout = terminal (Out_chan stdout) ~swallow_on_success:false
 
-  let stdin = terminal (In_chan stdin)
+  let stderr = terminal (Out_chan stderr) ~swallow_on_success:false
+
+  let stdin = terminal (In_chan stdin) ~swallow_on_success:false
 
   let null (type a) (mode : a mode) : a t =
     let fd =
@@ -143,7 +151,7 @@ type purpose =
 
 let io_to_redirection_path (kind : Io.kind) =
   match kind with
-  | Terminal -> None
+  | Terminal _ -> None
   | Null -> Some (Path.to_string Config.dev_null)
   | File fn -> Some (Path.to_string fn)
 
@@ -158,7 +166,7 @@ let command_line_enclosers ~dir ~(stdout_to : Io.output Io.t)
   let suffix =
     match stdin_from.kind with
     | Null
-    | Terminal ->
+    | Terminal _ ->
       suffix
     | File fn -> suffix ^ " < " ^ quote fn
   in
@@ -526,22 +534,43 @@ let run_internal ?dir ?(stdout_to = Io.stdout) ?(stderr_to = Io.stderr)
           (args, None)
       in
       let argv = prog_str :: args in
-      let output_filename, stdout_to, stderr_to =
+      let swallow_on_success (out : Io.output Io.t) =
+        match out.kind with
+        | Terminal { swallow_on_success } -> swallow_on_success
+        | _ -> false
+      in
+      let swallow_stdout_on_success = swallow_on_success stdout_to in
+      let swallow_stderr_on_success = swallow_on_success stderr_to in
+      let (stdout_capture, stdout_to), (stderr_capture, stderr_to) =
         match (stdout_to.kind, stderr_to.kind) with
-        | Terminal, _
-        | _, Terminal
+        | Terminal _, _
+        | _, Terminal _
           when !Clflags.capture_outputs ->
-          let fn = Temp.create File ~prefix:"dune" ~suffix:".output" in
-          let terminal = Io.file fn Io.Out in
-          let get (out : Io.output Io.t) =
-            if out.kind = Terminal then (
-              Io.flush out;
-              terminal
-            ) else
-              out
+          let capture () =
+            let fn = Temp.create File ~prefix:"dune" ~suffix:".output" in
+            (`Capture fn, Io.file fn Io.Out)
           in
-          (Some fn, get stdout_to, get stderr_to)
-        | _ -> (None, stdout_to, stderr_to)
+          let stdout =
+            match stdout_to.kind with
+            | Terminal _ ->
+              Io.flush stdout_to;
+              capture ()
+            | _ -> (`No_capture, stdout_to)
+          in
+          let stderr =
+            match (stdout_to.kind, stderr_to.kind) with
+            | ( Terminal { swallow_on_success = a }
+              , Terminal { swallow_on_success = b } )
+              when Bool.equal a b ->
+              Io.flush stderr_to;
+              (`Merged_with_stdout, snd stdout)
+            | _, Terminal _ ->
+              Io.flush stderr_to;
+              capture ()
+            | _ -> (`No_capture, stderr_to)
+          in
+          (stdout, stderr)
+        | _ -> ((`No_capture, stdout_to), (`No_capture, stderr_to))
       in
       let event_common, pid =
         (* Output.fd might create the file with Unix.openfile. We need to make
@@ -577,29 +606,46 @@ let run_internal ?dir ?(stdout_to = Io.stdout) ?(stderr_to = Io.stderr)
       | None, None -> ()
       | _, _ -> assert false);
       Option.iter response_file ~f:Path.unlink;
-      let output =
-        match output_filename with
-        | None -> ""
-        | Some fn ->
-          let s = Stdune.Io.read_file fn in
-          Temp.destroy File fn;
-          s
-      in
-      Log.command ~command_line ~output ~exit_status;
-      let exit_status : Exit_status.t =
+      let exit_status' : Exit_status.t =
         match exit_status with
         | WEXITED n when ok_codes n -> Ok n
         | WEXITED n -> Error (Failed n)
         | WSIGNALED n -> Error (Signaled (Signal.name n))
         | WSTOPPED _ -> assert false
       in
-      match (display, exit_status, output) with
+      let success = Result.is_ok exit_status' in
+      let read_and_destroy fn ~swallow_on_success =
+        let s =
+          if success && swallow_on_success then
+            ""
+          else
+            Stdune.Io.read_file fn
+        in
+        Temp.destroy File fn;
+        s
+      in
+      let stdout =
+        match stdout_capture with
+        | `No_capture -> ""
+        | `Capture fn ->
+          read_and_destroy fn ~swallow_on_success:swallow_stdout_on_success
+      in
+      let stderr =
+        match stderr_capture with
+        | `No_capture -> ""
+        | `Capture fn ->
+          read_and_destroy fn ~swallow_on_success:swallow_stderr_on_success
+        | `Merged_with_stdout -> ""
+      in
+      let output = stdout ^ stderr in
+      Log.command ~command_line ~output ~exit_status;
+      match (display, exit_status', output) with
       | (Quiet | Progress), Ok n, "" -> n (* Optimisation for the common case *)
       | Verbose, _, _ ->
-        Exit_status.handle_verbose exit_status ~id
+        Exit_status.handle_verbose exit_status' ~id
           ~command_line:fancy_command_line ~output
       | _ ->
-        Exit_status.handle_non_verbose exit_status ~prog:prog_str ~command_line
+        Exit_status.handle_non_verbose exit_status' ~prog:prog_str ~command_line
           ~output ~purpose ~display)
 
 let run ?dir ?stdout_to ?stderr_to ?stdin_from ?env ?(purpose = Internal_job)

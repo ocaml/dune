@@ -135,6 +135,7 @@ type t =
   { name : Name.t
   ; root : Path.Source.t
   ; version : string option
+  ; dune_version : Dune_lang.Syntax.Version.t
   ; info : Package.Info.t
   ; packages : Package.t Package.Name.Map.t
   ; stanza_parser : Stanza.t list Dune_lang.Decoder.t
@@ -152,7 +153,6 @@ type t =
   ; format_config : Format_config.t option
   ; strict_package_deps : bool
   ; cram : bool
-  ; execution_parameters : Execution_parameters.t
   }
 
 let equal = ( == )
@@ -183,14 +183,13 @@ let dialects t = t.dialects
 
 let explicit_js_mode t = t.explicit_js_mode
 
-let execution_parameters t = t.execution_parameters
-
-let dune_version t = Execution_parameters.dune_version t.execution_parameters
+let dune_version t = t.dune_version
 
 let to_dyn
     { name
     ; root
     ; version
+    ; dune_version
     ; info
     ; project_file
     ; parsing_context = _
@@ -208,13 +207,13 @@ let to_dyn
     ; format_config
     ; strict_package_deps
     ; cram
-    ; execution_parameters
     } =
   let open Dyn.Encoder in
   record
     [ ("name", Name.to_dyn name)
     ; ("root", Path.Source.to_dyn root)
     ; ("version", (option string) version)
+    ; ("dune_version", Dune_lang.Syntax.Version.to_dyn dune_version)
     ; ("info", Package.Info.to_dyn info)
     ; ("project_file", Path.Source.to_dyn project_file)
     ; ( "packages"
@@ -231,7 +230,6 @@ let to_dyn
     ; ("format_config", option Format_config.to_dyn format_config)
     ; ("strict_package_deps", bool strict_package_deps)
     ; ("cram", bool cram)
-    ; ("execution_parameters", Execution_parameters.to_dyn execution_parameters)
     ]
 
 let find_extension_args t key = Univ_map.find t.extension_args key
@@ -494,6 +492,7 @@ let infer ~dir packages =
   ; root
   ; info = Package.Info.empty
   ; version = None
+  ; dune_version = lang.version
   ; implicit_transitive_deps
   ; wrapped_executables
   ; executables_implicit_empty_intf
@@ -513,7 +512,6 @@ let infer ~dir packages =
   ; format_config = None
   ; strict_package_deps
   ; cram
-  ; execution_parameters = Execution_parameters.make ~dune_version:lang.version
   }
 
 module Toggle = struct
@@ -759,6 +757,7 @@ let parse ~dir ~lang ~opam_packages ~file ~dir_status =
         ; file_key
         ; root
         ; version
+        ; dune_version
         ; info
         ; packages
         ; stanza_parser
@@ -775,7 +774,6 @@ let parse ~dir ~lang ~opam_packages ~file ~dir_status =
         ; format_config
         ; strict_package_deps
         ; cram
-        ; execution_parameters = Execution_parameters.make ~dune_version
         }))
 
 let load_dune_project ~dir opam_packages ~dir_status =
@@ -827,3 +825,6 @@ let strict_package_deps t = t.strict_package_deps
 let cram t = t.cram
 
 let info t = t.info
+
+let update_execution_parameters t ep =
+  Execution_parameters.set_dune_version t.dune_version ep

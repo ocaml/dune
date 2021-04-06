@@ -30,6 +30,7 @@ let%expect_test _ =
 ; cache_duplication = None
 ; cache_trim_period = 120
 ; cache_trim_size = 10000000000
+; swallow_stdout_on_success = false
 }
  |}]
 
@@ -75,6 +76,7 @@ let%expect_test _ =
 ; cache_duplication = None
 ; cache_trim_period = 600
 ; cache_trim_size = 2000
+; swallow_stdout_on_success = false
 }
  |}]
 

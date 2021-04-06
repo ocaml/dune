@@ -73,7 +73,7 @@ let runtest =
   let term =
     let+ common = Common.term
     and+ dirs = Arg.(value & pos_all string [ "." ] name_) in
-    let config = Common.set_common common in
+    let config = Common.init common in
     let targets (setup : Import.Main.build_system) =
       Memo.Build.return
       @@ List.map dirs ~f:(fun dir ->
@@ -114,7 +114,7 @@ let build =
       | [] -> [ Common.default_target common ]
       | _ :: _ -> targets
     in
-    let config = Common.set_common common in
+    let config = Common.init common in
     let targets setup =
       Target.resolve_targets_exn (Common.root common) config setup targets
     in

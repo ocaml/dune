@@ -29,7 +29,7 @@ let term =
          & info [] ~docv:"INPUT"
              ~doc:"Use $(docv) as the input to the function.")
      in
-     let config = Common.set_common common in
+     let config = Common.init common in
      let action =
        Scheduler.go ~common ~config (fun () ->
            let open Fiber.O in

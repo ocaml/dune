@@ -43,7 +43,7 @@ let term =
       value & flag
       & info [ "no-build" ] ~doc:"don't rebuild target before executing")
   and+ args = Arg.(value & pos_right 0 string [] (Arg.info [] ~docv:"ARGS")) in
-  let config = Common.set_common common in
+  let config = Common.init common in
   Scheduler.go ~common ~config (fun () ->
       let open Fiber.O in
       let* setup = Import.Main.setup common config in

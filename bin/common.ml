@@ -148,7 +148,7 @@ let print_entering_message c =
     in
     Console.print [ Pp.verbatim (sprintf "Entering directory '%s'" dir) ]
 
-let set_common ?log_file ?(recognize_jbuilder_projects = false) c =
+let init ?log_file ?(recognize_jbuilder_projects = false) c =
   if c.root.dir <> Filename.current_dir_name then Sys.chdir c.root.dir;
   Path.set_root (normalize_path (Path.External.cwd ()));
   Path.Build.set_build_dir (Path.Build.Kind.of_string c.build_dir);

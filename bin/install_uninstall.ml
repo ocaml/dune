@@ -378,7 +378,7 @@ let install_uninstall ~what =
               "Select context to install from. By default, install files from \
                all defined contexts.")
     and+ sections = Sections.term in
-    let config = Common.set_common ~log_file:No_log_file common in
+    let config = Common.init ~log_file:No_log_file common in
     Scheduler.go ~common ~config (fun () ->
         let open Fiber.O in
         let* workspace = Memo.Build.run (Import.Main.scan_workspace ()) in

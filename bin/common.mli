@@ -26,13 +26,13 @@ val default_target : t -> Arg.Dep.t
 
 val prefix_target : t -> string -> string
 
-(** [set_common] executes sequence of side-effecting actions to initialize
-    Dune's working environment based on the options determined in a [Common.t]
+(** [init] executes sequence of side-effecting actions to initialize Dune's
+    working environment based on the options determined in a [Common.t]
     record.contents.
 
     Return the final configuration, which is the same as the one returned in the
     [config] field of [Dune_rules.Workspace.workspace ()]) *)
-val set_common :
+val init :
      ?log_file:Dune_util.Log.File.t
   -> ?recognize_jbuilder_projects:bool
   -> t

@@ -19,7 +19,7 @@ let term =
   and+ ctx_name =
     Common.context_arg ~doc:{|Select context where to build/run utop.|}
   and+ args = Arg.(value & pos_right 0 string [] (Arg.info [] ~docv:"ARGS")) in
-  let config = Common.set_common common in
+  let config = Common.init common in
   if not (Path.is_directory (Path.of_string (Common.prefix_target common dir)))
   then
     User_error.raise

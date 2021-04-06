@@ -562,6 +562,7 @@ let run_internal ?dir ?(stdout_to = Io.stdout) ?(stderr_to = Io.stderr)
             | ( Terminal { swallow_on_success = a }
               , Terminal { swallow_on_success = b } )
               when Bool.equal a b ->
+              Io.flush stderr_to;
               (`Merged_with_stdout, snd stdout)
             | _, Terminal _ ->
               Io.flush stderr_to;

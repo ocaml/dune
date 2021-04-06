@@ -409,7 +409,7 @@ let filter_out_stanzas_from_hidden_packages ~visible_pkgs =
 
 let init ~contexts ?only_packages conf =
   let open Fiber.O in
-  let { Dune_load.dune_files; packages; projects; vcs } = conf in
+  let { Dune_load.dune_files; packages; projects } = conf in
   let packages = Option.value only_packages ~default:packages in
   let* sctxs =
     let open Memo.Build.O in
@@ -468,7 +468,7 @@ let init ~contexts ?only_packages conf =
             (Path.Build.Map.find map path)
             ~default:Package.Id.Set.empty)
   in
-  let* () =
+  let+ () =
     Build_system.set_rule_generators
       ~init:(fun () ->
         Context_name.Map.iter sctxs ~f:Odoc.init |> Memo.Build.return)
@@ -480,5 +480,4 @@ let init ~contexts ?only_packages conf =
           Context_name.Map.find sctxs ctx
           |> Option.map ~f:(fun sctx -> gen_rules ~sctx))
   in
-  let+ () = Build_system.set_vcs vcs in
   sctxs

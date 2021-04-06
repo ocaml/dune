@@ -433,47 +433,6 @@ let set_rule_generators ~init ~gen_rules =
   Fdecl.set t.init_rules init_rules;
   Fdecl.set t.gen_rules gen_rules
 
-let set_vcs vcs =
-  let open Fiber.O in
-  let t = t () in
-  let () = Fdecl.set t.vcs vcs in
-  match t.caching with
-  | None -> Fiber.return ()
-  | Some ({ cache = (module Caching); _ } as caching) ->
-    let+ caching =
-      let+ with_repositories =
-        let f ({ Vcs.root; _ } as vcs) =
-          let+ commit = Memo.Build.run (Vcs.commit_id vcs) in
-          { Cache.directory = Path.to_absolute_filename root
-          ; remote = "" (* FIXME: fill or drop from the protocol *)
-          ; commit
-          }
-        in
-        let+ repositories = Fiber.parallel_map ~f (Fdecl.get t.vcs) in
-        Caching.Cache.with_repositories Caching.cache repositories
-      in
-      match with_repositories with
-      | Result.Ok cache ->
-        let cache =
-          (module struct
-            let cache = cache
-
-            module Cache = Caching.Cache
-          end : Cache.Caching)
-        in
-        Some { caching with cache }
-      | Result.Error e ->
-        User_warning.emit
-          [ Pp.textf "Unable to set cache repositiories, disabling cache: %s" e
-          ];
-        None
-    in
-    t.caching <- caching
-
-let get_vcs () =
-  let t = t () in
-  Fdecl.get t.vcs
-
 let get_cache () =
   let t = t () in
   t.caching
@@ -1720,7 +1679,7 @@ end = struct
                           ])
               | _ -> ()
             in
-            let* () =
+            let () =
               (* Promote *)
               match t.caching with
               | Some { cache = (module Caching : Cache.Caching); _ }
@@ -1734,18 +1693,10 @@ end = struct
                   Log.info
                     [ Pp.textf "promotion failed for %s: %s" targets msg ]
                 in
-                let+ repository =
-                  let+ dir = Memo.Build.run (Rule.find_source_dir rule) in
-                  let open Option.O in
-                  let* vcs = Source_tree.Dir.vcs dir in
-                  let f found = Path.equal found.Vcs.root vcs.Vcs.root in
-                  let+ _, i = get_vcs () |> List.findi ~f in
-                  i
-                in
                 Caching.Cache.promote Caching.cache targets_digests rule_digest
-                  [] ~repository ~duplication:None
+                  [] ~repository:None ~duplication:None
                 |> Result.map_error ~f:report |> ignore
-              | _ -> Fiber.return ()
+              | _ -> ()
             in
             let dynamic_deps_stages =
               List.map exec_result.dynamic_deps_stages

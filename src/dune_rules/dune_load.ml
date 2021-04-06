@@ -181,7 +181,6 @@ type conf =
   { dune_files : Dune_files.t
   ; packages : Package.t Package.Name.Map.t
   ; projects : Dune_project.t list
-  ; vcs : Vcs.t list
   }
 
 let interpret ~dir ~project ~(dune_file : Source_tree.Dune_file.t) =
@@ -194,11 +193,8 @@ let interpret ~dir ~project ~(dune_file : Source_tree.Dune_file.t) =
     Dune_files.Script { script = { dir; project; file }; from_parent = static }
   | Plain -> Literal (Dune_file.parse static ~dir ~file ~project)
 
-module Vcses_projects_and_dune_files =
-  Monoid.Product3
-    (Monoid.Appendable_list (struct
-      type t = Vcs.t
-    end))
+module Projects_and_dune_files =
+  Monoid.Product
     (Monoid.Appendable_list (struct
       type t = Dune_project.t
     end))
@@ -209,20 +205,14 @@ module Vcses_projects_and_dune_files =
 module Source_tree_map_reduce =
   Source_tree.Make_map_reduce_with_progress
     (Memo.Build)
-    (Vcses_projects_and_dune_files)
+    (Projects_and_dune_files)
 
 let load () =
   let open Fiber.O in
-  let+ vcs, projects, dune_files =
+  let+ projects, dune_files =
     Memo.Build.run
-      (let f dir : Vcses_projects_and_dune_files.t Memo.Build.t =
+      (let f dir : Projects_and_dune_files.t Memo.Build.t =
          let path = Source_tree.Dir.path dir in
-         let vcs =
-           match Source_tree.Dir.vcs dir with
-           | Some vcs when Path.equal vcs.root (Path.source path) ->
-             Appendable_list.singleton vcs
-           | _ -> Appendable_list.empty
-         in
          let project = Source_tree.Dir.project dir in
          let projects =
            if Path.Source.equal path (Dune_project.root project) then
@@ -235,13 +225,9 @@ let load () =
            | None -> Appendable_list.empty
            | Some d -> Appendable_list.singleton (path, project, d)
          in
-         Memo.Build.return (vcs, projects, dune_files)
+         Memo.Build.return (projects, dune_files)
        in
        Source_tree_map_reduce.map_reduce ~traverse:Sub_dirs.Status.Set.all ~f)
-  in
-  let vcs =
-    Appendable_list.to_list vcs
-    |> Path.Map.of_list_map_exn ~f:(fun vcs -> (vcs.Vcs.root, vcs))
   in
   let projects = Appendable_list.to_list projects in
   let packages =
@@ -266,4 +252,4 @@ let load () =
     List.map (Appendable_list.to_list dune_files)
       ~f:(fun (dir, project, dune_file) -> interpret ~dir ~project ~dune_file)
   in
-  { dune_files; packages; projects; vcs = Path.Map.values vcs }
+  { dune_files; packages; projects }

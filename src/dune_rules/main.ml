@@ -11,7 +11,7 @@ type build_system =
   }
 
 let init_build_system ~stats ~only_packages ~sandboxing_preference ~caching
-    ~build_mutex ~conf ~contexts =
+    ~conf ~contexts =
   let open Fiber.O in
   Build_system.reset ();
   let promote_source ?chmod ~src ~dst ctx =
@@ -23,7 +23,7 @@ let init_build_system ~stats ~only_packages ~sandboxing_preference ~caching
   let* () =
     Build_system.init ~stats ~sandboxing_preference ~promote_source
       ~contexts:(List.map ~f:Context.build_context contexts)
-      ?caching ?build_mutex ()
+      ?caching ()
   in
   List.iter contexts ~f:Context.init_configurator;
   let+ scontexts = Gen_rules.init conf ~contexts ~only_packages in

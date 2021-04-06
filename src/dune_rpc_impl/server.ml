@@ -92,7 +92,6 @@ end
 
 type t =
   { config : Run.Config.t
-  ; build_mutex : Fiber.Mutex.t
   ; pending_build_jobs : (Dep_conf.t list * Status.t Fiber.Ivar.t) Queue.t
   ; pool : Fiber.Pool.t
   ; mutable subscribers : Subscribers.t
@@ -210,18 +209,14 @@ let create () =
   let handler = Dune_rpc_server.make (handler t) in
   let pool = Fiber.Pool.create () in
   let config = Run.Config.Server { handler; backlog = 10; pool } in
-  let build_mutex = Fiber.Mutex.create () in
   Fdecl.set t
     { config
-    ; build_mutex
     ; pending_build_jobs
     ; subscribers = Subscribers.empty
     ; clients = Session_set.empty
     ; pool
     };
   Fdecl.get t
-
-let build_mutex t = t.build_mutex
 
 let config t = t.config
 

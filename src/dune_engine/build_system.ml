@@ -399,7 +399,7 @@ type t =
       -> Build_context.t option
       -> unit Fiber.t
   ; locks : (Path.t, Fiber.Mutex.t) Table.t
-  ; build_mutex : Fiber.Mutex.t option
+  ; build_mutex : Fiber.Mutex.t
   ; stats : Stats.t option
   }
 
@@ -2153,9 +2153,7 @@ let run f =
     Memo.Build.run
       (Memo.Build.with_error_handler f ~on_error:process_exn_and_reraise)
   in
-  match t.build_mutex with
-  | None -> f ()
-  | Some m -> Fiber.Mutex.with_lock m f
+  Fiber.Mutex.with_lock t.build_mutex f
 
 let build request =
   let+ result, _deps = exec_build_request request in
@@ -2318,8 +2316,7 @@ let load_dir_and_produce_its_rules ~dir =
 
 let load_dir ~dir = load_dir_and_produce_its_rules ~dir
 
-let init ~stats ~contexts ?build_mutex ~promote_source ?caching
-    ~sandboxing_preference () =
+let init ~stats ~contexts ~promote_source ?caching ~sandboxing_preference () =
   let contexts =
     Context_name.Map.of_list_map_exn contexts ~f:(fun c ->
         (c.Build_context.name, c))
@@ -2360,7 +2357,7 @@ let init ~stats ~contexts ?build_mutex ~promote_source ?caching
          mutexes. *)
       locks = Table.create (module Path) 32
     ; promote_source
-    ; build_mutex
+    ; build_mutex = Fiber.Mutex.create ()
     ; stats
     }
   in

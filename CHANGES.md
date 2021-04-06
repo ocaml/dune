@@ -84,6 +84,9 @@ Unreleased
 - Fields allowed in the config file are now also allowed in the
   workspace file (#4426, @jeremiedimino)
 
+- Add an option to swallow the output of actions when they succeed, to
+  reduce noise of large builds (#4422, @jeremiedimino)
+
 2.8.5 (28/03/2021)
 ------------------
 

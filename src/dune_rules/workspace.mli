@@ -108,3 +108,8 @@ val workspace : unit -> t Memo.Build.t
 (** Same as [workspace ()] except that if there are errors related to fields
     other than the ones of [config], they are not reported. *)
 val workspace_config : unit -> Dune_config.t Memo.Build.t
+
+(** Update the execution parameters according to what is written in the
+    [dune-workspace] file. *)
+val update_execution_parameters :
+  t -> Execution_parameters.t -> Execution_parameters.t

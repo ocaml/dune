@@ -353,43 +353,34 @@ module Dir0 = struct
         Path.Source.Set.add acc (Path.Source.relative t.path s))
 end
 
-module Settings : sig
+module Settings = struct
   type t =
     { ancestor_vcs : Vcs.t option
     ; recognize_jbuilder_projects : bool
+    ; execution_parameters : Execution_parameters.t
     }
 
-  val set : t -> unit
-
-  val get : unit -> t Memo.Build.t
-end = struct
-  type t =
-    { ancestor_vcs : Vcs.t option
-    ; recognize_jbuilder_projects : bool
+  let builtin_default =
+    { ancestor_vcs = None
+    ; recognize_jbuilder_projects = false
+    ; execution_parameters = Execution_parameters.builtin_default
     }
 
-  let equal { ancestor_vcs; recognize_jbuilder_projects } y =
-    Option.equal Vcs.equal ancestor_vcs y.ancestor_vcs
-    && Bool.equal recognize_jbuilder_projects y.recognize_jbuilder_projects
+  let set_ancestor_vcs x t = { t with ancestor_vcs = x }
 
-  let to_dyn { ancestor_vcs; recognize_jbuilder_projects } =
-    let open Dyn.Encoder in
-    record
-      [ ("ancestor_vcs", option Vcs.to_dyn ancestor_vcs)
-      ; ("recognize_jbuilder_projects", bool recognize_jbuilder_projects)
-      ]
+  let set_recognize_jbuilder_projects x t =
+    { t with recognize_jbuilder_projects = x }
 
-  let t = Fdecl.create to_dyn
+  let set_execution_parameters x t = { t with execution_parameters = x }
 
-  let set x = Fdecl.set_idempotent ~equal t x
+  let t : t Memo.Build.t Fdecl.t = Fdecl.create Dyn.Encoder.opaque
 
-  let get () =
-    let+ (_ : Memo.Run.t) = Memo.current_run () in
-    Fdecl.get t
+  let set x = Fdecl.set t x
+
+  let get () = Fdecl.get t
 end
 
-let init ~ancestor_vcs ~recognize_jbuilder_projects =
-  Settings.set { ancestor_vcs; recognize_jbuilder_projects }
+let init = Settings.set
 
 module rec Memoized : sig
   val root : unit -> Dir0.t Memo.Build.t
@@ -677,8 +668,10 @@ let nearest_dir path =
 
 let execution_parameters_of_dir =
   let f path =
-    let+ dir = nearest_dir path in
-    Dune_project.execution_parameters (Dir0.project dir)
+    let+ dir = nearest_dir path
+    and+ settings = Settings.get () in
+    settings.execution_parameters
+    |> Dune_project.update_execution_parameters (Dir0.project dir)
   in
   let memo =
     Memo.create "execution-parameters-of-dir"

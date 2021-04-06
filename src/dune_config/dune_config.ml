@@ -146,6 +146,7 @@ module type S = sig
     ; cache_duplication : Caching.Duplication.t field
     ; cache_trim_period : int field
     ; cache_trim_size : int64 field
+    ; swallow_stdout_on_success : bool field
     }
 end
 
@@ -171,6 +172,8 @@ struct
     ; cache_duplication = field a.cache_duplication b.cache_duplication
     ; cache_trim_period = field a.cache_trim_period b.cache_trim_period
     ; cache_trim_size = field a.cache_trim_size b.cache_trim_size
+    ; swallow_stdout_on_success =
+        field a.swallow_stdout_on_success b.swallow_stdout_on_success
     }
 end
 
@@ -192,6 +195,7 @@ struct
       ; cache_duplication
       ; cache_trim_period
       ; cache_trim_size
+      ; swallow_stdout_on_success
       } =
     Dyn.Encoder.record
       [ ("display", field Scheduler.Config.Display.to_dyn display)
@@ -210,6 +214,8 @@ struct
             cache_duplication )
       ; ("cache_trim_period", field Dyn.Encoder.int cache_trim_period)
       ; ("cache_trim_size", field Dyn.Encoder.int64 cache_trim_size)
+      ; ( "swallow_stdout_on_success"
+        , field Dyn.Encoder.bool swallow_stdout_on_success )
       ]
 end
 
@@ -233,6 +239,7 @@ module Partial = struct
     ; cache_trim_period = None
     ; cache_trim_size = None
     ; cache_duplication = None
+    ; swallow_stdout_on_success = None
     }
 
   include
@@ -288,6 +295,7 @@ let default =
   ; cache_trim_period = 10 * 60
   ; cache_trim_size = 10_000_000_000L
   ; cache_duplication = None
+  ; swallow_stdout_on_success = false
   }
 
 let decode_generic ~min_dune_version =
@@ -313,6 +321,9 @@ let decode_generic ~min_dune_version =
     field_o "cache-trim-period" (2, 0) Dune_lang.Decoder.duration
   and+ cache_trim_size =
     field_o "cache-trim-size" (2, 0) Dune_lang.Decoder.bytes_unit
+  and+ swallow_stdout_on_success =
+    field_o_b "swallow-stdout-on-success"
+      ~check:(Dune_lang.Syntax.since Stanza.syntax (3, 0))
   in
   { Partial.display
   ; concurrency
@@ -324,6 +335,7 @@ let decode_generic ~min_dune_version =
   ; cache_duplication
   ; cache_trim_period
   ; cache_trim_size
+  ; swallow_stdout_on_success
   }
 
 let decode =

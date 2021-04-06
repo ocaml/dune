@@ -33,5 +33,6 @@ val exec :
   -> env:Env.t
   -> rule_loc:Loc.t
   -> build_deps:(Dep.Set.t -> Dep.Fact.t Dep.Map.t Fiber.t)
+  -> execution_parameters:Execution_parameters.t
   -> Action.t
   -> Exec_result.t Fiber.t

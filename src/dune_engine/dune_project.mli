@@ -169,4 +169,7 @@ val cram : t -> bool
 
 val info : t -> Package.Info.t
 
-val execution_parameters : t -> Execution_parameters.t
+(** Update the execution parameters according to what is written in the
+    [dune-project] file. *)
+val update_execution_parameters :
+  t -> Execution_parameters.t -> Execution_parameters.t

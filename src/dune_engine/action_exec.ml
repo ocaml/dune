@@ -516,13 +516,18 @@ let exec_until_all_deps_ready ~ectx ~eenv t =
   let+ () = loop ~eenv in
   Exec_result.{ dynamic_deps_stages = List.rev !stages }
 
-let exec ~targets ~context ~env ~rule_loc ~build_deps t =
+let exec ~targets ~context ~env ~rule_loc ~build_deps ~execution_parameters t =
   let purpose = Process.Build_job targets in
   let ectx = { targets; purpose; context; rule_loc; build_deps }
   and eenv =
     { working_dir = Path.root
     ; env
-    ; stdout_to = Process.Io.stdout
+    ; stdout_to =
+        (if Execution_parameters.swallow_stdout_on_success execution_parameters
+        then
+          Process.Io.stdout_swallow_on_success
+        else
+          Process.Io.stdout)
     ; stderr_to = Process.Io.stderr
     ; stdin_from = Process.Io.null In
     ; prepared_dependencies = DAP.Dependency.Set.empty

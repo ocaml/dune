@@ -24,6 +24,10 @@ module Io : sig
 
   val stdout : output t
 
+  (** Same as [stdout], but drop it rather than redirect it to the terminal if
+      the command succeeds. *)
+  val stdout_swallow_on_success : output t
+
   val stderr : output t
 
   val stdin : input t

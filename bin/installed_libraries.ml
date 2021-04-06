@@ -13,7 +13,7 @@ let term =
       & info [ "na"; "not-available" ]
           ~doc:"List libraries that are not available and explain why")
   in
-  let config = Common.set_common common in
+  let config = Common.init common in
   Scheduler.go ~common ~config (fun () ->
       let open Fiber.O in
       let* ctxs = Memo.Build.run (Context.DB.all ()) in

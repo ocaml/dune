@@ -29,7 +29,7 @@ let term =
   and+ ctx_name =
     Common.context_arg ~doc:{|Select context where to build/run utop.|}
   in
-  let config = Common.set_common common in
+  let config = Common.init common in
   Scheduler.go ~common ~config (fun () ->
       let open Fiber.O in
       let* setup = Import.Main.setup common config in

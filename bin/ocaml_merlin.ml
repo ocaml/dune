@@ -30,8 +30,7 @@ let term =
   in
   let common = Common.set_print_directory common false in
   let config =
-    Common.set_common common ~log_file:No_log_file
-      ~recognize_jbuilder_projects:true
+    Common.init common ~log_file:No_log_file ~recognize_jbuilder_projects:true
   in
   Scheduler.go ~common ~config (fun () ->
       match dump_config with
@@ -68,8 +67,7 @@ module Dump_dot_merlin = struct
                printed. Defaults to the current directory.")
     in
     let config =
-      Common.set_common common ~log_file:No_log_file
-        ~recognize_jbuilder_projects:true
+      Common.init common ~log_file:No_log_file ~recognize_jbuilder_projects:true
     in
     Scheduler.go ~common ~config (fun () ->
         match path with

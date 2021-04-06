@@ -407,7 +407,7 @@ let filter_out_stanzas_from_hidden_packages ~visible_pkgs =
           Dune_file.Library_redirect redirect
         | _ -> None)
 
-let init ~contexts ?only_packages conf =
+let init ~contexts ~only_packages conf =
   let open Fiber.O in
   let { Dune_load.dune_files; packages; projects } = conf in
   let packages = Option.value only_packages ~default:packages in

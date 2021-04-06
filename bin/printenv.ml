@@ -51,7 +51,7 @@ let term =
       let open Fiber.O in
       let* setup = Import.Main.setup common config in
       let dir = Path.of_string dir in
-      let checked = Util.check_path setup.workspace.contexts dir in
+      let checked = Util.check_path setup.contexts dir in
       let request =
         Action_builder.all
           (match checked with

@@ -80,7 +80,7 @@ let runtest =
              let dir = Path.(relative root) (Common.prefix_target common dir) in
              Target.Alias
                (Alias.in_dir ~name:Dune_engine.Alias.Name.runtest
-                  ~recursive:true ~contexts:setup.workspace.contexts dir))
+                  ~recursive:true ~contexts:setup.contexts dir))
     in
     run_build_command ~common ~config ~targets
   in

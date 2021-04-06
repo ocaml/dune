@@ -54,7 +54,7 @@ let target_hint (_setup : Dune_rules.Main.build_system) path =
   User_message.did_you_mean (Path.to_string path) ~candidates
 
 let resolve_path path ~(setup : Dune_rules.Main.build_system) =
-  let checked = Util.check_path setup.workspace.contexts path in
+  let checked = Util.check_path setup.contexts path in
   let can't_build path =
     let+ hint = target_hint setup path in
     Error hint
@@ -65,7 +65,7 @@ let resolve_path path ~(setup : Dune_rules.Main.build_system) =
       Some
         [ Alias
             (Alias.in_dir ~name:Dune_engine.Alias.Name.default ~recursive:true
-               ~contexts:setup.workspace.contexts path)
+               ~contexts:setup.contexts path)
         ]
     | false -> None
   in
@@ -80,7 +80,7 @@ let resolve_path path ~(setup : Dune_rules.Main.build_system) =
     as_source_dir src >>= function
     | Some res -> Memo.Build.return (Ok res)
     | None -> (
-      Memo.Build.parallel_map setup.workspace.contexts ~f:(fun ctx ->
+      Memo.Build.parallel_map setup.contexts ~f:(fun ctx ->
           let path =
             Path.append_source (Path.build ctx.Context.build_dir) src
           in
@@ -119,10 +119,7 @@ let expand_path (root : Workspace_root.t)
 let resolve_alias root ~recursive sv ~(setup : Dune_rules.Main.build_system) =
   match Dune_engine.String_with_vars.text_only sv with
   | Some s ->
-    Ok
-      [ Alias
-          (Alias.of_string root ~recursive s ~contexts:setup.workspace.contexts)
-      ]
+    Ok [ Alias (Alias.of_string root ~recursive s ~contexts:setup.contexts) ]
   | None -> Error [ Pp.text "alias cannot contain variables" ]
 
 let resolve_target root ~setup = function
@@ -142,7 +139,7 @@ let resolve_target root ~setup = function
       resolve_path path ~setup
       >>| Result.map_error ~f:(fun hints -> (dep, hints))
     in
-    Memo.Build.parallel_map setup.workspace.contexts ~f
+    Memo.Build.parallel_map setup.contexts ~f
     >>| Result.List.concat_map ~f:Fun.id
   | dep -> Memo.Build.return (Error (dep, []))
 

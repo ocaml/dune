@@ -381,7 +381,7 @@ let install_uninstall ~what =
     let config = Common.set_common ~log_file:No_log_file common in
     Scheduler.go ~common ~config (fun () ->
         let open Fiber.O in
-        let* workspace = Import.Main.scan_workspace common in
+        let* workspace = Memo.Build.run (Import.Main.scan_workspace ()) in
         let contexts =
           match context with
           | None -> workspace.contexts

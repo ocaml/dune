@@ -79,14 +79,12 @@ let make_cache (config : Dune_config.t) =
 module Main = struct
   include Dune_rules.Main
 
-  let scan_workspace (common : Common.t) =
-    let capture_outputs = Common.capture_outputs common in
-    scan_workspace ~capture_outputs ()
+  let scan_workspace = scan_workspace
 
   let setup ?build_mutex common config =
     let open Fiber.O in
     let* caching = make_cache config in
-    let* workspace = scan_workspace common in
+    let* workspace = Memo.Build.run (scan_workspace ()) in
     let* only_packages =
       match Common.only_packages common with
       | None -> Fiber.return None

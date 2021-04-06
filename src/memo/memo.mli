@@ -262,23 +262,6 @@ val call : string -> Dune_lang.Ast.t -> Dyn.t Build.t
 module Run : sig
   (** A single build run. *)
   type t
-
-  (** A forward declaration that is reset after every run. *)
-  module Fdecl : sig
-    type 'a t
-
-    (** [create to_dyn] creates a forward declaration. The [to_dyn] parameter is
-        used for reporting errors in [set] and [get]. *)
-    val create : ('a -> Dyn.t) -> 'a t
-
-    (** [set t x] sets the value that is returned by [get t] to [x]. Raises if
-        [set] was already called. *)
-    val set : 'a t -> 'a -> unit Build.t
-
-    (** [get t] returns the [x] if [set comp x] was called. Raises if [set] has
-        not been called yet. *)
-    val get : 'a t -> 'a Build.t
-  end
 end
 
 (** Introduces a dependency on the current build run. *)

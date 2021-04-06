@@ -19,5 +19,5 @@ type conf = private
   ; projects : Dune_project.t list
   }
 
-(** Initialize the file tree and load all dune files. *)
-val load : unit -> conf Fiber.t
+(** Load all dune files. *)
+val load : unit -> conf Memo.Build.t

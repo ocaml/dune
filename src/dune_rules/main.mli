@@ -5,7 +5,6 @@ open! Import
 type workspace =
   { contexts : Context.t list
   ; conf : Dune_load.conf
-  ; env : Env.t
   }
 
 type build_system =
@@ -18,7 +17,7 @@ val package_install_file :
   workspace -> Package.Name.t -> (Path.Source.t, unit) result
 
 (** Scan the source tree and discover the overall layout of the workspace. *)
-val scan_workspace : capture_outputs:bool -> unit -> workspace Fiber.t
+val scan_workspace : unit -> workspace Memo.Build.t
 
 (** Load dune files and initializes the build system *)
 val init_build_system :
@@ -33,6 +32,3 @@ val init_build_system :
 val find_context_exn : workspace -> name:Context_name.t -> Context.t
 
 val find_scontext_exn : build_system -> name:Context_name.t -> Super_context.t
-
-(** Setup the environment *)
-val setup_env : capture_outputs:bool -> Env.t Fiber.t

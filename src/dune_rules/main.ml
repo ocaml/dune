@@ -1,14 +1,12 @@
 open! Dune_engine
 open! Stdune
 open Import
-open Fiber.O
 
 let () = Inline_tests.linkme
 
 type workspace =
   { contexts : Context.t list
   ; conf : Dune_load.conf
-  ; env : Env.t
   }
 
 type build_system =
@@ -26,33 +24,17 @@ let package_install_file w pkg =
       (Path.Source.relative dir
          (Utils.install_file ~package:name ~findlib_toolchain:None))
 
-let setup_env ~capture_outputs =
-  let env =
-    let env =
-      if
-        (not capture_outputs)
-        || not (Lazy.force Ansi_color.stderr_supports_color)
-      then
-        Env.initial
-      else
-        Colors.setup_env_for_colors Env.initial
-    in
-    Env.add env ~var:"INSIDE_DUNE" ~value:"1"
-  in
-  let+ () = Memo.Build.run (Memo.Run.Fdecl.set Global.env env) in
-  env
-
-let scan_workspace ~capture_outputs () =
-  let* env = setup_env ~capture_outputs in
+let scan_workspace () =
+  let open Memo.Build.O in
   let* conf = Dune_load.load () in
-  let+ contexts = Memo.Build.run (Context.DB.all ()) in
+  let+ contexts = Context.DB.all () in
   List.iter contexts ~f:(fun (ctx : Context.t) ->
       let open Pp.O in
       Log.info
         [ Pp.box ~indent:1
             (Pp.text "Dune context:" ++ Pp.cut ++ Dyn.pp (Context.to_dyn ctx))
         ]);
-  { contexts; conf; env }
+  { contexts; conf }
 
 let init_build_system ?stats ?only_packages ~sandboxing_preference ?caching
     ?build_mutex w =

@@ -23,7 +23,6 @@ end
 val init :
      stats:Stats.t option
   -> contexts:Build_context.t list
-  -> ?build_mutex:Fiber.Mutex.t
   -> promote_source:
        (   ?chmod:(int -> int)
         -> src:Path.Build.t

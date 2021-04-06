@@ -24,8 +24,6 @@ end
 
 val create : unit -> t
 
-val build_mutex : t -> Fiber.Mutex.t
-
 val config : t -> Run.Config.t
 
 type pending_build_action =

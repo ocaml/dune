@@ -14,7 +14,6 @@ val init_build_system :
   -> only_packages:Package.t Package.Name.Map.t option
   -> sandboxing_preference:Sandbox_mode.t list
   -> caching:Build_system.caching option
-  -> build_mutex:Fiber.Mutex.t option
   -> conf:Dune_load.conf
   -> contexts:Context.t list
   -> build_system Fiber.t

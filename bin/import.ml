@@ -79,7 +79,7 @@ let make_cache (config : Dune_config.t) =
 module Main = struct
   include Dune_rules.Main
 
-  let setup ?build_mutex common config =
+  let setup common config =
     let open Fiber.O in
     let* caching = make_cache config
     and* conf = Memo.Build.run (Dune_rules.Dune_load.load ())
@@ -128,7 +128,7 @@ module Main = struct
               (Pp.text "Dune context:" ++ Pp.cut ++ Dyn.pp (Context.to_dyn ctx))
           ]);
     init_build_system ~stats ~sandboxing_preference:config.sandboxing_preference
-      ~caching ~build_mutex ~only_packages ~conf ~contexts
+      ~caching ~only_packages ~conf ~contexts
 end
 
 module Scheduler = struct

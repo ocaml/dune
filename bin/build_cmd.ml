@@ -1,11 +1,6 @@
 open Stdune
 open Import
 
-let make_setup common config =
-  let rpc = Common.rpc common in
-  let build_mutex = Option.map rpc ~f:Dune_rpc_impl.Server.build_mutex in
-  Import.Main.setup ?build_mutex common config
-
 let run_build_command_poll ~(common : Common.t) ~config ~targets ~setup =
   let open Fiber.O in
   let every () =
@@ -45,7 +40,7 @@ let run_build_command_once ~(common : Common.t) ~config ~targets ~setup =
   Scheduler.go ~common ~config once
 
 let run_build_command ~(common : Common.t) ~config ~targets =
-  let setup () = make_setup common config in
+  let setup () = Import.Main.setup common config in
   (if Common.watch common then
     run_build_command_poll
   else

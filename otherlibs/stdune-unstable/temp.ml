@@ -4,6 +4,8 @@ type what =
 
 let prng = lazy (Random.State.make_self_init ())
 
+exception Retry
+
 let try_paths n ~dir ~prefix ~suffix ~f =
   assert (n > 0);
   let rec loop n =
@@ -12,11 +14,11 @@ let try_paths n ~dir ~prefix ~suffix ~f =
       Path.relative dir (Printf.sprintf "%s%06x%s" prefix rnd suffix)
     in
     if n = 1 then
-      f path
+      try f path with
+      | Retry -> Code_error.raise "try_paths failed to find a good candidate" []
     else
-      match f path with
-      | exception _ -> loop (n - 1)
-      | r -> r
+      try f path with
+      | Retry -> loop (n - 1)
   in
   loop n
 
@@ -94,13 +96,14 @@ let clear_dir dir =
 
 let temp_path =
   try_paths 1000 ~f:(fun candidate ->
-      if Path.exists candidate then raise Exit;
+      if Path.exists candidate then raise Retry;
       candidate)
 
 let temp_dir ~parent_dir ~prefix ~suffix =
   try_paths 1000 ~dir:parent_dir ~prefix ~suffix ~f:(fun candidate ->
-      create_temp_dir candidate;
-      candidate)
+      match Fpath.mkdir_p (Path.to_string candidate) with
+      | Created -> candidate
+      | Already_exists -> raise Retry)
 
 module Monad (M : sig
   type 'a t

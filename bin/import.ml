@@ -79,18 +79,17 @@ let make_cache (config : Dune_config.t) =
 module Main = struct
   include Dune_rules.Main
 
-  let scan_workspace = scan_workspace
-
   let setup ?build_mutex common config =
     let open Fiber.O in
-    let* caching = make_cache config in
-    let* workspace = Memo.Build.run (scan_workspace ()) in
+    let* caching = make_cache config
+    and* conf = Memo.Build.run (Dune_rules.Dune_load.load ())
+    and* contexts = Memo.Build.run (Context.DB.all ()) in
     let* only_packages =
       match Common.only_packages common with
       | None -> Fiber.return None
       | Some { Common.Only_packages.names; command_line_option } ->
         Package.Name.Set.iter names ~f:(fun pkg_name ->
-            if not (Package.Name.Map.mem workspace.conf.packages pkg_name) then
+            if not (Package.Name.Map.mem conf.packages pkg_name) then
               let pkg_name = Package.Name.to_string pkg_name in
               User_error.raise
                 [ Pp.textf "I don't know about package %s (passed through %s)"
@@ -99,9 +98,9 @@ module Main = struct
                 ~hints:
                   (User_message.did_you_mean pkg_name
                      ~candidates:
-                       (Package.Name.Map.keys workspace.conf.packages
+                       (Package.Name.Map.keys conf.packages
                        |> List.map ~f:Package.Name.to_string)));
-        Fiber.sequential_map (Package.Name.Map.values workspace.conf.packages)
+        Fiber.sequential_map (Package.Name.Map.values conf.packages)
           ~f:(fun pkg ->
             let+ vendored =
               let dir = Package.dir pkg in
@@ -122,9 +121,14 @@ module Main = struct
         >>| Option.some
     in
     let stats = Common.stats common in
-    init_build_system workspace ?stats
-      ~sandboxing_preference:config.sandboxing_preference ?caching ?build_mutex
-      ?only_packages
+    List.iter contexts ~f:(fun (ctx : Context.t) ->
+        let open Pp.O in
+        Log.info
+          [ Pp.box ~indent:1
+              (Pp.text "Dune context:" ++ Pp.cut ++ Dyn.pp (Context.to_dyn ctx))
+          ]);
+    init_build_system ~stats ~sandboxing_preference:config.sandboxing_preference
+      ~caching ~build_mutex ~only_packages ~conf ~contexts
 end
 
 module Scheduler = struct

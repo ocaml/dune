@@ -26,8 +26,32 @@ let get_dirs context ~prefix_from_command_line ~libdir_from_command_line =
     in
     (prefix, libdir)
 
-let resolve_package_install setup pkg =
-  match Import.Main.package_install_file setup pkg with
+module Workspace = struct
+  type t =
+    { packages : Package.t Package.Name.Map.t
+    ; contexts : Context.t list
+    }
+
+  let get () =
+    let open Memo.Build.O in
+    Memo.Build.run
+      (let+ conf = Dune_rules.Dune_load.load ()
+       and+ contexts = Context.DB.all () in
+       { packages = conf.packages; contexts })
+
+  let package_install_file t pkg =
+    match Package.Name.Map.find t.packages pkg with
+    | None -> Error ()
+    | Some p ->
+      let name = Package.name p in
+      let dir = Package.dir p in
+      Ok
+        (Path.Source.relative dir
+           (Dune_engine.Utils.install_file ~package:name ~findlib_toolchain:None))
+end
+
+let resolve_package_install workspace pkg =
+  match Workspace.package_install_file workspace pkg with
   | Ok path -> path
   | Error () ->
     let pkg = Package.Name.to_string pkg in
@@ -36,7 +60,7 @@ let resolve_package_install setup pkg =
       ~hints:
         (User_message.did_you_mean pkg
            ~candidates:
-             (Package.Name.Map.keys setup.conf.packages
+             (Package.Name.Map.keys workspace.packages
              |> List.map ~f:Package.Name.to_string))
 
 let print_unix_error f =
@@ -81,7 +105,7 @@ module type File_operations = sig
 end
 
 module type Workspace = sig
-  val workspace : Dune_rules.Main.workspace
+  val workspace : Workspace.t
 end
 
 module File_ops_dry_run : File_operations = struct
@@ -129,7 +153,7 @@ module File_ops_real (W : Workspace) : File_operations = struct
       plain_copy ()
     | No_version_needed -> plain_copy ()
     | Need_version print -> (
-      (match Package.Name.Map.find workspace.conf.packages package with
+      (match Package.Name.Map.find workspace.packages package with
       | None -> Fiber.return None
       | Some package -> Memo.Build.run (get_vcs (Package.dir package)))
       >>= function
@@ -381,16 +405,26 @@ let install_uninstall ~what =
     let config = Common.init ~log_file:No_log_file common in
     Scheduler.go ~common ~config (fun () ->
         let open Fiber.O in
-        let* workspace = Memo.Build.run (Import.Main.scan_workspace ()) in
+        let* workspace = Workspace.get () in
         let contexts =
           match context with
           | None -> workspace.contexts
-          | Some name -> [ Import.Main.find_context_exn workspace ~name ]
+          | Some name -> (
+            match
+              List.find workspace.contexts ~f:(fun c ->
+                  Dune_engine.Context_name.equal c.name name)
+            with
+            | Some ctx -> [ ctx ]
+            | None ->
+              User_error.raise
+                [ Pp.textf "Context %S not found!"
+                    (Dune_engine.Context_name.to_string name)
+                ])
         in
         let* pkgs =
           match pkgs with
           | [] ->
-            Fiber.parallel_map (Package.Name.Map.values workspace.conf.packages)
+            Fiber.parallel_map (Package.Name.Map.values workspace.packages)
               ~f:(fun pkg ->
                 package_is_vendored pkg >>| function
                 | true -> None

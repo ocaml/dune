@@ -31,15 +31,9 @@ let term =
         let* setup = Import.Main.setup common config in
         Build_system.run (fun () ->
             let open Memo.Build.O in
-            let context =
-              Import.Main.find_context_exn setup.workspace ~name:ctx_name
-            in
+            let context = Import.Main.find_context_exn setup ~name:ctx_name in
             let sctx = Import.Main.find_scontext_exn setup ~name:ctx_name in
-            let setup =
-              { setup with
-                workspace = { setup.workspace with contexts = [ context ] }
-              }
-            in
+            let setup = { setup with contexts = [ context ] } in
             let* target =
               Target.resolve_target (Common.root common) ~setup utop_target
               >>| function

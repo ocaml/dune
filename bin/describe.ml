@@ -125,11 +125,11 @@ module Crawl = struct
                 ]
             ] ))
 
-  let workspace { Dune_rules.Main.workspace; scontexts } (context : Context.t) =
+  let workspace { Dune_rules.Main.conf; contexts = _; scontexts }
+      (context : Context.t) =
     let sctx = Context_name.Map.find_exn scontexts context.name in
     let libs =
-      List.fold_left workspace.conf.projects ~init:Lib.Set.empty
-        ~f:(fun libs project ->
+      List.fold_left conf.projects ~init:Lib.Set.empty ~f:(fun libs project ->
           Super_context.find_scope_by_project sctx project
           |> Scope.libs |> Lib.DB.all |> Lib.Set.union libs)
     in
@@ -143,9 +143,7 @@ module Crawl = struct
       >>| List.filter_map ~f:Fun.id
     in
     let open Memo.Build.O in
-    let* dune_files =
-      Dune_load.Dune_files.eval workspace.conf.dune_files ~context
-    in
+    let* dune_files = Dune_load.Dune_files.eval conf.dune_files ~context in
     let* exes =
       Memo.Build.parallel_map dune_files ~f:(fun (dune_file : Dune_file.t) ->
           Memo.Build.parallel_map dune_file.stanzas ~f:(fun stanza ->
@@ -312,9 +310,7 @@ let term =
   Scheduler.go ~common ~config (fun () ->
       let open Fiber.O in
       let* setup = Import.Main.setup common config in
-      let context =
-        Import.Main.find_context_exn setup.workspace ~name:context_name
-      in
+      let context = Import.Main.find_context_exn setup ~name:context_name in
       let+ res = Memo.Build.run (What.describe what setup context) in
       match format with
       | Csexp -> Csexp.to_channel stdout (Sexp.of_dyn res)

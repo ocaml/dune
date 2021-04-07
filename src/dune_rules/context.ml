@@ -583,7 +583,7 @@ let create ~(kind : Kind.t) ~path ~env ~env_nodes ~name ~merlin ~targets
     in
     let t =
       let build_context =
-        Build_context.create ~name ~build_dir ~env
+        Build_context.create ~name ~build_dir
           ~host:(Option.map host ~f:(fun c -> c.build_context))
       in
       { name

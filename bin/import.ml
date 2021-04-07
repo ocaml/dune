@@ -35,36 +35,19 @@ let in_group (t, info) = (Term.Group.Term t, info)
 module Main = struct
   include Dune_rules.Main
 
-  let setup common (config : Dune_config.t) =
+  let setup () =
     let open Fiber.O in
-    let* conf = Memo.Build.run (Dune_rules.Dune_load.load ())
-    and* contexts = Memo.Build.run (Context.DB.all ()) in
-    let stats = Common.stats common in
-    List.iter contexts ~f:(fun (ctx : Context.t) ->
-        let open Pp.O in
-        Log.info
-          [ Pp.box ~indent:1
-              (Pp.text "Dune context:" ++ Pp.cut ++ Dyn.pp (Context.to_dyn ctx))
-          ]);
-    (* CR-soon amokhov: Right now, types [Dune_config.Caching.Duplication.t] and
-       [Dune_cache_storage.Mode.t] are the same. They will be unified after
-       removing the cache daemon and adapting the configuration format. *)
-    let cache_config =
-      match config.cache_mode with
-      | Disabled -> Dune_cache.Config.Disabled
-      | Enabled ->
-        Enabled
-          { storage_mode =
-              (match config.cache_duplication with
-              | None
-              | Some Hardlink ->
-                Dune_cache_storage.Mode.Hardlink
-              | Some Copy -> Copy)
-          ; check_probability = config.cache_check_probability
-          }
-    in
-    init_build_system ~stats ~sandboxing_preference:config.sandboxing_preference
-      ~cache_config ~conf ~contexts
+    let* setup = Memo.Build.run (get ()) in
+    let* scheduler = Scheduler.t () in
+    Console.Status_line.set (fun () ->
+        let progression = Build_system.get_current_progress () in
+        Some
+          (Pp.verbatim
+             (sprintf "Done: %u/%u (jobs: %u)"
+                progression.number_of_rules_executed
+                progression.number_of_rules_discovered
+                (Scheduler.running_jobs_count scheduler))));
+    Fiber.return setup
 end
 
 module Scheduler = struct

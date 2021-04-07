@@ -14,22 +14,13 @@ module Error : sig
   val message : t -> User_message.t
 end
 
-(** Initializes the build system. This must be called first. *)
-val init :
-     stats:Stats.t option
-  -> contexts:Build_context.t list
-  -> promote_source:
-       (   ?chmod:(int -> int)
-        -> src:Path.Build.t
-        -> dst:Path.Source.t
-        -> Build_context.t option
-        -> unit Fiber.t)
-  -> sandboxing_preference:Sandbox_mode.t list
-  -> cache_config:Dune_cache.Config.t
-  -> unit
-  -> unit Fiber.t
+module Context_or_install : sig
+  type t =
+    | Install of Context_name.t
+    | Context of Context_name.t
 
-val reset : unit -> unit
+  val to_dyn : t -> Dyn.t
+end
 
 module Subdir_set : sig
   type t =
@@ -47,37 +38,46 @@ end
 
 type extra_sub_directories_to_keep = Subdir_set.t
 
-module Context_or_install : sig
-  type t =
-    | Install of Context_name.t
-    | Context of Context_name.t
+module type Rule_generator = sig
+  (** The rule generator.
 
-  val to_dyn : t -> Dyn.t
+      This callback is used to generate the rules for a given directory in the
+      corresponding build context. It receives the directory for which to
+      generate the rules and the split part of the path after the build context.
+      It must return an additional list of sub-directories to keep. This is in
+      addition to the ones that are present in the source tree and the ones that
+      already contain rules.
+
+      It is expected that [gen_rules] only generate rules whose targets are
+      descendant of [dir].
+
+      The callback should return [None] if it doesn't know about the given
+      [Context_or_install.t]. *)
+  val gen_rules :
+       Context_or_install.t
+    -> dir:Path.Build.t
+    -> string list
+    -> (extra_sub_directories_to_keep * Rules.t) option Memo.Build.t
+
+  (** [global_rules] is a way to generate rules in arbitrary directories
+      upfront. *)
+  val global_rules : Rules.t Memo.Lazy.t
 end
 
-(** Set the rule generators callback. There must be one callback per build
-    context name.
-
-    Each callback is used to generate the rules for a given directory in the
-    corresponding build context. It receives the directory for which to generate
-    the rules and the split part of the path after the build context. It must
-    return an additional list of sub-directories to keep. This is in addition to
-    the ones that are present in the source tree and the ones that already
-    contain rules.
-
-    It is expected that [f] only generate rules whose targets are descendant of
-    [dir].
-
-    [init] can generate rules in any directory, so it's always called. *)
-val set_rule_generators :
-     init:(unit -> unit Memo.Build.t)
-  -> gen_rules:
-       (   Context_or_install.t
-        -> (   dir:Path.Build.t
-            -> string list
-            -> extra_sub_directories_to_keep Memo.Build.t)
-           option)
-  -> unit Fiber.t
+(** Initializes the build system. This must be called first. *)
+val init :
+     stats:Stats.t option
+  -> contexts:Build_context.t list Memo.Lazy.t
+  -> promote_source:
+       (   ?chmod:(int -> int)
+        -> src:Path.Build.t
+        -> dst:Path.Source.t
+        -> Build_context.t option
+        -> unit Fiber.t)
+  -> cache_config:Dune_cache.Config.t
+  -> sandboxing_preference:Sandbox_mode.t list
+  -> rule_generator:(module Rule_generator)
+  -> unit
 
 (** All other functions in this section must be called inside the rule generator
     callback. *)
@@ -145,8 +145,6 @@ val build : 'a Action_builder.t -> 'a Memo.Build.t
 
 val is_target : Path.t -> bool Memo.Build.t
 
-val contexts : unit -> Build_context.t Context_name.Map.t
-
 (** List of all buildable targets. *)
 val all_targets : unit -> Path.Build.Set.t Memo.Build.t
 
@@ -187,3 +185,14 @@ end
 (** {2 Running a build} *)
 
 val run : (unit -> 'a Memo.Build.t) -> 'a Fiber.t
+
+(** {2 Misc} *)
+
+module Progress : sig
+  type t =
+    { number_of_rules_discovered : int
+    ; number_of_rules_executed : int
+    }
+end
+
+val get_current_progress : unit -> Progress.t

@@ -665,7 +665,9 @@ let pp_stack () =
     ++ Pp.cut
     ++ Pp.chain stack ~f:(fun frame -> Dyn.pp (Stack_frame.to_dyn frame)))
 
-let dump_stack () = pp_stack () >>| Format.eprintf "%a" Pp.to_fmt
+let dump_stack () =
+  let+ pp = pp_stack () in
+  Console.print [ pp ]
 
 let get_cached_value_in_current_cycle (dep_node : _ Dep_node.t) =
   match dep_node.last_cached_value with

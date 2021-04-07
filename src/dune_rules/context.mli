@@ -136,7 +136,11 @@ val build_context : t -> Build_context.t
     an explicit installation directory. *)
 val install_prefix : t -> Path.t Fiber.t
 
-val init_configurator : t -> unit
+(** Generate the rules for producing the files needed by configurator. *)
+val gen_configurator_rules : t -> unit Memo.Build.t
+
+(** Force the files required by configurator at runtime to be produced. *)
+val force_configurator_files : unit Memo.Lazy.t
 
 module DB : sig
   val get : Path.Build.t -> t Memo.Build.t

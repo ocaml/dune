@@ -369,16 +369,19 @@ module Error = struct
     | e -> User_message.make [ Pp.text (Printexc.to_string e) ]
 end
 
+module type Rule_generator = sig
+  val gen_rules :
+       Context_or_install.t
+    -> dir:Path.Build.t
+    -> string list
+    -> (extra_sub_directories_to_keep * Rules.t) option Memo.Build.t
+
+  val global_rules : Rules.t Memo.Lazy.t
+end
+
 type t =
-  { contexts : Build_context.t Context_name.Map.t
-  ; init_rules : Rules.t Fdecl.t
-  ; gen_rules :
-      (   Context_or_install.t
-       -> (   dir:Path.Build.t
-           -> string list
-           -> extra_sub_directories_to_keep Memo.Build.t)
-          option)
-      Fdecl.t
+  { contexts : Build_context.t Context_name.Map.t Memo.Lazy.t
+  ; rule_generator : (module Rule_generator)
   ; sandboxing_preference : Sandbox_mode.t list
   ; mutable rule_done : int
   ; mutable rule_total : int
@@ -395,35 +398,16 @@ type t =
   ; cache_config : Dune_cache.Config.t
   }
 
-let t = ref None
+let t = Fdecl.create Dyn.Encoder.opaque
 
-let set x =
-  match !t with
-  | None -> t := Some x
-  | Some _ -> Code_error.raise "build system already initialized" []
+let set x = Fdecl.set t x
 
-let get_build_system () =
-  match !t with
-  | Some t -> t
-  | None -> Code_error.raise "build system not yet initialized" []
-
-let reset () = t := None
-
-let t = get_build_system
-
-let contexts () = (t ()).contexts
+let t () = Fdecl.get t
 
 let pp_paths set =
   Pp.enumerate (Path.Set.to_list set) ~f:(fun p ->
       Path.drop_optional_build_context p
       |> Path.to_string_maybe_quoted |> Pp.verbatim)
-
-let set_rule_generators ~init ~gen_rules =
-  let t = t () in
-  let open Fiber.O in
-  let+ init_rules = Memo.Build.run (Rules.collect_unit init) in
-  Fdecl.set t.init_rules init_rules;
-  Fdecl.set t.gen_rules gen_rules
 
 let get_dir_triage t ~dir =
   match Dpath.analyse_dir dir with
@@ -444,22 +428,24 @@ let get_dir_triage t ~dir =
               Path.Set.empty
             | Ok filenames -> Path.Set.of_listing ~dir ~filenames))
   | Build (Regular Root) ->
+    let+ contexts = Memo.Lazy.force t.contexts in
     let allowed_subdirs =
       Subdir_set.to_dir_set
         (Subdir_set.of_list
            (([ Dpath.Build.anonymous_actions_dir; Dpath.Build.install_dir ]
             |> List.map ~f:Path.Build.basename)
-           @ (Context_name.Map.keys t.contexts
+           @ (Context_name.Map.keys contexts
              |> List.map ~f:Context_name.to_string)))
     in
-    Memo.Build.return @@ Dir_triage.Known (Loaded.no_rules ~allowed_subdirs)
+    Dir_triage.Known (Loaded.no_rules ~allowed_subdirs)
   | Build (Install Root) ->
+    let+ contexts = Memo.Lazy.force t.contexts in
     let allowed_subdirs =
-      Context_name.Map.keys t.contexts
+      Context_name.Map.keys contexts
       |> List.map ~f:Context_name.to_string
       |> Subdir_set.of_list |> Subdir_set.to_dir_set
     in
-    Memo.Build.return @@ Dir_triage.Known (Loaded.no_rules ~allowed_subdirs)
+    Dir_triage.Known (Loaded.no_rules ~allowed_subdirs)
   | Build (Anonymous_action p) ->
     let build_dir = Dpath.Target_dir.build_dir p in
     Code_error.raise "Called get_dir_triage on an anonymous action directory"
@@ -613,20 +599,21 @@ let remove_old_sub_dirs_in_anonymous_actions_dir ~dir
         | _ -> ())
 
 let no_rule_found t ~loc fn =
+  let+ contexts = Memo.Lazy.force t.contexts in
   let fail fn ~loc =
     User_error.raise ?loc
       [ Pp.textf "No rule found for %s" (Dpath.describe_target fn) ]
   in
   let hints ctx =
     let candidates =
-      Context_name.Map.keys t.contexts |> List.map ~f:Context_name.to_string
+      Context_name.Map.keys contexts |> List.map ~f:Context_name.to_string
     in
     User_message.did_you_mean (Context_name.to_string ctx) ~candidates
   in
   match Dpath.analyse_target fn with
   | Other _ -> fail fn ~loc
   | Regular (ctx, _) ->
-    if Context_name.Map.mem t.contexts ctx then
+    if Context_name.Map.mem contexts ctx then
       fail fn ~loc
     else
       User_error.raise
@@ -636,7 +623,7 @@ let no_rule_found t ~loc fn =
         ]
         ~hints:(hints ctx)
   | Install (ctx, _) ->
-    if Context_name.Map.mem t.contexts ctx then
+    if Context_name.Map.mem contexts ctx then
       fail fn ~loc
     else
       User_error.raise
@@ -647,7 +634,7 @@ let no_rule_found t ~loc fn =
         ]
         ~hints:(hints ctx)
   | Alias (ctx, fn') ->
-    if Context_name.Map.mem t.contexts ctx then
+    if Context_name.Map.mem contexts ctx then
       fail fn ~loc
     else
       let fn =
@@ -916,22 +903,21 @@ end = struct
     in
     (* the above check makes this safe *)
     let dir = Path.as_in_build_dir_exn dir in
+    let sub_dir_components = Path.Source.explode sub_dir in
     (* Load all the rules *)
+    let (module RG : Rule_generator) = t.rule_generator in
     let* extra_subdirs_to_keep, rules_produced =
-      let gen_rules =
-        match (Fdecl.get t.gen_rules) context_name with
-        | None ->
-          Code_error.raise "[gen_rules] did not specify rules for the context"
-            [ ("context_name", Context_or_install.to_dyn context_name) ]
-        | Some f -> f
-      in
-      Rules.collect (fun () -> gen_rules ~dir (Path.Source.explode sub_dir))
-    in
+      RG.gen_rules context_name ~dir sub_dir_components >>| function
+      | None ->
+        Code_error.raise "[gen_rules] did not specify rules for the context"
+          [ ("context_name", Context_or_install.to_dyn context_name) ]
+      | Some x -> x
+    and* global_rules = Memo.Lazy.force RG.global_rules in
     let rules =
       let dir = Path.build dir in
       Rules.Dir_rules.union
         (Rules.find rules_produced dir)
-        (Rules.find (Fdecl.get t.init_rules) dir)
+        (Rules.find global_rules dir)
     in
     let collected = Rules.Dir_rules.consume rules in
     let rules = collected.rules in
@@ -978,8 +964,6 @@ end = struct
       match context_name with
       | Install _ -> (None, String.Set.empty)
       | Context context_name ->
-        (* This condition is [true] because of [get_dir_status] *)
-        assert (Context_name.Map.mem t.contexts context_name);
         let files, subdirs =
           match source_tree_dir with
           | None -> (Path.Source.Set.empty, String.Set.empty)
@@ -1017,7 +1001,13 @@ end = struct
     in
     let rules_here = compile_rules ~dir ~source_dirs rules in
     let* allowed_by_parent =
-      Generated_directory_restrictions.allowed_by_parent ~dir
+      match (context_name, sub_dir_components) with
+      | Context _, [ ".dune" ] ->
+        (* GROSS HACK: this is to avoid a cycle as the rules for all directories
+           force the generation of ".dune/configurator". We need a better way to
+           deal with such cases. *)
+        Memo.Build.return Generated_directory_restrictions.Unrestricted
+      | _ -> Generated_directory_restrictions.allowed_by_parent ~dir
     in
     let* () =
       match allowed_by_parent with
@@ -1115,7 +1105,7 @@ let get_rule_or_source t path =
     match Path.Build.Map.find rules path with
     | Some rule -> Memo.Build.return (Rule (path, rule))
     | None ->
-      let+ loc = Rule_fn.loc () in
+      let* loc = Rule_fn.loc () in
       no_rule_found t ~loc path
   else if Path.exists path then
     let+ d = Cached_digest.source_or_external_file path in
@@ -1129,8 +1119,9 @@ module Source_tree_map_reduce =
   Source_tree.Dir.Make_map_reduce (Memo.Build) (Monoid.Union (Path.Build.Set))
 
 let all_targets t =
-  let* root = Source_tree.root () in
-  Memo.Build.parallel_map (Context_name.Map.values t.contexts) ~f:(fun ctx ->
+  let* root = Source_tree.root ()
+  and* contexts = Memo.Lazy.force t.contexts in
+  Memo.Build.parallel_map (Context_name.Map.values contexts) ~f:(fun ctx ->
       Source_tree_map_reduce.map_reduce root ~traverse:Sub_dirs.Status.Set.all
         ~f:(fun dir ->
           load_dir
@@ -2119,13 +2110,13 @@ let process_exn_and_reraise exn =
           | Memo.Cycle_error.E cycle_error -> process_memcycle cycle_error
           | _ as exn -> exn))
   in
-  let build = get_build_system () in
-  build.errors <- exn :: build.errors;
+  let t = t () in
+  t.errors <- exn :: t.errors;
   Exn_with_backtrace.reraise exn
 
 let run f =
   Hooks.End_of_build.once Promotion.finalize;
-  let t = get_build_system () in
+  let t = t () in
   let f () =
     Memo.Build.run
       (Memo.Build.with_error_handler f ~on_error:process_exn_and_reraise)
@@ -2293,16 +2284,17 @@ let load_dir_and_produce_its_rules ~dir =
 
 let load_dir ~dir = load_dir_and_produce_its_rules ~dir
 
-let init ~stats ~contexts ~promote_source ~sandboxing_preference ~cache_config
-    () =
+let init ~stats ~contexts ~promote_source ~cache_config ~sandboxing_preference
+    ~rule_generator =
   let contexts =
-    Context_name.Map.of_list_map_exn contexts ~f:(fun c ->
-        (c.Build_context.name, c))
+    Memo.lazy_ (fun () ->
+        let+ contexts = Memo.Lazy.force contexts in
+        Context_name.Map.of_list_map_exn contexts ~f:(fun c ->
+            (c.Build_context.name, c)))
   in
   let t =
     { contexts
-    ; gen_rules = Fdecl.create Dyn.Encoder.opaque
-    ; init_rules = Fdecl.create Dyn.Encoder.opaque
+    ; rule_generator
     ; sandboxing_preference = sandboxing_preference @ Sandbox_mode.all
     ; rule_done = 0
     ; rule_total = 0
@@ -2316,15 +2308,24 @@ let init ~stats ~contexts ~promote_source ~sandboxing_preference ~cache_config
     ; cache_config
     }
   in
-  let open Fiber.O in
-  let* scheduler = Scheduler.t () in
-  Console.Status_line.set (fun () ->
-      Some
-        (Pp.verbatim
-           (sprintf "Done: %u/%u (jobs: %u)" t.rule_done t.rule_total
-              (Scheduler.running_jobs_count scheduler))));
-  set t;
-  Fiber.return ()
+  Hooks.End_of_build.always (fun () ->
+      t.errors <- [];
+      t.rule_done <- 0;
+      t.rule_total <- 0);
+  set t
+
+module Progress = struct
+  type t =
+    { number_of_rules_discovered : int
+    ; number_of_rules_executed : int
+    }
+end
+
+let get_current_progress () =
+  let t = t () in
+  { Progress.number_of_rules_executed = t.rule_done
+  ; number_of_rules_discovered = t.rule_total
+  }
 
 let targets_of = targets_of
 

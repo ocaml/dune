@@ -145,6 +145,7 @@ type t =
   ; implicit_transitive_deps : bool
   ; wrapped_executables : bool
   ; executables_implicit_empty_intf : bool
+  ; accept_alternative_dune_file_name : bool
   ; generate_opam_files : bool
   ; use_standard_c_and_cxx_flags : bool option
   ; file_key : File_key.t
@@ -199,6 +200,7 @@ let to_dyn
     ; implicit_transitive_deps
     ; wrapped_executables
     ; executables_implicit_empty_intf
+    ; accept_alternative_dune_file_name
     ; generate_opam_files
     ; use_standard_c_and_cxx_flags
     ; file_key
@@ -222,6 +224,8 @@ let to_dyn
     ; ("implicit_transitive_deps", bool implicit_transitive_deps)
     ; ("wrapped_executables", bool wrapped_executables)
     ; ("executables_implicit_empty_intf", bool executables_implicit_empty_intf)
+    ; ( "accept_alternative_dune_file_name"
+      , bool accept_alternative_dune_file_name )
     ; ("generate_opam_files", bool generate_opam_files)
     ; ("use_standard_c_and_cxx_flags", option bool use_standard_c_and_cxx_flags)
     ; ("file_key", string file_key)
@@ -496,6 +500,7 @@ let infer ~dir packages =
   ; implicit_transitive_deps
   ; wrapped_executables
   ; executables_implicit_empty_intf
+  ; accept_alternative_dune_file_name = false
   ; stanza_parser
   ; project_file
   ; extension_args
@@ -591,6 +596,9 @@ let parse ~dir ~lang ~opam_packages ~file ~dir_status =
         and+ executables_implicit_empty_intf =
           field_o_b "executables_implicit_empty_intf"
             ~check:(Dune_lang.Syntax.since Stanza.syntax (2, 9))
+        and+ accept_alternative_dune_file_name =
+          field_b "accept_alternative_dune_file_name"
+            ~check:(Dune_lang.Syntax.since Stanza.syntax (3, 0))
         and+ () = Dune_lang.Versioned_file.no_more_lang
         and+ generate_opam_files =
           field_o_b "generate_opam_files"
@@ -767,6 +775,7 @@ let parse ~dir ~lang ~opam_packages ~file ~dir_status =
         ; implicit_transitive_deps
         ; wrapped_executables
         ; executables_implicit_empty_intf
+        ; accept_alternative_dune_file_name
         ; generate_opam_files
         ; use_standard_c_and_cxx_flags
         ; dialects
@@ -814,6 +823,8 @@ let set_parsing_context t parser =
 let wrapped_executables t = t.wrapped_executables
 
 let executables_implicit_empty_intf t = t.executables_implicit_empty_intf
+
+let accept_alternative_dune_file_name t = t.accept_alternative_dune_file_name
 
 let () =
   let open Dune_lang.Decoder in

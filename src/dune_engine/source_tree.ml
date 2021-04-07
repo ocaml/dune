@@ -52,6 +52,8 @@ module Dune_file = struct
 
   let fname = "dune"
 
+  let alternative_fname = "dune-file"
+
   let jbuild_fname = "jbuild"
 
   type kind =
@@ -466,7 +468,7 @@ end = struct
       ~path ~files ~project =
     let file_exists =
       if dir_status = Data_only then
-        false
+        None
       else if
         (not recognize_jbuilder_projects)
         && String.Set.mem files Dune_file.jbuild_fname
@@ -482,8 +484,15 @@ end = struct
               "Note: You can use \"dune upgrade\" to convert your project to \
                dune."
           ]
+      else if
+        Dune_project.accept_alternative_dune_file_name project
+        && String.Set.mem files Dune_file.alternative_fname
+      then
+        Some Dune_file.alternative_fname
+      else if String.Set.mem files Dune_file.fname then
+        Some Dune_file.fname
       else
-        String.Set.mem files Dune_file.fname
+        None
     in
     let+ from_parent =
       match Path.Source.parent path with
@@ -494,14 +503,24 @@ end = struct
         let* parent = parent in
         let* dune_file = parent.contents.dune_file in
         let dir_basename = Path.Source.basename path in
-        Sub_dirs.Dir_map.descend dune_file.plain.for_subdirs dir_basename
+        let+ dir_map =
+          Sub_dirs.Dir_map.descend dune_file.plain.for_subdirs dir_basename
+        in
+        (dune_file.path, dir_map)
     in
-    let dune_file_absent = (not file_exists) && Option.is_none from_parent in
-    if dune_file_absent then
-      None
-    else
-      let file = Path.Source.relative path Dune_file.fname in
-      Some (Dune_file.load file ~file_exists ~project ~from_parent)
+    let open Option.O in
+    let+ file =
+      match (file_exists, from_parent) with
+      | None, None -> None
+      | Some fname, _ -> Some (Path.Source.relative path fname)
+      | None, Some (path, _) -> Some path
+    in
+    let from_parent =
+      let+ _, from_parent = from_parent in
+      from_parent
+    in
+    let file_exists = Option.is_some file_exists in
+    Dune_file.load file ~file_exists ~project ~from_parent
 
   let contents { Readdir.dirs; files } ~dirs_visited ~project ~path
       ~(dir_status : Sub_dirs.Status.t) =

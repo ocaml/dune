@@ -514,7 +514,7 @@ let create_projects_by_package projects : Dune_project.t Package.Name.Map.t =
 
 let modules_of_lib = Fdecl.create Dyn.Encoder.opaque
 
-let create ~(context : Context.t) ?host ~projects ~packages ~stanzas () =
+let create ~(context : Context.t) ~host ~projects ~packages ~stanzas =
   let lib_config = Context.lib_config context in
   let projects_by_package = create_projects_by_package projects in
   let installed_libs =
@@ -685,6 +685,75 @@ let create ~(context : Context.t) ?host ~projects ~packages ~stanzas () =
   Fdecl.set modules_of_lib_for_scope (fun ~dir ~name ->
       Fdecl.get modules_of_lib t ~dir ~name);
   t
+
+let filter_out_stanzas_from_hidden_packages ~visible_pkgs =
+  List.filter_map ~f:(fun stanza ->
+      let include_stanza =
+        match Dune_file.stanza_package stanza with
+        | None -> true
+        | Some package ->
+          let name = Package.name package in
+          Package.Name.Map.mem visible_pkgs name
+      in
+      if include_stanza then
+        Some stanza
+      else
+        match stanza with
+        | Dune_file.Library l ->
+          let open Option.O in
+          let+ redirect = Dune_file.Library_redirect.Local.of_private_lib l in
+          Dune_file.Library_redirect redirect
+        | _ -> None)
+
+let all =
+  Memo.lazy_ (fun () ->
+      let open Memo.Build.O in
+      let* { Dune_load.dune_files; packages; projects } = Dune_load.load ()
+      and* contexts = Context.DB.all ()
+      and* only_packages = Only_packages.get () in
+      let packages = Option.value only_packages ~default:packages in
+      let rec sctxs =
+        (* This lazy is just here for the need of [let rec]. We force it
+           straight away, so it is safe regarding [Memo]. *)
+        lazy
+          (Context_name.Map.of_list_map_exn contexts ~f:(fun (c : Context.t) ->
+               (c.name, Memo.Lazy.create (fun () -> make_sctx c))))
+      and make_sctx (context : Context.t) =
+        let host () =
+          match context.for_host with
+          | None -> Memo.Build.return None
+          | Some h ->
+            let+ sctx =
+              Memo.Lazy.force
+                (Context_name.Map.find_exn (Lazy.force sctxs) h.name)
+            in
+            Some sctx
+        in
+        let stanzas () =
+          let+ stanzas = Dune_load.Dune_files.eval ~context dune_files in
+          match only_packages with
+          | None -> stanzas
+          | Some visible_pkgs ->
+            List.map stanzas ~f:(fun (dir_conf : Dune_file.t) ->
+                { dir_conf with
+                  stanzas =
+                    filter_out_stanzas_from_hidden_packages ~visible_pkgs
+                      dir_conf.stanzas
+                })
+        in
+        let+ host, stanzas = Memo.Build.fork_and_join host stanzas in
+        create ~host ~context ~projects ~packages ~stanzas
+      in
+      Lazy.force sctxs |> Context_name.Map.to_list
+      |> Memo.Build.parallel_map ~f:(fun (name, sctx) ->
+             let+ sctx = Memo.Lazy.force sctx in
+             (name, sctx))
+      >>| Context_name.Map.of_list_exn)
+
+let find name =
+  let open Memo.Build.O in
+  let+ all = Memo.Lazy.force all in
+  Context_name.Map.find all name
 
 let dir_status_db t = t.dir_status_db
 

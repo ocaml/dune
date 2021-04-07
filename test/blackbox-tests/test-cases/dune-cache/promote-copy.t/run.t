@@ -17,7 +17,12 @@ Test the shared cache in copy mode:
   >   (targets target)
   >   (action (bash "touch rule-was-run; cat source source > target")))
   > EOF
-  $ echo hello > source
+
+It's a duck. It quacks. (Yes, the author of this comment didn't get it.)
+
+  $ cat > source <<EOF
+  > \_o< COIN
+  > EOF
 
 Initial build
 
@@ -46,10 +51,10 @@ The rule wasn't run:
 The files have been restored correctly:
 
   $ cat _build/default/source
-  hello
+  \_o< COIN
   $ cat _build/default/target
-  hello
-  hello
+  \_o< COIN
+  \_o< COIN
 
 ------------------
 

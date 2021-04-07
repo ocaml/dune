@@ -16,7 +16,13 @@ rather than the daemon
   >   (targets target)
   >   (action (bash "touch beacon ; cat source source > target")))
   > EOF
-  $ echo hello > source
+
+It's a duck. It quacks. (Yes, the author of this comment didn't get it.)
+
+  $ cat > source <<EOF
+  > \_o< COIN
+  > EOF
+
   $ env XDG_RUNTIME_DIR=$PWD/.xdg-runtime XDG_CACHE_HOME=$PWD/.xdg-cache dune build --config-file=config target
   $ dune_cmd stat hardlinks _build/default/source
   1
@@ -33,10 +39,10 @@ rather than the daemon
   $ test -e _build/default/beacon
   [1]
   $ cat _build/default/source
-  hello
+  \_o< COIN
   $ cat _build/default/target
-  hello
-  hello
+  \_o< COIN
+  \_o< COIN
 
   $ cat > dune-project <<EOF
   > (lang dune 2.1)

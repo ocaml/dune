@@ -66,10 +66,15 @@ inject a version number into rule digests.
 
 If you see the test below breaking, this means you changed the metadata format
 or the way that digests are computed and you should increment the corresponding
-version number. This number is stored in the [rule_digest_version] variable in
-[build_system.ml]. You may also need to change the versioning in [layout.ml] in
-the [dune_cache_storage] library and make sure that the cache trimmer treats new
-and old cache entries uniformly.
+version number. More specifically:
+
+- If a digest value changed, you should increment the [rule_digest_version]
+value in [build_system.ml].
+
+- If the metadata format changed, you should increment the metadata version in
+[layout.ml] in the [dune_cache_storage] library, e.g. from [meta/v5] to [meta/v6].
+You will also need to make sure that the cache trimmer treats new and old cache
+entries uniformly.
 
   $ (cd "$PWD/.xdg-cache/dune/db/meta/v5"; grep -rws . -e 'metadata' | sort)
   ./06/061fb516fd28c9a632c573f380b8a120:((8:metadata)(5:files(8:target_a32:5637dd9730e430c7477f52d46de3909c)))

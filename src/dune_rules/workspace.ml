@@ -324,6 +324,22 @@ module Context = struct
       ; dynamically_linked_foreign_archives = true
       ; instrument_with = Option.value instrument_with ~default:[]
       }
+
+  let build_contexts t =
+    let name = name t in
+    let native =
+      Build_context.create ~name ~host:(host_context t)
+        ~build_dir:(Path.Build.of_string (Context_name.to_string name))
+    in
+    native
+    ::
+    List.filter_map (targets t) ~f:(function
+      | Native -> None
+      | Named toolchain ->
+        let name = Context_name.target name ~toolchain in
+        Some
+          (Build_context.create ~name ~host:(Some native.name)
+             ~build_dir:(Path.Build.of_string (Context_name.to_string name))))
 end
 
 module T = struct

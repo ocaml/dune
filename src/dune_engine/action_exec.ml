@@ -101,7 +101,7 @@ let validate_context_and_prog context prog =
       | Some _ ->
         User_error.raise
           [ Pp.textf "Context %s has a host %s." target_name
-              (Context_name.to_string host.name)
+              (Context_name.to_string host)
           ; Pp.textf "It's not possible to execute binary %s in it."
               (Path.to_string_maybe_quoted prog)
           ; Pp.nop

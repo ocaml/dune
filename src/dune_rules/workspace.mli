@@ -61,6 +61,8 @@ module Context : sig
   val env : t -> Dune_env.Stanza.t
 
   val host_context : t -> Context_name.t option
+
+  val build_contexts : t -> Build_context.t list
 end
 
 (** Representation of a workspace. The list of context is topologically sorted,

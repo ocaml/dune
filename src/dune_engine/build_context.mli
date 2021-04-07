@@ -9,7 +9,11 @@ open! Import
 type t = private
   { name : Context_name.t
   ; build_dir : Path.Build.t
-  ; host : t option
+  ; host : Context_name.t option
   }
 
-val create : name:Context_name.t -> build_dir:Path.Build.t -> host:t option -> t
+val create :
+     name:Context_name.t
+  -> build_dir:Path.Build.t
+  -> host:Context_name.t option
+  -> t

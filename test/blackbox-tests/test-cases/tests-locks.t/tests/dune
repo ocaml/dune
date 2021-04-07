@@ -1,0 +1,4 @@
+(cram
+ (applies_to :whole_subtree)
+ (locks a)
+ (alias all-tests))

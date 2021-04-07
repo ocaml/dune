@@ -87,6 +87,8 @@ Unreleased
 - Add an option to swallow the output of actions when they succeed, to
   reduce noise of large builds (#4422, @jeremiedimino)
 
+- Add the possibility to use `locks` with the cram tests stanza (#4397, @voodoos)
+
 2.8.5 (28/03/2021)
 ------------------
 

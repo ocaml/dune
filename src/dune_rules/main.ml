@@ -25,7 +25,7 @@ let init_build_system ~stats ~sandboxing_preference ~caching ~conf ~contexts =
       ?caching ()
   in
   List.iter contexts ~f:Context.init_configurator;
-  let+ scontexts = Gen_rules.init conf ~contexts in
+  let+ scontexts = Gen_rules.init () in
   { conf; contexts; scontexts }
 
 let find_context_exn t ~name =

@@ -9,20 +9,16 @@ open Import
 
 type t
 
+val all : t Context_name.Map.t Memo.Lazy.t
+
+(** Find a super context by name. *)
+val find : Context_name.t -> t option Memo.Build.t
+
 val modules_of_lib :
   (* to avoid a cycle with [Dir_contents] *)
   (t -> dir:Path.Build.t -> name:Lib_name.t -> Modules.t Memo.Build.t) Fdecl.t
 
 val to_dyn : t -> Dyn.t
-
-val create :
-     context:Context.t
-  -> ?host:t
-  -> projects:Dune_project.t list
-  -> packages:Package.t Package.Name.Map.t
-  -> stanzas:Dune_file.t list
-  -> unit
-  -> t
 
 val context : t -> Context.t
 

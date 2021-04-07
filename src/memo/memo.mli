@@ -86,6 +86,10 @@ module Build : sig
 
   module Option : sig
     val iter : 'a option -> f:('a -> unit t) -> unit t
+
+    val map : 'a option -> f:('a -> 'b t) -> 'b option t
+
+    val bind : 'a option -> f:('a -> 'b option t) -> 'b option t
   end
 
   module Result : sig

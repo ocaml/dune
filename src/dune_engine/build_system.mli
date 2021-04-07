@@ -105,13 +105,14 @@ val targets_of : dir:Path.t -> Path.Set.t Memo.Build.t
 (** Load the rules for this directory. *)
 val load_dir : dir:Path.t -> unit Memo.Build.t
 
-(** Sets the package assignment *)
-val set_packages : (Path.Build.t -> Package.Id.Set.t Memo.Build.t) -> unit
-
 (** Assuming [files] is the list of files in [_build/install] that belong to
     package [pkg], [package_deps t pkg files] is the set of direct package
     dependencies of [package]. *)
-val package_deps : Package.t -> Path.Set.t -> Package.Id.Set.t Memo.Build.t
+val package_deps :
+     packages_of:(Path.Build.t -> Package.Id.Set.t Memo.Build.t)
+  -> Package.t
+  -> Path.Set.t
+  -> Package.Id.Set.t Memo.Build.t
 
 (** {2 Aliases} *)
 

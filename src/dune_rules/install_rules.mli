@@ -20,5 +20,3 @@ val meta_and_dune_package_rules :
    aalekseyev: actually I think we should just remove
    [meta_and_dune_package_rules] from the interface and have [gen_rules] do
    everything. *)
-
-val packages : Super_context.t -> Package.Id.Set.t Path.Build.Map.t Memo.Build.t

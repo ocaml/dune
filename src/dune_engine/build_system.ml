@@ -384,8 +384,6 @@ type t =
            -> extra_sub_directories_to_keep Memo.Build.t)
           option)
       Fdecl.t
-  ; (* Package files are part of *)
-    packages : (Path.Build.t -> Package.Id.Set.t Memo.Build.t) Fdecl.t
   ; mutable caching : caching option
   ; sandboxing_preference : Sandbox_mode.t list
   ; mutable rule_done : int
@@ -2091,12 +2089,7 @@ let process_memcycle (cycle_error : Memo.Cycle_error.t) =
       ; Pp.chain cycle ~f:(fun p -> p)
       ]
 
-let set_packages f =
-  let t = t () in
-  Fdecl.set t.packages f
-
-let package_deps (pkg : Package.t) files =
-  let t = t () in
+let package_deps ~packages_of (pkg : Package.t) files =
   let rules_seen = ref Rule.Set.empty in
   let rec loop fn =
     match Path.as_in_build_dir fn with
@@ -2105,7 +2098,7 @@ let package_deps (pkg : Package.t) files =
          and it doesn't have dependencies that do *)
       Memo.Build.return Package.Id.Set.empty
     | Some fn ->
-      let* pkgs = Fdecl.get t.packages fn in
+      let* pkgs = packages_of fn in
       if Package.Id.Set.is_empty pkgs || Package.Id.Set.mem pkgs pkg.id then
         loop_deps fn
       else
@@ -2346,7 +2339,6 @@ let init ~stats ~contexts ~promote_source ?caching ~sandboxing_preference () =
   in
   let t =
     { contexts
-    ; packages = Fdecl.create Dyn.Encoder.opaque
     ; gen_rules = Fdecl.create Dyn.Encoder.opaque
     ; init_rules = Fdecl.create Dyn.Encoder.opaque
     ; vcs = Fdecl.create Dyn.Encoder.opaque

@@ -390,22 +390,6 @@ let gen_rules ~sctx ~dir components =
 let init () =
   let open Fiber.O in
   let* sctxs = Memo.Build.run (Memo.Lazy.force Super_context.all) in
-  let () =
-    Build_system.set_packages (fun path ->
-        match
-          let open Option.O in
-          let* ctx_name, _ = Path.Build.extract_build_context path in
-          let* ctx_name = Context_name.of_string_opt ctx_name in
-          Context_name.Map.find sctxs ctx_name
-        with
-        | None -> Memo.Build.return Package.Id.Set.empty
-        | Some sctx ->
-          let open Memo.Build.O in
-          let+ map = Install_rules.packages sctx in
-          Option.value
-            (Path.Build.Map.find map path)
-            ~default:Package.Id.Set.empty)
-  in
   let+ () =
     Build_system.set_rule_generators
       ~init:(fun () ->

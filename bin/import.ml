@@ -84,42 +84,6 @@ module Main = struct
     let* caching = make_cache config
     and* conf = Memo.Build.run (Dune_rules.Dune_load.load ())
     and* contexts = Memo.Build.run (Context.DB.all ()) in
-    let* only_packages =
-      match Common.only_packages common with
-      | None -> Fiber.return None
-      | Some { Common.Only_packages.names; command_line_option } ->
-        Package.Name.Set.iter names ~f:(fun pkg_name ->
-            if not (Package.Name.Map.mem conf.packages pkg_name) then
-              let pkg_name = Package.Name.to_string pkg_name in
-              User_error.raise
-                [ Pp.textf "I don't know about package %s (passed through %s)"
-                    pkg_name command_line_option
-                ]
-                ~hints:
-                  (User_message.did_you_mean pkg_name
-                     ~candidates:
-                       (Package.Name.Map.keys conf.packages
-                       |> List.map ~f:Package.Name.to_string)));
-        Fiber.sequential_map (Package.Name.Map.values conf.packages)
-          ~f:(fun pkg ->
-            let+ vendored =
-              let dir = Package.dir pkg in
-              Memo.Build.run (Dune_engine.Source_tree.is_vendored dir)
-            in
-            let name = Package.name pkg in
-            let included = Package.Name.Set.mem names name in
-            if vendored && included then
-              User_error.raise
-                [ Pp.textf
-                    "Package %s is vendored and so will never be masked. It \
-                     makes no sense to pass it to -p, --only-packages or \
-                     --for-release-of-packages."
-                    (Package.Name.to_string name)
-                ];
-            Option.some_if (vendored || included) (name, pkg))
-        >>| List.filter_map ~f:Fun.id >>| Package.Name.Map.of_list_exn
-        >>| Option.some
-    in
     let stats = Common.stats common in
     List.iter contexts ~f:(fun (ctx : Context.t) ->
         let open Pp.O in
@@ -128,7 +92,7 @@ module Main = struct
               (Pp.text "Dune context:" ++ Pp.cut ++ Dyn.pp (Context.to_dyn ctx))
           ]);
     init_build_system ~stats ~sandboxing_preference:config.sandboxing_preference
-      ~caching ~only_packages ~conf ~contexts
+      ~caching ~conf ~contexts
 end
 
 module Scheduler = struct

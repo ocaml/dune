@@ -19,5 +19,5 @@ type conf = private
   ; projects : Dune_project.t list
   }
 
-(** Load all dune files. *)
+(** Load all dune files. This function is memoized. *)
 val load : unit -> conf Memo.Build.t

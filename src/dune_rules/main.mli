@@ -11,7 +11,6 @@ type build_system =
 (** Load dune files and initializes the build system *)
 val init_build_system :
      stats:Stats.t option
-  -> only_packages:Package.t Package.Name.Map.t option
   -> sandboxing_preference:Sandbox_mode.t list
   -> caching:Build_system.caching option
   -> conf:Dune_load.conf

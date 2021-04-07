@@ -33,7 +33,7 @@ let default_root () =
 
 let file_store_root cache = Path.L.relative cache.root [ "files"; "v4" ]
 
-let metadata_store_root cache = Path.L.relative cache.root [ "meta"; "v4" ]
+let metadata_store_root cache = Path.L.relative cache.root [ "meta"; "v5" ]
 
 (* A file storage scheme. *)
 module type FSScheme = sig
@@ -62,7 +62,7 @@ module FirstTwoCharsSubdir : FSScheme = struct
     let first_two_chars = String.sub digest ~pos:0 ~len:2 in
     Path.L.relative root [ first_two_chars; digest ]
 
-  (* List all entries in a given cache root. Returns the empty list of the root
+  (* List all entries in a given cache root. Returns the empty list if the root
      doesn't exist. *)
   let list ~root =
     let open Result.O in
@@ -87,13 +87,17 @@ let metadata_path cache key =
 
 let file_path cache key = FSSchemeImpl.path ~root:(file_store_root cache) key
 
-(* Support for an older version of the cache. *)
+(* Support for older versions of the cache. *)
 module V3 = struct
   let file_store_root cache = Path.L.relative cache.root [ "files"; "v3" ]
 
   let metadata_store_root cache = Path.L.relative cache.root [ "meta"; "v3" ]
 
   let file_path cache key = FSSchemeImpl.path ~root:(file_store_root cache) key
+end
+
+module V4 = struct
+  let metadata_store_root cache = Path.L.relative cache.root [ "meta"; "v4" ]
 end
 
 module Metadata_file = struct
@@ -425,13 +429,14 @@ let trim_bad_metadata_files ~metadata_files ~trimmed_so_far ~file_path cache =
       | false -> trimmed_so_far)
 
 let garbage_collect_impl ~trimmed_so_far cache =
-  let metadata_files = FSSchemeImpl.list ~root:(V3.metadata_store_root cache) in
-  let trimmed_so_far =
-    trim_bad_metadata_files ~metadata_files ~trimmed_so_far
-      ~file_path:V3.file_path cache
-  in
-  let metadata_files = FSSchemeImpl.list ~root:(metadata_store_root cache) in
-  trim_bad_metadata_files ~metadata_files ~trimmed_so_far ~file_path cache
+  List.fold_left ~init:trimmed_so_far
+    ~f:(fun trimmed_so_far (root, file_path) ->
+      let metadata_files = FSSchemeImpl.list ~root in
+      trim_bad_metadata_files ~metadata_files ~trimmed_so_far ~file_path cache)
+    [ (V3.metadata_store_root cache, V3.file_path)
+    ; (V4.metadata_store_root cache, file_path)
+    ; (metadata_store_root cache, file_path)
+    ]
 
 let garbage_collect = garbage_collect_impl ~trimmed_so_far:Trimming_result.empty
 

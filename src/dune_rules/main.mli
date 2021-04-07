@@ -12,7 +12,7 @@ type build_system =
 val init_build_system :
      stats:Stats.t option
   -> sandboxing_preference:Sandbox_mode.t list
-  -> caching:Build_system.caching option
+  -> cache_config:Dune_cache.Config.t
   -> conf:Dune_load.conf
   -> contexts:Context.t list
   -> build_system Fiber.t

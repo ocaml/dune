@@ -45,8 +45,7 @@ let run_build_command ~(common : Common.t) ~config ~targets =
     run_build_command_poll
   else
     run_build_command_once)
-    ~setup ~common ~config ~targets;
-  Build_system.cache_teardown ()
+    ~setup ~common ~config ~targets
 
 let runtest =
   let doc = "Run tests." in

@@ -18,6 +18,7 @@
   dune_util
   dune_meta_parser
   dune_section
+  dune_cache
   build_path_prefix_map
   dune_engine
   dune_config)

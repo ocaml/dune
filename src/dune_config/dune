@@ -4,7 +4,8 @@
   stdune
   xdg
   dune_lang
-  cache
+  dune_cache
+  dune_cache_storage
   dune_engine
   dune_rpc_private
   stats

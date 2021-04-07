@@ -715,6 +715,10 @@ module Build = struct
 
   let chmod t ~mode = Unix.chmod (to_string t) mode
 
+  let lstat t = Unix.lstat (to_string t)
+
+  let unlink_no_err t = Fpath.unlink_no_err (to_string t)
+
   module Kind = Kind
 end
 

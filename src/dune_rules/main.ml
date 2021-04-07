@@ -10,7 +10,8 @@ type build_system =
   ; scontexts : Super_context.t Context_name.Map.t
   }
 
-let init_build_system ~stats ~sandboxing_preference ~caching ~conf ~contexts =
+let init_build_system ~stats ~sandboxing_preference ~cache_config ~conf
+    ~contexts =
   let open Fiber.O in
   Build_system.reset ();
   let promote_source ?chmod ~src ~dst ctx =
@@ -22,7 +23,7 @@ let init_build_system ~stats ~sandboxing_preference ~caching ~conf ~contexts =
   let* () =
     Build_system.init ~stats ~sandboxing_preference ~promote_source
       ~contexts:(List.map ~f:Context.build_context contexts)
-      ?caching ()
+      ~cache_config ()
   in
   List.iter contexts ~f:Context.init_configurator;
   let+ scontexts = Gen_rules.init () in

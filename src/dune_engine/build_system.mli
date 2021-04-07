@@ -7,11 +7,6 @@ open! Import
 
 (** {2 Creation} *)
 
-type caching =
-  { cache : (module Cache.Caching)
-  ; check_probability : float
-  }
-
 module Error : sig
   (** Errors when building a target *)
   type t
@@ -29,8 +24,8 @@ val init :
         -> dst:Path.Source.t
         -> Build_context.t option
         -> unit Fiber.t)
-  -> ?caching:caching
   -> sandboxing_preference:Sandbox_mode.t list
+  -> cache_config:Dune_cache.Config.t
   -> unit
   -> unit Fiber.t
 
@@ -188,10 +183,6 @@ module For_command_line : sig
   (** Similar to [build], but doesn't build the dependencies, only expand them *)
   val eval_build_request : 'a Action_builder.t -> ('a * Dep.Set.t) Memo.Build.t
 end
-
-val get_cache : unit -> caching option
-
-val cache_teardown : unit -> unit
 
 (** {2 Running a build} *)
 

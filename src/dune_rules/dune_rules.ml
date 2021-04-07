@@ -30,6 +30,7 @@ module Setup = Setup
 module Meta = Meta
 module Toplevel = Toplevel
 module Global = Global
+module Only_packages = Only_packages
 
 (* Only for tests *)
 module Scheme = Scheme

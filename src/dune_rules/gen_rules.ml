@@ -406,9 +406,10 @@ let filter_out_stanzas_from_hidden_packages ~visible_pkgs =
           Dune_file.Library_redirect redirect
         | _ -> None)
 
-let init ~contexts ~only_packages conf =
+let init ~contexts conf =
   let open Fiber.O in
   let { Dune_load.dune_files; packages; projects } = conf in
+  let* only_packages = Memo.Build.run (Only_packages.get ()) in
   let packages = Option.value only_packages ~default:packages in
   let* sctxs =
     let open Memo.Build.O in

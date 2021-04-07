@@ -6,6 +6,7 @@ module Package = Dune_engine.Package
 module Profile = Dune_rules.Profile
 module Term = Cmdliner.Term
 module Manpage = Cmdliner.Manpage
+module Only_packages = Dune_rules.Only_packages
 
 module Let_syntax = struct
   let ( let+ ) t f = Term.(const f $ t)
@@ -15,25 +16,6 @@ end
 
 open Let_syntax
 
-module Only_packages : sig
-  type t = private
-    { names : Dune_engine.Package.Name.Set.t
-    ; command_line_option : string
-    }
-
-  val create :
-    names:Dune_engine.Package.Name.Set.t -> command_line_option:string -> t
-end = struct
-  type t =
-    { names : Dune_engine.Package.Name.Set.t
-    ; command_line_option : string
-    }
-
-  let create ~names ~command_line_option =
-    Clflags.only_packages := Some names;
-    { names; command_line_option }
-end
-
 type t =
   { debug_dep_path : bool
   ; debug_findlib : bool
@@ -42,7 +24,7 @@ type t =
   ; debug_digests : bool
   ; wait_for_filesystem_clock : bool
   ; root : Workspace_root.t
-  ; only_packages : Only_packages.t option
+  ; only_packages : Only_packages.Clflags.t
   ; capture_outputs : bool
   ; diff_command : string option
   ; promote : Clflags.Promote.t option
@@ -67,8 +49,6 @@ type t =
 let capture_outputs t = t.capture_outputs
 
 let root t = t.root
-
-let only_packages t = t.only_packages
 
 let watch t = t.watch
 
@@ -179,6 +159,7 @@ let init ?log_file ?(recognize_jbuilder_projects = false) c =
          |> Dune_rules.Workspace.update_execution_parameters w)
     |> S.set_recognize_jbuilder_projects recognize_jbuilder_projects);
   Dune_rules.Global.init ~capture_outputs:c.capture_outputs;
+  Only_packages.Clflags.set c.only_packages;
   Clflags.debug_dep_path := c.debug_dep_path;
   Clflags.debug_findlib := c.debug_findlib;
   Clflags.debug_backtraces c.debug_backtraces;
@@ -297,7 +278,7 @@ let build_info =
 module Options_implied_by_dash_p = struct
   type t =
     { root : string option
-    ; only_packages : Only_packages.t option
+    ; only_packages : Only_packages.Clflags.t
     ; ignore_promoted_rules : bool
     ; config_from_config_file : Dune_config.Partial.t
     ; profile : Profile.t option
@@ -403,7 +384,7 @@ module Options_implied_by_dash_p = struct
       Arg.(value & flag & info [ "promote-install-files" ] ~docs ~doc)
     in
     { root
-    ; only_packages = None
+    ; only_packages = No_restriction
     ; ignore_promoted_rules
     ; config_from_config_file
     ; profile = None
@@ -414,7 +395,7 @@ module Options_implied_by_dash_p = struct
 
   let release_options =
     { root = Some "."
-    ; only_packages = None
+    ; only_packages = No_restriction
     ; ignore_promoted_rules = true
     ; config_from_config_file = Dune_config.Partial.empty
     ; profile = Some Profile.Release
@@ -457,8 +438,10 @@ module Options_implied_by_dash_p = struct
                       it is likely that what you want instead is to
                       build a particular $(b,<package>.install) target.|})
       in
-      Option.map names ~f:(fun names ->
-          Only_packages.create ~names ~command_line_option:"only-packages")
+      match names with
+      | None -> Only_packages.Clflags.No_restriction
+      | Some names ->
+        Restrict { names; command_line_option = "--only-packages" }
     in
     { t with only_packages }
 
@@ -480,8 +463,9 @@ module Options_implied_by_dash_p = struct
     in
     { release_options with
       only_packages =
-        Option.map pkgs ~f:(fun names ->
-            Only_packages.create ~names ~command_line_option:(List.hd args))
+        (match pkgs with
+        | None -> No_restriction
+        | Some names -> Restrict { names; command_line_option = List.hd args })
     }
 
   let term =

@@ -252,3 +252,7 @@ let load () =
       ~f:(fun (dir, project, dune_file) -> interpret ~dir ~project ~dune_file)
   in
   { dune_files; packages; projects }
+
+let load =
+  let memo = Memo.lazy_ load in
+  fun () -> Memo.Lazy.force memo

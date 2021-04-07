@@ -165,9 +165,10 @@ let rules ~sctx ~expander ~dir tests =
               { acc with enabled_if; deps; alias; packages })
       in
       let test_rule () = test_rule ~sctx ~expander ~dir effective test in
-      match !Clflags.only_packages with
+      Only_packages.get () >>= function
       | None -> test_rule ()
       | Some only ->
+        let only = Package.Name.Map.keys only |> Package.Name.Set.of_list in
         Memo.Build.if_
           (Package.Name.Set.is_empty effective.packages
           || Package.Name.Set.(not (is_empty (inter only effective.packages))))

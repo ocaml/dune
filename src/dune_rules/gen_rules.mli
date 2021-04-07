@@ -6,6 +6,5 @@ open! Import
    names. *)
 val init :
      contexts:Context.t list
-  -> only_packages:Package.t Package.Name.Map.t option
   -> Dune_load.conf
   -> Super_context.t Context_name.Map.t Fiber.t

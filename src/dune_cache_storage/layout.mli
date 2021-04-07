@@ -18,18 +18,18 @@ val root_path : Path.t
     model, in reality we need to occasionally remove some outdated metadata
     files to free disk space.)
 
-    A metadata file coresponding to a build rule is named by the rule hash and
-    stores file names and content hashes of all artifacts produced by the rule.
+    A metadata file coresponding to a build rule is named by the rule digest and
+    stores file names and content digests of all artifacts produced by the rule.
 
     A metadata file coresponding to an output-producing action is named by the
-    action hash and stores the content hash of the resulting output. *)
+    action digest and stores the content digest of the resulting output. *)
 val metadata_storage_path : Path.t
 
 (** Path to the metadata file corresponding to a build action or rule with the
     given [rule_or_action_digest]. *)
 val metadata_path : rule_or_action_digest:Digest.t -> Path.t
 
-(** This is a storage for artifacts, where files named by content hashes store
+(** This is a storage for artifacts, where files named by content digests store
     the matching contents. We will create hard links to these files from build
     directories and rely on the hard link count, as well as on the last access
     time as useful metrics during cache trimming. *)
@@ -41,9 +41,9 @@ val file_path : file_digest:Digest.t -> Path.t
 (** This is a storage for outputs and, more generally, other values that the
     build system might choose to store in the cache in future. As in
     [files_path], we store the values in the files named by their content
-    hashes. However, these files will always have the hard link count equal to 1
-    because they do not appear anywhere in build directories. By storing them in
-    a separate directory, we simplify the job of the cache trimmer. *)
+    digests. However, these files will always have the hard link count equal to
+    one because they do not appear anywhere in build directories. By storing
+    them in a separate directory, we simplify the job of the cache trimmer. *)
 val value_storage_path : Path.t
 
 (** Path to the value corresponding to a given [value_digest]. *)

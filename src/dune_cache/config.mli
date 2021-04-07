@@ -1,3 +1,4 @@
+(** All configuration settings of Dune's local and cloud (in future) caches. *)
 type t =
   | Disabled
   | Enabled of

@@ -13,7 +13,6 @@
    store the mtime in the metadata and complain if it's not what we expected. *)
 
 open Stdune
-module Store_result := Dune_cache_storage.Store_result
 module Restore_result := Dune_cache_storage.Restore_result
 
 module Store_artifacts_result : sig
@@ -50,14 +49,6 @@ module Target : sig
       about the file, such as whether it is executable or not. *)
   val create : Path.Build.t -> t option
 end
-
-val store_output :
-     mode:Dune_cache_storage.Mode.t
-  -> action_digest:Digest.t
-  -> string
-  -> Store_result.t
-
-val restore_output : action_digest:Digest.t -> string Restore_result.t
 
 (** The [compute_digest] function is passed explicitly because the caller might
     want to memoize and/or throttle file digest computations. *)

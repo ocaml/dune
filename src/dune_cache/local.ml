@@ -74,10 +74,6 @@ let link_even_if_there_are_too_many_links_already ~src ~dst =
         Path.rename temp_path dst;
         Path.link src dst)
 
-let store_output = Dune_cache_storage.Value.store
-
-let restore_output = Dune_cache_storage.Value.restore
-
 module Artifacts = struct
   include Dune_cache_storage.Artifacts
 

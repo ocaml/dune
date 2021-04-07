@@ -523,7 +523,7 @@ let () =
       pending_targets := Path.Build.Set.empty;
       Path.Build.Set.iter fns ~f:(fun p -> Path.unlink_no_err (Path.build p)))
 
-let compute_targets_and_digests targets =
+let compute_target_digests targets =
   match
     List.map (Path.Build.Set.to_list targets) ~f:(fun target ->
         (target, Cached_digest.build_file target))
@@ -531,7 +531,7 @@ let compute_targets_and_digests targets =
   | l -> Some l
   | exception (Unix.Unix_error _ | Sys_error _) -> None
 
-let compute_targets_and_digests_or_raise_error exec_params ~loc targets =
+let compute_target_digests_or_raise_error exec_params ~loc targets =
   let remove_write_permissions =
     (* Remove write permissions on targets. A first theoretical reason is that
        the build process should be a computational graph and targets should not
@@ -1558,9 +1558,7 @@ end = struct
       in
       (* We don't need to digest target names here, as these are already part of
          the rule digest. *)
-      let digest_of_targets_and_digests l =
-        Digest.generic (List.map l ~f:snd)
-      in
+      let digest_of_target_digests l = Digest.generic (List.map l ~f:snd) in
       (* Here we determine if we need to execute the action based on information
          stored in [Trace_db]. If we need to, then [targets_and_digests] will be
          [None], otherwise it will be [Some l] where [l] is the list of targets
@@ -1580,12 +1578,12 @@ end = struct
               else
                 (* [targets_and_digests] will be [None] if not all targets were
                    built. *)
-                match compute_targets_and_digests targets with
+                match compute_target_digests targets with
                 | None -> None
                 | Some targets_and_digests ->
                   if
                     Digest.equal prev_trace.targets_digest
-                      (digest_of_targets_and_digests targets_and_digests)
+                      (digest_of_target_digests targets_and_digests)
                   then
                     Some (prev_trace, targets_and_digests)
                   else
@@ -1671,23 +1669,21 @@ end = struct
                     ~action
                 in
                 match targets_and_digests with
+                | Some targets_and_digets -> targets_and_digets
                 | None ->
-                  compute_targets_and_digests_or_raise_error
-                    execution_parameters ~loc targets
-                | Some targets_and_digets -> targets_and_digets)
+                  compute_target_digests_or_raise_error execution_parameters
+                    ~loc targets)
               | _ ->
                 Fiber.return
-                  (compute_targets_and_digests_or_raise_error
-                     execution_parameters ~loc targets)
+                  (compute_target_digests_or_raise_error execution_parameters
+                     ~loc targets)
             in
             let dynamic_deps_stages =
               List.map exec_result.dynamic_deps_stages
                 ~f:(fun (deps, fact_map) ->
                   (deps, Dep.Facts.digest fact_map ~sandbox_mode ~env))
             in
-            let targets_digest =
-              digest_of_targets_and_digests targets_and_digests
-            in
+            let targets_digest = digest_of_target_digests targets_and_digests in
             Trace_db.set (Path.build head_target)
               { rule_digest; dynamic_deps_stages; targets_digest };
             Fiber.return targets_and_digests)

@@ -23,19 +23,19 @@ let file_storage_path = root_path / "files" / "v4"
 
 let value_storage_path = root_path / "values" / "v3"
 
-let cache_path ~dir ~hash =
-  let two_first_chars = sprintf "%c%c" hash.[0] hash.[1] in
-  dir / two_first_chars / hash
+let cache_path ~dir ~hex =
+  let two_first_chars = sprintf "%c%c" hex.[0] hex.[1] in
+  dir / two_first_chars / hex
 
 let metadata_path ~rule_or_action_digest =
   cache_path ~dir:metadata_storage_path
-    ~hash:(Digest.to_string rule_or_action_digest)
+    ~hex:(Digest.to_string rule_or_action_digest)
 
 let value_path ~value_digest =
-  cache_path ~dir:value_storage_path ~hash:(Digest.to_string value_digest)
+  cache_path ~dir:value_storage_path ~hex:(Digest.to_string value_digest)
 
 let file_path ~file_digest =
-  cache_path ~dir:file_storage_path ~hash:(Digest.to_string file_digest)
+  cache_path ~dir:file_storage_path ~hex:(Digest.to_string file_digest)
 
 let temp_path = root_path / "temp"
 

@@ -118,10 +118,10 @@ module Var : sig
   val create : unit -> 'a t
 
   (** [get var] reads the value of [var]. *)
-  val get : 'a t -> 'a option
+  val get : 'a t -> 'a option fiber
 
   (** Same as [get] but raises if [var] is unset. *)
-  val get_exn : 'a t -> 'a
+  val get_exn : 'a t -> 'a fiber
 
   (** [set var value fiber] sets [var] to [value] during the execution of
       [fiber].
@@ -131,11 +131,7 @@ module Var : sig
       {[ set v x (get_exn v >>| fun y -> x = y) ]} *)
   val set : 'a t -> 'a -> (unit -> 'b fiber) -> 'b fiber
 
-  val set_sync : 'a t -> 'a -> (unit -> 'b) -> 'b
-
   val unset : 'a t -> (unit -> 'b fiber) -> 'b fiber
-
-  val unset_sync : 'a t -> (unit -> 'b) -> 'b
 end
 with type 'a fiber := 'a t
 

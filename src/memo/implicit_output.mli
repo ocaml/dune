@@ -4,9 +4,9 @@ type 'o t
 
 (** [produce] and [produce_opt] are used by effectful functions to produce
     output. *)
-val produce : 'o t -> 'o -> unit
+val produce : 'o t -> 'o -> unit Fiber.t
 
-val produce_opt : 'o t -> 'o option -> unit
+val produce_opt : 'o t -> 'o option -> unit Fiber.t
 
 (** [collect] and [forbid] take a potentially effectful function (one which may
     produce some implicit output) and turn it into a pure one (with explicit

@@ -796,7 +796,7 @@ let install_rules sctx (package : Package.t) =
                    Pp.text (Package.Name.to_string name))
           ]
   in
-  let () =
+  let* () =
     let context = Context.build_context ctx in
     let target_alias =
       Build_system.Alias.package_install ~context ~pkg:package
@@ -883,6 +883,8 @@ let memo =
       let install_file = Path.relative (Path.build path) install_fn in
       Rules.Produce.Alias.add_static_deps install_alias
         (Path.Set.singleton install_file)
+    else
+      Memo.Build.return ()
   in
   Memo.create
     ~input:(module Sctx_and_package)
@@ -896,7 +898,7 @@ let memo =
          let rules =
            Memo.lazy_ (fun () ->
                Rules.collect_unit (fun () ->
-                   let+ () = install_rules sctx pkg in
+                   let* () = install_rules sctx pkg in
                    install_alias ctx pkg))
          in
          Scheme.Approximation
@@ -922,11 +924,13 @@ let scheme_per_ctx_memo =
       Scheme.evaluate ~union:Rules.Dir_rules.union (Scheme.all schemes))
 
 let gen_rules sctx ~dir =
-  let+ rules, subdirs =
+  let* rules, subdirs =
     let* scheme = Memo.exec scheme_per_ctx_memo sctx in
     Scheme.Evaluated.get_rules scheme ~dir
   in
-  Rules.produce_dir ~dir (Option.value ~default:Rules.Dir_rules.empty rules);
+  let+ () =
+    Rules.produce_dir ~dir (Option.value ~default:Rules.Dir_rules.empty rules)
+  in
   Build_system.Subdir_set.These subdirs
 
 let packages =

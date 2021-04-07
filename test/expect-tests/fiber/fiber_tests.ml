@@ -110,8 +110,8 @@ let%expect_test "execution context of ivars" =
     Fiber.Var.set var 42 (fun () ->
         let* peek = Fiber.Ivar.peek ivar in
         assert (peek = None);
-        let+ () = Fiber.Ivar.read ivar in
-        let value = Fiber.Var.get_exn var in
+        let* () = Fiber.Ivar.read ivar in
+        let+ value = Fiber.Var.get_exn var in
         Printf.printf "var value %d\n" value)
   in
   let run = Fiber.fork_and_join_unit run_when_filled (Fiber.Ivar.fill ivar) in
@@ -123,11 +123,14 @@ let%expect_test "execution context of ivars" =
 let%expect_test "fiber vars are preseved across yields" =
   let var = Fiber.Var.create () in
   let fiber th () =
-    assert (Fiber.Var.get var = None);
+    let* v = Fiber.Var.get var in
+    assert (v = None);
     Fiber.Var.set var th (fun () ->
-        assert (Fiber.Var.get var = Some th);
-        let+ () = Scheduler.yield () in
-        assert (Fiber.Var.get var = Some th))
+        let* v = Fiber.Var.get var in
+        assert (v = Some th);
+        let* () = Scheduler.yield () in
+        let+ v = Fiber.Var.get var in
+        assert (v = Some th))
   in
   let run = Fiber.fork_and_join_unit (fiber 1) (fiber 2) in
   test unit run;
@@ -238,7 +241,8 @@ let%expect_test "wait_errors restores the execution context properly" =
                Fiber.collect_errors (fun () ->
                    Fiber.Var.set var "c" (fun () -> raise Exit)))
          in
-         print_endline (Fiber.Var.get_exn var);
+         let* v = Fiber.Var.get_exn var in
+         print_endline v;
          Fiber.return ()));
   [%expect {|
     a
@@ -870,35 +874,6 @@ let%expect_test "raise exception" =
          | _ -> assert false)
        (fun () -> Pool.stop pool));
   [%expect {| Caught Exit |}]
-
-let%expect_test "execution context preservation in iter callback" =
-  let ivar1 = Fiber.Ivar.create () in
-  let ivar2 = Fiber.Ivar.create () in
-  let ivar3 = Fiber.Ivar.create () in
-  let var = Fiber.Var.create () in
-  let step = ref 0 in
-  let fiber =
-    let* () = Fiber.Ivar.read ivar1 in
-    Fiber.Var.set var 1 (fun () ->
-        let* () = Fiber.Ivar.read ivar2 in
-        Fiber.Var.set var 2 (fun () -> Fiber.Ivar.read ivar3))
-  in
-  let iter () =
-    let v = Fiber.Var.get var in
-    Printf.printf "%d: var = %s\n" !step
-      (Dyn.to_string (Dyn.Encoder.(option int) v));
-    incr step;
-    match !step with
-    | 1 -> Fiber.Fill (ivar1, ())
-    | 2 -> Fiber.Fill (ivar2, ())
-    | 3 -> Fiber.Fill (ivar3, ())
-    | _ -> assert false
-  in
-  Fiber.run fiber ~iter;
-  [%expect {|
-    0: var = None
-    1: var = None
-    2: var = None |}]
 
 let%expect_test "stack usage with consecutive Ivar.fill" =
   let stack_size () = (Gc.stat ()).stack_size in

@@ -262,7 +262,7 @@ let add_rule sctx ~project ~pkg =
     Rule.Mode.Promote { lifetime = Unlimited; into = None; only = None }
   in
   let open Memo.Build.O in
-  let+ () = Super_context.add_rule sctx ~mode ~dir opam_rule in
+  let* () = Super_context.add_rule sctx ~mode ~dir opam_rule in
   let aliases =
     [ Alias.install ~dir
     ; Alias.runtest ~dir
@@ -270,7 +270,7 @@ let add_rule sctx ~project ~pkg =
     ]
   in
   let deps = Path.Set.singleton (Path.build opam_path) in
-  List.iter aliases ~f:(fun alias ->
+  Memo.Build.sequential_iter aliases ~f:(fun alias ->
       Rules.Produce.Alias.add_static_deps alias deps)
 
 let add_rules sctx ~dir =

@@ -249,12 +249,12 @@ val get_deps : ('i, _) t -> 'i -> (string option * Dyn.t) list option
 
 (** Print the memoized call stack during execution. This is useful for debugging
     purposes. *)
-val dump_stack : unit -> unit
+val dump_stack : unit -> unit Fiber.t
 
-val pp_stack : unit -> _ Pp.t
+val pp_stack : unit -> _ Pp.t Fiber.t
 
 (** Get the memoized call stack during the execution of a memoized function. *)
-val get_call_stack : unit -> Stack_frame.t list
+val get_call_stack : unit -> Stack_frame.t list Build.t
 
 (** Call a memoized function by name *)
 val call : string -> Dune_lang.Ast.t -> Dyn.t Build.t
@@ -307,9 +307,9 @@ module Implicit_output : sig
 
   (** [produce] and [produce_opt] are used by effectful functions to produce
       output. *)
-  val produce : 'o t -> 'o -> unit
+  val produce : 'o t -> 'o -> unit Build.t
 
-  val produce_opt : 'o t -> 'o option -> unit
+  val produce_opt : 'o t -> 'o option -> unit Build.t
 
   (** [collect] and [forbid] take a potentially effectful function (one which
       may produce some implicit output) and turn it into a pure one (with

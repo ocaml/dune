@@ -373,10 +373,10 @@ end = struct
     Fdecl.set Super_context.modules_of_lib f
 
   let gen_rules sctx ~dir =
-    Memo.exec memo0 (sctx, dir) >>| function
-    | See_above group_root -> Group_part group_root
+    Memo.exec memo0 (sctx, dir) >>= function
+    | See_above group_root -> Memo.Build.return (Group_part group_root)
     | Here { t; rules; subdirs } ->
-      Rules.produce_opt rules;
+      let+ () = Rules.produce_opt rules in
       Standalone_or_root (t, Path.Build.Map.values subdirs)
 end
 

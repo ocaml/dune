@@ -77,7 +77,7 @@ let gen_rules_output sctx (config : Format_config.t) ~version ~dialects
               ~output)
   in
   let open Memo.Build.O in
-  let+ () =
+  let* () =
     Source_tree.files_of source_dir
     >>= Memo.Build.parallel_iter_set
           (module Path.Source.Set)

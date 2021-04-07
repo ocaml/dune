@@ -109,7 +109,7 @@ module Dep : sig
 
   (*** [setup_deps ctx target odocs] Adds [odocs] as dependencies for [target].
     These dependencies may be used using the [deps] function *)
-  val setup_deps : Context.t -> target -> Path.Set.t -> unit
+  val setup_deps : Context.t -> target -> Path.Set.t -> unit Memo.Build.t
 end = struct
   let html_alias ctx m = Alias.doc ~dir:(Paths.html ctx m)
 
@@ -323,7 +323,7 @@ let setup_library_odoc_rules cctx (library : Library.t) ~dep_graphs =
         compiled :: acc)
   in
   let open Memo.Build.O in
-  let+ modules_and_odoc_files =
+  let* modules_and_odoc_files =
     Memo.Build.all_concurrently modules_and_odoc_files
   in
   Dep.setup_deps ctx (Lib local_lib)
@@ -504,7 +504,7 @@ let setup_lib_html_rules_def =
     let ctx = Super_context.context sctx in
     let* odocs = odocs sctx (Lib lib) in
     let pkg = Lib_info.package (Lib.Local.info lib) in
-    let+ () =
+    let* () =
       Memo.Build.parallel_iter odocs ~f:(fun odoc ->
           setup_html sctx ~pkg ~requires odoc)
     in
@@ -558,16 +558,16 @@ let setup_pkg_html_rules_def =
         Lib.closure libs ~linking:false
       in
       let ctx = Super_context.context sctx in
-      let+ () =
+      let* () =
         Memo.Build.parallel_iter libs ~f:(setup_lib_html_rules sctx ~requires)
-      and+ pkg_odocs =
+      and* pkg_odocs =
         let* pkg_odocs = odocs sctx (Pkg pkg) in
         let+ () =
           Memo.Build.parallel_iter pkg_odocs
             ~f:(setup_html sctx ~pkg:(Some pkg) ~requires)
         in
         pkg_odocs
-      and+ lib_odocs =
+      and* lib_odocs =
         Memo.Build.parallel_map libs ~f:(fun lib -> odocs sctx (Lib lib))
       in
       let odocs = List.concat (pkg_odocs :: lib_odocs) in
@@ -680,7 +680,7 @@ let setup_package_odoc_rules_def =
           in
           String.Map.set mlds "index" gen_mld
       in
-      let+ odocs =
+      let* odocs =
         Memo.Build.parallel_map (String.Map.values mlds) ~f:(fun mld ->
             compile_mld sctx (Mld.create mld) ~pkg
               ~doc_dir:(Paths.odocs ctx (Pkg pkg))
@@ -694,10 +694,12 @@ let setup_package_odoc_rules sctx ~pkg =
 let init sctx =
   let stanzas = SC.stanzas sctx in
   let ctx = Super_context.context sctx in
-  SC.packages sctx
-  |> Package.Name.Map.iter ~f:(fun (pkg : Package.t) ->
-         (* setup @doc to build the correct html for the package *)
-         setup_package_aliases sctx pkg);
+  let* () =
+    Package.Name.Map_traversals.parallel_iter (SC.packages sctx)
+      ~f:(fun _ (pkg : Package.t) ->
+        (* setup @doc to build the correct html for the package *)
+        setup_package_aliases sctx pkg)
+  in
   Rules.Produce.Alias.add_deps
     (Alias.private_doc ~dir:ctx.build_dir)
     (Action_builder.deps

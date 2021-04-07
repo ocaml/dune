@@ -1,4 +1,5 @@
 open! Stdune
+open Fiber.O
 
 module type Implicit_output = sig
   type t
@@ -79,7 +80,8 @@ let produce' ~union opt v =
   | Some v0 -> opt := Some (union v0 v)
 
 let produce (type o) (type_ : o t) (value : o) =
-  match Fiber.Var.get current_handler with
+  let+ current_handler = Fiber.Var.get current_handler in
+  match current_handler with
   | None ->
     Code_error.raise
       "Implicit_output.produce called without any handler in dynamic scope"
@@ -96,7 +98,7 @@ let produce (type o) (type_ : o t) (value : o) =
 
 let produce_opt t v =
   match v with
-  | None -> ()
+  | None -> Fiber.return ()
   | Some v -> produce t v
 
 let collect (type o) (type_ : o t) f =

@@ -28,11 +28,11 @@ let client_term common f =
   let common = Common.set_print_directory common false in
   let config = Common.init common in
   Scheduler.go ~common ~config (fun () ->
+      let open Fiber.O in
       let where = wait_for_server common in
       let stats = Common.stats common in
-      let run =
-        Dune_rpc_impl.Run.of_config Client (Scheduler.csexp_scheduler ()) stats
-      in
+      let* csexp_scheduler = Scheduler.csexp_scheduler () in
+      let run = Dune_rpc_impl.Run.of_config Client csexp_scheduler stats in
       f run where)
 
 module Init = struct

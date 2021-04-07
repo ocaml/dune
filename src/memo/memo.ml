@@ -32,6 +32,16 @@ module Build = struct
       match option with
       | None -> return ()
       | Some a -> f a
+
+    let map option ~f =
+      match option with
+      | None -> return None
+      | Some a -> f a >>| Option.some
+
+    let bind option ~f =
+      match option with
+      | None -> return None
+      | Some a -> f a
   end
 
   module Result = struct

@@ -752,6 +752,48 @@ let install_entries sctx (package : Package.t) =
   let+ packages = Stanzas_to_entries.stanzas_to_entries sctx in
   Package.Name.Map.Multi.find packages (Package.name package)
 
+let packages =
+  let f sctx =
+    let packages = Package.Name.Map.values (Super_context.packages sctx) in
+    let+ l =
+      Memo.Build.parallel_map packages ~f:(fun (pkg : Package.t) ->
+          install_entries sctx pkg
+          >>| List.map ~f:(fun (_loc, (entry : _ Install.Entry.t)) ->
+                  (entry.src, pkg.id)))
+    in
+    Path.Build.Map.of_list_fold (List.concat l) ~init:Package.Id.Set.empty
+      ~f:Package.Id.Set.add
+  in
+  let memo =
+    Memo.create "package-map" ~doc:"Return a map assining package to files"
+      ~input:(module Super_context.As_memo_key)
+      ~visibility:Hidden
+      ~output:
+        (Allow_cutoff
+           (module struct
+             type t = Package.Id.Set.t Path.Build.Map.t
+
+             let to_dyn = Path.Build.Map.to_dyn Package.Id.Set.to_dyn
+
+             let equal = Path.Build.Map.equal ~equal:Package.Id.Set.equal
+           end))
+      f
+  in
+  fun sctx -> Memo.exec memo sctx
+
+let packages_file_is_part_of path =
+  Memo.Build.Option.bind
+    (let open Option.O in
+    let* ctx_name, _ = Path.Build.extract_build_context path in
+    Context_name.of_string_opt ctx_name)
+    ~f:Super_context.find
+  >>= function
+  | None -> Memo.Build.return Package.Id.Set.empty
+  | Some sctx ->
+    let open Memo.Build.O in
+    let+ map = packages sctx in
+    Option.value (Path.Build.Map.find map path) ~default:Package.Id.Set.empty
+
 let install_rules sctx (package : Package.t) =
   let package_name = Package.name package in
   let install_paths =
@@ -772,7 +814,9 @@ let install_rules sctx (package : Package.t) =
   let packages =
     let open Action_builder.O in
     let+ packages =
-      Action_builder.memo_build (Build_system.package_deps package files)
+      Action_builder.memo_build
+        (Build_system.package_deps package files
+           ~packages_of:packages_file_is_part_of)
     in
     match strict_package_deps with
     | false -> packages
@@ -932,32 +976,3 @@ let gen_rules sctx ~dir =
     Rules.produce_dir ~dir (Option.value ~default:Rules.Dir_rules.empty rules)
   in
   Build_system.Subdir_set.These subdirs
-
-let packages =
-  let f sctx =
-    let packages = Package.Name.Map.values (Super_context.packages sctx) in
-    let+ l =
-      Memo.Build.parallel_map packages ~f:(fun (pkg : Package.t) ->
-          install_entries sctx pkg
-          >>| List.map ~f:(fun (_loc, (entry : _ Install.Entry.t)) ->
-                  (entry.src, pkg.id)))
-    in
-    Path.Build.Map.of_list_fold (List.concat l) ~init:Package.Id.Set.empty
-      ~f:Package.Id.Set.add
-  in
-  let memo =
-    Memo.create "package-map" ~doc:"Return a map assining package to files"
-      ~input:(module Super_context.As_memo_key)
-      ~visibility:Hidden
-      ~output:
-        (Allow_cutoff
-           (module struct
-             type t = Package.Id.Set.t Path.Build.Map.t
-
-             let to_dyn = Path.Build.Map.to_dyn Package.Id.Set.to_dyn
-
-             let equal = Path.Build.Map.equal ~equal:Package.Id.Set.equal
-           end))
-      f
-  in
-  fun sctx -> Memo.exec memo sctx

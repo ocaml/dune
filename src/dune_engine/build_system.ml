@@ -1990,12 +1990,21 @@ end = struct
       load_dir ~dir >>| function
       | Non_build targets -> Path.Set.filter targets ~f:(File_selector.test g)
       | Build { rules_here; _ } ->
-        Path.Build.Map.foldi ~init:[] rules_here ~f:(fun s _ acc ->
-            let s = Path.build s in
-            if File_selector.test g s then
-              s :: acc
-            else
-              acc)
+        let include_source_file_copies =
+          File_selector.include_source_file_copies g
+        in
+        Path.Build.Map.foldi ~init:[] rules_here
+          ~f:(fun s { Rule.info; _ } acc ->
+            match info with
+            | Rule.Info.Source_file_copy _ when not include_source_file_copies
+              ->
+              acc
+            | _ ->
+              let s = Path.build s in
+              if File_selector.test g s then
+                s :: acc
+              else
+                acc)
         |> Path.Set.of_list
 
     let eval_memo =

@@ -9,7 +9,10 @@ val dir : t -> Path.t
 
 val predicate : t -> string Predicate.t
 
-val create : dir:Path.t -> string Predicate.t -> t
+val include_source_file_copies : t -> bool
+
+val create :
+  dir:Path.t -> ?include_source_file_copies:bool -> string Predicate.t -> t
 
 val equal : t -> t -> bool
 

@@ -159,11 +159,11 @@ let copy_files sctx ~dir ~expander ~src_dir (def : Copy_files.t) =
            <dir> is not the current directory."
       ];
   (* add rules *)
-  let* src_in_build =
+  let src_in_build =
     match Path.as_in_source_tree src_in_src with
-    | None -> Memo.Build.return src_in_src
+    | None -> src_in_src
     | Some src_in_src ->
-      let+ context = Context.DB.get dir in
+      let context = Super_context.context sctx in
       Path.Build.append_source context.build_dir src_in_src |> Path.build
   in
   let* files =

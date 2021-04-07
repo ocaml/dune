@@ -12,6 +12,12 @@ type build_system =
 
 let init ~stats ~sandboxing_preference ~cache_config =
   let promote_source ?chmod ~src ~dst ctx =
+    let open Fiber.O in
+    let* ctx =
+      Memo.Build.run
+        (Memo.Build.Option.map ctx ~f:(fun (ctx : Build_context.t) ->
+             Context.DB.get ctx.name))
+    in
     let conf = Artifact_substitution.conf_of_context ctx in
     let src = Path.build src in
     let dst = Path.source dst in

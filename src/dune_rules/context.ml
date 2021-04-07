@@ -583,8 +583,7 @@ let create ~(kind : Kind.t) ~path ~env ~env_nodes ~name ~merlin ~targets
     in
     let t =
       let build_context =
-        Build_context.create ~name ~build_dir ~env ~stdlib_dir
-          ~default_ocamlpath
+        Build_context.create ~name ~build_dir ~env
           ~host:(Option.map host ~f:(fun c -> c.build_context))
       in
       { name
@@ -835,14 +834,7 @@ module DB = struct
           let+ contexts = all () in
           List.find_exn contexts ~f:(fun c -> Context_name.equal name c.name))
     in
-    fun dir ->
-      match Path.Build.extract_build_context dir with
-      | None ->
-        Code_error.raise "Context.DB.get: invalid dir"
-          [ ("dir", Path.Build.to_dyn dir) ]
-      | Some (name, _) ->
-        let name = Context_name.of_string name in
-        Memo.exec memo name
+    Memo.exec memo
 end
 
 let install_ocaml_libdir t =

@@ -50,7 +50,7 @@ type conf =
   ; hardcoded_ocaml_path : hardcoded_ocaml_path
   }
 
-let conf_of_context (context : Build_context.t option) =
+let conf_of_context (context : Context.t option) =
   let get_vcs = Source_tree.nearest_vcs in
   match context with
   | None ->

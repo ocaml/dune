@@ -69,6 +69,6 @@ A project that uses both files, should copy both.
   > (library (name a))
   > EOF
   $ dune build --root .
-  $ find _build/default -name '*.ml'
+  $ find _build/default -name '*.ml' | sort
   _build/default/a.ml
   _build/default/b.ml

@@ -206,10 +206,10 @@ let define_all_alias ~dir ~scope ~js_targets =
       in
       Predicate.create ~id ~f
     in
-    let include_source_file_copies =
-      Dune_project.dune_version (Scope.project scope) < (3, 0)
+    let only_generated_files =
+      Dune_project.dune_version (Scope.project scope) >= (3, 0)
     in
-    File_selector.create ~dir:(Path.build dir) ~include_source_file_copies pred
+    File_selector.create ~dir:(Path.build dir) ~only_generated_files pred
     |> Action_builder.paths_matching_unit ~loc:Loc.none
   in
   Rules.Produce.Alias.add_deps (Alias.all ~dir) deps

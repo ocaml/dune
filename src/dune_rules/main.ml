@@ -27,9 +27,7 @@ let init ~stats ~sandboxing_preference ~cache_config =
     ~contexts:
       (Memo.lazy_ (fun () ->
            let open Memo.Build.O in
-           let+ workspace = Workspace.workspace () in
-           List.concat_map workspace.contexts
-             ~f:Workspace.Context.build_contexts))
+           Workspace.workspace () >>| Workspace.build_contexts))
     ~cache_config
     ~rule_generator:(module Gen_rules)
 

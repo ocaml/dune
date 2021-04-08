@@ -61,8 +61,6 @@ module Context : sig
   val env : t -> Dune_env.Stanza.t
 
   val host_context : t -> Context_name.t option
-
-  val build_contexts : t -> Build_context.t list
 end
 
 (** Representation of a workspace. The list of context is topologically sorted,
@@ -115,3 +113,6 @@ val workspace_config : unit -> Dune_config.t Memo.Build.t
     [dune-workspace] file. *)
 val update_execution_parameters :
   t -> Execution_parameters.t -> Execution_parameters.t
+
+(** All the build contexts defined in the workspace. *)
+val build_contexts : t -> Build_context.t list

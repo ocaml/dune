@@ -1362,8 +1362,9 @@ end = struct
         [ Pp.textf "cache restore error [%s]: %s" hex (Printexc.to_string exn) ];
       None
 
-  let execute_action_for_rule t ~rule_digest ~action ~deps ~loc ~context
-      ~execution_parameters ~sandbox_mode ~dir ~targets =
+  let execute_action_for_rule t ~rule_digest ~action ~deps ~loc
+      ~(context : Build_context.t option) ~execution_parameters ~sandbox_mode
+      ~dir ~targets =
     let open Fiber.O in
     let { Action.Full.action; env; locks; can_go_in_shared_cache = _ } =
       action
@@ -1412,6 +1413,13 @@ end = struct
         ~f:(fun p -> Memo.Build.run (Fs.mkdir_p_or_check_exists ~loc p))
     in
     let build_deps deps = Memo.Build.run (build_deps deps) in
+    let root =
+      (match context with
+      | None -> Path.Build.root
+      | Some context -> context.build_dir)
+      |> Option.value sandboxed ~default:Fun.id
+      |> Path.build
+    in
     let+ exec_result =
       with_locks t locks ~f:(fun () ->
           let copy_files_from_sandbox sandboxed =
@@ -1419,8 +1427,8 @@ end = struct
                 rename_optional_file ~src:(sandboxed target) ~dst:target)
           in
           let+ exec_result =
-            Action_exec.exec ~context ~env ~targets ~rule_loc:loc ~build_deps
-              ~execution_parameters action
+            Action_exec.exec ~root ~context ~env ~targets ~rule_loc:loc
+              ~build_deps ~execution_parameters action
           in
           Option.iter sandboxed ~f:copy_files_from_sandbox;
           exec_result)

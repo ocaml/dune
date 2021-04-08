@@ -141,20 +141,6 @@ let run_expect_test file ~f =
   else if Path.exists corrected_file then
     Path.rm_rf corrected_file
 
-let _BUILD_PATH_PREFIX_MAP = "BUILD_PATH_PREFIX_MAP"
-
-let extend_build_path_prefix_map ~env ~cwd ~temp_dir =
-  let s =
-    Build_path_prefix_map.encode_map
-      [ Some
-          { source = Path.to_absolute_filename cwd; target = "$TESTCASE_ROOT" }
-      ; Some { source = Path.to_absolute_filename temp_dir; target = "$TMPDIR" }
-      ]
-  in
-  Env.update env ~var:_BUILD_PATH_PREFIX_MAP ~f:(function
-    | None -> Some s
-    | Some s' -> Some (s ^ ":" ^ s'))
-
 let fprln oc fmt = Printf.fprintf oc (fmt ^^ "\n")
 
 (* Produce the following shell code:
@@ -366,8 +352,8 @@ let create_sh_script cram_stanzas ~temp_dir : sh_script Fiber.t =
       in
       fprln oc ". %s > %s 2>&1" user_shell_code_file_sh_path
         user_shell_code_output_file_sh_path;
-      fprln oc {|printf "%%d\0%%s\0" $? $%s >> %s|} _BUILD_PATH_PREFIX_MAP
-        metadata_file_sh_path;
+      fprln oc {|printf "%%d\0%%s\0" $? $%s >> %s|}
+        Action_exec._BUILD_PATH_PREFIX_MAP metadata_file_sh_path;
       Cram_lexer.Command
         { command = lines
         ; output_file = user_shell_code_output_file
@@ -395,7 +381,16 @@ let run ~env ~script lexbuf : string Fiber.t =
   let env =
     let env = Env.add env ~var:"LC_ALL" ~value:"C" in
     let temp_dir = Path.relative temp_dir "tmp" in
-    let env = extend_build_path_prefix_map ~env ~cwd ~temp_dir in
+    let env =
+      Action_exec.extend_build_path_prefix_map env `New_rules_have_precedence
+        [ Some
+            { source = Path.to_absolute_filename cwd
+            ; target = "$TESTCASE_ROOT"
+            }
+        ; Some
+            { source = Path.to_absolute_filename temp_dir; target = "$TMPDIR" }
+        ]
+    in
     Path.mkdir_p temp_dir;
     Env.add env ~var:Env.Var.temp_dir
       ~value:(Path.to_absolute_filename temp_dir)

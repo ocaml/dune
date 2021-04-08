@@ -163,6 +163,8 @@ val wrapped_executables : t -> bool
 
 val executables_implicit_empty_intf : t -> bool
 
+val accept_alternative_dune_file_name : t -> bool
+
 val strict_package_deps : t -> bool
 
 val cram : t -> bool

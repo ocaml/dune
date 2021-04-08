@@ -6,6 +6,8 @@ open! Import
 module Dune_file : sig
   val fname : string
 
+  val alternative_fname : string
+
   val jbuild_fname : string
 
   type kind = private

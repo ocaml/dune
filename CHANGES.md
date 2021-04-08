@@ -89,6 +89,9 @@ Unreleased
 
 - Add the possibility to use `locks` with the cram tests stanza (#4397, @voodoos)
 
+- The `@all` alias no longer depends directly on copies of files from the source
+  directory (#4461, @nojb)
+
 2.8.5 (28/03/2021)
 ------------------
 

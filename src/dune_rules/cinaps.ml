@@ -41,16 +41,6 @@ let () =
 let gen_rules sctx t ~dir ~scope =
   let open Memo.Build.O in
   let loc = t.loc in
-  let cinaps_dir = Path.Build.relative dir ("." ^ name) in
-  let main_module_name = Module_name.of_string name in
-  let module_ =
-    Module.generated main_module_name ~src_dir:(Path.build cinaps_dir)
-  in
-  let cinaps_ml =
-    Module.source ~ml_kind:Ml_kind.Impl module_
-    |> Option.value_exn |> Module.File.path |> Path.as_in_build_dir_exn
-  in
-  let cinaps_exe = Path.Build.relative cinaps_dir (name ^ ".exe") in
   (* Files checked by cinaps *)
   let* cinapsed_files =
     Source_tree.files_of (Path.Build.drop_build_context_exn dir)
@@ -69,6 +59,28 @@ let gen_rules sctx t ~dir ~scope =
     Super_context.resolve_program sctx ~dir ~loc:(Some loc) name
       ~hint:"opam install cinaps"
   in
+  let cinaps_dir =
+    let stamp =
+      let digest =
+        if cinapsed_files = [] then
+          Digest.generic (t.loc, t.libraries, t.preprocess, t.preprocessor_deps)
+        else
+          Digest.generic
+            (cinapsed_files, t.libraries, t.preprocess, t.preprocessor_deps)
+      in
+      String.take (Digest.to_string digest) 8
+    in
+    Path.Build.relative dir ("." ^ name ^ "." ^ stamp)
+  in
+  let main_module_name = Module_name.of_string name in
+  let module_ =
+    Module.generated main_module_name ~src_dir:(Path.build cinaps_dir)
+  in
+  let cinaps_ml =
+    Module.source ~ml_kind:Ml_kind.Impl module_
+    |> Option.value_exn |> Module.File.path |> Path.as_in_build_dir_exn
+  in
+  let cinaps_exe = Path.Build.relative cinaps_dir (name ^ ".exe") in
   let* () =
     (* Ask cinaps to produce a .ml file to build *)
     Super_context.add_rule sctx ~loc:t.loc ~dir

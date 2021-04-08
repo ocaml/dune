@@ -53,10 +53,9 @@ module T = struct
   type t =
     { id : Id.t
     ; context : Build_context.t option
-    ; env : Env.t option
-    ; action : Action.t Action_builder.With_targets.t
+    ; targets : Path.Build.Set.t
+    ; action : Action.Full.t Action_builder.t
     ; mode : Mode.t
-    ; locks : Path.t list
     ; info : Info.t
     ; loc : Loc.t
     ; dir : Path.Build.t
@@ -79,15 +78,12 @@ module O = Comparable.Make (T)
 module Set = O.Set
 
 let make ?(sandbox = Sandbox_config.default) ?(mode = Mode.Standard) ~context
-    ~env ?(locks = []) ?(info = Info.Internal) action =
-  let open Action_builder.With_targets.O in
+    ?(info = Info.Internal) ~targets action =
+  let open Action_builder.O in
   let action =
-    Action_builder.With_targets.memoize "Rule.make"
-      (Action_builder.with_no_targets
-         (Action_builder.dep (Dep.sandbox_config sandbox))
-      >>> action)
+    Action_builder.memoize "Rule.make"
+      (Action_builder.dep (Dep.sandbox_config sandbox) >>> action)
   in
-  let targets = action.targets in
   let dir =
     match Path.Build.Set.choose targets with
     | None -> (
@@ -123,21 +119,14 @@ let make ?(sandbox = Sandbox_config.default) ?(mode = Mode.Standard) ~context
            (Path.build (Path.Build.relative dir "_unknown_")))
     | Source_file_copy p -> Loc.in_file (Path.source p)
   in
-  { id = Id.gen (); context; env; action; mode; locks; info; loc; dir }
+  { id = Id.gen (); targets; context; action; mode; info; loc; dir }
 
 let with_prefix t ~build =
   { t with
     action =
-      (let open Action_builder.With_targets.O in
-      Action_builder.With_targets.memoize "Rule.with_prefix"
-        (Action_builder.with_no_targets build >>> t.action))
+      (let open Action_builder.O in
+      Action_builder.memoize "Rule.with_prefix" (build >>> t.action))
   }
-
-let effective_env t =
-  match (t.env, t.context) with
-  | None, None -> Env.initial
-  | Some e, _ -> e
-  | None, Some c -> c.env
 
 let find_source_dir rule =
   let _, src_dir = Path.Build.extract_build_context_dir_exn rule.dir in

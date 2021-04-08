@@ -27,9 +27,7 @@ module Dir_rules = struct
   let data_to_dyn = function
     | Rule rule ->
       Dyn.Variant
-        ( "Rule"
-        , [ Record [ ("targets", Path.Build.Set.to_dyn rule.action.targets) ] ]
-        )
+        ("Rule", [ Record [ ("targets", Path.Build.Set.to_dyn rule.targets) ] ])
     | Alias alias ->
       Dyn.Variant
         ("Alias", [ Record [ ("name", Alias.Name.to_dyn alias.name) ] ])
@@ -147,15 +145,13 @@ module Produce = struct
       let expansion = Action_builder.deps (Dep.Set.of_files_set deps) in
       alias t { expansions = Appendable_list.singleton (loc, expansion) }
 
-    let add_action t ~context ~env ~loc ?(locks = []) action =
+    let add_action t ~context ~loc action =
       add_deps t ?loc
         (Action_builder.action
            (let open Action_builder.O in
            let+ action = action in
            { Action_builder.Action_desc.context = Some context
-           ; env
            ; action
-           ; locks
            ; loc
            ; dir = Alias.dir t
            ; alias = Some (Alias.name t)

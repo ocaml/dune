@@ -226,9 +226,7 @@ module Action_desc : sig
      eventually share the code. *)
   type nonrec t =
     { context : Build_context.t option
-    ; env : Env.t option
-    ; action : Action.t
-    ; locks : Path.t list
+    ; action : Action.Full.t
     ; loc : Loc.t option
     ; dir : Path.Build.t
           (** Directory the action is attached to. This is the directory where

@@ -70,10 +70,8 @@ module Produce : sig
     val add_action :
          t
       -> context:Build_context.t
-      -> env:Env.t option
       -> loc:Loc.t option
-      -> ?locks:Path.t list
-      -> Action.t Action_builder.t
+      -> Action.Full.t Action_builder.t
       -> unit Memo.Build.t
   end
 end

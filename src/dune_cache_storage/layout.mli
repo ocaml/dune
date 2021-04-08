@@ -53,5 +53,31 @@ val value_path : value_digest:Digest.t -> Path.t
     needed when storing new artifacts in the cache. See [write_atomically]. *)
 val temp_path : Path.t
 
-(** All cache directories. *)
-val root_path_subdirectories : Path.t list
+(** Support for all versions of the layout, used by the cache trimmer. The
+    functions provided by the top module are obtained by a partial application
+    of the corresponding function defined here to a suitable current version. *)
+module Versioned : sig
+  val metadata_storage_path : Version.Metadata.t -> Path.t
+
+  val metadata_path :
+    Version.Metadata.t -> rule_or_action_digest:Digest.t -> Path.t
+
+  val file_storage_path : Version.File.t -> Path.t
+
+  val file_path : Version.File.t -> file_digest:Digest.t -> Path.t
+
+  val value_storage_path : Version.Value.t -> Path.t
+
+  val value_path : Version.Value.t -> value_digest:Digest.t -> Path.t
+
+  (** List all metadata entries currently stored in the cache. Note that there
+      is no guarantee that the result is up-to-date, since files can be added or
+      removed concurrently by other processes. *)
+  val list_metadata_entries : Version.Metadata.t -> Path.t list
+
+  (** List [list_metadata_entries] but for file entries. *)
+  val list_file_entries : Version.File.t -> Path.t list
+
+  (** List [list_metadata_entries] but for value entries. *)
+  val list_value_entries : Version.Value.t -> Path.t list
+end

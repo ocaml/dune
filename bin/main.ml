@@ -22,7 +22,7 @@ let all : _ Term.Group.t list =
     ; Format_dune_file.command
     ; Compute.command
     ; Upgrade.command
-    ; Caching.command
+    ; Cache.command
     ; Describe.command
     ; Top.command
     ; Ocaml_merlin.command

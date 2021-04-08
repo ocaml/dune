@@ -5,6 +5,7 @@ open Stdune
 module Layout = Layout
 module Mode = Mode
 module Util = Util
+module Version = Version
 
 module Store_result : sig
   (** Outcomes are ordered in the order of severity. *)
@@ -84,6 +85,11 @@ module Metadata : sig
     | Value of Value.Metadata_file.t
 
   val restore : rule_or_action_digest:Digest.t -> t Restore_result.t
+
+  module Versioned : sig
+    val restore :
+      Version.Metadata.t -> rule_or_action_digest:Digest.t -> t Restore_result.t
+  end
 end
 
 (** [with_temp_path ?prefix ~suffix f] creates a file in [Layout.temp_path],

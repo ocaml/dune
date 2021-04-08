@@ -2,6 +2,7 @@ open Stdune
 module Layout = Layout
 module Mode = Mode
 module Util = Util
+module Version = Version
 
 (* See [doc/dev/cache.md] for design and implementation notes. *)
 
@@ -286,6 +287,11 @@ module Metadata = struct
 
   let restore ~metadata_path ~rule_or_action_digest =
     restore_metadata_file (metadata_path ~rule_or_action_digest) ~of_sexp
+
+  module Versioned = struct
+    let restore version =
+      restore ~metadata_path:(Layout.Versioned.metadata_path version)
+  end
 
   let restore = restore ~metadata_path:Layout.metadata_path
 end

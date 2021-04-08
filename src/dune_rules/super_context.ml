@@ -308,38 +308,47 @@ let expander t ~dir = Env_tree.expander t.env_tree ~dir
 
 let get_node t = Env_tree.get_node t
 
-let chdir_to_build_context_root t build =
-  Action_builder.With_targets.map build ~f:(fun (action : Action.t) ->
-      match action with
-      | Chdir _ -> action
-      | _ -> Chdir (Path.build t.context.build_dir, action))
-
 open Memo.Build.O
 
-let make_rule t ?sandbox ?mode ?locks ?loc ~dir build =
-  let build = chdir_to_build_context_root t build in
-  let+ env = get_node t.env_tree ~dir >>= Env_node.external_env in
-  Rule.make ?sandbox ?mode ?locks ~info:(Rule.Info.of_loc_opt loc)
+let make_full_action t ~dir ~locks build =
+  let open Action_builder.O in
+  let+ (action : Action.t) = build
+  and+ env =
+    Action_builder.memo_build
+      (let open Memo.Build.O in
+      get_node t.env_tree ~dir >>= Env_node.external_env)
+  in
+  let action =
+    match action with
+    | Chdir _ -> action
+    | _ -> Chdir (Path.build t.context.build_dir, action)
+  in
+  { Action.Full.action; env; locks }
+
+let make_rule t ?sandbox ?mode ?(locks = []) ?loc ~dir
+    { Action_builder.With_targets.build; targets } =
+  let build = make_full_action t build ~locks ~dir in
+  Rule.make ?sandbox ?mode ~info:(Rule.Info.of_loc_opt loc)
     ~context:(Some (Context.build_context t.context))
-    ~env:(Some env) build
+    ~targets build
 
 let add_rule t ?sandbox ?mode ?locks ?loc ~dir build =
-  let* rule = make_rule t ?sandbox ?mode ?locks ?loc ~dir build in
+  let rule = make_rule t ?sandbox ?mode ?locks ?loc ~dir build in
   Rules.Produce.rule rule
 
 let add_rule_get_targets t ?sandbox ?mode ?locks ?loc ~dir build =
-  let* rule = make_rule t ?sandbox ?mode ?locks ?loc ~dir build in
+  let rule = make_rule t ?sandbox ?mode ?locks ?loc ~dir build in
   let+ () = Rules.Produce.rule rule in
-  rule.action.targets
+  rule.targets
 
 let add_rules t ?sandbox ~dir builds =
   Memo.Build.parallel_iter builds ~f:(add_rule t ?sandbox ~dir)
 
-let add_alias_action t alias ~dir ~loc ?locks action =
-  let* env = get_node t.env_tree ~dir >>= Env_node.external_env in
+let add_alias_action t alias ~dir ~loc ?(locks = []) action =
   Rules.Produce.Alias.add_action
     ~context:(Context.build_context t.context)
-    ~env:(Some env) alias ~loc ?locks action
+    alias ~loc
+    (make_full_action t action ~locks ~dir)
 
 let build_dir_is_vendored build_dir =
   match Path.Build.drop_build_context build_dir with

@@ -57,14 +57,6 @@ include
     with type target := Path.Build.t
     with type string := string
 
-module Ast :
-  Action_intf.Ast
-    with type program = Prog.t
-    with type path = Path.t
-    with type target = Path.Build.t
-    with type string = string
-    with type t = t
-
 include
   Action_intf.Helpers
     with type program := Prog.t
@@ -72,8 +64,6 @@ include
     with type target := Path.Build.t
     with type string := string
     with type t := t
-
-val decode : t Dune_lang.Decoder.t
 
 module For_shell : sig
   include
@@ -132,3 +122,12 @@ val is_useful_to_distribute : t -> is_useful
     but an action creating a symlink should not since the cache will reject it
     anyway. *)
 val is_useful_to_memoize : t -> is_useful
+
+module Full : sig
+  (** A full action with its environment and list of locks *)
+  type nonrec t =
+    { action : t
+    ; env : Env.t
+    ; locks : Path.t list
+    }
+end

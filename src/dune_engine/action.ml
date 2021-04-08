@@ -308,3 +308,11 @@ let is_useful_to_sandbox = is_useful_to false false
 let is_useful_to_distribute = is_useful_to true false
 
 let is_useful_to_memoize = is_useful_to true true
+
+module Full = struct
+  type nonrec t =
+    { action : t
+    ; env : Env.t
+    ; locks : Path.t list
+    }
+end

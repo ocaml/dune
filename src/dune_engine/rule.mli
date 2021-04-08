@@ -58,10 +58,9 @@ end
 type t = private
   { id : Id.t
   ; context : Build_context.t option
-  ; env : Env.t option
-  ; action : Action.t Action_builder.With_targets.t
+  ; targets : Path.Build.Set.t
+  ; action : Action.Full.t Action_builder.t
   ; mode : Mode.t
-  ; locks : Path.t list
   ; info : Info.t
   ; loc : Loc.t
   ; (* Directory where all the targets are produced. *) dir : Path.Build.t
@@ -79,17 +78,14 @@ val make :
      ?sandbox:Sandbox_config.t
   -> ?mode:Mode.t
   -> context:Build_context.t option
-  -> env:Env.t option
-  -> ?locks:Path.t list
   -> ?info:Info.t
-  -> Action.t Action_builder.With_targets.t
+  -> targets:Path.Build.Set.t
+  -> Action.Full.t Action_builder.t
   -> t
 
 val with_prefix : t -> build:unit Action_builder.t -> t
 
 val loc : t -> Loc.t
-
-val effective_env : t -> Env.t
 
 (** [find_source_dir rule] is the closest source directory corresponding to
     rule.dir. Eg. [src/dune] for a rule with dir

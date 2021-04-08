@@ -670,17 +670,27 @@ end = struct
   let create_copy_rules ~ctx_dir ~non_target_source_files =
     Path.Source.Set.to_list_map non_target_source_files ~f:(fun path ->
         let ctx_path = Path.Build.append_source ctx_dir path in
-        let build = Action_builder.copy ~src:(Path.source path) ~dst:ctx_path in
+        let build =
+          let open Action_builder.O in
+          let path = Path.source path in
+          let+ () = Action_builder.path path in
+          { Action.Full.action = Action.copy path ctx_path
+          ; env = Env.empty
+          ; locks = []
+          }
+        in
         Rule.make
         (* There's an [assert false] in [prepare_managed_paths] that blows up if
            we try to sandbox this. *)
-          ~sandbox:Sandbox_config.no_sandboxing build ~context:None ~env:None
-          ~info:(Source_file_copy path))
+          ~sandbox:Sandbox_config.no_sandboxing ~context:None
+          ~info:(Source_file_copy path)
+          ~targets:(Path.Build.Set.singleton ctx_path)
+          build)
 
   let compile_rules ~dir ~source_dirs rules =
     List.concat_map rules ~f:(fun rule ->
         assert (Path.Build.( = ) dir rule.Rule.dir);
-        Path.Build.Set.to_list_map rule.action.targets ~f:(fun target ->
+        Path.Build.Set.to_list_map rule.targets ~f:(fun target ->
             if String.Set.mem source_dirs (Path.Build.basename target) then
               report_rule_src_dir_conflict dir target rule
             else
@@ -771,7 +781,7 @@ end = struct
             (* All targets are in [dir] and we know it correspond to a directory
                of a build context since there are source files to copy, so this
                call can't fail. *)
-            Path.Build.Set.to_list rule.action.targets
+            Path.Build.Set.to_list rule.targets
             |> Path.Source.Set.of_list_map ~f:Path.Build.drop_build_context_exn
           in
           if Path.Source.Set.is_subset source_files_for_targtes ~of_:to_copy
@@ -936,8 +946,7 @@ end = struct
        copied *)
     let source_files_to_ignore =
       List.fold_left rules ~init:Path.Build.Set.empty
-        ~f:(fun acc_ignored { Rule.action; mode; _ } ->
-          let targets = action.targets in
+        ~f:(fun acc_ignored { Rule.targets; mode; _ } ->
           match mode with
           | Promote { only = None; _ }
           | Ignore_source_files ->
@@ -1315,11 +1324,11 @@ end = struct
   let rule_digest_version = 4
 
   let compute_rule_digest (rule : Rule.t) ~deps ~action ~sandbox_mode =
-    let env = Rule.effective_env rule in
+    let { Action.Full.action; env; locks = _ } = action in
     let trace =
       ( rule_digest_version (* Update when changing the rule digest scheme. *)
       , Dep.Facts.digest deps ~sandbox_mode ~env
-      , Path.Build.Set.to_list_map rule.action.targets ~f:Path.Build.to_string
+      , Path.Build.Set.to_list_map rule.targets ~f:Path.Build.to_string
       , Option.map rule.context ~f:(fun c -> c.name)
       , Action.for_shell action )
     in
@@ -1350,9 +1359,10 @@ end = struct
         [ Pp.textf "cache restore error [%s]: %s" hex (Printexc.to_string exn) ];
       None
 
-  let execute_action_for_rule t ~rule_digest ~action ~deps ~loc ~context ~locks
-      ~execution_parameters ~sandbox_mode ~env ~dir ~targets =
+  let execute_action_for_rule t ~rule_digest ~action ~deps ~loc ~context
+      ~execution_parameters ~sandbox_mode ~dir ~targets =
     let open Fiber.O in
+    let { Action.Full.action; env; locks } = action in
     pending_targets := Path.Build.Set.union targets !pending_targets;
     let sandbox =
       Option.map sandbox_mode ~f:(fun mode ->
@@ -1472,22 +1482,12 @@ end = struct
 
   let execute_rule_impl ~rule_kind rule =
     let t = t () in
-    let { Rule.id = _
-        ; dir
-        ; env = _
-        ; context
-        ; mode
-        ; locks
-        ; action = _
-        ; info = _
-        ; loc
-        } =
+    let { Rule.id = _; targets; dir; context; mode; action; info = _; loc } =
       rule
     in
     if rule_kind = Normal_rule then start_rule t rule;
-    let targets = rule.action.targets in
     let head_target = Path.Build.Set.choose_exn targets in
-    let* action, deps = exec_build_request rule.action.build
+    let* action, deps = exec_build_request action
     and* execution_parameters =
       Source_tree.execution_parameters_of_dir
         (Path.Build.drop_build_context_exn dir)
@@ -1497,10 +1497,9 @@ end = struct
       let build_deps deps = Memo.Build.run (build_deps deps) in
       report_evaluated_rule t;
       let* () = Memo.Build.run (Fs.mkdir_p dir) in
-      let env = Rule.effective_env rule in
-      let is_action_dynamic = Action.is_dynamic action in
+      let is_action_dynamic = Action.is_dynamic action.action in
       let sandbox_mode =
-        match Action.is_useful_to_sandbox action with
+        match Action.is_useful_to_sandbox action.action with
         | Clearly_not ->
           let config = Dep.Map.sandbox_config deps in
           if Sandbox_config.mem config Sandbox_mode.none then
@@ -1545,7 +1544,7 @@ end = struct
       let can_go_in_shared_cache =
         not
           (always_rerun || is_action_dynamic
-          || Action.is_useful_to_memoize action = Clearly_not)
+          || Action.is_useful_to_memoize action.action = Clearly_not)
       in
       (* We don't need to digest target names here, as these are already part of
          the rule digest. *)
@@ -1593,7 +1592,9 @@ end = struct
               | (deps, old_digest) :: rest ->
                 let deps = Action_exec.Dynamic_dep.Set.to_dep_set deps in
                 let* deps = build_deps deps in
-                let new_digest = Dep.Facts.digest deps ~sandbox_mode ~env in
+                let new_digest =
+                  Dep.Facts.digest deps ~sandbox_mode ~env:action.env
+                in
                 if old_digest = new_digest then
                   loop rest
                 else
@@ -1646,7 +1647,7 @@ end = struct
             (* Step III. Execute the build action. *)
             let* exec_result =
               execute_action_for_rule t ~rule_digest ~action ~deps ~loc ~context
-                ~locks ~execution_parameters ~sandbox_mode ~env ~dir ~targets
+                ~execution_parameters ~sandbox_mode ~dir ~targets
             in
             let* targets_and_digests =
               (* Step IV. Store results to the shared cache and if that step
@@ -1657,7 +1658,7 @@ end = struct
                 when can_go_in_shared_cache -> (
                 let+ targets_and_digests =
                   try_to_store_to_shared_cache ~mode ~rule_digest ~targets
-                    ~action
+                    ~action:action.action
                 in
                 match targets_and_digests with
                 | Some targets_and_digets -> targets_and_digets
@@ -1672,7 +1673,7 @@ end = struct
             let dynamic_deps_stages =
               List.map exec_result.dynamic_deps_stages
                 ~f:(fun (deps, fact_map) ->
-                  (deps, Dep.Facts.digest fact_map ~sandbox_mode ~env))
+                  (deps, Dep.Facts.digest fact_map ~sandbox_mode ~env:action.env))
             in
             let targets_digest = digest_of_target_digests targets_and_digests in
             Trace_db.set (Path.build head_target)
@@ -1801,31 +1802,33 @@ end = struct
       Path.Build.relative dir basename
     in
     let action =
-      if capture_stdout then
-        Action.with_stdout_to target act.action
-      else
-        Action.progn [ act.action; Action.with_stdout_to target Action.empty ]
+      { act.action with
+        action =
+          (if capture_stdout then
+            Action.with_stdout_to target act.action.action
+          else
+            Action.progn
+              [ act.action.action; Action.with_stdout_to target Action.empty ])
+      }
     in
     let rule =
       let { Action_builder.Action_desc.context
-          ; env
           ; action = _
-          ; locks
           ; loc
           ; dir = _
           ; alias = _
           } =
         act
       in
-      Rule.make ~context ~env ~locks
+      Rule.make ~context
         ~info:
           (match loc with
           | Some loc -> From_dune_file loc
           | None -> Internal)
-        (Action_builder.with_targets ~targets:[ target ]
-           (let open Action_builder.O in
-           let+ () = Action_builder.deps deps in
-           action))
+        ~targets:(Path.Build.Set.singleton target)
+        (let open Action_builder.O in
+        let+ () = Action_builder.deps deps in
+        action)
     in
     let+ { deps = _; targets = _ } =
       execute_rule_impl rule
@@ -1869,9 +1872,7 @@ end = struct
     ignore observing_facts;
     let digest =
       let { Action_builder.Action_desc.context
-          ; env
-          ; action
-          ; locks
+          ; action = { action; env; locks }
           ; loc
           ; dir
           ; alias
@@ -1879,21 +1880,19 @@ end = struct
         act
       in
       let env =
-        Option.map env ~f:(fun env ->
-            (* Here we restrict the environment to only the variables we depend
-               on, so that we don't re-execute all actions when some irrelevant
-               environment variable changes.
+        (* Here we restrict the environment to only the variables we depend on,
+           so that we don't re-execute all actions when some irrelevant
+           environment variable changes.
 
-               Ideally, we would pass this restricted environment to the
-               external command, however that might be tedious to do in
-               practice. See this ticket for a longer discussion about the
-               management of the environment:
-               https://github.com/ocaml/dune/issues/4382 *)
-            Dep.Set.fold deps ~init:Env.Map.empty ~f:(fun dep acc ->
-                match dep with
-                | Env var -> Env.Map.set acc var (Env.get env var)
-                | _ -> acc)
-            |> Env.Map.to_list)
+           Ideally, we would pass this restricted environment to the external
+           command, however that might be tedious to do in practice. See this
+           ticket for a longer discussion about the management of the
+           environment: https://github.com/ocaml/dune/issues/4382 *)
+        Dep.Set.fold deps ~init:Env.Map.empty ~f:(fun dep acc ->
+            match dep with
+            | Env var -> Env.Map.set acc var (Env.get env var)
+            | _ -> acc)
+        |> Env.Map.to_list
       in
       Digest.generic
         ( Option.map context ~f:(fun c ->
@@ -2238,16 +2237,16 @@ end = struct
       Memo.create_hidden "evaluate-rule"
         ~input:(module Non_evaluated_rule)
         (fun rule ->
-          let* action, deps = eval_build_request rule.action.build in
+          let* action, deps = eval_build_request rule.action in
           let* expanded_deps = Expand.deps deps in
           Memo.Build.return
             { Rule.id = rule.id
             ; dir = rule.dir
             ; deps
             ; expanded_deps
-            ; targets = rule.action.targets
+            ; targets = rule.targets
             ; context = rule.context
-            ; action
+            ; action = action.action
             })
     in
     Memo.exec memo

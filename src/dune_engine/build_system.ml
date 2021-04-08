@@ -1485,7 +1485,7 @@ end = struct
     let { Rule.id = _; targets; dir; context; mode; action; info = _; loc } =
       rule
     in
-    if rule_kind = Normal_rule then start_rule t rule;
+    start_rule t rule;
     let head_target = Path.Build.Set.choose_exn targets in
     let* action, deps = exec_build_request action
     and* execution_parameters =
@@ -1758,7 +1758,7 @@ end = struct
                   t.promote_source ~src:path ~dst ~chmod context
                 ))
       in
-      if rule_kind = Normal_rule then t.rule_done <- t.rule_done + 1;
+      t.rule_done <- t.rule_done + 1;
       targets_and_digests)
     (* jeremidimino: we need to include the dependencies discovered while
        running the action here. Otherwise, package dependencies are broken in

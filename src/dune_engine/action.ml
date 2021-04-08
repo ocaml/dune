@@ -314,5 +314,6 @@ module Full = struct
     { action : t
     ; env : Env.t
     ; locks : Path.t list
+    ; can_go_in_shared_cache : bool
     }
 end

@@ -323,7 +323,7 @@ let make_full_action t ~dir ~locks build =
     | Chdir _ -> action
     | _ -> Chdir (Path.build t.context.build_dir, action)
   in
-  { Action.Full.action; env; locks }
+  { Action.Full.action; env; locks; can_go_in_shared_cache = true }
 
 let make_rule t ?sandbox ?mode ?(locks = []) ?loc ~dir
     { Action_builder.With_targets.build; targets } =

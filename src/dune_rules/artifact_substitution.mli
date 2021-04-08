@@ -28,7 +28,7 @@ type conf = private
         (** Initial prefix of installation when relocatable chosen *)
   }
 
-val conf_of_context : Build_context.t option -> conf
+val conf_of_context : Context.t option -> conf
 
 val conf_for_install :
      relocatable:bool

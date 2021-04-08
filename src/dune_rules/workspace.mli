@@ -113,3 +113,6 @@ val workspace_config : unit -> Dune_config.t Memo.Build.t
     [dune-workspace] file. *)
 val update_execution_parameters :
   t -> Execution_parameters.t -> Execution_parameters.t
+
+(** All the build contexts defined in the workspace. *)
+val build_contexts : t -> Build_context.t list

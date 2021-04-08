@@ -324,6 +324,17 @@ module Context = struct
       ; dynamically_linked_foreign_archives = true
       ; instrument_with = Option.value instrument_with ~default:[]
       }
+
+  let build_contexts t =
+    let name = name t in
+    let native = Build_context.create ~name ~host:(host_context t) in
+    native
+    ::
+    List.filter_map (targets t) ~f:(function
+      | Native -> None
+      | Named toolchain ->
+        let name = Context_name.target name ~toolchain in
+        Some (Build_context.create ~name ~host:(Some native.name)))
 end
 
 module T = struct
@@ -653,3 +664,5 @@ let workspace =
 let update_execution_parameters t ep =
   Execution_parameters.set_swallow_stdout_on_success
     t.config.swallow_stdout_on_success ep
+
+let build_contexts t = List.concat_map t.contexts ~f:Context.build_contexts

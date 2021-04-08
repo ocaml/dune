@@ -143,7 +143,7 @@ val gen_configurator_rules : t -> unit Memo.Build.t
 val force_configurator_files : unit Memo.Lazy.t
 
 module DB : sig
-  val get : Path.Build.t -> t Memo.Build.t
+  val get : Context_name.t -> t Memo.Build.t
 
   val all : unit -> t list Memo.Build.t
 end

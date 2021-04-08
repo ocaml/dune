@@ -691,7 +691,7 @@ let setup_package_odoc_rules_def =
 let setup_package_odoc_rules sctx ~pkg =
   Memo.With_implicit_output.exec setup_package_odoc_rules_def (sctx, pkg)
 
-let init sctx =
+let global_rules sctx =
   let stanzas = SC.stanzas sctx in
   let ctx = Super_context.context sctx in
   let* () =

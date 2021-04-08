@@ -159,6 +159,25 @@ let init ?log_file ?(recognize_jbuilder_projects = false) c =
          |> Dune_rules.Workspace.update_execution_parameters w)
     |> S.set_recognize_jbuilder_projects recognize_jbuilder_projects);
   Dune_rules.Global.init ~capture_outputs:c.capture_outputs;
+  (* CR-soon amokhov: Right now, types [Dune_config.Caching.Duplication.t] and
+     [Dune_cache_storage.Mode.t] are the same. They will be unified after
+     removing the cache daemon and adapting the configuration format. *)
+  let cache_config =
+    match config.cache_mode with
+    | Disabled -> Dune_cache.Config.Disabled
+    | Enabled ->
+      Enabled
+        { storage_mode =
+            (match config.cache_duplication with
+            | None
+            | Some Hardlink ->
+              Dune_cache_storage.Mode.Hardlink
+            | Some Copy -> Copy)
+        ; check_probability = config.cache_check_probability
+        }
+  in
+  Dune_rules.Main.init ~stats:c.stats
+    ~sandboxing_preference:config.sandboxing_preference ~cache_config;
   Only_packages.Clflags.set c.only_packages;
   Clflags.debug_dep_path := c.debug_dep_path;
   Clflags.debug_findlib := c.debug_findlib;

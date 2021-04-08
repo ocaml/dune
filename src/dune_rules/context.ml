@@ -324,46 +324,6 @@ let check_fdo_support has_native ocfg ~name =
             version_string
         ]
 
-(* We store this so that library such as dune-configurator can read things
-   runtime. Ideally, this should be created on-demand if we run a program linked
-   against configurator, however we currently don't support this kind of
-   "runtime dependencies" so we just do it eagerly. *)
-let write_dot_dune_dir ~build_dir ~ocamlc ~ocaml_config_vars =
-  let dir = Path.build (Path.Build.relative build_dir ".dune") in
-  Path.rm_rf dir;
-  Path.mkdir_p dir;
-  let ocamlc = Path.to_absolute_filename ocamlc in
-  let ocaml_config_vars = Ocaml_config.Vars.to_list ocaml_config_vars in
-  let () =
-    let open Dune_lang.Encoder in
-    Io.write_lines
-      (Path.relative dir "configurator")
-      (List.map ~f:Dune_lang.to_string
-         (record_fields
-            [ field "ocamlc" string ocamlc
-            ; field_l "ocaml_config_vars" (pair string string) ocaml_config_vars
-            ]))
-  in
-  let () =
-    let csexp =
-      let open Sexp in
-      let ocaml_config_vars =
-        Sexp.List
-          (List.map ocaml_config_vars ~f:(fun (k, v) -> List [ Atom k; Atom v ]))
-      in
-      List
-        [ List [ Atom "ocamlc"; Atom ocamlc ]
-        ; List [ Atom "ocaml_config_vars"; ocaml_config_vars ]
-        ]
-    in
-    let path = Path.relative dir "configurator.v2" in
-    Io.write_file path (Csexp.to_string csexp)
-  in
-  ()
-
-let init_configurator { build_dir; ocamlc; ocaml_config_vars; _ } =
-  write_dot_dune_dir ~build_dir ~ocamlc ~ocaml_config_vars
-
 let create ~(kind : Kind.t) ~path ~env ~env_nodes ~name ~merlin ~targets
     ~host_context ~host_toolchain ~profile ~fdo_target_exe
     ~dynamically_linked_foreign_archives ~instrument_with =
@@ -848,7 +808,14 @@ module DB = struct
         Memo.Build.parallel_map workspace.contexts ~f:(fun c ->
             Instantiate.instantiate (Workspace.Context.name c))
       in
-      List.concat contexts
+      let all = List.concat contexts in
+      List.iter all ~f:(fun t ->
+          let open Pp.O in
+          Log.info
+            [ Pp.box ~indent:1
+                (Pp.text "Dune context:" ++ Pp.cut ++ Dyn.pp (to_dyn t))
+            ]);
+      all
     in
     let memo =
       Memo.create "build-contexts" ~doc:"all build contexts"
@@ -922,3 +889,54 @@ let install_prefix t =
     Process.run_capture Strict opam ~env:t.env [ "config"; "var"; "prefix" ]
   in
   Path.of_filename_relative_to_initial_cwd (String.trim s)
+
+let dot_dune_dir t = Path.Build.relative t.build_dir ".dune"
+
+let configurator_v1 t = Path.Build.relative (dot_dune_dir t) "configurator"
+
+let configurator_v2 t = Path.Build.relative (dot_dune_dir t) "configurator.v2"
+
+(* We store this so that library such as dune-configurator can read things
+   runtime. Ideally, this should be created on-demand if we run a program linked
+   against configurator, however we currently don't support this kind of
+   "runtime dependencies" so we just do it eagerly. *)
+let gen_configurator_rules t =
+  let ocamlc = Path.to_absolute_filename t.ocamlc in
+  let ocaml_config_vars = Ocaml_config.Vars.to_list t.ocaml_config_vars in
+  let* () =
+    Rules.Produce.rule
+      (Rule.make ~context:None ~env:None
+         (Action_builder.write_file (configurator_v1 t)
+            (List.map
+               ~f:(fun x -> Dune_lang.to_string x ^ "\n")
+               (let open Dune_lang.Encoder in
+               record_fields
+                 [ field "ocamlc" string ocamlc
+                 ; field_l "ocaml_config_vars" (pair string string)
+                     ocaml_config_vars
+                 ])
+            |> String.concat ~sep:"")))
+  in
+  Rules.Produce.rule
+    (Rule.make ~context:None ~env:None
+       (Action_builder.write_file (configurator_v2 t)
+          (Csexp.to_string
+             (let open Sexp in
+             let ocaml_config_vars =
+               Sexp.List
+                 (List.map ocaml_config_vars ~f:(fun (k, v) ->
+                      List [ Atom k; Atom v ]))
+             in
+             List
+               [ List [ Atom "ocamlc"; Atom ocamlc ]
+               ; List [ Atom "ocaml_config_vars"; ocaml_config_vars ]
+               ]))))
+
+let force_configurator_files =
+  Memo.lazy_ (fun () ->
+      let* ctxs = DB.all () in
+      let files =
+        List.concat_map ctxs ~f:(fun t ->
+            [ Path.build (configurator_v1 t); Path.build (configurator_v2 t) ])
+      in
+      Build_system.build (Action_builder.paths files))

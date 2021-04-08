@@ -33,7 +33,7 @@ let term =
      let action =
        Scheduler.go ~common ~config (fun () ->
            let open Fiber.O in
-           let* _setup = Import.Main.setup common config in
+           let* _setup = Import.Main.setup () in
            match (fn, inp) with
            | "latest-lang-version", None ->
              Fiber.return

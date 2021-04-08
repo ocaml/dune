@@ -110,7 +110,7 @@ let term =
   let out = Option.map ~f:Path.of_string out in
   Scheduler.go ~common ~config (fun () ->
       let open Fiber.O in
-      let* setup = Import.Main.setup common config in
+      let* setup = Import.Main.setup () in
       Build_system.run (fun () ->
           let open Memo.Build.O in
           let* request =

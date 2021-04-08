@@ -2,7 +2,7 @@
 
 (** Such as:
 
-    - should target be set read-only?
+    - should targets be set read-only?
 
     - should aliases be expanded when sandboxing rules?
 

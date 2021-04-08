@@ -46,7 +46,7 @@ let term =
   let config = Common.init common in
   Scheduler.go ~common ~config (fun () ->
       let open Fiber.O in
-      let* setup = Import.Main.setup common config in
+      let* setup = Import.Main.setup () in
       let sctx = Import.Main.find_scontext_exn setup ~name:context in
       let context = Dune_rules.Super_context.context sctx in
       let path_relative_to_build_root p =

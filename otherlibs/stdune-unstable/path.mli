@@ -186,6 +186,10 @@ module Build : sig
   (** Set permissions for a given path. You can use the [Permissions] module if
       you need to modify existing permissions in a non-trivial way. *)
   val chmod : t -> mode:int -> unit
+
+  val lstat : t -> Unix.stats
+
+  val unlink_no_err : t -> unit
 end
 
 type t = private
@@ -379,10 +383,9 @@ val set_of_build_paths_list : Build.t list -> Set.t
 
 val string_of_file_kind : Unix.file_kind -> string
 
-(** Rename a file. rename oldpath newpath renames the file called oldpath,
-    giving it newpath as its new name, moving it between directories if needed.
-    If newpath already exists, its contents will be replaced with those of
-    oldpath. *)
+(** Rename a file. [rename oldpath newpath] renames the file called [oldpath] to
+    [newpath], moving it between directories if needed. If [newpath] already
+    exists, its contents will be replaced with those of [oldpath]. *)
 val rename : t -> t -> unit
 
 (** Set permissions for a given path. You can use the [Permissions] module if

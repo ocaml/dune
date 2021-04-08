@@ -40,7 +40,7 @@ module Caching : sig
   end
 
   module Duplication : sig
-    type t = Cache.Duplication_mode.t option
+    type t = Dune_cache_storage.Mode.t option
 
     val all : (string * t) list
 

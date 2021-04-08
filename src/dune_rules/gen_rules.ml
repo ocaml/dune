@@ -309,18 +309,11 @@ let gen_rules ~sctx ~dir components =
   let+ subdirs_to_keep1 = Install_rules.gen_rules sctx ~dir
   and+ (subdirs_to_keep2 : Build_system.extra_sub_directories_to_keep) =
     match components with
-    | ".dune" :: _ ->
-      (* Dummy rule to prevent dune from deleting this file. See comment
-         attached to [write_dot_dune_dir] in context.ml *)
-      let* () =
-        Super_context.add_rule sctx ~dir
-          (Action_builder.write_file
-             (Path.Build.relative dir "configurator")
-             "")
-      in
+    | [ ".dune"; "ccomp" ] ->
       (* Add rules for C compiler detection *)
       let+ () = Cxx_rules.rules ~sctx ~dir in
       S.These String.Set.empty
+    | ".dune" :: _ -> Memo.Build.return (S.These String.Set.empty)
     | ".js" :: rest -> (
       let+ () = Jsoo_rules.setup_separate_compilation_rules sctx rest in
       match rest with
@@ -390,19 +383,34 @@ let gen_rules ~sctx ~dir components =
   Build_system.Subdir_set.union_all
     [ subdirs_to_keep1; subdirs_to_keep2; subdirs_to_keep3 ]
 
-let init () =
-  let open Fiber.O in
-  let* sctxs = Memo.Build.run (Memo.Lazy.force Super_context.all) in
-  let+ () =
-    Build_system.set_rule_generators
-      ~init:(fun () ->
-        Memo.Build.parallel_iter (Context_name.Map.values sctxs) ~f:Odoc.init)
-      ~gen_rules:(function
-        | Install ctx ->
-          Option.map (Context_name.Map.find sctxs ctx) ~f:(fun sctx ~dir _ ->
-              Install_rules.gen_rules sctx ~dir)
-        | Context ctx ->
-          Context_name.Map.find sctxs ctx
-          |> Option.map ~f:(fun sctx -> gen_rules ~sctx))
-  in
-  sctxs
+let gen_rules ~sctx ~dir components =
+  let module S = Build_system.Subdir_set in
+  match components with
+  | [ ".dune" ] ->
+    (* [.dune] is treated specifically as generating the rules in all other
+       directories forces the production of the configurator files for which the
+       rules are setup in this branch. *)
+    let+ () = Context.gen_configurator_rules (Super_context.context sctx) in
+    S.These (String.Set.of_list [ "ccomp" ])
+  | _ ->
+    let* () = Memo.Lazy.force Context.force_configurator_files in
+    gen_rules ~sctx ~dir components
+
+let global_rules =
+  Memo.lazy_ (fun () ->
+      Rules.collect_unit (fun () ->
+          let* sctxs = Memo.Lazy.force Super_context.all in
+          Memo.Build.parallel_iter
+            (Context_name.Map.values sctxs)
+            ~f:Odoc.global_rules))
+
+let gen_rules ctx_or_install ~dir components =
+  match (ctx_or_install : Build_system.Context_or_install.t) with
+  | Install ctx ->
+    Super_context.find ctx
+    >>= Memo.Build.Option.map ~f:(fun sctx ->
+            Rules.collect (fun () -> Install_rules.gen_rules sctx ~dir))
+  | Context ctx ->
+    Super_context.find ctx
+    >>= Memo.Build.Option.map ~f:(fun sctx ->
+            Rules.collect (fun () -> gen_rules ~sctx ~dir components))

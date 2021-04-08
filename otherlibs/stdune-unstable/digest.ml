@@ -35,21 +35,24 @@ let to_string_raw s = s
    or to different memory locations. *)
 let generic a = string (Marshal.to_string a [ No_sharing ])
 
-let file_with_stats p (stats : Unix.stats) =
+let file_with_executable_bit ~executable path =
+  (* We follow the digest scheme used by Jenga. *)
+  let string_and_bool ~digest_hex ~bool =
+    D.string
+      (digest_hex
+      ^
+      if bool then
+        "\001"
+      else
+        "\000")
+  in
+  let content_digest = file path in
+  string_and_bool ~digest_hex:content_digest ~bool:executable
+
+let file_with_stats path (stats : Unix.stats) =
   match stats.st_kind with
   | S_DIR ->
     generic (stats.st_size, stats.st_perm, stats.st_mtime, stats.st_ctime)
   | _ ->
-    (* We follow the digest scheme used by Jenga. *)
-    let string_and_bool ~digest_hex ~bool =
-      D.string
-        (digest_hex
-        ^
-        if bool then
-          "\001"
-        else
-          "\000")
-    in
-    let content_digest = file p in
     let executable = stats.st_perm land 0o100 <> 0 in
-    string_and_bool ~digest_hex:content_digest ~bool:executable
+    file_with_executable_bit ~executable path

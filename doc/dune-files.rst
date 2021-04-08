@@ -320,6 +320,25 @@ In this mode, dune will populate the ``:standard`` set of C flags with the
 content of ``ocamlc_cflags`` and  ``ocamlc_cppflags``. These flags can be
 completed or overridden using the :ref:`ordered-set-language`.
 
+accept_alternative_dune_file_name
+---------------------------------
+
+Since Dune 3.0, it is possible to use the alternative file name ``dune-file``
+instead of ``dune`` to specify the build. This may be useful to avoid problems
+with ``dune`` files which have the executable permission in a directory that
+happens to be in the ``PATH`` (this can unwittingly happen under Windows).
+
+The feature must be enabled explicitly by adding the following field to
+``dune-project``:
+
+.. code:: scheme
+
+   (accept_alternative_dune_file_name)
+
+Note that ``dune`` continues to be accepted even after enabling this option, but
+if a file named ``dune-file`` is found in a directory, it will take precedence
+over ``dune``.
+
 dune
 ====
 

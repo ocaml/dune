@@ -677,6 +677,7 @@ end = struct
           { Action.Full.action = Action.copy path ctx_path
           ; env = Env.empty
           ; locks = []
+          ; can_go_in_shared_cache = true
           }
         in
         Rule.make
@@ -1321,16 +1322,18 @@ end = struct
 
   (* The current version of the rule digest scheme. We should increment it when
      making any changes to the scheme, to avoid collisions. *)
-  let rule_digest_version = 4
+  let rule_digest_version = 5
 
   let compute_rule_digest (rule : Rule.t) ~deps ~action ~sandbox_mode =
-    let { Action.Full.action; env; locks = _ } = action in
+    let { Action.Full.action; env; locks; can_go_in_shared_cache } = action in
     let trace =
       ( rule_digest_version (* Update when changing the rule digest scheme. *)
       , Dep.Facts.digest deps ~sandbox_mode ~env
       , Path.Build.Set.to_list_map rule.targets ~f:Path.Build.to_string
       , Option.map rule.context ~f:(fun c -> c.name)
-      , Action.for_shell action )
+      , Action.for_shell action
+      , can_go_in_shared_cache
+      , List.map locks ~f:Path.to_string )
     in
     Digest.generic trace
 
@@ -1362,7 +1365,9 @@ end = struct
   let execute_action_for_rule t ~rule_digest ~action ~deps ~loc ~context
       ~execution_parameters ~sandbox_mode ~dir ~targets =
     let open Fiber.O in
-    let { Action.Full.action; env; locks } = action in
+    let { Action.Full.action; env; locks; can_go_in_shared_cache = _ } =
+      action
+    in
     pending_targets := Path.Build.Set.union targets !pending_targets;
     let sandbox =
       Option.map sandbox_mode ~f:(fun mode ->
@@ -1542,9 +1547,10 @@ end = struct
       in
       let rule_digest = compute_rule_digest rule ~deps ~action ~sandbox_mode in
       let can_go_in_shared_cache =
-        not
-          (always_rerun || is_action_dynamic
-          || Action.is_useful_to_memoize action.action = Clearly_not)
+        action.can_go_in_shared_cache
+        && not
+             (always_rerun || is_action_dynamic
+             || Action.is_useful_to_memoize action.action = Clearly_not)
       in
       (* We don't need to digest target names here, as these are already part of
          the rule digest. *)
@@ -1872,7 +1878,7 @@ end = struct
     ignore observing_facts;
     let digest =
       let { Action_builder.Action_desc.context
-          ; action = { action; env; locks }
+          ; action = { action; env; locks; can_go_in_shared_cache }
           ; loc
           ; dir
           ; alias
@@ -1906,7 +1912,8 @@ end = struct
         , loc
         , dir
         , alias
-        , capture_stdout )
+        , capture_stdout
+        , can_go_in_shared_cache )
     in
     (* It might seem superfluous to memoize the execution here, given that a
        given anonymous action will typically only appear once during a given

@@ -923,6 +923,7 @@ let gen_configurator_rules t =
                |> String.concat ~sep:"")
          ; env = Env.empty
          ; locks = []
+         ; can_go_in_shared_cache = true
          }))
   in
   let fn = configurator_v2 t in
@@ -946,6 +947,7 @@ let gen_configurator_rules t =
                   ]))
        ; env = Env.empty
        ; locks = []
+       ; can_go_in_shared_cache = true
        }))
 
 let force_configurator_files =

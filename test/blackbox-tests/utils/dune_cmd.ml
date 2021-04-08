@@ -193,6 +193,23 @@ module Count_lines = struct
   let () = register name of_args run
 end
 
+module Rewrite_path = struct
+  let name = "rewrite-path"
+
+  let of_args = function
+    | [ path ] -> path
+    | _ -> raise (Arg.Bad "Usage: dune_cmd rewrite-path <path>")
+
+  let run path =
+    match
+      Build_path_prefix_map.decode_map (Sys.getenv "BUILD_PATH_PREFIX_MAP")
+    with
+    | Error msg -> failwith msg
+    | Ok map -> print_string (Build_path_prefix_map.rewrite map path)
+
+  let () = register name of_args run
+end
+
 let () =
   let name, args =
     match Array.to_list Sys.argv with

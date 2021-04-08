@@ -947,7 +947,6 @@ end = struct
     let source_files_to_ignore =
       List.fold_left rules ~init:Path.Build.Set.empty
         ~f:(fun acc_ignored { Rule.targets; mode; _ } ->
-          let targets = targets in
           match mode with
           | Promote { only = None; _ }
           | Ignore_source_files ->

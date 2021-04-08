@@ -92,6 +92,9 @@ Unreleased
 - The `@all` alias no longer depends directly on copies of files from the source
   directory (#4461, @nojb)
 
+- Allow dune-file as an alternative file name for dune files (needs to be
+  enabled in the dune-project file) (#4428, @nojb)
+
 2.8.5 (28/03/2021)
 ------------------
 

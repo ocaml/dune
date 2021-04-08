@@ -1,6 +1,8 @@
 Unreleased
 ----------
 
+- Allow multiple cinaps stanzas in the same directory (#4460, @rgrinberg)
+
 - Improve interpretation of ansi escape sequence when spawning processes (#4408,
   fixes #2665, @rgrinberg)
 

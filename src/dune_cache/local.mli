@@ -7,7 +7,10 @@
 
     The files in the cache are assumed to be immutable, which is mostly enforced
     by removing write permissions to any file in the cache, but of course anyone
-    could add back write permissions and corrupt the cache. *)
+    could add back write permissions and corrupt the cache.
+
+    See also the [dune_cache_storage] library that provides more functionality
+    for manipulating the store, such as accessing individual metadata entries. *)
 
 (* In case we do run into the problem of corrupted cache: we could actually
    store the mtime in the metadata and complain if it's not what we expected. *)
@@ -27,17 +30,6 @@ module Store_artifacts_result : sig
     | Will_not_store_due_to_non_determinism of Sexp.t
 end
 
-module Check_artifacts_result : sig
-  type t =
-    | Missing
-    | Already_present of (Path.Build.t * Digest.t) list
-    | Error of exn
-        (** [Error _] can happen due to genuine problems (cannot parse internal
-            cache files) or harmless ones (race with a concurrent change to the
-            cache). *)
-    | Non_determinism_detected of Sexp.t
-end
-
 module Target : sig
   type t
 
@@ -50,7 +42,11 @@ module Target : sig
   val create : Path.Build.t -> t option
 end
 
-(** The [compute_digest] function is passed explicitly because the caller might
+(** Store targets produced by a rule with a given digest. If successful, this
+    operation will create one metadata entry plus one file entry per target in
+    the cache.
+
+    The [compute_digest] function is passed explicitly because the caller might
     want to memoize and/or throttle file digest computations. *)
 val store_artifacts :
      mode:Dune_cache_storage.Mode.t
@@ -59,6 +55,9 @@ val store_artifacts :
   -> Target.t list
   -> Store_artifacts_result.t Fiber.t
 
+(** Restore targets produced by a rule with a given digest. If successful, this
+    operation will restore the targets on disk, in the [target_dir] directory,
+    and will also return their paths and digests. *)
 val restore_artifacts :
      mode:Dune_cache_storage.Mode.t
   -> rule_digest:Digest.t

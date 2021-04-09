@@ -26,14 +26,6 @@ module Store_artifacts_result = struct
     | (Error _ | Will_not_store_due_to_non_determinism _) as res -> res
 end
 
-module Check_artifacts_result = struct
-  type t =
-    | Missing
-    | Already_present of (Path.Build.t * Digest.t) list
-    | Error of exn
-    | Non_determinism_detected of Sexp.t
-end
-
 module Target = struct
   type t =
     { path : Path.Build.t

@@ -14,8 +14,6 @@
   threads.posix
   opam_file_format
   dune_lang
-  cache_daemon
-  cache
   dune_cache
   dune_cache_storage
   dune_glob

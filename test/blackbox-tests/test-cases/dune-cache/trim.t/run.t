@@ -47,11 +47,13 @@ the current digests for both files match those computed by Jenga.
   ./5e/5e5bb3a0ec0e689e19a59c3ee3d7fca8:content
   ./62/6274851067c88e9990e912be27cce386:content
 
-Move all current entries to v3 to test trimming of old versions of cache.
+Move all current entries to v3 and v4 to test trimming of old versions of cache.
 
   $ mkdir "$PWD/.xdg-cache/dune/db/files/v3"
   $ mkdir "$PWD/.xdg-cache/dune/db/meta/v3"
+  $ mkdir "$PWD/.xdg-cache/dune/db/meta/v4"
   $ mv "$PWD/.xdg-cache/dune/db/files/v4"/* "$PWD/.xdg-cache/dune/db/files/v3"
+  $ cp -r "$PWD/.xdg-cache/dune/db/meta/v5"/* "$PWD/.xdg-cache/dune/db/meta/v4"
   $ mv "$PWD/.xdg-cache/dune/db/meta/v5"/* "$PWD/.xdg-cache/dune/db/meta/v3"
 
 Build some more targets.
@@ -83,15 +85,21 @@ entries uniformly.
   $ dune_cmd stat size "$PWD/.xdg-cache/dune/db/meta/v5/71/71a631749bd743e4c107ba109224c12f"
   70
 
-Trimming the cache at this point should not remove anything because all file
-entries are still hard-linked from the build directory.
+Trimming the cache at this point should not remove any file entries because all
+of them are still hard-linked from the build directory. However, we should trim
+all metadata entries in [meta/v4] since they are broken: remember, we moved all
+[files/v4] to [files/v3].
 
+  $ find "$PWD/.xdg-cache/dune/db/meta/v4" -mindepth 2 -maxdepth 2 -type f | dune_cmd count-lines
+  4
   $ dune cache trim --trimmed-size 1B
-  Freed 0 bytes
+  Freed 287 bytes
   $ dune_cmd stat hardlinks _build/default/target_a
   2
   $ dune_cmd stat hardlinks _build/default/target_b
   2
+  $ find "$PWD/.xdg-cache/dune/db/meta/v4" -mindepth 2 -maxdepth 2 -type f | dune_cmd count-lines
+  0
 
 If we unlink a file in the build tree, then the corresponding file entry will be
 trimmed.
@@ -107,10 +115,29 @@ trimmed.
   $ test -e _build/default/beacon_a
   $ ! test -e _build/default/beacon_b
 
-  $ reset
+Now let's remove the remaining targets, left from the very first build and rerun
+the trimmer. That will delete unused [files/v3] and the corresponding metadata
+entries in [meta/v3].
+
+  $ rm -rf _build
+  $ find "$PWD/.xdg-cache/dune/db/files/v3" -mindepth 2 -maxdepth 2 -type f | dune_cmd count-lines
+  4
+  $ find "$PWD/.xdg-cache/dune/db/meta/v3" -mindepth 2 -maxdepth 2 -type f | dune_cmd count-lines
+  4
+
+We hide the output for reproducibility: some files are executable and their
+sizes might vary on different platforms
+
+  $ dune cache trim --size 0B > /dev/null
+
+  $ find "$PWD/.xdg-cache/dune/db/files/v3" -mindepth 2 -maxdepth 2 -type f | dune_cmd count-lines
+  0
+  $ find "$PWD/.xdg-cache/dune/db/meta/v3" -mindepth 2 -maxdepth 2 -type f | dune_cmd count-lines
+  0
 
 The cache deletes oldest files first.
 
+  $ reset
   $ dune build target_b
   $ dune_cmd wait-for-fs-clock-to-advance
   $ dune build target_a
@@ -132,7 +159,8 @@ target_a:
 
   $ reset
 
-When a cache entry becomes unused, its ctime is modified and will determine the order of trimming.
+When a cache entry becomes unused, its ctime is modified and will determine the
+order of trimming.
 
   $ dune build target_a target_b
   $ rm -f _build/default/beacon_a _build/default/target_a
@@ -147,21 +175,6 @@ When a cache entry becomes unused, its ctime is modified and will determine the 
   2
   $ test -e _build/default/beacon_a
   $ ! test -e _build/default/beacon_b
-
-  $ reset
-
-Check background trimming.
-
-  $ env -u DUNE_CACHE_EXIT_NO_CLIENT \
-  >   DUNE_CACHE_TRIM_SIZE=1 \
-  >   DUNE_CACHE_TRIM_PERIOD=1 \
-  >   dune cache start > /dev/null 2>&1
-  $ dune build target_a
-  $ rm -f _build/default/target_a _build/default/beacon_a
-  $ sleep 2
-  $ dune build target_a
-  $ test -e _build/default/beacon_a
-  $ dune cache stop
 
   $ reset
 

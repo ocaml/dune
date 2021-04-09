@@ -16,28 +16,74 @@ let root_path =
 
 let ( / ) = Path.relative
 
-(* We version metadata and actual cache content separately. *)
-let metadata_storage_path = root_path / "meta" / "v5"
-
-let file_storage_path = root_path / "files" / "v4"
-
-let value_storage_path = root_path / "values" / "v3"
+let temp_path = root_path / "temp"
 
 let cache_path ~dir ~hex =
   let two_first_chars = sprintf "%c%c" hex.[0] hex.[1] in
   dir / two_first_chars / hex
 
-let metadata_path ~rule_or_action_digest =
-  cache_path ~dir:metadata_storage_path
-    ~hex:(Digest.to_string rule_or_action_digest)
+(* List all entries in a given storage directory. *)
+let list_entries ~storage =
+  let open Result.O in
+  let entries dir =
+    match
+      String.length dir = 2 && String.for_all ~f:Char.is_lowercase_hex dir
+    with
+    | false ->
+      (* Ignore directories whose name isn't a two-character hex value. *)
+      Ok []
+    | true ->
+      let dir = storage / dir in
+      Path.readdir_unsorted dir
+      >>| List.filter_map ~f:(fun entry_name ->
+              match Digest.from_hex entry_name with
+              | None ->
+                (* Ignore entries whose names are not hex values. *)
+                None
+              | Some digest -> Some (dir / entry_name, digest))
+  in
+  match Path.readdir_unsorted storage >>= Result.List.concat_map ~f:entries with
+  | Ok res -> res
+  | Error ENOENT -> []
+  | Error e -> User_error.raise [ Pp.text (Unix.error_message e) ]
 
-let value_path ~value_digest =
-  cache_path ~dir:value_storage_path ~hex:(Digest.to_string value_digest)
+module Versioned = struct
+  let metadata_storage_path t =
+    root_path / "meta" / Version.Metadata.to_string t
 
-let file_path ~file_digest =
-  cache_path ~dir:file_storage_path ~hex:(Digest.to_string file_digest)
+  let file_storage_path t = root_path / "files" / Version.File.to_string t
 
-let temp_path = root_path / "temp"
+  let value_storage_path t = root_path / "values" / Version.Value.to_string t
 
-let root_path_subdirectories =
-  [ metadata_storage_path; file_storage_path; value_storage_path; temp_path ]
+  let metadata_path t =
+    let dir = metadata_storage_path t in
+    fun ~rule_or_action_digest ->
+      cache_path ~dir ~hex:(Digest.to_string rule_or_action_digest)
+
+  let file_path t =
+    let dir = file_storage_path t in
+    fun ~file_digest -> cache_path ~dir ~hex:(Digest.to_string file_digest)
+
+  let value_path t =
+    let dir = value_storage_path t in
+    fun ~value_digest -> cache_path ~dir ~hex:(Digest.to_string value_digest)
+
+  let list_metadata_entries t = list_entries ~storage:(metadata_storage_path t)
+
+  let list_file_entries t = list_entries ~storage:(file_storage_path t)
+
+  let list_value_entries t = list_entries ~storage:(value_storage_path t)
+end
+
+let metadata_storage_path =
+  Versioned.metadata_storage_path Version.Metadata.current
+
+let metadata_path = Versioned.metadata_path Version.Metadata.current
+
+let file_storage_path = Versioned.file_storage_path Version.File.current
+
+let file_path = Versioned.file_path Version.File.current
+
+let value_storage_path = Versioned.value_storage_path Version.Value.current
+
+let value_path = Versioned.value_path Version.Value.current

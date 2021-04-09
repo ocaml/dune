@@ -172,18 +172,16 @@ let refresh_and_chmod fn =
          - if it is in the build directory, then we expect that the rule
          producing this file will have taken core of chmodding it *)
       Path.stat fn
-    | _ -> (
-      match Cache.cachable stats.st_kind with
-      | true ->
-        (* We remove write permissions to uniformize behavior regardless of
-           whether the cache is activated. No need to be zealous in case the
-           file is not cached anyway. See issue #3311. *)
-        let perm =
-          Path.Permissions.remove ~mode:Path.Permissions.write stats.st_perm
-        in
-        Path.chmod ~mode:perm fn;
-        { stats with st_perm = perm }
-      | false -> stats)
+    | Unix.S_REG ->
+      (* We remove write permissions to uniformize behavior regardless of
+         whether the cache is activated. No need to be zealous in case the file
+         is not cached anyway. See issue #3311. *)
+      let perm =
+        Path.Permissions.remove ~mode:Path.Permissions.write stats.st_perm
+      in
+      Path.chmod ~mode:perm fn;
+      { stats with st_perm = perm }
+    | _ -> stats
   in
   refresh_ stats fn
 

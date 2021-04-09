@@ -105,25 +105,19 @@ module Common = struct
     let included_files_paths path = List.filter_map ~f:(included_file path)
   end
 
-  let read_and_parse ?lexer path =
-    let raw = Io.read_file (Path.source path) ~binary:false in
-    let csts =
-      Dune_lang.Parser.parse_string raw
-        ~fname:(Path.Source.to_string path)
-        ?lexer ~mode:Cst
-      |> List.map ~f:(Dune_lang.Cst.fetch_legacy_comments ~file_contents:raw)
-    in
+  let read_and_parse path =
+    let csts = Dune_lang.Parser.load (Path.source path) ~mode:Cst in
     let comments = Dune_lang.Cst.extract_comments csts in
     let sexps = List.filter_map csts ~f:Dune_lang.Cst.abstract in
     (sexps, comments)
 
   (* Return a mapping [Path.t -> Dune_lang.Ast.t list] containing [path] and all
      the files in includes, recursiverly *)
-  let scan_included_files ?lexer path =
+  let scan_included_files path =
     let files = ref Path.Source.Map.empty in
     let rec iter path =
       if not (Path.Source.Map.mem !files path) then (
-        let sexps, comments = read_and_parse ?lexer path in
+        let sexps, comments = read_and_parse path in
         files := Path.Source.Map.set !files path (sexps, comments);
         List.iter (Ast_tools.included_files_paths path sexps) ~f:iter
       )

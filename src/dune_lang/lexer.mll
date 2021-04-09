@@ -4,18 +4,6 @@ open! Stdune
 open Stdune
 
 module Token = struct
-  module Comment = struct
-    type t =
-      | Lines of string list
-      | Legacy
-
-    let to_dyn =
-      let open Dyn.Encoder in
-      function
-      | Legacy -> constr "Legacy" []
-      | Lines l -> constr "Lines" [ list string l ]
-  end
-
   type t =
     | Atom of Atom.t
     | Quoted_string of string
@@ -24,7 +12,7 @@ module Token = struct
     | Sexp_comment
     | Eof
     | Template of Template.t
-    | Comment of Comment.t
+    | Comment of string list
 end
 
 type t = with_comments:bool -> Lexing.lexbuf -> Token.t
@@ -193,7 +181,7 @@ and comment_trail acc = parse
   | newline blank* ';' (comment_body as s)
     { comment_trail (s :: acc) lexbuf }
   | ""
-    { Token.Comment (Lines (List.rev acc)) }
+    { Token.Comment (List.rev acc) }
 
 and atom acc start = parse
   | (atom_char # '%')+ as s

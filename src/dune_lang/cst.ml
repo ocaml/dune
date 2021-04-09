@@ -1,12 +1,11 @@
 open Stdune
-module Comment = Lexer.Token.Comment
 
 type t =
   | Atom of Loc.t * Atom.t
   | Quoted_string of Loc.t * string
   | Template of Template.t
   | List of Loc.t * t list
-  | Comment of Loc.t * Comment.t
+  | Comment of Loc.t * string list
 
 let rec to_dyn =
   let open Dyn.Encoder in
@@ -15,7 +14,7 @@ let rec to_dyn =
   | Quoted_string (_, s) -> constr "Quoted_string" [ string s ]
   | Template t -> constr "Template" [ Template.to_dyn t ]
   | List (_, l) -> constr "List" [ list to_dyn l ]
-  | Comment (_, c) -> constr "Comment" [ Comment.to_dyn c ]
+  | Comment (_, c) -> constr "Comment" [ Dyn.Encoder.(list string) c ]
 
 let loc
     ( Atom (loc, _)
@@ -24,28 +23,6 @@ let loc
     | Template { loc; _ }
     | Comment (loc, _) ) =
   loc
-
-let fetch_legacy_comments t ~file_contents =
-  let rec loop t =
-    match t with
-    | Template _
-    | Quoted_string _
-    | Atom _
-    | Comment (_, Lines _) ->
-      t
-    | List (loc, l) -> List (loc, List.map l ~f:loop)
-    | Comment (loc, Legacy) ->
-      let start = loc.start.pos_cnum in
-      let stop = loc.stop.pos_cnum in
-      let s =
-        if file_contents.[start] = '#' && file_contents.[start + 1] = '|' then
-          String.sub file_contents ~pos:(start + 2) ~len:(stop - start - 4)
-        else
-          String.sub file_contents ~pos:start ~len:(stop - start)
-      in
-      Comment (loc, Lines (String.split s ~on:'\n'))
-  in
-  loop t
 
 let rec abstract : t -> Ast.t option = function
   | Atom (loc, atom) -> Some (Atom (loc, atom))

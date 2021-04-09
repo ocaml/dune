@@ -321,10 +321,10 @@ world
   [%expect
     {|
 [ Atom A "hello"
-; Comment Lines [ " comment" ]
+; Comment [ " comment" ]
 ; Atom A "world"
-; Comment Lines [ " multiline"; " comment" ]
-; List [ Atom A "x"; Comment Lines [ " comment inside list" ]; Atom A "y" ]
+; Comment [ " multiline"; " comment" ]
+; List [ Atom A "x"; Comment [ " comment inside list" ]; Atom A "y" ]
 ]
 |}]
 

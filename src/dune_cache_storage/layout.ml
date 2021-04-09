@@ -34,7 +34,13 @@ let list_entries ~storage =
       Ok []
     | true ->
       let dir = storage / dir in
-      Path.readdir_unsorted dir >>| List.map ~f:(Path.relative dir)
+      Path.readdir_unsorted dir
+      >>| List.filter_map ~f:(fun entry_name ->
+              match Digest.from_hex entry_name with
+              | None ->
+                (* Ignore entries whose names are not hex values. *)
+                None
+              | Some digest -> Some (dir / entry_name, digest))
   in
   match Path.readdir_unsorted storage >>= Result.List.concat_map ~f:entries with
   | Ok res -> res

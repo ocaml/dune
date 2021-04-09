@@ -22,34 +22,27 @@ let trim_broken_metadata_entries ~trimmed_so_far =
         Layout.Versioned.file_path (Version.Metadata.file_version version)
       in
       List.fold_left metadata_entries ~init:trimmed_so_far
-        ~f:(fun trimmed_so_far path ->
+        ~f:(fun trimmed_so_far (path, rule_or_action_digest) ->
           let should_be_removed =
-            match Digest.from_hex (Path.basename path) with
-            | None ->
-              (* Keep unrecognized entries in the cache. *)
+            match Metadata.Versioned.restore version ~rule_or_action_digest with
+            | Not_found_in_cache ->
+              (* A concurrent process must have removed this metadata file. No
+                 need to try removing such "phantom" metadata files again. *)
               false
-            | Some rule_or_action_digest -> (
-              match
-                Metadata.Versioned.restore version ~rule_or_action_digest
-              with
-              | Not_found_in_cache ->
-                (* A concurrent process must have removed this metadata file. No
-                   need to try removing such "phantom" metadata files again. *)
+            | Error _exn ->
+              (* If a metadata file can't be restored, let's trim it. *)
+              true
+            | Restored metadata -> (
+              match metadata with
+              | Metadata.Value _ ->
+                (* We do not expect to see any value entries in the cache. Let's
+                   keep them untrimmed for now. *)
                 false
-              | Error _exn ->
-                (* If a metadata file can't be restored, let's trim it. *)
-                true
-              | Restored metadata -> (
-                match metadata with
-                | Metadata.Value _ ->
-                  (* We do not expect to see any value entries in the cache.
-                     Let's keep them untrimmed for now. *)
-                  false
-                | Metadata.Artifacts { entries; _ } ->
-                  List.exists entries
-                    ~f:(fun { Artifacts.Metadata_entry.file_digest; _ } ->
-                      let reference = file_path ~file_digest in
-                      not (Path.exists reference))))
+              | Metadata.Artifacts { entries; _ } ->
+                List.exists entries
+                  ~f:(fun { Artifacts.Metadata_entry.file_digest; _ } ->
+                    let reference = file_path ~file_digest in
+                    not (Path.exists reference)))
           in
           match should_be_removed with
           | true ->
@@ -73,14 +66,14 @@ let files_in_cache_for_all_supported_versions () =
 let file_exists_and_is_unused ~stats = stats.Unix.st_nlink = 1
 
 let trim ~goal =
-  let files = files_in_cache_for_all_supported_versions () in
+  let files = files_in_cache_for_all_supported_versions () |> List.map ~f:fst in
   let f path =
     let stats = Path.stat path in
     if file_exists_and_is_unused ~stats then
       Some (path, stats.st_size, stats.st_ctime)
     else
       None
-  and compare (_, _, t1) (_, _, t2) = Ordering.of_int (Stdlib.compare t1 t2) in
+  and compare (_, _, t1) (_, _, t2) = Poly.compare t1 t2 in
   let files = List.sort ~compare (List.filter_map ~f files)
   and delete (trimmed_so_far : Trimming_result.t) (path, bytes, _) =
     if trimmed_so_far.trimmed_bytes >= goal then
@@ -98,7 +91,7 @@ let trim ~goal =
   trim_broken_metadata_entries ~trimmed_so_far
 
 let overhead_size () =
-  let files = files_in_cache_for_all_supported_versions () in
+  let files = files_in_cache_for_all_supported_versions () |> List.map ~f:fst in
   let stats =
     let f p =
       try

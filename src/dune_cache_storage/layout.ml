@@ -87,3 +87,9 @@ let file_path = Versioned.file_path Version.File.current
 let value_storage_path = Versioned.value_storage_path Version.Value.current
 
 let value_path = Versioned.value_path Version.Value.current
+
+let create_cache_directories () =
+  List.iter
+    [ temp_path; metadata_storage_path; file_storage_path; value_storage_path ]
+    ~f:(fun path ->
+      ignore (Fpath.mkdir_p (Path.to_string path) : Fpath.mkdir_result))

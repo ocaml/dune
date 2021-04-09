@@ -1112,9 +1112,11 @@ let ensure_build_dir_exists () =
   | In_source_dir p -> Relative_to_source_root.mkdir_p p ~perms
   | External p -> (
     let p = External.to_string p in
-    try Unix.mkdir p perms with
-    | Unix.Unix_error (EEXIST, _, _) -> ()
-    | Unix.Unix_error (ENOENT, _, _) ->
+    match Fpath.mkdir ~perms p with
+    | Created
+    | Already_exists ->
+      ()
+    | exception Unix.Unix_error (ENOENT, _, _) ->
       User_error.raise
         [ Pp.textf
             "Cannot create external build directory %s. Make sure that the \

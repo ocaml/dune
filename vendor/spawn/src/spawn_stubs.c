@@ -178,6 +178,7 @@ static void subprocess_failure(int failure_fd,
      We only store the result of [write] to avoid a warning.
  */
   written = write(failure_fd, &failure, sizeof(failure));
+  (void)written;
   _exit(127);
 }
 
@@ -480,28 +481,43 @@ CAMLprim value spawn_unix(value v_env,
   CAMLreturn(Val_int(ret));
 }
 
-CAMLprim value spawn_windows(value __attribute__((unused)) v_env,
-                             value __attribute__((unused)) v_cwd,
-                             value __attribute__((unused)) v_prog,
-                             value __attribute__((unused)) v_cmdline,
-                             value __attribute__((unused)) v_stdin,
-                             value __attribute__((unused)) v_stdout,
-                             value __attribute__((unused)) v_stderr)
+CAMLprim value spawn_windows(value v_env,
+                             value v_cwd,
+                             value v_prog,
+                             value v_cmdline,
+                             value v_stdin,
+                             value v_stdout,
+                             value v_stderr)
 {
+  (void)v_env;
+  (void)v_cwd;
+  (void)v_prog;
+  (void)v_cmdline;
+  (void)v_stdin;
+  (void)v_stdout;
+  (void)v_stderr;
   unix_error(ENOSYS, "spawn_windows", Nothing);
 }
 
 #else
 
-CAMLprim value spawn_unix(value __attribute__((unused)) v_env,
-                          value __attribute__((unused)) v_cwd,
-                          value __attribute__((unused)) v_prog,
-                          value __attribute__((unused)) v_argv,
-                          value __attribute__((unused)) v_stdin,
-                          value __attribute__((unused)) v_stdout,
-                          value __attribute__((unused)) v_stderr,
-                          value __attribute__((unused)) v_use_vfork)
+CAMLprim value spawn_unix(value v_env,
+                          value v_cwd,
+                          value v_prog,
+                          value v_argv,
+                          value v_stdin,
+                          value v_stdout,
+                          value v_stderr,
+                          value v_use_vfork)
 {
+  (void)v_env;
+  (void)v_cwd;
+  (void)v_prog;
+  (void)v_argv;
+  (void)v_stdin;
+  (void)v_stdout;
+  (void)v_stderr;
+  (void)v_use_vfork;
   unix_error(ENOSYS, "spawn_unix", Nothing);
 }
 
@@ -546,12 +562,12 @@ CAMLprim value spawn_windows(value v_env,
   }
 
   if (!CreateProcess(String_val(v_prog),
-                     String_val(v_cmdline),
+                     Bytes_val(v_cmdline),
                      NULL,
                      NULL,
                      TRUE,
                      0,
-                     Is_block(v_env) ? String_val(Field(v_env, 0)) : NULL,
+                     Is_block(v_env) ? Bytes_val(Field(v_env, 0)) : NULL,
                      Is_block(v_cwd) ? String_val(Field(v_cwd, 0)) : NULL,
                      &si,
                      &pi)) {

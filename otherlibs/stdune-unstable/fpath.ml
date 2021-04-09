@@ -7,32 +7,26 @@ type mkdir_result =
 let initial_cwd = Stdlib.Sys.getcwd ()
 
 let mkdir ?(perms = 0o777) t_s =
-  if is_root t_s then
-    Already_exists
-  else
-    try
-      Unix.mkdir t_s perms;
-      Created
-    with
-    | Unix.Unix_error (EEXIST, _, _) -> Already_exists
+  try
+    Unix.mkdir t_s perms;
+    Created
+  with
+  | Unix.Unix_error (EEXIST, _, _) -> Already_exists
 
 let rec mkdir_p ?(perms = 0o777) t_s =
-  if is_root t_s then
-    Already_exists
-  else
-    try
+  try
+    Unix.mkdir t_s perms;
+    Created
+  with
+  | Unix.Unix_error (EEXIST, _, _) -> Already_exists
+  | Unix.Unix_error (ENOENT, _, _) as e ->
+    if is_root t_s then
+      raise e
+    else
+      let parent = Filename.dirname t_s in
+      let (_ : mkdir_result) = mkdir_p parent ~perms in
       Unix.mkdir t_s perms;
       Created
-    with
-    | Unix.Unix_error (EEXIST, _, _) -> Already_exists
-    | Unix.Unix_error (ENOENT, _, _) as e ->
-      let parent = Filename.dirname t_s in
-      if is_root parent then
-        raise e
-      else
-        let (_ : mkdir_result) = mkdir_p parent ~perms in
-        Unix.mkdir t_s perms;
-        Created
 
 let resolve_link path =
   match Unix.readlink path with

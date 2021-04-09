@@ -128,7 +128,7 @@ end = struct
     | Some p -> p
 
   let mkdir_p ?perms p =
-    ignore (Fpath.mkdir_p ?perms (to_string p) : Fpath.mkdir_p)
+    ignore (Fpath.mkdir_p ?perms (to_string p) : Fpath.mkdir_result)
 
   let extension t = Filename.extension (to_string t)
 
@@ -551,7 +551,7 @@ end
 
 module Relative_to_source_root = struct
   let mkdir_p ?perms s =
-    ignore (Fpath.mkdir_p ?perms (Local.to_string s) : Fpath.mkdir_p)
+    ignore (Fpath.mkdir_p ?perms (Local.to_string s) : Fpath.mkdir_result)
 end
 
 module Source0 = Local

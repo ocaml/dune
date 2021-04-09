@@ -36,7 +36,7 @@ let destroy = function
 
 let create_temp_dir ?perms path =
   let dir = Path.to_string path in
-  match Fpath.mkdir_p ?perms dir with
+  match Fpath.mkdir ?perms dir with
   | Created -> ()
   | Already_exists -> raise Retry
 
@@ -101,9 +101,8 @@ let temp_path =
 
 let temp_dir ~parent_dir ~prefix ~suffix =
   try_paths 1000 ~dir:parent_dir ~prefix ~suffix ~f:(fun candidate ->
-      match Fpath.mkdir_p (Path.to_string candidate) with
-      | Created -> candidate
-      | Already_exists -> raise Retry)
+      create_temp_dir candidate;
+      candidate)
 
 module Monad (M : sig
   type 'a t

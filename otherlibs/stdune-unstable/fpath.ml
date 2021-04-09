@@ -1,10 +1,20 @@
 let is_root t = Filename.dirname t = t
 
-type mkdir_p =
+type mkdir_result =
   | Already_exists
   | Created
 
 let initial_cwd = Stdlib.Sys.getcwd ()
+
+let mkdir ?(perms = 0o777) t_s =
+  if is_root t_s then
+    Already_exists
+  else
+    try
+      Unix.mkdir t_s perms;
+      Created
+    with
+    | Unix.Unix_error (EEXIST, _, _) -> Already_exists
 
 let rec mkdir_p ?(perms = 0o777) t_s =
   if is_root t_s then
@@ -20,7 +30,7 @@ let rec mkdir_p ?(perms = 0o777) t_s =
       if is_root parent then
         raise e
       else
-        let (_ : mkdir_p) = mkdir_p parent ~perms in
+        let (_ : mkdir_result) = mkdir_p parent ~perms in
         Unix.mkdir t_s perms;
         Created
 

@@ -54,8 +54,6 @@ module Dune_file = struct
 
   let alternative_fname = "dune-file"
 
-  let jbuild_fname = "jbuild"
-
   type kind =
     | Plain
     | Ocaml_script
@@ -358,20 +356,15 @@ end
 module Settings = struct
   type t =
     { ancestor_vcs : Vcs.t option
-    ; recognize_jbuilder_projects : bool
     ; execution_parameters : Execution_parameters.t
     }
 
   let builtin_default =
     { ancestor_vcs = None
-    ; recognize_jbuilder_projects = false
     ; execution_parameters = Execution_parameters.builtin_default
     }
 
   let set_ancestor_vcs x t = { t with ancestor_vcs = x }
-
-  let set_recognize_jbuilder_projects x t =
-    { t with recognize_jbuilder_projects = x }
 
   let set_execution_parameters x t = { t with execution_parameters = x }
 
@@ -464,26 +457,10 @@ end = struct
       (visited, init)
   end
 
-  let dune_file ~(dir_status : Sub_dirs.Status.t) ~recognize_jbuilder_projects
-      ~path ~files ~project =
+  let dune_file ~(dir_status : Sub_dirs.Status.t) ~path ~files ~project =
     let file_exists =
       if dir_status = Data_only then
         None
-      else if
-        (not recognize_jbuilder_projects)
-        && String.Set.mem files Dune_file.jbuild_fname
-      then
-        User_error.raise
-          ~loc:
-            (Loc.in_file
-               (Path.source (Path.Source.relative path Dune_file.jbuild_fname)))
-          [ Pp.text
-              "jbuild files are no longer supported, please convert this file \
-               to a dune file instead."
-          ; Pp.text
-              "Note: You can use \"dune upgrade\" to convert your project to \
-               dune."
-          ]
       else if
         Dune_project.accept_alternative_dune_file_name project
         && String.Set.mem files Dune_file.alternative_fname
@@ -524,13 +501,7 @@ end = struct
 
   let contents { Readdir.dirs; files } ~dirs_visited ~project ~path
       ~(dir_status : Sub_dirs.Status.t) =
-    let* recognize_jbuilder_projects =
-      let+ settings = Settings.get () in
-      settings.recognize_jbuilder_projects
-    in
-    let+ dune_file =
-      dune_file ~dir_status ~recognize_jbuilder_projects ~files ~project ~path
-    in
+    let+ dune_file = dune_file ~dir_status ~files ~project ~path in
     let sub_dirs = Dune_file.sub_dirs dune_file in
     let dirs_visited, sub_dirs =
       Get_subdir.all ~dirs_visited ~dirs ~sub_dirs ~parent_status:dir_status
@@ -613,7 +584,6 @@ end = struct
       | None -> Memo.Build.return None
       | Some (parent_dir, dirs_visited, dir_status, virtual_) ->
         let dirs_visited = Dirs_visited.Per_fn.find dirs_visited path in
-        let* settings = Settings.get () in
         let readdir =
           if virtual_ then
             Readdir.empty
@@ -628,8 +598,7 @@ end = struct
           else
             Option.value
               (Dune_project.load ~dir:path ~files:readdir.files
-                 ~infer_from_opam_files:settings.recognize_jbuilder_projects
-                 ~dir_status)
+                 ~infer_from_opam_files:false ~dir_status)
               ~default:parent_dir.project
         in
         let vcs = get_vcs ~default:parent_dir.vcs ~readdir ~path in

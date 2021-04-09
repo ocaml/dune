@@ -45,8 +45,5 @@ let load_sexps ~context:{ current_file; include_stack } (loc, fn) =
         Path.Source.equal f current_file)
   then
     error { current_file; include_stack };
-  let sexps =
-    Dune_lang.Parser.load ~lexer:Dune_lang.Lexer.token
-      (Path.source current_file) ~mode:Many
-  in
+  let sexps = Dune_lang.Parser.load (Path.source current_file) ~mode:Many in
   (sexps, { current_file; include_stack })

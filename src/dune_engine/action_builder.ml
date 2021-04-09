@@ -147,8 +147,7 @@ let strings p =
 
 let read_sexp p =
   let+ s = contents p in
-  Dune_lang.Parser.parse_string s ~lexer:Dune_lang.Lexer.token
-    ~fname:(Path.to_string p) ~mode:Single
+  Dune_lang.Parser.parse_string s ~fname:(Path.to_string p) ~mode:Single
 
 let if_file_exists p ~then_ ~else_ = If_file_exists (p, then_, else_)
 

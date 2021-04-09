@@ -65,32 +65,13 @@
   > (using fmt 1.2 (enabled_for reason))
   > EOF
 
-  $ cat > foo.opam <<EOF
-  > build: [
-  >   ["jbuilder" "subst" "-p" name]
-  >   ["jbuilder" "build"]
-  > ]
-  > depends: [
-  >   "jbuilder" {build & >= "1.0+beta42"}
-  > ]
-  > EOF
-
   $ dune upgrade
-  Project in dir . will be upgraded to dune v1.
-  Creating dune-project...
   Project in dir partv2/partv1 will be upgraded to dune v2.
   Project in dir partv2/partv1bis will be upgraded to dune v2.
   Upgrading partv2/partv1bis/dune-project...
   Upgrading partv2/partv1/dune.inc...
   Upgrading partv2/partv1/dune...
   Upgrading partv2/partv1/dune-project...
-  Upgrading foo.opam...
-  Upgrading jbuild.inc to dune.inc...
-  Upgrading jbuild to dune...
-  Project in dir . will be upgraded to dune v2.
-  Upgrading dune.inc...
-  Upgrading dune...
-  Upgrading dune-project...
   
   Some projects were upgraded to dune v2. Some breaking changes may not
   have been treated automatically. Here is a list of things you should check
@@ -125,53 +106,6 @@
     dependency on that file.
   - `self_build_stubs_archive` was deleted in version 2.0 of the dune
   language. Use the (foreign_archives ...) field instead.
-
-  $ cat dune
-  ;old style
-  ;block comment
-  ;
-  
-  (rule
-   (deps
-    (:< x)
-    y
-    z)
-   ; abc
-   (targets z)
-   ; def
-   (action
-    (with-stdout-to
-     z
-     (run echo %{<})))
-   (mode fallback))
-  
-  ; other
-  ; comment
-  
-  (rule
-   (copy x y))
-  
-  ;(sexp
-  ;    comment)
-  
-  (include dune.inc)
-
-  $ cat dune.inc
-  (rule
-   (deps
-    (:< a))
-   (targets b)
-   (action
-    (copy %{<} %{targets})))
-
-  $ cat foo.opam
-  build: [
-    ["dune" "subst"]
-    ["dune" "build" "-p" name "-j" jobs]
-  ]
-  depends: [
-    "dune" {build & >= "1.0"}
-  ]
 
 v1 -> v2
 

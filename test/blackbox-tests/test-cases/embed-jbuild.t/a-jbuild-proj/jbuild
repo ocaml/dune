@@ -1,7 +1,0 @@
-(jbuild_version 1)
-
-(rule
- ((targets (version.ml))
-  (action
-   (with-stdout-to ${@}
-    (echo "let version = \"${version:a-jbuild-proj}\"")))))

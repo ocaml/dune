@@ -22,11 +22,7 @@ val prefix_target : t -> string -> string
 
     Return the final configuration, which is the same as the one returned in the
     [config] field of [Dune_rules.Workspace.workspace ()]) *)
-val init :
-     ?log_file:Dune_util.Log.File.t
-  -> ?recognize_jbuilder_projects:bool
-  -> t
-  -> Dune_config.t
+val init : ?log_file:Dune_util.Log.File.t -> t -> Dune_config.t
 
 (** [examples \[("description", "dune cmd foo"); ...\]] is an [EXAMPLES] manpage
     section of enumerated examples illustrating how to run the documented

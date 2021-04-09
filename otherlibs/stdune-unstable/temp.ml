@@ -38,7 +38,7 @@ let create_temp_dir ?perms path =
   let dir = Path.to_string path in
   match Fpath.mkdir_p ?perms dir with
   | Created -> ()
-  | Already_exists -> raise (Unix.Unix_error (ENOENT, "mkdir", dir))
+  | Already_exists -> raise Retry
 
 let set = function
   | Dir -> tmp_dirs

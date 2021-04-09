@@ -10,7 +10,7 @@ type build_system =
   ; scontexts : Super_context.t Context_name.Map.t
   }
 
-let init ~stats ~sandboxing_preference ~cache_config =
+let init ~stats ~sandboxing_preference ~cache_config ~handler =
   let promote_source ?chmod ~src ~dst ctx =
     let open Fiber.O in
     let* ctx =
@@ -30,6 +30,7 @@ let init ~stats ~sandboxing_preference ~cache_config =
            Workspace.workspace () >>| Workspace.build_contexts))
     ~cache_config
     ~rule_generator:(module Gen_rules)
+    ~handler
 
 let get () =
   let open Memo.Build.O in

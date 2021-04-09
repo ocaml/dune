@@ -177,7 +177,8 @@ let init ?log_file ?(recognize_jbuilder_projects = false) c =
         }
   in
   Dune_rules.Main.init ~stats:c.stats
-    ~sandboxing_preference:config.sandboxing_preference ~cache_config;
+    ~sandboxing_preference:config.sandboxing_preference ~cache_config
+    ~handler:(Option.map c.rpc ~f:Dune_rpc_impl.Server.build_handler);
   Only_packages.Clflags.set c.only_packages;
   Clflags.debug_dep_path := c.debug_dep_path;
   Clflags.debug_findlib := c.debug_findlib;

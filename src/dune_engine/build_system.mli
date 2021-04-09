@@ -14,6 +14,9 @@ module Error : sig
   val message : t -> User_message.t
 end
 
+(** The current set of active errors *)
+val errors : unit -> Error.t list
+
 module Context_or_install : sig
   type t =
     | Install of Context_name.t
@@ -64,6 +67,26 @@ module type Rule_generator = sig
   val global_rules : Rules.t Memo.Lazy.t
 end
 
+module Handler : sig
+  (** Callbacks for build related events *)
+  type t
+
+  type event =
+    | Start  (** New build started *)
+    | Finish  (** Build finished successfully *)
+
+  type error =
+    | Add of Error.t  (** Error encountered while building *)
+    | Remove of Error.t  (** An existing error is invalidated *)
+
+  val create :
+       error:(error list -> unit Fiber.t) (** Callback for build [error] *)
+    -> build_progress:(complete:int -> remaining:int -> unit Fiber.t)
+         (** Callback whenever there's build progress to report *)
+    -> build_event:(event -> unit Fiber.t) (** Called for every [event] *)
+    -> t
+end
+
 (** Initializes the build system. This must be called first. *)
 val init :
      stats:Stats.t option
@@ -77,10 +100,8 @@ val init :
   -> cache_config:Dune_cache.Config.t
   -> sandboxing_preference:Sandbox_mode.t list
   -> rule_generator:(module Rule_generator)
+  -> handler:Handler.t option
   -> unit
-
-(** All other functions in this section must be called inside the rule generator
-    callback. *)
 
 (** {2 Primitive for rule generations} *)
 

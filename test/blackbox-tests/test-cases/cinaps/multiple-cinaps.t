@@ -21,3 +21,14 @@ Multiple cinaps stanzas in the same dune file
                ^^^^^^^^^^^^^^^^^^^
   Error: This function has type unit -> unit
          It is applied to too many arguments; maybe you forgot a `;'.
+
+  $ touch foo.ml
+  $ cat > dune <<EOF
+  > (cinaps (files foo.ml))
+  > (cinaps (files *.ml))
+  > EOF
+  $ dune runtest --diff-command diff 2>&1 | sed -E 's/[^ ]+sh/\$sh/'
+  Error: Multiple rules generated for
+  _build/default/.cinaps.a7811055/cinaps.ml-gen:
+  - dune:1
+  - dune:2

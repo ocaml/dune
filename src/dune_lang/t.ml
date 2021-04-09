@@ -14,18 +14,16 @@ let atom_or_quoted_string s =
 
 let atom s = Atom (Atom.of_string s)
 
-let unsafe_atom_of_string s = atom s
-
 let rec to_string t =
   match t with
-  | Atom a -> Atom.print a
+  | Atom (A s) -> s
   | Quoted_string s -> Escape.quoted s
   | List l ->
     Printf.sprintf "(%s)" (List.map l ~f:to_string |> String.concat ~sep:" ")
   | Template t -> Template.to_string t
 
 let rec pp = function
-  | Atom s -> Pp.verbatim (Atom.print s)
+  | Atom (A s) -> Pp.verbatim s
   | Quoted_string s -> Pp.verbatim (Escape.quoted s)
   | List [] -> Pp.verbatim "()"
   | List l ->
@@ -52,7 +50,7 @@ module Deprecated = struct
       Format.pp_print_string ppf (Escape.quoted s)
 
   let rec pp_split_strings ppf = function
-    | Atom s -> Format.pp_print_string ppf (Atom.print s)
+    | Atom (A s) -> Format.pp_print_string ppf s
     | Quoted_string s -> pp_print_quoted_string ppf s
     | List [] -> Format.pp_print_string ppf "()"
     | List (first :: rest) ->

@@ -16,8 +16,6 @@ val atom : string -> t
 
 val atom_or_quoted_string : string -> t
 
-val unsafe_atom_of_string : string -> t
-
 (** Serialize a S-expression *)
 val to_string : t -> string
 

@@ -20,8 +20,7 @@ let rec cst_of_encoded_ast (x : Ast.t) : Cst.t =
   | List (loc, l) -> List (loc, List.map l ~f:cst_of_encoded_ast)
   | Atom (loc, (A s as atom)) -> (
     match s.[0] with
-    | '\000' -> Comment (loc, Lines (String.drop s 1 |> String.split ~on:'\n'))
-    | '\001' -> Comment (loc, Legacy)
+    | '\000' -> Comment (loc, String.drop s 1 |> String.split ~on:'\n')
     | _ -> Atom (loc, atom))
 
 module Mode = struct
@@ -94,16 +93,12 @@ let rec loop with_comments depth lexer lexbuf acc =
     if depth > 0 then
       error (Loc.of_lexbuf lexbuf) "unclosed parenthesis at end of input";
     List.rev acc
-  | Comment comment ->
+  | Comment lines ->
     if not with_comments then
       loop false depth lexer lexbuf acc
     else
       let loc = Loc.of_lexbuf lexbuf in
-      let encoded =
-        match comment with
-        | Lines lines -> "\000" ^ String.concat lines ~sep:"\n"
-        | Legacy -> "\001"
-      in
+      let encoded = "\000" ^ String.concat lines ~sep:"\n" in
       loop with_comments depth lexer lexbuf
         (Atom (loc, Atom.of_string encoded) :: acc)
 

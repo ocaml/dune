@@ -14,8 +14,6 @@ val to_string : t -> string
     otherwise it is [None] *)
 val parse : string -> t option
 
-val print : t -> string
-
 val of_int : int -> t
 
 val of_float : float -> t

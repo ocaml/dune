@@ -6,7 +6,6 @@ module Token : sig
     | Quoted_string of string
     | Lparen
     | Rparen
-    | Sexp_comment
     | Eof
     | Template of Template.t
     | Comment of string list

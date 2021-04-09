@@ -13,15 +13,73 @@ let error (loc : Loc.t) message = User_error.raise ~loc [ Pp.text message ]
 
    We could also do clever things with GADTs, but it will add type variables
    everywhere which is annoying. *)
-let rec cst_of_encoded_ast (x : Ast.t) : Cst.t =
-  match x with
-  | Template t -> Template t
-  | Quoted_string (loc, s) -> Quoted_string (loc, s)
-  | List (loc, l) -> List (loc, List.map l ~f:cst_of_encoded_ast)
-  | Atom (loc, (A s as atom)) -> (
-    match s.[0] with
-    | '\000' -> Comment (loc, String.drop s 1 |> String.split ~on:'\n')
-    | _ -> Atom (loc, atom))
+module Encoded : sig
+  type t
+
+  val template : Template.t -> t
+
+  val atom : Loc.t -> Atom.t -> t
+
+  val quoted_string : Loc.t -> string -> t
+
+  val comment : Loc.t -> string list -> t
+
+  val list : Loc.t -> t list -> t
+
+  val to_csts : t list -> Cst.t list
+
+  val to_asts : t list -> Ast.t list
+end = struct
+  open Ast
+
+  type t = Ast.t
+
+  let comment_marker : Template.t =
+    (* In this value, both the location and template values are non-sensical:
+
+       - the location ends before it starts
+
+       - the template is empty and un-quoted *)
+    let loc : Loc.t =
+      { start = { pos_fname = ""; pos_cnum = -1; pos_lnum = -1; pos_bol = -1 }
+      ; stop = { pos_fname = ""; pos_cnum = -2; pos_lnum = -2; pos_bol = -2 }
+      }
+    in
+    { loc; parts = []; quoted = false }
+
+  let template t =
+    assert (t <> comment_marker);
+    Template t
+
+  let atom loc a = Atom (loc, a)
+
+  let quoted_string loc s = Quoted_string (loc, s)
+
+  let comment loc lines =
+    List
+      ( loc
+      , Template comment_marker
+        :: List.map lines ~f:(fun line -> Quoted_string (Loc.none, line)) )
+
+  let list loc l = List (loc, l)
+
+  let to_asts l = l
+
+  let rec to_cst (x : Ast.t) : Cst.t =
+    match x with
+    | Template t -> Template t
+    | Quoted_string (loc, s) -> Quoted_string (loc, s)
+    | Atom (loc, a) -> Atom (loc, a)
+    | List (loc, Template x :: l) when x = comment_marker ->
+      Comment
+        ( loc
+        , List.map l ~f:(function
+            | Quoted_string (_, s) -> s
+            | _ -> assert false) )
+    | List (loc, l) -> List (loc, to_csts l)
+
+  and to_csts l = List.map l ~f:to_cst
+end
 
 module Mode = struct
   type 'a t =
@@ -36,59 +94,49 @@ module Mode = struct
     | Many_as_one -> false
     | Cst -> true
 
-  let make_result : type a. a t -> Lexing.lexbuf -> Ast.t list -> a =
+  let make_result : type a. a t -> Lexing.lexbuf -> Encoded.t list -> a =
    fun t lexbuf sexps ->
     match t with
     | Single -> (
-      match sexps with
+      match Encoded.to_asts sexps with
       | [ sexp ] -> sexp
       | [] -> error (Loc.of_lexbuf lexbuf) "no s-expression found in input"
       | _ :: sexp :: _ ->
         error (Ast.loc sexp) "too many s-expressions found in input")
-    | Many -> sexps
+    | Many -> Encoded.to_asts sexps
     | Many_as_one -> (
-      match sexps with
+      match Encoded.to_asts sexps with
       | [] -> List (Loc.in_file (Path.of_string lexbuf.lex_curr_p.pos_fname), [])
       | x :: l ->
         let last = List.fold_left l ~init:x ~f:(fun _ x -> x) in
         let loc = { (Ast.loc x) with stop = (Ast.loc last).stop } in
         List (loc, x :: l))
-    | Cst -> List.map sexps ~f:cst_of_encoded_ast
+    | Cst -> Encoded.to_csts sexps
 end
 
 let rec loop with_comments depth lexer lexbuf acc =
   match (lexer ~with_comments lexbuf : Lexer.Token.t) with
   | Atom a ->
     let loc = Loc.of_lexbuf lexbuf in
-    loop with_comments depth lexer lexbuf (Ast.Atom (loc, a) :: acc)
+    loop with_comments depth lexer lexbuf (Encoded.atom loc a :: acc)
   | Quoted_string s ->
     let loc = Loc.of_lexbuf lexbuf in
-    loop with_comments depth lexer lexbuf (Quoted_string (loc, s) :: acc)
+    loop with_comments depth lexer lexbuf (Encoded.quoted_string loc s :: acc)
   | Template t ->
     let loc = Loc.of_lexbuf lexbuf in
-    loop with_comments depth lexer lexbuf (Template { t with loc } :: acc)
+    loop with_comments depth lexer lexbuf
+      (Encoded.template { t with loc } :: acc)
   | Lparen ->
     let start = Lexing.lexeme_start_p lexbuf in
     let sexps = loop with_comments (depth + 1) lexer lexbuf [] in
     let stop = Lexing.lexeme_end_p lexbuf in
-    loop with_comments depth lexer lexbuf (List ({ start; stop }, sexps) :: acc)
+    loop with_comments depth lexer lexbuf
+      (Encoded.list { start; stop } sexps :: acc)
   | Rparen ->
     if depth = 0 then
       error (Loc.of_lexbuf lexbuf)
         "right parenthesis without matching left parenthesis";
     List.rev acc
-  | Sexp_comment ->
-    let sexps =
-      let loc = Loc.of_lexbuf lexbuf in
-      match loop with_comments depth lexer lexbuf [] with
-      | commented :: sexps ->
-        if not with_comments then
-          sexps
-        else
-          Atom (Ast.loc commented, Atom.of_string "\001") :: sexps
-      | [] -> error loc "s-expression missing after #;"
-    in
-    List.rev_append acc sexps
   | Eof ->
     if depth > 0 then
       error (Loc.of_lexbuf lexbuf) "unclosed parenthesis at end of input";
@@ -98,9 +146,7 @@ let rec loop with_comments depth lexer lexbuf acc =
       loop false depth lexer lexbuf acc
     else
       let loc = Loc.of_lexbuf lexbuf in
-      let encoded = "\000" ^ String.concat lines ~sep:"\n" in
-      loop with_comments depth lexer lexbuf
-        (Atom (loc, Atom.of_string encoded) :: acc)
+      loop with_comments depth lexer lexbuf (Encoded.comment loc lines :: acc)
 
 let parse ~mode ?(lexer = Lexer.token) lexbuf =
   let with_comments = Mode.with_comments mode in

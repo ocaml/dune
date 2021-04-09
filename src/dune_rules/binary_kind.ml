@@ -32,6 +32,6 @@ let to_dyn t =
   let open Dyn.Encoder in
   constr (to_string t) []
 
-let encode t = Dune_lang.unsafe_atom_of_string (to_string t)
+let encode t = Dune_lang.atom (to_string t)
 
 let all = [ C; Exe; Object; Shared_object; Plugin; Js ]

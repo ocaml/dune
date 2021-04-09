@@ -403,7 +403,7 @@ module Mode_conf = struct
     let open Dyn.Encoder in
     constr (to_string t) []
 
-  let encode t = Dune_lang.unsafe_atom_of_string (to_string t)
+  let encode t = Dune_lang.atom (to_string t)
 
   module Kind = struct
     type t =
@@ -1238,7 +1238,7 @@ module Executables = struct
     let simple_encode link_mode =
       let is_ok (_, candidate) = compare candidate link_mode = Eq in
       List.find ~f:is_ok simple_representations
-      |> Option.map ~f:(fun (s, _) -> Dune_lang.unsafe_atom_of_string s)
+      |> Option.map ~f:(fun (s, _) -> Dune_lang.atom s)
 
     let encode link_mode =
       match simple_encode link_mode with

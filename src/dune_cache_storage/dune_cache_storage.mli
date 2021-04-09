@@ -48,11 +48,18 @@ module Value : sig
       ; value_digest : Digest.t
       }
 
+    (** Restore value metadata produced by an action with a given digest. The
+        metadata is restored only in memory, i.e. no new files will be created. *)
     val restore : action_digest:Digest.t -> t Restore_result.t
   end
 
+  (** Store a [string] value produced by an action with a given digest. If
+      successful, this operation will create one metadata entry and one value
+      entry in the cache. *)
   val store : mode:Mode.t -> action_digest:Digest.t -> string -> Store_result.t
 
+  (** Restore a [string] value produced by an action with a given digest. The
+      value is restored only in memory, i.e. no new files will be created. *)
   val restore : action_digest:Digest.t -> string Restore_result.t
 end
 
@@ -71,22 +78,33 @@ module Artifacts : sig
       ; entries : Metadata_entry.t list
       }
 
+    (** Store artifacts metadata produced by a rule with a given digest. If
+        successful, this operation will create one metadata entry in the cache. *)
     val store : t -> mode:Mode.t -> rule_digest:Digest.t -> Store_result.t
 
+    (** Restore artifacts metadata produced by a rule with a given digest. The
+        metadata is restored only in memory, i.e. no new files will be created. *)
     val restore : rule_digest:Digest.t -> t Restore_result.t
   end
 
+  (** List entries of a metadata file produced by a rule with a given digest.
+      The list of entries is restored only in memory, i.e. no new files will be
+      created. *)
   val list : rule_digest:Digest.t -> Metadata_entry.t list Restore_result.t
 end
 
+(** Some generic operations on metadata files. *)
 module Metadata : sig
   type t =
     | Artifacts of Artifacts.Metadata_file.t
     | Value of Value.Metadata_file.t
 
+  (** Restore metadata produced by a rule or action with a given digest. The
+      metadata is restored only in memory, i.e. no new files will be created. *)
   val restore : rule_or_action_digest:Digest.t -> t Restore_result.t
 
   module Versioned : sig
+    (** Same as the unversioned function but supports old metadata versions. *)
     val restore :
       Version.Metadata.t -> rule_or_action_digest:Digest.t -> t Restore_result.t
   end

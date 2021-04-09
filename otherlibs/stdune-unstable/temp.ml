@@ -96,7 +96,8 @@ let clear_dir dir =
 
 let temp_path =
   try_paths 1000 ~f:(fun candidate ->
-      if Path.exists candidate then raise Retry;
+      (try create_temp_file candidate with
+      | Unix.Unix_error (EEXIST, _, _) -> raise Retry);
       candidate)
 
 let temp_dir ~parent_dir ~prefix ~suffix =

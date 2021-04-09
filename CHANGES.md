@@ -95,6 +95,8 @@ Unreleased
 - Allow dune-file as an alternative file name for dune files (needs to be
   enabled in the dune-project file) (#4428, @nojb)
 
+- Drop support for upgrading jbuilder projects (#...., @jeremiedimino)
+
 2.8.5 (28/03/2021)
 ------------------
 

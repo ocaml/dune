@@ -128,7 +128,7 @@ let print_entering_message c =
     in
     Console.print [ Pp.verbatim (sprintf "Entering directory '%s'" dir) ]
 
-let init ?log_file ?(recognize_jbuilder_projects = false) c =
+let init ?log_file c =
   if c.root.dir <> Filename.current_dir_name then Sys.chdir c.root.dir;
   Path.set_root (normalize_path (Path.External.cwd ()));
   Path.Build.set_build_dir (Path.Build.Kind.of_string c.build_dir);
@@ -156,8 +156,7 @@ let init ?log_file ?(recognize_jbuilder_projects = false) c =
     |> S.set_ancestor_vcs c.root.ancestor_vcs
     |> S.set_execution_parameters
          (Dune_engine.Execution_parameters.builtin_default
-         |> Dune_rules.Workspace.update_execution_parameters w)
-    |> S.set_recognize_jbuilder_projects recognize_jbuilder_projects);
+         |> Dune_rules.Workspace.update_execution_parameters w));
   Dune_rules.Global.init ~capture_outputs:c.capture_outputs;
   (* CR-soon amokhov: Right now, types [Dune_config.Caching.Duplication.t] and
      [Dune_cache_storage.Mode.t] are the same. They will be unified after

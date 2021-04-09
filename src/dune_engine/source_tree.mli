@@ -8,8 +8,6 @@ module Dune_file : sig
 
   val alternative_fname : string
 
-  val jbuild_fname : string
-
   type kind = private
     | Plain
     | Ocaml_script
@@ -81,10 +79,6 @@ module Settings : sig
   (** The default vcs. If there is no vcs at the root of the workspace, then
       this is the vcs that will be used for the root. *)
   val set_ancestor_vcs : Vcs.t option -> t -> t
-
-  (** Whether we recognise jbuilder projects. This is only set to [true] by the
-      upgrader. *)
-  val set_recognize_jbuilder_projects : bool -> t -> t
 
   (** The default execution parameters. *)
   val set_execution_parameters : Execution_parameters.t -> t -> t

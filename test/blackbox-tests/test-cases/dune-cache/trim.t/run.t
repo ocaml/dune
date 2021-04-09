@@ -90,15 +90,16 @@ of them are still hard-linked from the build directory. However, we should trim
 all metadata entries in [meta/v4] since they are broken: remember, we moved all
 [files/v4] to [files/v3].
 
-  $ find "$PWD/.xdg-cache/dune/db/meta/v4" -mindepth 2 -maxdepth 2 -type f -printf '+'
-  ++++
+  $ find "$PWD/.xdg-cache/dune/db/meta/v4" -mindepth 2 -maxdepth 2 -type f | dune_cmd count-lines
+  4
   $ dune cache trim --trimmed-size 1B
   Freed 287 bytes
   $ dune_cmd stat hardlinks _build/default/target_a
   2
   $ dune_cmd stat hardlinks _build/default/target_b
   2
-  $ find "$PWD/.xdg-cache/dune/db/meta/v4" -mindepth 2 -maxdepth 2 -type f -printf '+'
+  $ find "$PWD/.xdg-cache/dune/db/meta/v4" -mindepth 2 -maxdepth 2 -type f | dune_cmd count-lines
+  0
 
 If we unlink a file in the build tree, then the corresponding file entry will be
 trimmed.
@@ -119,18 +120,20 @@ the trimmer. That will delete unused [files/v3] and the corresponding metadata
 entries in [meta/v3].
 
   $ rm -rf _build
-  $ find "$PWD/.xdg-cache/dune/db/files/v3" -mindepth 2 -maxdepth 2 -type f -printf '+'
-  ++++
-  $ find "$PWD/.xdg-cache/dune/db/meta/v3" -mindepth 2 -maxdepth 2 -type f -printf '+'
-  ++++
+  $ find "$PWD/.xdg-cache/dune/db/files/v3" -mindepth 2 -maxdepth 2 -type f | dune_cmd count-lines
+  4
+  $ find "$PWD/.xdg-cache/dune/db/meta/v3" -mindepth 2 -maxdepth 2 -type f | dune_cmd count-lines
+  4
 
 We hide the output for reproducibility: some files are executable and their
 sizes might vary on different platforms
 
   $ dune cache trim --size 0B > /dev/null
 
-  $ find "$PWD/.xdg-cache/dune/db/files/v3" -mindepth 2 -maxdepth 2 -type f -printf '+'
-  $ find "$PWD/.xdg-cache/dune/db/meta/v3" -mindepth 2 -maxdepth 2 -type f -printf '+'
+  $ find "$PWD/.xdg-cache/dune/db/files/v3" -mindepth 2 -maxdepth 2 -type f | dune_cmd count-lines
+  0
+  $ find "$PWD/.xdg-cache/dune/db/meta/v3" -mindepth 2 -maxdepth 2 -type f | dune_cmd count-lines
+  0
 
 The cache deletes oldest files first.
 

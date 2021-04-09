@@ -13,6 +13,10 @@ val default_root_path : unit -> Path.t
 (** The path to the root directory of the cache. *)
 val root_path : Path.t
 
+(** Create a few subdirectories in [root_path]. We expose this function because
+    we don't want to modify the file system when the cache is disabled. *)
+val create_cache_directories : unit -> unit
+
 (** This directory stores metadata files, one per each historically executed
     build rule or output-producing action. (While this is a convenient mental
     model, in reality we need to occasionally remove some outdated metadata

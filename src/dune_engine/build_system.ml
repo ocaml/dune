@@ -2361,6 +2361,11 @@ let init ~stats ~contexts ~promote_source ~cache_config ~sandboxing_preference
         Context_name.Map.of_list_map_exn contexts ~f:(fun c ->
             (c.Build_context.name, c)))
   in
+  let () =
+    match (cache_config : Dune_cache.Config.t) with
+    | Disabled -> ()
+    | Enabled _ -> Dune_cache_storage.Layout.create_cache_directories ()
+  in
   set
     { contexts
     ; rule_generator

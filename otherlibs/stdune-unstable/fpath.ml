@@ -1,28 +1,43 @@
 let is_root t = Filename.dirname t = t
 
-type mkdir_p =
+let initial_cwd = Stdlib.Sys.getcwd ()
+
+type mkdir_result =
+  | Already_exists
+  | Created
+  | Missing_parent_directory
+
+let mkdir ?(perms = 0o777) t_s =
+  try
+    Unix.mkdir t_s perms;
+    Created
+  with
+  | Unix.Unix_error (EEXIST, _, _) -> Already_exists
+  | Unix.Unix_error (ENOENT, _, _) -> Missing_parent_directory
+
+type mkdir_p_result =
   | Already_exists
   | Created
 
-let initial_cwd = Stdlib.Sys.getcwd ()
-
 let rec mkdir_p ?(perms = 0o777) t_s =
-  if is_root t_s then
-    Already_exists
-  else
-    try
-      Unix.mkdir t_s perms;
-      Created
-    with
-    | Unix.Unix_error (EEXIST, _, _) -> Already_exists
-    | Unix.Unix_error (ENOENT, _, _) as e ->
+  match mkdir ~perms t_s with
+  | Created -> Created
+  | Already_exists -> Already_exists
+  | Missing_parent_directory -> (
+    if is_root t_s then
+      Code_error.raise
+        "Impossible happened: [Fpath.mkdir] refused to create a directory at \
+         the root, allegedly because its parent was missing"
+        []
+    else
       let parent = Filename.dirname t_s in
-      if is_root parent then
-        raise e
-      else
-        let (_ : mkdir_p) = mkdir_p parent ~perms in
+      match mkdir_p ~perms parent with
+      | Created
+      | Already_exists ->
+        (* The [Already_exists] case might happen if some other process managed
+           to create the parent directory concurrently. *)
         Unix.mkdir t_s perms;
-        Created
+        Created)
 
 let resolve_link path =
   match Unix.readlink path with

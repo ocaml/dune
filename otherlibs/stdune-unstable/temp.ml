@@ -4,8 +4,6 @@ type what =
 
 let prng = lazy (Random.State.make_self_init ())
 
-exception Retry
-
 let try_paths n ~dir ~prefix ~suffix ~f =
   assert (n > 0);
   let rec loop n =
@@ -13,10 +11,11 @@ let try_paths n ~dir ~prefix ~suffix ~f =
       let rnd = Random.State.bits (Lazy.force prng) land 0xFFFFFF in
       Path.relative dir (Printf.sprintf "%s%06x%s" prefix rnd suffix)
     in
-    try f path with
-    | Retry ->
+    match f path with
+    | Ok res -> res
+    | Error `Retry ->
       if n = 1 then
-        Code_error.raise "try_paths failed to find a good candidate" []
+        Code_error.raise "[Temp.try_paths] failed to find a good candidate" []
       else
         loop (n - 1)
   in
@@ -28,7 +27,12 @@ let tmp_dirs = ref Path.Set.empty
 
 let create_temp_file ?(perms = 0o600) path =
   let file = Path.to_string path in
-  Unix.close (Unix.openfile file [ O_WRONLY; Unix.O_CREAT; Unix.O_EXCL ] perms)
+  match
+    Unix.close
+      (Unix.openfile file [ O_WRONLY; Unix.O_CREAT; Unix.O_EXCL ] perms)
+  with
+  | () -> Ok ()
+  | exception Unix.Unix_error (EEXIST, _, _) -> Error `Retry
 
 let destroy = function
   | Dir -> Path.rm_rf ~allow_external:true
@@ -36,9 +40,12 @@ let destroy = function
 
 let create_temp_dir ?perms path =
   let dir = Path.to_string path in
-  match Fpath.mkdir_p ?perms dir with
-  | Created -> ()
-  | Already_exists -> raise (Unix.Unix_error (ENOENT, "mkdir", dir))
+  match Fpath.mkdir ?perms dir with
+  | Created -> Ok ()
+  | Already_exists -> Error `Retry
+  | Missing_parent_directory ->
+    Code_error.raise "[Temp.create_temp_dir] called in a non-existing directory"
+      []
 
 let set = function
   | Dir -> tmp_dirs
@@ -63,8 +70,7 @@ let temp_in_dir ?perms what ~dir ~prefix ~suffix =
   let path =
     let create = create ?perms what in
     try_paths 1000 ~dir ~prefix ~suffix ~f:(fun path ->
-        create path;
-        path)
+        Result.map (create path) ~f:(fun () -> path))
   in
   let set = set what in
   set := Path.Set.add !set path;
@@ -96,14 +102,11 @@ let clear_dir dir =
 
 let temp_path =
   try_paths 1000 ~f:(fun candidate ->
-      if Path.exists candidate then raise Retry;
-      candidate)
+      Result.map (create_temp_file candidate) ~f:(fun () -> candidate))
 
 let temp_dir ~parent_dir ~prefix ~suffix =
   try_paths 1000 ~dir:parent_dir ~prefix ~suffix ~f:(fun candidate ->
-      match Fpath.mkdir_p (Path.to_string candidate) with
-      | Created -> candidate
-      | Already_exists -> raise Retry)
+      Result.map (create_temp_dir candidate) ~f:(fun () -> candidate))
 
 module Monad (M : sig
   type 'a t

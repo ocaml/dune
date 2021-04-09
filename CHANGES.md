@@ -95,7 +95,13 @@ Unreleased
 - Allow dune-file as an alternative file name for dune files (needs to be
   enabled in the dune-project file) (#4428, @nojb)
 
-- Drop support for upgrading jbuilder projects (#...., @jeremiedimino)
+- Drop support for upgrading jbuilder projects (#4473, @jeremiedimino)
+
+- Drop support for upgrading jbuilder projects (#4473, @jeremiedimino)
+
+- Extend the environment variable `BUILD_PATH_PREFIX_MAP` to rewrite
+  the root of the build dir (or sandbox) to `/workspace_root` (#4466,
+  @jeremiedimino)
 
 2.8.5 (28/03/2021)
 ------------------

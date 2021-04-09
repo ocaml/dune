@@ -15,7 +15,7 @@ let try_paths n ~dir ~prefix ~suffix ~f =
     | Ok res -> res
     | Error `Retry ->
       if n = 1 then
-        Code_error.raise "try_paths failed to find a good candidate" []
+        Code_error.raise "[Temp.try_paths] failed to find a good candidate" []
       else
         loop (n - 1)
   in
@@ -43,6 +43,9 @@ let create_temp_dir ?perms path =
   match Fpath.mkdir ?perms dir with
   | Created -> Ok ()
   | Already_exists -> Error `Retry
+  | Missing_parent_directory ->
+    Code_error.raise "[Temp.create_temp_dir] called in a non-existing directory"
+      []
 
 let set = function
   | Dir -> tmp_dirs

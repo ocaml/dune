@@ -127,8 +127,8 @@ end = struct
       Code_error.raise "Path.External.parent_exn called on a root path" []
     | Some p -> p
 
-  let mkdir_p ?perms p =
-    ignore (Fpath.mkdir_p ?perms (to_string p) : Fpath.mkdir_result)
+  let mkdir_p ?perms path =
+    ignore (Fpath.mkdir_p ?perms (to_string path) : Fpath.mkdir_p_result)
 
   let extension t = Filename.extension (to_string t)
 
@@ -550,8 +550,8 @@ end = struct
 end
 
 module Relative_to_source_root = struct
-  let mkdir_p ?perms s =
-    ignore (Fpath.mkdir_p ?perms (Local.to_string s) : Fpath.mkdir_result)
+  let mkdir_p ?perms path =
+    ignore (Fpath.mkdir_p ?perms (Local.to_string path) : Fpath.mkdir_p_result)
 end
 
 module Source0 = Local
@@ -1116,7 +1116,7 @@ let ensure_build_dir_exists () =
     | Created
     | Already_exists ->
       ()
-    | exception Unix.Unix_error (ENOENT, _, _) ->
+    | Missing_parent_directory ->
       User_error.raise
         [ Pp.textf
             "Cannot create external build directory %s. Make sure that the \

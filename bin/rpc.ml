@@ -69,6 +69,30 @@ module Init = struct
   let term = (Term.Group.Term term, info)
 end
 
+module Shutdown = struct
+  let send_shutdown cli =
+    Dune_rpc_impl.Client.notification cli
+      Dune_rpc_private.Public.Notification.shutdown ()
+
+  let on_notification _ = Fiber.return ()
+
+  let exec run where =
+    Dune_rpc_impl.Run.client run where
+      (Dune_rpc_private.Initialize.Request.create
+         ~id:(Dune_rpc_private.Id.make (Sexp.Atom "shutdown_cmd")))
+      ~on_notification ~f:send_shutdown
+
+  let info =
+    let doc = "cancel and shutdown any builds in the current workspace" in
+    Term.info "shutdown" ~doc
+
+  let term =
+    let+ (common : Common.t) = Common.term in
+    client_term common exec
+
+  let term = (Term.Group.Term term, info)
+end
+
 module Test = struct
   let rec to_dune_lang (s : Sexp.t) : Dune_lang.t =
     match s with
@@ -176,4 +200,5 @@ let info =
   in
   Term.info "rpc" ~doc ~man
 
-let group = (Term.Group.Group [ Init.term; Test.term; Status.term ], info)
+let group =
+  (Term.Group.Group [ Init.term; Test.term; Status.term; Shutdown.term ], info)

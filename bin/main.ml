@@ -26,6 +26,7 @@ let all : _ Term.Group.t list =
     ; Describe.command
     ; Top.command
     ; Ocaml_merlin.command
+    ; Shutdown.command
     ]
     |> List.map ~f:in_group
   in

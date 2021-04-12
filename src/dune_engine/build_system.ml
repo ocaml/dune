@@ -395,7 +395,7 @@ module Handler = struct
     }
 
   let report_progress t ~rule_done ~rule_total =
-    t.build_progress ~complete:rule_total ~remaining:rule_done
+    t.build_progress ~complete:rule_done ~remaining:(rule_total - rule_done)
 
   let do_nothing =
     { error = (fun _ -> Fiber.return ())
@@ -1806,7 +1806,7 @@ end = struct
       t.rule_done <- t.rule_done + 1;
       let+ () =
         Handler.report_progress t.handler ~rule_done:t.rule_done
-          ~rule_total:t.rule_done
+          ~rule_total:t.rule_total
       in
       targets_and_digests)
     (* jeremidimino: we need to include the dependencies discovered while

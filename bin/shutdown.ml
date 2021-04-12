@@ -19,6 +19,6 @@ let info =
 
 let term =
   let+ (common : Common.t) = Common.term in
-  client_term common exec
+  Rpc.client_term common exec
 
 let command = (term, info)

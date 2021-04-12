@@ -180,6 +180,15 @@
  (files   dune-runtest.1))
 
 (rule
+ (with-stdout-to dune-shutdown.1
+  (run dune shutdown --help=groff)))
+
+(install
+ (section man)
+ (package dune)
+ (files   dune-shutdown.1))
+
+(rule
  (with-stdout-to dune-subst.1
   (run dune subst --help=groff)))
 

@@ -1,92 +1,77 @@
-*******
-Caching
-*******
+**********
+Dune cache
+**********
 
-Dune has the ability to cache built files for later retrieval. This
-can greatly speedup subsequent builds when some dependencies are
-rebuilt in different workspaces, switching branches or iterating on
-code back and forth.
+Dune implements a cache of build results that is shared across different
+workspaces. Before executing a build rule, Dune looks it up in the shared cache,
+and if a matching entry is found, the rule's execution is skipped and the
+results are restored in the current build directory. This can greatly speed up
+builds when different workspaces share code, as well as when switching branches
+or simply undoing some changes within the same workspace.
 
 
 Configuration
 =============
 
-The cache is, for now, an opt-in feature. Add `(cache enabled)` to
-your dune configuration file (default `~/.config/dune/config`) to
-activate it. When turned on, built files will automatically be
-promoted to the cache, and subsequent builds will automatically check
-the cache for hits.
+For now, Dune cache is an opt-in feature. There are three ways to enable it;
+choose the one that is more convenient for you:
 
-The cached files are stored inside you `XDG_CACHE_HOME` directory on
-\*nix systems, and `"HOME\\Local Settings\\Cache"` on Windows.
+* Add `(cache enabled)` to your Dune configuration file
+  (`~/.config/dune/config` by default).
+* Set the environment variable `DUNE_CACHE` to `enabled`.
+* Run Dune with the `--cache=enabled` flag.
+
+By default, the cache is stored in your `XDG_CACHE_HOME` directory on \*nix
+systems, and `"HOME\\Local Settings\\Cache"` on Windows. You can change the
+default location by setting the environment variable `DUNE_CACHE_ROOT`.
 
 
-Daemon
-======
+Cache storage mode
+==================
 
-By default, most cache operations go through the dune cache daemon, a
-separate process that dune instances connect to. This enables
-promotions to happen asynchronously and not slow the build
-process. The daemon is automatically started if needed when dune needs
-accessing the cache, and lives on for further use.
+Dune supports two modes of storing and restoring cache entries: `hardlink` and
+`copy`. If your file system supports hard links, we recommend that you use the
+`hardlink` mode, which is generally more efficient and reliable.
 
-Although the daemon concept is totally transparent, one can control it
-via the `dune cache` subcommand.
-
-Starting the daemon
+The `hardlink` mode
 -------------------
 
-Use `dune cache start` to start the caching daemon if not running and
-print its endpoint, or retrieve the endpoint of the currently running
-daemon otherwise. A notable option is `--foreground` to not detach the
-daemon, which can help inspecting its log output.
+By default Dune uses hard links when storing and restoring cache entries. This
+is fast and has zero disk space overhead for files that still live in a build
+directory. There are two disadvantages of this mode:
 
-Stopping the daemon
--------------------
+* The cache storage must be on the same partition as the build tree.
 
-Use `dune cache stop` to stop the caching daemon. Although the daemon,
-when idle, should consume zero resources, you may want to get rid of
-the process. Also useful to restart the daemon with `--foreground`.
+* A cache entry can be corrupted by modifying the hard link that points to it
+  from the build directory. To reduce the risk of cache corruption, Dune
+  systematically removes write permissions from all build results. It is worth
+  noting that modifying files in the build directory is a bad practice anyway.
+
+The `copy` mode
+---------------
+
+If you specify `(cache-duplication copy)` in the configuration file, Dune will
+copy files to and from the cache instead of using hard links. This mode is
+slower and has higher disk space usage. On the positive side, it is more
+portable and doesn't have the disadvantages of the `hardlink` mode (see above).
 
 
-Filesystem implementation
-=======================================
+Trimming the cache
+==================
 
-Hardlink mode
--------------
+Storing all historically produced build results in the cache is infeasible, so
+you will need to occasionally trim the cache. To do that, you can run the
+`dune cache trim --size=BYTES` command. This will remove the least recently used
+cache entries to keep the cache overhead below the specified size. By "overhead"
+we mean the cache entries whose hard link count is equal to 1, i.e. which are
+not used in any build directory (trimming cache entries whose hard link count is
+greater than 1 would not free any disk space).
 
-By default the cache works by creating hardlinks to built files inside
-the cache directory when promoted, and in other build trees when
-retrieved. This has the great advantage of having zero disk space
-overhead for files still living in a build directory. This has two
-main constraints:
+Note that previous versions of Dune cache provided a "cache daemon" that could
+periodically trim the cache. The current version does not require an additional
+daemon process, and so this automated trimming functionality is no longer
+provided.
 
-* The cache root must be on the same partition as the build tree.
-* Produced files will be stripped from write permissions, as they are
-  shared between build trees. Note that modifying built files is bad
-  practice in any case.
-
-Copy mode
----------
-
-If one specifies `(cache-duplication copy)` in the configuration file,
-dune will copy files to and from the cache instead of using hardlinks.
-This can be useful if the build cache is on a different partition.
-
-On-disk size
-============
-
-The cache daemon will perform periodic trimming to limit the overhead.
-Every 10 minutes, it will purge the least recently used files so the
-cache overhead does not exceed 10G. This is configurable through the
-`(cache-trim-period SECONDS)` and `(cache-trim-size BYTES)`
-configuration entries. Note that this operation will only consider the
-cache overhead, i.e. files not currently hard-linked in a build
-directory, as removing files currently used would not free any disk
-space.
-
-On can run `dune cache trim --size=BYTES` to manually trigger trimming
-in the cache daemon.
 
 Reproducibility
 ===============
@@ -94,32 +79,19 @@ Reproducibility
 Reproducibility check
 ---------------------
 
-While default mode of operation of the cache is to speedup build times
-by not re-running some rules, it can also be used to check build
-reproducibility. If `(cache-check-probability FLOAT)` or
-`--cache-check-probability=FLOAT` is specified either respectively in
-the configuration file or the command line, in case of a cache hit
-dune will rerun the rule anyway with the given probability and compare
-the resulting files against a potential cache hit. If the files
-differ, the rule is not reproducible and a warning will be emitted.
+While the main purpose of Dune cache is to speed up build times, it can also be
+used to check build reproducibility. By specifying
+`(cache-check-probability FLOAT)` in the configuration file, or running Dune
+with the `--cache-check-probability=FLOAT` flag, you instruct Dune to re-execute
+randomly chosen build rules and compare their results with those stored in the
+cache. If the results differ, the rule is not reproducible and Dune will print
+out a corresponding warning.
 
 Non-reproducible rules
 ----------------------
 
-If you know that some rule is not reproducible (e.g. because it
-downloads a non-fixed file from the internet) and should never be
-cached, then you can mark it as such by using `(deps (universe))`.
-See :ref:`deps-field`.
-
-Daemon-less mode
-================
-
-While the cache daemon provides asynchronous promotions to speedup
-builds and background trimming amongst other things, in some
-situations direct access can be preferable. This can be the case when
-running in an isolated environment like Docker or OPAM sandboxes,
-where only one instance of dune will ever be running at a time, and
-access to external cache is prohibited. Direct filesystem access can
-be obtained by specifying `(cache-transport direct)` in the
-configuration file or passing `--cache-transport=direct` on the
-command line.
+Some build rules are inherently not reproducible because they involve running
+non-deterministic commands that, for example, depend on the current time or
+download files from the Internet.
+To prevent Dune from caching such rules, you can mark them as non-reproducible
+by using `(deps (universe))` -- see :ref:`deps-field`.

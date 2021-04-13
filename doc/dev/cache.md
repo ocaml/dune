@@ -78,10 +78,10 @@ Let `root` stand for the cache root directory. It has three main subdirectories.
   model, in reality we need to occasionally remove some outdated metadata files
   to free disk space &ndash; see the section on cache trimming.)
   <br/><br/>
-  A metadata file coresponding to a build rule is named by the rule hash and
+  A metadata file corresponding to a build rule is named by the rule hash and
   stores file names and content hashes of all artifacts produced by the rule.
   <br/><br/>
-  A metadata file coresponding to a value-producing action is named by the
+  A metadata file corresponding to a value-producing action is named by the
   action hash and stores the hash of the resulting value.
   <br/><br/>
   It is important to guarantee that rule and action hashes do not accidentally
@@ -225,7 +225,7 @@ cache needs to be regularly trimmed. The current trimming algorithm performs the
 following steps.
 
 * Scan the `files` directory to find all currently unused artifact entries. An
-  artiact is _unused_ if its hard link count is equal to 1. There is no point in
+  artifact is _unused_ if its hard link count is equal to 1. There is no point in
   trimming other entries, since they appear in at least one build directory. In
   fact, trimming them is potentially harmful because if the same entries were to
   be added to the cache again from a new directory, we would have been unable to

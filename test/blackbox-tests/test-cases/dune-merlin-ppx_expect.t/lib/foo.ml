@@ -1,1 +1,1 @@
-let%expect_test _ = print_endline "foo"
+let%expect_test _ = ()

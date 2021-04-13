@@ -185,3 +185,14 @@ they are part of the same rule.
   $ rm -f _build/default/multi_a _build/default/multi_b
   $ dune cache trim --trimmed-size 1B
   Freed 123 bytes
+
+Check the error message when using removed subcommands [start] and [stop]
+
+  $ dune cache start
+  Error: Dune no longer uses the cache daemon, and so the `start` and `stop`
+  subcommands of `dune cache` were removed.
+  [1]
+  $ dune cache stop
+  Error: Dune no longer uses the cache daemon, and so the `start` and `stop`
+  subcommands of `dune cache` were removed.
+  [1]

@@ -38,9 +38,26 @@ let trim ~trimmed_size ~size =
     User_message.print
       (User_message.make [ Pp.textf "Freed %Li bytes" trimmed_bytes ])
 
-type mode = Trim
+type mode =
+  | Trim
+  | Start_deprecated
+  | Stop_deprecated
 
-let modes = [ ("trim", Trim) ]
+let modes =
+  [ ("start", Start_deprecated); ("stop", Stop_deprecated); ("trim", Trim) ]
+
+(* CR-someday amokhov: See https://github.com/ocaml/dune/issues/4471. *)
+
+(* We don't want to list deprecated subcommands in help. *)
+let non_deprecated_modes = [ ("trim", Trim) ]
+
+(* We do want to print a nice error message if a deprecated subcommand is run. *)
+let deprecated_error () =
+  User_error.raise
+    [ Pp.text
+        "Dune no longer uses the cache daemon, and so the `start` and `stop` \
+         subcommands of `dune cache` were removed."
+    ]
 
 let term =
   Term.ret
@@ -51,7 +68,7 @@ let term =
          & info [] ~docv:"ACTION"
              ~doc:
                (Printf.sprintf "The cache action to perform (%s)"
-                  (Arg.doc_alts_enum modes)))
+                  (Arg.doc_alts_enum non_deprecated_modes)))
      and+ trimmed_size =
        Arg.(
          value
@@ -66,6 +83,9 @@ let term =
      in
      match mode with
      | Some Trim -> `Ok (trim ~trimmed_size ~size)
+     | Some Start_deprecated
+     | Some Stop_deprecated ->
+       deprecated_error ()
      | None -> `Help (`Pager, Some name)
 
 let command = (term, info)

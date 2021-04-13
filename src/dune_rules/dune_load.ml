@@ -201,9 +201,9 @@ module Dune_files = struct
             ; Pp.textf "Did you forgot to call [Jbuild_plugin.V*.send]?"
             ];
         Fiber.return
-          ( Dune_lang.Parser.load (Path.build generated_dune_file) ~mode:Many
+          (Dune_lang.Parser.load (Path.build generated_dune_file) ~mode:Many
           |> List.rev_append from_parent
-          |> Dune_file.parse ~dir ~file ~project ))
+          |> Dune_file.parse ~dir ~file ~project))
     >>| fun dynamic -> static @ dynamic
 end
 

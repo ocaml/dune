@@ -49,7 +49,7 @@ let rec eval t ~dir ~f =
     | _ ->
       let loc = String_with_vars.loc sw in
       User_error.raise ~loc
-        [ Pp.text "This value must be either true or false" ] )
+        [ Pp.text "This value must be either true or false" ])
   | And xs -> List.for_all ~f:(eval ~f ~dir) xs
   | Or xs -> List.exists ~f:(eval ~f ~dir) xs
   | Compare (op, x, y) ->
@@ -83,9 +83,8 @@ let decode =
   let decode =
     fix (fun t ->
         sum ~force_parens:true
-          ( ("or", repeat t >>| fun x -> Or x)
-          :: ("and", repeat t >>| fun x -> And x)
-          :: ops )
+          (("or", repeat t >>| fun x -> Or x)
+           :: ("and", repeat t >>| fun x -> And x) :: ops)
         <|> let+ v = String_with_vars.decode in
             Expr v)
   in

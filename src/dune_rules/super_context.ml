@@ -258,7 +258,7 @@ let get_site_of_packages_aux ~packages ~context ~pkg ~site =
     | Error Not_found ->
       User_error.raise
         [ Pp.textf "The package %s is not found" (Package.Name.to_string pkg) ]
-    | Error (Invalid_dune_package exn) -> Exn.raise exn )
+    | Error (Invalid_dune_package exn) -> Exn.raise exn)
 
 let get_site_of_packages t ~pkg ~site =
   get_site_of_packages_aux ~packages:t.packages ~context:t.context ~pkg ~site
@@ -273,10 +273,10 @@ let internal_lib_names t =
       List.fold_left stanzas ~init:acc ~f:(fun acc -> function
         | Dune_file.Library lib ->
           Lib_name.Set.add
-            ( match lib.visibility with
+            (match lib.visibility with
             | Private _ -> acc
             | Public public ->
-              Lib_name.Set.add acc (Dune_file.Public_lib.name public) )
+              Lib_name.Set.add acc (Dune_file.Public_lib.name public))
             (Lib_name.of_local lib.name)
         | _ -> acc))
 
@@ -441,8 +441,8 @@ let get_installed_binaries stanzas ~(context : Context.t) =
       | Dune_file.Install { section = Section Bin; files; _ } ->
         binaries_from_install files
       | Dune_file.Executables
-          ( { install_conf = Some { section = Section Bin; files; _ }; _ } as
-          exes ) ->
+          ({ install_conf = Some { section = Section Bin; files; _ }; _ } as
+          exes) ->
         let compile_info =
           let project = Scope.project d.scope in
           let dune_version = Dune_project.dune_version project in
@@ -478,7 +478,7 @@ let create_lib_entries_by_package ~public_libs stanzas =
         | None -> acc
         | Some lib ->
           let name = Package.name pkg in
-          (name, Lib_entry.Library (Lib.Local.of_lib_exn lib)) :: acc )
+          (name, Lib_entry.Library (Lib.Local.of_lib_exn lib)) :: acc)
       | Dune_file.Library { visibility = Public pub; _ } -> (
         match Lib.DB.find public_libs (Dune_file.Public_lib.name pub) with
         | None ->
@@ -488,7 +488,7 @@ let create_lib_entries_by_package ~public_libs stanzas =
         | Some lib ->
           let package = Dune_file.Public_lib.package pub in
           let name = Package.name package in
-          (name, Lib_entry.Library (Lib.Local.of_lib_exn lib)) :: acc )
+          (name, Lib_entry.Library (Lib.Local.of_lib_exn lib)) :: acc)
       | Dune_file.Deprecated_library_name
           ({ old_name = old_public_name, _; _ } as d) ->
         let package = Dune_file.Public_lib.package old_public_name in
@@ -612,10 +612,10 @@ let create ~(context : Context.t) ?host ~projects ~packages ~stanzas () =
               Stdune.Bin.path_sep
               (Path.to_absolute_filename
                  (Install.Section.Paths.get paths section))
-              ( if String.is_empty acc then
+              (if String.is_empty acc then
                 acc
               else
-                sprintf "%c%s" Stdune.Bin.path_sep acc )))
+                sprintf "%c%s" Stdune.Bin.path_sep acc)))
   in
   let context_env =
     if String.is_empty env_dune_dir_locations then

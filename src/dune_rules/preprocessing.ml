@@ -274,9 +274,9 @@ module Driver = struct
              Dune. Examples of ppx rewriters that are compatible with Dune are \
              ones using ocaml-migrate-parsetree, ppxlib or ppx_driver."
             (String.enumerate_and (List.map pps ~f:Lib_name.to_string))
-            ( match pps with
+            (match pps with
             | [ _ ] -> "is"
-            | _ -> "are" )
+            | _ -> "are")
         | names ->
           sprintf
             "No ppx driver were found.\nHint: Try upgrading or reinstalling %s."
@@ -325,9 +325,9 @@ let build_ppx_driver sctx ~scope ~target ~pps ~pp_names =
   in
   let add_rule ~sandbox = SC.add_rule ~sandbox sctx ~dir in
   add_rule ~sandbox:Sandbox_config.default
-    ( Build.of_result_map driver_and_libs ~f:(fun (driver, _) ->
-          Build.return (sprintf "let () = %s ()\n" driver.info.main))
-    |> Build.write_file_dyn ml_source );
+    (Build.of_result_map driver_and_libs ~f:(fun (driver, _) ->
+         Build.return (sprintf "let () = %s ()\n" driver.info.main))
+    |> Build.write_file_dyn ml_source);
   let linkages = [ Exe.Linkage.native_or_custom ctx ] in
   let program : Exe.Program.t =
     { name = Filename.remove_extension (Path.Build.basename target)
@@ -641,7 +641,7 @@ let make sctx ~dir ~expander ~dep_kind ~lint ~preprocess ~preprocessor_deps
                   (promote_correction ~suffix:corrected_suffix
                      (Path.as_in_build_dir_exn
                         (Option.value_exn (Module.file m ~ml_kind)))
-                     ( Build.with_no_targets preprocessor_deps
+                     (Build.with_no_targets preprocessor_deps
                      >>> Build.With_targets.of_result_map driver_and_flags
                            ~targets:[ dst ] ~f:(fun (exe, flags, args) ->
                              let dir =
@@ -655,7 +655,7 @@ let make sctx ~dir ~expander ~dep_kind ~lint ~preprocess ~preprocessor_deps
                                ; Command.Ml_kind.ppx_driver_flag ml_kind
                                ; Dep (Path.build src)
                                ; Command.Args.dyn flags
-                               ]) )))
+                               ]))))
         ) else
           let pp_flags =
             Build.of_result

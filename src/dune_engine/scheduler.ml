@@ -125,20 +125,20 @@ end = struct
 
   let available () =
     not
-      ( List.is_empty !files_changed
+      (List.is_empty !files_changed
       && Queue.is_empty jobs_completed
       && Signal.Set.is_empty !signals
-      && Queue.is_empty dedup_pending )
+      && Queue.is_empty dedup_pending)
 
   let dedup () =
     match Queue.pop dedup_pending with
     | None -> false
     | Some pending ->
       let (module Caching : Cache.Caching), (file : Cache.File.t) = pending in
-      ( match Cached_digest.peek_file (Path.build file.path) with
+      (match Cached_digest.peek_file (Path.build file.path) with
       | None -> ()
       | Some d when not (Digest.equal d file.digest) -> ()
-      | _ -> Caching.Cache.deduplicate Caching.cache file );
+      | _ -> Caching.Cache.deduplicate Caching.cache file);
       true
 
   let rec flush_dedup () = if dedup () then flush_dedup ()
@@ -179,7 +179,7 @@ end = struct
             if only_ignored_files then
               loop ()
             else
-              Files_changed )
+              Files_changed)
     in
     let ev = loop () in
     Mutex.unlock mutex;
@@ -295,13 +295,13 @@ end = struct
          | None ->
            User_error.raise
              [ Pp.text
-                 ( if Sys.linux then
+                 (if Sys.linux then
                    "Please install inotifywait to enable watch mode. If \
                     inotifywait is unavailable, fswatch may also be used but \
                     will result in a worse experience."
                  else
-                   "Please install fswatch to enable watch mode." )
-             ] ))
+                   "Please install fswatch to enable watch mode.")
+             ]))
 
   let buffering_time = 0.5 (* seconds *)
 
@@ -322,11 +322,11 @@ end = struct
     for i = 0 to buffer.size - 1 do
       let c = Bytes.get buffer.data i in
       if c = '\n' || c = '\r' then (
-        ( if !line_start < i then
+        (if !line_start < i then
           let line =
             Bytes.sub_string buffer.data ~pos:!line_start ~len:(i - !line_start)
           in
-          lines := line :: !lines );
+          lines := line :: !lines);
         line_start := i + 1
       )
     done;
@@ -460,7 +460,8 @@ end = struct
   let killall signal =
     Mutex.lock mutex;
     Process_table.iter ~f:(fun job ->
-        try Unix.kill (Pid.to_int job.pid) signal with Unix.Unix_error _ -> ());
+        try Unix.kill (Pid.to_int job.pid) signal with
+        | Unix.Unix_error _ -> ());
     Mutex.unlock mutex
 
   exception Finished of job * Unix.process_status
@@ -471,7 +472,8 @@ end = struct
           let pid, status = Unix.waitpid [ WNOHANG ] (Pid.to_int job.pid) in
           if pid <> 0 then raise_notrace (Finished (job, status)));
       false
-    with Finished (job, status) ->
+    with
+    | Finished (job, status) ->
       (* We need to do the [Unix.waitpid] and remove the process while holding
          the lock, otherwise the pid might be reused in between. *)
       Process_table.remove ~pid:job.pid status;
@@ -647,7 +649,7 @@ let prepare ?(config = Config.default) ~polling () =
   let cwd = Sys.getcwd () in
   if cwd <> initial_cwd && not !Clflags.no_print_directory then
     Printf.eprintf "Entering directory '%s'\n%!"
-      ( match Config.inside_dune with
+      (match Config.inside_dune with
       | false -> cwd
       | true -> (
         let descendant_simple p ~of_ =
@@ -669,15 +671,15 @@ let prepare ?(config = Config.default) ~polling () =
               else
                 loop (Filename.concat acc "..") (Filename.dirname dir)
             in
-            loop ".." (Filename.dirname s) ) ) );
+            loop ".." (Filename.dirname s))));
   let t =
     { original_cwd = cwd
     ; status = Building
     ; job_throttle =
         Fiber.Throttle.create
-          ( match config.concurrency with
+          (match config.concurrency with
           | Auto -> 1
-          | Fixed n -> n )
+          | Fixed n -> n)
     ; polling
     }
   in
@@ -707,12 +709,12 @@ end = struct
       - terminating the scheduler on signals *)
   let rec iter (t : t) =
     if
-      ( match t.status with
+      (match t.status with
       | Waiting_for_file_changes _ ->
         (* In polling mode, there are no pending jobs while we are waiting for
            file changes *)
         false
-      | _ -> true )
+      | _ -> true)
       && Event.pending_jobs () = 0
     then
       raise (Abort Never)
@@ -738,7 +740,7 @@ end = struct
           t.status <- Restarting_build;
           Process_watcher.killall Sys.sigkill;
           iter t
-        | Waiting_for_file_changes ivar -> Fill (ivar, ()) )
+        | Waiting_for_file_changes ivar -> Fill (ivar, ()))
       | Signal signal ->
         got_signal signal;
         raise (Abort Got_signal)

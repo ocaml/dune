@@ -116,7 +116,7 @@ module Spec = struct
         Code_error.raise
           "[Spec.register] called twice on a function with the same name"
           [ ("name", Dyn.String info.name) ]
-      | None -> String.Table.set by_name info.name (T t) )
+      | None -> String.Table.set by_name info.name (T t))
 
   let create (type o) ~info ~input ~visibility ~(output : o Output.t) ~f =
     let (output : (module Output_simple with type t = o)), allow_cutoff =
@@ -311,7 +311,7 @@ module Cached_value = struct
     | Ok prev_output, Ok curr_output -> (
       match node.without_state.spec.allow_cutoff with
       | Yes equal -> not (equal prev_output curr_output)
-      | No -> true )
+      | No -> true)
 
   (* Check if a cached value is up to date. If yes, return it. *)
   let rec get_sync : type a. a t -> a Value.t option =
@@ -343,11 +343,11 @@ module Cached_value = struct
               Code_error.raise
                 "Synchronous function depends on an asynchronous one. This is \
                  not allowed (this case should be unreachable)."
-                [] )
+                [])
           | Done t -> (
             match get_sync t with
             | None -> true
-            | Some curr_output -> dep_changed node prev_output curr_output ) )
+            | Some curr_output -> dep_changed node prev_output curr_output))
       in
       match List.exists ~f:dep_changed t.deps with
       | true -> None
@@ -400,7 +400,7 @@ module Cached_value = struct
                   let+ curr_output = Fiber.Ivar.read ivar in
                   dep_changed node prev_output curr_output
                 in
-                deps_changed (changed :: acc) deps )
+                deps_changed (changed :: acc) deps)
           | Done t ->
             if Run.is_current t.calculated_at then
               if
@@ -413,14 +413,14 @@ module Cached_value = struct
                 deps_changed acc deps
             else
               let changed =
-                ( match node.without_state.spec.f with
+                (match node.without_state.spec.f with
                 | Function.Sync _ -> Fiber.return (get_sync t)
-                | Function.Async _ -> get_async t )
+                | Function.Async _ -> get_async t)
                 >>| function
                 | None -> true
                 | Some curr_output -> dep_changed node prev_output curr_output
               in
-              deps_changed (changed :: acc) deps )
+              deps_changed (changed :: acc) deps)
       in
       deps_changed [] t.deps >>| function
       | true -> None
@@ -445,9 +445,9 @@ module Stack_frame_without_state = struct
   let to_dyn t =
     Dyn.Tuple
       [ String
-          ( match name t with
+          (match name t with
           | Some name -> name
-          | None -> "<unnamed>" )
+          | None -> "<unnamed>")
       ; input t
       ]
 end
@@ -516,9 +516,9 @@ let pp_stack () =
   let open Pp.O in
   let stack = Call_stack.get_call_stack () in
   Pp.vbox
-    ( Pp.box (Pp.text "Memoized function stack:")
+    (Pp.box (Pp.text "Memoized function stack:")
     ++ Pp.cut
-    ++ Pp.chain stack ~f:(fun frame -> Dyn.pp (Stack_frame.to_dyn frame)) )
+    ++ Pp.chain stack ~f:(fun frame -> Dyn.pp (Stack_frame.to_dyn frame)))
 
 let dump_stack () = Format.eprintf "%a" Pp.to_fmt (pp_stack ())
 
@@ -571,12 +571,13 @@ let add_dep_from_caller (type i o f) ~called_from_peek
           try
             Dag.add_assuming_missing global_dep_dag
               running_state_of_caller.sample_attempt node
-          with Dag.Cycle cycle ->
+          with
+          | Dag.Cycle cycle ->
             raise
               (Cycle_error.E
                  { stack = Call_stack.get_call_stack_without_state ()
                  ; cycle = List.map cycle ~f:(fun node -> node.Dag.data)
-                 }) )
+                 }))
       in
       running_state_of_caller.deps_so_far <-
         { running_state_of_caller.deps_so_far with
@@ -591,7 +592,7 @@ let add_dep_from_caller (type i o f) ~called_from_peek
               last_dep :: running_state_of_caller.deps_so_far.deps_reversed
           }
       in
-      Some add_last_dep )
+      Some add_last_dep)
 
 type ('input, 'output, 'f) t =
   { spec : ('input, 'output, 'f) Spec.t
@@ -647,9 +648,9 @@ let create_with_cache (type i o f) name ~cache ?doc ~input ~visibility ~output
   let spec =
     Spec.create ~info:(Some { name; doc }) ~input ~output ~visibility ~f
   in
-  ( match visibility with
+  (match visibility with
   | Public _ -> Spec.register spec
-  | Hidden -> () );
+  | Hidden -> ());
   Caches.register ~clear:(fun () -> Store.clear cache);
   { cache; spec }
 
@@ -755,7 +756,7 @@ end = struct
     | Done cv -> (
       match Cached_value.get_sync cv with
       | Some v -> Done v
-      | None -> new_attempt () )
+      | None -> new_attempt ())
 
   let exec_dep_node (dep_node : _ Dep_node.t) inp =
     let result = try_to_use_cache dep_node in
@@ -857,7 +858,7 @@ end = struct
     | Done cv -> (
       Cached_value.get_async cv >>= function
       | Some v -> k (Done v)
-      | None -> new_attempt () )
+      | None -> new_attempt ())
 
   let exec_dep_node (dep_node : _ Dep_node.t) inp =
     try_to_use_cache_k dep_node (fun result ->
@@ -911,7 +912,7 @@ let peek (type i o f) (t : (i, o, f) t) inp =
         in
         Some (Value.get_sync_exn cv.value)
       else
-        None )
+        None)
 
 let peek_exn t inp = Option.value_exn (peek t inp)
 
@@ -936,9 +937,9 @@ let call name input =
   let (module Output : Output_simple with type t = _) = spec.output in
   let input = Dune_lang.Decoder.parse spec.decode Univ_map.empty input in
   let+ output =
-    ( match spec.f with
+    (match spec.f with
     | Function.Async f -> f
-    | Function.Sync f -> fun x -> Fiber.return (f x) )
+    | Function.Sync f -> fun x -> Fiber.return (f x))
       input
   in
   Output.to_dyn output
@@ -988,12 +989,12 @@ module With_implicit_output = struct
       (typ : (i, o, f) Function.Type.t) (impl : f) =
     let output =
       Output.Simple
-        ( module struct
+        (module struct
           type t = o * io option
 
           let to_dyn ((o, _io) : t) =
             Dyn.List [ O.to_dyn o; Dyn.String "<implicit output is opaque>" ]
-        end )
+        end)
     in
     match typ with
     | Function.Type.Sync ->
@@ -1001,21 +1002,21 @@ module With_implicit_output = struct
         create name ?doc ~input ~visibility ~output Sync (fun i ->
             Implicit_output.collect_sync implicit_output (fun () -> impl i))
       in
-      ( fun input ->
-          let res, output = exec memo input in
-          Implicit_output.produce_opt implicit_output output;
-          res
-        : f )
+      (fun input ->
+         let res, output = exec memo input in
+         Implicit_output.produce_opt implicit_output output;
+         res
+        : f)
     | Function.Type.Async ->
       let memo =
         create name ?doc ~input ~visibility ~output Async (fun i ->
             Implicit_output.collect_async implicit_output (fun () -> impl i))
       in
-      ( fun input ->
-          Fiber.map (exec memo input) ~f:(fun (res, output) ->
-              Implicit_output.produce_opt implicit_output output;
-              res)
-        : f )
+      (fun input ->
+         Fiber.map (exec memo input) ~f:(fun (res, output) ->
+             Implicit_output.produce_opt implicit_output output;
+             res)
+        : f)
 
   let exec t = t
 end
@@ -1160,7 +1161,7 @@ module Poly = struct
             "Type_eq.Id.t mismatch in Memo.Poly: the likely reason is that the \
              provided Function.id returns different ids for the same input."
             [ ("Function.name", Dyn.String name) ]
-        | Some Type_eq.T -> res )
+        | Some Type_eq.T -> res)
   end
 
   module Sync (Function : sig

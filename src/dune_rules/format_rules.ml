@@ -58,7 +58,7 @@ let gen_rules_output sctx (config : Format_config.t) ~version ~dialects
           | None -> (
             match Dialect.preprocess dialect kind with
             | None -> Dialect.format Dialect.ocaml kind
-            | Some _ -> None )
+            | Some _ -> None)
         in
         let src = Path.as_in_build_dir_exn input in
         let extra_deps =

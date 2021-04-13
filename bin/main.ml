@@ -140,7 +140,7 @@ let promote =
     in
     Common.set_common common ~targets:[];
     Promotion.promote_files_registered_in_last_run
-      ( match files with
+      (match files with
       | [] -> All
       | _ ->
         let files =
@@ -151,7 +151,7 @@ let promote =
           Format.eprintf "@{<warning>Warning@}: Nothing to promote for %s.@."
             (Path.Source.to_string_maybe_quoted fn)
         in
-        These (files, on_missing) )
+        These (files, on_missing))
   in
   (term, Term.info "promote" ~doc ~man)
 
@@ -226,9 +226,9 @@ let default =
   ( term
   , Term.info "dune" ~doc
       ~version:
-        ( match Build_info.V1.version () with
+        (match Build_info.V1.version () with
         | None -> "n/a"
-        | Some v -> Build_info.V1.Version.to_string v )
+        | Some v -> Build_info.V1.Version.to_string v)
       ~man:
         [ `Blocks common_commands_synopsis
         ; `S "DESCRIPTION"
@@ -262,7 +262,8 @@ let () =
     match Term.eval_choice default all ~catch:false with
     | `Error _ -> exit 1
     | _ -> exit 0
-  with exn ->
+  with
+  | exn ->
     let exn = Exn_with_backtrace.capture exn in
     Dune_engine.Report_error.report exn;
     exit 1

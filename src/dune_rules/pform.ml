@@ -257,29 +257,29 @@ module Map = struct
       (String.drop (Artifact.ext x) 1, since ~version:(2, 0) (Macro.Artifact x))
     in
     String.Map.of_list_exn
-      ( [ ("exe", macro Exe)
-        ; ("bin", macro Bin)
-        ; ("lib", macro (Lib { lib_exec = false; lib_private = false }))
-        ; ("libexec", macro (Lib { lib_exec = true; lib_private = false }))
-        ; ( "lib-private"
-          , since ~version:(2, 1)
-              (Macro.Lib { lib_exec = false; lib_private = true }) )
-        ; ( "libexec-private"
-          , since ~version:(2, 1)
-              (Macro.Lib { lib_exec = true; lib_private = true }) )
-        ; ("lib-available", macro Lib_available)
-        ; ("version", macro Version)
-        ; ("read", macro Read)
-        ; ("read-lines", macro Read_lines)
-        ; ("read-strings", macro Read_strings)
-        ; ("dep", since ~version:(1, 0) Macro.Dep)
-        ; ("path", renamed_in ~version:(1, 0) ~new_name:"dep")
-        ; ("findlib", renamed_in ~version:(1, 0) ~new_name:"lib")
-        ; ("path-no-dep", deleted_in ~version:(1, 0) Macro.Path_no_dep)
-        ; ("ocaml-config", macro Ocaml_config)
-        ; ("env", since ~version:(1, 4) Macro.Env)
-        ]
-      @ List.map ~f:artifact Artifact.all )
+      ([ ("exe", macro Exe)
+       ; ("bin", macro Bin)
+       ; ("lib", macro (Lib { lib_exec = false; lib_private = false }))
+       ; ("libexec", macro (Lib { lib_exec = true; lib_private = false }))
+       ; ( "lib-private"
+         , since ~version:(2, 1)
+             (Macro.Lib { lib_exec = false; lib_private = true }) )
+       ; ( "libexec-private"
+         , since ~version:(2, 1)
+             (Macro.Lib { lib_exec = true; lib_private = true }) )
+       ; ("lib-available", macro Lib_available)
+       ; ("version", macro Version)
+       ; ("read", macro Read)
+       ; ("read-lines", macro Read_lines)
+       ; ("read-strings", macro Read_strings)
+       ; ("dep", since ~version:(1, 0) Macro.Dep)
+       ; ("path", renamed_in ~version:(1, 0) ~new_name:"dep")
+       ; ("findlib", renamed_in ~version:(1, 0) ~new_name:"lib")
+       ; ("path-no-dep", deleted_in ~version:(1, 0) Macro.Path_no_dep)
+       ; ("ocaml-config", macro Ocaml_config)
+       ; ("env", since ~version:(1, 4) Macro.Env)
+       ]
+      @ List.map ~f:artifact Artifact.all)
 
   let create ~(context : Context.t) =
     let ocamlopt =
@@ -303,11 +303,11 @@ module Map = struct
     let strings s = values (Value.L.strings s) in
     let lowercased =
       let c_compiler = Ocaml_config.c_compiler context.ocaml_config in
-      [ ("cpp", strings ((c_compiler :: cflags) @ [ "-E" ]))
+      [ ("cpp", strings (c_compiler :: cflags @ [ "-E" ]))
       ; ( "pa_cpp"
         , strings
-            ( (c_compiler :: cflags)
-            @ [ "-undef"; "-traditional"; "-x"; "c"; "-E" ] ) )
+            (c_compiler :: cflags
+            @ [ "-undef"; "-traditional"; "-x"; "c"; "-E" ]) )
       ; ("ocaml", path ocaml)
       ; ("ocamlc", path context.ocamlc)
       ; ("ocamlopt", path ocamlopt)
@@ -331,10 +331,10 @@ module Map = struct
       let version_string = Ocaml_config.version_string context.ocaml_config in
       let ext_plugin =
         Mode.plugin_ext
-          ( if Ocaml_config.natdynlink_supported context.ocaml_config then
+          (if Ocaml_config.natdynlink_supported context.ocaml_config then
             Mode.Native
           else
-            Mode.Byte )
+            Mode.Byte)
       in
       [ ("-verbose", values [])
       ; ("ocaml_bin", values [ Dir context.ocaml_bin ])

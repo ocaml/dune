@@ -15,6 +15,9 @@ open Stdune
       entry is silently overwritten, which might interfere with concurrent
       reading of that entry.
 
+    - In the [Hardlink] mode, the cache storage must be on the same partition as
+      the build tree.
+
     - In the [Hardlink] mode, a cache entry can be corrupted by modifying the
       hard link that points to it from the build directory. *)
 type t =

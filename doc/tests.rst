@@ -479,7 +479,7 @@ with a ``.t`` extension, so they must be enabled manually in the
 
 .. code:: scheme
 
-   (lang dune 2.8)
+   (lang dune 2.9)
    (cram enable)
 
 

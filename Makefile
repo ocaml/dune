@@ -17,7 +17,7 @@ core_bench \
 "csexp>=1.3.0" \
 js_of_ocaml \
 js_of_ocaml-compiler \
-"mdx=1.7.0" \
+mdx \
 menhir \
 ocamlfind \
 ocamlformat.0.17.0 \

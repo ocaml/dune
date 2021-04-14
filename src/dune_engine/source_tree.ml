@@ -27,7 +27,9 @@ module File = struct
 
   module Map = Map.Make (T)
 
-  let of_source_path p = of_stats (Path.stat (Path.source p))
+  let of_source_path p =
+    (* CR aalekseyev: handle errors from [Path.stat] *)
+    of_stats (Path.stat_exn (Path.source p))
 end
 
 module Dune_file = struct
@@ -179,9 +181,9 @@ end = struct
                 | S_DIR -> (true, File.of_source_path path)
                 | S_LNK -> (
                   match Path.stat (Path.source path) with
-                  | exception _ -> (false, File.dummy)
-                  | { st_kind = S_DIR; _ } as st -> (true, File.of_stats st)
-                  | _ -> (false, File.dummy))
+                  | Error _ -> (false, File.dummy)
+                  | Ok { st_kind = S_DIR; _ } as st -> (true, File.of_stats st)
+                  | Ok _ -> (false, File.dummy))
                 | _ -> (false, File.dummy)
               in
               if is_directory then

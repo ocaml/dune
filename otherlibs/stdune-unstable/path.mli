@@ -371,9 +371,13 @@ end
     of [/a/b] is [./a/b]. *)
 val local_part : t -> Local.t
 
-val stat : t -> Unix.stats
+val stat : t -> (Unix.stats, Unix.error) Result.t
 
-val lstat : t -> Unix.stats
+val stat_exn : t -> Unix.stats
+
+val lstat : t -> (Unix.stats, Unix.error) Result.t
+
+val lstat_exn : t -> Unix.stats
 
 (* it would be nice to call this [Set.of_source_paths], but it's annoying to
    change the [Set] signature because then we don't comply with [Path_intf.S] *)

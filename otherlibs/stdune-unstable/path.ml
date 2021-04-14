@@ -1261,9 +1261,19 @@ let local_part = function
   | In_source_tree l -> l
   | In_build_dir l -> l
 
-let stat t = Unix.stat (to_string t)
+let stat_exn t = Unix.stat (to_string t)
 
-let lstat t = Unix.lstat (to_string t)
+let stat t =
+  match stat_exn t with
+  | exception Unix.Unix_error (error, _, _) -> Error error
+  | stats -> Ok stats
+
+let lstat_exn t = Unix.lstat (to_string t)
+
+let lstat t =
+  match lstat_exn t with
+  | exception Unix.Unix_error (error, _, _) -> Error error
+  | stats -> Ok stats
 
 include (Comparator.Operators (T) : Comparator.OPS with type t := t)
 

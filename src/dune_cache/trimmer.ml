@@ -46,7 +46,8 @@ let trim_broken_metadata_entries ~trimmed_so_far =
           in
           match should_be_removed with
           | true ->
-            let bytes = (Path.stat path).st_size in
+            (* CR-soon aalekseyev: handle errors from [Path.stat] *)
+            let bytes = (Path.stat_exn path).st_size in
             Path.unlink_no_err path;
             Trimming_result.add trimmed_so_far ~bytes
           | false -> trimmed_so_far))
@@ -68,7 +69,8 @@ let file_exists_and_is_unused ~stats = stats.Unix.st_nlink = 1
 let trim ~goal =
   let files = files_in_cache_for_all_supported_versions () |> List.map ~f:fst in
   let f path =
-    let stats = Path.stat path in
+    (* CR-soon aalekseyev: handle errors from [Path.stat] *)
+    let stats = Path.stat_exn path in
     if file_exists_and_is_unused ~stats then
       Some (path, stats.st_size, stats.st_ctime)
     else
@@ -95,7 +97,7 @@ let overhead_size () =
   let stats =
     let f p =
       try
-        let stats = Path.stat p in
+        let stats = Path.stat_exn p in
         if file_exists_and_is_unused ~stats then
           Int64.of_int stats.st_size
         else

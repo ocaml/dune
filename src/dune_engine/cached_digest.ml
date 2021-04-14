@@ -82,7 +82,7 @@ let cache =
 let get_current_filesystem_time () =
   let special_path = Path.relative Path.build_dir ".filesystem-clock" in
   Io.write_file special_path "<dummy>";
-  (Path.stat special_path).st_mtime
+  (Path.stat_exn special_path).st_mtime
 
 let wait_for_fs_clock_to_advance () =
   let t = get_current_filesystem_time () in
@@ -143,23 +143,28 @@ let set_with_stat fn digest stat =
     }
 
 let set fn digest =
-  let stat = Path.stat fn in
+  (* the caller of [set] ensures that the files exist *)
+  let stat = Path.stat_exn fn in
   set_with_stat fn digest stat
 
 let refresh_ stats fn =
+  (* CR-soon aalekseyev: handle errors from [Digest.file_with_stats] in case
+     it's the source file and it's deleted *)
   let digest = Digest.file_with_stats fn stats in
   set_with_stat fn digest stats;
   digest
 
 let refresh_internal fn =
-  let stats = Path.stat fn in
+  (* CR-soon aalekseyev: handle errors from [Path.stat]. *)
+  let stats = Path.stat_exn fn in
   refresh_ stats fn
 
 let refresh fn = refresh_internal (Path.build fn)
 
 let refresh_and_chmod fn =
   let fn = Path.build fn in
-  let stats = Path.lstat fn in
+  (* CR-soon aalekseyev: handle errors from [Path.lstat]. *)
+  let stats = Path.lstat_exn fn in
   let stats =
     match stats.st_kind with
     | S_LNK ->
@@ -171,11 +176,13 @@ let refresh_and_chmod fn =
 
          - if it is in the build directory, then we expect that the rule
          producing this file will have taken core of chmodding it *)
-      Path.stat fn
+      (* CR-soon aalekseyev: handle errors from [Path.stat]. *)
+      Path.stat_exn fn
     | Unix.S_REG ->
       (* We remove write permissions to uniformize behavior regardless of
          whether the cache is activated. No need to be zealous in case the file
          is not cached anyway. See issue #3311. *)
+      (* CR-soon aalekseyev: handle errors from [chmod] etc. *)
       let perm =
         Path.Permissions.remove ~mode:Path.Permissions.write stats.st_perm
       in
@@ -194,7 +201,8 @@ let peek_file fn =
       (if x.stats_checked = cache.checked_key then
         x.digest
       else
-        let stats = Path.stat fn in
+        (* CR-soon aalekseyev: handle errors from [Path.stat]. *)
+        let stats = Path.stat_exn fn in
         let reduced_stats = Reduced_stats.of_unix_stats stats in
         match Reduced_stats.compare x.stats reduced_stats with
         | Eq ->

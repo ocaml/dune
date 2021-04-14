@@ -32,6 +32,7 @@ module Context : sig
                 the runtime system. *)
       ; dynamically_linked_foreign_archives : bool
       ; instrument_with : Lib_name.t list
+      ; merlin : bool
       }
   end
 
@@ -42,7 +43,6 @@ module Context : sig
                 is left opaque as we leave to opam to interpret it. *)
       ; switch : string
       ; root : string option
-      ; merlin : bool
       }
   end
 

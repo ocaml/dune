@@ -750,6 +750,7 @@ end = struct
         ; fdo_target_exe
         ; dynamically_linked_foreign_archives
         ; instrument_with
+        ; merlin = _
         } ->
       let merlin =
         workspace.merlin_context = Some (Workspace.Context.name context)
@@ -779,10 +780,10 @@ end = struct
             ; fdo_target_exe
             ; dynamically_linked_foreign_archives
             ; instrument_with
+            ; merlin
             }
         ; switch
         ; root
-        ; merlin
         } ->
       let env = extend_paths ~env paths in
       create_for_opam ~loc ~root ~env_nodes ~env ~profile ~switch ~name ~merlin

@@ -103,6 +103,12 @@ Unreleased
   the root of the build dir (or sandbox) to `/workspace_root` (#4466,
   @jeremiedimino)
 
+2.9.0 (unreleased)
+------------------
+
+- Allow to set up merlin in a variant of the default context
+  (#4145, @TheLortex, @voodoos)
+
 2.8.5 (28/03/2021)
 ------------------
 

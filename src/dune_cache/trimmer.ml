@@ -45,11 +45,18 @@ let trim_broken_metadata_entries ~trimmed_so_far =
                     not (Path.exists reference)))
           in
           match should_be_removed with
-          | true ->
-            (* CR-soon aalekseyev: handle errors from [Path.stat] *)
-            let bytes = (Path.stat_exn path).st_size in
-            Path.unlink_no_err path;
-            Trimming_result.add trimmed_so_far ~bytes
+          | true -> (
+            match Path.stat path with
+            | Ok stats ->
+              let bytes = stats.st_size in
+              (* If another process deletes [path] and the [unlink_no_err] below
+                 is a no-op, we take the credit and increase [trimmed_so_far]. *)
+              Path.unlink_no_err path;
+              Trimming_result.add trimmed_so_far ~bytes
+            | Error _ ->
+              (* Alas, here we can't take any (non-zero) credit, since we don't
+                 know the size of the deleted file. *)
+              trimmed_so_far)
           | false -> trimmed_so_far))
 
 let garbage_collect () =
@@ -68,16 +75,25 @@ let file_exists_and_is_unused ~stats = stats.Unix.st_nlink = 1
 
 let trim ~goal =
   let files = files_in_cache_for_all_supported_versions () |> List.map ~f:fst in
-  let f path =
-    (* CR-soon aalekseyev: handle errors from [Path.stat] *)
-    let stats = Path.stat_exn path in
-    if file_exists_and_is_unused ~stats then
-      Some (path, stats.st_size, stats.st_ctime)
-    else
-      None
-  and compare (_, _, t1) (_, _, t2) = Poly.compare t1 t2 in
-  let files = List.sort ~compare (List.filter_map ~f files)
-  and delete (trimmed_so_far : Trimming_result.t) (path, bytes, _) =
+  let files =
+    (* CR-soon amokhov: When the cache storage mode is [Copy], comparing [ctime]
+       isn't a good heuristic unless we bump [ctime] of a cache entry whenever
+       we restore it from the cache. The simplest way to do that is to [touch]
+       the entry but that also changes its [mtime] which isn't great. One way to
+       bump [ctime] of an entry without changing anything else is to use [chmod]
+       to set the same permissions that the entry already has. *)
+    List.sort
+      ~compare:(fun (_, _, ctime1) (_, _, ctime2) -> Poly.compare ctime1 ctime2)
+      (List.filter_map files ~f:(fun path ->
+           match Path.stat path with
+           | Ok stats ->
+             if file_exists_and_is_unused ~stats then
+               Some (path, stats.st_size, stats.st_ctime)
+             else
+               None
+           | Error _ -> None))
+  in
+  let delete (trimmed_so_far : Trimming_result.t) (path, bytes, _) =
     if trimmed_so_far.trimmed_bytes >= goal then
       trimmed_so_far
     else (

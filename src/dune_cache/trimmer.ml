@@ -78,7 +78,10 @@ let trim ~goal =
   let files =
     (* CR-soon amokhov: When the cache storage mode is [Copy], comparing [ctime]
        isn't a good heuristic unless we bump [ctime] of a cache entry whenever
-       we restore it from the cache. *)
+       we restore it from the cache. The simplest way to do that is to [touch]
+       the entry but that also changes its [mtime] which isn't great. One way to
+       bump [ctime] of an entry without changing anything else is to use [chmod]
+       to set the same permissions that the entry already has. *)
     List.sort
       ~compare:(fun (_, _, ctime1) (_, _, ctime2) -> Poly.compare ctime1 ctime2)
       (List.filter_map files ~f:(fun path ->

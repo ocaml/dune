@@ -84,7 +84,7 @@ let auto_concurrency =
           | Some s -> (
             match int_of_string s with
             | exception _ -> Fiber.return 1
-            | n -> Fiber.return n )
+            | n -> Fiber.return n)
         else
           let commands =
             [ ("nproc", [])
@@ -108,7 +108,7 @@ let auto_concurrency =
                 | Ok s -> (
                   match int_of_string (String.trim s) with
                   | n -> Fiber.return n
-                  | exception _ -> loop rest ) ) )
+                  | exception _ -> loop rest)))
           in
           loop commands
       in

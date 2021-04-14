@@ -186,8 +186,8 @@ include Sub_system.Register_end_point (struct
          and+ flags = Ordered_set_lang.Unexpanded.field "flags"
          and+ executable =
            field "executable" ~default:Ocaml_flags.Spec.standard
-             ( Dune_lang.Syntax.since Stanza.syntax (2, 8)
-             >>> fields Ocaml_flags.Spec.decode )
+             (Dune_lang.Syntax.since Stanza.syntax (2, 8)
+             >>> fields Ocaml_flags.Spec.decode)
          and+ backend = field_o "backend" (located Lib_name.decode)
          and+ libraries =
            field "libraries" (repeat (located Lib_name.decode)) ~default:[]
@@ -248,7 +248,7 @@ include Sub_system.Register_end_point (struct
       let* more_libs =
         Result.List.map info.libraries ~f:(Lib.DB.resolve (Scope.libs scope))
       in
-      Lib.closure ~linking:true ((lib :: libs) @ more_libs)
+      Lib.closure ~linking:true (lib :: libs @ more_libs)
     in
     (* Generate the runner file *)
     SC.add_rule sctx ~dir ~loc
@@ -361,14 +361,15 @@ include Sub_system.Register_end_point (struct
            Build.with_no_targets (Dep_conf_eval.unnamed info.deps ~expander)
            >>> Build.with_no_targets (Build.paths source_files)
            >>> Build.progn
-                 ( Command.run exe ~dir:(Path.build dir)
-                     [ runner_args; Dyn flags ]
-                 :: List.map source_files ~f:(fun fn ->
-                        Build.With_targets.return
-                          (Action.diff ~optional:true fn
-                             (Path.Build.extend_basename
-                                (Path.as_in_build_dir_exn fn)
-                                ~suffix:".corrected"))) )))
+                 (Command.run exe ~dir:(Path.build dir)
+                    [ runner_args; Dyn flags ]
+                  ::
+                  List.map source_files ~f:(fun fn ->
+                      Build.With_targets.return
+                        (Action.diff ~optional:true fn
+                           (Path.Build.extend_basename
+                              (Path.as_in_build_dir_exn fn)
+                              ~suffix:".corrected"))))))
 end)
 
 let linkme = ()

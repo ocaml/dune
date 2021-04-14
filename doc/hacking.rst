@@ -148,7 +148,7 @@ Such languages must be enabled in the dune-project separately:
 
 .. code:: scheme
 
-   (lang dune 2.8)
+   (lang dune 2.9)
    (using coq 0.2)
 
 If such extensions are experimental, it's recommended that they pass

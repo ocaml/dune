@@ -127,7 +127,7 @@ let expand_version scope pform s =
   | Some p -> (
     match p.version with
     | None -> [ Value.String "" ]
-    | Some s -> [ String s ] )
+    | Some s -> [ String s ])
 
 let isn't_allowed_in_this_position pform =
   let loc = String_with_vars.Var.loc pform in
@@ -160,16 +160,16 @@ let expand_artifact ~dir ~loc t a s : Expanded.t =
       | None -> does_not_exist ~loc ~what:"Module" (Module_name.to_string name)
       | Some (t, m) ->
         Value
-          ( match Obj_dir.Module.cm_file t m ~kind with
+          (match Obj_dir.Module.cm_file t m ~kind with
           | None -> [ Value.String "" ]
-          | Some path -> [ Value.Path (Path.build path) ] ) )
+          | Some path -> [ Value.Path (Path.build path) ]))
     | Lib mode -> (
       let name = Lib_name.parse_string_exn (loc, name) in
       match Ml_sources.Artifacts.lookup_library artifacts name with
       | None -> does_not_exist ~loc ~what:"Library" (Lib_name.to_string name)
       | Some lib ->
         let archives = Mode.Dict.get (Lib_info.archives lib) mode in
-        Value (Value.L.paths (List.map ~f:Path.build archives)) ) )
+        Value (Value.L.paths (List.map ~f:Path.build archives))))
 
 (* This expansion function only expands the most "static" variables and macros.
    These are all known without building anything, evaluating any dune files, and
@@ -190,7 +190,7 @@ let static_expand
     | Macro (Artifact a, s) when not artifacts_dynamic ->
       let loc = String_with_vars.Var.loc var in
       expand_artifact ~dir ~loc t a s
-    | expansion -> Deferred expansion )
+    | expansion -> Deferred expansion)
 
 let cc_cxx_bindings =
   Pform.Map.of_list_exn [ ("cc", Pform.Var.Cc); ("cxx", Pform.Var.Cxx) ]
@@ -375,8 +375,8 @@ let expand_and_record_generic acc ~dep_kind ~(dir : Path.Build.t) ~pform t
   | Macro (Dep, s) -> Static (path_exp (relative dir s))
   | Macro (Bin, s) ->
     Static
-      ( Artifacts.Bin.binary ~loc:(Some loc) t.bin_artifacts_host s
-      |> Action.Prog.ok_exn |> path_exp )
+      (Artifacts.Bin.binary ~loc:(Some loc) t.bin_artifacts_host s
+      |> Action.Prog.ok_exn |> path_exp)
   | Macro (Lib { lib_exec; lib_private }, s) -> (
     let lib, file = parse_lib_file ~loc s in
     Resolved_forms.add_lib_dep acc lib dep_kind;
@@ -407,17 +407,17 @@ let expand_and_record_generic acc ~dep_kind ~(dir : Path.Build.t) ~pform t
                       "The variable \"lib%s-private\" can only refer to \
                        libraries within the same project. The current \
                        project's name is %S, but the reference is to %s."
-                      ( if lib_exec then
+                      (if lib_exec then
                         "exec"
                       else
-                        "" )
+                        "")
                       (Dune_project.Name.to_string_hum
                          (Dune_project.name current_project))
-                      ( match referenced_project with
+                      (match referenced_project with
                       | None -> "an external library"
                       | Some project ->
                         Dune_project.name project
-                        |> Dune_project.Name.to_string_hum |> String.quoted )
+                        |> Dune_project.Name.to_string_hum |> String.quoted)
                   ]))
       else
         let artifacts =
@@ -445,7 +445,7 @@ let expand_and_record_generic acc ~dep_kind ~(dir : Path.Build.t) ~pform t
         Dynamic dep
     | Error e ->
       raise
-        ( match lib_private with
+        (match lib_private with
         | true -> e
         | false ->
           if Lib.DB.available (Scope.libs scope) lib then
@@ -456,13 +456,13 @@ let expand_and_record_generic acc ~dep_kind ~(dir : Path.Build.t) ~pform t
                       expands to the file's installation path which is not \
                       defined for private libraries."
                      (Lib_name.to_string lib)
-                     ( if lib_exec then
+                     (if lib_exec then
                        "exec"
                      else
-                       "" )
+                       "")
                  ])
           else
-            e ) )
+            e))
   | Macro (Lib_available, s) ->
     let lib = Lib_name.parse_string_exn (loc, s) in
     Resolved_forms.add_lib_dep acc lib Optional;
@@ -552,7 +552,7 @@ end = struct
           ; ( "deps_written_by_user"
             , Bindings.to_dyn Path.to_dyn deps_written_by_user )
           ]
-      | Some x -> Value.L.paths x )
+      | Some x -> Value.L.paths x)
     | Var Deps -> deps_written_by_user |> Bindings.to_list |> Value.L.paths
     | Var First_dep -> (
       match deps_written_by_user with
@@ -564,7 +564,7 @@ end = struct
       | [] ->
         User_warning.emit ~loc
           [ Pp.textf "Variable '%s' used with no explicit dependencies" key ];
-        [ Value.String "" ] )
+        [ Value.String "" ])
     | _ ->
       Code_error.raise "Unexpected variable in step2"
         [ ("var", String_with_vars.Var.to_dyn var) ]

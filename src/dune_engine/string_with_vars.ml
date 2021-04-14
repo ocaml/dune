@@ -49,7 +49,7 @@ let virt_var ?(quoted = false) pos s =
   assert (
     String.for_all s ~f:(function
       | ':' -> false
-      | _ -> true) );
+      | _ -> true));
   let loc = Loc.of_pos pos in
   let template =
     { parts = [ Var { payload = None; name = s; loc } ]; loc; quoted }
@@ -116,9 +116,9 @@ module Var = struct
 
   let describe t =
     to_string
-      ( match t.payload with
+      (match t.payload with
       | None -> t
-      | Some _ -> { t with payload = Some ".." } )
+      | Some _ -> { t with payload = Some ".." })
 end
 
 type known_suffix =
@@ -264,9 +264,9 @@ module Make (A : Applicative_intf.S1) = struct
       | None -> Partial.Unexpanded t
       | Some e ->
         Expanded
-          ( match Mode.value mode e with
+          (match Mode.value mode e with
           | None -> invalid_multivalue var e
-          | Some s -> s ) )
+          | Some s -> s))
     | _ ->
       let expanded_parts =
         List.map template.parts ~f:(fun part ->
@@ -279,7 +279,7 @@ module Make (A : Applicative_intf.S1) = struct
               | Some (([] | _ :: _ :: _) as e) when not template.quoted ->
                 invalid_multivalue var e
               | Some t -> Text (Value.L.concat ~dir t)
-              | None -> Var var ))
+              | None -> Var var))
       in
       let open App.O in
       let+ expanded = App.all expanded_parts in
@@ -300,7 +300,7 @@ module Make (A : Applicative_intf.S1) = struct
             let template =
               { template with parts = List.rev (commit_text acc_text acc) }
             in
-            Unexpanded { template; syntax_version } )
+            Unexpanded { template; syntax_version })
         | Text s :: items -> loop (s :: acc_text) acc items
         | it :: items -> loop [] (it :: commit_text acc_text acc) items
       in

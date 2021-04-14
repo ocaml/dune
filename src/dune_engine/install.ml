@@ -45,14 +45,14 @@ end = struct
     | Some (_, r) -> (
       match r.[0] with
       | '1' .. '8' as c -> Some (sprintf "man%c" c)
-      | _ -> None )
+      | _ -> None)
 
   let infer ~src_basename:p section =
     match section with
     | Section.Man -> (
       match man_subdir p with
       | Some subdir -> Filename.concat subdir p
-      | None -> p )
+      | None -> p)
     | _ -> p
 
   let of_install_file t ~src_basename ~section =
@@ -97,13 +97,13 @@ module Section_with_site = struct
   let decode =
     let open Dune_lang.Decoder in
     sum
-      ( ( Dune_section.enum_decoder
-        |> List.map ~f:(fun (k, d) -> (k, return (Section d))) )
+      ((Dune_section.enum_decoder
+       |> List.map ~f:(fun (k, d) -> (k, return (Section d))))
       @ [ ( "site"
           , Dune_lang.Syntax.since Section.dune_site_syntax (0, 1)
             >>> pair Package.Name.decode Section.Site.decode
             >>| fun (pkg, site) -> Site { pkg; site } )
-        ] )
+        ])
 end
 
 module Section = struct
@@ -224,7 +224,7 @@ module Entry = struct
         | Partial (var, suffix) -> (
           match String.rsplit2 ~on:'/' suffix with
           | Some (_, basename) -> basename
-          | None -> error var ) )
+          | None -> error var))
     in
     match dst with
     | Some dst' when Filename.extension dst' = ".exe" -> Dst.explicit dst'
@@ -383,6 +383,5 @@ let load_install_file path =
             | Option (_, String (_, src), [ String (_, dst) ]) ->
               install_file src (Some dst)
             | v -> fail (pos_of_opam_value v) "Invalid value in .install file")
-        | v -> fail (pos_of_opam_value v) "Invalid value for install section" )
-      )
+        | v -> fail (pos_of_opam_value v) "Invalid value for install section"))
     | Section (pos, _) -> fail pos "Sections are not allowed in .install file")

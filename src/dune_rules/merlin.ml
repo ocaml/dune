@@ -226,7 +226,7 @@ module Unprocessed = struct
           | Run (exe, args) -> pp_of_action exe args
           | Chdir (_, Run (exe, args)) -> pp_of_action exe args
           | Chdir (_, Chdir (_, Run (exe, args))) -> pp_of_action exe args
-          | _ -> None) )
+          | _ -> None))
     | _ -> Build.With_targets.return None
 
   let pp_flags sctx ~expander libname preprocess :
@@ -251,7 +251,7 @@ module Unprocessed = struct
           |> List.map ~f:quote_if_needed
           |> String.concat ~sep:" "
         in
-        Build.With_targets.return (Some Processed.{ flag = "-ppx"; args }) )
+        Build.With_targets.return (Some Processed.{ flag = "-ppx"; args }))
 
   let process
       { modules
@@ -309,8 +309,8 @@ let dot_merlin sctx ~dir ~more_src_dirs ~expander (t : Unprocessed.t) =
      Currently dune doesn't support declaring a dependency only on the existence
      of a file, so we have to use this trick. *)
   SC.add_rule sctx ~dir
-    ( Build.with_no_targets (Build.path (Path.build merlin_file))
-    >>> Build.create_file merlin_exist );
+    (Build.with_no_targets (Build.path (Path.build merlin_file))
+    >>> Build.create_file merlin_exist);
 
   Path.Set.singleton (Path.build merlin_file)
   |> Rules.Produce.Alias.add_deps (Alias.check ~dir);

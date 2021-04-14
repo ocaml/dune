@@ -43,7 +43,7 @@ let emit_warning allowed_vars is_error var =
 
 let decode ~allowed_vars ?(is_error = true) ~since () =
   let check_var ~allowed_vars var decoder_acc =
-    ( match String_with_vars.Var.payload var with
+    (match String_with_vars.Var.payload var with
     | Some _ -> emit_warning allowed_vars is_error var
     | None -> (
       let name = String_with_vars.Var.name var in
@@ -56,7 +56,7 @@ let decode ~allowed_vars ?(is_error = true) ~since () =
           let what = "This variable" in
           Dune_lang.Syntax.Error.since loc Stanza.syntax min_ver ~what
         else
-          return () ) )
+          return ()))
     >>> decoder_acc
   in
   let check_vars blang =
@@ -66,10 +66,9 @@ let decode ~allowed_vars ?(is_error = true) ~since () =
       Blang.fold_vars blang ~init:(return blang) ~f:(check_var ~allowed_vars)
   in
   let decode =
-    ( match since with
+    (match since with
     | None -> Blang.decode
-    | Some since -> Dune_lang.Syntax.since Stanza.syntax since >>> Blang.decode
-    )
+    | Some since -> Dune_lang.Syntax.since Stanza.syntax since >>> Blang.decode)
     >>= check_vars
   in
   field "enabled_if" ~default:Blang.true_ decode

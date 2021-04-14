@@ -7,9 +7,10 @@ bar.c is built with an "empty" set of flags.
   $ O_CC=$(ocamlc -config-var c_compiler)
   $ O_CCF=$(ocamlc -config-var ocamlc_cflags)
   $ O_CCPPF=$(ocamlc -config-var ocamlc_cppflags)
-  $ O_CC=${O_CC%% }
-  $ O_CCF=${O_CCF%% }
-  $ O_CCPPF=${O_CCPPF%% }
+  $ O_CC=$(echo $O_CC | sed -e 's/^[ \t]*//')
+  $ O_CCF=$(echo $O_CCF | sed -e 's/^[ \t]*//')
+  $ O_CCPPF=$(echo $O_CCPPF | sed -e 's/^[ \t]*//')
+
 
 
 use_standard_c_and_cxx_flags = default (false)

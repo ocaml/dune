@@ -8,10 +8,13 @@ No ppx driver found
   >  (modules foo1)
   >  (preprocess (pps)))
   > EOF
+
+  $ cat >no-driver/dune-project <<EOF
+  > (lang dune 2.8)
+  > EOF
+
   $ dune build --root no-driver
   Entering directory 'no-driver'
-  Info: Creating file dune-project with this contents:
-  | (lang dune 2.8)
   File "dune", line 5, characters 13-18:
   5 |  (preprocess (pps)))
                    ^^^^^

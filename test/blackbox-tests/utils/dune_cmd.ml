@@ -45,7 +45,7 @@ module Stat = struct
     | _ -> raise (Arg.Bad (sprintf "2 arguments must be provided"))
 
   let run { file; data } =
-    let stats = Path.stat file in
+    let stats = Path.stat_exn file in
     print_endline (pp_stats data stats)
 
   let () = register name of_args run

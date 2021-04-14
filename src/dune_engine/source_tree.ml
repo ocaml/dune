@@ -182,7 +182,7 @@ end = struct
                 | S_LNK -> (
                   match Path.stat (Path.source path) with
                   | Error _ -> (false, File.dummy)
-                  | Ok { st_kind = S_DIR; _ } as st -> (true, File.of_stats st)
+                  | Ok ({ st_kind = S_DIR; _ } as st) -> (true, File.of_stats st)
                   | Ok _ -> (false, File.dummy))
                 | _ -> (false, File.dummy)
               in

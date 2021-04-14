@@ -14,7 +14,7 @@ follows:
 ::
 
     build: [
-      ["dune" "subst"] {pinned}
+      ["dune" "subst"] {dev}
       ["dune" "build" "-p" name "-j" jobs]
     ]
 

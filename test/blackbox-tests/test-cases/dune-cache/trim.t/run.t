@@ -112,8 +112,10 @@ trimmed.
   2
   $ dune_cmd stat hardlinks _build/default/target_b
   2
-  $ test -e _build/default/beacon_a
-  $ ! test -e _build/default/beacon_b
+  $ dune_cmd exists _build/default/beacon_a
+  true
+  $ dune_cmd exists _build/default/beacon_b
+  false
 
 Now let's remove the remaining targets, left from the very first build and rerun
 the trimmer. That will delete unused [files/v3] and the corresponding metadata
@@ -154,8 +156,10 @@ target_a:
   2
   $ dune_cmd stat hardlinks _build/default/target_b
   2
-  $ ! test -e _build/default/beacon_a
-  $ test -e _build/default/beacon_b
+  $ dune_cmd exists _build/default/beacon_a
+  false
+  $ dune_cmd exists _build/default/beacon_b
+  true
 
   $ reset
 
@@ -173,8 +177,10 @@ order of trimming.
   2
   $ dune_cmd stat hardlinks _build/default/target_b
   2
-  $ test -e _build/default/beacon_a
-  $ ! test -e _build/default/beacon_b
+  $ dune_cmd exists _build/default/beacon_a
+  true
+  $ dune_cmd exists _build/default/beacon_b
+  false
 
   $ reset
 

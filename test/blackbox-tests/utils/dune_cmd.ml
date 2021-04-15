@@ -88,6 +88,20 @@ module Cat = struct
   let () = register name of_args run
 end
 
+module Exists = struct
+  type t = Path of Path.t
+
+  let name = "exists"
+
+  let of_args = function
+    | [ path ] -> Path (Path.of_filename_relative_to_initial_cwd path)
+    | _ -> raise (Arg.Bad "Usage: dune_arg exists <path>")
+
+  let run (Path path) = print_string (Path.exists path |> Bool.to_string)
+
+  let () = register name of_args run
+end
+
 module Expand_lines = struct
   let name = "expand_lines"
 

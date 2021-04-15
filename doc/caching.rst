@@ -50,11 +50,13 @@ directory. There are two disadvantages of this mode:
 The `copy` mode
 ---------------
 
-If you specify `(cache-duplication copy)` in the configuration file, Dune will
+If you specify `(cache-storage-mode copy)` in the configuration file, Dune will
 copy files to and from the cache instead of using hard links. This mode is
 slower and has higher disk space usage. On the positive side, it is more
 portable and doesn't have the disadvantages of the `hardlink` mode (see above).
 
+You can also set or override the storage mode via the environment variable
+`DUNE_CACHE_STORAGE_MODE` and the command line flag `--cache-storage-mode`.
 
 Trimming the cache
 ==================

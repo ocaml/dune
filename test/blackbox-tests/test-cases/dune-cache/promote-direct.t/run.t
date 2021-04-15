@@ -28,8 +28,8 @@
   2
   $ dune_cmd stat hardlinks _build/default/target
   2
-  $ test -e _build/default/beacon
-  [1]
+  $ dune_cmd exists _build/default/beacon
+  false
   $ cat _build/default/source
   \_o< COIN
   $ cat _build/default/target

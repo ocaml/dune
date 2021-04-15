@@ -32,5 +32,6 @@ val of_string : string -> (t, string) result
 
 val to_dyn : t -> Dyn.t
 
-(* CR-someday amokhov: Add a function to choose the mode by detecting whether
-   hard links can be created. *)
+(** Right now, this is hardcoded to be [Hardlink]. In future we plan to choose
+    the mode by detecting whether hard links can be created. *)
+val default : unit -> t

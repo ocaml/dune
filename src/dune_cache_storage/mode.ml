@@ -18,3 +18,7 @@ let to_string = function
 let to_dyn = function
   | Copy -> Dyn.Variant ("Copy", [])
   | Hardlink -> Dyn.Variant ("Hardlink", [])
+
+(* CR-someday amokhov: Check that hard links can actually be created and, if
+   not, return [Copy] instead. *)
+let default () = Hardlink

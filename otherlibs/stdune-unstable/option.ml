@@ -102,3 +102,9 @@ end
 let hash f = function
   | None -> Stdlib.Hashtbl.hash None
   | Some s -> Stdlib.Hashtbl.hash (f s)
+
+let merge x y ~f =
+  match (x, y) with
+  | None, res -> res
+  | res, None -> res
+  | Some x, Some y -> Some (f x y)

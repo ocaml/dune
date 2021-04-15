@@ -167,15 +167,11 @@ module Dir_map = struct
     { sexps = d1.sexps @ d2.sexps
     ; subdir_status =
         Status.Map.merge d1.subdir_status d2.subdir_status ~f:(fun l r ->
-            match (l, r) with
-            | acc, None
-            | None, acc ->
-              acc
-            | Some (loc, _), Some (loc2, _) ->
-              User_error.raise ~loc
-                [ Pp.text "This stanza stanza was already specified at:"
-                ; Pp.verbatim (Loc.to_file_colon_line loc2)
-                ])
+            Option.merge l r ~f:(fun (loc, _) (loc2, _) ->
+                User_error.raise ~loc
+                  [ Pp.text "This stanza stanza was already specified at:"
+                  ; Pp.verbatim (Loc.to_file_colon_line loc2)
+                  ]))
     }
 
   let rec merge t1 t2 : t =

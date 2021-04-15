@@ -233,19 +233,15 @@ let load () =
     List.fold_left projects ~init:Package.Name.Map.empty
       ~f:(fun acc (p : Dune_project.t) ->
         Package.Name.Map.merge acc (Dune_project.packages p) ~f:(fun name a b ->
-            match (a, b) with
-            | None, None -> None
-            | None, Some _ -> b
-            | Some _, None -> a
-            | Some a, Some b ->
-              User_error.raise
-                [ Pp.textf "Too many opam files for package %S:"
-                    (Package.Name.to_string name)
-                ; Pp.textf "- %s"
-                    (Path.Source.to_string_maybe_quoted (Package.opam_file a))
-                ; Pp.textf "- %s"
-                    (Path.Source.to_string_maybe_quoted (Package.opam_file b))
-                ]))
+            Option.merge a b ~f:(fun a b ->
+                User_error.raise
+                  [ Pp.textf "Too many opam files for package %S:"
+                      (Package.Name.to_string name)
+                  ; Pp.textf "- %s"
+                      (Path.Source.to_string_maybe_quoted (Package.opam_file a))
+                  ; Pp.textf "- %s"
+                      (Path.Source.to_string_maybe_quoted (Package.opam_file b))
+                  ])))
   in
   let dune_files =
     List.map (Appendable_list.to_list dune_files)

@@ -14,6 +14,9 @@ module Reproducibility_check : sig
       [true] with the [check_probability]. *)
   val sample : t -> bool
 
+  (** A helper function to construct the [Check] variant. *)
+  val check : float -> t
+
   val to_dyn : t -> Dyn.t
 end
 

@@ -57,7 +57,8 @@ module type S = sig
     ; terminal_persistence : Terminal_persistence.t field
     ; sandboxing_preference : Sandboxing_preference.t field
     ; cache_enabled : Cache.Enabled.t field
-    ; cache_check_probability : float field
+    ; cache_reproducibility_check :
+        Dune_cache.Config.Reproducibility_check.t field
     ; cache_storage_mode : Cache.Storage_mode.t field
     ; swallow_stdout_on_success : bool field
     }

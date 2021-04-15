@@ -3,6 +3,8 @@ open Stdune
 (* CR-someday amokhov: We should probably switch from float [check_probability]
    to integer [check_frequency], as in Jenga, to avoid generating random floats. *)
 
+(* CR-soon amokhov: That that the reproducibility check actually works. *)
+
 module Reproducibility_check = struct
   (* CR-someday amokhov: Add [Check_and_repair] to rewrite cache entries if they
      disagree with the check. *)
@@ -18,6 +20,8 @@ module Reproducibility_check = struct
     | Skip -> Dyn.Variant ("Skip", [])
     | Check { check_probability } ->
       Dyn.Variant ("Check", [ Dyn.Float check_probability ])
+
+  let check check_probability = Check { check_probability }
 end
 
 type t =

@@ -165,8 +165,7 @@ let init ?log_file c =
       Enabled
         { storage_mode =
             Option.value config.cache_storage_mode ~default:Hardlink
-        ; reproducibility_check =
-            Check { check_probability = config.cache_check_probability }
+        ; reproducibility_check = config.cache_reproducibility_check
         }
   in
   Dune_rules.Main.init ~stats:c.stats
@@ -605,12 +604,11 @@ let shared_with_config_file =
         "Check build reproducibility by re-executing randomly chosen rules and \
          comparing their results with those stored in Dune cache. Note: by \
          increasing the probability of such checks you slow down the build. \
-         Default is `%s'."
-        (Float.to_string Dune_config.default.cache_check_probability)
+         The default probability is zero, i.e. no rules are checked."
     in
     Arg.(
       value
-      & opt float Dune_config.default.cache_check_probability
+      & opt (some float) None
       & info
           [ "cache-check-probability" ]
           ~docs
@@ -628,7 +626,9 @@ let shared_with_config_file =
   ; sandboxing_preference = Option.map sandboxing_preference ~f:(fun x -> [ x ])
   ; terminal_persistence
   ; cache_enabled
-  ; cache_check_probability = Some cache_check_probability
+  ; cache_reproducibility_check =
+      Option.map cache_check_probability
+        ~f:Dune_cache.Config.Reproducibility_check.check
   ; cache_storage_mode
   ; swallow_stdout_on_success = Option.some_if swallow_stdout_on_success true
   }

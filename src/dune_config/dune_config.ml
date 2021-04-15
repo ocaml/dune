@@ -141,7 +141,8 @@ module type S = sig
     ; terminal_persistence : Terminal_persistence.t field
     ; sandboxing_preference : Sandboxing_preference.t field
     ; cache_enabled : Cache.Enabled.t field
-    ; cache_check_probability : float field
+    ; cache_reproducibility_check :
+        Dune_cache.Config.Reproducibility_check.t field
     ; cache_storage_mode : Cache.Storage_mode.t field
     ; swallow_stdout_on_success : bool field
     }
@@ -163,8 +164,8 @@ struct
     ; sandboxing_preference =
         field a.sandboxing_preference b.sandboxing_preference
     ; cache_enabled = field a.cache_enabled b.cache_enabled
-    ; cache_check_probability =
-        field a.cache_check_probability b.cache_check_probability
+    ; cache_reproducibility_check =
+        field a.cache_reproducibility_check b.cache_reproducibility_check
     ; cache_storage_mode = field a.cache_storage_mode b.cache_storage_mode
     ; swallow_stdout_on_success =
         field a.swallow_stdout_on_success b.swallow_stdout_on_success
@@ -184,7 +185,7 @@ struct
       ; terminal_persistence
       ; sandboxing_preference
       ; cache_enabled
-      ; cache_check_probability
+      ; cache_reproducibility_check
       ; cache_storage_mode
       ; swallow_stdout_on_success
       } =
@@ -196,8 +197,9 @@ struct
       ; ( "sandboxing_preference"
         , field (Dyn.Encoder.list Sandbox_mode.to_dyn) sandboxing_preference )
       ; ("cache_enabled", field Cache.Enabled.to_dyn cache_enabled)
-      ; ( "cache_check_probability"
-        , field Dyn.Encoder.float cache_check_probability )
+      ; ( "cache_reproducibility_check"
+        , field Dune_cache.Config.Reproducibility_check.to_dyn
+            cache_reproducibility_check )
       ; ( "cache_storage_mode"
         , field Cache.Storage_mode.to_dyn cache_storage_mode )
       ; ( "swallow_stdout_on_success"
@@ -220,7 +222,7 @@ module Partial = struct
     ; terminal_persistence = None
     ; sandboxing_preference = None
     ; cache_enabled = None
-    ; cache_check_probability = None
+    ; cache_reproducibility_check = None
     ; cache_storage_mode = None
     ; swallow_stdout_on_success = None
     }
@@ -273,7 +275,7 @@ let default =
   ; terminal_persistence = Terminal_persistence.Preserve
   ; sandboxing_preference = []
   ; cache_enabled = Disabled
-  ; cache_check_probability = 0.
+  ; cache_reproducibility_check = Skip
   ; cache_storage_mode = None
   ; swallow_stdout_on_success = false
   }
@@ -308,12 +310,12 @@ let decode_generic ~min_dune_version =
   and+ _cache_trim_period_unused_since_3_0 =
     field_o "cache-trim-period" (2, 0)
       (Dune_lang.Syntax.deleted_in Stanza.syntax (3, 0)
-         ~extra_info:"To trim the cache, see the 'dune cache trim' command."
+         ~extra_info:"To trim the cache, use the 'dune cache trim' command."
       >>> Dune_lang.Decoder.duration)
   and+ _cache_trim_size_unused_since_3_0 =
     field_o "cache-trim-size" (2, 0)
       (Dune_lang.Syntax.deleted_in Stanza.syntax (3, 0)
-         ~extra_info:"To trim the cache, see the 'dune cache trim' command."
+         ~extra_info:"To trim the cache, use the 'dune cache trim' command."
       >>> Dune_lang.Decoder.bytes_unit)
   and+ swallow_stdout_on_success =
     field_o_b "swallow-stdout-on-success"
@@ -324,12 +326,19 @@ let decode_generic ~min_dune_version =
         Code_error.raise "Both cache_duplication and cache_storage_mode are set"
           [])
   in
+  (* CR-someday amokhov: It is currently not possible to explicitly [Skip] the
+     reproducibility check in the configuration file. To do that, one can omit
+     the field or specify the probability 0, neither of which seems ideal. *)
+  let cache_reproducibility_check =
+    Option.map cache_check_probability
+      ~f:Dune_cache.Config.Reproducibility_check.check
+  in
   { Partial.display
   ; concurrency
   ; terminal_persistence
   ; sandboxing_preference
   ; cache_enabled
-  ; cache_check_probability
+  ; cache_reproducibility_check
   ; cache_storage_mode
   ; swallow_stdout_on_success
   }

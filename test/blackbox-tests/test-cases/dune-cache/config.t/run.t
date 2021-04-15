@@ -107,7 +107,7 @@ Build fails because 'cache-trim-period' was deleted
   4 | (cache-trim-period 1h)
       ^^^^^^^^^^^^^^^^^^^^^^
   Error: 'cache-trim-period' was deleted in version 3.0 of the dune language.
-  To trim the cache, see the 'dune cache trim' command.
+  To trim the cache, use the 'dune cache trim' command.
   [1]
 
 So, we comply and delete it
@@ -126,7 +126,7 @@ Build fails because 'cache-trim-size' was deleted
   4 | (cache-trim-size 1GB)
       ^^^^^^^^^^^^^^^^^^^^^
   Error: 'cache-trim-size' was deleted in version 3.0 of the dune language. To
-  trim the cache, see the 'dune cache trim' command.
+  trim the cache, use the 'dune cache trim' command.
   [1]
 
 So, we comply and delete it

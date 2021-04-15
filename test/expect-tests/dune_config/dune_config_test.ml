@@ -25,7 +25,7 @@ let%expect_test "cache-check-probability 0.1" =
     ; terminal_persistence = Preserve
     ; sandboxing_preference = []
     ; cache_enabled = Disabled
-    ; cache_check_probability = 0.1
+    ; cache_reproducibility_check = Check 0.1
     ; cache_storage_mode = None
     ; swallow_stdout_on_success = false
     }
@@ -40,7 +40,7 @@ let%expect_test "cache-storage-mode copy" =
     ; terminal_persistence = Preserve
     ; sandboxing_preference = []
     ; cache_enabled = Disabled
-    ; cache_check_probability = 0.
+    ; cache_reproducibility_check = Skip
     ; cache_storage_mode = Some Copy
     ; swallow_stdout_on_success = false
     }
@@ -55,7 +55,7 @@ let%expect_test "cache-storage-mode hardlink" =
     ; terminal_persistence = Preserve
     ; sandboxing_preference = []
     ; cache_enabled = Disabled
-    ; cache_check_probability = 0.
+    ; cache_reproducibility_check = Skip
     ; cache_storage_mode = Some Hardlink
     ; swallow_stdout_on_success = false
     }

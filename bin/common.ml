@@ -158,21 +158,14 @@ let init ?log_file c =
          (Dune_engine.Execution_parameters.builtin_default
          |> Dune_rules.Workspace.update_execution_parameters w));
   Dune_rules.Global.init ~capture_outputs:c.capture_outputs;
-  (* CR-soon amokhov: Right now, types [Dune_config.Caching.Duplication.t] and
-     [Dune_cache_storage.Mode.t] are the same. They will be unified after
-     removing the cache daemon and adapting the configuration format. *)
   let cache_config =
-    match config.cache_mode with
+    match config.cache_enabled with
     | Disabled -> Dune_cache.Config.Disabled
     | Enabled ->
       Enabled
         { storage_mode =
-            (match config.cache_duplication with
-            | None
-            | Some Hardlink ->
-              Dune_cache_storage.Mode.Hardlink
-            | Some Copy -> Copy)
-        ; check_probability = config.cache_check_probability
+            Option.value config.cache_storage_mode ~default:Hardlink
+        ; reproducibility_check = config.cache_reproducibility_check
         }
   in
   Dune_rules.Main.init ~stats:c.stats
@@ -582,39 +575,40 @@ let shared_with_config_file =
       & opt (some (enum modes)) None
       & info [ "terminal-persistence" ] ~docs ~docv:"MODE" ~doc)
   and+ display = display_term
-  and+ cache_mode =
+  and+ cache_enabled =
     let doc =
-      Printf.sprintf "Activate binary cache (%s). Default is `%s'."
-        (Arg.doc_alts_enum Dune_config.Caching.Mode.all)
-        (Dune_config.Caching.Mode.to_string Dune_config.default.cache_mode)
+      Printf.sprintf "Enable or disable Dune cache (%s). Default is `%s'."
+        (Arg.doc_alts_enum Dune_config.Cache.Enabled.all)
+        (Dune_config.Cache.Enabled.to_string Dune_config.default.cache_enabled)
     in
     Arg.(
       value
-      & opt (some (enum Dune_config.Caching.Mode.all)) None
+      & opt (some (enum Dune_config.Cache.Enabled.all)) None
       & info [ "cache" ] ~docs ~env:(Arg.env_var ~doc "DUNE_CACHE") ~doc)
-  and+ cache_transport =
-    let doc = "Binary cache protocol" in
+  and+ cache_storage_mode =
+    let doc =
+      Printf.sprintf "Dune cache storage mode (%s). Default is `%s'."
+        (Arg.doc_alts_enum Dune_config.Cache.Storage_mode.all)
+        (Dune_config.Cache.Storage_mode.to_string
+           Dune_config.default.cache_storage_mode)
+    in
     Arg.(
       value
-      & opt (some (enum Dune_config.Caching.Transport.all)) None
-      & info [ "cache-transport" ] ~docs
-          ~env:(Arg.env_var ~doc "DUNE_CACHE_TRANSPORT")
-          ~doc)
-  and+ cache_duplication =
-    let doc = "Binary cache duplication mode" in
-    Arg.(
-      value
-      & opt (some (enum Dune_config.Caching.Duplication.all)) None
-      & info [ "cache-duplication" ] ~docs
-          ~env:(Arg.env_var ~doc "DUNE_CACHE_DUPLICATION")
+      & opt (some (enum Dune_config.Cache.Storage_mode.all)) None
+      & info [ "cache-storage-mode" ] ~docs
+          ~env:(Arg.env_var ~doc "DUNE_CACHE_STORAGE_MODE")
           ~doc)
   and+ cache_check_probability =
     let doc =
-      "Probability cached rules are rerun to check for reproducibility"
+      Printf.sprintf
+        "Check build reproducibility by re-executing randomly chosen rules and \
+         comparing their results with those stored in Dune cache. Note: by \
+         increasing the probability of such checks you slow down the build. \
+         The default probability is zero, i.e. no rules are checked."
     in
     Arg.(
       value
-      & opt float Dune_config.default.cache_check_probability
+      & opt (some float) None
       & info
           [ "cache-check-probability" ]
           ~docs
@@ -631,12 +625,11 @@ let shared_with_config_file =
   ; concurrency
   ; sandboxing_preference = Option.map sandboxing_preference ~f:(fun x -> [ x ])
   ; terminal_persistence
-  ; cache_mode
-  ; cache_transport
-  ; cache_check_probability = Some cache_check_probability
-  ; cache_duplication
-  ; cache_trim_period = None
-  ; cache_trim_size = None
+  ; cache_enabled
+  ; cache_reproducibility_check =
+      Option.map cache_check_probability
+        ~f:Dune_cache.Config.Reproducibility_check.check
+  ; cache_storage_mode
   ; swallow_stdout_on_success = Option.some_if swallow_stdout_on_success true
   }
 
@@ -813,8 +806,8 @@ let term =
              digest cache entries in order for things to be reliable. This \
              option makes Dune wait for the file system clock to advance so \
              that it doesn't need to drop anything. You should probably not \
-             care about this option, it is mostly useful for Dune velopers to \
-             make Dune tests of the digest cache more reproducible.")
+             care about this option; it is mostly useful for Dune developers \
+             to make Dune tests of the digest cache more reproducible.")
   in
   let build_dir = Option.value ~default:default_build_dir build_dir in
   let root = Workspace_root.create ~specified_by_user:root in

@@ -83,13 +83,13 @@ module Sandboxing_preference = struct
            | Ok s -> s))
 end
 
-module Caching = struct
-  module Mode = struct
+module Cache = struct
+  module Enabled = struct
     type t =
-      | Disabled
       | Enabled
+      | Disabled
 
-    let all = [ ("disabled", Disabled); ("enabled", Enabled) ]
+    let all = [ ("enabled", Enabled); ("disabled", Disabled) ]
 
     let to_string = function
       | Enabled -> "enabled"
@@ -102,21 +102,17 @@ module Caching = struct
     let decode = enum all
   end
 
-  module Transport = struct
+  module Transport_deprecated = struct
     type t =
       | Daemon
       | Direct
-
-    let to_dyn = function
-      | Daemon -> Dyn.Variant ("Daemon", [])
-      | Direct -> Variant ("Direct", [])
 
     let all = [ ("daemon", Daemon); ("direct", Direct) ]
 
     let decode = enum all
   end
 
-  module Duplication = struct
+  module Storage_mode = struct
     type t = Dune_cache_storage.Mode.t option
 
     let all =
@@ -128,7 +124,11 @@ module Caching = struct
 
     let decode = enum all
 
-    let to_dyn = Dune_cache_storage.Mode.to_dyn
+    let to_string = function
+      | None -> "auto"
+      | Some mode -> Dune_cache_storage.Mode.to_string mode
+
+    let to_dyn = Dyn.Encoder.option Dune_cache_storage.Mode.to_dyn
   end
 end
 
@@ -140,12 +140,10 @@ module type S = sig
     ; concurrency : Concurrency.t field
     ; terminal_persistence : Terminal_persistence.t field
     ; sandboxing_preference : Sandboxing_preference.t field
-    ; cache_mode : Caching.Mode.t field
-    ; cache_transport : Caching.Transport.t field
-    ; cache_check_probability : float field
-    ; cache_duplication : Caching.Duplication.t field
-    ; cache_trim_period : int field
-    ; cache_trim_size : int64 field
+    ; cache_enabled : Cache.Enabled.t field
+    ; cache_reproducibility_check :
+        Dune_cache.Config.Reproducibility_check.t field
+    ; cache_storage_mode : Cache.Storage_mode.t field
     ; swallow_stdout_on_success : bool field
     }
 end
@@ -165,13 +163,10 @@ struct
     ; terminal_persistence = field a.terminal_persistence b.terminal_persistence
     ; sandboxing_preference =
         field a.sandboxing_preference b.sandboxing_preference
-    ; cache_mode = field a.cache_mode b.cache_mode
-    ; cache_transport = field a.cache_transport b.cache_transport
-    ; cache_check_probability =
-        field a.cache_check_probability b.cache_check_probability
-    ; cache_duplication = field a.cache_duplication b.cache_duplication
-    ; cache_trim_period = field a.cache_trim_period b.cache_trim_period
-    ; cache_trim_size = field a.cache_trim_size b.cache_trim_size
+    ; cache_enabled = field a.cache_enabled b.cache_enabled
+    ; cache_reproducibility_check =
+        field a.cache_reproducibility_check b.cache_reproducibility_check
+    ; cache_storage_mode = field a.cache_storage_mode b.cache_storage_mode
     ; swallow_stdout_on_success =
         field a.swallow_stdout_on_success b.swallow_stdout_on_success
     }
@@ -189,12 +184,9 @@ struct
       ; concurrency
       ; terminal_persistence
       ; sandboxing_preference
-      ; cache_mode
-      ; cache_transport
-      ; cache_check_probability
-      ; cache_duplication
-      ; cache_trim_period
-      ; cache_trim_size
+      ; cache_enabled
+      ; cache_reproducibility_check
+      ; cache_storage_mode
       ; swallow_stdout_on_success
       } =
     Dyn.Encoder.record
@@ -204,16 +196,12 @@ struct
         , field Terminal_persistence.to_dyn terminal_persistence )
       ; ( "sandboxing_preference"
         , field (Dyn.Encoder.list Sandbox_mode.to_dyn) sandboxing_preference )
-      ; ("cache_mode", field Caching.Mode.to_dyn cache_mode)
-      ; ("cache_transport", field Caching.Transport.to_dyn cache_transport)
-      ; ( "cache_check_probability"
-        , field Dyn.Encoder.float cache_check_probability )
-      ; ( "cache_duplication"
-        , field
-            (Dyn.Encoder.option Caching.Duplication.to_dyn)
-            cache_duplication )
-      ; ("cache_trim_period", field Dyn.Encoder.int cache_trim_period)
-      ; ("cache_trim_size", field Dyn.Encoder.int64 cache_trim_size)
+      ; ("cache_enabled", field Cache.Enabled.to_dyn cache_enabled)
+      ; ( "cache_reproducibility_check"
+        , field Dune_cache.Config.Reproducibility_check.to_dyn
+            cache_reproducibility_check )
+      ; ( "cache_storage_mode"
+        , field Cache.Storage_mode.to_dyn cache_storage_mode )
       ; ( "swallow_stdout_on_success"
         , field Dyn.Encoder.bool swallow_stdout_on_success )
       ]
@@ -233,12 +221,9 @@ module Partial = struct
     ; concurrency = None
     ; terminal_persistence = None
     ; sandboxing_preference = None
-    ; cache_mode = None
-    ; cache_transport = None
-    ; cache_check_probability = None
-    ; cache_trim_period = None
-    ; cache_trim_size = None
-    ; cache_duplication = None
+    ; cache_enabled = None
+    ; cache_reproducibility_check = None
+    ; cache_storage_mode = None
     ; swallow_stdout_on_success = None
     }
 
@@ -289,12 +274,9 @@ let default =
         Auto)
   ; terminal_persistence = Terminal_persistence.Preserve
   ; sandboxing_preference = []
-  ; cache_mode = Disabled
-  ; cache_transport = Daemon
-  ; cache_check_probability = 0.
-  ; cache_trim_period = 10 * 60
-  ; cache_trim_size = 10_000_000_000L
-  ; cache_duplication = None
+  ; cache_enabled = Disabled
+  ; cache_reproducibility_check = Skip
+  ; cache_storage_mode = None
   ; swallow_stdout_on_success = false
   }
 
@@ -310,31 +292,54 @@ let decode_generic ~min_dune_version =
     field_o "terminal-persistence" (1, 0) Terminal_persistence.decode
   and+ sandboxing_preference =
     field_o "sandboxing_preference" (1, 0) Sandboxing_preference.decode
-  and+ cache_mode = field_o "cache" (2, 0) Caching.Mode.decode
-  and+ cache_transport =
-    field_o "cache-transport" (2, 0) Caching.Transport.decode
+  and+ cache_enabled = field_o "cache" (2, 0) Cache.Enabled.decode
+  and+ _cache_transport_unused_since_3_0 =
+    field_o "cache-transport" (2, 0)
+      (Dune_lang.Syntax.deleted_in Stanza.syntax (3, 0)
+         ~extra_info:"Dune cache now uses only the direct transport mode."
+      >>> Cache.Transport_deprecated.decode)
   and+ cache_check_probability =
     field_o "cache-check-probability" (2, 7) Dune_lang.Decoder.float
   and+ cache_duplication =
-    field_o "cache-duplication" (2, 1) Caching.Duplication.decode
-  and+ cache_trim_period =
-    field_o "cache-trim-period" (2, 0) Dune_lang.Decoder.duration
-  and+ cache_trim_size =
-    field_o "cache-trim-size" (2, 0) Dune_lang.Decoder.bytes_unit
+    field_o "cache-duplication" (2, 1)
+      (Dune_lang.Syntax.renamed_in Stanza.syntax (3, 0)
+         ~to_:"cache-storage-mode"
+      >>> Cache.Storage_mode.decode)
+  and+ cache_storage_mode =
+    field_o "cache-storage-mode" (3, 0) Cache.Storage_mode.decode
+  and+ _cache_trim_period_unused_since_3_0 =
+    field_o "cache-trim-period" (2, 0)
+      (Dune_lang.Syntax.deleted_in Stanza.syntax (3, 0)
+         ~extra_info:"To trim the cache, use the 'dune cache trim' command."
+      >>> Dune_lang.Decoder.duration)
+  and+ _cache_trim_size_unused_since_3_0 =
+    field_o "cache-trim-size" (2, 0)
+      (Dune_lang.Syntax.deleted_in Stanza.syntax (3, 0)
+         ~extra_info:"To trim the cache, use the 'dune cache trim' command."
+      >>> Dune_lang.Decoder.bytes_unit)
   and+ swallow_stdout_on_success =
     field_o_b "swallow-stdout-on-success"
       ~check:(Dune_lang.Syntax.since Stanza.syntax (3, 0))
+  in
+  let cache_storage_mode =
+    Option.merge cache_duplication cache_storage_mode ~f:(fun _ _ ->
+        Code_error.raise "Both cache_duplication and cache_storage_mode are set"
+          [])
+  in
+  (* CR-someday amokhov: It is currently not possible to explicitly [Skip] the
+     reproducibility check in the configuration file. To do that, one can omit
+     the field or specify the probability 0, neither of which seems ideal. *)
+  let cache_reproducibility_check =
+    Option.map cache_check_probability
+      ~f:Dune_cache.Config.Reproducibility_check.check
   in
   { Partial.display
   ; concurrency
   ; terminal_persistence
   ; sandboxing_preference
-  ; cache_mode
-  ; cache_transport
-  ; cache_check_probability
-  ; cache_duplication
-  ; cache_trim_period
-  ; cache_trim_size
+  ; cache_enabled
+  ; cache_reproducibility_check
+  ; cache_storage_mode
   ; swallow_stdout_on_success
   }
 

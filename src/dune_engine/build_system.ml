@@ -1379,6 +1379,9 @@ end = struct
         in
         Stats.emit stats event)
 
+  (* CR-someday amokhov: If the cloud cache is enabled, then before attempting
+     to restore artifacts from the shared cache, we should send a download
+     request for [rule_digest] to the cloud. *)
   let try_to_restore_from_shared_cache ~mode ~rule_digest ~target_dir =
     let hex = Digest.to_string rule_digest in
     match Dune_cache.Local.restore_artifacts ~mode ~rule_digest ~target_dir with
@@ -1670,8 +1673,11 @@ end = struct
             | false, _
             | _, Disabled ->
               None
-            | true, Enabled { storage_mode = mode; check_probability } -> (
-              match Random.float 1. < check_probability with
+            | true, Enabled { storage_mode = mode; reproducibility_check } -> (
+              match
+                Dune_cache.Config.Reproducibility_check.sample
+                  reproducibility_check
+              with
               | true ->
                 (* CR-someday amokhov: Here we re-execute the rule, as in Jenga.
                    To make [check_probability] more meaningful, we could first
@@ -1679,10 +1685,6 @@ end = struct
                    entry for [rule_digest]. *)
                 None
               | false ->
-                (* CR-someday amokhov: If the cloud cache is enabled, then
-                   before attempting to restore artifacts from the shared cache,
-                   we should send a download request for [rule_digest] to the
-                   cloud. *)
                 try_to_restore_from_shared_cache ~mode ~rule_digest
                   ~target_dir:rule.dir)
           in
@@ -1699,7 +1701,7 @@ end = struct
                  fails, post-process targets by removing write permissions and
                  computing their digets. *)
               match t.cache_config with
-              | Enabled { storage_mode = mode; check_probability = _ }
+              | Enabled { storage_mode = mode; reproducibility_check = _ }
                 when can_go_in_shared_cache -> (
                 let+ targets_and_digests =
                   try_to_store_to_shared_cache ~mode ~rule_digest ~targets

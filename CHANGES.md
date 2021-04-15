@@ -103,6 +103,12 @@ Unreleased
   the root of the build dir (or sandbox) to `/workspace_root` (#4466,
   @jeremiedimino)
 
+- Simplify the implementation of build cache. We stop using the cache daemon to
+  access the cache and instead write to and read from it directly. The new cache
+  implementation is based on Jenga's cache library, which was thoroughly tested
+  on large-scale builds. Using Jenga's cache library will also make it easier
+  for us to port Jenga's cloud cache to Dune. (#4443, #4465, Andrey Mokhov)
+
 2.9.0 (unreleased)
 ------------------
 

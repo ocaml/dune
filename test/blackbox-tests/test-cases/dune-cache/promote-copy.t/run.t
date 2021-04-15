@@ -45,8 +45,8 @@ Clean + rebuild: Dune should restore artifacts from the cache by copying
 
 The rule wasn't run:
 
-  $ test -e _build/default/rule-was-run
-  [1]
+  $ dune_cmd exists _build/default/rule-was-run
+  false
 
 The files have been restored correctly:
 

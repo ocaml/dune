@@ -16,11 +16,11 @@ module Sandboxing_preference : sig
   type t = Dune_engine.Sandbox_mode.t list
 end
 
-module Caching : sig
-  module Mode : sig
+module Cache : sig
+  module Enabled : sig
     type t =
-      | Disabled
       | Enabled
+      | Disabled
 
     val all : (string * t) list
 
@@ -29,22 +29,14 @@ module Caching : sig
     val to_string : t -> string
   end
 
-  module Transport : sig
-    type t =
-      | Daemon
-      | Direct
-
-    val all : (string * t) list
-
-    val decode : t Dune_lang.Decoder.t
-  end
-
-  module Duplication : sig
+  module Storage_mode : sig
     type t = Dune_cache_storage.Mode.t option
 
     val all : (string * t) list
 
     val decode : t Dune_lang.Decoder.t
+
+    val to_string : t -> string
   end
 end
 
@@ -64,12 +56,10 @@ module type S = sig
     ; concurrency : Concurrency.t field
     ; terminal_persistence : Terminal_persistence.t field
     ; sandboxing_preference : Sandboxing_preference.t field
-    ; cache_mode : Caching.Mode.t field
-    ; cache_transport : Caching.Transport.t field
-    ; cache_check_probability : float field
-    ; cache_duplication : Caching.Duplication.t field
-    ; cache_trim_period : int field
-    ; cache_trim_size : int64 field
+    ; cache_enabled : Cache.Enabled.t field
+    ; cache_reproducibility_check :
+        Dune_cache.Config.Reproducibility_check.t field
+    ; cache_storage_mode : Cache.Storage_mode.t field
     ; swallow_stdout_on_success : bool field
     }
 end

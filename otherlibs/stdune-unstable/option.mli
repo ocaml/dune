@@ -51,3 +51,5 @@ val try_with : (unit -> 'a) -> 'a option
 module List : sig
   val all : 'a option list -> 'a list option
 end
+
+val merge : 'a t -> 'a t -> f:('a -> 'a -> 'a) -> 'a t

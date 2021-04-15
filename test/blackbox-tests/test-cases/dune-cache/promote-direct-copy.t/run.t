@@ -36,8 +36,8 @@ It's a duck. It quacks. (Yes, the author of this comment didn't get it.)
   1
   $ dune_cmd stat hardlinks _build/default/target
   1
-  $ test -e _build/default/beacon
-  [1]
+  $ dune_cmd exists _build/default/beacon
+  false
   $ cat _build/default/source
   \_o< COIN
   $ cat _build/default/target

@@ -64,13 +64,9 @@ end = struct
               | Installed ->
                 None
             in
-            match (acc, scope_for_key) with
-            | Some a, Some b ->
-              assert (Dune_project.equal a b);
-              acc
-            | Some _, None -> acc
-            | None, Some _ -> scope_for_key
-            | None, None -> None)
+            Option.merge acc scope_for_key ~f:(fun a b ->
+                assert (Dune_project.equal a b);
+                a))
       in
       { pps; project_root = Option.map project ~f:Dune_project.root }
   end

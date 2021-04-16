@@ -40,13 +40,6 @@ end = struct
     | None -> Memo.Build.return (empty ())
     | Some res -> Memo.Lazy.force res
 
-  let union_option ~f a b =
-    match (a, b) with
-    | None, x
-    | x, None ->
-      x
-    | Some x, Some y -> Some (f x y)
-
   let rec union ~union_rules x y =
     { by_child =
         String.Map.union x.by_child y.by_child ~f:(fun _key data1 data2 ->
@@ -59,7 +52,7 @@ end = struct
         Memo.lazy_ (fun () ->
             let+ x = Memo.Lazy.force x.rules_here
             and+ y = Memo.Lazy.force y.rules_here in
-            union_option x y ~f:union_rules)
+            Option.merge x y ~f:union_rules)
     }
 
   let rec restrict (dirs : Path.Local.w Dir_set.t) (t : _ Memo.Lazy.t) :

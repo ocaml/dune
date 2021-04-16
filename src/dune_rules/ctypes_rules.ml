@@ -225,7 +225,7 @@ let gen_headers headers buf =
   | Ctypes.Headers.Include lst ->
     List.iter lst ~f:(fun h -> pr buf "  print_endline \"#include <%s>\";" h)
   | Preamble s ->
-    pr buf "  print_endline \"%S\";" s
+    pr buf "  print_endline %S;" s
   end
 
 let type_gen_gen ~headers ~type_description_module =

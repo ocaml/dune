@@ -107,7 +107,27 @@ Check that probability values less than zero and greater than one are rejected
   Error: The reproducibility check probability must be in the range [0, 1].
   [1]
 
-Test that the command line flag works too
+Test that the environment variable and the command line flag work too
+
+  $ rm -rf _build
+  $ DUNE_CACHE_CHECK_PROBABILITY=-1 dune build --cache=enabled reproducible non-reproducible
+  Error: The reproducibility check probability must be in the range [0, 1].
+  [1]
+
+  $ rm -rf _build
+  $ DUNE_CACHE_CHECK_PROBABILITY=0.0 dune build --cache=enabled reproducible non-reproducible
+
+  $ rm -rf _build
+  $ DUNE_CACHE_CHECK_PROBABILITY=1.0 dune build --cache=enabled reproducible non-reproducible
+  Warning: cache store error [d7a59c882db29d4533f0ebd369764a7f]: ((in_cache
+  ((non-reproducible 1c8fc4744d4cef1bd2b8f5e915b36be9))) (computed
+  ((non-reproducible 6cfaa7a90747882bcf4ffe7252c1cf89)))) after executing
+  (echo 'build non-reproducible';cp dep non-reproducible)
+  build reproducible
+  build non-reproducible
+
+  $ rm -rf _build
+  $ DUNE_CACHE_CHECK_PROBABILITY=1.0 dune build --cache-check-probability=0.0 --cache=enabled reproducible non-reproducible
 
   $ rm -rf _build
   $ dune build --cache=enabled --cache-check-probability=1.0 reproducible non-reproducible

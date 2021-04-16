@@ -1,8 +1,5 @@
 open Stdune
 
-(* CR-someday amokhov: We should probably switch from float [check_probability]
-   to integer [check_frequency], as in Jenga, to avoid generating random floats. *)
-
 module Reproducibility_check = struct
   (* CR-someday amokhov: Add [Check_and_repair] to rewrite cache entries if they
      disagree with the check. *)

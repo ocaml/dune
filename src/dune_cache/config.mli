@@ -6,6 +6,11 @@ open Stdune
     stored in the cache. If the results differ, the rule is not reproducible and
     Dune will print out a corresponding warning. *)
 module Reproducibility_check : sig
+  (** We treat the probabilities 0 and 1 specially because in these two extremes
+      the behaviour of Dune can be completely deterministic. In particular, the
+      [sample] function doesn't require any randomness in the [Skip] and [Check]
+      cases. This speeds up sampling and also makes it clear that in these cases
+      Dune's behaviour is indeed deterministic. *)
   type t =
     | Skip
     | Check_with_probability of float  (** [0 < p < 1] *)
@@ -20,9 +25,17 @@ module Reproducibility_check : sig
       - If [t = Check], return [true]. *)
   val sample : t -> bool
 
-  (** A helper function that returns the [Check_with_probability] variant only
-      if the given probability is greater than zero and less than one. It also
-      raises an error for values less than zero or greater than one. *)
+  (** A helper function that turns a [p : float] into [t].
+
+      - If [p = 0], return [Skip].
+
+      - If [0 < p < 1], return [Check_with_probability p].
+
+      - If [p = 1], return [Check].
+
+      - If [p < 0] or [p > 1], raise a user error with a specified location. We
+        consider it a user error because [p] can come from the configuration
+        file, environment variable or command line. *)
   val check_with_probability : ?loc:Loc.t -> float -> t
 
   val to_dyn : t -> Dyn.t

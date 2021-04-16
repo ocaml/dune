@@ -8,14 +8,22 @@ open Stdune
 module Reproducibility_check : sig
   type t =
     | Skip
-    | Check of { check_probability : float }
+    | Check_with_probability of float  (** [0 < p < 1] *)
+    | Check
 
-  (** If [t = Skip], this function always returns [false]. Otherwise, it returns
-      [true] with the [check_probability]. *)
+  (** Should we check the current build rule for reproducibility?
+
+      - If [t = Skip], return [false].
+
+      - If [t = Check_with_probability p], return [true] with probability [p].
+
+      - If [t = Check], return [true]. *)
   val sample : t -> bool
 
-  (** A helper function to construct the [Check] variant. *)
-  val check : float -> t
+  (** A helper function that returns the [Check_with_probability] variant only
+      if the given probability is greater than zero and less than one. It also
+      raises an error for values less than zero or greater than one. *)
+  val check_with_probability : ?loc:Loc.t -> float -> t
 
   val to_dyn : t -> Dyn.t
 end

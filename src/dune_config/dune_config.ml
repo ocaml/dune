@@ -299,7 +299,10 @@ let decode_generic ~min_dune_version =
          ~extra_info:"Dune cache now uses only the direct transport mode."
       >>> Cache.Transport_deprecated.decode)
   and+ cache_check_probability =
-    field_o "cache-check-probability" (2, 7) Dune_lang.Decoder.float
+    field_o "cache-check-probability" (2, 7)
+      (let+ loc = loc
+       and+ p = Dune_lang.Decoder.float in
+       (loc, p))
   and+ cache_duplication =
     field_o "cache-duplication" (2, 1)
       (Dune_lang.Syntax.renamed_in Stanza.syntax (3, 0)
@@ -326,12 +329,9 @@ let decode_generic ~min_dune_version =
         Code_error.raise "Both cache_duplication and cache_storage_mode are set"
           [])
   in
-  (* CR-someday amokhov: It is currently not possible to explicitly [Skip] the
-     reproducibility check in the configuration file. To do that, one can omit
-     the field or specify the probability 0, neither of which seems ideal. *)
   let cache_reproducibility_check =
-    Option.map cache_check_probability
-      ~f:Dune_cache.Config.Reproducibility_check.check
+    Option.map cache_check_probability ~f:(fun (loc, p) ->
+        Dune_cache.Config.Reproducibility_check.check_with_probability ~loc p)
   in
   { Partial.display
   ; concurrency

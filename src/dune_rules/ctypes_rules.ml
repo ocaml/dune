@@ -419,7 +419,9 @@ let write_osl_to_sexp_file ~sctx ~dir ~filename osl =
       let encoded =
         match Ordered_set_lang.Unexpanded.encode osl with
         | [s] -> s
-        | _lst -> failwith "unexpected multi-element list"
+        | _lst ->
+          User_error.raise
+            [ Pp.textf "expected %s to contain a list of atoms" filename]
       in
       Dune_lang.to_string encoded
     in

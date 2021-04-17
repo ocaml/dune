@@ -1,4 +1,8 @@
-Check that while we refuse to cache symlinks, subsequent promotions still work.
+Check that: (i) we refuse to cache symbolic links, and (ii) rules that use the
+produced symbolic links work correctly and are appropriately cached.
+
+  $ export DUNE_CACHE=enabled
+  $ export DUNE_CACHE_ROOT=$PWD/.cache
 
   $ cat > dune-project <<EOF
   > (lang dune 2.1)
@@ -16,7 +20,19 @@ Check that while we refuse to cache symlinks, subsequent promotions still work.
   $ cat > source <<EOF
   > \_o< COIN
   > EOF
-  $ env DUNE_CACHE=enabled DUNE_CACHE_EXIT_NO_CLIENT=1 XDG_RUNTIME_DIR=$PWD/.xdg-runtime XDG_CACHE_HOME=$PWD/.xdg-cache dune build target
+  $ dune build target
+
+Dune cache contains entries for [source] and [target] but not for [link]
+
+  $ (cd "$DUNE_CACHE_ROOT/meta/v5"; grep -rs . -e 'source' | dune_cmd count-lines)
+  1
+  $ (cd "$DUNE_CACHE_ROOT/meta/v5"; grep -rs . -e 'target' | dune_cmd count-lines)
+  1
+  $ (cd "$DUNE_CACHE_ROOT/meta/v5"; grep -rs . -e 'link' | dune_cmd count-lines)
+  0
+
+The files in the build directory are shared with the cache entries
+
   $ dune_cmd stat hardlinks _build/default/source
   2
   $ dune_cmd stat hardlinks _build/default/target

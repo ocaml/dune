@@ -1,7 +1,15 @@
+Test basic cache store/restore functionality in the [copy] mode.
+
+Dune supports setting the cache directory in two ways, via the [XDG_CACHE_HOME]
+variable, and via the [DUNE_CACHE_ROOT] variable. Here we test the former.
+
+  $ export XDG_RUNTIME_DIR=$PWD/.xdg-runtime
+  $ export XDG_CACHE_HOME=$PWD/.xdg-cache
+
   $ cat > config <<EOF
-  > (lang dune 2.1)
+  > (lang dune 3.0)
   > (cache enabled)
-  > (cache-transport direct)
+  > (cache-storage-mode copy)
   > EOF
   $ cat > dune-project <<EOF
   > (lang dune 2.1)
@@ -10,24 +18,34 @@
   > (rule
   >   (deps source)
   >   (targets target)
-  >   (action (bash "touch beacon ; cat source source > target")))
+  >   (action (bash "touch beacon; cat source source > target")))
   > EOF
+
+It's a duck. It quacks. (Yes, the author of this comment didn't get it.)
+
   $ cat > source <<EOF
   > \_o< COIN
   > EOF
-  $ env DUNE_CACHE_EXIT_NO_CLIENT=1 XDG_RUNTIME_DIR=$PWD/.xdg-runtime XDG_CACHE_HOME=$PWD/.xdg-cache dune build --config-file=config target
+
+Test that after the build, the files in the build directory have the hard link
+count of 1, because they are not shared with the corresponding cache entries.
+
+  $ dune build --config-file=config target
   $ dune_cmd stat hardlinks _build/default/source
-  2
+  1
   $ dune_cmd stat hardlinks _build/default/target
-  2
+  1
   $ ls _build/default/beacon
   _build/default/beacon
+
+Test that rebuilding works.
+
   $ rm -rf _build/default
-  $ env DUNE_CACHE_EXIT_NO_CLIENT=1 XDG_RUNTIME_DIR=$PWD/.xdg-runtime XDG_CACHE_HOME=$PWD/.xdg-cache dune build --config-file=config target
+  $ dune build --config-file=config target
   $ dune_cmd stat hardlinks _build/default/source
-  2
+  1
   $ dune_cmd stat hardlinks _build/default/target
-  2
+  1
   $ dune_cmd exists _build/default/beacon
   false
   $ cat _build/default/source
@@ -36,6 +54,7 @@
   \_o< COIN
   \_o< COIN
 
+Test that the cache stores all historical build results.
 
   $ cat > dune-project <<EOF
   > (lang dune 2.1)
@@ -59,7 +78,7 @@
   >   (action (bash "echo running; cat t1 t1 > t2")))
   > EOF
   $ cp dune-v1 dune
-  $ env DUNE_CACHE_EXIT_NO_CLIENT=1 XDG_RUNTIME_DIR=$PWD/.xdg-runtime XDG_CACHE_HOME=$PWD/.xdg-cache dune build --config-file=config t2
+  $ dune build --config-file=config t2
           bash t1
   running
           bash t2
@@ -68,7 +87,7 @@
   v1
   v1
   $ cp dune-v2 dune
-  $ env DUNE_CACHE_EXIT_NO_CLIENT=1 XDG_RUNTIME_DIR=$PWD/.xdg-runtime XDG_CACHE_HOME=$PWD/.xdg-cache dune build --config-file=config t2
+  $ dune build --config-file=config t2
           bash t1
   running
           bash t2
@@ -77,7 +96,7 @@
   v2
   v2
   $ cp dune-v1 dune
-  $ env DUNE_CACHE_EXIT_NO_CLIENT=1 XDG_RUNTIME_DIR=$PWD/.xdg-runtime XDG_CACHE_HOME=$PWD/.xdg-cache dune build --config-file=config t2
+  $ dune build --config-file=config t2
   $ cat _build/default/t1
   v1
   $ cat _build/default/t2

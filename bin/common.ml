@@ -628,7 +628,7 @@ let shared_with_config_file =
   ; cache_enabled
   ; cache_reproducibility_check =
       Option.map cache_check_probability
-        ~f:Dune_cache.Config.Reproducibility_check.check
+        ~f:Dune_cache.Config.Reproducibility_check.check_with_probability
   ; cache_storage_mode
   ; swallow_stdout_on_success = Option.some_if swallow_stdout_on_success true
   }

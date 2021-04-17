@@ -25,7 +25,7 @@ let%expect_test "cache-check-probability 0.1" =
     ; terminal_persistence = Preserve
     ; sandboxing_preference = []
     ; cache_enabled = Disabled
-    ; cache_reproducibility_check = Check 0.1
+    ; cache_reproducibility_check = Check_with_probability 0.1
     ; cache_storage_mode = None
     ; swallow_stdout_on_success = false
     }

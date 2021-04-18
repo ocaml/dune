@@ -83,7 +83,7 @@ site using the :ref:`generate sites module stanza<generate_sites_module>`
     (libraries dune-site))
 
    (generate_sites_module
-    (name mysites)
+    (module mysites)
     (sites mygui))
 
 The generated module `mysites` depends on the library `dune-site` provided by

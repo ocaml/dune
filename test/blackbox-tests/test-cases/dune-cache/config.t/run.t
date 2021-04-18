@@ -1,3 +1,5 @@
+Test cache configuration.
+
 Check that old cache configuration format works fine with an old language
 
   $ cat > config <<EOF

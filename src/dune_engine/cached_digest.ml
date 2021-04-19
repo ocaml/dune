@@ -165,54 +165,32 @@ end
 
 let catch_fs_errors f =
   match f () with
-  | exception (Unix.Unix_error _ | Sys_error _ as exn) -> Refresh_result.Error exn
+  | exception ((Unix.Unix_error _ | Sys_error _) as exn) ->
+    Refresh_result.Error exn
   | res -> res
 
-let refresh fn : Refresh_result.t =
+let refresh fn ~remove_write_permissions : Refresh_result.t =
   let fn = Path.build fn in
   catch_fs_errors (fun () ->
-    match Path.stat_exn fn with
-    | exception (Unix.Unix_error (ENOENT, _, _)) ->
-      Refresh_result.No_such_file
-    | stat -> Refresh_result.Ok (refresh_exn stat fn))
-
-let refresh_and_chmod fn : Refresh_result.t =
-  let fn = Path.build fn in
-  catch_fs_errors (fun () ->
-    match Path.lstat_exn fn with
-    | exception (Unix.Unix_error (ENOENT, _, _)) ->
-      No_such_file
-    | stats ->
-      let stats =
-        match stats.st_kind with
-        | S_LNK ->
-          (* If the path is a symbolic link, we don't try to remove write
-             permissions. For two reasons:
-
-             - if the destination was not a build path (i.e. in the build
-               directory), then it would definitely be wrong to do so
-
-             - if it is in the build directory, then we expect that the rule
-               producing this file will have taken core of chmodding it *)
-          Path.stat_exn fn
-        | Unix.S_REG ->
-          (* We remove write permissions to uniformize behavior regardless of
-             whether the cache is activated. No need to be zealous in case the file
-             is not cached anyway. See issue #3311. *)
-          let perm =
-            Path.Permissions.remove ~mode:Path.Permissions.write stats.st_perm
-          in
-          Path.chmod ~mode:perm fn;
-          { stats with st_perm = perm }
-        | _ -> stats
-      in
-      Refresh_result.Ok (refresh_exn stats fn))
-;;
-
-let refresh fn ~remove_write_permissions =
-  match remove_write_permissions with
-  | false -> refresh fn
-  | true -> refresh_and_chmod fn
+      match Path.lstat_exn fn with
+      | exception Unix.Unix_error (ENOENT, _, _) -> Refresh_result.No_such_file
+      | stats ->
+        let stats =
+          match stats.st_kind with
+          | Unix.S_LNK -> Path.stat_exn fn
+          | Unix.S_REG -> (
+            match remove_write_permissions with
+            | false -> stats
+            | true ->
+              let perm =
+                Path.Permissions.remove ~mode:Path.Permissions.write
+                  stats.st_perm
+              in
+              Path.chmod ~mode:perm fn;
+              { stats with st_perm = perm })
+          | _ -> stats
+        in
+        Refresh_result.Ok (refresh_exn stats fn))
 
 let peek_file fn =
   let cache = Lazy.force cache in

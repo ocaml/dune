@@ -53,7 +53,11 @@ let file_with_stats path (stats : Unix.stats) =
   match stats.st_kind with
   | S_DIR ->
     generic (stats.st_size, stats.st_perm, stats.st_mtime, stats.st_ctime)
-  | S_BLK | S_CHR | S_LNK | S_FIFO | S_SOCK ->
+  | S_BLK
+  | S_CHR
+  | S_LNK
+  | S_FIFO
+  | S_SOCK ->
     failwith "Unexpected file kind"
   | S_REG ->
     let executable = stats.st_perm land 0o100 <> 0 in

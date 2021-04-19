@@ -21,7 +21,8 @@ end
 
 (** Same as [build_file], but forces the digest of the file to be re-computed.
 
-    If [remove_write_permissions] is true, also remove write permissions on the file. *)
+    If [remove_write_permissions] is true, also remove write permissions on the
+    file. *)
 val refresh : Path.Build.t -> remove_write_permissions:bool -> Refresh_result.t
 
 (** {1 Managing the cache} *)

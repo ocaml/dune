@@ -177,7 +177,10 @@ let refresh fn ~remove_write_permissions : Refresh_result.t =
       | stats ->
         let stats =
           match stats.st_kind with
-          | Unix.S_LNK -> Path.stat_exn fn
+          | Unix.S_LNK -> (
+            try Path.stat_exn fn with
+            | Unix.Unix_error (ENOENT, _, _) ->
+              raise (Sys_error "Broken symlink"))
           | Unix.S_REG -> (
             match remove_write_permissions with
             | false -> stats

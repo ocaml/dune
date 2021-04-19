@@ -15,6 +15,6 @@
   2 |   (targets a b)
   3 |   (action (bash "echo content > a; chmod -r a; ln -s foo b")))
   Error: Error trying to read targets after a rule was run:
-  - b: stat: No such file or directory
+  - b: Broken symlink
   - a: _build/default/a: Permission denied
   [1]

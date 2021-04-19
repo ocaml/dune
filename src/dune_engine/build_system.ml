@@ -435,10 +435,11 @@ let t () = Fdecl.get t
 
 let errors () = (t ()).errors
 
-let pp_paths set =
-  Pp.enumerate (Path.Set.to_list set) ~f:(fun p ->
-      Path.drop_optional_build_context p
-      |> Path.to_string_maybe_quoted |> Pp.verbatim)
+let pp_path p =
+  Path.drop_optional_build_context p
+  |> Path.to_string_maybe_quoted |> Pp.verbatim
+
+let pp_paths set = Pp.enumerate (Path.Set.to_list set) ~f:pp_path
 
 let get_dir_triage t ~dir =
   match Dpath.analyse_dir dir with
@@ -586,10 +587,25 @@ let compute_target_digests_or_raise_error exec_params ~loc targets =
       | [] -> []
       | _ ->
         [ Pp.textf "Error trying to read targets after a rule was run:"
-        ; Dyn.pp
-            (Dyn.List
-               (List.map errors ~f:(fun (path, exn) ->
-                    Dyn.Tuple [ Path.Build.to_dyn path; Exn.to_dyn exn ])))
+        ; Pp.enumerate errors ~f:(fun (path, exn) ->
+              let path = Path.build path in
+              Pp.concat ~sep:(Pp.verbatim ": ")
+                (pp_path path
+                 ::
+                 (match exn with
+                 | Unix.Unix_error (error, syscall, p) ->
+                   [ (if String.equal (Path.to_string path) p then
+                       Pp.verbatim syscall
+                     else
+                       Pp.concat
+                         [ Pp.verbatim syscall
+                         ; Pp.verbatim " "
+                         ; Pp.verbatim (String.maybe_quoted p)
+                         ])
+                   ; Pp.text (Unix.error_message error)
+                   ]
+                 | Sys_error msg -> [ Pp.verbatim msg ]
+                 | exn -> [ Pp.verbatim (Printexc.to_string exn) ])))
         ])
 
 let sandbox_dir = Path.Build.relative Path.Build.root ".sandbox"

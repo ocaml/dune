@@ -12,11 +12,17 @@ val peek_file : Path.t -> Digest.t option
 (** Digest the contents of an artefact *)
 val build_file : Path.Build.t -> Digest.t
 
-(** Same as [build_file], but forces the digest of the file to be re-computed *)
-val refresh : Path.Build.t -> Digest.t
+module Refresh_result : sig
+  type t =
+    | Ok of Digest.t
+    | No_such_file
+    | Error of exn
+end
 
-(** Same as {!refresh} but also remove write permissions on the file *)
-val refresh_and_chmod : Path.Build.t -> Digest.t
+(** Same as [build_file], but forces the digest of the file to be re-computed.
+
+    If [remove_write_permissions] is true, also remove write permissions on the file. *)
+val refresh : Path.Build.t -> remove_write_permissions:bool -> Refresh_result.t
 
 (** {1 Managing the cache} *)
 

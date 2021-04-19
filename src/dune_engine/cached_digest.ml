@@ -147,50 +147,72 @@ let set fn digest =
   let stat = Path.stat_exn fn in
   set_with_stat fn digest stat
 
-let refresh_ stats fn =
-  (* CR-soon aalekseyev: handle errors from [Digest.file_with_stats] in case
-     it's the source file and it's deleted *)
+let refresh_exn stats fn =
   let digest = Digest.file_with_stats fn stats in
   set_with_stat fn digest stats;
   digest
 
-let refresh_internal fn =
-  (* CR-soon aalekseyev: handle errors from [Path.stat]. *)
+let refresh_internal_exn fn =
   let stats = Path.stat_exn fn in
-  refresh_ stats fn
+  refresh_exn stats fn
 
-let refresh fn = refresh_internal (Path.build fn)
+module Refresh_result = struct
+  type t =
+    | Ok of Digest.t
+    | No_such_file
+    | Error of exn
+end
 
-let refresh_and_chmod fn =
+let catch_fs_errors f =
+  match f () with
+  | exception (Unix.Unix_error _ | Sys_error _ as exn) -> Refresh_result.Error exn
+  | res -> res
+
+let refresh fn : Refresh_result.t =
   let fn = Path.build fn in
-  (* CR-soon aalekseyev: handle errors from [Path.lstat]. *)
-  let stats = Path.lstat_exn fn in
-  let stats =
-    match stats.st_kind with
-    | S_LNK ->
-      (* If the path is a symbolic link, we don't try to remove write
-         permissions. For two reasons:
+  catch_fs_errors (fun () ->
+    match Path.stat_exn fn with
+    | exception (Unix.Unix_error (ENOENT, _, _)) ->
+      Refresh_result.No_such_file
+    | stat -> Refresh_result.Ok (refresh_exn stat fn))
 
-         - if the destination was not a build path (i.e. in the build
-         directory), then it would definitely be wrong to do so
+let refresh_and_chmod fn : Refresh_result.t =
+  let fn = Path.build fn in
+  catch_fs_errors (fun () ->
+    match Path.lstat_exn fn with
+    | exception (Unix.Unix_error (ENOENT, _, _)) ->
+      No_such_file
+    | stats ->
+      let stats =
+        match stats.st_kind with
+        | S_LNK ->
+          (* If the path is a symbolic link, we don't try to remove write
+             permissions. For two reasons:
 
-         - if it is in the build directory, then we expect that the rule
-         producing this file will have taken core of chmodding it *)
-      (* CR-soon aalekseyev: handle errors from [Path.stat]. *)
-      Path.stat_exn fn
-    | Unix.S_REG ->
-      (* We remove write permissions to uniformize behavior regardless of
-         whether the cache is activated. No need to be zealous in case the file
-         is not cached anyway. See issue #3311. *)
-      (* CR-soon aalekseyev: handle errors from [chmod] etc. *)
-      let perm =
-        Path.Permissions.remove ~mode:Path.Permissions.write stats.st_perm
+             - if the destination was not a build path (i.e. in the build
+               directory), then it would definitely be wrong to do so
+
+             - if it is in the build directory, then we expect that the rule
+               producing this file will have taken core of chmodding it *)
+          Path.stat_exn fn
+        | Unix.S_REG ->
+          (* We remove write permissions to uniformize behavior regardless of
+             whether the cache is activated. No need to be zealous in case the file
+             is not cached anyway. See issue #3311. *)
+          let perm =
+            Path.Permissions.remove ~mode:Path.Permissions.write stats.st_perm
+          in
+          Path.chmod ~mode:perm fn;
+          { stats with st_perm = perm }
+        | _ -> stats
       in
-      Path.chmod ~mode:perm fn;
-      { stats with st_perm = perm }
-    | _ -> stats
-  in
-  refresh_ stats fn
+      Refresh_result.Ok (refresh_exn stats fn))
+;;
+
+let refresh fn ~remove_write_permissions =
+  match remove_write_permissions with
+  | false -> refresh fn
+  | true -> refresh_and_chmod fn
 
 let peek_file fn =
   let cache = Lazy.force cache in
@@ -201,7 +223,6 @@ let peek_file fn =
       (if x.stats_checked = cache.checked_key then
         x.digest
       else
-        (* CR-soon aalekseyev: handle errors from [Path.stat]. *)
         let stats = Path.stat_exn fn in
         let reduced_stats = Reduced_stats.of_unix_stats stats in
         match Reduced_stats.compare x.stats reduced_stats with
@@ -238,7 +259,7 @@ let peek_file fn =
 
 let peek_or_refresh_file fn =
   match peek_file fn with
-  | None -> refresh_internal fn
+  | None -> refresh_internal_exn fn
   | Some v -> v
 
 let source_or_external_file fn =

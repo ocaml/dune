@@ -1,0 +1,22 @@
+  $ cat > dune-project <<EOF
+  > (lang dune 2.9)
+  > EOF
+
+  $ cat > dune <<EOF
+  > (rule
+  >   (targets a b)
+  >   (action (bash "echo content > a; chmod -r a; ln -s foo b")))
+  > 
+  > EOF
+
+  $ dune build b
+  File "dune", line 1, characters 0-84:
+  1 | (rule
+  2 |   (targets a b)
+  3 |   (action (bash "echo content > a; chmod -r a; ln -s foo b")))
+  Error: Error trying to read targets after a rule was run:
+  [ ("default/b",
+    "Unix.Unix_error(Unix.ENOENT, \"stat\", \"_build/default/b\")")
+  ; ("default/a", "Sys_error(\"_build/default/a: Permission denied\")")
+  ]
+  [1]

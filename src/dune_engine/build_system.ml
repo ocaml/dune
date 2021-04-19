@@ -563,26 +563,31 @@ let compute_target_digests_or_raise_error exec_params ~loc targets =
       Execution_parameters.should_remove_write_permissions_on_generated_files
         exec_params
   in
-  let refresh =
-    if remove_write_permissions then
-      Cached_digest.refresh_and_chmod
-    else
-      Cached_digest.refresh
+  let good, missing, errors =
+    Path.Build.Set.fold targets ~init:([], [], []) ~f:(fun target (good, missing, errors) ->
+      match Cached_digest.refresh ~remove_write_permissions target with
+      | Ok digest -> ((target, digest) :: good, missing, errors)
+      | No_such_file -> (good, (target :: missing), errors)
+      | Error exn -> (good, missing, ((target, exn) :: errors)))
   in
-  let good, bad =
-    Path.Build.Set.fold targets ~init:([], []) ~f:(fun target (good, bad) ->
-        match refresh target with
-        | digest -> ((target, digest) :: good, bad)
-        | exception (Unix.Unix_error _ | Sys_error _) ->
-          (good, Path.build target :: bad))
-  in
-  match bad with
-  | [] -> List.rev good
-  | missing ->
+  match missing, errors with
+  | [], [] -> List.rev good
+  | missing, errors ->
     User_error.raise ~loc
-      [ Pp.textf "Rule failed to generate the following targets:"
-      ; pp_paths (Path.Set.of_list missing)
-      ]
+      ((match missing with
+       | [] -> []
+       | _ ->
+         [ Pp.textf "Rule failed to generate the following targets:"
+         ; pp_paths (Path.Set.of_list (List.map ~f:Path.build missing))
+         ]
+      )
+    @ (match errors with
+      | [] -> []
+      | _ ->
+        [ Pp.textf "Error trying to read targets after a rule was run:"
+        ; Dyn.pp (Dyn.List (
+            List.map errors ~f:(fun (path, exn) -> Dyn.Tuple [Path.Build.to_dyn path; Exn.to_dyn exn])))
+        ]))
 
 let sandbox_dir = Path.Build.relative Path.Build.root ".sandbox"
 

@@ -435,10 +435,11 @@ let t () = Fdecl.get t
 
 let errors () = (t ()).errors
 
-let pp_paths set =
-  Pp.enumerate (Path.Set.to_list set) ~f:(fun p ->
-      Path.drop_optional_build_context p
-      |> Path.to_string_maybe_quoted |> Pp.verbatim)
+let pp_path p =
+  Path.drop_optional_build_context p
+  |> Path.to_string_maybe_quoted |> Pp.verbatim
+
+let pp_paths set = Pp.enumerate (Path.Set.to_list set) ~f:pp_path
 
 let get_dir_triage t ~dir =
   match Dpath.analyse_dir dir with
@@ -563,26 +564,55 @@ let compute_target_digests_or_raise_error exec_params ~loc targets =
       Execution_parameters.should_remove_write_permissions_on_generated_files
         exec_params
   in
-  let refresh =
-    if remove_write_permissions then
-      Cached_digest.refresh_and_chmod
-    else
-      Cached_digest.refresh
+  let good, missing, errors =
+    Path.Build.Set.fold targets ~init:([], [], [])
+      ~f:(fun target (good, missing, errors) ->
+        match Cached_digest.refresh ~remove_write_permissions target with
+        | Ok digest -> ((target, digest) :: good, missing, errors)
+        | No_such_file -> (good, target :: missing, errors)
+        | Error exn -> (good, missing, (target, exn) :: errors))
   in
-  let good, bad =
-    Path.Build.Set.fold targets ~init:([], []) ~f:(fun target (good, bad) ->
-        match refresh target with
-        | digest -> ((target, digest) :: good, bad)
-        | exception (Unix.Unix_error _ | Sys_error _) ->
-          (good, Path.build target :: bad))
-  in
-  match bad with
-  | [] -> List.rev good
-  | missing ->
+  match (missing, errors) with
+  | [], [] -> List.rev good
+  | missing, errors ->
     User_error.raise ~loc
-      [ Pp.textf "Rule failed to generate the following targets:"
-      ; pp_paths (Path.Set.of_list missing)
-      ]
+      ((match missing with
+       | [] -> []
+       | _ ->
+         [ Pp.textf "Rule failed to generate the following targets:"
+         ; pp_paths (Path.Set.of_list (List.map ~f:Path.build missing))
+         ])
+      @
+      match errors with
+      | [] -> []
+      | _ ->
+        [ Pp.textf "Error trying to read targets after a rule was run:"
+        ; Pp.enumerate (List.rev errors) ~f:(fun (path, exn) ->
+              let path = Path.build path in
+              let expected_syscall_path = Path.to_string path in
+              Pp.concat ~sep:(Pp.verbatim ": ")
+                (pp_path path
+                 ::
+                 (match exn with
+                 | Unix.Unix_error (error, syscall, p) ->
+                   [ (if String.equal expected_syscall_path p then
+                       Pp.verbatim syscall
+                     else
+                       Pp.concat
+                         [ Pp.verbatim syscall
+                         ; Pp.verbatim " "
+                         ; Pp.verbatim (String.maybe_quoted p)
+                         ])
+                   ; Pp.text (Unix.error_message error)
+                   ]
+                 | Sys_error msg ->
+                   [ Pp.verbatim
+                       (String.drop_prefix_if_exists
+                          ~prefix:(expected_syscall_path ^ ": ")
+                          msg)
+                   ]
+                 | exn -> [ Pp.verbatim (Printexc.to_string exn) ])))
+        ])
 
 let sandbox_dir = Path.Build.relative Path.Build.root ".sandbox"
 

@@ -587,7 +587,7 @@ let compute_target_digests_or_raise_error exec_params ~loc targets =
       | [] -> []
       | _ ->
         [ Pp.textf "Error trying to read targets after a rule was run:"
-        ; Pp.enumerate errors ~f:(fun (path, exn) ->
+        ; Pp.enumerate (List.rev errors) ~f:(fun (path, exn) ->
               let path = Path.build path in
               let expected_syscall_path = Path.to_string path in
               Pp.concat ~sep:(Pp.verbatim ": ")

@@ -3,6 +3,16 @@
   bar contents
   foo contents
 
+  $ dune build --root target @cat_dir
+  Entering directory 'target'
+       cat_dir alias cat_dir
+  bar:
+  bar contents
+  
+  foo:
+  foo contents
+  
+
   $ dune build --root dep
   Entering directory 'dep'
   File "dune", line 1, characters 0-68:

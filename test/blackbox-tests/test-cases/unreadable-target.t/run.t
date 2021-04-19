@@ -16,5 +16,5 @@
   3 |   (action (bash "echo content > a; chmod -r a; ln -s foo b")))
   Error: Error trying to read targets after a rule was run:
   - b: Broken symlink
-  - a: _build/default/a: Permission denied
+  - a: Permission denied
   [1]

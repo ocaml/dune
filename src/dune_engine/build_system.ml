@@ -589,12 +589,13 @@ let compute_target_digests_or_raise_error exec_params ~loc targets =
         [ Pp.textf "Error trying to read targets after a rule was run:"
         ; Pp.enumerate errors ~f:(fun (path, exn) ->
               let path = Path.build path in
+              let expected_syscall_path = Path.to_string path in
               Pp.concat ~sep:(Pp.verbatim ": ")
                 (pp_path path
                  ::
                  (match exn with
                  | Unix.Unix_error (error, syscall, p) ->
-                   [ (if String.equal (Path.to_string path) p then
+                   [ (if String.equal expected_syscall_path p then
                        Pp.verbatim syscall
                      else
                        Pp.concat
@@ -604,7 +605,12 @@ let compute_target_digests_or_raise_error exec_params ~loc targets =
                          ])
                    ; Pp.text (Unix.error_message error)
                    ]
-                 | Sys_error msg -> [ Pp.verbatim msg ]
+                 | Sys_error msg ->
+                   [ Pp.verbatim
+                       (String.drop_prefix_if_exists
+                          ~prefix:(expected_syscall_path ^ ": ")
+                          msg)
+                   ]
                  | exn -> [ Pp.verbatim (Printexc.to_string exn) ])))
         ])
 

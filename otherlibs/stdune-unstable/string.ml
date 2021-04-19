@@ -69,6 +69,11 @@ let drop_prefix s ~prefix =
   else
     None
 
+let drop_prefix_if_exists s ~prefix =
+  match drop_prefix s ~prefix with
+  | None -> s
+  | Some s -> s
+
 let drop_suffix s ~suffix =
   if is_suffix s ~suffix then
     if length s = length suffix then
@@ -77,6 +82,11 @@ let drop_suffix s ~suffix =
       Some (sub s ~pos:0 ~len:(length s - length suffix))
   else
     None
+
+let drop_suffix_if_exists s ~suffix =
+  match drop_suffix s ~suffix with
+  | None -> s
+  | Some s -> s
 
 let extract_words s ~is_word_char =
   let rec skip_blanks i =

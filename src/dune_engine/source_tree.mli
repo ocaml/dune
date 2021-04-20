@@ -70,23 +70,9 @@ module Dir : sig
   val to_dyn : t -> Dyn.t
 end
 
-module Settings : sig
-  (** Global source tree settings. *)
-  type t
-
-  val builtin_default : t
-
-  (** The default vcs. If there is no vcs at the root of the workspace, then
-      this is the vcs that will be used for the root. *)
-  val set_ancestor_vcs : Vcs.t option -> t -> t
-
-  (** The default execution parameters. *)
-  val set_execution_parameters : Execution_parameters.t -> t -> t
-end
-
-(** Set the global settings for this module. This function must be called
-    exactly once at the beginning of the process. *)
-val init : Settings.t Memo.Build.t -> unit
+(** Initialise the default vcs. If there is no vcs at the root of the workspace,
+    then this is the vcs that will be used for the root. *)
+val init : ancestor_vcs:Vcs.t option Memo.Build.t -> unit
 
 val root : unit -> Dir.t Memo.Build.t
 

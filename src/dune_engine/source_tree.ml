@@ -355,29 +355,9 @@ module Dir0 = struct
         Path.Source.Set.add acc (Path.Source.relative t.path s))
 end
 
-module Settings = struct
-  type t =
-    { ancestor_vcs : Vcs.t option
-    ; execution_parameters : Execution_parameters.t
-    }
+let ancestor_vcs = Fdecl.create Dyn.Encoder.opaque
 
-  let builtin_default =
-    { ancestor_vcs = None
-    ; execution_parameters = Execution_parameters.builtin_default
-    }
-
-  let set_ancestor_vcs x t = { t with ancestor_vcs = x }
-
-  let set_execution_parameters x t = { t with execution_parameters = x }
-
-  let t : t Memo.Build.t Fdecl.t = Fdecl.create Dyn.Encoder.opaque
-
-  let set x = Fdecl.set t x
-
-  let get () = Fdecl.get t
-end
-
-let init = Settings.set
+let init ~ancestor_vcs:m = Fdecl.set ancestor_vcs m
 
 module rec Memoized : sig
   val root : unit -> Dir0.t Memo.Build.t
@@ -523,7 +503,7 @@ end = struct
     | Some kind -> Some { Vcs.kind; root = Path.(append_source root) path }
 
   let root () =
-    let* settings = Settings.get () in
+    let* ancestor_vcs = Fdecl.get ancestor_vcs in
     let path = Path.Source.root in
     let dir_status : Sub_dirs.Status.t = Normal in
     let readdir =
@@ -544,9 +524,7 @@ end = struct
       | None -> Dune_project.anonymous ~dir:path
       | Some p -> p
     in
-    let vcs =
-      get_vcs ~default:settings.ancestor_vcs ~path:Path.Source.root ~readdir
-    in
+    let vcs = get_vcs ~default:ancestor_vcs ~path:Path.Source.root ~readdir in
     let dirs_visited = Dirs_visited.singleton path in
     let+ contents, visited =
       contents readdir ~dirs_visited ~project ~path ~dir_status
@@ -659,9 +637,8 @@ let nearest_dir path =
 let execution_parameters_of_dir =
   let f path =
     let+ dir = nearest_dir path
-    and+ settings = Settings.get () in
-    settings.execution_parameters
-    |> Dune_project.update_execution_parameters (Dir0.project dir)
+    and+ ep = Execution_parameters.default in
+    Dune_project.update_execution_parameters (Dir0.project dir) ep
   in
   let memo =
     Memo.create "execution-parameters-of-dir"

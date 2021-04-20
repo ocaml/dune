@@ -31,6 +31,9 @@ val set_dune_version : Dune_lang.Syntax.Version.t -> t -> t
 
 val set_swallow_stdout_on_success : bool -> t -> t
 
+(** As configured by [init] *)
+val default : t Memo.Build.t
+
 (** {1 Accessors} *)
 
 val dune_version : t -> Dune_lang.Syntax.Version.t
@@ -40,3 +43,7 @@ val should_remove_write_permissions_on_generated_files : t -> bool
 val should_expand_aliases_when_sandboxing : t -> bool
 
 val swallow_stdout_on_success : t -> bool
+
+(** {1 Initialisation} *)
+
+val init : t Memo.Build.t -> unit

@@ -1566,8 +1566,11 @@ end = struct
     let head_target = Path.Build.Set.choose_exn targets in
     let* action, deps = exec_build_request action
     and* execution_parameters =
-      Source_tree.execution_parameters_of_dir
-        (Path.Build.drop_build_context_exn dir)
+      match Dpath.Target_dir.of_target dir with
+      | Regular (With_context (_, dir))
+      | Anonymous_action (With_context (_, dir)) ->
+        Source_tree.execution_parameters_of_dir dir
+      | _ -> Execution_parameters.default
     in
     Memo.Build.of_reproducible_fiber
       (let open Fiber.O in

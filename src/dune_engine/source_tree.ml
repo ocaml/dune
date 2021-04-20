@@ -299,12 +299,16 @@ module Output = struct
 end
 
 module Dir0 = struct
+  type vcs =
+    | Ancestor_vcs
+    | This of Vcs.t
+
   type t =
     { path : Path.Source.t
     ; status : Sub_dirs.Status.t
     ; contents : contents
     ; project : Dune_project.t
-    ; vcs : Vcs.t option
+    ; vcs : vcs
     }
 
   and contents =
@@ -327,7 +331,10 @@ module Dir0 = struct
       [ ("path", Path.Source.to_dyn path)
       ; ("status", Sub_dirs.Status.to_dyn status)
       ; ("contents", dyn_of_contents contents)
-      ; ("vcs", Dyn.Encoder.option Vcs.to_dyn vcs)
+      ; ( "vcs"
+        , match vcs with
+          | Ancestor_vcs -> Dyn.Variant ("Ancestor_vcs", [])
+          | This vcs -> Dyn.Variant ("This", [ Vcs.to_dyn vcs ]) )
       ]
 
   and dyn_of_sub_dir { sub_dir_status; sub_dir_as_t; virtual_ } =
@@ -384,9 +391,24 @@ module Dir0 = struct
         Path.Source.Set.add acc (Path.Source.relative t.path s))
 end
 
-let ancestor_vcs = Fdecl.create Dyn.Encoder.opaque
-
-let init ~ancestor_vcs:m = Fdecl.set ancestor_vcs m
+let ancestor_vcs =
+  Memo.lazy_ (fun () ->
+      if Config.inside_dune then
+        Memo.Build.return None
+      else
+        let rec loop dir =
+          if Fpath.is_root dir then
+            None
+          else
+            let dir = Filename.dirname dir in
+            match
+              Sys.readdir dir |> Array.to_list |> String.Set.of_list
+              |> Vcs.Kind.of_dir_contents
+            with
+            | Some kind -> Some { Vcs.kind; root = Path.of_string dir }
+            | None -> loop dir
+        in
+        Memo.Build.return (loop (Path.to_absolute_filename Path.root)))
 
 module rec Memoized : sig
   val root : unit -> Dir0.t Memo.Build.t
@@ -519,17 +541,14 @@ end = struct
 
   let get_vcs ~default:vcs ~readdir:{ Readdir.path; files; dirs } =
     match
-      match
-        List.find_map dirs ~f:(fun (name, _, _) -> Vcs.Kind.of_filename name)
-      with
-      | Some kind -> Some kind
-      | None -> Vcs.Kind.of_dir_contents files
+      Vcs.Kind.of_dir_contents
+        (String.Set.union files
+           (String.Set.of_list_map dirs ~f:(fun (name, _, _) -> name)))
     with
     | None -> vcs
-    | Some kind -> Some { Vcs.kind; root = Path.(append_source root) path }
+    | Some kind -> Dir0.This { Vcs.kind; root = Path.(append_source root) path }
 
   let root () =
-    let* ancestor_vcs = Fdecl.get ancestor_vcs in
     let path = Path.Source.root in
     let dir_status : Sub_dirs.Status.t = Normal in
     let error_unable_to_load ~path error =
@@ -553,7 +572,7 @@ end = struct
       | Some p -> p
     in
     let* readdir = Readdir.filter_files readdir project in
-    let vcs = get_vcs ~default:ancestor_vcs ~readdir in
+    let vcs = get_vcs ~default:Ancestor_vcs ~readdir in
     let* dirs_visited =
       File.of_source_path path >>| function
       | Ok file -> Dirs_visited.singleton path file
@@ -676,7 +695,11 @@ let execution_parameters_of_dir =
   in
   Memo.exec memo
 
-let nearest_vcs path = nearest_dir path >>| Dir0.vcs
+let nearest_vcs path =
+  let* dir = nearest_dir path in
+  match Dir0.vcs dir with
+  | This vcs -> Memo.Build.return (Some vcs)
+  | Ancestor_vcs -> Memo.Lazy.force ancestor_vcs
 
 let files_of path =
   find_dir path >>| function

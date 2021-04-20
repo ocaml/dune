@@ -8,8 +8,6 @@ module Kind : sig
     | Hg
 
   val of_dir_contents : String.Set.t -> t option
-
-  val of_filename : string -> t option
 end
 
 type t =

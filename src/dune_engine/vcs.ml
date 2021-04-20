@@ -5,6 +5,7 @@ module Kind = struct
     | Git
     | Hg
 
+  (* The list should be sorted by [t] according to [compare]. [of_readd *)
   let filenames = [ (".git", Git); (".hg", Hg) ]
 
   let of_filename = List.assoc filenames

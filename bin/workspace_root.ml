@@ -29,11 +29,9 @@ type t =
   ; to_cwd : string list
   ; reach_from_root_prefix : string
   ; kind : Kind.t
-  ; ancestor_vcs : Dune_engine.Vcs.t option
   }
 
-let make kind dir =
-  { kind; dir; to_cwd = []; ancestor_vcs = None; reach_from_root_prefix = "" }
+let make kind dir = { kind; dir; to_cwd = []; reach_from_root_prefix = "" }
 
 let find () =
   let cwd = Sys.getcwd () in
@@ -52,30 +50,15 @@ let find () =
       candidate
     | files ->
       let files = String.Set.of_list (Array.to_list files) in
-      let new_candidate =
+      let candidate =
         match Kind.of_dir_contents files with
         | Some kind when Kind.priority kind <= Kind.priority candidate.kind ->
-          Some
-            { kind
-            ; dir
-            ; to_cwd
-            ; ancestor_vcs = None
-            ; (* This field is computed at the end *) reach_from_root_prefix =
-                ""
-            }
-        | _ -> None
-      in
-      let candidate =
-        match (new_candidate, candidate.ancestor_vcs) with
-        | Some c, _ -> c
-        | None, Some _ -> candidate
-        | None, None -> (
-          match Vcs.Kind.of_dir_contents files with
-          | Some kind ->
-            { candidate with
-              ancestor_vcs = Some { kind; root = Path.of_string dir }
-            }
-          | None -> candidate)
+          { kind
+          ; dir
+          ; to_cwd
+          ; (* This field is computed at the end *) reach_from_root_prefix = ""
+          }
+        | _ -> candidate
       in
       cont counter ~candidate dir ~to_cwd
   and cont counter ~candidate ~to_cwd dir =
@@ -92,12 +75,7 @@ let find () =
   let t =
     loop 0 ~to_cwd:[] cwd
       ~candidate:
-        { kind = Cwd
-        ; dir = cwd
-        ; to_cwd = []
-        ; ancestor_vcs = None
-        ; reach_from_root_prefix = ""
-        }
+        { kind = Cwd; dir = cwd; to_cwd = []; reach_from_root_prefix = "" }
   in
   { t with
     reach_from_root_prefix =

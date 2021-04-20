@@ -26,3 +26,5 @@ val unlink : string -> unit
 val unlink_no_err : string -> unit
 
 val initial_cwd : string
+
+val is_root : string -> bool

@@ -149,14 +149,12 @@ let init ?log_file c =
   Dune_config.init config;
   Dune_util.Log.init () ?file:log_file;
   Dune_engine.Source_tree.init
+    ~ancestor_vcs:(Memo.Build.return c.root.ancestor_vcs);
+  Dune_engine.Execution_parameters.init
     (let open Memo.Build.O in
-    let module S = Dune_engine.Source_tree.Settings in
     let+ w = Dune_rules.Workspace.workspace () in
-    S.builtin_default
-    |> S.set_ancestor_vcs c.root.ancestor_vcs
-    |> S.set_execution_parameters
-         (Dune_engine.Execution_parameters.builtin_default
-         |> Dune_rules.Workspace.update_execution_parameters w));
+    Dune_engine.Execution_parameters.builtin_default
+    |> Dune_rules.Workspace.update_execution_parameters w);
   Dune_rules.Global.init ~capture_outputs:c.capture_outputs;
   let cache_config =
     match config.cache_enabled with

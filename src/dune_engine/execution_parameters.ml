@@ -38,3 +38,12 @@ let should_remove_write_permissions_on_generated_files t =
 let should_expand_aliases_when_sandboxing t = t.dune_version >= (3, 0)
 
 let swallow_stdout_on_success t = t.swallow_stdout_on_success
+
+let default = Fdecl.create Dyn.Encoder.opaque
+
+let init t = Fdecl.set default t
+
+let default =
+  let open Memo.Build.O in
+  let* () = Memo.Build.return () in
+  Fdecl.get default

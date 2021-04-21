@@ -26,3 +26,7 @@ val unlink : string -> unit
 val unlink_no_err : string -> unit
 
 val initial_cwd : string
+
+val clear_dir : string -> unit
+
+val rm_rf : ?allow_external:bool -> string -> unit

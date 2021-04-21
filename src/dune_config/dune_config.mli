@@ -61,6 +61,7 @@ module type S = sig
         Dune_cache.Config.Reproducibility_check.t field
     ; cache_storage_mode : Cache.Storage_mode.t field
     ; swallow_stdout_on_success : bool field
+    ; fail_on_non_empty_stderr : bool field
     }
 end
 

@@ -549,7 +549,12 @@ let exec ~targets ~root ~context ~env ~rule_loc ~build_deps
           Process.Io.stdout_swallow_on_success
         else
           Process.Io.stdout)
-    ; stderr_to = Process.Io.stderr
+    ; stderr_to =
+        (if Execution_parameters.fail_on_non_empty_stderr execution_parameters
+        then
+          Process.Io.stderr_must_be_empty
+        else
+          Process.Io.stderr)
     ; stdin_from = Process.Io.null In
     ; prepared_dependencies = DAP.Dependency.Set.empty
     ; exit_codes = Predicate_lang.Element 0

@@ -618,6 +618,12 @@ let shared_with_config_file =
       & info
           [ "swallow-stdout-on-success" ]
           ~doc:"Swallow the output of an action when it succeeds.")
+  and+ fail_on_non_empty_stderr =
+    Arg.(
+      value & flag
+      & info
+          [ "fail-on-non-empty-stderr" ]
+          ~doc:"Consider that actions with a non empty stderr as failed.")
   in
   { Dune_config.Partial.display
   ; concurrency
@@ -629,6 +635,7 @@ let shared_with_config_file =
         ~f:Dune_cache.Config.Reproducibility_check.check_with_probability
   ; cache_storage_mode
   ; swallow_stdout_on_success = Option.some_if swallow_stdout_on_success true
+  ; fail_on_non_empty_stderr = Option.some_if fail_on_non_empty_stderr true
   }
 
 let term =

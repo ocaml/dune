@@ -38,10 +38,10 @@ module Io = struct
     | File of Path.t
     | Null
     | Terminal of
-        { swallow_on_success : bool
-              (* This argument makes no sense for inputs, but it seems annoying
-                 to change, especially as this code is meant to change again in
-                 #4435. *)
+        { (* These arguments make no sense for inputs, but it seems annoying to
+             change, especially as this code is meant to change again in #4435. *)
+          swallow_on_success : bool
+        ; must_be_empty : bool
         }
 
   type status =
@@ -79,9 +79,9 @@ module Io = struct
     ; mutable status : status
     }
 
-  let terminal ch ~swallow_on_success =
+  let terminal ch ~swallow_on_success ~must_be_empty =
     let fd = descr_of_channel ch in
-    { kind = Terminal { swallow_on_success }
+    { kind = Terminal { swallow_on_success; must_be_empty }
     ; mode = mode_of_channel ch
     ; fd = lazy fd
     ; channel = lazy ch
@@ -89,13 +89,19 @@ module Io = struct
     }
 
   let stdout_swallow_on_success =
-    terminal (Out_chan stdout) ~swallow_on_success:true
+    terminal (Out_chan stdout) ~swallow_on_success:true ~must_be_empty:false
 
-  let stdout = terminal (Out_chan stdout) ~swallow_on_success:false
+  let stdout =
+    terminal (Out_chan stdout) ~swallow_on_success:false ~must_be_empty:false
 
-  let stderr = terminal (Out_chan stderr) ~swallow_on_success:false
+  let stderr_must_be_empty =
+    terminal (Out_chan stderr) ~swallow_on_success:false ~must_be_empty:true
 
-  let stdin = terminal (In_chan stdin) ~swallow_on_success:false
+  let stderr =
+    terminal (Out_chan stderr) ~swallow_on_success:false ~must_be_empty:false
+
+  let stdin =
+    terminal (In_chan stdin) ~swallow_on_success:false ~must_be_empty:false
 
   let null (type a) (mode : a mode) : a t =
     let fd =
@@ -533,11 +539,18 @@ let run_internal ?dir ?(stdout_to = Io.stdout) ?(stderr_to = Io.stderr)
       let argv = prog_str :: args in
       let swallow_on_success (out : Io.output Io.t) =
         match out.kind with
-        | Terminal { swallow_on_success } -> swallow_on_success
+        | Terminal { swallow_on_success; _ } -> swallow_on_success
+        | _ -> false
+      in
+      let must_be_empty (out : Io.output Io.t) =
+        match out.kind with
+        | Terminal { must_be_empty; _ } -> must_be_empty
         | _ -> false
       in
       let swallow_stdout_on_success = swallow_on_success stdout_to in
       let swallow_stderr_on_success = swallow_on_success stderr_to in
+      let stdout_must_be_empty = must_be_empty stdout_to in
+      let stderr_must_be_empty = must_be_empty stderr_to in
       let (stdout_capture, stdout_to), (stderr_capture, stderr_to) =
         match (stdout_to.kind, stderr_to.kind) with
         | Terminal _, _
@@ -556,9 +569,9 @@ let run_internal ?dir ?(stdout_to = Io.stdout) ?(stderr_to = Io.stderr)
           in
           let stderr =
             match (stdout_to.kind, stderr_to.kind) with
-            | ( Terminal { swallow_on_success = a }
-              , Terminal { swallow_on_success = b } )
-              when Bool.equal a b ->
+            | ( Terminal { swallow_on_success = sos_a; must_be_empty = mbe_a }
+              , Terminal { swallow_on_success = sos_b; must_be_empty = mbe_b } )
+              when Bool.equal sos_a sos_b && Bool.equal mbe_a mbe_b ->
               Io.flush stderr_to;
               (`Merged_with_stdout, snd stdout)
             | _, Terminal _ ->
@@ -608,13 +621,37 @@ let run_internal ?dir ?(stdout_to = Io.stdout) ?(stderr_to = Io.stderr)
         | WSIGNALED n -> Error (Signaled (Signal.name n))
         | WSTOPPED _ -> assert false
       in
-      let success = Result.is_ok exit_status' in
-      let read_and_destroy fn ~swallow_on_success =
+      let actual_stdout =
+        match stdout_capture with
+        | `No_capture -> lazy ""
+        | `Capture fn -> lazy (Stdune.Io.read_file fn)
+      in
+      let actual_stderr =
+        match stderr_capture with
+        | `No_capture
+        | `Merged_with_stdout ->
+          lazy ""
+        | `Capture fn -> lazy (Stdune.Io.read_file fn)
+      in
+      let success =
+        Result.is_ok exit_status'
+        && ((not stdout_must_be_empty) || Lazy.force actual_stdout = "")
+        && ((not stderr_must_be_empty) || Lazy.force actual_stderr = "")
+      in
+      let exit_status' =
+        if success then
+          exit_status'
+        else
+          match exit_status' with
+          | Ok n -> Error (Failed n)
+          | Error _ -> exit_status'
+      in
+      let read_and_destroy fn actual_output ~swallow_on_success =
         let s =
           if success && swallow_on_success then
             ""
           else
-            Stdune.Io.read_file fn
+            Lazy.force actual_output
         in
         Temp.destroy File fn;
         s
@@ -623,14 +660,17 @@ let run_internal ?dir ?(stdout_to = Io.stdout) ?(stderr_to = Io.stderr)
         match stdout_capture with
         | `No_capture -> ""
         | `Capture fn ->
-          read_and_destroy fn ~swallow_on_success:swallow_stdout_on_success
+          read_and_destroy fn actual_stdout
+            ~swallow_on_success:swallow_stdout_on_success
       in
       let stderr =
         match stderr_capture with
-        | `No_capture -> ""
+        | `No_capture
+        | `Merged_with_stdout ->
+          ""
         | `Capture fn ->
-          read_and_destroy fn ~swallow_on_success:swallow_stderr_on_success
-        | `Merged_with_stdout -> ""
+          read_and_destroy fn actual_stderr
+            ~swallow_on_success:swallow_stderr_on_success
       in
       let output = stdout ^ stderr in
       Log.command ~command_line ~output ~exit_status;

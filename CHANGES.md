@@ -54,7 +54,7 @@ Unreleased
   of aliases. (#4303, @aalekseyev)
 
 - If an .ml file is not used by an executable, Dune no longer report
-  parsing error in this file (#...., @jeremiedimino)
+  parsing error in this file (#4510, @jeremiedimino)
 
 - Add support for sandboxing using hard links (#4360, @snowleopard)
 
@@ -86,6 +86,10 @@ Unreleased
 
 - Add an option to swallow the output of actions when they succeed, to
   reduce noise of large builds (#4422, @jeremiedimino)
+
+- Add an option to consider actions that have a non-empty stderr and
+  exit code of 0 as failing, again to reduce noise of large builds
+  (#...., @jeremiedimino)
 
 - Add the possibility to use `locks` with the cram tests stanza (#4397, @voodoos)
 

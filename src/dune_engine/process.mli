@@ -30,6 +30,10 @@ module Io : sig
 
   val stderr : output t
 
+  (** Same [stderr] but consider that the program failed if it prints something
+      on [stderr]. *)
+  val stderr_must_be_empty : output t
+
   val stdin : input t
 
   val null : 'a mode -> 'a t

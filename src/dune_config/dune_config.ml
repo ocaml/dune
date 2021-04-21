@@ -145,6 +145,7 @@ module type S = sig
         Dune_cache.Config.Reproducibility_check.t field
     ; cache_storage_mode : Cache.Storage_mode.t field
     ; swallow_stdout_on_success : bool field
+    ; fail_on_non_empty_stderr : bool field
     }
 end
 
@@ -169,6 +170,8 @@ struct
     ; cache_storage_mode = field a.cache_storage_mode b.cache_storage_mode
     ; swallow_stdout_on_success =
         field a.swallow_stdout_on_success b.swallow_stdout_on_success
+    ; fail_on_non_empty_stderr =
+        field a.fail_on_non_empty_stderr b.fail_on_non_empty_stderr
     }
 end
 
@@ -188,6 +191,7 @@ struct
       ; cache_reproducibility_check
       ; cache_storage_mode
       ; swallow_stdout_on_success
+      ; fail_on_non_empty_stderr
       } =
     Dyn.Encoder.record
       [ ("display", field Scheduler.Config.Display.to_dyn display)
@@ -204,6 +208,8 @@ struct
         , field Cache.Storage_mode.to_dyn cache_storage_mode )
       ; ( "swallow_stdout_on_success"
         , field Dyn.Encoder.bool swallow_stdout_on_success )
+      ; ( "fail_on_non_empty_stderr"
+        , field Dyn.Encoder.bool fail_on_non_empty_stderr )
       ]
 end
 
@@ -225,6 +231,7 @@ module Partial = struct
     ; cache_reproducibility_check = None
     ; cache_storage_mode = None
     ; swallow_stdout_on_success = None
+    ; fail_on_non_empty_stderr = None
     }
 
   include
@@ -278,6 +285,7 @@ let default =
   ; cache_reproducibility_check = Skip
   ; cache_storage_mode = None
   ; swallow_stdout_on_success = false
+  ; fail_on_non_empty_stderr = false
   }
 
 let decode_generic ~min_dune_version =
@@ -323,6 +331,9 @@ let decode_generic ~min_dune_version =
   and+ swallow_stdout_on_success =
     field_o_b "swallow-stdout-on-success"
       ~check:(Dune_lang.Syntax.since Stanza.syntax (3, 0))
+  and+ fail_on_non_empty_stderr =
+    field_o_b "fail-on-non-empty-stderr"
+      ~check:(Dune_lang.Syntax.since Stanza.syntax (3, 0))
   in
   let cache_storage_mode =
     Option.merge cache_duplication cache_storage_mode ~f:(fun _ _ ->
@@ -341,6 +352,7 @@ let decode_generic ~min_dune_version =
   ; cache_reproducibility_check
   ; cache_storage_mode
   ; swallow_stdout_on_success
+  ; fail_on_non_empty_stderr
   }
 
 let decode =

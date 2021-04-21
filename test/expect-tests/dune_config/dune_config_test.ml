@@ -28,6 +28,7 @@ let%expect_test "cache-check-probability 0.1" =
     ; cache_reproducibility_check = Check_with_probability 0.1
     ; cache_storage_mode = None
     ; swallow_stdout_on_success = false
+    ; fail_on_non_empty_stderr = false
     }
  |}]
 
@@ -43,6 +44,7 @@ let%expect_test "cache-storage-mode copy" =
     ; cache_reproducibility_check = Skip
     ; cache_storage_mode = Some Copy
     ; swallow_stdout_on_success = false
+    ; fail_on_non_empty_stderr = false
     }
  |}]
 
@@ -58,5 +60,6 @@ let%expect_test "cache-storage-mode hardlink" =
     ; cache_reproducibility_check = Skip
     ; cache_storage_mode = Some Hardlink
     ; swallow_stdout_on_success = false
+    ; fail_on_non_empty_stderr = false
     }
  |}]

@@ -667,7 +667,10 @@ let workspace =
   Memo.exec memo
 
 let update_execution_parameters t ep =
-  Execution_parameters.set_swallow_stdout_on_success
-    t.config.swallow_stdout_on_success ep
+  ep
+  |> Execution_parameters.set_swallow_stdout_on_success
+       t.config.swallow_stdout_on_success
+  |> Execution_parameters.set_fail_on_non_empty_stderr
+       t.config.fail_on_non_empty_stderr
 
 let build_contexts t = List.concat_map t.contexts ~f:Context.build_contexts

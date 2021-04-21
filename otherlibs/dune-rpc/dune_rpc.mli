@@ -76,6 +76,16 @@ module V1 : sig
       }
   end
 
+  module Target : sig
+    type t =
+      | Path of string
+      | Alias of string
+      | Library of string
+      | Executables of string list
+      | Preprocess of string list
+      | Loc of Loc.t
+  end
+
   module Diagnostic : sig
     type severity =
       | Error
@@ -98,7 +108,18 @@ module V1 : sig
 
     val promotion : t -> Promotion.t list
 
-    val targets : t -> string list
+    (* The list of targets is ordered such that the first element is the
+       immediate ("innermost") target being built when the error was
+       encountered, which was required by the next element, and so on. *)
+    val targets : t -> Target.t list
+
+    (* The directory from which the action producing the error was run, relative
+       to the workspace root. This is often, but not always, the directory of
+       the first target in [targets].
+
+       If this is [None], then the error most likely arose from a dune-internal
+       operation, which has an effective directory of the workspace root. *)
+    val directory : t -> string option
 
     module Event : sig
       type nonrec t =

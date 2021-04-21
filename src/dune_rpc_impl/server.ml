@@ -21,7 +21,13 @@ let diagnostic_of_error : Build_system.Error.t -> Dune_rpc_private.Diagnostic.t
   let message = Build_system.Error.message m in
   let loc = message.loc in
   let message = Pp.map_tags (Pp.concat message.paragraphs) ~f:(fun _ -> ()) in
-  { severity = None; targets = []; message; loc; promotion = [] }
+  { severity = None
+  ; targets = []
+  ; message
+  ; loc
+  ; promotion = []
+  ; directory = None
+  }
 
 (* TODO un-copy-paste from dune/bin/arg.ml *)
 let dep_parser =

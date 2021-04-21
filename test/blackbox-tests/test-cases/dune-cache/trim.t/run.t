@@ -190,77 +190,8 @@ are part of the same rule.
   $ dune cache trim --trimmed-size 1B
   Freed 123 bytes
 
-Test trimming priority in the [copy] mode.
-
-First, to work around the existence of [configurator.v2] entry in the cache, we
-first build the two targets in the [hardlink] mode, and trim everything apart
-from the [configurator.v2] entry, so that it keeps its hard link and the trimmer
-doesn't consider it for deletion.
-
-  $ reset
-  $ dune build target_a target_b
-  $ rm -f _build/default/target_a _build/default/target_b
-  $ dune cache trim --size 1B
-  Freed 158 bytes
-
-Now we are ready to build the two targets in the [copy] mode to populate the
-cache. After that, we clean the build directory.
-
-  $ dune build target_a target_b --cache-storage-mode=copy
-  $ rm -f _build/default/beacon_a _build/default/target_a
-  $ rm -f _build/default/beacon_b _build/default/target_b
-
-We now build [target_a] and then [target_b] in the [copy] mode, which would make
-the [target_a] the least recently used entry in the cache.
-
-  $ dune build target_a --cache-storage-mode=copy
-  $ dune_cmd wait-for-fs-clock-to-advance
-  $ dune build target_b --cache-storage-mode=copy
-  $ dune_cmd wait-for-fs-clock-to-advance
-
-
-Test that [target_a] is prioritised for trimming.
-
-Note that on Mac OSX these tests currently fail, which is why we override the
-output of [dune_cmd exists] by using [dune_cmd override-on macosx]. We should
-investigate and get rid of these overrides.
-
-  $ rm -f _build/default/beacon_a _build/default/target_a
-  $ rm -f _build/default/beacon_b _build/default/target_b
-  $ dune cache trim --trimmed-size 1B
-  Freed 79 bytes
-  $ dune build target_a target_b --cache-storage-mode=copy
-  $ dune_cmd stat hardlinks _build/default/target_a
-  1
-  $ dune_cmd stat hardlinks _build/default/target_b
-  1
-  $ dune_cmd exists _build/default/beacon_a | dune_cmd override-on macosx true
-  true
-  $ dune_cmd exists _build/default/beacon_b | dune_cmd override-on macosx false
-  false
-
-And now let's switch the order of deletion.
-
-  $ dune build target_b --cache-storage-mode=copy
-  $ dune_cmd wait-for-fs-clock-to-advance
-  $ dune build target_a --cache-storage-mode=copy
-  $ dune_cmd wait-for-fs-clock-to-advance
-
-Test that now [target_b] is prioritised for trimming.
-
-  $ rm -f _build/default/beacon_a _build/default/target_a
-  $ rm -f _build/default/beacon_b _build/default/target_b
-  $ dune cache trim --trimmed-size 1B
-  Freed 79 bytes
-  $ dune build target_a target_b --cache-storage-mode=copy
-  $ dune_cmd stat hardlinks _build/default/target_a
-  1
-  $ dune_cmd stat hardlinks _build/default/target_b
-  1
-  $ dune_cmd exists _build/default/beacon_a | dune_cmd override-on macosx false
-  false
-  $ dune_cmd exists _build/default/beacon_b | dune_cmd override-on macosx true
-  true
+TODO: Test trimming priority in the [copy] mode. In PR #4497 we added a test but
+it turned out to be flaky so we subsequently deleted it in #4511.
 
 Test the error message when using removed subcommands [start] and [stop].
 

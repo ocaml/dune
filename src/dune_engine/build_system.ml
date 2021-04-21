@@ -1439,6 +1439,7 @@ end = struct
           let sandbox_suffix = rule_digest |> Digest.to_string in
           (Path.Build.relative sandbox_dir sandbox_suffix, mode))
     in
+    let chdirs = Action.chdirs action in
     let* sandboxed, action =
       match sandbox with
       | None -> Fiber.return (None, action)
@@ -1450,7 +1451,7 @@ end = struct
         let* () =
           Fiber.parallel_iter_set
             (module Path.Set)
-            (Dep.Facts.dirs deps)
+            (Path.Set.union (Dep.Facts.dirs deps) chdirs)
             ~f:(fun path ->
               Memo.Build.run
                 (match Path.as_in_build_dir path with
@@ -1470,7 +1471,6 @@ end = struct
         ( Some sandboxed
         , Action.sandbox action ~sandboxed ~mode:sandbox_mode ~deps )
     and* () =
-      let chdirs = Action.chdirs action in
       Fiber.parallel_iter_set
         (module Path.Set)
         chdirs

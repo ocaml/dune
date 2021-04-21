@@ -123,11 +123,14 @@ end
 
 type t =
   { loc : Loc.t
+  ; version : Dune_lang.Syntax.Version.t
   ; files : Predicate_lang.Glob.t
   ; packages : (Loc.t * Package.Name.t) list
+  ; deps : Dep_conf.t Bindings.t
   ; preludes : Prelude.t list
   ; enabled_if : Blang.t
   ; package : Package.t option
+  ; libraries : Lib_dep.t list
   }
 
 let enabled_if t = t.enabled_if
@@ -137,7 +140,8 @@ type Stanza.t += T of t
 let syntax =
   let name = "mdx" in
   let desc = "mdx extension to verify code blocks in .md files" in
-  Dune_lang.Syntax.create ~name ~desc [ ((0, 1), `Since (2, 4)) ]
+  Dune_lang.Syntax.create ~name ~desc
+    [ ((0, 1), `Since (2, 4)); ((0, 2), `Since (3, 0)) ]
 
 let default_files =
   let has_extension ext s = String.equal ext (Filename.extension s) in
@@ -147,18 +151,38 @@ let decode =
   let open Dune_lang.Decoder in
   fields
     (let+ loc = loc
+     and+ version = Dune_lang.Syntax.get_exn syntax
      and+ files =
        field "files" Predicate_lang.Glob.decode ~default:default_files
-     and+ packages =
-       field ~default:[] "packages" (repeat (located Package.Name.decode))
-     and+ preludes = field ~default:[] "preludes" (repeat Prelude.decode)
      and+ enabled_if =
        Enabled_if.decode ~allowed_vars:Any ~since:(Some (2, 9)) ()
      and+ package =
        Stanza_common.Pkg.field_opt ()
          ~check:(Dune_lang.Syntax.since Stanza.syntax (2, 9))
+     and+ packages =
+       field ~default:[] "packages"
+         (Dune_lang.Syntax.deprecated_in syntax (0, 2)
+         >>> repeat (located Package.Name.decode))
+     and+ deps =
+       field "deps" ~default:Bindings.empty
+         (Dune_lang.Syntax.since syntax (0, 2)
+         >>> Bindings.decode Dep_conf.decode)
+     and+ preludes = field ~default:[] "preludes" (repeat Prelude.decode)
+     and+ libraries =
+       field "libraries" ~default:[]
+         (Dune_lang.Syntax.since syntax (0, 2)
+         >>> Dune_file.Lib_deps.decode Executable)
      in
-     { loc; files; packages; preludes; enabled_if; package })
+     { loc
+     ; version
+     ; files
+     ; packages
+     ; deps
+     ; preludes
+     ; libraries
+     ; enabled_if
+     ; package
+     })
 
 let () =
   let open Dune_lang.Decoder in
@@ -189,7 +213,8 @@ let files_to_mdx t ~sctx ~dir =
 
 (** Generates the rules for a single [src] file covered covered by the given
     [stanza]. *)
-let gen_rules_for_single_file stanza ~sctx ~dir ~expander ~mdx_prog src =
+let gen_rules_for_single_file stanza ~sctx ~dir ~expander ~mdx_prog
+    ~mdx_prog_gen src =
   let loc = stanza.loc in
   let mdx_dir = Path.Build.relative dir ".mdx" in
   let files = Files.from_source_file ~mdx_dir src in
@@ -201,26 +226,43 @@ let gen_rules_for_single_file stanza ~sctx ~dir ~expander ~mdx_prog src =
     (* Add the rule for generating the .corrected file using ocaml-mdx test *)
     let mdx_action =
       let open Action_builder.With_targets.O in
-      let deps =
+      let mdx_input_dependencies =
         Action_builder.bind (Deps.read files) ~f:(fun dep_set ->
             Action_builder.memo_build (Deps.to_dep_set dep_set ~dir))
       in
-      let dyn_deps = Action_builder.map deps ~f:(fun d -> ((), d)) in
-      let pkg_deps =
+      let dyn_deps =
+        Action_builder.map mdx_input_dependencies ~f:(fun d -> ((), d))
+      in
+      let mdx_package_deps =
         stanza.packages
         |> List.map ~f:(fun (loc, pkg) ->
                Dep_conf.Package
                  (Package.Name.to_string pkg |> String_with_vars.make_text loc))
       in
-      let prelude_args =
-        List.concat_map stanza.preludes ~f:(Prelude.to_args ~dir)
+      let mdx_generic_deps = Bindings.to_list stanza.deps in
+
+      let executable, command_line =
+        (*The old mdx stanza calls the [ocaml-mdx] executable, new ones the
+          generated executable *)
+        let open Command.Args in
+        match mdx_prog_gen with
+        | Some prog -> (Ok (Path.build prog), [ Dep (Path.build files.src) ])
+        | None ->
+          let prelude_args =
+            List.concat_map stanza.preludes ~f:(Prelude.to_args ~dir)
+          in
+          ( mdx_prog
+          , [ A "test" ] @ prelude_args
+            @ [ A "-o"; Target files.corrected; Dep (Path.build files.src) ] )
       in
+
       Action_builder.(
-        with_no_targets (Dep_conf_eval.unnamed ~expander pkg_deps))
+        with_no_targets
+          (Dep_conf_eval.unnamed ~expander
+             (mdx_package_deps @ mdx_generic_deps)))
       >>> Action_builder.with_no_targets (Action_builder.dyn_deps dyn_deps)
-      >>> Command.run ~dir:(Path.build dir) mdx_prog
-            ([ Command.Args.A "test" ] @ prelude_args
-            @ [ A "-o"; Target files.corrected; Dep (Path.build files.src) ])
+      >>> Command.run ~dir:(Path.build dir) ~stdout_to:files.corrected
+            executable command_line
     in
     Super_context.add_rule sctx ~loc ~dir mdx_action
   in
@@ -229,8 +271,80 @@ let gen_rules_for_single_file stanza ~sctx ~dir ~expander ~mdx_prog src =
   Super_context.add_alias_action sctx (Alias.runtest ~dir) ~loc:(Some loc) ~dir
     diff_action
 
+let name = "mdx_gen"
+
+let mdx_prog_gen t ~sctx ~dir ~scope ~expander ~mdx_prog =
+  let loc = t.loc in
+  let dune_version = Scope.project scope |> Dune_project.dune_version in
+  let file = Path.Build.relative dir "mdx_gen.ml-gen" in
+
+  (* Libs from the libraries field should have their include directories sent to
+     mdx *)
+  let open Resolve.O in
+  let directory_args =
+    let+ libs_to_include =
+      Resolve.List.filter_map t.libraries ~f:(function
+        | Direct lib
+        | Re_export lib ->
+          let+ lib = Lib.DB.resolve (Scope.libs scope) lib in
+          Some lib
+        | _ -> Resolve.return None)
+    in
+
+    let mode = Context.best_mode (Super_context.context sctx) in
+
+    let libs_include_paths = Lib.L.include_paths libs_to_include mode in
+
+    let open Command.Args in
+    let args =
+      Path.Set.to_list libs_include_paths
+      |> List.map ~f:(fun p -> S [ A "--directory"; Path p ])
+    in
+    S args
+  in
+
+  let prelude_args =
+    Command.Args.S (List.concat_map t.preludes ~f:(Prelude.to_args ~dir))
+  in
+
+  (* We call mdx to generate the testing executable source *)
+  let action =
+    Command.run ~dir:(Path.build dir) mdx_prog ~stdout_to:file
+      [ A "dune-gen"; prelude_args; Resolve.args directory_args ]
+  in
+  let open Memo.Build.O in
+  let* () = Super_context.add_rule sctx ~loc ~dir action in
+
+  (* We build the generated executable linking in the libs from the libraries
+     field *)
+  let obj_dir = Obj_dir.make_exe ~dir ~name in
+  let main_module_name = Module_name.of_string name in
+  let module_ = Module.generated ~src_dir:(Path.build dir) main_module_name in
+  let modules = Modules.singleton_exe module_ in
+  let flags = Ocaml_flags.default ~dune_version ~profile:Release in
+  let compile_info =
+    Lib.DB.resolve_user_written_deps_for_exes (Scope.libs scope)
+      [ (t.loc, name) ]
+      (Lib_dep.Direct (loc, Lib_name.of_string "mdx.test") :: t.libraries)
+      ~pps:[] ~dune_version
+  in
+  let cctx =
+    Compilation_context.create ~super_context:sctx ~scope ~expander ~obj_dir
+      ~modules ~flags
+      ~requires_compile:(Lib.Compile.direct_requires compile_info)
+      ~requires_link:(Lib.Compile.requires_link compile_info)
+      ~opaque:(Explicit false) ~js_of_ocaml:None ~package:None ()
+  in
+  let+ () =
+    Exe.build_and_link cctx
+      ~program:{ name; main_module_name; loc }
+      ~link_args:(Action_builder.return (Command.Args.A "-linkall"))
+      ~linkages:[ Exe.Linkage.byte ] ~promote:None
+  in
+  Path.Build.relative dir (name ^ ".bc")
+
 (** Generates the rules for a given mdx stanza *)
-let gen_rules t ~sctx ~dir ~expander =
+let gen_rules t ~sctx ~dir ~scope ~expander =
   let open Memo.Build.O in
   let register_rules () =
     let* files_to_mdx = files_to_mdx t ~sctx ~dir
@@ -238,8 +352,17 @@ let gen_rules t ~sctx ~dir ~expander =
       Super_context.resolve_program sctx ~dir ~loc:(Some t.loc)
         ~hint:"opam install mdx" "ocaml-mdx"
     in
+    let* mdx_prog_gen =
+      if Dune_lang.Syntax.Version.Infix.(t.version >= (0, 2)) then
+        Memo.Build.Option.map (Some t)
+          ~f:(mdx_prog_gen ~sctx ~dir ~scope ~expander ~mdx_prog)
+      else
+        Memo.Build.return None
+    in
     Memo.Build.parallel_iter files_to_mdx
-      ~f:(gen_rules_for_single_file t ~sctx ~dir ~expander ~mdx_prog)
+      ~f:
+        (gen_rules_for_single_file t ~sctx ~dir ~expander ~mdx_prog
+           ~mdx_prog_gen)
   in
   let* only_packages = Only_packages.get () in
   let do_it =

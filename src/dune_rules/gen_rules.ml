@@ -145,7 +145,7 @@ end = struct
       Expander.eval_blang expander (Mdx.enabled_if mdx) >>= function
       | false -> Memo.Build.return empty_none
       | true ->
-        let+ () = Mdx.gen_rules ~sctx ~dir ~expander mdx in
+        let+ () = Mdx.gen_rules ~sctx ~dir ~scope ~expander mdx in
         empty_none)
     | _ -> Memo.Build.return empty_none
 

@@ -36,7 +36,7 @@ Check that trimming does not crash when the cache directory does not exist.
   $ dune cache trim --size 0B
   Freed 0 bytes
 
-Check that the digest scheme for executable and non-excutable digests hasn't
+Check that the digest scheme for executable and non-executable digests hasn't
 changed. If it has, make sure to increment the version of the cache. Note that
 the current digests for both files match those computed by Jenga.
 
@@ -59,11 +59,10 @@ Build some more targets.
 
   $ dune build target_a target_b
 
-Dune stores the result of rule execution in a store keyed by "rule
-digests". If the way such rule digests are computed changes, we could
-end up in a situation where the same hash means something different
-before and after the change, which is bad. To reduce the risk, we
-inject a version number into rule digests.
+Dune stores the result of rule execution in a store keyed by "rule digests". If
+the way such rule digests are computed changes, we could end up in a situation
+where the same hash means something different before and after the change, which
+is bad. To reduce the risk, we inject a version number into rule digests.
 
 If you see the test below breaking, this means you changed the metadata format
 or the way that digests are computed and you should increment the corresponding
@@ -139,12 +138,14 @@ sizes might vary on different platforms
 The cache deletes oldest files first.
 
   $ reset
-  $ dune build target_b
-  $ dune_cmd wait-for-fs-clock-to-advance
-  $ dune build target_a
-The bellow rm commands also update the ctime, so we need to do it in
-the same order to preserve the fact that target_b is older than
-target_a:
+  $ dune build target_a target_b
+
+The [rm] commands below update the [ctime] of the corresponding cache entries.
+By deleting [target_b] first, we make its [ctime] older. The trimmer deletes
+older entries first, which is why [target_b] is trimmed while [target_a] is not.
+We know that [target_b] was trimmed, because it had to be rebuilt as indicated
+by the existence of [beacon_b].
+
   $ rm -f _build/default/beacon_b _build/default/target_b
   $ dune_cmd wait-for-fs-clock-to-advance
   $ rm -f _build/default/beacon_a _build/default/target_a
@@ -160,11 +161,10 @@ target_a:
   $ dune_cmd exists _build/default/beacon_b
   true
 
+Now let's redo the same test but delete the two targets in the opposite order,
+thus making the trimmer delete [target_a] instead of [target_b] as above.
+
   $ reset
-
-When a cache entry becomes unused, its ctime is modified and will determine the
-order of trimming.
-
   $ dune build target_a target_b
   $ rm -f _build/default/beacon_a _build/default/target_a
   $ dune_cmd wait-for-fs-clock-to-advance
@@ -181,22 +181,94 @@ order of trimming.
   $ dune_cmd exists _build/default/beacon_b
   false
 
+Test garbage collection: both [multi_a] and [multi_b] must be removed as they
+are part of the same rule.
+
   $ reset
-
-Check garbage collection: both multi_a and multi_b must be removed as
-they are part of the same rule.
-
   $ dune build multi_a multi_b
   $ rm -f _build/default/multi_a _build/default/multi_b
   $ dune cache trim --trimmed-size 1B
   Freed 123 bytes
 
-Check the error message when using removed subcommands [start] and [stop]
+Test trimming priority in the [copy] mode.
+
+First, to work around the existence of [configurator.v2] entry in the cache, we
+first build the two targets in the [hardlink] mode, and trim everything apart
+from the [configurator.v2] entry, so that it keeps its hard link and the trimmer
+doesn't consider it for deletion.
+
+  $ reset
+  $ dune build target_a target_b
+  $ rm -f _build/default/target_a _build/default/target_b
+  $ dune cache trim --size 1B
+  Freed 158 bytes
+
+Now we are ready to build the two targets in the [copy] mode to populate the
+cache. After that, we clean the build directory.
+
+  $ dune build target_a target_b --cache-storage-mode=copy
+  $ rm -f _build/default/beacon_a _build/default/target_a
+  $ rm -f _build/default/beacon_b _build/default/target_b
+
+We now build [target_a] and then [target_b] in the [copy] mode, which would make
+the [target_a] the least recently used entry in the cache.
+
+  $ dune build target_a --cache-storage-mode=copy
+  $ dune_cmd wait-for-fs-clock-to-advance
+  $ dune build target_b --cache-storage-mode=copy
+  $ dune_cmd wait-for-fs-clock-to-advance
+
+
+Test that [target_a] is prioritised for trimming.
+
+Note that on Mac OSX these tests currently fail, which is why we override the
+output of [dune_cmd exists] by using [dune_cmd override-on macosx]. We should
+investigate and get rid of these overrides.
+
+  $ rm -f _build/default/beacon_a _build/default/target_a
+  $ rm -f _build/default/beacon_b _build/default/target_b
+  $ dune cache trim --trimmed-size 1B
+  Freed 79 bytes
+  $ dune build target_a target_b --cache-storage-mode=copy
+  $ dune_cmd stat hardlinks _build/default/target_a
+  1
+  $ dune_cmd stat hardlinks _build/default/target_b
+  1
+  $ dune_cmd exists _build/default/beacon_a | dune_cmd override-on macosx true
+  true
+  $ dune_cmd exists _build/default/beacon_b | dune_cmd override-on macosx false
+  false
+
+And now let's switch the order of deletion.
+
+  $ dune build target_b --cache-storage-mode=copy
+  $ dune_cmd wait-for-fs-clock-to-advance
+  $ dune build target_a --cache-storage-mode=copy
+  $ dune_cmd wait-for-fs-clock-to-advance
+
+Test that now [target_b] is prioritised for trimming.
+
+  $ rm -f _build/default/beacon_a _build/default/target_a
+  $ rm -f _build/default/beacon_b _build/default/target_b
+  $ dune cache trim --trimmed-size 1B
+  Freed 79 bytes
+  $ dune build target_a target_b --cache-storage-mode=copy
+  $ dune_cmd stat hardlinks _build/default/target_a
+  1
+  $ dune_cmd stat hardlinks _build/default/target_b
+  1
+  $ dune_cmd exists _build/default/beacon_a | dune_cmd override-on macosx false
+  false
+  $ dune_cmd exists _build/default/beacon_b | dune_cmd override-on macosx true
+  true
+
+Test the error message when using removed subcommands [start] and [stop].
 
   $ dune cache start
   Error: Dune no longer uses the cache daemon, and so the `start` and `stop`
   subcommands of `dune cache` were removed.
   [1]
+
   $ dune cache stop
   Error: Dune no longer uses the cache daemon, and so the `start` and `stop`
   subcommands of `dune cache` were removed.

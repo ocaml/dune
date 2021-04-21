@@ -73,15 +73,21 @@ let files_in_cache_for_all_supported_versions () =
    skip it while trimming. *)
 let file_exists_and_is_unused ~stats = stats.Unix.st_nlink = 1
 
+(* Dune uses [ctime] to prioritise entries for deletion. How does this work?
+
+   - In the [Hardlink] mode, an entry to become unused when it loses the last
+   hard link that points to it from a build directory. When this happens, the
+   entry's [ctime] is modified. This means that the trimmer will start deleting
+   entries starting from the one that became unused first.
+
+   - In the [Copy] mode, all entries have hard link count of 1, and so they all
+   appear to be unused to the trimmer. However, copying an entry to the cache,
+   as well as copying it from the cache to a build directory, both change the
+   entry's [ctime]. This means that the trimmer will start deleting entries
+   starting from the one that was least recently created or used. *)
 let trim ~goal =
   let files = files_in_cache_for_all_supported_versions () |> List.map ~f:fst in
   let files =
-    (* CR-soon amokhov: When the cache storage mode is [Copy], comparing [ctime]
-       isn't a good heuristic unless we bump [ctime] of a cache entry whenever
-       we restore it from the cache. The simplest way to do that is to [touch]
-       the entry but that also changes its [mtime] which isn't great. One way to
-       bump [ctime] of an entry without changing anything else is to use [chmod]
-       to set the same permissions that the entry already has. *)
     List.sort
       ~compare:(fun (_, _, ctime1) (_, _, ctime2) -> Poly.compare ctime1 ctime2)
       (List.filter_map files ~f:(fun path ->
@@ -97,7 +103,7 @@ let trim ~goal =
     if trimmed_so_far.trimmed_bytes >= goal then
       trimmed_so_far
     else (
-      Path.unlink path;
+      Path.unlink_no_err path;
       (* CR-someday amokhov: We should really be using block_size * #blocks
          because that's how much we save actually. *)
       Trimming_result.add trimmed_so_far ~bytes

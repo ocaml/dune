@@ -1,0 +1,12 @@
+build: [
+  ["dune" "subst"] {dev}
+  [
+    "dune"
+    "build"
+    name
+    "-j"
+    jobs
+    "dune-bench.install"
+    "--release"
+  ]
+]

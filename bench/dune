@@ -1,0 +1,10 @@
+(executable
+ (name bench)
+ (public_name dune_bench)
+ (package dune-bench)
+ (libraries stats chrome_trace stdune fiber dune_engine dune_util))
+
+(rule
+ (alias bench)
+ (action
+  (run ./bench.exe)))

@@ -113,34 +113,42 @@ module Dune_file = struct
     { path = file; kind; plain }
 end
 
-module Readdir : sig
-  type t = private
-    { files : String.Set.t
-    ; dirs : (string * Path.Source.t * File.t) list
-    }
-
-  val empty : t
-
-  val of_source_path : Path.Source.t -> (t, Unix.error) Result.t
-end = struct
-  type t =
-    { files : String.Set.t
-    ; dirs : (string * Path.Source.t * File.t) list
-    }
-
-  let empty = { files = String.Set.empty; dirs = [] }
-
-  let _to_dyn { files; dirs } =
-    let open Dyn.Encoder in
-    record
-      [ ("files", String.Set.to_dyn files)
-      ; ("dirs", list (triple string Path.Source.to_dyn File.to_dyn) dirs)
-      ]
-
+let filter_source_files =
   let is_temp_file fn =
     String.is_prefix fn ~prefix:".#"
     || String.is_suffix fn ~suffix:".swp"
     || String.is_suffix fn ~suffix:"~"
+  in
+  ref (fun _ -> Memo.Build.return (fun _dir fn -> not (is_temp_file fn)))
+
+module Readdir : sig
+  type t = private
+    { path : Path.Source.t
+    ; files : String.Set.t
+    ; dirs : (string * Path.Source.t * File.t) list
+    }
+
+  val empty : Path.Source.t -> t
+
+  val filter_files : t -> Dune_project.t -> t Memo.Build.t
+
+  val of_source_path : Path.Source.t -> (t, Unix.error) Result.t
+end = struct
+  type t =
+    { path : Path.Source.t
+    ; files : String.Set.t
+    ; dirs : (string * Path.Source.t * File.t) list
+    }
+
+  let empty path = { path; files = String.Set.empty; dirs = [] }
+
+  let _to_dyn { path; files; dirs } =
+    let open Dyn.Encoder in
+    record
+      [ ("path", Path.Source.to_dyn path)
+      ; ("files", String.Set.to_dyn files)
+      ; ("dirs", list (triple string Path.Source.to_dyn File.to_dyn) dirs)
+      ]
 
   (* Returns [true] for special files such as character devices of sockets; see
      #3124 for more on issues caused by special devices *)
@@ -152,6 +160,10 @@ end = struct
     | S_SOCK ->
       true
     | _ -> false
+
+  let filter_files t project =
+    let+ f = !filter_source_files project in
+    { t with files = String.Set.filter t.files ~f:(fun fn -> f t.path fn) }
 
   let of_source_path path =
     match Path.readdir_unsorted_with_kinds (Path.source path) with
@@ -188,12 +200,13 @@ end = struct
               in
               if is_directory then
                 Right (fn, path, file)
-              else if is_temp_file fn || is_special kind then
+              else if is_special kind then
                 Skip
               else
                 Left fn)
       in
-      { files = String.Set.of_list files
+      { path
+      ; files = String.Set.of_list files
       ; dirs =
           List.sort dirs ~compare:(fun (a, _, _) (b, _, _) ->
               String.compare a b)
@@ -481,7 +494,7 @@ end = struct
     let file_exists = Option.is_some file_exists in
     Dune_file.load file ~file_exists ~project ~from_parent
 
-  let contents { Readdir.dirs; files } ~dirs_visited ~project ~path
+  let contents { Readdir.path; dirs; files } ~dirs_visited ~project
       ~(dir_status : Sub_dirs.Status.t) =
     let+ dune_file = dune_file ~dir_status ~files ~project ~path in
     let sub_dirs = Dune_file.sub_dirs dune_file in
@@ -491,7 +504,7 @@ end = struct
     in
     (Dir0.Contents.create ~files ~sub_dirs ~dune_file, dirs_visited)
 
-  let get_vcs ~default:vcs ~path ~readdir:{ Readdir.files; dirs } =
+  let get_vcs ~default:vcs ~readdir:{ Readdir.path; files; dirs } =
     match
       match
         List.find_map dirs ~f:(fun (name, _, _) -> Vcs.Kind.of_filename name)
@@ -524,10 +537,11 @@ end = struct
       | None -> Dune_project.anonymous ~dir:path
       | Some p -> p
     in
-    let vcs = get_vcs ~default:ancestor_vcs ~path:Path.Source.root ~readdir in
+    let* readdir = Readdir.filter_files readdir project in
+    let vcs = get_vcs ~default:ancestor_vcs ~readdir in
     let dirs_visited = Dirs_visited.singleton path in
     let+ contents, visited =
-      contents readdir ~dirs_visited ~project ~path ~dir_status
+      contents readdir ~dirs_visited ~project ~dir_status
     in
     let dir = Dir0.create ~project ~path ~status:dir_status ~contents ~vcs in
     { Output.dir; visited }
@@ -566,11 +580,11 @@ end = struct
         let dirs_visited = Dirs_visited.Per_fn.find dirs_visited path in
         let readdir =
           if virtual_ then
-            Readdir.empty
+            Readdir.empty path
           else
             match Readdir.of_source_path path with
             | Ok dir -> dir
-            | Error _ -> Readdir.empty
+            | Error _ -> Readdir.empty path
         in
         let project =
           if dir_status = Data_only then
@@ -581,9 +595,10 @@ end = struct
                  ~infer_from_opam_files:false ~dir_status)
               ~default:parent_dir.project
         in
-        let vcs = get_vcs ~default:parent_dir.vcs ~readdir ~path in
+        let* readdir = Readdir.filter_files readdir project in
+        let vcs = get_vcs ~default:parent_dir.vcs ~readdir in
         let* contents, visited =
-          contents readdir ~dirs_visited ~project ~path ~dir_status
+          contents readdir ~dirs_visited ~project ~dir_status
         in
         let dir =
           Dir0.create ~project ~path ~status:dir_status ~contents ~vcs

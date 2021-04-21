@@ -111,3 +111,12 @@ val find_dir_specified_on_command_line : dir:Path.Source.t -> Dir.t Memo.Build.t
 (** Return the execution parameters for the following directory *)
 val execution_parameters_of_dir :
   Path.Source.t -> Execution_parameters.t Memo.Build.t
+
+(**/**)
+
+(* Hook to describe how to filter source files. This can be used by forks of
+   Dune to implement different filtering strategies.
+
+   This is currently used inside Jane Street. *)
+val filter_source_files :
+  (Dune_project.t -> (Path.Source.t -> string -> bool) Memo.Build.t) ref

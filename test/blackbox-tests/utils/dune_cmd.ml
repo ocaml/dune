@@ -81,7 +81,7 @@ module Cat = struct
 
   let of_args = function
     | [ file ] -> File (Path.of_filename_relative_to_initial_cwd file)
-    | _ -> raise (Arg.Bad "Usage: dune_arg cat <file>")
+    | _ -> raise (Arg.Bad "Usage: dune_cmd cat <file>")
 
   let run (File p) = print_string (Io.read_file p)
 
@@ -95,7 +95,7 @@ module Exists = struct
 
   let of_args = function
     | [ path ] -> Path (Path.of_filename_relative_to_initial_cwd path)
-    | _ -> raise (Arg.Bad "Usage: dune_arg exists <path>")
+    | _ -> raise (Arg.Bad "Usage: dune_cmd exists <path>")
 
   let run (Path path) = print_string (Path.exists path |> Bool.to_string)
 
@@ -107,7 +107,7 @@ module Expand_lines = struct
 
   let of_args = function
     | [] -> ()
-    | _ -> raise (Arg.Bad ("Usage: dune_arg " ^ name))
+    | _ -> raise (Arg.Bad ("Usage: dune_cmd " ^ name))
 
   let run () =
     let re = Re.compile (Re.str "\\n") in
@@ -194,7 +194,7 @@ module Count_lines = struct
   let of_args = function
     | [] -> Stdin
     | [ file ] -> File (Path.of_filename_relative_to_initial_cwd file)
-    | _ -> raise (Arg.Bad "Usage: dune_arg count-lines <file>")
+    | _ -> raise (Arg.Bad "Usage: dune_cmd count-lines <file>")
 
   let run t =
     let n =
@@ -203,6 +203,45 @@ module Count_lines = struct
       | File p -> Io.with_file_in p ~binary:false ~f:count_lines
     in
     Printf.printf "%d\n%!" n
+
+  let () = register name of_args run
+end
+
+module Override_on = struct
+  module Configurator = Configurator.V1
+
+  type t =
+    { system_to_override_on : string
+    ; desired_output : string
+    }
+
+  let name = "override-on"
+
+  let copy_stdin () =
+    let rec loop () =
+      match input_line stdin with
+      | exception End_of_file -> ()
+      | line ->
+        print_endline line;
+        loop ()
+    in
+    loop ()
+
+  let of_args = function
+    | [ system_to_override_on; desired_output ] ->
+      { system_to_override_on; desired_output }
+    | _ ->
+      raise
+        (Arg.Bad
+           "Usage: dune_cmd override-on <system-to-override-on> \
+            <desired-output>")
+
+  let run { system_to_override_on; desired_output } =
+    let config = Configurator.create "override-on" in
+    match Configurator.ocaml_config_var config "system" with
+    | Some system when String.equal system system_to_override_on ->
+      print_endline desired_output
+    | _ -> copy_stdin ()
 
   let () = register name of_args run
 end

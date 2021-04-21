@@ -124,6 +124,9 @@ ifeq (dune,$(firstword $(MAKECMDGOALS)))
   $(eval $(RUN_ARGS):;@:)
 endif
 
+bench:
+	@dune exec -- ./bench/bench.exe
+
 dune: $(BIN)
 	$(BIN) $(RUN_ARGS)
 

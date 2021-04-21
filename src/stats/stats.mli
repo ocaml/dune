@@ -1,5 +1,9 @@
 type t
 
+module Json : sig
+  val to_string : Chrome_trace.Json.t -> string
+end
+
 type dst =
   | Out of out_channel
   | Custom of

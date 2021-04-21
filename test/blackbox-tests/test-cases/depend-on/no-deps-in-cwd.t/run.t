@@ -3,6 +3,9 @@
   > (lang dune 3.0)
   > EOF
 
+You can `chdir` into a directory without declaring any dependencies
+and dune makes sure that the directory exists inside the sandbox.
+
   $ mkdir a
   $ echo contents > x
   $ cat >a/dune <<EOF
@@ -13,9 +16,8 @@
   > )
   > EOF
   $ dune build @a --sandbox=copy
-  Error: chdir: _build/.sandbox/54e7c39ec539e048ba2218cceb055bf6/default/a: No
-  such file or directory
-  [1]
+          bash alias a/a
+  contents
 
   $ cat >dune <<EOF
   > (rule
@@ -25,6 +27,5 @@
   > )
   > EOF
   $ dune build @root --sandbox=copy
-  Error: chdir: _build/.sandbox/cba1cf593884e3c67471e7bb90263e06/default/a: No
-  such file or directory
-  [1]
+          bash alias root
+  contents

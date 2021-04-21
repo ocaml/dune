@@ -113,6 +113,9 @@ Unreleased
   to be produced by the action. Old message is still produced on ENOENT, but other
   errors deserve a more detailed report. (#4501, @aalekseyev)
 
+- Fixed a bug where a sandboxed action would fail if it declares no dependencies in
+  its initial working directory or any directory it `chdir`s into. (#4509, @aalekseyev)
+
 2.9.0 (unreleased)
 ------------------
 

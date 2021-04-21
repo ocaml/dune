@@ -2,8 +2,6 @@ open! Stdune
 open Import
 open Memo.Build.O
 
-let () = Hooks.End_of_build.always Memo.reset
-
 module Fs : sig
   val mkdir_p : Path.Build.t -> unit Memo.Build.t
 

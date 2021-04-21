@@ -362,7 +362,22 @@ module Cell : sig
   val invalidate : _ t -> unit
 end
 
+(** Create a "memoization cell" that focuses on a single input/output pair of a
+    memoized function. *)
 val cell : ('i, 'o) t -> 'i -> ('i, 'o) Cell.t
+
+module Expert : sig
+  (** Like [cell] but returns [Nothing] if the given memoized function has never
+      been evaluated on the specified input. We use [previously_evaluated_cell]
+      to skip unnecessary rebuilds when receiving file system events for files
+      that we don't care about.
+
+      Note that this function is monotonic: its result can change from [Nothing]
+      to [Some cell] as new cells get evaluated. However, calling [reset] clears
+      all memoization tables, and therefore resets [previously_evaluated_cell]
+      to [Nothing] as well. *)
+  val previously_evaluated_cell : ('i, 'o) t -> 'i -> ('i, 'o) Cell.t option
+end
 
 (** Memoization of polymorphic functions ['a input -> 'a output Build.t]. The
     provided [id] function must be injective, i.e. there must be a one-to-one

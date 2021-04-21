@@ -849,18 +849,35 @@ end = struct
       match Event.Queue.next t.events with
       | Job_completed (job, status) -> Fiber.Fill (job.ivar, status)
       | Files_changed changed_files -> (
-        List.iter changed_files ~f:Fs_notify_memo.invalidate;
-        match t.status with
-        | Shutting_down
-        | Restarting_build ->
-          (* We're already cancelling build, so file change events don't matter *)
-          iter t
-        | Building ->
-          t.handler t.config Build_interrupted;
-          t.status <- Restarting_build;
-          Process_watcher.killall t.process_watcher Sys.sigkill;
-          iter t
-        | Waiting_for_file_changes ivar -> Fill (ivar, Files_changed))
+        (* If none of [changed_files] is tracked by the build system, we will
+           ignore this [Files_changed] event to avoid unnecessary restarts. *)
+        let all_changed_files_skipped =
+          List.for_all changed_files ~f:(fun path ->
+              match Fs_notify_memo.invalidate path with
+              | Skipped -> true
+              | Invalidated -> false)
+        in
+        match all_changed_files_skipped with
+        | true -> iter t (* Ignore the event *)
+        | false -> (
+          (* CR-someday amokhov: Once we implement fully incremental builds, we
+             should stop resetting [Memo] on file change events. *)
+          (* It might seem that the above [invalidate] calls are currently
+             completely meaningless since we immediately reset the [Memo], but
+             they do serve one purpose: computing [all_changed_files_skipped]. *)
+          Memo.reset ();
+          match t.status with
+          | Shutting_down
+          | Restarting_build ->
+            (* We're already cancelling build, so file change events don't
+               matter *)
+            iter t
+          | Building ->
+            t.handler t.config Build_interrupted;
+            t.status <- Restarting_build;
+            Process_watcher.killall t.process_watcher Sys.sigkill;
+            iter t
+          | Waiting_for_file_changes ivar -> Fill (ivar, Files_changed)))
       | Rpc fill -> fill
       | Signal signal ->
         got_signal signal;

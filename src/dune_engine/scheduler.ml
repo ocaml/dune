@@ -849,30 +849,23 @@ end = struct
       match Event.Queue.next t.events with
       | Job_completed (job, status) -> Fiber.Fill (job.ivar, status)
       | Files_changed changed_files -> (
+        (* CR-someday amokhov: In addition to tracking files, we also need to
+           track directory listings. Otherwise, when a new file is added to a
+           source directory, [invalidate] will return [Skipped] because that
+           file was previously untracked. To fix this, we will need to introduce
+           new [Memo] cells for tracking directory listings, and [invalidate]
+           those cells when the listings change. *)
         (* If none of [changed_files] is tracked by the build system, we will
            ignore this [Files_changed] event to avoid unnecessary restarts. *)
-        let _all_changed_files_skipped =
+        let all_changed_files_skipped =
           List.for_all changed_files ~f:(fun path ->
               match Fs_notify_memo.invalidate path with
               | Skipped -> true
               | Invalidated -> false)
         in
-        (* CR-soon amokhov: For now, we disable this optimisation because it
-           breaks incremental builds when new files are added to a directory.
-           The reason is that these files have previously been untracked and
-           [invalidate] will therefore return [Skipped]. To fix this, we will
-           need to introduce new [Memo] cells for tracking directory listings.
-           When a new file is added to a directory, the corresponding cell will
-           become [Invalidated] and we will correctly restart the build. *)
-        let all_changed_files_skipped = false in
-        match all_changed_files_skipped with
-        | true -> iter t (* Ignore the event *)
-        | false -> (
-          (* CR-someday amokhov: Once we implement fully incremental builds, we
-             should stop resetting [Memo] on file change events. *)
-          (* It might seem that the above [invalidate] calls are currently
-             completely meaningless since we immediately reset the [Memo], but
-             they do serve one purpose: computing [all_changed_files_skipped]. *)
+        match (all_changed_files_skipped, Memo.incremental_mode_enabled) with
+        | true, true -> iter t (* Ignore the event *)
+        | _, _ -> (
           Memo.reset ();
           match t.status with
           | Shutting_down

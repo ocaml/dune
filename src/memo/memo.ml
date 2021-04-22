@@ -1256,12 +1256,12 @@ struct
   let eval x = exec memo (Key.T x) >>| Value.get ~input_with_matching_id:x
 end
 
-let should_clear_caches =
+let incremental_mode_enabled =
   match Sys.getenv_opt "DUNE_WATCHING_MODE_INCREMENTAL" with
-  | Some "true" -> false
+  | Some "true" -> true
   | Some "false"
   | None ->
-    true
+    false
   | Some _ ->
     User_error.raise
       [ Pp.text "Invalid value of DUNE_WATCHING_MODE_INCREMENTAL" ]
@@ -1272,4 +1272,4 @@ let restart_current_run () =
 
 let reset () =
   restart_current_run ();
-  if should_clear_caches then Caches.clear ()
+  if not incremental_mode_enabled then Caches.clear ()

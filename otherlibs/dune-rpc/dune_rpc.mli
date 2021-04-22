@@ -117,8 +117,8 @@ module V1 : sig
        to the workspace root. This is often, but not always, the directory of
        the first target in [targets].
 
-       If this is [None], then the error most likely arose from a dune-internal
-       operation, which has an effective directory of the workspace root. *)
+       If this is [None], then the error does not have an associated error (for
+       example, if your opam installation is too old). *)
     val directory : t -> string option
 
     module Event : sig

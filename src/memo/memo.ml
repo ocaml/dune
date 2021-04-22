@@ -1173,6 +1173,10 @@ end
 
 let cell = dep_node
 
+module Expert = struct
+  let previously_evaluated_cell t input = Store.find t.cache input
+end
+
 module Implicit_output = Implicit_output
 module Store = Store_intf
 

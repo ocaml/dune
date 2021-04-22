@@ -8,6 +8,17 @@ let memo =
     ~visibility:Hidden
     (fun _path -> Memo.Build.return ())
 
-let depend p = Memo.exec memo p
+let depend path = Memo.exec memo path
 
-let invalidate p = Memo.Cell.invalidate (Memo.cell memo p)
+module Invalidate_result = struct
+  type t =
+    | Invalidated
+    | Skipped
+end
+
+let invalidate path =
+  match Memo.Expert.previously_evaluated_cell memo path with
+  | None -> Invalidate_result.Skipped
+  | Some cell ->
+    Memo.Cell.invalidate cell;
+    Invalidated

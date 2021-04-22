@@ -12,15 +12,16 @@ Multiple cinaps stanzas in the same dune file
 
   $ touch x.ml x.mli
 
-  $ dune runtest --diff-command diff 2>&1 | sed -E 's/[^ ]+sh/\$sh/'
+  $ dune runtest --diff-command diff 2>&1
 
   $ touch foo.ml
   $ cat > dune <<EOF
   > (cinaps (files foo.ml))
   > (cinaps (files *oo.ml))
   > EOF
-  $ dune runtest --diff-command diff 2>&1 | sed -E 's/[^ ]+sh/\$sh/'
+  $ dune runtest --diff-command diff 2>&1
   Error: Multiple rules generated for
   _build/default/.cinaps.a7811055/cinaps.ml-gen:
   - dune:1
   - dune:2
+  [1]

@@ -866,11 +866,6 @@ end = struct
         match (all_changed_files_skipped, Memo.incremental_mode_enabled) with
         | true, true -> iter t (* Ignore the event *)
         | _, _ -> (
-          (* CR-someday amokhov: Once we implement fully incremental builds, we
-             should stop resetting [Memo] on file change events. *)
-          (* It might seem that the above [invalidate] calls are currently
-             completely meaningless since we immediately reset the [Memo], but
-             they do serve one purpose: computing [all_changed_files_skipped]. *)
           Memo.reset ();
           match t.status with
           | Shutting_down

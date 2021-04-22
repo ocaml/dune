@@ -362,11 +362,11 @@ end
 module Error = struct
   type t = Exn_with_backtrace.t
 
-  let message (t : t) =
-    let exn, _ = Dep_path.unwrap_exn t.exn in
+  let info (t : t) =
+    let exn, deps = Dep_path.unwrap_exn t.exn in
     match exn with
-    | User_error.E msg -> msg
-    | e -> User_message.make [ Pp.text (Printexc.to_string e) ]
+    | User_error.E msg -> (msg, deps)
+    | e -> (User_message.make [ Pp.text (Printexc.to_string e) ], deps)
 end
 
 module type Rule_generator = sig

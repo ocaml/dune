@@ -79,9 +79,21 @@ let run t args =
   in
   String.trim s
 
-let run_zero_separated t args =
-  Process.run_capture_zero_separated Strict (prog t) args ~dir:t.root
-    ~env:Env.initial
+let git_accept () =
+  Process.Accept (Predicate_lang.union [ Element 0; Element 128 ])
+
+let run_git t args =
+  let res =
+    Process.run_capture (git_accept ()) (prog t) args ~dir:t.root
+      ~env:Env.initial
+      ~stderr_to:(Process.Io.file Config.dev_null Out)
+  in
+  let open Fiber.O in
+  let+ res = res in
+  match res with
+  | Ok s -> Some (String.trim s)
+  | Error 128 -> None
+  | Error _ -> assert false
 
 let hg_describe t =
   let open Fiber.O in
@@ -114,25 +126,57 @@ let make_fun name ~output ~doc ~git ~hg =
   in
   Staged.stage (Memo.exec memo)
 
+module Option_output (S : sig
+  type t
+
+  val to_dyn : t -> Dyn.t
+end) =
+struct
+  type t = S.t option
+
+  let to_dyn t = Dyn.Encoder.option S.to_dyn t
+end
+
 let describe =
   Staged.unstage
   @@ make_fun "vcs-describe"
        ~doc:"Obtain a nice description of the tip from the vcs"
-       ~output:(Simple (module String))
-       ~git:(fun t -> run t [ "describe"; "--always"; "--dirty" ])
-       ~hg:hg_describe
+       ~output:(Simple (module Option_output (String)))
+       ~git:(fun t -> run_git t [ "describe"; "--always"; "--dirty" ])
+       ~hg:(fun x ->
+         let open Fiber.O in
+         let+ res = hg_describe x in
+         Some res)
 
 let commit_id =
   Staged.unstage
   @@ make_fun "vcs-commit-id" ~doc:"The hash of the head commit"
-       ~output:(Simple (module String))
-       ~git:(fun t -> run t [ "rev-parse"; "HEAD" ])
-       ~hg:(fun t -> run t [ "id"; "-i" ])
+       ~output:(Simple (module Option_output (String)))
+       ~git:(fun t -> run_git t [ "rev-parse"; "HEAD" ])
+       ~hg:(fun t ->
+         let open Fiber.O in
+         let+ res = run t [ "id"; "-i" ] in
+         Some res)
 
 let files =
-  let f args t =
+  let run_zero_separated_hg t args =
+    Process.run_capture_zero_separated Strict (prog t) args ~dir:t.root
+      ~env:Env.initial
+  in
+  let run_zero_separated_git t args =
     let open Fiber.O in
-    let+ l = run_zero_separated t args in
+    let+ res =
+      Process.run_capture_zero_separated (git_accept ()) (prog t) args
+        ~dir:t.root ~env:Env.initial
+    in
+    match res with
+    | Ok s -> s
+    | Error 128 -> []
+    | Error _ -> assert false
+  in
+  let f run args t =
+    let open Fiber.O in
+    let+ l = run t args in
     List.map l ~f:Path.in_source
   in
   Staged.unstage
@@ -144,5 +188,7 @@ let files =
 
               let to_dyn = Dyn.Encoder.list Path.to_dyn
             end))
-       ~git:(f [ "ls-tree"; "-z"; "-r"; "--name-only"; "HEAD" ])
-       ~hg:(f [ "files"; "-0" ])
+       ~git:
+         (f run_zero_separated_git
+            [ "ls-tree"; "-z"; "-r"; "--name-only"; "HEAD" ])
+       ~hg:(f run_zero_separated_hg [ "files"; "-0" ])

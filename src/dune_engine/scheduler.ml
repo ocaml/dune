@@ -849,18 +849,36 @@ end = struct
       match Event.Queue.next t.events with
       | Job_completed (job, status) -> Fiber.Fill (job.ivar, status)
       | Files_changed changed_files -> (
-        List.iter changed_files ~f:Fs_notify_memo.invalidate;
-        match t.status with
-        | Shutting_down
-        | Restarting_build ->
-          (* We're already cancelling build, so file change events don't matter *)
-          iter t
-        | Building ->
-          t.handler t.config Build_interrupted;
-          t.status <- Restarting_build;
-          Process_watcher.killall t.process_watcher Sys.sigkill;
-          iter t
-        | Waiting_for_file_changes ivar -> Fill (ivar, Files_changed))
+        (* CR-someday amokhov: In addition to tracking files, we also need to
+           track directory listings. Otherwise, when a new file is added to a
+           source directory, [invalidate] will return [Skipped] because that
+           file was previously untracked. To fix this, we will need to introduce
+           new [Memo] cells for tracking directory listings, and [invalidate]
+           those cells when the listings change. *)
+        (* If none of [changed_files] is tracked by the build system, we will
+           ignore this [Files_changed] event to avoid unnecessary restarts. *)
+        let all_changed_files_skipped =
+          List.for_all changed_files ~f:(fun path ->
+              match Fs_notify_memo.invalidate path with
+              | Skipped -> true
+              | Invalidated -> false)
+        in
+        match (all_changed_files_skipped, Memo.incremental_mode_enabled) with
+        | true, true -> iter t (* Ignore the event *)
+        | _, _ -> (
+          Memo.reset ();
+          match t.status with
+          | Shutting_down
+          | Restarting_build ->
+            (* We're already cancelling build, so file change events don't
+               matter *)
+            iter t
+          | Building ->
+            t.handler t.config Build_interrupted;
+            t.status <- Restarting_build;
+            Process_watcher.killall t.process_watcher Sys.sigkill;
+            iter t
+          | Waiting_for_file_changes ivar -> Fill (ivar, Files_changed)))
       | Rpc fill -> fill
       | Signal signal ->
         got_signal signal;

@@ -135,7 +135,9 @@ let eval t ~conf =
       (let open Memo.Build.O in
       conf.get_vcs p >>= function
       | None -> Memo.Build.return ""
-      | Some vcs -> Vcs.describe vcs)
+      | Some vcs ->
+        let+ res = Vcs.describe vcs in
+        Option.value res ~default:"")
   | Location (name, lib_name) ->
     Fiber.return (relocatable (conf.get_location name lib_name))
   | Configpath d ->

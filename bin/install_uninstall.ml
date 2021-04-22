@@ -158,12 +158,16 @@ module File_ops_real (W : Workspace) : File_operations = struct
       | Some package -> Memo.Build.run (get_vcs (Package.dir package)))
       >>= function
       | None -> plain_copy ()
-      | Some vcs ->
+      | Some vcs -> (
         let open Fiber.O in
-        let+ version = Memo.Build.run (Dune_engine.Vcs.describe vcs) in
-        let ppf = Format.formatter_of_out_channel oc in
-        print ppf ~version;
-        Format.pp_print_flush ppf ())
+        let* version = Memo.Build.run (Dune_engine.Vcs.describe vcs) in
+        match version with
+        | None -> plain_copy ()
+        | Some version ->
+          let ppf = Format.formatter_of_out_channel oc in
+          print ppf ~version;
+          Format.pp_print_flush ppf ();
+          Fiber.return ()))
 
   let process_meta ic =
     let lb = Lexing.from_channel ic in

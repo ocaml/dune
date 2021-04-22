@@ -14,6 +14,8 @@ end
 
 let () = init ()
 
+let printf = Printf.printf
+
 let string_fn_create name =
   Memo.create name
     ~input:(module String)
@@ -347,8 +349,6 @@ let%expect_test _ =
     *foobar
     *foobar |}]
 
-let printf = Printf.printf
-
 let%expect_test "fib linked list" =
   let module Element = struct
     type t =
@@ -410,6 +410,93 @@ let%expect_test "fib linked list" =
     prev: 8
     prev: 5 |}]
 
+let%expect_test "previously_evaluated_cell" =
+  let f x =
+    printf "Evaluating %s...\n" x;
+    Memo.Build.return ("[" ^ x ^ "]")
+  in
+  let memo =
+    Memo.create "boxed"
+      ~input:(module String)
+      ~visibility:(Public Dune_lang.Decoder.string)
+      ~output:(Allow_cutoff (module String))
+      ~doc:"" f
+  in
+  let evaluate_and_print name =
+    let cell = Memo.cell memo name in
+    printf "%s = %s\n" name (run (Cell.read cell))
+  in
+  let print_previously_evaluated_cell name =
+    match Memo.Expert.previously_evaluated_cell memo name with
+    | None -> printf "previously_evaluated_cell %s = None\n" name
+    | Some cell ->
+      printf "previously_evaluated_cell %s = %s\n" name (run (Cell.read cell))
+  in
+  let invalidate_if_evaluated name =
+    match Memo.Expert.previously_evaluated_cell memo name with
+    | None -> ()
+    | Some cell ->
+      printf "Invalidating %s...\n" name;
+      Cell.invalidate cell
+  in
+  print_previously_evaluated_cell "x";
+  print_previously_evaluated_cell "y";
+  (* Cells are initially unevaluated. *)
+  [%expect
+    {|
+    previously_evaluated_cell x = None
+    previously_evaluated_cell y = None
+  |}];
+  evaluate_and_print "x";
+  print_previously_evaluated_cell "x";
+  print_previously_evaluated_cell "y";
+  (* Only x is evaluated. *)
+  [%expect
+    {|
+    Evaluating x...
+    x = [x]
+    previously_evaluated_cell x = [x]
+    previously_evaluated_cell y = None
+  |}];
+  invalidate_if_evaluated "x";
+  invalidate_if_evaluated "y";
+  (* Only x got invalidated. *)
+  [%expect {|
+    Invalidating x...
+  |}];
+  evaluate_and_print "x";
+  evaluate_and_print "y";
+  print_previously_evaluated_cell "x";
+  print_previously_evaluated_cell "y";
+  (* Both are evaluated (x is re-evaluated because it was invalidated). *)
+  [%expect
+    {|
+    Evaluating x...
+    x = [x]
+    Evaluating y...
+    y = [y]
+    previously_evaluated_cell x = [x]
+    previously_evaluated_cell y = [y]
+  |}];
+  Memo.restart_current_run ();
+  print_previously_evaluated_cell "x";
+  print_previously_evaluated_cell "y";
+  (* Both are still evaluated after incrementing the current run. *)
+  [%expect
+    {|
+    previously_evaluated_cell x = [x]
+    previously_evaluated_cell y = [y]
+  |}];
+  Memo.reset ();
+  (* Both switch back to unevaluated after resetting the Memo. *)
+  print_previously_evaluated_cell "x";
+  print_previously_evaluated_cell "y";
+  [%expect
+    {|
+    previously_evaluated_cell x = None
+    previously_evaluated_cell y = None
+    |}]
+
 module Function = struct
   type 'a input =
     | I : int Type_eq.Id.t * int -> int input
@@ -430,11 +517,11 @@ module Function = struct
     match x with
     | I (_, i) ->
       let* () = Memo.Build.return () in
-      Printf.printf "Evaluating %d\n" i;
+      printf "Evaluating %d\n" i;
       Memo.Build.return (List.init i ~f:(fun i -> i + 1))
     | S (_, s) ->
       let* () = Memo.Build.return () in
-      Printf.printf "Evaluating %S\n" s;
+      printf "Evaluating %S\n" s;
       Memo.Build.return [ s ]
 
   let get (type a) (x : a input) : a =

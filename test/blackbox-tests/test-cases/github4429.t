@@ -15,10 +15,6 @@ Create a repository with no HEAD commit:
   >  (promote (until-clean)))
   > EOF
 
-At the moment Dune fails, which is bad:
+Dune handles this gracefully since #4441
 
-  $ dune exec ./main.exe 2>&1 | sed 's/.*\/git/{{ git }}/; s/> .*.output/> {{ output_file }}/g' 
-           git (internal) (exit 128)
-  {{ git }} describe --always --dirty > {{ output_file }}
-  fatal: bad revision 'HEAD'
-
+  $ dune exec ./main.exe 2>&1

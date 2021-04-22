@@ -145,11 +145,11 @@ let%expect_test "run and connect persistent" =
           rpc#terminate
         )
       in
-      let on_terminate () =
-        printfn "on_terminate: %d" !count;
+      let on_disconnect () =
+        printfn "on_disconnect: %d" !count;
         Lwt.return ()
       in
-      Client.connect_persistent chan ~on_connected ~on_connect ~on_terminate
+      Client.connect_persistent chan ~on_connected ~on_connect ~on_disconnect
     in
     let run_build1 =
       let* _ = rpc in
@@ -188,11 +188,11 @@ let%expect_test "run and connect persistent" =
     incoming connection 1
     on_connected: 1
     received ping. shutting down server
-    on_terminate: 1
+    on_disconnect: 1
     dune build finished with 1
     build2: connecting
     incoming connection 2
     on_connected: 2
     received ping. shutting down server
-    on_terminate: 2
+    on_disconnect: 2
     dune build finished with 0 |}]

@@ -851,12 +851,20 @@ end = struct
       | Files_changed changed_files -> (
         (* If none of [changed_files] is tracked by the build system, we will
            ignore this [Files_changed] event to avoid unnecessary restarts. *)
-        let all_changed_files_skipped =
+        let _all_changed_files_skipped =
           List.for_all changed_files ~f:(fun path ->
               match Fs_notify_memo.invalidate path with
               | Skipped -> true
               | Invalidated -> false)
         in
+        (* CR-soon amokhov: For now, we disable this optimisation because it
+           breaks incremental builds when new files are added to a directory.
+           The reason is that these files have previously been untracked and
+           [invalidate] will therefore return [Skipped]. To fix this, we will
+           need to introduce new [Memo] cells for tracking directory listings.
+           When a new file is added to a directory, the corresponding cell will
+           become [Invalidated] and we will correctly restart the build. *)
+        let all_changed_files_skipped = false in
         match all_changed_files_skipped with
         | true -> iter t (* Ignore the event *)
         | false -> (

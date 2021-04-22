@@ -410,7 +410,7 @@ module type S = sig
     -> 'a fiber
 
   val connect_persistent :
-       ?on_terminate:('a -> unit fiber)
+       ?on_disconnect:('a -> unit fiber)
     -> chan
     -> on_connect:(unit -> ('a * Initialize.Request.t * Handler.t option) fiber)
     -> on_connected:('a -> t -> unit fiber)
@@ -732,7 +732,7 @@ struct
     in
     connect_raw chan initialize ~f ~on_notification
 
-  let connect_persistent ?(on_terminate = fun _ -> Fiber.return ()) chan
+  let connect_persistent ?(on_disconnect = fun _ -> Fiber.return ()) chan
       ~on_connect ~on_connected =
     let chan = Chan.of_chan chan in
     let packets () =
@@ -772,7 +772,7 @@ struct
         let chan = make_chan packets in
         let* () = connect ?handler chan init ~f:(on_connected a) in
         Chan.close_read chan;
-        let* () = on_terminate a in
+        let* () = on_disconnect a in
         loop ()
       | Some Close_connection -> loop ()
       | None -> Fiber.return ()

@@ -227,7 +227,7 @@ module V1 : sig
       -> 'a fiber
 
     val connect_persistent :
-         ?on_terminate:('a -> unit fiber)
+         ?on_disconnect:('a -> unit fiber)
       -> chan
       -> on_connect:(unit -> ('a * Initialize.t * Handler.t option) fiber)
       -> on_connected:('a -> t -> unit fiber)

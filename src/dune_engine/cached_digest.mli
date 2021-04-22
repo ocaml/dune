@@ -1,15 +1,10 @@
 (** Digest files with caching *)
 open Stdune
 
-(** Digest the contents of the following source or external file *)
-val source_or_external_file : Path.t -> Digest.t Memo.Build.t
+(** Digest the contents of a source or external file. *)
+val source_or_external_file : Path.t -> Digest.t
 
-(* jeremiedimino: is it safe to export [peek_file]? *)
-
-(** The digest of the following file, if cached *)
-val peek_file : Path.t -> Digest.t option
-
-(** Digest the contents of an artefact *)
+(** Digest the contents of a build artifact. *)
 val build_file : Path.Build.t -> Digest.t
 
 module Refresh_result : sig

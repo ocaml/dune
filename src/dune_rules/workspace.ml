@@ -618,19 +618,14 @@ let workspace_step1 =
   let open Memo.Build.O in
   let f () =
     let clflags = Clflags.t () in
-    let path_exists p =
-      (* jeremiedimino: this is meh, we need a better Fs API *)
-      let+ () = Dune_engine.Fs_notify_memo.depend p in
-      Path.exists p
-    in
     let+ workspace_file =
       match clflags.workspace_file with
       | None ->
         let p = Path.of_string filename in
-        let+ exists = path_exists p in
+        let+ exists = Dune_engine.Fs_notify_memo.file_exists p in
         Option.some_if exists p
       | Some p -> (
-        path_exists p >>| function
+        Dune_engine.Fs_notify_memo.file_exists p >>| function
         | false ->
           User_error.raise
             [ Pp.textf "Workspace file %s does not exist"

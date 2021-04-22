@@ -243,12 +243,7 @@ let peek_or_refresh_file fn =
   | None -> refresh_internal_exn fn
   | Some v -> v
 
-let source_or_external_file fn =
-  let open Memo.Build.O in
-  assert (not (Path.is_in_build_dir fn));
-  let res = peek_or_refresh_file fn in
-  let+ () = Fs_notify_memo.depend fn in
-  res
+let source_or_external_file = peek_or_refresh_file
 
 let build_file fn = peek_or_refresh_file (Path.build fn)
 

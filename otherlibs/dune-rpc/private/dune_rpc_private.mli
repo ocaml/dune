@@ -123,6 +123,16 @@ module Loc : sig
     }
 end
 
+module Target : sig
+  type t =
+    | Path of string
+    | Alias of string
+    | Library of string
+    | Executables of string list
+    | Preprocess of string list
+    | Loc of Loc.t
+end
+
 module Diagnostic : sig
   type severity =
     | Error
@@ -136,11 +146,12 @@ module Diagnostic : sig
   end
 
   type t =
-    { targets : string list
+    { targets : Target.t list
     ; message : unit Pp.t
     ; loc : Loc.t option
     ; severity : severity option
     ; promotion : Promotion.t list
+    ; directory : string option
     }
 
   val loc : t -> Loc.t option
@@ -151,7 +162,9 @@ module Diagnostic : sig
 
   val promotion : t -> Promotion.t list
 
-  val targets : t -> string list
+  val targets : t -> Target.t list
+
+  val directory : t -> string option
 
   module Event : sig
     type nonrec t =

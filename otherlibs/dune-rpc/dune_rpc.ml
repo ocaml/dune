@@ -8,6 +8,7 @@ module V1 = struct
   module Call = Call
   module Client = Client
   module Loc = Loc
+  module Target = Target
   module Diagnostic = Diagnostic
   module Build = Build
   module Progress = Progress

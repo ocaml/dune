@@ -63,6 +63,15 @@ val five :
   -> ('e, fields) t
   -> ('a * 'b * 'c * 'd * 'e, fields) t
 
+val six :
+     ('a, fields) t
+  -> ('b, fields) t
+  -> ('c, fields) t
+  -> ('d, fields) t
+  -> ('e, fields) t
+  -> ('f, fields) t
+  -> ('a * 'b * 'c * 'd * 'e * 'f, fields) t
+
 val record : ('a, fields) t -> ('a, values) t
 
 val either : ('a, fields) t -> ('b, fields) t -> (('a, 'b) Either.t, fields) t

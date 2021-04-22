@@ -102,6 +102,43 @@ module Loc = struct
     iso (record (both start stop)) to_ from
 end
 
+module Target = struct
+  type t =
+    | Path of string
+    | Alias of string
+    | Library of string
+    | Executables of string list
+    | Preprocess of string list
+    | Loc of Loc.t
+
+  let sexp =
+    let open Conv in
+    let path = constr "Path" string (fun p -> Path p) in
+    let alias = constr "Alias" string (fun a -> Alias a) in
+    let lib = constr "Library" string (fun l -> Library l) in
+    let executables =
+      constr "Executables" (list string) (fun es -> Executables es)
+    in
+    let preprocess =
+      constr "Preprocess" (list string) (fun ps -> Preprocess ps)
+    in
+    let loc = constr "Loc" Loc.sexp (fun l -> Loc l) in
+    sum
+      [ econstr path
+      ; econstr alias
+      ; econstr lib
+      ; econstr executables
+      ; econstr preprocess
+      ; econstr loc
+      ] (function
+      | Path p -> case p path
+      | Alias a -> case a alias
+      | Library l -> case l lib
+      | Executables es -> case es executables
+      | Preprocess ps -> case ps preprocess
+      | Loc l -> case l loc)
+end
+
 module Diagnostic = struct
   type severity =
     | Error
@@ -123,11 +160,12 @@ module Diagnostic = struct
   end
 
   type t =
-    { targets : string list
+    { targets : Target.t list
     ; message : unit Stdune.Pp.t
     ; loc : Loc.t option
     ; severity : severity option
     ; promotion : Promotion.t list
+    ; directory : string option
     }
 
   let sexp_pp : (unit Stdune.Pp.t, Conv.values) Conv.t =
@@ -207,24 +245,27 @@ module Diagnostic = struct
 
   let targets t = t.targets
 
+  let directory t = t.directory
+
   let sexp_severity =
     let open Conv in
     enum [ ("error", Error); ("warning", Warning) ]
 
   let sexp =
     let open Conv in
-    let from { targets; message; loc; severity; promotion } =
-      (targets, message, loc, severity, promotion)
+    let from { targets; message; loc; severity; promotion; directory } =
+      (targets, message, loc, severity, promotion, directory)
     in
-    let to_ (targets, message, loc, severity, promotion) =
-      { targets; message; loc; severity; promotion }
+    let to_ (targets, message, loc, severity, promotion, directory) =
+      { targets; message; loc; severity; promotion; directory }
     in
     let loc = field "loc" (optional Loc.sexp) in
     let message = field "message" (required sexp_pp) in
-    let targets = field "targets" (required (list string)) in
+    let targets = field "targets" (required (list Target.sexp)) in
     let severity = field "severity" (optional sexp_severity) in
+    let directory = field "directory" (optional string) in
     let promotion = field "promotion" (required (list Promotion.sexp)) in
-    iso (record (five targets message loc severity promotion)) to_ from
+    iso (record (six targets message loc severity promotion directory)) to_ from
 
   module Event = struct
     type nonrec t =

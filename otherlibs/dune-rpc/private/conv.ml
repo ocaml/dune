@@ -413,6 +413,12 @@ let five a b c d e =
     (fun ((a, b), (c, d, e)) -> (a, b, c, d, e))
     (fun (a, b, c, d, e) -> ((a, b), (c, d, e)))
 
+let six a b c d e f =
+  iso
+    (both (three a b c) (three d e f))
+    (fun ((a, b, c), (d, e, f)) -> (a, b, c, d, e, f))
+    (fun (a, b, c, d, e, f) -> ((a, b, c), (d, e, f)))
+
 let sexp = Sexp
 
 let required x = Required x

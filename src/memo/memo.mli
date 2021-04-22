@@ -137,6 +137,11 @@ val reset : unit -> unit
     clear the memoization cache. *)
 val restart_current_run : unit -> unit
 
+(** Returns [true] if the user enabled the incremental mode via the environment
+    variable [DUNE_WATCHING_MODE_INCREMENTAL], and we should therefore assume
+    that the build system tracks all relevant side effects in the [Build] monad. *)
+val incremental_mode_enabled : bool
+
 module type Output_simple = sig
   type t
 

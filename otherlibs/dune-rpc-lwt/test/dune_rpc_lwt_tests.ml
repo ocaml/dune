@@ -17,7 +17,7 @@ let connect ~root_dir ~persistent =
   Lwt_process.open_process ("dune", args)
 
 let build_watch ~root_dir =
-  Lwt_process.open_process_none
+  Lwt_process.open_process_none ~stdin:`Close
     ( "dune"
     , [| "dune"
        ; "build"
@@ -132,7 +132,7 @@ let%expect_test "run and connect persistent" =
       let on_connected () t =
         printfn "on_connected: %d" !count;
         let* res = Client.request t Request.ping () in
-        let+ () =
+        let* () =
           match res with
           | Error _ -> failwith "unexpected"
           | Ok () ->
@@ -140,10 +140,11 @@ let%expect_test "run and connect persistent" =
             Client.notification t Notification.shutdown ()
         in
         if !count = 3 then (
-          (* TODO clean way for shutdown *)
           print_endline "received second session. shutting down";
-          rpc#terminate
-        )
+          let* () = Lwt_io.close rpc#stdout in
+          Lwt_io.close rpc#stdin
+        ) else
+          Lwt.return ()
       in
       let on_disconnect () =
         printfn "on_disconnect: %d" !count;

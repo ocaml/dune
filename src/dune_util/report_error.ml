@@ -7,7 +7,9 @@ type who_is_responsible_for_the_error =
   | Developer
 
 let get_user_message = function
-  | User_error.E msg -> (User, msg)
+  | User_error.E msg
+  | Located_error.E (msg, _) ->
+    (User, msg)
   | Code_error.E e ->
     let open Pp.O in
     ( Developer

@@ -8,6 +8,7 @@ module Value = Dune_util.Value
 module Ml_kind = Dune_util.Ml_kind
 module Dune_rpc = Dune_rpc_private
 module Config = Dune_util.Config
+module Located_error = Dune_util.Located_error
 
 (* To make bug reports usable *)
 let () = Printexc.record_backtrace true

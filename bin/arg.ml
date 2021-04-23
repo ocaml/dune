@@ -71,7 +71,9 @@ module Dep = struct
              ~mode:Dune_lang.Parser.Mode.Single s)
       with
       | x -> `Ok x
-      | exception User_error.E msg -> `Error (User_message.to_string msg))
+      | (exception User_error.E msg)
+      | (exception Dune_util.Located_error.E (msg, _)) ->
+        `Error (User_message.to_string msg))
 
   let string_of_alias ~recursive sv =
     let prefix =
@@ -115,7 +117,8 @@ let bytes =
       Dune_lang.Decoder.parse Dune_lang.Decoder.bytes_unit Univ_map.empty ast
     with
     | x -> Result.Ok x
-    | exception User_error.E msg ->
+    | (exception User_error.E msg)
+    | (exception Dune_util.Located_error.E (msg, _)) ->
       Result.Error (`Msg (User_message.to_string msg))
   in
   let pp_print_int64 state i =

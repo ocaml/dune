@@ -78,7 +78,7 @@ let clients_dir =
 
 let client_address () =
   let dir = Lazy.force clients_dir |> Path.build in
-  ignore (Fpath.mkdir_p (Path.to_string dir) : Fpath.mkdir_p_result);
+  Path.mkdir_p dir;
   Temp.temp_path ~dir ~prefix:"" ~suffix:".client" |> Path.as_in_build_dir_exn
 
 let waiting_clients scheduler =

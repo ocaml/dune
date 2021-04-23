@@ -20,25 +20,25 @@ val destroy : what -> Path.t -> unit
     itself. *)
 val clear_dir : Path.t -> unit
 
-(** [temp_path ~dir ~prefix ~suffix] creates a temporary file in [dir]. The base
+(** [temp_file ~dir ~prefix ~suffix] creates a temporary file in [dir]. The base
     name of the file is formed by concatenating [prefix], then a suitably chosen
     integer number, then [suffix]. Note that the file must be created to reserve
     the name in [dir] and prevent other processes from taking it concurrently.
     If you need a temporary file that does not exist on disk, you can create a
     temporary directory and safely use any file name there. *)
-val temp_path : dir:Path.t -> prefix:string -> suffix:string -> Path.t
+val temp_file : dir:Path.t -> prefix:string -> suffix:string -> Path.t
 
-(** Like [temp_path], but passes the temporary file to the callback [f], and
+(** Like [temp_file], but passes the temporary file to the callback [f], and
     makes sure the temporary file is deleted when [f] completes. If [f] raises
     an exception, the exception is re-raised (and the file is still deleted). *)
-val with_temp_path :
+val with_temp_file :
      dir:Path.t
   -> prefix:string
   -> suffix:string
   -> f:(Path.t Or_exn.t -> 'a)
   -> 'a
 
-(** Like [with_temp_path], but creates a temporary directory. *)
+(** Like [with_temp_file], but creates a temporary directory. *)
 val with_temp_dir :
      parent_dir:Path.t
   -> prefix:string
@@ -46,7 +46,7 @@ val with_temp_dir :
   -> f:(Path.t Or_exn.t -> 'a)
   -> 'a
 
-(** Versions of [with_temp_path] and [with_temp_dir] that are suitable for use
+(** Versions of [with_temp_file] and [with_temp_dir] that are suitable for use
     with concurrency monads. *)
 module Monad (M : sig
   type 'a t
@@ -54,7 +54,7 @@ module Monad (M : sig
   (** Like [Exn.protect] but lifted to [M]. *)
   val protect : f:(unit -> 'a t) -> finally:(unit -> unit) -> 'a t
 end) : sig
-  val with_temp_path :
+  val with_temp_file :
        dir:Path.t
     -> prefix:string
     -> suffix:string

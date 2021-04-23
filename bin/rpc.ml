@@ -11,18 +11,7 @@ let wait_for_server common =
       ]
   | Some w, None -> w
   | None, Some _ ->
-    let until = Unix.time () +. 1.0 in
-    let rec loop () =
-      if Unix.time () > until then
-        User_error.raise [ Pp.text "failed to establish rpc connection " ]
-      else
-        match Dune_rpc.Where.get () with
-        | Some w -> w
-        | None ->
-          Unix.sleepf 0.3;
-          loop ()
-    in
-    loop ()
+    User_error.raise [ Pp.text "failed to establish rpc connection " ]
 
 let client_term common f =
   let common = Common.set_print_directory common false in

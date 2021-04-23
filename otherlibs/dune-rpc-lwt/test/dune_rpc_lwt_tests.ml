@@ -92,7 +92,7 @@ let%expect_test "run and connect" =
     started session
     received ping. shutting down.
     rpc init finished with 0
-    dune build finished with 1
+    dune build finished with 0
     success |}]
 
 let%expect_test "run and connect persistent" =
@@ -190,7 +190,7 @@ let%expect_test "run and connect persistent" =
     on_connected: 1
     received ping. shutting down server
     on_disconnect: 1
-    dune build finished with 1
+    dune build finished with 0
     build2: connecting
     incoming connection 2
     on_connected: 2

@@ -91,6 +91,7 @@ let () =
     | `Error _ -> exit 1
     | _ -> exit 0
   with
+  | Scheduler.Run.Shutdown_requested -> exit 0
   | exn ->
     let exn = Exn_with_backtrace.capture exn in
     Dune_engine.Report_error.report exn;

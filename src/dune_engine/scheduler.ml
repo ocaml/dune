@@ -956,6 +956,8 @@ module Run = struct
     in
     loop ()
 
+  exception Shutdown_requested
+
   let go config ?(file_watcher = No_watcher)
       ~(on_event : Config.t -> Handler.Event.t -> unit) run =
     let t = prepare config ~handler:on_event in
@@ -968,7 +970,13 @@ module Run = struct
       match Run_once.run_and_cleanup t run with
       | Ok a -> Result.Ok a
       | Error (Got_signal | Never) ->
-        Error (Dune_util.Report_error.Already_reported, None)
+        let exn =
+          if t.status = Shutting_down then
+            Shutdown_requested
+          else
+            Dune_util.Report_error.Already_reported
+        in
+        Error (exn, None)
       | Error (Exn exn_with_bt) ->
         Error (exn_with_bt.exn, Some exn_with_bt.backtrace)
     in

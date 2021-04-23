@@ -363,8 +363,9 @@ module Error = struct
   let info (t : t) =
     let exn, deps = Dep_path.unwrap_exn t.exn in
     match exn with
-    | User_error.E msg -> (msg, deps)
-    | e -> (User_message.make [ Pp.text (Printexc.to_string e) ], deps)
+    | User_error.E msg -> (msg, deps, None)
+    | Located_error.E (msg, dir) -> (msg, deps, Some dir)
+    | e -> (User_message.make [ Pp.text (Printexc.to_string e) ], deps, None)
 end
 
 module type Rule_generator = sig

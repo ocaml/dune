@@ -11,7 +11,7 @@ module Error : sig
   (** Errors when building a target *)
   type t
 
-  val info : t -> User_message.t * Dep_path.Entry.t list option
+  val info : t -> User_message.t * Dep_path.Entry.t list option * Path.t option
 end
 
 (** The current set of active errors *)

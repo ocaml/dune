@@ -29,7 +29,7 @@ let target_of_dep_path_entry : Dep_path.Entry.t -> Dune_rpc_private.Target.t =
 let diagnostic_of_error : Build_system.Error.t -> Dune_rpc_private.Diagnostic.t
     =
  fun m ->
-  let message, targets = Build_system.Error.info m in
+  let message, targets, dir = Build_system.Error.info m in
   (* We need to reverse the list because [Build_system] stacks errors such that
      the first element is the target initially requested by the user, which is
      the opposite of what most clients probably care about. *)
@@ -41,7 +41,7 @@ let diagnostic_of_error : Build_system.Error.t -> Dune_rpc_private.Diagnostic.t
   ; message
   ; loc
   ; promotion = []
-  ; directory = None
+  ; directory = Option.map ~f:Path.to_string dir
   }
 
 (* TODO un-copy-paste from dune/bin/arg.ml *)

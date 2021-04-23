@@ -364,9 +364,12 @@ module Exit_status = struct
 
   (* In this module, we don't need the "Error: " prefix given that it is already
      included in the error message from the command. *)
-  let fail paragraphs = raise (User_error.E (User_message.make paragraphs))
+  let fail ~dir paragraphs =
+    match dir with
+    | None -> User_error.raise paragraphs
+    | Some dir -> Located_error.raise ~dir paragraphs
 
-  let handle_verbose t ~id ~output ~command_line =
+  let handle_verbose t ~id ~output ~command_line ~dir =
     let open Pp.O in
     let output = parse_output output in
     match t with
@@ -385,7 +388,7 @@ module Exit_status = struct
         | Failed n -> sprintf "exited with code %d" n
         | Signaled signame -> sprintf "got signal %s" signame
       in
-      fail
+      fail ~dir
         (Pp.tag User_message.Style.Kwd (Pp.verbatim "Command")
          ++ Pp.space ++ pp_id id ++ Pp.space ++ Pp.text msg ++ Pp.char ':'
          ::
@@ -412,7 +415,7 @@ module Exit_status = struct
     fun output ->
       loop output 0 (String.length output) [ 'F'; 'i'; 'l'; 'e'; ' ' ]
 
-  let handle_non_verbose t ~display ~purpose ~output ~prog ~command_line =
+  let handle_non_verbose t ~display ~purpose ~output ~prog ~command_line ~dir =
     let open Pp.O in
     let show_command =
       let show_full_command_on_error =
@@ -451,10 +454,10 @@ module Exit_status = struct
           if show_command then
             sprintf "(exit %d)" n
           else
-            fail (Option.to_list output)
+            fail ~dir (Option.to_list output)
         | Signaled signame -> sprintf "(got signal %s)" signame
       in
-      fail
+      fail ~dir
         (progname_and_purpose Error ++ Pp.char ' '
          ++ Pp.tag User_message.Style.Error (Pp.verbatim msg)
          ::
@@ -637,11 +640,11 @@ let run_internal ?dir ?(stdout_to = Io.stdout) ?(stderr_to = Io.stderr)
       match (display, exit_status', output) with
       | (Quiet | Progress), Ok n, "" -> n (* Optimisation for the common case *)
       | Verbose, _, _ ->
-        Exit_status.handle_verbose exit_status' ~id
+        Exit_status.handle_verbose exit_status' ~id ~dir
           ~command_line:fancy_command_line ~output
       | _ ->
         Exit_status.handle_non_verbose exit_status' ~prog:prog_str ~command_line
-          ~output ~purpose ~display)
+          ~dir ~output ~purpose ~display)
 
 let run ?dir ?stdout_to ?stderr_to ?stdin_from ?env ?(purpose = Internal_job)
     fail_mode prog args =

@@ -102,15 +102,22 @@ let recover_loc (entries : Entry.t list) =
   | Alias (loc, _) :: _ -> Some loc
   | _ -> None
 
+let augment_msg entries (msg : User_message.t) =
+  if is_loc_none msg.loc then
+    Option.map ~f:(fun loc -> { msg with loc = Some loc }) (recover_loc entries)
+  else
+    None
+
 let augment_user_error_loc entries exn =
   match exn with
-  | User_error.E msg ->
-    if is_loc_none msg.loc then
-      match recover_loc entries with
-      | None -> exn
-      | Some loc -> User_error.E { msg with loc = Some loc }
-    else
-      exn
+  | User_error.E msg -> (
+    match augment_msg entries msg with
+    | None -> exn
+    | Some msg -> User_error.E msg)
+  | Located_error.E (msg, dir) -> (
+    match augment_msg entries msg with
+    | None -> exn
+    | Some msg -> Located_error.E (msg, dir))
   | _ -> exn
 
 let unwrap_exn = function

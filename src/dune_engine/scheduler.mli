@@ -48,6 +48,11 @@ module Run : sig
     | Detect_external
     | No_watcher
 
+  (** Raised when [go] terminates due to the user requesting a shutdown via rpc.
+      The caller needs to know about this to set the exit code to 0 for such
+      cases *)
+  exception Shutdown_requested
+
   (** Runs [once] in a loop, executing [finally] after every iteration, even if
       Fiber.Never was encountered.
 

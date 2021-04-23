@@ -77,9 +77,9 @@ let clients_dir =
     (Path.Build.relative (Lazy.force Dune_rpc_private.Where.rpc_dir) "clients")
 
 let client_address () =
-  let dir = Lazy.force clients_dir in
-  Temp.temp_path ~dir:(Path.build dir) ~prefix:"" ~suffix:".client"
-  |> Path.as_in_build_dir_exn
+  let dir = Lazy.force clients_dir |> Path.build in
+  Path.mkdir_p dir;
+  Temp.temp_path ~dir ~prefix:"" ~suffix:".client" |> Path.as_in_build_dir_exn
 
 let waiting_clients scheduler =
   let waiting = Path.build (Lazy.force clients_dir) in

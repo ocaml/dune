@@ -59,7 +59,7 @@ let of_config config scheduler stats =
               | Some p -> p
               | None -> Filename.get_temp_dir_name ())
           in
-          Temp.temp_path ~dir ~prefix:"dune" ~suffix:""
+          Temp.temp_file ~dir ~prefix:"dune" ~suffix:""
         in
         Unix.symlink (Path.to_string socket)
           (let from = Path.external_ (Path.External.cwd ()) in
@@ -79,7 +79,7 @@ let clients_dir =
 let client_address () =
   let dir = Lazy.force clients_dir |> Path.build in
   Path.mkdir_p dir;
-  Temp.temp_path ~dir ~prefix:"" ~suffix:".client" |> Path.as_in_build_dir_exn
+  Temp.temp_file ~dir ~prefix:"" ~suffix:".client" |> Path.as_in_build_dir_exn
 
 let waiting_clients scheduler =
   let waiting = Path.build (Lazy.force clients_dir) in

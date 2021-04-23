@@ -100,12 +100,12 @@ let clear_dir dir =
   remove_from_set ~set:tmp_files;
   remove_from_set ~set:tmp_dirs
 
-let temp_path =
+let temp_file =
   try_paths 1000 ~f:(fun candidate ->
       Result.map (create_temp_file candidate) ~f:(fun () -> candidate))
 
-let temp_dir ~parent_dir ~prefix ~suffix =
-  try_paths 1000 ~dir:parent_dir ~prefix ~suffix ~f:(fun candidate ->
+let temp_dir ~parent_dir =
+  try_paths 1000 ~dir:parent_dir ~f:(fun candidate ->
       Result.map (create_temp_dir candidate) ~f:(fun () -> candidate))
 
 module Monad (M : sig
@@ -114,13 +114,13 @@ module Monad (M : sig
   val protect : f:(unit -> 'a t) -> finally:(unit -> unit) -> 'a t
 end) =
 struct
-  let with_temp_path ~dir ~prefix ~suffix ~f =
-    match temp_path ~dir ~prefix ~suffix with
+  let with_temp_file ~dir ~prefix ~suffix ~f =
+    match temp_file ~dir ~prefix ~suffix with
     | exception e -> f (Error e)
-    | temp_path ->
+    | temp_file ->
       M.protect
-        ~f:(fun () -> f (Ok temp_path))
-        ~finally:(fun () -> Path.unlink_no_err temp_path)
+        ~f:(fun () -> f (Ok temp_file))
+        ~finally:(fun () -> Path.unlink_no_err temp_file)
 
   let with_temp_dir ~parent_dir ~prefix ~suffix ~f =
     match temp_dir ~parent_dir ~prefix ~suffix with
@@ -137,6 +137,6 @@ module Id = Monad (struct
   let protect = Exn.protect
 end)
 
-let with_temp_path = Id.with_temp_path
+let with_temp_file = Id.with_temp_file
 
 let with_temp_dir = Id.with_temp_dir

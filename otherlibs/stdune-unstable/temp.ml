@@ -102,13 +102,6 @@ let clear_dir dir =
 
 let temp_path =
   try_paths 1000 ~f:(fun candidate ->
-      if Path.exists candidate then
-        Error `Retry
-      else
-        Ok candidate)
-
-let temp_file =
-  try_paths 1000 ~f:(fun candidate ->
       Result.map (create_temp_file candidate) ~f:(fun () -> candidate))
 
 let temp_dir ~parent_dir ~prefix ~suffix =
@@ -122,7 +115,7 @@ module Monad (M : sig
 end) =
 struct
   let with_temp_path ~dir ~prefix ~suffix ~f =
-    match temp_file ~dir ~prefix ~suffix with
+    match temp_path ~dir ~prefix ~suffix with
     | exception e -> f (Error e)
     | temp_path ->
       M.protect

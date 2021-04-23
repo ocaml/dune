@@ -972,34 +972,34 @@ let%expect_test "dynamic cycles with non-uniform cutoff structure" =
   evaluate_and_print summit_no_cutoff 0;
   [%expect
     {|
-    Started evaluating the summit with input 0
-    Started evaluating incrementing_chain_4_yes_cutoff
-    Started evaluating incrementing_chain_3_no_cutoff
+    Started evaluating base
+    Evaluated base: 3
     Started evaluating incrementing_chain_2_yes_cutoff
     Started evaluating incrementing_chain_1_no_cutoff
     Started evaluating cycle_creator_no_cutoff
-    Started evaluating base
-    Evaluated base: 3
     Evaluated cycle_creator_no_cutoff: 3
     Evaluated incrementing_chain_1_no_cutoff: 4
     Evaluated incrementing_chain_2_yes_cutoff: 5
+    Started evaluating incrementing_chain_4_yes_cutoff
+    Started evaluating incrementing_chain_3_no_cutoff
     Evaluated incrementing_chain_3_no_cutoff: 6
     Evaluated incrementing_chain_4_yes_cutoff: 7
+    Started evaluating the summit with input 0
     Evaluated the summit with input 0: 7
     f 0 = Ok 7 |}];
   evaluate_and_print summit_yes_cutoff 0;
   [%expect
     {|
-    Started evaluating the summit with input 0
-    Started evaluating incrementing_chain_4_no_cutoff
-    Started evaluating incrementing_chain_3_yes_cutoff
-    Started evaluating incrementing_chain_2_no_cutoff
-    Started evaluating incrementing_chain_1_yes_cutoff
     Started evaluating cycle_creator_yes_cutoff
     Evaluated cycle_creator_yes_cutoff: 3
+    Started evaluating incrementing_chain_1_yes_cutoff
     Evaluated incrementing_chain_1_yes_cutoff: 4
+    Started evaluating incrementing_chain_3_yes_cutoff
+    Started evaluating incrementing_chain_2_no_cutoff
     Evaluated incrementing_chain_2_no_cutoff: 5
     Evaluated incrementing_chain_3_yes_cutoff: 6
+    Started evaluating the summit with input 0
+    Started evaluating incrementing_chain_4_no_cutoff
     Evaluated incrementing_chain_4_no_cutoff: 7
     Evaluated the summit with input 0: 7
     f 0 = Ok 7 |}];
@@ -1403,7 +1403,6 @@ let%expect_test "error handling and duplicate exceptions" =
   in
   Fdecl.set f_impl (fun x ->
       printf "Calling f %d\n" x;
-
       match x with
       | 0 -> Memo.exec forward_fail x
       | 1 -> Memo.exec forward_fail2 x
@@ -1419,4 +1418,36 @@ let%expect_test "error handling and duplicate exceptions" =
     Calling f 1
     Calling f 0
     Error [ "(Failure 42)" ]
+    |}]
+
+let%expect_test "errors are cached" =
+  Printexc.record_backtrace false;
+  let f =
+    Memo.create_hidden "area of a square"
+      ~input:(module Int)
+      (fun x ->
+        printf "Started evaluating %d\n" x;
+        if x < 0 then failwith (sprintf "Negative input %d" x);
+        let res = x * x in
+        printf "Evaluated %d: %d\n" x res;
+        Memo.Build.return res)
+  in
+  evaluate_and_print f 5;
+  evaluate_and_print f (-5);
+  [%expect
+    {|
+    Started evaluating 5
+    Evaluated 5: 25
+    f 5 = Ok 25
+    Started evaluating -5
+    f -5 = Error [ { exn = "(Failure \"Negative input -5\")"; backtrace = "" } ]
+    |}];
+  evaluate_and_print f 5;
+  evaluate_and_print f (-5);
+  (* Note that we do not see any "Started evaluating" messages because both [Ok]
+     and [Error] results have been cached. *)
+  [%expect
+    {|
+    f 5 = Ok 25
+    f -5 = Error [ { exn = "(Failure \"Negative input -5\")"; backtrace = "" } ]
     |}]

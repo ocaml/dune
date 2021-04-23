@@ -718,15 +718,19 @@ module Cached_value = struct
     t.deps <- capture_dep_values ~deps_rev;
     t
 
-  let value_changed (type o) (node : (_, o) Dep_node.t) prev_output curr_output
-      =
-    match (prev_output, curr_output) with
-    | (Value.Error _ | Cancelled _), _ -> true
-    | _, (Value.Error _ | Cancelled _) -> true
-    | Ok prev_output, Ok curr_output -> (
+  let value_changed (node : _ Dep_node.t) prev_value cur_value =
+    match ((prev_value : _ Value.t), (cur_value : _ Value.t)) with
+    | Cancelled _, _
+    | _, Cancelled _
+    | Error _, Ok _
+    | Ok _, Error _ ->
+      true
+    | Ok prev_value, Ok cur_value -> (
       match node.without_state.spec.allow_cutoff with
-      | Yes equal -> not (equal prev_output curr_output)
+      | Yes equal -> not (equal prev_value cur_value)
       | No -> true)
+    | Error prev_error, Error cur_error ->
+      not (Exn_set.equal prev_error cur_error)
 end
 
 (* Add a dependency on the [dep_node] from the caller, if there is one. Returns
@@ -832,7 +836,7 @@ let dep_node (t : (_, _) t) input =
 
    - [Unchanged]: all the dependencies of the current node are up to date and we
    can therefore skip recomputing the node and can reuse the value computed in
-   the previuos run.
+   the previous run.
 
    - [Changed]: one of the dependencies has changed since the previous run and
    the current node should therefore be recomputed.
@@ -873,13 +877,15 @@ end = struct
         (* Dependencies of cancelled computations are not accurate, so we can't
            use [deps_changed] in this case. *)
         Fiber.return (Error Cache_lookup.Failure.Not_found)
-      | Error _ ->
-        (* We always recompute errors, so there is no point in checking if any
-           of their dependencies changed. In principle, we could introduce
-           "persistent errors" that are recomputed only when their dependencies
-           have changed. *)
-        Fiber.return (Error Cache_lookup.Failure.Not_found)
-      | Ok _ -> (
+      | Ok _
+      | Error _ -> (
+        (* We cache errors just like normal values. We assume that all [Memo]
+           computations are deterministic, which means if we rerun a computation
+           that previously led to raising a set of errors, we expect to get the
+           same set of errors back and we might as well skip the unnecessary
+           work. The downside is that if a computation is non-deterministic,
+           there is no way to force rerunning it, apart from changing some of
+           its dependencies. *)
         let+ deps_changed =
           let rec go deps =
             match deps with
@@ -891,8 +897,16 @@ end = struct
                    is up to date. If not, we must recompute [last_cached_value]. *)
                 let* restore_result = consider_and_restore_from_cache dep in
                 match restore_result with
-                | Ok cached_value -> (
-                  match Value_id.equal cached_value.id v_id with
+                | Ok cached_value_of_dep -> (
+                  (* Here we know that [dep] can be restored from the cache, so
+                     how can [v_id] be different from [cached_value_of_dep.id]?
+                     Good question! This can happen if [cached_value]'s node was
+                     skipped in the previous run (because it was unreachable),
+                     while [dep] wasn't skipped and its value changed. In the
+                     current run, [cached_value] is therefore stale. We learn
+                     this when we see that the [cached_value_of_dep] is not as
+                     recorded when computing [cached_value]. *)
+                  match Value_id.equal cached_value_of_dep.id v_id with
                   | true -> go deps
                   | false -> Fiber.return Changed_or_not.Changed)
                 | Error (Cancelled { dependency_cycle }) ->

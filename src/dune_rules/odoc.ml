@@ -305,9 +305,15 @@ let setup_library_odoc_rules cctx (library : Library.t) ~dep_graphs =
           compile_module sctx ~includes ~dep_graphs ~obj_dir ~pkg_or_lnu m
         in
         compiled :: acc)
+    |> Path.Set.of_list_map ~f:(fun (_, p) -> Path.build p)
+  in
+  let link_deps =
+    (* This is needed to build docs for libraries that depend on foreign
+       libraries. *)
+    Lib.link_deps lib Link_mode.Native |> Path.Set.of_list
   in
   Dep.setup_deps ctx (Lib local_lib)
-    (Path.Set.of_list_map modules_and_odoc_files ~f:(fun (_, p) -> Path.build p))
+    (Path.Set.union modules_and_odoc_files link_deps)
 
 let setup_css_rule sctx =
   let ctx = Super_context.context sctx in

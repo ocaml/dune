@@ -493,6 +493,22 @@ let report_process_end stats common ~id =
   let event = Event.async (Int id) End common in
   Stats.emit stats event
 
+let report_process_event stats ~prog ~args
+    (resource_usage : Proc.resource_usage) =
+  let common =
+    let name = Filename.basename prog in
+    let ts = Timestamp.now () in
+    Event.common_fields ~cat:[ "process" ] ~name ~ts ()
+  in
+  let args =
+    [ ("process_args", `List (List.map args ~f:(fun arg -> `String arg))) ]
+  in
+  let dur =
+    Chrome_trace.Event.Timestamp.of_float_seconds resource_usage.stime
+  in
+  let event = Event.complete ~args ~dur common in
+  Stats.emit stats event
+
 let run_internal ?dir ?(stdout_to = Io.stdout) ?(stderr_to = Io.stderr)
     ?(stdin_from = Io.null In) ?(env = Env.initial) ~purpose fail_mode prog args
     =
@@ -596,8 +612,12 @@ let run_internal ?dir ?(stdout_to = Io.stdout) ?(stderr_to = Io.stderr)
           env |> Dtemp.add_to_env |> Scheduler.Config.add_to_env config
         in
         let event_common =
-          Option.map config.stats
-            ~f:(report_process_start ~id ~prog:prog_str ~args)
+          match config.stats with
+          | Some stats when Sys.win32 ->
+            (* We track process times manually on windows. Elsewhere, we can use
+               [wait3] *)
+            Some (report_process_start stats ~id ~prog:prog_str ~args)
+          | _ -> None
         in
         let env = Env.to_unix env |> Spawn.Env.of_list in
         let pid =
@@ -612,11 +632,14 @@ let run_internal ?dir ?(stdout_to = Io.stdout) ?(stderr_to = Io.stderr)
       in
       Io.release stdout_to;
       Io.release stderr_to;
-      let+ exit_status = Scheduler.wait_for_process pid in
-      (match (event_common, config.stats) with
-      | Some common, Some stats -> report_process_end stats common ~id
-      | None, None -> ()
-      | _, _ -> assert false);
+      let+ exit_status, resource_usage = Scheduler.wait_for_process pid in
+      (match (event_common, config.stats, resource_usage) with
+      | Some common, Some stats, None -> report_process_end stats common ~id
+      | None, Some stats, Some resource_usage ->
+        report_process_event stats ~prog:prog_str ~args resource_usage
+      | None, None, _ -> ()
+      | None, Some _, None -> assert false
+      | Some _, _, _ -> assert false);
       Option.iter response_file ~f:Path.unlink;
       let actual_stdout =
         match stdout_capture with

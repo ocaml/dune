@@ -22,3 +22,18 @@ let restore_cwd_and_execve prog argv ~env =
     Stdlib.do_at_exit ();
     Unix.execve prog argv env
   )
+
+type resource_usage =
+  { utime : float
+  ; stime : float
+  }
+
+external stub_wait3 :
+  Unix.wait_flag list -> int * Unix.process_status * resource_usage
+  = "dune_wait3"
+
+let wait3 flags =
+  if Sys.win32 then
+    Code_error.raise "wait3 not available on windows" []
+  else
+    stub_wait3 flags

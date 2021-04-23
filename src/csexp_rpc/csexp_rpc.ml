@@ -133,10 +133,11 @@ module Session = struct
         | None -> (
           match t.kind with
           | Channel -> fun () -> close_out_noerr t.out_channel
-          | Socket ->
+          | Socket -> (
             fun () ->
               let fd = Unix.descr_of_out_channel t.out_channel in
-              Unix.shutdown fd Unix.SHUTDOWN_SEND))
+              try Unix.shutdown fd Unix.SHUTDOWN_SEND with
+              | Unix.Unix_error _ -> ())))
 end
 
 let close_fd_no_error fd =

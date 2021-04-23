@@ -95,17 +95,36 @@ let%expect_test "run and connect" =
     dune build finished with 0
     success |}]
 
+module Logger = struct
+  (* A little helper to make the output from the client and server determinstic.
+     Log messages are batched and outputted at the end. *)
+  type t =
+    { mutable messages : string list
+    ; name : string
+    }
+
+  let create ~name = { messages = []; name }
+
+  let log t fmt = Printf.ksprintf (fun m -> t.messages <- m :: t.messages) fmt
+
+  let print { messages; name } =
+    List.rev messages |> List.iter ~f:(fun msg -> printfn "%s: %s" name msg)
+end
+
 let%expect_test "run and connect persistent" =
   let test =
     let* root_dir = Lwt_io.create_temp_dir () in
+    let log_build1 = Logger.create ~name:"build1" in
+    let log_build2 = Logger.create ~name:"build2" in
+    let log_client = Logger.create ~name:"client" in
     let build () = build_watch ~root_dir in
     let build1 =
-      print_endline "build1: connecting";
+      Logger.log log_build1 "connecting";
       build ()
     in
     let build2 =
       let+ _ = build1#status in
-      print_endline "build2: connecting";
+      Logger.log log_build2 "connecting";
       build ()
     in
     let rpc =
@@ -116,7 +135,7 @@ let%expect_test "run and connect persistent" =
       let* rpc = rpc in
       let+ res = rpc#status in
       match res with
-      | WEXITED i -> printfn "rpc init finished with %i" i
+      | WEXITED i -> Logger.log log_client "rpc init finished with %i" i
       | _ -> assert false
     in
     let run_client =
@@ -125,29 +144,29 @@ let%expect_test "run and connect persistent" =
       let count = ref 0 in
       let on_connect () =
         incr count;
-        printfn "incoming connection %d" !count;
+        Logger.log log_client "incoming connection %d" !count;
         let initialize = Initialize.create ~id:(Id.make (Csexp.Atom "test")) in
         Lwt.return ((), initialize, None)
       in
       let on_connected () t =
-        printfn "on_connected: %d" !count;
+        Logger.log log_client "on_connected: %d" !count;
         let* res = Client.request t Request.ping () in
         let* () =
           match res with
           | Error _ -> failwith "unexpected"
           | Ok () ->
-            print_endline "received ping. shutting down server";
+            Logger.log log_client "received ping. shutting down server";
             Client.notification t Notification.shutdown ()
         in
         if !count = 3 then (
-          print_endline "received second session. shutting down";
+          Logger.log log_client "received second session. shutting down";
           let* () = Lwt_io.close rpc#stdout in
           Lwt_io.close rpc#stdin
         ) else
           Lwt.return ()
       in
       let on_disconnect () =
-        printfn "on_disconnect: %d" !count;
+        Logger.log log_client "on_disconnect: %d" !count;
         Lwt.return ()
       in
       Client.connect_persistent chan ~on_connected ~on_connect ~on_disconnect
@@ -156,7 +175,7 @@ let%expect_test "run and connect persistent" =
       let* _ = rpc in
       let+ res = build1#status in
       match res with
-      | WEXITED i -> printfn "dune build finished with %i" i
+      | WEXITED i -> Logger.log log_build1 "dune build finished with %i" i
       | _ -> assert false
     in
     let run_build2 =
@@ -166,7 +185,7 @@ let%expect_test "run and connect persistent" =
       let* res = build2#status in
       match res with
       | WEXITED i ->
-        printfn "dune build finished with %i" i;
+        Logger.log log_build2 "dune build finished with %i" i;
         let+ rpc = rpc in
         rpc#terminate
       | _ -> assert false
@@ -180,20 +199,23 @@ let%expect_test "run and connect persistent" =
         rpc#terminate;
         build1#terminate;
         let+ build2 = build2 in
-        build2#terminate)
+        build2#terminate;
+        Logger.print log_build1;
+        Logger.print log_build2;
+        Logger.print log_client)
   in
   Lwt_main.run test;
   [%expect
     {|
     build1: connecting
-    incoming connection 1
-    on_connected: 1
-    received ping. shutting down server
-    on_disconnect: 1
-    dune build finished with 0
+    build1: dune build finished with 0
     build2: connecting
-    incoming connection 2
-    on_connected: 2
-    received ping. shutting down server
-    on_disconnect: 2
-    dune build finished with 0 |}]
+    build2: dune build finished with 0
+    client: incoming connection 1
+    client: on_connected: 1
+    client: received ping. shutting down server
+    client: on_disconnect: 1
+    client: incoming connection 2
+    client: on_connected: 2
+    client: received ping. shutting down server
+    client: on_disconnect: 2 |}]

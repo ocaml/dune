@@ -456,7 +456,6 @@ end = struct
         Mutex.unlock event_mtx
       done
     in
-
     (* The buffer thread is used to avoid flooding the main thread with file
        changes events when a lot of file changes are reported at once. In
        particular, this avoids restarting the build over and over in a short

@@ -114,13 +114,30 @@ module Stanza_util = struct
     List.map lst ~f:(fun lib ->
       Lib_dep.Direct (loc, Lib_name.of_string lib))
 
+  let type_gen_script_module ctypes =
+    type_gen_script ctypes |> Module_name.of_string
+
+  let function_gen_script_module ctypes =
+    function_gen_script ctypes |> Module_name.of_string
+
   let generated_modules ctypes =
-    [ type_gen_script ctypes |> Module_name.of_string
-    ; function_gen_script ctypes |> Module_name.of_string
+    [ type_gen_script_module ctypes
+    ; function_gen_script_module ctypes
     ; c_generated_functions_module ctypes
     ; c_generated_types_module ctypes
     ; c_types_includer_module ctypes
     ; entry_module ctypes ]
+
+  (* not all modules that we generate should be bundled up into packages *)
+  let non_installable_modules ctypes =
+    let entire_set = Module_name.Set.of_list (generated_modules ctypes) in
+    let removal_set =
+      Module_name.Set.of_list
+        [ type_gen_script_module ctypes;
+          function_gen_script_module ctypes ]
+    in
+    Module_name.Set.diff entire_set removal_set
+    |> Module_name.Set.to_list
 
   let generated_ml_and_c_files ctypes =
     let ml_files =
@@ -133,9 +150,12 @@ module Stanza_util = struct
       [ c_generated_functions_cout_c ctypes ]
     in
     ml_files @ c_files
+
 end
 
 let generated_ml_and_c_files = Stanza_util.generated_ml_and_c_files
+
+let non_installable_modules = Stanza_util.non_installable_modules
 
 let ml_of_module_name mn =
   Module_name.to_string mn ^ ".ml"

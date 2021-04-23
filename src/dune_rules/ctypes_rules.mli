@@ -5,6 +5,8 @@ module Ctypes = Dune_file.Ctypes
 
 val generated_ml_and_c_files : Ctypes.t -> string list
 
+val non_installable_modules :  Ctypes.t -> Module_name.t list
+
 val gen_rules :
      dep_graphs:Dep_graph.t Ml_kind.Dict.t
   -> cctx:Compilation_context.t

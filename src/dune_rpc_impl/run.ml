@@ -11,16 +11,17 @@ module Config = struct
 end
 
 module Symlink_socket : sig
+  (** This module encapsulates the trick of using symlinks to get around the
+      restriction on length of domain sockets. *)
+
   type t
 
   val create : Path.t -> t
 
   val cleanup : t -> unit
 
-  val addr_unix : t -> Unix.sockaddr
+  val socket : t -> Path.t
 end = struct
-  (** This module encapsulates the trick of using symlinks to get around the
-      restriction on length of domain sockets. *)
   type t =
     { symlink : Path.t
     ; socket : Path.t
@@ -32,6 +33,8 @@ end = struct
       (Path.unlink_no_err socket;
        Path.unlink_no_err symlink)
 
+  let cleanup t = Lazy.force t.cleanup
+
   let create desired_path =
     let socket =
       let dir =
@@ -40,18 +43,22 @@ end = struct
           | Some p -> p
           | None -> Filename.get_temp_dir_name ())
       in
-      Temp.temp_file ~dir ~prefix:"dune" ~suffix:""
+      Temp.temp_file ~dir ~prefix:"" ~suffix:".dune"
     in
-    Unix.symlink (Path.to_string socket)
-      (let from = Path.external_ (Path.External.cwd ()) in
-       Path.mkdir_p (Path.parent_exn desired_path);
-       Path.reach_for_running ~from desired_path);
+    let () =
+      let dest =
+        let from = Path.external_ (Path.External.cwd ()) in
+        Path.mkdir_p (Path.parent_exn desired_path);
+        Path.reach_for_running ~from desired_path
+      in
+      Unix.symlink (Path.to_string socket) dest
+    in
     let cleanup = make_cleanup ~symlink:desired_path ~socket in
-    { symlink = desired_path; socket; cleanup }
+    let t = { symlink = desired_path; socket; cleanup } in
+    at_exit (fun () -> Lazy.force cleanup);
+    t
 
-  let addr_unix t = Unix.ADDR_UNIX (Path.to_string t.socket)
-
-  let cleanup t = Lazy.force t.cleanup
+  let socket t = t.socket
 end
 
 type t =
@@ -84,10 +91,10 @@ let of_config config scheduler stats =
     let real_where, symlink_socket =
       match where with
       | `Ip _ -> (where_to_socket where, None)
-      | `Unix symlink ->
-        let symlink_socket = Symlink_socket.create symlink in
-        at_exit (fun () -> Symlink_socket.cleanup symlink_socket);
-        (Symlink_socket.addr_unix symlink_socket, Some symlink_socket)
+      | `Unix path ->
+        let symlink_socket = Symlink_socket.create path in
+        ( Unix.ADDR_UNIX (Path.to_string (Symlink_socket.socket symlink_socket))
+        , Some symlink_socket )
     in
     let server = Csexp_rpc.Server.create real_where ~backlog scheduler in
     Server { server; handler; where; symlink_socket; stats; pool; scheduler }
@@ -96,10 +103,13 @@ let clients_dir =
   lazy
     (Path.Build.relative (Lazy.force Dune_rpc_private.Where.rpc_dir) "clients")
 
-let client_address () =
+let client_sock_fname = "s"
+
+let client_address what =
   let dir = Lazy.force clients_dir |> Path.build in
   Path.mkdir_p dir;
-  Temp.temp_file ~dir ~prefix:"" ~suffix:".client" |> Path.as_in_build_dir_exn
+  Temp.temp_in_dir what ~dir ~prefix:"" ~suffix:".client"
+  |> Path.as_in_build_dir_exn
 
 let waiting_clients scheduler =
   let waiting = Path.build (Lazy.force clients_dir) in
@@ -110,7 +120,9 @@ let waiting_clients scheduler =
         let path = Path.relative waiting file in
         let socket =
           match kind with
-          | S_SOCK -> Some (Unix.ADDR_UNIX (Path.to_string path))
+          | S_DIR ->
+            let socket = Path.relative path client_sock_fname in
+            Some (Unix.ADDR_UNIX (Path.to_string socket))
           | S_REG ->
             Some
               (Io.read_file path |> Dune_rpc_private.Where.of_string
@@ -162,6 +174,15 @@ let csexp_server t p =
     match t with
     | Server _ -> assert false
     | Client c -> c.scheduler
+  in
+  let p =
+    match p with
+    | `Ip _ as p -> p
+    | `Unix (`Dir d) ->
+      let symlink_socket =
+        Symlink_socket.create (Path.relative d client_sock_fname)
+      in
+      `Unix (Symlink_socket.socket symlink_socket)
   in
   Csexp_rpc.Server.create (where_to_socket p) ~backlog:1 csexp_scheduler
 

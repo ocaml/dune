@@ -99,40 +99,40 @@ let of_config config scheduler stats =
     let server = Csexp_rpc.Server.create real_where ~backlog scheduler in
     Server { server; handler; where; symlink_socket; stats; pool; scheduler }
 
-let clients_dir =
-  lazy
-    (Path.Build.relative (Lazy.force Dune_rpc_private.Where.rpc_dir) "clients")
+module Persistent = struct
+  (** Connection negotiation for persistent connections *)
 
-let client_sock_fname = "s"
+  let clients_dir =
+    lazy
+      (Path.Build.relative
+         (Lazy.force Dune_rpc_private.Where.rpc_dir)
+         "clients")
 
-let client_address what =
-  let dir = Lazy.force clients_dir |> Path.build in
-  Path.mkdir_p dir;
-  Temp.temp_in_dir what ~dir ~prefix:"" ~suffix:".client"
-  |> Path.as_in_build_dir_exn
+  let client_sock_fname = "s"
 
-let waiting_clients scheduler =
-  let waiting = Path.build (Lazy.force clients_dir) in
-  match Path.readdir_unsorted_with_kinds waiting with
-  | Error _ -> Fiber.return []
-  | Ok waiters ->
-    List.filter_map waiters ~f:(fun (file, (kind : Unix.file_kind)) ->
-        let path = Path.relative waiting file in
-        let socket =
-          match kind with
-          | S_DIR ->
-            let socket = Path.relative path client_sock_fname in
-            Some (Unix.ADDR_UNIX (Path.to_string socket))
-          | S_REG ->
-            Some
-              (Io.read_file path |> Dune_rpc_private.Where.of_string
-             |> where_to_socket)
-          | _ -> None
-        in
-        let open Option.O in
-        let+ socket = socket in
-        Csexp_rpc.Client.create socket scheduler)
-    |> Fiber.parallel_map ~f:Csexp_rpc.Client.connect
+  let waiting_clients scheduler =
+    let waiting = Path.build (Lazy.force clients_dir) in
+    match Path.readdir_unsorted_with_kinds waiting with
+    | Error _ -> Fiber.return []
+    | Ok waiters ->
+      List.filter_map waiters ~f:(fun (file, (kind : Unix.file_kind)) ->
+          let path = Path.relative waiting file in
+          let socket =
+            match kind with
+            | S_DIR ->
+              let socket = Path.relative path client_sock_fname in
+              Some (Unix.ADDR_UNIX (Path.to_string socket))
+            | S_REG ->
+              Some
+                (Io.read_file path |> Dune_rpc_private.Where.of_string
+               |> where_to_socket)
+            | _ -> None
+          in
+          let open Option.O in
+          let+ socket = socket in
+          Csexp_rpc.Client.create socket scheduler)
+      |> Fiber.parallel_map ~f:Csexp_rpc.Client.connect
+end
 
 let run t =
   Fiber.Var.set t_var t (fun () ->
@@ -148,7 +148,7 @@ let run t =
                   (* This waits until we listen on the socket before serving
                      clients that were already waiting. Not ideal. *)
                   Fiber.fork_and_join
-                    (fun () -> waiting_clients t.scheduler)
+                    (fun () -> Persistent.waiting_clients t.scheduler)
                     (fun () -> Csexp_rpc.Server.serve t.server)
                 in
                 let sessions =
@@ -161,45 +161,6 @@ let run t =
             Option.iter t.symlink_socket ~f:Symlink_socket.cleanup;
             Fiber.return ()))
 
-let csexp_client t p =
-  let csexp_scheduler =
-    match t with
-    | Client c -> c.scheduler
-    | Server s -> s.scheduler
-  in
-  Csexp_rpc.Client.create (where_to_socket p) csexp_scheduler
-
-let csexp_server t p =
-  let csexp_scheduler =
-    match t with
-    | Server _ -> assert false
-    | Client c -> c.scheduler
-  in
-  let p =
-    match p with
-    | `Ip _ as p -> p
-    | `Unix (`Dir d) ->
-      let symlink_socket =
-        Symlink_socket.create (Path.relative d client_sock_fname)
-      in
-      `Unix (Symlink_socket.socket symlink_socket)
-  in
-  Csexp_rpc.Server.create (where_to_socket p) ~backlog:1 csexp_scheduler
-
-let client t p init ~on_notification ~f =
-  let open Fiber.O in
-  let c = csexp_client t p in
-  let* session = Csexp_rpc.Client.connect c in
-  Client.connect_raw session init ~on_notification ~f
-
-let csexp_connect t in_ out =
-  let csexp_scheduler =
-    match t with
-    | Client c -> c.scheduler
-    | Server s -> s.scheduler
-  in
-  Csexp_rpc.Session.create in_ out csexp_scheduler
-
 let stop () =
   let open Fiber.O in
   let* t = Fiber.Var.get_exn t_var in
@@ -208,3 +169,89 @@ let stop () =
   | Server s ->
     Csexp_rpc.Server.stop s.server;
     Fiber.return ()
+
+module Client = struct
+  let client_address what =
+    let dir = Lazy.force Persistent.clients_dir |> Path.build in
+    Path.mkdir_p dir;
+    Temp.temp_in_dir what ~dir ~prefix:"" ~suffix:".client"
+    |> Path.as_in_build_dir_exn
+
+  let csexp_client t p =
+    let csexp_scheduler =
+      match t with
+      | Client c -> c.scheduler
+      | Server s -> s.scheduler
+    in
+    Csexp_rpc.Client.create (where_to_socket p) csexp_scheduler
+
+  let csexp_server t p =
+    let csexp_scheduler =
+      match t with
+      | Server _ -> assert false
+      | Client c -> c.scheduler
+    in
+    let p =
+      match p with
+      | `Ip _ as p -> p
+      | `Unix (`Dir d) ->
+        let symlink_socket =
+          Symlink_socket.create (Path.relative d Persistent.client_sock_fname)
+        in
+        `Unix (Symlink_socket.socket symlink_socket)
+    in
+    Csexp_rpc.Server.create (where_to_socket p) ~backlog:1 csexp_scheduler
+
+  let client t p init ~on_notification ~f =
+    let open Fiber.O in
+    let c = csexp_client t p in
+    let* session = Csexp_rpc.Client.connect c in
+    Client.connect_raw session init ~on_notification ~f
+
+  let csexp_connect t in_ out =
+    let csexp_scheduler =
+      match t with
+      | Client c -> c.scheduler
+      | Server s -> s.scheduler
+    in
+    Csexp_rpc.Session.create in_ out csexp_scheduler
+
+  let connect_persistent t =
+    let server, where_file =
+      let where, where_file =
+        if Sys.win32 then
+          let addr = Unix.inet_addr_of_string "0.0.0.0" in
+          (`Ip (addr, `Port 0), Some (client_address File))
+        else
+          let dir = client_address Dir in
+          (`Unix (`Dir (Path.build dir)), None)
+      in
+      (csexp_server t where, where_file)
+    in
+    let open Fiber.O in
+    let* listen_sessions =
+      let+ res = Csexp_rpc.Server.serve server in
+      (match (Csexp_rpc.Server.listening_address server, where_file) with
+      | ADDR_UNIX _, _ -> ()
+      | ADDR_INET _, None ->
+        (* the socket is already created, we don't need to write a file to
+           announce where we are listening *)
+        assert false
+      | ADDR_INET (addr, port), Some where_file ->
+        let where = `Ip (addr, `Port port) in
+        Io.write_file (Path.build where_file)
+          (Dune_rpc_private.Where.to_string where));
+      res
+    in
+    let client =
+      Dune_rpc_private.Where.get () |> Option.map ~f:(csexp_client t)
+    in
+    (* The combined sessions are the one that we established ourselves + the
+       remaining sessions later servers will establish by connecting to the
+       client *)
+    match client with
+    | None -> Fiber.return (listen_sessions, None)
+    | Some c ->
+      let+ session = Csexp_rpc.Client.connect c in
+      (Fiber.Stream.In.cons session listen_sessions, Some c)
+end

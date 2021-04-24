@@ -28,44 +28,11 @@ let client_term common f =
 module Init = struct
   let connect_persistent _common run_config =
     let open Fiber.O in
-    let stdio = Dune_rpc_impl.Run.csexp_connect run_config stdin stdout in
-    let server, where_file =
-      let where, where_file =
-        if Sys.win32 then
-          let addr = Unix.inet_addr_of_string "0.0.0.0" in
-          (`Ip (addr, `Port 0), Some (Dune_rpc_impl.Run.client_address File))
-        else
-          let dir = Dune_rpc_impl.Run.client_address Dir in
-          (`Unix (`Dir (Path.build dir)), None)
-      in
-      (Dune_rpc_impl.Run.csexp_server run_config where, where_file)
+    let stdio =
+      Dune_rpc_impl.Run.Client.csexp_connect run_config stdin stdout
     in
-    let* listen_sessions =
-      let+ res = Csexp_rpc.Server.serve server in
-      (match (Csexp_rpc.Server.listening_address server, where_file) with
-      | ADDR_UNIX _, _ -> ()
-      | ADDR_INET _, None ->
-        (* the socket is already created, we don't need to write a file to
-           announce where we are listening *)
-        assert false
-      | ADDR_INET (addr, port), Some where_file ->
-        let where = `Ip (addr, `Port port) in
-        Io.write_file (Path.build where_file) (Dune_rpc.Where.to_string where));
-      res
-    in
-    let client =
-      Dune_rpc.Where.get ()
-      |> Option.map ~f:(Dune_rpc_impl.Run.csexp_client run_config)
-    in
-    (* The combined sessions are the one that we established ourselves + the
-       remaining sessions later servers will establish by connecting to the
-       client *)
-    let* sessions =
-      match client with
-      | None -> Fiber.return listen_sessions
-      | Some c ->
-        let+ session = Csexp_rpc.Client.connect c in
-        Fiber.Stream.In.cons session listen_sessions
+    let* sessions, client =
+      Dune_rpc_impl.Run.Client.connect_persistent run_config
     in
     Fiber.Stream.In.sequential_iter sessions ~f:(fun session ->
         let connect =
@@ -118,10 +85,10 @@ module Init = struct
 
   let connect common run =
     let where = wait_for_server common in
-    let c = Dune_rpc_impl.Run.csexp_client run where in
+    let c = Dune_rpc_impl.Run.Client.csexp_client run where in
     let open Fiber.O in
     let* session = Csexp_rpc.Client.connect c in
-    let stdio = Dune_rpc_impl.Run.csexp_connect run stdin stdout in
+    let stdio = Dune_rpc_impl.Run.Client.csexp_connect run stdin stdout in
     let forward f t =
       Fiber.repeat_while ~init:() ~f:(fun () ->
           let* read = Csexp_rpc.Session.read f in
@@ -164,7 +131,7 @@ module Status = struct
     let where = wait_for_server common in
     printfn "Server is listening on %s" (Dune_rpc.Where.to_string where);
     printfn "ID's of connected clients (include this one):";
-    Dune_rpc_impl.Run.client run where
+    Dune_rpc_impl.Run.Client.client run where
       (Dune_rpc.Initialize.Request.create
          ~id:(Dune_rpc.Id.make (Sexp.Atom "status")))
       ~on_notification:(fun _ -> assert false)

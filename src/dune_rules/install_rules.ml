@@ -111,22 +111,9 @@ end = struct
              | Some dir -> sprintf "%s/%s" dir dst) )
     in
     let installable_modules =
-      let all_modules =
-        Dir_contents.ocaml dir_contents
-        |> Ml_sources.modules ~for_:(Library (Library.best_name lib))
-        |> Modules.fold_no_vlib ~init:[] ~f:(fun m acc -> m :: acc)
-      in
-      let non_installable_modules =
-        let lst =
-          match lib.buildable.ctypes with
-          | Some ctypes -> Ctypes_rules.non_installable_modules ctypes
-          | None -> []
-        in
-        Module_name.Set.of_list lst
-      in
-      List.filter all_modules ~f:(fun module_ ->
-        let module_name = Module.name module_ in
-        not (Module_name.Set.mem non_installable_modules module_name))
+      Dir_contents.ocaml dir_contents
+      |> Ml_sources.modules ~for_:(Library (Library.best_name lib))
+      |> Modules.fold_no_vlib ~init:[] ~f:(fun m acc -> m :: acc)
     in
     let sources =
       List.concat_map installable_modules ~f:(fun m ->

@@ -18,7 +18,7 @@ val gen_rules :
   -> unit
 
 val ctypes_cclib_flags :
-    standard:string list Action_builder.t
+     standard:string list Action_builder.t
   -> scope:Scope.t
   -> expander:Expander.t
   -> buildable:Dune_file.Buildable.t

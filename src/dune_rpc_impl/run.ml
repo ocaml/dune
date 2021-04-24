@@ -99,9 +99,13 @@ let of_config config scheduler stats =
     let server = Csexp_rpc.Server.create real_where ~backlog scheduler in
     Server { server; handler; where; symlink_socket; stats; pool; scheduler }
 
-module Persistent = struct
+module Persistent : sig
   (** Connection negotiation for persistent connections *)
+  val waiting_clients :
+    Csexp_rpc.Scheduler.t -> Csexp_rpc.Session.t list Fiber.t
 
+  val create_waiting_client : t -> Csexp_rpc.Session.t Fiber.Stream.In.t Fiber.t
+end = struct
   let clients_dir =
     lazy
       (Path.Build.relative
@@ -109,6 +113,55 @@ module Persistent = struct
          "clients")
 
   let client_sock_fname = "s"
+
+  let client_address what =
+    let dir = Lazy.force clients_dir |> Path.build in
+    Path.mkdir_p dir;
+    Temp.temp_in_dir what ~dir ~prefix:"" ~suffix:".client"
+    |> Path.as_in_build_dir_exn
+
+  let csexp_server t p =
+    let csexp_scheduler =
+      match t with
+      | Server _ -> assert false
+      | Client c -> c.scheduler
+    in
+    let p =
+      match p with
+      | `Ip _ as p -> p
+      | `Unix (`Dir d) ->
+        let symlink_socket =
+          Symlink_socket.create (Path.relative d client_sock_fname)
+        in
+        `Unix (Symlink_socket.socket symlink_socket)
+    in
+    Csexp_rpc.Server.create (where_to_socket p) ~backlog:1 csexp_scheduler
+
+  let create_waiting_client t =
+    let server, where_file =
+      let where, where_file =
+        if Sys.win32 then
+          let addr = Unix.inet_addr_of_string "0.0.0.0" in
+          (`Ip (addr, `Port 0), Some (client_address File))
+        else
+          let dir = client_address Dir in
+          (`Unix (`Dir (Path.build dir)), None)
+      in
+      (csexp_server t where, where_file)
+    in
+    let open Fiber.O in
+    let+ sessions = Csexp_rpc.Server.serve server in
+    (match (Csexp_rpc.Server.listening_address server, where_file) with
+    | ADDR_UNIX _, _ -> ()
+    | ADDR_INET _, None ->
+      (* the socket is already created, we don't need to write a file to
+         announce where we are listening *)
+      assert false
+    | ADDR_INET (addr, port), Some where_file ->
+      let where = `Ip (addr, `Port port) in
+      Io.write_file (Path.build where_file)
+        (Dune_rpc_private.Where.to_string where));
+    sessions
 
   let waiting_clients scheduler =
     let waiting = Path.build (Lazy.force clients_dir) in
@@ -179,29 +232,6 @@ module Connect = struct
     in
     Csexp_rpc.Client.create (where_to_socket p) csexp_scheduler
 
-  let client_address what =
-    let dir = Lazy.force Persistent.clients_dir |> Path.build in
-    Path.mkdir_p dir;
-    Temp.temp_in_dir what ~dir ~prefix:"" ~suffix:".client"
-    |> Path.as_in_build_dir_exn
-
-  let csexp_server t p =
-    let csexp_scheduler =
-      match t with
-      | Server _ -> assert false
-      | Client c -> c.scheduler
-    in
-    let p =
-      match p with
-      | `Ip _ as p -> p
-      | `Unix (`Dir d) ->
-        let symlink_socket =
-          Symlink_socket.create (Path.relative d Persistent.client_sock_fname)
-        in
-        `Unix (Symlink_socket.socket symlink_socket)
-    in
-    Csexp_rpc.Server.create (where_to_socket p) ~backlog:1 csexp_scheduler
-
   let csexp_connect t in_ out =
     let csexp_scheduler =
       match t with
@@ -211,32 +241,8 @@ module Connect = struct
     Csexp_rpc.Session.create in_ out csexp_scheduler
 
   let connect_persistent t =
-    let server, where_file =
-      let where, where_file =
-        if Sys.win32 then
-          let addr = Unix.inet_addr_of_string "0.0.0.0" in
-          (`Ip (addr, `Port 0), Some (client_address File))
-        else
-          let dir = client_address Dir in
-          (`Unix (`Dir (Path.build dir)), None)
-      in
-      (csexp_server t where, where_file)
-    in
     let open Fiber.O in
-    let* listen_sessions =
-      let+ res = Csexp_rpc.Server.serve server in
-      (match (Csexp_rpc.Server.listening_address server, where_file) with
-      | ADDR_UNIX _, _ -> ()
-      | ADDR_INET _, None ->
-        (* the socket is already created, we don't need to write a file to
-           announce where we are listening *)
-        assert false
-      | ADDR_INET (addr, port), Some where_file ->
-        let where = `Ip (addr, `Port port) in
-        Io.write_file (Path.build where_file)
-          (Dune_rpc_private.Where.to_string where));
-      res
-    in
+    let* listen_sessions = Persistent.create_waiting_client t in
     let client =
       Dune_rpc_private.Where.get () |> Option.map ~f:(csexp_client t)
     in

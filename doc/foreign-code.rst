@@ -72,8 +72,8 @@ libraries without writing any C code.
 
 You need only provide two OCaml modules, named ``Type_descriptions`` and
 ``Function_descriptions`` which describe the types, values and functions you
-want to access in the C library from OCaml.  Additionally, you must list C
-any headers and a method for resolving build and link flags.
+want to access in the C library from OCaml.  Additionally, you must list
+any C headers and a method for resolving build and link flags.
 
 If you're binding a library distributed by your OS, you can use the
 ``pkg-config`` utility to resolve any build and link flags.  Alternatively,
@@ -85,14 +85,14 @@ provide the flags manually.
   (executable
     (name foo)
     (libraries core)
-      (flags (:standard -w -9-27))
-      (ctypes
-        (external_library_name libfoo)
-        (build_flags_resolver pkg_config)
-        (headers (include "foo.h"))
-        (type_descriptions Type_descriptions)
-        (function_descriptions Function_descriptions)
-        (generated_entry_point C)))
+    (flags (:standard -w -9-27))
+    (ctypes
+      (external_library_name libfoo)
+      (build_flags_resolver pkg_config)
+      (headers (include "foo.h"))
+      (type_descriptions Type_descriptions)
+      (function_descriptions Function_descriptions)
+      (generated_entry_point C)))
 
 This stanza will introduce a module named ``C`` into your project, with the
 sub-modules ``Types`` and ``Functions`` that will have your fully bound C

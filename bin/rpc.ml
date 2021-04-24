@@ -29,22 +29,26 @@ module Init = struct
   let connect_persistent _common run_config =
     let open Fiber.O in
     let stdio = Dune_rpc_impl.Run.csexp_connect run_config stdin stdout in
-    let where_file = Dune_rpc_impl.Run.client_address () in
-    let server =
-      let where =
+    let server, where_file =
+      let where, where_file =
         if Sys.win32 then
           let addr = Unix.inet_addr_of_string "0.0.0.0" in
-          `Ip (addr, `Port 0)
+          (`Ip (addr, `Port 0), Some (Dune_rpc_impl.Run.client_address File))
         else
-          `Unix (Path.build where_file)
+          let dir = Dune_rpc_impl.Run.client_address Dir in
+          (`Unix (`Dir (Path.build dir)), None)
       in
-      Dune_rpc_impl.Run.csexp_server run_config where
+      (Dune_rpc_impl.Run.csexp_server run_config where, where_file)
     in
     let* listen_sessions =
       let+ res = Csexp_rpc.Server.serve server in
-      (match Csexp_rpc.Server.listening_address server with
-      | ADDR_UNIX _ -> ()
-      | ADDR_INET (addr, port) ->
+      (match (Csexp_rpc.Server.listening_address server, where_file) with
+      | ADDR_UNIX _, _ -> ()
+      | ADDR_INET _, None ->
+        (* the socket is already created, we don't need to write a file to
+           announce where we are listening *)
+        assert false
+      | ADDR_INET (addr, port), Some where_file ->
         let where = `Ip (addr, `Port port) in
         Io.write_file (Path.build where_file) (Dune_rpc.Where.to_string where));
       res

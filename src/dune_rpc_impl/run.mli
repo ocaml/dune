@@ -25,6 +25,9 @@ val stop : unit -> unit Fiber.t
 
 val run : t -> unit Fiber.t
 
+(** [client t where init ~on_notification ~f] Establishes a client connection to
+    [where], initializes it with [init]. Once initialization is done, cals [f]
+    with the active client. All notifications are fed to [on_notification]*)
 val client :
      t
   -> Dune_rpc.Where.t

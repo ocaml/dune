@@ -25,7 +25,15 @@ val stop : unit -> unit Fiber.t
 
 val run : t -> unit Fiber.t
 
-module Client : sig
+val client :
+     t
+  -> Dune_rpc.Where.t
+  -> Dune_rpc.Initialize.Request.t
+  -> on_notification:(Dune_rpc.Call.t -> unit Fiber.t)
+  -> f:(Client.t -> 'a Fiber.t)
+  -> 'a Fiber.t
+
+module Connect : sig
   (** [csexp_client t path] connects to [path] and returns the client.
 
       This is needed for implementing low level functions such as
@@ -43,14 +51,4 @@ module Client : sig
        t
     -> (Csexp_rpc.Session.t Fiber.Stream.In.t * Csexp_rpc.Client.t option)
        Fiber.t
-
-  val client_address : Temp.what -> Path.Build.t
-
-  val client :
-       t
-    -> Dune_rpc.Where.t
-    -> Dune_rpc.Initialize.Request.t
-    -> on_notification:(Dune_rpc.Call.t -> unit Fiber.t)
-    -> f:(Client.t -> 'a Fiber.t)
-    -> 'a Fiber.t
 end

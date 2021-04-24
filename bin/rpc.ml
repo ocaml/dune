@@ -29,10 +29,10 @@ module Init = struct
   let connect_persistent _common run_config =
     let open Fiber.O in
     let stdio =
-      Dune_rpc_impl.Run.Client.csexp_connect run_config stdin stdout
+      Dune_rpc_impl.Run.Connect.csexp_connect run_config stdin stdout
     in
     let* sessions, client =
-      Dune_rpc_impl.Run.Client.connect_persistent run_config
+      Dune_rpc_impl.Run.Connect.connect_persistent run_config
     in
     Fiber.Stream.In.sequential_iter sessions ~f:(fun session ->
         let connect =
@@ -85,10 +85,10 @@ module Init = struct
 
   let connect common run =
     let where = wait_for_server common in
-    let c = Dune_rpc_impl.Run.Client.csexp_client run where in
+    let c = Dune_rpc_impl.Run.Connect.csexp_client run where in
     let open Fiber.O in
     let* session = Csexp_rpc.Client.connect c in
-    let stdio = Dune_rpc_impl.Run.Client.csexp_connect run stdin stdout in
+    let stdio = Dune_rpc_impl.Run.Connect.csexp_connect run stdin stdout in
     let forward f t =
       Fiber.repeat_while ~init:() ~f:(fun () ->
           let* read = Csexp_rpc.Session.read f in
@@ -131,7 +131,7 @@ module Status = struct
     let where = wait_for_server common in
     printfn "Server is listening on %s" (Dune_rpc.Where.to_string where);
     printfn "ID's of connected clients (include this one):";
-    Dune_rpc_impl.Run.Client.client run where
+    Dune_rpc_impl.Run.client run where
       (Dune_rpc.Initialize.Request.create
          ~id:(Dune_rpc.Id.make (Sexp.Atom "status")))
       ~on_notification:(fun _ -> assert false)

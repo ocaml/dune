@@ -10,10 +10,49 @@ module Config = struct
         }
 end
 
-type cleanup =
-  { symlink : Path.t
-  ; socket : Path.t
-  }
+module Symlink_socket : sig
+  type t
+
+  val create : Path.t -> t
+
+  val cleanup : t -> unit
+
+  val addr_unix : t -> Unix.sockaddr
+end = struct
+  (** This module encapsulates the trick of using symlinks to get around the
+      restriction on length of domain sockets. *)
+  type t =
+    { symlink : Path.t
+    ; socket : Path.t
+    ; cleanup : unit Lazy.t
+    }
+
+  let make_cleanup ~symlink ~socket =
+    lazy
+      (Path.unlink_no_err socket;
+       Path.unlink_no_err symlink)
+
+  let create desired_path =
+    let socket =
+      let dir =
+        Path.of_string
+          (match Xdg.runtime_dir with
+          | Some p -> p
+          | None -> Filename.get_temp_dir_name ())
+      in
+      Temp.temp_file ~dir ~prefix:"dune" ~suffix:""
+    in
+    Unix.symlink (Path.to_string socket)
+      (let from = Path.external_ (Path.External.cwd ()) in
+       Path.mkdir_p (Path.parent_exn desired_path);
+       Path.reach_for_running ~from desired_path);
+    let cleanup = make_cleanup ~symlink:desired_path ~socket in
+    { symlink = desired_path; socket; cleanup }
+
+  let addr_unix t = Unix.ADDR_UNIX (Path.to_string t.socket)
+
+  let cleanup t = Lazy.force t.cleanup
+end
 
 type t =
   | Client of { scheduler : Csexp_rpc.Scheduler.t }
@@ -24,7 +63,7 @@ type t =
       ; pool : Fiber.Pool.t
       ; where : Dune_rpc_private.Where.t
       ; stats : Stats.t option
-      ; cleanup : cleanup option
+      ; symlink_socket : Symlink_socket.t option
       }
 
 let t_var = Fiber.Var.create ()
@@ -32,12 +71,6 @@ let t_var = Fiber.Var.create ()
 let t () = Fiber.Var.get_exn t_var
 
 module Server = Dune_rpc_server.Make (Csexp_rpc.Session)
-
-let delete_cleanup = function
-  | None -> ()
-  | Some { socket; symlink } ->
-    Path.unlink_no_err socket;
-    Path.unlink_no_err symlink
 
 let where_to_socket = function
   | `Ip (addr, `Port port) -> Unix.ADDR_INET (addr, port)
@@ -48,29 +81,16 @@ let of_config config scheduler stats =
   | Config.Client -> Client { scheduler }
   | Config.Server { handler; backlog; pool } ->
     let where = Dune_rpc_private.Where.default () in
-    let real_where, cleanup =
+    let real_where, symlink_socket =
       match where with
       | `Ip _ -> (where_to_socket where, None)
       | `Unix symlink ->
-        let socket =
-          let dir =
-            Path.of_string
-              (match Xdg.runtime_dir with
-              | Some p -> p
-              | None -> Filename.get_temp_dir_name ())
-          in
-          Temp.temp_file ~dir ~prefix:"dune" ~suffix:""
-        in
-        Unix.symlink (Path.to_string socket)
-          (let from = Path.external_ (Path.External.cwd ()) in
-           Path.mkdir_p (Path.parent_exn symlink);
-           Path.reach_for_running ~from symlink);
-        let cleanup = Some { socket; symlink } in
-        at_exit (fun () -> delete_cleanup cleanup);
-        (ADDR_UNIX (Path.to_string socket), cleanup)
+        let symlink_socket = Symlink_socket.create symlink in
+        at_exit (fun () -> Symlink_socket.cleanup symlink_socket);
+        (Symlink_socket.addr_unix symlink_socket, Some symlink_socket)
     in
     let server = Csexp_rpc.Server.create real_where ~backlog scheduler in
-    Server { server; handler; where; cleanup; stats; pool; scheduler }
+    Server { server; handler; where; symlink_socket; stats; pool; scheduler }
 
 let clients_dir =
   lazy
@@ -126,7 +146,7 @@ let run t =
                 Fiber.Pool.stop t.pool)
               (fun () -> Fiber.Pool.run t.pool))
           ~finally:(fun () ->
-            delete_cleanup t.cleanup;
+            Option.iter t.symlink_socket ~f:Symlink_socket.cleanup;
             Fiber.return ()))
 
 let csexp_client t p =

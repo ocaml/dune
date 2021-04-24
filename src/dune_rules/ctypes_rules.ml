@@ -130,14 +130,8 @@ module Stanza_util = struct
 
   (* not all modules that we generate should be bundled up into packages *)
   let non_installable_modules ctypes =
-    let entire_set = Module_name.Set.of_list (generated_modules ctypes) in
-    let removal_set =
-      Module_name.Set.of_list
-        [ type_gen_script_module ctypes;
-          function_gen_script_module ctypes ]
-    in
-    Module_name.Set.diff entire_set removal_set
-    |> Module_name.Set.to_list
+    [ type_gen_script_module ctypes
+    ; function_gen_script_module ctypes ]
 
   let generated_ml_and_c_files ctypes =
     let ml_files =

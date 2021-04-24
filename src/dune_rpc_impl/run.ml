@@ -170,13 +170,7 @@ let stop () =
     Csexp_rpc.Server.stop s.server;
     Fiber.return ()
 
-module Client = struct
-  let client_address what =
-    let dir = Lazy.force Persistent.clients_dir |> Path.build in
-    Path.mkdir_p dir;
-    Temp.temp_in_dir what ~dir ~prefix:"" ~suffix:".client"
-    |> Path.as_in_build_dir_exn
-
+module Connect = struct
   let csexp_client t p =
     let csexp_scheduler =
       match t with
@@ -184,6 +178,12 @@ module Client = struct
       | Server s -> s.scheduler
     in
     Csexp_rpc.Client.create (where_to_socket p) csexp_scheduler
+
+  let client_address what =
+    let dir = Lazy.force Persistent.clients_dir |> Path.build in
+    Path.mkdir_p dir;
+    Temp.temp_in_dir what ~dir ~prefix:"" ~suffix:".client"
+    |> Path.as_in_build_dir_exn
 
   let csexp_server t p =
     let csexp_scheduler =
@@ -201,12 +201,6 @@ module Client = struct
         `Unix (Symlink_socket.socket symlink_socket)
     in
     Csexp_rpc.Server.create (where_to_socket p) ~backlog:1 csexp_scheduler
-
-  let client t p init ~on_notification ~f =
-    let open Fiber.O in
-    let c = csexp_client t p in
-    let* session = Csexp_rpc.Client.connect c in
-    Client.connect_raw session init ~on_notification ~f
 
   let csexp_connect t in_ out =
     let csexp_scheduler =
@@ -255,3 +249,9 @@ module Client = struct
       let+ session = Csexp_rpc.Client.connect c in
       (Fiber.Stream.In.cons session listen_sessions, Some c)
 end
+
+let client t p init ~on_notification ~f =
+  let open Fiber.O in
+  let c = Connect.csexp_client t p in
+  let* session = Csexp_rpc.Client.connect c in
+  Client.connect_raw session init ~on_notification ~f

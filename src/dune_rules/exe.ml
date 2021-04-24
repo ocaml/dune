@@ -233,7 +233,7 @@ let link_many ?link_args ?o_files ?(embed_in_plugin_libraries=[]) ~dep_graphs
           Dep_graph.top_closed_implementations dep_graphs.impl [ main ]
       in
       Cm_files.make ~obj_dir ~modules ~top_sorted_modules
-        ~ext_obj:ctx.lib_config.ext_obj
+        ~ext_obj:ctx.lib_config.ext_obj ()
     in
     List.iter linkages ~f:(fun linkage ->
       if linkage = Linkage.js then

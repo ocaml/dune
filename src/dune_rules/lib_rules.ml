@@ -318,12 +318,21 @@ let setup_build_archives (lib : Dune_file.Library.t) ~cctx
     let lib_info = Library.to_lib_info lib ~dir ~lib_config in
     Lib_info.eval_native_archives_exn lib_info ~modules:(Some modules)
   in
-  (let cm_files =
-     Cm_files.make ~obj_dir ~ext_obj ~modules ~top_sorted_modules
-   in
-   Mode.Dict.Set.iter modes ~f:(fun mode ->
-       build_lib lib ~native_archives ~dir ~sctx ~expander ~flags ~mode
-         ~cm_files ~scope));
+  let () =
+    let cm_files =
+      let excluded_modules =
+        (* ctypes type_gen and function_gen scripts should not be included in the
+           library.  Otherwise they will spew stuff to stdout on library load. *)
+        match lib.buildable.ctypes with
+        | Some ctypes -> Ctypes_rules.non_installable_modules ctypes
+        | None -> []
+      in
+      Cm_files.make ~excluded_modules ~obj_dir ~ext_obj ~modules ~top_sorted_modules ()
+    in
+    Mode.Dict.Set.iter modes ~f:(fun mode ->
+      build_lib lib ~native_archives ~dir ~sctx ~expander ~flags ~mode
+        ~cm_files ~scope)
+  in
   (* Build *.cma.js *)
   if modes.byte then
     Super_context.add_rules sctx ~dir

@@ -571,6 +571,11 @@ let run_internal ?dir ?(stdout_to = Io.stdout) ?(stderr_to = Io.stderr)
             match (stdout_to.kind, stderr_to.kind) with
             | Terminal Print, Terminal Print
             | Terminal Swallow, Terminal Swallow ->
+              (* We don't merge when both are [Must_be_empty]. If we did and an
+                 action had unexpected output on both stdout and stderr the
+                 error message would be "has unexpected output on stdout". With
+                 the current code, it is "has unexpected output on stdout and
+                 stderr", which is more precise. *)
               Io.flush stderr_to;
               (`Merged_with_stdout, snd stdout)
             | _, Terminal _ ->

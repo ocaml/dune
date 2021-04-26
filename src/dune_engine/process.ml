@@ -414,7 +414,8 @@ module Exit_status = struct
     fun output ->
       loop output 0 (String.length output) [ 'F'; 'i'; 'l'; 'e'; ' ' ]
 
-  let handle_non_verbose t ~display ~purpose ~output ~prog ~command_line =
+  let handle_non_verbose t ~display ~purpose ~output ~prog ~command_line
+      ~has_unexpected_stdout ~has_unexpected_stderr =
     let open Pp.O in
     let show_command =
       let show_full_command_on_error =
@@ -451,7 +452,17 @@ module Exit_status = struct
         match err with
         | Failed n ->
           if show_command then
-            sprintf "(exit %d)" n
+            let unexpected_outputs =
+              List.filter_map
+                [ (has_unexpected_stdout, "stdout")
+                ; (has_unexpected_stderr, "stderr")
+                ] ~f:(fun (b, name) -> Option.some_if b name)
+            in
+            match (n, unexpected_outputs) with
+            | 0, _ :: _ ->
+              sprintf "(had unexpected output on %s)"
+                (String.enumerate_and unexpected_outputs)
+            | _ -> sprintf "(exit %d)" n
           else
             fail (Option.to_list output)
         | Signaled signame -> sprintf "(got signal %s)" signame
@@ -558,9 +569,8 @@ let run_internal ?dir ?(stdout_to = Io.stdout) ?(stderr_to = Io.stderr)
           in
           let stderr =
             match (stdout_to.kind, stderr_to.kind) with
-            | Terminal stdout_on_success, Terminal stderr_on_success
-              when Action_output_on_success.equal stdout_on_success
-                     stderr_on_success ->
+            | Terminal Print, Terminal Print
+            | Terminal Swallow, Terminal Swallow ->
               Io.flush stderr_to;
               (`Merged_with_stdout, snd stdout)
             | _, Terminal _ ->
@@ -615,21 +625,26 @@ let run_internal ?dir ?(stdout_to = Io.stdout) ?(stderr_to = Io.stderr)
           lazy ""
         | `Capture fn -> lazy (Stdune.Io.read_file fn)
       in
-      let outputs_are_as_expected =
-        let is_as_expected (on_success : Action_output_on_success.t)
-            actual_output =
-          match on_success with
-          | Must_be_empty -> Lazy.force actual_output = ""
-          | Print
-          | Swallow ->
-            true
-        in
-        is_as_expected stdout_on_success actual_stdout
-        && is_as_expected stderr_on_success actual_stderr
+      let has_unexpected_output (on_success : Action_output_on_success.t)
+          actual_output =
+        match on_success with
+        | Must_be_empty -> Lazy.force actual_output <> ""
+        | Print
+        | Swallow ->
+          false
+      in
+      let has_unexpected_stdout =
+        has_unexpected_output stdout_on_success actual_stdout
+      and has_unexpected_stderr =
+        has_unexpected_output stderr_on_success actual_stderr
       in
       let exit_status' : Exit_status.t =
         match exit_status with
-        | WEXITED n when outputs_are_as_expected && ok_codes n -> Ok n
+        | WEXITED n
+          when (not has_unexpected_stdout)
+               && (not has_unexpected_stderr)
+               && ok_codes n ->
+          Ok n
         | WEXITED n -> Error (Failed n)
         | WSIGNALED n -> Error (Signaled (Signal.name n))
         | WSTOPPED _ -> assert false
@@ -668,7 +683,8 @@ let run_internal ?dir ?(stdout_to = Io.stdout) ?(stderr_to = Io.stderr)
           ~command_line:fancy_command_line ~output
       | _ ->
         Exit_status.handle_non_verbose exit_status' ~prog:prog_str ~command_line
-          ~output ~purpose ~display)
+          ~output ~purpose ~display ~has_unexpected_stdout
+          ~has_unexpected_stderr)
 
 let run ?dir ?stdout_to ?stderr_to ?stdin_from ?env ?(purpose = Internal_job)
     fail_mode prog args =

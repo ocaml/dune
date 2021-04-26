@@ -13,6 +13,10 @@ Test for --action-stdxxx-on-success
   > (rule
   >  (alias default)
   >  (action (system "echo 'Something went wrong!' >&2")))
+  > 
+  > (rule
+  >  (alias both-stdout-and-stderr-output)
+  >  (action (system "echo stdout; echo stderr >&2")))
   > EOF
 
 By default, stdout and stderr are always printed:
@@ -46,7 +50,7 @@ printing the output of the action that had a non-empty output.
   1 | (rule
   2 |  (alias default)
   3 |  (action (system "echo 'Hello, world!'")))
-            sh alias default (exit 0)
+            sh alias default (had unexpected output on stdout)
   (cd _build/default && sh -c 'echo '\''Hello, world!'\''')
   Hello, world!
   [1]
@@ -59,10 +63,27 @@ printing the output of the action that had a non-empty output.
   5 | (rule
   6 |  (alias default)
   7 |  (action (system "echo 'Something went wrong!' >&2")))
-            sh alias default (exit 0)
+            sh alias default (had unexpected output on stderr)
   (cd _build/default && sh -c 'echo '\''Something went wrong!'\'' >&2')
   Something went wrong!
   [1]
+
+Same but with output on both stdout and stderr:
+
+  $ dune clean
+  $ dune build @both-stdout-and-stderr-output \
+  >    --action-stdout-on-success=must-be-empty \
+  >    --action-stderr-on-success=must-be-empty
+  File "dune", line 9, characters 0-95:
+   9 | (rule
+  10 |  (alias both-stdout-and-stderr-output)
+  11 |  (action (system "echo stdout; echo stderr >&2")))
+            sh alias both-stdout-and-stderr-output (had unexpected output on stdout and stderr)
+  (cd _build/default && sh -c 'echo stdout; echo stderr >&2')
+  stdout
+  stderr
+  [1]
+
 
 Incremental builds
 ------------------
@@ -215,7 +236,7 @@ better if we stop at the end of the whole action.
   4 |   (progn
   5 |    (system "echo 1")
   6 |    (system "echo 2"))))
-            sh alias default (exit 0)
+            sh alias default (had unexpected output on stdout)
   (cd _build/default && sh -c 'echo 1')
   1
   [1]

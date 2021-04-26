@@ -1451,3 +1451,68 @@ let%expect_test "errors are cached" =
     f 5 = Ok 25
     f -5 = Error [ { exn = "(Failure \"Negative input -5\")"; backtrace = "" } ]
     |}]
+
+let%expect_test "errors work with early cutoff" =
+  let divide =
+    Memo.create "divide 100 by input"
+      ~input:(module Int)
+      ~visibility:Hidden
+      ~output:(Allow_cutoff (module Int))
+      ~doc:""
+      (fun x ->
+        let+ (_ : Memo.Run.t) = Memo.current_run () in
+        printf "[divide] Started evaluating %d\n" x;
+        (if x > 100 then
+          (* We create a new exception each type on purpose, to break the cutoff *)
+          let exception Input_too_large in
+          raise Input_too_large);
+        let res = 100 / x in
+        printf "[divide] Evaluated %d: %d\n" x res;
+        res)
+  in
+  let f =
+    Memo.create_hidden "Negate"
+      ~input:(module Int)
+      (fun x ->
+        printf "[negate] Started evaluating %d\n" x;
+        let+ res = Memo.exec divide x >>| Stdlib.Int.neg in
+        printf "[negate] Evaluated %d: %d\n" x res;
+        res)
+  in
+  evaluate_and_print f 0;
+  evaluate_and_print f 20;
+  evaluate_and_print f 200;
+  [%expect
+    {|
+    [negate] Started evaluating 0
+    [divide] Started evaluating 0
+    f 0 = Error [ { exn = "Division_by_zero"; backtrace = "" } ]
+    [negate] Started evaluating 20
+    [divide] Started evaluating 20
+    [divide] Evaluated 20: 5
+    [negate] Evaluated 20: -5
+    f 20 = Ok -5
+    [negate] Started evaluating 200
+    [divide] Started evaluating 200
+    f 200 = Error [ { exn = "Input_too_large"; backtrace = "" } ]
+    |}];
+  Memo.restart_current_run ();
+  evaluate_and_print f 0;
+  evaluate_and_print f 20;
+  evaluate_and_print f 200;
+  (* Here we reevaluate all calls to [divide] because they depend on the current
+     run. Due to the early cutoff, we skip recomputing the outer [negate] for
+     the inputs 0 (error) and 20 (success), because the results remain the same.
+     However, we do attempt to re-evaluate [negate] for the input 200 because
+     the result of [divide] does change: we get a fresh exception. *)
+  [%expect
+    {|
+    [divide] Started evaluating 0
+    f 0 = Error [ { exn = "Division_by_zero"; backtrace = "" } ]
+    [divide] Started evaluating 20
+    [divide] Evaluated 20: 5
+    f 20 = Ok -5
+    [divide] Started evaluating 200
+    [negate] Started evaluating 200
+    f 200 = Error [ { exn = "Input_too_large"; backtrace = "" } ]
+    |}]

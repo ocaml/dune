@@ -91,9 +91,13 @@ let unlink_no_err t =
   try unlink t with
   | _ -> ()
 
+type clear_dir_result =
+  | Cleared
+  | Directory_does_not_exist
+
 let rec clear_dir dir =
   match Dune_filesystem_stubs.read_directory_with_kinds dir with
-  | Error ENOENT -> ()
+  | Error ENOENT -> Directory_does_not_exist
   | Error error ->
     raise
       (Unix.Unix_error
@@ -101,13 +105,18 @@ let rec clear_dir dir =
   | Ok listing ->
     List.iter listing ~f:(fun (fn, kind) ->
         let fn = Filename.concat dir fn in
+        (* Note that by the time we reach this point, [fn] might have been
+           deleted by a concurrent process. Both [rm_rf_dir] and [unlink_no_err]
+           will tolerate such phantom paths and succeed. *)
         match kind with
         | Unix.S_DIR -> rm_rf_dir fn
-        | _ -> unlink fn)
+        | _ -> unlink_no_err fn);
+    Cleared
 
 and rm_rf_dir path =
-  clear_dir path;
-  Unix.rmdir path
+  match clear_dir path with
+  | Cleared -> Unix.rmdir path
+  | Directory_does_not_exist -> ()
 
 let rm_rf ?(allow_external = false) fn =
   if (not allow_external) && not (Filename.is_relative fn) then

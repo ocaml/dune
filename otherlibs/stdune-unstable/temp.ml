@@ -88,7 +88,12 @@ let destroy what fn =
   set := Path.Set.remove !set fn
 
 let clear_dir dir =
-  Path.clear_dir dir;
+  (match Path.clear_dir dir with
+  | Cleared -> ()
+  | Directory_does_not_exist ->
+    (* We can end up here if the temporary directory has already been cleared,
+       e.g. manually by the caller of [create Dir]. *)
+    ());
   let remove_from_set ~set =
     set :=
       Path.Set.filter !set ~f:(fun f ->

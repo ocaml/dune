@@ -118,6 +118,8 @@ Unreleased
 - Fixed a bug where a sandboxed action would fail if it declares no dependencies in
   its initial working directory or any directory it `chdir`s into. (#4509, @aalekseyev)
 
+- Fix a crash when clearing temporary directories (#4489, #4529, Andrey Mokhov)
+
 2.9.0 (unreleased)
 ------------------
 

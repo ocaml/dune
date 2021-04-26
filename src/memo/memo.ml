@@ -407,7 +407,9 @@ module Cache_lookup = struct
   end
 
   module Result = struct
-    type 'a t = ('a, 'a Failure.t) result
+    type 'a t =
+      | Ok of 'a
+      | Failure of 'a Failure.t
   end
 end
 
@@ -473,7 +475,8 @@ module Sample_attempt = struct
         }
 
   let restore = function
-    | Finished cached_value -> Fiber.return (Ok cached_value)
+    | Finished cached_value ->
+      Fiber.return (Cache_lookup.Result.Ok cached_value)
     | Running { result; _ } -> Once.force result.restore_from_cache
 
   let compute = function
@@ -870,13 +873,13 @@ end = struct
             -> 'o Cached_value.t Cache_lookup.Result.t Fiber.t =
    fun last_cached_value ->
     match last_cached_value with
-    | None -> Fiber.return (Error Cache_lookup.Failure.Not_found)
+    | None -> Fiber.return (Cache_lookup.Result.Failure Not_found)
     | Some cached_value -> (
       match cached_value.value with
       | Cancelled _dependency_cycle ->
         (* Dependencies of cancelled computations are not accurate, so we can't
            use [deps_changed] in this case. *)
-        Fiber.return (Error Cache_lookup.Failure.Not_found)
+        Fiber.return (Cache_lookup.Result.Failure Not_found)
       | Ok _
       | Error _ -> (
         (* We cache errors just like normal values. We assume that all [Memo]
@@ -909,9 +912,9 @@ end = struct
                   match Value_id.equal cached_value_of_dep.id v_id with
                   | true -> go deps
                   | false -> Fiber.return Changed_or_not.Changed)
-                | Error (Cancelled { dependency_cycle }) ->
+                | Failure (Cancelled { dependency_cycle }) ->
                   Fiber.return (Changed_or_not.Cancelled { dependency_cycle })
-                | Error (Not_found | Out_of_date _) ->
+                | Failure (Not_found | Out_of_date _) ->
                   Fiber.return Changed_or_not.Changed)
               | Yes _equal -> (
                 (* If [dep] has a cutoff predicate, it is not sufficient to
@@ -937,10 +940,10 @@ end = struct
         match deps_changed with
         | Unchanged ->
           cached_value.last_validated_at <- Run.current ();
-          Ok cached_value
-        | Changed -> Error (Cache_lookup.Failure.Out_of_date cached_value)
+          Cache_lookup.Result.Ok cached_value
+        | Changed -> Failure (Out_of_date cached_value)
         | Cancelled { dependency_cycle } ->
-          Error (Cancelled { dependency_cycle })))
+          Failure (Cancelled { dependency_cycle })))
 
   and compute :
         'i 'o.    ('i, 'o) Dep_node.t
@@ -971,7 +974,7 @@ end = struct
       (value, Deps_so_far.get_compute_deps_rev deps_so_far)
     in
     match cache_lookup_failure with
-    | Cache_lookup.Failure.Cancelled { dependency_cycle } ->
+    | Cancelled { dependency_cycle } ->
       Fiber.return (Cached_value.create_cancelled ~dependency_cycle)
     | Not_found ->
       let+ value, deps_rev = compute_value_and_deps_rev () in
@@ -1004,13 +1007,13 @@ end = struct
               in
               (match restore_result with
               | Ok _ -> dep_node.state <- Not_considering
-              | Error _ -> ());
+              | Failure _ -> ());
               restore_result))
     in
     let compute =
       Once.and_then restore_from_cache ~f_must_not_raise:(function
         | Ok cached_value -> Fiber.return cached_value
-        | Error cache_lookup_failure ->
+        | Failure cache_lookup_failure ->
           Call_stack.push_frame frame (fun () ->
               dep_node.last_cached_value <- None;
               let+ cached_value =
@@ -1064,7 +1067,8 @@ end = struct
     consider dep_node >>= function
     | Ok sample_attempt -> Sample_attempt.restore sample_attempt
     | Error dependency_cycle ->
-      Fiber.return (Error (Cache_lookup.Failure.Cancelled { dependency_cycle }))
+      Fiber.return
+        (Cache_lookup.Result.Failure (Cancelled { dependency_cycle }))
 
   let exec_dep_node dep_node =
     Fiber.of_thunk (fun () ->

@@ -93,11 +93,11 @@ let unlink_no_err t =
 
 type clear_dir_result =
   | Cleared
-  | Does_not_exist
+  | Directory_does_not_exist
 
 let rec clear_dir dir =
   match Dune_filesystem_stubs.read_directory_with_kinds dir with
-  | Error ENOENT -> Does_not_exist
+  | Error ENOENT -> Directory_does_not_exist
   | Error error ->
     raise
       (Unix.Unix_error
@@ -116,7 +116,7 @@ let rec clear_dir dir =
 and rm_rf_dir path =
   match clear_dir path with
   | Cleared -> Unix.rmdir path
-  | Does_not_exist -> ()
+  | Directory_does_not_exist -> ()
 
 let rm_rf ?(allow_external = false) fn =
   if (not allow_external) && not (Filename.is_relative fn) then

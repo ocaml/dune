@@ -90,9 +90,9 @@ let destroy what fn =
 let clear_dir dir =
   (match Path.clear_dir dir with
   | Cleared -> ()
-  | Does_not_exist ->
-    (* We can end up here if nested temporary directories are cleared starting
-       from the outermost directory. It's OK to do nothing in this case. *)
+  | Directory_does_not_exist ->
+    (* We can end up here if the temporary directory has already been cleared,
+       e.g. manually by the caller of [create Dir]. *)
     ());
   let remove_from_set ~set =
     set :=

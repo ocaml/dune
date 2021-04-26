@@ -101,8 +101,6 @@ Unreleased
 
 - Drop support for upgrading jbuilder projects (#4473, @jeremiedimino)
 
-- Drop support for upgrading jbuilder projects (#4473, @jeremiedimino)
-
 - Extend the environment variable `BUILD_PATH_PREFIX_MAP` to rewrite
   the root of the build dir (or sandbox) to `/workspace_root` (#4466,
   @jeremiedimino)
@@ -112,8 +110,8 @@ Unreleased
   implementation is based on Jenga's cache library, which was thoroughly tested
   on large-scale builds. Using Jenga's cache library will also make it easier
   for us to port Jenga's cloud cache to Dune. (#4443, #4465, Andrey Mokhov)
-  
-- More informative error message when Dune can't read a target that's supposed 
+
+- More informative error message when Dune can't read a target that's supposed
   to be produced by the action. Old message is still produced on ENOENT, but other
   errors deserve a more detailed report. (#4501, @aalekseyev)
 

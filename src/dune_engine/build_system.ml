@@ -360,11 +360,14 @@ end
 module Error = struct
   type t = Exn_with_backtrace.t
 
+  let extract_dir : User_error.Annot.t -> Path.t option = function
+    | Process.With_directory dir -> Some dir
+    | _ -> None
+
   let info (t : t) =
     let exn, deps = Dep_path.unwrap_exn t.exn in
     match exn with
-    | User_error.E msg -> (msg, deps, None)
-    | Located_error.E (msg, dir) -> (msg, deps, Some dir)
+    | User_error.E (msg, annot) -> (msg, deps, Option.bind ~f:extract_dir annot)
     | e -> (User_message.make [ Pp.text (Printexc.to_string e) ], deps, None)
 end
 

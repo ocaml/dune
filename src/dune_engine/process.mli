@@ -2,6 +2,8 @@
 
 open Import
 
+type User_error.Annot.t += With_directory of Path.t
+
 (** How to handle sub-process failures *)
 type ('a, 'b) failure_mode =
   | Strict : ('a, 'a) failure_mode

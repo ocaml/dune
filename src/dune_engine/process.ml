@@ -5,6 +5,8 @@ module Json = Chrome_trace.Json
 module Event = Chrome_trace.Event
 module Timestamp = Event.Timestamp
 
+type User_error.Annot.t += With_directory of Path.t
+
 type ('a, 'b) failure_mode =
   | Strict : ('a, 'a) failure_mode
   | Accept : int Predicate_lang.t -> ('a, ('a, int) result) failure_mode
@@ -365,9 +367,12 @@ module Exit_status = struct
   (* In this module, we don't need the "Error: " prefix given that it is already
      included in the error message from the command. *)
   let fail ~dir paragraphs =
-    match dir with
-    | None -> User_error.raise paragraphs
-    | Some dir -> Located_error.raise ~dir paragraphs
+    let dir =
+      match dir with
+      | None -> Path.of_string (Sys.getcwd ())
+      | Some dir -> dir
+    in
+    User_error.raise paragraphs ~annot:(With_directory dir)
 
   let handle_verbose t ~id ~output ~command_line ~dir =
     let open Pp.O in

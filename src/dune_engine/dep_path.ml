@@ -110,14 +110,10 @@ let augment_msg entries (msg : User_message.t) =
 
 let augment_user_error_loc entries exn =
   match exn with
-  | User_error.E msg -> (
+  | User_error.E (msg, annot) -> (
     match augment_msg entries msg with
     | None -> exn
-    | Some msg -> User_error.E msg)
-  | Dune_util.Located_error.E (msg, dir) -> (
-    match augment_msg entries msg with
-    | None -> exn
-    | Some msg -> Dune_util.Located_error.E (msg, dir))
+    | Some msg -> User_error.E (msg, annot))
   | _ -> exn
 
 let unwrap_exn = function

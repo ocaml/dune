@@ -110,18 +110,21 @@ let run t =
         Fiber.finalize
           (fun () ->
             let open Fiber.O in
-            let* waiting, serve =
-              (* This waits until we listen on the socket before serving clients
-                 that were already waiting. Not ideal. *)
-              Fiber.fork_and_join
-                (fun () -> waiting_clients t.scheduler)
-                (fun () -> Csexp_rpc.Server.serve t.server)
-            in
-            let sessions =
-              Fiber.Stream.In.append (Fiber.Stream.In.of_list waiting) serve
-            in
-            let* () = Server.serve sessions t.stats t.handler in
-            Fiber.Pool.stop t.pool)
+            Fiber.fork_and_join_unit
+              (fun () ->
+                let* waiting, serve =
+                  (* This waits until we listen on the socket before serving
+                     clients that were already waiting. Not ideal. *)
+                  Fiber.fork_and_join
+                    (fun () -> waiting_clients t.scheduler)
+                    (fun () -> Csexp_rpc.Server.serve t.server)
+                in
+                let sessions =
+                  Fiber.Stream.In.append (Fiber.Stream.In.of_list waiting) serve
+                in
+                let* () = Server.serve sessions t.stats t.handler in
+                Fiber.Pool.stop t.pool)
+              (fun () -> Fiber.Pool.run t.pool))
           ~finally:(fun () ->
             delete_cleanup t.cleanup;
             Fiber.return ()))

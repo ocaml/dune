@@ -881,11 +881,11 @@ end = struct
       | Error _ -> (
         (* We cache errors just like normal values. We assume that all [Memo]
            computations are deterministic, which means if we rerun a computation
-           that previously led to raising a set of errors, we expect to get the
-           same set of errors back and we might as well skip the unnecessary
-           work. The downside is that if a computation is non-deterministic,
-           there is no way to force rerunning it, apart from changing some of
-           its dependencies. *)
+           that previously led to raising a set of errors on the same inputs, we
+           expect to get the same set of errors back and we might as well skip
+           the unnecessary work. The downside is that if a computation is
+           non-deterministic, there is no way to force rerunning it, apart from
+           changing some of its dependencies. *)
         let+ deps_changed =
           let rec go deps =
             match deps with
@@ -961,7 +961,12 @@ end = struct
       let value =
         match res with
         | Ok res -> Value.Ok res
-        | Error exns -> Error (Exn_set.of_list exns)
+        | Error exns ->
+          (* CR-someday amokhov: Here we remove error duplicates that can appear
+             due to diamond dependencies. We could add [Fiber.collect_error_set]
+             that returns a set of errors instead of a list, to get rid of the
+             duplicates as early as possible. *)
+          Error (Exn_set.of_list exns)
       in
       (value, Deps_so_far.get_compute_deps_rev deps_so_far)
     in

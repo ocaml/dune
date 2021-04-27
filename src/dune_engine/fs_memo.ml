@@ -13,7 +13,7 @@ let memo =
    you could add a higher-level primitive instead, such as [file_exists]? *)
 let depend path =
   if Path.is_in_build_dir path then
-    Code_error.raise "Fs_notify_memo.depend called on a build path" [];
+    Code_error.raise "Fs_memo.depend called on a build path" [];
   Memo.exec memo path
 
 let file_exists path =
@@ -32,7 +32,7 @@ end
 
 let invalidate path =
   if Path.is_in_build_dir path then
-    Code_error.raise "Fs_notify_memo.invalidate called on a build path" [];
+    Code_error.raise "Fs_memo.invalidate called on a build path" [];
   match Memo.Expert.previously_evaluated_cell memo path with
   | None -> Invalidate_result.Skipped
   | Some cell ->

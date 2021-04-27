@@ -55,5 +55,5 @@ module Report_error = Report_error
 module Pform = Pform
 module Cm_kind = Cm_kind
 module Mode = Mode
-module Fs_notify_memo = Fs_notify_memo
+module Fs_memo = Fs_memo
 module Execution_parameters = Execution_parameters

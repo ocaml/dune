@@ -270,8 +270,8 @@ end = struct
                       Table.remove q.ignored_files abs_path;
                       None
                     ) else
-                      (* CR-soon amokhov: Generate other kinds of events. *)
-                      Some (Fs_memo.Event.create ~kind:File_changed ~path))
+                      (* CR-soon amokhov: Generate more precise events. *)
+                      Some (Fs_memo.Event.create ~kind:Unknown ~path))
               in
               match Nonempty_list.of_list events with
               | None -> loop ()
@@ -857,7 +857,7 @@ end = struct
       match Event.Queue.next t.events with
       | Job_completed (job, proc_info) -> Fiber.Fill (job.ivar, proc_info)
       | File_system_changed events -> (
-        match (Fs_memo.process_events events : Fs_memo.Rebuild_required.t) with
+        match (Fs_memo.handle events : Fs_memo.Rebuild_required.t) with
         | No -> iter t (* Ignore the event *)
         | Yes -> (
           Memo.reset ();

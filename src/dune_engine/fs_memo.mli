@@ -28,6 +28,7 @@ module Event : sig
     | File_changed
     | Directory_created
     | Directory_deleted
+    | Unknown  (** Treated conservatively as any possible event. *)
 
   type t
 
@@ -40,5 +41,5 @@ module Rebuild_required : sig
     | No  (** All file system events correspond to untracked paths. *)
 end
 
-(** Process file system events and let the caller know if a rebuild is required. *)
-val process_events : Event.t Nonempty_list.t -> Rebuild_required.t
+(** Handle file system events and let the caller know if a rebuild is required. *)
+val handle : Event.t Nonempty_list.t -> Rebuild_required.t

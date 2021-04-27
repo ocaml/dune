@@ -48,6 +48,25 @@ let file_digest = declaring_dependency ~f:Cached_digest.source_or_external_file
 
 let dir_contents = declaring_dependency ~f:Path.readdir_unsorted_with_kinds
 
+module Rebuild_required = struct
+  type t =
+    | Yes
+    | No
+
+  let combine x y =
+    match (x, y) with
+    | Yes, _ -> Yes
+    | _, Yes -> Yes
+    | No, No -> No
+
+  let invalidate path =
+    match Memo.Expert.previously_evaluated_cell memo path with
+    | None -> No
+    | Some cell ->
+      Memo.Cell.invalidate cell;
+      Yes
+end
+
 module Event = struct
   type kind =
     | File_created
@@ -55,6 +74,7 @@ module Event = struct
     | File_changed
     | Directory_created
     | Directory_deleted
+    | Unknown  (** Treated conservatively as any possible event. *)
 
   type t =
     { path : Path.t
@@ -65,26 +85,26 @@ module Event = struct
     if Path.is_in_build_dir path then
       Code_error.raise "Fs_memo.Event.create called on a build path" [];
     { path; kind }
+
+  let handle { kind; path } =
+    match kind with
+    (* CR-soon amokhov: Improve event handling. *)
+    | _ -> (
+      let acc = Rebuild_required.invalidate path in
+      match Path.parent path with
+      | None -> acc
+      | Some path ->
+        Rebuild_required.combine acc (Rebuild_required.invalidate path))
 end
 
-module Rebuild_required = struct
-  type t =
-    | Yes
-    | No
-end
-
-let process_events events =
+let handle events =
   (* Knowing that the list is non-empty makes it easier to think about the logic
      that checks the [Memo.incremental_mode_enabled] flag. *)
   let events = Nonempty_list.to_list events in
   let rebuild_required =
     (* We can't use [List.exists] here due to its short-circuiting behaviour. *)
-    List.fold_left events ~init:No ~f:(fun acc { Event.path; _ } ->
-        match Memo.Expert.previously_evaluated_cell memo path with
-        | None -> acc
-        | Some cell ->
-          Memo.Cell.invalidate cell;
-          Rebuild_required.Yes)
+    List.fold_left events ~init:No ~f:(fun acc event ->
+        Rebuild_required.combine acc (Event.handle event))
   in
   match rebuild_required with
   | Yes -> Rebuild_required.Yes

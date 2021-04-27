@@ -1454,18 +1454,18 @@ let%expect_test "errors are cached" =
 
 let%expect_test "errors work with early cutoff" =
   let divide =
+    let exception Input_too_large of Memo.Run.t in
     Memo.create "divide 100 by input"
       ~input:(module Int)
       ~visibility:Hidden
       ~output:(Allow_cutoff (module Int))
       ~doc:""
       (fun x ->
-        let+ (_ : Memo.Run.t) = Memo.current_run () in
+        let+ run = Memo.current_run () in
         printf "[divide] Started evaluating %d\n" x;
-        (if x > 100 then
-          (* We create a new exception each type on purpose, to break the cutoff *)
-          let exception Input_too_large in
-          raise Input_too_large);
+        if x > 100 then
+          (* This exception will be different in each run. *)
+          raise (Input_too_large run);
         let res = 100 / x in
         printf "[divide] Evaluated %d: %d\n" x res;
         res)
@@ -1494,7 +1494,7 @@ let%expect_test "errors work with early cutoff" =
     f 20 = Ok -5
     [negate] Started evaluating 200
     [divide] Started evaluating 200
-    f 200 = Error [ { exn = "Input_too_large"; backtrace = "" } ]
+    f 200 = Error [ { exn = "Input_too_large(_)"; backtrace = "" } ]
     |}];
   Memo.restart_current_run ();
   evaluate_and_print f 0;
@@ -1514,5 +1514,5 @@ let%expect_test "errors work with early cutoff" =
     f 20 = Ok -5
     [divide] Started evaluating 200
     [negate] Started evaluating 200
-    f 200 = Error [ { exn = "Input_too_large"; backtrace = "" } ]
+    f 200 = Error [ { exn = "Input_too_large(_)"; backtrace = "" } ]
     |}]

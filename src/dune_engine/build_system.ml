@@ -1177,7 +1177,7 @@ let get_rule_or_source t path =
       let* loc = Rule_fn.loc () in
       no_rule_found t ~loc path
   else if Path.exists path then
-    let+ d = Fs_notify_memo.file_digest path in
+    let+ d = Fs_memo.file_digest path in
     Source d
   else
     let+ loc = Rule_fn.loc () in
@@ -1823,7 +1823,7 @@ end = struct
                   else
                     let in_build_dir_digest = Cached_digest.build_file path in
                     let+ in_source_tree_digest =
-                      Memo.Build.run (Fs_notify_memo.file_digest in_source_tree)
+                      Memo.Build.run (Fs_memo.file_digest in_source_tree)
                     in
                     in_build_dir_digest = in_source_tree_digest
                 in

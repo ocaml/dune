@@ -858,7 +858,7 @@ end = struct
            ignore this [Files_changed] event to avoid unnecessary restarts. *)
         let all_changed_files_skipped =
           List.for_all changed_files ~f:(fun path ->
-              match Fs_notify_memo.invalidate path with
+              match Fs_memo.invalidate path with
               | Skipped -> true
               | Invalidated -> false)
         in

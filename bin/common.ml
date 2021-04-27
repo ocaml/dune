@@ -612,12 +612,32 @@ let shared_with_config_file =
           ~docs
           ~env:(Arg.env_var ~doc "DUNE_CACHE_CHECK_PROBABILITY")
           ~doc)
-  and+ swallow_stdout_on_success =
+  and+ action_stdout_on_success =
     Arg.(
-      value & flag
+      value
+      & opt (some (enum Dune_config.Action_output_on_success.all)) None
       & info
-          [ "swallow-stdout-on-success" ]
-          ~doc:"Swallow the output of an action when it succeeds.")
+          [ "action-stdout-on-success" ]
+          ~doc:
+            "Specify how to deal with the standard output of actions when they \
+             succeed. Possible values are: $(b,print) to just print it to \
+             Dune's output, $(b,swallow) to completely ignore it and \
+             $(b,must-be-empty) to enforce that the action printed nothing. \
+             With $(b,must-be-empty), Dune will consider that the action \
+             failed if it printed something to its standard output. The \
+             default is $(b,print).")
+  and+ action_stderr_on_success =
+    Arg.(
+      value
+      & opt (some (enum Dune_config.Action_output_on_success.all)) None
+      & info
+          [ "action-stderr-on-success" ]
+          ~doc:
+            "Same as $(b,--action-stdout-on-success) but for the standard \
+             output for error messages. A good default for large \
+             mono-repositories is $(b,--action-stdout-on-success=swallow \
+             --action-stderr-on-success=must-be-empty). This ensures that a \
+             successful build has a \"clean\" empty output.")
   in
   { Dune_config.Partial.display
   ; concurrency
@@ -628,7 +648,8 @@ let shared_with_config_file =
       Option.map cache_check_probability
         ~f:Dune_cache.Config.Reproducibility_check.check_with_probability
   ; cache_storage_mode
-  ; swallow_stdout_on_success = Option.some_if swallow_stdout_on_success true
+  ; action_stdout_on_success
+  ; action_stderr_on_success
   }
 
 let term =

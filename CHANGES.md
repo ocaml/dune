@@ -88,8 +88,11 @@ Unreleased
 - Fields allowed in the config file are now also allowed in the
   workspace file (#4426, @jeremiedimino)
 
-- Add an option to swallow the output of actions when they succeed, to
-  reduce noise of large builds (#4422, @jeremiedimino)
+- Add options to control how Dune should handle stdout and stderr of
+  actions when then succeed. It is now possible to ask Dune to ignore
+  the stdout of actions when they succeed or to request that the
+  stderr of actions must be empty. This allows to reduce the noise of
+  large builds (#4422, #4515, @jeremiedimino)
 
 - Add the possibility to use `locks` with the cram tests stanza (#4397, @voodoos)
 

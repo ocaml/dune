@@ -1381,9 +1381,10 @@ end = struct
 
   (* The current version of the rule digest scheme. We should increment it when
      making any changes to the scheme, to avoid collisions. *)
-  let rule_digest_version = 5
+  let rule_digest_version = 6
 
-  let compute_rule_digest (rule : Rule.t) ~deps ~action ~sandbox_mode =
+  let compute_rule_digest (rule : Rule.t) ~deps ~action ~sandbox_mode
+      ~execution_parameters =
     let { Action.Full.action; env; locks; can_go_in_shared_cache } = action in
     let trace =
       ( rule_digest_version (* Update when changing the rule digest scheme. *)
@@ -1392,7 +1393,9 @@ end = struct
       , Option.map rule.context ~f:(fun c -> c.name)
       , Action.for_shell action
       , can_go_in_shared_cache
-      , List.map locks ~f:Path.to_string )
+      , List.map locks ~f:Path.to_string
+      , Execution_parameters.action_stdout_on_success execution_parameters
+      , Execution_parameters.action_stderr_on_success execution_parameters )
     in
     Digest.generic trace
 
@@ -1618,7 +1621,10 @@ end = struct
         let force_rerun = !Clflags.force && is_test in
         force_rerun || Dep.Map.has_universe deps
       in
-      let rule_digest = compute_rule_digest rule ~deps ~action ~sandbox_mode in
+      let rule_digest =
+        compute_rule_digest rule ~deps ~action ~sandbox_mode
+          ~execution_parameters
+      in
       let can_go_in_shared_cache =
         action.can_go_in_shared_cache
         && not

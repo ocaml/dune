@@ -4,6 +4,7 @@ open Fiber.O
 module Json = Chrome_trace.Json
 module Event = Chrome_trace.Event
 module Timestamp = Event.Timestamp
+module Action_output_on_success = Execution_parameters.Action_output_on_success
 
 type ('a, 'b) failure_mode =
   | Strict : ('a, 'a) failure_mode
@@ -38,11 +39,9 @@ module Io = struct
     | File of Path.t
     | Null
     | Terminal of
-        { swallow_on_success : bool
-              (* This argument makes no sense for inputs, but it seems annoying
-                 to change, especially as this code is meant to change again in
-                 #4435. *)
-        }
+        (* This argument make no sense for inputs, but it seems annoying to
+           change, especially as this code is meant to change again in #4435. *)
+        Action_output_on_success.t
 
   type status =
     | Keep_open
@@ -79,23 +78,26 @@ module Io = struct
     ; mutable status : status
     }
 
-  let terminal ch ~swallow_on_success =
+  let terminal ch output_on_success =
     let fd = descr_of_channel ch in
-    { kind = Terminal { swallow_on_success }
+    { kind = Terminal output_on_success
     ; mode = mode_of_channel ch
     ; fd = lazy fd
     ; channel = lazy ch
     ; status = Keep_open
     }
 
-  let stdout_swallow_on_success =
-    terminal (Out_chan stdout) ~swallow_on_success:true
+  let make_stdout output_on_success =
+    terminal (Out_chan stdout) output_on_success
 
-  let stdout = terminal (Out_chan stdout) ~swallow_on_success:false
+  let stdout = make_stdout Print
 
-  let stderr = terminal (Out_chan stderr) ~swallow_on_success:false
+  let make_stderr output_on_success =
+    terminal (Out_chan stderr) output_on_success
 
-  let stdin = terminal (In_chan stdin) ~swallow_on_success:false
+  let stderr = make_stderr Print
+
+  let stdin = terminal (In_chan stdin) Print
 
   let null (type a) (mode : a mode) : a t =
     let fd =
@@ -412,7 +414,8 @@ module Exit_status = struct
     fun output ->
       loop output 0 (String.length output) [ 'F'; 'i'; 'l'; 'e'; ' ' ]
 
-  let handle_non_verbose t ~display ~purpose ~output ~prog ~command_line =
+  let handle_non_verbose t ~display ~purpose ~output ~prog ~command_line
+      ~has_unexpected_stdout ~has_unexpected_stderr =
     let open Pp.O in
     let show_command =
       let show_full_command_on_error =
@@ -449,7 +452,17 @@ module Exit_status = struct
         match err with
         | Failed n ->
           if show_command then
-            sprintf "(exit %d)" n
+            let unexpected_outputs =
+              List.filter_map
+                [ (has_unexpected_stdout, "stdout")
+                ; (has_unexpected_stderr, "stderr")
+                ] ~f:(fun (b, name) -> Option.some_if b name)
+            in
+            match (n, unexpected_outputs) with
+            | 0, _ :: _ ->
+              sprintf "(had unexpected output on %s)"
+                (String.enumerate_and unexpected_outputs)
+            | _ -> sprintf "(exit %d)" n
           else
             fail (Option.to_list output)
         | Signaled signame -> sprintf "(got signal %s)" signame
@@ -531,13 +544,13 @@ let run_internal ?dir ?(stdout_to = Io.stdout) ?(stderr_to = Io.stderr)
           (args, None)
       in
       let argv = prog_str :: args in
-      let swallow_on_success (out : Io.output Io.t) =
+      let output_on_success (out : Io.output Io.t) =
         match out.kind with
-        | Terminal { swallow_on_success } -> swallow_on_success
-        | _ -> false
+        | Terminal x -> x
+        | _ -> Print
       in
-      let swallow_stdout_on_success = swallow_on_success stdout_to in
-      let swallow_stderr_on_success = swallow_on_success stderr_to in
+      let stdout_on_success = output_on_success stdout_to in
+      let stderr_on_success = output_on_success stderr_to in
       let (stdout_capture, stdout_to), (stderr_capture, stderr_to) =
         match (stdout_to.kind, stderr_to.kind) with
         | Terminal _, _
@@ -556,9 +569,13 @@ let run_internal ?dir ?(stdout_to = Io.stdout) ?(stderr_to = Io.stderr)
           in
           let stderr =
             match (stdout_to.kind, stderr_to.kind) with
-            | ( Terminal { swallow_on_success = a }
-              , Terminal { swallow_on_success = b } )
-              when Bool.equal a b ->
+            | Terminal Print, Terminal Print
+            | Terminal Swallow, Terminal Swallow ->
+              (* We don't merge when both are [Must_be_empty]. If we did and an
+                 action had unexpected output on both stdout and stderr the
+                 error message would be "has unexpected output on stdout". With
+                 the current code, it is "has unexpected output on stdout and
+                 stderr", which is more precise. *)
               Io.flush stderr_to;
               (`Merged_with_stdout, snd stdout)
             | _, Terminal _ ->
@@ -601,20 +618,49 @@ let run_internal ?dir ?(stdout_to = Io.stdout) ?(stderr_to = Io.stderr)
       | None, None -> ()
       | _, _ -> assert false);
       Option.iter response_file ~f:Path.unlink;
+      let actual_stdout =
+        match stdout_capture with
+        | `No_capture -> lazy ""
+        | `Capture fn -> lazy (Stdune.Io.read_file fn)
+      in
+      let actual_stderr =
+        match stderr_capture with
+        | `No_capture
+        | `Merged_with_stdout ->
+          lazy ""
+        | `Capture fn -> lazy (Stdune.Io.read_file fn)
+      in
+      let has_unexpected_output (on_success : Action_output_on_success.t)
+          actual_output =
+        match on_success with
+        | Must_be_empty -> Lazy.force actual_output <> ""
+        | Print
+        | Swallow ->
+          false
+      in
+      let has_unexpected_stdout =
+        has_unexpected_output stdout_on_success actual_stdout
+      and has_unexpected_stderr =
+        has_unexpected_output stderr_on_success actual_stderr
+      in
       let exit_status' : Exit_status.t =
         match exit_status with
-        | WEXITED n when ok_codes n -> Ok n
+        | WEXITED n
+          when (not has_unexpected_stdout)
+               && (not has_unexpected_stderr)
+               && ok_codes n ->
+          Ok n
         | WEXITED n -> Error (Failed n)
         | WSIGNALED n -> Error (Signaled (Signal.name n))
         | WSTOPPED _ -> assert false
       in
       let success = Result.is_ok exit_status' in
-      let read_and_destroy fn ~swallow_on_success =
+      let swallow_on_success_if_requested fn actual_output
+          (on_success : Action_output_on_success.t) =
         let s =
-          if success && swallow_on_success then
-            ""
-          else
-            Stdune.Io.read_file fn
+          match (success, on_success) with
+          | true, Swallow -> ""
+          | _ -> Lazy.force actual_output
         in
         Temp.destroy File fn;
         s
@@ -623,14 +669,15 @@ let run_internal ?dir ?(stdout_to = Io.stdout) ?(stderr_to = Io.stderr)
         match stdout_capture with
         | `No_capture -> ""
         | `Capture fn ->
-          read_and_destroy fn ~swallow_on_success:swallow_stdout_on_success
+          swallow_on_success_if_requested fn actual_stdout stdout_on_success
       in
       let stderr =
         match stderr_capture with
-        | `No_capture -> ""
+        | `No_capture
+        | `Merged_with_stdout ->
+          ""
         | `Capture fn ->
-          read_and_destroy fn ~swallow_on_success:swallow_stderr_on_success
-        | `Merged_with_stdout -> ""
+          swallow_on_success_if_requested fn actual_stderr stderr_on_success
       in
       let output = stdout ^ stderr in
       Log.command ~command_line ~output ~exit_status;
@@ -641,7 +688,8 @@ let run_internal ?dir ?(stdout_to = Io.stdout) ?(stderr_to = Io.stderr)
           ~command_line:fancy_command_line ~output
       | _ ->
         Exit_status.handle_non_verbose exit_status' ~prog:prog_str ~command_line
-          ~output ~purpose ~display)
+          ~output ~purpose ~display ~has_unexpected_stdout
+          ~has_unexpected_stderr)
 
 let run ?dir ?stdout_to ?stderr_to ?stdin_from ?env ?(purpose = Internal_job)
     fail_mode prog args =

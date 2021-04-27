@@ -88,24 +88,16 @@ let prepare_workspace () =
       Format.eprintf "cloning %s/%s@." pkg.org pkg.name;
       Package.clone pkg)
 
-let with_timer f =
-  let start = Unix.time () in
-  let res = f () in
-  let stop = Unix.time () in
-  (stop -. start, res)
-
 let dune_build () =
   let stdin_from = Process.(Io.null In) in
   let stdout_to = Process.(Io.file Config.dev_null Out) in
   let stderr_to = Process.(Io.file Config.dev_null Out) in
-  let start = Unix.time () in
   let open Fiber.O in
-  let+ () =
-    Process.run Strict (Lazy.force dune) ~stdin_from ~stdout_to ~stderr_to
+  let+ times =
+    Process.run_with_times (Lazy.force dune) ~stdin_from ~stdout_to ~stderr_to
       [ "build"; "@install"; "--root"; "." ]
   in
-  let stop = Unix.time () in
-  stop -. start
+  times.elapsed_time
 
 let run_bench () =
   let open Fiber.O in

@@ -23,17 +23,40 @@ let restore_cwd_and_execve prog argv ~env =
     Unix.execve prog argv env
   )
 
-type resource_usage =
-  { utime : float
-  ; stime : float
-  }
+module Resource_usage = struct
+  type t =
+    { user_cpu_time : float
+    ; system_cpu_time : float
+    }
+end
+
+module Times = struct
+  type t =
+    { elapsed_time : float
+    ; resource_usage : Resource_usage.t option
+    }
+end
+
+module Process_info = struct
+  type t =
+    { pid : Pid.t
+    ; status : Unix.process_status
+    ; end_time : float
+    ; resource_usage : Resource_usage.t option
+    }
+end
 
 external stub_wait3 :
-  Unix.wait_flag list -> int * Unix.process_status * resource_usage
+  Unix.wait_flag list -> int * Unix.process_status * float * Resource_usage.t
   = "dune_wait3"
 
-let wait3 flags =
+let wait flags =
   if Sys.win32 then
     Code_error.raise "wait3 not available on windows" []
   else
-    stub_wait3 flags
+    let pid, status, end_time, resource_usage = stub_wait3 flags in
+    { Process_info.pid = Pid.of_int pid
+    ; status
+    ; end_time
+    ; resource_usage = Some resource_usage
+    }

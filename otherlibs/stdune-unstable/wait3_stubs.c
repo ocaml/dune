@@ -49,12 +49,14 @@ value dune_wait3(value flags) {
   CAMLlocal2(times, res);
 
   int pid, status, cv_flags;
+  struct timeval tp;
   cv_flags = caml_convert_flag_list(flags, wait_flag_table);
 
   struct rusage ru;
 
   caml_enter_blocking_section();
   pid = wait3(&status, cv_flags, &ru);
+  gettimeofday(&tp, NULL);
   caml_leave_blocking_section();
   if (pid == -1)
     uerror("wait3", Nothing);
@@ -63,10 +65,11 @@ value dune_wait3(value flags) {
   Store_double_field(times, 0, ru.ru_utime.tv_sec + ru.ru_utime.tv_usec / 1e6);
   Store_double_field(times, 1, ru.ru_stime.tv_sec + ru.ru_stime.tv_usec / 1e6);
 
-  res = caml_alloc_tuple(3);
+  res = caml_alloc_tuple(4);
   Store_field(res, 0, Val_int(pid));
   Store_field(res, 1, alloc_process_status(status));
-  Store_field(res, 2, times);
+  Store_field(res, 2, caml_copy_double(((double) tp.tv_sec + (double) tp.tv_usec / 1e6)));
+  Store_field(res, 3, times);
   CAMLreturn(res);
 }
 

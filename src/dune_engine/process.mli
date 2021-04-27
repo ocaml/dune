@@ -69,6 +69,17 @@ val run :
   -> string list
   -> 'a Fiber.t
 
+val run_with_times :
+     ?dir:Path.t
+  -> ?stdout_to:Io.output Io.t
+  -> ?stderr_to:Io.output Io.t
+  -> ?stdin_from:Io.input Io.t
+  -> ?env:Env.t
+  -> ?purpose:purpose
+  -> Path.t
+  -> string list
+  -> Proc.Times.t Fiber.t
+
 (** Run a command and capture its output *)
 val run_capture :
      ?dir:Path.t

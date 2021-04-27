@@ -80,8 +80,7 @@ val t : unit -> t Fiber.t
 val with_job_slot : (Config.t -> 'a Fiber.t) -> 'a Fiber.t
 
 (** Wait for the following process to terminate *)
-val wait_for_process :
-  Pid.t -> (Unix.process_status * Proc.resource_usage option) Fiber.t
+val wait_for_process : Pid.t -> Proc.Process_info.t Fiber.t
 
 (** Wait for dune cache to be disconnected. Drop any other event. *)
 val wait_for_dune_cache : unit -> unit

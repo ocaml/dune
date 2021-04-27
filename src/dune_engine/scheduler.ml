@@ -857,10 +857,9 @@ end = struct
       match Event.Queue.next t.events with
       | Job_completed (job, proc_info) -> Fiber.Fill (job.ivar, proc_info)
       | File_system_changed events -> (
-        let rebuild_required = Fs_memo.process_events events in
-        match (rebuild_required, Memo.incremental_mode_enabled) with
-        | No, true -> iter t (* Ignore the event *)
-        | _, _ -> (
+        match (Fs_memo.process_events events : Fs_memo.Rebuild_required.t) with
+        | No -> iter t (* Ignore the event *)
+        | Yes -> (
           Memo.reset ();
           match t.status with
           | Shutting_down

@@ -19,8 +19,11 @@ let depend path =
     Code_error.raise "Fs_memo.depend called on a build path" [];
   Memo.exec memo path
 
-(* Declare a dependency on [path] and then sample the current value using the
-   supplied function [f].
+(* This does two things, in this order:
+
+   - Declare a dependency on [path];
+
+   - Sample the current value using the supplied function [f].
 
    If the order is reversed, the value can change after we sample it but before
    we register the dependency, which can result in memoizing a stale value. This
@@ -76,16 +79,16 @@ let process_events events =
   let events = Nonempty_list.to_list events in
   let rebuild_required =
     (* We can't use [List.exists] here due to its short-circuiting behaviour. *)
-    List.fold_left events ~init:false ~f:(fun acc { Event.path; _ } ->
+    List.fold_left events ~init:No ~f:(fun acc { Event.path; _ } ->
         match Memo.Expert.previously_evaluated_cell memo path with
         | None -> acc
         | Some cell ->
           Memo.Cell.invalidate cell;
-          true)
+          Rebuild_required.Yes)
   in
   match rebuild_required with
-  | true -> Rebuild_required.Yes
-  | false -> (
+  | Yes -> Rebuild_required.Yes
+  | No -> (
     match Memo.incremental_mode_enabled with
     | true -> No
     | false ->

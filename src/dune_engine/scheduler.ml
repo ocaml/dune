@@ -112,7 +112,7 @@ end
 (** The event queue *)
 module Event : sig
   type t =
-    | Files_changed of Path.t list
+    | File_system_changed of Fs_memo.Event.t Nonempty_list.t
     | Job_completed of job * Proc.Process_info.t
     | Signal of Signal.t
     | Rpc of Fiber.fill
@@ -159,7 +159,7 @@ module Event : sig
   with type event := t
 end = struct
   type t =
-    | Files_changed of Path.t list
+    | File_system_changed of Fs_memo.Event.t Nonempty_list.t
     | Job_completed of job * Proc.Process_info.t
     | Signal of Signal.t
     | Rpc of Fiber.fill
@@ -260,21 +260,22 @@ end = struct
                 q.pending_jobs <- q.pending_jobs - 1;
                 assert (q.pending_jobs >= 0);
                 Job_completed (job, proc_info))
-            | fns -> (
+            | files_changed -> (
               q.files_changed <- [];
-              let files =
-                List.filter fns ~f:(fun fn ->
-                    let fn = Path.to_absolute_filename fn in
-                    if Table.mem q.ignored_files fn then (
+              let events =
+                List.filter_map files_changed ~f:(fun path ->
+                    let abs_path = Path.to_absolute_filename path in
+                    if Table.mem q.ignored_files abs_path then (
                       (* only use ignored record once *)
-                      Table.remove q.ignored_files fn;
-                      false
+                      Table.remove q.ignored_files abs_path;
+                      None
                     ) else
-                      true)
+                      (* CR-soon amokhov: Generate other kinds of events. *)
+                      Some (Fs_memo.Event.create ~kind:File_changed ~path))
               in
-              match files with
-              | [] -> loop ()
-              | _ :: _ -> Files_changed files))
+              match Nonempty_list.of_list events with
+              | None -> loop ()
+              | Some events -> File_system_changed events))
       in
       let ev = loop () in
       Mutex.unlock q.mutex;
@@ -686,7 +687,7 @@ end
 
 type waiting_for_file_changes =
   | Shutdown_requested
-  | Files_changed
+  | File_system_changed
 
 type status =
   (* Waiting for file changes to start a new a build *)
@@ -855,23 +856,10 @@ end = struct
       t.handler t.config Tick;
       match Event.Queue.next t.events with
       | Job_completed (job, proc_info) -> Fiber.Fill (job.ivar, proc_info)
-      | Files_changed changed_files -> (
-        (* CR-someday amokhov: In addition to tracking files, we also need to
-           track directory listings. Otherwise, when a new file is added to a
-           source directory, [invalidate] will return [Skipped] because that
-           file was previously untracked. To fix this, we will need to introduce
-           new [Memo] cells for tracking directory listings, and [invalidate]
-           those cells when the listings change. *)
-        (* If none of [changed_files] is tracked by the build system, we will
-           ignore this [Files_changed] event to avoid unnecessary restarts. *)
-        let all_changed_files_skipped =
-          List.for_all changed_files ~f:(fun path ->
-              match Fs_memo.invalidate path with
-              | Skipped -> true
-              | Invalidated -> false)
-        in
-        match (all_changed_files_skipped, Memo.incremental_mode_enabled) with
-        | true, true -> iter t (* Ignore the event *)
+      | File_system_changed events -> (
+        let rebuild_required = Fs_memo.process_events events in
+        match (rebuild_required, Memo.incremental_mode_enabled) with
+        | No, true -> iter t (* Ignore the event *)
         | _, _ -> (
           Memo.reset ();
           match t.status with
@@ -885,7 +873,7 @@ end = struct
             t.status <- Restarting_build;
             Process_watcher.killall t.process_watcher Sys.sigkill;
             iter t
-          | Waiting_for_file_changes ivar -> Fill (ivar, Files_changed)))
+          | Waiting_for_file_changes ivar -> Fill (ivar, File_system_changed)))
       | Rpc fill -> fill
       | Signal signal ->
         got_signal signal;
@@ -953,7 +941,7 @@ module Run = struct
         let* next = Fiber.Ivar.read ivar in
         match next with
         | Shutdown_requested -> Fiber.return ()
-        | Files_changed -> (
+        | File_system_changed -> (
           t.handler t.config Source_files_changed;
           match res with
           | Error _

@@ -1,5 +1,12 @@
 open! Stdune
 
+(* CR-someday amokhov: The current implementation memoizes all errors, which may
+   be inconvenient in rare cases, e.g. if a build action fails due to a spurious
+   error, such as running out of memory. Right now, the only way to force such
+   actions to be rebuilt is to restart Dune, which clears all memoized errors.
+   In future, we would like to provide a way to rerun all actions failed due to
+   errors without restarting the build, e.g. via a Dune RPC call. *)
+
 type 'a build
 
 module type Build = sig

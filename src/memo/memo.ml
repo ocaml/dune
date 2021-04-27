@@ -407,7 +407,9 @@ module Cache_lookup = struct
   end
 
   module Result = struct
-    type 'a t = ('a, 'a Failure.t) result
+    type 'a t =
+      | Ok of 'a
+      | Failure of 'a Failure.t
   end
 end
 
@@ -473,7 +475,8 @@ module Sample_attempt = struct
         }
 
   let restore = function
-    | Finished cached_value -> Fiber.return (Ok cached_value)
+    | Finished cached_value ->
+      Fiber.return (Cache_lookup.Result.Ok cached_value)
     | Running { result; _ } -> Once.force result.restore_from_cache
 
   let compute = function
@@ -718,15 +721,19 @@ module Cached_value = struct
     t.deps <- capture_dep_values ~deps_rev;
     t
 
-  let value_changed (type o) (node : (_, o) Dep_node.t) prev_output curr_output
-      =
-    match (prev_output, curr_output) with
-    | (Value.Error _ | Cancelled _), _ -> true
-    | _, (Value.Error _ | Cancelled _) -> true
-    | Ok prev_output, Ok curr_output -> (
+  let value_changed (node : _ Dep_node.t) prev_value cur_value =
+    match ((prev_value : _ Value.t), (cur_value : _ Value.t)) with
+    | Cancelled _, _
+    | _, Cancelled _
+    | Error _, Ok _
+    | Ok _, Error _ ->
+      true
+    | Ok prev_value, Ok cur_value -> (
       match node.without_state.spec.allow_cutoff with
-      | Yes equal -> not (equal prev_output curr_output)
+      | Yes equal -> not (equal prev_value cur_value)
       | No -> true)
+    | Error prev_error, Error cur_error ->
+      not (Exn_set.equal prev_error cur_error)
 end
 
 (* Add a dependency on the [dep_node] from the caller, if there is one. Returns
@@ -832,7 +839,7 @@ let dep_node (t : (_, _) t) input =
 
    - [Unchanged]: all the dependencies of the current node are up to date and we
    can therefore skip recomputing the node and can reuse the value computed in
-   the previuos run.
+   the previous run.
 
    - [Changed]: one of the dependencies has changed since the previous run and
    the current node should therefore be recomputed.
@@ -866,20 +873,22 @@ end = struct
             -> 'o Cached_value.t Cache_lookup.Result.t Fiber.t =
    fun last_cached_value ->
     match last_cached_value with
-    | None -> Fiber.return (Error Cache_lookup.Failure.Not_found)
+    | None -> Fiber.return (Cache_lookup.Result.Failure Not_found)
     | Some cached_value -> (
       match cached_value.value with
       | Cancelled _dependency_cycle ->
         (* Dependencies of cancelled computations are not accurate, so we can't
            use [deps_changed] in this case. *)
-        Fiber.return (Error Cache_lookup.Failure.Not_found)
-      | Error _ ->
-        (* We always recompute errors, so there is no point in checking if any
-           of their dependencies changed. In principle, we could introduce
-           "persistent errors" that are recomputed only when their dependencies
-           have changed. *)
-        Fiber.return (Error Cache_lookup.Failure.Not_found)
-      | Ok _ -> (
+        Fiber.return (Cache_lookup.Result.Failure Not_found)
+      | Ok _
+      | Error _ -> (
+        (* We cache errors just like normal values. We assume that all [Memo]
+           computations are deterministic, which means if we rerun a computation
+           that previously led to raising a set of errors on the same inputs, we
+           expect to get the same set of errors back and we might as well skip
+           the unnecessary work. The downside is that if a computation is
+           non-deterministic, there is no way to force rerunning it, apart from
+           changing some of its dependencies. *)
         let+ deps_changed =
           let rec go deps =
             match deps with
@@ -891,13 +900,21 @@ end = struct
                    is up to date. If not, we must recompute [last_cached_value]. *)
                 let* restore_result = consider_and_restore_from_cache dep in
                 match restore_result with
-                | Ok cached_value -> (
-                  match Value_id.equal cached_value.id v_id with
+                | Ok cached_value_of_dep -> (
+                  (* Here we know that [dep] can be restored from the cache, so
+                     how can [v_id] be different from [cached_value_of_dep.id]?
+                     Good question! This can happen if [cached_value]'s node was
+                     skipped in the previous run (because it was unreachable),
+                     while [dep] wasn't skipped and its value changed. In the
+                     current run, [cached_value] is therefore stale. We learn
+                     this when we see that the [cached_value_of_dep] is not as
+                     recorded when computing [cached_value]. *)
+                  match Value_id.equal cached_value_of_dep.id v_id with
                   | true -> go deps
                   | false -> Fiber.return Changed_or_not.Changed)
-                | Error (Cancelled { dependency_cycle }) ->
+                | Failure (Cancelled { dependency_cycle }) ->
                   Fiber.return (Changed_or_not.Cancelled { dependency_cycle })
-                | Error (Not_found | Out_of_date _) ->
+                | Failure (Not_found | Out_of_date _) ->
                   Fiber.return Changed_or_not.Changed)
               | Yes _equal -> (
                 (* If [dep] has a cutoff predicate, it is not sufficient to
@@ -923,10 +940,10 @@ end = struct
         match deps_changed with
         | Unchanged ->
           cached_value.last_validated_at <- Run.current ();
-          Ok cached_value
-        | Changed -> Error (Cache_lookup.Failure.Out_of_date cached_value)
+          Cache_lookup.Result.Ok cached_value
+        | Changed -> Failure (Out_of_date cached_value)
         | Cancelled { dependency_cycle } ->
-          Error (Cancelled { dependency_cycle })))
+          Failure (Cancelled { dependency_cycle })))
 
   and compute :
         'i 'o.    ('i, 'o) Dep_node.t
@@ -947,12 +964,17 @@ end = struct
       let value =
         match res with
         | Ok res -> Value.Ok res
-        | Error exns -> Error (Exn_set.of_list exns)
+        | Error exns ->
+          (* CR-someday amokhov: Here we remove error duplicates that can appear
+             due to diamond dependencies. We could add [Fiber.collect_error_set]
+             that returns a set of errors instead of a list, to get rid of the
+             duplicates as early as possible. *)
+          Error (Exn_set.of_list exns)
       in
       (value, Deps_so_far.get_compute_deps_rev deps_so_far)
     in
     match cache_lookup_failure with
-    | Cache_lookup.Failure.Cancelled { dependency_cycle } ->
+    | Cancelled { dependency_cycle } ->
       Fiber.return (Cached_value.create_cancelled ~dependency_cycle)
     | Not_found ->
       let+ value, deps_rev = compute_value_and_deps_rev () in
@@ -985,13 +1007,13 @@ end = struct
               in
               (match restore_result with
               | Ok _ -> dep_node.state <- Not_considering
-              | Error _ -> ());
+              | Failure _ -> ());
               restore_result))
     in
     let compute =
       Once.and_then restore_from_cache ~f_must_not_raise:(function
         | Ok cached_value -> Fiber.return cached_value
-        | Error cache_lookup_failure ->
+        | Failure cache_lookup_failure ->
           Call_stack.push_frame frame (fun () ->
               dep_node.last_cached_value <- None;
               let+ cached_value =
@@ -1045,7 +1067,8 @@ end = struct
     consider dep_node >>= function
     | Ok sample_attempt -> Sample_attempt.restore sample_attempt
     | Error dependency_cycle ->
-      Fiber.return (Error (Cache_lookup.Failure.Cancelled { dependency_cycle }))
+      Fiber.return
+        (Cache_lookup.Result.Failure (Cancelled { dependency_cycle }))
 
   let exec_dep_node dep_node =
     Fiber.of_thunk (fun () ->

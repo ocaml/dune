@@ -123,6 +123,14 @@ Unreleased
 
 - Fix a crash when clearing temporary directories (#4489, #4529, Andrey Mokhov)
 
+- Dune now memoizes all errors when running in the file-watching mode. This
+  speeds up incremental rebuilds but may be inconvenient in rare cases, e.g. if
+  a build action fails due to a spurious error, such as running out of memory.
+  Right now, the only way to force such actions to be rebuilt is to restart
+  Dune, which clears all memoized errors. In future, we would like to provide a
+  way to rerun all actions failed due to errors without restarting the build,
+  e.g. via a Dune RPC call. (#4522, Andrey Mokhov)
+
 2.9.0 (unreleased)
 ------------------
 

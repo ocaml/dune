@@ -638,7 +638,9 @@ let workspace_step1 =
     | None -> default_step1 clflags
     | Some p -> load_step1 clflags p
   in
-  let memo = Memo.create_hidden "workspaces-internal" ~input:(module Unit) f in
+  let memo =
+    Memo.create_no_cutoff "workspaces-internal" ~input:(module Unit) f
+  in
   Memo.exec memo
 
 let workspace_config () =
@@ -653,10 +655,7 @@ let workspace =
     Lazy.force step1.t
   in
   let memo =
-    Memo.create "workspace"
-      ~input:(module Unit)
-      ~output:(Allow_cutoff (module T))
-      f
+    Memo.create "workspace" ~input:(module Unit) ~output:(Cutoff (module T)) f
   in
   Memo.exec memo
 

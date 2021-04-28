@@ -66,13 +66,13 @@ module Allow_cutoff = struct
     | Yes of ('o -> 'o -> bool)
 end
 
-module type Output_simple = sig
+module type Output_no_cutoff = sig
   type t
 
   val to_dyn : t -> Dyn.t
 end
 
-module type Output_allow_cutoff = sig
+module type Output_cutoff = sig
   type t
 
   val to_dyn : t -> Dyn.t
@@ -88,21 +88,21 @@ end
 
 module Output = struct
   type 'o t =
-    | Simple of (module Output_simple with type t = 'o)
-    | Allow_cutoff of (module Output_allow_cutoff with type t = 'o)
+    | No_cutoff of (module Output_no_cutoff with type t = 'o)
+    | Cutoff of (module Output_cutoff with type t = 'o)
 
-  let simple (type a) ?to_dyn () =
+  let no_cutoff (type a) ?to_dyn () =
     let to_dyn = Option.value to_dyn ~default:(fun _ -> Dyn.Opaque) in
-    Simple
+    No_cutoff
       (module struct
         type t = a
 
         let to_dyn = to_dyn
       end)
 
-  let allow_cutoff (type a) ?to_dyn ~(equal : a -> a -> bool) () =
+  let cutoff (type a) ?to_dyn ~(equal : a -> a -> bool) () =
     let to_dyn = Option.value to_dyn ~default:(fun _ -> Dyn.Opaque) in
-    Allow_cutoff
+    Cutoff
       (module struct
         type t = a
 
@@ -111,10 +111,10 @@ module Output = struct
         let equal = equal
       end)
 
-  let create ?cutoff ?to_dyn () =
-    match cutoff with
-    | None -> simple ?to_dyn ()
-    | Some equal -> allow_cutoff ?to_dyn ~equal ()
+  let create ?cutoff:cutoff_arg ?to_dyn () =
+    match cutoff_arg with
+    | None -> no_cutoff ?to_dyn ()
+    | Some equal -> cutoff ?to_dyn ~equal ()
 end
 
 module Exn_comparable = Comparable.Make (struct
@@ -132,7 +132,7 @@ module Spec = struct
   type ('i, 'o) t =
     { name : string option
     ; input : (module Store_intf.Input with type t = 'i)
-    ; output : (module Output_simple with type t = 'o)
+    ; output : (module Output_no_cutoff with type t = 'o)
     ; allow_cutoff : 'o Allow_cutoff.t
     ; witness : 'i Type_eq.Id.t
     ; f : 'i -> 'o Fiber.t
@@ -148,10 +148,10 @@ module Spec = struct
             sprintf "lazy value created at %s" (Loc.to_file_colon_line loc))
       | _ -> name
     in
-    let (output : (module Output_simple with type t = o)), allow_cutoff =
+    let (output : (module Output_no_cutoff with type t = o)), allow_cutoff =
       match output with
-      | Simple (module Output) -> ((module Output), Allow_cutoff.No)
-      | Allow_cutoff (module Output) -> ((module Output), Yes Output.equal)
+      | No_cutoff (module Output) -> ((module Output), Allow_cutoff.No)
+      | Cutoff (module Output) -> ((module Output), Yes Output.equal)
     in
     { name; input; output; allow_cutoff; witness = Type_eq.Id.create (); f }
 end
@@ -757,8 +757,8 @@ let create (type i) name ~input:(module Input : Input with type t = i) ~output f
   let input = (module Input : Store_intf.Input with type t = i) in
   create_with_cache name ~cache ~input ~output f
 
-let create_hidden name ~input impl =
-  create ~output:(Output.simple ()) name ~input impl
+let create_no_cutoff name ~input ?output_to_dyn f =
+  create name ~input ~output:(Output.no_cutoff ?to_dyn:output_to_dyn ()) f
 
 let make_dep_node ~spec ~input : _ Dep_node.t =
   let dep_node_without_state : _ Dep_node_without_state.t =
@@ -1064,7 +1064,7 @@ module Current_run = struct
   let f () = Run.current () |> Build.return
 
   let memo =
-    create "current-run" ~input:(module Unit) ~output:(Simple (module Run)) f
+    create "current-run" ~input:(module Unit) ~output:(No_cutoff (module Run)) f
 
   let exec () = exec memo ()
 
@@ -1077,9 +1077,10 @@ module With_implicit_output = struct
   type ('i, 'o) t = 'i -> 'o Fiber.t
 
   let create (type o) name ~input
-      ~output:(module O : Output_simple with type t = o) ~implicit_output impl =
+      ~output:(module O : Output_no_cutoff with type t = o) ~implicit_output
+      impl =
     let output =
-      Output.simple
+      Output.no_cutoff
         ~to_dyn:(fun (o, _io) ->
           Dyn.List [ O.to_dyn o; Dyn.String "<implicit output is opaque>" ])
         ()
@@ -1180,7 +1181,7 @@ struct
   end
 
   let memo =
-    create_hidden name
+    create_no_cutoff name
       ~input:(module Key)
       (function
         | Key.T input -> eval input >>| fun v -> Value.T (id input, v))

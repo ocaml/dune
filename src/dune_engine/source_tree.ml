@@ -616,7 +616,7 @@ end = struct
     let memo =
       Memo.create "find-dir-raw"
         ~input:(module Path.Source)
-        ~output:(Simple (module Output))
+        ~output:(No_cutoff (module Output))
         find_dir_raw_impl
     in
     Memo.cell memo
@@ -658,7 +658,7 @@ let execution_parameters_of_dir =
   let memo =
     Memo.create "execution-parameters-of-dir"
       ~input:(module Path.Source)
-      ~output:(Allow_cutoff (module Execution_parameters))
+      ~output:(Cutoff (module Execution_parameters))
       f
   in
   Memo.exec memo

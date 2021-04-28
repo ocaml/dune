@@ -12,6 +12,16 @@ module Fs : sig
   val assert_exists : loc:Loc.t -> Path.t -> unit Memo.Build.t
 end = struct
   let mkdir_p_def =
+    (* CR-someday amokhov: It's difficult to think about the correctness of this
+       memoized function. Right now, we never invalidate it, so if we delete a
+       stale build directory, we'll not be able to recreate it later. Perhaps,
+       we should create directories as part of running actions that need them.
+       That would be less efficient, as we'd call [mkdir] on the same directory
+       multiple times, but it would be easier to guarantee correctness.
+
+       Note: if we find a way to reliably invalidate this function, its output
+       should continue to have no cutoff because the callers might depend not
+       just on the existence of a directory but on its *continuous* existence. *)
     Memo.create_no_cutoff "mkdir_p"
       ~input:(module Path.Build)
       (fun p ->

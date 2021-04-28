@@ -132,6 +132,12 @@ module Cache = struct
   end
 end
 
+module Action_output_on_success = struct
+  include Dune_engine.Execution_parameters.Action_output_on_success
+
+  let decode = enum all
+end
+
 module type S = sig
   type 'a field
 
@@ -144,7 +150,8 @@ module type S = sig
     ; cache_reproducibility_check :
         Dune_cache.Config.Reproducibility_check.t field
     ; cache_storage_mode : Cache.Storage_mode.t field
-    ; swallow_stdout_on_success : bool field
+    ; action_stdout_on_success : Action_output_on_success.t field
+    ; action_stderr_on_success : Action_output_on_success.t field
     }
 end
 
@@ -167,8 +174,10 @@ struct
     ; cache_reproducibility_check =
         field a.cache_reproducibility_check b.cache_reproducibility_check
     ; cache_storage_mode = field a.cache_storage_mode b.cache_storage_mode
-    ; swallow_stdout_on_success =
-        field a.swallow_stdout_on_success b.swallow_stdout_on_success
+    ; action_stdout_on_success =
+        field a.action_stdout_on_success b.action_stdout_on_success
+    ; action_stderr_on_success =
+        field a.action_stderr_on_success b.action_stderr_on_success
     }
 end
 
@@ -187,7 +196,8 @@ struct
       ; cache_enabled
       ; cache_reproducibility_check
       ; cache_storage_mode
-      ; swallow_stdout_on_success
+      ; action_stdout_on_success
+      ; action_stderr_on_success
       } =
     Dyn.Encoder.record
       [ ("display", field Scheduler.Config.Display.to_dyn display)
@@ -202,8 +212,10 @@ struct
             cache_reproducibility_check )
       ; ( "cache_storage_mode"
         , field Cache.Storage_mode.to_dyn cache_storage_mode )
-      ; ( "swallow_stdout_on_success"
-        , field Dyn.Encoder.bool swallow_stdout_on_success )
+      ; ( "action_stdout_on_success"
+        , field Action_output_on_success.to_dyn action_stdout_on_success )
+      ; ( "action_stderr_on_success"
+        , field Action_output_on_success.to_dyn action_stderr_on_success )
       ]
 end
 
@@ -224,7 +236,8 @@ module Partial = struct
     ; cache_enabled = None
     ; cache_reproducibility_check = None
     ; cache_storage_mode = None
-    ; swallow_stdout_on_success = None
+    ; action_stdout_on_success = None
+    ; action_stderr_on_success = None
     }
 
   include
@@ -277,7 +290,8 @@ let default =
   ; cache_enabled = Disabled
   ; cache_reproducibility_check = Skip
   ; cache_storage_mode = None
-  ; swallow_stdout_on_success = false
+  ; action_stdout_on_success = Print
+  ; action_stderr_on_success = Print
   }
 
 let decode_generic ~min_dune_version =
@@ -320,9 +334,10 @@ let decode_generic ~min_dune_version =
       (Dune_lang.Syntax.deleted_in Stanza.syntax (3, 0)
          ~extra_info:"To trim the cache, use the 'dune cache trim' command."
       >>> Dune_lang.Decoder.bytes_unit)
-  and+ swallow_stdout_on_success =
-    field_o_b "swallow-stdout-on-success"
-      ~check:(Dune_lang.Syntax.since Stanza.syntax (3, 0))
+  and+ action_stdout_on_success =
+    field_o "action_stdout_on_success" (3, 0) Action_output_on_success.decode
+  and+ action_stderr_on_success =
+    field_o "action_stderr_on_success" (3, 0) Action_output_on_success.decode
   in
   let cache_storage_mode =
     Option.merge cache_duplication cache_storage_mode ~f:(fun _ _ ->
@@ -340,7 +355,8 @@ let decode_generic ~min_dune_version =
   ; cache_enabled
   ; cache_reproducibility_check
   ; cache_storage_mode
-  ; swallow_stdout_on_success
+  ; action_stdout_on_success
+  ; action_stderr_on_success
   }
 
 let decode =

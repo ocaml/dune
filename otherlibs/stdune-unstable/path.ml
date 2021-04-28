@@ -1142,34 +1142,12 @@ let insert_after_build_dir_exn =
     | External _ ->
       error a b
 
-let rec clear_dir dir =
-  match Dune_filesystem_stubs.read_directory_with_kinds dir with
-  | Error ENOENT -> ()
-  | Error error ->
-    raise
-      (Unix.Unix_error
-         (error, dir, "Stdune.Path.rm_rf: read_directory_with_kinds"))
-  | Ok listing ->
-    List.iter listing ~f:(fun (fn, kind) ->
-        let fn = Filename.concat dir fn in
-        match kind with
-        | Unix.S_DIR -> rm_rf_dir fn
-        | _ -> Fpath.unlink fn)
-
-and rm_rf_dir path =
-  clear_dir path;
-  Unix.rmdir path
+let clear_dir dir = Fpath.clear_dir (to_string dir)
 
 let rm_rf ?(allow_external = false) t =
   if (not allow_external) && not (is_managed t) then
     Code_error.raise "Path.rm_rf called on external dir" [ ("t", to_dyn t) ];
-  let fn = to_string t in
-  match Unix.lstat fn with
-  | exception Unix.Unix_error (ENOENT, _, _) -> ()
-  | { Unix.st_kind = S_DIR; _ } -> rm_rf_dir fn
-  | _ -> Fpath.unlink fn
-
-let clear_dir dir = clear_dir (to_string dir)
+  Fpath.rm_rf ~allow_external (to_string t)
 
 let mkdir_p ?perms = function
   | External s -> External.mkdir_p s ?perms

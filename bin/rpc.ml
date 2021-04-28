@@ -11,36 +11,84 @@ let wait_for_server common =
       ]
   | Some w, None -> w
   | None, Some _ ->
-    let until = Unix.time () +. 1.0 in
-    let rec loop () =
-      if Unix.time () > until then
-        User_error.raise [ Pp.text "failed to establish rpc connection " ]
-      else
-        match Dune_rpc.Where.get () with
-        | Some w -> w
-        | None ->
-          Unix.sleepf 0.3;
-          loop ()
-    in
-    loop ()
+    User_error.raise [ Pp.text "failed to establish rpc connection " ]
 
 let client_term common f =
   let common = Common.set_print_directory common false in
   let config = Common.init common in
   Scheduler.go ~common ~config (fun () ->
       let open Fiber.O in
-      let where = wait_for_server common in
-      let stats = Common.stats common in
       let* csexp_scheduler = Scheduler.csexp_scheduler () in
-      let run = Dune_rpc_impl.Run.of_config Client csexp_scheduler stats in
-      f run where)
+      let run =
+        let stats = Common.stats common in
+        Dune_rpc_impl.Run.of_config Client csexp_scheduler stats
+      in
+      f common run)
 
 module Init = struct
-  let connect run where =
-    let c = Dune_rpc_impl.Run.csexp_client run where in
+  let connect_persistent _common run_config =
+    let open Fiber.O in
+    let stdio =
+      Dune_rpc_impl.Run.Connect.csexp_connect run_config stdin stdout
+    in
+    let* sessions, client =
+      Dune_rpc_impl.Run.Connect.connect_persistent run_config
+    in
+    Fiber.Stream.In.sequential_iter sessions ~f:(fun session ->
+        let connect =
+          Dune_rpc.Conv.to_sexp Dune_rpc.Persistent.In.sexp New_connection
+        in
+        let* () = Csexp_rpc.Session.write stdio (Some connect) in
+        let forward_to_stdout () =
+          Fiber.repeat_while ~init:() ~f:(fun () ->
+              let* read = Csexp_rpc.Session.read session in
+              let packet =
+                let packet =
+                  match read with
+                  | None -> Dune_rpc.Persistent.In.Close_connection
+                  | Some s -> Packet s
+                in
+                Dune_rpc.Conv.to_sexp Dune_rpc.Persistent.In.sexp packet
+              in
+              let+ () = Csexp_rpc.Session.write stdio (Some packet) in
+              Option.map read ~f:ignore)
+        in
+        let forward_from_stdin () =
+          Fiber.repeat_while ~init:() ~f:(fun () ->
+              let* read = Csexp_rpc.Session.read stdio in
+              let packet =
+                match read with
+                | None -> None
+                | Some p -> (
+                  match
+                    Dune_rpc.Conv.of_sexp Dune_rpc.Persistent.Out.sexp
+                      ~version:(0, 0) p
+                  with
+                  | Error _ -> Code_error.raise "unexpected packet" []
+                  | Ok s -> Some s)
+              in
+              match packet with
+              | None
+              | Some Close_connection ->
+                let+ () = Csexp_rpc.Session.write session None in
+                None
+              | Some (Packet sexp) ->
+                let+ () = Csexp_rpc.Session.write session (Some sexp) in
+                Some ())
+        in
+        Fiber.finalize
+          (fun () ->
+            Fiber.fork_and_join_unit forward_to_stdout forward_from_stdin)
+          ~finally:(fun () ->
+            Option.iter client ~f:Csexp_rpc.Client.stop;
+            Fiber.return ()))
+
+  let connect common run =
+    let where = wait_for_server common in
+    let c = Dune_rpc_impl.Run.Connect.csexp_client run where in
     let open Fiber.O in
     let* session = Csexp_rpc.Client.connect c in
-    let stdio = Dune_rpc_impl.Run.csexp_connect run stdin stdout in
+    let stdio = Dune_rpc_impl.Run.Connect.csexp_connect run stdin stdout in
     let forward f t =
       Fiber.repeat_while ~init:() ~f:(fun () ->
           let* read = Csexp_rpc.Session.read f in
@@ -57,8 +105,15 @@ module Init = struct
         Fiber.return ())
 
   let term =
-    let+ (common : Common.t) = Common.term in
-    client_term common connect
+    let+ (common : Common.t) = Common.term
+    and+ persistent =
+      let doc = "Wait for build servers and automatically reconnect." in
+      Arg.(value & flag & info [ "persistent" ] ~doc)
+    in
+    if persistent then
+      client_term common connect_persistent
+    else
+      client_term common connect
 
   let man = [ `Blocks Common.help_secs ]
 
@@ -69,76 +124,11 @@ module Init = struct
   let term = (Term.Group.Term term, info)
 end
 
-module Test = struct
-  let rec to_dune_lang (s : Sexp.t) : Dune_lang.t =
-    match s with
-    | Atom s -> Dune_lang.atom_or_quoted_string s
-    | List s -> List (List.map ~f:to_dune_lang s)
-
-  let rec of_dune_lang (s : Dune_lang.t) : Sexp.t =
-    match s with
-    | Atom s -> Atom (Dune_lang.Atom.to_string s)
-    | Quoted_string s -> Atom s
-    | List s -> List (List.map ~f:of_dune_lang s)
-    | Template _ -> Atom (Dune_lang.to_string s)
-
-  let connect run where =
-    let lexbuf = Lexing.from_channel stdin in
-    let input =
-      Dune_lang.Parser.parse ~mode:Many lexbuf
-      |> List.map ~f:(fun ast ->
-             let sexp = Dune_lang.Ast.remove_locs ast in
-             of_dune_lang sexp)
-    in
-    let c = Dune_rpc_impl.Run.csexp_client run where in
-    let open Fiber.O in
-    let* session = Csexp_rpc.Client.connect c in
-    let i () =
-      Fiber.repeat_while ~init:input ~f:(function
-        | [] ->
-          let+ () = Csexp_rpc.Session.write session None in
-          None
-        | x :: xs ->
-          let+ () = Csexp_rpc.Session.write session (Some x) in
-          Some xs)
-    in
-    let o () =
-      Fiber.repeat_while ~init:() ~f:(fun () ->
-          let+ read = Csexp_rpc.Session.read session in
-          match read with
-          | None -> None
-          | Some sexp ->
-            let sexp = to_dune_lang sexp in
-            printfn "%s\n" (Dune_lang.to_string sexp);
-            Some ())
-    in
-    Fiber.fork_and_join_unit i o
-
-  let term =
-    let+ (common : Common.t) = Common.term in
-    let common = Common.set_rpc common (Dune_rpc_impl.Server.create ()) in
-    client_term common (fun run where ->
-        let open Fiber.O in
-        let* () = connect run where in
-        Dune_rpc_impl.Run.stop ())
-
-  let man =
-    [ `S "DESCRIPTION"
-    ; `P "This is for internal use only"
-    ; `Blocks Common.help_secs
-    ]
-
-  let doc = "test dune rpc with a series of requests"
-
-  let info = Term.info "test" ~doc ~man
-
-  let term = (Term.Group.Term term, info)
-end
-
 module Status = struct
   let term =
     let+ (common : Common.t) = Common.term in
-    client_term common @@ fun run where ->
+    client_term common @@ fun common run ->
+    let where = wait_for_server common in
     printfn "Server is listening on %s" (Dune_rpc.Where.to_string where);
     printfn "ID's of connected clients (include this one):";
     Dune_rpc_impl.Run.client run where
@@ -176,4 +166,4 @@ let info =
   in
   Term.info "rpc" ~doc ~man
 
-let group = (Term.Group.Group [ Init.term; Test.term; Status.term ], info)
+let group = (Term.Group.Group [ Init.term; Status.term ], info)

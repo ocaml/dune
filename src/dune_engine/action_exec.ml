@@ -544,12 +544,11 @@ let exec ~targets ~root ~context ~env ~rule_loc ~build_deps
     { working_dir = Path.root
     ; env
     ; stdout_to =
-        (if Execution_parameters.swallow_stdout_on_success execution_parameters
-        then
-          Process.Io.stdout_swallow_on_success
-        else
-          Process.Io.stdout)
-    ; stderr_to = Process.Io.stderr
+        Process.Io.make_stdout
+          (Execution_parameters.action_stdout_on_success execution_parameters)
+    ; stderr_to =
+        Process.Io.make_stderr
+          (Execution_parameters.action_stderr_on_success execution_parameters)
     ; stdin_from = Process.Io.null In
     ; prepared_dependencies = DAP.Dependency.Set.empty
     ; exit_codes = Predicate_lang.Element 0

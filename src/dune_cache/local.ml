@@ -58,12 +58,11 @@ end
 let link_even_if_there_are_too_many_links_already ~src ~dst =
   try Path.link src dst with
   | Unix.Unix_error (Unix.EMLINK, _, _) ->
-    Temp.with_temp_path ~dir:temp_path ~prefix:"dune" ~suffix:"copy"
-      ~f:(function
+    Temp.with_temp_file ~dir:temp_dir ~prefix:"dune" ~suffix:"copy" ~f:(function
       | Error e -> raise e
-      | Ok temp_path ->
-        Io.copy_file ~src ~dst:temp_path ();
-        Path.rename temp_path dst;
+      | Ok temp_file ->
+        Io.copy_file ~src ~dst:temp_file ();
+        Path.rename temp_file dst;
         Path.link src dst)
 
 module Artifacts = struct

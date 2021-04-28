@@ -110,18 +110,18 @@ module Metadata : sig
   end
 end
 
-(** [with_temp_path ?prefix ~suffix f] creates a file in [Layout.temp_path],
-    then passes it to the callback [f], and makes sure the file is deleted when
-    [f] completes or raises. The base name of the temporary file is formed by
+(** [with_temp_file ?prefix ~suffix f] creates a file in [Layout.temp_dir], then
+    passes it to the callback [f], and makes sure the file is deleted when [f]
+    completes or raises. The base name of the temporary file is formed by
     concatenating the [prefix] (which is set to "dune" by default), then a
     suitably chosen integer number, then [suffix]. *)
-val with_temp_path :
+val with_temp_file :
      ?prefix:string
   -> suffix:string
   -> (Path.t Or_exn.t -> 'a Fiber.t)
   -> 'a Fiber.t
 
-(** Like [with_temp_path] but creates a directory in [Layout.temp_path]. *)
+(** Like [with_temp_file] but creates a directory in [Layout.temp_dir]. *)
 val with_temp_dir :
      ?prefix:string
   -> suffix:string

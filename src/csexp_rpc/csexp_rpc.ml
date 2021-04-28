@@ -13,7 +13,8 @@ module Async : sig
 
   val create : Scheduler.t -> t
 
-  val task : t -> f:(unit -> 'a) -> 'a Or_exn.t Fiber.t
+  val task :
+    t -> f:(unit -> 'a) -> ('a, [ `Exn of exn | `Stopped ]) result Fiber.t
 
   val task_exn : t -> f:(unit -> 'a) -> 'a Fiber.t
 
@@ -34,14 +35,19 @@ end = struct
     let ivar, fill = t.scheduler.create_thread_safe_ivar () in
     let f () = fill (Result.try_with f) in
     match Worker.add_work t.worker ~f with
-    | Ok () -> Fiber.Ivar.read ivar
-    | Error `Stopped -> Code_error.raise "worker stopped" []
+    | Error `Stopped -> Fiber.return (Error `Stopped)
+    | Ok () -> (
+      let+ res = Fiber.Ivar.read ivar in
+      match res with
+      | Error exn -> Error (`Exn exn)
+      | Ok e -> Ok e)
 
   let task_exn t ~f =
     let+ res = task t ~f in
     match res with
-    | Ok s -> s
-    | Error e -> raise e
+    | Error `Stopped -> Code_error.raise "worker stopped" []
+    | Error (`Exn e) -> reraise e
+    | Ok res -> res
 end
 
 module Session_id = Id.Make ()
@@ -100,9 +106,10 @@ module Session = struct
     let+ res = Async.task t.reader ~f:read in
     let res =
       match res with
-      | Error exn ->
+      | Error (`Exn exn) ->
         Async.stop t.reader;
         raise exn
+      | Error `Stopped -> None
       | Ok res -> (
         match res with
         | Ok (Some _ as s) -> s
@@ -126,10 +133,11 @@ module Session = struct
         | None -> (
           match t.kind with
           | Channel -> fun () -> close_out_noerr t.out_channel
-          | Socket ->
+          | Socket -> (
             fun () ->
               let fd = Unix.descr_of_out_channel t.out_channel in
-              Unix.shutdown fd Unix.SHUTDOWN_SEND))
+              try Unix.shutdown fd Unix.SHUTDOWN_SEND with
+              | Unix.Unix_error _ -> ())))
 end
 
 let close_fd_no_error fd =
@@ -156,7 +164,8 @@ module Server = struct
       | ADDR_UNIX p ->
         let p = Path.of_string p in
         Path.unlink_no_err p;
-        Path.mkdir_p (Path.parent_exn p)
+        Path.mkdir_p (Path.parent_exn p);
+        at_exit (fun () -> Path.unlink_no_err p)
       | _ -> ());
       Unix.bind fd sockaddr;
       Unix.listen fd backlog;

@@ -16,15 +16,9 @@ let () = init ()
 
 let printf = Printf.printf
 
-let string_fn_create name =
-  Memo.create name
-    ~input:(module String)
-    ~visibility:(Public Dune_lang.Decoder.string)
+let string_fn_create name = Memo.create name ~input:(module String)
 
-let int_fn_create name =
-  Memo.create name
-    ~input:(module Int)
-    ~visibility:(Public Dune_lang.Decoder.int)
+let int_fn_create name = Memo.create name ~input:(module Int)
 
 (* to run a computation *)
 let run m = Scheduler.run (Memo.Build.run m)
@@ -200,8 +194,7 @@ let%expect_test _ =
   |}]
 
 let make_f name f ~input ~output =
-  Memo.create name ~input ~visibility:Hidden ~output:(Allow_cutoff output)
-    ~doc:"" f
+  Memo.create name ~input ~output:(Allow_cutoff output) f
 
 let id =
   let f =
@@ -312,10 +305,9 @@ let%expect_test _ =
 (* Tests for depending on the current run *)
 
 let depends_on_run =
-  Memo.create "foobar" ~doc:"foo123"
+  Memo.create "foobar"
     ~input:(module Unit)
     ~output:(Allow_cutoff (module Unit))
-    ~visibility:Hidden
     (fun () ->
       let+ (_ : Memo.Run.t) = Memo.current_run () in
       print_endline "running foobar")
@@ -338,9 +330,8 @@ let%expect_test _ =
   let memo =
     Memo.create "for-cell"
       ~input:(module String)
-      ~visibility:(Public Dune_lang.Decoder.string)
       ~output:(Allow_cutoff (module String))
-      ~doc:"" f
+      f
   in
   let cell = Memo.cell memo "foobar" in
   print_endline (run (Cell.read cell));
@@ -381,9 +372,8 @@ let%expect_test "fib linked list" =
   let memo =
     Memo.create "fib"
       ~input:(module Int)
-      ~visibility:Hidden
       ~output:(Simple (module Element))
-      compute_element ~doc:""
+      compute_element
   in
   Fdecl.set memo_fdecl memo;
   let fourth = run (Memo.exec memo 4) in
@@ -418,9 +408,8 @@ let%expect_test "previously_evaluated_cell" =
   let memo =
     Memo.create "boxed"
       ~input:(module String)
-      ~visibility:(Public Dune_lang.Decoder.string)
       ~output:(Allow_cutoff (module String))
-      ~doc:"" f
+      f
   in
   let evaluate_and_print name =
     let cell = Memo.cell memo name in
@@ -675,7 +664,7 @@ let create ~with_cutoff name f =
     | true -> Memo.Output.Allow_cutoff (module Int)
     | false -> Simple (module Int)
   in
-  Memo.create name ~input:(module Unit) ~visibility:Hidden ~output ~doc:"" f
+  Memo.create name ~input:(module Unit) ~output f
 
 let%expect_test "diamond with non-uniform cutoff structure" =
   let base = create ~with_cutoff:true "base" (count_runs "base") in
@@ -714,9 +703,8 @@ let%expect_test "diamond with non-uniform cutoff structure" =
   let summit =
     Memo.create "summit"
       ~input:(module Int)
-      ~visibility:Hidden
       ~output:(Simple (module Int))
-      ~doc:"" summit
+      summit
   in
   evaluate_and_print summit 0;
   [%expect
@@ -828,7 +816,7 @@ let%expect_test "dynamic cycles with non-uniform cutoff structure" =
     in
     Memo.create "incrementing_chain_plus_input"
       ~input:(module Int)
-      ~visibility:Hidden ~output ~doc:"" plus_input
+      ~output plus_input
   in
   let summit_fdecl = Fdecl.create (fun _ -> Dyn.Opaque) in
   let cycle_creator_no_cutoff =
@@ -972,34 +960,34 @@ let%expect_test "dynamic cycles with non-uniform cutoff structure" =
   evaluate_and_print summit_no_cutoff 0;
   [%expect
     {|
-    Started evaluating the summit with input 0
-    Started evaluating incrementing_chain_4_yes_cutoff
-    Started evaluating incrementing_chain_3_no_cutoff
+    Started evaluating base
+    Evaluated base: 3
     Started evaluating incrementing_chain_2_yes_cutoff
     Started evaluating incrementing_chain_1_no_cutoff
     Started evaluating cycle_creator_no_cutoff
-    Started evaluating base
-    Evaluated base: 3
     Evaluated cycle_creator_no_cutoff: 3
     Evaluated incrementing_chain_1_no_cutoff: 4
     Evaluated incrementing_chain_2_yes_cutoff: 5
+    Started evaluating incrementing_chain_4_yes_cutoff
+    Started evaluating incrementing_chain_3_no_cutoff
     Evaluated incrementing_chain_3_no_cutoff: 6
     Evaluated incrementing_chain_4_yes_cutoff: 7
+    Started evaluating the summit with input 0
     Evaluated the summit with input 0: 7
     f 0 = Ok 7 |}];
   evaluate_and_print summit_yes_cutoff 0;
   [%expect
     {|
-    Started evaluating the summit with input 0
-    Started evaluating incrementing_chain_4_no_cutoff
-    Started evaluating incrementing_chain_3_yes_cutoff
-    Started evaluating incrementing_chain_2_no_cutoff
-    Started evaluating incrementing_chain_1_yes_cutoff
     Started evaluating cycle_creator_yes_cutoff
     Evaluated cycle_creator_yes_cutoff: 3
+    Started evaluating incrementing_chain_1_yes_cutoff
     Evaluated incrementing_chain_1_yes_cutoff: 4
+    Started evaluating incrementing_chain_3_yes_cutoff
+    Started evaluating incrementing_chain_2_no_cutoff
     Evaluated incrementing_chain_2_no_cutoff: 5
     Evaluated incrementing_chain_3_yes_cutoff: 6
+    Started evaluating the summit with input 0
+    Started evaluating incrementing_chain_4_no_cutoff
     Evaluated incrementing_chain_4_no_cutoff: 7
     Evaluated the summit with input 0: 7
     f 0 = Ok 7 |}];
@@ -1053,9 +1041,7 @@ let%expect_test "deadlocks when creating a cycle twice" =
   let summit =
     Memo.create "summit"
       ~input:(module Int)
-      ~visibility:Hidden
       ~output:(Simple (module Int))
-      ~doc:""
       (fun offset ->
         printf "Started evaluating summit\n";
         let+ middle = Memo.exec middle () in
@@ -1094,9 +1080,7 @@ let%expect_test "Nested nodes with cutoff are recomputed optimally" =
   let summit =
     Memo.create "summit"
       ~input:(module Int)
-      ~visibility:Hidden
       ~output:(Simple (module Int))
-      ~doc:""
       (fun offset ->
         printf "Started evaluating summit\n";
         let middle =
@@ -1178,9 +1162,7 @@ let%expect_test "Test that there are no phantom dependencies" =
   let summit =
     Memo.create "summit"
       ~input:(module Int)
-      ~visibility:Hidden
       ~output:(Simple (module Int))
-      ~doc:""
       (fun offset ->
         printf "Started evaluating summit\n";
         let middle =
@@ -1243,9 +1225,7 @@ let%expect_test "Abandoned node with no cutoff is recomputed" =
   let middle =
     Memo.create "middle"
       ~input:(module Unit)
-      ~visibility:Hidden
       ~output:(Simple (module Int))
-      ~doc:""
       (fun () ->
         printf "Started evaluating middle\n";
         let base = base () in
@@ -1257,9 +1237,7 @@ let%expect_test "Abandoned node with no cutoff is recomputed" =
   let summit =
     Memo.create "summit"
       ~input:(module Int)
-      ~visibility:Hidden
       ~output:(Simple (module Int))
-      ~doc:""
       (fun input ->
         printf "Started evaluating summit\n";
         let* middle = Memo.exec middle () in
@@ -1403,7 +1381,6 @@ let%expect_test "error handling and duplicate exceptions" =
   in
   Fdecl.set f_impl (fun x ->
       printf "Calling f %d\n" x;
-
       match x with
       | 0 -> Memo.exec forward_fail x
       | 1 -> Memo.exec forward_fail2 x
@@ -1419,4 +1396,99 @@ let%expect_test "error handling and duplicate exceptions" =
     Calling f 1
     Calling f 0
     Error [ "(Failure 42)" ]
+    |}]
+
+let%expect_test "errors are cached" =
+  Printexc.record_backtrace false;
+  let f =
+    Memo.create_hidden "area of a square"
+      ~input:(module Int)
+      (fun x ->
+        printf "Started evaluating %d\n" x;
+        if x < 0 then failwith (sprintf "Negative input %d" x);
+        let res = x * x in
+        printf "Evaluated %d: %d\n" x res;
+        Memo.Build.return res)
+  in
+  evaluate_and_print f 5;
+  evaluate_and_print f (-5);
+  [%expect
+    {|
+    Started evaluating 5
+    Evaluated 5: 25
+    f 5 = Ok 25
+    Started evaluating -5
+    f -5 = Error [ { exn = "(Failure \"Negative input -5\")"; backtrace = "" } ]
+    |}];
+  evaluate_and_print f 5;
+  evaluate_and_print f (-5);
+  (* Note that we do not see any "Started evaluating" messages because both [Ok]
+     and [Error] results have been cached. *)
+  [%expect
+    {|
+    f 5 = Ok 25
+    f -5 = Error [ { exn = "(Failure \"Negative input -5\")"; backtrace = "" } ]
+    |}]
+
+let%expect_test "errors work with early cutoff" =
+  let divide =
+    let exception Input_too_large of Memo.Run.t in
+    Memo.create "divide 100 by input"
+      ~input:(module Int)
+      ~output:(Allow_cutoff (module Int))
+      (fun x ->
+        let+ run = Memo.current_run () in
+        printf "[divide] Started evaluating %d\n" x;
+        if x > 100 then
+          (* This exception will be different in each run. *)
+          raise (Input_too_large run);
+        let res = 100 / x in
+        printf "[divide] Evaluated %d: %d\n" x res;
+        res)
+  in
+  let f =
+    Memo.create_hidden "Negate"
+      ~input:(module Int)
+      (fun x ->
+        printf "[negate] Started evaluating %d\n" x;
+        let+ res = Memo.exec divide x >>| Stdlib.Int.neg in
+        printf "[negate] Evaluated %d: %d\n" x res;
+        res)
+  in
+  evaluate_and_print f 0;
+  evaluate_and_print f 20;
+  evaluate_and_print f 200;
+  [%expect
+    {|
+    [negate] Started evaluating 0
+    [divide] Started evaluating 0
+    f 0 = Error [ { exn = "Division_by_zero"; backtrace = "" } ]
+    [negate] Started evaluating 20
+    [divide] Started evaluating 20
+    [divide] Evaluated 20: 5
+    [negate] Evaluated 20: -5
+    f 20 = Ok -5
+    [negate] Started evaluating 200
+    [divide] Started evaluating 200
+    f 200 = Error [ { exn = "Input_too_large(_)"; backtrace = "" } ]
+    |}];
+  Memo.restart_current_run ();
+  evaluate_and_print f 0;
+  evaluate_and_print f 20;
+  evaluate_and_print f 200;
+  (* Here we reevaluate all calls to [divide] because they depend on the current
+     run. Due to the early cutoff, we skip recomputing the outer [negate] for
+     the inputs 0 (error) and 20 (success), because the results remain the same.
+     However, we do attempt to re-evaluate [negate] for the input 200 because
+     the result of [divide] does change: we get a fresh exception. *)
+  [%expect
+    {|
+    [divide] Started evaluating 0
+    f 0 = Error [ { exn = "Division_by_zero"; backtrace = "" } ]
+    [divide] Started evaluating 20
+    [divide] Evaluated 20: 5
+    f 20 = Ok -5
+    [divide] Started evaluating 200
+    [negate] Started evaluating 200
+    f 200 = Error [ { exn = "Input_too_large(_)"; backtrace = "" } ]
     |}]

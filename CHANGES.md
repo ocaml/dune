@@ -58,7 +58,7 @@ Unreleased
   of aliases. (#4303, @aalekseyev)
 
 - If an .ml file is not used by an executable, Dune no longer report
-  parsing error in this file (#...., @jeremiedimino)
+  parsing error in this file (#4330, @jeremiedimino)
 
 - Add support for sandboxing using hard links (#4360, @snowleopard)
 
@@ -88,8 +88,11 @@ Unreleased
 - Fields allowed in the config file are now also allowed in the
   workspace file (#4426, @jeremiedimino)
 
-- Add an option to swallow the output of actions when they succeed, to
-  reduce noise of large builds (#4422, @jeremiedimino)
+- Add options to control how Dune should handle stdout and stderr of
+  actions when then succeed. It is now possible to ask Dune to ignore
+  the stdout of actions when they succeed or to request that the
+  stderr of actions must be empty. This allows to reduce the noise of
+  large builds (#4422, #4515, @jeremiedimino)
 
 - Add the possibility to use `locks` with the cram tests stanza (#4397, @voodoos)
 
@@ -98,8 +101,6 @@ Unreleased
 
 - Allow dune-file as an alternative file name for dune files (needs to be
   enabled in the dune-project file) (#4428, @nojb)
-
-- Drop support for upgrading jbuilder projects (#4473, @jeremiedimino)
 
 - Drop support for upgrading jbuilder projects (#4473, @jeremiedimino)
 
@@ -112,13 +113,26 @@ Unreleased
   implementation is based on Jenga's cache library, which was thoroughly tested
   on large-scale builds. Using Jenga's cache library will also make it easier
   for us to port Jenga's cloud cache to Dune. (#4443, #4465, Andrey Mokhov)
-  
-- More informative error message when Dune can't read a target that's supposed 
+
+- More informative error message when Dune can't read a target that's supposed
   to be produced by the action. Old message is still produced on ENOENT, but other
   errors deserve a more detailed report. (#4501, @aalekseyev)
 
 - Fixed a bug where a sandboxed action would fail if it declares no dependencies in
   its initial working directory or any directory it `chdir`s into. (#4509, @aalekseyev)
+
+- Fix a crash when clearing temporary directories (#4489, #4529, Andrey Mokhov)
+
+- Dune now memoizes all errors when running in the file-watching mode. This
+  speeds up incremental rebuilds but may be inconvenient in rare cases, e.g. if
+  a build action fails due to a spurious error, such as running out of memory.
+  Right now, the only way to force such actions to be rebuilt is to restart
+  Dune, which clears all memoized errors. In future, we would like to provide a
+  way to rerun all actions failed due to errors without restarting the build,
+  e.g. via a Dune RPC call. (#4522, Andrey Mokhov)
+
+- Remove `dune compute`. It was broken and unused (#4540,
+  @jeremiedimino)
 
 2.9.0 (unreleased)
 ------------------

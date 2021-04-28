@@ -303,8 +303,8 @@ module Temp = Temp.Monad (struct
     Fiber.finalize f ~finally:(fun () -> finally () |> Fiber.return)
 end)
 
-let with_temp_path ?(prefix = "dune") ~suffix f =
-  Temp.with_temp_path ~dir:Layout.temp_path ~prefix ~suffix ~f
+let with_temp_file ?(prefix = "dune") ~suffix f =
+  Temp.with_temp_file ~dir:Layout.temp_dir ~prefix ~suffix ~f
 
 let with_temp_dir ?(prefix = "dune") ~suffix f =
-  Temp.with_temp_dir ~parent_dir:Layout.temp_path ~prefix ~suffix ~f
+  Temp.with_temp_dir ~parent_dir:Layout.temp_dir ~prefix ~suffix ~f

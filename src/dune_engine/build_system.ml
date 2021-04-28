@@ -12,10 +12,9 @@ module Fs : sig
   val assert_exists : loc:Loc.t -> Path.t -> unit Memo.Build.t
 end = struct
   let mkdir_p_def =
-    Memo.create "mkdir_p" ~doc:"mkdir_p"
+    Memo.create "mkdir_p"
       ~input:(module Path.Build)
       ~output:(Simple (module Unit))
-      ~visibility:Hidden
       (fun p ->
         Path.mkdir_p (Path.build p);
         Memo.Build.return ())
@@ -23,10 +22,9 @@ end = struct
   let mkdir_p = Memo.exec mkdir_p_def
 
   let assert_exists_def =
-    Memo.create "assert_path_exists" ~doc:"Path.exists"
+    Memo.create "assert_path_exists"
       ~input:(module Path)
       ~output:(Simple (module Bool))
-      ~visibility:Hidden
       (fun p -> Memo.Build.return (Path.exists p))
 
   let assert_exists ~loc path =
@@ -1143,9 +1141,7 @@ end = struct
   let load_dir =
     let load_dir_impl dir = load_dir_impl (t ()) ~dir in
     let memo =
-      Memo.create_hidden "load-dir" ~doc:"load dir"
-        ~input:(module Path)
-        load_dir_impl
+      Memo.create_hidden "load-dir" ~input:(module Path) load_dir_impl
     in
     fun ~dir -> Memo.exec memo dir
 end
@@ -1181,7 +1177,7 @@ let get_rule_or_source t path =
       let* loc = Rule_fn.loc () in
       no_rule_found t ~loc path
   else if Path.exists path then
-    let+ d = Cached_digest.source_or_external_file path in
+    let+ d = Fs_memo.file_digest path in
     Source d
   else
     let+ loc = Rule_fn.loc () in
@@ -1385,9 +1381,10 @@ end = struct
 
   (* The current version of the rule digest scheme. We should increment it when
      making any changes to the scheme, to avoid collisions. *)
-  let rule_digest_version = 5
+  let rule_digest_version = 6
 
-  let compute_rule_digest (rule : Rule.t) ~deps ~action ~sandbox_mode =
+  let compute_rule_digest (rule : Rule.t) ~deps ~action ~sandbox_mode
+      ~execution_parameters =
     let { Action.Full.action; env; locks; can_go_in_shared_cache } = action in
     let trace =
       ( rule_digest_version (* Update when changing the rule digest scheme. *)
@@ -1396,7 +1393,9 @@ end = struct
       , Option.map rule.context ~f:(fun c -> c.name)
       , Action.for_shell action
       , can_go_in_shared_cache
-      , List.map locks ~f:Path.to_string )
+      , List.map locks ~f:Path.to_string
+      , Execution_parameters.action_stdout_on_success execution_parameters
+      , Execution_parameters.action_stderr_on_success execution_parameters )
     in
     Digest.generic trace
 
@@ -1622,7 +1621,10 @@ end = struct
         let force_rerun = !Clflags.force && is_test in
         force_rerun || Dep.Map.has_universe deps
       in
-      let rule_digest = compute_rule_digest rule ~deps ~action ~sandbox_mode in
+      let rule_digest =
+        compute_rule_digest rule ~deps ~action ~sandbox_mode
+          ~execution_parameters
+      in
       let can_go_in_shared_cache =
         action.can_go_in_shared_cache
         && not
@@ -1821,8 +1823,7 @@ end = struct
                   else
                     let in_build_dir_digest = Cached_digest.build_file path in
                     let+ in_source_tree_digest =
-                      Memo.Build.run
-                        (Cached_digest.source_or_external_file in_source_tree)
+                      Memo.Build.run (Fs_memo.file_digest in_source_tree)
                     in
                     in_build_dir_digest = in_source_tree_digest
                 in
@@ -2063,36 +2064,34 @@ end = struct
         |> Path.Set.of_list
 
     let eval_memo =
-      Memo.create "eval-pred" ~doc:"Evaluate a predicate in a directory"
+      Memo.create "eval-pred"
         ~input:(module File_selector)
         ~output:(Allow_cutoff (module Path.Set))
-        ~visibility:Hidden eval_impl
+        eval_impl
 
     let eval = Memo.exec eval_memo
 
     let build =
       Memo.exec
-        (Memo.create "build-pred" ~doc:"build a predicate"
+        (Memo.create "build-pred"
            ~input:(module File_selector)
            ~output:(Allow_cutoff (module Dep.Fact.Files))
-           ~visibility:Hidden build_impl)
+           build_impl)
   end
 
   let build_file_memo =
     Memo.create "build-file"
       ~output:(Allow_cutoff (module Digest))
-      ~doc:"Build a file."
       ~input:(module Path)
-      ~visibility:Hidden build_file_impl
+      build_file_impl
 
   let build_file = Memo.exec build_file_memo
 
   let build_alias_memo =
     Memo.create "build-alias"
       ~output:(Allow_cutoff (module Dep.Fact.Files))
-      ~doc:"Build an alias."
       ~input:(module Alias)
-      ~visibility:Hidden build_alias_impl
+      build_alias_impl
 
   let build_alias = Memo.exec build_alias_memo
 

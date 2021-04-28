@@ -29,12 +29,12 @@
     outside of the workspace and build directory. To be on the safe side Dune
     makes no assumption does nothing clever with these paths.
 
-    External paths are presented as [Path.External.t] values.contents
+    External paths are represented as [Path.External.t] values.
 
     {1 The Path.t type}
 
     The [Path.t] type represents all possible paths, i.e. both local and
-    extenral paths. *)
+    external paths. *)
 
 (** Relative path relative to the root tracked by the type system.
 
@@ -334,11 +334,12 @@ val unlink_no_err : t -> unit
 
 val link : t -> t -> unit
 
+(** If the path does not exist, this function is a no-op. *)
 val rm_rf : ?allow_external:bool -> t -> unit
 
 (** [clear_dir t] deletes all the contents of directory [t] without removing [t]
-    itself *)
-val clear_dir : t -> unit
+    itself. *)
+val clear_dir : t -> Fpath.clear_dir_result
 
 val mkdir_p : ?perms:int -> t -> unit
 

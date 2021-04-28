@@ -48,6 +48,11 @@ module Run : sig
     | Detect_external
     | No_watcher
 
+  (** Raised when [go] terminates due to the user requesting a shutdown via rpc.
+      The caller needs to know about this to set the exit code to 0 for such
+      cases *)
+  exception Shutdown_requested
+
   (** Runs [once] in a loop, executing [finally] after every iteration, even if
       Fiber.Never was encountered.
 
@@ -75,7 +80,7 @@ val t : unit -> t Fiber.t
 val with_job_slot : (Config.t -> 'a Fiber.t) -> 'a Fiber.t
 
 (** Wait for the following process to terminate *)
-val wait_for_process : Pid.t -> Unix.process_status Fiber.t
+val wait_for_process : Pid.t -> Proc.Process_info.t Fiber.t
 
 (** Wait for dune cache to be disconnected. Drop any other event. *)
 val wait_for_dune_cache : unit -> unit

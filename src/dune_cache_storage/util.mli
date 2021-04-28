@@ -7,7 +7,7 @@ module Write_result : sig
     | Error of exn
 end
 
-(** Write a given [content] to a temporary file in [Layout.temp_path], and then
+(** Write a given [content] to a temporary file in [Layout.temp_dir], and then
     atomically move it to a specified destination.
 
     If the destination already exists, return [Already_present].

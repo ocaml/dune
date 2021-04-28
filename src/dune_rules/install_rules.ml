@@ -381,8 +381,7 @@ end = struct
 
                let to_dyn _ = Dyn.Opaque
              end))
-        "stanzas-to-entries" ~doc:"install entries for all packages"
-        ~visibility:Hidden stanzas_to_entries
+        "stanzas-to-entries" stanzas_to_entries
     in
     Memo.exec memo
 end
@@ -703,7 +702,6 @@ end = struct
     end in
     Memo.With_implicit_output.create "meta_and_dune_package_rules"
       ~input:(module Project_and_super_context)
-      ~visibility:Hidden
       ~output:(module Unit)
       ~implicit_output:Rules.implicit_output meta_and_dune_package_rules_impl
 
@@ -765,9 +763,8 @@ let packages =
       ~f:Package.Id.Set.add
   in
   let memo =
-    Memo.create "package-map" ~doc:"Return a map assining package to files"
+    Memo.create "package-map"
       ~input:(module Super_context.As_memo_key)
-      ~visibility:Hidden
       ~output:
         (Allow_cutoff
            (module struct
@@ -933,8 +930,7 @@ let memo =
   Memo.create
     ~input:(module Sctx_and_package)
     ~output:(Simple (module Rules_scheme))
-    "install-rules-and-pkg-entries" ~doc:"install rules and package entries"
-    ~visibility:Hidden
+    "install-rules-and-pkg-entries"
     (fun (sctx, pkg) ->
       Memo.Build.return
         (let ctx = Super_context.context sctx in
@@ -961,7 +957,6 @@ let scheme_per_ctx_memo =
   Memo.create
     ~input:(module Super_context.As_memo_key)
     ~output:(Memo.Output.simple ()) "install-rule-scheme"
-    ~doc:"install rules scheme" ~visibility:Hidden
     (fun sctx ->
       let packages = Package.Name.Map.values (Super_context.packages sctx) in
       let* schemes = Memo.Build.sequential_map packages ~f:(scheme sctx) in

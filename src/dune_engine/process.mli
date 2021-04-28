@@ -26,11 +26,11 @@ module Io : sig
 
   val stdout : output t
 
-  (** Same as [stdout], but drop it rather than redirect it to the terminal if
-      the command succeeds. *)
-  val stdout_swallow_on_success : output t
+  val make_stdout : Execution_parameters.Action_output_on_success.t -> output t
 
   val stderr : output t
+
+  val make_stderr : Execution_parameters.Action_output_on_success.t -> output t
 
   val stdin : input t
 
@@ -70,6 +70,17 @@ val run :
   -> Path.t
   -> string list
   -> 'a Fiber.t
+
+val run_with_times :
+     ?dir:Path.t
+  -> ?stdout_to:Io.output Io.t
+  -> ?stderr_to:Io.output Io.t
+  -> ?stdin_from:Io.input Io.t
+  -> ?env:Env.t
+  -> ?purpose:purpose
+  -> Path.t
+  -> string list
+  -> Proc.Times.t Fiber.t
 
 (** Run a command and capture its output *)
 val run_capture :

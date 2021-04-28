@@ -618,19 +618,14 @@ let workspace_step1 =
   let open Memo.Build.O in
   let f () =
     let clflags = Clflags.t () in
-    let path_exists p =
-      (* jeremiedimino: this is meh, we need a better Fs API *)
-      let+ () = Dune_engine.Fs_notify_memo.depend p in
-      Path.exists p
-    in
     let+ workspace_file =
       match clflags.workspace_file with
       | None ->
         let p = Path.of_string filename in
-        let+ exists = path_exists p in
+        let+ exists = Dune_engine.Fs_memo.file_exists p in
         Option.some_if exists p
       | Some p -> (
-        path_exists p >>| function
+        Dune_engine.Fs_memo.file_exists p >>| function
         | false ->
           User_error.raise
             [ Pp.textf "Workspace file %s does not exist"
@@ -658,8 +653,7 @@ let workspace =
     Lazy.force step1.t
   in
   let memo =
-    Memo.create "workspace" ~doc:"Return the workspace configuration"
-      ~visibility:Hidden
+    Memo.create "workspace"
       ~input:(module Unit)
       ~output:(Allow_cutoff (module T))
       f
@@ -667,7 +661,10 @@ let workspace =
   Memo.exec memo
 
 let update_execution_parameters t ep =
-  Execution_parameters.set_swallow_stdout_on_success
-    t.config.swallow_stdout_on_success ep
+  ep
+  |> Execution_parameters.set_action_stdout_on_success
+       t.config.action_stdout_on_success
+  |> Execution_parameters.set_action_stderr_on_success
+       t.config.action_stderr_on_success
 
 let build_contexts t = List.concat_map t.contexts ~f:Context.build_contexts

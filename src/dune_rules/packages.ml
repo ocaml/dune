@@ -11,10 +11,9 @@ let mlds_by_package_def =
     let to_dyn _ = Dyn.Opaque
   end in
   Memo.With_implicit_output.create "mlds by package"
-    ~implicit_output:Rules.implicit_output ~doc:"mlds by package"
+    ~implicit_output:Rules.implicit_output
     ~input:(module Super_context.As_memo_key)
     ~output:(module Output)
-    ~visibility:Hidden
     (fun sctx ->
       let stanzas = Super_context.stanzas sctx in
       Memo.Build.parallel_map stanzas ~f:(fun (w : _ Dir_with_dune.t) ->

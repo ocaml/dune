@@ -52,7 +52,7 @@ end
 
 type job =
   { pid : Pid.t
-  ; ivar : Unix.process_status Fiber.Ivar.t
+  ; ivar : Proc.Process_info.t Fiber.Ivar.t
   }
 
 module Signal = struct
@@ -112,8 +112,8 @@ end
 (** The event queue *)
 module Event : sig
   type t =
-    | Files_changed of Path.t list
-    | Job_completed of job * Unix.process_status
+    | File_system_changed of Fs_memo.Event.t Nonempty_list.t
+    | Job_completed of job * Proc.Process_info.t
     | Signal of Signal.t
     | Rpc of Fiber.fill
 
@@ -150,7 +150,7 @@ module Event : sig
     (** Send an event to the main thread. *)
     val send_files_changed : t -> Path.t list -> unit
 
-    val send_job_completed : t -> job -> Unix.process_status -> unit
+    val send_job_completed : t -> job -> Proc.Process_info.t -> unit
 
     val send_signal : t -> Signal.t -> unit
 
@@ -159,14 +159,14 @@ module Event : sig
   with type event := t
 end = struct
   type t =
-    | Files_changed of Path.t list
-    | Job_completed of job * Unix.process_status
+    | File_system_changed of Fs_memo.Event.t Nonempty_list.t
+    | Job_completed of job * Proc.Process_info.t
     | Signal of Signal.t
     | Rpc of Fiber.fill
 
   module Queue = struct
     type t =
-      { jobs_completed : (job * Unix.process_status) Queue.t
+      { jobs_completed : (job * Proc.Process_info.t) Queue.t
       ; sync_tasks : (unit -> unit) Queue.t
       ; mutable files_changed : Path.t list
       ; mutable signals : Signal.Set.t
@@ -256,25 +256,26 @@ end = struct
               | None ->
                 q.pending_rpc <- q.pending_rpc - 1;
                 Rpc (Queue.pop_exn q.rpc_completed)
-              | Some (job, status) ->
+              | Some (job, proc_info) ->
                 q.pending_jobs <- q.pending_jobs - 1;
                 assert (q.pending_jobs >= 0);
-                Job_completed (job, status))
-            | fns -> (
+                Job_completed (job, proc_info))
+            | files_changed -> (
               q.files_changed <- [];
-              let files =
-                List.filter fns ~f:(fun fn ->
-                    let fn = Path.to_absolute_filename fn in
-                    if Table.mem q.ignored_files fn then (
+              let events =
+                List.filter_map files_changed ~f:(fun path ->
+                    let abs_path = Path.to_absolute_filename path in
+                    if Table.mem q.ignored_files abs_path then (
                       (* only use ignored record once *)
-                      Table.remove q.ignored_files fn;
-                      false
+                      Table.remove q.ignored_files abs_path;
+                      None
                     ) else
-                      true)
+                      (* CR-soon amokhov: Generate more precise events. *)
+                      Some (Fs_memo.Event.create ~kind:Unknown ~path))
               in
-              match files with
-              | [] -> loop ()
-              | _ :: _ -> Files_changed files))
+              match Nonempty_list.of_list events with
+              | None -> loop ()
+              | Some events -> File_system_changed events))
       in
       let ev = loop () in
       Mutex.unlock q.mutex;
@@ -294,10 +295,10 @@ end = struct
       if not avail then Condition.signal q.cond;
       Mutex.unlock q.mutex
 
-    let send_job_completed q job status =
+    let send_job_completed q job proc_info =
       Mutex.lock q.mutex;
       let avail = available q in
-      Queue.push q.jobs_completed (job, status);
+      Queue.push q.jobs_completed (job, proc_info);
       if not avail then Condition.signal q.cond;
       Mutex.unlock q.mutex
 
@@ -456,7 +457,6 @@ end = struct
         Mutex.unlock event_mtx
       done
     in
-
     (* The buffer thread is used to avoid flooding the main thread with file
        changes events when a lot of file changes are reported at once. In
        particular, this avoids restarting the build over and over in a short
@@ -501,7 +501,7 @@ module Process_watcher : sig
 end = struct
   type process_state =
     | Running of job
-    | Zombie of Unix.process_status
+    | Zombie of Proc.Process_info.t
 
   (* This mutable table is safe: it does not interact with the state we track in
      the build system. *)
@@ -516,7 +516,7 @@ end = struct
   module Process_table : sig
     val add : t -> job -> unit
 
-    val remove : t -> pid:Pid.t -> Unix.process_status -> unit
+    val remove : t -> Proc.Process_info.t -> unit
 
     val running_count : t -> int
 
@@ -528,18 +528,18 @@ end = struct
         Table.set t.table job.pid (Running job);
         t.running_count <- t.running_count + 1;
         if t.running_count = 1 then Condition.signal t.something_is_running
-      | Some (Zombie status) ->
+      | Some (Zombie proc_info) ->
         Table.remove t.table job.pid;
-        Event.Queue.send_job_completed t.events job status
+        Event.Queue.send_job_completed t.events job proc_info
       | Some (Running _) -> assert false
 
-    let remove t ~pid status =
-      match Table.find t.table pid with
-      | None -> Table.set t.table pid (Zombie status)
+    let remove t (proc_info : Proc.Process_info.t) =
+      match Table.find t.table proc_info.pid with
+      | None -> Table.set t.table proc_info.pid (Zombie proc_info)
       | Some (Running job) ->
         t.running_count <- t.running_count - 1;
-        Table.remove t.table pid;
-        Event.Queue.send_job_completed t.events job status
+        Table.remove t.table proc_info.pid;
+        Event.Queue.send_job_completed t.events job proc_info
       | Some (Zombie _) -> assert false
 
     let iter t ~f =
@@ -564,19 +564,28 @@ end = struct
         | Unix.Unix_error _ -> ());
     Mutex.unlock t.mutex
 
-  exception Finished of job * Unix.process_status
+  exception Finished of Proc.Process_info.t
 
   let wait_nonblocking_win32 t =
     try
       Process_table.iter t ~f:(fun job ->
           let pid, status = Unix.waitpid [ WNOHANG ] (Pid.to_int job.pid) in
-          if pid <> 0 then raise_notrace (Finished (job, status)));
+          if pid <> 0 then
+            let now = Unix.gettimeofday () in
+            let info : Proc.Process_info.t =
+              { pid = Pid.of_int pid
+              ; status
+              ; end_time = now
+              ; resource_usage = None
+              }
+            in
+            raise_notrace (Finished info));
       false
     with
-    | Finished (job, status) ->
+    | Finished proc_info ->
       (* We need to do the [Unix.waitpid] and remove the process while holding
          the lock, otherwise the pid might be reused in between. *)
-      Process_table.remove t ~pid:job.pid status;
+      Process_table.remove t proc_info;
       true
 
   let wait_win32 t =
@@ -588,10 +597,9 @@ end = struct
 
   let wait_unix t =
     Mutex.unlock t.mutex;
-    let pid, status = Unix.wait () in
+    let proc_info = Proc.wait [] in
     Mutex.lock t.mutex;
-    let pid = Pid.of_int pid in
-    Process_table.remove t ~pid status
+    Process_table.remove t proc_info
 
   let wait =
     if Sys.win32 then
@@ -679,7 +687,7 @@ end
 
 type waiting_for_file_changes =
   | Shutdown_requested
-  | Files_changed
+  | File_system_changed
 
 type status =
   (* Waiting for file changes to start a new a build *)
@@ -847,25 +855,11 @@ end = struct
     else (
       t.handler t.config Tick;
       match Event.Queue.next t.events with
-      | Job_completed (job, status) -> Fiber.Fill (job.ivar, status)
-      | Files_changed changed_files -> (
-        (* CR-someday amokhov: In addition to tracking files, we also need to
-           track directory listings. Otherwise, when a new file is added to a
-           source directory, [invalidate] will return [Skipped] because that
-           file was previously untracked. To fix this, we will need to introduce
-           new [Memo] cells for tracking directory listings, and [invalidate]
-           those cells when the listings change. *)
-        (* If none of [changed_files] is tracked by the build system, we will
-           ignore this [Files_changed] event to avoid unnecessary restarts. *)
-        let all_changed_files_skipped =
-          List.for_all changed_files ~f:(fun path ->
-              match Fs_notify_memo.invalidate path with
-              | Skipped -> true
-              | Invalidated -> false)
-        in
-        match (all_changed_files_skipped, Memo.incremental_mode_enabled) with
-        | true, true -> iter t (* Ignore the event *)
-        | _, _ -> (
+      | Job_completed (job, proc_info) -> Fiber.Fill (job.ivar, proc_info)
+      | File_system_changed events -> (
+        match (Fs_memo.handle events : Fs_memo.Rebuild_required.t) with
+        | No -> iter t (* Ignore the event *)
+        | Yes -> (
           Memo.reset ();
           match t.status with
           | Shutting_down
@@ -878,7 +872,7 @@ end = struct
             t.status <- Restarting_build;
             Process_watcher.killall t.process_watcher Sys.sigkill;
             iter t
-          | Waiting_for_file_changes ivar -> Fill (ivar, Files_changed)))
+          | Waiting_for_file_changes ivar -> Fill (ivar, File_system_changed)))
       | Rpc fill -> fill
       | Signal signal ->
         got_signal signal;
@@ -946,7 +940,7 @@ module Run = struct
         let* next = Fiber.Ivar.read ivar in
         match next with
         | Shutdown_requested -> Fiber.return ()
-        | Files_changed -> (
+        | File_system_changed -> (
           t.handler t.config Source_files_changed;
           match res with
           | Error _
@@ -955,6 +949,8 @@ module Run = struct
           | Ok `Stop -> Fiber.return ()))
     in
     loop ()
+
+  exception Shutdown_requested
 
   let go config ?(file_watcher = No_watcher)
       ~(on_event : Config.t -> Handler.Event.t -> unit) run =
@@ -968,7 +964,13 @@ module Run = struct
       match Run_once.run_and_cleanup t run with
       | Ok a -> Result.Ok a
       | Error (Got_signal | Never) ->
-        Error (Dune_util.Report_error.Already_reported, None)
+        let exn =
+          if t.status = Shutting_down then
+            Shutdown_requested
+          else
+            Dune_util.Report_error.Already_reported
+        in
+        Error (exn, None)
       | Error (Exn exn_with_bt) ->
         Error (exn_with_bt.exn, Some exn_with_bt.backtrace)
     in

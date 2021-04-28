@@ -104,7 +104,7 @@ type files_to_promote =
 let do_promote db files_to_promote =
   let by_targets = group_by_targets db in
   let potential_build_contexts =
-    match Path.readdir_unsorted_with_kinds Path.build_dir with
+    match Path.Untracked.readdir_unsorted_with_kinds Path.build_dir with
     | exception _ -> []
     | Error _ -> []
     | Ok files ->

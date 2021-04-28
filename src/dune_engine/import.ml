@@ -14,11 +14,17 @@ module Path = struct
 
   module Untracked = struct
     let exists = exists
+
+    let readdir_unsorted_with_kinds = readdir_unsorted_with_kinds
   end
 
   (* Encourage using [Fs_memo.file_exists] if possible. The untracked version is
      still available as [Path.Untracked.exists]. *)
   let exists = `Use_fs_memo_file_exists_instead
+
+  (* Encourage using [Fs_memo.dir_contents] if possible. The untracked version
+     is still available as [Path.Untracked.readdir_unsorted_with_kinds]. *)
+  let readdir_unsorted_with_kinds = `Use_fs_memo_dir_contents_instead
 end
 
 (* To make bug reports usable *)

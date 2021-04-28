@@ -325,7 +325,7 @@ module File_watcher : sig
   type t
 
   (** Create a new file watcher. *)
-  val create : Event.Queue.t -> t
+  val create : thread_safe_send_files_changed:(Path.t list -> unit) -> t
 
   (** Pid of the external file watcher process *)
   val pid : t -> Pid.t
@@ -442,7 +442,7 @@ end = struct
     Unix.close w;
     (r, pid)
 
-  let create q =
+  let create ~thread_safe_send_files_changed =
     let files_changed = ref [] in
     let event_mtx = Mutex.create () in
     let event_cv = Condition.create () in
@@ -476,7 +476,7 @@ end = struct
       let files = !files_changed in
       files_changed := [];
       Mutex.unlock event_mtx;
-      Event.Queue.send_files_changed q files;
+      thread_safe_send_files_changed files;
       Thread.delay buffering_time;
       buffer_thread ()
     in
@@ -907,6 +907,7 @@ module Run = struct
     | Detect_external
     | No_watcher
 
+  module Event_queue = Event.Queue
   module Event = Handler.Event
 
   let poll step =
@@ -963,7 +964,11 @@ module Run = struct
     let watcher =
       match file_watcher with
       | No_watcher -> None
-      | Detect_external -> Some (File_watcher.create t.events)
+      | Detect_external ->
+        Some
+          (File_watcher.create
+             ~thread_safe_send_files_changed:(fun files_changed ->
+               Event_queue.send_files_changed t.events files_changed))
     in
     let result =
       match Run_once.run_and_cleanup t run with

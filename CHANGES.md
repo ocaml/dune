@@ -58,7 +58,7 @@ Unreleased
   of aliases. (#4303, @aalekseyev)
 
 - If an .ml file is not used by an executable, Dune no longer report
-  parsing error in this file (#...., @jeremiedimino)
+  parsing error in this file (#4330, @jeremiedimino)
 
 - Add support for sandboxing using hard links (#4360, @snowleopard)
 

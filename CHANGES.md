@@ -131,7 +131,7 @@ Unreleased
   way to rerun all actions failed due to errors without restarting the build,
   e.g. via a Dune RPC call. (#4522, Andrey Mokhov)
 
-- Remove `dune compute`. It was broken and unused (#....,
+- Remove `dune compute`. It was broken and unused (#4540,
   @jeremiedimino)
 
 2.9.0 (unreleased)

@@ -22,8 +22,11 @@ module Symlink_socket : sig
 
   val socket : t -> Path.t
 end = struct
+  (* Maximum path before we resort to the trick *)
+  let max_path_length = 100
+
   type t =
-    { symlink : Path.t
+    { symlink : Path.t option
     ; socket : Path.t
     ; cleanup : unit Lazy.t
     }
@@ -31,32 +34,37 @@ end = struct
   let make_cleanup ~symlink ~socket =
     lazy
       (Path.unlink_no_err socket;
-       Path.unlink_no_err symlink)
+       Option.iter symlink ~f:Path.unlink_no_err)
 
   let cleanup t = Lazy.force t.cleanup
 
   let create desired_path =
-    let socket =
-      let dir =
-        Path.of_string
-          (match Xdg.runtime_dir with
-          | Some p -> p
-          | None -> Filename.get_temp_dir_name ())
+    let desired_path_s = Path.to_string desired_path in
+    if String.length desired_path_s <= max_path_length then
+      let cleanup = make_cleanup ~symlink:None ~socket:desired_path in
+      { symlink = None; socket = desired_path; cleanup }
+    else
+      let socket =
+        let dir =
+          Path.of_string
+            (match Xdg.runtime_dir with
+            | Some p -> p
+            | None -> Filename.get_temp_dir_name ())
+        in
+        Temp.temp_file ~dir ~prefix:"" ~suffix:".dune"
       in
-      Temp.temp_file ~dir ~prefix:"" ~suffix:".dune"
-    in
-    let () =
-      let dest =
-        let from = Path.external_ (Path.External.cwd ()) in
-        Path.mkdir_p (Path.parent_exn desired_path);
-        Path.reach_for_running ~from desired_path
+      let () =
+        let dest =
+          let from = Path.external_ (Path.External.cwd ()) in
+          Path.mkdir_p (Path.parent_exn desired_path);
+          Path.reach_for_running ~from desired_path
+        in
+        Unix.symlink (Path.to_string socket) dest
       in
-      Unix.symlink (Path.to_string socket) dest
-    in
-    let cleanup = make_cleanup ~symlink:desired_path ~socket in
-    let t = { symlink = desired_path; socket; cleanup } in
-    at_exit (fun () -> Lazy.force cleanup);
-    t
+      let cleanup = make_cleanup ~symlink:(Some desired_path) ~socket in
+      let t = { symlink = Some desired_path; socket; cleanup } in
+      at_exit (fun () -> Lazy.force cleanup);
+      t
 
   let socket t = t.socket
 end

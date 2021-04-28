@@ -149,13 +149,13 @@ val restart_current_run : unit -> unit
     that the build system tracks all relevant side effects in the [Build] monad. *)
 val incremental_mode_enabled : bool
 
-module type Output_simple = sig
+module type Output_no_cutoff = sig
   type t
 
   val to_dyn : t -> Dyn.t
 end
 
-module type Output_allow_cutoff = sig
+module type Output_cutoff = sig
   type t
 
   val to_dyn : t -> Dyn.t
@@ -163,20 +163,18 @@ module type Output_allow_cutoff = sig
   val equal : t -> t -> bool
 end
 
-(** When we recompute the function and find that its output is the same as what
-    we computed before, we can sometimes skip recomputing the values that depend
-    on it.
-
-    [Allow_cutoff] specifies how to compare the output values for that purpose.
+(** When we recompute a function and find that its output is the same as what we
+    computed before, we can sometimes skip recomputing the values that depend on
+    it. [Cutoff] specifies how to compare the output values for that purpose.
 
     Note that currently Dune wipes all memoization caches on every run, so
     cutoff is not effective. *)
 module Output : sig
   type 'o t =
-    | Simple of (module Output_simple with type t = 'o)
-    | Allow_cutoff of (module Output_allow_cutoff with type t = 'o)
+    | No_cutoff of (module Output_no_cutoff with type t = 'o)
+    | Cutoff of (module Output_cutoff with type t = 'o)
 
-  val simple : ?to_dyn:('a -> Dyn.t) -> unit -> 'a t
+  val no_cutoff : ?to_dyn:('a -> Dyn.t) -> unit -> 'a t
 end
 
 module type Input = sig
@@ -207,6 +205,9 @@ module Store : sig
   end
 end
 
+(** Like [create] but accepts a custom [store] for memoization. This is useful
+    when there is a custom data structure indexed by keys of type ['i] that is
+    more efficient than the one that Memo uses by default (a plain hash table). *)
 val create_with_store :
      string
   -> store:(module Store.S with type key = 'i)
@@ -215,7 +216,7 @@ val create_with_store :
   -> ('i -> 'o Fiber.t)
   -> ('i, 'o) t
 
-(** [create name ~input ~output f] creates a memoized version of
+(** [create name ~input ~output f] creates a memoized version of the function
     [f : 'i -> 'o Build.t]. The result of [f] for a given input is cached, so
     that the second time [exec t x] is called, the previous result is re-used if
     possible.
@@ -224,11 +225,8 @@ val create_with_store :
     the result of such dependent call changes, [exec t x] will automatically
     recompute [f x].
 
-    Running the computation may raise [Memo.Cycle_error.E] if a cycle is
-    detected.
-
-    [visibility] determines whether the function is user-facing or internal and
-    if it's user-facing then how to parse the values written by the user. *)
+    Running the computation may raise [Memo.Cycle_error.E] if a dependency cycle
+    is detected. *)
 val create :
      string
   -> input:(module Input with type t = 'i)
@@ -236,9 +234,11 @@ val create :
   -> ('i -> 'o Build.t)
   -> ('i, 'o) t
 
-val create_hidden :
+(** A version of [create] for memoizing functions with no cutoff. *)
+val create_no_cutoff :
      string
   -> input:(module Input with type t = 'i)
+  -> ?output_to_dyn:('o -> Dyn.t)
   -> ('i -> 'o Build.t)
   -> ('i, 'o) t
 
@@ -325,7 +325,7 @@ module With_implicit_output : sig
   val create :
        string
     -> input:(module Input with type t = 'i)
-    -> output:(module Output_simple with type t = 'o)
+    -> output:(module Output_no_cutoff with type t = 'o)
     -> implicit_output:'io Implicit_output.t
     -> ('i -> 'o Build.t)
     -> ('i, 'o) t

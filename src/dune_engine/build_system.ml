@@ -12,9 +12,18 @@ module Fs : sig
   val assert_exists : loc:Loc.t -> Path.t -> unit Memo.Build.t
 end = struct
   let mkdir_p_def =
-    Memo.create "mkdir_p"
+    (* CR-someday amokhov: It's difficult to think about the correctness of this
+       memoized function. Right now, we never invalidate it, so if we delete a
+       stale build directory, we'll not be able to recreate it later. Perhaps,
+       we should create directories as part of running actions that need them.
+       That would be less efficient, as we'd call [mkdir] on the same directory
+       multiple times, but it would be easier to guarantee correctness.
+
+       Note: if we find a way to reliably invalidate this function, its output
+       should continue to have no cutoff because the callers might depend not
+       just on the existence of a directory but on its *continuous* existence. *)
+    Memo.create_no_cutoff "mkdir_p"
       ~input:(module Path.Build)
-      ~output:(Simple (module Unit))
       (fun p ->
         Path.mkdir_p (Path.build p);
         Memo.Build.return ())
@@ -24,7 +33,7 @@ end = struct
   let assert_exists_def =
     Memo.create "assert_path_exists"
       ~input:(module Path)
-      ~output:(Simple (module Bool))
+      ~output:(No_cutoff (module Bool))
       (fun p -> Memo.Build.return (Path.exists p))
 
   let assert_exists ~loc path =
@@ -1137,7 +1146,7 @@ end = struct
   let load_dir =
     let load_dir_impl dir = load_dir_impl (t ()) ~dir in
     let memo =
-      Memo.create_hidden "load-dir" ~input:(module Path) load_dir_impl
+      Memo.create_no_cutoff "load-dir" ~input:(module Path) load_dir_impl
     in
     fun ~dir -> Memo.exec memo dir
 end
@@ -1923,7 +1932,7 @@ end = struct
     target
 
   let execute_action_generic_stage2_memo =
-    Memo.create_hidden "execute-action"
+    Memo.create_no_cutoff "execute-action"
       ~input:(module Action_desc)
       execute_action_generic_stage2_impl
 
@@ -2062,7 +2071,7 @@ end = struct
     let eval_memo =
       Memo.create "eval-pred"
         ~input:(module File_selector)
-        ~output:(Allow_cutoff (module Path.Set))
+        ~output:(Cutoff (module Path.Set))
         eval_impl
 
     let eval = Memo.exec eval_memo
@@ -2071,28 +2080,28 @@ end = struct
       Memo.exec
         (Memo.create "build-pred"
            ~input:(module File_selector)
-           ~output:(Allow_cutoff (module Dep.Fact.Files))
+           ~output:(Cutoff (module Dep.Fact.Files))
            build_impl)
   end
 
   let build_file_memo =
     Memo.create "build-file"
-      ~output:(Allow_cutoff (module Digest))
       ~input:(module Path)
+      ~output:(Cutoff (module Digest))
       build_file_impl
 
   let build_file = Memo.exec build_file_memo
 
   let build_alias_memo =
     Memo.create "build-alias"
-      ~output:(Allow_cutoff (module Dep.Fact.Files))
       ~input:(module Alias)
+      ~output:(Cutoff (module Dep.Fact.Files))
       build_alias_impl
 
   let build_alias = Memo.exec build_alias_memo
 
   let execute_rule_memo =
-    Memo.create_hidden "execute-rule"
+    Memo.create_no_cutoff "execute-rule"
       ~input:(module Rule)
       (execute_rule_impl ~rule_kind:Normal_rule)
 
@@ -2307,7 +2316,7 @@ end = struct
   end = struct
     let alias =
       let memo =
-        Memo.create_hidden "expand-alias"
+        Memo.create_no_cutoff "expand-alias"
           ~input:(module Alias)
           (fun alias ->
             let* l = expand_alias_gen alias ~eval_build_request in
@@ -2331,7 +2340,7 @@ end = struct
 
   let evaluate_rule =
     let memo =
-      Memo.create_hidden "evaluate-rule"
+      Memo.create_no_cutoff "evaluate-rule"
         ~input:(module Non_evaluated_rule)
         (fun rule ->
           let* action, deps = eval_build_request rule.action in

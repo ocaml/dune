@@ -346,15 +346,7 @@ end = struct
         }
 
   let memo0 =
-    let module Output = struct
-      type t = result0
-
-      let to_dyn _ = Dyn.Opaque
-    end in
-    Memo.create "dir-contents-get0"
-      ~input:(module Key)
-      ~output:(Simple (module Output))
-      get0_impl
+    Memo.create_no_cutoff "dir-contents-get0" ~input:(module Key) get0_impl
 
   let get sctx ~dir =
     Memo.exec memo0 (sctx, dir) >>= function

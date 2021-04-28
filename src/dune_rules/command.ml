@@ -163,7 +163,7 @@ module Args = struct
 
   let memo t =
     let memo =
-      Memo.create_hidden "Command.Args.memo"
+      Memo.create_no_cutoff "Command.Args.memo"
         ~input:(module Path)
         (fun dir -> Memo.Build.return (expand_static ~dir t))
     in

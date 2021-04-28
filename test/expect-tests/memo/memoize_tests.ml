@@ -16,15 +16,9 @@ let () = init ()
 
 let printf = Printf.printf
 
-let string_fn_create name =
-  Memo.create name
-    ~input:(module String)
-    ~visibility:(Public Dune_lang.Decoder.string)
+let string_fn_create name = Memo.create name ~input:(module String)
 
-let int_fn_create name =
-  Memo.create name
-    ~input:(module Int)
-    ~visibility:(Public Dune_lang.Decoder.int)
+let int_fn_create name = Memo.create name ~input:(module Int)
 
 (* to run a computation *)
 let run m = Scheduler.run (Memo.Build.run m)
@@ -200,8 +194,7 @@ let%expect_test _ =
   |}]
 
 let make_f name f ~input ~output =
-  Memo.create name ~input ~visibility:Hidden ~output:(Allow_cutoff output)
-    ~doc:"" f
+  Memo.create name ~input ~output:(Allow_cutoff output) f
 
 let id =
   let f =
@@ -312,10 +305,9 @@ let%expect_test _ =
 (* Tests for depending on the current run *)
 
 let depends_on_run =
-  Memo.create "foobar" ~doc:"foo123"
+  Memo.create "foobar"
     ~input:(module Unit)
     ~output:(Allow_cutoff (module Unit))
-    ~visibility:Hidden
     (fun () ->
       let+ (_ : Memo.Run.t) = Memo.current_run () in
       print_endline "running foobar")
@@ -338,9 +330,8 @@ let%expect_test _ =
   let memo =
     Memo.create "for-cell"
       ~input:(module String)
-      ~visibility:(Public Dune_lang.Decoder.string)
       ~output:(Allow_cutoff (module String))
-      ~doc:"" f
+      f
   in
   let cell = Memo.cell memo "foobar" in
   print_endline (run (Cell.read cell));
@@ -381,9 +372,8 @@ let%expect_test "fib linked list" =
   let memo =
     Memo.create "fib"
       ~input:(module Int)
-      ~visibility:Hidden
       ~output:(Simple (module Element))
-      compute_element ~doc:""
+      compute_element
   in
   Fdecl.set memo_fdecl memo;
   let fourth = run (Memo.exec memo 4) in
@@ -418,9 +408,8 @@ let%expect_test "previously_evaluated_cell" =
   let memo =
     Memo.create "boxed"
       ~input:(module String)
-      ~visibility:(Public Dune_lang.Decoder.string)
       ~output:(Allow_cutoff (module String))
-      ~doc:"" f
+      f
   in
   let evaluate_and_print name =
     let cell = Memo.cell memo name in
@@ -675,7 +664,7 @@ let create ~with_cutoff name f =
     | true -> Memo.Output.Allow_cutoff (module Int)
     | false -> Simple (module Int)
   in
-  Memo.create name ~input:(module Unit) ~visibility:Hidden ~output ~doc:"" f
+  Memo.create name ~input:(module Unit) ~output f
 
 let%expect_test "diamond with non-uniform cutoff structure" =
   let base = create ~with_cutoff:true "base" (count_runs "base") in
@@ -714,9 +703,8 @@ let%expect_test "diamond with non-uniform cutoff structure" =
   let summit =
     Memo.create "summit"
       ~input:(module Int)
-      ~visibility:Hidden
       ~output:(Simple (module Int))
-      ~doc:"" summit
+      summit
   in
   evaluate_and_print summit 0;
   [%expect
@@ -828,7 +816,7 @@ let%expect_test "dynamic cycles with non-uniform cutoff structure" =
     in
     Memo.create "incrementing_chain_plus_input"
       ~input:(module Int)
-      ~visibility:Hidden ~output ~doc:"" plus_input
+      ~output plus_input
   in
   let summit_fdecl = Fdecl.create (fun _ -> Dyn.Opaque) in
   let cycle_creator_no_cutoff =
@@ -1053,9 +1041,7 @@ let%expect_test "deadlocks when creating a cycle twice" =
   let summit =
     Memo.create "summit"
       ~input:(module Int)
-      ~visibility:Hidden
       ~output:(Simple (module Int))
-      ~doc:""
       (fun offset ->
         printf "Started evaluating summit\n";
         let+ middle = Memo.exec middle () in
@@ -1094,9 +1080,7 @@ let%expect_test "Nested nodes with cutoff are recomputed optimally" =
   let summit =
     Memo.create "summit"
       ~input:(module Int)
-      ~visibility:Hidden
       ~output:(Simple (module Int))
-      ~doc:""
       (fun offset ->
         printf "Started evaluating summit\n";
         let middle =
@@ -1178,9 +1162,7 @@ let%expect_test "Test that there are no phantom dependencies" =
   let summit =
     Memo.create "summit"
       ~input:(module Int)
-      ~visibility:Hidden
       ~output:(Simple (module Int))
-      ~doc:""
       (fun offset ->
         printf "Started evaluating summit\n";
         let middle =
@@ -1243,9 +1225,7 @@ let%expect_test "Abandoned node with no cutoff is recomputed" =
   let middle =
     Memo.create "middle"
       ~input:(module Unit)
-      ~visibility:Hidden
       ~output:(Simple (module Int))
-      ~doc:""
       (fun () ->
         printf "Started evaluating middle\n";
         let base = base () in
@@ -1257,9 +1237,7 @@ let%expect_test "Abandoned node with no cutoff is recomputed" =
   let summit =
     Memo.create "summit"
       ~input:(module Int)
-      ~visibility:Hidden
       ~output:(Simple (module Int))
-      ~doc:""
       (fun input ->
         printf "Started evaluating summit\n";
         let* middle = Memo.exec middle () in
@@ -1457,9 +1435,7 @@ let%expect_test "errors work with early cutoff" =
     let exception Input_too_large of Memo.Run.t in
     Memo.create "divide 100 by input"
       ~input:(module Int)
-      ~visibility:Hidden
       ~output:(Allow_cutoff (module Int))
-      ~doc:""
       (fun x ->
         let+ run = Memo.current_run () in
         printf "[divide] Started evaluating %d\n" x;

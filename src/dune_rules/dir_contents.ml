@@ -354,7 +354,7 @@ end = struct
     Memo.create "dir-contents-get0"
       ~input:(module Key)
       ~output:(Simple (module Output))
-      ~doc:"dir contents" ~visibility:Hidden get0_impl
+      get0_impl
 
   let get sctx ~dir =
     Memo.exec memo0 (sctx, dir) >>= function

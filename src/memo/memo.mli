@@ -185,12 +185,6 @@ module type Input = sig
   include Table.Key with type t := t
 end
 
-module Visibility : sig
-  type 'i t =
-    | Hidden
-    | Public of 'i Dune_lang.Decoder.t
-end
-
 module Store : sig
   module type Input = sig
     type t
@@ -216,15 +210,13 @@ end
 val create_with_store :
      string
   -> store:(module Store.S with type key = 'i)
-  -> ?doc:string
   -> input:(module Store.Input with type t = 'i)
-  -> visibility:'i Visibility.t
   -> output:'o Output.t
   -> ('i -> 'o Fiber.t)
   -> ('i, 'o) t
 
-(** [create name ~doc ~input ~visibility ~output f] creates a memoized version
-    of [f : 'i -> 'o Build.t]. The result of [f] for a given input is cached, so
+(** [create name ~input ~output f] creates a memoized version of
+    [f : 'i -> 'o Build.t]. The result of [f] for a given input is cached, so
     that the second time [exec t x] is called, the previous result is re-used if
     possible.
 
@@ -239,16 +231,13 @@ val create_with_store :
     if it's user-facing then how to parse the values written by the user. *)
 val create :
      string
-  -> ?doc:string
   -> input:(module Input with type t = 'i)
-  -> visibility:'i Visibility.t
   -> output:'o Output.t
   -> ('i -> 'o Build.t)
   -> ('i, 'o) t
 
 val create_hidden :
      string
-  -> ?doc:string
   -> input:(module Input with type t = 'i)
   -> ('i -> 'o Build.t)
   -> ('i, 'o) t
@@ -272,9 +261,6 @@ val pp_stack : unit -> _ Pp.t Fiber.t
 (** Get the memoized call stack during the execution of a memoized function. *)
 val get_call_stack : unit -> Stack_frame.t list Build.t
 
-(** Call a memoized function by name *)
-val call : string -> Dune_lang.Ast.t -> Dyn.t Build.t
-
 module Run : sig
   (** A single build run. *)
   type t
@@ -282,19 +268,6 @@ end
 
 (** Introduces a dependency on the current build run. *)
 val current_run : unit -> Run.t Build.t
-
-module Info : sig
-  type t =
-    { name : string
-    ; doc : string option
-    }
-end
-
-(** Return the list of registered functions *)
-val registered_functions : unit -> Info.t list
-
-(** Lookup function's info *)
-val function_info : name:string -> Info.t
 
 module Lazy : sig
   type 'a t
@@ -351,9 +324,7 @@ module With_implicit_output : sig
 
   val create :
        string
-    -> ?doc:string
     -> input:(module Input with type t = 'i)
-    -> visibility:'i Visibility.t
     -> output:(module Output_simple with type t = 'o)
     -> implicit_output:'io Implicit_output.t
     -> ('i -> 'o Build.t)

@@ -69,14 +69,19 @@ module Stanza_util = struct
   let type_gen_script ctypes =
     sprintf "%s__type_gen" ctypes.Ctypes.external_library_name
 
-  let function_gen_script ctypes =
-    sprintf "%s__function_gen" ctypes.Ctypes.external_library_name
+  let module_name_lower_string module_name =
+    String.lowercase (Module_name.to_string module_name)
 
-  let type_description_module ctypes =
-    ctypes.Ctypes.type_descriptions
+  let function_gen_script ctypes fd =
+    sprintf "%s__function_gen__%s__%s" ctypes.Ctypes.external_library_name
+      (module_name_lower_string fd.Ctypes.Function_description.functor_)
+      (module_name_lower_string fd.Ctypes.Function_description.instance)
 
-  let function_description_module ctypes =
-    ctypes.Ctypes.function_descriptions
+  let type_description_functor ctypes =
+    ctypes.Ctypes.type_description.functor_
+
+  let type_description_instance ctypes =
+    ctypes.Ctypes.type_description.instance
 
   let entry_module ctypes =
     ctypes.Ctypes.generated_entry_point
@@ -92,8 +97,11 @@ module Stanza_util = struct
     sprintf "%s__c_generated_types" ctypes.Ctypes.external_library_name
     |> Module_name.of_string
 
-  let c_generated_functions_module ctypes =
-    sprintf "%s__c_generated_functions" ctypes.Ctypes.external_library_name
+  let c_generated_functions_module ctypes fd =
+    sprintf "%s__c_generated_functions__%s__%s"
+      ctypes.Ctypes.external_library_name
+      (module_name_lower_string fd.Ctypes.Function_description.functor_)
+      (module_name_lower_string fd.Ctypes.Function_description.instance)
     |> Module_name.of_string
 
   (* This includer module is simply some glue to instantiate the Types functor
@@ -101,14 +109,11 @@ module Stanza_util = struct
   let c_types_includer_module ctypes =
     ctypes.Ctypes.generated_types
 
-  let c_generated_types_cout_c ctypes =
-    sprintf "%s__c_cout_generated_types.c" ctypes.Ctypes.external_library_name
-
-  let c_generated_types_cout_exe ctypes =
-    sprintf "%s__c_cout_generated_types.exe" ctypes.Ctypes.external_library_name
-
-  let c_generated_functions_cout_c ctypes =
-    sprintf "%s__c_cout_generated_functions.c" ctypes.Ctypes.external_library_name
+  let c_generated_functions_cout_c ctypes fd =
+    sprintf "%s__c_cout_generated_functions__%s__%s.c"
+      ctypes.Ctypes.external_library_name
+      (module_name_lower_string fd.Ctypes.Function_description.functor_)
+      (module_name_lower_string fd.Ctypes.Function_description.instance)
 
   let lib_deps_of_strings ~loc lst =
     List.map lst ~f:(fun lib ->
@@ -117,20 +122,23 @@ module Stanza_util = struct
   let type_gen_script_module ctypes =
     type_gen_script ctypes |> Module_name.of_string
 
-  let function_gen_script_module ctypes =
-    function_gen_script ctypes |> Module_name.of_string
+  let function_gen_script_module ctypes function_description =
+    function_gen_script ctypes function_description |> Module_name.of_string
 
   let generated_modules ctypes =
+    List.concat_map ctypes.Ctypes.function_description ~f:(fun function_description ->
+      [ function_gen_script_module ctypes function_description
+      ; c_generated_functions_module ctypes function_description ])
+    @
     [ type_gen_script_module ctypes
-    ; function_gen_script_module ctypes
-    ; c_generated_functions_module ctypes
     ; c_generated_types_module ctypes
     ; c_types_includer_module ctypes
     ; entry_module ctypes ]
 
   let non_installable_modules ctypes =
-    [ type_gen_script_module ctypes
-    ; function_gen_script_module ctypes ]
+    type_gen_script_module ctypes
+    :: List.map ctypes.Ctypes.function_description ~f:(fun function_description ->
+      function_gen_script_module ctypes function_description)
 
   let generated_ml_and_c_files ctypes =
     let ml_files =
@@ -140,7 +148,8 @@ module Stanza_util = struct
       |> List.map ~f:(fun m -> m ^ ".ml")
     in
     let c_files =
-      [ c_generated_functions_cout_c ctypes ]
+      List.map ctypes.Ctypes.function_description ~f:(fun fd ->
+        c_generated_functions_cout_c ctypes fd)
     in
     ml_files @ c_files
 end
@@ -169,30 +178,39 @@ let modules_of_list ~dir ~modules =
   Modules.exe_unwrapped name_map
   (* Modules.exe_wrapped ~src_dir:dir ~modules:name_map *)
 
-let write_c_types_includer_module ~sctx ~dir ~filename ~type_description_module
-      ~c_generated_types_module =
+let write_c_types_includer_module ~sctx ~dir ~filename
+      ~type_description_functor ~c_generated_types_module =
   let path = Path.Build.relative dir filename in
   let contents =
     let buf = Buffer.create 1024 in
     let pr buf fmt = Printf.bprintf buf (fmt ^^ "\n") in
     pr buf "include %s.Types (%s)"
-        (Module_name.to_string type_description_module)
+        (Module_name.to_string type_description_functor)
         (Module_name.to_string c_generated_types_module);
     Buffer.contents buf
   in
   Super_context.add_rule ~loc:Loc.none sctx ~dir
     (Action_builder.write_file path contents)
 
-let write_entry_point_module ~sctx ~dir ~filename ~function_description_module
-      ~c_generated_functions_module ~c_types_includer_module =
+let write_entry_point_module ~ctypes ~sctx ~dir ~filename
+      ~type_description_instance ~function_description
+      ~c_types_includer_module =
   let path = Path.Build.relative dir filename in
   let contents =
     let buf = Buffer.create 1024 in
     let pr buf fmt = Printf.bprintf buf (fmt ^^ "\n") in
-    pr buf "module Types = %s" (Module_name.to_string c_types_includer_module);
-    pr buf "module Functions = %s.Functions (%s)"
-        (Module_name.to_string function_description_module)
-        (Module_name.to_string c_generated_functions_module);
+    pr buf "module %s = %s"
+      (Module_name.to_string type_description_instance)
+      (Module_name.to_string c_types_includer_module);
+    List.iter function_description ~f:(fun fd ->
+      let c_generated_functions_module =
+        Stanza_util.c_generated_functions_module ctypes fd
+      in
+      pr buf "module %s = %s.Functions (%s)"
+        (fd.Ctypes.Function_description.instance |> Module_name.to_string)
+        (fd.Ctypes.Function_description.functor_ |> Module_name.to_string)
+        (Module_name.to_string c_generated_functions_module)
+    );
     Buffer.contents buf
   in
   Super_context.add_rule ~loc:Loc.none sctx ~dir
@@ -239,19 +257,17 @@ let gen_headers headers buf =
     pr buf "  print_endline %S;" s
   end
 
-let type_gen_gen ~headers ~type_description_module =
+let type_gen_gen ~headers ~type_description_functor =
   let buf = Buffer.create 1024 in
   let pr buf fmt = Printf.bprintf buf (fmt ^^ "\n") in
   pr buf "let () =";
   gen_headers headers buf;
   pr buf "  Cstubs_structs.write_c Format.std_formatter";
-  pr buf "    (module %s.Types)" (Module_name.to_string type_description_module);
+  pr buf "    (module %s.Types)" (Module_name.to_string type_description_functor);
   Buffer.contents buf
 
-let function_gen_gen ~concurrency ~headers ~function_description_module =
-  let function_description_module =
-    Module_name.to_string function_description_module
-  in
+let function_gen_gen ~concurrency ~headers ~function_description_functor =
+  let module_name = Module_name.to_string function_description_functor in
   let concurrency =
     match concurrency with
     | Ctypes.Concurrency_policy.Unlocked -> "Cstubs.unlocked"
@@ -267,25 +283,25 @@ let function_gen_gen ~concurrency ~headers ~function_description_module =
   pr buf "  match Sys.argv.(1) with";
   pr buf "  | \"ml\" ->";
   pr buf "    Cstubs.write_ml ~concurrency Format.std_formatter ~prefix";
-  pr buf "      (module %s.Functions)" function_description_module;
+  pr buf "      (module %s.Functions)" module_name;
   pr buf "  | \"c\" ->";
   gen_headers headers buf;
   pr buf "    Cstubs.write_c ~concurrency Format.std_formatter ~prefix";
-  pr buf "      (module %s.Functions)" function_description_module;
+  pr buf "      (module %s.Functions)" module_name;
   pr buf "  | s -> failwith (\"unknown functions \"^s)";
   Buffer.contents buf
 
 let write_type_gen_script ~headers ~dir ~filename ~sctx
-      ~type_description_module =
+      ~type_description_functor =
   let path = Path.Build.relative dir filename in
-  let script = type_gen_gen ~headers ~type_description_module in
+  let script = type_gen_gen ~headers ~type_description_functor in
   Super_context.add_rule ~loc:Loc.none sctx ~dir
     (Action_builder.write_file path script)
 
 let write_function_gen_script ~headers ~sctx ~dir ~name
-      ~function_description_module ~concurrency =
+      ~function_description_functor ~concurrency =
   let path = Path.Build.relative dir (name ^ ".ml") in
-  let script = function_gen_gen ~concurrency ~headers ~function_description_module in
+  let script = function_gen_gen ~concurrency ~headers ~function_description_functor in
   Super_context.add_rule ~loc:Loc.none sctx ~dir (Action_builder.write_file path script)
 
 let rule ?(deps=[]) ?stdout_to ?(args=[]) ?(targets=[]) ~exe ~sctx ~dir () =
@@ -443,17 +459,14 @@ let write_osl_to_sexp_file ~sctx ~dir ~filename osl =
 let gen_rules ~dep_graphs ~cctx ~buildable ~loc ~scope ~dir ~sctx =
   let ctypes = Option.value_exn buildable.Buildable.ctypes in
   let external_library_name = ctypes.Ctypes.external_library_name in
-  let type_description_module = Stanza_util.type_description_module ctypes in
-  let function_description_module = Stanza_util.function_description_module ctypes in
+  let type_description_functor = Stanza_util.type_description_functor ctypes in
   let c_types_includer_module = Stanza_util.c_types_includer_module ctypes in
   let c_generated_types_module = Stanza_util.c_generated_types_module ctypes in
   let rule = rule ~sctx ~dir in
   let () =
     write_c_types_includer_module
-      ~sctx ~dir
-      ~filename:(ml_of_module_name c_types_includer_module)
-      ~c_generated_types_module
-      ~type_description_module
+      ~sctx ~dir ~filename:(ml_of_module_name c_types_includer_module)
+      ~c_generated_types_module ~type_description_functor
   in
   (* The output of this process is to generate a cflags sexp and a c library
      flags sexp file. We can probe these flags by using the system pkg-config,
@@ -498,15 +511,15 @@ let gen_rules ~dep_graphs ~cctx ~buildable ~loc ~scope ~dir ~sctx =
      data/types produced in this step. *)
   let () =
     let c_generated_types_cout_c =
-      Stanza_util.c_generated_types_cout_c ctypes
+      sprintf "%s__c_cout_generated_types.c" external_library_name
     in
     let c_generated_types_cout_exe =
-      Stanza_util.c_generated_types_cout_exe ctypes
+      sprintf "%s__c_cout_generated_types.exe" external_library_name
     in
     let type_gen_script = Stanza_util.type_gen_script ctypes in
     write_type_gen_script ~headers ~sctx ~dir
       ~filename:(type_gen_script ^ ".ml")
-      ~type_description_module;
+      ~type_description_functor;
     exe_link_only type_gen_script;
     rule
       ~stdout_to:c_generated_types_cout_c
@@ -524,36 +537,43 @@ let gen_rules ~dep_graphs ~cctx ~buildable ~loc ~scope ~dir ~sctx =
   in
   (* Function_gen is similar to type_gen above, though it produces both an
      .ml file and a .c file.  These files correspond to the files you would
-     have to write by hand to wrap C code (if ctypes didn't exist!) *)
+     have to write by hand to wrap C code (if ctypes didn't exist!)
+
+     Also the user can repeat the 'function_description' stanza to do this
+     more than once.  This is needed for generating blocking and non-blocking
+     sets of functions, for example, which requires a different 'concurrency'
+     parameter in the code generator. *)
   let () =
-    let stubs_prefix = external_library_name ^ "_stubs" in
-    let c_generated_functions_cout_c =
-      Stanza_util.c_generated_functions_cout_c ctypes
-    in
-    let function_gen_script = Stanza_util.function_gen_script ctypes in
-    write_function_gen_script ~headers ~sctx ~dir
-      ~name:function_gen_script ~function_description_module
-      ~concurrency:ctypes.Ctypes.concurrency;
-    exe_link_only function_gen_script;
-    rule
-      ~stdout_to:c_generated_functions_cout_c
-      ~exe:(function_gen_script ^ ".exe")
-      ~args:["c"; stubs_prefix]
-      ();
-    rule
-      ~stdout_to:(Stanza_util.c_generated_functions_module ctypes
-                  |> ml_of_module_name)
-      ~exe:(function_gen_script ^ ".exe")
-      ~args:["ml"; stubs_prefix]
-      ()
+    List.iter ctypes.Ctypes.function_description ~f:(fun fd ->
+      let stubs_prefix = external_library_name ^ "_stubs" in
+      let c_generated_functions_cout_c =
+        Stanza_util.c_generated_functions_cout_c ctypes fd
+      in
+      let function_gen_script = Stanza_util.function_gen_script ctypes fd in
+      write_function_gen_script ~headers ~sctx ~dir
+        ~name:function_gen_script
+        ~concurrency:fd.Ctypes.Function_description.concurrency
+        ~function_description_functor:fd.Ctypes.Function_description.functor_;
+      exe_link_only function_gen_script;
+      rule
+        ~stdout_to:c_generated_functions_cout_c
+        ~exe:(function_gen_script ^ ".exe")
+        ~args:["c"; stubs_prefix]
+        ();
+      rule
+        ~stdout_to:(Stanza_util.c_generated_functions_module ctypes fd
+                    |> ml_of_module_name)
+        ~exe:(function_gen_script ^ ".exe")
+        ~args:["ml"; stubs_prefix]
+        ()
+    )
   in
   (* The entry point module binds the instantiated Types and Functions functors
-     to the entry point module name the user specified. *)
-  write_entry_point_module
-    ~sctx ~dir
+     to the entry point module name and instances the user specified. *)
+  write_entry_point_module ~ctypes ~sctx ~dir
     ~filename:(generated_entry_module |> ml_of_module_name)
-    ~function_description_module:(Stanza_util.function_description_module ctypes)
-    ~c_generated_functions_module:(Stanza_util.c_generated_functions_module ctypes)
+    ~type_description_instance:(Stanza_util.type_description_instance ctypes)
+    ~function_description:ctypes.Ctypes.function_description
     ~c_types_includer_module
 
 let ctypes_cclib_flags ~standard ~scope ~expander ~buildable =

@@ -59,13 +59,25 @@ module Ctypes : sig
       | Preamble of string
   end
 
+  module Type_description : sig
+    type t =
+      { functor_ : Module_name.t
+      ; instance : Module_name.t }
+  end
+
+  module Function_description : sig
+    type t =
+      { concurrency : Concurrency_policy.t
+      ; functor_ : Module_name.t
+      ; instance : Module_name.t }
+  end
+
   type t =
     { external_library_name : string
     ; build_flags_resolver : Build_flags_resolver.t
     ; headers : Headers.t
-    ; concurrency : Concurrency_policy.t
-    ; type_descriptions : Module_name.t
-    ; function_descriptions : Module_name.t
+    ; type_description : Type_description.t
+    ; function_description : Function_description.t list
     ; generated_types : Module_name.t
     ; generated_entry_point : Module_name.t }
   type Stanza.t += T of t

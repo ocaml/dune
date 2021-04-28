@@ -8,7 +8,11 @@ val cflags_sexp : external_library_name:string -> string
 
 val c_library_flags : external_library_name:string -> string
 
-val c_generated_functions_cout_no_ext : external_library_name:string -> string
+val c_generated_functions_cout_no_ext :
+     external_library_name:string
+  -> functor_:Module_name.t
+  -> instance:Module_name.t
+  -> string
 
 val libraries_needed_for_ctypes : loc:Loc.t -> Lib_dep.t list
 
@@ -22,5 +26,7 @@ val add :
                 -> flags:Ordered_set_lang.Unexpanded.t option
                 -> Foreign.Stubs.t list
                 -> Foreign.Stubs.t list)
+  -> functor_:Module_name.t
+  -> instance:Module_name.t
   -> foreign_stubs:Foreign.Stubs.t list
   -> Foreign.Stubs.t list

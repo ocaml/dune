@@ -111,13 +111,44 @@ module Ctypes = struct
     let default = Include []
   end
 
+  module Type_description = struct
+    type t =
+      { functor_ : Module_name.t
+      ; instance : Module_name.t }
+
+    let decode =
+      let open Dune_lang.Decoder in
+      fields
+        (let+ functor_ = field "functor" Module_name.decode
+         and+ instance =  field "instance" Module_name.decode
+         in
+         { functor_; instance })
+  end
+
+  module Function_description = struct
+    type t =
+      { concurrency : Concurrency_policy.t
+      ; functor_ : Module_name.t
+      ; instance : Module_name.t }
+
+    let decode =
+      let open Dune_lang.Decoder in
+      fields
+        (let+ concurrency = field_o "concurrency" Concurrency_policy.decode
+         and+ functor_ = field "functor" Module_name.decode
+         and+ instance =  field "instance" Module_name.decode
+         in
+         { concurrency = Option.value concurrency ~default:Concurrency_policy.default
+         ; functor_
+         ; instance })
+  end
+
   type t =
     { external_library_name : string
     ; build_flags_resolver : Build_flags_resolver.t
     ; headers : Headers.t
-    ; concurrency : Concurrency_policy.t
-    ; type_descriptions : Module_name.t
-    ; function_descriptions : Module_name.t
+    ; type_description : Type_description.t
+    ; function_description : Function_description.t list
     ; generated_types       : Module_name.t
     ; generated_entry_point : Module_name.t }
 
@@ -134,19 +165,17 @@ module Ctypes = struct
     fields
       (let+ external_library_name = field "external_library_name" string
        and+ build_flags_resolver = field_o "build_flags_resolver" Build_flags_resolver.decode
+       and+ type_description = field "type_description" Type_description.decode
+       and+ function_description = multi_field "function_description" Function_description.decode
        and+ headers = field_o "headers" Headers.decode
-       and+ concurrency = field_o "concurrency" Concurrency_policy.decode
-       and+ type_descriptions = field "type_descriptions" Module_name.decode
-       and+ function_descriptions = field "function_descriptions" Module_name.decode
        and+ generated_types       = field_o "generated_types" Module_name.decode
        and+ generated_entry_point = field "generated_entry_point" Module_name.decode
      in
      { external_library_name
      ; build_flags_resolver = Option.value build_flags_resolver ~default:Build_flags_resolver.default
      ; headers = Option.value headers ~default:Headers.default
-     ; concurrency = Option.value concurrency ~default:Concurrency_policy.default
-     ; type_descriptions
-     ; function_descriptions
+     ; type_description
+     ; function_description
      ; generated_types = Option.value generated_types ~default:(Module_name.of_string "Types_generated")
      ; generated_entry_point })
 
@@ -407,10 +436,14 @@ module Buildable = struct
       match ctypes with
       | None -> foreign_stubs
       | Some ctypes ->
-        Ctypes_stubs.add ~loc
-          ~parsing_context:(Dune_project.parsing_context project)
-          ~external_library_name:ctypes.Ctypes.external_library_name
-          ~add_stubs ~foreign_stubs
+        let init = foreign_stubs in
+        List.fold_left ctypes.function_description ~init ~f:(fun foreign_stubs fd ->
+          Ctypes_stubs.add ~loc
+            ~parsing_context:(Dune_project.parsing_context project)
+            ~external_library_name:ctypes.Ctypes.external_library_name
+            ~functor_:fd.Ctypes.Function_description.functor_
+            ~instance:fd.Ctypes.Function_description.instance
+            ~add_stubs ~foreign_stubs)
     in
     let foreign_archives = Option.value ~default:[] foreign_archives in
     let foreign_archives =

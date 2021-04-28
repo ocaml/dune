@@ -18,6 +18,10 @@
       (vendored
         (c_flags "-Ivendor")))
     (headers (include "example.h"))
-    (type_descriptions Type_descriptions)
-    (function_descriptions Function_descriptions)
+    (type_description
+      (instance Types)
+      (functor Type_description))
+    (function_description
+      (instance Functions)
+      (functor Function_description))
     (generated_entry_point C)))

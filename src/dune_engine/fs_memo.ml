@@ -59,15 +59,35 @@ module Rebuild_required = struct
     | _, Yes -> Yes
     | No, No -> No
 
-  let invalidate path =
+  let invalidate_path path =
     match Memo.Expert.previously_evaluated_cell memo path with
     | None -> No
     | Some cell ->
       Memo.Cell.invalidate cell;
       Yes
+
+  (* When a file or directory is created or deleted, we need to also invalidate
+     the parent directory, so that the [dir_contents] queries are re-executed. *)
+  let invalidate_path_and_its_parent path =
+    combine (invalidate_path path)
+      (match Path.parent path with
+      | None -> No
+      | Some path -> invalidate_path path)
 end
 
 module Event = struct
+  (* Here are some assumptions about events:
+
+     - If a file is renamed, we receive [File_created] and [File_deleted] events
+     with corresponding paths.
+
+     - If a directory is renamed then in addition to the [Directory_created] and
+     [Directory_deleted] events for the directory itself, we receive events
+     about all file and directory paths in the corresponding file tree.
+
+     - Similarly, if a directory is deleted, we receive the [Directory_deleted]
+     event for the directory itself, as well as deletion events for all paths in
+     the corresponding file tree. *)
   type kind =
     | File_created
     | File_deleted
@@ -86,15 +106,28 @@ module Event = struct
       Code_error.raise "Fs_memo.Event.create called on a build path" [];
     { path; kind }
 
+  (* CR-someday amokhov: The way we currently treat file system events is simple
+     and robust but doesn't take advantage of all the information we receive.
+     Here are some ideas for future optimisation:
+
+     - Don't invalidate [file_exists] queries on [File_changed] events.
+
+     - If a [file_exists] query currently returns [true] and we receive a
+     corresponding [File_deleted] event, we can change the query's result to
+     [false] without rerunning the [Path.exists] function (and vice versa).
+
+     - Similarly, the result of [dir_contents] queries can be updated without
+     calling [Path.readdir_unsorted_with_kinds]: we know which file or directory
+     should be added to or removed from the result. *)
   let handle { kind; path } =
     match kind with
-    (* CR-soon amokhov: Improve event handling. *)
-    | _ -> (
-      let acc = Rebuild_required.invalidate path in
-      match Path.parent path with
-      | None -> acc
-      | Some path ->
-        Rebuild_required.combine acc (Rebuild_required.invalidate path))
+    | File_changed -> Rebuild_required.invalidate_path path
+    | File_created
+    | File_deleted
+    | Directory_created
+    | Directory_deleted
+    | Unknown ->
+      Rebuild_required.invalidate_path_and_its_parent path
 end
 
 let handle events =

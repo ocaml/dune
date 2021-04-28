@@ -1,4 +1,6 @@
 open Stdune
+module Process = Dune_engine.Process
+module Config = Dune_util.Config
 
 module Json = struct
   include Chrome_trace.Json
@@ -69,8 +71,6 @@ module Package = struct
   let make org name = { org; name }
 
   let clone t =
-    let module Process = Dune_engine.Process in
-    let module Config = Dune_util.Config in
     let stdout_to = Process.Io.(file Config.dev_null Out) in
     let stderr_to = Process.Io.(file Config.dev_null Out) in
     let stdin_from = Process.Io.(null In) in
@@ -83,6 +83,42 @@ let duniverse =
   [ pkg "ocaml-dune" "dune-bench" ]
 
 let prepare_workspace () =
+  Fiber.parallel_iter duniverse ~f:(fun (pkg : Package.t) ->
+      Fpath.rm_rf pkg.name;
+      Format.eprintf "cloning %s/%s@." pkg.org pkg.name;
+      Package.clone pkg)
+
+let dune_build () =
+  let stdin_from = Process.(Io.null In) in
+  let stdout_to = Process.(Io.file Config.dev_null Out) in
+  let stderr_to = Process.(Io.file Config.dev_null Out) in
+  let open Fiber.O in
+  let+ times =
+    Process.run_with_times (Lazy.force dune) ~stdin_from ~stdout_to ~stderr_to
+      [ "build"; "@install"; "--root"; "." ]
+  in
+  times.elapsed_time
+
+let run_bench () =
+  let open Fiber.O in
+  let* clean = dune_build () in
+  let+ zero =
+    let open Fiber.O in
+    let rec zero acc n =
+      if n = 0 then
+        Fiber.return (List.rev acc)
+      else
+        let* time = dune_build () in
+        zero (time :: acc) (pred n)
+    in
+    zero [] 5
+  in
+  (clean, zero)
+
+let () =
+  Dune_util.Log.init ~file:No_log_file ();
+  let dir = Temp.create Dir ~prefix:"dune." ~suffix:".bench" in
+  Sys.chdir (Path.to_string dir);
   let module Scheduler = Dune_engine.Scheduler in
   let config =
     { Scheduler.Config.concurrency = 10
@@ -91,42 +127,22 @@ let prepare_workspace () =
     ; stats = None
     }
   in
-  Scheduler.Run.go config
-    ~on_event:(fun _ _ -> ())
-    (fun () ->
-      Fiber.parallel_iter duniverse ~f:(fun (pkg : Package.t) ->
-          Fpath.rm_rf pkg.name;
-          Format.eprintf "cloning %s/%s@." pkg.org pkg.name;
-          Package.clone pkg))
-
-let with_timer f =
-  let start = Unix.time () in
-  let res = f () in
-  let stop = Unix.time () in
-  (stop -. start, res)
-
-let () =
-  Dune_util.Log.init ~file:No_log_file ();
-  let dir = Temp.create Dir ~prefix:"dune." ~suffix:".bench" in
-  Sys.chdir (Path.to_string dir);
-  prepare_workspace ();
-  let clean, _ =
-    with_timer (fun () -> Sys.command "dune build @install --root . 1>&2")
+  let clean, zero =
+    Scheduler.Run.go config
+      ~on_event:(fun _ _ -> ())
+      (fun () ->
+        let open Fiber.O in
+        let* () = prepare_workspace () in
+        run_bench ())
   in
-  let zeros =
-    List.init 5 ~f:(fun _ ->
-        let time, _ =
-          with_timer (fun () -> Sys.command "dune build @install --root . 1>&2")
-        in
-        `Float time)
-  in
+  let zero = List.map zero ~f:(fun t -> `Float t) in
   let size =
     let stat : Unix.stats = Path.stat_exn (Lazy.force dune) in
     stat.st_size
   in
   let results =
     [ { Output.name = "clean_build"; metrics = [ ("time", `Float clean) ] }
-    ; { Output.name = "zero_build"; metrics = [ ("time", `List zeros) ] }
+    ; { Output.name = "zero_build"; metrics = [ ("time", `List zero) ] }
     ; { Output.name = "dune_size"; metrics = [ ("size", `Int size) ] }
     ]
   in

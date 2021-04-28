@@ -52,7 +52,7 @@ end
 
 type job =
   { pid : Pid.t
-  ; ivar : Unix.process_status Fiber.Ivar.t
+  ; ivar : Proc.Process_info.t Fiber.Ivar.t
   }
 
 module Signal = struct
@@ -113,7 +113,7 @@ end
 module Event : sig
   type t =
     | Files_changed of Path.t list
-    | Job_completed of job * Unix.process_status
+    | Job_completed of job * Proc.Process_info.t
     | Signal of Signal.t
     | Rpc of Fiber.fill
 
@@ -150,7 +150,7 @@ module Event : sig
     (** Send an event to the main thread. *)
     val send_files_changed : t -> Path.t list -> unit
 
-    val send_job_completed : t -> job -> Unix.process_status -> unit
+    val send_job_completed : t -> job -> Proc.Process_info.t -> unit
 
     val send_signal : t -> Signal.t -> unit
 
@@ -160,13 +160,13 @@ module Event : sig
 end = struct
   type t =
     | Files_changed of Path.t list
-    | Job_completed of job * Unix.process_status
+    | Job_completed of job * Proc.Process_info.t
     | Signal of Signal.t
     | Rpc of Fiber.fill
 
   module Queue = struct
     type t =
-      { jobs_completed : (job * Unix.process_status) Queue.t
+      { jobs_completed : (job * Proc.Process_info.t) Queue.t
       ; sync_tasks : (unit -> unit) Queue.t
       ; mutable files_changed : Path.t list
       ; mutable signals : Signal.Set.t
@@ -256,10 +256,10 @@ end = struct
               | None ->
                 q.pending_rpc <- q.pending_rpc - 1;
                 Rpc (Queue.pop_exn q.rpc_completed)
-              | Some (job, status) ->
+              | Some (job, proc_info) ->
                 q.pending_jobs <- q.pending_jobs - 1;
                 assert (q.pending_jobs >= 0);
-                Job_completed (job, status))
+                Job_completed (job, proc_info))
             | fns -> (
               q.files_changed <- [];
               let files =
@@ -294,10 +294,10 @@ end = struct
       if not avail then Condition.signal q.cond;
       Mutex.unlock q.mutex
 
-    let send_job_completed q job status =
+    let send_job_completed q job proc_info =
       Mutex.lock q.mutex;
       let avail = available q in
-      Queue.push q.jobs_completed (job, status);
+      Queue.push q.jobs_completed (job, proc_info);
       if not avail then Condition.signal q.cond;
       Mutex.unlock q.mutex
 
@@ -500,7 +500,7 @@ module Process_watcher : sig
 end = struct
   type process_state =
     | Running of job
-    | Zombie of Unix.process_status
+    | Zombie of Proc.Process_info.t
 
   (* This mutable table is safe: it does not interact with the state we track in
      the build system. *)
@@ -515,7 +515,7 @@ end = struct
   module Process_table : sig
     val add : t -> job -> unit
 
-    val remove : t -> pid:Pid.t -> Unix.process_status -> unit
+    val remove : t -> Proc.Process_info.t -> unit
 
     val running_count : t -> int
 
@@ -527,18 +527,18 @@ end = struct
         Table.set t.table job.pid (Running job);
         t.running_count <- t.running_count + 1;
         if t.running_count = 1 then Condition.signal t.something_is_running
-      | Some (Zombie status) ->
+      | Some (Zombie proc_info) ->
         Table.remove t.table job.pid;
-        Event.Queue.send_job_completed t.events job status
+        Event.Queue.send_job_completed t.events job proc_info
       | Some (Running _) -> assert false
 
-    let remove t ~pid status =
-      match Table.find t.table pid with
-      | None -> Table.set t.table pid (Zombie status)
+    let remove t (proc_info : Proc.Process_info.t) =
+      match Table.find t.table proc_info.pid with
+      | None -> Table.set t.table proc_info.pid (Zombie proc_info)
       | Some (Running job) ->
         t.running_count <- t.running_count - 1;
-        Table.remove t.table pid;
-        Event.Queue.send_job_completed t.events job status
+        Table.remove t.table proc_info.pid;
+        Event.Queue.send_job_completed t.events job proc_info
       | Some (Zombie _) -> assert false
 
     let iter t ~f =
@@ -563,19 +563,28 @@ end = struct
         | Unix.Unix_error _ -> ());
     Mutex.unlock t.mutex
 
-  exception Finished of job * Unix.process_status
+  exception Finished of Proc.Process_info.t
 
   let wait_nonblocking_win32 t =
     try
       Process_table.iter t ~f:(fun job ->
           let pid, status = Unix.waitpid [ WNOHANG ] (Pid.to_int job.pid) in
-          if pid <> 0 then raise_notrace (Finished (job, status)));
+          if pid <> 0 then
+            let now = Unix.gettimeofday () in
+            let info : Proc.Process_info.t =
+              { pid = Pid.of_int pid
+              ; status
+              ; end_time = now
+              ; resource_usage = None
+              }
+            in
+            raise_notrace (Finished info));
       false
     with
-    | Finished (job, status) ->
+    | Finished proc_info ->
       (* We need to do the [Unix.waitpid] and remove the process while holding
          the lock, otherwise the pid might be reused in between. *)
-      Process_table.remove t ~pid:job.pid status;
+      Process_table.remove t proc_info;
       true
 
   let wait_win32 t =
@@ -587,10 +596,9 @@ end = struct
 
   let wait_unix t =
     Mutex.unlock t.mutex;
-    let pid, status = Unix.wait () in
+    let proc_info = Proc.wait [] in
     Mutex.lock t.mutex;
-    let pid = Pid.of_int pid in
-    Process_table.remove t ~pid status
+    Process_table.remove t proc_info
 
   let wait =
     if Sys.win32 then
@@ -846,7 +854,7 @@ end = struct
     else (
       t.handler t.config Tick;
       match Event.Queue.next t.events with
-      | Job_completed (job, status) -> Fiber.Fill (job.ivar, status)
+      | Job_completed (job, proc_info) -> Fiber.Fill (job.ivar, proc_info)
       | Files_changed changed_files -> (
         (* CR-someday amokhov: In addition to tracking files, we also need to
            track directory listings. Otherwise, when a new file is added to a

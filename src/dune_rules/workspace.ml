@@ -653,8 +653,7 @@ let workspace =
     Lazy.force step1.t
   in
   let memo =
-    Memo.create "workspace" ~doc:"Return the workspace configuration"
-      ~visibility:Hidden
+    Memo.create "workspace"
       ~input:(module Unit)
       ~output:(Allow_cutoff (module T))
       f

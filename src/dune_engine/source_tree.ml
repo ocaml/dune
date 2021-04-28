@@ -614,10 +614,10 @@ end = struct
         option (Output.to_dyn Dir0.to_dyn)
     end in
     let memo =
-      Memo.create "find-dir-raw" ~doc:"get file tree"
+      Memo.create "find-dir-raw"
         ~input:(module Path.Source)
         ~output:(Simple (module Output))
-        ~visibility:Memo.Visibility.Hidden find_dir_raw_impl
+        find_dir_raw_impl
     in
     Memo.cell memo
 
@@ -657,10 +657,9 @@ let execution_parameters_of_dir =
   in
   let memo =
     Memo.create "execution-parameters-of-dir"
-      ~doc:"Return the execution parameters of a given directory"
       ~input:(module Path.Source)
       ~output:(Allow_cutoff (module Execution_parameters))
-      ~visibility:Hidden f
+      f
   in
   Memo.exec memo
 

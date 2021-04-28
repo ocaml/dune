@@ -20,7 +20,6 @@ let all : _ Term.Group.t list =
     ; Printenv.command
     ; Help.command
     ; Format_dune_file.command
-    ; Compute.command
     ; Upgrade.command
     ; Cache.command
     ; Describe.command

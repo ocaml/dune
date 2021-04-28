@@ -139,9 +139,8 @@ module DB = struct
           ; fn =
               Memo.create "get-dir-status"
                 ~input:(module Path.Build)
-                ~visibility:Hidden
                 ~output:(Simple (module T))
-                ~doc:"Get a directory status." Fn.get
+                Fn.get
           }
       end
 

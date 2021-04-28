@@ -21,8 +21,6 @@ module Kind = struct
       , [] )
 
   let equal = ( = )
-
-  let decode = Dune_lang.Decoder.enum [ ("git", Git); ("hg", Hg) ]
 end
 
 module T = struct
@@ -40,13 +38,6 @@ module T = struct
 
   (* No need to hash the kind as there is only only kind per directory *)
   let hash t = Path.hash t.root
-
-  let decode =
-    let open Dune_lang.Decoder in
-    fields
-      (let+ root = field "root" Dpath.decode
-       and+ kind = field "kind" Kind.decode in
-       { root; kind })
 end
 
 include T
@@ -118,12 +109,8 @@ let hg_describe t =
   in
   s ^ dirty_suffix
 
-let make_fun name ~output ~doc ~git ~hg =
-  let memo =
-    Memo.create name ~doc
-      ~input:(module T)
-      ~output ~visibility:(Public decode) (select git hg)
-  in
+let make_fun name ~output ~git ~hg =
+  let memo = Memo.create name ~input:(module T) ~output (select git hg) in
   Staged.stage (Memo.exec memo)
 
 module Option_output (S : sig
@@ -140,7 +127,6 @@ end
 let describe =
   Staged.unstage
   @@ make_fun "vcs-describe"
-       ~doc:"Obtain a nice description of the tip from the vcs"
        ~output:(Simple (module Option_output (String)))
        ~git:(fun t -> run_git t [ "describe"; "--always"; "--dirty" ])
        ~hg:(fun x ->
@@ -150,7 +136,7 @@ let describe =
 
 let commit_id =
   Staged.unstage
-  @@ make_fun "vcs-commit-id" ~doc:"The hash of the head commit"
+  @@ make_fun "vcs-commit-id"
        ~output:(Simple (module Option_output (String)))
        ~git:(fun t -> run_git t [ "rev-parse"; "HEAD" ])
        ~hg:(fun t ->
@@ -180,7 +166,7 @@ let files =
     List.map l ~f:Path.in_source
   in
   Staged.unstage
-  @@ make_fun "vcs-files" ~doc:"Return the files committed in the repo"
+  @@ make_fun "vcs-files"
        ~output:
          (Simple
             (module struct

@@ -117,12 +117,6 @@ module Output = struct
     | Some equal -> allow_cutoff ?to_dyn ~equal ()
 end
 
-module Visibility = struct
-  type 'i t =
-    | Hidden
-    | Public of 'i Dune_lang.Decoder.t
-end
-
 module Exn_comparable = Comparable.Make (struct
   type t = Exn_with_backtrace.t
 
@@ -134,78 +128,32 @@ end)
 
 module Exn_set = Exn_comparable.Set
 
-module Info = struct
-  type t =
-    { name : string
-    ; doc : string option
-    }
-end
-
 module Spec = struct
   type ('i, 'o) t =
-    { info : Info.t option
+    { name : string option
     ; input : (module Store_intf.Input with type t = 'i)
     ; output : (module Output_simple with type t = 'o)
     ; allow_cutoff : 'o Allow_cutoff.t
-    ; decode : 'i Dune_lang.Decoder.t
     ; witness : 'i Type_eq.Id.t
     ; f : 'i -> 'o Fiber.t
     }
 
-  type packed = T : (_, _) t -> packed [@@unboxed]
-
-  (* This mutable table is safe under the assumption that [register] is called
-     only at the top level, which is currently true. This means that all
-     memoization tables created not at the top level are hidden. *)
-  let by_name : packed String.Table.t = String.Table.create 256
-
-  let find name = String.Table.find by_name name
-
-  let register t =
-    match t.info with
-    | None -> Code_error.raise "[Spec.register] got a function with no info" []
-    | Some info -> (
-      match find info.name with
-      | Some _ ->
-        Code_error.raise
-          "[Spec.register] called twice on a function with the same name"
-          [ ("name", Dyn.String info.name) ]
-      | None -> String.Table.set by_name info.name (T t))
-
-  let create (type o) ~info ~input ~visibility ~(output : o Output.t) ~f =
-    let info =
-      match info with
+  let create (type o) ~name ~input ~(output : o Output.t) ~f =
+    let name =
+      match name with
       | None when !track_locations_of_lazy_values ->
         Option.map
           (Caller_id.get ~skip:[ __FILE__ ])
           ~f:(fun loc ->
-            let name =
-              sprintf "lazy value created at %s" (Loc.to_file_colon_line loc)
-            in
-            { Info.name; doc = None })
-      | _ -> info
+            sprintf "lazy value created at %s" (Loc.to_file_colon_line loc))
+      | _ -> name
     in
     let (output : (module Output_simple with type t = o)), allow_cutoff =
       match output with
       | Simple (module Output) -> ((module Output), Allow_cutoff.No)
       | Allow_cutoff (module Output) -> ((module Output), Yes Output.equal)
     in
-    let decode =
-      match visibility with
-      | Visibility.Public decode -> decode
-      | Hidden ->
-        let open Dune_lang.Decoder in
-        let+ loc = loc in
-        User_error.raise ~loc [ Pp.text "<not-implemented>" ]
-    in
-    { info
-    ; input
-    ; output
-    ; allow_cutoff
-    ; decode
-    ; witness = Type_eq.Id.create ()
-    ; f
-    }
+    { name; input; output; allow_cutoff; witness = Type_eq.Id.create (); f }
 end
 
 module Id = Id.Make ()
@@ -239,7 +187,7 @@ module Stack_frame_without_state = struct
 
   type t = Dep_node_without_state.packed
 
-  let name (T t) = Option.map t.spec.info ~f:(fun x -> x.name)
+  let name (T t) = t.spec.name
 
   let input (T t) = ser_input t
 
@@ -791,32 +739,26 @@ module Stack_frame = struct
     | None -> None
 end
 
-let create_with_cache (type i o) name ~cache ?doc ~input ~visibility ~output
-    (f : i -> o Fiber.t) =
-  let spec =
-    Spec.create ~info:(Some { name; doc }) ~input ~output ~visibility ~f
-  in
-  (match visibility with
-  | Public _ -> Spec.register spec
-  | Hidden -> ());
+let create_with_cache (type i o) name ~cache ~input ~output (f : i -> o Fiber.t)
+    =
+  let spec = Spec.create ~name:(Some name) ~input ~output ~f in
   Caches.register ~clear:(fun () -> Store.clear cache);
   { cache; spec }
 
 let create_with_store (type i) name
-    ~store:(module S : Store_intf.S with type key = i) ?doc ~input ~visibility
-    ~output f =
+    ~store:(module S : Store_intf.S with type key = i) ~input ~output f =
   let cache = Store.make (module S) in
-  create_with_cache name ~cache ?doc ~input ~output ~visibility f
+  create_with_cache name ~cache ~input ~output f
 
-let create (type i) name ?doc ~input:(module Input : Input with type t = i)
-    ~visibility ~output f =
+let create (type i) name ~input:(module Input : Input with type t = i) ~output f
+    =
   (* This mutable table is safe: the implementation tracks all dependencies. *)
   let cache = Store.of_table (Table.create (module Input) 16) in
   let input = (module Input : Store_intf.Input with type t = i) in
-  create_with_cache name ~cache ?doc ~input ~visibility ~output f
+  create_with_cache name ~cache ~input ~output f
 
-let create_hidden name ?doc ~input impl =
-  create ~output:(Output.simple ()) ~visibility:Hidden name ?doc ~input impl
+let create_hidden name ~input impl =
+  create ~output:(Output.simple ()) name ~input impl
 
 let make_dep_node ~spec ~input : _ Dep_node.t =
   let dep_node_without_state : _ Dep_node_without_state.t =
@@ -1090,34 +1032,7 @@ let get_deps (type i o) (t : (i, o) t) inp =
     | Some cv ->
       Some
         (List.map cv.deps ~f:(fun (Last_dep.T (dep, _value)) ->
-             ( Option.map dep.without_state.spec.info ~f:(fun x -> x.name)
-             , ser_input dep.without_state ))))
-
-let get_func name =
-  match Spec.find name with
-  | None -> User_error.raise [ Pp.textf "function %s doesn't exist!" name ]
-  | Some spec -> spec
-
-let call name input =
-  let (Spec.T spec) = get_func name in
-  let (module Output : Output_simple with type t = _) = spec.output in
-  let input = Dune_lang.Decoder.parse spec.decode Univ_map.empty input in
-  let+ output = spec.f input in
-  Output.to_dyn output
-
-let function_info_of_spec (Spec.T spec) =
-  match spec.info with
-  | Some info -> info
-  | None -> Code_error.raise "[function_info_of_spec] got an unnamed spec" []
-
-let registered_functions () =
-  String.Table.to_seq_values Spec.by_name
-  |> Seq.fold_left
-       ~f:(fun xs x -> List.cons (function_info_of_spec x) xs)
-       ~init:[]
-  |> List.sort ~compare:(fun x y -> String.compare x.Info.name y.Info.name)
-
-let function_info ~name = get_func name |> function_info_of_spec
+             (dep.without_state.spec.name, ser_input dep.without_state))))
 
 let get_call_stack = Call_stack.get_call_stack_without_state
 
@@ -1149,10 +1064,7 @@ module Current_run = struct
   let f () = Run.current () |> Build.return
 
   let memo =
-    create "current-run"
-      ~input:(module Unit)
-      ~output:(Simple (module Run))
-      ~visibility:Hidden f
+    create "current-run" ~input:(module Unit) ~output:(Simple (module Run)) f
 
   let exec () = exec memo ()
 
@@ -1164,7 +1076,7 @@ let current_run () = Current_run.exec ()
 module With_implicit_output = struct
   type ('i, 'o) t = 'i -> 'o Fiber.t
 
-  let create (type o) name ?doc ~input ~visibility
+  let create (type o) name ~input
       ~output:(module O : Output_simple with type t = o) ~implicit_output impl =
     let output =
       Output.simple
@@ -1173,7 +1085,7 @@ module With_implicit_output = struct
         ()
     in
     let memo =
-      create name ?doc ~input ~visibility ~output (fun i ->
+      create name ~input ~output (fun i ->
           Implicit_output.collect implicit_output (fun () -> impl i))
     in
     fun input ->
@@ -1205,10 +1117,7 @@ module Store = Store_intf
 
 let lazy_cell ?cutoff ?to_dyn f =
   let output = Output.create ?cutoff ?to_dyn () in
-  let visibility = Visibility.Hidden in
-  let spec =
-    Spec.create ~info:None ~input:(module Unit) ~output ~visibility ~f
-  in
+  let spec = Spec.create ~name:None ~input:(module Unit) ~output ~f in
   make_dep_node ~spec ~input:()
 
 let lazy_ ?cutoff ?to_dyn f =

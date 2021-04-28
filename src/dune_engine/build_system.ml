@@ -12,10 +12,9 @@ module Fs : sig
   val assert_exists : loc:Loc.t -> Path.t -> unit Memo.Build.t
 end = struct
   let mkdir_p_def =
-    Memo.create "mkdir_p" ~doc:"mkdir_p"
+    Memo.create "mkdir_p"
       ~input:(module Path.Build)
       ~output:(Simple (module Unit))
-      ~visibility:Hidden
       (fun p ->
         Path.mkdir_p (Path.build p);
         Memo.Build.return ())
@@ -23,10 +22,9 @@ end = struct
   let mkdir_p = Memo.exec mkdir_p_def
 
   let assert_exists_def =
-    Memo.create "assert_path_exists" ~doc:"Path.exists"
+    Memo.create "assert_path_exists"
       ~input:(module Path)
       ~output:(Simple (module Bool))
-      ~visibility:Hidden
       (fun p -> Memo.Build.return (Path.exists p))
 
   let assert_exists ~loc path =
@@ -1139,9 +1137,7 @@ end = struct
   let load_dir =
     let load_dir_impl dir = load_dir_impl (t ()) ~dir in
     let memo =
-      Memo.create_hidden "load-dir" ~doc:"load dir"
-        ~input:(module Path)
-        load_dir_impl
+      Memo.create_hidden "load-dir" ~input:(module Path) load_dir_impl
     in
     fun ~dir -> Memo.exec memo dir
 end
@@ -2064,36 +2060,34 @@ end = struct
         |> Path.Set.of_list
 
     let eval_memo =
-      Memo.create "eval-pred" ~doc:"Evaluate a predicate in a directory"
+      Memo.create "eval-pred"
         ~input:(module File_selector)
         ~output:(Allow_cutoff (module Path.Set))
-        ~visibility:Hidden eval_impl
+        eval_impl
 
     let eval = Memo.exec eval_memo
 
     let build =
       Memo.exec
-        (Memo.create "build-pred" ~doc:"build a predicate"
+        (Memo.create "build-pred"
            ~input:(module File_selector)
            ~output:(Allow_cutoff (module Dep.Fact.Files))
-           ~visibility:Hidden build_impl)
+           build_impl)
   end
 
   let build_file_memo =
     Memo.create "build-file"
       ~output:(Allow_cutoff (module Digest))
-      ~doc:"Build a file."
       ~input:(module Path)
-      ~visibility:Hidden build_file_impl
+      build_file_impl
 
   let build_file = Memo.exec build_file_memo
 
   let build_alias_memo =
     Memo.create "build-alias"
       ~output:(Allow_cutoff (module Dep.Fact.Files))
-      ~doc:"Build an alias."
       ~input:(module Alias)
-      ~visibility:Hidden build_alias_impl
+      build_alias_impl
 
   let build_alias = Memo.exec build_alias_memo
 

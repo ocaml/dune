@@ -335,7 +335,6 @@ let create ~(kind : Kind.t) ~path ~env ~env_nodes ~name ~merlin ~targets
       (sprintf "which-memo-for-%s" (Context_name.to_string name))
       ~input:(module Program.Name)
       ~output:(Allow_cutoff (module Program.Which_path))
-      ~visibility:Hidden
       (fun p -> Memo.Build.return (Program.which ~path p))
   in
   let which = Memo.exec which_memo in
@@ -791,10 +790,10 @@ end = struct
         ~dynamically_linked_foreign_archives ~instrument_with
 
   let memo =
-    Memo.create "instantiate-context" ~doc:"instantiate contexts"
+    Memo.create "instantiate-context"
       ~input:(module Context_name)
       ~output:(Simple (module T_list))
-      ~visibility:Memo.Visibility.Hidden instantiate_impl
+      instantiate_impl
 
   let instantiate name = Memo.exec memo name
 end
@@ -817,19 +816,18 @@ module DB = struct
       all
     in
     let memo =
-      Memo.create "build-contexts" ~doc:"all build contexts"
+      Memo.create "build-contexts"
         ~input:(module Unit)
         ~output:(Simple (module T_list))
-        ~visibility:Memo.Visibility.Hidden impl
+        impl
     in
     Memo.exec memo
 
   let get =
     let memo =
-      Memo.create "context-db-get" ~doc:"get context from db"
+      Memo.create "context-db-get"
         ~input:(module Context_name)
         ~output:(Simple (module T))
-        ~visibility:Hidden
         (fun name ->
           let+ contexts = all () in
           List.find_exn contexts ~f:(fun c -> Context_name.equal name c.name))

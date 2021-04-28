@@ -1,6 +1,6 @@
-open! Stdune
 open! Dune_engine
-open Import
+open! Dune_engine.Import
+open! Stdune
 module Opam_package = Package
 module P = Variant
 module Ps = Variant.Set

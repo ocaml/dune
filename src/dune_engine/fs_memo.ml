@@ -34,7 +34,8 @@ let declaring_dependency path ~f =
   let+ () = depend path in
   f path
 
-let file_exists = declaring_dependency ~f:Path.exists
+(* Assuming our file system watcher is any good, this untracked call is safe. *)
+let file_exists = declaring_dependency ~f:Path.Untracked.exists
 
 (* CR-someday amokhov: It is unclear if we got the layers of abstraction right
    here. One could argue that caching is a higher-level concept compared to file

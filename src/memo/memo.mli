@@ -205,7 +205,9 @@ module Store : sig
   end
 end
 
-(** Like [create] but accepts a custom [store] for memoization. *)
+(** Like [create] but accepts a custom [store] for memoization. This is useful
+    when there is a custom data structure indexed by keys of type ['i] that is
+    more efficient than the one that Memo uses by default (a plain hash table). *)
 val create_with_store :
      string
   -> store:(module Store.S with type key = 'i)

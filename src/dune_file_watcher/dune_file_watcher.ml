@@ -4,43 +4,42 @@ type t = Pid.t
 
 let pid t = t
 
-let command =
-  lazy
-    (let excludes =
-       [ {|/_build|}
-       ; {|/_opam|}
-       ; {|/_esy|}
-       ; {|/\..+|}
-       ; {|~$|}
-       ; {|/#[^#]*#$|}
-       ; {|4913|} (* https://github.com/neovim/neovim/issues/3460 *)
-       ]
-     in
-     let path = Path.to_string_maybe_quoted Path.root in
-     match
-       if Sys.linux then
-         Bin.which ~path:(Env.path Env.initial) "inotifywait"
-       else
-         None
-     with
-     | Some inotifywait ->
-       (* On Linux, use inotifywait. *)
-       let excludes = String.concat ~sep:"|" excludes in
-       ( inotifywait
-       , [ "-r"
-         ; path
-         ; "--exclude"
-         ; excludes
-         ; "-e"
-         ; "close_write"
-         ; "-e"
-         ; "delete"
-         ; "--format"
-         ; "%w%f"
-         ; "-m"
-         ; "-q"
-         ] )
-     | None -> (
+let command ~root =
+  (let excludes =
+     [ {|/_build|}
+     ; {|/_opam|}
+     ; {|/_esy|}
+     ; {|/\..+|}
+     ; {|~$|}
+     ; {|/#[^#]*#$|}
+     ; {|4913|} (* https://github.com/neovim/neovim/issues/3460 *)
+     ]
+   in
+   let path = Path.to_string_maybe_quoted root in
+   match
+     if Sys.linux then
+       Bin.which ~path:(Env.path Env.initial) "inotifywait"
+     else
+       None
+   with
+   | Some inotifywait ->
+     (* On Linux, use inotifywait. *)
+     let excludes = String.concat ~sep:"|" excludes in
+     ( inotifywait
+     , [ "-r"
+       ; path
+       ; "--exclude"
+       ; excludes
+       ; "-e"
+       ; "close_write"
+       ; "-e"
+       ; "delete"
+       ; "--format"
+       ; "%w%f"
+       ; "-m"
+       ; "-q"
+       ] )
+   | None -> (
        (* On all other platforms, try to use fswatch. fswatch's event filtering
           is not reliable (at least on Linux), so don't try to use it, instead
           act on all events. *)
@@ -64,11 +63,11 @@ let command =
          User_error.raise
            [ Pp.text
                (if Sys.linux then
-                 "Please install inotifywait to enable watch mode. If \
-                  inotifywait is unavailable, fswatch may also be used but \
-                  will result in a worse experience."
-               else
-                 "Please install fswatch to enable watch mode.")
+                  "Please install inotifywait to enable watch mode. If \
+                   inotifywait is unavailable, fswatch may also be used but \
+                   will result in a worse experience."
+                else
+                  "Please install fswatch to enable watch mode.")
            ]))
 
 let buffer_capacity = 65536
@@ -101,8 +100,8 @@ let read_lines buffer fd =
     ~len:buffer.size;
   List.rev !lines
 
-let spawn_external_watcher () =
-  let prog, args = Lazy.force command in
+let spawn_external_watcher ~root =
+  let prog, args = command ~root in
   let prog = Path.to_absolute_filename prog in
   let argv = prog :: args in
   let r, w = Unix.pipe () in
@@ -110,8 +109,8 @@ let spawn_external_watcher () =
   Unix.close w;
   (r, pid)
 
-let create_no_buffering ~thread_safe_send_files_changed =
-  let pipe, pid = spawn_external_watcher () in
+let create_no_buffering ~thread_safe_send_files_changed ~root =
+  let pipe, pid = spawn_external_watcher ~root in
   let worker_thread pipe =
     let buffer = { data = Bytes.create buffer_capacity; size = 0 } in
     while true do
@@ -122,11 +121,11 @@ let create_no_buffering ~thread_safe_send_files_changed =
   ignore (Thread.create worker_thread pipe : Thread.t);
   pid
 
-let create_with_buffering ~debounce_interval ~thread_safe_send_files_changed =
+let with_buffering ~create ~thread_safe_send_files_changed ~debounce_interval =
   let files_changed = ref [] in
   let event_mtx = Mutex.create () in
   let event_cv = Condition.create () in
-  let pid = create_no_buffering ~thread_safe_send_files_changed:(fun lines ->
+  let res = create ~thread_safe_send_files_changed:(fun lines ->
     Mutex.lock event_mtx;
     files_changed := List.rev_append lines !files_changed;
     Condition.signal event_cv;
@@ -158,12 +157,18 @@ let create_with_buffering ~debounce_interval ~thread_safe_send_files_changed =
     buffer_thread ()
   in
   ignore (Thread.create buffer_thread () : Thread.t);
-  pid
+  res
 
-let create ~debounce_interval ~thread_safe_send_files_changed =
+let create ~root ~debounce_interval ~thread_safe_send_files_changed =
   match debounce_interval with
-  | None -> create_no_buffering ~thread_safe_send_files_changed
-  | Some debounce_interval -> create_with_buffering ~debounce_interval ~thread_safe_send_files_changed
+  | None -> create_no_buffering ~root ~thread_safe_send_files_changed
+  | Some debounce_interval ->
+    with_buffering ~thread_safe_send_files_changed ~debounce_interval
+      ~create:(create_no_buffering ~root)
 
 let create_default =
-  create ~debounce_interval:(Some (0.5  (* seconds *)))
+  create ~root:Path.root ~debounce_interval:(Some (0.5  (* seconds *)))
+
+let wait_watches_established _t =
+  (* TODO: implement *)
+  Thread.delay 0.3

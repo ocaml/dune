@@ -6,7 +6,8 @@ type t
    [debounce_interval] is measured in seconds and it controls the minimum
 *)
 val create :
-  debounce_interval:float option
+  root:Path.t
+  -> debounce_interval:float option
   -> thread_safe_send_files_changed:(Path.t list -> unit)
   -> t
 
@@ -17,3 +18,5 @@ val create_default :
 
 (** Pid of the external file watcher process *)
 val pid : t -> Pid.t
+
+val wait_watches_established : t -> unit

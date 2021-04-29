@@ -92,7 +92,6 @@ val nearest_dir : Path.Source.t -> Dir.t Memo.Build.t
 
 (** [nearest_vcs t fn] returns the version control system with the longest root
     path that is an ancestor of [fn]. *)
-
 val nearest_vcs : Path.Source.t -> Vcs.t option Memo.Build.t
 
 val files_of : Path.Source.t -> Path.Source.Set.t Memo.Build.t

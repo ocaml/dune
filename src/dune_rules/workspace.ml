@@ -622,10 +622,10 @@ let workspace_step1 =
       match clflags.workspace_file with
       | None ->
         let p = Path.of_string filename in
-        let+ exists = Dune_engine.Fs_memo.file_exists p in
+        let+ exists = Fs_memo.path_exists p in
         Option.some_if exists p
       | Some p -> (
-        Dune_engine.Fs_memo.file_exists p >>| function
+        Fs_memo.path_exists p >>| function
         | false ->
           User_error.raise
             [ Pp.textf "Workspace file %s does not exist"

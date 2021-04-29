@@ -3,15 +3,20 @@ open Import
 open Memo.Build.O
 
 module Fs : sig
+  (** A memoized version of [mkdir] that avoids calling [mkdir] multiple times
+      in the same directory. *)
   val mkdir_p : Path.Build.t -> unit Memo.Build.t
 
-  (** Creates directory if inside build path, otherwise asserts that directory
-      exists. *)
-  val mkdir_p_or_check_exists : loc:Loc.t -> Path.t -> unit Memo.Build.t
-
-  val assert_exists : loc:Loc.t -> Path.t -> unit Memo.Build.t
+  (** If the given path points to the build directory, we call [mkdir_p] on it
+      (or on the corresponding path in the sandbox if [sandboxed] is provided).
+      Otherwise, we assert that the given source or external path exists. *)
+  val mkdir_p_or_assert_existence :
+       ?sandboxed:(Path.Build.t -> Path.Build.t)
+    -> loc:Loc.t
+    -> Path.t
+    -> unit Memo.Build.t
 end = struct
-  let mkdir_p_def =
+  let mkdir_p_memo =
     (* CR-someday amokhov: It's difficult to think about the correctness of this
        memoized function. Right now, we never invalidate it, so if we delete a
        stale build directory, we'll not be able to recreate it later. Perhaps,
@@ -28,27 +33,17 @@ end = struct
         Path.mkdir_p (Path.build p);
         Memo.Build.return ())
 
-  let mkdir_p = Memo.exec mkdir_p_def
+  let mkdir_p = Memo.exec mkdir_p_memo
 
-  let assert_exists_def =
-    Memo.create "assert_path_exists"
-      ~input:(module Path)
-      ~output:(No_cutoff (module Bool))
-      (* CR-someday amokhov: We can switch to using [Fs_memo.file_exists] here,
-         since we never call this function on build paths. *)
-        (fun p -> Memo.Build.return (Path.Untracked.exists p))
-
-  let assert_exists ~loc path =
-    Memo.exec assert_exists_def path >>| function
-    | false ->
-      User_error.raise ~loc
-        [ Pp.textf "%S does not exist" (Path.to_string_maybe_quoted path) ]
-    | true -> ()
-
-  let mkdir_p_or_check_exists ~loc path =
+  let mkdir_p_or_assert_existence ?(sandboxed = Fun.id) ~loc path =
     match Path.as_in_build_dir path with
-    | None -> assert_exists ~loc path
-    | Some path -> mkdir_p path
+    | Some path -> mkdir_p (sandboxed path)
+    | None -> (
+      Fs_memo.path_exists path >>| function
+      | true -> ()
+      | false ->
+        User_error.raise ~loc
+          [ Pp.textf "%S does not exist" (Path.to_string_maybe_quoted path) ])
 end
 
 (* [Promoted_to_delete] is used mostly to implement [dune clean]. It is an
@@ -1183,14 +1178,15 @@ let get_rule_or_source t path =
     | None ->
       let* loc = Rule_fn.loc () in
       no_rule_found t ~loc path
-  else if Path.Untracked.exists path then
-    (* CR-someday amokhov: Switch the above to [Fs_memo.file_exists]. *)
-    let+ d = Fs_memo.file_digest path in
-    Source d
   else
-    let+ loc = Rule_fn.loc () in
-    User_error.raise ?loc
-      [ Pp.textf "File unavailable: %s" (Path.to_string_maybe_quoted path) ]
+    Fs_memo.path_exists path >>= function
+    | true ->
+      let+ d = Fs_memo.file_digest path in
+      Source d
+    | false ->
+      let+ loc = Rule_fn.loc () in
+      User_error.raise ?loc
+        [ Pp.textf "File unavailable: %s" (Path.to_string_maybe_quoted path) ]
 
 module Source_tree_map_reduce =
   Source_tree.Dir.Make_map_reduce (Memo.Build) (Monoid.Union (Path.Build.Set))
@@ -1463,9 +1459,7 @@ end = struct
             (Path.Set.union (Dep.Facts.dirs deps) chdirs)
             ~f:(fun path ->
               Memo.Build.run
-                (match Path.as_in_build_dir path with
-                | None -> Fs.assert_exists ~loc path
-                | Some path -> Fs.mkdir_p (sandboxed path)))
+                (Fs.mkdir_p_or_assert_existence ~loc ~sandboxed path))
         in
         let+ () = Memo.Build.run (Fs.mkdir_p (sandboxed dir)) in
         let deps =
@@ -1483,7 +1477,7 @@ end = struct
       Fiber.parallel_iter_set
         (module Path.Set)
         chdirs
-        ~f:(fun p -> Memo.Build.run (Fs.mkdir_p_or_check_exists ~loc p))
+        ~f:(fun p -> Memo.Build.run (Fs.mkdir_p_or_assert_existence ~loc p))
     in
     let build_deps deps = Memo.Build.run (build_deps deps) in
     let root =
@@ -1826,15 +1820,16 @@ end = struct
                 let dst = in_source_tree in
                 let in_source_tree = Path.source in_source_tree in
                 let* is_up_to_date =
-                  (* CR-someday amokhov: Switch to [Fs_memo.file_exists] here. *)
-                  if not (Path.Untracked.exists in_source_tree) then
-                    Fiber.return false
-                  else
-                    let in_build_dir_digest = Cached_digest.build_file path in
-                    let+ in_source_tree_digest =
-                      Memo.Build.run (Fs_memo.file_digest in_source_tree)
-                    in
-                    in_build_dir_digest = in_source_tree_digest
+                  Memo.Build.run
+                    (let open Memo.Build.O in
+                    Fs_memo.path_exists in_source_tree >>= function
+                    | false -> Memo.Build.return false
+                    | true ->
+                      let in_build_dir_digest = Cached_digest.build_file path in
+                      let+ in_source_tree_digest =
+                        Fs_memo.file_digest in_source_tree
+                      in
+                      Digest.equal in_build_dir_digest in_source_tree_digest)
                 in
                 if is_up_to_date then
                   Fiber.return ()
@@ -2026,7 +2021,8 @@ end = struct
     in
     Io.read_file (Path.build target)
 
-  (* a rule can have multiple files, but rule.run_rule may only be called once.
+  (* A rule can have multiple targets but calls to [execute_rule] are memoized,
+     so the rule will be executed only once.
 
      [build_file_impl] returns both the set of dependencies of the file as well
      as its digest. *)

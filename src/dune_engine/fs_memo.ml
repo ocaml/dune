@@ -29,13 +29,13 @@ let depend path =
    out explicitly by doing things in the right order.
 
    Currently, we do not expose this low-level primitive. If you need it, perhaps
-   you could add a higher-level primitive instead, such as [file_exists]? *)
+   you could add a higher-level primitive instead, such as [path_exists]? *)
 let declaring_dependency path ~f =
   let+ () = depend path in
   f path
 
 (* Assuming our file system watcher is any good, this untracked call is safe. *)
-let file_exists = declaring_dependency ~f:Path.Untracked.exists
+let path_exists = declaring_dependency ~f:Path.Untracked.exists
 
 (* CR-someday amokhov: It is unclear if we got the layers of abstraction right
    here. One could argue that caching is a higher-level concept compared to file
@@ -111,9 +111,9 @@ module Event = struct
      and robust but doesn't take advantage of all the information we receive.
      Here are some ideas for future optimisation:
 
-     - Don't invalidate [file_exists] queries on [File_changed] events.
+     - Don't invalidate [path_exists] queries on [File_changed] events.
 
-     - If a [file_exists] query currently returns [true] and we receive a
+     - If a [path_exists] query currently returns [true] and we receive a
      corresponding [File_deleted] event, we can change the query's result to
      [false] without rerunning the [Path.exists] function (and vice versa).
 

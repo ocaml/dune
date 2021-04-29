@@ -166,7 +166,8 @@ end = struct
     { t with files = String.Set.filter t.files ~f:(fun fn -> f t.path fn) }
 
   let of_source_path path =
-    match Path.readdir_unsorted_with_kinds (Path.source path) with
+    (* CR-someday amokhov: Use [Fs_memo.dir_contents] instead. *)
+    match Path.Untracked.readdir_unsorted_with_kinds (Path.source path) with
     | Error unix_error ->
       User_warning.emit
         [ Pp.textf "Unable to read directory %s. Ignoring."

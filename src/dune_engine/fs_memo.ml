@@ -34,7 +34,8 @@ let declaring_dependency path ~f =
   let+ () = depend path in
   f path
 
-let file_exists = declaring_dependency ~f:Path.exists
+(* Assuming our file system watcher is any good, this untracked call is safe. *)
+let file_exists = declaring_dependency ~f:Path.Untracked.exists
 
 (* CR-someday amokhov: It is unclear if we got the layers of abstraction right
    here. One could argue that caching is a higher-level concept compared to file
@@ -44,7 +45,9 @@ let file_exists = declaring_dependency ~f:Path.exists
    of [file_digest] seems error-prone. We may need to rethink this decision. *)
 let file_digest = declaring_dependency ~f:Cached_digest.source_or_external_file
 
-let dir_contents = declaring_dependency ~f:Path.readdir_unsorted_with_kinds
+(* Assuming our file system watcher is any good, this untracked call is safe. *)
+let dir_contents =
+  declaring_dependency ~f:Path.Untracked.readdir_unsorted_with_kinds
 
 module Rebuild_required = struct
   type t =

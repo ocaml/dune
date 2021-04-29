@@ -34,7 +34,9 @@ end = struct
     Memo.create "assert_path_exists"
       ~input:(module Path)
       ~output:(No_cutoff (module Bool))
-      (fun p -> Memo.Build.return (Path.exists p))
+      (* CR-someday amokhov: We can switch to using [Fs_memo.file_exists] here,
+         since we never call this function on build paths. *)
+        (fun p -> Memo.Build.return (Path.Untracked.exists p))
 
   let assert_exists ~loc path =
     Memo.exec assert_exists_def path >>| function
@@ -630,7 +632,7 @@ let rec with_locks t mutexes ~f =
       (fun () -> with_locks t mutexes ~f)
 
 let remove_old_artifacts ~dir ~rules_here ~(subdirs_to_keep : Subdir_set.t) =
-  match Path.readdir_unsorted_with_kinds (Path.build dir) with
+  match Path.Untracked.readdir_unsorted_with_kinds (Path.build dir) with
   | exception _ -> ()
   | Error _ -> ()
   | Ok files ->
@@ -650,7 +652,7 @@ let remove_old_artifacts ~dir ~rules_here ~(subdirs_to_keep : Subdir_set.t) =
    not. *)
 let remove_old_sub_dirs_in_anonymous_actions_dir ~dir
     ~(subdirs_to_keep : Subdir_set.t) =
-  match Path.readdir_unsorted_with_kinds (Path.build dir) with
+  match Path.Untracked.readdir_unsorted_with_kinds (Path.build dir) with
   | exception _ -> ()
   | Error _ -> ()
   | Ok files ->
@@ -1181,7 +1183,8 @@ let get_rule_or_source t path =
     | None ->
       let* loc = Rule_fn.loc () in
       no_rule_found t ~loc path
-  else if Path.exists path then
+  else if Path.Untracked.exists path then
+    (* CR-someday amokhov: Switch the above to [Fs_memo.file_exists]. *)
     let+ d = Fs_memo.file_digest path in
     Source d
   else
@@ -1823,7 +1826,8 @@ end = struct
                 let dst = in_source_tree in
                 let in_source_tree = Path.source in_source_tree in
                 let* is_up_to_date =
-                  if not (Path.exists in_source_tree) then
+                  (* CR-someday amokhov: Switch to [Fs_memo.file_exists] here. *)
+                  if not (Path.Untracked.exists in_source_tree) then
                     Fiber.return false
                   else
                     let in_build_dir_digest = Cached_digest.build_file path in

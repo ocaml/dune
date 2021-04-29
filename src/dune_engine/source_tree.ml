@@ -28,9 +28,7 @@ module File = struct
   module Map = Map.Make (T)
 
   let of_source_path p =
-    (* CR-someday aalekseyev: handle errors from [Path.stat] *)
-    (* CR-someday amokhov: ... and use a tracked version of [Path.stat]. *)
-    of_stats (Path.stat_exn (Path.source p))
+    Fs_memo.path_stat (Path.source p) >>| Result.map ~f:of_stats
 end
 
 module Dune_file = struct
@@ -168,7 +166,7 @@ end = struct
     { t with files = String.Set.filter t.files ~f:(fun fn -> f t.path fn) }
 
   let of_source_path path =
-    Fs_memo.dir_contents (Path.source path) >>| function
+    Fs_memo.dir_contents (Path.source path) >>= function
     | Error unix_error ->
       User_warning.emit
         [ Pp.textf "Unable to read directory %s. Ignoring."
@@ -182,31 +180,35 @@ end = struct
                   Dune_file.fname))
         ; Pp.textf "Reason: %s" (Unix.error_message unix_error)
         ];
-      Error unix_error
+      Memo.Build.return (Error unix_error)
     | Ok unsorted_contents ->
-      let files, dirs =
-        List.filter_partition_map unsorted_contents ~f:(fun (fn, kind) ->
+      let+ files, dirs =
+        Memo.Build.parallel_map unsorted_contents ~f:(fun (fn, kind) ->
             let path = Path.Source.relative path fn in
             if Path.Source.is_in_build_dir path then
-              Skip
+              Memo.Build.return List.Skip
             else
-              let is_directory, file =
+              let+ is_directory, file =
                 match kind with
-                | S_DIR -> (true, File.of_source_path path)
+                | S_DIR -> (
+                  File.of_source_path path >>| function
+                  | Ok file -> (true, file)
+                  | Error _ -> (true, File.dummy))
                 | S_LNK -> (
-                  (* CR-someday amokhov: [Path.stat] should be tracked. *)
-                  match Path.stat (Path.source path) with
-                  | Error _ -> (false, File.dummy)
+                  Fs_memo.path_stat (Path.source path) >>| function
                   | Ok ({ st_kind = S_DIR; _ } as st) -> (true, File.of_stats st)
-                  | Ok _ -> (false, File.dummy))
-                | _ -> (false, File.dummy)
+                  | Ok _
+                  | Error _ ->
+                    (false, File.dummy))
+                | _ -> Memo.Build.return (false, File.dummy)
               in
               if is_directory then
-                Right (fn, path, file)
+                List.Right (fn, path, file)
               else if is_special kind then
                 Skip
               else
                 Left fn)
+        >>| List.filter_partition_map ~f:Fun.id
       in
       { path
       ; files = String.Set.of_list files
@@ -221,7 +223,7 @@ module Dirs_visited : sig
   (** Unique set of all directories visited *)
   type t
 
-  val singleton : Path.Source.t -> t
+  val singleton : Path.Source.t -> File.t -> t
 
   module Per_fn : sig
     (** Stores the directories visited per node (basename) *)
@@ -241,7 +243,7 @@ module Dirs_visited : sig
 end = struct
   type t = Path.Source.t File.Map.t
 
-  let singleton path = File.Map.singleton (File.of_source_path path) path
+  let singleton path file = File.Map.singleton file path
 
   module Per_fn = struct
     type nonrec t = t String.Map.t
@@ -522,15 +524,17 @@ end = struct
     let* ancestor_vcs = Fdecl.get ancestor_vcs in
     let path = Path.Source.root in
     let dir_status : Sub_dirs.Status.t = Normal in
+    let error_unable_to_load ~path error =
+      User_error.raise
+        [ Pp.textf "Unable to load source %s.@.Reason:%s@."
+            (Path.Source.to_string_maybe_quoted path)
+            (Unix.error_message error)
+        ]
+    in
     let* readdir =
       Readdir.of_source_path path >>| function
       | Ok dir -> dir
-      | Error m ->
-        User_error.raise
-          [ Pp.textf "Unable to load source %s.@.Reason:%s@."
-              (Path.Source.to_string_maybe_quoted path)
-              (Unix.error_message m)
-          ]
+      | Error e -> error_unable_to_load ~path e
     in
     let project =
       match
@@ -542,7 +546,11 @@ end = struct
     in
     let* readdir = Readdir.filter_files readdir project in
     let vcs = get_vcs ~default:ancestor_vcs ~readdir in
-    let dirs_visited = Dirs_visited.singleton path in
+    let* dirs_visited =
+      File.of_source_path path >>| function
+      | Ok file -> Dirs_visited.singleton path file
+      | Error e -> error_unable_to_load ~path e
+    in
     let+ contents, visited =
       contents readdir ~dirs_visited ~project ~dir_status
     in

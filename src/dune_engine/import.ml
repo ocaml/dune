@@ -16,14 +16,29 @@ module Path = struct
     let exists = exists
 
     let readdir_unsorted_with_kinds = readdir_unsorted_with_kinds
+
+    let stat = stat
+
+    let stat_exn = stat_exn
+
+    let lstat = lstat
+
+    let lstat_exn = lstat_exn
   end
 
-  (* Encourage using [Fs_memo.file_exists] if possible. The untracked version is
-     still available as [Path.Untracked.exists]. *)
+  (* Encourage using [Fs_memo] equivalents if possible. The untracked versions
+     are still available in the [Path.Untracked] module. *)
+
   let exists = `Use_fs_memo_file_exists_instead
 
-  (* Encourage using [Fs_memo.dir_contents] if possible. The untracked version
-     is still available as [Path.Untracked.readdir_unsorted_with_kinds]. *)
+  let stat = `Use_fs_memo_stat_instead
+
+  let stat_exn = `Use_fs_memo_stat_instead
+
+  let lstat = `Use_fs_memo_lstat_instead
+
+  let lstat_exn = `Use_fs_memo_lstat_instead
+
   let readdir_unsorted_with_kinds = `Use_fs_memo_dir_contents_instead
 end
 

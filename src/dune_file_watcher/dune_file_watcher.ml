@@ -71,8 +71,6 @@ let command =
                  "Please install fswatch to enable watch mode.")
            ]))
 
-let buffering_time = 0.5 (* seconds *)
-
 let buffer_capacity = 65536
 
 type buffer =
@@ -112,19 +110,28 @@ let spawn_external_watcher () =
   Unix.close w;
   (r, pid)
 
-let create ~thread_safe_send_files_changed =
-  let files_changed = ref [] in
-  let event_mtx = Mutex.create () in
-  let event_cv = Condition.create () in
+let create_no_buffering ~thread_safe_send_files_changed =
+  let pipe, pid = spawn_external_watcher () in
   let worker_thread pipe =
     let buffer = { data = Bytes.create buffer_capacity; size = 0 } in
     while true do
       let lines = List.map (read_lines buffer pipe) ~f:Path.of_string in
-      Mutex.lock event_mtx;
-      files_changed := List.rev_append lines !files_changed;
-      Condition.signal event_cv;
-      Mutex.unlock event_mtx
+      thread_safe_send_files_changed lines
     done
+  in
+  ignore (Thread.create worker_thread pipe : Thread.t);
+  pid
+
+let create_with_buffering ~debounce_interval ~thread_safe_send_files_changed =
+  let files_changed = ref [] in
+  let event_mtx = Mutex.create () in
+  let event_cv = Condition.create () in
+  let pid = create_no_buffering ~thread_safe_send_files_changed:(fun lines ->
+    Mutex.lock event_mtx;
+    files_changed := List.rev_append lines !files_changed;
+    Condition.signal event_cv;
+    Mutex.unlock event_mtx
+  )
   in
   (* The buffer thread is used to avoid flooding the main thread with file
      changes events when a lot of file changes are reported at once. In
@@ -137,7 +144,7 @@ let create ~thread_safe_send_files_changed =
      so that we get a fast response time
 
      - after the first event is received, buffer subsequent events for
-     [buffering_time] *)
+     [debounce_interval] *)
   let rec buffer_thread () =
     Mutex.lock event_mtx;
     while List.is_empty !files_changed do
@@ -147,10 +154,16 @@ let create ~thread_safe_send_files_changed =
     files_changed := [];
     Mutex.unlock event_mtx;
     thread_safe_send_files_changed files;
-    Thread.delay buffering_time;
+    Thread.delay debounce_interval;
     buffer_thread ()
   in
-  let pipe, pid = spawn_external_watcher () in
-  ignore (Thread.create worker_thread pipe : Thread.t);
   ignore (Thread.create buffer_thread () : Thread.t);
   pid
+
+let create ~debounce_interval ~thread_safe_send_files_changed =
+  match debounce_interval with
+  | None -> create_no_buffering ~thread_safe_send_files_changed
+  | Some debounce_interval -> create_with_buffering ~debounce_interval ~thread_safe_send_files_changed
+
+let create_default =
+  create ~debounce_interval:(Some (0.5  (* seconds *)))

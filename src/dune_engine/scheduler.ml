@@ -801,7 +801,7 @@ module Run = struct
       | No_watcher -> None
       | Detect_external ->
         Some
-          (Dune_file_watcher.create
+          (Dune_file_watcher.create_default
              ~thread_safe_send_files_changed:(fun files_changed ->
                Event_queue.send_files_changed t.events files_changed))
     in

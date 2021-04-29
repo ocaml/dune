@@ -13,6 +13,8 @@ module Annot : sig
 
   module Make (M : sig
     type payload
+
+    val to_dyn : payload -> Dyn.t
   end) : S with type payload = M.payload
 end
 

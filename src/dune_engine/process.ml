@@ -8,6 +8,8 @@ module Action_output_on_success = Execution_parameters.Action_output_on_success
 
 module With_directory_annot = User_error.Annot.Make (struct
   type payload = Path.t
+
+  let to_dyn = Path.to_dyn
 end)
 
 type ('a, 'b) failure_mode =

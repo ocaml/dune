@@ -1,6 +1,8 @@
 module Annot = struct
   type t = ..
 
+  let format = ref (fun _ -> assert false)
+
   module type S = sig
     type payload
 
@@ -11,6 +13,8 @@ module Annot = struct
 
   module Make (M : sig
     type payload
+
+    val to_dyn : payload -> Dyn.t
   end) : S with type payload = M.payload = struct
     type payload = M.payload
 
@@ -22,6 +26,13 @@ module Annot = struct
       match t with
       | A t -> on_match t
       | _ -> on_failure ()
+
+    let () =
+      let f = function
+        | A t -> Dyn.pp (M.to_dyn t)
+        | other -> !format other
+      in
+      format := f
   end
 end
 
@@ -38,5 +49,9 @@ let raise ?loc ?hints ?annot paragraphs =
 
 let () =
   Printexc.register_printer (function
-    | E (t, _) -> Some (Format.asprintf "%a@?" Pp.to_fmt (User_message.pp t))
+    | E (t, None) -> Some (Format.asprintf "%a@?" Pp.to_fmt (User_message.pp t))
+    | E (t, Some annot) ->
+      Some
+        (Format.asprintf "%a (annotations: %a)@?" Pp.to_fmt (User_message.pp t)
+           Pp.to_fmt (!Annot.format annot))
     | _ -> None)

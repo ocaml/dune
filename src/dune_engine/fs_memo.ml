@@ -48,6 +48,10 @@ let path_stat = declaring_dependency ~f:Path.Untracked.stat
    of [file_digest] seems error-prone. We may need to rethink this decision. *)
 let file_digest = declaring_dependency ~f:Cached_digest.source_or_external_file
 
+let with_lexbuf_from_file path ~f =
+  declaring_dependency path ~f:(fun path ->
+      Io.Untracked.with_lexbuf_from_file path ~f)
+
 let dir_contents =
   declaring_dependency ~f:Path.Untracked.readdir_unsorted_with_kinds
 

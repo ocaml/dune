@@ -614,17 +614,10 @@ end = struct
         Memo.Build.return (Some { Output.dir; visited }))
 
   let find_dir_raw =
-    let module Output = struct
-      type t = Dir0.t Output.t option
-
-      let to_dyn =
-        let open Dyn.Encoder in
-        option (Output.to_dyn Dir0.to_dyn)
-    end in
     let memo =
-      Memo.create "find-dir-raw"
+      Memo.create_no_cutoff "find-dir-raw"
         ~input:(module Path.Source)
-        ~output:(No_cutoff (module Output))
+        ~output_to_dyn:(Dyn.Encoder.option (Output.to_dyn Dir0.to_dyn))
         find_dir_raw_impl
     in
     Memo.cell memo

@@ -132,7 +132,7 @@ module Readdir : sig
 
   val filter_files : t -> Dune_project.t -> t Memo.Build.t
 
-  val of_source_path : Path.Source.t -> (t, Unix.error) Result.t
+  val of_source_path : Path.Source.t -> (t, Unix.error) Result.t Memo.Build.t
 end = struct
   type t =
     { path : Path.Source.t
@@ -166,8 +166,7 @@ end = struct
     { t with files = String.Set.filter t.files ~f:(fun fn -> f t.path fn) }
 
   let of_source_path path =
-    (* CR-someday amokhov: Use [Fs_memo.dir_contents] instead. *)
-    match Path.Untracked.readdir_unsorted_with_kinds (Path.source path) with
+    Fs_memo.dir_contents (Path.source path) >>| function
     | Error unix_error ->
       User_warning.emit
         [ Pp.textf "Unable to read directory %s. Ignoring."
@@ -520,8 +519,8 @@ end = struct
     let* ancestor_vcs = Fdecl.get ancestor_vcs in
     let path = Path.Source.root in
     let dir_status : Sub_dirs.Status.t = Normal in
-    let readdir =
-      match Readdir.of_source_path path with
+    let* readdir =
+      Readdir.of_source_path path >>| function
       | Ok dir -> dir
       | Error m ->
         User_error.raise
@@ -579,11 +578,11 @@ end = struct
       | None -> Memo.Build.return None
       | Some (parent_dir, dirs_visited, dir_status, virtual_) ->
         let dirs_visited = Dirs_visited.Per_fn.find dirs_visited path in
-        let readdir =
+        let* readdir =
           if virtual_ then
-            Readdir.empty path
+            Memo.Build.return (Readdir.empty path)
           else
-            match Readdir.of_source_path path with
+            Readdir.of_source_path path >>| function
             | Ok dir -> dir
             | Error _ -> Readdir.empty path
         in

@@ -6,7 +6,9 @@ module Event = Chrome_trace.Event
 module Timestamp = Event.Timestamp
 module Action_output_on_success = Execution_parameters.Action_output_on_success
 
-type User_error.Annot.t += With_directory of Path.t
+module With_directory_annot = User_error.Annot.Make (struct
+  type payload = Path.t
+end)
 
 type ('a, 'b) failure_mode =
   | Strict : ('a, 'a) failure_mode
@@ -374,7 +376,7 @@ module Exit_status = struct
       | None -> Path.of_string (Sys.getcwd ())
       | Some dir -> dir
     in
-    User_error.raise paragraphs ~annot:(With_directory dir)
+    User_error.raise paragraphs ~annot:(With_directory_annot.make dir)
 
   let handle_verbose t ~id ~output ~command_line ~dir =
     let open Pp.O in

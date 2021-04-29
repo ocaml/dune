@@ -1,7 +1,19 @@
 (** Error meant for humans *)
 
 module Annot : sig
-  type t = ..
+  type t
+
+  module type S = sig
+    type payload
+
+    val make : payload -> t
+
+    val check : t -> (payload -> 'a) -> (unit -> 'a) -> 'a
+  end
+
+  module Make (M : sig
+    type payload
+  end) : S with type payload = M.payload
 end
 
 (** User errors are errors that users need to fix themselves in order to make

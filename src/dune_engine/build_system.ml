@@ -358,9 +358,10 @@ end
 module Error = struct
   type t = Exn_with_backtrace.t
 
-  let extract_dir : User_error.Annot.t -> Path.t option = function
-    | Process.With_directory dir -> Some dir
-    | _ -> None
+  let extract_dir annot =
+    Process.With_directory_annot.check annot
+      (fun dir -> Some dir)
+      (fun () -> None)
 
   let info (t : t) =
     let exn, deps = Dep_path.unwrap_exn t.exn in

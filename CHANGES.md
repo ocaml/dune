@@ -92,6 +92,9 @@ Unreleased
 - If an .ml file is not used by an executable, Dune no longer report
   parsing error in this file (#...., @jeremiedimino)
 
+- Experimental ctypes support (#3905, fixes #135, @mbacarella)
+
+
 2.8.2 (21/01/2021)
 ------------------
 

@@ -28,7 +28,8 @@ module File = struct
   module Map = Map.Make (T)
 
   let of_source_path p =
-    (* CR aalekseyev: handle errors from [Path.stat] *)
+    (* CR-someday aalekseyev: handle errors from [Path.stat] *)
+    (* CR-someday amokhov: ... and use a tracked version of [Path.stat]. *)
     of_stats (Path.stat_exn (Path.source p))
 end
 
@@ -102,6 +103,7 @@ module Dune_file = struct
       match file_exists with
       | false -> (Plain, load_plain [] ~file ~from_parent ~project)
       | true ->
+        (* CR-someday amokhov: [Io.with_lexbuf_from_file] should be tracked. *)
         Io.with_lexbuf_from_file (Path.source file) ~f:(fun lb ->
             if Dune_lexer.is_script lb then
               let from_parent = load_plain [] ~file ~from_parent ~project in
@@ -192,6 +194,7 @@ end = struct
                 match kind with
                 | S_DIR -> (true, File.of_source_path path)
                 | S_LNK -> (
+                  (* CR-someday amokhov: [Path.stat] should be tracked. *)
                   match Path.stat (Path.source path) with
                   | Error _ -> (false, File.dummy)
                   | Ok ({ st_kind = S_DIR; _ } as st) -> (true, File.of_stats st)

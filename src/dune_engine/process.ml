@@ -378,7 +378,9 @@ module Exit_status = struct
       | None -> Path.of_string (Sys.getcwd ())
       | Some dir -> dir
     in
-    User_error.raise paragraphs ~annot:(With_directory_annot.make dir)
+    raise
+      (User_error.E
+         (User_message.make paragraphs, Some (With_directory_annot.make dir)))
 
   let handle_verbose t ~id ~output ~command_line ~dir =
     let open Pp.O in

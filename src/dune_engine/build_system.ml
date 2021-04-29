@@ -7,14 +7,13 @@ module Fs : sig
       in the same directory. *)
   val mkdir_p : Path.Build.t -> unit Memo.Build.t
 
-  (** If the given path points to the build directory, we call [mkdir_p] on it
-      (or on the corresponding path in the sandbox if [sandboxed] is provided).
-      Otherwise, we assert that the given source or external path exists. *)
-  val mkdir_p_or_assert_existence :
-       ?sandboxed:(Path.Build.t -> Path.Build.t)
-    -> loc:Loc.t
-    -> Path.t
-    -> unit Memo.Build.t
+  (** If the given path points to the build directory, we call [mkdir_p] on it.
+      Otherwise, we assert that the given source or external path exists.
+
+      How can non-build paths appear here? Here are two examples: (i) there are
+      rules that copy source files to the build directory, (ii) some rules may
+      need to [chdir] to a source directory to run an action there. *)
+  val mkdir_p_or_assert_existence : loc:Loc.t -> Path.t -> unit Memo.Build.t
 end = struct
   let mkdir_p_memo =
     (* CR-someday amokhov: It's difficult to think about the correctness of this
@@ -35,9 +34,9 @@ end = struct
 
   let mkdir_p = Memo.exec mkdir_p_memo
 
-  let mkdir_p_or_assert_existence ?(sandboxed = Fun.id) ~loc path =
+  let mkdir_p_or_assert_existence ~loc path =
     match Path.as_in_build_dir path with
-    | Some path -> mkdir_p (sandboxed path)
+    | Some path -> mkdir_p path
     | None -> (
       Fs_memo.path_exists path >>| function
       | true -> ()
@@ -1459,7 +1458,14 @@ end = struct
             (Path.Set.union (Dep.Facts.dirs deps) chdirs)
             ~f:(fun path ->
               Memo.Build.run
-                (Fs.mkdir_p_or_assert_existence ~loc ~sandboxed path))
+                (match Path.as_in_build_dir path with
+                | None ->
+                  (* We do not need to assert the existence of [path] here. The
+                     existence of paths that come from [deps] has already been
+                     ensured. As for [chdirs], their existence is asserted in
+                     the [Fs.mkdir_p_or_assert_existence] call below. *)
+                  Memo.Build.return ()
+                | Some path -> Fs.mkdir_p (sandboxed path)))
         in
         let+ () = Memo.Build.run (Fs.mkdir_p (sandboxed dir)) in
         let deps =

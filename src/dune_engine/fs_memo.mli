@@ -8,8 +8,8 @@ open Import
    only for source paths, because we don't watch external directories. We should
    try to implement at least a partial support for watching external paths. *)
 
-(** Check if a source or external file exists and declare a dependency on it. *)
-val file_exists : Path.t -> bool Memo.Build.t
+(** Check if a source or external path exists and declare a dependency on it. *)
+val path_exists : Path.t -> bool Memo.Build.t
 
 (** Digest the contents of a source or external file and declare a dependency on
     it. *)

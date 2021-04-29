@@ -11,6 +11,9 @@ open Import
 (** Check if a source or external path exists and declare a dependency on it. *)
 val path_exists : Path.t -> bool Memo.Build.t
 
+(** Call [Path.stat] on a path and declare a dependency on it. *)
+val path_stat : Path.t -> (Unix.stats, Unix.error) result Memo.Build.t
+
 (** Digest the contents of a source or external file and declare a dependency on
     it. *)
 val file_digest : Path.t -> Digest.t Memo.Build.t

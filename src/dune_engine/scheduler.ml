@@ -801,7 +801,7 @@ module Run = struct
       | No_watcher -> None
       | Detect_external ->
         Some
-          (File_watcher.create
+          (Dune_file_watcher.create
              ~thread_safe_send_files_changed:(fun files_changed ->
                Event_queue.send_files_changed t.events files_changed))
     in
@@ -820,7 +820,7 @@ module Run = struct
         Error (exn_with_bt.exn, Some exn_with_bt.backtrace)
     in
     Option.iter watcher ~f:(fun watcher ->
-        ignore (wait_for_process t (File_watcher.pid watcher) : _ Fiber.t));
+        ignore (wait_for_process t (Dune_file_watcher.pid watcher) : _ Fiber.t));
     ignore (kill_and_wait_for_all_processes t : saw_signal);
     match result with
     | Ok a -> a

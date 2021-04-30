@@ -97,12 +97,12 @@ module Dune_file = struct
     { Plain.contents; for_subdirs = active }
 
   let load file ~file_exists ~from_parent ~project =
-    let kind, plain =
+    let+ kind, plain =
       match file_exists with
-      | false -> (Plain, load_plain [] ~file ~from_parent ~project)
+      | false ->
+        Memo.Build.return (Plain, load_plain [] ~file ~from_parent ~project)
       | true ->
-        (* CR-someday amokhov: [Io.with_lexbuf_from_file] should be tracked. *)
-        Io.with_lexbuf_from_file (Path.source file) ~f:(fun lb ->
+        Fs_memo.with_lexbuf_from_file (Path.source file) ~f:(fun lb ->
             if Dune_lexer.is_script lb then
               let from_parent = load_plain [] ~file ~from_parent ~project in
               (Ocaml_script, from_parent)
@@ -471,7 +471,7 @@ end = struct
       else
         None
     in
-    let+ from_parent =
+    let* from_parent =
       match Path.Source.parent path with
       | None -> Memo.Build.return None
       | Some parent ->
@@ -485,19 +485,16 @@ end = struct
         in
         (dune_file.path, dir_map)
     in
-    let open Option.O in
-    let+ file =
+    let file =
       match (file_exists, from_parent) with
       | None, None -> None
       | Some fname, _ -> Some (Path.Source.relative path fname)
       | None, Some (path, _) -> Some path
     in
-    let from_parent =
-      let+ _, from_parent = from_parent in
-      from_parent
-    in
-    let file_exists = Option.is_some file_exists in
-    Dune_file.load file ~file_exists ~project ~from_parent
+    Memo.Build.Option.map file ~f:(fun file ->
+        let file_exists = Option.is_some file_exists in
+        let from_parent = Option.map from_parent ~f:snd in
+        Dune_file.load file ~file_exists ~project ~from_parent)
 
   let contents { Readdir.path; dirs; files } ~dirs_visited ~project
       ~(dir_status : Sub_dirs.Status.t) =
@@ -617,17 +614,10 @@ end = struct
         Memo.Build.return (Some { Output.dir; visited }))
 
   let find_dir_raw =
-    let module Output = struct
-      type t = Dir0.t Output.t option
-
-      let to_dyn =
-        let open Dyn.Encoder in
-        option (Output.to_dyn Dir0.to_dyn)
-    end in
     let memo =
-      Memo.create "find-dir-raw"
+      Memo.create_no_cutoff "find-dir-raw"
         ~input:(module Path.Source)
-        ~output:(No_cutoff (module Output))
+        ~output_to_dyn:(Dyn.Encoder.option (Output.to_dyn Dir0.to_dyn))
         find_dir_raw_impl
     in
     Memo.cell memo

@@ -42,6 +42,19 @@ module Path = struct
   let readdir_unsorted_with_kinds = `Use_fs_memo_dir_contents_instead
 end
 
+module Io = struct
+  include Io
+
+  module Untracked = struct
+    let with_lexbuf_from_file = with_lexbuf_from_file
+  end
+
+  (* Encourage using [Fs_memo] equivalents if possible. The untracked versions
+     are still available in the [Io.Untracked] module. *)
+
+  let with_lexbuf_from_file = `Use_fs_memo_with_lexbuf_from_file
+end
+
 (* To make bug reports usable *)
 let () = Printexc.record_backtrace true
 

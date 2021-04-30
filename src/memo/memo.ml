@@ -15,7 +15,7 @@ module type Build = sig
   val memo_build : 'a build -> 'a t
 end
 
-module Build = struct
+module Build0 = struct
   include Fiber
 
   let if_ x y =
@@ -1061,7 +1061,7 @@ let get_call_stack = Call_stack.get_call_stack_without_state
 let invalidate_dep_node (node : _ Dep_node.t) = node.last_cached_value <- None
 
 module Current_run = struct
-  let f () = Run.current () |> Build.return
+  let f () = Run.current () |> Build0.return
 
   let memo =
     create "current-run" ~input:(module Unit) ~output:(No_cutoff (module Run)) f
@@ -1072,6 +1072,14 @@ module Current_run = struct
 end
 
 let current_run () = Current_run.exec ()
+
+module Build = struct
+  include Build0
+
+  let of_non_reproducible_fiber fiber =
+    let* (_ : Run.t) = current_run () in
+    fiber
+end
 
 module With_implicit_output = struct
   type ('i, 'o) t = 'i -> 'o Fiber.t
@@ -1206,3 +1214,5 @@ let restart_current_run () =
 let reset () =
   restart_current_run ();
   if not incremental_mode_enabled then Caches.clear ()
+
+let clear_memoization_caches () = Caches.clear ()

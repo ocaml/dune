@@ -473,8 +473,9 @@ let%expect_test "previously_evaluated_cell" =
     previously_evaluated_cell x = [x]
     previously_evaluated_cell y = [y]
   |}];
-  Memo.reset ();
-  (* Both switch back to unevaluated after resetting the Memo. *)
+  Memo.clear_memoization_caches ();
+  Memo.restart_current_run ();
+  (* Both switch back to unevaluated after clearing all memoization caches. *)
   print_previously_evaluated_cell "x";
   print_previously_evaluated_cell "y";
   [%expect

@@ -27,12 +27,17 @@ module Build : sig
 
   val run : 'a t -> 'a Fiber.t
 
-  (** [of_reproducible_fiber fiber] injects a fiber into the build monad. This
-      module assumes that the given fiber is "reproducible", i.e. that executing
-      it multiple times will always yield the same result.
-
-      It is however up to the user to ensure this property. *)
+  (** [of_reproducible_fiber fiber] injects a fiber into the build monad. The
+      given fiber must be "reproducible", i.e. executing it multiple times
+      should always yield the same result. It is up to the caller to ensure that
+      this property holds. If it doesn't, use [of_non_reproducible_fiber]. *)
   val of_reproducible_fiber : 'a Fiber.t -> 'a t
+
+  (** [of_non_reproducible_fiber fiber] injects a fiber into the build monad.
+      The fiber is considered to be "non-reproducible", i.e. it may return
+      different values each time it is executed (for example, the current time),
+      and it will therefore be re-executed on every build run. *)
+  val of_non_reproducible_fiber : 'a Fiber.t -> 'a t
 
   val return : 'a -> 'a t
 
@@ -148,6 +153,10 @@ val restart_current_run : unit -> unit
     variable [DUNE_WATCHING_MODE_INCREMENTAL], and we should therefore assume
     that the build system tracks all relevant side effects in the [Build] monad. *)
 val incremental_mode_enabled : bool
+
+(** Forget all memoized values, forcing them to be recomputed on the next build
+    run. Intended for use by the testsuite. *)
+val clear_memoization_caches : unit -> unit
 
 module type Output_no_cutoff = sig
   type t

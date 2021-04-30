@@ -128,9 +128,6 @@ module Event : sig
         returned first. *)
     val next : t -> event
 
-    (** Handle all enqueued deduplications. *)
-    val flush_sync_tasks : t -> unit
-
     (** Ignore the ne next file change event about this file. *)
     val ignore_next_file_change_event : t -> Path.t -> unit
 
@@ -153,8 +150,6 @@ module Event : sig
     val send_job_completed : t -> job -> Proc.Process_info.t -> unit
 
     val send_signal : t -> Signal.t -> unit
-
-    val send_sync_task : t -> (unit -> unit) -> unit
   end
   with type event := t
 end = struct
@@ -167,7 +162,6 @@ end = struct
   module Queue = struct
     type t =
       { jobs_completed : (job * Proc.Process_info.t) Queue.t
-      ; sync_tasks : (unit -> unit) Queue.t
       ; mutable files_changed : Path.t list
       ; mutable signals : Signal.Set.t
       ; mutex : Mutex.t
@@ -189,7 +183,6 @@ end = struct
     let create stats =
       let jobs_completed = Queue.create () in
       let rpc_completed = Queue.create () in
-      let sync_tasks = Queue.create () in
       let files_changed = [] in
       let signals = Signal.Set.empty in
       let mutex = Mutex.create () in
@@ -198,7 +191,6 @@ end = struct
       let pending_jobs = 0 in
       let pending_rpc = 0 in
       { jobs_completed
-      ; sync_tasks
       ; files_changed
       ; signals
       ; mutex
@@ -223,17 +215,7 @@ end = struct
         (List.is_empty q.files_changed
         && Queue.is_empty q.jobs_completed
         && Signal.Set.is_empty q.signals
-        && Queue.is_empty q.sync_tasks
         && Queue.is_empty q.rpc_completed)
-
-    let sync_task q =
-      match Queue.pop q.sync_tasks with
-      | None -> false
-      | Some task ->
-        task ();
-        true
-
-    let rec flush_sync_tasks q = if sync_task q then flush_sync_tasks q
 
     let next q =
       Option.iter q.stats ~f:Stats.record_gc_and_fd;
@@ -242,40 +224,37 @@ end = struct
         while not (available q) do
           Condition.wait q.cond q.mutex
         done;
-        if sync_task q then
-          loop ()
-        else
-          match Signal.Set.choose q.signals with
-          | Some signal ->
-            q.signals <- Signal.Set.remove q.signals signal;
-            Signal signal
-          | None -> (
-            match q.files_changed with
-            | [] -> (
-              match Queue.pop q.jobs_completed with
-              | None ->
-                q.pending_rpc <- q.pending_rpc - 1;
-                Rpc (Queue.pop_exn q.rpc_completed)
-              | Some (job, proc_info) ->
-                q.pending_jobs <- q.pending_jobs - 1;
-                assert (q.pending_jobs >= 0);
-                Job_completed (job, proc_info))
-            | files_changed -> (
-              q.files_changed <- [];
-              let events =
-                List.filter_map files_changed ~f:(fun path ->
-                    let abs_path = Path.to_absolute_filename path in
-                    if Table.mem q.ignored_files abs_path then (
-                      (* only use ignored record once *)
-                      Table.remove q.ignored_files abs_path;
-                      None
-                    ) else
-                      (* CR-soon amokhov: Generate more precise events. *)
-                      Some (Fs_memo.Event.create ~kind:Unknown ~path))
-              in
-              match Nonempty_list.of_list events with
-              | None -> loop ()
-              | Some events -> File_system_changed events))
+        match Signal.Set.choose q.signals with
+        | Some signal ->
+          q.signals <- Signal.Set.remove q.signals signal;
+          Signal signal
+        | None -> (
+          match q.files_changed with
+          | [] -> (
+            match Queue.pop q.jobs_completed with
+            | None ->
+              q.pending_rpc <- q.pending_rpc - 1;
+              Rpc (Queue.pop_exn q.rpc_completed)
+            | Some (job, proc_info) ->
+              q.pending_jobs <- q.pending_jobs - 1;
+              assert (q.pending_jobs >= 0);
+              Job_completed (job, proc_info))
+          | files_changed -> (
+            q.files_changed <- [];
+            let events =
+              List.filter_map files_changed ~f:(fun path ->
+                  let abs_path = Path.to_absolute_filename path in
+                  if Table.mem q.ignored_files abs_path then (
+                    (* only use ignored record once *)
+                    Table.remove q.ignored_files abs_path;
+                    None
+                  ) else
+                    (* CR-soon amokhov: Generate more precise events. *)
+                    Some (Fs_memo.Event.create ~kind:Unknown ~path))
+            in
+            match Nonempty_list.of_list events with
+            | None -> loop ()
+            | Some events -> File_system_changed events))
       in
       let ev = loop () in
       Mutex.unlock q.mutex;
@@ -306,13 +285,6 @@ end = struct
       Mutex.lock q.mutex;
       let avail = available q in
       q.signals <- Signal.Set.add q.signals signal;
-      if not avail then Condition.signal q.cond;
-      Mutex.unlock q.mutex
-
-    let send_sync_task q f =
-      Mutex.lock q.mutex;
-      let avail = available q in
-      Queue.push q.sync_tasks f;
       if not avail then Condition.signal q.cond;
       Mutex.unlock q.mutex
 
@@ -761,10 +733,6 @@ let wait_for_process t pid =
 
 let global = ref None
 
-let wait_for_dune_cache () =
-  let t = Option.value_exn !global in
-  Event.Queue.flush_sync_tasks t.events
-
 let got_signal signal =
   if !Log.verbose then
     Log.info [ Pp.textf "Got signal %s, exiting." (Signal.name signal) ]
@@ -982,10 +950,6 @@ module Run = struct
     | Error (exn, None) -> Exn.raise exn
     | Error (exn, Some bt) -> Exn.raise_with_backtrace exn bt
 end
-
-let send_sync_task d =
-  let t = Option.value_exn !global in
-  Event.Queue.send_sync_task t.events d
 
 let wait_for_process pid =
   let* t = t () in

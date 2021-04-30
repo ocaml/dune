@@ -38,6 +38,10 @@ let declaring_dependency path ~f =
    untracked calls are safe. *)
 let path_exists = declaring_dependency ~f:Path.Untracked.exists
 
+(* CR-someday amokhov: Some call sites of [path_stat] care only about one field,
+   such as [st_kind], and most of the file system events leave it as is. It may
+   be useful to introduce a more precise variant of this function that will be
+   invalidated less frequently. *)
 let path_stat = declaring_dependency ~f:Path.Untracked.stat
 
 (* CR-someday amokhov: It is unclear if we got the layers of abstraction right

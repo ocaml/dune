@@ -11,7 +11,7 @@ let buffer_capacity = 65536
 
 (* Fixed-size buffer for reading line-by-line from file descriptors. Bug:
    deadlocks if there's a line longer than the capacity of the buffer. TODO: use
-   Out_channel? *)
+   In_channel? *)
 module Buffer = struct
   type buffer =
     { data : Bytes.t

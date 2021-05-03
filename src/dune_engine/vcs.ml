@@ -52,7 +52,7 @@ let git, hg =
   (get "git", get "hg")
 
 let select git hg t =
-  Memo.Build.of_reproducible_fiber
+  Memo.Build.of_non_reproducible_fiber
     (match t.kind with
     | Git -> git t
     | Hg -> hg t)
@@ -109,25 +109,13 @@ let hg_describe t =
   in
   s ^ dirty_suffix
 
-let make_fun name ~output ~git ~hg =
-  let memo = Memo.create name ~input:(module T) ~output (select git hg) in
+let make_fun name ~git ~hg =
+  let memo = Memo.create name ~input:(module T) (select git hg) in
   Staged.stage (Memo.exec memo)
-
-module Option_output (S : sig
-  type t
-
-  val to_dyn : t -> Dyn.t
-end) =
-struct
-  type t = S.t option
-
-  let to_dyn t = Dyn.Encoder.option S.to_dyn t
-end
 
 let describe =
   Staged.unstage
   @@ make_fun "vcs-describe"
-       ~output:(Simple (module Option_output (String)))
        ~git:(fun t -> run_git t [ "describe"; "--always"; "--dirty" ])
        ~hg:(fun x ->
          let open Fiber.O in
@@ -137,7 +125,6 @@ let describe =
 let commit_id =
   Staged.unstage
   @@ make_fun "vcs-commit-id"
-       ~output:(Simple (module Option_output (String)))
        ~git:(fun t -> run_git t [ "rev-parse"; "HEAD" ])
        ~hg:(fun t ->
          let open Fiber.O in
@@ -167,13 +154,6 @@ let files =
   in
   Staged.unstage
   @@ make_fun "vcs-files"
-       ~output:
-         (Simple
-            (module struct
-              type t = Path.t list
-
-              let to_dyn = Dyn.Encoder.list Path.to_dyn
-            end))
        ~git:
          (f run_zero_separated_git
             [ "ls-tree"; "-z"; "-r"; "--name-only"; "HEAD" ])

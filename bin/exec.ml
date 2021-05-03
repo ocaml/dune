@@ -26,7 +26,7 @@ let man =
   ; Common.examples
       [ ("Run the executable named `my_exec'", "dune exec my_exec")
       ; ( "Run the executable defined in `foo.ml' with the argument `arg'"
-        , "dune exec ./foo.exe -- arg" )
+        , "dune exec -- ./foo.exe arg" )
       ]
   ]
 
@@ -66,11 +66,13 @@ let term =
             let open Memo.Build.O in
             (match prog_where with
             | `Search p ->
-              [ Path.Build.relative
+              let p =
+                Path.Build.relative
                   (Local_install_path.bin_dir ~context:context.name)
                   p
                 |> Path.build
-              ]
+              in
+              [ p; Path.extend_basename p ~suffix:Bin.exe ]
             | `This_rel p when Sys.win32 ->
               [ p; Path.extend_basename p ~suffix:Bin.exe ]
             | `This_rel p -> [ p ]

@@ -8,12 +8,19 @@ open Import
    only for source paths, because we don't watch external directories. We should
    try to implement at least a partial support for watching external paths. *)
 
-(** Check if a source or external file exists and declare a dependency on it. *)
-val file_exists : Path.t -> bool Memo.Build.t
+(** Check if a source or external path exists and declare a dependency on it. *)
+val path_exists : Path.t -> bool Memo.Build.t
+
+(** Call [Path.stat] on a path and declare a dependency on it. *)
+val path_stat : Path.t -> (Unix.stats, Unix.error) result Memo.Build.t
 
 (** Digest the contents of a source or external file and declare a dependency on
     it. *)
 val file_digest : Path.t -> Digest.t Memo.Build.t
+
+(** Like [Io.Untracked.with_lexbuf_from_file] but declares a dependency on the
+    path. *)
+val with_lexbuf_from_file : Path.t -> f:(Lexing.lexbuf -> 'a) -> 'a Memo.Build.t
 
 (** List the contents of a source or external directory and declare a dependency
     on it. The result is unsorted and includes both name and kind of each entry. *)

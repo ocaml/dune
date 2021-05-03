@@ -5,10 +5,7 @@ open Memo.Build.O
 (* Files and directories have non-overlapping sets of paths, so we can track
    them using the same memoization table. *)
 let memo =
-  Memo.create "fs_memo"
-    ~input:(module Path)
-    ~output:(Simple (module Unit))
-    (fun _path -> Memo.Build.return ())
+  Memo.create "fs_memo" ~input:(module Path) (fun _path -> Memo.Build.return ())
 
 (* Declare a dependency on a path. Instead of calling [depend] directly, you
    should prefer using the helper function [declaring_dependency], because it
@@ -30,12 +27,20 @@ let depend path =
    out explicitly by doing things in the right order.
 
    Currently, we do not expose this low-level primitive. If you need it, perhaps
-   you could add a higher-level primitive instead, such as [file_exists]? *)
+   you could add a higher-level primitive instead, such as [path_exists]? *)
 let declaring_dependency path ~f =
   let+ () = depend path in
   f path
 
-let file_exists = declaring_dependency ~f:Path.exists
+(* Assuming our file system watcher is any good, this and all subsequent
+   untracked calls are safe. *)
+let path_exists = declaring_dependency ~f:Path.Untracked.exists
+
+(* CR-someday amokhov: Some call sites of [path_stat] care only about one field,
+   such as [st_kind], and most of the file system events leave it as is. It may
+   be useful to introduce a more precise variant of this function that will be
+   invalidated less frequently. *)
+let path_stat = declaring_dependency ~f:Path.Untracked.stat
 
 (* CR-someday amokhov: It is unclear if we got the layers of abstraction right
    here. One could argue that caching is a higher-level concept compared to file
@@ -45,7 +50,12 @@ let file_exists = declaring_dependency ~f:Path.exists
    of [file_digest] seems error-prone. We may need to rethink this decision. *)
 let file_digest = declaring_dependency ~f:Cached_digest.source_or_external_file
 
-let dir_contents = declaring_dependency ~f:Path.readdir_unsorted_with_kinds
+let with_lexbuf_from_file path ~f =
+  declaring_dependency path ~f:(fun path ->
+      Io.Untracked.with_lexbuf_from_file path ~f)
+
+let dir_contents =
+  declaring_dependency ~f:Path.Untracked.readdir_unsorted_with_kinds
 
 module Rebuild_required = struct
   type t =
@@ -109,9 +119,9 @@ module Event = struct
      and robust but doesn't take advantage of all the information we receive.
      Here are some ideas for future optimisation:
 
-     - Don't invalidate [file_exists] queries on [File_changed] events.
+     - Don't invalidate [path_exists] queries on [File_changed] events.
 
-     - If a [file_exists] query currently returns [true] and we receive a
+     - If a [path_exists] query currently returns [true] and we receive a
      corresponding [File_deleted] event, we can change the query's result to
      [false] without rerunning the [Path.exists] function (and vice versa).
 

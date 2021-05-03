@@ -1,6 +1,5 @@
 open! Dune_engine
 open! Stdune
-open Import
 
 type rename_and_edit =
   { original_file : Path.Source.t

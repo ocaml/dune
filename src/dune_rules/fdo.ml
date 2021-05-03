@@ -45,7 +45,7 @@ let get_flags var =
     Env.get ctx.env var |> Option.value ~default:""
     |> String.extract_blank_separated_words |> Memo.Build.return
   in
-  let memo = Memo.create_hidden var ~input:(module Context) f in
+  let memo = Memo.create var ~input:(module Context) f in
   Memo.exec memo
 
 let ocamlfdo_flags = get_flags "OCAMLFDO_FLAGS"
@@ -113,7 +113,7 @@ let get_profile =
     else
       None
   in
-  let memo = Memo.create_hidden Mode.var ~input:(module Context) f in
+  let memo = Memo.create Mode.var ~input:(module Context) f in
   Memo.exec memo
 
 let opt_rule cctx m =

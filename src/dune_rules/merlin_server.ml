@@ -1,6 +1,5 @@
 open! Dune_engine
 open! Stdune
-open Import
 open Fiber.O
 
 module Merlin_conf = struct

@@ -1,6 +1,6 @@
 (library
  (name dune_file_watcher_tests)
- (inline_tests (deps ))
+ (inline_tests (deps))
  (libraries
   dune_file_watcher
   ppx_expect.config
@@ -10,7 +10,6 @@
   stdune
   ppx_inline_test.config
   threads.posix
-  stdio
-  )
+  stdio)
  (preprocess
   (pps ppx_expect ppx_sexp_conv ppx_jane)))

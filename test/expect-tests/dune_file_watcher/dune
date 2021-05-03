@@ -10,6 +10,7 @@
   stdune
   ppx_inline_test.config
   threads.posix
-  stdio)
+  stdio
+  spawn)
  (preprocess
   (pps ppx_expect ppx_sexp_conv ppx_jane)))

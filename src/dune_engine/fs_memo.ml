@@ -54,7 +54,7 @@ let with_lexbuf_from_file path ~f =
   declaring_dependency path ~f:(fun path ->
       Io.Untracked.with_lexbuf_from_file path ~f)
 
-let dir_contents =
+let dir_contents_unsorted =
   declaring_dependency ~f:Path.Untracked.readdir_unsorted_with_kinds
 
 module Rebuild_required = struct

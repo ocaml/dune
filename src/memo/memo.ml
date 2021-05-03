@@ -92,7 +92,7 @@ module Spec = struct
     ; f : 'i -> 'o Fiber.t
     }
 
-  let create ~name ~input ?cutoff ~f =
+  let create ~name ~input ?cutoff f =
     let name =
       match name with
       | None when !track_locations_of_lazy_values ->
@@ -695,7 +695,7 @@ end
 
 let create_with_cache (type i o) name ~cache ~input ?cutoff (f : i -> o Fiber.t)
     =
-  let spec = Spec.create ~name:(Some name) ~input ?cutoff ~f in
+  let spec = Spec.create ~name:(Some name) ~input ?cutoff f in
   Caches.register ~clear:(fun () -> Store.clear cache);
   { cache; spec }
 
@@ -1067,7 +1067,7 @@ module Implicit_output = Implicit_output
 module Store = Store_intf
 
 let lazy_cell ?cutoff f =
-  let spec = Spec.create ~name:None ~input:(module Unit) ?cutoff ~f in
+  let spec = Spec.create ~name:None ~input:(module Unit) ?cutoff f in
   make_dep_node ~spec ~input:()
 
 let lazy_ ?cutoff f =

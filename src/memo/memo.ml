@@ -66,55 +66,10 @@ module Allow_cutoff = struct
     | Yes of ('o -> 'o -> bool)
 end
 
-module type Output_no_cutoff = sig
-  type t
-
-  val to_dyn : t -> Dyn.t
-end
-
-module type Output_cutoff = sig
-  type t
-
-  val to_dyn : t -> Dyn.t
-
-  val equal : t -> t -> bool
-end
-
 module type Input = sig
   type t
 
   include Table.Key with type t := t
-end
-
-module Output = struct
-  type 'o t =
-    | No_cutoff of (module Output_no_cutoff with type t = 'o)
-    | Cutoff of (module Output_cutoff with type t = 'o)
-
-  let no_cutoff (type a) ?to_dyn () =
-    let to_dyn = Option.value to_dyn ~default:(fun _ -> Dyn.Opaque) in
-    No_cutoff
-      (module struct
-        type t = a
-
-        let to_dyn = to_dyn
-      end)
-
-  let cutoff (type a) ?to_dyn ~(equal : a -> a -> bool) () =
-    let to_dyn = Option.value to_dyn ~default:(fun _ -> Dyn.Opaque) in
-    Cutoff
-      (module struct
-        type t = a
-
-        let to_dyn = to_dyn
-
-        let equal = equal
-      end)
-
-  let create ?cutoff:cutoff_arg ?to_dyn () =
-    match cutoff_arg with
-    | None -> no_cutoff ?to_dyn ()
-    | Some equal -> cutoff ?to_dyn ~equal ()
 end
 
 module Exn_comparable = Comparable.Make (struct
@@ -132,13 +87,12 @@ module Spec = struct
   type ('i, 'o) t =
     { name : string option
     ; input : (module Store_intf.Input with type t = 'i)
-    ; output : (module Output_no_cutoff with type t = 'o)
     ; allow_cutoff : 'o Allow_cutoff.t
     ; witness : 'i Type_eq.Id.t
     ; f : 'i -> 'o Fiber.t
     }
 
-  let create (type o) ~name ~input ~(output : o Output.t) ~f =
+  let create ~name ~input ?cutoff f =
     let name =
       match name with
       | None when !track_locations_of_lazy_values ->
@@ -148,12 +102,12 @@ module Spec = struct
             sprintf "lazy value created at %s" (Loc.to_file_colon_line loc))
       | _ -> name
     in
-    let (output : (module Output_no_cutoff with type t = o)), allow_cutoff =
-      match output with
-      | No_cutoff (module Output) -> ((module Output), Allow_cutoff.No)
-      | Cutoff (module Output) -> ((module Output), Yes Output.equal)
+    let allow_cutoff =
+      match cutoff with
+      | None -> Allow_cutoff.No
+      | Some equal -> Yes equal
     in
-    { name; input; output; allow_cutoff; witness = Type_eq.Id.create (); f }
+    { name; input; allow_cutoff; witness = Type_eq.Id.create (); f }
 end
 
 module Id = Id.Make ()
@@ -739,26 +693,23 @@ module Stack_frame = struct
     | None -> None
 end
 
-let create_with_cache (type i o) name ~cache ~input ~output (f : i -> o Fiber.t)
+let create_with_cache (type i o) name ~cache ~input ?cutoff (f : i -> o Fiber.t)
     =
-  let spec = Spec.create ~name:(Some name) ~input ~output ~f in
+  let spec = Spec.create ~name:(Some name) ~input ?cutoff f in
   Caches.register ~clear:(fun () -> Store.clear cache);
   { cache; spec }
 
 let create_with_store (type i) name
-    ~store:(module S : Store_intf.S with type key = i) ~input ~output f =
+    ~store:(module S : Store_intf.S with type key = i) ~input ?cutoff f =
   let cache = Store.make (module S) in
-  create_with_cache name ~cache ~input ~output f
+  create_with_cache name ~cache ~input ?cutoff f
 
-let create (type i) name ~input:(module Input : Input with type t = i) ~output f
+let create (type i) name ~input:(module Input : Input with type t = i) ?cutoff f
     =
   (* This mutable table is safe: the implementation tracks all dependencies. *)
   let cache = Store.of_table (Table.create (module Input) 16) in
   let input = (module Input : Store_intf.Input with type t = i) in
-  create_with_cache name ~cache ~input ~output f
-
-let create_no_cutoff name ~input ?output_to_dyn f =
-  create name ~input ~output:(Output.no_cutoff ?to_dyn:output_to_dyn ()) f
+  create_with_cache name ~cache ~input ?cutoff f
 
 let make_dep_node ~spec ~input : _ Dep_node.t =
   let dep_node_without_state : _ Dep_node_without_state.t =
@@ -1063,8 +1014,7 @@ let invalidate_dep_node (node : _ Dep_node.t) = node.last_cached_value <- None
 module Current_run = struct
   let f () = Run.current () |> Build0.return
 
-  let memo =
-    create "current-run" ~input:(module Unit) ~output:(No_cutoff (module Run)) f
+  let memo = create "current-run" ~input:(module Unit) f
 
   let exec () = exec memo ()
 
@@ -1084,17 +1034,9 @@ end
 module With_implicit_output = struct
   type ('i, 'o) t = 'i -> 'o Fiber.t
 
-  let create (type o) name ~input
-      ~output:(module O : Output_no_cutoff with type t = o) ~implicit_output
-      impl =
-    let output =
-      Output.no_cutoff
-        ~to_dyn:(fun (o, _io) ->
-          Dyn.List [ O.to_dyn o; Dyn.String "<implicit output is opaque>" ])
-        ()
-    in
+  let create name ~input ~implicit_output impl =
     let memo =
-      create name ~input ~output (fun i ->
+      create name ~input (fun i ->
           Implicit_output.collect implicit_output (fun () -> impl i))
     in
     fun input ->
@@ -1124,13 +1066,12 @@ end
 module Implicit_output = Implicit_output
 module Store = Store_intf
 
-let lazy_cell ?cutoff ?to_dyn f =
-  let output = Output.create ?cutoff ?to_dyn () in
-  let spec = Spec.create ~name:None ~input:(module Unit) ~output ~f in
+let lazy_cell ?cutoff f =
+  let spec = Spec.create ~name:None ~input:(module Unit) ?cutoff f in
   make_dep_node ~spec ~input:()
 
-let lazy_ ?cutoff ?to_dyn f =
-  let cell = lazy_cell ?cutoff ?to_dyn f in
+let lazy_ ?cutoff f =
+  let cell = lazy_cell ?cutoff f in
   fun () -> Cell.read cell
 
 module Lazy = struct
@@ -1189,7 +1130,7 @@ struct
   end
 
   let memo =
-    create_no_cutoff name
+    create name
       ~input:(module Key)
       (function
         | Key.T input -> eval input >>| fun v -> Value.T (id input, v))

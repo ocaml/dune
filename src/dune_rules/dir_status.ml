@@ -134,11 +134,7 @@ module DB = struct
       end = struct
         let t =
           { stanzas_per_dir
-          ; fn =
-              Memo.create_no_cutoff "get-dir-status"
-                ~input:(module Path.Build)
-                ~output_to_dyn:(fun _ -> Dyn.String "<dir-status>")
-                Fn.get
+          ; fn = Memo.create "get-dir-status" ~input:(module Path.Build) Fn.get
           }
       end
 

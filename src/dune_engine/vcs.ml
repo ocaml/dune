@@ -21,8 +21,6 @@ module Kind = struct
       , [] )
 
   let equal = ( = )
-
-  let decode = Dune_lang.Decoder.enum [ ("git", Git); ("hg", Hg) ]
 end
 
 module T = struct
@@ -40,13 +38,6 @@ module T = struct
 
   (* No need to hash the kind as there is only only kind per directory *)
   let hash t = Path.hash t.root
-
-  let decode =
-    let open Dune_lang.Decoder in
-    fields
-      (let+ root = field "root" Dpath.decode
-       and+ kind = field "kind" Kind.decode in
-       { root; kind })
 end
 
 include T
@@ -61,7 +52,7 @@ let git, hg =
   (get "git", get "hg")
 
 let select git hg t =
-  Memo.Build.of_reproducible_fiber
+  Memo.Build.of_non_reproducible_fiber
     (match t.kind with
     | Git -> git t
     | Hg -> hg t)
@@ -118,30 +109,13 @@ let hg_describe t =
   in
   s ^ dirty_suffix
 
-let make_fun name ~output ~doc ~git ~hg =
-  let memo =
-    Memo.create name ~doc
-      ~input:(module T)
-      ~output ~visibility:(Public decode) (select git hg)
-  in
+let make_fun name ~git ~hg =
+  let memo = Memo.create name ~input:(module T) (select git hg) in
   Staged.stage (Memo.exec memo)
-
-module Option_output (S : sig
-  type t
-
-  val to_dyn : t -> Dyn.t
-end) =
-struct
-  type t = S.t option
-
-  let to_dyn t = Dyn.Encoder.option S.to_dyn t
-end
 
 let describe =
   Staged.unstage
   @@ make_fun "vcs-describe"
-       ~doc:"Obtain a nice description of the tip from the vcs"
-       ~output:(Simple (module Option_output (String)))
        ~git:(fun t -> run_git t [ "describe"; "--always"; "--dirty" ])
        ~hg:(fun x ->
          let open Fiber.O in
@@ -150,8 +124,7 @@ let describe =
 
 let commit_id =
   Staged.unstage
-  @@ make_fun "vcs-commit-id" ~doc:"The hash of the head commit"
-       ~output:(Simple (module Option_output (String)))
+  @@ make_fun "vcs-commit-id"
        ~git:(fun t -> run_git t [ "rev-parse"; "HEAD" ])
        ~hg:(fun t ->
          let open Fiber.O in
@@ -180,14 +153,7 @@ let files =
     List.map l ~f:Path.in_source
   in
   Staged.unstage
-  @@ make_fun "vcs-files" ~doc:"Return the files committed in the repo"
-       ~output:
-         (Simple
-            (module struct
-              type t = Path.t list
-
-              let to_dyn = Dyn.Encoder.list Path.to_dyn
-            end))
+  @@ make_fun "vcs-files"
        ~git:
          (f run_zero_separated_git
             [ "ls-tree"; "-z"; "-r"; "--name-only"; "HEAD" ])

@@ -11,19 +11,17 @@ module T = struct
   type t =
     | Generated
     | Source_only of Source_tree.Dir.t
-    | Standalone of Source_tree.Dir.t * Stanza.t list Dir_with_dune.t
-    (* Directory not part of a multi-directory group. *)
-    | Group_root of
+    | (* Directory not part of a multi-directory group *)
+        Standalone of
+        Source_tree.Dir.t * Stanza.t list Dir_with_dune.t
+    | (* Directory with [(include_subdirs x)] where [x] is not [no] *)
+        Group_root of
         Source_tree.Dir.t
         * (Loc.t * Include_subdirs.qualification)
         * Stanza.t list Dir_with_dune.t
-    (* Directory with [(include_subdirs x)] where [x] is not [no] *)
-    | Is_component_of_a_group_but_not_the_root of
+    | (* Sub-directory of a [Group_root _] *)
+        Is_component_of_a_group_but_not_the_root of
         is_component_of_a_group_but_not_the_root
-
-  (* Sub-directory of a [Group_root _] *)
-
-  let to_dyn _ = Dyn.String "<dir-status>"
 end
 
 include T
@@ -136,12 +134,7 @@ module DB = struct
       end = struct
         let t =
           { stanzas_per_dir
-          ; fn =
-              Memo.create "get-dir-status"
-                ~input:(module Path.Build)
-                ~visibility:Hidden
-                ~output:(Simple (module T))
-                ~doc:"Get a directory status." Fn.get
+          ; fn = Memo.create "get-dir-status" ~input:(module Path.Build) Fn.get
           }
       end
 

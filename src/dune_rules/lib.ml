@@ -19,7 +19,7 @@ module Error = struct
      consider the library that triggered the error. *)
 
   let make ?loc ?hints paragraphs =
-    Error (User_error.E (User_error.make ?loc ?hints paragraphs))
+    Error (User_error.E (User_error.make ?loc ?hints paragraphs, None))
 
   let pp_lib info =
     let name = Lib_info.name info in

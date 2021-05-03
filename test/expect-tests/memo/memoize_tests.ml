@@ -17,14 +17,9 @@ let () = init ()
 let printf = Printf.printf
 
 let string_fn_create name =
-  Memo.create name
-    ~input:(module String)
-    ~visibility:(Public Dune_lang.Decoder.string)
+  Memo.create name ~input:(module String) ~cutoff:String.equal
 
-let int_fn_create name =
-  Memo.create name
-    ~input:(module Int)
-    ~visibility:(Public Dune_lang.Decoder.int)
+let int_fn_create name ~cutoff = Memo.create name ~input:(module Int) ~cutoff
 
 (* to run a computation *)
 let run m = Scheduler.run (Memo.Build.run m)
@@ -35,11 +30,9 @@ let run_memo f v = run (Memo.exec f v)
 let compdep x = Memo.Build.return (x ^ x)
 
 (* our two dependencies are called some and another *)
-let mcompdep1 =
-  string_fn_create "some" ~output:(Allow_cutoff (module String)) compdep
+let mcompdep1 = string_fn_create "some" compdep
 
-let mcompdep2 =
-  string_fn_create "another" ~output:(Allow_cutoff (module String)) compdep
+let mcompdep2 = string_fn_create "another" compdep
 
 (* compute the dependencies once so they are present in the global hash table *)
 let () =
@@ -58,7 +51,7 @@ let comp x =
   counter := !counter + 1;
   String.sub a ~pos:0 ~len:(String.length a |> min 3)
 
-let mcomp = string_fn_create "test" ~output:(Allow_cutoff (module String)) comp
+let mcomp = string_fn_create "test" comp
 
 (* running it the first time should increase the counter, running it again
    should not, but should still return the same result *)
@@ -131,9 +124,7 @@ let mcompcycle =
     else
       failwith "cycle"
   in
-  let fn =
-    int_fn_create "cycle" ~output:(Allow_cutoff (module String)) compcycle
-  in
+  let fn = int_fn_create "cycle" compcycle ~cutoff:Int.equal in
   Fdecl.set mcompcycle fn;
   fn
 
@@ -181,7 +172,7 @@ let mfib =
       let+ r2 = mfib (x - 2) in
       r1 + r2
   in
-  let fn = int_fn_create "fib" ~output:(Allow_cutoff (module Int)) compfib in
+  let fn = int_fn_create "fib" compfib ~cutoff:Int.equal in
   Fdecl.set mfib fn;
   fn
 
@@ -199,14 +190,10 @@ let%expect_test _ =
     2001
   |}]
 
-let make_f name f ~input ~output =
-  Memo.create name ~input ~visibility:Hidden ~output:(Allow_cutoff output)
-    ~doc:"" f
+let make_f name = Memo.create name ~cutoff:String.equal
 
 let id =
-  let f =
-    make_f "id" Memo.Build.return ~input:(module String) ~output:(module String)
-  in
+  let f = make_f "id" ~input:(module String) Memo.Build.return in
   Memo.exec f
 
 module Test_lazy (Lazy : sig
@@ -219,7 +206,7 @@ end) =
 struct
   let lazy_memo =
     let f =
-      Memo.create_hidden "lazy_memo"
+      Memo.create "lazy_memo"
         ~input:(module String)
         (fun s -> Memo.Build.return (Lazy.create (fun () -> id ("lazy: " ^ s))))
     in
@@ -228,22 +215,20 @@ struct
   let f1_def, f1 =
     let f =
       make_f "f1"
+        ~input:(module String)
         (fun s ->
           let+ s = lazy_memo s >>= Lazy.force in
           "f1: " ^ s)
-        ~input:(module String)
-        ~output:(module String)
     in
     (f, Memo.exec f)
 
   let f2_def, f2 =
     let f =
       make_f "f2"
+        ~input:(module String)
         (fun s ->
           let+ s = lazy_memo s >>= Lazy.force in
           "f2: " ^ s)
-        ~input:(module String)
-        ~output:(module String)
     in
     (f, Memo.exec f)
 
@@ -312,10 +297,9 @@ let%expect_test _ =
 (* Tests for depending on the current run *)
 
 let depends_on_run =
-  Memo.create "foobar" ~doc:"foo123"
+  Memo.create "foobar"
     ~input:(module Unit)
-    ~output:(Allow_cutoff (module Unit))
-    ~visibility:Hidden
+    ~cutoff:Unit.equal
     (fun () ->
       let+ (_ : Memo.Run.t) = Memo.current_run () in
       print_endline "running foobar")
@@ -336,11 +320,7 @@ let%expect_test _ =
 let%expect_test _ =
   let f x = Memo.Build.return ("*" ^ x) in
   let memo =
-    Memo.create "for-cell"
-      ~input:(module String)
-      ~visibility:(Public Dune_lang.Decoder.string)
-      ~output:(Allow_cutoff (module String))
-      ~doc:"" f
+    Memo.create "for-cell" ~input:(module String) ~cutoff:String.equal f
   in
   let cell = Memo.cell memo "foobar" in
   print_endline (run (Cell.read cell));
@@ -356,8 +336,6 @@ let%expect_test "fib linked list" =
       ; value : int
       ; next_cell : (int, t) Memo.Cell.t
       }
-
-    let to_dyn t = Dyn.Int t.value
   end in
   let force cell : Element.t Memo.Build.t = Memo.Cell.read cell in
   let memo_fdecl = Fdecl.create Dyn.Encoder.opaque in
@@ -378,13 +356,7 @@ let%expect_test "fib linked list" =
     in
     { Element.next_cell = Memo.cell memo (x + 1); prev_cell; value }
   in
-  let memo =
-    Memo.create "fib"
-      ~input:(module Int)
-      ~visibility:Hidden
-      ~output:(Simple (module Element))
-      compute_element ~doc:""
-  in
+  let memo = Memo.create "fib" ~input:(module Int) compute_element in
   Fdecl.set memo_fdecl memo;
   let fourth = run (Memo.exec memo 4) in
   printf "4th: %d\n" fourth.value;
@@ -416,11 +388,7 @@ let%expect_test "previously_evaluated_cell" =
     Memo.Build.return ("[" ^ x ^ "]")
   in
   let memo =
-    Memo.create "boxed"
-      ~input:(module String)
-      ~visibility:(Public Dune_lang.Decoder.string)
-      ~output:(Allow_cutoff (module String))
-      ~doc:"" f
+    Memo.create "boxed" ~input:(module String) ~cutoff:String.equal f
   in
   let evaluate_and_print name =
     let cell = Memo.cell memo name in
@@ -487,8 +455,9 @@ let%expect_test "previously_evaluated_cell" =
     previously_evaluated_cell x = [x]
     previously_evaluated_cell y = [y]
   |}];
-  Memo.reset ();
-  (* Both switch back to unevaluated after resetting the Memo. *)
+  Memo.clear_memoization_caches ();
+  Memo.restart_current_run ();
+  (* Both switch back to unevaluated after clearing all memoization caches. *)
   print_previously_evaluated_cell "x";
   print_previously_evaluated_cell "y";
   [%expect
@@ -611,9 +580,7 @@ let evaluate_and_print f x =
 
 let%expect_test "error handling and memo" =
   let f =
-    int_fn_create "f"
-      ~output:(Allow_cutoff (module Int))
-      (fun x ->
+    int_fn_create "f" ~cutoff:Int.equal (fun x ->
         printf "Calling f %d\n" x;
         if x = 42 then
           failwith "42"
@@ -670,12 +637,8 @@ let increment which which_memo () =
 
 (* Create a memoization node with or without cutoff. *)
 let create ~with_cutoff name f =
-  let output =
-    match with_cutoff with
-    | true -> Memo.Output.Allow_cutoff (module Int)
-    | false -> Simple (module Int)
-  in
-  Memo.create name ~input:(module Unit) ~visibility:Hidden ~output ~doc:"" f
+  let cutoff = Option.some_if with_cutoff Int.equal in
+  Memo.create name ~input:(module Unit) ?cutoff f
 
 let%expect_test "diamond with non-uniform cutoff structure" =
   let base = create ~with_cutoff:true "base" (count_runs "base") in
@@ -711,13 +674,7 @@ let%expect_test "diamond with non-uniform cutoff structure" =
     printf "Evaluated summit with offset %d: %d\n" offset result;
     result
   in
-  let summit =
-    Memo.create "summit"
-      ~input:(module Int)
-      ~visibility:Hidden
-      ~output:(Simple (module Int))
-      ~doc:"" summit
-  in
+  let summit = Memo.create "summit" ~input:(module Int) summit in
   evaluate_and_print summit 0;
   [%expect
     {|
@@ -821,14 +778,10 @@ let%expect_test "dynamic cycles with non-uniform cutoff structure" =
       printf "Evaluated the summit with input %d: %d\n" input result;
       result
     in
-    let output =
-      match end_with_cutoff with
-      | true -> Memo.Output.Allow_cutoff (module Int)
-      | false -> Simple (module Int)
-    in
+    let cutoff = Option.some_if end_with_cutoff Int.equal in
     Memo.create "incrementing_chain_plus_input"
       ~input:(module Int)
-      ~visibility:Hidden ~output ~doc:"" plus_input
+      ?cutoff plus_input
   in
   let summit_fdecl = Fdecl.create (fun _ -> Dyn.Opaque) in
   let cycle_creator_no_cutoff =
@@ -1053,9 +1006,6 @@ let%expect_test "deadlocks when creating a cycle twice" =
   let summit =
     Memo.create "summit"
       ~input:(module Int)
-      ~visibility:Hidden
-      ~output:(Simple (module Int))
-      ~doc:""
       (fun offset ->
         printf "Started evaluating summit\n";
         let+ middle = Memo.exec middle () in
@@ -1094,9 +1044,6 @@ let%expect_test "Nested nodes with cutoff are recomputed optimally" =
   let summit =
     Memo.create "summit"
       ~input:(module Int)
-      ~visibility:Hidden
-      ~output:(Simple (module Int))
-      ~doc:""
       (fun offset ->
         printf "Started evaluating summit\n";
         let middle =
@@ -1178,9 +1125,6 @@ let%expect_test "Test that there are no phantom dependencies" =
   let summit =
     Memo.create "summit"
       ~input:(module Int)
-      ~visibility:Hidden
-      ~output:(Simple (module Int))
-      ~doc:""
       (fun offset ->
         printf "Started evaluating summit\n";
         let middle =
@@ -1243,9 +1187,6 @@ let%expect_test "Abandoned node with no cutoff is recomputed" =
   let middle =
     Memo.create "middle"
       ~input:(module Unit)
-      ~visibility:Hidden
-      ~output:(Simple (module Int))
-      ~doc:""
       (fun () ->
         printf "Started evaluating middle\n";
         let base = base () in
@@ -1257,9 +1198,6 @@ let%expect_test "Abandoned node with no cutoff is recomputed" =
   let summit =
     Memo.create "summit"
       ~input:(module Int)
-      ~visibility:Hidden
-      ~output:(Simple (module Int))
-      ~doc:""
       (fun input ->
         printf "Started evaluating summit\n";
         let* middle = Memo.exec middle () in
@@ -1349,9 +1287,8 @@ let%expect_test "error handling with diamonds" =
   Printexc.record_backtrace true;
   let f_impl = Fdecl.create Dyn.Encoder.opaque in
   let f =
-    int_fn_create "error-diamond: f"
-      ~output:(Allow_cutoff (module Unit))
-      (fun x -> Fdecl.get f_impl x)
+    int_fn_create "error-diamond: f" ~cutoff:Unit.equal (fun x ->
+        Fdecl.get f_impl x)
   in
   Fdecl.set f_impl (fun x ->
       printf "Calling f %d\n" x;
@@ -1382,24 +1319,19 @@ let%expect_test "error handling and duplicate exceptions" =
   Printexc.record_backtrace true;
   let f_impl = Fdecl.create Dyn.Encoder.opaque in
   let f =
-    int_fn_create "test8: duplicate-exception: f"
-      ~output:(Allow_cutoff (module Unit))
-      (fun x -> Fdecl.get f_impl x)
+    int_fn_create "test8: duplicate-exception: f" ~cutoff:Unit.equal (fun x ->
+        Fdecl.get f_impl x)
   in
   let fail =
-    int_fn_create "test8: fail"
-      ~output:(Allow_cutoff (module Unit))
-      (fun _x -> failwith "42")
+    int_fn_create "test8: fail" ~cutoff:Unit.equal (fun _x -> failwith "42")
   in
   let forward_fail =
-    int_fn_create "test8: forward fail"
-      ~output:(Allow_cutoff (module Unit))
-      (fun x -> Memo.exec fail x)
+    int_fn_create "test8: forward fail" ~cutoff:Unit.equal (fun x ->
+        Memo.exec fail x)
   in
   let forward_fail2 =
-    int_fn_create "test8: forward fail2"
-      ~output:(Allow_cutoff (module Unit))
-      (fun x -> Memo.exec fail x)
+    int_fn_create "test8: forward fail2" ~cutoff:Unit.equal (fun x ->
+        Memo.exec fail x)
   in
   Fdecl.set f_impl (fun x ->
       printf "Calling f %d\n" x;
@@ -1423,7 +1355,7 @@ let%expect_test "error handling and duplicate exceptions" =
 let%expect_test "errors are cached" =
   Printexc.record_backtrace false;
   let f =
-    Memo.create_hidden "area of a square"
+    Memo.create "area of a square"
       ~input:(module Int)
       (fun x ->
         printf "Started evaluating %d\n" x;
@@ -1457,9 +1389,7 @@ let%expect_test "errors work with early cutoff" =
     let exception Input_too_large of Memo.Run.t in
     Memo.create "divide 100 by input"
       ~input:(module Int)
-      ~visibility:Hidden
-      ~output:(Allow_cutoff (module Int))
-      ~doc:""
+      ~cutoff:Int.equal
       (fun x ->
         let+ run = Memo.current_run () in
         printf "[divide] Started evaluating %d\n" x;
@@ -1471,7 +1401,7 @@ let%expect_test "errors work with early cutoff" =
         res)
   in
   let f =
-    Memo.create_hidden "Negate"
+    Memo.create "Negate"
       ~input:(module Int)
       (fun x ->
         printf "[negate] Started evaluating %d\n" x;

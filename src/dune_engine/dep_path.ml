@@ -104,11 +104,11 @@ let recover_loc (entries : Entry.t list) =
 
 let augment_user_error_loc entries exn =
   match exn with
-  | User_error.E msg ->
+  | User_error.E (msg, annot) ->
     if is_loc_none msg.loc then
       match recover_loc entries with
       | None -> exn
-      | Some loc -> User_error.E { msg with loc = Some loc }
+      | Some loc -> User_error.E ({ msg with loc = Some loc }, annot)
     else
       exn
   | _ -> exn

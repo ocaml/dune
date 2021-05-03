@@ -166,7 +166,7 @@ end = struct
     { t with files = String.Set.filter t.files ~f:(fun fn -> f t.path fn) }
 
   let of_source_path path =
-    Fs_memo.dir_contents (Path.source path) >>= function
+    Fs_memo.dir_contents_unsorted (Path.source path) >>= function
     | Error unix_error ->
       User_warning.emit
         [ Pp.textf "Unable to read directory %s. Ignoring."

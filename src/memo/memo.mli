@@ -158,34 +158,6 @@ val incremental_mode_enabled : bool
     run. Intended for use by the testsuite. *)
 val clear_memoization_caches : unit -> unit
 
-module type Output_no_cutoff = sig
-  type t
-
-  val to_dyn : t -> Dyn.t
-end
-
-module type Output_cutoff = sig
-  type t
-
-  val to_dyn : t -> Dyn.t
-
-  val equal : t -> t -> bool
-end
-
-(** When we recompute a function and find that its output is the same as what we
-    computed before, we can sometimes skip recomputing the values that depend on
-    it. [Cutoff] specifies how to compare the output values for that purpose.
-
-    Note that currently Dune wipes all memoization caches on every run, so
-    cutoff is not effective. *)
-module Output : sig
-  type 'o t =
-    | No_cutoff of (module Output_no_cutoff with type t = 'o)
-    | Cutoff of (module Output_cutoff with type t = 'o)
-
-  val no_cutoff : ?to_dyn:('a -> Dyn.t) -> unit -> 'a t
-end
-
 module type Input = sig
   type t
 
@@ -221,33 +193,31 @@ val create_with_store :
      string
   -> store:(module Store.S with type key = 'i)
   -> input:(module Store.Input with type t = 'i)
-  -> output:'o Output.t
+  -> ?cutoff:('o -> 'o -> bool)
   -> ('i -> 'o Fiber.t)
   -> ('i, 'o) t
 
-(** [create name ~input ~output f] creates a memoized version of the function
+(** [create name ~input ?cutoff f] creates a memoized version of the function
     [f : 'i -> 'o Build.t]. The result of [f] for a given input is cached, so
     that the second time [exec t x] is called, the previous result is re-used if
     possible.
 
-    [exec t x] tracks what calls to other memoized function [f x] performs. When
-    the result of such dependent call changes, [exec t x] will automatically
-    recompute [f x].
+    [exec t x] tracks what calls to other memoized functions [f x] performs.
+    When the result of any of such dependent calls changes, [exec t x] will
+    automatically recompute [f x].
+
+    If the caller provides the [cutoff] equality check, we will use it to check
+    if the function's output is the same as cached in the previous computation.
+    If it's the same, we will be able to skip recomputing the functions that
+    depend on it. Note that currently Dune wipes all memoization caches on every
+    run, so this early cutoff optimisation is not effective.
 
     Running the computation may raise [Memo.Cycle_error.E] if a dependency cycle
     is detected. *)
 val create :
      string
   -> input:(module Input with type t = 'i)
-  -> output:'o Output.t
-  -> ('i -> 'o Build.t)
-  -> ('i, 'o) t
-
-(** A version of [create] for memoizing functions with no cutoff. *)
-val create_no_cutoff :
-     string
-  -> input:(module Input with type t = 'i)
-  -> ?output_to_dyn:('o -> Dyn.t)
+  -> ?cutoff:('o -> 'o -> bool)
   -> ('i -> 'o Build.t)
   -> ('i, 'o) t
 
@@ -283,22 +253,14 @@ module Lazy : sig
 
   val of_val : 'a -> 'a t
 
-  val create :
-       ?cutoff:('a -> 'a -> bool)
-    -> ?to_dyn:('a -> Dyn.t)
-    -> (unit -> 'a Build.t)
-    -> 'a t
+  val create : ?cutoff:('a -> 'a -> bool) -> (unit -> 'a Build.t) -> 'a t
 
   val force : 'a t -> 'a Build.t
 
   val map : 'a t -> f:('a -> 'b) -> 'b t
 end
 
-val lazy_ :
-     ?cutoff:('a -> 'a -> bool)
-  -> ?to_dyn:('a -> Dyn.t)
-  -> (unit -> 'a Build.t)
-  -> 'a Lazy.t
+val lazy_ : ?cutoff:('a -> 'a -> bool) -> (unit -> 'a Build.t) -> 'a Lazy.t
 
 module Implicit_output : sig
   type 'o t
@@ -334,7 +296,6 @@ module With_implicit_output : sig
   val create :
        string
     -> input:(module Input with type t = 'i)
-    -> output:(module Output_no_cutoff with type t = 'o)
     -> implicit_output:'io Implicit_output.t
     -> ('i -> 'o Build.t)
     -> ('i, 'o) t

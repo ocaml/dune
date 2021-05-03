@@ -26,7 +26,7 @@ end = struct
        Note: if we find a way to reliably invalidate this function, its output
        should continue to have no cutoff because the callers might depend not
        just on the existence of a directory but on its *continuous* existence. *)
-    Memo.create_no_cutoff "mkdir_p"
+    Memo.create "mkdir_p"
       ~input:(module Path.Build)
       (fun p ->
         Path.mkdir_p (Path.build p);
@@ -1141,9 +1141,7 @@ end = struct
 
   let load_dir =
     let load_dir_impl dir = load_dir_impl (t ()) ~dir in
-    let memo =
-      Memo.create_no_cutoff "load-dir" ~input:(module Path) load_dir_impl
-    in
+    let memo = Memo.create "load-dir" ~input:(module Path) load_dir_impl in
     fun ~dir -> Memo.exec memo dir
 end
 
@@ -1937,7 +1935,7 @@ end = struct
     target
 
   let execute_action_generic_stage2_memo =
-    Memo.create_no_cutoff "execute-action"
+    Memo.create "execute-action"
       ~input:(module Action_desc)
       execute_action_generic_stage2_impl
 
@@ -2077,8 +2075,7 @@ end = struct
     let eval_memo =
       Memo.create "eval-pred"
         ~input:(module File_selector)
-        ~output:(Cutoff (module Path.Set))
-        eval_impl
+        ~cutoff:Path.Set.equal eval_impl
 
     let eval = Memo.exec eval_memo
 
@@ -2086,28 +2083,25 @@ end = struct
       Memo.exec
         (Memo.create "build-pred"
            ~input:(module File_selector)
-           ~output:(Cutoff (module Dep.Fact.Files))
-           build_impl)
+           ~cutoff:Dep.Fact.Files.equal build_impl)
   end
 
   let build_file_memo =
     Memo.create "build-file"
       ~input:(module Path)
-      ~output:(Cutoff (module Digest))
-      build_file_impl
+      ~cutoff:Digest.equal build_file_impl
 
   let build_file = Memo.exec build_file_memo
 
   let build_alias_memo =
     Memo.create "build-alias"
       ~input:(module Alias)
-      ~output:(Cutoff (module Dep.Fact.Files))
-      build_alias_impl
+      ~cutoff:Dep.Fact.Files.equal build_alias_impl
 
   let build_alias = Memo.exec build_alias_memo
 
   let execute_rule_memo =
-    Memo.create_no_cutoff "execute-rule"
+    Memo.create "execute-rule"
       ~input:(module Rule)
       (execute_rule_impl ~rule_kind:Normal_rule)
 
@@ -2322,7 +2316,7 @@ end = struct
   end = struct
     let alias =
       let memo =
-        Memo.create_no_cutoff "expand-alias"
+        Memo.create "expand-alias"
           ~input:(module Alias)
           (fun alias ->
             let* l = expand_alias_gen alias ~eval_build_request in
@@ -2346,7 +2340,7 @@ end = struct
 
   let evaluate_rule =
     let memo =
-      Memo.create_no_cutoff "evaluate-rule"
+      Memo.create "evaluate-rule"
         ~input:(module Non_evaluated_rule)
         (fun rule ->
           let* action, deps = eval_build_request rule.action in

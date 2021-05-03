@@ -5,15 +5,9 @@ open Dune_file
 open Memo.Build.O
 
 let mlds_by_package_def =
-  let module Output = struct
-    type t = Path.Build.t list Package.Name.Map.t
-
-    let to_dyn _ = Dyn.Opaque
-  end in
   Memo.With_implicit_output.create "mlds by package"
     ~implicit_output:Rules.implicit_output
     ~input:(module Super_context.As_memo_key)
-    ~output:(module Output)
     (fun sctx ->
       let stanzas = Super_context.stanzas sctx in
       Memo.Build.parallel_map stanzas ~f:(fun (w : _ Dir_with_dune.t) ->

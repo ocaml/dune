@@ -339,31 +339,27 @@ module Context = struct
         Some (Build_context.create ~name ~host:(Some native.name)))
 end
 
-module T = struct
-  type t =
-    { merlin_context : Context_name.t option
-    ; contexts : Context.t list
-    ; env : Dune_env.Stanza.t
-    ; config : Dune_config.t
-    }
+type t =
+  { merlin_context : Context_name.t option
+  ; contexts : Context.t list
+  ; env : Dune_env.Stanza.t
+  ; config : Dune_config.t
+  }
 
-  let to_dyn { merlin_context; contexts; env; config } =
-    let open Dyn.Encoder in
-    record
-      [ ("merlin_context", option Context_name.to_dyn merlin_context)
-      ; ("contexts", list Context.to_dyn contexts)
-      ; ("env", Dune_env.Stanza.to_dyn env)
-      ; ("config", Dune_config.to_dyn config)
-      ]
+let to_dyn { merlin_context; contexts; env; config } =
+  let open Dyn.Encoder in
+  record
+    [ ("merlin_context", option Context_name.to_dyn merlin_context)
+    ; ("contexts", list Context.to_dyn contexts)
+    ; ("env", Dune_env.Stanza.to_dyn env)
+    ; ("config", Dune_config.to_dyn config)
+    ]
 
-  let equal { merlin_context; contexts; env; config } w =
-    Option.equal Context_name.equal merlin_context w.merlin_context
-    && List.equal Context.equal contexts w.contexts
-    && Dune_env.Stanza.equal env w.env
-    && Dune_config.equal config w.config
-end
-
-include T
+let equal { merlin_context; contexts; env; config } w =
+  Option.equal Context_name.equal merlin_context w.merlin_context
+  && List.equal Context.equal contexts w.contexts
+  && Dune_env.Stanza.equal env w.env
+  && Dune_config.equal config w.config
 
 let hash { merlin_context; contexts; env; config } =
   Hashtbl.hash
@@ -638,9 +634,7 @@ let workspace_step1 =
     | None -> default_step1 clflags
     | Some p -> load_step1 clflags p
   in
-  let memo =
-    Memo.create_no_cutoff "workspaces-internal" ~input:(module Unit) f
-  in
+  let memo = Memo.create "workspaces-internal" ~input:(module Unit) f in
   Memo.exec memo
 
 let workspace_config () =
@@ -654,9 +648,7 @@ let workspace =
     let+ step1 = workspace_step1 () in
     Lazy.force step1.t
   in
-  let memo =
-    Memo.create "workspace" ~input:(module Unit) ~output:(Cutoff (module T)) f
-  in
+  let memo = Memo.create "workspace" ~input:(module Unit) ~cutoff:equal f in
   Memo.exec memo
 
 let update_execution_parameters t ep =

@@ -5,9 +5,7 @@ open Memo.Build.O
 (* Files and directories have non-overlapping sets of paths, so we can track
    them using the same memoization table. *)
 let memo =
-  Memo.create_no_cutoff "fs_memo"
-    ~input:(module Path)
-    (fun _path -> Memo.Build.return ())
+  Memo.create "fs_memo" ~input:(module Path) (fun _path -> Memo.Build.return ())
 
 (* Declare a dependency on a path. Instead of calling [depend] directly, you
    should prefer using the helper function [declaring_dependency], because it

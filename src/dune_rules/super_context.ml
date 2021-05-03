@@ -183,7 +183,7 @@ end = struct
 
         let memo =
           Memo.exec
-            (Memo.create_no_cutoff "env-nodes-memo"
+            (Memo.create "env-nodes-memo"
                ~input:(module Path.Build)
                (fun path -> Memo.Build.return (get_impl env_tree path)))
 

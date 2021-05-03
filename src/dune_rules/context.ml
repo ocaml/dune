@@ -36,14 +36,6 @@ end
 module Program = struct
   module Name = String
 
-  module Which_path = struct
-    type t = Path.t option
-
-    let equal = Option.equal Path.equal
-
-    let to_dyn = Dyn.Encoder.option Path.to_dyn
-  end
-
   let programs_for_which_we_prefer_opt_ext =
     [ "ocamlc"; "ocamldep"; "ocamlmklib"; "ocamlobjinfo"; "ocamlopt" ]
 
@@ -231,7 +223,7 @@ end = struct
         Dyn.Tuple
           [ Env.to_dyn env; Dyn.Encoder.(option string root); String switch ]
     end in
-    let memo = Memo.create_no_cutoff "opam-env" ~input:(module Input) impl in
+    let memo = Memo.create "opam-env" ~input:(module Input) impl in
     fun ~env ~root ~switch -> Memo.exec memo (env, root, switch)
 end
 
@@ -329,7 +321,7 @@ let create ~(kind : Kind.t) ~path ~env ~env_nodes ~name ~merlin ~targets
     Memo.create
       (sprintf "which-memo-for-%s" (Context_name.to_string name))
       ~input:(module Program.Name)
-      ~output:(Cutoff (module Program.Which_path))
+      ~cutoff:(Option.equal Path.equal)
       (fun p -> Memo.Build.return (Program.which ~path p))
   in
   let which = Memo.exec which_memo in
@@ -779,9 +771,9 @@ end = struct
         ~dynamically_linked_foreign_archives ~instrument_with
 
   let memo =
-    Memo.create_no_cutoff "instantiate-context"
+    Memo.create "instantiate-context"
       ~input:(module Context_name)
-      ~output_to_dyn:(Dyn.Encoder.list to_dyn) instantiate_impl
+      instantiate_impl
 
   let instantiate name = Memo.exec memo name
 end
@@ -803,18 +795,13 @@ module DB = struct
             ]);
       all
     in
-    let memo =
-      Memo.create_no_cutoff "build-contexts"
-        ~input:(module Unit)
-        ~output_to_dyn:(Dyn.Encoder.list to_dyn) impl
-    in
+    let memo = Memo.create "build-contexts" ~input:(module Unit) impl in
     Memo.exec memo
 
   let get =
     let memo =
-      Memo.create_no_cutoff "context-db-get"
+      Memo.create "context-db-get"
         ~input:(module Context_name)
-        ~output_to_dyn:to_dyn
         (fun name ->
           let+ contexts = all () in
           List.find_exn contexts ~f:(fun c -> Context_name.equal name c.name))

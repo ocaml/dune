@@ -370,7 +370,7 @@ end = struct
 
   let stanzas_to_entries =
     let memo =
-      Memo.create_no_cutoff
+      Memo.create
         ~input:(module Super_context.As_memo_key)
         "stanzas-to-entries" stanzas_to_entries
     in
@@ -693,7 +693,6 @@ end = struct
     end in
     Memo.With_implicit_output.create "meta_and_dune_package_rules"
       ~input:(module Project_and_super_context)
-      ~output:(module Unit)
       ~implicit_output:Rules.implicit_output meta_and_dune_package_rules_impl
 
   let meta_and_dune_package_rules sctx ~dir =
@@ -756,15 +755,7 @@ let packages =
   let memo =
     Memo.create "package-map"
       ~input:(module Super_context.As_memo_key)
-      ~output:
-        (Cutoff
-           (module struct
-             type t = Package.Id.Set.t Path.Build.Map.t
-
-             let to_dyn = Path.Build.Map.to_dyn Package.Id.Set.to_dyn
-
-             let equal = Path.Build.Map.equal ~equal:Package.Id.Set.equal
-           end))
+      ~cutoff:(Path.Build.Map.equal ~equal:Package.Id.Set.equal)
       f
   in
   fun sctx -> Memo.exec memo sctx
@@ -913,7 +904,7 @@ let memo =
     else
       Memo.Build.return ()
   in
-  Memo.create_no_cutoff
+  Memo.create
     ~input:(module Sctx_and_package)
     "install-rules-and-pkg-entries"
     (fun (sctx, pkg) ->
@@ -939,7 +930,7 @@ let memo =
 let scheme sctx pkg = Memo.exec memo (sctx, pkg)
 
 let scheme_per_ctx_memo =
-  Memo.create_no_cutoff
+  Memo.create
     ~input:(module Super_context.As_memo_key)
     "install-rule-scheme"
     (fun sctx ->

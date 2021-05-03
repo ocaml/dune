@@ -231,8 +231,6 @@ module Dirs_visited : sig
 
     type dirs_visited
 
-    val to_dyn : t -> Dyn.t
-
     val init : t
 
     val find : t -> Path.Source.t -> dirs_visited
@@ -271,8 +269,6 @@ end = struct
                 ])
         in
         String.Map.add_exn acc fn new_dirs_visited
-
-    let to_dyn t = String.Map.to_dyn (File.Map.to_dyn Path.Source.to_dyn) t
   end
 end
 
@@ -281,10 +277,6 @@ module Output = struct
     { dir : 'a
     ; visited : Dirs_visited.Per_fn.t
     }
-
-  let to_dyn f { dir; visited } =
-    let open Dyn.Encoder in
-    record [ ("dir", f dir); ("visited", Dirs_visited.Per_fn.to_dyn visited) ]
 end
 
 module Dir0 = struct
@@ -615,10 +607,7 @@ end = struct
 
   let find_dir_raw =
     let memo =
-      Memo.create_no_cutoff "find-dir-raw"
-        ~input:(module Path.Source)
-        ~output_to_dyn:(Dyn.Encoder.option (Output.to_dyn Dir0.to_dyn))
-        find_dir_raw_impl
+      Memo.create "find-dir-raw" ~input:(module Path.Source) find_dir_raw_impl
     in
     Memo.cell memo
 
@@ -659,8 +648,7 @@ let execution_parameters_of_dir =
   let memo =
     Memo.create "execution-parameters-of-dir"
       ~input:(module Path.Source)
-      ~output:(Cutoff (module Execution_parameters))
-      f
+      ~cutoff:Execution_parameters.equal f
   in
   Memo.exec memo
 

@@ -19,40 +19,35 @@ module Action_output_on_success = struct
   let hash = Poly.hash
 end
 
-module T = struct
-  type t =
-    { dune_version : Dune_lang.Syntax.Version.t
-    ; action_stdout_on_success : Action_output_on_success.t
-    ; action_stderr_on_success : Action_output_on_success.t
-    }
+type t =
+  { dune_version : Dune_lang.Syntax.Version.t
+  ; action_stdout_on_success : Action_output_on_success.t
+  ; action_stderr_on_success : Action_output_on_success.t
+  }
 
-  let equal { dune_version; action_stdout_on_success; action_stderr_on_success }
-      t =
-    Dune_lang.Syntax.Version.equal dune_version t.dune_version
-    && Action_output_on_success.equal action_stdout_on_success
-         t.action_stdout_on_success
-    && Action_output_on_success.equal action_stderr_on_success
-         t.action_stderr_on_success
+let equal { dune_version; action_stdout_on_success; action_stderr_on_success } t
+    =
+  Dune_lang.Syntax.Version.equal dune_version t.dune_version
+  && Action_output_on_success.equal action_stdout_on_success
+       t.action_stdout_on_success
+  && Action_output_on_success.equal action_stderr_on_success
+       t.action_stderr_on_success
 
-  let hash { dune_version; action_stdout_on_success; action_stderr_on_success }
-      =
-    Hashtbl.hash
-      ( Dune_lang.Syntax.Version.hash dune_version
-      , Action_output_on_success.hash action_stdout_on_success
-      , Action_output_on_success.hash action_stderr_on_success )
+let hash { dune_version; action_stdout_on_success; action_stderr_on_success } =
+  Hashtbl.hash
+    ( Dune_lang.Syntax.Version.hash dune_version
+    , Action_output_on_success.hash action_stdout_on_success
+    , Action_output_on_success.hash action_stderr_on_success )
 
-  let to_dyn
-      { dune_version; action_stdout_on_success; action_stderr_on_success } =
-    Dyn.Record
-      [ ("dune_version", Dune_lang.Syntax.Version.to_dyn dune_version)
-      ; ( "action_stdout_on_success"
-        , Action_output_on_success.to_dyn action_stdout_on_success )
-      ; ( "action_stderr_on_success"
-        , Action_output_on_success.to_dyn action_stderr_on_success )
-      ]
-end
-
-include T
+let to_dyn { dune_version; action_stdout_on_success; action_stderr_on_success }
+    =
+  Dyn.Record
+    [ ("dune_version", Dune_lang.Syntax.Version.to_dyn dune_version)
+    ; ( "action_stdout_on_success"
+      , Action_output_on_success.to_dyn action_stdout_on_success )
+    ; ( "action_stderr_on_success"
+      , Action_output_on_success.to_dyn action_stderr_on_success )
+    ]
 
 let builtin_default =
   { dune_version = Stanza.latest_version

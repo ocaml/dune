@@ -186,17 +186,6 @@ module Store : sig
   end
 end
 
-(** Like [create] but accepts a custom [store] for memoization. This is useful
-    when there is a custom data structure indexed by keys of type ['i] that is
-    more efficient than the one that Memo uses by default (a plain hash table). *)
-val create_with_store :
-     string
-  -> store:(module Store.S with type key = 'i)
-  -> input:(module Store.Input with type t = 'i)
-  -> ?cutoff:('o -> 'o -> bool)
-  -> ('i -> 'o Fiber.t)
-  -> ('i, 'o) t
-
 (** [create name ~input ?cutoff f] creates a memoized version of the function
     [f : 'i -> 'o Build.t]. The result of [f] for a given input is cached, so
     that the second time [exec t x] is called, the previous result is re-used if
@@ -217,6 +206,17 @@ val create_with_store :
 val create :
      string
   -> input:(module Input with type t = 'i)
+  -> ?cutoff:('o -> 'o -> bool)
+  -> ('i -> 'o Build.t)
+  -> ('i, 'o) t
+
+(** Like [create] but accepts a custom [store] for memoization. This is useful
+    when there is a custom data structure indexed by keys of type ['i] that is
+    more efficient than the one that Memo uses by default (a plain hash table). *)
+val create_with_store :
+     string
+  -> store:(module Store.S with type key = 'i)
+  -> input:(module Store.Input with type t = 'i)
   -> ?cutoff:('o -> 'o -> bool)
   -> ('i -> 'o Build.t)
   -> ('i, 'o) t

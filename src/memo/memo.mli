@@ -356,3 +356,13 @@ val unwrap_exn : (exn -> exn) ref
 (** If [true], this module will record the location of [Lazy.t] values. This is
     a bit expensive to compute, but it helps debugging. *)
 val track_locations_of_lazy_values : bool ref
+
+module For_tests : sig
+  val nodes_considered_in_current_run : unit -> int
+
+  val edges_considered_in_current_run : unit -> int
+
+  val nodes_computed_in_current_run : unit -> int
+
+  val report_for_current_run : unit -> string
+end

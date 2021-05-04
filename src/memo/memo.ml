@@ -3,6 +3,24 @@ open Fiber.O
 
 let track_locations_of_lazy_values = ref false
 
+module Perf_counters = struct
+  let nodes_considered = ref 0
+
+  let edges_considered = ref 0
+
+  let nodes_computed = ref 0
+
+  let reset () =
+    nodes_considered := 0;
+    edges_considered := 0;
+    nodes_computed := 0
+
+  let record_newly_considered_node ~edges ~computed =
+    incr nodes_considered;
+    edges_considered := !edges_considered + edges;
+    if computed then incr nodes_computed
+end
+
 type 'a build = 'a Fiber.t
 
 module type Build = sig
@@ -892,6 +910,12 @@ end = struct
     let frame : Stack_frame_with_state.t =
       T { without_state = dep_node.without_state; running_state }
     in
+    let stop_considering ~(cached_value : _ Cached_value.t) ~computed =
+      dep_node.state <- Not_considering;
+      Perf_counters.record_newly_considered_node
+        ~edges:(List.length cached_value.deps)
+        ~computed
+    in
     let restore_from_cache =
       Once.create ~must_not_raise:(fun () ->
           Call_stack.push_frame frame (fun () ->
@@ -899,7 +923,8 @@ end = struct
                 restore_from_cache dep_node.last_cached_value
               in
               (match restore_result with
-              | Ok _ -> dep_node.state <- Not_considering
+              | Ok cached_value ->
+                stop_considering ~cached_value ~computed:false
               | Failure _ -> ());
               restore_result))
     in
@@ -913,7 +938,7 @@ end = struct
                 compute dep_node cache_lookup_failure running_state.deps_so_far
               in
               dep_node.last_cached_value <- Some cached_value;
-              dep_node.state <- Not_considering;
+              stop_considering ~cached_value ~computed:true;
               cached_value))
     in
     let result : _ Sample_attempt.Result.t = { restore_from_cache; compute } in
@@ -1150,10 +1175,25 @@ let incremental_mode_enabled =
 
 let restart_current_run () =
   Current_run.invalidate ();
-  Run.restart ()
+  Run.restart ();
+  Perf_counters.reset ()
 
 let reset () =
   restart_current_run ();
   if not incremental_mode_enabled then Caches.clear ()
 
 let clear_memoization_caches () = Caches.clear ()
+
+module For_tests = struct
+  let nodes_considered_in_current_run () = !Perf_counters.nodes_considered
+
+  let edges_considered_in_current_run () = !Perf_counters.edges_considered
+
+  let nodes_computed_in_current_run () = !Perf_counters.nodes_computed
+
+  let report_for_current_run () =
+    sprintf "%d/%d nodes/edges considered, %d nodes computed\n"
+      (nodes_considered_in_current_run ())
+      (edges_considered_in_current_run ())
+      (nodes_computed_in_current_run ())
+end

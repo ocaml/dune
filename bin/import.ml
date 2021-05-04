@@ -65,7 +65,7 @@ module Scheduler = struct
            ; Pp.nop
            ])
 
-  let on_event dune_config _config = function
+  let on_event common dune_config _config = function
     | Scheduler.Run.Event.Tick -> Console.Status_line.refresh ()
     | Scheduler.Run.Event.Source_files_changed -> maybe_clear_screen dune_config
     | Build_interrupted ->
@@ -78,6 +78,10 @@ module Scheduler = struct
       in
       Console.Status_line.set_constant status_line
     | Build_finish res ->
+      if Common.watch_perf_counters common then
+        Console.print_user_message
+          (User_message.make
+             [ Pp.textf "%s" (Memo.For_tests.report_for_current_run ()) ]);
       let message =
         match res with
         | Success -> Pp.tag User_message.Style.Success (Pp.verbatim "Success")
@@ -90,7 +94,7 @@ module Scheduler = struct
   let go ~(common : Common.t) ~config:dune_config f =
     let stats = Common.stats common in
     let config = Dune_config.for_scheduler dune_config None stats in
-    Scheduler.Run.go config ~on_event:(on_event dune_config) f
+    Scheduler.Run.go config ~on_event:(on_event common dune_config) f
 
   let poll ~(common : Common.t) ~config:dune_config ~every ~finally =
     let stats = Common.stats common in
@@ -117,7 +121,9 @@ module Scheduler = struct
               Dune_rpc_impl.Run.run rpc)
             run
     in
-    Scheduler.Run.go config ~file_watcher ~on_event:(on_event dune_config) run
+    Scheduler.Run.go config ~file_watcher
+      ~on_event:(on_event common dune_config)
+      run
 end
 
 let restore_cwd_and_execve (common : Common.t) prog argv env =

@@ -499,14 +499,14 @@ let report_process_start stats ~id ~prog ~args ~now =
     [ ("process_args", `List (List.map args ~f:(fun arg -> `String arg))) ]
   in
   let event = Event.async (Int id) ~args Start common in
-  Stats.emit stats event;
+  Dune_stats.emit stats event;
   (common, args)
 
 let report_process_end stats (common, args) ~now (times : Proc.Times.t) =
   let common = Event.set_ts common (Timestamp.of_float_seconds now) in
   let dur = Chrome_trace.Event.Timestamp.of_float_seconds times.elapsed_time in
   let event = Event.complete ~args ~dur common in
-  Stats.emit stats event
+  Dune_stats.emit stats event
 
 let run_internal ?dir ?(stdout_to = Io.stdout) ?(stderr_to = Io.stderr)
     ?(stdin_from = Io.null In) ?(env = Env.initial) ~purpose fail_mode prog args

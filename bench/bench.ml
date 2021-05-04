@@ -4,7 +4,7 @@ module Config = Dune_util.Config
 
 module Json = struct
   include Chrome_trace.Json
-  include Stats.Json
+  include Dune_stats.Json
 end
 
 module Output = struct

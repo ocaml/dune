@@ -5,10 +5,6 @@
 
   $ dune build --root inaccessible-in-deps 2>&1
   Entering directory 'inaccessible-in-deps'
-  File "dune", line 5, characters 0-49:
-  5 | (alias
-  6 |  (name default)
-  7 |  (action (run ./foo.exe)))
   File "foo.ml", line 1, characters 0-5:
   1 | X.run ();;
       ^^^^^

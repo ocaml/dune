@@ -23,7 +23,7 @@ module Config : sig
     { concurrency : int
     ; display : Display.t
     ; rpc : Dune_rpc.Where.t option
-    ; stats : Stats.t option
+    ; stats : Dune_stats.t option
     }
 
   (** [add_to_env env] adds to [env] the environment variable that describes

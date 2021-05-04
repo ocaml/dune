@@ -77,7 +77,7 @@ type t =
       ; handler : Dune_rpc_server.t
       ; pool : Fiber.Pool.t
       ; where : Dune_rpc_private.Where.t
-      ; stats : Stats.t option
+      ; stats : Dune_stats.t option
       ; symlink_socket : Symlink_socket.t option
       }
 

@@ -301,7 +301,9 @@ let build_ppx_driver sctx ~scope ~target ~pps ~pp_names =
         Driver.select pps ~loc:(Dot_ppx (target, pp_names))
         >>| Resolve.map ~f:(fun driver -> (driver, pps)))
     >>| (* Extend the dependency stack as we don't have locations at this point *)
-    Resolve.extend_dep_path (Preprocess pp_names)
+    Resolve.push_stack_frame ~human_readable_description:(fun () ->
+        Dyn.pp
+          (List [ String "pps"; Dyn.Encoder.(list Lib_name.to_dyn) pp_names ]))
   in
   (* CR-someday diml: what we should do is build the .cmx/.cmo once and for all
      at the point where the driver is defined. *)
@@ -433,7 +435,7 @@ let get_cookies ~loc ~expander ~lib_name libs =
            [ "--cookie"; sprintf "%s=%S" name value ])
   with
   | x -> Resolve.return x
-  | exception User_error.E (msg, None) -> Resolve.fail msg
+  | exception User_error.E (msg, []) -> Resolve.fail msg
 
 let ppx_driver_and_flags_internal sctx ~loc ~expander ~lib_name ~flags libs =
   let open Resolve.O in

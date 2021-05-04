@@ -4,6 +4,79 @@ open Resolve.O
 
 (* Errors *)
 
+module Dep_path : sig
+  module Entry : sig
+    module Lib : sig
+      type t =
+        { path : Path.t
+        ; name : Lib_name.t
+        }
+
+      val pp : t -> _ Pp.t
+    end
+
+    module Implements_via : sig
+      type t =
+        | Variant of Variant.t
+        | Default_for of Lib.t
+    end
+
+    type t =
+      { lib : Lib.t
+      ; implements_via : Implements_via.t option
+      }
+  end
+
+  type t = Entry.t list
+
+  val pp : t -> _ Pp.t
+end = struct
+  module Entry = struct
+    module Lib = struct
+      type t =
+        { path : Path.t
+        ; name : Lib_name.t
+        }
+
+      let pp { path; name } =
+        Pp.textf "library %S in %s" (Lib_name.to_string name)
+          (Path.to_string_maybe_quoted path)
+    end
+
+    module Implements_via = struct
+      type t =
+        | Variant of Variant.t
+        | Default_for of Lib.t
+
+      let pp = function
+        | Variant v -> Pp.textf "via variant %S" (Variant.to_string v)
+        | Default_for l ->
+          Pp.seq (Pp.text "via default implementation for ") (Lib.pp l)
+    end
+
+    type t =
+      { lib : Lib.t
+      ; implements_via : Implements_via.t option
+      }
+
+    let pp { lib; implements_via } =
+      match implements_via with
+      | None -> Lib.pp lib
+      | Some via ->
+        Pp.concat ~sep:Pp.space [ Lib.pp lib; Implements_via.pp via ]
+  end
+
+  type t = Entry.t list
+
+  let pp t =
+    Pp.vbox
+      (Pp.concat ~sep:Pp.cut
+         (List.map t ~f:(fun x ->
+              Pp.box ~indent:3
+                (Pp.seq (Pp.verbatim "-> ")
+                   (Pp.seq (Pp.text "required by ") (Entry.pp x))))))
+end
+
 (* The current module never raises. It returns all errors as [Result.Error
    (User_error.E _)] values instead. Errors are later inserted into
    [Action_builder.t] values so that they are only raised during the actual
@@ -31,7 +104,7 @@ module Error = struct
     let info = Pp.box (pp_lib info) in
     match dp with
     | [] -> info
-    | _ -> Pp.vbox (Pp.concat ~sep:Pp.cut [ info; Dep_path.Entries.pp dp ])
+    | _ -> Pp.vbox (Pp.concat ~sep:Pp.cut [ info; Dep_path.pp dp ])
 
   let not_found ~loc ~name =
     make ~loc [ Pp.textf "Library %S not found." (Lib_name.to_string name) ]
@@ -75,7 +148,7 @@ module Error = struct
        ::
        (match dp with
        | [] -> []
-       | _ -> [ Dep_path.Entries.pp dp ]))
+       | _ -> [ Dep_path.pp dp ]))
 
   let overlap ~in_workspace ~installed =
     make
@@ -764,7 +837,7 @@ module Dep_stack = struct
             Implements_via.to_dep_path_implements_via via
           in
           loop
-            (Dep_path.Entry.Library ({ path; name }, implements_via) :: acc)
+            ({ Dep_path.Entry.lib = { path; name }; implements_via } :: acc)
             l
     in
     loop [] t.stack
@@ -1177,8 +1250,8 @@ end = struct
     in
     let src_dir = Lib_info.src_dir info in
     let map_error x =
-      let lib = { Dep_path.Entry.Lib.path = src_dir; name } in
-      Resolve.extend_dep_path (Library (lib, None)) x
+      Resolve.push_stack_frame x ~human_readable_description:(fun () ->
+          Dep_path.Entry.Lib.pp { name; path = src_dir })
     in
     let requires = map_error requires in
     let ppx_runtime_deps = map_error ppx_runtime_deps in
@@ -1602,7 +1675,7 @@ end = struct
           let req_by = Dep_stack.to_required_by stack ~stop_at:t.orig_stack in
           Error.make ~loc
             [ Pp.textf "Library %S was pulled in." (Lib_name.to_string lib.name)
-            ; Dep_path.Entries.pp req_by
+            ; Dep_path.pp req_by
             ]
         | None ->
           t.visited <- Set.add t.visited lib;
@@ -1880,11 +1953,20 @@ module DB = struct
                    (Lib_name.to_string lib.name)
                ]
          and+ res = res in
-         Resolve.extend_dep_path (Executables exes)
+         Resolve.push_stack_frame
            (Resolve_names.linking_closure_with_overlap_checks
               ~stack:Dep_stack.empty
               (Option.some_if (not allow_overlaps) t)
-              ~forbidden_libraries res))
+              ~forbidden_libraries res)
+           ~human_readable_description:(fun () ->
+             match exes with
+             | [ (loc, name) ] ->
+               Pp.textf "executable %s in %s" name (Loc.to_file_colon_line loc)
+             | names ->
+               let loc, _ = List.hd names in
+               Pp.textf "executables %s in %s"
+                 (String.enumerate_and (List.map ~f:snd names))
+                 (Loc.to_file_colon_line loc)))
     in
     let merlin_ident = Merlin_ident.for_exes ~names:(List.map ~f:snd exes) in
     { Compile.direct_requires = res

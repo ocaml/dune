@@ -69,11 +69,23 @@ let report_backtraces b = report_backtraces_flag := b
 
 let clear_reported () = reported := Digest.Set.empty
 
-let report ?(extra = fun _ -> None) { Exn_with_backtrace.exn; backtrace } =
+let print_memo_stacks = ref false
+
+let report { Exn_with_backtrace.exn; backtrace } =
+  let exn, memo_stack =
+    match exn with
+    | Memo.Error.E err -> (Memo.Error.get err, Memo.Error.stack err)
+    | _ -> (exn, [])
+  in
   match exn with
   | Already_reported -> ()
   | _ ->
     let who_is_responsible, msg = get_user_message exn in
+    let has_embed_location =
+      match exn with
+      | User_error.E (_, annots) -> User_error.has_embed_location annots
+      | _ -> false
+    in
     let msg =
       if msg.loc = Some Loc.none then
         { msg with loc = None }
@@ -95,8 +107,41 @@ let report ?(extra = fun _ -> None) { Exn_with_backtrace.exn; backtrace } =
                (Printexc.raw_backtrace_to_string backtrace |> String.split_lines)
                ~f:(fun line -> Pp.box ~indent:2 (Pp.text line)))
       in
+      let memo_stack =
+        if !print_memo_stacks then
+          memo_stack
+        else
+          match msg.loc with
+          | None ->
+            if has_embed_location then
+              []
+            else
+              memo_stack
+          | Some loc ->
+            if Filename.is_relative loc.start.pos_fname then
+              (* If the error points to a local file, we assume that we don't
+                 need to explain to the user how we reached this error. *)
+              []
+            else
+              memo_stack
+      in
+      let memo_stack =
+        match
+          List.filter_map memo_stack
+            ~f:Memo.Stack_frame.human_readable_description
+        with
+        | [] -> None
+        | pps ->
+          Some
+            (Pp.vbox
+               (Pp.concat ~sep:Pp.cut
+                  (List.map pps ~f:(fun pp ->
+                       Pp.box ~indent:3
+                         (Pp.seq (Pp.verbatim "-> ")
+                            (Pp.seq (Pp.text "required by ") pp))))))
+      in
       let msg =
-        match extra msg.loc with
+        match memo_stack with
         | None -> msg
         | Some pp -> append msg [ pp ]
       in

@@ -381,13 +381,7 @@ struct
         | true -> exec then_
         | false -> exec else_)
       | Catch (t, on_error) -> (
-        let+ res =
-          Memo.Build.map_reduce_errors
-            (module Monoid.Unit)
-            ~on_error:(fun _ -> Memo.Build.return ())
-            (fun () -> exec t)
-        in
-        match res with
+        Memo.Build.swallow_errors (fun () -> exec t) >>| function
         | Ok r -> r
         | Error () -> (on_error, Dep.Map.empty))
       | Memo m -> Memo_poly.eval m

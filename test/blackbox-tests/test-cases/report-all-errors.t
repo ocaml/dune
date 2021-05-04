@@ -49,22 +49,14 @@ failing before it had a chance to start thinking about building `z`.
   $ echo 'exit 1' > fail.ml
 
   $ dune build
-  File "dune", line 1, characters 0-73:
-  1 | (rule
-  2 |  (alias default)
-  3 |  (action
-  4 |   (progn
-  5 |    (cat %{read:x})
-  6 |    (cat y))))
+  File "dune", line 10, characters 0-42:
+  10 | (rule (with-stdout-to y (run ./fail.exe)))
+       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
           fail y (exit 1)
   (cd _build/default && ./fail.exe) > _build/default/y
-  File "dune", line 1, characters 0-73:
-  1 | (rule
-  2 |  (alias default)
-  3 |  (action
-  4 |   (progn
-  5 |    (cat %{read:x})
-  6 |    (cat y))))
+  File "dune", line 11, characters 0-42:
+  11 | (rule (with-stdout-to z (run ./fail.exe)))
+       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
           fail z (exit 1)
   (cd _build/default && ./fail.exe) > _build/default/z
   [1]

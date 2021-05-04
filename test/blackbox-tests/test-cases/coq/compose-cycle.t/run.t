@@ -6,9 +6,9 @@
   - b
   - a
   - b
-  -> required by a/a.vo
-  -> required by install lib/coq/user-contrib/a/a.vo
-  -> required by ccycle.install
+  -> required by _build/default/a/a.vo
+  -> required by _build/install/default/lib/coq/user-contrib/a/a.vo
+  -> required by _build/default/ccycle.install
   -> required by alias default in dune:1
   File "b/dune", line 2, characters 7-8:
   2 |  (name b)
@@ -17,8 +17,8 @@
   - a
   - b
   - a
-  -> required by b/b.vo
-  -> required by install lib/coq/user-contrib/b/b.vo
-  -> required by ccycle.install
+  -> required by _build/default/b/b.vo
+  -> required by _build/install/default/lib/coq/user-contrib/b/b.vo
+  -> required by _build/default/ccycle.install
   -> required by alias default in dune:1
   [1]

@@ -15,12 +15,8 @@
 
   $ dune build --root dep
   Entering directory 'dep'
-  File "dune", line 1, characters 0-68:
-  1 | (alias
-  2 |  (name default)
-  3 |  (deps dir)
-  4 |  (action (bash "cat %{deps}/*")))
   Error: No rule found for dir
+  -> required by alias default in dune:1
   [1]
 
 We should not be able to produce a directory in a rule that already exists

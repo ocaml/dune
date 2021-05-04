@@ -699,7 +699,7 @@ end = struct
             (module Monoid.Unit)
             f
             ~on_error:(fun e ->
-              Report_error.report e;
+              Dune_util.Report_error.report e;
               Fiber.return ()))
     in
     match Fiber.run fiber ~iter:(fun () -> iter t) with
@@ -763,7 +763,7 @@ module Run = struct
       let* res =
         let on_error exn =
           (match t.status with
-          | Building -> Report_error.report exn
+          | Building -> Dune_util.Report_error.report exn
           | Shutting_down
           | Restarting_build ->
             ()

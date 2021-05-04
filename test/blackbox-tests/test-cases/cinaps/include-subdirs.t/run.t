@@ -21,6 +21,9 @@ cinaps doesn't work with (include_subdirs unqualified)
   > EOF
 
   $ dune runtest --diff-command diff 2>&1 | sed -E 's/[^ ]+sh/\$sh/'
+  File "sub/dune", line 1, characters 0-24:
+  1 | (cinaps (files test.ml))
+      ^^^^^^^^^^^^^^^^^^^^^^^^
             sh (internal) (exit 1)
   (cd _build/default && $sh -c 'diff sub/test.ml sub/test.ml.cinaps-corrected')
   2,3c2

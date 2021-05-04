@@ -175,7 +175,7 @@ let init ?log_file c =
     ~cache_debug_flags:c.cache_debug_flags
     ~handler:(Option.map c.rpc ~f:Dune_rpc_impl.Server.build_handler);
   Only_packages.Clflags.set c.only_packages;
-  Clflags.debug_dep_path := c.debug_dep_path;
+  Dune_util.Report_error.print_memo_stacks := c.debug_dep_path;
   Clflags.debug_findlib := c.debug_findlib;
   Clflags.debug_backtraces c.debug_backtraces;
   Clflags.debug_artifact_substitution := c.debug_artifact_substitution;

@@ -10,8 +10,7 @@ module Args0 = struct
     | `Targets
     ]
 
-  type expand =
-    dir:Path.t -> (string list * Dep.Set.t, fail) result Memo.Build.t
+  type expand = dir:Path.t -> string list Action_builder.t
 
   (* Debugging tip: if you changed this file and Dune got broken in a weird way
      it's probably because of the [Fail] constructor. *)
@@ -88,14 +87,7 @@ let rec expand :
       (Action_builder.map (Action_builder.deps deps) ~f:(fun () -> []))
   | Hidden_targets fns ->
     Action_builder.with_targets ~targets:fns (Action_builder.return [])
-  | Expand f ->
-    Action_builder.with_no_targets
-      (let open Action_builder.O in
-      Action_builder.memo_build (f ~dir) >>= function
-      | Error e -> Action_builder.fail e
-      | Ok (args, deps) ->
-        let open Action_builder.O in
-        Action_builder.deps deps >>> Action_builder.return args)
+  | Expand f -> Action_builder.with_no_targets (f ~dir)
 
 and expand_no_targets ~dir (t : without_targets t) =
   let { Action_builder.With_targets.build; targets } = expand ~dir t in
@@ -143,12 +135,13 @@ module Args = struct
         ~input:(module Path)
         (fun dir ->
           Memo.Build.return
-            (match Action_builder.static_eval (expand_no_targets ~dir t) with
-            | None -> assert false
-            | Some x -> Ok x
-            | exception exn -> Error { fail = (fun () -> raise exn) }))
+            (Action_builder.memoize "Command.Args.memo"
+               (expand_no_targets ~dir t)))
     in
-    Expand (fun ~dir -> Memo.exec memo dir)
+    Expand
+      (fun ~dir ->
+        let open Action_builder.O in
+        Action_builder.memo_build (Memo.exec memo dir) >>= Fun.id)
 end
 
 module Ml_kind = struct

@@ -249,7 +249,7 @@ struct
               (* The [let+ () = A.return () in ...] is to delay the error until
                  the evaluation of the applicative *)
               let+ () = A.return () in
-              raise (User_error.E (msg, None))
+              raise (User_error.E (msg, []))
             | Pform (source, p) ->
               let+ v = f ~source p in
               if t.quoted then
@@ -320,7 +320,7 @@ let encode t =
       ; parts =
           List.map t.parts ~f:(function
             | Text s -> Dune_lang.Template.Text s
-            | Error (_, msg) -> raise (User_error.E (msg, None))
+            | Error (_, msg) -> raise (User_error.E (msg, []))
             | Pform (source, pform) -> (
               match Pform.encode_to_latest_dune_lang_version pform with
               | Pform_was_deleted ->

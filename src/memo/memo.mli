@@ -77,24 +77,9 @@ module Build : sig
   end
   [@@inline always]
 
-  (** The bellow functions will eventually disappear and are only exported for
-      the transition to the memo monad *)
-
-  val with_error_handler :
-    (unit -> 'a t) -> on_error:(Exn_with_backtrace.t -> Nothing.t t) -> 'a t
-
-  val map_reduce_errors :
-       (module Monoid with type t = 'a)
-    -> on_error:(Exn_with_backtrace.t -> 'a t)
-    -> (unit -> 'b t)
-    -> ('b, 'a) result t
-
-  val collect_errors :
-    (unit -> 'a t) -> ('a, Exn_with_backtrace.t list) Result.t t
-
-  val finalize : (unit -> 'a t) -> finally:(unit -> unit t) -> 'a t
-
-  val reraise_all : Exn_with_backtrace.t list -> 'a t
+  (** [swallow_errors f] swallows any error raised during the execution of [f].
+      Use this function if you are ok with a computation failing. *)
+  val swallow_errors : (unit -> 'a t) -> ('a, unit) Result.t t
 
   module Option : sig
     val iter : 'a option -> f:('a -> unit t) -> unit t
@@ -126,6 +111,22 @@ module Stack_frame : sig
   (** Checks if the stack frame is a frame of the given memoized function and if
       so, returns [Some i] where [i] is the argument of the function. *)
   val as_instance_of : t -> of_:('input, _) memo -> 'input option
+
+  val human_readable_description : t -> User_message.Style.t Pp.t option
+end
+
+(** Errors raised by user-supplied memoized functions that have been augmented
+    with Memo call stack information. *)
+module Error : sig
+  type t
+
+  exception E of t
+
+  (** Get the underlying exception.*)
+  val get : t -> exn
+
+  (** Return the stack leading to the node which raised the exception.*)
+  val stack : t -> Stack_frame.t list
 end
 
 module Cycle_error : sig
@@ -135,9 +136,6 @@ module Cycle_error : sig
 
   (** Get the list of stack frames in this cycle. *)
   val get : t -> Stack_frame.t list
-
-  (** Return the stack leading to the node which raised the cycle. *)
-  val stack : t -> Stack_frame.t list
 end
 
 (** Mark an exception as non-reproducible to indicate that it shouldn't be
@@ -205,12 +203,16 @@ end
     depend on it. Note that currently Dune wipes all memoization caches on every
     run, so this early cutoff optimisation is not effective.
 
+    If [human_readable_description] is passed, it will be used when displaying
+    the memo stack to the user.
+
     Running the computation may raise [Memo.Cycle_error.E] if a dependency cycle
     is detected. *)
 val create :
      string
   -> input:(module Input with type t = 'i)
   -> ?cutoff:('o -> 'o -> bool)
+  -> ?human_readable_description:('i -> User_message.Style.t Pp.t)
   -> ('i -> 'o Build.t)
   -> ('i, 'o) t
 
@@ -222,6 +224,7 @@ val create_with_store :
   -> store:(module Store.S with type key = 'i)
   -> input:(module Store.Input with type t = 'i)
   -> ?cutoff:('o -> 'o -> bool)
+  -> ?human_readable_description:('i -> User_message.Style.t Pp.t)
   -> ('i -> 'o Build.t)
   -> ('i, 'o) t
 
@@ -244,6 +247,13 @@ val pp_stack : unit -> _ Pp.t Fiber.t
 (** Get the memoized call stack during the execution of a memoized function. *)
 val get_call_stack : unit -> Stack_frame.t list Build.t
 
+(** Insert a stack frame to make call stacks more precise when showing them to
+    the user. *)
+val push_stack_frame :
+     human_readable_description:(unit -> User_message.Style.t Pp.t)
+  -> (unit -> 'a Build.t)
+  -> 'a Build.t
+
 module Run : sig
   (** A single build run. *)
   type t
@@ -257,14 +267,22 @@ module Lazy : sig
 
   val of_val : 'a -> 'a t
 
-  val create : ?cutoff:('a -> 'a -> bool) -> (unit -> 'a Build.t) -> 'a t
+  val create :
+       ?cutoff:('a -> 'a -> bool)
+    -> ?human_readable_description:(unit -> User_message.Style.t Pp.t)
+    -> (unit -> 'a Build.t)
+    -> 'a t
 
   val force : 'a t -> 'a Build.t
 
   val map : 'a t -> f:('a -> 'b) -> 'b t
 end
 
-val lazy_ : ?cutoff:('a -> 'a -> bool) -> (unit -> 'a Build.t) -> 'a Lazy.t
+val lazy_ :
+     ?cutoff:('a -> 'a -> bool)
+  -> ?human_readable_description:(unit -> User_message.Style.t Pp.t)
+  -> (unit -> 'a Build.t)
+  -> 'a Lazy.t
 
 module Implicit_output : sig
   type 'o t
@@ -354,8 +372,6 @@ module Poly (Function : sig
 end) : sig
   val eval : 'a Function.input -> 'a Function.output Build.t
 end
-
-val unwrap_exn : (exn -> exn) ref
 
 (** If [true], this module will record the location of [Lazy.t] values. This is
     a bit expensive to compute, but it helps debugging. *)

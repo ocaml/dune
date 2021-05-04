@@ -130,9 +130,9 @@ val is_error : 'a t -> bool
     actually evaluated. *)
 val fail : User_message.t -> _ t
 
-(** Insert the following entry in the dependency path in case of failure. This
-    helps improve error messages. *)
-val extend_dep_path : Dep_path.Entry.t -> 'a t -> 'a t
+(** Similar to [Memo.push_stack_frame]. *)
+val push_stack_frame :
+  human_readable_description:(unit -> User_message.Style.t Pp.t) -> 'a t -> 'a t
 
 val all : 'a t list -> 'a list t
 

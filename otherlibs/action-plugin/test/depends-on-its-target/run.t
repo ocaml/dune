@@ -19,11 +19,11 @@
   $ cp ./bin/foo2.exe ./
 
   $ dune build some_file1
-  Error: Dependency cycle between the following files:
+  Error: Dependency cycle between:
      _build/default/some_file1
   [1]
 
   $ dune build some_file2
-  Error: Dependency cycle between the following files:
+  Error: Dependency cycle between:
      _build/default/some_file2
   [1]

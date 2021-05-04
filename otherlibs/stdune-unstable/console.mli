@@ -13,6 +13,11 @@ module Backend : sig
     (** Change the status line *)
     val set_status_line : User_message.Style.t Pp.t option -> unit
 
+    (** Print a message if the backend does not display the status line. This is
+        needed so that the important status changes show up even when a [dumb]
+        terminal backend is used. *)
+    val print_if_no_status_line : User_message.Style.t Pp.t -> unit
+
     (** Reset the log output *)
     val reset : unit -> unit
   end
@@ -45,13 +50,17 @@ module Status_line : sig
   (** This module allows to buffer status updates so that they don't slow down
       the application *)
 
-  (** Function that produces the current status line *)
-  type t = unit -> User_message.Style.t Pp.t option
+  (** The current status line *)
+  type t = User_message.Style.t Pp.t option
 
-  (** Change the status line generator *)
-  val set : t -> unit
+  (** Change the status line generator to a "live" value that's updated
+      continuously, such as a progress indicator. This message is not shown when
+      a "dumb" terminal backend is in use. *)
+  val set_live : (unit -> t) -> unit
 
-  val set_temporarily : t -> (unit -> 'a) -> 'a
+  (** Set the status line to a fixed value. Unlike with [set_live], this text is
+      printed even if a dumb console backend is in use. *)
+  val set_constant : t -> unit
 
   val refresh : unit -> unit
 end

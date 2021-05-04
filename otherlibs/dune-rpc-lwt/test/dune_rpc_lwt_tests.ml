@@ -89,6 +89,7 @@ let%expect_test "run and connect" =
          build#terminate));
   [%expect
     {|
+    Success, waiting for filesystem changes...
     started session
     received ping. shutting down.
     rpc init finished with 0
@@ -207,6 +208,7 @@ let%expect_test "run and connect persistent" =
   Lwt_main.run test;
   [%expect
     {|
+    Success, waiting for filesystem changes...
     build1: connecting
     build1: dune build finished with 0
     build2: connecting

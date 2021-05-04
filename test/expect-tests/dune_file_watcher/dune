@@ -1,6 +1,8 @@
 (library
  (name dune_file_watcher_tests)
- (inline_tests (deps (sandbox always)))
+ (inline_tests
+  (deps
+   (sandbox always)))
  (libraries
   dune_file_watcher
   ppx_expect.config

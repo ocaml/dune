@@ -41,7 +41,7 @@ module Config = struct
     { concurrency : int
     ; display : Display.t
     ; rpc : Dune_rpc.Where.t option
-    ; stats : Stats.t option
+    ; stats : Dune_stats.t option
     }
 
   let add_to_env t env =
@@ -122,7 +122,7 @@ module Event : sig
 
     type event
 
-    val create : Stats.t option -> t
+    val create : Dune_stats.t option -> t
 
     (** Return the next event. File changes event are always flattened and
         returned first. *)
@@ -177,7 +177,7 @@ end = struct
       ; mutable pending_jobs : int
       ; mutable pending_rpc : int
       ; rpc_completed : Fiber.fill Queue.t
-      ; stats : Stats.t option
+      ; stats : Dune_stats.t option
       }
 
     let create stats =
@@ -218,7 +218,7 @@ end = struct
         && Queue.is_empty q.rpc_completed)
 
     let next q =
-      Option.iter q.stats ~f:Stats.record_gc_and_fd;
+      Option.iter q.stats ~f:Dune_stats.record_gc_and_fd;
       Mutex.lock q.mutex;
       let rec loop () =
         while not (available q) do

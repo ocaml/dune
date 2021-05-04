@@ -100,5 +100,5 @@ module Make (S : sig
   val read : t -> Sexp.t option Fiber.t
 end) : sig
   (** [serve sessions handler] serve all [sessions] using [handler] *)
-  val serve : S.t Fiber.Stream.In.t -> Stats.t option -> t -> unit Fiber.t
+  val serve : S.t Fiber.Stream.In.t -> Dune_stats.t option -> t -> unit Fiber.t
 end

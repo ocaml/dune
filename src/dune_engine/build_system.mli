@@ -89,7 +89,7 @@ end
 
 (** Initializes the build system. This must be called first. *)
 val init :
-     stats:Stats.t option
+     stats:Dune_stats.t option
   -> contexts:Build_context.t list Memo.Lazy.t
   -> promote_source:
        (   ?chmod:(int -> int)

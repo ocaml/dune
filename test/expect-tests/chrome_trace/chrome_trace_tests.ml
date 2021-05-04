@@ -8,7 +8,7 @@ let buf = Buffer.create 0
 let c =
   let write s = Buffer.add_string buf s in
   let close () = () in
-  Stats.create (Custom { write; close })
+  Dune_stats.create (Custom { write; close })
 
 let () =
   let module Event = Chrome_trace.Event in
@@ -33,8 +33,8 @@ let () =
         ~args:[ ("foo", `Int 100) ]
     ]
   in
-  List.iter events ~f:(Stats.emit c);
-  Stats.close c
+  List.iter events ~f:(Dune_stats.emit c);
+  Dune_stats.close c
 
 let buffer_lines () = String.split_lines (Buffer.contents buf)
 

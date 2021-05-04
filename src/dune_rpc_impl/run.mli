@@ -17,7 +17,7 @@ type t
 
 val t : unit -> t Fiber.t
 
-val of_config : Config.t -> Csexp_rpc.Scheduler.t -> Stats.t option -> t
+val of_config : Config.t -> Csexp_rpc.Scheduler.t -> Dune_stats.t option -> t
 
 (** Stop accepting new rpc connections. Fiber returns when all existing
     connetions terminate *)

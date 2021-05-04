@@ -429,7 +429,7 @@ type t =
       -> unit Fiber.t
   ; locks : (Path.t, Fiber.Mutex.t) Table.t
   ; build_mutex : Fiber.Mutex.t
-  ; stats : Stats.t option
+  ; stats : Dune_stats.t option
   ; cache_config : Dune_cache.Config.t
   }
 
@@ -1414,7 +1414,7 @@ end = struct
           let common = Event.common_fields ~name:"evaluated_rules" ~ts () in
           Event.counter common args
         in
-        Stats.emit stats event)
+        Dune_stats.emit stats event)
 
   (* CR-someday amokhov: If the cloud cache is enabled, then before attempting
      to restore artifacts from the shared cache, we should send a download

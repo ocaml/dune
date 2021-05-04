@@ -27,12 +27,17 @@ module Build : sig
 
   val run : 'a t -> 'a Fiber.t
 
-  (** [of_reproducible_fiber fiber] injects a fiber into the build monad. This
-      module assumes that the given fiber is "reproducible", i.e. that executing
-      it multiple times will always yield the same result.
-
-      It is however up to the user to ensure this property. *)
+  (** [of_reproducible_fiber fiber] injects a fiber into the build monad. The
+      given fiber must be "reproducible", i.e. executing it multiple times
+      should always yield the same result. It is up to the caller to ensure that
+      this property holds. If it doesn't, use [of_non_reproducible_fiber]. *)
   val of_reproducible_fiber : 'a Fiber.t -> 'a t
+
+  (** [of_non_reproducible_fiber fiber] injects a fiber into the build monad.
+      The fiber is considered to be "non-reproducible", i.e. it may return
+      different values each time it is executed (for example, the current time),
+      and it will therefore be re-executed on every build run. *)
+  val of_non_reproducible_fiber : 'a Fiber.t -> 'a t
 
   val return : 'a -> 'a t
 
@@ -149,46 +154,14 @@ val restart_current_run : unit -> unit
     that the build system tracks all relevant side effects in the [Build] monad. *)
 val incremental_mode_enabled : bool
 
-module type Output_simple = sig
-  type t
-
-  val to_dyn : t -> Dyn.t
-end
-
-module type Output_allow_cutoff = sig
-  type t
-
-  val to_dyn : t -> Dyn.t
-
-  val equal : t -> t -> bool
-end
-
-(** When we recompute the function and find that its output is the same as what
-    we computed before, we can sometimes skip recomputing the values that depend
-    on it.
-
-    [Allow_cutoff] specifies how to compare the output values for that purpose.
-
-    Note that currently Dune wipes all memoization caches on every run, so
-    cutoff is not effective. *)
-module Output : sig
-  type 'o t =
-    | Simple of (module Output_simple with type t = 'o)
-    | Allow_cutoff of (module Output_allow_cutoff with type t = 'o)
-
-  val simple : ?to_dyn:('a -> Dyn.t) -> unit -> 'a t
-end
+(** Forget all memoized values, forcing them to be recomputed on the next build
+    run. Intended for use by the testsuite. *)
+val clear_memoization_caches : unit -> unit
 
 module type Input = sig
   type t
 
   include Table.Key with type t := t
-end
-
-module Visibility : sig
-  type 'i t =
-    | Hidden
-    | Public of 'i Dune_lang.Decoder.t
 end
 
 module Store : sig
@@ -213,43 +186,38 @@ module Store : sig
   end
 end
 
+(** Like [create] but accepts a custom [store] for memoization. This is useful
+    when there is a custom data structure indexed by keys of type ['i] that is
+    more efficient than the one that Memo uses by default (a plain hash table). *)
 val create_with_store :
      string
   -> store:(module Store.S with type key = 'i)
-  -> ?doc:string
   -> input:(module Store.Input with type t = 'i)
-  -> visibility:'i Visibility.t
-  -> output:'o Output.t
+  -> ?cutoff:('o -> 'o -> bool)
   -> ('i -> 'o Fiber.t)
   -> ('i, 'o) t
 
-(** [create name ~doc ~input ~visibility ~output f] creates a memoized version
-    of [f : 'i -> 'o Build.t]. The result of [f] for a given input is cached, so
+(** [create name ~input ?cutoff f] creates a memoized version of the function
+    [f : 'i -> 'o Build.t]. The result of [f] for a given input is cached, so
     that the second time [exec t x] is called, the previous result is re-used if
     possible.
 
-    [exec t x] tracks what calls to other memoized function [f x] performs. When
-    the result of such dependent call changes, [exec t x] will automatically
-    recompute [f x].
+    [exec t x] tracks what calls to other memoized functions [f x] performs.
+    When the result of any of such dependent calls changes, [exec t x] will
+    automatically recompute [f x].
 
-    Running the computation may raise [Memo.Cycle_error.E] if a cycle is
-    detected.
+    If the caller provides the [cutoff] equality check, we will use it to check
+    if the function's output is the same as cached in the previous computation.
+    If it's the same, we will be able to skip recomputing the functions that
+    depend on it. Note that currently Dune wipes all memoization caches on every
+    run, so this early cutoff optimisation is not effective.
 
-    [visibility] determines whether the function is user-facing or internal and
-    if it's user-facing then how to parse the values written by the user. *)
+    Running the computation may raise [Memo.Cycle_error.E] if a dependency cycle
+    is detected. *)
 val create :
      string
-  -> ?doc:string
   -> input:(module Input with type t = 'i)
-  -> visibility:'i Visibility.t
-  -> output:'o Output.t
-  -> ('i -> 'o Build.t)
-  -> ('i, 'o) t
-
-val create_hidden :
-     string
-  -> ?doc:string
-  -> input:(module Input with type t = 'i)
+  -> ?cutoff:('o -> 'o -> bool)
   -> ('i -> 'o Build.t)
   -> ('i, 'o) t
 
@@ -272,9 +240,6 @@ val pp_stack : unit -> _ Pp.t Fiber.t
 (** Get the memoized call stack during the execution of a memoized function. *)
 val get_call_stack : unit -> Stack_frame.t list Build.t
 
-(** Call a memoized function by name *)
-val call : string -> Dune_lang.Ast.t -> Dyn.t Build.t
-
 module Run : sig
   (** A single build run. *)
   type t
@@ -283,40 +248,19 @@ end
 (** Introduces a dependency on the current build run. *)
 val current_run : unit -> Run.t Build.t
 
-module Info : sig
-  type t =
-    { name : string
-    ; doc : string option
-    }
-end
-
-(** Return the list of registered functions *)
-val registered_functions : unit -> Info.t list
-
-(** Lookup function's info *)
-val function_info : name:string -> Info.t
-
 module Lazy : sig
   type 'a t
 
   val of_val : 'a -> 'a t
 
-  val create :
-       ?cutoff:('a -> 'a -> bool)
-    -> ?to_dyn:('a -> Dyn.t)
-    -> (unit -> 'a Build.t)
-    -> 'a t
+  val create : ?cutoff:('a -> 'a -> bool) -> (unit -> 'a Build.t) -> 'a t
 
   val force : 'a t -> 'a Build.t
 
   val map : 'a t -> f:('a -> 'b) -> 'b t
 end
 
-val lazy_ :
-     ?cutoff:('a -> 'a -> bool)
-  -> ?to_dyn:('a -> Dyn.t)
-  -> (unit -> 'a Build.t)
-  -> 'a Lazy.t
+val lazy_ : ?cutoff:('a -> 'a -> bool) -> (unit -> 'a Build.t) -> 'a Lazy.t
 
 module Implicit_output : sig
   type 'o t
@@ -351,10 +295,7 @@ module With_implicit_output : sig
 
   val create :
        string
-    -> ?doc:string
     -> input:(module Input with type t = 'i)
-    -> visibility:'i Visibility.t
-    -> output:(module Output_simple with type t = 'o)
     -> implicit_output:'io Implicit_output.t
     -> ('i -> 'o Build.t)
     -> ('i, 'o) t

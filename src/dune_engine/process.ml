@@ -6,6 +6,12 @@ module Event = Chrome_trace.Event
 module Timestamp = Event.Timestamp
 module Action_output_on_success = Execution_parameters.Action_output_on_success
 
+module With_directory_annot = User_error.Annot.Make (struct
+  type payload = Path.t
+
+  let to_dyn = Path.to_dyn
+end)
+
 type ('a, 'b) failure_mode =
   | Strict : ('a, 'a) failure_mode
   | Accept : int Predicate_lang.t -> ('a, ('a, int) result) failure_mode
@@ -366,9 +372,17 @@ module Exit_status = struct
 
   (* In this module, we don't need the "Error: " prefix given that it is already
      included in the error message from the command. *)
-  let fail paragraphs = raise (User_error.E (User_message.make paragraphs))
+  let fail ~dir paragraphs =
+    let dir =
+      match dir with
+      | None -> Path.of_string (Sys.getcwd ())
+      | Some dir -> dir
+    in
+    raise
+      (User_error.E
+         (User_message.make paragraphs, Some (With_directory_annot.make dir)))
 
-  let handle_verbose t ~id ~output ~command_line =
+  let handle_verbose t ~id ~output ~command_line ~dir =
     let open Pp.O in
     let output = parse_output output in
     match t with
@@ -387,7 +401,7 @@ module Exit_status = struct
         | Failed n -> sprintf "exited with code %d" n
         | Signaled signame -> sprintf "got signal %s" signame
       in
-      fail
+      fail ~dir
         (Pp.tag User_message.Style.Kwd (Pp.verbatim "Command")
          ++ Pp.space ++ pp_id id ++ Pp.space ++ Pp.text msg ++ Pp.char ':'
          ::
@@ -414,7 +428,7 @@ module Exit_status = struct
     fun output ->
       loop output 0 (String.length output) [ 'F'; 'i'; 'l'; 'e'; ' ' ]
 
-  let handle_non_verbose t ~display ~purpose ~output ~prog ~command_line
+  let handle_non_verbose t ~display ~purpose ~output ~prog ~command_line ~dir
       ~has_unexpected_stdout ~has_unexpected_stderr =
     let open Pp.O in
     let show_command =
@@ -464,10 +478,10 @@ module Exit_status = struct
                 (String.enumerate_and unexpected_outputs)
             | _ -> sprintf "(exit %d)" n
           else
-            fail (Option.to_list output)
+            fail ~dir (Option.to_list output)
         | Signaled signame -> sprintf "(got signal %s)" signame
       in
-      fail
+      fail ~dir
         (progname_and_purpose Error ++ Pp.char ' '
          ++ Pp.tag User_message.Style.Error (Pp.verbatim msg)
          ::
@@ -475,10 +489,10 @@ module Exit_status = struct
          :: Option.to_list output)
 end
 
-let report_process_start stats ~id ~prog ~args =
+let report_process_start stats ~id ~prog ~args ~now =
   let common =
     let name = Filename.basename prog in
-    let ts = Timestamp.now () in
+    let ts = Timestamp.of_float_seconds now in
     Event.common_fields ~cat:[ "process" ] ~name ~ts ()
   in
   let args =
@@ -486,11 +500,12 @@ let report_process_start stats ~id ~prog ~args =
   in
   let event = Event.async (Int id) ~args Start common in
   Stats.emit stats event;
-  common
+  (common, args)
 
-let report_process_end stats common ~id =
-  let common = Event.set_ts common (Timestamp.now ()) in
-  let event = Event.async (Int id) End common in
+let report_process_end stats (common, args) ~now (times : Proc.Times.t) =
+  let common = Event.set_ts common (Timestamp.of_float_seconds now) in
+  let dur = Chrome_trace.Event.Timestamp.of_float_seconds times.elapsed_time in
+  let event = Event.complete ~args ~dur common in
   Stats.emit stats event
 
 let run_internal ?dir ?(stdout_to = Io.stdout) ?(stderr_to = Io.stderr)
@@ -586,7 +601,7 @@ let run_internal ?dir ?(stdout_to = Io.stdout) ?(stderr_to = Io.stderr)
           (stdout, stderr)
         | _ -> ((`No_capture, stdout_to), (`No_capture, stderr_to))
       in
-      let event_common, pid =
+      let event_common, started_at, pid =
         (* Output.fd might create the file with Unix.openfile. We need to make
            sure to call it before doing the chdir as the path might be relative. *)
         let stdout = Io.fd stdout_to in
@@ -595,28 +610,37 @@ let run_internal ?dir ?(stdout_to = Io.stdout) ?(stderr_to = Io.stderr)
         let env =
           env |> Dtemp.add_to_env |> Scheduler.Config.add_to_env config
         in
-        let event_common =
-          Option.map config.stats
-            ~f:(report_process_start ~id ~prog:prog_str ~args)
-        in
         let env = Env.to_unix env |> Spawn.Env.of_list in
-        let pid =
-          Spawn.spawn () ~prog:prog_str ~argv ~env ~stdout ~stderr ~stdin
-            ~cwd:
-              (match dir with
-              | None -> Inherit
-              | Some dir -> Path (Path.to_string dir))
-          |> Pid.of_int
+        let started_at, pid =
+          (* jeremiedimino: I think we should do this just before the [execve]
+             in the stub for [Spawn.spawn] to be as precise as possible *)
+          let now = Unix.gettimeofday () in
+          ( now
+          , Spawn.spawn () ~prog:prog_str ~argv ~env ~stdout ~stderr ~stdin
+              ~cwd:
+                (match dir with
+                | None -> Inherit
+                | Some dir -> Path (Path.to_string dir))
+            |> Pid.of_int )
         in
-        (event_common, pid)
+        let event_common =
+          Option.map config.stats ~f:(fun stats ->
+              ( stats
+              , report_process_start stats ~id ~prog:prog_str ~args
+                  ~now:started_at ))
+        in
+        (event_common, started_at, pid)
       in
       Io.release stdout_to;
       Io.release stderr_to;
-      let+ exit_status = Scheduler.wait_for_process pid in
-      (match (event_common, config.stats) with
-      | Some common, Some stats -> report_process_end stats common ~id
-      | None, None -> ()
-      | _, _ -> assert false);
+      let+ process_info = Scheduler.wait_for_process pid in
+      let times =
+        { Proc.Times.elapsed_time = process_info.end_time -. started_at
+        ; resource_usage = process_info.resource_usage
+        }
+      in
+      Option.iter event_common ~f:(fun (stats, common) ->
+          report_process_end stats common ~now:process_info.end_time times);
       Option.iter response_file ~f:Path.unlink;
       let actual_stdout =
         match stdout_capture with
@@ -644,7 +668,7 @@ let run_internal ?dir ?(stdout_to = Io.stdout) ?(stderr_to = Io.stderr)
         has_unexpected_output stderr_on_success actual_stderr
       in
       let exit_status' : Exit_status.t =
-        match exit_status with
+        match process_info.status with
         | WEXITED n
           when (not has_unexpected_stdout)
                && (not has_unexpected_stderr)
@@ -680,24 +704,35 @@ let run_internal ?dir ?(stdout_to = Io.stdout) ?(stderr_to = Io.stderr)
           swallow_on_success_if_requested fn actual_stderr stderr_on_success
       in
       let output = stdout ^ stderr in
-      Log.command ~command_line ~output ~exit_status;
-      match (display, exit_status', output) with
-      | (Quiet | Progress), Ok n, "" -> n (* Optimisation for the common case *)
-      | Verbose, _, _ ->
-        Exit_status.handle_verbose exit_status' ~id
-          ~command_line:fancy_command_line ~output
-      | _ ->
-        Exit_status.handle_non_verbose exit_status' ~prog:prog_str ~command_line
-          ~output ~purpose ~display ~has_unexpected_stdout
-          ~has_unexpected_stderr)
+      Log.command ~command_line ~output ~exit_status:process_info.status;
+      let res =
+        match (display, exit_status', output) with
+        | (Quiet | Progress), Ok n, "" ->
+          n (* Optimisation for the common case *)
+        | Verbose, _, _ ->
+          Exit_status.handle_verbose exit_status' ~id ~dir
+            ~command_line:fancy_command_line ~output
+        | _ ->
+          Exit_status.handle_non_verbose exit_status' ~prog:prog_str ~dir
+            ~command_line ~output ~purpose ~display ~has_unexpected_stdout
+            ~has_unexpected_stderr
+      in
+      (res, times))
 
 let run ?dir ?stdout_to ?stderr_to ?stdin_from ?env ?(purpose = Internal_job)
     fail_mode prog args =
   let+ run =
     run_internal ?dir ?stdout_to ?stderr_to ?stdin_from ?env ~purpose fail_mode
       prog args
+    >>| fst
   in
   map_result fail_mode run ~f:ignore
+
+let run_with_times ?dir ?stdout_to ?stderr_to ?stdin_from ?env
+    ?(purpose = Internal_job) prog args =
+  run_internal ?dir ?stdout_to ?stderr_to ?stdin_from ?env ~purpose Strict prog
+    args
+  >>| snd
 
 let run_capture_gen ?dir ?stderr_to ?stdin_from ?env ?(purpose = Internal_job)
     fail_mode prog args ~f =
@@ -705,6 +740,7 @@ let run_capture_gen ?dir ?stderr_to ?stdin_from ?env ?(purpose = Internal_job)
   let+ run =
     run_internal ?dir ~stdout_to:(Io.file fn Io.Out) ?stderr_to ?stdin_from ?env
       ~purpose fail_mode prog args
+    >>| fst
   in
   map_result fail_mode run ~f:(fun () ->
       let x = f fn in

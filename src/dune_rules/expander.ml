@@ -139,7 +139,7 @@ let isn't_allowed_in_this_position_message ~source =
     ]
 
 let isn't_allowed_in_this_position ~source =
-  raise (User_error.E (isn't_allowed_in_this_position_message ~source))
+  raise (User_error.E (isn't_allowed_in_this_position_message ~source, None))
 
 let expand_artifact ~source t a s =
   match t.lookup_artifacts with
@@ -433,26 +433,27 @@ let expand_pform_gen ~(context : Context.t) ~bindings ~dir ~source
                 else
                   Error
                     (User_error.E
-                       (User_error.make
-                          ~loc:(Dune_lang.Template.Pform.loc source)
-                          [ Pp.textf
-                              "The variable \"lib%s-private\" can only refer \
-                               to libraries within the same project. The \
-                               current project's name is %S, but the reference \
-                               is to %s."
-                              (if lib_exec then
-                                "exec"
-                              else
-                                "")
-                              (Dune_project.Name.to_string_hum
-                                 (Dune_project.name current_project))
-                              (match referenced_project with
-                              | None -> "an external library"
-                              | Some project ->
-                                Dune_project.name project
-                                |> Dune_project.Name.to_string_hum
-                                |> String.quoted)
-                          ]))
+                       ( User_error.make
+                           ~loc:(Dune_lang.Template.Pform.loc source)
+                           [ Pp.textf
+                               "The variable \"lib%s-private\" can only refer \
+                                to libraries within the same project. The \
+                                current project's name is %S, but the \
+                                reference is to %s."
+                               (if lib_exec then
+                                 "exec"
+                               else
+                                 "")
+                               (Dune_project.Name.to_string_hum
+                                  (Dune_project.name current_project))
+                               (match referenced_project with
+                               | None -> "an external library"
+                               | Some project ->
+                                 Dune_project.name project
+                                 |> Dune_project.Name.to_string_hum
+                                 |> String.quoted)
+                           ]
+                       , None ))
               else
                 let artifacts =
                   if lib_exec then
@@ -481,18 +482,20 @@ let expand_pform_gen ~(context : Context.t) ~bindings ~dir ~source
                 | false ->
                   if Lib.DB.available (Scope.libs scope) lib then
                     User_error.E
-                      (User_error.make
-                         ~loc:(Dune_lang.Template.Pform.loc source)
-                         [ Pp.textf
-                             "The library %S is not public. The variable \
-                              \"lib%s\" expands to the file's installation \
-                              path which is not defined for private libraries."
-                             (Lib_name.to_string lib)
-                             (if lib_exec then
-                               "exec"
-                             else
-                               "")
-                         ])
+                      ( User_error.make
+                          ~loc:(Dune_lang.Template.Pform.loc source)
+                          [ Pp.textf
+                              "The library %S is not public. The variable \
+                               \"lib%s\" expands to the file's installation \
+                               path which is not defined for private \
+                               libraries."
+                              (Lib_name.to_string lib)
+                              (if lib_exec then
+                                "exec"
+                              else
+                                "")
+                          ]
+                      , None )
                   else
                     e))
       | Lib_available ->

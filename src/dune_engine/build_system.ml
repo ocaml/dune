@@ -1447,30 +1447,29 @@ end = struct
           (Path.Build.relative sandbox_dir sandbox_suffix, mode))
     in
     let chdirs = Action.chdirs action in
-    let* sandboxed, action =
+    let sandboxed, action =
       match sandbox with
-      | None -> Fiber.return (None, action)
+      | None -> (None, action)
       | Some (sandbox_dir, sandbox_mode) ->
         Path.rm_rf (Path.build sandbox_dir);
         let sandboxed path : Path.Build.t =
           Path.Build.append_local sandbox_dir (Path.Build.local path)
         in
-        let* () =
-          Fiber.parallel_iter_set
-            (module Path.Set)
-            (Path.Set.union (Dep.Facts.dirs deps) chdirs)
-            ~f:(fun path ->
-              Memo.Build.run
-                (match Path.as_in_build_dir path with
-                | None ->
-                  (* We do not need to assert the existence of [path] here. The
-                     existence of paths that come from [deps] has already been
-                     ensured. As for [chdirs], their existence is asserted in
-                     the [Fs.mkdir_p_or_assert_existence] call below. *)
-                  Memo.Build.return ()
-                | Some path -> Fs.mkdir_p (sandboxed path)))
-        in
-        let+ () = Memo.Build.run (Fs.mkdir_p (sandboxed dir)) in
+        Path.Set.iter
+          (Path.Set.union (Dep.Facts.dirs deps) chdirs)
+          ~f:(fun path ->
+            match Path.as_in_build_dir path with
+            | None ->
+              (* This [path] is not in the build directory, so we do not need to
+                 create it. If it comes from [deps], it must exist already. If
+                 it comes from [chdirs], we'll ensure that it exists in the call
+                 to [Fs.mkdir_p_or_assert_existence] below. *)
+              ()
+            | Some path ->
+              (* There is no point in using the memoized version [Fs.mkdir_p]
+                 since these directories are not shared between actions. *)
+              Path.mkdir_p (Path.build (sandboxed path)));
+        Path.mkdir_p (Path.build (sandboxed dir));
         let deps =
           if
             Execution_parameters.should_expand_aliases_when_sandboxing
@@ -1482,7 +1481,8 @@ end = struct
         in
         ( Some sandboxed
         , Action.sandbox action ~sandboxed ~mode:sandbox_mode ~deps )
-    and* () =
+    in
+    let* () =
       Fiber.parallel_iter_set
         (module Path.Set)
         chdirs

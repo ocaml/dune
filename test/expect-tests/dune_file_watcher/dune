@@ -3,6 +3,10 @@
  (inline_tests
   (deps
    (sandbox always)))
+ (enabled_if
+  (and
+   (<> %{system} macosx)
+   (<> %{system} win)))
  (libraries
   dune_file_watcher
   ppx_expect.config

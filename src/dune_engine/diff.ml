@@ -32,11 +32,11 @@ let decode_binary path target =
 
 let eq_files { optional; mode; file1; file2 } =
   let file1 =
-    if Path.exists file1 then
+    if Path.Untracked.exists file1 then
       file1
     else
       Config.dev_null
   in
   let file2 = Path.build file2 in
-  (optional && not (Path.exists file2))
+  (optional && not (Path.Untracked.exists file2))
   || Mode.compare_files mode file1 file2 = Eq

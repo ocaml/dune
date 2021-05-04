@@ -1,6 +1,8 @@
 Unreleased
 ----------
 
+- Fixes `dune exec` not adding .exe on Windows (#4371, fixes #3322, @MisterDA)
+
 - Allow multiple cinaps stanzas in the same directory (#4460, @rgrinberg)
 
 - Fix `$ dune subst` in empty git repositories (#4441, fixes #3619, @rgrinberg)
@@ -58,7 +60,7 @@ Unreleased
   of aliases. (#4303, @aalekseyev)
 
 - If an .ml file is not used by an executable, Dune no longer report
-  parsing error in this file (#...., @jeremiedimino)
+  parsing error in this file (#4330, @jeremiedimino)
 
 - Add support for sandboxing using hard links (#4360, @snowleopard)
 
@@ -130,6 +132,9 @@ Unreleased
   Dune, which clears all memoized errors. In future, we would like to provide a
   way to rerun all actions failed due to errors without restarting the build,
   e.g. via a Dune RPC call. (#4522, Andrey Mokhov)
+
+- Remove `dune compute`. It was broken and unused (#4540,
+  @jeremiedimino)
 
 2.9.0 (unreleased)
 ------------------

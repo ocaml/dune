@@ -1,6 +1,6 @@
 open! Dune_engine
+open! Dune_engine.Import
 open! Stdune
-open Import
 
 module Jbuild_plugin : sig
   val create_plugin_wrapper :

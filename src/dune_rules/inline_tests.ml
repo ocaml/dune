@@ -40,10 +40,11 @@ module Backend = struct
               | None ->
                 Error
                   (User_error.E
-                     (User_error.make ~loc
-                        [ Pp.textf "%S is not an %s" (Lib_name.to_string name)
-                            (desc ~plural:false)
-                        ]))
+                     ( User_error.make ~loc
+                         [ Pp.textf "%S is not an %s" (Lib_name.to_string name)
+                             (desc ~plural:false)
+                         ]
+                     , None ))
               | Some t -> Ok t))
         >>| Result.List.all
       in

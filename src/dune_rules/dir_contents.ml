@@ -345,16 +345,7 @@ end = struct
             Path.Build.Map.of_list_map_exn subdirs ~f:(fun x -> (x.dir, x))
         }
 
-  let memo0 =
-    let module Output = struct
-      type t = result0
-
-      let to_dyn _ = Dyn.Opaque
-    end in
-    Memo.create "dir-contents-get0"
-      ~input:(module Key)
-      ~output:(Simple (module Output))
-      ~doc:"dir contents" ~visibility:Hidden get0_impl
+  let memo0 = Memo.create "dir-contents-get0" ~input:(module Key) get0_impl
 
   let get sctx ~dir =
     Memo.exec memo0 (sctx, dir) >>= function

@@ -1,6 +1,5 @@
 open! Dune_engine
 open! Stdune
-open Import
 open Fiber.O
 
 module Merlin_conf = struct
@@ -66,7 +65,7 @@ let to_local file_path =
          the build context *)
       Ok (Path.drop_optional_build_context path |> Path.local_part)
     with
-    | User_error.E mess -> User_message.to_string mess |> error)
+    | User_error.E (mess, _) -> User_message.to_string mess |> error)
   | None ->
     Printf.sprintf "Path %S is not in dune workspace (%S)." file_path
       Path.(to_absolute_filename Path.root)

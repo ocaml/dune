@@ -3,6 +3,7 @@ open Fiber.O
 open Dune_rpc_server
 open Dune_rpc_private
 module Dep_conf = Dune_rules.Dep_conf
+module Dep_path = Dune_engine.Dep_path
 module Build_system = Dune_engine.Build_system
 
 module Status = struct
@@ -15,18 +16,32 @@ end
 
 type pending_build_action = Build of Dep_conf.t list * Status.t Fiber.Ivar.t
 
+let target_of_dep_path_entry : Dep_path.Entry.t -> Dune_rpc_private.Target.t =
+  let open Dune_engine in
+  function
+  | Dep_path.Entry.Path p -> Path (Path.to_string p)
+  | Alias (_, a) -> Alias (Alias.describe a)
+  | Library (lib, _) -> Library (Lib_name.to_string lib.name)
+  | Executables es -> Executables (List.map ~f:(fun (_, e) -> e) es)
+  | Preprocess ps -> Preprocess (List.map ~f:Lib_name.to_string ps)
+  | Loc l -> Loc l
+
 let diagnostic_of_error : Build_system.Error.t -> Dune_rpc_private.Diagnostic.t
     =
  fun m ->
-  let message = Build_system.Error.message m in
+  let message, targets, dir = Build_system.Error.info m in
+  (* We need to reverse the list because [Build_system] stacks errors such that
+     the first element is the target initially requested by the user, which is
+     the opposite of what most clients probably care about. *)
+  let targets = List.rev (Option.value ~default:[] targets) in
   let loc = message.loc in
   let message = Pp.map_tags (Pp.concat message.paragraphs) ~f:(fun _ -> ()) in
   { severity = None
-  ; targets = []
+  ; targets = List.map ~f:target_of_dep_path_entry targets
   ; message
   ; loc
   ; promotion = []
-  ; directory = None
+  ; directory = Option.map ~f:Path.to_string dir
   }
 
 (* TODO un-copy-paste from dune/bin/arg.ml *)

@@ -16,6 +16,26 @@ contents of all configuration files read by Dune and looks like:
 
 Additionally, they can contains the following stanzas.
 
+.. _using:
+
+using
+-----
+
+The language of configuration files read by Dune can be extended to support
+additional stanzas (eg. ``menhir``, ``coq.theory``, ``mdx``). This is done by
+adding a line such as:
+
+.. code:: scheme
+
+    (using <plugin> <version>)
+
+in the ``dune-project`` file where ``<plugin>`` is the name of the plugin that
+defines this stanza and ``<version>`` describes the version of the configuration
+language. Note that this version has nothing to do with the version of the
+associated tool or library. In particular, adding a ``using`` stanza will not
+result in a build dependency in the generated ``.opam`` file, see
+:ref:`generate_opam_files <generate_opam_files>`.
+
 name
 ----
 
@@ -208,6 +228,8 @@ where ``<setting>`` is one of:
 - ``(enabled_for <languages>)`` can be used to restrict the languages that are
   considered for formatting.
 
+.. _generate_opam_files:
+
 generate_opam_files
 -------------------
 
@@ -302,6 +324,10 @@ language: The syntax is as a list of the following elements:
         | (name (<logop> (<stage> | <constr>)*))
 
    dep-specification = dep+
+
+Note that the use of a ``using`` stanza (see :ref:`using <using>`) does not
+automatically add the associated library or tool as a dependency. They have to
+be added explicitly.
 
 .. _always-add-cflags:
 

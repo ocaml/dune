@@ -2,6 +2,8 @@
 
 open Import
 
+module With_directory_annot : User_error.Annot.S with type payload = Path.t
+
 (** How to handle sub-process failures *)
 type ('a, 'b) failure_mode =
   | Strict : ('a, 'a) failure_mode
@@ -68,6 +70,17 @@ val run :
   -> Path.t
   -> string list
   -> 'a Fiber.t
+
+val run_with_times :
+     ?dir:Path.t
+  -> ?stdout_to:Io.output Io.t
+  -> ?stderr_to:Io.output Io.t
+  -> ?stdin_from:Io.input Io.t
+  -> ?env:Env.t
+  -> ?purpose:purpose
+  -> Path.t
+  -> string list
+  -> Proc.Times.t Fiber.t
 
 (** Run a command and capture its output *)
 val run_capture :

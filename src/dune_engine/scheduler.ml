@@ -41,7 +41,7 @@ module Config = struct
     { concurrency : int
     ; display : Display.t
     ; rpc : Dune_rpc.Where.t option
-    ; stats : Stats.t option
+    ; stats : Dune_stats.t option
     }
 
   let add_to_env t env =
@@ -52,7 +52,7 @@ end
 
 type job =
   { pid : Pid.t
-  ; ivar : Unix.process_status Fiber.Ivar.t
+  ; ivar : Proc.Process_info.t Fiber.Ivar.t
   }
 
 module Signal = struct
@@ -112,8 +112,8 @@ end
 (** The event queue *)
 module Event : sig
   type t =
-    | Files_changed of Path.t list
-    | Job_completed of job * Unix.process_status
+    | File_system_changed of Fs_memo.Event.t Nonempty_list.t
+    | Job_completed of job * Proc.Process_info.t
     | Signal of Signal.t
     | Rpc of Fiber.fill
 
@@ -122,14 +122,11 @@ module Event : sig
 
     type event
 
-    val create : Stats.t option -> t
+    val create : Dune_stats.t option -> t
 
     (** Return the next event. File changes event are always flattened and
         returned first. *)
     val next : t -> event
-
-    (** Handle all enqueued deduplications. *)
-    val flush_sync_tasks : t -> unit
 
     (** Ignore the ne next file change event about this file. *)
     val ignore_next_file_change_event : t -> Path.t -> unit
@@ -150,24 +147,21 @@ module Event : sig
     (** Send an event to the main thread. *)
     val send_files_changed : t -> Path.t list -> unit
 
-    val send_job_completed : t -> job -> Unix.process_status -> unit
+    val send_job_completed : t -> job -> Proc.Process_info.t -> unit
 
     val send_signal : t -> Signal.t -> unit
-
-    val send_sync_task : t -> (unit -> unit) -> unit
   end
   with type event := t
 end = struct
   type t =
-    | Files_changed of Path.t list
-    | Job_completed of job * Unix.process_status
+    | File_system_changed of Fs_memo.Event.t Nonempty_list.t
+    | Job_completed of job * Proc.Process_info.t
     | Signal of Signal.t
     | Rpc of Fiber.fill
 
   module Queue = struct
     type t =
-      { jobs_completed : (job * Unix.process_status) Queue.t
-      ; sync_tasks : (unit -> unit) Queue.t
+      { jobs_completed : (job * Proc.Process_info.t) Queue.t
       ; mutable files_changed : Path.t list
       ; mutable signals : Signal.Set.t
       ; mutex : Mutex.t
@@ -183,13 +177,12 @@ end = struct
       ; mutable pending_jobs : int
       ; mutable pending_rpc : int
       ; rpc_completed : Fiber.fill Queue.t
-      ; stats : Stats.t option
+      ; stats : Dune_stats.t option
       }
 
     let create stats =
       let jobs_completed = Queue.create () in
       let rpc_completed = Queue.create () in
-      let sync_tasks = Queue.create () in
       let files_changed = [] in
       let signals = Signal.Set.empty in
       let mutex = Mutex.create () in
@@ -198,7 +191,6 @@ end = struct
       let pending_jobs = 0 in
       let pending_rpc = 0 in
       { jobs_completed
-      ; sync_tasks
       ; files_changed
       ; signals
       ; mutex
@@ -223,58 +215,46 @@ end = struct
         (List.is_empty q.files_changed
         && Queue.is_empty q.jobs_completed
         && Signal.Set.is_empty q.signals
-        && Queue.is_empty q.sync_tasks
         && Queue.is_empty q.rpc_completed)
 
-    let sync_task q =
-      match Queue.pop q.sync_tasks with
-      | None -> false
-      | Some task ->
-        task ();
-        true
-
-    let rec flush_sync_tasks q = if sync_task q then flush_sync_tasks q
-
     let next q =
-      Option.iter q.stats ~f:Stats.record_gc_and_fd;
+      Option.iter q.stats ~f:Dune_stats.record_gc_and_fd;
       Mutex.lock q.mutex;
       let rec loop () =
         while not (available q) do
           Condition.wait q.cond q.mutex
         done;
-        if sync_task q then
-          loop ()
-        else
-          match Signal.Set.choose q.signals with
-          | Some signal ->
-            q.signals <- Signal.Set.remove q.signals signal;
-            Signal signal
-          | None -> (
-            match q.files_changed with
-            | [] -> (
-              match Queue.pop q.jobs_completed with
-              | None ->
-                q.pending_rpc <- q.pending_rpc - 1;
-                Rpc (Queue.pop_exn q.rpc_completed)
-              | Some (job, status) ->
-                q.pending_jobs <- q.pending_jobs - 1;
-                assert (q.pending_jobs >= 0);
-                Job_completed (job, status))
-            | fns -> (
-              q.files_changed <- [];
-              let files =
-                List.filter fns ~f:(fun fn ->
-                    let fn = Path.to_absolute_filename fn in
-                    if Table.mem q.ignored_files fn then (
-                      (* only use ignored record once *)
-                      Table.remove q.ignored_files fn;
-                      false
-                    ) else
-                      true)
-              in
-              match files with
-              | [] -> loop ()
-              | _ :: _ -> Files_changed files))
+        match Signal.Set.choose q.signals with
+        | Some signal ->
+          q.signals <- Signal.Set.remove q.signals signal;
+          Signal signal
+        | None -> (
+          match q.files_changed with
+          | [] -> (
+            match Queue.pop q.jobs_completed with
+            | None ->
+              q.pending_rpc <- q.pending_rpc - 1;
+              Rpc (Queue.pop_exn q.rpc_completed)
+            | Some (job, proc_info) ->
+              q.pending_jobs <- q.pending_jobs - 1;
+              assert (q.pending_jobs >= 0);
+              Job_completed (job, proc_info))
+          | files_changed -> (
+            q.files_changed <- [];
+            let events =
+              List.filter_map files_changed ~f:(fun path ->
+                  let abs_path = Path.to_absolute_filename path in
+                  if Table.mem q.ignored_files abs_path then (
+                    (* only use ignored record once *)
+                    Table.remove q.ignored_files abs_path;
+                    None
+                  ) else
+                    (* CR-soon amokhov: Generate more precise events. *)
+                    Some (Fs_memo.Event.create ~kind:Unknown ~path))
+            in
+            match Nonempty_list.of_list events with
+            | None -> loop ()
+            | Some events -> File_system_changed events))
       in
       let ev = loop () in
       Mutex.unlock q.mutex;
@@ -294,10 +274,10 @@ end = struct
       if not avail then Condition.signal q.cond;
       Mutex.unlock q.mutex
 
-    let send_job_completed q job status =
+    let send_job_completed q job proc_info =
       Mutex.lock q.mutex;
       let avail = available q in
-      Queue.push q.jobs_completed (job, status);
+      Queue.push q.jobs_completed (job, proc_info);
       if not avail then Condition.signal q.cond;
       Mutex.unlock q.mutex
 
@@ -308,182 +288,10 @@ end = struct
       if not avail then Condition.signal q.cond;
       Mutex.unlock q.mutex
 
-    let send_sync_task q f =
-      Mutex.lock q.mutex;
-      let avail = available q in
-      Queue.push q.sync_tasks f;
-      if not avail then Condition.signal q.cond;
-      Mutex.unlock q.mutex
-
     let pending_jobs q = q.pending_jobs
 
     let pending_rpc q = q.pending_rpc
   end
-end
-
-module File_watcher : sig
-  type t
-
-  (** Create a new file watcher. *)
-  val create : Event.Queue.t -> t
-
-  (** Pid of the external file watcher process *)
-  val pid : t -> Pid.t
-end = struct
-  type t = Pid.t
-
-  let pid t = t
-
-  let command =
-    lazy
-      (let excludes =
-         [ {|/_build|}
-         ; {|/_opam|}
-         ; {|/_esy|}
-         ; {|/\..+|}
-         ; {|~$|}
-         ; {|/#[^#]*#$|}
-         ; {|4913|} (* https://github.com/neovim/neovim/issues/3460 *)
-         ]
-       in
-       let path = Path.to_string_maybe_quoted Path.root in
-       match
-         if Sys.linux then
-           Bin.which ~path:(Env.path Env.initial) "inotifywait"
-         else
-           None
-       with
-       | Some inotifywait ->
-         (* On Linux, use inotifywait. *)
-         let excludes = String.concat ~sep:"|" excludes in
-         ( inotifywait
-         , [ "-r"
-           ; path
-           ; "--exclude"
-           ; excludes
-           ; "-e"
-           ; "close_write"
-           ; "-e"
-           ; "delete"
-           ; "--format"
-           ; "%w%f"
-           ; "-m"
-           ; "-q"
-           ] )
-       | None -> (
-         (* On all other platforms, try to use fswatch. fswatch's event
-            filtering is not reliable (at least on Linux), so don't try to use
-            it, instead act on all events. *)
-         match Bin.which ~path:(Env.path Env.initial) "fswatch" with
-         | Some fswatch ->
-           let excludes =
-             List.concat_map excludes ~f:(fun x -> [ "--exclude"; x ])
-           in
-           ( fswatch
-           , [ "-r"
-             ; path
-             ; "--event"
-             ; "Created"
-             ; "--event"
-             ; "Updated"
-             ; "--event"
-             ; "Removed"
-             ]
-             @ excludes )
-         | None ->
-           User_error.raise
-             [ Pp.text
-                 (if Sys.linux then
-                   "Please install inotifywait to enable watch mode. If \
-                    inotifywait is unavailable, fswatch may also be used but \
-                    will result in a worse experience."
-                 else
-                   "Please install fswatch to enable watch mode.")
-             ]))
-
-  let buffering_time = 0.5 (* seconds *)
-
-  let buffer_capacity = 65536
-
-  type buffer =
-    { data : Bytes.t
-    ; mutable size : int
-    }
-
-  let read_lines buffer fd =
-    let len =
-      Unix.read fd buffer.data buffer.size (buffer_capacity - buffer.size)
-    in
-    buffer.size <- buffer.size + len;
-    let lines = ref [] in
-    let line_start = ref 0 in
-    for i = 0 to buffer.size - 1 do
-      let c = Bytes.get buffer.data i in
-      if c = '\n' || c = '\r' then (
-        (if !line_start < i then
-          let line =
-            Bytes.sub_string buffer.data ~pos:!line_start ~len:(i - !line_start)
-          in
-          lines := line :: !lines);
-        line_start := i + 1
-      )
-    done;
-    buffer.size <- buffer.size - !line_start;
-    Bytes.blit ~src:buffer.data ~src_pos:!line_start ~dst:buffer.data ~dst_pos:0
-      ~len:buffer.size;
-    List.rev !lines
-
-  let spawn_external_watcher () =
-    let prog, args = Lazy.force command in
-    let prog = Path.to_absolute_filename prog in
-    let argv = prog :: args in
-    let r, w = Unix.pipe () in
-    let pid = Spawn.spawn () ~prog ~argv ~stdout:w |> Pid.of_int in
-    Unix.close w;
-    (r, pid)
-
-  let create q =
-    let files_changed = ref [] in
-    let event_mtx = Mutex.create () in
-    let event_cv = Condition.create () in
-    let worker_thread pipe =
-      let buffer = { data = Bytes.create buffer_capacity; size = 0 } in
-      while true do
-        let lines = List.map (read_lines buffer pipe) ~f:Path.of_string in
-        Mutex.lock event_mtx;
-        files_changed := List.rev_append lines !files_changed;
-        Condition.signal event_cv;
-        Mutex.unlock event_mtx
-      done
-    in
-    (* The buffer thread is used to avoid flooding the main thread with file
-       changes events when a lot of file changes are reported at once. In
-       particular, this avoids restarting the build over and over in a short
-       period of time when many events are reported at once.
-
-       It works as follow:
-
-       - when the first event is received, send it to the main thread
-       immediately so that we get a fast response time
-
-       - after the first event is received, buffer subsequent events for
-       [buffering_time] *)
-    let rec buffer_thread () =
-      Mutex.lock event_mtx;
-      while List.is_empty !files_changed do
-        Condition.wait event_cv event_mtx
-      done;
-      let files = !files_changed in
-      files_changed := [];
-      Mutex.unlock event_mtx;
-      Event.Queue.send_files_changed q files;
-      Thread.delay buffering_time;
-      buffer_thread ()
-    in
-    let pipe, pid = spawn_external_watcher () in
-    ignore (Thread.create worker_thread pipe : Thread.t);
-    ignore (Thread.create buffer_thread () : Thread.t);
-    pid
 end
 
 module Process_watcher : sig
@@ -500,7 +308,7 @@ module Process_watcher : sig
 end = struct
   type process_state =
     | Running of job
-    | Zombie of Unix.process_status
+    | Zombie of Proc.Process_info.t
 
   (* This mutable table is safe: it does not interact with the state we track in
      the build system. *)
@@ -515,7 +323,7 @@ end = struct
   module Process_table : sig
     val add : t -> job -> unit
 
-    val remove : t -> pid:Pid.t -> Unix.process_status -> unit
+    val remove : t -> Proc.Process_info.t -> unit
 
     val running_count : t -> int
 
@@ -527,18 +335,18 @@ end = struct
         Table.set t.table job.pid (Running job);
         t.running_count <- t.running_count + 1;
         if t.running_count = 1 then Condition.signal t.something_is_running
-      | Some (Zombie status) ->
+      | Some (Zombie proc_info) ->
         Table.remove t.table job.pid;
-        Event.Queue.send_job_completed t.events job status
+        Event.Queue.send_job_completed t.events job proc_info
       | Some (Running _) -> assert false
 
-    let remove t ~pid status =
-      match Table.find t.table pid with
-      | None -> Table.set t.table pid (Zombie status)
+    let remove t (proc_info : Proc.Process_info.t) =
+      match Table.find t.table proc_info.pid with
+      | None -> Table.set t.table proc_info.pid (Zombie proc_info)
       | Some (Running job) ->
         t.running_count <- t.running_count - 1;
-        Table.remove t.table pid;
-        Event.Queue.send_job_completed t.events job status
+        Table.remove t.table proc_info.pid;
+        Event.Queue.send_job_completed t.events job proc_info
       | Some (Zombie _) -> assert false
 
     let iter t ~f =
@@ -563,19 +371,28 @@ end = struct
         | Unix.Unix_error _ -> ());
     Mutex.unlock t.mutex
 
-  exception Finished of job * Unix.process_status
+  exception Finished of Proc.Process_info.t
 
   let wait_nonblocking_win32 t =
     try
       Process_table.iter t ~f:(fun job ->
           let pid, status = Unix.waitpid [ WNOHANG ] (Pid.to_int job.pid) in
-          if pid <> 0 then raise_notrace (Finished (job, status)));
+          if pid <> 0 then
+            let now = Unix.gettimeofday () in
+            let info : Proc.Process_info.t =
+              { pid = Pid.of_int pid
+              ; status
+              ; end_time = now
+              ; resource_usage = None
+              }
+            in
+            raise_notrace (Finished info));
       false
     with
-    | Finished (job, status) ->
+    | Finished proc_info ->
       (* We need to do the [Unix.waitpid] and remove the process while holding
          the lock, otherwise the pid might be reused in between. *)
-      Process_table.remove t ~pid:job.pid status;
+      Process_table.remove t proc_info;
       true
 
   let wait_win32 t =
@@ -587,10 +404,9 @@ end = struct
 
   let wait_unix t =
     Mutex.unlock t.mutex;
-    let pid, status = Unix.wait () in
+    let proc_info = Proc.wait [] in
     Mutex.lock t.mutex;
-    let pid = Pid.of_int pid in
-    Process_table.remove t ~pid status
+    Process_table.remove t proc_info
 
   let wait =
     if Sys.win32 then
@@ -678,7 +494,7 @@ end
 
 type waiting_for_file_changes =
   | Shutdown_requested
-  | Files_changed
+  | File_system_changed
 
 type status =
   (* Waiting for file changes to start a new a build *)
@@ -751,10 +567,6 @@ let wait_for_process t pid =
   Fiber.Ivar.read ivar
 
 let global = ref None
-
-let wait_for_dune_cache () =
-  let t = Option.value_exn !global in
-  Event.Queue.flush_sync_tasks t.events
 
 let got_signal signal =
   if !Log.verbose then
@@ -846,25 +658,11 @@ end = struct
     else (
       t.handler t.config Tick;
       match Event.Queue.next t.events with
-      | Job_completed (job, status) -> Fiber.Fill (job.ivar, status)
-      | Files_changed changed_files -> (
-        (* CR-someday amokhov: In addition to tracking files, we also need to
-           track directory listings. Otherwise, when a new file is added to a
-           source directory, [invalidate] will return [Skipped] because that
-           file was previously untracked. To fix this, we will need to introduce
-           new [Memo] cells for tracking directory listings, and [invalidate]
-           those cells when the listings change. *)
-        (* If none of [changed_files] is tracked by the build system, we will
-           ignore this [Files_changed] event to avoid unnecessary restarts. *)
-        let all_changed_files_skipped =
-          List.for_all changed_files ~f:(fun path ->
-              match Fs_memo.invalidate path with
-              | Skipped -> true
-              | Invalidated -> false)
-        in
-        match (all_changed_files_skipped, Memo.incremental_mode_enabled) with
-        | true, true -> iter t (* Ignore the event *)
-        | _, _ -> (
+      | Job_completed (job, proc_info) -> Fiber.Fill (job.ivar, proc_info)
+      | File_system_changed events -> (
+        match (Fs_memo.handle events : Fs_memo.Rebuild_required.t) with
+        | No -> iter t (* Ignore the event *)
+        | Yes -> (
           Memo.reset ();
           match t.status with
           | Shutting_down
@@ -877,7 +675,7 @@ end = struct
             t.status <- Restarting_build;
             Process_watcher.killall t.process_watcher Sys.sigkill;
             iter t
-          | Waiting_for_file_changes ivar -> Fill (ivar, Files_changed)))
+          | Waiting_for_file_changes ivar -> Fill (ivar, File_system_changed)))
       | Rpc fill -> fill
       | Signal signal ->
         got_signal signal;
@@ -907,6 +705,7 @@ module Run = struct
     | Detect_external
     | No_watcher
 
+  module Event_queue = Event.Queue
   module Event = Handler.Event
 
   let poll step =
@@ -945,7 +744,7 @@ module Run = struct
         let* next = Fiber.Ivar.read ivar in
         match next with
         | Shutdown_requested -> Fiber.return ()
-        | Files_changed -> (
+        | File_system_changed -> (
           t.handler t.config Source_files_changed;
           match res with
           | Error _
@@ -963,7 +762,11 @@ module Run = struct
     let watcher =
       match file_watcher with
       | No_watcher -> None
-      | Detect_external -> Some (File_watcher.create t.events)
+      | Detect_external ->
+        Some
+          (Dune_file_watcher.create_default
+             ~thread_safe_send_files_changed:(fun files_changed ->
+               Event_queue.send_files_changed t.events files_changed))
     in
     let result =
       match Run_once.run_and_cleanup t run with
@@ -980,17 +783,13 @@ module Run = struct
         Error (exn_with_bt.exn, Some exn_with_bt.backtrace)
     in
     Option.iter watcher ~f:(fun watcher ->
-        ignore (wait_for_process t (File_watcher.pid watcher) : _ Fiber.t));
+        ignore (wait_for_process t (Dune_file_watcher.pid watcher) : _ Fiber.t));
     ignore (kill_and_wait_for_all_processes t : saw_signal);
     match result with
     | Ok a -> a
     | Error (exn, None) -> Exn.raise exn
     | Error (exn, Some bt) -> Exn.raise_with_backtrace exn bt
 end
-
-let send_sync_task d =
-  let t = Option.value_exn !global in
-  Event.Queue.send_sync_task t.events d
 
 let wait_for_process pid =
   let* t = t () in

@@ -1,8 +1,7 @@
 open! Dune_engine
+open! Dune_engine.Import
 open! Stdune
-open Import
 open Dune_file
-open! No_io
 module SC = Super_context
 open Memo.Build.O
 

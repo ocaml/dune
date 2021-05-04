@@ -1,5 +1,6 @@
 open! Dune_engine
-open Import
+open! Dune_engine.Import
+open! Stdune
 
 module Sanitizer : sig
   [@@@ocaml.warning "-32"]

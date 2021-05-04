@@ -46,10 +46,11 @@ module Register_backend (M : Backend) = struct
       | None ->
         Error
           (User_error.E
-             (User_error.make ~loc
-                [ Pp.textf "%s is not %s %s" (Lib_name.to_string name)
-                    M.desc_article (M.desc ~plural:false)
-                ]))
+             ( User_error.make ~loc
+                 [ Pp.textf "%s is not %s %s" (Lib_name.to_string name)
+                     M.desc_article (M.desc ~plural:false)
+                 ]
+             , None ))
       | Some t -> Ok t)
 
   module Selection_error = struct
@@ -62,20 +63,22 @@ module Register_backend (M : Backend) = struct
       match t with
       | Too_many_backends backends ->
         User_error.E
-          (User_error.make ~loc
-             [ Pp.textf "Too many independent %s found:" (M.desc ~plural:true)
-             ; Pp.enumerate backends ~f:(fun t ->
-                   let lib = M.lib t in
-                   let info = Lib.info lib in
-                   let src_dir = Lib_info.src_dir info in
-                   Pp.textf "%S in %s"
-                     (Lib_name.to_string (Lib.name lib))
-                     (Path.to_string_maybe_quoted src_dir))
-             ])
+          ( User_error.make ~loc
+              [ Pp.textf "Too many independent %s found:" (M.desc ~plural:true)
+              ; Pp.enumerate backends ~f:(fun t ->
+                    let lib = M.lib t in
+                    let info = Lib.info lib in
+                    let src_dir = Lib_info.src_dir info in
+                    Pp.textf "%S in %s"
+                      (Lib_name.to_string (Lib.name lib))
+                      (Path.to_string_maybe_quoted src_dir))
+              ]
+          , None )
       | No_backend_found ->
         User_error.E
-          (User_error.make ~loc
-             [ Pp.textf "No %s found." (M.desc ~plural:false) ])
+          ( User_error.make ~loc
+              [ Pp.textf "No %s found." (M.desc ~plural:false) ]
+          , None )
       | Other exn -> exn
 
     let or_exn res ~loc =

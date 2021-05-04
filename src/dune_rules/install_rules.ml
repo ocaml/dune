@@ -360,7 +360,7 @@ end = struct
         | Some (name, entries) ->
           Package.Name.Map.Multi.add_all acc name entries)
     |> Package.Name.Map.map ~f:(fun entries ->
-           (* Sort entries so that the ordering in [dune-package] is independant
+           (* Sort entries so that the ordering in [dune-package] is independent
               of Dune's current implementation. *)
            (* jeremiedimino: later on, we group this list by section and sort
               each section. It feels like we should just do this here once and
@@ -372,17 +372,7 @@ end = struct
     let memo =
       Memo.create
         ~input:(module Super_context.As_memo_key)
-        ~output:
-          (Simple
-             (module struct
-               type t =
-                 (Loc.t option * Path.Build.t Install.Entry.t) list
-                 Package.Name.Map.t
-
-               let to_dyn _ = Dyn.Opaque
-             end))
-        "stanzas-to-entries" ~doc:"install entries for all packages"
-        ~visibility:Hidden stanzas_to_entries
+        "stanzas-to-entries" stanzas_to_entries
     in
     Memo.exec memo
 end
@@ -703,8 +693,6 @@ end = struct
     end in
     Memo.With_implicit_output.create "meta_and_dune_package_rules"
       ~input:(module Project_and_super_context)
-      ~visibility:Hidden
-      ~output:(module Unit)
       ~implicit_output:Rules.implicit_output meta_and_dune_package_rules_impl
 
   let meta_and_dune_package_rules sctx ~dir =
@@ -765,18 +753,9 @@ let packages =
       ~f:Package.Id.Set.add
   in
   let memo =
-    Memo.create "package-map" ~doc:"Return a map assining package to files"
+    Memo.create "package-map"
       ~input:(module Super_context.As_memo_key)
-      ~visibility:Hidden
-      ~output:
-        (Allow_cutoff
-           (module struct
-             type t = Package.Id.Set.t Path.Build.Map.t
-
-             let to_dyn = Path.Build.Map.to_dyn Package.Id.Set.to_dyn
-
-             let equal = Path.Build.Map.equal ~equal:Package.Id.Set.equal
-           end))
+      ~cutoff:(Path.Build.Map.equal ~equal:Package.Id.Set.equal)
       f
   in
   fun sctx -> Memo.exec memo sctx
@@ -899,11 +878,6 @@ let install_rules sctx (package : Package.t) =
     action
 
 let memo =
-  let module Rules_scheme = struct
-    type t = Rules.Dir_rules.t Scheme.t
-
-    let to_dyn _ = Dyn.Opaque
-  end in
   let module Sctx_and_package = struct
     module Super_context = Super_context.As_memo_key
 
@@ -932,9 +906,7 @@ let memo =
   in
   Memo.create
     ~input:(module Sctx_and_package)
-    ~output:(Simple (module Rules_scheme))
-    "install-rules-and-pkg-entries" ~doc:"install rules and package entries"
-    ~visibility:Hidden
+    "install-rules-and-pkg-entries"
     (fun (sctx, pkg) ->
       Memo.Build.return
         (let ctx = Super_context.context sctx in
@@ -960,8 +932,7 @@ let scheme sctx pkg = Memo.exec memo (sctx, pkg)
 let scheme_per_ctx_memo =
   Memo.create
     ~input:(module Super_context.As_memo_key)
-    ~output:(Memo.Output.simple ()) "install-rule-scheme"
-    ~doc:"install rules scheme" ~visibility:Hidden
+    "install-rule-scheme"
     (fun sctx ->
       let packages = Package.Name.Map.values (Super_context.packages sctx) in
       let* schemes = Memo.Build.sequential_map packages ~f:(scheme sctx) in

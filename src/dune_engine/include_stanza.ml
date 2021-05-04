@@ -35,7 +35,7 @@ let load_sexps ~context:{ current_file; include_stack } (loc, fn) =
   let include_stack = (loc, current_file) :: include_stack in
   let dir = Path.Source.parent_exn current_file in
   let current_file = Path.Source.relative dir fn in
-  if not (Path.exists (Path.source current_file)) then
+  if not (Path.Untracked.exists (Path.source current_file)) then
     User_error.raise ~loc
       [ Pp.textf "File %s doesn't exist."
           (Path.Source.to_string_maybe_quoted current_file)

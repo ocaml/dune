@@ -81,7 +81,7 @@ module Scheduler = struct
       if Common.watch_perf_counters common then
         Console.print_user_message
           (User_message.make
-             [ Pp.textf "%s" (Memo.For_tests.report_for_current_run ()) ]);
+             [ Pp.textf "%s" (Memo.Perf_counters.report_for_current_run ()) ]);
       let message =
         match res with
         | Success -> Pp.tag User_message.Style.Success (Pp.verbatim "Success")

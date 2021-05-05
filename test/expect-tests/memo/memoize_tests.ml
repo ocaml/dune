@@ -16,11 +16,11 @@ let () = init ()
 
 let printf = Printf.printf
 
-let () = Memo.For_tests.enable_perf_counters ()
+let () = Memo.Perf_counters.enable ()
 
 let print_perf_counters () =
-  Memo.For_tests.assert_invariants ();
-  printf "%s\n" (Memo.For_tests.report_for_current_run ())
+  Memo.Perf_counters.assert_invariants ();
+  printf "%s\n" (Memo.Perf_counters.report_for_current_run ())
 
 let string_fn_create name =
   Memo.create name ~input:(module String) ~cutoff:String.equal

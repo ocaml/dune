@@ -3,7 +3,7 @@ open Fiber.O
 
 let track_locations_of_lazy_values = ref false
 
-module Perf_counters = struct
+module Counters = struct
   let enabled = ref false
 
   let nodes_considered = ref 0
@@ -813,8 +813,8 @@ end = struct
             match deps with
             | [] -> Fiber.return Changed_or_not.Unchanged
             | Last_dep.T (dep, v_id) :: deps -> (
-              if !Perf_counters.enabled then
-                Perf_counters.record_new_edge_traversals ~count:1;
+              if !Counters.enabled then
+                Counters.record_new_edge_traversals ~count:1;
               match dep.without_state.spec.allow_cutoff with
               | No -> (
                 (* If [dep] has no cutoff, it is sufficient to check whether it
@@ -893,8 +893,8 @@ end = struct
           Error (Exn_set.of_list exns)
       in
       let deps_rev = Deps_so_far.get_compute_deps_rev deps_so_far in
-      if !Perf_counters.enabled then
-        Perf_counters.record_new_edge_traversals ~count:(List.length deps_rev);
+      if !Counters.enabled then
+        Counters.record_new_edge_traversals ~count:(List.length deps_rev);
       (value, deps_rev)
     in
     match cache_lookup_failure with
@@ -925,8 +925,8 @@ end = struct
     in
     let stop_considering ~(cached_value : _ Cached_value.t) ~computed =
       dep_node.state <- Not_considering;
-      if !Perf_counters.enabled then
-        Perf_counters.record_newly_considered_node
+      if !Counters.enabled then
+        Counters.record_newly_considered_node
           ~edges:(List.length cached_value.deps)
           ~computed
     in
@@ -1190,7 +1190,7 @@ let incremental_mode_enabled =
 let restart_current_run () =
   Current_run.invalidate ();
   Run.restart ();
-  Perf_counters.reset ()
+  Counters.reset ()
 
 let reset () =
   restart_current_run ();
@@ -1198,16 +1198,16 @@ let reset () =
 
 let clear_memoization_caches () = Caches.clear ()
 
-module For_tests = struct
-  let nodes_in_current_run () = !Perf_counters.nodes_considered
+module Perf_counters = struct
+  let enable () = Counters.enabled := true
 
-  let edges_in_current_run () = !Perf_counters.edges_considered
+  let nodes_in_current_run () = !Counters.nodes_considered
 
-  let nodes_computed_in_current_run () = !Perf_counters.nodes_computed
+  let edges_in_current_run () = !Counters.edges_considered
 
-  let edges_traversed_in_current_run () = !Perf_counters.edges_traversed
+  let nodes_computed_in_current_run () = !Counters.nodes_computed
 
-  let enable_perf_counters () = Perf_counters.enabled := true
+  let edges_traversed_in_current_run () = !Counters.edges_traversed
 
   let report_for_current_run () =
     sprintf "%d/%d computed/total nodes, %d/%d traversed/total edges"

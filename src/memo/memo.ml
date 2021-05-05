@@ -1208,4 +1208,9 @@ module For_tests = struct
       (nodes_in_current_run ())
       (edges_traversed_in_current_run ())
       (edges_in_current_run ())
+
+  let assert_invariants () =
+    assert (nodes_computed_in_current_run () <= nodes_in_current_run ());
+    assert (edges_in_current_run () <= edges_traversed_in_current_run ());
+    assert (edges_traversed_in_current_run () <= 2 * edges_in_current_run ())
 end

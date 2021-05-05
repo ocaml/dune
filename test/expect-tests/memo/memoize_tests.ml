@@ -17,11 +17,8 @@ let () = init ()
 let printf = Printf.printf
 
 let print_perf_counters () =
-  let open Memo.For_tests in
-  assert (nodes_computed_in_current_run () <= nodes_in_current_run ());
-  assert (edges_in_current_run () <= edges_traversed_in_current_run ());
-  assert (edges_traversed_in_current_run () <= 2 * edges_in_current_run ());
-  printf "%s\n" (report_for_current_run ())
+  Memo.For_tests.assert_invariants ();
+  printf "%s\n" (Memo.For_tests.report_for_current_run ())
 
 let string_fn_create name =
   Memo.create name ~input:(module String) ~cutoff:String.equal

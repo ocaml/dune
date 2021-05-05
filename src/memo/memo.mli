@@ -374,4 +374,7 @@ module For_tests : sig
   val edges_traversed_in_current_run : unit -> int
 
   val report_for_current_run : unit -> string
+
+  (** Raise if any internal invariants are violated. *)
+  val assert_invariants : unit -> unit
 end

@@ -161,7 +161,7 @@ let build_c ~kind ~sctx ~dir ~expander ~include_flags (loc, src, dst) =
           produced in the current directory *)
        Command.run ~dir:(Path.build dir) c_compiler
          ([ Command.Args.dyn with_user_and_std_flags
-          ; S [ A "-I"; Path ctx.stdlib_dir ]
+          ; S [ A "-idirafter"; Path ctx.stdlib_dir ]
           ; include_flags
           ]
          @ output_param @ [ A "-c"; Dep src ]))

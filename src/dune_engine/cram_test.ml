@@ -31,3 +31,5 @@ let script t =
   match t with
   | File f -> f
   | Dir d -> d.file
+
+let fname_in_dir_test = "run.t"

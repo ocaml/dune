@@ -715,7 +715,7 @@ module Dir = struct
               in
               let contents = t.dir in
               let dir = contents.path in
-              let fname = "run.t" in
+              let fname = Cram_test.fname_in_dir_test in
               let test =
                 let file = Path.Source.relative dir fname in
                 Cram_test.Dir { file; dir }

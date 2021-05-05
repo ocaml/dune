@@ -27,7 +27,8 @@
   dune_rpc_private
   dune_rpc_server
   csexp_rpc
-  spawn)
+  spawn
+  dune_file_watcher)
  (synopsis "Internal Dune library, do not use!"))
 
 (ocamllex dune_lexer)

@@ -268,7 +268,7 @@ let%expect_test _ =
 let%expect_test _ =
   (* This test used to demonstrate a bug due to a bad interaction between [lazy]
      and synchronous memoized functions. The dependency on [lazy] was only
-     registered by one of the dependants below, which meant we couldn't safely
+     registered by one of the dependents below, which meant we couldn't safely
      use [lazy] together with [Memo].
 
      Now that [Memo] doesn't support memoization of synchronous functions
@@ -1279,10 +1279,9 @@ let%expect_test "Abandoned node with no cutoff is recomputed" =
         printf "Evaluated summit: %d\n" result;
         result)
   in
+  Memo.restart_current_run ();
   evaluate_and_print summit 0;
   print_perf_counters ();
-  (* CR-someday amokhov: Here, in the first run, we consider 6 nodes but compute
-     only 4 of them. How does that happen? *)
   [%expect
     {|
     Started evaluating summit
@@ -1294,7 +1293,7 @@ let%expect_test "Abandoned node with no cutoff is recomputed" =
     *** Captured last base ***
     Evaluated summit: 1
     f 0 = Ok 1
-    6/5 nodes/edges considered, 4 nodes computed
+    4/4 nodes/edges considered, 4 nodes computed
   |}];
   Memo.restart_current_run ();
   evaluate_and_print summit 0;

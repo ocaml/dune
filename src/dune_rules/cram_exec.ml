@@ -372,7 +372,7 @@ let _display_with_bars s =
 
 let run ~env ~script lexbuf : string Fiber.t =
   let temp_dir =
-    let suffix = Path.basename script in
+    let suffix = "." ^ Path.basename script in
     Temp.create Dir ~prefix:"dune.cram." ~suffix
   in
   let cram_stanzas = cram_stanzas lexbuf in

@@ -77,13 +77,15 @@ module Scheduler = struct
              (Pp.verbatim ", killing current build..."))
       in
       Console.Status_line.set_constant status_line
-    | Build_finish res ->
+    | Build_finish (build_result, build_duration_in_seconds) ->
       if Common.watch_perf_counters common then
         Console.print_user_message
           (User_message.make
-             [ Pp.textf "%s" (Memo.Perf_counters.report_for_current_run ()) ]);
+             [ Pp.textf "%s" (Memo.Perf_counters.report_for_current_run ())
+             ; Pp.textf "(%.2f sec)" build_duration_in_seconds
+             ]);
       let message =
-        match res with
+        match build_result with
         | Success -> Pp.tag User_message.Style.Success (Pp.verbatim "Success")
         | Failure -> Pp.tag User_message.Style.Error (Pp.verbatim "Had errors")
       in

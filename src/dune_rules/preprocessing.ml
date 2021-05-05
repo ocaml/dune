@@ -202,10 +202,11 @@ module Driver = struct
               | None ->
                 Error
                   (User_error.E
-                     (User_error.make ~loc
-                        [ Pp.textf "%S is not a %s" (Lib_name.to_string name)
-                            (desc ~plural:false)
-                        ]))
+                     ( User_error.make ~loc
+                         [ Pp.textf "%S is not a %s" (Lib_name.to_string name)
+                             (desc ~plural:false)
+                         ]
+                     , None ))
               | Some t -> Ok t))
         >>| Result.List.all
       in
@@ -236,16 +237,17 @@ module Driver = struct
   let make_error loc msg =
     match loc with
     | User_file (loc, _) ->
-      Error (User_error.E (User_error.make ~loc [ Pp.text msg ]))
+      Error (User_error.E (User_error.make ~loc [ Pp.text msg ], None))
     | Dot_ppx (path, pps) ->
       Error
         (User_error.E
-           (User_error.make
-              ~loc:(Loc.in_file (Path.build path))
-              [ Pp.textf "Failed to create on-demand ppx rewriter for %s; %s"
-                  (String.enumerate_and (List.map pps ~f:Lib_name.to_string))
-                  (String.uncapitalize msg)
-              ]))
+           ( User_error.make
+               ~loc:(Loc.in_file (Path.build path))
+               [ Pp.textf "Failed to create on-demand ppx rewriter for %s; %s"
+                   (String.enumerate_and (List.map pps ~f:Lib_name.to_string))
+                   (String.uncapitalize msg)
+               ]
+           , None ))
 
   let select libs ~loc =
     let open Memo.Build.O in

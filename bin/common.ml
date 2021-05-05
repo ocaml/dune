@@ -41,7 +41,7 @@ type t =
   ; stats_trace_file : string option
   ; always_show_command_line : bool
   ; promote_install_files : bool
-  ; stats : Stats.t option
+  ; stats : Dune_stats.t option
   ; file_watcher : Dune_engine.Scheduler.Run.file_watcher
   ; workspace_config : Dune_rules.Workspace.Clflags.t
   }
@@ -838,8 +838,8 @@ let term =
   in
   let stats =
     Option.map stats_trace_file ~f:(fun f ->
-        let stats = Stats.create (Out (open_out f)) in
-        at_exit (fun () -> Stats.close stats);
+        let stats = Dune_stats.create (Out (open_out f)) in
+        at_exit (fun () -> Dune_stats.close stats);
         stats)
   in
   { debug_dep_path

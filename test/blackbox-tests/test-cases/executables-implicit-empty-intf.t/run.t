@@ -22,9 +22,6 @@ as will test binaries:
 
   $ dune runtest 2>&1 |
   > sed -e 's,(warn.*32.*),(warning 32),g'
-  File "test/dune", line 2, characters 7-11:
-  2 |  (name test))
-             ^^^^
   File "test/test.ml", line 1, characters 4-10:
   1 | let unused = 1
           ^^^^^^

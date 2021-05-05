@@ -93,6 +93,17 @@ let is_loc_none loc =
   | None -> true
   | Some loc -> Loc.is_none loc
 
+(* Similar to [output_starts_with_location] in process.ml but operating on
+   [Pp.t]. *)
+let message_starts_with_location msg =
+  (* The implementation is heavy handed but it doesn't seem worth optimising
+     now. Indeed, we have been discussing the idea of extracting the location
+     from command run by Dune more systematically, so it's likely that this code
+     will go away eventually. *)
+  String.is_prefix
+    (Format.asprintf "%a" Pp.to_fmt (User_message.pp msg))
+    ~prefix:"File "
+
 let recover_loc (entries : Entry.t list) =
   match entries with
   (* In principle it makes sense to recover loc for more than just aliases, but
@@ -104,11 +115,11 @@ let recover_loc (entries : Entry.t list) =
 
 let augment_user_error_loc entries exn =
   match exn with
-  | User_error.E msg ->
-    if is_loc_none msg.loc then
+  | User_error.E (msg, annot) ->
+    if is_loc_none msg.loc && not (message_starts_with_location msg) then
       match recover_loc entries with
       | None -> exn
-      | Some loc -> User_error.E { msg with loc = Some loc }
+      | Some loc -> User_error.E ({ msg with loc = Some loc }, annot)
     else
       exn
   | _ -> exn

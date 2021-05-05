@@ -14,7 +14,7 @@ let parse_lexbuf lb =
 
 let parse_file path_opt =
   match path_opt with
-  | Some path -> Io.with_lexbuf_from_file path ~f:parse_lexbuf
+  | Some path -> Io.Untracked.with_lexbuf_from_file path ~f:parse_lexbuf
   | None -> parse_lexbuf @@ Lexing.from_channel stdin
 
 let can_be_displayed_wrapped =

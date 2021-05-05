@@ -26,9 +26,14 @@ module Make (Stdune : sig
   end
 
   module User_error : sig
+    module Annot : sig
+      type t
+    end
+
     val raise :
          ?loc:Loc.t
       -> ?hints:User_message.Style.t Pp.t list
+      -> ?annot:Annot.t
       -> User_message.Style.t Pp.t list
       -> _
   end

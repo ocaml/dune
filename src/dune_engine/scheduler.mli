@@ -23,7 +23,7 @@ module Config : sig
     { concurrency : int
     ; display : Display.t
     ; rpc : Dune_rpc.Where.t option
-    ; stats : Stats.t option
+    ; stats : Dune_stats.t option
     }
 
   (** [add_to_env env] adds to [env] the environment variable that describes
@@ -80,10 +80,7 @@ val t : unit -> t Fiber.t
 val with_job_slot : (Config.t -> 'a Fiber.t) -> 'a Fiber.t
 
 (** Wait for the following process to terminate *)
-val wait_for_process : Pid.t -> Unix.process_status Fiber.t
-
-(** Wait for dune cache to be disconnected. Drop any other event. *)
-val wait_for_dune_cache : unit -> unit
+val wait_for_process : Pid.t -> Proc.Process_info.t Fiber.t
 
 (** Make the scheduler ignore next change to a certain file in watch mode.
 
@@ -93,9 +90,6 @@ val ignore_for_watch : Path.t -> unit Fiber.t
 
 (** Number of jobs currently running in the background *)
 val running_jobs_count : t -> int
-
-(** Send a task that will run in the scheduler thread *)
-val send_sync_task : (unit -> unit) -> unit
 
 (** Start the shutdown sequence. Among other things, it causes Dune to cancel
     the current build and stop accepting RPC clients. *)

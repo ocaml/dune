@@ -1,8 +1,4 @@
   $ dune build 2>&1 | grep -v ocamlc
-  File "dune", line 5, characters 0-52:
-  5 | (alias
-  6 |  (name default)
-  7 |  (action (run ./fooexe.exe)))
   File "fooexe.ml", line 3, characters 0-7:
   3 | Bar.run ();;
       ^^^^^^^

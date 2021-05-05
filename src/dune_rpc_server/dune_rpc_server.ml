@@ -123,7 +123,7 @@ module Event = struct
           let id = Event.Id.Int (Session.Id.to_int id) in
           Event.async ?args id kind common
         in
-        Stats.emit stats event)
+        Dune_stats.emit stats event)
 end
 
 module H = struct

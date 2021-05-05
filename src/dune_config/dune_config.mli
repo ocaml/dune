@@ -119,5 +119,5 @@ val equal : t -> t -> bool
 val for_scheduler :
      t
   -> Dune_rpc_private.Where.t option
-  -> Stats.t option
+  -> Dune_stats.t option
   -> Dune_engine.Scheduler.Config.t

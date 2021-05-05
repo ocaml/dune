@@ -28,8 +28,7 @@ module File = struct
   module Map = Map.Make (T)
 
   let of_source_path p =
-    (* CR aalekseyev: handle errors from [Path.stat] *)
-    of_stats (Path.stat_exn (Path.source p))
+    Fs_memo.path_stat (Path.source p) >>| Result.map ~f:of_stats
 end
 
 module Dune_file = struct
@@ -98,11 +97,12 @@ module Dune_file = struct
     { Plain.contents; for_subdirs = active }
 
   let load file ~file_exists ~from_parent ~project =
-    let kind, plain =
+    let+ kind, plain =
       match file_exists with
-      | false -> (Plain, load_plain [] ~file ~from_parent ~project)
+      | false ->
+        Memo.Build.return (Plain, load_plain [] ~file ~from_parent ~project)
       | true ->
-        Io.with_lexbuf_from_file (Path.source file) ~f:(fun lb ->
+        Fs_memo.with_lexbuf_from_file (Path.source file) ~f:(fun lb ->
             if Dune_lexer.is_script lb then
               let from_parent = load_plain [] ~file ~from_parent ~project in
               (Ocaml_script, from_parent)
@@ -132,7 +132,7 @@ module Readdir : sig
 
   val filter_files : t -> Dune_project.t -> t Memo.Build.t
 
-  val of_source_path : Path.Source.t -> (t, Unix.error) Result.t
+  val of_source_path : Path.Source.t -> (t, Unix.error) Result.t Memo.Build.t
 end = struct
   type t =
     { path : Path.Source.t
@@ -166,7 +166,7 @@ end = struct
     { t with files = String.Set.filter t.files ~f:(fun fn -> f t.path fn) }
 
   let of_source_path path =
-    match Path.readdir_unsorted_with_kinds (Path.source path) with
+    Fs_memo.dir_contents_unsorted (Path.source path) >>= function
     | Error unix_error ->
       User_warning.emit
         [ Pp.textf "Unable to read directory %s. Ignoring."
@@ -180,30 +180,35 @@ end = struct
                   Dune_file.fname))
         ; Pp.textf "Reason: %s" (Unix.error_message unix_error)
         ];
-      Error unix_error
+      Memo.Build.return (Error unix_error)
     | Ok unsorted_contents ->
-      let files, dirs =
-        List.filter_partition_map unsorted_contents ~f:(fun (fn, kind) ->
+      let+ files, dirs =
+        Memo.Build.parallel_map unsorted_contents ~f:(fun (fn, kind) ->
             let path = Path.Source.relative path fn in
             if Path.Source.is_in_build_dir path then
-              Skip
+              Memo.Build.return List.Skip
             else
-              let is_directory, file =
+              let+ is_directory, file =
                 match kind with
-                | S_DIR -> (true, File.of_source_path path)
+                | S_DIR -> (
+                  File.of_source_path path >>| function
+                  | Ok file -> (true, file)
+                  | Error _ -> (true, File.dummy))
                 | S_LNK -> (
-                  match Path.stat (Path.source path) with
-                  | Error _ -> (false, File.dummy)
+                  Fs_memo.path_stat (Path.source path) >>| function
                   | Ok ({ st_kind = S_DIR; _ } as st) -> (true, File.of_stats st)
-                  | Ok _ -> (false, File.dummy))
-                | _ -> (false, File.dummy)
+                  | Ok _
+                  | Error _ ->
+                    (false, File.dummy))
+                | _ -> Memo.Build.return (false, File.dummy)
               in
               if is_directory then
-                Right (fn, path, file)
+                List.Right (fn, path, file)
               else if is_special kind then
                 Skip
               else
                 Left fn)
+        >>| List.filter_partition_map ~f:Fun.id
       in
       { path
       ; files = String.Set.of_list files
@@ -218,15 +223,13 @@ module Dirs_visited : sig
   (** Unique set of all directories visited *)
   type t
 
-  val singleton : Path.Source.t -> t
+  val singleton : Path.Source.t -> File.t -> t
 
   module Per_fn : sig
     (** Stores the directories visited per node (basename) *)
     type t
 
     type dirs_visited
-
-    val to_dyn : t -> Dyn.t
 
     val init : t
 
@@ -238,7 +241,7 @@ module Dirs_visited : sig
 end = struct
   type t = Path.Source.t File.Map.t
 
-  let singleton path = File.Map.singleton (File.of_source_path path) path
+  let singleton path file = File.Map.singleton file path
 
   module Per_fn = struct
     type nonrec t = t String.Map.t
@@ -266,8 +269,6 @@ end = struct
                 ])
         in
         String.Map.add_exn acc fn new_dirs_visited
-
-    let to_dyn t = String.Map.to_dyn (File.Map.to_dyn Path.Source.to_dyn) t
   end
 end
 
@@ -276,10 +277,6 @@ module Output = struct
     { dir : 'a
     ; visited : Dirs_visited.Per_fn.t
     }
-
-  let to_dyn f { dir; visited } =
-    let open Dyn.Encoder in
-    record [ ("dir", f dir); ("visited", Dirs_visited.Per_fn.to_dyn visited) ]
 end
 
 module Dir0 = struct
@@ -466,7 +463,7 @@ end = struct
       else
         None
     in
-    let+ from_parent =
+    let* from_parent =
       match Path.Source.parent path with
       | None -> Memo.Build.return None
       | Some parent ->
@@ -480,19 +477,16 @@ end = struct
         in
         (dune_file.path, dir_map)
     in
-    let open Option.O in
-    let+ file =
+    let file =
       match (file_exists, from_parent) with
       | None, None -> None
       | Some fname, _ -> Some (Path.Source.relative path fname)
       | None, Some (path, _) -> Some path
     in
-    let from_parent =
-      let+ _, from_parent = from_parent in
-      from_parent
-    in
-    let file_exists = Option.is_some file_exists in
-    Dune_file.load file ~file_exists ~project ~from_parent
+    Memo.Build.Option.map file ~f:(fun file ->
+        let file_exists = Option.is_some file_exists in
+        let from_parent = Option.map from_parent ~f:snd in
+        Dune_file.load file ~file_exists ~project ~from_parent)
 
   let contents { Readdir.path; dirs; files } ~dirs_visited ~project
       ~(dir_status : Sub_dirs.Status.t) =
@@ -519,15 +513,17 @@ end = struct
     let* ancestor_vcs = Fdecl.get ancestor_vcs in
     let path = Path.Source.root in
     let dir_status : Sub_dirs.Status.t = Normal in
-    let readdir =
-      match Readdir.of_source_path path with
+    let error_unable_to_load ~path error =
+      User_error.raise
+        [ Pp.textf "Unable to load source %s.@.Reason:%s@."
+            (Path.Source.to_string_maybe_quoted path)
+            (Unix.error_message error)
+        ]
+    in
+    let* readdir =
+      Readdir.of_source_path path >>| function
       | Ok dir -> dir
-      | Error m ->
-        User_error.raise
-          [ Pp.textf "Unable to load source %s.@.Reason:%s@."
-              (Path.Source.to_string_maybe_quoted path)
-              (Unix.error_message m)
-          ]
+      | Error e -> error_unable_to_load ~path e
     in
     let project =
       match
@@ -539,7 +535,11 @@ end = struct
     in
     let* readdir = Readdir.filter_files readdir project in
     let vcs = get_vcs ~default:ancestor_vcs ~readdir in
-    let dirs_visited = Dirs_visited.singleton path in
+    let* dirs_visited =
+      File.of_source_path path >>| function
+      | Ok file -> Dirs_visited.singleton path file
+      | Error e -> error_unable_to_load ~path e
+    in
     let+ contents, visited =
       contents readdir ~dirs_visited ~project ~dir_status
     in
@@ -578,11 +578,11 @@ end = struct
       | None -> Memo.Build.return None
       | Some (parent_dir, dirs_visited, dir_status, virtual_) ->
         let dirs_visited = Dirs_visited.Per_fn.find dirs_visited path in
-        let readdir =
+        let* readdir =
           if virtual_ then
-            Readdir.empty path
+            Memo.Build.return (Readdir.empty path)
           else
-            match Readdir.of_source_path path with
+            Readdir.of_source_path path >>| function
             | Ok dir -> dir
             | Error _ -> Readdir.empty path
         in
@@ -606,18 +606,8 @@ end = struct
         Memo.Build.return (Some { Output.dir; visited }))
 
   let find_dir_raw =
-    let module Output = struct
-      type t = Dir0.t Output.t option
-
-      let to_dyn =
-        let open Dyn.Encoder in
-        option (Output.to_dyn Dir0.to_dyn)
-    end in
     let memo =
-      Memo.create "find-dir-raw" ~doc:"get file tree"
-        ~input:(module Path.Source)
-        ~output:(Simple (module Output))
-        ~visibility:Memo.Visibility.Hidden find_dir_raw_impl
+      Memo.create "find-dir-raw" ~input:(module Path.Source) find_dir_raw_impl
     in
     Memo.cell memo
 
@@ -657,10 +647,8 @@ let execution_parameters_of_dir =
   in
   let memo =
     Memo.create "execution-parameters-of-dir"
-      ~doc:"Return the execution parameters of a given directory"
       ~input:(module Path.Source)
-      ~output:(Allow_cutoff (module Execution_parameters))
-      ~visibility:Hidden f
+      ~cutoff:Execution_parameters.equal f
   in
   Memo.exec memo
 

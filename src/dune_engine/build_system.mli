@@ -11,7 +11,7 @@ module Error : sig
   (** Errors when building a target *)
   type t
 
-  val message : t -> User_message.t
+  val info : t -> User_message.t * Dep_path.Entry.t list option * Path.t option
 end
 
 (** The current set of active errors *)
@@ -89,7 +89,7 @@ end
 
 (** Initializes the build system. This must be called first. *)
 val init :
-     stats:Stats.t option
+     stats:Dune_stats.t option
   -> contexts:Build_context.t list Memo.Lazy.t
   -> promote_source:
        (   ?chmod:(int -> int)

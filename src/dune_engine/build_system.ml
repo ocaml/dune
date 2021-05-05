@@ -116,8 +116,6 @@ end
 
 let files_in_source_tree_to_delete () = Promoted_to_delete.get_db ()
 
-let alias_exists_fdecl = Fdecl.create (fun _ -> Dyn.Opaque)
-
 module Alias0 = struct
   include Alias
 
@@ -731,6 +729,8 @@ module rec Load_rules : sig
 
   val lookup_alias :
     Alias.t -> (Loc.t * unit Action_builder.t) list option Memo.Build.t
+
+  val alias_exists : Alias.t -> bool Memo.Build.t
 end = struct
   open Load_rules
 
@@ -794,11 +794,10 @@ end = struct
         [ ("alias", Alias.to_dyn alias) ]
     | Build { aliases; _ } -> Alias.Name.Map.find aliases (Alias.name alias)
 
-  let () =
-    Fdecl.set alias_exists_fdecl (fun alias ->
-        lookup_alias alias >>| function
-        | None -> false
-        | Some _ -> true)
+  let alias_exists alias =
+    lookup_alias alias >>| function
+    | None -> false
+    | Some _ -> true
 
   let compute_alias_expansions ~(collected : Rules.Dir_rules.ready) ~dir =
     let aliases = collected.aliases in
@@ -1319,7 +1318,7 @@ end = struct
 
     let file_exists = file_exists
 
-    let alias_exists alias = Fdecl.get alias_exists_fdecl alias
+    let alias_exists = Load_rules.alias_exists
 
     let execute_action = execute_action
 
@@ -2299,7 +2298,7 @@ end = struct
 
     let file_exists = file_exists
 
-    let alias_exists a = Fdecl.get alias_exists_fdecl a
+    let alias_exists = Load_rules.alias_exists
 
     let execute_action ~observing_facts:_ _act =
       (* We don't need to execute this action to compute the final action. *)

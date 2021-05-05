@@ -12,7 +12,7 @@ module Json = struct
     match t with
     | `String s -> quote_string_to_buf s buf
     | `Int i -> Buffer.add_string buf (string_of_int i)
-    | `Float f -> Buffer.add_string buf (string_of_float f)
+    | `Float f -> Buffer.add_string buf (Printf.sprintf "%.17g" f)
     | `Bool b -> Buffer.add_string buf (string_of_bool b)
     | `List l ->
       Buffer.add_char buf '[';

@@ -16,8 +16,10 @@ let connect ~root_dir ~persistent =
   in
   Lwt_process.open_process ("dune", args)
 
-let build_watch ~root_dir =
-  Lwt_process.open_process_none ~stdin:`Close
+let build_watch ~root_dir ~suppress_stderr =
+  Lwt_process.open_process_none
+    ~stdin:`Close
+    ~stderr:(if suppress_stderr then `Dev_null else `Keep)
     ( "dune"
     , [| "dune"
        ; "build"
@@ -49,7 +51,7 @@ let%expect_test "run and connect" =
   let initialize = Initialize.create ~id:(Id.make (Csexp.Atom "test")) in
   Lwt_main.run
     (let* root_dir = Lwt_io.create_temp_dir () in
-     let build = build_watch ~root_dir in
+     let build = build_watch ~root_dir ~suppress_stderr:false in
      let rpc =
        let+ () = Lwt_unix.sleep 0.5 in
        connect ~root_dir ~persistent:false
@@ -118,7 +120,12 @@ let%expect_test "run and connect persistent" =
     let log_build1 = Logger.create ~name:"build1" in
     let log_build2 = Logger.create ~name:"build2" in
     let log_client = Logger.create ~name:"client" in
-    let build () = build_watch ~root_dir in
+    let build () =
+      (* Dune prints "Success, waiting for filesystem changes" to
+         stderr, which is not deterministic because we race to shut down dune
+         before it finishes a build. *)
+      build_watch ~root_dir ~suppress_stderr:true
+    in
     let build1 =
       Logger.log log_build1 "connecting";
       build ()
@@ -208,7 +215,6 @@ let%expect_test "run and connect persistent" =
   Lwt_main.run test;
   [%expect
     {|
-    Success, waiting for filesystem changes...
     build1: connecting
     build1: dune build finished with 0
     build2: connecting

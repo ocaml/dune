@@ -38,6 +38,7 @@ type t =
   ; rpc : Dune_rpc_impl.Server.t option
   ; default_target : Arg.Dep.t (* For build & runtest only *)
   ; watch : bool
+  ; watch_metrics : bool
   ; stats_trace_file : string option
   ; always_show_command_line : bool
   ; promote_install_files : bool
@@ -51,6 +52,8 @@ let capture_outputs t = t.capture_outputs
 let root t = t.root
 
 let watch t = t.watch
+
+let watch_metrics t = t.watch_metrics
 
 let file_watcher t = t.file_watcher
 
@@ -733,6 +736,11 @@ let term =
           ~doc:
             "Instead of terminating build after completion, wait continuously \
              for file changes.")
+  and+ watch_metrics =
+    Arg.(
+      value & flag
+      & info [ "watch-metrics" ] ~docs
+          ~doc:"Display various performance metrics in file-watching mode")
   and+ { Options_implied_by_dash_p.root
        ; only_packages
        ; ignore_promoted_rules
@@ -842,6 +850,7 @@ let term =
         at_exit (fun () -> Dune_stats.close stats);
         stats)
   in
+  if watch_metrics then Memo.Perf_counters.enable ();
   { debug_dep_path
   ; debug_findlib
   ; debug_backtraces
@@ -862,6 +871,7 @@ let term =
   ; store_orig_src_dir
   ; default_target
   ; watch
+  ; watch_metrics
   ; stats_trace_file
   ; always_show_command_line
   ; promote_install_files

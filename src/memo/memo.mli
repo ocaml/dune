@@ -356,3 +356,29 @@ val unwrap_exn : (exn -> exn) ref
 (** If [true], this module will record the location of [Lazy.t] values. This is
     a bit expensive to compute, but it helps debugging. *)
 val track_locations_of_lazy_values : bool ref
+
+(** Various performance counters. Reset to zero at the start of every run. *)
+module Perf_counters : sig
+  (** This function must be called to enable performance counters. *)
+  val enable : unit -> unit
+
+  (** Number of nodes visited in the current run. *)
+  val nodes_in_current_run : unit -> int
+
+  (** Number of dependency edges of the nodes visited in the current run. *)
+  val edges_in_current_run : unit -> int
+
+  (** Number of nodes that were (re)computed in the current run. This number
+      cannot not exceed [nodes_in_current_run]. *)
+  val nodes_computed_in_current_run : unit -> int
+
+  (** Number of edges that were traversed in the current run. Some edges may be
+      traversed twice, so this number can exceed [edges_in_current_run]. *)
+  val edges_traversed_in_current_run : unit -> int
+
+  (** A concise summary of performance counters. *)
+  val report_for_current_run : unit -> string
+
+  (** Raise if any internal invariants are violated. *)
+  val assert_invariants : unit -> unit
+end

@@ -582,9 +582,8 @@ let got_signal signal =
   if !Log.verbose then
     Log.info [ Pp.textf "Got signal %s, exiting." (Signal.name signal) ]
 
-let filesystem_wathcer_terminated () =
-  if !Log.verbose then
-    Log.info [ Pp.textf "Filesystem watcher terminated, exiting." ]
+let filesystem_watcher_terminated () =
+  Log.info [ Pp.textf "Filesystem watcher terminated, exiting." ]
 
 type saw_signal =
   | Ok
@@ -692,7 +691,7 @@ end = struct
           | Waiting_for_file_changes ivar -> Fill (ivar, File_system_changed)))
       | Rpc fill -> fill
       | File_system_watcher_terminated ->
-        filesystem_wathcer_terminated ();
+        filesystem_watcher_terminated ();
         raise (Abort Got_signal_or_watcher_failed)
       | Signal signal ->
         got_signal signal;

@@ -10,15 +10,21 @@ module Perf_counters = struct
 
   let nodes_computed = ref 0
 
+  let edges_traversed = ref 0
+
   let reset () =
     nodes_considered := 0;
     edges_considered := 0;
-    nodes_computed := 0
+    nodes_computed := 0;
+    edges_traversed := 0
 
   let record_newly_considered_node ~edges ~computed =
     incr nodes_considered;
     edges_considered := !edges_considered + edges;
     if computed then incr nodes_computed
+
+  let record_new_edge_traversals ~count =
+    edges_traversed := !edges_traversed + count
 end
 
 type 'a build = 'a Fiber.t
@@ -805,6 +811,7 @@ end = struct
             match deps with
             | [] -> Fiber.return Changed_or_not.Unchanged
             | Last_dep.T (dep, v_id) :: deps -> (
+              Perf_counters.record_new_edge_traversals ~count:1;
               match dep.without_state.spec.allow_cutoff with
               | No -> (
                 (* If [dep] has no cutoff, it is sufficient to check whether it
@@ -882,7 +889,9 @@ end = struct
              duplicates as early as possible. *)
           Error (Exn_set.of_list exns)
       in
-      (value, Deps_so_far.get_compute_deps_rev deps_so_far)
+      let deps_rev = Deps_so_far.get_compute_deps_rev deps_so_far in
+      Perf_counters.record_new_edge_traversals ~count:(List.length deps_rev);
+      (value, deps_rev)
     in
     match cache_lookup_failure with
     | Cancelled { dependency_cycle } ->
@@ -1185,15 +1194,18 @@ let reset () =
 let clear_memoization_caches () = Caches.clear ()
 
 module For_tests = struct
-  let nodes_considered_in_current_run () = !Perf_counters.nodes_considered
+  let nodes_in_current_run () = !Perf_counters.nodes_considered
 
-  let edges_considered_in_current_run () = !Perf_counters.edges_considered
+  let edges_in_current_run () = !Perf_counters.edges_considered
 
   let nodes_computed_in_current_run () = !Perf_counters.nodes_computed
 
+  let edges_traversed_in_current_run () = !Perf_counters.edges_traversed
+
   let report_for_current_run () =
-    sprintf "%d/%d nodes/edges considered, %d nodes computed\n"
-      (nodes_considered_in_current_run ())
-      (edges_considered_in_current_run ())
+    sprintf "%d/%d computed/total nodes, %d/%d traversed/total edges"
       (nodes_computed_in_current_run ())
+      (nodes_in_current_run ())
+      (edges_traversed_in_current_run ())
+      (edges_in_current_run ())
 end

@@ -8,6 +8,8 @@ val rpc : t -> Dune_rpc_impl.Server.t option
 
 val stats : t -> Dune_stats.t option
 
+val watch_metrics : t -> bool
+
 val watch : t -> bool
 
 val file_watcher : t -> Dune_engine.Scheduler.Run.file_watcher

@@ -3,6 +3,32 @@ open Fiber.O
 
 let track_locations_of_lazy_values = ref false
 
+module Counters = struct
+  let enabled = ref false
+
+  let nodes_considered = ref 0
+
+  let edges_considered = ref 0
+
+  let nodes_computed = ref 0
+
+  let edges_traversed = ref 0
+
+  let reset () =
+    nodes_considered := 0;
+    edges_considered := 0;
+    nodes_computed := 0;
+    edges_traversed := 0
+
+  let record_newly_considered_node ~edges ~computed =
+    incr nodes_considered;
+    edges_considered := !edges_considered + edges;
+    if computed then incr nodes_computed
+
+  let record_new_edge_traversals ~count =
+    edges_traversed := !edges_traversed + count
+end
+
 type 'a build = 'a Fiber.t
 
 module type Build = sig
@@ -787,6 +813,8 @@ end = struct
             match deps with
             | [] -> Fiber.return Changed_or_not.Unchanged
             | Last_dep.T (dep, v_id) :: deps -> (
+              if !Counters.enabled then
+                Counters.record_new_edge_traversals ~count:1;
               match dep.without_state.spec.allow_cutoff with
               | No -> (
                 (* If [dep] has no cutoff, it is sufficient to check whether it
@@ -864,7 +892,10 @@ end = struct
              duplicates as early as possible. *)
           Error (Exn_set.of_list exns)
       in
-      (value, Deps_so_far.get_compute_deps_rev deps_so_far)
+      let deps_rev = Deps_so_far.get_compute_deps_rev deps_so_far in
+      if !Counters.enabled then
+        Counters.record_new_edge_traversals ~count:(List.length deps_rev);
+      (value, deps_rev)
     in
     match cache_lookup_failure with
     | Cancelled { dependency_cycle } ->
@@ -892,6 +923,13 @@ end = struct
     let frame : Stack_frame_with_state.t =
       T { without_state = dep_node.without_state; running_state }
     in
+    let stop_considering ~(cached_value : _ Cached_value.t) ~computed =
+      dep_node.state <- Not_considering;
+      if !Counters.enabled then
+        Counters.record_newly_considered_node
+          ~edges:(List.length cached_value.deps)
+          ~computed
+    in
     let restore_from_cache =
       Once.create ~must_not_raise:(fun () ->
           Call_stack.push_frame frame (fun () ->
@@ -899,7 +937,8 @@ end = struct
                 restore_from_cache dep_node.last_cached_value
               in
               (match restore_result with
-              | Ok _ -> dep_node.state <- Not_considering
+              | Ok cached_value ->
+                stop_considering ~cached_value ~computed:false
               | Failure _ -> ());
               restore_result))
     in
@@ -913,7 +952,7 @@ end = struct
                 compute dep_node cache_lookup_failure running_state.deps_so_far
               in
               dep_node.last_cached_value <- Some cached_value;
-              dep_node.state <- Not_considering;
+              stop_considering ~cached_value ~computed:true;
               cached_value))
     in
     let result : _ Sample_attempt.Result.t = { restore_from_cache; compute } in
@@ -1150,10 +1189,35 @@ let incremental_mode_enabled =
 
 let restart_current_run () =
   Current_run.invalidate ();
-  Run.restart ()
+  Run.restart ();
+  Counters.reset ()
 
 let reset () =
   restart_current_run ();
   if not incremental_mode_enabled then Caches.clear ()
 
 let clear_memoization_caches () = Caches.clear ()
+
+module Perf_counters = struct
+  let enable () = Counters.enabled := true
+
+  let nodes_in_current_run () = !Counters.nodes_considered
+
+  let edges_in_current_run () = !Counters.edges_considered
+
+  let nodes_computed_in_current_run () = !Counters.nodes_computed
+
+  let edges_traversed_in_current_run () = !Counters.edges_traversed
+
+  let report_for_current_run () =
+    sprintf "%d/%d computed/total nodes, %d/%d traversed/total edges"
+      (nodes_computed_in_current_run ())
+      (nodes_in_current_run ())
+      (edges_traversed_in_current_run ())
+      (edges_in_current_run ())
+
+  let assert_invariants () =
+    assert (nodes_computed_in_current_run () <= nodes_in_current_run ());
+    assert (edges_in_current_run () <= edges_traversed_in_current_run ());
+    assert (edges_traversed_in_current_run () <= 2 * edges_in_current_run ())
+end

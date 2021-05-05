@@ -37,11 +37,13 @@ module Run : sig
       | Success
       | Failure
 
+    type build_duration_in_seconds = float
+
     type t =
       | Tick
       | Source_files_changed
       | Build_interrupted
-      | Build_finish of build_result
+      | Build_finish of build_result * build_duration_in_seconds
   end
 
   type file_watcher =

@@ -39,7 +39,7 @@ module Main = struct
     let open Fiber.O in
     let* setup = Memo.Build.run (get ()) in
     let* scheduler = Scheduler.t () in
-    Console.Status_line.set (fun () ->
+    Console.Status_line.set_live (fun () ->
         let progression = Build_system.get_current_progress () in
         Some
           (Pp.verbatim
@@ -76,18 +76,16 @@ module Scheduler = struct
              (Pp.tag User_message.Style.Error (Pp.verbatim "Had errors"))
              (Pp.verbatim ", killing current build..."))
       in
-      Console.Status_line.set (Fun.const status_line)
+      Console.Status_line.set_constant status_line
     | Build_finish res ->
       let message =
         match res with
         | Success -> Pp.tag User_message.Style.Success (Pp.verbatim "Success")
         | Failure -> Pp.tag User_message.Style.Error (Pp.verbatim "Had errors")
       in
-      Console.Status_line.set
-        (Fun.const
-           (Some
-              (Pp.seq message
-                 (Pp.verbatim ", waiting for filesystem changes..."))))
+      Console.Status_line.set_constant
+        (Some
+           (Pp.seq message (Pp.verbatim ", waiting for filesystem changes...")))
 
   let go ~(common : Common.t) ~config:dune_config f =
     let stats = Common.stats common in

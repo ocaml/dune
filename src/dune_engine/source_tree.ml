@@ -742,7 +742,7 @@ struct
   let map_reduce ~traverse ~f =
     let* root = M.memo_build (root ()) in
     let nb_path_visited = ref 0 in
-    Console.Status_line.set (fun () ->
+    Console.Status_line.set_live (fun () ->
         Some (Pp.textf "Scanned %i directories" !nb_path_visited));
     let+ res =
       map_reduce root ~traverse ~f:(fun dir ->
@@ -750,7 +750,7 @@ struct
           if !nb_path_visited mod 100 = 0 then Console.Status_line.refresh ();
           f dir)
     in
-    Console.Status_line.set (Fun.const None);
+    Console.Status_line.set_constant None;
     res
 end
 

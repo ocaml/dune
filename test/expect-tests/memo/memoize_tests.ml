@@ -17,7 +17,9 @@ let () = init ()
 let printf = Printf.printf
 
 let print_perf_counters () =
-  printf "%s\n" (Memo.For_tests.report_for_current_run ())
+  let open Memo.For_tests in
+  assert (nodes_computed_in_current_run () <= nodes_considered_in_current_run ());
+  printf "%s\n" (report_for_current_run ())
 
 let string_fn_create name =
   Memo.create name ~input:(module String) ~cutoff:String.equal

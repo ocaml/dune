@@ -713,7 +713,7 @@ module Run = struct
   let poll step =
     let* t = t () in
     let rec loop () : unit Fiber.t =
-      let build_started = Sys.time () in
+      let build_started = Unix.gettimeofday () in
       t.status <- Building;
       let* res =
         let on_error exn =
@@ -742,7 +742,7 @@ module Run = struct
           | Error _ -> Failure
           | Ok _ -> Success
         in
-        let build_duration = Sys.time () -. build_started in
+        let build_duration = Unix.gettimeofday () -. build_started in
         t.handler t.config (Build_finish (build_result, build_duration));
         let ivar = Fiber.Ivar.create () in
         t.status <- Waiting_for_file_changes ivar;

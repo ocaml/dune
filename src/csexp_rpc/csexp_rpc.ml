@@ -156,7 +156,9 @@ module Server = struct
 
     let create sockaddr ~backlog =
       let fd =
-        Unix.socket (Unix.domain_of_sockaddr sockaddr) Unix.SOCK_STREAM 0
+        Unix.socket ~cloexec:true
+          (Unix.domain_of_sockaddr sockaddr)
+          Unix.SOCK_STREAM 0
       in
       Unix.setsockopt fd Unix.SO_REUSEADDR true;
       Unix.set_nonblock fd;
@@ -189,7 +191,7 @@ module Server = struct
         if inter then
           None
         else if accept then
-          let fd, _ = Unix.accept t.fd in
+          let fd, _ = Unix.accept ~cloexec:true t.fd in
           Some fd
         else
           assert false
@@ -264,7 +266,9 @@ module Client = struct
 
     let create sockaddr =
       let fd =
-        Unix.socket (Unix.domain_of_sockaddr sockaddr) Unix.SOCK_STREAM 0
+        Unix.socket ~cloexec:true
+          (Unix.domain_of_sockaddr sockaddr)
+          Unix.SOCK_STREAM 0
       in
       { sockaddr; fd }
 

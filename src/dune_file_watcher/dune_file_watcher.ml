@@ -32,8 +32,7 @@ module Buffer = struct
     in
     buffer.size <- buffer.size + len;
     if len = 0 then
-      `End_of_file
-        (Bytes.sub_string buffer.data ~pos:0 ~len:(buffer.size))
+      `End_of_file (Bytes.sub_string buffer.data ~pos:0 ~len:buffer.size)
     else
       `Ok
         (let lines = ref [] in
@@ -176,8 +175,7 @@ let create_no_buffering ~thread_safe_send_events ~root =
     while true do
       let lines =
         match Buffer.read_lines buffer pipe with
-        | `End_of_file _remaining ->
-          [ Event.Watcher_terminated ]
+        | `End_of_file _remaining -> [ Event.Watcher_terminated ]
         | `Ok lines ->
           List.map lines ~f:(fun line ->
               match parse_line line with

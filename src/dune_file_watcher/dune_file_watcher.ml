@@ -5,6 +5,12 @@ type t =
   ; wait_for_watches_established : unit -> unit
   }
 
+module Event = struct
+  type t =
+    | File_changed of Path.t
+    | Watcher_terminated
+end
+
 let pid t = t.pid
 
 let buffer_capacity = 65536
@@ -26,8 +32,7 @@ module Buffer = struct
     in
     buffer.size <- buffer.size + len;
     if len = 0 then
-      `End_of_file
-        (Bytes.sub_string buffer.data ~pos:0 ~len:(Bytes.length buffer.data))
+      `End_of_file (Bytes.sub_string buffer.data ~pos:0 ~len:buffer.size)
     else
       `Ok
         (let lines = ref [] in
@@ -163,33 +168,32 @@ let spawn_external_watcher ~root =
   Option.iter stderr ~f:Unix.close;
   ((r_stdout, parse_line, wait), pid)
 
-let create_no_buffering ~thread_safe_send_files_changed ~root =
+let create_no_buffering ~thread_safe_send_events ~root =
   let (pipe, parse_line, wait), pid = spawn_external_watcher ~root in
   let worker_thread pipe =
     let buffer = Buffer.create ~capacity:buffer_capacity in
     while true do
       let lines =
-        List.map
-          (match Buffer.read_lines buffer pipe with
-          | `End_of_file _ -> failwith "end of file reading inotify pipe"
-          | `Ok lines -> lines)
-          ~f:(fun line ->
-            match parse_line line with
-            | Error s -> failwith s
-            | Ok path -> Path.of_string path)
+        match Buffer.read_lines buffer pipe with
+        | `End_of_file _remaining -> [ Event.Watcher_terminated ]
+        | `Ok lines ->
+          List.map lines ~f:(fun line ->
+              match parse_line line with
+              | Error s -> failwith s
+              | Ok path -> Event.File_changed (Path.of_string path))
       in
-      thread_safe_send_files_changed lines
+      thread_safe_send_events lines
     done
   in
   ignore (Thread.create worker_thread pipe : Thread.t);
   { pid; wait_for_watches_established = wait }
 
-let with_buffering ~create ~thread_safe_send_files_changed ~debounce_interval =
+let with_buffering ~create ~thread_safe_send_events ~debounce_interval =
   let files_changed = ref [] in
   let event_mtx = Mutex.create () in
   let event_cv = Condition.create () in
   let res =
-    create ~thread_safe_send_files_changed:(fun lines ->
+    create ~thread_safe_send_events:(fun lines ->
         Mutex.lock event_mtx;
         files_changed := List.rev_append lines !files_changed;
         Condition.signal event_cv;
@@ -215,18 +219,18 @@ let with_buffering ~create ~thread_safe_send_files_changed ~debounce_interval =
     let files = !files_changed in
     files_changed := [];
     Mutex.unlock event_mtx;
-    thread_safe_send_files_changed files;
+    thread_safe_send_events files;
     Thread.delay debounce_interval;
     buffer_thread ()
   in
   ignore (Thread.create buffer_thread () : Thread.t);
   res
 
-let create ~root ~debounce_interval ~thread_safe_send_files_changed =
+let create ~root ~debounce_interval ~thread_safe_send_events =
   match debounce_interval with
-  | None -> create_no_buffering ~root ~thread_safe_send_files_changed
+  | None -> create_no_buffering ~root ~thread_safe_send_events
   | Some debounce_interval ->
-    with_buffering ~thread_safe_send_files_changed ~debounce_interval
+    with_buffering ~thread_safe_send_events ~debounce_interval
       ~create:(create_no_buffering ~root)
 
 let create_default =

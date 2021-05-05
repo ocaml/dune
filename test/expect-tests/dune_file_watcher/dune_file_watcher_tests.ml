@@ -86,7 +86,7 @@ let%expect_test _ =
   let events_buffer = ref [] in
   let watcher =
     Dune_file_watcher.create ~debounce_interval:None
-      ~thread_safe_send_files_changed:(fun events ->
+      ~thread_safe_send_events:(fun events ->
         Mutex.lock mutex;
         events_buffer := !events_buffer @ events;
         Mutex.unlock mutex)
@@ -98,7 +98,10 @@ let%expect_test _ =
         | [] -> None
         | list ->
           events_buffer := [];
-          Some list)
+          Some
+            (List.map list ~f:(function
+              | Dune_file_watcher.Event.File_changed file -> file
+              | Dune_file_watcher.Event.Watcher_terminated -> assert false)))
   in
   let print_events n = print_events ~try_to_get_events ~expected:n in
   Dune_file_watcher.wait_watches_established_blocking watcher;

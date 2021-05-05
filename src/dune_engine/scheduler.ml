@@ -113,6 +113,7 @@ end
 module Event : sig
   type t =
     | File_system_changed of Fs_memo.Event.t Nonempty_list.t
+    | File_system_watcher_terminated
     | Job_completed of job * Proc.Process_info.t
     | Signal of Signal.t
     | Rpc of Fiber.fill
@@ -145,7 +146,7 @@ module Event : sig
     val register_rpc_started : t -> unit
 
     (** Send an event to the main thread. *)
-    val send_files_changed : t -> Path.t list -> unit
+    val send_file_watcher_events : t -> Dune_file_watcher.Event.t list -> unit
 
     val send_job_completed : t -> job -> Proc.Process_info.t -> unit
 
@@ -155,6 +156,7 @@ module Event : sig
 end = struct
   type t =
     | File_system_changed of Fs_memo.Event.t Nonempty_list.t
+    | File_system_watcher_terminated
     | Job_completed of job * Proc.Process_info.t
     | Signal of Signal.t
     | Rpc of Fiber.fill
@@ -162,7 +164,7 @@ end = struct
   module Queue = struct
     type t =
       { jobs_completed : (job * Proc.Process_info.t) Queue.t
-      ; mutable files_changed : Path.t list
+      ; mutable file_watcher_events : Dune_file_watcher.Event.t list
       ; mutable signals : Signal.Set.t
       ; mutex : Mutex.t
       ; cond : Condition.t
@@ -183,7 +185,7 @@ end = struct
     let create stats =
       let jobs_completed = Queue.create () in
       let rpc_completed = Queue.create () in
-      let files_changed = [] in
+      let file_watcher_events = [] in
       let signals = Signal.Set.empty in
       let mutex = Mutex.create () in
       let cond = Condition.create () in
@@ -191,7 +193,7 @@ end = struct
       let pending_jobs = 0 in
       let pending_rpc = 0 in
       { jobs_completed
-      ; files_changed
+      ; file_watcher_events
       ; signals
       ; mutex
       ; cond
@@ -212,7 +214,7 @@ end = struct
 
     let available q =
       not
-        (List.is_empty q.files_changed
+        (List.is_empty q.file_watcher_events
         && Queue.is_empty q.jobs_completed
         && Signal.Set.is_empty q.signals
         && Queue.is_empty q.rpc_completed)
@@ -229,7 +231,7 @@ end = struct
           q.signals <- Signal.Set.remove q.signals signal;
           Signal signal
         | None -> (
-          match q.files_changed with
+          match q.file_watcher_events with
           | [] -> (
             match Queue.pop q.jobs_completed with
             | None ->
@@ -239,10 +241,15 @@ end = struct
               q.pending_jobs <- q.pending_jobs - 1;
               assert (q.pending_jobs >= 0);
               Job_completed (job, proc_info))
-          | files_changed -> (
-            q.files_changed <- [];
+          | events -> (
+            q.file_watcher_events <- [];
+            let terminated = ref false in
             let events =
-              List.filter_map files_changed ~f:(fun path ->
+              List.filter_map events ~f:(function
+                | Watcher_terminated ->
+                  terminated := true;
+                  None
+                | File_changed path ->
                   let abs_path = Path.to_absolute_filename path in
                   if Table.mem q.ignored_files abs_path then (
                     (* only use ignored record once *)
@@ -252,9 +259,12 @@ end = struct
                     (* CR-soon amokhov: Generate more precise events. *)
                     Some (Fs_memo.Event.create ~kind:Unknown ~path))
             in
-            match Nonempty_list.of_list events with
-            | None -> loop ()
-            | Some events -> File_system_changed events))
+            match !terminated with
+            | true -> File_system_watcher_terminated
+            | false -> (
+              match Nonempty_list.of_list events with
+              | None -> loop ()
+              | Some events -> File_system_changed events)))
       in
       let ev = loop () in
       Mutex.unlock q.mutex;
@@ -267,10 +277,10 @@ end = struct
       if not avail then Condition.signal q.cond;
       Mutex.unlock q.mutex
 
-    let send_files_changed q files =
+    let send_file_watcher_events q files =
       Mutex.lock q.mutex;
       let avail = available q in
-      q.files_changed <- List.rev_append files q.files_changed;
+      q.file_watcher_events <- List.rev_append files q.file_watcher_events;
       if not avail then Condition.signal q.cond;
       Mutex.unlock q.mutex
 
@@ -574,6 +584,9 @@ let got_signal signal =
   if !Log.verbose then
     Log.info [ Pp.textf "Got signal %s, exiting." (Signal.name signal) ]
 
+let filesystem_watcher_terminated () =
+  Log.info [ Pp.textf "Filesystem watcher terminated, exiting." ]
+
 type saw_signal =
   | Ok
   | Got_signal
@@ -625,7 +638,7 @@ let prepare (config : Config.t) ~(handler : Handler.t) =
 
 module Run_once : sig
   type run_error =
-    | Got_signal
+    | Got_signal_or_watcher_failed
     | Never
     | Exn of Exn_with_backtrace.t
 
@@ -633,7 +646,7 @@ module Run_once : sig
   val run_and_cleanup : t -> (unit -> 'a Fiber.t) -> ('a, run_error) Result.t
 end = struct
   type run_error =
-    | Got_signal
+    | Got_signal_or_watcher_failed
     | Never
     | Exn of Exn_with_backtrace.t
 
@@ -679,9 +692,12 @@ end = struct
             iter t
           | Waiting_for_file_changes ivar -> Fill (ivar, File_system_changed)))
       | Rpc fill -> fill
+      | File_system_watcher_terminated ->
+        filesystem_watcher_terminated ();
+        raise (Abort Got_signal_or_watcher_failed)
       | Signal signal ->
         got_signal signal;
-        raise (Abort Got_signal)
+        raise (Abort Got_signal_or_watcher_failed)
     )
 
   let run t f : _ result =
@@ -698,7 +714,7 @@ end = struct
     let res = run t f in
     Console.Status_line.set_constant None;
     match kill_and_wait_for_all_processes t with
-    | Got_signal -> Error Got_signal
+    | Got_signal -> Error Got_signal_or_watcher_failed
     | Ok -> res
 end
 
@@ -770,13 +786,13 @@ module Run = struct
       | Detect_external ->
         Some
           (Dune_file_watcher.create_default
-             ~thread_safe_send_files_changed:(fun files_changed ->
-               Event_queue.send_files_changed t.events files_changed))
+             ~thread_safe_send_events:(fun files_changed ->
+               Event_queue.send_file_watcher_events t.events files_changed))
     in
     let result =
       match Run_once.run_and_cleanup t run with
       | Ok a -> Result.Ok a
-      | Error (Got_signal | Never) ->
+      | Error (Got_signal_or_watcher_failed | Never) ->
         let exn =
           if t.status = Shutting_down then
             Shutdown_requested

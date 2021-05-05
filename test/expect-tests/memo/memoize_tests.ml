@@ -830,7 +830,8 @@ let%expect_test "dynamic cycles with non-uniform cutoff structure" =
      in deadlocks and reappearance of zombie computations. The problem has now
      been fixed and so the line below is just a no-op. *)
   let _ = Memo.exec cycle_creator_no_cutoff () in
-  [%expect {| |}];
+  print_perf_counters ();
+  [%expect {| 9/11 nodes/edges considered, 6 nodes computed |}];
   evaluate_and_print summit_no_cutoff 0;
   print_perf_counters ();
   [%expect
@@ -1280,6 +1281,8 @@ let%expect_test "Abandoned node with no cutoff is recomputed" =
   in
   evaluate_and_print summit 0;
   print_perf_counters ();
+  (* CR-someday amokhov: Here, in the first run, we consider 6 nodes but compute
+     only 4 of them. How does that happen? *)
   [%expect
     {|
     Started evaluating summit

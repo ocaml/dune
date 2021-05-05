@@ -4,6 +4,8 @@ open Fiber.O
 let track_locations_of_lazy_values = ref false
 
 module Perf_counters = struct
+  let enabled = ref false
+
   let nodes_considered = ref 0
 
   let edges_considered = ref 0
@@ -811,7 +813,8 @@ end = struct
             match deps with
             | [] -> Fiber.return Changed_or_not.Unchanged
             | Last_dep.T (dep, v_id) :: deps -> (
-              Perf_counters.record_new_edge_traversals ~count:1;
+              if !Perf_counters.enabled then
+                Perf_counters.record_new_edge_traversals ~count:1;
               match dep.without_state.spec.allow_cutoff with
               | No -> (
                 (* If [dep] has no cutoff, it is sufficient to check whether it
@@ -890,7 +893,8 @@ end = struct
           Error (Exn_set.of_list exns)
       in
       let deps_rev = Deps_so_far.get_compute_deps_rev deps_so_far in
-      Perf_counters.record_new_edge_traversals ~count:(List.length deps_rev);
+      if !Perf_counters.enabled then
+        Perf_counters.record_new_edge_traversals ~count:(List.length deps_rev);
       (value, deps_rev)
     in
     match cache_lookup_failure with
@@ -921,9 +925,10 @@ end = struct
     in
     let stop_considering ~(cached_value : _ Cached_value.t) ~computed =
       dep_node.state <- Not_considering;
-      Perf_counters.record_newly_considered_node
-        ~edges:(List.length cached_value.deps)
-        ~computed
+      if !Perf_counters.enabled then
+        Perf_counters.record_newly_considered_node
+          ~edges:(List.length cached_value.deps)
+          ~computed
     in
     let restore_from_cache =
       Once.create ~must_not_raise:(fun () ->
@@ -1201,6 +1206,8 @@ module For_tests = struct
   let nodes_computed_in_current_run () = !Perf_counters.nodes_computed
 
   let edges_traversed_in_current_run () = !Perf_counters.edges_traversed
+
+  let enable_perf_counters () = Perf_counters.enabled := true
 
   let report_for_current_run () =
     sprintf "%d/%d computed/total nodes, %d/%d traversed/total edges"

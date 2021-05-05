@@ -373,6 +373,10 @@ module For_tests : sig
       traversed twice, so this number can exceed [edges_in_current_run]. *)
   val edges_traversed_in_current_run : unit -> int
 
+  (** This function must be called to enable performance counters. *)
+  val enable_perf_counters : unit -> unit
+
+  (** A concise summary of performance counters. *)
   val report_for_current_run : unit -> string
 
   (** Raise if any internal invariants are violated. *)

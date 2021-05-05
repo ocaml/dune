@@ -850,6 +850,7 @@ let term =
         at_exit (fun () -> Dune_stats.close stats);
         stats)
   in
+  if watch_perf_counters then Memo.For_tests.enable_perf_counters ();
   { debug_dep_path
   ; debug_findlib
   ; debug_backtraces

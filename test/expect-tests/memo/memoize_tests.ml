@@ -16,6 +16,8 @@ let () = init ()
 
 let printf = Printf.printf
 
+let () = Memo.For_tests.enable_perf_counters ()
+
 let print_perf_counters () =
   Memo.For_tests.assert_invariants ();
   printf "%s\n" (Memo.For_tests.report_for_current_run ())

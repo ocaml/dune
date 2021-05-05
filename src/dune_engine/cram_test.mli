@@ -13,4 +13,6 @@ val dyn_of_t : t -> Dyn.t
 
 val name : t -> string
 
+val fname_in_dir_test : string
+
 val script : t -> Path.Source.t

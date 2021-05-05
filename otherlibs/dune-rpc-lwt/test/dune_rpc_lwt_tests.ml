@@ -17,9 +17,12 @@ let connect ~root_dir ~persistent =
   Lwt_process.open_process ("dune", args)
 
 let build_watch ~root_dir ~suppress_stderr =
-  Lwt_process.open_process_none
-    ~stdin:`Close
-    ~stderr:(if suppress_stderr then `Dev_null else `Keep)
+  Lwt_process.open_process_none ~stdin:`Close
+    ~stderr:
+      (if suppress_stderr then
+        `Dev_null
+      else
+        `Keep)
     ( "dune"
     , [| "dune"
        ; "build"
@@ -121,9 +124,9 @@ let%expect_test "run and connect persistent" =
     let log_build2 = Logger.create ~name:"build2" in
     let log_client = Logger.create ~name:"client" in
     let build () =
-      (* Dune prints "Success, waiting for filesystem changes" to
-         stderr, which is not deterministic because we race to shut down dune
-         before it finishes a build. *)
+      (* Dune prints "Success, waiting for filesystem changes" to stderr, which
+         is not deterministic because we race to shut down dune before it
+         finishes a build. *)
       build_watch ~root_dir ~suppress_stderr:true
     in
     let build1 =

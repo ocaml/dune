@@ -78,7 +78,7 @@ module Scheduler = struct
       in
       Console.Status_line.set_constant status_line
     | Build_finish (build_result, build_duration_in_seconds) ->
-      if Common.watch_perf_counters common then
+      if Common.watch_metrics common then
         Console.print_user_message
           (User_message.make
              [ Pp.textf "%s" (Memo.Perf_counters.report_for_current_run ())

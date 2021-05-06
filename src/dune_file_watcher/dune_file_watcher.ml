@@ -11,6 +11,13 @@ module Event = struct
     | Watcher_terminated
 end
 
+module Scheduler = struct
+  type t =
+    { thread_safe_send_events : Event.t list -> unit
+    ; spawn_thread : (unit -> unit) -> unit
+    }
+end
+
 let pid t = t.pid
 
 let buffer_capacity = 65536
@@ -168,7 +175,7 @@ let spawn_external_watcher ~root =
   Option.iter stderr ~f:Unix.close;
   ((r_stdout, parse_line, wait), pid)
 
-let create_no_buffering ~thread_safe_send_events ~root =
+let create_no_buffering ~(scheduler : Scheduler.t) ~root =
   let (pipe, parse_line, wait), pid = spawn_external_watcher ~root in
   let worker_thread pipe =
     let buffer = Buffer.create ~capacity:buffer_capacity in
@@ -182,22 +189,25 @@ let create_no_buffering ~thread_safe_send_events ~root =
               | Error s -> failwith s
               | Ok path -> Event.File_changed (Path.of_string path))
       in
-      thread_safe_send_events lines
+      scheduler.thread_safe_send_events lines
     done
   in
-  ignore (Thread.create worker_thread pipe : Thread.t);
+  scheduler.spawn_thread (fun () -> worker_thread pipe);
   { pid; wait_for_watches_established = wait }
 
-let with_buffering ~create ~thread_safe_send_events ~debounce_interval =
+let with_buffering ~create ~(scheduler : Scheduler.t) ~debounce_interval =
   let files_changed = ref [] in
   let event_mtx = Mutex.create () in
   let event_cv = Condition.create () in
   let res =
-    create ~thread_safe_send_events:(fun lines ->
-        Mutex.lock event_mtx;
-        files_changed := List.rev_append lines !files_changed;
-        Condition.signal event_cv;
-        Mutex.unlock event_mtx)
+    let thread_safe_send_events lines =
+      Mutex.lock event_mtx;
+      files_changed := List.rev_append lines !files_changed;
+      Condition.signal event_cv;
+      Mutex.unlock event_mtx
+    in
+    let scheduler = { scheduler with thread_safe_send_events } in
+    create ~scheduler
   in
   (* The buffer thread is used to avoid flooding the main thread with file
      changes events when a lot of file changes are reported at once. In
@@ -219,18 +229,18 @@ let with_buffering ~create ~thread_safe_send_events ~debounce_interval =
     let files = !files_changed in
     files_changed := [];
     Mutex.unlock event_mtx;
-    thread_safe_send_events files;
+    scheduler.thread_safe_send_events files;
     Thread.delay debounce_interval;
     buffer_thread ()
   in
-  ignore (Thread.create buffer_thread () : Thread.t);
+  scheduler.spawn_thread buffer_thread;
   res
 
-let create ~root ~debounce_interval ~thread_safe_send_events =
+let create ~root ~debounce_interval ~scheduler =
   match debounce_interval with
-  | None -> create_no_buffering ~root ~thread_safe_send_events
+  | None -> create_no_buffering ~root ~scheduler
   | Some debounce_interval ->
-    with_buffering ~thread_safe_send_events ~debounce_interval
+    with_buffering ~scheduler ~debounce_interval
       ~create:(create_no_buffering ~root)
 
 let create_default =

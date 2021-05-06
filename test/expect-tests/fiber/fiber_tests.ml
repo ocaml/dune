@@ -181,13 +181,16 @@ let%expect_test _ =
 Error [ { exn = "Exit"; backtrace = "" } ]
 |}]
 
-let log_error (e : Exn_with_backtrace.t) =
-  Fiber.return (Printf.printf "raised %s\n" (Printexc.to_string e.exn))
+let log_error  (e : Exn_with_backtrace.t) =
+  Printf.printf "raised %s\n" (Printexc.to_string e.exn);
+  Fiber.return ()
 
+(* demonstrating that [with_error_handler_internal] can violate the invariant
+    that failures are accompanied by at least one exception. *)
 let%expect_test _ =
   test (backtrace_result unit)
     (Fiber.collect_errors (fun () ->
-         Fiber.with_error_handler failing_fiber ~on_error:log_error));
+       Fiber.For_tests.with_error_handler_internal failing_fiber ~on_error:log_error));
   [%expect {|
 raised Exit
 Error []
@@ -214,7 +217,7 @@ let%expect_test _ =
 
 let%expect_test "collect errors inside with_error_handler" =
   test (backtrace_result unit) ~expect_never:true
-    (Fiber.with_error_handler
+    (Fiber.For_tests.with_error_handler_internal
        ~on_error:(fun _ ->
          print_endline "captured the error";
          Fiber.return ())
@@ -249,27 +252,25 @@ let%expect_test "wait_errors restores the execution context properly" =
     () |}]
 
 let%expect_test _ =
-  test ~expect_never:true opaque
-    (Fiber.fork_and_join
+  test ~expect_never:false unit
+    (Fiber.fork_and_join_unit
        (fun () ->
          let log_error by (e : Exn_with_backtrace.t) =
-           Printf.printf "%s: raised %s\n" by (Printexc.to_string e.exn);
-           Fiber.return ()
+           Printf.printf "%s: raised %s\n" by (Printexc.to_string e.exn)
          in
-         Fiber.with_error_handler ~on_error:(log_error "outer") (fun () ->
-             Fiber.fork_and_join failing_fiber (fun () ->
+         Fiber.with_error_handler_unit
+           ~on_error:(fun err -> log_error "outer" err; Fiber.return ()) (fun () ->
+              (Fiber.fork_and_join_unit failing_fiber (fun () ->
                  Fiber.with_error_handler
-                   ~on_error:(fun e ->
-                     let+ () = log_error "inner" e in
-                     raise Exit)
-                   failing_fiber)))
+                   ~on_error:(fun exn -> log_error "inner" exn; raise Exit)
+                   failing_fiber)) ))
        long_running_fiber);
   [%expect
     {|
     outer: raised Exit
     inner: raised Exit
     outer: raised Exit
-    [PASS] Never raised as expected |}]
+    () |}]
 
 let%expect_test "nested with_error_handler" =
   let fiber =
@@ -336,7 +337,7 @@ let%expect_test "finalize" =
     Fiber.finalize
       ~finally:(fun () -> Fiber.return (print_endline "finally"))
       (fun () ->
-        Fiber.with_error_handler
+         Fiber.For_tests.with_error_handler_internal
           (fun () -> raise Exit)
           ~on_error:(fun exn_with_bt ->
             printf "exn: %s\n%!" (Printexc.to_string exn_with_bt.exn);
@@ -395,7 +396,7 @@ let%expect_test "sequential_iter error handling" =
     Fiber.finalize
       ~finally:(fun () -> Fiber.return (print_endline "finally"))
       (fun () ->
-        Fiber.with_error_handler
+        Fiber.with_error_handler_unit
           (fun () ->
             Fiber.sequential_iter [ 1; 2; 3 ] ~f:(fun x ->
                 if x = 2 then
@@ -406,13 +407,13 @@ let%expect_test "sequential_iter error handling" =
             printf "exn: %s\n%!" (Printexc.to_string exn_with_bt.exn);
             Fiber.return ()))
   in
-  test unit fiber ~expect_never:true;
+  test unit fiber ~expect_never:false;
   [%expect
     {|
     count: 1
     exn: Exit
     finally
-    [PASS] Never raised as expected |}]
+    () |}]
 
 let%expect_test "sequential_iter" =
   let fiber =

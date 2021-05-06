@@ -459,7 +459,18 @@ module Var = struct
   let create () = create ~name:"var" (fun _ -> Dyn.Encoder.string "var")
 end
 
-let with_error_handler f ~on_error k = EC.set_error_handler ~on_error f () k
+let with_error_handler_internal f ~on_error k =
+  EC.set_error_handler
+    ~on_error:(fun x -> on_error x)
+    f
+    () k
+
+let with_error_handler f ~on_error k =
+  EC.set_error_handler
+    ~on_error:(fun (x : Exn_with_backtrace.t) ->
+      map (on_error x) ~f:(Nothing.unreachable_code))
+    f
+    () k
 
 let wait_errors f k = EC.wait_errors f k
 
@@ -471,10 +482,16 @@ let map_reduce_errors (type a) (module M : Monoid with type t = a) ~on_error f k
     acc := M.combine !acc m
   in
   wait_errors
-    (fun () -> with_error_handler ~on_error f)
+    (fun () -> with_error_handler_internal ~on_error f)
     (function
       | Ok _ as ok -> k ok
       | Error () -> k (Error !acc))
+
+let with_error_handler_unit f ~on_error =
+  map (map_reduce_errors (module Monoid.Unit) ~on_error f)
+    ~f:(function
+      | Ok () -> ()
+      | Error () -> ())
 
 let collect_errors f =
   let module Exns = Monoid.Appendable_list (Exn_with_backtrace) in
@@ -893,3 +910,7 @@ let run t ~iter =
   EC.run t ~iter:(fun () ->
       let (Fill (ivar, v)) = iter () in
       Ivar.fill ivar v)
+
+module For_tests = struct
+  let with_error_handler_internal = with_error_handler_internal
+end

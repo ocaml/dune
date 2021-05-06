@@ -53,12 +53,7 @@ let git =
      in
      Bin.which ~path "git" |> Option.value_exn)
 
-let dune =
-  lazy
-    (let path =
-       Env.get Env.initial "PATH" |> Option.value_exn |> Bin.parse_path
-     in
-     Bin.which ~path "dune" |> Option.value_exn)
+let dune = Path.of_string (Filename.concat Fpath.initial_cwd Sys.argv.(1))
 
 module Package = struct
   type t =
@@ -94,7 +89,7 @@ let dune_build () =
   let stderr_to = Process.(Io.file Config.dev_null Out) in
   let open Fiber.O in
   let+ times =
-    Process.run_with_times (Lazy.force dune) ~stdin_from ~stdout_to ~stderr_to
+    Process.run_with_times dune ~stdin_from ~stdout_to ~stderr_to
       [ "build"; "@install"; "--root"; "." ]
   in
   times.elapsed_time
@@ -137,7 +132,7 @@ let () =
   in
   let zero = List.map zero ~f:(fun t -> `Float t) in
   let size =
-    let stat : Unix.stats = Path.stat_exn (Lazy.force dune) in
+    let stat : Unix.stats = Path.stat_exn dune in
     stat.st_size
   in
   let results =

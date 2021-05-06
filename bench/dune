@@ -7,4 +7,4 @@
 (rule
  (alias bench)
  (action
-  (run ./bench.exe)))
+  (run ./bench.exe %{bin:dune})))

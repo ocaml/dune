@@ -86,10 +86,14 @@ let%expect_test _ =
   let events_buffer = ref [] in
   let watcher =
     Dune_file_watcher.create ~debounce_interval:None
-      ~thread_safe_send_events:(fun events ->
-        Mutex.lock mutex;
-        events_buffer := !events_buffer @ events;
-        Mutex.unlock mutex)
+      ~scheduler:
+        { spawn_thread = (fun f -> ignore (Thread.create f () : Thread.t))
+        ; thread_safe_send_events =
+            (fun events ->
+              Mutex.lock mutex;
+              events_buffer := !events_buffer @ events;
+              Mutex.unlock mutex)
+        }
       ~root:Path.root
   in
   let try_to_get_events () =

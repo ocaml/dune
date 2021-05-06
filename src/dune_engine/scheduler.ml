@@ -786,8 +786,12 @@ module Run = struct
       | Detect_external ->
         Some
           (Dune_file_watcher.create_default
-             ~thread_safe_send_events:(fun files_changed ->
-               Event_queue.send_file_watcher_events t.events files_changed))
+             ~scheduler:
+               { spawn_thread = Thread.spawn
+               ; thread_safe_send_events =
+                   (fun files_changed ->
+                     Event_queue.send_file_watcher_events t.events files_changed)
+               })
     in
     let result =
       match Run_once.run_and_cleanup t run with

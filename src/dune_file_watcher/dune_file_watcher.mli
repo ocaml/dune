@@ -8,16 +8,26 @@ module Event : sig
     | Watcher_terminated
 end
 
+module Scheduler : sig
+  (** Hook into the fiber scheduler. *)
+  type t =
+    { thread_safe_send_events : Event.t list -> unit
+          (** Send a list of events to the scheduler from a separate system
+              thread.. *)
+    ; spawn_thread : (unit -> unit) -> unit
+          (** We spawn threads through this function in case the scheduler wants
+              to block signals *)
+    }
+end
+
 (** Create a new file watcher. [debounce_interval] is measured in seconds and it
-    controls the minimum time between calls to [thread_safe_send_files_changed]. *)
+    controls the minimum time between calls to
+    [scheduler.thread_safe_send_files_changed]. *)
 val create :
-     root:Path.t
-  -> debounce_interval:float option
-  -> thread_safe_send_events:(Event.t list -> unit)
-  -> t
+  root:Path.t -> debounce_interval:float option -> scheduler:Scheduler.t -> t
 
 (** Create a new file watcher with default settings. *)
-val create_default : thread_safe_send_events:(Event.t list -> unit) -> t
+val create_default : scheduler:Scheduler.t -> t
 
 (** Pid of the external file watcher process *)
 val pid : t -> Pid.t

@@ -34,8 +34,7 @@ let never_fiber () = Fiber.never
 let backtrace_result dyn_of_ok =
   Result.to_dyn dyn_of_ok (list Exn_with_backtrace.to_dyn)
 
-let unit_result dyn_of_ok =
-  Result.to_dyn dyn_of_ok unit
+let unit_result dyn_of_ok = Result.to_dyn dyn_of_ok unit
 
 let test ?(expect_never = false) to_dyn f =
   let never_raised = ref false in
@@ -207,7 +206,9 @@ let map_reduce_errors_unit ~on_error t =
   Fiber.map_reduce_errors (module Monoid.Unit) ~on_error t
 
 let%expect_test "collect errors inside with_error_handler" =
-  test (unit_result (backtrace_result unit)) ~expect_never:false
+  test
+    (unit_result (backtrace_result unit))
+    ~expect_never:false
     (map_reduce_errors_unit
        ~on_error:(fun _ ->
          print_endline "captured the error";
@@ -244,25 +245,21 @@ let%expect_test "wait_errors restores the execution context properly" =
 
 let%expect_test _ =
   test ~expect_never:false (unit_result unit)
-    (Fiber.fork_and_join_unit
-       long_running_fiber
-       (fun () ->
-          let log_error by (e : Exn_with_backtrace.t) =
-            Printf.printf "%s: raised %s\n" by (Printexc.to_string e.exn)
-          in
-          map_reduce_errors_unit
-            ~on_error:(fun err ->
-              log_error "outer" err;
-              Fiber.return ())
-            (fun () ->
-               Fiber.fork_and_join_unit failing_fiber (fun () ->
+    (Fiber.fork_and_join_unit long_running_fiber (fun () ->
+         let log_error by (e : Exn_with_backtrace.t) =
+           Printf.printf "%s: raised %s\n" by (Printexc.to_string e.exn)
+         in
+         map_reduce_errors_unit
+           ~on_error:(fun err ->
+             log_error "outer" err;
+             Fiber.return ())
+           (fun () ->
+             Fiber.fork_and_join_unit failing_fiber (fun () ->
                  Fiber.with_error_handler
                    ~on_error:(fun exn ->
                      log_error "inner" exn;
                      raise Exit)
-                   failing_fiber))
-       )
-       );
+                   failing_fiber))));
   [%expect
     {|
     outer: raised Exit
@@ -378,8 +375,8 @@ let%expect_test "sequential_iter error handling" =
     Fiber.finalize
       ~finally:(fun () -> Fiber.return (print_endline "finally"))
       (fun () ->
-         map_reduce_errors_unit
-           (fun () ->
+        map_reduce_errors_unit
+          (fun () ->
             Fiber.sequential_iter [ 1; 2; 3 ] ~f:(fun x ->
                 if x = 2 then
                   raise Exit

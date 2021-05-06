@@ -459,10 +459,10 @@ module Var = struct
   let create () = create ~name:"var" (fun _ -> Dyn.Encoder.string "var")
 end
 
-(* This function violates the invariant that every fiber
-   either returns a value or fails with one or more errors:
-   if [on_error] does not re-raise the exception, then the fiber returned by
-   [with_error_handler_internal] fails with 0 errors. *)
+(* This function violates the invariant that every fiber either returns a value
+   or fails with one or more errors: if [on_error] does not re-raise the
+   exception, then the fiber returned by [with_error_handler_internal] fails
+   with 0 errors. *)
 let with_error_handler_internal f ~on_error k =
   EC.set_error_handler ~on_error f () k
 

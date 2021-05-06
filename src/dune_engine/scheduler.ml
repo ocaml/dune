@@ -202,9 +202,7 @@ end = struct
 
     let register_job_started q = q.pending_jobs <- q.pending_jobs + 1
 
-
-    let register_rpc_started q =
-      q.pending_rpc <- q.pending_rpc + 1
+    let register_rpc_started q = q.pending_rpc <- q.pending_rpc + 1
 
     let ignore_next_file_change_event q path =
       assert (Path.is_in_source_tree path);
@@ -663,16 +661,19 @@ end = struct
         false
       | _ -> true)
       && Event.Queue.pending_jobs t.events = 0
-      &&
-      (* CR-someday aalekseyev:
-         Deadlock detection is pretty much useless when RPC is in use because
-         there's pretty much always a "pending" call to [accept] that makes
-         this condition false. We should probably make deadlock detection more aggressive
-         by not taking into account the Ivars waiting for user input (such as [accept])
-         if the build is in progress. *)
+      && (* CR-someday aalekseyev: Deadlock detection is pretty much useless
+            when RPC is in use because there's pretty much always a "pending"
+            call to [accept] that makes this condition false. We should probably
+            make deadlock detection more aggressive by not taking into account
+            the Ivars waiting for user input (such as [accept]) if the build is
+            in progress. *)
       Event.Queue.pending_rpc t.events = 0
-    then raise (Abort (Exn (Exn_with_backtrace.try_with_never_returns (fun () ->
-      Code_error.raise "Deadlock" []))))
+    then
+      raise
+        (Abort
+           (Exn
+              (Exn_with_backtrace.try_with_never_returns (fun () ->
+                   Code_error.raise "Deadlock" []))))
     else (
       t.handler t.config Tick;
       match Event.Queue.next t.events with
@@ -704,10 +705,15 @@ end = struct
     )
 
   let run t f : _ result =
-    let fiber = set t (fun () -> Fiber.map_reduce_errors (module Monoid.Unit) f ~on_error:(fun e ->
-      Report_error.report e;
-      Fiber.return ()
-    )) in
+    let fiber =
+      set t (fun () ->
+          Fiber.map_reduce_errors
+            (module Monoid.Unit)
+            f
+            ~on_error:(fun e ->
+              Report_error.report e;
+              Fiber.return ()))
+    in
     match Fiber.run fiber ~iter:(fun () -> iter t) with
     | Ok res ->
       assert (Event.Queue.pending_jobs t.events = 0);

@@ -460,17 +460,13 @@ module Var = struct
 end
 
 let with_error_handler_internal f ~on_error k =
-  EC.set_error_handler
-    ~on_error:(fun x -> on_error x)
-    f
-    () k
+  EC.set_error_handler ~on_error:(fun x -> on_error x) f () k
 
 let with_error_handler f ~on_error k =
   EC.set_error_handler
     ~on_error:(fun (x : Exn_with_backtrace.t) ->
-      map (on_error x) ~f:(Nothing.unreachable_code))
-    f
-    () k
+      map (on_error x) ~f:Nothing.unreachable_code)
+    f () k
 
 let wait_errors f k = EC.wait_errors f k
 
@@ -488,7 +484,8 @@ let map_reduce_errors (type a) (module M : Monoid with type t = a) ~on_error f k
       | Error () -> k (Error !acc))
 
 let with_error_handler_unit f ~on_error =
-  map (map_reduce_errors (module Monoid.Unit) ~on_error f)
+  map
+    (map_reduce_errors (module Monoid.Unit) ~on_error f)
     ~f:(function
       | Ok () -> ()
       | Error () -> ())

@@ -25,10 +25,4 @@ let%expect_test "null output" =
   let stderr_to = Process.(Io.null Out) in
   let run () = Process.run ~stdout_to ~stderr_to Strict true_ [] in
   let _res = go run in
-  [%expect.unreachable]
-  [@@expect.uncaught_exn
-    {|
-  (Dune_util.Report_error.Already_reported)
-  Trailing output
-  ---------------
-  Error: close: : Bad file descriptor |}]
+  [%expect{||}]

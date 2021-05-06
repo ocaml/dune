@@ -147,9 +147,6 @@ with type 'a fiber := 'a t
 val with_error_handler :
   (unit -> 'a t) -> on_error:(Exn_with_backtrace.t -> Nothing.t t) -> 'a t
 
-val with_error_handler_unit :
-  (unit -> unit t) -> on_error:(Exn_with_backtrace.t -> unit t) -> unit t
-
 val map_reduce_errors :
      (module Monoid with type t = 'a)
   -> on_error:(Exn_with_backtrace.t -> 'a t)
@@ -376,15 +373,3 @@ type fill = Fill : 'a Ivar.t * 'a -> fill
     the scheduler, it should block waiting for an event and return an ivar to
     fill. *)
 val run : 'a t -> iter:(unit -> fill) -> 'a
-
-module For_tests : sig
-  (** This function is used internally to implement [map_reduce_errors], so its
-      behavior is worth testing.
-
-      However, note that this function violates the invariant that every fiber
-      either returns a value or fails with one or more errors. (if [on_error]
-      does not re-raise the exception, then the fiber returned by
-      [with_error_handler_internal] fails with 0 errors) *)
-  val with_error_handler_internal :
-    (unit -> 'a t) -> on_error:(Exn_with_backtrace.t -> unit t) -> 'a t
-end

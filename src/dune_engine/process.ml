@@ -112,7 +112,7 @@ module Io = struct
       | Out -> Config.dev_null_out
     in
     let channel = lazy (channel_of_descr (Lazy.force fd) mode) in
-    { kind = Null; mode; fd; channel; status = Close_after_exec }
+    { kind = Null; mode; fd; channel; status = Keep_open }
 
   let file : type a. _ -> ?perm:int -> a mode -> a t =
    fun fn ?(perm = 0o666) mode ->

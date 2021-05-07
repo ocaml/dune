@@ -1,7 +1,3 @@
-let on_error e =
-  Report_error.report e;
-  Fiber.return ()
-
 open! Stdune
 open Import
 open Fiber.O
@@ -638,16 +634,14 @@ let prepare (config : Config.t) ~(handler : Handler.t) =
 
 module Run_once : sig
   type run_error =
-    | Got_signal_or_watcher_failed
-    | Never
+    | Already_reported
     | Exn of Exn_with_backtrace.t
 
   (** Run the build and clean up after it (kill any stray processes etc). *)
   val run_and_cleanup : t -> (unit -> 'a Fiber.t) -> ('a, run_error) Result.t
 end = struct
   type run_error =
-    | Got_signal_or_watcher_failed
-    | Never
+    | Already_reported
     | Exn of Exn_with_backtrace.t
 
   exception Abort of run_error
@@ -667,9 +661,19 @@ end = struct
         false
       | _ -> true)
       && Event.Queue.pending_jobs t.events = 0
-      && Event.Queue.pending_rpc t.events = 0
+      && (* CR-someday aalekseyev: Deadlock detection is pretty much useless
+            when RPC is in use because there's pretty much always a "pending"
+            call to [accept] that makes this condition false. We should probably
+            make deadlock detection more aggressive by not taking into account
+            the Ivars waiting for user input (such as [accept]) if the build is
+            in progress. *)
+      Event.Queue.pending_rpc t.events = 0
     then
-      raise (Abort Never)
+      raise
+        (Abort
+           (Exn
+              (Exn_with_backtrace.try_with_never_returns (fun () ->
+                   Code_error.raise "Deadlock" []))))
     else (
       t.handler t.config Tick;
       match Event.Queue.next t.events with
@@ -694,19 +698,28 @@ end = struct
       | Rpc fill -> fill
       | File_system_watcher_terminated ->
         filesystem_watcher_terminated ();
-        raise (Abort Got_signal_or_watcher_failed)
+        raise (Abort Already_reported)
       | Signal signal ->
         got_signal signal;
-        raise (Abort Got_signal_or_watcher_failed)
+        raise (Abort Already_reported)
     )
 
   let run t f : _ result =
-    let fiber = set t (fun () -> Fiber.with_error_handler f ~on_error) in
+    let fiber =
+      set t (fun () ->
+          Fiber.map_reduce_errors
+            (module Monoid.Unit)
+            f
+            ~on_error:(fun e ->
+              Report_error.report e;
+              Fiber.return ()))
+    in
     match Fiber.run fiber ~iter:(fun () -> iter t) with
-    | res ->
+    | Ok res ->
       assert (Event.Queue.pending_jobs t.events = 0);
       assert (Event.Queue.pending_rpc t.events = 0);
       Ok res
+    | Error () -> Error Already_reported
     | exception Abort err -> Error err
     | exception exn -> Error (Exn (Exn_with_backtrace.capture exn))
 
@@ -714,7 +727,7 @@ end = struct
     let res = run t f in
     Console.Status_line.set_constant None;
     match kill_and_wait_for_all_processes t with
-    | Got_signal -> Error Got_signal_or_watcher_failed
+    | Got_signal -> Error Already_reported
     | Ok -> res
 end
 
@@ -796,7 +809,7 @@ module Run = struct
     let result =
       match Run_once.run_and_cleanup t run with
       | Ok a -> Result.Ok a
-      | Error (Got_signal_or_watcher_failed | Never) ->
+      | Error Already_reported ->
         let exn =
           if t.status = Shutting_down then
             Shutdown_requested

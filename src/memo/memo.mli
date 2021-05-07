@@ -81,7 +81,7 @@ module Build : sig
       the transition to the memo monad *)
 
   val with_error_handler :
-    (unit -> 'a t) -> on_error:(Exn_with_backtrace.t -> unit t) -> 'a t
+    (unit -> 'a t) -> on_error:(Exn_with_backtrace.t -> Nothing.t t) -> 'a t
 
   val map_reduce_errors :
        (module Monoid with type t = 'a)

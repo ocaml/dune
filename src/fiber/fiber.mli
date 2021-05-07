@@ -145,7 +145,7 @@ with type 'a fiber := 'a t
     It is guaranteed that after the fiber has returned a value, [on_error] will
     never be called. *)
 val with_error_handler :
-  (unit -> 'a t) -> on_error:(Exn_with_backtrace.t -> unit t) -> 'a t
+  (unit -> 'a t) -> on_error:(Exn_with_backtrace.t -> Nothing.t t) -> 'a t
 
 val map_reduce_errors :
      (module Monoid with type t = 'a)

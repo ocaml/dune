@@ -459,7 +459,18 @@ module Var = struct
   let create () = create ~name:"var" (fun _ -> Dyn.Encoder.string "var")
 end
 
-let with_error_handler f ~on_error k = EC.set_error_handler ~on_error f () k
+(* This function violates the invariant that every fiber either returns a value
+   or fails with one or more errors: if [on_error] does not re-raise the
+   exception, then the fiber returned by [with_error_handler_internal] fails
+   with 0 errors. *)
+let with_error_handler_internal f ~on_error k =
+  EC.set_error_handler ~on_error f () k
+
+let with_error_handler f ~on_error k =
+  EC.set_error_handler
+    ~on_error:(fun (x : Exn_with_backtrace.t) ->
+      map (on_error x) ~f:Nothing.unreachable_code)
+    f () k
 
 let wait_errors f k = EC.wait_errors f k
 
@@ -471,7 +482,7 @@ let map_reduce_errors (type a) (module M : Monoid with type t = a) ~on_error f k
     acc := M.combine !acc m
   in
   wait_errors
-    (fun () -> with_error_handler ~on_error f)
+    (fun () -> with_error_handler_internal ~on_error f)
     (function
       | Ok _ as ok -> k ok
       | Error () -> k (Error !acc))

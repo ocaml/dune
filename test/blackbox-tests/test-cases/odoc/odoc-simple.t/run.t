@@ -2,20 +2,16 @@ This test generates documentation using odoc for a library:
 
   $ dune build @doc
 
-  $ ls -R _build/default/_doc/_odoc
-  pkg
-  
-  _build/default/_doc/_odoc/pkg:
-  bar
-  foo
-  
-  _build/default/_doc/_odoc/pkg/bar:
-  page-index.odoc
-  page-index.odocl
-  
-  _build/default/_doc/_odoc/pkg/foo:
-  page-index.odoc
-  page-index.odocl
+  $ find _build/default/_doc/_odoc -name '*.odoc'
+  _build/default/_doc/_odoc/pkg/foo/page-index.odoc
+  _build/default/_doc/_odoc/pkg/bar/page-index.odoc
+
+.odocl files should be generated in the same path as the original .odoc file
+
+  $ find _build/default/_doc/_odoc -name '*.odocl'
+  _build/default/_doc/_odoc/pkg/foo/page-index.odocl
+  _build/default/_doc/_odoc/pkg/bar/page-index.odocl
+
   $ dune runtest
   <!DOCTYPE html>
   <html xmlns="http://www.w3.org/1999/xhtml">

@@ -439,6 +439,23 @@ let check_mlds_no_dupes ~pkg ~mlds =
           (Path.to_string_maybe_quoted (Path.build p2))
       ]
 
+let entry_modules_by_lib sctx lib =
+  let info = Lib.Local.info lib in
+  let dir = Lib_info.src_dir info in
+  let name = Lib.name (Lib.Local.to_lib lib) in
+  Dir_contents.get sctx ~dir >>= Dir_contents.ocaml
+  >>| Ml_sources.modules ~for_:(Library name)
+  >>| Modules.entry_modules
+
+let entry_modules sctx ~pkg =
+  let l = libs_of_pkg sctx ~pkg in
+  let+ l =
+    Memo.Build.parallel_map l ~f:(fun l ->
+        let+ m = entry_modules_by_lib sctx l in
+        (l, m))
+  in
+  Lib.Local.Map.of_list_exn l
+
 let odoc_artifacts sctx target =
   let ctx = Super_context.context sctx in
   let dir = Paths.odocs ctx target in
@@ -461,17 +478,15 @@ let odoc_artifacts sctx target =
            create_odoc_artifact ctx ~target odoc_file odocl_file)
   | Lib lib ->
     let info = Lib.Local.info lib in
-    let dir = Lib_info.src_dir info in
-    let+ modules =
-      let name = Lib_info.name info in
-      Dir_contents.get sctx ~dir >>= Dir_contents.ocaml
-      >>| Ml_sources.modules ~for_:(Library name)
-    in
     let obj_dir = Lib_info.obj_dir info in
-    Modules.fold_no_vlib modules ~init:[] ~f:(fun m acc ->
+    let* modules = entry_modules_by_lib sctx lib in
+    List.map
+      ~f:(fun m ->
         let odoc_file = Obj_dir.Module.odoc obj_dir m in
         let odocl_file = Obj_dir.Module.odocl obj_dir m in
-        create_odoc_artifact ctx ~target odoc_file odocl_file :: acc)
+        create_odoc_artifact ctx ~target odoc_file odocl_file)
+      modules
+    |> Memo.Build.return
 
 let setup_library_odoc_rules cctx (library : Library.t) ~dep_graphs =
   let lib =
@@ -614,23 +629,6 @@ let setup_package_aliases sctx (pkg : Package.t) =
         |> List.map ~f:(fun lib -> Dep.html_alias ctx (Lib lib)))
        |> Dune_engine.Dep.Set.of_list_map ~f:(fun f -> Dune_engine.Dep.alias f)
        ))
-
-let entry_modules_by_lib sctx lib =
-  let info = Lib.Local.info lib in
-  let dir = Lib_info.src_dir info in
-  let name = Lib.name (Lib.Local.to_lib lib) in
-  Dir_contents.get sctx ~dir >>= Dir_contents.ocaml
-  >>| Ml_sources.modules ~for_:(Library name)
-  >>| Modules.entry_modules
-
-let entry_modules sctx ~pkg =
-  let l = libs_of_pkg sctx ~pkg in
-  let+ l =
-    Memo.Build.parallel_map l ~f:(fun l ->
-        let+ m = entry_modules_by_lib sctx l in
-        (l, m))
-  in
-  Lib.Local.Map.of_list_exn l
 
 let default_index ~pkg entry_modules =
   let b = Buffer.create 512 in

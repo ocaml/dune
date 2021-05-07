@@ -682,7 +682,6 @@ end = struct
         match (Fs_memo.handle events : Fs_memo.Rebuild_required.t) with
         | No -> iter t (* Ignore the event *)
         | Yes -> (
-          Memo.reset ();
           match t.status with
           | Shutting_down
           | Restarting_build ->
@@ -764,7 +763,9 @@ module Run = struct
         (* We just finished a build, so there's no way this was set *)
         assert false
       | Shutting_down -> Fiber.return ()
-      | Restarting_build -> loop ()
+      | Restarting_build ->
+        Memo.reset ();
+        loop ()
       | Building -> (
         let build_result : Handler.Event.build_result =
           match res with

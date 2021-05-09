@@ -146,3 +146,6 @@ dune-release:
 	DUNE_RELEASE_DELEGATE=github-dune-release-delegate dune-release publish distrib --verbose -n dune
 	dune-release opam pkg -n dune
 	dune-release opam submit -n dune
+
+nix/opam-selection.nix: Makefile
+	nix-shell -A resolve default.nix

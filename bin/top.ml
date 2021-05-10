@@ -48,8 +48,9 @@ let term =
           let* libs =
             Dune_rules.Utop.libs_under_dir sctx ~db ~dir:(Path.build dir)
           in
-          let requires =
-            Dune_rules.Lib.closure ~linking:true libs |> Result.ok_exn
+          let* requires =
+            Dune_rules.Resolve.read_memo_build
+              (Dune_rules.Lib.closure ~linking:true libs)
           in
           let include_paths =
             Dune_rules.Lib.L.toplevel_include_paths requires

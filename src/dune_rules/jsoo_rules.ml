@@ -52,8 +52,10 @@ let js_of_ocaml_rule sctx ~sub_command ~dir ~flags ~spec ~target =
 let standalone_runtime_rule cc ~javascript_files ~target ~flags =
   let spec =
     Command.Args.S
-      [ Command.of_result_map (Compilation_context.requires_link cc)
-          ~f:(fun libs -> Deps (Lib.L.jsoo_runtime_files libs))
+      [ Resolve.args
+          (let open Resolve.O in
+          let+ libs = Compilation_context.requires_link cc in
+          Command.Args.Deps (Lib.L.jsoo_runtime_files libs))
       ; Deps javascript_files
       ]
   in
@@ -68,8 +70,10 @@ let exe_rule cc ~javascript_files ~src ~target ~flags =
   let sctx = Compilation_context.super_context cc in
   let spec =
     Command.Args.S
-      [ Command.of_result_map (Compilation_context.requires_link cc)
-          ~f:(fun libs -> Deps (Lib.L.jsoo_runtime_files libs))
+      [ Resolve.args
+          (let open Resolve.O in
+          let+ libs = Compilation_context.requires_link cc in
+          Command.Args.Deps (Lib.L.jsoo_runtime_files libs))
       ; Deps javascript_files
       ; Dep (Path.build src)
       ]
@@ -97,18 +101,20 @@ let link_rule cc ~runtime ~target cm =
   let requires = Compilation_context.requires_link cc in
   let get_all =
     Action_builder.map cm ~f:(fun cm ->
-        Command.of_result_map requires ~f:(fun libs ->
-            let all_libs = List.concat_map libs ~f:(jsoo_archives ~ctx) in
-            (* Special case for the stdlib because it is not referenced in the
-               META *)
-            let all_libs =
-              Path.build (in_build_dir ~ctx [ "stdlib"; "stdlib.cma.js" ])
-              :: all_libs
-            in
-            let all_other_modules =
-              List.map cm ~f:(Path.extend_basename ~suffix:".js")
-            in
-            Deps (List.concat [ all_libs; all_other_modules ])))
+        Resolve.args
+          (let open Resolve.O in
+          let+ libs = requires in
+          let all_libs = List.concat_map libs ~f:(jsoo_archives ~ctx) in
+          (* Special case for the stdlib because it is not referenced in the
+             META *)
+          let all_libs =
+            Path.build (in_build_dir ~ctx [ "stdlib"; "stdlib.cma.js" ])
+            :: all_libs
+          in
+          let all_other_modules =
+            List.map cm ~f:(Path.extend_basename ~suffix:".js")
+          in
+          Command.Args.Deps (List.concat [ all_libs; all_other_modules ])))
   in
   let spec =
     let std_exit =

@@ -7,37 +7,38 @@ module Includes = struct
   type t = Command.Args.without_targets Command.Args.t Cm_kind.Dict.t
 
   let make ~project ~opaque ~requires : _ Cm_kind.Dict.t =
-    match requires with
-    | Error exn ->
-      Cm_kind.Dict.make_all (Command.Args.Fail { fail = (fun () -> raise exn) })
-    | Ok libs ->
-      let iflags mode = Lib.L.include_flags ~project libs mode in
-      let cmi_includes =
-        Command.Args.memo
-          (Command.Args.S
-             [ iflags Byte
-             ; Hidden_deps (Lib_file_deps.deps libs ~groups:[ Cmi ])
-             ])
-      in
-      let cmx_includes =
-        Command.Args.memo
-          (Command.Args.S
-             [ iflags Native
-             ; Hidden_deps
-                 (if opaque then
-                   List.map libs ~f:(fun lib ->
-                       ( lib
-                       , if Lib.is_local lib then
-                           [ Lib_file_deps.Group.Cmi ]
-                         else
-                           [ Cmi; Cmx ] ))
-                   |> Lib_file_deps.deps_with_exts
-                 else
-                   Lib_file_deps.deps libs
-                     ~groups:[ Lib_file_deps.Group.Cmi; Cmx ])
-             ])
-      in
-      { cmi = cmi_includes; cmo = cmi_includes; cmx = cmx_includes }
+    let open Resolve.O in
+    let iflags libs mode = Lib.L.include_flags ~project libs mode in
+    let cmi_includes =
+      Command.Args.memo
+        (Resolve.args
+           (let+ libs = requires in
+            Command.Args.S
+              [ iflags libs Byte
+              ; Hidden_deps (Lib_file_deps.deps libs ~groups:[ Cmi ])
+              ]))
+    in
+    let cmx_includes =
+      Command.Args.memo
+        (Resolve.args
+           (let+ libs = requires in
+            Command.Args.S
+              [ iflags libs Native
+              ; Hidden_deps
+                  (if opaque then
+                    List.map libs ~f:(fun lib ->
+                        ( lib
+                        , if Lib.is_local lib then
+                            [ Lib_file_deps.Group.Cmi ]
+                          else
+                            [ Cmi; Cmx ] ))
+                    |> Lib_file_deps.deps_with_exts
+                  else
+                    Lib_file_deps.deps libs
+                      ~groups:[ Lib_file_deps.Group.Cmi; Cmx ])
+              ]))
+    in
+    { cmi = cmi_includes; cmo = cmi_includes; cmx = cmx_includes }
 
   let empty = Cm_kind.Dict.make_all Command.Args.empty
 end
@@ -59,8 +60,8 @@ type t =
   ; obj_dir : Path.Build.t Obj_dir.t
   ; modules : Modules.t
   ; flags : Ocaml_flags.t
-  ; requires_compile : Lib.t list Or_exn.t
-  ; requires_link : Lib.t list Or_exn.t Lazy.t
+  ; requires_compile : Lib.t list Resolve.t
+  ; requires_link : Lib.t list Resolve.t Lazy.t
   ; includes : Includes.t
   ; preprocessing : Pp_spec.t
   ; opaque : bool
@@ -220,16 +221,17 @@ let for_wrapped_compat t = { t with includes = Includes.empty; stdlib = None }
 let for_plugin_executable t ~embed_in_plugin_libraries =
   let libs = Scope.libs t.scope in
   let requires_link =
-    lazy (Result.List.map ~f:(Lib.DB.resolve libs) embed_in_plugin_libraries)
+    lazy (Resolve.List.map ~f:(Lib.DB.resolve libs) embed_in_plugin_libraries)
   in
   { t with requires_link }
 
 let without_bin_annot t = { t with bin_annot = false }
 
-let root_module_entries t : Module_name.t list Or_exn.t Memo.Build.t =
-  match t.requires_compile with
-  | Error _ as err -> Memo.Build.return err
-  | Ok requires ->
-    Memo.Build.map
-      (Memo.Build.parallel_map requires ~f:Lib.entry_module_names)
-      ~f:(Result.List.concat_map ~f:Fun.id)
+let root_module_entries t =
+  let open Action_builder.O in
+  let* requires = Resolve.read t.requires_compile in
+  let* l =
+    Action_builder.List.map requires ~f:(fun lib ->
+        Action_builder.memo_build (Lib.entry_module_names lib) >>= Resolve.read)
+  in
+  Action_builder.return (List.concat l)

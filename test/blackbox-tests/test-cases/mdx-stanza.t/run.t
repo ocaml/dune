@@ -71,3 +71,23 @@ You can set MDX preludes using the preludes field of the stanza
 
   $ dune runtest --root preludes
   Entering directory 'preludes'
+
+The mdx stanza supports (enabled_if):
+
+  $ dune runtest --root enabled-if
+  Entering directory 'enabled-if'
+  File "iftrue.md", line 1, characters 0-0:
+  Error: Files _build/default/iftrue.md and
+  _build/default/.mdx/iftrue.md.corrected differ.
+  [1]
+
+(enabled_if) needs a recent (lang dune):
+
+  $ dune runtest --root enabled-if-old-lang-dune
+  Entering directory 'enabled-if-old-lang-dune'
+  File "dune", line 2, characters 1-18:
+  2 |  (enabled_if true))
+       ^^^^^^^^^^^^^^^^^
+  Error: 'enabled_if' is only available since version 2.9 of the dune language.
+  Please update your dune-project file to have (lang dune 2.9).
+  [1]

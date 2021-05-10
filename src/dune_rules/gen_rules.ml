@@ -136,7 +136,7 @@ end = struct
     | Cinaps.T cinaps ->
       let+ () = Cinaps.gen_rules sctx cinaps ~dir ~scope in
       empty_none
-    | Mdx.T mdx ->
+    | Mdx.T mdx when Expander.eval_blang expander (Mdx.enabled_if mdx) ->
       let+ () = Mdx.gen_rules ~sctx ~dir ~expander mdx in
       empty_none
     | _ -> Memo.Build.return empty_none

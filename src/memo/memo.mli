@@ -140,8 +140,8 @@ module Cycle_error : sig
   val stack : t -> Stack_frame.t list
 end
 
-(** The user can mark exceptions as [Non_reproducible] to indicate that they
-    shouldn't be cached. *)
+(** Mark an exception as non-reproducible to indicate that it shouldn't be
+    cached. *)
 exception Non_reproducible of exn
 
 (** Notify the memoization system that the build system has restarted. This

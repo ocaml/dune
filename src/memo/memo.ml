@@ -194,8 +194,9 @@ module Cycle_error = struct
   let stack t = t.stack
 end
 
-(* The user can mark exceptions as [Non_reproducible] to indicate that they
-   shouldn't be cached. *)
+(* The user can wrap exceptions into the [Non_reproducible] constructor to tell
+   Memo that they shouldn't be cached. We will catch them, unwrap, and re-raise
+   without the wrapper. *)
 exception Non_reproducible of exn
 
 (* A value calculated during a "sample attempt". A sample attempt can fail for

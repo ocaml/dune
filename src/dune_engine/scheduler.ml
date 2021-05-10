@@ -831,9 +831,27 @@ module Run = struct
     | Error (exn, Some bt) -> Exn.raise_with_backtrace exn bt
 end
 
+type wait_for_process_result =
+  { process_info : Proc.Process_info.t
+  ; run_cancelled : bool
+  }
+
 let wait_for_process pid =
-  let* t = t () in
-  wait_for_process t pid
+  let* process_info =
+    let* t = t () in
+    wait_for_process t pid
+  in
+  let+ t = t () in
+  { process_info
+  ; run_cancelled =
+      (match t.status with
+      | Restarting_build
+      | Shutting_down ->
+        true
+      | Building
+      | Waiting_for_file_changes _ ->
+        false)
+  }
 
 let shutdown () =
   let* t = t () in

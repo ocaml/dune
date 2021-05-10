@@ -32,11 +32,14 @@ open! Import
     "../src/foo.ml" if the command is started from the "test" directory. *)
 
 module Args : sig
-  type static = Static
+  type without_targets = [ `Without_targets ]
 
-  type dynamic = Dynamic
+  type any =
+    [ `Without_targets
+    | `With_targets
+    ]
 
-  (** The type [expand] captures the meaning of a static [Command.Args.t] that
+  (** The type [expand] captures the meaning of a dynamic [Command.Args.t] that
       has no target declarations: it is a way to construct functions that given
       a current working directory [dir] compute the list of command line
       arguments of type [string list] and a set of dependencies of type
@@ -46,61 +49,64 @@ module Args : sig
     dir:Path.t -> (string list * Dep.Set.t, fail) result Memo.Build.t
 
   type _ t =
-    | A : string -> _ t
-    | As : string list -> _ t
-    | S : 'a t list -> 'a t
-    | Concat : string * 'a t list -> 'a t
-    | Dep : Path.t -> _ t
-    | Deps : Path.t list -> _ t
-    | Target : Path.Build.t -> dynamic t
-    | Path : Path.t -> _ t
-    | Paths : Path.t list -> _ t
-    | Hidden_deps : Dep.Set.t -> _ t
-    | Hidden_targets : Path.Build.t list -> dynamic t
-    | Dyn : static t Action_builder.t -> dynamic t
-    | Fail : fail -> _ t
-    | Expand : expand -> dynamic t
+    | A : string -> [> `Without_targets ] t
+    | As : string list -> [> `Without_targets ] t
+    | S : 'a t list -> [> `Without_targets ] t
+    | Concat : string * 'a t list -> [> `Without_targets ] t
+    | Dep : Path.t -> [> `Without_targets ] t
+    | Deps : Path.t list -> [> `Without_targets ] t
+    | Target : Path.Build.t -> [> `With_targets ] t
+    | Path : Path.t -> [> `Without_targets ] t
+    | Paths : Path.t list -> [> `Without_targets ] t
+    | Hidden_deps : Dep.Set.t -> [> `Without_targets ] t
+    | Hidden_targets : Path.Build.t list -> [> `With_targets ] t
+    | Dyn : without_targets t Action_builder.t -> [> `Without_targets ] t
+    | Fail : fail -> [> `Without_targets ] t
+    | Expand : expand -> [> `Without_targets ] t
 
-  (** Create dynamic command line arguments. *)
-  val dyn : string list Action_builder.t -> dynamic t
+  (** Create with_targets command line arguments. *)
+  val dyn : string list Action_builder.t -> [> `Without_targets ] t
 
   (** Create an empty command line. *)
-  val empty : _ t
+  val empty : [> `Without_targets ] t
 
   (** Memoize the computation of command line arguments specified by a given
       expression. Use this function when the same subexpression appears in
       multiple [Command.Args.t] expressions to share both the time and memory
       required for the computation. *)
-  val memo : static t -> dynamic t
+  val memo : without_targets t -> [> `Without_targets ] t
+
+  val as_any : without_targets t -> any t
 end
 
-(* TODO: Using list in [dynamic t list] complicates the API unnecessarily: we
-   can use the constructor [S] to concatenate lists instead. *)
+(* TODO: Using list in [with_targets t list] complicates the API unnecessarily:
+   we can use the constructor [S] to concatenate lists instead. *)
 val run :
      dir:Path.t
   -> ?stdout_to:Path.Build.t
   -> Action.Prog.t
-  -> Args.dynamic Args.t list
+  -> Args.any Args.t list
   -> Action.t Action_builder.With_targets.t
 
 (** Same as [run], but for actions that don't produce targets *)
 val run' :
      dir:Path.t
   -> Action.Prog.t
-  -> Args.static Args.t list
+  -> Args.without_targets Args.t list
   -> Action.t Action_builder.t
 
 (** [quote_args quote args] is [As \[quote; arg1; quote; arg2; ...\]] *)
-val quote_args : string -> string list -> _ Args.t
+val quote_args : string -> string list -> [> `Without_targets ] Args.t
 
-val of_result : 'a Args.t Or_exn.t -> 'a Args.t
+val of_result : ([> `Without_targets ] as 'a) Args.t Or_exn.t -> 'a Args.t
 
-val of_result_map : 'a Or_exn.t -> f:('a -> 'b Args.t) -> 'b Args.t
+val of_result_map :
+  'a Or_exn.t -> f:('a -> ([> `Without_targets ] as 'b) Args.t) -> 'b Args.t
 
-val fail : exn -> 'a Args.t
+val fail : exn -> [> `Without_targets ] Args.t
 
 module Ml_kind : sig
-  val flag : Ml_kind.t -> _ Args.t
+  val flag : Ml_kind.t -> [> `Without_targets ] Args.t
 
-  val ppx_driver_flag : Ml_kind.t -> _ Args.t
+  val ppx_driver_flag : Ml_kind.t -> [> `Without_targets ] Args.t
 end

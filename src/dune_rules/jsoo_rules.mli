@@ -16,7 +16,7 @@ val build_exe :
   -> js_of_ocaml:Dune_file.Js_of_ocaml.t
   -> src:Path.Build.t
   -> cm:Path.t list Action_builder.t
-  -> flags:Command.Args.dynamic Command.Args.t
+  -> flags:Command.Args.any Command.Args.t
   -> promote:Rule.Promote.t option
   -> unit Memo.Build.t
 

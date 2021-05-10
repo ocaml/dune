@@ -25,5 +25,5 @@ module Linker_script : sig
 
   val create : Compilation_context.t -> Path.t -> t
 
-  val flags : t -> Command.Args.dynamic Command.Args.t Memo.Build.t
+  val flags : t -> [> `Without_targets ] Command.Args.t Memo.Build.t
 end

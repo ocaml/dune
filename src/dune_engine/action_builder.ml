@@ -515,7 +515,7 @@ let rec can_eval_statically : type a. a t -> bool = function
   | Action_stdout _ -> false
 
 let static_eval =
-  let rec loop : type a. a t -> unit t -> a * unit t =
+  let rec loop : type a. a t -> Dep.Set.t -> a * Dep.Set.t =
    fun t acc ->
     match t with
     | Pure x -> (x, acc)
@@ -536,13 +536,13 @@ let static_eval =
       (f a b, acc)
     | All xs -> loop_many [] xs acc
     | Paths_glob _ -> assert false
-    | Deps _ -> ((), acc >>> t)
+    | Deps deps -> ((), Dep.Set.union deps acc)
     | Dyn_paths b ->
       let (x, ps), acc = loop b acc in
-      (x, Deps (Dep.Set.of_files_set ps) >>> acc)
+      (x, Dep.Set.union (Dep.Set.of_files_set ps) acc)
     | Dyn_deps b ->
       let (x, deps), acc = loop b acc in
-      (x, Deps deps >>> acc)
+      (x, Dep.Set.union deps acc)
     | Source_tree _ -> assert false
     | Contents _ -> assert false
     | Lines_of _ -> assert false
@@ -554,7 +554,7 @@ let static_eval =
     | Memo _ -> assert false
     | Catch (t, v) -> (
       try loop t acc with
-      | _ -> (v, return ()))
+      | _ -> (v, Dep.Set.empty))
     | Memo_build _ -> assert false
     | Dyn_memo_build _ -> assert false
     | Bind _ -> assert false
@@ -562,7 +562,8 @@ let static_eval =
     | Goal t -> loop t acc
     | Action _ -> assert false
     | Action_stdout _ -> assert false
-  and loop_many : type a. a list -> a t list -> unit t -> a list * unit t =
+  and loop_many : type a. a list -> a t list -> Dep.Set.t -> a list * Dep.Set.t
+      =
    fun acc_res l acc ->
     match l with
     | [] -> (List.rev acc_res, acc)
@@ -572,7 +573,7 @@ let static_eval =
   in
   fun t ->
     if can_eval_statically t then
-      Some (loop t (return ()))
+      Some (loop t Dep.Set.empty)
     else
       None
 

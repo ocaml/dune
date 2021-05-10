@@ -268,10 +268,8 @@ val action_stdout : Action_desc.t t -> string t
 
 (** {1 Analysis} *)
 
-(** Returns [Some (x, t)] if the following can be evaluated statically. The
-    returned [t] should be attached to the current action builder to record
-    dependencies and other informations. Otherwise return [None]. *)
-val static_eval : 'a t -> ('a * unit t) option
+(** Returns [Some (x, deps)] if the following can be evaluated statically. *)
+val static_eval : 'a t -> ('a * Dep.Set.t) option
 
 (** [goal t] ignores all facts that have been accumulated about the dependencies
     of [t]. For example, [goal (path p)] declares that a path [p] contributes to

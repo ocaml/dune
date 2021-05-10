@@ -275,8 +275,8 @@ end = struct
         (* Try to collect the dependency statically as it helps for [dune
            external-lib-deps]. *)
         match Action_builder.static_eval x with
-        | Some (x, builder) -> (
-          ( builder >>> Action_builder.return x
+        | Some (x, deps) -> (
+          ( Action_builder.deps deps >>> Action_builder.return x
           , match f x with
             | None -> acc
             | Some fn ->
@@ -310,8 +310,8 @@ end = struct
         (fn, acc)
       else
         match Action_builder.static_eval fn with
-        | Some (fn, fn_builder) ->
-          ( fn_builder >>> Action_builder.return fn
+        | Some (fn, deps) ->
+          ( Action_builder.deps deps >>> Action_builder.return fn
           , { acc with
               deps_if_exist =
                 { acc.deps_if_exist with

@@ -108,12 +108,8 @@ module Scheduler = struct
         fun () ->
           Fiber.fork_and_join_unit
             (fun () ->
-              let open Fiber.O in
               let rpc_config = Dune_rpc_impl.Server.config rpc in
-              let* scheduler = Scheduler.csexp_scheduler () in
-              let rpc =
-                Dune_rpc_impl.Run.of_config rpc_config scheduler config.stats
-              in
+              let rpc = Dune_rpc_impl.Run.of_config rpc_config config.stats in
               Dune_rpc_impl.Run.run rpc)
             run
     in

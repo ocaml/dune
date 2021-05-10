@@ -539,7 +539,6 @@ type t =
   ; job_throttle : Fiber.Throttle.t
   ; events : Event.Queue.t
   ; process_watcher : Process_watcher.t
-  ; csexp_scheduler : Csexp_rpc.Scheduler.t Lazy.t
   }
 
 let t : t Fiber.Var.t = Fiber.Var.create ()
@@ -613,20 +612,6 @@ let prepare (config : Config.t) ~(handler : Handler.t) =
      all threads. *)
   Signal_watcher.init events;
   let process_watcher = Process_watcher.init events in
-  let csexp_scheduler =
-    lazy
-      (let create_thread_safe_ivar () =
-         let ivar = Fiber.Ivar.create () in
-         let fill v =
-           Event.Queue.send_rpc_completed events (Fiber.Fill (ivar, v))
-         in
-         Event.Queue.register_rpc_started events;
-         (ivar, fill)
-       in
-       { Csexp_rpc.Scheduler.create_thread_safe_ivar
-       ; spawn_thread = Thread.spawn
-       })
-  in
   let t =
     { status = Building
     ; job_throttle = Fiber.Throttle.create config.concurrency
@@ -634,7 +619,6 @@ let prepare (config : Config.t) ~(handler : Handler.t) =
     ; events
     ; config
     ; handler
-    ; csexp_scheduler
     }
   in
   global := Some t;
@@ -881,7 +865,3 @@ let shutdown () =
   in
   t.status <- Shutting_down;
   fill_file_changes
-
-let csexp_scheduler () =
-  let+ t = t () in
-  Lazy.force t.csexp_scheduler

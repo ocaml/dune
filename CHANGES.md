@@ -136,13 +136,13 @@ Unreleased
 - Remove `dune compute`. It was broken and unused (#4540,
   @jeremiedimino)
 
-- Add `(enabled_if ...)` to `(mdx ...)` (#4434, @emillon)
-
 2.9.0 (unreleased)
 ------------------
 
 - Allow to set up merlin in a variant of the default context
   (#4145, @TheLortex, @voodoos)
+
+- Add `(enabled_if ...)` to `(mdx ...)` (#4434, @emillon)
 
 2.8.5 (28/03/2021)
 ------------------

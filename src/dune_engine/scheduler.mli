@@ -70,6 +70,18 @@ module Run : sig
     -> 'a
 end
 
+module Worker : sig
+  (** A worker is a thread that runs submitted tasks *)
+  type t
+
+  val create : unit -> t Fiber.t
+
+  val task :
+    t -> f:(unit -> 'a) -> ('a, [ `Exn of exn | `Stopped ]) result Fiber.t
+
+  val stop : t -> unit
+end
+
 type t
 
 (** Get the instance of the scheduler that runs the current fiber. *)

@@ -141,6 +141,8 @@ module Event : sig
 
     val register_rpc_started : t -> unit
 
+    val register_rpc_completed : t -> unit
+
     (** Send an event to the main thread. *)
     val send_file_watcher_events : t -> Dune_file_watcher.Event.t list -> unit
 
@@ -203,6 +205,8 @@ end = struct
     let register_job_started q = q.pending_jobs <- q.pending_jobs + 1
 
     let register_rpc_started q = q.pending_rpc <- q.pending_rpc + 1
+
+    let register_rpc_completed q = q.pending_rpc <- q.pending_rpc - 1
 
     let ignore_next_file_change_event q path =
       assert (Path.is_in_source_tree path);
@@ -732,6 +736,37 @@ end = struct
     match kill_and_wait_for_all_processes t with
     | Got_signal -> Error Already_reported
     | Ok -> res
+end
+
+module Worker = struct
+  type t =
+    { worker : Thread_worker.t
+    ; events : Event.Queue.t
+    }
+
+  let stop t = Thread_worker.stop t.worker
+
+  let create () =
+    let worker = Thread_worker.create ~spawn_thread:Thread.spawn in
+    let+ scheduler = t () in
+    { worker; events = scheduler.events }
+
+  let task (t : t) ~f =
+    let ivar = Fiber.Ivar.create () in
+    let f () =
+      let res = Result.try_with f in
+      Event.Queue.send_rpc_completed t.events (Fiber.Fill (ivar, res))
+    in
+    Event.Queue.register_rpc_started t.events;
+    match Thread_worker.add_work t.worker ~f with
+    | Error `Stopped ->
+      Event.Queue.register_rpc_completed t.events;
+      Fiber.return (Error `Stopped)
+    | Ok () -> (
+      let+ res = Fiber.Ivar.read ivar in
+      match res with
+      | Error exn -> Error (`Exn exn)
+      | Ok e -> Ok e)
 end
 
 module Run = struct

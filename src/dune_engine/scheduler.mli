@@ -106,6 +106,3 @@ val running_jobs_count : t -> int
 (** Start the shutdown sequence. Among other things, it causes Dune to cancel
     the current build and stop accepting RPC clients. *)
 val shutdown : unit -> unit Fiber.t
-
-(** Scheduler to create [Csexp_rpc] sessions *)
-val csexp_scheduler : unit -> Csexp_rpc.Scheduler.t Fiber.t

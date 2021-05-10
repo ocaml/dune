@@ -21,20 +21,20 @@ module Async : sig
   val stop : t -> unit
 end = struct
   type t =
-    { worker : Worker.t
+    { worker : Thread_worker.t
     ; scheduler : Scheduler.t
     }
 
-  let stop t = Worker.stop t.worker
+  let stop t = Thread_worker.stop t.worker
 
   let create (scheduler : Scheduler.t) =
-    let worker = Worker.create ~spawn_thread:scheduler.spawn_thread in
+    let worker = Thread_worker.create ~spawn_thread:scheduler.spawn_thread in
     { worker; scheduler }
 
   let task (t : t) ~f =
     let ivar, fill = t.scheduler.create_thread_safe_ivar () in
     let f () = fill (Result.try_with f) in
-    match Worker.add_work t.worker ~f with
+    match Thread_worker.add_work t.worker ~f with
     | Error `Stopped -> Fiber.return (Error `Stopped)
     | Ok () -> (
       let+ res = Fiber.Ivar.read ivar in

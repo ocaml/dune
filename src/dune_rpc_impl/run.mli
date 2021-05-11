@@ -15,8 +15,6 @@ end
 
 type t
 
-val t : unit -> t Fiber.t
-
 val of_config : Config.t -> Dune_stats.t option -> t
 
 (** Stop accepting new rpc connections. Fiber returns when all existing
@@ -41,13 +39,6 @@ module Connect : sig
       This is needed for implementing low level functions such as
       [$ dune rpc init] *)
   val csexp_client : Dune_rpc.Where.t -> Csexp_rpc.Client.t Fiber.t
-
-  (** [csexp_connect i o] creates a session where requests are read from [i] and
-      responses are written to [o].
-
-      This is needed for implementing low level functions such as
-      [$ dune rpc init] *)
-  val csexp_connect : in_channel -> out_channel -> Csexp_rpc.Session.t Fiber.t
 
   val connect_persistent :
        unit

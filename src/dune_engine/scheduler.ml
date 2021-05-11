@@ -141,8 +141,6 @@ module Event : sig
 
     val register_worker_task_started : t -> unit
 
-    val register_worker_task_completed : t -> unit
-
     (** Send an event to the main thread. *)
     val send_file_watcher_events : t -> Dune_file_watcher.Event.t list -> unit
 
@@ -206,9 +204,6 @@ end = struct
 
     let register_worker_task_started q =
       q.pending_worker_tasks <- q.pending_worker_tasks + 1
-
-    let register_worker_task_completed q =
-      q.pending_worker_tasks <- q.pending_worker_tasks - 1
 
     let ignore_next_file_change_event q path =
       assert (Path.is_in_source_tree path);
@@ -743,12 +738,10 @@ module Worker = struct
       let res = Result.try_with f in
       Event.Queue.send_worker_task_completed t.events (Fiber.Fill (ivar, res))
     in
-    Event.Queue.register_worker_task_started t.events;
     match Thread_worker.add_work t.worker ~f with
-    | Error `Stopped ->
-      Event.Queue.register_worker_task_completed t.events;
-      Fiber.return (Error `Stopped)
+    | Error `Stopped -> Fiber.return (Error `Stopped)
     | Ok () -> (
+      Event.Queue.register_worker_task_started t.events;
       let+ res = Fiber.Ivar.read ivar in
       match res with
       | Error exn -> Error (`Exn exn)

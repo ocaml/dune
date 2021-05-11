@@ -385,4 +385,8 @@ module Perf_counters : sig
 
   (** Raise if any internal invariants are violated. *)
   val assert_invariants : unit -> unit
+
+  (** Reset the counters to zero. You typically don't need to call this function
+      directly (as counters are reset on every run) but it's useful for tests. *)
+  val reset : unit -> unit
 end

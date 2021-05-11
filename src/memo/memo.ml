@@ -1244,4 +1244,6 @@ module Perf_counters = struct
     assert (nodes_computed_in_current_run () <= nodes_in_current_run ());
     assert (edges_in_current_run () <= edges_traversed_in_current_run ());
     assert (edges_traversed_in_current_run () <= 2 * edges_in_current_run ())
+
+  let reset () = Counters.reset ()
 end

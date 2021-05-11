@@ -183,6 +183,7 @@ let mfib =
   fn
 
 let%expect_test _ =
+  Memo.Perf_counters.reset ();
   counter := 0;
   Format.printf "%d@." (run_memo mfib 2000);
   Format.printf "%d@." !counter;
@@ -197,7 +198,7 @@ let%expect_test _ =
   |}];
   print_perf_counters ();
   [%expect
-    {| 2013/2013 computed/total nodes, 4005/4005 traversed/total edges |}]
+    {| 2001/2001 computed/total nodes, 3998/3998 traversed/total edges |}]
 
 let make_f name = Memo.create name ~cutoff:String.equal
 
@@ -339,6 +340,7 @@ let%expect_test _ =
     *foobar |}]
 
 let%expect_test "fib linked list" =
+  Memo.Perf_counters.reset ();
   let module Element = struct
     type t =
       { prev_cell : (int, t) Memo.Cell.t
@@ -392,7 +394,7 @@ let%expect_test "fib linked list" =
     prev: 5
   |}];
   print_perf_counters ();
-  [%expect {| 11/11 computed/total nodes, 13/13 traversed/total edges |}]
+  [%expect {| 8/8 computed/total nodes, 12/12 traversed/total edges |}]
 
 let%expect_test "previously_evaluated_cell" =
   let f x =
@@ -687,6 +689,7 @@ let%expect_test "diamond with non-uniform cutoff structure" =
     result
   in
   let summit = Memo.create "summit" ~input:(module Int) summit in
+  Memo.Perf_counters.reset ();
   evaluate_and_print summit 0;
   print_perf_counters ();
   [%expect
@@ -704,8 +707,9 @@ let%expect_test "diamond with non-uniform cutoff structure" =
     Evaluated after_yes_cutoff: 2
     Evaluated summit with offset 0: 4
     f 0 = Ok 4
-    14/14 computed/total nodes, 7/7 traversed/total edges
+    7/7 computed/total nodes, 7/7 traversed/total edges
   |}];
+  Memo.Perf_counters.reset ();
   evaluate_and_print summit 1;
   print_perf_counters ();
   [%expect
@@ -713,7 +717,7 @@ let%expect_test "diamond with non-uniform cutoff structure" =
     Started evaluating summit with offset 1
     Evaluated summit with offset 1: 5
     f 1 = Ok 5
-    15/15 computed/total nodes, 9/9 traversed/total edges
+    1/1 computed/total nodes, 2/2 traversed/total edges
   |}];
   Memo.restart_current_run ();
   evaluate_and_print summit 0;
@@ -731,13 +735,15 @@ let%expect_test "diamond with non-uniform cutoff structure" =
     f 0 = Ok 4
     5/7 computed/total nodes, 11/7 traversed/total edges
   |}];
+  Memo.Perf_counters.reset ();
   evaluate_and_print summit 1;
   print_perf_counters ();
   [%expect
     {|
     f 1 = Ok 5
-    5/8 computed/total nodes, 13/9 traversed/total edges
+    0/1 computed/total nodes, 2/2 traversed/total edges
   |}];
+  Memo.Perf_counters.reset ();
   evaluate_and_print summit 2;
   print_perf_counters ();
   [%expect
@@ -745,7 +751,7 @@ let%expect_test "diamond with non-uniform cutoff structure" =
     Started evaluating summit with offset 2
     Evaluated summit with offset 2: 6
     f 2 = Ok 6
-    6/9 computed/total nodes, 15/11 traversed/total edges
+    1/1 computed/total nodes, 2/2 traversed/total edges
   |}]
 
 (* The test below sets up the following situation:
@@ -831,9 +837,11 @@ let%expect_test "dynamic cycles with non-uniform cutoff structure" =
      the eager execution of some internal side effects. That further manifested
      in deadlocks and reappearance of zombie computations. The problem has now
      been fixed and so the line below is just a no-op. *)
+  Memo.Perf_counters.reset ();
   let _ = Memo.exec cycle_creator_no_cutoff () in
   print_perf_counters ();
-  [%expect {| 6/9 computed/total nodes, 15/11 traversed/total edges |}];
+  [%expect {| 0/0 computed/total nodes, 0/0 traversed/total edges |}];
+  Memo.Perf_counters.reset ();
   evaluate_and_print summit_no_cutoff 0;
   print_perf_counters ();
   [%expect
@@ -853,8 +861,9 @@ let%expect_test "dynamic cycles with non-uniform cutoff structure" =
     Evaluated incrementing_chain_4_yes_cutoff: 5
     Evaluated the summit with input 0: 5
     f 0 = Ok 5
-    13/16 computed/total nodes, 22/18 traversed/total edges
+    7/7 computed/total nodes, 7/7 traversed/total edges
   |}];
+  Memo.Perf_counters.reset ();
   evaluate_and_print summit_yes_cutoff 0;
   print_perf_counters ();
   [%expect
@@ -872,8 +881,9 @@ let%expect_test "dynamic cycles with non-uniform cutoff structure" =
     Evaluated incrementing_chain_4_no_cutoff: 5
     Evaluated the summit with input 0: 5
     f 0 = Ok 5
-    19/22 computed/total nodes, 28/24 traversed/total edges
+    6/6 computed/total nodes, 6/6 traversed/total edges
   |}];
+  Memo.Perf_counters.reset ();
   evaluate_and_print summit_no_cutoff 2;
   print_perf_counters ();
   [%expect
@@ -881,8 +891,9 @@ let%expect_test "dynamic cycles with non-uniform cutoff structure" =
     Started evaluating the summit with input 2
     Evaluated the summit with input 2: 7
     f 2 = Ok 7
-    20/23 computed/total nodes, 29/25 traversed/total edges
+    1/1 computed/total nodes, 1/1 traversed/total edges
   |}];
+  Memo.Perf_counters.reset ();
   evaluate_and_print summit_yes_cutoff 2;
   print_perf_counters ();
   [%expect
@@ -890,7 +901,7 @@ let%expect_test "dynamic cycles with non-uniform cutoff structure" =
     Started evaluating the summit with input 2
     Evaluated the summit with input 2: 7
     f 2 = Ok 7
-    21/24 computed/total nodes, 30/26 traversed/total edges
+    1/1 computed/total nodes, 1/1 traversed/total edges
   |}];
   Memo.restart_current_run ();
   evaluate_and_print summit_no_cutoff 0;
@@ -917,6 +928,7 @@ let%expect_test "dynamic cycles with non-uniform cutoff structure" =
     f 0 = Error [ { exn = "Memo.Cycle_error.E(_)"; backtrace = "" } ]
     9/9 computed/total nodes, 16/8 traversed/total edges
   |}];
+  Memo.Perf_counters.reset ();
   evaluate_and_print summit_yes_cutoff 0;
   print_perf_counters ();
   [%expect
@@ -937,8 +949,9 @@ let%expect_test "dynamic cycles with non-uniform cutoff structure" =
     - called by ("incrementing_chain_4_no_cutoff", ())
     - called by ("incrementing_chain_plus_input", 2)
     f 0 = Error [ { exn = "Memo.Cycle_error.E(_)"; backtrace = "" } ]
-    16/16 computed/total nodes, 30/15 traversed/total edges
+    7/7 computed/total nodes, 14/7 traversed/total edges
   |}];
+  Memo.Perf_counters.reset ();
   evaluate_and_print summit_no_cutoff 2;
   print_perf_counters ();
   [%expect
@@ -952,8 +965,9 @@ let%expect_test "dynamic cycles with non-uniform cutoff structure" =
     - called by ("incrementing_chain_4_yes_cutoff", ())
     - called by ("incrementing_chain_plus_input", 2)
     f 2 = Error [ { exn = "Memo.Cycle_error.E(_)"; backtrace = "" } ]
-    16/16 computed/total nodes, 30/15 traversed/total edges
+    0/0 computed/total nodes, 0/0 traversed/total edges
   |}];
+  Memo.Perf_counters.reset ();
   evaluate_and_print summit_yes_cutoff 2;
   print_perf_counters ();
   [%expect
@@ -967,7 +981,7 @@ let%expect_test "dynamic cycles with non-uniform cutoff structure" =
     - called by ("incrementing_chain_4_no_cutoff", ())
     - called by ("incrementing_chain_plus_input", 2)
     f 2 = Error [ { exn = "Memo.Cycle_error.E(_)"; backtrace = "" } ]
-    16/16 computed/total nodes, 30/15 traversed/total edges
+    0/0 computed/total nodes, 0/0 traversed/total edges
   |}];
   Memo.restart_current_run ();
   evaluate_and_print summit_no_cutoff 0;
@@ -991,6 +1005,7 @@ let%expect_test "dynamic cycles with non-uniform cutoff structure" =
     f 0 = Ok 7
     8/8 computed/total nodes, 14/7 traversed/total edges
   |}];
+  Memo.Perf_counters.reset ();
   evaluate_and_print summit_yes_cutoff 0;
   print_perf_counters ();
   [%expect
@@ -1008,8 +1023,9 @@ let%expect_test "dynamic cycles with non-uniform cutoff structure" =
     Evaluated incrementing_chain_4_no_cutoff: 7
     Evaluated the summit with input 0: 7
     f 0 = Ok 7
-    14/14 computed/total nodes, 26/13 traversed/total edges
+    6/6 computed/total nodes, 12/6 traversed/total edges
   |}];
+  Memo.Perf_counters.reset ();
   evaluate_and_print summit_no_cutoff 2;
   print_perf_counters ();
   [%expect
@@ -1017,8 +1033,9 @@ let%expect_test "dynamic cycles with non-uniform cutoff structure" =
     Started evaluating the summit with input 2
     Evaluated the summit with input 2: 9
     f 2 = Ok 9
-    15/15 computed/total nodes, 27/14 traversed/total edges
+    1/1 computed/total nodes, 1/1 traversed/total edges
   |}];
+  Memo.Perf_counters.reset ();
   evaluate_and_print summit_yes_cutoff 2;
   print_perf_counters ();
   [%expect
@@ -1026,7 +1043,7 @@ let%expect_test "dynamic cycles with non-uniform cutoff structure" =
     Started evaluating the summit with input 2
     Evaluated the summit with input 2: 9
     f 2 = Ok 9
-    16/16 computed/total nodes, 28/15 traversed/total edges
+    1/1 computed/total nodes, 1/1 traversed/total edges
   |}]
 
 let%expect_test "deadlocks when creating a cycle twice" =
@@ -1125,6 +1142,7 @@ let%expect_test "Nested nodes with cutoff are recomputed optimally" =
         printf "Evaluated summit: %d\n" result;
         result)
   in
+  Memo.Perf_counters.reset ();
   evaluate_and_print summit 0;
   evaluate_and_print summit 1;
   print_perf_counters ();
@@ -1436,6 +1454,7 @@ let%expect_test "reproducible errors are cached" =
         printf "Evaluated %d: %d\n" x res;
         Memo.Build.return res)
   in
+  Memo.Perf_counters.reset ();
   evaluate_and_print f 5;
   evaluate_and_print f (-5);
   evaluate_and_print f 0;
@@ -1450,12 +1469,9 @@ let%expect_test "reproducible errors are cached" =
     f -5 = Error [ { exn = "(Failure \"Negative input -5\")"; backtrace = "" } ]
     Started evaluating 0
     f 0 = Error [ { exn = "(Failure \"Zero input\")"; backtrace = "" } ]
-    18/18 computed/total nodes, 17/13 traversed/total edges
+    3/3 computed/total nodes, 0/0 traversed/total edges
   |}];
-  (* CR-someday amokhov: Investigate why the above perf counters are so large.
-     It seems that we end up traversing nodes/edges related to the previous
-     tests, but it's unclear why. Note that below this number drops after we
-     call [Memo.restart_current_run ()]. *)
+  Memo.Perf_counters.reset ();
   evaluate_and_print f 5;
   evaluate_and_print f (-5);
   evaluate_and_print f 0;
@@ -1467,7 +1483,7 @@ let%expect_test "reproducible errors are cached" =
     f 5 = Ok 25
     f -5 = Error [ { exn = "(Failure \"Negative input -5\")"; backtrace = "" } ]
     f 0 = Error [ { exn = "(Failure \"Zero input\")"; backtrace = "" } ]
-    18/18 computed/total nodes, 17/13 traversed/total edges
+    0/0 computed/total nodes, 0/0 traversed/total edges
   |}];
   Memo.restart_current_run ();
   evaluate_and_print f 5;
@@ -1510,6 +1526,7 @@ let%expect_test "errors work with early cutoff" =
         printf "[negate] Evaluated %d: %d\n" x res;
         res)
   in
+  Memo.Perf_counters.reset ();
   evaluate_and_print f 0;
   evaluate_and_print f 20;
   evaluate_and_print f 200;
@@ -1527,7 +1544,7 @@ let%expect_test "errors work with early cutoff" =
     [negate] Started evaluating 200
     [divide] Started evaluating 200
     f 200 = Error [ { exn = "Input_too_large(_)"; backtrace = "" } ]
-    8/10 computed/total nodes, 6/6 traversed/total edges
+    7/7 computed/total nodes, 6/6 traversed/total edges
   |}];
   Memo.restart_current_run ();
   evaluate_and_print f 0;

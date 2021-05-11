@@ -81,15 +81,8 @@ val t : unit -> t Fiber.t
     available and then calls [f]. *)
 val with_job_slot : (Config.t -> 'a Fiber.t) -> 'a Fiber.t
 
-type wait_for_process_result =
-  { process_info : Proc.Process_info.t
-  ; run_cancelled : bool
-  }
-
-(** Wait for a process to terminate. The resulting [run_cancelled] is [true] if
-    the current build is being cancelled, which suggests that the process got
-    killed rather than failed on its own. *)
-val wait_for_process : Pid.t -> wait_for_process_result Fiber.t
+(** Wait for the following process to terminate *)
+val wait_for_process : Pid.t -> Proc.Process_info.t Fiber.t
 
 (** Make the scheduler ignore next change to a certain file in watch mode.
 

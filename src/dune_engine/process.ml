@@ -372,20 +372,17 @@ module Exit_status = struct
 
   (* In this module, we don't need the "Error: " prefix given that it is already
      included in the error message from the command. *)
-  let fail ~dir ~run_cancelled paragraphs =
+  let fail ~dir paragraphs =
     let dir =
       match dir with
       | None -> Path.of_string (Sys.getcwd ())
       | Some dir -> dir
     in
-    match run_cancelled with
-    | true -> raise (Memo.Non_reproducible (Failure "Build cancelled"))
-    | false ->
-      raise
-        (User_error.E
-           (User_message.make paragraphs, Some (With_directory_annot.make dir)))
+    raise
+      (User_error.E
+         (User_message.make paragraphs, Some (With_directory_annot.make dir)))
 
-  let handle_verbose t ~id ~output ~command_line ~dir ~run_cancelled =
+  let handle_verbose t ~id ~output ~command_line ~dir =
     let open Pp.O in
     let output = parse_output output in
     match t with
@@ -404,7 +401,7 @@ module Exit_status = struct
         | Failed n -> sprintf "exited with code %d" n
         | Signaled signame -> sprintf "got signal %s" signame
       in
-      fail ~dir ~run_cancelled
+      fail ~dir
         (Pp.tag User_message.Style.Kwd (Pp.verbatim "Command")
          ++ Pp.space ++ pp_id id ++ Pp.space ++ Pp.text msg ++ Pp.char ':'
          ::
@@ -432,7 +429,7 @@ module Exit_status = struct
       loop output 0 (String.length output) [ 'F'; 'i'; 'l'; 'e'; ' ' ]
 
   let handle_non_verbose t ~display ~purpose ~output ~prog ~command_line ~dir
-      ~has_unexpected_stdout ~has_unexpected_stderr ~run_cancelled =
+      ~has_unexpected_stdout ~has_unexpected_stderr =
     let open Pp.O in
     let show_command =
       let show_full_command_on_error =
@@ -481,10 +478,10 @@ module Exit_status = struct
                 (String.enumerate_and unexpected_outputs)
             | _ -> sprintf "(exit %d)" n
           else
-            fail ~dir ~run_cancelled (Option.to_list output)
+            fail ~dir (Option.to_list output)
         | Signaled signame -> sprintf "(got signal %s)" signame
       in
-      fail ~dir ~run_cancelled
+      fail ~dir
         (progname_and_purpose Error ++ Pp.char ' '
          ++ Pp.tag User_message.Style.Error (Pp.verbatim msg)
          ::
@@ -636,7 +633,7 @@ let run_internal ?dir ?(stdout_to = Io.stdout) ?(stderr_to = Io.stderr)
       in
       Io.release stdout_to;
       Io.release stderr_to;
-      let+ { process_info; run_cancelled } = Scheduler.wait_for_process pid in
+      let+ process_info = Scheduler.wait_for_process pid in
       let times =
         { Proc.Times.elapsed_time = process_info.end_time -. started_at
         ; resource_usage = process_info.resource_usage
@@ -714,11 +711,11 @@ let run_internal ?dir ?(stdout_to = Io.stdout) ?(stderr_to = Io.stderr)
           n (* Optimisation for the common case *)
         | Verbose, _, _ ->
           Exit_status.handle_verbose exit_status' ~id ~dir
-            ~command_line:fancy_command_line ~output ~run_cancelled
+            ~command_line:fancy_command_line ~output
         | _ ->
           Exit_status.handle_non_verbose exit_status' ~prog:prog_str ~dir
             ~command_line ~output ~purpose ~display ~has_unexpected_stdout
-            ~has_unexpected_stderr ~run_cancelled
+            ~has_unexpected_stderr
       in
       (res, times))
 

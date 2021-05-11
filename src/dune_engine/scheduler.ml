@@ -553,8 +553,8 @@ let ignore_for_watch p =
   Event.Queue.ignore_next_file_change_event t.events p
 
 let with_job_slot f =
+  let* t = t () in
   let run_only_if_current_status_is_building ~f =
-    let* t = t () in
     match t.status with
     | Restarting_build
     | Shutting_down ->
@@ -565,7 +565,6 @@ let with_job_slot f =
          tasks here. *)
       assert false
   in
-  let* t = t () in
   Fiber.Throttle.run t.job_throttle ~f:(fun () ->
       run_only_if_current_status_is_building ~f:(fun () ->
           Fiber.collect_errors (fun () -> f t.config) >>= function

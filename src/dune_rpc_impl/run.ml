@@ -82,8 +82,6 @@ type t =
 
 let t_var = Fiber.Var.create ()
 
-let t () = Fiber.Var.get_exn t_var
-
 module Server = Dune_rpc_server.Make (Csexp_rpc.Session)
 
 let where_to_socket = function
@@ -230,8 +228,6 @@ let stop () =
 
 module Connect = struct
   let csexp_client p = Csexp_rpc.Client.create (where_to_socket p)
-
-  let csexp_connect in_ out = Csexp_rpc.Session.create in_ out
 
   let connect_persistent () =
     let open Fiber.O in

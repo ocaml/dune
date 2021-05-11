@@ -112,7 +112,7 @@ module Event : sig
     | File_system_watcher_terminated
     | Job_completed of job * Proc.Process_info.t
     | Signal of Signal.t
-    | Rpc of Fiber.fill
+    | Worker_task of Fiber.fill
 
   module Queue : sig
     type t
@@ -128,8 +128,8 @@ module Event : sig
     (** Ignore the ne next file change event about this file. *)
     val ignore_next_file_change_event : t -> Path.t -> unit
 
-    (** Pending rpc events *)
-    val pending_rpc : t -> int
+    (** Pending worker tasks *)
+    val pending_worker_tasks : t -> int
 
     (** Register the fact that a job was started. *)
     val register_job_started : t -> unit
@@ -137,11 +137,11 @@ module Event : sig
     (** Number of jobs for which the status hasn't been reported yet .*)
     val pending_jobs : t -> int
 
-    val send_rpc_completed : t -> Fiber.fill -> unit
+    val send_worker_task_completed : t -> Fiber.fill -> unit
 
-    val register_rpc_started : t -> unit
+    val register_worker_task_started : t -> unit
 
-    val register_rpc_completed : t -> unit
+    val register_worker_task_completed : t -> unit
 
     (** Send an event to the main thread. *)
     val send_file_watcher_events : t -> Dune_file_watcher.Event.t list -> unit
@@ -157,7 +157,7 @@ end = struct
     | File_system_watcher_terminated
     | Job_completed of job * Proc.Process_info.t
     | Signal of Signal.t
-    | Rpc of Fiber.fill
+    | Worker_task of Fiber.fill
 
   module Queue = struct
     type t =
@@ -175,21 +175,21 @@ end = struct
                the build to take the promoted files into account if need be. *)
       ; ignored_files : (string, unit) Table.t
       ; mutable pending_jobs : int
-      ; mutable pending_rpc : int
-      ; rpc_completed : Fiber.fill Queue.t
+      ; mutable pending_worker_tasks : int
+      ; worker_tasks_completed : Fiber.fill Queue.t
       ; stats : Dune_stats.t option
       }
 
     let create stats =
       let jobs_completed = Queue.create () in
-      let rpc_completed = Queue.create () in
+      let worker_tasks_completed = Queue.create () in
       let file_watcher_events = [] in
       let signals = Signal.Set.empty in
       let mutex = Mutex.create () in
       let cond = Condition.create () in
       let ignored_files = Table.create (module String) 64 in
       let pending_jobs = 0 in
-      let pending_rpc = 0 in
+      let pending_worker_tasks = 0 in
       { jobs_completed
       ; file_watcher_events
       ; signals
@@ -197,16 +197,18 @@ end = struct
       ; cond
       ; ignored_files
       ; pending_jobs
-      ; rpc_completed
-      ; pending_rpc
+      ; worker_tasks_completed
+      ; pending_worker_tasks
       ; stats
       }
 
     let register_job_started q = q.pending_jobs <- q.pending_jobs + 1
 
-    let register_rpc_started q = q.pending_rpc <- q.pending_rpc + 1
+    let register_worker_task_started q =
+      q.pending_worker_tasks <- q.pending_worker_tasks + 1
 
-    let register_rpc_completed q = q.pending_rpc <- q.pending_rpc - 1
+    let register_worker_task_completed q =
+      q.pending_worker_tasks <- q.pending_worker_tasks - 1
 
     let ignore_next_file_change_event q path =
       assert (Path.is_in_source_tree path);
@@ -217,7 +219,7 @@ end = struct
         (List.is_empty q.file_watcher_events
         && Queue.is_empty q.jobs_completed
         && Signal.Set.is_empty q.signals
-        && Queue.is_empty q.rpc_completed)
+        && Queue.is_empty q.worker_tasks_completed)
 
     let next q =
       Option.iter q.stats ~f:Dune_stats.record_gc_and_fd;
@@ -235,8 +237,8 @@ end = struct
           | [] -> (
             match Queue.pop q.jobs_completed with
             | None ->
-              q.pending_rpc <- q.pending_rpc - 1;
-              Rpc (Queue.pop_exn q.rpc_completed)
+              q.pending_worker_tasks <- q.pending_worker_tasks - 1;
+              Worker_task (Queue.pop_exn q.worker_tasks_completed)
             | Some (job, proc_info) ->
               q.pending_jobs <- q.pending_jobs - 1;
               assert (q.pending_jobs >= 0);
@@ -270,10 +272,10 @@ end = struct
       Mutex.unlock q.mutex;
       ev
 
-    let send_rpc_completed q event =
+    let send_worker_task_completed q event =
       Mutex.lock q.mutex;
       let avail = available q in
-      Queue.push q.rpc_completed event;
+      Queue.push q.worker_tasks_completed event;
       if not avail then Condition.signal q.cond;
       Mutex.unlock q.mutex
 
@@ -300,7 +302,7 @@ end = struct
 
     let pending_jobs q = q.pending_jobs
 
-    let pending_rpc q = q.pending_rpc
+    let pending_worker_tasks q = q.pending_worker_tasks
   end
 end
 
@@ -659,7 +661,7 @@ end = struct
             make deadlock detection more aggressive by not taking into account
             the Ivars waiting for user input (such as [accept]) if the build is
             in progress. *)
-      Event.Queue.pending_rpc t.events = 0
+      Event.Queue.pending_worker_tasks t.events = 0
     then
       raise
         (Abort
@@ -686,7 +688,7 @@ end = struct
             Process_watcher.killall t.process_watcher Sys.sigkill;
             iter t
           | Waiting_for_file_changes ivar -> Fill (ivar, File_system_changed)))
-      | Rpc fill -> fill
+      | Worker_task fill -> fill
       | File_system_watcher_terminated ->
         filesystem_watcher_terminated ();
         raise (Abort Already_reported)
@@ -708,7 +710,7 @@ end = struct
     match Fiber.run fiber ~iter:(fun () -> iter t) with
     | Ok res ->
       assert (Event.Queue.pending_jobs t.events = 0);
-      assert (Event.Queue.pending_rpc t.events = 0);
+      assert (Event.Queue.pending_worker_tasks t.events = 0);
       Ok res
     | Error () -> Error Already_reported
     | exception Abort err -> Error err
@@ -739,12 +741,12 @@ module Worker = struct
     let ivar = Fiber.Ivar.create () in
     let f () =
       let res = Result.try_with f in
-      Event.Queue.send_rpc_completed t.events (Fiber.Fill (ivar, res))
+      Event.Queue.send_worker_task_completed t.events (Fiber.Fill (ivar, res))
     in
-    Event.Queue.register_rpc_started t.events;
+    Event.Queue.register_worker_task_started t.events;
     match Thread_worker.add_work t.worker ~f with
     | Error `Stopped ->
-      Event.Queue.register_rpc_completed t.events;
+      Event.Queue.register_worker_task_completed t.events;
       Fiber.return (Error `Stopped)
     | Ok () -> (
       let+ res = Fiber.Ivar.read ivar in

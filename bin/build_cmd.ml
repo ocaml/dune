@@ -11,7 +11,7 @@ let run_build_system ~common ~(targets : unit -> Target.t list Memo.Build.t) =
         Build_system.build (Target.request targets))
   in
   if Common.print_metrics common then
-    let gc_stat = Gc.stat () in
+    let gc_stat = Gc.quick_stat () in
     Console.print_user_message
       (User_message.make
          [ Pp.textf "%s" (Memo.Perf_counters.report_for_current_run ())

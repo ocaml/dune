@@ -554,24 +554,24 @@ let ignore_for_watch p =
 
 let with_job_slot f =
   let* t = t () in
-  let run_only_if_current_status_is_building ~f =
+  let raise_if_cancelled () =
     match t.status with
     | Restarting_build
     | Shutting_down ->
       raise (Memo.Non_reproducible (Failure "Build cancelled"))
-    | Building -> f ()
+    | Building -> ()
     | Waiting_for_file_changes _ ->
       (* At this stage, we're not running a build, so we shouldn't be running
          tasks here. *)
       assert false
   in
   Fiber.Throttle.run t.job_throttle ~f:(fun () ->
-      run_only_if_current_status_is_building ~f:(fun () ->
-          Fiber.collect_errors (fun () -> f t.config) >>= function
-          | Ok res -> Fiber.return res
-          | Error exns ->
-            run_only_if_current_status_is_building ~f:(fun () ->
-                Fiber.reraise_all exns)))
+      raise_if_cancelled ();
+      Fiber.collect_errors (fun () -> f t.config) >>= function
+      | Ok res -> Fiber.return res
+      | Error exns ->
+        raise_if_cancelled ();
+        Fiber.reraise_all exns)
 
 (* We use this version privately in this module whenever we can pass the
    scheduler explicitly *)

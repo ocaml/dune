@@ -1423,7 +1423,7 @@ let%expect_test "error handling and duplicate exceptions" =
     Error [ "(Failure 42)" ]
     |}]
 
-let%expect_test "errors are cached" =
+let%expect_test "reproducible errors are cached" =
   Printexc.record_backtrace false;
   let f =
     Memo.create "area of a square"
@@ -1431,12 +1431,15 @@ let%expect_test "errors are cached" =
       (fun x ->
         printf "Started evaluating %d\n" x;
         if x < 0 then failwith (sprintf "Negative input %d" x);
+        if x = 0 then raise (Memo.Non_reproducible (Failure "Zero input"));
         let res = x * x in
         printf "Evaluated %d: %d\n" x res;
         Memo.Build.return res)
   in
   evaluate_and_print f 5;
   evaluate_and_print f (-5);
+  evaluate_and_print f 0;
+  (* Note that the [Non_reproducible] wrapper has been removed. *)
   print_perf_counters ();
   [%expect
     {|
@@ -1445,10 +1448,17 @@ let%expect_test "errors are cached" =
     f 5 = Ok 25
     Started evaluating -5
     f -5 = Error [ { exn = "(Failure \"Negative input -5\")"; backtrace = "" } ]
-    17/17 computed/total nodes, 17/13 traversed/total edges
+    Started evaluating 0
+    f 0 = Error [ { exn = "(Failure \"Zero input\")"; backtrace = "" } ]
+    18/18 computed/total nodes, 17/13 traversed/total edges
   |}];
+  (* CR-someday amokhov: Investigate why the above perf counters are so large.
+     It seems that we end up traversing nodes/edges related to the previous
+     tests, but it's unclear why. Note that below this number drops after we
+     call [Memo.restart_current_run ()]. *)
   evaluate_and_print f 5;
   evaluate_and_print f (-5);
+  evaluate_and_print f 0;
   print_perf_counters ();
   (* Note that we do not see any "Started evaluating" messages because both [Ok]
      and [Error] results have been cached. *)
@@ -1456,7 +1466,23 @@ let%expect_test "errors are cached" =
     {|
     f 5 = Ok 25
     f -5 = Error [ { exn = "(Failure \"Negative input -5\")"; backtrace = "" } ]
-    17/17 computed/total nodes, 17/13 traversed/total edges
+    f 0 = Error [ { exn = "(Failure \"Zero input\")"; backtrace = "" } ]
+    18/18 computed/total nodes, 17/13 traversed/total edges
+  |}];
+  Memo.restart_current_run ();
+  evaluate_and_print f 5;
+  evaluate_and_print f (-5);
+  evaluate_and_print f 0;
+  print_perf_counters ();
+  (* Here we re-execute only one computation: the one that corresponds to the
+     non-reproducible error. *)
+  [%expect
+    {|
+    f 5 = Ok 25
+    f -5 = Error [ { exn = "(Failure \"Negative input -5\")"; backtrace = "" } ]
+    Started evaluating 0
+    f 0 = Error [ { exn = "(Failure \"Zero input\")"; backtrace = "" } ]
+    1/3 computed/total nodes, 0/0 traversed/total edges
   |}]
 
 let%expect_test "errors work with early cutoff" =
@@ -1501,7 +1527,7 @@ let%expect_test "errors work with early cutoff" =
     [negate] Started evaluating 200
     [divide] Started evaluating 200
     f 200 = Error [ { exn = "Input_too_large(_)"; backtrace = "" } ]
-    23/23 computed/total nodes, 23/19 traversed/total edges
+    8/10 computed/total nodes, 6/6 traversed/total edges
   |}];
   Memo.restart_current_run ();
   evaluate_and_print f 0;

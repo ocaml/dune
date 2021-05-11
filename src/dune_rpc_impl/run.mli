@@ -13,15 +13,11 @@ module Config : sig
         }
 end
 
-type t
-
-val of_config : Config.t -> Dune_stats.t option -> t
-
 (** Stop accepting new rpc connections. Fiber returns when all existing
     connetions terminate *)
 val stop : unit -> unit Fiber.t
 
-val run : t -> unit Fiber.t
+val run : Config.t -> Dune_stats.t option -> unit Fiber.t
 
 (** [client t where init ~on_notification ~f] Establishes a client connection to
     [where], initializes it with [init]. Once initialization is done, cals [f]

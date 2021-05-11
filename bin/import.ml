@@ -109,8 +109,7 @@ module Scheduler = struct
           Fiber.fork_and_join_unit
             (fun () ->
               let rpc_config = Dune_rpc_impl.Server.config rpc in
-              let rpc = Dune_rpc_impl.Run.of_config rpc_config config.stats in
-              Dune_rpc_impl.Run.run rpc)
+              Dune_rpc_impl.Run.run rpc_config config.stats)
             run
     in
     Scheduler.Run.go config ~file_watcher ~on_event:(on_event dune_config) run

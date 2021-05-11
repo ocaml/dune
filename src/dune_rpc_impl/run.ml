@@ -80,29 +80,13 @@ type t =
       ; symlink_socket : Symlink_socket.t option
       }
 
-let t_var = Fiber.Var.create ()
+let t_var : t Fiber.Var.t = Fiber.Var.create ()
 
 module Server = Dune_rpc_server.Make (Csexp_rpc.Session)
 
 let where_to_socket = function
   | `Ip (addr, `Port port) -> Unix.ADDR_INET (addr, port)
   | `Unix p -> Unix.ADDR_UNIX (Path.to_string p)
-
-let of_config config stats =
-  match config with
-  | Config.Client -> Client
-  | Config.Server { handler; backlog; pool } ->
-    let where = Dune_rpc_private.Where.default () in
-    let real_where, symlink_socket =
-      match where with
-      | `Ip _ -> (where_to_socket where, None)
-      | `Unix path ->
-        let symlink_socket = Symlink_socket.create path in
-        ( Unix.ADDR_UNIX (Path.to_string (Symlink_socket.socket symlink_socket))
-        , Some symlink_socket )
-    in
-    let server = Csexp_rpc.Server.create real_where ~backlog in
-    Server { server; handler; where; symlink_socket; stats; pool }
 
 module Persistent : sig
   (** Connection negotiation for persistent connections *)
@@ -191,7 +175,24 @@ end = struct
       |> Fiber.map ~f:List.filter_opt
 end
 
-let run t =
+let of_config config stats =
+  match config with
+  | Config.Client -> Client
+  | Config.Server { handler; backlog; pool } ->
+    let where = Dune_rpc_private.Where.default () in
+    let real_where, symlink_socket =
+      match where with
+      | `Ip _ -> (where_to_socket where, None)
+      | `Unix path ->
+        let symlink_socket = Symlink_socket.create path in
+        ( Unix.ADDR_UNIX (Path.to_string (Symlink_socket.socket symlink_socket))
+        , Some symlink_socket )
+    in
+    let server = Csexp_rpc.Server.create real_where ~backlog in
+    Server { server; handler; where; symlink_socket; stats; pool }
+
+let run config stats =
+  let t = of_config config stats in
   Fiber.Var.set t_var t (fun () ->
       match t with
       | Client -> Fiber.return ()

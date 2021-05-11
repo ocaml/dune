@@ -1,9 +1,18 @@
 open Stdune
 open Import
 
+let print_metrics common ~build_duration_in_seconds =
+  if Common.print_metrics common then
+    Console.print_user_message
+      (User_message.make
+         [ Pp.textf "%s" (Memo.Perf_counters.report_for_current_run ())
+         ; Pp.textf "(%.2f sec)" build_duration_in_seconds
+         ])
+
 let run_build_command_poll ~(common : Common.t) ~config ~targets ~setup =
   let open Fiber.O in
   let every () =
+    let build_started = Unix.gettimeofday () in
     Cached_digest.invalidate_cached_timestamps ();
     let* setup = setup () in
     let* targets =
@@ -24,6 +33,8 @@ let run_build_command_poll ~(common : Common.t) ~config ~targets ~setup =
           let* targets = targets () in
           Build_system.build (Target.request targets))
     in
+    let build_duration_in_seconds = Unix.gettimeofday () -. build_started in
+    print_metrics common ~build_duration_in_seconds;
     `Continue
   in
   Scheduler.poll ~common ~config ~every ~finally:Hooks.End_of_build.run
@@ -37,7 +48,10 @@ let run_build_command_once ~(common : Common.t) ~config ~targets ~setup =
         let* targets = targets setup in
         Build_system.build (Target.request targets))
   in
-  Scheduler.go ~common ~config once
+  let build_started = Unix.gettimeofday () in
+  Scheduler.go ~common ~config once;
+  let build_duration_in_seconds = Unix.gettimeofday () -. build_started in
+  print_metrics common ~build_duration_in_seconds
 
 let run_build_command ~(common : Common.t) ~config ~targets =
   let setup () = Import.Main.setup () in

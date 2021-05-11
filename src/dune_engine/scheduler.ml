@@ -518,13 +518,11 @@ module Handler = struct
       | Success
       | Failure
 
-    type build_duration_in_seconds = float
-
     type t =
       | Tick
       | Source_files_changed
       | Build_interrupted
-      | Build_finish of build_result * build_duration_in_seconds
+      | Build_finish of build_result
   end
 
   type t = Config.t -> Event.t -> unit
@@ -747,7 +745,6 @@ module Run = struct
   let poll step =
     let* t = t () in
     let rec loop () : unit Fiber.t =
-      let build_started = Unix.gettimeofday () in
       t.status <- Building;
       let* res =
         let on_error exn =
@@ -778,8 +775,7 @@ module Run = struct
           | Error _ -> Failure
           | Ok _ -> Success
         in
-        let build_duration = Unix.gettimeofday () -. build_started in
-        t.handler t.config (Build_finish (build_result, build_duration));
+        t.handler t.config (Build_finish build_result);
         let ivar = Fiber.Ivar.create () in
         t.status <- Waiting_for_file_changes ivar;
         let* next = Fiber.Ivar.read ivar in

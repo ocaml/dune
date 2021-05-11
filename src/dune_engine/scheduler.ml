@@ -780,6 +780,7 @@ module Run = struct
         match next with
         | Shutdown_requested -> Fiber.return ()
         | File_system_changed -> (
+          Memo.reset ();
           t.handler t.config Source_files_changed;
           match res with
           | Error _

@@ -378,13 +378,12 @@ module Exit_status = struct
       | None -> Path.of_string (Sys.getcwd ())
       | Some dir -> dir
     in
-    let exn =
-      User_error.E
-        (User_message.make paragraphs, Some (With_directory_annot.make dir))
-    in
     match run_cancelled with
-    | false -> raise exn
-    | true -> raise (Memo.Non_reproducible exn)
+    | true -> raise (Memo.Non_reproducible (Failure "Build cancelled"))
+    | false ->
+      raise
+        (User_error.E
+           (User_message.make paragraphs, Some (With_directory_annot.make dir)))
 
   let handle_verbose t ~id ~output ~command_line ~dir ~run_cancelled =
     let open Pp.O in

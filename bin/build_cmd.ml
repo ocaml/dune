@@ -1,6 +1,22 @@
 open Stdune
 open Import
 
+let run_build_system ~common ~(targets : unit -> Target.t list Memo.Build.t) =
+  let open Fiber.O in
+  let build_started = Unix.gettimeofday () in
+  let+ () =
+    Build_system.run (fun () ->
+        let open Memo.Build.O in
+        let* targets = targets () in
+        Build_system.build (Target.request targets))
+  in
+  if Common.print_metrics common then
+    Console.print_user_message
+      (User_message.make
+         [ Pp.textf "%s" (Memo.Perf_counters.report_for_current_run ())
+         ; Pp.textf "(%.2f sec)" (Unix.gettimeofday () -. build_started)
+         ])
+
 let run_build_command_poll ~(common : Common.t) ~config ~targets ~setup =
   let open Fiber.O in
   let every () =
@@ -18,12 +34,7 @@ let run_build_command_poll ~(common : Common.t) ~config ~targets ~setup =
         fun () ->
           Target.resolve_targets_exn (Common.root common) config setup targets
     in
-    let+ () =
-      Build_system.run (fun () ->
-          let open Memo.Build.O in
-          let* targets = targets () in
-          Build_system.build (Target.request targets))
-    in
+    let+ () = run_build_system ~common ~targets in
     `Continue
   in
   Scheduler.poll ~common ~config ~every ~finally:Hooks.End_of_build.run
@@ -32,10 +43,7 @@ let run_build_command_once ~(common : Common.t) ~config ~targets ~setup =
   let open Fiber.O in
   let once () =
     let* setup = setup () in
-    Build_system.run (fun () ->
-        let open Memo.Build.O in
-        let* targets = targets setup in
-        Build_system.build (Target.request targets))
+    run_build_system ~common ~targets:(fun () -> targets setup)
   in
   Scheduler.go ~common ~config once
 

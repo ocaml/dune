@@ -194,6 +194,11 @@ module Cycle_error = struct
   let stack t = t.stack
 end
 
+(* The user can wrap exceptions into the [Non_reproducible] constructor to tell
+   Memo that they shouldn't be cached. We will catch them, unwrap, and re-raise
+   without the wrapper. *)
+exception Non_reproducible of exn
+
 (* A value calculated during a "sample attempt". A sample attempt can fail for
    two reasons:
 
@@ -207,12 +212,15 @@ end
 module Value = struct
   type 'a t =
     | Ok of 'a
-    | Error of Exn_set.t
+    | Error of
+        { exns : Exn_set.t
+        ; reproducible : bool
+        }
     | Cancelled of { dependency_cycle : Cycle_error.t }
 
   let get_exn = function
     | Ok a -> Fiber.return a
-    | Error exns -> Fiber.reraise_all (Exn_set.to_list exns)
+    | Error { exns; _ } -> Fiber.reraise_all (Exn_set.to_list exns)
     | Cancelled { dependency_cycle } -> raise (Cycle_error.E dependency_cycle)
 end
 
@@ -651,8 +659,8 @@ module Cached_value = struct
 
   let value_changed (node : _ Dep_node.t) prev_value cur_value =
     match ((prev_value : _ Value.t), (cur_value : _ Value.t)) with
-    | Cancelled _, _
-    | _, Cancelled _
+    | (Cancelled _ | Error { reproducible = false; _ }), _
+    | _, (Cancelled _ | Error { reproducible = false; _ })
     | Error _, Ok _
     | Ok _, Error _ ->
       true
@@ -660,8 +668,9 @@ module Cached_value = struct
       match node.without_state.spec.allow_cutoff with
       | Yes equal -> not (equal prev_value cur_value)
       | No -> true)
-    | Error prev_error, Error cur_error ->
-      not (Exn_set.equal prev_error cur_error)
+    | ( Error { exns = prev_exns; reproducible = true }
+      , Error { exns = cur_exns; reproducible = true } ) ->
+      not (Exn_set.equal prev_exns cur_exns)
 end
 
 (* Add a dependency on the [dep_node] from the caller, if there is one. Returns
@@ -799,8 +808,11 @@ end = struct
         (* Dependencies of cancelled computations are not accurate, so we can't
            use [deps_changed] in this case. *)
         Fiber.return (Cache_lookup.Result.Failure Not_found)
+      | Error { reproducible = false; _ } ->
+        (* We do not cache non-reproducible errors. *)
+        Fiber.return (Cache_lookup.Result.Failure Not_found)
       | Ok _
-      | Error _ -> (
+      | Error { reproducible = true; _ } -> (
         (* We cache errors just like normal values. We assume that all [Memo]
            computations are deterministic, which means if we rerun a computation
            that previously led to raising a set of errors on the same inputs, we
@@ -890,7 +902,19 @@ end = struct
              due to diamond dependencies. We could add [Fiber.collect_error_set]
              that returns a set of errors instead of a list, to get rid of the
              duplicates as early as possible. *)
-          Error (Exn_set.of_list exns)
+          let exns, reproducible =
+            List.fold_left exns ~init:(Exn_set.empty, true)
+              ~f:(fun (acc, acc_reproducible) exn ->
+                let exn, acc_reproducible =
+                  match exn with
+                  | { Exn_with_backtrace.exn = Non_reproducible exn; backtrace }
+                    ->
+                    ({ Exn_with_backtrace.exn; backtrace }, false)
+                  | exn -> (exn, acc_reproducible)
+                in
+                (Exn_set.add acc exn, acc_reproducible))
+          in
+          Error { exns; reproducible }
       in
       let deps_rev = Deps_so_far.get_compute_deps_rev deps_so_far in
       if !Counters.enabled then
@@ -1220,4 +1244,6 @@ module Perf_counters = struct
     assert (nodes_computed_in_current_run () <= nodes_in_current_run ());
     assert (edges_in_current_run () <= edges_traversed_in_current_run ());
     assert (edges_traversed_in_current_run () <= 2 * edges_in_current_run ())
+
+  let reset () = Counters.reset ()
 end

@@ -140,6 +140,10 @@ module Cycle_error : sig
   val stack : t -> Stack_frame.t list
 end
 
+(** Mark an exception as non-reproducible to indicate that it shouldn't be
+    cached. *)
+exception Non_reproducible of exn
+
 (** Notify the memoization system that the build system has restarted. This
     removes the values that depend on the [current_run] from the memoization
     cache, and cancels all pending computations. *)
@@ -381,4 +385,8 @@ module Perf_counters : sig
 
   (** Raise if any internal invariants are violated. *)
   val assert_invariants : unit -> unit
+
+  (** Reset the counters to zero. You typically don't need to call this function
+      directly (as counters are reset on every run) but it's useful for tests. *)
+  val reset : unit -> unit
 end

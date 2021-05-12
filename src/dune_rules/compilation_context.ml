@@ -4,7 +4,7 @@ open Import
 module SC = Super_context
 
 module Includes = struct
-  type t = Command.Args.dynamic Command.Args.t Cm_kind.Dict.t
+  type t = Command.Args.without_targets Command.Args.t Cm_kind.Dict.t
 
   let make ~project ~opaque ~requires : _ Cm_kind.Dict.t =
     match requires with

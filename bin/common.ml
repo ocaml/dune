@@ -45,6 +45,7 @@ type t =
   ; stats : Dune_stats.t option
   ; file_watcher : Dune_engine.Scheduler.Run.file_watcher
   ; workspace_config : Dune_rules.Workspace.Clflags.t
+  ; cache_debug_flags : Dune_engine.Cache_debug_flags.t
   }
 
 let capture_outputs t = t.capture_outputs
@@ -171,6 +172,7 @@ let init ?log_file c =
   in
   Dune_rules.Main.init ~stats:c.stats
     ~sandboxing_preference:config.sandboxing_preference ~cache_config
+    ~cache_debug_flags:c.cache_debug_flags
     ~handler:(Option.map c.rpc ~f:Dune_rpc_impl.Server.build_handler);
   Only_packages.Clflags.set c.only_packages;
   Clflags.debug_dep_path := c.debug_dep_path;
@@ -655,6 +657,59 @@ let shared_with_config_file =
   ; action_stderr_on_success
   }
 
+module Cache_debug_flags = Dune_engine.Cache_debug_flags
+
+let cache_debug_flags_term : Cache_debug_flags.t Term.t =
+  let initial =
+    { Cache_debug_flags.shared_cache = false; workspace_local_cache = false }
+  in
+  let all_layers =
+    [ ("shared", fun r -> { r with Cache_debug_flags.shared_cache = true })
+    ; ( "workspace-local"
+      , fun r -> { r with Cache_debug_flags.workspace_local_cache = true } )
+    ]
+  in
+  let no_layers = ([], fun x -> x) in
+  let combine_layers =
+    List.fold_right ~init:no_layers
+      ~f:(fun (names, value) (acc_names, acc_value) ->
+        (names @ acc_names, fun x -> acc_value (value x)))
+  in
+  let all_layer_names = String.concat ~sep:"," (List.map ~f:fst all_layers) in
+  let layers_conv =
+    let parser s =
+      let parse_one s =
+        match
+          List.find_map all_layers ~f:(fun (name, value) ->
+              match String.equal name s with
+              | true -> Some ([ name ], value)
+              | false -> None)
+        with
+        | None ->
+          ksprintf (fun s -> Error (`Msg s)) "Invalid cache layer name: %S" s
+        | Some x -> Ok x
+      in
+      String.split s ~on:',' |> List.map ~f:parse_one |> Result.List.all
+      |> Result.map ~f:combine_layers
+    in
+    let printer ppf (names, _value) =
+      Format.pp_print_string ppf (String.concat ~sep:"," names)
+    in
+    Arg.conv ~docv:"CACHE-LAYERS" (parser, printer)
+  in
+  let+ _names, value =
+    Arg.(
+      value & opt layers_conv no_layers
+      & info [ "debug-cache" ] ~docs:copts_sect
+          ~doc:
+            (sprintf
+               {|Show debug messages on cache misses for the given cache layers.
+Value is a comma-separated list of cache layer names.
+All available cache layers: %s.|}
+               all_layer_names))
+  in
+  value initial
+
 let term =
   let docs = copts_sect in
   let+ config_from_command_line = shared_with_config_file
@@ -835,7 +890,7 @@ let term =
              that it doesn't need to drop anything. You should probably not \
              care about this option; it is mostly useful for Dune developers \
              to make Dune tests of the digest cache more reproducible.")
-  in
+  and+ cache_debug_flags = cache_debug_flags_term in
   let build_dir = Option.value ~default:default_build_dir build_dir in
   let root = Workspace_root.create ~specified_by_user:root in
   let rpc =
@@ -885,6 +940,7 @@ let term =
       ; config_from_command_line
       ; config_from_config_file
       }
+  ; cache_debug_flags
   }
 
 let set_rpc t rpc = { t with rpc = Some rpc }

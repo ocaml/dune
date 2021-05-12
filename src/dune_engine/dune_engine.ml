@@ -57,3 +57,4 @@ module Cm_kind = Cm_kind
 module Mode = Mode
 module Fs_memo = Fs_memo
 module Execution_parameters = Execution_parameters
+module Cache_debug_flags = Cache_debug_flags

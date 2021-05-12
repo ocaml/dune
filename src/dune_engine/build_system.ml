@@ -1780,7 +1780,7 @@ end = struct
       let* targets_and_digests =
         match targets_and_digests with
         | Hit x -> Fiber.return x
-        | Miss miss_reason -> (
+        | Miss miss_reason ->
           report_workspace_local_cache_miss
             ~cache_debug_flags:t.cache_debug_flags ~head_target miss_reason;
           (* Step I. Remove stale targets both from the digest table and from
@@ -1818,46 +1818,70 @@ end = struct
                   ~debug_shared_cache:t.cache_debug_flags.shared_cache ~mode
                   ~rule_digest ~head_target ~target_dir:rule.dir)
           in
-          match targets_and_digests_from_cache with
-          | Hit targets_and_digests -> Fiber.return targets_and_digests
-          | Miss shared_cache_miss_reason ->
-            report_shared_cache_miss ~cache_debug_flags:t.cache_debug_flags
-              ~rule_digest ~head_target shared_cache_miss_reason;
-            (* Step III. Execute the build action. *)
-            let* exec_result =
-              execute_action_for_rule t ~rule_digest ~action ~deps ~loc ~context
-                ~execution_parameters ~sandbox_mode ~dir ~targets
-            in
-            let* targets_and_digests =
-              (* Step IV. Store results to the shared cache and if that step
-                 fails, post-process targets by removing write permissions and
-                 computing their digets. *)
-              match t.cache_config with
-              | Enabled { storage_mode = mode; reproducibility_check = _ }
-                when can_go_in_shared_cache -> (
-                let+ targets_and_digests =
-                  try_to_store_to_shared_cache ~mode ~rule_digest ~targets
-                    ~action:action.action
-                in
-                match targets_and_digests with
-                | Some targets_and_digets -> targets_and_digets
-                | None ->
-                  compute_target_digests_or_raise_error execution_parameters
-                    ~loc targets)
-              | _ ->
-                Fiber.return
-                  (compute_target_digests_or_raise_error execution_parameters
-                     ~loc targets)
-            in
-            let dynamic_deps_stages =
-              List.map exec_result.dynamic_deps_stages
-                ~f:(fun (deps, fact_map) ->
-                  (deps, Dep.Facts.digest fact_map ~sandbox_mode ~env:action.env))
-            in
-            let targets_digest = digest_of_target_digests targets_and_digests in
-            Trace_db.set (Path.build head_target)
-              { rule_digest; dynamic_deps_stages; targets_digest };
-            Fiber.return targets_and_digests)
+          let* targets_and_digests, trace_db_entry =
+            match targets_and_digests_from_cache with
+            | Hit targets_and_digests ->
+              Fiber.return
+                ( targets_and_digests
+                , ({ rule_digest
+                   ; dynamic_deps_stages =
+                       (* Rules with dynamic deps can't be stored to the
+                          shared-cache (see the [is_action_dynamic] check
+                          above), so we know this is not a dynamic action, so
+                          returning an empty list is correct. The lack of
+                          information to fill in [dynamic_deps_stages] here is
+                          precisely the reason why we don't store dynamic
+                          actions in the shared cache. *)
+                       []
+                   ; targets_digest =
+                       digest_of_target_digests targets_and_digests
+                   }
+                    : Trace_db.Entry.t) )
+            | Miss shared_cache_miss_reason ->
+              report_shared_cache_miss ~cache_debug_flags:t.cache_debug_flags
+                ~rule_digest ~head_target shared_cache_miss_reason;
+              (* Step III. Execute the build action. *)
+              let* exec_result =
+                execute_action_for_rule t ~rule_digest ~action ~deps ~loc
+                  ~context ~execution_parameters ~sandbox_mode ~dir ~targets
+              in
+              let* targets_and_digests =
+                (* Step IV. Store results to the shared cache and if that step
+                   fails, post-process targets by removing write permissions and
+                   computing their digets. *)
+                match t.cache_config with
+                | Enabled { storage_mode = mode; reproducibility_check = _ }
+                  when can_go_in_shared_cache -> (
+                  let+ targets_and_digests =
+                    try_to_store_to_shared_cache ~mode ~rule_digest ~targets
+                      ~action:action.action
+                  in
+                  match targets_and_digests with
+                  | Some targets_and_digets -> targets_and_digets
+                  | None ->
+                    compute_target_digests_or_raise_error execution_parameters
+                      ~loc targets)
+                | _ ->
+                  Fiber.return
+                    (compute_target_digests_or_raise_error execution_parameters
+                       ~loc targets)
+              in
+              let dynamic_deps_stages =
+                List.map exec_result.dynamic_deps_stages
+                  ~f:(fun (deps, fact_map) ->
+                    ( deps
+                    , Dep.Facts.digest fact_map ~sandbox_mode ~env:action.env ))
+              in
+              let targets_digest =
+                digest_of_target_digests targets_and_digests
+              in
+              Fiber.return
+                ( targets_and_digests
+                , ({ rule_digest; dynamic_deps_stages; targets_digest }
+                    : Trace_db.Entry.t) )
+          in
+          Trace_db.set (Path.build head_target) trace_db_entry;
+          Fiber.return targets_and_digests
       in
       let* () =
         match (mode, !Clflags.promote) with

@@ -67,7 +67,7 @@ val requires_link : t -> Lib.t list Or_exn.t
 
 val requires_compile : t -> Lib.t list Or_exn.t
 
-val includes : t -> Command.Args.without_targets Command.Args.t Cm_kind.Dict.t
+val includes : t -> Command.Args.others Command.Args.t Cm_kind.Dict.t
 
 val preprocessing : t -> Pp_spec.t
 

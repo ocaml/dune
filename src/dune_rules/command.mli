@@ -32,11 +32,11 @@ open! Import
     "../src/foo.ml" if the command is started from the "test" directory. *)
 
 module Args : sig
-  type without_targets = [ `Without_targets ]
+  type others = [ `Others ]
 
   type any =
-    [ `Without_targets
-    | `With_targets
+    [ `Others
+    | `Targets
     ]
 
   (** The type [expand] captures the meaning of a [Command.Args.t] that has no
@@ -49,34 +49,34 @@ module Args : sig
     dir:Path.t -> (string list * Dep.Set.t, fail) result Memo.Build.t
 
   type _ t =
-    | A : string -> [> `Without_targets ] t
-    | As : string list -> [> `Without_targets ] t
+    | A : string -> _ t
+    | As : string list -> _ t
     | S : 'a t list -> 'a t
     | Concat : string * 'a t list -> 'a t
-    | Dep : Path.t -> [> `Without_targets ] t
-    | Deps : Path.t list -> [> `Without_targets ] t
-    | Target : Path.Build.t -> [> `With_targets ] t
-    | Path : Path.t -> [> `Without_targets ] t
-    | Paths : Path.t list -> [> `Without_targets ] t
-    | Hidden_deps : Dep.Set.t -> [> `Without_targets ] t
-    | Hidden_targets : Path.Build.t list -> [> `With_targets ] t
-    | Dyn : without_targets t Action_builder.t -> [> `Without_targets ] t
-    | Fail : fail -> [> `Without_targets ] t
-    | Expand : expand -> [> `Without_targets ] t
+    | Dep : Path.t -> _ t
+    | Deps : Path.t list -> _ t
+    | Target : Path.Build.t -> [> `Targets ] t
+    | Path : Path.t -> _ t
+    | Paths : Path.t list -> _ t
+    | Hidden_deps : Dep.Set.t -> _ t
+    | Hidden_targets : Path.Build.t list -> [> `Targets ] t
+    | Dyn : others t Action_builder.t -> _ t
+    | Fail : fail -> _ t
+    | Expand : expand -> _ t
 
   (** Create with_targets command line arguments. *)
-  val dyn : string list Action_builder.t -> [> `Without_targets ] t
+  val dyn : string list Action_builder.t -> _ t
 
   (** Create an empty command line. *)
-  val empty : [> `Without_targets ] t
+  val empty : _ t
 
   (** Memoize the computation of command line arguments specified by a given
       expression. Use this function when the same subexpression appears in
       multiple [Command.Args.t] expressions to share both the time and memory
       required for the computation. *)
-  val memo : without_targets t -> [> `Without_targets ] t
+  val memo : others t -> _ t
 
-  val as_any : without_targets t -> any t
+  val as_any : others t -> any t
 end
 
 (* TODO: Using list in [with_targets t list] complicates the API unnecessarily:
@@ -92,21 +92,20 @@ val run :
 val run' :
      dir:Path.t
   -> Action.Prog.t
-  -> Args.without_targets Args.t list
+  -> Args.others Args.t list
   -> Action.t Action_builder.t
 
 (** [quote_args quote args] is [As \[quote; arg1; quote; arg2; ...\]] *)
-val quote_args : string -> string list -> [> `Without_targets ] Args.t
+val quote_args : string -> string list -> _ Args.t
 
-val of_result : ([> `Without_targets ] as 'a) Args.t Or_exn.t -> 'a Args.t
+val of_result : (_ as 'a) Args.t Or_exn.t -> 'a Args.t
 
-val of_result_map :
-  'a Or_exn.t -> f:('a -> ([> `Without_targets ] as 'b) Args.t) -> 'b Args.t
+val of_result_map : 'a Or_exn.t -> f:('a -> (_ as 'b) Args.t) -> 'b Args.t
 
-val fail : exn -> [> `Without_targets ] Args.t
+val fail : exn -> _ Args.t
 
 module Ml_kind : sig
-  val flag : Ml_kind.t -> [> `Without_targets ] Args.t
+  val flag : Ml_kind.t -> _ Args.t
 
-  val ppx_driver_flag : Ml_kind.t -> [> `Without_targets ] Args.t
+  val ppx_driver_flag : Ml_kind.t -> _ Args.t
 end

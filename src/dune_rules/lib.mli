@@ -70,27 +70,20 @@ module L : sig
 
   type nonrec t = t list
 
-  val to_iflags : Path.Set.t -> [> `Without_targets ] Command.Args.t
+  val to_iflags : Path.Set.t -> _ Command.Args.t
 
   val include_paths : ?project:Dune_project.t -> t -> Mode.t -> Path.Set.t
 
-  val include_flags :
-       ?project:Dune_project.t
-    -> t
-    -> Mode.t
-    -> [> `Without_targets ] Command.Args.t
+  val include_flags : ?project:Dune_project.t -> t -> Mode.t -> _ Command.Args.t
 
   val c_include_paths : t -> Path.Set.t
 
-  val c_include_flags : t -> [> `Without_targets ] Command.Args.t
+  val c_include_flags : t -> _ Command.Args.t
 
   val toplevel_include_paths : t -> Path.Set.t
 
   val compile_and_link_flags :
-       compile:t
-    -> link:t
-    -> mode:Link_mode.t
-    -> [> `Without_targets ] Command.Args.t
+    compile:t -> link:t -> mode:Link_mode.t -> _ Command.Args.t
 
   val jsoo_runtime_files : t -> Path.t list
 
@@ -118,10 +111,7 @@ module Lib_and_module : sig
     val of_libs : lib list -> t
 
     val link_flags :
-         t
-      -> lib_config:Lib_config.t
-      -> mode:Link_mode.t
-      -> [> `Without_targets ] Command.Args.t
+      t -> lib_config:Lib_config.t -> mode:Link_mode.t -> _ Command.Args.t
   end
 end
 with type lib := t

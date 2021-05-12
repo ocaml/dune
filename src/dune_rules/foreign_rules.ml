@@ -6,7 +6,7 @@ module Source_tree_map_reduce =
   Source_tree.Dir.Make_map_reduce
     (Action_builder)
     (Monoid.Appendable_list (struct
-      type t = Command.Args.without_targets Command.Args.t
+      type t = Command.Args.others Command.Args.t
     end))
 
 (* Compute command line flags for the [include_dirs] field of [Foreign.Stubs.t]

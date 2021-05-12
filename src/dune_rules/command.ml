@@ -3,11 +3,11 @@ open! Stdune
 open Import
 
 module Args0 = struct
-  type without_targets = [ `Without_targets ]
+  type others = [ `Others ]
 
   type any =
-    [ `Without_targets
-    | `With_targets
+    [ `Others
+    | `Targets
     ]
 
   type expand =
@@ -16,26 +16,26 @@ module Args0 = struct
   (* Debugging tip: if you changed this file and Dune got broken in a weird way
      it's probably because of the [Fail] constructor. *)
   type _ t =
-    | A : string -> [> `Without_targets ] t
-    | As : string list -> [> `Without_targets ] t
+    | A : string -> _ t
+    | As : string list -> _ t
     | S : 'a t list -> 'a t
     | Concat : string * 'a t list -> 'a t
-    | Dep : Path.t -> [> `Without_targets ] t
-    | Deps : Path.t list -> [> `Without_targets ] t
-    | Target : Path.Build.t -> [> `With_targets ] t
-    | Path : Path.t -> [> `Without_targets ] t
-    | Paths : Path.t list -> [> `Without_targets ] t
-    | Hidden_deps : Dep.Set.t -> [> `Without_targets ] t
-    | Hidden_targets : Path.Build.t list -> [> `With_targets ] t
-    | Dyn : without_targets t Action_builder.t -> [> `Without_targets ] t
-    | Fail : fail -> [> `Without_targets ] t
-    | Expand : expand -> [> `Without_targets ] t
+    | Dep : Path.t -> _ t
+    | Deps : Path.t list -> _ t
+    | Target : Path.Build.t -> [> `Targets ] t
+    | Path : Path.t -> _ t
+    | Paths : Path.t list -> _ t
+    | Hidden_deps : Dep.Set.t -> _ t
+    | Hidden_targets : Path.Build.t list -> [> `Targets ] t
+    | Dyn : others t Action_builder.t -> _ t
+    | Fail : fail -> _ t
+    | Expand : expand -> _ t
 
   let dyn args = Dyn (Action_builder.map args ~f:(fun x -> As x))
 
   let empty = S []
 
-  let rec as_any : without_targets t -> any t = function
+  let rec as_any : others t -> any t = function
     | A _ as x -> (x :> any t)
     | As _ as x -> (x :> any t)
     | S l -> S (List.map l ~f:as_any)
@@ -97,7 +97,7 @@ let rec expand :
         let open Action_builder.O in
         Action_builder.deps deps >>> Action_builder.return args)
 
-and expand_no_targets ~dir (t : without_targets t) =
+and expand_no_targets ~dir (t : others t) =
   let { Action_builder.With_targets.build; targets } = expand ~dir t in
   assert (Path.Build.Set.is_empty targets);
   build

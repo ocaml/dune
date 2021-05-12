@@ -96,9 +96,9 @@ val run' :
 (** [quote_args quote args] is [As \[quote; arg1; quote; arg2; ...\]] *)
 val quote_args : string -> string list -> _ Args.t
 
-val of_result : (_ as 'a) Args.t Or_exn.t -> 'a Args.t
+val of_result : 'a Args.t Or_exn.t -> 'a Args.t
 
-val of_result_map : 'a Or_exn.t -> f:('a -> (_ as 'b) Args.t) -> 'b Args.t
+val of_result_map : 'a Or_exn.t -> f:('a -> 'b Args.t) -> 'b Args.t
 
 val fail : exn -> _ Args.t
 

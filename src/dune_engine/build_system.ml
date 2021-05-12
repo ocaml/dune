@@ -1396,7 +1396,7 @@ end = struct
       ( rule_digest_version (* Update when changing the rule digest scheme. *)
       , Dep.Facts.digest deps ~sandbox_mode ~env
       , Path.Build.Set.to_list_map rule.targets ~f:Path.Build.to_string
-      , Option.map rule.context ~f:(fun c -> Context_name.to_string c.name)
+      , Option.map rule.context ~f:(fun c -> c.name)
       , Action.for_shell action
       , can_go_in_shared_cache
       , List.map locks ~f:Path.to_string

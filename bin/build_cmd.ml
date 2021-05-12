@@ -2,23 +2,24 @@ open Stdune
 open Import
 
 let run_build_system ~common ~(targets : unit -> Target.t list Memo.Build.t) =
-  let open Fiber.O in
   let build_started = Unix.gettimeofday () in
-  let+ () =
-    Build_system.run (fun () ->
-        let open Memo.Build.O in
-        let* targets = targets () in
-        Build_system.build (Target.request targets))
-  in
-  if Common.print_metrics common then
-    let gc_stat = Gc.quick_stat () in
-    Console.print_user_message
-      (User_message.make
-         [ Pp.textf "%s" (Memo.Perf_counters.report_for_current_run ())
-         ; Pp.textf "(%.2f sec, %d heap words)"
-             (Unix.gettimeofday () -. build_started)
-             gc_stat.heap_words
-         ])
+  Fiber.finalize
+    (fun () ->
+      Build_system.run (fun () ->
+          let open Memo.Build.O in
+          let* targets = targets () in
+          Build_system.build (Target.request targets)))
+    ~finally:(fun () ->
+      (if Common.print_metrics common then
+        let gc_stat = Gc.quick_stat () in
+        Console.print_user_message
+          (User_message.make
+             [ Pp.textf "%s" (Memo.Perf_counters.report_for_current_run ())
+             ; Pp.textf "(%.2f sec, %d heap words)"
+                 (Unix.gettimeofday () -. build_started)
+                 gc_stat.heap_words
+             ]));
+      Fiber.return ())
 
 let run_build_command_poll ~(common : Common.t) ~config ~targets ~setup =
   let open Fiber.O in

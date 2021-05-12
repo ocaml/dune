@@ -40,8 +40,8 @@ module C_define : sig
 
       {[
         # C.C_define.import c ~includes:"caml/config.h" ["ARCH_SIXTYFOUR",
-        Switch];; - (string * Configurator.C_define.Value.t) list =
-        ["ARCH_SIXTYFOUR", Switch true]
+                                                         Switch];; - (string * Configurator.C_define.Value.t) list =
+                                                                   ["ARCH_SIXTYFOUR", Switch true]
       ]} *)
   val import :
        t

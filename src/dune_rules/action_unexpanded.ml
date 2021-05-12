@@ -120,7 +120,6 @@ end = struct
     let env = { expander; infer = true; dir = Expander.dir expander } in
     let b, acc = t env acc in
     let { targets; deps; deps_if_exist } = acc in
-
     (* A file can be inferred as both a dependency and a target, for instance:
 
        {[ (progn (copy a b) (copy b c)) ]} *)

@@ -156,7 +156,6 @@ let build_c ~kind ~sctx ~dir ~expander ~include_flags (loc, src, dst) =
            only when compiling c files.) *)
       ~sandbox:Sandbox_config.no_sandboxing
       (let src = Path.build (Foreign.Source.path src) in
-
        (* We have to execute the rule in the library directory as the .o is
           produced in the current directory *)
        Command.run ~dir:(Path.build dir) c_compiler

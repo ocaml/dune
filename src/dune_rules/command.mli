@@ -62,7 +62,7 @@ module Args : sig
     | Fail : fail -> _ t
     | Expand : expand -> _ t
 
-  (** Create with_targets command line arguments. *)
+  (** Create dynamic command line arguments. *)
   val dyn : string list Action_builder.t -> _ t
 
   (** Create an empty command line. *)

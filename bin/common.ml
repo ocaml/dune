@@ -739,6 +739,18 @@ let term =
       value & flag
       & info [ "debug-digests" ] ~docs
           ~doc:"Explain why Dune decides to re-digest some files")
+  and+ store_digest_preimage =
+    Arg.(
+      value & flag
+      & info
+          [ "debug-store-digest-preimage" ]
+          ~docs
+          ~doc:
+            "Store digest preimage for all computed digests, so that it's \
+             possible to reverse them later, for debugging. The digests are \
+             stored in the shared cache (see --cache flag) as values, even if \
+             cache is otherwise disabled. This should be used only for \
+             debugging, since it's slow and it litters the shared cache.")
   and+ no_buffer =
     let doc =
       {|Do not buffer the output of commands executed by dune. By default dune
@@ -905,6 +917,7 @@ let term =
         at_exit (fun () -> Dune_stats.close stats);
         stats)
   in
+  if store_digest_preimage then Dune_engine.Reversible_digest.enable ();
   if print_metrics then Memo.Perf_counters.enable ();
   { debug_dep_path
   ; debug_findlib

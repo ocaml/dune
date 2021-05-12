@@ -3,7 +3,7 @@ open! Stdune
 open Import
 
 module Args0 = struct
-  type others = [ `Others ]
+  type without_targets = [ `Others ]
 
   type any =
     [ `Others
@@ -27,7 +27,7 @@ module Args0 = struct
     | Paths : Path.t list -> _ t
     | Hidden_deps : Dep.Set.t -> _ t
     | Hidden_targets : Path.Build.t list -> [> `Targets ] t
-    | Dyn : others t Action_builder.t -> _ t
+    | Dyn : without_targets t Action_builder.t -> _ t
     | Fail : fail -> _ t
     | Expand : expand -> _ t
 
@@ -35,7 +35,7 @@ module Args0 = struct
 
   let empty = S []
 
-  let rec as_any : others t -> any t = function
+  let rec as_any : without_targets t -> any t = function
     | A _ as x -> (x :> any t)
     | As _ as x -> (x :> any t)
     | S l -> S (List.map l ~f:as_any)
@@ -97,7 +97,7 @@ let rec expand :
         let open Action_builder.O in
         Action_builder.deps deps >>> Action_builder.return args)
 
-and expand_no_targets ~dir (t : others t) =
+and expand_no_targets ~dir (t : without_targets t) =
   let { Action_builder.With_targets.build; targets } = expand ~dir t in
   assert (Path.Build.Set.is_empty targets);
   build

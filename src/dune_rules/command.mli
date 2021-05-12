@@ -32,12 +32,10 @@ open! Import
     "../src/foo.ml" if the command is started from the "test" directory. *)
 
 module Args : sig
-  type others = [ `Others ]
 
-  type any =
-    [ `Others
-    | `Targets
-    ]
+  type without_targets = [ `Others ]
+
+  type any = [ `Others | `Targets ]
 
   (** The type [expand] captures the meaning of a [Command.Args.t] that has no
       target declarations: it is a way to construct functions that given a
@@ -60,7 +58,7 @@ module Args : sig
     | Paths : Path.t list -> _ t
     | Hidden_deps : Dep.Set.t -> _ t
     | Hidden_targets : Path.Build.t list -> [> `Targets ] t
-    | Dyn : others t Action_builder.t -> _ t
+    | Dyn : without_targets t Action_builder.t -> _ t
     | Fail : fail -> _ t
     | Expand : expand -> _ t
 
@@ -74,9 +72,9 @@ module Args : sig
       expression. Use this function when the same subexpression appears in
       multiple [Command.Args.t] expressions to share both the time and memory
       required for the computation. *)
-  val memo : others t -> _ t
+  val memo : without_targets t -> _ t
 
-  val as_any : others t -> any t
+  val as_any : without_targets t -> any t
 end
 
 (* TODO: Using list in [with_targets t list] complicates the API unnecessarily:
@@ -92,7 +90,7 @@ val run :
 val run' :
      dir:Path.t
   -> Action.Prog.t
-  -> Args.others Args.t list
+  -> Args.without_targets Args.t list
   -> Action.t Action_builder.t
 
 (** [quote_args quote args] is [As \[quote; arg1; quote; arg2; ...\]] *)

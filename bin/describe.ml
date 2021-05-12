@@ -61,7 +61,7 @@ module Crawl = struct
         :: acc)
 
   let executables sctx ~project ~dir exes =
-    let+ modules_, obj_dir =
+    let* modules_, obj_dir =
       let first_exe = snd (List.hd exes.Dune_file.Executables.names) in
       Dir_contents.get sctx ~dir >>= Dir_contents.ocaml
       >>| Ml_sources.modules_and_obj_dir ~for_:(Exe { first_exe })
@@ -69,9 +69,9 @@ module Crawl = struct
     let obj_dir = Obj_dir.of_local obj_dir in
     let modules_ = modules ~obj_dir modules_ in
     let scope = Super_context.find_scope_by_project sctx project in
-    let compile_info = Exe_rules.compile_info ~scope exes in
-    match Lib.Compile.direct_requires compile_info with
-    | Error _ -> None
+    let+ compile_info = Exe_rules.compile_info ~scope exes in
+    match Resolve.peek (Lib.Compile.direct_requires compile_info) with
+    | Error () -> None
     | Ok libs ->
       let include_dirs = Obj_dir.all_cmis obj_dir in
       Some
@@ -92,8 +92,8 @@ module Crawl = struct
              ] ))
 
   let library sctx lib =
-    match Lib.requires lib with
-    | Error _ -> Memo.Build.return None
+    match Resolve.peek (Lib.requires lib) with
+    | Error () -> Memo.Build.return None
     | Ok requires ->
       let name = Lib.name lib in
       let info = Lib.info lib in
@@ -135,7 +135,7 @@ module Crawl = struct
     in
     let* libs =
       Lib.Set.fold libs ~init:libs ~f:(fun lib libs ->
-          match Lib.requires lib with
+          match Resolve.peek (Lib.requires lib) with
           | Error _ -> libs
           | Ok requires -> Lib.Set.of_list requires |> Lib.Set.union libs)
       |> Lib.Set.to_list

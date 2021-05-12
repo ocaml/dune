@@ -44,9 +44,6 @@ module With_targets : sig
 
   val all : 'a t list -> 'a list t
 
-  val of_result_map :
-    'a Or_exn.t -> f:('a -> 'b t) -> targets:Path.Build.t list -> 'b t
-
   (** [memoize name t] is an action builder that behaves like [t] except that
       its result is computed only once. *)
   val memoize : string -> 'a t -> 'a t
@@ -93,8 +90,6 @@ end
 
 (** Delay a static computation until the description is evaluated *)
 val delayed : (unit -> 'a) -> 'a t
-
-val or_exn : 'a Or_exn.t t -> 'a t
 
 (** CR-someday diml: this API is not great, what about:
 
@@ -189,10 +184,6 @@ val if_file_exists : Path.t -> then_:'a t -> else_:'a t -> 'a t
 (** Always fail when executed. We pass a function rather than an exception to
     get a proper backtrace *)
 val fail : fail -> _ t
-
-val of_result : 'a t Or_exn.t -> 'a t
-
-val of_result_map : 'a Or_exn.t -> f:('a -> 'b t) -> 'b t
 
 (** [memoize name t] is an action builder that behaves like [t] except that its
     result is computed only once. *)

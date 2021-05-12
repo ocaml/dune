@@ -203,7 +203,7 @@ let make_lib_modules (d : _ Dir_with_dune.t) ~lookup_vlib ~(lib : Library.t)
     ~modules =
   let src_dir = d.ctx_dir in
   let+ res =
-    let open Result.O in
+    let open Resolve.O in
     match lib.implements with
     | None ->
       (* In the two following pattern matching, we can only get [From _] if
@@ -225,8 +225,8 @@ let make_lib_modules (d : _ Dir_with_dune.t) ~lookup_vlib ~(lib : Library.t)
         | None -> Exe_or_normal_lib
         | Some virtual_modules -> Virtual { virtual_modules }
       in
-      Memo.Build.return (Ok (kind, main_module_name, wrapped))
-    | Some _ -> (
+      Memo.Build.return (Resolve.return (kind, main_module_name, wrapped))
+    | Some _ ->
       assert (Option.is_none lib.virtual_modules);
       let resolved =
         let name = Library.best_name lib in
@@ -236,20 +236,20 @@ let make_lib_modules (d : _ Dir_with_dune.t) ~lookup_vlib ~(lib : Library.t)
       in
       (* This [Option.value_exn] is correct because the above [lib.implements]
          is [Some _] and this [lib] variable correspond to the same library. *)
-      match Option.value_exn (Lib.implements resolved) with
-      | Error _ as err -> Memo.Build.return err
-      | Ok vlib ->
-        Memo.Build.map (virtual_modules lookup_vlib vlib) ~f:(fun impl ->
-            let kind : Modules_field_evaluator.kind = Implementation impl in
-            let+ main_module_name, wrapped =
-              let open Result.O in
-              let* main_module_name = Lib.main_module_name resolved in
-              let+ wrapped = Lib.wrapped resolved in
-              (main_module_name, Option.value_exn wrapped)
-            in
-            (kind, main_module_name, wrapped)))
+      Resolve.Build.bind
+        (Option.value_exn (Lib.implements resolved))
+        ~f:(fun vlib ->
+          Memo.Build.map (virtual_modules lookup_vlib vlib) ~f:(fun impl ->
+              let kind : Modules_field_evaluator.kind = Implementation impl in
+              let+ main_module_name, wrapped =
+                let open Resolve.O in
+                let* main_module_name = Lib.main_module_name resolved in
+                let+ wrapped = Lib.wrapped resolved in
+                (main_module_name, Option.value_exn wrapped)
+              in
+              (kind, main_module_name, wrapped)))
   in
-  Result.map res ~f:(fun (kind, main_module_name, wrapped) ->
+  Resolve.map res ~f:(fun (kind, main_module_name, wrapped) ->
       let modules =
         Modules_field_evaluator.eval ~modules ~buildable:lib.buildable ~kind
           ~private_modules:
@@ -266,12 +266,14 @@ let libs_and_exes (d : _ Dir_with_dune.t) ~lookup_vlib ~modules =
   Memo.Build.parallel_map d.data ~f:(fun stanza ->
       match (stanza : Stanza.t) with
       | Library lib ->
-        let+ modules = make_lib_modules d ~lookup_vlib ~modules ~lib in
-        (* jeremiedimino: this [Result.ok_exn] means that if the user writes an
+        (* jeremiedimino: this [Resolve.get] means that if the user writes an
            invalid [implements] field, we will get an error immediately even if
            the library is not built. We should change this to carry the
            [Or_exn.t] a bit longer. *)
-        let modules = Result.ok_exn modules in
+        let+ modules =
+          make_lib_modules d ~lookup_vlib ~modules ~lib
+          >>= Resolve.read_memo_build
+        in
         let obj_dir = Library.obj_dir lib ~dir:d.ctx_dir in
         List.Left (lib, modules, obj_dir)
       | Executables exes

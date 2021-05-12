@@ -134,15 +134,6 @@ let quote_args =
 
 let fail e = Fail { fail = (fun _ -> raise e) }
 
-let of_result = function
-  | Ok x -> x
-  | Error e -> fail e
-
-let of_result_map res ~f =
-  match res with
-  | Ok x -> f x
-  | Error e -> fail e
-
 module Args = struct
   include Args0
 

@@ -220,15 +220,15 @@ module Unprocessed = struct
     ; modules : Modules.t
     }
 
-  let make ?(requires = Ok []) ~stdlib_dir ~flags
+  let make ?(requires = Resolve.return []) ~stdlib_dir ~flags
       ?(preprocess = Preprocess.Per_module.no_preprocessing ()) ?libname
       ?(source_dirs = Path.Source.Set.empty) ~modules ~obj_dir ~dialects ~ident
       () =
     (* Merlin shouldn't cause the build to fail, so we just ignore errors *)
     let requires =
-      match requires with
+      match Resolve.peek requires with
       | Ok l -> Lib.Set.of_list l
-      | Error _ -> Lib.Set.empty
+      | Error () -> Lib.Set.empty
     in
     let objs_dirs =
       Obj_dir.byte_dir obj_dir |> Path.build |> Path.Set.singleton
@@ -312,10 +312,11 @@ module Unprocessed = struct
     | No_preprocessing -> Action_builder.return None
     | Pps { loc; pps; flags; staged = _ } -> (
       match
-        Preprocessing.get_ppx_driver sctx ~loc ~expander ~lib_name:libname
-          ~flags ~scope pps
+        Resolve.peek
+          (Preprocessing.get_ppx_driver sctx ~loc ~expander ~lib_name:libname
+             ~flags ~scope pps)
       with
-      | Error _exn -> Action_builder.return None
+      | Error () -> Action_builder.return None
       | Ok (exe, flags) ->
         let args =
           Path.to_absolute_filename (Path.build exe) :: "--as-ppx" :: flags

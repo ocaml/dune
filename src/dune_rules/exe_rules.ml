@@ -120,13 +120,15 @@ let executables_rules ~sctx ~dir ~expander ~dir_contents ~scope ~compile_info
     let instrumentation_backend =
       Lib.DB.instrumentation_backend (Scope.libs scope)
     in
-    let preprocess =
-      Preprocess.Per_module.with_instrumentation exes.buildable.preprocess
-        ~instrumentation_backend
+    let* preprocess =
+      Resolve.read_memo_build
+        (Preprocess.Per_module.with_instrumentation exes.buildable.preprocess
+           ~instrumentation_backend)
     in
-    let instrumentation_deps =
-      Preprocess.Per_module.instrumentation_deps exes.buildable.preprocess
-        ~instrumentation_backend
+    let* instrumentation_deps =
+      Resolve.read_memo_build
+        (Preprocess.Per_module.instrumentation_deps exes.buildable.preprocess
+           ~instrumentation_backend)
     in
     Preprocessing.make sctx ~dir ~scope ~expander ~preprocess
       ~preprocessor_deps:exes.buildable.preprocessor_deps ~instrumentation_deps
@@ -172,10 +174,11 @@ let executables_rules ~sctx ~dir ~expander ~dir_contents ~scope ~compile_info
   in
   let stdlib_dir = ctx.Context.stdlib_dir in
   let requires_compile = Compilation_context.requires_compile cctx in
-  let preprocess =
-    Preprocess.Per_module.with_instrumentation exes.buildable.preprocess
-      ~instrumentation_backend:
-        (Lib.DB.instrumentation_backend (Scope.libs scope))
+  let* preprocess =
+    Resolve.read_memo_build
+      (Preprocess.Per_module.with_instrumentation exes.buildable.preprocess
+         ~instrumentation_backend:
+           (Lib.DB.instrumentation_backend (Scope.libs scope)))
   in
   let+ () =
     (* Building an archive for foreign stubs, we link the corresponding object
@@ -218,11 +221,12 @@ let executables_rules ~sctx ~dir ~expander ~dir_contents ~scope ~compile_info
 
 let compile_info ~scope (exes : Dune_file.Executables.t) =
   let dune_version = Scope.project scope |> Dune_project.dune_version in
-  let pps =
-    Preprocess.Per_module.pps
+  let+ pps =
+    Resolve.read_memo_build
       (Preprocess.Per_module.with_instrumentation exes.buildable.preprocess
          ~instrumentation_backend:
            (Lib.DB.instrumentation_backend (Scope.libs scope)))
+    >>| Preprocess.Per_module.pps
   in
   Lib.DB.resolve_user_written_deps_for_exes (Scope.libs scope) exes.names
     exes.buildable.libraries ~pps ~dune_version
@@ -231,7 +235,7 @@ let compile_info ~scope (exes : Dune_file.Executables.t) =
 
 let rules ~sctx ~dir ~dir_contents ~scope ~expander
     (exes : Dune_file.Executables.t) =
-  let compile_info = compile_info ~scope exes in
+  let* compile_info = compile_info ~scope exes in
   let f () =
     executables_rules exes ~sctx ~dir ~dir_contents ~scope ~expander
       ~compile_info ~embed_in_plugin_libraries:exes.embed_in_plugin_libraries

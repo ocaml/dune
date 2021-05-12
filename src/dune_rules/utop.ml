@@ -57,11 +57,13 @@ let libs_and_ppx_under_dir sctx ~db ~dir =
                ~f:(fun (acc, pps) -> function
                | Dune_file.Library l -> (
                  match
-                   Lib.DB.resolve_when_exists db
-                     (l.buildable.loc, Dune_file.Library.best_name l)
+                   Option.map
+                     (Lib.DB.resolve_when_exists db
+                        (l.buildable.loc, Dune_file.Library.best_name l))
+                     ~f:Resolve.peek
                  with
                  | None
-                 | Some (Error _) ->
+                 | Some (Error ()) ->
                    (acc, pps)
                    (* library is defined but outside our scope or is disabled *)
                  | Some (Ok lib) ->
@@ -124,7 +126,7 @@ let setup sctx ~dir =
   let loc = Toplevel.Source.loc source in
   let* modules = Toplevel.Source.modules source preprocessing in
   let requires =
-    let open Result.O in
+    let open Resolve.O in
     (loc, Lib_name.of_string "utop")
     |> Lib.DB.resolve db
     >>| (fun utop -> utop :: libs)

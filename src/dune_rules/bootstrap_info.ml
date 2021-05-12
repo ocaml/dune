@@ -8,8 +8,10 @@ let def name dyn =
   Pp.box ~indent:2 (Pp.textf "let %s = " name ++ Dyn.pp dyn)
 
 let rule sctx compile (exes : Dune_file.Executables.t) () =
-  let libs = Result.ok_exn (Lazy.force (Lib.Compile.requires_link compile)) in
-  let locals, externals =
+  let* locals, externals =
+    let+ libs =
+      Resolve.read_memo_build (Lazy.force (Lib.Compile.requires_link compile))
+    in
     List.partition_map libs ~f:(fun lib ->
         match Lib.Local.of_lib lib with
         | Some x -> Left x

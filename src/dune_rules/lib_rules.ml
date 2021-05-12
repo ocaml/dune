@@ -189,8 +189,8 @@ let foreign_rules (library : Foreign.Library.t) ~sctx ~expander ~dir
       Dir_contents.foreign_sources dir_contents
       >>| Foreign_sources.for_archive ~archive_name
     in
-    Foreign_rules.build_o_files ~sctx ~dir ~expander ~requires:(Result.ok [])
-      ~dir_contents ~foreign_sources
+    Foreign_rules.build_o_files ~sctx ~dir ~expander
+      ~requires:(Resolve.return []) ~dir_contents ~foreign_sources
     |> Memo.Build.parallel_map ~f:(Memo.Build.map ~f:Path.build)
   in
   let* () = Check_rules.add_files sctx ~dir o_files in
@@ -356,13 +356,15 @@ let cctx (lib : Library.t) ~sctx ~source_modules ~dir ~expander ~scope
   let instrumentation_backend =
     Lib.DB.instrumentation_backend (Scope.libs scope)
   in
-  let preprocess =
-    Preprocess.Per_module.with_instrumentation lib.buildable.preprocess
-      ~instrumentation_backend
+  let* preprocess =
+    Resolve.read_memo_build
+      (Preprocess.Per_module.with_instrumentation lib.buildable.preprocess
+         ~instrumentation_backend)
   in
-  let instrumentation_deps =
-    Preprocess.Per_module.instrumentation_deps lib.buildable.preprocess
-      ~instrumentation_backend
+  let* instrumentation_deps =
+    Resolve.read_memo_build
+      (Preprocess.Per_module.instrumentation_deps lib.buildable.preprocess
+         ~instrumentation_backend)
   in
   (* Preprocess before adding the alias module as it doesn't need preprocessing *)
   let* pp =
@@ -432,11 +434,11 @@ let library_rules (lib : Library.t) ~cctx ~source_modules ~dir_contents
       ; source_modules
       ; compile_info
       }
-  in
-  let preprocess =
-    Preprocess.Per_module.with_instrumentation lib.buildable.preprocess
-      ~instrumentation_backend:
-        (Lib.DB.instrumentation_backend (Scope.libs scope))
+  and+ preprocess =
+    Resolve.read_memo_build
+      (Preprocess.Per_module.with_instrumentation lib.buildable.preprocess
+         ~instrumentation_backend:
+           (Lib.DB.instrumentation_backend (Scope.libs scope)))
   in
   ( cctx
   , Merlin.make ~requires:requires_compile ~stdlib_dir ~flags ~modules

@@ -429,6 +429,7 @@ type t =
   ; build_mutex : Fiber.Mutex.t
   ; stats : Dune_stats.t option
   ; cache_config : Dune_cache.Config.t
+  ; cache_debug_flags : Cache_debug_flags.t
   }
 
 let t = Fdecl.create Dyn.Encoder.opaque
@@ -1386,7 +1387,7 @@ end = struct
 
   (* The current version of the rule digest scheme. We should increment it when
      making any changes to the scheme, to avoid collisions. *)
-  let rule_digest_version = 6
+  let rule_digest_version = 7
 
   let compute_rule_digest (rule : Rule.t) ~deps ~action ~sandbox_mode
       ~execution_parameters =
@@ -1395,7 +1396,7 @@ end = struct
       ( rule_digest_version (* Update when changing the rule digest scheme. *)
       , Dep.Facts.digest deps ~sandbox_mode ~env
       , Path.Build.Set.to_list_map rule.targets ~f:Path.Build.to_string
-      , Option.map rule.context ~f:(fun c -> c.name)
+      , Option.map rule.context ~f:(fun c -> Context_name.to_string c.name)
       , Action.for_shell action
       , can_go_in_shared_cache
       , List.map locks ~f:Path.to_string
@@ -1415,22 +1416,46 @@ end = struct
         in
         Dune_stats.emit stats event)
 
+  (** A type isomorphic to Result, but without the negative connotations
+      assotiated with the word Error. *)
+  module Cache_result = struct
+    type ('hit, 'miss) t =
+      | Hit of 'hit
+      | Miss of 'miss
+  end
+
+  let shared_cache_key_string_for_log ~rule_digest ~head_target =
+    sprintf "[%s] (%s)"
+      (Digest.to_string rule_digest)
+      (Path.Build.to_string head_target)
+
+  module Shared_cache_miss_reason = struct
+    type t =
+      | Cache_disabled
+      | Can't_go_in_shared_cache
+      | Rerunning_for_reproducibility_check
+      | Not_found_in_cache
+      | Error of string
+  end
+
   (* CR-someday amokhov: If the cloud cache is enabled, then before attempting
      to restore artifacts from the shared cache, we should send a download
      request for [rule_digest] to the cloud. *)
-  let try_to_restore_from_shared_cache ~mode ~rule_digest ~target_dir =
-    let hex = Digest.to_string rule_digest in
+  let try_to_restore_from_shared_cache ~debug_shared_cache ~mode ~rule_digest
+      ~head_target ~target_dir : (_, Shared_cache_miss_reason.t) Cache_result.t
+      =
+    let key () = shared_cache_key_string_for_log ~rule_digest ~head_target in
     match Dune_cache.Local.restore_artifacts ~mode ~rule_digest ~target_dir with
     | Restored res ->
-      Log.info [ Pp.textf "cache restore success [%s]" hex ];
-      Some res
-    | Not_found_in_cache ->
-      Log.info [ Pp.textf "cache restore failure [%s]: not found in cache" hex ];
-      None
-    | Error exn ->
-      Log.info
-        [ Pp.textf "cache restore error [%s]: %s" hex (Printexc.to_string exn) ];
-      None
+      (* it's a small departure from the general "debug cache" semantics that
+         we're also printing successes, but it can be useful to see successes
+         too if the goal is to understand when and how the file in the build
+         directory appeared *)
+      if debug_shared_cache then
+        Log.info [ Pp.textf "cache restore success %s" (key ()) ];
+      Hit res
+    | Not_found_in_cache -> Miss Not_found_in_cache
+    | Error exn -> Miss (Error (Printexc.to_string exn))
 
   let execute_action_for_rule t ~rule_digest ~action ~deps ~loc
       ~(context : Build_context.t option) ~execution_parameters ~sandbox_mode
@@ -1568,6 +1593,59 @@ end = struct
     | Anonymous_action
     | Anonymous_action_attached_to_alias
 
+  let report_workspace_local_cache_miss
+      ~(cache_debug_flags : Cache_debug_flags.t) ~head_target reason =
+    match cache_debug_flags.workspace_local_cache with
+    | false -> ()
+    | true ->
+      let reason =
+        match reason with
+        | `No_previous_record -> "never seen this target before"
+        | `Rule_changed (before, after) ->
+          sprintf "rule or dependencies changed: %s -> %s"
+            (Digest.to_string before) (Digest.to_string after)
+        | `Targets_missing -> "target missing from build dir"
+        | `Targets_changed -> "target changed in build dir"
+        | `Always_rerun -> "not trying to use the cache"
+        | `Dynamic_deps_changed -> "dynamic dependencies changed"
+      in
+      Log.info
+        [ Pp.hbox
+            (Pp.textf "Workspace-local cache miss: %s: %s\n"
+               (Path.Build.to_string head_target)
+               reason)
+        ]
+
+  let report_shared_cache_miss ~(cache_debug_flags : Cache_debug_flags.t)
+      ~rule_digest ~head_target (reason : Shared_cache_miss_reason.t) =
+    let should_print =
+      match (cache_debug_flags.shared_cache, reason) with
+      | true, _ -> true
+      | false, Error _ ->
+        (* always log errors because they are not expected as a part of normal
+           operation and might indicate a problem *)
+        true
+      | false, _ -> false
+    in
+    match should_print with
+    | false -> ()
+    | true ->
+      let reason =
+        match reason with
+        | Cache_disabled -> "cache disabled"
+        | Can't_go_in_shared_cache -> "can't go in shared cache"
+        | Error exn -> sprintf "error: %s" exn
+        | Rerunning_for_reproducibility_check ->
+          "rerunning for reproducibility check"
+        | Not_found_in_cache -> "not found in cache"
+      in
+      Log.info
+        [ Pp.hbox
+            (Pp.textf "Shared cache miss %s: %s\n"
+               (shared_cache_key_string_for_log ~rule_digest ~head_target)
+               reason)
+        ]
+
   let execute_rule_impl ~rule_kind rule =
     let t = t () in
     let { Rule.id = _; targets; dir; context; mode; action; info = _; loc } =
@@ -1648,42 +1726,44 @@ end = struct
          stored in [Trace_db]. If we need to, then [targets_and_digests] will be
          [None], otherwise it will be [Some l] where [l] is the list of targets
          and their digests. *)
-      let* (targets_and_digests : (Path.Build.t * Digest.t) list option) =
+      let* (targets_and_digests :
+             ((Path.Build.t * Digest.t) list, _) Cache_result.t) =
         if always_rerun then
-          Fiber.return None
+          Fiber.return (Cache_result.Miss `Always_rerun)
         else
           (* [prev_trace] will be [None] if rule is run for the first time. *)
           let prev_trace = Trace_db.get (Path.build head_target) in
           let prev_trace_with_targets_and_digests =
             match prev_trace with
-            | None -> None
+            | None -> Cache_result.Miss `No_previous_record
             | Some prev_trace -> (
               if prev_trace.rule_digest <> rule_digest then
-                None
+                Cache_result.Miss
+                  (`Rule_changed (prev_trace.rule_digest, rule_digest))
               else
                 (* [targets_and_digests] will be [None] if not all targets were
                    built. *)
                 match compute_target_digests targets with
-                | None -> None
+                | None -> Cache_result.Miss `Targets_missing
                 | Some targets_and_digests ->
                   if
                     Digest.equal prev_trace.targets_digest
                       (digest_of_target_digests targets_and_digests)
                   then
-                    Some (prev_trace, targets_and_digests)
+                    Hit (prev_trace, targets_and_digests)
                   else
-                    None)
+                    Cache_result.Miss `Targets_changed)
           in
           match prev_trace_with_targets_and_digests with
-          | None -> Fiber.return None
-          | Some (prev_trace, targets_and_digests) ->
+          | Cache_result.Miss reason -> Fiber.return (Cache_result.Miss reason)
+          | Hit (prev_trace, targets_and_digests) ->
             (* CR-someday aalekseyev: If there's a change at one of the last
                stages, we still re-run all the previous stages, which is a bit
                of a waste. We could remember what stage needs re-running and
                only re-run that (and later stages). *)
             let rec loop stages =
               match stages with
-              | [] -> Fiber.return (Some targets_and_digests)
+              | [] -> Fiber.return (Cache_result.Hit targets_and_digests)
               | (deps, old_digest) :: rest ->
                 let deps = Action_exec.Dynamic_dep.Set.to_dep_set deps in
                 let* deps = build_deps deps in
@@ -1693,20 +1773,21 @@ end = struct
                 if old_digest = new_digest then
                   loop rest
                 else
-                  Fiber.return None
+                  Fiber.return (Cache_result.Miss `Dynamic_deps_changed)
             in
             loop prev_trace.dynamic_deps_stages
       in
       let* targets_and_digests =
         match targets_and_digests with
-        | Some x -> Fiber.return x
-        | None -> (
+        | Hit x -> Fiber.return x
+        | Miss miss_reason -> (
+          report_workspace_local_cache_miss
+            ~cache_debug_flags:t.cache_debug_flags ~head_target miss_reason;
           (* Step I. Remove stale targets both from the digest table and from
              the build directory. *)
           Path.Build.Set.iter targets ~f:(fun target ->
               Cached_digest.remove (Path.build target);
               Path.Build.unlink_no_err target);
-
           (* Step II. Try to restore artifacts from the shared cache if the
              following conditions are met.
 
@@ -1715,11 +1796,11 @@ end = struct
              2. The shared cache is [Enabled].
 
              3. The rule is not selected for a reproducibility check. *)
-          let targets_and_digests_from_cache =
+          let targets_and_digests_from_cache :
+              (_, Shared_cache_miss_reason.t) Cache_result.t =
             match (can_go_in_shared_cache, t.cache_config) with
-            | false, _
-            | _, Disabled ->
-              None
+            | false, _ -> Miss Shared_cache_miss_reason.Can't_go_in_shared_cache
+            | _, Disabled -> Miss Shared_cache_miss_reason.Cache_disabled
             | true, Enabled { storage_mode = mode; reproducibility_check } -> (
               match
                 Dune_cache.Config.Reproducibility_check.sample
@@ -1730,14 +1811,18 @@ end = struct
                    To make [check_probability] more meaningful, we could first
                    make sure that the shared cache actually does contain an
                    entry for [rule_digest]. *)
-                None
+                Cache_result.Miss
+                  Shared_cache_miss_reason.Rerunning_for_reproducibility_check
               | false ->
-                try_to_restore_from_shared_cache ~mode ~rule_digest
-                  ~target_dir:rule.dir)
+                try_to_restore_from_shared_cache
+                  ~debug_shared_cache:t.cache_debug_flags.shared_cache ~mode
+                  ~rule_digest ~head_target ~target_dir:rule.dir)
           in
           match targets_and_digests_from_cache with
-          | Some targets_and_digests -> Fiber.return targets_and_digests
-          | None ->
+          | Hit targets_and_digests -> Fiber.return targets_and_digests
+          | Miss shared_cache_miss_reason ->
+            report_shared_cache_miss ~cache_debug_flags:t.cache_debug_flags
+              ~rule_digest ~head_target shared_cache_miss_reason;
             (* Step III. Execute the build action. *)
             let* exec_result =
               execute_action_for_rule t ~rule_digest ~action ~deps ~loc ~context
@@ -2398,8 +2483,8 @@ let load_dir_and_produce_its_rules ~dir =
 
 let load_dir ~dir = load_dir_and_produce_its_rules ~dir
 
-let init ~stats ~contexts ~promote_source ~cache_config ~sandboxing_preference
-    ~rule_generator ~handler =
+let init ~stats ~contexts ~promote_source ~cache_config ~cache_debug_flags
+    ~sandboxing_preference ~rule_generator ~handler =
   let contexts =
     Memo.lazy_ (fun () ->
         let+ contexts = Memo.Lazy.force contexts in
@@ -2426,6 +2511,7 @@ let init ~stats ~contexts ~promote_source ~cache_config ~sandboxing_preference
     ; build_mutex = Fiber.Mutex.create ()
     ; stats
     ; cache_config
+    ; cache_debug_flags
     }
 
 module Progress = struct

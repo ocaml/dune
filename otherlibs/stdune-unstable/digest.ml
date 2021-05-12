@@ -4,11 +4,39 @@ module D = Stdlib.Digest
 module Set = String.Set
 module Map = String.Map
 
+module type Digest_impl = sig
+  val file : string -> t
+
+  val string : string -> t
+end
+
+module Direct_impl : Digest_impl = struct
+  let file = D.file
+
+  let string = D.string
+end
+
+module Mutable_impl = struct
+  let file_ref = ref D.file
+
+  let string_ref = ref D.string
+
+  let file f = !file_ref f
+
+  let string s = !string_ref s
+end
+
+let override_impl ~file ~string =
+  Mutable_impl.file_ref := file;
+  Mutable_impl.string_ref := string
+
+module Impl : Digest_impl = Mutable_impl
+
 let hash = Hashtbl.hash
 
 let equal = String.equal
 
-let file p = D.file (Path.to_string p)
+let file p = Impl.file (Path.to_string p)
 
 let compare x y = Ordering.of_int (D.compare x y)
 
@@ -23,7 +51,7 @@ let from_hex s =
   | s -> Some s
   | exception Invalid_argument _ -> None
 
-let string = D.string
+let string = Impl.string
 
 let to_string_raw s = s
 
@@ -38,7 +66,7 @@ let generic a = string (Marshal.to_string a [ No_sharing ])
 let file_with_executable_bit ~executable path =
   (* We follow the digest scheme used by Jenga. *)
   let string_and_bool ~digest_hex ~bool =
-    D.string
+    Impl.string
       (digest_hex
       ^
       if bool then

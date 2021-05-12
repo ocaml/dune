@@ -51,11 +51,9 @@ let make_relative_to_root p =
    absolute path - A path relative to [Path.initial_cwd] *)
 let to_local file_path =
   let error msg = Error msg in
-
   (* This ensure the path is absolute. If not it is prefixed with
      [Path.initial_cwd] *)
   let abs_file_path = Path.of_filename_relative_to_initial_cwd file_path in
-
   (* Then we make the path relative to [Path.root] (and not [Path.initial_cwd]) *)
   match make_relative_to_root abs_file_path with
   | Some path -> (

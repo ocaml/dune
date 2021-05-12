@@ -384,14 +384,10 @@ let setup_rule cctx ~source_rule coq_module =
   if coq_debug then
     Format.eprintf "gen_rule coq_module: %a@\n%!" Pp.to_fmt
       (Dyn.pp (Coq_module.to_dyn coq_module));
-
   let file_flags = Context.coqc_file_flags cctx in
-
   let coqdep_rule = coqdep_rule cctx ~source_rule ~file_flags coq_module in
-
   (* Process coqdep and generate rules *)
   let deps_of = deps_of ~dir:cctx.dir ~boot_type:cctx.boot_type coq_module in
-
   (* Rules for the files *)
   { Module_rule.coqdep = coqdep_rule
   ; coqc =
@@ -423,9 +419,7 @@ let setup_rules ~sctx ~dir ~dir_contents (s : Theory.t) =
   let scope = SC.find_scope_by_dir sctx dir in
   let coq_lib_db = Scope.coq_libs scope in
   let theory = Coq_lib.DB.resolve coq_lib_db s.name |> Result.ok_exn in
-
   let* coq_dir_contents = Dir_contents.coq dir_contents in
-
   let+ cctx =
     let wrapper_name = Coq_lib.wrapper theory in
     let theories_deps = Coq_lib.DB.requires coq_lib_db theory in
@@ -435,10 +429,8 @@ let setup_rules ~sctx ~dir ~dir_contents (s : Theory.t) =
     Context.create sctx ~coqc_dir ~dir ~wrapper_name ~theories_deps ~theory_dirs
       s.buildable
   in
-
   (* List of modules to compile for this library *)
   let coq_modules = Coq_sources.library coq_dir_contents ~name in
-
   let source_rule =
     let theories =
       let open Result.O in

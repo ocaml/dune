@@ -32,10 +32,12 @@ open! Import
     "../src/foo.ml" if the command is started from the "test" directory. *)
 
 module Args : sig
-
   type without_targets = [ `Others ]
 
-  type any = [ `Others | `Targets ]
+  type any =
+    [ `Others
+    | `Targets
+    ]
 
   (** The type [expand] captures the meaning of a [Command.Args.t] that has no
       target declarations: it is a way to construct functions that given a

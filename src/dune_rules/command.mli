@@ -51,8 +51,8 @@ module Args : sig
   type _ t =
     | A : string -> [> `Without_targets ] t
     | As : string list -> [> `Without_targets ] t
-    | S : 'a t list -> [> `Without_targets ] t
-    | Concat : string * 'a t list -> [> `Without_targets ] t
+    | S : 'a t list -> 'a t
+    | Concat : string * 'a t list -> 'a t
     | Dep : Path.t -> [> `Without_targets ] t
     | Deps : Path.t list -> [> `Without_targets ] t
     | Target : Path.Build.t -> [> `With_targets ] t

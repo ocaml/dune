@@ -18,8 +18,8 @@ module Args0 = struct
   type _ t =
     | A : string -> [> `Without_targets ] t
     | As : string list -> [> `Without_targets ] t
-    | S : 'a t list -> [> `Without_targets ] t
-    | Concat : string * 'a t list -> [> `Without_targets ] t
+    | S : 'a t list -> 'a t
+    | Concat : string * 'a t list -> 'a t
     | Dep : Path.t -> [> `Without_targets ] t
     | Deps : Path.t list -> [> `Without_targets ] t
     | Target : Path.Build.t -> [> `With_targets ] t
@@ -35,11 +35,11 @@ module Args0 = struct
 
   let empty = S []
 
-  let as_any : without_targets t -> any t = function
+  let rec as_any : without_targets t -> any t = function
     | A _ as x -> (x :> any t)
     | As _ as x -> (x :> any t)
-    | S l -> S l
-    | Concat (sep, l) -> Concat (sep, l)
+    | S l -> S (List.map l ~f:as_any)
+    | Concat (sep, l) -> Concat (sep, List.map l ~f:as_any)
     | Dep _ as x -> (x :> any t)
     | Deps _ as x -> (x :> any t)
     | Path _ as x -> (x :> any t)

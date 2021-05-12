@@ -118,12 +118,14 @@ module Processed = struct
     Path.Set.iter src_dirs ~f:(fun p -> printf "S %s\n" (serialize_path p));
     List.iter extensions ~f:(fun { Ml_kind.Dict.impl; intf } ->
         printf "SUFFIX %s" (Printf.sprintf "%s %s" impl intf));
+
     (* We print all FLG directives as comments *)
     List.iter pp_configs
       ~f:
         (Module_name.Per_item.fold ~init:() ~f:(fun pp () ->
              Option.iter pp ~f:(fun { flag; args } ->
                  printf "# FLG %s\n" (flag ^ " " ^ quote_for_dot_merlin args))));
+
     List.iter flags ~f:(fun flags ->
         match flags with
         | [] -> ()
@@ -376,10 +378,12 @@ end
 let dot_merlin sctx ~dir ~more_src_dirs ~expander (t : Unprocessed.t) =
   let open Memo.Build.O in
   let merlin_file = Merlin_ident.merlin_file_path dir t.ident in
+
   let* () =
     Path.Set.singleton (Path.build merlin_file)
     |> Rules.Produce.Alias.add_static_deps (Alias.check ~dir)
   in
+
   let merlin = Unprocessed.process t sctx ~more_src_dirs ~expander in
   let action =
     Action_builder.With_targets.write_file_dyn merlin_file

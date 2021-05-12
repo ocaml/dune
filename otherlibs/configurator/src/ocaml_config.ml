@@ -10,8 +10,8 @@ module Vars = struct
         match String.index line ':' with
         | Some i ->
           let x =
-            ( String.take line i
-            , String.drop line (i + 2) (* skipping the space *) )
+            (* skipping 2 chars because we also need to skip the space *)
+            (String.take line i, String.drop line (i + 2))
           in
           loop (x :: acc) lines
         | None -> Error (Printf.sprintf "Unrecognized line: %S" line))

@@ -65,6 +65,7 @@ type t =
   ; buffer : Buffer.t
   ; mutable after_first_event : bool
   }
+
 (* all fields of record used *)
 
 let close { print; close; _ } =

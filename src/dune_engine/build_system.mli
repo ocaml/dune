@@ -98,6 +98,7 @@ val init :
         -> Build_context.t option
         -> unit Fiber.t)
   -> cache_config:Dune_cache.Config.t
+  -> cache_debug_flags:Cache_debug_flags.t
   -> sandboxing_preference:Sandbox_mode.t list
   -> rule_generator:(module Rule_generator)
   -> handler:Handler.t option

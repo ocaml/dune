@@ -1387,7 +1387,7 @@ end = struct
 
   (* The current version of the rule digest scheme. We should increment it when
      making any changes to the scheme, to avoid collisions. *)
-  let rule_digest_version = 6
+  let rule_digest_version = 7
 
   let compute_rule_digest (rule : Rule.t) ~deps ~action ~sandbox_mode
       ~execution_parameters =
@@ -1396,7 +1396,7 @@ end = struct
       ( rule_digest_version (* Update when changing the rule digest scheme. *)
       , Dep.Facts.digest deps ~sandbox_mode ~env
       , Path.Build.Set.to_list_map rule.targets ~f:Path.Build.to_string
-      , Option.map rule.context ~f:(fun c -> c.name)
+      , Option.map rule.context ~f:(fun c -> Context_name.to_string c.name)
       , Action.for_shell action
       , can_go_in_shared_cache
       , List.map locks ~f:Path.to_string

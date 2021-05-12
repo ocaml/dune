@@ -66,8 +66,8 @@ module Package = struct
   let make org name = { org; name }
 
   let clone t =
-    let stdout_to = Process.Io.(file Config.dev_null Out) in
-    let stderr_to = Process.Io.(file Config.dev_null Out) in
+    let stdout_to = Process.Io.make_stdout Swallow in
+    let stderr_to = Process.Io.make_stderr Swallow in
     let stdin_from = Process.Io.(null In) in
     Process.run Strict ~stdout_to ~stderr_to ~stdin_from (Lazy.force git)
       [ "clone"; uri t ]
@@ -85,8 +85,8 @@ let prepare_workspace () =
 
 let dune_build () =
   let stdin_from = Process.(Io.null In) in
-  let stdout_to = Process.(Io.file Config.dev_null Out) in
-  let stderr_to = Process.(Io.file Config.dev_null Out) in
+  let stdout_to = Process.Io.make_stdout Swallow in
+  let stderr_to = Process.Io.make_stderr Swallow in
   let open Fiber.O in
   let+ times =
     Process.run_with_times dune ~stdin_from ~stdout_to ~stderr_to

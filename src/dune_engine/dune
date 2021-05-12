@@ -26,7 +26,7 @@
   dune_section
   dune_rpc_private
   dune_rpc_server
-  csexp_rpc
+  thread_worker
   spawn
   dune_file_watcher)
  (synopsis "Internal Dune library, do not use!"))

@@ -70,6 +70,18 @@ module Run : sig
     -> 'a
 end
 
+module Worker : sig
+  (** A worker is a thread that runs submitted tasks *)
+  type t
+
+  val create : unit -> t Fiber.t
+
+  val task :
+    t -> f:(unit -> 'a) -> ('a, [ `Exn of exn | `Stopped ]) result Fiber.t
+
+  val stop : t -> unit
+end
+
 type t
 
 (** Get the instance of the scheduler that runs the current fiber. *)
@@ -94,6 +106,3 @@ val running_jobs_count : t -> int
 (** Start the shutdown sequence. Among other things, it causes Dune to cancel
     the current build and stop accepting RPC clients. *)
 val shutdown : unit -> unit Fiber.t
-
-(** Scheduler to create [Csexp_rpc] sessions *)
-val csexp_scheduler : unit -> Csexp_rpc.Scheduler.t Fiber.t

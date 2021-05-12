@@ -1,53 +1,15 @@
 open Stdune
 open Fiber.O
 
-module Scheduler = struct
-  type t =
-    { create_thread_safe_ivar : 'a. unit -> 'a Fiber.Ivar.t * ('a -> unit)
-    ; spawn_thread : (unit -> unit) -> unit
-    }
-end
-
-module Async : sig
-  type t
-
-  val create : Scheduler.t -> t
-
-  val task :
-    t -> f:(unit -> 'a) -> ('a, [ `Exn of exn | `Stopped ]) result Fiber.t
-
-  val task_exn : t -> f:(unit -> 'a) -> 'a Fiber.t
-
-  val stop : t -> unit
-end = struct
-  type t =
-    { worker : Worker.t
-    ; scheduler : Scheduler.t
-    }
-
-  let stop t = Worker.stop t.worker
-
-  let create (scheduler : Scheduler.t) =
-    let worker = Worker.create ~spawn_thread:scheduler.spawn_thread in
-    { worker; scheduler }
-
-  let task (t : t) ~f =
-    let ivar, fill = t.scheduler.create_thread_safe_ivar () in
-    let f () = fill (Result.try_with f) in
-    match Worker.add_work t.worker ~f with
-    | Error `Stopped -> Fiber.return (Error `Stopped)
-    | Ok () -> (
-      let+ res = Fiber.Ivar.read ivar in
-      match res with
-      | Error exn -> Error (`Exn exn)
-      | Ok e -> Ok e)
+module Worker = struct
+  include Dune_engine.Scheduler.Worker
 
   let task_exn t ~f =
     let+ res = task t ~f in
     match res with
-    | Error `Stopped -> Code_error.raise "worker stopped" []
+    | Error `Stopped -> assert false
     | Error (`Exn e) -> reraise e
-    | Ok res -> res
+    | Ok s -> s
 end
 
 module Session_id = Id.Make ()
@@ -65,31 +27,24 @@ module Session = struct
     { out_channel : out_channel
     ; in_channel : in_channel
     ; id : Id.t
-    ; writer : Async.t
-    ; reader : Async.t
-    ; scheduler : Scheduler.t
+    ; writer : Worker.t
+    ; reader : Worker.t
     ; kind : kind
     }
 
-  let create_full kind in_channel out_channel scheduler =
+  let create_full kind in_channel out_channel =
     if debug then Format.eprintf ">> NEW SESSION@.";
     let reader_ref = ref None in
-    let t =
+    let+ t =
+      let* reader = Worker.create () in
+      let+ writer = Worker.create () in
       let id = Id.gen () in
-      { in_channel
-      ; out_channel
-      ; id
-      ; reader = Async.create scheduler
-      ; writer = Async.create scheduler
-      ; scheduler
-      ; kind
-      }
+      { in_channel; out_channel; id; reader; writer; kind }
     in
     reader_ref := Some t.reader;
     t
 
-  let create in_channel out_channel scheduler =
-    create_full Channel in_channel out_channel scheduler
+  let create in_channel out_channel = create_full Channel in_channel out_channel
 
   let string_of_packet = function
     | None -> "EOF"
@@ -103,11 +58,11 @@ module Session = struct
       | Sys_blocked_io -> read ()
       | e -> reraise e
     in
-    let+ res = Async.task t.reader ~f:read in
+    let+ res = Worker.task t.reader ~f:read in
     let res =
       match res with
       | Error (`Exn exn) ->
-        Async.stop t.reader;
+        Worker.stop t.reader;
         raise exn
       | Error `Stopped -> None
       | Ok res -> (
@@ -115,7 +70,7 @@ module Session = struct
         | Ok (Some _ as s) -> s
         | Error _
         | Ok None ->
-          Async.stop t.reader;
+          Worker.stop t.reader;
           None)
     in
     if debug then Format.eprintf "<< %s@." (string_of_packet res);
@@ -123,7 +78,7 @@ module Session = struct
 
   let write t sexp =
     if debug then Format.eprintf ">> %s@." (string_of_packet sexp);
-    Async.task_exn t.writer
+    Worker.task_exn t.writer
       ~f:
         (match sexp with
         | Some sexp ->
@@ -210,22 +165,20 @@ module Server = struct
   type t =
     { mutable transport : Transport.t option
     ; backlog : int
-    ; scheduler : Scheduler.t
     ; sockaddr : Unix.sockaddr
     }
 
-  let create sockaddr ~backlog scheduler =
-    { sockaddr; backlog; scheduler; transport = None }
+  let create sockaddr ~backlog = { sockaddr; backlog; transport = None }
 
   let serve (t : t) =
-    let async = Async.create t.scheduler in
+    let* async = Worker.create () in
     let+ transport =
-      Async.task_exn async ~f:(fun () ->
+      Worker.task_exn async ~f:(fun () ->
           Transport.create t.sockaddr ~backlog:t.backlog)
     in
     t.transport <- Some transport;
     let accept () =
-      Async.task async ~f:(fun () ->
+      Worker.task async ~f:(fun () ->
           Transport.accept transport
           |> Option.map ~f:(fun client ->
                  let in_ = Unix.in_channel_of_descr client in
@@ -233,13 +186,13 @@ module Server = struct
                  (in_, out)))
     in
     let loop () =
-      let+ accept = accept () in
+      let* accept = accept () in
       match accept with
       | Error _
       | Ok None ->
-        None
+        Fiber.return None
       | Ok (Some (in_, out)) ->
-        let session = Session.create_full Socket in_ out t.scheduler in
+        let+ session = Session.create_full Socket in_ out in
         Some session
     in
     Fiber.Stream.In.create loop
@@ -279,23 +232,25 @@ module Client = struct
 
   type t =
     { mutable transport : Transport.t option
-    ; async : Async.t
-    ; scheduler : Scheduler.t
+    ; async : Worker.t
     ; sockaddr : Unix.sockaddr
     }
 
-  let create sockaddr scheduler =
-    let async = Async.create scheduler in
-    { sockaddr; scheduler; async; transport = None }
+  let create sockaddr =
+    let+ async = Worker.create () in
+    { sockaddr; async; transport = None }
 
   let connect t =
-    Async.task_exn t.async ~f:(fun () ->
-        let transport = Transport.create t.sockaddr in
-        t.transport <- Some transport;
-        let client = Transport.connect transport in
-        let out = Unix.out_channel_of_descr client in
-        let in_ = Unix.in_channel_of_descr client in
-        Session.create in_ out t.scheduler)
+    let* in_, out =
+      Worker.task_exn t.async ~f:(fun () ->
+          let transport = Transport.create t.sockaddr in
+          t.transport <- Some transport;
+          let client = Transport.connect transport in
+          let out = Unix.out_channel_of_descr client in
+          let in_ = Unix.in_channel_of_descr client in
+          (in_, out))
+    in
+    Session.create in_ out
 
   let stop t = Option.iter t.transport ~f:Transport.close
 end

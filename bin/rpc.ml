@@ -16,24 +16,13 @@ let wait_for_server common =
 let client_term common f =
   let common = Common.set_print_directory common false in
   let config = Common.init common in
-  Scheduler.go ~common ~config (fun () ->
-      let open Fiber.O in
-      let* csexp_scheduler = Scheduler.csexp_scheduler () in
-      let run =
-        let stats = Common.stats common in
-        Dune_rpc_impl.Run.of_config Client csexp_scheduler stats
-      in
-      f common run)
+  Scheduler.go ~common ~config (fun () -> f common)
 
 module Init = struct
-  let connect_persistent _common run_config =
+  let connect_persistent _common =
     let open Fiber.O in
-    let stdio =
-      Dune_rpc_impl.Run.Connect.csexp_connect run_config stdin stdout
-    in
-    let* sessions, client =
-      Dune_rpc_impl.Run.Connect.connect_persistent run_config
-    in
+    let* stdio = Csexp_rpc.Session.create stdin stdout in
+    let* sessions, client = Dune_rpc_impl.Run.Connect.connect_persistent () in
     Fiber.Stream.In.sequential_iter sessions ~f:(fun session ->
         let connect =
           Dune_rpc.Conv.to_sexp Dune_rpc.Persistent.In.sexp New_connection
@@ -83,12 +72,12 @@ module Init = struct
             Option.iter client ~f:Csexp_rpc.Client.stop;
             Fiber.return ()))
 
-  let connect common run =
+  let connect common =
     let where = wait_for_server common in
-    let c = Dune_rpc_impl.Run.Connect.csexp_client run where in
     let open Fiber.O in
+    let* c = Dune_rpc_impl.Run.Connect.csexp_client where in
     let* session = Csexp_rpc.Client.connect c in
-    let stdio = Dune_rpc_impl.Run.Connect.csexp_connect run stdin stdout in
+    let* stdio = Csexp_rpc.Session.create stdin stdout in
     let forward f t =
       Fiber.repeat_while ~init:() ~f:(fun () ->
           let* read = Csexp_rpc.Session.read f in
@@ -127,11 +116,11 @@ end
 module Status = struct
   let term =
     let+ (common : Common.t) = Common.term in
-    client_term common @@ fun common run ->
+    client_term common @@ fun common ->
     let where = wait_for_server common in
     printfn "Server is listening on %s" (Dune_rpc.Where.to_string where);
     printfn "ID's of connected clients (include this one):";
-    Dune_rpc_impl.Run.client run where
+    Dune_rpc_impl.Run.client where
       (Dune_rpc.Initialize.Request.create
          ~id:(Dune_rpc.Id.make (Sexp.Atom "status")))
       ~on_notification:(fun _ -> assert false)

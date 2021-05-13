@@ -34,17 +34,16 @@ module Chan = struct
 end
 
 module Drpc = struct
-  module Client = Dune_rpc.Client (struct
-    module Fiber = struct
-      include Fiber
+  module Client =
+    Dune_rpc.Client
+      (struct
+        include Fiber
 
-      let parallel_iter t ~f =
-        let stream = Fiber.Stream.In.create t in
-        Fiber.Stream.In.parallel_iter stream ~f
-    end
-
-    module Chan = Chan
-  end)
+        let parallel_iter t ~f =
+          let stream = Fiber.Stream.In.create t in
+          Fiber.Stream.In.parallel_iter stream ~f
+      end)
+      (Chan)
 
   module Server = Dune_rpc_server.Make (Chan)
 

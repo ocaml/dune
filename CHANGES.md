@@ -136,6 +136,11 @@ Unreleased
 - Remove `dune compute`. It was broken and unused (#4540,
   @jeremiedimino)
 
+- No longer generate an approximate merlin files when computing the
+  ocaml flags fails, for instance because they include the contents of
+  a file that failed to build. This was a niche feature and it was
+  getting in the way of making Dune's core better. (#4607, @jeremiedimino)
+
 2.9.0 (unreleased)
 ------------------
 

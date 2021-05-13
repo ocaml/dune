@@ -30,7 +30,6 @@ module T = struct
     | Dyn_deps : ('a * Dep.Set.t) t -> 'a t
     | Fail : fail -> _ t
     | Memo : 'a memo -> 'a t
-    | Catch : 'a t * 'a -> 'a t
     | Deps : Dep.Set.t -> unit t
     | Memo_build : 'a Memo.Build.t -> 'a t
     | Dyn_memo_build : 'a Memo.Build.t t -> 'a t
@@ -121,8 +120,6 @@ let dyn_path_set_reuse paths =
 let env_var s = Deps (Dep.Set.singleton (Dep.env s))
 
 let alias a = dep (Dep.alias a)
-
-let catch t ~on_error = Catch (t, on_error)
 
 let contents p = Contents p
 
@@ -380,10 +377,6 @@ struct
         Build_deps.file_exists p >>= function
         | true -> exec then_
         | false -> exec else_)
-      | Catch (t, on_error) -> (
-        Memo.Build.swallow_errors (fun () -> exec t) >>| function
-        | Ok r -> r
-        | Error () -> (on_error, Dep.Map.empty))
       | Memo m -> Memo_poly.eval m
       | Memo_build f ->
         let+ f = f in
@@ -450,7 +443,6 @@ let rec can_eval_statically : type a. a t -> bool = function
   | Fail _ -> true
   | If_file_exists (_, _, _) -> false
   | Memo _ -> false
-  | Catch (t, _) -> can_eval_statically t
   | Memo_build _ -> false
   | Dyn_memo_build _ -> false
   | Bind _ ->
@@ -518,9 +510,6 @@ let static_eval =
     | Fail { fail } -> fail ()
     | If_file_exists (_, _, _) -> assert false
     | Memo _ -> assert false
-    | Catch (t, v) -> (
-      try loop t acc with
-      | _ -> (v, Dep.Set.empty))
     | Memo_build _ -> assert false
     | Dyn_memo_build _ -> assert false
     | Bind _ -> assert false

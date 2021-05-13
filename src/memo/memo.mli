@@ -77,10 +77,6 @@ module Build : sig
   end
   [@@inline always]
 
-  (** [swallow_errors f] swallows any error raised during the execution of [f].
-      Use this function if you are ok with a computation failing. *)
-  val swallow_errors : (unit -> 'a t) -> ('a, unit) Result.t t
-
   module Option : sig
     val iter : 'a option -> f:('a -> unit t) -> unit t
 

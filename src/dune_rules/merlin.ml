@@ -246,7 +246,7 @@ module Unprocessed = struct
     let config =
       { stdlib_dir
       ; requires
-      ; flags = Action_builder.catch flags ~on_error:[]
+      ; flags
       ; preprocess
       ; libname
       ; source_dirs

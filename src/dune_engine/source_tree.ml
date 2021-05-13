@@ -121,6 +121,81 @@ let filter_source_files =
   in
   ref (fun _ -> Memo.Build.return (fun _dir fn -> not (is_temp_file fn)))
 
+(* CR-someday amokhov: It would be nice to derive this instead. For now let's
+   trust I haven't messed this up. *)
+let unix_error_equal (x : Unix.error) (y : Unix.error) =
+  match (x, y) with
+  | E2BIG, E2BIG -> true
+  | EACCES, EACCES -> true
+  | EAGAIN, EAGAIN -> true
+  | EBADF, EBADF -> true
+  | EBUSY, EBUSY -> true
+  | ECHILD, ECHILD -> true
+  | EDEADLK, EDEADLK -> true
+  | EDOM, EDOM -> true
+  | EEXIST, EEXIST -> true
+  | EFAULT, EFAULT -> true
+  | EFBIG, EFBIG -> true
+  | EINTR, EINTR -> true
+  | EINVAL, EINVAL -> true
+  | EIO, EIO -> true
+  | EISDIR, EISDIR -> true
+  | EMFILE, EMFILE -> true
+  | EMLINK, EMLINK -> true
+  | ENAMETOOLONG, ENAMETOOLONG -> true
+  | ENFILE, ENFILE -> true
+  | ENODEV, ENODEV -> true
+  | ENOENT, ENOENT -> true
+  | ENOEXEC, ENOEXEC -> true
+  | ENOLCK, ENOLCK -> true
+  | ENOMEM, ENOMEM -> true
+  | ENOSPC, ENOSPC -> true
+  | ENOSYS, ENOSYS -> true
+  | ENOTDIR, ENOTDIR -> true
+  | ENOTEMPTY, ENOTEMPTY -> true
+  | ENOTTY, ENOTTY -> true
+  | ENXIO, ENXIO -> true
+  | EPERM, EPERM -> true
+  | EPIPE, EPIPE -> true
+  | ERANGE, ERANGE -> true
+  | EROFS, EROFS -> true
+  | ESPIPE, ESPIPE -> true
+  | ESRCH, ESRCH -> true
+  | EXDEV, EXDEV -> true
+  | EWOULDBLOCK, EWOULDBLOCK -> true
+  | EINPROGRESS, EINPROGRESS -> true
+  | EALREADY, EALREADY -> true
+  | ENOTSOCK, ENOTSOCK -> true
+  | EDESTADDRREQ, EDESTADDRREQ -> true
+  | EMSGSIZE, EMSGSIZE -> true
+  | EPROTOTYPE, EPROTOTYPE -> true
+  | ENOPROTOOPT, ENOPROTOOPT -> true
+  | EPROTONOSUPPORT, EPROTONOSUPPORT -> true
+  | ESOCKTNOSUPPORT, ESOCKTNOSUPPORT -> true
+  | EOPNOTSUPP, EOPNOTSUPP -> true
+  | EPFNOSUPPORT, EPFNOSUPPORT -> true
+  | EAFNOSUPPORT, EAFNOSUPPORT -> true
+  | EADDRINUSE, EADDRINUSE -> true
+  | EADDRNOTAVAIL, EADDRNOTAVAIL -> true
+  | ENETDOWN, ENETDOWN -> true
+  | ENETUNREACH, ENETUNREACH -> true
+  | ENETRESET, ENETRESET -> true
+  | ECONNABORTED, ECONNABORTED -> true
+  | ECONNRESET, ECONNRESET -> true
+  | ENOBUFS, ENOBUFS -> true
+  | EISCONN, EISCONN -> true
+  | ENOTCONN, ENOTCONN -> true
+  | ESHUTDOWN, ESHUTDOWN -> true
+  | ETOOMANYREFS, ETOOMANYREFS -> true
+  | ETIMEDOUT, ETIMEDOUT -> true
+  | ECONNREFUSED, ECONNREFUSED -> true
+  | EHOSTDOWN, EHOSTDOWN -> true
+  | EHOSTUNREACH, EHOSTUNREACH -> true
+  | ELOOP, ELOOP -> true
+  | EOVERFLOW, EOVERFLOW -> true
+  | EUNKNOWNERR x, EUNKNOWNERR y -> Int.equal x y
+  | _, _ -> false
+
 module Readdir : sig
   type t = private
     { path : Path.Source.t
@@ -139,6 +214,15 @@ end = struct
     ; files : String.Set.t
     ; dirs : (string * Path.Source.t * File.t) list
     }
+
+  let equal =
+    let dirs_equal (s1, p1, f1) (s2, p2, f2) =
+      String.equal s1 s2 && Path.Source.equal p1 p2 && File.compare f1 f2 = Eq
+    in
+    fun x y ->
+      Path.Source.equal x.path y.path
+      && String.Set.equal x.files y.files
+      && List.equal dirs_equal x.dirs y.dirs
 
   let empty path = { path; files = String.Set.empty; dirs = [] }
 
@@ -165,7 +249,7 @@ end = struct
     let+ f = !filter_source_files project in
     { t with files = String.Set.filter t.files ~f:(fun fn -> f t.path fn) }
 
-  let of_source_path path =
+  let of_source_path_impl path =
     Fs_memo.dir_contents_unsorted (Path.source path) >>= function
     | Error unix_error ->
       User_warning.emit
@@ -217,6 +301,16 @@ end = struct
               String.compare a b)
       }
       |> Result.ok
+
+  (* Having a cutoff here speeds up incremental rebuilds quite a bit when a
+     directory contents is invalidated but the result stays the same. *)
+  let of_source_path_memo =
+    Memo.create "readdir-of-source-path"
+      ~input:(module Path.Source)
+      ~cutoff:(Result.equal equal unix_error_equal)
+      of_source_path_impl
+
+  let of_source_path = Memo.exec of_source_path_memo
 end
 
 module Dirs_visited : sig

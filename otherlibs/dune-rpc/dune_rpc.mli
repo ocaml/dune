@@ -102,7 +102,7 @@ module V1 : sig
 
     val loc : t -> Loc.t option
 
-    val message : t -> unit Stdune.Pp.t
+    val message : t -> unit Pp.t
 
     val severity : t -> severity option
 

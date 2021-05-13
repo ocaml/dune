@@ -80,7 +80,7 @@ let test ?(on_notification = fun _ -> assert false) ~client ~handler ~init () =
   in
   Scheduler.run (Scheduler.create ()) run
 
-let init ?(id = Id.make (Atom "test-client")) ?(version = (1, 1)) () =
+let init ?(id = Id.make (Csexp.Atom "test-client")) ?(version = (1, 1)) () =
   { Initialize.Request.version; id }
 
 let%expect_test "initialize scheduler with rpc" =

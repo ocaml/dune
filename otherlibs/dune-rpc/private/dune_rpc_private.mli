@@ -1,5 +1,3 @@
-open Stdune
-
 module Conv : module type of Conv
 
 module Id : sig
@@ -7,26 +5,26 @@ module Id : sig
 
   val sexp : t Conv.value
 
-  val to_dyn : t -> Dyn.t
+  val to_dyn : t -> Stdune.Dyn.t
 
   val equal : t -> t -> bool
 
   val hash : t -> int
 
-  val make : Sexp.t -> t
+  val make : Csexp.t -> t
 
-  val to_sexp : t -> Sexp.t
+  val to_sexp : t -> Csexp.t
 
-  module Set : Set.S with type elt = t
+  module Set : Stdune.Set.S with type elt = t
 end
 
 module Call : sig
   type t =
     { method_ : string
-    ; params : Sexp.t
+    ; params : Csexp.t
     }
 
-  val create : ?params:Sexp.t -> method_:string -> unit -> t
+  val create : ?params:Csexp.t -> method_:string -> unit -> t
 end
 
 module Request : sig
@@ -41,7 +39,7 @@ module Response : sig
       | Version_error
 
     type t =
-      { payload : Sexp.t option
+      { payload : Csexp.t option
       ; message : string
       ; kind : kind
       }
@@ -50,10 +48,10 @@ module Response : sig
 
     val of_conv : Conv.error -> t
 
-    val create : ?payload:Sexp.t -> kind:kind -> message:string -> unit -> t
+    val create : ?payload:Csexp.t -> kind:kind -> message:string -> unit -> t
   end
 
-  type t = (Sexp.t, Error.t) result
+  type t = (Csexp.t, Error.t) result
 end
 
 module Initialize : sig
@@ -77,7 +75,7 @@ module Initialize : sig
 
     val create : unit -> t
 
-    val to_response : t -> Stdune.Sexp.t
+    val to_response : t -> Csexp.t
 
     val sexp : t Conv.value
   end
@@ -103,11 +101,11 @@ end
 
 module Where : sig
   type t =
-    [ `Unix of Path.t
+    [ `Unix of Stdune.Path.t
     | `Ip of Unix.inet_addr * [ `Port of int ]
     ]
 
-  val rpc_dir : Path.Build.t Lazy.t
+  val rpc_dir : Stdune.Path.Build.t Lazy.t
 
   val of_string : string -> t
 
@@ -117,7 +115,7 @@ module Where : sig
 
   val default : unit -> t
 
-  val add_to_env : t -> Env.t -> Env.t
+  val add_to_env : t -> Stdune.Env.t -> Stdune.Env.t
 end
 
 module Loc : sig
@@ -196,7 +194,7 @@ end
 
 module Message : sig
   type t =
-    { payload : Sexp.t option
+    { payload : Csexp.t option
     ; message : string
     }
 end
@@ -291,9 +289,9 @@ module Client (S : sig
   module Chan : sig
     type t
 
-    val write : t -> Sexp.t option -> unit Fiber.t
+    val write : t -> Csexp.t option -> unit Fiber.t
 
-    val read : t -> Sexp.t option Fiber.t
+    val read : t -> Csexp.t option Fiber.t
   end
 end) : S with type 'a fiber := 'a S.Fiber.t and type chan := S.Chan.t
 
@@ -311,7 +309,7 @@ module Persistent : sig
 
   module Out : sig
     type t =
-      | Packet of Sexp.t
+      | Packet of Csexp.t
       | Close_connection
 
     val sexp : t Conv.value

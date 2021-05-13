@@ -372,42 +372,20 @@ module Exit_status = struct
 
   (* In this module, we don't need the "Error: " prefix given that it is already
      included in the error message from the command. *)
-  let fail ~dir paragraphs =
+  let fail ~dir ~has_embedded_location paragraphs =
     let dir =
       match dir with
       | None -> Path.of_string (Sys.getcwd ())
       | Some dir -> dir
     in
-    raise
-      (User_error.E
-         (User_message.make paragraphs, Some (With_directory_annot.make dir)))
-
-  let handle_verbose t ~id ~output ~command_line ~dir =
-    let open Pp.O in
-    let output = parse_output output in
-    match t with
-    | Ok n ->
-      Option.iter output ~f:(fun output ->
-          Console.print_user_message
-            (User_message.make
-               [ Pp.tag User_message.Style.Kwd (Pp.verbatim "Output")
-                 ++ pp_id id ++ Pp.char ':'
-               ; output
-               ]));
-      n
-    | Error err ->
-      let msg =
-        match err with
-        | Failed n -> sprintf "exited with code %d" n
-        | Signaled signame -> sprintf "got signal %s" signame
-      in
-      fail ~dir
-        (Pp.tag User_message.Style.Kwd (Pp.verbatim "Command")
-         ++ Pp.space ++ pp_id id ++ Pp.space ++ Pp.text msg ++ Pp.char ':'
-         ::
-         Pp.tag User_message.Style.Prompt (Pp.char '$')
-         ++ Pp.char ' ' ++ command_line
-         :: Option.to_list output)
+    let annots = [ With_directory_annot.make dir ] in
+    let annots =
+      if has_embedded_location then
+        User_error.Annot.Has_embedded_location.make () :: annots
+      else
+        annots
+    in
+    raise (User_error.E (User_message.make paragraphs, annots))
 
   (* Check if the command output starts with a location, ignoring ansi escape
      sequences *)
@@ -428,9 +406,38 @@ module Exit_status = struct
     fun output ->
       loop output 0 (String.length output) [ 'F'; 'i'; 'l'; 'e'; ' ' ]
 
+  let handle_verbose t ~id ~output ~command_line ~dir =
+    let open Pp.O in
+    let has_embedded_location = outputs_starts_with_location output in
+    let output = parse_output output in
+    match t with
+    | Ok n ->
+      Option.iter output ~f:(fun output ->
+          Console.print_user_message
+            (User_message.make
+               [ Pp.tag User_message.Style.Kwd (Pp.verbatim "Output")
+                 ++ pp_id id ++ Pp.char ':'
+               ; output
+               ]));
+      n
+    | Error err ->
+      let msg =
+        match err with
+        | Failed n -> sprintf "exited with code %d" n
+        | Signaled signame -> sprintf "got signal %s" signame
+      in
+      fail ~dir ~has_embedded_location
+        (Pp.tag User_message.Style.Kwd (Pp.verbatim "Command")
+         ++ Pp.space ++ pp_id id ++ Pp.space ++ Pp.text msg ++ Pp.char ':'
+         ::
+         Pp.tag User_message.Style.Prompt (Pp.char '$')
+         ++ Pp.char ' ' ++ command_line
+         :: Option.to_list output)
+
   let handle_non_verbose t ~display ~purpose ~output ~prog ~command_line ~dir
       ~has_unexpected_stdout ~has_unexpected_stderr =
     let open Pp.O in
+    let has_embedded_location = outputs_starts_with_location output in
     let show_command =
       let show_full_command_on_error =
         !Clflags.always_show_command_line
@@ -439,7 +446,7 @@ module Exit_status = struct
               they are executed locally or in the CI. *)
         (Config.inside_ci && not Config.inside_dune)
       in
-      show_full_command_on_error || not (outputs_starts_with_location output)
+      show_full_command_on_error || not has_embedded_location
     in
     let output = parse_output output in
     let _, progname, _ = Fancy.split_prog prog in
@@ -478,10 +485,10 @@ module Exit_status = struct
                 (String.enumerate_and unexpected_outputs)
             | _ -> sprintf "(exit %d)" n
           else
-            fail ~dir (Option.to_list output)
+            fail ~dir ~has_embedded_location (Option.to_list output)
         | Signaled signame -> sprintf "(got signal %s)" signame
       in
-      fail ~dir
+      fail ~dir ~has_embedded_location
         (progname_and_purpose Error ++ Pp.char ' '
          ++ Pp.tag User_message.Style.Error (Pp.verbatim msg)
          ::

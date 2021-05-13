@@ -30,7 +30,9 @@ let int_fn_create name ~cutoff = Memo.create name ~input:(module Int) ~cutoff
 (* to run a computation *)
 let run m = Scheduler.run (Memo.Build.run m)
 
-let run_memo f v = run (Memo.exec f v)
+let run_memo f v =
+  try run (Memo.exec f v) with
+  | Memo.Error.E err -> raise (Memo.Error.get err)
 
 (* the trivial dependencies are simply the identity function *)
 let compdep x = Memo.Build.return (x ^ x)
@@ -581,12 +583,23 @@ let print_result arg res =
   Format.printf "f %d = %a@." arg Pp.to_fmt
     (Dyn.pp (Result.to_dyn int (list Exn_with_backtrace.to_dyn) res))
 
+let run_collect_errors f =
+  let open Fiber.O in
+  Fiber.collect_errors (fun () -> Memo.Build.run (f ())) >>| function
+  | Ok _ as res -> res
+  | Error errs ->
+    Error
+      (List.map errs ~f:(fun (e : Exn_with_backtrace.t) ->
+           match e.exn with
+           | Memo.Error.E err -> { e with exn = Memo.Error.get err }
+           | _ -> e))
+
 let evaluate_and_print f x =
   let res =
     try
       Fiber.run
         ~iter:(fun () -> raise Exit)
-        (Memo.Build.run (Memo.Build.collect_errors (fun () -> Memo.exec f x)))
+        (run_collect_errors (fun () -> Memo.exec f x))
     with
     | exn -> Error [ Exn_with_backtrace.capture exn ]
   in
@@ -1358,11 +1371,7 @@ let%expect_test "Abandoned node with no cutoff is recomputed" =
 
 let print_exns f =
   let res =
-    match
-      Fiber.run
-        ~iter:(fun () -> raise Exit)
-        (Memo.Build.run (Memo.Build.collect_errors f))
-    with
+    match Fiber.run ~iter:(fun () -> raise Exit) (run_collect_errors f) with
     | Ok _ -> assert false
     | Error exns ->
       Error (List.map exns ~f:(fun (e : Exn_with_backtrace.t) -> e.exn))

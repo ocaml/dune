@@ -367,10 +367,11 @@ module Error = struct
       (fun () -> None)
 
   let info (t : t) =
-    let exn, deps = Dep_path.unwrap_exn t.exn in
-    match exn with
-    | User_error.E (msg, annot) -> (msg, deps, Option.bind ~f:extract_dir annot)
-    | e -> (User_message.make [ Pp.text (Printexc.to_string e) ], deps, None)
+    match t.exn with
+    | User_error.E (msg, annots) -> (msg, List.find_map annots ~f:extract_dir)
+    | e ->
+      (* CR-someday jeremiedimino: Use [Report_error.get_user_message] here. *)
+      (User_message.make [ Pp.text (Printexc.to_string e) ], None)
 end
 
 module type Rule_generator = sig
@@ -1218,10 +1219,18 @@ let expand_alias_gen alias ~eval_build_request =
     User_error.raise ?loc [ Pp.textf "No rule found for %s" alias_descr ]
   | Some alias_definitions ->
     Memo.Build.parallel_map alias_definitions ~f:(fun (loc, definition) ->
-        let on_error exn = Dep_path.reraise exn (Alias (loc, alias)) in
-        Memo.Build.with_error_handler ~on_error (fun () ->
+        Memo.push_stack_frame
+          (fun () ->
             let+ (), facts = eval_build_request definition in
-            facts))
+            facts)
+          ~human_readable_description:(fun () ->
+            let loc_suffix =
+              if Loc.is_none loc then
+                ""
+              else
+                " in " ^ Loc.to_file_colon_line loc
+            in
+            Pp.textf "alias %s%s" (Alias.describe alias) loc_suffix))
 
 type rule_execution_result =
   { deps : Dep.Fact.t Dep.Map.t
@@ -1269,10 +1278,12 @@ and Exported : sig
 
   val execute_rule : Rule.t -> rule_execution_result Memo.Build.t
 
-  (** Exported to inspect memoization cycles. *)
-  val build_file_memo : (Path.t, Digest.t) Memo.t
+  (* The below two definitions are useless, but if we remove them we get an
+     "Undefined_recursive_module" exception. *)
 
-  val build_alias_memo : (Alias.t, Dep.Fact.Files.t) Memo.t
+  val build_file_memo : (Path.t, Digest.t) Memo.t [@@warning "-32"]
+
+  val build_alias_memo : (Alias.t, Dep.Fact.Files.t) Memo.t [@@warning "-32"]
 end = struct
   open Used_recursively
 
@@ -1661,313 +1672,336 @@ end = struct
         Source_tree.execution_parameters_of_dir dir
       | _ -> Execution_parameters.default
     in
-    Memo.Build.of_reproducible_fiber
-      (let open Fiber.O in
-      let build_deps deps = Memo.Build.run (build_deps deps) in
-      report_evaluated_rule t;
-      let* () = Memo.Build.run (Fs.mkdir_p dir) in
-      let is_action_dynamic = Action.is_dynamic action.action in
-      let sandbox_mode =
-        match Action.is_useful_to_sandbox action.action with
-        | Clearly_not ->
-          let config = Dep.Map.sandbox_config deps in
-          if Sandbox_config.mem config Sandbox_mode.none then
-            Sandbox_mode.none
-          else
-            User_error.raise ~loc
-              [ Pp.text
-                  "Rule dependencies are configured to require sandboxing, but \
-                   the rule has no actions that could potentially require \
-                   sandboxing."
-              ]
-        | Maybe ->
-          select_sandbox_mode ~loc
-            (Dep.Map.sandbox_config deps)
-            ~sandboxing_preference:t.sandboxing_preference
-      in
-      let always_rerun =
-        let is_test =
-          (* jeremiedimino: what about:
-
-             {v (rule (alias runtest) (targets x) (action ...)) v}
-
-             These will be treated as [Normal_rule], and the bellow match means
-             that [--force] will have no effect on them. Is that what we want?
-
-             The doc says:
-
-             -f, --force Force actions associated to aliases to be re-executed
-             even if their dependencies haven't changed.
-
-             So it seems to me that such rules should be re-executed. TBC *)
-          match rule_kind with
-          | Normal_rule
-          | Anonymous_action ->
-            false
-          | Anonymous_action_attached_to_alias -> true
-        in
-        let force_rerun = !Clflags.force && is_test in
-        force_rerun || Dep.Map.has_universe deps
-      in
-      let rule_digest =
-        compute_rule_digest rule ~deps ~action ~sandbox_mode
-          ~execution_parameters
-      in
-      let can_go_in_shared_cache =
-        action.can_go_in_shared_cache
-        && not
-             (always_rerun || is_action_dynamic
-             || Action.is_useful_to_memoize action.action = Clearly_not)
-      in
-      (* We don't need to digest target names here, as these are already part of
-         the rule digest. *)
-      let digest_of_target_digests l = Digest.generic (List.map l ~f:snd) in
-      (* Here we determine if we need to execute the action based on information
-         stored in [Trace_db]. If we need to, then [targets_and_digests] will be
-         [None], otherwise it will be [Some l] where [l] is the list of targets
-         and their digests. *)
-      let* (targets_and_digests :
-             ((Path.Build.t * Digest.t) list, _) Cache_result.t) =
-        if always_rerun then
-          Fiber.return (Cache_result.Miss `Always_rerun)
+    let wrap_fiber f =
+      Memo.Build.of_reproducible_fiber
+        (if Loc.is_none loc then
+          f ()
         else
-          (* [prev_trace] will be [None] if rule is run for the first time. *)
-          let prev_trace = Trace_db.get (Path.build head_target) in
-          let prev_trace_with_targets_and_digests =
-            match prev_trace with
-            | None -> Cache_result.Miss `No_previous_record
-            | Some prev_trace -> (
-              if prev_trace.rule_digest <> rule_digest then
-                Cache_result.Miss
-                  (`Rule_changed (prev_trace.rule_digest, rule_digest))
-              else
-                (* [targets_and_digests] will be [None] if not all targets were
-                   built. *)
-                match compute_target_digests targets with
-                | None -> Cache_result.Miss `Targets_missing
-                | Some targets_and_digests ->
-                  if
-                    Digest.equal prev_trace.targets_digest
-                      (digest_of_target_digests targets_and_digests)
-                  then
-                    Hit (prev_trace, targets_and_digests)
-                  else
-                    Cache_result.Miss `Targets_changed)
+          Fiber.with_error_handler f ~on_error:(fun exn ->
+              match exn.exn with
+              | User_error.E (msg, annots)
+                when not (User_error.has_location msg annots) ->
+                let msg = { msg with loc = Some loc } in
+                Exn_with_backtrace.reraise
+                  { exn with exn = User_error.E (msg, annots) }
+              | _ -> Exn_with_backtrace.reraise exn))
+    in
+    wrap_fiber (fun () ->
+        let open Fiber.O in
+        let build_deps deps = Memo.Build.run (build_deps deps) in
+        report_evaluated_rule t;
+        let* () = Memo.Build.run (Fs.mkdir_p dir) in
+        let is_action_dynamic = Action.is_dynamic action.action in
+        let sandbox_mode =
+          match Action.is_useful_to_sandbox action.action with
+          | Clearly_not ->
+            let config = Dep.Map.sandbox_config deps in
+            if Sandbox_config.mem config Sandbox_mode.none then
+              Sandbox_mode.none
+            else
+              User_error.raise ~loc
+                [ Pp.text
+                    "Rule dependencies are configured to require sandboxing, \
+                     but the rule has no actions that could potentially \
+                     require sandboxing."
+                ]
+          | Maybe ->
+            select_sandbox_mode ~loc
+              (Dep.Map.sandbox_config deps)
+              ~sandboxing_preference:t.sandboxing_preference
+        in
+        let always_rerun =
+          let is_test =
+            (* jeremiedimino: what about:
+
+               {v (rule (alias runtest) (targets x) (action ...)) v}
+
+               These will be treated as [Normal_rule], and the bellow match
+               means that [--force] will have no effect on them. Is that what we
+               want?
+
+               The doc says:
+
+               -f, --force Force actions associated to aliases to be re-executed
+               even if their dependencies haven't changed.
+
+               So it seems to me that such rules should be re-executed. TBC *)
+            match rule_kind with
+            | Normal_rule
+            | Anonymous_action ->
+              false
+            | Anonymous_action_attached_to_alias -> true
           in
-          match prev_trace_with_targets_and_digests with
-          | Cache_result.Miss reason -> Fiber.return (Cache_result.Miss reason)
-          | Hit (prev_trace, targets_and_digests) ->
-            (* CR-someday aalekseyev: If there's a change at one of the last
-               stages, we still re-run all the previous stages, which is a bit
-               of a waste. We could remember what stage needs re-running and
-               only re-run that (and later stages). *)
-            let rec loop stages =
-              match stages with
-              | [] -> Fiber.return (Cache_result.Hit targets_and_digests)
-              | (deps, old_digest) :: rest ->
-                let deps = Action_exec.Dynamic_dep.Set.to_dep_set deps in
-                let* deps = build_deps deps in
-                let new_digest =
-                  Dep.Facts.digest deps ~sandbox_mode ~env:action.env
-                in
-                if old_digest = new_digest then
-                  loop rest
+          let force_rerun = !Clflags.force && is_test in
+          force_rerun || Dep.Map.has_universe deps
+        in
+        let rule_digest =
+          compute_rule_digest rule ~deps ~action ~sandbox_mode
+            ~execution_parameters
+        in
+        let can_go_in_shared_cache =
+          action.can_go_in_shared_cache
+          && not
+               (always_rerun || is_action_dynamic
+               || Action.is_useful_to_memoize action.action = Clearly_not)
+        in
+        (* We don't need to digest target names here, as these are already part
+           of the rule digest. *)
+        let digest_of_target_digests l = Digest.generic (List.map l ~f:snd) in
+        (* Here we determine if we need to execute the action based on
+           information stored in [Trace_db]. If we need to, then
+           [targets_and_digests] will be [None], otherwise it will be [Some l]
+           where [l] is the list of targets and their digests. *)
+        let* (targets_and_digests :
+               ((Path.Build.t * Digest.t) list, _) Cache_result.t) =
+          if always_rerun then
+            Fiber.return (Cache_result.Miss `Always_rerun)
+          else
+            (* [prev_trace] will be [None] if rule is run for the first time. *)
+            let prev_trace = Trace_db.get (Path.build head_target) in
+            let prev_trace_with_targets_and_digests =
+              match prev_trace with
+              | None -> Cache_result.Miss `No_previous_record
+              | Some prev_trace -> (
+                if prev_trace.rule_digest <> rule_digest then
+                  Cache_result.Miss
+                    (`Rule_changed (prev_trace.rule_digest, rule_digest))
                 else
-                  Fiber.return (Cache_result.Miss `Dynamic_deps_changed)
+                  (* [targets_and_digests] will be [None] if not all targets
+                     were built. *)
+                  match compute_target_digests targets with
+                  | None -> Cache_result.Miss `Targets_missing
+                  | Some targets_and_digests ->
+                    if
+                      Digest.equal prev_trace.targets_digest
+                        (digest_of_target_digests targets_and_digests)
+                    then
+                      Hit (prev_trace, targets_and_digests)
+                    else
+                      Cache_result.Miss `Targets_changed)
             in
-            loop prev_trace.dynamic_deps_stages
-      in
-      let* targets_and_digests =
-        match targets_and_digests with
-        | Hit x -> Fiber.return x
-        | Miss miss_reason ->
-          report_workspace_local_cache_miss
-            ~cache_debug_flags:t.cache_debug_flags ~head_target miss_reason;
-          (* Step I. Remove stale targets both from the digest table and from
-             the build directory. *)
-          Path.Build.Set.iter targets ~f:(fun target ->
-              Cached_digest.remove (Path.build target);
-              Path.Build.unlink_no_err target);
-          (* Step II. Try to restore artifacts from the shared cache if the
-             following conditions are met.
-
-             1. The rule can be cached, i.e. [can_go_in_shared_cache] is [true].
-
-             2. The shared cache is [Enabled].
-
-             3. The rule is not selected for a reproducibility check. *)
-          let targets_and_digests_from_cache :
-              (_, Shared_cache_miss_reason.t) Cache_result.t =
-            match (can_go_in_shared_cache, t.cache_config) with
-            | false, _ -> Miss Shared_cache_miss_reason.Can't_go_in_shared_cache
-            | _, Disabled -> Miss Shared_cache_miss_reason.Cache_disabled
-            | true, Enabled { storage_mode = mode; reproducibility_check } -> (
-              match
-                Dune_cache.Config.Reproducibility_check.sample
-                  reproducibility_check
-              with
-              | true ->
-                (* CR-someday amokhov: Here we re-execute the rule, as in Jenga.
-                   To make [check_probability] more meaningful, we could first
-                   make sure that the shared cache actually does contain an
-                   entry for [rule_digest]. *)
-                Cache_result.Miss
-                  Shared_cache_miss_reason.Rerunning_for_reproducibility_check
-              | false ->
-                try_to_restore_from_shared_cache
-                  ~debug_shared_cache:t.cache_debug_flags.shared_cache ~mode
-                  ~rule_digest ~head_target ~target_dir:rule.dir)
-          in
-          let* targets_and_digests, trace_db_entry =
-            match targets_and_digests_from_cache with
-            | Hit targets_and_digests ->
-              Fiber.return
-                ( targets_and_digests
-                , ({ rule_digest
-                   ; dynamic_deps_stages =
-                       (* Rules with dynamic deps can't be stored to the
-                          shared-cache (see the [is_action_dynamic] check
-                          above), so we know this is not a dynamic action, so
-                          returning an empty list is correct. The lack of
-                          information to fill in [dynamic_deps_stages] here is
-                          precisely the reason why we don't store dynamic
-                          actions in the shared cache. *)
-                       []
-                   ; targets_digest =
-                       digest_of_target_digests targets_and_digests
-                   }
-                    : Trace_db.Entry.t) )
-            | Miss shared_cache_miss_reason ->
-              report_shared_cache_miss ~cache_debug_flags:t.cache_debug_flags
-                ~rule_digest ~head_target shared_cache_miss_reason;
-              (* Step III. Execute the build action. *)
-              let* exec_result =
-                execute_action_for_rule t ~rule_digest ~action ~deps ~loc
-                  ~context ~execution_parameters ~sandbox_mode ~dir ~targets
-              in
-              let* targets_and_digests =
-                (* Step IV. Store results to the shared cache and if that step
-                   fails, post-process targets by removing write permissions and
-                   computing their digets. *)
-                match t.cache_config with
-                | Enabled { storage_mode = mode; reproducibility_check = _ }
-                  when can_go_in_shared_cache -> (
-                  let+ targets_and_digests =
-                    try_to_store_to_shared_cache ~mode ~rule_digest ~targets
-                      ~action:action.action
+            match prev_trace_with_targets_and_digests with
+            | Cache_result.Miss reason ->
+              Fiber.return (Cache_result.Miss reason)
+            | Hit (prev_trace, targets_and_digests) ->
+              (* CR-someday aalekseyev: If there's a change at one of the last
+                 stages, we still re-run all the previous stages, which is a bit
+                 of a waste. We could remember what stage needs re-running and
+                 only re-run that (and later stages). *)
+              let rec loop stages =
+                match stages with
+                | [] -> Fiber.return (Cache_result.Hit targets_and_digests)
+                | (deps, old_digest) :: rest ->
+                  let deps = Action_exec.Dynamic_dep.Set.to_dep_set deps in
+                  let* deps = build_deps deps in
+                  let new_digest =
+                    Dep.Facts.digest deps ~sandbox_mode ~env:action.env
                   in
-                  match targets_and_digests with
-                  | Some targets_and_digets -> targets_and_digets
-                  | None ->
-                    compute_target_digests_or_raise_error execution_parameters
-                      ~loc targets)
-                | _ ->
-                  Fiber.return
-                    (compute_target_digests_or_raise_error execution_parameters
-                       ~loc targets)
+                  if old_digest = new_digest then
+                    loop rest
+                  else
+                    Fiber.return (Cache_result.Miss `Dynamic_deps_changed)
               in
-              let dynamic_deps_stages =
-                List.map exec_result.dynamic_deps_stages
-                  ~f:(fun (deps, fact_map) ->
-                    ( deps
-                    , Dep.Facts.digest fact_map ~sandbox_mode ~env:action.env ))
-              in
-              let targets_digest =
-                digest_of_target_digests targets_and_digests
-              in
-              Fiber.return
-                ( targets_and_digests
-                , ({ rule_digest; dynamic_deps_stages; targets_digest }
-                    : Trace_db.Entry.t) )
-          in
-          Trace_db.set (Path.build head_target) trace_db_entry;
-          Fiber.return targets_and_digests
-      in
-      let* () =
-        match (mode, !Clflags.promote) with
-        | (Standard | Fallback | Ignore_source_files), _
-        | Promote _, Some Never ->
-          Fiber.return ()
-        | Promote { lifetime; into; only }, (Some Automatically | None) ->
-          Fiber.parallel_iter_set
-            (module Path.Build.Set)
-            targets
-            ~f:(fun path ->
-              let consider_for_promotion =
-                match only with
-                | None -> true
-                | Some pred ->
-                  Predicate_lang.Glob.exec pred
-                    (Path.reach (Path.build path) ~from:(Path.build dir))
-                    ~standard:Predicate_lang.any
-              in
-              match consider_for_promotion with
-              | false -> Fiber.return ()
-              | true ->
-                let in_source_tree = Path.Build.drop_build_context_exn path in
-                let in_source_tree =
-                  match into with
-                  | None -> in_source_tree
-                  | Some { loc; dir } ->
-                    Path.Source.relative
-                      (Path.Source.relative
-                         (Path.Source.parent_exn in_source_tree)
-                         dir ~error_loc:loc)
-                      (Path.Source.basename in_source_tree)
+              loop prev_trace.dynamic_deps_stages
+        in
+        let* targets_and_digests =
+          match targets_and_digests with
+          | Hit x -> Fiber.return x
+          | Miss miss_reason ->
+            report_workspace_local_cache_miss
+              ~cache_debug_flags:t.cache_debug_flags ~head_target miss_reason;
+            (* Step I. Remove stale targets both from the digest table and from
+               the build directory. *)
+            Path.Build.Set.iter targets ~f:(fun target ->
+                Cached_digest.remove (Path.build target);
+                Path.Build.unlink_no_err target);
+            (* Step II. Try to restore artifacts from the shared cache if the
+               following conditions are met.
+
+               1. The rule can be cached, i.e. [can_go_in_shared_cache] is
+               [true].
+
+               2. The shared cache is [Enabled].
+
+               3. The rule is not selected for a reproducibility check. *)
+            let targets_and_digests_from_cache :
+                (_, Shared_cache_miss_reason.t) Cache_result.t =
+              match (can_go_in_shared_cache, t.cache_config) with
+              | false, _ ->
+                Miss Shared_cache_miss_reason.Can't_go_in_shared_cache
+              | _, Disabled -> Miss Shared_cache_miss_reason.Cache_disabled
+              | true, Enabled { storage_mode = mode; reproducibility_check }
+                -> (
+                match
+                  Dune_cache.Config.Reproducibility_check.sample
+                    reproducibility_check
+                with
+                | true ->
+                  (* CR-someday amokhov: Here we re-execute the rule, as in
+                     Jenga. To make [check_probability] more meaningful, we
+                     could first make sure that the shared cache actually does
+                     contain an entry for [rule_digest]. *)
+                  Cache_result.Miss
+                    Shared_cache_miss_reason.Rerunning_for_reproducibility_check
+                | false ->
+                  try_to_restore_from_shared_cache
+                    ~debug_shared_cache:t.cache_debug_flags.shared_cache ~mode
+                    ~rule_digest ~head_target ~target_dir:rule.dir)
+            in
+            let* targets_and_digests, trace_db_entry =
+              match targets_and_digests_from_cache with
+              | Hit targets_and_digests ->
+                Fiber.return
+                  ( targets_and_digests
+                  , ({ rule_digest
+                     ; dynamic_deps_stages =
+                         (* Rules with dynamic deps can't be stored to the
+                            shared-cache (see the [is_action_dynamic] check
+                            above), so we know this is not a dynamic action, so
+                            returning an empty list is correct. The lack of
+                            information to fill in [dynamic_deps_stages] here is
+                            precisely the reason why we don't store dynamic
+                            actions in the shared cache. *)
+                         []
+                     ; targets_digest =
+                         digest_of_target_digests targets_and_digests
+                     }
+                      : Trace_db.Entry.t) )
+              | Miss shared_cache_miss_reason ->
+                report_shared_cache_miss ~cache_debug_flags:t.cache_debug_flags
+                  ~rule_digest ~head_target shared_cache_miss_reason;
+                (* Step III. Execute the build action. *)
+                let* exec_result =
+                  execute_action_for_rule t ~rule_digest ~action ~deps ~loc
+                    ~context ~execution_parameters ~sandbox_mode ~dir ~targets
                 in
-                let* () =
-                  let dir = Path.Source.parent_exn in_source_tree in
-                  Memo.Build.run (Source_tree.find_dir dir) >>| function
-                  | Some _ -> ()
-                  | None ->
-                    let loc =
-                      match into with
-                      | Some into -> into.loc
-                      | None ->
-                        Code_error.raise
-                          "promoting into directory that does not exist"
-                          [ ("in_source_tree", Path.Source.to_dyn in_source_tree)
-                          ]
+                let* targets_and_digests =
+                  (* Step IV. Store results to the shared cache and if that step
+                     fails, post-process targets by removing write permissions
+                     and computing their digets. *)
+                  match t.cache_config with
+                  | Enabled { storage_mode = mode; reproducibility_check = _ }
+                    when can_go_in_shared_cache -> (
+                    let+ targets_and_digests =
+                      try_to_store_to_shared_cache ~mode ~rule_digest ~targets
+                        ~action:action.action
                     in
-                    User_error.raise ~loc
-                      [ Pp.textf "directory %S does not exist"
-                          (Path.Source.to_string_maybe_quoted dir)
-                      ]
+                    match targets_and_digests with
+                    | Some targets_and_digets -> targets_and_digets
+                    | None ->
+                      compute_target_digests_or_raise_error execution_parameters
+                        ~loc targets)
+                  | _ ->
+                    Fiber.return
+                      (compute_target_digests_or_raise_error
+                         execution_parameters ~loc targets)
                 in
-                let dst = in_source_tree in
-                let in_source_tree = Path.source in_source_tree in
-                let* is_up_to_date =
-                  Memo.Build.run
-                    (let open Memo.Build.O in
-                    Fs_memo.path_exists in_source_tree >>= function
-                    | false -> Memo.Build.return false
-                    | true ->
-                      let in_build_dir_digest = Cached_digest.build_file path in
-                      let+ in_source_tree_digest =
-                        Fs_memo.file_digest in_source_tree
+                let dynamic_deps_stages =
+                  List.map exec_result.dynamic_deps_stages
+                    ~f:(fun (deps, fact_map) ->
+                      ( deps
+                      , Dep.Facts.digest fact_map ~sandbox_mode ~env:action.env
+                      ))
+                in
+                let targets_digest =
+                  digest_of_target_digests targets_and_digests
+                in
+                Fiber.return
+                  ( targets_and_digests
+                  , ({ rule_digest; dynamic_deps_stages; targets_digest }
+                      : Trace_db.Entry.t) )
+            in
+            Trace_db.set (Path.build head_target) trace_db_entry;
+            Fiber.return targets_and_digests
+        in
+        let* () =
+          match (mode, !Clflags.promote) with
+          | (Standard | Fallback | Ignore_source_files), _
+          | Promote _, Some Never ->
+            Fiber.return ()
+          | Promote { lifetime; into; only }, (Some Automatically | None) ->
+            Fiber.parallel_iter_set
+              (module Path.Build.Set)
+              targets
+              ~f:(fun path ->
+                let consider_for_promotion =
+                  match only with
+                  | None -> true
+                  | Some pred ->
+                    Predicate_lang.Glob.exec pred
+                      (Path.reach (Path.build path) ~from:(Path.build dir))
+                      ~standard:Predicate_lang.any
+                in
+                match consider_for_promotion with
+                | false -> Fiber.return ()
+                | true ->
+                  let in_source_tree = Path.Build.drop_build_context_exn path in
+                  let in_source_tree =
+                    match into with
+                    | None -> in_source_tree
+                    | Some { loc; dir } ->
+                      Path.Source.relative
+                        (Path.Source.relative
+                           (Path.Source.parent_exn in_source_tree)
+                           dir ~error_loc:loc)
+                        (Path.Source.basename in_source_tree)
+                  in
+                  let* () =
+                    let dir = Path.Source.parent_exn in_source_tree in
+                    Memo.Build.run (Source_tree.find_dir dir) >>| function
+                    | Some _ -> ()
+                    | None ->
+                      let loc =
+                        match into with
+                        | Some into -> into.loc
+                        | None ->
+                          Code_error.raise
+                            "promoting into directory that does not exist"
+                            [ ( "in_source_tree"
+                              , Path.Source.to_dyn in_source_tree )
+                            ]
                       in
-                      Digest.equal in_build_dir_digest in_source_tree_digest)
-                in
-                if is_up_to_date then
-                  Fiber.return ()
-                else (
-                  if lifetime = Until_clean then
-                    Promoted_to_delete.add in_source_tree;
-                  let* () = Scheduler.ignore_for_watch in_source_tree in
-                  (* The file in the build directory might be read-only if it
-                     comes from the shared cache. However, we want the file in
-                     the source tree to be writable by the user, so we
-                     explicitly set the user writable bit. *)
-                  let chmod n = n lor 0o200 in
-                  t.promote_source ~src:path ~dst ~chmod context
-                ))
-      in
-      t.rule_done <- t.rule_done + 1;
-      let+ () =
-        Handler.report_progress t.handler ~rule_done:t.rule_done
-          ~rule_total:t.rule_total
-      in
-      targets_and_digests)
+                      User_error.raise ~loc
+                        [ Pp.textf "directory %S does not exist"
+                            (Path.Source.to_string_maybe_quoted dir)
+                        ]
+                  in
+                  let dst = in_source_tree in
+                  let in_source_tree = Path.source in_source_tree in
+                  let* is_up_to_date =
+                    Memo.Build.run
+                      (let open Memo.Build.O in
+                      Fs_memo.path_exists in_source_tree >>= function
+                      | false -> Memo.Build.return false
+                      | true ->
+                        let in_build_dir_digest =
+                          Cached_digest.build_file path
+                        in
+                        let+ in_source_tree_digest =
+                          Fs_memo.file_digest in_source_tree
+                        in
+                        Digest.equal in_build_dir_digest in_source_tree_digest)
+                  in
+                  if is_up_to_date then
+                    Fiber.return ()
+                  else (
+                    if lifetime = Until_clean then
+                      Promoted_to_delete.add in_source_tree;
+                    let* () = Scheduler.ignore_for_watch in_source_tree in
+                    (* The file in the build directory might be read-only if it
+                       comes from the shared cache. However, we want the file in
+                       the source tree to be writable by the user, so we
+                       explicitly set the user writable bit. *)
+                    let chmod n = n lor 0o200 in
+                    t.promote_source ~src:path ~dst ~chmod context
+                  ))
+        in
+        t.rule_done <- t.rule_done + 1;
+        let+ () =
+          Handler.report_progress t.handler ~rule_done:t.rule_done
+            ~rule_total:t.rule_total
+        in
+        targets_and_digests)
     (* jeremidimino: we need to include the dependencies discovered while
        running the action here. Otherwise, package dependencies are broken in
        the presence of dynamic actions *)
@@ -2145,13 +2179,16 @@ end = struct
      as its digest. *)
   let build_file_impl path =
     let t = t () in
-    let on_error exn = Dep_path.reraise exn (Path path) in
-    Memo.Build.with_error_handler ~on_error (fun () ->
-        get_rule_or_source t path >>= function
-        | Source digest -> Memo.Build.return digest
-        | Rule (path, rule) ->
-          let+ { deps = _; targets } = execute_rule rule in
-          Path.Build.Map.find_exn targets path)
+    get_rule_or_source t path >>= function
+    | Source digest -> Memo.Build.return digest
+    | Rule (path, rule) ->
+      let+ { deps = _; targets } =
+        Memo.push_stack_frame
+          (fun () -> execute_rule rule)
+          ~human_readable_description:(fun () ->
+            Pp.text (Path.to_string_maybe_quoted (Path.build path)))
+      in
+      Path.Build.Map.find_exn targets path
 
   let build_alias_impl alias =
     let+ l = expand_alias_gen alias ~eval_build_request:exec_build_request in
@@ -2239,23 +2276,15 @@ open Exported
 
 let eval_pred = Pred.eval
 
-let get_human_readable_info stack_frame =
-  match Memo.Stack_frame.as_instance_of ~of_:build_file_memo stack_frame with
-  | Some p -> Some (Pp.verbatim (Path.to_string_maybe_quoted p))
-  | None -> (
-    match Memo.Stack_frame.as_instance_of ~of_:build_alias_memo stack_frame with
-    | Some alias -> Some (Pp.verbatim ("alias " ^ Alias.describe alias))
-    | None -> None)
-
 let process_memcycle (cycle_error : Memo.Cycle_error.t) =
   let cycle =
     Memo.Cycle_error.get cycle_error
-    |> List.filter_map ~f:get_human_readable_info
+    |> List.filter_map ~f:Memo.Stack_frame.human_readable_description
   in
   match List.last cycle with
   | None ->
     let frames = Memo.Cycle_error.get cycle_error in
-    Code_error.raise "dependency cycle that does not involve any files"
+    Code_error.raise "internal dependency cycle"
       [ ("frames", Dyn.Encoder.(list Memo.Stack_frame.to_dyn) frames) ]
   | Some last ->
     let first = List.hd cycle in
@@ -2266,9 +2295,7 @@ let process_memcycle (cycle_error : Memo.Cycle_error.t) =
         last :: cycle
     in
     User_error.raise
-      [ Pp.text "Dependency cycle between the following files:"
-      ; Pp.chain cycle ~f:(fun p -> p)
-      ]
+      [ Pp.text "Dependency cycle between:"; Pp.chain cycle ~f:(fun p -> p) ]
 
 let package_deps ~packages_of (pkg : Package.t) files =
   let rules_seen = ref Rule.Set.empty in
@@ -2313,11 +2340,14 @@ module Alias = Alias0
 let process_exn_and_reraise exn =
   let open Fiber.O in
   let exn =
-    Exn_with_backtrace.map exn
-      ~f:
-        (Dep_path.map ~f:(function
+    Exn_with_backtrace.map exn ~f:(fun exn ->
+        match exn with
+        | Memo.Cycle_error.E cycle_error -> process_memcycle cycle_error
+        | Memo.Error.E e -> (
+          match Memo.Error.get e with
           | Memo.Cycle_error.E cycle_error -> process_memcycle cycle_error
-          | _ as exn -> exn))
+          | _ -> exn)
+        | _ -> exn)
   in
   let t = t () in
   t.errors <- exn :: t.errors;

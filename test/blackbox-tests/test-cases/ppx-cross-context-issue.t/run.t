@@ -6,7 +6,7 @@
                         ^^^^^^
   Error: Library "fooppx" in _build/cross-environment/ppx is hidden
   (unsatisfied 'enabled_if').
-  -> required by lib/lib.pp.ml (context cross-environment)
+  -> required by _build/cross-environment/lib/lib.pp.ml
   -> required by alias lib/all (context cross-environment)
   -> required by alias default (context cross-environment)
   [1]

@@ -53,6 +53,12 @@ module Build0 = struct
 
   let of_reproducible_fiber = Fun.id
 
+  let swallow_errors f =
+    Fiber.map_reduce_errors
+      (module Monoid.Unit)
+      f
+      ~on_error:(fun _ -> Fiber.return ())
+
   module Option = struct
     let iter option ~f =
       match option with
@@ -84,8 +90,6 @@ module Build0 = struct
   let memo_build = Fun.id
 end
 
-let unwrap_exn = ref Fun.id
-
 module Allow_cutoff = struct
   type 'o t =
     | No
@@ -98,17 +102,6 @@ module type Input = sig
   include Table.Key with type t := t
 end
 
-module Exn_comparable = Comparable.Make (struct
-  type t = Exn_with_backtrace.t
-
-  let compare { Exn_with_backtrace.exn; backtrace = _ } (t : t) =
-    Poly.compare (!unwrap_exn exn) (!unwrap_exn t.exn)
-
-  let to_dyn = Exn_with_backtrace.to_dyn
-end)
-
-module Exn_set = Exn_comparable.Set
-
 module Spec = struct
   type ('i, 'o) t =
     { name : string option
@@ -116,9 +109,10 @@ module Spec = struct
     ; allow_cutoff : 'o Allow_cutoff.t
     ; witness : 'i Type_eq.Id.t
     ; f : 'i -> 'o Fiber.t
+    ; human_readable_description : ('i -> User_message.Style.t Pp.t) option
     }
 
-  let create ~name ~input ?cutoff f =
+  let create ~name ~input ~human_readable_description ~cutoff f =
     let name =
       match name with
       | None when !track_locations_of_lazy_values ->
@@ -133,7 +127,13 @@ module Spec = struct
       | None -> Allow_cutoff.No
       | Some equal -> Yes equal
     in
-    { name; input; allow_cutoff; witness = Type_eq.Id.create (); f }
+    { name
+    ; input
+    ; allow_cutoff
+    ; witness = Type_eq.Id.create ()
+    ; f
+    ; human_readable_description
+    }
 end
 
 module Id = Id.Make ()
@@ -181,23 +181,52 @@ module Stack_frame_without_state = struct
       ]
 end
 
-module Cycle_error = struct
+module Error = struct
   type t =
-    { cycle : Stack_frame_without_state.t list
-    ; stack : Stack_frame_without_state.t list
+    { exn : exn
+    ; rev_stack : Stack_frame_without_state.t list
     }
 
   exception E of t
 
-  let get t = t.cycle
+  let get t = t.exn
 
-  let stack t = t.stack
+  let stack t = List.rev t.rev_stack
+
+  let extend_stack exn ~stack_frame =
+    E
+      (match exn with
+      | E t -> { t with rev_stack = stack_frame :: t.rev_stack }
+      | _ -> { exn; rev_stack = [ stack_frame ] })
+end
+
+module Cycle_error = struct
+  type t = Stack_frame_without_state.t list
+
+  exception E of t
+
+  let get t = t
 end
 
 (* The user can wrap exceptions into the [Non_reproducible] constructor to tell
    Memo that they shouldn't be cached. We will catch them, unwrap, and re-raise
    without the wrapper. *)
 exception Non_reproducible of exn
+
+module Exn_comparable = Comparable.Make (struct
+  type t = Exn_with_backtrace.t
+
+  let unwrap = function
+    | Error.E { exn; _ } -> exn
+    | exn -> exn
+
+  let compare { Exn_with_backtrace.exn; backtrace = _ } (t : t) =
+    Poly.compare (unwrap exn) (unwrap t.exn)
+
+  let to_dyn = Exn_with_backtrace.to_dyn
+end)
+
+module Exn_set = Exn_comparable.Set
 
 (* A value calculated during a "sample attempt". A sample attempt can fail for
    two reasons:
@@ -218,10 +247,15 @@ module Value = struct
         }
     | Cancelled of { dependency_cycle : Cycle_error.t }
 
-  let get_exn = function
+  let get_exn t ~stack_frame =
+    match t with
     | Ok a -> Fiber.return a
-    | Error { exns; _ } -> Fiber.reraise_all (Exn_set.to_list exns)
-    | Cancelled { dependency_cycle } -> raise (Cycle_error.E dependency_cycle)
+    | Error { exns; _ } ->
+      Fiber.reraise_all
+        (Exn_set.to_list_map exns ~f:(fun exn ->
+             { exn with exn = Error.extend_stack exn.exn ~stack_frame }))
+    | Cancelled { dependency_cycle } ->
+      raise (Error.extend_stack (Cycle_error.E dependency_cycle) ~stack_frame)
 end
 
 module Dag : Dag.S with type value := Dep_node_without_state.packed =
@@ -592,8 +626,8 @@ module Call_stack = struct
 
   let push_frame (frame : Stack_frame_with_state.t) f =
     let* stack = get_call_stack () in
-    Fiber.Var.set call_stack_var (frame :: stack) (fun () ->
-        Implicit_output.forbid f)
+    let stack = frame :: stack in
+    Fiber.Var.set call_stack_var stack (fun () -> Implicit_output.forbid f)
 end
 
 let pp_stack () =
@@ -707,9 +741,7 @@ let add_dep_from_caller (type i o) (dep_node : (i, o) Dep_node.t)
         Deps_so_far.add_dep deps_so_far_of_caller dep_node.without_state.id
           (Dep_node.T dep_node);
         Fiber.return (Ok ())
-      | Some cycle ->
-        let+ stack = Call_stack.get_call_stack_without_state () in
-        Error { Cycle_error.stack; cycle }))
+      | Some cycle -> Fiber.return (Error cycle)))
 
 type ('input, 'output) t =
   { spec : ('input, 'output) Spec.t
@@ -726,25 +758,31 @@ module Stack_frame = struct
     match Type_eq.Id.same memo.spec.witness t.spec.witness with
     | Some Type_eq.T -> Some t.input
     | None -> None
+
+  let human_readable_description (Dep_node_without_state.T t) =
+    Option.map t.spec.human_readable_description ~f:(fun f -> f t.input)
 end
 
-let create_with_cache (type i o) name ~cache ~input ?cutoff (f : i -> o Fiber.t)
-    =
-  let spec = Spec.create ~name:(Some name) ~input ?cutoff f in
+let create_with_cache (type i o) name ~cache ~input ~cutoff
+    ~human_readable_description (f : i -> o Fiber.t) =
+  let spec =
+    Spec.create ~name:(Some name) ~input ~cutoff ~human_readable_description f
+  in
   Caches.register ~clear:(fun () -> Store.clear cache);
   { cache; spec }
 
 let create_with_store (type i) name
-    ~store:(module S : Store_intf.S with type key = i) ~input ?cutoff f =
+    ~store:(module S : Store_intf.S with type key = i) ~input ?cutoff
+    ?human_readable_description f =
   let cache = Store.make (module S) in
-  create_with_cache name ~cache ~input ?cutoff f
+  create_with_cache name ~cache ~input ~cutoff ~human_readable_description f
 
-let create (type i) name ~input:(module Input : Input with type t = i) ?cutoff f
-    =
+let create (type i) name ~input:(module Input : Input with type t = i) ?cutoff
+    ?human_readable_description f =
   (* This mutable table is safe: the implementation tracks all dependencies. *)
   let cache = Store.of_table (Table.create (module Input) 16) in
   let input = (module Input : Store_intf.Input with type t = i) in
-  create_with_cache name ~cache ~input ?cutoff f
+  create_with_cache name ~cache ~input ~cutoff ~human_readable_description f
 
 let make_dep_node ~spec ~input : _ Dep_node.t =
   let dep_node_without_state : _ Dep_node_without_state.t =
@@ -1026,13 +1064,15 @@ end = struct
       Fiber.return
         (Cache_lookup.Result.Failure (Cancelled { dependency_cycle }))
 
-  let exec_dep_node dep_node =
+  let exec_dep_node (dep_node : _ Dep_node.t) =
     Fiber.of_thunk (fun () ->
+        let stack_frame = Dep_node_without_state.T dep_node.without_state in
         consider_and_compute dep_node >>= function
         | Ok res ->
           let* res = res in
-          Value.get_exn res.value
-        | Error cycle_error -> raise (Cycle_error.E cycle_error))
+          Value.get_exn res.value ~stack_frame
+        | Error cycle_error ->
+          raise (Error.extend_stack (Cycle_error.E cycle_error) ~stack_frame))
 end
 
 let exec (type i o) (t : (i, o) t) i = Exec.exec_dep_node (dep_node t i)
@@ -1129,13 +1169,20 @@ end
 module Implicit_output = Implicit_output
 module Store = Store_intf
 
-let lazy_cell ?cutoff f =
-  let spec = Spec.create ~name:None ~input:(module Unit) ?cutoff f in
+let lazy_cell ?cutoff ?human_readable_description f =
+  let spec =
+    Spec.create ~name:None
+      ~input:(module Unit)
+      ~cutoff ~human_readable_description f
+  in
   make_dep_node ~spec ~input:()
 
-let lazy_ ?cutoff f =
-  let cell = lazy_cell ?cutoff f in
+let lazy_ ?cutoff ?human_readable_description f =
+  let cell = lazy_cell ?cutoff ?human_readable_description f in
   fun () -> Cell.read cell
+
+let push_stack_frame ~human_readable_description f =
+  Cell.read (lazy_cell ~human_readable_description f)
 
 module Lazy = struct
   type 'a t = unit -> 'a Fiber.t

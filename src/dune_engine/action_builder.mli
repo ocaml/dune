@@ -154,10 +154,6 @@ val dyn_path_set : ('a * Path.Set.t) t -> 'a t
 
 val dyn_path_set_reuse : Path.Set.t t -> Path.Set.t t
 
-(** [catch t ~on_error] evaluates to [on_error] if an exception is raised during
-    the evaluation of [t]. *)
-val catch : 'a t -> on_error:'a -> 'a t
-
 (** [contents path] returns a description that when run will return the contents
     of the file at [path]. *)
 val contents : Path.t -> string t

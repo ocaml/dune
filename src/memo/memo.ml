@@ -53,12 +53,6 @@ module Build0 = struct
 
   let of_reproducible_fiber = Fun.id
 
-  let swallow_errors f =
-    Fiber.map_reduce_errors
-      (module Monoid.Unit)
-      f
-      ~on_error:(fun _ -> Fiber.return ())
-
   module Option = struct
     let iter option ~f =
       match option with

@@ -735,7 +735,7 @@ module Worker = struct
   let task (t : t) ~f =
     let ivar = Fiber.Ivar.create () in
     let f () =
-      let res = Result.try_with f in
+      let res = Exn_with_backtrace.try_with f in
       Event.Queue.send_worker_task_completed t.events (Fiber.Fill (ivar, res))
     in
     match Thread_worker.add_work t.worker ~f with

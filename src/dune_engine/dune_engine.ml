@@ -58,3 +58,4 @@ module Mode = Mode
 module Fs_memo = Fs_memo
 module Execution_parameters = Execution_parameters
 module Cache_debug_flags = Cache_debug_flags
+module Reversible_digest = Reversible_digest

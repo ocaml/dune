@@ -75,10 +75,11 @@ let pp_flags t =
   match t.preprocess with
   | Pps { loc; pps; flags; staged = _ } -> (
     match
-      Preprocessing.get_ppx_driver sctx ~loc ~expander ~lib_name:None ~flags
-        ~scope pps
+      Resolve.peek
+        (Preprocessing.get_ppx_driver sctx ~loc ~expander ~lib_name:None ~flags
+           ~scope pps)
     with
-    | Error _exn -> Pp.nop
+    | Error () -> Pp.nop
     | Ok (exe, flags) ->
       let ppx =
         Dyn.Encoder.list Dyn.Encoder.string
@@ -104,16 +105,17 @@ let setup_module_rules t =
   let path = Source.source_path t.source in
   let requires_compile = Compilation_context.requires_compile t.cctx in
   let main_ml =
-    Action_builder.of_result_map requires_compile ~f:(fun libs ->
-        Action_builder.return
-          (let include_dirs =
-             Path.Set.to_list (Lib.L.include_paths libs Mode.Byte)
-           in
-           let pp_ppx = pp_flags t in
-           let pp_dirs = Source.pp_ml t.source ~include_dirs in
-           let pp = Pp.seq pp_ppx pp_dirs in
-           Format.asprintf "%a@." Pp.to_fmt pp))
-    |> Action_builder.write_file_dyn path
+    Action_builder.write_file_dyn path
+      (Resolve.read
+         (let open Resolve.O in
+         let* libs = requires_compile in
+         let include_dirs =
+           Path.Set.to_list (Lib.L.include_paths libs Mode.Byte)
+         in
+         let pp_ppx = pp_flags t in
+         let pp_dirs = Source.pp_ml t.source ~include_dirs in
+         let pp = Pp.seq pp_ppx pp_dirs in
+         Resolve.return (Format.asprintf "%a@." Pp.to_fmt pp)))
   in
   Super_context.add_rule sctx ~dir main_ml
 

@@ -344,23 +344,23 @@ let root_source entries =
         (Module_name.to_string name));
   Buffer.contents b
 
-let build_root_module root_module ~entries ~cctx =
+let build_root_module root_module ~get_entries ~cctx =
   let sctx = Compilation_context.super_context cctx in
   let file = Option.value_exn (Module.file root_module ~ml_kind:Impl) in
   let dir = Compilation_context.dir cctx in
-  let root_file = Result.map entries ~f:root_source in
   let open Memo.Build.O in
   let* () =
     Super_context.add_rule ~loc:Loc.none sctx ~dir
       (let target = Path.as_in_build_dir_exn file in
-       Action_builder.With_targets.of_result_map root_file ~targets:[ target ]
-         ~f:(Action_builder.write_file target))
+       Action_builder.write_file_dyn target
+         (let open Action_builder.O in
+         let+ entries = get_entries () in
+         root_source entries))
   in
   build_module cctx root_module
     ~dep_graphs:(Dep_graph.Ml_kind.dummy root_module)
 
 let build_all cctx ~dep_graphs =
-  let open Memo.Build.O in
   let for_wrapped_compat = lazy (Compilation_context.for_wrapped_compat cctx) in
   let modules = Compilation_context.modules cctx in
   Memo.Build.parallel_iter
@@ -369,8 +369,8 @@ let build_all cctx ~dep_graphs =
       match Module.kind m with
       | Root ->
         let cctx = Compilation_context.for_root_module cctx in
-        let* entries = Compilation_context.root_module_entries cctx in
-        build_root_module m ~entries ~cctx
+        let get_entries () = Compilation_context.root_module_entries cctx in
+        build_root_module m ~get_entries ~cctx
       | Alias ->
         let cctx = Compilation_context.for_alias_module cctx in
         build_alias_module ~alias_module:m ~cctx

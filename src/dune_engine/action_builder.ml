@@ -28,7 +28,6 @@ module T = struct
     | Lines_of : Path.t -> string list t
     | Dyn_paths : ('a * Path.Set.t) t -> 'a t
     | Dyn_deps : ('a * Dep.Set.t) t -> 'a t
-    | Or_exn : 'a Or_exn.t t -> 'a t
     | Fail : fail -> _ t
     | Memo : 'a memo -> 'a t
     | Catch : 'a t * 'a -> 'a t
@@ -81,8 +80,6 @@ let ignore x = Map (Fun.const (), x)
 let map2 x y ~f = Map2 (f, x, y)
 
 let delayed f = Map (f, Pure ())
-
-let or_exn s = Or_exn s
 
 let all_unit xs =
   let+ (_ : unit list) = all xs in
@@ -160,15 +157,6 @@ let paths_existing paths =
 
 let fail x = Fail x
 
-let of_result = function
-  | Ok x -> x
-  | Error e -> fail { fail = (fun () -> raise e) }
-
-let of_result_map res ~f =
-  match res with
-  | Ok x -> f x
-  | Error e -> fail { fail = (fun () -> raise e) }
-
 let memoize name t = Memo { name; id = Type_eq.Id.create (); t }
 
 let source_tree ~dir = Source_tree dir
@@ -243,15 +231,6 @@ module With_targets = struct
     add ~targets:[ fn ]
       (let+ s = s in
        Action.Write_file (fn, perm, s))
-
-  let of_result_map res ~f ~targets =
-    add ~targets
-      (match res with
-      | Ok x -> f x
-      | Error e ->
-        { build = Fail { fail = (fun () -> raise e) }
-        ; targets = Path.Build.Set.empty
-        })
 
   let memoize name t = { build = memoize name t.build; targets = t.targets }
 end
@@ -396,9 +375,6 @@ struct
         let* (x, deps), deps_x = exec t in
         let+ deps = Build_deps.register_action_deps deps in
         (x, merge_facts deps deps_x)
-      | Or_exn e ->
-        let+ a, deps = exec e in
-        (Result.ok_exn a, deps)
       | Fail { fail } -> fail ()
       | If_file_exists (p, then_, else_) -> (
         Build_deps.file_exists p >>= function
@@ -477,7 +453,6 @@ let rec can_eval_statically : type a. a t -> bool = function
   | Source_tree _ -> false
   | Contents _ -> false
   | Lines_of _ -> false
-  | Or_exn b -> can_eval_statically b
   | Fail _ -> true
   | If_file_exists (_, _, _) -> false
   | Memo _ -> false
@@ -546,9 +521,6 @@ let static_eval =
     | Source_tree _ -> assert false
     | Contents _ -> assert false
     | Lines_of _ -> assert false
-    | Or_exn b ->
-      let res, acc = loop b acc in
-      (Result.ok_exn res, acc)
     | Fail { fail } -> fail ()
     | If_file_exists (_, _, _) -> assert false
     | Memo _ -> assert false

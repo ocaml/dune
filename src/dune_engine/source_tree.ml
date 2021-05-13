@@ -140,6 +140,15 @@ end = struct
     ; dirs : (string * Path.Source.t * File.t) list
     }
 
+  let equal =
+    let dirs_equal (s1, p1, f1) (s2, p2, f2) =
+      String.equal s1 s2 && Path.Source.equal p1 p2 && File.compare f1 f2 = Eq
+    in
+    fun x y ->
+      Path.Source.equal x.path y.path
+      && String.Set.equal x.files y.files
+      && List.equal dirs_equal x.dirs y.dirs
+
   let empty path = { path; files = String.Set.empty; dirs = [] }
 
   let _to_dyn { path; files; dirs } =
@@ -165,7 +174,7 @@ end = struct
     let+ f = !filter_source_files project in
     { t with files = String.Set.filter t.files ~f:(fun fn -> f t.path fn) }
 
-  let of_source_path path =
+  let of_source_path_impl path =
     Fs_memo.dir_contents_unsorted (Path.source path) >>= function
     | Error unix_error ->
       User_warning.emit
@@ -217,6 +226,16 @@ end = struct
               String.compare a b)
       }
       |> Result.ok
+
+  (* Having a cutoff here speeds up incremental rebuilds quite a bit when a
+     directory contents is invalidated but the result stays the same. *)
+  let of_source_path_memo =
+    Memo.create "readdir-of-source-path"
+      ~input:(module Path.Source)
+      ~cutoff:(Result.equal equal Unix_error.equal)
+      of_source_path_impl
+
+  let of_source_path = Memo.exec of_source_path_memo
 end
 
 module Dirs_visited : sig

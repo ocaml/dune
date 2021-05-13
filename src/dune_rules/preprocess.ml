@@ -79,13 +79,24 @@ let filter_map t ~f =
       Pps { t with pps }
   | (No_preprocessing | Action _ | Future_syntax _) as t -> t
 
-let fold t ~init ~f =
+let filter_map_resolve t ~f =
+  let open Resolve.O in
   match t with
-  | Pps t -> List.fold_left t.pps ~init ~f
+  | Pps t ->
+    let+ pps = Resolve.List.filter_map t.pps ~f in
+    if pps = [] then
+      No_preprocessing
+    else
+      Pps { t with pps }
+  | (No_preprocessing | Action _ | Future_syntax _) as t -> Resolve.return t
+
+let fold_resolve t ~init ~f =
+  match t with
+  | Pps t -> Resolve.List.fold_left t.pps ~init ~f
   | No_preprocessing
   | Action _
   | Future_syntax _ ->
-    init
+    Resolve.return init
 
 module Without_instrumentation = struct
   type t = Loc.t * Lib_name.t
@@ -244,22 +255,26 @@ module Per_module = struct
 
   let with_instrumentation t ~instrumentation_backend =
     let f = function
-      | With_instrumentation.Ordinary libname -> Some libname
+      | With_instrumentation.Ordinary libname -> Resolve.return (Some libname)
       | With_instrumentation.Instrumentation_backend (libname, _deps) ->
         instrumentation_backend libname
     in
-    Per_module.map t ~f:(filter_map ~f)
+    Per_module.map_resolve t ~f:(filter_map_resolve ~f)
 
   let instrumentation_deps t ~instrumentation_backend =
+    let open Resolve.O in
     let f = function
-      | With_instrumentation.Ordinary _ -> []
+      | With_instrumentation.Ordinary _ -> Resolve.return []
       | With_instrumentation.Instrumentation_backend (libname, deps) -> (
-        match instrumentation_backend libname with
+        instrumentation_backend libname >>| function
         | Some _ -> deps
         | None -> [])
     in
-    Per_module.fold t ~init:[] ~f:(fun t init ->
-        let f acc t = f t :: acc in
-        fold t ~init ~f)
-    |> List.rev |> List.flatten
+    Per_module.fold_resolve t ~init:[] ~f:(fun t init ->
+        let f acc t =
+          let+ x = f t in
+          x :: acc
+        in
+        fold_resolve t ~init ~f)
+    >>| List.rev >>| List.flatten
 end

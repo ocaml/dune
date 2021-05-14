@@ -74,7 +74,7 @@ let%expect_test "csexp server life cycle" =
   in
   let config =
     { Scheduler.Config.concurrency = 1
-    ; display = Quiet
+    ; display = { verbosity = Quiet; status_line = false }
     ; rpc = None
     ; stats = None
     }

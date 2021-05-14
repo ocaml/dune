@@ -27,8 +27,8 @@ module Session = struct
     { out_channel : out_channel
     ; in_channel : in_channel
     ; id : Id.t
-    ; writer : Worker.t
-    ; reader : Worker.t
+    ; mutable writer : Worker.t option
+    ; mutable reader : Worker.t option
     ; kind : kind
     }
 
@@ -39,7 +39,13 @@ module Session = struct
       let* reader = Worker.create () in
       let+ writer = Worker.create () in
       let id = Id.gen () in
-      { in_channel; out_channel; id; reader; writer; kind }
+      { in_channel
+      ; out_channel
+      ; id
+      ; reader = Some reader
+      ; writer = Some writer
+      ; kind
+      }
     in
     reader_ref := Some t.reader;
     t
@@ -51,48 +57,72 @@ module Session = struct
     | Some csexp -> Csexp.to_string csexp
 
   let read t =
-    let rec read () =
-      try Csexp.input_opt t.in_channel with
-      | Unix.Unix_error (_ , _, _) -> Ok None
-      | Sys_error _ -> Ok None
-      | Sys_blocked_io -> read ()
-      | e -> reraise e
+    let debug res =
+      if debug then Format.eprintf "<< %s@." (string_of_packet res)
     in
-    let+ res = Worker.task t.reader ~f:read in
-    let res =
-      match res with
-      | Error (`Exn _)
-      | Error `Stopped ->
-        Worker.stop t.reader;
-        None
-      | Ok res -> (
+    match t.reader with
+    | None ->
+      debug None;
+      Fiber.return None
+    | Some reader ->
+      let rec read () =
+        try Csexp.input_opt t.in_channel with
+        | Unix.Unix_error (_, _, _) -> Ok None
+        | Sys_error _ -> Ok None
+        | Sys_blocked_io -> read ()
+        | e -> reraise e
+      in
+      let+ res = Worker.task reader ~f:read in
+      let res =
         match res with
-        | Ok (Some _ as s) -> s
-        | Error _
-        | Ok None ->
-          Worker.stop t.reader;
-          None)
-    in
-    if debug then Format.eprintf "<< %s@." (string_of_packet res);
-    res
+        | Error (`Exn _)
+        | Error `Stopped ->
+          Worker.stop reader;
+          t.reader <- None;
+          None
+        | Ok res -> (
+          match res with
+          | Ok (Some _ as s) -> s
+          | Error _
+          | Ok None ->
+            Worker.stop reader;
+            t.reader <- None;
+            None)
+      in
+      debug res;
+      res
 
   let write t sexp =
     if debug then Format.eprintf ">> %s@." (string_of_packet sexp);
-    Worker.task_exn t.writer
-      ~f:
-        (match sexp with
-        | Some sexp ->
-          fun () ->
-            Csexp.to_channel t.out_channel sexp;
-            flush t.out_channel
-        | None -> (
-          match t.kind with
-          | Channel -> fun () -> close_out_noerr t.out_channel
-          | Socket -> (
-            fun () ->
-              let fd = Unix.descr_of_out_channel t.out_channel in
-              try Unix.shutdown fd Unix.SHUTDOWN_SEND with
-              | Unix.Unix_error _ -> ())))
+    match t.writer with
+    | None ->
+      Code_error.raise "attempting to write to a closed channel"
+        [ ("sexp", (Dyn.Encoder.option Sexp.to_dyn) sexp) ]
+    | Some writer -> (
+      let+ res =
+        Worker.task writer
+          ~f:
+            (match sexp with
+            | Some sexp ->
+              fun () ->
+                Csexp.to_channel t.out_channel sexp;
+                flush t.out_channel
+            | None -> (
+              match t.kind with
+              | Channel -> fun () -> close_out_noerr t.out_channel
+              | Socket -> (
+                fun () ->
+                  let fd = Unix.descr_of_out_channel t.out_channel in
+                  try Unix.shutdown fd Unix.SHUTDOWN_SEND with
+                  | Unix.Unix_error _ -> ())))
+      in
+      match res with
+      | Ok () -> ()
+      | Error `Stopped -> assert false
+      | Error (`Exn e) ->
+        t.writer <- None;
+        Worker.stop writer;
+        reraise e)
 end
 
 let close_fd_no_error fd =

@@ -67,7 +67,12 @@ module Init = struct
         in
         Fiber.finalize
           (fun () ->
-            Fiber.fork_and_join_unit forward_to_stdout forward_from_stdin)
+            Fiber.with_error_handler
+              (fun () ->
+                Fiber.fork_and_join_unit forward_to_stdout forward_from_stdin)
+              ~on_error:(fun exn ->
+                Dune_util.Report_error.report exn;
+                Exn_with_backtrace.reraise exn))
           ~finally:(fun () ->
             Option.iter client ~f:Csexp_rpc.Client.stop;
             Fiber.return ()))

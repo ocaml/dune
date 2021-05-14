@@ -556,7 +556,7 @@ let run_internal ?dir ?(stdout_to = Io.stdout) ?(stderr_to = Io.stderr)
           match Response_file.get ~prog with
           | Not_supported -> (args, None)
           | Zero_terminated_strings arg ->
-            let fn = Temp.create File ~prefix:"responsefile" ~suffix:".data" in
+            let fn = Temp.create File ~prefix:"responsefile" ~suffix:"data" in
             Stdune.Io.with_file_out fn ~f:(fun oc ->
                 List.iter args ~f:(fun arg ->
                     output_string oc arg;
@@ -579,7 +579,7 @@ let run_internal ?dir ?(stdout_to = Io.stdout) ?(stderr_to = Io.stderr)
         | _, Terminal _
           when !Clflags.capture_outputs ->
           let capture () =
-            let fn = Temp.create File ~prefix:"dune." ~suffix:".output" in
+            let fn = Temp.create File ~prefix:"dune" ~suffix:"output" in
             (`Capture fn, Io.file fn Io.Out)
           in
           let stdout =
@@ -743,7 +743,7 @@ let run_with_times ?dir ?stdout_to ?stderr_to ?stdin_from ?env
 
 let run_capture_gen ?dir ?stderr_to ?stdin_from ?env ?(purpose = Internal_job)
     fail_mode prog args ~f =
-  let fn = Temp.create File ~prefix:"dune." ~suffix:".output" in
+  let fn = Temp.create File ~prefix:"dune" ~suffix:"output" in
   let+ run =
     run_internal ?dir ~stdout_to:(Io.file fn Io.Out) ?stderr_to ?stdin_from ?env
       ~purpose fail_mode prog args

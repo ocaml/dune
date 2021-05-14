@@ -30,7 +30,7 @@ module Logger = struct
 end
 
 let%expect_test "csexp server life cycle" =
-  let tmp_dir = Temp.create Dir ~prefix:"test." ~suffix:".dune.rpc" in
+  let tmp_dir = Temp.create Dir ~prefix:"test" ~suffix:"dune_rpc" in
   let addr : Unix.sockaddr =
     if Sys.win32 then
       ADDR_INET (Unix.inet_addr_loopback, 0)

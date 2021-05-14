@@ -5,7 +5,7 @@ open Dune_engine
 
 let config =
   { Scheduler.Config.concurrency = 1
-  ; display = Short
+  ; display = { verbosity = Short; status_line = false }
   ; rpc = None
   ; stats = None
   }

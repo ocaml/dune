@@ -122,7 +122,7 @@ module Session = struct
       | Error (`Exn e) ->
         t.writer <- None;
         Worker.stop writer;
-        reraise e)
+        Exn_with_backtrace.reraise e)
 end
 
 let close_fd_no_error fd =

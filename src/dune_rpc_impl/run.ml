@@ -51,7 +51,7 @@ end = struct
             | Some p -> p
             | None -> Filename.get_temp_dir_name ())
         in
-        Temp.temp_file ~dir ~prefix:"" ~suffix:".dune"
+        Temp.temp_file ~dir ~prefix:"" ~suffix:"dune"
       in
       let () =
         let dest =

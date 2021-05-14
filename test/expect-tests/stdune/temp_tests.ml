@@ -5,7 +5,7 @@ open Dyn.Encoder
 let () = init ()
 
 let%expect_test "Temp.clear_dir works" =
-  let path = Temp.create Dir ~prefix:"dune." ~suffix:".unit_test" in
+  let path = Temp.create Dir ~prefix:"dune" ~suffix:"unit_test" in
   Path.touch (Path.relative path "foo");
   let print () =
     Path.readdir_unsorted path
@@ -17,4 +17,5 @@ let%expect_test "Temp.clear_dir works" =
   print ();
   [%expect {|
     Ok [ "foo" ]
-    Ok [] |}]
+    Ok []
+  |}]

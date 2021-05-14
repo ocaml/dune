@@ -112,7 +112,7 @@ let run_bench () =
 
 let () =
   Dune_util.Log.init ~file:No_log_file ();
-  let dir = Temp.create Dir ~prefix:"dune." ~suffix:".bench" in
+  let dir = Temp.create Dir ~prefix:"dune" ~suffix:"bench" in
   Sys.chdir (Path.to_string dir);
   let module Scheduler = Dune_engine.Scheduler in
   let config =

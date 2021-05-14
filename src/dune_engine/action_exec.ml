@@ -120,8 +120,8 @@ let exec_run ~ectx ~eenv prog args =
 
 let exec_run_dynamic_client ~ectx ~eenv prog args =
   validate_context_and_prog ectx.context prog;
-  let run_arguments_fn = Temp.create File ~prefix:"dune." ~suffix:".run" in
-  let response_fn = Temp.create File ~prefix:"dune." ~suffix:".response" in
+  let run_arguments_fn = Temp.create File ~prefix:"dune" ~suffix:"run" in
+  let response_fn = Temp.create File ~prefix:"dune" ~suffix:"response" in
   let run_arguments =
     let targets =
       let to_relative path =

@@ -21,11 +21,11 @@ val destroy : what -> Path.t -> unit
 val clear_dir : Path.t -> unit
 
 (** [temp_file ~dir ~prefix ~suffix] creates a temporary file in [dir]. The base
-    name of the file is formed by concatenating [prefix], then a suitably chosen
-    integer number, then [suffix]. Note that the file must be created to reserve
-    the name in [dir] and prevent other processes from taking it concurrently.
-    If you need a temporary file that does not exist on disk, you can create a
-    temporary directory and safely use any file name there. *)
+    name of the file is [prefix_num_suffix], where [num] is a random integer
+    number. Note that the file must be created to reserve the name in [dir] and
+    prevent other processes from taking it concurrently. If you need a temporary
+    file that does not exist on disk, you can create a temporary directory and
+    safely use any file name there. *)
 val temp_file : dir:Path.t -> prefix:string -> suffix:string -> Path.t
 
 (** Like [temp_file], but passes the temporary file to the callback [f], and

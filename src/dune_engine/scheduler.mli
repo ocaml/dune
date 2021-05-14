@@ -77,7 +77,9 @@ module Worker : sig
   val create : unit -> t Fiber.t
 
   val task :
-    t -> f:(unit -> 'a) -> ('a, [ `Exn of Exn_with_backtrace.t | `Stopped ]) result Fiber.t
+       t
+    -> f:(unit -> 'a)
+    -> ('a, [ `Exn of Exn_with_backtrace.t | `Stopped ]) result Fiber.t
 
   val stop : t -> unit
 end

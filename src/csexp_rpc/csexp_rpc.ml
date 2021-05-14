@@ -8,7 +8,7 @@ module Worker = struct
     let+ res = task t ~f in
     match res with
     | Error `Stopped -> assert false
-    | Error (`Exn e) -> reraise e
+    | Error (`Exn e) -> Exn_with_backtrace.reraise e
     | Ok s -> s
 end
 
@@ -63,7 +63,7 @@ module Session = struct
       match res with
       | Error (`Exn exn) ->
         Worker.stop t.reader;
-        raise exn
+        Exn_with_backtrace.reraise exn
       | Error `Stopped -> None
       | Ok res -> (
         match res with

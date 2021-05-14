@@ -277,7 +277,6 @@ end = struct
   let needs_dumping = ref false
 
   let t =
-    (* This [lazy] is safe: it does not call any memoized functions. *)
     lazy
       (match P.load file with
       | Some t -> t

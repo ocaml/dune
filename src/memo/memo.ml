@@ -226,7 +226,9 @@ module Exn_set = Exn_comparable.Set
    two reasons:
 
    - [Error]: the user-supplied function that was called to compute the value
-   raised one or more exceptions, recorded in the [Exn_set.t].
+   raised one or more exceptions recorded in the [Exn_set.t]. If any of those
+   exceptions was marked as [Non_reproducible], the [reproducible] field will be
+   set to [false].
 
    - [Cancelled]: the attempt was cancelled due to a dependency cycle.
 
@@ -359,7 +361,7 @@ module Cache_lookup = struct
      of date because one of its dependencies changed; we return the old value so
      that it can be compared with a new one to support the early cutoff.
 
-     - [Cancelled _]: the cache lookup has been cancelled because of a
+     - [Cancelled _]: the cache lookup attempt has been cancelled because of a
      dependency cycle. This outcome indicates that a dependency cycle has been
      introduced in the current run. If a cycle existed in a previous run, the
      outcome would have been [Not_found] instead. *)
@@ -485,7 +487,7 @@ module M = struct
            wasted since [f 0] does depend on it.
 
            aalekseyev: now we have a more stringent requirement: [deps] must be
-           a linearization of dependency causality order, otherwise the
+           a linearisation of dependency causality order, otherwise the
            validation algorithm may create spurious dependency cycles. *)
         mutable deps : Last_dep.t list
       }
@@ -845,11 +847,11 @@ end = struct
         Fiber.return (Cache_lookup.Result.Failure Not_found)
       | Ok _
       | Error { reproducible = true; _ } -> (
-        (* We cache errors just like normal values. We assume that all [Memo]
-           computations are deterministic, which means if we rerun a computation
-           that previously led to raising a set of errors on the same inputs, we
-           expect to get the same set of errors back and we might as well skip
-           the unnecessary work. The downside is that if a computation is
+        (* We cache reproducible errors just like normal values. We assume that
+           all [Memo] computations are deterministic, which means if we rerun a
+           computation that previously raised a set of errors on the same inputs
+           then we expect to get the same set of errors back and might as well
+           skip the unnecessary work. The downside is that if a computation is
            non-deterministic, there is no way to force rerunning it, apart from
            changing some of its dependencies. *)
         let+ deps_changed =
@@ -917,11 +919,10 @@ end = struct
    fun dep_node cache_lookup_failure deps_so_far ->
     Deps_so_far.start_compute deps_so_far;
     let compute_value_and_deps_rev () =
-      (* A consequence of using [Fiber.collect_errors] is that memoized
-         functions don't report errors promptly - errors are reported once all
-         child fibers terminate. To fix this, we should use
-         [Fiber.with_error_handler], but we don't have access to dune's error
-         reporting mechanism in memo *)
+      (* One consequence of using [Fiber.collect_errors] is that memoized
+         functions don't report errors promptly; instead, errors are reported
+         only once all child fibers terminate. To solve this, one might hope to
+         use [Fiber.with_error_handler] but the details are unclear. *)
       let+ res =
         Fiber.collect_errors (fun () ->
             dep_node.without_state.spec.f dep_node.without_state.input)
@@ -1071,17 +1072,6 @@ end
 
 let exec (type i o) (t : (i, o) t) i = Exec.exec_dep_node (dep_node t i)
 
-let get_deps (type i o) (t : (i, o) t) inp =
-  match Store.find t.cache inp with
-  | None -> None
-  | Some dep_node -> (
-    match get_cached_value_in_current_cycle dep_node with
-    | None -> None
-    | Some cv ->
-      Some
-        (List.map cv.deps ~f:(fun (Last_dep.T (dep, _value)) ->
-             (dep.without_state.spec.name, ser_input dep.without_state))))
-
 let get_call_stack = Call_stack.get_call_stack_without_state
 
 (* There are two approaches to invalidating memoization nodes. Currently, when a
@@ -1161,7 +1151,6 @@ module Expert = struct
 end
 
 module Implicit_output = Implicit_output
-module Store = Store_intf
 
 let lazy_cell ?cutoff ?human_readable_description f =
   let spec =
@@ -1261,8 +1250,6 @@ let reset () =
   restart_current_run ();
   if not incremental_mode_enabled then Caches.clear ()
 
-let clear_memoization_caches () = Caches.clear ()
-
 module Perf_counters = struct
   let enable () = Counters.enabled := true
 
@@ -1288,3 +1275,20 @@ module Perf_counters = struct
 
   let reset () = Counters.reset ()
 end
+
+module For_tests = struct
+  let get_deps (type i o) (t : (i, o) t) inp =
+    match Store.find t.cache inp with
+    | None -> None
+    | Some dep_node -> (
+      match get_cached_value_in_current_cycle dep_node with
+      | None -> None
+      | Some cv ->
+        Some
+          (List.map cv.deps ~f:(fun (Last_dep.T (dep, _value)) ->
+               (dep.without_state.spec.name, ser_input dep.without_state))))
+
+  let clear_memoization_caches () = Caches.clear ()
+end
+
+module Store = Store_intf

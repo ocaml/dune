@@ -79,7 +79,7 @@ let%expect_test _ =
 
 let%expect_test _ =
   let open Dyn.Encoder in
-  Memo.get_deps mcomp "a"
+  Memo.For_tests.get_deps mcomp "a"
   |> option (list (pair (option string) (fun x -> x)))
   |> print_dyn;
   [%expect {|
@@ -253,7 +253,8 @@ struct
   let deps () =
     let open Dyn.Encoder in
     let conv = option (list (pair (option string) (fun x -> x))) in
-    pair conv conv (get_deps f1_def "foo", get_deps f2_def "foo")
+    pair conv conv
+      (For_tests.get_deps f1_def "foo", For_tests.get_deps f2_def "foo")
 end
 
 module Builtin_lazy = Test_lazy (struct
@@ -471,7 +472,7 @@ let%expect_test "previously_evaluated_cell" =
     previously_evaluated_cell x = [x]
     previously_evaluated_cell y = [y]
   |}];
-  Memo.clear_memoization_caches ();
+  Memo.For_tests.clear_memoization_caches ();
   Memo.restart_current_run ();
   (* Both switch back to unevaluated after clearing all memoization caches. *)
   print_previously_evaluated_cell "x";

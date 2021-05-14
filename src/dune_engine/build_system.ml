@@ -289,7 +289,9 @@ end = struct
   let dump () =
     if !needs_dumping && Path.build_dir_exists () then (
       needs_dumping := false;
-      P.dump file (Lazy.force t)
+      Console.Status_line.set_live_temporarily
+        (fun () -> Some (Pp.hbox (Pp.text "Saving build trace db...")))
+        (fun () -> P.dump file (Lazy.force t))
     )
 
   let () = Hooks.End_of_build.always dump

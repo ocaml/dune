@@ -53,7 +53,7 @@ module Session = struct
   let read t =
     let rec read () =
       try Csexp.input_opt t.in_channel with
-      | Unix.Unix_error (EBADF, _, _) -> Ok None
+      | Unix.Unix_error (_ , _, _) -> Ok None
       | Sys_error _ -> Ok None
       | Sys_blocked_io -> read ()
       | e -> reraise e

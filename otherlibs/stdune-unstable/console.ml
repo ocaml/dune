@@ -154,6 +154,11 @@ module Status_line = struct
     | None -> ()
     | Some msg -> print_if_no_status_line msg);
     refresh ()
+
+  let set_live_temporarily x f =
+    let old = !status_line in
+    set_live x;
+    Exn.protect ~finally:(fun () -> set_live old) ~f
 end
 
 let () = User_warning.set_reporter print_user_message

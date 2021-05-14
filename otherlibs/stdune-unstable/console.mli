@@ -62,5 +62,9 @@ module Status_line : sig
       printed even if a dumb console backend is in use. *)
   val set_constant : t -> unit
 
+  (** [set_live_temporarily status f] sets the status line to a given live value
+      for the duration of [f] and then reverts to the old value. *)
+  val set_live_temporarily : (unit -> t) -> (unit -> 'a) -> 'a
+
   val refresh : unit -> unit
 end

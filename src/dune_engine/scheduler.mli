@@ -5,11 +5,15 @@ open Stdune
 
 module Config : sig
   module Display : sig
-    type t =
-      | Progress  (** Single interactive status line *)
+    type verbosity =
+      | Quiet  (** Only display errors *)
       | Short  (** One line per command *)
       | Verbose  (** Display all commands fully *)
-      | Quiet  (** Only display errors *)
+
+    type t =
+      { status_line : bool
+      ; verbosity : verbosity
+      }
 
     val all : (string * t) list
 

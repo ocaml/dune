@@ -155,7 +155,7 @@ let resolve_targets_mixed root (config : Dune_config.t) setup user_targets =
           >>| Result.map_error ~f:(fun hints ->
                   (Arg.Dep.file (Path.to_string p), hints)))
     in
-    if config.display = Verbose then
+    if config.display.verbosity = Verbose then
       Log.info
         [ Pp.text "Actual targets:"
         ; Pp.enumerate

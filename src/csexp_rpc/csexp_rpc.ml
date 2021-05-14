@@ -61,10 +61,10 @@ module Session = struct
     let+ res = Worker.task t.reader ~f:read in
     let res =
       match res with
-      | Error (`Exn exn) ->
+      | Error (`Exn _)
+      | Error `Stopped ->
         Worker.stop t.reader;
-        Exn_with_backtrace.reraise exn
-      | Error `Stopped -> None
+        None
       | Ok res -> (
         match res with
         | Ok (Some _ as s) -> s

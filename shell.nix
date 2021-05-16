@@ -5,6 +5,8 @@ let
 in with local;
 
 pkgs.mkShell {
+  # standard dependencies fetched from nixpkgs. essentially everything outside
+  # of opam
   buildInputs = (with pkgs; [
     coreutils
     # we prefer tools from outside our opam build plan to minimize conflicts
@@ -21,6 +23,8 @@ pkgs.mkShell {
     coq
     python38Packages.sphinx
     python38Packages.sphinx_rtd_theme
+    # opam dependencies. the versions for these are solved for in
+    # nix/opam-selection.nix
   ]) ++ (with opam; [
     lwt
     bisect_ppx

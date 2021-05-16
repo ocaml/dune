@@ -19,6 +19,8 @@ pkgs.mkShell {
     gnused
     gawk
     coq
+    python38Packages.sphinx
+    python38Packages.sphinx_rtd_theme
   ]) ++ (with opam; [
     lwt
     bisect_ppx

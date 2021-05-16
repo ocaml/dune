@@ -11,13 +11,6 @@ let
   args = {
     inherit (pkgs.ocaml-ng.ocamlPackages_4_12) ocaml;
     selection = ./opam-selection.nix;
-    src = builtins.filterSource (path: type:
-      if type == "directory" then
-        (let name = baseNameOf path;
-        in name != "_boot" && name != ".git" && name != "_build" && name
-        != "_opam")
-      else
-        true) ../.;
   };
   opam-selection = opam2nix.build args;
   resolve = opam2nix.resolve args ([

@@ -1,4 +1,10 @@
 # paramaterised derivation with dependencies injected (callPackage style)
+
+# We generate nix derivations corresponding to the opam packages from
+# opam-repository that we are interested in. We do this by passing the desired
+# package names to opam2nix, which runs the opam solve and spits out a build
+# plan into opam-selection.nix
+# The build plan can be regenerated with $ make nix/opam-selection.nix
 { pkgs, stdenv, opam2nix }:
 let
   strings = pkgs.lib.strings;

@@ -147,6 +147,7 @@ dune-release:
 	dune-release opam pkg -n dune
 	dune-release opam submit -n dune
 
+# see nix/default.nix for details
 .PHONY: nix/opam-selection.nix
 nix/opam-selection.nix: Makefile
 	nix-shell -A resolve default.nix

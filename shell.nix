@@ -5,18 +5,6 @@ let
 in with local;
 
 pkgs.mkShell {
-  inputsFrom = [
-    dune
-    dune-action-plugin
-    dune-bench
-    dune-build-info
-    dune-configurator
-    dune-private-libs
-    dune-rpc
-    dune-rpc-lwt
-    dune-site
-  ];
-
   buildInputs = (with pkgs; [
     coreutils
     # we prefer tools from outside our opam build plan to minimize conflicts

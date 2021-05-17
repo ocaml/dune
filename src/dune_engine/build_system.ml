@@ -362,7 +362,7 @@ end
 module Error = struct
   type t =
     { exn : Exn_with_backtrace.t
-    ; rule_source : Path.Source.t option
+    ; rule_source : Loc.t option
     }
 
   let extract_dir annot =
@@ -1284,7 +1284,7 @@ and Exported : sig
 
   val execute_rule : Rule.t -> rule_execution_result Memo.Build.t
 
-  val rule_source : unit -> Path.Source.t option Memo.Build.t
+  val rule_source : unit -> Loc.t option Memo.Build.t
 
   (* The below two definitions are useless, but if we remove them we get an
      "Undefined_recursive_module" exception. *)
@@ -2268,10 +2268,12 @@ end = struct
     List.find_map stack ~f:(fun frame ->
         match Memo.Stack_frame.as_instance_of frame ~of_:execute_rule_memo with
         | None -> None
-        | Some (r : Rule.t) -> (
-          match r.info with
-          | Source_file_copy source -> Some source
-          | _ -> None))
+        | Some (r : Rule.t) ->
+          let loc = Rule.loc r in
+          if Loc.is_none loc then
+            None
+          else
+            Some loc)
 
   let execute_rule = Memo.exec execute_rule_memo
 

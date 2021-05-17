@@ -25,8 +25,7 @@ let diagnostic_of_error (m : Build_system.Error.t) : Diagnostic.t =
   ; loc
   ; promotion = []
   ; directory = Option.map ~f:Path.to_string dir
-  ; rule_source =
-      Option.map ~f:Path.Source.to_string (Build_system.Error.rule_source m)
+  ; rule_source = Build_system.Error.rule_source m
   }
 
 (* TODO un-copy-paste from dune/bin/arg.ml *)

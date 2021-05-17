@@ -154,7 +154,7 @@ module Diagnostic : sig
     ; severity : severity option
     ; promotion : Promotion.t list
     ; directory : string option
-    ; rule_source : string option
+    ; rule_source : Loc.t option
     }
 
   val loc : t -> Loc.t option
@@ -169,7 +169,7 @@ module Diagnostic : sig
 
   val directory : t -> string option
 
-  val rule_source : t -> string option
+  val rule_source : t -> Loc.t option
 
   module Event : sig
     type nonrec t =

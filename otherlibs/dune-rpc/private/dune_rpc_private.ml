@@ -166,7 +166,7 @@ module Diagnostic = struct
     ; severity : severity option
     ; promotion : Promotion.t list
     ; directory : string option
-    ; rule_source : string option
+    ; rule_source : Loc.t option
     }
 
   let sexp_pp : (unit Stdune.Pp.t, Conv.values) Conv.t =
@@ -269,7 +269,7 @@ module Diagnostic = struct
     let targets = field "targets" (required (list Target.sexp)) in
     let severity = field "severity" (optional sexp_severity) in
     let directory = field "directory" (optional string) in
-    let rule_source = field "rule_source" (optional string) in
+    let rule_source = field "rule_source" (optional Loc.sexp) in
     let promotion = field "promotion" (required (list Promotion.sexp)) in
     iso
       (record

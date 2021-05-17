@@ -11,7 +11,7 @@ module Error : sig
   (** Errors when building a target *)
   type t
 
-  val rule_source : t -> Path.Source.t option
+  val rule_source : t -> Loc.t option
 
   val info : t -> User_message.t * Path.t option
 end

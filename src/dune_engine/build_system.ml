@@ -360,15 +360,15 @@ module Context_or_install = struct
 end
 
 module Error = struct
-  type t = Exn_with_backtrace.t
+  type t = { exn : Exn_with_backtrace.t }
 
   let extract_dir annot =
     Process.With_directory_annot.check annot
       (fun dir -> Some dir)
       (fun () -> None)
 
-  let info (t : t) =
-    match t.exn with
+  let info { exn } =
+    match exn.exn with
     | User_error.E (msg, annots) -> (msg, List.find_map annots ~f:extract_dir)
     | e ->
       (* CR-someday jeremiedimino: Use [Report_error.get_user_message] here. *)
@@ -419,7 +419,7 @@ type t =
   ; sandboxing_preference : Sandbox_mode.t list
   ; mutable rule_done : int
   ; mutable rule_total : int
-  ; mutable errors : Exn_with_backtrace.t list
+  ; mutable errors : Error.t list
   ; handler : Handler.t
   ; promote_source :
          ?chmod:(int -> int)
@@ -2351,8 +2351,9 @@ let process_exn_and_reraise exn =
         | _ -> exn)
   in
   let t = t () in
-  t.errors <- exn :: t.errors;
-  let+ () = t.handler.error [ Add exn ] in
+  let error = { Error.exn } in
+  t.errors <- error :: t.errors;
+  let+ () = t.handler.error [ Add error ] in
   Exn_with_backtrace.reraise exn
 
 let run f =

@@ -16,12 +16,14 @@ module Config = struct
       ; verbosity : verbosity
       }
 
+    (* Even though [status_line] is true by default in most of these, the status
+       line is actually not shown if the output is redirected to a file or a
+       pipe. *)
     let all =
       [ ("progress", { verbosity = Quiet; status_line = true })
-      ; ("verbose", { verbosity = Verbose; status_line = false })
-      ; ("short", { verbosity = Short; status_line = false })
+      ; ("verbose", { verbosity = Verbose; status_line = true })
+      ; ("short", { verbosity = Short; status_line = true })
       ; ("quiet", { verbosity = Quiet; status_line = false })
-      ; ("verbose+progress", { verbosity = Verbose; status_line = true })
       ]
 
     let verbosity_to_dyn : verbosity -> Dyn.t = function

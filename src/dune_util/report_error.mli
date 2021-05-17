@@ -18,8 +18,5 @@ val report_backtraces : bool -> unit
     has already failed. *)
 exception Already_reported
 
-(** Clear the list of already reported errors. *)
-val clear_reported : unit -> unit
-
 (** Print the memo stacks of errors. *)
 val print_memo_stacks : bool ref

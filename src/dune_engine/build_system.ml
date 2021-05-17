@@ -277,7 +277,6 @@ end = struct
   let needs_dumping = ref false
 
   let t =
-    (* This [lazy] is safe: it does not call any memoized functions. *)
     lazy
       (match P.load file with
       | Some t -> t
@@ -1666,14 +1665,20 @@ end = struct
     in
     start_rule t rule;
     let head_target = Path.Build.Set.choose_exn targets in
-    let* action, deps = exec_build_request action
-    and* execution_parameters =
+    let* execution_parameters =
       match Dpath.Target_dir.of_target dir with
       | Regular (With_context (_, dir))
       | Anonymous_action (With_context (_, dir)) ->
         Source_tree.execution_parameters_of_dir dir
       | _ -> Execution_parameters.default
     in
+    (* Note: we do not run [exec_build_request] in parallel with the above: if
+       we fail to compute action execution parameters, we have no use for the
+       action and might as well fail early, skipping unnecessary dependencies.
+       The function [Source_tree.execution_parameters_of_dir] is memoized, and
+       the result is not expected to change often, so we do not sacrifise too
+       much performance here by executing it sequentially. *)
+    let* action, deps = exec_build_request action in
     let wrap_fiber f =
       Memo.Build.of_reproducible_fiber
         (if Loc.is_none loc then

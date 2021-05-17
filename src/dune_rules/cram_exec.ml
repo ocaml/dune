@@ -382,7 +382,7 @@ let run ~env ~script lexbuf : string Fiber.t =
       in
       "." ^ suffix
     in
-    Temp.create Dir ~prefix:"dune.cram." ~suffix
+    Temp.create Dir ~prefix:"dune_cram" ~suffix
   in
   let cram_stanzas = cram_stanzas lexbuf in
   let open Fiber.O in

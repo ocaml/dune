@@ -626,6 +626,11 @@ end = struct
 
   let find_dir_raw =
     let memo =
+      (* amokhov: After running some experiments, I convinced myself that it's
+         not worth adding a [cutoff] here because we don't recompute this
+         function very often (the [find_dir] calls are probably guarded by other
+         cutoffs). Note also that adding a [cutoff] here is non-trivial because
+         [Dir0.t] stores memoization cells in [sub_dir_as_t]. *)
       Memo.create "find-dir-raw" ~input:(module Path.Source) find_dir_raw_impl
     in
     Memo.cell memo

@@ -727,8 +727,6 @@ let all =
       and* only_packages = Only_packages.get () in
       let packages = Option.value only_packages ~default:packages in
       let rec sctxs =
-        (* This lazy is just here for the need of [let rec]. We force it
-           straight away, so it is safe regarding [Memo]. *)
         lazy
           (Context_name.Map.of_list_map_exn contexts ~f:(fun (c : Context.t) ->
                (c.name, Memo.Lazy.create (fun () -> make_sctx c))))

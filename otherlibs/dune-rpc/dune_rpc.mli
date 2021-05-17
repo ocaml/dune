@@ -102,7 +102,7 @@ module V1 : sig
 
     val loc : t -> Loc.t option
 
-    val message : t -> unit Stdune.Pp.t
+    val message : t -> unit Pp.t
 
     val severity : t -> severity option
 
@@ -235,47 +235,43 @@ module V1 : sig
   end
 
   (** Functor to create a client implementation *)
-  module Client (S : sig
-    module Fiber : sig
+  module Client (Fiber : sig
+    type 'a t
+
+    val return : 'a -> 'a t
+
+    val fork_and_join_unit : (unit -> unit t) -> (unit -> 'a t) -> 'a t
+
+    val parallel_iter : (unit -> 'a option t) -> f:('a -> unit t) -> unit t
+
+    module O : sig
+      val ( let* ) : 'a t -> ('a -> 'b t) -> 'b t
+
+      val ( let+ ) : 'a t -> ('a -> 'b) -> 'b t
+    end
+
+    module Ivar : sig
+      type 'a fiber
+
       type 'a t
 
-      val return : 'a -> 'a t
+      val create : unit -> 'a t
 
-      val fork_and_join_unit : (unit -> unit t) -> (unit -> 'a t) -> 'a t
+      val read : 'a t -> 'a fiber
 
-      val parallel_iter : (unit -> 'a option t) -> f:('a -> unit t) -> unit t
-
-      module O : sig
-        val ( let* ) : 'a t -> ('a -> 'b t) -> 'b t
-
-        val ( let+ ) : 'a t -> ('a -> 'b) -> 'b t
-      end
-
-      module Ivar : sig
-        type 'a fiber
-
-        type 'a t
-
-        val create : unit -> 'a t
-
-        val read : 'a t -> 'a fiber
-
-        val fill : 'a t -> 'a -> unit fiber
-      end
-      with type 'a fiber := 'a t
+      val fill : 'a t -> 'a -> unit fiber
     end
+    with type 'a fiber := 'a t
+  end) (Chan : sig
+    type t
 
-    module Chan : sig
-      type t
+    (* [write t x] writes the s-expression when [x] is [Some _], and closes the
+       session if [x = None] *)
+    val write : t -> Csexp.t option -> unit Fiber.t
 
-      (* [write t x] writes the s-expression when [x] is [Some _], and closes
-         the session if [x = None] *)
-      val write : t -> Csexp.t option -> unit Fiber.t
-
-      (* [read t] attempts to read from [t]. If an s-expression is read, it is
-         returned as [Some sexp], otherwise [None] is returned and the session
-         is closed. *)
-      val read : t -> Csexp.t option Fiber.t
-    end
-  end) : S with type 'a fiber := 'a S.Fiber.t and type chan := S.Chan.t
+    (* [read t] attempts to read from [t]. If an s-expression is read, it is
+       returned as [Some sexp], otherwise [None] is returned and the session is
+       closed. *)
+    val read : t -> Csexp.t option Fiber.t
+  end) : S with type 'a fiber := 'a Fiber.t and type chan := Chan.t
 end

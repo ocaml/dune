@@ -115,7 +115,6 @@ module Create = struct
         |]
       in
       let table =
-        (* This [lazy] and the mutable table below are pure and hence safe. *)
         lazy
           (let table = Table.create (module String) (Array.length fields) in
            Array.iteri fields ~f:(fun i field -> Table.add_exn table field i);

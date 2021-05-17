@@ -15,9 +15,7 @@ end
 
 type pending_build_action = Build of Dep_conf.t list * Status.t Fiber.Ivar.t
 
-let diagnostic_of_error : Build_system.Error.t -> Dune_rpc_private.Diagnostic.t
-    =
- fun m ->
+let diagnostic_of_error (m : Build_system.Error.t) : Diagnostic.t =
   let message, dir = Build_system.Error.info m in
   let loc = message.loc in
   let message = Pp.map_tags (Pp.concat message.paragraphs) ~f:(fun _ -> ()) in
@@ -27,6 +25,8 @@ let diagnostic_of_error : Build_system.Error.t -> Dune_rpc_private.Diagnostic.t
   ; loc
   ; promotion = []
   ; directory = Option.map ~f:Path.to_string dir
+  ; rule_source =
+      Option.map ~f:Path.Source.to_string (Build_system.Error.rule_source m)
   }
 
 (* TODO un-copy-paste from dune/bin/arg.ml *)

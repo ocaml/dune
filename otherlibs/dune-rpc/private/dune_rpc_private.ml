@@ -166,6 +166,7 @@ module Diagnostic = struct
     ; severity : severity option
     ; promotion : Promotion.t list
     ; directory : string option
+    ; rule_source : string option
     }
 
   let sexp_pp : (unit Stdune.Pp.t, Conv.values) Conv.t =
@@ -247,25 +248,33 @@ module Diagnostic = struct
 
   let directory t = t.directory
 
+  let rule_source t = t.rule_source
+
   let sexp_severity =
     let open Conv in
     enum [ ("error", Error); ("warning", Warning) ]
 
   let sexp =
     let open Conv in
-    let from { targets; message; loc; severity; promotion; directory } =
-      (targets, message, loc, severity, promotion, directory)
+    let from
+        { targets; message; loc; severity; promotion; directory; rule_source } =
+      (targets, message, loc, severity, promotion, directory, rule_source)
     in
-    let to_ (targets, message, loc, severity, promotion, directory) =
-      { targets; message; loc; severity; promotion; directory }
+    let to_ (targets, message, loc, severity, promotion, directory, rule_source)
+        =
+      { targets; message; loc; severity; promotion; directory; rule_source }
     in
     let loc = field "loc" (optional Loc.sexp) in
     let message = field "message" (required sexp_pp) in
     let targets = field "targets" (required (list Target.sexp)) in
     let severity = field "severity" (optional sexp_severity) in
     let directory = field "directory" (optional string) in
+    let rule_source = field "rule_source" (optional string) in
     let promotion = field "promotion" (required (list Promotion.sexp)) in
-    iso (record (six targets message loc severity promotion directory)) to_ from
+    iso
+      (record
+         (seven targets message loc severity promotion directory rule_source))
+      to_ from
 
   module Event = struct
     type nonrec t =

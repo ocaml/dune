@@ -121,6 +121,8 @@ module V1 : sig
        example, if your opam installation is too old). *)
     val directory : t -> string option
 
+    val rule_source : t -> string option
+
     module Event : sig
       type nonrec t =
         | Add of t

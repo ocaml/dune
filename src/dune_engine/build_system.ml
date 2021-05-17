@@ -360,14 +360,19 @@ module Context_or_install = struct
 end
 
 module Error = struct
-  type t = { exn : Exn_with_backtrace.t }
+  type t =
+    { exn : Exn_with_backtrace.t
+    ; rule_source : Path.Source.t option
+    }
 
   let extract_dir annot =
     Process.With_directory_annot.check annot
       (fun dir -> Some dir)
       (fun () -> None)
 
-  let info { exn } =
+  let rule_source t = t.rule_source
+
+  let info { exn; rule_source = _ } =
     match exn.exn with
     | User_error.E (msg, annots) -> (msg, List.find_map annots ~f:extract_dir)
     | e ->
@@ -1278,6 +1283,8 @@ and Exported : sig
     'a Action_builder.t -> ('a * Dep.Fact.t Dep.Map.t) Memo.Build.t
 
   val execute_rule : Rule.t -> rule_execution_result Memo.Build.t
+
+  val rule_source : unit -> Path.Source.t option Memo.Build.t
 
   (* The below two definitions are useless, but if we remove them we get an
      "Undefined_recursive_module" exception. *)
@@ -2256,6 +2263,16 @@ end = struct
       ~input:(module Rule)
       (execute_rule_impl ~rule_kind:Normal_rule)
 
+  let rule_source () =
+    let+ stack = Memo.get_call_stack () in
+    List.find_map stack ~f:(fun frame ->
+        match Memo.Stack_frame.as_instance_of frame ~of_:execute_rule_memo with
+        | None -> None
+        | Some (r : Rule.t) -> (
+          match r.info with
+          | Source_file_copy source -> Some source
+          | _ -> None))
+
   let execute_rule = Memo.exec execute_rule_memo
 
   let () =
@@ -2340,6 +2357,7 @@ module Alias = Alias0
 
 let process_exn_and_reraise exn =
   let open Fiber.O in
+  let* rule_source = Memo.Build.run (rule_source ()) in
   let exn =
     Exn_with_backtrace.map exn ~f:(fun exn ->
         match exn with
@@ -2351,7 +2369,7 @@ let process_exn_and_reraise exn =
         | _ -> exn)
   in
   let t = t () in
-  let error = { Error.exn } in
+  let error = { Error.exn; rule_source } in
   t.errors <- error :: t.errors;
   let+ () = t.handler.error [ Add error ] in
   Exn_with_backtrace.reraise exn

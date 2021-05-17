@@ -434,7 +434,7 @@ module Exit_status = struct
          ++ Pp.char ' ' ++ command_line
          :: Option.to_list output)
 
-  let handle_non_verbose t ~display ~purpose ~output ~prog ~command_line ~dir
+  let handle_non_verbose t ~verbosity ~purpose ~output ~prog ~command_line ~dir
       ~has_unexpected_stdout ~has_unexpected_stderr =
     let open Pp.O in
     let has_embedded_location = outputs_starts_with_location output in
@@ -459,7 +459,11 @@ module Exit_status = struct
     | Ok n ->
       if
         Option.is_some output
-        || (display = Scheduler.Config.Display.Short && purpose <> Internal_job)
+        || (match verbosity with
+           | Scheduler.Config.Display.Short -> true
+           | Quiet -> false
+           | Verbose -> assert false)
+           && purpose <> Internal_job
       then
         Console.print_user_message
           (User_message.make
@@ -536,7 +540,7 @@ let run_internal ?dir ?(stdout_to = Io.stdout) ?(stderr_to = Io.stderr)
         command_line ~prog:prog_str ~args ~dir ~stdout_to ~stderr_to ~stdin_from
       in
       let fancy_command_line =
-        match display with
+        match display.verbosity with
         | Verbose ->
           let open Pp.O in
           let cmdline =
@@ -713,16 +717,15 @@ let run_internal ?dir ?(stdout_to = Io.stdout) ?(stderr_to = Io.stderr)
       let output = stdout ^ stderr in
       Log.command ~command_line ~output ~exit_status:process_info.status;
       let res =
-        match (display, exit_status', output) with
-        | (Quiet | Progress), Ok n, "" ->
-          n (* Optimisation for the common case *)
+        match (display.verbosity, exit_status', output) with
+        | Quiet, Ok n, "" -> n (* Optimisation for the common case *)
         | Verbose, _, _ ->
           Exit_status.handle_verbose exit_status' ~id ~dir
             ~command_line:fancy_command_line ~output
         | _ ->
           Exit_status.handle_non_verbose exit_status' ~prog:prog_str ~dir
-            ~command_line ~output ~purpose ~display ~has_unexpected_stdout
-            ~has_unexpected_stderr
+            ~command_line ~output ~purpose ~verbosity:display.verbosity
+            ~has_unexpected_stdout ~has_unexpected_stderr
       in
       (res, times))
 

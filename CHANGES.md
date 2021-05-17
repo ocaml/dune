@@ -141,6 +141,9 @@ Unreleased
   a file that failed to build. This was a niche feature and it was
   getting in the way of making Dune's core better. (#4607, @jeremiedimino)
 
+- Make Dune display the progress indicator in all output modes except quiet
+  (#4618, @aalekseyev)
+
 2.9.0 (unreleased)
 ------------------
 

@@ -61,7 +61,10 @@ let term =
   let+ () = Common.build_info
   and+ debug_backtraces = Common.debug_backtraces in
   let config : Dune_config.t =
-    { Dune_config.default with display = Quiet; concurrency = Fixed 1 }
+    { Dune_config.default with
+      display = { verbosity = Quiet; status_line = false }
+    ; concurrency = Fixed 1
+    }
   in
   Dune_engine.Clflags.debug_backtraces debug_backtraces;
   Path.set_root (Path.External.cwd ());

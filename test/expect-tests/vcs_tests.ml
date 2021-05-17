@@ -118,7 +118,7 @@ let run kind script =
   let vcs = { Vcs.kind; root = temp_dir } in
   let config =
     { Scheduler.Config.concurrency = 1
-    ; display = Short
+    ; display = { verbosity = Short; status_line = false }
     ; rpc = None
     ; stats = None
     }

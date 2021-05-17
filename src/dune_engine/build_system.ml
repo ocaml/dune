@@ -368,7 +368,12 @@ module Error = struct
       (fun () -> None)
 
   let info (t : t) =
-    match t.exn with
+    let e =
+      match t.exn with
+      | Memo.Error.E e -> Memo.Error.get e
+      | e -> e
+    in
+    match e with
     | User_error.E (msg, annots) -> (msg, List.find_map annots ~f:extract_dir)
     | e ->
       (* CR-someday jeremiedimino: Use [Report_error.get_user_message] here. *)

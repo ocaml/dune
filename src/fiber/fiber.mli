@@ -74,7 +74,10 @@ val sequential_iter : 'a list -> f:('a -> unit t) -> unit t
     however once the combining fiber has terminated, it is guaranteed that there
     are no fibers lingering around. *)
 
-(** Start two fibers and wait for their results. *)
+(** Start two fibers and wait for their result. Note that this function combines
+    both successes and errors: if one of the computations fails, we let the
+    other one run to completion, to give it a chance to raise its errors too.
+    All other parallel execution combinators have the same error semantics. *)
 val fork_and_join : (unit -> 'a t) -> (unit -> 'b t) -> ('a * 'b) t
 
 (** Same but assume the first fiber returns [unit]. *)

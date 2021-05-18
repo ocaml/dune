@@ -1,3 +1,6 @@
+  $ opam_prefix="$(opam config var prefix)"
+  $ export BUILD_PATH_PREFIX_MAP="/OPAM_PREFIX=$opam_prefix:$BUILD_PATH_PREFIX_MAP"
+
 We call `$(opam switch show)` so that this test always uses an existing switch
 
   $ cat >dune-workspace <<EOF
@@ -17,10 +20,9 @@ We call `$(opam switch show)` so that this test always uses an existing switch
   ..
   lib-foo
 
-  $ dune ocaml-merlin --dump-config="$(pwd)" |
-  > sed 's#'$(opam config var prefix)'#OPAM_PREFIX#'
+  $ dune ocaml-merlin --dump-config="$(pwd)"
   Foo
-  ((STDLIB OPAM_PREFIX/lib/ocaml)
+  ((STDLIB /OPAM_PREFIX/lib/ocaml)
    (EXCLUDE_QUERY_DIR)
    (B
     $TESTCASE_ROOT/_build/cross/.foo.objs/byte)

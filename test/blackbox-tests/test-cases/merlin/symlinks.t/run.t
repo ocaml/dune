@@ -25,8 +25,10 @@ Dune ocaml-merlin also accepts paths relative to the current directory
   Foo
 
   $ cd realsrc
-  $ dune ocaml-merlin --dump-config="." --root=".." |
-  > sed 's#'$(opam config var prefix)'#OPAM_PREFIX#' |
-  > head -n 2
+
+  $ opam_prefix="$(opam config var prefix)"
+  $ export BUILD_PATH_PREFIX_MAP="/OPAM_PREFIX=$opam_prefix:$BUILD_PATH_PREFIX_MAP"
+
+  $ dune ocaml-merlin --dump-config="." --root=".." | head -n 2
   Foo
-  ((STDLIB OPAM_PREFIX/lib/ocaml)
+  ((STDLIB /OPAM_PREFIX/lib/ocaml)

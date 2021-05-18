@@ -1,8 +1,10 @@
+  $ opam_prefix="$(opam config var prefix)"
+  $ export BUILD_PATH_PREFIX_MAP="/OPAM_PREFIX=$opam_prefix:$BUILD_PATH_PREFIX_MAP"
+
   $ dune build foo.cma --profile release
-  $ dune ocaml-merlin --dump-config=$(pwd) |
-  > sed 's#'$(opam config var prefix)'#OPAM_PREFIX#'
+  $ dune ocaml-merlin --dump-config=$(pwd)
   Foo
-  ((STDLIB OPAM_PREFIX/lib/ocaml)
+  ((STDLIB /OPAM_PREFIX/lib/ocaml)
    (EXCLUDE_QUERY_DIR)
    (B
     $TESTCASE_ROOT/_build/default/.foo.objs/byte)
@@ -12,10 +14,9 @@
 
   $ rm -f .merlin
   $ dune build foo.cma --profile release
-  $ dune ocaml-merlin --dump-config=$(pwd) |
-  > sed 's#'$(opam config var prefix)'#OPAM_PREFIX#'
+  $ dune ocaml-merlin --dump-config=$(pwd)
   Foo
-  ((STDLIB OPAM_PREFIX/lib/ocaml)
+  ((STDLIB /OPAM_PREFIX/lib/ocaml)
    (EXCLUDE_QUERY_DIR)
    (B
     $TESTCASE_ROOT/_build/default/.foo.objs/byte)
@@ -25,10 +26,9 @@
 
   $ echo toto > .merlin
   $ dune build foo.cma --profile release
-  $ dune ocaml-merlin --dump-config=$(pwd) |
-  > sed 's#'$(opam config var prefix)'#OPAM_PREFIX#'
+  $ dune ocaml-merlin --dump-config=$(pwd)
   Foo
-  ((STDLIB OPAM_PREFIX/lib/ocaml)
+  ((STDLIB /OPAM_PREFIX/lib/ocaml)
    (EXCLUDE_QUERY_DIR)
    (B
     $TESTCASE_ROOT/_build/default/.foo.objs/byte)

@@ -1,11 +1,13 @@
 This test demonstrates that -ppx is no more missing when two stanzas are
 in the same dune file, but require different ppx specifications
 
+  $ opam_prefix="$(opam config var prefix)"
+  $ export BUILD_PATH_PREFIX_MAP="/OPAM_PREFIX=$opam_prefix:$BUILD_PATH_PREFIX_MAP"
+
   $ dune build @all --profile release
-  $ dune ocaml-merlin --dump-config=$(pwd) |
-  > sed 's#'$(opam config var prefix)'#OPAM_PREFIX#'
+  $ dune ocaml-merlin --dump-config=$(pwd)
   Usesppx1
-  ((STDLIB OPAM_PREFIX/lib/ocaml)
+  ((STDLIB /OPAM_PREFIX/lib/ocaml)
    (EXCLUDE_QUERY_DIR)
    (B
     $TESTCASE_ROOT/_build/default/.usesppx1.objs/byte)
@@ -19,7 +21,7 @@ in the same dune file, but require different ppx specifications
      'library-name="usesppx1"'"))
    (FLG (-open Usesppx1 -w -40)))
   Usesppx2
-  ((STDLIB OPAM_PREFIX/lib/ocaml)
+  ((STDLIB /OPAM_PREFIX/lib/ocaml)
    (EXCLUDE_QUERY_DIR)
    (B
     $TESTCASE_ROOT/_build/default/.usesppx2.objs/byte)

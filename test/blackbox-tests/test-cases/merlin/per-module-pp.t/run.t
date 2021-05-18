@@ -1,12 +1,14 @@
   $ dune build @check
 
+  $ opam_prefix="$(opam config var prefix)"
+  $ export BUILD_PATH_PREFIX_MAP="/OPAM_PREFIX=$opam_prefix:$BUILD_PATH_PREFIX_MAP"
+
 We dump the config for Foo and Bar modules but the pp.exe preprocessor
 should appear only once since only Foo is using it.
 
-  $ dune ocaml-merlin --dump-config=$(pwd) |
-  > sed 's#'$(opam config var prefix)'#OPAM_PREFIX#'
+  $ dune ocaml-merlin --dump-config=$(pwd)
   Foo
-  ((STDLIB OPAM_PREFIX/lib/ocaml)
+  ((STDLIB /OPAM_PREFIX/lib/ocaml)
    (EXCLUDE_QUERY_DIR)
    (B
     $TESTCASE_ROOT/_build/default/.foo.objs/byte)
@@ -23,7 +25,7 @@ should appear only once since only Foo is using it.
      -short-paths
      -keep-locs)))
   Bar
-  ((STDLIB OPAM_PREFIX/lib/ocaml)
+  ((STDLIB /OPAM_PREFIX/lib/ocaml)
    (EXCLUDE_QUERY_DIR)
    (B
     $TESTCASE_ROOT/_build/default/.foo.objs/byte)

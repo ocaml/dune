@@ -18,6 +18,7 @@ module Build : sig
 
   include Build with type 'a t = 'a build
 
+  (* CR-someday amokhov: Return the set of exceptions explicitly. *)
   val run : 'a t -> 'a Fiber.t
 
   (** [of_reproducible_fiber fiber] injects a fiber into the build monad. The
@@ -34,7 +35,18 @@ module Build : sig
 
   val return : 'a -> 'a t
 
+  (** Combine results of two computations executed in sequence. *)
   val both : 'a t -> 'b t -> ('a * 'b) t
+
+  (** Combine results of two computations executed in parallel. Note that this
+      function combines both successes and errors: if one of the computations
+      fails, we let the other one run to completion, to give it a chance to
+      raise its errors too. Regardless of the outcome (success or failure), the
+      result will collect dependencies from both of the computations. All other
+      parallel execution combinators have the same error/dependencies semantics. *)
+  val fork_and_join : (unit -> 'a t) -> (unit -> 'b t) -> ('a * 'b) t
+
+  val fork_and_join_unit : (unit -> unit t) -> (unit -> 'a t) -> 'a t
 
   (** This uses a sequential implementation. We use the short name to conform
       with the [Applicative] interface. See [all_concurrently] for the version
@@ -48,10 +60,6 @@ module Build : sig
   val sequential_map : 'a list -> f:('a -> 'b t) -> 'b list t
 
   val sequential_iter : 'a list -> f:('a -> unit t) -> unit t
-
-  val fork_and_join : (unit -> 'a t) -> (unit -> 'b t) -> ('a * 'b) t
-
-  val fork_and_join_unit : (unit -> unit t) -> (unit -> 'a t) -> 'a t
 
   val parallel_map : 'a list -> f:('a -> 'b t) -> 'b list t
 

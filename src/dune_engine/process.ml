@@ -154,8 +154,12 @@ module Io = struct
 end
 
 type purpose =
-  | Internal_job
-  | Build_job of Path.Build.Set.t
+  | Internal_job of Loc.t option * User_error.Annot.t list
+  | Build_job of Loc.t option * User_error.Annot.t list * Path.Build.Set.t
+
+let loc_and_annots_of_purpose = function
+  | Internal_job (loc, annots) -> (loc, annots)
+  | Build_job (loc, annots, _) -> (loc, annots)
 
 let io_to_redirection_path (kind : Io.kind) =
   match kind with
@@ -284,8 +288,8 @@ module Fancy = struct
     Pp.verbatim prefix ++ pp ++ Pp.verbatim suffix
 
   let pp_purpose = function
-    | Internal_job -> Pp.verbatim "(internal)"
-    | Build_job targets -> (
+    | Internal_job _ -> Pp.verbatim "(internal)"
+    | Build_job (_, _, targets) -> (
       let rec split_paths targets_acc ctxs_acc = function
         | [] -> (List.rev targets_acc, Context_name.Set.to_list ctxs_acc)
         | path :: rest -> (
@@ -372,20 +376,21 @@ module Exit_status = struct
 
   (* In this module, we don't need the "Error: " prefix given that it is already
      included in the error message from the command. *)
-  let fail ~dir ~has_embedded_location paragraphs =
+  let fail ~purpose ~dir ~has_embedded_location paragraphs =
     let dir =
       match dir with
       | None -> Path.of_string (Sys.getcwd ())
       | Some dir -> dir
     in
-    let annots = [ With_directory_annot.make dir ] in
+    let loc, annots = loc_and_annots_of_purpose purpose in
+    let annots = With_directory_annot.make dir :: annots in
     let annots =
       if has_embedded_location then
         User_error.Annot.Has_embedded_location.make () :: annots
       else
         annots
     in
-    raise (User_error.E (User_message.make paragraphs, annots))
+    raise (User_error.E (User_message.make ?loc paragraphs, annots))
 
   (* Check if the command output starts with a location, ignoring ansi escape
      sequences *)
@@ -406,7 +411,7 @@ module Exit_status = struct
     fun output ->
       loop output 0 (String.length output) [ 'F'; 'i'; 'l'; 'e'; ' ' ]
 
-  let handle_verbose t ~id ~output ~command_line ~dir =
+  let handle_verbose t ~id ~purpose ~output ~command_line ~dir =
     let open Pp.O in
     let has_embedded_location = outputs_starts_with_location output in
     let output = parse_output output in
@@ -426,7 +431,7 @@ module Exit_status = struct
         | Failed n -> sprintf "exited with code %d" n
         | Signaled signame -> sprintf "got signal %s" signame
       in
-      fail ~dir ~has_embedded_location
+      fail ~purpose ~dir ~has_embedded_location
         (Pp.tag User_message.Style.Kwd (Pp.verbatim "Command")
          ++ Pp.space ++ pp_id id ++ Pp.space ++ Pp.text msg ++ Pp.char ':'
          ::
@@ -434,7 +439,7 @@ module Exit_status = struct
          ++ Pp.char ' ' ++ command_line
          :: Option.to_list output)
 
-  let handle_non_verbose t ~display ~purpose ~output ~prog ~command_line ~dir
+  let handle_non_verbose t ~verbosity ~purpose ~output ~prog ~command_line ~dir
       ~has_unexpected_stdout ~has_unexpected_stderr =
     let open Pp.O in
     let has_embedded_location = outputs_starts_with_location output in
@@ -459,7 +464,14 @@ module Exit_status = struct
     | Ok n ->
       if
         Option.is_some output
-        || (display = Scheduler.Config.Display.Short && purpose <> Internal_job)
+        || (match verbosity with
+           | Scheduler.Config.Display.Short -> true
+           | Quiet -> false
+           | Verbose -> assert false)
+           &&
+           match purpose with
+           | Internal_job _ -> false
+           | Build_job _ -> true
       then
         Console.print_user_message
           (User_message.make
@@ -485,10 +497,10 @@ module Exit_status = struct
                 (String.enumerate_and unexpected_outputs)
             | _ -> sprintf "(exit %d)" n
           else
-            fail ~dir ~has_embedded_location (Option.to_list output)
+            fail ~purpose ~dir ~has_embedded_location (Option.to_list output)
         | Signaled signame -> sprintf "(got signal %s)" signame
       in
-      fail ~dir ~has_embedded_location
+      fail ~purpose ~dir ~has_embedded_location
         (progname_and_purpose Error ++ Pp.char ' '
          ++ Pp.tag User_message.Style.Error (Pp.verbatim msg)
          ::
@@ -536,7 +548,7 @@ let run_internal ?dir ?(stdout_to = Io.stdout) ?(stderr_to = Io.stderr)
         command_line ~prog:prog_str ~args ~dir ~stdout_to ~stderr_to ~stdin_from
       in
       let fancy_command_line =
-        match display with
+        match display.verbosity with
         | Verbose ->
           let open Pp.O in
           let cmdline =
@@ -713,21 +725,20 @@ let run_internal ?dir ?(stdout_to = Io.stdout) ?(stderr_to = Io.stderr)
       let output = stdout ^ stderr in
       Log.command ~command_line ~output ~exit_status:process_info.status;
       let res =
-        match (display, exit_status', output) with
-        | (Quiet | Progress), Ok n, "" ->
-          n (* Optimisation for the common case *)
+        match (display.verbosity, exit_status', output) with
+        | Quiet, Ok n, "" -> n (* Optimisation for the common case *)
         | Verbose, _, _ ->
-          Exit_status.handle_verbose exit_status' ~id ~dir
+          Exit_status.handle_verbose exit_status' ~id ~purpose ~dir
             ~command_line:fancy_command_line ~output
         | _ ->
           Exit_status.handle_non_verbose exit_status' ~prog:prog_str ~dir
-            ~command_line ~output ~purpose ~display ~has_unexpected_stdout
-            ~has_unexpected_stderr
+            ~command_line ~output ~purpose ~verbosity:display.verbosity
+            ~has_unexpected_stdout ~has_unexpected_stderr
       in
       (res, times))
 
-let run ?dir ?stdout_to ?stderr_to ?stdin_from ?env ?(purpose = Internal_job)
-    fail_mode prog args =
+let run ?dir ?stdout_to ?stderr_to ?stdin_from ?env
+    ?(purpose = Internal_job (None, [])) fail_mode prog args =
   let+ run =
     run_internal ?dir ?stdout_to ?stderr_to ?stdin_from ?env ~purpose fail_mode
       prog args
@@ -736,13 +747,13 @@ let run ?dir ?stdout_to ?stderr_to ?stdin_from ?env ?(purpose = Internal_job)
   map_result fail_mode run ~f:ignore
 
 let run_with_times ?dir ?stdout_to ?stderr_to ?stdin_from ?env
-    ?(purpose = Internal_job) prog args =
+    ?(purpose = Internal_job (None, [])) prog args =
   run_internal ?dir ?stdout_to ?stderr_to ?stdin_from ?env ~purpose Strict prog
     args
   >>| snd
 
-let run_capture_gen ?dir ?stderr_to ?stdin_from ?env ?(purpose = Internal_job)
-    fail_mode prog args ~f =
+let run_capture_gen ?dir ?stderr_to ?stdin_from ?env
+    ?(purpose = Internal_job (None, [])) fail_mode prog args ~f =
   let fn = Temp.create File ~prefix:"dune" ~suffix:"output" in
   let+ run =
     run_internal ?dir ~stdout_to:(Io.file fn Io.Out) ?stderr_to ?stdin_from ?env
@@ -761,8 +772,8 @@ let run_capture_lines = run_capture_gen ~f:Stdune.Io.lines_of_file
 let run_capture_zero_separated =
   run_capture_gen ~f:Stdune.Io.zero_strings_of_file
 
-let run_capture_line ?dir ?stderr_to ?stdin_from ?env ?(purpose = Internal_job)
-    fail_mode prog args =
+let run_capture_line ?dir ?stderr_to ?stdin_from ?env
+    ?(purpose = Internal_job (None, [])) fail_mode prog args =
   run_capture_gen ?dir ?stderr_to ?stdin_from ?env ~purpose fail_mode prog args
     ~f:(fun fn ->
       match Stdune.Io.lines_of_file fn with
@@ -775,11 +786,13 @@ let run_capture_line ?dir ?stderr_to ?stdin_from ?env ?(purpose = Internal_job)
           | None -> prog_display
           | Some dir -> sprintf "cd %s && %s" (Path.to_string dir) prog_display
         in
+        let loc, annots = loc_and_annots_of_purpose purpose in
         match l with
         | [] ->
-          User_error.raise [ Pp.textf "Command returned nothing: %s" cmdline ]
+          User_error.raise ?loc ~annots
+            [ Pp.textf "Command returned nothing: %s" cmdline ]
         | _ ->
-          User_error.raise
+          User_error.raise ?loc ~annots
             [ Pp.textf "command returned too many lines: %s" cmdline
             ; Pp.vbox
                 (Pp.concat_map l ~sep:Pp.cut ~f:(fun line ->

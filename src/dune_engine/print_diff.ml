@@ -26,6 +26,9 @@ let print ?(skip_trailing_cr = Sys.win32) path1 path2 =
     | _ -> (Path.root, path1, path2)
   in
   let loc = Loc.in_file file1 in
+  let run_process ?(purpose = Process.Internal_job (Some loc, [])) prog args =
+    Process.run ~dir ~env:Env.initial Strict prog args ~purpose
+  in
   let file1, file2 = Path.(to_string file1, to_string file2) in
   let fallback () =
     User_error.raise ~loc
@@ -57,9 +60,7 @@ let print ?(skip_trailing_cr = Sys.win32) path1 path2 =
         args
     in
     let args = args @ files in
-    Console.print
-      [ Pp.map_tags ~f:(fun Loc -> User_message.Style.Loc) (Loc.pp loc) ];
-    let* () = Process.run ~dir ~env:Env.initial Strict path args in
+    let* () = run_process path args in
     fallback ()
   in
   match !Clflags.diff_command with
@@ -71,8 +72,8 @@ let print ?(skip_trailing_cr = Sys.win32) path1 path2 =
         (String.quote_for_shell file1)
         (String.quote_for_shell file2)
     in
-    let* () = Process.run ~dir ~env:Env.initial Strict sh [ arg; cmd ] in
-    User_error.raise
+    let* () = run_process sh [ arg; cmd ] in
+    User_error.raise ~loc
       [ Pp.textf "command reported no differences: %s"
           (if Path.is_root dir then
             cmd
@@ -89,13 +90,23 @@ let print ?(skip_trailing_cr = Sys.win32) path1 path2 =
       | None -> normal_diff ()
       | Some prog ->
         let* () =
-          Process.run ~dir ~env:Env.initial Strict prog
+          run_process prog
             ([ "-keep-whitespace"; "-location-style"; "omake" ]
             @ (if Lazy.force Ansi_color.stderr_supports_color then
                 []
               else
                 [ "-ascii" ])
             @ [ file1; file2 ])
+            ~purpose:
+              ((* Because of the [-location-style omake], patdiff will print the
+                  location of each hunk in a format that the editor should
+                  understand. However, the location won't be the first line of
+                  the output, so the [process] module won't recognise that the
+                  output has a location.
+
+                  For this reason, we manually pass the bellow annotation. *)
+                 Internal_job
+                 (None, [ User_error.Annot.Has_embedded_location.make () ]))
         in
         (* Use "diff" if "patdiff" reported no differences *)
         normal_diff ())

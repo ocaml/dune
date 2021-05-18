@@ -49,8 +49,6 @@ module Build0 = struct
     | true -> y ()
     | false -> return ()
 
-  let run = Fun.id
-
   let of_reproducible_fiber = Fun.id
 
   module Option = struct
@@ -1116,6 +1114,12 @@ module Build = struct
   let of_non_reproducible_fiber fiber =
     let* (_ : Run.t) = current_run () in
     fiber
+
+  let run t =
+    let* res = Fiber.collect_errors (fun () -> t) in
+    match res with
+    | Ok res -> Fiber.return res
+    | Error exns -> Fiber.reraise_all (Exn_set.of_list exns |> Exn_set.to_list)
 end
 
 module With_implicit_output = struct

@@ -52,10 +52,11 @@ module Io : sig
   val multi_use : 'a t -> 'a t
 end
 
-(** Why a Fiber.t was run *)
+(** Why a Fiber.t was run. The location and annotations will be attached to
+    error messages. *)
 type purpose =
-  | Internal_job
-  | Build_job of Path.Build.Set.t
+  | Internal_job of Loc.t option * User_error.Annot.t list
+  | Build_job of Loc.t option * User_error.Annot.t list * Path.Build.Set.t
 
 (** [run ?dir ?stdout_to prog args] spawns a sub-process and wait for its
     termination. [stdout_to] [stderr_to] are released *)

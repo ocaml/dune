@@ -368,7 +368,12 @@ module Error = struct
       (fun () -> None)
 
   let info (t : t) =
-    match t.exn with
+    let e =
+      match t.exn with
+      | Memo.Error.E e -> Memo.Error.get e
+      | e -> e
+    in
+    match e with
     | User_error.E (msg, annots) -> (msg, List.find_map annots ~f:extract_dir)
     | e ->
       (* CR-someday jeremiedimino: Use [Report_error.get_user_message] here. *)
@@ -1665,14 +1670,20 @@ end = struct
     in
     start_rule t rule;
     let head_target = Path.Build.Set.choose_exn targets in
-    let* action, deps = exec_build_request action
-    and* execution_parameters =
+    let* execution_parameters =
       match Dpath.Target_dir.of_target dir with
       | Regular (With_context (_, dir))
       | Anonymous_action (With_context (_, dir)) ->
         Source_tree.execution_parameters_of_dir dir
       | _ -> Execution_parameters.default
     in
+    (* Note: we do not run [exec_build_request] in parallel with the above: if
+       we fail to compute action execution parameters, we have no use for the
+       action and might as well fail early, skipping unnecessary dependencies.
+       The function [Source_tree.execution_parameters_of_dir] is memoized, and
+       the result is not expected to change often, so we do not sacrifise too
+       much performance here by executing it sequentially. *)
+    let* action, deps = exec_build_request action in
     let wrap_fiber f =
       Memo.Build.of_reproducible_fiber
         (if Loc.is_none loc then

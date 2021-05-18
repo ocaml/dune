@@ -275,11 +275,7 @@ let hash = Hashtbl.hash
 let equal a b = Poly.equal a b
 
 let default =
-  { display =
-      (if Config.inside_dune then
-        Quiet
-      else
-        Progress)
+  { display = { verbosity = Quiet; status_line = not Config.inside_dune }
   ; concurrency =
       (if Config.inside_dune then
         Fixed 1
@@ -389,14 +385,14 @@ let load_user_config_file () =
     Partial.empty
 
 let adapt_display config ~output_is_a_tty =
-  (* Progress isn't meaningful if inside a terminal (or emacs), so reset the
-     display to Quiet if the output is getting piped to a file or something. *)
+  (* Progress isn't meaningful if inside a terminal (or emacs), so disable it if
+     the output is getting piped to a file or something. *)
   let config =
     if
-      config.display = Progress && (not output_is_a_tty)
+      config.display.status_line && (not output_is_a_tty)
       && not Config.inside_emacs
     then
-      { config with display = Quiet }
+      { config with display = { config.display with status_line = false } }
     else
       config
   in
@@ -409,7 +405,7 @@ let adapt_display config ~output_is_a_tty =
 
 let init t =
   Console.Backend.set (Scheduler.Config.Display.console_backend t.display);
-  Log.verbose := t.display = Verbose
+  Log.verbose := t.display.verbosity = Verbose
 
 let auto_concurrency =
   lazy

@@ -18,6 +18,7 @@ module Build : sig
 
   include Build with type 'a t = 'a build
 
+  (* CR-someday amokhov: Return the set of exceptions explicitly. *)
   val run : 'a t -> 'a Fiber.t
 
   (** [of_reproducible_fiber fiber] injects a fiber into the build monad. The

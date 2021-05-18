@@ -1,5 +1,7 @@
   $ ocamlc_where="$(ocamlc -where)"
   $ export BUILD_PATH_PREFIX_MAP="/OCAMLC_WHERE=$ocamlc_where:$BUILD_PATH_PREFIX_MAP"
+  $ ocamlfind_libs="$(ocamlfind printconf path | while read line; do printf lib=${line}:; done)"
+  $ export BUILD_PATH_PREFIX_MAP="$ocamlfind_libs:$BUILD_PATH_PREFIX_MAP"
 
 CRAM sanitization
   $ dune build ./exe/.merlin-conf/exe-x --profile release
@@ -7,15 +9,15 @@ CRAM sanitization
   X
   ((STDLIB /OCAMLC_WHERE)
    (EXCLUDE_QUERY_DIR)
-   (B /Users/rgrinberg/github/ocaml/dune/_opam/lib/bytes)
-   (B /Users/rgrinberg/github/ocaml/dune/_opam/lib/findlib)
+   (B lib/bytes)
+   (B lib/findlib)
    (B /OCAMLC_WHERE)
    (B
     $TESTCASE_ROOT/_build/default/exe/.x.eobjs/byte)
    (B
     $TESTCASE_ROOT/_build/default/lib/.foo.objs/public_cmi)
-   (S /Users/rgrinberg/github/ocaml/dune/_opam/lib/bytes)
-   (S /Users/rgrinberg/github/ocaml/dune/_opam/lib/findlib)
+   (S lib/bytes)
+   (S lib/findlib)
    (S /OCAMLC_WHERE)
    (S
     $TESTCASE_ROOT/exe)
@@ -63,13 +65,13 @@ CRAM sanitization
   Privmod
   ((STDLIB /OCAMLC_WHERE)
    (EXCLUDE_QUERY_DIR)
-   (B /Users/rgrinberg/github/ocaml/dune/_opam/lib/bytes)
-   (B /Users/rgrinberg/github/ocaml/dune/_opam/lib/findlib)
+   (B lib/bytes)
+   (B lib/findlib)
    (B /OCAMLC_WHERE)
    (B
     $TESTCASE_ROOT/_build/default/lib/.foo.objs/byte)
-   (S /Users/rgrinberg/github/ocaml/dune/_opam/lib/bytes)
-   (S /Users/rgrinberg/github/ocaml/dune/_opam/lib/findlib)
+   (S lib/bytes)
+   (S lib/findlib)
    (S /OCAMLC_WHERE)
    (S
     $TESTCASE_ROOT/lib)
@@ -85,13 +87,13 @@ CRAM sanitization
   Foo
   ((STDLIB /OCAMLC_WHERE)
    (EXCLUDE_QUERY_DIR)
-   (B /Users/rgrinberg/github/ocaml/dune/_opam/lib/bytes)
-   (B /Users/rgrinberg/github/ocaml/dune/_opam/lib/findlib)
+   (B lib/bytes)
+   (B lib/findlib)
    (B /OCAMLC_WHERE)
    (B
     $TESTCASE_ROOT/_build/default/lib/.foo.objs/byte)
-   (S /Users/rgrinberg/github/ocaml/dune/_opam/lib/bytes)
-   (S /Users/rgrinberg/github/ocaml/dune/_opam/lib/findlib)
+   (S lib/bytes)
+   (S lib/findlib)
    (S /OCAMLC_WHERE)
    (S
     $TESTCASE_ROOT/lib)

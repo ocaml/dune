@@ -159,7 +159,7 @@ let%expect_test "run and connect persistent" =
         let initialize = Initialize.create ~id:(Id.make (Csexp.Atom "test")) in
         Lwt.return ((), initialize, None)
       in
-      let on_connected () t =
+      let on_connected () _ t =
         Logger.log log_client "on_connected: %d" !count;
         let* res = Client.request t Request.ping () in
         let* () =

@@ -252,7 +252,7 @@ module type S = sig
        ?on_disconnect:('a -> unit fiber)
     -> chan
     -> on_connect:(unit -> ('a * Initialize.Request.t * Handler.t option) fiber)
-    -> on_connected:('a -> t -> unit fiber)
+    -> on_connected:('a -> (unit -> unit fiber) -> t -> unit fiber)
     -> unit fiber
 end
 

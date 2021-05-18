@@ -413,7 +413,7 @@ module type S = sig
        ?on_disconnect:('a -> unit fiber)
     -> chan
     -> on_connect:(unit -> ('a * Initialize.Request.t * Handler.t option) fiber)
-    -> on_connected:('a -> t -> unit fiber)
+    -> on_connected:('a -> (unit -> unit fiber) -> t -> unit fiber)
     -> unit fiber
 end
 
@@ -738,13 +738,15 @@ struct
           | Error e -> raise (Invalid_session e))
     in
     let make_chan packets =
+      let closed : unit Fiber.Ivar.t = Fiber.Ivar.create () in
       let read () =
-        let+ packet = packets () in
+        let* packet = packets () in
         match (packet : Persistent.In.t option) with
-        | None
+        | None -> Fiber.return None
         | Some Close_connection ->
+          let+ () = Fiber.Ivar.fill closed () in
           None
-        | Some (Packet csexp) -> Some csexp
+        | Some (Packet csexp) -> Fiber.return (Some csexp)
         | Some New_connection ->
           Code_error.raise "Unexpected new connection." []
       in
@@ -757,15 +759,15 @@ struct
         let sexp = Conv.to_sexp Persistent.Out.sexp packet in
         Chan.write chan (Some sexp)
       in
-      Chan.make read write
+      (Chan.make read write, fun () -> Fiber.Ivar.read closed)
     in
     let rec loop () =
       let* packet = packets () in
       match packet with
       | Some New_connection ->
         let* a, init, handler = on_connect () in
-        let chan = make_chan packets in
-        let* () = connect ?handler chan init ~f:(on_connected a) in
+        let chan, on_close = make_chan packets in
+        let* () = connect ?handler chan init ~f:(on_connected a on_close) in
         Chan.close_read chan;
         let* () = on_disconnect a in
         loop ()

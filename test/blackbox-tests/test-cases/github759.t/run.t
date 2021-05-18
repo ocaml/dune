@@ -1,10 +1,10 @@
-  $ opam_prefix="$(opam config var prefix)"
-  $ export BUILD_PATH_PREFIX_MAP="/OPAM_PREFIX=$opam_prefix:$BUILD_PATH_PREFIX_MAP"
+  $ ocamlc_where="$(ocamlc -where)"
+  $ export BUILD_PATH_PREFIX_MAP="/OCAMLC_WHERE=$ocamlc_where:$BUILD_PATH_PREFIX_MAP"
 
   $ dune build foo.cma --profile release
   $ dune ocaml-merlin --dump-config=$(pwd)
   Foo
-  ((STDLIB /OPAM_PREFIX/lib/ocaml)
+  ((STDLIB /OCAMLC_WHERE)
    (EXCLUDE_QUERY_DIR)
    (B
     $TESTCASE_ROOT/_build/default/.foo.objs/byte)
@@ -16,7 +16,7 @@
   $ dune build foo.cma --profile release
   $ dune ocaml-merlin --dump-config=$(pwd)
   Foo
-  ((STDLIB /OPAM_PREFIX/lib/ocaml)
+  ((STDLIB /OCAMLC_WHERE)
    (EXCLUDE_QUERY_DIR)
    (B
     $TESTCASE_ROOT/_build/default/.foo.objs/byte)
@@ -28,7 +28,7 @@
   $ dune build foo.cma --profile release
   $ dune ocaml-merlin --dump-config=$(pwd)
   Foo
-  ((STDLIB /OPAM_PREFIX/lib/ocaml)
+  ((STDLIB /OCAMLC_WHERE)
    (EXCLUDE_QUERY_DIR)
    (B
     $TESTCASE_ROOT/_build/default/.foo.objs/byte)

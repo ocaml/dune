@@ -157,6 +157,10 @@ type purpose =
   | Internal_job of Loc.t option
   | Build_job of Loc.t option * Path.Build.Set.t
 
+let loc_of_purpose = function
+  | Internal_job loc -> loc
+  | Build_job (loc, _) -> loc
+
 let io_to_redirection_path (kind : Io.kind) =
   match kind with
   | Terminal _ -> None
@@ -378,11 +382,7 @@ module Exit_status = struct
       | None -> Path.of_string (Sys.getcwd ())
       | Some dir -> dir
     in
-    let loc =
-      match purpose with
-      | Internal_job loc -> loc
-      | Build_job (loc, _) -> loc
-    in
+    let loc = loc_of_purpose purpose in
     let annots = [ With_directory_annot.make dir ] in
     let annots =
       if has_embedded_location then
@@ -786,11 +786,13 @@ let run_capture_line ?dir ?stderr_to ?stdin_from ?env
           | None -> prog_display
           | Some dir -> sprintf "cd %s && %s" (Path.to_string dir) prog_display
         in
+        let loc = loc_of_purpose purpose in
         match l with
         | [] ->
-          User_error.raise [ Pp.textf "Command returned nothing: %s" cmdline ]
+          User_error.raise ?loc
+            [ Pp.textf "Command returned nothing: %s" cmdline ]
         | _ ->
-          User_error.raise
+          User_error.raise ?loc
             [ Pp.textf "command returned too many lines: %s" cmdline
             ; Pp.vbox
                 (Pp.concat_map l ~sep:Pp.cut ~f:(fun line ->

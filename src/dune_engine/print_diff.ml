@@ -25,88 +25,79 @@ let print ?(skip_trailing_cr = Sys.win32) path1 path2 =
       (dir1, Path.source f1, Path.source f2)
     | _ -> (Path.root, path1, path2)
   in
-  Fiber.with_error_handler
-    ~on_error:(fun exn ->
-      Exn_with_backtrace.reraise
-        (match exn.exn with
-        | User_error.E (msg, annot) when not (User_error.has_location msg annot)
-          ->
-          let loc = Loc.in_file file1 in
-          let msg = { msg with loc = Some loc } in
-          { exn with exn = User_error.E (msg, annot) }
-        | _ -> exn))
-    (fun () ->
-      let file1, file2 = Path.(to_string file1, to_string file2) in
-      let fallback () =
-        User_error.raise
-          [ Pp.textf "Files %s and %s differ."
-              (Path.to_string_maybe_quoted
-                 (Path.drop_optional_sandbox_root path1))
-              (Path.to_string_maybe_quoted
-                 (Path.drop_optional_sandbox_root path2))
-          ]
-      in
-      let normal_diff () =
-        let path, args, skip_trailing_cr_arg, files =
-          let which prog = Bin.which ~path:(Env.path Env.initial) prog in
-          match which "git" with
-          | Some path ->
-            ( path
-            , [ "--no-pager"; "diff"; "--no-index"; "--color=always"; "-u" ]
-            , "--ignore-cr-at-eol"
-            , List.map
-                ~f:(fun (path, file) -> resolve_link ~dir path file)
-                [ (path1, file1); (path2, file2) ] )
-          | None -> (
-            match which "diff" with
-            | Some path ->
-              (path, [ "-u" ], "--strip-trailing-cr", [ file1; file2 ])
-            | None -> fallback ())
-        in
-        let args =
-          if skip_trailing_cr then
-            args @ [ skip_trailing_cr_arg ]
-          else
-            args
-        in
-        let args = args @ files in
-        let* () = Process.run ~dir ~env:Env.initial Strict path args in
-        fallback ()
-      in
-      match !Clflags.diff_command with
-      | Some "-" -> fallback ()
-      | Some cmd ->
-        let sh, arg = Utils.system_shell_exn ~needed_to:"print diffs" in
-        let cmd =
-          sprintf "%s %s %s" cmd
-            (String.quote_for_shell file1)
-            (String.quote_for_shell file2)
-        in
-        let* () = Process.run ~dir ~env:Env.initial Strict sh [ arg; cmd ] in
-        User_error.raise
-          [ Pp.textf "command reported no differences: %s"
-              (if Path.is_root dir then
-                cmd
-              else
-                sprintf "cd %s && %s"
-                  (String.quote_for_shell (Path.to_string dir))
-                  cmd)
-          ]
+  let loc = Loc.in_file file1 in
+  let run_process prog args =
+    Process.run ~dir ~env:Env.initial Strict prog args
+      ~purpose:(Internal_job (Some loc))
+  in
+  let file1, file2 = Path.(to_string file1, to_string file2) in
+  let fallback () =
+    User_error.raise ~loc
+      [ Pp.textf "Files %s and %s differ."
+          (Path.to_string_maybe_quoted (Path.drop_optional_sandbox_root path1))
+          (Path.to_string_maybe_quoted (Path.drop_optional_sandbox_root path2))
+      ]
+  in
+  let normal_diff () =
+    let path, args, skip_trailing_cr_arg, files =
+      let which prog = Bin.which ~path:(Env.path Env.initial) prog in
+      match which "git" with
+      | Some path ->
+        ( path
+        , [ "--no-pager"; "diff"; "--no-index"; "--color=always"; "-u" ]
+        , "--ignore-cr-at-eol"
+        , List.map
+            ~f:(fun (path, file) -> resolve_link ~dir path file)
+            [ (path1, file1); (path2, file2) ] )
       | None -> (
-        if Config.inside_dune then
-          fallback ()
-        else
-          match Bin.which ~path:(Env.path Env.initial) "patdiff" with
-          | None -> normal_diff ()
-          | Some prog ->
-            let* () =
-              Process.run ~dir ~env:Env.initial Strict prog
-                ([ "-keep-whitespace" ]
-                @ (if Lazy.force Ansi_color.stderr_supports_color then
-                    []
-                  else
-                    [ "-ascii" ])
-                @ [ file1; file2 ])
-            in
-            (* Use "diff" if "patdiff" reported no differences *)
-            normal_diff ()))
+        match which "diff" with
+        | Some path -> (path, [ "-u" ], "--strip-trailing-cr", [ file1; file2 ])
+        | None -> fallback ())
+    in
+    let args =
+      if skip_trailing_cr then
+        args @ [ skip_trailing_cr_arg ]
+      else
+        args
+    in
+    let args = args @ files in
+    let* () = run_process path args in
+    fallback ()
+  in
+  match !Clflags.diff_command with
+  | Some "-" -> fallback ()
+  | Some cmd ->
+    let sh, arg = Utils.system_shell_exn ~needed_to:"print diffs" in
+    let cmd =
+      sprintf "%s %s %s" cmd
+        (String.quote_for_shell file1)
+        (String.quote_for_shell file2)
+    in
+    let* () = run_process sh [ arg; cmd ] in
+    User_error.raise ~loc
+      [ Pp.textf "command reported no differences: %s"
+          (if Path.is_root dir then
+            cmd
+          else
+            sprintf "cd %s && %s"
+              (String.quote_for_shell (Path.to_string dir))
+              cmd)
+      ]
+  | None -> (
+    if Config.inside_dune then
+      fallback ()
+    else
+      match Bin.which ~path:(Env.path Env.initial) "patdiff" with
+      | None -> normal_diff ()
+      | Some prog ->
+        let* () =
+          run_process prog
+            ([ "-keep-whitespace" ]
+            @ (if Lazy.force Ansi_color.stderr_supports_color then
+                []
+              else
+                [ "-ascii" ])
+            @ [ file1; file2 ])
+        in
+        (* Use "diff" if "patdiff" reported no differences *)
+        normal_diff ())

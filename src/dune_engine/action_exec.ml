@@ -533,7 +533,7 @@ let extend_build_path_prefix_map env how map =
 
 let exec ~targets ~root ~context ~env ~rule_loc ~build_deps
     ~execution_parameters t =
-  let purpose = Process.Build_job targets in
+  let purpose = Process.Build_job (None, targets) in
   let env =
     extend_build_path_prefix_map env `New_rules_have_precedence
       [ Some

@@ -226,6 +226,24 @@ module V1 : sig
       -> f:(t -> 'a fiber)
       -> 'a fiber
 
+    (** [connect_persistent ?on_disconnect session ~on_connect ~on_connected]
+        connects to a [dune rpc init --persistent] process that waits for
+        possibly-transient server connections and connects to them in sequence.
+
+        When a server is discovered, [on_connect ()] is first run to produce the
+        application's internal state [s], initialization data and handlers.
+        Next, [on_connected s wait_for_disconnect t] is called, where:
+
+        - [wait_for_disconnect ()] produces a fiber that is determined when the
+          server disconnects
+        - [t] is the client object for this session
+
+        Finally, if present, [on_disconnect s] will be called after the
+        resolution of [on_connected], before waiting for new server connections.
+
+        Note that [on_connect], [on_connected] and [on_disconnect] are
+        necessarily called in sequence, so blocking those fibers will cause a
+        deadlock, in which no new servers will be discovered. *)
     val connect_persistent :
          ?on_disconnect:('a -> unit fiber)
       -> chan

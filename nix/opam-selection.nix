@@ -13,8 +13,8 @@ let
         {
           owner = "ocaml";
           repo = "opam-repository";
-          rev = "d5e60ce7f7dc4c2357ae7cf52bdaecd5a747fec0";
-          sha256 = "1l72m4vqavvahkzrywfv15z9qzcqfkz9mxnknzrxns0hbi7n62z6";
+          rev = "8f4e2eaeefede85ba0399c8460942dfe9d82a64c";
+          sha256 = "0j98nmmazdnmac7544w8fy8944084680rphsdwyg94dasvb11nwf";
         };
         src = (pkgs.fetchFromGitHub) fetch;
       };
@@ -871,14 +871,14 @@ in
       };
       opamSrc = repoPath (repos.opam-repository.src) 
       {
-        hash = "sha256:1smhrhh098w4amj1ih5fkzhbpiabqa1n42q9plif1fwzq9l0262w";
+        hash = "sha256:13hy5mhzf47860lbm84nk9r48ivrjyd1hv9i56pvlqb6dcb94ffj";
         package = "packages/menhir/menhir.20210419";
       };
       pname = "menhir";
       src = pkgs.fetchurl 
       {
         sha256 = "1z471apfcfs9d1s85wg33z5prfnifzx07dprjxq4fgfpcbqpqh7q";
-        url = "https://gitlab.inria.fr/fpottier/menhir/repository/20210419/archive.tar.gz";
+        url = "https://gitlab.inria.fr/fpottier/menhir/-/archive/20210419/archive.tar.gz";
       };
       version = "20210419";
     };
@@ -891,14 +891,14 @@ in
       };
       opamSrc = repoPath (repos.opam-repository.src) 
       {
-        hash = "sha256:0xinqc298kplg5s54cs3riqyag8hxz2a4dghscb3cbjwp4cr4gww";
+        hash = "sha256:0393sm6qzdffhhkx4sqfmwr6xgl8dab7ap37mfwzyjrjycxbi1k5";
         package = "packages/menhirLib/menhirLib.20210419";
       };
       pname = "menhirLib";
       src = pkgs.fetchurl 
       {
         sha256 = "1z471apfcfs9d1s85wg33z5prfnifzx07dprjxq4fgfpcbqpqh7q";
-        url = "https://gitlab.inria.fr/fpottier/menhir/repository/20210419/archive.tar.gz";
+        url = "https://gitlab.inria.fr/fpottier/menhir/-/archive/20210419/archive.tar.gz";
       };
       version = "20210419";
     };
@@ -911,14 +911,14 @@ in
       };
       opamSrc = repoPath (repos.opam-repository.src) 
       {
-        hash = "sha256:19f00dfi80r04kw76rwfln8v4bi1jxkc25mp1i68jl5x1flmbq58";
+        hash = "sha256:0ss2dh1dak5d5rqi6p6nvplrpi13y0s71fzka8l7djpj15qfcqdx";
         package = "packages/menhirSdk/menhirSdk.20210419";
       };
       pname = "menhirSdk";
       src = pkgs.fetchurl 
       {
         sha256 = "1z471apfcfs9d1s85wg33z5prfnifzx07dprjxq4fgfpcbqpqh7q";
-        url = "https://gitlab.inria.fr/fpottier/menhir/repository/20210419/archive.tar.gz";
+        url = "https://gitlab.inria.fr/fpottier/menhir/-/archive/20210419/archive.tar.gz";
       };
       version = "20210419";
     };

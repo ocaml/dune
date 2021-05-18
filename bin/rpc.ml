@@ -42,6 +42,7 @@ module Init = struct
               let+ () = Csexp_rpc.Session.write stdio (Some packet) in
               Option.map read ~f:ignore)
         in
+        let close = lazy (Csexp_rpc.Session.write session None) in
         let forward_from_stdin () =
           Fiber.repeat_while ~init:() ~f:(fun () ->
               let* read = Csexp_rpc.Session.read stdio in
@@ -59,7 +60,7 @@ module Init = struct
               match packet with
               | None
               | Some Close_connection ->
-                let+ () = Csexp_rpc.Session.write session None in
+                let+ () = Lazy.force close in
                 None
               | Some (Packet sexp) ->
                 let+ () = Csexp_rpc.Session.write session (Some sexp) in
@@ -67,15 +68,25 @@ module Init = struct
         in
         Fiber.finalize
           (fun () ->
-            Fiber.with_error_handler
-              (fun () ->
-                Fiber.fork_and_join_unit forward_to_stdout forward_from_stdin)
-              ~on_error:(fun exn ->
-                Dune_util.Report_error.report exn;
-                Exn_with_backtrace.reraise exn))
+            let+ res =
+              Fiber.collect_errors (fun () ->
+                  (* We want to close right away so we use with_error_handler *)
+                  Fiber.with_error_handler
+                    ~on_error:(fun exn ->
+                      let+ () = Lazy.force close in
+                      Dune_util.Report_error.report exn;
+                      raise Dune_util.Report_error.Already_reported)
+                    (fun () ->
+                      Fiber.fork_and_join_unit forward_to_stdout
+                        forward_from_stdin))
+            in
+            match res with
+            | Ok () -> ()
+            | Error _ -> ())
           ~finally:(fun () ->
+            let+ () = Lazy.force close in
             Option.iter client ~f:Csexp_rpc.Client.stop;
-            Fiber.return ()))
+            ()))
 
   let connect common =
     let where = wait_for_server common in

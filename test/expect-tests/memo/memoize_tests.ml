@@ -939,7 +939,20 @@ let%expect_test "dynamic cycles with non-uniform cutoff structure" =
     - called by ("incrementing_chain_3_no_cutoff", ())
     - called by ("incrementing_chain_4_yes_cutoff", ())
     - called by ("incrementing_chain_plus_input", 2)
-    f 0 = Error [ { exn = "Memo.Cycle_error.E(_)"; backtrace = "" } ]
+    f 0 = Error
+            [ { exn =
+                  "Cycle_error.E\n\
+                  \  [ (\"incrementing_chain_plus_input\", 2)\n\
+                  \  ; (\"cycle_creator_no_cutoff\", ())\n\
+                  \  ; (\"incrementing_chain_1_no_cutoff\", ())\n\
+                  \  ; (\"incrementing_chain_2_yes_cutoff\", ())\n\
+                  \  ; (\"incrementing_chain_3_no_cutoff\", ())\n\
+                  \  ; (\"incrementing_chain_4_yes_cutoff\", ())\n\
+                  \  ; (\"incrementing_chain_plus_input\", 2)\n\
+                  \  ]"
+              ; backtrace = ""
+              }
+            ]
     9/9 computed/total nodes, 16/8 traversed/total edges
   |}];
   Memo.Perf_counters.reset ();
@@ -962,7 +975,20 @@ let%expect_test "dynamic cycles with non-uniform cutoff structure" =
     - called by ("incrementing_chain_3_yes_cutoff", ())
     - called by ("incrementing_chain_4_no_cutoff", ())
     - called by ("incrementing_chain_plus_input", 2)
-    f 0 = Error [ { exn = "Memo.Cycle_error.E(_)"; backtrace = "" } ]
+    f 0 = Error
+            [ { exn =
+                  "Cycle_error.E\n\
+                  \  [ (\"incrementing_chain_plus_input\", 2)\n\
+                  \  ; (\"cycle_creator_yes_cutoff\", ())\n\
+                  \  ; (\"incrementing_chain_1_yes_cutoff\", ())\n\
+                  \  ; (\"incrementing_chain_2_no_cutoff\", ())\n\
+                  \  ; (\"incrementing_chain_3_yes_cutoff\", ())\n\
+                  \  ; (\"incrementing_chain_4_no_cutoff\", ())\n\
+                  \  ; (\"incrementing_chain_plus_input\", 2)\n\
+                  \  ]"
+              ; backtrace = ""
+              }
+            ]
     7/7 computed/total nodes, 14/7 traversed/total edges
   |}];
   Memo.Perf_counters.reset ();
@@ -978,7 +1004,20 @@ let%expect_test "dynamic cycles with non-uniform cutoff structure" =
     - called by ("incrementing_chain_3_no_cutoff", ())
     - called by ("incrementing_chain_4_yes_cutoff", ())
     - called by ("incrementing_chain_plus_input", 2)
-    f 2 = Error [ { exn = "Memo.Cycle_error.E(_)"; backtrace = "" } ]
+    f 2 = Error
+            [ { exn =
+                  "Cycle_error.E\n\
+                  \  [ (\"incrementing_chain_plus_input\", 2)\n\
+                  \  ; (\"cycle_creator_no_cutoff\", ())\n\
+                  \  ; (\"incrementing_chain_1_no_cutoff\", ())\n\
+                  \  ; (\"incrementing_chain_2_yes_cutoff\", ())\n\
+                  \  ; (\"incrementing_chain_3_no_cutoff\", ())\n\
+                  \  ; (\"incrementing_chain_4_yes_cutoff\", ())\n\
+                  \  ; (\"incrementing_chain_plus_input\", 2)\n\
+                  \  ]"
+              ; backtrace = ""
+              }
+            ]
     0/0 computed/total nodes, 0/0 traversed/total edges
   |}];
   Memo.Perf_counters.reset ();
@@ -994,7 +1033,20 @@ let%expect_test "dynamic cycles with non-uniform cutoff structure" =
     - called by ("incrementing_chain_3_yes_cutoff", ())
     - called by ("incrementing_chain_4_no_cutoff", ())
     - called by ("incrementing_chain_plus_input", 2)
-    f 2 = Error [ { exn = "Memo.Cycle_error.E(_)"; backtrace = "" } ]
+    f 2 = Error
+            [ { exn =
+                  "Cycle_error.E\n\
+                  \  [ (\"incrementing_chain_plus_input\", 2)\n\
+                  \  ; (\"cycle_creator_yes_cutoff\", ())\n\
+                  \  ; (\"incrementing_chain_1_yes_cutoff\", ())\n\
+                  \  ; (\"incrementing_chain_2_no_cutoff\", ())\n\
+                  \  ; (\"incrementing_chain_3_yes_cutoff\", ())\n\
+                  \  ; (\"incrementing_chain_4_no_cutoff\", ())\n\
+                  \  ; (\"incrementing_chain_plus_input\", 2)\n\
+                  \  ]"
+              ; backtrace = ""
+              }
+            ]
     0/0 computed/total nodes, 0/0 traversed/total edges
   |}];
   Memo.restart_current_run ();

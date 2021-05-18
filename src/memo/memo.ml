@@ -190,6 +190,13 @@ module Error = struct
       (match exn with
       | E t -> { t with rev_stack = stack_frame :: t.rev_stack }
       | _ -> { exn; rev_stack = [ stack_frame ] })
+
+  let to_dyn t =
+    let open Dyn.Encoder in
+    record
+      [ ("exn", Exn.to_dyn t.exn)
+      ; ("stack", Dyn.Encoder.list Stack_frame_without_state.to_dyn (stack t))
+      ]
 end
 
 module Cycle_error = struct
@@ -198,12 +205,28 @@ module Cycle_error = struct
   exception E of t
 
   let get t = t
+
+  let to_dyn = Dyn.Encoder.list Stack_frame_without_state.to_dyn
 end
 
 (* The user can wrap exceptions into the [Non_reproducible] constructor to tell
    Memo that they shouldn't be cached. We will catch them, unwrap, and re-raise
    without the wrapper. *)
 exception Non_reproducible of exn
+
+let () =
+  Printexc.register_printer (fun exn ->
+      let dyn =
+        let open Dyn.Encoder in
+        match exn with
+        | Error.E err -> Some (constr "Memo.Error.E" [ Error.to_dyn err ])
+        | Cycle_error.E frames ->
+          Some (constr "Cycle_error.E" [ Cycle_error.to_dyn frames ])
+        | Non_reproducible exn ->
+          Some (constr "Memo.Non_reproducible" [ Exn.to_dyn exn ])
+        | _ -> None
+      in
+      Option.map dyn ~f:Dyn.to_string)
 
 module Exn_comparable = Comparable.Make (struct
   type t = Exn_with_backtrace.t

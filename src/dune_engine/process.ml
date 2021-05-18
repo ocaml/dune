@@ -154,12 +154,12 @@ module Io = struct
 end
 
 type purpose =
-  | Internal_job of Loc.t option
-  | Build_job of Loc.t option * Path.Build.Set.t
+  | Internal_job of Loc.t option * User_error.Annot.t list
+  | Build_job of Loc.t option * User_error.Annot.t list * Path.Build.Set.t
 
-let loc_of_purpose = function
-  | Internal_job loc -> loc
-  | Build_job (loc, _) -> loc
+let loc_and_annots_of_purpose = function
+  | Internal_job (loc, annots) -> (loc, annots)
+  | Build_job (loc, annots, _) -> (loc, annots)
 
 let io_to_redirection_path (kind : Io.kind) =
   match kind with
@@ -289,7 +289,7 @@ module Fancy = struct
 
   let pp_purpose = function
     | Internal_job _ -> Pp.verbatim "(internal)"
-    | Build_job (_, targets) -> (
+    | Build_job (_, _, targets) -> (
       let rec split_paths targets_acc ctxs_acc = function
         | [] -> (List.rev targets_acc, Context_name.Set.to_list ctxs_acc)
         | path :: rest -> (
@@ -382,8 +382,8 @@ module Exit_status = struct
       | None -> Path.of_string (Sys.getcwd ())
       | Some dir -> dir
     in
-    let loc = loc_of_purpose purpose in
-    let annots = [ With_directory_annot.make dir ] in
+    let loc, annots = loc_and_annots_of_purpose purpose in
+    let annots = With_directory_annot.make dir :: annots in
     let annots =
       if has_embedded_location then
         User_error.Annot.Has_embedded_location.make () :: annots
@@ -738,7 +738,7 @@ let run_internal ?dir ?(stdout_to = Io.stdout) ?(stderr_to = Io.stderr)
       (res, times))
 
 let run ?dir ?stdout_to ?stderr_to ?stdin_from ?env
-    ?(purpose = Internal_job None) fail_mode prog args =
+    ?(purpose = Internal_job (None, [])) fail_mode prog args =
   let+ run =
     run_internal ?dir ?stdout_to ?stderr_to ?stdin_from ?env ~purpose fail_mode
       prog args
@@ -747,13 +747,13 @@ let run ?dir ?stdout_to ?stderr_to ?stdin_from ?env
   map_result fail_mode run ~f:ignore
 
 let run_with_times ?dir ?stdout_to ?stderr_to ?stdin_from ?env
-    ?(purpose = Internal_job None) prog args =
+    ?(purpose = Internal_job (None, [])) prog args =
   run_internal ?dir ?stdout_to ?stderr_to ?stdin_from ?env ~purpose Strict prog
     args
   >>| snd
 
 let run_capture_gen ?dir ?stderr_to ?stdin_from ?env
-    ?(purpose = Internal_job None) fail_mode prog args ~f =
+    ?(purpose = Internal_job (None, [])) fail_mode prog args ~f =
   let fn = Temp.create File ~prefix:"dune" ~suffix:"output" in
   let+ run =
     run_internal ?dir ~stdout_to:(Io.file fn Io.Out) ?stderr_to ?stdin_from ?env
@@ -773,7 +773,7 @@ let run_capture_zero_separated =
   run_capture_gen ~f:Stdune.Io.zero_strings_of_file
 
 let run_capture_line ?dir ?stderr_to ?stdin_from ?env
-    ?(purpose = Internal_job None) fail_mode prog args =
+    ?(purpose = Internal_job (None, [])) fail_mode prog args =
   run_capture_gen ?dir ?stderr_to ?stdin_from ?env ~purpose fail_mode prog args
     ~f:(fun fn ->
       match Stdune.Io.lines_of_file fn with
@@ -786,13 +786,13 @@ let run_capture_line ?dir ?stderr_to ?stdin_from ?env
           | None -> prog_display
           | Some dir -> sprintf "cd %s && %s" (Path.to_string dir) prog_display
         in
-        let loc = loc_of_purpose purpose in
+        let loc, annots = loc_and_annots_of_purpose purpose in
         match l with
         | [] ->
-          User_error.raise ?loc
+          User_error.raise ?loc ~annots
             [ Pp.textf "Command returned nothing: %s" cmdline ]
         | _ ->
-          User_error.raise ?loc
+          User_error.raise ?loc ~annots
             [ Pp.textf "command returned too many lines: %s" cmdline
             ; Pp.vbox
                 (Pp.concat_map l ~sep:Pp.cut ~f:(fun line ->

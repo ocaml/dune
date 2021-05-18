@@ -26,9 +26,8 @@ let print ?(skip_trailing_cr = Sys.win32) path1 path2 =
     | _ -> (Path.root, path1, path2)
   in
   let loc = Loc.in_file file1 in
-  let run_process prog args =
-    Process.run ~dir ~env:Env.initial Strict prog args
-      ~purpose:(Internal_job (Some loc))
+  let run_process ?(purpose = Process.Internal_job (Some loc, [])) prog args =
+    Process.run ~dir ~env:Env.initial Strict prog args ~purpose
   in
   let file1, file2 = Path.(to_string file1, to_string file2) in
   let fallback () =
@@ -92,12 +91,22 @@ let print ?(skip_trailing_cr = Sys.win32) path1 path2 =
       | Some prog ->
         let* () =
           run_process prog
-            ([ "-keep-whitespace" ]
+            ([ "-keep-whitespace"; "-location-style"; "omake" ]
             @ (if Lazy.force Ansi_color.stderr_supports_color then
                 []
               else
                 [ "-ascii" ])
             @ [ file1; file2 ])
+            ~purpose:
+              ((* Because of the [-location-style omake], patdiff will print the
+                  location of each hunk in a format that the editor should
+                  understand. However, the location won't be the first line of
+                  the output, so the [process] module won't recognise that the
+                  output has a location.
+
+                  For this reason, we manually pass the bellow annotation. *)
+                 Internal_job
+                 (None, [ User_error.Annot.Has_embedded_location.make () ]))
         in
         (* Use "diff" if "patdiff" reported no differences *)
         normal_diff ())

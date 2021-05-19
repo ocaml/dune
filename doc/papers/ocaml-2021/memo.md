@@ -103,28 +103,33 @@ Street's internal build system Jenga) does support concurrency but detects
 cycles by "stopping the world" and traversing the "frozen" dependency graph to
 see if concurrent computations might have deadlocked by waiting for each other.
 
-
-* Push-based vs pull-based
-
-Other relevant libraries:
-
-* Incremental, Adapton: no support for concurrency, no cycle detection, push-based
-
-* Tenacious: similar to Memo but is based on Async, has different early cutoff
-  semantics, and relies on regular blocking cycle detection algorithm.
+Compared to the incremental computation libraries mentioned above, the current
+implementation of Memo makes one controversial design choice. Incremental,
+Adapton and Tenacious are all *push based*, i.e., they trigger recomputation
+starting from the leaves of the computation graph. Memo is *pull based*:
+`invalidate` calls merely mark leaves (cells) as out of date, but recomputation
+is driven from the top-level `run` calls. The main drawback of this approach is
+that Memo needs to traverse the whole graph on each rebuild. The main benefits
+are: (i) Memo doesn't need to store reverse dependencies, which saves space and
+eliminates various garbage collection pitfalls; (ii) Memo avoids "spurious"
+recomputations, where a node is recomputed but subsequently becomes unreachable
+from the top due to a new dependency structure. We may reconsider this design
+choice in future, but for now traversing the whole graph on each rebuild isn't
+a bottleneck, even for large-scale builds where graphs contain millions of
+nodes.
 
 ## Development status
 
-* Currently under development, seeking feedback from the OCaml community
-
-* Can be made available as a functor over an arbitrary concurrency monad
+Memo is still in active development and we welcome feedback from the OCaml
+community on how to make it better. While the current implementation is tied to
+Dune's `Fiber`, the core functionality can be made available as a functor over
+an arbitrary concurrency monad, making it useable with `Async` and `Lwt`.
 
 ## Acknowledgements
 
 We thank Rudi Horn, Rudi Grinberg, Emilio Jesús Gallego Arias, and other Dune
 developers for their contributions to Memo and Dune. We are also grateful to
-Armaël Guéneau for helping us with the incremental cycle detection library that
-we use in Memo.
+Armaël Guéneau for helping us with the incremental cycle detection library [3].
 
 # References
 

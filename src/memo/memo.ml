@@ -243,6 +243,26 @@ end)
 
 module Exn_set = Exn_comparable.Set
 
+module Collect_errors_monoid = struct
+  module T = struct
+    type t =
+      { exns : Exn_set.t
+      ; reproducible : bool
+      }
+
+    let empty = { exns = Exn_set.empty; reproducible = true }
+
+    let combine { exns = exns1; reproducible = reproducible1 }
+        { exns = exns2; reproducible = reproducible2 } =
+      { exns = Exn_set.union exns1 exns2
+      ; reproducible = reproducible1 && reproducible2
+      }
+  end
+
+  include T
+  include Monoid.Make (T)
+end
+
 (* A value calculated during a "sample attempt". A sample attempt can fail for
    two reasons:
 
@@ -258,10 +278,7 @@ module Exn_set = Exn_comparable.Set
 module Value = struct
   type 'a t =
     | Ok of 'a
-    | Error of
-        { exns : Exn_set.t
-        ; reproducible : bool
-        }
+    | Error of Collect_errors_monoid.t
     | Cancelled of { dependency_cycle : Cycle_error.t }
 
   let get_exn t ~stack_frame =
@@ -628,8 +645,10 @@ open To_open
 let global_dep_dag = Dag.create ()
 
 module Call_stack = struct
+  type t = Stack_frame_with_state.t list
+
   (* The variable holding the call stack for the current context. *)
-  let call_stack_var = Fiber.Var.create ()
+  let call_stack_var : t Fiber.Var.t = Fiber.Var.create ()
 
   let get_call_stack () =
     Fiber.Var.get call_stack_var >>| Option.value ~default:[]
@@ -637,7 +656,7 @@ module Call_stack = struct
   let get_call_stack_without_state () =
     get_call_stack ()
     >>| List.map ~f:(fun (Stack_frame_with_state.T t) ->
-            Dep_node_without_state.T t.without_state)
+      Dep_node_without_state.T t.without_state)
 
   let get_call_stack_tip () = get_call_stack () >>| List.hd_opt
 
@@ -645,6 +664,55 @@ module Call_stack = struct
     let* stack = get_call_stack () in
     let stack = frame :: stack in
     Fiber.Var.set call_stack_var stack (fun () -> Implicit_output.forbid f)
+end
+
+module Error_handler : sig
+  val is_set : bool Fiber.t
+
+  val report_error : Exn_with_backtrace.t -> unit Fiber.t
+
+  val with_error_handler :
+    (Exn_with_backtrace.t -> unit Fiber.t) -> (unit -> 'a Fiber.t) -> 'a Fiber.t
+end = struct
+  type t = Exn_with_backtrace.t -> unit Fiber.t
+
+  let var : t Fiber.Var.t = Fiber.Var.create ()
+
+  let is_set = Fiber.map (Fiber.Var.get var) ~f:Option.is_some
+
+  let get_exn = Fiber.Var.get_exn var
+
+  let report_error error =
+    let open Fiber.O in
+    let* handler = get_exn in
+    let* stack = Call_stack.get_call_stack_without_state () in
+    let error =
+      Exn_with_backtrace.map error ~f:(fun exn ->
+        List.fold_left stack
+          ~init:exn ~f:(fun exn stack_frame -> Error.extend_stack exn ~stack_frame))
+    in
+    handler error
+
+  let deduplicate_errors f =
+    let reported = ref Exn_set.empty in
+    fun exn ->
+      if Exn_set.mem !reported exn then
+        Fiber.return ()
+      else (
+        reported := Exn_set.add !reported exn;
+        f exn
+      )
+
+  let with_error_handler t f =
+    Fiber.of_thunk (fun () ->
+        let t = deduplicate_errors t in
+        Fiber.bind (Fiber.Var.get var) ~f:(function
+          | None -> Fiber.Var.set var t f
+          | Some _handler ->
+            Code_error.raise
+              "Memo.run_with_error_handler: an error handler is already \
+               installed"
+              []))
 end
 
 let pp_stack () =
@@ -837,6 +905,20 @@ module Changed_or_not = struct
     | Cancelled of { dependency_cycle : Cycle_error.t }
 end
 
+let report_and_collect_errors f =
+  Fiber.map_reduce_errors
+    (module Collect_errors_monoid)
+    ~on_error:(fun exn ->
+      let exn, reproducible =
+        match exn with
+        | { Exn_with_backtrace.exn = Non_reproducible exn; backtrace } ->
+          ({ Exn_with_backtrace.exn; backtrace }, false)
+        | exn -> (exn, true)
+      in
+      let+ () = Error_handler.report_error exn in
+      ({ exns = Exn_set.singleton exn; reproducible } : Collect_errors_monoid.t))
+    f
+
 module Exec : sig
   (* [exec_dep_node] is a variant of [consider_and_compute] but with a simpler
      type, convenient for external usage. *)
@@ -940,35 +1022,14 @@ end = struct
    fun dep_node cache_lookup_failure deps_so_far ->
     Deps_so_far.start_compute deps_so_far;
     let compute_value_and_deps_rev () =
-      (* One consequence of using [Fiber.collect_errors] is that memoized
-         functions don't report errors promptly; instead, errors are reported
-         only once all child fibers terminate. To solve this, one might hope to
-         use [Fiber.with_error_handler] but the details are unclear. *)
       let+ res =
-        Fiber.collect_errors (fun () ->
+        report_and_collect_errors (fun () ->
             dep_node.without_state.spec.f dep_node.without_state.input)
       in
       let value =
         match res with
         | Ok res -> Value.Ok res
-        | Error exns ->
-          (* CR-someday amokhov: Here we remove error duplicates that can appear
-             due to diamond dependencies. We could add [Fiber.collect_error_set]
-             that returns a set of errors instead of a list, to get rid of the
-             duplicates as early as possible. *)
-          let exns, reproducible =
-            List.fold_left exns ~init:(Exn_set.empty, true)
-              ~f:(fun (acc, acc_reproducible) exn ->
-                let exn, acc_reproducible =
-                  match exn with
-                  | { Exn_with_backtrace.exn = Non_reproducible exn; backtrace }
-                    ->
-                    ({ Exn_with_backtrace.exn; backtrace }, false)
-                  | exn -> (exn, acc_reproducible)
-                in
-                (Exn_set.add acc exn, acc_reproducible))
-          in
-          Error { exns; reproducible }
+        | Error errors -> Error errors
       in
       let deps_rev = Deps_so_far.get_compute_deps_rev deps_so_far in
       if !Counters.enabled then
@@ -1138,11 +1199,27 @@ module Build = struct
     let* (_ : Run.t) = current_run () in
     fiber
 
+  let is_top_level =
+    let+ is_set = Error_handler.is_set in
+    not is_set
+
+  let run_with_error_handler t ~handle_error =
+    Error_handler.with_error_handler handle_error (fun () ->
+        let* res = report_and_collect_errors (fun () -> t) in
+        match res with
+        | Ok ok -> Fiber.return ok
+        | Error ({ exns; reproducible = _ } : Collect_errors_monoid.t) ->
+          Fiber.reraise_all (Exn_set.to_list exns))
+
   let run t =
-    let* res = Fiber.collect_errors (fun () -> t) in
-    match res with
-    | Ok res -> Fiber.return res
-    | Error exns -> Fiber.reraise_all (Exn_set.of_list exns |> Exn_set.to_list)
+    let* is_top_level = is_top_level in
+    (* CR-someday aalekseyev: I think this automagical detection of toplevel
+       calls is weird. My hunch is that having separate functions for toplevel
+       and non-toplevel [run] would be better. *)
+    match is_top_level with
+    | true ->
+      run_with_error_handler t ~handle_error:(fun _exn -> Fiber.return ())
+    | false -> t
 end
 
 module With_implicit_output = struct

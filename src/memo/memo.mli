@@ -21,6 +21,12 @@ module Build : sig
   (* CR-someday amokhov: Return the set of exceptions explicitly. *)
   val run : 'a t -> 'a Fiber.t
 
+  (** Every error gets reported twice: once early, in non-deterministic order,
+      by calling [handler_error], and once later, in deterministic order, by
+      raising a fiber exception. *)
+  val run_with_error_handler :
+    'a t -> handle_error:(Exn_with_backtrace.t -> unit Fiber.t) -> 'a Fiber.t
+
   (** [of_reproducible_fiber fiber] injects a fiber into the build monad. The
       given fiber must be "reproducible", i.e. executing it multiple times
       should always yield the same result. It is up to the caller to ensure that

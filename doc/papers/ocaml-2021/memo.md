@@ -18,8 +18,8 @@ We present Memo, an incremental computation library that improves Dune's
 performance on large-scale code bases. The requirements that come from the build
 systems domain make Memo an interesting point in the design space of incremental
 computation libraries. In particular, Memo needs to cope with concurrency,
-dependency cycles, non-determinism, and scale to computation graphs comprising
-millions of nodes.
+dynamic dependencies, dependency cycles, non-determinism, and scale to
+computation graphs comprising millions of nodes.
 
 ## Introduction
 
@@ -74,21 +74,35 @@ be considered out of date.
 The above introduction covers only a small part of the Memo's API, yet it gives
 us enough context to discuss the most interesting aspects of the implementation.
 
-Firstly, to *capture dependencies*, Memo maintains a *call stack*, where stack
+Firstly, to *capture dependencies*, Memo maintains a call stack, where stack
 frames correspond to `exec` calls. The call stack is also useful for reporting
 good error messages: when a user-supplied function raises an exception, we
 extend it with the current Memo stack trace using human-readable annotations
-provided via an optional argument of `create`.
+provided to `create` via an optional argument.
 
-<!-- Note that memoized functions can have diamond-shaped call graphs, and to avoid
-reporting the same error multiple times, we need to deduplicate them. -->
+Memo supports two ways of *error reporting*: fast (to show errors to the user as
+soon as they occur during a build), and deterministic (to provide a stable error
+summary at the end of the build). To speed up rebuilds, Memo also supports
+*error caching*: by default, it doesn't recompute a `Build` function that
+previously failed if its dependencies are up to date. This behaviour can be
+overridden for *non-reproducible errors* that should not be cached, for example,
+the errors that occur while Dune cancels the current build by interrupting the
+execution of external commands.
 
-* Why cycle detection and concurrency is hard combination (example)
+<!-- Note that memoized functions can have diamond-shaped call graphs, and to
+avoid reporting the same error multiple times, we need to deduplicate them. -->
 
-* Interaction of build cancellation with error caching
+One of the most interesting aspects of Memo is *detecting dependency cycles*.
+Since Dune supports *dynamic build dependencies* [2], the dependency graph is
+not known before the build starts. During the build, new nodes and dependency
+edges are discovered concurrently, and Memo uses an incremental cycle detection
+algorithm [3] to detect and report dependency cycles as soon as they are
+created. This is a unique feature of Memo: Incremental [4] and Adapton [5]
+libraries do not support concurrency; the Tenacious library (used by Jane
+Street's internal build system Jenga) does support concurrency but detects
+cycles by "stopping the world" and traversing the "frozen" dependency graph to
+see if concurrent computations might have deadlocked by waiting for each other.
 
-* Interaction of concurrency and error-reporting (want errors to appear quickly
-and in deterministic order -- impossible?)
 
 * Push-based vs pull-based
 
@@ -109,10 +123,26 @@ Other relevant libraries:
 
 We thank Rudi Horn, Rudi Grinberg, Emilio Jesús Gallego Arias, and other Dune
 developers for their contributions to Memo and Dune. We are also grateful to
-Armaël Guéneau for the help with the incremental cycle detection library that
+Armaël Guéneau for helping us with the incremental cycle detection library that
 we use in Memo.
 
 # References
 
-[1] Jane Street, 2018. *"Dune: A composable build system for OCaml"*.
-    [https://dune.build/](https://dune.build/).
+[1] Jane Street. *"Dune: A composable build system for OCaml"*.
+    [https://dune.build/](https://dune.build/) (2018).
+
+[2] Andrey Mokhov, Neil Mitchell, and Simon Peyton Jones. *"Build systems à la
+    carte: Theory and practice"*. Journal of Functional Programming 30 (2020).
+
+<!-- [3] Michael A. Bender, Jeremy T. Fineman, Seth Gilbert, and Robert E. Tarjan.
+    *"A new approach to incremental cycle detection and related problems"*. ACM Transactions on Algorithms (TALG) 12, no. 2 (2015). -->
+
+[3] Armaël Guéneau, Jacques-Henri Jourdan, Arthur Charguéraud, and François
+    Pottier. *"Formal proof and analysis of an incremental cycle detection
+    algorithm"*. Interactive Theorem Proving, no. 141 (2019).
+
+[4] Jane Street. *The Incremental library*.
+    [https://opensource.janestreet.com/incremental/](https://opensource.janestreet.com/incremental/) (2015).
+
+[5] Matthew A. Hammer, Khoo Yit Phang, Michael Hicks, and Jeffrey S. Foster.
+    *"Adapton: Composable, demand-driven incremental computation"*. PLDI (2014).

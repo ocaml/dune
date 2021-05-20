@@ -159,8 +159,21 @@ module Diagnostic = struct
       iso (record (both in_build in_source)) to_ from
   end
 
+  module Id = struct
+    type t = int
+
+    let compare (a : t) (b : t) = compare a b
+
+    let hash (t : t) = Hashtbl.hash t
+
+    let create t : t = t
+
+    let sexp = Conv.int
+  end
+
   type t =
     { targets : Target.t list
+    ; id : Id.t
     ; message : unit Stdune.Pp.t
     ; loc : Loc.t option
     ; severity : severity option
@@ -247,17 +260,19 @@ module Diagnostic = struct
 
   let directory t = t.directory
 
+  let id t = t.id
+
   let sexp_severity =
     let open Conv in
     enum [ ("error", Error); ("warning", Warning) ]
 
   let sexp =
     let open Conv in
-    let from { targets; message; loc; severity; promotion; directory } =
-      (targets, message, loc, severity, promotion, directory)
+    let from { targets; message; loc; severity; promotion; directory; id } =
+      (targets, message, loc, severity, promotion, directory, id)
     in
-    let to_ (targets, message, loc, severity, promotion, directory) =
-      { targets; message; loc; severity; promotion; directory }
+    let to_ (targets, message, loc, severity, promotion, directory, id) =
+      { targets; message; loc; severity; promotion; directory; id }
     in
     let loc = field "loc" (optional Loc.sexp) in
     let message = field "message" (required sexp_pp) in
@@ -265,7 +280,10 @@ module Diagnostic = struct
     let severity = field "severity" (optional sexp_severity) in
     let directory = field "directory" (optional string) in
     let promotion = field "promotion" (required (list Promotion.sexp)) in
-    iso (record (six targets message loc severity promotion directory)) to_ from
+    let id = field "id" (required Id.sexp) in
+    iso
+      (record (seven targets message loc severity promotion directory id))
+      to_ from
 
   module Event = struct
     type nonrec t =

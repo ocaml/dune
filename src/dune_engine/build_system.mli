@@ -12,6 +12,8 @@ module Error : sig
   type t
 
   val info : t -> User_message.t * Path.t option
+
+  val id : t -> int
 end
 
 (** The current set of active errors *)

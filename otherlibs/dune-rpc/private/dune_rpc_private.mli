@@ -147,14 +147,27 @@ module Diagnostic : sig
       }
   end
 
+  module Id : sig
+    type t
+
+    val compare : t -> t -> int
+
+    val hash : t -> int
+
+    val create : int -> t
+  end
+
   type t =
     { targets : Target.t list
+    ; id : Id.t
     ; message : unit Pp.t
     ; loc : Loc.t option
     ; severity : severity option
     ; promotion : Promotion.t list
     ; directory : string option
     }
+
+  val id : t -> Id.t
 
   val loc : t -> Loc.t option
 

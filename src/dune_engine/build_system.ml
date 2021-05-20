@@ -360,7 +360,14 @@ module Context_or_install = struct
 end
 
 module Error = struct
-  type t = Exn_with_backtrace.t
+  module Id = Id.Make ()
+
+  type t =
+    { exn : Exn_with_backtrace.t
+    ; id : Id.t
+    }
+
+  let id t = Id.to_int t.id
 
   let extract_dir annot =
     Process.With_directory_annot.check annot
@@ -369,7 +376,7 @@ module Error = struct
 
   let info (t : t) =
     let e =
-      match t.exn with
+      match t.exn.exn with
       | Memo.Error.E e -> Memo.Error.get e
       | e -> e
     in
@@ -424,7 +431,7 @@ type t =
   ; sandboxing_preference : Sandbox_mode.t list
   ; mutable rule_done : int
   ; mutable rule_total : int
-  ; mutable errors : Exn_with_backtrace.t list
+  ; mutable errors : Error.t list
   ; handler : Handler.t
   ; promote_source :
          ?chmod:(int -> int)
@@ -2362,8 +2369,9 @@ let process_exn_and_reraise exn =
         | _ -> exn)
   in
   let t = t () in
-  t.errors <- exn :: t.errors;
-  let+ () = t.handler.error [ Add exn ] in
+  let error = { Error.exn; id = Error.Id.gen () } in
+  t.errors <- error :: t.errors;
+  let+ () = t.handler.error [ Add error ] in
   Exn_with_backtrace.reraise exn
 
 let run f =

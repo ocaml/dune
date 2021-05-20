@@ -16,6 +16,26 @@ contents of all configuration files read by Dune and looks like:
 
 Additionally, they can contains the following stanzas.
 
+.. _using:
+
+using
+-----
+
+The language of configuration files read by Dune can be extended to support
+additional stanzas (eg. ``menhir``, ``coq.theory``, ``mdx``). This is done by
+adding a line such as:
+
+.. code:: scheme
+
+    (using <plugin> <version>)
+
+in the ``dune-project`` file where ``<plugin>`` is the name of the plugin that
+defines this stanza and ``<version>`` describes the version of the configuration
+language. Note that this version has nothing to do with the version of the
+associated tool or library. In particular, adding a ``using`` stanza will not
+result in a build dependency in the generated ``.opam`` file, see
+:ref:`generate_opam_files <generate_opam_files>`.
+
 name
 ----
 
@@ -208,6 +228,8 @@ where ``<setting>`` is one of:
 - ``(enabled_for <languages>)`` can be used to restrict the languages that are
   considered for formatting.
 
+.. _generate_opam_files:
+
 generate_opam_files
 -------------------
 
@@ -303,6 +325,10 @@ language: The syntax is as a list of the following elements:
 
    dep-specification = dep+
 
+Note that the use of a ``using`` stanza (see :ref:`using <using>`) does not
+automatically add the associated library or tool as a dependency. They have to
+be added explicitly.
+
 .. _always-add-cflags:
 
 use_standard_c_and_cxx_flags
@@ -319,6 +345,25 @@ adding the following field to the ``dune-project`` file:
 In this mode, dune will populate the ``:standard`` set of C flags with the
 content of ``ocamlc_cflags`` and  ``ocamlc_cppflags``. These flags can be
 completed or overridden using the :ref:`ordered-set-language`.
+
+accept_alternative_dune_file_name
+---------------------------------
+
+Since Dune 3.0, it is possible to use the alternative file name ``dune-file``
+instead of ``dune`` to specify the build. This may be useful to avoid problems
+with ``dune`` files which have the executable permission in a directory that
+happens to be in the ``PATH`` (this can unwittingly happen under Windows).
+
+The feature must be enabled explicitly by adding the following field to
+``dune-project``:
+
+.. code:: scheme
+
+   (accept_alternative_dune_file_name)
+
+Note that ``dune`` continues to be accepted even after enabling this option, but
+if a file named ``dune-file`` is found in a directory, it will take precedence
+over ``dune``.
 
 dune
 ====

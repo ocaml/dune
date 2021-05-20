@@ -11,6 +11,7 @@ Cycle detection
   -> "a" in _build/default
   -> required by library "c" in _build/default
   -> required by executable cycle in dune:17
+  -> required by _build/default/cycle.exe
   [1]
 
 Select with no solution

@@ -1,5 +1,3 @@
-open Stdune
-
 module Conv : module type of Conv
 
 module Id : sig
@@ -7,24 +5,26 @@ module Id : sig
 
   val sexp : t Conv.value
 
-  val to_dyn : t -> Dyn.t
+  val to_dyn : t -> Stdune.Dyn.t
 
   val equal : t -> t -> bool
 
   val hash : t -> int
 
-  val make : Sexp.t -> t
+  val make : Csexp.t -> t
 
-  module Set : Set.S with type elt = t
+  val to_sexp : t -> Csexp.t
+
+  module Set : Stdune.Set.S with type elt = t
 end
 
 module Call : sig
   type t =
     { method_ : string
-    ; params : Sexp.t
+    ; params : Csexp.t
     }
 
-  val create : ?params:Sexp.t -> method_:string -> unit -> t
+  val create : ?params:Csexp.t -> method_:string -> unit -> t
 end
 
 module Request : sig
@@ -39,7 +39,7 @@ module Response : sig
       | Version_error
 
     type t =
-      { payload : Sexp.t option
+      { payload : Csexp.t option
       ; message : string
       ; kind : kind
       }
@@ -48,10 +48,10 @@ module Response : sig
 
     val of_conv : Conv.error -> t
 
-    val create : ?payload:Sexp.t -> kind:kind -> message:string -> unit -> t
+    val create : ?payload:Csexp.t -> kind:kind -> message:string -> unit -> t
   end
 
-  type t = (Sexp.t, Error.t) result
+  type t = (Csexp.t, Error.t) result
 end
 
 module Initialize : sig
@@ -75,7 +75,7 @@ module Initialize : sig
 
     val create : unit -> t
 
-    val to_response : t -> Stdune.Sexp.t
+    val to_response : t -> Csexp.t
 
     val sexp : t Conv.value
   end
@@ -101,9 +101,13 @@ end
 
 module Where : sig
   type t =
-    [ `Unix of Path.t
+    [ `Unix of Stdune.Path.t
     | `Ip of Unix.inet_addr * [ `Port of int ]
     ]
+
+  val rpc_dir : Stdune.Path.Build.t Lazy.t
+
+  val of_string : string -> t
 
   val get : unit -> t option
 
@@ -111,120 +115,201 @@ module Where : sig
 
   val default : unit -> t
 
-  val add_to_env : t -> Env.t -> Env.t
+  val add_to_env : t -> Stdune.Env.t -> Stdune.Env.t
 end
 
 module Loc : sig
-  type t =
+  type t = Stdune.Loc.t =
     { start : Lexing.position
     ; stop : Lexing.position
     }
 end
 
-module Error : sig
+module Target : sig
   type t =
-    { target : string option
-    ; message : string
+    | Path of string
+    | Alias of string
+    | Library of string
+    | Executables of string list
+    | Preprocess of string list
+    | Loc of Loc.t
+end
+
+module Diagnostic : sig
+  type severity =
+    | Error
+    | Warning
+
+  module Promotion : sig
+    type t =
+      { in_build : string
+      ; in_source : string
+      }
+  end
+
+  type t =
+    { targets : Target.t list
+    ; message : unit Pp.t
     ; loc : Loc.t option
+    ; severity : severity option
+    ; promotion : Promotion.t list
+    ; directory : string option
+    }
+
+  val loc : t -> Loc.t option
+
+  val message : t -> unit Pp.t
+
+  val severity : t -> severity option
+
+  val promotion : t -> Promotion.t list
+
+  val targets : t -> Target.t list
+
+  val directory : t -> string option
+
+  module Event : sig
+    type nonrec t =
+      | Add of t
+      | Remove of t
+  end
+end
+
+module Build : sig
+  module Event : sig
+    type t =
+      | Start
+      | Finish
+      | Fail
+      | Interrupt
+  end
+end
+
+module Progress : sig
+  type t =
+    { complete : int
+    ; remaining : int
     }
 end
 
 module Message : sig
   type t =
-    { payload : Sexp.t option
+    { payload : Csexp.t option
     ; message : string
-    }
-end
-
-module Promotion : sig
-  type t =
-    { in_build : string
-    ; in_source : string
     }
 end
 
 module Subscribe : sig
   type t =
-    | Error
-    | Promotion
+    | Diagnostics
+    | Build_progress
 end
 
-module Client (S : sig
-  module Fiber : sig
-    type 'a t
-
-    val return : 'a -> 'a t
-
-    val fork_and_join_unit : (unit -> unit t) -> (unit -> 'a t) -> 'a t
-
-    val parallel_iter : (unit -> 'a option t) -> f:('a -> unit t) -> unit t
-
-    module O : sig
-      val ( let* ) : 'a t -> ('a -> 'b t) -> 'b t
-
-      val ( let+ ) : 'a t -> ('a -> 'b) -> 'b t
-    end
-
-    module Ivar : sig
-      type 'a fiber
-
-      type 'a t
-
-      val create : unit -> 'a t
-
-      val read : 'a t -> 'a fiber
-
-      val fill : 'a t -> 'a -> unit fiber
-    end
-    with type 'a fiber := 'a t
-  end
-
-  module Chan : sig
-    type t
-
-    val write : t -> Sexp.t option -> unit Fiber.t
-
-    val read : t -> Sexp.t option Fiber.t
-  end
-end) : sig
-  open S
-
+module type S = sig
   type t
+
+  type 'a fiber
+
+  type chan
 
   val request :
        ?id:Id.t
     -> t
     -> ('a, 'b) Decl.request
     -> 'a
-    -> ('b, Response.Error.t) result Fiber.t
+    -> ('b, Response.Error.t) result fiber
 
-  val notification : t -> 'a Decl.notification -> 'a -> unit Fiber.t
+  val notification : t -> 'a Decl.notification -> 'a -> unit fiber
 
   module Handler : sig
     type t
 
     val create :
-         ?log:(Message.t -> unit Fiber.t)
-      -> ?errors:(Error.t list -> unit Fiber.t)
-      -> ?promotions:(Promotion.t list -> unit Fiber.t)
-      -> ?abort:(Message.t -> unit Fiber.t)
+         ?log:(Message.t -> unit fiber)
+      -> ?diagnostic:(Diagnostic.Event.t list -> unit fiber)
+      -> ?build_event:(Build.Event.t -> unit fiber)
+      -> ?build_progress:(Progress.t -> unit fiber)
+      -> ?abort:(Message.t -> unit fiber)
       -> unit
       -> t
   end
 
   val connect_raw :
-       Chan.t
+       chan
     -> Initialize.Request.t
-    -> on_notification:(Call.t -> unit Fiber.t)
-    -> f:(t -> 'a Fiber.t)
-    -> 'a Fiber.t
+    -> on_notification:(Call.t -> unit fiber)
+    -> f:(t -> 'a fiber)
+    -> 'a fiber
 
   val connect :
        ?handler:Handler.t
-    -> Chan.t
+    -> chan
     -> Initialize.Request.t
-    -> f:(t -> 'a Fiber.t)
-    -> 'a Fiber.t
+    -> f:(t -> 'a fiber)
+    -> 'a fiber
+
+  val connect_persistent :
+       ?on_disconnect:('a -> unit fiber)
+    -> chan
+    -> on_connect:(unit -> ('a * Initialize.Request.t * Handler.t option) fiber)
+    -> on_connected:('a -> t -> unit fiber)
+    -> unit fiber
+end
+
+module Client (Fiber : sig
+  type 'a t
+
+  val return : 'a -> 'a t
+
+  val fork_and_join_unit : (unit -> unit t) -> (unit -> 'a t) -> 'a t
+
+  val parallel_iter : (unit -> 'a option t) -> f:('a -> unit t) -> unit t
+
+  module O : sig
+    val ( let* ) : 'a t -> ('a -> 'b t) -> 'b t
+
+    val ( let+ ) : 'a t -> ('a -> 'b) -> 'b t
+  end
+
+  module Ivar : sig
+    type 'a fiber
+
+    type 'a t
+
+    val create : unit -> 'a t
+
+    val read : 'a t -> 'a fiber
+
+    val fill : 'a t -> 'a -> unit fiber
+  end
+  with type 'a fiber := 'a t
+end) (Chan : sig
+  type t
+
+  val write : t -> Csexp.t option -> unit Fiber.t
+
+  val read : t -> Csexp.t option Fiber.t
+end) : S with type 'a fiber := 'a Fiber.t and type chan := Chan.t
+
+module Persistent : sig
+  module In : sig
+    (** The type of incoming packets when hosting multiple connections in
+        sequence over a single channel *)
+    type t =
+      | New_connection
+      | Packet of Csexp.t
+      | Close_connection
+
+    val sexp : t Conv.value
+  end
+
+  module Out : sig
+    type t =
+      | Packet of Csexp.t
+      | Close_connection
+
+    val sexp : t Conv.value
+  end
 end
 
 module Packet : sig
@@ -258,6 +343,10 @@ module Public : sig
 
   module Request : sig
     type ('a, 'b) t = ('a, 'b) Decl.request
+
+    val ping : (unit, unit) t
+
+    val diagnostics : (unit, Diagnostic.t list) t
   end
 
   module Notification : sig
@@ -274,9 +363,9 @@ end
 module Server_notifications : sig
   (** Notification sent from server to client *)
 
-  val errors : Error.t list Decl.notification
+  val diagnostic : Diagnostic.Event.t list Decl.notification
 
-  val promotions : Promotion.t list Decl.notification
+  val progress : Progress.t Decl.notification
 
   val log : Message.t Decl.notification
 

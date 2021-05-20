@@ -21,21 +21,7 @@ let deps_of t (m : Module.t) =
       ; ("m", Module.to_dyn m)
       ]
 
-module Top_closure = struct
-  module Action_builder = struct
-    include Action_builder
-
-    let ( >>= ) t f = Action_builder.Expert.action_builder (map t ~f)
-
-    module O = struct
-      include O
-
-      let ( let* ) = ( >>= )
-    end
-  end
-
-  include Top_closure.Make (Module_name.Unique.Set) (Action_builder)
-end
+module Top_closure = Top_closure.Make (Module_name.Unique.Set) (Action_builder)
 
 let top_closed t modules =
   let+ res =

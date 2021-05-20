@@ -34,17 +34,16 @@ module Chan = struct
 end
 
 module Drpc = struct
-  module Client = Dune_rpc.Client (struct
-    module Fiber = struct
-      include Fiber
+  module Client =
+    Dune_rpc.Client
+      (struct
+        include Fiber
 
-      let parallel_iter t ~f =
-        let stream = Fiber.Stream.In.create t in
-        Fiber.Stream.In.parallel_iter stream ~f
-    end
-
-    module Chan = Chan
-  end)
+        let parallel_iter t ~f =
+          let stream = Fiber.Stream.In.create t in
+          Fiber.Stream.In.parallel_iter stream ~f
+      end)
+      (Chan)
 
   module Server = Dune_rpc_server.Make (Chan)
 
@@ -73,14 +72,14 @@ let test ?(on_notification = fun _ -> assert false) ~client ~handler ~init () =
           Chan.write client_chan None)
     in
     let server () =
-      let+ () = Drpc.serve sessions (Dune_rpc_server.make handler) in
+      let+ () = Drpc.serve sessions None (Dune_rpc_server.make handler) in
       printfn "server: finished."
     in
     Fiber.parallel_iter [ connect; client; server ] ~f:(fun f -> f ())
   in
   Scheduler.run (Scheduler.create ()) run
 
-let init ?(id = Id.make (Atom "test-client")) ?(version = (1, 1)) () =
+let init ?(id = Id.make (Csexp.Atom "test-client")) ?(version = (1, 1)) () =
   { Initialize.Request.version; id }
 
 let%expect_test "initialize scheduler with rpc" =
@@ -105,7 +104,10 @@ let%expect_test "invalid client version" =
   ( "{ payload = Some [ [ \"supported versions until\"; [ \"2\"; \"0\" ] ] ]\
    \n; message = \"Unsupported version\"\
    \n; kind = Version_error\
-   \n}") |}]
+   \n}")
+  Trailing output
+  ---------------
+  server: finished. |}]
 
 let%expect_test "call private method" =
   let decl = Decl.request ~method_:"double" Conv.int Conv.int in

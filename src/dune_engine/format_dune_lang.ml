@@ -14,7 +14,7 @@ let parse_lexbuf lb =
 
 let parse_file path_opt =
   match path_opt with
-  | Some path -> Io.with_lexbuf_from_file path ~f:parse_lexbuf
+  | Some path -> Io.Untracked.with_lexbuf_from_file path ~f:parse_lexbuf
   | None -> parse_lexbuf @@ Lexing.from_channel stdin
 
 let can_be_displayed_wrapped =
@@ -43,12 +43,8 @@ let print_wrapped_list ~version x =
 
 let pp_comment_line l = Pp.char ';' ++ Pp.verbatim l
 
-let pp_comment loc (comment : Dune_lang.Cst.Comment.t) =
-  match comment with
-  | Lines ls -> Pp.vbox (Pp.concat_map ~sep:Pp.cut ~f:pp_comment_line ls)
-  | Legacy ->
-    User_error.raise ~loc
-      [ Pp.text "Formatting is only supported with the dune syntax" ]
+let pp_comment lines =
+  Pp.vbox (Pp.concat_map ~sep:Pp.cut ~f:pp_comment_line lines)
 
 let pp_break attached =
   if attached then
@@ -61,8 +57,8 @@ let pp_list_with_comments pp_sexp sexps =
     match l with
     | x :: Comment (loc, c) :: xs ->
       let attached = Loc.on_same_line (Dune_lang.Cst.loc x) loc in
-      pp_sexp x ++ pp_break attached ++ pp_comment loc c ++ Pp.cut ++ go xs
-    | Comment (loc, c) :: xs -> pp_comment loc c ++ Pp.cut ++ go xs
+      pp_sexp x ++ pp_break attached ++ pp_comment c ++ Pp.cut ++ go xs
+    | Comment (_, c) :: xs -> pp_comment c ++ Pp.cut ++ go xs
     | [ x ] -> pp_sexp x
     | x :: xs -> pp_sexp x ++ Pp.cut ++ go xs
     | [] -> Pp.nop
@@ -77,7 +73,7 @@ let rec pp_sexp ~version : Dune_lang.Cst.t -> _ = function
         print_wrapped_list ~version sexps
       else
         pp_sexp_list ~version sexps)
-  | Comment (loc, c) -> pp_comment loc c
+  | Comment (_, c) -> pp_comment c
 
 and pp_sexp_list ~version sexps =
   Pp.char '(' ++ pp_list_with_comments (pp_sexp ~version) sexps ++ Pp.char ')'

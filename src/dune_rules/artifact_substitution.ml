@@ -44,14 +44,14 @@ type hardcoded_ocaml_path =
   | Relocatable of Path.t
 
 type conf =
-  { get_vcs : Path.Source.t -> Vcs.t option
+  { get_vcs : Path.Source.t -> Vcs.t option Memo.Build.t
   ; get_location : Section.t -> Package.Name.t -> Path.t
   ; get_config_path : configpath -> Path.t option
   ; hardcoded_ocaml_path : hardcoded_ocaml_path
   }
 
-let conf_of_context (context : Build_context.t option) =
-  let get_vcs = File_tree.nearest_vcs in
+let conf_of_context (context : Context.t option) =
+  let get_vcs = Source_tree.nearest_vcs in
   match context with
   | None ->
     { get_vcs
@@ -70,7 +70,7 @@ let conf_of_context (context : Build_context.t option) =
       let install_dir = Path.build (Path.Build.relative install_dir "lib") in
       Hardcoded (install_dir :: context.default_ocamlpath)
     in
-    { get_vcs = File_tree.nearest_vcs
+    { get_vcs = Source_tree.nearest_vcs
     ; get_location
     ; get_config_path
     ; hardcoded_ocaml_path
@@ -78,7 +78,7 @@ let conf_of_context (context : Build_context.t option) =
 
 let conf_for_install ~relocatable ~default_ocamlpath ~stdlib_dir ~prefix ~libdir
     ~mandir =
-  let get_vcs = File_tree.nearest_vcs in
+  let get_vcs = Source_tree.nearest_vcs in
   let hardcoded_ocaml_path =
     if relocatable then
       Relocatable prefix
@@ -98,7 +98,7 @@ let conf_for_install ~relocatable ~default_ocamlpath ~stdlib_dir ~prefix ~libdir
   { get_location; get_vcs; get_config_path; hardcoded_ocaml_path }
 
 let conf_dummy =
-  { get_vcs = (fun _ -> None)
+  { get_vcs = (fun _ -> Memo.Build.return None)
   ; get_location = (fun _ _ -> Path.root)
   ; get_config_path = (fun _ -> None)
   ; hardcoded_ocaml_path = Hardcoded []
@@ -130,10 +130,14 @@ let eval t ~conf =
   match t with
   | Repeat (n, s) ->
     Fiber.return (Array.make n s |> Array.to_list |> String.concat ~sep:"")
-  | Vcs_describe p -> (
-    match conf.get_vcs p with
-    | None -> Fiber.return ""
-    | Some vcs -> Memo.Build.run (Vcs.describe vcs))
+  | Vcs_describe p ->
+    Memo.Build.run
+      (let open Memo.Build.O in
+      conf.get_vcs p >>= function
+      | None -> Memo.Build.return ""
+      | Some vcs ->
+        let+ res = Vcs.describe vcs in
+        Option.value res ~default:"")
   | Location (name, lib_name) ->
     Fiber.return (relocatable (conf.get_location name lib_name))
   | Configpath d ->

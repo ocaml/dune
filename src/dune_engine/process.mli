@@ -2,6 +2,8 @@
 
 open Import
 
+module With_directory_annot : User_error.Annot.S with type payload = Path.t
+
 (** How to handle sub-process failures *)
 type ('a, 'b) failure_mode =
   | Strict : ('a, 'a) failure_mode
@@ -24,7 +26,11 @@ module Io : sig
 
   val stdout : output t
 
+  val make_stdout : Execution_parameters.Action_output_on_success.t -> output t
+
   val stderr : output t
+
+  val make_stderr : Execution_parameters.Action_output_on_success.t -> output t
 
   val stdin : input t
 
@@ -37,7 +43,7 @@ module Io : sig
       input from the file. The returned channel can only be used by a single
       call to {!run}. If you want to use it multiple times, you need to use
       [clone]. *)
-  val file : Path.t -> 'a mode -> 'a t
+  val file : Path.t -> ?perm:int -> 'a mode -> 'a t
 
   (** Call this when you no longer need this redirection *)
   val release : 'a t -> unit
@@ -46,10 +52,11 @@ module Io : sig
   val multi_use : 'a t -> 'a t
 end
 
-(** Why a Fiber.t was run *)
+(** Why a Fiber.t was run. The location and annotations will be attached to
+    error messages. *)
 type purpose =
-  | Internal_job
-  | Build_job of Path.Build.Set.t
+  | Internal_job of Loc.t option * User_error.Annot.t list
+  | Build_job of Loc.t option * User_error.Annot.t list * Path.Build.Set.t
 
 (** [run ?dir ?stdout_to prog args] spawns a sub-process and wait for its
     termination. [stdout_to] [stderr_to] are released *)
@@ -64,6 +71,17 @@ val run :
   -> Path.t
   -> string list
   -> 'a Fiber.t
+
+val run_with_times :
+     ?dir:Path.t
+  -> ?stdout_to:Io.output Io.t
+  -> ?stderr_to:Io.output Io.t
+  -> ?stdin_from:Io.input Io.t
+  -> ?env:Env.t
+  -> ?purpose:purpose
+  -> Path.t
+  -> string list
+  -> Proc.Times.t Fiber.t
 
 (** Run a command and capture its output *)
 val run_capture :

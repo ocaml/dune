@@ -6,8 +6,8 @@
   fiber
   stdune
   unix
-  cache_daemon
-  cache
+  dune_cache
+  dune_cache_storage
   dune_rules
   dune_engine
   dune_util
@@ -16,6 +16,8 @@
   threads.posix
   build_info
   dune_config
+  chrome_trace
+  dune_stats
   csexp
   csexp_rpc
   dune_rpc_impl

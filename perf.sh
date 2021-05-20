@@ -53,7 +53,7 @@ run_test() {
 setup_test
 CURRENT_BRANCH=$(git branch | sed -n -e 's/^\* \(.*\)/\1/p')
 
-rm -f _perf/rows _perf/current _perf/master
+rm -f _perf/rows _perf/current _perf/main
 
 echo "            " >> _perf/rows
 echo "            " >> _perf/rows
@@ -70,14 +70,14 @@ echo "==============" >> _perf/current
 echo "Testing the current branch ($CURRENT_BRANCH)"
 run_test current
 
-echo "Master branch" >> _perf/master
-echo "=============" >> _perf/master
-git checkout master
-echo "Testing master"
-run_test master
+echo "Main branch" >> _perf/main
+echo "===========" >> _perf/main
+git checkout main
+echo "Testing main"
+run_test main
 
 git checkout $CURRENT_BRANCH
 
 echo ""
 
-paste -d ' ' <(pad 10 < _perf/rows) <(pad 14 < _perf/current) _perf/master
+paste -d ' ' <(pad 10 < _perf/rows) <(pad 14 < _perf/current) _perf/main

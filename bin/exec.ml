@@ -26,7 +26,7 @@ let man =
   ; Common.examples
       [ ("Run the executable named `my_exec'", "dune exec my_exec")
       ; ( "Run the executable defined in `foo.ml' with the argument `arg'"
-        , "dune exec ./foo.exe -- arg" )
+        , "dune exec -- ./foo.exe arg" )
       ]
   ]
 
@@ -43,100 +43,111 @@ let term =
       value & flag
       & info [ "no-build" ] ~doc:"don't rebuild target before executing")
   and+ args = Arg.(value & pos_right 0 string [] (Arg.info [] ~docv:"ARGS")) in
-  Common.set_common common;
-  let setup =
-    Scheduler.go ~common (fun () -> Memo.Build.run (Import.Main.setup common))
-  in
-  let sctx = Import.Main.find_scontext_exn setup ~name:context in
-  let context = Dune_rules.Super_context.context sctx in
-  let path_relative_to_build_root p =
-    Common.prefix_target common p
-    |> Path.Build.relative context.build_dir
-    |> Path.build
-  in
-  let prog_where =
-    match Filename.analyze_program_name prog with
-    | Absolute -> `This_abs (Path.of_string prog)
-    | In_path -> `Search prog
-    | Relative_to_current_dir -> `This_rel (path_relative_to_build_root prog)
-  in
-  let targets =
-    lazy
-      ((match prog_where with
-       | `Search p ->
-         [ Path.Build.relative
-             (Local_install_path.bin_dir ~context:context.name)
-             p
-           |> Path.build
-         ]
-       | `This_rel p when Sys.win32 ->
-         [ p; Path.extend_basename p ~suffix:Bin.exe ]
-       | `This_rel p -> [ p ]
-       | `This_abs p when Path.is_in_build_dir p -> [ p ]
-       | `This_abs _ -> [])
-      |> List.map ~f:(fun p -> Target.Path p)
-      |> Target.resolve_targets_mixed common setup
-      |> List.concat_map ~f:(function
-           | Ok targets -> targets
-           | Error _ -> []))
-  in
-  let real_prog =
-    (if not no_rebuild then
-      match Lazy.force targets with
-      | [] -> ()
-      | targets ->
-        Build_cmd.run_build_command_once ~common
-          ~targets:(fun () -> targets)
-          ~setup:(fun () -> Memo.Build.return ());
-        Hooks.End_of_build.run ());
-    match prog_where with
-    | `Search prog ->
-      let path =
-        Path.build (Local_install_path.bin_dir ~context:context.name)
-        :: context.path
+  let config = Common.init common in
+  Scheduler.go ~common ~config (fun () ->
+      let open Fiber.O in
+      let* setup = Import.Main.setup () in
+      let sctx = Import.Main.find_scontext_exn setup ~name:context in
+      let context = Dune_rules.Super_context.context sctx in
+      let path_relative_to_build_root p =
+        Common.prefix_target common p
+        |> Path.Build.relative context.build_dir
+        |> Path.build
       in
-      Bin.which prog ~path
-    | `This_rel prog
-    | `This_abs prog ->
-      if Path.exists prog then
-        Some prog
-      else if not Sys.win32 then
-        None
-      else
-        let prog = Path.extend_basename prog ~suffix:Bin.exe in
-        Option.some_if (Path.exists prog) prog
-  in
-  (* Good candidates for the "./x.exe" instead of "x.exe" error are executables
-     present in the current directory *)
-  let hints () =
-    let candidates =
-      let path = path_relative_to_build_root "" in
-      Path.Set.to_list (Build_system.targets_of ~dir:path)
-      |> List.filter ~f:(fun p -> Path.extension p = ".exe")
-      |> List.map ~f:(fun p -> "./" ^ Path.basename p)
-    in
-    User_message.did_you_mean prog ~candidates
-  in
-  match (real_prog, no_rebuild) with
-  | None, true -> (
-    match Lazy.force targets with
-    | [] ->
-      let hints = hints () in
-      User_error.raise ~hints [ Pp.textf "Program %S not found!" prog ]
-    | _ :: _ ->
-      User_error.raise
-        [ Pp.textf
-            "Program %S isn't built yet. You need to build it first or remove \
-             the --no-build option."
-            prog
-        ])
-  | None, false ->
-    let hints = hints () in
-    User_error.raise ~hints [ Pp.textf "Program %S not found!" prog ]
-  | Some real_prog, _ ->
-    let real_prog = Path.to_string real_prog in
-    let argv = prog :: args in
-    restore_cwd_and_execve common real_prog argv
-      (Super_context.context_env sctx)
+      let prog_where =
+        match Filename.analyze_program_name prog with
+        | Absolute -> `This_abs (Path.of_string prog)
+        | In_path -> `Search prog
+        | Relative_to_current_dir ->
+          `This_rel (path_relative_to_build_root prog)
+      in
+      let targets =
+        Memo.Lazy.create (fun () ->
+            let open Memo.Build.O in
+            (match prog_where with
+            | `Search p ->
+              let p =
+                Path.Build.relative
+                  (Local_install_path.bin_dir ~context:context.name)
+                  p
+                |> Path.build
+              in
+              [ p; Path.extend_basename p ~suffix:Bin.exe ]
+            | `This_rel p when Sys.win32 ->
+              [ p; Path.extend_basename p ~suffix:Bin.exe ]
+            | `This_rel p -> [ p ]
+            | `This_abs p when Path.is_in_build_dir p -> [ p ]
+            | `This_abs _ -> [])
+            |> List.map ~f:(fun p -> Target.Path p)
+            |> Target.resolve_targets_mixed (Common.root common) config setup
+            >>| List.concat_map ~f:(function
+                  | Ok targets -> targets
+                  | Error _ -> []))
+      in
+      let* real_prog =
+        let+ () =
+          if no_rebuild then
+            Fiber.return ()
+          else
+            Build_system.run (fun () ->
+                let open Memo.Build.O in
+                Memo.Lazy.force targets >>= function
+                | [] -> Memo.Build.return ()
+                | targets ->
+                  let+ () = Build_system.build (Target.request targets) in
+                  Hooks.End_of_build.run ())
+        in
+        match prog_where with
+        | `Search prog ->
+          let path =
+            Path.build (Local_install_path.bin_dir ~context:context.name)
+            :: context.path
+          in
+          Bin.which prog ~path
+        | `This_rel prog
+        | `This_abs prog ->
+          if Path.exists prog then
+            Some prog
+          else if not Sys.win32 then
+            None
+          else
+            let prog = Path.extend_basename prog ~suffix:Bin.exe in
+            Option.some_if (Path.exists prog) prog
+      in
+      (* Good candidates for the "./x.exe" instead of "x.exe" error are
+         executables present in the current directory *)
+      let hints () =
+        let+ candidates =
+          let path = path_relative_to_build_root "" in
+          let+ targets =
+            Build_system.run (fun () -> Build_system.targets_of ~dir:path)
+          in
+          Path.Set.to_list targets
+          |> List.filter ~f:(fun p -> Path.extension p = ".exe")
+          |> List.map ~f:(fun p -> "./" ^ Path.basename p)
+        in
+        User_message.did_you_mean prog ~candidates
+      in
+      match (real_prog, no_rebuild) with
+      | None, true -> (
+        Memo.Build.run (Memo.Lazy.force targets) >>= function
+        | [] ->
+          let* hints = hints () in
+          User_error.raise ~hints [ Pp.textf "Program %S not found!" prog ]
+        | _ :: _ ->
+          User_error.raise
+            [ Pp.textf
+                "Program %S isn't built yet. You need to build it first or \
+                 remove the --no-build option."
+                prog
+            ])
+      | None, false ->
+        let* hints = hints () in
+        User_error.raise ~hints [ Pp.textf "Program %S not found!" prog ]
+      | Some real_prog, _ ->
+        let real_prog = Path.to_string real_prog in
+        let argv = prog :: args in
+        restore_cwd_and_execve common real_prog argv
+          (Super_context.context_env sctx))
 
 let command = (term, info)

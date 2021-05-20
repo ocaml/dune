@@ -1,10 +1,33 @@
 open Import
 
+(* The reduced set of file stats this module inspects to decide whether a file
+   changed or not *)
+module Reduced_stats = struct
+  type t =
+    { mtime : float
+    ; size : int
+    ; perm : Unix.file_perm
+    }
+
+  let to_dyn { mtime; size; perm } =
+    Dyn.Record
+      [ ("mtime", Float mtime); ("size", Int size); ("perm", Int perm) ]
+
+  let of_unix_stats (stats : Unix.stats) =
+    { mtime = stats.st_mtime; size = stats.st_size; perm = stats.st_perm }
+
+  let compare a b =
+    match Float.compare a.mtime b.mtime with
+    | (Lt | Gt) as x -> x
+    | Eq -> (
+      match Int.compare a.size b.size with
+      | (Lt | Gt) as x -> x
+      | Eq -> Int.compare a.perm b.perm)
+end
+
 type file =
   { mutable digest : Digest.t
-  ; mutable timestamp : float
-  ; mutable size : int
-  ; mutable permissions : Unix.file_perm
+  ; mutable stats : Reduced_stats.t
   ; mutable stats_checked : int
   }
 
@@ -16,12 +39,28 @@ type t =
 
 let db_file = Path.relative Path.build_dir ".digest-db"
 
+let dyn_of_file { digest; stats; stats_checked } =
+  Dyn.Record
+    [ ("digest", Digest.to_dyn digest)
+    ; ("stats", Reduced_stats.to_dyn stats)
+    ; ("stats_checked", Int stats_checked)
+    ]
+
+let to_dyn { checked_key; max_timestamp; table } =
+  Dyn.Record
+    [ ("checked_key", Int checked_key)
+    ; ("max_timestamp", Float max_timestamp)
+    ; ("table", Path.Table.to_dyn dyn_of_file table)
+    ]
+
 module P = Persistent.Make (struct
   type nonrec t = t
 
   let name = "DIGEST-DB"
 
-  let version = 4
+  let version = 5
+
+  let to_dyn = to_dyn
 end)
 
 let needs_dumping = ref false
@@ -43,27 +82,46 @@ let cache =
 let get_current_filesystem_time () =
   let special_path = Path.relative Path.build_dir ".filesystem-clock" in
   Io.write_file special_path "<dummy>";
-  (Path.stat special_path).st_mtime
+  (Path.Untracked.stat_exn special_path).st_mtime
+
+let wait_for_fs_clock_to_advance () =
+  let t = get_current_filesystem_time () in
+  while get_current_filesystem_time () <= t do
+    (* This is a blocking wait but we don't care too much. This code is only
+       used in the test suite. *)
+    Unix.sleepf 0.01
+  done
 
 let delete_very_recent_entries () =
   let cache = Lazy.force cache in
+  if !Clflags.wait_for_filesystem_clock then wait_for_fs_clock_to_advance ();
   let now = get_current_filesystem_time () in
   match Float.compare cache.max_timestamp now with
   | Lt -> ()
   | Eq
   | Gt ->
-    Path.Table.filteri_inplace cache.table ~f:(fun ~key:_ ~data ->
-        match Float.compare data.timestamp now with
+    Path.Table.filteri_inplace cache.table ~f:(fun ~key:fn ~data ->
+        match Float.compare data.stats.mtime now with
         | Lt -> true
         | Gt
         | Eq ->
+          if !Clflags.debug_digests then
+            Console.print
+              [ Pp.textf
+                  "Dropping cached digest for %s because it has exactly the \
+                   same mtime as the file system clock."
+                  (Path.to_string_maybe_quoted fn)
+              ];
           false)
 
 let dump () =
   if !needs_dumping && Path.build_dir_exists () then (
     needs_dumping := false;
-    delete_very_recent_entries ();
-    P.dump db_file (Lazy.force cache)
+    Console.Status_line.set_live_temporarily
+      (fun () -> Some (Pp.hbox (Pp.text "Saving digest db...")))
+      (fun () ->
+        delete_very_recent_entries ();
+        P.dump db_file (Lazy.force cache))
   )
 
 let () = Hooks.End_of_build.always dump
@@ -79,40 +137,66 @@ let set_max_timestamp cache (stat : Unix.stats) =
 
 let set_with_stat fn digest stat =
   let cache = Lazy.force cache in
-  let permissions = stat.Unix.st_perm in
   needs_dumping := true;
   set_max_timestamp cache stat;
   Path.Table.set cache.table fn
     { digest
-    ; timestamp = stat.st_mtime
+    ; stats = Reduced_stats.of_unix_stats stat
     ; stats_checked = cache.checked_key
-    ; size = stat.st_size
-    ; permissions
     }
 
 let set fn digest =
-  let stat = Path.stat fn in
+  (* the caller of [set] ensures that the files exist *)
+  let stat = Path.Untracked.stat_exn fn in
   set_with_stat fn digest stat
 
-let refresh_ stats fn =
+let refresh_exn stats fn =
   let digest = Digest.file_with_stats fn stats in
   set_with_stat fn digest stats;
   digest
 
-let refresh fn =
-  let stats = Path.stat fn in
-  refresh_ stats fn
+let refresh_internal_exn fn =
+  let stats = Path.Untracked.stat_exn fn in
+  refresh_exn stats fn
 
-let refresh_and_chmod fn =
-  let stats = Path.lstat fn in
-  let () =
-    (* We remove write permissions to uniformize behavior regardless of whether
-       the cache is activated. No need to be zealous in case the file is not
-       cached anyway. See issue #3311. *)
-    if Cache.cachable stats.st_kind then
-      Path.chmod ~stats:(Some stats) ~mode:0o222 ~op:`Remove fn
-  in
-  refresh_ stats fn
+module Refresh_result = struct
+  type t =
+    | Ok of Digest.t
+    | No_such_file
+    | Error of exn
+end
+
+let catch_fs_errors f =
+  match f () with
+  | exception ((Unix.Unix_error _ | Sys_error _) as exn) ->
+    Refresh_result.Error exn
+  | res -> res
+
+let refresh fn ~remove_write_permissions : Refresh_result.t =
+  let fn = Path.build fn in
+  catch_fs_errors (fun () ->
+      match Path.Untracked.lstat_exn fn with
+      | exception Unix.Unix_error (ENOENT, _, _) -> Refresh_result.No_such_file
+      | stats ->
+        let stats =
+          match stats.st_kind with
+          | Unix.S_LNK -> (
+            try Path.Untracked.stat_exn fn with
+            | Unix.Unix_error (ENOENT, _, _) ->
+              raise (Sys_error "Broken symlink"))
+          | Unix.S_REG -> (
+            match remove_write_permissions with
+            | false -> stats
+            | true ->
+              let perm =
+                Path.Permissions.remove ~mode:Path.Permissions.write
+                  stats.st_perm
+              in
+              Path.chmod ~mode:perm fn;
+              { stats with st_perm = perm })
+          | _ -> stats
+        in
+        Refresh_result.Ok (refresh_exn stats fn))
 
 let peek_file fn =
   let cache = Lazy.force cache in
@@ -122,36 +206,49 @@ let peek_file fn =
     Some
       (if x.stats_checked = cache.checked_key then
         x.digest
-      else (
-        needs_dumping := true;
-        let stat = Path.stat fn in
-        let dirty = ref false in
-        set_max_timestamp cache stat;
-        if stat.st_mtime <> x.timestamp then (
-          dirty := true;
-          x.timestamp <- stat.st_mtime
-        );
-        if stat.st_perm <> x.permissions then (
-          dirty := true;
-          x.permissions <- stat.st_perm
-        );
-        if stat.st_size <> x.size then (
-          dirty := true;
-          x.size <- stat.st_size
-        );
-        if !dirty then x.digest <- Digest.file_with_stats fn stat;
-        x.stats_checked <- cache.checked_key;
-        x.digest
-      ))
+      else
+        let stats = Path.Untracked.stat_exn fn in
+        let reduced_stats = Reduced_stats.of_unix_stats stats in
+        match Reduced_stats.compare x.stats reduced_stats with
+        | Eq ->
+          (* Even though we're modifying the [stats_checked] field, we don't
+             need to set [needs_dumping := true] here. This is because
+             [checked_key] is incremented every time we load from disk, which
+             makes it so that [stats_checked < checked_key] for all entries
+             after loading, regardless of whether we save the new value here or
+             not. *)
+          x.stats_checked <- cache.checked_key;
+          x.digest
+        | Gt
+        | Lt ->
+          let digest = Digest.file_with_stats fn stats in
+          if !Clflags.debug_digests then
+            Console.print
+              [ Pp.textf "Re-digested file %s because its stats changed:"
+                  (Path.to_string_maybe_quoted fn)
+              ; Dyn.pp
+                  (Dyn.Record
+                     [ ("old_digest", Digest.to_dyn x.digest)
+                     ; ("new_digest", Digest.to_dyn digest)
+                     ; ("old_stats", Reduced_stats.to_dyn x.stats)
+                     ; ("new_stats", Reduced_stats.to_dyn reduced_stats)
+                     ])
+              ];
+          needs_dumping := true;
+          set_max_timestamp cache stats;
+          x.digest <- digest;
+          x.stats <- reduced_stats;
+          x.stats_checked <- cache.checked_key;
+          digest)
 
-let file fn =
-  let res =
-    match peek_file fn with
-    | None -> refresh fn
-    | Some v -> v
-  in
-  Fs_notify_memo.depend fn;
-  res
+let peek_or_refresh_file fn =
+  match peek_file fn with
+  | None -> refresh_internal_exn fn
+  | Some v -> v
+
+let source_or_external_file = peek_or_refresh_file
+
+let build_file fn = peek_or_refresh_file (Path.build fn)
 
 let remove fn =
   let cache = Lazy.force cache in

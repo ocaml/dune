@@ -93,6 +93,8 @@ module Entry : sig
 
   val add_install_prefix :
     Path.Build.t t -> paths:Section.Paths.t -> prefix:Path.t -> Path.Build.t t
+
+  val compare : Path.Build.t t -> Path.Build.t t -> Ordering.t
 end
 
 (** Same as Entry, but the destination can be in the site of a package *)

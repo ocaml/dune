@@ -1,5 +1,6 @@
 open! Dune_engine
-open Import
+open! Dune_engine.Import
+open! Stdune
 
 module Sanitizer : sig
   [@@@ocaml.warning "-32"]
@@ -141,20 +142,6 @@ let run_expect_test file ~f =
   else if Path.exists corrected_file then
     Path.rm_rf corrected_file
 
-let _BUILD_PATH_PREFIX_MAP = "BUILD_PATH_PREFIX_MAP"
-
-let extend_build_path_prefix_map ~env ~cwd ~temp_dir =
-  let s =
-    Build_path_prefix_map.encode_map
-      [ Some
-          { source = Path.to_absolute_filename cwd; target = "$TESTCASE_ROOT" }
-      ; Some { source = Path.to_absolute_filename temp_dir; target = "$TMPDIR" }
-      ]
-  in
-  Env.update env ~var:_BUILD_PATH_PREFIX_MAP ~f:(function
-    | None -> Some s
-    | Some s' -> Some (s ^ ":" ^ s'))
-
 let fprln oc fmt = Printf.fprintf oc (fmt ^^ "\n")
 
 (* Produce the following shell code:
@@ -284,7 +271,7 @@ let rewrite_paths build_path_prefix_map ~parent_script ~command_script s =
 
 let sanitize ~parent_script cram_to_output :
     (block_result * metadata_entry * string) Cram_lexer.block list =
-  List.map cram_to_output ~f:(fun t ->
+  List.map cram_to_output ~f:(fun (t : (block_result * _) Cram_lexer.block) ->
       match t with
       | Cram_lexer.Comment t -> Cram_lexer.Comment t
       | Command
@@ -366,8 +353,8 @@ let create_sh_script cram_stanzas ~temp_dir : sh_script Fiber.t =
       in
       fprln oc ". %s > %s 2>&1" user_shell_code_file_sh_path
         user_shell_code_output_file_sh_path;
-      fprln oc {|printf "%%d\0%%s\0" $? $%s >> %s|} _BUILD_PATH_PREFIX_MAP
-        metadata_file_sh_path;
+      fprln oc {|printf "%%d\0%%s\0" $? $%s >> %s|}
+        Action_exec._BUILD_PATH_PREFIX_MAP metadata_file_sh_path;
       Cram_lexer.Command
         { command = lines
         ; output_file = user_shell_code_output_file
@@ -385,8 +372,17 @@ let _display_with_bars s =
 
 let run ~env ~script lexbuf : string Fiber.t =
   let temp_dir =
-    let suffix = Path.basename script in
-    Temp.create Dir ~prefix:"dune.cram." ~suffix
+    let suffix =
+      let basename = Path.basename script in
+      let suffix =
+        if basename = Cram_test.fname_in_dir_test then
+          Path.basename (Path.parent_exn script)
+        else
+          basename
+      in
+      "." ^ suffix
+    in
+    Temp.create Dir ~prefix:"dune_cram" ~suffix
   in
   let cram_stanzas = cram_stanzas lexbuf in
   let open Fiber.O in
@@ -395,7 +391,16 @@ let run ~env ~script lexbuf : string Fiber.t =
   let env =
     let env = Env.add env ~var:"LC_ALL" ~value:"C" in
     let temp_dir = Path.relative temp_dir "tmp" in
-    let env = extend_build_path_prefix_map ~env ~cwd ~temp_dir in
+    let env =
+      Action_exec.extend_build_path_prefix_map env `New_rules_have_precedence
+        [ Some
+            { source = Path.to_absolute_filename cwd
+            ; target = "$TESTCASE_ROOT"
+            }
+        ; Some
+            { source = Path.to_absolute_filename temp_dir; target = "$TMPDIR" }
+        ]
+    in
     Path.mkdir_p temp_dir;
     Env.add env ~var:Env.Var.temp_dir
       ~value:(Path.to_absolute_filename temp_dir)

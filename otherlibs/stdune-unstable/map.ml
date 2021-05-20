@@ -146,6 +146,13 @@ module Make (Key : Key) : S with type key = Key.t = struct
     List.fold_left (List.rev l) ~init:empty ~f:(fun acc (key, data) ->
         add_multi acc key data)
 
+  let of_list_unit =
+    let rec loop acc = function
+      | [] -> acc
+      | k :: l -> loop (set acc k ()) l
+    in
+    fun l -> loop empty l
+
   let keys t = foldi t ~init:[] ~f:(fun k _ l -> k :: l) |> List.rev
 
   let values t = foldi t ~init:[] ~f:(fun _ v l -> v :: l) |> List.rev

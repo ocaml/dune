@@ -9,8 +9,9 @@ merged with (and sometimes replaced by) the flags in the env stanza.
   $ O_CC=$(ocamlc -config-var c_compiler)
   $ O_CCF=$(ocamlc -config-var ocamlc_cflags)
   $ O_CCPPF=$(ocamlc -config-var ocamlc_cppflags)
-  $ O_CC=${O_CC%% }
-  $ O_CCF=${O_CCF%% }
+  $ O_CC=$(echo $O_CC | sed -e 's/^[ \t]*//')
+  $ O_CCF=$(echo $O_CCF | sed -e 's/^[ \t]*//')
+  $ O_CCPPF=$(echo $O_CCPPF | sed -e 's/^[ \t]*//')
 
 No env
   $ cat > dune <<'EOF'

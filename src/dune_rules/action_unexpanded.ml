@@ -26,7 +26,7 @@ module Action_expander : sig
 
      In addition to this, it embeds an expander for easily expanding templates. *)
 
-  include Applicative_intf.S1
+  include Applicative
 
   (* Disable targets/dependencies inference detection *)
   val no_infer : 'a t -> 'a t
@@ -120,7 +120,6 @@ end = struct
     let env = { expander; infer = true; dir = Expander.dir expander } in
     let b, acc = t env acc in
     let { targets; deps; deps_if_exist } = acc in
-
     (* A file can be inferred as both a dependency and a target, for instance:
 
        {[ (progn (copy a b) (copy b c)) ]} *)
@@ -139,9 +138,8 @@ end = struct
     in
     let add_deps f { static; dyn } =
       f (remove_targets static)
-      >>> Action_builder.Expert.action_builder
-            (let+ set = dyn in
-             f (remove_targets set))
+      >>> let* set = dyn in
+          f (remove_targets set)
     in
     Action_builder.with_targets_set ~targets
       (let+ () = add_deps Action_builder.path_set deps
@@ -276,8 +274,8 @@ end = struct
         (* Try to collect the dependency statically as it helps for [dune
            external-lib-deps]. *)
         match Action_builder.static_eval x with
-        | Some (x, builder) -> (
-          ( builder >>> Action_builder.return x
+        | Some (x, deps) -> (
+          ( Action_builder.deps deps >>> Action_builder.return x
           , match f x with
             | None -> acc
             | Some fn ->
@@ -311,8 +309,8 @@ end = struct
         (fn, acc)
       else
         match Action_builder.static_eval fn with
-        | Some (fn, fn_builder) ->
-          ( fn_builder >>> Action_builder.return fn
+        | Some (fn, deps) ->
+          ( Action_builder.deps deps >>> Action_builder.return fn
           , { acc with
               deps_if_exist =
                 { acc.deps_if_exist with
@@ -364,24 +362,25 @@ end = struct
       let b =
         let dir = Path.build env.dir in
         let loc = loc sw in
-        let+ prog, args = Expander.expand env sw ~mode:At_least_one in
-        let prog =
+        let* prog, args = Expander.expand env sw ~mode:At_least_one in
+        let+ prog =
           match prog with
           | Value.Dir p ->
             User_error.raise ~loc
               [ Pp.textf "%s is a directory and cannot be used as an executable"
                   (Path.to_string_maybe_quoted p)
               ]
-          | Path p -> Ok p
+          | Path p -> Action_builder.return (Ok p)
           | String s -> (
             match Filename.analyze_program_name s with
             | Relative_to_current_dir
             | Absolute ->
-              Ok (Path.relative dir s)
+              Action_builder.return (Ok (Path.relative dir s))
             | In_path ->
-              Artifacts.Bin.binary ~loc:(Some loc)
-                (Expander.artifacts env.expander)
-                s)
+              Action_builder.memo_build
+                (Artifacts.Bin.binary ~loc:(Some loc)
+                   (Expander.artifacts env.expander)
+                   s))
         in
         let prog = Result.map prog ~f:(Expander.map_exe env.expander) in
         let args = Value.L.to_strings ~dir args in
@@ -425,10 +424,10 @@ let rec expand (t : Action_dune_lang.t) : Action.t Action_expander.t =
         A.set_env ~var ~value:(E.string value)
           (let+ t = expand t in
            fun ~value -> O.Setenv (var, value, t)))
-  | Redirect_out (outputs, fn, t) ->
+  | Redirect_out (outputs, fn, perm, t) ->
     let+ fn = E.target fn
     and+ t = expand t in
-    O.Redirect_out (outputs, fn, t)
+    O.Redirect_out (outputs, fn, perm, t)
   | Redirect_in (inputs, fn, t) ->
     let+ fn = E.dep fn
     and+ t = expand t in
@@ -454,6 +453,10 @@ let rec expand (t : Action_dune_lang.t) : Action.t Action_expander.t =
     let+ x = E.dep x
     and+ y = E.target y in
     O.Symlink (x, y)
+  | Hardlink (x, y) ->
+    let+ x = E.dep x
+    and+ y = E.target y in
+    O.Hardlink (x, y)
   | Copy_and_add_line_directive (x, y) ->
     let+ x = E.dep x
     and+ y = E.target y in
@@ -464,10 +467,10 @@ let rec expand (t : Action_dune_lang.t) : Action.t Action_expander.t =
   | Bash x ->
     let+ x = E.string x in
     O.Bash x
-  | Write_file (fn, s) ->
+  | Write_file (fn, perm, s) ->
     let+ fn = E.target fn
     and+ s = E.string s in
-    O.Write_file (fn, s)
+    O.Write_file (fn, perm, s)
   | Rename (x, _) ->
     (* [Rename] is not part of the syntax so this case is not reachable. The
        reason it is not exposed to the user is because we can't easily decide
@@ -489,14 +492,9 @@ let rec expand (t : Action_dune_lang.t) : Action.t Action_expander.t =
         [ Pp.text
             "(mkdir ...) is not supported for paths outside of the workspace:"
         ; Pp.seq (Pp.verbatim "  ")
-            (Dune_lang.pp
-               (List
-                  [ Dune_lang.unsafe_atom_of_string "mkdir"; Dpath.encode path ]))
+            (Dune_lang.pp (List [ Dune_lang.atom "mkdir"; Dpath.encode path ]))
         ];
     O.Mkdir path
-  | Digest_files l ->
-    let+ l = A.all (List.map l ~f:E.dep) in
-    O.Digest_files l
   | Diff { optional; file1; file2; mode } ->
     let+ file1 = E.dep_if_exists file1
     and+ file2 =
@@ -524,6 +522,32 @@ let rec expand (t : Action_dune_lang.t) : Action.t Action_expander.t =
     let+ script = E.dep script in
     O.Cram script
 
+let pp_path_build target = Pp.text (Dpath.describe_path (Path.build target))
+
+let expand_no_targets t ~loc ~deps:deps_written_by_user ~expander ~what =
+  let open Action_builder.O in
+  let deps_builder, expander =
+    Dep_conf_eval.named ~expander deps_written_by_user
+  in
+  let expander =
+    Expander.set_expanding_what expander (User_action_without_targets { what })
+  in
+  let { Action_builder.With_targets.build; targets } =
+    Action_expander.run (expand t) ~expander
+  in
+  if not (Path.Build.Set.is_empty targets) then
+    User_error.raise ~loc
+      [ Pp.textf
+          "%s must not have targets, however I inferred that these files will \
+           be created by this action:"
+          (String.capitalize what)
+      ; Pp.enumerate (Path.Build.Set.to_list targets) ~f:pp_path_build
+      ];
+  let+ () = deps_builder
+  and+ action = build in
+  let dir = Path.build (Expander.dir expander) in
+  Action.Chdir (dir, action)
+
 let expand t ~loc ~deps:deps_written_by_user ~targets_dir
     ~targets:targets_written_by_user ~expander =
   let open Action_builder.O in
@@ -531,13 +555,9 @@ let expand t ~loc ~deps:deps_written_by_user ~targets_dir
     Dep_conf_eval.named ~expander deps_written_by_user
   in
   let expander =
-    match (targets_written_by_user : Targets.Or_forbidden.t) with
-    | Targets Infer
-    | Forbidden _ ->
-      (* TODO jeremiedimino: the error message used to be better when someone
-         was using %{target} in an [(alias ...)] stanza. *)
-      expander
-    | Targets (Static { targets; multiplicity }) ->
+    match (targets_written_by_user : _ Targets.t) with
+    | Infer -> expander
+    | Static { targets; multiplicity } ->
       Expander.add_bindings_full expander
         ~bindings:
           (Pform.Map.singleton
@@ -554,25 +574,11 @@ let expand t ~loc ~deps:deps_written_by_user ~targets_dir
   let { Action_builder.With_targets.build; targets } =
     Action_expander.run (expand t) ~expander
   in
-  let pp_path_build target =
-    Pp.text (Dpath.describe_path (Path.build target))
-  in
   let targets =
-    match (targets_written_by_user : Targets.Or_forbidden.t) with
-    | Targets Infer -> targets
-    | Targets (Static { targets = targets'; multiplicity = _ }) ->
+    match (targets_written_by_user : _ Targets.t) with
+    | Infer -> targets
+    | Static { targets = targets'; multiplicity = _ } ->
       Path.Build.Set.union targets (Path.Build.Set.of_list targets')
-    | Forbidden context ->
-      if Path.Build.Set.is_empty targets then
-        targets
-      else
-        User_error.raise ~loc
-          [ Pp.textf
-              "%s must not have targets, however I inferred that these files \
-               will be created by this action:"
-              (String.capitalize context)
-          ; Pp.enumerate (Path.Build.Set.to_list targets) ~f:pp_path_build
-          ]
   in
   Path.Build.Set.iter targets ~f:(fun target ->
       if Path.Build.( <> ) (Path.Build.parent_exn target) targets_dir then

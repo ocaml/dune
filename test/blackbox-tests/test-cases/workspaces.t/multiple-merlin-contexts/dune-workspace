@@ -1,0 +1,12 @@
+(lang dune 1.0)
+
+(context
+ (default
+  (merlin)))
+
+(context
+ (opam
+  (switch foo-switch)
+  (name foo-name)
+  (profile foo-profile)
+  (merlin)))

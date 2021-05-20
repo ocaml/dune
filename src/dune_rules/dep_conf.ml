@@ -78,16 +78,13 @@ let decode =
 open Dune_lang
 
 let encode = function
-  | File t ->
-    List [ Dune_lang.unsafe_atom_of_string "file"; String_with_vars.encode t ]
-  | Alias t ->
-    List [ Dune_lang.unsafe_atom_of_string "alias"; String_with_vars.encode t ]
+  | File t -> List [ Dune_lang.atom "file"; String_with_vars.encode t ]
+  | Alias t -> List [ Dune_lang.atom "alias"; String_with_vars.encode t ]
   | Alias_rec t ->
-    List
-      [ Dune_lang.unsafe_atom_of_string "alias_rec"; String_with_vars.encode t ]
+    List [ Dune_lang.atom "alias_rec"; String_with_vars.encode t ]
   | Glob_files { glob = t; recursive } ->
     List
-      [ Dune_lang.unsafe_atom_of_string
+      [ Dune_lang.atom
           (if recursive then
             "glob_files_rec"
           else
@@ -95,17 +92,10 @@ let encode = function
       ; String_with_vars.encode t
       ]
   | Source_tree t ->
-    List
-      [ Dune_lang.unsafe_atom_of_string "source_tree"
-      ; String_with_vars.encode t
-      ]
-  | Package t ->
-    List
-      [ Dune_lang.unsafe_atom_of_string "package"; String_with_vars.encode t ]
-  | Universe -> Dune_lang.unsafe_atom_of_string "universe"
-  | Env_var t ->
-    List
-      [ Dune_lang.unsafe_atom_of_string "env_var"; String_with_vars.encode t ]
+    List [ Dune_lang.atom "source_tree"; String_with_vars.encode t ]
+  | Package t -> List [ Dune_lang.atom "package"; String_with_vars.encode t ]
+  | Universe -> Dune_lang.atom "universe"
+  | Env_var t -> List [ Dune_lang.atom "env_var"; String_with_vars.encode t ]
   | Sandbox_config config ->
     if Sandbox_config.equal config Sandbox_config.no_special_requirements then
       List []

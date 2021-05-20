@@ -17,7 +17,7 @@ let parse =
 
 let parse_value = parse_gen OpamBaseParser.value
 
-let load fn = Io.with_lexbuf_from_file fn ~f:parse
+let load fn = Io.Untracked.with_lexbuf_from_file fn ~f:parse
 
 let get_field t name =
   List.find_map t.file_contents ~f:(function
@@ -115,7 +115,6 @@ module Create = struct
         |]
       in
       let table =
-        (* This [lazy] and the mutable table below are pure and hence safe. *)
         lazy
           (let table = Table.create (module String) (Array.length fields) in
            Array.iteri fields ~f:(fun i field -> Table.add_exn table field i);

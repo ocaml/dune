@@ -3,7 +3,7 @@
   $ cd a
 
   $ cat >dune-project <<EOF
-  > (lang dune 2.9)
+  > (lang dune 3.0)
   > EOF
   $ echo old-contents > x
   $ cat >dune <<EOF
@@ -35,6 +35,23 @@ And the path does appear in the sandbox:
   $ dune build @b --sandbox copy 2>&1 | grep -v 'cd _build/.sandbox'
           bash alias b
   running b: new-contents
+
+However, this is only since 3.0, before that aliases where not
+expanded when creating the sandbox:
+
+  $ echo '(lang dune 2.8)' > dune-project
+  $ dune clean
+  $ dune build @b --sandbox copy 2>&1 | grep -v 'cd _build/.sandbox'
+  File "dune", line 5, characters 0-89:
+  5 | (rule
+  6 |   (alias b)
+  7 |   (deps (alias a))
+  8 |   (action (bash "echo -n \"running b: \"; cat x"))
+  9 | )
+          bash alias b (exit 1)
+  running b: cat: x: No such file or directory
+  $ echo '(lang dune 3.0)' > dune-project
+
 Now test that including an alias into another alias includes its expansion:
   $ cat >dune <<EOF
   > (alias

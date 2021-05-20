@@ -11,6 +11,14 @@ module Inputs : module type of struct
   include Action_intf.Inputs
 end
 
+module File_perm : sig
+  include module type of struct
+    include Action_intf.File_perm
+  end
+
+  val to_unix_perm : t -> int
+end
+
 (** result of the lookup of a program, the path to it or information about the
     failure and possibly a hint how to fix it *)
 module Prog : sig
@@ -49,14 +57,6 @@ include
     with type target := Path.Build.t
     with type string := string
 
-module Ast :
-  Action_intf.Ast
-    with type program = Prog.t
-    with type path = Path.t
-    with type target = Path.Build.t
-    with type string = string
-    with type t = t
-
 include
   Action_intf.Helpers
     with type program := Prog.t
@@ -64,8 +64,6 @@ include
     with type target := Path.Build.t
     with type string := string
     with type t := t
-
-val decode : t Dune_lang.Decoder.t
 
 module For_shell : sig
   include
@@ -97,7 +95,7 @@ val sandbox :
      t
   -> sandboxed:(Path.Build.t -> Path.Build.t)
   -> mode:Sandbox_mode.some
-  -> deps:Dep.Set.t
+  -> deps:_ Path.Map.t
   -> t
 
 type is_useful =
@@ -124,3 +122,13 @@ val is_useful_to_distribute : t -> is_useful
     but an action creating a symlink should not since the cache will reject it
     anyway. *)
 val is_useful_to_memoize : t -> is_useful
+
+module Full : sig
+  (** A full action with its environment and list of locks *)
+  type nonrec t =
+    { action : t
+    ; env : Env.t
+    ; locks : Path.t list
+    ; can_go_in_shared_cache : bool
+    }
+end

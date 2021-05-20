@@ -1,4 +1,14 @@
 (library
  (name dune_config)
- (libraries stdune xdg dune_lang cache dune_engine dune_util)
+ (libraries
+  stdune
+  xdg
+  dune_lang
+  dune_cache
+  dune_cache_storage
+  dune_engine
+  dune_rpc_private
+  dune_stats
+  dune_util
+  spawn)
  (synopsis "Internal Dune library, do not use!"))

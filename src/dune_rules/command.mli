@@ -32,17 +32,20 @@ open! Import
     "../src/foo.ml" if the command is started from the "test" directory. *)
 
 module Args : sig
-  type static = Static
+  type without_targets = [ `Others ]
 
-  type dynamic = Dynamic
+  type any =
+    [ `Others
+    | `Targets
+    ]
 
-  (** The type [expand] captures the meaning of a static [Command.Args.t] that
-      has no target declarations: it is a way to construct functions that given
-      a current working directory [dir] compute the list of command line
-      arguments of type [string list] and a set of dependencies of type
-      [Dep.Set.t], or fail. You can use the constructor [Expand] to specify the
-      meaning directly, which is sometimes useful, e.g. for memoization. *)
-  type expand = dir:Path.t -> (string list * Dep.Set.t, fail) result
+  (** The type [expand] captures the meaning of a [Command.Args.t] that has no
+      target declarations: it is a way to construct functions that given a
+      current working directory [dir] compute the list of command line arguments
+      of type [string list] in the action builder monad. You can use the
+      constructor [Expand] to specify the meaning directly, which is sometimes
+      useful, e.g. for memoization. *)
+  type expand = dir:Path.t -> string list Action_builder.t
 
   type _ t =
     | A : string -> _ t
@@ -51,17 +54,17 @@ module Args : sig
     | Concat : string * 'a t list -> 'a t
     | Dep : Path.t -> _ t
     | Deps : Path.t list -> _ t
-    | Target : Path.Build.t -> dynamic t
+    | Target : Path.Build.t -> [> `Targets ] t
     | Path : Path.t -> _ t
     | Paths : Path.t list -> _ t
     | Hidden_deps : Dep.Set.t -> _ t
-    | Hidden_targets : Path.Build.t list -> dynamic t
-    | Dyn : static t Action_builder.t -> dynamic t
+    | Hidden_targets : Path.Build.t list -> [> `Targets ] t
+    | Dyn : without_targets t Action_builder.t -> _ t
     | Fail : fail -> _ t
     | Expand : expand -> _ t
 
   (** Create dynamic command line arguments. *)
-  val dyn : string list Action_builder.t -> dynamic t
+  val dyn : string list Action_builder.t -> _ t
 
   (** Create an empty command line. *)
   val empty : _ t
@@ -70,26 +73,31 @@ module Args : sig
       expression. Use this function when the same subexpression appears in
       multiple [Command.Args.t] expressions to share both the time and memory
       required for the computation. *)
-  val memo : static t -> _ t
+  val memo : without_targets t -> _ t
+
+  val as_any : without_targets t -> any t
 end
 
-(* TODO: Using list in [dynamic t list] complicates the API unnecessarily: we
-   can use the constructor [S] to concatenate lists instead. *)
+(* TODO: Using list in [with_targets t list] complicates the API unnecessarily:
+   we can use the constructor [S] to concatenate lists instead. *)
 val run :
      dir:Path.t
   -> ?stdout_to:Path.Build.t
   -> Action.Prog.t
-  -> Args.dynamic Args.t list
+  -> Args.any Args.t list
   -> Action.t Action_builder.With_targets.t
+
+(** Same as [run], but for actions that don't produce targets *)
+val run' :
+     dir:Path.t
+  -> Action.Prog.t
+  -> Args.without_targets Args.t list
+  -> Action.t Action_builder.t
 
 (** [quote_args quote args] is [As \[quote; arg1; quote; arg2; ...\]] *)
 val quote_args : string -> string list -> _ Args.t
 
-val of_result : 'a Args.t Or_exn.t -> 'a Args.t
-
-val of_result_map : 'a Or_exn.t -> f:('a -> 'b Args.t) -> 'b Args.t
-
-val fail : exn -> 'a Args.t
+val fail : exn -> _ Args.t
 
 module Ml_kind : sig
   val flag : Ml_kind.t -> _ Args.t

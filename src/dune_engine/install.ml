@@ -203,15 +203,12 @@ module Entry = struct
     }
 
   let compare x y =
-    let c = Path.Build.compare x.src y.src in
-    if c <> Eq then
-      c
-    else
-      let c = Dst.compare x.dst y.dst in
-      if c <> Eq then
-        c
-      else
-        Section.compare x.section y.section
+    match Section.compare x.section y.section with
+    | (Lt | Gt) as c -> c
+    | Eq -> (
+      match Dst.compare x.dst y.dst with
+      | (Lt | Gt) as c -> c
+      | Eq -> Path.Build.compare x.src y.src)
 
   let adjust_dst_gen =
     let error (source_pform : Dune_lang.Template.Pform.t) =

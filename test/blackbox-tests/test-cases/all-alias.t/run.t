@@ -4,8 +4,8 @@
   Entering directory 'private-exe'
       ocamldep .foo.eobjs/foo.ml.d
         ocamlc .foo.eobjs/byte/foo.{cmi,cmo,cmt}
-        ocamlc foo.bc
       ocamlopt .foo.eobjs/native/foo.{cmx,o}
+        ocamlc foo.bc
       ocamlopt foo.exe
 
 @all builds private libs
@@ -23,6 +23,7 @@
   $ dune build --root install-stanza @subdir/all
   Entering directory 'install-stanza'
   Error: No rule found for subdir/foobar
+  -> required by alias subdir/all
   [1]
 
 @all builds user defined rules
@@ -36,3 +37,39 @@
   $ dune build --display short --root install-alias @all
   Entering directory 'install-alias'
           echo foo
+
+@all does not depend directly on file copies from the source tree
+
+  $ mkdir -p source-file-copies
+  $ cd source-file-copies
+  $ cat > dune-project <<EOF
+  > (lang dune 3.0)
+  > EOF
+
+Add two files
+
+  $ touch a.ml b.ml
+
+An empty project, should not copy any file.
+
+  $ dune build
+  $ find _build/default -name '*.ml'
+
+A project that only uses a.ml, should not copy b.ml
+
+  $ cat > dune <<EOF
+  > (library (name a) (modules a))
+  > EOF
+  $ dune build
+  $ find _build/default -name '*.ml'
+  _build/default/a.ml
+
+A project that uses both files, should copy both.
+
+  $ cat > dune <<EOF
+  > (library (name a))
+  > EOF
+  $ dune build
+  $ find _build/default -name '*.ml' | sort
+  _build/default/a.ml
+  _build/default/b.ml

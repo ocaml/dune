@@ -20,16 +20,16 @@ let all : _ Term.Group.t list =
     ; Printenv.command
     ; Help.command
     ; Format_dune_file.command
-    ; Compute.command
     ; Upgrade.command
-    ; Caching.command
+    ; Cache.command
     ; Describe.command
     ; Top.command
     ; Ocaml_merlin.command
+    ; Shutdown.command
     ]
     |> List.map ~f:in_group
   in
-  let groups = [ Ocaml.group; Rpc.group ] in
+  let groups = [ Ocaml.group; Rpc.group; Internal.group ] in
   terms @ groups
 
 (* Short reminders for the most used and useful commands *)
@@ -90,7 +90,8 @@ let () =
     | `Error _ -> exit 1
     | _ -> exit 0
   with
+  | Scheduler.Run.Shutdown_requested -> exit 0
   | exn ->
     let exn = Exn_with_backtrace.capture exn in
-    Dune_engine.Report_error.report exn;
+    Dune_util.Report_error.report exn;
     exit 1

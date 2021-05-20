@@ -218,10 +218,7 @@ let check_invalid_module_listing ~(buildable : Buildable.t) ~intf_only ~modules
           ; Pp.text "You need to add the following field to this stanza:"
           ; Pp.nop
           ; Pp.textf "  %s"
-              (let tag =
-                 Dune_lang.unsafe_atom_of_string
-                   "modules_without_implementation"
-               in
+              (let tag = Dune_lang.atom "modules_without_implementation" in
                let modules =
                  missing_intf_only |> uncapitalized
                  |> List.map ~f:Dune_lang.Encoder.string

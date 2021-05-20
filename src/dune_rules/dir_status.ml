@@ -10,20 +10,18 @@ module T = struct
 
   type t =
     | Generated
-    | Source_only of File_tree.Dir.t
-    | Standalone of File_tree.Dir.t * Stanza.t list Dir_with_dune.t
-    (* Directory not part of a multi-directory group. *)
-    | Group_root of
-        File_tree.Dir.t
+    | Source_only of Source_tree.Dir.t
+    | (* Directory not part of a multi-directory group *)
+        Standalone of
+        Source_tree.Dir.t * Stanza.t list Dir_with_dune.t
+    | (* Directory with [(include_subdirs x)] where [x] is not [no] *)
+        Group_root of
+        Source_tree.Dir.t
         * (Loc.t * Include_subdirs.qualification)
         * Stanza.t list Dir_with_dune.t
-    (* Directory with [(include_subdirs x)] where [x] is not [no] *)
-    | Is_component_of_a_group_but_not_the_root of
+    | (* Sub-directory of a [Group_root _] *)
+        Is_component_of_a_group_but_not_the_root of
         is_component_of_a_group_but_not_the_root
-
-  (* Sub-directory of a [Group_root _] *)
-
-  let to_dyn _ = Dyn.String "<dir-status>"
 end
 
 include T
@@ -70,55 +68,61 @@ let check_no_module_consumer stanzas =
 module DB = struct
   type nonrec t =
     { stanzas_per_dir : Dune_file.Stanzas.t Dir_with_dune.t Path.Build.Map.t
-    ; fn : (Path.Build.t, t) Memo.Sync.t
+    ; fn : (Path.Build.t, t) Memo.t
     }
 
   let stanzas_in db ~dir = Path.Build.Map.find db.stanzas_per_dir dir
 
   let get db ~dir =
+    let open Memo.Build.O in
     let get ~dir = Memo.exec db.fn dir in
     let enclosing_group ~dir =
       match Path.Build.parent dir with
-      | None -> No_group
-      | Some parent_dir -> current_group parent_dir (get ~dir:parent_dir)
+      | None -> Memo.Build.return No_group
+      | Some parent_dir -> get ~dir:parent_dir >>| current_group parent_dir
     in
-    match
-      Option.bind (Path.Build.drop_build_context dir) ~f:File_tree.find_dir
-    with
+    (match Path.Build.drop_build_context dir with
+    | None -> Memo.Build.return None
+    | Some dir -> Source_tree.find_dir dir)
+    >>= function
     | None -> (
-      match enclosing_group ~dir with
+      let+ enclosing_group = enclosing_group ~dir in
+      match enclosing_group with
       | No_group -> Generated
       | Group_root group_root ->
         Is_component_of_a_group_but_not_the_root { stanzas = None; group_root })
-    | Some ft_dir -> (
-      let project_root = File_tree.Dir.project ft_dir |> Dune_project.root in
+    | Some st_dir -> (
+      let project_root = Source_tree.Dir.project st_dir |> Dune_project.root in
       let build_dir_is_project_root =
         Path.Build.drop_build_context_exn dir |> Path.Source.equal project_root
       in
       match stanzas_in db ~dir with
       | None -> (
         if build_dir_is_project_root then
-          Source_only ft_dir
+          Memo.Build.return (Source_only st_dir)
         else
-          match enclosing_group ~dir with
-          | No_group -> Source_only ft_dir
+          let+ enclosing_group = enclosing_group ~dir in
+          match enclosing_group with
+          | No_group -> Source_only st_dir
           | Group_root group_root ->
             Is_component_of_a_group_but_not_the_root
               { stanzas = None; group_root })
       | Some d -> (
         match get_include_subdirs d.data with
-        | Some (loc, Include mode) -> Group_root (ft_dir, (loc, mode), d)
-        | Some (_, No) -> Standalone (ft_dir, d)
+        | Some (loc, Include mode) ->
+          Memo.Build.return (T.Group_root (st_dir, (loc, mode), d))
+        | Some (_, No) -> Memo.Build.return (Standalone (st_dir, d))
         | None -> (
           if build_dir_is_project_root then
-            Standalone (ft_dir, d)
+            Memo.Build.return (Standalone (st_dir, d))
           else
-            match enclosing_group ~dir with
+            let+ enclosing_group = enclosing_group ~dir in
+            match enclosing_group with
             | Group_root group_root ->
               check_no_module_consumer d.data;
               Is_component_of_a_group_but_not_the_root
                 { stanzas = Some d; group_root }
-            | No_group -> Standalone (ft_dir, d))))
+            | No_group -> Standalone (st_dir, d))))
 
   let make ~stanzas_per_dir =
     (* CR-someday aalekseyev: This local recursive module is a bit awkward. In
@@ -130,17 +134,12 @@ module DB = struct
       end = struct
         let t =
           { stanzas_per_dir
-          ; fn =
-              Memo.create "get-dir-status"
-                ~input:(module Path.Build)
-                ~visibility:Hidden
-                ~output:(Simple (module T))
-                ~doc:"Get a directory status." Sync Fn.get
+          ; fn = Memo.create "get-dir-status" ~input:(module Path.Build) Fn.get
           }
       end
 
       and Fn : sig
-        val get : Path.Build.t -> T.t
+        val get : Path.Build.t -> T.t Memo.Build.t
       end = struct
         let get dir = get Res.t ~dir
       end

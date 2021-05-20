@@ -9,3 +9,5 @@ val to_string : t -> string
 val of_string : string -> t option
 
 val to_dyn : t -> Dyn.t
+
+val hash : t -> int

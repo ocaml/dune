@@ -3,7 +3,11 @@
  (public_name stdune-unstable)
  (synopsis
   "Standard library of Dune.\nThis library offers no backwards compatibility guarantees. Use at your own risk.")
- (libraries unix csexp dune_filesystem_stubs)
+ (libraries
+  unix
+  csexp
+  (re_export pp)
+  dune_filesystem_stubs)
  (foreign_stubs
   (language c)
-  (names fcntl_stubs)))
+  (names fcntl_stubs wait3_stubs)))

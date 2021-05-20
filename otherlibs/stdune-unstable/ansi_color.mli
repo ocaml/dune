@@ -1,6 +1,8 @@
 module Style : sig
   type t
 
+  val to_dyn : t -> Dyn.t
+
   val fg_default : t
 
   val fg_black : t
@@ -78,6 +80,9 @@ module Style : sig
   (** Ansi escape sequence that set the terminal style to exactly these styles *)
   val escape_sequence : t list -> string
 end
+
+val make_printer :
+  bool Lazy.t -> Format.formatter -> (Style.t list Pp.t -> unit) Staged.t
 
 (** Print to [Format.std_formatter] *)
 val print : Style.t list Pp.t -> unit

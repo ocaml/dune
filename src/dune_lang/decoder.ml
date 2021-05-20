@@ -264,6 +264,10 @@ let capture ctx state =
   let f t = result ctx (t ctx state) in
   (f, [])
 
+let lazy_ t =
+  let+ f = capture in
+  lazy (f t)
+
 let end_of_list (Values (loc, cstr, _)) =
   match cstr with
   | None ->
@@ -590,7 +594,7 @@ let map_validate t ~f ctx state1 =
       | Some _ -> msg
       | None -> { msg with loc = Some (loc_between_states ctx state1 state2) }
     in
-    raise (User_error.E msg)
+    raise (User_error.E (msg, []))
 
 (** TODO: Improve consistency of error messages, e.g. use %S consistently for
     field names: see [field_missing] and [field_present_too_many_times]. *)

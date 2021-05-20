@@ -19,3 +19,4 @@ module Table = Table
 module Set = Set
 module Io = Io
 module Loc = Loc
+module Fdecl = Fdecl

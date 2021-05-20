@@ -10,6 +10,11 @@ let try_with f =
   | r -> Result.Ok r
   | exception exn -> Error (capture exn)
 
+let try_with_never_returns f =
+  match f () with
+  | (_ : Nothing.t) -> .
+  | exception exn -> capture exn
+
 let reraise { exn; backtrace } = Exn.raise_with_backtrace exn backtrace
 
 let pp_uncaught fmt { exn; backtrace } =

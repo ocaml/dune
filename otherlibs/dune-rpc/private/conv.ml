@@ -128,6 +128,10 @@ type ('a, 'kind) t =
   | Enum : (string * 'a) list -> ('a, values) t
   | Sum : 'a econstr list * ('a -> case) -> ('a, values) t
   | Pair : ('a, values) t * ('b, values) t -> ('a * 'b, values) t
+  | Triple :
+      ('a, values) t * ('b, values) t * ('c, values) t
+      -> ('a * 'b * 'c, values) t
+  | Fdecl : ('a, 'k) t Fdecl.t -> ('a, 'k) t
   | Either :
       (* Invariant: field names must be different *)
       ('a, fields) t
@@ -170,6 +174,8 @@ let sum x y = Sum (x, y)
 
 let pair x y = Pair (x, y)
 
+let triple x y z = Triple (x, y, z)
+
 let discard_values ((a, x) : _ * values ret) =
   match (x : values ret) with
   | Values -> a
@@ -205,6 +211,18 @@ let unit =
       | _ -> raise_of_sexp "expected empty list")
     , fun () -> List [] )
 
+let char =
+  Iso
+    ( Sexp
+    , (function
+      | Atom s ->
+        if String.length s = 1 then
+          s.[0]
+        else
+          raise_of_sexp "expected only a single character"
+      | List _ -> raise_of_sexp "expected a string of length 1")
+    , fun c -> Atom (String.make 1 c) )
+
 let to_sexp : 'a. ('a, values) t -> 'a -> Sexp.t =
  fun t a ->
   let rec loop : type a k. (a, k) t -> a -> k =
@@ -212,10 +230,14 @@ let to_sexp : 'a. ('a, values) t -> 'a -> Sexp.t =
     match t with
     | Sexp -> a
     | Version (t, _) -> loop t a
+    | Fdecl t -> loop (Fdecl.get t) a
     | List t -> List (List.map a ~f:(loop t))
     | Pair (x, y) ->
       let a, b = a in
       List [ loop x a; loop y b ]
+    | Triple (x, y, z) ->
+      let a, b, c = a in
+      List [ loop x a; loop y b; loop z c ]
     | Record r ->
       let fields = loop r a in
       Fields.to_sexp fields
@@ -274,6 +296,7 @@ let of_sexp : 'a. ('a, values) t -> version:int * int -> Sexp.t -> 'a =
      | Version (t, { since; until }) ->
        check_version ~version ~since ~until ctx;
        loop t ctx
+     | Fdecl t -> loop (Fdecl.get t) ctx
      | List t -> (
        match ctx with
        | List xs -> (List.map xs ~f:(fun x -> discard_values (loop t x)), Values)
@@ -284,6 +307,14 @@ let of_sexp : 'a. ('a, values) t -> version:int * int -> Sexp.t -> 'a =
          let a, Values = loop x a in
          let b, Values = loop y b in
          ((a, b), Values)
+       | _ -> raise_of_sexp "expected field entry")
+     | Triple (x, y, z) -> (
+       match ctx with
+       | List [ a; b; c ] ->
+         let a, Values = loop x a in
+         let b, Values = loop y b in
+         let c, Values = loop z c in
+         ((a, b, c), Values)
        | _ -> raise_of_sexp "expected field entry")
      | Record (r : (a, fields) t) ->
        let (fields : Fields.t) = Fields.of_sexp ctx in
@@ -376,8 +407,22 @@ let four a b c d =
     (fun ((w, x), (y, z)) -> (w, x, y, z))
     (fun (w, x, y, z) -> ((w, x), (y, z)))
 
+let five a b c d e =
+  iso
+    (both (both a b) (three c d e))
+    (fun ((a, b), (c, d, e)) -> (a, b, c, d, e))
+    (fun (a, b, c, d, e) -> ((a, b), (c, d, e)))
+
+let six a b c d e f =
+  iso
+    (both (three a b c) (three d e f))
+    (fun ((a, b, c), (d, e, f)) -> (a, b, c, d, e, f))
+    (fun (a, b, c, d, e, f) -> ((a, b, c), (d, e, f)))
+
 let sexp = Sexp
 
 let required x = Required x
 
 let optional x = Optional x
+
+let fdecl x = Fdecl x

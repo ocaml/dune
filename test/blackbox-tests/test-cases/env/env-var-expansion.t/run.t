@@ -32,7 +32,6 @@ incrementality works properly, that (setenv ...) is taken into account, etc.
   Entering directory 'correct'
   $ DUNE_ENV_VAR=true dune build --root correct @echo1
   Entering directory 'correct'
-  true
 
 This test is broken because previous/new values should differ in these tests. In
 the dune file, the environment variable ends up being set locally, but this

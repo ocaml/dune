@@ -13,8 +13,6 @@ module Decl : sig
 
   val build : (string list, Status.t) request
 
-  val ping : (unit, unit) request
-
   val shutdown : unit notification
 
   module Status : sig
@@ -26,12 +24,11 @@ end
 
 val create : unit -> t
 
-val build_mutex : t -> Fiber.Mutex.t
+val config : t -> Run.Config.t
 
-val config : t -> Dune_engine.Scheduler.Config.Rpc.t
+val build_handler : t -> Dune_engine.Build_system.Handler.t
 
 type pending_build_action =
-  | Shutdown
   | Build of Dune_rules.Dep_conf.t list * Status.t Fiber.Ivar.t
 
 val pending_build_action : t -> pending_build_action option

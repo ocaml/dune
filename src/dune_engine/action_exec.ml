@@ -50,7 +50,7 @@ module Dynamic_dep = struct
   module Set = struct
     include O.Set
 
-    let to_dep_set t = t |> to_list |> Dep.Set.of_list_map ~f:to_dep
+    let to_dep_set t = to_list_map t ~f:to_dep |> Dep.Set.of_list
 
     let of_DAP_dep_set ~working_dir t =
       t |> DAP.Dependency.Set.to_list
@@ -59,7 +59,7 @@ module Dynamic_dep = struct
 end
 
 module Exec_result = struct
-  type t = { dynamic_deps_stages : Dynamic_dep.Set.t List.t }
+  type t = { dynamic_deps_stages : (Dynamic_dep.Set.t * Dep.Facts.t) List.t }
 end
 
 type done_or_more_deps =
@@ -75,7 +75,7 @@ type exec_context =
   ; context : Build_context.t option
   ; purpose : Process.purpose
   ; rule_loc : Loc.t
-  ; build_deps : Dep.Set.t -> unit Fiber.t
+  ; build_deps : Dep.Set.t -> Dep.Facts.t Fiber.t
   }
 
 type exec_environment =
@@ -101,7 +101,7 @@ let validate_context_and_prog context prog =
       | Some _ ->
         User_error.raise
           [ Pp.textf "Context %s has a host %s." target_name
-              (Context_name.to_string host.name)
+              (Context_name.to_string host)
           ; Pp.textf "It's not possible to execute binary %s in it."
               (Path.to_string_maybe_quoted prog)
           ; Pp.nop
@@ -120,8 +120,8 @@ let exec_run ~ectx ~eenv prog args =
 
 let exec_run_dynamic_client ~ectx ~eenv prog args =
   validate_context_and_prog ectx.context prog;
-  let run_arguments_fn = Temp.create File ~prefix:"dune." ~suffix:".run" in
-  let response_fn = Temp.create File ~prefix:"dune." ~suffix:".response" in
+  let run_arguments_fn = Temp.create File ~prefix:"dune" ~suffix:"run" in
+  let response_fn = Temp.create File ~prefix:"dune" ~suffix:"response" in
   let run_arguments =
     let targets =
       let to_relative path =
@@ -203,14 +203,16 @@ let rec exec t ~ectx ~eenv =
   | Chdir (dir, t) -> exec t ~ectx ~eenv:{ eenv with working_dir = dir }
   | Setenv (var, value, t) ->
     exec t ~ectx ~eenv:{ eenv with env = Env.add eenv.env ~var ~value }
-  | Redirect_out (Stdout, fn, Echo s) ->
-    Io.write_file (Path.build fn) (String.concat s ~sep:" ");
+  | Redirect_out (Stdout, fn, perm, Echo s) ->
+    let perm = Action.File_perm.to_unix_perm perm in
+    Io.write_file (Path.build fn) (String.concat s ~sep:" ") ~perm;
     Fiber.return Done
-  | Redirect_out (outputs, fn, t) ->
+  | Redirect_out (outputs, fn, perm, t) ->
     let fn = Path.build fn in
-    redirect_out t ~ectx ~eenv outputs fn
+    redirect_out t ~ectx ~eenv outputs ~perm fn
   | Redirect_in (inputs, fn, t) -> redirect_in t ~ectx ~eenv inputs fn
-  | Ignore (outputs, t) -> redirect_out t ~ectx ~eenv outputs Config.dev_null
+  | Ignore (outputs, t) ->
+    redirect_out t ~ectx ~eenv ~perm:Normal outputs Config.dev_null
   | Progn ts -> exec_list ts ~ectx ~eenv
   | Echo strs ->
     let+ () = exec_echo eenv.stdout_to (String.concat strs ~sep:" ") in
@@ -246,6 +248,31 @@ let rec exec t ~ectx ~eenv =
         )
       | exception _ -> Unix.symlink src dst);
     Fiber.return Done
+  | Hardlink (src, dst) ->
+    (* CR-someday amokhov: Instead of always falling back to copying, we could
+       detect if hardlinking works on Windows and if yes, use it. We do this in
+       the Dune cache implementation, so we can share some code. *)
+    (match Sys.win32 with
+    | true -> Io.copy_file ~src ~dst:(Path.build dst) ()
+    | false -> (
+      let rec follow_symlinks name =
+        match Unix.readlink name with
+        | link_name ->
+          let name = Filename.concat (Filename.dirname name) link_name in
+          follow_symlinks name
+        | exception Unix.Unix_error (Unix.EINVAL, _, _) -> name
+      in
+      let src = follow_symlinks (Path.to_string src) in
+      let dst = Path.Build.to_string dst in
+      try Unix.link src dst with
+      | Unix.Unix_error (Unix.EEXIST, _, _) ->
+        (* CR-someday amokhov: Investigate why we need to occasionally clear the
+           destination (we also do this in the symlink case above). Perhaps, the
+           list of dependencies may have duplicates? If yes, it may be better to
+           filter out the duplicates first. *)
+        Unix.unlink dst;
+        Unix.link src dst));
+    Fiber.return Done
   | Copy_and_add_line_directive (src, dst) ->
     Io.with_file_in src ~f:(fun ic ->
         Path.build dst
@@ -269,8 +296,9 @@ let rec exec t ~ectx ~eenv =
         [ "-e"; "-u"; "-o"; "pipefail"; "-c"; cmd ]
     in
     Done
-  | Write_file (fn, s) ->
-    Io.write_file (Path.build fn) s;
+  | Write_file (fn, perm, s) ->
+    let perm = Action.File_perm.to_unix_perm perm in
+    Io.write_file (Path.build fn) s ~perm;
     Fiber.return Done
   | Rename (src, dst) ->
     Unix.rename (Path.Build.to_string src) (Path.Build.to_string dst);
@@ -285,15 +313,6 @@ let rec exec t ~ectx ~eenv =
       Code_error.raise "Action_exec.exec: mkdir on non build dir"
         [ ("path", Path.to_dyn path) ];
     Fiber.return Done
-  | Digest_files paths ->
-    let s =
-      let data =
-        List.map paths ~f:(fun fn -> (Path.to_string fn, Cached_digest.file fn))
-      in
-      Digest.generic data
-    in
-    let+ () = exec_echo eenv.stdout_to (Digest.to_string_raw s) in
-    Done
   | Diff ({ optional; file1; file2; mode } as diff) ->
     let remove_intermediate_file () =
       if optional then
@@ -307,7 +326,7 @@ let rec exec t ~ectx ~eenv =
       let is_copied_from_source_tree file =
         match Path.extract_build_context_dir_maybe_sandboxed file with
         | None -> false
-        | Some (_, file) -> Path.exists (Path.source file)
+        | Some (_, file) -> Path.Untracked.exists (Path.source file)
       in
       let+ () =
         Fiber.finalize
@@ -327,7 +346,8 @@ let rec exec t ~ectx ~eenv =
               (* Promote if in the source tree or not a target. The second case
                  means that the diffing have been done with the empty file *)
               if
-                (is_copied_from_source_tree file1 || not (Path.exists file1))
+                (is_copied_from_source_tree file1
+                || not (Path.Untracked.exists file1))
                 && not (is_copied_from_source_tree (Path.build file2))
               then
                 Promotion.File.register_dep
@@ -337,7 +357,9 @@ let rec exec t ~ectx ~eenv =
                           (Path.extract_build_context_dir_maybe_sandboxed file1)))
                   ~correction_file:file2
             | true ->
-              if is_copied_from_source_tree file1 || not (Path.exists file1)
+              if
+                is_copied_from_source_tree file1
+                || not (Path.Untracked.exists file1)
               then
                 Promotion.File.register_intermediate
                   ~source_file:
@@ -377,8 +399,8 @@ let rec exec t ~ectx ~eenv =
     in
     Done
 
-and redirect_out t ~ectx ~eenv outputs fn =
-  redirect t ~ectx ~eenv ~out:(outputs, fn) ()
+and redirect_out t ~ectx ~eenv ~perm outputs fn =
+  redirect t ~ectx ~eenv ~out:(outputs, fn, perm) ()
 
 and redirect_in t ~ectx ~eenv inputs fn =
   redirect t ~ectx ~eenv ~in_:(inputs, fn) ()
@@ -394,8 +416,11 @@ and redirect t ~ectx ~eenv ?in_ ?out () =
   let stdout_to, stderr_to, release_out =
     match out with
     | None -> (eenv.stdout_to, eenv.stderr_to, ignore)
-    | Some (outputs, fn) ->
-      let out = Process.Io.file fn Process.Io.Out in
+    | Some (outputs, fn, perm) ->
+      let out =
+        Process.Io.file fn Process.Io.Out
+          ~perm:(Action.File_perm.to_unix_perm perm)
+      in
       let stdout_to, stderr_to =
         match outputs with
         | Stdout -> (out, eenv.stderr_to)
@@ -449,7 +474,7 @@ and exec_pipe outputs ts ~ectx ~eenv =
         let eenv =
           { eenv with stderr_to = Process.Io.multi_use eenv.stderr_to }
         in
-        redirect t ~ectx ~eenv ~in_:(Stdin, in_) ~out:(Stdout, out) ()
+        redirect t ~ectx ~eenv ~in_:(Stdin, in_) ~out:(Stdout, out, Normal) ()
       in
       Dtemp.destroy File in_;
       match done_or_deps with
@@ -466,7 +491,7 @@ and exec_pipe outputs ts ~ectx ~eenv =
       | Stdout -> { eenv with stderr_to = Process.Io.multi_use eenv.stderr_to }
       | Stderr -> { eenv with stdout_to = Process.Io.multi_use eenv.stdout_to }
     in
-    let* done_or_deps = redirect_out t1 ~ectx ~eenv outputs out in
+    let* done_or_deps = redirect_out t1 ~ectx ~eenv ~perm:Normal outputs out in
     match done_or_deps with
     | Need_more_deps _ as need -> Fiber.return need
     | Done -> loop ~in_:out ts)
@@ -479,8 +504,10 @@ let exec_until_all_deps_ready ~ectx ~eenv t =
     match result with
     | Done -> Fiber.return ()
     | Need_more_deps (relative_deps, deps_to_build) ->
-      stages := deps_to_build :: !stages;
-      let* () = ectx.build_deps (Dynamic_dep.Set.to_dep_set deps_to_build) in
+      let* fact_map =
+        ectx.build_deps (Dynamic_dep.Set.to_dep_set deps_to_build)
+      in
+      stages := (deps_to_build, fact_map) :: !stages;
       let eenv =
         { eenv with
           prepared_dependencies =
@@ -492,14 +519,39 @@ let exec_until_all_deps_ready ~ectx ~eenv t =
   let+ () = loop ~eenv in
   Exec_result.{ dynamic_deps_stages = List.rev !stages }
 
-let exec ~targets ~context ~env ~rule_loc ~build_deps t =
-  let purpose = Process.Build_job targets in
+let _BUILD_PATH_PREFIX_MAP = "BUILD_PATH_PREFIX_MAP"
+
+let extend_build_path_prefix_map env how map =
+  let new_rules = Build_path_prefix_map.encode_map map in
+  Env.update env ~var:_BUILD_PATH_PREFIX_MAP ~f:(function
+    | None -> Some new_rules
+    | Some existing_rules ->
+      Some
+        (match how with
+        | `Existing_rules_have_precedence -> new_rules ^ ":" ^ existing_rules
+        | `New_rules_have_precedence -> existing_rules ^ ":" ^ new_rules))
+
+let exec ~targets ~root ~context ~env ~rule_loc ~build_deps
+    ~execution_parameters t =
+  let purpose = Process.Build_job (None, [], targets) in
+  let env =
+    extend_build_path_prefix_map env `New_rules_have_precedence
+      [ Some
+          { source = Path.to_absolute_filename root
+          ; target = "/workspace_root"
+          }
+      ]
+  in
   let ectx = { targets; purpose; context; rule_loc; build_deps }
   and eenv =
     { working_dir = Path.root
     ; env
-    ; stdout_to = Process.Io.stdout
-    ; stderr_to = Process.Io.stderr
+    ; stdout_to =
+        Process.Io.make_stdout
+          (Execution_parameters.action_stdout_on_success execution_parameters)
+    ; stderr_to =
+        Process.Io.make_stderr
+          (Execution_parameters.action_stderr_on_success execution_parameters)
     ; stdin_from = Process.Io.null In
     ; prepared_dependencies = DAP.Dependency.Set.empty
     ; exit_codes = Predicate_lang.Element 0

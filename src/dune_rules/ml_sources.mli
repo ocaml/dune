@@ -17,7 +17,7 @@ end
 
 type t
 
-val artifacts : t -> Artifacts.t
+val artifacts : t -> Artifacts.t Memo.Build.t
 
 type for_ =
   | Library of Lib_name.t  (** Library name *)
@@ -47,7 +47,7 @@ val make :
      Stanza.t list Dir_with_dune.t
   -> lib_config:Lib_config.t
   -> loc:Loc.t
-  -> lookup_vlib:(dir:Path.Build.t -> t)
+  -> lookup_vlib:(dir:Path.Build.t -> t Memo.Build.t)
   -> include_subdirs:Loc.t * Dune_file.Include_subdirs.t
   -> dirs:(Path.Build.t * 'a list * String.Set.t) list
-  -> t
+  -> t Memo.Build.t

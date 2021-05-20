@@ -41,7 +41,12 @@ let is_valid =
     let len = String.length s in
     len > 0 && loop s 0 len
 
-let of_string s = A s
+let of_string s =
+  if is_valid s then
+    A s
+  else
+    Code_error.raise "Dune_lang.Atom.of_string got invalid atom"
+      [ ("atom", String s) ]
 
 let to_string (A s) = s
 
@@ -51,19 +56,12 @@ let parse s =
   else
     None
 
-let print (A s) =
-  if is_valid s then
-    s
-  else
-    Code_error.raise "atom cannot be printed in dune syntax"
-      [ ("atom", String s) ]
-
-let of_int i = of_string (string_of_int i)
+let of_int i = A (string_of_int i)
 
 let of_float x = of_string (string_of_float x)
 
-let of_bool x = of_string (string_of_bool x)
+let of_bool x = A (string_of_bool x)
 
-let of_digest d = of_string (Digest.to_string d)
+let of_digest d = A (Digest.to_string d)
 
-let of_int64 i = of_string (Int64.to_string i)
+let of_int64 i = A (Int64.to_string i)

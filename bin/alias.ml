@@ -49,8 +49,8 @@ let in_dir ~name ~recursive ~contexts dir =
         ]
     }
 
-let of_string common ~recursive s ~contexts =
-  let path = Path.relative Path.root (Common.prefix_target common s) in
+let of_string (root : Workspace_root.t) ~recursive s ~contexts =
+  let path = Path.relative Path.root (root.reach_from_root_prefix ^ s) in
   if Path.is_root path then
     User_error.raise
       [ Pp.textf "@ on the command line must be followed by a valid alias name"

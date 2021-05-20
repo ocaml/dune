@@ -6,13 +6,17 @@ end
 
 let debug_findlib = ref false
 
-let debug_dep_path = ref false
-
 let debug_artifact_substitution = ref false
+
+let debug_digests = ref false
+
+let wait_for_filesystem_clock = ref false
 
 let capture_outputs = ref true
 
-let debug_backtraces = Dune_util.Report_error.report_backtraces
+let debug_backtraces b =
+  Dune_util.Report_error.report_backtraces b;
+  Memo.track_locations_of_lazy_values := b
 
 let diff_command = ref None
 
@@ -31,5 +35,3 @@ let always_show_command_line = ref false
 let promote_install_files = ref false
 
 let ignore_promoted_rules = ref false
-
-let only_packages = ref None

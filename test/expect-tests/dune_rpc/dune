@@ -1,5 +1,6 @@
 (library
  (name dune_rpc_tests)
+ (modules dune_rpc_tests)
  (inline_tests)
  (libraries
   ocaml_config
@@ -7,6 +8,7 @@
   dune_rpc_server
   stdune
   test_scheduler
+  csexp
   fiber
   ;; This is because of the (implicit_transitive_deps false)
   ;; in dune-project

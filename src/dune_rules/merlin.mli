@@ -31,7 +31,7 @@ module Processed : sig
 end
 
 val make :
-     ?requires:Lib.t list Or_exn.t
+     ?requires:Lib.t list Resolve.t
   -> stdlib_dir:Path.t
   -> flags:Ocaml_flags.t
   -> ?preprocess:
@@ -53,4 +53,4 @@ val add_rules :
   -> more_src_dirs:Path.Source.t list
   -> expander:Expander.t
   -> t
-  -> unit
+  -> unit Memo.Build.t

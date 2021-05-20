@@ -17,10 +17,7 @@ type conf = private
   { dune_files : Dune_files.t
   ; packages : Package.t Package.Name.Map.t
   ; projects : Dune_project.t list
-  ; vcs : Vcs.t list
   }
 
-(** Initialize the file tree and load all dune files. [ancestor_vcs] is the
-    potential VCS repository the root is contained in. That is, not the
-    repository the root directly contains. *)
-val load : ancestor_vcs:Vcs.t option -> conf
+(** Load all dune files. This function is memoized. *)
+val load : unit -> conf Memo.Build.t

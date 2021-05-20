@@ -34,13 +34,39 @@ module Make (Key : Map.Key) : Per_item_intf.S with type key = Key.t = struct
 
   let fold t ~init ~f = Array.fold_right t.values ~init ~f
 
+  let fold_resolve t ~init ~f =
+    let open Resolve.O in
+    let rec loop i acc =
+      if i = Array.length t.values then
+        Resolve.return acc
+      else
+        let* acc = f t.values.(i) acc in
+        loop (i + 1) acc
+    in
+    loop 0 init
+
   let exists t ~f = Array.exists t.values ~f
 
   let is_constant t = Array.length t.values = 1
 
-  let map_with_targets { map; values } ~f =
-    let open Action_builder.With_targets.O in
-    let l = Array.to_list values in
-    let+ new_values = List.map l ~f |> Action_builder.With_targets.all in
-    { map; values = Array.of_list new_values }
+  module Make_monad_traversals (M : sig
+    include Monad
+
+    val all : 'a t list -> 'a list t
+  end) =
+  struct
+    let map { map; values } ~f =
+      let open M.O in
+      let l = Array.to_list values in
+      let+ new_values = List.map l ~f |> M.all in
+      { map; values = Array.of_list new_values }
+  end
+
+  module A = Make_monad_traversals (Action_builder)
+
+  let map_action_builder = A.map
+
+  module R = Make_monad_traversals (Resolve)
+
+  let map_resolve = R.map
 end

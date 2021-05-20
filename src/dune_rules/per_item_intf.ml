@@ -1,3 +1,4 @@
+open Stdune
 open! Dune_engine
 
 module type S = sig
@@ -23,10 +24,13 @@ module type S = sig
 
   val fold : 'a t -> init:'acc -> f:('a -> 'acc -> 'acc) -> 'acc
 
+  val fold_resolve :
+    'a t -> init:'acc -> f:('a -> 'acc -> 'acc Resolve.t) -> 'acc Resolve.t
+
   val exists : 'a t -> f:('a -> bool) -> bool
 
-  val map_with_targets :
-       'a t
-    -> f:('a -> 'b Action_builder.With_targets.t)
-    -> 'b t Action_builder.With_targets.t
+  val map_action_builder :
+    'a t -> f:('a -> 'b Action_builder.t) -> 'b t Action_builder.t
+
+  val map_resolve : 'a t -> f:('a -> 'b Resolve.t) -> 'b t Resolve.t
 end

@@ -53,6 +53,7 @@ module Name = struct
   let version_fn (t : t) = to_string t ^ ".version"
 
   module Infix = Comparator.Operators (T)
+  module Map_traversals = Memo.Build.Make_map_traversals (Map)
 end
 
 module Id = struct

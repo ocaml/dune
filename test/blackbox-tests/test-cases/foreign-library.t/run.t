@@ -91,6 +91,7 @@ Testsuite for the (foreign_library ...) stanza.
   >  (flags -DCONFIG_VALUE=2000)
   >  (names config))
   > EOF
+  $ touch lib/calc.ml
 
   $ rm -rf _build
   $ ./sdune build

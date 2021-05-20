@@ -77,7 +77,8 @@ let run_action (vcs : Vcs.t) action =
       | Hg when not has_hg -> { vcs with kind = Git }
       | _ -> vcs
     in
-    Memo.Build.run (Vcs.describe vcs) >>| fun s ->
+    let+ s = Memo.Build.run (Vcs.describe vcs) in
+    let s = Option.value s ~default:"n/a" in
     let processed =
       String.split s ~on:'-'
       |> List.map ~f:(fun s ->
@@ -117,9 +118,9 @@ let run kind script =
   let vcs = { Vcs.kind; root = temp_dir } in
   let config =
     { Scheduler.Config.concurrency = 1
-    ; terminal_persistence = Preserve
-    ; display = Short
+    ; display = { verbosity = Short; status_line = false }
     ; rpc = None
+    ; stats = None
     }
   in
   Scheduler.Run.go

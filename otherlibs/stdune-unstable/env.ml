@@ -28,7 +28,7 @@ module Map = Var.Map
    memoization framework when computing [unix]. *)
 type t =
   { vars : string Map.t
-  ; mutable unix : string array option
+  ; mutable unix : string list option
   }
 
 let equal t { vars; unix = _ } = Map.equal ~equal:String.equal t.vars vars
@@ -51,7 +51,6 @@ let to_unix t =
       Map.foldi ~init:[]
         ~f:(fun k v acc -> Printf.sprintf "%s=%s" k v :: acc)
         t.vars
-      |> Array.of_list
     in
     t.unix <- Some res;
     res
@@ -106,3 +105,5 @@ let path env =
   match get env "PATH" with
   | None -> []
   | Some s -> Bin.parse_path s
+
+let to_map t = t.vars

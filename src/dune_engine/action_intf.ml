@@ -11,6 +11,14 @@ module Inputs = struct
   type t = Stdin
 end
 
+module File_perm = struct
+  (** File mode, for when creating files. We only allow what Dune takes into
+      account when memoizing commands. *)
+  type t =
+    | Normal
+    | Executable
+end
+
 module type Ast = sig
   type program
 
@@ -28,7 +36,7 @@ module type Ast = sig
     | Setenv of string * string * t
     (* It's not possible to use a build path here since jbuild supports
        redirecting to /dev/null. In [dune] files this is replaced with %{null} *)
-    | Redirect_out of Outputs.t * target * t
+    | Redirect_out of Outputs.t * target * File_perm.t * t
     | Redirect_in of Inputs.t * path * t
     | Ignore of Outputs.t * t
     | Progn of t list
@@ -36,14 +44,14 @@ module type Ast = sig
     | Cat of path
     | Copy of path * target
     | Symlink of path * target
+    | Hardlink of path * target
     | Copy_and_add_line_directive of path * target
     | System of string
     | Bash of string
-    | Write_file of target * string
+    | Write_file of target * File_perm.t * string
     | Rename of target * target
     | Remove_tree of target
     | Mkdir of path
-    | Digest_files of path list
     | Diff of (path, target) Diff.t
     | Merge_files_into of path list * string list * target
     | No_infer of t
@@ -69,11 +77,11 @@ module type Helpers = sig
 
   val setenv : string -> string -> t -> t
 
-  val with_stdout_to : target -> t -> t
+  val with_stdout_to : ?perm:File_perm.t -> target -> t -> t
 
-  val with_stderr_to : target -> t -> t
+  val with_stderr_to : ?perm:File_perm.t -> target -> t -> t
 
-  val with_outputs_to : target -> t -> t
+  val with_outputs_to : ?perm:File_perm.t -> target -> t -> t
 
   val with_stdin_from : path -> t -> t
 
@@ -99,15 +107,13 @@ module type Helpers = sig
 
   val bash : string -> t
 
-  val write_file : target -> string -> t
+  val write_file : ?perm:File_perm.t -> target -> string -> t
 
   val rename : target -> target -> t
 
   val remove_tree : target -> t
 
   val mkdir : path -> t
-
-  val digest_files : path list -> t
 
   val diff : ?optional:bool -> ?mode:Diff.Mode.t -> path -> target -> t
 

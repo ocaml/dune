@@ -5,7 +5,21 @@ open! Import
 
 type 'a t
 
-include Applicative_intf.S1 with type 'a t := 'a t
+module O : sig
+  val ( >>> ) : unit t -> 'a t -> 'a t
+
+  val ( >>= ) : 'a t -> ('a -> 'b t) -> 'b t
+
+  val ( >>| ) : 'a t -> ('a -> 'b) -> 'b t
+
+  val ( let* ) : 'a t -> ('a -> 'b t) -> 'b t
+
+  val ( and* ) : 'a t -> 'b t -> ('a * 'b) t
+
+  val ( let+ ) : 'a t -> ('a -> 'b) -> 'b t
+
+  val ( and+ ) : 'a t -> 'b t -> ('a * 'b) t
+end
 
 module With_targets : sig
   type 'a build
@@ -25,12 +39,10 @@ module With_targets : sig
 
   val map2 : 'a t -> 'b t -> f:('a -> 'b -> 'c) -> 'c t
 
-  val write_file_dyn : Path.Build.t -> string t -> Action.t t
+  val write_file_dyn :
+    ?perm:Action.File_perm.t -> Path.Build.t -> string t -> Action.t t
 
   val all : 'a t list -> 'a list t
-
-  val of_result_map :
-    'a Or_exn.t -> f:('a -> 'b t) -> targets:Path.Build.t list -> 'b t
 
   (** [memoize name t] is an action builder that behaves like [t] except that
       its result is computed only once. *)
@@ -58,9 +70,13 @@ val with_no_targets : 'a t -> 'a With_targets.t
 
 val return : 'a -> 'a t
 
+val bind : 'a t -> f:('a -> 'b t) -> 'b t
+
 val map : 'a t -> f:('a -> 'b) -> 'b t
 
 val map2 : 'a t -> 'b t -> f:('a -> 'b -> 'c) -> 'c t
+
+val both : 'a t -> 'b t -> ('a * 'b) t
 
 val ignore : 'a t -> unit t
 
@@ -68,10 +84,12 @@ val all : 'a t list -> 'a list t
 
 val all_unit : unit t list -> unit t
 
+module List : sig
+  val map : 'a list -> f:('a -> 'b t) -> 'b list t
+end
+
 (** Delay a static computation until the description is evaluated *)
 val delayed : (unit -> 'a) -> 'a t
-
-val or_exn : 'a Or_exn.t t -> 'a t
 
 (** CR-someday diml: this API is not great, what about:
 
@@ -136,10 +154,6 @@ val dyn_path_set : ('a * Path.Set.t) t -> 'a t
 
 val dyn_path_set_reuse : Path.Set.t t -> Path.Set.t t
 
-(** [catch t ~on_error] evaluates to [on_error] if an exception is raised during
-    the evaluation of [t]. *)
-val catch : 'a t -> on_error:'a -> 'a t
-
 (** [contents path] returns a description that when run will return the contents
     of the file at [path]. *)
 val contents : Path.t -> string t
@@ -167,18 +181,19 @@ val if_file_exists : Path.t -> then_:'a t -> else_:'a t -> 'a t
     get a proper backtrace *)
 val fail : fail -> _ t
 
-val of_result : 'a t Or_exn.t -> 'a t
-
-val of_result_map : 'a Or_exn.t -> f:('a -> 'b t) -> 'b t
-
 (** [memoize name t] is an action builder that behaves like [t] except that its
     result is computed only once. *)
 val memoize : string -> 'a t -> 'a t
 
 (** Create a file with the given contents. *)
-val write_file : Path.Build.t -> string -> Action.t With_targets.t
+val write_file :
+  ?perm:Action.File_perm.t -> Path.Build.t -> string -> Action.t With_targets.t
 
-val write_file_dyn : Path.Build.t -> string t -> Action.t With_targets.t
+val write_file_dyn :
+     ?perm:Action.File_perm.t
+  -> Path.Build.t
+  -> string t
+  -> Action.t With_targets.t
 
 val copy : src:Path.t -> dst:Path.Build.t -> Action.t With_targets.t
 
@@ -187,55 +202,112 @@ val copy_and_add_line_directive :
 
 val symlink : src:Path.t -> dst:Path.Build.t -> Action.t With_targets.t
 
-val create_file : Path.Build.t -> Action.t With_targets.t
+val create_file :
+  ?perm:Action.File_perm.t -> Path.Build.t -> Action.t With_targets.t
 
 (** Merge a list of actions accumulating the sets of their targets. *)
 val progn : Action.t With_targets.t list -> Action.t With_targets.t
 
+module Action_desc : sig
+  (* jeremiedimino: this type correspond to a subset of [Rule.t]. We should
+     eventually share the code. *)
+  type nonrec t =
+    { context : Build_context.t option
+    ; action : Action.Full.t
+    ; loc : Loc.t option
+    ; dir : Path.Build.t
+          (** Directory the action is attached to. This is the directory where
+              the outcome of the action will be cached. *)
+    ; alias : Alias.Name.t option  (** For better error messages *)
+    }
+end
+
+(** Execute an action. You can think of [action t] as a convenient way of
+    declaring an anonymous build rule and depending on its outcome. While the
+    return type is [unit], the action might fail. So the outcome here is success
+    or failure. This function is commonly used for attaching tests to an alias.
+
+    Note that any dependency declared in [t] is treated as a dependency of the
+    action returned by [t], rather than the action currently being computed.
+    More precisely, in the following code:
+
+    {[
+      let+ () = Action_builder.path p1
+      and+ () =
+        Action_builder.action
+          (let+ () = Action_builder.path p2 in
+           act2)
+      in
+      act1
+    ]}
+
+    Dune assumes that:
+
+    - [act1] will read [p1]
+    - [act2] will read [p2]
+
+    When passing [--force] to Dune, these are exactly the actions that will be
+    re-executed. *)
+val action : Action_desc.t t -> unit t
+
+(** Same as [action], but captures the output of the action. *)
+val action_stdout : Action_desc.t t -> string t
+
 (** {1 Analysis} *)
 
-(** Returns [Some (x, t)] if the following can be evaluated statically. The
-    returned [t] should be attached to the current action builder to record
-    dependencies and other informations. Otherwise return [None]. *)
-val static_eval : 'a t -> ('a * unit t) option
+(** Returns [Some (x, deps)] if the following can be evaluated statically. *)
+val static_eval : 'a t -> ('a * Dep.Set.t) option
 
-val capture_deps : 'a t -> ('a * Dep.Set.t) t
+(** [goal t] ignores all facts that have been accumulated about the dependencies
+    of [t]. For example, [goal (path p)] declares that a path [p] contributes to
+    the "goal" of the resulting action builder, which means [p] must be built,
+    but the contents of [p] is irrelevant. *)
+val goal : 'a t -> 'a t
 
 module Expander : String_with_vars.Expander with type 'a app := 'a t
 
 (** {1 Execution} *)
 
 module Make_exec (Build_deps : sig
-  (** Wait until the given set of dependencies is built *)
-  val build_deps : Dep.Set.t -> unit Memo.Build.t
+  type fact
+
+  val merge_facts : fact Dep.Map.t -> fact Dep.Map.t -> fact Dep.Map.t
+
+  val read_file : Path.t -> f:(Path.t -> 'a) -> 'a Memo.Build.t
 
   (** Register some newly discover action dependencies *)
-  val register_action_deps : Dep.Set.t -> unit Memo.Build.t
+  val register_action_deps : Dep.Set.t -> fact Dep.Map.t Memo.Build.t
+
+  (** [register_action_dep_pred fs] is the same as evaluating [fs] and calling
+      [register_action_deps (Dep.file_selector fs)], but more efficient as both
+      computation require evaluating [fs]. *)
+  val register_action_dep_pred :
+    File_selector.t -> (Path.Set.t * fact) Memo.Build.t
 
   (** Check whether a file exists. Returns [true] for files generated by a rule. *)
-  val file_exists : Path.t -> bool
+  val file_exists : Path.t -> bool Memo.Build.t
 
   (** Check whether an alias is defined. *)
   val alias_exists : Alias.t -> bool Memo.Build.t
-end) : sig
-  (** Execute an action builder. Returns the result and the set of dependencies
-      collected. *)
-  val exec : 'a t -> ('a * Dep.Set.t) Memo.Build.t
-end
 
-(** These functions are experimental and potentially unsafe to use. Each usage
-    must be discussed and justified. *)
-module Expert : sig
-  (** This function "stages" static dependencies and can therefore reduce build
-      parallelism: until the outer action builder has been evaluated, the static
-      dependencies of the inner action builder are unknown. *)
-  val action_builder : 'a t t -> 'a t
+  val execute_action :
+    observing_facts:fact Dep.Map.t -> Action_desc.t -> unit Memo.Build.t
+
+  val execute_action_stdout :
+    observing_facts:fact Dep.Map.t -> Action_desc.t -> string Memo.Build.t
+end) : sig
+  (** Execute an action builder. Returns the result and the trace of the
+      dependencies. *)
+  val exec : 'a t -> ('a * Build_deps.fact Dep.Map.t) Memo.Build.t
 end
 
 (** If you're thinking of using [Process.run] here, check that: (i) you don't in
     fact need [Command.run], and that (ii) [Process.run] only reads the declared
     build rule dependencies. *)
 val memo_build : 'a Memo.Build.t -> 'a t
+
+(** Like [memo_build] but collapses the two levels of [t]. *)
+val memo_build_join : 'a t Memo.Build.t -> 'a t
 
 (** If you're thinking of using [Process.run] here, check that: (i) you don't in
     fact need [Command.run], and that (ii) [Process.run] only reads the declared
@@ -247,7 +319,5 @@ val dyn_memo_build : 'a Memo.Build.t t -> 'a t
 val dyn_memo_build_deps : ('a * Dep.Set.t) Memo.Build.t t -> 'a t
 
 (**/**)
-
-val paths_for_rule : Path.Set.t -> unit t
 
 val dep_on_alias_if_exists : Alias.t -> bool t

@@ -69,18 +69,6 @@ Configuration files are taken into account for this action:
 
   $ touch enabled/.ocamlformat
   $ dune build @fmt
-  File "lang2/default/dune", line 1, characters 0-0:
-  Error: Files _build/default/lang2/default/dune and
-  _build/default/lang2/default/.formatted/dune differ.
-  File "lang2/default/e.ml", line 1, characters 0-0:
-  Error: Files _build/default/lang2/default/e.ml and
-  _build/default/lang2/default/.formatted/e.ml differ.
-  File "lang2/partial/a.ml", line 1, characters 0-0:
-  Error: Files _build/default/lang2/partial/a.ml and
-  _build/default/lang2/partial/.formatted/a.ml differ.
-  File "partial/a.ml", line 1, characters 0-0:
-  Error: Files _build/default/partial/a.ml and
-  _build/default/partial/.formatted/a.ml differ.
   File "enabled/dune", line 1, characters 0-0:
   Error: Files _build/default/enabled/dune and
   _build/default/enabled/.formatted/dune differ.
@@ -102,6 +90,18 @@ Configuration files are taken into account for this action:
   File "enabled/subdir/lib.ml", line 1, characters 0-0:
   Error: Files _build/default/enabled/subdir/lib.ml and
   _build/default/enabled/subdir/.formatted/lib.ml differ.
+  File "lang2/default/dune", line 1, characters 0-0:
+  Error: Files _build/default/lang2/default/dune and
+  _build/default/lang2/default/.formatted/dune differ.
+  File "lang2/default/e.ml", line 1, characters 0-0:
+  Error: Files _build/default/lang2/default/e.ml and
+  _build/default/lang2/default/.formatted/e.ml differ.
+  File "lang2/partial/a.ml", line 1, characters 0-0:
+  Error: Files _build/default/lang2/partial/a.ml and
+  _build/default/lang2/partial/.formatted/a.ml differ.
+  File "partial/a.ml", line 1, characters 0-0:
+  Error: Files _build/default/partial/a.ml and
+  _build/default/partial/.formatted/a.ml differ.
   [1]
 
 And fixable files can be promoted:

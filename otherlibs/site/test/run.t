@@ -327,7 +327,7 @@ Test %{version:installed-pkg}
   $ for i in f; do
   >   mkdir -p $i
   >   cat >$i/dune-project <<EOF
-  > (lang dune 2.8)
+  > (lang dune 2.9)
   > (using dune_site 0.1)
   > (name $i)
   > (version 0.$i)

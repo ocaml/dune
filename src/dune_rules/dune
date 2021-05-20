@@ -13,11 +13,15 @@
   dune_glob
   ocaml_config
   dune_action_plugin
+  chrome_trace
+  dune_stats
   dune_util
   dune_meta_parser
   dune_section
+  dune_cache
   build_path_prefix_map
-  dune_engine)
+  dune_engine
+  dune_config)
  (synopsis "Internal Dune library, do not use!"))
 
 (ocamllex ocamlobjinfo cram_lexer)

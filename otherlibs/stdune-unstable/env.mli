@@ -25,7 +25,7 @@ val vars : t -> Var.Set.t
 (** The environment when the process started *)
 val initial : t
 
-val to_unix : t -> string array
+val to_unix : t -> string list
 
 val get : t -> Var.t -> string option
 
@@ -44,6 +44,8 @@ val update : t -> var:Var.t -> f:(string option -> string option) -> t
 val to_dyn : t -> Dyn.t
 
 val of_string_map : string String.Map.t -> t
+
+val to_map : t -> string Map.t
 
 val iter : t -> f:(string -> string -> unit) -> unit
 

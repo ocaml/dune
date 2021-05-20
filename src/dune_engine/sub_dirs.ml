@@ -167,15 +167,11 @@ module Dir_map = struct
     { sexps = d1.sexps @ d2.sexps
     ; subdir_status =
         Status.Map.merge d1.subdir_status d2.subdir_status ~f:(fun l r ->
-            match (l, r) with
-            | acc, None
-            | None, acc ->
-              acc
-            | Some (loc, _), Some (loc2, _) ->
-              User_error.raise ~loc
-                [ Pp.text "This stanza stanza was already specified at:"
-                ; Pp.verbatim (Loc.to_file_colon_line loc2)
-                ])
+            Option.merge l r ~f:(fun (loc, _) (loc2, _) ->
+                User_error.raise ~loc
+                  [ Pp.text "This stanza stanza was already specified at:"
+                  ; Pp.verbatim (Loc.to_file_colon_line loc2)
+                  ]))
     }
 
   let rec merge t1 t2 : t =
@@ -188,9 +184,14 @@ module Dir_map = struct
   let merge_all = List.fold_left ~f:merge ~init:empty
 end
 
-let descedant_path =
+let descendant_path =
   Dune_lang.Decoder.plain_string (fun ~loc fn ->
-      Path.Local.parse_string_exn ~loc fn |> Path.Local.explode)
+      if Filename.is_relative fn then
+        Path.Local.parse_string_exn ~loc fn |> Path.Local.explode
+      else
+        let msg = [ Pp.textf "invalid sub-directory path %S" fn ] in
+        let hints = [ Pp.textf "sub-directory path must be relative" ] in
+        User_error.raise ~loc ~hints msg)
 
 let strict_subdir field_name =
   let open Dune_lang.Decoder in
@@ -263,7 +264,7 @@ let decode =
   in
   let rec subdir () =
     let* () = Dune_lang.Syntax.since Stanza.syntax (2, 5) in
-    let* subdir = descedant_path in
+    let* subdir = descendant_path in
     let+ node = fields (decode ~allow_ignored_subdirs:false) in
     Dir_map.make_at_path subdir node
   and decode ~allow_ignored_subdirs =

@@ -7,4 +7,4 @@ val setup_rules :
      Super_context.t
   -> dir:Path.Build.t
   -> Dune_file.Generate_sites_module.t
-  -> string
+  -> string Memo.Build.t

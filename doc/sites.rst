@@ -83,7 +83,7 @@ site using the :ref:`generate sites module stanza<generate_sites_module>`
     (libraries dune-site))
 
    (generate_sites_module
-    (name mysites)
+    (module mysites)
     (sites mygui))
 
 The generated module `mysites` depends on the library `dune-site` provided by
@@ -184,100 +184,140 @@ Example
 We demonstrate an example of the scheme above. The example consists of the
 following components:
 
-Inside package `c`,
+Inside package `app`:
 
-- A package `c`, containing the executable `c`, that we intend to extend with
-  plugins.
+- An executable `app`, that we intend to extend with plugins.
 
-- A library `c.register` which defines the plugin registration interface.
+- A library `app.registration` which defines the plugin registration interface.
 
 - A generated module `Sites` which can load available plugins at runtime.
 
-- An executable `c` that will use the module `Sites` to load all the plugins.
+- An executable `app` that will use the module `Sites` to load all the plugins.
 
-Inside package `b`, we declare plugin using the `c.register` api and the
+Inside package `Plugin1`, we declare a plugin using the `app.registration` api and the
 `plugin` stanza.
+
+Directory structure
+^^^^^^^^^^^^^^^^^^^
+
+.. code::
+
+  .
+  ├── app.ml
+  ├── dune
+  ├── dune-project
+  ├── plugin
+  │   ├── dune
+  │   ├── dune-project
+  │   └── plugin1_impl.ml
+  └── registration.ml
+
 
 Main executable (C)
 ^^^^^^^^^^^^^^^^^^^^^
 
-- ``dune-project`` file:
+- The ``dune-project`` file:
 
 .. code:: scheme
 
-   (lang dune 3.0)
-   (using dune_site 0.1)
-   (name c)
-   (package
-    (name c)
+  (lang dune 3.0)
+  (using dune_site 0.1)
+  (name app)
+
+  (package
+    (name app)
     (sites (lib plugins)))
 
 
-- ``dune`` file:
+- The ``dune`` file:
 
 .. code:: scheme
 
-   (executable
-    (public_name c)
-    (modules sites c)
-    (libraries c.register dune-site dune-site.plugins))
+  (executable
+    (public_name app)
+    (modules sites app)
+    (libraries app.register dune-site dune-site.plugins))
 
-   (library
-    (public_name c.register)
-    (name c_register)
-    (modules c_register))
+  (library
+    (public_name app.register)
+    (name registration)
+    (modules registration))
 
-   (generate_sites_module
-    (module sites)
-    (plugins (c plugins)))
+  (generate_sites_module
+  (module sites)
+  (plugins (app plugins)))
 
 The generated module `sites` depends here also on the library
-`dune-site.plugins` because the plugins optional field is requested.
+`dune-site.plugins` because the `plugins` optional field is requested.
 
-- The module ``c_register.ml`` of the library ``c.register``:
-
-.. code:: ocaml
-
-   let todo = Queue.create ()
-
-- The code of the executable ``c.ml``:
+- The module ``registration.ml`` of the library ``app.registration``:
 
 .. code:: ocaml
 
-   (* load all the available plugins *)
-   let () = Sites.Plugins.Plugins.load_all ()
-   (* Execute the code registered by the plugins *)
-   let () = Queue.iter (fun f -> f ()) !C_register.todo
+  let todo : (unit -> unit) Queue.t = Queue.create ()
 
-One plugin (B)
-^^^^^^^^^^^^^^
+- The code of the executable ``app.ml``:
 
-- ``dune-project`` file:
+.. code:: ocaml
+
+  (* load all the available plugins *)
+  let () = Sites.Plugins.Plugins.load_all ()
+
+  let () = print_endline "Main app starts..."
+  (* Execute the code registered by the plugins *)
+  let () = Queue.iter (fun f -> f ()) Registration.todo
+
+The plugin "plugin1"
+^^^^^^^^^^^^^^^^^^^^
+
+- The ``plugin/dune-project`` file:
 
 .. code:: scheme
 
-   (lang dune 3.0)
-   (using dune_site 0.1)
-   (name b)
+  (lang dune 3.0)
+  (using dune_site 0.1)
 
-- ``dune`` file:
+  (generate_opam_files true)
+
+  (package
+    (name plugin1))
+
+
+- The ``plugin/dune`` file:
 
 .. code:: scheme
 
   (library
-   (public_name b)
-   (libraries c.register))
+    (public_name plugin1.plugin1_impl)
+    (name plugin1_impl)
+    (modules plugin1_impl)
+    (libraries app.register))
 
   (plugin
-   (name b)
-   (libraries b)
-   (site (c plugins)))
+    (name plugin1)
+    (libraries plugin1.plugin1_impl)
+    (site (app plugins)))
 
-- The code of the plugin ``b.ml``:
+
+
+- The code of the plugin ``plugin/plugin1_impl.ml``:
 
 .. code:: ocaml
 
-   let () =
-     Queue.add (fun () -> print_endline "B is doing something") C_register.todo
+  let () =
+    print_endline "Registration of Plugin1";
+    Queue.add (fun () -> print_endline "Plugin1 is doing something...") Registration.todo
+
+Running the example
+^^^^^^^^^^^^^^^^^^^
+
+.. code::
+
+  $ dune build @install && dune exec ./app.exe
+  Registration of Plugin1
+  Main app starts...
+  Plugin1 is doing something...
+
+
 
 .. _Dynlink: https://caml.inria.fr/pub/docs/manual-ocaml/libref/Dynlink.html

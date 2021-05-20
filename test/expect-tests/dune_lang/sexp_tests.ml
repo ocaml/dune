@@ -30,7 +30,7 @@ let of_sexp =
 
 let%expect_test _ =
   (try ignore (parse of_sexp Univ_map.empty (Lazy.force sexp) : int) with
-  | User_error.E msg -> User_message.print { msg with loc = None });
+  | User_error.E (msg, _) -> User_message.print { msg with loc = None });
   [%expect {|
 Error: Field "foo" is present too many times
 |}]
@@ -45,202 +45,154 @@ let%expect_test _ =
 [ 1; 2 ]
 |}]
 
-type 'res parse_result_diff =
-  { jbuild : ('res, string) result
-  ; dune : ('res, string) result
-  }
-
-let dyn_of_parse_result_diff f { jbuild; dune } =
-  let open Dyn.Encoder in
-  record
-    [ ("jbuild", Result.to_dyn f string jbuild)
-    ; ("dune", Result.to_dyn f string dune)
-    ]
-
-type 'res parse_result =
-  | Same of ('res, string) result
-  | Different of 'res parse_result_diff
-
-let dyn_of_parse_result f =
-  let open Dyn.Encoder in
-  function
-  | Same r -> constr "Same" [ Result.to_dyn f string r ]
-  | Different r -> constr "Different" [ dyn_of_parse_result_diff f r ]
-
 let string_of_user_error (msg : User_message.t) =
   Format.asprintf "%a" Pp.to_fmt (User_message.pp { msg with loc = None })
   |> String.drop_prefix ~prefix:"Error: "
   |> Option.value_exn |> String.trim
 
 let parse s =
-  let f ~lexer =
+  let res =
     try
       Ok
-        (Dune_lang.Parser.parse_string ~fname:"" ~mode:Many ~lexer s
+        (Dune_lang.Parser.parse_string ~fname:"" ~mode:Many s
         |> List.map ~f:Dune_lang.Ast.remove_locs)
     with
-    | User_error.E msg -> Error (string_of_user_error msg)
+    | User_error.E (msg, _) -> Error (string_of_user_error msg)
     | e -> Error (Printexc.to_string e)
   in
-  let jbuild = f ~lexer:Jbuild_support.Lexer.token in
-  let dune = f ~lexer:Dune_lang.Lexer.token in
-  let res =
-    if jbuild <> dune then
-      Different { jbuild; dune }
-    else
-      Same jbuild
-  in
-  dyn_of_parse_result (Dyn.Encoder.list Dune_lang.to_dyn) res |> print_dyn
+  print_dyn
+    (Result.to_dyn (Dyn.Encoder.list Dune_lang.to_dyn) Dyn.Encoder.string res)
 
 let%expect_test _ =
   parse {| # ## x##y x||y a#b|c#d copy# |};
   [%expect {|
-Same Ok [ "#"; "##"; "x##y"; "x||y"; "a#b|c#d"; "copy#" ]
+Ok [ "#"; "##"; "x##y"; "x||y"; "a#b|c#d"; "copy#" ]
 |}]
 
 let%expect_test _ =
   parse {|x #| comment |# y|};
-  [%expect
-    {|
-Different
-  { jbuild = Ok [ "x"; "y" ]; dune = Ok [ "x"; "#|"; "comment"; "|#"; "y" ] }
+  [%expect {|
+Ok [ "x"; "#|"; "comment"; "|#"; "y" ]
 |}]
 
 let%expect_test _ =
   parse {|x#|y|};
-  [%expect
-    {|
-Different
-  { jbuild = Error "jbuild atoms cannot contain #|"; dune = Ok [ "x#|y" ] }
+  [%expect {|
+Ok [ "x#|y" ]
 |}]
 
 let%expect_test _ =
   parse {|x|#y|};
-  [%expect
-    {|
-Different
-  { jbuild = Error "jbuild atoms cannot contain |#"; dune = Ok [ "x|#y" ] }
+  [%expect {|
+Ok [ "x|#y" ]
 |}]
 
 let%expect_test _ =
   parse {|"\a"|};
-  [%expect
-    {|
-Different { jbuild = Ok [ "\\a" ]; dune = Error "unknown escape sequence" }
+  [%expect {|
+Error "unknown escape sequence"
 |}]
 
 let%expect_test _ =
   parse {|"\%{x}"|};
   [%expect {|
-Different { jbuild = Ok [ "\\%{x}" ]; dune = Ok [ "%{x}" ] }
+Ok [ "%{x}" ]
 |}]
 
 let%expect_test _ =
   parse {|"$foo"|};
   [%expect {|
-Same Ok [ "$foo" ]
+Ok [ "$foo" ]
 |}]
 
 let%expect_test _ =
   parse {|"%foo"|};
   [%expect {|
-Same Ok [ "%foo" ]
+Ok [ "%foo" ]
 |}]
 
 let%expect_test _ =
   parse {|"bar%foo"|};
   [%expect {|
-Same Ok [ "bar%foo" ]
+Ok [ "bar%foo" ]
 |}]
 
 let%expect_test _ =
   parse {|"bar$foo"|};
   [%expect {|
-Same Ok [ "bar$foo" ]
+Ok [ "bar$foo" ]
 |}]
 
 let%expect_test _ =
   parse {|"%bar$foo%"|};
   [%expect {|
-Same Ok [ "%bar$foo%" ]
+Ok [ "%bar$foo%" ]
 |}]
 
 let%expect_test _ =
   parse {|"$bar%foo%"|};
   [%expect {|
-Same Ok [ "$bar%foo%" ]
+Ok [ "$bar%foo%" ]
 |}]
 
 let%expect_test _ =
   parse {|\${foo}|};
   [%expect {|
-Same Ok [ "\\${foo}" ]
+Ok [ "\\${foo}" ]
 |}]
 
 let%expect_test _ =
   parse {|\%{foo}|};
-  [%expect
-    {|
-Different { jbuild = Ok [ "\\%{foo}" ]; dune = Ok [ template "\\%{foo}" ] }
+  [%expect {|
+Ok [ template "\\%{foo}" ]
 |}]
 
 let%expect_test _ =
   parse {|\$bar%foo%|};
   [%expect {|
-Same Ok [ "\\$bar%foo%" ]
+Ok [ "\\$bar%foo%" ]
 |}]
 
 let%expect_test _ =
   parse {|\$bar\%foo%|};
   [%expect {|
-Same Ok [ "\\$bar\\%foo%" ]
+Ok [ "\\$bar\\%foo%" ]
 |}]
 
 let%expect_test _ =
   parse {|\$bar\%foo%{bar}|};
-  [%expect
-    {|
-Different
-  { jbuild = Ok [ "\\$bar\\%foo%{bar}" ]
-  ; dune = Ok [ template "\\$bar\\%foo%{bar}" ]
-  }
+  [%expect {|
+Ok [ template "\\$bar\\%foo%{bar}" ]
 |}]
 
 let%expect_test _ =
   parse {|"bar%{foo}"|};
-  [%expect
-    {|
-Different
-  { jbuild = Ok [ "bar%{foo}" ]; dune = Ok [ template "\"bar%{foo}\"" ] }
+  [%expect {|
+Ok [ template "\"bar%{foo}\"" ]
 |}]
 
 let%expect_test _ =
   parse {|"bar\%{foo}"|};
-  [%expect
-    {|
-Different { jbuild = Ok [ "bar\\%{foo}" ]; dune = Ok [ "bar%{foo}" ] }
+  [%expect {|
+Ok [ "bar%{foo}" ]
 |}]
 
 let%expect_test _ =
   parse {|bar%{foo}|};
-  [%expect
-    {|
-Different { jbuild = Ok [ "bar%{foo}" ]; dune = Ok [ template "bar%{foo}" ] }
+  [%expect {|
+Ok [ template "bar%{foo}" ]
 |}]
 
 let%expect_test _ =
   parse {|"bar%{foo}"|};
-  [%expect
-    {|
-Different
-  { jbuild = Ok [ "bar%{foo}" ]; dune = Ok [ template "\"bar%{foo}\"" ] }
+  [%expect {|
+Ok [ template "\"bar%{foo}\"" ]
 |}]
 
 let%expect_test _ =
   parse {|"bar\%foo"|};
-  [%expect
-    {|
-Different { jbuild = Ok [ "bar\\%foo" ]; dune = Ok [ "bar%foo" ] }
+  [%expect {|
+Ok [ "bar%foo" ]
 |}]
 
 (* Printing tests *)
@@ -295,20 +247,14 @@ let test syntax sexp =
     , let s =
         Format.asprintf "%a" (fun ppf x -> Pp.to_fmt ppf (Dune_lang.pp x)) sexp
       in
-      match
-        Dune_lang.Parser.parse_string s ~mode:Single ~fname:""
-          ~lexer:
-            (match syntax with
-            | Jbuild -> Jbuild_support.Lexer.token
-            | Dune -> Dune_lang.Lexer.token)
-      with
+      match Dune_lang.Parser.parse_string s ~mode:Single ~fname:"" with
       | sexp' ->
         let sexp' = Dune_lang.Ast.remove_locs sexp' in
         if sexp = sexp' then
           Round_trip_success
         else
           Did_not_round_trip sexp'
-      | exception User_error.E msg ->
+      | exception User_error.E (msg, _) ->
         Did_not_parse_back (string_of_user_error msg) )
   in
   let open Dyn.Encoder in
@@ -375,10 +321,10 @@ world
   [%expect
     {|
 [ Atom A "hello"
-; Comment Lines [ " comment" ]
+; Comment [ " comment" ]
 ; Atom A "world"
-; Comment Lines [ " multiline"; " comment" ]
-; List [ Atom A "x"; Comment Lines [ " comment inside list" ]; Atom A "y" ]
+; Comment [ " multiline"; " comment" ]
+; List [ Atom A "x"; Comment [ " comment inside list" ]; Atom A "y" ]
 ]
 |}]
 
@@ -401,22 +347,3 @@ comment)
 block
 comment|#
 |}
-
-let%expect_test _ =
-  Dune_lang.Parser.parse ~lexer:Jbuild_support.Lexer.token ~mode:Cst
-    (Lexing.from_string jbuild_file)
-  |> List.map
-       ~f:(Dune_lang.Cst.fetch_legacy_comments ~file_contents:jbuild_file)
-  |> Dyn.Encoder.list Dune_lang.Cst.to_dyn
-  |> print_dyn;
-  [%expect
-    {|
-[ Atom A "hello"
-; Comment Lines [ " comment" ]
-; Atom A "world"
-; Comment Lines [ " multiline"; " comment" ]
-; List [ Atom A "x"; Comment Lines [ " comment inside list" ]; Atom A "y" ]
-; Comment Lines [ "(sexp"; "comment)" ]
-; Comment Lines [ "old style"; "block"; "comment" ]
-]
-|}]

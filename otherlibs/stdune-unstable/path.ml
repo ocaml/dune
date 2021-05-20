@@ -127,8 +127,8 @@ end = struct
       Code_error.raise "Path.External.parent_exn called on a root path" []
     | Some p -> p
 
-  let mkdir_p ?perms p =
-    ignore (Fpath.mkdir_p ?perms (to_string p) : Fpath.mkdir_p)
+  let mkdir_p ?perms path =
+    ignore (Fpath.mkdir_p ?perms (to_string path) : Fpath.mkdir_p_result)
 
   let extension t = Filename.extension (to_string t)
 
@@ -142,7 +142,7 @@ end = struct
 
   let cwd () = make (Sys.getcwd ())
 
-  let initial_cwd = cwd ()
+  let initial_cwd = make Fpath.initial_cwd
 
   let as_local t =
     let s = to_string t in
@@ -550,8 +550,8 @@ end = struct
 end
 
 module Relative_to_source_root = struct
-  let mkdir_p ?perms s =
-    ignore (Fpath.mkdir_p ?perms (Local.to_string s) : Fpath.mkdir_p)
+  let mkdir_p ?perms path =
+    ignore (Fpath.mkdir_p ?perms (Local.to_string path) : Fpath.mkdir_p_result)
 end
 
 module Source0 = Local
@@ -610,19 +610,13 @@ module Kind = struct
     | External x -> External (External.relative x (Local.to_string y))
 end
 
-let chmod_generic ~mode ?(op = `Set) path =
-  let mode =
-    match op with
-    | `Set -> mode
-    | `Add
-    | `Remove ->
-      let stat = Unix.stat path in
-      if op = `Add then
-        stat.st_perm lor mode
-      else
-        stat.st_perm land lnot mode
-  in
-  Unix.chmod path mode
+module Permissions = struct
+  let write = 0o222
+
+  let add ~mode perm = perm lor mode
+
+  let remove ~mode perm = perm land lnot mode
+end
 
 module Build = struct
   include Local
@@ -719,7 +713,11 @@ module Build = struct
 
   let of_local t = t
 
-  let chmod ~mode ?(op = `Set) path = chmod_generic ~mode ~op (to_string path)
+  let chmod t ~mode = Unix.chmod (to_string t) mode
+
+  let lstat t = Unix.lstat (to_string t)
+
+  let unlink_no_err t = Fpath.unlink_no_err (to_string t)
 
   module Kind = Kind
 end
@@ -917,11 +915,17 @@ let append_local = append_local
 let append_source = append_local
 
 let basename t =
-  match kind t with
-  | In_source_dir t -> Local.basename t
-  | External t -> External.basename t
+  match t with
+  | In_build_dir p -> Local.basename p
+  | In_source_tree s -> Local.basename s
+  | External s -> External.basename s
 
-let basename_opt = basename_opt ~is_root ~basename
+let is_a_root = function
+  | In_build_dir p -> Local.is_root p
+  | In_source_tree s -> Local.is_root s
+  | External s -> External.is_root s
+
+let basename_opt = basename_opt ~is_root:is_a_root ~basename
 
 let parent = function
   | External s -> Option.map (External.parent s) ~f:external_
@@ -1108,9 +1112,11 @@ let ensure_build_dir_exists () =
   | In_source_dir p -> Relative_to_source_root.mkdir_p p ~perms
   | External p -> (
     let p = External.to_string p in
-    try Unix.mkdir p perms with
-    | Unix.Unix_error (EEXIST, _, _) -> ()
-    | Unix.Unix_error (ENOENT, _, _) ->
+    match Fpath.mkdir ~perms p with
+    | Created
+    | Already_exists ->
+      ()
+    | Missing_parent_directory ->
       User_error.raise
         [ Pp.textf
             "Cannot create external build directory %s. Make sure that the \
@@ -1136,34 +1142,12 @@ let insert_after_build_dir_exn =
     | External _ ->
       error a b
 
-let rec clear_dir dir =
-  match Dune_filesystem_stubs.read_directory_with_kinds dir with
-  | Error ENOENT -> ()
-  | Error error ->
-    raise
-      (Unix.Unix_error
-         (error, dir, "Stdune.Path.rm_rf: read_directory_with_kinds"))
-  | Ok listing ->
-    List.iter listing ~f:(fun (fn, kind) ->
-        let fn = Filename.concat dir fn in
-        match kind with
-        | Unix.S_DIR -> rm_rf_dir fn
-        | _ -> Fpath.unlink fn)
-
-and rm_rf_dir path =
-  clear_dir path;
-  Unix.rmdir path
+let clear_dir dir = Fpath.clear_dir (to_string dir)
 
 let rm_rf ?(allow_external = false) t =
   if (not allow_external) && not (is_managed t) then
     Code_error.raise "Path.rm_rf called on external dir" [ ("t", to_dyn t) ];
-  let fn = to_string t in
-  match Unix.lstat fn with
-  | exception Unix.Unix_error (ENOENT, _, _) -> ()
-  | { Unix.st_kind = S_DIR; _ } -> rm_rf_dir fn
-  | _ -> Fpath.unlink fn
-
-let clear_dir dir = clear_dir (to_string dir)
+  Fpath.rm_rf ~allow_external (to_string t)
 
 let mkdir_p ?perms = function
   | External s -> External.mkdir_p s ?perms
@@ -1255,9 +1239,19 @@ let local_part = function
   | In_source_tree l -> l
   | In_build_dir l -> l
 
-let stat t = Unix.stat (to_string t)
+let stat_exn t = Unix.stat (to_string t)
 
-let lstat t = Unix.lstat (to_string t)
+let stat t =
+  match stat_exn t with
+  | exception Unix.Unix_error (error, _, _) -> Error error
+  | stats -> Ok stats
+
+let lstat_exn t = Unix.lstat (to_string t)
+
+let lstat t =
+  match lstat_exn t with
+  | exception Unix.Unix_error (error, _, _) -> Error error
+  | stats -> Ok stats
 
 include (Comparator.Operators (T) : Comparator.OPS with type t := t)
 
@@ -1289,23 +1283,7 @@ let string_of_file_kind = function
 let rename old_path new_path =
   Sys.rename (to_string old_path) (to_string new_path)
 
-let chmod ~mode ?(stats = None) ?(op = `Set) path =
-  let mode =
-    match op with
-    | `Set -> mode
-    | `Add
-    | `Remove ->
-      let stats =
-        match stats with
-        | Some stats -> stats
-        | None -> stat path
-      in
-      if Stdlib.( = ) op `Add then
-        stats.st_perm lor mode
-      else
-        stats.st_perm land lnot mode
-  in
-  Unix.chmod (to_string path) mode
+let chmod t ~mode = Unix.chmod (to_string t) mode
 
 let follow_symlink path =
   Fpath.follow_symlink (to_string path) |> Result.map ~f:of_string

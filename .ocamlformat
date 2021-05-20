@@ -1,4 +1,5 @@
 version=0.17.0
+profile=conventional
 break-separators=before
 dock-collection-brackets=false
 break-sequences=true

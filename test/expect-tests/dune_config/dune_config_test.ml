@@ -7,79 +7,59 @@ let parse s =
   let ast =
     Parser.parse_string ~fname:"expect_test" ~mode:Parser.Mode.Single s
   in
-  Dune_lang.Decoder.parse Dune_config.decode Stdune.Univ_map.empty ast
+  let decode =
+    Dune_lang.Syntax.set Dune_engine.Stanza.syntax
+      (Active (3, 0))
+      Dune_config.decode
+  in
+  Dune_lang.Decoder.parse decode Stdune.Univ_map.empty ast
+  |> Dune_config.(superpose default)
   |> Dune_config.to_dyn |> print_dyn
 
-let%expect_test _ =
-  parse "(cache-trim-period 2m)";
+let%expect_test "cache-check-probability 0.1" =
+  parse "(cache-check-probability 0.1)";
   [%expect
     {|
-{ display = "quiet"
-; concurrency = "1"
-; terminal_persistence = "preserve"
-; sandboxing_preference = []
-; cache_mode = "disabled"
-; cache_transport = "daemon"
-; cache_check_probability = 0.
-; cache_trim_period = 120
-; cache_trim_size = 10000000000
-}
+    { display = { status_line = false; verbosity = Quiet }
+    ; concurrency = Fixed 1
+    ; terminal_persistence = Preserve
+    ; sandboxing_preference = []
+    ; cache_enabled = Disabled
+    ; cache_reproducibility_check = Check_with_probability 0.1
+    ; cache_storage_mode = None
+    ; action_stdout_on_success = Print
+    ; action_stderr_on_success = Print
+    }
  |}]
 
-let%expect_test _ =
-  parse "(cache-trim-period 2)";
-  [%expect.unreachable]
-  [@@expect.uncaught_exn
-    {|
-  ( "File\
-   \n\"expect_test\",\
-   \nline\
-   \n1,\
-   \ncharacters\
-   \n19-20:\
-   \nError: missing suffix, use one of s, m, h\
-   \n") |}]
-
-let%expect_test _ =
-  parse "(cache-trim-period 2k)";
-  [%expect.unreachable]
-  [@@expect.uncaught_exn
-    {|
-  ( "File\
-   \n\"expect_test\",\
-   \nline\
-   \n1,\
-   \ncharacters\
-   \n19-21:\
-   \nError: invalid suffix, use one of s, m, h\
-   \n") |}]
-
-let%expect_test _ =
-  parse "(cache-trim-size 2kB)";
+let%expect_test "cache-storage-mode copy" =
+  parse "(cache-storage-mode copy)";
   [%expect
     {|
-{ display = "quiet"
-; concurrency = "1"
-; terminal_persistence = "preserve"
-; sandboxing_preference = []
-; cache_mode = "disabled"
-; cache_transport = "daemon"
-; cache_check_probability = 0.
-; cache_trim_period = 600
-; cache_trim_size = 2000
-}
+    { display = { status_line = false; verbosity = Quiet }
+    ; concurrency = Fixed 1
+    ; terminal_persistence = Preserve
+    ; sandboxing_preference = []
+    ; cache_enabled = Disabled
+    ; cache_reproducibility_check = Skip
+    ; cache_storage_mode = Some Copy
+    ; action_stdout_on_success = Print
+    ; action_stderr_on_success = Print
+    }
  |}]
 
-let%expect_test _ =
-  parse "(cache-trim-size 42)";
-  [%expect.unreachable]
-  [@@expect.uncaught_exn
+let%expect_test "cache-storage-mode hardlink" =
+  parse "(cache-storage-mode hardlink)";
+  [%expect
     {|
-  ( "File\
-   \n\"expect_test\",\
-   \nline\
-   \n1,\
-   \ncharacters\
-   \n17-19:\
-   \nError: missing suffix, use one of B, kB, KB, MB, GB\
-   \n") |}]
+    { display = { status_line = false; verbosity = Quiet }
+    ; concurrency = Fixed 1
+    ; terminal_persistence = Preserve
+    ; sandboxing_preference = []
+    ; cache_enabled = Disabled
+    ; cache_reproducibility_check = Skip
+    ; cache_storage_mode = Some Hardlink
+    ; action_stdout_on_success = Print
+    ; action_stderr_on_success = Print
+    }
+ |}]

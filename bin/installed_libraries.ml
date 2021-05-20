@@ -13,12 +13,9 @@ let term =
       & info [ "na"; "not-available" ]
           ~doc:"List libraries that are not available and explain why")
   in
-  Common.set_common common;
-  let capture_outputs = Common.capture_outputs common in
-  let _env : Env.t = Import.Main.setup_env ~capture_outputs in
-  Scheduler.go ~common (fun () ->
+  let config = Common.init common in
+  Scheduler.go ~common ~config (fun () ->
       let open Fiber.O in
-      let () = Workspace.init () in
       let* ctxs = Memo.Build.run (Context.DB.all ()) in
       let ctx = List.hd ctxs in
       let findlib = ctx.findlib in

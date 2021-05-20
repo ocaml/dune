@@ -11,4 +11,4 @@ val template_file : Path.t -> Path.t
 val generate :
   Dune_project.t -> Package.t -> template:(Path.t * string) option -> string
 
-val add_rules : Super_context.t -> dir:Path.Build.t -> unit
+val add_rules : Super_context.t -> dir:Path.Build.t -> unit Memo.Build.t

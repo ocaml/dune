@@ -1,6 +1,6 @@
 open! Dune_engine
+open! Dune_engine.Import
 open! Stdune
-open Import
 
 module Jbuild_plugin : sig
   val create_plugin_wrapper :
@@ -160,7 +160,7 @@ module Dune_files = struct
         in
         let ocaml = Action.Prog.ok_exn context.ocaml in
         let* () =
-          Memo.Build.of_fiber
+          Memo.Build.of_reproducible_fiber
             (Process.run Strict ~dir:(Path.source dir) ~env:context.env ocaml
                args)
         in
@@ -181,66 +181,74 @@ type conf =
   { dune_files : Dune_files.t
   ; packages : Package.t Package.Name.Map.t
   ; projects : Dune_project.t list
-  ; vcs : Vcs.t list
   }
 
-let interpret ~dir ~project ~(dune_file : File_tree.Dune_file.t) =
-  let file = File_tree.Dune_file.path dune_file in
+let interpret ~dir ~project ~(dune_file : Source_tree.Dune_file.t) =
+  let file = Source_tree.Dune_file.path dune_file in
   let static =
-    File_tree.Dune_file.get_static_sexp_and_possibly_destroy dune_file
+    Source_tree.Dune_file.get_static_sexp_and_possibly_destroy dune_file
   in
-  match File_tree.Dune_file.kind dune_file with
+  match Source_tree.Dune_file.kind dune_file with
   | Ocaml_script ->
     Dune_files.Script { script = { dir; project; file }; from_parent = static }
   | Plain -> Literal (Dune_file.parse static ~dir ~file ~project)
 
-let load ~ancestor_vcs =
-  File_tree.init ~ancestor_vcs ~recognize_jbuilder_projects:false;
-  let _, vcs, projects =
-    let f dir (ancestor_vcs, vcs, projects) =
-      let vcs =
-        match File_tree.Dir.vcs dir with
-        | Some repository -> Path.Map.set vcs repository.root repository
-        | None -> vcs
+module Projects_and_dune_files =
+  Monoid.Product
+    (Monoid.Appendable_list (struct
+      type t = Dune_project.t
+    end))
+    (Monoid.Appendable_list (struct
+      type t = Path.Source.t * Dune_project.t * Source_tree.Dune_file.t
+    end))
+
+module Source_tree_map_reduce =
+  Source_tree.Make_map_reduce_with_progress
+    (Memo.Build)
+    (Projects_and_dune_files)
+
+let load () =
+  let open Memo.Build.O in
+  let+ projects, dune_files =
+    let f dir : Projects_and_dune_files.t Memo.Build.t =
+      let path = Source_tree.Dir.path dir in
+      let project = Source_tree.Dir.project dir in
+      let projects =
+        if Path.Source.equal path (Dune_project.root project) then
+          Appendable_list.singleton project
+        else
+          Appendable_list.empty
       in
-      let p = File_tree.Dir.project dir in
-      if Path.Source.equal (File_tree.Dir.path dir) (Dune_project.root p) then
-        (ancestor_vcs, vcs, p :: projects)
-      else
-        (ancestor_vcs, vcs, projects)
-    and vcs =
-      match ancestor_vcs with
-      | Some vcs -> Path.Map.of_list_exn [ (Path.root, vcs) ]
-      | None -> Path.Map.empty
+      let dune_files =
+        match Source_tree.Dir.dune_file dir with
+        | None -> Appendable_list.empty
+        | Some d -> Appendable_list.singleton (path, project, d)
+      in
+      Memo.Build.return (projects, dune_files)
     in
-    File_tree.fold_with_progress
-      ~traverse:{ data_only = false; vendored = true; normal = true }
-      ~init:(ancestor_vcs, vcs, []) ~f
+    Source_tree_map_reduce.map_reduce ~traverse:Sub_dirs.Status.Set.all ~f
   in
+  let projects = Appendable_list.to_list projects in
   let packages =
     List.fold_left projects ~init:Package.Name.Map.empty
       ~f:(fun acc (p : Dune_project.t) ->
         Package.Name.Map.merge acc (Dune_project.packages p) ~f:(fun name a b ->
-            match (a, b) with
-            | None, None -> None
-            | None, Some _ -> b
-            | Some _, None -> a
-            | Some a, Some b ->
-              User_error.raise
-                [ Pp.textf "Too many opam files for package %S:"
-                    (Package.Name.to_string name)
-                ; Pp.textf "- %s"
-                    (Path.Source.to_string_maybe_quoted (Package.opam_file a))
-                ; Pp.textf "- %s"
-                    (Path.Source.to_string_maybe_quoted (Package.opam_file b))
-                ]))
+            Option.merge a b ~f:(fun a b ->
+                User_error.raise
+                  [ Pp.textf "Too many opam files for package %S:"
+                      (Package.Name.to_string name)
+                  ; Pp.textf "- %s"
+                      (Path.Source.to_string_maybe_quoted (Package.opam_file a))
+                  ; Pp.textf "- %s"
+                      (Path.Source.to_string_maybe_quoted (Package.opam_file b))
+                  ])))
   in
   let dune_files =
-    File_tree.Dir.fold_dune_files (File_tree.root ()) ~init:[]
-      ~f:(fun ~basename:_ dir dune_file dune_files ->
-        let path = File_tree.Dir.path dir in
-        let project = File_tree.Dir.project dir in
-        let dune_file = interpret ~dir:path ~project ~dune_file in
-        dune_file :: dune_files)
+    List.map (Appendable_list.to_list dune_files)
+      ~f:(fun (dir, project, dune_file) -> interpret ~dir ~project ~dune_file)
   in
-  { dune_files; packages; projects; vcs = Path.Map.values vcs }
+  { dune_files; packages; projects }
+
+let load =
+  let memo = Memo.lazy_ load in
+  fun () -> Memo.Lazy.force memo

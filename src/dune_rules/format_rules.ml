@@ -5,10 +5,8 @@ let add_diff sctx loc alias ~dir ~input ~output =
   let open Action_builder.O in
   let action = Action.Chdir (Path.build dir, Action.diff input output) in
   Super_context.add_alias_action sctx alias ~dir ~loc:(Some loc) ~locks:[]
-    ~stamp:input
-    (Action_builder.with_no_targets
-       (Action_builder.paths [ input; Path.build output ]
-       >>> Action_builder.return action))
+    (Action_builder.paths [ input; Path.build output ]
+    >>> Action_builder.return action)
 
 let rec subdirs_until_root dir =
   match Path.parent dir with
@@ -69,14 +67,22 @@ let gen_rules_output sctx (config : Format_config.t) ~version ~dialects
         in
         let open Action_builder.With_targets.O in
         Action_builder.with_no_targets extra_deps
-        >>> Preprocessing.action_for_pp ~loc ~expander ~action ~src
-              ~target:(Some output)
+        >>> Preprocessing.action_for_pp_with_target ~loc ~expander ~action ~src
+              ~target:output
     in
-    Option.iter formatter ~f:(fun arr ->
-        Super_context.add_rule sctx ~mode:Standard ~loc ~dir arr;
-        add_diff sctx loc alias_formatted ~dir ~input:(Path.build input) ~output)
+    Memo.Build.Option.iter formatter ~f:(fun action ->
+        let open Memo.Build.O in
+        Super_context.add_rule sctx ~mode:Standard ~loc ~dir action
+        >>> add_diff sctx loc alias_formatted ~dir ~input:(Path.build input)
+              ~output)
   in
-  File_tree.files_of source_dir |> Path.Source.Set.iter ~f:setup_formatting;
+  let open Memo.Build.O in
+  let* () =
+    Source_tree.files_of source_dir
+    >>= Memo.Build.parallel_iter_set
+          (module Path.Source.Set)
+          ~f:setup_formatting
+  in
   Rules.Produce.Alias.add_static_deps alias_formatted Path.Set.empty
 
 let gen_rules ~dir =

@@ -79,6 +79,16 @@
   > EOF
   $ echo "Hello, Dune!" > input
   $ dune build --display=short --root . @f5
+  File "dune", line 32, characters 0-225:
+  32 | (rule
+  33 |  (alias f5)
+  34 |  (action (with-accepted-exit-codes
+  35 |           0
+  36 |           (setenv VAR myvar
+  37 |            (with-stdin-from input
+  38 |             (chdir .
+  39 |              (with-stdout-to out2.txt
+  40 |               (run ./exit.exe 1))))))))
           exit out2.txt (exit 1)
   (cd _build/default && ./exit.exe 1) < _build/default/input > _build/default/out2.txt
   [1]

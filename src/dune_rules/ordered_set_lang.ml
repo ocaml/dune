@@ -246,17 +246,13 @@ module Unexpanded = struct
       | Element s -> String_with_vars.encode s
       | Standard -> Dune_lang.atom ":standard"
       | Union l -> List (List.map l ~f:loop)
-      | Diff (a, b) ->
-        List [ loop a; Dune_lang.unsafe_atom_of_string "\\"; loop b ]
+      | Diff (a, b) -> List [ loop a; Dune_lang.atom "\\"; loop b ]
       | Include fn ->
-        List
-          [ Dune_lang.unsafe_atom_of_string ":include"
-          ; String_with_vars.encode fn
-          ]
+        List [ Dune_lang.atom ":include"; String_with_vars.encode fn ]
     in
     match t.ast with
     | Union l -> List.map l ~f:loop
-    | Diff (a, b) -> [ loop a; Dune_lang.unsafe_atom_of_string "\\"; loop b ]
+    | Diff (a, b) -> [ loop a; Dune_lang.atom "\\"; loop b ]
     | ast -> [ loop ast ]
 
   let standard = standard
@@ -356,15 +352,13 @@ module Unexpanded = struct
         if not allow_include then
           User_error.raise ~loc [ Pp.text "(:include ...) is not allowed here" ]
         else
-          Action_builder.Expert.action_builder
-            (let+ sexp =
-               Action_builder.Expert.action_builder
-                 (let+ path = expand_template fn ~mode:Single in
-                  let path = Value.to_path path ?error_loc:(Some loc) ~dir in
-                  Action_builder.read_sexp path)
-             in
-             let t = Dune_lang.Decoder.parse decode context sexp in
-             expand t.ast ~allow_include:false)
+          let* sexp =
+            let* path = expand_template fn ~mode:Single in
+            let path = Value.to_path path ?error_loc:(Some loc) ~dir in
+            Action_builder.read_sexp path
+          in
+          let t = Dune_lang.Decoder.parse decode context sexp in
+          expand t.ast ~allow_include:false
       | Union l ->
         let+ l = Action_builder.all (List.map l ~f:(expand ~allow_include)) in
         Union l

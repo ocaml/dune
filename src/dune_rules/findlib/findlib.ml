@@ -1,6 +1,6 @@
-open! Stdune
 open! Dune_engine
-open Import
+open! Dune_engine.Import
+open! Stdune
 module Opam_package = Package
 module P = Variant
 module Ps = Variant.Set
@@ -385,12 +385,13 @@ end = struct
               | Error e ->
                 Error
                   (User_error.E
-                     (User_message.make
-                        [ Pp.textf "Unable to get entry modules of %s in %s. "
-                            (Lib_name.to_string t.name)
-                            (Path.to_string src_dir)
-                        ; Pp.textf "error: %s" (Unix.error_message e)
-                        ]))
+                     ( User_message.make
+                         [ Pp.textf "Unable to get entry modules of %s in %s. "
+                             (Lib_name.to_string t.name)
+                             (Path.to_string src_dir)
+                         ; Pp.textf "error: %s" (Unix.error_message e)
+                         ]
+                     , [] ))
               | Ok files ->
                 let ext = Cm_kind.ext Cmi in
                 Result.List.filter_map files ~f:(fun fname ->
@@ -409,7 +410,7 @@ end = struct
                             (Loc.in_dir src_dir, name)
                         with
                         | Ok s -> Ok (Some s)
-                        | Error e -> Error (User_error.E e)))))
+                        | Error e -> Error (User_error.E (e, []))))))
         in
         Lib_info.create ~path_kind:External ~loc ~name:t.name ~kind ~status
           ~src_dir ~orig_src_dir ~obj_dir ~version ~synopsis ~main_module_name
@@ -621,7 +622,8 @@ let all_packages t =
 
    - A memoized function for finding packages by names (see [find]).
 
-   - A [Memo.Lazy.t] storing the set of all packages (see [root_packages]). *)
+   - A [Memo.Lazy.Async.t] storing the set of all packages (see
+   [root_packages]). *)
 let create ~paths ~(lib_config : Lib_config.t) =
   let stdlib_dir = lib_config.stdlib_dir in
   let version = lib_config.ocaml_version in

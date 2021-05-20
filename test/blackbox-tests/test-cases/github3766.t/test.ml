@@ -41,6 +41,7 @@ let cmd_res s =
     Spawn.spawn ~stderr:Unix.stdout ~stdout:Unix.stdout ~prog
       ~argv:[ prog; Path.to_absolute_filename script ]
       ()
+    |> Pid.of_int
   in
   let pid', code = Unix.wait () in
   assert (Pid.equal pid (Pid.of_int pid'));
@@ -65,18 +66,18 @@ module Spec = struct
 
   let name { mli_only; wrapped; stubs } =
     sprintf "%s_%s_%s"
-      ( if mli_only then
+      (if mli_only then
         "mli_only"
       else
-        "no_mli" )
-      ( if wrapped then
+        "no_mli")
+      (if wrapped then
         "wrapped"
       else
-        "unwrapped" )
-      ( if stubs then
+        "unwrapped")
+      (if stubs then
         "stubs"
       else
-        "no_stubs" )
+        "no_stubs")
 
   let all =
     let for_all f = List.concat_map [ true; false ] ~f in

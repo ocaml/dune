@@ -34,6 +34,8 @@ let never_fiber () = Fiber.never
 let backtrace_result dyn_of_ok =
   Result.to_dyn dyn_of_ok (list Exn_with_backtrace.to_dyn)
 
+let unit_result dyn_of_ok = Result.to_dyn dyn_of_ok unit
+
 let test ?(expect_never = false) to_dyn f =
   let never_raised = ref false in
   (try Scheduler.run f |> to_dyn |> print_dyn with
@@ -46,6 +48,24 @@ let test ?(expect_never = false) to_dyn f =
   | false, true ->
     print_endline "[FAIL] expected Never to be raised but it wasn't"
   | true, false -> print_endline "[FAIL] unexpected Never raised"
+
+let%expect_test "basics" =
+  test unit (Fiber.return ());
+  [%expect {| () |}];
+
+  test unit
+    (let* () = Fiber.return () in
+     Fiber.return ());
+  [%expect {| () |}];
+
+  test unit
+    (let* () = Scheduler.yield () in
+     Fiber.return ());
+  [%expect {| () |}]
+
+let%expect_test "collect_errors" =
+  test (backtrace_result unit) (Fiber.collect_errors (fun () -> raise Exit));
+  [%expect {| Error [ { exn = "Exit"; backtrace = "" } ] |}]
 
 let%expect_test "reraise_all" =
   let exns =
@@ -92,8 +112,8 @@ let%expect_test "execution context of ivars" =
     Fiber.Var.set var 42 (fun () ->
         let* peek = Fiber.Ivar.peek ivar in
         assert (peek = None);
-        let+ () = Fiber.Ivar.read ivar in
-        let value = Fiber.Var.get_exn var in
+        let* () = Fiber.Ivar.read ivar in
+        let+ value = Fiber.Var.get_exn var in
         Printf.printf "var value %d\n" value)
   in
   let run = Fiber.fork_and_join_unit run_when_filled (Fiber.Ivar.fill ivar) in
@@ -105,11 +125,14 @@ let%expect_test "execution context of ivars" =
 let%expect_test "fiber vars are preseved across yields" =
   let var = Fiber.Var.create () in
   let fiber th () =
-    assert (Fiber.Var.get var = None);
+    let* v = Fiber.Var.get var in
+    assert (v = None);
     Fiber.Var.set var th (fun () ->
-        assert (Fiber.Var.get var = Some th);
-        let+ () = Scheduler.yield () in
-        assert (Fiber.Var.get var = Some th))
+        let* v = Fiber.Var.get var in
+        assert (v = Some th);
+        let* () = Scheduler.yield () in
+        let+ v = Fiber.Var.get var in
+        assert (v = Some th))
   in
   let run = Fiber.fork_and_join_unit (fiber 1) (fiber 2) in
   test unit run;
@@ -160,18 +183,6 @@ let%expect_test _ =
 Error [ { exn = "Exit"; backtrace = "" } ]
 |}]
 
-let log_error (e : Exn_with_backtrace.t) =
-  Printf.printf "raised %s\n" (Printexc.to_string e.exn)
-
-let%expect_test _ =
-  test (backtrace_result unit)
-    (Fiber.collect_errors (fun () ->
-         Fiber.with_error_handler failing_fiber ~on_error:log_error));
-  [%expect {|
-raised Exit
-Error []
-|}]
-
 let%expect_test _ =
   test
     (backtrace_result (pair unit unit))
@@ -191,10 +202,17 @@ let%expect_test _ =
 (Error [ { exn = "Exit"; backtrace = "" } ], ())
 |}]
 
+let map_reduce_errors_unit ~on_error t =
+  Fiber.map_reduce_errors (module Monoid.Unit) ~on_error t
+
 let%expect_test "collect errors inside with_error_handler" =
-  test (backtrace_result unit) ~expect_never:true
-    (Fiber.with_error_handler
-       ~on_error:(fun _ -> print_endline "captured the error")
+  test
+    (unit_result (backtrace_result unit))
+    ~expect_never:false
+    (map_reduce_errors_unit
+       ~on_error:(fun _ ->
+         print_endline "captured the error";
+         Fiber.return ())
        (fun () ->
          let* res = Fiber.collect_errors (fun () -> raise (Failure "")) in
          match res with
@@ -207,7 +225,7 @@ let%expect_test "collect errors inside with_error_handler" =
     {|
     got the error out of collect_errors
     captured the error
-    [PASS] Never raised as expected |}]
+    Error () |}]
 
 let%expect_test "wait_errors restores the execution context properly" =
   let var = Fiber.Var.create () in
@@ -218,33 +236,36 @@ let%expect_test "wait_errors restores the execution context properly" =
                Fiber.collect_errors (fun () ->
                    Fiber.Var.set var "c" (fun () -> raise Exit)))
          in
-         print_endline (Fiber.Var.get_exn var);
+         let* v = Fiber.Var.get_exn var in
+         print_endline v;
          Fiber.return ()));
   [%expect {|
     a
     () |}]
 
 let%expect_test _ =
-  test ~expect_never:true opaque
-    (Fiber.fork_and_join
-       (fun () ->
+  test ~expect_never:false (unit_result unit)
+    (Fiber.fork_and_join_unit long_running_fiber (fun () ->
          let log_error by (e : Exn_with_backtrace.t) =
            Printf.printf "%s: raised %s\n" by (Printexc.to_string e.exn)
          in
-         Fiber.with_error_handler ~on_error:(log_error "outer") (fun () ->
-             Fiber.fork_and_join failing_fiber (fun () ->
+         map_reduce_errors_unit
+           ~on_error:(fun err ->
+             log_error "outer" err;
+             Fiber.return ())
+           (fun () ->
+             Fiber.fork_and_join_unit failing_fiber (fun () ->
                  Fiber.with_error_handler
-                   ~on_error:(fun e ->
-                     log_error "inner" e;
+                   ~on_error:(fun exn ->
+                     log_error "inner" exn;
                      raise Exit)
-                   failing_fiber)))
-       long_running_fiber);
+                   failing_fiber))));
   [%expect
     {|
     outer: raised Exit
     inner: raised Exit
     outer: raised Exit
-    [PASS] Never raised as expected |}]
+    Error () |}]
 
 let%expect_test "nested with_error_handler" =
   let fiber =
@@ -305,22 +326,7 @@ let%expect_test "finalize" =
   | Exit -> print_endline "[PASS] got Exit");
   [%expect {|
     finally
-    [PASS] got Exit |}];
-
-  let fiber =
-    Fiber.finalize
-      ~finally:(fun () -> Fiber.return (print_endline "finally"))
-      (fun () ->
-        Fiber.with_error_handler
-          (fun () -> raise Exit)
-          ~on_error:(fun exn_with_bt ->
-            printf "exn: %s\n%!" (Printexc.to_string exn_with_bt.exn)))
-  in
-  test unit fiber ~expect_never:true;
-  [%expect {|
-    exn: Exit
-    finally
-    [PASS] Never raised as expected |}]
+    [PASS] got Exit |}]
 
 let%expect_test "nested finalize" =
   let fiber =
@@ -369,7 +375,7 @@ let%expect_test "sequential_iter error handling" =
     Fiber.finalize
       ~finally:(fun () -> Fiber.return (print_endline "finally"))
       (fun () ->
-        Fiber.with_error_handler
+        map_reduce_errors_unit
           (fun () ->
             Fiber.sequential_iter [ 1; 2; 3 ] ~f:(fun x ->
                 if x = 2 then
@@ -377,15 +383,15 @@ let%expect_test "sequential_iter error handling" =
                 else
                   Fiber.return (Printf.printf "count: %d\n" x)))
           ~on_error:(fun exn_with_bt ->
-            printf "exn: %s\n%!" (Printexc.to_string exn_with_bt.exn)))
+            printf "exn: %s\n%!" (Printexc.to_string exn_with_bt.exn);
+            Fiber.return ()))
   in
-  test unit fiber ~expect_never:true;
-  [%expect
-    {|
+  test (unit_result unit) fiber ~expect_never:false;
+  [%expect {|
     count: 1
     exn: Exit
     finally
-    [PASS] Never raised as expected |}]
+    Error () |}]
 
 let%expect_test "sequential_iter" =
   let fiber =
@@ -787,7 +793,6 @@ let%expect_test "Stream: multiple writers is an error" =
   Trailing output
   ---------------
   Writer 1 writing
-  Reader 1 done
   Writer 2 writing |}]
 
 let%expect_test "Stream: writing on a closed stream is an error" =
@@ -805,3 +810,83 @@ let%expect_test "Stream: writing on a closed stream is an error" =
   Trailing output
   ---------------
   None |}]
+
+module Pool = Fiber.Pool
+
+let%expect_test "start & stop pool" =
+  Scheduler.run
+    (let pool = Pool.create () in
+     Pool.stop pool);
+  [%expect {| |}]
+
+let%expect_test "run 2 tasks" =
+  Scheduler.run
+    (let pool = Pool.create () in
+     let task n () =
+       printf "task %d\n" n;
+       Fiber.return ()
+     in
+     let tasks () =
+       Fiber.parallel_iter [ 1; 2 ] ~f:(fun n -> Pool.task pool ~f:(task n))
+     in
+     Fiber.fork_and_join_unit
+       (fun () -> Pool.run pool)
+       (fun () ->
+         let* () = tasks () in
+         Pool.stop pool));
+  [%expect {|
+    task 1
+    task 2 |}]
+
+let%expect_test "raise exception" =
+  Scheduler.run
+    (let pool = Pool.create () in
+     let* () = Pool.task pool ~f:(fun () -> raise Exit) in
+     Fiber.fork_and_join_unit
+       (fun () ->
+         let+ res = Fiber.collect_errors (fun () -> Pool.run pool) in
+         match res with
+         | Ok _ -> assert false
+         | Error [ e ] ->
+           assert (e.exn = Exit);
+           print_endline "Caught Exit"
+         | _ -> assert false)
+       (fun () -> Pool.stop pool));
+  [%expect {| Caught Exit |}]
+
+let%expect_test "stack usage with consecutive Ivar.fill" =
+  let stack_size () = (Gc.stat ()).stack_size in
+  let rec loop acc prev n =
+    if n = 0 then
+      (acc, prev)
+    else
+      let next = Fiber.Ivar.create () in
+      let fiber =
+        let* () = Fiber.Ivar.read prev in
+        Fiber.Ivar.fill next ()
+      in
+      loop (fiber :: acc) next (n - 1)
+  in
+  let stack_usage n =
+    let first = Fiber.Ivar.create () in
+    let fibers, final = loop [] first n in
+    let* () = Fiber.parallel_iter fibers ~f:Fun.id
+    and* n =
+      let init = stack_size () in
+      let+ () = Fiber.Ivar.read final in
+      stack_size () - init
+    and* () = Fiber.Ivar.fill first () in
+    Fiber.return n
+  in
+  let n0 = Scheduler.run (stack_usage 0) in
+  let n1000 = Scheduler.run (stack_usage 1000) in
+  if n0 = n1000 then
+    printf "[PASS]"
+  else
+    printf
+      "[FAIL]\n\
+       Stack usage for n = 0:    %d words\n\
+       Stack usage for n = 1000: %d words\n"
+      n0 n1000;
+  [%expect {|
+    [PASS] |}]

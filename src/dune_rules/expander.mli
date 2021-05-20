@@ -38,7 +38,7 @@ val set_foreign_flags :
      t
   -> f:
        (   dir:Path.Build.t
-        -> string list Action_builder.t Foreign_language.Dict.t)
+        -> string list Action_builder.t Foreign_language.Dict.t Memo.Build.t)
   -> t
 
 val set_local_env_var : t -> var:string -> value:string Action_builder.t -> t
@@ -52,13 +52,17 @@ val set_bin_artifacts : t -> bin_artifacts_host:Artifacts.Bin.t -> t
 val set_artifacts_dynamic : t -> bool -> t
 
 val set_lookup_ml_sources :
-  t -> f:(dir:Path.Build.t -> Ml_sources.Artifacts.t) -> t
+  t -> f:(dir:Path.Build.t -> Ml_sources.Artifacts.t Memo.Build.t) -> t
 
 module Expanding_what : sig
   type t =
     | Nothing_special
     | Deps_like_field
-    | User_action of Targets.Or_forbidden.t
+    | User_action of Path.Build.t Targets.t
+    | User_action_without_targets of { what : string }
+        (** [what] describe what the action is. It should be a plural and is
+            inserted in a sentence as follow: "<what> are not allowed to have
+            targets" *)
 end
 
 (** Used to improve error messages and handing special cases, such as:

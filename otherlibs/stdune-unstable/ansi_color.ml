@@ -1,6 +1,8 @@
 module Style = struct
   type t = string
 
+  let to_dyn s = Dyn.Encoder.string s
+
   let fg_black = "30"
 
   let fg_red = "31"
@@ -35,6 +37,24 @@ module Style = struct
 
   let fg_bright_white = "97"
 
+  let fg_all =
+    [ fg_black
+    ; fg_green
+    ; fg_yellow
+    ; fg_blue
+    ; fg_magenta
+    ; fg_cyan
+    ; fg_white
+    ; fg_bright_black
+    ; fg_bright_red
+    ; fg_bright_green
+    ; fg_bright_yellow
+    ; fg_bright_blue
+    ; fg_bright_magenta
+    ; fg_bright_cyan
+    ; fg_bright_white
+    ]
+
   let bg_black = "40"
 
   let bg_red = "41"
@@ -68,6 +88,26 @@ module Style = struct
   let bg_bright_cyan = "106"
 
   let bg_bright_white = "107"
+
+  let bg_all =
+    [ bg_black
+    ; bg_red
+    ; bg_green
+    ; bg_yellow
+    ; bg_blue
+    ; bg_magenta
+    ; bg_cyan
+    ; bg_white
+    ; bg_default
+    ; bg_bright_black
+    ; bg_bright_red
+    ; bg_bright_green
+    ; bg_bright_yellow
+    ; bg_bright_blue
+    ; bg_bright_magenta
+    ; bg_bright_cyan
+    ; bg_bright_white
+    ]
 
   let bold = "1"
 
@@ -178,9 +218,16 @@ let parse_line str styles =
               String.sub str ~pos:seq_start ~len:(seq_end - seq_start)
               |> String.split ~on:';'
               |> List.fold_left ~init:(List.rev styles) ~f:(fun styles s ->
-                     match s with
-                     | "0" -> []
-                     | _ -> s :: styles)
+                     if s = Style.fg_default then
+                       List.filter styles ~f:(fun s ->
+                           not (List.mem Style.fg_all s ~equal:String.equal))
+                     else if s = Style.bg_default then
+                       List.filter styles ~f:(fun s ->
+                           not (List.mem Style.bg_all s ~equal:String.equal))
+                     else if s = "0" then
+                       []
+                     else
+                       s :: styles)
               |> List.rev
           in
           loop styles (seq_end + 1) acc)

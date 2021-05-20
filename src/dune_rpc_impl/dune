@@ -3,6 +3,9 @@
  (libraries
   stdune
   fiber
+  csexp_rpc
+  dune_stats
+  xdg
   dune_rpc_private
   dune_rpc_server
   dune_engine

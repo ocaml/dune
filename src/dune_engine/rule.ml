@@ -5,11 +5,17 @@ module Info = struct
   type t =
     | From_dune_file of Loc.t
     | Internal
-    | Source_file_copy
+    | Source_file_copy of Path.Source.t
 
   let of_loc_opt = function
     | None -> Internal
     | Some loc -> From_dune_file loc
+
+  let to_dyn : t -> Dyn.t = function
+    | From_dune_file loc -> Dyn.Variant ("From_dune_file", [ Loc.to_dyn loc ])
+    | Internal -> Dyn.Variant ("Internal", [])
+    | Source_file_copy p ->
+      Dyn.Variant ("Source_file_copy", [ Path.Source.to_dyn p ])
 end
 
 module Promote = struct
@@ -47,11 +53,11 @@ module T = struct
   type t =
     { id : Id.t
     ; context : Build_context.t option
-    ; env : Env.t option
-    ; action : Action.t Action_builder.With_targets.t
+    ; targets : Path.Build.Set.t
+    ; action : Action.Full.t Action_builder.t
     ; mode : Mode.t
-    ; locks : Path.t list
     ; info : Info.t
+    ; loc : Loc.t
     ; dir : Path.Build.t
     }
 
@@ -61,23 +67,10 @@ module T = struct
 
   let hash t = Id.hash t.id
 
-  let loc t =
-    match (t.info : Info.t) with
-    | From_dune_file loc -> loc
-    | Internal
-    | Source_file_copy ->
-      let dir = Path.drop_optional_build_context_src_exn (Path.build t.dir) in
-      let file =
-        match
-          Option.bind (File_tree.find_dir dir) ~f:File_tree.Dir.dune_file
-        with
-        | Some file -> File_tree.Dune_file.path file
-        | None -> Path.Source.relative dir "_unknown_"
-      in
-      Loc.in_file (Path.source file)
+  let loc t = t.loc
 
   let to_dyn t : Dyn.t =
-    Record [ ("id", Id.to_dyn t.id); ("loc", Loc.to_dyn_hum (loc t)) ]
+    Record [ ("id", Id.to_dyn t.id); ("info", Info.to_dyn t.info) ]
 end
 
 include T
@@ -85,15 +78,12 @@ module O = Comparable.Make (T)
 module Set = O.Set
 
 let make ?(sandbox = Sandbox_config.default) ?(mode = Mode.Standard) ~context
-    ~env ?(locks = []) ?(info = Info.Internal) action =
-  let open Action_builder.With_targets.O in
+    ?(info = Info.Internal) ~targets action =
+  let open Action_builder.O in
   let action =
-    Action_builder.With_targets.memoize "Rule.make"
-      (Action_builder.with_no_targets
-         (Action_builder.dep (Dep.sandbox_config sandbox))
-      >>> action)
+    Action_builder.memoize "Rule.make"
+      (Action_builder.dep (Dep.sandbox_config sandbox) >>> action)
   in
-  let targets = action.targets in
   let dir =
     match Path.Build.Set.choose targets with
     | None -> (
@@ -109,7 +99,7 @@ let make ?(sandbox = Sandbox_config.default) ?(mode = Mode.Standard) ~context
       then
         match info with
         | Internal
-        | Source_file_copy ->
+        | Source_file_copy _ ->
           Code_error.raise "rule has targets in different directories"
             [ ("targets", Path.Build.Set.to_dyn targets) ]
         | From_dune_file loc ->
@@ -120,23 +110,24 @@ let make ?(sandbox = Sandbox_config.default) ?(mode = Mode.Standard) ~context
             ]);
       dir
   in
-  { id = Id.gen (); context; env; action; mode; locks; info; dir }
+  let loc =
+    match info with
+    | From_dune_file loc -> loc
+    | Internal ->
+      Loc.in_file
+        (Path.drop_optional_build_context
+           (Path.build (Path.Build.relative dir "_unknown_")))
+    | Source_file_copy p -> Loc.in_file (Path.source p)
+  in
+  { id = Id.gen (); targets; context; action; mode; info; loc; dir }
 
 let with_prefix t ~build =
   { t with
     action =
-      (let open Action_builder.With_targets.O in
-      Action_builder.With_targets.memoize "Rule.with_prefix"
-        (Action_builder.with_no_targets build >>> t.action))
+      (let open Action_builder.O in
+      Action_builder.memoize "Rule.with_prefix" (build >>> t.action))
   }
-
-let effective_env t =
-  match (t.env, t.context) with
-  | None, None -> Env.initial
-  | Some e, _ -> e
-  | None, Some c -> c.env
 
 let find_source_dir rule =
   let _, src_dir = Path.Build.extract_build_context_dir_exn rule.dir in
-  let res = File_tree.nearest_dir src_dir in
-  res
+  Source_tree.nearest_dir src_dir

@@ -45,7 +45,7 @@ module Stat = struct
     | _ -> raise (Arg.Bad (sprintf "2 arguments must be provided"))
 
   let run { file; data } =
-    let stats = Path.stat file in
+    let stats = Path.stat_exn file in
     print_endline (pp_stats data stats)
 
   let () = register name of_args run
@@ -81,9 +81,23 @@ module Cat = struct
 
   let of_args = function
     | [ file ] -> File (Path.of_filename_relative_to_initial_cwd file)
-    | _ -> raise (Arg.Bad "Usage: dune_arg cat <file>")
+    | _ -> raise (Arg.Bad "Usage: dune_cmd cat <file>")
 
   let run (File p) = print_string (Io.read_file p)
+
+  let () = register name of_args run
+end
+
+module Exists = struct
+  type t = Path of Path.t
+
+  let name = "exists"
+
+  let of_args = function
+    | [ path ] -> Path (Path.of_filename_relative_to_initial_cwd path)
+    | _ -> raise (Arg.Bad "Usage: dune_cmd exists <path>")
+
+  let run (Path path) = print_string (Path.exists path |> Bool.to_string)
 
   let () = register name of_args run
 end
@@ -93,7 +107,7 @@ module Expand_lines = struct
 
   let of_args = function
     | [] -> ()
-    | _ -> raise (Arg.Bad ("Usage: dune_arg " ^ name))
+    | _ -> raise (Arg.Bad ("Usage: dune_cmd " ^ name))
 
   let run () =
     let re = Re.compile (Re.str "\\n") in
@@ -180,7 +194,7 @@ module Count_lines = struct
   let of_args = function
     | [] -> Stdin
     | [ file ] -> File (Path.of_filename_relative_to_initial_cwd file)
-    | _ -> raise (Arg.Bad "Usage: dune_arg count-lines <file>")
+    | _ -> raise (Arg.Bad "Usage: dune_cmd count-lines <file>")
 
   let run t =
     let n =
@@ -189,6 +203,62 @@ module Count_lines = struct
       | File p -> Io.with_file_in p ~binary:false ~f:count_lines
     in
     Printf.printf "%d\n%!" n
+
+  let () = register name of_args run
+end
+
+module Override_on = struct
+  module Configurator = Configurator.V1
+
+  type t =
+    { system_to_override_on : string
+    ; desired_output : string
+    }
+
+  let name = "override-on"
+
+  let copy_stdin () =
+    let rec loop () =
+      match input_line stdin with
+      | exception End_of_file -> ()
+      | line ->
+        print_endline line;
+        loop ()
+    in
+    loop ()
+
+  let of_args = function
+    | [ system_to_override_on; desired_output ] ->
+      { system_to_override_on; desired_output }
+    | _ ->
+      raise
+        (Arg.Bad
+           "Usage: dune_cmd override-on <system-to-override-on> \
+            <desired-output>")
+
+  let run { system_to_override_on; desired_output } =
+    let config = Configurator.create "override-on" in
+    match Configurator.ocaml_config_var config "system" with
+    | Some system when String.equal system system_to_override_on ->
+      print_endline desired_output
+    | _ -> copy_stdin ()
+
+  let () = register name of_args run
+end
+
+module Rewrite_path = struct
+  let name = "rewrite-path"
+
+  let of_args = function
+    | [ path ] -> path
+    | _ -> raise (Arg.Bad "Usage: dune_cmd rewrite-path <path>")
+
+  let run path =
+    match
+      Build_path_prefix_map.decode_map (Sys.getenv "BUILD_PATH_PREFIX_MAP")
+    with
+    | Error msg -> failwith msg
+    | Ok map -> print_string (Build_path_prefix_map.rewrite map path)
 
   let () = register name of_args run
 end

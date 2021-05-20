@@ -814,9 +814,9 @@ directory, filtering it to only contain the files that were declared as
 dependencies. Then we run the action in that directory, and then we copy
 the targets back to the build directory.
 
-You can configure dune to use sandboxing modes ``symlink`` or ``copy``, which
-determines how the individual files are populated (they will be symlinked or
-copied into the sandbox directory).
+You can configure dune to use sandboxing modes ``symlink``, ``hardlink`` or
+``copy``, which determines how the individual files are populated (they will be
+symlinked, hardlinked or copied into the sandbox directory).
 
 This approach is very simple and portable, but that comes with
 certain limitations:

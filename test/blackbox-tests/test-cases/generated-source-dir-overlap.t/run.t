@@ -1,20 +1,25 @@
 If a generated directory is "overlaid" by a source dir, then things break.
 
-  $ mkdir .cinaps
+  $ mkdir .dune
+
+  $ cat > .dune/dune <<EOF
+  > (rule
+  >  (alias foo)
+  >  (action (echo foobar)))
+  > EOF
 
   $ cat > dune-project <<EOF
   > (lang dune 2.2)
-  > (using cinaps 1.0)
   > EOF
 
   $ cat > dune <<EOF
-  > (cinaps (files *.ml))
-  > (dirs .cinaps)
+  > (dirs .dune)
   > EOF
 
-  $ dune build @cinaps
-  File "dune", line 1, characters 0-21:
-  1 | (cinaps (files *.ml))
-      ^^^^^^^^^^^^^^^^^^^^^
-  Error: No rule found for .cinaps/cinaps.exe
+  $ dune build @foo
+  Error: Alias "foo" specified on the command line is empty.
+  It is not defined in . or any of its descendants.
   [1]
+
+The command above claims that @foo isn't defined, but it clearly is if we
+replace .dune with a normal name.

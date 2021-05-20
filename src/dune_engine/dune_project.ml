@@ -135,6 +135,7 @@ type t =
   { name : Name.t
   ; root : Path.Source.t
   ; version : string option
+  ; dune_version : Dune_lang.Syntax.Version.t
   ; info : Package.Info.t
   ; packages : Package.t Package.Name.Map.t
   ; stanza_parser : Stanza.t list Dune_lang.Decoder.t
@@ -144,7 +145,7 @@ type t =
   ; implicit_transitive_deps : bool
   ; wrapped_executables : bool
   ; executables_implicit_empty_intf : bool
-  ; dune_version : Dune_lang.Syntax.Version.t
+  ; accept_alternative_dune_file_name : bool
   ; generate_opam_files : bool
   ; use_standard_c_and_cxx_flags : bool option
   ; file_key : File_key.t
@@ -185,10 +186,13 @@ let dialects t = t.dialects
 
 let explicit_js_mode t = t.explicit_js_mode
 
+let dune_version t = t.dune_version
+
 let to_dyn
     { name
     ; root
     ; version
+    ; dune_version
     ; info
     ; project_file
     ; parsing_context = _
@@ -198,7 +202,7 @@ let to_dyn
     ; implicit_transitive_deps
     ; wrapped_executables
     ; executables_implicit_empty_intf
-    ; dune_version
+    ; accept_alternative_dune_file_name
     ; generate_opam_files
     ; use_standard_c_and_cxx_flags
     ; file_key
@@ -213,6 +217,7 @@ let to_dyn
     [ ("name", Name.to_dyn name)
     ; ("root", Path.Source.to_dyn root)
     ; ("version", (option string) version)
+    ; ("dune_version", Dune_lang.Syntax.Version.to_dyn dune_version)
     ; ("info", Package.Info.to_dyn info)
     ; ("project_file", Path.Source.to_dyn project_file)
     ; ( "packages"
@@ -221,7 +226,8 @@ let to_dyn
     ; ("implicit_transitive_deps", bool implicit_transitive_deps)
     ; ("wrapped_executables", bool wrapped_executables)
     ; ("executables_implicit_empty_intf", bool executables_implicit_empty_intf)
-    ; ("dune_version", Dune_lang.Syntax.Version.to_dyn dune_version)
+    ; ( "accept_alternative_dune_file_name"
+      , bool accept_alternative_dune_file_name )
     ; ("generate_opam_files", bool generate_opam_files)
     ; ("use_standard_c_and_cxx_flags", option bool use_standard_c_and_cxx_flags)
     ; ("file_key", string file_key)
@@ -453,7 +459,7 @@ let format_extension_key =
 let format_config t =
   let ext = find_extension_args t format_extension_key in
   let dune_lang = t.format_config in
-  let version = t.dune_version in
+  let version = dune_version t in
   Format_config.of_config ~ext ~dune_lang ~version
 
 let default_name ~dir ~(packages : Package.t Package.Name.Map.t) =
@@ -492,14 +498,15 @@ let infer ~dir packages =
   ; root
   ; info = Package.Info.empty
   ; version = None
+  ; dune_version = lang.version
   ; implicit_transitive_deps
   ; wrapped_executables
   ; executables_implicit_empty_intf
+  ; accept_alternative_dune_file_name = false
   ; stanza_parser
   ; project_file
   ; extension_args
   ; parsing_context
-  ; dune_version = lang.version
   ; generate_opam_files = false
   ; use_standard_c_and_cxx_flags =
       (if lang.version < (3, 0) then
@@ -591,6 +598,9 @@ let parse ~dir ~lang ~opam_packages ~file ~dir_status =
         and+ executables_implicit_empty_intf =
           field_o_b "executables_implicit_empty_intf"
             ~check:(Dune_lang.Syntax.since Stanza.syntax (2, 9))
+        and+ accept_alternative_dune_file_name =
+          field_b "accept_alternative_dune_file_name"
+            ~check:(Dune_lang.Syntax.since Stanza.syntax (3, 0))
         and+ () = Dune_lang.Versioned_file.no_more_lang
         and+ generate_opam_files =
           field_o_b "generate_opam_files"
@@ -757,6 +767,7 @@ let parse ~dir ~lang ~opam_packages ~file ~dir_status =
         ; file_key
         ; root
         ; version
+        ; dune_version
         ; info
         ; packages
         ; stanza_parser
@@ -766,7 +777,7 @@ let parse ~dir ~lang ~opam_packages ~file ~dir_status =
         ; implicit_transitive_deps
         ; wrapped_executables
         ; executables_implicit_empty_intf
-        ; dune_version
+        ; accept_alternative_dune_file_name
         ; generate_opam_files
         ; use_standard_c_and_cxx_flags
         ; dialects
@@ -808,14 +819,14 @@ let load ~dir ~files ~infer_from_opam_files ~dir_status =
   else
     None
 
-let dune_version t = t.dune_version
-
 let set_parsing_context t parser =
   Dune_lang.Decoder.set_many t.parsing_context parser
 
 let wrapped_executables t = t.wrapped_executables
 
 let executables_implicit_empty_intf t = t.executables_implicit_empty_intf
+
+let accept_alternative_dune_file_name t = t.accept_alternative_dune_file_name
 
 let () =
   let open Dune_lang.Decoder in
@@ -827,3 +838,6 @@ let strict_package_deps t = t.strict_package_deps
 let cram t = t.cram
 
 let info t = t.info
+
+let update_execution_parameters t ep =
+  Execution_parameters.set_dune_version t.dune_version ep

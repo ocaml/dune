@@ -1,16 +1,17 @@
 Unreleased
 ----------
 
-- Make `patdiff` show refined diffs (#4257, fixes #4254, @hakuch)
+- Fixes `dune exec` not adding .exe on Windows (#4371, fixes #3322, @MisterDA)
+
+- Allow multiple cinaps stanzas in the same directory (#4460, @rgrinberg)
+
+- Fix `$ dune subst` in empty git repositories (#4441, fixes #3619, @rgrinberg)
+
+- Improve interpretation of ansi escape sequence when spawning processes (#4408,
+  fixes #2665, @rgrinberg)
 
 - Allow `(package pkg)` in dependencies even if `pkg` is an installed package
   (#4170, @bobot)
-
-- Fixed a bug that could result in needless recompilation under Windows due to
-  case differences in the result of `Sys.getcwd` (observed under `emacs`).
-  (#3966, @nojb).
-
-- Fixed absence of executable bit for installed `.cmxs` (#4149, fixes #4148, @bobot)
 
 - Allow `%{version:pkg}` to work for external packages (#4104, @kit-ty-kate)
 
@@ -23,9 +24,6 @@ Unreleased
 - Add `ocaml` command subgroup for OCaml related commands such as `utop`, `top`,
   and `merlin` (#3936, @rgrinberg).
 
-- Do not pass include directories containing native objects when compiling
-  bytecode (#4200, @nojb)
-
 - Detect unknown variables more eagerly (#4184, @jeremiedimino)
 
 - Improve location of variables and macros in error messages (#4205,
@@ -33,25 +31,10 @@ Unreleased
 
 - Auto-detect `dune-project` files as `dune` files in Emacs (#4222, @shonfeder)
 
-- Restore compatibility with Coq < 8.10 for coq-lang < 0.3 , document
-  that `(using coq 0.3)` does require Coq 8.10 at least (#4224, fixes
-  #4142, @ejgallego)
-
-- Add a META rule for `compiler-libs.native-toplevel` (#4175, @altgr)
-
-- No longer call `chmod` on symbolic links (fixes #4195, @dannywillems)
-
 - Dune no longer automatically create or edit `dune-project` files
   (#4239, fixes #4108, @jeremiedimino)
 
-- Have `dune` communicate the location of the standard library directory to
-  `merlin` (#4211, fixes #4188, @nojb)
-
 - Add support for instrumentation dependencies (#4210, fixes #3983, @nojb)
-
-- Workaround incorrect exception raised by `Unix.utimes` (OCaml PR#8857) in
-  `Path.touch` on Windows. This fixes dune cache in direct mode on Windows.
-  (#4223, @dra27)
 
 - Cleanup temporary files after running `$ dune exec`. (#4260, fixes #4243,
   @rgrinberg)
@@ -59,9 +42,6 @@ Unreleased
 - Add a new subcommand `dune ocaml dump-dot-merlin` that prints a mix of all the
   merlin configuration of a directory (defaulting to the current directory) in
   the Merlin configuration syntax. (#4250, @voodoos)
-
-- `dune ocaml-merlin` is now able to provide configuration for source files in
-  the `_build` directory. (#4274, @voodoos)
 
 - Enable cram tests by default (#4262, @rgrinberg)
 
@@ -71,13 +51,150 @@ Unreleased
   library installation directory. This makes the behavior of Dune
   simpler and more reproducible (#4281, @jeremiedimino)
 
-- Automatically delete left-over Merlin files when rebuilding for the first time
-  a project previously built with Dune `<= 2.7`. (#4261, @voodoos, @aalekseyev)
-
 - Remove the `external-lib-deps` command. This command was only
   approximative and the cost of maintainance was getting too high. We
   removed it to make room for new more important features (#4298,
   @jeremiedimino)
+
+- It is now possible to define action dependencies through a chain
+  of aliases. (#4303, @aalekseyev)
+
+- If an .ml file is not used by an executable, Dune no longer report
+  parsing error in this file (#4330, @jeremiedimino)
+
+- Add support for sandboxing using hard links (#4360, @snowleopard)
+
+- Fix dune crash when `subdir` is an absolute path (#4366, @anmonteiro)
+
+- Changed the implementation of actions attached to aliases, as in
+  `(rule (alias runtest) (action (run ./test)))`. A visible result for
+  users is that such actions are now memoized for longer. For
+  instance:
+  ```
+  $ echo '(rule (alias runtest) (action (echo "X=%{env:X=0}\n")))` > dune
+  $ X=1 dune runtest
+  X=1
+  $ X=2 dune runtest
+  X=2
+  $ X=1 dune runtest
+  ```
+  Previously, Dune would have re-executed the action again at the last
+  line. Now it remembers the result of the first execution.
+
+- Fix a bug where dune would always re-run all actions that produce symlinks,
+  even if their dependencies did not change. (#4405, @aalekseyev)
+
+- Fix a bug that was causing Dune to re-hash generated files more
+  often than necessary (#4419, @jeremiedimino)
+
+- Fields allowed in the config file are now also allowed in the
+  workspace file (#4426, @jeremiedimino)
+
+- Add options to control how Dune should handle stdout and stderr of
+  actions when then succeed. It is now possible to ask Dune to ignore
+  the stdout of actions when they succeed or to request that the
+  stderr of actions must be empty. This allows to reduce the noise of
+  large builds (#4422, #4515, @jeremiedimino)
+
+- Add the possibility to use `locks` with the cram tests stanza (#4397, @voodoos)
+
+- The `@all` alias no longer depends directly on copies of files from the source
+  directory (#4461, @nojb)
+
+- Allow dune-file as an alternative file name for dune files (needs to be
+  enabled in the dune-project file) (#4428, @nojb)
+
+- Drop support for upgrading jbuilder projects (#4473, @jeremiedimino)
+
+- Extend the environment variable `BUILD_PATH_PREFIX_MAP` to rewrite
+  the root of the build dir (or sandbox) to `/workspace_root` (#4466,
+  @jeremiedimino)
+
+- Simplify the implementation of build cache. We stop using the cache daemon to
+  access the cache and instead write to and read from it directly. The new cache
+  implementation is based on Jenga's cache library, which was thoroughly tested
+  on large-scale builds. Using Jenga's cache library will also make it easier
+  for us to port Jenga's cloud cache to Dune. (#4443, #4465, Andrey Mokhov)
+
+- More informative error message when Dune can't read a target that's supposed
+  to be produced by the action. Old message is still produced on ENOENT, but other
+  errors deserve a more detailed report. (#4501, @aalekseyev)
+
+- Fixed a bug where a sandboxed action would fail if it declares no dependencies in
+  its initial working directory or any directory it `chdir`s into. (#4509, @aalekseyev)
+
+- Fix a crash when clearing temporary directories (#4489, #4529, Andrey Mokhov)
+
+- Dune now memoizes all errors when running in the file-watching mode. This
+  speeds up incremental rebuilds but may be inconvenient in rare cases, e.g. if
+  a build action fails due to a spurious error, such as running out of memory.
+  Right now, the only way to force such actions to be rebuilt is to restart
+  Dune, which clears all memoized errors. In future, we would like to provide a
+  way to rerun all actions failed due to errors without restarting the build,
+  e.g. via a Dune RPC call. (#4522, Andrey Mokhov)
+
+- Remove `dune compute`. It was broken and unused (#4540,
+  @jeremiedimino)
+
+- No longer generate an approximate merlin files when computing the
+  ocaml flags fails, for instance because they include the contents of
+  a file that failed to build. This was a niche feature and it was
+  getting in the way of making Dune's core better. (#4607, @jeremiedimino)
+
+- Make Dune display the progress indicator in all output modes except quiet
+  (#4618, @aalekseyev)
+
+2.9.0 (unreleased)
+------------------
+
+- Allow to set up merlin in a variant of the default context
+  (#4145, @TheLortex, @voodoos)
+
+- Add `(enabled_if ...)` to `(mdx ...)` (#4434, @emillon)
+
+2.8.5 (28/03/2021)
+------------------
+
+- Fixed absence of executable bit for installed `.cmxs` (#4149, fixes #4148, @bobot)
+
+- Fix a race in Dune cache. It was particularly easy to hit this race when using
+  the cache on Windows (#4406, fixes #4167, @snowleopard)
+
+2.8.4 (08/03/2021)
+------------------
+
+- Fix crash when META file for `compiler-libs.toplevel` is present
+  (@jeremiedimino, #4249)
+
+2.8.3 (07/03/2021)
+------------------
+
+- Make `patdiff` show refined diffs (#4257, fixes #4254, @hakuch)
+
+- Fixed a bug that could result in needless recompilation under Windows due to
+  case differences in the result of `Sys.getcwd` (observed under `emacs`).
+  (#3966, @nojb).
+
+- Restore compatibility with Coq < 8.10 for coq-lang < 0.3 , document
+  that `(using coq 0.3)` does require Coq 8.10 at least (#4224, fixes
+  #4142, @ejgallego)
+
+- Add a META rule for `compiler-libs.native-toplevel` (#4175, @altgr)
+
+- No longer call `chmod` on symbolic links (fixes #4195, @dannywillems)
+
+- Have `dune` communicate the location of the standard library directory to
+  `merlin` (#4211, fixes #4188, @nojb)
+
+- Workaround incorrect exception raised by `Unix.utimes` (OCaml PR#8857) in
+  `Path.touch` on Windows. This fixes dune cache in direct mode on Windows.
+  (#4223, @dra27)
+
+- `dune ocaml-merlin` is now able to provide configuration for source files in
+  the `_build` directory. (#4274, @voodoos)
+
+- Automatically delete left-over Merlin files when rebuilding for the first time
+  a project previously built with Dune `<= 2.7`. (#4261, @voodoos, @aalekseyev)
 
 - Fix `ppx.exe` being compiled for the wrong target when cross-compiling
   (#3751, fixes #3698, @toots)
@@ -86,8 +203,8 @@ Unreleased
   easier for `dune top` to locate C stubs associated to concerned libraries.
   (#4242, fixes #4231, @nojb)
 
-- It is now possible to define action dependencies through a chain
-  of aliases. (#4303, @aalekseyev)
+- Do not pass include directories containing native objects when compiling
+  bytecode (#4200, @nojb)
 
 - If an .ml file is not used by an executable, Dune no longer report
   parsing error in this file (#...., @jeremiedimino)

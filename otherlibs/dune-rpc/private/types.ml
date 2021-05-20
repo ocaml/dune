@@ -15,6 +15,8 @@ module Id = struct
 
   let make s = s
 
+  let to_sexp t = t
+
   let sexp = Conv.sexp
 
   let gen f = Conv.field "id" (f sexp)
@@ -193,6 +195,53 @@ module Initialize = struct
     let create () = ()
 
     let to_response () = Conv.to_sexp sexp ()
+  end
+end
+
+module Persistent = struct
+  module Out = struct
+    type t =
+      | Packet of Sexp.t
+      | Close_connection
+
+    let sexp =
+      let open Conv in
+      let packet = constr "packet" sexp (fun p -> Packet p) in
+      let close_connection =
+        constr "close_connection" unit (fun () -> Close_connection)
+      in
+      sum [ econstr packet; econstr close_connection ] (function
+        | Packet p -> case p packet
+        | Close_connection -> case () close_connection)
+  end
+
+  module In = struct
+    type t =
+      | New_connection
+      | Packet of Csexp.t
+      | Close_connection
+
+    let to_dyn =
+      let open Dyn.Encoder in
+      function
+      | New_connection -> constr "New_connection" []
+      | Close_connection -> constr "Close_connection" []
+      | Packet sexp -> constr "Packet" [ Sexp.to_dyn sexp ]
+
+    let sexp =
+      let open Conv in
+      let new_connection =
+        constr "new_connection" unit (fun () -> New_connection)
+      in
+      let packet = constr "packet" sexp (fun p -> Packet p) in
+      let close_connection =
+        constr "close_connection" unit (fun () -> Close_connection)
+      in
+      sum [ econstr new_connection; econstr packet; econstr close_connection ]
+        (function
+        | New_connection -> case () new_connection
+        | Packet p -> case p packet
+        | Close_connection -> case () close_connection)
   end
 end
 

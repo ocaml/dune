@@ -47,7 +47,7 @@ end
 
 (* This functor is where [(menhir ...)] stanzas are desugared. *)
 
-module Run (P : PARAMS) : sig end = struct
+module Run (P : PARAMS) = struct
   open P
 
   (* [sctx] is the "super context", while [context] is the "context". Both store
@@ -111,11 +111,13 @@ module Run (P : PARAMS) : sig end = struct
 
   (* [menhir args] generates a Menhir command line (a build action). *)
 
-  let menhir (args : 'a args) : Action.t Action_builder.With_targets.t =
-    Command.run ~dir:(Path.build build_dir) menhir_binary args
+  let menhir (args : 'a args) :
+      Action.t Action_builder.With_targets.t Memo.Build.t =
+    Memo.Build.map menhir_binary ~f:(fun prog ->
+        Command.run ~dir:(Path.build build_dir) prog args)
 
   let rule ?(mode = stanza.mode) :
-      Action.t Action_builder.With_targets.t -> unit =
+      Action.t Action_builder.With_targets.t -> unit Memo.Build.t =
     SC.add_rule sctx ~dir ~mode ~loc:stanza.loc
 
   let expand_flags flags = Super_context.menhir_flags sctx ~dir ~expander ~flags
@@ -173,18 +175,21 @@ module Run (P : PARAMS) : sig end = struct
      is the three-step process where Menhir is invoked twice and OCaml type
      inference is performed in between. *)
 
-  let process3 base ~cmly (stanza : stanza) : unit =
+  let process3 base ~cmly (stanza : stanza) : unit Memo.Build.t =
+    let open Memo.Build.O in
     let expanded_flags = expand_flags stanza.flags in
     (* 1. A first invocation of Menhir creates a mock [.ml] file. *)
-    rule ~mode:Standard
-      (menhir
-         [ Command.Args.dyn expanded_flags
-         ; Deps (sources stanza.modules)
-         ; A "--base"
-         ; Path (Path.relative (Path.build dir) base)
-         ; A "--infer-write-query"
-         ; Target (mock_ml base)
-         ]);
+    let* () =
+      menhir
+        [ Command.Args.dyn expanded_flags
+        ; Deps (sources stanza.modules)
+        ; A "--base"
+        ; Path (Path.relative (Path.build dir) base)
+        ; A "--infer-write-query"
+        ; Target (mock_ml base)
+        ]
+      >>= rule ~mode:Standard
+    in
     (* 2. The OCaml compiler performs type inference. *)
     let name = Module_name.of_string_allow_invalid (stanza.loc, mock base) in
     let mock_module : Module.t =
@@ -194,42 +199,45 @@ module Run (P : PARAMS) : sig end = struct
       in
       Module.of_source ~visibility:Public ~kind:Impl source
     in
-    let mock_module =
+    let* mock_module =
       Pp_spec.pp_module_as
         (Compilation_context.preprocessing cctx)
         name mock_module ~lint:false
     in
     let cctx = Compilation_context.without_bin_annot cctx in
-    let deps = Dep_rules.for_module cctx mock_module in
-    Module_compilation.ocamlc_i ~deps cctx mock_module
-      ~output:(inferred_mli base);
+    let* deps = Dep_rules.for_module cctx mock_module in
+    let* () =
+      Module_compilation.ocamlc_i ~deps cctx mock_module
+        ~output:(inferred_mli base)
+    in
     (* 3. A second invocation of Menhir reads the inferred [.mli] file. *)
-    rule
-      (menhir
-         [ Command.Args.dyn expanded_flags
-         ; Deps (sources stanza.modules)
-         ; A "--base"
-         ; Path (Path.relative (Path.build dir) base)
-         ; A "--infer-read-reply"
-         ; Dep (Path.build (inferred_mli base))
-         ; Hidden_targets (targets base ~cmly)
-         ])
+    menhir
+      [ Command.Args.dyn expanded_flags
+      ; Deps (sources stanza.modules)
+      ; A "--base"
+      ; Path (Path.relative (Path.build dir) base)
+      ; A "--infer-read-reply"
+      ; Dep (Path.build (inferred_mli base))
+      ; Hidden_targets (targets base ~cmly)
+      ]
+    >>= rule
 
   (* ------------------------------------------------------------------------ *)
 
   (* [process3 stanza] converts a Menhir stanza into a set of build rules. This
      is a simpler one-step process where Menhir is invoked directly. *)
 
-  let process1 base ~cmly (stanza : stanza) : unit =
+  let process1 base ~cmly (stanza : stanza) : unit Memo.Build.t =
+    let open Memo.Build.O in
     let expanded_flags = expand_flags stanza.flags in
-    rule
-      (menhir
-         [ Command.Args.dyn expanded_flags
-         ; Deps (sources stanza.modules)
-         ; A "--base"
-         ; Path (Path.relative (Path.build dir) base)
-         ; Hidden_targets (targets base ~cmly)
-         ])
+    menhir
+      [ Command.Args.dyn expanded_flags
+      ; Deps (sources stanza.modules)
+      ; A "--base"
+      ; Path (Path.relative (Path.build dir) base)
+      ; Hidden_targets (targets base ~cmly)
+      ]
+    >>= rule
 
   (* ------------------------------------------------------------------------ *)
 
@@ -239,7 +247,7 @@ module Run (P : PARAMS) : sig end = struct
   (* Because Menhir processes [--only-tokens] before the [--infer-*] commands,
      when [--only-tokens] is present, no [--infer-*] command should be used. *)
 
-  let process (stanza : stanza) : unit =
+  let process (stanza : stanza) : unit Memo.Build.t =
     let base = Option.value_exn stanza.merge_into in
     let ocaml_type_inference_disabled, cmly =
       Ordered_set_lang.Unexpanded.fold_strings stanza.flags ~init:(false, false)
@@ -260,10 +268,7 @@ module Run (P : PARAMS) : sig end = struct
       process3 base stanza ~cmly
 
   (* ------------------------------------------------------------------------ *)
-
-  (* The main side effect. *)
-
-  let () = List.iter ~f:process stanzas
+  let gen_rules () = Memo.Build.sequential_iter ~f:process stanzas
 end
 
 (* -------------------------------------------------------------------------- *)
@@ -292,4 +297,4 @@ let gen_rules ~dir cctx stanza =
 
     let stanza = stanza
   end) in
-  ()
+  R.gen_rules ()

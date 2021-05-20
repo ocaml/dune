@@ -17,6 +17,8 @@ module Id : sig
 
   val equal : t -> t -> bool
 
+  val to_sexp : t -> Sexp.t
+
   module Set : Set.S with type elt = t
 end
 
@@ -98,6 +100,27 @@ module Initialize : sig
     val create : unit -> t
 
     val to_response : t -> Sexp.t
+
+    val sexp : t Conv.value
+  end
+end
+
+module Persistent : sig
+  module In : sig
+    type t =
+      | New_connection
+      | Packet of Csexp.t
+      | Close_connection
+
+    val sexp : t Conv.value
+
+    val to_dyn : t -> Dyn.t
+  end
+
+  module Out : sig
+    type t =
+      | Packet of Sexp.t
+      | Close_connection
 
     val sexp : t Conv.value
   end

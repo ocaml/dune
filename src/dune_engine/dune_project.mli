@@ -165,8 +165,15 @@ val wrapped_executables : t -> bool
 
 val executables_implicit_empty_intf : t -> bool
 
+val accept_alternative_dune_file_name : t -> bool
+
 val strict_package_deps : t -> bool
 
 val cram : t -> bool
 
 val info : t -> Package.Info.t
+
+(** Update the execution parameters according to what is written in the
+    [dune-project] file. *)
+val update_execution_parameters :
+  t -> Execution_parameters.t -> Execution_parameters.t

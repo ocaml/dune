@@ -42,7 +42,7 @@ end
 (* [link_many] is like [build_and_link_many], but it allows you to share
    modules between executables without requiring an intermediate library. *)
 val link_many :
-     ?link_args:Command.Args.static Command.Args.t Action_builder.t
+     ?link_args:Command.Args.without_targets Command.Args.t Action_builder.t
   -> ?o_files:Path.t list
   -> ?embed_in_plugin_libraries:(Loc.t * Lib_name.t) list
   -> dep_graphs:Dep_graph.t Import.Ml_kind.Dict.t
@@ -50,27 +50,27 @@ val link_many :
   -> linkages:Linkage.t list
   -> promote:Rule.Promote.t option
   -> Compilation_context.t
-  -> unit
+  -> unit Memo.Build.t
 
 val build_and_link :
-     ?link_args:Command.Args.static Command.Args.t Action_builder.t
+     ?link_args:Command.Args.without_targets Command.Args.t Action_builder.t
   -> ?o_files:Path.t list
   -> ?embed_in_plugin_libraries:(Loc.t * Lib_name.t) list
   -> program:Program.t
   -> linkages:Linkage.t list
   -> promote:Rule.Promote.t option
   -> Compilation_context.t
-  -> unit
+  -> unit Memo.Build.t
 
 val build_and_link_many :
-     ?link_args:Command.Args.static Command.Args.t Action_builder.t
+     ?link_args:Command.Args.without_targets Command.Args.t Action_builder.t
   -> ?o_files:Path.t list
   -> ?embed_in_plugin_libraries:(Loc.t * Lib_name.t) list
   -> programs:Program.t list
   -> linkages:Linkage.t list
   -> promote:Rule.Promote.t option
   -> Compilation_context.t
-  -> unit
+  -> unit Memo.Build.t
 
 val exe_path :
      Compilation_context.t

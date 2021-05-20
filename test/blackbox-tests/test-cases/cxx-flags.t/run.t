@@ -11,9 +11,9 @@ Default: use_standard_c_and_cxx_flags = false
   $ MsvcF="/TP"
 
 > Check that compiler detection is done
-  $ dune build .dune/ccomp
+  $ dune build .dune/ccomp/ccomp
 
-  $ cat _build/default/.dune/ccomp |
+  $ cat _build/default/.dune/ccomp/ccomp |
   > grep -ce "clang\|gcc\|msvc"
   1
 
@@ -47,9 +47,9 @@ With use_standard_c_and_cxx_flags = true
   > EOF
 
 > Check that compiler detection is done
-  $ dune build .dune/ccomp
+  $ dune build .dune/ccomp/ccomp
 
-  $ cat _build/default/.dune/ccomp |
+  $ cat _build/default/.dune/ccomp/ccomp |
   > grep -ce "clang\|gcc\|msvc"
   1
 

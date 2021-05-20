@@ -4,11 +4,9 @@ open! Import
 type t =
   { name : Context_name.t
   ; build_dir : Path.Build.t
-  ; env : Env.t
-  ; host : t option
-  ; stdlib_dir : Path.t  (** todo try to remove it *)
-  ; default_ocamlpath : Path.t list  (** todo try to remove it *)
+  ; host : Context_name.t option
   }
 
-let create ~name ~build_dir ~env ~host ~stdlib_dir ~default_ocamlpath =
-  { name; build_dir; env; host; stdlib_dir; default_ocamlpath }
+let create ~name ~host =
+  let build_dir = Path.Build.of_string (Context_name.to_string name) in
+  { name; build_dir; host }

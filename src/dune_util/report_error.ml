@@ -7,7 +7,7 @@ type who_is_responsible_for_the_error =
   | Developer
 
 let get_user_message = function
-  | User_error.E msg -> (User, msg)
+  | User_error.E (msg, _) -> (User, msg)
   | Code_error.E e ->
     let open Pp.O in
     ( Developer
@@ -61,53 +61,86 @@ let i_must_not_crash =
       ]
     )
 
-let reported = ref Digest.Set.empty
-
 let report_backtraces_flag = ref false
 
 let report_backtraces b = report_backtraces_flag := b
 
-let clear_reported () = reported := Digest.Set.empty
+let print_memo_stacks = ref false
 
-let buf = Buffer.create 128
-
-let ppf = Format.formatter_of_buffer buf
-
-let report ?(extra = fun _ -> None) { Exn_with_backtrace.exn; backtrace } =
+let report { Exn_with_backtrace.exn; backtrace } =
+  let exn, memo_stack =
+    match exn with
+    | Memo.Error.E err -> (Memo.Error.get err, Memo.Error.stack err)
+    | _ -> (exn, [])
+  in
   match exn with
   | Already_reported -> ()
   | _ ->
     let who_is_responsible, msg = get_user_message exn in
+    let has_embed_location =
+      match exn with
+      | User_error.E (_, annots) -> User_error.has_embed_location annots
+      | _ -> false
+    in
     let msg =
       if msg.loc = Some Loc.none then
         { msg with loc = None }
       else
         msg
     in
-    let hash = Digest.generic msg in
-    if not (Digest.Set.mem !reported hash) then (
-      reported := Digest.Set.add !reported hash;
-      let append (msg : User_message.t) pp =
-        { msg with paragraphs = msg.paragraphs @ pp }
-      in
-      let msg =
-        if who_is_responsible = User && not !report_backtraces_flag then
-          msg
-        else
-          append msg
-            (List.map
-               (Printexc.raw_backtrace_to_string backtrace |> String.split_lines)
-               ~f:(fun line -> Pp.box ~indent:2 (Pp.text line)))
-      in
-      let msg =
-        match extra msg.loc with
-        | None -> msg
-        | Some pp -> append msg [ pp ]
-      in
-      let msg =
-        match who_is_responsible with
-        | User -> msg
-        | Developer -> append msg (i_must_not_crash ())
-      in
-      Console.print_user_message msg
-    )
+    let append (msg : User_message.t) pp =
+      { msg with paragraphs = msg.paragraphs @ pp }
+    in
+    let msg =
+      if who_is_responsible = User && not !report_backtraces_flag then
+        msg
+      else
+        append msg
+          (List.map
+             (Printexc.raw_backtrace_to_string backtrace |> String.split_lines)
+             ~f:(fun line -> Pp.box ~indent:2 (Pp.text line)))
+    in
+    let memo_stack =
+      if !print_memo_stacks then
+        memo_stack
+      else
+        match msg.loc with
+        | None ->
+          if has_embed_location then
+            []
+          else
+            memo_stack
+        | Some loc ->
+          if Filename.is_relative loc.start.pos_fname then
+            (* If the error points to a local file, we assume that we don't need
+               to explain to the user how we reached this error. *)
+            []
+          else
+            memo_stack
+    in
+    let memo_stack =
+      match
+        List.filter_map memo_stack
+          ~f:Memo.Stack_frame.human_readable_description
+      with
+      | [] -> None
+      | pps ->
+        Some
+          (Pp.vbox
+             (Pp.concat ~sep:Pp.cut
+                (List.map pps ~f:(fun pp ->
+                     Pp.box ~indent:3
+                       (Pp.seq (Pp.verbatim "-> ")
+                          (Pp.seq (Pp.text "required by ") pp))))))
+    in
+    let msg =
+      match memo_stack with
+      | None -> msg
+      | Some pp -> append msg [ pp ]
+    in
+    let msg =
+      match who_is_responsible with
+      | User -> msg
+      | Developer -> append msg (i_must_not_crash ())
+    in
+    Console.print_user_message msg

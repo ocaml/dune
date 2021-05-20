@@ -44,6 +44,12 @@
  (applies_to fdo)
  (enabled_if false))
 
+; This test is flaky
+
+(cram
+ (applies_to tests-locks)
+ (enabled_if false))
+
 ; The following test is flaky due to platform sensitivity
 ; see https://github.com/ocaml/dune/issues/3744
 
@@ -113,5 +119,5 @@
 (subdir
  github3766.t
  (executable
-  (libraries stdune)
+  (libraries stdune spawn)
   (name test)))

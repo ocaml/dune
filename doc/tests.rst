@@ -608,7 +608,11 @@ The ``cram`` stanza accepts the following fields:
 - ``alias`` - alias that can be used to run the test. In addition to the user
   alias, every test ``foo.t`` is attached to the ``@runtest`` alias and gets its
   own ``@foo`` alias to make it convenient to run individually.
+- ``(locks (<lock-names>))`` specify that the tests must be run while
+  holding the following locks. See the :ref:`locks` section for more details.
 - ``deps`` - dependencies of the test
+- ``(package <package-name>)`` - attach the tests selected by this stanza to the
+specified package
 
 A single test may be configured by more than one ``cram`` stanza. In such cases,
 the values from all applicable ``cram`` stanzas are merged together to get the

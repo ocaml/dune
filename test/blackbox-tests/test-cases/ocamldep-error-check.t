@@ -20,6 +20,9 @@ Dune uses ocamldep to prevent a module from depending on itself.
   Foo is the main module of the library and is the only module exposed outside
   of the library. Consequently, it should be the one depending on all the other
   modules in the library.
+  -> required by _build/default/lib/.foo.objs/foo__Bar.impl.all-deps
+  -> required by _build/default/lib/foo.cma
+  -> required by alias lib/all
   [1]
 
   $ rm lib/bar.ml

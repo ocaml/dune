@@ -8,7 +8,7 @@ val foreign_rules :
   -> expander:Expander.t
   -> dir:Path.Build.t
   -> dir_contents:Dir_contents.t
-  -> unit
+  -> unit Memo.Build.t
 
 val rules :
      Library.t
@@ -17,4 +17,4 @@ val rules :
   -> dir:Path.Build.t
   -> expander:Expander.t
   -> scope:Scope.t
-  -> Compilation_context.t * Merlin.t
+  -> (Compilation_context.t * Merlin.t) Memo.Build.t

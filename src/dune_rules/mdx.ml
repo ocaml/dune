@@ -80,10 +80,13 @@ module Deps = struct
       | File f -> Right (to_path ~dir f))
 
   let to_dep_set ~dir t_list =
+    let open Memo.Build.O in
     let dirs, files = dirs_and_files ~dir t_list in
     let dep_set = Dep.Set.of_files files in
-    List.fold_left dirs ~init:dep_set ~f:(fun acc dir ->
-        Dep.Set.union acc (fst (Dep.Set.source_tree dir)))
+    let+ l =
+      Memo.Build.parallel_map dirs ~f:(fun dir -> Dep.Set.source_tree dir)
+    in
+    List.fold_left l ~init:dep_set ~f:Dep.Set.union
 end
 
 module Prelude = struct
@@ -123,7 +126,10 @@ type t =
   ; files : Predicate_lang.Glob.t
   ; packages : (Loc.t * Package.Name.t) list
   ; preludes : Prelude.t list
+  ; enabled_if : Blang.t
   }
+
+let enabled_if t = t.enabled_if
 
 type Stanza.t += T of t
 
@@ -144,8 +150,11 @@ let decode =
        field "files" Predicate_lang.Glob.decode ~default:default_files
      and+ packages =
        field ~default:[] "packages" (repeat (located Package.Name.decode))
-     and+ preludes = field ~default:[] "preludes" (repeat Prelude.decode) in
-     { loc; files; packages; preludes })
+     and+ preludes = field ~default:[] "preludes" (repeat Prelude.decode)
+     and+ enabled_if =
+       Enabled_if.decode ~allowed_vars:Any ~since:(Some (2, 9)) ()
+     in
+     { loc; files; packages; preludes; enabled_if })
 
 let () =
   let open Dune_lang.Decoder in
@@ -156,8 +165,11 @@ let () =
 (** Returns the list of files (in _build) to be passed to mdx for the given
     stanza and context *)
 let files_to_mdx t ~sctx ~dir =
+  let open Memo.Build.O in
   let src_dir = Path.Build.drop_build_context_exn dir in
-  let src_dir_files = Path.Source.Set.to_list (File_tree.files_of src_dir) in
+  let+ src_dir_files =
+    Source_tree.files_of src_dir >>| Path.Source.Set.to_list
+  in
   let must_mdx src_path =
     let file = Path.Source.basename src_path in
     Predicate_lang.Glob.exec t.files ~standard:default_files file
@@ -178,40 +190,48 @@ let gen_rules_for_single_file stanza ~sctx ~dir ~expander ~mdx_prog src =
   let mdx_dir = Path.Build.relative dir ".mdx" in
   let files = Files.from_source_file ~mdx_dir src in
   (* Add the rule for generating the .mdx.deps file with ocaml-mdx deps *)
-  Super_context.add_rule sctx ~loc ~dir (Deps.rule ~dir ~mdx_prog files);
-  (* Add the rule for generating the .corrected file using ocaml-mdx test *)
-  let mdx_action =
-    let open Action_builder.With_targets.O in
-    let deps = Action_builder.map (Deps.read files) ~f:(Deps.to_dep_set ~dir) in
-    let dyn_deps = Action_builder.map deps ~f:(fun d -> ((), d)) in
-    let pkg_deps =
-      stanza.packages
-      |> List.map ~f:(fun (loc, pkg) ->
-             Dep_conf.Package
-               (Package.Name.to_string pkg |> String_with_vars.make_text loc))
+  let open Memo.Build.O in
+  let* () =
+    Super_context.add_rule sctx ~loc ~dir (Deps.rule ~dir ~mdx_prog files)
+  and* () =
+    (* Add the rule for generating the .corrected file using ocaml-mdx test *)
+    let mdx_action =
+      let open Action_builder.With_targets.O in
+      let deps =
+        Action_builder.bind (Deps.read files) ~f:(fun dep_set ->
+            Action_builder.memo_build (Deps.to_dep_set dep_set ~dir))
+      in
+      let dyn_deps = Action_builder.map deps ~f:(fun d -> ((), d)) in
+      let pkg_deps =
+        stanza.packages
+        |> List.map ~f:(fun (loc, pkg) ->
+               Dep_conf.Package
+                 (Package.Name.to_string pkg |> String_with_vars.make_text loc))
+      in
+      let prelude_args =
+        List.concat_map stanza.preludes ~f:(Prelude.to_args ~dir)
+      in
+      Action_builder.(
+        with_no_targets (Dep_conf_eval.unnamed ~expander pkg_deps))
+      >>> Action_builder.with_no_targets (Action_builder.dyn_deps dyn_deps)
+      >>> Command.run ~dir:(Path.build dir) mdx_prog
+            ([ Command.Args.A "test" ] @ prelude_args
+            @ [ A "-o"; Target files.corrected; Dep (Path.build files.src) ])
     in
-    let prelude_args =
-      List.concat_map stanza.preludes ~f:(Prelude.to_args ~dir)
-    in
-    Action_builder.(with_no_targets (Dep_conf_eval.unnamed ~expander pkg_deps))
-    >>> Action_builder.with_no_targets (Action_builder.dyn_deps dyn_deps)
-    >>> Command.run ~dir:(Path.build dir) mdx_prog
-          ([ Command.Args.A "test" ] @ prelude_args
-          @ [ A "-o"; Target files.corrected; Dep (Path.build files.src) ])
+    Super_context.add_rule sctx ~loc ~dir mdx_action
   in
-  Super_context.add_rule sctx ~loc ~dir mdx_action;
   (* Attach the diff action to the @runtest for the src and corrected files *)
   let diff_action = Files.diff_action files in
   Super_context.add_alias_action sctx (Alias.runtest ~dir) ~loc:(Some loc) ~dir
-    ~stamp:("mdx", files.src)
-    (Action_builder.with_no_targets diff_action)
+    diff_action
 
 (** Generates the rules for a given mdx stanza *)
 let gen_rules t ~sctx ~dir ~expander =
-  let files_to_mdx = files_to_mdx t ~sctx ~dir in
-  let mdx_prog =
+  let open Memo.Build.O in
+  let* files_to_mdx = files_to_mdx t ~sctx ~dir
+  and* mdx_prog =
     Super_context.resolve_program sctx ~dir ~loc:(Some t.loc)
       ~hint:"opam install mdx" "ocaml-mdx"
   in
-  List.iter files_to_mdx
+  Memo.Build.parallel_iter files_to_mdx
     ~f:(gen_rules_for_single_file t ~sctx ~dir ~expander ~mdx_prog)

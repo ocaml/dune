@@ -75,4 +75,4 @@ let record_fields (l : field list) =
     | Normal (name, v) -> Some (List [ Atom (Atom.of_string name); v ])
     | Inlined_list (name, l) -> Some (List (Atom (Atom.of_string name) :: l)))
 
-let unknown _ = unsafe_atom_of_string "<unknown>"
+let unknown _ = atom "<unknown>"

@@ -124,6 +124,9 @@ val repeat1 : 'a t -> 'a list t
 (** Capture the rest of the input for later parsing *)
 val capture : ('a t -> 'a) t
 
+(** Delay the parsing of the rest of the input *)
+val lazy_ : 'a t -> 'a Lazy.t t
+
 (** [enter t] expect the next element of the input to be a list and parse its
     contents with [t]. *)
 val enter : 'a t -> 'a t

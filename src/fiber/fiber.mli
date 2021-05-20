@@ -41,6 +41,11 @@ module O : sig
   val ( let* ) : 'a t -> ('a -> 'b t) -> 'b t
 
   val ( let+ ) : 'a t -> ('a -> 'b) -> 'b t
+
+  (** Similar to [fork_and_join] *)
+  val ( and* ) : 'a t -> 'b t -> ('a * 'b) t
+
+  val ( and+ ) : 'a t -> 'b t -> ('a * 'b) t
 end
 
 val map : 'a t -> f:('a -> 'b) -> 'b t
@@ -54,6 +59,10 @@ val bind : 'a t -> f:('a -> 'b t) -> 'b t
 
 val both : 'a t -> 'b t -> ('a * 'b) t
 
+(** Execute a list of fibers in sequence. We use the short name to conform with
+    the [Applicative] interface.*)
+val all : 'a t list -> 'a list t
+
 val sequential_map : 'a list -> f:('a -> 'b t) -> 'b list t
 
 val sequential_iter : 'a list -> f:('a -> unit t) -> unit t
@@ -65,7 +74,10 @@ val sequential_iter : 'a list -> f:('a -> unit t) -> unit t
     however once the combining fiber has terminated, it is guaranteed that there
     are no fibers lingering around. *)
 
-(** Start two fibers and wait for their results. *)
+(** Start two fibers and wait for their result. Note that this function combines
+    both successes and errors: if one of the computations fails, we let the
+    other one run to completion, to give it a chance to raise its errors too.
+    All other parallel execution combinators have the same error semantics. *)
 val fork_and_join : (unit -> 'a t) -> (unit -> 'b t) -> ('a * 'b) t
 
 (** Same but assume the first fiber returns [unit]. *)
@@ -73,6 +85,12 @@ val fork_and_join_unit : (unit -> unit t) -> (unit -> 'a t) -> 'a t
 
 (** Map a list in parallel. *)
 val parallel_map : 'a list -> f:('a -> 'b t) -> 'b list t
+
+(* CR-someday amokhov: For discoverability and fast code completion it would be
+   better to name functions [foo_sequentially] rather than [sequential_foo]. *)
+
+(** Like [all] but executes the fibers concurrently. *)
+val all_concurrently : 'a t list -> 'a list t
 
 (** Iter over a list in parallel. *)
 val parallel_iter : 'a list -> f:('a -> unit t) -> unit t
@@ -82,6 +100,14 @@ val parallel_iter_set :
   -> 's
   -> f:('a -> unit t)
   -> unit t
+
+(** Provide efficient parallel iter/map functions for maps. *)
+module Make_map_traversals (Map : Map.S) : sig
+  val parallel_iter : 'a Map.t -> f:(Map.key -> 'a -> unit t) -> unit t
+
+  val parallel_map : 'a Map.t -> f:(Map.key -> 'a -> 'b t) -> 'b Map.t t
+end
+[@@inline always]
 
 (** {1 Local storage} *)
 
@@ -95,10 +121,10 @@ module Var : sig
   val create : unit -> 'a t
 
   (** [get var] reads the value of [var]. *)
-  val get : 'a t -> 'a option
+  val get : 'a t -> 'a option fiber
 
   (** Same as [get] but raises if [var] is unset. *)
-  val get_exn : 'a t -> 'a
+  val get_exn : 'a t -> 'a fiber
 
   (** [set var value fiber] sets [var] to [value] during the execution of
       [fiber].
@@ -108,11 +134,7 @@ module Var : sig
       {[ set v x (get_exn v >>| fun y -> x = y) ]} *)
   val set : 'a t -> 'a -> (unit -> 'b fiber) -> 'b fiber
 
-  val set_sync : 'a t -> 'a -> (unit -> 'b) -> 'b
-
   val unset : 'a t -> (unit -> 'b fiber) -> 'b fiber
-
-  val unset_sync : 'a t -> (unit -> 'b) -> 'b
 end
 with type 'a fiber := 'a t
 
@@ -126,18 +148,13 @@ with type 'a fiber := 'a t
     It is guaranteed that after the fiber has returned a value, [on_error] will
     never be called. *)
 val with_error_handler :
-  (unit -> 'a t) -> on_error:(Exn_with_backtrace.t -> unit) -> 'a t
+  (unit -> 'a t) -> on_error:(Exn_with_backtrace.t -> Nothing.t t) -> 'a t
 
-(** [fold_errors f ~init ~on_error] calls [on_error] for every exception raised
-    during the execution of [f]. This include exceptions raised when calling
-    [f ()] or during the execution of fibers after [f ()] has returned.
-
-    Exceptions raised by [on_error] are passed on to the parent error handler. *)
-val fold_errors :
-     (unit -> 'a t)
-  -> init:'b
-  -> on_error:(Exn_with_backtrace.t -> 'b -> 'b)
-  -> ('a, 'b) Result.t t
+val map_reduce_errors :
+     (module Monoid with type t = 'a)
+  -> on_error:(Exn_with_backtrace.t -> 'a t)
+  -> (unit -> 'b t)
+  -> ('b, 'a) result t
 
 (** [collect_errors f] is:
     [fold_errors f ~init:\[\] ~on_error:(fun e l -> e :: l)] *)
@@ -280,6 +297,10 @@ module Stream : sig
     val sequential_iter : 'a t -> f:('a -> unit fiber) -> unit fiber
 
     val parallel_iter : 'a t -> f:('a -> unit fiber) -> unit fiber
+
+    val append : 'a t -> 'a t -> 'a t
+
+    val cons : 'a -> 'a t -> 'a t
   end
 
   module Out : sig
@@ -311,6 +332,39 @@ module Stream : sig
   (** [pipe ()] returns [(i, o)] where values pushed through [o] can be read
       through [i]. *)
   val pipe : unit -> 'a In.t * 'a Out.t
+end
+with type 'a fiber := 'a t
+
+module Pool : sig
+  (** Pool is used to submit asynchronous tasks without waiting for their
+      completion. *)
+  type t
+
+  type 'a fiber
+
+  (** Create a new pool. *)
+  val create : unit -> t
+
+  (** [running pool] returns whether it's possible to submit tasks to [pool] *)
+  val running : t -> bool fiber
+
+  (** [task pool ~f] submit [f] to be done in [pool]. Errors raised [pool] will
+      not be raised in the current fiber, but inside the [Pool.run] fiber.
+
+      If [running pool] returns [false], this function will raise a
+      [Code_error]. *)
+  val task : t -> f:(unit -> unit fiber) -> unit fiber
+
+  (** [stop pool] stops the pool from receiving new tasks. After this function
+      is called, [task pool ~f] will fail to submit new tasks.
+
+      Note that stopping the pool does not prevent already queued tasks from
+      running. *)
+  val stop : t -> unit fiber
+
+  (** [run pool] Runs all tasks submitted to [pool] in parallel. Errors raised
+      by such tasks must be caught here.*)
+  val run : t -> unit fiber
 end
 with type 'a fiber := 'a t
 

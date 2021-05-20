@@ -1,31 +1,41 @@
 open! Stdune
 open Import
 
+module Action_desc = struct
+  type nonrec t =
+    { context : Build_context.t option
+    ; action : Action.Full.t
+    ; loc : Loc.t option
+    ; dir : Path.Build.t
+    ; alias : Alias.Name.t option
+    }
+end
+
 module T = struct
   type 'a t =
     | Pure : 'a -> 'a t
     | Map : ('a -> 'b) * 'a t -> 'b t
+    | Bind : 'a t * ('a -> 'b t) -> 'b t
     | Both : 'a t * 'b t -> ('a * 'b) t
     | Seq : unit t * 'b t -> 'b t
     | All : 'a t list -> 'a list t
     | Map2 : ('a -> 'b -> 'c) * 'a t * 'b t -> 'c t
-    | Paths_for_rule : Path.Set.t -> unit t
     | Paths_glob : File_selector.t -> Path.Set.t t
+    | Source_tree : Path.t -> Path.Set.t t
     | Dep_on_alias_if_exists : Alias.t -> bool t
     | If_file_exists : Path.t * 'a t * 'a t -> 'a t
     | Contents : Path.t -> string t
     | Lines_of : Path.t -> string list t
     | Dyn_paths : ('a * Path.Set.t) t -> 'a t
     | Dyn_deps : ('a * Dep.Set.t) t -> 'a t
-    | Or_exn : 'a Or_exn.t t -> 'a t
     | Fail : fail -> _ t
     | Memo : 'a memo -> 'a t
-    | Catch : 'a t * 'a -> 'a t
     | Deps : Dep.Set.t -> unit t
     | Memo_build : 'a Memo.Build.t -> 'a t
     | Dyn_memo_build : 'a Memo.Build.t t -> 'a t
-    | Build : 'a t t -> 'a t
-    | Capture_deps : 'a t -> ('a * Dep.Set.t) t
+    | Goal : 'a t -> 'a t
+    | Action : Action_desc.t t -> unit t
+    | Action_stdout : Action_desc.t t -> string t
 
   and 'a memo =
     { name : string
@@ -37,6 +47,8 @@ module T = struct
 
   let map x ~f = Map (f, x)
 
+  let bind x ~f = Bind (x, f)
+
   let both x y = Both (x, y)
 
   let all xs = All xs
@@ -44,9 +56,17 @@ module T = struct
   module O = struct
     let ( >>> ) a b = Seq (a, b)
 
+    let ( >>= ) t f = Bind (t, f)
+
+    let ( >>| ) t f = Map (f, t)
+
     let ( and+ ) a b = Both (a, b)
 
+    let ( and* ) a b = Both (a, b)
+
     let ( let+ ) t f = Map (f, t)
+
+    let ( let* ) t f = Bind (t, f)
   end
 end
 
@@ -59,8 +79,6 @@ let ignore x = Map (Fun.const (), x)
 let map2 x y ~f = Map2 (f, x, y)
 
 let delayed f = Map (f, Pure ())
-
-let or_exn s = Or_exn s
 
 let all_unit xs =
   let+ (_ : unit list) = all xs in
@@ -99,13 +117,9 @@ let dyn_path_set_reuse paths =
     (let+ paths = paths in
      (paths, paths))
 
-let paths_for_rule ps = Paths_for_rule ps
-
 let env_var s = Deps (Dep.Set.singleton (Dep.env s))
 
 let alias a = dep (Dep.alias a)
-
-let catch t ~on_error = Catch (t, on_error)
 
 let contents p = Contents p
 
@@ -127,8 +141,7 @@ let strings p =
 
 let read_sexp p =
   let+ s = contents p in
-  Dune_lang.Parser.parse_string s ~lexer:Dune_lang.Lexer.token
-    ~fname:(Path.to_string p) ~mode:Single
+  Dune_lang.Parser.parse_string s ~fname:(Path.to_string p) ~mode:Single
 
 let if_file_exists p ~then_ ~else_ = If_file_exists (p, then_, else_)
 
@@ -141,21 +154,13 @@ let paths_existing paths =
 
 let fail x = Fail x
 
-let of_result = function
-  | Ok x -> x
-  | Error e -> fail { fail = (fun () -> raise e) }
-
-let of_result_map res ~f =
-  match res with
-  | Ok x -> f x
-  | Error e -> fail { fail = (fun () -> raise e) }
-
 let memoize name t = Memo { name; id = Type_eq.Id.create (); t }
 
-let source_tree ~dir =
-  let dep_set, file_set = Dep.Set.source_tree dir in
-  let+ () = deps dep_set in
-  file_set
+let source_tree ~dir = Source_tree dir
+
+let action t = Action t
+
+let action_stdout t = Action_stdout t
 
 (* CR-someday amokhov: The set of targets is accumulated using information from
    multiple sources by calling [Path.Build.Set.union] and hence occasionally
@@ -219,19 +224,10 @@ module With_targets = struct
       in
       { build = All (List.rev build); targets }
 
-  let write_file_dyn fn s =
+  let write_file_dyn ?(perm = Action.File_perm.Normal) fn s =
     add ~targets:[ fn ]
       (let+ s = s in
-       Action.Write_file (fn, s))
-
-  let of_result_map res ~f ~targets =
-    add ~targets
-      (match res with
-      | Ok x -> f x
-      | Error e ->
-        { build = Fail { fail = (fun () -> raise e) }
-        ; targets = Path.Build.Set.empty
-        })
+       Action.Write_file (fn, perm, s))
 
   let memoize name t = { build = memoize name t.build; targets = t.targets }
 end
@@ -244,13 +240,13 @@ let with_targets_set build ~targets : _ With_targets.t = { build; targets }
 let with_no_targets build : _ With_targets.t =
   { build; targets = Path.Build.Set.empty }
 
-let write_file fn s =
-  with_targets ~targets:[ fn ] (return (Action.Write_file (fn, s)))
+let write_file ?(perm = Action.File_perm.Normal) fn s =
+  with_targets ~targets:[ fn ] (return (Action.Write_file (fn, perm, s)))
 
-let write_file_dyn fn s =
+let write_file_dyn ?(perm = Action.File_perm.Normal) fn s =
   with_targets ~targets:[ fn ]
     (let+ s = s in
-     Action.Write_file (fn, s))
+     Action.Write_file (fn, perm, s))
 
 let copy ~src ~dst =
   with_targets ~targets:[ dst ] (path src >>> return (Action.Copy (src, dst)))
@@ -262,42 +258,55 @@ let copy_and_add_line_directive ~src ~dst =
 let symlink ~src ~dst =
   with_targets ~targets:[ dst ] (path src >>> return (Action.Symlink (src, dst)))
 
-let create_file fn =
+let create_file ?(perm = Action.File_perm.Normal) fn =
   with_targets ~targets:[ fn ]
-    (return (Action.Redirect_out (Stdout, fn, Action.empty)))
+    (return (Action.Redirect_out (Stdout, fn, perm, Action.empty)))
 
 let progn ts =
   let open With_targets.O in
   let+ actions = With_targets.all ts in
   Action.Progn actions
 
+let goal t = Goal t
+
 (* Execution *)
 
-module Expert = struct
-  let action_builder f = Build f
-end
-
 let memo_build f = Memo_build f
+
+let memo_build_join f = Memo_build f |> bind ~f:Fun.id
 
 let dyn_memo_build f = Dyn_memo_build f
 
 module Make_exec (Build_deps : sig
-  val build_deps : Dep.Set.t -> unit Memo.Build.t
+  type fact
 
-  val register_action_deps : Dep.Set.t -> unit Memo.Build.t
+  val merge_facts : fact Dep.Map.t -> fact Dep.Map.t -> fact Dep.Map.t
 
-  val file_exists : Path.t -> bool
+  val read_file : Path.t -> f:(Path.t -> 'a) -> 'a Memo.Build.t
+
+  val register_action_deps : Dep.Set.t -> fact Dep.Map.t Memo.Build.t
+
+  val register_action_dep_pred :
+    File_selector.t -> (Path.Set.t * fact) Memo.Build.t
+
+  val file_exists : Path.t -> bool Memo.Build.t
 
   val alias_exists : Alias.t -> bool Memo.Build.t
+
+  val execute_action :
+    observing_facts:fact Dep.Map.t -> Action_desc.t -> unit Memo.Build.t
+
+  val execute_action_stdout :
+    observing_facts:fact Dep.Map.t -> Action_desc.t -> string Memo.Build.t
 end) =
 struct
   module rec Execution : sig
-    val exec : 'a t -> ('a * Dep.Set.t) Memo.Build.t
+    val exec : 'a t -> ('a * Build_deps.fact Dep.Map.t) Memo.Build.t
   end = struct
     module Function = struct
       type 'a input = 'a memo
 
-      type 'a output = 'a * Dep.Set.t
+      type 'a output = 'a * Build_deps.fact Dep.Map.t
 
       let name = "exec-memo"
 
@@ -308,14 +317,14 @@ struct
       let eval m = Execution.exec m.t
     end
 
-    module Poly_memo = Memo.Poly.Async (Function)
-
-    let eval_pred x = Fdecl.get Dep.eval_pred x
-
+    module Memo_poly = Memo.Poly (Function)
     open Memo.Build.O
 
-    let rec exec : type a. a t -> (a * Dep.Set.t) Memo.Build.t = function
-      | Pure x -> Memo.Build.return (x, Dep.Set.empty)
+    let merge_facts = Build_deps.merge_facts
+
+    let rec exec : type a. a t -> (a * Build_deps.fact Dep.Map.t) Memo.Build.t =
+      function
+      | Pure x -> Memo.Build.return (x, Dep.Map.empty)
       | Map (f, a) ->
         let+ a, deps_a = exec a in
         (f a, deps_a)
@@ -323,90 +332,82 @@ struct
         let+ (a, deps_a), (b, deps_b) =
           Memo.Build.fork_and_join (fun () -> exec a) (fun () -> exec b)
         in
-        ((a, b), Dep.Set.union deps_a deps_b)
+        ((a, b), merge_facts deps_a deps_b)
       | Seq (a, b) ->
         let+ ((), deps_a), (b, deps_b) =
           Memo.Build.fork_and_join (fun () -> exec a) (fun () -> exec b)
         in
-        (b, Dep.Set.union deps_a deps_b)
+        (b, merge_facts deps_a deps_b)
       | Map2 (f, a, b) ->
         let+ (a, deps_a), (b, deps_b) =
           Memo.Build.fork_and_join (fun () -> exec a) (fun () -> exec b)
         in
-        (f a b, Dep.Set.union deps_a deps_b)
+        (f a b, merge_facts deps_a deps_b)
       | All xs ->
         let+ res = Memo.Build.parallel_map xs ~f:exec in
         let res, deps = List.split res in
-        (res, Dep.Set.union_all deps)
+        (res, List.fold_left deps ~init:Dep.Map.empty ~f:merge_facts)
       | Deps deps ->
-        let+ () = Build_deps.register_action_deps deps in
+        let+ deps = Build_deps.register_action_deps deps in
         ((), deps)
-      | Paths_for_rule ps ->
-        let+ () = Build_deps.build_deps (Dep.Set.of_files_set ps) in
-        ((), Dep.Set.empty)
       | Paths_glob g ->
-        let ps = eval_pred g in
-        let+ () = Build_deps.register_action_deps (Dep.Set.of_files_set ps) in
-        (ps, Dep.Set.singleton (Dep.file_selector g))
+        let+ ps, fact = Build_deps.register_action_dep_pred g in
+        (ps, Dep.Map.singleton (Dep.file_selector g) fact)
+      | Source_tree dir ->
+        let* deps, paths = Dep.Set.source_tree_with_file_set dir in
+        let+ deps = Build_deps.register_action_deps deps in
+        (paths, deps)
       | Contents p ->
-        let+ () = Build_deps.build_deps (Dep.Set.singleton (Dep.file p)) in
-        (Io.read_file p, Dep.Set.empty)
+        let+ x = Build_deps.read_file p ~f:Io.read_file in
+        (x, Dep.Map.empty)
       | Lines_of p ->
-        let+ () = Build_deps.build_deps (Dep.Set.singleton (Dep.file p)) in
-        (Io.lines_of_file p, Dep.Set.empty)
+        let+ x = Build_deps.read_file p ~f:Io.lines_of_file in
+        (x, Dep.Map.empty)
       | Dyn_paths t ->
         let* (x, paths), deps_x = exec t in
         let deps = Dep.Set.of_files_set paths in
-        let+ () = Build_deps.register_action_deps deps in
-        (x, Dep.Set.union deps deps_x)
+        let+ deps = Build_deps.register_action_deps deps in
+        (x, merge_facts deps deps_x)
       | Dyn_deps t ->
         let* (x, deps), deps_x = exec t in
-        let+ () = Build_deps.register_action_deps deps in
-        (x, Dep.Set.union deps deps_x)
-      | Or_exn e ->
-        let+ a, deps = exec e in
-        (Result.ok_exn a, deps)
+        let+ deps = Build_deps.register_action_deps deps in
+        (x, merge_facts deps deps_x)
       | Fail { fail } -> fail ()
-      | If_file_exists (p, then_, else_) ->
-        if Build_deps.file_exists p then
-          exec then_
-        else
-          exec else_
-      | Catch (t, on_error) -> (
-        let+ res =
-          Memo.Build.fold_errors ~init:on_error
-            ~on_error:(fun _ x -> x)
-            (fun () -> exec t)
-        in
-        match res with
-        | Ok r -> r
-        | Error r -> (r, Dep.Set.empty))
-      | Memo m ->
-        let* res, deps = Poly_memo.eval m in
-        let+ () = Build_deps.register_action_deps deps in
-        (res, deps)
+      | If_file_exists (p, then_, else_) -> (
+        Build_deps.file_exists p >>= function
+        | true -> exec then_
+        | false -> exec else_)
+      | Memo m -> Memo_poly.eval m
       | Memo_build f ->
         let+ f = f in
-        (f, Dep.Set.empty)
+        (f, Dep.Map.empty)
       | Dyn_memo_build f ->
         let* f, deps = exec f in
         let+ f = f in
         (f, deps)
-      | Build b ->
-        let* b, deps0 = exec b in
-        let+ r, deps1 = exec b in
-        (r, Dep.Set.union deps0 deps1)
-      | Capture_deps b ->
-        let+ b, deps0 = exec b in
-        ((b, deps0), deps0)
+      | Bind (t, f) ->
+        let* x, deps0 = exec t in
+        let+ r, deps1 = exec (f x) in
+        (r, merge_facts deps0 deps1)
       | Dep_on_alias_if_exists alias -> (
         let* definition = Build_deps.alias_exists alias in
         match definition with
-        | false -> Memo.Build.return (false, Dep.Set.empty)
+        | false -> Memo.Build.return (false, Dep.Map.empty)
         | true ->
           let deps = Dep.Set.singleton (Dep.alias alias) in
-          let+ () = Build_deps.register_action_deps deps in
+          let+ deps = Build_deps.register_action_deps deps in
           (true, deps))
+      | Goal t ->
+        let+ a, (_irrelevant_for_goals : Build_deps.fact Dep.Map.t) = exec t in
+        (a, Dep.Map.empty)
+      | Action t ->
+        let* act, facts = exec t in
+        let+ () = Build_deps.execute_action ~observing_facts:facts act in
+        ((), Dep.Map.empty)
+      | Action_stdout t ->
+        let* act, facts = exec t in
+        let+ s = Build_deps.execute_action_stdout ~observing_facts:facts act in
+        (s, Dep.Map.empty)
   end
 
   include Execution
@@ -432,22 +433,20 @@ let rec can_eval_statically : type a. a t -> bool = function
   | Seq (a, b) -> can_eval_statically a && can_eval_statically b
   | Map2 (_, a, b) -> can_eval_statically a && can_eval_statically b
   | All xs -> List.for_all xs ~f:can_eval_statically
-  | Paths_for_rule _ -> false
   | Paths_glob _ -> false
   | Deps _ -> true
   | Dyn_paths b -> can_eval_statically b
   | Dyn_deps b -> can_eval_statically b
+  | Source_tree _ -> false
   | Contents _ -> false
   | Lines_of _ -> false
-  | Or_exn b -> can_eval_statically b
   | Fail _ -> true
   | If_file_exists (_, _, _) -> false
   | Memo _ -> false
-  | Catch (t, _) -> can_eval_statically t
   | Memo_build _ -> false
   | Dyn_memo_build _ -> false
-  | Build _ ->
-    (* TODO jeremiedimino: This should be [can_eval_statically b], however it
+  | Bind _ ->
+    (* TODO jeremiedimino: This should be [can_eval_statically t], however it
        breaks the [Expander.set_artifacts_dynamic] trick that it used to break a
        cycle. The cycle is as follow:
 
@@ -471,15 +470,13 @@ let rec can_eval_statically : type a. a t -> bool = function
        If we find another way to break this cycle we should be able to change
        this code. *)
     false
-  | Capture_deps _ ->
-    (* In principle we can eval [Capture_deps b] statically if we can eval [b]
-       and its deps statically, but we don't have a mechanism for evaluating the
-       deps statically, so we have to answer with constant false here *)
-    false
   | Dep_on_alias_if_exists _ -> false
+  | Goal t -> can_eval_statically t
+  | Action _ -> false
+  | Action_stdout _ -> false
 
 let static_eval =
-  let rec loop : type a. a t -> unit t -> a * unit t =
+  let rec loop : type a. a t -> Dep.Set.t -> a * Dep.Set.t =
    fun t acc ->
     match t with
     | Pure x -> (x, acc)
@@ -499,32 +496,29 @@ let static_eval =
       let b, acc = loop b acc in
       (f a b, acc)
     | All xs -> loop_many [] xs acc
-    | Paths_for_rule _ -> assert false
     | Paths_glob _ -> assert false
-    | Deps _ -> ((), acc >>> t)
+    | Deps deps -> ((), Dep.Set.union deps acc)
     | Dyn_paths b ->
       let (x, ps), acc = loop b acc in
-      (x, Deps (Dep.Set.of_files_set ps) >>> acc)
+      (x, Dep.Set.union (Dep.Set.of_files_set ps) acc)
     | Dyn_deps b ->
       let (x, deps), acc = loop b acc in
-      (x, Deps deps >>> acc)
+      (x, Dep.Set.union deps acc)
+    | Source_tree _ -> assert false
     | Contents _ -> assert false
     | Lines_of _ -> assert false
-    | Or_exn b ->
-      let res, acc = loop b acc in
-      (Result.ok_exn res, acc)
     | Fail { fail } -> fail ()
     | If_file_exists (_, _, _) -> assert false
     | Memo _ -> assert false
-    | Catch (t, v) -> (
-      try loop t acc with
-      | _ -> (v, return ()))
     | Memo_build _ -> assert false
     | Dyn_memo_build _ -> assert false
-    | Build _ -> assert false
-    | Capture_deps _ -> assert false
+    | Bind _ -> assert false
     | Dep_on_alias_if_exists _ -> assert false
-  and loop_many : type a. a list -> a t list -> unit t -> a list * unit t =
+    | Goal t -> loop t acc
+    | Action _ -> assert false
+    | Action_stdout _ -> assert false
+  and loop_many : type a. a list -> a t list -> Dep.Set.t -> a list * Dep.Set.t
+      =
    fun acc_res l acc ->
     match l with
     | [] -> (List.rev acc_res, acc)
@@ -534,12 +528,14 @@ let static_eval =
   in
   fun t ->
     if can_eval_statically t then
-      Some (loop t (return ()))
+      Some (loop t Dep.Set.empty)
     else
       None
-
-let capture_deps b = Capture_deps b
 
 let dyn_memo_build_deps t = dyn_deps (dyn_memo_build t)
 
 let dep_on_alias_if_exists t = Dep_on_alias_if_exists t
+
+module List = struct
+  let map l ~f = all (List.map l ~f)
+end

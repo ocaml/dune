@@ -1,4 +1,0 @@
-(library
- (name cache)
- (synopsis "[Internal] Dune binary artifact cache protocol")
- (libraries stdune threads.posix xdg dune_lang dune_util csexp))

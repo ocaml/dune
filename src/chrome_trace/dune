@@ -1,0 +1,4 @@
+(library
+ (name chrome_trace)
+ (libraries unix)
+ (synopsis "Emit catapult trace files, compatible with chrome://tracing"))

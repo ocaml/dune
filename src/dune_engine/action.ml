@@ -3,6 +3,14 @@ open Import
 module Outputs = Action_ast.Outputs
 module Inputs = Action_ast.Inputs
 
+module File_perm = struct
+  include Action_intf.File_perm
+
+  let to_unix_perm = function
+    | Normal -> 0o666
+    | Executable -> 0o777
+end
+
 module Prog = struct
   module Not_found = struct
     type t =
@@ -22,7 +30,7 @@ module Prog = struct
       in
       Utils.program_not_found_message ?hint ~loc ~context program
 
-    let raise t = raise (User_error.E (user_message t))
+    let raise t = raise (User_error.E (user_message t, []))
 
     let to_dyn { context; program; hint; loc = _ } =
       let open Dyn.Encoder in
@@ -121,7 +129,7 @@ let fold_one_step t ~init:acc ~f =
   match t with
   | Chdir (_, t)
   | Setenv (_, _, t)
-  | Redirect_out (_, _, t)
+  | Redirect_out (_, _, _, t)
   | Redirect_in (_, _, t)
   | Ignore (_, t)
   | With_accepted_exit_codes (_, t)
@@ -136,6 +144,7 @@ let fold_one_step t ~init:acc ~f =
   | Cat _
   | Copy _
   | Symlink _
+  | Hardlink _
   | Copy_and_add_line_directive _
   | System _
   | Bash _
@@ -143,7 +152,6 @@ let fold_one_step t ~init:acc ~f =
   | Rename _
   | Remove_tree _
   | Mkdir _
-  | Digest_files _
   | Diff _
   | Merge_files_into _
   | Cram _
@@ -169,7 +177,7 @@ let rec is_dynamic = function
   | Dynamic_run _ -> true
   | Chdir (_, t)
   | Setenv (_, _, t)
-  | Redirect_out (_, _, t)
+  | Redirect_out (_, _, _, t)
   | Redirect_in (_, _, t)
   | Ignore (_, t)
   | With_accepted_exit_codes (_, t)
@@ -185,13 +193,13 @@ let rec is_dynamic = function
   | Cat _
   | Copy _
   | Symlink _
+  | Hardlink _
   | Copy_and_add_line_directive _
   | Write_file _
   | Rename _
   | Remove_tree _
   | Diff _
   | Mkdir _
-  | Digest_files _
   | Merge_files_into _
   | Cram _
   | Format_dune_file _ ->
@@ -199,7 +207,7 @@ let rec is_dynamic = function
 
 let prepare_managed_paths ~link ~sandboxed deps =
   let steps =
-    Path.Set.fold (Dep.Set.eval_paths deps) ~init:[] ~f:(fun path acc ->
+    Path.Map.foldi deps ~init:[] ~f:(fun path _ acc ->
         match Path.as_in_build_dir path with
         | None ->
           (* This can actually raise if we try to sandbox the "copy from source
@@ -215,18 +223,26 @@ let prepare_managed_paths ~link ~sandboxed deps =
   Progn steps
 
 let link_function ~(mode : Sandbox_mode.some) : path -> target -> t =
+  let win32_error mode =
+    let mode = Sandbox_mode.to_string (Some mode) in
+    Code_error.raise
+      (sprintf
+         "Don't have %ss on win32, but [%s] sandboxing mode was selected. To \
+          use emulation via copy, the [copy] sandboxing mode should be \
+          selected."
+         mode mode)
+      []
+  in
   match mode with
-  | Symlink ->
-    if Sys.win32 then
-      Code_error.raise
-        "Don't have symlinks on win32, but [Symlink] sandboxing mode was \
-         selected. To use emulation via copy, the [Copy] sandboxing mode \
-         should be selected."
-        []
-    else
-      fun a b ->
-    Symlink (a, b)
+  | Symlink -> (
+    match Sys.win32 with
+    | true -> win32_error mode
+    | false -> fun a b -> Symlink (a, b))
   | Copy -> fun a b -> Copy (a, b)
+  | Hardlink -> (
+    match Sys.win32 with
+    | true -> win32_error mode
+    | false -> fun a b -> Hardlink (a, b))
 
 let maybe_sandbox_path f p =
   match Path.as_in_build_dir p with
@@ -253,7 +269,7 @@ let is_useful_to distribute memoize =
     match t with
     | Chdir (_, t) -> loop t
     | Setenv (_, _, t) -> loop t
-    | Redirect_out (_, _, t) -> memoize || loop t
+    | Redirect_out (_, _, _, t) -> memoize || loop t
     | Redirect_in (_, _, t) -> loop t
     | Ignore (_, t)
     | With_accepted_exit_codes (_, t)
@@ -266,13 +282,13 @@ let is_useful_to distribute memoize =
     | Cat _ -> memoize
     | Copy _ -> memoize
     | Symlink _ -> false
+    | Hardlink _ -> false
     | Copy_and_add_line_directive _ -> memoize
     | Write_file _ -> distribute
     | Rename _ -> memoize
     | Remove_tree _ -> false
     | Diff _ -> distribute
     | Mkdir _ -> false
-    | Digest_files _ -> distribute
     | Merge_files_into _ -> distribute
     | Cram _
     | Run _ ->
@@ -292,3 +308,12 @@ let is_useful_to_sandbox = is_useful_to false false
 let is_useful_to_distribute = is_useful_to true false
 
 let is_useful_to_memoize = is_useful_to true true
+
+module Full = struct
+  type nonrec t =
+    { action : t
+    ; env : Env.t
+    ; locks : Path.t list
+    ; can_go_in_shared_cache : bool
+    }
+end

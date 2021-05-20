@@ -15,7 +15,7 @@ val gen_rules :
   -> scope:Scope.t
   -> dir:Path.Build.t
   -> sctx:Super_context.t
-  -> unit
+  -> unit Memo.Build.t
 
 val ctypes_cclib_flags :
      standard:string list Action_builder.t

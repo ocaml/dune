@@ -29,12 +29,12 @@
     outside of the workspace and build directory. To be on the safe side Dune
     makes no assumption does nothing clever with these paths.
 
-    External paths are presented as [Path.External.t] values.contents
+    External paths are represented as [Path.External.t] values.
 
     {1 The Path.t type}
 
     The [Path.t] type represents all possible paths, i.e. both local and
-    extenral paths. *)
+    external paths. *)
 
 (** Relative path relative to the root tracked by the type system.
 
@@ -113,6 +113,17 @@ module External : sig
   val mkdir_p : ?perms:int -> t -> unit
 end
 
+module Permissions : sig
+  (** Write permissions. *)
+  val write : int
+
+  (** Add [mode] permissions to a given mask. *)
+  val add : mode:int -> int -> int
+
+  (** Remove [mode] permissions from a given mask. *)
+  val remove : mode:int -> int -> int
+end
+
 module Build : sig
   type w
 
@@ -164,7 +175,7 @@ module Build : sig
     val of_string : string -> t
   end
 
-  (** set the build directory. Can only be called once and must be done before
+  (** Set the build directory. Can only be called once and must be done before
       paths are converted to strings elsewhere. *)
   val set_build_dir : Kind.t -> unit
 
@@ -172,7 +183,13 @@ module Build : sig
 
   val of_local : Local.t -> t
 
-  val chmod : mode:int -> ?op:[ `Add | `Remove | `Set ] -> t -> unit
+  (** Set permissions for a given path. You can use the [Permissions] module if
+      you need to modify existing permissions in a non-trivial way. *)
+  val chmod : t -> mode:int -> unit
+
+  val lstat : t -> Unix.stats
+
+  val unlink_no_err : t -> unit
 end
 
 type t = private
@@ -317,11 +334,12 @@ val unlink_no_err : t -> unit
 
 val link : t -> t -> unit
 
+(** If the path does not exist, this function is a no-op. *)
 val rm_rf : ?allow_external:bool -> t -> unit
 
 (** [clear_dir t] deletes all the contents of directory [t] without removing [t]
-    itself *)
-val clear_dir : t -> unit
+    itself. *)
+val clear_dir : t -> Fpath.clear_dir_result
 
 val mkdir_p : ?perms:int -> t -> unit
 
@@ -354,9 +372,13 @@ end
     of [/a/b] is [./a/b]. *)
 val local_part : t -> Local.t
 
-val stat : t -> Unix.stats
+val stat : t -> (Unix.stats, Unix.error) Result.t
 
-val lstat : t -> Unix.stats
+val stat_exn : t -> Unix.stats
+
+val lstat : t -> (Unix.stats, Unix.error) Result.t
+
+val lstat_exn : t -> Unix.stats
 
 (* it would be nice to call this [Set.of_source_paths], but it's annoying to
    change the [Set] signature because then we don't comply with [Path_intf.S] *)
@@ -366,23 +388,14 @@ val set_of_build_paths_list : Build.t list -> Set.t
 
 val string_of_file_kind : Unix.file_kind -> string
 
-(** Rename a file. rename oldpath newpath renames the file called oldpath,
-    giving it newpath as its new name, moving it between directories if needed.
-    If newpath already exists, its contents will be replaced with those of
-    oldpath. *)
+(** Rename a file. [rename oldpath newpath] renames the file called [oldpath] to
+    [newpath], moving it between directories if needed. If [newpath] already
+    exists, its contents will be replaced with those of [oldpath]. *)
 val rename : t -> t -> unit
 
-(** Set permissions on the designed files. [op] is [`Set] by default, which sets
-    the permissions exactly to [mode], while [`Add] will add the given [mode] to
-    the current permissions and [`Remove] remove them. [path] will be stat'd in
-    the `Add and `Remove case to determine the current permission, unless the
-    already computed stats are passed as [stats] to save a system call. *)
-val chmod :
-     mode:int
-  -> ?stats:Unix.stats option
-  -> ?op:[ `Add | `Remove | `Set ]
-  -> t
-  -> unit
+(** Set permissions for a given path. You can use the [Permissions] module if
+    you need to modify existing permissions in a non-trivial way. *)
+val chmod : t -> mode:int -> unit
 
 (** Attempts to resolve a symlink. Returns [None] if the path isn't a symlink *)
 val follow_symlink : t -> (t, Fpath.follow_symlink_error) result

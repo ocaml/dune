@@ -1,43 +1,30 @@
 type t
 
-val workspace_file : t -> Arg.Path.t option
-
-val x : t -> Dune_engine.Context_name.t option
-
-val profile : t -> Dune_rules.Profile.t option
-
 val capture_outputs : t -> bool
 
 val root : t -> Workspace_root.t
 
-val config : t -> Dune_config.t
-
 val rpc : t -> Dune_rpc_impl.Server.t option
 
-val set_config : t -> Dune_config.t -> t
+val stats : t -> Dune_stats.t option
 
-module Only_packages : sig
-  type t = private
-    { names : Dune_engine.Package.Name.Set.t
-    ; command_line_option : string
-          (** Which of [-p], [--only-packages], ... was passed *)
-    }
-end
-
-val only_packages : t -> Only_packages.t option
+val print_metrics : t -> bool
 
 val watch : t -> bool
+
+val file_watcher : t -> Dune_engine.Scheduler.Run.file_watcher
 
 val default_target : t -> Arg.Dep.t
 
 val prefix_target : t -> string -> string
 
-val instrument_with : t -> Dune_engine.Lib_name.t list option
+(** [init] executes sequence of side-effecting actions to initialize Dune's
+    working environment based on the options determined in a [Common.t]
+    record.contents.
 
-(** [set_common] executes sequence of side-effecting actions to initialize
-    Dune's working environment based on the options determined in a [Common.t]
-    record.contents. *)
-val set_common : ?log_file:Dune_util.Log.File.t -> t -> unit
+    Return the final configuration, which is the same as the one returned in the
+    [config] field of [Dune_rules.Workspace.workspace ()]) *)
+val init : ?log_file:Dune_util.Log.File.t -> t -> Dune_config.t
 
 (** [examples \[("description", "dune cmd foo"); ...\]] is an [EXAMPLES] manpage
     section of enumerated examples illustrating how to run the documented
@@ -60,7 +47,7 @@ val set_print_directory : t -> bool -> t
 
 val debug_backtraces : bool Cmdliner.Term.t
 
-val config_term : Dune_config.t Cmdliner.Term.t
+val config_from_config_file : Dune_config.Partial.t Cmdliner.Term.t
 
 val display_term : Dune_engine.Scheduler.Config.Display.t option Cmdliner.Term.t
 

@@ -9,6 +9,7 @@ BIN := ./dune.exe
 # Dependencies used for testing dune, when developed locally and
 # when tested in CI
 TEST_DEPS := \
+lwt \
 bisect_ppx \
 cinaps \
 coq-native \
@@ -123,6 +124,10 @@ ifeq (dune,$(firstword $(MAKECMDGOALS)))
   # ...and turn them into do-nothing targets
   $(eval $(RUN_ARGS):;@:)
 endif
+
+.PHONY: bench
+bench:
+	@dune exec -- ./bench/bench.exe 2> /dev/null
 
 dune: $(BIN)
 	$(BIN) $(RUN_ARGS)

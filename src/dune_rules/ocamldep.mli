@@ -7,7 +7,7 @@ val deps_of :
      cctx:Compilation_context.t
   -> ml_kind:Ml_kind.t
   -> Module.t
-  -> Module.t list Action_builder.t
+  -> Module.t list Action_builder.t Memo.Build.t
 
 val read_deps_of :
      obj_dir:Path.Build.t Obj_dir.t

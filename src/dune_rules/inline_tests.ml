@@ -11,8 +11,8 @@ module Backend = struct
     type t =
       { info : Info.t
       ; lib : Lib.t
-      ; runner_libraries : Lib.t list Or_exn.t
-      ; extends : t list Or_exn.t
+      ; runner_libraries : Lib.t list Resolve.t
+      ; extends : t list Resolve.t
       }
 
     let desc ~plural =
@@ -30,26 +30,28 @@ module Backend = struct
     let extends t = t.extends
 
     let instantiate ~resolve ~get lib (info : Info.t) =
+      let open Memo.Build.O in
+      let+ extends =
+        Memo.Build.parallel_map info.extends ~f:(fun ((loc, name) as x) ->
+            Resolve.Build.bind (resolve x) ~f:(fun lib ->
+                get ~loc lib >>| function
+                | None ->
+                  Resolve.fail
+                    (User_error.make ~loc
+                       [ Pp.textf "%S is not an %s" (Lib_name.to_string name)
+                           (desc ~plural:false)
+                       ])
+                | Some t -> Resolve.return t))
+        >>| Resolve.List.map ~f:Fun.id
+      in
       { info
       ; lib
-      ; runner_libraries = Result.List.map info.runner_libraries ~f:resolve
-      ; extends =
-          (let open Result.O in
-          Result.List.map info.extends ~f:(fun ((loc, name) as x) ->
-              let* lib = resolve x in
-              match get ~loc lib with
-              | None ->
-                Error
-                  (User_error.E
-                     (User_error.make ~loc
-                        [ Pp.textf "%S is not an %s" (Lib_name.to_string name)
-                            (desc ~plural:false)
-                        ]))
-              | Some t -> Ok t))
+      ; runner_libraries = Resolve.List.map info.runner_libraries ~f:resolve
+      ; extends
       }
 
     let public_info t =
-      let open Result.O in
+      let open Resolve.O in
       let+ runner_libraries = t.runner_libraries
       and+ extends = t.extends in
       { Info.loc = t.info.loc
@@ -74,6 +76,7 @@ include Sub_system.Register_end_point (struct
   module Info = Inline_tests_info.Tests
 
   let gen_rules c ~(info : Info.t) ~backends =
+    let open Memo.Build.O in
     let { Sub_system.Library_compilation_context.super_context = sctx
         ; dir
         ; stanza = lib
@@ -101,57 +104,55 @@ include Sub_system.Register_end_point (struct
       Module.generated ~src_dir name
     in
     let modules = Modules.singleton_exe main_module in
-    let expander = Super_context.expander sctx ~dir in
+    let* expander = Super_context.expander sctx ~dir in
     let runner_libs =
-      let open Result.O in
+      let open Resolve.O in
       let* libs =
-        Result.List.concat_map backends ~f:(fun (backend : Backend.t) ->
+        Resolve.List.concat_map backends ~f:(fun (backend : Backend.t) ->
             backend.runner_libraries)
       in
       let* lib =
         Lib.DB.resolve (Scope.libs scope) (loc, Dune_file.Library.best_name lib)
       in
       let* more_libs =
-        Result.List.map info.libraries ~f:(Lib.DB.resolve (Scope.libs scope))
+        Resolve.List.map info.libraries ~f:(Lib.DB.resolve (Scope.libs scope))
       in
       Lib.closure ~linking:true (lib :: libs @ more_libs)
     in
     (* Generate the runner file *)
-    SC.add_rule sctx ~dir ~loc
-      (let target =
-         Module.file main_module ~ml_kind:Impl
-         |> Option.value_exn |> Path.as_in_build_dir_exn
-       in
-       let files ml_kind =
-         Value.L.paths
-           (List.filter_map source_modules ~f:(Module.file ~ml_kind))
-       in
-       let bindings =
-         Pform.Map.of_list_exn
-           [ (Var Impl_files, files Impl); (Var Intf_files, files Intf) ]
-       in
-       let expander = Expander.add_bindings expander ~bindings in
-       let action =
-         let open Action_builder.With_targets.O in
-         let+ actions =
-           Action_builder.With_targets.all
-             (List.filter_map backends ~f:(fun (backend : Backend.t) ->
-                  Option.map backend.info.generate_runner
-                    ~f:(fun (loc, action) ->
-                      Action_unexpanded.expand action ~loc ~expander ~deps:[]
-                        ~targets:(Forbidden "inline test generators")
-                        ~targets_dir:dir)))
+    let* () =
+      SC.add_rule sctx ~dir ~loc
+        (let target =
+           Module.file main_module ~ml_kind:Impl
+           |> Option.value_exn |> Path.as_in_build_dir_exn
          in
-         Action.with_stdout_to target (Action.progn actions)
-       in
-       Action_builder.With_targets.add ~targets:[ target ] action);
-    let cctx =
+         let files ml_kind =
+           Value.L.paths
+             (List.filter_map source_modules ~f:(Module.file ~ml_kind))
+         in
+         let bindings =
+           Pform.Map.of_list_exn
+             [ (Var Impl_files, files Impl); (Var Intf_files, files Intf) ]
+         in
+         let expander = Expander.add_bindings expander ~bindings in
+         let action =
+           let open Action_builder.With_targets.O in
+           let+ actions =
+             Action_builder.with_no_targets
+               (Action_builder.all
+                  (List.filter_map backends ~f:(fun (backend : Backend.t) ->
+                       Option.map backend.info.generate_runner
+                         ~f:(fun (loc, action) ->
+                           Action_unexpanded.expand_no_targets action ~loc
+                             ~expander ~deps:[] ~what:"inline test generators"))))
+           in
+           Action.with_stdout_to target (Action.progn actions)
+         in
+         Action_builder.With_targets.add ~targets:[ target ] action)
+    and* cctx =
       let package = Dune_file.Library.package lib in
-      let flags =
-        Ocaml_flags.append_common
-          (Super_context.ocaml_flags sctx ~dir info.executable)
-          [ "-w"; "-24"; "-g" ]
-      in
+      let+ ocaml_flags = Super_context.ocaml_flags sctx ~dir info.executable in
+      let flags = Ocaml_flags.append_common ocaml_flags [ "-w"; "-24"; "-g" ] in
       Compilation_context.create () ~super_context:sctx ~expander ~scope
         ~obj_dir ~modules ~opaque:(Explicit false) ~requires_compile:runner_libs
         ~requires_link:(lazy runner_libs)
@@ -171,11 +172,13 @@ include Sub_system.Register_end_point (struct
           | Byte -> Exe.Linkage.byte
           | Javascript -> Exe.Linkage.js)
     in
-    Exe.build_and_link cctx
-      ~program:{ name; main_module_name = Module.name main_module; loc }
-      ~linkages
-      ~link_args:(Action_builder.return (Command.Args.A "-linkall"))
-      ~promote:None;
+    let* () =
+      Exe.build_and_link cctx
+        ~program:{ name; main_module_name = Module.name main_module; loc }
+        ~linkages
+        ~link_args:(Action_builder.return (Command.Args.A "-linkall"))
+        ~promote:None
+    in
     let flags =
       let flags =
         List.map backends ~f:(fun backend -> backend.Backend.info.flags)
@@ -194,10 +197,13 @@ include Sub_system.Register_end_point (struct
                ~standard:(Action_builder.return []))
         |> Action_builder.all
       in
-      Command.Args.As (List.concat l)
+      List.concat l
     in
     let source_files = List.concat_map source_modules ~f:Module.sources in
-    Mode_conf.Set.iter info.modes ~f:(fun (mode : Mode_conf.t) ->
+    Memo.Build.parallel_iter_set
+      (module Mode_conf.Set)
+      info.modes
+      ~f:(fun (mode : Mode_conf.t) ->
         let ext =
           match mode with
           | Native
@@ -215,32 +221,43 @@ include Sub_system.Register_end_point (struct
           | Javascript -> Some "node"
         in
         SC.add_alias_action sctx ~dir ~loc:(Some info.loc) (Alias.runtest ~dir)
-          ~stamp:("ppx-runner", name, mode)
           (let exe =
              Path.build (Path.Build.relative inline_test_dir (name ^ ext))
            in
-           let exe, runner_args =
+           let open Action_builder.O in
+           let+ () = Dep_conf_eval.unnamed info.deps ~expander
+           and+ () = Action_builder.paths source_files
+           and+ () = Action_builder.path exe
+           and+ action =
              match custom_runner with
-             | None -> (Ok exe, Command.Args.empty)
-             | Some runner ->
-               ( Super_context.resolve_program ~dir sctx ~loc:(Some loc) runner
-               , Dep exe )
+             | None ->
+               let+ flags = flags in
+               Action.run (Ok exe) flags
+             | Some runner -> (
+               let* prog =
+                 Action_builder.memo_build
+                   (Super_context.resolve_program ~dir sctx ~loc:(Some loc)
+                      runner)
+               and* flags = flags in
+               let action =
+                 Action.run prog
+                   (Path.reach exe ~from:(Path.build dir) :: flags)
+               in
+               (* jeremiedimino: it feels like this pattern should be pushed
+                  into [resolve_program] directly *)
+               match prog with
+               | Error _ -> Action_builder.return action
+               | Ok p -> Action_builder.path p >>> Action_builder.return action)
            in
-           let open Action_builder.With_targets.O in
-           Action_builder.with_no_targets
-             (Dep_conf_eval.unnamed info.deps ~expander)
-           >>> Action_builder.with_no_targets
-                 (Action_builder.paths source_files)
-           >>> Action_builder.progn
-                 (Command.run exe ~dir:(Path.build dir)
-                    [ runner_args; Dyn flags ]
-                  ::
-                  List.map source_files ~f:(fun fn ->
-                      Action_builder.With_targets.return
-                        (Action.diff ~optional:true fn
-                           (Path.Build.extend_basename
-                              (Path.as_in_build_dir_exn fn)
-                              ~suffix:".corrected"))))))
+           let run_tests = Action.chdir (Path.build dir) action in
+           Action.progn
+             (run_tests
+              ::
+              List.map source_files ~f:(fun fn ->
+                  Action.diff ~optional:true fn
+                    (Path.Build.extend_basename
+                       (Path.as_in_build_dir_exn fn)
+                       ~suffix:".corrected")))))
 end)
 
 let linkme = ()

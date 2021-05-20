@@ -10,7 +10,8 @@ module Expanding_what = struct
   type t =
     | Nothing_special
     | Deps_like_field
-    | User_action of Targets.Or_forbidden.t
+    | User_action of Path.Build.t Targets.t
+    | User_action_without_targets of { what : string }
 end
 
 type t =
@@ -26,9 +27,11 @@ type t =
   ; c_compiler : string
   ; context : Context.t
   ; artifacts_dynamic : bool
-  ; lookup_artifacts : (dir:Path.Build.t -> Ml_sources.Artifacts.t) option
+  ; lookup_artifacts :
+      (dir:Path.Build.t -> Ml_sources.Artifacts.t Memo.Build.t) option
   ; foreign_flags :
-      dir:Path.Build.t -> string list Action_builder.t Foreign_language.Dict.t
+         dir:Path.Build.t
+      -> string list Action_builder.t Foreign_language.Dict.t Memo.Build.t
   ; find_package : Package.Name.t -> any_package option
   ; expanding_what : Expanding_what.t
   }
@@ -62,7 +65,8 @@ let map_exe t p =
   match t.expanding_what with
   | Deps_like_field -> p
   | Nothing_special
-  | User_action _ ->
+  | User_action _
+  | User_action_without_targets _ ->
     Context.map_exe t.context p
 
 let extend_env t ~env =
@@ -93,12 +97,22 @@ let expand_version { scope; _ } ~source s =
     | None -> [ Value.String "" ]
     | Some s -> [ String s ]
   in
+  let project = Scope.project scope in
   match
     Package.Name.Map.find
-      (Dune_project.packages (Scope.project scope))
+      (Dune_project.packages project)
       (Package.Name.of_string s)
   with
   | Some p -> value_from_version p.version
+  | None when Dune_project.dune_version project < (2, 9) ->
+    User_error.raise ~loc:source.Dune_lang.Template.Pform.loc
+      [ Pp.textf "Package %S doesn't exist in the current project." s ]
+      ~hints:
+        [ Pp.text
+            "If you want to refer to an installed package, or more generally \
+             to a package from another project, you need at least (lang dune \
+             2.9)."
+        ]
   | None -> (
     let libname = Lib_name.of_string s in
     let pkgname = Lib_name.package_name libname in
@@ -125,7 +139,7 @@ let isn't_allowed_in_this_position_message ~source =
     ]
 
 let isn't_allowed_in_this_position ~source =
-  raise (User_error.E (isn't_allowed_in_this_position_message ~source))
+  raise (User_error.E (isn't_allowed_in_this_position_message ~source, []))
 
 let expand_artifact ~source t a s =
   match t.lookup_artifacts with
@@ -137,7 +151,7 @@ let expand_artifact ~source t a s =
     let does_not_exist ~loc ~what name =
       User_error.raise ~loc [ Pp.textf "%s %s does not exist." what name ]
     in
-    let artifacts = lookup ~dir in
+    let* artifacts = Action_builder.memo_build (lookup ~dir) in
     match a with
     | Pform.Artifact.Mod kind -> (
       let name =
@@ -172,10 +186,10 @@ let expand_artifact ~source t a s =
                Value.Path fn))))
 
 let cc t =
-  let cc = t.foreign_flags ~dir:t.dir in
-  Foreign_language.Dict.map cc ~f:(fun cc ->
-      let+ flags = cc in
-      strings (t.c_compiler :: flags))
+  Memo.Build.map (t.foreign_flags ~dir:t.dir) ~f:(fun cc ->
+      Foreign_language.Dict.map cc ~f:(fun cc ->
+          let+ flags = cc in
+          strings (t.c_compiler :: flags)))
 
 let get_prog = function
   | Ok p -> path p
@@ -201,20 +215,20 @@ let[@inline never] invalid_use_of_target_variable t
   | Nothing_special
   | Deps_like_field ->
     isn't_allowed_in_this_position ~source
+  | User_action_without_targets { what } ->
+    User_error.raise ~loc:source.loc
+      [ Pp.textf "You cannot use %s in %s."
+          (Dune_lang.Template.Pform.describe source)
+          what
+      ]
   | User_action targets -> (
     match targets with
-    | Targets Infer ->
+    | Infer ->
       User_error.raise ~loc:source.loc
         [ Pp.textf "You cannot use %s with inferred rules."
             (Dune_lang.Template.Pform.describe source)
         ]
-    | Forbidden context ->
-      User_error.raise ~loc:source.loc
-        [ Pp.textf "You cannot use %s in %s."
-            (Dune_lang.Template.Pform.describe source)
-            context
-        ]
-    | Targets (Static { targets = _; multiplicity }) ->
+    | Static { targets = _; multiplicity } ->
       assert (multiplicity <> var_multiplicity);
       Targets.Multiplicity.check_variable_matches_field ~loc:source.loc
         ~field:multiplicity ~variable:var_multiplicity;
@@ -255,13 +269,13 @@ let expand_pform_gen ~(context : Context.t) ~bindings ~dir ~source
       | Ocamlc -> static (path context.ocamlc)
       | Ocamlopt -> static (get_prog context.ocamlopt)
       | Make ->
-        static
-          (match context.which "make" with
-          | None ->
-            Utils.program_not_found ~context:context.name
-              ~loc:(Some (Dune_lang.Template.Pform.loc source))
-              "make"
-          | Some p -> path p)
+        Direct
+          (Action_builder.memo_build (context.which "make") >>| function
+           | None ->
+             Utils.program_not_found ~context:context.name
+               ~loc:(Some (Dune_lang.Template.Pform.loc source))
+               "make"
+           | Some p -> path p)
       | Cpp -> static (strings (c_compiler_and_flags context @ [ "-E" ]))
       | Pa_cpp ->
         static
@@ -307,8 +321,16 @@ let expand_pform_gen ~(context : Context.t) ~bindings ~dir ~source
           (fun t ->
             Action_builder.return
               [ Value.Dir (Path.build (Scope.root t.scope)) ])
-      | Cc -> Need_full_expander (fun t -> (cc t).c)
-      | Cxx -> Need_full_expander (fun t -> (cc t).cxx)
+      | Cc ->
+        Need_full_expander
+          (fun t ->
+            let* cc = Action_builder.memo_build (cc t) in
+            cc.c)
+      | Cxx ->
+        Need_full_expander
+          (fun t ->
+            let* cc = Action_builder.memo_build (cc t) in
+            cc.cxx)
       | Ccomp_type ->
         static
           (string
@@ -354,9 +376,8 @@ let expand_pform_gen ~(context : Context.t) ~bindings ~dir ~source
         Need_full_expander
           (fun t ->
             if t.artifacts_dynamic then
-              Action_builder.Expert.action_builder
-                (Action_builder.delayed (fun () ->
-                     expand_artifact ~source t a s))
+              let* () = Action_builder.return () in
+              expand_artifact ~source t a s
             else
               expand_artifact ~source t a s)
       | Path_no_dep ->
@@ -369,11 +390,13 @@ let expand_pform_gen ~(context : Context.t) ~bindings ~dir ~source
       | Bin ->
         Need_full_expander
           (fun t ->
-            dep
-              (Artifacts.Bin.binary
-                 ~loc:(Some (Dune_lang.Template.Pform.loc source))
-                 t.bin_artifacts_host s
-              |> Action.Prog.ok_exn))
+            let* prog =
+              Action_builder.memo_build
+                (Artifacts.Bin.binary
+                   ~loc:(Some (Dune_lang.Template.Pform.loc source))
+                   t.bin_artifacts_host s)
+            in
+            dep (Action.Prog.ok_exn prog))
       | Lib { lib_exec; lib_private } ->
         Need_full_expander
           (fun t ->
@@ -391,9 +414,9 @@ let expand_pform_gen ~(context : Context.t) ~bindings ~dir ~source
               else
                 t.scope
             in
-            match
+            let p =
+              let open Resolve.O in
               if lib_private then
-                let open Result.O in
                 let* lib =
                   Lib.DB.resolve (Scope.libs scope)
                     (Dune_lang.Template.Pform.loc source, lib)
@@ -406,30 +429,28 @@ let expand_pform_gen ~(context : Context.t) ~bindings ~dir ~source
                   Option.equal Dune_project.equal (Some current_project)
                     referenced_project
                 then
-                  Ok (Path.relative (Lib_info.src_dir (Lib.info lib)) file)
+                  Resolve.return
+                    (Path.relative (Lib_info.src_dir (Lib.info lib)) file)
                 else
-                  Error
-                    (User_error.E
-                       (User_error.make
-                          ~loc:(Dune_lang.Template.Pform.loc source)
-                          [ Pp.textf
-                              "The variable \"lib%s-private\" can only refer \
-                               to libraries within the same project. The \
-                               current project's name is %S, but the reference \
-                               is to %s."
-                              (if lib_exec then
-                                "exec"
-                              else
-                                "")
-                              (Dune_project.Name.to_string_hum
-                                 (Dune_project.name current_project))
-                              (match referenced_project with
-                              | None -> "an external library"
-                              | Some project ->
-                                Dune_project.name project
-                                |> Dune_project.Name.to_string_hum
-                                |> String.quoted)
-                          ]))
+                  Resolve.fail
+                    (User_error.make
+                       ~loc:(Dune_lang.Template.Pform.loc source)
+                       [ Pp.textf
+                           "The variable \"lib%s-private\" can only refer to \
+                            libraries within the same project. The current \
+                            project's name is %S, but the reference is to %s."
+                           (if lib_exec then
+                             "exec"
+                           else
+                             "")
+                           (Dune_project.Name.to_string_hum
+                              (Dune_project.name current_project))
+                           (match referenced_project with
+                           | None -> "an external library"
+                           | Some project ->
+                             Dune_project.name project
+                             |> Dune_project.Name.to_string_hum |> String.quoted)
+                       ])
               else
                 let artifacts =
                   if lib_exec then
@@ -440,7 +461,8 @@ let expand_pform_gen ~(context : Context.t) ~bindings ~dir ~source
                 Artifacts.Public_libs.file_of_lib artifacts
                   ~loc:(Dune_lang.Template.Pform.loc source)
                   ~lib ~file
-            with
+            in
+            match Resolve.peek p with
             | Ok p ->
               if
                 (not lib_exec) || (not Sys.win32)
@@ -451,27 +473,28 @@ let expand_pform_gen ~(context : Context.t) ~bindings ~dir ~source
                 let p_exe = Path.extend_basename p ~suffix:".exe" in
                 Action_builder.if_file_exists p_exe ~then_:(dep p_exe)
                   ~else_:(dep p)
-            | Error e ->
-              raise
-                (match lib_private with
-                | true -> e
-                | false ->
-                  if Lib.DB.available (Scope.libs scope) lib then
-                    User_error.E
-                      (User_error.make
-                         ~loc:(Dune_lang.Template.Pform.loc source)
-                         [ Pp.textf
-                             "The library %S is not public. The variable \
-                              \"lib%s\" expands to the file's installation \
-                              path which is not defined for private libraries."
-                             (Lib_name.to_string lib)
-                             (if lib_exec then
-                               "exec"
-                             else
-                               "")
-                         ])
-                  else
-                    e))
+            | Error () ->
+              let p =
+                let open Resolve.O in
+                if lib_private || not (Lib.DB.available (Scope.libs scope) lib)
+                then
+                  p >>| fun _ -> assert false
+                else
+                  Resolve.fail
+                    (User_error.make
+                       ~loc:(Dune_lang.Template.Pform.loc source)
+                       [ Pp.textf
+                           "The library %S is not public. The variable \
+                            \"lib%s\" expands to the file's installation path \
+                            which is not defined for private libraries."
+                           (Lib_name.to_string lib)
+                           (if lib_exec then
+                             "exec"
+                           else
+                             "")
+                       ])
+              in
+              Resolve.read p)
       | Lib_available ->
         Need_full_expander
           (fun t ->

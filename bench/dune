@@ -1,4 +1,10 @@
 (executable
- (name main)
- (modules main)
- (libraries dune_bench core_bench.inline_benchmarks))
+ (name bench)
+ (public_name dune_bench)
+ (package dune-bench)
+ (libraries dune_stats chrome_trace stdune fiber dune_engine dune_util))
+
+(rule
+ (alias bench)
+ (action
+  (run ./bench.exe %{bin:dune})))

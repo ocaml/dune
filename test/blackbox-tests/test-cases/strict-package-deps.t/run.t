@@ -19,6 +19,8 @@ the package dependencies inferred by dune:
   $ dune build @install
   Error: Package foo is missing the following package dependencies
   - bar
+  -> required by _build/default/foo.install
+  -> required by alias install
   [1]
 
   $ cat >foo/dune <<EOF
@@ -27,6 +29,8 @@ the package dependencies inferred by dune:
   $ dune build @install
   Error: Package foo is missing the following package dependencies
   - bar
+  -> required by _build/default/foo.install
+  -> required by alias install
   [1]
   $ cd ..
 
@@ -50,4 +54,6 @@ transitive deps.
   $ dune build @install
   Error: Package foo is missing the following package dependencies
   - baz
+  -> required by _build/default/foo.install
+  -> required by alias install
   [1]

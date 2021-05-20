@@ -1,56 +1,63 @@
 open Stdune
 open Import
 
-let make_setup common =
-  let rpc = Common.rpc common in
-  let build_mutex = Option.map rpc ~f:Dune_rpc_impl.Server.build_mutex in
-  Import.Main.setup ?build_mutex common
+let run_build_system ~common ~(targets : unit -> Target.t list Memo.Build.t) =
+  let build_started = Unix.gettimeofday () in
+  Fiber.finalize
+    (fun () ->
+      Build_system.run (fun () ->
+          let open Memo.Build.O in
+          let* targets = targets () in
+          Build_system.build (Target.request targets)))
+    ~finally:(fun () ->
+      (if Common.print_metrics common then
+        let gc_stat = Gc.quick_stat () in
+        Console.print_user_message
+          (User_message.make
+             [ Pp.textf "%s" (Memo.Perf_counters.report_for_current_run ())
+             ; Pp.textf "(%.2f sec, %d heap words)"
+                 (Unix.gettimeofday () -. build_started)
+                 gc_stat.heap_words
+             ]));
+      Fiber.return ())
 
-let run_build_command_poll ~(common : Common.t) ~targets ~setup =
+let run_build_command_poll ~(common : Common.t) ~config ~targets ~setup =
   let open Fiber.O in
-  let once () =
+  let every () =
     Cached_digest.invalidate_cached_timestamps ();
-    let* setup = Memo.Build.run (setup ()) in
-    match
+    let* setup = setup () in
+    let* targets =
       match
         let open Option.O in
         let* rpc = Common.rpc common in
         Dune_rpc_impl.Server.pending_build_action rpc
       with
-      | None -> `Build (targets setup, None)
-      | Some Shutdown -> `Shutdown
+      | None -> Fiber.return (fun () -> targets setup)
       | Some (Build (targets, ivar)) ->
-        `Build (Target.resolve_targets_exn common setup targets, Some ivar)
-    with
-    | `Shutdown -> Fiber.return `Stop
-    | `Build (targets, ivar) ->
-      let* () =
-        match ivar with
-        | None -> Fiber.return ()
-        | Some ivar -> Fiber.Ivar.fill ivar Accepted
-      in
-      let+ () = Memo.Build.run (do_build targets) in
-      `Continue
+        let+ () = Fiber.Ivar.fill ivar Accepted in
+        fun () ->
+          Target.resolve_targets_exn (Common.root common) config setup targets
+    in
+    let+ () = run_build_system ~common ~targets in
+    `Continue
   in
-  Scheduler.poll ~common ~once ~finally:Hooks.End_of_build.run
+  Scheduler.poll ~common ~config ~every ~finally:Hooks.End_of_build.run
 
-let run_build_command_once ~(common : Common.t) ~targets ~setup =
+let run_build_command_once ~(common : Common.t) ~config ~targets ~setup =
+  let open Fiber.O in
   let once () =
-    let open Fiber.O in
-    let* setup = Memo.Build.run (setup ()) in
-    let targets = targets setup in
-    Memo.Build.run (do_build targets)
+    let* setup = setup () in
+    run_build_system ~common ~targets:(fun () -> targets setup)
   in
-  Scheduler.go ~common once
+  Scheduler.go ~common ~config once
 
-let run_build_command ~(common : Common.t) ~targets =
-  let setup () = make_setup common in
+let run_build_command ~(common : Common.t) ~config ~targets =
+  let setup () = Import.Main.setup () in
   (if Common.watch common then
     run_build_command_poll
   else
     run_build_command_once)
-    ~setup ~common ~targets;
-  Build_system.cache_teardown ()
+    ~setup ~common ~config ~targets
 
 let runtest =
   let doc = "Run tests." in
@@ -72,15 +79,16 @@ let runtest =
   let term =
     let+ common = Common.term
     and+ dirs = Arg.(value & pos_all string [ "." ] name_) in
-    Common.set_common common;
+    let config = Common.init common in
     let targets (setup : Import.Main.build_system) =
-      List.map dirs ~f:(fun dir ->
-          let dir = Path.(relative root) (Common.prefix_target common dir) in
-          Target.Alias
-            (Alias.in_dir ~name:Dune_engine.Alias.Name.runtest ~recursive:true
-               ~contexts:setup.workspace.contexts dir))
+      Memo.Build.return
+      @@ List.map dirs ~f:(fun dir ->
+             let dir = Path.(relative root) (Common.prefix_target common dir) in
+             Target.Alias
+               (Alias.in_dir ~name:Dune_engine.Alias.Name.runtest
+                  ~recursive:true ~contexts:setup.contexts dir))
     in
-    run_build_command ~common ~targets
+    run_build_command ~common ~config ~targets
   in
   (term, Term.info "runtest" ~doc ~man)
 
@@ -112,8 +120,10 @@ let build =
       | [] -> [ Common.default_target common ]
       | _ :: _ -> targets
     in
-    Common.set_common common;
-    let targets setup = Target.resolve_targets_exn common setup targets in
-    run_build_command ~common ~targets
+    let config = Common.init common in
+    let targets setup =
+      Target.resolve_targets_exn (Common.root common) config setup targets
+    in
+    run_build_command ~common ~config ~targets
   in
   (term, Term.info "build" ~doc ~man)

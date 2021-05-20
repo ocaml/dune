@@ -13,11 +13,11 @@ module type S = sig
 
   (** Create an instance of the sub-system *)
   val instantiate :
-       resolve:(Loc.t * Lib_name.t -> Lib.t Or_exn.t)
-    -> get:(loc:Loc.t -> Lib.t -> t option)
+       resolve:(Loc.t * Lib_name.t -> Lib.t Resolve.t)
+    -> get:(loc:Loc.t -> Lib.t -> t option Memo.Build.t)
     -> Lib.t
     -> Info.t
-    -> t
+    -> t Memo.Build.t
 end
 
 (** A backend, for implementors of the sub-system *)
@@ -37,26 +37,23 @@ module type Backend = sig
   (** Return the processed information. This is what is serialised in
       [dune-package] files. Typically, it should be the original info with the
       private library names replaced by public ones. *)
-  val public_info : t -> Info.t Or_exn.t
+  val public_info : t -> Info.t Resolve.t
 end
 
 module type Registered_backend = sig
   type t
 
-  val get : Lib.t -> t option
+  val get : Lib.t -> t option Memo.Build.t
 
   (** Resolve a backend name *)
-  val resolve : Lib.DB.t -> Loc.t * Lib_name.t -> t Or_exn.t
+  val resolve : Lib.DB.t -> Loc.t * Lib_name.t -> t Resolve.t Memo.Build.t
 
   module Selection_error : sig
     type nonrec t =
       | Too_many_backends of t list
       | No_backend_found
-      | Other of exn
 
-    val to_exn : t -> loc:Loc.t -> exn
-
-    val or_exn : ('a, t) result -> loc:Loc.t -> 'a Or_exn.t
+    val to_lib_resolve : ('a, t) result -> loc:Loc.t -> 'a Resolve.t
   end
 
   (** Choose a backend by either using the ones written by the user or by
@@ -67,9 +64,9 @@ module type Registered_backend = sig
       them is in the transitive closure of the other one. *)
   val select_extensible_backends :
        ?written_by_user:t list
-    -> extends:(t -> t list Or_exn.t)
+    -> extends:(t -> t list Resolve.t)
     -> Lib.t list
-    -> (t list, Selection_error.t) result
+    -> (t list, Selection_error.t) result Resolve.t Memo.Build.t
 
   (** Choose a backend by either using the ones written by the user or by
       scanning the dependencies.
@@ -77,9 +74,9 @@ module type Registered_backend = sig
       A backend can replace other backends *)
   val select_replaceable_backend :
        ?written_by_user:t list
-    -> replaces:(t -> t list Or_exn.t)
+    -> replaces:(t -> t list Resolve.t)
     -> Lib.t list
-    -> (t, Selection_error.t) result
+    -> (t, Selection_error.t) result Resolve.t Memo.Build.t
 end
 
 (* This is probably what we'll give to plugins *)
@@ -100,7 +97,7 @@ module type End_point = sig
     include Registered_backend
 
     (** Backends that this backends extends *)
-    val extends : t -> t list Or_exn.t
+    val extends : t -> t list Resolve.t
   end
 
   module Info : sig
@@ -114,5 +111,5 @@ module type End_point = sig
        Library_compilation_context.t
     -> info:Info.t
     -> backends:Backend.t list
-    -> unit
+    -> unit Memo.Build.t
 end

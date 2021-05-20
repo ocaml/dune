@@ -39,8 +39,6 @@ val singleton_exe : Module.t -> t
 
 val fold_no_vlib : t -> init:'acc -> f:(Module.t -> 'acc -> 'acc) -> 'acc
 
-val iter_no_vlib : t -> f:(Module.t -> unit) -> unit
-
 val exe_unwrapped : Module.Name_map.t -> t
 
 val exe_wrapped : src_dir:Path.Build.t -> modules:Module.Name_map.t -> t
@@ -54,7 +52,8 @@ val for_alias : t -> Module.Name_map.t
 
 val fold_user_written : t -> f:(Module.t -> 'acc -> 'acc) -> init:'acc -> 'acc
 
-val map_user_written : t -> f:(Module.t -> Module.t) -> t
+val map_user_written :
+  t -> f:(Module.t -> Module.t Memo.Build.t) -> t Memo.Build.t
 
 (** Returns all the compatibility modules. *)
 val wrapped_compat : t -> Module.Name_map.t
@@ -67,6 +66,11 @@ module Sourced_module : sig
 end
 
 val obj_map : t -> f:(Sourced_module.t -> 'a) -> 'a Module.Obj_map.t
+
+val obj_map_build :
+     t
+  -> f:(Sourced_module.t -> 'a Memo.Build.t)
+  -> 'a Module.Obj_map.t Memo.Build.t
 
 (** List of entry modules visible to users of the library. For wrapped
     libraries, this is always one module. For unwrapped libraries, this could be

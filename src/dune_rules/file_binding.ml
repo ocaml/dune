@@ -45,6 +45,29 @@ module Unexpanded = struct
     Install.Entry.adjust_dst ~section ~src:(expand_partial t.src) ~dst
 
   let expand t ~dir ~f =
+    let open Memo.Build.O in
+    let f sw =
+      let+ f = f sw in
+      (String_with_vars.loc sw, f)
+    in
+    let* src =
+      let+ loc, expanded = f t.src in
+      (loc, Path.Build.relative dir expanded)
+    in
+    let+ dst =
+      match t.dst with
+      | None -> Memo.Build.return None
+      | Some dst ->
+        let+ loc, p = f dst in
+        Some (loc, p)
+    in
+    { src; dst }
+
+  (* CR-someday amokhov: The function below is almost the same as [expand] but
+     factoring out the common functionality might make it more complicated, so
+     I'm not doing this for now. This function has only one remaining use site
+     and is likely to disappear with further "monadification". *)
+  let expand_static t ~dir ~f =
     let f sw = (String_with_vars.loc sw, f sw) in
     let src =
       let loc, expanded = f t.src in

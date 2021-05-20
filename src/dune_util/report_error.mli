@@ -8,14 +8,8 @@ open Stdune
     keep a cache of reported errors and ignore errors that have already been
     reported.
 
-    We cache what is actually printed to the screen.
-
-    [extra] is the extra material that is printed between the backtrace and the
-    hint. *)
-val report :
-     ?extra:(Loc.t option -> User_message.Style.t Pp.t option)
-  -> Exn_with_backtrace.t
-  -> unit
+    We cache what is actually printed to the screen. *)
+val report : Exn_with_backtrace.t -> unit
 
 val report_backtraces : bool -> unit
 
@@ -24,9 +18,5 @@ val report_backtraces : bool -> unit
     has already failed. *)
 exception Already_reported
 
-(** Clear the list of already reported errors. *)
-val clear_reported : unit -> unit
-
-(**/**)
-
-val ppf : Format.formatter
+(** Print the memo stacks of errors. *)
+val print_memo_stacks : bool ref

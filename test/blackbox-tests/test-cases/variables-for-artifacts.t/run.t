@@ -227,6 +227,9 @@ of a (rule).
 The following (failing) test shows that the variables cannot yet be used in the (deps)
 field of a (rule).
 
+TODO30: this test is no longer failing. It should fail because
+%{cmo:...} wasn't allowed in the deps field in (lang dune <3.0).
+
   $ mkdir deps-fail
   $ echo "(lang dune 2.1)" > deps-fail/dune-project
   $ cat > deps-fail/dune << EOF
@@ -240,7 +243,7 @@ field of a (rule).
   File "dune", line 3, characters 7-16:
   3 |  (deps %{cmo:x2})
              ^^^^^^^^^
-  Error: %{cmo:..} isn't allowed in this position.
+  Error: Module X2 does not exist.
   [1]
 
 The above restriction also applies to other stanzas. Any stanzas that introduces

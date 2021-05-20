@@ -49,7 +49,8 @@ Some errors:
   allowed and disallowed
   [1]
 
-When we don't pass [preserve_file_kind], the rules can observe the file kind changing based on sandbox mode chosen:
+When we don't pass [preserve_file_kind], the rules can observe the file kind
+changing based on sandbox mode chosen:
 
   $ rm -rf _build
   $ echo text-file > text-file
@@ -64,11 +65,31 @@ When we don't pass [preserve_file_kind], the rules can observe the file kind cha
   $ cat _build/default/t | grep -Eo 'link|ASCII'
   ASCII
 
+  $ dune build t --sandbox copy
+  $ cat _build/default/t | grep -Eo 'link|ASCII'
+  ASCII
+
+  $ dune build t --sandbox hardlink
+  $ cat _build/default/t | grep -Eo 'link|ASCII'
+  ASCII
+
 When we pass [preserve_file_kind], the file type seen by the rule is preserved:
 
   $ true > dune
   $ echo '(rule (target t) (deps text-file (sandbox preserve_file_kind)) (action (with-stdout-to %{target} (run file -h text-file))))' >> dune
   $ dune build t --sandbox symlink
+  $ cat _build/default/t | grep -Eo 'link|ASCII'
+  ASCII
+
+  $ dune build t --sandbox none
+  $ cat _build/default/t | grep -Eo 'link|ASCII'
+  ASCII
+
+  $ dune build t --sandbox copy
+  $ cat _build/default/t | grep -Eo 'link|ASCII'
+  ASCII
+
+  $ dune build t --sandbox hardlink
   $ cat _build/default/t | grep -Eo 'link|ASCII'
   ASCII
 

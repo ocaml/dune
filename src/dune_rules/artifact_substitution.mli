@@ -21,14 +21,14 @@ type hardcoded_ocaml_path =
   | Relocatable of Path.t
 
 type conf = private
-  { get_vcs : Path.Source.t -> Vcs.t option
+  { get_vcs : Path.Source.t -> Vcs.t option Memo.Build.t
   ; get_location : Section.t -> Package.Name.t -> Path.t
   ; get_config_path : configpath -> Path.t option
   ; hardcoded_ocaml_path : hardcoded_ocaml_path
         (** Initial prefix of installation when relocatable chosen *)
   }
 
-val conf_of_context : Build_context.t option -> conf
+val conf_of_context : Context.t option -> conf
 
 val conf_for_install :
      relocatable:bool

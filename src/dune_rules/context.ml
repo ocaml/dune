@@ -36,14 +36,6 @@ end
 module Program = struct
   module Name = String
 
-  module Which_path = struct
-    type t = Path.t option
-
-    let equal = Option.equal Path.equal
-
-    let to_dyn = Dyn.Encoder.option Path.to_dyn
-  end
-
   let programs_for_which_we_prefer_opt_ext =
     [ "ocamlc"; "ocamldep"; "ocamlmklib"; "ocamlobjinfo"; "ocamlopt" ]
 
@@ -64,82 +56,77 @@ module Program = struct
     List.find_map path ~f:(fun dir -> best_path dir program)
 end
 
-module T = struct
-  type t =
-    { name : Context_name.t
-    ; kind : Kind.t
-    ; profile : Profile.t
-    ; merlin : bool
-    ; fdo_target_exe : Path.t option
-    ; dynamically_linked_foreign_archives : bool
-    ; for_host : t option
-    ; implicit : bool
-    ; build_dir : Path.Build.t
-    ; env_nodes : Env_nodes.t
-    ; path : Path.t list
-    ; toplevel_path : Path.t option
-    ; ocaml_bin : Path.t
-    ; ocaml : Action.Prog.t
-    ; ocamlc : Path.t
-    ; ocamlopt : Action.Prog.t
-    ; ocamldep : Action.Prog.t
-    ; ocamlmklib : Action.Prog.t
-    ; ocamlobjinfo : Action.Prog.t
-    ; env : Env.t
-    ; findlib : Findlib.t
-    ; findlib_toolchain : Context_name.t option
-    ; default_ocamlpath : Path.t list
-    ; arch_sixtyfour : bool
-    ; ocaml_config : Ocaml_config.t
-    ; ocaml_config_vars : Ocaml_config.Vars.t
-    ; version : Ocaml_version.t
-    ; stdlib_dir : Path.t
-    ; supports_shared_libraries : Dynlink_supported.By_the_os.t
-    ; which : string -> Path.t option
-    ; lib_config : Lib_config.t
-    ; build_context : Build_context.t
-    }
+type t =
+  { name : Context_name.t
+  ; kind : Kind.t
+  ; profile : Profile.t
+  ; merlin : bool
+  ; fdo_target_exe : Path.t option
+  ; dynamically_linked_foreign_archives : bool
+  ; for_host : t option
+  ; implicit : bool
+  ; build_dir : Path.Build.t
+  ; env_nodes : Env_nodes.t
+  ; path : Path.t list
+  ; toplevel_path : Path.t option
+  ; ocaml_bin : Path.t
+  ; ocaml : Action.Prog.t
+  ; ocamlc : Path.t
+  ; ocamlopt : Action.Prog.t
+  ; ocamldep : Action.Prog.t
+  ; ocamlmklib : Action.Prog.t
+  ; ocamlobjinfo : Action.Prog.t
+  ; env : Env.t
+  ; findlib : Findlib.t
+  ; findlib_toolchain : Context_name.t option
+  ; default_ocamlpath : Path.t list
+  ; arch_sixtyfour : bool
+  ; ocaml_config : Ocaml_config.t
+  ; ocaml_config_vars : Ocaml_config.Vars.t
+  ; version : Ocaml_version.t
+  ; stdlib_dir : Path.t
+  ; supports_shared_libraries : Dynlink_supported.By_the_os.t
+  ; which : string -> Path.t option Memo.Build.t
+  ; lib_config : Lib_config.t
+  ; build_context : Build_context.t
+  }
 
-  let equal x y = Context_name.equal x.name y.name
+let equal x y = Context_name.equal x.name y.name
 
-  let hash t = Context_name.hash t.name
+let hash t = Context_name.hash t.name
 
-  let build_context t = t.build_context
+let build_context t = t.build_context
 
-  let to_dyn t : Dyn.t =
-    let open Dyn.Encoder in
-    let path = Path.to_dyn in
-    record
-      [ ("name", Context_name.to_dyn t.name)
-      ; ("kind", Kind.to_dyn t.kind)
-      ; ("profile", Profile.to_dyn t.profile)
-      ; ("merlin", Bool t.merlin)
-      ; ( "for_host"
-        , option Context_name.to_dyn
-            (Option.map t.for_host ~f:(fun t -> t.name)) )
-      ; ("fdo_target_exe", option path t.fdo_target_exe)
-      ; ("build_dir", Path.Build.to_dyn t.build_dir)
-      ; ("toplevel_path", option path t.toplevel_path)
-      ; ("ocaml_bin", path t.ocaml_bin)
-      ; ("ocaml", Action.Prog.to_dyn t.ocaml)
-      ; ("ocamlc", path t.ocamlc)
-      ; ("ocamlopt", Action.Prog.to_dyn t.ocamlopt)
-      ; ("ocamldep", Action.Prog.to_dyn t.ocamldep)
-      ; ("ocamlmklib", Action.Prog.to_dyn t.ocamlmklib)
-      ; ("env", Env.to_dyn (Env.diff t.env Env.initial))
-      ; ("findlib_path", list path (Findlib.paths t.findlib))
-      ; ("arch_sixtyfour", Bool t.arch_sixtyfour)
-      ; ( "natdynlink_supported"
-        , Bool
-            (Dynlink_supported.By_the_os.get t.lib_config.natdynlink_supported)
-        )
-      ; ( "supports_shared_libraries"
-        , Bool (Dynlink_supported.By_the_os.get t.supports_shared_libraries) )
-      ; ("ocaml_config", Ocaml_config.to_dyn t.ocaml_config)
-      ]
-end
-
-include T
+let to_dyn t : Dyn.t =
+  let open Dyn.Encoder in
+  let path = Path.to_dyn in
+  record
+    [ ("name", Context_name.to_dyn t.name)
+    ; ("kind", Kind.to_dyn t.kind)
+    ; ("profile", Profile.to_dyn t.profile)
+    ; ("merlin", Bool t.merlin)
+    ; ( "for_host"
+      , option Context_name.to_dyn (Option.map t.for_host ~f:(fun t -> t.name))
+      )
+    ; ("fdo_target_exe", option path t.fdo_target_exe)
+    ; ("build_dir", Path.Build.to_dyn t.build_dir)
+    ; ("toplevel_path", option path t.toplevel_path)
+    ; ("ocaml_bin", path t.ocaml_bin)
+    ; ("ocaml", Action.Prog.to_dyn t.ocaml)
+    ; ("ocamlc", path t.ocamlc)
+    ; ("ocamlopt", Action.Prog.to_dyn t.ocamlopt)
+    ; ("ocamldep", Action.Prog.to_dyn t.ocamldep)
+    ; ("ocamlmklib", Action.Prog.to_dyn t.ocamlmklib)
+    ; ("env", Env.to_dyn (Env.diff t.env Env.initial))
+    ; ("findlib_path", list path (Findlib.paths t.findlib))
+    ; ("arch_sixtyfour", Bool t.arch_sixtyfour)
+    ; ( "natdynlink_supported"
+      , Bool (Dynlink_supported.By_the_os.get t.lib_config.natdynlink_supported)
+      )
+    ; ( "supports_shared_libraries"
+      , Bool (Dynlink_supported.By_the_os.get t.supports_shared_libraries) )
+    ; ("ocaml_config", Ocaml_config.to_dyn t.ocaml_config)
+    ]
 
 let to_dyn_concise t : Dyn.t = Context_name.to_dyn t.name
 
@@ -157,12 +144,12 @@ module Opam : sig
   val opam_binary_exn : unit -> Path.t Memo.Build.t
 end = struct
   let opam =
-    Memo.Lazy.Async.create (fun () ->
+    Memo.Lazy.create (fun () ->
         match Bin.which ~path:(Env.path Env.initial) "opam" with
         | None -> Utils.program_not_found "opam" ~loc:None
         | Some opam -> (
           let+ version =
-            Memo.Build.of_fiber
+            Memo.Build.of_reproducible_fiber
               (Process.run_capture_line Strict opam
                  [ "--version"; "--color=never" ])
           in
@@ -184,7 +171,7 @@ end = struct
               ; Pp.verbatim version
               ]))
 
-  let opam_binary_exn () = Memo.Lazy.Async.force opam
+  let opam_binary_exn () = Memo.Lazy.force opam
 
   let env =
     let impl (env, root, switch) =
@@ -199,7 +186,8 @@ end = struct
           ]
       in
       let+ s =
-        Memo.Build.of_fiber (Process.run_capture ~env Strict opam args)
+        Memo.Build.of_reproducible_fiber
+          (Process.run_capture ~env Strict opam args)
       in
       Dune_lang.Parser.parse_string ~fname:"<opam output>" ~mode:Single s
       |> Dune_lang.Decoder.(
@@ -235,7 +223,7 @@ end = struct
         Dyn.Tuple
           [ Env.to_dyn env; Dyn.Encoder.(option string root); String switch ]
     end in
-    let memo = Memo.create_hidden "opam-env" ~input:(module Input) Async impl in
+    let memo = Memo.create "opam-env" ~input:(module Input) impl in
     fun ~env ~root ~switch -> Memo.exec memo (env, root, switch)
 end
 
@@ -287,7 +275,8 @@ let ocamlfind_printconf_path ~env ~ocamlfind ~toolchain =
     | Some s -> "-toolchain" :: Context_name.to_string s :: args
   in
   let+ l =
-    Memo.Build.of_fiber (Process.run_capture_lines ~env Strict ocamlfind args)
+    Memo.Build.of_reproducible_fiber
+      (Process.run_capture_lines ~env Strict ocamlfind args)
   in
   List.map l ~f:Path.of_filename_relative_to_initial_cwd
 
@@ -322,46 +311,6 @@ let check_fdo_support has_native ocfg ~name =
             version_string
         ]
 
-(* We store this so that library such as dune-configurator can read things
-   runtime. Ideally, this should be created on-demand if we run a program linked
-   against configurator, however we currently don't support this kind of
-   "runtime dependencies" so we just do it eagerly. *)
-let write_dot_dune_dir ~build_dir ~ocamlc ~ocaml_config_vars =
-  let dir = Path.build (Path.Build.relative build_dir ".dune") in
-  Path.rm_rf dir;
-  Path.mkdir_p dir;
-  let ocamlc = Path.to_absolute_filename ocamlc in
-  let ocaml_config_vars = Ocaml_config.Vars.to_list ocaml_config_vars in
-  let () =
-    let open Dune_lang.Encoder in
-    Io.write_lines
-      (Path.relative dir "configurator")
-      (List.map ~f:Dune_lang.to_string
-         (record_fields
-            [ field "ocamlc" string ocamlc
-            ; field_l "ocaml_config_vars" (pair string string) ocaml_config_vars
-            ]))
-  in
-  let () =
-    let csexp =
-      let open Sexp in
-      let ocaml_config_vars =
-        Sexp.List
-          (List.map ocaml_config_vars ~f:(fun (k, v) -> List [ Atom k; Atom v ]))
-      in
-      List
-        [ List [ Atom "ocamlc"; Atom ocamlc ]
-        ; List [ Atom "ocaml_config_vars"; ocaml_config_vars ]
-        ]
-    in
-    let path = Path.relative dir "configurator.v2" in
-    Io.write_file path (Csexp.to_string csexp)
-  in
-  ()
-
-let init_configurator { build_dir; ocamlc; ocaml_config_vars; _ } =
-  write_dot_dune_dir ~build_dir ~ocamlc ~ocaml_config_vars
-
 let create ~(kind : Kind.t) ~path ~env ~env_nodes ~name ~merlin ~targets
     ~host_context ~host_toolchain ~profile ~fdo_target_exe
     ~dynamically_linked_foreign_archives ~instrument_with =
@@ -372,18 +321,18 @@ let create ~(kind : Kind.t) ~path ~env ~env_nodes ~name ~merlin ~targets
     Memo.create
       (sprintf "which-memo-for-%s" (Context_name.to_string name))
       ~input:(module Program.Name)
-      ~output:(Allow_cutoff (module Program.Which_path))
-      ~visibility:Hidden Sync (Program.which ~path)
+      ~cutoff:(Option.equal Path.equal)
+      (fun p -> Memo.Build.return (Program.which ~path p))
   in
   let which = Memo.exec which_memo in
   let which_exn x =
-    match which x with
+    which x >>| function
     | None -> prog_not_found_in_path x
     | Some x -> x
   in
   let findlib_config_path =
-    Memo.lazy_async ~cutoff:Path.equal (fun () ->
-        let fn = which_exn "ocamlfind" in
+    Memo.lazy_ ~cutoff:Path.equal (fun () ->
+        let* fn = which_exn "ocamlfind" in
         (* When OCAMLFIND_CONF is set, "ocamlfind printconf" does print the
            contents of the variable, but "ocamlfind printconf conf" still prints
            the configuration file set at the configuration time of ocamlfind,
@@ -391,7 +340,7 @@ let create ~(kind : Kind.t) ~path ~env ~env_nodes ~name ~merlin ~targets
         (match Env.get env "OCAMLFIND_CONF" with
         | Some s -> Memo.Build.return s
         | None ->
-          Memo.Build.of_fiber
+          Memo.Build.of_reproducible_fiber
             (Process.run_capture_line ~env Strict fn [ "printconf"; "conf" ]))
         >>| Path.of_filename_relative_to_initial_cwd)
   in
@@ -401,37 +350,40 @@ let create ~(kind : Kind.t) ~path ~env ~env_nodes ~name ~merlin ~targets
       match findlib_toolchain with
       | None -> Memo.Build.return None
       | Some toolchain ->
-        let+ path = Memo.Lazy.Async.force findlib_config_path in
+        let+ path = Memo.Lazy.force findlib_config_path in
         let toolchain = Context_name.to_string toolchain in
         let context = Context_name.to_string name in
         Some (Findlib.Config.load path ~toolchain ~context)
     in
     let get_tool_using_findlib_config prog =
-      let open Option.O in
-      let* conf = findlib_config in
-      let* s = Findlib.Config.get conf prog in
-      match Filename.analyze_program_name s with
-      | In_path -> which s
-      | Relative_to_current_dir ->
-        User_error.raise
-          [ Pp.textf
-              "The effective Findlib configuration specifies the relative path \
-               %S for the program %S. This is currently not supported."
-              s prog
-          ]
-      | Absolute -> Some (Path.of_filename_relative_to_initial_cwd s)
+      match
+        Option.bind findlib_config ~f:(fun conf -> Findlib.Config.get conf prog)
+      with
+      | None -> Memo.Build.return None
+      | Some s -> (
+        match Filename.analyze_program_name s with
+        | In_path -> which s
+        | Relative_to_current_dir ->
+          User_error.raise
+            [ Pp.textf
+                "The effective Findlib configuration specifies the relative \
+                 path %S for the program %S. This is currently not supported."
+                s prog
+            ]
+        | Absolute ->
+          Memo.Build.return (Some (Path.of_filename_relative_to_initial_cwd s)))
     in
-    let ocamlc =
-      match get_tool_using_findlib_config "ocamlc" with
-      | Some x -> x
+    let* ocamlc =
+      get_tool_using_findlib_config "ocamlc" >>= function
+      | Some x -> Memo.Build.return x
       | None -> (
-        match which "ocamlc" with
+        which "ocamlc" >>| function
         | Some x -> x
         | None -> prog_not_found_in_path "ocamlc")
     in
     let dir = Path.parent_exn ocamlc in
     let get_ocaml_tool prog =
-      match get_tool_using_findlib_config prog with
+      get_tool_using_findlib_config prog >>| function
       | Some x -> Ok x
       | None -> (
         match Program.best_path dir prog with
@@ -469,7 +421,7 @@ let create ~(kind : Kind.t) ~path ~env ~env_nodes ~name ~merlin ~targets
     let default_library_search_path () =
       match Build_environment_kind.query ~kind ~findlib_toolchain ~env with
       | Cross_compilation_using_findlib_toolchain toolchain ->
-        let ocamlfind = which_exn "ocamlfind" in
+        let* ocamlfind = which_exn "ocamlfind" in
         let env = Env.remove env ~var:"OCAMLPATH" in
         ocamlfind_printconf_path ~env ~ocamlfind ~toolchain:(Some toolchain)
       | Hardcoded_path l ->
@@ -496,7 +448,7 @@ let create ~(kind : Kind.t) ~path ~env ~env_nodes ~name ~merlin ~targets
     let* default_ocamlpath, (ocaml_config_vars, ocfg) =
       Memo.Build.fork_and_join default_library_search_path (fun () ->
           let+ lines =
-            Memo.Build.of_fiber
+            Memo.Build.of_reproducible_fiber
               (Process.run_capture_lines ~env Strict ocamlc [ "-config" ])
           in
           ocaml_config_ok_exn
@@ -576,7 +528,7 @@ let create ~(kind : Kind.t) ~path ~env ~env_nodes ~name ~merlin ~targets
     let stdlib_dir = Path.of_string (Ocaml_config.standard_library ocfg) in
     let natdynlink_supported = Ocaml_config.natdynlink_supported ocfg in
     let arch_sixtyfour = Ocaml_config.word_size ocfg = 64 in
-    let ocamlopt = get_ocaml_tool "ocamlopt" in
+    let* ocamlopt = get_ocaml_tool "ocamlopt" in
     let lib_config =
       { Lib_config.has_native = Result.is_ok ocamlopt
       ; ext_obj = Ocaml_config.ext_obj ocfg
@@ -599,13 +551,15 @@ let create ~(kind : Kind.t) ~path ~env ~env_nodes ~name ~merlin ~targets
     in
     if Option.is_some fdo_target_exe then
       check_fdo_support lib_config.has_native ocfg ~name;
-    let ocaml =
+    let* ocaml =
       let program = "ocaml" in
-      match which program with
+      which program >>| function
       | Some s -> Ok s
       | None ->
         Error (Action.Prog.Not_found.create ~context:name ~program ~loc:None ())
-    in
+    and* ocamldep = get_ocaml_tool "ocamldep"
+    and* ocamlmklib = get_ocaml_tool "ocamlmklib"
+    and* ocamlobjinfo = get_ocaml_tool "ocamlobjinfo" in
     let ocaml_bin = dir in
     let supports_shared_libraries =
       Ocaml_config.supports_shared_libraries ocfg
@@ -615,9 +569,7 @@ let create ~(kind : Kind.t) ~path ~env ~env_nodes ~name ~merlin ~targets
     in
     let t =
       let build_context =
-        Build_context.create ~name ~build_dir ~env ~stdlib_dir
-          ~default_ocamlpath
-          ~host:(Option.map host ~f:(fun c -> c.build_context))
+        Build_context.create ~name ~host:(Option.map host ~f:(fun c -> c.name))
       in
       { name
       ; implicit
@@ -638,9 +590,9 @@ let create ~(kind : Kind.t) ~path ~env ~env_nodes ~name ~merlin ~targets
       ; ocaml
       ; ocamlc
       ; ocamlopt
-      ; ocamldep = get_ocaml_tool "ocamldep"
-      ; ocamlmklib = get_ocaml_tool "ocamlmklib"
-      ; ocamlobjinfo = get_ocaml_tool "ocamlobjinfo"
+      ; ocamldep
+      ; ocamlmklib
+      ; ocamlobjinfo
       ; env
       ; findlib = Findlib.create ~paths:findlib_paths ~lib_config
       ; findlib_toolchain
@@ -740,18 +692,12 @@ let create_for_opam ~loc ~root ~env ~env_nodes ~targets ~profile ~switch ~name
     ~host_toolchain ~fdo_target_exe ~dynamically_linked_foreign_archives
     ~instrument_with
 
-module T_list = struct
-  type nonrec t = t list
-
-  let to_dyn = Dyn.Encoder.list to_dyn
-end
-
 module rec Instantiate : sig
   val instantiate : Context_name.t -> t list Memo.Build.t
 end = struct
   let instantiate_impl name : t list Memo.Build.t =
-    let env = Memo.Run.Fdecl.get Global.env in
-    let workspace = Workspace.workspace () in
+    let env = Global.env () in
+    let* workspace = Workspace.workspace () in
     let context =
       List.find_exn workspace.contexts ~f:(fun ctx ->
           Context_name.equal (Workspace.Context.name ctx) name)
@@ -784,6 +730,7 @@ end = struct
         ; fdo_target_exe
         ; dynamically_linked_foreign_archives
         ; instrument_with
+        ; merlin = _
         } ->
       let merlin =
         workspace.merlin_context = Some (Workspace.Context.name context)
@@ -813,10 +760,10 @@ end = struct
             ; fdo_target_exe
             ; dynamically_linked_foreign_archives
             ; instrument_with
+            ; merlin
             }
         ; switch
         ; root
-        ; merlin
         } ->
       let env = extend_paths ~env paths in
       create_for_opam ~loc ~root ~env_nodes ~env ~profile ~switch ~name ~merlin
@@ -824,58 +771,42 @@ end = struct
         ~dynamically_linked_foreign_archives ~instrument_with
 
   let memo =
-    Memo.create "instantiate-context" ~doc:"instantiate contexts"
+    Memo.create "instantiate-context"
       ~input:(module Context_name)
-      ~output:(Simple (module T_list))
-      ~visibility:Memo.Visibility.Hidden Async instantiate_impl
+      instantiate_impl
 
   let instantiate name = Memo.exec memo name
 end
 
-module Create = struct
-  let call () =
-    let workspace = Workspace.workspace () in
-    let+ contexts =
-      Memo.Build.parallel_map workspace.contexts ~f:(fun c ->
-          Instantiate.instantiate (Workspace.Context.name c))
-    in
-    List.concat contexts
-
-  let memo =
-    Memo.create "create-contexts" ~doc:"create contexts"
-      ~input:(module Unit)
-      ~output:(Simple (module T_list))
-      ~visibility:Memo.Visibility.Hidden Async call
-end
-
 module DB = struct
-  let all = Memo.exec Create.memo
+  let all =
+    let impl () =
+      let* workspace = Workspace.workspace () in
+      let+ contexts =
+        Memo.Build.parallel_map workspace.contexts ~f:(fun c ->
+            Instantiate.instantiate (Workspace.Context.name c))
+      in
+      let all = List.concat contexts in
+      List.iter all ~f:(fun t ->
+          let open Pp.O in
+          Log.info
+            [ Pp.box ~indent:1
+                (Pp.text "Dune context:" ++ Pp.cut ++ Dyn.pp (to_dyn t))
+            ]);
+      all
+    in
+    let memo = Memo.create "build-contexts" ~input:(module Unit) impl in
+    Memo.exec memo
 
   let get =
     let memo =
-      Memo.create "context-db-get" ~doc:"get context from db"
+      Memo.create "context-db-get"
         ~input:(module Context_name)
-        ~output:(Simple (module T))
-        ~visibility:Hidden Sync
         (fun name ->
-          (* CR-someday amokhov: Here we assume that [get] is called after the
-             asynchronously running function [Create.memo] has completed. It
-             would be better to statically guarantee the completion. Note that
-             moving this code into a fiber was ruled out because it would
-             require any functions that need the context to go inside the fiber
-             too. @rgrinberg and @diml decided that it would be too large and
-             possibly undesirable refactoring. Any other options? *)
-          let contexts = Memo.peek_exn Create.memo () in
+          let+ contexts = all () in
           List.find_exn contexts ~f:(fun c -> Context_name.equal name c.name))
     in
-    fun dir ->
-      match Path.Build.extract_build_context dir with
-      | None ->
-        Code_error.raise "Context.DB.get: invalid dir"
-          [ ("dir", Path.Build.to_dyn dir) ]
-      | Some (name, _) ->
-        let name = Context_name.of_string name in
-        Memo.exec memo name
+    Memo.exec memo
 end
 
 let install_ocaml_libdir t =
@@ -918,12 +849,76 @@ let map_exe (context : t) =
 let install_prefix t =
   let open Fiber.O in
   let* opam = Memo.Build.run (Opam.opam_binary_exn ()) in
-  Process.run_capture (Accept Predicate_lang.any) opam ~env:t.env
-    [ "config"; "var"; "prefix" ]
-  >>| function
-  | Ok s -> Path.of_filename_relative_to_initial_cwd (String.trim s)
-  | Error _ ->
-    (* jeremiedimino: we should probably be more strict here when we are running
-       in an opam environment. i.e. when [build_environment_kind.query] reports
-       [Opam2_environment]. *)
-    Path.parent_exn t.ocaml_bin
+  let+ s =
+    Process.run_capture Strict opam ~env:t.env [ "config"; "var"; "prefix" ]
+  in
+  Path.of_filename_relative_to_initial_cwd (String.trim s)
+
+let dot_dune_dir t = Path.Build.relative t.build_dir ".dune"
+
+let configurator_v1 t = Path.Build.relative (dot_dune_dir t) "configurator"
+
+let configurator_v2 t = Path.Build.relative (dot_dune_dir t) "configurator.v2"
+
+(* We store this so that library such as dune-configurator can read things
+   runtime. Ideally, this should be created on-demand if we run a program linked
+   against configurator, however we currently don't support this kind of
+   "runtime dependencies" so we just do it eagerly. *)
+let gen_configurator_rules t =
+  let ocamlc = Path.to_absolute_filename t.ocamlc in
+  let ocaml_config_vars = Ocaml_config.Vars.to_list t.ocaml_config_vars in
+  let* () =
+    let fn = configurator_v1 t in
+    Rules.Produce.rule
+      (Rule.make ~context:None
+         ~targets:(Path.Build.Set.singleton fn)
+         (let open Action_builder.O in
+         let+ () = Action_builder.return () in
+         { Action.Full.action =
+             Action.write_file fn
+               (List.map
+                  ~f:(fun x -> Dune_lang.to_string x ^ "\n")
+                  (let open Dune_lang.Encoder in
+                  record_fields
+                    [ field "ocamlc" string ocamlc
+                    ; field_l "ocaml_config_vars" (pair string string)
+                        ocaml_config_vars
+                    ])
+               |> String.concat ~sep:"")
+         ; env = Env.empty
+         ; locks = []
+         ; can_go_in_shared_cache = true
+         }))
+  in
+  let fn = configurator_v2 t in
+  Rules.Produce.rule
+    (Rule.make ~context:None
+       ~targets:(Path.Build.Set.singleton fn)
+       (let open Action_builder.O in
+       let+ () = Action_builder.return () in
+       { Action.Full.action =
+           Action.write_file fn
+             (Csexp.to_string
+                (let open Sexp in
+                let ocaml_config_vars =
+                  Sexp.List
+                    (List.map ocaml_config_vars ~f:(fun (k, v) ->
+                         List [ Atom k; Atom v ]))
+                in
+                List
+                  [ List [ Atom "ocamlc"; Atom ocamlc ]
+                  ; List [ Atom "ocaml_config_vars"; ocaml_config_vars ]
+                  ]))
+       ; env = Env.empty
+       ; locks = []
+       ; can_go_in_shared_cache = true
+       }))
+
+let force_configurator_files =
+  Memo.lazy_ (fun () ->
+      let* ctxs = DB.all () in
+      let files =
+        List.concat_map ctxs ~f:(fun t ->
+            [ Path.build (configurator_v1 t); Path.build (configurator_v2 t) ])
+      in
+      Build_system.build (Action_builder.paths files))

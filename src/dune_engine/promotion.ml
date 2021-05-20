@@ -40,7 +40,9 @@ module File = struct
 
   let promote { src; staging; dst } =
     let correction_file = Option.value staging ~default:src in
-    let correction_exists = Path.exists (Path.build correction_file) in
+    let correction_exists =
+      Path.Untracked.exists (Path.build correction_file)
+    in
     Console.print
       [ Pp.box ~indent:2
           (if correction_exists then
@@ -74,6 +76,8 @@ module P = Persistent.Make (struct
   let name = "TO-PROMOTE"
 
   let version = 2
+
+  let to_dyn = Dyn.Encoder.list File.to_dyn
 end)
 
 let db_file = Path.relative Path.build_dir ".to-promote"
@@ -81,7 +85,7 @@ let db_file = Path.relative Path.build_dir ".to-promote"
 let dump_db db =
   if Path.build_dir_exists () then
     match db with
-    | [] -> if Path.exists db_file then Path.unlink_no_err db_file
+    | [] -> if Path.Untracked.exists db_file then Path.unlink_no_err db_file
     | l -> P.dump db_file l
 
 let load_db () = Option.value ~default:[] (P.load db_file)
@@ -100,7 +104,7 @@ type files_to_promote =
 let do_promote db files_to_promote =
   let by_targets = group_by_targets db in
   let potential_build_contexts =
-    match Path.readdir_unsorted_with_kinds Path.build_dir with
+    match Path.Untracked.readdir_unsorted_with_kinds Path.build_dir with
     | exception _ -> []
     | Error _ -> []
     | Ok files ->

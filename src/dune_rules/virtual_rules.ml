@@ -48,85 +48,98 @@ let setup_copy_rules_for_impl ~sctx ~dir vimpl =
     let dst = Obj_dir.Module.cm_file_exn impl_obj_dir m ~kind in
     copy_to_obj_dir ~src ~dst
   in
+  let open Memo.Build.O in
   let copy_objs src =
-    copy_obj_file src Cmi;
-    (if
-     Module.visibility src = Public
-     && Obj_dir.need_dedicated_public_dir impl_obj_dir
-    then
-      let dst = Obj_dir.Module.cm_public_file_exn impl_obj_dir src ~kind:Cmi in
-      let src = Obj_dir.Module.cm_public_file_exn vlib_obj_dir src ~kind:Cmi in
-      copy_to_obj_dir ~src ~dst);
-    if Module.has src ~ml_kind:Impl then (
-      if byte then copy_obj_file src Cmo;
-      if native then (
-        copy_obj_file src Cmx;
-        let object_file dir = Obj_dir.Module.o_file_exn dir src ~ext_obj in
-        copy_to_obj_dir ~src:(object_file vlib_obj_dir)
-          ~dst:(object_file impl_obj_dir)
-      )
-    )
+    copy_obj_file src Cmi
+    >>> Memo.Build.if_
+          (Module.visibility src = Public
+          && Obj_dir.need_dedicated_public_dir impl_obj_dir)
+          (fun () ->
+            let dst =
+              Obj_dir.Module.cm_public_file_exn impl_obj_dir src ~kind:Cmi
+            in
+            let src =
+              Obj_dir.Module.cm_public_file_exn vlib_obj_dir src ~kind:Cmi
+            in
+            copy_to_obj_dir ~src ~dst)
+    >>> Memo.Build.if_ (Module.has src ~ml_kind:Impl) (fun () ->
+            Memo.Build.if_ byte (fun () -> copy_obj_file src Cmo)
+            >>> Memo.Build.if_ native (fun () ->
+                    copy_obj_file src Cmx
+                    >>>
+                    let object_file dir =
+                      Obj_dir.Module.o_file_exn dir src ~ext_obj
+                    in
+                    copy_to_obj_dir ~src:(object_file vlib_obj_dir)
+                      ~dst:(object_file impl_obj_dir)))
   in
   let vlib_modules = Vimpl.vlib_modules vimpl in
-  Modules.iter_no_vlib vlib_modules ~f:(fun m -> copy_objs m)
+  Modules.fold_no_vlib vlib_modules ~init:(Memo.Build.return ())
+    ~f:(fun m acc -> acc >>> copy_objs m)
 
 let impl sctx ~(lib : Dune_file.Library.t) ~scope =
-  Option.map lib.implements ~f:(fun (loc, implements) ->
-      match Lib.DB.find (Scope.libs scope) implements with
-      | None ->
-        User_error.raise ~loc
-          [ Pp.textf "Cannot implement %s as that library isn't available"
-              (Lib_name.to_string implements)
-          ]
-      | Some vlib ->
-        let info = Lib.info vlib in
-        let virtual_ =
-          let virtual_ = Lib_info.virtual_ info in
-          match virtual_ with
-          | None ->
-            User_error.raise ~loc:lib.buildable.loc
-              [ Pp.textf "Library %s isn't virtual and cannot be implemented"
-                  (Lib_name.to_string implements)
-              ]
-          | Some v -> v
-        in
-        let vlib_modules, vlib_foreign_objects =
-          let foreign_objects = Lib_info.foreign_objects info in
-          match (virtual_, foreign_objects) with
-          | External _, Local
-          | Local, External _ ->
-            assert false
-          | External modules, External fa -> (modules, fa)
-          | Local, Local ->
-            let name = Lib.name vlib in
-            let vlib = Lib.Local.of_lib_exn vlib in
-            let dir_contents =
-              let info = Lib.Local.info vlib in
-              let dir = Lib_info.src_dir info in
-              Dir_contents.get sctx ~dir
+  let open Memo.Build.O in
+  match lib.implements with
+  | None -> Memo.Build.return None
+  | Some (loc, implements) -> (
+    match Lib.DB.find (Scope.libs scope) implements with
+    | None ->
+      User_error.raise ~loc
+        [ Pp.textf "Cannot implement %s as that library isn't available"
+            (Lib_name.to_string implements)
+        ]
+    | Some vlib ->
+      let info = Lib.info vlib in
+      let virtual_ =
+        let virtual_ = Lib_info.virtual_ info in
+        match virtual_ with
+        | None ->
+          User_error.raise ~loc:lib.buildable.loc
+            [ Pp.textf "Library %s isn't virtual and cannot be implemented"
+                (Lib_name.to_string implements)
+            ]
+        | Some v -> v
+      in
+      let+ vlib_modules, vlib_foreign_objects =
+        let foreign_objects = Lib_info.foreign_objects info in
+        match (virtual_, foreign_objects) with
+        | External _, Local
+        | Local, External _ ->
+          assert false
+        | External modules, External fa -> Memo.Build.return (modules, fa)
+        | Local, Local ->
+          let name = Lib.name vlib in
+          let vlib = Lib.Local.of_lib_exn vlib in
+          let* dir_contents =
+            let info = Lib.Local.info vlib in
+            let dir = Lib_info.src_dir info in
+            Dir_contents.get sctx ~dir
+          in
+          let* preprocess =
+            Resolve.read_memo_build
+              (Preprocess.Per_module.with_instrumentation
+                 lib.buildable.preprocess
+                 ~instrumentation_backend:
+                   (Lib.DB.instrumentation_backend (Scope.libs scope)))
+          in
+          let* modules =
+            let pp_spec =
+              Pp_spec.make preprocess (Super_context.context sctx).version
             in
-            let preprocess =
-              Preprocess.Per_module.with_instrumentation
-                lib.buildable.preprocess
-                ~instrumentation_backend:
-                  (Lib.DB.instrumentation_backend (Scope.libs scope))
-            in
-            let modules =
-              let pp_spec =
-                Pp_spec.make preprocess (Super_context.context sctx).version
-              in
-              Dir_contents.ocaml dir_contents
-              |> Ml_sources.modules ~for_:(Library name)
-              |> Modules.map_user_written ~f:(Pp_spec.pped_module pp_spec)
-            in
-            let foreign_objects =
-              let ext_obj = (Super_context.context sctx).lib_config.ext_obj in
-              let dir = Obj_dir.obj_dir (Lib.Local.obj_dir vlib) in
-              Dir_contents.foreign_sources dir_contents
-              |> Foreign_sources.for_lib ~name
-              |> Foreign.Sources.object_files ~ext_obj ~dir
-              |> List.map ~f:Path.build
-            in
-            (modules, foreign_objects)
-        in
-        Vimpl.make ~impl:lib ~vlib ~vlib_modules ~vlib_foreign_objects)
+            Dir_contents.ocaml dir_contents
+            >>| Ml_sources.modules ~for_:(Library name)
+            >>= Modules.map_user_written ~f:(fun m ->
+                    Memo.Build.return (Pp_spec.pped_module pp_spec m))
+          in
+          let+ foreign_objects =
+            let ext_obj = (Super_context.context sctx).lib_config.ext_obj in
+            let dir = Obj_dir.obj_dir (Lib.Local.obj_dir vlib) in
+            let+ foreign_sources = Dir_contents.foreign_sources dir_contents in
+            foreign_sources
+            |> Foreign_sources.for_lib ~name
+            |> Foreign.Sources.object_files ~ext_obj ~dir
+            |> List.map ~f:Path.build
+          in
+          (modules, foreign_objects)
+      in
+      Some (Vimpl.make ~impl:lib ~vlib ~vlib_modules ~vlib_foreign_objects))

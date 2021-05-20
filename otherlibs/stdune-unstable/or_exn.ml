@@ -11,5 +11,5 @@ include Monad.Make (struct
 
   let return = Result.return
 
-  let ( >>= ) = Result.( >>= )
+  let bind = Result.bind
 end)

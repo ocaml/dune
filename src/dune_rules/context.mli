@@ -89,7 +89,7 @@ type t = private
   ; version : Ocaml_version.t
   ; stdlib_dir : Path.t
   ; supports_shared_libraries : Dynlink_supported.By_the_os.t
-  ; which : string -> Path.t option
+  ; which : string -> Path.t option Memo.Build.t
         (** Given a program name, e.g. ["ocaml"], find the path to a preferred
             executable in PATH, e.g. [Some "/path/to/ocaml.opt.exe"]. *)
   ; lib_config : Lib_config.t
@@ -136,10 +136,14 @@ val build_context : t -> Build_context.t
     an explicit installation directory. *)
 val install_prefix : t -> Path.t Fiber.t
 
-val init_configurator : t -> unit
+(** Generate the rules for producing the files needed by configurator. *)
+val gen_configurator_rules : t -> unit Memo.Build.t
+
+(** Force the files required by configurator at runtime to be produced. *)
+val force_configurator_files : unit Memo.Lazy.t
 
 module DB : sig
-  val get : Path.Build.t -> t
+  val get : Context_name.t -> t Memo.Build.t
 
   val all : unit -> t list Memo.Build.t
 end

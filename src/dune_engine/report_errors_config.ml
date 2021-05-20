@@ -11,4 +11,4 @@ type t =
   | Deterministic
   | Twice
 
-let default : t = Deterministic
+let default : t = Early

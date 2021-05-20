@@ -11,4 +11,9 @@ type t =
   | Deterministic
   | Twice
 
-let default : t = Early
+let default : t =
+  match Dune_util.Config.inside_dune with
+  | true ->
+    Deterministic
+  | false ->
+    Early

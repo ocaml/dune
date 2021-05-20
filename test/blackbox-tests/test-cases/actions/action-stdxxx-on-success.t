@@ -44,6 +44,8 @@ printing the output of the action that had a non-empty output.
 
   $ dune clean
   $ dune build --action-stdout-on-success=must-be-empty
+            sh alias default
+  Something went wrong!
   File "dune", line 1, characters 0-65:
   1 | (rule
   2 |  (alias default)
@@ -51,8 +53,6 @@ printing the output of the action that had a non-empty output.
             sh alias default (had unexpected output on stdout)
   (cd _build/default && sh -c 'echo '\''Hello, world!'\''')
   Hello, world!
-            sh alias default
-  Something went wrong!
   [1]
 
   $ dune clean

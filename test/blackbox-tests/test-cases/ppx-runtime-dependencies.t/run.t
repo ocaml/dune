@@ -66,8 +66,6 @@ Handling ppx_runtime_libraries dependencies correctly
   -> "a" in _build/default
   -> required by library "c" in _build/default
   -> required by executable main in bin/dune:2
-  -> required by _build/default/bin/.main.eobjs/byte/dune__exe__Main.cmi
-  -> required by _build/default/bin/.main.eobjs/native/dune__exe__Main.cmx
   -> required by _build/default/bin/main.exe
   [1]
 
@@ -173,7 +171,5 @@ Note that pps dependencies are separated by a runtime dependency.
   -> "gen_c" in _build/default
   -> required by library "c" in _build/default
   -> required by executable main in bin/dune:2
-  -> required by _build/default/bin/.main.eobjs/byte/dune__exe__Main.cmi
-  -> required by _build/default/bin/.main.eobjs/native/dune__exe__Main.cmx
   -> required by _build/default/bin/main.exe
   [1]

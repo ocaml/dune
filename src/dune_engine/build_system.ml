@@ -2399,7 +2399,7 @@ let run f =
     let* res =
       Fiber.with_error_handler ~on_error:process_exn_and_reraise (fun () ->
           Memo.Build.run_with_error_handler (f ())
-            ~handle_error:process_exn_and_report)
+            ~handle_error_no_raise:process_exn_and_report)
     in
     let+ () = t.handler.build_event Finish in
     res

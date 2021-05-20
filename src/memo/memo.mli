@@ -23,9 +23,15 @@ module Build : sig
 
   (** Every error gets reported twice: once early, in non-deterministic order,
       by calling [handler_error], and once later, in deterministic order, by
-      raising a fiber exception. *)
+      raising a fiber exception.
+
+      [handle_error_no_raise] must not raise exceptions, otherwise internal memo
+      invariants get messed up and you get confusing errors like "Attempted to
+      create a cached value based on some stale inputs". *)
   val run_with_error_handler :
-    'a t -> handle_error:(Exn_with_backtrace.t -> unit Fiber.t) -> 'a Fiber.t
+       'a t
+    -> handle_error_no_raise:(Exn_with_backtrace.t -> unit Fiber.t)
+    -> 'a Fiber.t
 
   (** [of_reproducible_fiber fiber] injects a fiber into the build monad. The
       given fiber must be "reproducible", i.e. executing it multiple times

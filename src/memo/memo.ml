@@ -1203,8 +1203,8 @@ module Build = struct
     let+ is_set = Error_handler.is_set in
     not is_set
 
-  let run_with_error_handler t ~handle_error =
-    Error_handler.with_error_handler handle_error (fun () ->
+  let run_with_error_handler t ~handle_error_no_raise =
+    Error_handler.with_error_handler handle_error_no_raise (fun () ->
         let* res = report_and_collect_errors (fun () -> t) in
         match res with
         | Ok ok -> Fiber.return ok
@@ -1218,7 +1218,8 @@ module Build = struct
        and non-toplevel [run] would be better. *)
     match is_top_level with
     | true ->
-      run_with_error_handler t ~handle_error:(fun _exn -> Fiber.return ())
+      run_with_error_handler t ~handle_error_no_raise:(fun _exn ->
+          Fiber.return ())
     | false -> t
 end
 

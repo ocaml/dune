@@ -27,7 +27,18 @@ module Build : sig
 
       [handle_error_no_raise] must not raise exceptions, otherwise internal memo
       invariants get messed up and you get confusing errors like "Attempted to
-      create a cached value based on some stale inputs". *)
+      create a cached value based on some stale inputs".
+
+      Nested calls of [run_with_error_handler] are not allowed.
+
+      If multiple calls to [run_with_error_handler] happen concurrently
+      (possibly with different error handlers), then each handler will correctly
+      receive all errors it would be expected to receive if run independently.
+      However, each error will only be sent "early" to one of the handlers,
+      while the other handler will get this error delayed. If this limitation
+      becomes problematic, it may be possible to lift it by eagerly bubbling up
+      each error through individual dependency edges instead of sending errors
+      directly to the handler in scope. *)
   val run_with_error_handler :
        'a t
     -> handle_error_no_raise:(Exn_with_backtrace.t -> unit Fiber.t)

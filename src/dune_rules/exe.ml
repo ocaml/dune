@@ -226,8 +226,7 @@ let link_many ?link_args ?o_files ?(embed_in_plugin_libraries=[]) ~dep_graphs
   let dep_graphs : Dep_graph.t Ml_kind.Dict.t = dep_graphs in
   let open Memo.Build.O in
   let modules = Compilation_context.modules cctx in
-  let* () = Module_compilation.build_all cctx ~dep_graphs
-  and* link_time_code_gen = Link_time_code_gen.handle_special_libs cctx in
+  let* link_time_code_gen = Link_time_code_gen.handle_special_libs cctx in
   Memo.Build.parallel_iter programs
     ~f:(fun { Program.name; main_module_name; loc } ->
       let cm_files =

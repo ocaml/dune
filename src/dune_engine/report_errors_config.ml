@@ -13,7 +13,5 @@ type t =
 
 let default : t =
   match Dune_util.Config.inside_dune with
-  | true ->
-    Deterministic
-  | false ->
-    Early
+  | true -> Deterministic
+  | false -> Early

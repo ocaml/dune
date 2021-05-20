@@ -8,23 +8,23 @@ open! Stdune
    Aside from perhaps providing an "header.h" include line, you should be
    able to wrap an entire C library without writing a single line of C code.
 
-   This stanza requires the user to specify the names of 4 modules:
+   This stanza requires the user to specify the names of 4 (or more) modules:
 
-    (type_descriptions Type_descriptions)
+    (type_description Type_description)
     (generated_types Types_generated)
-    (function_descriptions Function_descriptions)
-    (generated_entry_point C))
+    (function_description Function_description) ; can be repeated
+    (generated_entry_point C)
 
    The user must also implement two of the modules:
 
-   (1) $type_descriptions.ml musth ave the following top-level functor:
+   (1) $type_description.ml must have the following top-level functor:
 
     module Types (T : Ctypes.TYPE) = struct
       (* put calls to Ctypes.TYPE.constant and Ctypes.TYPE.typedef here
          to wrap C constants and structs *)
     end
 
-   (2) $function_descriptions.ml must have the following two definitions:
+   (2) $function_description.ml must have the following two definitions:
 
     modules Types = $generated_types
 

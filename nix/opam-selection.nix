@@ -13,8 +13,8 @@ let
         {
           owner = "ocaml";
           repo = "opam-repository";
-          rev = "8f4e2eaeefede85ba0399c8460942dfe9d82a64c";
-          sha256 = "0j98nmmazdnmac7544w8fy8944084680rphsdwyg94dasvb11nwf";
+          rev = "941103a05c260dba7d9188cb48c2ca9d70531f0e";
+          sha256 = "0l6rwsy6ccbvgkyfr3mmxbhncilqnnx7is7vfqbw5khnhl58frql";
         };
         src = (pkgs.fetchFromGitHub) fetch;
       };
@@ -316,6 +316,35 @@ in
         url = "http://erratique.ch/software/cmdliner/releases/cmdliner-1.0.4.tbz";
       };
       version = "1.0.4";
+    };
+    conf-gmp = 
+    {
+      buildInputs = [ (pkgs.gmp or null) (pkgs.gmp-dev or null)
+                       (pkgs.gmp-devel or null) (pkgs.libgmp-dev or null) ];
+      opamInputs = {
+      };
+      opamSrc = repoPath (repos.opam-repository.src) 
+      {
+        hash = "sha256:0xmnv1w1w66c15dgahcgzj980khq7hsva5k9bwc2r1pcj4a2q94d";
+        package = "packages/conf-gmp/conf-gmp.3";
+      };
+      pname = "conf-gmp";
+      src = null;
+      version = "3";
+    };
+    coq-core = 
+    {
+      opamInputs = 
+      {
+        dune = selection.dune;
+        ocaml = selection.ocaml;
+        ocamlfind = selection.ocamlfind;
+        zarith = selection.zarith;
+      };
+      opamSrc = "coq-core.opam";
+      pname = "coq-core";
+      src = self.directSrc "coq-core";
+      version = "dev";
     };
     core = 
     {
@@ -2462,6 +2491,27 @@ in
         url = "https://github.com/ocaml-community/yojson/releases/download/1.7.0/yojson-1.7.0.tbz";
       };
       version = "1.7.0";
+    };
+    zarith = 
+    {
+      opamInputs = 
+      {
+        conf-gmp = selection.conf-gmp;
+        ocaml = selection.ocaml;
+        ocamlfind = selection.ocamlfind;
+      };
+      opamSrc = repoPath (repos.opam-repository.src) 
+      {
+        hash = "sha256:03by05004bgfkfllpacf3vk1h8i6q7wzwi7cgxy0nyj5ffga0ggh";
+        package = "packages/zarith/zarith.1.12";
+      };
+      pname = "zarith";
+      src = pkgs.fetchurl 
+      {
+        sha256 = "1098xpqsq3gwpz9k2gc6ahiz2zk0z0xxi1lwc07nvj2570y5ccnc";
+        url = "https://github.com/ocaml/Zarith/archive/release-1.12.tar.gz";
+      };
+      version = "1.12";
     };
     zed = 
     {

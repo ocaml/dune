@@ -5,12 +5,19 @@
 # package names to opam2nix, which runs the opam solve and spits out a build
 # plan into opam-selection.nix
 # The build plan can be regenerated with $ make nix/opam-selection.nix
-{ pkgs, stdenv, opam2nix }:
+{ pkgs, stdenv, opam2nix, fetchFromGitHub }:
 let
   strings = pkgs.lib.strings;
+  coq = fetchFromGitHub {
+    owner = "coq";
+    repo = "coq";
+    rev = "f16b7c75bcc8651e43ec1f0c8ae6744748665213";
+    sha256 = "sha256-C+rk3CMUGypbsCgbHQUgaBIzOE0jUaeQ/YHZ0GYx8aI=";
+  };
   args = {
     inherit (pkgs.ocaml-ng.ocamlPackages_4_12) ocaml;
     selection = ./opam-selection.nix;
+    src = { coq-core = coq; };
   };
   opam-selection = opam2nix.build args;
   resolve = opam2nix.resolve args ([
@@ -32,9 +39,23 @@ let
     "ppxlib"
     "result"
     "utop"
+    "${coq}/coq-core.opam"
   ]);
+
+  coq-core = opam-selection.coq-core.overrideAttrs (super: {
+    buildInputs = (super.buildInputs or [ ]) ++ [ pkgs.bash pkgs.gnused pkgs.which ];
+    configurePhase = ''
+      patchShebangs dev/tools/ doc/stdlib
+    '';
+    preInstallCheck = ''
+      patchShebangs tools/
+      patchShebangs test-suite/
+      export OCAMLPATH=$OCAMLFIND_DESTDIR:$OCAMLPATH
+    '';
+  });
 
 in {
   inherit resolve;
+  inherit coq-core;
   opam = opam-selection;
 }

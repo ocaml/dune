@@ -1,9 +1,6 @@
 ---
 geometry: "left=2cm,right=2cm,top=2.4cm,bottom=2.1cm"
-mainfont: Libertine
-fontfamily: libertine
-fontfamilyoptions:
-  - mono=false
+bibliography: refs.bib
 ---
 
 # Memo: the incremental computation library that powers Dune
@@ -23,13 +20,13 @@ computation graphs comprising millions of nodes.
 
 ## Introduction
 
-The OCaml build system Dune [1] supports a continuous file-watching build mode,
-where rebuilds are triggered automatically as the user is editing source files.
-The simplest way to implement this functionality is to restart Dune on any file
-change but that is too slow for large projects. To avoid re-scanning the
-project's file tree, re-parsing all build specification files, and re-generating
-all build rules from scratch every time, Dune uses an incremental computation
-library called Memo. Below we briefly introduce the Memo's API.
+The OCaml build system Dune [@dune] supports a continuous file-watching build
+mode, where rebuilds are triggered automatically as the user is editing source
+files. The simplest way to implement this functionality is to restart Dune on
+any file change but that is too slow for large projects. To avoid re-scanning
+the project's file tree, re-parsing all build specification files, and
+re-generating all build rules from scratch every time, Dune uses an incremental
+computation library called Memo. Below we briefly introduce the Memo's API.
 
 Memo's `Build` monad is implemented on top of the *concurrency monad* `Fiber`.
 Dune uses `Fiber` to speed up builds by executing external commands in parallel,
@@ -93,15 +90,16 @@ execution of external commands.
 avoid reporting the same error multiple times, we need to deduplicate them. -->
 
 One of the most interesting aspects of Memo is *detecting dependency cycles*.
-Since Dune supports *dynamic build dependencies* [2], the dependency graph is
-not known before the build starts. During the build, new nodes and dependency
-edges are discovered concurrently, and Memo uses an incremental cycle detection
-algorithm [3] to detect and report dependency cycles as soon as they are
-created. This is a unique feature of Memo: Incremental [4] and Adapton [5]
-libraries do not support concurrency; the Tenacious library (used by Jane
-Street's internal build system Jenga) does support concurrency but detects
-cycles by "stopping the world" and traversing the "frozen" dependency graph to
-see if concurrent computations might have deadlocked by waiting for each other.
+Since Dune supports *dynamic build dependencies* [@mokhov2020build], the
+dependency graph is not known before the build starts. During the build, new
+nodes and dependency edges are discovered concurrently, and Memo uses an
+incremental cycle detection algorithm [@gueneau2019cycles] to detect and report
+dependency cycles as soon as they are created. This is a unique feature of Memo:
+Incremental [@incremental] and Adapton [@hammer2014adapton] libraries do not
+support concurrency; the Tenacious library (used by Jane Street's internal build
+system Jenga) does support concurrency but detects cycles by "stopping the
+world" and traversing the "frozen" dependency graph to see if concurrent
+computations might have deadlocked by waiting for each other.
 
 Compared to the incremental computation libraries mentioned above, the current
 implementation of Memo makes one controversial design choice. Incremental,
@@ -115,8 +113,7 @@ eliminates various garbage collection pitfalls; (ii) Memo avoids "spurious"
 recomputations, where a node is recomputed but subsequently becomes unreachable
 from the top due to a new dependency structure. We may reconsider this design
 choice in future, but for now traversing the whole graph on each rebuild isn't
-a bottleneck, even for large-scale builds where graphs contain millions of
-nodes.
+a bottleneck even for large-scale builds where graphs contain millions of nodes.
 
 ## Development status
 
@@ -129,25 +126,9 @@ an arbitrary concurrency monad, making it useable with `Async` and `Lwt`.
 
 We thank Rudi Horn, Rudi Grinberg, Emilio Jesús Gallego Arias, and other Dune
 developers for their contributions to Memo and Dune. We are also grateful to
-Armaël Guéneau for helping us with the incremental cycle detection library [3].
+Armaël Guéneau for helping us integrate the incremental cycle detection library
+in Memo.
 
 # References
 
-[1] Jane Street. *"Dune: A composable build system for OCaml"*.
-    [https://dune.build/](https://dune.build/) (2018).
-
-[2] Andrey Mokhov, Neil Mitchell, and Simon Peyton Jones. *"Build systems à la
-    carte: Theory and practice"*. Journal of Functional Programming 30 (2020).
-
-<!-- [3] Michael A. Bender, Jeremy T. Fineman, Seth Gilbert, and Robert E. Tarjan.
-    *"A new approach to incremental cycle detection and related problems"*. ACM Transactions on Algorithms (TALG) 12, no. 2 (2015). -->
-
-[3] Armaël Guéneau, Jacques-Henri Jourdan, Arthur Charguéraud, and François
-    Pottier. *"Formal proof and analysis of an incremental cycle detection
-    algorithm"*. Interactive Theorem Proving, no. 141 (2019).
-
-[4] Jane Street. *The Incremental library*.
-    [https://opensource.janestreet.com/incremental/](https://opensource.janestreet.com/incremental/) (2015).
-
-[5] Matthew A. Hammer, Khoo Yit Phang, Michael Hicks, and Jeffrey S. Foster.
-    *"Adapton: Composable, demand-driven incremental computation"*. PLDI (2014).
+<!-- References to be generated by Pandoc. -->

@@ -656,7 +656,7 @@ module Call_stack = struct
   let get_call_stack_without_state () =
     get_call_stack ()
     >>| List.map ~f:(fun (Stack_frame_with_state.T t) ->
-      Dep_node_without_state.T t.without_state)
+            Dep_node_without_state.T t.without_state)
 
   let get_call_stack_tip () = get_call_stack () >>| List.hd_opt
 
@@ -688,8 +688,8 @@ end = struct
     let* stack = Call_stack.get_call_stack_without_state () in
     let error =
       Exn_with_backtrace.map error ~f:(fun exn ->
-        List.fold_left stack
-          ~init:exn ~f:(fun exn stack_frame -> Error.extend_stack exn ~stack_frame))
+          List.fold_left stack ~init:exn ~f:(fun exn stack_frame ->
+              Error.extend_stack exn ~stack_frame))
     in
     handler error
 

@@ -1,5 +1,7 @@
 (** Command line flags *)
 
+val report_errors_config : Report_errors_config.t ref
+
 (** Debug the findlib implementation *)
 val debug_findlib : bool ref
 

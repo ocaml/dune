@@ -21,7 +21,8 @@ pkgs.mkShell {
     gnugrep
     gnused
     gawk
-    coq
+    # we can't use coq from nixpkgs because it doesn't include libraries
+    # coq
     python38Packages.sphinx
     python38Packages.sphinx_rtd_theme
     # opam dependencies. the versions for these are solved for in
@@ -44,6 +45,6 @@ pkgs.mkShell {
     ppxlib
     result
     utop
-  ]);
+  ]) ++ [ coq-core ];
 
 }

@@ -221,3 +221,11 @@ let min xs ~f = reduce xs ~f:(Ordering.min f)
 let max xs ~f = reduce xs ~f:(Ordering.max f)
 
 let mem t a ~equal = exists t ~f:(equal a)
+
+(* copy&paste from [base] *)
+let split_while xs ~f =
+  let rec loop acc = function
+    | hd :: tl when f hd -> loop (hd :: acc) tl
+    | t -> (rev acc, t)
+  in
+  loop [] xs

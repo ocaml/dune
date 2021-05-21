@@ -178,6 +178,8 @@ module Stack_frame_without_state = struct
       ; input t
       ]
 
+  let id (T a) = a.id
+
   let equal (T a) (T b) = Id.equal a.id b.id
 end
 
@@ -199,26 +201,41 @@ module Error = struct
 
   exception E of t
 
-  let rec shorten_stack_leading_to_cycle ~stack cycle =
-    match (stack, cycle) with
-    | x :: xs, c :: cs ->
-      if Stack_frame_without_state.equal x c then
-        shorten_stack_leading_to_cycle ~stack:xs (cs @ [ c ])
-      else
-        (stack, cycle)
-    | _, [] ->
-      (* should be impossible, but no need to hide the obviously-messed-up error
-         to point that out *)
-      (stack, cycle)
-    | [], _ -> (stack, cycle)
+  let rotate_cycle ~is_desired_head cycle =
+    match
+      List.split_while cycle ~f:(fun elem -> not (is_desired_head elem))
+    with
+    | _, [] -> None
+    | prefix, suffix -> Some (suffix @ prefix)
+
+  let shorten_stack_leading_to_cycle ~rev_stack cycle =
+    let ids_in_cycle =
+      List.map cycle ~f:Stack_frame_without_state.id |> Id.Set.of_list
+    in
+    match
+      List.split_while
+        ~f:(fun frame ->
+          not (Id.Set.mem ids_in_cycle (Stack_frame_without_state.id frame)))
+        rev_stack
+    with
+    | rev_stack, [] -> (rev_stack, cycle)
+    | rev_stack, node_in_cycle :: _ ->
+      let cycle =
+        rotate_cycle
+          ~is_desired_head:(Stack_frame_without_state.equal node_in_cycle)
+          (List.rev cycle)
+        |> Option.value_exn |> List.rev
+      in
+      (rev_stack, cycle)
 
   let get_exn_and_stack t =
-    let stack = List.rev t.rev_stack in
     match t.exn with
     | Cycle_error.E cycle ->
-      let stack, cycle = shorten_stack_leading_to_cycle ~stack cycle in
-      (Cycle_error.E cycle, stack)
-    | exn -> (exn, stack)
+      let rev_stack, cycle =
+        shorten_stack_leading_to_cycle ~rev_stack:t.rev_stack cycle
+      in
+      (Cycle_error.E cycle, List.rev rev_stack)
+    | exn -> (exn, List.rev t.rev_stack)
 
   let get t = fst (get_exn_and_stack t)
 

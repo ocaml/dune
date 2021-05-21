@@ -293,7 +293,12 @@ end = struct
         (fun () -> P.dump file (Lazy.force t))
     )
 
-  let () = Hooks.End_of_build.always dump
+  (* CR-someday amokhov: If this happens to be executed after we've cleared the
+     status line and printed some text afterwards, [dump] would overwrite that
+     text by the "Saving..." message. If this hypothetical scenario turns out to
+     be a real problem, we will need to add some synchronisation mechanism to
+     prevent clearing the status line too early. *)
+  let () = at_exit dump
 
   let get path =
     let t = Lazy.force t in

@@ -234,6 +234,26 @@ module type S = sig
 
   val notification : t -> 'a Decl.notification -> 'a -> unit fiber
 
+  module Batch : sig
+    type t
+
+    type client
+
+    val create : client -> t
+
+    val request :
+         ?id:Id.t
+      -> t
+      -> ('a, 'b) Decl.request
+      -> 'a
+      -> ('b, Response.Error.t) result fiber
+
+    val notification : t -> 'a Decl.notification -> 'a -> unit
+
+    val submit : t -> unit fiber
+  end
+  with type client := t
+
   module Handler : sig
     type t
 

@@ -400,6 +400,26 @@ module type S = sig
 
   val notification : t -> 'a Decl.notification -> 'a -> unit fiber
 
+  module Batch : sig
+    type t
+
+    type client
+
+    val create : client -> t
+
+    val request :
+         ?id:Id.t
+      -> t
+      -> ('a, 'b) Decl.request
+      -> 'a
+      -> ('b, Response.Error.t) result fiber
+
+    val notification : t -> 'a Decl.notification -> 'a -> unit
+
+    val submit : t -> unit fiber
+  end
+  with type client := t
+
   module Handler : sig
     type t
 
@@ -574,36 +594,29 @@ struct
     let requests = Table.create (module Id) 16 in
     { chan; requests; on_notification; next_id = 0; initialize; running = true }
 
-  let request_untyped t (id, req) =
+  let prepare_request t id =
     match t.running with
     | false ->
       let err =
         Response.Error.create ~message:"connection terminated" ~kind:Code_error
           ()
       in
-      Fiber.return (Error err)
+      Error err
     | true ->
       let ivar = Fiber.Ivar.create () in
       (match Table.add t.requests id ivar with
       | Ok () -> ()
       | Error _ -> Code_error.raise "duplicate id" [ ("id", Id.to_dyn id) ]);
+      Ok ivar
+
+  let request_untyped t (id, req) =
+    match prepare_request t id with
+    | Error e -> Fiber.return (Error e)
+    | Ok ivar ->
       let* () = send t (Some [ Request (id, req) ]) in
       Fiber.Ivar.read ivar
 
-  let request ?id t (decl : _ Decl.request) req =
-    let id =
-      match id with
-      | Some id -> id
-      | None ->
-        let id = Sexp.List [ Atom "auto"; Atom (Int.to_string t.next_id) ] in
-        t.next_id <- t.next_id + 1;
-        Id.make id
-    in
-    let req =
-      { Call.params = Conv.to_sexp decl.req req; method_ = decl.method_ }
-    in
-    let* res = request_untyped t (id, req) in
-    match res with
+  let parse_response t (decl : _ Decl.request) = function
     | Error e -> Fiber.return (Error e)
     | Ok res -> (
       match Conv.of_sexp decl.resp ~version:t.initialize.version res with
@@ -612,7 +625,22 @@ struct
         terminate_with_error t "response not matched by decl"
           [ ("e", Conv.dyn_of_error e) ])
 
-  let notification t (decl : _ Decl.notification) n =
+  let gen_id t = function
+    | Some id -> id
+    | None ->
+      let id = Sexp.List [ Atom "auto"; Atom (Int.to_string t.next_id) ] in
+      t.next_id <- t.next_id + 1;
+      Id.make id
+
+  let request ?id t (decl : _ Decl.request) req =
+    let id = gen_id t id in
+    let req =
+      { Call.params = Conv.to_sexp decl.req req; method_ = decl.method_ }
+    in
+    let* res = request_untyped t (id, req) in
+    parse_response t decl res
+
+  let make_notification t (decl : _ Decl.notification) n k =
     match t.running with
     | false ->
       let err =
@@ -624,7 +652,41 @@ struct
       let call =
         { Call.params = Conv.to_sexp decl.req n; method_ = decl.method_ }
       in
-      send t (Some (Notification call))
+      k call
+
+  let notification t (decl : _ Decl.notification) n =
+    make_notification t decl n (fun call -> send t (Some [ Notification call ]))
+
+  module Batch = struct
+    type nonrec t =
+      { client : t
+      ; mutable pending : Packet.Query.t list
+      }
+
+    let create client = { client; pending = [] }
+
+    let notification t n a =
+      make_notification t.client n a (fun call ->
+          t.pending <- Notification call :: t.pending)
+
+    let request ?id t (decl : _ Decl.request) req =
+      let id = gen_id t.client id in
+      let ivar = prepare_request t.client id in
+      match ivar with
+      | Error e -> Fiber.return (Error e)
+      | Ok ivar ->
+        let req =
+          { Call.params = Conv.to_sexp decl.req req; method_ = decl.method_ }
+        in
+        t.pending <- Packet.Query.Request (id, req) :: t.pending;
+        let* res = Fiber.Ivar.read ivar in
+        parse_response t.client decl res
+
+    let submit t =
+      let pending = List.rev t.pending in
+      t.pending <- [];
+      send t.client (Some pending)
+  end
 
   let read_packets t packets =
     let* () =

@@ -680,7 +680,7 @@ let symlink_installed_artifacts_to_build_install sctx
       in
       Super_context.add_rule sctx ~loc ~dir:ctx.build_dir
         (Build.symlink ~src:(Path.build entry.src) ~dst);
-      Install.Entry.set_src entry dst)
+      Install.Entry.set_src entry (Path.build dst))
 
 let promote_install_file (ctx : Context.t) =
   !Clflags.promote_install_files

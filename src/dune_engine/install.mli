@@ -91,7 +91,7 @@ module Entry : sig
   val relative_installed_path : _ t -> paths:Section.Paths.t -> Path.t
 
   val add_install_prefix :
-    Path.Build.t t -> paths:Section.Paths.t -> prefix:Path.t -> Path.Build.t t
+    'a t -> paths:Section.Paths.t -> prefix:Path.t -> 'a t
 end
 
 (** Same as Entry, but the destination can be in the site of a package *)
@@ -103,8 +103,8 @@ module Entry_with_site : sig
     }
 end
 
-val files : Path.Build.t Entry.t list -> Path.Set.t
+val files : Path.t Entry.t list -> Path.Set.t
 
-val gen_install_file : Path.Build.t Entry.t list -> string
+val gen_install_file : Path.t Entry.t list -> string
 
 val load_install_file : Path.t -> Path.t Entry.t list

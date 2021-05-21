@@ -56,6 +56,10 @@ module Session = struct
     | None -> "EOF"
     | Some csexp -> Csexp.to_string csexp
 
+  let string_of_packets = function
+    | None -> "EOF"
+    | Some sexps -> String.concat ~sep:" " (List.map ~f:Csexp.to_string sexps)
+
   let read t =
     let debug res =
       if debug then Format.eprintf "<< %s@." (string_of_packet res)
@@ -92,20 +96,20 @@ module Session = struct
       debug res;
       res
 
-  let write t sexp =
-    if debug then Format.eprintf ">> %s@." (string_of_packet sexp);
+  let write t sexps =
+    if debug then Format.eprintf ">> %s@." (string_of_packets sexps);
     match t.writer with
     | None ->
       Code_error.raise "attempting to write to a closed channel"
-        [ ("sexp", (Dyn.Encoder.option Sexp.to_dyn) sexp) ]
+        [ ("sexp", Dyn.Encoder.(option (list Sexp.to_dyn)) sexps) ]
     | Some writer -> (
       let+ res =
         Worker.task writer
           ~f:
-            (match sexp with
-            | Some sexp ->
+            (match sexps with
+            | Some sexps ->
               fun () ->
-                Csexp.to_channel t.out_channel sexp;
+                List.iter sexps ~f:(Csexp.to_channel t.out_channel);
                 flush t.out_channel
             | None -> (
               match t.kind with

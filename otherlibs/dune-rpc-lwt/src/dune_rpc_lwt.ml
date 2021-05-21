@@ -72,6 +72,9 @@ module V1 = struct
 
         let write (_, o) = function
           | None -> Lwt_io.close o
-          | Some csexp -> Lwt_io.write o (Csexp.to_string csexp)
+          | Some csexps ->
+            Lwt_list.iter_s
+              (fun sexp -> Lwt_io.write o (Csexp.to_string sexp))
+              csexps
       end)
 end

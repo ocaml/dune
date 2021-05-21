@@ -501,6 +501,18 @@ module Options_implied_by_dash_p = struct
                  "Select the build profile, for instance $(b,dev) or \
                   $(b,release). The default is $(b,%s)."
                  (Profile.to_string Dune_rules.Profile.default)))
+    and+ no_promote_install_files =
+      let doc =
+        "Do not promote the generated <package>.install files to the source \
+         tree"
+      in
+      Arg.(value & flag & info [ "no-promote-install-files" ] ~docs ~doc)
+    in
+    let t =
+      { t with
+        promote_install_files =
+          (not no_promote_install_files) && t.promote_install_files
+      }
     in
     match profile with
     | None -> t

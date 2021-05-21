@@ -2293,27 +2293,6 @@ open Exported
 
 let eval_pred = Pred.eval
 
-let process_memcycle (cycle_error : Memo.Cycle_error.t) =
-  let cycle =
-    Memo.Cycle_error.get cycle_error
-    |> List.filter_map ~f:Memo.Stack_frame.human_readable_description
-  in
-  match List.last cycle with
-  | None ->
-    let frames = Memo.Cycle_error.get cycle_error in
-    Code_error.raise "internal dependency cycle"
-      [ ("frames", Dyn.Encoder.(list Memo.Stack_frame.to_dyn) frames) ]
-  | Some last ->
-    let first = List.hd cycle in
-    let cycle =
-      if last = first then
-        cycle
-      else
-        last :: cycle
-    in
-    User_error.raise
-      [ Pp.text "Dependency cycle between:"; Pp.chain cycle ~f:(fun p -> p) ]
-
 let package_deps ~packages_of (pkg : Package.t) files =
   let rules_seen = ref Rule.Set.empty in
   let rec loop fn =
@@ -2354,22 +2333,22 @@ let prefix_rules (prefix : unit Action_builder.t) ~f =
 
 module Alias = Alias0
 
-let process_exn_and_reraise exn =
-  let open Fiber.O in
-  let exn =
-    Exn_with_backtrace.map exn ~f:(fun exn ->
-        match exn with
-        | Memo.Cycle_error.E cycle_error -> process_memcycle cycle_error
-        | Memo.Error.E e -> (
-          match Memo.Error.get e with
-          | Memo.Cycle_error.E cycle_error -> process_memcycle cycle_error
-          | _ -> exn)
-        | _ -> exn)
-  in
+let report_early_exn exn =
   let t = t () in
   t.errors <- exn :: t.errors;
-  let+ () = t.handler.error [ Add exn ] in
-  Exn_with_backtrace.reraise exn
+  (match !Clflags.report_errors_config with
+  | Early
+  | Twice ->
+    Dune_util.Report_error.report exn
+  | Deterministic -> ());
+  t.handler.error [ Add exn ]
+
+let reraise_exn exn =
+  match !Clflags.report_errors_config with
+  | Early -> raise Dune_util.Report_error.Already_reported
+  | Twice
+  | Deterministic ->
+    Exn_with_backtrace.reraise exn
 
 let run f =
   let open Fiber.O in
@@ -2385,8 +2364,9 @@ let run f =
   let f () =
     let* () = t.handler.build_event Start in
     let* res =
-      Fiber.with_error_handler ~on_error:process_exn_and_reraise (fun () ->
-          Memo.Build.run (f ()))
+      Fiber.with_error_handler ~on_error:reraise_exn (fun () ->
+          Memo.Build.run_with_error_handler (f ())
+            ~handle_error_no_raise:report_early_exn)
     in
     let+ () = t.handler.build_event Finish in
     res

@@ -167,7 +167,6 @@ let%expect_test _ =
       - 2
       - 1
       - 0
-      - 2
       4
       [ (Some "cycle", 2)
       ; (Some "cycle", 1)
@@ -946,7 +945,6 @@ let%expect_test "dynamic cycles with non-uniform cutoff structure" =
     - called by ("incrementing_chain_2_yes_cutoff", ())
     - called by ("incrementing_chain_3_no_cutoff", ())
     - called by ("incrementing_chain_4_yes_cutoff", ())
-    - called by ("incrementing_chain_plus_input", 2)
     f 0 = Error
             [ { exn =
                   "Cycle_error.E\n\
@@ -956,7 +954,6 @@ let%expect_test "dynamic cycles with non-uniform cutoff structure" =
                   \  ; (\"incrementing_chain_2_yes_cutoff\", ())\n\
                   \  ; (\"incrementing_chain_3_no_cutoff\", ())\n\
                   \  ; (\"incrementing_chain_4_yes_cutoff\", ())\n\
-                  \  ; (\"incrementing_chain_plus_input\", 2)\n\
                   \  ]"
               ; backtrace = ""
               }
@@ -982,7 +979,6 @@ let%expect_test "dynamic cycles with non-uniform cutoff structure" =
     - called by ("incrementing_chain_2_no_cutoff", ())
     - called by ("incrementing_chain_3_yes_cutoff", ())
     - called by ("incrementing_chain_4_no_cutoff", ())
-    - called by ("incrementing_chain_plus_input", 2)
     f 0 = Error
             [ { exn =
                   "Cycle_error.E\n\
@@ -992,7 +988,6 @@ let%expect_test "dynamic cycles with non-uniform cutoff structure" =
                   \  ; (\"incrementing_chain_2_no_cutoff\", ())\n\
                   \  ; (\"incrementing_chain_3_yes_cutoff\", ())\n\
                   \  ; (\"incrementing_chain_4_no_cutoff\", ())\n\
-                  \  ; (\"incrementing_chain_plus_input\", 2)\n\
                   \  ]"
               ; backtrace = ""
               }
@@ -1011,7 +1006,6 @@ let%expect_test "dynamic cycles with non-uniform cutoff structure" =
     - called by ("incrementing_chain_2_yes_cutoff", ())
     - called by ("incrementing_chain_3_no_cutoff", ())
     - called by ("incrementing_chain_4_yes_cutoff", ())
-    - called by ("incrementing_chain_plus_input", 2)
     f 2 = Error
             [ { exn =
                   "Cycle_error.E\n\
@@ -1021,7 +1015,6 @@ let%expect_test "dynamic cycles with non-uniform cutoff structure" =
                   \  ; (\"incrementing_chain_2_yes_cutoff\", ())\n\
                   \  ; (\"incrementing_chain_3_no_cutoff\", ())\n\
                   \  ; (\"incrementing_chain_4_yes_cutoff\", ())\n\
-                  \  ; (\"incrementing_chain_plus_input\", 2)\n\
                   \  ]"
               ; backtrace = ""
               }
@@ -1040,7 +1033,6 @@ let%expect_test "dynamic cycles with non-uniform cutoff structure" =
     - called by ("incrementing_chain_2_no_cutoff", ())
     - called by ("incrementing_chain_3_yes_cutoff", ())
     - called by ("incrementing_chain_4_no_cutoff", ())
-    - called by ("incrementing_chain_plus_input", 2)
     f 2 = Error
             [ { exn =
                   "Cycle_error.E\n\
@@ -1050,7 +1042,6 @@ let%expect_test "dynamic cycles with non-uniform cutoff structure" =
                   \  ; (\"incrementing_chain_2_no_cutoff\", ())\n\
                   \  ; (\"incrementing_chain_3_yes_cutoff\", ())\n\
                   \  ; (\"incrementing_chain_4_no_cutoff\", ())\n\
-                  \  ; (\"incrementing_chain_plus_input\", 2)\n\
                   \  ]"
               ; backtrace = ""
               }
@@ -1190,17 +1181,17 @@ let%expect_test "deadlocks when creating a cycle twice" =
     f 2 = Error [ { exn = "Exit"; backtrace = "" } ]
     |}]
 
-let lazy_rec f =
+let lazy_rec ~name f =
   let fdecl = Fdecl.create (fun _ -> Dyn.Opaque) in
-  let node = Memo.Lazy.create (fun () -> f (Fdecl.get fdecl)) in
+  let node = Memo.Lazy.create ~name (fun () -> f (Fdecl.get fdecl)) in
   Fdecl.set fdecl node;
   node
 
 let%expect_test "two similar, but not physically-equal, cycle errors" =
-  let cycle1 = lazy_rec (fun node -> Memo.Lazy.force node) in
-  let cycle2 = lazy_rec (fun node -> Memo.Lazy.force node) in
+  let cycle1 = lazy_rec ~name:"cycle" (fun node -> Memo.Lazy.force node) in
+  let cycle2 = lazy_rec ~name:"cycle" (fun node -> Memo.Lazy.force node) in
   let both =
-    Memo.Lazy.create (fun () ->
+    Memo.Lazy.create ~name:"both" (fun () ->
         Memo.Build.fork_and_join_unit
           (fun () -> Lazy.force cycle1)
           (fun () -> Lazy.force cycle2))
@@ -1213,16 +1204,12 @@ let%expect_test "two similar, but not physically-equal, cycle errors" =
     {|
     Error: { exn =
                "Memo.Error.E\n\
-               \  { exn = \"Cycle_error.E [ (\\\"<unnamed>\\\", ()); (\\\"<unnamed>\\\", ()) ]\"\n\
-               \  ; stack = [ (\"<unnamed>\", ()); (\"<unnamed>\", ()); (\"<unnamed>\", ()) ]\n\
-               \  }"
+               \  { exn = \"Cycle_error.E [ (\\\"cycle\\\", ()) ]\"; stack = [ (\"both\", ()) ] }"
            ; backtrace = ""
            }
     Error: { exn =
                "Memo.Error.E\n\
-               \  { exn = \"Cycle_error.E [ (\\\"<unnamed>\\\", ()); (\\\"<unnamed>\\\", ()) ]\"\n\
-               \  ; stack = [ (\"<unnamed>\", ()); (\"<unnamed>\", ()); (\"<unnamed>\", ()) ]\n\
-               \  }"
+               \  { exn = \"Cycle_error.E [ (\\\"cycle\\\", ()) ]\"; stack = [ (\"both\", ()) ] }"
            ; backtrace = ""
            } |}]
 

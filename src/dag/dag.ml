@@ -93,7 +93,7 @@ module Make (Value : Value) : S with type value := Value.t = struct
            (let path = compute_cycle () in
             assert (List.hd path == w);
             assert (Option.value_exn (List.last path) == v);
-            List.rev path @ [ v ]))
+            List.rev path))
 
   let rec pp_depth depth pp_value fmt n =
     if depth >= 20 then

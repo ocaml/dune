@@ -21,6 +21,29 @@ module Build : sig
   (* CR-someday amokhov: Return the set of exceptions explicitly. *)
   val run : 'a t -> 'a Fiber.t
 
+  (** Every error gets reported twice: once early, in non-deterministic order,
+      by calling [handler_error], and once later, in deterministic order, by
+      raising a fiber exception.
+
+      [handle_error_no_raise] must not raise exceptions, otherwise internal memo
+      invariants get messed up and you get confusing errors like "Attempted to
+      create a cached value based on some stale inputs".
+
+      Nested calls of [run_with_error_handler] are not allowed.
+
+      If multiple calls to [run_with_error_handler] happen concurrently
+      (possibly with different error handlers), then each handler will correctly
+      receive all errors it would be expected to receive if run independently.
+      However, each error will only be sent "early" to one of the handlers,
+      while the other handler will get this error delayed. If this limitation
+      becomes problematic, it may be possible to lift it by eagerly bubbling up
+      each error through individual dependency edges instead of sending errors
+      directly to the handler in scope. *)
+  val run_with_error_handler :
+       'a t
+    -> handle_error_no_raise:(Exn_with_backtrace.t -> unit Fiber.t)
+    -> 'a Fiber.t
+
   (** [of_reproducible_fiber fiber] injects a fiber into the build monad. The
       given fiber must be "reproducible", i.e. executing it multiple times
       should always yield the same result. It is up to the caller to ensure that
@@ -264,6 +287,7 @@ module Lazy : sig
 
   val create :
        ?cutoff:('a -> 'a -> bool)
+    -> ?name:string
     -> ?human_readable_description:(unit -> User_message.Style.t Pp.t)
     -> (unit -> 'a Build.t)
     -> 'a t
@@ -275,6 +299,7 @@ end
 
 val lazy_ :
      ?cutoff:('a -> 'a -> bool)
+  -> ?name:string
   -> ?human_readable_description:(unit -> User_message.Style.t Pp.t)
   -> (unit -> 'a Build.t)
   -> 'a Lazy.t

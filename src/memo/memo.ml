@@ -97,8 +97,8 @@ end
 module Spec = struct
   type ('i, 'o) t =
     { name : string option
-    ; (* If the field [witness] precedes any of the functional values ([input] and [f]),
-         then polymorphic comparison actually works for [Spec.t]s. *)
+    ; (* If the field [witness] precedes any of the functional values ([input]
+         and [f]), then polymorphic comparison actually works for [Spec.t]s. *)
       witness : 'i Type_eq.Id.t
     ; input : (module Store_intf.Input with type t = 'i)
     ; allow_cutoff : 'o Allow_cutoff.t
@@ -145,10 +145,10 @@ end
 module Dep_node_without_state = struct
   type ('i, 'o) t =
     { id : Id.t
-    (* If [id] is placed first in this data structhre, then polymorphic comparison
-       for dep nodes works fine regardless of the other fields.
-       (at the moment polymorphic comparison is used for Exn_set, but we're hoping
-       to change that) *)
+          (* If [id] is placed first in this data structhre, then polymorphic
+             comparison for dep nodes works fine regardless of the other fields.
+             (at the moment polymorphic comparison is used for Exn_set, but
+             we're hoping to change that) *)
     ; spec : ('i, 'o) Spec.t
     ; input : 'i
     }

@@ -177,6 +177,18 @@ module Stack_frame_without_state = struct
           | None -> "<unnamed>")
       ; input t
       ]
+
+  let equal (T a) (T b) = Id.equal a.id b.id
+end
+
+module Cycle_error = struct
+  type t = Stack_frame_without_state.t list
+
+  exception E of t
+
+  let get t = t
+
+  let to_dyn = Dyn.Encoder.list Stack_frame_without_state.to_dyn
 end
 
 module Error = struct
@@ -187,9 +199,30 @@ module Error = struct
 
   exception E of t
 
-  let get t = t.exn
+  let rec shorten_stack_leading_to_cycle ~stack cycle =
+    match (stack, cycle) with
+    | x :: xs, c :: cs ->
+      if Stack_frame_without_state.equal x c then
+        shorten_stack_leading_to_cycle ~stack:xs (cs @ [ c ])
+      else
+        (stack, cycle)
+    | _, [] ->
+      (* should be impossible, but no need to hide the obviously-messed-up error
+         to point that out *)
+      (stack, cycle)
+    | [], _ -> (stack, cycle)
 
-  let stack t = List.rev t.rev_stack
+  let get_exn_and_stack t =
+    let stack = List.rev t.rev_stack in
+    match t.exn with
+    | Cycle_error.E cycle ->
+      let stack, cycle = shorten_stack_leading_to_cycle ~stack cycle in
+      (Cycle_error.E cycle, stack)
+    | exn -> (exn, stack)
+
+  let get t = fst (get_exn_and_stack t)
+
+  let stack t = snd (get_exn_and_stack t)
 
   let extend_stack exn ~stack_frame =
     E
@@ -203,16 +236,6 @@ module Error = struct
       [ ("exn", Exn.to_dyn t.exn)
       ; ("stack", Dyn.Encoder.list Stack_frame_without_state.to_dyn (stack t))
       ]
-end
-
-module Cycle_error = struct
-  type t = Stack_frame_without_state.t list
-
-  exception E of t
-
-  let get t = t
-
-  let to_dyn = Dyn.Encoder.list Stack_frame_without_state.to_dyn
 end
 
 (* The user can wrap exceptions into the [Non_reproducible] constructor to tell
@@ -294,8 +317,7 @@ module Value = struct
       Fiber.reraise_all
         (Exn_set.to_list_map exns ~f:(fun exn ->
              { exn with exn = Error.extend_stack exn.exn ~stack_frame }))
-    | Cancelled { dependency_cycle } ->
-      raise (Error.extend_stack (Cycle_error.E dependency_cycle) ~stack_frame)
+    | Cancelled { dependency_cycle } -> raise (Cycle_error.E dependency_cycle)
 end
 
 module Dag : Dag.S with type value := Dep_node_without_state.packed =
@@ -1166,8 +1188,7 @@ end = struct
         | Ok res ->
           let* res = res in
           Value.get_exn res.value ~stack_frame
-        | Error cycle_error ->
-          raise (Error.extend_stack (Cycle_error.E cycle_error) ~stack_frame))
+        | Error cycle_error -> raise (Cycle_error.E cycle_error))
 end
 
 let exec (type i o) (t : (i, o) t) i = Exec.exec_dep_node (dep_node t i)

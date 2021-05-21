@@ -28,10 +28,6 @@ let code_error ~loc ~dyn_without_loc =
   }
 
 let get_error_from_exn = function
-  | Memo.Error.E _
-  | Already_reported ->
-    (* should be handled by the caller *)
-    assert false
   | Memo.Cycle_error.E raw_cycle -> (
     let cycle =
       Memo.Cycle_error.get raw_cycle
@@ -126,6 +122,18 @@ let report_backtraces b = report_backtraces_flag := b
 
 let print_memo_stacks = ref false
 
+let format_memo_stack pps =
+  match pps with
+  | [] -> None
+  | _ ->
+    Some
+      (Pp.vbox
+         (Pp.concat ~sep:Pp.cut
+            (List.map pps ~f:(fun pp ->
+                 Pp.box ~indent:3
+                   (Pp.seq (Pp.verbatim "-> ")
+                      (Pp.seq (Pp.text "required by ") pp))))))
+
 let report { Exn_with_backtrace.exn; backtrace } =
   let exn, memo_stack =
     match exn with
@@ -173,19 +181,15 @@ let report { Exn_with_backtrace.exn; backtrace } =
             memo_stack
     in
     let memo_stack =
-      match
-        List.filter_map memo_stack
-          ~f:Memo.Stack_frame.human_readable_description
-      with
-      | [] -> None
-      | pps ->
-        Some
-          (Pp.vbox
-             (Pp.concat ~sep:Pp.cut
-                (List.map pps ~f:(fun pp ->
-                     Pp.box ~indent:3
-                       (Pp.seq (Pp.verbatim "-> ")
-                          (Pp.seq (Pp.text "required by ") pp))))))
+      match responsible with
+      | User ->
+        format_memo_stack
+          (List.filter_map memo_stack
+             ~f:Memo.Stack_frame.human_readable_description)
+      | Developer ->
+        format_memo_stack
+          (List.map memo_stack ~f:(fun frame ->
+               Dyn.pp (Memo.Stack_frame.to_dyn frame)))
     in
     let msg =
       match memo_stack with

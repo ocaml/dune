@@ -76,6 +76,7 @@ module Section_with_site = struct
     | Site of
         { pkg : Package.Name.t
         ; site : Section.Site.t
+        ; loc : Loc.t
         }
 
   (* let compare : t -> t -> Ordering.t = Poly.compare *)
@@ -84,12 +85,12 @@ module Section_with_site = struct
     let open Dyn.Encoder in
     match x with
     | Section s -> constr "Section" [ Section.to_dyn s ]
-    | Site { pkg; site } ->
+    | Site { pkg; site; loc = _ } ->
       constr "Section" [ Package.Name.to_dyn pkg; Section.Site.to_dyn site ]
 
   let to_string = function
     | Section s -> Section.to_string s
-    | Site { pkg; site } ->
+    | Site { pkg; site; loc = _ } ->
       sprintf "(site %s %s)"
         (Package.Name.to_string pkg)
         (Section.Site.to_string site)
@@ -101,8 +102,8 @@ module Section_with_site = struct
        |> List.map ~f:(fun (k, d) -> (k, return (Section d))))
       @ [ ( "site"
           , Dune_lang.Syntax.since Section.dune_site_syntax (0, 1)
-            >>> pair Package.Name.decode Section.Site.decode
-            >>| fun (pkg, site) -> Site { pkg; site } )
+            >>> located (pair Package.Name.decode Section.Site.decode)
+            >>| fun (loc, (pkg, site)) -> Site { pkg; site; loc } )
         ])
 end
 
@@ -252,8 +253,8 @@ module Entry = struct
   let make_with_site section ?dst get_section src =
     match section with
     | Section_with_site.Section section -> make section ?dst src
-    | Site { pkg; site } ->
-      let section = get_section ~pkg ~site in
+    | Site { pkg; site; loc } ->
+      let section = get_section ~loc ~pkg ~site in
       let dst =
         adjust_dst
           ~src:(Expanded (Path.to_string (Path.build src)))

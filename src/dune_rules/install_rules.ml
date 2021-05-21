@@ -375,7 +375,7 @@ end = struct
               each section. It feels like we should just do this here once and
               for all. *)
            List.sort entries ~compare:(fun (_, a) (_, b) ->
-               Install.Entry.compare a b))
+               Install.Entry.compare Path.Build.compare a b))
 
   let stanzas_to_entries =
     let memo =
@@ -734,7 +734,7 @@ let symlink_installed_artifacts_to_build_install sctx
         Super_context.add_rule sctx ~loc ~dir:ctx.build_dir
           (Action_builder.symlink ~src:(Path.build entry.src) ~dst)
       in
-      Install.Entry.set_src entry dst)
+      Install.Entry.set_src entry (Path.build dst))
 
 let promote_install_file (ctx : Context.t) =
   !Clflags.promote_install_files

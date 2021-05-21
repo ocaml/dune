@@ -9,6 +9,10 @@
 type t =
   | Early
   | Deterministic
+  (* CR-someday aalekseyev: The deterministic mode is not entirely deterministic
+     as far as error stack traces are concerned, since we're choosing an
+     arbitrary stack trace to display, and the choice can be affected by
+     scheduling. *)
   | Twice
 
 let default : t =

@@ -61,8 +61,8 @@ let%expect_test _ =
                                                              (6: k=2) (child 4 1) [
                                                              ]]]];
                   (2: k=1) (child 1 1) []]
-child 4 1 child 3 1 child 2 1 child 1 2 root child 4
-1
+child 4 1 child 3 1 child 2 1 child 1 2
+root
 |}]
 
 let rec adjacent_pairs l =
@@ -161,15 +161,15 @@ let cycle_test variant =
 let%expect_test _ =
   cycle_test `a;
   [%expect {|
-23 22 21 20 14 13 12 11
-23
+23 22 21 20 14 13 12
+11
 |}]
 
 let%expect_test _ =
   cycle_test `b;
   [%expect {|
-23 22 21 20 14 13 12 11
-23
+23 22 21 20 14 13 12
+11
 |}]
 
 let%expect_test "creating a cycle can succeed on the second attempt" =

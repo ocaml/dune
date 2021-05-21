@@ -349,3 +349,20 @@ Test compiling an external plugin
   e: $TESTCASE_ROOT/_install/share/e/data
   info.txt is found: true
   run c: registered:e,b.
+
+Test error location
+---------------------------------
+
+  $ cat >a/dune <<EOF
+  > (library
+  >  (public_name a)
+  >  (libraries dune-site))
+  > (generate_sites_module (module sites) (sites non-existent))
+  > EOF
+
+  $ dune build
+  File "a/dune", line 4, characters 45-57:
+  4 | (generate_sites_module (module sites) (sites non-existent))
+                                                   ^^^^^^^^^^^^
+  Error: Unknown package
+  [1]

@@ -239,12 +239,12 @@ let to_dyn t = Context.to_dyn t.context
 
 let host t = Option.value t.host ~default:t
 
-let get_site_of_packages_aux ~packages ~context ~pkg ~site =
+let get_site_of_packages_aux ~loc ~packages ~context ~pkg ~site =
   let find_site sites ~pkg ~site =
     match Section.Site.Map.find sites site with
     | Some section -> section
     | None ->
-      User_error.raise
+      User_error.raise ~loc
         [ Pp.textf "Package %s doesn't define a site %s"
             (Package.Name.to_string pkg)
             (Section.Site.to_string site)
@@ -256,12 +256,13 @@ let get_site_of_packages_aux ~packages ~context ~pkg ~site =
     match Findlib.find_root_package context.Context.findlib pkg with
     | Ok p -> find_site p.sites ~pkg ~site
     | Error Not_found ->
-      User_error.raise
+      User_error.raise ~loc
         [ Pp.textf "The package %s is not found" (Package.Name.to_string pkg) ]
     | Error (Invalid_dune_package exn) -> Exn.raise exn)
 
-let get_site_of_packages t ~pkg ~site =
-  get_site_of_packages_aux ~packages:t.packages ~context:t.context ~pkg ~site
+let get_site_of_packages t ~loc ~pkg ~site =
+  get_site_of_packages_aux ~loc ~packages:t.packages ~context:t.context ~pkg
+    ~site
 
 let lib_entries_of_package t pkg_name =
   Package.Name.Map.find t.lib_entries_by_package pkg_name
@@ -567,17 +568,17 @@ let create ~(context : Context.t) ?host ~projects ~packages ~stanzas () =
   let package_sections =
     Dir_with_dune.deep_fold stanzas ~init:Package.Name.Map.empty
       ~f:(fun _ stanza acc ->
-        let add_in_package_sites acc pkg site =
+        let add_in_package_sites acc pkg site loc =
           let section =
-            get_site_of_packages_aux ~packages ~context ~pkg ~site
+            get_site_of_packages_aux ~loc ~packages ~context ~pkg ~site
           in
           add_in_package_section acc pkg section
         in
         match stanza with
-        | Dune_file.Install { section = Site { pkg; site }; _ } ->
-          add_in_package_sites acc pkg site
-        | Dune_file.Plugin { site = _, (pkg, site); _ } ->
-          add_in_package_sites acc pkg site
+        | Dune_file.Install { section = Site { pkg; site; loc }; _ } ->
+          add_in_package_sites acc pkg site loc
+        | Dune_file.Plugin { site = loc, (pkg, site); _ } ->
+          add_in_package_sites acc pkg site loc
         | _ -> acc)
   in
   (* Add the site of the local package: it should only useful for making sure

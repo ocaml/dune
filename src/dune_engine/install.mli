@@ -17,6 +17,7 @@ module Section_with_site : sig
     | Site of
         { pkg : Package.Name.t
         ; site : Section.Site.t
+        ; loc : Loc.t
         }
 
   val to_string : t -> string
@@ -82,7 +83,10 @@ module Entry : sig
   val make_with_site :
        Section_with_site.t
     -> ?dst:string
-    -> (pkg:Package.Name.t -> site:Dune_section.Site.t -> Section.t)
+    -> (   loc:Loc.t
+        -> pkg:Package.Name.t
+        -> site:Dune_section.Site.t
+        -> Section.t)
     -> Path.Build.t
     -> Path.Build.t t
 

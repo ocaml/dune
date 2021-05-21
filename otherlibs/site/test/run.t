@@ -353,6 +353,20 @@ Test compiling an external plugin
 Test error location
 ---------------------------------
 
+  $ cat >>a/dune <<EOF
+  > (install
+  >  (section (site (non-existent foo)))
+  >  (files a.ml)
+  > )
+  > EOF
+
+  $ dune build @install
+  File "a/dune", line 6, characters 16-34:
+  6 |  (section (site (non-existent foo)))
+                      ^^^^^^^^^^^^^^^^^^
+  Error: The package non-existent is not found
+  [1]
+
   $ cat >a/dune <<EOF
   > (library
   >  (public_name a)

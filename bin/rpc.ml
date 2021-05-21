@@ -27,7 +27,7 @@ module Init = struct
         let connect =
           Dune_rpc.Conv.to_sexp Dune_rpc.Persistent.In.sexp New_connection
         in
-        let* () = Csexp_rpc.Session.write stdio (Some connect) in
+        let* () = Csexp_rpc.Session.write stdio (Some [ connect ]) in
         let forward_to_stdout () =
           Fiber.repeat_while ~init:() ~f:(fun () ->
               let* read = Csexp_rpc.Session.read session in
@@ -39,7 +39,7 @@ module Init = struct
                 in
                 Dune_rpc.Conv.to_sexp Dune_rpc.Persistent.In.sexp packet
               in
-              let+ () = Csexp_rpc.Session.write stdio (Some packet) in
+              let+ () = Csexp_rpc.Session.write stdio (Some [ packet ]) in
               Option.map read ~f:ignore)
         in
         let close = lazy (Csexp_rpc.Session.write session None) in
@@ -63,7 +63,7 @@ module Init = struct
                 let+ () = Lazy.force close in
                 None
               | Some (Packet sexp) ->
-                let+ () = Csexp_rpc.Session.write session (Some sexp) in
+                let+ () = Csexp_rpc.Session.write session (Some [ sexp ]) in
                 Some ())
         in
         Fiber.finalize
@@ -97,7 +97,9 @@ module Init = struct
     let forward f t =
       Fiber.repeat_while ~init:() ~f:(fun () ->
           let* read = Csexp_rpc.Session.read f in
-          let+ () = Csexp_rpc.Session.write t read in
+          let+ () =
+            Csexp_rpc.Session.write t (Option.map read ~f:List.singleton)
+          in
           Option.map read ~f:(fun (_ : Sexp.t) -> ()))
     in
     Fiber.finalize

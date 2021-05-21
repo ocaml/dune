@@ -23,7 +23,12 @@ module Chan = struct
 
   let create () = { in_ = Fiber.Stream.pipe (); out = Fiber.Stream.pipe () }
 
-  let write t s = Fiber.Stream.Out.write (snd t.out) s
+  let write t s =
+    match s with
+    | None -> Fiber.Stream.Out.write (snd t.out) None
+    | Some s ->
+      Fiber.sequential_iter s ~f:(fun s ->
+          Fiber.Stream.Out.write (snd t.out) (Some s))
 
   let read t = Fiber.Stream.In.read (fst t.in_)
 

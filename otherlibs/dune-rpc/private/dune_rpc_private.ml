@@ -465,7 +465,7 @@ module Client (Fiber : sig
 end) (Chan : sig
   type t
 
-  val write : t -> Sexp.t option -> unit Fiber.t
+  val write : t -> Sexp.t list option -> unit Fiber.t
 
   val read : t -> Sexp.t option Fiber.t
 end) =
@@ -475,7 +475,7 @@ struct
   module Chan = struct
     type t =
       { read : unit -> Sexp.t option Fiber.t
-      ; write : Sexp.t option -> unit Fiber.t
+      ; write : Sexp.t list option -> unit Fiber.t
       ; mutable closed_read : bool
       ; mutable closed_write : bool
       }
@@ -555,15 +555,20 @@ struct
       (fun () -> terminate t)
       (fun () -> Code_error.raise message info)
 
-  let send t (packet : Packet.Query.t option) =
-    let sexp =
-      Option.map packet ~f:(function
-        | Notification p -> Conv.to_sexp (Conv.record Call.fields) p
-        | Request (id, request) ->
-          let conv = Conv.record (Conv.both Id.required_field Call.fields) in
-          Conv.to_sexp conv (id, request))
+  let send t (packet : Packet.Query.t list option) =
+    let sexps =
+      Option.map packet
+        ~f:
+          (List.map ~f:(function
+            | Packet.Query.Notification p ->
+              Conv.to_sexp (Conv.record Call.fields) p
+            | Request (id, request) ->
+              let conv =
+                Conv.record (Conv.both Id.required_field Call.fields)
+              in
+              Conv.to_sexp conv (id, request)))
     in
-    Chan.write t.chan sexp
+    Chan.write t.chan sexps
 
   let create ~chan ~initialize ~on_notification =
     let requests = Table.create (module Id) 16 in
@@ -582,7 +587,7 @@ struct
       (match Table.add t.requests id ivar with
       | Ok () -> ()
       | Error _ -> Code_error.raise "duplicate id" [ ("id", Id.to_dyn id) ]);
-      let* () = send t (Some (Request (id, req))) in
+      let* () = send t (Some [ Request (id, req) ]) in
       Fiber.Ivar.read ivar
 
   let request ?id t (decl : _ Decl.request) req =
@@ -767,13 +772,13 @@ struct
           Code_error.raise "Unexpected new connection." []
       in
       let write p =
-        let packet =
+        let packets =
           match p with
-          | Some p -> Persistent.Out.Packet p
-          | None -> Close_connection
+          | Some p -> List.map p ~f:(fun p -> Persistent.Out.Packet p)
+          | None -> [ Close_connection ]
         in
-        let sexp = Conv.to_sexp Persistent.Out.sexp packet in
-        Chan.write chan (Some sexp)
+        let sexps = List.map packets ~f:(Conv.to_sexp Persistent.Out.sexp) in
+        Chan.write chan (Some sexps)
       in
       Chan.make read write
     in

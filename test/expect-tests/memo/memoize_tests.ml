@@ -34,6 +34,15 @@ let run_memo f v =
   try run (Memo.exec f v) with
   | Memo.Error.E err -> raise (Memo.Error.get err)
 
+let run_and_log_errors m =
+  match Scheduler.run (Fiber.collect_errors (fun () -> Memo.Build.run m)) with
+  | Ok res -> res
+  | Error exns ->
+    List.iter exns ~f:(fun exn ->
+      Format.printf "Error: %a@." Pp.to_fmt
+        (Dyn.pp (Exn_with_backtrace.to_dyn exn))
+    )
+
 (* the trivial dependencies are simply the identity function *)
 let compdep x = Memo.Build.return (x ^ x)
 
@@ -1181,6 +1190,52 @@ let%expect_test "deadlocks when creating a cycle twice" =
     Started evaluating summit
     f 2 = Error [ { exn = "Exit"; backtrace = "" } ]
     |}]
+
+let lazy_rec f =
+  let fdecl = Fdecl.create (fun _ -> Dyn.Opaque) in
+  let node =
+    Memo.Lazy.create (fun () ->
+      f (Fdecl.get fdecl))
+  in
+  Fdecl.set fdecl node;
+  node
+
+let%expect_test "two similar, but not physically-equal, cycle errors" =
+  let cycle1 =
+    lazy_rec (fun node ->
+      Memo.Lazy.force node)
+  in
+  let cycle2 =
+    lazy_rec (fun node ->
+      Memo.Lazy.force node)
+  in
+  let both =
+    Memo.Lazy.create (fun () ->
+      Memo.Build.fork_and_join_unit
+        (fun () -> Lazy.force cycle1)
+        (fun () -> Lazy.force cycle2)
+    )
+  in
+  run_and_log_errors (Memo.Lazy.force both);
+  (* Even though these errors look similar, they are actually talking about two different
+     cycles which can be distinguished by the internal node ids, so they are not
+     deduplicated. *)
+  [%expect {|
+    Error: { exn =
+               "Memo.Error.E\n\
+               \  { exn = \"Cycle_error.E [ (\\\"<unnamed>\\\", ()); (\\\"<unnamed>\\\", ()) ]\"\n\
+               \  ; stack = [ (\"<unnamed>\", ()); (\"<unnamed>\", ()); (\"<unnamed>\", ()) ]\n\
+               \  }"
+           ; backtrace = ""
+           }
+    Error: { exn =
+               "Memo.Error.E\n\
+               \  { exn = \"Cycle_error.E [ (\\\"<unnamed>\\\", ()); (\\\"<unnamed>\\\", ()) ]\"\n\
+               \  ; stack = [ (\"<unnamed>\", ()); (\"<unnamed>\", ()); (\"<unnamed>\", ()) ]\n\
+               \  }"
+           ; backtrace = ""
+           } |}]
+
 
 let%expect_test "Nested nodes with cutoff are recomputed optimally" =
   let counter = create ~with_cutoff:false "counter" (count_runs "counter") in

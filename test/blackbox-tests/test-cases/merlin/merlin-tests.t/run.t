@@ -1,20 +1,24 @@
+  $ ocamlc_where="$(ocamlc -where)"
+  $ export BUILD_PATH_PREFIX_MAP="/OCAMLC_WHERE=$ocamlc_where:$BUILD_PATH_PREFIX_MAP"
+  $ ocamlfind_libs="$(ocamlfind printconf path | while read line; do printf lib=${line}:; done)"
+  $ export BUILD_PATH_PREFIX_MAP="$ocamlfind_libs:$BUILD_PATH_PREFIX_MAP"
+
 CRAM sanitization
   $ dune build ./exe/.merlin-conf/exe-x --profile release
-  $ dune ocaml-merlin --dump-config=$(pwd)/exe |
-  > sed 's#'$(opam config var prefix)'#OPAM_PREFIX#'
+  $ dune ocaml-merlin --dump-config=$(pwd)/exe
   X
-  ((STDLIB OPAM_PREFIX/lib/ocaml)
+  ((STDLIB /OCAMLC_WHERE)
    (EXCLUDE_QUERY_DIR)
-   (B OPAM_PREFIX/lib/bytes)
-   (B OPAM_PREFIX/lib/findlib)
-   (B OPAM_PREFIX/lib/ocaml)
+   (B lib/bytes)
+   (B lib/findlib)
+   (B /OCAMLC_WHERE)
    (B
     $TESTCASE_ROOT/_build/default/exe/.x.eobjs/byte)
    (B
     $TESTCASE_ROOT/_build/default/lib/.foo.objs/public_cmi)
-   (S OPAM_PREFIX/lib/bytes)
-   (S OPAM_PREFIX/lib/findlib)
-   (S OPAM_PREFIX/lib/ocaml)
+   (S lib/bytes)
+   (S lib/findlib)
+   (S /OCAMLC_WHERE)
    (S
     $TESTCASE_ROOT/exe)
    (S
@@ -25,10 +29,9 @@ CRAM sanitization
    (FLG (-w -40)))
 
   $ dune build ./lib/.merlin-conf/lib-foo ./lib/.merlin-conf/lib-bar --profile release
-  $ dune ocaml-merlin --dump-config=$(pwd)/lib |
-  > sed 's#'$(opam config var prefix)'#OPAM_PREFIX#'
+  $ dune ocaml-merlin --dump-config=$(pwd)/lib
   File
-  ((STDLIB OPAM_PREFIX/lib/ocaml)
+  ((STDLIB /OCAMLC_WHERE)
    (EXCLUDE_QUERY_DIR)
    (B
     $TESTCASE_ROOT/_build/default/lib/.bar.objs/byte)
@@ -44,7 +47,7 @@ CRAM sanitization
      'library-name="bar"'"))
    (FLG (-open Bar -w -40)))
   Bar
-  ((STDLIB OPAM_PREFIX/lib/ocaml)
+  ((STDLIB /OCAMLC_WHERE)
    (EXCLUDE_QUERY_DIR)
    (B
     $TESTCASE_ROOT/_build/default/lib/.bar.objs/byte)
@@ -60,16 +63,16 @@ CRAM sanitization
      'library-name="bar"'"))
    (FLG (-open Bar -w -40)))
   Privmod
-  ((STDLIB OPAM_PREFIX/lib/ocaml)
+  ((STDLIB /OCAMLC_WHERE)
    (EXCLUDE_QUERY_DIR)
-   (B OPAM_PREFIX/lib/bytes)
-   (B OPAM_PREFIX/lib/findlib)
-   (B OPAM_PREFIX/lib/ocaml)
+   (B lib/bytes)
+   (B lib/findlib)
+   (B /OCAMLC_WHERE)
    (B
     $TESTCASE_ROOT/_build/default/lib/.foo.objs/byte)
-   (S OPAM_PREFIX/lib/bytes)
-   (S OPAM_PREFIX/lib/findlib)
-   (S OPAM_PREFIX/lib/ocaml)
+   (S lib/bytes)
+   (S lib/findlib)
+   (S /OCAMLC_WHERE)
    (S
     $TESTCASE_ROOT/lib)
    (S
@@ -82,16 +85,16 @@ CRAM sanitization
      'library-name="foo"'"))
    (FLG (-open Foo -w -40)))
   Foo
-  ((STDLIB OPAM_PREFIX/lib/ocaml)
+  ((STDLIB /OCAMLC_WHERE)
    (EXCLUDE_QUERY_DIR)
-   (B OPAM_PREFIX/lib/bytes)
-   (B OPAM_PREFIX/lib/findlib)
-   (B OPAM_PREFIX/lib/ocaml)
+   (B lib/bytes)
+   (B lib/findlib)
+   (B /OCAMLC_WHERE)
    (B
     $TESTCASE_ROOT/_build/default/lib/.foo.objs/byte)
-   (S OPAM_PREFIX/lib/bytes)
-   (S OPAM_PREFIX/lib/findlib)
-   (S OPAM_PREFIX/lib/ocaml)
+   (S lib/bytes)
+   (S lib/findlib)
+   (S /OCAMLC_WHERE)
    (S
     $TESTCASE_ROOT/lib)
    (S
@@ -110,10 +113,9 @@ Make sure a ppx directive is generated (if not, the [grep ppx] step fails)
 Make sure pp flag is correct and variables are expanded
 
   $ dune build ./pp-with-expand/.merlin-conf/exe-foobar --profile release
-  $ dune ocaml-merlin --dump-config=$(pwd)/pp-with-expand |
-  > sed 's#'$(opam config var prefix)'#OPAM_PREFIX#'
+  $ dune ocaml-merlin --dump-config=$(pwd)/pp-with-expand
   Foobar
-  ((STDLIB OPAM_PREFIX/lib/ocaml)
+  ((STDLIB /OCAMLC_WHERE)
    (EXCLUDE_QUERY_DIR)
    (B
     $TESTCASE_ROOT/_build/default/pp-with-expand/.foobar.eobjs/byte)
@@ -127,10 +129,9 @@ Make sure pp flag is correct and variables are expanded
 
 Check hash of executables names if more than one
   $ dune build ./exes/.merlin-conf/exe-x-6562915302827c6dce0630390bfa68b7
-  $ dune ocaml-merlin --dump-config=$(pwd)/exes |
-  > sed 's#'$(opam config var prefix)'#OPAM_PREFIX#'
+  $ dune ocaml-merlin --dump-config=$(pwd)/exes
   Y
-  ((STDLIB OPAM_PREFIX/lib/ocaml)
+  ((STDLIB /OCAMLC_WHERE)
    (EXCLUDE_QUERY_DIR)
    (B
     $TESTCASE_ROOT/_build/default/exes/.x.eobjs/byte)
@@ -144,7 +145,7 @@ Check hash of executables names if more than one
      -short-paths
      -keep-locs)))
   X
-  ((STDLIB OPAM_PREFIX/lib/ocaml)
+  ((STDLIB /OCAMLC_WHERE)
    (EXCLUDE_QUERY_DIR)
    (B
     $TESTCASE_ROOT/_build/default/exes/.x.eobjs/byte)

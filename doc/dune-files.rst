@@ -190,6 +190,8 @@ where ``<setting>`` is one of:
 - ``(enabled_for <languages>)`` can be used to restrict the languages that are
   considered for formatting.
 
+.. _generate_opam_files:
+
 generate_opam_files
 -------------------
 

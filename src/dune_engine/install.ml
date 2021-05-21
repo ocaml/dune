@@ -186,7 +186,7 @@ module Entry = struct
     }
 
   let compare x y =
-    let c = Path.Build.compare x.src y.src in
+    let c = Path.compare x.src y.src in
     if c <> Eq then
       c
     else
@@ -318,12 +318,10 @@ module Entry_with_site = struct
 end
 
 let files entries =
-  Path.Set.of_list_map entries ~f:(fun (entry : Path.Build.t Entry.t) ->
-      Path.build entry.src)
+  Path.Set.of_list_map entries ~f:(fun (entry : Path.t Entry.t) -> entry.src)
 
 let group entries =
-  List.map entries ~f:(fun (entry : Path.Build.t Entry.t) ->
-      (entry.section, entry))
+  List.map entries ~f:(fun (entry : _ Entry.t) -> (entry.section, entry))
   |> Section.Map.of_list_multi
 
 let gen_install_file entries =
@@ -332,11 +330,10 @@ let gen_install_file entries =
   Section.Map.iteri (group entries) ~f:(fun section entries ->
       pr "%s: [" (Section.to_string section);
       List.sort ~compare:Entry.compare entries
-      |> List.iter ~f:(fun (e : Path.Build.t Entry.t) ->
-             let src = Path.to_string (Path.build e.src) in
+      |> List.iter ~f:(fun (e : Path.t Entry.t) ->
+             let src = Path.to_string e.src in
              match
-               Dst.to_install_file
-                 ~src_basename:(Path.Build.basename e.src)
+               Dst.to_install_file ~src_basename:(Path.basename e.src)
                  ~section:e.section e.dst
              with
              | None -> pr "  %S" src

@@ -228,6 +228,26 @@ module V1 : sig
 
     val notification : t -> 'a Notification.t -> 'a -> unit fiber
 
+    module Batch : sig
+      type t
+
+      type client
+
+      val create : client -> t
+
+      val request :
+           ?id:Id.t
+        -> t
+        -> ('a, 'b) Request.t
+        -> 'a
+        -> ('b, Response.Error.t) result fiber
+
+      val notification : t -> 'a Notification.t -> 'a -> unit
+
+      val submit : t -> unit fiber
+    end
+    with type client := t
+
     (** [connect ?on_handler session init ~f] connect to [session], initialize
         with [init] and call [f] once the client is initialized. [handler] is
         called for some notifications sent to [session] *)

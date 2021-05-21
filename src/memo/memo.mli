@@ -287,6 +287,7 @@ module Lazy : sig
 
   val create :
        ?cutoff:('a -> 'a -> bool)
+    -> ?name:string
     -> ?human_readable_description:(unit -> User_message.Style.t Pp.t)
     -> (unit -> 'a Build.t)
     -> 'a t
@@ -298,6 +299,7 @@ end
 
 val lazy_ :
      ?cutoff:('a -> 'a -> bool)
+  -> ?name:string
   -> ?human_readable_description:(unit -> User_message.Style.t Pp.t)
   -> (unit -> 'a Build.t)
   -> 'a Lazy.t

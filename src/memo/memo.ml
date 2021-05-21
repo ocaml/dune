@@ -1296,16 +1296,14 @@ end
 
 module Implicit_output = Implicit_output
 
-let lazy_cell ?cutoff ?human_readable_description f =
+let lazy_cell ?cutoff ?name ?human_readable_description f =
   let spec =
-    Spec.create ~name:None
-      ~input:(module Unit)
-      ~cutoff ~human_readable_description f
+    Spec.create ~name ~input:(module Unit) ~cutoff ~human_readable_description f
   in
   make_dep_node ~spec ~input:()
 
-let lazy_ ?cutoff ?human_readable_description f =
-  let cell = lazy_cell ?cutoff ?human_readable_description f in
+let lazy_ ?cutoff ?name ?human_readable_description f =
+  let cell = lazy_cell ?cutoff ?name ?human_readable_description f in
   fun () -> Cell.read cell
 
 let push_stack_frame ~human_readable_description f =

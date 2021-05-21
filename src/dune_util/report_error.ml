@@ -12,29 +12,63 @@ type error =
   ; has_embedded_location : bool
   }
 
+let code_error ~loc ~dyn_without_loc =
+  let open Pp.O in
+  { responsible = Developer
+  ; msg =
+      User_message.make ?loc
+        [ Pp.tag User_message.Style.Error
+            (Pp.textf
+               "Internal error, please report upstream including the contents \
+                of _build/log.")
+        ; Pp.text "Description:"
+        ; Pp.box ~indent:2 (Pp.verbatim "  " ++ Dyn.pp dyn_without_loc)
+        ]
+  ; has_embedded_location = false
+  }
+
 let get_error_from_exn = function
   | Memo.Error.E _
   | Already_reported ->
     (* should be handled by the caller *)
     assert false
+  | Memo.Cycle_error.E raw_cycle -> (
+    let cycle =
+      Memo.Cycle_error.get raw_cycle
+      |> List.filter_map ~f:Memo.Stack_frame.human_readable_description
+    in
+    match List.last cycle with
+    | None ->
+      let frames = Memo.Cycle_error.get raw_cycle in
+      code_error ~loc:None
+        ~dyn_without_loc:
+          (Dyn.Tuple
+             [ String "internal dependency cycle"
+             ; Record
+                 [ ("frames", Dyn.Encoder.(list Memo.Stack_frame.to_dyn) frames)
+                 ]
+             ])
+    | Some last ->
+      let first = List.hd cycle in
+      let cycle =
+        if last = first then
+          cycle
+        else
+          last :: cycle
+      in
+      { responsible = User
+      ; msg =
+          User_message.make ~prefix:User_error.prefix
+            [ Pp.text "Dependency cycle between:"
+            ; Pp.chain cycle ~f:(fun p -> p)
+            ]
+      ; has_embedded_location = false
+      })
   | User_error.E (msg, annots) ->
     let has_embedded_location = User_error.has_embed_location annots in
     { responsible = User; msg; has_embedded_location }
   | Code_error.E e ->
-    let open Pp.O in
-    { responsible = Developer
-    ; msg =
-        User_message.make ?loc:e.loc
-          [ Pp.tag User_message.Style.Error
-              (Pp.textf
-                 "Internal error, please report upstream including the \
-                  contents of _build/log.")
-          ; Pp.text "Description:"
-          ; Pp.box ~indent:2
-              (Pp.verbatim "  " ++ Dyn.pp (Code_error.to_dyn_without_loc e))
-          ]
-    ; has_embedded_location = false
-    }
+    code_error ~loc:e.loc ~dyn_without_loc:(Code_error.to_dyn_without_loc e)
   | Unix.Unix_error (err, func, fname) ->
     { responsible = User
     ; msg =

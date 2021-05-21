@@ -21,9 +21,11 @@
   $ dune build some_file1
   Error: Dependency cycle between:
      _build/default/some_file1
+  -> required by _build/default/some_file1
   [1]
 
   $ dune build some_file2
   Error: Dependency cycle between:
      _build/default/some_file2
+  -> required by _build/default/some_file2
   [1]

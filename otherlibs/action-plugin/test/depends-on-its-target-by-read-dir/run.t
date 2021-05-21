@@ -15,6 +15,7 @@
   $ dune build some_file
   Error: Dependency cycle between:
      _build/default/some_file
+  -> required by _build/default/some_file
   [1]
 
 ^ This is not great. There is no actual dependency cycle, dune is just

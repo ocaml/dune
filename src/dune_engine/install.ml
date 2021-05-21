@@ -207,13 +207,13 @@ module Entry = struct
     ; section : Section.t
     }
 
-  let compare x y =
+  let compare compare_src x y =
     match Section.compare x.section y.section with
     | (Lt | Gt) as c -> c
     | Eq -> (
       match Dst.compare x.dst y.dst with
       | (Lt | Gt) as c -> c
-      | Eq -> Path.Build.compare x.src y.src)
+      | Eq -> compare_src x.src y.src)
 
   let adjust_dst_gen =
     let error (source_pform : Dune_lang.Template.Pform.t) =
@@ -342,12 +342,10 @@ module Entry_with_site = struct
 end
 
 let files entries =
-  Path.Set.of_list_map entries ~f:(fun (entry : Path.Build.t Entry.t) ->
-      Path.build entry.src)
+  Path.Set.of_list_map entries ~f:(fun (entry : Path.t Entry.t) -> entry.src)
 
 let group entries =
-  List.map entries ~f:(fun (entry : Path.Build.t Entry.t) ->
-      (entry.section, entry))
+  List.map entries ~f:(fun (entry : _ Entry.t) -> (entry.section, entry))
   |> Section.Map.of_list_multi
 
 let gen_install_file entries =
@@ -355,12 +353,11 @@ let gen_install_file entries =
   let pr fmt = Printf.bprintf buf (fmt ^^ "\n") in
   Section.Map.iteri (group entries) ~f:(fun section entries ->
       pr "%s: [" (Section.to_string section);
-      List.sort ~compare:Entry.compare entries
-      |> List.iter ~f:(fun (e : Path.Build.t Entry.t) ->
-             let src = Path.to_string (Path.build e.src) in
+      List.sort ~compare:(Entry.compare Path.compare) entries
+      |> List.iter ~f:(fun (e : Path.t Entry.t) ->
+             let src = Path.to_string e.src in
              match
-               Dst.to_install_file
-                 ~src_basename:(Path.Build.basename e.src)
+               Dst.to_install_file ~src_basename:(Path.basename e.src)
                  ~section:e.section e.dst
              with
              | None -> pr "  %S" src

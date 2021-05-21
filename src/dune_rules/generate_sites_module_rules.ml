@@ -21,6 +21,89 @@ let sourceroot_code buf =
 let relocatable_code buf =
   pr buf "let relocatable = Lazy.force %s.relocatable" helpers
 
+let is_ocaml_keywords = function
+  | "and"
+  | "as"
+  | "assert"
+  | "asr"
+  | "begin"
+  | "class"
+  | "constraint"
+  | "do"
+  | "done"
+  | "downto"
+  | "else"
+  | "end"
+  | "exception"
+  | "external"
+  | "false"
+  | "for"
+  | "fun"
+  | "function"
+  | "functor"
+  | "if"
+  | "in"
+  | "include"
+  | "inherit"
+  | "initializer"
+  | "land"
+  | "lazy"
+  | "let"
+  | "lor"
+  | "lsl"
+  | "lsr"
+  | "lxor"
+  | "match"
+  | "method"
+  | "mod"
+  | "module"
+  | "mutable"
+  | "new"
+  | "nonrec"
+  | "object"
+  | "of"
+  | "open"
+  | "or"
+  | "private"
+  | "rec"
+  | "sig"
+  | "struct"
+  | "then"
+  | "to"
+  | "true"
+  | "try"
+  | "type"
+  | "val"
+  | "virtual"
+  | "when"
+  | "while"
+  | "with" ->
+    true
+  | _ -> false
+
+let sanitize_site_name name =
+  let rec aux name i =
+    if i < 0 then
+      i
+    else if name.[i] = '_' then
+      aux name (i - 1)
+    else
+      i
+  in
+  let name = String.uncapitalize_ascii (Section.Site.to_string name) in
+  let last = String.length name - 1 in
+  let i = aux name last in
+  let s =
+    if i <> last then
+      String.sub name ~pos:0 ~len:(i + 1)
+    else
+      name
+  in
+  if is_ocaml_keywords s then
+    name ^ "_"
+  else
+    name
+
 let sites_code sctx buf (loc, pkg) =
   let package =
     match Package.Name.Map.find (Super_context.packages sctx) pkg with
@@ -29,9 +112,7 @@ let sites_code sctx buf (loc, pkg) =
   in
   let package_name = Package.name package in
   Section.Site.Map.iteri package.sites ~f:(fun name section ->
-      pr buf "    let %s = %s.site"
-        (String.uncapitalize_ascii (Section.Site.to_string name))
-        helpers;
+      pr buf "    let %s = %s.site" (sanitize_site_name name) helpers;
       pr buf "      ~package:%S" (Package.Name.to_string package_name);
       pr buf "      ~section:Dune_section.%s"
         (String.capitalize_ascii (Section.to_string section));
@@ -47,7 +128,7 @@ let plugins_code sctx buf pkg sites =
   let pkg = Package.Name.to_string pkg in
   (* Parse the replacement format described in [artifact_substitution.ml]. *)
   List.iter sites ~f:(fun (loc, ssite) ->
-      let site = Section.Site.to_string ssite in
+      let site = sanitize_site_name ssite in
       if not (Section.Site.Map.mem package.sites ssite) then
         User_error.raise ~loc
           [ Pp.textf "Package %s doesn't define a site %s" pkg site ];

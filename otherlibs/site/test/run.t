@@ -409,3 +409,22 @@ Test %{version:installed-pkg}
   Error: Library names are not allowed in this position. Only package names are
   allowed
   [1]
+
+  $ rm f/dune
+
+Test error location
+---------------------------------
+
+  $ cat >a/dune <<EOF
+  > (library
+  >  (public_name a)
+  >  (libraries dune-site))
+  > (generate_sites_module (module sites) (sites non-existent))
+  > EOF
+
+  $ dune build
+  File "a/dune", line 4, characters 45-57:
+  4 | (generate_sites_module (module sites) (sites non-existent))
+                                                   ^^^^^^^^^^^^
+  Error: Unknown package
+  [1]

@@ -25,11 +25,9 @@ let sites_code sctx buf (loc, pkg) =
   let package =
     match Package.Name.Map.find (Super_context.packages sctx) pkg with
     | Some p -> p
-    | None ->
-      User_error.raise ~loc [ Pp.text "dune_site used outside a package" ]
+    | None -> User_error.raise ~loc [ Pp.text "Unknown package" ]
   in
   let package_name = Package.name package in
-  (* Parse the replacement format described in [artifact_substitution.ml]. *)
   Section.Site.Map.iteri package.sites ~f:(fun name section ->
       pr buf "    let %s = %s.site"
         (String.uncapitalize_ascii (Section.Site.to_string name))

@@ -720,8 +720,9 @@ end = struct
 
   let with_error_handler t f =
     Fiber.of_thunk (fun () ->
-      (* [with_error_handler] runs once for every incremental run, so calling
-         [deduplicate_errors] afresh here makes sure that we re-report all errors*)
+        (* [with_error_handler] runs once for every incremental run, so calling
+           [deduplicate_errors] afresh here makes sure that we re-report all
+           errors*)
         let t = deduplicate_errors t in
         Fiber.bind (Fiber.Var.get var) ~f:(function
           | None -> Fiber.Var.set var t f

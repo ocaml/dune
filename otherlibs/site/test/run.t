@@ -153,11 +153,6 @@ Test with an opam like installation
   ]
 
   $ dune build -p a @install
-  File "d/dune", line 5, characters 45-46:
-  5 | (generate_sites_module (module sites) (sites d))
-                                                   ^
-  Error: dune_site used outside a package
-  [1]
 
 
 

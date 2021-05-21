@@ -317,8 +317,20 @@ let package_is_vendored (pkg : Dune_engine.Package.t) =
   let dir = Package.dir pkg in
   Dune_engine.File_tree.is_vendored dir
 
+type what =
+  | Install
+  | Uninstall
+
+let pp_what fmt = function
+  | Install -> Format.pp_print_string fmt "Install"
+  | Uninstall -> Format.pp_print_string fmt "Uninstall"
+
+let cmd_what = function
+  | Install -> "install"
+  | Uninstall -> "uninstall"
+
 let install_uninstall ~what =
-  let doc = sprintf "%s packages." (String.capitalize what) in
+  let doc = Format.asprintf "%a packages." pp_what what in
   let name_ = Arg.info [] ~docv:"PACKAGE" in
   let term =
     let+ common = Common.term
@@ -430,8 +442,8 @@ let install_uninstall ~what =
                  multiple contexts!"
             ]
         | _ -> ());
-        let module CMap = Map.Make (Context) in
         let install_files_by_context =
+          let module CMap = Map.Make (Context) in
           CMap.of_list_multi install_files
           |> CMap.to_list
           |> List.map ~f:(fun (context, install_files) ->
@@ -495,7 +507,8 @@ let install_uninstall ~what =
                         |> interpret_destdir ~destdir
                       in
                       let dir = Path.parent_exn dst in
-                      if what = "install" then (
+                      match what with
+                      | Install ->
                         Ops.remove_if_exists dst;
                         Printf.eprintf "Installing %s\n%!"
                           (Path.to_string_maybe_quoted dst);
@@ -505,11 +518,10 @@ let install_uninstall ~what =
                         in
                         Ops.copy_file ~src:entry.src ~dst ~executable
                           ~special_file ~package ~conf
-                      ) else (
+                      | Uninstall ->
                         Ops.remove_if_exists dst;
                         files_deleted_in := Path.Set.add !files_deleted_in dir;
-                        Fiber.return ()
-                      ))))
+                        Fiber.return ())))
         in
         Path.Set.to_list !files_deleted_in
         (* This [List.rev] is to ensure we process children directories before
@@ -517,8 +529,8 @@ let install_uninstall ~what =
         |> List.rev
         |> List.iter ~f:Ops.remove_dir_if_empty)
   in
-  (term, Cmdliner.Term.info what ~doc ~man:Common.help_secs)
+  (term, Cmdliner.Term.info (cmd_what what) ~doc ~man:Common.help_secs)
 
-let install = install_uninstall ~what:"install"
+let install = install_uninstall ~what:Install
 
-let uninstall = install_uninstall ~what:"uninstall"
+let uninstall = install_uninstall ~what:Uninstall

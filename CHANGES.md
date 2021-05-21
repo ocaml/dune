@@ -144,6 +144,9 @@ Unreleased
 - Make Dune display the progress indicator in all output modes except quiet
   (#4618, @aalekseyev)
 
+- Do not log `live_words` and `free_words` in trace file. This allows using
+  `Gc.quick_stat` which does not scan the heap. (#4643, @emillon)
+
 2.9.0 (unreleased)
 ------------------
 

@@ -697,7 +697,16 @@ end = struct
           List.fold_left stack ~init:exn ~f:(fun exn stack_frame ->
               Error.extend_stack exn ~stack_frame))
     in
-    handler error
+    Fiber.map
+      (Fiber.collect_errors (fun () -> handler error))
+      ~f:(function
+        | Ok () -> ()
+        | Error e ->
+          (* Unfortunately, by re-raising an exception here we're violating some
+             Memo invariants and causing more confusing exceptions, but
+             hopefully this code_error will be a hint. *)
+          Code_error.raise "Memo error handler raised an exception"
+            [ ("exns", Dyn.Encoder.list Exn_with_backtrace.to_dyn e) ])
 
   let deduplicate_errors f =
     let reported = ref Exn_set.empty in

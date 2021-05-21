@@ -6,7 +6,7 @@ Test embedding of sites locations information
   $ for i in a b d; do
   > mkdir -p $i
   > cat >$i/dune-project <<EOF
-  > (lang dune 2.8)
+  > (lang dune 2.9)
   > (generate_opam_files true)
   > (using dune_site 0.1)
   > (name $i)
@@ -18,7 +18,8 @@ Test embedding of sites locations information
   $ for i in c; do
   >   mkdir -p $i
   >   cat >$i/dune-project <<EOF
-  > (lang dune 2.8)
+  > (lang dune 2.9)
+  > (generate_opam_files true)
   > (using dune_site 0.1)
   > (name $i)
   > (package (name $i) (sites (share data) (lib plugins)))
@@ -126,6 +127,7 @@ Test embedding of sites locations information
   > (lang dune 2.2)
   > EOF
 
+
 Test with an opam like installation
 --------------------------------
 
@@ -136,11 +138,11 @@ Test with an opam like installation
   opam-version: "2.0"
   version: "0.a"
   depends: [
-    "dune" {>= "2.8"}
+    "dune" {>= "2.9"}
     "odoc" {with-doc}
   ]
   build: [
-    ["dune" "subst"] {dev}
+    ["dune" "subst" "--root" "."] {dev}
     [
       "dune"
       "build"
@@ -148,15 +150,26 @@ Test with an opam like installation
       name
       "-j"
       jobs
+      "--no-promote-install-files"
       "@install"
       "@runtest" {with-test}
       "@doc" {with-doc}
     ]
+    ["dune" "install" "-p" name "--create-install-files" name]
   ]
 
-  $ dune build -p a @install
+  $ dune build -p a --no-promote-install-files @install
 
+  $ test -e a/a.install
+  [1]
 
+  $ dune install -p a --create-install-files a 2> /dev/null
+
+  $ grep "_destdir" a/a.install -c
+  7
+
+  $ grep "_build" a/a.install -c
+  12
 
 Build everything
 ----------------

@@ -26,7 +26,11 @@ let diagnostic_of_error : Build_system.Error.t -> Dune_rpc_private.Diagnostic.t
   ; message
   ; loc
   ; promotion = []
-  ; directory = Option.map ~f:Path.to_string dir
+  ; directory =
+      Option.map
+        ~f:(fun p ->
+          Path.to_string (Path.drop_optional_build_context_maybe_sandboxed p))
+        dir
   }
 
 (* TODO un-copy-paste from dune/bin/arg.ml *)

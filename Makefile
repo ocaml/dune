@@ -125,8 +125,8 @@ ifeq (dune,$(firstword $(MAKECMDGOALS)))
 endif
 
 .PHONY: bench
-bench:
-	@dune exec -- ./bench/bench.exe 2> /dev/null
+bench: release
+	@dune exec -- ./bench/bench.exe _build/default/dune.exe   2> /dev/null
 
 dune: $(BIN)
 	$(BIN) $(RUN_ARGS)

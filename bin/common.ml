@@ -46,6 +46,7 @@ type t =
   ; file_watcher : Dune_engine.Scheduler.Run.file_watcher
   ; workspace_config : Dune_rules.Workspace.Clflags.t
   ; cache_debug_flags : Dune_engine.Cache_debug_flags.t
+  ; report_errors_config : Dune_engine.Report_errors_config.t
   }
 
 let capture_outputs t = t.capture_outputs
@@ -176,6 +177,7 @@ let init ?log_file c =
     ~handler:(Option.map c.rpc ~f:Dune_rpc_impl.Server.build_handler);
   Only_packages.Clflags.set c.only_packages;
   Dune_util.Report_error.print_memo_stacks := c.debug_dep_path;
+  Clflags.report_errors_config := c.report_errors_config;
   Clflags.debug_findlib := c.debug_findlib;
   Clflags.debug_backtraces c.debug_backtraces;
   Clflags.debug_artifact_substitution := c.debug_artifact_substitution;
@@ -902,7 +904,27 @@ let term =
              that it doesn't need to drop anything. You should probably not \
              care about this option; it is mostly useful for Dune developers \
              to make Dune tests of the digest cache more reproducible.")
-  and+ cache_debug_flags = cache_debug_flags_term in
+  and+ cache_debug_flags = cache_debug_flags_term
+  and+ report_errors_config =
+    Arg.(
+      value
+      & opt
+          (enum
+             [ ("early", Dune_engine.Report_errors_config.Early)
+             ; ("deterministic", Deterministic)
+             ; ("twice", Twice)
+             ])
+          Dune_engine.Report_errors_config.default
+      & info [ "error-reporting" ]
+          ~doc:
+            "Controls when the build errors are reported.\n\
+             $(b,early) - report errors as soon as they are discovered.\n\
+             $(b,deterministic) - report errors at the end of the build in a \
+             deterministic order.\n\
+             $(b,twice) - report each error twice: once as soon as the error \
+             is discovered and then again at the end of the build, in a \
+             deterministic order.")
+  in
   let build_dir = Option.value ~default:default_build_dir build_dir in
   let root = Workspace_root.create ~specified_by_user:root in
   let rpc =
@@ -954,6 +976,7 @@ let term =
       ; config_from_config_file
       }
   ; cache_debug_flags
+  ; report_errors_config
   }
 
 let set_rpc t rpc = { t with rpc = Some rpc }

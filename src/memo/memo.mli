@@ -182,7 +182,7 @@ val restart_current_run : unit -> unit
 (** Returns [true] if the user enabled the incremental mode via the environment
     variable [DUNE_WATCHING_MODE_INCREMENTAL], and we should therefore assume
     that the build system tracks all relevant side effects in the [Build] monad. *)
-val incremental_mode_enabled : bool
+val incremental_mode_enabled : bool ref
 
 module type Input = sig
   type t
@@ -360,6 +360,13 @@ end
 (** Create a "memoization cell" that focuses on a single input/output pair of a
     memoized function. *)
 val cell : ('i, 'o) t -> 'i -> ('i, 'o) Cell.t
+
+val lazy_cell :
+     ?cutoff:('a -> 'a -> bool)
+  -> ?name:string
+  -> ?human_readable_description:(unit -> User_message.Style.t Pp.t)
+  -> (unit -> 'a Build.t)
+  -> (unit, 'a) Cell.t
 
 (** Memoization of polymorphic functions ['a input -> 'a output Build.t]. The
     provided [id] function must be injective, i.e. there must be a one-to-one

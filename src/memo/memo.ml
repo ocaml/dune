@@ -922,7 +922,7 @@ let create_with_store (type i) name
 let create (type i) name ~input:(module Input : Input with type t = i) ?cutoff
     ?human_readable_description f =
   (* This mutable table is safe: the implementation tracks all dependencies. *)
-  let cache = Store.of_table (Table.create (module Input) 16) in
+  let cache = Store.of_table (Table.create (module Input) 2) in
   let input = (module Input : Store_intf.Input with type t = i) in
   create_with_cache name ~cache ~input ~cutoff ~human_readable_description f
 
@@ -1391,14 +1391,15 @@ struct
 end
 
 let incremental_mode_enabled =
-  match Sys.getenv_opt "DUNE_WATCHING_MODE_INCREMENTAL" with
-  | Some "true" -> true
-  | Some "false"
-  | None ->
-    false
-  | Some _ ->
-    User_error.raise
-      [ Pp.text "Invalid value of DUNE_WATCHING_MODE_INCREMENTAL" ]
+  ref
+    (match Sys.getenv_opt "DUNE_WATCHING_MODE_INCREMENTAL" with
+    | Some "true" -> true
+    | Some "false"
+    | None ->
+      false
+    | Some _ ->
+      User_error.raise
+        [ Pp.text "Invalid value of DUNE_WATCHING_MODE_INCREMENTAL" ])
 
 let restart_current_run () =
   Current_run.invalidate ();
@@ -1407,7 +1408,7 @@ let restart_current_run () =
 
 let reset () =
   restart_current_run ();
-  if not incremental_mode_enabled then Caches.clear ()
+  if not !incremental_mode_enabled then Caches.clear ()
 
 module Perf_counters = struct
   let enable () = Counters.enabled := true

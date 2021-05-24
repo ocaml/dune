@@ -90,3 +90,5 @@ val min : 'a list -> f:('a -> 'a -> Ordering.t) -> 'a option
 val max : 'a list -> f:('a -> 'a -> Ordering.t) -> 'a option
 
 val mem : 'a list -> 'a -> equal:('a -> 'a -> bool) -> bool
+
+val split_while : 'a t -> f:('a -> bool) -> 'a t * 'a t

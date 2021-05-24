@@ -1,0 +1,3 @@
+(library
+ (name thread_worker)
+ (libraries stdune threads.posix))

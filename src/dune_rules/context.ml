@@ -36,14 +36,6 @@ end
 module Program = struct
   module Name = String
 
-  module Which_path = struct
-    type t = Path.t option
-
-    let equal = Option.equal Path.equal
-
-    let to_dyn = Dyn.Encoder.option Path.to_dyn
-  end
-
   let programs_for_which_we_prefer_opt_ext =
     [ "ocamlc"; "ocamldep"; "ocamlmklib"; "ocamlobjinfo"; "ocamlopt" ]
 
@@ -64,82 +56,77 @@ module Program = struct
     List.find_map path ~f:(fun dir -> best_path dir program)
 end
 
-module T = struct
-  type t =
-    { name : Context_name.t
-    ; kind : Kind.t
-    ; profile : Profile.t
-    ; merlin : bool
-    ; fdo_target_exe : Path.t option
-    ; dynamically_linked_foreign_archives : bool
-    ; for_host : t option
-    ; implicit : bool
-    ; build_dir : Path.Build.t
-    ; env_nodes : Env_nodes.t
-    ; path : Path.t list
-    ; toplevel_path : Path.t option
-    ; ocaml_bin : Path.t
-    ; ocaml : Action.Prog.t
-    ; ocamlc : Path.t
-    ; ocamlopt : Action.Prog.t
-    ; ocamldep : Action.Prog.t
-    ; ocamlmklib : Action.Prog.t
-    ; ocamlobjinfo : Action.Prog.t
-    ; env : Env.t
-    ; findlib : Findlib.t
-    ; findlib_toolchain : Context_name.t option
-    ; default_ocamlpath : Path.t list
-    ; arch_sixtyfour : bool
-    ; ocaml_config : Ocaml_config.t
-    ; ocaml_config_vars : Ocaml_config.Vars.t
-    ; version : Ocaml_version.t
-    ; stdlib_dir : Path.t
-    ; supports_shared_libraries : Dynlink_supported.By_the_os.t
-    ; which : string -> Path.t option Memo.Build.t
-    ; lib_config : Lib_config.t
-    ; build_context : Build_context.t
-    }
+type t =
+  { name : Context_name.t
+  ; kind : Kind.t
+  ; profile : Profile.t
+  ; merlin : bool
+  ; fdo_target_exe : Path.t option
+  ; dynamically_linked_foreign_archives : bool
+  ; for_host : t option
+  ; implicit : bool
+  ; build_dir : Path.Build.t
+  ; env_nodes : Env_nodes.t
+  ; path : Path.t list
+  ; toplevel_path : Path.t option
+  ; ocaml_bin : Path.t
+  ; ocaml : Action.Prog.t
+  ; ocamlc : Path.t
+  ; ocamlopt : Action.Prog.t
+  ; ocamldep : Action.Prog.t
+  ; ocamlmklib : Action.Prog.t
+  ; ocamlobjinfo : Action.Prog.t
+  ; env : Env.t
+  ; findlib : Findlib.t
+  ; findlib_toolchain : Context_name.t option
+  ; default_ocamlpath : Path.t list
+  ; arch_sixtyfour : bool
+  ; ocaml_config : Ocaml_config.t
+  ; ocaml_config_vars : Ocaml_config.Vars.t
+  ; version : Ocaml_version.t
+  ; stdlib_dir : Path.t
+  ; supports_shared_libraries : Dynlink_supported.By_the_os.t
+  ; which : string -> Path.t option Memo.Build.t
+  ; lib_config : Lib_config.t
+  ; build_context : Build_context.t
+  }
 
-  let equal x y = Context_name.equal x.name y.name
+let equal x y = Context_name.equal x.name y.name
 
-  let hash t = Context_name.hash t.name
+let hash t = Context_name.hash t.name
 
-  let build_context t = t.build_context
+let build_context t = t.build_context
 
-  let to_dyn t : Dyn.t =
-    let open Dyn.Encoder in
-    let path = Path.to_dyn in
-    record
-      [ ("name", Context_name.to_dyn t.name)
-      ; ("kind", Kind.to_dyn t.kind)
-      ; ("profile", Profile.to_dyn t.profile)
-      ; ("merlin", Bool t.merlin)
-      ; ( "for_host"
-        , option Context_name.to_dyn
-            (Option.map t.for_host ~f:(fun t -> t.name)) )
-      ; ("fdo_target_exe", option path t.fdo_target_exe)
-      ; ("build_dir", Path.Build.to_dyn t.build_dir)
-      ; ("toplevel_path", option path t.toplevel_path)
-      ; ("ocaml_bin", path t.ocaml_bin)
-      ; ("ocaml", Action.Prog.to_dyn t.ocaml)
-      ; ("ocamlc", path t.ocamlc)
-      ; ("ocamlopt", Action.Prog.to_dyn t.ocamlopt)
-      ; ("ocamldep", Action.Prog.to_dyn t.ocamldep)
-      ; ("ocamlmklib", Action.Prog.to_dyn t.ocamlmklib)
-      ; ("env", Env.to_dyn (Env.diff t.env Env.initial))
-      ; ("findlib_path", list path (Findlib.paths t.findlib))
-      ; ("arch_sixtyfour", Bool t.arch_sixtyfour)
-      ; ( "natdynlink_supported"
-        , Bool
-            (Dynlink_supported.By_the_os.get t.lib_config.natdynlink_supported)
-        )
-      ; ( "supports_shared_libraries"
-        , Bool (Dynlink_supported.By_the_os.get t.supports_shared_libraries) )
-      ; ("ocaml_config", Ocaml_config.to_dyn t.ocaml_config)
-      ]
-end
-
-include T
+let to_dyn t : Dyn.t =
+  let open Dyn.Encoder in
+  let path = Path.to_dyn in
+  record
+    [ ("name", Context_name.to_dyn t.name)
+    ; ("kind", Kind.to_dyn t.kind)
+    ; ("profile", Profile.to_dyn t.profile)
+    ; ("merlin", Bool t.merlin)
+    ; ( "for_host"
+      , option Context_name.to_dyn (Option.map t.for_host ~f:(fun t -> t.name))
+      )
+    ; ("fdo_target_exe", option path t.fdo_target_exe)
+    ; ("build_dir", Path.Build.to_dyn t.build_dir)
+    ; ("toplevel_path", option path t.toplevel_path)
+    ; ("ocaml_bin", path t.ocaml_bin)
+    ; ("ocaml", Action.Prog.to_dyn t.ocaml)
+    ; ("ocamlc", path t.ocamlc)
+    ; ("ocamlopt", Action.Prog.to_dyn t.ocamlopt)
+    ; ("ocamldep", Action.Prog.to_dyn t.ocamldep)
+    ; ("ocamlmklib", Action.Prog.to_dyn t.ocamlmklib)
+    ; ("env", Env.to_dyn (Env.diff t.env Env.initial))
+    ; ("findlib_path", list path (Findlib.paths t.findlib))
+    ; ("arch_sixtyfour", Bool t.arch_sixtyfour)
+    ; ( "natdynlink_supported"
+      , Bool (Dynlink_supported.By_the_os.get t.lib_config.natdynlink_supported)
+      )
+    ; ( "supports_shared_libraries"
+      , Bool (Dynlink_supported.By_the_os.get t.supports_shared_libraries) )
+    ; ("ocaml_config", Ocaml_config.to_dyn t.ocaml_config)
+    ]
 
 let to_dyn_concise t : Dyn.t = Context_name.to_dyn t.name
 
@@ -236,7 +223,7 @@ end = struct
         Dyn.Tuple
           [ Env.to_dyn env; Dyn.Encoder.(option string root); String switch ]
     end in
-    let memo = Memo.create_hidden "opam-env" ~input:(module Input) impl in
+    let memo = Memo.create "opam-env" ~input:(module Input) impl in
     fun ~env ~root ~switch -> Memo.exec memo (env, root, switch)
 end
 
@@ -334,8 +321,7 @@ let create ~(kind : Kind.t) ~path ~env ~env_nodes ~name ~merlin ~targets
     Memo.create
       (sprintf "which-memo-for-%s" (Context_name.to_string name))
       ~input:(module Program.Name)
-      ~output:(Allow_cutoff (module Program.Which_path))
-      ~visibility:Hidden
+      ~cutoff:(Option.equal Path.equal)
       (fun p -> Memo.Build.return (Program.which ~path p))
   in
   let which = Memo.exec which_memo in
@@ -706,12 +692,6 @@ let create_for_opam ~loc ~root ~env ~env_nodes ~targets ~profile ~switch ~name
     ~host_toolchain ~fdo_target_exe ~dynamically_linked_foreign_archives
     ~instrument_with
 
-module T_list = struct
-  type nonrec t = t list
-
-  let to_dyn = Dyn.Encoder.list to_dyn
-end
-
 module rec Instantiate : sig
   val instantiate : Context_name.t -> t list Memo.Build.t
 end = struct
@@ -791,10 +771,9 @@ end = struct
         ~dynamically_linked_foreign_archives ~instrument_with
 
   let memo =
-    Memo.create "instantiate-context" ~doc:"instantiate contexts"
+    Memo.create "instantiate-context"
       ~input:(module Context_name)
-      ~output:(Simple (module T_list))
-      ~visibility:Memo.Visibility.Hidden instantiate_impl
+      instantiate_impl
 
   let instantiate name = Memo.exec memo name
 end
@@ -816,20 +795,13 @@ module DB = struct
             ]);
       all
     in
-    let memo =
-      Memo.create "build-contexts" ~doc:"all build contexts"
-        ~input:(module Unit)
-        ~output:(Simple (module T_list))
-        ~visibility:Memo.Visibility.Hidden impl
-    in
+    let memo = Memo.create "build-contexts" ~input:(module Unit) impl in
     Memo.exec memo
 
   let get =
     let memo =
-      Memo.create "context-db-get" ~doc:"get context from db"
+      Memo.create "context-db-get"
         ~input:(module Context_name)
-        ~output:(Simple (module T))
-        ~visibility:Hidden
         (fun name ->
           let+ contexts = all () in
           List.find_exn contexts ~f:(fun c -> Context_name.equal name c.name))

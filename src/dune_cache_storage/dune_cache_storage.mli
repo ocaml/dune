@@ -127,3 +127,11 @@ val with_temp_dir :
   -> suffix:string
   -> (Path.t Or_exn.t -> 'a Fiber.t)
   -> 'a Fiber.t
+
+module Raw_value : sig
+  val store_unchecked :
+       mode:Mode.t
+    -> content:string
+    -> content_digest:Digest.t
+    -> Util.Write_result.t
+end

@@ -77,10 +77,13 @@
 
   $ stop_building
   dune exited:
+  Success, waiting for filesystem changes...
   
   ********** NEW BUILD **********
   
+  Success, waiting for filesystem changes...
   
   ********** NEW BUILD **********
   
+  Success, waiting for filesystem changes...
   0

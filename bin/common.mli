@@ -6,7 +6,9 @@ val root : t -> Workspace_root.t
 
 val rpc : t -> Dune_rpc_impl.Server.t option
 
-val stats : t -> Stats.t option
+val stats : t -> Dune_stats.t option
+
+val print_metrics : t -> bool
 
 val watch : t -> Dune_engine.Clflags.Watch.t
 

@@ -174,7 +174,7 @@ module Driver = struct
     type t =
       { info : Info.t
       ; lib : Lib.t
-      ; replaces : t list Or_exn.t
+      ; replaces : t list Resolve.t
       }
 
     let desc ~plural =
@@ -195,24 +195,21 @@ module Driver = struct
       let open Memo.Build.O in
       let+ replaces =
         Memo.Build.parallel_map info.replaces ~f:(fun ((loc, name) as x) ->
-            match resolve x with
-            | Error _ as err -> Memo.Build.return err
-            | Ok lib -> (
-              get ~loc lib >>| function
-              | None ->
-                Error
-                  (User_error.E
-                     (User_error.make ~loc
-                        [ Pp.textf "%S is not a %s" (Lib_name.to_string name)
-                            (desc ~plural:false)
-                        ]))
-              | Some t -> Ok t))
-        >>| Result.List.all
+            Resolve.Build.bind (resolve x) ~f:(fun lib ->
+                get ~loc lib >>| function
+                | None ->
+                  Resolve.fail
+                    (User_error.make ~loc
+                       [ Pp.textf "%S is not a %s" (Lib_name.to_string name)
+                           (desc ~plural:false)
+                       ])
+                | Some t -> Resolve.return t))
+        >>| Resolve.List.map ~f:Fun.id
       in
       { info; lib; replaces }
 
     let public_info t =
-      let open Result.O in
+      let open Resolve.O in
       let+ replaces = t.replaces in
       { Info.loc = t.info.loc
       ; flags = t.info.flags
@@ -233,59 +230,61 @@ module Driver = struct
     | User_file of Loc.t * (Loc.t * Lib_name.t) list
     | Dot_ppx of Path.Build.t * Lib_name.t list
 
-  let make_error loc msg =
+  let fail loc msg =
     match loc with
-    | User_file (loc, _) ->
-      Error (User_error.E (User_error.make ~loc [ Pp.text msg ]))
+    | User_file (loc, _) -> Resolve.fail (User_error.make ~loc [ Pp.text msg ])
     | Dot_ppx (path, pps) ->
-      Error
-        (User_error.E
-           (User_error.make
-              ~loc:(Loc.in_file (Path.build path))
-              [ Pp.textf "Failed to create on-demand ppx rewriter for %s; %s"
-                  (String.enumerate_and (List.map pps ~f:Lib_name.to_string))
-                  (String.uncapitalize msg)
-              ]))
+      Resolve.fail
+        (User_error.make
+           ~loc:(Loc.in_file (Path.build path))
+           [ Pp.textf "Failed to create on-demand ppx rewriter for %s; %s"
+               (String.enumerate_and (List.map pps ~f:Lib_name.to_string))
+               (String.uncapitalize msg)
+           ])
 
   let select libs ~loc =
     let open Memo.Build.O in
-    select_replaceable_backend libs ~replaces >>| function
-    | Ok _ as x -> x
-    | Error No_backend_found ->
-      let msg =
-        match
-          List.filter_map libs ~f:(fun lib ->
-              match Lib_name.to_string (Lib.name lib) with
-              | ("ocaml-migrate-parsetree" | "ppxlib" | "ppx_driver") as s ->
-                Some s
-              | _ -> None)
-        with
-        | [] ->
-          let pps =
-            match loc with
-            | User_file (_, pps) -> List.map pps ~f:snd
-            | Dot_ppx (_, pps) -> pps
-          in
-          sprintf
-            "No ppx driver were found. It seems that %s %s not compatible with \
-             Dune. Examples of ppx rewriters that are compatible with Dune are \
-             ones using ocaml-migrate-parsetree, ppxlib or ppx_driver."
-            (String.enumerate_and (List.map pps ~f:Lib_name.to_string))
-            (match pps with
-            | [ _ ] -> "is"
-            | _ -> "are")
-        | names ->
-          sprintf
-            "No ppx driver were found.\nHint: Try upgrading or reinstalling %s."
-            (String.enumerate_and names)
-      in
-      make_error loc msg
-    | Error (Too_many_backends ts) ->
-      make_error loc
-        (sprintf "Too many incompatible ppx drivers were found: %s."
-           (String.enumerate_and
-              (List.map ts ~f:(fun t -> Lib_name.to_string (Lib.name (lib t))))))
-    | Error (Other exn) -> Error exn
+    select_replaceable_backend libs ~replaces
+    >>| Resolve.bind ~f:(function
+          | Ok x -> Resolve.return x
+          | Error Selection_error.No_backend_found ->
+            let msg =
+              match
+                List.filter_map libs ~f:(fun lib ->
+                    match Lib_name.to_string (Lib.name lib) with
+                    | ("ocaml-migrate-parsetree" | "ppxlib" | "ppx_driver") as s
+                      ->
+                      Some s
+                    | _ -> None)
+              with
+              | [] ->
+                let pps =
+                  match loc with
+                  | User_file (_, pps) -> List.map pps ~f:snd
+                  | Dot_ppx (_, pps) -> pps
+                in
+                sprintf
+                  "No ppx driver were found. It seems that %s %s not \
+                   compatible with Dune. Examples of ppx rewriters that are \
+                   compatible with Dune are ones using \
+                   ocaml-migrate-parsetree, ppxlib or ppx_driver."
+                  (String.enumerate_and (List.map pps ~f:Lib_name.to_string))
+                  (match pps with
+                  | [ _ ] -> "is"
+                  | _ -> "are")
+              | names ->
+                sprintf
+                  "No ppx driver were found.\n\
+                   Hint: Try upgrading or reinstalling %s."
+                  (String.enumerate_and names)
+            in
+            fail loc msg
+          | Error (Too_many_backends ts) ->
+            fail loc
+              (sprintf "Too many incompatible ppx drivers were found: %s."
+                 (String.enumerate_and
+                    (List.map ts ~f:(fun t ->
+                         Lib_name.to_string (Lib.name (lib t)))))))
 end
 
 let ppx_exe sctx ~key =
@@ -296,17 +295,15 @@ let build_ppx_driver sctx ~scope ~target ~pps ~pp_names =
   let open Memo.Build.O in
   let ctx = SC.context sctx in
   let* driver_and_libs =
-    (match Result.bind pps ~f:(Lib.closure ~linking:true) with
-    | Error _ as err -> Memo.Build.return err
-    | Ok pps ->
-      Memo.Build.map
-        (Driver.select pps ~loc:(Dot_ppx (target, pp_names)))
-        ~f:(fun driver -> Result.map driver ~f:(fun driver -> (driver, pps))))
-    >>| function
-    | Ok _ as ok -> ok
-    | Error e ->
-      (* Extend the dependency stack as we don't have locations at this point *)
-      Error (Dep_path.prepend_exn e (Preprocess pp_names))
+    Resolve.Build.bind
+      (Resolve.bind pps ~f:(Lib.closure ~linking:true))
+      ~f:(fun pps ->
+        Driver.select pps ~loc:(Dot_ppx (target, pp_names))
+        >>| Resolve.map ~f:(fun driver -> (driver, pps)))
+    >>| (* Extend the dependency stack as we don't have locations at this point *)
+    Resolve.push_stack_frame ~human_readable_description:(fun () ->
+        Dyn.pp
+          (List [ String "pps"; Dyn.Encoder.(list Lib_name.to_dyn) pp_names ]))
   in
   (* CR-someday diml: what we should do is build the .cmx/.cmo once and for all
      at the point where the driver is defined. *)
@@ -322,9 +319,11 @@ let build_ppx_driver sctx ~scope ~target ~pps ~pp_names =
   let add_rule ~sandbox = SC.add_rule ~sandbox sctx ~dir in
   let* () =
     add_rule ~sandbox:Sandbox_config.default
-      (Action_builder.of_result_map driver_and_libs ~f:(fun (driver, _) ->
-           Action_builder.return (sprintf "let () = %s ()\n" driver.info.main))
-      |> Action_builder.write_file_dyn ml_source)
+      (Action_builder.write_file_dyn ml_source
+         (Resolve.read
+            (let open Resolve.O in
+            let+ driver, _ = driver_and_libs in
+            sprintf "let () = %s ()\n" driver.info.main)))
   in
   let linkages = [ Exe.Linkage.native_or_custom ctx ] in
   let program : Exe.Program.t =
@@ -336,7 +335,7 @@ let build_ppx_driver sctx ~scope ~target ~pps ~pp_names =
   let obj_dir = Obj_dir.for_pp ~dir in
   let* cctx =
     let+ expander = Super_context.expander sctx ~dir in
-    let requires_compile = Result.map driver_and_libs ~f:snd in
+    let requires_compile = Resolve.map driver_and_libs ~f:snd in
     let requires_link = lazy requires_compile in
     let flags = Ocaml_flags.of_list [ "-g"; "-w"; "-24" ] in
     let opaque = Compilation_context.Explicit false in
@@ -400,59 +399,64 @@ let get_cookies ~loc ~expander ~lib_name libs =
       , Some ("library-name", (library_name, Lib_name.of_local (loc, lib_name)))
       )
   in
-  Result.try_with (fun () ->
-      List.concat_map libs ~f:(fun t ->
-          let info = Lib.info t in
-          let kind = Lib_info.kind info in
-          match kind with
-          | Normal -> []
-          | Ppx_rewriter { cookies }
-          | Ppx_deriver { cookies } ->
-            List.map
-              ~f:(fun { Lib_kind.Ppx_args.Cookie.name; value } ->
-                (name, (Expander.Static.expand_str expander value, Lib.name t)))
-              cookies)
-      |> (fun l ->
-           match library_name_cookie with
-           | None -> l
-           | Some cookie -> cookie :: l)
-      |> String.Map.of_list_reducei
-           ~f:(fun name ((val1, lib1) as res) (val2, lib2) ->
-             if String.equal val1 val2 then
-               res
-             else
-               let lib1 = Lib_name.to_string lib1 in
-               let lib2 = Lib_name.to_string lib2 in
-               User_error.raise ~loc
-                 [ Pp.textf
-                     "%s and %s have inconsistent requests for cookie %S; %s \
-                      requests %S and %s requests %S"
-                     lib1 lib2 name lib1 val1 lib2 val2
-                 ])
-      |> String.Map.foldi ~init:[] ~f:(fun name (value, _) acc ->
-             (name, value) :: acc)
-      |> List.rev
-      |> List.concat_map ~f:(fun (name, value) ->
-             [ "--cookie"; sprintf "%s=%S" name value ]))
+  match
+    List.concat_map libs ~f:(fun t ->
+        let info = Lib.info t in
+        let kind = Lib_info.kind info in
+        match kind with
+        | Normal -> []
+        | Ppx_rewriter { cookies }
+        | Ppx_deriver { cookies } ->
+          List.map
+            ~f:(fun { Lib_kind.Ppx_args.Cookie.name; value } ->
+              (name, (Expander.Static.expand_str expander value, Lib.name t)))
+            cookies)
+    |> (fun l ->
+         match library_name_cookie with
+         | None -> l
+         | Some cookie -> cookie :: l)
+    |> String.Map.of_list_reducei
+         ~f:(fun name ((val1, lib1) as res) (val2, lib2) ->
+           if String.equal val1 val2 then
+             res
+           else
+             let lib1 = Lib_name.to_string lib1 in
+             let lib2 = Lib_name.to_string lib2 in
+             User_error.raise ~loc
+               [ Pp.textf
+                   "%s and %s have inconsistent requests for cookie %S; %s \
+                    requests %S and %s requests %S"
+                   lib1 lib2 name lib1 val1 lib2 val2
+               ])
+    |> String.Map.foldi ~init:[] ~f:(fun name (value, _) acc ->
+           (name, value) :: acc)
+    |> List.rev
+    |> List.concat_map ~f:(fun (name, value) ->
+           [ "--cookie"; sprintf "%s=%S" name value ])
+  with
+  | x -> Resolve.return x
+  | exception User_error.E (msg, []) -> Resolve.fail msg
 
 let ppx_driver_and_flags_internal sctx ~loc ~expander ~lib_name ~flags libs =
-  let open Result.O in
+  let open Resolve.O in
   let flags = List.map ~f:(Expander.Static.expand_str expander) flags in
   let+ cookies = get_cookies ~loc ~lib_name ~expander libs in
   let sctx = SC.host sctx in
   (ppx_driver_exe sctx libs, flags @ cookies)
 
 let ppx_driver_and_flags sctx ~lib_name ~expander ~scope ~loc ~flags pps =
-  Action_builder.memo_build
-    (let open Memo.Build.O in
-    let libs = Result.ok_exn (Lib.DB.resolve_pps (Scope.libs scope) pps) in
-    let exe, flags =
-      Result.ok_exn
-        (ppx_driver_and_flags_internal sctx ~loc ~expander ~lib_name ~flags libs)
-    in
-    let libs = Result.ok_exn (Lib.closure libs ~linking:true) in
-    let+ driver = Driver.select libs ~loc:(User_file (loc, pps)) in
-    (exe, Result.ok_exn driver, flags))
+  let open Action_builder.O in
+  let* libs = Resolve.read (Lib.DB.resolve_pps (Scope.libs scope) pps) in
+  let* exe, flags =
+    Resolve.read
+      (ppx_driver_and_flags_internal sctx ~loc ~expander ~lib_name ~flags libs)
+  in
+  let* libs = Resolve.read (Lib.closure libs ~linking:true) in
+  let+ driver =
+    Action_builder.memo_build (Driver.select libs ~loc:(User_file (loc, pps)))
+    >>= Resolve.read
+  in
+  (exe, driver, flags)
 
 let workspace_root_var =
   String_with_vars.virt_pform __POS__ (Var Workspace_root)
@@ -710,11 +714,11 @@ let make sctx ~dir ~expander ~lint ~preprocess ~preprocessor_deps
   |> Pp_spec.make
 
 let get_ppx_driver sctx ~loc ~expander ~scope ~lib_name ~flags pps =
-  let open Result.O in
+  let open Resolve.O in
   let* libs = Lib.DB.resolve_pps (Scope.libs scope) pps in
   ppx_driver_and_flags_internal sctx ~loc ~expander ~lib_name ~flags libs
 
 let ppx_exe sctx ~scope pp =
-  let open Result.O in
+  let open Resolve.O in
   let+ libs = Lib.DB.resolve_pps (Scope.libs scope) [ (Loc.none, pp) ] in
   ppx_driver_exe sctx libs

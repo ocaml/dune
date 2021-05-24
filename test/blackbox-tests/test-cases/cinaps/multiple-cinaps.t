@@ -24,4 +24,6 @@ Multiple cinaps stanzas in the same dune file
   _build/default/.cinaps.a7811055/cinaps.ml-gen:
   - dune:1
   - dune:2
+  -> required by alias cinaps in dune:1
+  -> required by alias runtest
   [1]

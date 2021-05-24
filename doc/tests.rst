@@ -611,6 +611,8 @@ The ``cram`` stanza accepts the following fields:
 - ``(locks (<lock-names>))`` specify that the tests must be run while
   holding the following locks. See the :ref:`locks` section for more details.
 - ``deps`` - dependencies of the test
+- ``(package <package-name>)`` - attach the tests selected by this stanza to the
+specified package
 
 A single test may be configured by more than one ``cram`` stanza. In such cases,
 the values from all applicable ``cram`` stanzas are merged together to get the

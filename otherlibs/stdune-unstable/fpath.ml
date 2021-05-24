@@ -115,8 +115,15 @@ let rec clear_dir dir =
 
 and rm_rf_dir path =
   match clear_dir path with
-  | Cleared -> Unix.rmdir path
   | Directory_does_not_exist -> ()
+  | Cleared -> (
+    match Unix.rmdir path with
+    | () -> ()
+    | exception Unix.Unix_error (ENOENT, _, _) ->
+      (* How can we end up here? [clear_dir] cleared the directory successfully,
+         but by the time the above [Unix.rmdir] was called, another process
+         deleted the directory. *)
+      ())
 
 let rm_rf ?(allow_external = false) fn =
   if (not allow_external) && not (Filename.is_relative fn) then

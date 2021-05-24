@@ -10,7 +10,8 @@ type build_system =
   ; scontexts : Super_context.t Context_name.Map.t
   }
 
-let init ~stats ~sandboxing_preference ~cache_config ~handler =
+let init ~stats ~sandboxing_preference ~cache_config ~cache_debug_flags ~handler
+    =
   let promote_source ?chmod ~src ~dst ctx =
     let open Fiber.O in
     let* ctx =
@@ -28,7 +29,7 @@ let init ~stats ~sandboxing_preference ~cache_config ~handler =
       (Memo.lazy_ (fun () ->
            let open Memo.Build.O in
            Workspace.workspace () >>| Workspace.build_contexts))
-    ~cache_config
+    ~cache_config ~cache_debug_flags
     ~rule_generator:(module Gen_rules)
     ~handler
 

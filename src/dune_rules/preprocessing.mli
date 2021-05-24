@@ -25,7 +25,7 @@ val get_ppx_driver :
   -> lib_name:Lib_name.Local.t option
   -> flags:String_with_vars.t list
   -> (Loc.t * Lib_name.t) list
-  -> (Path.Build.t * string list) Or_exn.t
+  -> (Path.Build.t * string list) Resolve.t
 
 val gen_rules : Super_context.t -> string list -> unit Memo.Build.t
 
@@ -40,4 +40,4 @@ val action_for_pp_with_target :
   -> Action.t Action_builder.With_targets.t
 
 val ppx_exe :
-  Super_context.t -> scope:Scope.t -> Lib_name.t -> Path.Build.t Or_exn.t
+  Super_context.t -> scope:Scope.t -> Lib_name.t -> Path.Build.t Resolve.t

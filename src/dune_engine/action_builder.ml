@@ -28,10 +28,8 @@ module T = struct
     | Lines_of : Path.t -> string list t
     | Dyn_paths : ('a * Path.Set.t) t -> 'a t
     | Dyn_deps : ('a * Dep.Set.t) t -> 'a t
-    | Or_exn : 'a Or_exn.t t -> 'a t
     | Fail : fail -> _ t
     | Memo : 'a memo -> 'a t
-    | Catch : 'a t * 'a -> 'a t
     | Deps : Dep.Set.t -> unit t
     | Memo_build : 'a Memo.Build.t -> 'a t
     | Dyn_memo_build : 'a Memo.Build.t t -> 'a t
@@ -82,8 +80,6 @@ let map2 x y ~f = Map2 (f, x, y)
 
 let delayed f = Map (f, Pure ())
 
-let or_exn s = Or_exn s
-
 let all_unit xs =
   let+ (_ : unit list) = all xs in
   ()
@@ -125,8 +121,6 @@ let env_var s = Deps (Dep.Set.singleton (Dep.env s))
 
 let alias a = dep (Dep.alias a)
 
-let catch t ~on_error = Catch (t, on_error)
-
 let contents p = Contents p
 
 let lines_of p = Lines_of p
@@ -159,15 +153,6 @@ let paths_existing paths =
          if_file_exists file ~then_:(path file) ~else_:(return ())))
 
 let fail x = Fail x
-
-let of_result = function
-  | Ok x -> x
-  | Error e -> fail { fail = (fun () -> raise e) }
-
-let of_result_map res ~f =
-  match res with
-  | Ok x -> f x
-  | Error e -> fail { fail = (fun () -> raise e) }
 
 let memoize name t = Memo { name; id = Type_eq.Id.create (); t }
 
@@ -243,15 +228,6 @@ module With_targets = struct
     add ~targets:[ fn ]
       (let+ s = s in
        Action.Write_file (fn, perm, s))
-
-  let of_result_map res ~f ~targets =
-    add ~targets
-      (match res with
-      | Ok x -> f x
-      | Error e ->
-        { build = Fail { fail = (fun () -> raise e) }
-        ; targets = Path.Build.Set.empty
-        })
 
   let memoize name t = { build = memoize name t.build; targets = t.targets }
 end
@@ -396,24 +372,11 @@ struct
         let* (x, deps), deps_x = exec t in
         let+ deps = Build_deps.register_action_deps deps in
         (x, merge_facts deps deps_x)
-      | Or_exn e ->
-        let+ a, deps = exec e in
-        (Result.ok_exn a, deps)
       | Fail { fail } -> fail ()
       | If_file_exists (p, then_, else_) -> (
         Build_deps.file_exists p >>= function
         | true -> exec then_
         | false -> exec else_)
-      | Catch (t, on_error) -> (
-        let+ res =
-          Memo.Build.map_reduce_errors
-            (module Monoid.Unit)
-            ~on_error:(fun _ -> Memo.Build.return ())
-            (fun () -> exec t)
-        in
-        match res with
-        | Ok r -> r
-        | Error () -> (on_error, Dep.Map.empty))
       | Memo m -> Memo_poly.eval m
       | Memo_build f ->
         let+ f = f in
@@ -477,11 +440,9 @@ let rec can_eval_statically : type a. a t -> bool = function
   | Source_tree _ -> false
   | Contents _ -> false
   | Lines_of _ -> false
-  | Or_exn b -> can_eval_statically b
   | Fail _ -> true
   | If_file_exists (_, _, _) -> false
   | Memo _ -> false
-  | Catch (t, _) -> can_eval_statically t
   | Memo_build _ -> false
   | Dyn_memo_build _ -> false
   | Bind _ ->
@@ -515,7 +476,7 @@ let rec can_eval_statically : type a. a t -> bool = function
   | Action_stdout _ -> false
 
 let static_eval =
-  let rec loop : type a. a t -> unit t -> a * unit t =
+  let rec loop : type a. a t -> Dep.Set.t -> a * Dep.Set.t =
    fun t acc ->
     match t with
     | Pure x -> (x, acc)
@@ -536,25 +497,19 @@ let static_eval =
       (f a b, acc)
     | All xs -> loop_many [] xs acc
     | Paths_glob _ -> assert false
-    | Deps _ -> ((), acc >>> t)
+    | Deps deps -> ((), Dep.Set.union deps acc)
     | Dyn_paths b ->
       let (x, ps), acc = loop b acc in
-      (x, Deps (Dep.Set.of_files_set ps) >>> acc)
+      (x, Dep.Set.union (Dep.Set.of_files_set ps) acc)
     | Dyn_deps b ->
       let (x, deps), acc = loop b acc in
-      (x, Deps deps >>> acc)
+      (x, Dep.Set.union deps acc)
     | Source_tree _ -> assert false
     | Contents _ -> assert false
     | Lines_of _ -> assert false
-    | Or_exn b ->
-      let res, acc = loop b acc in
-      (Result.ok_exn res, acc)
     | Fail { fail } -> fail ()
     | If_file_exists (_, _, _) -> assert false
     | Memo _ -> assert false
-    | Catch (t, v) -> (
-      try loop t acc with
-      | _ -> (v, return ()))
     | Memo_build _ -> assert false
     | Dyn_memo_build _ -> assert false
     | Bind _ -> assert false
@@ -562,7 +517,8 @@ let static_eval =
     | Goal t -> loop t acc
     | Action _ -> assert false
     | Action_stdout _ -> assert false
-  and loop_many : type a. a list -> a t list -> unit t -> a list * unit t =
+  and loop_many : type a. a list -> a t list -> Dep.Set.t -> a list * Dep.Set.t
+      =
    fun acc_res l acc ->
     match l with
     | [] -> (List.rev acc_res, acc)
@@ -572,7 +528,7 @@ let static_eval =
   in
   fun t ->
     if can_eval_statically t then
-      Some (loop t (return ()))
+      Some (loop t Dep.Set.empty)
     else
       None
 

@@ -124,6 +124,7 @@ ifeq (dune,$(firstword $(MAKECMDGOALS)))
   $(eval $(RUN_ARGS):;@:)
 endif
 
+.PHONY: bench
 bench:
 	@dune exec -- ./bench/bench.exe 2> /dev/null
 
@@ -145,3 +146,8 @@ dune-release:
 	DUNE_RELEASE_DELEGATE=github-dune-release-delegate dune-release publish distrib --verbose -n dune
 	dune-release opam pkg -n dune
 	dune-release opam submit -n dune
+
+# see nix/default.nix for details
+.PHONY: nix/opam-selection.nix
+nix/opam-selection.nix: Makefile
+	nix-shell -A resolve default.nix

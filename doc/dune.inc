@@ -27,15 +27,6 @@
  (files   dune-clean.1))
 
 (rule
- (with-stdout-to dune-compute.1
-  (run dune compute --help=groff)))
-
-(install
- (section man)
- (package dune)
- (files   dune-compute.1))
-
-(rule
  (with-stdout-to dune-describe.1
   (run dune describe --help=groff)))
 

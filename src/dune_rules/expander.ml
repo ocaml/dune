@@ -139,7 +139,7 @@ let isn't_allowed_in_this_position_message ~source =
     ]
 
 let isn't_allowed_in_this_position ~source =
-  raise (User_error.E (isn't_allowed_in_this_position_message ~source))
+  raise (User_error.E (isn't_allowed_in_this_position_message ~source, []))
 
 let expand_artifact ~source t a s =
   match t.lookup_artifacts with
@@ -414,9 +414,9 @@ let expand_pform_gen ~(context : Context.t) ~bindings ~dir ~source
               else
                 t.scope
             in
-            match
+            let p =
+              let open Resolve.O in
               if lib_private then
-                let open Result.O in
                 let* lib =
                   Lib.DB.resolve (Scope.libs scope)
                     (Dune_lang.Template.Pform.loc source, lib)
@@ -429,30 +429,28 @@ let expand_pform_gen ~(context : Context.t) ~bindings ~dir ~source
                   Option.equal Dune_project.equal (Some current_project)
                     referenced_project
                 then
-                  Ok (Path.relative (Lib_info.src_dir (Lib.info lib)) file)
+                  Resolve.return
+                    (Path.relative (Lib_info.src_dir (Lib.info lib)) file)
                 else
-                  Error
-                    (User_error.E
-                       (User_error.make
-                          ~loc:(Dune_lang.Template.Pform.loc source)
-                          [ Pp.textf
-                              "The variable \"lib%s-private\" can only refer \
-                               to libraries within the same project. The \
-                               current project's name is %S, but the reference \
-                               is to %s."
-                              (if lib_exec then
-                                "exec"
-                              else
-                                "")
-                              (Dune_project.Name.to_string_hum
-                                 (Dune_project.name current_project))
-                              (match referenced_project with
-                              | None -> "an external library"
-                              | Some project ->
-                                Dune_project.name project
-                                |> Dune_project.Name.to_string_hum
-                                |> String.quoted)
-                          ]))
+                  Resolve.fail
+                    (User_error.make
+                       ~loc:(Dune_lang.Template.Pform.loc source)
+                       [ Pp.textf
+                           "The variable \"lib%s-private\" can only refer to \
+                            libraries within the same project. The current \
+                            project's name is %S, but the reference is to %s."
+                           (if lib_exec then
+                             "exec"
+                           else
+                             "")
+                           (Dune_project.Name.to_string_hum
+                              (Dune_project.name current_project))
+                           (match referenced_project with
+                           | None -> "an external library"
+                           | Some project ->
+                             Dune_project.name project
+                             |> Dune_project.Name.to_string_hum |> String.quoted)
+                       ])
               else
                 let artifacts =
                   if lib_exec then
@@ -463,7 +461,8 @@ let expand_pform_gen ~(context : Context.t) ~bindings ~dir ~source
                 Artifacts.Public_libs.file_of_lib artifacts
                   ~loc:(Dune_lang.Template.Pform.loc source)
                   ~lib ~file
-            with
+            in
+            match Resolve.peek p with
             | Ok p ->
               if
                 (not lib_exec) || (not Sys.win32)
@@ -474,27 +473,28 @@ let expand_pform_gen ~(context : Context.t) ~bindings ~dir ~source
                 let p_exe = Path.extend_basename p ~suffix:".exe" in
                 Action_builder.if_file_exists p_exe ~then_:(dep p_exe)
                   ~else_:(dep p)
-            | Error e ->
-              raise
-                (match lib_private with
-                | true -> e
-                | false ->
-                  if Lib.DB.available (Scope.libs scope) lib then
-                    User_error.E
-                      (User_error.make
-                         ~loc:(Dune_lang.Template.Pform.loc source)
-                         [ Pp.textf
-                             "The library %S is not public. The variable \
-                              \"lib%s\" expands to the file's installation \
-                              path which is not defined for private libraries."
-                             (Lib_name.to_string lib)
-                             (if lib_exec then
-                               "exec"
-                             else
-                               "")
-                         ])
-                  else
-                    e))
+            | Error () ->
+              let p =
+                let open Resolve.O in
+                if lib_private || not (Lib.DB.available (Scope.libs scope) lib)
+                then
+                  p >>| fun _ -> assert false
+                else
+                  Resolve.fail
+                    (User_error.make
+                       ~loc:(Dune_lang.Template.Pform.loc source)
+                       [ Pp.textf
+                           "The library %S is not public. The variable \
+                            \"lib%s\" expands to the file's installation path \
+                            which is not defined for private libraries."
+                           (Lib_name.to_string lib)
+                           (if lib_exec then
+                             "exec"
+                           else
+                             "")
+                       ])
+              in
+              Resolve.read p)
       | Lib_available ->
         Need_full_expander
           (fun t ->

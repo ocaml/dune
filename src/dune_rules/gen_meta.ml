@@ -67,6 +67,7 @@ let archives ?(preds = []) lib =
   ]
 
 let gen_lib pub_name lib ~path ~version =
+  let open Memo.Build.O in
   let info = Lib.info lib in
   let synopsis = Lib_info.synopsis info in
   let kind = Lib_info.kind info in
@@ -89,22 +90,25 @@ let gen_lib pub_name lib ~path ~version =
       [ Pos "ppx_driver" ]
   in
   let to_names = Lib_name.Set.of_list_map ~f:Lib.name in
-  let lib_deps = Lib.requires lib |> Result.ok_exn |> to_names in
-  let ppx_rt_deps = Lib.ppx_runtime_deps lib |> Result.ok_exn |> to_names in
-  let ppx_runtime_deps_for_deprecated_method =
-    (* For the deprecated method, we need to put all the runtime dependencies of
-       the transitive closure.
+  let* lib_deps = Resolve.read_memo_build (Lib.requires lib) >>| to_names in
+  let* ppx_rt_deps =
+    Resolve.read_memo_build (Lib.ppx_runtime_deps lib) >>| to_names
+  in
+  let+ ppx_runtime_deps_for_deprecated_method =
+    Resolve.read_memo_build
+      (let open Resolve.O in
+      (* For the deprecated method, we need to put all the runtime dependencies
+         of the transitive closure.
 
-       We need to do this because [ocamlfind ocamlc -package ppx_foo] will not
-       look for the transitive dependencies of [foo], and the runtime
-       dependencies might be attached to a dependency of [foo] rather than [foo]
-       itself.
+         We need to do this because [ocamlfind ocamlc -package ppx_foo] will not
+         look for the transitive dependencies of [foo], and the runtime
+         dependencies might be attached to a dependency of [foo] rather than
+         [foo] itself.
 
-       Sigh... *)
-    Lib.closure [ lib ] ~linking:false
-    |> Result.ok_exn
-    |> List.concat_map ~f:(fun lib -> Result.ok_exn (Lib.ppx_runtime_deps lib))
-    |> to_names
+         Sigh... *)
+      Lib.closure [ lib ] ~linking:false
+      >>= Resolve.List.concat_map ~f:Lib.ppx_runtime_deps
+      >>| to_names)
   in
   List.concat
     [ version
@@ -166,13 +170,14 @@ let gen_lib pub_name lib ~path ~version =
     ]
 
 let gen ~(package : Package.t) ~add_directory_entry entries =
+  let open Memo.Build.O in
   let version =
     match package.version with
     | None -> []
     | Some s -> [ rule "version" [] Set s ]
   in
-  let pkgs =
-    List.map entries ~f:(fun (e : Super_context.Lib_entry.t) ->
+  let+ pkgs =
+    Memo.Build.parallel_map entries ~f:(fun (e : Super_context.Lib_entry.t) ->
         match e with
         | Library lib -> (
           let info = Lib.Local.info lib in
@@ -202,14 +207,18 @@ let gen ~(package : Package.t) ~add_directory_entry entries =
                 (pub_name, path)
               | _ -> (pub_name, path)
             in
-            (pub_name, gen_lib pub_name ~path (Lib.Local.to_lib lib) ~version))
+            let+ entries =
+              gen_lib pub_name ~path (Lib.Local.to_lib lib) ~version
+            in
+            (pub_name, entries))
         | Deprecated_library_name
             { old_name = old_public_name, _
             ; new_public_name = _, new_public_name
             ; _
             } ->
-          ( Pub_name.of_lib_name (Dune_file.Public_lib.name old_public_name)
-          , version @ [ requires (Lib_name.Set.singleton new_public_name) ] ))
+          Memo.Build.return
+            ( Pub_name.of_lib_name (Dune_file.Public_lib.name old_public_name)
+            , version @ [ requires (Lib_name.Set.singleton new_public_name) ] ))
   in
   let pkgs =
     List.map pkgs ~f:(fun (pn, meta) ->

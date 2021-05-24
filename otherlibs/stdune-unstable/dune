@@ -10,4 +10,4 @@
   dune_filesystem_stubs)
  (foreign_stubs
   (language c)
-  (names fcntl_stubs)))
+  (names fcntl_stubs wait3_stubs)))

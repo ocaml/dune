@@ -7,6 +7,8 @@ type t =
 
 val try_with : (unit -> 'a) -> ('a, t) Result.t
 
+val try_with_never_returns : (unit -> Nothing.t) -> t
+
 (** This function should be the very first thing called in the exception handler
     if you want it to work correctly. Otherwise it might capture an incorrect
     backtrace. *)

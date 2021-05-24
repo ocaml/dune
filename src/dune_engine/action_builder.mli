@@ -44,9 +44,6 @@ module With_targets : sig
 
   val all : 'a t list -> 'a list t
 
-  val of_result_map :
-    'a Or_exn.t -> f:('a -> 'b t) -> targets:Path.Build.t list -> 'b t
-
   (** [memoize name t] is an action builder that behaves like [t] except that
       its result is computed only once. *)
   val memoize : string -> 'a t -> 'a t
@@ -93,8 +90,6 @@ end
 
 (** Delay a static computation until the description is evaluated *)
 val delayed : (unit -> 'a) -> 'a t
-
-val or_exn : 'a Or_exn.t t -> 'a t
 
 (** CR-someday diml: this API is not great, what about:
 
@@ -159,10 +154,6 @@ val dyn_path_set : ('a * Path.Set.t) t -> 'a t
 
 val dyn_path_set_reuse : Path.Set.t t -> Path.Set.t t
 
-(** [catch t ~on_error] evaluates to [on_error] if an exception is raised during
-    the evaluation of [t]. *)
-val catch : 'a t -> on_error:'a -> 'a t
-
 (** [contents path] returns a description that when run will return the contents
     of the file at [path]. *)
 val contents : Path.t -> string t
@@ -189,10 +180,6 @@ val if_file_exists : Path.t -> then_:'a t -> else_:'a t -> 'a t
 (** Always fail when executed. We pass a function rather than an exception to
     get a proper backtrace *)
 val fail : fail -> _ t
-
-val of_result : 'a t Or_exn.t -> 'a t
-
-val of_result_map : 'a Or_exn.t -> f:('a -> 'b t) -> 'b t
 
 (** [memoize name t] is an action builder that behaves like [t] except that its
     result is computed only once. *)
@@ -268,10 +255,8 @@ val action_stdout : Action_desc.t t -> string t
 
 (** {1 Analysis} *)
 
-(** Returns [Some (x, t)] if the following can be evaluated statically. The
-    returned [t] should be attached to the current action builder to record
-    dependencies and other informations. Otherwise return [None]. *)
-val static_eval : 'a t -> ('a * unit t) option
+(** Returns [Some (x, deps)] if the following can be evaluated statically. *)
+val static_eval : 'a t -> ('a * Dep.Set.t) option
 
 (** [goal t] ignores all facts that have been accumulated about the dependencies
     of [t]. For example, [goal (path p)] declares that a path [p] contributes to

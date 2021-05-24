@@ -38,12 +38,14 @@ type t =
   ; rpc : Dune_rpc_impl.Server.t option
   ; default_target : Arg.Dep.t (* For build & runtest only *)
   ; watch : Dune_engine.Clflags.Watch.t
+  ; print_metrics : bool
   ; stats_trace_file : string option
   ; always_show_command_line : bool
   ; promote_install_files : bool
-  ; stats : Stats.t option
+  ; stats : Dune_stats.t option
   ; file_watcher : Dune_engine.Scheduler.Run.file_watcher
   ; workspace_config : Dune_rules.Workspace.Clflags.t
+  ; cache_debug_flags : Dune_engine.Cache_debug_flags.t
   }
 
 let capture_outputs t = t.capture_outputs
@@ -51,6 +53,8 @@ let capture_outputs t = t.capture_outputs
 let root t = t.root
 
 let watch t = t.watch
+
+let print_metrics t = t.print_metrics
 
 let file_watcher t = t.file_watcher
 
@@ -168,9 +172,10 @@ let init ?log_file c =
   in
   Dune_rules.Main.init ~stats:c.stats
     ~sandboxing_preference:config.sandboxing_preference ~cache_config
+    ~cache_debug_flags:c.cache_debug_flags
     ~handler:(Option.map c.rpc ~f:Dune_rpc_impl.Server.build_handler);
   Only_packages.Clflags.set c.only_packages;
-  Clflags.debug_dep_path := c.debug_dep_path;
+  Dune_util.Report_error.print_memo_stacks := c.debug_dep_path;
   Clflags.debug_findlib := c.debug_findlib;
   Clflags.debug_backtraces c.debug_backtraces;
   Clflags.debug_artifact_substitution := c.debug_artifact_substitution;
@@ -509,7 +514,7 @@ let display_term =
          & info [ "verbose" ] ~docs:copts_sect
              ~doc:"Same as $(b,--display verbose)")
      in
-     Option.some_if verbose Display.Verbose)
+     Option.some_if verbose { Display.verbosity = Verbose; status_line = true })
     Arg.(
       value
       & opt (some (enum Display.all)) None
@@ -612,12 +617,32 @@ let shared_with_config_file =
           ~docs
           ~env:(Arg.env_var ~doc "DUNE_CACHE_CHECK_PROBABILITY")
           ~doc)
-  and+ swallow_stdout_on_success =
+  and+ action_stdout_on_success =
     Arg.(
-      value & flag
+      value
+      & opt (some (enum Dune_config.Action_output_on_success.all)) None
       & info
-          [ "swallow-stdout-on-success" ]
-          ~doc:"Swallow the output of an action when it succeeds.")
+          [ "action-stdout-on-success" ]
+          ~doc:
+            "Specify how to deal with the standard output of actions when they \
+             succeed. Possible values are: $(b,print) to just print it to \
+             Dune's output, $(b,swallow) to completely ignore it and \
+             $(b,must-be-empty) to enforce that the action printed nothing. \
+             With $(b,must-be-empty), Dune will consider that the action \
+             failed if it printed something to its standard output. The \
+             default is $(b,print).")
+  and+ action_stderr_on_success =
+    Arg.(
+      value
+      & opt (some (enum Dune_config.Action_output_on_success.all)) None
+      & info
+          [ "action-stderr-on-success" ]
+          ~doc:
+            "Same as $(b,--action-stdout-on-success) but for the standard \
+             output for error messages. A good default for large \
+             mono-repositories is $(b,--action-stdout-on-success=swallow \
+             --action-stderr-on-success=must-be-empty). This ensures that a \
+             successful build has a \"clean\" empty output.")
   in
   { Dune_config.Partial.display
   ; concurrency
@@ -628,8 +653,62 @@ let shared_with_config_file =
       Option.map cache_check_probability
         ~f:Dune_cache.Config.Reproducibility_check.check_with_probability
   ; cache_storage_mode
-  ; swallow_stdout_on_success = Option.some_if swallow_stdout_on_success true
+  ; action_stdout_on_success
+  ; action_stderr_on_success
   }
+
+module Cache_debug_flags = Dune_engine.Cache_debug_flags
+
+let cache_debug_flags_term : Cache_debug_flags.t Term.t =
+  let initial =
+    { Cache_debug_flags.shared_cache = false; workspace_local_cache = false }
+  in
+  let all_layers =
+    [ ("shared", fun r -> { r with Cache_debug_flags.shared_cache = true })
+    ; ( "workspace-local"
+      , fun r -> { r with Cache_debug_flags.workspace_local_cache = true } )
+    ]
+  in
+  let no_layers = ([], fun x -> x) in
+  let combine_layers =
+    List.fold_right ~init:no_layers
+      ~f:(fun (names, value) (acc_names, acc_value) ->
+        (names @ acc_names, fun x -> acc_value (value x)))
+  in
+  let all_layer_names = String.concat ~sep:"," (List.map ~f:fst all_layers) in
+  let layers_conv =
+    let parser s =
+      let parse_one s =
+        match
+          List.find_map all_layers ~f:(fun (name, value) ->
+              match String.equal name s with
+              | true -> Some ([ name ], value)
+              | false -> None)
+        with
+        | None ->
+          ksprintf (fun s -> Error (`Msg s)) "Invalid cache layer name: %S" s
+        | Some x -> Ok x
+      in
+      String.split s ~on:',' |> List.map ~f:parse_one |> Result.List.all
+      |> Result.map ~f:combine_layers
+    in
+    let printer ppf (names, _value) =
+      Format.pp_print_string ppf (String.concat ~sep:"," names)
+    in
+    Arg.conv ~docv:"CACHE-LAYERS" (parser, printer)
+  in
+  let+ _names, value =
+    Arg.(
+      value & opt layers_conv no_layers
+      & info [ "debug-cache" ] ~docs:copts_sect
+          ~doc:
+            (sprintf
+               {|Show debug messages on cache misses for the given cache layers.
+Value is a comma-separated list of cache layer names.
+All available cache layers: %s.|}
+               all_layer_names))
+  in
+  value initial
 
 let term =
   let docs = copts_sect in
@@ -660,6 +739,18 @@ let term =
       value & flag
       & info [ "debug-digests" ] ~docs
           ~doc:"Explain why Dune decides to re-digest some files")
+  and+ store_digest_preimage =
+    Arg.(
+      value & flag
+      & info
+          [ "debug-store-digest-preimage" ]
+          ~docs
+          ~doc:
+            "Store digest preimage for all computed digests, so that it's \
+             possible to reverse them later, for debugging. The digests are \
+             stored in the shared cache (see --cache flag) as values, even if \
+             cache is otherwise disabled. This should be used only for \
+             debugging, since it's slow and it litters the shared cache.")
   and+ no_buffer =
     let doc =
       {|Do not buffer the output of commands executed by dune. By default dune
@@ -744,6 +835,11 @@ Otherwise, dune will exit.|}
                      Dune_engine.Poll_automation_harness.create ~command)))
        in
        res)
+  and+ print_metrics =
+    Arg.(
+      value & flag
+      & info [ "print-metrics" ] ~docs
+          ~doc:"Print out various performance metrics after every build")
   and+ { Options_implied_by_dash_p.root
        ; only_packages
        ; ignore_promoted_rules
@@ -838,7 +934,7 @@ Otherwise, dune will exit.|}
              that it doesn't need to drop anything. You should probably not \
              care about this option; it is mostly useful for Dune developers \
              to make Dune tests of the digest cache more reproducible.")
-  in
+  and+ cache_debug_flags = cache_debug_flags_term in
   let build_dir = Option.value ~default:default_build_dir build_dir in
   let root = Workspace_root.create ~specified_by_user:root in
   let rpc =
@@ -848,10 +944,12 @@ Otherwise, dune will exit.|}
   in
   let stats =
     Option.map stats_trace_file ~f:(fun f ->
-        let stats = Stats.create (Out (open_out f)) in
-        at_exit (fun () -> Stats.close stats);
+        let stats = Dune_stats.create (Out (open_out f)) in
+        at_exit (fun () -> Dune_stats.close stats);
         stats)
   in
+  if store_digest_preimage then Dune_engine.Reversible_digest.enable ();
+  if print_metrics then Memo.Perf_counters.enable ();
   { debug_dep_path
   ; debug_findlib
   ; debug_backtraces
@@ -872,6 +970,7 @@ Otherwise, dune will exit.|}
   ; store_orig_src_dir
   ; default_target
   ; watch
+  ; print_metrics
   ; stats_trace_file
   ; always_show_command_line
   ; promote_install_files
@@ -885,6 +984,7 @@ Otherwise, dune will exit.|}
       ; config_from_command_line
       ; config_from_config_file
       }
+  ; cache_debug_flags
   }
 
 let set_rpc t rpc = { t with rpc = Some rpc }

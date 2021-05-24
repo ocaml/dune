@@ -104,7 +104,7 @@ module Dep : sig
   val deps :
        Context.t
     -> Package.Name.t option
-    -> (Lib.t list, exn) result
+    -> Lib.t list Resolve.t
     -> unit Action_builder.t
 
   (*** [setup_deps ctx target odocs] Adds [odocs] as dependencies for [target].
@@ -116,22 +116,22 @@ end = struct
   let alias = Alias.make (Alias.Name.of_string ".odoc-all")
 
   let deps ctx pkg requires =
-    Action_builder.of_result_map requires ~f:(fun libs ->
-        Action_builder.deps
-          (let init =
-             match pkg with
-             | Some p ->
-               Dep.Set.singleton
-                 (Dep.alias (alias ~dir:(Paths.odocs ctx (Pkg p))))
-             | None -> Dep.Set.empty
-           in
-           List.fold_left libs ~init ~f:(fun acc (lib : Lib.t) ->
-               match Lib.Local.of_lib lib with
-               | None -> acc
-               | Some lib ->
-                 let dir = Paths.odocs ctx (Lib lib) in
-                 let alias = alias ~dir in
-                 Dep.Set.add acc (Dep.alias alias))))
+    let open Action_builder.O in
+    let* libs = Resolve.read requires in
+    Action_builder.deps
+      (let init =
+         match pkg with
+         | Some p ->
+           Dep.Set.singleton (Dep.alias (alias ~dir:(Paths.odocs ctx (Pkg p))))
+         | None -> Dep.Set.empty
+       in
+       List.fold_left libs ~init ~f:(fun acc (lib : Lib.t) ->
+           match Lib.Local.of_lib lib with
+           | None -> acc
+           | Some lib ->
+             let dir = Paths.odocs ctx (Lib lib) in
+             let alias = alias ~dir in
+             Dep.Set.add acc (Dep.alias alias)))
 
   let alias ctx m = alias ~dir:(Paths.odocs ctx m)
 
@@ -233,25 +233,27 @@ let compile_mld sctx (m : Mld.t) ~includes ~doc_dir ~pkg =
   odoc_file
 
 let odoc_include_flags ctx pkg requires =
-  Command.of_result_map requires ~f:(fun libs ->
-      let paths =
-        libs
-        |> List.fold_left
-             ~f:(fun paths lib ->
-               match Lib.Local.of_lib lib with
-               | None -> paths
-               | Some lib ->
-                 Path.Set.add paths (Path.build (Paths.odocs ctx (Lib lib))))
-             ~init:Path.Set.empty
-      in
-      let paths =
-        match pkg with
-        | Some p -> Path.Set.add paths (Path.build (Paths.odocs ctx (Pkg p)))
-        | None -> paths
-      in
-      S
-        (List.concat_map (Path.Set.to_list paths) ~f:(fun dir ->
-             [ Command.Args.A "-I"; Path dir ])))
+  Resolve.args
+    (let open Resolve.O in
+    let+ libs = requires in
+    let paths =
+      libs
+      |> List.fold_left
+           ~f:(fun paths lib ->
+             match Lib.Local.of_lib lib with
+             | None -> paths
+             | Some lib ->
+               Path.Set.add paths (Path.build (Paths.odocs ctx (Lib lib))))
+           ~init:Path.Set.empty
+    in
+    let paths =
+      match pkg with
+      | Some p -> Path.Set.add paths (Path.build (Paths.odocs ctx (Pkg p)))
+      | None -> paths
+    in
+    Command.Args.S
+      (List.concat_map (Path.Set.to_list paths) ~f:(fun dir ->
+           [ Command.Args.A "-I"; Path dir ])))
 
 let setup_html sctx (odoc_file : odoc) ~pkg ~requires =
   let ctx = Super_context.context sctx in
@@ -485,18 +487,18 @@ let setup_lib_html_rules_def =
   let module Input = struct
     module Super_context = Super_context.As_memo_key
 
-    type t = Super_context.t * Lib.Local.t * Lib.t list Or_exn.t
+    type t = Super_context.t * Lib.Local.t * Lib.t list Resolve.t
 
     let equal (sc1, l1, r1) (sc2, l2, r2) =
       Super_context.equal sc1 sc2
       && Lib.Local.equal l1 l2
-      && Or_exn.equal (List.equal Lib.equal) r1 r2
+      && Resolve.equal (List.equal Lib.equal) r1 r2
 
     let hash (sc, l, r) =
       Hashtbl.hash
         ( Super_context.hash sc
         , Lib.Local.hash l
-        , Or_exn.hash (List.hash Lib.hash) r )
+        , Resolve.hash (List.hash Lib.hash) r )
 
     let to_dyn _ = Dyn.Opaque
   end in
@@ -515,10 +517,9 @@ let setup_lib_html_rules_def =
       (Path.Set.of_list (List.rev_append static_html html_files))
   in
   Memo.With_implicit_output.create "setup-library-html-rules"
-    ~doc:"setup html rules for library" ~implicit_output:Rules.implicit_output
+    ~implicit_output:Rules.implicit_output
     ~input:(module Input)
-    ~output:(module Unit)
-    ~visibility:Hidden f
+    f
 
 let setup_lib_html_rules sctx lib ~requires =
   Memo.With_implicit_output.exec setup_lib_html_rules_def (sctx, lib, requires)
@@ -548,10 +549,8 @@ let setup_pkg_html_rules_def =
         ]
   end in
   Memo.With_implicit_output.create "setup-package-html-rules"
-    ~output:(module Unit)
-    ~implicit_output:Rules.implicit_output ~doc:"setup odoc package html rules"
     ~input:(module Input)
-    ~visibility:Hidden
+    ~implicit_output:Rules.implicit_output
     (fun (sctx, pkg, (libs : Lib.Local.t list)) ->
       let requires =
         let libs = (libs :> Lib.t list) in
@@ -658,10 +657,8 @@ let setup_package_odoc_rules_def =
     let to_dyn (_, name) = Dyn.Tuple [ Package.Name.to_dyn name ]
   end in
   Memo.With_implicit_output.create "setup-package-odoc-rules"
-    ~output:(module Unit)
-    ~implicit_output:Rules.implicit_output ~doc:"setup odoc package rules"
     ~input:(module Input)
-    ~visibility:Hidden
+    ~implicit_output:Rules.implicit_output
     (fun (sctx, pkg) ->
       let* mlds = Packages.mlds sctx pkg in
       let mlds = check_mlds_no_dupes ~pkg ~mlds in

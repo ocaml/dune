@@ -12,7 +12,7 @@ module Json = struct
     match t with
     | `String s -> quote_string_to_buf s buf
     | `Int i -> Buffer.add_string buf (string_of_int i)
-    | `Float f -> Buffer.add_string buf (string_of_float f)
+    | `Float f -> Buffer.add_string buf (Printf.sprintf "%.17g" f)
     | `Bool b -> Buffer.add_string buf (string_of_bool b)
     | `List l ->
       Buffer.add_char buf '[';
@@ -65,6 +65,7 @@ type t =
   ; buffer : Buffer.t
   ; mutable after_first_event : bool
   }
+
 (* all fields of record used *)
 
 let close { print; close; _ } =
@@ -106,7 +107,7 @@ module Fd_count = struct
   let try_to_use_lsof () =
     (* note: we do not use the Process module here, because it would create a
        circular dependency *)
-    let temp = Temp.create File ~prefix:"dune." ~suffix:".lsof" in
+    let temp = Temp.create File ~prefix:"dune" ~suffix:"lsof" in
     let stdout =
       Unix.openfile
         (Path.to_absolute_filename temp)

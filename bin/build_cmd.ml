@@ -1,7 +1,27 @@
 open Stdune
 open Import
 
-let run_build_command_poll ~automation_harness ~(common : Common.t) ~config
+let run_build_system ~common ~(targets : unit -> Target.t list Memo.Build.t) =
+  let build_started = Unix.gettimeofday () in
+  Fiber.finalize
+    (fun () ->
+      Build_system.run (fun () ->
+          let open Memo.Build.O in
+          let* targets = targets () in
+          Build_system.build (Target.request targets)))
+    ~finally:(fun () ->
+      (if Common.print_metrics common then
+        let gc_stat = Gc.quick_stat () in
+        Console.print_user_message
+          (User_message.make
+             [ Pp.textf "%s" (Memo.Perf_counters.report_for_current_run ())
+             ; Pp.textf "(%.2f sec, %d heap words)"
+                 (Unix.gettimeofday () -. build_started)
+                 gc_stat.heap_words
+             ]));
+      Fiber.return ())
+
+let run_build_command_poll ~(common : Common.t) ~automation_harness ~config
     ~targets ~setup =
   let open Fiber.O in
   let every () =
@@ -19,12 +39,7 @@ let run_build_command_poll ~automation_harness ~(common : Common.t) ~config
         fun () ->
           Target.resolve_targets_exn (Common.root common) config setup targets
     in
-    let+ () =
-      Build_system.run (fun () ->
-          let open Memo.Build.O in
-          let* targets = targets () in
-          Build_system.build (Target.request targets))
-    in
+    let+ () = run_build_system ~common ~targets in
     `Continue
   in
   Scheduler.poll ~automation_harness ~common ~config ~every
@@ -34,10 +49,7 @@ let run_build_command_once ~(common : Common.t) ~config ~targets ~setup =
   let open Fiber.O in
   let once () =
     let* setup = setup () in
-    Build_system.run (fun () ->
-        let open Memo.Build.O in
-        let* targets = targets setup in
-        Build_system.build (Target.request targets))
+    run_build_system ~common ~targets:(fun () -> targets setup)
   in
   Scheduler.go ~common ~config once
 

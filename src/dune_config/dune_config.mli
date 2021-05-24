@@ -48,6 +48,12 @@ module Terminal_persistence : sig
   val all : (string * t) list
 end
 
+module Action_output_on_success : sig
+  include module type of struct
+    include Dune_engine.Execution_parameters.Action_output_on_success
+  end
+end
+
 module type S = sig
   type 'a field
 
@@ -60,7 +66,8 @@ module type S = sig
     ; cache_reproducibility_check :
         Dune_cache.Config.Reproducibility_check.t field
     ; cache_storage_mode : Cache.Storage_mode.t field
-    ; swallow_stdout_on_success : bool field
+    ; action_stdout_on_success : Action_output_on_success.t field
+    ; action_stderr_on_success : Action_output_on_success.t field
     }
 end
 
@@ -112,5 +119,5 @@ val equal : t -> t -> bool
 val for_scheduler :
      t
   -> Dune_rpc_private.Where.t option
-  -> Stats.t option
+  -> Dune_stats.t option
   -> Dune_engine.Scheduler.Config.t

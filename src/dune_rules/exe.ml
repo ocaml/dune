@@ -177,17 +177,20 @@ let link_exe ~loc ~name ~(linkage : Linkage.t) ~cm_files ~link_time_code_gen
           ; A "-o"
           ; Target exe
           ; As linkage.flags
-          ; Command.of_result_map link_time_code_gen
-              ~f:(fun { Link_time_code_gen.to_link; force_linkall } ->
-                S
-                  [ As
-                      (if force_linkall then
-                        [ "-linkall" ]
-                      else
-                        [])
-                  ; Lib.Lib_and_module.L.link_flags to_link
-                      ~lib_config:ctx.lib_config ~mode:linkage.mode
-                  ])
+          ; Resolve.args
+              (let open Resolve.O in
+              let+ { Link_time_code_gen.to_link; force_linkall } =
+                link_time_code_gen
+              in
+              Command.Args.S
+                [ As
+                    (if force_linkall then
+                      [ "-linkall" ]
+                    else
+                      [])
+                ; Lib.Lib_and_module.L.link_flags to_link
+                    ~lib_config:ctx.lib_config ~mode:linkage.mode
+                ])
           ; Deps o_files
           ; Dyn
               (Action_builder.map top_sorted_cms ~f:(fun x ->

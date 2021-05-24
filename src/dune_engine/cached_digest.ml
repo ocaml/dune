@@ -82,7 +82,7 @@ let cache =
 let get_current_filesystem_time () =
   let special_path = Path.relative Path.build_dir ".filesystem-clock" in
   Io.write_file special_path "<dummy>";
-  (Path.stat_exn special_path).st_mtime
+  (Path.Untracked.stat_exn special_path).st_mtime
 
 let wait_for_fs_clock_to_advance () =
   let t = get_current_filesystem_time () in
@@ -117,8 +117,11 @@ let delete_very_recent_entries () =
 let dump () =
   if !needs_dumping && Path.build_dir_exists () then (
     needs_dumping := false;
-    delete_very_recent_entries ();
-    P.dump db_file (Lazy.force cache)
+    Console.Status_line.set_live_temporarily
+      (fun () -> Some (Pp.hbox (Pp.text "Saving digest db...")))
+      (fun () ->
+        delete_very_recent_entries ();
+        P.dump db_file (Lazy.force cache))
   )
 
 let () = Hooks.End_of_build.always dump
@@ -144,7 +147,7 @@ let set_with_stat fn digest stat =
 
 let set fn digest =
   (* the caller of [set] ensures that the files exist *)
-  let stat = Path.stat_exn fn in
+  let stat = Path.Untracked.stat_exn fn in
   set_with_stat fn digest stat
 
 let refresh_exn stats fn =
@@ -153,7 +156,7 @@ let refresh_exn stats fn =
   digest
 
 let refresh_internal_exn fn =
-  let stats = Path.stat_exn fn in
+  let stats = Path.Untracked.stat_exn fn in
   refresh_exn stats fn
 
 module Refresh_result = struct
@@ -172,13 +175,13 @@ let catch_fs_errors f =
 let refresh fn ~remove_write_permissions : Refresh_result.t =
   let fn = Path.build fn in
   catch_fs_errors (fun () ->
-      match Path.lstat_exn fn with
+      match Path.Untracked.lstat_exn fn with
       | exception Unix.Unix_error (ENOENT, _, _) -> Refresh_result.No_such_file
       | stats ->
         let stats =
           match stats.st_kind with
           | Unix.S_LNK -> (
-            try Path.stat_exn fn with
+            try Path.Untracked.stat_exn fn with
             | Unix.Unix_error (ENOENT, _, _) ->
               raise (Sys_error "Broken symlink"))
           | Unix.S_REG -> (
@@ -204,7 +207,7 @@ let peek_file fn =
       (if x.stats_checked = cache.checked_key then
         x.digest
       else
-        let stats = Path.stat_exn fn in
+        let stats = Path.Untracked.stat_exn fn in
         let reduced_stats = Reduced_stats.of_unix_stats stats in
         match Reduced_stats.compare x.stats reduced_stats with
         | Eq ->

@@ -1,12 +1,11 @@
 open! Dune_engine
 open! Stdune
-open Action_builder.O
 
 module Source_tree_map_reduce =
   Source_tree.Dir.Make_map_reduce
     (Action_builder)
     (Monoid.Appendable_list (struct
-      type t = Command.Args.static Command.Args.t
+      type t = Command.Args.without_targets Command.Args.t
     end))
 
 (* Compute command line flags for the [include_dirs] field of [Foreign.Stubs.t]
@@ -14,78 +13,86 @@ module Source_tree_map_reduce =
 let include_dir_flags ~expander ~dir (stubs : Foreign.Stubs.t) =
   let scope = Expander.scope expander in
   let lib_dir loc lib_name =
-    match Lib.DB.resolve (Scope.libs scope) (loc, lib_name) with
-    | Error e -> raise e
-    | Ok lib -> Lib_info.src_dir (Lib.info lib)
+    let open Resolve.O in
+    let+ lib = Lib.DB.resolve (Scope.libs scope) (loc, lib_name) in
+    Lib_info.src_dir (Lib.info lib)
   in
   Command.Args.S
     (List.map stubs.include_dirs ~f:(fun include_dir ->
-         let loc, include_dir =
-           match (include_dir : Foreign.Stubs.Include_dir.t) with
-           | Dir dir ->
-             (String_with_vars.loc dir, Expander.Static.expand_path expander dir)
-           | Lib (loc, lib_name) -> (loc, lib_dir loc lib_name)
-         in
-         let dep_args =
-           match Path.extract_build_context_dir include_dir with
-           | None ->
-             (* This branch corresponds to an external directory. The current
-                implementation tracks its contents NON-recursively. *)
-             (* TODO: Track the contents recursively. One way to implement this
-                is to change [Build_system.Loaded.Non_build] so that it contains
-                not only files but also directories and traverse them
-                recursively in [Build_system.Exported.Pred]. *)
-             let () =
-               let error msg =
-                 User_error.raise ~loc
-                   [ Pp.textf "Unable to read the include directory."
-                   ; Pp.textf "Reason: %s." msg
-                   ]
+         Resolve.args
+           (let open Resolve.O in
+           let+ loc, include_dir =
+             match (include_dir : Foreign.Stubs.Include_dir.t) with
+             | Dir dir ->
+               Resolve.return
+                 ( String_with_vars.loc dir
+                 , Expander.Static.expand_path expander dir )
+             | Lib (loc, lib_name) ->
+               let+ lib_dir = lib_dir loc lib_name in
+               (loc, lib_dir)
+           in
+           let dep_args =
+             match Path.extract_build_context_dir include_dir with
+             | None ->
+               (* This branch corresponds to an external directory. The current
+                  implementation tracks its contents NON-recursively. *)
+               (* TODO: Track the contents recursively. One way to implement
+                  this is to change [Build_system.Loaded.Non_build] so that it
+                  contains not only files but also directories and traverse them
+                  recursively in [Build_system.Exported.Pred]. *)
+               let () =
+                 let error msg =
+                   User_error.raise ~loc
+                     [ Pp.textf "Unable to read the include directory."
+                     ; Pp.textf "Reason: %s." msg
+                     ]
+                 in
+                 match Path.is_directory_with_error include_dir with
+                 | Error msg -> error msg
+                 | Ok false ->
+                   error
+                     (Printf.sprintf "%S is not a directory"
+                        (Path.to_string include_dir))
+                 | Ok true -> ()
                in
-               match Path.is_directory_with_error include_dir with
-               | Error msg -> error msg
-               | Ok false ->
-                 error
-                   (Printf.sprintf "%S is not a directory"
-                      (Path.to_string include_dir))
-               | Ok true -> ()
-             in
-             let deps =
-               Dep.Set.singleton
-                 (Dep.file_selector
-                    (File_selector.create ~dir:include_dir Predicate.true_))
-             in
-             Command.Args.Hidden_deps deps
-           | Some (build_dir, source_dir) ->
-             Command.Args.Dyn
-               ((* This branch corresponds to a source directory. We track its
-                   contents recursively. *)
-                Action_builder.memo_build (Source_tree.find_dir source_dir)
-                >>= function
-                | None ->
-                  User_error.raise ~loc
-                    [ Pp.textf "Include directory %S does not exist."
-                        (Path.reach ~from:(Path.build dir) include_dir)
-                    ]
-                | Some dir ->
-                  let+ l =
-                    Source_tree_map_reduce.map_reduce dir
-                      ~traverse:Sub_dirs.Status.Set.all ~f:(fun t ->
-                        let dir =
-                          Path.append_source build_dir (Source_tree.Dir.path t)
-                        in
-                        let deps =
-                          Dep.Set.singleton
-                            (Dep.file_selector
-                               (File_selector.create ~dir Predicate.true_))
-                        in
-                        Action_builder.return
-                          (Appendable_list.singleton
-                             (Command.Args.Hidden_deps deps)))
-                  in
-                  Command.Args.S (Appendable_list.to_list l))
-         in
-         Command.Args.S [ A "-I"; Path include_dir; dep_args ]))
+               let deps =
+                 Dep.Set.singleton
+                   (Dep.file_selector
+                      (File_selector.create ~dir:include_dir Predicate.true_))
+               in
+               Command.Args.Hidden_deps deps
+             | Some (build_dir, source_dir) ->
+               let open Action_builder.O in
+               Command.Args.Dyn
+                 ((* This branch corresponds to a source directory. We track its
+                     contents recursively. *)
+                  Action_builder.memo_build (Source_tree.find_dir source_dir)
+                  >>= function
+                  | None ->
+                    User_error.raise ~loc
+                      [ Pp.textf "Include directory %S does not exist."
+                          (Path.reach ~from:(Path.build dir) include_dir)
+                      ]
+                  | Some dir ->
+                    let+ l =
+                      Source_tree_map_reduce.map_reduce dir
+                        ~traverse:Sub_dirs.Status.Set.all ~f:(fun t ->
+                          let dir =
+                            Path.append_source build_dir
+                              (Source_tree.Dir.path t)
+                          in
+                          let deps =
+                            Dep.Set.singleton
+                              (Dep.file_selector
+                                 (File_selector.create ~dir Predicate.true_))
+                          in
+                          Action_builder.return
+                            (Appendable_list.singleton
+                               (Command.Args.Hidden_deps deps)))
+                    in
+                    Command.Args.S (Appendable_list.to_list l))
+           in
+           Command.Args.S [ A "-I"; Path include_dir; dep_args ])))
 
 let build_c ~kind ~sctx ~dir ~expander ~include_flags (loc, src, dst) =
   let ctx = Super_context.context sctx in
@@ -156,7 +163,6 @@ let build_c ~kind ~sctx ~dir ~expander ~include_flags (loc, src, dst) =
            only when compiling c files.) *)
       ~sandbox:Sandbox_config.no_sandboxing
       (let src = Path.build (Foreign.Source.path src) in
-
        (* We have to execute the rule in the library directory as the .o is
           produced in the current directory *)
        Command.run ~dir:(Path.build dir) c_compiler
@@ -186,13 +192,14 @@ let build_o_files ~sctx ~foreign_sources ~(dir : Path.Build.t) ~expander
   let includes =
     Command.Args.S
       [ Hidden_deps (Dep.Set.of_files h_files)
-      ; Command.of_result_map requires ~f:(fun libs ->
-            S
-              [ Lib.L.c_include_flags libs
-              ; Hidden_deps
-                  (Lib_file_deps.deps libs
-                     ~groups:[ Lib_file_deps.Group.Header ])
-              ])
+      ; Resolve.args
+          (let open Resolve.O in
+          let+ libs = requires in
+          Command.Args.S
+            [ Lib.L.c_include_flags libs
+            ; Hidden_deps
+                (Lib_file_deps.deps libs ~groups:[ Lib_file_deps.Group.Header ])
+            ])
       ]
   in
   String.Map.to_list_map foreign_sources ~f:(fun obj (loc, src) ->

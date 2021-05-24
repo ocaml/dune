@@ -11,7 +11,7 @@ module Error : sig
   (** Errors when building a target *)
   type t
 
-  val message : t -> User_message.t
+  val info : t -> User_message.t * Path.t option
 end
 
 (** The current set of active errors *)
@@ -89,7 +89,7 @@ end
 
 (** Initializes the build system. This must be called first. *)
 val init :
-     stats:Stats.t option
+     stats:Dune_stats.t option
   -> contexts:Build_context.t list Memo.Lazy.t
   -> promote_source:
        (   ?chmod:(int -> int)
@@ -98,6 +98,7 @@ val init :
         -> Build_context.t option
         -> unit Fiber.t)
   -> cache_config:Dune_cache.Config.t
+  -> cache_debug_flags:Cache_debug_flags.t
   -> sandboxing_preference:Sandbox_mode.t list
   -> rule_generator:(module Rule_generator)
   -> handler:Handler.t option

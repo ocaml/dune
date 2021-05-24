@@ -12,8 +12,6 @@ end
 
 let debug_findlib = ref false
 
-let debug_dep_path = ref false
-
 let debug_artifact_substitution = ref false
 
 let debug_digests = ref false

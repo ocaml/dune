@@ -16,30 +16,39 @@ let () = init ()
 
 let printf = Printf.printf
 
-let string_fn_create name =
-  Memo.create name
-    ~input:(module String)
-    ~visibility:(Public Dune_lang.Decoder.string)
+let () = Memo.Perf_counters.enable ()
 
-let int_fn_create name =
-  Memo.create name
-    ~input:(module Int)
-    ~visibility:(Public Dune_lang.Decoder.int)
+let print_perf_counters () =
+  Memo.Perf_counters.assert_invariants ();
+  printf "%s\n" (Memo.Perf_counters.report_for_current_run ())
+
+let string_fn_create name =
+  Memo.create name ~input:(module String) ~cutoff:String.equal
+
+let int_fn_create name ~cutoff = Memo.create name ~input:(module Int) ~cutoff
 
 (* to run a computation *)
 let run m = Scheduler.run (Memo.Build.run m)
 
-let run_memo f v = run (Memo.exec f v)
+let run_memo f v =
+  try run (Memo.exec f v) with
+  | Memo.Error.E err -> raise (Memo.Error.get err)
+
+let run_and_log_errors m =
+  match Scheduler.run (Fiber.collect_errors (fun () -> Memo.Build.run m)) with
+  | Ok res -> res
+  | Error exns ->
+    List.iter exns ~f:(fun exn ->
+        Format.printf "Error: %a@." Pp.to_fmt
+          (Dyn.pp (Exn_with_backtrace.to_dyn exn)))
 
 (* the trivial dependencies are simply the identity function *)
 let compdep x = Memo.Build.return (x ^ x)
 
 (* our two dependencies are called some and another *)
-let mcompdep1 =
-  string_fn_create "some" ~output:(Allow_cutoff (module String)) compdep
+let mcompdep1 = string_fn_create "some" compdep
 
-let mcompdep2 =
-  string_fn_create "another" ~output:(Allow_cutoff (module String)) compdep
+let mcompdep2 = string_fn_create "another" compdep
 
 (* compute the dependencies once so they are present in the global hash table *)
 let () =
@@ -58,7 +67,7 @@ let comp x =
   counter := !counter + 1;
   String.sub a ~pos:0 ~len:(String.length a |> min 3)
 
-let mcomp = string_fn_create "test" ~output:(Allow_cutoff (module String)) comp
+let mcomp = string_fn_create "test" comp
 
 (* running it the first time should increase the counter, running it again
    should not, but should still return the same result *)
@@ -78,7 +87,7 @@ let%expect_test _ =
 
 let%expect_test _ =
   let open Dyn.Encoder in
-  Memo.get_deps mcomp "a"
+  Memo.For_tests.get_deps mcomp "a"
   |> option (list (pair (option string) (fun x -> x)))
   |> print_dyn;
   [%expect {|
@@ -131,9 +140,7 @@ let mcompcycle =
     else
       failwith "cycle"
   in
-  let fn =
-    int_fn_create "cycle" ~output:(Allow_cutoff (module String)) compcycle
-  in
+  let fn = int_fn_create "cycle" compcycle ~cutoff:Int.equal in
   Fdecl.set mcompcycle fn;
   fn
 
@@ -181,11 +188,12 @@ let mfib =
       let+ r2 = mfib (x - 2) in
       r1 + r2
   in
-  let fn = int_fn_create "fib" ~output:(Allow_cutoff (module Int)) compfib in
+  let fn = int_fn_create "fib" compfib ~cutoff:Int.equal in
   Fdecl.set mfib fn;
   fn
 
 let%expect_test _ =
+  Memo.Perf_counters.reset ();
   counter := 0;
   Format.printf "%d@." (run_memo mfib 2000);
   Format.printf "%d@." !counter;
@@ -197,16 +205,15 @@ let%expect_test _ =
     2001
     3080005411477819488
     2001
-  |}]
+  |}];
+  print_perf_counters ();
+  [%expect
+    {| 2001/2001 computed/total nodes, 3998/3998 traversed/total edges |}]
 
-let make_f name f ~input ~output =
-  Memo.create name ~input ~visibility:Hidden ~output:(Allow_cutoff output)
-    ~doc:"" f
+let make_f name = Memo.create name ~cutoff:String.equal
 
 let id =
-  let f =
-    make_f "id" Memo.Build.return ~input:(module String) ~output:(module String)
-  in
+  let f = make_f "id" ~input:(module String) Memo.Build.return in
   Memo.exec f
 
 module Test_lazy (Lazy : sig
@@ -219,7 +226,7 @@ end) =
 struct
   let lazy_memo =
     let f =
-      Memo.create_hidden "lazy_memo"
+      Memo.create "lazy_memo"
         ~input:(module String)
         (fun s -> Memo.Build.return (Lazy.create (fun () -> id ("lazy: " ^ s))))
     in
@@ -228,22 +235,20 @@ struct
   let f1_def, f1 =
     let f =
       make_f "f1"
+        ~input:(module String)
         (fun s ->
           let+ s = lazy_memo s >>= Lazy.force in
           "f1: " ^ s)
-        ~input:(module String)
-        ~output:(module String)
     in
     (f, Memo.exec f)
 
   let f2_def, f2 =
     let f =
       make_f "f2"
+        ~input:(module String)
         (fun s ->
           let+ s = lazy_memo s >>= Lazy.force in
           "f2: " ^ s)
-        ~input:(module String)
-        ~output:(module String)
     in
     (f, Memo.exec f)
 
@@ -256,7 +261,8 @@ struct
   let deps () =
     let open Dyn.Encoder in
     let conv = option (list (pair (option string) (fun x -> x))) in
-    pair conv conv (get_deps f1_def "foo", get_deps f2_def "foo")
+    pair conv conv
+      (For_tests.get_deps f1_def "foo", For_tests.get_deps f2_def "foo")
 end
 
 module Builtin_lazy = Test_lazy (struct
@@ -276,7 +282,7 @@ let%expect_test _ =
 let%expect_test _ =
   (* This test used to demonstrate a bug due to a bad interaction between [lazy]
      and synchronous memoized functions. The dependency on [lazy] was only
-     registered by one of the dependants below, which meant we couldn't safely
+     registered by one of the dependents below, which meant we couldn't safely
      use [lazy] together with [Memo].
 
      Now that [Memo] doesn't support memoization of synchronous functions
@@ -312,10 +318,9 @@ let%expect_test _ =
 (* Tests for depending on the current run *)
 
 let depends_on_run =
-  Memo.create "foobar" ~doc:"foo123"
+  Memo.create "foobar"
     ~input:(module Unit)
-    ~output:(Allow_cutoff (module Unit))
-    ~visibility:Hidden
+    ~cutoff:Unit.equal
     (fun () ->
       let+ (_ : Memo.Run.t) = Memo.current_run () in
       print_endline "running foobar")
@@ -336,11 +341,7 @@ let%expect_test _ =
 let%expect_test _ =
   let f x = Memo.Build.return ("*" ^ x) in
   let memo =
-    Memo.create "for-cell"
-      ~input:(module String)
-      ~visibility:(Public Dune_lang.Decoder.string)
-      ~output:(Allow_cutoff (module String))
-      ~doc:"" f
+    Memo.create "for-cell" ~input:(module String) ~cutoff:String.equal f
   in
   let cell = Memo.cell memo "foobar" in
   print_endline (run (Cell.read cell));
@@ -350,14 +351,13 @@ let%expect_test _ =
     *foobar |}]
 
 let%expect_test "fib linked list" =
+  Memo.Perf_counters.reset ();
   let module Element = struct
     type t =
       { prev_cell : (int, t) Memo.Cell.t
       ; value : int
       ; next_cell : (int, t) Memo.Cell.t
       }
-
-    let to_dyn t = Dyn.Int t.value
   end in
   let force cell : Element.t Memo.Build.t = Memo.Cell.read cell in
   let memo_fdecl = Fdecl.create Dyn.Encoder.opaque in
@@ -378,13 +378,7 @@ let%expect_test "fib linked list" =
     in
     { Element.next_cell = Memo.cell memo (x + 1); prev_cell; value }
   in
-  let memo =
-    Memo.create "fib"
-      ~input:(module Int)
-      ~visibility:Hidden
-      ~output:(Simple (module Element))
-      compute_element ~doc:""
-  in
+  let memo = Memo.create "fib" ~input:(module Int) compute_element in
   Fdecl.set memo_fdecl memo;
   let fourth = run (Memo.exec memo 4) in
   printf "4th: %d\n" fourth.value;
@@ -408,7 +402,10 @@ let%expect_test "fib linked list" =
     computing 6
     7th: 13
     prev: 8
-    prev: 5 |}]
+    prev: 5
+  |}];
+  print_perf_counters ();
+  [%expect {| 8/8 computed/total nodes, 12/12 traversed/total edges |}]
 
 let%expect_test "previously_evaluated_cell" =
   let f x =
@@ -416,11 +413,7 @@ let%expect_test "previously_evaluated_cell" =
     Memo.Build.return ("[" ^ x ^ "]")
   in
   let memo =
-    Memo.create "boxed"
-      ~input:(module String)
-      ~visibility:(Public Dune_lang.Decoder.string)
-      ~output:(Allow_cutoff (module String))
-      ~doc:"" f
+    Memo.create "boxed" ~input:(module String) ~cutoff:String.equal f
   in
   let evaluate_and_print name =
     let cell = Memo.cell memo name in
@@ -487,8 +480,9 @@ let%expect_test "previously_evaluated_cell" =
     previously_evaluated_cell x = [x]
     previously_evaluated_cell y = [y]
   |}];
-  Memo.reset ();
-  (* Both switch back to unevaluated after resetting the Memo. *)
+  Memo.For_tests.clear_memoization_caches ();
+  Memo.restart_current_run ();
+  (* Both switch back to unevaluated after clearing all memoization caches. *)
   print_previously_evaluated_cell "x";
   print_previously_evaluated_cell "y";
   [%expect
@@ -598,12 +592,23 @@ let print_result arg res =
   Format.printf "f %d = %a@." arg Pp.to_fmt
     (Dyn.pp (Result.to_dyn int (list Exn_with_backtrace.to_dyn) res))
 
+let run_collect_errors f =
+  let open Fiber.O in
+  Fiber.collect_errors (fun () -> Memo.Build.run (f ())) >>| function
+  | Ok _ as res -> res
+  | Error errs ->
+    Error
+      (List.map errs ~f:(fun (e : Exn_with_backtrace.t) ->
+           match e.exn with
+           | Memo.Error.E err -> { e with exn = Memo.Error.get err }
+           | _ -> e))
+
 let evaluate_and_print f x =
   let res =
     try
       Fiber.run
         ~iter:(fun () -> raise Exit)
-        (Memo.Build.run (Memo.Build.collect_errors (fun () -> Memo.exec f x)))
+        (run_collect_errors (fun () -> Memo.exec f x))
     with
     | exn -> Error [ Exn_with_backtrace.capture exn ]
   in
@@ -611,9 +616,7 @@ let evaluate_and_print f x =
 
 let%expect_test "error handling and memo" =
   let f =
-    int_fn_create "f"
-      ~output:(Allow_cutoff (module Int))
-      (fun x ->
+    int_fn_create "f" ~cutoff:Int.equal (fun x ->
         printf "Calling f %d\n" x;
         if x = 42 then
           failwith "42"
@@ -670,12 +673,8 @@ let increment which which_memo () =
 
 (* Create a memoization node with or without cutoff. *)
 let create ~with_cutoff name f =
-  let output =
-    match with_cutoff with
-    | true -> Memo.Output.Allow_cutoff (module Int)
-    | false -> Simple (module Int)
-  in
-  Memo.create name ~input:(module Unit) ~visibility:Hidden ~output ~doc:"" f
+  let cutoff = Option.some_if with_cutoff Int.equal in
+  Memo.create name ~input:(module Unit) ?cutoff f
 
 let%expect_test "diamond with non-uniform cutoff structure" =
   let base = create ~with_cutoff:true "base" (count_runs "base") in
@@ -711,14 +710,10 @@ let%expect_test "diamond with non-uniform cutoff structure" =
     printf "Evaluated summit with offset %d: %d\n" offset result;
     result
   in
-  let summit =
-    Memo.create "summit"
-      ~input:(module Int)
-      ~visibility:Hidden
-      ~output:(Simple (module Int))
-      ~doc:"" summit
-  in
+  let summit = Memo.create "summit" ~input:(module Int) summit in
+  Memo.Perf_counters.reset ();
   evaluate_and_print summit 0;
+  print_perf_counters ();
   [%expect
     {|
     Started evaluating summit with offset 0
@@ -734,16 +729,21 @@ let%expect_test "diamond with non-uniform cutoff structure" =
     Evaluated after_yes_cutoff: 2
     Evaluated summit with offset 0: 4
     f 0 = Ok 4
-    |}];
+    7/7 computed/total nodes, 7/7 traversed/total edges
+  |}];
+  Memo.Perf_counters.reset ();
   evaluate_and_print summit 1;
+  print_perf_counters ();
   [%expect
     {|
     Started evaluating summit with offset 1
     Evaluated summit with offset 1: 5
     f 1 = Ok 5
-    |}];
+    1/1 computed/total nodes, 2/2 traversed/total edges
+  |}];
   Memo.restart_current_run ();
   evaluate_and_print summit 0;
+  print_perf_counters ();
   [%expect
     {|
     Started evaluating base
@@ -755,18 +755,26 @@ let%expect_test "diamond with non-uniform cutoff structure" =
     Started evaluating yes_cutoff
     Evaluated yes_cutoff: 1
     f 0 = Ok 4
-    |}];
+    5/7 computed/total nodes, 11/7 traversed/total edges
+  |}];
+  Memo.Perf_counters.reset ();
   evaluate_and_print summit 1;
-  [%expect {|
+  print_perf_counters ();
+  [%expect
+    {|
     f 1 = Ok 5
-    |}];
+    0/1 computed/total nodes, 2/2 traversed/total edges
+  |}];
+  Memo.Perf_counters.reset ();
   evaluate_and_print summit 2;
+  print_perf_counters ();
   [%expect
     {|
     Started evaluating summit with offset 2
     Evaluated summit with offset 2: 6
     f 2 = Ok 6
-    |}]
+    1/1 computed/total nodes, 2/2 traversed/total edges
+  |}]
 
 (* The test below sets up the following situation:
 
@@ -821,14 +829,10 @@ let%expect_test "dynamic cycles with non-uniform cutoff structure" =
       printf "Evaluated the summit with input %d: %d\n" input result;
       result
     in
-    let output =
-      match end_with_cutoff with
-      | true -> Memo.Output.Allow_cutoff (module Int)
-      | false -> Simple (module Int)
-    in
+    let cutoff = Option.some_if end_with_cutoff Int.equal in
     Memo.create "incrementing_chain_plus_input"
       ~input:(module Int)
-      ~visibility:Hidden ~output ~doc:"" plus_input
+      ?cutoff plus_input
   in
   let summit_fdecl = Fdecl.create (fun _ -> Dyn.Opaque) in
   let cycle_creator_no_cutoff =
@@ -855,9 +859,13 @@ let%expect_test "dynamic cycles with non-uniform cutoff structure" =
      the eager execution of some internal side effects. That further manifested
      in deadlocks and reappearance of zombie computations. The problem has now
      been fixed and so the line below is just a no-op. *)
+  Memo.Perf_counters.reset ();
   let _ = Memo.exec cycle_creator_no_cutoff () in
-  [%expect {| |}];
+  print_perf_counters ();
+  [%expect {| 0/0 computed/total nodes, 0/0 traversed/total edges |}];
+  Memo.Perf_counters.reset ();
   evaluate_and_print summit_no_cutoff 0;
+  print_perf_counters ();
   [%expect
     {|
     Started evaluating the summit with input 0
@@ -874,8 +882,12 @@ let%expect_test "dynamic cycles with non-uniform cutoff structure" =
     Evaluated incrementing_chain_3_no_cutoff: 4
     Evaluated incrementing_chain_4_yes_cutoff: 5
     Evaluated the summit with input 0: 5
-    f 0 = Ok 5 |}];
+    f 0 = Ok 5
+    7/7 computed/total nodes, 7/7 traversed/total edges
+  |}];
+  Memo.Perf_counters.reset ();
   evaluate_and_print summit_yes_cutoff 0;
+  print_perf_counters ();
   [%expect
     {|
     Started evaluating the summit with input 0
@@ -890,21 +902,32 @@ let%expect_test "dynamic cycles with non-uniform cutoff structure" =
     Evaluated incrementing_chain_3_yes_cutoff: 4
     Evaluated incrementing_chain_4_no_cutoff: 5
     Evaluated the summit with input 0: 5
-    f 0 = Ok 5 |}];
+    f 0 = Ok 5
+    6/6 computed/total nodes, 6/6 traversed/total edges
+  |}];
+  Memo.Perf_counters.reset ();
   evaluate_and_print summit_no_cutoff 2;
+  print_perf_counters ();
   [%expect
     {|
     Started evaluating the summit with input 2
     Evaluated the summit with input 2: 7
-    f 2 = Ok 7 |}];
+    f 2 = Ok 7
+    1/1 computed/total nodes, 1/1 traversed/total edges
+  |}];
+  Memo.Perf_counters.reset ();
   evaluate_and_print summit_yes_cutoff 2;
+  print_perf_counters ();
   [%expect
     {|
     Started evaluating the summit with input 2
     Evaluated the summit with input 2: 7
-    f 2 = Ok 7 |}];
+    f 2 = Ok 7
+    1/1 computed/total nodes, 1/1 traversed/total edges
+  |}];
   Memo.restart_current_run ();
   evaluate_and_print summit_no_cutoff 0;
+  print_perf_counters ();
   [%expect
     {|
     Started evaluating base
@@ -924,8 +947,25 @@ let%expect_test "dynamic cycles with non-uniform cutoff structure" =
     - called by ("incrementing_chain_3_no_cutoff", ())
     - called by ("incrementing_chain_4_yes_cutoff", ())
     - called by ("incrementing_chain_plus_input", 2)
-    f 0 = Error [ { exn = "Memo.Cycle_error.E(_)"; backtrace = "" } ] |}];
+    f 0 = Error
+            [ { exn =
+                  "Cycle_error.E\n\
+                  \  [ (\"incrementing_chain_plus_input\", 2)\n\
+                  \  ; (\"cycle_creator_no_cutoff\", ())\n\
+                  \  ; (\"incrementing_chain_1_no_cutoff\", ())\n\
+                  \  ; (\"incrementing_chain_2_yes_cutoff\", ())\n\
+                  \  ; (\"incrementing_chain_3_no_cutoff\", ())\n\
+                  \  ; (\"incrementing_chain_4_yes_cutoff\", ())\n\
+                  \  ; (\"incrementing_chain_plus_input\", 2)\n\
+                  \  ]"
+              ; backtrace = ""
+              }
+            ]
+    9/9 computed/total nodes, 16/8 traversed/total edges
+  |}];
+  Memo.Perf_counters.reset ();
   evaluate_and_print summit_yes_cutoff 0;
+  print_perf_counters ();
   [%expect
     {|
     Started evaluating cycle_creator_yes_cutoff
@@ -943,8 +983,25 @@ let%expect_test "dynamic cycles with non-uniform cutoff structure" =
     - called by ("incrementing_chain_3_yes_cutoff", ())
     - called by ("incrementing_chain_4_no_cutoff", ())
     - called by ("incrementing_chain_plus_input", 2)
-    f 0 = Error [ { exn = "Memo.Cycle_error.E(_)"; backtrace = "" } ] |}];
+    f 0 = Error
+            [ { exn =
+                  "Cycle_error.E\n\
+                  \  [ (\"incrementing_chain_plus_input\", 2)\n\
+                  \  ; (\"cycle_creator_yes_cutoff\", ())\n\
+                  \  ; (\"incrementing_chain_1_yes_cutoff\", ())\n\
+                  \  ; (\"incrementing_chain_2_no_cutoff\", ())\n\
+                  \  ; (\"incrementing_chain_3_yes_cutoff\", ())\n\
+                  \  ; (\"incrementing_chain_4_no_cutoff\", ())\n\
+                  \  ; (\"incrementing_chain_plus_input\", 2)\n\
+                  \  ]"
+              ; backtrace = ""
+              }
+            ]
+    7/7 computed/total nodes, 14/7 traversed/total edges
+  |}];
+  Memo.Perf_counters.reset ();
   evaluate_and_print summit_no_cutoff 2;
+  print_perf_counters ();
   [%expect
     {|
     Dependency cycle detected:
@@ -955,8 +1012,25 @@ let%expect_test "dynamic cycles with non-uniform cutoff structure" =
     - called by ("incrementing_chain_3_no_cutoff", ())
     - called by ("incrementing_chain_4_yes_cutoff", ())
     - called by ("incrementing_chain_plus_input", 2)
-    f 2 = Error [ { exn = "Memo.Cycle_error.E(_)"; backtrace = "" } ] |}];
+    f 2 = Error
+            [ { exn =
+                  "Cycle_error.E\n\
+                  \  [ (\"incrementing_chain_plus_input\", 2)\n\
+                  \  ; (\"cycle_creator_no_cutoff\", ())\n\
+                  \  ; (\"incrementing_chain_1_no_cutoff\", ())\n\
+                  \  ; (\"incrementing_chain_2_yes_cutoff\", ())\n\
+                  \  ; (\"incrementing_chain_3_no_cutoff\", ())\n\
+                  \  ; (\"incrementing_chain_4_yes_cutoff\", ())\n\
+                  \  ; (\"incrementing_chain_plus_input\", 2)\n\
+                  \  ]"
+              ; backtrace = ""
+              }
+            ]
+    0/0 computed/total nodes, 0/0 traversed/total edges
+  |}];
+  Memo.Perf_counters.reset ();
   evaluate_and_print summit_yes_cutoff 2;
+  print_perf_counters ();
   [%expect
     {|
     Dependency cycle detected:
@@ -967,54 +1041,84 @@ let%expect_test "dynamic cycles with non-uniform cutoff structure" =
     - called by ("incrementing_chain_3_yes_cutoff", ())
     - called by ("incrementing_chain_4_no_cutoff", ())
     - called by ("incrementing_chain_plus_input", 2)
-    f 2 = Error [ { exn = "Memo.Cycle_error.E(_)"; backtrace = "" } ] |}];
+    f 2 = Error
+            [ { exn =
+                  "Cycle_error.E\n\
+                  \  [ (\"incrementing_chain_plus_input\", 2)\n\
+                  \  ; (\"cycle_creator_yes_cutoff\", ())\n\
+                  \  ; (\"incrementing_chain_1_yes_cutoff\", ())\n\
+                  \  ; (\"incrementing_chain_2_no_cutoff\", ())\n\
+                  \  ; (\"incrementing_chain_3_yes_cutoff\", ())\n\
+                  \  ; (\"incrementing_chain_4_no_cutoff\", ())\n\
+                  \  ; (\"incrementing_chain_plus_input\", 2)\n\
+                  \  ]"
+              ; backtrace = ""
+              }
+            ]
+    0/0 computed/total nodes, 0/0 traversed/total edges
+  |}];
   Memo.restart_current_run ();
   evaluate_and_print summit_no_cutoff 0;
+  print_perf_counters ();
   [%expect
     {|
-    Started evaluating the summit with input 0
-    Started evaluating incrementing_chain_4_yes_cutoff
-    Started evaluating incrementing_chain_3_no_cutoff
+    Started evaluating base
+    Evaluated base: 3
     Started evaluating incrementing_chain_2_yes_cutoff
     Started evaluating incrementing_chain_1_no_cutoff
     Started evaluating cycle_creator_no_cutoff
-    Started evaluating base
-    Evaluated base: 3
     Evaluated cycle_creator_no_cutoff: 3
     Evaluated incrementing_chain_1_no_cutoff: 4
     Evaluated incrementing_chain_2_yes_cutoff: 5
+    Started evaluating incrementing_chain_4_yes_cutoff
+    Started evaluating incrementing_chain_3_no_cutoff
     Evaluated incrementing_chain_3_no_cutoff: 6
     Evaluated incrementing_chain_4_yes_cutoff: 7
+    Started evaluating the summit with input 0
     Evaluated the summit with input 0: 7
-    f 0 = Ok 7 |}];
+    f 0 = Ok 7
+    8/8 computed/total nodes, 14/7 traversed/total edges
+  |}];
+  Memo.Perf_counters.reset ();
   evaluate_and_print summit_yes_cutoff 0;
+  print_perf_counters ();
   [%expect
     {|
-    Started evaluating the summit with input 0
-    Started evaluating incrementing_chain_4_no_cutoff
-    Started evaluating incrementing_chain_3_yes_cutoff
-    Started evaluating incrementing_chain_2_no_cutoff
-    Started evaluating incrementing_chain_1_yes_cutoff
     Started evaluating cycle_creator_yes_cutoff
     Evaluated cycle_creator_yes_cutoff: 3
+    Started evaluating incrementing_chain_1_yes_cutoff
     Evaluated incrementing_chain_1_yes_cutoff: 4
+    Started evaluating incrementing_chain_3_yes_cutoff
+    Started evaluating incrementing_chain_2_no_cutoff
     Evaluated incrementing_chain_2_no_cutoff: 5
     Evaluated incrementing_chain_3_yes_cutoff: 6
+    Started evaluating the summit with input 0
+    Started evaluating incrementing_chain_4_no_cutoff
     Evaluated incrementing_chain_4_no_cutoff: 7
     Evaluated the summit with input 0: 7
-    f 0 = Ok 7 |}];
+    f 0 = Ok 7
+    6/6 computed/total nodes, 12/6 traversed/total edges
+  |}];
+  Memo.Perf_counters.reset ();
   evaluate_and_print summit_no_cutoff 2;
+  print_perf_counters ();
   [%expect
     {|
     Started evaluating the summit with input 2
     Evaluated the summit with input 2: 9
-    f 2 = Ok 9 |}];
+    f 2 = Ok 9
+    1/1 computed/total nodes, 1/1 traversed/total edges
+  |}];
+  Memo.Perf_counters.reset ();
   evaluate_and_print summit_yes_cutoff 2;
+  print_perf_counters ();
   [%expect
     {|
     Started evaluating the summit with input 2
     Evaluated the summit with input 2: 9
-    f 2 = Ok 9 |}]
+    f 2 = Ok 9
+    1/1 computed/total nodes, 1/1 traversed/total edges
+  |}]
 
 let%expect_test "deadlocks when creating a cycle twice" =
   let fdecl_base = Fdecl.create (fun _ -> Dyn.Opaque) in
@@ -1053,9 +1157,6 @@ let%expect_test "deadlocks when creating a cycle twice" =
   let summit =
     Memo.create "summit"
       ~input:(module Int)
-      ~visibility:Hidden
-      ~output:(Simple (module Int))
-      ~doc:""
       (fun offset ->
         printf "Started evaluating summit\n";
         let+ middle = Memo.exec middle () in
@@ -1089,14 +1190,47 @@ let%expect_test "deadlocks when creating a cycle twice" =
     f 2 = Error [ { exn = "Exit"; backtrace = "" } ]
     |}]
 
+let lazy_rec f =
+  let fdecl = Fdecl.create (fun _ -> Dyn.Opaque) in
+  let node = Memo.Lazy.create (fun () -> f (Fdecl.get fdecl)) in
+  Fdecl.set fdecl node;
+  node
+
+let%expect_test "two similar, but not physically-equal, cycle errors" =
+  let cycle1 = lazy_rec (fun node -> Memo.Lazy.force node) in
+  let cycle2 = lazy_rec (fun node -> Memo.Lazy.force node) in
+  let both =
+    Memo.Lazy.create (fun () ->
+        Memo.Build.fork_and_join_unit
+          (fun () -> Lazy.force cycle1)
+          (fun () -> Lazy.force cycle2))
+  in
+  run_and_log_errors (Memo.Lazy.force both);
+  (* Even though these errors look similar, they are actually talking about two
+     different cycles which can be distinguished by the internal node ids, so
+     they are not deduplicated. *)
+  [%expect
+    {|
+    Error: { exn =
+               "Memo.Error.E\n\
+               \  { exn = \"Cycle_error.E [ (\\\"<unnamed>\\\", ()); (\\\"<unnamed>\\\", ()) ]\"\n\
+               \  ; stack = [ (\"<unnamed>\", ()); (\"<unnamed>\", ()); (\"<unnamed>\", ()) ]\n\
+               \  }"
+           ; backtrace = ""
+           }
+    Error: { exn =
+               "Memo.Error.E\n\
+               \  { exn = \"Cycle_error.E [ (\\\"<unnamed>\\\", ()); (\\\"<unnamed>\\\", ()) ]\"\n\
+               \  ; stack = [ (\"<unnamed>\", ()); (\"<unnamed>\", ()); (\"<unnamed>\", ()) ]\n\
+               \  }"
+           ; backtrace = ""
+           } |}]
+
 let%expect_test "Nested nodes with cutoff are recomputed optimally" =
   let counter = create ~with_cutoff:false "counter" (count_runs "counter") in
   let summit =
     Memo.create "summit"
       ~input:(module Int)
-      ~visibility:Hidden
-      ~output:(Simple (module Int))
-      ~doc:""
       (fun offset ->
         printf "Started evaluating summit\n";
         let middle =
@@ -1118,8 +1252,10 @@ let%expect_test "Nested nodes with cutoff are recomputed optimally" =
         printf "Evaluated summit: %d\n" result;
         result)
   in
+  Memo.Perf_counters.reset ();
   evaluate_and_print summit 0;
   evaluate_and_print summit 1;
+  print_perf_counters ();
   (* In the first run, everything is OK. *)
   [%expect
     {|
@@ -1139,10 +1275,12 @@ let%expect_test "Nested nodes with cutoff are recomputed optimally" =
     Evaluated middle: 1
     Evaluated summit: 2
     f 1 = Ok 2
-    |}];
+    8/8 computed/total nodes, 7/7 traversed/total edges
+  |}];
   Memo.restart_current_run ();
   evaluate_and_print summit 0;
   evaluate_and_print summit 2;
+  print_perf_counters ();
   (* In the second run, we don't recompute [base] three times as we did before. *)
   [%expect
     {|
@@ -1162,7 +1300,8 @@ let%expect_test "Nested nodes with cutoff are recomputed optimally" =
     Evaluated middle: 2
     Evaluated summit: 4
     f 2 = Ok 4
-    |}]
+    8/8 computed/total nodes, 11/7 traversed/total edges
+  |}]
 
 (* In addition to its direct purpose, this test also: (i) demonstrates what
    happens in the presence of non-determinism; and (ii) tests cell invalidation. *)
@@ -1178,9 +1317,6 @@ let%expect_test "Test that there are no phantom dependencies" =
   let summit =
     Memo.create "summit"
       ~input:(module Int)
-      ~visibility:Hidden
-      ~output:(Simple (module Int))
-      ~doc:""
       (fun offset ->
         printf "Started evaluating summit\n";
         let middle =
@@ -1243,9 +1379,6 @@ let%expect_test "Abandoned node with no cutoff is recomputed" =
   let middle =
     Memo.create "middle"
       ~input:(module Unit)
-      ~visibility:Hidden
-      ~output:(Simple (module Int))
-      ~doc:""
       (fun () ->
         printf "Started evaluating middle\n";
         let base = base () in
@@ -1257,9 +1390,6 @@ let%expect_test "Abandoned node with no cutoff is recomputed" =
   let summit =
     Memo.create "summit"
       ~input:(module Int)
-      ~visibility:Hidden
-      ~output:(Simple (module Int))
-      ~doc:""
       (fun input ->
         printf "Started evaluating summit\n";
         let* middle = Memo.exec middle () in
@@ -1279,7 +1409,9 @@ let%expect_test "Abandoned node with no cutoff is recomputed" =
         printf "Evaluated summit: %d\n" result;
         result)
   in
+  Memo.restart_current_run ();
   evaluate_and_print summit 0;
+  print_perf_counters ();
   [%expect
     {|
     Started evaluating summit
@@ -1291,9 +1423,11 @@ let%expect_test "Abandoned node with no cutoff is recomputed" =
     *** Captured last base ***
     Evaluated summit: 1
     f 0 = Ok 1
-    |}];
+    4/4 computed/total nodes, 4/4 traversed/total edges
+  |}];
   Memo.restart_current_run ();
   evaluate_and_print summit 0;
+  print_perf_counters ();
   [%expect
     {|
     Started evaluating summit
@@ -1305,11 +1439,13 @@ let%expect_test "Abandoned node with no cutoff is recomputed" =
     *** Abandoned captured base ***
     Evaluated summit: 0
     f 0 = Ok 0
-    |}];
+    4/4 computed/total nodes, 6/3 traversed/total edges
+  |}];
   (* At this point, [captured_base] is a stale computation: [restore_from_cache]
      failed but [compute] never started. *)
   Memo.restart_current_run ();
   evaluate_and_print summit 0;
+  print_perf_counters ();
   (* We will now attempt to force [compute] of a stale computation but this is
      handled correctly by restarting the computation. Note that this causes an
      additional increment of the counter, thus leading to an inconsistent value
@@ -1327,15 +1463,12 @@ let%expect_test "Abandoned node with no cutoff is recomputed" =
     Evaluated base: 4
     Evaluated summit: 4
     f 0 = Ok 4
-    |}]
+    5/5 computed/total nodes, 9/5 traversed/total edges
+  |}]
 
 let print_exns f =
   let res =
-    match
-      Fiber.run
-        ~iter:(fun () -> raise Exit)
-        (Memo.Build.run (Memo.Build.collect_errors f))
-    with
+    match Fiber.run ~iter:(fun () -> raise Exit) (run_collect_errors f) with
     | Ok _ -> assert false
     | Error exns ->
       Error (List.map exns ~f:(fun (e : Exn_with_backtrace.t) -> e.exn))
@@ -1349,9 +1482,8 @@ let%expect_test "error handling with diamonds" =
   Printexc.record_backtrace true;
   let f_impl = Fdecl.create Dyn.Encoder.opaque in
   let f =
-    int_fn_create "error-diamond: f"
-      ~output:(Allow_cutoff (module Unit))
-      (fun x -> Fdecl.get f_impl x)
+    int_fn_create "error-diamond: f" ~cutoff:Unit.equal (fun x ->
+        Fdecl.get f_impl x)
   in
   Fdecl.set f_impl (fun x ->
       printf "Calling f %d\n" x;
@@ -1382,28 +1514,22 @@ let%expect_test "error handling and duplicate exceptions" =
   Printexc.record_backtrace true;
   let f_impl = Fdecl.create Dyn.Encoder.opaque in
   let f =
-    int_fn_create "test8: duplicate-exception: f"
-      ~output:(Allow_cutoff (module Unit))
-      (fun x -> Fdecl.get f_impl x)
+    int_fn_create "test8: duplicate-exception: f" ~cutoff:Unit.equal (fun x ->
+        Fdecl.get f_impl x)
   in
   let fail =
-    int_fn_create "test8: fail"
-      ~output:(Allow_cutoff (module Unit))
-      (fun _x -> failwith "42")
+    int_fn_create "test8: fail" ~cutoff:Unit.equal (fun _x -> failwith "42")
   in
   let forward_fail =
-    int_fn_create "test8: forward fail"
-      ~output:(Allow_cutoff (module Unit))
-      (fun x -> Memo.exec fail x)
+    int_fn_create "test8: forward fail" ~cutoff:Unit.equal (fun x ->
+        Memo.exec fail x)
   in
   let forward_fail2 =
-    int_fn_create "test8: forward fail2"
-      ~output:(Allow_cutoff (module Unit))
-      (fun x -> Memo.exec fail x)
+    int_fn_create "test8: forward fail2" ~cutoff:Unit.equal (fun x ->
+        Memo.exec fail x)
   in
   Fdecl.set f_impl (fun x ->
       printf "Calling f %d\n" x;
-
       match x with
       | 0 -> Memo.exec forward_fail x
       | 1 -> Memo.exec forward_fail2 x
@@ -1420,3 +1546,131 @@ let%expect_test "error handling and duplicate exceptions" =
     Calling f 0
     Error [ "(Failure 42)" ]
     |}]
+
+let%expect_test "reproducible errors are cached" =
+  Printexc.record_backtrace false;
+  let f =
+    Memo.create "area of a square"
+      ~input:(module Int)
+      (fun x ->
+        printf "Started evaluating %d\n" x;
+        if x < 0 then failwith (sprintf "Negative input %d" x);
+        if x = 0 then raise (Memo.Non_reproducible (Failure "Zero input"));
+        let res = x * x in
+        printf "Evaluated %d: %d\n" x res;
+        Memo.Build.return res)
+  in
+  Memo.Perf_counters.reset ();
+  evaluate_and_print f 5;
+  evaluate_and_print f (-5);
+  evaluate_and_print f 0;
+  (* Note that the [Non_reproducible] wrapper has been removed. *)
+  print_perf_counters ();
+  [%expect
+    {|
+    Started evaluating 5
+    Evaluated 5: 25
+    f 5 = Ok 25
+    Started evaluating -5
+    f -5 = Error [ { exn = "(Failure \"Negative input -5\")"; backtrace = "" } ]
+    Started evaluating 0
+    f 0 = Error [ { exn = "(Failure \"Zero input\")"; backtrace = "" } ]
+    3/3 computed/total nodes, 0/0 traversed/total edges
+  |}];
+  Memo.Perf_counters.reset ();
+  evaluate_and_print f 5;
+  evaluate_and_print f (-5);
+  evaluate_and_print f 0;
+  print_perf_counters ();
+  (* Note that we do not see any "Started evaluating" messages because both [Ok]
+     and [Error] results have been cached. *)
+  [%expect
+    {|
+    f 5 = Ok 25
+    f -5 = Error [ { exn = "(Failure \"Negative input -5\")"; backtrace = "" } ]
+    f 0 = Error [ { exn = "(Failure \"Zero input\")"; backtrace = "" } ]
+    0/0 computed/total nodes, 0/0 traversed/total edges
+  |}];
+  Memo.restart_current_run ();
+  evaluate_and_print f 5;
+  evaluate_and_print f (-5);
+  evaluate_and_print f 0;
+  print_perf_counters ();
+  (* Here we re-execute only one computation: the one that corresponds to the
+     non-reproducible error. *)
+  [%expect
+    {|
+    f 5 = Ok 25
+    f -5 = Error [ { exn = "(Failure \"Negative input -5\")"; backtrace = "" } ]
+    Started evaluating 0
+    f 0 = Error [ { exn = "(Failure \"Zero input\")"; backtrace = "" } ]
+    1/3 computed/total nodes, 0/0 traversed/total edges
+  |}]
+
+let%expect_test "errors work with early cutoff" =
+  let divide =
+    let exception Input_too_large of Memo.Run.t in
+    Memo.create "divide 100 by input"
+      ~input:(module Int)
+      ~cutoff:Int.equal
+      (fun x ->
+        let+ run = Memo.current_run () in
+        printf "[divide] Started evaluating %d\n" x;
+        if x > 100 then
+          (* This exception will be different in each run. *)
+          raise (Input_too_large run);
+        let res = 100 / x in
+        printf "[divide] Evaluated %d: %d\n" x res;
+        res)
+  in
+  let f =
+    Memo.create "Negate"
+      ~input:(module Int)
+      (fun x ->
+        printf "[negate] Started evaluating %d\n" x;
+        let+ res = Memo.exec divide x >>| Stdlib.Int.neg in
+        printf "[negate] Evaluated %d: %d\n" x res;
+        res)
+  in
+  Memo.Perf_counters.reset ();
+  evaluate_and_print f 0;
+  evaluate_and_print f 20;
+  evaluate_and_print f 200;
+  print_perf_counters ();
+  [%expect
+    {|
+    [negate] Started evaluating 0
+    [divide] Started evaluating 0
+    f 0 = Error [ { exn = "Division_by_zero"; backtrace = "" } ]
+    [negate] Started evaluating 20
+    [divide] Started evaluating 20
+    [divide] Evaluated 20: 5
+    [negate] Evaluated 20: -5
+    f 20 = Ok -5
+    [negate] Started evaluating 200
+    [divide] Started evaluating 200
+    f 200 = Error [ { exn = "Input_too_large(_)"; backtrace = "" } ]
+    7/7 computed/total nodes, 6/6 traversed/total edges
+  |}];
+  Memo.restart_current_run ();
+  evaluate_and_print f 0;
+  evaluate_and_print f 20;
+  evaluate_and_print f 200;
+  print_perf_counters ();
+  (* Here we reevaluate all calls to [divide] because they depend on the current
+     run. Due to the early cutoff, we skip recomputing the outer [negate] for
+     the inputs 0 (error) and 20 (success), because the results remain the same.
+     However, we do attempt to re-evaluate [negate] for the input 200 because
+     the result of [divide] does change: we get a fresh exception. *)
+  [%expect
+    {|
+    [divide] Started evaluating 0
+    f 0 = Error [ { exn = "Division_by_zero"; backtrace = "" } ]
+    [divide] Started evaluating 20
+    [divide] Evaluated 20: 5
+    f 20 = Ok -5
+    [divide] Started evaluating 200
+    [negate] Started evaluating 200
+    f 200 = Error [ { exn = "Input_too_large(_)"; backtrace = "" } ]
+    5/7 computed/total nodes, 10/6 traversed/total edges
+  |}]

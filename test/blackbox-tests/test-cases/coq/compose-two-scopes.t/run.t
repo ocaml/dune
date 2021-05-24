@@ -3,8 +3,8 @@
   4 |  (theories a))
                  ^
   Error: Theory a not found
-  -> required by b/b.vo
-  -> required by install lib/coq/user-contrib/b/b.vo
-  -> required by cvendor.install
+  -> required by _build/default/b/b.vo
+  -> required by _build/install/default/lib/coq/user-contrib/b/b.vo
+  -> required by _build/default/cvendor.install
   -> required by alias default in dune:1
   [1]

@@ -1,6 +1,8 @@
 Unreleased
 ----------
 
+- Fixes `dune exec` not adding .exe on Windows (#4371, fixes #3322, @MisterDA)
+
 - Allow multiple cinaps stanzas in the same directory (#4460, @rgrinberg)
 
 - Fix `$ dune subst` in empty git repositories (#4441, fixes #3619, @rgrinberg)
@@ -58,7 +60,7 @@ Unreleased
   of aliases. (#4303, @aalekseyev)
 
 - If an .ml file is not used by an executable, Dune no longer report
-  parsing error in this file (#...., @jeremiedimino)
+  parsing error in this file (#4330, @jeremiedimino)
 
 - Add support for sandboxing using hard links (#4360, @snowleopard)
 
@@ -88,8 +90,11 @@ Unreleased
 - Fields allowed in the config file are now also allowed in the
   workspace file (#4426, @jeremiedimino)
 
-- Add an option to swallow the output of actions when they succeed, to
-  reduce noise of large builds (#4422, @jeremiedimino)
+- Add options to control how Dune should handle stdout and stderr of
+  actions when then succeed. It is now possible to ask Dune to ignore
+  the stdout of actions when they succeed or to request that the
+  stderr of actions must be empty. This allows to reduce the noise of
+  large builds (#4422, #4515, @jeremiedimino)
 
 - Add the possibility to use `locks` with the cram tests stanza (#4397, @voodoos)
 
@@ -120,11 +125,32 @@ Unreleased
 
 - Fix a crash when clearing temporary directories (#4489, #4529, Andrey Mokhov)
 
+- Dune now memoizes all errors when running in the file-watching mode. This
+  speeds up incremental rebuilds but may be inconvenient in rare cases, e.g. if
+  a build action fails due to a spurious error, such as running out of memory.
+  Right now, the only way to force such actions to be rebuilt is to restart
+  Dune, which clears all memoized errors. In future, we would like to provide a
+  way to rerun all actions failed due to errors without restarting the build,
+  e.g. via a Dune RPC call. (#4522, Andrey Mokhov)
+
+- Remove `dune compute`. It was broken and unused (#4540,
+  @jeremiedimino)
+
+- No longer generate an approximate merlin files when computing the
+  ocaml flags fails, for instance because they include the contents of
+  a file that failed to build. This was a niche feature and it was
+  getting in the way of making Dune's core better. (#4607, @jeremiedimino)
+
+- Make Dune display the progress indicator in all output modes except quiet
+  (#4618, @aalekseyev)
+
 2.9.0 (unreleased)
 ------------------
 
 - Allow to set up merlin in a variant of the default context
   (#4145, @TheLortex, @voodoos)
+
+- Add `(enabled_if ...)` to `(mdx ...)` (#4434, @emillon)
 
 2.8.5 (28/03/2021)
 ------------------

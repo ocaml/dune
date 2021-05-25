@@ -1661,3 +1661,91 @@ let%expect_test "errors work with early cutoff" =
     f 200 = Error [ { exn = "Input_too_large(_)"; backtrace = "" } ]
     5/7 computed/total nodes, 10/6 traversed/total edges
   |}]
+
+(* This test uses non-deterministic tasks to show that adding old dependency
+   edges to the cycle detection graph can lead to spurious cycle errors, where a
+   cycle is formed by a combination of old and new edges.
+
+   In the first build run, A depends on B. In all later runs, B depends on A. *)
+let%expect_test "Test that there are no spurious cycles" =
+  let task_b_fdecl = Fdecl.create (fun _ -> Dyn.Opaque) in
+  let task_a =
+    let memory_a = ref 0 in
+    Memo.create "A"
+      ~input:(module Int)
+      (fun _input ->
+        printf "Started evaluating A\n";
+        let+ result =
+          match !memory_a with
+          | 0 ->
+            let+ b = Memo.exec (Fdecl.get task_b_fdecl) 0 in
+            b + 1
+          | _ -> Memo.Build.return 0
+        in
+        incr memory_a;
+        printf "A = %d\n" result;
+        printf "Evaluated A\n";
+        result)
+  in
+  let task_b =
+    let memory_b = ref 0 in
+    Memo.create "B"
+      ~input:(module Int)
+      ~cutoff:Int.equal
+      (fun _input ->
+        printf "Started evaluating B\n";
+        let+ result =
+          match !memory_b with
+          | 0 -> Memo.Build.return 0
+          | _ ->
+            let+ a = Memo.exec task_a 0 in
+            a + 1
+        in
+        incr memory_b;
+        printf "B = %d\n" result;
+        printf "Evaluated B\n";
+        result)
+  in
+  Fdecl.set task_b_fdecl task_b;
+  Memo.Perf_counters.reset ();
+  evaluate_and_print task_a 0;
+  [%expect
+    {|
+    Started evaluating A
+    Started evaluating B
+    B = 0
+    Evaluated B
+    A = 1
+    Evaluated A
+    f 0 = Ok 1
+  |}];
+  evaluate_and_print task_b 0;
+  [%expect {| f 0 = Ok 0 |}];
+  print_perf_counters ();
+  [%expect {| 2/2 computed/total nodes, 1/1 traversed/total edges |}];
+  Memo.Cell.invalidate (Memo.cell task_b 0);
+  Memo.restart_current_run ();
+  evaluate_and_print task_a 0;
+  (* Note that here task B blows up with a cycle error when trying to restore
+     its result from the cache. A doesn't need it and terminates correctly. *)
+  [%expect
+    {|
+    Started evaluating B
+    Started evaluating A
+    A = 0
+    Evaluated A
+    f 0 = Ok 0
+  |}];
+  evaluate_and_print task_b 0;
+  (* Now we get to see the spurious cycle. *)
+  [%expect
+    {|
+    Dependency cycle detected:
+    - ("A", 0)
+    - called by ("B", 0)
+    f 0 = Error
+            [ { exn = "Cycle_error.E [ (\"A\", 0); (\"B\", 0) ]"
+              ; backtrace = ""
+              }
+            ]
+  |}]

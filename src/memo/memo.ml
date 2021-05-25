@@ -855,12 +855,12 @@ let cycle_detection_timer = Metrics.Timer.create ()
    an [Error] if the new dependency would introduce a dependency cycle. *)
 let add_dep_from_caller (type i o) (dep_node : (i, o) Dep_node.t)
     (sample_attempt : _ Sample_attempt.t) =
-  let* caller = Call_stack.get_call_stack_tip () in
+  let+ caller = Call_stack.get_call_stack_tip () in
   (* Not counting the above computation of the [caller] towards cycle detection,
      to avoid inserting an extra Fiber map or bind. *)
   Metrics.Timer.record cycle_detection_timer ~f:(fun () ->
       match caller with
-      | None -> Fiber.return (Ok ())
+      | None -> Ok ()
       | Some (Stack_frame_with_state.T caller) -> (
         let deps_so_far_of_caller = caller.running_state.deps_so_far in
         match
@@ -870,7 +870,7 @@ let add_dep_from_caller (type i o) (dep_node : (i, o) Dep_node.t)
         | true ->
           Deps_so_far.add_dep deps_so_far_of_caller dep_node.without_state.id
             (Dep_node.T dep_node);
-          Fiber.return (Ok ())
+          Ok ()
         | false -> (
           let cycle_error =
             match sample_attempt with
@@ -888,8 +888,8 @@ let add_dep_from_caller (type i o) (dep_node : (i, o) Dep_node.t)
           | None ->
             Deps_so_far.add_dep deps_so_far_of_caller dep_node.without_state.id
               (Dep_node.T dep_node);
-            Fiber.return (Ok ())
-          | Some cycle -> Fiber.return (Error cycle))))
+            Ok ()
+          | Some cycle -> Error cycle)))
 
 type ('input, 'output) t =
   { spec : ('input, 'output) Spec.t

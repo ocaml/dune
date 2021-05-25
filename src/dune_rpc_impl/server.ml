@@ -21,7 +21,9 @@ let diagnostic_of_error : Build_system.Error.t -> Dune_rpc_private.Diagnostic.t
   let message, dir = Build_system.Error.info m in
   let loc = message.loc in
   let message = Pp.map_tags (Pp.concat message.paragraphs) ~f:(fun _ -> ()) in
+  let id = Build_system.Error.id m |> Diagnostic.Id.create in
   { severity = None
+  ; id
   ; targets = []
   ; message
   ; loc

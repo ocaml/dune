@@ -365,7 +365,14 @@ module Context_or_install = struct
 end
 
 module Error = struct
-  type t = Exn_with_backtrace.t
+  module Id = Id.Make ()
+
+  type t =
+    { exn : Exn_with_backtrace.t
+    ; id : Id.t
+    }
+
+  let id t = Id.to_int t.id
 
   let extract_dir annot =
     Process.With_directory_annot.check annot
@@ -374,7 +381,7 @@ module Error = struct
 
   let info (t : t) =
     let e =
-      match t.exn with
+      match t.exn.exn with
       | Memo.Error.E e -> Memo.Error.get e
       | e -> e
     in
@@ -429,7 +436,7 @@ type t =
   ; sandboxing_preference : Sandbox_mode.t list
   ; mutable rule_done : int
   ; mutable rule_total : int
-  ; mutable errors : Exn_with_backtrace.t list
+  ; mutable errors : Error.t list
   ; handler : Handler.t
   ; promote_source :
          ?chmod:(int -> int)
@@ -2335,13 +2342,14 @@ module Alias = Alias0
 
 let report_early_exn exn =
   let t = t () in
-  t.errors <- exn :: t.errors;
+  let error = { Error.exn; id = Error.Id.gen () } in
+  t.errors <- error :: t.errors;
   (match !Clflags.report_errors_config with
   | Early
   | Twice ->
     Dune_util.Report_error.report exn
   | Deterministic -> ());
-  t.handler.error [ Add exn ]
+  t.handler.error [ Add error ]
 
 let reraise_exn exn =
   match !Clflags.report_errors_config with

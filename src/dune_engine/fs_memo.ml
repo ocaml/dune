@@ -151,7 +151,7 @@ let handle events =
   match rebuild_required with
   | Yes -> Rebuild_required.Yes
   | No -> (
-    match Memo.incremental_mode_enabled with
+    match !Memo.incremental_mode_enabled with
     | true -> No
     | false ->
       (* In this mode, we do not assume that all file system dependencies are

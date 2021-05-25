@@ -74,10 +74,23 @@ module Function (A : sig
 end)
 (M : Monoid_intf.Basic) : Monoid_intf.S with type t = A.t -> M.t
 
-(** Endofunctions, i.e., functions of type [t -> t] form the following monoid:
+(** Endofunctions, i.e., functions of type [t -> t], form two monoids. *)
+module Endofunction : sig
+  (** The left-to-right function composition monoid, where the argument is first
+      passed to the leftmost function:
 
-    - empty = fun x -> x
-    - combine f g = fun x -> f (g x) *)
-module Endofunction (A : sig
-  type t
-end) : Monoid_intf.S with type t = A.t -> A.t
+      - empty = fun x -> x
+      - combine f g = fun x -> g (f x) *)
+  module Left (A : sig
+    type t
+  end) : Monoid_intf.S with type t = A.t -> A.t
+
+  (** The right-to-left function composition monoid, where the argument is first
+      passed to the rightmost function:
+
+      - empty = fun x -> x
+      - combine f g = fun x -> f (g x) *)
+  module Right (A : sig
+    type t
+  end) : Monoid_intf.S with type t = A.t -> A.t
+end

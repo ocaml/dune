@@ -68,6 +68,7 @@ module Seq = Seq
 module Temp = Temp
 module Queue = Queue
 module Caller_id = Caller_id
+module Metrics = Metrics
 
 module type Applicative = Applicative_intf.S
 

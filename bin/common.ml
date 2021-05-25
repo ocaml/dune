@@ -940,7 +940,10 @@ let term =
         stats)
   in
   if store_digest_preimage then Dune_engine.Reversible_digest.enable ();
-  if print_metrics then Memo.Perf_counters.enable ();
+  if print_metrics then (
+    Memo.Perf_counters.enable ();
+    Metrics.enable ()
+  );
   { debug_dep_path
   ; debug_findlib
   ; debug_backtraces

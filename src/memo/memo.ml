@@ -849,41 +849,47 @@ module Cached_value = struct
       not (Exn_set.equal prev_exns cur_exns)
 end
 
+let cycle_detection_timer = Metrics.Timer.create ()
+
 (* Add a dependency on the [dep_node] from the caller, if there is one. Returns
    an [Error] if the new dependency would introduce a dependency cycle. *)
 let add_dep_from_caller (type i o) (dep_node : (i, o) Dep_node.t)
     (sample_attempt : _ Sample_attempt.t) =
-  let* caller = Call_stack.get_call_stack_tip () in
-  match caller with
-  | None -> Fiber.return (Ok ())
-  | Some (Stack_frame_with_state.T caller) -> (
-    let deps_so_far_of_caller = caller.running_state.deps_so_far in
-    match
-      Id.Map.mem deps_so_far_of_caller.added_to_dag dep_node.without_state.id
-    with
-    | true ->
-      Deps_so_far.add_dep deps_so_far_of_caller dep_node.without_state.id
-        (Dep_node.T dep_node);
-      Fiber.return (Ok ())
-    | false -> (
-      let cycle_error =
-        match sample_attempt with
-        | Finished _ -> None
-        | Running { dag_node; _ } -> (
-          match
-            Dag.add_assuming_missing global_dep_dag
-              caller.running_state.dag_node dag_node
-          with
-          | () -> None
-          | exception Dag.Cycle cycle ->
-            Some (List.map cycle ~f:(fun dag_node -> dag_node.Dag.data)))
-      in
-      match cycle_error with
-      | None ->
-        Deps_so_far.add_dep deps_so_far_of_caller dep_node.without_state.id
-          (Dep_node.T dep_node);
-        Fiber.return (Ok ())
-      | Some cycle -> Fiber.return (Error cycle)))
+  let+ caller = Call_stack.get_call_stack_tip () in
+  (* Not counting the above computation of the [caller] towards cycle detection,
+     to avoid inserting an extra Fiber map or bind. *)
+  Metrics.Timer.record cycle_detection_timer ~f:(fun () ->
+      match caller with
+      | None -> Ok ()
+      | Some (Stack_frame_with_state.T caller) -> (
+        let deps_so_far_of_caller = caller.running_state.deps_so_far in
+        match
+          Id.Map.mem deps_so_far_of_caller.added_to_dag
+            dep_node.without_state.id
+        with
+        | true ->
+          Deps_so_far.add_dep deps_so_far_of_caller dep_node.without_state.id
+            (Dep_node.T dep_node);
+          Ok ()
+        | false -> (
+          let cycle_error =
+            match sample_attempt with
+            | Finished _ -> None
+            | Running { dag_node; _ } -> (
+              match
+                Dag.add_assuming_missing global_dep_dag
+                  caller.running_state.dag_node dag_node
+              with
+              | () -> None
+              | exception Dag.Cycle cycle ->
+                Some (List.map cycle ~f:(fun dag_node -> dag_node.Dag.data)))
+          in
+          match cycle_error with
+          | None ->
+            Deps_so_far.add_dep deps_so_far_of_caller dep_node.without_state.id
+              (Dep_node.T dep_node);
+            Ok ()
+          | Some cycle -> Error cycle)))
 
 type ('input, 'output) t =
   { spec : ('input, 'output) Spec.t

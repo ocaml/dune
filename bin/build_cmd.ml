@@ -15,9 +15,13 @@ let run_build_system ~common ~(targets : unit -> Target.t list Memo.Build.t) =
         Console.print_user_message
           (User_message.make
              [ Pp.textf "%s" (Memo.Perf_counters.report_for_current_run ())
-             ; Pp.textf "(%.2f sec, %d heap words)"
+             ; Pp.textf
+                 "(%.2fs total, %.2fs cycle detection, %.2fs digests, %.1fM \
+                  heap words)"
                  (Unix.gettimeofday () -. build_started)
-                 gc_stat.heap_words
+                 (Metrics.Timer.read_seconds Memo.cycle_detection_timer)
+                 (Metrics.Timer.read_seconds Digest.generic_timer)
+                 (float_of_int gc_stat.heap_words /. 1_000_000.)
              ]));
       Fiber.return ())
 

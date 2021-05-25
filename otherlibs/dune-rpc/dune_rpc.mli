@@ -98,9 +98,21 @@ module V1 : sig
         }
     end
 
+    module Id : sig
+      type t
+
+      val compare : t -> t -> int
+
+      val hash : t -> int
+
+      val create : int -> t
+    end
+
     type t
 
     val loc : t -> Loc.t option
+
+    val id : t -> Id.t
 
     val message : t -> unit Pp.t
 

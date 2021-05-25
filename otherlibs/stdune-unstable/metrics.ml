@@ -2,9 +2,7 @@ let enabled = ref false
 
 let enable () = enabled := true
 
-module Reset = Monoid.Endofunction.Left (struct
-  type t = unit
-end)
+module Reset = Monoid.Endofunction.Left (Unit)
 
 let reset = ref Reset.empty
 

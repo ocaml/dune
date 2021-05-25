@@ -2,9 +2,8 @@ let
   pkgs = (import <nixpkgs> { });
   local = (import ./default.nix { });
   inherit (pkgs) stdenv lib;
-in with local;
 
-pkgs.mkShell {
+in pkgs.mkShell {
   # standard dependencies fetched from nixpkgs. essentially everything outside
   # of opam
   buildInputs = (with pkgs; [
@@ -27,7 +26,7 @@ pkgs.mkShell {
     python38Packages.sphinx_rtd_theme
     # opam dependencies. the versions for these are solved for in
     # nix/opam-selection.nix
-  ]) ++ (with opam; [
+  ]) ++ (with local.deps.opam; [
     lwt
     bisect_ppx
     cinaps
@@ -45,6 +44,6 @@ pkgs.mkShell {
     ppxlib
     result
     utop
-  ]) ++ [ coq-core ];
+  ]) ++ [ local.deps.coq-core ];
 
 }

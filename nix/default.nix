@@ -8,6 +8,7 @@
 { pkgs, stdenv, opam2nix, fetchFromGitHub }:
 let
   strings = pkgs.lib.strings;
+  ocaml = pkgs.ocaml-ng.ocamlPackages_4_12.ocaml;
   coq = fetchFromGitHub {
     owner = "coq";
     repo = "coq";
@@ -15,7 +16,7 @@ let
     sha256 = "sha256-C+rk3CMUGypbsCgbHQUgaBIzOE0jUaeQ/YHZ0GYx8aI=";
   };
   args = {
-    inherit (pkgs.ocaml-ng.ocamlPackages_4_12) ocaml;
+    inherit ocaml;
     selection = ./opam-selection.nix;
     src = { coq-core = coq; };
   };
@@ -57,5 +58,6 @@ let
 in {
   inherit resolve;
   inherit coq-core;
+  inherit ocaml;
   opam = opam-selection;
 }

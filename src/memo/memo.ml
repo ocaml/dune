@@ -402,14 +402,12 @@ module Deps_so_far = struct
   type status = { added_to_compute_deps : bool } [@@unboxed]
 
   type 'node t =
-    { added_to_dag : (Id.t, status) Table.t
+    { added_to_dag : status Id.Table.t
     ; mutable compute_deps : 'node deps
     }
 
   let create () =
-    { added_to_dag = Table.create (module Id) 4
-    ; compute_deps = Compute_not_started
-    }
+    { added_to_dag = Id.Table.create 4; compute_deps = Compute_not_started }
 
   let start_compute t = t.compute_deps <- Compute_started { deps_reversed = [] }
 
@@ -418,15 +416,15 @@ module Deps_so_far = struct
   let add_dep t node_id node =
     match t.compute_deps with
     | Compute_not_started ->
-      Table.set t.added_to_dag node_id { added_to_compute_deps = false }
+      Id.Table.set t.added_to_dag node_id { added_to_compute_deps = false }
     | Compute_started { deps_reversed } -> (
-      match Table.find t.added_to_dag node_id with
+      match Id.Table.find t.added_to_dag node_id with
       | Some { added_to_compute_deps = true } -> ()
       | None
       | Some { added_to_compute_deps = false } ->
         t.compute_deps <-
           Compute_started { deps_reversed = node :: deps_reversed };
-        Table.set t.added_to_dag node_id { added_to_compute_deps = true })
+        Id.Table.set t.added_to_dag node_id { added_to_compute_deps = true })
 
   let get_compute_deps_rev t =
     match t.compute_deps with
@@ -867,7 +865,8 @@ let add_dep_from_caller (type i o) (dep_node : (i, o) Dep_node.t)
       | Some (Stack_frame_with_state.T caller) -> (
         let deps_so_far_of_caller = caller.running_state.deps_so_far in
         match
-          Table.mem deps_so_far_of_caller.added_to_dag dep_node.without_state.id
+          Id.Table.mem deps_so_far_of_caller.added_to_dag
+            dep_node.without_state.id
         with
         | true ->
           Deps_so_far.add_dep deps_so_far_of_caller dep_node.without_state.id

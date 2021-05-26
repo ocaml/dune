@@ -569,8 +569,8 @@ struct
     | true ->
       t.running <- false;
       let ivars = ref [] in
-      Table.filteri_inplace t.requests ~f:(fun ~key:_ ~data:ivar ->
-          ivars := ivar :: !ivars;
+      Table.filteri_inplace t.requests ~f:(fun ~key:id ~data:ivar ->
+          ivars := (id, ivar) :: !ivars;
           false);
       let ivars () =
         Fiber.return
@@ -583,10 +583,14 @@ struct
       Fiber.fork_and_join_unit
         (fun () -> Chan.write t.chan None)
         (fun () ->
-          Fiber.parallel_iter ivars ~f:(fun ivar ->
+          Fiber.parallel_iter ivars ~f:(fun (id, ivar) ->
               let error =
-                Response.Error.create ~kind:Code_error
-                  ~message:"connection terminated" ()
+                let payload = Sexp.record [ ("id", Id.to_sexp id) ] in
+                Response.Error.create ~kind:Code_error ~payload
+                  ~message:
+                    "connection terminated. this request will never receive a \
+                     response"
+                  ()
               in
               Fiber.Ivar.fill ivar (Error error)))
 

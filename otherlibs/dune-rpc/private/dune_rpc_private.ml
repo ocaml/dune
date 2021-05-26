@@ -618,8 +618,14 @@ struct
     match t.running with
     | false ->
       let err =
-        Response.Error.create ~message:"connection terminated" ~kind:Code_error
-          ()
+        let payload =
+          Sexp.record
+            [ ("id", Id.to_sexp id)
+            ; ("req", Conv.to_sexp (Conv.record Call.fields) req)
+            ]
+        in
+        Response.Error.create ~payload
+          ~message:"request sent while connection is dead" ~kind:Code_error ()
       in
       Error err
     | true ->
@@ -664,7 +670,9 @@ struct
     match t.running with
     | false ->
       let err =
-        Response.Error.create ~message:"connection terminated" ~kind:Code_error
+        let payload = Conv.to_sexp (Conv.record Call.fields) call in
+        Response.Error.create ~payload
+          ~message:"notification sent while connection is dead" ~kind:Code_error
           ()
       in
       raise (Response.Error.E err)

@@ -544,6 +544,14 @@ struct
 
   exception Invalid_session of Conv.error
 
+  let () =
+    Printexc.register_printer (function
+      | Invalid_session error ->
+        Some
+          (Dyn.to_string
+             (Dyn.Encoder.constr "Invalid_session" [ Conv.dyn_of_error error ]))
+      | _ -> None)
+
   type t =
     { chan : Chan.t
     ; requests : (Id.t, Response.t Fiber.Ivar.t) Table.t

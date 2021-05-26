@@ -135,7 +135,8 @@ module Response = struct
 
     let () =
       Printexc.register_printer (function
-        | E e -> Some (Dyn.to_string (to_dyn e))
+        | E e ->
+          Some (Dyn.to_string (Dyn.Encoder.constr "Response.E" [ to_dyn e ]))
         | _ -> None)
   end
 

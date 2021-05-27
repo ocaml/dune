@@ -1257,35 +1257,6 @@ module Invalidation = struct
   let clear_caches = Leaf (fun () -> Caches.clear ())
 end
 
-module Phase = struct
-  (** We think it's hard to know what happens if we invalidate the node in the
-      middle of a run. In particular it could cause the same node to be computed
-      multiple times in the same run, which is not really something we want to
-      think about. *)
-  type t =
-    | Runnable
-    | Invalidating
-
-  let equal a b =
-    match (a, b) with
-    | Runnable, Runnable -> true
-    | Runnable, _
-    | _, Runnable ->
-      false
-    | Invalidating, Invalidating -> true
-
-  let current : t ref = ref Runnable
-
-  let assert_invalidating () =
-    match !current with
-    | Invalidating -> ()
-    | Runnable ->
-      Code_error.raise
-        "Attempted to invalidate a dep node in Runnable phase. Invalidation \
-         should be done in the Invalidating phase."
-        []
-end
-
 (* There are two approaches to invalidating memoization nodes. Currently, when a
    node is invalidated by calling [invalidate_dep_node], only the node itself is
    marked as "changed" (by setting [node.last_cached_value] to [None]). Then,
@@ -1310,9 +1281,7 @@ end
    documenting in the code. *)
 let invalidate_dep_node (node : _ Dep_node.t) =
   Invalidation.Leaf
-    (fun () ->
-      Phase.assert_invalidating ();
-      node.last_cached_value <- None)
+    (fun () -> node.last_cached_value <- None)
 
 module Current_run = struct
   let f () = Run.current () |> Build0.return
@@ -1479,15 +1448,8 @@ let incremental_mode_enabled =
       User_error.raise
         [ Pp.text "Invalid value of DUNE_WATCHING_MODE_INCREMENTAL" ])
 
-let execute_invalidation invalidation =
-  assert (Phase.equal !Phase.current Runnable);
-  Phase.current := Invalidating;
-  Invalidation.execute invalidation;
-  Phase.current := Runnable
-
 let reset invalidation =
-  execute_invalidation
-    (Invalidation.combine invalidation (Current_run.invalidate ()));
+  Invalidation.execute (Invalidation.combine invalidation (Current_run.invalidate ()));
   Run.restart ();
   Counters.reset ()
 

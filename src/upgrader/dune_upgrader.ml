@@ -386,7 +386,7 @@ let upgrade () =
       (* Run the upgrader again to update new v1 projects to v2 No more than one
          additional upgrade should be needed *)
       (* We reset thje memoization as a simple way to refresh the Source_tree *)
-      Memo.reset ();
+      Memo.reset Memo.Invalidation.clear_caches;
       aux true
     ) else if !v2_updates then (
       Console.print

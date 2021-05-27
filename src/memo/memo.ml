@@ -1219,6 +1219,44 @@ let exec (type i o) (t : (i, o) t) i = Exec.exec_dep_node (dep_node t i)
 
 let get_call_stack = Call_stack.get_call_stack_without_state
 
+module Invalidation = struct
+  (* Represented as a tree mainly to get a tail-recursive execution, but being
+     able to special-case empty invalidations is also useful. *)
+  type t =
+    | Empty
+    | Leaf of (unit -> unit)
+    | Combine of t * t
+
+  let empty : t = Empty
+
+  let combine a b =
+    match (a, b) with
+    | Empty, x
+    | x, Empty ->
+      x
+    | x, y -> Combine (x, y)
+
+  let rec execute x xs =
+    match x with
+    | Empty -> execute_list xs
+    | Leaf f ->
+      f ();
+      execute_list xs
+    | Combine (x, y) -> execute x (y :: xs)
+
+  and execute_list = function
+    | [] -> ()
+    | x :: xs -> execute x xs
+
+  let execute x = execute x []
+
+  let is_empty = function
+    | Empty -> true
+    | _ -> false
+
+  let clear_caches = Leaf (fun () -> Caches.clear ())
+end
+
 (* There are two approaches to invalidating memoization nodes. Currently, when a
    node is invalidated by calling [invalidate_dep_node], only the node itself is
    marked as "changed" (by setting [node.last_cached_value] to [None]). Then,
@@ -1241,7 +1279,8 @@ let get_call_stack = Call_stack.get_call_stack_without_state
    Is it worth switching from the current approach to the alternative? It's best
    to answer this question by benchmarking. This is not urgent but is worth
    documenting in the code. *)
-let invalidate_dep_node (node : _ Dep_node.t) = node.last_cached_value <- None
+let invalidate_dep_node (node : _ Dep_node.t) =
+  Invalidation.Leaf (fun () -> node.last_cached_value <- None)
 
 module Current_run = struct
   let f () = Run.current () |> Build0.return
@@ -1408,14 +1447,11 @@ let incremental_mode_enabled =
       User_error.raise
         [ Pp.text "Invalid value of DUNE_WATCHING_MODE_INCREMENTAL" ])
 
-let restart_current_run () =
-  Current_run.invalidate ();
+let reset invalidation =
+  Invalidation.execute
+    (Invalidation.combine invalidation (Current_run.invalidate ()));
   Run.restart ();
   Counters.reset ()
-
-let reset () =
-  restart_current_run ();
-  if not !incremental_mode_enabled then Caches.clear ()
 
 module Perf_counters = struct
   let enable () = Counters.enabled := true

@@ -511,7 +511,7 @@ end
 
 type waiting_for_file_changes =
   | Shutdown_requested
-  | File_system_changed
+  | File_system_changed of Memo.Invalidation.t
 
 type status =
   (* Waiting for file changes to start a new a build *)
@@ -519,7 +519,7 @@ type status =
   (* Running a build *)
   | Building
   (* Cancellation requested. Build jobs are immediately rejected in this state *)
-  | Restarting_build
+  | Restarting_build of Memo.Invalidation.t
   (* Shut down requested. No new new builds will start *)
   | Shutting_down
 
@@ -564,7 +564,7 @@ let with_job_slot f =
   let* t = t () in
   let raise_if_cancelled () =
     match t.status with
-    | Restarting_build
+    | Restarting_build _
     | Shutting_down ->
       raise (Memo.Non_reproducible (Failure "Build cancelled"))
     | Building -> ()
@@ -678,21 +678,26 @@ end = struct
       match Event.Queue.next t.events with
       | Job_completed (job, proc_info) -> Fiber.Fill (job.ivar, proc_info)
       | File_system_changed events -> (
-        match (Fs_memo.handle events : Fs_memo.Rebuild_required.t) with
-        | No -> iter t (* Ignore the event *)
-        | Yes -> (
+        let invalidation = (Fs_memo.handle events : Memo.Invalidation.t) in
+        match Memo.Invalidation.is_empty invalidation with
+        | true -> iter t (* Ignore the event *)
+        | false -> (
           match t.status with
-          | Shutting_down
-          | Restarting_build ->
+          | Shutting_down -> iter t
+          | Restarting_build prev_invalidation ->
+            t.status <-
+              Restarting_build
+                (Memo.Invalidation.combine prev_invalidation invalidation);
             (* We're already cancelling build, so file change events don't
                matter *)
             iter t
           | Building ->
             t.handler t.config Build_interrupted;
-            t.status <- Restarting_build;
+            t.status <- Restarting_build invalidation;
             Process_watcher.killall t.process_watcher Sys.sigkill;
             iter t
-          | Waiting_for_file_changes ivar -> Fill (ivar, File_system_changed)))
+          | Waiting_for_file_changes ivar ->
+            Fill (ivar, File_system_changed invalidation)))
       | Worker_task fill -> fill
       | File_system_watcher_terminated ->
         filesystem_watcher_terminated ();
@@ -775,7 +780,7 @@ module Run = struct
           (match t.status with
           | Building -> Dune_util.Report_error.report exn
           | Shutting_down
-          | Restarting_build ->
+          | Restarting_build _ ->
             ()
           | Waiting_for_file_changes _ ->
             (* We are inside a build, so we aren't waiting for a file change
@@ -790,8 +795,8 @@ module Run = struct
         (* We just finished a build, so there's no way this was set *)
         assert false
       | Shutting_down -> Fiber.return ()
-      | Restarting_build ->
-        Memo.reset ();
+      | Restarting_build invalidations ->
+        Memo.reset invalidations;
         loop ()
       | Building -> (
         let build_result : Handler.Event.build_result =
@@ -805,8 +810,8 @@ module Run = struct
         let* next = Fiber.Ivar.read ivar in
         match next with
         | Shutdown_requested -> Fiber.return ()
-        | File_system_changed -> (
-          Memo.reset ();
+        | File_system_changed invalidations -> (
+          Memo.reset invalidations;
           t.handler t.config Source_files_changed;
           match res with
           | Error _

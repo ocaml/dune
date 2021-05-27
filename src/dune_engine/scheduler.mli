@@ -100,6 +100,8 @@ val with_job_slot : (Config.t -> 'a Fiber.t) -> 'a Fiber.t
 (** Wait for the following process to terminate *)
 val wait_for_process : Pid.t -> Proc.Process_info.t Fiber.t
 
+val yield_if_there_are_pending_events : unit -> unit Fiber.t
+
 (** Make the scheduler ignore next change to a certain file in watch mode.
 
     This is used with promoted files that are copied back to the source tree

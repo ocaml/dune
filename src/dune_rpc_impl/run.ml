@@ -90,7 +90,7 @@ let where_to_socket = function
 
 module Persistent : sig
   (** Connection negotiation for persistent connections *)
-  val waiting_clients : unit -> Csexp_rpc.Session.t list Fiber.t
+  val waiting_clients : unit -> Csexp_rpc.Session.t Fiber.t list
 
   val create_waiting_client :
     unit -> Csexp_rpc.Session.t Fiber.Stream.In.t Fiber.t
@@ -150,29 +150,23 @@ end = struct
   let waiting_clients () =
     let waiting = Path.build (Lazy.force clients_dir) in
     match Path.readdir_unsorted_with_kinds waiting with
-    | Error _ -> Fiber.return []
+    | Error _ -> []
     | Ok waiters ->
-      Fiber.parallel_map waiters ~f:(fun (file, (kind : Unix.file_kind)) ->
+      List.filter_map waiters ~f:(fun (file, (kind : Unix.file_kind)) ->
           let path = Path.relative waiting file in
-          let socket =
-            match kind with
-            | S_DIR ->
-              let socket = Path.relative path client_sock_fname in
-              Some (Unix.ADDR_UNIX (Path.to_string socket))
-            | S_REG ->
-              Some
-                (Io.read_file path |> Dune_rpc_private.Where.of_string
-               |> where_to_socket)
-            | _ -> None
-          in
-          match socket with
-          | None -> Fiber.return None
-          | Some socket ->
-            let open Fiber.O in
-            let* client = Csexp_rpc.Client.create socket in
-            let+ session = Csexp_rpc.Client.connect client in
-            Some session)
-      |> Fiber.map ~f:List.filter_opt
+          match kind with
+          | S_DIR ->
+            let socket = Path.relative path client_sock_fname in
+            Some (Unix.ADDR_UNIX (Path.to_string socket))
+          | S_REG ->
+            Some
+              (Io.read_file path |> Dune_rpc_private.Where.of_string
+             |> where_to_socket)
+          | _ -> None)
+      |> List.map ~f:(fun socket ->
+             let open Fiber.O in
+             let* client = Csexp_rpc.Client.create socket in
+             Csexp_rpc.Client.connect client)
 end
 
 let of_config config stats =
@@ -202,16 +196,46 @@ let run config stats =
             let open Fiber.O in
             Fiber.fork_and_join_unit
               (fun () ->
-                let* waiting, serve =
-                  (* This waits until we listen on the socket before serving
-                     clients that were already waiting. Not ideal. *)
-                  Fiber.fork_and_join Persistent.waiting_clients (fun () ->
-                      Csexp_rpc.Server.serve t.server)
+                let sessions = Fiber.Mvar.create () in
+                let* () =
+                  Fiber.parallel_iter
+                    ~f:(fun f -> f ())
+                    [ (fun () ->
+                        let* listening = Csexp_rpc.Server.serve t.server in
+                        let* () =
+                          Fiber.Stream.In.parallel_iter listening
+                            ~f:(fun session ->
+                              Fiber.Mvar.write sessions (Some session))
+                        in
+                        Fiber.Mvar.write sessions None)
+                    ; (fun () ->
+                        let* () =
+                          Persistent.waiting_clients ()
+                          |> Fiber.parallel_iter ~f:(fun session ->
+                                 let* session = session in
+                                 Fiber.Mvar.write sessions (Some session))
+                        in
+                        Fiber.Mvar.write sessions None)
+                    ; (fun () ->
+                        let sessions =
+                          let closes = ref `Both_open in
+                          Fiber.Stream.In.create
+                            (let rec loop () =
+                               let* res = Fiber.Mvar.read sessions in
+                               match res with
+                               | Some res -> Fiber.return (Some res)
+                               | None -> (
+                                 match !closes with
+                                 | `Both_open ->
+                                   closes := `One_open;
+                                   loop ()
+                                 | `One_open -> Fiber.return None)
+                             in
+                             loop)
+                        in
+                        Server.serve sessions t.stats t.handler)
+                    ]
                 in
-                let sessions =
-                  Fiber.Stream.In.append (Fiber.Stream.In.of_list waiting) serve
-                in
-                let* () = Server.serve sessions t.stats t.handler in
                 Fiber.Pool.stop t.pool)
               (fun () -> Fiber.Pool.run t.pool))
           ~finally:(fun () ->

@@ -1219,6 +1219,73 @@ let exec (type i o) (t : (i, o) t) i = Exec.exec_dep_node (dep_node t i)
 
 let get_call_stack = Call_stack.get_call_stack_without_state
 
+module Invalidation = struct
+  (* Represented as a tree mainly to get a tail-recursive execution, but being
+     able to special-case empty invalidations is also useful. *)
+  type t =
+    | Empty
+    | Leaf of (unit -> unit)
+    | Combine of t * t
+
+  let empty : t = Empty
+
+  let combine a b =
+    match (a, b) with
+    | Empty, x
+    | x, Empty ->
+      x
+    | x, y -> Combine (x, y)
+
+  let rec execute x xs =
+    match x with
+    | Empty -> execute_list xs
+    | Leaf f ->
+      f ();
+      execute_list xs
+    | Combine (x, y) -> execute x (y :: xs)
+
+  and execute_list = function
+    | [] -> ()
+    | x :: xs -> execute x xs
+
+  let execute x = execute x []
+
+  let is_empty = function
+    | Empty -> true
+    | _ -> false
+
+  let clear_caches = Leaf (fun () -> Caches.clear ())
+end
+
+module Phase = struct
+  (** We think it's hard to know what happens if we invalidate the node in the
+      middle of a run. In particular it could cause the same node to be computed
+      multiple times in the same run, which is not really something we want to
+      think about. *)
+  type t =
+    | Runnable
+    | Invalidating
+
+  let equal a b =
+    match (a, b) with
+    | Runnable, Runnable -> true
+    | Runnable, _
+    | _, Runnable ->
+      false
+    | Invalidating, Invalidating -> true
+
+  let current : t ref = ref Runnable
+
+  let assert_invalidating () =
+    match !current with
+    | Invalidating -> ()
+    | Runnable ->
+      Code_error.raise
+        "Attempted to invalidate a dep node in Runnable phase. Invalidation \
+         should be done in the Invalidating phase."
+        []
+end
+
 (* There are two approaches to invalidating memoization nodes. Currently, when a
    node is invalidated by calling [invalidate_dep_node], only the node itself is
    marked as "changed" (by setting [node.last_cached_value] to [None]). Then,
@@ -1241,7 +1308,11 @@ let get_call_stack = Call_stack.get_call_stack_without_state
    Is it worth switching from the current approach to the alternative? It's best
    to answer this question by benchmarking. This is not urgent but is worth
    documenting in the code. *)
-let invalidate_dep_node (node : _ Dep_node.t) = node.last_cached_value <- None
+let invalidate_dep_node (node : _ Dep_node.t) =
+  Invalidation.Leaf
+    (fun () ->
+      Phase.assert_invalidating ();
+      node.last_cached_value <- None)
 
 module Current_run = struct
   let f () = Run.current () |> Build0.return
@@ -1408,14 +1479,17 @@ let incremental_mode_enabled =
       User_error.raise
         [ Pp.text "Invalid value of DUNE_WATCHING_MODE_INCREMENTAL" ])
 
-let restart_current_run () =
-  Current_run.invalidate ();
+let execute_invalidation invalidation =
+  assert (Phase.equal !Phase.current Runnable);
+  Phase.current := Invalidating;
+  Invalidation.execute invalidation;
+  Phase.current := Runnable
+
+let reset invalidation =
+  execute_invalidation
+    (Invalidation.combine invalidation (Current_run.invalidate ()));
   Run.restart ();
   Counters.reset ()
-
-let reset () =
-  restart_current_run ();
-  if not !incremental_mode_enabled then Caches.clear ()
 
 module Perf_counters = struct
   let enable () = Counters.enabled := true

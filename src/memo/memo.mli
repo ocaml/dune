@@ -194,9 +194,7 @@ end
 
 (** Notify the memoization system that the build system has restarted. This
     removes the values specified by [Invalidation.t] from the memoization cache,
-    advances the current run, and cancels all pending computations. (*
-    CR-someday aalekseyev: In what sense does it cancel pending computations? I
-    don't think it does anything for that. *) *)
+    and advances the current run. *)
 val reset : Invalidation.t -> unit
 
 (** Returns [true] if the user enabled the incremental mode via the environment

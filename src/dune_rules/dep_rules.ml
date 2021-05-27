@@ -215,12 +215,9 @@ let for_module cctx module_ =
   dict_of_func_concurrently (deps_of cctx (Normal module_))
 
 let rules cctx ~modules =
-  match Modules.as_singleton modules with
-  | Some m -> Memo.Build.return (Dep_graph.Ml_kind.dummy m)
-  | None ->
-    let dir = Compilation_context.dir cctx in
-    dict_of_func_concurrently (fun ~ml_kind ->
-        let+ per_module =
-          Modules.obj_map_build modules ~f:(deps_of cctx ~ml_kind)
-        in
-        Dep_graph.make ~dir ~per_module)
+  let dir = CC.dir cctx in
+  dict_of_func_concurrently (fun ~ml_kind ->
+      let+ per_module =
+        Modules.obj_map_build modules ~f:(deps_of cctx ~ml_kind)
+      in
+      Dep_graph.make ~dir ~per_module)

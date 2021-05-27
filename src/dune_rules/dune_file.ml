@@ -158,7 +158,7 @@ module Ctypes = struct
 
   let syntax =
     Dune_lang.Syntax.create ~name ~desc:"the ctypes extension"
-      [ ((0, 1), `Since (2, 8)) ]
+      [ ((0, 1), `Since (3, 0)) ]
 
   let decode =
     let open Dune_lang.Decoder in

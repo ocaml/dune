@@ -1,5 +1,6 @@
 open! Dune_engine
 open! Stdune
+open Memo.Build.O
 
 type ('src, 'dst) t =
   { src : 'src
@@ -38,14 +39,14 @@ module Unexpanded = struct
     ; dst = Some (String_with_vars.make_text locd dst)
     }
 
-  let expand_src t ~dir ~f = Path.Build.relative dir (f t.src)
+  let expand_src t ~dir ~f = f t.src >>| Path.Build.relative dir
 
   let destination_relative_to_install_path t ~section ~expand ~expand_partial =
-    let dst = Option.map ~f:expand t.dst in
-    Install.Entry.adjust_dst ~section ~src:(expand_partial t.src) ~dst
+    let+ src = expand_partial t.src
+    and+ dst = Memo.Build.Option.map ~f:expand t.dst in
+    Install.Entry.adjust_dst ~section ~src ~dst
 
   let expand t ~dir ~f =
-    let open Memo.Build.O in
     let f sw =
       let+ f = f sw in
       (String_with_vars.loc sw, f)
@@ -62,25 +63,6 @@ module Unexpanded = struct
         Some (loc, p)
     in
     { src; dst }
-
-  (* CR-someday amokhov: The function below is almost the same as [expand] but
-     factoring out the common functionality might make it more complicated, so
-     I'm not doing this for now. This function has only one remaining use site
-     and is likely to disappear with further "monadification". *)
-  let expand_static t ~dir ~f =
-    let f sw = (String_with_vars.loc sw, f sw) in
-    let src =
-      let loc, expanded = f t.src in
-      (loc, Path.Build.relative dir expanded)
-    in
-    { src
-    ; dst =
-        (let f sw =
-           let loc, p = f sw in
-           (loc, p)
-         in
-         Option.map ~f t.dst)
-    }
 
   module L = struct
     let decode_file =

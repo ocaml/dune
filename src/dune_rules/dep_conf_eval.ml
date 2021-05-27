@@ -19,96 +19,132 @@ let collect_source_files_recursively dir ~f =
       ~f:(fun dir ->
         f (Path.append_source prefix_with (Source_tree.Dir.path dir)))
 
-let dep expander = function
-  | File s ->
-    let* path = Expander.expand_path expander s in
+type dep_evaluation_result =
+  | Simple of Path.t Memo.Build.t
+  | Other of Path.t list Action_builder.t
+
+let to_action_builder = function
+  | Simple path ->
+    let* path = Action_builder.memo_build path in
     let+ () = Action_builder.path path in
     [ path ]
+  | Other x -> x
+
+let dep expander = function
+  | File s -> (
+    match Expander.With_deps_if_necessary.expand_path expander s with
+    | Without_deps path ->
+      (* This special case is to support this pattern:
+
+         {v ... (deps (:x foo)) (action (... (diff? %{x} %{x}.corrected))) ...
+         v}
+
+         Indeed, the second argument of [diff?] must be something that can be
+         evaluated at rule production time since the dependency/target inferrer
+         treats this argument as "consuming a target", and targets must be known
+         at rule production time. This is not compatible with computing its
+         expansion in the action builder monad, which is evaluated at rule
+         execution time. *)
+      Simple path
+    | With_deps path ->
+      Other
+        (let* path = path in
+         let+ () = Action_builder.path path in
+         [ path ]))
   | Alias s ->
-    let* a = make_alias expander s in
-    let+ () = Action_builder.alias a in
-    []
+    Other
+      (let* a = make_alias expander s in
+       let+ () = Action_builder.alias a in
+       [])
   | Alias_rec s ->
-    let* a = make_alias expander s in
-    let+ () = Build_system.Alias.dep_rec ~loc:(String_with_vars.loc s) a in
-    []
+    Other
+      (let* a = make_alias expander s in
+       let+ () = Build_system.Alias.dep_rec ~loc:(String_with_vars.loc s) a in
+       [])
   | Glob_files { glob = s; recursive } ->
-    let loc = String_with_vars.loc s in
-    let* path = Expander.expand_path expander s in
-    let pred = Glob.of_string_exn loc (Path.basename path) |> Glob.to_pred in
-    let dir = Path.parent_exn path in
-    let files_in dir =
-      Action_builder.paths_matching ~loc (File_selector.create ~dir pred)
-    in
-    let+ files =
-      if recursive then
-        collect_source_files_recursively dir ~f:files_in
-      else
-        files_in dir
-    in
-    Path.Set.to_list files
+    Other
+      (let loc = String_with_vars.loc s in
+       let* path = Expander.expand_path expander s in
+       let pred = Glob.of_string_exn loc (Path.basename path) |> Glob.to_pred in
+       let dir = Path.parent_exn path in
+       let files_in dir =
+         Action_builder.paths_matching ~loc (File_selector.create ~dir pred)
+       in
+       let+ files =
+         if recursive then
+           collect_source_files_recursively dir ~f:files_in
+         else
+           files_in dir
+       in
+       Path.Set.to_list files)
   | Source_tree s ->
-    let* path = Expander.expand_path expander s in
-    Action_builder.map ~f:Path.Set.to_list
-      (Action_builder.source_tree ~dir:path)
+    Other
+      (let* path = Expander.expand_path expander s in
+       Action_builder.map ~f:Path.Set.to_list
+         (Action_builder.source_tree ~dir:path))
   | Package p ->
-    let* pkg = Expander.expand_str expander p in
-    let+ () =
-      let pkg = Package.Name.of_string pkg in
-      let context = Expander.context expander in
-      match Expander.find_package expander pkg with
-      | Some (Local pkg) ->
-        Action_builder.alias
-          (Build_system.Alias.package_install
-             ~context:(Context.build_context context)
-             ~pkg)
-      | Some (Installed pkg) ->
-        let version =
-          Dune_project.dune_version @@ Scope.project @@ Expander.scope expander
-        in
-        if version < (2, 9) then
-          Action_builder.fail
-            { fail =
-                (fun () ->
-                  let loc = String_with_vars.loc p in
-                  User_error.raise ~loc
-                    [ Pp.textf
-                        "Dependency on an installed package requires at least \
-                         (lang dune 2.9)"
-                    ])
-            }
-        else
-          let files =
-            List.concat_map
-              ~f:(fun (s, l) ->
-                let dir = Section.Map.find_exn pkg.sections s in
-                List.map l ~f:(fun d ->
-                    Path.relative dir (Install.Dst.to_string d)))
-              pkg.files
-          in
-          Action_builder.paths files
-      | None ->
-        Action_builder.fail
-          { fail =
-              (fun () ->
-                let loc = String_with_vars.loc p in
-                User_error.raise ~loc
-                  [ Pp.textf "Package %s does not exist"
-                      (Package.Name.to_string pkg)
-                  ])
-          }
-    in
-    []
+    Other
+      (let* pkg = Expander.expand_str expander p in
+       let+ () =
+         let pkg = Package.Name.of_string pkg in
+         let context = Expander.context expander in
+         match Expander.find_package expander pkg with
+         | Some (Local pkg) ->
+           Action_builder.alias
+             (Build_system.Alias.package_install
+                ~context:(Context.build_context context)
+                ~pkg)
+         | Some (Installed pkg) ->
+           let version =
+             Dune_project.dune_version @@ Scope.project
+             @@ Expander.scope expander
+           in
+           if version < (2, 9) then
+             Action_builder.fail
+               { fail =
+                   (fun () ->
+                     let loc = String_with_vars.loc p in
+                     User_error.raise ~loc
+                       [ Pp.textf
+                           "Dependency on an installed package requires at \
+                            least (lang dune 2.9)"
+                       ])
+               }
+           else
+             let files =
+               List.concat_map
+                 ~f:(fun (s, l) ->
+                   let dir = Section.Map.find_exn pkg.sections s in
+                   List.map l ~f:(fun d ->
+                       Path.relative dir (Install.Dst.to_string d)))
+                 pkg.files
+             in
+             Action_builder.paths files
+         | None ->
+           Action_builder.fail
+             { fail =
+                 (fun () ->
+                   let loc = String_with_vars.loc p in
+                   User_error.raise ~loc
+                     [ Pp.textf "Package %s does not exist"
+                         (Package.Name.to_string pkg)
+                     ])
+             }
+       in
+       [])
   | Universe ->
-    let+ () = Action_builder.dep Dep.universe in
-    []
+    Other
+      (let+ () = Action_builder.dep Dep.universe in
+       [])
   | Env_var var_sw ->
-    let* var = Expander.expand_str expander var_sw in
-    let+ () = Action_builder.env_var var in
-    []
+    Other
+      (let* var = Expander.expand_str expander var_sw in
+       let+ () = Action_builder.env_var var in
+       [])
   | Sandbox_config sandbox_config ->
-    let+ () = Action_builder.dep (Dep.sandbox_config sandbox_config) in
-    []
+    Other
+      (let+ () = Action_builder.dep (Dep.sandbox_config sandbox_config) in
+       [])
 
 let prepare_expander expander =
   Expander.set_expanding_what expander Deps_like_field
@@ -117,7 +153,7 @@ let unnamed ~expander l =
   let expander = prepare_expander expander in
   List.fold_left l ~init:(Action_builder.return ()) ~f:(fun acc x ->
       let+ () = acc
-      and+ _x = dep expander x in
+      and+ _x = to_action_builder (dep expander x) in
       ())
 
 let named ~expander l =
@@ -126,26 +162,54 @@ let named ~expander l =
     List.fold_left l ~init:([], Pform.Map.empty)
       ~f:(fun (builders, bindings) x ->
         match x with
-        | Bindings.Unnamed x -> (dep expander x :: builders, bindings)
-        | Named (name, x) ->
-          let x =
-            Action_builder.memoize ("dep " ^ name)
-              (let+ l = Action_builder.all (List.map x ~f:(dep expander)) in
-               List.concat l)
-          in
-          let bindings =
-            Pform.Map.set bindings (Var (User_var name))
-              (let+ paths = x in
-               Dune_util.Value.L.paths paths)
-          in
-          (x :: builders, bindings))
+        | Bindings.Unnamed x ->
+          (to_action_builder (dep expander x) :: builders, bindings)
+        | Named (name, x) -> (
+          let x = List.map x ~f:(dep expander) in
+          match
+            Option.List.all
+              (List.map x ~f:(function
+                | Simple x -> Some x
+                | Other _ -> None))
+          with
+          | Some x ->
+            let open Memo.Build.O in
+            let x = Memo.lazy_ (fun () -> Memo.Build.all x) in
+            let bindings =
+              Pform.Map.set bindings (Var (User_var name))
+                (Expander.With_or_without_deps.Without_deps
+                   (let+ paths = Memo.Lazy.force x in
+                    Dune_util.Value.L.paths paths))
+            in
+            let x =
+              let open Action_builder.O in
+              let* x = Action_builder.memo_build (Memo.Lazy.force x) in
+              let+ () = Action_builder.paths x in
+              x
+            in
+            (x :: builders, bindings)
+          | None ->
+            let x =
+              Action_builder.memoize ("dep " ^ name)
+                (Action_builder.List.concat_map x ~f:to_action_builder)
+            in
+            let bindings =
+              Pform.Map.set bindings (Var (User_var name))
+                (Expander.With_or_without_deps.With_deps
+                   (let+ paths = x in
+                    Dune_util.Value.L.paths paths))
+            in
+            (x :: builders, bindings)))
   in
   let builder =
     let+ l = Action_builder.all (List.rev builders) in
     Dune_util.Value.L.paths (List.concat l)
   in
   let builder = Action_builder.memoize "deps" builder in
-  let bindings = Pform.Map.set bindings (Var Deps) builder in
+  let bindings =
+    Pform.Map.set bindings (Var Deps)
+      (Expander.With_or_without_deps.With_deps builder)
+  in
   let expander = Expander.add_bindings_full expander ~bindings in
   let builder = Action_builder.ignore builder in
   (builder, expander)

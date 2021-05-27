@@ -310,20 +310,18 @@ module Unprocessed = struct
     | Action (loc, (action : Action_dune_lang.t)) ->
       pp_flag_of_action ~expander ~loc ~action
     | No_preprocessing -> Action_builder.return None
-    | Pps { loc; pps; flags; staged = _ } -> (
-      match
-        Resolve.peek
-          (Preprocessing.get_ppx_driver sctx ~loc ~expander ~lib_name:libname
-             ~flags ~scope pps)
-      with
-      | Error () -> Action_builder.return None
-      | Ok (exe, flags) ->
-        let args =
-          Path.to_absolute_filename (Path.build exe) :: "--as-ppx" :: flags
-          |> List.map ~f:quote_if_needed
-          |> String.concat ~sep:" "
-        in
-        Action_builder.return (Some Processed.{ flag = "-ppx"; args }))
+    | Pps { loc; pps; flags; staged = _ } ->
+      let open Action_builder.O in
+      let* exe, flags =
+        Preprocessing.get_ppx_driver sctx ~loc ~expander ~lib_name:libname
+          ~flags ~scope pps
+      in
+      let args =
+        Path.to_absolute_filename (Path.build exe) :: "--as-ppx" :: flags
+        |> List.map ~f:quote_if_needed
+        |> String.concat ~sep:" "
+      in
+      Action_builder.return (Some Processed.{ flag = "-ppx"; args })
 
   let process
       { modules

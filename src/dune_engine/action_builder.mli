@@ -86,7 +86,14 @@ val all_unit : unit t list -> unit t
 
 module List : sig
   val map : 'a list -> f:('a -> 'b t) -> 'b list t
+
+  val concat_map : 'a list -> f:('a -> 'b list t) -> 'b list t
 end
+
+val push_stack_frame :
+     human_readable_description:(unit -> User_message.Style.t Pp.t)
+  -> (unit -> 'a t)
+  -> 'a t
 
 (** Delay a static computation until the description is evaluated *)
 val delayed : (unit -> 'a) -> 'a t
@@ -252,11 +259,6 @@ val action : Action_desc.t t -> unit t
 
 (** Same as [action], but captures the output of the action. *)
 val action_stdout : Action_desc.t t -> string t
-
-(** {1 Analysis} *)
-
-(** Returns [Some (x, deps)] if the following can be evaluated statically. *)
-val static_eval : 'a t -> ('a * Dep.Set.t) option
 
 (** [goal t] ignores all facts that have been accumulated about the dependencies
     of [t]. For example, [goal (path p)] declares that a path [p] contributes to

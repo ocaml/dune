@@ -471,7 +471,7 @@ end = struct
 
   let signal_waiter () =
     if Sys.win32 then (
-      let r, w = Unix.pipe () in
+      let r, w = Unix.pipe ~cloexec:true () in
       let buf = Bytes.create 1 in
       Sys.set_signal Sys.sigint
         (Signal_handle (fun _ -> assert (Unix.write w buf 0 1 = 1)));

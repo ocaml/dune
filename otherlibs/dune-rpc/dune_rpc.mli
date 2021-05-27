@@ -228,6 +228,26 @@ module V1 : sig
 
     val notification : t -> 'a Notification.t -> 'a -> unit fiber
 
+    module Batch : sig
+      type t
+
+      type client
+
+      val create : client -> t
+
+      val request :
+           ?id:Id.t
+        -> t
+        -> ('a, 'b) Request.t
+        -> 'a
+        -> ('b, Response.Error.t) result fiber
+
+      val notification : t -> 'a Notification.t -> 'a -> unit
+
+      val submit : t -> unit fiber
+    end
+    with type client := t
+
     (** [connect ?on_handler session init ~f] connect to [session], initialize
         with [init] and call [f] once the client is initialized. [handler] is
         called for some notifications sent to [session] *)
@@ -279,7 +299,7 @@ module V1 : sig
 
     (* [write t x] writes the s-expression when [x] is [Some _], and closes the
        session if [x = None] *)
-    val write : t -> Csexp.t option -> unit Fiber.t
+    val write : t -> Csexp.t list option -> unit Fiber.t
 
     (* [read t] attempts to read from [t]. If an s-expression is read, it is
        returned as [Some sexp], otherwise [None] is returned and the session is

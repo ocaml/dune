@@ -24,7 +24,7 @@ module Session : sig
 
   (* [write t x] writes the s-expression when [x] is [Some sexp], and closes the
      session if [x = None ] *)
-  val write : t -> Sexp.t option -> unit Fiber.t
+  val write : t -> Sexp.t list option -> unit Fiber.t
 
   (** If [read] returns [None], the session is closed and all subsequent reads
       will return [None] *)

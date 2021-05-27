@@ -45,6 +45,26 @@ module V1 = struct
 
     val notification : t -> 'a Notification.t -> 'a -> unit fiber
 
+    module Batch : sig
+      type t
+
+      type client
+
+      val create : client -> t
+
+      val request :
+           ?id:Id.t
+        -> t
+        -> ('a, 'b) Request.t
+        -> 'a
+        -> ('b, Response.Error.t) result fiber
+
+      val notification : t -> 'a Notification.t -> 'a -> unit
+
+      val submit : t -> unit fiber
+    end
+    with type client := t
+
     val connect :
          ?handler:Handler.t
       -> chan

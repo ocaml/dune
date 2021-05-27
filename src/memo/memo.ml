@@ -1280,8 +1280,7 @@ end
    to answer this question by benchmarking. This is not urgent but is worth
    documenting in the code. *)
 let invalidate_dep_node (node : _ Dep_node.t) =
-  Invalidation.Leaf
-    (fun () -> node.last_cached_value <- None)
+  Invalidation.Leaf (fun () -> node.last_cached_value <- None)
 
 module Current_run = struct
   let f () = Run.current () |> Build0.return
@@ -1449,7 +1448,8 @@ let incremental_mode_enabled =
         [ Pp.text "Invalid value of DUNE_WATCHING_MODE_INCREMENTAL" ])
 
 let reset invalidation =
-  Invalidation.execute (Invalidation.combine invalidation (Current_run.invalidate ()));
+  Invalidation.execute
+    (Invalidation.combine invalidation (Current_run.invalidate ()));
   Run.restart ();
   Counters.reset ()
 

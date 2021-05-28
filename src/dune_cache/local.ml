@@ -217,6 +217,8 @@ module Artifacts = struct
       ~f:(fun (entries : Metadata_entry.t list) ->
         match
           create_all_or_nothing entries
+            ~destroy:(fun (path_in_build_dir, _digest) ->
+              Path.Build.unlink_no_err path_in_build_dir)
             ~create:(fun { Metadata_entry.file_name; file_digest } ->
               let path_in_build_dir =
                 Path.Build.relative target_dir file_name
@@ -242,8 +244,6 @@ module Artifacts = struct
                 with
                 | exception Sys_error _ -> Error Not_found
                 | () -> Ok (path_in_build_dir, file_digest)))
-            ~destroy:(fun (path_in_build_dir, _digest) ->
-              Path.Build.unlink_no_err path_in_build_dir)
         with
         | Ok artifacts -> Restored artifacts
         | Error Not_found ->

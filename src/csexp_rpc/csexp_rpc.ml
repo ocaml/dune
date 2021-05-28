@@ -1,5 +1,6 @@
 open Stdune
 open Fiber.O
+module Log = Dune_util.Log
 
 module Worker = struct
   include Dune_engine.Scheduler.Worker
@@ -35,10 +36,11 @@ module Session = struct
     }
 
   let create ~socket in_channel out_channel =
-    if debug then Format.eprintf ">> NEW SESSION@.";
+    let id = Id.gen () in
+    if debug then
+      Log.info [ Pp.textf "RPC created new session %d" (Id.to_int id) ];
     let* reader = Worker.create () in
     let+ writer = Worker.create () in
-    let id = Id.gen () in
     let state = Open { in_channel; out_channel; reader; writer; socket } in
     { id; state }
 
@@ -65,7 +67,9 @@ module Session = struct
 
   let read t =
     let debug res =
-      if debug then Format.eprintf "<< %s@." (string_of_packet res)
+      if debug then
+        Log.info
+          [ Pp.verbatim ("RPC <<\n" ^ string_of_packet res); Pp.text "<<" ]
     in
     match t.state with
     | Closed ->
@@ -97,7 +101,9 @@ module Session = struct
       res
 
   let write t sexps =
-    if debug then Format.eprintf ">> %s@." (string_of_packets sexps);
+    if debug then
+      Log.info
+        [ Pp.verbatim ("RPC >>\n" ^ string_of_packets sexps); Pp.text ">>" ];
     match t.state with
     | Closed -> (
       match sexps with

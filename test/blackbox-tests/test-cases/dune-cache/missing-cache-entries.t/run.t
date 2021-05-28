@@ -82,18 +82,7 @@ Selectively delete just one of the set of targets.
   $ rm -r _build
 
   $ dune build --config-file=config twin-a
-  File "dune", line 5, characters 0-131:
-  5 | (rule
-  6 |   (deps source)
-  7 |   (targets twin-a twin-b)
-  8 |   (action (bash "echo twin-a-contents >> twin-a; echo twin-b-contents >> twin-b")))
-          bash twin-a,twin-b (exit 1)
-  (cd _build/default && /usr/bin/bash -e -u -o pipefail -c 'echo twin-a-contents >> twin-a; echo twin-b-contents >> twin-b')
-  /usr/bin/bash: twin-a: Permission denied
-  [1]
   $ cat _build/default/twin-a
-  cat: _build/default/twin-a: No such file or directory
-  [1]
+  twin-a-contents
   $ cat _build/default/twin-b
-  cat: _build/default/twin-b: No such file or directory
-  [1]
+  twin-b-contents

@@ -559,6 +559,8 @@ let report_rule_conflict fn (rule' : Rule.t) (rule : Rule.t) =
    need to delete them as they might contain garbage. *)
 let pending_targets = ref Path.Build.Set.empty
 
+let () = Hooks.End_of_build.always Metrics.reset
+
 let () =
   Hooks.End_of_build.always (fun () ->
       let fns = !pending_targets in

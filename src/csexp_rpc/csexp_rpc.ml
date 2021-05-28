@@ -54,11 +54,11 @@ module Session = struct
 
   let string_of_packet = function
     | None -> "EOF"
-    | Some csexp -> Csexp.to_string csexp
+    | Some csexp -> Sexp.to_string csexp
 
   let string_of_packets = function
     | None -> "EOF"
-    | Some sexps -> String.concat ~sep:" " (List.map ~f:Csexp.to_string sexps)
+    | Some sexps -> String.concat ~sep:" " (List.map ~f:Sexp.to_string sexps)
 
   let read t =
     let debug res =

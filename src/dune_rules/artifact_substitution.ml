@@ -563,7 +563,8 @@ let copy ~conf ~input_file ~input ~output =
   parse ~input ~mode:(Copy { conf; input_file; output })
 
 let copy_file ~conf ?chmod ~src ~dst () =
-  let ic, oc = Io.setup_copy ?chmod ~src ~dst () in
+  let open Fiber.O in
+  let* ic, oc = Fiber.return (Io.setup_copy ?chmod ~src ~dst ()) in
   Fiber.finalize
     ~finally:(fun () ->
       Io.close_both (ic, oc);
@@ -571,7 +572,8 @@ let copy_file ~conf ?chmod ~src ~dst () =
     (fun () -> copy ~conf ~input_file:src ~input:(input ic) ~output:(output oc))
 
 let test_file ~src () =
-  let ic = Io.open_in src in
+  let open Fiber.O in
+  let* ic = Fiber.return (Io.open_in src) in
   Fiber.finalize
     ~finally:(fun b ->
       Io.close_in ic;

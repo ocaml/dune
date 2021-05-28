@@ -2,22 +2,6 @@ Check that Dune cache can cope with missing file/metadata entries.
 
   $ export DUNE_CACHE_ROOT=$PWD/.cache
 
-  $ function find_unique_entry_containing {
-  >   (all_entries_x=$(cd "$DUNE_CACHE_ROOT"; grep -rsl . -e "$1"; echo -n x)
-  >   print_all_entries () {
-  >     printf "%s" "$all_entries_x" | head -c -1
-  >   }
-  >   count="$(print_all_entries | wc -l)"
-  >   if [ "$count" != 1 ];
-  >   then
-  >     printf "found %d entries:\n" "$count"
-  >     print_all_entries >&2;
-  >     false
-  >   else
-  >     print_all_entries
-  >   fi)
-  > }
-
   $ cat > config <<EOF
   > (lang dune 2.1)
   > (sandboxing_preference none)

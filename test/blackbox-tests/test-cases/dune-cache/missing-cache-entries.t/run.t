@@ -77,8 +77,8 @@ Now nuke the whole cache directory.
 
 Selectively delete just one of the set of targets.
 
-  $ twin_a_entry=$(find_unique_entry_containing "twin-b-contents")
-  $ rm "$DUNE_CACHE_ROOT"/"$twin_a_entry"
+  $ twin_b_entry=$(dune_cmd find-file-by-contents-regexp "$DUNE_CACHE_ROOT" "twin-b-contents")
+  $ rm "$twin_b_entry"
   $ rm -r _build
 
   $ dune build --config-file=config twin-a

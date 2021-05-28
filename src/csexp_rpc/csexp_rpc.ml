@@ -231,8 +231,20 @@ module Server = struct
     let loop () =
       let* accept = accept () in
       match accept with
-      | Error _
+      | Error `Stopped ->
+        Log.info [ Pp.text "RPC stopped accepting." ];
+        Fiber.return None
+      | Error (`Exn exn) ->
+        Log.info
+          [ Pp.text "RPC accept failed. Server will not accept new clients"
+          ; Exn_with_backtrace.pp exn
+          ];
+        Fiber.return None
       | Ok None ->
+        Log.info
+          [ Pp.text
+              "RPC accepted the last client. No more clients will be accepted."
+          ];
         Fiber.return None
       | Ok (Some (in_, out)) ->
         let+ session = Session.create ~socket:true in_ out in

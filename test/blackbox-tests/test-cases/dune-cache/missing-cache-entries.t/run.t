@@ -30,7 +30,7 @@ Check that Dune cache can cope with missing file/metadata entries.
   $ cat _build/default/target
   \_o< COIN
   \_o< COIN
-  $ cat _build/default/twin-{a,b}
+  $ cat _build/default/twin-a _build/default/twin-b
   twin-a-contents
   twin-b-contents
 

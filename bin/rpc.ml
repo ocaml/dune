@@ -15,7 +15,7 @@ let wait_for_server common =
 
 let client_term common f =
   let common = Common.set_print_directory common false in
-  let config = Common.init common in
+  let config = Common.init ~log_file:No_log_file common in
   Scheduler.go ~common ~config (fun () -> f common)
 
 (* cwong: Should we put this into [dune-rpc]? *)
@@ -95,6 +95,7 @@ let establish_client_session ~common ~wait =
 
 module Init = struct
   let connect ~wait common =
+    Dune_util.Log.init ~file:No_log_file ();
     let open Fiber.O in
     let* client, session = establish_client_session ~common ~wait in
     let* stdio = Csexp_rpc.Session.create ~socket:false stdin stdout in

@@ -223,7 +223,6 @@ module Artifacts = struct
               let path_in_build_dir =
                 Path.Build.relative target_dir file_name
               in
-              Path.Build.unlink_no_err path_in_build_dir;
               let path_in_cache = file_path ~file_digest in
               match (mode : Dune_cache_storage.Mode.t) with
               | Hardlink -> (

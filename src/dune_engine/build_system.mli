@@ -13,6 +13,8 @@ module Error : sig
 
   val info : t -> User_message.t * Path.t option
 
+  val promotion : t -> Promotion.Annot.t option
+
   val id : t -> int
 end
 

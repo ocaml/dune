@@ -86,6 +86,12 @@ module Response = struct
       ; kind : kind
       }
 
+    let payload t = t.payload
+
+    let kind t = t.kind
+
+    let message t = t.message
+
     exception E of t
 
     let create ?payload ~kind ~message () = { payload; message; kind }

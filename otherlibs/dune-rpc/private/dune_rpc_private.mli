@@ -44,6 +44,12 @@ module Response : sig
       ; kind : kind
       }
 
+    val payload : t -> Csexp.t option
+
+    val message : t -> string
+
+    val kind : t -> kind
+
     exception E of t
 
     val of_conv : Conv.error -> t
@@ -123,6 +129,10 @@ module Loc : sig
     { start : Lexing.position
     ; stop : Lexing.position
     }
+
+  val start : t -> Lexing.position
+
+  val stop : t -> Lexing.position
 end
 
 module Target : sig
@@ -145,6 +155,10 @@ module Diagnostic : sig
       { in_build : string
       ; in_source : string
       }
+
+    val in_build : t -> string
+
+    val in_source : t -> string
   end
 
   module Id : sig
@@ -210,6 +224,10 @@ module Message : sig
     { payload : Csexp.t option
     ; message : string
     }
+
+  val payload : t -> Csexp.t option
+
+  val message : t -> string
 end
 
 module Subscribe : sig

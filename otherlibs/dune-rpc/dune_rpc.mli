@@ -51,11 +51,13 @@ module V1 : sig
         | Code_error
         | Version_error
 
-      type t =
-        { payload : Csexp.t option
-        ; message : string
-        ; kind : kind
-        }
+      type t
+
+      val payload : t -> Csexp.t option
+
+      val message : t -> string
+
+      val kind : t -> kind
 
       exception E of t
     end
@@ -70,10 +72,11 @@ module V1 : sig
   end
 
   module Loc : sig
-    type t =
-      { start : Lexing.position
-      ; stop : Lexing.position
-      }
+    type t
+
+    val start : t -> Lexing.position
+
+    val stop : t -> Lexing.position
   end
 
   module Target : sig
@@ -92,10 +95,11 @@ module V1 : sig
       | Warning
 
     module Promotion : sig
-      type t =
-        { in_build : string
-        ; in_source : string
-        }
+      type t
+
+      val in_build : t -> string
+
+      val in_source : t -> string
     end
 
     module Id : sig
@@ -164,10 +168,11 @@ module V1 : sig
   end
 
   module Message : sig
-    type t =
-      { payload : Csexp.t option
-      ; message : string
-      }
+    type t
+
+    val payload : t -> Csexp.t option
+
+    val message : t -> string
   end
 
   module Notification : sig

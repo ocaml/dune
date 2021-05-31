@@ -293,6 +293,12 @@ val push_stack_frame :
 module Run : sig
   (** A single build run. *)
   type t
+
+  module For_tests : sig
+    val compare : t -> t -> Ordering.t
+
+    val current : unit -> t
+  end
 end
 
 (** Introduces a dependency on the current build run. *)

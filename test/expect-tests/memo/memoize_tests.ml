@@ -1596,6 +1596,17 @@ let%expect_test "reproducible errors are cached" =
 let%expect_test "errors work with early cutoff" =
   let divide =
     let exception Input_too_large of Memo.Run.t in
+    let first_run = Memo.Run.For_tests.current () in
+    Printexc.register_printer (fun exn ->
+        match exn with
+        | Input_too_large run ->
+          Some
+            (sprintf "Input_too_large <%s run>"
+               (if Memo.Run.For_tests.compare first_run run = Eq then
+                 "first"
+               else
+                 "second"))
+        | _ -> None);
     Memo.create "divide 100 by input"
       ~input:(module Int)
       ~cutoff:Int.equal
@@ -1635,7 +1646,7 @@ let%expect_test "errors work with early cutoff" =
     f 20 = Ok -5
     [negate] Started evaluating 200
     [divide] Started evaluating 200
-    f 200 = Error [ { exn = "Input_too_large(_)"; backtrace = "" } ]
+    f 200 = Error [ { exn = "Input_too_large <first run>"; backtrace = "" } ]
     7/7 computed/total nodes, 6/6 traversed/total edges
   |}];
   Memo.reset Memo.Invalidation.empty;
@@ -1657,7 +1668,7 @@ let%expect_test "errors work with early cutoff" =
     f 20 = Ok -5
     [divide] Started evaluating 200
     [negate] Started evaluating 200
-    f 200 = Error [ { exn = "Input_too_large(_)"; backtrace = "" } ]
+    f 200 = Error [ { exn = "Input_too_large <second run>"; backtrace = "" } ]
     5/7 computed/total nodes, 10/6 traversed/total edges
   |}]
 

@@ -1,5 +1,14 @@
 open! Stdune
 
+module Annot : sig
+  type t =
+    { in_source : Path.Source.t
+    ; in_build : Path.Build.t
+    }
+
+  include User_error.Annot.S with type payload := t
+end
+
 module File : sig
   type t
 

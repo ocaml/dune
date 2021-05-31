@@ -379,6 +379,19 @@ module Error = struct
       (fun dir -> Some dir)
       (fun () -> None)
 
+  let extract_promote annot =
+    Promotion.Annot.check annot (fun promote -> Some promote) (fun () -> None)
+
+  let promotion t =
+    let e =
+      match t.exn.exn with
+      | Memo.Error.E e -> Memo.Error.get e
+      | e -> e
+    in
+    match e with
+    | User_error.E (_, annots) -> List.find_map annots ~f:extract_promote
+    | _ -> None
+
   let info (t : t) =
     let e =
       match t.exn.exn with

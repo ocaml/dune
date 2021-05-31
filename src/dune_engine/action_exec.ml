@@ -331,14 +331,22 @@ let rec exec t ~ectx ~eenv =
       let+ () =
         Fiber.finalize
           (fun () ->
+            let annot =
+              Promotion.Annot.make
+                { Promotion.Annot.in_source =
+                    Path.extract_build_context_dir_maybe_sandboxed file1
+                    |> Option.value_exn |> snd
+                ; in_build = file2
+                }
+            in
             if mode = Binary then
-              User_error.raise
+              User_error.raise ~annots:[ annot ]
                 [ Pp.textf "Files %s and %s differ."
                     (Path.to_string_maybe_quoted file1)
                     (Path.to_string_maybe_quoted (Path.build file2))
                 ]
             else
-              Print_diff.print file1 (Path.build file2)
+              Print_diff.print annot file1 (Path.build file2)
                 ~skip_trailing_cr:(mode = Text && Sys.win32))
           ~finally:(fun () ->
             (match optional with

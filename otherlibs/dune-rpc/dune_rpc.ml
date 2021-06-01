@@ -53,10 +53,11 @@ module V1 = struct
       -> 'a fiber
 
     val connect_persistent :
-         ?on_disconnect:('a -> unit fiber)
-      -> chan
+         chan
       -> on_connect:(unit -> ('a * Initialize.t * Handler.t option) fiber)
-      -> on_connected:('a -> (unit -> unit fiber) -> t -> unit fiber)
+      -> on_connected:('a -> t -> unit fiber)
       -> unit fiber
+
+    val disconnected : t -> unit fiber
   end
 end

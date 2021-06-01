@@ -159,7 +159,7 @@ let%expect_test "run and connect persistent" =
         let initialize = Initialize.create ~id:(Id.make (Csexp.Atom "test")) in
         Lwt.return ((), initialize, None)
       in
-      let on_connected () _ t =
+      let on_connected () t =
         Logger.log log_client "on_connected: %d" !count;
         let* res = Client.request t Request.ping () in
         let* () =
@@ -169,18 +169,19 @@ let%expect_test "run and connect persistent" =
             Logger.log log_client "received ping. shutting down server";
             Client.notification t Notification.shutdown ()
         in
-        if !count = 3 then (
-          Logger.log log_client "received second session. shutting down";
-          let* () = Lwt_io.close rpc#stdout in
-          Lwt_io.close rpc#stdin
-        ) else
-          Lwt.return ()
-      in
-      let on_disconnect () =
+        let* () =
+          if !count = 3 then (
+            Logger.log log_client "received second session. shutting down";
+            let* () = Lwt_io.close rpc#stdout in
+            Lwt_io.close rpc#stdin
+          ) else
+            Lwt.return ()
+        in
+        let* () = Client.disconnected t in
         Logger.log log_client "on_disconnect: %d" !count;
         Lwt.return ()
       in
-      Client.connect_persistent chan ~on_connected ~on_connect ~on_disconnect
+      Client.connect_persistent chan ~on_connected ~on_connect
     in
     let run_build1 =
       let* _ = rpc in

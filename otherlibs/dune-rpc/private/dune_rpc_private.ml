@@ -410,11 +410,12 @@ module type S = sig
     -> 'a fiber
 
   val connect_persistent :
-       ?on_disconnect:('a -> unit fiber)
-    -> chan
+       chan
     -> on_connect:(unit -> ('a * Initialize.Request.t * Handler.t option) fiber)
-    -> on_connected:('a -> (unit -> unit fiber) -> t -> unit fiber)
+    -> on_connected:('a -> t -> unit fiber)
     -> unit fiber
+
+  val disconnected : t -> unit fiber
 end
 
 module Client (Fiber : sig
@@ -460,16 +461,27 @@ struct
       ; write : Sexp.t option -> unit Fiber.t
       ; mutable closed_read : bool
       ; mutable closed_write : bool
+      ; on_close : unit Fiber.Ivar.t
       }
 
-    let make read write =
-      { read; write; closed_read = false; closed_write = false }
+    let make read write on_close =
+      { read; write; closed_read = false; closed_write = false; on_close }
 
     let of_chan c =
-      { read = (fun () -> Chan.read c)
+      let on_close = Fiber.Ivar.create () in
+      let read () =
+        let* result = Chan.read c in
+        match result with
+        | None ->
+          let+ () = Fiber.Ivar.fill on_close () in
+          None
+        | _ -> Fiber.return result
+      in
+      { read
       ; write = (fun s -> Chan.write c s)
       ; closed_read = false
       ; closed_write = false
+      ; on_close
       }
 
     let write t s =
@@ -727,8 +739,7 @@ struct
     in
     connect_raw chan initialize ~f ~on_notification
 
-  let connect_persistent ?(on_disconnect = fun _ -> Fiber.return ()) chan
-      ~on_connect ~on_connected =
+  let connect_persistent chan ~on_connect ~on_connected =
     let chan = Chan.of_chan chan in
     let packets () =
       let+ read = Chan.read chan in
@@ -759,17 +770,16 @@ struct
         let sexp = Conv.to_sexp Persistent.Out.sexp packet in
         Chan.write chan (Some sexp)
       in
-      (Chan.make read write, fun () -> Fiber.Ivar.read closed)
+      Chan.make read write closed
     in
     let rec loop () =
       let* packet = packets () in
       match packet with
       | Some New_connection ->
         let* a, init, handler = on_connect () in
-        let chan, on_close = make_chan packets in
-        let* () = connect ?handler chan init ~f:(on_connected a on_close) in
+        let chan = make_chan packets in
+        let* () = connect ?handler chan init ~f:(on_connected a) in
         Chan.close_read chan;
-        let* () = on_disconnect a in
         loop ()
       | Some Close_connection -> loop ()
       | None -> Fiber.return ()
@@ -786,4 +796,6 @@ struct
   let connect ?handler chan init ~f =
     let chan = Chan.of_chan chan in
     connect ?handler chan init ~f
+
+  let disconnected t = Fiber.Ivar.read t.chan.on_close
 end

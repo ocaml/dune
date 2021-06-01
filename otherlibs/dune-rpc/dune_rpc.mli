@@ -232,24 +232,19 @@ module V1 : sig
 
         When a server is discovered, [on_connect ()] is first run to produce the
         application's internal state [s], initialization data and handlers.
-        Next, [on_connected s wait_for_disconnect t] is called, where:
+        Next, [on_connected s t] is called, where [t] is the client object for
+        this session.
 
-        - [wait_for_disconnect ()] produces a fiber that is determined when the
-          server disconnects
-        - [t] is the client object for this session
-
-        Finally, if present, [on_disconnect s] will be called after the
-        resolution of [on_connected], before waiting for new server connections.
-
-        Note that [on_connect], [on_connected] and [on_disconnect] are
-        necessarily called in sequence, so blocking those fibers will cause a
-        deadlock, in which no new servers will be discovered. *)
+        Note that [on_connect] and [on_connected] are necessarily called in
+        sequence, so blocking those fibers will cause a deadlock, in which no
+        new servers will be discovered. *)
     val connect_persistent :
-         ?on_disconnect:('a -> unit fiber)
-      -> chan
+         chan
       -> on_connect:(unit -> ('a * Initialize.t * Handler.t option) fiber)
-      -> on_connected:('a -> (unit -> unit fiber) -> t -> unit fiber)
+      -> on_connected:('a -> t -> unit fiber)
       -> unit fiber
+
+    val disconnected : t -> unit fiber
   end
 
   (** Functor to create a client implementation *)

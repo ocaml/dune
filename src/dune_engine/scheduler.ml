@@ -529,14 +529,21 @@ type waiting_for_file_changes =
   | File_system_changed of Memo.Invalidation.t
 
 type status =
-  (* Waiting for file changes to start a new a build *)
-  | Waiting_for_file_changes of waiting_for_file_changes Fiber.Ivar.t
-  (* Running a build *)
-  | Building
-  (* Cancellation requested. Build jobs are immediately rejected in this state *)
-  | Restarting_build of Memo.Invalidation.t
-  (* Shut down requested. No new new builds will start *)
-  | Shutting_down
+  | (* Ready to start the next build. Waiting for a signal from the user, the
+       test harness, or the polling loop. The payload is the collection of
+       filesystem events. *)
+      Standing_by of
+      Memo.Invalidation.t
+  | (* Waiting for file changes to start a new a build *)
+      Waiting_for_file_changes of
+      waiting_for_file_changes Fiber.Ivar.t
+  | (* Running a build *)
+      Building
+  | (* Cancellation requested. Build jobs are immediately rejected in this state *)
+      Restarting_build of
+      Memo.Invalidation.t
+  | (* Shut down requested. No new new builds will start *)
+      Shutting_down
 
 module Handler = struct
   module Event = struct
@@ -593,7 +600,8 @@ let with_job_slot f =
     | Shutting_down ->
       raise (Memo.Non_reproducible (Failure "Build cancelled"))
     | Building -> ()
-    | Waiting_for_file_changes _ ->
+    | Waiting_for_file_changes _
+    | Standing_by _ ->
       (* At this stage, we're not running a build, so we shouldn't be running
          tasks here. *)
       assert false
@@ -645,7 +653,12 @@ let prepare (config : Config.t) ~(handler : Handler.t) =
   Signal_watcher.init events;
   let process_watcher = Process_watcher.init events in
   let t =
-    { status = Building
+    { status =
+        (* Slightly weird initialization happening here: for polling mode we
+           initialize in "Building" state, immediately switch to Standing_by and
+           then back to "Building". It would make more sense to start in
+           "Stand_by" from the start. *)
+        Building
     ; job_throttle = Fiber.Throttle.create config.concurrency
     ; process_watcher
     ; events
@@ -692,6 +705,11 @@ end = struct
             Restarting_build
               (Memo.Invalidation.combine prev_invalidation invalidation);
           (* We're already cancelling build, so file change events don't matter *)
+          iter t
+        | Standing_by prev_invalidation ->
+          t.status <-
+            Standing_by
+              (Memo.Invalidation.combine prev_invalidation invalidation);
           iter t
         | Building ->
           t.handler t.config Build_interrupted;
@@ -773,58 +791,81 @@ module Run = struct
   module Event_queue = Event.Queue
   module Event = Handler.Event
 
+  module Build_outcome = struct
+    type t =
+      | Shutdown
+      | Cancelled_due_to_file_changes
+      | Finished of ([ `Continue ], unit) Result.t
+  end
+
+  let poll_iter t step =
+    (match t.status with
+    | Standing_by invalidations -> Memo.reset invalidations
+    | _ ->
+      Code_error.raise "[poll_iter]: expected the build status [Standing_by]" []);
+    t.status <- Building;
+    let+ res =
+      let report_error exn =
+        match t.status with
+        | Building -> Dune_util.Report_error.report exn
+        | Shutting_down
+        | Restarting_build _ ->
+          ()
+        | Standing_by _ -> assert false
+        | Waiting_for_file_changes _ ->
+          (* We are inside a build, so we aren't waiting for a file change event *)
+          assert false
+      in
+      let on_error exn =
+        report_error exn;
+        Fiber.return ()
+      in
+      Fiber.map_reduce_errors
+        (module Monoid.Unit)
+        ~on_error (step ~report_error)
+    in
+    match t.status with
+    | Waiting_for_file_changes _
+    | Standing_by _ ->
+      (* We just finished a build, so there's no way this was set *)
+      assert false
+    | Shutting_down -> Build_outcome.Shutdown
+    | Restarting_build invalidations ->
+      t.status <- Standing_by invalidations;
+      Build_outcome.Cancelled_due_to_file_changes
+    | Building ->
+      let build_result : Handler.Event.build_result =
+        match res with
+        | Error _ -> Failure
+        | Ok _ -> Success
+      in
+      t.handler t.config (Build_finish build_result);
+      t.status <- Standing_by Memo.Invalidation.empty;
+      Build_outcome.Finished res
+
   let poll step =
     let* t = t () in
-    let rec loop () : unit Fiber.t =
-      t.status <- Building;
-      let* res =
-        let report_error exn =
-          match t.status with
-          | Building -> Dune_util.Report_error.report exn
-          | Shutting_down
-          | Restarting_build _ ->
-            ()
-          | Waiting_for_file_changes _ ->
-            (* We are inside a build, so we aren't waiting for a file change
-               event *)
-            assert false
-        in
-        let on_error exn =
-          report_error exn;
-          Fiber.return ()
-        in
-        Fiber.map_reduce_errors
-          (module Monoid.Unit)
-          ~on_error (step ~report_error)
-      in
-      match t.status with
-      | Waiting_for_file_changes _ ->
-        (* We just finished a build, so there's no way this was set *)
-        assert false
-      | Shutting_down -> Fiber.return ()
-      | Restarting_build invalidations ->
-        Memo.reset invalidations;
-        loop ()
-      | Building -> (
-        let build_result : Handler.Event.build_result =
-          match res with
-          | Error _ -> Failure
-          | Ok _ -> Success
-        in
-        t.handler t.config (Build_finish build_result);
+    (match t.status with
+    | Building -> t.status <- Standing_by Memo.Invalidation.empty
+    | _ -> assert false);
+    let rec loop () =
+      let* res = poll_iter t step in
+      match res with
+      | Shutdown -> Fiber.return ()
+      | Cancelled_due_to_file_changes -> loop ()
+      | Finished res -> (
         let ivar = Fiber.Ivar.create () in
         t.status <- Waiting_for_file_changes ivar;
         let* next = Fiber.Ivar.read ivar in
         match next with
         | Shutdown_requested -> Fiber.return ()
         | File_system_changed invalidations -> (
-          Memo.reset invalidations;
+          t.status <- Standing_by invalidations;
           t.handler t.config Source_files_changed;
           match res with
           | Error _
           | Ok `Continue ->
-            loop ()
-          | Ok `Stop -> Fiber.return ()))
+            loop ()))
     in
     loop ()
 

@@ -67,7 +67,7 @@ module Run : sig
   val poll :
        (   report_error:(Exn_with_backtrace.t -> unit)
         -> unit
-        -> [ `Continue | `Stop ] Fiber.t)
+        -> [ `Continue ] Fiber.t)
     -> unit Fiber.t
 
   val go :

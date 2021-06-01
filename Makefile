@@ -41,10 +41,10 @@ help:
 	@cat doc/make-help.txt
 
 release: $(BIN)
-	$(BIN) build -p dune --profile dune-bootstrap
+	@$(BIN) build -p dune --profile dune-bootstrap
 
 dune.exe: bootstrap.ml boot/libs.ml boot/duneboot.ml
-	ocaml bootstrap.ml
+	@ocaml bootstrap.ml
 
 dev: $(BIN)
 	$(BIN) build @install

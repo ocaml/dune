@@ -126,6 +126,15 @@
  (files   dune-ocaml-merlin.1))
 
 (rule
+ (with-stdout-to dune-ping.1
+  (run dune ping --help=groff)))
+
+(install
+ (section man)
+ (package dune)
+ (files   dune-ping.1))
+
+(rule
  (with-stdout-to dune-printenv.1
   (run dune printenv --help=groff)))
 

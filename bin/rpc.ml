@@ -132,7 +132,7 @@ module Init = struct
 end
 
 let report_error error =
-  Printf.printf "Error: %s\n"
+  Printf.printf "Error: %s\n%!"
     (Dyn.to_string (Dune_rpc_private.Response.Error.to_dyn error))
 
 module Status = struct

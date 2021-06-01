@@ -39,7 +39,9 @@ module Client : sig
 
   val stop : t -> unit
 
-  val connect : t -> Session.t Fiber.t
+  val connect_exn : t -> Session.t Fiber.t
+
+  val connect : t -> (Session.t, Exn_with_backtrace.t) result Fiber.t
 end
 
 module Server : sig

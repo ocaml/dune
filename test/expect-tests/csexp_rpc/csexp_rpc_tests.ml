@@ -46,7 +46,7 @@ let%expect_test "csexp server life cycle" =
     Fiber.fork_and_join_unit
       (fun () ->
         let log fmt = Logger.log client_log fmt in
-        let* client = Client.connect client in
+        let* client = Client.connect_exn client in
         let* () = Session.write client (Some [ List [ Atom "from client" ] ]) in
         log "written";
         let* response = Session.read client in

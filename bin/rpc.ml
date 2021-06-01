@@ -22,7 +22,7 @@ module Init = struct
   let connect_persistent _common =
     let open Fiber.O in
     let* stdio = Csexp_rpc.Session.create stdin stdout in
-    let* sessions, client = Dune_rpc_impl.Run.Connect.connect_persistent () in
+    let sessions = Dune_rpc_impl.Run.Connect.connect_persistent () in
     Fiber.Stream.In.sequential_iter sessions ~f:(fun session ->
         let connect =
           Dune_rpc.Conv.to_sexp Dune_rpc.Persistent.In.sexp New_connection
@@ -85,14 +85,13 @@ module Init = struct
             | Error _ -> ())
           ~finally:(fun () ->
             let+ () = Lazy.force close in
-            Option.iter client ~f:Csexp_rpc.Client.stop;
             ()))
 
   let connect common =
     let where = wait_for_server common in
     let open Fiber.O in
     let* c = Dune_rpc_impl.Run.Connect.csexp_client where in
-    let* session = Csexp_rpc.Client.connect c in
+    let* session = Csexp_rpc.Client.connect_exn c in
     let* stdio = Csexp_rpc.Session.create stdin stdout in
     let forward f t =
       Fiber.repeat_while ~init:() ~f:(fun () ->

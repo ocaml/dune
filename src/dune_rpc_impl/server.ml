@@ -37,6 +37,7 @@ let diagnostic_of_error : Build_system.Error.t -> Dune_rpc_private.Diagnostic.t
   ; message
   ; loc
   ; promotion
+  ; related = []
   ; directory =
       Option.map
         ~f:(fun p ->

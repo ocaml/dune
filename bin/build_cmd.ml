@@ -1,11 +1,12 @@
 open Stdune
 open Import
 
-let run_build_system ~common ~(targets : unit -> Target.t list Memo.Build.t) =
+let run_build_system ?report_error ~common
+    ~(targets : unit -> Target.t list Memo.Build.t) () =
   let build_started = Unix.gettimeofday () in
   Fiber.finalize
     (fun () ->
-      Build_system.run (fun () ->
+      Build_system.run ?report_error (fun () ->
           let open Memo.Build.O in
           let* targets = targets () in
           Build_system.build (Target.request targets)))
@@ -27,7 +28,7 @@ let run_build_system ~common ~(targets : unit -> Target.t list Memo.Build.t) =
 
 let run_build_command_poll ~(common : Common.t) ~config ~targets ~setup =
   let open Fiber.O in
-  let every () =
+  let every ~report_error () =
     Cached_digest.invalidate_cached_timestamps ();
     let* setup = setup () in
     let* targets =
@@ -42,7 +43,7 @@ let run_build_command_poll ~(common : Common.t) ~config ~targets ~setup =
         fun () ->
           Target.resolve_targets_exn (Common.root common) config setup targets
     in
-    let+ () = run_build_system ~common ~targets in
+    let+ () = run_build_system ~report_error ~common ~targets () in
     `Continue
   in
   Scheduler.poll ~common ~config ~every ~finally:Hooks.End_of_build.run
@@ -51,7 +52,7 @@ let run_build_command_once ~(common : Common.t) ~config ~targets ~setup =
   let open Fiber.O in
   let once () =
     let* setup = setup () in
-    run_build_system ~common ~targets:(fun () -> targets setup)
+    run_build_system ~common ~targets:(fun () -> targets setup) ()
   in
   Scheduler.go ~common ~config once
 

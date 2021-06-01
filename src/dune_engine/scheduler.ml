@@ -776,8 +776,8 @@ module Run = struct
     let rec loop () : unit Fiber.t =
       t.status <- Building;
       let* res =
-        let on_error exn =
-          (match t.status with
+        let report_error exn =
+          match t.status with
           | Building -> Dune_util.Report_error.report exn
           | Shutting_down
           | Restarting_build _ ->
@@ -785,10 +785,15 @@ module Run = struct
           | Waiting_for_file_changes _ ->
             (* We are inside a build, so we aren't waiting for a file change
                event *)
-            assert false);
+            assert false
+        in
+        let on_error exn =
+          report_error exn;
           Fiber.return ()
         in
-        Fiber.map_reduce_errors (module Monoid.Unit) ~on_error step
+        Fiber.map_reduce_errors
+          (module Monoid.Unit)
+          ~on_error (step ~report_error)
       in
       match t.status with
       | Waiting_for_file_changes _ ->

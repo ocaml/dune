@@ -208,7 +208,10 @@ end
 
 (** {2 Running a build} *)
 
-val run : (unit -> 'a Memo.Build.t) -> 'a Fiber.t
+val run :
+     ?report_error:(Exn_with_backtrace.t -> unit)
+  -> (unit -> 'a Memo.Build.t)
+  -> 'a Fiber.t
 
 (** {2 Misc} *)
 

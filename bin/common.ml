@@ -37,7 +37,7 @@ type t =
     orig_args : string list
   ; rpc : Dune_rpc_impl.Server.t option
   ; default_target : Arg.Dep.t (* For build & runtest only *)
-  ; watch : bool
+  ; watch : Dune_engine.Watch_mode_config.t
   ; print_metrics : bool
   ; stats_trace_file : string option
   ; always_show_command_line : bool
@@ -799,12 +799,34 @@ let term =
             "Force actions associated to aliases to be re-executed even\n\
             \                   if their dependencies haven't changed.")
   and+ watch =
-    Arg.(
-      value & flag
-      & info [ "watch"; "w" ]
-          ~doc:
-            "Instead of terminating build after completion, wait continuously \
-             for file changes.")
+    Term.ret
+      (let watch_arg_name = "watch" in
+       let passive_watch_mode_arg_name = "passive-watch-mode" in
+       let+ w_flag =
+         Arg.(
+           value & flag
+           & info [ watch_arg_name; "w" ]
+               ~doc:
+                 "Instead of terminating build after completion, wait \
+                  continuously for file changes.")
+       and+ passive_watch_mode_flag =
+         Arg.(
+           value & flag
+           & info
+               [ passive_watch_mode_arg_name ]
+               ~doc:
+                 "Do not automatically start or re-start a build. Only do it \
+                  when a build RPC is received.")
+       in
+       match (w_flag, passive_watch_mode_flag) with
+       | false, false -> `Ok Dune_engine.Watch_mode_config.No
+       | false, true ->
+         `Error
+           ( true
+           , sprintf "Cannot use %s if %s was not passed"
+               passive_watch_mode_arg_name watch_arg_name )
+       | true, false -> `Ok (Dune_engine.Watch_mode_config.Yes Eager)
+       | true, true -> `Ok (Dune_engine.Watch_mode_config.Yes Passive))
   and+ print_metrics =
     Arg.(
       value & flag
@@ -928,10 +950,9 @@ let term =
   let build_dir = Option.value ~default:default_build_dir build_dir in
   let root = Workspace_root.create ~specified_by_user:root in
   let rpc =
-    if watch then
-      Some (Dune_rpc_impl.Server.create ())
-    else
-      None
+    match watch with
+    | Yes _ -> Some (Dune_rpc_impl.Server.create ())
+    | No -> None
   in
   let stats =
     Option.map stats_trace_file ~f:(fun f ->

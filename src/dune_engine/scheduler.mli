@@ -70,6 +70,12 @@ module Run : sig
         -> [ `Continue ] Fiber.t)
     -> unit Fiber.t
 
+  val poll_passive :
+       get_build_request:
+         (report_error:(Exn_with_backtrace.t -> unit) -> [ `Continue ] Fiber.t)
+         Fiber.t
+    -> unit Fiber.t
+
   val go :
        Config.t
     -> ?file_watcher:file_watcher

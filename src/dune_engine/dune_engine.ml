@@ -58,3 +58,4 @@ module Execution_parameters = Execution_parameters
 module Cache_debug_flags = Cache_debug_flags
 module Reversible_digest = Reversible_digest
 module Report_errors_config = Report_errors_config
+module Watch_mode_config = Watch_mode_config

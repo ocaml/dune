@@ -31,4 +31,4 @@ val build_handler : t -> Dune_engine.Build_system.Handler.t
 type pending_build_action =
   | Build of Dune_rules.Dep_conf.t list * Status.t Fiber.Ivar.t
 
-val pending_build_action : t -> pending_build_action option
+val pending_build_action : t -> pending_build_action Fiber.t

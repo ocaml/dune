@@ -37,7 +37,7 @@ val promote : Promote.t option ref
 val force : bool ref
 
 (** Instead of terminating build after completion, watch for changes *)
-val watch : bool ref
+val watch : Watch_mode_config.t ref
 
 (** Do not print "Entering directory" messages *)
 val no_print_directory : bool ref

@@ -537,6 +537,10 @@ type status =
   | (* Waiting for file changes to start a new a build *)
       Waiting_for_file_changes of
       waiting_for_file_changes Fiber.Ivar.t
+  | (* Waiting for the propagation of inotify events to finish before starting a
+       build. *)
+      Waiting_for_inotify_sync of
+      Memo.Invalidation.t * unit Fiber.Ivar.t
   | (* Running a build *)
       Building
   | (* Cancellation requested. Build jobs are immediately rejected in this state *)
@@ -601,6 +605,7 @@ let with_job_slot f =
       raise (Memo.Non_reproducible (Failure "Build cancelled"))
     | Building -> ()
     | Waiting_for_file_changes _
+    | Waiting_for_inotify_sync _
     | Standing_by _ ->
       (* At this stage, we're not running a build, so we shouldn't be running
          tasks here. *)
@@ -717,7 +722,12 @@ end = struct
           Process_watcher.killall t.process_watcher Sys.sigkill;
           iter t
         | Waiting_for_file_changes ivar ->
-          Fill (ivar, File_system_changed invalidation)))
+          Fill (ivar, File_system_changed invalidation)
+        | Waiting_for_inotify_sync (prev_invalidation, ivar) ->
+          t.status <-
+            Waiting_for_inotify_sync
+              (Memo.Invalidation.combine prev_invalidation invalidation, ivar);
+          iter t))
     | Worker_task fill -> fill
     | File_system_watcher_terminated ->
       filesystem_watcher_terminated ();
@@ -815,6 +825,10 @@ module Run = struct
         | Waiting_for_file_changes _ ->
           (* We are inside a build, so we aren't waiting for a file change event *)
           assert false
+        | Waiting_for_inotify_sync _ ->
+          (* We only use inotify sync between the builds, not in the middle of
+             one. *)
+          assert false
       in
       let on_error exn =
         report_error exn;
@@ -826,6 +840,7 @@ module Run = struct
     in
     match t.status with
     | Waiting_for_file_changes _
+    | Waiting_for_inotify_sync _
     | Standing_by _ ->
       (* We just finished a build, so there's no way this was set *)
       assert false
@@ -853,19 +868,53 @@ module Run = struct
       match res with
       | Shutdown -> Fiber.return ()
       | Cancelled_due_to_file_changes -> loop ()
-      | Finished res -> (
+      | Finished _res -> (
         let ivar = Fiber.Ivar.create () in
         t.status <- Waiting_for_file_changes ivar;
         let* next = Fiber.Ivar.read ivar in
         match next with
         | Shutdown_requested -> Fiber.return ()
-        | File_system_changed invalidations -> (
+        | File_system_changed invalidations ->
           t.status <- Standing_by invalidations;
           t.handler t.config Source_files_changed;
-          match res with
-          | Error _
-          | Ok `Continue ->
-            loop ()))
+          loop ())
+    in
+    loop ()
+
+  let wait_for_inotify_sync t =
+    let ivar = Fiber.Ivar.create () in
+    match t.status with
+    | Standing_by invalidation ->
+      t.status <- Waiting_for_inotify_sync (invalidation, ivar);
+      Fiber.Ivar.read ivar
+    | _ -> assert false
+
+  let special_file_for_inotify_sync =
+    (* this file needs to be not-ignored by inotify *)
+    Path.source (Path.Source.relative Path.Source.root "dune-inotify-sync")
+
+  let do_inotify_sync t =
+    Io.write_file special_file_for_inotify_sync "z";
+    Console.print [ Pp.text "waiting for inotify sync" ];
+    let+ () = wait_for_inotify_sync t in
+    Console.print [ Pp.text "waited for inotify sync" ];
+    ()
+
+  let poll_passive ~get_build_request =
+    let* t = t () in
+    (match t.status with
+    | Building -> t.status <- Standing_by Memo.Invalidation.empty
+    | _ -> assert false);
+    let rec loop () =
+      let* build_request = get_build_request in
+      let* () = do_inotify_sync t in
+      let* res =
+        poll_iter t (fun ~report_error () -> build_request ~report_error)
+      in
+      match res with
+      | Shutdown -> Fiber.return ()
+      | Cancelled_due_to_file_changes -> loop ()
+      | Finished _res -> loop ()
     in
     loop ()
 

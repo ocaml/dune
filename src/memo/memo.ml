@@ -983,6 +983,8 @@ let report_and_collect_errors f =
       ({ exns = Exn_set.singleton exn; reproducible } : Collect_errors_monoid.t))
     f
 
+let yield_if_there_are_pending_events = ref Fiber.return
+
 module Exec : sig
   (* [exec_dep_node] is a variant of [consider_and_compute] but with a simpler
      type, convenient for external usage. *)
@@ -1086,6 +1088,7 @@ end = struct
    fun dep_node cache_lookup_failure deps_so_far ->
     Deps_so_far.start_compute deps_so_far;
     let compute_value_and_deps_rev () =
+      let* () = !yield_if_there_are_pending_events () in
       let+ res =
         report_and_collect_errors (fun () ->
             dep_node.without_state.spec.f dep_node.without_state.input)

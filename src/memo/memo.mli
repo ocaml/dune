@@ -467,3 +467,5 @@ module For_tests : sig
       build run. *)
   val clear_memoization_caches : unit -> unit
 end
+
+val yield_if_there_are_pending_events : (unit -> unit Fiber.t) ref

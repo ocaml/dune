@@ -123,6 +123,7 @@ module Event : sig
     | Job_completed of job * Proc.Process_info.t
     | Signal of Signal.t
     | Worker_task of Fiber.fill
+    | Yield of unit Fiber.Ivar.t
 
   module Queue : sig
     type t
@@ -157,6 +158,8 @@ module Event : sig
     val send_job_completed : t -> job -> Proc.Process_info.t -> unit
 
     val send_signal : t -> Signal.t -> unit
+
+    val yield_if_there_are_pending_events : t -> unit Fiber.t
   end
   with type event := t
 end = struct
@@ -166,6 +169,7 @@ end = struct
     | Job_completed of job * Proc.Process_info.t
     | Signal of Signal.t
     | Worker_task of Fiber.fill
+    | Yield of unit Fiber.Ivar.t
 
   module Queue = struct
     type t =
@@ -186,6 +190,8 @@ end = struct
       ; mutable pending_worker_tasks : int
       ; worker_tasks_completed : Fiber.fill Queue.t
       ; stats : Dune_stats.t option
+      ; mutable got_event : bool
+      ; mutable yield : unit Fiber.Ivar.t option
       }
 
     let create stats =
@@ -208,6 +214,8 @@ end = struct
       ; worker_tasks_completed
       ; pending_worker_tasks
       ; stats
+      ; got_event = false
+      ; yield = None
       }
 
     let register_job_started q = q.pending_jobs <- q.pending_jobs + 1
@@ -219,20 +227,30 @@ end = struct
       assert (Path.is_in_source_tree path);
       Table.set q.ignored_files (Path.to_absolute_filename path) ()
 
-    let available q =
-      not
-        (List.is_empty q.file_watcher_events
-        && Queue.is_empty q.jobs_completed
-        && Signal.Set.is_empty q.signals
-        && Queue.is_empty q.worker_tasks_completed)
+    let add_event q f =
+      Mutex.lock q.mutex;
+      f q;
+      if not q.got_event then (
+        q.got_event <- true;
+        Condition.signal q.cond
+      );
+      Mutex.unlock q.mutex
+
+    let yield_if_there_are_pending_events q =
+      if Config.inside_dune || not q.got_event then
+        Fiber.return ()
+      else
+        match q.yield with
+        | Some ivar -> Fiber.Ivar.read ivar
+        | None ->
+          let ivar = Fiber.Ivar.create () in
+          q.yield <- Some ivar;
+          Fiber.Ivar.read ivar
 
     let next q =
       Option.iter q.stats ~f:Dune_stats.record_gc_and_fd;
       Mutex.lock q.mutex;
       let rec loop () =
-        while not (available q) do
-          Condition.wait q.cond q.mutex
-        done;
         match Signal.Set.choose q.signals with
         | Some signal ->
           q.signals <- Signal.Set.remove q.signals signal;
@@ -241,9 +259,17 @@ end = struct
           match q.file_watcher_events with
           | [] -> (
             match Queue.pop q.jobs_completed with
-            | None ->
-              q.pending_worker_tasks <- q.pending_worker_tasks - 1;
-              Worker_task (Queue.pop_exn q.worker_tasks_completed)
+            | None -> (
+              match Queue.pop q.worker_tasks_completed with
+              | Some fill ->
+                q.pending_worker_tasks <- q.pending_worker_tasks - 1;
+                Worker_task fill
+              | None -> (
+                match q.yield with
+                | Some ivar ->
+                  q.yield <- None;
+                  Yield ivar
+                | None -> wait ()))
             | Some (job, proc_info) ->
               q.pending_jobs <- q.pending_jobs - 1;
               assert (q.pending_jobs >= 0);
@@ -272,38 +298,27 @@ end = struct
               match Nonempty_list.of_list events with
               | None -> loop ()
               | Some events -> File_system_changed events)))
+      and wait () =
+        q.got_event <- false;
+        Condition.wait q.cond q.mutex;
+        loop ()
       in
       let ev = loop () in
       Mutex.unlock q.mutex;
       ev
 
     let send_worker_task_completed q event =
-      Mutex.lock q.mutex;
-      let avail = available q in
-      Queue.push q.worker_tasks_completed event;
-      if not avail then Condition.signal q.cond;
-      Mutex.unlock q.mutex
+      add_event q (fun q -> Queue.push q.worker_tasks_completed event)
 
     let send_file_watcher_events q files =
-      Mutex.lock q.mutex;
-      let avail = available q in
-      q.file_watcher_events <- List.rev_append files q.file_watcher_events;
-      if not avail then Condition.signal q.cond;
-      Mutex.unlock q.mutex
+      add_event q (fun q ->
+          q.file_watcher_events <- List.rev_append files q.file_watcher_events)
 
     let send_job_completed q job proc_info =
-      Mutex.lock q.mutex;
-      let avail = available q in
-      Queue.push q.jobs_completed (job, proc_info);
-      if not avail then Condition.signal q.cond;
-      Mutex.unlock q.mutex
+      add_event q (fun q -> Queue.push q.jobs_completed (job, proc_info))
 
     let send_signal q signal =
-      Mutex.lock q.mutex;
-      let avail = available q in
-      q.signals <- Signal.Set.add q.signals signal;
-      if not avail then Condition.signal q.cond;
-      Mutex.unlock q.mutex
+      add_event q (fun q -> q.signals <- Signal.Set.add q.signals signal)
 
     let pending_jobs q = q.pending_jobs
 
@@ -552,9 +567,19 @@ let t : t Fiber.Var.t = Fiber.Var.create ()
 
 let set x f = Fiber.Var.set t x f
 
+let t_opt () = Fiber.Var.get t
+
 let t () = Fiber.Var.get_exn t
 
 let running_jobs_count t = Event.Queue.pending_jobs t.events
+
+let yield_if_there_are_pending_events () =
+  t_opt () >>= function
+  | None -> Fiber.return ()
+  | Some t -> Event.Queue.yield_if_there_are_pending_events t.events
+
+let () =
+  Memo.yield_if_there_are_pending_events := yield_if_there_are_pending_events
 
 let ignore_for_watch p =
   let+ t = t () in
@@ -652,60 +677,37 @@ end = struct
       - starting cancellations
       - terminating the scheduler on signals *)
   let rec iter (t : t) =
-    if
-      (match t.status with
-      | Waiting_for_file_changes _ ->
-        (* In polling mode, there are no pending jobs while we are waiting for
-           file changes *)
-        false
-      | _ -> true)
-      && Event.Queue.pending_jobs t.events = 0
-      && (* CR-someday aalekseyev: Deadlock detection is pretty much useless
-            when RPC is in use because there's pretty much always a "pending"
-            call to [accept] that makes this condition false. We should probably
-            make deadlock detection more aggressive by not taking into account
-            the Ivars waiting for user input (such as [accept]) if the build is
-            in progress. *)
-      Event.Queue.pending_worker_tasks t.events = 0
-    then
-      raise
-        (Abort
-           (Exn
-              (Exn_with_backtrace.try_with_never_returns (fun () ->
-                   Code_error.raise "Deadlock" []))))
-    else (
-      t.handler t.config Tick;
-      match Event.Queue.next t.events with
-      | Job_completed (job, proc_info) -> Fiber.Fill (job.ivar, proc_info)
-      | File_system_changed events -> (
-        let invalidation = (Fs_memo.handle events : Memo.Invalidation.t) in
-        match Memo.Invalidation.is_empty invalidation with
-        | true -> iter t (* Ignore the event *)
-        | false -> (
-          match t.status with
-          | Shutting_down -> iter t
-          | Restarting_build prev_invalidation ->
-            t.status <-
-              Restarting_build
-                (Memo.Invalidation.combine prev_invalidation invalidation);
-            (* We're already cancelling build, so file change events don't
-               matter *)
-            iter t
-          | Building ->
-            t.handler t.config Build_interrupted;
-            t.status <- Restarting_build invalidation;
-            Process_watcher.killall t.process_watcher Sys.sigkill;
-            iter t
-          | Waiting_for_file_changes ivar ->
-            Fill (ivar, File_system_changed invalidation)))
-      | Worker_task fill -> fill
-      | File_system_watcher_terminated ->
-        filesystem_watcher_terminated ();
-        raise (Abort Already_reported)
-      | Signal signal ->
-        got_signal signal;
-        raise (Abort Already_reported)
-    )
+    t.handler t.config Tick;
+    match Event.Queue.next t.events with
+    | Job_completed (job, proc_info) -> Fiber.Fill (job.ivar, proc_info)
+    | File_system_changed events -> (
+      let invalidation = (Fs_memo.handle events : Memo.Invalidation.t) in
+      match Memo.Invalidation.is_empty invalidation with
+      | true -> iter t (* Ignore the event *)
+      | false -> (
+        match t.status with
+        | Shutting_down -> iter t
+        | Restarting_build prev_invalidation ->
+          t.status <-
+            Restarting_build
+              (Memo.Invalidation.combine prev_invalidation invalidation);
+          (* We're already cancelling build, so file change events don't matter *)
+          iter t
+        | Building ->
+          t.handler t.config Build_interrupted;
+          t.status <- Restarting_build invalidation;
+          Process_watcher.killall t.process_watcher Sys.sigkill;
+          iter t
+        | Waiting_for_file_changes ivar ->
+          Fill (ivar, File_system_changed invalidation)))
+    | Worker_task fill -> fill
+    | File_system_watcher_terminated ->
+      filesystem_watcher_terminated ();
+      raise (Abort Already_reported)
+    | Signal signal ->
+      got_signal signal;
+      raise (Abort Already_reported)
+    | Yield ivar -> Fill (ivar, ())
 
   let run t f : _ result =
     let fiber =

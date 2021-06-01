@@ -131,6 +131,10 @@ module Init = struct
   let term = (Term.Group.Term term, info)
 end
 
+let report_error error =
+  Printf.printf "Error: %s\n"
+    (Dyn.to_string (Dune_rpc_private.Response.Error.to_dyn error))
+
 module Status = struct
   let term =
     let+ (common : Common.t) = Common.term in
@@ -149,16 +153,50 @@ module Status = struct
             ()
         in
         match response with
-        | Error _ -> assert false
-        (* TODO *)
+        | Error error -> report_error error
         | Ok { clients } ->
           List.iter clients ~f:(fun client ->
               let sexp = Dune_rpc.Conv.to_sexp Dune_rpc.Id.sexp client in
               Sexp.to_string sexp |> print_endline))
 
   let info =
-    let doc = "shot active connections" in
+    let doc = "show active connections" in
     Term.info "status" ~doc
+
+  let term = (Term.Group.Term term, info)
+end
+
+module Build = struct
+  let term =
+    let name_ = Arg.info [] ~docv:"TARGET" in
+    let+ (common : Common.t) = Common.term
+    and+ targets = Arg.(value & pos_all string [] name_) in
+    client_term common @@ fun common ->
+    let where = wait_for_server common in
+    printfn "Server is listening on %s" (Dune_rpc.Where.to_string where);
+    printfn "ID's of connected clients (include this one):";
+    Dune_rpc_impl.Run.client where
+      (Dune_rpc.Initialize.Request.create
+         ~id:(Dune_rpc.Id.make (Sexp.Atom "build")))
+      ~on_notification:(fun _ -> assert false)
+      ~f:(fun session ->
+        let open Fiber.O in
+        let+ response =
+          Dune_rpc_impl.Client.request session Dune_rpc_impl.Server.Decl.build
+            targets
+        in
+        match response with
+        | Error (error : Dune_rpc_private.Response.Error.t) ->
+          report_error error
+        | Ok Rejected -> print_endline "wut"
+        | Ok Accepted -> print_endline "Accepted")
+
+  let info =
+    let doc =
+      "build a given target (requires dune to be running in passive watching \
+       mode)"
+    in
+    Term.info "build" ~doc
 
   let term = (Term.Group.Term term, info)
 end
@@ -173,4 +211,4 @@ let info =
   in
   Term.info "rpc" ~doc ~man
 
-let group = (Term.Group.Group [ Init.term; Status.term ], info)
+let group = (Term.Group.Group [ Init.term; Status.term; Build.term ], info)

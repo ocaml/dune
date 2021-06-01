@@ -58,6 +58,8 @@ module Response : sig
       ; kind : kind
       }
 
+    val to_dyn : t -> Dyn.t
+
     val payload : t -> Sexp.t option
 
     val message : t -> string

@@ -171,6 +171,17 @@ module Diagnostic : sig
     val create : int -> t
   end
 
+  module Related : sig
+    type t =
+      { message : unit Pp.t
+      ; loc : Loc.t
+      }
+
+    val message : t -> unit Pp.t
+
+    val loc : t -> Loc.t
+  end
+
   type t =
     { targets : Target.t list
     ; id : Id.t
@@ -179,7 +190,10 @@ module Diagnostic : sig
     ; severity : severity option
     ; promotion : Promotion.t list
     ; directory : string option
+    ; related : Related.t list
     }
+
+  val related : t -> Related.t list
 
   val id : t -> Id.t
 

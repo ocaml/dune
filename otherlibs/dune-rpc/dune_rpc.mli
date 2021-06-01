@@ -112,7 +112,17 @@ module V1 : sig
       val create : int -> t
     end
 
+    module Related : sig
+      type t
+
+      val loc : t -> Loc.t
+
+      val message : t -> unit Pp.t
+    end
+
     type t
+
+    val related : t -> Related.t list
 
     val loc : t -> Loc.t option
 

@@ -2017,6 +2017,7 @@ end = struct
                        the source tree to be writable by the user, so we
                        explicitly set the user writable bit. *)
                     let chmod n = n lor 0o200 in
+                    Path.unlink_no_err (Path.source dst);
                     t.promote_source ~src:path ~dst ~chmod context
                   ))
         in

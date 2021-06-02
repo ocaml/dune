@@ -5,6 +5,8 @@ open Stdune
 
 type t
 
+val enabled_if : t -> Blang.t
+
 type Stanza.t += T of t
 
 (** Genrates the rules to handle the given mdx stanza *)

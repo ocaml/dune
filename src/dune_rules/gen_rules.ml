@@ -132,7 +132,7 @@ end = struct
     | Cinaps.T cinaps ->
       Cinaps.gen_rules sctx cinaps ~dir ~scope;
       empty_none
-    | Mdx.T mdx ->
+    | Mdx.T mdx when Expander.eval_blang expander (Mdx.enabled_if mdx) ->
       Mdx.gen_rules ~sctx ~dir ~expander mdx;
       empty_none
     | _ -> empty_none

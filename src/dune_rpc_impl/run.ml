@@ -98,17 +98,7 @@ end = struct
       let waiter = Scheduler.Worker.create () in
       fun () ->
         let* waiter = waiter in
-        let+ res =
-          Scheduler.Worker.task waiter ~f:(fun () -> Unix.sleepf 0.2)
-        in
-        match res with
-        | Ok () -> ()
-        | Error `Stopped ->
-          (* we never call Worker.stop *)
-          assert false
-        | Error (`Exn _) ->
-          (* sleep cannot fail *)
-          assert false
+        Scheduler.Worker.task_exn waiter ~f:(fun () -> Unix.sleepf 0.2)
     in
     Fiber.Stream.In.create
       (let rec loop () =

@@ -763,6 +763,14 @@ module Worker = struct
       match res with
       | Error exn -> Error (`Exn exn)
       | Ok e -> Ok e)
+
+  let task_exn t ~f =
+    let+ res = task t ~f in
+    match res with
+    | Ok a -> a
+    | Error `Stopped ->
+      Code_error.raise "Scheduler.Worker.task_exn: worker stopped" []
+    | Error (`Exn e) -> Exn_with_backtrace.reraise e
 end
 
 module Run = struct

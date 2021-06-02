@@ -89,6 +89,10 @@ module Worker : sig
     -> f:(unit -> 'a)
     -> ('a, [ `Exn of Exn_with_backtrace.t | `Stopped ]) result Fiber.t
 
+  (** Should be used for tasks never raise and always complete before stop is
+      called *)
+  val task_exn : t -> f:(unit -> 'a) -> 'a Fiber.t
+
   val stop : t -> unit
 end
 

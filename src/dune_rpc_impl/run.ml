@@ -145,7 +145,8 @@ let run config stats =
             Fiber.fork_and_join_unit
               (fun () ->
                 let* sessions = Csexp_rpc.Server.serve t.server in
-                Server.serve sessions t.stats t.handler)
+                let* () = Server.serve sessions t.stats t.handler in
+                Fiber.Pool.stop t.pool)
               (fun () -> Fiber.Pool.run t.pool))
           ~finally:(fun () ->
             Option.iter t.symlink_socket ~f:Symlink_socket.cleanup;

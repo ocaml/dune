@@ -144,6 +144,7 @@ let handler (t : t Fdecl.t) : 'a Dune_rpc_server.Handler.t =
       [ Subscribe.Diagnostics; Build_progress ]
       |> List.fold_left ~init:t.subscribers ~f:(fun acc which ->
              Subscribers.remove acc which session);
+    t.clients <- Session_set.remove t.clients session;
     Fiber.return ()
   in
   let rpc =

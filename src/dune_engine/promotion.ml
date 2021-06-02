@@ -38,6 +38,13 @@ module File = struct
     let src = snd (Path.Build.split_sandbox_root correction_file) in
     db := { src; staging = Some staging; dst = source_file } :: !db
 
+  let do_promote ~correction_file ~dst =
+    Path.unlink_no_err (Path.source dst);
+    let chmod perms = perms lor 0o200 in
+    Io.copy_file ~chmod
+      ~src:(Path.build correction_file)
+      ~dst:(Path.source dst) ()
+
   let promote { src; staging; dst } =
     let correction_file = Option.value staging ~default:src in
     let correction_exists =
@@ -59,11 +66,7 @@ module File = struct
                 Format.sprintf "staging file (%s)"
                   (Path.to_string_maybe_quoted (Path.build staging))))
       ];
-    if correction_exists then
-      let chmod perms = perms lor 0o200 in
-      Io.copy_file ~chmod
-        ~src:(Path.build correction_file)
-        ~dst:(Path.source dst) ()
+    if correction_exists then do_promote ~correction_file ~dst
 end
 
 let clear_cache () = File.db := []

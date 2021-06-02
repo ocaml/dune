@@ -458,13 +458,6 @@ module type S = sig
     -> Initialize.Request.t
     -> f:(t -> 'a fiber)
     -> 'a fiber
-
-  val connect_persistent :
-       ?on_disconnect:('a -> unit fiber)
-    -> chan
-    -> on_connect:(unit -> ('a * Initialize.Request.t * Handler.t option) fiber)
-    -> on_connected:('a -> t -> unit fiber)
-    -> unit fiber
 end
 
 module Client (Fiber : sig
@@ -512,9 +505,6 @@ struct
       ; mutable closed_write : bool
       }
 
-    let make read write =
-      { read; write; closed_read = false; closed_write = false }
-
     let of_chan c =
       { read = (fun () -> Chan.read c)
       ; write = (fun s -> Chan.write c s)
@@ -532,8 +522,6 @@ struct
           t.closed_write <- true;
           t.write None
         )
-
-    let close_read t = t.closed_read <- true
 
     let read t =
       if t.closed_read then
@@ -842,56 +830,6 @@ struct
       Handler.on_notification handler ~version:initialize.version
     in
     connect_raw chan initialize ~f ~on_notification
-
-  let connect_persistent ?(on_disconnect = fun _ -> Fiber.return ()) chan
-      ~on_connect ~on_connected =
-    let chan = Chan.of_chan chan in
-    let packets () =
-      let+ read = Chan.read chan in
-      Option.map read ~f:(fun sexp ->
-          match Conv.of_sexp Persistent.In.sexp sexp ~version:(0, 0) with
-          | Ok m -> m
-          | Error e -> raise (Invalid_session e))
-    in
-    let make_chan packets =
-      let read () =
-        let+ packet = packets () in
-        match (packet : Persistent.In.t option) with
-        | None
-        | Some Close_connection ->
-          None
-        | Some (Packet csexp) -> Some csexp
-        | Some New_connection ->
-          Code_error.raise "Unexpected new connection." []
-      in
-      let write p =
-        let packets =
-          match p with
-          | Some p -> List.map p ~f:(fun p -> Persistent.Out.Packet p)
-          | None -> [ Close_connection ]
-        in
-        let sexps = List.map packets ~f:(Conv.to_sexp Persistent.Out.sexp) in
-        Chan.write chan (Some sexps)
-      in
-      Chan.make read write
-    in
-    let rec loop () =
-      let* packet = packets () in
-      match packet with
-      | Some New_connection ->
-        let* a, init, handler = on_connect () in
-        let chan = make_chan packets in
-        let* () = connect ?handler chan init ~f:(on_connected a) in
-        Chan.close_read chan;
-        let* () = on_disconnect a in
-        loop ()
-      | Some Close_connection -> loop ()
-      | None -> Fiber.return ()
-      | Some (Packet p) ->
-        Code_error.raise "Expected new connection"
-          [ ("received", Sexp.to_dyn p) ]
-    in
-    loop ()
 
   let connect_raw chan init ~on_notification ~f =
     let chan = Chan.of_chan chan in

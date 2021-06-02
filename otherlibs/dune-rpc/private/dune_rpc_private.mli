@@ -298,13 +298,6 @@ module type S = sig
     -> Initialize.Request.t
     -> f:(t -> 'a fiber)
     -> 'a fiber
-
-  val connect_persistent :
-       ?on_disconnect:('a -> unit fiber)
-    -> chan
-    -> on_connect:(unit -> ('a * Initialize.Request.t * Handler.t option) fiber)
-    -> on_connected:('a -> t -> unit fiber)
-    -> unit fiber
 end
 
 module Client (Fiber : sig
@@ -341,27 +334,6 @@ end) (Chan : sig
 
   val read : t -> Csexp.t option Fiber.t
 end) : S with type 'a fiber := 'a Fiber.t and type chan := Chan.t
-
-module Persistent : sig
-  module In : sig
-    (** The type of incoming packets when hosting multiple connections in
-        sequence over a single channel *)
-    type t =
-      | New_connection
-      | Packet of Csexp.t
-      | Close_connection
-
-    val sexp : t Conv.value
-  end
-
-  module Out : sig
-    type t =
-      | Packet of Csexp.t
-      | Close_connection
-
-    val sexp : t Conv.value
-  end
-end
 
 module Packet : sig
   module Reply : sig

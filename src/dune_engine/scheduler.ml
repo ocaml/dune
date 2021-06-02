@@ -908,16 +908,26 @@ module Run = struct
     Console.print [ Pp.text "waited for inotify sync" ];
     ()
 
+  module Build_outcome_for_rpc = struct
+    type t =
+      | Success
+      | Failure
+  end
+
   let poll_passive ~get_build_request =
     let* t = t () in
     (match t.status with
     | Building -> t.status <- Standing_by Memo.Invalidation.empty
     | _ -> assert false);
     let rec loop () =
-      let* build_request = get_build_request in
+      let* (build_request, response_ivar) = get_build_request in
       let* () = do_inotify_sync t in
       let* res =
         poll_iter t (fun ~report_error () -> build_request ~report_error)
+      in
+      let* () = Fiber.Ivar.fill response_ivar (match res with
+        | Finished (Ok _) -> Build_outcome_for_rpc.Success
+        | Finished (Error _) | Cancelled_due_to_file_changes | Shutdown -> Build_outcome_for_rpc.Failure)
       in
       match res with
       | Shutdown -> Fiber.return ()

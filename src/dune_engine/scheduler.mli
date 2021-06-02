@@ -70,9 +70,16 @@ module Run : sig
         -> [ `Continue ] Fiber.t)
     -> unit Fiber.t
 
+  module Build_outcome_for_rpc : sig
+    type t =
+      | Success
+      | Failure
+  end
+
   val poll_passive :
        get_build_request:
-         (report_error:(Exn_with_backtrace.t -> unit) -> [ `Continue ] Fiber.t)
+         ((report_error:(Exn_with_backtrace.t -> unit) -> [ `Continue ] Fiber.t) *
+          Build_outcome_for_rpc.t Fiber.Ivar.t)
          Fiber.t
     -> unit Fiber.t
 

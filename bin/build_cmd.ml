@@ -61,7 +61,7 @@ let run_build_command_poll_passive ~(common : Common.t) ~config ~targets ~setup
   match Common.rpc common with
   | None ->
     Code_error.raise
-      "Attempted to start a passive polling mode started without an RPC server"
+      "Attempted to start a passive polling mode without an RPC server"
       []
   | Some rpc ->
     Import.Scheduler.go_with_rpc_server_and_console_status_reporting ~common
@@ -75,14 +75,15 @@ let run_build_command_poll_passive ~(common : Common.t) ~config ~targets ~setup
                Target.resolve_targets_exn (Common.root common) config setup
                  targets
              in
-             fun ~report_error ->
+             (fun ~report_error ->
                Fiber.of_thunk (fun () ->
                    Fiber.finalize
-                     ~finally:(fun () ->
-                       Hooks.End_of_build.run ();
-                       (* CR aalekseyev: Accepted -> Build_finished *)
-                       Fiber.Ivar.fill ivar Accepted)
-                     (fun () -> run_build ~report_error targets))))
+                     ~finally:(fun () -> Hooks.End_of_build.run ();
+                                Fiber.return ()
+                              )
+                     (fun () -> run_build ~report_error targets))),
+               ivar
+            ))
 
 let run_build_command_once ~(common : Common.t) ~config ~targets
     ~(setup : unit -> Import.Main.build_system Fiber.t) =

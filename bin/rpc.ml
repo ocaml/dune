@@ -188,8 +188,8 @@ module Build = struct
         match response with
         | Error (error : Dune_rpc_private.Response.Error.t) ->
           report_error error
-        | Ok Rejected -> print_endline "wut"
-        | Ok Accepted -> print_endline "Accepted")
+        | Ok Failure -> print_endline "Failure"
+        | Ok Success -> print_endline "Success")
 
   let info =
     let doc =

@@ -5,15 +5,15 @@ open Dune_rpc_private
 module Dep_conf = Dune_rules.Dep_conf
 module Build_system = Dune_engine.Build_system
 
-module Status = struct
-  type t =
-    | Accepted
-    | Rejected
+module Build_outcome = struct
+  type t = Dune_engine.Scheduler.Run.Build_outcome_for_rpc.t =
+    | Success
+    | Failure
 
-  let sexp = Conv.enum [ ("Accepted", Accepted); ("Rejected", Rejected) ]
+  let sexp = Conv.enum [ ("Success", Success); ("Failure", Failure) ]
 end
 
-type pending_build_action = Build of Dep_conf.t list * Status.t Fiber.Ivar.t
+type pending_build_action = Build of Dep_conf.t list * Build_outcome.t Fiber.Ivar.t
 
 let diagnostic_of_error : Build_system.Error.t -> Dune_rpc_private.Diagnostic.t
     =
@@ -44,7 +44,7 @@ let dep_parser =
 module Decl = struct
   module Decl = Decl
 
-  let build = Decl.request ~method_:"build" Conv.(list string) Status.sexp
+  let build = Decl.request ~method_:"build" Conv.(list string) Build_outcome.sexp
 
   let shutdown = Decl.notification ~method_:"shutdown" Conv.unit
 
@@ -162,7 +162,7 @@ end
 
 type t =
   { config : Run.Config.t
-  ; pending_build_jobs : (Dep_conf.t list * Status.t Fiber.Ivar.t) Job_queue.t
+  ; pending_build_jobs : (Dep_conf.t list * Build_outcome.t Fiber.Ivar.t) Job_queue.t
   ; build_handler : Build_system.Handler.t
   ; pool : Fiber.Pool.t
   ; mutable subscribers : Subscribers.t
@@ -222,7 +222,7 @@ let handler (t : t Fdecl.t) : 'a Dune_rpc_server.Handler.t =
       match Job_queue.pop_internal (Fdecl.get t).pending_build_jobs with
       | None -> Fiber.return ()
       | Some (_, job) ->
-        let* () = Fiber.Ivar.fill job Status.Rejected in
+        let* () = Fiber.Ivar.fill job Build_outcome.Failure in
         cancel_pending_jobs ()
     in
     let shutdown () =

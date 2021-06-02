@@ -618,7 +618,7 @@ struct
     let requests = Table.create (module Id) 16 in
     { chan; requests; on_notification; next_id = 0; initialize; running = true }
 
-  let prepare_request t id =
+  let prepare_request t (id, req) =
     match t.running with
     | false ->
       let err =
@@ -640,7 +640,7 @@ struct
       Ok ivar
 
   let request_untyped t (id, req) =
-    match prepare_request t id with
+    match prepare_request t (id, req) with
     | Error e -> Fiber.return (Error e)
     | Ok ivar ->
       let* () = send t (Some [ Request (id, req) ]) in
@@ -670,23 +670,21 @@ struct
     let* res = request_untyped t (id, req) in
     parse_response t decl res
 
-  let make_notification t (decl : _ Decl.notification) n k =
+  let make_notification (type a) t (decl : a Decl.notification) (n : a) k =
+    let call =
+      { Call.params = Conv.to_sexp decl.req n; method_ = decl.method_ }
+    in
     match t.running with
+    | true -> k call
     | false ->
       let err =
-        let payload = Conv.to_sexp (Conv.record Call.fields) call in
-        Response.Error.create ~payload
+        Response.Error.create ~payload:call.params
           ~message:"notification sent while connection is dead" ~kind:Code_error
           ()
       in
       raise (Response.Error.E err)
-    | true ->
-      let call =
-        { Call.params = Conv.to_sexp decl.req n; method_ = decl.method_ }
-      in
-      k call
 
-  let notification t (decl : _ Decl.notification) n =
+  let notification (type a) t (decl : a Decl.notification) (n : a) =
     make_notification t decl n (fun call -> send t (Some [ Notification call ]))
 
   module Batch = struct
@@ -701,15 +699,16 @@ struct
       make_notification t.client n a (fun call ->
           t.pending <- Notification call :: t.pending)
 
-    let request ?id t (decl : _ Decl.request) req =
+    let request (type a b) ?id t (decl : (a, b) Decl.request) (req : a) :
+        (b, _) result Fiber.t =
       let id = gen_id t.client id in
-      let ivar = prepare_request t.client id in
+      let req =
+        { Call.params = Conv.to_sexp decl.req req; method_ = decl.method_ }
+      in
+      let ivar = prepare_request t.client (id, req) in
       match ivar with
       | Error e -> Fiber.return (Error e)
       | Ok ivar ->
-        let req =
-          { Call.params = Conv.to_sexp decl.req req; method_ = decl.method_ }
-        in
         t.pending <- Packet.Query.Request (id, req) :: t.pending;
         let* res = Fiber.Ivar.read ivar in
         parse_response t.client decl res

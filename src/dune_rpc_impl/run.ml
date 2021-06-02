@@ -89,34 +89,6 @@ let where_to_socket = function
   | `Ip (addr, `Port port) -> Unix.ADDR_INET (addr, port)
   | `Unix p -> Unix.ADDR_UNIX (Path.to_string p)
 
-module Persistent : sig
-  val create_waiting_client : unit -> Csexp_rpc.Session.t Fiber.Stream.In.t
-end = struct
-  let create_waiting_client () =
-    let open Fiber.O in
-    let sleep =
-      let waiter = Scheduler.Worker.create () in
-      fun () ->
-        let* waiter = waiter in
-        Scheduler.Worker.task_exn waiter ~f:(fun () -> Unix.sleepf 0.2)
-    in
-    Fiber.Stream.In.create
-      (let rec loop () =
-         match Dune_rpc_private.Where.get () with
-         | None -> sleep_and_loop ()
-         | Some where -> (
-           let* client = Csexp_rpc.Client.create (where_to_socket where) in
-           let* res = Csexp_rpc.Client.connect client in
-           match res with
-           | Ok res -> Fiber.return (Some res)
-           | Error _ -> sleep_and_loop ())
-       and sleep_and_loop () =
-         let* () = sleep () in
-         loop ()
-       in
-       loop)
-end
-
 let of_config config stats =
   match config with
   | Config.Client -> Client
@@ -163,8 +135,6 @@ let stop () =
 
 module Connect = struct
   let csexp_client p = Csexp_rpc.Client.create (where_to_socket p)
-
-  let connect_persistent () = Persistent.create_waiting_client ()
 end
 
 let client p init ~on_notification ~f =

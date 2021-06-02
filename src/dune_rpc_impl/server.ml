@@ -201,9 +201,14 @@ let handler (t : t Fdecl.t) : 'a Dune_rpc_server.Handler.t =
       let ivar = Fiber.Ivar.create () in
       let targets =
         List.map targets ~f:(fun s ->
-            Dune_lang.Decoder.parse dep_parser Univ_map.empty
-              (Dune_lang.Parser.parse_string ~fname:"dune rpc"
-                 ~mode:Dune_lang.Parser.Mode.Single s))
+          Dune_lang.Decoder.parse dep_parser
+            (Univ_map.set Univ_map.empty Dune_engine.String_with_vars.decoding_env_key
+               (* CR-someday aalekseyev: hardcoding the version here is not ideal,
+                  but it will do for now since this command is not stable and we're only
+                  using it in tests. *)
+               (Dune_engine.Pform.Env.initial (3, 0)))
+            (Dune_lang.Parser.parse_string ~fname:"dune rpc"
+               ~mode:Dune_lang.Parser.Mode.Single s))
       in
       let* () =
         Job_queue.write (Fdecl.get t).pending_build_jobs (targets, ivar)

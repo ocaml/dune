@@ -50,6 +50,9 @@ module Event : sig
 
   type t
 
+  val kind : t -> kind
+  val path : t -> Path.t
+
   val create : kind:kind -> path:Path.t -> t
 end
 

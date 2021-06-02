@@ -123,6 +123,9 @@ module Event = struct
     | Directory_deleted
     | Unknown ->
       invalidate_path_and_its_parent path
+
+  let path t = t.path
+  let kind t = t.kind
 end
 
 let handle events =

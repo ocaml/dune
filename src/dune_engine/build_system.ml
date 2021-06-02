@@ -559,6 +559,8 @@ let report_rule_conflict fn (rule' : Rule.t) (rule : Rule.t) =
    need to delete them as they might contain garbage. *)
 let pending_targets = ref Path.Build.Set.empty
 
+let () = Hooks.End_of_build.always Metrics.reset
+
 let () =
   Hooks.End_of_build.always (fun () ->
       let fns = !pending_targets in
@@ -2341,14 +2343,14 @@ let prefix_rules (prefix : unit Action_builder.t) ~f =
 
 module Alias = Alias0
 
-let report_early_exn exn =
+let report_early_exn ~report_error exn =
   let t = t () in
   let error = { Error.exn; id = Error.Id.gen () } in
   t.errors <- error :: t.errors;
   (match !Clflags.report_errors_config with
   | Early
   | Twice ->
-    Dune_util.Report_error.report exn
+    report_error exn
   | Deterministic -> ());
   t.handler.error [ Add error ]
 
@@ -2359,7 +2361,7 @@ let reraise_exn exn =
   | Deterministic ->
     Exn_with_backtrace.reraise exn
 
-let run f =
+let run ?(report_error = Dune_util.Report_error.report) f =
   let open Fiber.O in
   Hooks.End_of_build.once Promotion.finalize;
   let t = t () in
@@ -2375,7 +2377,7 @@ let run f =
     let* res =
       Fiber.with_error_handler ~on_error:reraise_exn (fun () ->
           Memo.Build.run_with_error_handler (f ())
-            ~handle_error_no_raise:report_early_exn)
+            ~handle_error_no_raise:(report_early_exn ~report_error))
     in
     let+ () = t.handler.build_event Finish in
     res

@@ -849,9 +849,7 @@ let map_exe (context : t) =
 let install_prefix t =
   let open Fiber.O in
   let* opam = Memo.Build.run (Opam.opam_binary_exn ()) in
-  let+ s =
-    Process.run_capture Strict opam ~env:t.env [ "config"; "var"; "prefix" ]
-  in
+  let+ s = Process.run_capture Strict opam ~env:t.env [ "var"; "prefix" ] in
   Path.of_filename_relative_to_initial_cwd (String.trim s)
 
 let dot_dune_dir t = Path.Build.relative t.build_dir ".dune"

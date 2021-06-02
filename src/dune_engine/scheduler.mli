@@ -64,7 +64,11 @@ module Run : sig
 
       If [shutdown] is called, the current build will be canceled and new builds
       will not start. *)
-  val poll : (unit -> [ `Continue | `Stop ] Fiber.t) -> unit Fiber.t
+  val poll :
+       (   report_error:(Exn_with_backtrace.t -> unit)
+        -> unit
+        -> [ `Continue | `Stop ] Fiber.t)
+    -> unit Fiber.t
 
   val go :
        Config.t
@@ -99,6 +103,8 @@ val with_job_slot : (Config.t -> 'a Fiber.t) -> 'a Fiber.t
 
 (** Wait for the following process to terminate *)
 val wait_for_process : Pid.t -> Proc.Process_info.t Fiber.t
+
+val yield_if_there_are_pending_events : unit -> unit Fiber.t
 
 (** Make the scheduler ignore next change to a certain file in watch mode.
 

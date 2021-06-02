@@ -419,15 +419,29 @@ struct
         in
         let id = session#id in
         Event.emit (Session Start) stats id;
-        let+ res = Fiber.collect_errors (fun () -> session#start) in
+        let+ res =
+          Fiber.map_reduce_errors
+            (module Monoid.Unit)
+            (fun () -> session#start)
+            ~on_error:(fun exn ->
+              (* TODO report errors in dune_stats as well *)
+              let msg =
+                User_error.make
+                  [ Pp.textf "encountered error serving rpc client (id %d)"
+                      (Session.Id.to_int id)
+                  ; Exn_with_backtrace.pp exn
+                  ]
+              in
+              let e = { exn with exn = User_error.E (msg, []) } in
+              Dune_util.Report_error.report e;
+              Fiber.return ())
+        in
         Event.emit (Session Stop) stats id;
         match res with
         | Ok () -> ()
-        | Error exns ->
-          Dune_util.Log.info
-            [ Pp.text "fatal error when serving rpc client"
-            ; Pp.concat_map ~sep:Pp.newline exns ~f:Exn_with_backtrace.pp
-            ])
+        | Error () ->
+          (* already reported above *)
+          ())
 end
 
 module Handler = H.Builder

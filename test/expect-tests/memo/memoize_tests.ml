@@ -18,6 +18,8 @@ let printf = Printf.printf
 
 let () = Memo.Perf_counters.enable ()
 
+let () = Memo.Debug.check_invariants := true
+
 let print_perf_counters () =
   Memo.Perf_counters.assert_invariants ();
   printf "%s\n" (Memo.Perf_counters.report_for_current_run ())
@@ -328,7 +330,7 @@ let%expect_test _ =
   run (Memo.exec depends_on_run ());
   run (Memo.exec depends_on_run ());
   print_endline "resetting memo";
-  Memo.reset ();
+  Memo.reset Invalidation.empty;
   run (Memo.exec depends_on_run ());
   [%expect {|
     running foobar
@@ -426,7 +428,7 @@ let%expect_test "previously_evaluated_cell" =
   in
   let invalidate_if_evaluated name =
     match Memo.Expert.previously_evaluated_cell memo name with
-    | None -> ()
+    | None -> Memo.Invalidation.empty
     | Some cell ->
       printf "Invalidating %s...\n" name;
       Cell.invalidate cell
@@ -450,8 +452,10 @@ let%expect_test "previously_evaluated_cell" =
     previously_evaluated_cell x = [x]
     previously_evaluated_cell y = None
   |}];
-  invalidate_if_evaluated "x";
-  invalidate_if_evaluated "y";
+  Memo.reset
+    (Memo.Invalidation.combine
+       (invalidate_if_evaluated "x")
+       (invalidate_if_evaluated "y"));
   (* Only x got invalidated. *)
   [%expect {|
     Invalidating x...
@@ -470,7 +474,7 @@ let%expect_test "previously_evaluated_cell" =
     previously_evaluated_cell x = [x]
     previously_evaluated_cell y = [y]
   |}];
-  Memo.restart_current_run ();
+  Memo.reset Memo.Invalidation.empty;
   print_previously_evaluated_cell "x";
   print_previously_evaluated_cell "y";
   (* Both are still evaluated after incrementing the current run. *)
@@ -479,8 +483,7 @@ let%expect_test "previously_evaluated_cell" =
     previously_evaluated_cell x = [x]
     previously_evaluated_cell y = [y]
   |}];
-  Memo.For_tests.clear_memoization_caches ();
-  Memo.restart_current_run ();
+  Memo.reset Memo.Invalidation.clear_caches;
   (* Both switch back to unevaluated after clearing all memoization caches. *)
   print_previously_evaluated_cell "x";
   print_previously_evaluated_cell "y";
@@ -740,7 +743,7 @@ let%expect_test "diamond with non-uniform cutoff structure" =
     f 1 = Ok 5
     1/1 computed/total nodes, 2/2 traversed/total edges
   |}];
-  Memo.restart_current_run ();
+  Memo.reset Memo.Invalidation.empty;
   evaluate_and_print summit 0;
   print_perf_counters ();
   [%expect
@@ -924,7 +927,7 @@ let%expect_test "dynamic cycles with non-uniform cutoff structure" =
     f 2 = Ok 7
     1/1 computed/total nodes, 1/1 traversed/total edges
   |}];
-  Memo.restart_current_run ();
+  Memo.reset Memo.Invalidation.empty;
   evaluate_and_print summit_no_cutoff 0;
   print_perf_counters ();
   [%expect
@@ -1048,7 +1051,7 @@ let%expect_test "dynamic cycles with non-uniform cutoff structure" =
             ]
     0/0 computed/total nodes, 0/0 traversed/total edges
   |}];
-  Memo.restart_current_run ();
+  Memo.reset Memo.Invalidation.empty;
   evaluate_and_print summit_no_cutoff 0;
   print_perf_counters ();
   [%expect
@@ -1167,7 +1170,7 @@ let%expect_test "deadlocks when creating a cycle twice" =
     Started evaluating summit
     f 1 = Error [ { exn = "Exit"; backtrace = "" } ]
     |}];
-  Memo.restart_current_run ();
+  Memo.reset Memo.Invalidation.empty;
   evaluate_and_print summit 0;
   evaluate_and_print summit 2;
   [%expect
@@ -1264,7 +1267,7 @@ let%expect_test "Nested nodes with cutoff are recomputed optimally" =
     f 1 = Ok 2
     8/8 computed/total nodes, 7/7 traversed/total edges
   |}];
-  Memo.restart_current_run ();
+  Memo.reset Memo.Invalidation.empty;
   evaluate_and_print summit 0;
   evaluate_and_print summit 2;
   print_perf_counters ();
@@ -1331,12 +1334,11 @@ let%expect_test "Test that there are no phantom dependencies" =
     Evaluated summit: 8
     f 0 = Ok 8
     |}];
-  Memo.restart_current_run ();
+  Memo.reset Memo.Invalidation.empty;
   evaluate_and_print summit 0;
   (* No recomputation is needed since the [cell] is up to date. *)
   [%expect {| f 0 = Ok 8 |}];
-  Memo.Cell.invalidate cell;
-  Memo.restart_current_run ();
+  Memo.reset (Memo.Cell.invalidate cell);
   evaluate_and_print summit 0;
   (* Note that we no longer depend on the [cell]. *)
   [%expect
@@ -1345,8 +1347,7 @@ let%expect_test "Test that there are no phantom dependencies" =
     *** middle does not depend on base ***
     Evaluated summit: 0
     f 0 = Ok 0 |}];
-  Memo.Cell.invalidate cell;
-  Memo.restart_current_run ();
+  Memo.reset (Memo.Cell.invalidate cell);
   evaluate_and_print summit 0;
   (* Nothing is recomputed, since the result no longer depends on the cell. In
      the past, the cell remained as a "phantom dependency", which caused
@@ -1396,7 +1397,7 @@ let%expect_test "Abandoned node with no cutoff is recomputed" =
         printf "Evaluated summit: %d\n" result;
         result)
   in
-  Memo.restart_current_run ();
+  Memo.reset Memo.Invalidation.empty;
   evaluate_and_print summit 0;
   print_perf_counters ();
   [%expect
@@ -1412,7 +1413,7 @@ let%expect_test "Abandoned node with no cutoff is recomputed" =
     f 0 = Ok 1
     4/4 computed/total nodes, 4/4 traversed/total edges
   |}];
-  Memo.restart_current_run ();
+  Memo.reset Memo.Invalidation.empty;
   evaluate_and_print summit 0;
   print_perf_counters ();
   [%expect
@@ -1430,7 +1431,7 @@ let%expect_test "Abandoned node with no cutoff is recomputed" =
   |}];
   (* At this point, [captured_base] is a stale computation: [restore_from_cache]
      failed but [compute] never started. *)
-  Memo.restart_current_run ();
+  Memo.reset Memo.Invalidation.empty;
   evaluate_and_print summit 0;
   print_perf_counters ();
   (* We will now attempt to force [compute] of a stale computation but this is
@@ -1578,7 +1579,7 @@ let%expect_test "reproducible errors are cached" =
     f 0 = Error [ { exn = "(Failure \"Zero input\")"; backtrace = "" } ]
     0/0 computed/total nodes, 0/0 traversed/total edges
   |}];
-  Memo.restart_current_run ();
+  Memo.reset Memo.Invalidation.empty;
   evaluate_and_print f 5;
   evaluate_and_print f (-5);
   evaluate_and_print f 0;
@@ -1597,6 +1598,17 @@ let%expect_test "reproducible errors are cached" =
 let%expect_test "errors work with early cutoff" =
   let divide =
     let exception Input_too_large of Memo.Run.t in
+    let first_run = Memo.Run.For_tests.current () in
+    Printexc.register_printer (fun exn ->
+        match exn with
+        | Input_too_large run ->
+          Some
+            (sprintf "Input_too_large <%s run>"
+               (if Memo.Run.For_tests.compare first_run run = Eq then
+                 "first"
+               else
+                 "second"))
+        | _ -> None);
     Memo.create "divide 100 by input"
       ~input:(module Int)
       ~cutoff:Int.equal
@@ -1636,10 +1648,10 @@ let%expect_test "errors work with early cutoff" =
     f 20 = Ok -5
     [negate] Started evaluating 200
     [divide] Started evaluating 200
-    f 200 = Error [ { exn = "Input_too_large(_)"; backtrace = "" } ]
+    f 200 = Error [ { exn = "Input_too_large <first run>"; backtrace = "" } ]
     7/7 computed/total nodes, 6/6 traversed/total edges
   |}];
-  Memo.restart_current_run ();
+  Memo.reset Memo.Invalidation.empty;
   evaluate_and_print f 0;
   evaluate_and_print f 20;
   evaluate_and_print f 200;
@@ -1658,7 +1670,7 @@ let%expect_test "errors work with early cutoff" =
     f 20 = Ok -5
     [divide] Started evaluating 200
     [negate] Started evaluating 200
-    f 200 = Error [ { exn = "Input_too_large(_)"; backtrace = "" } ]
+    f 200 = Error [ { exn = "Input_too_large <second run>"; backtrace = "" } ]
     5/7 computed/total nodes, 10/6 traversed/total edges
   |}]
 
@@ -1723,8 +1735,7 @@ let%expect_test "Test that there are no spurious cycles" =
   [%expect {| f 0 = Ok 0 |}];
   print_perf_counters ();
   [%expect {| 2/2 computed/total nodes, 1/1 traversed/total edges |}];
-  Memo.Cell.invalidate (Memo.cell task_b 0);
-  Memo.restart_current_run ();
+  Memo.reset (Memo.Cell.invalidate (Memo.cell task_b 0));
   evaluate_and_print task_a 0;
   (* Note that here task B blows up with a cycle error when trying to restore
      its result from the cache. A doesn't need it and terminates correctly. *)

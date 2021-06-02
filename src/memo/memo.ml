@@ -1,7 +1,11 @@
 open! Stdune
 open Fiber.O
 
-let track_locations_of_lazy_values = ref false
+module Debug = struct
+  let track_locations_of_lazy_values = ref false
+
+  let check_invariants = ref false
+end
 
 module Counters = struct
   let enabled = ref false
@@ -109,7 +113,7 @@ module Spec = struct
   let create ~name ~input ~human_readable_description ~cutoff f =
     let name =
       match name with
-      | None when !track_locations_of_lazy_values ->
+      | None when !Debug.track_locations_of_lazy_values ->
         Option.map
           (Caller_id.get ~skip:[ __FILE__ ])
           ~f:(fun loc ->
@@ -145,10 +149,10 @@ end
 module Dep_node_without_state = struct
   type ('i, 'o) t =
     { id : Id.t
-          (* If [id] is placed first in this data structhre, then polymorphic
+          (* If [id] is placed first in this data structure, then polymorphic
              comparison for dep nodes works fine regardless of the other fields.
-             (at the moment polymorphic comparison is used for Exn_set, but
-             we're hoping to change that) *)
+             At the moment polymorphic comparison is used for [Exn_set], but we
+             hope to change that. *)
     ; spec : ('i, 'o) Spec.t
     ; input : 'i
     }
@@ -313,9 +317,7 @@ end
    two reasons:
 
    - [Error]: the user-supplied function that was called to compute the value
-   raised one or more exceptions recorded in the [Exn_set.t]. If any of those
-   exceptions was marked as [Non_reproducible], the [reproducible] field will be
-   set to [false].
+   raised one or more exceptions recorded in the [Collect_errors_monoid.t].
 
    - [Cancelled]: the attempt was cancelled due to a dependency cycle.
 
@@ -341,42 +343,6 @@ module Dag : Dag.S with type value := Dep_node_without_state.packed =
 Dag.Make (struct
   type t = Dep_node_without_state.packed
 end)
-
-(* [Value_id] is an identifier allocated every time a node value is computed and
-   found to be different from before.
-
-   The clients then use [Value_id] to see if the value have changed since the
-   previous value they observed. This means we don't need to run the cutoff
-   comparison at every client.
-
-   There is a downside, though: if the value changes from x to y, and then back
-   to x, then the [Value_id] changes without the value actually changing, which
-   is a shame. So we should test and see if [Value_id] is worth keeping or it's
-   better to just evaluate the cutoff multiple times. *)
-module Value_id : sig
-  type t
-
-  val create : unit -> t
-
-  val equal : t -> t -> bool
-
-  val to_dyn : t -> Dyn.t
-end = struct
-  type t = int
-
-  let to_dyn = Int.to_dyn
-
-  let next = ref 0
-
-  let create () =
-    let res = !next in
-    next := res + 1;
-    res
-
-  let equal = Int.equal
-end
-
-let _ = Value_id.to_dyn
 
 (* Dependencies of a value accumulated so far. All of them are added to the DAG
    of sample attempts to detect cycles.
@@ -535,20 +501,31 @@ module Sample_attempt = struct
 end
 
 module M = struct
+  (* A [value] along with some additional information that allows us to check
+     whether the it is up to date or needs to be recomputed. *)
   module rec Cached_value : sig
     type 'o t =
       { value : 'o Value.t
-      ; (* The value id, used to check that the value is the same. *)
-        id : Value_id.t
-      ; (* When was last computed or confirmed unchanged *)
-        mutable last_validated_at : Run.t
-      ; (* The values stored in [deps] must have been calculated at
-           [last_validated_at] too.
+      ; (* We store [last_changed_at] and [last_validated_at] for early cutoff.
+           See Section 5.2.2 of "Build Systems a la Carte: Theory and Practice"
+           for more details (https://doi.org/10.1017/S0956796820000088).
 
-           In fact the set of deps can change over the lifetime of
-           [Cached_value] even if the [value] and [id] do not change. This can
-           happen if the value gets re-computed, but a cutoff prevents us from
-           updating the value id.
+           - [last_changed_at] is the run when the value changed last time.
+
+           - [last_validated_at] is the run when the value was last confirmed as
+           up to date. Invariant: [last_changed_at <= last_validated_at].
+
+           Consider a dependency [dep] of a node [caller].
+
+           If [dep.last_changed_at > caller.last_validated_at], then the [dep]'s
+           value has changed since it had been previously used by the [caller]
+           and therefore the [caller] needs to be recomputed. *)
+        last_changed_at : Run.t
+      ; mutable last_validated_at : Run.t
+      ; (* The list of dependencies [deps], as captured at [last_validated_at].
+           Note that the list of dependencies can change over the lifetime of
+           [Cached_value]: this happens if the value gets re-computed but is
+           declared unchanged by the cutoff check.
 
            Note that [deps] should be listed in the order in which they were
            depended on to avoid recomputations of the dependencies that are no
@@ -570,10 +547,9 @@ module M = struct
            listed [g 0] first, we would recompute it and the work wouldn't be
            wasted since [f 0] does depend on it.
 
-           aalekseyev: now we have a more stringent requirement: [deps] must be
-           a linearisation of dependency causality order, otherwise the
-           validation algorithm may create spurious dependency cycles. *)
-        mutable deps : Last_dep.t list
+           Another important reason to list [deps] according to a linearisation
+           of the dependency order is to eliminate spurious dependency cycles. *)
+        mutable deps : Dep_node.packed list
       }
   end =
     Cached_value
@@ -627,49 +603,11 @@ module M = struct
     type packed = T : (_, _) t -> packed [@@unboxed]
   end =
     Dep_node
-
-  (* We store the [Value_id.t] of the last [Cached_value.t] value we depended on
-     to support early cutoff.
-
-     Consider a dependency [T (dep, value_id) : Last_dep.t] of a node [caller].
-
-     If [dep.last_cached_value.id <> value_id] then the early cutoff fails, i.e.
-     the value that the caller had previously used has changed and received a
-     new identifier, which means the caller needs to be recomputed.
-
-     Note that we can achieve the same early cutoff behaviour by switching to
-     storing two runs in each [Cached_value.t] instead of just one:
-
-     - [last_validated_at : Run.t], which we store already, and
-
-     - [last_changed_at : Run.t], which records the run when the value changed
-     last time, with the invariant [last_changed_at <= last_validated_at].
-
-     If [dep.last_changed_at > caller.last_validated_at], then the value has
-     changed since it had been previously used by the caller, and therefore the
-     caller needs to be recomputed. This new condition is equivalent to the
-     above condition [dep.last_cached_value.id <> value_id] but doesn't require
-     storing value identifiers in [Last_dep.t].
-
-     See Section 5.2.2 of "Build Systems a la Carte: Theory and Practice" for
-     more details on this optimisation (it is worth checking out the scenario
-     described in Fig. 7).
-
-     Historical remark: previously [Last_dep.t] stored [Value.t] instead of just
-     the corresponding [Value_id.t], which means we had to compare the current
-     value and the value recorded in [Last_dep] in every run. By switching to
-     storing the [Value_id.t], the (potentially expensive) value comparisons
-     were replaced with cheap comparisons of their integer identifiers. *)
-  and Last_dep : sig
-    type t = T : ('a, 'b) Dep_node.t * Value_id.t -> t
-  end =
-    Last_dep
 end
 
 module State = M.State
 module Running_state = M.Running_state
 module Dep_node = M.Dep_node
-module Last_dep = M.Last_dep
 
 module Stack_frame_with_state = struct
   type ('i, 'o) unpacked =
@@ -797,41 +735,43 @@ let get_cached_value_in_current_cycle (dep_node : _ Dep_node.t) =
 module Cached_value = struct
   include M.Cached_value
 
-  let capture_dep_values ~deps_rev =
-    List.rev_map deps_rev ~f:(function Dep_node.T dep_node ->
-        (match get_cached_value_in_current_cycle dep_node with
-        | None ->
-          let reason =
-            match dep_node.last_cached_value with
-            | None -> "(no value)"
-            | Some _ -> "(old run)"
-          in
-          Code_error.raise
-            ("Attempted to create a cached value based on some stale inputs "
-           ^ reason)
-            []
-        | Some cv -> Last_dep.T (dep_node, cv.id)))
+  let capture_deps ~deps_rev =
+    if !Debug.check_invariants then
+      List.iter deps_rev ~f:(function Dep_node.T dep_node ->
+          (match get_cached_value_in_current_cycle dep_node with
+          | None ->
+            let reason =
+              match dep_node.last_cached_value with
+              | None -> "(no value)"
+              | Some _ -> "(old run)"
+            in
+            Code_error.raise
+              ("Attempted to create a cached value based on some stale inputs "
+             ^ reason)
+              []
+          | Some _up_to_date_cached_value -> ()));
+    List.rev deps_rev
 
   let create x ~deps_rev =
-    { deps = capture_dep_values ~deps_rev
-    ; value = x
+    { value = x
+    ; last_changed_at = Run.current ()
     ; last_validated_at = Run.current ()
-    ; id = Value_id.create ()
+    ; deps = capture_deps ~deps_rev
     }
 
   (* Dependencies of cancelled computations are not accurate, so we store the
      empty list of [deps] in this case. In future, it would be better to
      refactor the code to avoid storing the list altogether in this case. *)
   let create_cancelled ~dependency_cycle =
-    { deps = []
-    ; value = Cancelled { dependency_cycle }
+    { value = Cancelled { dependency_cycle }
+    ; last_changed_at = Run.current ()
     ; last_validated_at = Run.current ()
-    ; id = Value_id.create ()
+    ; deps = []
     }
 
   let confirm_old_value t ~deps_rev =
     t.last_validated_at <- Run.current ();
-    t.deps <- capture_dep_values ~deps_rev;
+    t.deps <- capture_deps ~deps_rev;
     t
 
   let value_changed (node : _ Dep_node.t) prev_value cur_value =
@@ -983,6 +923,8 @@ let report_and_collect_errors f =
       ({ exns = Exn_set.singleton exn; reproducible } : Collect_errors_monoid.t))
     f
 
+let yield_if_there_are_pending_events = ref Fiber.return
+
 module Exec : sig
   (* [exec_dep_node] is a variant of [consider_and_compute] but with a simpler
      type, convenient for external usage. *)
@@ -1025,27 +967,27 @@ end = struct
           let rec go deps =
             match deps with
             | [] -> Fiber.return Changed_or_not.Unchanged
-            | Last_dep.T (dep, v_id) :: deps -> (
+            | Dep_node.T dep :: deps -> (
               if !Counters.enabled then
                 Counters.record_new_edge_traversals ~count:1;
               match dep.without_state.spec.allow_cutoff with
               | No -> (
                 (* If [dep] has no cutoff, it is sufficient to check whether it
                    is up to date. If not, we must recompute [last_cached_value]. *)
-                let* restore_result = consider_and_restore_from_cache dep in
-                match restore_result with
+                consider_and_restore_from_cache dep
+                >>= function
                 | Ok cached_value_of_dep -> (
-                  (* Here we know that [dep] can be restored from the cache, so
-                     how can [v_id] be different from [cached_value_of_dep.id]?
-                     Good question! This can happen if [cached_value]'s node was
-                     skipped in the previous run (because it was unreachable),
-                     while [dep] wasn't skipped and its value changed. In the
-                     current run, [cached_value] is therefore stale. We learn
-                     this when we see that the [cached_value_of_dep] is not as
-                     recorded when computing [cached_value]. *)
-                  match Value_id.equal cached_value_of_dep.id v_id with
-                  | true -> go deps
-                  | false -> Fiber.return Changed_or_not.Changed)
+                  (* The [Changed] branch will be taken if [cached_value]'s node
+                     was skipped in the previous run (it was unreachable), while
+                     [dep] wasn't skipped and [cached_value_of_dep] changed. *)
+                  match
+                    Run.compare cached_value_of_dep.last_changed_at
+                      cached_value.last_validated_at
+                  with
+                  | Gt -> Fiber.return Changed_or_not.Changed
+                  | Eq
+                  | Lt ->
+                    go deps)
                 | Failure (Cancelled { dependency_cycle }) ->
                   Fiber.return (Changed_or_not.Cancelled { dependency_cycle })
                 | Failure (Not_found | Out_of_date _) ->
@@ -1053,21 +995,26 @@ end = struct
               | Yes _equal -> (
                 (* If [dep] has a cutoff predicate, it is not sufficient to
                    check whether it is up to date: even if it isn't, after we
-                   recompute it, the resulting [Value_id] may remain unchanged,
-                   allowing us to skip recomputing [last_cached_value]. *)
+                   recompute it, the resulting value may remain unchanged,
+                   allowing us to skip recomputing the [last_cached_value]. *)
                 consider_and_compute dep
                 >>= function
-                | Error dependency_cycle ->
-                  Fiber.return (Changed_or_not.Cancelled { dependency_cycle })
-                | Ok cached_value -> (
-                  let* cached_value = cached_value in
-                  (* Note that [cached_value.value] will be [Cancelled _] if
+                | Ok cached_value_of_dep -> (
+                  let* cached_value_of_dep = cached_value_of_dep in
+                  (* Note: [cached_value_of_dep.value] will be [Cancelled _] if
                      [dep] itself doesn't introduce a dependency cycle but one
                      of its transitive dependencies does. In this case, the
-                     value [id] will be new, so we will take the [false] branch. *)
-                  match Value_id.equal cached_value.id v_id with
-                  | true -> go deps
-                  | false -> Fiber.return Changed_or_not.Changed)))
+                     value will be new, so we will take the [Changed] branch. *)
+                  match
+                    Run.compare cached_value_of_dep.last_changed_at
+                      cached_value.last_validated_at
+                  with
+                  | Gt -> Fiber.return Changed_or_not.Changed
+                  | Eq
+                  | Lt ->
+                    go deps)
+                | Error dependency_cycle ->
+                  Fiber.return (Changed_or_not.Cancelled { dependency_cycle })))
           in
           go cached_value.deps
         in
@@ -1086,6 +1033,7 @@ end = struct
    fun dep_node cache_lookup_failure deps_so_far ->
     Deps_so_far.start_compute deps_so_far;
     let compute_value_and_deps_rev () =
+      let* () = !yield_if_there_are_pending_events () in
       let+ res =
         report_and_collect_errors (fun () ->
             dep_node.without_state.spec.f dep_node.without_state.input)
@@ -1219,6 +1167,44 @@ let exec (type i o) (t : (i, o) t) i = Exec.exec_dep_node (dep_node t i)
 
 let get_call_stack = Call_stack.get_call_stack_without_state
 
+module Invalidation = struct
+  (* Represented as a tree mainly to get a tail-recursive execution, but being
+     able to special-case empty invalidations is also useful. *)
+  type t =
+    | Empty
+    | Leaf of (unit -> unit)
+    | Combine of t * t
+
+  let empty : t = Empty
+
+  let combine a b =
+    match (a, b) with
+    | Empty, x
+    | x, Empty ->
+      x
+    | x, y -> Combine (x, y)
+
+  let rec execute x xs =
+    match x with
+    | Empty -> execute_list xs
+    | Leaf f ->
+      f ();
+      execute_list xs
+    | Combine (x, y) -> execute x (y :: xs)
+
+  and execute_list = function
+    | [] -> ()
+    | x :: xs -> execute x xs
+
+  let execute x = execute x []
+
+  let is_empty = function
+    | Empty -> true
+    | _ -> false
+
+  let clear_caches = Leaf (fun () -> Caches.clear ())
+end
+
 (* There are two approaches to invalidating memoization nodes. Currently, when a
    node is invalidated by calling [invalidate_dep_node], only the node itself is
    marked as "changed" (by setting [node.last_cached_value] to [None]). Then,
@@ -1241,7 +1227,8 @@ let get_call_stack = Call_stack.get_call_stack_without_state
    Is it worth switching from the current approach to the alternative? It's best
    to answer this question by benchmarking. This is not urgent but is worth
    documenting in the code. *)
-let invalidate_dep_node (node : _ Dep_node.t) = node.last_cached_value <- None
+let invalidate_dep_node (node : _ Dep_node.t) =
+  Invalidation.Leaf (fun () -> node.last_cached_value <- None)
 
 module Current_run = struct
   let f () = Run.current () |> Build0.return
@@ -1345,8 +1332,6 @@ module Lazy = struct
   let map t ~f = create (fun () -> Fiber.map ~f (t ()))
 end
 
-module Run = Run
-
 module Poly (Function : sig
   type 'a input
 
@@ -1408,14 +1393,11 @@ let incremental_mode_enabled =
       User_error.raise
         [ Pp.text "Invalid value of DUNE_WATCHING_MODE_INCREMENTAL" ])
 
-let restart_current_run () =
-  Current_run.invalidate ();
+let reset invalidation =
+  Invalidation.execute
+    (Invalidation.combine invalidation (Current_run.invalidate ()));
   Run.restart ();
   Counters.reset ()
-
-let reset () =
-  restart_current_run ();
-  if not !incremental_mode_enabled then Caches.clear ()
 
 module Perf_counters = struct
   let enable () = Counters.enabled := true
@@ -1452,10 +1434,20 @@ module For_tests = struct
       | None -> None
       | Some cv ->
         Some
-          (List.map cv.deps ~f:(fun (Last_dep.T (dep, _value)) ->
+          (List.map cv.deps ~f:(fun (Dep_node.T dep) ->
                (dep.without_state.spec.name, ser_input dep.without_state))))
 
   let clear_memoization_caches () = Caches.clear ()
 end
 
 module Store = Store_intf
+
+module Run = struct
+  type t = Run.t
+
+  module For_tests = struct
+    let compare = Run.compare
+
+    let current = Run.current
+  end
+end

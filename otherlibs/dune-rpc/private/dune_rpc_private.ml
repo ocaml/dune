@@ -79,6 +79,10 @@ end
 module Loc = struct
   include Loc
 
+  let start t = t.start
+
+  let stop t = t.stop
+
   let pos_sexp =
     let open Conv in
     let to_ (pos_fname, pos_lnum, pos_bol, pos_cnum) =
@@ -149,6 +153,10 @@ module Diagnostic = struct
       { in_build : string
       ; in_source : string
       }
+
+    let in_build t = t.in_build
+
+    let in_source t = t.in_source
 
     let sexp =
       let open Conv in
@@ -331,6 +339,10 @@ module Message = struct
     { payload : Sexp.t option
     ; message : string
     }
+
+  let payload t = t.payload
+
+  let message t = t.message
 
   let sexp =
     let open Conv in

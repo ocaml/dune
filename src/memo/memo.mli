@@ -170,14 +170,32 @@ end
     cached. *)
 exception Non_reproducible of exn
 
-(** Notify the memoization system that the build system has restarted. This
-    removes the values that depend on the [current_run] from the memoization
-    cache, and cancels all pending computations. *)
-val reset : unit -> unit
+(** [Invalidation] describes a set of nodes to be invalidated between
+    memoization runs. These sets can be combined into larger sets to then be
+    passed to [reset]. *)
+module Invalidation : sig
+  type t
 
-(** Notify the memoization system that the build system has restarted but do not
-    clear the memoization cache. *)
-val restart_current_run : unit -> unit
+  val empty : t
+
+  val combine : t -> t -> t
+
+  val is_empty : t -> bool
+
+  (** Indicates that memoization tables should be cleared. We use it if
+      incremental mode is not enabled.
+
+      Bug: this is not sufficient to guarantee full recomputation because it
+      does not invalidate individual nodes, only tables, so if you hold on to a
+      node (via a [lazy_] or [cell] call), then that's going to keep its
+      potentially stale value. *)
+  val clear_caches : t
+end
+
+(** Notify the memoization system that the build system has restarted. This
+    removes the values specified by [Invalidation.t] from the memoization cache,
+    and advances the current run. *)
+val reset : Invalidation.t -> unit
 
 (** Returns [true] if the user enabled the incremental mode via the environment
     variable [DUNE_WATCHING_MODE_INCREMENTAL], and we should therefore assume
@@ -275,6 +293,12 @@ val push_stack_frame :
 module Run : sig
   (** A single build run. *)
   type t
+
+  module For_tests : sig
+    val compare : t -> t -> Ordering.t
+
+    val current : unit -> t
+  end
 end
 
 (** Introduces a dependency on the current build run. *)
@@ -354,7 +378,7 @@ module Cell : sig
 
   (** Mark this cell as invalid, forcing recomputation of this value. The
       consumers may be recomputed or not, depending on early cutoff. *)
-  val invalidate : _ t -> unit
+  val invalidate : _ t -> Invalidation.t
 end
 
 (** Create a "memoization cell" that focuses on a single input/output pair of a
@@ -387,9 +411,14 @@ end) : sig
   val eval : 'a Function.input -> 'a Function.output Build.t
 end
 
-(** If [true], this module will record the location of [Lazy.t] values. This is
-    a bit expensive to compute, but it helps debugging. *)
-val track_locations_of_lazy_values : bool ref
+(** Diagnostics features that affect performance but are useful for debugging. *)
+module Debug : sig
+  (** If [true], Memo will record the location of [Lazy.t] values. *)
+  val track_locations_of_lazy_values : bool ref
+
+  (** If [true], Memo will perform additional checks of internal invariants. *)
+  val check_invariants : bool ref
+end
 
 (** Various performance counters. Reset to zero at the start of every run. *)
 module Perf_counters : sig
@@ -449,3 +478,5 @@ module For_tests : sig
       build run. *)
   val clear_memoization_caches : unit -> unit
 end
+
+val yield_if_there_are_pending_events : (unit -> unit Fiber.t) ref

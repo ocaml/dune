@@ -57,32 +57,18 @@ let with_lexbuf_from_file path ~f =
 let dir_contents_unsorted =
   declaring_dependency ~f:Path.Untracked.readdir_unsorted_with_kinds
 
-module Rebuild_required = struct
-  type t =
-    | Yes
-    | No
+let invalidate_path path =
+  match Memo.Expert.previously_evaluated_cell memo path with
+  | None -> Memo.Invalidation.empty
+  | Some cell -> Memo.Cell.invalidate cell
 
-  let combine x y =
-    match (x, y) with
-    | Yes, _ -> Yes
-    | _, Yes -> Yes
-    | No, No -> No
-
-  let invalidate_path path =
-    match Memo.Expert.previously_evaluated_cell memo path with
-    | None -> No
-    | Some cell ->
-      Memo.Cell.invalidate cell;
-      Yes
-
-  (* When a file or directory is created or deleted, we need to also invalidate
-     the parent directory, so that the [dir_contents] queries are re-executed. *)
-  let invalidate_path_and_its_parent path =
-    combine (invalidate_path path)
-      (match Path.parent path with
-      | None -> No
-      | Some path -> invalidate_path path)
-end
+(* When a file or directory is created or deleted, we need to also invalidate
+   the parent directory, so that the [dir_contents] queries are re-executed. *)
+let invalidate_path_and_its_parent path =
+  Memo.Invalidation.combine (invalidate_path path)
+    (match Path.parent path with
+    | None -> Memo.Invalidation.empty
+    | Some path -> invalidate_path path)
 
 module Event = struct
   (* Here are some assumptions about events:
@@ -128,32 +114,31 @@ module Event = struct
      - Similarly, the result of [dir_contents] queries can be updated without
      calling [Path.readdir_unsorted_with_kinds]: we know which file or directory
      should be added to or removed from the result. *)
-  let handle { kind; path } =
+  let handle { kind; path } : Memo.Invalidation.t =
     match kind with
-    | File_changed -> Rebuild_required.invalidate_path path
+    | File_changed -> invalidate_path path
     | File_created
     | File_deleted
     | Directory_created
     | Directory_deleted
     | Unknown ->
-      Rebuild_required.invalidate_path_and_its_parent path
+      invalidate_path_and_its_parent path
 end
 
 let handle events =
-  (* Knowing that the list is non-empty makes it easier to think about the logic
-     that checks the [Memo.incremental_mode_enabled] flag. *)
-  let events = Nonempty_list.to_list events in
-  let rebuild_required =
-    (* We can't use [List.exists] here due to its short-circuiting behaviour. *)
-    List.fold_left events ~init:No ~f:(fun acc event ->
-        Rebuild_required.combine acc (Event.handle event))
+  let invalidation =
+    let events = Nonempty_list.to_list events in
+    List.fold_left events ~init:Memo.Invalidation.empty ~f:(fun acc event ->
+        Memo.Invalidation.combine acc (Event.handle event))
   in
-  match rebuild_required with
-  | Yes -> Rebuild_required.Yes
-  | No -> (
-    match !Memo.incremental_mode_enabled with
-    | true -> No
-    | false ->
-      (* In this mode, we do not assume that all file system dependencies are
-         declared correctly and therefore conservatively require a rebuild. *)
-      Yes)
+  match !Memo.incremental_mode_enabled with
+  | true -> invalidation
+  | false ->
+    (* In this mode, we do not assume that all file system dependencies are
+       declared correctly and therefore conservatively require a rebuild. *)
+    (* The fact that the [events] list is non-empty justifies clearing the
+       caches. *)
+    let (_ : _ Nonempty_list.t) = events in
+    (* Since [clear_caches] is not sufficient to guarantee invalidation, we pay
+       attention to [invalidation] too, for good measure *)
+    Memo.Invalidation.combine Memo.Invalidation.clear_caches invalidation

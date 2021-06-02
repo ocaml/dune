@@ -63,16 +63,18 @@
   $ cat _build/default/y
   new-contents2
 
-  $ with_timeout dune rpc shutdown
+  $ with_timeout dune shutdown
   $ cat dune-output
-  dune exited:
+  file_system_changed
+  waiting for inotify sync
+  file_system_changed
+  waited for inotify sync
   Success, waiting for filesystem changes...
-  
-  ********** NEW BUILD **********
-  
+  waiting for inotify sync
+  file_system_changed
+  waited for inotify sync
   Success, waiting for filesystem changes...
-  
-  ********** NEW BUILD **********
-  
+  waiting for inotify sync
+  file_system_changed
+  waited for inotify sync
   Success, waiting for filesystem changes...
-  0

@@ -148,7 +148,7 @@ Unreleased
   `Gc.quick_stat` which does not scan the heap. (#4643, @emillon)
 
 - Don't let command run by Dune observe the environment variable
-  `INSIDE_EMACS` in order to improve reproducibility (#....,
+  `INSIDE_EMACS` in order to improve reproducibility (#4680,
   @jeremiedimino)
 
 2.9.0 (unreleased)

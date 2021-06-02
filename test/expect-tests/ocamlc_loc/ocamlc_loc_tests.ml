@@ -19,26 +19,6 @@ module Test = struct
     Io.write_file path contents;
     path
 
-  let string_of_loc { Ocamlc_loc.path; line; chars } =
-    sprintf "file %s, line %s%s" path
-      (match line with
-      | `Single i -> string_of_int i
-      | `Range (x, y) -> sprintf "%d-%d" x y)
-      (match chars with
-      | None -> ""
-      | Some (x, y) -> sprintf ", chars %d-%d" x y)
-
-  let print_message message =
-    match (message : Ocamlc_loc.message) with
-    | Raw s -> printfn "raw message =\n%s" s
-    | Structured { preview; message; severity } ->
-      printfn "severity = %s"
-        (match severity with
-        | Error -> "error"
-        | Warning { code; name } -> sprintf "warning %d [%s]" code name);
-      Option.iter preview ~f:(printfn "preview =\n%s");
-      printfn "message = %s" message
-
   let create f =
     let dir = Temp.create Dir ~prefix:"dune." ~suffix:".test" in
     let t = { dir } in
@@ -46,17 +26,13 @@ module Test = struct
     let out_file = Exn.protect ~f:(fun () -> f t) ~finally:restore_cwd in
     let output = Io.read_file out_file in
     (* Format.eprintf "print raw output:@.%s@.%!" output; *)
-    let locs = Ocamlc_loc.parse output in
-    List.iteri locs ~f:(fun i { Ocamlc_loc.loc; message; related } ->
+    let locs =
+      Ocamlc_loc.parse
+        (Format.asprintf "%a@." Pp.to_fmt (Ansi_color.parse output))
+    in
+    List.iteri locs ~f:(fun i report ->
         printfn ">> error %d" i;
-        printfn "loc = %s" (string_of_loc loc);
-        print_message message;
-        if related <> [] then (
-          printfn "related errors:";
-          List.iter related ~f:(fun (loc, message) ->
-              print_message message;
-              printfn "loc = %s" (string_of_loc loc))
-        ))
+        print_endline (Dyn.to_string (Ocamlc_loc.dyn_of_report report)))
 end
 
 let%expect_test "" =
@@ -68,14 +44,20 @@ let%expect_test "" =
   [%expect
     {|
     >> error 0
-    loc = file test.ml, line 1, chars 9-12
-    severity = error
-    preview =
-    1 | let () = 123
-                 ^^^
-
-    message = This expression has type int but an expression was expected of type
-             unit |}]
+    { loc = { path = "test.ml"; line = Single 1; chars = Some (9, 12) }
+    ; message =
+        Structured
+          { file_excerpt = Some "1 | let () = 123\n\
+                                \             ^^^\n\
+                                 "
+          ; message =
+              "This expression has type int but an expression was expected of type\n\
+              \         unit\n\
+               "
+          ; severity = Error
+          }
+    ; related = []
+    } |}]
 
 let%expect_test "" =
   Test.create (fun t ->
@@ -96,32 +78,34 @@ end
   [%expect
     {|
     >> error 0
-    loc = file test.ml, line 4-6, chars 6-3
-    severity = error
-    preview =
-    4 | ......struct
-    5 |   let x y = y +. 2.0
-    6 | end
-
-    message = Signature mismatch:
-           Modules do not match:
-             sig val x : float -> float end
-           is not included in
-             sig val x : int -> int end
-           Values do not match:
-             val x : float -> float
-           is not included in
-             val x : int -> int
-
-    >> error 1
-    loc = file test.ml, line 3, chars 2-20
-    raw message =
-    Expected declaration
-
-    >> error 2
-    loc = file test.ml, line 5, chars 6-7
-    raw message =
-    Actual declaration |}]
+    { loc = { path = "test.ml"; line = Range 4,6; chars = Some (6, 3) }
+    ; message =
+        Structured
+          { file_excerpt =
+              Some "4 | ......struct\n\
+                    5 |   let x y = y +. 2.0\n\
+                    6 | end\n\
+                    "
+          ; message =
+              "Signature mismatch:\n\
+              \       Modules do not match:\n\
+              \         sig val x : float -> float end\n\
+              \       is not included in\n\
+              \         sig val x : int -> int end\n\
+              \       Values do not match:\n\
+              \         val x : float -> float\n\
+              \       is not included in\n\
+              \         val x : int -> int"
+          ; severity = Error
+          }
+    ; related =
+        [ ({ path = "test.ml"; line = Single 3; chars = Some (2, 20) },
+          Raw "Expected declaration")
+        ; ({ path = "test.ml"; line = Single 5; chars = Some (6, 7) },
+          Raw "Actual declaration\n\
+               ")
+        ]
+    } |}]
 
 let%expect_test "warning" =
   Test.create (fun t ->
@@ -133,14 +117,20 @@ let%expect_test "warning" =
       Path.relative t.dir "out");
   [%expect
     {|
-   >> error 0
-   loc = file test.ml, line 1, chars 13-14
-   severity = warning 26 [unused-var]
-   preview =
-   1 | let () = let x = 2 in ()
-                    ^
-
-   message = unused variable x. |}]
+    >> error 0
+    { loc = { path = "test.ml"; line = Single 1; chars = Some (13, 14) }
+    ; message =
+        Structured
+          { file_excerpt =
+              Some "1 | let () = let x = 2 in ()\n\
+                   \                 ^\n\
+                    "
+          ; message = "unused variable x.\n\
+                       "
+          ; severity = Warning { code = 26; name = "unused-var" }
+          }
+    ; related = []
+    } |}]
 
 let%expect_test "mli mismatch" =
   Test.create (fun t ->
@@ -152,18 +142,21 @@ let%expect_test "mli mismatch" =
       Path.relative t.dir "out");
   [%expect
     {|
-   >> error 0
-   loc = file test.ml, line 1
-   severity = error
-   message = The implementation test.ml does not match the interface test.cmi:
-          Values do not match: val x : bool is not included in val x : int
-
-   >> error 1
-   loc = file test.mli, line 1, chars 0-11
-   raw message =
-   Expected declaration
-
-   >> error 2
-   loc = file test.ml, line 1, chars 4-5
-   raw message =
-   Actual declaration |}]
+    >> error 0
+    { loc = { path = "test.ml"; line = Single 1; chars = None }
+    ; message =
+        Structured
+          { file_excerpt = None
+          ; message =
+              "The implementation test.ml does not match the interface test.cmi:\n\
+              \       Values do not match: val x : bool is not included in val x : int"
+          ; severity = Error
+          }
+    ; related =
+        [ ({ path = "test.mli"; line = Single 1; chars = Some (0, 11) },
+          Raw "Expected declaration")
+        ; ({ path = "test.ml"; line = Single 1; chars = Some (4, 5) },
+          Raw "Actual declaration\n\
+               ")
+        ]
+    } |}]

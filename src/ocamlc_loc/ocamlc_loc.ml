@@ -1,4 +1,5 @@
 module Re = Dune_re
+module Dyn = Stdune.Dyn
 
 type severity =
   | Error
@@ -10,7 +11,7 @@ type severity =
 type message =
   | Raw of string
   | Structured of
-      { preview : string option
+      { file_excerpt : string option
       ; message : string
       ; severity : severity
       }
@@ -27,6 +28,45 @@ type report =
   ; related : (loc * message) list
   }
 
+let dyn_of_severity =
+  let open Dyn.Encoder in
+  function
+  | Error -> constr "Error" []
+  | Warning { code; name } ->
+    constr "Warning" [ record [ ("code", int code); ("name", string name) ] ]
+
+let dyn_of_message =
+  let open Dyn.Encoder in
+  function
+  | Raw s -> constr "Raw" [ string s ]
+  | Structured { file_excerpt; message; severity } ->
+    constr "Structured"
+      [ record
+          [ ("file_excerpt", (option string) file_excerpt)
+          ; ("message", string message)
+          ; ("severity", dyn_of_severity severity)
+          ]
+      ]
+
+let dyn_of_loc { path; line; chars } =
+  let open Dyn.Encoder in
+  record
+    [ ("path", string path)
+    ; ( "line"
+      , match line with
+        | `Single i -> constr "Single" [ int i ]
+        | `Range (i, j) -> constr "Range" [ int i; int j ] )
+    ; ("chars", option (pair int int) chars)
+    ]
+
+let dyn_of_report { loc; message; related } =
+  let open Dyn.Encoder in
+  record
+    [ ("loc", dyn_of_loc loc)
+    ; ("message", dyn_of_message message)
+    ; ("related", list (pair dyn_of_loc dyn_of_message) related)
+    ]
+
 let re =
   lazy
     (let open Re in
@@ -36,10 +76,12 @@ let re =
     let chars = seq [ str "characters"; rep1 space; range ] in
     let file = seq [ str "File "; char '"'; group path; char '"'; char ',' ] in
     let single_marker, line = mark (seq [ str "line"; rep1 space; number ]) in
-    let range_marker, lines = mark (seq [ str "lines"; rep1 space; range ]) in
+    let lines = seq [ str "lines"; rep1 space; range ] in
+    let related_marker, related_space = mark (seq [ char '\n'; rep1 blank ]) in
     let re =
       seq
-        [ file
+        [ opt related_space
+        ; file
         ; rep1 space
         ; alt [ line; lines ]
         ; opt (seq [ char ','; rep1 space; chars ])
@@ -47,7 +89,7 @@ let re =
         ; rep space
         ]
     in
-    (Re.compile re, single_marker, range_marker))
+    (Re.compile re, single_marker, related_marker))
 
 let message_re =
   lazy
@@ -80,7 +122,7 @@ let parse_message msg =
   match Re.exec re msg with
   | exception Not_found -> Raw msg
   | group ->
-    let preview =
+    let file_excerpt =
       if Re.Group.test group 1 then
         Some (Re.Group.get group 1)
       else
@@ -94,10 +136,10 @@ let parse_message msg =
         let name = Re.Group.get group 3 in
         Warning { code; name }
     in
-    Structured { preview; severity; message = Re.Group.get group 4 }
+    Structured { file_excerpt; severity; message = Re.Group.get group 4 }
 
-let parse s : report list =
-  let re, single_marker, _ = Lazy.force re in
+let parse s =
+  let re, single_marker, related_marker = Lazy.force re in
   match Re.split_full re s with
   | [] -> []
   | [ `Text _ ] -> []
@@ -119,7 +161,11 @@ let parse s : report list =
           None
       in
       let message = parse_message message in
-      { loc = { path = str_group 1; line; chars }; message; related = [] }
+      let res = ({ path = str_group 1; line; chars }, message) in
+      if Re.Mark.test group related_marker then
+        `Related res
+      else
+        `Parent res
     in
     let rec loop acc = function
       | `Text _ :: _ -> assert false
@@ -133,3 +179,26 @@ let parse s : report list =
       | [] -> acc
     in
     List.rev (loop [] rest)
+
+let parse s =
+  let rec loop acc current = function
+    | [] -> current_to_acc acc current
+    | `Parent (loc, message) :: xs ->
+      let acc = current_to_acc acc current in
+      let current = `Accumulating { related = []; loc; message } in
+      loop acc current xs
+    | `Related (loc, message) :: xs ->
+      let current =
+        match current with
+        | `None -> assert false
+        | `Accumulating p ->
+          `Accumulating { p with related = (loc, message) :: p.related }
+      in
+      loop acc current xs
+  and current_to_acc acc current =
+    match current with
+    | `None -> acc
+    | `Accumulating p -> { p with related = List.rev p.related } :: acc
+  in
+  let components = parse s in
+  List.rev (loop [] `None components)

@@ -14,7 +14,7 @@ type severity =
 type message =
   | Raw of string
   | Structured of
-      { preview : string option
+      { file_excerpt : string option
       ; message : string
       ; severity : severity
       }
@@ -24,5 +24,7 @@ type report =
   ; message : message
   ; related : (loc * message) list
   }
+
+val dyn_of_report : report -> Stdune.Dyn.t
 
 val parse : string -> report list

@@ -279,7 +279,7 @@ module Client = struct
     | None ->
       Code_error.raise "connection already established with the client" []
     | Some async -> (
-      let* res =
+      let task =
         Worker.task async ~f:(fun () ->
             let transport = Transport.create t.sockaddr in
             t.transport <- Some transport;
@@ -290,7 +290,8 @@ module Client = struct
       in
       Worker.stop async;
       t.async <- None;
-      match res with
+      let* task = task in
+      match task with
       | Error `Stopped -> assert false
       | Error (`Exn exn) -> Fiber.return (Error exn)
       | Ok (in_, out) ->

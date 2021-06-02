@@ -66,26 +66,20 @@ module Init = struct
                 let+ () = Csexp_rpc.Session.write session (Some [ sexp ]) in
                 Some ())
         in
-        Fiber.finalize
-          (fun () ->
-            let+ res =
-              Fiber.collect_errors (fun () ->
-                  (* We want to close right away so we use with_error_handler *)
-                  Fiber.with_error_handler
-                    ~on_error:(fun exn ->
-                      let+ () = Lazy.force close in
-                      Dune_util.Report_error.report exn;
-                      raise Dune_util.Report_error.Already_reported)
-                    (fun () ->
-                      Fiber.fork_and_join_unit forward_to_stdout
-                        forward_from_stdin))
-            in
-            match res with
-            | Ok () -> ()
-            | Error _ -> ())
-          ~finally:(fun () ->
-            let+ () = Lazy.force close in
-            ()))
+        let* res =
+          Fiber.map_reduce_errors
+            (module Monoid.Unit)
+            ~on_error:(fun exn ->
+              let+ () = Lazy.force close in
+              Dune_util.Report_error.report exn;
+              raise Dune_util.Report_error.Already_reported)
+            (fun () ->
+              Fiber.fork_and_join_unit forward_to_stdout forward_from_stdin)
+        in
+        let+ () = Lazy.force close in
+        match res with
+        | Ok () -> ()
+        | Error () -> ())
 
   let connect common =
     let where = wait_for_server common in

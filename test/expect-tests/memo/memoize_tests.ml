@@ -18,6 +18,8 @@ let printf = Printf.printf
 
 let () = Memo.Perf_counters.enable ()
 
+let () = Memo.Debug.check_invariants := true
+
 let print_perf_counters () =
   Memo.Perf_counters.assert_invariants ();
   printf "%s\n" (Memo.Perf_counters.report_for_current_run ())

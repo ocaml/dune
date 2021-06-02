@@ -1,7 +1,11 @@
 open! Stdune
 open Fiber.O
 
-let track_locations_of_lazy_values = ref false
+module Debug = struct
+  let track_locations_of_lazy_values = ref false
+
+  let check_invariants = ref false
+end
 
 module Counters = struct
   let enabled = ref false
@@ -109,7 +113,7 @@ module Spec = struct
   let create ~name ~input ~human_readable_description ~cutoff f =
     let name =
       match name with
-      | None when !track_locations_of_lazy_values ->
+      | None when !Debug.track_locations_of_lazy_values ->
         Option.map
           (Caller_id.get ~skip:[ __FILE__ ])
           ~f:(fun loc ->
@@ -731,11 +735,28 @@ let get_cached_value_in_current_cycle (dep_node : _ Dep_node.t) =
 module Cached_value = struct
   include M.Cached_value
 
+  let capture_deps ~deps_rev =
+    if !Debug.check_invariants then
+      List.iter deps_rev ~f:(function Dep_node.T dep_node ->
+          (match get_cached_value_in_current_cycle dep_node with
+          | None ->
+            let reason =
+              match dep_node.last_cached_value with
+              | None -> "(no value)"
+              | Some _ -> "(old run)"
+            in
+            Code_error.raise
+              ("Attempted to create a cached value based on some stale inputs "
+             ^ reason)
+              []
+          | Some _up_to_date_cached_value -> ()));
+    List.rev deps_rev
+
   let create x ~deps_rev =
     { value = x
     ; last_changed_at = Run.current ()
     ; last_validated_at = Run.current ()
-    ; deps = List.rev deps_rev
+    ; deps = capture_deps ~deps_rev
     }
 
   (* Dependencies of cancelled computations are not accurate, so we store the
@@ -750,7 +771,7 @@ module Cached_value = struct
 
   let confirm_old_value t ~deps_rev =
     t.last_validated_at <- Run.current ();
-    t.deps <- List.rev deps_rev;
+    t.deps <- capture_deps ~deps_rev;
     t
 
   let value_changed (node : _ Dep_node.t) prev_value cur_value =

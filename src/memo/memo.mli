@@ -411,9 +411,14 @@ end) : sig
   val eval : 'a Function.input -> 'a Function.output Build.t
 end
 
-(** If [true], this module will record the location of [Lazy.t] values. This is
-    a bit expensive to compute, but it helps debugging. *)
-val track_locations_of_lazy_values : bool ref
+(** Diagnostics features that affect performance but are useful for debugging. *)
+module Debug : sig
+  (** If [true], Memo will record the location of [Lazy.t] values. *)
+  val track_locations_of_lazy_values : bool ref
+
+  (** If [true], Memo will perform additional checks of internal invariants. *)
+  val check_invariants : bool ref
+end
 
 (** Various performance counters. Reset to zero at the start of every run. *)
 module Perf_counters : sig

@@ -173,8 +173,6 @@ module Build = struct
     and+ targets = Arg.(value & pos_all string [] name_) in
     client_term common @@ fun common ->
     let where = wait_for_server common in
-    printfn "Server is listening on %s" (Dune_rpc.Where.to_string where);
-    printfn "ID's of connected clients (include this one):";
     Dune_rpc_impl.Run.client where
       (Dune_rpc.Initialize.Request.create
          ~id:(Dune_rpc.Id.make (Sexp.Atom "build")))

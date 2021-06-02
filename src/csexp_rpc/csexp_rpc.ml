@@ -266,25 +266,31 @@ module Client = struct
 
   type t =
     { mutable transport : Transport.t option
-    ; async : Worker.t
+    ; mutable async : Worker.t option
     ; sockaddr : Unix.sockaddr
     }
 
   let create sockaddr =
     let+ async = Worker.create () in
-    { sockaddr; async; transport = None }
+    { sockaddr; async = Some async; transport = None }
 
   let connect t =
-    let* in_, out =
-      Worker.task_exn t.async ~f:(fun () ->
-          let transport = Transport.create t.sockaddr in
-          t.transport <- Some transport;
-          let client = Transport.connect transport in
-          let out = Unix.out_channel_of_descr client in
-          let in_ = Unix.in_channel_of_descr client in
-          (in_, out))
-    in
-    Session.create_full Socket in_ out
+    match t.async with
+    | None ->
+      Code_error.raise "connection already established with the client" []
+    | Some async ->
+      let* in_, out =
+        Worker.task_exn async ~f:(fun () ->
+            let transport = Transport.create t.sockaddr in
+            t.transport <- Some transport;
+            let client = Transport.connect transport in
+            let out = Unix.out_channel_of_descr client in
+            let in_ = Unix.in_channel_of_descr client in
+            (in_, out))
+      in
+      Worker.stop async;
+      t.async <- None;
+      Session.create_full Socket in_ out
 
   let stop t = Option.iter t.transport ~f:Transport.close
 end

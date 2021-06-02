@@ -274,7 +274,7 @@ module Client = struct
     let+ async = Worker.create () in
     { sockaddr; async; transport = None }
 
-  let connect t =
+  let connect_exn t =
     let* in_, out =
       Worker.task_exn t.async ~f:(fun () ->
           let transport = Transport.create t.sockaddr in
@@ -285,6 +285,23 @@ module Client = struct
           (in_, out))
     in
     Session.create in_ out
+
+  let connect t =
+    let* res =
+      Worker.task t.async ~f:(fun () ->
+          let transport = Transport.create t.sockaddr in
+          t.transport <- Some transport;
+          let client = Transport.connect transport in
+          let out = Unix.out_channel_of_descr client in
+          let in_ = Unix.in_channel_of_descr client in
+          (in_, out))
+    in
+    match res with
+    | Error `Stopped -> assert false
+    | Error (`Exn exn) -> Fiber.return (Error exn)
+    | Ok (in_, out) ->
+      let+ res = Session.create in_ out in
+      Ok res
 
   let stop t = Option.iter t.transport ~f:Transport.close
 end

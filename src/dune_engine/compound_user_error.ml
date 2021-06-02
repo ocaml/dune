@@ -42,3 +42,45 @@ include Annot
 include User_error.Annot.Make (Annot)
 
 let make ~main ~related = make (create ~main ~related)
+
+let make_loc ~dir { Ocamlc_loc.path; chars; line } : Loc.t =
+  let pos_fname =
+    let dir = Path.drop_optional_build_context_maybe_sandboxed dir in
+    Path.to_absolute_filename (Path.relative dir path)
+  in
+  let pos_lnum_start, pos_lnum_stop =
+    match line with
+    | `Single i -> (i, i)
+    | `Range (i, j) -> (i, j)
+  in
+  let pos_cnum_start, pos_cnum_stop =
+    match chars with
+    | None -> (0, 0)
+    | Some (x, y) -> (x, y)
+  in
+  let pos = { Lexing.pos_fname; pos_lnum = 0; pos_bol = 0; pos_cnum = 0 } in
+  { Loc.start =
+      { pos with pos_lnum = pos_lnum_start; pos_cnum = pos_cnum_start }
+  ; Loc.stop = { pos with pos_lnum = pos_lnum_stop; pos_cnum = pos_cnum_stop }
+  }
+
+let make_message (msg : Ocamlc_loc.message) =
+  match msg with
+  | Raw s -> Pp.verbatim s
+  | Structured { file_excerpt = _; message; severity = _ } ->
+    Pp.verbatim message
+
+let parse_output ~dir s =
+  let reports = Ocamlc_loc.parse s in
+  match reports with
+  | [] -> None
+  | report :: _ ->
+    (* We assume that there's at most one error coming from a command for now.*)
+    let make_message (loc, message) =
+      let loc = make_loc ~dir loc in
+      let message = make_message message in
+      User_message.make ~loc [ message ]
+    in
+    let main = make_message (report.loc, report.message) in
+    let related = List.map report.related ~f:make_message in
+    Some (make ~main ~related)

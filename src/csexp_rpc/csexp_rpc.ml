@@ -19,20 +19,15 @@ let debug = Option.is_some (Env.get Env.initial "DUNE_RPC_DEBUG")
 module Session = struct
   module Id = Session_id
 
-  type kind =
-    | Socket
-    | Channel
-
   type t =
     { out_channel : out_channel
     ; in_channel : in_channel
     ; id : Id.t
     ; mutable writer : Worker.t option
     ; mutable reader : Worker.t option
-    ; kind : kind
     }
 
-  let create_full kind in_channel out_channel =
+  let create in_channel out_channel =
     if debug then Format.eprintf ">> NEW SESSION@.";
     let reader_ref = ref None in
     let+ t =
@@ -44,13 +39,10 @@ module Session = struct
       ; id
       ; reader = Some reader
       ; writer = Some writer
-      ; kind
       }
     in
     reader_ref := Some t.reader;
     t
-
-  let create in_channel out_channel = create_full Channel in_channel out_channel
 
   let string_of_packet = function
     | None -> "EOF"
@@ -103,30 +95,25 @@ module Session = struct
       Code_error.raise "attempting to write to a closed channel"
         [ ("sexp", Dyn.Encoder.(option (list Sexp.to_dyn)) sexps) ]
     | Some writer -> (
-      let+ res =
-        Worker.task writer
-          ~f:
-            (match sexps with
-            | Some sexps ->
-              fun () ->
-                List.iter sexps ~f:(Csexp.to_channel t.out_channel);
-                flush t.out_channel
-            | None -> (
-              match t.kind with
-              | Channel -> fun () -> close_out_noerr t.out_channel
-              | Socket -> (
-                fun () ->
-                  let fd = Unix.descr_of_out_channel t.out_channel in
-                  try Unix.shutdown fd Unix.SHUTDOWN_SEND with
-                  | Unix.Unix_error _ -> ())))
-      in
-      match res with
-      | Ok () -> ()
-      | Error `Stopped -> assert false
-      | Error (`Exn e) ->
-        t.writer <- None;
+      match sexps with
+      | None ->
+        close_out_noerr t.out_channel;
+        close_in_noerr t.in_channel;
         Worker.stop writer;
-        Exn_with_backtrace.reraise e)
+        Fiber.return ()
+      | Some sexps -> (
+        let+ res =
+          Worker.task writer ~f:(fun () ->
+              List.iter sexps ~f:(Csexp.to_channel t.out_channel);
+              flush t.out_channel)
+        in
+        match res with
+        | Ok () -> ()
+        | Error `Stopped -> assert false
+        | Error (`Exn e) ->
+          t.writer <- None;
+          Worker.stop writer;
+          Exn_with_backtrace.reraise e))
 end
 
 let close_fd_no_error fd =
@@ -226,7 +213,7 @@ module Server = struct
       | Ok None ->
         Fiber.return None
       | Ok (Some (in_, out)) ->
-        let+ session = Session.create_full Socket in_ out in
+        let+ session = Session.create in_ out in
         Some session
     in
     Fiber.Stream.In.create loop
@@ -295,7 +282,7 @@ module Client = struct
       | Error `Stopped -> assert false
       | Error (`Exn exn) -> Fiber.return (Error exn)
       | Ok (in_, out) ->
-        let+ res = Session.create_full Socket in_ out in
+        let+ res = Session.create in_ out in
         Ok res)
 
   let connect_exn t =

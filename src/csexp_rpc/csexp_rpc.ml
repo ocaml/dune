@@ -284,7 +284,7 @@ module Client = struct
           let in_ = Unix.in_channel_of_descr client in
           (in_, out))
     in
-    Session.create in_ out
+    Session.create_full Socket in_ out
 
   let stop t = Option.iter t.transport ~f:Transport.close
 end

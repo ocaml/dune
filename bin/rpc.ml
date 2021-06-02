@@ -71,8 +71,7 @@ module Init = struct
             (module Monoid.Unit)
             ~on_error:(fun exn ->
               let+ () = Lazy.force close in
-              Dune_util.Report_error.report exn;
-              raise Dune_util.Report_error.Already_reported)
+              Dune_util.Report_error.report exn)
             (fun () ->
               Fiber.fork_and_join_unit forward_to_stdout forward_from_stdin)
         in

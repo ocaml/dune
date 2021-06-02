@@ -14,6 +14,12 @@ let init ~capture_outputs =
        else
          Colors.setup_env_for_colors Env.initial
      in
-     Env.add env ~var:"INSIDE_DUNE" ~value:"1")
+     let env = Env.add env ~var:"INSIDE_DUNE" ~value:"1" in
+     (* To improve reproducibility, we don't let command executed by Dune
+        observe whether Dune is run inside emacs or not. One such program that
+        behave differently when run inside emacs is Dune itself and we sometimes
+        run Dune from inside Dune, for instnace in cram tests, so it is
+        important to do this. *)
+     Env.remove env ~var:"INSIDE_EMACS")
 
 let env () = Fdecl.get env

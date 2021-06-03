@@ -14,6 +14,8 @@ module File : sig
 
   val to_dyn : t -> Dyn.t
 
+  val in_staging_area : Path.Source.t -> Path.Build.t
+
   (** Register an intermediate file to promote. The build path may point to the
       sandbox and the file will be moved to the staging area. *)
   val register_intermediate :

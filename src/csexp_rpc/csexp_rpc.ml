@@ -24,6 +24,7 @@ module Session = struct
     | Open of
         { out_channel : out_channel
         ; in_channel : in_channel
+        ; socket : bool
         ; writer : Worker.t
         ; reader : Worker.t
         }
@@ -33,12 +34,12 @@ module Session = struct
     ; mutable state : state
     }
 
-  let create in_channel out_channel =
+  let create ~socket in_channel out_channel =
     if debug then Format.eprintf ">> NEW SESSION@.";
     let* reader = Worker.create () in
     let+ writer = Worker.create () in
     let id = Id.gen () in
-    let state = Open { in_channel; out_channel; reader; writer } in
+    let state = Open { in_channel; out_channel; reader; writer; socket } in
     { id; state }
 
   let string_of_packet = function
@@ -52,11 +53,14 @@ module Session = struct
   let close t =
     match t.state with
     | Closed -> ()
-    | Open { in_channel; out_channel; reader; writer } ->
+    | Open { in_channel; out_channel; reader; writer; socket } ->
       Worker.stop reader;
       Worker.stop writer;
+      if socket then
+        Unix.shutdown (Unix.descr_of_out_channel out_channel) Unix.SHUTDOWN_ALL
+      else
+        close_in_noerr in_channel;
       close_out_noerr out_channel;
-      close_in_noerr in_channel;
       t.state <- Closed
 
   let read t =
@@ -217,7 +221,7 @@ module Server = struct
       | Ok None ->
         Fiber.return None
       | Ok (Some (in_, out)) ->
-        let+ session = Session.create in_ out in
+        let+ session = Session.create ~socket:true in_ out in
         Some session
     in
     Fiber.Stream.In.create loop
@@ -285,7 +289,7 @@ module Client = struct
       | Error `Stopped -> assert false
       | Error (`Exn exn) -> Fiber.return (Error exn)
       | Ok (in_, out) ->
-        let+ res = Session.create in_ out in
+        let+ res = Session.create ~socket:true in_ out in
         Ok res)
 
   let connect_exn t =

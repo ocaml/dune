@@ -20,7 +20,7 @@ module Session : sig
       writing *)
   type t
 
-  val create : in_channel -> out_channel -> t Fiber.t
+  val create : socket:bool -> in_channel -> out_channel -> t Fiber.t
 
   (* [write t x] writes the s-expression when [x] is [Some sexp], and closes the
      session if [x = None ] *)

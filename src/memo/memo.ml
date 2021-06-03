@@ -513,9 +513,9 @@ end
    - [Changed]: one of the dependencies has changed since the previous run and
    the current node should therefore be recomputed.
 
-   - [Cycle_error _]: one of the dependencies leads to a dependency cycle. In
-   this case, there is no point in recomputing the current node: it's impossible
-   to bring its dependencies up to date! *)
+   - [Cancelled _]: one of the dependencies leads to a dependency cycle. In this
+   case, there is no point in recomputing the current node: it's impossible to
+   bring its dependencies up to date! *)
 module Changed_or_not = struct
   type t =
     | Unchanged

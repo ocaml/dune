@@ -59,7 +59,7 @@ module Init = struct
                  running"
             ]
     in
-    let* stdio = Csexp_rpc.Session.create stdin stdout in
+    let* stdio = Csexp_rpc.Session.create ~socket:false stdin stdout in
     let forward f t =
       Fiber.repeat_while ~init:() ~f:(fun () ->
           let* read = Csexp_rpc.Session.read f in

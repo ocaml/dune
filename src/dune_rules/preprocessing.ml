@@ -432,11 +432,9 @@ let get_cookies ~loc ~expander ~lib_name libs =
                   requests %S and %s requests %S"
                  lib1 lib2 name lib1 val1 lib2 val2
              ])
-  |> String.Map.foldi ~init:[] ~f:(fun name (value, _) acc ->
-         (name, value) :: acc)
-  |> List.rev
-  |> List.concat_map ~f:(fun (name, value) ->
+  |> String.Map.to_list_map ~f:(fun name (value, _) ->
          [ "--cookie"; sprintf "%s=%S" name value ])
+  |> List.concat
 
 let ppx_driver_and_flags_internal sctx ~loc ~expander ~lib_name ~flags libs =
   let open Action_builder.O in

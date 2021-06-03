@@ -139,10 +139,39 @@ val package_deps :
 
 (** {1 Requests} *)
 
+(** Build a file and return the digest of its contents *)
+val build_file : Path.t -> Digest.t Memo.Build.t
+
 (** Build a request *)
 val build : 'a Action_builder.t -> 'a Memo.Build.t
 
+(** Return [true] if a file exists or is buildable *)
+val file_exists : Path.t -> bool Memo.Build.t
+
+val alias_exists : Alias.t -> bool Memo.Build.t
+
 val is_target : Path.t -> bool Memo.Build.t
+
+val build_deps : Dep.Set.t -> Dep.Facts.t Memo.Build.t
+
+(** Execute a action. The execution is cached. *)
+val execute_action :
+     observing_facts:Dep.Facts.t
+  -> Action_builder.Action_desc.t
+  -> unit Memo.Build.t
+
+(** Execute a action and capture its output. The execution is cached. *)
+val execute_action_stdout :
+     observing_facts:Dep.Facts.t
+  -> Action_builder.Action_desc.t
+  -> string Memo.Build.t
+
+(** Return the rule that has the given file has target, if any *)
+val get_rule : Path.t -> Rule.t option Memo.Build.t
+
+(** Return the definition of an alias *)
+val get_alias_definition :
+  Alias.t -> (Loc.t * unit Action_builder.t) list Memo.Build.t
 
 (** List of all buildable targets. *)
 val all_targets : unit -> Path.Build.Set.t Memo.Build.t
@@ -150,36 +179,6 @@ val all_targets : unit -> Path.Build.Set.t Memo.Build.t
 (** The set of files that were created in the source tree and need to be
     deleted. *)
 val files_in_source_tree_to_delete : unit -> Path.Set.t
-
-(** {2 Build rules} *)
-
-module For_command_line : sig
-  (** Functions in this module duplicate some work that is done by [build] and
-      other functions, so they not suitable to be called as part of a normal
-      build. However, we need them in some part of the command line. *)
-
-  (** A fully evaluated rule. *)
-  module Rule : sig
-    type t = private
-      { id : Rule.Id.t
-      ; dir : Path.Build.t
-      ; deps : Dep.Set.t
-      ; expanded_deps : Path.Set.t
-      ; targets : Path.Build.Set.t
-      ; context : Build_context.t option
-      ; action : Action.t
-      }
-  end
-
-  (** Return the list of fully evaluated rules used to build the given targets.
-      If [recursive] is [true], also include the rules needed to build the
-      transitive dependencies of the targets. *)
-  val evaluate_rules :
-    recursive:bool -> request:unit Action_builder.t -> Rule.t list Memo.Build.t
-
-  (** Similar to [build], but doesn't build the dependencies, only expand them *)
-  val eval_build_request : 'a Action_builder.t -> ('a * Dep.Set.t) Memo.Build.t
-end
 
 (** {2 Running a build} *)
 

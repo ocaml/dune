@@ -69,6 +69,7 @@ And we see the error:
        $TESTCASE_ROOT/use/../external/_build/install/default/lib/some_package1
   -> required by _build/default/proj2/.bar.objs/byte/bar.cmo
   -> required by _build/default/proj2/bar.cma
+  -> required by %{cma:proj2/bar} at command line:1
   [1]
 
 We can fix the error by allow overlapping dependencies:

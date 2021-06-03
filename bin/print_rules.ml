@@ -121,9 +121,9 @@ let term =
                       Path.build p :: acc)
               >>| Action_builder.paths
             | _ ->
-              Target.resolve_targets_exn (Common.root common) config setup
-                targets
-              >>| Target.request
+              Memo.Build.return
+                (Target.interpret_targets (Common.root common) config setup
+                   targets)
           in
           let+ rules =
             Build_system.For_command_line.evaluate_rules ~request ~recursive

@@ -1,4 +1,5 @@
 open Stdune
+open Dune_engine
 
 type t =
   { name : Dune_engine.Alias.Name.t
@@ -59,3 +60,11 @@ let of_string (root : Workspace_root.t) ~recursive s ~contexts =
     let dir = Path.parent_exn path in
     let name = Dune_engine.Alias.Name.of_string (Path.basename path) in
     in_dir ~name ~recursive ~contexts dir
+
+let request { name; recursive; dir; contexts } =
+  let contexts = List.map ~f:Dune_rules.Context.name contexts in
+  (if recursive then
+    Build_system.Alias.dep_rec_multi_contexts
+  else
+    Build_system.Alias.dep_multi_contexts)
+    ~dir ~name ~contexts

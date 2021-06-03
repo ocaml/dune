@@ -116,7 +116,7 @@ end
 
 let files_in_source_tree_to_delete () = Promoted_to_delete.get_db ()
 
-module Alias0 = struct
+module Alias = struct
   include Alias
 
   let dep t = Action_builder.dep (Dep.alias t)
@@ -848,8 +848,7 @@ end = struct
                     ( Loc.none
                     , let open Action_builder.O in
                       let+ _ =
-                        Alias0.dep_rec_internal ~name:default_alias ~dir
-                          ~ctx_dir
+                        Alias.dep_rec_internal ~name:default_alias ~dir ~ctx_dir
                       in
                       () )
               })
@@ -2340,8 +2339,6 @@ let prefix_rules (prefix : unit Action_builder.t) ~f =
     Rules.produce (Rules.map_rules rules ~f:(Rule.with_prefix ~build:prefix))
   in
   res
-
-module Alias = Alias0
 
 let report_early_exn ~report_error exn =
   let t = t () in

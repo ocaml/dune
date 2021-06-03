@@ -16,13 +16,7 @@ let request targets =
       >>>
       match target with
       | File path -> Action_builder.path path
-      | Alias { Alias.name; recursive; dir; contexts } ->
-        let contexts = List.map ~f:Dune_rules.Context.name contexts in
-        (if recursive then
-          Build_system.Alias.dep_rec_multi_contexts
-        else
-          Build_system.Alias.dep_multi_contexts)
-          ~dir ~name ~contexts)
+      | Alias a -> Alias.request a)
 
 let target_hint (_setup : Dune_rules.Main.build_system) path =
   assert (Path.is_managed path);
@@ -170,3 +164,9 @@ let resolve_targets_exn root config setup user_targets =
             ]
             ~hints
         | Ok targets -> targets)
+
+let interpret_targets root config setup user_targets =
+  let open Action_builder.O in
+  let* () = Action_builder.return () in
+  Action_builder.memo_build (resolve_targets_exn root config setup user_targets)
+  >>= request

@@ -20,15 +20,18 @@ let client_term common f =
 
 module Init = struct
   let connect ~wait common =
-    let where = wait_for_server common in
     let open Fiber.O in
     let* client, session =
       let once () =
-        let* client = Dune_rpc_impl.Run.Connect.csexp_client where in
-        let+ session = Csexp_rpc.Client.connect client in
-        match session with
-        | Error _ -> None
-        | Ok session -> Some (client, session)
+        let where = Dune_rpc.Where.get () in
+        match where with
+        | None -> Fiber.return None
+        | Some where -> (
+          let* client = Dune_rpc_impl.Run.Connect.csexp_client where in
+          let+ session = Csexp_rpc.Client.connect client in
+          match session with
+          | Error _ -> None
+          | Ok session -> Some (client, session))
       in
       let rec loop sleeper =
         let* res = once () in

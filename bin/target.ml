@@ -9,10 +9,6 @@ type t =
   | File of Path.t
   | Alias of Alias.t
 
-type resolve_input =
-  | Path of Path.t
-  | Dep of Arg.Dep.t
-
 let request targets =
   List.fold_left targets ~init:(Action_builder.return ()) ~f:(fun acc target ->
       let open Action_builder.O in
@@ -143,17 +139,13 @@ let resolve_target root ~setup = function
     >>| Result.List.concat_map ~f:Fun.id
   | dep -> Memo.Build.return (Error (dep, []))
 
-let resolve_targets_mixed root (config : Dune_config.t) setup user_targets =
+let resolve_targets root (config : Dune_config.t)
+    (setup : Dune_rules.Main.build_system) user_targets =
   match user_targets with
   | [] -> Memo.Build.return []
   | _ ->
     let+ targets =
-      Memo.Build.parallel_map user_targets ~f:(function
-        | Dep d -> resolve_target root ~setup d
-        | Path p ->
-          resolve_path p ~setup
-          >>| Result.map_error ~f:(fun hints ->
-                  (Arg.Dep.file (Path.to_string p), hints)))
+      Memo.Build.parallel_map user_targets ~f:(resolve_target root ~setup)
     in
     if config.display.verbosity = Verbose then
       Log.info
@@ -167,11 +159,6 @@ let resolve_targets_mixed root (config : Dune_config.t) setup user_targets =
               | Alias a -> Alias.pp a)
         ];
     targets
-
-let resolve_targets root config (setup : Dune_rules.Main.build_system)
-    user_targets =
-  List.map ~f:(fun dep -> Dep dep) user_targets
-  |> resolve_targets_mixed root config setup
 
 let resolve_targets_exn root config setup user_targets =
   resolve_targets root config setup user_targets

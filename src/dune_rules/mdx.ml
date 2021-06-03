@@ -124,6 +124,7 @@ type t =
   ; packages : (Loc.t * Package.Name.t) list
   ; preludes : Prelude.t list
   ; enabled_if : Blang.t
+  ; package : Package.t option
   }
 
 let enabled_if t = t.enabled_if
@@ -150,8 +151,11 @@ let decode =
      and+ preludes = field ~default:[] "preludes" (repeat Prelude.decode)
      and+ enabled_if =
        Enabled_if.decode ~allowed_vars:Any ~since:(Some (2, 9)) ()
+     and+ package =
+       Stanza_common.Pkg.field_opt ()
+         ~check:(Dune_lang.Syntax.since Stanza.syntax (2, 9))
      in
-     { loc; files; packages; preludes; enabled_if })
+     { loc; files; packages; preludes; enabled_if; package })
 
 let () =
   let open Dune_lang.Decoder in
@@ -214,10 +218,21 @@ let gen_rules_for_single_file stanza ~sctx ~dir ~expander ~mdx_prog src =
 
 (** Generates the rules for a given mdx stanza *)
 let gen_rules t ~sctx ~dir ~expander =
-  let files_to_mdx = files_to_mdx t ~sctx ~dir in
-  let mdx_prog =
-    Super_context.resolve_program sctx ~dir ~loc:(Some t.loc)
-      ~hint:"opam install mdx" "ocaml-mdx"
+  let register_rules () =
+    let files_to_mdx = files_to_mdx t ~sctx ~dir in
+    let mdx_prog =
+      Super_context.resolve_program sctx ~dir ~loc:(Some t.loc)
+        ~hint:"opam install mdx" "ocaml-mdx"
+    in
+    List.iter files_to_mdx
+      ~f:(gen_rules_for_single_file t ~sctx ~dir ~expander ~mdx_prog)
   in
-  List.iter files_to_mdx
-    ~f:(gen_rules_for_single_file t ~sctx ~dir ~expander ~mdx_prog)
+  let do_it =
+    match (!Clflags.only_packages, t.package) with
+    | None, _
+    | Some _, None ->
+      true
+    | Some only, Some stanza_package ->
+      Package.Name.Set.mem only (Package.name stanza_package)
+  in
+  if do_it then register_rules ()

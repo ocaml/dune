@@ -8,6 +8,8 @@ unreleased - 2.9 branch
 - Allow to set up merlin in a variant of the default context
   (#4145, @TheLortex, @voodoos)
 
+- Add `(package ...)` to `(mdx ...)` (#4691, fixes #3756, @emillon)
+
 2.8.5 (28/03/2021)
 ------------------
 

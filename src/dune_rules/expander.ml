@@ -14,38 +14,38 @@ module Expanding_what = struct
     | User_action_without_targets of { what : string }
 end
 
-module With_or_without_deps = struct
+module Deps = struct
   module T = struct
     type 'a t =
-      | Without_deps of 'a Memo.Build.t
-      | With_deps of 'a Action_builder.t
+      | Without of 'a Memo.Build.t
+      | With of 'a Action_builder.t
 
-    let return x = Without_deps (Memo.Build.return x)
+    let return x = Without (Memo.Build.return x)
 
     let map t ~f =
       match t with
-      | Without_deps t -> Without_deps (Memo.Build.map t ~f)
-      | With_deps t -> With_deps (Action_builder.map t ~f)
+      | Without t -> Without (Memo.Build.map t ~f)
+      | With t -> With (Action_builder.map t ~f)
 
     let both a b =
       match (a, b) with
-      | Without_deps a, Without_deps b -> Without_deps (Memo.Build.both a b)
-      | With_deps a, With_deps b -> With_deps (Action_builder.both a b)
-      | Without_deps a, With_deps b ->
-        With_deps (Action_builder.both (Action_builder.memo_build a) b)
-      | With_deps a, Without_deps b ->
-        With_deps (Action_builder.both a (Action_builder.memo_build b))
+      | Without a, Without b -> Without (Memo.Build.both a b)
+      | With a, With b -> With (Action_builder.both a b)
+      | Without a, With b ->
+        With (Action_builder.both (Action_builder.memo_build a) b)
+      | With a, Without b ->
+        With (Action_builder.both a (Action_builder.memo_build b))
   end
 
   include T
   include Applicative.Make (T)
 
   let action_builder = function
-    | Without_deps x -> Action_builder.memo_build x
-    | With_deps x -> x
+    | Without x -> Action_builder.memo_build x
+    | With x -> x
 end
 
-type value = Value.t list With_or_without_deps.t
+type value = Value.t list Deps.t
 
 type t =
   { dir : Path.Build.t
@@ -111,8 +111,7 @@ let add_bindings_full t ~bindings =
 let add_bindings t ~bindings =
   add_bindings_full t
     ~bindings:
-      (Pform.Map.map bindings ~f:(fun v ->
-           With_or_without_deps.Without_deps (Memo.Build.return v)))
+      (Pform.Map.map bindings ~f:(fun v -> Deps.Without (Memo.Build.return v)))
 
 let path p = [ Value.Path p ]
 
@@ -239,7 +238,7 @@ type nonrec expansion_result =
   | Direct of value
   | Need_full_expander of (t -> value)
 
-let static v = Direct (Without_deps (Memo.Build.return v))
+let static v = Direct (Without (Memo.Build.return v))
 
 let[@inline never] invalid_use_of_target_variable t
     ~(source : Dune_lang.Template.Pform.t) ~var_multiplicity =
@@ -303,7 +302,7 @@ let expand_pform_gen ~(context : Context.t) ~bindings ~dir ~source
       | Make ->
         let open Memo.Build.O in
         Direct
-          (Without_deps
+          (Without
              (context.which "make" >>| function
               | None ->
                 Utils.program_not_found ~context:context.name
@@ -353,19 +352,19 @@ let expand_pform_gen ~(context : Context.t) ~bindings ~dir ~source
       | Project_root ->
         Need_full_expander
           (fun t ->
-            Without_deps
+            Without
               (Memo.Build.return
                  [ Value.Dir (Path.build (Scope.root t.scope)) ]))
       | Cc ->
         Need_full_expander
           (fun t ->
-            With_deps
+            With
               (let* cc = Action_builder.memo_build (cc t) in
                cc.c))
       | Cxx ->
         Need_full_expander
           (fun t ->
-            With_deps
+            With
               (let* cc = Action_builder.memo_build (cc t) in
                cc.cxx))
       | Ccomp_type ->
@@ -401,32 +400,31 @@ let expand_pform_gen ~(context : Context.t) ~bindings ~dir ~source
             | Some (var, default) -> (
               match Env.Var.Map.find t.local_env var with
               | Some v ->
-                With_deps
+                With
                   (let+ v = v in
                    string v)
               | None ->
-                Without_deps
+                Without
                   (Memo.Build.return
                      (string (Option.value ~default (Env.get t.env var))))))
       | Version ->
         Need_full_expander
-          (fun t ->
-            Without_deps (Memo.Build.return (expand_version t ~source s)))
+          (fun t -> Without (Memo.Build.return (expand_version t ~source s)))
       | Artifact a ->
-        Need_full_expander (fun t -> With_deps (expand_artifact ~source t a s))
+        Need_full_expander (fun t -> With (expand_artifact ~source t a s))
       | Path_no_dep ->
         (* This case is for %{path-no-dep:...} which was only allowed inside
            jbuild files *)
         assert false
       | Exe ->
         Need_full_expander
-          (fun t -> With_deps (dep (map_exe t (relative ~source t.dir s))))
+          (fun t -> With (dep (map_exe t (relative ~source t.dir s))))
       | Dep ->
-        Need_full_expander (fun t -> With_deps (dep (relative ~source t.dir s)))
+        Need_full_expander (fun t -> With (dep (relative ~source t.dir s)))
       | Bin ->
         Need_full_expander
           (fun t ->
-            With_deps
+            With
               (let* prog =
                  Action_builder.memo_build
                    (Artifacts.Bin.binary
@@ -437,7 +435,7 @@ let expand_pform_gen ~(context : Context.t) ~bindings ~dir ~source
       | Lib { lib_exec; lib_private } ->
         Need_full_expander
           (fun t ->
-            With_deps
+            With
               (let lib, file =
                  let loc = Dune_lang.Template.Pform.loc source in
                  match String.lsplit2 s ~on:':' with
@@ -541,7 +539,7 @@ let expand_pform_gen ~(context : Context.t) ~bindings ~dir ~source
       | Lib_available ->
         Need_full_expander
           (fun t ->
-            Without_deps
+            Without
               (let lib =
                  Lib_name.parse_string_exn
                    (Dune_lang.Template.Pform.loc source, s)
@@ -552,25 +550,22 @@ let expand_pform_gen ~(context : Context.t) ~bindings ~dir ~source
       | Read ->
         let path = relative ~source dir s in
         Direct
-          (With_deps
-             (Action_builder.map (Action_builder.contents path) ~f:string))
+          (With (Action_builder.map (Action_builder.contents path) ~f:string))
       | Read_lines ->
         let path = relative ~source dir s in
         Direct
-          (With_deps
-             (Action_builder.map (Action_builder.lines_of path) ~f:strings))
+          (With (Action_builder.map (Action_builder.lines_of path) ~f:strings))
       | Read_strings ->
         let path = relative ~source dir s in
         Direct
-          (With_deps
-             (Action_builder.map (Action_builder.strings path) ~f:strings))))
+          (With (Action_builder.map (Action_builder.strings path) ~f:strings))))
 
 (* Make sure to delay exceptions *)
 let expand_pform_gen ~context ~bindings ~dir ~source pform =
   match expand_pform_gen ~context ~bindings ~source ~dir pform with
   | exception (User_error.E _ as exn) ->
     Direct
-      (Without_deps
+      (Without
          (let open Memo.Build.O in
          let+ () = Memo.Build.return () in
          reraise exn))
@@ -580,7 +575,7 @@ let expand_pform_gen ~context ~bindings ~dir ~source pform =
       (fun t ->
         try f t with
         | User_error.E _ as exn ->
-          Without_deps
+          Without
             (let open Memo.Build.O in
             let+ () = Memo.Build.return () in
             reraise exn))
@@ -601,8 +596,8 @@ let expand_pform t ~source pform =
         | Direct v -> v
         | Need_full_expander f -> f t
       with
-      | With_deps x -> x
-      | Without_deps x -> Action_builder.memo_build x)
+      | With x -> x
+      | Without x -> Action_builder.memo_build x)
     ~human_readable_description:(fun () -> describe_source ~source)
 
 let expand_pform_no_deps t ~source pform =
@@ -616,8 +611,8 @@ let expand_pform_no_deps t ~source pform =
         | Direct v -> v
         | Need_full_expander f -> f t
       with
-      | With_deps _ -> isn't_allowed_in_this_position ~source
-      | Without_deps x -> x)
+      | With _ -> isn't_allowed_in_this_position ~source
+      | Without x -> x)
     ~human_readable_description:(fun () -> describe_source ~source)
 
 let expand t ~mode template =
@@ -672,10 +667,10 @@ module No_deps = struct
 end
 
 module With_deps_if_necessary = struct
-  open With_or_without_deps.O
-  module E = String_with_vars.Make_expander (With_or_without_deps)
+  open Deps.O
+  module E = String_with_vars.Make_expander (Deps)
 
-  let expand_pform t ~source pform : _ With_or_without_deps.t =
+  let expand_pform t ~source pform : _ Deps.t =
     match
       match
         expand_pform_gen ~context:t.context ~bindings:t.bindings ~dir:t.dir
@@ -684,13 +679,13 @@ module With_deps_if_necessary = struct
       | Direct v -> v
       | Need_full_expander f -> f t
     with
-    | Without_deps t ->
-      Without_deps
+    | Without t ->
+      Without
         (Memo.push_stack_frame
            (fun () -> t)
            ~human_readable_description:(fun () -> describe_source ~source))
-    | With_deps t ->
-      With_deps
+    | With t ->
+      With
         (Action_builder.push_stack_frame
            (fun () -> t)
            ~human_readable_description:(fun () -> describe_source ~source))
@@ -716,9 +711,9 @@ module With_reduced_var_set = struct
       (fun () ->
         match expand_pform_gen ~context ~bindings ~dir ~source pform with
         | Need_full_expander _
-        | Direct (With_deps _) ->
+        | Direct (With _) ->
           Memo.Build.return None
-        | Direct (Without_deps x) -> x >>| Option.some)
+        | Direct (Without x) -> x >>| Option.some)
       ~human_readable_description:(fun () -> describe_source ~source)
 
   let expand_pform ~context ~bindings ~dir ~source pform =

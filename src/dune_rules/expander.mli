@@ -65,17 +65,17 @@ val set_expanding_what : t -> Expanding_what.t -> t
     such bindings. *)
 val add_bindings : t -> bindings:Value.t list Pform.Map.t -> t
 
-module With_or_without_deps : sig
+module Deps : sig
   type 'a t =
-    | Without_deps of 'a Memo.Build.t
-    | With_deps of 'a Action_builder.t
+    | Without of 'a Memo.Build.t
+    | With of 'a Action_builder.t
 
   include Applicative with type 'a t := 'a t
 
   val action_builder : 'a t -> 'a Action_builder.t
 end
 
-type value = Value.t list With_or_without_deps.t
+type value = Value.t list Deps.t
 
 val add_bindings_full : t -> bindings:value Pform.Map.t -> t
 
@@ -113,9 +113,9 @@ end
 module With_deps_if_necessary : sig
   (** Same as [expand_xxx] but stay in the [Memo.Build] monad if possible. *)
 
-  val expand_path : t -> String_with_vars.t -> Path.t With_or_without_deps.t
+  val expand_path : t -> String_with_vars.t -> Path.t Deps.t
 
-  val expand_str : t -> String_with_vars.t -> string With_or_without_deps.t
+  val expand_str : t -> String_with_vars.t -> string Deps.t
 end
 
 module With_reduced_var_set : sig

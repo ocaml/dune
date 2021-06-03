@@ -33,7 +33,7 @@ let to_action_builder = function
 let dep expander = function
   | File s -> (
     match Expander.With_deps_if_necessary.expand_path expander s with
-    | Without_deps path ->
+    | Without path ->
       (* This special case is to support this pattern:
 
          {v ... (deps (:x foo)) (action (... (diff? %{x} %{x}.corrected))) ...
@@ -46,7 +46,7 @@ let dep expander = function
          expansion in the action builder monad, which is evaluated at rule
          execution time. *)
       Simple path
-    | With_deps path ->
+    | With path ->
       Other
         (let* path = path in
          let+ () = Action_builder.path path in
@@ -177,7 +177,7 @@ let named ~expander l =
             let x = Memo.lazy_ (fun () -> Memo.Build.all x) in
             let bindings =
               Pform.Map.set bindings (Var (User_var name))
-                (Expander.With_or_without_deps.Without_deps
+                (Expander.Deps.Without
                    (let+ paths = Memo.Lazy.force x in
                     Dune_util.Value.L.paths paths))
             in
@@ -195,7 +195,7 @@ let named ~expander l =
             in
             let bindings =
               Pform.Map.set bindings (Var (User_var name))
-                (Expander.With_or_without_deps.With_deps
+                (Expander.Deps.With
                    (let+ paths = x in
                     Dune_util.Value.L.paths paths))
             in
@@ -207,8 +207,7 @@ let named ~expander l =
   in
   let builder = Action_builder.memoize "deps" builder in
   let bindings =
-    Pform.Map.set bindings (Var Deps)
-      (Expander.With_or_without_deps.With_deps builder)
+    Pform.Map.set bindings (Var Deps) (Expander.Deps.With builder)
   in
   let expander = Expander.add_bindings_full expander ~bindings in
   let builder = Action_builder.ignore builder in

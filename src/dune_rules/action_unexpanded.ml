@@ -522,7 +522,7 @@ let expand t ~loc ~deps:deps_written_by_user ~targets_dir
                 (match multiplicity with
                 | One -> Target
                 | Multiple -> Targets))
-             (Expander.With_or_without_deps.Without_deps
+             (Expander.Deps.Without
                 (Memo.Build.return
                    (Value.L.paths (List.map targets ~f:Path.build)))))
   in

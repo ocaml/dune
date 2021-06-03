@@ -122,3 +122,5 @@ val running_jobs_count : t -> int
 (** Start the shutdown sequence. Among other things, it causes Dune to cancel
     the current build and stop accepting RPC clients. *)
 val shutdown : unit -> unit Fiber.t
+
+val inject_memo_invalidation : Memo.Invalidation.t -> unit Fiber.t

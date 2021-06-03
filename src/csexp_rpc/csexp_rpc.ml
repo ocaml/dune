@@ -108,10 +108,14 @@ module Session = struct
     | Open { writer; out_channel; socket; _ } -> (
       match sexps with
       | None ->
-        if socket then
-          Unix.shutdown
-            (Unix.descr_of_out_channel out_channel)
-            Unix.SHUTDOWN_ALL;
+        (if socket then
+          try
+            (* TODO this hack is temporary until we get rid of dune rpc init *)
+            Unix.shutdown
+              (Unix.descr_of_out_channel out_channel)
+              Unix.SHUTDOWN_ALL
+          with
+          | Unix.Unix_error (_, _, _) -> ());
         close t;
         Fiber.return ()
       | Some sexps -> (

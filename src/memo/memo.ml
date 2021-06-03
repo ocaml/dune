@@ -40,6 +40,8 @@ module type Build = sig
 
   module List : sig
     val map : 'a list -> f:('a -> 'b t) -> 'b list t
+
+    val concat_map : 'a list -> f:('a -> 'b list t) -> 'b list t
   end
 
   val memo_build : 'a build -> 'a t
@@ -81,6 +83,8 @@ module Build0 = struct
 
   module List = struct
     let map = parallel_map
+
+    let concat_map l ~f = map l ~f >>| List.concat
   end
 
   let memo_build = Fun.id

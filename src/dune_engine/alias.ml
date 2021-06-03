@@ -206,3 +206,12 @@ let describe alias =
       (Path.Source.to_string_maybe_quoted
          (Path.Source.relative dir_in_context (Name.to_string alias.name)))
       (ctx_suffix ctx)
+
+let package_install ~(context : Build_context.t) ~(pkg : Package.t) =
+  let dir =
+    let dir = Package.dir pkg in
+    Path.Build.append_source context.build_dir dir
+  in
+  let name = Package.name pkg in
+  sprintf ".%s-files" (Package.Name.to_string name)
+  |> Name.of_string |> make ~dir

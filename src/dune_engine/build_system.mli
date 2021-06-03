@@ -106,6 +106,8 @@ val init :
   -> sandboxing_preference:Sandbox_mode.t list
   -> rule_generator:(module Rule_generator)
   -> handler:Handler.t option
+  -> implicit_default_alias:
+       (Path.Build.t -> unit Action_builder.t option Memo.Build.t)
   -> unit
 
 (** {2 Primitive for rule generations} *)
@@ -134,35 +136,6 @@ val package_deps :
   -> Package.t
   -> Path.Set.t
   -> Package.Id.Set.t Memo.Build.t
-
-(** {2 Aliases} *)
-
-module Alias : sig
-  type t = Alias.t
-
-  (** Alias for all the files in [_build/install] that belong to this package *)
-  val package_install : context:Build_context.t -> pkg:Package.t -> t
-
-  (** Depend on the expansion of this alias. *)
-  val dep : t -> unit Action_builder.t
-
-  (** Implements [@@alias] on the command line *)
-  val dep_multi_contexts :
-       dir:Path.Source.t
-    -> name:Alias.Name.t
-    -> contexts:Context_name.t list
-    -> unit Action_builder.t
-
-  (** Implements [(alias_rec ...)] in dependency specification *)
-  val dep_rec : t -> loc:Loc.t -> unit Action_builder.t
-
-  (** Implements [@alias] on the command line *)
-  val dep_rec_multi_contexts :
-       dir:Path.Source.t
-    -> name:Alias.Name.t
-    -> contexts:Context_name.t list
-    -> unit Action_builder.t
-end
 
 (** {1 Requests} *)
 

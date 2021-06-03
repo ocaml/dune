@@ -148,6 +148,13 @@ val env_var : string -> unit t
 
 val alias : Alias.t -> unit t
 
+val dep_on_alias_if_exists : Alias.t -> bool t
+
+(** Depend on an alias recursively. Return [true] if the alias is defined in at
+    least one directory, and [false] otherwise. *)
+val dep_on_alias_rec :
+  Alias.Name.t -> Context_name.t -> Source_tree.Dir.t -> bool t
+
 (** Compute the set of source of all files present in the sub-tree starting at
     [dir] and record them as dependencies. *)
 val source_tree : dir:Path.t -> Path.Set.t t
@@ -319,7 +326,3 @@ val dyn_memo_build : 'a Memo.Build.t t -> 'a t
 (** A version of [dyn_memo_build] that makes it convenient to declare dynamic
     action dependencies. *)
 val dyn_memo_build_deps : ('a * Dep.Set.t) Memo.Build.t t -> 'a t
-
-(**/**)
-
-val dep_on_alias_if_exists : Alias.t -> bool t

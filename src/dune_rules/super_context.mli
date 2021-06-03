@@ -128,7 +128,7 @@ val add_rules :
 
 val add_alias_action :
      t
-  -> Build_system.Alias.t
+  -> Alias.t
   -> dir:Path.Build.t
   -> loc:Loc.t option
   -> ?locks:Path.t list

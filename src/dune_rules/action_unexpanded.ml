@@ -70,11 +70,11 @@ module Action_expander : sig
 
     val prog_and_args : String_with_vars.t -> (Action.Prog.t * string list) t
 
-    module Early : sig
-      (* "Early" expansion. The expansion happens at the time the rule is
-         constructed rather than at the time the rule is being executed. As a
-         result, the result can be used immediately. However, percent forms that
-         introduce action dependencies are disallowed. *)
+    module At_rule_eval_stage : sig
+      (* Expansion that happens at the time the rule is constructed rather than
+         at the time the rule is being executed. As a result, the result can be
+         used immediately. However, percent forms that introduce action
+         dependencies are disallowed. *)
       val path : String_with_vars.t -> f:(Path.t -> 'a t) -> 'a t
 
       val string : String_with_vars.t -> f:(string -> 'a t) -> 'a t
@@ -254,7 +254,7 @@ end = struct
 
     let path sw env acc = Memo.Build.return (Expander.expand_path env sw, acc)
 
-    module Early = struct
+    module At_rule_eval_stage = struct
       let make ~expand sw ~f env acc =
         let*! x = expand env sw in
         f x env acc
@@ -371,13 +371,13 @@ let rec expand (t : Action_dune_lang.t) : Action.t Action_expander.t =
     let+ prog, args = expand_run prog args in
     O.Dynamic_run (prog, args)
   | Chdir (fn, t) ->
-    E.Early.path fn ~f:(fun dir ->
+    E.At_rule_eval_stage.path fn ~f:(fun dir ->
         A.chdir
           (as_in_build_dir dir ~loc:(String_with_vars.loc fn) ~what:"Directory")
           (let+ t = expand t in
            O.Chdir (dir, t)))
   | Setenv (var, value, t) ->
-    E.Early.string var ~f:(fun var ->
+    E.At_rule_eval_stage.string var ~f:(fun var ->
         A.set_env ~var ~value:(E.string value)
           (let+ t = expand t in
            fun ~value -> O.Setenv (var, value, t)))

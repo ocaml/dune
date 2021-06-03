@@ -2,6 +2,29 @@ open Import
 
 let staging_area = Path.Build.relative Path.Build.root ".promotion-staging"
 
+module Promote_annot = struct
+  type payload =
+    { in_source : Path.Source.t
+    ; in_build : Path.Build.t
+    }
+
+  let to_dyn { in_source; in_build } =
+    let open Dyn.Encoder in
+    record
+      [ ("in_source", Path.Source.to_dyn in_source)
+      ; ("in_build", Path.Build.to_dyn in_build)
+      ]
+end
+
+module Annot = struct
+  type t = Promote_annot.payload =
+    { in_source : Path.Source.t
+    ; in_build : Path.Build.t
+    }
+
+  include User_error.Annot.Make (Promote_annot)
+end
+
 module File = struct
   type t =
     { src : Path.Build.t

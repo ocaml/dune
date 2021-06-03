@@ -504,6 +504,25 @@ module Sample_attempt = struct
     | Running { result; _ } -> Once.force result.compute
 end
 
+(* Checking dependencies of a node can lead to one of these outcomes:
+
+   - [Unchanged]: all the dependencies of the current node are up to date and we
+   can therefore skip recomputing the node and can reuse the value computed in
+   the previous run.
+
+   - [Changed]: one of the dependencies has changed since the previous run and
+   the current node should therefore be recomputed.
+
+   - [Cancelled _]: one of the dependencies leads to a dependency cycle. In this
+   case, there is no point in recomputing the current node: it's impossible to
+   bring its dependencies up to date! *)
+module Changed_or_not = struct
+  type t =
+    | Unchanged
+    | Changed
+    | Cancelled of { dependency_cycle : Cycle_error.t }
+end
+
 module M = struct
   (* A [value] along with some additional information that allows us to check
      whether the it is up to date or needs to be recomputed. *)
@@ -553,10 +572,51 @@ module M = struct
 
            Another important reason to list [deps] according to a linearisation
            of the dependency order is to eliminate spurious dependency cycles. *)
-        mutable deps : Dep_node.packed list
+        mutable deps : Deps.t
       }
   end =
     Cached_value
+
+  and Deps : sig
+    type t
+
+    val create : deps_rev:Dep_node.packed list -> t
+
+    val empty : t
+
+    val length : t -> int
+
+    val to_list : t -> Dep_node.packed list
+
+    val changed_or_not :
+         t
+      -> f:(Dep_node.packed -> Changed_or_not.t Fiber.t)
+      -> Changed_or_not.t Fiber.t
+  end = struct
+    (* The array is stored reversed to avoid reversing the list in [create]. We
+       need to be careful about traversing the array in the right order in the
+       functions [to_list] and [changed_or_not]. *)
+    type t = Dep_node.packed array
+
+    let create ~deps_rev = Array.of_list deps_rev
+
+    let empty = Array.init 0 ~f:(fun _ -> assert false)
+
+    let length = Array.length
+
+    let to_list = Array.fold_left ~init:[] ~f:(fun acc x -> x :: acc)
+
+    let changed_or_not t ~f =
+      let rec go index =
+        if index < 0 then
+          Fiber.return Changed_or_not.Unchanged
+        else
+          f t.(index) >>= function
+          | Changed_or_not.Unchanged -> go (index - 1)
+          | (Changed | Cancelled _) as res -> Fiber.return res
+      in
+      go (Array.length t - 1)
+  end
 
   and Running_state : sig
     type t =
@@ -612,6 +672,7 @@ end
 module State = M.State
 module Running_state = M.Running_state
 module Dep_node = M.Dep_node
+module Deps = M.Deps
 
 module Stack_frame_with_state = struct
   type ('i, 'o) unpacked =
@@ -754,7 +815,7 @@ module Cached_value = struct
              ^ reason)
               []
           | Some _up_to_date_cached_value -> ()));
-    List.rev deps_rev
+    Deps.create ~deps_rev
 
   let create x ~deps_rev =
     { value = x
@@ -770,7 +831,7 @@ module Cached_value = struct
     { value = Cancelled { dependency_cycle }
     ; last_changed_at = Run.current ()
     ; last_validated_at = Run.current ()
-    ; deps = []
+    ; deps = Deps.empty
     }
 
   let confirm_old_value t ~deps_rev =
@@ -894,25 +955,6 @@ let dep_node (t : (_, _) t) input =
     Store.set t.cache input dep_node;
     dep_node
 
-(* Checking dependencies of a node can lead to one of these outcomes:
-
-   - [Unchanged]: all the dependencies of the current node are up to date and we
-   can therefore skip recomputing the node and can reuse the value computed in
-   the previous run.
-
-   - [Changed]: one of the dependencies has changed since the previous run and
-   the current node should therefore be recomputed.
-
-   - [Cycle_error _]: one of the dependencies leads to a dependency cycle. In
-   this case, there is no point in recomputing the current node: it's impossible
-   to bring its dependencies up to date! *)
-module Changed_or_not = struct
-  type t =
-    | Unchanged
-    | Changed
-    | Cancelled of { dependency_cycle : Cycle_error.t }
-end
-
 let report_and_collect_errors f =
   Fiber.map_reduce_errors
     (module Collect_errors_monoid)
@@ -968,18 +1010,22 @@ end = struct
            non-deterministic, there is no way to force rerunning it, apart from
            changing some of its dependencies. *)
         let+ deps_changed =
-          let rec go deps =
-            match deps with
-            | [] -> Fiber.return Changed_or_not.Unchanged
-            | Dep_node.T dep :: deps -> (
+          (* Make sure [f] gets inlined to avoid unnecessary closure allocations
+             and improve stack traces in profiling. *)
+          Deps.changed_or_not cached_value.deps
+            ~f:(fun [@inline] (Dep_node.T dep) ->
               if !Counters.enabled then
                 Counters.record_new_edge_traversals ~count:1;
+              (* CR-someday amokhov: Chasing so many pointers for every [dep] is
+                 very expensive. We could have two constructors instead of just
+                 [Dep_node.T] to indicate whether the [dep] has a cutoff or not,
+                 but that requires further thinking and benchmarking. *)
               match dep.without_state.spec.allow_cutoff with
               | No -> (
                 (* If [dep] has no cutoff, it is sufficient to check whether it
                    is up to date. If not, we must recompute [last_cached_value]. *)
                 consider_and_restore_from_cache dep
-                >>= function
+                >>| function
                 | Ok cached_value_of_dep -> (
                   (* The [Changed] branch will be taken if [cached_value]'s node
                      was skipped in the previous run (it was unreachable), while
@@ -988,14 +1034,13 @@ end = struct
                     Run.compare cached_value_of_dep.last_changed_at
                       cached_value.last_validated_at
                   with
-                  | Gt -> Fiber.return Changed_or_not.Changed
+                  | Gt -> Changed_or_not.Changed
                   | Eq
                   | Lt ->
-                    go deps)
+                    Unchanged)
                 | Failure (Cancelled { dependency_cycle }) ->
-                  Fiber.return (Changed_or_not.Cancelled { dependency_cycle })
-                | Failure (Not_found | Out_of_date _) ->
-                  Fiber.return Changed_or_not.Changed)
+                  Cancelled { dependency_cycle }
+                | Failure (Not_found | Out_of_date _) -> Changed)
               | Yes _equal -> (
                 (* If [dep] has a cutoff predicate, it is not sufficient to
                    check whether it is up to date: even if it isn't, after we
@@ -1004,7 +1049,7 @@ end = struct
                 consider_and_compute dep
                 >>= function
                 | Ok cached_value_of_dep -> (
-                  let* cached_value_of_dep = cached_value_of_dep in
+                  let+ cached_value_of_dep = cached_value_of_dep in
                   (* Note: [cached_value_of_dep.value] will be [Cancelled _] if
                      [dep] itself doesn't introduce a dependency cycle but one
                      of its transitive dependencies does. In this case, the
@@ -1013,14 +1058,12 @@ end = struct
                     Run.compare cached_value_of_dep.last_changed_at
                       cached_value.last_validated_at
                   with
-                  | Gt -> Fiber.return Changed_or_not.Changed
+                  | Gt -> Changed_or_not.Changed
                   | Eq
                   | Lt ->
-                    go deps)
+                    Unchanged)
                 | Error dependency_cycle ->
                   Fiber.return (Changed_or_not.Cancelled { dependency_cycle })))
-          in
-          go cached_value.deps
         in
         match deps_changed with
         | Unchanged ->
@@ -1082,7 +1125,7 @@ end = struct
       dep_node.state <- Not_considering;
       if !Counters.enabled then
         Counters.record_newly_considered_node
-          ~edges:(List.length cached_value.deps)
+          ~edges:(Deps.length cached_value.deps)
           ~computed
     in
     let restore_from_cache =
@@ -1438,8 +1481,9 @@ module For_tests = struct
       | None -> None
       | Some cv ->
         Some
-          (List.map cv.deps ~f:(fun (Dep_node.T dep) ->
-               (dep.without_state.spec.name, ser_input dep.without_state))))
+          (Deps.to_list cv.deps
+          |> List.map ~f:(fun (Dep_node.T dep) ->
+                 (dep.without_state.spec.name, ser_input dep.without_state))))
 
   let clear_memoization_caches () = Caches.clear ()
 end

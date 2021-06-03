@@ -116,88 +116,6 @@ end
 
 let files_in_source_tree_to_delete () = Promoted_to_delete.get_db ()
 
-module Alias = struct
-  include Alias
-
-  let dep t = Action_builder.dep (Dep.alias t)
-
-  let dep_multi_contexts ~dir ~name ~contexts =
-    ignore (Source_tree.find_dir_specified_on_command_line ~dir);
-    let context_to_alias_expansion ctx =
-      let ctx_dir = Context_name.build_dir ctx in
-      let dir = Path.Build.(append_source ctx_dir dir) in
-      dep (make ~dir name)
-    in
-    Action_builder.all_unit (List.map contexts ~f:context_to_alias_expansion)
-
-  open Action_builder.O
-  module Source_tree_map_reduce =
-    Source_tree.Dir.Make_map_reduce (Action_builder) (Monoid.Exists)
-
-  let dep_rec_internal ~name ~dir ~ctx_dir =
-    let f dir =
-      let path = Path.Build.append_source ctx_dir (Source_tree.Dir.path dir) in
-      Action_builder.dep_on_alias_if_exists (make ~dir:path name)
-    in
-    Source_tree_map_reduce.map_reduce dir
-      ~traverse:Sub_dirs.Status.Set.normal_only ~f
-
-  let dep_rec t ~loc =
-    let ctx_dir, src_dir =
-      Path.Build.extract_build_context_dir_exn (Alias.dir t)
-    in
-    Action_builder.memo_build (Source_tree.find_dir src_dir) >>= function
-    | None ->
-      Action_builder.fail
-        { fail =
-            (fun () ->
-              User_error.raise ~loc
-                [ Pp.textf "Don't know about directory %s!"
-                    (Path.Source.to_string_maybe_quoted src_dir)
-                ])
-        }
-    | Some dir ->
-      let name = Alias.name t in
-      let+ is_nonempty = dep_rec_internal ~name ~dir ~ctx_dir in
-      if (not is_nonempty) && not (is_standard name) then
-        User_error.raise ~loc
-          [ Pp.text "This alias is empty."
-          ; Pp.textf "Alias %S is not defined in %s or any of its descendants."
-              (Alias.Name.to_string name)
-              (Path.Source.to_string_maybe_quoted src_dir)
-          ]
-
-  let dep_rec_multi_contexts ~dir:src_dir ~name ~contexts =
-    let open Action_builder.O in
-    let* dir =
-      Action_builder.memo_build
-        (Source_tree.find_dir_specified_on_command_line ~dir:src_dir)
-    in
-    let+ is_nonempty_list =
-      Action_builder.all
-        (List.map contexts ~f:(fun ctx ->
-             let ctx_dir = Context_name.build_dir ctx in
-             dep_rec_internal ~name ~dir ~ctx_dir))
-    in
-    let is_nonempty = List.exists is_nonempty_list ~f:Fun.id in
-    if (not is_nonempty) && not (is_standard name) then
-      User_error.raise
-        [ Pp.textf "Alias %S specified on the command line is empty."
-            (Alias.Name.to_string name)
-        ; Pp.textf "It is not defined in %s or any of its descendants."
-            (Path.Source.to_string_maybe_quoted src_dir)
-        ]
-
-  let package_install ~(context : Build_context.t) ~(pkg : Package.t) =
-    let dir =
-      let dir = Package.dir pkg in
-      Path.Build.append_source context.build_dir dir
-    in
-    let name = Package.name pkg in
-    sprintf ".%s-files" (Package.Name.to_string name)
-    |> Alias.Name.of_string |> make ~dir
-end
-
 module Loaded = struct
   type build =
     { allowed_subdirs : Path.Unspecified.w Dir_set.t
@@ -449,6 +367,8 @@ type t =
   ; stats : Dune_stats.t option
   ; cache_config : Dune_cache.Config.t
   ; cache_debug_flags : Cache_debug_flags.t
+  ; implicit_default_alias :
+      Path.Build.t -> unit Action_builder.t option Memo.Build.t
   }
 
 let t = Fdecl.create Dyn.Encoder.opaque
@@ -821,37 +741,17 @@ end = struct
     | None -> false
     | Some _ -> true
 
-  let compute_alias_expansions ~(collected : Rules.Dir_rules.ready) ~dir =
+  let compute_alias_expansions t ~(collected : Rules.Dir_rules.ready) ~dir =
     let aliases = collected.aliases in
     let+ aliases =
       if Alias.Name.Map.mem aliases Alias.Name.default then
         Memo.Build.return aliases
       else
-        match Path.Build.extract_build_context_dir dir with
-        | None -> Memo.Build.return aliases
-        | Some (ctx_dir, src_dir) -> (
-          Source_tree.find_dir src_dir >>| function
-          | None -> aliases
-          | Some dir ->
-            let default_alias =
-              let dune_version =
-                Source_tree.Dir.project dir |> Dune_project.dune_version
-              in
-              if dune_version >= (2, 0) then
-                Alias.Name.all
-              else
-                Alias.Name.install
-            in
-            Alias.Name.Map.set aliases Alias.Name.default
-              { expansions =
-                  Appendable_list.singleton
-                    ( Loc.none
-                    , let open Action_builder.O in
-                      let+ _ =
-                        Alias.dep_rec_internal ~name:default_alias ~dir ~ctx_dir
-                      in
-                      () )
-              })
+        t.implicit_default_alias dir >>| function
+        | None -> aliases
+        | Some expansion ->
+          Alias.Name.Map.set aliases Alias.Name.default
+            { expansions = Appendable_list.singleton (Loc.none, expansion) }
     in
     Alias.Name.Map.map aliases
       ~f:(fun { Rules.Dir_rules.Alias_spec.expansions } ->
@@ -1021,7 +921,7 @@ end = struct
     let rules = collected.rules in
     let* aliases =
       match context_name with
-      | Context _ -> compute_alias_expansions ~collected ~dir
+      | Context _ -> compute_alias_expansions t ~collected ~dir
       | Install _ ->
         (* There are no aliases in the [_build/install] directory *)
         Memo.Build.return Alias.Name.Map.empty
@@ -2543,7 +2443,7 @@ let load_dir_and_produce_its_rules ~dir =
 let load_dir ~dir = load_dir_and_produce_its_rules ~dir
 
 let init ~stats ~contexts ~promote_source ~cache_config ~cache_debug_flags
-    ~sandboxing_preference ~rule_generator ~handler =
+    ~sandboxing_preference ~rule_generator ~handler ~implicit_default_alias =
   let contexts =
     Memo.lazy_ (fun () ->
         let+ contexts = Memo.Lazy.force contexts in
@@ -2571,6 +2471,7 @@ let init ~stats ~contexts ~promote_source ~cache_config ~cache_debug_flags
     ; stats
     ; cache_config
     ; cache_debug_flags
+    ; implicit_default_alias
     }
 
 module Progress = struct

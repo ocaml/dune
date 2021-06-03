@@ -330,7 +330,8 @@ let make_rule t ?sandbox ?mode ?(locks = []) ?loc ~dir
   let build = make_full_action t build ~locks ~dir in
   Rule.make ?sandbox ?mode ~info:(Rule.Info.of_loc_opt loc)
     ~context:(Some (Context.build_context t.context))
-    ~targets build
+    ~targets
+    (Action_builder.run' build)
 
 let add_rule t ?sandbox ?mode ?locks ?loc ~dir build =
   let rule = make_rule t ?sandbox ?mode ?locks ?loc ~dir build in
@@ -348,7 +349,7 @@ let add_alias_action t alias ~dir ~loc ?(locks = []) action =
   Rules.Produce.Alias.add_action
     ~context:(Context.build_context t.context)
     alias ~loc
-    (make_full_action t action ~locks ~dir)
+    (Action_builder.run' (make_full_action t action ~locks ~dir))
 
 let build_dir_is_vendored build_dir =
   match Path.Build.drop_build_context build_dir with

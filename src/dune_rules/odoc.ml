@@ -587,7 +587,7 @@ let setup_package_aliases sctx (pkg : Package.t) =
     let dir = Path.Build.append_source ctx.build_dir pkg_dir in
     Alias.doc ~dir
   in
-  Rules.Produce.Alias.add_deps alias
+  Action_builder.add_alias_deps alias
     (Action_builder.deps
        (Dep.html_alias ctx (Pkg name)
         ::
@@ -697,7 +697,7 @@ let global_rules sctx =
         (* setup @doc to build the correct html for the package *)
         setup_package_aliases sctx pkg)
   in
-  Rules.Produce.Alias.add_deps
+  Action_builder.add_alias_deps
     (Alias.private_doc ~dir:ctx.build_dir)
     (Action_builder.deps
        (stanzas

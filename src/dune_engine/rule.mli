@@ -55,11 +55,15 @@ module Id : sig
   module Set : Set.S with type elt = t
 end
 
+type facts_or_deps =
+  | Facts of Dep.Facts.t
+  | Deps of Dep.Set.t
+
 type t = private
   { id : Id.t
   ; context : Build_context.t option
   ; targets : Path.Build.Set.t
-  ; action : Action.Full.t Action_builder.t
+  ; action : (Action.Full.t * facts_or_deps) Memo.Lazy.t
   ; mode : Mode.t
   ; info : Info.t
   ; loc : Loc.t
@@ -80,10 +84,10 @@ val make :
   -> context:Build_context.t option
   -> ?info:Info.t
   -> targets:Path.Build.Set.t
-  -> Action.Full.t Action_builder.t
+  -> (Action.Full.t * facts_or_deps) Memo.Build.t
   -> t
 
-val with_prefix : t -> build:unit Action_builder.t -> t
+val set_action : t -> (Action.Full.t * facts_or_deps) Memo.Lazy.t -> t
 
 val loc : t -> Loc.t
 
@@ -91,3 +95,17 @@ val loc : t -> Loc.t
     rule.dir. Eg. [src/dune] for a rule with dir
     [_build/default/src/dune/.dune.objs]. *)
 val find_source_dir : t -> Source_tree.Dir.t Memo.Build.t
+
+module Anonymous_action : sig
+  (* jeremiedimino: this type correspond to a subset of [Rule.t]. We should
+     eventually share the code. *)
+  type t =
+    { context : Build_context.t option
+    ; action : Action.Full.t
+    ; loc : Loc.t option
+    ; dir : Path.Build.t
+          (** Directory the action is attached to. This is the directory where
+              the outcome of the action will be cached. *)
+    ; alias : Alias.Name.t option  (** For better error messages *)
+    }
+end

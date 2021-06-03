@@ -161,7 +161,7 @@ module Register_end_point (M : End_point) = struct
     | Ok backends -> M.gen_rules c ~info ~backends
     | Error () ->
       let fail = Action_builder.ignore (Resolve.read backends) in
-      Build_system.prefix_rules fail ~f:(fun () ->
+      Action_builder.prefix_rules fail ~f:(fun () ->
           M.gen_rules c ~info ~backends:[])
 
   include Lib.Sub_system.Register (struct

@@ -56,7 +56,10 @@ let term =
             Dune_rules.Lib.L.toplevel_include_paths requires
           in
           let* files = link_deps requires in
-          let* () = Build_system.build (Action_builder.paths files) in
+          let* () =
+            Memo.Build.parallel_iter files ~f:(fun file ->
+                Build_system.build_file file >>| ignore)
+          in
           let files_to_load =
             List.filter files ~f:(fun p ->
                 let ext = Path.extension p in

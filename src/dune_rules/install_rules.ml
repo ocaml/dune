@@ -831,7 +831,7 @@ let install_rules sctx (package : Package.t) =
     let context = Context.build_context ctx in
     let target_alias = Alias.package_install ~context ~pkg:package in
     let open Action_builder.O in
-    Rules.Produce.Alias.add_deps target_alias
+    Action_builder.add_alias_deps target_alias
       (Action_builder.dyn_deps
          (let+ packages = packages
           and+ () = Action_builder.deps (Dep.Set.of_files_set files) in

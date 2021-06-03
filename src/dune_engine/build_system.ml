@@ -121,7 +121,7 @@ module Loaded = struct
     { allowed_subdirs : Path.Unspecified.w Dir_set.t
     ; rules_produced : Rules.t
     ; rules_here : Rule.t Path.Build.Map.t
-    ; aliases : (Loc.t * unit Action_builder.t) list Alias.Name.Map.t
+    ; aliases : (Loc.t * Rules.Dir_rules.Alias_spec.item) list Alias.Name.Map.t
     }
 
   type t =
@@ -390,7 +390,7 @@ type t =
   ; cache_config : Dune_cache.Config.t
   ; cache_debug_flags : Cache_debug_flags.t
   ; implicit_default_alias :
-      Path.Build.t -> unit Action_builder.t option Memo.Build.t
+      Path.Build.t -> Rule.facts_or_deps Memo.Build.t option Memo.Build.t
   }
 
 let t = Fdecl.create Dyn.Encoder.opaque
@@ -692,7 +692,8 @@ module rec Load_rules : sig
   val targets_of : dir:Path.t -> Path.Set.t Memo.Build.t
 
   val lookup_alias :
-    Alias.t -> (Loc.t * unit Action_builder.t) list option Memo.Build.t
+       Alias.t
+    -> (Loc.t * Rules.Dir_rules.Alias_spec.item) list option Memo.Build.t
 
   val alias_exists : Alias.t -> bool Memo.Build.t
 end = struct
@@ -702,14 +703,14 @@ end = struct
     Path.Source.Set.to_list_map non_target_source_files ~f:(fun path ->
         let ctx_path = Path.Build.append_source ctx_dir path in
         let build =
-          let open Action_builder.O in
           let path = Path.source path in
-          let+ () = Action_builder.path path in
-          { Action.Full.action = Action.copy path ctx_path
-          ; env = Env.empty
-          ; locks = []
-          ; can_go_in_shared_cache = true
-          }
+          Memo.Build.return
+            ( { Action.Full.action = Action.copy path ctx_path
+              ; env = Env.empty
+              ; locks = []
+              ; can_go_in_shared_cache = true
+              }
+            , Rule.Deps (Dep.Set.singleton (Dep.file path)) )
         in
         Rule.make
         (* There's an [assert false] in [prepare_managed_paths] that blows up if
@@ -773,7 +774,10 @@ end = struct
         | None -> aliases
         | Some expansion ->
           Alias.Name.Map.set aliases Alias.Name.default
-            { expansions = Appendable_list.singleton (Loc.none, expansion) }
+            { expansions =
+                Appendable_list.singleton
+                  (Loc.none, Rules.Dir_rules.Alias_spec.Deps expansion)
+            }
     in
     Alias.Name.Map.map aliases
       ~f:(fun { Rules.Dir_rules.Alias_spec.expansions } ->
@@ -1175,16 +1179,16 @@ module type Rec = sig
 
   val build_deps : Dep.Set.t -> Dep.Facts.t Memo.Build.t
 
+  val build_facts_or_deps : Rule.facts_or_deps -> Dep.Facts.t Memo.Build.t
+
   val execute_rule : Rule.t -> rule_execution_result Memo.Build.t
 
   val execute_action :
-       observing_facts:Dep.Facts.t
-    -> Action_builder.Action_desc.t
-    -> unit Memo.Build.t
+    observing_facts:Dep.Facts.t -> Rule.Anonymous_action.t -> unit Memo.Build.t
 
   val execute_action_stdout :
        observing_facts:Dep.Facts.t
-    -> Action_builder.Action_desc.t
+    -> Rule.Anonymous_action.t
     -> string Memo.Build.t
 
   module Pred : sig
@@ -1201,9 +1205,6 @@ module rec Used_recursively : Rec = Exported
 
 and Exported : sig
   include Rec
-
-  val exec_build_request :
-    'a Action_builder.t -> ('a * Dep.Fact.t Dep.Map.t) Memo.Build.t
 
   val execute_rule : Rule.t -> rule_execution_result Memo.Build.t
 
@@ -1241,33 +1242,9 @@ end = struct
   let build_deps deps =
     Dep.Map.parallel_map deps ~f:(fun dep () -> build_dep dep)
 
-  module Build_exec = Action_builder.Make_exec (struct
-    type fact = Dep.Fact.t
-
-    let merge_facts = Dep.Facts.union
-
-    let read_file p ~f =
-      let+ _digest = build_file p in
-      f p
-
-    let register_action_deps = build_deps
-
-    let register_action_dep_pred g =
-      let+ files = Pred.build g in
-      ( Path.Map.keys (Dep.Fact.Files.paths files) |> Path.Set.of_list
-      , Dep.Fact.file_selector g files )
-
-    let file_exists = file_exists
-
-    let alias_exists = Load_rules.alias_exists
-
-    let execute_action = execute_action
-
-    let execute_action_stdout = execute_action_stdout
-  end)
-  [@@inlined]
-
-  let exec_build_request = Build_exec.exec
+  let build_facts_or_deps = function
+    | Rule.Facts facts -> Memo.Build.return facts
+    | Deps deps -> build_deps deps
 
   let select_sandbox_mode (config : Sandbox_config.t) ~loc
       ~sandboxing_preference =
@@ -1600,13 +1577,14 @@ end = struct
         Source_tree.execution_parameters_of_dir dir
       | _ -> Execution_parameters.default
     in
-    (* Note: we do not run [exec_build_request] in parallel with the above: if
-       we fail to compute action execution parameters, we have no use for the
-       action and might as well fail early, skipping unnecessary dependencies.
-       The function [Source_tree.execution_parameters_of_dir] is memoized, and
-       the result is not expected to change often, so we do not sacrifise too
-       much performance here by executing it sequentially. *)
-    let* action, deps = exec_build_request action in
+    (* Note: we do not run the bellow in parallel with the above: if we fail to
+       compute action execution parameters, we have no use for the action and
+       might as well fail early, skipping unnecessary dependencies. The function
+       [Source_tree.execution_parameters_of_dir] is memoized, and the result is
+       not expected to change often, so we do not sacrifise too much performance
+       here by executing it sequentially. *)
+    let* action, deps = Memo.Lazy.force action in
+    let* deps = build_facts_or_deps deps in
     let wrap_fiber f =
       Memo.Build.of_reproducible_fiber
         (if Loc.is_none loc then
@@ -1945,9 +1923,9 @@ end = struct
     fun targets_and_digests ->
     { deps; targets = Path.Build.Map.of_list_exn targets_and_digests }
 
-  module Action_desc = struct
+  module Anonymous_action = struct
     type t =
-      { action : Action_builder.Action_desc.t
+      { action : Rule.Anonymous_action.t
       ; deps : Dep.Set.t
       ; capture_stdout : bool
       ; digest : Digest.t
@@ -1965,7 +1943,7 @@ end = struct
   end
 
   let execute_action_generic_stage2_impl
-      { Action_desc.action = act; deps; capture_stdout; digest } =
+      { Anonymous_action.action = act; deps; capture_stdout; digest } =
     let target =
       let dir =
         Path.Build.append_local Dpath.Build.anonymous_actions_dir
@@ -1990,12 +1968,8 @@ end = struct
       }
     in
     let rule =
-      let { Action_builder.Action_desc.context
-          ; action = _
-          ; loc
-          ; dir = _
-          ; alias = _
-          } =
+      let { Rule.Anonymous_action.context; action = _; loc; dir = _; alias = _ }
+          =
         act
       in
       Rule.make ~context
@@ -2004,9 +1978,7 @@ end = struct
           | Some loc -> From_dune_file loc
           | None -> Internal)
         ~targets:(Path.Build.Set.singleton target)
-        (let open Action_builder.O in
-        let+ () = Action_builder.deps deps in
-        action)
+        (Memo.Build.return (action, Rule.Deps deps))
     in
     let+ { deps = _; targets = _ } =
       execute_rule_impl rule
@@ -2019,7 +1991,7 @@ end = struct
 
   let execute_action_generic_stage2_memo =
     Memo.create "execute-action"
-      ~input:(module Action_desc)
+      ~input:(module Anonymous_action)
       execute_action_generic_stage2_impl
 
   let execute_action_generic ~observing_facts act ~capture_stdout =
@@ -2049,7 +2021,7 @@ end = struct
     let observing_facts = () in
     ignore observing_facts;
     let digest =
-      let { Action_builder.Action_desc.context
+      let { Rule.Anonymous_action.context
           ; action = { action; env; locks; can_go_in_shared_cache }
           ; loc
           ; dir
@@ -2132,8 +2104,14 @@ end = struct
       >>= Memo.Build.parallel_map ~f:(fun (loc, definition) ->
               Memo.push_stack_frame
                 (fun () ->
-                  let+ (), facts = exec_build_request definition in
-                  facts)
+                  match definition with
+                  | Rules.Dir_rules.Alias_spec.Deps x ->
+                    x >>= build_facts_or_deps
+                  | Action x ->
+                    let* action, facts_or_deps = x in
+                    let* facts = build_facts_or_deps facts_or_deps in
+                    let* () = execute_action action ~observing_facts:facts in
+                    Memo.Build.return Dep.Facts.empty)
                 ~human_readable_description:(fun () ->
                   Alias.describe alias ~loc))
     in
@@ -2214,12 +2192,14 @@ end = struct
               Option.bind
                 (Memo.Stack_frame.as_instance_of frame
                    ~of_:execute_action_generic_stage2_memo) ~f:(fun x ->
-                  x.action.loc)))
+                  x.action.Rule.Anonymous_action.loc)))
 end
 
 open Exported
 
 let eval_pred = Pred.eval
+
+let build_pred = Pred.build
 
 let package_deps ~packages_of (pkg : Package.t) files =
   let rules_seen = ref Rule.Set.empty in
@@ -2251,13 +2231,6 @@ let package_deps ~packages_of (pkg : Package.t) files =
     List.fold_left sets ~init:Package.Id.Set.empty ~f:Package.Id.Set.union
   in
   loop_files (Path.Set.to_list files)
-
-let prefix_rules (prefix : unit Action_builder.t) ~f =
-  let* res, rules = Rules.collect f in
-  let+ () =
-    Rules.produce (Rules.map_rules rules ~f:(Rule.with_prefix ~build:prefix))
-  in
-  res
 
 let caused_by_cancellation (exn : Exn_with_backtrace.t) =
   match exn.exn with
@@ -2349,11 +2322,11 @@ let run_exn f =
 
 let build_file = build_file
 
-let build_deps = build_deps
+let read_file p ~f =
+  let+ _digest = build_file p in
+  f p
 
-let build request =
-  let+ result, _deps = exec_build_request request in
-  result
+let build_deps = build_deps
 
 let file_exists = file_exists
 

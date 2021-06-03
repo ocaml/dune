@@ -43,7 +43,7 @@ let term =
                     (String.maybe_quoted dir)
                 ]
             | true ->
-              let+ () = Build_system.build (Action_builder.path utop_target) in
+              let+ _digest = Build_system.build_file utop_target in
               (sctx, Path.to_string utop_target)))
   in
   Hooks.End_of_build.run ();

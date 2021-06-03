@@ -49,12 +49,16 @@ end
 
 module Id = Id.Make ()
 
+type facts_or_deps =
+  | Facts of Dep.Facts.t
+  | Deps of Dep.Set.t
+
 module T = struct
   type t =
     { id : Id.t
     ; context : Build_context.t option
     ; targets : Path.Build.Set.t
-    ; action : Action.Full.t Action_builder.t
+    ; action : (Action.Full.t * facts_or_deps) Memo.Lazy.t
     ; mode : Mode.t
     ; info : Info.t
     ; loc : Loc.t
@@ -79,10 +83,17 @@ module Set = O.Set
 
 let make ?(sandbox = Sandbox_config.default) ?(mode = Mode.Standard) ~context
     ?(info = Info.Internal) ~targets action =
-  let open Action_builder.O in
+  let open Memo.Build.O in
   let action =
-    Action_builder.memoize "Rule.make"
-      (Action_builder.dep (Dep.sandbox_config sandbox) >>> action)
+    Memo.lazy_ ~name:"Rule.make" (fun () ->
+        let+ action, facts_or_deps = action in
+        let dep = Dep.sandbox_config sandbox in
+        let facts_or_deps =
+          match facts_or_deps with
+          | Facts facts -> Facts (Dep.Map.add_exn facts dep Dep.Fact.nothing)
+          | Deps deps -> Deps (Dep.Set.add deps dep)
+        in
+        (action, facts_or_deps))
   in
   let dir =
     match Path.Build.Set.choose targets with
@@ -121,13 +132,18 @@ let make ?(sandbox = Sandbox_config.default) ?(mode = Mode.Standard) ~context
   in
   { id = Id.gen (); targets; context; action; mode; info; loc; dir }
 
-let with_prefix t ~build =
-  { t with
-    action =
-      (let open Action_builder.O in
-      Action_builder.memoize "Rule.with_prefix" (build >>> t.action))
-  }
+let set_action t action = { t with action }
 
 let find_source_dir rule =
   let _, src_dir = Path.Build.extract_build_context_dir_exn rule.dir in
   Source_tree.nearest_dir src_dir
+
+module Anonymous_action = struct
+  type t =
+    { context : Build_context.t option
+    ; action : Action.Full.t
+    ; loc : Loc.t option
+    ; dir : Path.Build.t
+    ; alias : Alias.Name.t option
+    }
+end

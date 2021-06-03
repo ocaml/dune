@@ -11,8 +11,11 @@ module Dir_rules : sig
   val union : t -> t -> t
 
   module Alias_spec : sig
-    type t = { expansions : (Loc.t * unit Action_builder.t) Appendable_list.t }
-    [@@unboxed]
+    type item =
+      | Deps of Rule.facts_or_deps Memo.Build.t
+      | Action of (Rule.Anonymous_action.t * Rule.facts_or_deps) Memo.Build.t
+
+    type t = { expansions : (Loc.t * item) Appendable_list.t } [@@unboxed]
   end
 
   (** A ready to process view of the rules of a directory *)
@@ -59,7 +62,10 @@ module Produce : sig
         registered by [deps] are considered as a part of alias expansion of
         [alias]. *)
     val add_deps :
-      t -> ?loc:Stdune.Loc.t -> unit Action_builder.t -> unit Memo.Build.t
+         t
+      -> ?loc:Stdune.Loc.t
+      -> Rule.facts_or_deps Memo.Build.t
+      -> unit Memo.Build.t
 
     val add_static_deps :
       t -> ?loc:Stdune.Loc.t -> Path.Set.t -> unit Memo.Build.t
@@ -71,7 +77,7 @@ module Produce : sig
          t
       -> context:Build_context.t
       -> loc:Loc.t option
-      -> Action.Full.t Action_builder.t
+      -> (Action.Full.t * Rule.facts_or_deps) Memo.Build.t
       -> unit Memo.Build.t
   end
 end

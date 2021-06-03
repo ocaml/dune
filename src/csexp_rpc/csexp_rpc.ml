@@ -56,10 +56,10 @@ module Session = struct
     | Open { in_channel; out_channel; reader; writer; socket } ->
       Worker.stop reader;
       Worker.stop writer;
-      if socket then
-        Unix.shutdown (Unix.descr_of_out_channel out_channel) Unix.SHUTDOWN_ALL
-      else
-        close_in_noerr in_channel;
+      (* with a socket, there's only one fd. We make sure to close it only once.
+         with dune rpc init, we have two separate fd's (stdin/stdout) so we must
+         close both. *)
+      if not socket then close_in_noerr in_channel;
       close_out_noerr out_channel;
       t.state <- Closed
 
@@ -105,9 +105,13 @@ module Session = struct
       | Some sexps ->
         Code_error.raise "attempting to write to a closed channel"
           [ ("sexp", Dyn.Encoder.(list Sexp.to_dyn) sexps) ])
-    | Open { writer; out_channel; _ } -> (
+    | Open { writer; out_channel; socket; _ } -> (
       match sexps with
       | None ->
+        if socket then
+          Unix.shutdown
+            (Unix.descr_of_out_channel out_channel)
+            Unix.SHUTDOWN_ALL;
         close t;
         Fiber.return ()
       | Some sexps -> (

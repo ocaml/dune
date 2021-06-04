@@ -20,7 +20,8 @@ let run_build_system ?report_error ~common ~(request : unit Action_builder.t) ()
              ]));
       Fiber.return ())
 
-let run_build_command_poll_eager ~(common : Common.t) ~config ~request ~setup : unit =
+let run_build_command_poll_eager ~(common : Common.t) ~config ~request ~setup :
+    unit =
   let open Fiber.O in
   let every ~report_error () =
     Cached_digest.invalidate_cached_timestamps ();
@@ -54,8 +55,7 @@ let run_build_command_poll_passive ~(common : Common.t) ~config ~request ~setup
   match Common.rpc common with
   | None ->
     Code_error.raise
-      "Attempted to start a passive polling mode without an RPC server"
-      []
+      "Attempted to start a passive polling mode without an RPC server" []
   | Some rpc ->
     Import.Scheduler.go_with_rpc_server_and_console_status_reporting ~common
       ~config (fun () ->
@@ -65,17 +65,17 @@ let run_build_command_poll_passive ~(common : Common.t) ~config ~request ~setup
                Dune_rpc_impl.Server.pending_build_action rpc
              in
              let targets setup =
-               Target.interpret_targets (Common.root common) config setup targets
+               Target.interpret_targets (Common.root common) config setup
+                 targets
              in
-             (fun ~report_error ->
-               Fiber.of_thunk (fun () ->
-                   Fiber.finalize
-                     ~finally:(fun () -> Hooks.End_of_build.run ();
-                                Fiber.return ()
-                              )
-                     (fun () -> run_build ~report_error targets))),
-               ivar
-            ))
+             ( (fun ~report_error ->
+                 Fiber.of_thunk (fun () ->
+                     Fiber.finalize
+                       ~finally:(fun () ->
+                         Hooks.End_of_build.run ();
+                         Fiber.return ())
+                       (fun () -> run_build ~report_error targets)))
+             , ivar )))
 
 let run_build_command_once ~(common : Common.t) ~config ~request
     ~(setup : unit -> Import.Main.build_system Fiber.t) =

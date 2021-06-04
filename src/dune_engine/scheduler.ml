@@ -755,9 +755,10 @@ end = struct
       let invalidation =
         (handle_invalidation_events events : Memo.Invalidation.t)
       in
-      let have_sync = List.exists (Nonempty_list.to_list events) ~f:(function
-        | (Sync : Event.build_input_change) -> true
-        | _ -> false)
+      let have_sync =
+        List.exists (Nonempty_list.to_list events) ~f:(function
+          | (Sync : Event.build_input_change) -> true
+          | _ -> false)
       in
       match Memo.Invalidation.is_empty invalidation && not have_sync with
       | true -> iter t (* Ignore the event *)
@@ -783,14 +784,16 @@ end = struct
         | Waiting_for_file_changes ivar ->
           Fill (ivar, Build_inputs_changed invalidation)
         | Waiting_for_inotify_sync (prev_invalidation, ivar) ->
-          let invalidation = Memo.Invalidation.combine prev_invalidation invalidation in
-          if have_sync
-          then
-            (t.status <- Standing_by invalidation;
-             Fill (ivar, ()))
-          else
-            (t.status <- Waiting_for_inotify_sync (invalidation, ivar);
-             iter t)))
+          let invalidation =
+            Memo.Invalidation.combine prev_invalidation invalidation
+          in
+          if have_sync then (
+            t.status <- Standing_by invalidation;
+            Fill (ivar, ())
+          ) else (
+            t.status <- Waiting_for_inotify_sync (invalidation, ivar);
+            iter t
+          )))
     | Worker_task fill -> fill
     | File_system_watcher_terminated ->
       filesystem_watcher_terminated ();
@@ -979,14 +982,19 @@ module Run = struct
     | Building -> t.status <- Standing_by Memo.Invalidation.empty
     | _ -> assert false);
     let rec loop () =
-      let* (build_request, response_ivar) = get_build_request in
+      let* build_request, response_ivar = get_build_request in
       let* () = do_inotify_sync t in
       let* res =
         poll_iter t (fun ~report_error () -> build_request ~report_error)
       in
-      let* () = Fiber.Ivar.fill response_ivar (match res with
-        | Finished (Ok _) -> Build_outcome_for_rpc.Success
-        | Finished (Error _) | Cancelled_due_to_file_changes | Shutdown -> Build_outcome_for_rpc.Failure)
+      let* () =
+        Fiber.Ivar.fill response_ivar
+          (match res with
+          | Finished (Ok _) -> Build_outcome_for_rpc.Success
+          | Finished (Error _)
+          | Cancelled_due_to_file_changes
+          | Shutdown ->
+            Build_outcome_for_rpc.Failure)
       in
       match res with
       | Shutdown -> Fiber.return ()

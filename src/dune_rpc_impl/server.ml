@@ -13,7 +13,8 @@ module Build_outcome = struct
   let sexp = Conv.enum [ ("Success", Success); ("Failure", Failure) ]
 end
 
-type pending_build_action = Build of Dep_conf.t list * Build_outcome.t Fiber.Ivar.t
+type pending_build_action =
+  | Build of Dep_conf.t list * Build_outcome.t Fiber.Ivar.t
 
 let diagnostic_of_error : Build_system.Error.t -> Dune_rpc_private.Diagnostic.t
     =
@@ -54,7 +55,8 @@ let dep_parser =
 module Decl = struct
   module Decl = Decl
 
-  let build = Decl.request ~method_:"build" Conv.(list string) Build_outcome.sexp
+  let build =
+    Decl.request ~method_:"build" Conv.(list string) Build_outcome.sexp
 
   let shutdown = Decl.notification ~method_:"shutdown" Conv.unit
 
@@ -172,7 +174,8 @@ end
 
 type t =
   { config : Run.Config.t
-  ; pending_build_jobs : (Dep_conf.t list * Build_outcome.t Fiber.Ivar.t) Job_queue.t
+  ; pending_build_jobs :
+      (Dep_conf.t list * Build_outcome.t Fiber.Ivar.t) Job_queue.t
   ; build_handler : Build_system.Handler.t
   ; pool : Fiber.Pool.t
   ; mutable subscribers : Subscribers.t
@@ -211,14 +214,15 @@ let handler (t : t Fdecl.t) : 'a Dune_rpc_server.Handler.t =
       let ivar = Fiber.Ivar.create () in
       let targets =
         List.map targets ~f:(fun s ->
-          Dune_lang.Decoder.parse dep_parser
-            (Univ_map.set Univ_map.empty Dune_engine.String_with_vars.decoding_env_key
-               (* CR-someday aalekseyev: hardcoding the version here is not ideal,
-                  but it will do for now since this command is not stable and we're only
-                  using it in tests. *)
-               (Dune_engine.Pform.Env.initial (3, 0)))
-            (Dune_lang.Parser.parse_string ~fname:"dune rpc"
-               ~mode:Dune_lang.Parser.Mode.Single s))
+            Dune_lang.Decoder.parse dep_parser
+              (Univ_map.set Univ_map.empty
+                 Dune_engine.String_with_vars.decoding_env_key
+                 (* CR-someday aalekseyev: hardcoding the version here is not
+                    ideal, but it will do for now since this command is not
+                    stable and we're only using it in tests. *)
+                 (Dune_engine.Pform.Env.initial (3, 0)))
+              (Dune_lang.Parser.parse_string ~fname:"dune rpc"
+                 ~mode:Dune_lang.Parser.Mode.Single s))
       in
       let* () =
         Job_queue.write (Fdecl.get t).pending_build_jobs (targets, ivar)

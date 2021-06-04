@@ -100,12 +100,14 @@ let command ~root =
     ]
   in
   let exclude_paths =
-    (* these paths are used as patterns for fswatch, so they better not contain any
-       regex-special characters *)
+    (* these paths are used as patterns for fswatch, so they better not contain
+       any regex-special characters *)
     [ "_build" ]
   in
   let root = Path.to_string root in
-  let inotify_special_path = Path.to_string (special_file_for_inotify_sync ()) in
+  let inotify_special_path =
+    Path.to_string (special_file_for_inotify_sync ())
+  in
   match
     if Sys.linux then
       Bin.which ~path:(Env.path Env.initial) "inotifywait"
@@ -117,17 +119,18 @@ let command ~root =
     let excludes = String.concat ~sep:"|" exclude_patterns in
     ( inotifywait
     , List.concat
-        [ [ "-r" ; root ]
-        (* excluding with "@" is more efficient that using --exclude
-           because it avoids creating inotify watches altogether,
-           while --exclude merely filters the events after they are generated *)
-        ; List.map exclude_paths ~f:(fun path -> "@" ^ Filename.concat root path)
+        [ [ "-r"; root ]
+          (* excluding with "@" is more efficient that using --exclude because
+             it avoids creating inotify watches altogether, while --exclude
+             merely filters the events after they are generated *)
+        ; List.map exclude_paths ~f:(fun path ->
+              "@" ^ Filename.concat root path)
         ; [ inotify_special_path ]
         ; [ "--exclude"; excludes ]
-        ; [ "-e"; "close_write"]
-        ; [ "-e"; "delete"]
+        ; [ "-e"; "close_write" ]
+        ; [ "-e"; "delete" ]
         ; [ "--format"; "e:%e:%w%f" ]
-        ; ["-m"]
+        ; [ "-m" ]
         ]
     , Inotify.parse_message
     , Some Inotify.wait_for_watches_established )
@@ -138,9 +141,8 @@ let command ~root =
     match Bin.which ~path:(Env.path Env.initial) "fswatch" with
     | Some fswatch ->
       let excludes =
-        List.concat_map
-          (exclude_patterns @ exclude_paths)
-          ~f:(fun x -> [ "--exclude"; x ])
+        List.concat_map (exclude_patterns @ exclude_paths) ~f:(fun x ->
+            [ "--exclude"; x ])
       in
       ( fswatch
       , [ "-r"
@@ -167,8 +169,7 @@ let command ~root =
               "Please install fswatch to enable watch mode.")
         ])
 
-let emit_sync () =
-  Io.write_file (special_file_for_inotify_sync ()) "z"
+let emit_sync () = Io.write_file (special_file_for_inotify_sync ()) "z"
 
 let prepare_sync () =
   Path.mkdir_p (Path.parent_exn (special_file_for_inotify_sync ()));
@@ -210,9 +211,8 @@ let create_no_buffering ~(scheduler : Scheduler.t) ~root =
               match parse_line line with
               | Error s -> failwith s
               | Ok path ->
-                let path = (Path.of_string path) in
-                if Path.(=) path special_file_for_inotify_sync
-                then
+                let path = Path.of_string path in
+                if Path.( = ) path special_file_for_inotify_sync then
                   Event.Sync
                 else
                   Event.File_changed path)

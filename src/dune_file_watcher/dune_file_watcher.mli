@@ -35,9 +35,9 @@ val pid : t -> Pid.t
 
 val wait_watches_established_blocking : t -> unit
 
-(** Cause a [Sync] event to be propagated through the notification sybsystem
-    to attemt to make sure that we've processed all the events that happened
-    so far. *)
+(** Cause a [Sync] event to be propagated through the notification sybsystem to
+    attemt to make sure that we've processed all the events that happened so
+    far. *)
 val emit_sync : unit -> unit
 
 module For_tests : sig

@@ -594,6 +594,8 @@ be un-commented afterward. This feature does not aim at writing exact or correct
 ``.merlin`` files, its sole purpose is to lessen the burden of writing the
 configuration from scratch.
 
+.. _merlin-filenames:
+
 Non-standard filenames
 ----------------------
 

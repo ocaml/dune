@@ -50,3 +50,14 @@ Workspaces also allow you to set the env for a context:
   (c_flags ())
   (cxx_flags ())
   (menhir_flags ())
+
+  $ dune build --root multiple-merlin-contexts 
+  Entering directory 'multiple-merlin-contexts'
+  File "dune-workspace", line 8, characters 1-82:
+   8 |  (opam
+   9 |   (switch foo-switch)
+  10 |   (name foo-name)
+  11 |   (profile foo-profile)
+  12 |   (merlin)))
+  Error: you can only have one context for merlin
+  [1]

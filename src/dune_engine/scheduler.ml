@@ -279,6 +279,8 @@ end = struct
             let terminated = ref false in
             let events =
               List.filter_map events ~f:(function
+                | Sync -> assert false
+
                 | Watcher_terminated ->
                   terminated := true;
                   None
@@ -674,10 +676,6 @@ let prepare (config : Config.t) ~(handler : Handler.t) =
   global := Some t;
   t
 
-let special_file_for_inotify_sync =
-  (* this file needs to be not-ignored by inotify *)
-  Path.source (Path.Source.relative Path.Source.root "dune-inotify-sync")
-
 module Run_once : sig
   type run_error =
     | Already_reported
@@ -730,13 +728,13 @@ end = struct
           Fill (ivar, File_system_changed invalidation)
         | Waiting_for_inotify_sync (prev_invalidation, ivar) ->
           let invalidation = Memo.Invalidation.combine prev_invalidation invalidation in
-          if List.exists (Nonempty_list.to_list  events) ~f:(fun event ->
-            Path.(=)
-              (Fs_memo.Event.path event)
-              special_file_for_inotify_sync)
-          then (
-            t.status <- Standing_by invalidation;
-            Fill (ivar, ()))
+          if List.exists (Nonempty_list.to_list events) ~f:(function
+            | _ when "sync" = "sync" -> true
+            | _ -> false)
+          then
+            (
+                t.status <- Standing_by invalidation;
+                Fill (ivar, ()))
           else
             (t.status <- Waiting_for_inotify_sync (invalidation, ivar);
              iter t)))
@@ -902,7 +900,7 @@ module Run = struct
     | _ -> assert false
 
   let do_inotify_sync t =
-    Io.write_file special_file_for_inotify_sync "z";
+    Dune_file_watcher.emit_sync ();
     Console.print [ Pp.text "waiting for inotify sync" ];
     let+ () = wait_for_inotify_sync t in
     Console.print [ Pp.text "waited for inotify sync" ];

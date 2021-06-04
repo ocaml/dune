@@ -8,6 +8,7 @@ type t =
 module Event = struct
   type t =
     | File_changed of Path.t
+    | Sync
     | Watcher_terminated
 end
 
@@ -85,10 +86,12 @@ module Inotify = struct
       | None -> Error "invalid message (event type missing)")
 end
 
+let special_file_for_inotify_sync () =
+  Path.build (Path.Build.relative Path.Build.root "dune-inotify-sync")
+
 let command ~root =
-  let excludes =
-    [ {|/_build|}
-    ; {|/_opam|}
+  let exclude_patterns =
+    [ {|/_opam|}
     ; {|/_esy|}
     ; {|/\..+|}
     ; {|~$|}
@@ -96,7 +99,13 @@ let command ~root =
     ; {|4913|} (* https://github.com/neovim/neovim/issues/3460 *)
     ]
   in
-  let path = Path.to_string_maybe_quoted root in
+  let exclude_paths =
+    (* these paths are used as patterns for fswatch, so they better not contain any
+       regex-special characters *)
+    [ "_build" ]
+  in
+  let root = Path.to_string root in
+  let inotify_special_path = Path.to_string (special_file_for_inotify_sync ()) in
   match
     if Sys.linux then
       Bin.which ~path:(Env.path Env.initial) "inotifywait"
@@ -105,20 +114,21 @@ let command ~root =
   with
   | Some inotifywait ->
     (* On Linux, use inotifywait. *)
-    let excludes = String.concat ~sep:"|" excludes in
+    let excludes = String.concat ~sep:"|" exclude_patterns in
     ( inotifywait
-    , [ "-r"
-      ; path
-      ; "--exclude"
-      ; excludes
-      ; "-e"
-      ; "close_write"
-      ; "-e"
-      ; "delete"
-      ; "--format"
-      ; "e:%e:%w%f"
-      ; "-m"
-      ]
+    , List.concat
+        [ [ "-r" ; root ]
+        (* excluding with "@" is more efficient that using --exclude
+           because it avoids creating inotify watches altogether,
+           while --exclude merely filters the events after they are generated *)
+        ; List.map exclude_paths ~f:(fun path -> "@" ^ Filename.concat root path)
+        ; [ inotify_special_path ]
+        ; [ "--exclude"; excludes ]
+        ; [ "-e"; "close_write"]
+        ; [ "-e"; "delete"]
+        ; [ "--format"; "e:%e:%w%f" ]
+        ; ["-m"]
+        ]
     , Inotify.parse_message
     , Some Inotify.wait_for_watches_established )
   | None -> (
@@ -128,11 +138,13 @@ let command ~root =
     match Bin.which ~path:(Env.path Env.initial) "fswatch" with
     | Some fswatch ->
       let excludes =
-        List.concat_map excludes ~f:(fun x -> [ "--exclude"; x ])
+        List.concat_map
+          (exclude_patterns @ exclude_paths)
+          ~f:(fun x -> [ "--exclude"; x ])
       in
       ( fswatch
       , [ "-r"
-        ; path
+        ; root
         ; "--event"
         ; "Created"
         ; "--event"
@@ -140,6 +152,7 @@ let command ~root =
         ; "--event"
         ; "Removed"
         ]
+        @ [ "--include"; inotify_special_path ]
         @ excludes
       , (fun s -> Ok s)
       , None )
@@ -154,7 +167,15 @@ let command ~root =
               "Please install fswatch to enable watch mode.")
         ])
 
+let emit_sync () =
+  Io.write_file (special_file_for_inotify_sync ()) "z"
+
+let prepare_sync () =
+  Path.mkdir_p (Path.parent_exn (special_file_for_inotify_sync ()));
+  emit_sync ()
+
 let spawn_external_watcher ~root =
+  prepare_sync ();
   let prog, args, parse_line, wait_for_start = command ~root in
   let prog = Path.to_absolute_filename prog in
   let argv = prog :: args in
@@ -176,6 +197,7 @@ let spawn_external_watcher ~root =
   ((r_stdout, parse_line, wait), pid)
 
 let create_no_buffering ~(scheduler : Scheduler.t) ~root =
+  let special_file_for_inotify_sync = special_file_for_inotify_sync () in
   let (pipe, parse_line, wait), pid = spawn_external_watcher ~root in
   let worker_thread pipe =
     let buffer = Buffer.create ~capacity:buffer_capacity in
@@ -187,7 +209,13 @@ let create_no_buffering ~(scheduler : Scheduler.t) ~root =
           List.map lines ~f:(fun line ->
               match parse_line line with
               | Error s -> failwith s
-              | Ok path -> Event.File_changed (Path.of_string path))
+              | Ok path ->
+                let path = (Path.of_string path) in
+                if Path.(=) path special_file_for_inotify_sync
+                then
+                  Event.Sync
+                else
+                  Event.File_changed path)
       in
       scheduler.thread_safe_send_events lines
     done

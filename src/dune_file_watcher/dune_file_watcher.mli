@@ -5,6 +5,7 @@ type t
 module Event : sig
   type t =
     | File_changed of Path.t
+    | Sync
     | Watcher_terminated
 end
 
@@ -33,6 +34,11 @@ val create_default : scheduler:Scheduler.t -> t
 val pid : t -> Pid.t
 
 val wait_watches_established_blocking : t -> unit
+
+(** Cause a [Sync] event to be propagated through the notification sybsystem
+    to attemt to make sure that we've processed all the events that happened
+    so far. *)
+val emit_sync : unit -> unit
 
 module For_tests : sig
   val suspend : t -> unit

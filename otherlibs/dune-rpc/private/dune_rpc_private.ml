@@ -761,8 +761,10 @@ struct
       let table = Table.create (module String) 16 in
       let to_callback (decl : _ Decl.notification) f payload =
         match Conv.of_sexp decl.req payload ~version with
-        | Error _ -> Code_error.raise "invalid notification" []
         | Ok s -> f s
+        | Error error ->
+          Code_error.raise "invalid notification"
+            [ ("error", Conv.dyn_of_error error) ]
       in
       let add (decl : _ Decl.notification) f =
         Table.add_exn table decl.method_ (to_callback decl f)
@@ -772,7 +774,9 @@ struct
       add Server_notifications.abort t.abort;
       fun { Call.method_; params } ->
         match Table.find table method_ with
-        | None -> Code_error.raise "invalid method from server" []
+        | None ->
+          Code_error.raise "invalid method from server"
+            [ ("method_", Dyn.Encoder.string method_) ]
         | Some v -> v params
 
     let log { Message.payload; message } =

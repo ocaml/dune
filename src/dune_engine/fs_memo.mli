@@ -51,7 +51,7 @@ module Event : sig
   type t
 
   val create : kind:kind -> path:Path.t -> t
-end
 
-(** Handle file system events and let the caller know if a rebuild is required. *)
-val handle : Event.t Nonempty_list.t -> Memo.Invalidation.t
+  (** Handle file system event. *)
+  val handle : t -> Memo.Invalidation.t
+end

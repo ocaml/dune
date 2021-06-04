@@ -3,6 +3,9 @@ unreleased - 2.9 branch
 
 - Add `(enabled_if ...)` to `(mdx ...)` (#4434, @emillon)
 
+- Allow to set up merlin in a variant of the default context
+  (#4145, @TheLortex, @voodoos)
+
 2.8.5 (28/03/2021)
 ------------------
 

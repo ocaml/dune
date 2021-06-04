@@ -452,9 +452,6 @@ module Perf_counters : sig
   val reset : unit -> unit
 end
 
-(** Total time taken by the cycle detection functionality. *)
-val cycle_detection_timer : Metrics.Timer.t
-
 module Expert : sig
   (** Like [cell] but returns [Nothing] if the given memoized function has never
       been evaluated on the specified input. We use [previously_evaluated_cell]

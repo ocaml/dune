@@ -40,21 +40,23 @@ type t =
 let true_ = Const true
 
 let rec eval t ~dir ~f =
+  let open Memo.Build.O in
   match t with
-  | Const x -> x
+  | Const x -> Memo.Build.return x
   | Expr sw -> (
-    match String_with_vars.expand sw ~mode:Single ~dir ~f with
+    String_with_vars.expand sw ~mode:Single ~dir ~f >>| function
     | String "true" -> true
     | String "false" -> false
     | _ ->
       let loc = String_with_vars.loc sw in
       User_error.raise ~loc
         [ Pp.text "This value must be either true or false" ])
-  | And xs -> List.for_all ~f:(eval ~f ~dir) xs
-  | Or xs -> List.exists ~f:(eval ~f ~dir) xs
+  | And xs ->
+    Memo.Build.List.map xs ~f:(eval ~f ~dir) >>| List.for_all ~f:Fun.id
+  | Or xs -> Memo.Build.List.map xs ~f:(eval ~f ~dir) >>| List.exists ~f:Fun.id
   | Compare (op, x, y) ->
-    let x = String_with_vars.expand x ~mode:Many ~dir ~f
-    and y = String_with_vars.expand y ~mode:Many ~dir ~f in
+    let+ x = String_with_vars.expand x ~mode:Many ~dir ~f
+    and+ y = String_with_vars.expand y ~mode:Many ~dir ~f in
     Op.eval op (Value.L.compare_vals ~dir x y)
 
 let rec to_dyn =

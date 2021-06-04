@@ -314,9 +314,9 @@ let setup_build_archives (lib : Dune_file.Library.t) ~cctx
      [Obj_dir]. That's fragile and will break if the layout of the object
      directory changes *)
   let dir = Obj_dir.dir obj_dir in
-  let native_archives =
+  let* native_archives =
     let lib_config = ctx.lib_config in
-    let lib_info = Library.to_lib_info lib ~dir ~lib_config in
+    let+ lib_info = Library.to_lib_info lib ~dir ~lib_config in
     Lib_info.eval_native_archives_exn lib_info ~modules:(Some modules)
   in
   let cm_files = Cm_files.make ~obj_dir ~ext_obj ~modules ~top_sorted_modules in

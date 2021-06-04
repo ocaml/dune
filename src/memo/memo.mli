@@ -7,6 +7,8 @@ module type Build = sig
 
   module List : sig
     val map : 'a list -> f:('a -> 'b t) -> 'b list t
+
+    val concat_map : 'a list -> f:('a -> 'b list t) -> 'b list t
   end
 
   val memo_build : 'a build -> 'a t
@@ -293,6 +295,12 @@ val push_stack_frame :
 module Run : sig
   (** A single build run. *)
   type t
+
+  module For_tests : sig
+    val compare : t -> t -> Ordering.t
+
+    val current : unit -> t
+  end
 end
 
 (** Introduces a dependency on the current build run. *)
@@ -405,9 +413,14 @@ end) : sig
   val eval : 'a Function.input -> 'a Function.output Build.t
 end
 
-(** If [true], this module will record the location of [Lazy.t] values. This is
-    a bit expensive to compute, but it helps debugging. *)
-val track_locations_of_lazy_values : bool ref
+(** Diagnostics features that affect performance but are useful for debugging. *)
+module Debug : sig
+  (** If [true], Memo will record the location of [Lazy.t] values. *)
+  val track_locations_of_lazy_values : bool ref
+
+  (** If [true], Memo will perform additional checks of internal invariants. *)
+  val check_invariants : bool ref
+end
 
 (** Various performance counters. Reset to zero at the start of every run. *)
 module Perf_counters : sig
@@ -438,9 +451,6 @@ module Perf_counters : sig
       directly (as counters are reset on every run) but it's useful for tests. *)
   val reset : unit -> unit
 end
-
-(** Total time taken by the cycle detection functionality. *)
-val cycle_detection_timer : Metrics.Timer.t
 
 module Expert : sig
   (** Like [cell] but returns [Nothing] if the given memoized function has never

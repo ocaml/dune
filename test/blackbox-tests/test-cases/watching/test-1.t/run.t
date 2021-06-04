@@ -65,16 +65,12 @@
 
   $ with_timeout dune shutdown
   $ cat dune-output
-  file_system_changed
   waiting for inotify sync
-  file_system_changed
   waited for inotify sync
   Success, waiting for filesystem changes...
   waiting for inotify sync
-  file_system_changed
   waited for inotify sync
   Success, waiting for filesystem changes...
   waiting for inotify sync
-  file_system_changed
   waited for inotify sync
   Success, waiting for filesystem changes...

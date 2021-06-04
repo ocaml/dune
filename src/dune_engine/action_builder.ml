@@ -36,6 +36,9 @@ module T = struct
     | Goal : 'a t -> 'a t
     | Action : Action_desc.t t -> unit t
     | Action_stdout : Action_desc.t t -> string t
+    | Push_stack_frame :
+        (unit -> User_message.Style.t Pp.t) * (unit -> 'a t)
+        -> 'a t
 
   and 'a memo =
     { name : string
@@ -53,6 +56,8 @@ module T = struct
 
   let all xs = All xs
 
+  let memo_build f = Memo_build f
+
   module O = struct
     let ( >>> ) a b = Seq (a, b)
 
@@ -68,15 +73,30 @@ module T = struct
 
     let ( let* ) t f = Bind (t, f)
   end
+
+  open O
+
+  module List = struct
+    let map l ~f = all (List.map l ~f)
+
+    let concat_map l ~f = map l ~f >>| List.concat
+  end
 end
 
 module Expander = String_with_vars.Make_expander (T)
 include T
 open O
 
+open struct
+  module List = Stdune.List
+end
+
 let ignore x = Map (Fun.const (), x)
 
 let map2 x y ~f = Map2 (f, x, y)
+
+let push_stack_frame ~human_readable_description f =
+  Push_stack_frame (human_readable_description, f)
 
 let delayed f = Map (f, Pure ())
 
@@ -269,13 +289,27 @@ let progn ts =
 
 let goal t = Goal t
 
-(* Execution *)
-
-let memo_build f = Memo_build f
-
 let memo_build_join f = Memo_build f |> bind ~f:Fun.id
 
 let dyn_memo_build f = Dyn_memo_build f
+
+let dyn_memo_build_deps t = dyn_deps (dyn_memo_build t)
+
+let dep_on_alias_if_exists t = Dep_on_alias_if_exists t
+
+module Source_tree_map_reduce =
+  Source_tree.Dir.Make_map_reduce (T) (Monoid.Exists)
+
+let dep_on_alias_rec name context_name dir =
+  let build_dir = Context_name.build_dir context_name in
+  let f dir =
+    let path = Path.Build.append_source build_dir (Source_tree.Dir.path dir) in
+    dep_on_alias_if_exists (Alias.make ~dir:path name)
+  in
+  Source_tree_map_reduce.map_reduce dir
+    ~traverse:Sub_dirs.Status.Set.normal_only ~f
+
+(* Execution *)
 
 module Make_exec (Build_deps : sig
   type fact
@@ -408,134 +442,10 @@ struct
         let* act, facts = exec t in
         let+ s = Build_deps.execute_action_stdout ~observing_facts:facts act in
         (s, Dep.Map.empty)
+      | Push_stack_frame (human_readable_description, f) ->
+        Memo.push_stack_frame ~human_readable_description (fun () ->
+            exec (f ()))
   end
 
   include Execution
-end
-
-(* Static evaluation *)
-
-(* Note: there is some duplicated logic between [can_eval_statically] and
-   [static_eval]. More precisely, [can_eval_statically] returns [false] exactly
-   for the nodes [static_eval] produces [assert false]. The duplication is not
-   ideal, but the code is simpler this way and also we expect that we will get
-   rid of this function eventually, once we have pushed the [Memo.Build.t] monad
-   enough in the code base.
-
-   If this code ends being more permanent that we expected, we should probably
-   get rid of the duplication. This code was introduced on February 2021, to
-   give an idea of how long it has been here. *)
-
-let rec can_eval_statically : type a. a t -> bool = function
-  | Pure _ -> true
-  | Map (_, a) -> can_eval_statically a
-  | Both (a, b) -> can_eval_statically a && can_eval_statically b
-  | Seq (a, b) -> can_eval_statically a && can_eval_statically b
-  | Map2 (_, a, b) -> can_eval_statically a && can_eval_statically b
-  | All xs -> List.for_all xs ~f:can_eval_statically
-  | Paths_glob _ -> false
-  | Deps _ -> true
-  | Dyn_paths b -> can_eval_statically b
-  | Dyn_deps b -> can_eval_statically b
-  | Source_tree _ -> false
-  | Contents _ -> false
-  | Lines_of _ -> false
-  | Fail _ -> true
-  | If_file_exists (_, _, _) -> false
-  | Memo _ -> false
-  | Memo_build _ -> false
-  | Dyn_memo_build _ -> false
-  | Bind _ ->
-    (* TODO jeremiedimino: This should be [can_eval_statically t], however it
-       breaks the [Expander.set_artifacts_dynamic] trick that it used to break a
-       cycle. The cycle is as follow:
-
-       - [(rule (deps %{cmo:x}) ..)] requires expanding %{cmo:x}
-
-       - expanding %{cmo:x} requires computing the artifacts DB
-
-       - computing the artifacts DB requires computing the module<->library
-       assignment
-
-       - computing the above requires knowing the set of source files (static
-       and generated) in a given directory
-
-       - computing the above works by looking at the source tree and adding all
-       targets of user rules
-
-       - computing targets of user rules is done by effectively generating the
-       rules for the user rules, which means interpreting the [(deps
-       %{cmo:...})] thing
-
-       If we find another way to break this cycle we should be able to change
-       this code. *)
-    false
-  | Dep_on_alias_if_exists _ -> false
-  | Goal t -> can_eval_statically t
-  | Action _ -> false
-  | Action_stdout _ -> false
-
-let static_eval =
-  let rec loop : type a. a t -> Dep.Set.t -> a * Dep.Set.t =
-   fun t acc ->
-    match t with
-    | Pure x -> (x, acc)
-    | Map (f, a) ->
-      let x, acc = loop a acc in
-      (f x, acc)
-    | Both (a, b) ->
-      let a, acc = loop a acc in
-      let b, acc = loop b acc in
-      ((a, b), acc)
-    | Seq (a, b) ->
-      let (), acc = loop a acc in
-      let b, acc = loop b acc in
-      (b, acc)
-    | Map2 (f, a, b) ->
-      let a, acc = loop a acc in
-      let b, acc = loop b acc in
-      (f a b, acc)
-    | All xs -> loop_many [] xs acc
-    | Paths_glob _ -> assert false
-    | Deps deps -> ((), Dep.Set.union deps acc)
-    | Dyn_paths b ->
-      let (x, ps), acc = loop b acc in
-      (x, Dep.Set.union (Dep.Set.of_files_set ps) acc)
-    | Dyn_deps b ->
-      let (x, deps), acc = loop b acc in
-      (x, Dep.Set.union deps acc)
-    | Source_tree _ -> assert false
-    | Contents _ -> assert false
-    | Lines_of _ -> assert false
-    | Fail { fail } -> fail ()
-    | If_file_exists (_, _, _) -> assert false
-    | Memo _ -> assert false
-    | Memo_build _ -> assert false
-    | Dyn_memo_build _ -> assert false
-    | Bind _ -> assert false
-    | Dep_on_alias_if_exists _ -> assert false
-    | Goal t -> loop t acc
-    | Action _ -> assert false
-    | Action_stdout _ -> assert false
-  and loop_many : type a. a list -> a t list -> Dep.Set.t -> a list * Dep.Set.t
-      =
-   fun acc_res l acc ->
-    match l with
-    | [] -> (List.rev acc_res, acc)
-    | t :: l ->
-      let x, acc = loop t acc in
-      loop_many (x :: acc_res) l acc
-  in
-  fun t ->
-    if can_eval_statically t then
-      Some (loop t Dep.Set.empty)
-    else
-      None
-
-let dyn_memo_build_deps t = dyn_deps (dyn_memo_build t)
-
-let dep_on_alias_if_exists t = Dep_on_alias_if_exists t
-
-module List = struct
-  let map l ~f = all (List.map l ~f)
 end

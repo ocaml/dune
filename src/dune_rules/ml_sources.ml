@@ -93,14 +93,14 @@ module Artifacts = struct
   let lookup_library { libraries; modules = _ } = Lib_name.Map.find libraries
 
   let make (d : _ Dir_with_dune.t) ~lib_config (libs, exes) =
-    let libraries =
-      List.fold_left ~init:Lib_name.Map.empty libs
-        ~f:(fun libraries (lib, _, _) ->
+    let+ libraries =
+      Memo.Build.List.map libs ~f:(fun (lib, _, _) ->
           let name = Lib_name.of_local lib.Library.name in
-          let info =
+          let+ info =
             Dune_file.Library.to_lib_info lib ~dir:d.ctx_dir ~lib_config
           in
-          Lib_name.Map.add_exn libraries name info)
+          (name, info))
+      >>| Lib_name.Map.of_list_exn
     in
     let modules =
       let by_name modules obj_dir =
@@ -333,7 +333,6 @@ let make (d : _ Dir_with_dune.t) ~lib_config ~loc ~lookup_vlib ~include_subdirs
   in
   let modules = Modules.make libs_and_exes in
   let artifacts =
-    Memo.lazy_ (fun () ->
-        Memo.Build.return (Artifacts.make ~lib_config d libs_and_exes))
+    Memo.lazy_ (fun () -> Artifacts.make ~lib_config d libs_and_exes)
   in
   { modules; artifacts }

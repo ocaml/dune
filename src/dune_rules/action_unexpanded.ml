@@ -3,6 +3,12 @@ open! Stdune
 open Import
 module Mapper = Action_mapper.Make (Action_dune_lang) (Action_dune_lang)
 
+(* So that we can confortably use both the [Action_builder.O] and [Memo.BUild.O]
+   monad at the same time *)
+let ( let+! ) = Memo.Build.O.( let+ )
+
+let ( let*! ) = Memo.Build.O.( let* )
+
 let as_in_build_dir ~what ~loc p =
   match Path.as_in_build_dir p with
   | Some p -> p
@@ -35,7 +41,8 @@ module Action_expander : sig
 
   val set_env : var:string -> value:string t -> (value:string -> 'a) t -> 'a t
 
-  val run : 'a t -> expander:Expander.t -> 'a Action_builder.With_targets.t
+  val run :
+    'a t -> expander:Expander.t -> 'a Action_builder.With_targets.t Memo.Build.t
 
   (* String with vars expansion *)
   module E : sig
@@ -63,19 +70,20 @@ module Action_expander : sig
 
     val prog_and_args : String_with_vars.t -> (Action.Prog.t * string list) t
 
-    (* Expand a template statically and pass it to [f]. Raise if it cannot be
-       expanded statically. *)
-    val static_path : String_with_vars.t -> f:(Path.t -> 'a t) -> 'a t
+    module At_rule_eval_stage : sig
+      (* Expansion that happens at the time the rule is constructed rather than
+         at the time the rule is being executed. As a result, the result can be
+         used immediately. However, percent forms that introduce action
+         dependencies are disallowed. *)
+      val path : String_with_vars.t -> f:(Path.t -> 'a t) -> 'a t
 
-    val static_string : String_with_vars.t -> f:(string -> 'a t) -> 'a t
+      val string : String_with_vars.t -> f:(string -> 'a t) -> 'a t
+    end
   end
 end = struct
   open Action_builder.O
 
-  type deps =
-    { static : Path.Set.t
-    ; dyn : Path.Set.t Action_builder.t
-    }
+  type deps = Path.Set.t Action_builder.t
 
   type collector =
     { targets : Path.Build.Set.t
@@ -89,63 +97,61 @@ end = struct
     ; dir : Path.Build.t
     }
 
-  type 'a t = env -> collector -> 'a Action_builder.t * collector
+  type 'a t = env -> collector -> ('a Action_builder.t * collector) Memo.Build.t
 
-  let return x _env acc = (Action_builder.return x, acc)
+  let return x _env acc = Memo.Build.return (Action_builder.return x, acc)
 
   let map t ~f env acc =
-    let b, acc = t env acc in
+    let+! b, acc = t env acc in
     (Action_builder.map b ~f, acc)
 
   let both a b env acc =
-    let a, acc = a env acc in
-    let b, acc = b env acc in
-    (Action_builder.both a b, acc)
+    let*! a, acc = a env acc in
+    let*! b, acc = b env acc in
+    Memo.Build.return (Action_builder.both a b, acc)
 
   let all =
     let rec loop res l env acc =
       match l with
-      | [] -> (Action_builder.map (Action_builder.all res) ~f:List.rev, acc)
+      | [] ->
+        Memo.Build.return
+          (Action_builder.map (Action_builder.all res) ~f:List.rev, acc)
       | t :: l ->
-        let x, acc = t env acc in
+        let*! x, acc = t env acc in
         loop (x :: res) l env acc
     in
     fun l env acc -> loop [] l env acc
 
   let run t ~expander =
-    let deps =
-      { static = Path.Set.empty; dyn = Action_builder.return Path.Set.empty }
-    in
+    let deps = Action_builder.return Path.Set.empty in
     let acc = { targets = Path.Build.Set.empty; deps; deps_if_exist = deps } in
     let env = { expander; infer = true; dir = Expander.dir expander } in
-    let b, acc = t env acc in
-    let { targets; deps; deps_if_exist } = acc in
-    (* A file can be inferred as both a dependency and a target, for instance:
+    Memo.Build.map (t env acc) ~f:(fun (b, acc) ->
+        let { targets; deps; deps_if_exist } = acc in
+        (* A file can be inferred as both a dependency and a target, for
+           instance:
 
-       {[ (progn (copy a b) (copy b c)) ]} *)
-    let remove_targets =
-      let targets =
-        Path.Build.Set.to_list targets |> Path.Set.of_list_map ~f:Path.build
-      in
-      fun deps -> Path.Set.diff deps targets
-    in
-    let action_builder_path_set_if_exist deps_if_exist =
-      Path.Set.fold deps_if_exist ~init:(Action_builder.return ())
-        ~f:(fun f acc ->
-          acc
-          >>> Action_builder.if_file_exists f ~then_:(Action_builder.path f)
-                ~else_:(Action_builder.return ()))
-    in
-    let add_deps f { static; dyn } =
-      f (remove_targets static)
-      >>> let* set = dyn in
-          f (remove_targets set)
-    in
-    Action_builder.with_targets_set ~targets
-      (let+ () = add_deps Action_builder.path_set deps
-       and+ () = add_deps action_builder_path_set_if_exist deps_if_exist
-       and+ res = b in
-       res)
+           {[ (progn (copy a b) (copy b c)) ]} *)
+        let remove_targets =
+          let targets =
+            Path.Build.Set.to_list targets |> Path.Set.of_list_map ~f:Path.build
+          in
+          fun deps -> Path.Set.diff deps targets
+        in
+        let deps = deps >>| remove_targets in
+        let deps_if_exist = deps_if_exist >>| remove_targets in
+        let action_builder_path_set_if_exist deps_if_exist =
+          Path.Set.fold deps_if_exist ~init:(Action_builder.return ())
+            ~f:(fun f acc ->
+              acc
+              >>> Action_builder.if_file_exists f ~then_:(Action_builder.path f)
+                    ~else_:(Action_builder.return ()))
+        in
+        Action_builder.with_targets_set ~targets
+          (let+ () = deps >>= Action_builder.path_set
+           and+ () = deps_if_exist >>= action_builder_path_set_if_exist
+           and+ res = b in
+           res))
 
   let chdir dir t env acc =
     (* We do not change the directory of the expander to make sure payloads are
@@ -166,14 +172,14 @@ end = struct
     t { env with dir } acc
 
   let set_env ~var ~value t env acc =
-    let value, acc = value env acc in
+    let*! value, acc = value env acc in
     let value = Action_builder.memoize "env var" value in
     let env =
       { env with
         expander = Expander.set_local_env_var env.expander ~var ~value
       }
     in
-    let f, acc = t env acc in
+    let+! f, acc = t env acc in
     let b =
       let+ f = f
       and+ value = value in
@@ -182,7 +188,7 @@ end = struct
     (b, acc)
 
   let no_infer t env acc =
-    let x, _acc = t { env with infer = false } acc in
+    let+! x, _acc = t { env with infer = false } acc in
     (x, acc)
 
   module O = struct
@@ -191,9 +197,9 @@ end = struct
     let ( and+ ) = both
 
     let ( >>> ) a b env acc =
-      let a, acc = a env acc in
-      let b, acc = b env acc in
-      (Action_builder.O.( >>> ) a b, acc)
+      let*! a, acc = a env acc in
+      let*! b, acc = b env acc in
+      Memo.Build.return (Action_builder.O.( >>> ) a b, acc)
   end
 
   module E = struct
@@ -220,143 +226,94 @@ end = struct
         let+ v = expand env ~mode:Many sw in
         Value.L.to_strings v ~dir:(Path.build env.dir)
 
-      module Static = struct
+      let artifacts = Expander.artifacts
+
+      let map_exe = Expander.map_exe
+
+      module No_deps = struct
         let expand env ~mode template =
           String_with_vars.expand ~dir:(Path.build env.dir) ~mode template
-            ~f:(Expander.Static.expand_pform env.expander)
+            ~f:(Expander.No_deps.expand_pform env.expander)
 
         let expand_path env sw =
-          let v = expand env ~mode:Single sw in
+          let+! v = expand env ~mode:Single sw in
           Value.to_path v ~error_loc:(String_with_vars.loc sw)
             ~dir:(Path.build env.dir)
 
         let expand_string env sw =
-          let v = expand env ~mode:Single sw in
+          let+! v = expand env ~mode:Single sw in
           Value.to_string v ~dir:(Path.build env.dir)
-
-        module Or_exn = struct
-          let expand_path env sw =
-            Result.try_with (fun () -> expand_path env sw)
-
-          let expand_string env sw =
-            Result.try_with (fun () -> expand_string env sw)
-        end
       end
-
-      let artifacts = Expander.artifacts
-
-      let map_exe = Expander.map_exe
     end
 
-    let string sw env acc = (Expander.expand_string env sw, acc)
+    let string sw env acc =
+      Memo.Build.return (Expander.expand_string env sw, acc)
 
-    let strings sw env acc = (Expander.expand_strings env sw, acc)
+    let strings sw env acc =
+      Memo.Build.return (Expander.expand_strings env sw, acc)
 
-    let fail exn acc =
-      (Action_builder.fail { fail = (fun () -> raise exn) }, acc)
+    let path sw env acc = Memo.Build.return (Expander.expand_path env sw, acc)
 
-    let static_string sw ~f env acc =
-      match Expander.Static.Or_exn.expand_string env sw with
-      | Ok s -> f s env acc
-      | Error exn -> fail exn acc
+    module At_rule_eval_stage = struct
+      let make ~expand sw ~f env acc =
+        let*! x = expand env sw in
+        f x env acc
 
-    let path sw env acc = (Expander.expand_path env sw, acc)
+      let string sw ~f = make ~expand:Expander.No_deps.expand_string sw ~f
 
-    let static_path sw ~f env acc =
-      match Expander.Static.Or_exn.expand_path env sw with
-      | Ok s -> f s env acc
-      | Error exn -> fail exn acc
+      let path sw ~f = make ~expand:Expander.No_deps.expand_path sw ~f
+    end
 
     let register_dep x ~f env acc =
-      if not env.infer then
-        (x, acc)
-      else
-        (* Try to collect the dependency statically as it helps for [dune
-           external-lib-deps]. *)
-        match Action_builder.static_eval x with
-        | Some (x, deps) -> (
-          ( Action_builder.deps deps >>> Action_builder.return x
-          , match f x with
-            | None -> acc
-            | Some fn ->
-              { acc with
-                deps =
-                  { acc.deps with static = Path.Set.add acc.deps.static fn }
-              } ))
-        | None
-        | (exception User_error.E _) ->
+      Memo.Build.return
+        (if not env.infer then
+          (x, acc)
+        else
           let x = Action_builder.memoize "dep" x in
           ( x
           , { acc with
               deps =
-                { acc.deps with
-                  dyn =
-                    (let+ x = x
-                     and+ set = acc.deps.dyn in
-                     match f x with
-                     | None -> set
-                     | Some fn -> Path.Set.add set fn)
-                }
-            } )
+                (let+ x = x
+                 and+ set = acc.deps in
+                 match f x with
+                 | None -> set
+                 | Some fn -> Path.Set.add set fn)
+            } ))
 
     let dep sw env acc =
       let fn = Expander.expand_path env sw in
       register_dep fn ~f:Option.some env acc
 
     let dep_if_exists sw env acc =
-      let fn = Expander.expand_path env sw in
-      if not env.infer then
-        (fn, acc)
-      else
-        match Action_builder.static_eval fn with
-        | Some (fn, deps) ->
-          ( Action_builder.deps deps >>> Action_builder.return fn
-          , { acc with
-              deps_if_exist =
-                { acc.deps_if_exist with
-                  static = Path.Set.add acc.deps_if_exist.static fn
-                }
-            } )
-        | None
-        | (exception User_error.E _) ->
-          let fn = Action_builder.memoize "dep_if_exists" fn in
-          ( fn
-          , { acc with
-              deps_if_exist =
-                { acc.deps_if_exist with
-                  dyn =
-                    (let+ fn = fn
-                     and+ set = acc.deps_if_exist.dyn in
-                     Path.Set.add set fn)
-                }
-            } )
+      Memo.Build.return
+        (let fn = Expander.expand_path env sw in
+         if not env.infer then
+           (fn, acc)
+         else
+           let fn = Action_builder.memoize "dep_if_exists" fn in
+           ( fn
+           , { acc with
+               deps_if_exist =
+                 (let+ fn = fn
+                  and+ set = acc.deps_if_exist in
+                  Path.Set.add set fn)
+             } ))
 
-    let consume_file sw env acc =
+    let add_or_remove_target ~what ~f sw env acc =
       if not env.infer then
-        let b, acc = path sw env acc in
-        let b =
-          let+ p = b in
-          as_in_build_dir p ~what:"File" ~loc:(loc sw)
-        in
-        (b, acc)
+        Memo.Build.return
+          ( (let+ p = Expander.expand_path env sw in
+             as_in_build_dir ~what ~loc:(loc sw) p)
+          , acc )
       else
-        static_path sw env acc ~f:(fun p _env acc ->
-            let p = as_in_build_dir p ~what:"File" ~loc:(loc sw) in
-            ( Action_builder.return p
-            , { acc with targets = Path.Build.Set.remove acc.targets p } ))
+        let+! p = Expander.No_deps.expand_path env sw in
+        let p = as_in_build_dir p ~what ~loc:(loc sw) in
+        (Action_builder.return p, { acc with targets = f acc.targets p })
 
-    let target sw env acc =
-      if not env.infer then
-        ( (let+ p = Expander.expand_path env sw in
-           as_in_build_dir ~what:"Target" ~loc:(loc sw) p)
-        , acc )
-      else
-        match Expander.Static.Or_exn.expand_path env sw with
-        | Error exn -> fail exn acc
-        | Ok p ->
-          let p = as_in_build_dir ~what:"Target" ~loc:(loc sw) p in
-          ( Action_builder.return p
-          , { acc with targets = Path.Build.Set.add acc.targets p } )
+    let consume_file =
+      add_or_remove_target ~what:"File" ~f:Path.Build.Set.remove
+
+    let target = add_or_remove_target ~what:"Target" ~f:Path.Build.Set.add
 
     let prog_and_args sw env acc =
       let b =
@@ -414,13 +371,13 @@ let rec expand (t : Action_dune_lang.t) : Action.t Action_expander.t =
     let+ prog, args = expand_run prog args in
     O.Dynamic_run (prog, args)
   | Chdir (fn, t) ->
-    E.static_path fn ~f:(fun dir ->
+    E.At_rule_eval_stage.path fn ~f:(fun dir ->
         A.chdir
           (as_in_build_dir dir ~loc:(String_with_vars.loc fn) ~what:"Directory")
           (let+ t = expand t in
            O.Chdir (dir, t)))
   | Setenv (var, value, t) ->
-    E.static_string var ~f:(fun var ->
+    E.At_rule_eval_stage.string var ~f:(fun var ->
         A.set_env ~var ~value:(E.string value)
           (let+ t = expand t in
            fun ~value -> O.Setenv (var, value, t)))
@@ -532,8 +489,8 @@ let expand_no_targets t ~loc ~deps:deps_written_by_user ~expander ~what =
   let expander =
     Expander.set_expanding_what expander (User_action_without_targets { what })
   in
-  let { Action_builder.With_targets.build; targets } =
-    Action_expander.run (expand t) ~expander
+  let* { Action_builder.With_targets.build; targets } =
+    Action_builder.memo_build (Action_expander.run (expand t) ~expander)
   in
   if not (Path.Build.Set.is_empty targets) then
     User_error.raise ~loc
@@ -565,13 +522,14 @@ let expand t ~loc ~deps:deps_written_by_user ~targets_dir
                 (match multiplicity with
                 | One -> Target
                 | Multiple -> Targets))
-             (Action_builder.return
-                (Value.L.paths (List.map targets ~f:Path.build))))
+             (Expander.Deps.Without
+                (Memo.Build.return
+                   (Value.L.paths (List.map targets ~f:Path.build)))))
   in
   let expander =
     Expander.set_expanding_what expander (User_action targets_written_by_user)
   in
-  let { Action_builder.With_targets.build; targets } =
+  let+! { Action_builder.With_targets.build; targets } =
     Action_expander.run (expand t) ~expander
   in
   let targets =

@@ -86,7 +86,14 @@ val all_unit : unit t list -> unit t
 
 module List : sig
   val map : 'a list -> f:('a -> 'b t) -> 'b list t
+
+  val concat_map : 'a list -> f:('a -> 'b list t) -> 'b list t
 end
+
+val push_stack_frame :
+     human_readable_description:(unit -> User_message.Style.t Pp.t)
+  -> (unit -> 'a t)
+  -> 'a t
 
 (** Delay a static computation until the description is evaluated *)
 val delayed : (unit -> 'a) -> 'a t
@@ -140,6 +147,13 @@ val paths_existing : Path.t list -> unit t
 val env_var : string -> unit t
 
 val alias : Alias.t -> unit t
+
+val dep_on_alias_if_exists : Alias.t -> bool t
+
+(** Depend on an alias recursively. Return [true] if the alias is defined in at
+    least one directory, and [false] otherwise. *)
+val dep_on_alias_rec :
+  Alias.Name.t -> Context_name.t -> Source_tree.Dir.t -> bool t
 
 (** Compute the set of source of all files present in the sub-tree starting at
     [dir] and record them as dependencies. *)
@@ -253,11 +267,6 @@ val action : Action_desc.t t -> unit t
 (** Same as [action], but captures the output of the action. *)
 val action_stdout : Action_desc.t t -> string t
 
-(** {1 Analysis} *)
-
-(** Returns [Some (x, deps)] if the following can be evaluated statically. *)
-val static_eval : 'a t -> ('a * Dep.Set.t) option
-
 (** [goal t] ignores all facts that have been accumulated about the dependencies
     of [t]. For example, [goal (path p)] declares that a path [p] contributes to
     the "goal" of the resulting action builder, which means [p] must be built,
@@ -317,7 +326,3 @@ val dyn_memo_build : 'a Memo.Build.t t -> 'a t
 (** A version of [dyn_memo_build] that makes it convenient to declare dynamic
     action dependencies. *)
 val dyn_memo_build_deps : ('a * Dep.Set.t) Memo.Build.t t -> 'a t
-
-(**/**)
-
-val dep_on_alias_if_exists : Alias.t -> bool t

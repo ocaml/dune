@@ -106,10 +106,11 @@ let%expect_test "invalid client version" =
   [%expect.unreachable]
   [@@expect.uncaught_exn
     {|
-  ( "{ payload = Some [ [ \"supported versions until\"; [ \"2\"; \"0\" ] ] ]\
-   \n; message = \"Unsupported version\"\
-   \n; kind = Version_error\
-   \n}")
+  ( "Response.E\
+   \n  { payload = Some [ [ \"supported versions until\"; [ \"2\"; \"0\" ] ] ]\
+   \n  ; message = \"Unsupported version\"\
+   \n  ; kind = Version_error\
+   \n  }")
   Trailing output
   ---------------
   server: finished. |}]

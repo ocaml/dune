@@ -127,21 +127,3 @@ module Event = struct
   let path t = t.path
   let kind t = t.kind
 end
-
-let handle events =
-  let invalidation =
-    let events = Nonempty_list.to_list events in
-    List.fold_left events ~init:Memo.Invalidation.empty ~f:(fun acc event ->
-        Memo.Invalidation.combine acc (Event.handle event))
-  in
-  match !Memo.incremental_mode_enabled with
-  | true -> invalidation
-  | false ->
-    (* In this mode, we do not assume that all file system dependencies are
-       declared correctly and therefore conservatively require a rebuild. *)
-    (* The fact that the [events] list is non-empty justifies clearing the
-       caches. *)
-    let (_ : _ Nonempty_list.t) = events in
-    (* Since [clear_caches] is not sufficient to guarantee invalidation, we pay
-       attention to [invalidation] too, for good measure *)
-    Memo.Invalidation.combine Memo.Invalidation.clear_caches invalidation

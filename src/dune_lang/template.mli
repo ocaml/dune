@@ -7,6 +7,8 @@ module Pform : sig
     ; payload : string option
     }
 
+  val to_string : t -> string
+
   val to_dyn : t -> Dyn.t
 
   val name : t -> string

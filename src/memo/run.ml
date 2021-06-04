@@ -1,15 +1,15 @@
 open Stdune
 
-type t = bool ref
+type t = int
 
-let to_dyn _ = Dyn.opaque
+let compare = Int.compare
 
-let current = ref (ref true)
+let to_dyn = Dyn.Encoder.int
 
-let restart () =
-  !current := false;
-  current := ref true
+let current = ref 0
+
+let is_current t = Int.equal !current t
+
+let restart () = incr current
 
 let current () = !current
-
-let is_current t = !t

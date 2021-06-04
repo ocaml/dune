@@ -3,6 +3,8 @@ unreleased - 2.9 branch
 
 - Add `(enabled_if ...)` to `(mdx ...)` (#4434, @emillon)
 
+- Add the possibility to use `locks` with the cram tests stanza (#4480, @voodoos)
+
 2.8.5 (28/03/2021)
 ------------------
 

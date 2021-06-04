@@ -1,4 +1,5 @@
 open Stdune
+open Dune_engine
 
 type t = private
   { name : Dune_engine.Alias.Name.t
@@ -22,3 +23,5 @@ val of_string :
   -> t
 
 val pp : t -> _ Pp.t
+
+val request : t -> unit Action_builder.t

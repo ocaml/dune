@@ -56,6 +56,8 @@ module T = struct
 
   let all xs = All xs
 
+  let memo_build f = Memo_build f
+
   module O = struct
     let ( >>> ) a b = Seq (a, b)
 
@@ -71,11 +73,23 @@ module T = struct
 
     let ( let* ) t f = Bind (t, f)
   end
+
+  open O
+
+  module List = struct
+    let map l ~f = all (List.map l ~f)
+
+    let concat_map l ~f = map l ~f >>| List.concat
+  end
 end
 
 module Expander = String_with_vars.Make_expander (T)
 include T
 open O
+
+open struct
+  module List = Stdune.List
+end
 
 let ignore x = Map (Fun.const (), x)
 
@@ -275,13 +289,27 @@ let progn ts =
 
 let goal t = Goal t
 
-(* Execution *)
-
-let memo_build f = Memo_build f
-
 let memo_build_join f = Memo_build f |> bind ~f:Fun.id
 
 let dyn_memo_build f = Dyn_memo_build f
+
+let dyn_memo_build_deps t = dyn_deps (dyn_memo_build t)
+
+let dep_on_alias_if_exists t = Dep_on_alias_if_exists t
+
+module Source_tree_map_reduce =
+  Source_tree.Dir.Make_map_reduce (T) (Monoid.Exists)
+
+let dep_on_alias_rec name context_name dir =
+  let build_dir = Context_name.build_dir context_name in
+  let f dir =
+    let path = Path.Build.append_source build_dir (Source_tree.Dir.path dir) in
+    dep_on_alias_if_exists (Alias.make ~dir:path name)
+  in
+  Source_tree_map_reduce.map_reduce dir
+    ~traverse:Sub_dirs.Status.Set.normal_only ~f
+
+(* Execution *)
 
 module Make_exec (Build_deps : sig
   type fact
@@ -420,14 +448,4 @@ struct
   end
 
   include Execution
-end
-
-let dyn_memo_build_deps t = dyn_deps (dyn_memo_build t)
-
-let dep_on_alias_if_exists t = Dep_on_alias_if_exists t
-
-module List = struct
-  let map l ~f = all (List.map l ~f)
-
-  let concat_map l ~f = map l ~f >>| List.concat
 end

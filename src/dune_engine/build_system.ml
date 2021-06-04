@@ -116,88 +116,6 @@ end
 
 let files_in_source_tree_to_delete () = Promoted_to_delete.get_db ()
 
-module Alias = struct
-  include Alias
-
-  let dep t = Action_builder.dep (Dep.alias t)
-
-  let dep_multi_contexts ~dir ~name ~contexts =
-    ignore (Source_tree.find_dir_specified_on_command_line ~dir);
-    let context_to_alias_expansion ctx =
-      let ctx_dir = Context_name.build_dir ctx in
-      let dir = Path.Build.(append_source ctx_dir dir) in
-      dep (make ~dir name)
-    in
-    Action_builder.all_unit (List.map contexts ~f:context_to_alias_expansion)
-
-  open Action_builder.O
-  module Source_tree_map_reduce =
-    Source_tree.Dir.Make_map_reduce (Action_builder) (Monoid.Exists)
-
-  let dep_rec_internal ~name ~dir ~ctx_dir =
-    let f dir =
-      let path = Path.Build.append_source ctx_dir (Source_tree.Dir.path dir) in
-      Action_builder.dep_on_alias_if_exists (make ~dir:path name)
-    in
-    Source_tree_map_reduce.map_reduce dir
-      ~traverse:Sub_dirs.Status.Set.normal_only ~f
-
-  let dep_rec t ~loc =
-    let ctx_dir, src_dir =
-      Path.Build.extract_build_context_dir_exn (Alias.dir t)
-    in
-    Action_builder.memo_build (Source_tree.find_dir src_dir) >>= function
-    | None ->
-      Action_builder.fail
-        { fail =
-            (fun () ->
-              User_error.raise ~loc
-                [ Pp.textf "Don't know about directory %s!"
-                    (Path.Source.to_string_maybe_quoted src_dir)
-                ])
-        }
-    | Some dir ->
-      let name = Alias.name t in
-      let+ is_nonempty = dep_rec_internal ~name ~dir ~ctx_dir in
-      if (not is_nonempty) && not (is_standard name) then
-        User_error.raise ~loc
-          [ Pp.text "This alias is empty."
-          ; Pp.textf "Alias %S is not defined in %s or any of its descendants."
-              (Alias.Name.to_string name)
-              (Path.Source.to_string_maybe_quoted src_dir)
-          ]
-
-  let dep_rec_multi_contexts ~dir:src_dir ~name ~contexts =
-    let open Action_builder.O in
-    let* dir =
-      Action_builder.memo_build
-        (Source_tree.find_dir_specified_on_command_line ~dir:src_dir)
-    in
-    let+ is_nonempty_list =
-      Action_builder.all
-        (List.map contexts ~f:(fun ctx ->
-             let ctx_dir = Context_name.build_dir ctx in
-             dep_rec_internal ~name ~dir ~ctx_dir))
-    in
-    let is_nonempty = List.exists is_nonempty_list ~f:Fun.id in
-    if (not is_nonempty) && not (is_standard name) then
-      User_error.raise
-        [ Pp.textf "Alias %S specified on the command line is empty."
-            (Alias.Name.to_string name)
-        ; Pp.textf "It is not defined in %s or any of its descendants."
-            (Path.Source.to_string_maybe_quoted src_dir)
-        ]
-
-  let package_install ~(context : Build_context.t) ~(pkg : Package.t) =
-    let dir =
-      let dir = Package.dir pkg in
-      Path.Build.append_source context.build_dir dir
-    in
-    let name = Package.name pkg in
-    sprintf ".%s-files" (Package.Name.to_string name)
-    |> Alias.Name.of_string |> make ~dir
-end
-
 module Loaded = struct
   type build =
     { allowed_subdirs : Path.Unspecified.w Dir_set.t
@@ -379,6 +297,19 @@ module Error = struct
       (fun dir -> Some dir)
       (fun () -> None)
 
+  let extract_promote annot =
+    Promotion.Annot.check annot (fun promote -> Some promote) (fun () -> None)
+
+  let promotion t =
+    let e =
+      match t.exn.exn with
+      | Memo.Error.E e -> Memo.Error.get e
+      | e -> e
+    in
+    match e with
+    | User_error.E (_, annots) -> List.find_map annots ~f:extract_promote
+    | _ -> None
+
   let info (t : t) =
     let e =
       match t.exn.exn with
@@ -449,6 +380,8 @@ type t =
   ; stats : Dune_stats.t option
   ; cache_config : Dune_cache.Config.t
   ; cache_debug_flags : Cache_debug_flags.t
+  ; implicit_default_alias :
+      Path.Build.t -> unit Action_builder.t option Memo.Build.t
   }
 
 let t = Fdecl.create Dyn.Encoder.opaque
@@ -821,37 +754,17 @@ end = struct
     | None -> false
     | Some _ -> true
 
-  let compute_alias_expansions ~(collected : Rules.Dir_rules.ready) ~dir =
+  let compute_alias_expansions t ~(collected : Rules.Dir_rules.ready) ~dir =
     let aliases = collected.aliases in
     let+ aliases =
       if Alias.Name.Map.mem aliases Alias.Name.default then
         Memo.Build.return aliases
       else
-        match Path.Build.extract_build_context_dir dir with
-        | None -> Memo.Build.return aliases
-        | Some (ctx_dir, src_dir) -> (
-          Source_tree.find_dir src_dir >>| function
-          | None -> aliases
-          | Some dir ->
-            let default_alias =
-              let dune_version =
-                Source_tree.Dir.project dir |> Dune_project.dune_version
-              in
-              if dune_version >= (2, 0) then
-                Alias.Name.all
-              else
-                Alias.Name.install
-            in
-            Alias.Name.Map.set aliases Alias.Name.default
-              { expansions =
-                  Appendable_list.singleton
-                    ( Loc.none
-                    , let open Action_builder.O in
-                      let+ _ =
-                        Alias.dep_rec_internal ~name:default_alias ~dir ~ctx_dir
-                      in
-                      () )
-              })
+        t.implicit_default_alias dir >>| function
+        | None -> aliases
+        | Some expansion ->
+          Alias.Name.Map.set aliases Alias.Name.default
+            { expansions = Appendable_list.singleton (Loc.none, expansion) }
     in
     Alias.Name.Map.map aliases
       ~f:(fun { Rules.Dir_rules.Alias_spec.expansions } ->
@@ -1021,7 +934,7 @@ end = struct
     let rules = collected.rules in
     let* aliases =
       match context_name with
-      | Context _ -> compute_alias_expansions ~collected ~dir
+      | Context _ -> compute_alias_expansions t ~collected ~dir
       | Install _ ->
         (* There are no aliases in the [_build/install] directory *)
         Memo.Build.return Alias.Name.Map.empty
@@ -1230,26 +1143,14 @@ let all_targets t =
             Path.Build.Set.of_list (Path.Build.Map.keys rules_here)))
   >>| Path.Build.Set.union_all
 
-let expand_alias_gen alias ~eval_build_request =
+let get_alias_definition alias =
   lookup_alias alias >>= function
   | None ->
+    let open Pp.O in
     let+ loc = Rule_fn.loc () in
-    let alias_descr = sprintf "alias %s" (Alias.describe alias) in
-    User_error.raise ?loc [ Pp.textf "No rule found for %s" alias_descr ]
-  | Some alias_definitions ->
-    Memo.Build.parallel_map alias_definitions ~f:(fun (loc, definition) ->
-        Memo.push_stack_frame
-          (fun () ->
-            let+ (), facts = eval_build_request definition in
-            facts)
-          ~human_readable_description:(fun () ->
-            let loc_suffix =
-              if Loc.is_none loc then
-                ""
-              else
-                " in " ^ Loc.to_file_colon_line loc
-            in
-            Pp.textf "alias %s%s" (Alias.describe alias) loc_suffix))
+    User_error.raise ?loc
+      [ Pp.text "No rule found for alias " ++ Alias.describe alias ]
+  | Some x -> Memo.Build.return x
 
 type rule_execution_result =
   { deps : Dep.Fact.t Dep.Map.t
@@ -2217,7 +2118,16 @@ end = struct
       Path.Build.Map.find_exn targets path
 
   let build_alias_impl alias =
-    let+ l = expand_alias_gen alias ~eval_build_request:exec_build_request in
+    let+ l =
+      get_alias_definition alias
+      >>= Memo.Build.parallel_map ~f:(fun (loc, definition) ->
+              Memo.push_stack_frame
+                (fun () ->
+                  let+ (), facts = exec_build_request definition in
+                  facts)
+                ~human_readable_description:(fun () ->
+                  Alias.describe alias ~loc))
+    in
     Dep.Facts.group_paths_as_fact_files l
 
   module Pred = struct
@@ -2381,159 +2291,25 @@ let run ?(report_error = Dune_util.Report_error.report) f =
   in
   Fiber.Mutex.with_lock t.build_mutex f
 
+let build_file = build_file
+
+let build_deps = build_deps
+
 let build request =
   let+ result, _deps = exec_build_request request in
   result
+
+let file_exists = file_exists
+
+let alias_exists = Load_rules.alias_exists
 
 let is_target file =
   let+ targets = targets_of ~dir:(Path.parent_exn file) in
   Path.Set.mem targets file
 
-module For_command_line : sig
-  module Rule : sig
-    type t = private
-      { id : Rule.Id.t
-      ; dir : Path.Build.t
-      ; deps : Dep.Set.t
-      ; expanded_deps : Path.Set.t
-      ; targets : Path.Build.Set.t
-      ; context : Build_context.t option
-      ; action : Action.t
-      }
-  end
+let execute_action = execute_action
 
-  val evaluate_rules :
-    recursive:bool -> request:unit Action_builder.t -> Rule.t list Memo.Build.t
-
-  val eval_build_request : 'a Action_builder.t -> ('a * Dep.Set.t) Memo.Build.t
-end = struct
-  module Non_evaluated_rule = Rule
-
-  module Rule = struct
-    type t =
-      { id : Rule.Id.t
-      ; dir : Path.Build.t
-      ; deps : Dep.Set.t
-      ; expanded_deps : Path.Set.t
-      ; targets : Path.Build.Set.t
-      ; context : Build_context.t option
-      ; action : Action.t
-      }
-  end
-
-  module Rule_top_closure =
-    Top_closure.Make (Non_evaluated_rule.Id.Set) (Memo.Build)
-
-  (* Evaluate a rule without building the action dependencies *)
-  module Eval_action_builder = Action_builder.Make_exec (struct
-    type fact = unit
-
-    let merge_facts = Dep.Set.union
-
-    let read_file p ~f =
-      let+ _digest = build_file p in
-      f p
-
-    let register_action_deps deps = Memo.Build.return deps
-
-    let register_action_dep_pred g =
-      let+ ps = Pred.eval g in
-      (ps, ())
-
-    let file_exists = file_exists
-
-    let alias_exists = Load_rules.alias_exists
-
-    let execute_action ~observing_facts:_ _act =
-      (* We don't need to execute this action to compute the final action. *)
-      (* jeremiedimino: but maybe we should capture it somehow, it seems
-         relevant to display in the output of [dune rules] *)
-      Memo.Build.return ()
-
-    let execute_action_stdout ~observing_facts:deps act =
-      let* facts = build_deps deps in
-      execute_action_stdout ~observing_facts:facts act
-  end)
-
-  let eval_build_request = Eval_action_builder.exec
-
-  module rec Expand : sig
-    val alias : Alias.t -> Path.Set.t Memo.Build.t
-
-    val deps : Dep.Set.t -> Path.Set.t Memo.Build.t
-  end = struct
-    let alias =
-      let memo =
-        Memo.create "expand-alias"
-          ~input:(module Alias)
-          (fun alias ->
-            let* l = expand_alias_gen alias ~eval_build_request in
-            let deps = List.fold_left l ~init:Dep.Set.empty ~f:Dep.Set.union in
-            Expand.deps deps)
-      in
-      Memo.exec memo
-
-    let deps deps =
-      Memo.Build.parallel_map (Dep.Set.to_list deps) ~f:(fun (dep : Dep.t) ->
-          match dep with
-          | File p -> Memo.Build.return (Path.Set.singleton p)
-          | File_selector g -> eval_pred g
-          | Alias a -> Expand.alias a
-          | Env _
-          | Universe
-          | Sandbox_config _ ->
-            Memo.Build.return Path.Set.empty)
-      >>| Path.Set.union_all
-  end
-
-  let evaluate_rule =
-    let memo =
-      Memo.create "evaluate-rule"
-        ~input:(module Non_evaluated_rule)
-        (fun rule ->
-          let* action, deps = eval_build_request rule.action in
-          let* expanded_deps = Expand.deps deps in
-          Memo.Build.return
-            { Rule.id = rule.id
-            ; dir = rule.dir
-            ; deps
-            ; expanded_deps
-            ; targets = rule.targets
-            ; context = rule.context
-            ; action = action.action
-            })
-    in
-    Memo.exec memo
-
-  let evaluate_rules ~recursive ~request =
-    let rules_of_deps deps =
-      Expand.deps deps >>| Path.Set.to_list
-      >>= Memo.Build.parallel_map ~f:(fun p ->
-              get_rule p >>= function
-              | None -> Memo.Build.return None
-              | Some rule -> evaluate_rule rule >>| Option.some)
-      >>| List.filter_map ~f:Fun.id
-    in
-    let* (), deps = Eval_action_builder.exec request in
-    let* root_rules = rules_of_deps deps in
-    Rule_top_closure.top_closure root_rules
-      ~key:(fun rule -> rule.Rule.id)
-      ~deps:(fun rule ->
-        if recursive then
-          rules_of_deps rule.deps
-        else
-          Memo.Build.return [])
-    >>| function
-    | Ok l -> l
-    | Error cycle ->
-      User_error.raise
-        [ Pp.text "Dependency cycle detected:"
-        ; Pp.chain cycle ~f:(fun rule ->
-              Pp.verbatim
-                (Path.to_string_maybe_quoted
-                   (Path.build (Path.Build.Set.choose_exn rule.targets))))
-        ]
-end
+let execute_action_stdout = execute_action_stdout
 
 let load_dir_and_produce_its_rules ~dir =
   load_dir ~dir >>= function
@@ -2543,7 +2319,7 @@ let load_dir_and_produce_its_rules ~dir =
 let load_dir ~dir = load_dir_and_produce_its_rules ~dir
 
 let init ~stats ~contexts ~promote_source ~cache_config ~cache_debug_flags
-    ~sandboxing_preference ~rule_generator ~handler =
+    ~sandboxing_preference ~rule_generator ~handler ~implicit_default_alias =
   let contexts =
     Memo.lazy_ (fun () ->
         let+ contexts = Memo.Lazy.force contexts in
@@ -2571,6 +2347,7 @@ let init ~stats ~contexts ~promote_source ~cache_config ~cache_debug_flags
     ; stats
     ; cache_config
     ; cache_debug_flags
+    ; implicit_default_alias
     }
 
 module Progress = struct

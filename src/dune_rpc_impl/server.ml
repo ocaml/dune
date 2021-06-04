@@ -22,12 +22,22 @@ let diagnostic_of_error : Build_system.Error.t -> Dune_rpc_private.Diagnostic.t
   let loc = message.loc in
   let message = Pp.map_tags (Pp.concat message.paragraphs) ~f:(fun _ -> ()) in
   let id = Build_system.Error.id m |> Diagnostic.Id.create in
+  let promotion =
+    match Build_system.Error.promotion m with
+    | None -> []
+    | Some { in_source; in_build } ->
+      [ { Diagnostic.Promotion.in_source = Path.Source.to_string in_source
+        ; in_build = Path.Build.to_string in_build
+        }
+      ]
+  in
   { severity = None
   ; id
   ; targets = []
   ; message
   ; loc
-  ; promotion = []
+  ; promotion
+  ; related = []
   ; directory =
       Option.map
         ~f:(fun p ->
@@ -135,6 +145,7 @@ let handler (t : t Fdecl.t) : 'a Dune_rpc_server.Handler.t =
       [ Subscribe.Diagnostics; Build_progress ]
       |> List.fold_left ~init:t.subscribers ~f:(fun acc which ->
              Subscribers.remove acc which session);
+    t.clients <- Session_set.remove t.clients session;
     Fiber.return ()
   in
   let rpc =

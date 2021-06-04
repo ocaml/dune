@@ -30,6 +30,33 @@ let to_action_builder = function
     [ path ]
   | Other x -> x
 
+let dep_on_alias_rec alias ~loc =
+  let ctx_name, src_dir =
+    Path.Build.extract_build_context_exn (Alias.dir alias)
+  in
+  Action_builder.memo_build (Source_tree.find_dir src_dir) >>= function
+  | None ->
+    Action_builder.fail
+      { fail =
+          (fun () ->
+            User_error.raise ~loc
+              [ Pp.textf "Don't know about directory %s!"
+                  (Path.Source.to_string_maybe_quoted src_dir)
+              ])
+      }
+  | Some dir ->
+    let name = Dune_engine.Alias.name alias in
+    let+ is_nonempty =
+      Action_builder.dep_on_alias_rec name (Context_name.of_string ctx_name) dir
+    in
+    if (not is_nonempty) && not (Alias.is_standard name) then
+      User_error.raise ~loc
+        [ Pp.text "This alias is empty."
+        ; Pp.textf "Alias %S is not defined in %s or any of its descendants."
+            (Alias.Name.to_string name)
+            (Path.Source.to_string_maybe_quoted src_dir)
+        ]
+
 let dep expander = function
   | File s -> (
     match Expander.With_deps_if_necessary.expand_path expander s with
@@ -59,7 +86,7 @@ let dep expander = function
   | Alias_rec s ->
     Other
       (let* a = make_alias expander s in
-       let+ () = Build_system.Alias.dep_rec ~loc:(String_with_vars.loc s) a in
+       let+ () = dep_on_alias_rec ~loc:(String_with_vars.loc s) a in
        [])
   | Glob_files { glob = s; recursive } ->
     Other
@@ -91,7 +118,7 @@ let dep expander = function
          match Expander.find_package expander pkg with
          | Some (Local pkg) ->
            Action_builder.alias
-             (Build_system.Alias.package_install
+             (Alias.package_install
                 ~context:(Context.build_context context)
                 ~pkg)
          | Some (Installed pkg) ->

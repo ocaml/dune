@@ -86,6 +86,12 @@ module Response = struct
       ; kind : kind
       }
 
+    let payload t = t.payload
+
+    let kind t = t.kind
+
+    let message t = t.message
+
     exception E of t
 
     let create ?payload ~kind ~message () = { payload; message; kind }
@@ -129,7 +135,8 @@ module Response = struct
 
     let () =
       Printexc.register_printer (function
-        | E e -> Some (Dyn.to_string (to_dyn e))
+        | E e ->
+          Some (Dyn.to_string (Dyn.Encoder.constr "Response.E" [ to_dyn e ]))
         | _ -> None)
   end
 

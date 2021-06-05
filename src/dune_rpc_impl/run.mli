@@ -35,9 +35,4 @@ module Connect : sig
       This is needed for implementing low level functions such as
       [$ dune rpc init] *)
   val csexp_client : Dune_rpc.Where.t -> Csexp_rpc.Client.t Fiber.t
-
-  val connect_persistent :
-       unit
-    -> (Csexp_rpc.Session.t Fiber.Stream.In.t * Csexp_rpc.Client.t option)
-       Fiber.t
 end

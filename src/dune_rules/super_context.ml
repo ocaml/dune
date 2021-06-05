@@ -426,19 +426,19 @@ let resolve_program t ~dir ?hint ~loc bin =
   Artifacts.Bin.binary ?hint ~loc bin_artifacts bin
 
 let get_installed_binaries stanzas ~(context : Context.t) =
-  let open Resolve.O in
+  let open Memo.Build.O in
   let install_dir = Local_install_path.bin_dir ~context:context.name in
   let expand_str ~dir sw =
-    Expander.Static.With_reduced_var_set.expand_str ~context ~dir sw
+    Expander.With_reduced_var_set.expand_str ~context ~dir sw
   in
   let expand_str_partial ~dir sw =
-    Expander.Static.With_reduced_var_set.expand_str_partial ~context ~dir sw
+    Expander.With_reduced_var_set.expand_str_partial ~context ~dir sw
   in
-  Resolve.List.map stanzas ~f:(fun (d : _ Dir_with_dune.t) ->
-      Resolve.List.map d.data ~f:(fun stanza ->
+  Memo.Build.List.map stanzas ~f:(fun (d : _ Dir_with_dune.t) ->
+      Memo.Build.List.map d.data ~f:(fun stanza ->
           let binaries_from_install files =
-            List.fold_left files ~init:Path.Build.Set.empty ~f:(fun acc fb ->
-                let p =
+            Memo.Build.List.map files ~f:(fun fb ->
+                let+ p =
                   File_binding.Unexpanded.destination_relative_to_install_path
                     fb ~section:Bin
                     ~expand:(expand_str ~dir:d.ctx_dir)
@@ -446,24 +446,26 @@ let get_installed_binaries stanzas ~(context : Context.t) =
                 in
                 let p = Path.Local.of_string (Install.Dst.to_string p) in
                 if Path.Local.is_root (Path.Local.parent_exn p) then
-                  Path.Build.Set.add acc (Path.Build.append_local install_dir p)
+                  Some (Path.Build.append_local install_dir p)
                 else
-                  acc)
+                  None)
+            >>| List.filter_map ~f:Fun.id >>| Path.Build.Set.of_list
           in
           match (stanza : Stanza.t) with
           | Dune_file.Install { section = Section Bin; files; _ } ->
-            Resolve.return (binaries_from_install files)
+            binaries_from_install files
           | Dune_file.Executables
               ({ install_conf = Some { section = Section Bin; files; _ }; _ } as
               exes) ->
-            let+ compile_info =
+            let* compile_info =
               let project = Scope.project d.scope in
               let dune_version = Dune_project.dune_version project in
               let+ pps =
-                Preprocess.Per_module.with_instrumentation
-                  exes.buildable.preprocess
-                  ~instrumentation_backend:
-                    (Lib.DB.instrumentation_backend (Scope.libs d.scope))
+                Resolve.read_memo_build
+                  (Preprocess.Per_module.with_instrumentation
+                     exes.buildable.preprocess
+                     ~instrumentation_backend:
+                       (Lib.DB.instrumentation_backend (Scope.libs d.scope)))
                 >>| Preprocess.Per_module.pps
               in
               Lib.DB.resolve_user_written_deps_for_exes (Scope.libs d.scope)
@@ -476,8 +478,8 @@ let get_installed_binaries stanzas ~(context : Context.t) =
             if available then
               binaries_from_install files
             else
-              Path.Build.Set.empty
-          | _ -> Resolve.return Path.Build.Set.empty)
+              Memo.Build.return Path.Build.Set.empty
+          | _ -> Memo.Build.return Path.Build.Set.empty)
       >>| Path.Build.Set.union_all)
   >>| Path.Build.Set.union_all
 
@@ -533,7 +535,7 @@ let create ~(context : Context.t) ~host ~projects ~packages ~stanzas =
     Lib.DB.create_from_findlib context.findlib ~lib_config ~projects_by_package
   in
   let modules_of_lib_for_scope = Fdecl.create Dyn.Encoder.opaque in
-  let scopes, public_libs =
+  let* scopes, public_libs =
     Scope.DB.create_from_stanzas ~projects ~projects_by_package ~context
       ~installed_libs ~modules_of_lib:modules_of_lib_for_scope stanzas
   in
@@ -553,9 +555,7 @@ let create ~(context : Context.t) ~host ~projects ~packages ~stanzas =
         (stanzas.Dir_with_dune.ctx_dir, stanzas))
   in
   let* artifacts =
-    let+ local_bins =
-      Resolve.read_memo_build (get_installed_binaries ~context stanzas)
-    in
+    let+ local_bins = get_installed_binaries ~context stanzas in
     Artifacts.create context ~public_libs ~local_bins
   in
   let any_package = any_package_aux ~packages ~context in

@@ -82,10 +82,10 @@ let make ~dir ~inherit_from ~scope ~config_stanza ~profile ~expander
           Memo.Build.sequential_map config.binaries
             ~f:
               (File_binding.Unexpanded.expand ~dir ~f:(fun template ->
-                   let+ expander_for_artifacts =
+                   let* expander_for_artifacts =
                      Memo.Lazy.force expander_for_artifacts
                    in
-                   Expander.Static.expand_str expander_for_artifacts template))
+                   Expander.No_deps.expand_str expander_for_artifacts template))
         in
         binaries @ expanded)
   in

@@ -79,6 +79,10 @@ end
 module Loc = struct
   include Loc
 
+  let start t = t.start
+
+  let stop t = t.stop
+
   let pos_sexp =
     let open Conv in
     let to_ (pos_fname, pos_lnum, pos_bol, pos_cnum) =
@@ -150,6 +154,10 @@ module Diagnostic = struct
       ; in_source : string
       }
 
+    let in_build t = t.in_build
+
+    let in_source t = t.in_source
+
     let sexp =
       let open Conv in
       let from { in_build; in_source } = (in_build, in_source) in
@@ -158,28 +166,6 @@ module Diagnostic = struct
       let in_source = field "in_source" (required string) in
       iso (record (both in_build in_source)) to_ from
   end
-
-  module Id = struct
-    type t = int
-
-    let compare (a : t) (b : t) = compare a b
-
-    let hash (t : t) = Hashtbl.hash t
-
-    let create t : t = t
-
-    let sexp = Conv.int
-  end
-
-  type t =
-    { targets : Target.t list
-    ; id : Id.t
-    ; message : unit Stdune.Pp.t
-    ; loc : Loc.t option
-    ; severity : severity option
-    ; promotion : Promotion.t list
-    ; directory : string option
-    }
 
   let sexp_pp : (unit Stdune.Pp.t, Conv.values) Conv.t =
     let open Conv in
@@ -248,6 +234,48 @@ module Diagnostic = struct
     in
     iso (Fdecl.get t_fdecl) Pp.of_ast to_ast
 
+  module Id = struct
+    type t = int
+
+    let compare (a : t) (b : t) = compare a b
+
+    let hash (t : t) = Hashtbl.hash t
+
+    let create t : t = t
+
+    let sexp = Conv.int
+  end
+
+  module Related = struct
+    type t =
+      { message : unit Pp.t
+      ; loc : Loc.t
+      }
+
+    let message t = t.message
+
+    let loc t = t.loc
+
+    let sexp =
+      let open Conv in
+      let loc = field "loc" (required Loc.sexp) in
+      let message = field "message" (required sexp_pp) in
+      let to_ (loc, message) = { loc; message } in
+      let from { loc; message } = (loc, message) in
+      iso (record (both loc message)) to_ from
+  end
+
+  type t =
+    { targets : Target.t list
+    ; id : Id.t
+    ; message : unit Stdune.Pp.t
+    ; loc : Loc.t option
+    ; severity : severity option
+    ; promotion : Promotion.t list
+    ; directory : string option
+    ; related : Related.t list
+    }
+
   let loc t = t.loc
 
   let message t = t.message
@@ -260,6 +288,8 @@ module Diagnostic = struct
 
   let directory t = t.directory
 
+  let related t = t.related
+
   let id t = t.id
 
   let sexp_severity =
@@ -268,11 +298,13 @@ module Diagnostic = struct
 
   let sexp =
     let open Conv in
-    let from { targets; message; loc; severity; promotion; directory; id } =
-      (targets, message, loc, severity, promotion, directory, id)
+    let from
+        { targets; message; loc; severity; promotion; directory; id; related } =
+      (targets, message, loc, severity, promotion, directory, id, related)
     in
-    let to_ (targets, message, loc, severity, promotion, directory, id) =
-      { targets; message; loc; severity; promotion; directory; id }
+    let to_ (targets, message, loc, severity, promotion, directory, id, related)
+        =
+      { targets; message; loc; severity; promotion; directory; id; related }
     in
     let loc = field "loc" (optional Loc.sexp) in
     let message = field "message" (required sexp_pp) in
@@ -281,8 +313,10 @@ module Diagnostic = struct
     let directory = field "directory" (optional string) in
     let promotion = field "promotion" (required (list Promotion.sexp)) in
     let id = field "id" (required Id.sexp) in
+    let related = field "related" (required (list Related.sexp)) in
     iso
-      (record (seven targets message loc severity promotion directory id))
+      (record
+         (eight targets message loc severity promotion directory id related))
       to_ from
 
   module Event = struct
@@ -331,6 +365,10 @@ module Message = struct
     { payload : Sexp.t option
     ; message : string
     }
+
+  let payload t = t.payload
+
+  let message t = t.message
 
   let sexp =
     let open Conv in
@@ -446,13 +484,6 @@ module type S = sig
     -> Initialize.Request.t
     -> f:(t -> 'a fiber)
     -> 'a fiber
-
-  val connect_persistent :
-       ?on_disconnect:('a -> unit fiber)
-    -> chan
-    -> on_connect:(unit -> ('a * Initialize.Request.t * Handler.t option) fiber)
-    -> on_connected:('a -> t -> unit fiber)
-    -> unit fiber
 end
 
 module Client (Fiber : sig
@@ -500,9 +531,6 @@ struct
       ; mutable closed_write : bool
       }
 
-    let make read write =
-      { read; write; closed_read = false; closed_write = false }
-
     let of_chan c =
       { read = (fun () -> Chan.read c)
       ; write = (fun s -> Chan.write c s)
@@ -521,8 +549,6 @@ struct
           t.write None
         )
 
-    let close_read t = t.closed_read <- true
-
     let read t =
       if t.closed_read then
         Fiber.return None
@@ -531,6 +557,14 @@ struct
   end
 
   exception Invalid_session of Conv.error
+
+  let () =
+    Printexc.register_printer (function
+      | Invalid_session error ->
+        Some
+          (Dyn.to_string
+             (Dyn.Encoder.constr "Invalid_session" [ Conv.dyn_of_error error ]))
+      | _ -> None)
 
   type t =
     { chan : Chan.t
@@ -549,8 +583,8 @@ struct
     | true ->
       t.running <- false;
       let ivars = ref [] in
-      Table.filteri_inplace t.requests ~f:(fun ~key:_ ~data:ivar ->
-          ivars := ivar :: !ivars;
+      Table.filteri_inplace t.requests ~f:(fun ~key:id ~data:ivar ->
+          ivars := (id, ivar) :: !ivars;
           false);
       let ivars () =
         Fiber.return
@@ -563,10 +597,14 @@ struct
       Fiber.fork_and_join_unit
         (fun () -> Chan.write t.chan None)
         (fun () ->
-          Fiber.parallel_iter ivars ~f:(fun ivar ->
+          Fiber.parallel_iter ivars ~f:(fun (id, ivar) ->
               let error =
-                Response.Error.create ~kind:Code_error
-                  ~message:"connection terminated" ()
+                let payload = Sexp.record [ ("id", Id.to_sexp id) ] in
+                Response.Error.create ~kind:Code_error ~payload
+                  ~message:
+                    "connection terminated. this request will never receive a \
+                     response"
+                  ()
               in
               Fiber.Ivar.fill ivar (Error error)))
 
@@ -594,12 +632,18 @@ struct
     let requests = Table.create (module Id) 16 in
     { chan; requests; on_notification; next_id = 0; initialize; running = true }
 
-  let prepare_request t id =
+  let prepare_request t (id, req) =
     match t.running with
     | false ->
       let err =
-        Response.Error.create ~message:"connection terminated" ~kind:Code_error
-          ()
+        let payload =
+          Sexp.record
+            [ ("id", Id.to_sexp id)
+            ; ("req", Conv.to_sexp (Conv.record Call.fields) req)
+            ]
+        in
+        Response.Error.create ~payload
+          ~message:"request sent while connection is dead" ~kind:Code_error ()
       in
       Error err
     | true ->
@@ -610,7 +654,7 @@ struct
       Ok ivar
 
   let request_untyped t (id, req) =
-    match prepare_request t id with
+    match prepare_request t (id, req) with
     | Error e -> Fiber.return (Error e)
     | Ok ivar ->
       let* () = send t (Some [ Request (id, req) ]) in
@@ -640,21 +684,21 @@ struct
     let* res = request_untyped t (id, req) in
     parse_response t decl res
 
-  let make_notification t (decl : _ Decl.notification) n k =
+  let make_notification (type a) t (decl : a Decl.notification) (n : a) k =
+    let call =
+      { Call.params = Conv.to_sexp decl.req n; method_ = decl.method_ }
+    in
     match t.running with
+    | true -> k call
     | false ->
       let err =
-        Response.Error.create ~message:"connection terminated" ~kind:Code_error
+        Response.Error.create ~payload:call.params
+          ~message:"notification sent while connection is dead" ~kind:Code_error
           ()
       in
       raise (Response.Error.E err)
-    | true ->
-      let call =
-        { Call.params = Conv.to_sexp decl.req n; method_ = decl.method_ }
-      in
-      k call
 
-  let notification t (decl : _ Decl.notification) n =
+  let notification (type a) t (decl : a Decl.notification) (n : a) =
     make_notification t decl n (fun call -> send t (Some [ Notification call ]))
 
   module Batch = struct
@@ -669,15 +713,16 @@ struct
       make_notification t.client n a (fun call ->
           t.pending <- Notification call :: t.pending)
 
-    let request ?id t (decl : _ Decl.request) req =
+    let request (type a b) ?id t (decl : (a, b) Decl.request) (req : a) :
+        (b, _) result Fiber.t =
       let id = gen_id t.client id in
-      let ivar = prepare_request t.client id in
+      let req =
+        { Call.params = Conv.to_sexp decl.req req; method_ = decl.method_ }
+      in
+      let ivar = prepare_request t.client (id, req) in
       match ivar with
       | Error e -> Fiber.return (Error e)
       | Ok ivar ->
-        let req =
-          { Call.params = Conv.to_sexp decl.req req; method_ = decl.method_ }
-        in
         t.pending <- Packet.Query.Request (id, req) :: t.pending;
         let* res = Fiber.Ivar.read ivar in
         parse_response t.client decl res
@@ -811,56 +856,6 @@ struct
       Handler.on_notification handler ~version:initialize.version
     in
     connect_raw chan initialize ~f ~on_notification
-
-  let connect_persistent ?(on_disconnect = fun _ -> Fiber.return ()) chan
-      ~on_connect ~on_connected =
-    let chan = Chan.of_chan chan in
-    let packets () =
-      let+ read = Chan.read chan in
-      Option.map read ~f:(fun sexp ->
-          match Conv.of_sexp Persistent.In.sexp sexp ~version:(0, 0) with
-          | Ok m -> m
-          | Error e -> raise (Invalid_session e))
-    in
-    let make_chan packets =
-      let read () =
-        let+ packet = packets () in
-        match (packet : Persistent.In.t option) with
-        | None
-        | Some Close_connection ->
-          None
-        | Some (Packet csexp) -> Some csexp
-        | Some New_connection ->
-          Code_error.raise "Unexpected new connection." []
-      in
-      let write p =
-        let packets =
-          match p with
-          | Some p -> List.map p ~f:(fun p -> Persistent.Out.Packet p)
-          | None -> [ Close_connection ]
-        in
-        let sexps = List.map packets ~f:(Conv.to_sexp Persistent.Out.sexp) in
-        Chan.write chan (Some sexps)
-      in
-      Chan.make read write
-    in
-    let rec loop () =
-      let* packet = packets () in
-      match packet with
-      | Some New_connection ->
-        let* a, init, handler = on_connect () in
-        let chan = make_chan packets in
-        let* () = connect ?handler chan init ~f:(on_connected a) in
-        Chan.close_read chan;
-        let* () = on_disconnect a in
-        loop ()
-      | Some Close_connection -> loop ()
-      | None -> Fiber.return ()
-      | Some (Packet p) ->
-        Code_error.raise "Expected new connection"
-          [ ("received", Sexp.to_dyn p) ]
-    in
-    loop ()
 
   let connect_raw chan init ~on_notification ~f =
     let chan = Chan.of_chan chan in

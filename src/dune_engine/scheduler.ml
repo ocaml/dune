@@ -117,8 +117,12 @@ end
 
 (** The event queue *)
 module Event : sig
+  type build_input_change =
+    | Fs_event of Fs_memo.Event.t
+    | Invalidation of Memo.Invalidation.t
+
   type t =
-    | File_system_changed of Fs_memo.Event.t Nonempty_list.t
+    | Build_inputs_changed of build_input_change Nonempty_list.t
     | File_system_watcher_terminated
     | Job_completed of job * Proc.Process_info.t
     | Signal of Signal.t
@@ -155,6 +159,8 @@ module Event : sig
     (** Send an event to the main thread. *)
     val send_file_watcher_events : t -> Dune_file_watcher.Event.t list -> unit
 
+    val send_invalidation_event : t -> Memo.Invalidation.t -> unit
+
     val send_job_completed : t -> job -> Proc.Process_info.t -> unit
 
     val send_signal : t -> Signal.t -> unit
@@ -163,18 +169,28 @@ module Event : sig
   end
   with type event := t
 end = struct
+  type build_input_change =
+    | Fs_event of Fs_memo.Event.t
+    | Invalidation of Memo.Invalidation.t
+
   type t =
-    | File_system_changed of Fs_memo.Event.t Nonempty_list.t
+    | Build_inputs_changed of build_input_change Nonempty_list.t
     | File_system_watcher_terminated
     | Job_completed of job * Proc.Process_info.t
     | Signal of Signal.t
     | Worker_task of Fiber.fill
     | Yield of unit Fiber.Ivar.t
 
+  module Invalidation_event = struct
+    type t =
+      | Invalidation of Memo.Invalidation.t
+      | Filesystem_event of Dune_file_watcher.Event.t
+  end
+
   module Queue = struct
     type t =
       { jobs_completed : (job * Proc.Process_info.t) Queue.t
-      ; mutable file_watcher_events : Dune_file_watcher.Event.t list
+      ; mutable invalidation_events : Invalidation_event.t list
       ; mutable signals : Signal.Set.t
       ; mutex : Mutex.t
       ; cond : Condition.t
@@ -197,7 +213,7 @@ end = struct
     let create stats =
       let jobs_completed = Queue.create () in
       let worker_tasks_completed = Queue.create () in
-      let file_watcher_events = [] in
+      let invalidation_events = [] in
       let signals = Signal.Set.empty in
       let mutex = Mutex.create () in
       let cond = Condition.create () in
@@ -205,7 +221,7 @@ end = struct
       let pending_jobs = 0 in
       let pending_worker_tasks = 0 in
       { jobs_completed
-      ; file_watcher_events
+      ; invalidation_events
       ; signals
       ; mutex
       ; cond
@@ -256,7 +272,7 @@ end = struct
           q.signals <- Signal.Set.remove q.signals signal;
           Signal signal
         | None -> (
-          match q.file_watcher_events with
+          match q.invalidation_events with
           | [] -> (
             match Queue.pop q.jobs_completed with
             | None -> (
@@ -275,14 +291,16 @@ end = struct
               assert (q.pending_jobs >= 0);
               Job_completed (job, proc_info))
           | events -> (
-            q.file_watcher_events <- [];
+            q.invalidation_events <- [];
             let terminated = ref false in
             let events =
               List.filter_map events ~f:(function
-                | Watcher_terminated ->
+                | Invalidation invalidation ->
+                  Some (Invalidation invalidation : build_input_change)
+                | Filesystem_event Watcher_terminated ->
                   terminated := true;
                   None
-                | File_changed path ->
+                | Filesystem_event (File_changed path) ->
                   let abs_path = Path.to_absolute_filename path in
                   if Table.mem q.ignored_files abs_path then (
                     (* only use ignored record once *)
@@ -290,14 +308,14 @@ end = struct
                     None
                   ) else
                     (* CR-soon amokhov: Generate more precise events. *)
-                    Some (Fs_memo.Event.create ~kind:Unknown ~path))
+                    Some (Fs_event (Fs_memo.Event.create ~kind:Unknown ~path)))
             in
             match !terminated with
             | true -> File_system_watcher_terminated
             | false -> (
               match Nonempty_list.of_list events with
               | None -> loop ()
-              | Some events -> File_system_changed events)))
+              | Some events -> Build_inputs_changed events)))
       and wait () =
         q.got_event <- false;
         Condition.wait q.cond q.mutex;
@@ -310,9 +328,17 @@ end = struct
     let send_worker_task_completed q event =
       add_event q (fun q -> Queue.push q.worker_tasks_completed event)
 
-    let send_file_watcher_events q files =
+    let send_invalidation_events q events =
       add_event q (fun q ->
-          q.file_watcher_events <- List.rev_append files q.file_watcher_events)
+          q.invalidation_events <- List.rev_append events q.invalidation_events)
+
+    let send_file_watcher_events q files =
+      send_invalidation_events q
+        (List.map files ~f:(fun file : Invalidation_event.t ->
+             Filesystem_event file))
+
+    let send_invalidation_event q invalidation =
+      send_invalidation_events q [ Invalidation invalidation ]
 
     let send_job_completed q job proc_info =
       add_event q (fun q -> Queue.push q.jobs_completed (job, proc_info))
@@ -526,7 +552,7 @@ end
 
 type waiting_for_file_changes =
   | Shutdown_requested
-  | File_system_changed of Memo.Invalidation.t
+  | Build_inputs_changed of Memo.Invalidation.t
 
 type status =
   (* Waiting for file changes to start a new a build *)
@@ -670,6 +696,29 @@ end = struct
 
   exception Abort of run_error
 
+  let handle_invalidation_events events =
+    let handle_event event =
+      match (event : Event.build_input_change) with
+      | Invalidation invalidation -> invalidation
+      | Fs_event event -> Fs_memo.Event.handle event
+    in
+    let invalidation =
+      let events = Nonempty_list.to_list events in
+      List.fold_left events ~init:Memo.Invalidation.empty ~f:(fun acc event ->
+          Memo.Invalidation.combine acc (handle_event event))
+    in
+    match !Memo.incremental_mode_enabled with
+    | true -> invalidation
+    | false ->
+      (* In this mode, we do not assume that all file system dependencies are
+         declared correctly and therefore conservatively require a rebuild. *)
+      (* The fact that the [events] list is non-empty justifies clearing the
+         caches. *)
+      let (_ : _ Nonempty_list.t) = events in
+      (* Since [clear_caches] is not sufficient to guarantee invalidation, we
+         pay attention to [invalidation] too, for good measure *)
+      Memo.Invalidation.combine Memo.Invalidation.clear_caches invalidation
+
   (** This function is the heart of the scheduler. It makes progress in
       executing fibers by doing the following:
 
@@ -680,8 +729,10 @@ end = struct
     t.handler t.config Tick;
     match Event.Queue.next t.events with
     | Job_completed (job, proc_info) -> Fiber.Fill (job.ivar, proc_info)
-    | File_system_changed events -> (
-      let invalidation = (Fs_memo.handle events : Memo.Invalidation.t) in
+    | Build_inputs_changed events -> (
+      let invalidation =
+        (handle_invalidation_events events : Memo.Invalidation.t)
+      in
       match Memo.Invalidation.is_empty invalidation with
       | true -> iter t (* Ignore the event *)
       | false -> (
@@ -699,7 +750,7 @@ end = struct
           Process_watcher.killall t.process_watcher Sys.sigkill;
           iter t
         | Waiting_for_file_changes ivar ->
-          Fill (ivar, File_system_changed invalidation)))
+          Fill (ivar, Build_inputs_changed invalidation)))
     | Worker_task fill -> fill
     | File_system_watcher_terminated ->
       filesystem_watcher_terminated ();
@@ -763,6 +814,14 @@ module Worker = struct
       match res with
       | Error exn -> Error (`Exn exn)
       | Ok e -> Ok e)
+
+  let task_exn t ~f =
+    let+ res = task t ~f in
+    match res with
+    | Ok a -> a
+    | Error `Stopped ->
+      Code_error.raise "Scheduler.Worker.task_exn: worker stopped" []
+    | Error (`Exn e) -> Exn_with_backtrace.reraise e
 end
 
 module Run = struct
@@ -817,7 +876,7 @@ module Run = struct
         let* next = Fiber.Ivar.read ivar in
         match next with
         | Shutdown_requested -> Fiber.return ()
-        | File_system_changed invalidations -> (
+        | Build_inputs_changed invalidations -> (
           Memo.reset invalidations;
           t.handler t.config Source_files_changed;
           match res with
@@ -883,3 +942,8 @@ let shutdown () =
   t.status <- Shutting_down;
   Process_watcher.killall t.process_watcher Sys.sigkill;
   fill_file_changes
+
+let inject_memo_invalidation invalidation =
+  let* t = t () in
+  Event.Queue.send_invalidation_event t.events invalidation;
+  Fiber.return ()

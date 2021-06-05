@@ -296,7 +296,7 @@ struct
     { t with parts }
 end
 
-include Make_expander (Applicative.Id)
+include Make_expander (Memo.Build)
 
 let is_pform t pform =
   match t.parts with

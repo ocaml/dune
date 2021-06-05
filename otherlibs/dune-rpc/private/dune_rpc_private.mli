@@ -44,6 +44,12 @@ module Response : sig
       ; kind : kind
       }
 
+    val payload : t -> Csexp.t option
+
+    val message : t -> string
+
+    val kind : t -> kind
+
     exception E of t
 
     val of_conv : Conv.error -> t
@@ -123,6 +129,10 @@ module Loc : sig
     { start : Lexing.position
     ; stop : Lexing.position
     }
+
+  val start : t -> Lexing.position
+
+  val stop : t -> Lexing.position
 end
 
 module Target : sig
@@ -145,6 +155,10 @@ module Diagnostic : sig
       { in_build : string
       ; in_source : string
       }
+
+    val in_build : t -> string
+
+    val in_source : t -> string
   end
 
   module Id : sig
@@ -157,6 +171,17 @@ module Diagnostic : sig
     val create : int -> t
   end
 
+  module Related : sig
+    type t =
+      { message : unit Pp.t
+      ; loc : Loc.t
+      }
+
+    val message : t -> unit Pp.t
+
+    val loc : t -> Loc.t
+  end
+
   type t =
     { targets : Target.t list
     ; id : Id.t
@@ -165,7 +190,10 @@ module Diagnostic : sig
     ; severity : severity option
     ; promotion : Promotion.t list
     ; directory : string option
+    ; related : Related.t list
     }
+
+  val related : t -> Related.t list
 
   val id : t -> Id.t
 
@@ -210,6 +238,10 @@ module Message : sig
     { payload : Csexp.t option
     ; message : string
     }
+
+  val payload : t -> Csexp.t option
+
+  val message : t -> string
 end
 
 module Subscribe : sig
@@ -280,13 +312,6 @@ module type S = sig
     -> Initialize.Request.t
     -> f:(t -> 'a fiber)
     -> 'a fiber
-
-  val connect_persistent :
-       ?on_disconnect:('a -> unit fiber)
-    -> chan
-    -> on_connect:(unit -> ('a * Initialize.Request.t * Handler.t option) fiber)
-    -> on_connected:('a -> t -> unit fiber)
-    -> unit fiber
 end
 
 module Client (Fiber : sig
@@ -323,27 +348,6 @@ end) (Chan : sig
 
   val read : t -> Csexp.t option Fiber.t
 end) : S with type 'a fiber := 'a Fiber.t and type chan := Chan.t
-
-module Persistent : sig
-  module In : sig
-    (** The type of incoming packets when hosting multiple connections in
-        sequence over a single channel *)
-    type t =
-      | New_connection
-      | Packet of Csexp.t
-      | Close_connection
-
-    val sexp : t Conv.value
-  end
-
-  module Out : sig
-    type t =
-      | Packet of Csexp.t
-      | Close_connection
-
-    val sexp : t Conv.value
-  end
-end
 
 module Packet : sig
   module Reply : sig

@@ -89,6 +89,10 @@ module Worker : sig
     -> f:(unit -> 'a)
     -> ('a, [ `Exn of Exn_with_backtrace.t | `Stopped ]) result Fiber.t
 
+  (** Should be used for tasks never raise and always complete before stop is
+      called *)
+  val task_exn : t -> f:(unit -> 'a) -> 'a Fiber.t
+
   val stop : t -> unit
 end
 
@@ -118,3 +122,5 @@ val running_jobs_count : t -> int
 (** Start the shutdown sequence. Among other things, it causes Dune to cancel
     the current build and stop accepting RPC clients. *)
 val shutdown : unit -> unit Fiber.t
+
+val inject_memo_invalidation : Memo.Invalidation.t -> unit Fiber.t

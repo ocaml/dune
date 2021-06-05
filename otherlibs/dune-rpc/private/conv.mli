@@ -82,6 +82,17 @@ val seven :
   -> ('g, fields) t
   -> ('a * 'b * 'c * 'd * 'e * 'f * 'g, fields) t
 
+val eight :
+     ('a, fields) t
+  -> ('b, fields) t
+  -> ('c, fields) t
+  -> ('d, fields) t
+  -> ('e, fields) t
+  -> ('f, fields) t
+  -> ('g, fields) t
+  -> ('h, fields) t
+  -> ('a * 'b * 'c * 'd * 'e * 'f * 'g * 'h, fields) t
+
 val record : ('a, fields) t -> ('a, values) t
 
 val either : ('a, fields) t -> ('b, fields) t -> (('a, 'b) Either.t, fields) t

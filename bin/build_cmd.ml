@@ -1,68 +1,61 @@
 open Stdune
 open Import
 
-let run_build_system ?report_error ~common
-    ~(targets : unit -> Target.t list Memo.Build.t) () =
+let run_build_system ?report_error ~common ~(request : unit Action_builder.t) ()
+    =
   let build_started = Unix.gettimeofday () in
   Fiber.finalize
     (fun () ->
-      Build_system.run ?report_error (fun () ->
-          let open Memo.Build.O in
-          let* targets = targets () in
-          Build_system.build (Target.request targets)))
+      Build_system.run ?report_error (fun () -> Build_system.build request))
     ~finally:(fun () ->
       (if Common.print_metrics common then
         let gc_stat = Gc.quick_stat () in
         Console.print_user_message
           (User_message.make
              [ Pp.textf "%s" (Memo.Perf_counters.report_for_current_run ())
-             ; Pp.textf
-                 "(%.2fs total, %.2fs cycle detection, %.2fs digests, %.1fM \
-                  heap words)"
+             ; Pp.textf "(%.2fs total, %.2fs digests, %.1fM heap words)"
                  (Unix.gettimeofday () -. build_started)
-                 (Metrics.Timer.read_seconds Memo.cycle_detection_timer)
                  (Metrics.Timer.read_seconds Digest.generic_timer)
                  (float_of_int gc_stat.heap_words /. 1_000_000.)
              ]));
       Fiber.return ())
 
-let run_build_command_poll ~(common : Common.t) ~config ~targets ~setup =
+let run_build_command_poll ~(common : Common.t) ~config ~request ~setup =
   let open Fiber.O in
   let every ~report_error () =
     Cached_digest.invalidate_cached_timestamps ();
     let* setup = setup () in
-    let* targets =
+    let* request =
       match
         let open Option.O in
         let* rpc = Common.rpc common in
         Dune_rpc_impl.Server.pending_build_action rpc
       with
-      | None -> Fiber.return (fun () -> targets setup)
+      | None -> Fiber.return (request setup)
       | Some (Build (targets, ivar)) ->
         let+ () = Fiber.Ivar.fill ivar Accepted in
-        fun () ->
-          Target.resolve_targets_exn (Common.root common) config setup targets
+        Target.interpret_targets (Common.root common) config setup targets
     in
-    let+ () = run_build_system ~report_error ~common ~targets () in
+    let+ () = run_build_system ~report_error ~common ~request () in
     `Continue
   in
   Scheduler.poll ~common ~config ~every ~finally:Hooks.End_of_build.run
 
-let run_build_command_once ~(common : Common.t) ~config ~targets ~setup =
+let run_build_command_once ~(common : Common.t) ~config ~request ~setup =
   let open Fiber.O in
   let once () =
     let* setup = setup () in
-    run_build_system ~common ~targets:(fun () -> targets setup) ()
+    run_build_system ~common ~request:(request setup) ()
   in
   Scheduler.go ~common ~config once
 
-let run_build_command ~(common : Common.t) ~config ~targets =
+let run_build_command ~(common : Common.t) ~config ~request =
   let setup () = Import.Main.setup () in
   (if Common.watch common then
     run_build_command_poll
   else
     run_build_command_once)
-    ~setup ~common ~config ~targets
+    ~setup ~common ~config ~request
 
 let runtest =
   let doc = "Run tests." in
@@ -85,15 +78,15 @@ let runtest =
     let+ common = Common.term
     and+ dirs = Arg.(value & pos_all string [ "." ] name_) in
     let config = Common.init common in
-    let targets (setup : Import.Main.build_system) =
-      Memo.Build.return
-      @@ List.map dirs ~f:(fun dir ->
+    let request (setup : Import.Main.build_system) =
+      Action_builder.all_unit
+        (List.map dirs ~f:(fun dir ->
              let dir = Path.(relative root) (Common.prefix_target common dir) in
-             Target.Alias
-               (Alias.in_dir ~name:Dune_engine.Alias.Name.runtest
-                  ~recursive:true ~contexts:setup.contexts dir))
+             Alias.in_dir ~name:Dune_engine.Alias.Name.runtest ~recursive:true
+               ~contexts:setup.contexts dir
+             |> Alias.request))
     in
-    run_build_command ~common ~config ~targets
+    run_build_command ~common ~config ~request
   in
   (term, Term.info "runtest" ~doc ~man)
 
@@ -126,9 +119,9 @@ let build =
       | _ :: _ -> targets
     in
     let config = Common.init common in
-    let targets setup =
-      Target.resolve_targets_exn (Common.root common) config setup targets
+    let request setup =
+      Target.interpret_targets (Common.root common) config setup targets
     in
-    run_build_command ~common ~config ~targets
+    run_build_command ~common ~config ~request
   in
   (term, Term.info "build" ~doc ~man)

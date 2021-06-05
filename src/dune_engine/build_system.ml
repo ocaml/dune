@@ -2277,7 +2277,10 @@ let run ?(report_error = Dune_util.Report_error.report) f =
   t.rule_done <- 0;
   t.rule_total <- 0;
   let* () =
-    t.handler.error (List.map old_errors ~f:(fun x -> Handler.Remove x))
+    match old_errors with
+    | [] -> Fiber.return ()
+    | _ :: _ ->
+      t.handler.error (List.map old_errors ~f:(fun x -> Handler.Remove x))
   in
   let f () =
     let* () = t.handler.build_event Start in

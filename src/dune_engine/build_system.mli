@@ -11,7 +11,7 @@ module Error : sig
   (** Errors when building a target *)
   type t
 
-  val info : t -> User_message.t * Path.t option
+  val info : t -> User_message.t * User_message.t list * Path.t option
 
   val promotion : t -> Promotion.Annot.t option
 

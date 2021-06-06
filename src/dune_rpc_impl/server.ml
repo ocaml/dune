@@ -18,9 +18,9 @@ type pending_build_action = Build of Dep_conf.t list * Status.t Fiber.Ivar.t
 let diagnostic_of_error : Build_system.Error.t -> Dune_rpc_private.Diagnostic.t
     =
  fun m ->
-  let message, dir = Build_system.Error.info m in
+  let message, related, dir = Build_system.Error.info m in
   let loc = message.loc in
-  let message = Pp.map_tags (Pp.concat message.paragraphs) ~f:(fun _ -> ()) in
+  let make_message pars = Pp.map_tags (Pp.concat pars) ~f:(fun _ -> ()) in
   let id = Build_system.Error.id m |> Diagnostic.Id.create in
   let promotion =
     match Build_system.Error.promotion m with
@@ -31,13 +31,20 @@ let diagnostic_of_error : Build_system.Error.t -> Dune_rpc_private.Diagnostic.t
         }
       ]
   in
+  let related =
+    List.map related ~f:(fun (related : User_message.t) ->
+        { Dune_rpc_private.Diagnostic.Related.message =
+            make_message related.paragraphs
+        ; loc = Option.value_exn related.loc
+        })
+  in
   { severity = None
   ; id
   ; targets = []
-  ; message
+  ; message = make_message message.paragraphs
   ; loc
   ; promotion
-  ; related = []
+  ; related
   ; directory =
       Option.map
         ~f:(fun p ->

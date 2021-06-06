@@ -310,6 +310,9 @@ module Error = struct
     | User_error.E (_, annots) -> List.find_map annots ~f:extract_promote
     | _ -> None
 
+  let extract_compound_error annot =
+    Compound_user_error.check annot Option.some (fun () -> None)
+
   let info (t : t) =
     let e =
       match t.exn.exn with
@@ -317,10 +320,14 @@ module Error = struct
       | e -> e
     in
     match e with
-    | User_error.E (msg, annots) -> (msg, List.find_map annots ~f:extract_dir)
+    | User_error.E (msg, annots) -> (
+      let dir = List.find_map annots ~f:extract_dir in
+      match List.find_map annots ~f:extract_compound_error with
+      | None -> (msg, [], dir)
+      | Some { main; related } -> (main, related, dir))
     | e ->
       (* CR-someday jeremiedimino: Use [Report_error.get_user_message] here. *)
-      (User_message.make [ Pp.text (Printexc.to_string e) ], None)
+      (User_message.make [ Pp.text (Printexc.to_string e) ], [], None)
 end
 
 module type Rule_generator = sig

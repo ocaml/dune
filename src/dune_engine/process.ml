@@ -360,7 +360,34 @@ let pp_id id =
   let open Pp.O in
   Pp.char '[' ++ Pp.tag User_message.Style.Id (Pp.textf "%d" id) ++ Pp.char ']'
 
-module Exit_status = struct
+module Exit_status : sig
+  type error =
+    | Failed of int
+    | Signaled of string
+
+  type t = (int, error) result
+
+  val handle_verbose :
+       ('a, error) result
+    -> id:int
+    -> purpose:purpose
+    -> output:string
+    -> command_line:User_message.Style.t Pp.t
+    -> dir:With_directory_annot.payload option
+    -> 'a
+
+  val handle_non_verbose :
+       ('a, error) result
+    -> verbosity:Scheduler.Config.Display.verbosity
+    -> purpose:purpose
+    -> output:string
+    -> prog:string
+    -> command_line:string
+    -> dir:With_directory_annot.payload option
+    -> has_unexpected_stdout:bool
+    -> has_unexpected_stderr:bool
+    -> 'a
+end = struct
   type error =
     | Failed of int
     | Signaled of string

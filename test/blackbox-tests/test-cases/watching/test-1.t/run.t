@@ -1,10 +1,9 @@
   $ DUNE_RUNNING=0
 
   $ start_dune () {
-  >  ((dune build "$@" -w --passive-watch-mode > dune-output 2>&1) || (echo $? >> dune-output)) &
+  >  ((dune build "$@" -w --passive-watch-mode > dune-output 2>&1) || (echo exit $? >> dune-output)) &
   >   DUNE_PID=$!;
   >   DUNE_RUNNING=1;
-  >   sleep 2
   > }
 
   $ with_timeout () {
@@ -18,12 +17,9 @@
   >   fi
   > }
 
-
   $ build () {
-  >   with_timeout dune rpc build "$@"
+  >   with_timeout dune rpc build --wait "$@"
   > }
-
-  $ start_dune
 
 ----------------------------------------------------------------------------------
 * Compile a simple rule
@@ -41,8 +37,9 @@
   >  (action (bash "cat x > y")))
   > EOF
 
-  $ echo wut
-  wut
+  $ start_dune
+
+# CR aalekseyev: this fails with "rpc server not running, despite the --wait"
 
   $ build y
   Success

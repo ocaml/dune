@@ -70,12 +70,11 @@ Test that rebuilding works.
   # Workspace-local cache miss: _build/default/target1: target missing from build dir
   # (_build/default/target1)
 
-Test how zero the zero build is. To be fixed in a subsequent commit.
+Test how zero the zero build is.
 
   $ dune build --config-file=config target1 --debug-cache=shared,workspace-local
   $ cat _build/log | grep '_build/default/source\|_build/default/target'
-  # Workspace-local cache miss: _build/default/target1: target changed in build dir
-  # (_build/default/target1)
+  [1]
 
 Test that the cache stores all historical build results.
 

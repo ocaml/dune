@@ -207,6 +207,7 @@ module Artifacts = struct
           List.iter acc ~f:destroy;
           Error e
         | Ok v -> Ok (v :: acc))
+    |> Result.map ~f:List.rev
 
   type file_restore_error =
     | Not_found

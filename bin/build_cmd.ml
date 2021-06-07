@@ -32,7 +32,7 @@ let run_build_command_poll_eager ~(common : Common.t) ~config ~request ~setup :
   in
   Import.Scheduler.go_with_rpc_server_and_console_status_reporting ~common
     ~config (fun () ->
-      Scheduler.Run.poll (fun ~report_error () ->
+      Scheduler.Run.poll (fun ~report_error ->
           Fiber.finalize (every ~report_error) ~finally:(fun () ->
               Fiber.return (Hooks.End_of_build.run ()))))
 

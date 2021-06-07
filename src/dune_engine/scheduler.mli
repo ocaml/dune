@@ -57,17 +57,14 @@ module Run : sig
       cases *)
   exception Shutdown_requested
 
-  (** Runs [once] in a loop, executing [finally] after every iteration, even if
-      Fiber.Never was encountered.
+  (** [poll once] runs [once] in a loop.
 
       If any source files change in the middle of iteration, it gets canceled.
 
       If [shutdown] is called, the current build will be canceled and new builds
       will not start. *)
   val poll :
-       (   report_error:(Exn_with_backtrace.t -> unit)
-        -> unit
-        -> [ `Continue ] Fiber.t)
+       (report_error:(Exn_with_backtrace.t -> unit) -> [ `Continue ] Fiber.t)
     -> unit Fiber.t
 
   module Build_outcome_for_rpc : sig

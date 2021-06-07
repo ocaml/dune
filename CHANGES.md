@@ -3,6 +3,8 @@ unreleased - 2.9 branch
 
 - Add `(enabled_if ...)` to `(mdx ...)` (#4434, @emillon)
 
+- Add the possibility to use `locks` with the cram tests stanza (#4480, @voodoos)
+
 - Allow to set up merlin in a variant of the default context
   (#4145, @TheLortex, @voodoos)
 

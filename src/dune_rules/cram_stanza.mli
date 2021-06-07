@@ -6,11 +6,12 @@ type applies_to =
   | Files_matching_in_this_dir of Predicate_lang.Glob.t
 
 type t =
-  { loc : Loc.t
+  { loc : Loc.t (* ; dir : Path.t *)
   ; applies_to : applies_to
   ; alias : Alias.Name.t option
   ; deps : Dep_conf.t Bindings.t option
   ; enabled_if : Blang.t
+  ; locks : String_with_vars.t list
   ; package : Package.t option
   }
 

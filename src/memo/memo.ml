@@ -1161,17 +1161,17 @@ end = struct
   and start_considering :
         'i 'o. ('i, 'o) Dep_node.t -> 'o Cached_value.t Sample_attempt.t =
    fun dep_node ->
-    match currently_considering dep_node.state with
-    | Not_considering -> (
-      match get_cached_value_in_current_cycle dep_node with
-      | None -> newly_considering dep_node
-      | Some cv -> Finished cv)
-    | Considering
-        { running = { dag_node; deps_so_far = _ }
-        ; sample_attempt_result = result
-        ; _
-        } ->
-      Running { dag_node; result }
+    match get_cached_value_in_current_cycle dep_node with
+    | Some cv -> Finished cv
+    | None -> (
+      match currently_considering dep_node.state with
+      | Not_considering -> newly_considering dep_node
+      | Considering
+          { running = { dag_node; deps_so_far = _ }
+          ; sample_attempt_result = result
+          ; _
+          } ->
+        Running { dag_node; result })
 
   and consider :
         'i 'o.    ('i, 'o) Dep_node.t

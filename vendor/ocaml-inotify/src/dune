@@ -1,0 +1,5 @@
+(library
+ (name ocaml_inotify)
+ (modules :standard \ lwt_inotify)
+ (wrapped   false)
+ (flags     (-w -3-6-27-32-33-35-50)))

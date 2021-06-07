@@ -39,6 +39,10 @@ count of 1, because they are not shared with the corresponding cache entries.
   1
   $ dune_cmd exists _build/default/beacon
   true
+
+We expect to see both workspace-local and shared cache misses in the build log,
+because we've never built [target1] before.
+
   $ cat _build/log | grep '_build/default/source\|_build/default/target'
   # Workspace-local cache miss: _build/default/source: never seen this target before
   # Shared cache miss [8b39c1a0b45579f8da18f42be8e6aca0] (_build/default/source): not found in cache
@@ -64,13 +68,17 @@ Test that rebuilding works.
   $ cat _build/default/target2
   \_o< COIN
   \_o< COIN
+
+Now we expect to see only workspace-local cache misses in the build log, because
+we've cleaned [_build/default] but not the shared cache.
+
   $ cat _build/log | grep '_build/default/source\|_build/default/target'
   # Workspace-local cache miss: _build/default/source: target missing from build dir
   # (_build/default/source)
   # Workspace-local cache miss: _build/default/target1: target missing from build dir
   # (_build/default/target1)
 
-Test how zero the zero build is.
+Test how zero the zero build is. We do not expect to see any cache misses.
 
   $ dune build --config-file=config target1 --debug-cache=shared,workspace-local
   $ cat _build/log | grep '_build/default/source\|_build/default/target'

@@ -121,3 +121,10 @@
  (executable
   (libraries stdune spawn)
   (name test)))
+
+(subdir
+ watching
+ ;  macos CI does not have fswatch installed
+ (cram
+  (enabled_if
+   (<> "macosx" %{ocaml-config:system}))))

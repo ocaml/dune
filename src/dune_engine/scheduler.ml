@@ -910,7 +910,8 @@ module Run = struct
       in
       Fiber.map_reduce_errors
         (module Monoid.Unit)
-        ~on_error (step ~report_error)
+        ~on_error
+        (fun () -> step ~report_error)
     in
     match t.status with
     | Waiting_for_file_changes _
@@ -985,7 +986,7 @@ module Run = struct
       let* build_request, response_ivar = get_build_request in
       let* () = do_inotify_sync t in
       let* res =
-        poll_iter t (fun ~report_error () -> build_request ~report_error)
+        poll_iter t (fun ~report_error -> build_request ~report_error)
       in
       let* () =
         Fiber.Ivar.fill response_ivar

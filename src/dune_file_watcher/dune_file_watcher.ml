@@ -100,6 +100,11 @@ let command ~root =
     ]
   in
   let exclude_paths =
+    (* These paths should already exist on the filesystem when the watches are
+       initially set up, otherwise the @<path> has no effect for inotifywait. If
+       the file is deleted and re-created then "exclusion" is lost. This is why
+       we're not including "_opam" and "_esy" in this list, in case they are
+       created when dune is already running. *)
     (* these paths are used as patterns for fswatch, so they better not contain
        any regex-special characters *)
     [ "_build" ]
@@ -141,8 +146,9 @@ let command ~root =
     match Bin.which ~path:(Env.path Env.initial) "fswatch" with
     | Some fswatch ->
       let excludes =
-        List.concat_map (exclude_patterns @ exclude_paths) ~f:(fun x ->
-            [ "--exclude"; x ])
+        List.concat_map
+          (exclude_patterns @ List.map exclude_paths ~f:(fun p -> "/" ^ p))
+          ~f:(fun x -> [ "--exclude"; x ])
       in
       ( fswatch
       , [ "-r"

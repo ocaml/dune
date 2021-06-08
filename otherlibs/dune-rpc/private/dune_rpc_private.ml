@@ -772,6 +772,7 @@ struct
       add Server_notifications.diagnostic t.diagnostic;
       add Server_notifications.log t.log;
       add Server_notifications.abort t.abort;
+      add Server_notifications.progress t.build_progress;
       fun { Call.method_; params } ->
         match Table.find table method_ with
         | None ->

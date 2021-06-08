@@ -422,10 +422,13 @@ end = struct
     | Goal t ->
       let+ a, (_irrelevant_for_goals : Dep.Facts.t) = run1 t in
       (a, Dep.Map.empty)
-    | Action t ->
-      let* act, facts = run t in
-      let+ () = Build_system.execute_action ~observing_facts:facts act in
-      ((), Dep.Map.empty)
+    | Action t -> (
+      match !mode with
+      | Eager ->
+        let* act, facts = run t in
+        let+ () = Build_system.execute_action ~observing_facts:facts act in
+        ((), Dep.Map.empty)
+      | Lazy -> Memo.Build.return ((), Dep.Map.empty))
     | Action_stdout t ->
       let* act, facts = run t in
       let+ s = Build_system.execute_action_stdout ~observing_facts:facts act in

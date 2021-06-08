@@ -691,7 +691,9 @@ let prepare (config : Config.t) ~(handler : Handler.t) =
         (* Slightly weird initialization happening here: for polling mode we
            initialize in "Building" state, immediately switch to Standing_by and
            then back to "Building". It would make more sense to start in
-           "Stand_by" from the start. *)
+           "Stand_by" from the start.
+           We can't "just" switch the initial value here because then the non-polling mode
+           would run in "Standing_by" mode, which is even weirder. *)
         Building
     ; job_throttle = Fiber.Throttle.create config.concurrency
     ; process_watcher

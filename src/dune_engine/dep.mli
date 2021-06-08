@@ -46,6 +46,10 @@ module Fact : sig
 
   type t
 
+  val equal : t -> t -> bool
+
+  val compare : t -> t -> Ordering.t
+
   val nothing : t
 
   val file : Path.t -> Digest.t -> t
@@ -59,6 +63,8 @@ module Fact : sig
     val to_dyn : t -> Dyn.t
 
     val equal : t -> t -> bool
+
+    val compare : t -> t -> Ordering.t
 
     (** Return all the paths in this file group *)
     val paths : t -> Digest.t Path.Map.t
@@ -84,6 +90,8 @@ module Facts : sig
 
   val union : t -> t -> t
 
+  val union_all : t list -> t
+
   (** Return all the paths, expanding aliases *)
   val paths : t -> Digest.t Path.Map.t
 
@@ -103,6 +111,8 @@ module Set : sig
   type dep := t
 
   type t = unit Map.t
+
+  val equal : t -> t -> bool
 
   val empty : t
 

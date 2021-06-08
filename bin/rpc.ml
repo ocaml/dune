@@ -18,6 +18,18 @@ let client_term common f =
   let config = Common.init common in
   Scheduler.go ~common ~config (fun () -> f common)
 
+(* cwong: Should we put this into [dune-rpc]? *)
+let interpret_kind = function
+  | Dune_rpc_private.Response.Error.Invalid_request -> "Invalid_request"
+  | Code_error -> "Code_error"
+  | Version_error -> "Version_error"
+
+let raise_rpc_error (e : Dune_rpc_private.Response.Error.t) =
+  User_error.raise
+    [ Pp.text "Server returned error: "
+    ; Pp.textf "%s (error kind: %s)" e.message (interpret_kind e.kind)
+    ]
+
 module Init = struct
   let connect ~wait common =
     let open Fiber.O in
@@ -132,12 +144,6 @@ module Status = struct
 end
 
 module Ping = struct
-  (* cwong: Should we put this into [dune-rpc]? *)
-  let interpret_kind = function
-    | Dune_rpc_private.Response.Error.Invalid_request -> "Invalid_request"
-    | Code_error -> "Code_error"
-    | Version_error -> "Version_error"
-
   let send_ping cli =
     let open Fiber.O in
     let+ response =
@@ -148,11 +154,7 @@ module Ping = struct
       User_message.print
         (User_message.make
            [ Pp.text "Server appears to be responding normally" ])
-    | Error (e : Dune_rpc_private.Response.Error.t) ->
-      User_error.raise
-        [ Pp.text "Server returned error: "
-        ; Pp.textf "%s (error kind: %s)" e.message (interpret_kind e.kind)
-        ]
+    | Error e -> raise_rpc_error e
 
   let on_notification _ = Fiber.return ()
 

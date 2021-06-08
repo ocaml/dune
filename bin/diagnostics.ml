@@ -44,7 +44,7 @@ let exec common =
   match errors with
   | Ok errors ->
     List.iter errors ~f:(fun err -> User_message.print (format_diagnostic err))
-  | Err (e : Dune_rpc_private.Response.Error.t) -> failwith "todo"
+  | Error e -> Rpc.raise_rpc_error e
 
 let info =
   let doc = "fetch and return errors from the current build" in

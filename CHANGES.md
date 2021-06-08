@@ -159,6 +159,8 @@ Unreleased
 
 - Add `(enabled_if ...)` to `(mdx ...)` (#4434, @emillon)
 
+- Add `(package ...)` to `(mdx ...)` (#4691, fixes #3756, @emillon)
+
 2.8.5 (28/03/2021)
 ------------------
 

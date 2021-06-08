@@ -73,6 +73,11 @@ module Run : sig
       | Failure
   end
 
+  (** [poll_passive] is similar to [poll], but it can be used to drive the
+      polling loop explicitly instead of starting new iterations automatically.
+
+      The fiber [get_build_request] is run at the beginning of every iteration
+      to wait for the build signal. *)
   val poll_passive :
        get_build_request:
          ((report_error:(Exn_with_backtrace.t -> unit) -> unit Fiber.t)

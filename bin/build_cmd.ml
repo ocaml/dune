@@ -2,52 +2,51 @@ open Stdune
 open Import
 
 let run_build_system ~report_error ~common ~(request : unit Action_builder.t) ()
-  =
+    =
   let build_started = Unix.gettimeofday () in
   Fiber.finalize
     (fun () ->
-       Build_system.run ~report_error (fun () -> Build_system.build request))
+      Build_system.run ~report_error (fun () -> Build_system.build request))
     ~finally:(fun () ->
       (if Common.print_metrics common then
-         let gc_stat = Gc.quick_stat () in
-         Console.print_user_message
-           (User_message.make
-              [ Pp.textf "%s" (Memo.Perf_counters.report_for_current_run ())
-              ; Pp.textf "(%.2fs total, %.2fs digests, %.1fM heap words)"
-                  (Unix.gettimeofday () -. build_started)
-                  (Metrics.Timer.read_seconds Digest.generic_timer)
-                  (float_of_int gc_stat.heap_words /. 1_000_000.)
-              ]));
+        let gc_stat = Gc.quick_stat () in
+        Console.print_user_message
+          (User_message.make
+             [ Pp.textf "%s" (Memo.Perf_counters.report_for_current_run ())
+             ; Pp.textf "(%.2fs total, %.2fs digests, %.1fM heap words)"
+                 (Unix.gettimeofday () -. build_started)
+                 (Metrics.Timer.read_seconds Digest.generic_timer)
+                 (float_of_int gc_stat.heap_words /. 1_000_000.)
+             ]));
       Fiber.return ())
 
 let setup () = Import.Main.setup ()
 
 let run_build_system ~is_polling ~report_error ~common ~request =
   let open Fiber.O in
-  Fiber.finalize (fun () ->
-    Cached_digest.invalidate_cached_timestamps ();
-    let* setup = setup () in
-    let request = request setup in
-    run_build_system ~report_error ~common ~request ())
+  Fiber.finalize
+    (fun () ->
+      Cached_digest.invalidate_cached_timestamps ();
+      let* setup = setup () in
+      let request = request setup in
+      run_build_system ~report_error ~common ~request ())
     ~finally:(fun () ->
-      (* CR-someday aalekseyev:
-         Another weird difference here between polling and non-polling:
-         end-of-build hooks run with at_exit hooks for non-polling builds.
-         If we simply remove this "if" then the relative ordering between error
-         reporting and end-of-build hooks changes, which seems undesirable.
-         We should unify error reporting first, then this. *)
-      if is_polling then (Hooks.End_of_build.run ());
+      (* CR-someday aalekseyev: Another weird difference here between polling
+         and non-polling: end-of-build hooks run with at_exit hooks for
+         non-polling builds. If we simply remove this "if" then the relative
+         ordering between error reporting and end-of-build hooks changes, which
+         seems undesirable. We should unify error reporting first, then this. *)
+      if is_polling then Hooks.End_of_build.run ();
       Fiber.return ())
 
-let run_build_command_poll_eager ~(common : Common.t) ~config ~request :
-  unit =
+let run_build_command_poll_eager ~(common : Common.t) ~config ~request : unit =
   Import.Scheduler.go_with_rpc_server_and_console_status_reporting ~common
     ~config (fun () ->
       Scheduler.Run.poll (fun ~report_error ->
-        run_build_system ~is_polling:true ~common ~report_error ~request))
+          run_build_system ~is_polling:true ~common ~report_error ~request))
 
-let run_build_command_poll_passive ~(common : Common.t) ~config ~request:_
-  : unit =
+let run_build_command_poll_passive ~(common : Common.t) ~config ~request:_ :
+    unit =
   (* CR-someday aalekseyev: It would've been better to complain if [request] is
      non-empty, but we can't check that here because [request] is a function.*)
   let open Fiber.O in
@@ -68,12 +67,14 @@ let run_build_command_poll_passive ~(common : Common.t) ~config ~request:_
                  targets
              in
              ( (fun ~report_error ->
-                 run_build_system ~is_polling:true ~common ~report_error ~request))
-           , ivar ))
+                 run_build_system ~is_polling:true ~common ~report_error
+                   ~request)
+             , ivar )))
 
 let run_build_command_once ~(common : Common.t) ~config ~request =
   let once () =
-    run_build_system ~is_polling:false ~common ~request ~report_error:Dune_util.Report_error.report
+    run_build_system ~is_polling:false ~common ~request
+      ~report_error:Dune_util.Report_error.report
   in
   Scheduler.go ~common ~config once
 

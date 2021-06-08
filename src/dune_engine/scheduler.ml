@@ -691,9 +691,9 @@ let prepare (config : Config.t) ~(handler : Handler.t) =
         (* Slightly weird initialization happening here: for polling mode we
            initialize in "Building" state, immediately switch to Standing_by and
            then back to "Building". It would make more sense to start in
-           "Stand_by" from the start.
-           We can't "just" switch the initial value here because then the non-polling mode
-           would run in "Standing_by" mode, which is even weirder. *)
+           "Stand_by" from the start. We can't "just" switch the initial value
+           here because then the non-polling mode would run in "Standing_by"
+           mode, which is even weirder. *)
         Building
     ; job_throttle = Fiber.Throttle.create config.concurrency
     ; process_watcher
@@ -936,21 +936,18 @@ module Run = struct
       Build_outcome.Finished res
 
   type handle_outcome_result =
-    | Shutdown | Proceed
+    | Shutdown
+    | Proceed
 
   let poll_gen ~get_build_request =
     let* t = t () in
     (match t.status with
-     | Building -> t.status <- Standing_by Memo.Invalidation.empty
-     | _ -> assert false);
+    | Building -> t.status <- Standing_by Memo.Invalidation.empty
+    | _ -> assert false);
     let rec loop () =
-      let* (build_request, handle_outcome) = get_build_request t in
-      let* res =
-        poll_iter t build_request
-      in
-      let* next =
-        handle_outcome res
-      in
+      let* build_request, handle_outcome = get_build_request t in
+      let* res = poll_iter t build_request in
+      let* next = handle_outcome res in
       match next with
       | Shutdown -> Fiber.return ()
       | Proceed -> loop ()
@@ -959,22 +956,22 @@ module Run = struct
 
   let poll step =
     poll_gen ~get_build_request:(fun (t : t) ->
-      let handle_outcome  (outcome : Build_outcome.t) =
-        match outcome with
-        | Shutdown  -> Fiber.return (Shutdown)
-        | Cancelled_due_to_file_changes -> Fiber.return Proceed
-        | Finished _res ->
-          let ivar = Fiber.Ivar.create () in
-          t.status <- Waiting_for_file_changes ivar;
-          let* next = Fiber.Ivar.read ivar in
-          match next with
-          | Shutdown_requested -> Fiber.return Shutdown
-          | Build_inputs_changed invalidations ->
-            t.status <- Standing_by invalidations;
-            t.handler t.config Source_files_changed;
-            Fiber.return Proceed
-      in
-      Fiber.return (step, handle_outcome))
+        let handle_outcome (outcome : Build_outcome.t) =
+          match outcome with
+          | Shutdown -> Fiber.return Shutdown
+          | Cancelled_due_to_file_changes -> Fiber.return Proceed
+          | Finished _res -> (
+            let ivar = Fiber.Ivar.create () in
+            t.status <- Waiting_for_file_changes ivar;
+            let* next = Fiber.Ivar.read ivar in
+            match next with
+            | Shutdown_requested -> Fiber.return Shutdown
+            | Build_inputs_changed invalidations ->
+              t.status <- Standing_by invalidations;
+              t.handler t.config Source_files_changed;
+              Fiber.return Proceed)
+        in
+        Fiber.return (step, handle_outcome))
 
   let wait_for_inotify_sync t =
     let ivar = Fiber.Ivar.create () in
@@ -999,20 +996,21 @@ module Run = struct
 
   let poll_passive ~get_build_request =
     poll_gen ~get_build_request:(fun t ->
-      let* (request, response_ivar) = get_build_request in
-      let+ () = do_inotify_sync t in
-      let handle_outcome (res : Build_outcome.t) =
-        let+ () = Fiber.Ivar.fill response_ivar
-          (match res with
-            | Finished (Ok _) -> Build_outcome_for_rpc.Success
-           | Finished (Error _)
-           | Cancelled_due_to_file_changes
-           | Shutdown ->
-             Build_outcome_for_rpc.Failure)
+        let* request, response_ivar = get_build_request in
+        let+ () = do_inotify_sync t in
+        let handle_outcome (res : Build_outcome.t) =
+          let+ () =
+            Fiber.Ivar.fill response_ivar
+              (match res with
+              | Finished (Ok _) -> Build_outcome_for_rpc.Success
+              | Finished (Error _)
+              | Cancelled_due_to_file_changes
+              | Shutdown ->
+                Build_outcome_for_rpc.Failure)
+          in
+          Proceed
         in
-        Proceed
-      in
-      (request, handle_outcome))
+        (request, handle_outcome))
 
   exception Shutdown_requested
 

@@ -126,3 +126,10 @@ understood by dune language."))
  (depends (dune-private-libs (= :version)))
  (synopsis "Embed locations informations inside executable and libraries")
  (description ""))
+
+(package
+ (name dune-bench)
+ (synopsis "Dune's benchmarking suite")
+ (depends
+  (ocaml (>= 4.08.0)))
+ (description "Dune's private benchmarking suite"))

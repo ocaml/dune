@@ -881,7 +881,7 @@ module Run = struct
     type t =
       | Shutdown
       | Cancelled_due_to_file_changes
-      | Finished of ([ `Continue ], unit) Result.t
+      | Finished of (unit, unit) Result.t
   end
 
   let poll_iter t step =

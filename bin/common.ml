@@ -525,6 +525,11 @@ let display_term =
             {|Control the display mode of Dune.
          See $(b,dune-config\(5\)) for more details.|})
 
+let simple_arg_conv ~to_string ~of_string =
+  Arg.conv
+    ( (fun s -> Result.map_error (of_string s) ~f:(fun s -> `Msg s))
+    , fun pp x -> Format.pp_print_string pp (to_string x) )
+
 let shared_with_config_file =
   let docs = copts_sect in
   let+ concurrency =
@@ -542,12 +547,8 @@ let shared_with_config_file =
           ~doc:{|Run no more than $(i,JOBS) commands simultaneously.|})
   and+ sandboxing_preference =
     let arg =
-      Arg.conv
-        ( (fun s ->
-            Result.map_error (Dune_engine.Sandbox_mode.of_string s) ~f:(fun s ->
-                `Msg s))
-        , fun pp x ->
-            Format.pp_print_string pp (Dune_engine.Sandbox_mode.to_string x) )
+      simple_arg_conv ~of_string:Dune_engine.Sandbox_mode.of_string
+        ~to_string:Dune_engine.Sandbox_mode.to_string
     in
     Arg.(
       value
@@ -799,34 +800,17 @@ let term =
             "Force actions associated to aliases to be re-executed even\n\
             \                   if their dependencies haven't changed.")
   and+ watch =
-    Term.ret
-      (let watch_arg_name = "watch" in
-       let passive_watch_mode_arg_name = "passive-watch-mode" in
-       let+ w_flag =
-         Arg.(
-           value & flag
-           & info [ watch_arg_name; "w" ]
-               ~doc:
-                 "Instead of terminating build after completion, wait \
-                  continuously for file changes.")
-       and+ passive_watch_mode_flag =
-         Arg.(
-           value & flag
-           & info
-               [ passive_watch_mode_arg_name ]
-               ~doc:
-                 "Do not automatically start or re-start a build. Only do it \
-                  when a build RPC is received.")
-       in
-       match (w_flag, passive_watch_mode_flag) with
-       | false, false -> `Ok Dune_engine.Watch_mode_config.No
-       | false, true ->
-         `Error
-           ( true
-           , sprintf "Cannot use %s if %s was not passed"
-               passive_watch_mode_arg_name watch_arg_name )
-       | true, false -> `Ok (Dune_engine.Watch_mode_config.Yes Eager)
-       | true, true -> `Ok (Dune_engine.Watch_mode_config.Yes Passive))
+    let watch_arg_name = "watch" in
+    Arg.(
+      value
+      & opt ~vopt:(Dune_engine.Watch_mode_config.Yes Eager)
+          (simple_arg_conv ~to_string:Dune_engine.Watch_mode_config.to_string
+             ~of_string:Dune_engine.Watch_mode_config.of_string)
+          Dune_engine.Watch_mode_config.No
+      & info [ watch_arg_name; "w" ]
+          ~doc:
+            "Instead of terminating build after completion, wait continuously \
+             for file changes.")
   and+ print_metrics =
     Arg.(
       value & flag

@@ -933,28 +933,46 @@ module Run = struct
       t.status <- Standing_by Memo.Invalidation.empty;
       Build_outcome.Finished res
 
-  let poll step =
+  type handle_outcome_result =
+    | Shutdown | Proceed
+
+  let poll_gen ~get_build_request =
     let* t = t () in
     (match t.status with
-    | Building -> t.status <- Standing_by Memo.Invalidation.empty
-    | _ -> assert false);
+     | Building -> t.status <- Standing_by Memo.Invalidation.empty
+     | _ -> assert false);
     let rec loop () =
-      let* res = poll_iter t step in
-      match res with
+      let* (build_request, handle_outcome) = get_build_request t in
+      let* res =
+        poll_iter t build_request
+      in
+      let* next =
+        handle_outcome res
+      in
+      match next with
       | Shutdown -> Fiber.return ()
-      | Cancelled_due_to_file_changes -> loop ()
-      | Finished _res -> (
-        let ivar = Fiber.Ivar.create () in
-        t.status <- Waiting_for_file_changes ivar;
-        let* next = Fiber.Ivar.read ivar in
-        match next with
-        | Shutdown_requested -> Fiber.return ()
-        | Build_inputs_changed invalidations ->
-          t.status <- Standing_by invalidations;
-          t.handler t.config Source_files_changed;
-          loop ())
+      | Proceed -> loop ()
     in
     loop ()
+
+  let poll step =
+    poll_gen ~get_build_request:(fun (t : t) ->
+      let handle_outcome  (outcome : Build_outcome.t) =
+        match outcome with
+        | Shutdown  -> Fiber.return (Shutdown)
+        | Cancelled_due_to_file_changes -> Fiber.return Proceed
+        | Finished _res ->
+          let ivar = Fiber.Ivar.create () in
+          t.status <- Waiting_for_file_changes ivar;
+          let* next = Fiber.Ivar.read ivar in
+          match next with
+          | Shutdown_requested -> Fiber.return Shutdown
+          | Build_inputs_changed invalidations ->
+            t.status <- Standing_by invalidations;
+            t.handler t.config Source_files_changed;
+            Fiber.return Proceed
+      in
+      Fiber.return (step, handle_outcome))
 
   let wait_for_inotify_sync t =
     let ivar = Fiber.Ivar.create () in
@@ -978,31 +996,21 @@ module Run = struct
   end
 
   let poll_passive ~get_build_request =
-    let* t = t () in
-    (match t.status with
-    | Building -> t.status <- Standing_by Memo.Invalidation.empty
-    | _ -> assert false);
-    let rec loop () =
-      let* build_request, response_ivar = get_build_request in
-      let* () = do_inotify_sync t in
-      let* res =
-        poll_iter t (fun ~report_error -> build_request ~report_error)
-      in
-      let* () =
-        Fiber.Ivar.fill response_ivar
+    poll_gen ~get_build_request:(fun t ->
+      let* (request, response_ivar) = get_build_request in
+      let+ () = do_inotify_sync t in
+      let handle_outcome (res : Build_outcome.t) =
+        let+ () = Fiber.Ivar.fill response_ivar
           (match res with
-          | Finished (Ok _) -> Build_outcome_for_rpc.Success
-          | Finished (Error _)
-          | Cancelled_due_to_file_changes
-          | Shutdown ->
-            Build_outcome_for_rpc.Failure)
+            | Finished (Ok _) -> Build_outcome_for_rpc.Success
+           | Finished (Error _)
+           | Cancelled_due_to_file_changes
+           | Shutdown ->
+             Build_outcome_for_rpc.Failure)
+        in
+        Proceed
       in
-      match res with
-      | Shutdown -> Fiber.return ()
-      | Cancelled_due_to_file_changes -> loop ()
-      | Finished _res -> loop ()
-    in
-    loop ()
+      (request, handle_outcome))
 
   exception Shutdown_requested
 

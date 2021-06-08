@@ -379,6 +379,8 @@ let parallel_iter l ~f k =
   | [ x ] -> f x k
   | _ -> parallel_iter_generic ~n:(List.length l) ~iter:(List.iter l) ~f k
 
+let all_concurrently_unit l = parallel_iter l ~f:Fun.id
+
 let parallel_iter_set (type a s)
     (module S : Set.S with type elt = a and type t = s) t ~(f : a -> unit t) k =
   let len = S.cardinal t in

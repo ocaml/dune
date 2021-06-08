@@ -342,6 +342,15 @@ module Build = struct
       | Finish
       | Fail
       | Interrupt
+
+    let sexp =
+      let open Conv in
+      enum
+        [ ("start", Start)
+        ; ("finish", Finish)
+        ; ("fail", Fail)
+        ; ("interrupt", Interrupt)
+        ]
   end
 end
 
@@ -420,6 +429,9 @@ module Server_notifications = struct
   let log = Decl.notification ~method_:"notify/log" Message.sexp
 
   let progress = Decl.notification ~method_:"notify/progress" Progress.sexp
+
+  let build_event =
+    Decl.notification ~method_:"notify/build-event" Build.Event.sexp
 end
 
 module type S = sig

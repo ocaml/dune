@@ -39,10 +39,6 @@
 
   $ start_dune
 
-# CR aalekseyev: Without this sleep
-# this fails with "rpc server not running, despite the --wait"
-  $ sleep 1
-
   $ build y
   Success
   $ cat _build/default/y

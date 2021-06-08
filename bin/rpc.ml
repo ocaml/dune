@@ -18,50 +18,66 @@ let client_term common f =
   let config = Common.init common in
   Scheduler.go ~common ~config (fun () -> f common)
 
+let retry_loop once =
+  let open Fiber.O in
+  let rec loop sleeper =
+    let* res = once () in
+    match res with
+    | Some result ->
+      (match sleeper with
+      | None -> ()
+      | Some s -> Scheduler.Worker.stop s);
+      Fiber.return result
+    | None ->
+      let* sleeper = Scheduler.Worker.create () in
+      let* () =
+        Scheduler.Worker.task_exn sleeper ~f:(fun () -> Unix.sleepf 0.2)
+      in
+      loop (Some sleeper)
+  in
+  loop None
+
+let establish_connection_or_raise ~wait ~common once =
+  let open Fiber.O in
+  if wait then
+    retry_loop once
+  else
+    let+ res = once () in
+    match res with
+    | Some (client, session) -> (client, session)
+    | None ->
+      let (_ : Dune_rpc_private.Where.t) = wait_for_server common in
+      User_error.raise
+        [ Pp.text
+            "failed to establish connection even though server seems to be \
+             running"
+        ]
+
+let wait_term =
+  let doc =
+    "poll until server starts listening and then establish connection."
+  in
+  Arg.(value & flag & info [ "wait" ] ~doc)
+
+let establish_client_session ~common ~wait =
+  let open Fiber.O in
+  let once () =
+    let where = Dune_rpc.Where.get () in
+    match where with
+    | None -> Fiber.return None
+    | Some where -> (
+      let* client = Dune_rpc_impl.Run.Connect.csexp_client where in
+      let+ session = Csexp_rpc.Client.connect client in
+      match session with
+      | Error _ -> None
+      | Ok session -> Some (client, session))
+  in
+  establish_connection_or_raise ~wait ~common once
+
 module Init = struct
   let connect ~wait common =
     let open Fiber.O in
-    let* client, session =
-      let once () =
-        let where = Dune_rpc.Where.get () in
-        match where with
-        | None -> Fiber.return None
-        | Some where -> (
-          let* client = Dune_rpc_impl.Run.Connect.csexp_client where in
-          let+ session = Csexp_rpc.Client.connect client in
-          match session with
-          | Error _ -> None
-          | Ok session -> Some (client, session))
-      in
-      let rec loop sleeper =
-        let* res = once () in
-        match res with
-        | Some (client, session) ->
-          (match sleeper with
-          | None -> ()
-          | Some s -> Scheduler.Worker.stop s);
-          Fiber.return (client, session)
-        | None ->
-          let* sleeper = Scheduler.Worker.create () in
-          let* () =
-            Scheduler.Worker.task_exn sleeper ~f:(fun () -> Unix.sleepf 0.2)
-          in
-          loop (Some sleeper)
-      in
-      if wait then
-        loop None
-      else
-        let+ res = once () in
-        match res with
-        | Some (client, session) -> (client, session)
-        | None ->
-          let (_ : Dune_rpc_private.Where.t) = wait_for_server common in
-          User_error.raise
-            [ Pp.text
-                "failed to establish connection even though server seems to be \
-                 running"
-            ]
-    in
+    let* client, session = establish_client_session ~common ~wait in
     let* stdio = Csexp_rpc.Session.create ~socket:false stdin stdout in
     let forward f t =
       Fiber.repeat_while ~init:() ~f:(fun () ->
@@ -82,12 +98,7 @@ module Init = struct
 
   let term =
     let+ (common : Common.t) = Common.term
-    and+ wait =
-      let doc =
-        "poll until server starts listening and then establish connection."
-      in
-      Arg.(value & flag & info [ "wait" ] ~doc)
-    in
+    and+ wait = wait_term in
     client_term common (connect ~wait)
 
   let man = [ `Blocks Common.help_secs ]
@@ -138,10 +149,12 @@ module Build = struct
   let term =
     let name_ = Arg.info [] ~docv:"TARGET" in
     let+ (common : Common.t) = Common.term
+    and+ wait = wait_term
     and+ targets = Arg.(value & pos_all string [] name_) in
     client_term common @@ fun common ->
-    let where = wait_for_server common in
-    Dune_rpc_impl.Run.client where
+    let open Fiber.O in
+    let* _client, session = establish_client_session ~common ~wait in
+    Dune_rpc_impl.Run.client_with_session ~session
       (Dune_rpc.Initialize.Request.create
          ~id:(Dune_rpc.Id.make (Sexp.Atom "build")))
       ~on_notification:(fun _ -> assert false)

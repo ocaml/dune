@@ -142,3 +142,6 @@ let client p init ~on_notification ~f =
   let* c = Connect.csexp_client p in
   let* session = Csexp_rpc.Client.connect_exn c in
   Client.connect_raw session init ~on_notification ~f
+
+let client_with_session init ~session ~on_notification ~f =
+  Client.connect_raw session init ~on_notification ~f

@@ -122,6 +122,10 @@ ifeq (dune,$(firstword $(MAKECMDGOALS)))
   $(eval $(RUN_ARGS):;@:)
 endif
 
+.PHONY: bench
+bench:
+	@echo {\"results\":[]}
+
 dune: $(BIN)
 	$(BIN) $(RUN_ARGS)
 

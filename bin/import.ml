@@ -99,9 +99,8 @@ module Scheduler = struct
     let file_watcher = Common.file_watcher common in
     let run =
       let run () =
-        Scheduler.Run.poll (fun ~report_error () ->
-            Fiber.finalize (every ~report_error) ~finally:(fun () ->
-                Fiber.return (finally ())))
+        Scheduler.Run.poll (fun () ->
+            Fiber.finalize every ~finally:(fun () -> Fiber.return (finally ())))
       in
       match Common.rpc common with
       | None -> run

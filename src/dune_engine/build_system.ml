@@ -2257,14 +2257,19 @@ let prefix_rules (prefix : unit Action_builder.t) ~f =
   in
   res
 
-let report_early_exn ~report_error exn =
+let caused_by_cancellation (exn : Exn_with_backtrace.t) =
+  match exn.exn with
+  | Scheduler.Run.Build_cancelled -> true
+  | _ -> false
+
+let report_early_exn exn =
   let t = t () in
   let error = { Error.exn; id = Error.Id.gen () } in
   t.errors <- error :: t.errors;
   (match !Clflags.report_errors_config with
   | Early
   | Twice ->
-    report_error exn
+    if not (caused_by_cancellation exn) then Dune_util.Report_error.report exn
   | Deterministic -> ());
   t.handler.error [ Add error ]
 
@@ -2275,7 +2280,7 @@ let reraise_exn exn =
   | Deterministic ->
     Exn_with_backtrace.reraise exn
 
-let run ?(report_error = Dune_util.Report_error.report) f =
+let run f =
   let open Fiber.O in
   Hooks.End_of_build.once Promotion.finalize;
   let t = t () in
@@ -2294,7 +2299,7 @@ let run ?(report_error = Dune_util.Report_error.report) f =
     let* res =
       Fiber.with_error_handler ~on_error:reraise_exn (fun () ->
           Memo.Build.run_with_error_handler (f ())
-            ~handle_error_no_raise:(report_early_exn ~report_error))
+            ~handle_error_no_raise:report_early_exn)
     in
     let+ () = t.handler.build_event Finish in
     res

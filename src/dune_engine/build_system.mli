@@ -182,10 +182,7 @@ val files_in_source_tree_to_delete : unit -> Path.Set.t
 
 (** {2 Running a build} *)
 
-val run :
-     ?report_error:(Exn_with_backtrace.t -> unit)
-  -> (unit -> 'a Memo.Build.t)
-  -> 'a Fiber.t
+val run : (unit -> 'a Memo.Build.t) -> 'a Fiber.t
 
 (** {2 Misc} *)
 

@@ -611,13 +611,15 @@ let ignore_for_watch p =
   let+ t = t () in
   Event.Queue.ignore_next_file_change_event t.events p
 
+exception Build_cancelled
+
 let with_job_slot f =
   let* t = t () in
   let raise_if_cancelled () =
     match t.status with
     | Restarting_build _
     | Shutting_down ->
-      raise (Memo.Non_reproducible (Failure "Build cancelled"))
+      raise (Memo.Non_reproducible Build_cancelled)
     | Building -> ()
     | Waiting_for_file_changes _ ->
       (* At this stage, we're not running a build, so we shouldn't be running
@@ -837,24 +839,16 @@ module Run = struct
     let rec loop () : unit Fiber.t =
       t.status <- Building;
       let* res =
-        let report_error exn =
-          match t.status with
-          | Building -> Dune_util.Report_error.report exn
-          | Shutting_down
-          | Restarting_build _ ->
-            ()
-          | Waiting_for_file_changes _ ->
-            (* We are inside a build, so we aren't waiting for a file change
-               event *)
-            assert false
+        let report_error (exn : Exn_with_backtrace.t) =
+          match exn.exn with
+          | Build_cancelled -> ()
+          | _ -> Dune_util.Report_error.report exn
         in
         let on_error exn =
           report_error exn;
           Fiber.return ()
         in
-        Fiber.map_reduce_errors
-          (module Monoid.Unit)
-          ~on_error (step ~report_error)
+        Fiber.map_reduce_errors (module Monoid.Unit) ~on_error step
       in
       match t.status with
       | Waiting_for_file_changes _ ->
@@ -888,6 +882,8 @@ module Run = struct
     loop ()
 
   exception Shutdown_requested
+
+  exception Build_cancelled
 
   let go config ?(file_watcher = No_watcher)
       ~(on_event : Config.t -> Handler.Event.t -> unit) run =

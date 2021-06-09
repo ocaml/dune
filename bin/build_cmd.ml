@@ -1,12 +1,10 @@
 open Stdune
 open Import
 
-let run_build_system ?report_error ~common ~(request : unit Action_builder.t) ()
-    =
+let run_build_system ~common ~(request : unit Action_builder.t) () =
   let build_started = Unix.gettimeofday () in
   Fiber.finalize
-    (fun () ->
-      Build_system.run ?report_error (fun () -> Build_system.build request))
+    (fun () -> Build_system.run (fun () -> Build_system.build request))
     ~finally:(fun () ->
       (if Common.print_metrics common then
         let gc_stat = Gc.quick_stat () in
@@ -22,7 +20,7 @@ let run_build_system ?report_error ~common ~(request : unit Action_builder.t) ()
 
 let run_build_command_poll ~(common : Common.t) ~config ~request ~setup =
   let open Fiber.O in
-  let every ~report_error () =
+  let every () =
     Cached_digest.invalidate_cached_timestamps ();
     let* setup = setup () in
     let* request =
@@ -36,7 +34,7 @@ let run_build_command_poll ~(common : Common.t) ~config ~request ~setup =
         let+ () = Fiber.Ivar.fill ivar Accepted in
         Target.interpret_targets (Common.root common) config setup targets
     in
-    let+ () = run_build_system ~report_error ~common ~request () in
+    let+ () = run_build_system ~common ~request () in
     `Continue
   in
   Scheduler.poll ~common ~config ~every ~finally:Hooks.End_of_build.run

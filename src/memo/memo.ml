@@ -145,9 +145,15 @@ module Id = Id.Make ()
 module Caches = struct
   let cleaners = ref []
 
-  let register ~clear = cleaners := clear :: !cleaners
+  let invalidators = ref []
+
+  let register ~clear ~invalidate =
+    cleaners := clear :: !cleaners;
+    invalidators := invalidate :: !invalidators
 
   let clear () = List.iter !cleaners ~f:(fun f -> f ())
+
+  let invalidate () = List.iter !cleaners ~f:(fun f -> f ())
 end
 
 module Dep_node_without_state = struct
@@ -916,12 +922,17 @@ module Stack_frame = struct
     Option.map t.spec.human_readable_description ~f:(fun f -> f t.input)
 end
 
+let invalidate_store =
+  Store.iter ~f:(fun node -> node.Dep_node.last_cached_value <- None)
+
 let create_with_cache (type i o) name ~cache ~input ~cutoff
     ~human_readable_description (f : i -> o Fiber.t) =
   let spec =
     Spec.create ~name:(Some name) ~input ~cutoff ~human_readable_description f
   in
-  Caches.register ~clear:(fun () -> Store.clear cache);
+  Caches.register
+    ~clear:(fun () -> Store.clear cache)
+    ~invalidate:(fun () -> invalidate_store cache);
   { cache; spec }
 
 let create_with_store (type i) name
@@ -1250,12 +1261,13 @@ module Invalidation = struct
     | Empty -> true
     | _ -> false
 
-  let clear_caches = Leaf (fun () -> Caches.clear ())
-
-  let clear_cache { cache; _ } =
+  let clear_caches =
     Leaf
       (fun () ->
-        Store.iter cache ~f:(fun node -> node.last_cached_value <- None))
+        Caches.invalidate ();
+        Caches.clear ())
+
+  let invalidate_cache { cache; _ } = Leaf (fun () -> invalidate_store cache)
 end
 
 (* There are two approaches to invalidating memoization nodes. Currently, when a

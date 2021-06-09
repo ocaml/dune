@@ -266,7 +266,7 @@ let term =
   Scheduler.go ~common ~config (fun () ->
       let open Fiber.O in
       let* setup = Import.Main.setup () in
-      Build_system.run (fun () ->
+      Build_system.run_exn (fun () ->
           let open Memo.Build.O in
           let* request =
             match targets with

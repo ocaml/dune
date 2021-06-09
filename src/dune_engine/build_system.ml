@@ -2276,12 +2276,15 @@ let report_early_exn exn =
     | Deterministic -> ());
     t.handler.error [ Add error ]
 
-let reraise_exn exn =
+let handle_final_exns exns =
   match !Clflags.report_errors_config with
-  | Early -> raise Dune_util.Report_error.Already_reported
+  | Early -> ()
   | Twice
   | Deterministic ->
-    Exn_with_backtrace.reraise exn
+    let report exn =
+      if not (caused_by_cancellation exn) then Dune_util.Report_error.report exn
+    in
+    List.iter exns ~f:report
 
 let run f =
   let open Fiber.O in
@@ -2300,14 +2303,26 @@ let run f =
   let f () =
     let* () = t.handler.build_event Start in
     let* res =
-      Fiber.with_error_handler ~on_error:reraise_exn (fun () ->
+      Fiber.collect_errors (fun () ->
           Memo.Build.run_with_error_handler (f ())
             ~handle_error_no_raise:report_early_exn)
     in
-    let+ () = t.handler.build_event Finish in
-    res
+    match res with
+    | Ok res ->
+      let+ () = t.handler.build_event Finish in
+      Ok res
+    | Error exns ->
+      handle_final_exns exns;
+      Fiber.return (Error `Already_reported)
   in
   Fiber.Mutex.with_lock t.build_mutex f
+
+let run_exn f =
+  let open Fiber.O in
+  let+ res = run f in
+  match res with
+  | Ok res -> res
+  | Error `Already_reported -> raise Dune_util.Report_error.Already_reported
 
 let build_file = build_file
 

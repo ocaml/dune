@@ -827,6 +827,8 @@ module Worker = struct
 end
 
 module Run = struct
+  exception Build_cancelled = Build_cancelled
+
   type file_watcher =
     | Detect_external
     | No_watcher
@@ -838,18 +840,7 @@ module Run = struct
     let* t = t () in
     let rec loop () : unit Fiber.t =
       t.status <- Building;
-      let* res =
-        let report_error (exn : Exn_with_backtrace.t) =
-          match exn.exn with
-          | Build_cancelled -> ()
-          | _ -> Dune_util.Report_error.report exn
-        in
-        let on_error exn =
-          report_error exn;
-          Fiber.return ()
-        in
-        Fiber.map_reduce_errors (module Monoid.Unit) ~on_error step
-      in
+      let* res = step in
       match t.status with
       | Waiting_for_file_changes _ ->
         (* We just finished a build, so there's no way this was set *)
@@ -874,16 +865,13 @@ module Run = struct
           Memo.reset invalidations;
           t.handler t.config Source_files_changed;
           match res with
-          | Error _
-          | Ok `Continue ->
-            loop ()
-          | Ok `Stop -> Fiber.return ()))
+          | Error `Already_reported
+          | Ok () ->
+            loop ()))
     in
     loop ()
 
   exception Shutdown_requested
-
-  exception Build_cancelled
 
   let go config ?(file_watcher = No_watcher)
       ~(on_event : Config.t -> Handler.Event.t -> unit) run =

@@ -182,7 +182,11 @@ val files_in_source_tree_to_delete : unit -> Path.Set.t
 
 (** {2 Running a build} *)
 
-val run : (unit -> 'a Memo.Build.t) -> 'a Fiber.t
+val run :
+  (unit -> 'a Memo.Build.t) -> ('a, [ `Already_reported ]) Result.t Fiber.t
+
+(** A variant of [run] that raises an [Already_reported] exception on error. *)
+val run_exn : (unit -> 'a Memo.Build.t) -> 'a Fiber.t
 
 (** {2 Misc} *)
 

@@ -66,7 +66,7 @@ module Run : sig
 
       If [shutdown] is called, the current build will be canceled and new builds
       will not start. *)
-  val poll : (unit -> [ `Continue | `Stop ] Fiber.t) -> unit Fiber.t
+  val poll : (unit, [ `Already_reported ]) Result.t Fiber.t -> unit Fiber.t
 
   val go :
        Config.t

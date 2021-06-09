@@ -57,6 +57,9 @@ module Run : sig
       cases *)
   exception Shutdown_requested
 
+  (** Raised by fibers that are terminated because the build was interrupted *)
+  exception Build_cancelled
+
   (** Runs [once] in a loop, executing [finally] after every iteration, even if
       Fiber.Never was encountered.
 

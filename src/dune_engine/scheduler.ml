@@ -611,13 +611,15 @@ let ignore_for_watch p =
   let+ t = t () in
   Event.Queue.ignore_next_file_change_event t.events p
 
+exception Build_cancelled
+
 let with_job_slot f =
   let* t = t () in
   let raise_if_cancelled () =
     match t.status with
     | Restarting_build _
     | Shutting_down ->
-      raise (Memo.Non_reproducible (Failure "Build cancelled"))
+      raise (Memo.Non_reproducible Build_cancelled)
     | Building -> ()
     | Waiting_for_file_changes _ ->
       (* At this stage, we're not running a build, so we shouldn't be running
@@ -888,6 +890,8 @@ module Run = struct
     loop ()
 
   exception Shutdown_requested
+
+  exception Build_cancelled = Build_cancelled
 
   let go config ?(file_watcher = No_watcher)
       ~(on_event : Config.t -> Handler.Event.t -> unit) run =

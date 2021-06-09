@@ -2257,16 +2257,19 @@ let prefix_rules (prefix : unit Action_builder.t) ~f =
   in
   res
 
-let report_early_exn ~report_error exn =
-  let t = t () in
-  let error = { Error.exn; id = Error.Id.gen () } in
-  t.errors <- error :: t.errors;
+let report_early_exn ~report_error (exn : Exn_with_backtrace.t) =
   (match !Clflags.report_errors_config with
   | Early
   | Twice ->
     report_error exn
   | Deterministic -> ());
-  t.handler.error [ Add error ]
+  match exn.exn with
+  | Memo.Non_reproducible Scheduler.Run.Build_cancelled -> Fiber.return ()
+  | _ ->
+    let t = t () in
+    let error = { Error.exn; id = Error.Id.gen () } in
+    t.errors <- error :: t.errors;
+    t.handler.error [ Add error ]
 
 let reraise_exn exn =
   match !Clflags.report_errors_config with

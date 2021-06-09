@@ -1214,6 +1214,8 @@ let exec (type i o) (t : (i, o) t) i = Exec.exec_dep_node (dep_node t i)
 let get_call_stack = Call_stack.get_call_stack_without_state
 
 module Invalidation = struct
+  type ('i, 'o) memo = ('i, 'o) t
+
   (* Represented as a tree mainly to get a tail-recursive execution, but being
      able to special-case empty invalidations is also useful. *)
   type t =
@@ -1249,6 +1251,11 @@ module Invalidation = struct
     | _ -> false
 
   let clear_caches = Leaf (fun () -> Caches.clear ())
+
+  let clear_cache { cache; _ } =
+    Leaf
+      (fun () ->
+        Store.iter cache ~f:(fun node -> node.last_cached_value <- None))
 end
 
 (* There are two approaches to invalidating memoization nodes. Currently, when a

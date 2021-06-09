@@ -1760,3 +1760,66 @@ let%expect_test "Test that there are no spurious cycles" =
               }
             ]
   |}]
+
+let%expect_test "Test Memo.clear_cache" =
+  let add_one =
+    Memo.create "Add 1"
+      ~input:(module Int)
+      (fun input ->
+        let result = input + 1 in
+        printf "Evaluated add_one(%d)\n" input;
+        Memo.Build.return result)
+  in
+  let add_two =
+    Memo.create "Add 2"
+      ~input:(module Int)
+      (fun input ->
+        let+ result = Memo.exec add_one input in
+        printf "Evaluated add_two(%d)\n" input;
+        result + 1)
+  in
+  Memo.Perf_counters.reset ();
+  evaluate_and_print add_one 1;
+  evaluate_and_print add_one 2;
+  [%expect
+    {|
+    Evaluated add_one(1)
+    f 1 = Ok 2
+    Evaluated add_one(2)
+    f 2 = Ok 3
+  |}];
+  evaluate_and_print add_two 1;
+  evaluate_and_print add_two 2;
+  [%expect
+    {|
+    Evaluated add_two(1)
+    f 1 = Ok 3
+    Evaluated add_two(2)
+    f 2 = Ok 4
+  |}];
+  print_perf_counters ();
+  [%expect {| 4/4 computed/total nodes, 2/2 traversed/total edges |}];
+  let invalidation = Memo.Invalidation.clear_cache add_one in
+  Memo.reset invalidation;
+  evaluate_and_print add_one 1;
+  evaluate_and_print add_one 2;
+  (* We recompute all [add_one] calls. *)
+  [%expect
+    {|
+    Evaluated add_one(1)
+    f 1 = Ok 2
+    Evaluated add_one(2)
+    f 2 = Ok 3
+  |}];
+  evaluate_and_print add_two 1;
+  evaluate_and_print add_two 2;
+  (* We recompute [add_two] calls because they depend on [add_one] calls. *)
+  [%expect
+    {|
+    Evaluated add_two(1)
+    f 1 = Ok 3
+    Evaluated add_two(2)
+    f 2 = Ok 4
+  |}];
+  print_perf_counters ();
+  [%expect {| 4/4 computed/total nodes, 4/2 traversed/total edges |}]

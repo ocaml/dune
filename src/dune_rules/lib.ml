@@ -1472,6 +1472,7 @@ end = struct
               lib :: acc_res
             in
             (acc_res, acc_selects, acc_re_exports)
+          | NonPP _ -> failwith (Format.sprintf "not implemented %s %d" __FILE__ __LINE__)
           | Select select ->
             let res, resolved_select = resolve_select select in
             let acc_res =

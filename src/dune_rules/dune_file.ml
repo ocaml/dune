@@ -99,6 +99,7 @@ module Lib_deps = struct
            | Lib_dep.Re_export (_, s)
            | Lib_dep.Direct (_, s) ->
              add Required s acc
+           | NonPP _ -> failwith (Format.sprintf "not implemented %s %d" __FILE__ __LINE__)
            | Select { choices; _ } ->
              List.fold_left choices ~init:acc
                ~f:(fun acc (c : Lib_dep.Select.Choice.t) ->

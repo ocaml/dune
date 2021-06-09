@@ -6,10 +6,16 @@ module Pps_and_flags = struct
   let decode =
     let+ loc = loc
     and+ l, flags =
-      until_keyword "--" ~before:String_with_vars.decode
+      let before =
+        String_with_vars.decode <|> (field "non_ppx_plugins" (repeat String_with_vars.decode))
+      in
+      until_keyword "--" ~before
         ~after:(repeat String_with_vars.decode)
     and+ syntax_version = Dune_lang.Syntax.get_exn Stanza.syntax in
     let pps, more_flags =
+
+      Format.printf "%a\n%!" (Format.pp_print_list (fun ppf x -> String_with_vars.to_dyn x |> Dyn.pp |> Pp.to_fmt ppf )) l;
+
       List.partition_map l ~f:(fun s ->
           match String_with_vars.is_prefix ~prefix:"-" s with
           | Yes -> Right s

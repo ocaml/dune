@@ -344,6 +344,8 @@ module Handler = struct
   type event =
     | Start
     | Finish
+    | Fail
+    | Interrupt
 
   type error =
     | Add of Error.t
@@ -2294,12 +2296,27 @@ let run ?(report_error = Dune_util.Report_error.report) f =
   in
   let f () =
     let* () = t.handler.build_event Start in
+    let build_end_reported = ref false in
     let* res =
       Fiber.with_error_handler ~on_error:reraise_exn (fun () ->
           Memo.Build.run_with_error_handler (f ())
-            ~handle_error_no_raise:(report_early_exn ~report_error))
+            ~handle_error_no_raise:(fun exn ->
+              Fiber.fork_and_join_unit
+                (fun () -> report_early_exn ~report_error exn)
+                (fun () ->
+                  build_end_reported := true;
+                  t.handler.build_event
+                    (match exn.exn with
+                    | Memo.Non_reproducible Scheduler.Run.Build_cancelled ->
+                      Interrupt
+                    | _ -> Fail))))
     in
-    let+ () = t.handler.build_event Finish in
+    let+ () =
+      if !build_end_reported then
+        Fiber.return ()
+      else
+        t.handler.build_event Finish
+    in
     res
   in
   Fiber.Mutex.with_lock t.build_mutex f

@@ -2260,6 +2260,10 @@ let prefix_rules (prefix : unit Action_builder.t) ~f =
 let caused_by_cancellation (exn : Exn_with_backtrace.t) =
   match exn.exn with
   | Scheduler.Run.Build_cancelled -> true
+  | Memo.Error.E err ->
+    (match Memo.Error.get err with
+     | Scheduler.Run.Build_cancelled -> true
+     | _ -> false)
   | _ -> false
 
 let report_early_exn exn =

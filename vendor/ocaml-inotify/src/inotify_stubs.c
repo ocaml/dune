@@ -49,7 +49,7 @@ static int inotify_return_table[] = {
 value caml_inotify_init(value unit) {
   CAMLparam1(unit);
 
-  int fd = inotify_init();
+  int fd = inotify_init1(IN_CLOEXEC);
   if (fd == -1) uerror("inotify_init", Nothing);
 
   CAMLreturn(Val_int(fd));

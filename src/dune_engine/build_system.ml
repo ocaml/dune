@@ -2264,14 +2264,17 @@ let caused_by_cancellation (exn : Exn_with_backtrace.t) =
 
 let report_early_exn exn =
   let t = t () in
-  let error = { Error.exn; id = Error.Id.gen () } in
-  t.errors <- error :: t.errors;
-  (match !Clflags.report_errors_config with
-  | Early
-  | Twice ->
-    if not (caused_by_cancellation exn) then Dune_util.Report_error.report exn
-  | Deterministic -> ());
-  t.handler.error [ Add error ]
+  match caused_by_cancellation exn with
+  | true -> Fiber.return ()
+  | false ->
+    let error = { Error.exn; id = Error.Id.gen () } in
+    t.errors <- error :: t.errors;
+    (match !Clflags.report_errors_config with
+    | Early
+    | Twice ->
+      Dune_util.Report_error.report exn
+    | Deterministic -> ());
+    t.handler.error [ Add error ]
 
 let reraise_exn exn =
   match !Clflags.report_errors_config with

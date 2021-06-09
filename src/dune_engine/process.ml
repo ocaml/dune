@@ -798,5 +798,3 @@ let run_capture_line ?dir ?stderr_to ?stdin_from ?env
                 (Pp.concat_map l ~sep:Pp.cut ~f:(fun line ->
                      Pp.seq (Pp.verbatim "> ") (Pp.verbatim line)))
             ]))
-
-

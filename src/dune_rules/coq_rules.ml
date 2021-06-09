@@ -95,6 +95,16 @@ let select_native_mode ~sctx ~(buildable : Buildable.t) =
   else
     snd buildable.mode
 
+let rec resolve_first lib_db = function
+  | [] -> assert false
+  | [ n ] -> Lib.DB.resolve lib_db (Loc.none, Lib_name.of_string n)
+  | n :: l -> (
+    match
+      Lib.DB.resolve_when_exists lib_db (Loc.none, Lib_name.of_string n)
+    with
+    | Some l -> l
+    | None -> resolve_first lib_db l)
+
 module Context = struct
   type 'a t =
     { coqdep : Action.Prog.t
@@ -231,7 +241,7 @@ module Context = struct
     in
     let mode = select_native_mode ~sctx ~buildable in
     let native_includes =
-      Lib.DB.resolve lib_db (Loc.none, Lib_name.of_string "coq.kernel")
+      resolve_first lib_db [ "coq-core.kernel"; "coq.kernel" ]
       |> Result.map ~f:(fun lib -> Util.coq_nativelib_cmi_dirs [ lib ])
     in
     let native_theory_includes =

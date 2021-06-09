@@ -1630,7 +1630,7 @@ The supported Coq language versions are:
 
 - ``0.1``: basic Coq theory support,
 - ``0.2``: support for the ``theories`` field, and composition of theories in the same scope,
-- ``0.3``: support for ``(mode native)``, requires Coq >= 8.10.
+- ``0.3``: support for ``(mode native)``, requires Coq >= 8.10 (and dune >= 2.9 for Coq >= 8.14).
 
 Guarantees with respect to stability are not provided yet,
 however, as implementation of features progresses, we hope to reach

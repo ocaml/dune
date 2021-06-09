@@ -176,6 +176,8 @@ exception Non_reproducible of exn
     memoization runs. These sets can be combined into larger sets to then be
     passed to [reset]. *)
 module Invalidation : sig
+  type ('input, 'output) memo = ('input, 'output) t
+
   type t
 
   val empty : t
@@ -184,7 +186,7 @@ module Invalidation : sig
 
   val is_empty : t -> bool
 
-  (** Indicates that memoization tables should be cleared. We use it if
+  (** Indicates that all memoization tables should be cleared. We use it if
       incremental mode is not enabled.
 
       Bug: this is not sufficient to guarantee full recomputation because it
@@ -192,6 +194,9 @@ module Invalidation : sig
       node (via a [lazy_] or [cell] call), then that's going to keep its
       potentially stale value. *)
   val clear_caches : t
+
+  (** Like [clear_caches] but only clears the cache of a given [memo] table. *)
+  val clear_cache : _ memo -> t
 end
 
 (** Notify the memoization system that the build system has restarted. This
@@ -229,6 +234,8 @@ module Store : sig
     val set : 'a t -> key -> 'a -> unit
 
     val find : 'a t -> key -> 'a option
+
+    val iter : 'a t -> f:('a -> unit) -> unit
   end
 end
 

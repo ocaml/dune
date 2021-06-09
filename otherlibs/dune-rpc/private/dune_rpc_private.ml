@@ -769,7 +769,8 @@ struct
       ; build_progress : Progress.t -> unit Fiber.t
       }
 
-    let on_notification (t : t) ~version =
+    let on_notification { log; abort; diagnostic; build_event; build_progress }
+        ~version =
       let table = Table.create (module String) 16 in
       let to_callback (decl : _ Decl.notification) f payload =
         match Conv.of_sexp decl.req payload ~version with
@@ -781,10 +782,11 @@ struct
       let add (decl : _ Decl.notification) f =
         Table.add_exn table decl.method_ (to_callback decl f)
       in
-      add Server_notifications.diagnostic t.diagnostic;
-      add Server_notifications.log t.log;
-      add Server_notifications.abort t.abort;
-      add Server_notifications.progress t.build_progress;
+      add Server_notifications.diagnostic diagnostic;
+      add Server_notifications.log log;
+      add Server_notifications.abort abort;
+      add Server_notifications.progress build_progress;
+      add Server_notifications.build_event build_event;
       fun { Call.method_; params } ->
         match Table.find table method_ with
         | None ->

@@ -161,6 +161,8 @@ Unreleased
 
 - Add `(package ...)` to `(mdx ...)` (#4691, fixes #3756, @emillon)
 
+- Handle renaming of `coq.kernel` library to `coq-core.kernel` in Coq 8.14 (#4713, @proux01)
+
 2.8.5 (28/03/2021)
 ------------------
 

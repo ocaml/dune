@@ -285,7 +285,17 @@ let build_progress t ~complete ~remaining =
           Session.notification session Server_notifications.progress
             notification))
 
-let build_event _ _ = Fiber.return ()
+let build_event t (event : Build_system.Handler.event) =
+  let t = Fdecl.get t in
+  let notification =
+    match event with
+    | Start -> Build.Event.Start
+    | Finish -> Finish
+  in
+  task t (fun () ->
+      Subscribers.notify t.subscribers Build_progress ~f:(fun session ->
+          Session.notification session Server_notifications.build_event
+            notification))
 
 let create () =
   let t = Fdecl.create Dyn.Encoder.opaque in

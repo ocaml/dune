@@ -662,6 +662,9 @@ module M = struct
       { without_state : ('i, 'o) Dep_node_without_state.t
       ; mutable state : 'o State.t
       ; mutable last_cached_value : 'o Cached_value.t option
+      ; (* This field caches the value of [without_state.spec.allow_cutoff] to
+           avoid jumping through two more pointers in a tight loop. *)
+        has_cutoff : bool
       }
 
     type packed = T : (_, _) t -> packed [@@unboxed]
@@ -941,6 +944,10 @@ let make_dep_node ~spec ~input : _ Dep_node.t =
   { without_state = dep_node_without_state
   ; last_cached_value = None
   ; state = Not_considering
+  ; has_cutoff =
+      (match spec.allow_cutoff with
+      | Yes _equal -> true
+      | No -> false)
   }
 
 let dep_node (t : (_, _) t) input =
@@ -1012,12 +1019,8 @@ end = struct
             ~f:(fun [@inline] (Dep_node.T dep) ->
               if !Counters.enabled then
                 Counters.record_new_edge_traversals ~count:1;
-              (* CR-someday amokhov: Chasing so many pointers for every [dep] is
-                 very expensive. We could have two constructors instead of just
-                 [Dep_node.T] to indicate whether the [dep] has a cutoff or not,
-                 but that requires further thinking and benchmarking. *)
-              match dep.without_state.spec.allow_cutoff with
-              | No -> (
+              match dep.has_cutoff with
+              | false -> (
                 (* If [dep] has no cutoff, it is sufficient to check whether it
                    is up to date. If not, we must recompute [last_cached_value]. *)
                 consider_and_restore_from_cache dep
@@ -1037,7 +1040,7 @@ end = struct
                 | Failure (Cancelled { dependency_cycle }) ->
                   Cancelled { dependency_cycle }
                 | Failure (Not_found | Out_of_date _) -> Changed)
-              | Yes _equal -> (
+              | true -> (
                 (* If [dep] has a cutoff predicate, it is not sufficient to
                    check whether it is up to date: even if it isn't, after we
                    recompute it, the resulting value may remain unchanged,
@@ -1211,6 +1214,8 @@ let exec (type i o) (t : (i, o) t) i = Exec.exec_dep_node (dep_node t i)
 let get_call_stack = Call_stack.get_call_stack_without_state
 
 module Invalidation = struct
+  type ('i, 'o) memo = ('i, 'o) t
+
   (* Represented as a tree mainly to get a tail-recursive execution, but being
      able to special-case empty invalidations is also useful. *)
   type t =
@@ -1246,6 +1251,11 @@ module Invalidation = struct
     | _ -> false
 
   let clear_caches = Leaf (fun () -> Caches.clear ())
+
+  let clear_cache { cache; _ } =
+    Leaf
+      (fun () ->
+        Store.iter cache ~f:(fun node -> node.last_cached_value <- None))
 end
 
 (* There are two approaches to invalidating memoization nodes. Currently, when a

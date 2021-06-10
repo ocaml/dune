@@ -85,7 +85,7 @@ an flambda compiler with the help of variable expansion:
 
 .. code:: lisp
 
-   (and %{ocamlc-config:flambda} (= %{ocamlc-config:system} macosx))
+   (and %{ocaml-config:flambda} (= %{ocaml-config:system} macosx))
 
 .. _predicate-lang:
 

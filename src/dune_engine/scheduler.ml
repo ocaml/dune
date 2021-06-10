@@ -625,13 +625,15 @@ let ignore_for_watch p =
   let+ t = t () in
   Event.Queue.ignore_next_file_change_event t.events p
 
+exception Build_cancelled
+
 let with_job_slot f =
   let* t = t () in
   let raise_if_cancelled () =
     match t.status with
     | Restarting_build _
     | Shutting_down ->
-      raise (Memo.Non_reproducible (Failure "Build cancelled"))
+      raise (Memo.Non_reproducible Build_cancelled)
     | Building -> ()
     | Waiting_for_file_changes _
     | Waiting_for_inotify_sync _
@@ -870,6 +872,8 @@ module Worker = struct
 end
 
 module Run = struct
+  exception Build_cancelled = Build_cancelled
+
   type file_watcher =
     | Detect_external
     | No_watcher
@@ -881,7 +885,7 @@ module Run = struct
     type t =
       | Shutdown
       | Cancelled_due_to_file_changes
-      | Finished of (unit, unit) Result.t
+      | Finished of (unit, [ `Already_reported ]) Result.t
   end
 
   let poll_iter t step =
@@ -890,31 +894,7 @@ module Run = struct
     | _ ->
       Code_error.raise "[poll_iter]: expected the build status [Standing_by]" []);
     t.status <- Building;
-    let+ res =
-      let report_error exn =
-        match t.status with
-        | Building -> Dune_util.Report_error.report exn
-        | Shutting_down
-        | Restarting_build _ ->
-          ()
-        | Standing_by _ -> assert false
-        | Waiting_for_file_changes _ ->
-          (* We are inside a build, so we aren't waiting for a file change event *)
-          assert false
-        | Waiting_for_inotify_sync _ ->
-          (* We only use inotify sync between the builds, not in the middle of
-             one. *)
-          assert false
-      in
-      let on_error exn =
-        report_error exn;
-        Fiber.return ()
-      in
-      Fiber.map_reduce_errors
-        (module Monoid.Unit)
-        ~on_error
-        (fun () -> step ~report_error)
-    in
+    let+ res = step in
     match t.status with
     | Waiting_for_file_changes _
     | Waiting_for_inotify_sync _
@@ -928,7 +908,7 @@ module Run = struct
     | Building ->
       let build_result : Handler.Event.build_result =
         match res with
-        | Error _ -> Failure
+        | Error `Already_reported -> Failure
         | Ok _ -> Success
       in
       t.handler t.config (Build_finish build_result);

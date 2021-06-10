@@ -85,7 +85,7 @@ let term =
       in
       let* prog =
         let open Memo.Build.O in
-        Build_system.run (fun () ->
+        Build_system.run_exn (fun () ->
             match Filename.analyze_program_name prog with
             | In_path -> (
               Super_context.resolve_program sctx ~dir ~loc:None prog

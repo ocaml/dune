@@ -1690,7 +1690,7 @@ The supported Coq language versions are:
 
 - ``0.1``: basic Coq theory support,
 - ``0.2``: support for the ``theories`` field, and composition of theories in the same scope,
-- ``0.3``: support for ``(mode native)``, requires Coq >= 8.10.
+- ``0.3``: support for ``(mode native)``, requires Coq >= 8.10 (and dune >= 2.9 for Coq >= 8.14).
 
 Guarantees with respect to stability are not provided yet,
 however, as implementation of features progresses, we hope to reach
@@ -1880,6 +1880,15 @@ Where ``<optional-fields>`` are:
 - ``(preludes <files>)`` are the prelude files you want to pass to MDX.
   See `MDX's documentation <https://github.com/realworldocaml/mdx>`__ for more
   details on preludes.
+
+- ``(enabled_if <blang expression>)`` is the same as the corresponding field of
+  `library`_.
+
+- ``(package <package>)`` specifies which package to attach this stanza to
+  (similarly to when ``(package)`` is attached to a ``(rule)`` stanza. When
+  ``-p`` is passed, ``(mdx)`` stanzas with an other package will be ignored.
+  Note that this is feature is completely separate from ``(packages)``, which
+  specifies some dependencies.
 
 .. _plugin:
 

@@ -57,15 +57,15 @@ module Run : sig
       cases *)
   exception Shutdown_requested
 
+  exception Build_cancelled
+
   (** [poll once] runs [once] in a loop.
 
       If any source files change in the middle of iteration, it gets canceled.
 
       If [shutdown] is called, the current build will be canceled and new builds
       will not start. *)
-  val poll :
-       (report_error:(Exn_with_backtrace.t -> unit) -> unit Fiber.t)
-    -> unit Fiber.t
+  val poll : (unit, [ `Already_reported ]) Result.t Fiber.t -> unit Fiber.t
 
   module Build_outcome_for_rpc : sig
     type t =
@@ -80,7 +80,7 @@ module Run : sig
       to wait for the build signal. *)
   val poll_passive :
        get_build_request:
-         ((report_error:(Exn_with_backtrace.t -> unit) -> unit Fiber.t)
+         ((unit, [ `Already_reported ]) Result.t Fiber.t
          * Build_outcome_for_rpc.t Fiber.Ivar.t)
          Fiber.t
     -> unit Fiber.t

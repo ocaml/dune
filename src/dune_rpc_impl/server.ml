@@ -19,9 +19,9 @@ type pending_build_action =
 let diagnostic_of_error : Build_system.Error.t -> Dune_rpc_private.Diagnostic.t
     =
  fun m ->
-  let message, dir = Build_system.Error.info m in
+  let message, related, dir = Build_system.Error.info m in
   let loc = message.loc in
-  let message = Pp.map_tags (Pp.concat message.paragraphs) ~f:(fun _ -> ()) in
+  let make_message pars = Pp.map_tags (Pp.concat pars) ~f:(fun _ -> ()) in
   let id = Build_system.Error.id m |> Diagnostic.Id.create in
   let promotion =
     match Build_system.Error.promotion m with
@@ -32,13 +32,20 @@ let diagnostic_of_error : Build_system.Error.t -> Dune_rpc_private.Diagnostic.t
         }
       ]
   in
+  let related =
+    List.map related ~f:(fun (related : User_message.t) ->
+        { Dune_rpc_private.Diagnostic.Related.message =
+            make_message related.paragraphs
+        ; loc = Option.value_exn related.loc
+        })
+  in
   { severity = None
   ; id
   ; targets = []
-  ; message
+  ; message = make_message message.paragraphs
   ; loc
   ; promotion
-  ; related = []
+  ; related
   ; directory =
       Option.map
         ~f:(fun p ->
@@ -338,7 +345,17 @@ let build_progress t ~complete ~remaining =
           Session.notification session Server_notifications.progress
             notification))
 
-let build_event _ _ = Fiber.return ()
+let build_event t (event : Build_system.Handler.event) =
+  let t = Fdecl.get t in
+  let notification =
+    match event with
+    | Start -> Build.Event.Start
+    | Finish -> Finish
+  in
+  task t (fun () ->
+      Subscribers.notify t.subscribers Build_progress ~f:(fun session ->
+          Session.notification session Server_notifications.build_event
+            notification))
 
 let create () =
   let t = Fdecl.create Dyn.Encoder.opaque in

@@ -156,11 +156,19 @@ let make (d : _ Dir_with_dune.t) ~(sources : Foreign.Sources.Unresolved.t)
   let archives =
     Foreign.Archive.Name.Map.of_list_reducei foreign_libs
       ~f:(fun archive_name (loc1, _) (loc2, _) ->
-        User_error.raise ~loc:loc2
-          [ Pp.textf
-              "Multiple foreign libraries with the same archive name %S; the \
-               name has already been taken in %s."
-              (Foreign.Archive.Name.to_string archive_name)
+        let main_message =
+          sprintf "Multiple foreign libraries with the same archive name %S"
+            (Foreign.Archive.Name.to_string archive_name)
+        in
+        let annots =
+          let main = User_message.make ~loc:loc2 [ Pp.text main_message ] in
+          let related =
+            [ User_message.make ~loc:loc1 [ Pp.text "Name already used here" ] ]
+          in
+          [ Compound_user_error.make ~main ~related ]
+        in
+        User_error.raise ~annots ~loc:loc2
+          [ Pp.textf "%s; the name has already been taken in %s." main_message
               (Loc.to_file_colon_line loc1)
           ])
     |> Foreign.Archive.Name.Map.map ~f:snd

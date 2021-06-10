@@ -29,7 +29,7 @@ let term =
     Scheduler.go ~common ~config (fun () ->
         let open Fiber.O in
         let* setup = Import.Main.setup () in
-        Build_system.run (fun () ->
+        Build_system.run_exn (fun () ->
             let open Memo.Build.O in
             let context = Import.Main.find_context_exn setup ~name:ctx_name in
             let sctx = Import.Main.find_scontext_exn setup ~name:ctx_name in

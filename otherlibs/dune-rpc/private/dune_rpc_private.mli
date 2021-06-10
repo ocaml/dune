@@ -406,6 +406,8 @@ module Server_notifications : sig
 
   val progress : Progress.t Decl.notification
 
+  val build_event : Build.Event.t Decl.notification
+
   val log : Message.t Decl.notification
 
   val abort : Message.t Decl.notification

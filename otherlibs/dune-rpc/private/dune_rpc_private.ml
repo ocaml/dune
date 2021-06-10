@@ -342,6 +342,15 @@ module Build = struct
       | Finish
       | Fail
       | Interrupt
+
+    let sexp =
+      let open Conv in
+      enum
+        [ ("start", Start)
+        ; ("finish", Finish)
+        ; ("fail", Fail)
+        ; ("interrupt", Interrupt)
+        ]
   end
 end
 
@@ -420,6 +429,9 @@ module Server_notifications = struct
   let log = Decl.notification ~method_:"notify/log" Message.sexp
 
   let progress = Decl.notification ~method_:"notify/progress" Progress.sexp
+
+  let build_event =
+    Decl.notification ~method_:"notify/build-event" Build.Event.sexp
 end
 
 module type S = sig
@@ -761,8 +773,10 @@ struct
       let table = Table.create (module String) 16 in
       let to_callback (decl : _ Decl.notification) f payload =
         match Conv.of_sexp decl.req payload ~version with
-        | Error _ -> Code_error.raise "invalid notification" []
         | Ok s -> f s
+        | Error error ->
+          Code_error.raise "invalid notification"
+            [ ("error", Conv.dyn_of_error error) ]
       in
       let add (decl : _ Decl.notification) f =
         Table.add_exn table decl.method_ (to_callback decl f)
@@ -770,9 +784,12 @@ struct
       add Server_notifications.diagnostic t.diagnostic;
       add Server_notifications.log t.log;
       add Server_notifications.abort t.abort;
+      add Server_notifications.progress t.build_progress;
       fun { Call.method_; params } ->
         match Table.find table method_ with
-        | None -> Code_error.raise "invalid method from server" []
+        | None ->
+          Code_error.raise "invalid method from server"
+            [ ("method_", Dyn.Encoder.string method_) ]
         | Some v -> v params
 
     let log { Message.payload; message } =

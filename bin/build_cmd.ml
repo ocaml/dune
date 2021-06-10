@@ -20,7 +20,7 @@ let run_build_system ~common ~(request : unit Action_builder.t) () =
 
 let setup () = Import.Main.setup ()
 
-let run_build_system ~is_polling ~common ~request =
+let run_build_system ~common ~request =
   let open Fiber.O in
   Fiber.finalize
     (fun () ->
@@ -29,18 +29,12 @@ let run_build_system ~is_polling ~common ~request =
       let request = request setup in
       run_build_system ~common ~request ())
     ~finally:(fun () ->
-      (* CR-someday aalekseyev: Another weird difference here between polling
-         and non-polling: end-of-build hooks run with at_exit hooks for
-         non-polling builds. If we simply remove this "if" then the relative
-         ordering between error reporting and end-of-build hooks changes, which
-         seems undesirable. We should unify error reporting first, then this. *)
-      if is_polling then Hooks.End_of_build.run ();
+      Hooks.End_of_build.run ();
       Fiber.return ())
 
 let run_build_command_poll_eager ~(common : Common.t) ~config ~request : unit =
   Import.Scheduler.go_with_rpc_server_and_console_status_reporting ~common
-    ~config (fun () ->
-      Scheduler.Run.poll (run_build_system ~is_polling:true ~common ~request))
+    ~config (fun () -> Scheduler.Run.poll (run_build_system ~common ~request))
 
 let run_build_command_poll_passive ~(common : Common.t) ~config ~request:_ :
     unit =
@@ -63,12 +57,12 @@ let run_build_command_poll_passive ~(common : Common.t) ~config ~request:_ :
                Target.interpret_targets (Common.root common) config setup
                  targets
              in
-             (run_build_system ~is_polling:true ~common ~request, ivar)))
+             (run_build_system ~common ~request, ivar)))
 
 let run_build_command_once ~(common : Common.t) ~config ~request =
   let open Fiber.O in
   let once () =
-    let+ res = run_build_system ~is_polling:false ~common ~request in
+    let+ res = run_build_system ~common ~request in
     match res with
     | Error `Already_reported -> raise Dune_util.Report_error.Already_reported
     | Ok () -> ()

@@ -3,6 +3,8 @@ unreleased - 2.9 branch
 
 - Add `(enabled_if ...)` to `(mdx ...)` (#4434, @emillon)
 
+- Add support for instrumentation dependencies (#4210, fixes #3983, @nojb)
+
 - Add the possibility to use `locks` with the cram tests stanza (#4480, @voodoos)
 
 - Allow to set up merlin in a variant of the default context

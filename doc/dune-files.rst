@@ -1821,6 +1821,15 @@ Where ``<optional-fields>`` are:
   See `MDX's documentation <https://github.com/realworldocaml/mdx>`__ for more
   details on preludes.
 
+- ``(enabled_if <blang expression>)`` is the same as the corresponding field of
+  `library`_.
+
+- ``(package <package>)`` specifies which package to attach this stanza to
+  (similarly to when ``(package)`` is attached to a ``(rule)`` stanza. When
+  ``-p`` is passed, ``(mdx)`` stanzas with an other package will be ignored.
+  Note that this is feature is completely separate from ``(packages)``, which
+  specifies some dependencies.
+
 .. _plugin:
 
 plugin (since 2.8)

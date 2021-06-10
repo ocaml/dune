@@ -29,6 +29,14 @@ val client :
   -> f:(Client.t -> 'a Fiber.t)
   -> 'a Fiber.t
 
+(** Like [client], but start with an already-established session. *)
+val client_with_session :
+     Dune_rpc.Initialize.Request.t
+  -> session:Csexp_rpc.Session.t
+  -> on_notification:(Dune_rpc.Call.t -> unit Fiber.t)
+  -> f:(Client.t -> 'a Fiber.t)
+  -> 'a Fiber.t
+
 module Connect : sig
   (** [csexp_client t path] connects to [path] and returns the client.
 

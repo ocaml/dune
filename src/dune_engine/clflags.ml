@@ -26,7 +26,7 @@ let promote = ref None
 
 let force = ref false
 
-let watch = ref false
+let watch = ref Watch_mode_config.No
 
 let no_print_directory = ref false
 

@@ -18,47 +18,63 @@ let run_build_system ~common ~(request : unit Action_builder.t) () =
              ]));
       Fiber.return ())
 
-let run_build_command_poll ~(common : Common.t) ~config ~request ~setup =
-  let open Fiber.O in
-  let every =
-    Fiber.of_thunk (fun () ->
-        Cached_digest.invalidate_cached_timestamps ();
-        let* setup = setup () in
-        let* request =
-          match
-            let open Option.O in
-            let* rpc = Common.rpc common in
-            Dune_rpc_impl.Server.pending_build_action rpc
-          with
-          | None -> Fiber.return (request setup)
-          | Some (Build (targets, ivar)) ->
-            let+ () = Fiber.Ivar.fill ivar Accepted in
-            Target.interpret_targets (Common.root common) config setup targets
-        in
-        run_build_system ~common ~request ())
-  in
-  Scheduler.poll ~common ~config ~every ~finally:Hooks.End_of_build.run
+let setup () = Import.Main.setup ()
 
-let run_build_command_once ~(common : Common.t) ~config ~request ~setup =
+let run_build_system ~common ~request =
+  let open Fiber.O in
+  Fiber.finalize
+    (fun () ->
+      Cached_digest.invalidate_cached_timestamps ();
+      let* setup = setup () in
+      let request = request setup in
+      run_build_system ~common ~request ())
+    ~finally:(fun () ->
+      Hooks.End_of_build.run ();
+      Fiber.return ())
+
+let run_build_command_poll_eager ~(common : Common.t) ~config ~request : unit =
+  Import.Scheduler.go_with_rpc_server_and_console_status_reporting ~common
+    ~config (fun () -> Scheduler.Run.poll (run_build_system ~common ~request))
+
+let run_build_command_poll_passive ~(common : Common.t) ~config ~request:_ :
+    unit =
+  (* CR-someday aalekseyev: It would've been better to complain if [request] is
+     non-empty, but we can't check that here because [request] is a function.*)
+  let open Fiber.O in
+  match Common.rpc common with
+  | None ->
+    Code_error.raise
+      "Attempted to start a passive polling mode without an RPC server" []
+  | Some rpc ->
+    Import.Scheduler.go_with_rpc_server_and_console_status_reporting ~common
+      ~config (fun () ->
+        Scheduler.Run.poll_passive
+          ~get_build_request:
+            (let+ (Build (targets, ivar)) =
+               Dune_rpc_impl.Server.pending_build_action rpc
+             in
+             let request setup =
+               Target.interpret_targets (Common.root common) config setup
+                 targets
+             in
+             (run_build_system ~common ~request, ivar)))
+
+let run_build_command_once ~(common : Common.t) ~config ~request =
   let open Fiber.O in
   let once () =
-    let* setup = setup () in
-    let+ res = run_build_system ~common ~request:(request setup) () in
+    let+ res = run_build_system ~common ~request in
     match res with
-    | Error `Already_reported ->
-      (* to ensure non-zero exit code *)
-      raise Dune_util.Report_error.Already_reported
+    | Error `Already_reported -> raise Dune_util.Report_error.Already_reported
     | Ok () -> ()
   in
   Scheduler.go ~common ~config once
 
 let run_build_command ~(common : Common.t) ~config ~request =
-  let setup () = Import.Main.setup () in
-  (if Common.watch common then
-    run_build_command_poll
-  else
-    run_build_command_once)
-    ~setup ~common ~config ~request
+  (match Common.watch common with
+  | Yes Eager -> run_build_command_poll_eager
+  | Yes Passive -> run_build_command_poll_passive
+  | No -> run_build_command_once)
+    ~common ~config ~request
 
 let runtest =
   let doc = "Run tests." in

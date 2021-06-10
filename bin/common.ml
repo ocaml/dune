@@ -37,7 +37,7 @@ type t =
     orig_args : string list
   ; rpc : Dune_rpc_impl.Server.t option
   ; default_target : Arg.Dep.t (* For build & runtest only *)
-  ; watch : bool
+  ; watch : Dune_engine.Watch_mode_config.t
   ; print_metrics : bool
   ; stats_trace_file : string option
   ; always_show_command_line : bool
@@ -525,6 +525,11 @@ let display_term =
             {|Control the display mode of Dune.
          See $(b,dune-config\(5\)) for more details.|})
 
+let simple_arg_conv ~to_string ~of_string =
+  Arg.conv
+    ( (fun s -> Result.map_error (of_string s) ~f:(fun s -> `Msg s))
+    , fun pp x -> Format.pp_print_string pp (to_string x) )
+
 let shared_with_config_file =
   let docs = copts_sect in
   let+ concurrency =
@@ -542,12 +547,8 @@ let shared_with_config_file =
           ~doc:{|Run no more than $(i,JOBS) commands simultaneously.|})
   and+ sandboxing_preference =
     let arg =
-      Arg.conv
-        ( (fun s ->
-            Result.map_error (Dune_engine.Sandbox_mode.of_string s) ~f:(fun s ->
-                `Msg s))
-        , fun pp x ->
-            Format.pp_print_string pp (Dune_engine.Sandbox_mode.to_string x) )
+      simple_arg_conv ~of_string:Dune_engine.Sandbox_mode.of_string
+        ~to_string:Dune_engine.Sandbox_mode.to_string
     in
     Arg.(
       value
@@ -799,9 +800,14 @@ let term =
             "Force actions associated to aliases to be re-executed even\n\
             \                   if their dependencies haven't changed.")
   and+ watch =
+    let watch_arg_name = "watch" in
     Arg.(
-      value & flag
-      & info [ "watch"; "w" ]
+      value
+      & opt ~vopt:(Dune_engine.Watch_mode_config.Yes Eager)
+          (simple_arg_conv ~to_string:Dune_engine.Watch_mode_config.to_string
+             ~of_string:Dune_engine.Watch_mode_config.of_string)
+          Dune_engine.Watch_mode_config.No
+      & info [ watch_arg_name; "w" ]
           ~doc:
             "Instead of terminating build after completion, wait continuously \
              for file changes.")
@@ -928,10 +934,9 @@ let term =
   let build_dir = Option.value ~default:default_build_dir build_dir in
   let root = Workspace_root.create ~specified_by_user:root in
   let rpc =
-    if watch then
-      Some (Dune_rpc_impl.Server.create ())
-    else
-      None
+    match watch with
+    | Yes _ -> Some (Dune_rpc_impl.Server.create ())
+    | No -> None
   in
   let stats =
     Option.map stats_trace_file ~f:(fun f ->

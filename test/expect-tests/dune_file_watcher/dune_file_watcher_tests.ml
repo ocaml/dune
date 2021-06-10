@@ -104,6 +104,7 @@ let%expect_test _ =
           events_buffer := [];
           Some
             (List.map list ~f:(function
+              | Dune_file_watcher.Event.Sync -> assert false
               | Dune_file_watcher.Event.File_changed file -> file
               | Dune_file_watcher.Event.Watcher_terminated -> assert false)))
   in

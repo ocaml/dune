@@ -32,7 +32,13 @@ include Common.Let_syntax
 
 let in_group (t, info) = (Term.Group.Term t, info)
 
-module Main = struct
+module Main : sig
+  include module type of struct
+    include Dune_rules.Main
+  end
+
+  val setup : unit -> build_system Fiber.t
+end = struct
   include Dune_rules.Main
 
   let setup () =
@@ -92,18 +98,13 @@ module Scheduler = struct
     let config = Dune_config.for_scheduler dune_config None stats in
     Scheduler.Run.go config ~on_event:(on_event dune_config) f
 
-  let poll ~(common : Common.t) ~config:dune_config ~every ~finally =
+  let go_with_rpc_server_and_console_status_reporting ~(common : Common.t)
+      ~config:dune_config run =
     let stats = Common.stats common in
     let rpc_where = Some (Dune_rpc_private.Where.default ()) in
     let config = Dune_config.for_scheduler dune_config rpc_where stats in
     let file_watcher = Common.file_watcher common in
     let run =
-      let run () =
-        Scheduler.Run.poll
-          (Fiber.finalize
-             (fun () -> every)
-             ~finally:(fun () -> Fiber.return (finally ())))
-      in
       match Common.rpc common with
       | None -> run
       | Some rpc ->

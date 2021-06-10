@@ -52,6 +52,8 @@ module Response : sig
 
     exception E of t
 
+    val to_dyn : t -> Stdune.Dyn.t
+
     val of_conv : Conv.error -> t
 
     val create : ?payload:Csexp.t -> kind:kind -> message:string -> unit -> t

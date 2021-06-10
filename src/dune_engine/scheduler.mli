@@ -57,6 +57,8 @@ module Run : sig
       cases *)
   exception Shutdown_requested
 
+  exception Build_cancelled
+
   (** Runs [once] in a loop, executing [finally] after every iteration, even if
       Fiber.Never was encountered.
 
@@ -64,11 +66,7 @@ module Run : sig
 
       If [shutdown] is called, the current build will be canceled and new builds
       will not start. *)
-  val poll :
-       (   report_error:(Exn_with_backtrace.t -> unit)
-        -> unit
-        -> [ `Continue | `Stop ] Fiber.t)
-    -> unit Fiber.t
+  val poll : (unit, [ `Already_reported ]) Result.t Fiber.t -> unit Fiber.t
 
   val go :
        Config.t

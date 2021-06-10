@@ -1,12 +1,10 @@
 open Stdune
 open Import
 
-let run_build_system ?report_error ~common ~(request : unit Action_builder.t) ()
-    =
+let run_build_system ~common ~(request : unit Action_builder.t) () =
   let build_started = Unix.gettimeofday () in
   Fiber.finalize
-    (fun () ->
-      Build_system.run ?report_error (fun () -> Build_system.build request))
+    (fun () -> Build_system.run (fun () -> Build_system.build request))
     ~finally:(fun () ->
       (if Common.print_metrics common then
         let gc_stat = Gc.quick_stat () in
@@ -22,22 +20,22 @@ let run_build_system ?report_error ~common ~(request : unit Action_builder.t) ()
 
 let run_build_command_poll ~(common : Common.t) ~config ~request ~setup =
   let open Fiber.O in
-  let every ~report_error () =
-    Cached_digest.invalidate_cached_timestamps ();
-    let* setup = setup () in
-    let* request =
-      match
-        let open Option.O in
-        let* rpc = Common.rpc common in
-        Dune_rpc_impl.Server.pending_build_action rpc
-      with
-      | None -> Fiber.return (request setup)
-      | Some (Build (targets, ivar)) ->
-        let+ () = Fiber.Ivar.fill ivar Accepted in
-        Target.interpret_targets (Common.root common) config setup targets
-    in
-    let+ () = run_build_system ~report_error ~common ~request () in
-    `Continue
+  let every =
+    Fiber.of_thunk (fun () ->
+        Cached_digest.invalidate_cached_timestamps ();
+        let* setup = setup () in
+        let* request =
+          match
+            let open Option.O in
+            let* rpc = Common.rpc common in
+            Dune_rpc_impl.Server.pending_build_action rpc
+          with
+          | None -> Fiber.return (request setup)
+          | Some (Build (targets, ivar)) ->
+            let+ () = Fiber.Ivar.fill ivar Accepted in
+            Target.interpret_targets (Common.root common) config setup targets
+        in
+        run_build_system ~common ~request ())
   in
   Scheduler.poll ~common ~config ~every ~finally:Hooks.End_of_build.run
 
@@ -45,7 +43,12 @@ let run_build_command_once ~(common : Common.t) ~config ~request ~setup =
   let open Fiber.O in
   let once () =
     let* setup = setup () in
-    run_build_system ~common ~request:(request setup) ()
+    let+ res = run_build_system ~common ~request:(request setup) () in
+    match res with
+    | Error `Already_reported ->
+      (* to ensure non-zero exit code *)
+      raise Dune_util.Report_error.Already_reported
+    | Ok () -> ()
   in
   Scheduler.go ~common ~config once
 

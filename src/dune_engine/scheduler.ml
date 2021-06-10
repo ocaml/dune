@@ -611,13 +611,15 @@ let ignore_for_watch p =
   let+ t = t () in
   Event.Queue.ignore_next_file_change_event t.events p
 
+exception Build_cancelled
+
 let with_job_slot f =
   let* t = t () in
   let raise_if_cancelled () =
     match t.status with
     | Restarting_build _
     | Shutting_down ->
-      raise (Memo.Non_reproducible (Failure "Build cancelled"))
+      raise (Memo.Non_reproducible Build_cancelled)
     | Building -> ()
     | Waiting_for_file_changes _ ->
       (* At this stage, we're not running a build, so we shouldn't be running
@@ -825,6 +827,8 @@ module Worker = struct
 end
 
 module Run = struct
+  exception Build_cancelled = Build_cancelled
+
   type file_watcher =
     | Detect_external
     | No_watcher
@@ -836,26 +840,7 @@ module Run = struct
     let* t = t () in
     let rec loop () : unit Fiber.t =
       t.status <- Building;
-      let* res =
-        let report_error exn =
-          match t.status with
-          | Building -> Dune_util.Report_error.report exn
-          | Shutting_down
-          | Restarting_build _ ->
-            ()
-          | Waiting_for_file_changes _ ->
-            (* We are inside a build, so we aren't waiting for a file change
-               event *)
-            assert false
-        in
-        let on_error exn =
-          report_error exn;
-          Fiber.return ()
-        in
-        Fiber.map_reduce_errors
-          (module Monoid.Unit)
-          ~on_error (step ~report_error)
-      in
+      let* res = step in
       match t.status with
       | Waiting_for_file_changes _ ->
         (* We just finished a build, so there's no way this was set *)
@@ -880,10 +865,9 @@ module Run = struct
           Memo.reset invalidations;
           t.handler t.config Source_files_changed;
           match res with
-          | Error _
-          | Ok `Continue ->
-            loop ()
-          | Ok `Stop -> Fiber.return ()))
+          | Error `Already_reported
+          | Ok () ->
+            loop ()))
     in
     loop ()
 

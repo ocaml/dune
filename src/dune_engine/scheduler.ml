@@ -919,13 +919,15 @@ module Run = struct
     | Shutdown
     | Proceed
 
+  type step = (unit, [ `Already_reported ]) Result.t Fiber.t
+
   let poll_gen ~get_build_request =
     let* t = t () in
     (match t.status with
     | Building -> t.status <- Standing_by Memo.Invalidation.empty
     | _ -> assert false);
     let rec loop () =
-      let* build_request, handle_outcome = get_build_request t in
+      let* (build_request : step), handle_outcome = get_build_request t in
       let* res = poll_iter t build_request in
       let* next = handle_outcome res in
       match next with

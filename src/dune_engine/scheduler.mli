@@ -59,13 +59,15 @@ module Run : sig
 
   exception Build_cancelled
 
+  type step = (unit, [ `Already_reported ]) Result.t Fiber.t
+
   (** [poll once] runs [once] in a loop.
 
       If any source files change in the middle of iteration, it gets canceled.
 
       If [shutdown] is called, the current build will be canceled and new builds
       will not start. *)
-  val poll : (unit, [ `Already_reported ]) Result.t Fiber.t -> unit Fiber.t
+  val poll : step -> unit Fiber.t
 
   module Build_outcome_for_rpc : sig
     type t =
@@ -79,10 +81,7 @@ module Run : sig
       The fiber [get_build_request] is run at the beginning of every iteration
       to wait for the build signal. *)
   val poll_passive :
-       get_build_request:
-         ((unit, [ `Already_reported ]) Result.t Fiber.t
-         * Build_outcome_for_rpc.t Fiber.Ivar.t)
-         Fiber.t
+       get_build_request:(step * Build_outcome_for_rpc.t Fiber.Ivar.t) Fiber.t
     -> unit Fiber.t
 
   val go :

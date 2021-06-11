@@ -351,6 +351,8 @@ let build_event t (event : Build_system.Handler.event) =
     match event with
     | Start -> Build.Event.Start
     | Finish -> Finish
+    | Interrupt -> Interrupt
+    | Fail -> Fail
   in
   task t (fun () ->
       Subscribers.notify t.subscribers Build_progress ~f:(fun session ->

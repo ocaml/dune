@@ -344,6 +344,8 @@ module Handler = struct
   type event =
     | Start
     | Finish
+    | Fail
+    | Interrupt
 
   type error =
     | Add of Error.t
@@ -2321,14 +2323,31 @@ let run f =
   in
   let f () =
     let* () = t.handler.build_event Start in
+    let build_end_status_reported = ref false in
     let* res =
       Fiber.collect_errors (fun () ->
           Memo.Build.run_with_error_handler (f ())
-            ~handle_error_no_raise:report_early_exn)
+            ~handle_error_no_raise:(fun exn ->
+              let* () = report_early_exn exn in
+              if !build_end_status_reported then
+                Fiber.return ()
+              else (
+                build_end_status_reported := true;
+                t.handler.build_event
+                  (if caused_by_cancellation exn then
+                    Interrupt
+                  else
+                    Fail)
+              )))
     in
     match res with
     | Ok res ->
-      let+ () = t.handler.build_event Finish in
+      let+ () =
+        if !build_end_status_reported then
+          Fiber.return ()
+        else
+          t.handler.build_event Finish
+      in
       Ok res
     | Error exns ->
       handle_final_exns exns;

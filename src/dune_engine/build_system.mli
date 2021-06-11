@@ -78,6 +78,8 @@ module Handler : sig
   type event =
     | Start  (** New build started *)
     | Finish  (** Build finished successfully *)
+    | Fail
+    | Interrupt
 
   type error =
     | Add of Error.t  (** Error encountered while building *)

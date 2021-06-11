@@ -188,27 +188,43 @@ let files =
 let setup_diagnostics f =
   let exec () =
     let handler =
-      let on_diagnostic_event (e : Dune_rpc.Diagnostic.Event.t) =
-        let e =
-          (* we remove pp tags otherwise the output is too messy *)
-          let remove_pp (d : Dune_rpc.Diagnostic.t) =
-            { d with
-              message = Pp.verbatim (Format.asprintf "%a@." Pp.to_fmt d.message)
-            }
-          in
-          match e with
-          | Add e -> Dune_rpc.Diagnostic.Event.Add (remove_pp e)
-          | Remove e -> Remove (remove_pp e)
+      let cwd = Sys.getcwd () in
+      let sanitize_path path =
+        match String.drop_prefix path ~prefix:cwd with
+        | None -> path
+        | Some s -> "$CWD" ^ s
+      in
+      (* function to remove remove pp tags and hide junk from paths *)
+      let sanitize (d : Dune_rpc.Diagnostic.t) =
+        let directory = Option.map d.directory ~f:sanitize_path in
+        let promotion =
+          List.map d.promotion ~f:(fun (p : Dune_rpc.Diagnostic.Promotion.t) ->
+              let in_build = sanitize_path p.in_build in
+              let in_source = sanitize_path p.in_source in
+              { Dune_rpc.Diagnostic.Promotion.in_build; in_source })
         in
-        printfn "%s" (Dyn.to_string (Dune_rpc.Diagnostic.Event.to_dyn e));
-        match e with
+        { d with
+          message = Pp.verbatim (Format.asprintf "%a@." Pp.to_fmt d.message)
+        ; directory
+        ; promotion
+        }
+      in
+      let on_diagnostic_event (e : Dune_rpc.Diagnostic.Event.t) =
+        (match e with
         | Remove _ -> ()
         | Add e ->
           Dune_rpc.Diagnostic.promotion e
           |> List.iter ~f:(fun promotion ->
                  let path = Dune_rpc.Diagnostic.Promotion.in_build promotion in
                  if not (Sys.file_exists path) then
-                   printfn "FAILURE: promotion file %s does not exist" path)
+                   printfn "FAILURE: promotion file %s does not exist"
+                     (sanitize_path path)));
+        let e =
+          match e with
+          | Add e -> Dune_rpc.Diagnostic.Event.Add (sanitize e)
+          | Remove e -> Remove (sanitize e)
+        in
+        printfn "%s" (Dyn.to_string (Dune_rpc.Diagnostic.Event.to_dyn e))
       in
       Client.Handler.create
         ~diagnostic:(fun de ->
@@ -257,7 +273,7 @@ let%expect_test "related error" =
     subscribing to notifications
     Building foo.cma
     [ "Add"
-    ; [ [ "directory"; "." ]
+    ; [ [ "directory"; "$CWD" ]
       ; [ "id"; "0" ]
       ; [ "message"
         ; [ "Verbatim"
@@ -329,7 +345,10 @@ let%expect_test "promotion" =
           ]
         ]
       ; [ "promotion"
-        ; [ [ [ "in_build"; "_build/default/x.gen" ]; [ "in_source"; "x" ] ] ]
+        ; [ [ [ "in_build"; "$CWD/_build/default/x.gen" ]
+            ; [ "in_source"; "$CWD/x" ]
+            ]
+          ]
         ]
       ; [ "related"; [] ]
       ; [ "targets"; [] ]
@@ -362,6 +381,7 @@ let%expect_test "optional promotion" =
     {|
     subscribing to notifications
     Building (alias foo)
+    FAILURE: promotion file $CWD/_build/default/output.actual does not exist
     [ "Add"
     ; [ [ "id"; "0" ]
       ; [ "loc"
@@ -389,8 +409,8 @@ let%expect_test "optional promotion" =
           ]
         ]
       ; [ "promotion"
-        ; [ [ [ "in_build"; "_build/default/output.actual" ]
-            ; [ "in_source"; "output.expected" ]
+        ; [ [ [ "in_build"; "$CWD/_build/default/output.actual" ]
+            ; [ "in_source"; "$CWD/output.expected" ]
             ]
           ]
         ]
@@ -398,7 +418,6 @@ let%expect_test "optional promotion" =
       ; [ "targets"; [] ]
       ]
     ]
-    FAILURE: promotion file _build/default/output.actual does not exist
     Build (alias foo) failed
     stderr:
     waiting for inotify sync
@@ -492,7 +511,7 @@ let%expect_test "create and fix error" =
         subscribing to notifications
         Building ./foo.exe
         [ "Add"
-        ; [ [ "directory"; "." ]
+        ; [ [ "directory"; "$CWD" ]
           ; [ "id"; "0" ]
           ; [ "message"
             ; [ "Verbatim"
@@ -517,7 +536,7 @@ let%expect_test "create and fix error" =
         {|
         Building ./foo.exe
         [ "Remove"
-        ; [ [ "directory"; "." ]
+        ; [ [ "directory"; "$CWD" ]
           ; [ "id"; "0" ]
           ; [ "message"
             ; [ "Verbatim"

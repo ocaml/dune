@@ -16,19 +16,37 @@ end
 type pending_build_action =
   | Build of Dep_conf.t list * Build_outcome.t Fiber.Ivar.t
 
+let absolutize_paths ~dir (loc : Loc.t) =
+  let make_path name =
+    Path.to_absolute_filename
+      (if Filename.is_relative name then
+        Path.append_local dir (Path.Local.parse_string_exn ~loc name)
+      else
+        Path.of_string name)
+  in
+  { Loc.start = { loc.start with pos_fname = make_path loc.start.pos_fname }
+  ; stop = { loc.stop with pos_fname = make_path loc.stop.pos_fname }
+  }
+
 let diagnostic_of_error : Build_system.Error.t -> Dune_rpc_private.Diagnostic.t
     =
  fun m ->
   let message, related, dir = Build_system.Error.info m in
-  let loc = message.loc in
+  let make_loc loc =
+    match dir with
+    | None -> loc
+    | Some dir -> absolutize_paths ~dir loc
+  in
+  let loc = Option.map message.loc ~f:make_loc in
   let make_message pars = Pp.map_tags (Pp.concat pars) ~f:(fun _ -> ()) in
   let id = Build_system.Error.id m |> Diagnostic.Id.create in
   let promotion =
     match Build_system.Error.promotion m with
     | None -> []
     | Some { in_source; in_build } ->
-      [ { Diagnostic.Promotion.in_source = Path.Source.to_string in_source
-        ; in_build = Path.Build.to_string in_build
+      [ { Diagnostic.Promotion.in_source =
+            Path.to_absolute_filename (Path.source in_source)
+        ; in_build = Path.to_absolute_filename (Path.build in_build)
         }
       ]
   in
@@ -36,7 +54,7 @@ let diagnostic_of_error : Build_system.Error.t -> Dune_rpc_private.Diagnostic.t
     List.map related ~f:(fun (related : User_message.t) ->
         { Dune_rpc_private.Diagnostic.Related.message =
             make_message related.paragraphs
-        ; loc = Option.value_exn related.loc
+        ; loc = make_loc (Option.value_exn related.loc)
         })
   in
   { severity = None
@@ -49,7 +67,8 @@ let diagnostic_of_error : Build_system.Error.t -> Dune_rpc_private.Diagnostic.t
   ; directory =
       Option.map
         ~f:(fun p ->
-          Path.to_string (Path.drop_optional_build_context_maybe_sandboxed p))
+          Path.to_absolute_filename
+            (Path.drop_optional_build_context_maybe_sandboxed p))
         dir
   }
 

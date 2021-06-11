@@ -41,7 +41,11 @@ let retry_loop once =
       | Some s -> Scheduler.Worker.stop s);
       Fiber.return result
     | None ->
-      let* sleeper = Scheduler.Worker.create () in
+      let* sleeper =
+        match sleeper with
+        | None -> Scheduler.Worker.create ()
+        | Some sleeper -> Fiber.return sleeper
+      in
       let* () =
         Scheduler.Worker.task_exn sleeper ~f:(fun () -> Unix.sleepf 0.2)
       in

@@ -81,6 +81,9 @@ jobs:
       # Install ocamlfind-secondary and ocaml-secondary-compiler, if needed
       - run: opam install ./dune.opam --deps-only --with-test
 
+      - run: brew install fswatch coreutils
+        if: env.OS == 'macos-latest'
+
       # dune doesn't have any additional dependencies so we can build it right
       # away this makes it possible to see build errors as soon as possible
       - run: opam exec -- make dune.exe

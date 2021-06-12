@@ -6,8 +6,10 @@
   >   DUNE_RUNNING=1;
   > }
 
+  $ timeout="$(command -v timeout || echo gtimeout)"
+
   $ with_timeout () {
-  >   timeout 2 "$@"
+  >   $timeout 2 "$@"
   >   exit_code=$?
   >   if [ "$exit_code" = 124 ]
   >   then

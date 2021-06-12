@@ -86,8 +86,9 @@ module Inotify = struct
       | None -> Error "invalid message (event type missing)")
 end
 
-let special_file_for_inotify_sync () =
-  Path.build (Path.Build.relative Path.Build.root "dune-inotify-sync")
+let special_file_for_inotify_sync =
+  let path = lazy (Path.Build.relative Path.Build.root "dune-inotify-sync") in
+  fun () -> Lazy.force path
 
 let command ~root =
   let exclude_patterns =
@@ -111,7 +112,7 @@ let command ~root =
   in
   let root = Path.to_string root in
   let inotify_special_path =
-    Path.to_string (special_file_for_inotify_sync ())
+    Path.Build.to_string (special_file_for_inotify_sync ())
   in
   match
     if Sys.linux then
@@ -175,10 +176,11 @@ let command ~root =
               "Please install fswatch to enable watch mode.")
         ])
 
-let emit_sync () = Io.write_file (special_file_for_inotify_sync ()) "z"
+let emit_sync () =
+  Io.write_file (Path.build (special_file_for_inotify_sync ())) "z"
 
 let prepare_sync () =
-  Path.mkdir_p (Path.parent_exn (special_file_for_inotify_sync ()));
+  Path.mkdir_p (Path.parent_exn (Path.build (special_file_for_inotify_sync ())));
   emit_sync ()
 
 let spawn_external_watcher ~root =
@@ -208,6 +210,9 @@ let create_no_buffering ~(scheduler : Scheduler.t) ~root =
   let (pipe, parse_line, wait), pid = spawn_external_watcher ~root in
   let worker_thread pipe =
     let buffer = Buffer.create ~capacity:buffer_capacity in
+    let special_file_for_inotify_sync_absolute =
+      Path.to_absolute_filename (Path.build special_file_for_inotify_sync)
+    in
     while true do
       let lines =
         match Buffer.read_lines buffer pipe with
@@ -216,12 +221,22 @@ let create_no_buffering ~(scheduler : Scheduler.t) ~root =
           List.map lines ~f:(fun line ->
               match parse_line line with
               | Error s -> failwith s
-              | Ok path ->
-                let path = Path.of_string path in
-                if Path.( = ) path special_file_for_inotify_sync then
-                  Event.Sync
-                else
-                  Event.File_changed path)
+              | Ok path_s -> (
+                let path = Path.of_string path_s in
+                match path with
+                | In_source_tree _ -> Event.File_changed path
+                | External _ ->
+                  if String.equal path_s special_file_for_inotify_sync_absolute
+                  then
+                    Event.Sync
+                  else
+                    Event.File_changed path
+                | In_build_dir build_path ->
+                  if Path.Build.( = ) build_path special_file_for_inotify_sync
+                  then
+                    Event.Sync
+                  else
+                    Event.File_changed path))
       in
       scheduler.thread_safe_send_events lines
     done

@@ -46,7 +46,7 @@ module Modules = struct
     let rev_map =
       let rev_modules =
         let by_name buildable =
-          Modules.fold_user_written ~init:[] ~f:(fun m acc ->
+          Modules.fold_user_available ~init:[] ~f:(fun m acc ->
               (Module.name m, buildable) :: acc)
         in
         List.rev_append
@@ -104,7 +104,7 @@ module Artifacts = struct
     in
     let modules =
       let by_name modules obj_dir =
-        Modules_group.fold_user_written ~init:modules ~f:(fun m modules ->
+        Modules_group.fold_user_available ~init:modules ~f:(fun m modules ->
             Module_name.Map.add_exn modules (Module.name m) (obj_dir, m))
       in
       let init =

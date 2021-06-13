@@ -154,6 +154,9 @@ Unreleased
 - Fix `root_module` when used in public libraries (#4685, fixes #4684,
   @rgrinberg, @CraigFe)
 
+- Fix `root_module` when used with preprocessing (#4683, fixes #4682,
+  @rgrinberg, @CraigFe)
+
 2.9.0 (unreleased)
 ------------------
 

@@ -151,6 +151,9 @@ Unreleased
   `INSIDE_EMACS` in order to improve reproducibility (#4680,
   @jeremiedimino)
 
+- Fix `root_module` when used in public libraries (#4685, fixes #4684,
+  @rgrinberg, @CraigFe)
+
 2.9.0 (unreleased)
 ------------------
 

@@ -789,7 +789,12 @@ module Library = struct
         false
     in
     Obj_dir.make_lib ~dir
-      ~has_private_modules:(t.private_modules <> None)
+      ~has_private_modules:
+        ((* TODO instead of this fragile approximation, we should be looking at
+            [Modules.t] and deciding. Unfortunately, [Obj_dir.t] is currently
+            used in some places where [Modules.t] is not yet constructed. *)
+         t.private_modules <> None
+        || t.buildable.root_module <> None)
       ~private_lib (snd t.name)
 
   let main_module_name t : Lib_info.Main_module_name.t =

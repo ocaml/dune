@@ -154,6 +154,11 @@ let command ~root =
       ( fswatch
       , [ "-r"
         ; root
+        ; (* If [inotify_special_path] is not passed here, then the [--exclude
+             _build] makes fswatch not descend into [_build], which means it
+             never even discovers that [inotify_special_path] exists. This is
+             despite the fact that [--include] appears before. *)
+          inotify_special_path
         ; "--event"
         ; "Created"
         ; "--event"

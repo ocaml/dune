@@ -1158,7 +1158,7 @@ let get_alias_definition alias =
     let open Pp.O in
     let+ loc = Rule_fn.loc () in
     User_error.raise ?loc
-      [ Pp.text "No rule found for alias " ++ Alias.describe alias ]
+      [ Pp.text "No rule found for " ++ Alias.describe alias ]
   | Some x -> Memo.Build.return x
 
 type rule_execution_result =

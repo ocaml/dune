@@ -4,6 +4,7 @@
   (deps
    (source_tree ../unit-tests/findlib-db)
    (source_tree ../unit-tests/toolchain.d)))
+ (modules :standard \ vcs_tests)
  (libraries
   ocaml_config
   dune_tests_common
@@ -14,6 +15,32 @@
   fiber
   dune_lang
   dune_config
+  memo
+  ;; This is because of the (implicit_transitive_deps false)
+  ;; in dune-project
+  ppx_expect.config
+  ppx_expect.config_types
+  ppx_expect.common
+  base
+  ppx_inline_test.config)
+ (preprocess
+  (pps ppx_expect)))
+
+(library
+ (name vcs_tests)
+ (inline_tests
+  (deps
+   ;; the dependency on hg is optional, but i'm not sure how to express that.
+   ;; %{bin:hg}
+   %{bin:git}))
+ (modules vcs_tests)
+ (libraries
+  ocaml_config
+  dune_tests_common
+  stdune
+  dune_util
+  dune_engine
+  fiber
   memo
   ;; This is because of the (implicit_transitive_deps false)
   ;; in dune-project

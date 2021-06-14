@@ -21,6 +21,7 @@
 (subdir
  jsoo
  (cram
+  (deps %{bin:node})
   (alias runtest-js)))
 
 (cram

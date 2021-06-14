@@ -145,15 +145,9 @@ module Id = Id.Make ()
 module Caches = struct
   let cleaners = ref []
 
-  let invalidators = ref []
-
-  let register ~clear ~invalidate =
-    cleaners := clear :: !cleaners;
-    invalidators := invalidate :: !invalidators
+  let register ~clear = cleaners := clear :: !cleaners
 
   let clear () = List.iter !cleaners ~f:(fun f -> f ())
-
-  let invalidate () = List.iter !cleaners ~f:(fun f -> f ())
 end
 
 module Dep_node_without_state = struct
@@ -922,17 +916,40 @@ module Stack_frame = struct
     Option.map t.spec.human_readable_description ~f:(fun f -> f t.input)
 end
 
-let invalidate_store =
-  Store.iter ~f:(fun node -> node.Dep_node.last_cached_value <- None)
+(* There are two approaches to invalidating memoization nodes. Currently, when a
+   node is invalidated by calling [invalidate_dep_node], only the node itself is
+   marked as "changed" (by setting [node.last_cached_value] to [None]). Then,
+   the whole graph is marked as "possibly changed" by calling [Run.restart ()],
+   which in O(1) time makes all [last_validated_at : Run.t] values out of date.
+   In the subsequent computation phase, the whole graph is traversed from top to
+   bottom to discover "actual changes" and recompute all the nodes affected by
+   these changes. One disadvantage of this approach is that the whole graph
+   needs to be traversed even if only a small part of it depends on the set of
+   invalidated nodes.
+
+   An alternative approach is as follows. Whenever the [invalidate_dep_node]
+   function is called, we recursively mark all of its reverse dependencies as
+   "possibly changed". Then, in the computation phase, we only need to traverse
+   the marked part of graph (instead of the whole graph as we do currently). One
+   disadvantage of this approach is that every node needs to store a list of its
+   reverse dependencies, which introduces cyclic memory references and
+   complicates garbage collection.
+
+   Is it worth switching from the current approach to the alternative? It's best
+   to answer this question by benchmarking. This is not urgent but is worth
+   documenting in the code. *)
+let invalidate_dep_node (node : _ Dep_node.t) = node.last_cached_value <- None
+
+let invalidate_store = Store.iter ~f:invalidate_dep_node
 
 let create_with_cache (type i o) name ~cache ~input ~cutoff
     ~human_readable_description (f : i -> o Fiber.t) =
   let spec =
     Spec.create ~name:(Some name) ~input ~cutoff ~human_readable_description f
   in
-  Caches.register
-    ~clear:(fun () -> Store.clear cache)
-    ~invalidate:(fun () -> invalidate_store cache);
+  Caches.register ~clear:(fun () ->
+      Store.clear cache;
+      invalidate_store cache);
   { cache; spec }
 
 let create_with_store (type i) name
@@ -1261,39 +1278,13 @@ module Invalidation = struct
     | Empty -> true
     | _ -> false
 
-  let clear_caches =
-    Leaf
-      (fun () ->
-        Caches.invalidate ();
-        Caches.clear ())
+  let clear_caches = Leaf (fun () -> Caches.clear ())
 
   let invalidate_cache { cache; _ } = Leaf (fun () -> invalidate_store cache)
+
+  let invalidate_node (node : _ Dep_node.t) =
+    Leaf (fun () -> invalidate_dep_node node)
 end
-
-(* There are two approaches to invalidating memoization nodes. Currently, when a
-   node is invalidated by calling [invalidate_dep_node], only the node itself is
-   marked as "changed" (by setting [node.last_cached_value] to [None]). Then,
-   the whole graph is marked as "possibly changed" by calling [Run.restart ()],
-   which in O(1) time makes all [last_validated_at : Run.t] values out of date.
-   In the subsequent computation phase, the whole graph is traversed from top to
-   bottom to discover "actual changes" and recompute all the nodes affected by
-   these changes. One disadvantage of this approach is that the whole graph
-   needs to be traversed even if only a small part of it depends on the set of
-   invalidated nodes.
-
-   An alternative approach is as follows. Whenever the [invalidate_dep_node]
-   function is called, we recursively mark all of its reverse dependencies as
-   "possibly changed". Then, in the computation phase, we only need to traverse
-   the marked part of graph (instead of the whole graph as we do currently). One
-   disadvantage of this approach is that every node needs to store a list of its
-   reverse dependencies, which introduces cyclic memory references and
-   complicates garbage collection.
-
-   Is it worth switching from the current approach to the alternative? It's best
-   to answer this question by benchmarking. This is not urgent but is worth
-   documenting in the code. *)
-let invalidate_dep_node (node : _ Dep_node.t) =
-  Invalidation.Leaf (fun () -> node.last_cached_value <- None)
 
 module Current_run = struct
   let f () = Run.current () |> Build0.return
@@ -1302,7 +1293,7 @@ module Current_run = struct
 
   let exec () = exec memo ()
 
-  let invalidate () = invalidate_dep_node (dep_node memo ())
+  let invalidate () = Invalidation.invalidate_node (dep_node memo ())
 end
 
 let current_run () = Current_run.exec ()
@@ -1361,7 +1352,7 @@ module Cell = struct
 
   let read = Exec.exec_dep_node
 
-  let invalidate = invalidate_dep_node
+  let invalidate = Invalidation.invalidate_node
 end
 
 let cell = dep_node

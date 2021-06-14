@@ -2,6 +2,7 @@ Test case for https://github.com/ocaml/dune/issues/3322
 "dune exec needs to add .exe on Windows"
 
   $ os_type=$(ocamlc -config-var os_type)
+  $ echo 'let () = print_endline "Hello, World!"' > example.ml
 
 Test that on Windows `dune exec -- public_name` and
 `dune exec -- public_name.exe` have the same effect.

@@ -890,3 +890,51 @@ let%expect_test "stack usage with consecutive Ivar.fill" =
       n0 n1000;
   [%expect {|
     [PASS] |}]
+
+let%expect_test "all_concurrently_unit" =
+  Scheduler.run
+    (let+ () = Fiber.all_concurrently_unit [] in
+     printf "empty list");
+  [%expect {| empty list |}];
+
+  Scheduler.run
+    (let+ () = Fiber.all_concurrently_unit [ Fiber.return () ] in
+     printf "singleton list");
+  [%expect {| singleton list |}];
+
+  Scheduler.run
+    (let print i =
+       Fiber.of_thunk (fun () ->
+           printfn "print: %i" i;
+           Fiber.return ())
+     in
+     let+ () = Fiber.all_concurrently_unit [ print 1; print 2 ] in
+     printf "multi element list");
+  [%expect {|
+    print: 1
+    print: 2
+    multi element list |}];
+
+  Scheduler.run
+    (let print i =
+       Fiber.of_thunk (fun () ->
+           printfn "print: %i" i;
+           Fiber.return ())
+     in
+     let fail = Fiber.of_thunk (fun () -> raise Exit) in
+     let+ () =
+       let+ res =
+         Fiber.collect_errors (fun () ->
+             Fiber.all_concurrently_unit [ print 1; fail ])
+       in
+       match res with
+       | Error [ { exn = Exit; _ } ] -> printfn "successfully caught errror"
+       | Ok () -> assert false
+       | Error _ -> assert false
+     in
+     printf "multi element list");
+  [%expect
+    {|
+    print: 1
+    successfully caught errror
+    multi element list |}]

@@ -1586,25 +1586,6 @@ end = struct
                reason)
         ]
 
-  (* All actions that raised errors in [execute_rule_impl] depend on this cell.
-     By invalidating this cell, one can therefore force them to be rerun. *)
-  let error_cell = Memo.lazy_cell ~name:"error-cell" Memo.Build.return
-
-  let of_reproducible_fiber_with_error_cell_dependency fiber ~on_error =
-    let handled_error = ref false in
-    let on_error exn =
-      handled_error := true;
-      on_error exn
-    in
-    let fiber = Fiber.with_error_handler fiber ~on_error in
-    let* result = Memo.Build.of_non_reproducible_fiber fiber in
-    let+ () =
-      match !handled_error with
-      | true -> Memo.Cell.read error_cell
-      | false -> Memo.Build.return ()
-    in
-    result
-
   let execute_rule_impl ~rule_kind rule =
     let t = t () in
     let { Rule.id = _; targets; dir; context; mode; action; info = _; loc } =
@@ -1627,14 +1608,18 @@ end = struct
        much performance here by executing it sequentially. *)
     let* action, deps = exec_build_request action in
     let wrap_fiber f =
-      of_reproducible_fiber_with_error_cell_dependency f ~on_error:(fun exn ->
-          match exn.exn with
-          | User_error.E (msg, annots)
-            when not (Loc.is_none loc || User_error.has_location msg annots) ->
-            let msg = { msg with loc = Some loc } in
-            Exn_with_backtrace.reraise
-              { exn with exn = User_error.E (msg, annots) }
-          | _ -> Exn_with_backtrace.reraise exn)
+      Memo.Build.of_reproducible_fiber
+        (if Loc.is_none loc then
+          f ()
+        else
+          Fiber.with_error_handler f ~on_error:(fun exn ->
+              match exn.exn with
+              | User_error.E (msg, annots)
+                when not (User_error.has_location msg annots) ->
+                let msg = { msg with loc = Some loc } in
+                Exn_with_backtrace.reraise
+                  { exn with exn = User_error.E (msg, annots) }
+              | _ -> Exn_with_backtrace.reraise exn))
     in
     wrap_fiber (fun () ->
         let open Fiber.O in

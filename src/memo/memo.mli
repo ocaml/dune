@@ -197,6 +197,8 @@ module Invalidation : sig
 
   (** Like [clear_caches] but only clears the cache of a given [memo] table. *)
   val clear_cache : _ memo -> t
+
+  val to_dyn : t -> Dyn.t
 end
 
 (** Notify the memoization system that the build system has restarted. This

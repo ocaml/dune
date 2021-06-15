@@ -7,9 +7,12 @@ open Dune_rpc.V1
 open Dune_rpc_lwt.V1
 
 let connect ~root_dir =
-  let args = [| "dune"; "rpc"; "init"; "--root"; root_dir |] in
-  let args = args in
-  Lwt_process.open_process ("dune", args)
+  let build_dir = Filename.concat root_dir "_build" in
+  let* res = Where.get ~build_dir in
+  match res with
+  | None ->
+    Lwt.fail_with (sprintf "unable to establish to connection in %s" build_dir)
+  | Some w -> connect_chan w
 
 let build_watch ~root_dir ~suppress_stderr =
   Lwt_process.open_process_none ~stdin:`Close
@@ -45,19 +48,22 @@ let run_with_timeout f =
       | _ -> ());
       Lwt.return_unit)
 
+let initial_cwd = Sys.getcwd ()
+
 let%expect_test "run and connect" =
   let initialize = Initialize.create ~id:(Id.make (Csexp.Atom "test")) in
+  Sys.chdir initial_cwd;
   Lwt_main.run
     (let* root_dir = Lwt_io.create_temp_dir () in
+     Sys.chdir root_dir;
      let build = build_watch ~root_dir ~suppress_stderr:false in
      let rpc =
-       let+ () = Lwt_unix.sleep 0.5 in
+       let* () = Lwt_unix.sleep 0.5 in
        connect ~root_dir
      in
      let run_client =
        let* rpc = rpc in
-       let chan = (rpc#stdout, rpc#stdin) in
-       Client.connect chan initialize ~f:(fun t ->
+       Client.connect rpc initialize ~f:(fun t ->
            print_endline "started session";
            let* res = Client.request t Request.ping () in
            match res with
@@ -66,15 +72,7 @@ let%expect_test "run and connect" =
              print_endline "received ping. shutting down.";
              Client.notification t Notification.shutdown ())
      in
-     let run_rpc =
-       let* rpc = rpc in
-       let+ res = rpc#status in
-       match res with
-       | WEXITED i -> printfn "rpc init finished with %i" i
-       | _ -> assert false
-     in
      let run_build =
-       let* _ = run_rpc in
        let+ res = build#status in
        match res with
        | WEXITED i -> printfn "dune build finished with %i" i
@@ -82,19 +80,16 @@ let%expect_test "run and connect" =
      in
      Lwt.finalize
        (fun () ->
-         run_with_timeout (fun () -> Lwt.all [ run_client; run_rpc; run_build ]))
+         run_with_timeout (fun () -> Lwt.all [ run_client; run_build ]))
        (fun () ->
-         let+ rpc = rpc in
-         rpc#terminate;
-         build#terminate));
+         build#terminate;
+         Lwt.return_unit));
   [%expect
     {|
     Success, waiting for filesystem changes...
     started session
     received ping. shutting down.
-    rpc init finished with 0
-    dune build finished with 0
-    success |}]
+    dune build finished with 0 |}]
 
 module Logger = struct
   (* A little helper to make the output from the client and server determinstic.

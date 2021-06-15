@@ -115,13 +115,40 @@ module Where : sig
 
   val of_string : string -> t
 
-  val get : unit -> t option
-
   val to_string : t -> string
 
-  val default : unit -> t
-
   val add_to_env : t -> Stdune.Env.t -> Stdune.Env.t
+
+  module type S = sig
+    type 'a fiber
+
+    val get : build_dir:string -> t option fiber
+
+    val default : build_dir:string -> t
+  end
+
+  module Make (Fiber : sig
+    type 'a t
+
+    val return : 'a -> 'a t
+
+    module O : sig
+      val ( let* ) : 'a t -> ('a -> 'b t) -> 'b t
+
+      val ( let+ ) : 'a t -> ('a -> 'b) -> 'b t
+    end
+  end) (Sys : sig
+    val getenv : string -> string option
+
+    val is_win32 : unit -> bool
+
+    val read_file : string -> string Fiber.t
+
+    val readlink : string -> string Fiber.t
+
+    val analyze_path :
+      string -> [ `Symlink | `Unix_socket | `Normal_file | `Other ] Fiber.t
+  end) : S with type 'a fiber := 'a Fiber.t
 end
 
 module Loc : sig
@@ -250,28 +277,13 @@ module Subscribe : sig
     | Build_progress
 end
 
-module type S = sig
-  type t
-
-  type 'a fiber
-
-  type chan
-
-  val request :
-       ?id:Id.t
-    -> t
-    -> ('a, 'b) Decl.request
-    -> 'a
-    -> ('b, Response.Error.t) result fiber
-
-  val notification : t -> 'a Decl.notification -> 'a -> unit fiber
-
-  module Batch : sig
+module Client : sig
+  module type S = sig
     type t
 
-    type client
+    type 'a fiber
 
-    val create : client -> t
+    type chan
 
     val request :
          ?id:Id.t
@@ -280,76 +292,93 @@ module type S = sig
       -> 'a
       -> ('b, Response.Error.t) result fiber
 
-    val notification : t -> 'a Decl.notification -> 'a -> unit
+    val notification : t -> 'a Decl.notification -> 'a -> unit fiber
 
-    val submit : t -> unit fiber
+    module Batch : sig
+      type t
+
+      type client
+
+      val create : client -> t
+
+      val request :
+           ?id:Id.t
+        -> t
+        -> ('a, 'b) Decl.request
+        -> 'a
+        -> ('b, Response.Error.t) result fiber
+
+      val notification : t -> 'a Decl.notification -> 'a -> unit
+
+      val submit : t -> unit fiber
+    end
+    with type client := t
+
+    module Handler : sig
+      type t
+
+      val create :
+           ?log:(Message.t -> unit fiber)
+        -> ?diagnostic:(Diagnostic.Event.t list -> unit fiber)
+        -> ?build_event:(Build.Event.t -> unit fiber)
+        -> ?build_progress:(Progress.t -> unit fiber)
+        -> ?abort:(Message.t -> unit fiber)
+        -> unit
+        -> t
+    end
+
+    val connect_raw :
+         chan
+      -> Initialize.Request.t
+      -> on_notification:(Call.t -> unit fiber)
+      -> f:(t -> 'a fiber)
+      -> 'a fiber
+
+    val connect :
+         ?handler:Handler.t
+      -> chan
+      -> Initialize.Request.t
+      -> f:(t -> 'a fiber)
+      -> 'a fiber
   end
-  with type client := t
 
-  module Handler : sig
-    type t
-
-    val create :
-         ?log:(Message.t -> unit fiber)
-      -> ?diagnostic:(Diagnostic.Event.t list -> unit fiber)
-      -> ?build_event:(Build.Event.t -> unit fiber)
-      -> ?build_progress:(Progress.t -> unit fiber)
-      -> ?abort:(Message.t -> unit fiber)
-      -> unit
-      -> t
-  end
-
-  val connect_raw :
-       chan
-    -> Initialize.Request.t
-    -> on_notification:(Call.t -> unit fiber)
-    -> f:(t -> 'a fiber)
-    -> 'a fiber
-
-  val connect :
-       ?handler:Handler.t
-    -> chan
-    -> Initialize.Request.t
-    -> f:(t -> 'a fiber)
-    -> 'a fiber
-end
-
-module Client (Fiber : sig
-  type 'a t
-
-  val return : 'a -> 'a t
-
-  val fork_and_join_unit : (unit -> unit t) -> (unit -> 'a t) -> 'a t
-
-  val parallel_iter : (unit -> 'a option t) -> f:('a -> unit t) -> unit t
-
-  val finalize : (unit -> 'a t) -> finally:(unit -> unit t) -> 'a t
-
-  module O : sig
-    val ( let* ) : 'a t -> ('a -> 'b t) -> 'b t
-
-    val ( let+ ) : 'a t -> ('a -> 'b) -> 'b t
-  end
-
-  module Ivar : sig
-    type 'a fiber
-
+  module Make (Fiber : sig
     type 'a t
 
-    val create : unit -> 'a t
+    val return : 'a -> 'a t
 
-    val read : 'a t -> 'a fiber
+    val fork_and_join_unit : (unit -> unit t) -> (unit -> 'a t) -> 'a t
 
-    val fill : 'a t -> 'a -> unit fiber
-  end
-  with type 'a fiber := 'a t
-end) (Chan : sig
-  type t
+    val parallel_iter : (unit -> 'a option t) -> f:('a -> unit t) -> unit t
 
-  val write : t -> Csexp.t list option -> unit Fiber.t
+    val finalize : (unit -> 'a t) -> finally:(unit -> unit t) -> 'a t
 
-  val read : t -> Csexp.t option Fiber.t
-end) : S with type 'a fiber := 'a Fiber.t and type chan := Chan.t
+    module O : sig
+      val ( let* ) : 'a t -> ('a -> 'b t) -> 'b t
+
+      val ( let+ ) : 'a t -> ('a -> 'b) -> 'b t
+    end
+
+    module Ivar : sig
+      type 'a fiber
+
+      type 'a t
+
+      val create : unit -> 'a t
+
+      val read : 'a t -> 'a fiber
+
+      val fill : 'a t -> 'a -> unit fiber
+    end
+    with type 'a fiber := 'a t
+  end) (Chan : sig
+    type t
+
+    val write : t -> Csexp.t list option -> unit Fiber.t
+
+    val read : t -> Csexp.t option Fiber.t
+  end) : S with type 'a fiber := 'a Fiber.t and type chan := Chan.t
+end
 
 module Packet : sig
   module Reply : sig

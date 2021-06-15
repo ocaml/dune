@@ -85,19 +85,14 @@ let t_var : t Fiber.Var.t = Fiber.Var.create ()
 
 module Server = Dune_rpc_server.Make (Csexp_rpc.Session)
 
-let where_to_socket = function
-  | `Unix p -> Unix.ADDR_UNIX p
-  | `Ip (`Host host, `Port port) ->
-    Unix.ADDR_INET (Unix.inet_addr_of_string host, port)
-
 let of_config config stats =
   match config with
   | Config.Client -> Client
   | Config.Server { handler; backlog; pool } ->
-    let where = Dune_rpc_private.Where.default () in
+    let where = Where.default () in
     let real_where, symlink_socket =
       match where with
-      | `Ip _ -> (where_to_socket where, None)
+      | `Ip _ -> (Where.to_socket where, None)
       | `Unix path ->
         let path = Path.of_string path in
         let symlink_socket = Symlink_socket.create path in
@@ -136,7 +131,7 @@ let stop () =
     Fiber.return ()
 
 module Connect = struct
-  let csexp_client p = Csexp_rpc.Client.create (where_to_socket p)
+  let csexp_client p = Csexp_rpc.Client.create (Where.to_socket p)
 end
 
 let client p init ~on_notification ~f =

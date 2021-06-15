@@ -632,6 +632,16 @@ module Arg : sig
       {b Note.} Environment variable lookup is unsupported for
       for these arguments. *)
 
+
+  val alias : string list -> info -> bool t
+  (** [alias l i] is a [flag i] except the arguments [l] are also parsed as
+     if they appeared in place of the option. *)
+
+  val alias_opt : (string -> string list) -> info -> bool t
+  (** [alias l i] is a [flag i] except the arguments [l arg] are also parsed as
+     if they appeared in place of the option. [arg] is the possible argument
+     given on the command line *)
+
   val opt : ?vopt:'a -> 'a conv -> 'a -> info -> 'a t
   (** [opt vopt c v i] is an ['a] argument defined by the value of
       an optional argument that may appear {e at most} once on the command

@@ -64,7 +64,11 @@ type arg =                     (* information about a command line argument. *)
     pos : pos_kind;                                  (* positional arg kind. *)
     opt_kind : opt_kind;                               (* optional arg kind. *)
     opt_names : string list;                        (* names (for opt args). *)
-    opt_all : bool; }                          (* repeatable (for opt args). *)
+    opt_all : bool;                            (* repeatable (for opt args). *)
+    opt_alias: string -> string option -> (string list, string) Result.t;
+    (* [opt_alias arg value], [arg] is the name of the argument,
+        and [value] is the possible value *)
+  }
 
 let dumb_pos = pos ~rev:false ~start:(-1) ~len:None
 
@@ -79,7 +83,8 @@ let arg ?docs ?(docv = "") ?(doc = "") ?env names =
       | _ -> Cmdliner_manpage.s_options
   in
   { id = new_id (); absent = Val (lazy ""); env; doc; docv; docs;
-    pos = dumb_pos; opt_kind = Flag; opt_names; opt_all = false; }
+    pos = dumb_pos; opt_kind = Flag; opt_names; opt_all = false;
+    opt_alias = fun _ _ -> Ok [] }
 
 let arg_id a = a.id
 let arg_absent a = a.absent
@@ -99,6 +104,7 @@ let arg_opt_name_sample a =
   | n :: ns -> if (String.length n) > 2 then n else find ns
   in
   find a.opt_names
+let arg_alias a = a.opt_alias
 
 let arg_make_req a = { a with absent = Err }
 let arg_make_all_opts a = { a with opt_all = true }
@@ -108,6 +114,7 @@ let arg_make_opt_all ~absent ~kind:opt_kind a =
 
 let arg_make_pos ~pos a = { a with pos }
 let arg_make_pos_abs ~absent ~pos a = { a with absent; pos }
+let arg_aliases ~aliases a = { a with opt_alias = aliases }
 
 let arg_is_opt a = a.opt_names <> []
 let arg_is_pos a = a.opt_names = []

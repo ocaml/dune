@@ -339,36 +339,34 @@ module Options_implied_by_dash_p = struct
     ; promote_install_files
     }
 
-  let release_options =
-    { root = Some "."
-    ; only_packages = None
-    ; ignore_promoted_rules = true
-    ; config_file = No_config
-    ; profile = Some Profile.Release
-    ; default_target =
-        Arg.Dep.alias_rec ~dir:Path.Local.root Dune_engine.Alias.Name.install
-    ; always_show_command_line = true
-    ; promote_install_files = true
-    }
-
   let dash_dash_release =
-    let+ (_ : bool) =
-      Arg.(
-        value & flag
-        & info [ "release" ] ~docs ~docv:"PACKAGES"
-            ~doc:
-              "Put $(b,dune) into a reproducible $(i,release) mode. This is in \
-               fact a shorthand for $(b,--root . --ignore-promoted-rules \
-               --no-config --profile release --always-show-command-line \
-               --promote-install-files --default-target @install). You should \
-               use this option for release builds. For instance, you must use \
-               this option in your $(i,<package>.opam) files. Except if you \
-               already use $(b,-p), as $(b,-p) implies this option.")
-    in
-    release_options
+    Arg.(
+      value
+      & alias
+          [ "--root"
+          ; "."
+          ; "--ignore-promoted-rules"
+          ; "--no-config"
+          ; "--profile"
+          ; "release"
+          ; "--always-show-command-line"
+          ; "--promote-install-files"
+          ; "--default-target"
+          ; "@install"
+          ]
+      & info [ "release" ] ~docs ~docv:"PACKAGES"
+          ~doc:
+            "Put $(b,dune) into a reproducible $(i,release) mode. This is in \
+             fact a shorthand for $(b,--root . --ignore-promoted-rules \
+             --no-config --profile release --always-show-command-line \
+             --promote-install-files --default-target @install). You should \
+             use this option for release builds. For instance, you must use \
+             this option in your $(i,<package>.opam) files. Except if you \
+             already use $(b,-p), as $(b,-p) implies this option.")
 
   let options =
-    let+ t = one_of options dash_dash_release
+    let+ t = options
+    and+ _ = dash_dash_release
     and+ only_packages =
       let+ names =
         Arg.(
@@ -390,36 +388,29 @@ module Options_implied_by_dash_p = struct
     { t with only_packages }
 
   let dash_p =
-    let+ pkgs, args =
-      Term.with_used_args
-        Arg.(
-          value
-          & opt (some packages) None
-          & info
-              [ "p"; "for-release-of-packages" ]
-              ~docs ~docv:"PACKAGES"
-              ~doc:
-                "Shorthand for $(b,--release --only-packages PACKAGE). You \
-                 must use this option in your $(i,<package>.opam) files, in \
-                 order to build only what's necessary when your project \
-                 contains multiple packages as well as getting reproducible \
-                 builds.")
-    in
-    { release_options with
-      only_packages =
-        Option.map pkgs ~f:(fun names ->
-            Only_packages.create ~names ~command_line_option:(List.hd args))
-    }
+    Term.with_used_args
+      Arg.(
+        value
+        & alias_opt (fun s -> [ "--release"; "--only-packages"; s ])
+        & info
+            [ "p"; "for-release-of-packages" ]
+            ~docs ~docv:"PACKAGES"
+            ~doc:
+              "Shorthand for $(b,--release --only-packages PACKAGE). You must \
+               use this option in your $(i,<package>.opam) files, in order to \
+               build only what's necessary when your project contains multiple \
+               packages as well as getting reproducible builds.")
 
   let term =
-    let+ t = one_of options dash_p
+    let+ t = options
+    and+ _ = dash_p
     and+ profile =
       let doc =
         "Build profile. $(b,dev) if unspecified or $(b,release) if -p is set."
       in
       Arg.(
-        value
-        & opt (some profile) None
+        last
+        & opt_all (some profile) [ None ]
         & info [ "profile" ] ~docs
             ~env:(Arg.env_var ~doc "DUNE_PROFILE")
             ~doc:

@@ -12,13 +12,13 @@ Test that incompatible options are properly reported
   [1]
 
   $ dune build -p toto --root .
-  dune: Cannot use --root and -p simultaneously
+  dune: option `--root' cannot be repeated
   Usage: dune build [OPTION]... [TARGET]...
   Try `dune build --help' or `dune --help' for more information.
   [1]
 
   $ dune build --for-release-of-packages toto --root .
-  dune: Cannot use --root and --for-release-of-packages simultaneously
+  dune: option `--root' cannot be repeated
   Usage: dune build [OPTION]... [TARGET]...
   Try `dune build --help' or `dune --help' for more information.
   [1]
@@ -30,13 +30,13 @@ Test that incompatible options are properly reported
   [1]
 
   $ dune build -p toto --release
-  dune: Cannot use --release and -p simultaneously
+  dune: option `--root' cannot be repeated
   Usage: dune build [OPTION]... [TARGET]...
   Try `dune build --help' or `dune --help' for more information.
   [1]
 
   $ dune build --release --root .
-  dune: Cannot use --root and --release simultaneously
+  dune: option `--root' cannot be repeated
   Usage: dune build [OPTION]... [TARGET]...
   Try `dune build --help' or `dune --help' for more information.
   [1]

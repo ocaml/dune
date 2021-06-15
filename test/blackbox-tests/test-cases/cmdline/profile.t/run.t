@@ -16,4 +16,4 @@
    ; profile = User_defined "bar"
 
   $ DUNE_PROFILE="bar" dune build -p foo --verbose 2>&1 | grep "; profile"
-   ; profile = User_defined "bar"
+   ; profile = Release

@@ -1799,7 +1799,7 @@ let%expect_test "Test Memo.clear_cache" =
   |}];
   print_perf_counters ();
   [%expect {| 4/4 computed/total nodes, 2/2 traversed/total edges |}];
-  let invalidation = Memo.Invalidation.clear_cache add_one in
+  let invalidation = Memo.Invalidation.invalidate_cache add_one in
   Memo.reset invalidation;
   evaluate_and_print add_one 1;
   evaluate_and_print add_one 2;

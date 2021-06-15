@@ -737,13 +737,12 @@ end = struct
     | true -> invalidation
     | false ->
       (* In this mode, we do not assume that all file system dependencies are
-         declared correctly and therefore conservatively require a rebuild. *)
-      (* The fact that the [events] list is non-empty justifies clearing the
+         declared correctly and therefore conservatively require a rebuild.
+
+         The fact that the [events] list is non-empty justifies clearing the
          caches. *)
       let (_ : _ Nonempty_list.t) = events in
-      (* Since [clear_caches] is not sufficient to guarantee invalidation, we
-         pay attention to [invalidation] too, for good measure *)
-      Memo.Invalidation.combine Memo.Invalidation.clear_caches invalidation
+      Memo.Invalidation.clear_caches
 
   (** This function is the heart of the scheduler. It makes progress in
       executing fibers by doing the following:

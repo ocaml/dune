@@ -192,6 +192,8 @@ module Invalidation : sig
 
   (** Invalidate all computations stored in a given [memo] table. *)
   val invalidate_cache : _ memo -> t
+
+  val to_dyn : t -> Dyn.t
 end
 
 (** Notify the memoization system that the build system has restarted. This

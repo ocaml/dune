@@ -1244,11 +1244,24 @@ let get_call_stack = Call_stack.get_call_stack_without_state
 module Invalidation = struct
   type ('i, 'o) memo = ('i, 'o) t
 
-  (* Represented as a tree mainly to get a tail-recursive execution, but being
-     able to special-case empty invalidations is also useful. *)
+  module Leaf = struct
+    type t =
+      | Invalidate_node : _ Dep_node.t -> t
+      | Clear_cache : ('input, ('input, 'output) Dep_node.t) Store.t -> t
+      | Clear_caches
+
+    let to_dyn (t : t) =
+      match t with
+      | Invalidate_node node ->
+        Stack_frame_without_state.to_dyn (T node.without_state)
+      | Clear_cache _ -> Dyn.Variant ("Clear_cache", [ Dyn.Opaque ])
+      | Clear_caches -> Dyn.Variant ("Clear_caches", [])
+  end
+
+  (* Represented as a tree mainly to get a tail-recursive execution. *)
   type t =
     | Empty
-    | Leaf of (unit -> unit)
+    | Leaf of Leaf.t
     | Combine of t * t
 
   let empty : t = Empty
@@ -1260,11 +1273,23 @@ module Invalidation = struct
       x
     | x, y -> Combine (x, y)
 
+  let execute_clear_cache cache =
+    Store.iter cache ~f:(fun (node : _ Dep_node.t) ->
+        node.last_cached_value <- None)
+
+  let execute_invalidate_node (node : _ Dep_node.t) =
+    node.last_cached_value <- None
+
+  let execute_leaf = function
+    | Leaf.Invalidate_node node -> execute_invalidate_node node
+    | Clear_cache cache -> execute_clear_cache cache
+    | Clear_caches -> Caches.clear ()
+
   let rec execute x xs =
     match x with
     | Empty -> execute_list xs
     | Leaf f ->
-      f ();
+      execute_leaf f;
       execute_list xs
     | Combine (x, y) -> execute x (y :: xs)
 
@@ -1272,18 +1297,32 @@ module Invalidation = struct
     | [] -> ()
     | x :: xs -> execute x xs
 
+  let rec to_list_x_xs x xs acc =
+    match x with
+    | Empty -> to_list_xs xs acc
+    | Leaf f -> to_list_xs xs (f :: acc)
+    | Combine (x, y) -> to_list_x_xs x (y :: xs) acc
+
+  and to_list_xs xs acc =
+    match xs with
+    | [] -> acc
+    | x :: xs -> to_list_x_xs x xs acc
+
+  let to_list t = to_list_x_xs t [] []
+
+  let to_dyn t = Dyn.List (List.map (to_list t) ~f:Leaf.to_dyn)
+
   let execute x = execute x []
 
   let is_empty = function
     | Empty -> true
     | _ -> false
 
-  let clear_caches = Leaf (fun () -> Caches.clear ())
+  let clear_caches = Leaf Clear_caches
 
-  let invalidate_cache { cache; _ } = Leaf (fun () -> invalidate_store cache)
+  let invalidate_cache { cache; _ } = Leaf (Clear_cache cache)
 
-  let invalidate_node (node : _ Dep_node.t) =
-    Leaf (fun () -> invalidate_dep_node node)
+  let invalidate_node (node : _ Dep_node.t) = Leaf (Invalidate_node node)
 end
 
 module Current_run = struct

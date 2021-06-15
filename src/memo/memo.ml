@@ -1273,16 +1273,9 @@ module Invalidation = struct
       x
     | x, y -> Combine (x, y)
 
-  let execute_clear_cache cache =
-    Store.iter cache ~f:(fun (node : _ Dep_node.t) ->
-        node.last_cached_value <- None)
-
-  let execute_invalidate_node (node : _ Dep_node.t) =
-    node.last_cached_value <- None
-
   let execute_leaf = function
-    | Leaf.Invalidate_node node -> execute_invalidate_node node
-    | Clear_cache cache -> execute_clear_cache cache
+    | Leaf.Invalidate_node node -> invalidate_dep_node node
+    | Clear_cache store -> invalidate_store store
     | Clear_caches -> Caches.clear ()
 
   let rec execute x xs =

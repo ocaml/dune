@@ -32,7 +32,7 @@ module Where = struct
     | Error _ -> failwith ("invalid address format " ^ s)
     | Ok s -> of_dbus s
 
-  let rpc_dir = lazy Path.Build.(relative root "rpc")
+  let rpc_dir = lazy (Path.build @@ Path.Build.(relative root "rpc"))
 
   let fname = "conn"
 
@@ -44,7 +44,7 @@ module Where = struct
         (if Sys.win32 then
           `Ip (Unix.inet_addr_of_string "0.0.0.0", `Port default_port)
         else
-          `Unix (Path.build (Path.Build.relative (Lazy.force rpc_dir) fname)))
+          `Unix (Path.relative (Lazy.force rpc_dir) fname))
     in
     fun () -> Lazy.force s
 
@@ -52,7 +52,7 @@ module Where = struct
     match Sys.getenv_opt _DUNE_RPC with
     | Some d -> Some (of_string d)
     | None -> (
-      let path = Path.build (Path.Build.relative (Lazy.force rpc_dir) fname) in
+      let path = Path.relative (Lazy.force rpc_dir) fname in
       match Path.exists path with
       | false -> None
       | true ->

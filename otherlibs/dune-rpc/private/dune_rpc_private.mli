@@ -113,8 +113,6 @@ module Where : sig
     | `Ip of Unix.inet_addr * [ `Port of int ]
     ]
 
-  val rpc_dir : Stdune.Path.Build.t Lazy.t
-
   val of_string : string -> t
 
   val get : unit -> t option

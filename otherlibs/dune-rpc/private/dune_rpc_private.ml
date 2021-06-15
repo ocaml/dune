@@ -5,7 +5,7 @@ include Types
 module Where = struct
   type t =
     [ `Unix of string
-    | `Ip of Unix.inet_addr * [ `Port of int ]
+    | `Ip of [ `Host of string ] * [ `Port of int ]
     ]
 
   let default_port = 8587
@@ -21,10 +21,8 @@ module Where = struct
         | None -> default_port
         | Some p -> int_of_string p
       in
-      let addr =
-        List.assoc args "host" |> Option.value_exn |> Unix.inet_addr_of_string
-      in
-      `Ip (addr, `Port port)
+      let addr = List.assoc args "host" |> Option.value_exn in
+      `Ip (`Host addr, `Port port)
     | _ -> failwith "invalid connection type"
 
   let of_string s =
@@ -42,7 +40,7 @@ module Where = struct
     let s =
       lazy
         (if Sys.win32 then
-          `Ip (Unix.inet_addr_of_string "0.0.0.0", `Port default_port)
+          `Ip (`Host "0.0.0.0", `Port default_port)
         else
           `Unix (Path.to_string (Path.relative (Lazy.force rpc_dir) fname)))
     in
@@ -64,9 +62,8 @@ module Where = struct
 
   let to_dbus : t -> Dbus_address.t = function
     | `Unix p -> { name = "unix"; args = [ ("path", p) ] }
-    | `Ip (host, `Port port) ->
+    | `Ip (`Host host, `Port port) ->
       let port = string_of_int port in
-      let host = Unix.string_of_inet_addr host in
       { name = "tcp"; args = [ ("host", host); ("port", port) ] }
 
   let to_string t = Dbus_address.to_string (to_dbus t)

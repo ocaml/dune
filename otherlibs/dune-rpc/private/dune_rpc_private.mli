@@ -110,7 +110,7 @@ end
 module Where : sig
   type t =
     [ `Unix of string
-    | `Ip of Unix.inet_addr * [ `Port of int ]
+    | `Ip of [ `Host of string ] * [ `Port of int ]
     ]
 
   val of_string : string -> t

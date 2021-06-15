@@ -109,7 +109,7 @@ end
 
 module Where : sig
   type t =
-    [ `Unix of Stdune.Path.t
+    [ `Unix of string
     | `Ip of Unix.inet_addr * [ `Port of int ]
     ]
 

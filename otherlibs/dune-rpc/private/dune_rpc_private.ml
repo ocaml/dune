@@ -4,7 +4,7 @@ include Types
 
 module Where = struct
   type t =
-    [ `Unix of Path.t
+    [ `Unix of string
     | `Ip of Unix.inet_addr * [ `Port of int ]
     ]
 
@@ -13,7 +13,7 @@ module Where = struct
   let of_dbus { Dbus_address.name; args } =
     match name with
     | "unix" ->
-      let path = Path.of_string (Option.value_exn (List.assoc args "path")) in
+      let path = Option.value_exn (List.assoc args "path") in
       `Unix path
     | "tcp" ->
       let port =
@@ -44,7 +44,7 @@ module Where = struct
         (if Sys.win32 then
           `Ip (Unix.inet_addr_of_string "0.0.0.0", `Port default_port)
         else
-          `Unix (Path.relative (Lazy.force rpc_dir) fname))
+          `Unix (Path.to_string (Path.relative (Lazy.force rpc_dir) fname)))
     in
     fun () -> Lazy.force s
 
@@ -59,11 +59,11 @@ module Where = struct
         let stat = Unix.stat (Path.to_string path) in
         Some
           (match stat.st_kind with
-          | Unix.S_SOCK -> `Unix path
+          | Unix.S_SOCK -> `Unix (Path.to_string path)
           | _ -> of_string (Io.read_file path)))
 
   let to_dbus : t -> Dbus_address.t = function
-    | `Unix p -> { name = "unix"; args = [ ("path", Path.to_string p) ] }
+    | `Unix p -> { name = "unix"; args = [ ("path", p) ] }
     | `Ip (host, `Port port) ->
       let port = string_of_int port in
       let host = Unix.string_of_inet_addr host in

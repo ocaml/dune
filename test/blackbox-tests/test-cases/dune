@@ -122,3 +122,10 @@
  (executable
   (libraries stdune spawn)
   (name test)))
+
+(subdir
+ watching
+ ; see https://github.com/ocaml/dune/pull/4728
+ (cram
+  (enabled_if
+   (<> "macosx" %{ocaml-config:system}))))

@@ -87,7 +87,7 @@ module Server = Dune_rpc_server.Make (Csexp_rpc.Session)
 
 let where_to_socket = function
   | `Ip (addr, `Port port) -> Unix.ADDR_INET (addr, port)
-  | `Unix p -> Unix.ADDR_UNIX (Path.to_string p)
+  | `Unix p -> Unix.ADDR_UNIX p
 
 let of_config config stats =
   match config with
@@ -98,6 +98,7 @@ let of_config config stats =
       match where with
       | `Ip _ -> (where_to_socket where, None)
       | `Unix path ->
+        let path = Path.of_string path in
         let symlink_socket = Symlink_socket.create path in
         ( Unix.ADDR_UNIX (Path.to_string (Symlink_socket.socket symlink_socket))
         , Some symlink_socket )

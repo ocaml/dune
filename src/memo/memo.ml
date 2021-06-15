@@ -1322,8 +1322,7 @@ module Invalidation = struct
 
   let invalidate_cache { cache; _ } = Leaf (Clear_cache cache)
 
-  let invalidate_node (node : _ Dep_node.t) =
-    Leaf (Invalidate_node node)
+  let invalidate_node (node : _ Dep_node.t) = Leaf (Invalidate_node node)
 end
 
 module Current_run = struct

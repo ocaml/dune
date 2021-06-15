@@ -111,6 +111,11 @@ let parse_opt_args ~peek_opts optidx cl args =
               | v :: rest -> if is_opt v then None, args else Some v, rest
           in
           let arg = O ((k, name, value) :: opt_arg cl a) in
+          let errs,args =
+            match Cmdliner_info.arg_alias a name value with
+            | Ok l -> errs,l@args
+            | Error err -> err::errs,args
+          in
           loop errs (k + 1) (Amap.add a arg cl) pargs args
       | `Not_found when peek_opts -> loop errs (k + 1) cl pargs args
       | `Not_found ->

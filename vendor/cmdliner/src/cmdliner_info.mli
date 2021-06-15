@@ -56,6 +56,7 @@ val arg_opt_names : arg -> string list (* has dashes *)
 val arg_opt_name_sample : arg -> string (* warning must be an opt arg *)
 val arg_opt_kind : arg -> opt_kind
 val arg_pos : arg -> pos_kind
+val arg_alias : arg -> string -> string option -> (string list, string) Result.t
 
 val arg_make_req : arg -> arg
 val arg_make_all_opts : arg -> arg
@@ -63,6 +64,7 @@ val arg_make_opt : absent:arg_absence -> kind:opt_kind -> arg -> arg
 val arg_make_opt_all : absent:arg_absence -> kind:opt_kind -> arg -> arg
 val arg_make_pos : pos:pos_kind -> arg -> arg
 val arg_make_pos_abs : absent:arg_absence -> pos:pos_kind -> arg -> arg
+val arg_aliases : aliases:(string -> string option -> (string list, string) Result.t) -> arg -> arg
 
 val arg_is_opt : arg -> bool
 val arg_is_pos : arg -> bool

@@ -186,17 +186,12 @@ module Invalidation : sig
 
   val is_empty : t -> bool
 
-  (** Indicates that all memoization tables should be cleared. We use it if
-      incremental mode is not enabled.
-
-      Bug: this is not sufficient to guarantee full recomputation because it
-      does not invalidate individual nodes, only tables, so if you hold on to a
-      node (via a [lazy_] or [cell] call), then that's going to keep its
-      potentially stale value. *)
+  (** Clear all memoization tables. We use it if the incremental mode is not
+      enabled. *)
   val clear_caches : t
 
-  (** Like [clear_caches] but only clears the cache of a given [memo] table. *)
-  val clear_cache : _ memo -> t
+  (** Invalidate all computations stored in a given [memo] table. *)
+  val invalidate_cache : _ memo -> t
 end
 
 (** Notify the memoization system that the build system has restarted. This

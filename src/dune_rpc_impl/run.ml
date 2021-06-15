@@ -86,8 +86,9 @@ let t_var : t Fiber.Var.t = Fiber.Var.create ()
 module Server = Dune_rpc_server.Make (Csexp_rpc.Session)
 
 let where_to_socket = function
-  | `Ip (addr, `Port port) -> Unix.ADDR_INET (addr, port)
   | `Unix p -> Unix.ADDR_UNIX p
+  | `Ip (`Host host, `Port port) ->
+    Unix.ADDR_INET (Unix.inet_addr_of_string host, port)
 
 let of_config config stats =
   match config with

@@ -327,7 +327,10 @@ module Options_implied_by_dash_p = struct
       let doc =
         "Promote the generated <package>.install files to the source tree"
       in
-      Arg.(last & opt_all ~vopt:true bool [false] & info [ "promote-install-files" ] ~docs ~doc)
+      Arg.(
+        last
+        & opt_all ~vopt:true bool [ false ]
+        & info [ "promote-install-files" ] ~docs ~doc)
     in
     { root
     ; only_packages = None

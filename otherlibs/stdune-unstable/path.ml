@@ -310,6 +310,7 @@ end = struct
         match s.[i] with
         | '/' -> false
         | '.' -> before_dot_slash s (i - 1)
+        | '\\' when Sys.win32 -> false
         | _ -> in_component s (i - 1)
     and before_dot_slash s i =
       if i < 0 then
@@ -318,6 +319,7 @@ end = struct
         match s.[i] with
         | '/' -> false
         | '.' -> before_dot_dot_slash s (i - 1)
+        | '\\' when Sys.win32 -> false
         | _ -> in_component s (i - 1)
     and before_dot_dot_slash s i =
       if i < 0 then
@@ -325,6 +327,7 @@ end = struct
       else
         match s.[i] with
         | '/' -> false
+        | '\\' when Sys.win32 -> false
         | _ -> in_component s (i - 1)
     and in_component s i =
       if i < 0 then
@@ -332,6 +335,7 @@ end = struct
       else
         match s.[i] with
         | '/' -> before_slash s (i - 1)
+        | '\\' when Sys.win32 -> false
         | _ -> in_component s (i - 1)
     in
     fun s ->

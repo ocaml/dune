@@ -22,6 +22,7 @@ mkdir -p "$lib_name/src"
 
 SRC=$TMP/$lib_name
 
+rm "$SRC"/lib/lwt_inotify.ml{,i}
 cp -v "$SRC"/lib/*.{ml,mli,c} "$lib_name"/src
 
 git checkout HEAD "$lib_name"/src/dune || true

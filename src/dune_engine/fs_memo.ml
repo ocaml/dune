@@ -2,10 +2,38 @@ open! Stdune
 open! Import
 open Memo.Build.O
 
+type t = { dune_file_watcher : Dune_file_watcher.t option }
+
+let t_fdecl = Fdecl.create (fun _ -> String "<fs_memo>")
+
+let init ~dune_file_watcher = Fdecl.set t_fdecl { dune_file_watcher }
+
 (* Files and directories have non-overlapping sets of paths, so we can track
    them using the same memoization table. *)
 let memo =
-  Memo.create "fs_memo" ~input:(module Path) (fun _path -> Memo.Build.return ())
+  Memo.create "fs_memo"
+    ~input:(module Path)
+    (fun path ->
+      let { dune_file_watcher } =
+        try Fdecl.get t_fdecl with
+        | _ ->
+          (* CR-someday aalekseyev: This is needed because we read the workspace
+             file before we start the inotify watcher. This means that we are
+             not watching the workspace file, which is bad enough, and we're
+             also leaving a hole for furter abuses like this. *)
+          { dune_file_watcher = None }
+      in
+      Option.iter dune_file_watcher ~f:(fun dune_file_watcher ->
+          try Dune_file_watcher.add_watch dune_file_watcher path with
+          | Unix.Unix_error (ENOENT, _, _) -> (
+            (* If the file is absent, we need to wait for it to be created by
+               watching the parent. We still try to add a watch for the file
+               itself after that succeeds, in case the file was created already
+               before we started watching its parent. *)
+            Dune_file_watcher.add_watch dune_file_watcher (Path.parent_exn path);
+            try Dune_file_watcher.add_watch dune_file_watcher path with
+            | Unix.Unix_error (ENOENT, _, _) -> ()));
+      Memo.Build.return ())
 
 (* Declare a dependency on a path. Instead of calling [depend] directly, you
    should prefer using the helper function [declaring_dependency], because it
@@ -71,24 +99,24 @@ let invalidate_path_and_its_parent path =
     | Some path -> invalidate_path path)
 
 module Event = struct
-  (* Here are some assumptions about events:
+  (* Here are some idealized assumptions about events:
 
-     - If a file is renamed, we receive [File_created] and [File_deleted] events
-     with corresponding paths.
+     - If a file is renamed, we receive [Created] and [Deleted] events with
+     corresponding paths.
 
-     - If a directory is renamed then in addition to the [Directory_created] and
-     [Directory_deleted] events for the directory itself, we receive events
-     about all file and directory paths in the corresponding file tree.
+     - If a directory is renamed then in addition to the [Created] and [Deleted]
+     events for the directory itself, we receive events about all file and
+     directory paths in the corresponding file tree.
 
-     - Similarly, if a directory is deleted, we receive the [Directory_deleted]
-     event for the directory itself, as well as deletion events for all paths in
-     the corresponding file tree. *)
+     - Similarly, if a directory is deleted, we receive the [Deleted] event for
+     the directory itself, as well as deletion events for all watched paths in
+     the corresponding file tree.
+
+     Very little of these assumptions currently hold. *)
   type kind =
-    | File_created
-    | File_deleted
+    | Created
+    | Deleted
     | File_changed
-    | Directory_created
-    | Directory_deleted
     | Unknown  (** Treated conservatively as any possible event. *)
 
   type t =
@@ -117,10 +145,8 @@ module Event = struct
   let handle { kind; path } : Memo.Invalidation.t =
     match kind with
     | File_changed -> invalidate_path path
-    | File_created
-    | File_deleted
-    | Directory_created
-    | Directory_deleted
+    | Created
+    | Deleted
     | Unknown ->
       invalidate_path_and_its_parent path
 

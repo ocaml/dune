@@ -123,6 +123,7 @@ module Event : sig
     | Invalidation of Memo.Invalidation.t
 
   type t =
+    | File_watcher_task of (unit -> unit)
     | Build_inputs_changed of build_input_change Nonempty_list.t
     | File_system_watcher_terminated
     | Job_completed of job * Proc.Process_info.t
@@ -157,6 +158,8 @@ module Event : sig
 
     val register_worker_task_started : t -> unit
 
+    val send_file_watcher_task : t -> (unit -> unit) -> unit
+
     (** Send an event to the main thread. *)
     val send_file_watcher_events : t -> Dune_file_watcher.Event.t list -> unit
 
@@ -176,6 +179,7 @@ end = struct
     | Invalidation of Memo.Invalidation.t
 
   type t =
+    | File_watcher_task of (unit -> unit)
     | Build_inputs_changed of build_input_change Nonempty_list.t
     | File_system_watcher_terminated
     | Job_completed of job * Proc.Process_info.t
@@ -192,6 +196,7 @@ end = struct
   module Queue = struct
     type t =
       { jobs_completed : (job * Proc.Process_info.t) Queue.t
+      ; file_watcher_tasks : (unit -> unit) Queue.t
       ; mutable invalidation_events : Invalidation_event.t list
       ; mutable signals : Signal.Set.t
       ; mutex : Mutex.t
@@ -214,6 +219,7 @@ end = struct
 
     let create stats =
       let jobs_completed = Queue.create () in
+      let file_watcher_tasks = Queue.create () in
       let worker_tasks_completed = Queue.create () in
       let invalidation_events = [] in
       let signals = Signal.Set.empty in
@@ -223,6 +229,7 @@ end = struct
       let pending_jobs = 0 in
       let pending_worker_tasks = 0 in
       { jobs_completed
+      ; file_watcher_tasks
       ; invalidation_events
       ; signals
       ; mutex
@@ -265,6 +272,49 @@ end = struct
           q.yield <- Some ivar;
           Fiber.Ivar.read ivar
 
+    let process_inotify_event q
+        (event : Async_inotify_for_dune.Async_inotify.Event.t) =
+      let should_ignore =
+        List.exists (Dune_file_watcher.inotify_event_paths event)
+          ~f:(fun path ->
+            let path = Path.of_string path in
+            let abs_path = Path.to_absolute_filename path in
+            if Table.mem q.ignored_files abs_path then (
+              (* only use ignored record once *)
+              Table.remove q.ignored_files abs_path;
+              true
+            ) else
+              false)
+      in
+      if should_ignore then
+        []
+      else
+        match event with
+        | Created path ->
+          let path = Path.of_string path in
+          [ Fs_event (Fs_memo.Event.create ~kind:Created ~path) ]
+        | Unlinked path ->
+          let path = Path.of_string path in
+          [ Fs_event (Fs_memo.Event.create ~kind:Deleted ~path) ]
+        | Modified path ->
+          let path = Path.of_string path in
+          [ Fs_event (Fs_memo.Event.create ~kind:File_changed ~path) ]
+        | Moved move -> (
+          match move with
+          | Away path ->
+            let path = Path.of_string path in
+            [ Fs_event (Fs_memo.Event.create ~kind:Deleted ~path) ]
+          | Into path ->
+            let path = Path.of_string path in
+            [ Fs_event (Fs_memo.Event.create ~kind:Created ~path) ]
+          | Move (from, to_) ->
+            let from = Path.of_string from in
+            let to_ = Path.of_string to_ in
+            [ Fs_event (Fs_memo.Event.create ~kind:Deleted ~path:from)
+            ; Fs_event (Fs_memo.Event.create ~kind:Created ~path:to_)
+            ])
+        | Queue_overflow -> [ Invalidation Memo.Invalidation.clear_caches ]
+
     let next q =
       Option.iter q.stats ~f:Dune_stats.record_gc_and_fd;
       Mutex.lock q.mutex;
@@ -274,51 +324,56 @@ end = struct
           q.signals <- Signal.Set.remove q.signals signal;
           Signal signal
         | None -> (
-          match q.invalidation_events with
-          | [] -> (
-            match Queue.pop q.jobs_completed with
-            | None -> (
-              match Queue.pop q.worker_tasks_completed with
-              | Some fill ->
-                q.pending_worker_tasks <- q.pending_worker_tasks - 1;
-                Worker_task fill
+          match Queue.pop q.file_watcher_tasks with
+          | Some job -> File_watcher_task job
+          | None -> (
+            match q.invalidation_events with
+            | [] -> (
+              match Queue.pop q.jobs_completed with
               | None -> (
-                match q.yield with
-                | Some ivar ->
-                  q.yield <- None;
-                  Yield ivar
-                | None -> wait ()))
-            | Some (job, proc_info) ->
-              q.pending_jobs <- q.pending_jobs - 1;
-              assert (q.pending_jobs >= 0);
-              Job_completed (job, proc_info))
-          | events -> (
-            q.invalidation_events <- [];
-            let terminated = ref false in
-            let events =
-              List.filter_map events ~f:(function
-                | Filesystem_event Sync -> Some (Sync : build_input_change)
-                | Invalidation invalidation ->
-                  Some (Invalidation invalidation : build_input_change)
-                | Filesystem_event Watcher_terminated ->
-                  terminated := true;
-                  None
-                | Filesystem_event (File_changed path) ->
-                  let abs_path = Path.to_absolute_filename path in
-                  if Table.mem q.ignored_files abs_path then (
-                    (* only use ignored record once *)
-                    Table.remove q.ignored_files abs_path;
-                    None
-                  ) else
-                    (* CR-soon amokhov: Generate more precise events. *)
-                    Some (Fs_event (Fs_memo.Event.create ~kind:Unknown ~path)))
-            in
-            match !terminated with
-            | true -> File_system_watcher_terminated
-            | false -> (
-              match Nonempty_list.of_list events with
-              | None -> loop ()
-              | Some events -> Build_inputs_changed events)))
+                match Queue.pop q.worker_tasks_completed with
+                | Some fill ->
+                  q.pending_worker_tasks <- q.pending_worker_tasks - 1;
+                  Worker_task fill
+                | None -> (
+                  match q.yield with
+                  | Some ivar ->
+                    q.yield <- None;
+                    Yield ivar
+                  | None -> wait ()))
+              | Some (job, proc_info) ->
+                q.pending_jobs <- q.pending_jobs - 1;
+                assert (q.pending_jobs >= 0);
+                Job_completed (job, proc_info))
+            | events -> (
+              q.invalidation_events <- [];
+              let terminated = ref false in
+              let events =
+                List.concat_map events ~f:(function
+                  | Filesystem_event Sync -> [ (Sync : build_input_change) ]
+                  | Invalidation invalidation ->
+                    [ (Invalidation invalidation : build_input_change) ]
+                  | Filesystem_event Watcher_terminated ->
+                    terminated := true;
+                    []
+                  | Filesystem_event (Inotify_event event) ->
+                    process_inotify_event q event
+                  | Filesystem_event (File_changed path) ->
+                    let abs_path = Path.to_absolute_filename path in
+                    if Table.mem q.ignored_files abs_path then (
+                      (* only use ignored record once *)
+                      Table.remove q.ignored_files abs_path;
+                      []
+                    ) else
+                      (* XX-soon amokhov: Generate more precise events. *)
+                      [ Fs_event (Fs_memo.Event.create ~kind:Unknown ~path) ])
+              in
+              match !terminated with
+              | true -> File_system_watcher_terminated
+              | false -> (
+                match Nonempty_list.of_list events with
+                | None -> loop ()
+                | Some events -> Build_inputs_changed events))))
       and wait () =
         q.got_event <- false;
         Condition.wait q.cond q.mutex;
@@ -348,6 +403,9 @@ end = struct
 
     let send_signal q signal =
       add_event q (fun q -> q.signals <- Signal.Set.add q.signals signal)
+
+    let send_file_watcher_task q job =
+      add_event q (fun q -> Queue.push q.file_watcher_tasks job)
 
     let pending_jobs q = q.pending_jobs
 
@@ -754,6 +812,9 @@ end = struct
     t.handler t.config Tick;
     match Event.Queue.next t.events with
     | Job_completed (job, proc_info) -> Fiber.Fill (job.ivar, proc_info)
+    | File_watcher_task job ->
+      job ();
+      iter t
     | Build_inputs_changed events -> (
       let invalidation =
         (handle_invalidation_events events : Memo.Invalidation.t)
@@ -1015,8 +1076,11 @@ module Run = struct
                ; thread_safe_send_events =
                    (fun files_changed ->
                      Event_queue.send_file_watcher_events t.events files_changed)
+               ; thread_safe_send_job =
+                   (fun job -> Event_queue.send_file_watcher_task t.events job)
                })
     in
+    Fs_memo.init ~dune_file_watcher:watcher;
     let result =
       match Run_once.run_and_cleanup t run with
       | Ok a -> Result.Ok a
@@ -1032,7 +1096,9 @@ module Run = struct
         Error (exn_with_bt.exn, Some exn_with_bt.backtrace)
     in
     Option.iter watcher ~f:(fun watcher ->
-        ignore (wait_for_process t (Dune_file_watcher.pid watcher) : _ Fiber.t));
+        match Dune_file_watcher.shutdown watcher with
+        | `Kill pid -> ignore (wait_for_process t pid : _ Fiber.t)
+        | `No_op -> ());
     ignore (kill_and_wait_for_all_processes t : saw_signal);
     match result with
     | Ok a -> a

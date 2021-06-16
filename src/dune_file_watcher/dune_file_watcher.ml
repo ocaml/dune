@@ -1,25 +1,44 @@
 open! Stdune
+module Inotify_lib = Async_inotify_for_dune.Async_inotify
+
+let inotify_event_paths event =
+  match event with
+  | Async_inotify_for_dune.Async_inotify.Event.Created path
+  | Async_inotify_for_dune.Async_inotify.Event.Unlinked path
+  | Async_inotify_for_dune.Async_inotify.Event.Modified path
+  | Async_inotify_for_dune.Async_inotify.Event.Moved (Away path)
+  | Async_inotify_for_dune.Async_inotify.Event.Moved (Into path) ->
+    [ path ]
+  | Async_inotify_for_dune.Async_inotify.Event.Moved (Move (from, to_)) ->
+    [ from; to_ ]
+  | Async_inotify_for_dune.Async_inotify.Event.Queue_overflow -> []
+
+type kind =
+  | Coarse of { wait_for_watches_established : unit -> unit }
+  | Fine of { inotify : Inotify_lib.t }
 
 type t =
-  { pid : Pid.t
-  ; wait_for_watches_established : unit -> unit
+  { shutdown : [ `Kill of Pid.t | `No_op ]
+  ; kind : kind
   }
 
 module Event = struct
   type t =
     | File_changed of Path.t
+    | Inotify_event of Inotify_lib.Event.t
     | Sync
     | Watcher_terminated
 end
 
 module Scheduler = struct
   type t =
-    { thread_safe_send_events : Event.t list -> unit
-    ; spawn_thread : (unit -> unit) -> unit
+    { spawn_thread : (unit -> unit) -> unit
+    ; thread_safe_send_events : Event.t list -> unit
+    ; thread_safe_send_job : (unit -> unit) -> unit
     }
 end
 
-let pid t = t.pid
+let shutdown t = t.shutdown
 
 let buffer_capacity = 65536
 
@@ -63,7 +82,7 @@ module Buffer = struct
          List.rev !lines)
 end
 
-module Inotify = struct
+module Inotifywait = struct
   let wait_for_watches_established stderr =
     let buffer = Buffer.create ~capacity:65536 in
     let rec loop () =
@@ -90,7 +109,7 @@ let special_file_for_inotify_sync =
   let path = lazy (Path.Build.relative Path.Build.root "dune-inotify-sync") in
   fun () -> Lazy.force path
 
-let command ~root =
+let command ~root ~backend =
   let exclude_patterns =
     [ {|/_opam|}
     ; {|/_esy|}
@@ -114,13 +133,8 @@ let command ~root =
   let inotify_special_path =
     Path.Build.to_string (special_file_for_inotify_sync ())
   in
-  match
-    if Sys.linux then
-      Bin.which ~path:(Env.path Env.initial) "inotifywait"
-    else
-      None
-  with
-  | Some inotifywait ->
+  match backend with
+  | `Inotifywait inotifywait ->
     (* On Linux, use inotifywait. *)
     let excludes = String.concat ~sep:"|" exclude_patterns in
     ( inotifywait
@@ -138,48 +152,70 @@ let command ~root =
         ; [ "--format"; "e:%e:%w%f" ]
         ; [ "-m" ]
         ]
-    , Inotify.parse_message
-    , Some Inotify.wait_for_watches_established )
-  | None -> (
+    , Inotifywait.parse_message
+    , Some Inotifywait.wait_for_watches_established )
+  | `Fswatch fswatch ->
     (* On all other platforms, try to use fswatch. fswatch's event filtering is
        not reliable (at least on Linux), so don't try to use it, instead act on
        all events. *)
-    match Bin.which ~path:(Env.path Env.initial) "fswatch" with
-    | Some fswatch ->
-      let excludes =
-        List.concat_map
-          (exclude_patterns @ List.map exclude_paths ~f:(fun p -> "/" ^ p))
-          ~f:(fun x -> [ "--exclude"; x ])
-      in
-      ( fswatch
-      , [ "-r"
-        ; root
-        ; (* If [inotify_special_path] is not passed here, then the [--exclude
-             _build] makes fswatch not descend into [_build], which means it
-             never even discovers that [inotify_special_path] exists. This is
-             despite the fact that [--include] appears before. *)
-          inotify_special_path
-        ; "--event"
-        ; "Created"
-        ; "--event"
-        ; "Updated"
-        ; "--event"
-        ; "Removed"
-        ]
-        @ [ "--include"; inotify_special_path ]
-        @ excludes
-      , (fun s -> Ok s)
-      , None )
-    | None ->
-      User_error.raise
-        [ Pp.text
-            (if Sys.linux then
-              "Please install inotifywait to enable watch mode. If inotifywait \
-               is unavailable, fswatch may also be used but will result in a \
-               worse experience."
-            else
-              "Please install fswatch to enable watch mode.")
-        ])
+    let excludes =
+      List.concat_map
+        (exclude_patterns @ List.map exclude_paths ~f:(fun p -> "/" ^ p))
+        ~f:(fun x -> [ "--exclude"; x ])
+    in
+    ( fswatch
+    , [ "-r"
+      ; root
+      ; (* If [inotify_special_path] is not passed here, then the [--exclude
+           _build] makes fswatch not descend into [_build], which means it never
+           even discovers that [inotify_special_path] exists. This is despite
+           the fact that [--include] appears before. *)
+        inotify_special_path
+      ; "--event"
+      ; "Created"
+      ; "--event"
+      ; "Updated"
+      ; "--event"
+      ; "Removed"
+      ]
+      @ [ "--include"; inotify_special_path ]
+      @ excludes
+    , (fun s -> Ok s)
+    , None )
+
+let select_watcher_backend ~use_inotify_lib =
+  let try_fswatch () =
+    Option.map
+      (Bin.which ~path:(Env.path Env.initial) "fswatch")
+      ~f:(fun fswatch -> `Fswatch fswatch)
+  in
+  let try_inotifywait () =
+    Option.map
+      (Bin.which ~path:(Env.path Env.initial) "inotifywait")
+      ~f:(fun inotifywait -> `Inotifywait inotifywait)
+  in
+  let error str = User_error.raise [ Pp.text str ] in
+  match Sys.linux with
+  | false -> (
+    match try_fswatch () with
+    | Some res -> res
+    | None -> error "Please install fswatch to enable watch mode.")
+  | true -> (
+    if use_inotify_lib then
+      `Inotify_lib
+    else
+      match try_inotifywait () with
+      | Some res -> res
+      | None -> (
+        match try_fswatch () with
+        | Some res -> res
+        | None ->
+          User_error.raise
+            [ Pp.text
+                "Please install inotifywait to enable watch mode. If \
+                 inotifywait is unavailable, fswatch may also be used but will \
+                 result in a worse experience."
+            ]))
 
 let emit_sync () =
   Io.write_file (Path.build (special_file_for_inotify_sync ())) "z"
@@ -188,9 +224,9 @@ let prepare_sync () =
   Path.mkdir_p (Path.parent_exn (Path.build (special_file_for_inotify_sync ())));
   emit_sync ()
 
-let spawn_external_watcher ~root =
+let spawn_external_watcher ~root ~backend =
   prepare_sync ();
-  let prog, args, parse_line, wait_for_start = command ~root in
+  let prog, args, parse_line, wait_for_start = command ~root ~backend in
   let prog = Path.to_absolute_filename prog in
   let argv = prog :: args in
   let r_stdout, w_stdout = Unix.pipe () in
@@ -210,9 +246,28 @@ let spawn_external_watcher ~root =
   Option.iter stderr ~f:Unix.close;
   ((r_stdout, parse_line, wait), pid)
 
-let create_no_buffering ~(scheduler : Scheduler.t) ~root =
+let create_inotifylib_watcher ~(scheduler : Scheduler.t) =
   let special_file_for_inotify_sync = special_file_for_inotify_sync () in
-  let (pipe, parse_line, wait), pid = spawn_external_watcher ~root in
+  Inotify_lib.create ~spawn_thread:scheduler.spawn_thread
+    ~modify_event_selector:`Closed_writable_fd
+    ~send_job_to_scheduler:scheduler.thread_safe_send_job
+    ~emit_event:(fun event ->
+      (* this runs in the scheduler thread already, so we don't really need the
+         "thread_safe_" part, but it doesn't hurt either *)
+      let event =
+        match event with
+        | Modified path
+          when Path.equal (Path.of_string path)
+                 (Path.build special_file_for_inotify_sync) ->
+          Event.Sync
+        | event -> Inotify_event event
+      in
+      scheduler.thread_safe_send_events [ event ])
+    ~log_error:(fun error -> Console.print [ Pp.text error ])
+
+let create_no_buffering ~(scheduler : Scheduler.t) ~root ~backend =
+  let special_file_for_inotify_sync = special_file_for_inotify_sync () in
+  let (pipe, parse_line, wait), pid = spawn_external_watcher ~root ~backend in
   let worker_thread pipe =
     let buffer = Buffer.create ~capacity:buffer_capacity in
     let special_file_for_inotify_sync_absolute =
@@ -247,7 +302,9 @@ let create_no_buffering ~(scheduler : Scheduler.t) ~root =
     done
   in
   scheduler.spawn_thread (fun () -> worker_thread pipe);
-  { pid; wait_for_watches_established = wait }
+  { shutdown = `Kill pid
+  ; kind = Coarse { wait_for_watches_established = wait }
+  }
 
 let with_buffering ~create ~(scheduler : Scheduler.t) ~debounce_interval =
   let files_changed = ref [] in
@@ -290,20 +347,57 @@ let with_buffering ~create ~(scheduler : Scheduler.t) ~debounce_interval =
   scheduler.spawn_thread buffer_thread;
   res
 
-let create ~root ~debounce_interval ~scheduler =
+let create_external ~root ~debounce_interval ~scheduler ~backend =
   match debounce_interval with
-  | None -> create_no_buffering ~root ~scheduler
+  | None -> create_no_buffering ~root ~scheduler ~backend
   | Some debounce_interval ->
     with_buffering ~scheduler ~debounce_interval
       ~create:(create_no_buffering ~root)
+      ~backend
 
-let create_default =
-  create ~root:Path.root ~debounce_interval:(Some 0.5 (* seconds *))
+let create_inotifylib ~scheduler =
+  prepare_sync ();
+  let inotify = create_inotifylib_watcher ~scheduler in
+  Inotify_lib.add inotify
+    (Path.to_string (Path.build (special_file_for_inotify_sync ())));
+  { kind = Fine { inotify }; shutdown = `No_op }
 
-let wait_watches_established_blocking t = t.wait_for_watches_established ()
+let create_default ~scheduler =
+  match select_watcher_backend ~use_inotify_lib:true with
+  | (`Inotifywait _ | `Fswatch _) as backend ->
+    create_external ~scheduler ~root:Path.root
+      ~debounce_interval:(Some 0.5 (* seconds *)) ~backend
+  | `Inotify_lib -> create_inotifylib ~scheduler
+
+let create_external ~root ~debounce_interval ~scheduler =
+  match select_watcher_backend ~use_inotify_lib:false with
+  | (`Inotifywait _ | `Fswatch _) as backend ->
+    create_external ~root ~debounce_interval ~scheduler ~backend
+  | `Inotify_lib -> assert false
+
+let wait_for_initial_watches_established_blocking t =
+  match t.kind with
+  | Coarse { wait_for_watches_established } -> wait_for_watches_established ()
+  | Fine { inotify = _ } ->
+    (* no initial watches needed: all watches should be set up at the time just
+       before file access *)
+    ()
+
+let add_watch t path =
+  match t.kind with
+  | Coarse _ ->
+    (* Here we assume that the path is already being watched because the coarse
+       file watchers are expected to watch all the source files from the start *)
+    ()
+  | Fine { inotify } -> Inotify_lib.add inotify (Path.to_string path)
 
 module For_tests = struct
-  let suspend t = Unix.kill (Pid.to_int t.pid) Sys.sigstop
+  let pid t =
+    match t.shutdown with
+    | `Kill pid -> pid
+    | `No_op -> failwith "don't know how to suspend an inotifylib watcher"
 
-  let resume t = Unix.kill (Pid.to_int t.pid) Sys.sigcont
+  let suspend t = Unix.kill (Pid.to_int (pid t)) Sys.sigstop
+
+  let resume t = Unix.kill (Pid.to_int (pid t)) Sys.sigcont
 end

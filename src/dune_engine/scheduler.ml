@@ -371,8 +371,8 @@ end = struct
                     other things. *)
                  [ signal
                  ; invalidation
-                 ; jobs_completed
                  ; worker_tasks_completed
+                 ; jobs_completed
                  ; yield
                  ]))
             q

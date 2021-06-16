@@ -324,10 +324,9 @@ end = struct
           in
           match !terminated with
           | true -> Some File_system_watcher_terminated
-          | false -> (
-            match Nonempty_list.of_list events with
-            | None -> None
-            | Some events -> Some (Build_inputs_changed events)))
+          | false ->
+            Option.map (Nonempty_list.of_list events) ~f:(fun events ->
+                Build_inputs_changed events))
 
       let jobs_completed q =
         Option.map (Queue.pop q.jobs_completed) ~f:(fun (job, proc_info) ->
@@ -345,13 +344,7 @@ end = struct
             q.yield <- None;
             Yield ivar)
 
-      let rec chain list q =
-        match list with
-        | [] -> None
-        | f :: fs -> (
-          match f q with
-          | Some event -> Some event
-          | None -> chain fs q)
+      let chain list q = List.find_map list ~f:(fun f -> f q)
     end
 
     let next q =

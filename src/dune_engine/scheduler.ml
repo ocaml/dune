@@ -569,7 +569,7 @@ type status =
   | (* Waiting for the propagation of inotify events to finish before starting a
        build. *)
       Waiting_for_inotify_sync of
-      Memo.Invalidation.t * unit Fiber.Ivar.t
+      Memo.Invalidation.t * [ `Shutdown_requested | `Sync ] Fiber.Ivar.t
   | (* Running a build *)
       Building
   | (* Cancellation requested. Build jobs are immediately rejected in this state *)
@@ -790,9 +790,11 @@ end = struct
           let invalidation =
             Memo.Invalidation.combine prev_invalidation invalidation
           in
-          if have_sync then (
+          if t.status = Shutting_down then
+            Fill (ivar, `Shutdown_requested)
+          else if have_sync then (
             t.status <- Standing_by invalidation;
-            Fill (ivar, ())
+            Fill (ivar, `Sync)
           ) else (
             t.status <- Waiting_for_inotify_sync (invalidation, ivar);
             iter t
@@ -971,9 +973,10 @@ module Run = struct
   let do_inotify_sync t =
     Dune_file_watcher.emit_sync ();
     Console.print [ Pp.text "waiting for inotify sync" ];
-    let+ () = wait_for_inotify_sync t in
-    Console.print [ Pp.text "waited for inotify sync" ];
-    ()
+    let+ wait_result = wait_for_inotify_sync t in
+    match wait_result with
+    | `Sync -> Console.print [ Pp.text "waited for inotify sync" ]
+    | `Shutdown_requested -> ()
 
   module Build_outcome_for_rpc = struct
     type t =
@@ -1049,8 +1052,14 @@ let shutdown () =
   let fill_file_changes =
     match t.status with
     | Waiting_for_file_changes ivar -> Fiber.Ivar.fill ivar Shutdown_requested
+    | Waiting_for_inotify_sync (_, ivar) ->
+      Fiber.Ivar.fill ivar `Shutdown_requested
+    | Standing_by _ ->
+      Event.Queue.send_signal t.events Quit;
+      Fiber.return ()
     | _ -> Fiber.return ()
   in
+
   t.status <- Shutting_down;
   Process_watcher.killall t.process_watcher Sys.sigkill;
   fill_file_changes

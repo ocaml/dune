@@ -363,7 +363,7 @@ end = struct
             run
               (chain
                  (* Event sources are listed in priority order. Signals are the
-                    highest priority to maximise responsiveness to Ctrl+C.
+                    highest priority to maximize responsiveness to Ctrl+C.
                     [worker_tasks_completed] and [invalidation] is used for
                     reacting to user input, so their latency is also important.
                     [jobs_completed] and [yield] are where the bulk of the work

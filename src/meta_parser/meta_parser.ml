@@ -33,7 +33,7 @@ module Make (Stdune : sig
     val raise :
          ?loc:Loc.t
       -> ?hints:User_message.Style.t Pp.t list
-      -> ?annot:Annot.t
+      -> ?annots:Annot.t list
       -> User_message.Style.t Pp.t list
       -> _
   end

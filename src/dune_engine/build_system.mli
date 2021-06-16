@@ -11,7 +11,11 @@ module Error : sig
   (** Errors when building a target *)
   type t
 
-  val info : t -> User_message.t * Dep_path.Entry.t list option * Path.t option
+  val info : t -> User_message.t * User_message.t list * Path.t option
+
+  val promotion : t -> Promotion.Annot.t option
+
+  val id : t -> int
 end
 
 (** The current set of active errors *)
@@ -74,6 +78,8 @@ module Handler : sig
   type event =
     | Start  (** New build started *)
     | Finish  (** Build finished successfully *)
+    | Fail
+    | Interrupt
 
   type error =
     | Add of Error.t  (** Error encountered while building *)
@@ -89,7 +95,7 @@ end
 
 (** Initializes the build system. This must be called first. *)
 val init :
-     stats:Stats.t option
+     stats:Dune_stats.t option
   -> contexts:Build_context.t list Memo.Lazy.t
   -> promote_source:
        (   ?chmod:(int -> int)
@@ -98,9 +104,12 @@ val init :
         -> Build_context.t option
         -> unit Fiber.t)
   -> cache_config:Dune_cache.Config.t
+  -> cache_debug_flags:Cache_debug_flags.t
   -> sandboxing_preference:Sandbox_mode.t list
   -> rule_generator:(module Rule_generator)
   -> handler:Handler.t option
+  -> implicit_default_alias:
+       (Path.Build.t -> unit Action_builder.t option Memo.Build.t)
   -> unit
 
 (** {2 Primitive for rule generations} *)
@@ -130,41 +139,41 @@ val package_deps :
   -> Path.Set.t
   -> Package.Id.Set.t Memo.Build.t
 
-(** {2 Aliases} *)
-
-module Alias : sig
-  type t = Alias.t
-
-  (** Alias for all the files in [_build/install] that belong to this package *)
-  val package_install : context:Build_context.t -> pkg:Package.t -> t
-
-  (** Depend on the expansion of this alias. *)
-  val dep : t -> unit Action_builder.t
-
-  (** Implements [@@alias] on the command line *)
-  val dep_multi_contexts :
-       dir:Path.Source.t
-    -> name:Alias.Name.t
-    -> contexts:Context_name.t list
-    -> unit Action_builder.t
-
-  (** Implements [(alias_rec ...)] in dependency specification *)
-  val dep_rec : t -> loc:Loc.t -> unit Action_builder.t
-
-  (** Implements [@alias] on the command line *)
-  val dep_rec_multi_contexts :
-       dir:Path.Source.t
-    -> name:Alias.Name.t
-    -> contexts:Context_name.t list
-    -> unit Action_builder.t
-end
-
 (** {1 Requests} *)
+
+(** Build a file and return the digest of its contents *)
+val build_file : Path.t -> Digest.t Memo.Build.t
 
 (** Build a request *)
 val build : 'a Action_builder.t -> 'a Memo.Build.t
 
+(** Return [true] if a file exists or is buildable *)
+val file_exists : Path.t -> bool Memo.Build.t
+
+val alias_exists : Alias.t -> bool Memo.Build.t
+
 val is_target : Path.t -> bool Memo.Build.t
+
+val build_deps : Dep.Set.t -> Dep.Facts.t Memo.Build.t
+
+(** Execute a action. The execution is cached. *)
+val execute_action :
+     observing_facts:Dep.Facts.t
+  -> Action_builder.Action_desc.t
+  -> unit Memo.Build.t
+
+(** Execute a action and capture its output. The execution is cached. *)
+val execute_action_stdout :
+     observing_facts:Dep.Facts.t
+  -> Action_builder.Action_desc.t
+  -> string Memo.Build.t
+
+(** Return the rule that has the given file has target, if any *)
+val get_rule : Path.t -> Rule.t option Memo.Build.t
+
+(** Return the definition of an alias *)
+val get_alias_definition :
+  Alias.t -> (Loc.t * unit Action_builder.t) list Memo.Build.t
 
 (** List of all buildable targets. *)
 val all_targets : unit -> Path.Build.Set.t Memo.Build.t
@@ -173,39 +182,13 @@ val all_targets : unit -> Path.Build.Set.t Memo.Build.t
     deleted. *)
 val files_in_source_tree_to_delete : unit -> Path.Set.t
 
-(** {2 Build rules} *)
-
-module For_command_line : sig
-  (** Functions in this module duplicate some work that is done by [build] and
-      other functions, so they not suitable to be called as part of a normal
-      build. However, we need them in some part of the command line. *)
-
-  (** A fully evaluated rule. *)
-  module Rule : sig
-    type t = private
-      { id : Rule.Id.t
-      ; dir : Path.Build.t
-      ; deps : Dep.Set.t
-      ; expanded_deps : Path.Set.t
-      ; targets : Path.Build.Set.t
-      ; context : Build_context.t option
-      ; action : Action.t
-      }
-  end
-
-  (** Return the list of fully evaluated rules used to build the given targets.
-      If [recursive] is [true], also include the rules needed to build the
-      transitive dependencies of the targets. *)
-  val evaluate_rules :
-    recursive:bool -> request:unit Action_builder.t -> Rule.t list Memo.Build.t
-
-  (** Similar to [build], but doesn't build the dependencies, only expand them *)
-  val eval_build_request : 'a Action_builder.t -> ('a * Dep.Set.t) Memo.Build.t
-end
-
 (** {2 Running a build} *)
 
-val run : (unit -> 'a Memo.Build.t) -> 'a Fiber.t
+val run :
+  (unit -> 'a Memo.Build.t) -> ('a, [ `Already_reported ]) Result.t Fiber.t
+
+(** A variant of [run] that raises an [Already_reported] exception on error. *)
+val run_exn : (unit -> 'a Memo.Build.t) -> 'a Fiber.t
 
 (** {2 Misc} *)
 

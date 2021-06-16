@@ -50,14 +50,12 @@ module Event : sig
 
   type t
 
+  val kind : t -> kind
+
+  val path : t -> Path.t
+
   val create : kind:kind -> path:Path.t -> t
-end
 
-module Rebuild_required : sig
-  type t =
-    | Yes  (** The file system changed in a way that requires rebuilding. *)
-    | No  (** All file system events correspond to untracked paths. *)
+  (** Handle file system event. *)
+  val handle : t -> Memo.Invalidation.t
 end
-
-(** Handle file system events and let the caller know if a rebuild is required. *)
-val handle : Event.t Nonempty_list.t -> Rebuild_required.t

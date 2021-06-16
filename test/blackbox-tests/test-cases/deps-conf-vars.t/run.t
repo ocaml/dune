@@ -12,11 +12,9 @@ for this feature.
 
   $ dune build --root dynamic
   Entering directory 'dynamic'
-  File "dune", line 1, characters 0-43:
-  1 | (alias
-  2 |  (name default)
-  3 |  (deps %{read:foo}))
   Error: No rule found for foo
+  -> required by %{read:foo} at dune:3
+  -> required by alias default in dune:1
   [1]
 
   $ dune build --root alias-lib-file

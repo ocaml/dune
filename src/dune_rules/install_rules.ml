@@ -43,10 +43,13 @@ end = struct
     match lib.kind with
     | Normal
     | Ppx_deriver _ ->
-      []
+      Memo.Build.return []
     | Ppx_rewriter _ ->
       let name = Dune_file.Library.best_name lib in
-      [ Preprocessing.ppx_exe sctx ~scope name |> Result.ok_exn ]
+      let+ ppx_exe =
+        Resolve.read_memo_build (Preprocessing.ppx_exe sctx ~scope name)
+      in
+      [ ppx_exe ]
 
   let if_ cond l =
     if cond then
@@ -92,7 +95,7 @@ end = struct
     let loc = lib.buildable.loc in
     let ctx = Super_context.context sctx in
     let lib_config = ctx.lib_config in
-    let info = Dune_file.Library.to_lib_info lib ~dir ~lib_config in
+    let* info = Dune_file.Library.to_lib_info lib ~dir ~lib_config in
     let obj_dir = Lib_info.obj_dir info in
     let make_entry section ?sub_dir ?dst fn =
       ( Some loc
@@ -178,12 +181,12 @@ end = struct
           in
           other_cm_files)
     in
-    let+ lib_files, dll_files =
+    let* lib_files, dll_files =
       let+ lib_files = lib_files ~dir ~dir_contents ~lib_config info in
       let dll_files = dll_files ~modes ~dynlink:lib.dynlink ~ctx info in
       (lib_files, dll_files)
     in
-    let execs = lib_ppxs sctx ~scope ~lib in
+    let+ execs = lib_ppxs sctx ~scope ~lib in
     let install_c_headers =
       List.map
         ~f:(fun base ->
@@ -202,38 +205,45 @@ end = struct
       ]
 
   let keep_if expander ~scope stanza =
-    Option.some_if
-      (match (stanza : Stanza.t) with
+    let+ keep =
+      match (stanza : Stanza.t) with
       | Dune_file.Library lib ->
-        (not lib.optional)
-        || Lib.DB.available (Scope.libs scope) (Dune_file.Library.best_name lib)
-      | Dune_file.Documentation _ -> true
+        Memo.Build.return
+          ((not lib.optional)
+          || Lib.DB.available (Scope.libs scope)
+               (Dune_file.Library.best_name lib))
+      | Dune_file.Documentation _ -> Memo.Build.return true
       | Dune_file.Install { enabled_if; _ } ->
         Expander.eval_blang expander enabled_if
-      | Dune_file.Plugin _ -> true
-      | Dune_file.Executables ({ install_conf = Some _; _ } as exes) ->
-        Expander.eval_blang expander exes.enabled_if
-        && ((not exes.optional)
-           ||
-           let compile_info =
-             let dune_version =
-               Scope.project scope |> Dune_project.dune_version
-             in
-             let pps =
-               Preprocess.Per_module.pps
-                 (Preprocess.Per_module.with_instrumentation
-                    exes.buildable.preprocess
-                    ~instrumentation_backend:
-                      (Lib.DB.instrumentation_backend (Scope.libs scope)))
-             in
-             Lib.DB.resolve_user_written_deps_for_exes (Scope.libs scope)
-               exes.names exes.buildable.libraries ~pps ~dune_version
-               ~allow_overlaps:exes.buildable.allow_overlapping_dependencies
-           in
-           Result.is_ok (Lib.Compile.direct_requires compile_info))
-      | Coq_stanza.Theory.T d -> Option.is_some d.package
-      | _ -> false)
-      stanza
+      | Dune_file.Plugin _ -> Memo.Build.return true
+      | Dune_file.Executables ({ install_conf = Some _; _ } as exes) -> (
+        Expander.eval_blang expander exes.enabled_if >>= function
+        | false -> Memo.Build.return false
+        | true ->
+          if not exes.optional then
+            Memo.Build.return true
+          else
+            let+ compile_info =
+              let dune_version =
+                Scope.project scope |> Dune_project.dune_version
+              in
+              let+ pps =
+                Resolve.read_memo_build
+                  (Preprocess.Per_module.with_instrumentation
+                     exes.buildable.preprocess
+                     ~instrumentation_backend:
+                       (Lib.DB.instrumentation_backend (Scope.libs scope)))
+                >>| Preprocess.Per_module.pps
+              in
+              Lib.DB.resolve_user_written_deps_for_exes (Scope.libs scope)
+                exes.names exes.buildable.libraries ~pps ~dune_version
+                ~allow_overlaps:exes.buildable.allow_overlapping_dependencies
+            in
+            Resolve.is_ok (Lib.Compile.direct_requires compile_info))
+      | Coq_stanza.Theory.T d -> Memo.Build.return (Option.is_some d.package)
+      | _ -> Memo.Build.return false
+    in
+    Option.some_if keep stanza
 
   let is_odig_doc_file fn =
     List.exists [ "README"; "LICENSE"; "CHANGE"; "HISTORY" ] ~f:(fun prefix ->
@@ -299,8 +309,8 @@ end = struct
           let named_entries =
             let { Dir_with_dune.ctx_dir = dir; scope; _ } = d in
             let* expander = Super_context.expander sctx ~dir in
-            let stanza_and_package =
-              let stanza = keep_if expander stanza ~scope in
+            let* stanza_and_package =
+              let+ stanza = keep_if expander stanza ~scope in
               let open Option.O in
               let* stanza = stanza in
               let+ package = Dune_file.stanza_package stanza in
@@ -314,20 +324,19 @@ end = struct
                 | Dune_file.Install i
                 | Dune_file.Executables { install_conf = Some i; _ } ->
                   let path_expander =
-                    File_binding.Unexpanded.expand_static ~dir
-                      ~f:(Expander.Static.expand_str expander)
+                    File_binding.Unexpanded.expand ~dir
+                      ~f:(Expander.No_deps.expand_str expander)
                   in
                   let section = i.section in
-                  Memo.Build.return
-                    (List.map i.files ~f:(fun unexpanded ->
-                         let fb = path_expander unexpanded in
-                         let loc = File_binding.Expanded.src_loc fb in
-                         let src = File_binding.Expanded.src fb in
-                         let dst = File_binding.Expanded.dst fb in
-                         ( Some loc
-                         , Install.Entry.make_with_site section
-                             (Super_context.get_site_of_packages sctx)
-                             src ?dst )))
+                  Memo.Build.List.map i.files ~f:(fun unexpanded ->
+                      let+ fb = path_expander unexpanded in
+                      let loc = File_binding.Expanded.src_loc fb in
+                      let src = File_binding.Expanded.src fb in
+                      let dst = File_binding.Expanded.dst fb in
+                      ( Some loc
+                      , Install.Entry.make_with_site section
+                          (Super_context.get_site_of_packages sctx)
+                          src ?dst ))
                 | Dune_file.Library lib ->
                   let sub_dir = Dune_file.Library.sub_dir lib in
                   let* dir_contents = Dir_contents.get sctx ~dir in
@@ -464,13 +473,9 @@ end = struct
               Lib.to_dune_lib lib
                 ~dir:(Path.build (lib_root lib))
                 ~modules ~foreign_objects
+              >>= Resolve.read_memo_build
             in
-            Some
-              ( name
-              , Dune_package.Entry.Library
-                  (* XXX Raising here is not great. Loading the install rules
-                     will now break rules everywhere else *)
-                  (Result.ok_exn sub_systems) ))
+            Some (name, Dune_package.Entry.Library sub_systems))
     in
     let entries =
       List.fold_left entries ~init:Lib_name.Map.empty ~f:(fun acc x ->
@@ -632,9 +637,10 @@ end = struct
     let* () =
       Super_context.add_rule sctx ~dir:ctx.build_dir
         (let open Action_builder.O in
-        (let+ template = template in
-         let meta =
-           Gen_meta.gen ~package:pkg ~add_directory_entry:true entries
+        (let* template = template in
+         let+ meta =
+           Action_builder.memo_build
+             (Gen_meta.gen ~package:pkg ~add_directory_entry:true entries)
          in
          let pp =
            Pp.vbox
@@ -658,20 +664,22 @@ end = struct
       ~f:(fun name _loc ->
         let meta = Package_paths.deprecated_meta_file ctx pkg name in
         Super_context.add_rule sctx ~dir:ctx.build_dir
-          ((let meta =
-              let entries =
-                match Package.Name.Map.find deprecated_packages name with
-                | None -> []
-                | Some entries -> entries
-              in
-              Gen_meta.gen ~package:pkg entries ~add_directory_entry:false
-            in
-            let pp =
-              let open Pp.O in
-              Pp.vbox (Meta.pp meta.entries ++ Pp.cut)
-            in
-            Format.asprintf "%a" Pp.to_fmt pp)
-          |> Action_builder.write_file meta))
+          (Action_builder.write_file_dyn meta
+             (let open Action_builder.O in
+             let+ meta =
+               let entries =
+                 match Package.Name.Map.find deprecated_packages name with
+                 | None -> []
+                 | Some entries -> entries
+               in
+               Action_builder.memo_build
+                 (Gen_meta.gen ~package:pkg entries ~add_directory_entry:false)
+             in
+             let pp =
+               let open Pp.O in
+               Pp.vbox (Meta.pp meta.entries ++ Pp.cut)
+             in
+             Format.asprintf "%a" Pp.to_fmt pp)))
 
   let meta_and_dune_package_rules_impl (project, sctx) =
     Dune_project.packages project
@@ -821,9 +829,7 @@ let install_rules sctx (package : Package.t) =
   in
   let* () =
     let context = Context.build_context ctx in
-    let target_alias =
-      Build_system.Alias.package_install ~context ~pkg:package
-    in
+    let target_alias = Alias.package_install ~context ~pkg:package in
     let open Action_builder.O in
     Rules.Produce.Alias.add_deps target_alias
       (Action_builder.dyn_deps
@@ -838,8 +844,7 @@ let install_rules sctx (package : Package.t) =
                        (Super_context.packages sctx)
                        name
                    in
-                   Build_system.Alias.package_install ~context ~pkg |> Dep.alias)
-          )))
+                   Alias.package_install ~context ~pkg |> Dep.alias) )))
   in
   let action =
     let install_file =

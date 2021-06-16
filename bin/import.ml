@@ -32,14 +32,20 @@ include Common.Let_syntax
 
 let in_group (t, info) = (Term.Group.Term t, info)
 
-module Main = struct
+module Main : sig
+  include module type of struct
+    include Dune_rules.Main
+  end
+
+  val setup : unit -> build_system Fiber.t
+end = struct
   include Dune_rules.Main
 
   let setup () =
     let open Fiber.O in
     let* setup = Memo.Build.run (get ()) in
     let* scheduler = Scheduler.t () in
-    Console.Status_line.set (fun () ->
+    Console.Status_line.set_live (fun () ->
         let progression = Build_system.get_current_progress () in
         Some
           (Pp.verbatim
@@ -76,47 +82,37 @@ module Scheduler = struct
              (Pp.tag User_message.Style.Error (Pp.verbatim "Had errors"))
              (Pp.verbatim ", killing current build..."))
       in
-      Console.Status_line.set (Fun.const status_line)
-    | Build_finish res ->
+      Console.Status_line.set_constant status_line
+    | Build_finish build_result ->
       let message =
-        match res with
+        match build_result with
         | Success -> Pp.tag User_message.Style.Success (Pp.verbatim "Success")
         | Failure -> Pp.tag User_message.Style.Error (Pp.verbatim "Had errors")
       in
-      Console.Status_line.set
-        (Fun.const
-           (Some
-              (Pp.seq message
-                 (Pp.verbatim ", waiting for filesystem changes..."))))
+      Console.Status_line.set_constant
+        (Some
+           (Pp.seq message (Pp.verbatim ", waiting for filesystem changes...")))
 
   let go ~(common : Common.t) ~config:dune_config f =
     let stats = Common.stats common in
     let config = Dune_config.for_scheduler dune_config None stats in
     Scheduler.Run.go config ~on_event:(on_event dune_config) f
 
-  let poll ~(common : Common.t) ~config:dune_config ~every ~finally =
+  let go_with_rpc_server_and_console_status_reporting ~(common : Common.t)
+      ~config:dune_config run =
     let stats = Common.stats common in
     let rpc_where = Some (Dune_rpc_private.Where.default ()) in
     let config = Dune_config.for_scheduler dune_config rpc_where stats in
     let file_watcher = Common.file_watcher common in
     let run =
-      let run () =
-        Scheduler.Run.poll (fun () ->
-            Fiber.finalize every ~finally:(fun () -> Fiber.return (finally ())))
-      in
       match Common.rpc common with
       | None -> run
       | Some rpc ->
         fun () ->
           Fiber.fork_and_join_unit
             (fun () ->
-              let open Fiber.O in
               let rpc_config = Dune_rpc_impl.Server.config rpc in
-              let* scheduler = Scheduler.csexp_scheduler () in
-              let rpc =
-                Dune_rpc_impl.Run.of_config rpc_config scheduler config.stats
-              in
-              Dune_rpc_impl.Run.run rpc)
+              Dune_rpc_impl.Run.run rpc_config config.stats)
             run
     in
     Scheduler.Run.go config ~file_watcher ~on_event:(on_event dune_config) run

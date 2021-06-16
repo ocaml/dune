@@ -1,0 +1,8 @@
+% Run Pandoc with -H header.tex to apply these changes
+
+\definecolor{inline_code_colour}{HTML}{000080}
+
+\let\oldtexttt\texttt
+\renewcommand{\texttt}[1]{\textcolor{inline_code_colour}{\oldtexttt{#1}}}
+
+\urlstyle{sf}

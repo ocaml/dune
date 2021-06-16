@@ -33,7 +33,7 @@ let term =
   Scheduler.go ~common ~config (fun () ->
       let open Fiber.O in
       let* setup = Import.Main.setup () in
-      Build_system.run (fun () ->
+      Build_system.run_exn (fun () ->
           let open Memo.Build.O in
           let sctx =
             Dune_engine.Context_name.Map.find setup.scontexts ctx_name
@@ -48,17 +48,15 @@ let term =
           let* libs =
             Dune_rules.Utop.libs_under_dir sctx ~db ~dir:(Path.build dir)
           in
-          let requires =
-            Dune_rules.Lib.closure ~linking:true libs |> Result.ok_exn
+          let* requires =
+            Dune_rules.Resolve.read_memo_build
+              (Dune_rules.Lib.closure ~linking:true libs)
           in
           let include_paths =
             Dune_rules.Lib.L.toplevel_include_paths requires
           in
           let* files = link_deps requires in
-          let* () =
-            Build_system.build
-              (Target.request (List.map files ~f:(fun f -> Target.File f)))
-          in
+          let* () = Build_system.build (Action_builder.paths files) in
           let files_to_load =
             List.filter files ~f:(fun p ->
                 let ext = Path.extension p in

@@ -71,3 +71,59 @@ You can set MDX preludes using the preludes field of the stanza
 
   $ dune runtest --root preludes
   Entering directory 'preludes'
+
+The mdx stanza supports (enabled_if):
+
+  $ dune runtest --root enabled-if
+  Entering directory 'enabled-if'
+  File "iftrue.md", line 1, characters 0-0:
+  Error: Files _build/default/iftrue.md and
+  _build/default/.mdx/iftrue.md.corrected differ.
+  [1]
+
+(enabled_if) needs a recent (lang dune):
+
+  $ dune runtest --root enabled-if-old-lang-dune
+  Entering directory 'enabled-if-old-lang-dune'
+  File "dune", line 2, characters 1-18:
+  2 |  (enabled_if true))
+       ^^^^^^^^^^^^^^^^^
+  Error: 'enabled_if' is only available since version 2.9 of the dune language.
+  Please update your dune-project file to have (lang dune 2.9).
+  [1]
+
+The mdx stanza supports (package):
+
+  $ dune runtest --root package
+  Entering directory 'package'
+  File "doc-a.md", line 1, characters 0-0:
+  Error: Files _build/default/doc-a.md and
+  _build/default/.mdx/doc-a.md.corrected differ.
+  File "doc-b.md", line 1, characters 0-0:
+  Error: Files _build/default/doc-b.md and
+  _build/default/.mdx/doc-b.md.corrected differ.
+  File "doc-nopkg.md", line 1, characters 0-0:
+  Error: Files _build/default/doc-nopkg.md and
+  _build/default/.mdx/doc-nopkg.md.corrected differ.
+  [1]
+
+  $ dune runtest --root package --only-packages b
+  Entering directory 'package'
+  File "doc-b.md", line 1, characters 0-0:
+  Error: Files _build/default/doc-b.md and
+  _build/default/.mdx/doc-b.md.corrected differ.
+  File "doc-nopkg.md", line 1, characters 0-0:
+  Error: Files _build/default/doc-nopkg.md and
+  _build/default/.mdx/doc-nopkg.md.corrected differ.
+  [1]
+
+(package) needs a recent (lang dune):
+
+  $ dune runtest --root package-old-lang-dune --only-packages b
+  Entering directory 'package-old-lang-dune'
+  File "dune", line 3, characters 1-12:
+  3 |  (package a))
+       ^^^^^^^^^^^
+  Error: 'package' is only available since version 2.9 of the dune language.
+  Please update your dune-project file to have (lang dune 2.9).
+  [1]

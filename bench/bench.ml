@@ -4,7 +4,7 @@ module Config = Dune_util.Config
 
 module Json = struct
   include Chrome_trace.Json
-  include Stats.Json
+  include Dune_stats.Json
 end
 
 module Output = struct
@@ -53,12 +53,7 @@ let git =
      in
      Bin.which ~path "git" |> Option.value_exn)
 
-let dune =
-  lazy
-    (let path =
-       Env.get Env.initial "PATH" |> Option.value_exn |> Bin.parse_path
-     in
-     Bin.which ~path "dune" |> Option.value_exn)
+let dune = Path.of_string (Filename.concat Fpath.initial_cwd Sys.argv.(1))
 
 module Package = struct
   type t =
@@ -71,8 +66,8 @@ module Package = struct
   let make org name = { org; name }
 
   let clone t =
-    let stdout_to = Process.Io.(file Config.dev_null Out) in
-    let stderr_to = Process.Io.(file Config.dev_null Out) in
+    let stdout_to = Process.Io.make_stdout Swallow in
+    let stderr_to = Process.Io.make_stderr Swallow in
     let stdin_from = Process.Io.(null In) in
     Process.run Strict ~stdout_to ~stderr_to ~stdin_from (Lazy.force git)
       [ "clone"; uri t ]
@@ -90,11 +85,11 @@ let prepare_workspace () =
 
 let dune_build () =
   let stdin_from = Process.(Io.null In) in
-  let stdout_to = Process.(Io.file Config.dev_null Out) in
-  let stderr_to = Process.(Io.file Config.dev_null Out) in
+  let stdout_to = Process.Io.make_stdout Swallow in
+  let stderr_to = Process.Io.make_stderr Swallow in
   let open Fiber.O in
   let+ times =
-    Process.run_with_times (Lazy.force dune) ~stdin_from ~stdout_to ~stderr_to
+    Process.run_with_times dune ~stdin_from ~stdout_to ~stderr_to
       [ "build"; "@install"; "--root"; "." ]
   in
   times.elapsed_time
@@ -117,12 +112,12 @@ let run_bench () =
 
 let () =
   Dune_util.Log.init ~file:No_log_file ();
-  let dir = Temp.create Dir ~prefix:"dune." ~suffix:".bench" in
+  let dir = Temp.create Dir ~prefix:"dune" ~suffix:"bench" in
   Sys.chdir (Path.to_string dir);
   let module Scheduler = Dune_engine.Scheduler in
   let config =
     { Scheduler.Config.concurrency = 10
-    ; display = Quiet
+    ; display = { verbosity = Quiet; status_line = false }
     ; rpc = None
     ; stats = None
     }
@@ -137,7 +132,7 @@ let () =
   in
   let zero = List.map zero ~f:(fun t -> `Float t) in
   let size =
-    let stat : Unix.stats = Path.stat_exn (Lazy.force dune) in
+    let stat : Unix.stats = Path.stat_exn dune in
     stat.st_size
   in
   let results =

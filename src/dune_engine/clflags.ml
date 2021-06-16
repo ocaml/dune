@@ -4,9 +4,9 @@ module Promote = struct
     | Never
 end
 
-let debug_findlib = ref false
+let report_errors_config = ref Report_errors_config.default
 
-let debug_dep_path = ref false
+let debug_findlib = ref false
 
 let debug_artifact_substitution = ref false
 
@@ -18,7 +18,7 @@ let capture_outputs = ref true
 
 let debug_backtraces b =
   Dune_util.Report_error.report_backtraces b;
-  Memo.track_locations_of_lazy_values := b
+  Memo.Debug.track_locations_of_lazy_values := b
 
 let diff_command = ref None
 
@@ -26,7 +26,7 @@ let promote = ref None
 
 let force = ref false
 
-let watch = ref false
+let watch = ref Watch_mode_config.No
 
 let no_print_directory = ref false
 

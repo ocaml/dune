@@ -118,14 +118,12 @@ module Processed = struct
     Path.Set.iter src_dirs ~f:(fun p -> printf "S %s\n" (serialize_path p));
     List.iter extensions ~f:(fun { Ml_kind.Dict.impl; intf } ->
         printf "SUFFIX %s" (Printf.sprintf "%s %s" impl intf));
-
     (* We print all FLG directives as comments *)
     List.iter pp_configs
       ~f:
         (Module_name.Per_item.fold ~init:() ~f:(fun pp () ->
              Option.iter pp ~f:(fun { flag; args } ->
                  printf "# FLG %s\n" (flag ^ " " ^ quote_for_dot_merlin args))));
-
     List.iter flags ~f:(fun flags ->
         match flags with
         | [] -> ()
@@ -222,15 +220,15 @@ module Unprocessed = struct
     ; modules : Modules.t
     }
 
-  let make ?(requires = Ok []) ~stdlib_dir ~flags
+  let make ?(requires = Resolve.return []) ~stdlib_dir ~flags
       ?(preprocess = Preprocess.Per_module.no_preprocessing ()) ?libname
       ?(source_dirs = Path.Source.Set.empty) ~modules ~obj_dir ~dialects ~ident
       () =
     (* Merlin shouldn't cause the build to fail, so we just ignore errors *)
     let requires =
-      match requires with
+      match Resolve.peek requires with
       | Ok l -> Lib.Set.of_list l
-      | Error _ -> Lib.Set.empty
+      | Error () -> Lib.Set.empty
     in
     let objs_dirs =
       Obj_dir.byte_dir obj_dir |> Path.build |> Path.Set.singleton
@@ -248,7 +246,7 @@ module Unprocessed = struct
     let config =
       { stdlib_dir
       ; requires
-      ; flags = Action_builder.catch flags ~on_error:[]
+      ; flags
       ; preprocess
       ; libname
       ; source_dirs
@@ -312,19 +310,18 @@ module Unprocessed = struct
     | Action (loc, (action : Action_dune_lang.t)) ->
       pp_flag_of_action ~expander ~loc ~action
     | No_preprocessing -> Action_builder.return None
-    | Pps { loc; pps; flags; staged = _ } -> (
-      match
+    | Pps { loc; pps; flags; staged = _ } ->
+      let open Action_builder.O in
+      let* exe, flags =
         Preprocessing.get_ppx_driver sctx ~loc ~expander ~lib_name:libname
           ~flags ~scope pps
-      with
-      | Error _exn -> Action_builder.return None
-      | Ok (exe, flags) ->
-        let args =
-          Path.to_absolute_filename (Path.build exe) :: "--as-ppx" :: flags
-          |> List.map ~f:quote_if_needed
-          |> String.concat ~sep:" "
-        in
-        Action_builder.return (Some Processed.{ flag = "-ppx"; args }))
+      in
+      let args =
+        Path.to_absolute_filename (Path.build exe) :: "--as-ppx" :: flags
+        |> List.map ~f:quote_if_needed
+        |> String.concat ~sep:" "
+      in
+      Action_builder.return (Some Processed.{ flag = "-ppx"; args })
 
   let process
       { modules
@@ -378,12 +375,10 @@ end
 let dot_merlin sctx ~dir ~more_src_dirs ~expander (t : Unprocessed.t) =
   let open Memo.Build.O in
   let merlin_file = Merlin_ident.merlin_file_path dir t.ident in
-
   let* () =
     Path.Set.singleton (Path.build merlin_file)
     |> Rules.Produce.Alias.add_static_deps (Alias.check ~dir)
   in
-
   let merlin = Unprocessed.process t sctx ~more_src_dirs ~expander in
   let action =
     Action_builder.With_targets.write_file_dyn merlin_file

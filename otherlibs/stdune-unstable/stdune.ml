@@ -6,7 +6,6 @@ module Bytes = Bytes
 module Char = Char
 module Comparator = Comparator
 module Console = Console
-module Daemonize = Daemonize
 module Either = Either
 module Exn = Exn
 module Exn_with_backtrace = Exn_with_backtrace
@@ -55,6 +54,7 @@ module Tuple = Tuple
 module Poly = Poly
 module Code_error = Code_error
 module User_error = User_error
+module Unix_error = Unix_error
 module User_message = User_message
 module User_warning = User_warning
 module Lexbuf = Lexbuf
@@ -68,6 +68,7 @@ module Seq = Seq
 module Temp = Temp
 module Queue = Queue
 module Caller_id = Caller_id
+module Metrics = Metrics
 
 module type Applicative = Applicative_intf.S
 

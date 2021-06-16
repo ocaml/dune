@@ -2,6 +2,29 @@ open Import
 
 let staging_area = Path.Build.relative Path.Build.root ".promotion-staging"
 
+module Promote_annot = struct
+  type payload =
+    { in_source : Path.Source.t
+    ; in_build : Path.Build.t
+    }
+
+  let to_dyn { in_source; in_build } =
+    let open Dyn.Encoder in
+    record
+      [ ("in_source", Path.Source.to_dyn in_source)
+      ; ("in_build", Path.Build.to_dyn in_build)
+      ]
+end
+
+module Annot = struct
+  type t = Promote_annot.payload =
+    { in_source : Path.Source.t
+    ; in_build : Path.Build.t
+    }
+
+  include User_error.Annot.Make (Promote_annot)
+end
+
 module File = struct
   type t =
     { src : Path.Build.t
@@ -38,6 +61,13 @@ module File = struct
     let src = snd (Path.Build.split_sandbox_root correction_file) in
     db := { src; staging = Some staging; dst = source_file } :: !db
 
+  let do_promote ~correction_file ~dst =
+    Path.unlink_no_err (Path.source dst);
+    let chmod perms = perms lor 0o200 in
+    Io.copy_file ~chmod
+      ~src:(Path.build correction_file)
+      ~dst:(Path.source dst) ()
+
   let promote { src; staging; dst } =
     let correction_file = Option.value staging ~default:src in
     let correction_exists =
@@ -59,11 +89,7 @@ module File = struct
                 Format.sprintf "staging file (%s)"
                   (Path.to_string_maybe_quoted (Path.build staging))))
       ];
-    if correction_exists then
-      let chmod perms = perms lor 0o200 in
-      Io.copy_file ~chmod
-        ~src:(Path.build correction_file)
-        ~dst:(Path.source dst) ()
+    if correction_exists then do_promote ~correction_file ~dst
 end
 
 let clear_cache () = File.db := []

@@ -41,10 +41,10 @@ help:
 	@cat doc/make-help.txt
 
 release: $(BIN)
-	$(BIN) build -p dune --profile dune-bootstrap
+	@$(BIN) build -p dune --profile dune-bootstrap
 
 dune.exe: bootstrap.ml boot/libs.ml boot/duneboot.ml
-	ocaml bootstrap.ml
+	@ocaml bootstrap.ml
 
 dev: $(BIN)
 	$(BIN) build @install
@@ -125,8 +125,8 @@ ifeq (dune,$(firstword $(MAKECMDGOALS)))
 endif
 
 .PHONY: bench
-bench:
-	@dune exec -- ./bench/bench.exe 2> /dev/null
+bench: release
+	@dune exec -- ./bench/bench.exe _build/default/dune.exe   2> /dev/null
 
 dune: $(BIN)
 	$(BIN) $(RUN_ARGS)
@@ -146,3 +146,8 @@ dune-release:
 	DUNE_RELEASE_DELEGATE=github-dune-release-delegate dune-release publish distrib --verbose -n dune
 	dune-release opam pkg -n dune
 	dune-release opam submit -n dune
+
+# see nix/default.nix for details
+.PHONY: nix/opam-selection.nix
+nix/opam-selection.nix: Makefile
+	nix-shell -A resolve default.nix

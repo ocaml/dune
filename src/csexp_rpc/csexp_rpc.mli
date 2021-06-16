@@ -15,28 +15,16 @@
 
 open Stdune
 
-module Scheduler : sig
-  (** Hook into the fiber scheduler. *)
-  type t =
-    { create_thread_safe_ivar : 'a. unit -> 'a Fiber.Ivar.t * ('a -> unit)
-          (** Create a thread safe Ivar. The returned function must be called
-              from a separate thread in order to fill the ivar. *)
-    ; spawn_thread : (unit -> unit) -> unit
-          (** We spawn threads through this function in case the scheduler wants
-              to block signals *)
-    }
-end
-
 module Session : sig
   (** Rpc session backed by two threads. One thread for reading, and another for
       writing *)
   type t
 
-  val create : in_channel -> out_channel -> Scheduler.t -> t
+  val create : socket:bool -> in_channel -> out_channel -> t Fiber.t
 
   (* [write t x] writes the s-expression when [x] is [Some sexp], and closes the
      session if [x = None ] *)
-  val write : t -> Sexp.t option -> unit Fiber.t
+  val write : t -> Sexp.t list option -> unit Fiber.t
 
   (** If [read] returns [None], the session is closed and all subsequent reads
       will return [None] *)
@@ -47,18 +35,20 @@ module Client : sig
   (** RPC Client *)
   type t
 
-  val create : Unix.sockaddr -> Scheduler.t -> t
+  val create : Unix.sockaddr -> t Fiber.t
 
   val stop : t -> unit
 
-  val connect : t -> Session.t Fiber.t
+  val connect_exn : t -> Session.t Fiber.t
+
+  val connect : t -> (Session.t, Exn_with_backtrace.t) result Fiber.t
 end
 
 module Server : sig
   (** RPC Server *)
   type t
 
-  val create : Unix.sockaddr -> backlog:int -> Scheduler.t -> t
+  val create : Unix.sockaddr -> backlog:int -> t
 
   val stop : t -> unit
 

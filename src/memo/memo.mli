@@ -1,12 +1,5 @@
 open! Stdune
 
-(* CR-someday amokhov: The current implementation memoizes all errors, which may
-   be inconvenient in rare cases, e.g. if a build action fails due to a spurious
-   error, such as running out of memory. Right now, the only way to force such
-   actions to be rebuilt is to restart Dune, which clears all memoized errors.
-   In future, we would like to provide a way to rerun all actions failed due to
-   errors without restarting the build, e.g. via a Dune RPC call. *)
-
 type 'a build
 
 module type Build = sig
@@ -14,6 +7,8 @@ module type Build = sig
 
   module List : sig
     val map : 'a list -> f:('a -> 'b t) -> 'b list t
+
+    val concat_map : 'a list -> f:('a -> 'b list t) -> 'b list t
   end
 
   val memo_build : 'a build -> 'a t
@@ -25,7 +20,31 @@ module Build : sig
 
   include Build with type 'a t = 'a build
 
+  (* CR-someday amokhov: Return the set of exceptions explicitly. *)
   val run : 'a t -> 'a Fiber.t
+
+  (** Every error gets reported twice: once early, in non-deterministic order,
+      by calling [handler_error], and once later, in deterministic order, by
+      raising a fiber exception.
+
+      [handle_error_no_raise] must not raise exceptions, otherwise internal memo
+      invariants get messed up and you get confusing errors like "Attempted to
+      create a cached value based on some stale inputs".
+
+      Nested calls of [run_with_error_handler] are not allowed.
+
+      If multiple calls to [run_with_error_handler] happen concurrently
+      (possibly with different error handlers), then each handler will correctly
+      receive all errors it would be expected to receive if run independently.
+      However, each error will only be sent "early" to one of the handlers,
+      while the other handler will get this error delayed. If this limitation
+      becomes problematic, it may be possible to lift it by eagerly bubbling up
+      each error through individual dependency edges instead of sending errors
+      directly to the handler in scope. *)
+  val run_with_error_handler :
+       'a t
+    -> handle_error_no_raise:(Exn_with_backtrace.t -> unit Fiber.t)
+    -> 'a Fiber.t
 
   (** [of_reproducible_fiber fiber] injects a fiber into the build monad. The
       given fiber must be "reproducible", i.e. executing it multiple times
@@ -41,7 +60,18 @@ module Build : sig
 
   val return : 'a -> 'a t
 
+  (** Combine results of two computations executed in sequence. *)
   val both : 'a t -> 'b t -> ('a * 'b) t
+
+  (** Combine results of two computations executed in parallel. Note that this
+      function combines both successes and errors: if one of the computations
+      fails, we let the other one run to completion, to give it a chance to
+      raise its errors too. Regardless of the outcome (success or failure), the
+      result will collect dependencies from both of the computations. All other
+      parallel execution combinators have the same error/dependencies semantics. *)
+  val fork_and_join : (unit -> 'a t) -> (unit -> 'b t) -> ('a * 'b) t
+
+  val fork_and_join_unit : (unit -> unit t) -> (unit -> 'a t) -> 'a t
 
   (** This uses a sequential implementation. We use the short name to conform
       with the [Applicative] interface. See [all_concurrently] for the version
@@ -55,10 +85,6 @@ module Build : sig
   val sequential_map : 'a list -> f:('a -> 'b t) -> 'b list t
 
   val sequential_iter : 'a list -> f:('a -> unit t) -> unit t
-
-  val fork_and_join : (unit -> 'a t) -> (unit -> 'b t) -> ('a * 'b) t
-
-  val fork_and_join_unit : (unit -> unit t) -> (unit -> 'a t) -> 'a t
 
   val parallel_map : 'a list -> f:('a -> 'b t) -> 'b list t
 
@@ -76,25 +102,6 @@ module Build : sig
     val parallel_map : 'a Map.t -> f:(Map.key -> 'a -> 'b t) -> 'b Map.t t
   end
   [@@inline always]
-
-  (** The bellow functions will eventually disappear and are only exported for
-      the transition to the memo monad *)
-
-  val with_error_handler :
-    (unit -> 'a t) -> on_error:(Exn_with_backtrace.t -> unit t) -> 'a t
-
-  val map_reduce_errors :
-       (module Monoid with type t = 'a)
-    -> on_error:(Exn_with_backtrace.t -> 'a t)
-    -> (unit -> 'b t)
-    -> ('b, 'a) result t
-
-  val collect_errors :
-    (unit -> 'a t) -> ('a, Exn_with_backtrace.t list) Result.t t
-
-  val finalize : (unit -> 'a t) -> finally:(unit -> unit t) -> 'a t
-
-  val reraise_all : Exn_with_backtrace.t list -> 'a t
 
   module Option : sig
     val iter : 'a option -> f:('a -> unit t) -> unit t
@@ -126,6 +133,22 @@ module Stack_frame : sig
   (** Checks if the stack frame is a frame of the given memoized function and if
       so, returns [Some i] where [i] is the argument of the function. *)
   val as_instance_of : t -> of_:('input, _) memo -> 'input option
+
+  val human_readable_description : t -> User_message.Style.t Pp.t option
+end
+
+(** Errors raised by user-supplied memoized functions that have been augmented
+    with Memo call stack information. *)
+module Error : sig
+  type t
+
+  exception E of t
+
+  (** Get the underlying exception.*)
+  val get : t -> exn
+
+  (** Return the stack leading to the node which raised the exception.*)
+  val stack : t -> Stack_frame.t list
 end
 
 module Cycle_error : sig
@@ -135,28 +158,53 @@ module Cycle_error : sig
 
   (** Get the list of stack frames in this cycle. *)
   val get : t -> Stack_frame.t list
+end
 
-  (** Return the stack leading to the node which raised the cycle. *)
-  val stack : t -> Stack_frame.t list
+(* CR-someday amokhov: The current implementation memoizes all errors that are
+   not wrapped into [Non_reproducible], which may be inconvenient in some cases,
+   e.g. if a build action fails due to a spurious error, such as running out of
+   memory. Right now, the only way to force such actions to be rebuilt is to
+   restart Dune, which clears all memoized errors. In future, we would like to
+   provide a way to rerun all failed actions without restarting the build, e.g.
+   via a Dune RPC call. *)
+
+(** Mark an exception as non-reproducible to indicate that it shouldn't be
+    cached. *)
+exception Non_reproducible of exn
+
+(** [Invalidation] describes a set of nodes to be invalidated between
+    memoization runs. These sets can be combined into larger sets to then be
+    passed to [reset]. *)
+module Invalidation : sig
+  type ('input, 'output) memo = ('input, 'output) t
+
+  type t
+
+  val empty : t
+
+  val combine : t -> t -> t
+
+  val is_empty : t -> bool
+
+  (** Clear all memoization tables. We use it if the incremental mode is not
+      enabled. *)
+  val clear_caches : t
+
+  (** Invalidate all computations stored in a given [memo] table. *)
+  val invalidate_cache : _ memo -> t
+
+  val to_dyn : t -> Dyn.t
 end
 
 (** Notify the memoization system that the build system has restarted. This
-    removes the values that depend on the [current_run] from the memoization
-    cache, and cancels all pending computations. *)
-val reset : unit -> unit
-
-(** Notify the memoization system that the build system has restarted but do not
-    clear the memoization cache. *)
-val restart_current_run : unit -> unit
+    removes the values specified by [Invalidation.t] from the memoization cache,
+    and advances the current run. *)
+val reset : Invalidation.t -> unit
 
 (** Returns [true] if the user enabled the incremental mode via the environment
     variable [DUNE_WATCHING_MODE_INCREMENTAL], and we should therefore assume
     that the build system tracks all relevant side effects in the [Build] monad. *)
-val incremental_mode_enabled : bool
-
-(** Forget all memoized values, forcing them to be recomputed on the next build
-    run. Intended for use by the testsuite. *)
-val clear_memoization_caches : unit -> unit
+val incremental_mode_enabled : bool ref
 
 module type Input = sig
   type t
@@ -183,19 +231,10 @@ module Store : sig
     val set : 'a t -> key -> 'a -> unit
 
     val find : 'a t -> key -> 'a option
+
+    val iter : 'a t -> f:('a -> unit) -> unit
   end
 end
-
-(** Like [create] but accepts a custom [store] for memoization. This is useful
-    when there is a custom data structure indexed by keys of type ['i] that is
-    more efficient than the one that Memo uses by default (a plain hash table). *)
-val create_with_store :
-     string
-  -> store:(module Store.S with type key = 'i)
-  -> input:(module Store.Input with type t = 'i)
-  -> ?cutoff:('o -> 'o -> bool)
-  -> ('i -> 'o Fiber.t)
-  -> ('i, 'o) t
 
 (** [create name ~input ?cutoff f] creates a memoized version of the function
     [f : 'i -> 'o Build.t]. The result of [f] for a given input is cached, so
@@ -209,8 +248,12 @@ val create_with_store :
     If the caller provides the [cutoff] equality check, we will use it to check
     if the function's output is the same as cached in the previous computation.
     If it's the same, we will be able to skip recomputing the functions that
-    depend on it. Note that currently Dune wipes all memoization caches on every
-    run, so this early cutoff optimisation is not effective.
+    depend on it. Note: by default Dune wipes all memoization caches on every
+    run, so this early cutoff optimisation is not effective. To override default
+    behaviour, run Dune with the flag [DUNE_WATCHING_MODE_INCREMENTAL=true].
+
+    If [human_readable_description] is passed, it will be used when displaying
+    the memo stack to the user.
 
     Running the computation may raise [Memo.Cycle_error.E] if a dependency cycle
     is detected. *)
@@ -218,18 +261,24 @@ val create :
      string
   -> input:(module Input with type t = 'i)
   -> ?cutoff:('o -> 'o -> bool)
+  -> ?human_readable_description:('i -> User_message.Style.t Pp.t)
   -> ('i -> 'o Build.t)
   -> ('i, 'o) t
 
-(** Execute a memoized function *)
+(** Like [create] but accepts a custom [store] for memoization. This is useful
+    when there is a custom data structure indexed by keys of type ['i] that is
+    more efficient than the one that Memo uses by default (a plain hash table). *)
+val create_with_store :
+     string
+  -> store:(module Store.S with type key = 'i)
+  -> input:(module Store.Input with type t = 'i)
+  -> ?cutoff:('o -> 'o -> bool)
+  -> ?human_readable_description:('i -> User_message.Style.t Pp.t)
+  -> ('i -> 'o Build.t)
+  -> ('i, 'o) t
+
+(** Execute a memoized function. *)
 val exec : ('i, 'o) t -> 'i -> 'o Build.t
-
-(** After running a memoization function with a given name and input, it is
-    possible to query which dependencies that function used during execution by
-    calling [get_deps] with the name and input used during execution.
-
-    Returns [None] if the dependencies were not computed yet. *)
-val get_deps : ('i, _) t -> 'i -> (string option * Dyn.t) list option
 
 (** Print the memoized call stack during execution. This is useful for debugging
     purposes. *)
@@ -240,9 +289,22 @@ val pp_stack : unit -> _ Pp.t Fiber.t
 (** Get the memoized call stack during the execution of a memoized function. *)
 val get_call_stack : unit -> Stack_frame.t list Build.t
 
+(** Insert a stack frame to make call stacks more precise when showing them to
+    the user. *)
+val push_stack_frame :
+     human_readable_description:(unit -> User_message.Style.t Pp.t)
+  -> (unit -> 'a Build.t)
+  -> 'a Build.t
+
 module Run : sig
   (** A single build run. *)
   type t
+
+  module For_tests : sig
+    val compare : t -> t -> Ordering.t
+
+    val current : unit -> t
+  end
 end
 
 (** Introduces a dependency on the current build run. *)
@@ -253,14 +315,24 @@ module Lazy : sig
 
   val of_val : 'a -> 'a t
 
-  val create : ?cutoff:('a -> 'a -> bool) -> (unit -> 'a Build.t) -> 'a t
+  val create :
+       ?cutoff:('a -> 'a -> bool)
+    -> ?name:string
+    -> ?human_readable_description:(unit -> User_message.Style.t Pp.t)
+    -> (unit -> 'a Build.t)
+    -> 'a t
 
   val force : 'a t -> 'a Build.t
 
   val map : 'a t -> f:('a -> 'b) -> 'b t
 end
 
-val lazy_ : ?cutoff:('a -> 'a -> bool) -> (unit -> 'a Build.t) -> 'a Lazy.t
+val lazy_ :
+     ?cutoff:('a -> 'a -> bool)
+  -> ?name:string
+  -> ?human_readable_description:(unit -> User_message.Style.t Pp.t)
+  -> (unit -> 'a Build.t)
+  -> 'a Lazy.t
 
 module Implicit_output : sig
   type 'o t
@@ -312,25 +384,19 @@ module Cell : sig
 
   (** Mark this cell as invalid, forcing recomputation of this value. The
       consumers may be recomputed or not, depending on early cutoff. *)
-  val invalidate : _ t -> unit
+  val invalidate : _ t -> Invalidation.t
 end
 
 (** Create a "memoization cell" that focuses on a single input/output pair of a
     memoized function. *)
 val cell : ('i, 'o) t -> 'i -> ('i, 'o) Cell.t
 
-module Expert : sig
-  (** Like [cell] but returns [Nothing] if the given memoized function has never
-      been evaluated on the specified input. We use [previously_evaluated_cell]
-      to skip unnecessary rebuilds when receiving file system events for files
-      that we don't care about.
-
-      Note that this function is monotonic: its result can change from [Nothing]
-      to [Some cell] as new cells get evaluated. However, calling [reset] clears
-      all memoization tables, and therefore resets [previously_evaluated_cell]
-      to [Nothing] as well. *)
-  val previously_evaluated_cell : ('i, 'o) t -> 'i -> ('i, 'o) Cell.t option
-end
+val lazy_cell :
+     ?cutoff:('a -> 'a -> bool)
+  -> ?name:string
+  -> ?human_readable_description:(unit -> User_message.Style.t Pp.t)
+  -> (unit -> 'a Build.t)
+  -> (unit, 'a) Cell.t
 
 (** Memoization of polymorphic functions ['a input -> 'a output Build.t]. The
     provided [id] function must be injective, i.e. there must be a one-to-one
@@ -351,8 +417,69 @@ end) : sig
   val eval : 'a Function.input -> 'a Function.output Build.t
 end
 
-val unwrap_exn : (exn -> exn) ref
+(** Diagnostics features that affect performance but are useful for debugging. *)
+module Debug : sig
+  (** If [true], Memo will record the location of [Lazy.t] values. *)
+  val track_locations_of_lazy_values : bool ref
 
-(** If [true], this module will record the location of [Lazy.t] values. This is
-    a bit expensive to compute, but it helps debugging. *)
-val track_locations_of_lazy_values : bool ref
+  (** If [true], Memo will perform additional checks of internal invariants. *)
+  val check_invariants : bool ref
+end
+
+(** Various performance counters. Reset to zero at the start of every run. *)
+module Perf_counters : sig
+  (** This function must be called to enable performance counters. *)
+  val enable : unit -> unit
+
+  (** Number of nodes visited in the current run. *)
+  val nodes_in_current_run : unit -> int
+
+  (** Number of dependency edges of the nodes visited in the current run. *)
+  val edges_in_current_run : unit -> int
+
+  (** Number of nodes that were (re)computed in the current run. This number
+      cannot not exceed [nodes_in_current_run]. *)
+  val nodes_computed_in_current_run : unit -> int
+
+  (** Number of edges that were traversed in the current run. Some edges may be
+      traversed twice, so this number can exceed [edges_in_current_run]. *)
+  val edges_traversed_in_current_run : unit -> int
+
+  (** A concise summary of performance counters. *)
+  val report_for_current_run : unit -> string
+
+  (** Raise if any internal invariants are violated. *)
+  val assert_invariants : unit -> unit
+
+  (** Reset the counters to zero. You typically don't need to call this function
+      directly (as counters are reset on every run) but it's useful for tests. *)
+  val reset : unit -> unit
+end
+
+module Expert : sig
+  (** Like [cell] but returns [Nothing] if the given memoized function has never
+      been evaluated on the specified input. We use [previously_evaluated_cell]
+      to skip unnecessary rebuilds when receiving file system events for files
+      that we don't care about.
+
+      Note that this function is monotonic: its result can change from [Nothing]
+      to [Some cell] as new cells get evaluated. However, calling [reset] clears
+      all memoization tables, and therefore resets [previously_evaluated_cell]
+      to [Nothing] as well. *)
+  val previously_evaluated_cell : ('i, 'o) t -> 'i -> ('i, 'o) Cell.t option
+end
+
+module For_tests : sig
+  (** After executing a memoized function with a given name and input, it is
+      possible to query which dependencies that function used during execution
+      by calling [get_deps] with the name and input used during execution.
+
+      Returns [None] if the dependencies were not computed yet. *)
+  val get_deps : ('i, _) t -> 'i -> (string option * Dyn.t) list option
+
+  (** Forget all memoized values, forcing them to be recomputed on the next
+      build run. *)
+  val clear_memoization_caches : unit -> unit
+end
+
+val yield_if_there_are_pending_events : (unit -> unit Fiber.t) ref

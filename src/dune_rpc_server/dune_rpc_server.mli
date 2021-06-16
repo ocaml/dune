@@ -92,7 +92,7 @@ module Make (S : sig
 
   (* [write t x] writes the s-expression when [x] is [Some _], and closes the
      session if [x = None] *)
-  val write : t -> Sexp.t option -> unit Fiber.t
+  val write : t -> Sexp.t list option -> unit Fiber.t
 
   (* [read t] attempts to read from [t]. If an s-expression is read, it is
      returned as [Some sexp], otherwise [None] is returned and the session is
@@ -100,5 +100,5 @@ module Make (S : sig
   val read : t -> Sexp.t option Fiber.t
 end) : sig
   (** [serve sessions handler] serve all [sessions] using [handler] *)
-  val serve : S.t Fiber.Stream.In.t -> Stats.t option -> t -> unit Fiber.t
+  val serve : S.t Fiber.Stream.In.t -> Dune_stats.t option -> t -> unit Fiber.t
 end

@@ -51,11 +51,13 @@ module V1 : sig
         | Code_error
         | Version_error
 
-      type t =
-        { payload : Csexp.t option
-        ; message : string
-        ; kind : kind
-        }
+      type t
+
+      val payload : t -> Csexp.t option
+
+      val message : t -> string
+
+      val kind : t -> kind
 
       exception E of t
     end
@@ -70,10 +72,11 @@ module V1 : sig
   end
 
   module Loc : sig
-    type t =
-      { start : Lexing.position
-      ; stop : Lexing.position
-      }
+    type t
+
+    val start : t -> Lexing.position
+
+    val stop : t -> Lexing.position
   end
 
   module Target : sig
@@ -92,17 +95,40 @@ module V1 : sig
       | Warning
 
     module Promotion : sig
-      type t =
-        { in_build : string
-        ; in_source : string
-        }
+      type t
+
+      val in_build : t -> string
+
+      val in_source : t -> string
+    end
+
+    module Id : sig
+      type t
+
+      val compare : t -> t -> int
+
+      val hash : t -> int
+
+      val create : int -> t
+    end
+
+    module Related : sig
+      type t
+
+      val loc : t -> Loc.t
+
+      val message : t -> unit Pp.t
     end
 
     type t
 
+    val related : t -> Related.t list
+
     val loc : t -> Loc.t option
 
-    val message : t -> unit Stdune.Pp.t
+    val id : t -> Id.t
+
+    val message : t -> unit Pp.t
 
     val severity : t -> severity option
 
@@ -152,10 +178,11 @@ module V1 : sig
   end
 
   module Message : sig
-    type t =
-      { payload : Csexp.t option
-      ; message : string
-      }
+    type t
+
+    val payload : t -> Csexp.t option
+
+    val message : t -> string
   end
 
   module Notification : sig
@@ -216,6 +243,26 @@ module V1 : sig
 
     val notification : t -> 'a Notification.t -> 'a -> unit fiber
 
+    module Batch : sig
+      type t
+
+      type client
+
+      val create : client -> t
+
+      val request :
+           ?id:Id.t
+        -> t
+        -> ('a, 'b) Request.t
+        -> 'a
+        -> ('b, Response.Error.t) result fiber
+
+      val notification : t -> 'a Notification.t -> 'a -> unit
+
+      val submit : t -> unit fiber
+    end
+    with type client := t
+
     (** [connect ?on_handler session init ~f] connect to [session], initialize
         with [init] and call [f] once the client is initialized. [handler] is
         called for some notifications sent to [session] *)
@@ -225,57 +272,46 @@ module V1 : sig
       -> Initialize.t
       -> f:(t -> 'a fiber)
       -> 'a fiber
-
-    val connect_persistent :
-         ?on_disconnect:('a -> unit fiber)
-      -> chan
-      -> on_connect:(unit -> ('a * Initialize.t * Handler.t option) fiber)
-      -> on_connected:('a -> t -> unit fiber)
-      -> unit fiber
   end
 
   (** Functor to create a client implementation *)
-  module Client (S : sig
-    module Fiber : sig
+  module Client (Fiber : sig
+    type 'a t
+
+    val return : 'a -> 'a t
+
+    val fork_and_join_unit : (unit -> unit t) -> (unit -> 'a t) -> 'a t
+
+    val parallel_iter : (unit -> 'a option t) -> f:('a -> unit t) -> unit t
+
+    module O : sig
+      val ( let* ) : 'a t -> ('a -> 'b t) -> 'b t
+
+      val ( let+ ) : 'a t -> ('a -> 'b) -> 'b t
+    end
+
+    module Ivar : sig
+      type 'a fiber
+
       type 'a t
 
-      val return : 'a -> 'a t
+      val create : unit -> 'a t
 
-      val fork_and_join_unit : (unit -> unit t) -> (unit -> 'a t) -> 'a t
+      val read : 'a t -> 'a fiber
 
-      val parallel_iter : (unit -> 'a option t) -> f:('a -> unit t) -> unit t
-
-      module O : sig
-        val ( let* ) : 'a t -> ('a -> 'b t) -> 'b t
-
-        val ( let+ ) : 'a t -> ('a -> 'b) -> 'b t
-      end
-
-      module Ivar : sig
-        type 'a fiber
-
-        type 'a t
-
-        val create : unit -> 'a t
-
-        val read : 'a t -> 'a fiber
-
-        val fill : 'a t -> 'a -> unit fiber
-      end
-      with type 'a fiber := 'a t
+      val fill : 'a t -> 'a -> unit fiber
     end
+    with type 'a fiber := 'a t
+  end) (Chan : sig
+    type t
 
-    module Chan : sig
-      type t
+    (* [write t x] writes the s-expression when [x] is [Some _], and closes the
+       session if [x = None] *)
+    val write : t -> Csexp.t list option -> unit Fiber.t
 
-      (* [write t x] writes the s-expression when [x] is [Some _], and closes
-         the session if [x = None] *)
-      val write : t -> Csexp.t option -> unit Fiber.t
-
-      (* [read t] attempts to read from [t]. If an s-expression is read, it is
-         returned as [Some sexp], otherwise [None] is returned and the session
-         is closed. *)
-      val read : t -> Csexp.t option Fiber.t
-    end
-  end) : S with type 'a fiber := 'a S.Fiber.t and type chan := S.Chan.t
+    (* [read t] attempts to read from [t]. If an s-expression is read, it is
+       returned as [Some sexp], otherwise [None] is returned and the session is
+       closed. *)
+    val read : t -> Csexp.t option Fiber.t
+  end) : S with type 'a fiber := 'a Fiber.t and type chan := Chan.t
 end

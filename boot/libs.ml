@@ -23,7 +23,7 @@ let local_libraries =
   ; ("otherlibs/action-plugin/src", Some "Dune_action_plugin", false, None)
   ; ("src/chrome_trace", Some "Chrome_trace", false, None)
   ; ("vendor/spawn/src", Some "Spawn", false, None)
-  ; ("src/stats", Some "Stats", false, None)
+  ; ("src/dune_stats", Some "Dune_stats", false, None)
   ; ("src/dune_util", Some "Dune_util", false, None)
   ; ("src/meta_parser", Some "Dune_meta_parser", false, None)
   ; ("src/section", Some "Dune_section", false, None)
@@ -31,7 +31,8 @@ let local_libraries =
     None)
   ; ("otherlibs/dune-rpc/private", Some "Dune_rpc_private", false, None)
   ; ("src/dune_rpc_server", Some "Dune_rpc_server", false, None)
-  ; ("src/csexp_rpc", Some "Csexp_rpc", false, None)
+  ; ("src/thread_worker", Some "Thread_worker", false, None)
+  ; ("src/dune_file_watcher", Some "Dune_file_watcher", false, None)
   ; ("src/dune_engine", Some "Dune_engine", false, None)
   ; ("src/dune_config", Some "Dune_config", false, None)
   ; ("src/dune_rules", Some "Dune_rules", true, None)
@@ -39,5 +40,6 @@ let local_libraries =
   ; ("vendor/cmdliner/src", None, false, None)
   ; ("otherlibs/build-info/src", Some "Build_info", false,
     Some "Build_info_data")
+  ; ("src/csexp_rpc", Some "Csexp_rpc", false, None)
   ; ("src/dune_rpc_impl", Some "Dune_rpc_impl", false, None)
   ]

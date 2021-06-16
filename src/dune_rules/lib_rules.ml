@@ -189,8 +189,8 @@ let foreign_rules (library : Foreign.Library.t) ~sctx ~expander ~dir
       Dir_contents.foreign_sources dir_contents
       >>| Foreign_sources.for_archive ~archive_name
     in
-    Foreign_rules.build_o_files ~sctx ~dir ~expander ~requires:(Result.ok [])
-      ~dir_contents ~foreign_sources
+    Foreign_rules.build_o_files ~sctx ~dir ~expander
+      ~requires:(Resolve.return []) ~dir_contents ~foreign_sources
     |> Memo.Build.parallel_map ~f:(Memo.Build.map ~f:Path.build)
   in
   let* () = Check_rules.add_files sctx ~dir o_files in
@@ -314,9 +314,9 @@ let setup_build_archives (lib : Dune_file.Library.t) ~cctx
      [Obj_dir]. That's fragile and will break if the layout of the object
      directory changes *)
   let dir = Obj_dir.dir obj_dir in
-  let native_archives =
+  let* native_archives =
     let lib_config = ctx.lib_config in
-    let lib_info = Library.to_lib_info lib ~dir ~lib_config in
+    let+ lib_info = Library.to_lib_info lib ~dir ~lib_config in
     Lib_info.eval_native_archives_exn lib_info ~modules:(Some modules)
   in
   let cm_files = Cm_files.make ~obj_dir ~ext_obj ~modules ~top_sorted_modules in
@@ -356,13 +356,15 @@ let cctx (lib : Library.t) ~sctx ~source_modules ~dir ~expander ~scope
   let instrumentation_backend =
     Lib.DB.instrumentation_backend (Scope.libs scope)
   in
-  let preprocess =
-    Preprocess.Per_module.with_instrumentation lib.buildable.preprocess
-      ~instrumentation_backend
+  let* preprocess =
+    Resolve.read_memo_build
+      (Preprocess.Per_module.with_instrumentation lib.buildable.preprocess
+         ~instrumentation_backend)
   in
-  let instrumentation_deps =
-    Preprocess.Per_module.instrumentation_deps lib.buildable.preprocess
-      ~instrumentation_backend
+  let* instrumentation_deps =
+    Resolve.read_memo_build
+      (Preprocess.Per_module.instrumentation_deps lib.buildable.preprocess
+         ~instrumentation_backend)
   in
   (* Preprocess before adding the alias module as it doesn't need preprocessing *)
   let* pp =
@@ -432,11 +434,11 @@ let library_rules (lib : Library.t) ~cctx ~source_modules ~dir_contents
       ; source_modules
       ; compile_info
       }
-  in
-  let preprocess =
-    Preprocess.Per_module.with_instrumentation lib.buildable.preprocess
-      ~instrumentation_backend:
-        (Lib.DB.instrumentation_backend (Scope.libs scope))
+  and+ preprocess =
+    Resolve.read_memo_build
+      (Preprocess.Per_module.with_instrumentation lib.buildable.preprocess
+         ~instrumentation_backend:
+           (Lib.DB.instrumentation_backend (Scope.libs scope)))
   in
   ( cctx
   , Merlin.make ~requires:requires_compile ~stdlib_dir ~flags ~modules

@@ -71,7 +71,7 @@ let run_action (vcs : Vcs.t) action =
       (match vcs.kind with
       | Git -> "git"
       | Hg -> "hg");
-    Memo.reset ();
+    Memo.reset Memo.Invalidation.clear_caches;
     let vcs =
       match vcs.kind with
       | Hg when not has_hg -> { vcs with kind = Git }
@@ -118,7 +118,7 @@ let run kind script =
   let vcs = { Vcs.kind; root = temp_dir } in
   let config =
     { Scheduler.Config.concurrency = 1
-    ; display = Short
+    ; display = { verbosity = Short; status_line = false }
     ; rpc = None
     ; stats = None
     }

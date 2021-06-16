@@ -45,18 +45,31 @@ module V1 = struct
 
     val notification : t -> 'a Notification.t -> 'a -> unit fiber
 
+    module Batch : sig
+      type t
+
+      type client
+
+      val create : client -> t
+
+      val request :
+           ?id:Id.t
+        -> t
+        -> ('a, 'b) Request.t
+        -> 'a
+        -> ('b, Response.Error.t) result fiber
+
+      val notification : t -> 'a Notification.t -> 'a -> unit
+
+      val submit : t -> unit fiber
+    end
+    with type client := t
+
     val connect :
          ?handler:Handler.t
       -> chan
       -> Initialize.t
       -> f:(t -> 'a fiber)
       -> 'a fiber
-
-    val connect_persistent :
-         ?on_disconnect:('a -> unit fiber)
-      -> chan
-      -> on_connect:(unit -> ('a * Initialize.t * Handler.t option) fiber)
-      -> on_connected:('a -> t -> unit fiber)
-      -> unit fiber
   end
 end

@@ -26,6 +26,7 @@ let all : _ Term.Group.t list =
     ; Top.command
     ; Ocaml_merlin.command
     ; Shutdown.command
+    ; Diagnostics.command
     ]
     |> List.map ~f:in_group
   in
@@ -93,5 +94,5 @@ let () =
   | Scheduler.Run.Shutdown_requested -> exit 0
   | exn ->
     let exn = Exn_with_backtrace.capture exn in
-    Dune_engine.Report_error.report exn;
+    Dune_util.Report_error.report exn;
     exit 1

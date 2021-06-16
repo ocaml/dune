@@ -74,7 +74,10 @@ val sequential_iter : 'a list -> f:('a -> unit t) -> unit t
     however once the combining fiber has terminated, it is guaranteed that there
     are no fibers lingering around. *)
 
-(** Start two fibers and wait for their results. *)
+(** Start two fibers and wait for their result. Note that this function combines
+    both successes and errors: if one of the computations fails, we let the
+    other one run to completion, to give it a chance to raise its errors too.
+    All other parallel execution combinators have the same error semantics. *)
 val fork_and_join : (unit -> 'a t) -> (unit -> 'b t) -> ('a * 'b) t
 
 (** Same but assume the first fiber returns [unit]. *)
@@ -88,6 +91,10 @@ val parallel_map : 'a list -> f:('a -> 'b t) -> 'b list t
 
 (** Like [all] but executes the fibers concurrently. *)
 val all_concurrently : 'a t list -> 'a list t
+
+(** Like [all_concurrently] but is specialized for [unit] fibers. The advantage
+    being that it doesn't allocate a return list. *)
+val all_concurrently_unit : unit t list -> unit t
 
 (** Iter over a list in parallel. *)
 val parallel_iter : 'a list -> f:('a -> unit t) -> unit t
@@ -145,7 +152,7 @@ with type 'a fiber := 'a t
     It is guaranteed that after the fiber has returned a value, [on_error] will
     never be called. *)
 val with_error_handler :
-  (unit -> 'a t) -> on_error:(Exn_with_backtrace.t -> unit t) -> 'a t
+  (unit -> 'a t) -> on_error:(Exn_with_backtrace.t -> Nothing.t t) -> 'a t
 
 val map_reduce_errors :
      (module Monoid with type t = 'a)

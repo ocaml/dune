@@ -85,7 +85,7 @@ an flambda compiler with the help of variable expansion:
 
 .. code:: lisp
 
-   (and %{ocamlc-config:flambda} (= %{ocamlc-config:system} macosx))
+   (and %{ocaml-config:flambda} (= %{ocaml-config:system} macosx))
 
 .. _predicate-lang:
 
@@ -700,7 +700,10 @@ The following constructions are available:
 - ``(echo <string>)`` to output a string on stdout
 - ``(write-file <file> <string>)`` writes ``<string>`` to ``<file>``
 - ``(cat <file>)`` to print the contents of a file to stdout
-- ``(copy <src> <dst>)`` to copy a file
+- ``(copy <src> <dst>)`` to copy a file. If these files are OCaml sources you
+  should follow the ``module_name.xxx.ml``
+  :ref:`naming convention <merlin-filenames>` to preserve Merlin's
+  functionality.
 - ``(copy# <src> <dst>)`` to copy a file and add a line directive at
   the beginning
 - ``(system <cmd>)`` to execute a command using the system shell: ``sh`` on Unix

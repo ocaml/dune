@@ -118,6 +118,12 @@ let restore_metadata_file file ~of_sexp : _ Restore_result.t =
 let restore_metadata ~rule_or_action_digest ~of_sexp : _ Restore_result.t =
   restore_metadata_file (Layout.metadata_path ~rule_or_action_digest) ~of_sexp
 
+module Raw_value = struct
+  let store_unchecked ~mode ~content ~content_digest =
+    Util.write_atomically ~mode ~content
+      (Layout.value_path ~value_digest:content_digest)
+end
+
 module Value = struct
   module Metadata_file = struct
     type t =
@@ -177,8 +183,8 @@ module Value = struct
       (* We assume that there are no hash collisions and hence omit the check
          for non-determinism when writing values. *)
       let value_result =
-        Util.write_atomically ~mode ~content:value
-          (Layout.value_path ~value_digest)
+        Raw_value.store_unchecked ~mode ~content:value
+          ~content_digest:value_digest
         |> Store_result.of_write_result
       in
       Store_result.combine metadata_result value_result

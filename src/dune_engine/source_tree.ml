@@ -140,6 +140,15 @@ end = struct
     ; dirs : (string * Path.Source.t * File.t) list
     }
 
+  let equal =
+    let dirs_equal (s1, p1, f1) (s2, p2, f2) =
+      String.equal s1 s2 && Path.Source.equal p1 p2 && File.compare f1 f2 = Eq
+    in
+    fun x y ->
+      Path.Source.equal x.path y.path
+      && String.Set.equal x.files y.files
+      && List.equal dirs_equal x.dirs y.dirs
+
   let empty path = { path; files = String.Set.empty; dirs = [] }
 
   let _to_dyn { path; files; dirs } =
@@ -165,7 +174,7 @@ end = struct
     let+ f = !filter_source_files project in
     { t with files = String.Set.filter t.files ~f:(fun fn -> f t.path fn) }
 
-  let of_source_path path =
+  let of_source_path_impl path =
     Fs_memo.dir_contents_unsorted (Path.source path) >>= function
     | Error unix_error ->
       User_warning.emit
@@ -217,6 +226,16 @@ end = struct
               String.compare a b)
       }
       |> Result.ok
+
+  (* Having a cutoff here speeds up incremental rebuilds quite a bit when a
+     directory contents is invalidated but the result stays the same. *)
+  let of_source_path_memo =
+    Memo.create "readdir-of-source-path"
+      ~input:(module Path.Source)
+      ~cutoff:(Result.equal equal Unix_error.equal)
+      of_source_path_impl
+
+  let of_source_path = Memo.exec of_source_path_memo
 end
 
 module Dirs_visited : sig
@@ -607,6 +626,11 @@ end = struct
 
   let find_dir_raw =
     let memo =
+      (* amokhov: After running some experiments, I convinced myself that it's
+         not worth adding a [cutoff] here because we don't recompute this
+         function very often (the [find_dir] calls are probably guarded by other
+         cutoffs). Note also that adding a [cutoff] here is non-trivial because
+         [Dir0.t] stores memoization cells in [sub_dir_as_t]. *)
       Memo.create "find-dir-raw" ~input:(module Path.Source) find_dir_raw_impl
     in
     Memo.cell memo
@@ -715,7 +739,7 @@ module Dir = struct
               in
               let contents = t.dir in
               let dir = contents.path in
-              let fname = "run.t" in
+              let fname = Cram_test.fname_in_dir_test in
               let test =
                 let file = Path.Source.relative dir fname in
                 Cram_test.Dir { file; dir }
@@ -742,7 +766,7 @@ struct
   let map_reduce ~traverse ~f =
     let* root = M.memo_build (root ()) in
     let nb_path_visited = ref 0 in
-    Console.Status_line.set (fun () ->
+    Console.Status_line.set_live (fun () ->
         Some (Pp.textf "Scanned %i directories" !nb_path_visited));
     let+ res =
       map_reduce root ~traverse ~f:(fun dir ->
@@ -750,7 +774,7 @@ struct
           if !nb_path_visited mod 100 = 0 then Console.Status_line.refresh ();
           f dir)
     in
-    Console.Status_line.set (Fun.const None);
+    Console.Status_line.set_constant None;
     res
 end
 

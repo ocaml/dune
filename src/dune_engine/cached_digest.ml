@@ -117,11 +117,14 @@ let delete_very_recent_entries () =
 let dump () =
   if !needs_dumping && Path.build_dir_exists () then (
     needs_dumping := false;
-    delete_very_recent_entries ();
-    P.dump db_file (Lazy.force cache)
+    Console.Status_line.set_live_temporarily
+      (fun () -> Some (Pp.hbox (Pp.text "Saving digest db...")))
+      (fun () ->
+        delete_very_recent_entries ();
+        P.dump db_file (Lazy.force cache))
   )
 
-let () = Hooks.End_of_build.always dump
+let () = at_exit dump
 
 let invalidate_cached_timestamps () =
   (if Lazy.is_val cache then

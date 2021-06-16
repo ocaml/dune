@@ -115,10 +115,12 @@ let impl sctx ~(lib : Dune_file.Library.t) ~scope =
             let dir = Lib_info.src_dir info in
             Dir_contents.get sctx ~dir
           in
-          let preprocess =
-            Preprocess.Per_module.with_instrumentation lib.buildable.preprocess
-              ~instrumentation_backend:
-                (Lib.DB.instrumentation_backend (Scope.libs scope))
+          let* preprocess =
+            Resolve.read_memo_build
+              (Preprocess.Per_module.with_instrumentation
+                 lib.buildable.preprocess
+                 ~instrumentation_backend:
+                   (Lib.DB.instrumentation_backend (Scope.libs scope)))
           in
           let* modules =
             let pp_spec =

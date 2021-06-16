@@ -3,9 +3,7 @@ binaries stanza. %{bin:foo} is visible on the other hand.
   $ dune build
            foo alias default
   this is foo.exe
-  File "dune", line 5, characters 0-54:
-  5 | (alias
-  6 |  (name default)
-  7 |  (action (run %{exe:foo.exe})))
   Error: No rule found for foo.exe
+  -> required by %{exe:foo.exe} at dune:7
+  -> required by alias default in dune:5
   [1]

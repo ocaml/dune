@@ -23,7 +23,12 @@ module Chan = struct
 
   let create () = { in_ = Fiber.Stream.pipe (); out = Fiber.Stream.pipe () }
 
-  let write t s = Fiber.Stream.Out.write (snd t.out) s
+  let write t s =
+    match s with
+    | None -> Fiber.Stream.Out.write (snd t.out) None
+    | Some s ->
+      Fiber.sequential_iter s ~f:(fun s ->
+          Fiber.Stream.Out.write (snd t.out) (Some s))
 
   let read t = Fiber.Stream.In.read (fst t.in_)
 
@@ -34,17 +39,16 @@ module Chan = struct
 end
 
 module Drpc = struct
-  module Client = Dune_rpc.Client (struct
-    module Fiber = struct
-      include Fiber
+  module Client =
+    Dune_rpc.Client
+      (struct
+        include Fiber
 
-      let parallel_iter t ~f =
-        let stream = Fiber.Stream.In.create t in
-        Fiber.Stream.In.parallel_iter stream ~f
-    end
-
-    module Chan = Chan
-  end)
+        let parallel_iter t ~f =
+          let stream = Fiber.Stream.In.create t in
+          Fiber.Stream.In.parallel_iter stream ~f
+      end)
+      (Chan)
 
   module Server = Dune_rpc_server.Make (Chan)
 
@@ -80,7 +84,7 @@ let test ?(on_notification = fun _ -> assert false) ~client ~handler ~init () =
   in
   Scheduler.run (Scheduler.create ()) run
 
-let init ?(id = Id.make (Atom "test-client")) ?(version = (1, 1)) () =
+let init ?(id = Id.make (Csexp.Atom "test-client")) ?(version = (1, 1)) () =
   { Initialize.Request.version; id }
 
 let%expect_test "initialize scheduler with rpc" =
@@ -102,10 +106,11 @@ let%expect_test "invalid client version" =
   [%expect.unreachable]
   [@@expect.uncaught_exn
     {|
-  ( "{ payload = Some [ [ \"supported versions until\"; [ \"2\"; \"0\" ] ] ]\
-   \n; message = \"Unsupported version\"\
-   \n; kind = Version_error\
-   \n}")
+  ( "Response.E\
+   \n  { payload = Some [ [ \"supported versions until\"; [ \"2\"; \"0\" ] ] ]\
+   \n  ; message = \"Unsupported version\"\
+   \n  ; kind = Version_error\
+   \n  }")
   Trailing output
   ---------------
   server: finished. |}]

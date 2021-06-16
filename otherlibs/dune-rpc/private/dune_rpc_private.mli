@@ -1,5 +1,3 @@
-open Stdune
-
 module Conv : module type of Conv
 
 module Id : sig
@@ -7,26 +5,26 @@ module Id : sig
 
   val sexp : t Conv.value
 
-  val to_dyn : t -> Dyn.t
+  val to_dyn : t -> Stdune.Dyn.t
 
   val equal : t -> t -> bool
 
   val hash : t -> int
 
-  val make : Sexp.t -> t
+  val make : Csexp.t -> t
 
-  val to_sexp : t -> Sexp.t
+  val to_sexp : t -> Csexp.t
 
-  module Set : Set.S with type elt = t
+  module Set : Stdune.Set.S with type elt = t
 end
 
 module Call : sig
   type t =
     { method_ : string
-    ; params : Sexp.t
+    ; params : Csexp.t
     }
 
-  val create : ?params:Sexp.t -> method_:string -> unit -> t
+  val create : ?params:Csexp.t -> method_:string -> unit -> t
 end
 
 module Request : sig
@@ -41,19 +39,27 @@ module Response : sig
       | Version_error
 
     type t =
-      { payload : Sexp.t option
+      { payload : Csexp.t option
       ; message : string
       ; kind : kind
       }
 
+    val payload : t -> Csexp.t option
+
+    val message : t -> string
+
+    val kind : t -> kind
+
     exception E of t
+
+    val to_dyn : t -> Stdune.Dyn.t
 
     val of_conv : Conv.error -> t
 
-    val create : ?payload:Sexp.t -> kind:kind -> message:string -> unit -> t
+    val create : ?payload:Csexp.t -> kind:kind -> message:string -> unit -> t
   end
 
-  type t = (Sexp.t, Error.t) result
+  type t = (Csexp.t, Error.t) result
 end
 
 module Initialize : sig
@@ -77,7 +83,7 @@ module Initialize : sig
 
     val create : unit -> t
 
-    val to_response : t -> Stdune.Sexp.t
+    val to_response : t -> Csexp.t
 
     val sexp : t Conv.value
   end
@@ -103,11 +109,11 @@ end
 
 module Where : sig
   type t =
-    [ `Unix of Path.t
+    [ `Unix of Stdune.Path.t
     | `Ip of Unix.inet_addr * [ `Port of int ]
     ]
 
-  val rpc_dir : Path.Build.t Lazy.t
+  val rpc_dir : Stdune.Path.Build.t Lazy.t
 
   val of_string : string -> t
 
@@ -117,7 +123,7 @@ module Where : sig
 
   val default : unit -> t
 
-  val add_to_env : t -> Env.t -> Env.t
+  val add_to_env : t -> Stdune.Env.t -> Stdune.Env.t
 end
 
 module Loc : sig
@@ -125,6 +131,10 @@ module Loc : sig
     { start : Lexing.position
     ; stop : Lexing.position
     }
+
+  val start : t -> Lexing.position
+
+  val stop : t -> Lexing.position
 end
 
 module Target : sig
@@ -147,16 +157,47 @@ module Diagnostic : sig
       { in_build : string
       ; in_source : string
       }
+
+    val in_build : t -> string
+
+    val in_source : t -> string
+  end
+
+  module Id : sig
+    type t
+
+    val compare : t -> t -> int
+
+    val hash : t -> int
+
+    val create : int -> t
+  end
+
+  module Related : sig
+    type t =
+      { message : unit Pp.t
+      ; loc : Loc.t
+      }
+
+    val message : t -> unit Pp.t
+
+    val loc : t -> Loc.t
   end
 
   type t =
     { targets : Target.t list
+    ; id : Id.t
     ; message : unit Pp.t
     ; loc : Loc.t option
     ; severity : severity option
     ; promotion : Promotion.t list
     ; directory : string option
+    ; related : Related.t list
     }
+
+  val related : t -> Related.t list
+
+  val id : t -> Id.t
 
   val loc : t -> Loc.t option
 
@@ -196,9 +237,13 @@ end
 
 module Message : sig
   type t =
-    { payload : Sexp.t option
+    { payload : Csexp.t option
     ; message : string
     }
+
+  val payload : t -> Csexp.t option
+
+  val message : t -> string
 end
 
 module Subscribe : sig
@@ -222,6 +267,26 @@ module type S = sig
     -> ('b, Response.Error.t) result fiber
 
   val notification : t -> 'a Decl.notification -> 'a -> unit fiber
+
+  module Batch : sig
+    type t
+
+    type client
+
+    val create : client -> t
+
+    val request :
+         ?id:Id.t
+      -> t
+      -> ('a, 'b) Decl.request
+      -> 'a
+      -> ('b, Response.Error.t) result fiber
+
+    val notification : t -> 'a Decl.notification -> 'a -> unit
+
+    val submit : t -> unit fiber
+  end
+  with type client := t
 
   module Handler : sig
     type t
@@ -249,74 +314,42 @@ module type S = sig
     -> Initialize.Request.t
     -> f:(t -> 'a fiber)
     -> 'a fiber
-
-  val connect_persistent :
-       ?on_disconnect:('a -> unit fiber)
-    -> chan
-    -> on_connect:(unit -> ('a * Initialize.Request.t * Handler.t option) fiber)
-    -> on_connected:('a -> t -> unit fiber)
-    -> unit fiber
 end
 
-module Client (S : sig
-  module Fiber : sig
+module Client (Fiber : sig
+  type 'a t
+
+  val return : 'a -> 'a t
+
+  val fork_and_join_unit : (unit -> unit t) -> (unit -> 'a t) -> 'a t
+
+  val parallel_iter : (unit -> 'a option t) -> f:('a -> unit t) -> unit t
+
+  module O : sig
+    val ( let* ) : 'a t -> ('a -> 'b t) -> 'b t
+
+    val ( let+ ) : 'a t -> ('a -> 'b) -> 'b t
+  end
+
+  module Ivar : sig
+    type 'a fiber
+
     type 'a t
 
-    val return : 'a -> 'a t
+    val create : unit -> 'a t
 
-    val fork_and_join_unit : (unit -> unit t) -> (unit -> 'a t) -> 'a t
+    val read : 'a t -> 'a fiber
 
-    val parallel_iter : (unit -> 'a option t) -> f:('a -> unit t) -> unit t
-
-    module O : sig
-      val ( let* ) : 'a t -> ('a -> 'b t) -> 'b t
-
-      val ( let+ ) : 'a t -> ('a -> 'b) -> 'b t
-    end
-
-    module Ivar : sig
-      type 'a fiber
-
-      type 'a t
-
-      val create : unit -> 'a t
-
-      val read : 'a t -> 'a fiber
-
-      val fill : 'a t -> 'a -> unit fiber
-    end
-    with type 'a fiber := 'a t
+    val fill : 'a t -> 'a -> unit fiber
   end
+  with type 'a fiber := 'a t
+end) (Chan : sig
+  type t
 
-  module Chan : sig
-    type t
+  val write : t -> Csexp.t list option -> unit Fiber.t
 
-    val write : t -> Sexp.t option -> unit Fiber.t
-
-    val read : t -> Sexp.t option Fiber.t
-  end
-end) : S with type 'a fiber := 'a S.Fiber.t and type chan := S.Chan.t
-
-module Persistent : sig
-  module In : sig
-    (** The type of incoming packets when hosting multiple connections in
-        sequence over a single channel *)
-    type t =
-      | New_connection
-      | Packet of Csexp.t
-      | Close_connection
-
-    val sexp : t Conv.value
-  end
-
-  module Out : sig
-    type t =
-      | Packet of Sexp.t
-      | Close_connection
-
-    val sexp : t Conv.value
-  end
-end
+  val read : t -> Csexp.t option Fiber.t
+end) : S with type 'a fiber := 'a Fiber.t and type chan := Chan.t
 
 module Packet : sig
   module Reply : sig
@@ -372,6 +405,8 @@ module Server_notifications : sig
   val diagnostic : Diagnostic.Event.t list Decl.notification
 
   val progress : Progress.t Decl.notification
+
+  val build_event : Build.Event.t Decl.notification
 
   val log : Message.t Decl.notification
 

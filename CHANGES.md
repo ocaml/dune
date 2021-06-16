@@ -136,11 +136,35 @@ Unreleased
 - Remove `dune compute`. It was broken and unused (#4540,
   @jeremiedimino)
 
+- No longer generate an approximate merlin files when computing the
+  ocaml flags fails, for instance because they include the contents of
+  a file that failed to build. This was a niche feature and it was
+  getting in the way of making Dune's core better. (#4607, @jeremiedimino)
+
+- Make Dune display the progress indicator in all output modes except quiet
+  (#4618, @aalekseyev)
+
+- Do not log `live_words` and `free_words` in trace file. This allows using
+  `Gc.quick_stat` which does not scan the heap. (#4643, @emillon)
+
+- Don't let command run by Dune observe the environment variable
+  `INSIDE_EMACS` in order to improve reproducibility (#4680,
+  @jeremiedimino)
+
+- Fix `root_module` when used in public libraries (#4685, fixes #4684,
+  @rgrinberg, @CraigFe)
+
 2.9.0 (unreleased)
 ------------------
 
 - Allow to set up merlin in a variant of the default context
   (#4145, @TheLortex, @voodoos)
+
+- Add `(enabled_if ...)` to `(mdx ...)` (#4434, @emillon)
+
+- Add `(package ...)` to `(mdx ...)` (#4691, fixes #3756, @emillon)
+
+- Handle renaming of `coq.kernel` library to `coq-core.kernel` in Coq 8.14 (#4713, @proux01)
 
 2.8.5 (28/03/2021)
 ------------------

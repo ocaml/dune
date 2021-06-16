@@ -77,7 +77,7 @@ let conf_of_context (context : Build_context.t option) =
     }
 
 let conf_for_install ~relocatable ~default_ocamlpath ~stdlib_dir ~prefix ~libdir
-    ~mandir =
+    ~mandir ~docdir ~etcdir =
   let get_vcs = File_tree.nearest_vcs in
   let hardcoded_ocaml_path =
     if relocatable then
@@ -87,7 +87,8 @@ let conf_for_install ~relocatable ~default_ocamlpath ~stdlib_dir ~prefix ~libdir
   in
   let get_location section package =
     let paths =
-      Install.Section.Paths.make ~package ~destdir:prefix ?libdir ?mandir ()
+      Install.Section.Paths.make ~package ~destdir:prefix ?libdir ?mandir
+        ?docdir ?etcdir ()
     in
     Install.Section.Paths.get paths section
   in

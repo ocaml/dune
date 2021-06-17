@@ -177,6 +177,9 @@ Unreleased
   new `(subst <disable|enable>)` stanza to the `dune-project` file.
   (#4864, @kit-ty-kate)
 
+- Support Coq's 8.14 standalone native compiler mode `coqnative` (#4750,
+  @ejgallego @ppedrot @Zimmi48)
+
 2.9.1 (07/09/2021)
 ------------------
 
@@ -193,7 +196,6 @@ Unreleased
   (#4860, @bobot)
 
 2.9.0 (29/06/2021)
-------------------
 
 - Add `(enabled_if ...)` to `(mdx ...)` (#4434, @emillon)
 

@@ -302,6 +302,10 @@ end = struct
       User_error.raise ?loc:error_loc
         [ Pp.textf "path outside the workspace: %s from %s" path (to_string t) ]
 
+  (* Check whether a path is in canonical form: no '.' or '..' components, no
+     repeated '/' components, no backslashes '\\' (on Windows only), and not
+     ending in a slash '/'. *)
+
   let is_canonicalized =
     let rec before_slash s i =
       if i < 0 then

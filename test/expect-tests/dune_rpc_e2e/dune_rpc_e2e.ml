@@ -88,7 +88,7 @@ let run ~prog ~argv =
   Unix.close stdout_w;
   Unix.close stderr_w;
   ( pid
-  , (let+ proc = Scheduler.wait_for_process (Pid.of_int pid) in
+  , (let+ proc = Scheduler.wait_for_process ~timeout:3.0 (Pid.of_int pid) in
      Unix.close stdout_i;
      Unix.close stderr_i;
      if proc.status <> Unix.WEXITED 0 then

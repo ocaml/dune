@@ -368,6 +368,8 @@ module Diagnostic = struct
       sum [ econstr add; econstr remove ] (function
         | Add t -> case t add
         | Remove t -> case t remove)
+
+    let to_dyn t = Sexp.to_dyn (Conv.to_sexp sexp t)
   end
 end
 
@@ -379,14 +381,22 @@ module Build = struct
       | Fail
       | Interrupt
 
-    let sexp =
-      let open Conv in
-      enum
-        [ ("start", Start)
-        ; ("finish", Finish)
-        ; ("fail", Fail)
-        ; ("interrupt", Interrupt)
-        ]
+    let all =
+      [ ("start", Start)
+      ; ("finish", Finish)
+      ; ("fail", Fail)
+      ; ("interrupt", Interrupt)
+      ]
+
+    let sexp = Conv.enum all
+
+    let to_dyn t =
+      List.find_map all ~f:(fun (s, v) ->
+          if v = t then
+            Some (Dyn.String s)
+          else
+            None)
+      |> Option.value_exn
   end
 end
 

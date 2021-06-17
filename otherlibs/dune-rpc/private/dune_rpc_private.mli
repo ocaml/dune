@@ -240,6 +240,8 @@ module Diagnostic : sig
     type nonrec t =
       | Add of t
       | Remove of t
+
+    val to_dyn : t -> Stdune.Dyn.t
   end
 end
 
@@ -250,6 +252,8 @@ module Build : sig
       | Finish
       | Fail
       | Interrupt
+
+    val to_dyn : t -> Stdune.Dyn.t
   end
 end
 

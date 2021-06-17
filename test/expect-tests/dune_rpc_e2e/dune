@@ -1,0 +1,24 @@
+(library
+ (name dune_rpc_e2e)
+ (inline_tests
+  (deps
+   (package dune)))
+ (libraries
+  dune_rpc_private
+  dune_util
+  stdune
+  spawn
+  csexp
+  fiber
+  dune_engine
+  dune_rpc_impl
+  csexp_rpc
+  ;; This is because of the (implicit_transitive_deps false)
+  ;; in dune-project
+  ppx_expect.config
+  ppx_expect.config_types
+  ppx_expect.common
+  base
+  ppx_inline_test.config)
+ (preprocess
+  (pps ppx_expect)))

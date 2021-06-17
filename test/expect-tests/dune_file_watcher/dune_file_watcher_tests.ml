@@ -85,7 +85,7 @@ let%expect_test _ =
   in
   let events_buffer = ref [] in
   let watcher =
-    Dune_file_watcher.create ~debounce_interval:None
+    Dune_file_watcher.create_external ~debounce_interval:None
       ~scheduler:
         { spawn_thread = (fun f -> ignore (Thread.create f () : Thread.t))
         ; thread_safe_send_events =

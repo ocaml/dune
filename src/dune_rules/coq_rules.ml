@@ -119,7 +119,7 @@ module Context = struct
     ; scope : Scope.t
     ; boot_type : Bootstrap.t
     ; build_dir : Path.Build.t
-    ; profile_flags : string list Action_builder.t
+    ; profile_flags : string list Build.t
     ; mode : Coq_mode.t
     ; native_includes : Path.Set.t Or_exn.t
     ; native_theory_includes : Path.Build.Set.t Or_exn.t

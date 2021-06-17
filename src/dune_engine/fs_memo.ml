@@ -4,9 +4,26 @@ open Memo.Build.O
 
 type t = { dune_file_watcher : Dune_file_watcher.t option }
 
-let t_fdecl = Fdecl.create (fun _ -> String "<fs_memo>")
+(* Ideally this should be an [Fdecl], but there are currently two reasons why
+   it's not:
 
-let init ~dune_file_watcher = Fdecl.set t_fdecl { dune_file_watcher }
+   - We read the workspace file before we start the inotify watcher, so [init]
+   is called after [t_ref] is used. This is clearly not good (it means we never
+   re-read the workspace file)
+
+   - There are tests that call [Scheduler.go] multiple times, therefore [init]
+   gets called multiple times. Since they don't use file watcher, it shouldn't
+   be a problem. *)
+let t_ref = ref { dune_file_watcher = None }
+
+let init ~dune_file_watcher =
+  match !t_ref.dune_file_watcher with
+  | Some _ ->
+    Code_error.raise
+      "Called [Fs_memo.init] a second time after a file watcher was already \
+       set up "
+      []
+  | None -> t_ref := { dune_file_watcher }
 
 (* Files and directories have non-overlapping sets of paths, so we can track
    them using the same memoization table. *)
@@ -14,15 +31,7 @@ let memo =
   Memo.create "fs_memo"
     ~input:(module Path)
     (fun path ->
-      let { dune_file_watcher } =
-        try Fdecl.get t_fdecl with
-        | _ ->
-          (* CR-someday aalekseyev: This is needed because we read the workspace
-             file before we start the inotify watcher. This means that we are
-             not watching the workspace file, which is bad enough, and we're
-             also leaving a hole for furter abuses like this. *)
-          { dune_file_watcher = None }
-      in
+      let { dune_file_watcher } = !t_ref in
       Option.iter dune_file_watcher ~f:(fun dune_file_watcher ->
           try Dune_file_watcher.add_watch dune_file_watcher path with
           | Unix.Unix_error (ENOENT, _, _) -> (

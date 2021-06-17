@@ -93,6 +93,7 @@ let%expect_test _ =
               Mutex.lock mutex;
               events_buffer := !events_buffer @ events;
               Mutex.unlock mutex)
+        ; thread_safe_send_job = (fun _job -> assert false)
         }
       ~root:Path.root
   in
@@ -104,12 +105,13 @@ let%expect_test _ =
           events_buffer := [];
           Some
             (List.map list ~f:(function
+              | Inotify_event _ -> assert false
               | Dune_file_watcher.Event.Sync -> assert false
               | Dune_file_watcher.Event.File_changed file -> file
               | Dune_file_watcher.Event.Watcher_terminated -> assert false)))
   in
   let print_events n = print_events ~try_to_get_events ~expected:n in
-  Dune_file_watcher.wait_watches_established_blocking watcher;
+  Dune_file_watcher.wait_for_initial_watches_established_blocking watcher;
   Stdio.Out_channel.write_all "x" ~data:"x";
   print_events 1;
   [%expect {|

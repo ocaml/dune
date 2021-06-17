@@ -60,6 +60,24 @@
   $ cat _build/default/y
   new-contents2
 
+----------------------------------------------------------------------------------
+* File rename
+
+  $ mv x z
+  $ build y
+  Failure
+
+  $ echo new-contents3 > z
+
+  $ build y
+  Failure
+
+  $ mv z x
+  $ build y
+  Success
+  $ cat _build/default/y
+  new-contents3
+
   $ with_timeout dune shutdown
   $ cat dune-output
   waiting for inotify sync
@@ -71,3 +89,4 @@
   waiting for inotify sync
   waited for inotify sync
   Success, waiting for filesystem changes...
+

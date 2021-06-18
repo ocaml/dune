@@ -17,6 +17,9 @@ unreleased - 2.9 branch
 - Fix generation of merlin configuration when using `(include_subdirs
   unqualified)` on Windows (#4745, @nojb)
 
+- Fix bug for the install of Coq native files when using `(include_subdirs qualified)`
+  (#4753, @ejgallego)
+
 2.8.5 (28/03/2021)
 ------------------
 

@@ -501,7 +501,7 @@ let install_rules ~sctx ~dir s =
       else
         coq_plugins_install_rules ~scope ~package ~dst_dir s
     in
-    let wrapper_name = dst_suffix in
+    let wrapper_name = Coq_lib_name.wrapper name in
     let to_path f = Path.reach ~from:(Path.build dir) (Path.build f) in
     let to_dst f = Path.Local.to_string @@ Path.Local.relative dst_dir f in
     let make_entry (orig_file : Path.Build.t) (dst_file : string) =

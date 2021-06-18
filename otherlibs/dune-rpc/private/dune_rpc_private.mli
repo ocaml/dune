@@ -325,6 +325,8 @@ module Client (Fiber : sig
 
   val parallel_iter : (unit -> 'a option t) -> f:('a -> unit t) -> unit t
 
+  val finalize : (unit -> 'a t) -> finally:(unit -> unit t) -> 'a t
+
   module O : sig
     val ( let* ) : 'a t -> ('a -> 'b t) -> 'b t
 

@@ -155,6 +155,10 @@ Unreleased
 
 - Display Coq profile flags in `dune printenv` (#4767, @ejgallego)
 
+- Introduce mdx stanza 0.2, requiring mdx >= 1.9.0, with a new generic `deps`
+  field and the possibility to statically link `libraries` in the test
+  executable. (#3956, fixes #3955)
+
 2.9.0 (unreleased)
 ------------------
 

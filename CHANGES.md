@@ -12,6 +12,11 @@ unreleased - 2.9 branch
 
 - Add `(package ...)` to `(mdx ...)` (#4691, fixes #3756, @emillon)
 
+- Handle renaming of `coq.kernel` library to `coq-core.kernel` in Coq 8.14 (#4713, @proux01)
+
+- Fix generation of merlin configuration when using `(include_subdirs
+  unqualified)` on Windows (#4745, @nojb)
+
 2.8.5 (28/03/2021)
 ------------------
 

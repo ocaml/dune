@@ -147,8 +147,7 @@ module Status = struct
       ~f:(fun session ->
         let open Fiber.O in
         let+ response =
-          Dune_rpc_impl.Client.request session Dune_rpc_impl.Server.Decl.status
-            ()
+          Dune_rpc_impl.Client.request session Dune_rpc_impl.Decl.status ()
         in
         match response with
         | Error error -> report_error error
@@ -180,8 +179,7 @@ module Build = struct
       ~f:(fun session ->
         let open Fiber.O in
         let+ response =
-          Dune_rpc_impl.Client.request session Dune_rpc_impl.Server.Decl.build
-            targets
+          Dune_rpc_impl.Client.request session Dune_rpc_impl.Decl.build targets
         in
         match response with
         | Error (error : Dune_rpc_private.Response.Error.t) ->

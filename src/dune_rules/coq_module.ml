@@ -41,8 +41,9 @@ let build_vo_dir ~obj_dir x =
   List.fold_left x.prefix ~init:obj_dir ~f:Path.Build.relative
 
 let cmxs_of_mod ~wrapper_name x =
+  let wrapper_split = String.split wrapper_name ~on:'.' in
   let native_base =
-    "N" ^ String.concat ~sep:"_" (wrapper_name :: x.prefix @ [ x.name ])
+    "N" ^ String.concat ~sep:"_" (wrapper_split @ x.prefix @ [ x.name ])
   in
   [ native_base ^ ".cmi"; native_base ^ ".cmxs" ]
 

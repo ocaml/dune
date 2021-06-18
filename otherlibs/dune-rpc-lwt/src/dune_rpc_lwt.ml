@@ -22,6 +22,8 @@ module V1 = struct
             and+ () = parallel_iter ls ~f in
             ()
 
+        let finalize f ~finally = Lwt.finalize f finally
+
         module Ivar = struct
           type 'a t = 'a Lwt.t * 'a Lwt.u
 

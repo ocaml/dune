@@ -507,6 +507,8 @@ module Client (Fiber : sig
 
   val parallel_iter : (unit -> 'a option t) -> f:('a -> unit t) -> unit t
 
+  val finalize : (unit -> 'a t) -> finally:(unit -> unit t) -> 'a t
+
   module O : sig
     val ( let* ) : 'a t -> ('a -> 'b t) -> 'b t
 
@@ -863,8 +865,11 @@ struct
       | Error e -> raise (Response.Error.E e)
       | Ok csexp ->
         let _resp = Conv.of_sexp Initialize.Response.sexp csexp in
-        let* res = f client in
-        let+ () = Chan.write chan None in
+        let+ res =
+          Fiber.finalize
+            (fun () -> f client)
+            ~finally:(fun () -> Chan.write chan None)
+        in
         res
     in
     Fiber.fork_and_join_unit (fun () -> read_packets client packets) run

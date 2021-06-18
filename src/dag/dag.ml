@@ -34,6 +34,8 @@ module Make (Value : Value) : S with type value := Value.t = struct
 
     type vertex = node
 
+    let node_id { info; _ } = info.id
+
     let new_mark g =
       let m = g.fresh_mark in
       g.fresh_mark <- g.fresh_mark + 1;

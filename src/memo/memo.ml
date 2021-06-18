@@ -346,62 +346,6 @@ Dag.Make (struct
   type t = Dep_node_without_state.packed
 end)
 
-(* Dependencies of a value accumulated so far. All of them are added to the DAG
-   of sample attempts to detect cycles.
-
-   We start accumulating dependencies during the [restore_from_cache] step. Some
-   of them may turn out to be "phantom", i.e. we used to depend on them but do
-   not depend on them anymore. This happens when the [restore_from_cache] step
-   fails and we fall back to recomputing the value, which can lead to a new set
-   of dependencies.
-
-   Once we move to the [compute] step, we start accumulating actual dependencies
-   of the value in [compute_deps]. The list of dependencies is stored in the
-   reversed order for efficient updates.
-
-   After the [compute] step has finished, [compute_deps] are stored in the
-   resulting [Cached_value.t]. *)
-module Deps_so_far = struct
-  type 'node deps =
-    | Compute_not_started
-    | Compute_started of { deps_reversed : 'node list }
-
-  (* Some of the [added_to_dag] nodes also need to be added to [compute_deps]. *)
-  type status = { added_to_compute_deps : bool } [@@unboxed]
-
-  type 'node t =
-    { added_to_dag : status Id.Table.t
-    ; mutable compute_deps : 'node deps
-    }
-
-  let create () =
-    { added_to_dag = Id.Table.create 4; compute_deps = Compute_not_started }
-
-  let start_compute t = t.compute_deps <- Compute_started { deps_reversed = [] }
-
-  (* Add a new dependency [node] to [added_to_dag] and also to [compute_deps] if
-     [Compute_started] and the dependency hasn't been added before. *)
-  let add_dep t node_id node =
-    match t.compute_deps with
-    | Compute_not_started ->
-      Id.Table.set t.added_to_dag node_id { added_to_compute_deps = false }
-    | Compute_started { deps_reversed } -> (
-      match Id.Table.find t.added_to_dag node_id with
-      | Some { added_to_compute_deps = true } -> ()
-      | None
-      | Some { added_to_compute_deps = false } ->
-        t.compute_deps <-
-          Compute_started { deps_reversed = node :: deps_reversed };
-        Id.Table.set t.added_to_dag node_id { added_to_compute_deps = true })
-
-  let get_compute_deps_rev t =
-    match t.compute_deps with
-    | Compute_not_started ->
-      Code_error.raise
-        "get_compute_deps_rev called in the Compute_not_started state" []
-    | Compute_started { deps_reversed } -> deps_reversed
-end
-
 module Cache_lookup = struct
   (* Looking up a value cached in a previous run can fail in three possible
      ways:
@@ -460,6 +404,11 @@ module Once = struct
           let+ () = Fiber.Ivar.fill ivar result in
           result)
 
+  let forced t =
+    match t.state with
+    | Forced _ -> true
+    | Not_forced _ -> false
+
   (* Like a monadic bind but [f_must_not_raise] returns a [Fiber.t], not a [t]. *)
   let and_then t ~f_must_not_raise =
     create ~must_not_raise:(fun () -> Fiber.bind (force t) ~f:f_must_not_raise)
@@ -477,7 +426,7 @@ end
    [Finished] attempts do not need to be in the DAG but currently they remain
    there until the end of the current run. When the run completes, the DAG is
    garbage collected because we no longer hold any references to its nodes. *)
-module Sample_attempt = struct
+module Sample_attempt0 = struct
   module Result = struct
     type 'a t =
       { restore_from_cache : 'a Cache_lookup.Result.t Once.t
@@ -488,18 +437,9 @@ module Sample_attempt = struct
   type 'a t =
     | Finished of 'a
     | Running of
-        { dag_node : Dag.node
+        { dag_node : Dag.node Lazy.t
         ; result : 'a Result.t
         }
-
-  let restore = function
-    | Finished cached_value ->
-      Fiber.return (Cache_lookup.Result.Ok cached_value)
-    | Running { result; _ } -> Once.force result.restore_from_cache
-
-  let compute = function
-    | Finished cached_value -> Fiber.return cached_value
-    | Running { result; _ } -> Once.force result.compute
 end
 
 (* Checking dependencies of a node can lead to one of these outcomes:
@@ -616,14 +556,6 @@ module M = struct
       go (Array.length t - 1)
   end
 
-  and Running_state : sig
-    type t =
-      { deps_so_far : Dep_node.packed Deps_so_far.t
-      ; dag_node : Dag.node
-      }
-  end =
-    Running_state
-
   (* Why do we store a [run] in the [Considering] state?
 
      It is possible for a computation to remain in the [Considering] state after
@@ -643,14 +575,16 @@ module M = struct
      be garbage collected. Note: some stale computations may never be restarted,
      e.g. if they end up getting forever stuck behind an inactive conditional. *)
   and State : sig
+    (* CR-soon amokhov: [State] is almost the same as [Sample_attempt0]. Shall
+       we unify them? *)
     type 'o t =
       (* [Considering] marks computations currently being considered, i.e. whose
          result we currently attempt to restore from the cache or recompute. *)
       | Not_considering
       | Considering of
           { run : Run.t
-          ; running : Running_state.t
-          ; sample_attempt_result : 'o Cached_value.t Sample_attempt.Result.t
+          ; dag_node : Dag.node Lazy.t
+          ; sample_attempt_result : 'o Cached_value.t Sample_attempt0.Result.t
           }
   end =
     State
@@ -671,14 +605,23 @@ module M = struct
 end
 
 module State = M.State
-module Running_state = M.Running_state
 module Dep_node = M.Dep_node
 module Deps = M.Deps
 
 module Stack_frame_with_state = struct
+  type phase =
+    | Restore_from_cache
+    | Compute
+
   type ('i, 'o) unpacked =
     { without_state : ('i, 'o) Dep_node_without_state.t
-    ; running_state : Running_state.t
+    ; dag_node : Dag.node Lazy.t
+    ; (* We expect the size of this set to be small in practice, so using [Set]
+         should be cheaper than [Table]. *)
+      mutable children_added_to_dag : Int.Set.t
+    ; mutable phase : phase
+    ; (* [deps_rev] are accumulated only when [phase = Compute] *)
+      mutable deps_rev : Dep_node.packed list
     }
 
   type t = T : ('i, 'o) unpacked -> t
@@ -691,8 +634,6 @@ module To_open = struct
 end
 
 open To_open
-
-let global_dep_dag = Dag.create ()
 
 module Call_stack = struct
   type t = Stack_frame_with_state.t list
@@ -714,6 +655,100 @@ module Call_stack = struct
     let* stack = get_call_stack () in
     let stack = frame :: stack in
     Fiber.Var.set call_stack_var stack (fun () -> Implicit_output.forbid f)
+end
+
+let global_dep_dag = Dag.create ()
+
+module Sample_attempt = struct
+  include Sample_attempt0
+
+  (* Add all edges leading from the root of the call stack to [dag_node] to the
+     cycle detection DAG. *)
+  let add_path_to ~dag_node =
+    let+ stack = Call_stack.get_call_stack () in
+    let rec add_path_impl stack dag_node =
+      match stack with
+      | [] -> Ok ()
+      | Stack_frame_with_state.T
+          ({ dag_node = (lazy caller_dag_node); _ } as frame)
+        :: stack -> (
+        let dag_node_id = Dag.node_id dag_node in
+        match Int.Set.mem frame.children_added_to_dag dag_node_id with
+        | true ->
+          (* Here we know that the current [frame] has already been traversed in
+             a previous [add_path_to] call. Therefore, the DAG already contains
+             all the edges that we will discover by continuing the recursive
+             traversal. We might as well stop here and save time. *)
+          Ok ()
+        | false -> (
+          match
+            Dag.add_assuming_missing global_dep_dag caller_dag_node dag_node
+          with
+          | exception Dag.Cycle cycle ->
+            Error (List.map cycle ~f:(fun dag_node -> dag_node.Dag.data))
+          | () -> (
+            if !Counters.enabled then
+              incr Counters.edges_in_cycle_detection_graph;
+            let not_traversed_before =
+              Int.Set.is_empty frame.children_added_to_dag
+            in
+            frame.children_added_to_dag <-
+              Int.Set.add frame.children_added_to_dag dag_node_id;
+            match not_traversed_before with
+            | false ->
+              (* Same optimisation as above. *)
+              Ok ()
+            | true -> add_path_impl stack caller_dag_node)))
+    in
+    add_path_impl stack (Lazy.force dag_node)
+
+  let force_and_check_for_cycles once dag_node =
+    let force () =
+      let+ result = Once.force once in
+      Ok result
+    in
+    match Once.forced once with
+    | false -> force ()
+    | true -> (
+      add_path_to ~dag_node >>= function
+      | Ok () -> force ()
+      | Error cycle_error -> Fiber.return (Error cycle_error))
+
+  (* Add a dependency on the [dep_node] from the caller, if there is one. *)
+  let add_dep_from_caller dep_node =
+    let+ caller = Call_stack.get_call_stack_tip () in
+    match caller with
+    | None -> ()
+    | Some (Stack_frame_with_state.T caller) -> (
+      match caller.phase with
+      | Restore_from_cache -> ()
+      | Compute -> caller.deps_rev <- Dep_node.T dep_node :: caller.deps_rev)
+
+  let restore dep_node sample_attempt =
+    let* result =
+      match sample_attempt with
+      | Finished cached_value ->
+        Fiber.return (Ok (Cache_lookup.Result.Ok cached_value))
+      | Running { result; dag_node } ->
+        force_and_check_for_cycles result.restore_from_cache dag_node
+    in
+    let+ () =
+      Build0.Result.iter result ~f:(fun _ok -> add_dep_from_caller dep_node)
+    in
+    result
+
+  (* CR-soon amokhov: Get rid of code duplication. *)
+  let compute dep_node sample_attempt =
+    let* result =
+      match sample_attempt with
+      | Finished cached_value -> Fiber.return (Ok cached_value)
+      | Running { result; dag_node } ->
+        force_and_check_for_cycles result.compute dag_node
+    in
+    let+ () =
+      Build0.Result.iter result ~f:(fun _ok -> add_dep_from_caller dep_node)
+    in
+    result
 end
 
 module Error_handler : sig
@@ -855,47 +890,6 @@ module Cached_value = struct
       , Error { exns = cur_exns; reproducible = true } ) ->
       not (Exn_set.equal prev_exns cur_exns)
 end
-
-(* Add a dependency on the [dep_node] from the caller, if there is one. Returns
-   an [Error] if the new dependency would introduce a dependency cycle. *)
-let add_dep_from_caller (type i o) (dep_node : (i, o) Dep_node.t)
-    (sample_attempt : _ Sample_attempt.t) =
-  let+ caller = Call_stack.get_call_stack_tip () in
-  (* Not counting the above computation of the [caller] towards cycle detection,
-     to avoid inserting an extra Fiber map or bind. *)
-  match caller with
-  | None -> Ok ()
-  | Some (Stack_frame_with_state.T caller) -> (
-    let deps_so_far_of_caller = caller.running_state.deps_so_far in
-    match
-      Id.Table.mem deps_so_far_of_caller.added_to_dag dep_node.without_state.id
-    with
-    | true ->
-      Deps_so_far.add_dep deps_so_far_of_caller dep_node.without_state.id
-        (Dep_node.T dep_node);
-      Ok ()
-    | false -> (
-      let cycle_error =
-        match sample_attempt with
-        | Finished _ -> None
-        | Running { dag_node; _ } -> (
-          match
-            Dag.add_assuming_missing global_dep_dag
-              caller.running_state.dag_node dag_node
-          with
-          | () ->
-            if !Counters.enabled then
-              incr Counters.edges_in_cycle_detection_graph;
-            None
-          | exception Dag.Cycle cycle ->
-            Some (List.map cycle ~f:(fun dag_node -> dag_node.Dag.data)))
-      in
-      match cycle_error with
-      | None ->
-        Deps_so_far.add_dep deps_so_far_of_caller dep_node.without_state.id
-          (Dep_node.T dep_node);
-        Ok ()
-      | Some cycle -> Error cycle))
 
 type ('input, 'output) t =
   { spec : ('input, 'output) Spec.t
@@ -1074,9 +1068,8 @@ end = struct
                    recompute it, the resulting value may remain unchanged,
                    allowing us to skip recomputing the [last_cached_value]. *)
                 consider_and_compute dep
-                >>= function
+                >>| function
                 | Ok cached_value_of_dep -> (
-                  let+ cached_value_of_dep = cached_value_of_dep in
                   (* Note: [cached_value_of_dep.value] will be [Cancelled _] if
                      [dep] itself doesn't introduce a dependency cycle but one
                      of its transitive dependencies does. In this case, the
@@ -1089,8 +1082,7 @@ end = struct
                   | Eq
                   | Lt ->
                     Unchanged)
-                | Error dependency_cycle ->
-                  Fiber.return (Changed_or_not.Cancelled { dependency_cycle })))
+                | Error dependency_cycle -> Cancelled { dependency_cycle }))
         in
         match deps_changed with
         | Unchanged ->
@@ -1102,11 +1094,11 @@ end = struct
 
   and compute :
         'i 'o.    ('i, 'o) Dep_node.t
-        -> 'o Cached_value.t Cache_lookup.Failure.t
-        -> Dep_node.packed Deps_so_far.t -> 'o Cached_value.t Fiber.t =
-   fun dep_node cache_lookup_failure deps_so_far ->
-    Deps_so_far.start_compute deps_so_far;
+        -> 'o Cached_value.t Cache_lookup.Failure.t -> Stack_frame_with_state.t
+        -> 'o Cached_value.t Fiber.t =
+   fun dep_node cache_lookup_failure (T frame) ->
     let compute_value_and_deps_rev () =
+      frame.phase <- Compute;
       let* () = !yield_if_there_are_pending_events () in
       let+ res =
         report_and_collect_errors (fun () ->
@@ -1117,7 +1109,7 @@ end = struct
         | Ok res -> Value.Ok res
         | Error errors -> Error errors
       in
-      let deps_rev = Deps_so_far.get_compute_deps_rev deps_so_far in
+      let deps_rev = frame.deps_rev in
       if !Counters.enabled then
         Counters.edges_traversed :=
           !Counters.edges_traversed + List.length deps_rev;
@@ -1138,22 +1130,22 @@ end = struct
   and newly_considering :
         'i 'o. ('i, 'o) Dep_node.t -> 'o Cached_value.t Sample_attempt.t =
    fun dep_node ->
-    if !Counters.enabled then (
-      (* CR-soon amokhov: For now these counters coincide but they will become
-         different after PR 4756 is merged. *)
-      incr Counters.nodes_in_cycle_detection_graph;
-      incr Counters.nodes_considered
-    );
-    let dag_node : Dag.node =
-      { info = Dag.create_node_info global_dep_dag
-      ; data = Dep_node_without_state.T dep_node.without_state
-      }
-    in
-    let running_state : Running_state.t =
-      { dag_node; deps_so_far = Deps_so_far.create () }
+    if !Counters.enabled then incr Counters.nodes_considered;
+    let dag_node : Dag.node Lazy.t =
+      lazy
+        (if !Counters.enabled then incr Counters.nodes_in_cycle_detection_graph;
+         { info = Dag.create_node_info global_dep_dag
+         ; data = Dep_node_without_state.T dep_node.without_state
+         })
     in
     let frame : Stack_frame_with_state.t =
-      T { without_state = dep_node.without_state; running_state }
+      T
+        { without_state = dep_node.without_state
+        ; phase = Restore_from_cache
+        ; deps_rev = []
+        ; dag_node
+        ; children_added_to_dag = Int.Set.empty
+        }
     in
     let restore_from_cache =
       Once.create ~must_not_raise:(fun () ->
@@ -1176,9 +1168,7 @@ end = struct
         | Failure cache_lookup_failure ->
           Call_stack.push_frame frame (fun () ->
               dep_node.last_cached_value <- None;
-              let+ cached_value =
-                compute dep_node cache_lookup_failure running_state.deps_so_far
-              in
+              let+ cached_value = compute dep_node cache_lookup_failure frame in
               dep_node.last_cached_value <- Some cached_value;
               dep_node.state <- Not_considering;
               if !Counters.enabled then (
@@ -1191,10 +1181,7 @@ end = struct
     let result : _ Sample_attempt.Result.t = { restore_from_cache; compute } in
     dep_node.state <-
       Considering
-        { run = Run.current ()
-        ; running = running_state
-        ; sample_attempt_result = result
-        };
+        { run = Run.current (); dag_node; sample_attempt_result = result };
     Sample_attempt.Running { dag_node; result }
 
   and start_considering :
@@ -1205,43 +1192,31 @@ end = struct
     | None -> (
       match currently_considering dep_node.state with
       | Not_considering -> newly_considering dep_node
-      | Considering
-          { running = { dag_node; deps_so_far = _ }
-          ; sample_attempt_result = result
-          ; _
-          } ->
+      | Considering { dag_node; sample_attempt_result = result; _ } ->
         Running { dag_node; result })
-
-  and consider :
-        'i 'o.    ('i, 'o) Dep_node.t
-        -> ('o Cached_value.t Sample_attempt.t, Cycle_error.t) result Fiber.t =
-   fun dep_node ->
-    let sample_attempt = start_considering dep_node in
-    add_dep_from_caller dep_node sample_attempt
-    >>| Result.map ~f:(fun () -> sample_attempt)
 
   and consider_and_compute :
         'i 'o.    ('i, 'o) Dep_node.t
-        -> ('o Cached_value.t Fiber.t, Cycle_error.t) result Fiber.t =
-   fun dep_node -> consider dep_node >>| Result.map ~f:Sample_attempt.compute
+        -> ('o Cached_value.t, Cycle_error.t) result Fiber.t =
+   fun dep_node ->
+    let sample_attempt = start_considering dep_node in
+    Sample_attempt.compute dep_node sample_attempt
 
   and consider_and_restore_from_cache :
         'i 'o.    ('i, 'o) Dep_node.t
         -> 'o Cached_value.t Cache_lookup.Result.t Fiber.t =
    fun dep_node ->
-    consider dep_node >>= function
-    | Ok sample_attempt -> Sample_attempt.restore sample_attempt
+    let sample_attempt = start_considering dep_node in
+    Sample_attempt.restore dep_node sample_attempt >>| function
+    | Ok res -> res
     | Error dependency_cycle ->
-      Fiber.return
-        (Cache_lookup.Result.Failure (Cancelled { dependency_cycle }))
+      Cache_lookup.Result.Failure (Cancelled { dependency_cycle })
 
   let exec_dep_node (dep_node : _ Dep_node.t) =
     Fiber.of_thunk (fun () ->
         let stack_frame = Dep_node_without_state.T dep_node.without_state in
         consider_and_compute dep_node >>= function
-        | Ok res ->
-          let* res = res in
-          Value.get_exn res.value ~stack_frame
+        | Ok res -> Value.get_exn res.value ~stack_frame
         | Error cycle_error -> raise (Cycle_error.E cycle_error))
 end
 

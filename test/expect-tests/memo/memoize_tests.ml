@@ -87,11 +87,14 @@ let%expect_test _ =
     1
   |}]
 
-let%expect_test _ =
+let print_deps memo input =
   let open Dyn.Encoder in
-  Memo.For_tests.get_deps mcomp "a"
+  Memo.For_tests.get_deps memo input
   |> option (list (pair (option string) (fun x -> x)))
-  |> print_dyn;
+  |> print_dyn
+
+let%expect_test _ =
+  print_deps mcomp "a";
   [%expect {|
     Some [ (Some "some", "a"); (Some "another", "aa") ]
   |}]
@@ -408,10 +411,13 @@ let%expect_test "fib linked list" =
     prev: 8
     prev: 5
   |}];
+  (* Note that duplicate dependencies are not filtered out. *)
+  print_deps memo 5;
+  [%expect {| Some [ (Some "fib", 4); (Some "fib", 4); (Some "fib", 3) ] |}];
   print_perf_counters ();
   [%expect
     {|
-    Memo: 8/8 computed/total nodes, 12/12 traversed/total edges
+    Memo: 8/8 computed/total nodes, 18/18 traversed/total edges
     Memo's cycle detection graph: 5/5 nodes/edges
   |}]
 
@@ -1025,21 +1031,21 @@ let%expect_test "dynamic cycles with non-uniform cutoff structure" =
   [%expect
     {|
     Dependency cycle detected:
-    - ("incrementing_chain_plus_input", 2)
+    - ("incrementing_chain_4_yes_cutoff", ())
+    - called by ("incrementing_chain_plus_input", 2)
     - called by ("cycle_creator_no_cutoff", ())
     - called by ("incrementing_chain_1_no_cutoff", ())
     - called by ("incrementing_chain_2_yes_cutoff", ())
     - called by ("incrementing_chain_3_no_cutoff", ())
-    - called by ("incrementing_chain_4_yes_cutoff", ())
     f 2 = Error
             [ { exn =
                   "Cycle_error.E\n\
-                  \  [ (\"incrementing_chain_plus_input\", 2)\n\
+                  \  [ (\"incrementing_chain_4_yes_cutoff\", ())\n\
+                  \  ; (\"incrementing_chain_plus_input\", 2)\n\
                   \  ; (\"cycle_creator_no_cutoff\", ())\n\
                   \  ; (\"incrementing_chain_1_no_cutoff\", ())\n\
                   \  ; (\"incrementing_chain_2_yes_cutoff\", ())\n\
                   \  ; (\"incrementing_chain_3_no_cutoff\", ())\n\
-                  \  ; (\"incrementing_chain_4_yes_cutoff\", ())\n\
                   \  ]"
               ; backtrace = ""
               }
@@ -1053,21 +1059,21 @@ let%expect_test "dynamic cycles with non-uniform cutoff structure" =
   [%expect
     {|
     Dependency cycle detected:
-    - ("incrementing_chain_plus_input", 2)
+    - ("incrementing_chain_4_no_cutoff", ())
+    - called by ("incrementing_chain_plus_input", 2)
     - called by ("cycle_creator_yes_cutoff", ())
     - called by ("incrementing_chain_1_yes_cutoff", ())
     - called by ("incrementing_chain_2_no_cutoff", ())
     - called by ("incrementing_chain_3_yes_cutoff", ())
-    - called by ("incrementing_chain_4_no_cutoff", ())
     f 2 = Error
             [ { exn =
                   "Cycle_error.E\n\
-                  \  [ (\"incrementing_chain_plus_input\", 2)\n\
+                  \  [ (\"incrementing_chain_4_no_cutoff\", ())\n\
+                  \  ; (\"incrementing_chain_plus_input\", 2)\n\
                   \  ; (\"cycle_creator_yes_cutoff\", ())\n\
                   \  ; (\"incrementing_chain_1_yes_cutoff\", ())\n\
                   \  ; (\"incrementing_chain_2_no_cutoff\", ())\n\
                   \  ; (\"incrementing_chain_3_yes_cutoff\", ())\n\
-                  \  ; (\"incrementing_chain_4_no_cutoff\", ())\n\
                   \  ]"
               ; backtrace = ""
               }

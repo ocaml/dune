@@ -21,6 +21,9 @@ module type S = sig
     ; info : node_info
     }
 
+  (* CR-soon amokhov: Switch to [Id.t]. *)
+  val node_id : node -> int
+
   (** A cycle has been found while adding an arc. *)
   exception Cycle of node list
 
@@ -31,7 +34,7 @@ module type S = sig
   val create_node_info : t -> node_info
 
   (** [add_assuming_missing dag v w] creates an arc going from [v] to [w]
-      assuming it doesn't already exists. The the arc does exist, the behaviuor
+      assuming it doesn't already exists. If the arc does exist, the behaviour
       is undefined.
 
       @raise Cycle if creating the arc would create a cycle. *)

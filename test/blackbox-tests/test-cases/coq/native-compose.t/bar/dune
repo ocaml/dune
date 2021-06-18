@@ -1,5 +1,5 @@
 (coq.theory
- (name bar)
+ (name bar.baz)
  (package base)
  (mode native)
  (theories foo)

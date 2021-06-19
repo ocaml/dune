@@ -27,6 +27,9 @@ unreleased - 2.9 branch
 
 - Handle renaming of `coq.kernel` library to `coq-core.kernel` in Coq 8.14 (#4713, @proux01)
 
+- Fix issue where Dune would ignore `(env ... (coq (flags ...)))`
+  declarations appearing in `dune` files (#4749, fixes #4566, @ejgallego @rgrinberg)
+
 2.8.5 (28/03/2021)
 ------------------
 

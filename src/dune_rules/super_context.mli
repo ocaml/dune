@@ -85,7 +85,7 @@ val local_binaries : t -> dir:Path.Build.t -> File_binding.Expanded.t list
 val odoc : t -> dir:Path.Build.t -> Env_node.Odoc.t
 
 (** coq config in the corresponding [(env)] stanza. *)
-val coq : t -> dir:Path.Build.t -> Env_node.Coq.t
+val coq : t -> dir:Path.Build.t -> Env_node.Coq.t Build.t
 
 (** Formatting settings in the corresponding [(env)] stanza. *)
 val format_config : t -> dir:Path.Build.t -> Format_config.t

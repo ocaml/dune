@@ -177,6 +177,9 @@ Unreleased
   Dune's configure and `dune install` command. (#4744, fixes #4723,
   @ejgallego, thanks to @JasonGross for reporting this issue)
 
+- Fix issue where Dune would ignore `(env ... (coq (flags ...)))`
+  declarations appearing in `dune` files (#4749, fixes #4566, @ejgallego @rgrinberg)
+
 2.8.5 (28/03/2021)
 ------------------
 

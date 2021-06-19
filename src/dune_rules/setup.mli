@@ -13,3 +13,9 @@ val library_destdir : string option
 
 (** Where to install manpages for the default context. *)
 val mandir : string option
+
+(** Where to install docs for the default context. *)
+val docdir : string option
+
+(** Where to install configuration files for the default context. *)
+val etcdir : string option

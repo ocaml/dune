@@ -367,6 +367,17 @@ let install_uninstall ~what =
         "When passed, manually override the directory to install man pages"
       in
       Arg.(value & opt (some string) None & info [ "mandir" ] ~docv:"PATH" ~doc)
+    and+ docdir =
+      let doc =
+        "When passed, manually override the directory to install documentation"
+      in
+      Arg.(value & opt (some string) None & info [ "docdir" ] ~docv:"PATH" ~doc)
+    and+ etcdir =
+      let doc =
+        "When passed, manually override the directory to install configuration \
+         files"
+      in
+      Arg.(value & opt (some string) None & info [ "etcdir" ] ~docv:"PATH" ~doc)
     and+ dry_run =
       Arg.(
         value & flag
@@ -498,6 +509,18 @@ let install_uninstall ~what =
               | Some _ -> mandir
               | None -> Dune_rules.Setup.mandir)
           in
+          let docdir =
+            Option.map ~f:Path.of_string
+              (match docdir with
+              | Some _ -> docdir
+              | None -> Dune_rules.Setup.docdir)
+          in
+          let etcdir =
+            Option.map ~f:Path.of_string
+              (match etcdir with
+              | Some _ -> etcdir
+              | None -> Dune_rules.Setup.etcdir)
+          in
           Fiber.sequential_iter install_files_by_context
             ~f:(fun (context, entries_per_package) ->
               let* prefix, libdir =
@@ -507,13 +530,14 @@ let install_uninstall ~what =
               let conf =
                 Dune_rules.Artifact_substitution.conf_for_install ~relocatable
                   ~default_ocamlpath:context.default_ocamlpath
-                  ~stdlib_dir:context.stdlib_dir ~prefix ~libdir ~mandir
+                  ~stdlib_dir:context.stdlib_dir ~prefix ~libdir ~mandir ~docdir
+                  ~etcdir
               in
               Fiber.sequential_iter entries_per_package
                 ~f:(fun (package, entries) ->
                   let paths =
                     Install.Section.Paths.make ~package ~destdir:prefix ?libdir
-                      ?mandir ()
+                      ?mandir ?docdir ?etcdir ()
                   in
                   let+ entries =
                     Fiber.sequential_map entries ~f:(fun entry ->

@@ -37,6 +37,8 @@ val conf_for_install :
   -> prefix:Path.t
   -> libdir:Path.t option
   -> mandir:Path.t option
+  -> docdir:Path.t option
+  -> etcdir:Path.t option
   -> conf
 
 val conf_dummy : conf

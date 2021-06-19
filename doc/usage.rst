@@ -530,6 +530,11 @@ no difference.
 Note that ``--prefix`` and ``--libdir`` are only supported if a single build
 context is in use.
 
+Note that ``dune install`` (and Dune's ``configure``) support
+additional parameters to override install directories in addition to
+``--prefix``, in particular, ``--mandir``, ``--docdir``, and
+``--etcdir`` are supported
+
 Relocation Mode
 ---------------
 

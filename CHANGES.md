@@ -20,6 +20,11 @@ unreleased - 2.9 branch
 - Fix bug for the install of Coq native files when using `(include_subdirs qualified)`
   (#4753, @ejgallego)
 
+- Allow users to specify install target directories for `doc` and
+  `etc` sections. We add new options `--docdir` and `--etcdir` to both
+  Dune's configure and `dune install` command. (#4744, fixes #4723,
+  @ejgallego, thanks to @JasonGross for reporting this issue)
+
 2.8.5 (28/03/2021)
 ------------------
 

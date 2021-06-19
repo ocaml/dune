@@ -143,14 +143,19 @@ module Section = struct
       ; man : Path.t
       }
 
+    (* FIXME: we should handle all directories uniformly, instead of
+       special-casing etcdir, mandir, and docdir as of today [which was done for
+       convenience of backporting] *)
     let make ~package ~destdir ?(libdir = Path.relative destdir "lib")
-        ?(mandir = Path.relative destdir "man") () =
+        ?(mandir = Path.relative destdir "man")
+        ?(docdir = Path.relative destdir "doc")
+        ?(etcdir = Path.relative destdir "etc") () =
       let package = Package.Name.to_string package in
       let lib_root = libdir in
       let libexec_root = libdir in
       let share_root = Path.relative destdir "share" in
-      let etc_root = Path.relative destdir "etc" in
-      let doc_root = Path.relative destdir "doc" in
+      let etc_root = etcdir in
+      let doc_root = docdir in
       { lib_root
       ; libexec_root
       ; share_root

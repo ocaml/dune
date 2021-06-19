@@ -172,6 +172,11 @@ Unreleased
 - Fix generation of merlin configuration when using `(include_subdirs
   unqualified)` on Windows (#4745, @nojb)
 
+- Allow users to specify install target directories for `doc` and
+  `etc` sections. We add new options `--docdir` and `--etcdir` to both
+  Dune's configure and `dune install` command. (#4744, fixes #4723,
+  @ejgallego, thanks to @JasonGross for reporting this issue)
+
 2.8.5 (28/03/2021)
 ------------------
 

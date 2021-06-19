@@ -10,7 +10,7 @@ module Odoc = struct
 end
 
 module Coq = struct
-  type t = Ordered_set_lang.Unexpanded.t
+  type t = string list
 end
 
 type t =
@@ -23,7 +23,7 @@ type t =
   ; inline_tests : Dune_env.Stanza.Inline_tests.t Memo.Lazy.t
   ; menhir_flags : string list Build.t Memo.Lazy.t
   ; odoc : Odoc.t Memo.Lazy.t
-  ; coq : Coq.t Memo.Lazy.t
+  ; coq : Coq.t Action_builder.t Memo.Lazy.t
   ; format_config : Format_config.t Memo.Lazy.t
   }
 
@@ -144,7 +144,14 @@ let make ~dir ~inherit_from ~scope ~config_stanza ~profile ~expander
     inherited ~field:odoc ~root (fun { warnings } ->
         { warnings = Option.value config.odoc.warnings ~default:warnings })
   in
-  let coq = inherited ~field:coq ~root:config.coq (fun x -> x) in
+  let default_coq_flags = Action_builder.return [ "-q" ] in
+  let coq : Coq.t Action_builder.t Memo.Lazy.t =
+    inherited ~field:coq ~root:default_coq_flags (fun flags ->
+        let+ expander = Memo.Lazy.force expander in
+        let expander = Expander.set_dir expander ~dir in
+        let standard = flags in
+        Expander.expand_and_eval_set expander config.coq ~standard)
+  in
   let format_config =
     inherited_if_absent ~field:format_config ~root:config.format_config
       (function

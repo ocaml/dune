@@ -12,7 +12,7 @@ module Odoc : sig
 end
 
 module Coq : sig
-  type t = Ordered_set_lang.Unexpanded.t
+  type t = string list
 end
 
 type t
@@ -46,7 +46,7 @@ val bin_artifacts : t -> Artifacts.Bin.t
 
 val odoc : t -> Odoc.t
 
-val coq : t -> Coq.t
+val coq : t -> Coq.t Build.t
 
 val menhir_flags : t -> string list Build.t
 

@@ -119,7 +119,7 @@ module Context = struct
     ; scope : Scope.t
     ; boot_type : Bootstrap.t
     ; build_dir : Path.Build.t
-    ; profile_flags : Ordered_set_lang.Unexpanded.t
+    ; profile_flags : string list Action_builder.t
     ; mode : Coq_mode.t
     ; native_includes : Path.Set.t Or_exn.t
     ; native_theory_includes : Path.Build.Set.t Or_exn.t
@@ -129,13 +129,8 @@ module Context = struct
     let dir = Path.build (snd t.coqc) in
     Command.run ~dir ?stdout_to (fst t.coqc) args
 
-  let standard_coq_flags = Build.return [ "-q" ]
-
   let coq_flags t =
-    let standard = standard_coq_flags in
-    let standard =
-      Expander.expand_and_eval_set t.expander t.profile_flags ~standard
-    in
+    let standard = t.profile_flags in
     Expander.expand_and_eval_set t.expander t.buildable.flags ~standard
 
   let theories_flags =

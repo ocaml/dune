@@ -25,6 +25,8 @@ unreleased - 2.9 branch
   Dune's configure and `dune install` command. (#4744, fixes #4723,
   @ejgallego, thanks to @JasonGross for reporting this issue)
 
+- Handle renaming of `coq.kernel` library to `coq-core.kernel` in Coq 8.14 (#4713, @proux01)
+
 2.8.5 (28/03/2021)
 ------------------
 

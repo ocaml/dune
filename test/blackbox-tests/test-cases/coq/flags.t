@@ -17,7 +17,7 @@ Test case: default flags
   > EOF
 
   $ dune build foo.vo && tail -n 1 _build/log | sed 's/(cd .*coqc/coqc/' | sed 's/$ //'
-  coqc -q -w -native-compiler-disabled -native-compiler ondemand -R . foo foo.v)
+  coqc -q -w -deprecated-native-compiler-option -w -native-compiler-disabled -native-compiler ondemand -R . foo foo.v)
 
 TC: :standard
 
@@ -29,7 +29,7 @@ TC: :standard
 
   $ rm _build/default/foo.vo
   $ dune build foo.vo && tail -n 1 _build/log | sed 's/(cd .*coqc/coqc/' | sed 's/$ //'
-  coqc -q -w -native-compiler-disabled -native-compiler ondemand -R . foo foo.v)
+  coqc -q -w -deprecated-native-compiler-option -w -native-compiler-disabled -native-compiler ondemand -R . foo foo.v)
 
 TC: override :standard
 
@@ -40,7 +40,7 @@ TC: override :standard
   > EOF
 
   $ dune build foo.vo && tail -n 1 _build/log | sed 's/(cd .*coqc/coqc/' | sed 's/$ //'
-  coqc -w -native-compiler-disabled -native-compiler ondemand -R . foo foo.v)
+  coqc -w -deprecated-native-compiler-option -w -native-compiler-disabled -native-compiler ondemand -R . foo foo.v)
 
 TC: add to :standard
 
@@ -51,7 +51,7 @@ TC: add to :standard
   > EOF
 
   $ dune build foo.vo && tail -n 1 _build/log | sed 's/(cd .*coqc/coqc/' | sed 's/$ //'
-  coqc -q -type-in-type -w -native-compiler-disabled -native-compiler ondemand -R . foo foo.v)
+  coqc -q -type-in-type -w -deprecated-native-compiler-option -w -native-compiler-disabled -native-compiler ondemand -R . foo foo.v)
 
 TC: extend in workspace + override standard
 
@@ -67,7 +67,7 @@ TC: extend in workspace + override standard
   > EOF
 
   $ dune build foo.vo && tail -n 1 _build/log | sed 's/(cd .*coqc/coqc/' | sed 's/$ //'
-  coqc -type-in-type -w -native-compiler-disabled -native-compiler ondemand -R . foo foo.v)
+  coqc -type-in-type -w -deprecated-native-compiler-option -w -native-compiler-disabled -native-compiler ondemand -R . foo foo.v)
 
 TC: extend in workspace + override standard
 
@@ -77,7 +77,7 @@ TC: extend in workspace + override standard
   > EOF
 
   $ dune build foo.vo && tail -n 1 _build/log | sed 's/(cd .*coqc/coqc/' | sed 's/$ //'
-  coqc -q -type-in-type -w -native-compiler-disabled -native-compiler ondemand -R . foo foo.v)
+  coqc -q -type-in-type -w -deprecated-native-compiler-option -w -native-compiler-disabled -native-compiler ondemand -R . foo foo.v)
 
 TC: extend in dune (env) + override standard
 
@@ -89,7 +89,7 @@ TC: extend in dune (env) + override standard
 
   $ rm -rf _build/default/foo.vo
   $ dune build foo.vo && tail -n 1 _build/log | sed 's/(cd .*coqc/coqc/' | sed 's/$ //'
-  coqc -type-in-type -w -native-compiler-disabled -native-compiler ondemand -R . foo foo.v)
+  coqc -type-in-type -w -deprecated-native-compiler-option -w -native-compiler-disabled -native-compiler ondemand -R . foo foo.v)
 
 TC: extend in dune (env) + standard
 
@@ -101,7 +101,7 @@ TC: extend in dune (env) + standard
 
   $ rm -rf _build/default/foo.vo
   $ dune build foo.vo && tail -n 1 _build/log | sed 's/(cd .*coqc/coqc/' | sed 's/$ //'
-  coqc -q -type-in-type -type-in-type -w -native-compiler-disabled -native-compiler ondemand -R . foo foo.v)
+  coqc -q -type-in-type -type-in-type -w -deprecated-native-compiler-option -w -native-compiler-disabled -native-compiler ondemand -R . foo foo.v)
 
 TC: extend in dune (env) + workspace + standard
 
@@ -118,4 +118,4 @@ TC: extend in dune (env) + workspace + standard
 
   $ rm -rf _build/default/foo.vo
   $ dune build foo.vo && tail -n 1 _build/log | sed 's/(cd .*coqc/coqc/' | sed 's/$ //'
-  coqc -q -type-in-type -bt -w -native-compiler-disabled -native-compiler ondemand -R . foo foo.v)
+  coqc -q -type-in-type -bt -w -deprecated-native-compiler-option -w -native-compiler-disabled -native-compiler ondemand -R . foo foo.v)

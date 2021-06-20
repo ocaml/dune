@@ -183,6 +183,9 @@ Unreleased
 - Fix bug for the install of Coq native files when using `(include_subdirs qualified)`
   (#4753, @ejgallego)
 
+- Disable some warnings on Coq 8.14 and `(lang coq (>= 0.3))` due to
+  the rework of the Coq "native" compilation system (#4760, @ejgallego)
+
 2.8.5 (28/03/2021)
 ------------------
 

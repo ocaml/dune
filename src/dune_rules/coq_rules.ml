@@ -168,7 +168,13 @@ module Context = struct
     | Coq_mode.Legacy -> Command.Args.As []
     | Coq_mode.VoOnly ->
       Command.Args.As
-        [ "-w"; "-native-compiler-disabled"; "-native-compiler"; "ondemand" ]
+        [ "-w"
+        ; "-deprecated-native-compiler-option"
+        ; "-w"
+        ; "-native-compiler-disabled"
+        ; "-native-compiler"
+        ; "ondemand"
+        ]
     | Coq_mode.Native ->
       let args =
         let open Resolve.O in
@@ -184,7 +190,8 @@ module Context = struct
         in
         (* This dir is relative to the file, by default [.coq-native/] *)
         Command.Args.S
-          [ Command.Args.As [ "-native-output-dir"; "." ]
+          [ Command.Args.As [ "-w"; "-deprecated-native-compiler-option" ]
+          ; Command.Args.As [ "-native-output-dir"; "." ]
           ; Command.Args.As [ "-native-compiler"; "on" ]
           ; Command.Args.S (List.rev native_include_ml_args)
           ; Command.Args.S (List.rev native_include_theory_output)

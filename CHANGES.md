@@ -180,6 +180,9 @@ Unreleased
 - Fix issue where Dune would ignore `(env ... (coq (flags ...)))`
   declarations appearing in `dune` files (#4749, fixes #4566, @ejgallego @rgrinberg)
 
+- Fix bug for the install of Coq native files when using `(include_subdirs qualified)`
+  (#4753, @ejgallego)
+
 2.8.5 (28/03/2021)
 ------------------
 

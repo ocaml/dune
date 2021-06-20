@@ -30,6 +30,9 @@ unreleased - 2.9 branch
 - Fix issue where Dune would ignore `(env ... (coq (flags ...)))`
   declarations appearing in `dune` files (#4749, fixes #4566, @ejgallego @rgrinberg)
 
+- Disable some warnings on Coq 8.14 and `(lang coq (>= 0.3))` due to
+  the rework of the Coq "native" compilation system (#4760, @ejgallego)
+
 2.8.5 (28/03/2021)
 ------------------
 

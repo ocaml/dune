@@ -25,8 +25,6 @@ unreleased - 2.9 branch
   Dune's configure and `dune install` command. (#4744, fixes #4723,
   @ejgallego, thanks to @JasonGross for reporting this issue)
 
-- Handle renaming of `coq.kernel` library to `coq-core.kernel` in Coq 8.14 (#4713, @proux01)
-
 - Fix issue where Dune would ignore `(env ... (coq (flags ...)))`
   declarations appearing in `dune` files (#4749, fixes #4566, @ejgallego @rgrinberg)
 

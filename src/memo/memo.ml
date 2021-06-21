@@ -29,18 +29,6 @@ module Counters = struct
     edges_traversed := 0;
     nodes_in_cycle_detection_graph := 0;
     edges_in_cycle_detection_graph := 0
-
-  let record_newly_considered_node ~edges ~computed =
-    incr nodes_considered;
-    edges_considered := !edges_considered + edges;
-    if computed then incr nodes_computed
-
-  let record_new_edge_traversals ~count =
-    edges_traversed := !edges_traversed + count
-
-  let record_new_cycle_detection_node () = incr nodes_in_cycle_detection_graph
-
-  let record_new_cycle_detection_edge () = incr edges_in_cycle_detection_graph
 end
 
 type 'a build = 'a Fiber.t
@@ -891,12 +879,14 @@ let add_dep_from_caller (type i o) (dep_node : (i, o) Dep_node.t)
         match sample_attempt with
         | Finished _ -> None
         | Running { dag_node; _ } -> (
-          if !Counters.enabled then Counters.record_new_cycle_detection_edge ();
           match
             Dag.add_assuming_missing global_dep_dag
               caller.running_state.dag_node dag_node
           with
-          | () -> None
+          | () ->
+            if !Counters.enabled then
+              incr Counters.edges_in_cycle_detection_graph;
+            None
           | exception Dag.Cycle cycle ->
             Some (List.map cycle ~f:(fun dag_node -> dag_node.Dag.data)))
       in
@@ -1056,8 +1046,7 @@ end = struct
              and improve stack traces in profiling. *)
           Deps.changed_or_not cached_value.deps
             ~f:(fun [@inline] (Dep_node.T dep) ->
-              if !Counters.enabled then
-                Counters.record_new_edge_traversals ~count:1;
+              if !Counters.enabled then incr Counters.edges_traversed;
               match dep.has_cutoff with
               | false -> (
                 (* If [dep] has no cutoff, it is sufficient to check whether it
@@ -1130,7 +1119,8 @@ end = struct
       in
       let deps_rev = Deps_so_far.get_compute_deps_rev deps_so_far in
       if !Counters.enabled then
-        Counters.record_new_edge_traversals ~count:(List.length deps_rev);
+        Counters.edges_traversed :=
+          !Counters.edges_traversed + List.length deps_rev;
       (value, deps_rev)
     in
     match cache_lookup_failure with
@@ -1148,7 +1138,12 @@ end = struct
   and newly_considering :
         'i 'o. ('i, 'o) Dep_node.t -> 'o Cached_value.t Sample_attempt.t =
    fun dep_node ->
-    if !Counters.enabled then Counters.record_new_cycle_detection_node ();
+    if !Counters.enabled then (
+      (* CR-soon amokhov: For now these counters coincide but they will become
+         different after PR 4756 is merged. *)
+      incr Counters.nodes_in_cycle_detection_graph;
+      incr Counters.nodes_considered
+    );
     let dag_node : Dag.node =
       { info = Dag.create_node_info global_dep_dag
       ; data = Dep_node_without_state.T dep_node.without_state
@@ -1160,13 +1155,6 @@ end = struct
     let frame : Stack_frame_with_state.t =
       T { without_state = dep_node.without_state; running_state }
     in
-    let stop_considering ~(cached_value : _ Cached_value.t) ~computed =
-      dep_node.state <- Not_considering;
-      if !Counters.enabled then
-        Counters.record_newly_considered_node
-          ~edges:(Deps.length cached_value.deps)
-          ~computed
-    in
     let restore_from_cache =
       Once.create ~must_not_raise:(fun () ->
           Call_stack.push_frame frame (fun () ->
@@ -1175,7 +1163,10 @@ end = struct
               in
               (match restore_result with
               | Ok cached_value ->
-                stop_considering ~cached_value ~computed:false
+                dep_node.state <- Not_considering;
+                if !Counters.enabled then
+                  Counters.edges_considered :=
+                    !Counters.edges_considered + Deps.length cached_value.deps
               | Failure _ -> ());
               restore_result))
     in
@@ -1189,7 +1180,12 @@ end = struct
                 compute dep_node cache_lookup_failure running_state.deps_so_far
               in
               dep_node.last_cached_value <- Some cached_value;
-              stop_considering ~cached_value ~computed:true;
+              dep_node.state <- Not_considering;
+              if !Counters.enabled then (
+                incr Counters.nodes_computed;
+                Counters.edges_considered :=
+                  !Counters.edges_considered + Deps.length cached_value.deps
+              );
               cached_value))
     in
     let result : _ Sample_attempt.Result.t = { restore_from_cache; compute } in
@@ -1534,7 +1530,12 @@ module Perf_counters = struct
   let assert_invariants () =
     assert (nodes_computed_in_current_run () <= nodes_in_current_run ());
     assert (edges_in_current_run () <= edges_traversed_in_current_run ());
-    assert (edges_traversed_in_current_run () <= 2 * edges_in_current_run ())
+    assert (edges_traversed_in_current_run () <= 2 * edges_in_current_run ());
+    assert (
+      nodes_for_cycle_detection_in_current_run () <= nodes_in_current_run ());
+    assert (
+      edges_for_cycle_detection_in_current_run ()
+      <= edges_traversed_in_current_run ())
 
   let reset () = Counters.reset ()
 end

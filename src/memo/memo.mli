@@ -445,10 +445,12 @@ module Perf_counters : sig
       twice, so this number can exceed [edges_in_current_run]. *)
   val edges_traversed_in_current_run : unit -> int
 
-  (** Number of nodes added to the cycle detection DAG in the current run. *)
+  (** Number of nodes added to the cycle detection DAG in the current run. This
+      number cannot not exceed [nodes_in_current_run]. *)
   val nodes_for_cycle_detection_in_current_run : unit -> int
 
-  (** Number of edges added to the cycle detection DAG in the current run. *)
+  (** Number of edges added to the cycle detection DAG in the current run. This
+      number cannot not exceed [edges_traversed_in_current_run].*)
   val edges_for_cycle_detection_in_current_run : unit -> int
 
   (** A concise summary of performance counters. *)

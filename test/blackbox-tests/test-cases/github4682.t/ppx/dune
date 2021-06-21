@@ -1,0 +1,4 @@
+(library
+ (name ppx)
+ (kind ppx_rewriter)
+ (ppx.driver (main Ppx.main)))

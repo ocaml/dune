@@ -55,6 +55,8 @@ module Section : sig
       -> destdir:Path.t
       -> ?libdir:Path.t
       -> ?mandir:Path.t
+      -> ?docdir:Path.t
+      -> ?etcdir:Path.t
       -> unit
       -> t
 

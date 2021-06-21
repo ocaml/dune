@@ -154,6 +154,9 @@ Unreleased
 - Fix `root_module` when used in public libraries (#4685, fixes #4684,
   @rgrinberg, @CraigFe)
 
+- Fix `root_module` when used with preprocessing (#4683, fixes #4682,
+  @rgrinberg, @CraigFe)
+
 2.9.0 (unreleased)
 ------------------
 
@@ -165,6 +168,23 @@ Unreleased
 - Add `(package ...)` to `(mdx ...)` (#4691, fixes #3756, @emillon)
 
 - Handle renaming of `coq.kernel` library to `coq-core.kernel` in Coq 8.14 (#4713, @proux01)
+
+- Fix generation of merlin configuration when using `(include_subdirs
+  unqualified)` on Windows (#4745, @nojb)
+
+- Allow users to specify install target directories for `doc` and
+  `etc` sections. We add new options `--docdir` and `--etcdir` to both
+  Dune's configure and `dune install` command. (#4744, fixes #4723,
+  @ejgallego, thanks to @JasonGross for reporting this issue)
+
+- Fix issue where Dune would ignore `(env ... (coq (flags ...)))`
+  declarations appearing in `dune` files (#4749, fixes #4566, @ejgallego @rgrinberg)
+
+- Fix bug for the install of Coq native files when using `(include_subdirs qualified)`
+  (#4753, @ejgallego)
+
+- Disable some warnings on Coq 8.14 and `(lang coq (>= 0.3))` due to
+  the rework of the Coq "native" compilation system (#4760, @ejgallego)
 
 2.8.5 (28/03/2021)
 ------------------

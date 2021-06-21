@@ -121,35 +121,35 @@ value caml_inotify_convert(value buf) {
 value caml_inotify_init(value unit) {
   CAMLparam1(unit);
 
-  unix_error(ENOTSUPP, "inotify_init", Nothing);
+  unix_error(ENOTSUP, "inotify_init", Nothing);
 }
 
 value caml_inotify_add_watch(value fd, value path, value selector_flags) {
   CAMLparam3(fd, path, selector_flags);
 
-  unix_error(ENOTSUPP, "inotify_add_watch", Nothing);
+  unix_error(ENOTSUP, "inotify_add_watch", Nothing);
 }
 
 value caml_inotify_rm_watch(value fd, value watch) {
   CAMLparam2(fd, watch);
 
-  unix_error(ENOTSUPP, "inotify_rm_watch", Nothing);
+  unix_error(ENOTSUP, "inotify_rm_watch", Nothing);
 }
 
 value caml_inotify_struct_size(value unit) {
   CAMLparam1(unit);
-  unix_error(ENOTSUPP, "inotify_struct_size", Nothing);
+  unix_error(ENOTSUP, "inotify_struct_size", Nothing);
 }
 
 value caml_inotify_name_max(value unit) {
   CAMLparam1(unit);
-  unix_error(ENOTSUPP, "inotify_name_max", Nothing);
+  unix_error(ENOTSUP, "inotify_name_max", Nothing);
 }
 
 value caml_inotify_convert(value buf) {
   CAMLparam1(buf);
 
-  unix_error(ENOTSUPP, "inotify_convert", Nothing);
+  unix_error(ENOTSUP, "inotify_convert", Nothing);
 }
 
 #endif

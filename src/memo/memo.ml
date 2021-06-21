@@ -18,11 +18,17 @@ module Counters = struct
 
   let edges_traversed = ref 0
 
+  let nodes_in_cycle_detection_graph = ref 0
+
+  let edges_in_cycle_detection_graph = ref 0
+
   let reset () =
     nodes_considered := 0;
     edges_considered := 0;
     nodes_computed := 0;
-    edges_traversed := 0
+    edges_traversed := 0;
+    nodes_in_cycle_detection_graph := 0;
+    edges_in_cycle_detection_graph := 0
 
   let record_newly_considered_node ~edges ~computed =
     incr nodes_considered;
@@ -31,6 +37,10 @@ module Counters = struct
 
   let record_new_edge_traversals ~count =
     edges_traversed := !edges_traversed + count
+
+  let record_new_cycle_detection_node () = incr nodes_in_cycle_detection_graph
+
+  let record_new_cycle_detection_edge () = incr edges_in_cycle_detection_graph
 end
 
 type 'a build = 'a Fiber.t
@@ -881,6 +891,7 @@ let add_dep_from_caller (type i o) (dep_node : (i, o) Dep_node.t)
         match sample_attempt with
         | Finished _ -> None
         | Running { dag_node; _ } -> (
+          if !Counters.enabled then Counters.record_new_cycle_detection_edge ();
           match
             Dag.add_assuming_missing global_dep_dag
               caller.running_state.dag_node dag_node
@@ -1137,6 +1148,7 @@ end = struct
   and newly_considering :
         'i 'o. ('i, 'o) Dep_node.t -> 'o Cached_value.t Sample_attempt.t =
    fun dep_node ->
+    if !Counters.enabled then Counters.record_new_cycle_detection_node ();
     let dag_node : Dag.node =
       { info = Dag.create_node_info global_dep_dag
       ; data = Dep_node_without_state.T dep_node.without_state
@@ -1498,12 +1510,26 @@ module Perf_counters = struct
 
   let edges_traversed_in_current_run () = !Counters.edges_traversed
 
+  let nodes_for_cycle_detection_in_current_run () =
+    !Counters.edges_in_cycle_detection_graph
+
+  let edges_for_cycle_detection_in_current_run () =
+    !Counters.edges_in_cycle_detection_graph
+
   let report_for_current_run () =
-    sprintf "%d/%d computed/total nodes, %d/%d traversed/total edges"
-      (nodes_computed_in_current_run ())
-      (nodes_in_current_run ())
-      (edges_traversed_in_current_run ())
-      (edges_in_current_run ())
+    let memo =
+      sprintf "Memo: %d/%d computed/total nodes, %d/%d traversed/total edges"
+        (nodes_computed_in_current_run ())
+        (nodes_in_current_run ())
+        (edges_traversed_in_current_run ())
+        (edges_in_current_run ())
+    in
+    let cycle_detection =
+      sprintf "Memo's cycle detection graph: %d/%d nodes/edges"
+        (nodes_for_cycle_detection_in_current_run ())
+        (edges_for_cycle_detection_in_current_run ())
+    in
+    String.concat ~sep:"\n" [ memo; cycle_detection ]
 
   let assert_invariants () =
     assert (nodes_computed_in_current_run () <= nodes_in_current_run ());

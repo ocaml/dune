@@ -437,13 +437,19 @@ module Perf_counters : sig
   (** Number of dependency edges of the nodes visited in the current run. *)
   val edges_in_current_run : unit -> int
 
-  (** Number of nodes that were (re)computed in the current run. This number
-      cannot not exceed [nodes_in_current_run]. *)
+  (** Number of nodes (re)computed in the current run. This number cannot not
+      exceed [nodes_in_current_run]. *)
   val nodes_computed_in_current_run : unit -> int
 
-  (** Number of edges that were traversed in the current run. Some edges may be
-      traversed twice, so this number can exceed [edges_in_current_run]. *)
+  (** Number of edges traversed in the current run. Some edges may be traversed
+      twice, so this number can exceed [edges_in_current_run]. *)
   val edges_traversed_in_current_run : unit -> int
+
+  (** Number of nodes added to the cycle detection DAG in the current run. *)
+  val nodes_for_cycle_detection_in_current_run : unit -> int
+
+  (** Number of edges added to the cycle detection DAG in the current run. *)
+  val edges_for_cycle_detection_in_current_run : unit -> int
 
   (** A concise summary of performance counters. *)
   val report_for_current_run : unit -> string

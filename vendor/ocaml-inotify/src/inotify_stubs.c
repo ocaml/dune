@@ -28,6 +28,8 @@
 #include <caml/callback.h>
 #include <caml/unixsupport.h>
 
+#ifdef __linux__
+
 #include <features.h>
 #include <sys/inotify.h>
 
@@ -113,3 +115,41 @@ value caml_inotify_convert(value buf) {
 
   CAMLreturn(event);
 }
+
+# else
+
+value caml_inotify_init(value unit) {
+  CAMLparam1(unit);
+
+  unix_error(ENOTSUPP, "inotify_init", Nothing);
+}
+
+value caml_inotify_add_watch(value fd, value path, value selector_flags) {
+  CAMLparam3(fd, path, selector_flags);
+
+  unix_error(ENOTSUPP, "inotify_add_watch", Nothing);
+}
+
+value caml_inotify_rm_watch(value fd, value watch) {
+  CAMLparam2(fd, watch);
+
+  unix_error(ENOTSUPP, "inotify_rm_watch", Nothing);
+}
+
+value caml_inotify_struct_size(value unit) {
+  CAMLparam1(unit);
+  unix_error(ENOTSUPP, "inotify_struct_size", Nothing);
+}
+
+value caml_inotify_name_max(value unit) {
+  CAMLparam1(unit);
+  unix_error(ENOTSUPP, "inotify_name_max", Nothing);
+}
+
+value caml_inotify_convert(value buf) {
+  CAMLparam1(buf);
+
+  unix_error(ENOTSUPP, "inotify_convert", Nothing);
+}
+
+#endif

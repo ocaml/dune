@@ -34,8 +34,6 @@ Unreleased
 - Dune no longer automatically create or edit `dune-project` files
   (#4239, fixes #4108, @jeremiedimino)
 
-- Add support for instrumentation dependencies (#4210, fixes #3983, @nojb)
-
 - Cleanup temporary files after running `$ dune exec`. (#4260, fixes #4243,
   @rgrinberg)
 
@@ -95,8 +93,6 @@ Unreleased
   the stdout of actions when they succeed or to request that the
   stderr of actions must be empty. This allows to reduce the noise of
   large builds (#4422, #4515, @jeremiedimino)
-
-- Add the possibility to use `locks` with the cram tests stanza (#4397, @voodoos)
 
 - The `@all` alias no longer depends directly on copies of files from the source
   directory (#4461, @nojb)
@@ -160,10 +156,14 @@ Unreleased
 2.9.0 (unreleased)
 ------------------
 
+- Add `(enabled_if ...)` to `(mdx ...)` (#4434, @emillon)
+
+- Add support for instrumentation dependencies (#4210, fixes #3983, @nojb)
+
+- Add the possibility to use `locks` with the cram tests stanza (#4397, @voodoos)
+
 - Allow to set up merlin in a variant of the default context
   (#4145, @TheLortex, @voodoos)
-
-- Add `(enabled_if ...)` to `(mdx ...)` (#4434, @emillon)
 
 - Add `(package ...)` to `(mdx ...)` (#4691, fixes #3756, @emillon)
 
@@ -172,6 +172,9 @@ Unreleased
 - Fix generation of merlin configuration when using `(include_subdirs
   unqualified)` on Windows (#4745, @nojb)
 
+- Fix bug for the install of Coq native files when using `(include_subdirs qualified)`
+  (#4753, @ejgallego)
+
 - Allow users to specify install target directories for `doc` and
   `etc` sections. We add new options `--docdir` and `--etcdir` to both
   Dune's configure and `dune install` command. (#4744, fixes #4723,
@@ -179,9 +182,6 @@ Unreleased
 
 - Fix issue where Dune would ignore `(env ... (coq (flags ...)))`
   declarations appearing in `dune` files (#4749, fixes #4566, @ejgallego @rgrinberg)
-
-- Fix bug for the install of Coq native files when using `(include_subdirs qualified)`
-  (#4753, @ejgallego)
 
 - Disable some warnings on Coq 8.14 and `(lang coq (>= 0.3))` due to
   the rework of the Coq "native" compilation system (#4760, @ejgallego)

@@ -83,9 +83,93 @@ let add t path =
   Watch_table.set t.watch_table watch path;
   String_table.set t.path_table path watch
 
+let process_raw_events t events =
+  let watch_table = t.watch_table in
+  let ev_kinds =
+    List.filter_map events
+      ~f:(fun (watch, ev_kinds, trans_id, fn) ->
+        if
+          Inotify.int_of_watch watch = -1
+          (* queue overflow event is always reported on watch -1 *)
+        then
+          let maybe_overflow =
+            List.filter_map ev_kinds ~f:(fun ev ->
+              match ev with
+              | Inotify.Q_overflow ->
+                Some (ev, trans_id, "<overflow>")
+              | _ -> None)
+          in
+          match maybe_overflow with
+          | [] -> None
+          | _ :: _ -> Some maybe_overflow
+        else
+          match Watch_table.find watch_table watch with
+          | None ->
+            t.log_error
+              (Printf.sprintf
+                 "Events for an unknown watch (%d) [%s]\n"
+                 (Inotify.int_of_watch watch)
+                 (String.concat ~sep:", "
+                    (List.map ev_kinds
+                       ~f:Inotify.string_of_event_kind)));
+            None
+          | Some path ->
+            let fn =
+              match fn with
+              | None -> path
+              | Some fn -> path ^/ fn
+            in
+            Some
+              (List.map ev_kinds ~f:(fun ev -> (ev, trans_id, fn))))
+    |> List.concat
+  in
+  let pending_mv, actions =
+    List.fold_left ev_kinds ~init:(None, [])
+      ~f:(fun (pending_mv, actions) (kind, trans_id, fn) ->
+        let add_pending lst =
+          match pending_mv with
+          | None -> lst
+          | Some (_, fn) -> Moved (Away fn) :: lst
+        in
+        match kind with
+        | Inotify.Moved_from ->
+          (Some (trans_id, fn), add_pending actions)
+        | Inotify.Moved_to -> (
+            match pending_mv with
+            | None -> (None, Moved (Into fn) :: actions)
+            | Some (m_trans_id, m_fn) ->
+              if m_trans_id = trans_id then
+                (None, Moved (Move (m_fn, fn)) :: actions)
+              else
+                (None, Moved (Away m_fn) :: Moved (Into fn) :: actions)
+          )
+        | Inotify.Move_self ->
+          (Some (trans_id, fn), add_pending actions)
+        | Inotify.Create -> (None, Created fn :: add_pending actions)
+        | Inotify.Delete ->
+          (None, Unlinked fn :: add_pending actions)
+        | Inotify.Modify
+        | Inotify.Close_write ->
+          (None, Modified fn :: add_pending actions)
+        | Inotify.Q_overflow ->
+          (None, Queue_overflow :: add_pending actions)
+        | Inotify.Delete_self -> (None, add_pending actions)
+        | Inotify.Access
+        | Inotify.Attrib
+        | Inotify.Open
+        | Inotify.Ignored
+        | Inotify.Isdir
+        | Inotify.Unmount
+        | Inotify.Close_nowrite ->
+          (None, add_pending actions))
+  in
+  List.rev
+    (match pending_mv with
+     | None -> actions
+     | Some (_, fn) -> Moved (Away fn) :: actions)
+
 let pump_events t ~spawn_thread =
   let fd = t.fd in
-  let watch_table = t.watch_table in
   let () =
     spawn_thread (fun () ->
         while true do
@@ -93,89 +177,7 @@ let pump_events t ~spawn_thread =
             UnixLabels.select ~read:[ fd ] ~write:[] ~except:[] ~timeout:(-1.)
           in
           let events = Inotify.read fd in
-          t.send_emit_events_job_to_scheduler (fun () ->
-              let ev_kinds =
-                List.filter_map events
-                  ~f:(fun (watch, ev_kinds, trans_id, fn) ->
-                    if
-                      Inotify.int_of_watch watch = -1
-                      (* queue overflow event is always reported on watch -1 *)
-                    then
-                      let maybe_overflow =
-                        List.filter_map ev_kinds ~f:(fun ev ->
-                            match ev with
-                            | Inotify.Q_overflow ->
-                              Some (ev, trans_id, "<overflow>")
-                            | _ -> None)
-                      in
-                      match maybe_overflow with
-                      | [] -> None
-                      | _ :: _ -> Some maybe_overflow
-                    else
-                      match Watch_table.find watch_table watch with
-                      | None ->
-                        t.log_error
-                          (Printf.sprintf
-                             "Events for an unknown watch (%d) [%s]\n"
-                             (Inotify.int_of_watch watch)
-                             (String.concat ~sep:", "
-                                (List.map ev_kinds
-                                   ~f:Inotify.string_of_event_kind)));
-                        None
-                      | Some path ->
-                        let fn =
-                          match fn with
-                          | None -> path
-                          | Some fn -> path ^/ fn
-                        in
-                        Some
-                          (List.map ev_kinds ~f:(fun ev -> (ev, trans_id, fn))))
-                |> List.concat
-              in
-              let pending_mv, actions =
-                List.fold_left ev_kinds ~init:(None, [])
-                  ~f:(fun (pending_mv, actions) (kind, trans_id, fn) ->
-                    let add_pending lst =
-                      match pending_mv with
-                      | None -> lst
-                      | Some (_, fn) -> Moved (Away fn) :: lst
-                    in
-                    match kind with
-                    | Inotify.Moved_from ->
-                      (Some (trans_id, fn), add_pending actions)
-                    | Inotify.Moved_to -> (
-                      match pending_mv with
-                      | None -> (None, Moved (Into fn) :: actions)
-                      | Some (m_trans_id, m_fn) ->
-                        if m_trans_id = trans_id then
-                          (None, Moved (Move (m_fn, fn)) :: actions)
-                        else
-                          (None, Moved (Away m_fn) :: Moved (Into fn) :: actions)
-                      )
-                    | Inotify.Move_self ->
-                      (Some (trans_id, fn), add_pending actions)
-                    | Inotify.Create -> (None, Created fn :: add_pending actions)
-                    | Inotify.Delete ->
-                      (None, Unlinked fn :: add_pending actions)
-                    | Inotify.Modify
-                    | Inotify.Close_write ->
-                      (None, Modified fn :: add_pending actions)
-                    | Inotify.Q_overflow ->
-                      (None, Queue_overflow :: add_pending actions)
-                    | Inotify.Delete_self -> (None, add_pending actions)
-                    | Inotify.Access
-                    | Inotify.Attrib
-                    | Inotify.Open
-                    | Inotify.Ignored
-                    | Inotify.Isdir
-                    | Inotify.Unmount
-                    | Inotify.Close_nowrite ->
-                      (None, add_pending actions))
-              in
-              List.rev
-                (match pending_mv with
-                | None -> actions
-                | Some (_, fn) -> Moved (Away fn) :: actions))
+          t.send_emit_events_job_to_scheduler (fun () -> process_raw_events t events)
         done)
   in
   ()

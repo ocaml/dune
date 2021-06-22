@@ -10,7 +10,7 @@ module V1 = struct
   module Diagnostic = Diagnostic
   module Path = Path
   module Progress = Progress
-  module Subscribe = Subscribe
+  module Sub = Sub
   module Message = Message
   module Where = Where
   include Public
@@ -20,6 +20,8 @@ module V1 = struct
       type t
 
       type 'a fiber
+
+      type 'a stream
 
       type chan
 
@@ -45,6 +47,15 @@ module V1 = struct
       val notification : t -> 'a Notification.t -> 'a -> unit fiber
 
       val disconnected : t -> unit fiber
+
+      module Subscription : sig
+        type t
+
+        val cancel : t -> unit fiber
+      end
+
+      val subscribe :
+        ?id:Id.t -> t -> 'a Sub.t -> (Subscription.t * 'a stream) fiber
 
       module Batch : sig
         type t

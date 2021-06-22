@@ -176,10 +176,12 @@ module V1 : sig
       | Success
   end
 
-  module Subscribe : sig
-    type t =
-      | Diagnostics
-      | Build_progress
+  module Sub : sig
+    type 'a t
+
+    val progress : Progress.t t
+
+    val diagnostic : Diagnostic.Event.t list t
   end
 
   module Message : sig
@@ -192,10 +194,6 @@ module V1 : sig
 
   module Notification : sig
     type 'a t
-
-    val subscribe : Subscribe.t t
-
-    val unsubscribe : Subscribe.t t
 
     (** Request dune to shutdown. The current build job will be cancelled. *)
     val shutdown : unit t
@@ -224,6 +222,8 @@ module V1 : sig
       type t
 
       type 'a fiber
+
+      type 'a stream
 
       type chan
 
@@ -260,6 +260,15 @@ module V1 : sig
           when the session is ended from the server side (such as if the build
           server is killed entirely). *)
       val disconnected : t -> unit fiber
+
+      module Subscription : sig
+        type t
+
+        val cancel : t -> unit fiber
+      end
+
+      val subscribe :
+        ?id:Id.t -> t -> 'a Sub.t -> (Subscription.t * 'a stream) fiber
 
       module Batch : sig
         type t
@@ -320,6 +329,8 @@ module V1 : sig
         val read : 'a t -> 'a fiber
 
         val fill : 'a t -> 'a -> unit fiber
+
+        val peek : 'a t -> 'a option fiber
       end
       with type 'a fiber := 'a t
     end) (Chan : sig
@@ -333,7 +344,25 @@ module V1 : sig
          returned as [Some sexp], otherwise [None] is returned and the session
          is closed. *)
       val read : t -> Csexp.t option Fiber.t
-    end) : S with type 'a fiber := 'a Fiber.t and type chan := Chan.t
+    end) (Stream : sig
+      module Out : sig
+        type 'a t
+
+        val write : 'a t -> 'a -> unit Fiber.t
+
+        val close : 'a t -> unit Fiber.t
+      end
+
+      module In : sig
+        type 'a t
+      end
+
+      val create : unit -> 'a In.t * 'a Out.t
+    end) :
+      S
+        with type 'a fiber := 'a Fiber.t
+         and type chan := Chan.t
+         and type 'a stream := 'a Stream.In.t
   end
 
   module Where : sig

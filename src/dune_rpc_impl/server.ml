@@ -130,34 +130,106 @@ end)
 
 module Session_set = Session_comparable.Set
 
-module Subscribers = struct
+module Subscribers : sig
+  type t
+
+  type _ what =
+    | Diagnostic : Diagnostic.Event.t list what
+    | Progress : Progress.t what
+
+  val empty : t
+
+  val remove : t -> 'a what -> 'a Subscription.t -> t
+
+  (** Remove all subscriptions of a sesssion *)
+  val remove_session : t -> Client.t Session.t -> t
+
+  val add : t -> 'a what -> 'a Subscription.t -> t
+
+  val notify : t -> 'a what -> 'a -> unit Fiber.t
+end = struct
+  module S = struct
+    let compare = Subscription.compare
+
+    let to_dyn x = Subscription.to_dyn x
+  end
+
+  module Progress_subs_comparable = Comparable.Make (struct
+    type t = Progress.t Subscription.t
+
+    include S
+  end)
+
+  module Progress_subs = Progress_subs_comparable.Set
+
+  module Diagnostic_subs_comparable = Comparable.Make (struct
+    type t = Diagnostic.Event.t list Subscription.t
+
+    include S
+  end)
+
+  module Diagnostic_subs = Diagnostic_subs_comparable.Set
+  module Session_map = Session_comparable.Map
+
+  module Sub_comparable = Comparable.Make (struct
+    type t = Subscription.packed
+
+    let compare x y = Subscription.compare_packed x y
+
+    let to_dyn (Subscription.E x) = Subscription.to_dyn x
+  end)
+
+  module Sub_map = Sub_comparable.Map
+
   type t =
-    { build_progress : Session_set.t
-    ; diagnostics : Session_set.t
+    { build_progress : Progress.t Subscription.t Sub_map.t
+    ; diagnostic : Diagnostic.Event.t list Subscription.t Sub_map.t
     }
 
-  let empty =
-    { build_progress = Session_set.empty; diagnostics = Session_set.empty }
+  type _ what =
+    | Diagnostic : Diagnostic.Event.t list what
+    | Progress : Progress.t what
 
-  let get t (which : Subscribe.t) =
-    match which with
-    | Build_progress -> t.build_progress
-    | Diagnostics -> t.diagnostics
+  let empty = { build_progress = Sub_map.empty; diagnostic = Sub_map.empty }
 
-  let modify t (which : Subscribe.t) ~f =
-    match which with
-    | Build_progress -> { t with build_progress = f t.build_progress }
-    | Diagnostics -> { t with diagnostics = f t.diagnostics }
+  let with_sub_map (type a b) t (what : a what)
+      ~(f : a Subscription.t Sub_map.t -> b * a Subscription.t Sub_map.t) :
+      b * t =
+    match what with
+    | Progress ->
+      let res, build_progress = f t.build_progress in
+      (res, { t with build_progress })
+    | Diagnostic ->
+      let res, diagnostic = f t.diagnostic in
+      (res, { t with diagnostic })
 
-  let add t which session =
-    modify t which ~f:(fun set -> Session_set.add set session)
+  let modify t what ~f =
+    let (), res = with_sub_map t what ~f:(fun map -> ((), f map)) in
+    res
 
-  let remove t which session =
-    modify t which ~f:(fun set -> Session_set.remove set session)
+  let add (type a) t (what : a what) (sub : a Subscription.t) =
+    let key = Subscription.E sub in
+    modify t what ~f:(fun map -> Sub_map.add_exn map key sub)
 
-  let notify t which ~f =
-    let set = get t which in
-    Fiber.parallel_iter_set (module Session_set) set ~f
+  let remove (type a) t (what : a what) (sub : a Subscription.t) =
+    let key = Subscription.E sub in
+    modify t what ~f:(fun map -> Sub_map.remove map key)
+
+  let remove_session t session =
+    Session.subscriptions session
+    |> List.fold_left ~init:t ~f:(fun t sub ->
+           { build_progress = Sub_map.remove t.build_progress sub
+           ; diagnostic = Sub_map.remove t.diagnostic sub
+           })
+
+  let notify (type a) t (what : a what) (a : a) =
+    let fiber, _map =
+      with_sub_map t what ~f:(fun map ->
+          ( Sub_map.values map
+            |> Fiber.parallel_iter ~f:(fun sub -> Subscription.update sub a)
+          , map ))
+    in
+    fiber
 end
 
 (** Primitive unbounded FIFO channel. Reads are blocking. Writes are not
@@ -230,11 +302,7 @@ let handler (t : t Fdecl.t) : 'a Dune_rpc_server.Handler.t =
   in
   let on_terminate session =
     let t = Fdecl.get t in
-    t.subscribers <-
-      [ Subscribe.Diagnostics; Build_progress ]
-      |> List.fold_left ~init:t.subscribers ~f:(fun acc which ->
-             Subscribers.remove acc which session);
-    t.clients <- Session_set.remove t.clients session;
+    t.subscribers <- Subscribers.remove_session t.subscribers session;
     Fiber.return ()
   in
   let rpc =
@@ -294,35 +362,17 @@ let handler (t : t Fdecl.t) : 'a Dune_rpc_server.Handler.t =
       Decl.shutdown
   in
   let () =
-    let unsubscribe session (sub : Subscribe.t) =
-      let t = Fdecl.get t in
-      t.subscribers <- Subscribers.remove t.subscribers sub session;
-      Fiber.return ()
-    in
-    let cb = Handler.callback' (Handler.public ~since:(1, 0) ()) unsubscribe in
-    Handler.notification rpc cb Public.Notification.unsubscribe
-  in
-  let () =
-    let subscribe session (sub : Subscribe.t) =
-      let t = Fdecl.get t in
-      t.subscribers <- Subscribers.add t.subscribers sub session;
-      let* running = Fiber.Pool.running t.pool in
-      match running with
-      | false -> Fiber.return ()
-      | true -> (
-        match sub with
-        | Subscribe.Diagnostics ->
-          let errors = Build_system.errors () in
-          Fiber.Pool.task t.pool ~f:(fun () ->
-              let events =
-                List.map errors ~f:(fun (e : Build_system.Error.t) ->
-                    Diagnostic.Event.Add (diagnostic_of_error e))
-              in
-              Session.notification session Server_notifications.diagnostic
-                events)
-        | Build_progress ->
-          let evt =
+    let info = Handler.public ~since:(3, 0) () in
+    Handler.subscription rpc info Sub.progress
+      ~on_subscribe:(fun _ -> Fiber.return ())
+      ~subscription:(fun _session () sub ->
+        let t = Fdecl.get t in
+        let* () =
+          let event =
             match Build_system.last_event () with
+            | Some Fail -> Progress.Failed
+            | Some Interrupt -> Interrupted
+            | Some Finish -> Success
             | None -> Progress.Waiting
             | Some Start ->
               let current_progress : Build_system.Progress.t =
@@ -334,15 +384,27 @@ let handler (t : t Fdecl.t) : 'a Dune_rpc_server.Handler.t =
                 ; remaining =
                     current_progress.number_of_rules_discovered - complete
                 }
-            | Some Fail -> Failed
-            | Some Interrupt -> Interrupted
-            | Some Finish -> Success
           in
-          Fiber.Pool.task t.pool ~f:(fun () ->
-              Session.notification session Server_notifications.progress evt))
-    in
-    let cb = Handler.callback' (Handler.public ~since:(1, 0) ()) subscribe in
-    Handler.notification rpc cb Public.Notification.subscribe
+          Subscription.update sub event
+        in
+        t.subscribers <- Subscribers.add t.subscribers Progress sub;
+        let+ () = Subscription.finished sub in
+        t.subscribers <- Subscribers.remove t.subscribers Progress sub)
+  in
+  let () =
+    let info = Handler.public ~since:(3, 0) () in
+    Handler.subscription rpc info Sub.diagnostic
+      ~on_subscribe:(fun _ -> Fiber.return ())
+      ~subscription:(fun _session () sub ->
+        let t = Fdecl.get t in
+        let* () =
+          Build_system.errors ()
+          |> List.map ~f:(fun e -> Diagnostic.Event.Add (diagnostic_of_error e))
+          |> Subscription.update sub
+        in
+        t.subscribers <- Subscribers.add t.subscribers Diagnostic sub;
+        let+ () = Subscription.finished sub in
+        t.subscribers <- Subscribers.remove t.subscribers Diagnostic sub)
   in
   let () =
     let f () =
@@ -423,16 +485,11 @@ let task t f =
 let error t errors =
   let t = Fdecl.get t in
   task t (fun () ->
-      let events =
-        lazy
-          (List.map errors ~f:(fun (e : Build_system.Handler.error) ->
-               match e with
-               | Add x -> Diagnostic.Event.Add (diagnostic_of_error x)
-               | Remove x -> Remove (diagnostic_of_error x)))
-      in
-      Subscribers.notify t.subscribers Diagnostics ~f:(fun session ->
-          Session.notification session Server_notifications.diagnostic
-            (Lazy.force events)))
+      List.map errors ~f:(fun (e : Build_system.Handler.error) ->
+          match e with
+          | Add x -> Diagnostic.Event.Add (diagnostic_of_error x)
+          | Remove x -> Remove (diagnostic_of_error x))
+      |> Subscribers.notify t.subscribers Diagnostic)
 
 let progress_of_build_event : Build_system.Handler.event -> Progress.t =
   function
@@ -443,19 +500,15 @@ let progress_of_build_event : Build_system.Handler.event -> Progress.t =
 
 let build_progress t ~complete ~remaining =
   let t = Fdecl.get t in
-  let notification = Progress.In_progress { complete; remaining } in
   task t (fun () ->
-      Subscribers.notify t.subscribers Build_progress ~f:(fun session ->
-          Session.notification session Server_notifications.progress
-            notification))
+      let notification = Progress.In_progress { complete; remaining } in
+      Subscribers.notify t.subscribers Progress notification)
 
 let build_event t (event : Build_system.Handler.event) =
   let t = Fdecl.get t in
-  let notification = progress_of_build_event event in
   task t (fun () ->
-      Subscribers.notify t.subscribers Build_progress ~f:(fun session ->
-          Session.notification session Server_notifications.progress
-            notification))
+      let notification = progress_of_build_event event in
+      Subscribers.notify t.subscribers Progress notification)
 
 let create () =
   let t = Fdecl.create Dyn.Encoder.opaque in

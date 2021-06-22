@@ -3,6 +3,26 @@ open Dune_rpc.V1
 open Lwt.Syntax
 
 module V1 = struct
+  module Stream = struct
+    module In = struct
+      type 'a t = 'a Lwt_stream.t
+    end
+
+    module Out = struct
+      type 'a t = 'a option -> unit
+
+      let write s a =
+        s (Some a);
+        Lwt.return_unit
+
+      let close s =
+        s None;
+        Lwt.return_unit
+    end
+
+    let create () = Lwt_stream.create ()
+  end
+
   module Fiber = struct
     include Lwt
 
@@ -30,6 +50,11 @@ module V1 = struct
       let fill (_, u) x =
         Lwt.wakeup u x;
         Lwt.return_unit
+
+      let peek (x, _) =
+        match Lwt.state x with
+        | Return a -> Lwt.return (Some a)
+        | _ -> Lwt.return_none
 
       let read (x, _) = x
     end
@@ -81,6 +106,7 @@ module V1 = struct
               (fun sexp -> Lwt_io.write o (Csexp.to_string sexp))
               csexps
       end)
+      (Stream)
 
   module Where =
     Where.Make

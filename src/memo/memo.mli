@@ -80,7 +80,7 @@ module Build : sig
 
   val all_concurrently : 'a t list -> 'a list t
 
-  val if_ : bool -> (unit -> unit t) -> unit t
+  val when_ : bool -> (unit -> unit t) -> unit t
 
   val sequential_map : 'a list -> f:('a -> 'b t) -> 'b list t
 

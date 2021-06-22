@@ -250,4 +250,4 @@ let gen_rules t ~sctx ~dir ~expander =
     | Some only, Some stanza_package ->
       Package.Name.Map.mem only (Package.name stanza_package)
   in
-  Memo.Build.if_ do_it register_rules
+  Memo.Build.when_ do_it register_rules

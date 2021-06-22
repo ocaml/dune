@@ -20,14 +20,29 @@ end
    be a problem. *)
 let t_ref = ref (Initialization_state.Uninitialized [])
 
+(* CR-someday aalekseyev: For [watch_path] to work correctly we need to ensure
+   that the parent directory of [path] exists. That is certainly not guaranteed
+   by the [Fs_memo] API, so we should do something to make it more robust, but I
+   believe that is masked by the fact that we usually (always?) look at the
+   source directory before looking for files in that directory.
+
+   It might seem that the [ENOENT] "fall back" trick used below can be extended
+   to fall back all the way to the root, but it can't because subscribing to the
+   root is not sufficient to receive events for creation of "root/a/b/c/d".
+   (however, subscribing to "root/a/b/c" is sufficient for that) *)
 let watch_path dune_file_watcher path =
   try Dune_file_watcher.add_watch dune_file_watcher path with
   | Unix.Unix_error (ENOENT, _, _) -> (
+    (* If we're at the root of the workspace (or the unix root) then we can't
+       get ENOENT because dune can't start without a workspace and unix root
+       always exists, so this [_exn] can't raise (except if the user delets the
+       workspace dir under our feet, in which case all bets are off). *)
+    let containing_dir = Path.parent_exn path in
     (* If the file is absent, we need to wait for it to be created by watching
        the parent. We still try to add a watch for the file itself after that
        succeeds, in case the file was created already before we started watching
        its parent. *)
-    Dune_file_watcher.add_watch dune_file_watcher (Path.parent_exn path);
+    Dune_file_watcher.add_watch dune_file_watcher containing_dir;
     try Dune_file_watcher.add_watch dune_file_watcher path with
     | Unix.Unix_error (ENOENT, _, _) -> ())
 

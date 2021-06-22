@@ -664,7 +664,7 @@ module Sample_attempt = struct
     add_path_impl stack (Lazy.force dag_node)
 
   let force_and_check_for_cycles once dag_node =
-    Once.force_with_blocking_check once ~on_blocking_wait:(fun () ->
+    Once.force_with_blocking_check once ~on_blocking:(fun () ->
         add_path_to ~dag_node)
 
   (* Add a dependency on the [dep_node] from the caller, if there is one. *)

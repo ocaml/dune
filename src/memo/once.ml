@@ -26,11 +26,11 @@ let force t =
         let+ () = Fiber.Ivar.fill ivar result in
         result)
 
-let force_with_blocking_check t ~on_blocking_wait =
+let force_with_blocking_check t ~on_blocking =
   Fiber.of_thunk (fun () ->
       match t.state with
       | Forced ivar -> (
-        on_blocking_wait () >>= function
+        on_blocking () >>= function
         | Ok () -> Fiber.Ivar.read ivar >>| Result.ok
         | Error _ as error -> Fiber.return error)
       | Not_forced { must_not_raise } ->

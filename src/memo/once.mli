@@ -18,10 +18,10 @@ val create : must_not_raise:(unit -> 'a Fiber.t) -> 'a t
     allows the caller to detect cycles and avoid such deadlocks. *)
 val force : 'a t -> 'a Fiber.t
 
-(** Like [force] but the [on_blocking_wait] argument can be used to avoid
-    deadlocks: [on_blocking_wait] will be called before blocking the caller,
-    giving it a chance to detect a cycle and return [Error] to bail out early. *)
+(** Like [force] but the [on_blocking] argument can be used to avoid deadlocks:
+    [on_blocking] will be called before blocking the caller, giving it a chance
+    to detect a cycle and return [Error] to bail out early. *)
 val force_with_blocking_check :
      'a t
-  -> on_blocking_wait:(unit -> (unit, 'b) result Fiber.t)
+  -> on_blocking:(unit -> (unit, 'b) result Fiber.t)
   -> ('a, 'b) result Fiber.t

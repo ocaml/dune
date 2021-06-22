@@ -161,7 +161,9 @@ module Event = struct
      the directory itself, as well as deletion events for all watched paths in
      the corresponding file tree.
 
-     Very little of these assumptions currently hold. *)
+     Not all of these assumptions currently hold. In particular, directory
+     renames probably just give "created" and "deleted" for the directory
+     itself, which means we are not correctly handling directory renames. *)
   type kind =
     | Created
     | Deleted

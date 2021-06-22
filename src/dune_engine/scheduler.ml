@@ -1128,7 +1128,8 @@ module Run = struct
                    (fun job -> Event_queue.send_file_watcher_task t.events job)
                })
     in
-    Fs_memo.init ~dune_file_watcher:watcher;
+    let initial_invalidation = Fs_memo.init ~dune_file_watcher:watcher in
+    Memo.reset initial_invalidation;
     let result =
       match Run_once.run_and_cleanup t run with
       | Ok a -> Result.Ok a

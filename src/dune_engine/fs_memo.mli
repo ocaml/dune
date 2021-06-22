@@ -1,8 +1,9 @@
 open! Stdune
 open Import
 
-(** [init] must be called at initialization. *)
-val init : dune_file_watcher:Dune_file_watcher.t option -> unit
+(** [init] must be called at initialization. Returns the set of nodes that need
+    to be invalidated because they were accessed before [init] was called. *)
+val init : dune_file_watcher:Dune_file_watcher.t option -> Memo.Invalidation.t
 
 (** All functions in this module raise a code error when given a path in the
     build directory. *)

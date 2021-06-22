@@ -2,28 +2,41 @@ open! Stdune
 open! Import
 open Memo.Build.O
 
-type t = { dune_file_watcher : Dune_file_watcher.t option }
+module Initialization_state = struct
+  type t =
+    | Uninitialized of Path.t list
+    | Initialized of { dune_file_watcher : Dune_file_watcher.t option }
+end
 
 (* Ideally this should be an [Fdecl], but there are currently two reasons why
    it's not:
 
    - We read the workspace file before we start the inotify watcher, so [init]
-   is called after [t_ref] is used. This is clearly not good (it means we never
-   re-read the workspace file)
+   is called after [t_ref] is used. This means we have to invalidate some
+   entries of t when [init] is called and set up subscriptions.
 
    - There are tests that call [Scheduler.go] multiple times, therefore [init]
    gets called multiple times. Since they don't use file watcher, it shouldn't
    be a problem. *)
-let t_ref = ref { dune_file_watcher = None }
+let t_ref = ref (Initialization_state.Uninitialized [])
 
-let init ~dune_file_watcher =
-  match !t_ref.dune_file_watcher with
-  | Some _ ->
-    Code_error.raise
-      "Called [Fs_memo.init] a second time after a file watcher was already \
-       set up "
-      []
-  | None -> t_ref := { dune_file_watcher }
+let watch_path dune_file_watcher path =
+  try Dune_file_watcher.add_watch dune_file_watcher path with
+  | Unix.Unix_error (ENOENT, _, _) -> (
+    (* If the file is absent, we need to wait for it to be created by watching
+       the parent. We still try to add a watch for the file itself after that
+       succeeds, in case the file was created already before we started watching
+       its parent. *)
+    Dune_file_watcher.add_watch dune_file_watcher (Path.parent_exn path);
+    try Dune_file_watcher.add_watch dune_file_watcher path with
+    | Unix.Unix_error (ENOENT, _, _) -> ())
+
+let watch_path_using_ref path =
+  match !t_ref with
+  | Initialized { dune_file_watcher = None } -> ()
+  | Initialized { dune_file_watcher = Some watcher } -> watch_path watcher path
+  | Uninitialized paths_to_watch ->
+    t_ref := Uninitialized (path :: paths_to_watch)
 
 (* Files and directories have non-overlapping sets of paths, so we can track
    them using the same memoization table. *)
@@ -31,18 +44,35 @@ let memo =
   Memo.create "fs_memo"
     ~input:(module Path)
     (fun path ->
-      let { dune_file_watcher } = !t_ref in
-      Option.iter dune_file_watcher ~f:(fun dune_file_watcher ->
-          try Dune_file_watcher.add_watch dune_file_watcher path with
-          | Unix.Unix_error (ENOENT, _, _) -> (
-            (* If the file is absent, we need to wait for it to be created by
-               watching the parent. We still try to add a watch for the file
-               itself after that succeeds, in case the file was created already
-               before we started watching its parent. *)
-            Dune_file_watcher.add_watch dune_file_watcher (Path.parent_exn path);
-            try Dune_file_watcher.add_watch dune_file_watcher path with
-            | Unix.Unix_error (ENOENT, _, _) -> ()));
+      watch_path_using_ref path;
       Memo.Build.return ())
+
+let invalidate_path path =
+  match Memo.Expert.previously_evaluated_cell memo path with
+  | None -> Memo.Invalidation.empty
+  | Some cell -> Memo.Cell.invalidate cell
+
+let init ~dune_file_watcher =
+  match !t_ref with
+  | Initialized { dune_file_watcher = Some _ } ->
+    Code_error.raise
+      "Called [Fs_memo.init] a second time after a file watcher was already \
+       set up "
+      []
+  | Initialized { dune_file_watcher = None } ->
+    (* It would be nice to disallow this to simplify things, but there are tests
+       that call [Scheduler.go] multiple times, therefore [init] gets called
+       multiple times. Since they don't use the file watcher, it shouldn't be a
+       problem. *)
+    Memo.Invalidation.empty
+  | Uninitialized accessed_paths ->
+    let res =
+      Memo.Invalidation.reduce (List.map accessed_paths ~f:invalidate_path)
+    in
+    t_ref := Initialized { dune_file_watcher };
+    Option.iter dune_file_watcher ~f:(fun watcher ->
+        List.iter accessed_paths ~f:(fun path -> watch_path watcher path));
+    res
 
 (* Declare a dependency on a path. Instead of calling [depend] directly, you
    should prefer using the helper function [declaring_dependency], because it
@@ -93,11 +123,6 @@ let with_lexbuf_from_file path ~f =
 
 let dir_contents_unsorted =
   declaring_dependency ~f:Path.Untracked.readdir_unsorted_with_kinds
-
-let invalidate_path path =
-  match Memo.Expert.previously_evaluated_cell memo path with
-  | None -> Memo.Invalidation.empty
-  | Some cell -> Memo.Cell.invalidate cell
 
 (* When a file or directory is created or deleted, we need to also invalidate
    the parent directory, so that the [dir_contents] queries are re-executed. *)

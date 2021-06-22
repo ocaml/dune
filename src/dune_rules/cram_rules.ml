@@ -181,7 +181,7 @@ let rules ~sctx ~expander ~dir tests =
       | None -> test_rule ()
       | Some only ->
         let only = Package.Name.Map.keys only |> Package.Name.Set.of_list in
-        Memo.Build.if_
+        Memo.Build.when_
           (Package.Name.Set.is_empty effective.packages
           || Package.Name.Set.(not (is_empty (inter only effective.packages))))
           test_rule)

@@ -48,7 +48,7 @@ end
 module Build0 = struct
   include Fiber
 
-  let if_ x y =
+  let when_ x y =
     match x with
     | true -> y ()
     | false -> return ()

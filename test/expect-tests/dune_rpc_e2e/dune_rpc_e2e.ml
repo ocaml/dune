@@ -149,7 +149,7 @@ let run =
       ~finally:(fun () -> Sys.chdir cwd)
       ~f:(fun () ->
         Sys.chdir (Path.to_string dir);
-        Scheduler.Run.go config run ~on_event:(fun _ _ -> ()))
+        Scheduler.Run.go config run ~timeout:3.0 ~on_event:(fun _ _ -> ()))
 
 let%expect_test "turn on and shutdown" =
   let test () =
@@ -174,7 +174,7 @@ let files =
 
 let setup_diagnostics f =
   let exec () =
-    let handler =
+    let on_diagnostic_event =
       let cwd = Sys.getcwd () in
       let sanitize_path path =
         match String.drop_prefix path ~prefix:cwd with
@@ -215,7 +215,7 @@ let setup_diagnostics f =
         ; related
         }
       in
-      let on_diagnostic_event (e : Dune_rpc.Diagnostic.Event.t) =
+      fun (e : Dune_rpc.Diagnostic.Event.t) ->
         (match e with
         | Remove _ -> ()
         | Add e ->
@@ -231,22 +231,22 @@ let setup_diagnostics f =
           | Remove e -> Remove (sanitize e)
         in
         printfn "%s" (Dyn.to_string (Dune_rpc.Diagnostic.Event.to_dyn e))
-      in
-      Client.Handler.create
-        ~diagnostic:(fun de ->
-          List.iter de ~f:on_diagnostic_event;
-          Fiber.return ())
-        ()
     in
-    run_client ~handler (fun client ->
+    run_client (fun client ->
         (* First we test for regular errors *)
         files [ ("dune-project", "(lang dune 3.0)") ];
-        let* () =
-          printfn "subscribing to notifications";
-          Client.notification client Dune_rpc.Public.Notification.subscribe
-            Diagnostics
+        let* sub, stream =
+          printfn "subscribing to diagnostics";
+          Client.subscribe client Dune_rpc.Sub.diagnostic
         in
-        f client)
+        Fiber.fork_and_join_unit
+          (fun () ->
+            let* () = f client in
+            Client.Subscription.cancel sub)
+          (fun () ->
+            Fiber.Stream.In.sequential_iter stream ~f:(fun des ->
+                List.iter des ~f:on_diagnostic_event;
+                Fiber.return ())))
   in
   run (fun () -> test exec)
 
@@ -259,7 +259,7 @@ let%expect_test "error in dune file" =
   diagnostic_with_build [ ("dune", "(library (name foo))") ] "foo.cma";
   [%expect
     {|
-    subscribing to notifications
+    subscribing to diagnostics
     Building foo.cma
     Build foo.cma succeeded
     stderr:
@@ -276,7 +276,7 @@ let%expect_test "related error" =
     "foo.cma";
   [%expect
     {|
-    subscribing to notifications
+    subscribing to diagnostics
     Building foo.cma
     [ "Add"
     ; [ [ "directory"; "$CWD" ]
@@ -379,7 +379,7 @@ let%expect_test "promotion" =
     "(alias foo)";
   [%expect
     {|
-    subscribing to notifications
+    subscribing to diagnostics
     Building (alias foo)
     [ "Add"
     ; [ [ "id"; "0" ]
@@ -442,7 +442,7 @@ let%expect_test "optional promotion" =
     "(alias foo)";
   [%expect
     {|
-    subscribing to notifications
+    subscribing to diagnostics
     Building (alias foo)
     FAILURE: promotion file $CWD/_build/default/output.actual does not exist
     [ "Add"
@@ -498,7 +498,7 @@ let%expect_test "warning detection" =
     "./foo.exe";
   [%expect
     {|
-    subscribing to notifications
+    subscribing to diagnostics
     Building ./foo.exe
     Build ./foo.exe succeeded
     stderr:
@@ -516,7 +516,7 @@ let%expect_test "error from user rule" =
     "./foo";
   [%expect
     {|
-      subscribing to notifications
+      subscribing to diagnostics
       Building ./foo
       [ "Add"
       ; [ [ "id"; "0" ]
@@ -571,7 +571,7 @@ let%expect_test "create and fix error" =
       let* () = dune_build client "./foo.exe" in
       [%expect
         {|
-        subscribing to notifications
+        subscribing to diagnostics
         Building ./foo.exe
         [ "Add"
         ; [ [ "directory"; "$CWD" ]

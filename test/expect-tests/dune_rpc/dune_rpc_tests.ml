@@ -40,16 +40,8 @@ end
 
 module Drpc = struct
   module Client =
-    Dune_rpc.Client.Make
-      (struct
-        include Fiber
-
-        let parallel_iter t ~f =
-          let stream = Fiber.Stream.In.create t in
-          Fiber.Stream.In.parallel_iter stream ~f
-      end)
-      (Chan)
-
+    Dune_rpc.Client.Make (Dune_rpc_impl.Client.Fiber) (Chan)
+      (Dune_rpc_impl.Client.Stream)
   module Server = Dune_rpc_server.Make (Chan)
 end
 
@@ -233,3 +225,81 @@ let%expect_test "versioning public methods" =
     client: 20
     client: error invalid version
     server: finished. |}]
+
+let%test_module "subscription" =
+  (module struct
+    let sub_decl = { Dune_rpc_private.Sub.elem = Conv.string; name = "pulse" }
+
+    let version = (3, 0)
+
+    let init = init ~version ()
+
+    let rpc () = Handler.create ~on_init ~version ()
+
+    let server f =
+      let rpc = rpc () in
+      let () =
+        let on_subscribe _ = Fiber.return 42 in
+        let subscription _ _ sub = f sub in
+        let info = Handler.public ~since:(3, 0) () in
+        Handler.subscription rpc info sub_decl ~on_subscribe ~subscription
+      in
+      rpc
+
+    let run_client client on_next =
+      printfn "client: making subscription";
+      let* sub, stream = Client.subscribe client sub_decl in
+      let+ () =
+        Fiber.Stream.In.sequential_iter stream ~f:(fun a -> on_next a sub)
+      in
+      printfn "subscription terminated"
+
+    let%expect_test "subscription - client cancel" =
+      let client client =
+        let count = ref 0 in
+        run_client client (fun v active_sub ->
+            if !count = 2 then
+              Client.Subscription.cancel active_sub
+            else (
+              printfn "client: update %s received" v;
+              incr count;
+              Fiber.return ()
+            ))
+      in
+      let handler =
+        server (fun sub ->
+            let* () = Subscription.update sub "first" in
+            let* () = Subscription.update sub "second" in
+            let* () = Subscription.update sub "third" in
+            Subscription.finished sub)
+      in
+      test ~init ~client ~handler ();
+      [%expect
+        {|
+    client: making subscription
+    client: update first received
+    client: update second received
+    subscription terminated
+    server: finished. |}]
+
+    let%expect_test "subscription - server cancel" =
+      let client client =
+        run_client client (fun v _ ->
+            printfn "client: update %s received" v;
+            Fiber.return ())
+      in
+      let handler =
+        server (fun sub ->
+            let* () = Subscription.update sub "first" in
+            let* () = Subscription.update sub "second" in
+            Subscription.finish sub)
+      in
+      test ~init ~client ~handler ();
+      [%expect
+        {|
+    client: making subscription
+    client: update first received
+    client: update second received
+    subscription terminated
+    server: finished. |}]
+  end)

@@ -16,6 +16,8 @@ module Id : sig
   val to_sexp : t -> Csexp.t
 
   module Set : Stdune.Set.S with type elt = t
+
+  module Map : Stdune.Map.S with type key = t
 end
 
 module Call : sig
@@ -278,10 +280,19 @@ module Message : sig
   val message : t -> string
 end
 
-module Subscribe : sig
-  type t =
-    | Diagnostics
-    | Build_progress
+module Sub : sig
+  type 'a t =
+    { elem : 'a Conv.value
+    ; name : string
+    }
+
+  val progress : Progress.t t
+
+  val diagnostic : Diagnostic.Event.t list t
+
+  val cancel : Id.t Decl.notification
+
+  val subscribe : (string, unit) Decl.request
 end
 
 module Client : sig
@@ -289,6 +300,8 @@ module Client : sig
     type t
 
     type 'a fiber
+
+    type 'a stream
 
     type chan
 
@@ -302,6 +315,15 @@ module Client : sig
     val notification : t -> 'a Decl.notification -> 'a -> unit fiber
 
     val disconnected : t -> unit fiber
+
+    module Subscription : sig
+      type t
+
+      val cancel : t -> unit fiber
+    end
+
+    val subscribe :
+      ?id:Id.t -> t -> 'a Sub.t -> (Subscription.t * 'a stream) fiber
 
     module Batch : sig
       type t
@@ -370,6 +392,8 @@ module Client : sig
       val read : 'a t -> 'a fiber
 
       val fill : 'a t -> 'a -> unit fiber
+
+      val peek : 'a t -> 'a option fiber
     end
     with type 'a fiber := 'a t
   end) (Chan : sig
@@ -378,7 +402,25 @@ module Client : sig
     val write : t -> Csexp.t list option -> unit Fiber.t
 
     val read : t -> Csexp.t option Fiber.t
-  end) : S with type 'a fiber := 'a Fiber.t and type chan := Chan.t
+  end) (Stream : sig
+    module Out : sig
+      type 'a t
+
+      val write : 'a t -> 'a -> unit Fiber.t
+
+      val close : 'a t -> unit Fiber.t
+    end
+
+    module In : sig
+      type 'a t
+    end
+
+    val create : unit -> 'a In.t * 'a Out.t
+  end) :
+    S
+      with type 'a fiber := 'a Fiber.t
+       and type chan := Chan.t
+       and type 'a stream := 'a Stream.In.t
 end
 
 module Packet : sig
@@ -425,10 +467,6 @@ module Public : sig
   module Notification : sig
     type 'a t = 'a Decl.notification
 
-    val subscribe : Subscribe.t t
-
-    val unsubscribe : Subscribe.t t
-
     val shutdown : unit t
   end
 end
@@ -443,4 +481,6 @@ module Server_notifications : sig
   val log : Message.t Decl.notification
 
   val abort : Message.t Decl.notification
+
+  val update_sub : 'a Sub.t -> (Id.t * 'a option) Decl.notification
 end

@@ -1,7 +1,8 @@
 open Stdune
 open Poly
-(* We don't make calls to [Inotify] functions ([add_watch], [rm_watch]) in
-   [In_thread.run] because:
+
+(* We don't make calls to [Inotify] functions ([add_watch], [rm_watch]) in a
+   separate thread because:
 
    - we don't think they can block for a while - Inotify doesn't release the
    OCaml lock anyway - it avoids racing with the select loop below, by
@@ -64,8 +65,7 @@ type t =
   ; log_error : string -> unit
   ; watch_table : string Watch_table.t
   ; path_table : Inotify.watch String_table.t
-  ; send_job_to_scheduler : (unit -> unit) -> unit
-  ; emit_event : Event.t -> unit
+  ; send_emit_events_job_to_scheduler : (unit -> Event.t list) -> unit
   ; select_events : Inotify.selector list
   }
 
@@ -93,7 +93,7 @@ let pump_events t ~spawn_thread =
             UnixLabels.select ~read:[ fd ] ~write:[] ~except:[] ~timeout:(-1.)
           in
           let events = Inotify.read fd in
-          t.send_job_to_scheduler (fun () ->
+          t.send_emit_events_job_to_scheduler (fun () ->
               let ev_kinds =
                 List.filter_map events
                   ~f:(fun (watch, ev_kinds, trans_id, fn) ->
@@ -172,19 +172,16 @@ let pump_events t ~spawn_thread =
                     | Inotify.Close_nowrite ->
                       (None, add_pending actions))
               in
-              let actions =
-                List.rev
-                  (match pending_mv with
-                  | None -> actions
-                  | Some (_, fn) -> Moved (Away fn) :: actions)
-              in
-              List.iter actions ~f:t.emit_event)
+              List.rev
+                (match pending_mv with
+                | None -> actions
+                | Some (_, fn) -> Moved (Away fn) :: actions))
         done)
   in
   ()
 
-let create ~spawn_thread ~modify_event_selector ~emit_event ~log_error
-    ~send_job_to_scheduler =
+let create ~spawn_thread ~modify_event_selector ~log_error
+    ~send_emit_events_job_to_scheduler =
   let fd = Inotify.create () in
   let watch_table = Watch_table.create 10 in
   let modify_selector : Inotify.selector =
@@ -204,9 +201,8 @@ let create ~spawn_thread ~modify_event_selector ~emit_event ~log_error
         ; S_Moved_from
         ; S_Moved_to
         ]
-    ; emit_event
     ; log_error
-    ; send_job_to_scheduler
+    ; send_emit_events_job_to_scheduler
     }
   in
   pump_events t ~spawn_thread;

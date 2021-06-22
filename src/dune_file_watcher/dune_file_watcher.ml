@@ -250,19 +250,21 @@ let create_inotifylib_watcher ~(scheduler : Scheduler.t) =
   let special_file_for_inotify_sync = special_file_for_inotify_sync () in
   Inotify_lib.create ~spawn_thread:scheduler.spawn_thread
     ~modify_event_selector:`Closed_writable_fd
-    ~send_job_to_scheduler:scheduler.thread_safe_send_job
-    ~emit_event:(fun event ->
-      (* this runs in the scheduler thread already, so we don't really need the
-         "thread_safe_" part, but it doesn't hurt either *)
-      let event =
-        match event with
-        | Modified path
-          when Path.equal (Path.of_string path)
-                 (Path.build special_file_for_inotify_sync) ->
-          Event.Sync
-        | event -> Inotify_event event
-      in
-      scheduler.thread_safe_send_events [ event ])
+    ~send_emit_events_job_to_scheduler:(fun f ->
+      scheduler.thread_safe_send_job (fun () ->
+          let events = f () in
+          let events =
+            List.map events ~f:(fun event ->
+                match (event : Inotify_lib.Event.t) with
+                | Modified path
+                  when Path.equal (Path.of_string path)
+                         (Path.build special_file_for_inotify_sync) ->
+                  Event.Sync
+                | event -> Event.Inotify_event event)
+          in
+          (* this runs in the scheduler thread already, so we don't really need
+             the "thread_safe_" part, but it doesn't hurt either *)
+          scheduler.thread_safe_send_events events))
     ~log_error:(fun error -> Console.print [ Pp.text error ])
 
 let create_no_buffering ~(scheduler : Scheduler.t) ~root ~backend =

@@ -987,7 +987,7 @@ module Run = struct
   exception Build_cancelled = Build_cancelled
 
   type file_watcher =
-    | Detect_external
+    | Automatic
     | No_watcher
 
   module Event_queue = Event.Queue
@@ -1116,7 +1116,7 @@ module Run = struct
     let watcher =
       match file_watcher with
       | No_watcher -> None
-      | Detect_external ->
+      | Automatic ->
         Some
           (Dune_file_watcher.create_default
              ~scheduler:

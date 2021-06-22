@@ -892,10 +892,10 @@ let term =
       value
       & opt
           (enum
-             [ ("automatic", Dune_engine.Scheduler.Run.Detect_external)
+             [ ("automatic", Dune_engine.Scheduler.Run.Automatic)
              ; ("manual", No_watcher)
              ])
-          Detect_external
+          Automatic
       & info [ "file-watcher" ] ~doc)
   and+ wait_for_filesystem_clock =
     Arg.(

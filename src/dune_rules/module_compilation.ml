@@ -38,7 +38,7 @@ let other_cm_files ~opaque ~(cm_kind : Cm_kind.t) ~dep_graph ~obj_dir m =
 
 let copy_interface ~sctx ~dir ~obj_dir m =
   (* symlink the .cmi into the public interface directory *)
-  Memo.Build.if_
+  Memo.Build.when_
     (Module.visibility m <> Visibility.Private
     && Obj_dir.need_dedicated_public_dir obj_dir)
     (fun () ->
@@ -231,7 +231,7 @@ let build_module ~dep_graphs ?(precompiled_cmi = false) cctx m =
       >>> build_cm cctx m ~dep_graphs ~precompiled_cmi ~cm_kind:Cmx
             ~phase:(Some Fdo.Emit)
   and* () =
-    Memo.Build.if_ (not precompiled_cmi) (fun () ->
+    Memo.Build.when_ (not precompiled_cmi) (fun () ->
         build_cm cctx m ~dep_graphs ~precompiled_cmi ~cm_kind:Cmi ~phase:None)
   in
   let obj_dir = CC.obj_dir cctx in

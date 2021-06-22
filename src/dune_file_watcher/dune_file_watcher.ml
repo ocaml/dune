@@ -1,17 +1,16 @@
 open! Stdune
 module Inotify_lib = Async_inotify_for_dune.Async_inotify
 
-let inotify_event_paths event =
+let inotify_event_paths (event : Inotify_lib.Event.t) =
   match event with
-  | Async_inotify_for_dune.Async_inotify.Event.Created path
-  | Async_inotify_for_dune.Async_inotify.Event.Unlinked path
-  | Async_inotify_for_dune.Async_inotify.Event.Modified path
-  | Async_inotify_for_dune.Async_inotify.Event.Moved (Away path)
-  | Async_inotify_for_dune.Async_inotify.Event.Moved (Into path) ->
+  | Created path
+  | Unlinked path
+  | Modified path
+  | Moved (Away path)
+  | Moved (Into path) ->
     [ path ]
-  | Async_inotify_for_dune.Async_inotify.Event.Moved (Move (from, to_)) ->
-    [ from; to_ ]
-  | Async_inotify_for_dune.Async_inotify.Event.Queue_overflow -> []
+  | Moved (Move (from, to_)) -> [ from; to_ ]
+  | Queue_overflow -> []
 
 type kind =
   | Coarse of { wait_for_watches_established : unit -> unit }

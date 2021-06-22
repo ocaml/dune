@@ -375,45 +375,6 @@ module Cache_lookup = struct
   end
 end
 
-(* A fiber that can be shared but is still computed at most once. An equivalent
-   of ['a Lazy.t] but for asynchronous computations. *)
-module Once = struct
-  type 'a state =
-    | Not_forced of { must_not_raise : unit -> 'a Fiber.t }
-    | Forced of 'a Fiber.Ivar.t
-
-  type 'a t = { mutable state : 'a state }
-
-  (* If a given thunk does in fact raise an exception, forcing it will propagate
-     the exception to the first caller, and leave all subsequent callers stuck,
-     forever waiting for the unfilled [Ivar.t]. *)
-  let create ~must_not_raise = { state = Not_forced { must_not_raise } }
-
-  (* Note that side effects of the shared fiber will happen only when the fiber
-     returned by [force t] is executed. *)
-  let force t =
-    Fiber.of_thunk (fun () ->
-        match t.state with
-        | Forced ivar ->
-          let+ res = Fiber.Ivar.read ivar in
-          res
-        | Not_forced { must_not_raise } ->
-          let ivar = Fiber.Ivar.create () in
-          t.state <- Forced ivar;
-          let* result = must_not_raise () in
-          let+ () = Fiber.Ivar.fill ivar result in
-          result)
-
-  let forced t =
-    match t.state with
-    | Forced _ -> true
-    | Not_forced _ -> false
-
-  (* Like a monadic bind but [f_must_not_raise] returns a [Fiber.t], not a [t]. *)
-  let and_then t ~f_must_not_raise =
-    create ~must_not_raise:(fun () -> Fiber.bind (force t) ~f:f_must_not_raise)
-end
-
 (* An attempt to sample the current value of a node. It's an "attempt" because
    it can fail due to a dependency cycle.
 
@@ -703,16 +664,8 @@ module Sample_attempt = struct
     add_path_impl stack (Lazy.force dag_node)
 
   let force_and_check_for_cycles once dag_node =
-    let force () =
-      let+ result = Once.force once in
-      Ok result
-    in
-    match Once.forced once with
-    | false -> force ()
-    | true -> (
-      add_path_to ~dag_node >>= function
-      | Ok () -> force ()
-      | Error cycle_error -> Fiber.return (Error cycle_error))
+    Once.force_with_blocking_check once ~on_blocking_wait:(fun () ->
+        add_path_to ~dag_node)
 
   (* Add a dependency on the [dep_node] from the caller, if there is one. *)
   let add_dep_from_caller dep_node =
@@ -1163,20 +1116,25 @@ end = struct
               restore_result))
     in
     let compute =
-      Once.and_then restore_from_cache ~f_must_not_raise:(function
-        | Ok cached_value -> Fiber.return cached_value
-        | Failure cache_lookup_failure ->
-          Call_stack.push_frame frame (fun () ->
-              dep_node.last_cached_value <- None;
-              let+ cached_value = compute dep_node cache_lookup_failure frame in
-              dep_node.last_cached_value <- Some cached_value;
-              dep_node.state <- Not_considering;
-              if !Counters.enabled then (
-                incr Counters.nodes_computed;
-                Counters.edges_considered :=
-                  !Counters.edges_considered + Deps.length cached_value.deps
-              );
-              cached_value))
+      Once.create ~must_not_raise:(fun () ->
+          (* We do not use [Once.force_with_blocking_check] here because cycle
+             detection will be performed when forcing the outer [Once.t]. *)
+          Once.force restore_from_cache >>= function
+          | Ok cached_value -> Fiber.return cached_value
+          | Failure cache_lookup_failure ->
+            Call_stack.push_frame frame (fun () ->
+                dep_node.last_cached_value <- None;
+                let+ cached_value =
+                  compute dep_node cache_lookup_failure frame
+                in
+                dep_node.last_cached_value <- Some cached_value;
+                dep_node.state <- Not_considering;
+                if !Counters.enabled then (
+                  incr Counters.nodes_computed;
+                  Counters.edges_considered :=
+                    !Counters.edges_considered + Deps.length cached_value.deps
+                );
+                cached_value))
     in
     let result : _ Sample_attempt.Result.t = { restore_from_cache; compute } in
     dep_node.state <-

@@ -59,6 +59,13 @@ let memo =
   Memo.create "fs_memo"
     ~input:(module Path)
     (fun path ->
+      (* It may seem weird that we are adding a watch on every invalidation of
+         the cell. This is OK because [add_watch] is idempotent, in the sense
+         that we are not accumulating watches.
+
+         In fact, if path disappears then we lose the watch and have to
+         re-establish it, so doing it on every computation is sometimes
+         necessary. *)
       watch_path_using_ref path;
       Memo.Build.return ())
 

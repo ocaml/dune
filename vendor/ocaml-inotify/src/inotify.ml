@@ -129,3 +129,5 @@ let read fd =
   in
 
   List.rev (read_one 0 [])
+
+external supported_by_the_os : unit -> bool = "caml_inotify_is_supported"

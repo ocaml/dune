@@ -48,6 +48,12 @@ static int inotify_return_table[] = {
   IN_IGNORED, IN_ISDIR, IN_Q_OVERFLOW, IN_UNMOUNT, 0
 };
 
+value caml_inotify_is_supported (value unit) {
+  CAMLparam1(unit);
+
+  CAMLreturn(Val_int(1));
+}
+
 value caml_inotify_init(value unit) {
   CAMLparam1(unit);
 
@@ -116,7 +122,13 @@ value caml_inotify_convert(value buf) {
   CAMLreturn(event);
 }
 
-# else
+#else
+
+value caml_inotify_is_supported (value unit) {
+  CAMLparam1(unit);
+
+  CAMLreturn(Val_int(0));
+}
 
 value caml_inotify_init(value unit) {
   CAMLparam1(unit);

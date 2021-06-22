@@ -113,3 +113,7 @@ val rm_watch  : Unix.file_descr -> watch -> unit
     case the event kind list will consist of [[Q_overflow]]. Such an event would be
     associated with a watch descriptor [-1], never returned from {!add_watch}. *)
 val read      : Unix.file_descr -> event list
+
+(** Returns [true] if inotify is supported by the OS.
+    So effectively it returns true on linux and false elsewhere. *)
+val supported_by_the_os : unit -> bool

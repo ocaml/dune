@@ -201,9 +201,10 @@ let select_watcher_backend ~use_inotify_lib =
     | Some res -> res
     | None -> error "Please install fswatch to enable watch mode.")
   | true -> (
-    if use_inotify_lib then
+    if use_inotify_lib then (
+      assert (Ocaml_inotify.Inotify.supported_by_the_os ());
       `Inotify_lib
-    else
+    ) else
       match try_inotifywait () with
       | Some res -> res
       | None -> (

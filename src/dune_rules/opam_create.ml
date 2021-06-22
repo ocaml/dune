@@ -275,7 +275,7 @@ let add_rule sctx ~project ~pkg =
 
 let add_rules sctx ~dir =
   let project = Super_context.find_scope_by_dir sctx dir |> Scope.project in
-  Memo.Build.if_ (Dune_project.generate_opam_files project) (fun () ->
+  Memo.Build.when_ (Dune_project.generate_opam_files project) (fun () ->
       let packages = Dune_project.packages project in
       Package.Name.Map_traversals.parallel_iter packages
         ~f:(fun _name (pkg : Package.t) -> add_rule sctx ~project ~pkg))

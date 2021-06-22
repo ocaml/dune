@@ -15,27 +15,26 @@ type 'a t = { mutable state : 'a state }
    forever waiting for the unfilled [Ivar.t]. *)
 let create ~must_not_raise = { state = Not_forced { must_not_raise } }
 
-let force t =
-  Fiber.of_thunk (fun () ->
-      match t.state with
-      | Forced ivar -> Fiber.Ivar.read ivar
-      | Not_forced { must_not_raise } ->
-        let ivar = Fiber.Ivar.create () in
-        t.state <- Forced ivar;
-        let* result = must_not_raise () in
-        let+ () = Fiber.Ivar.fill ivar result in
-        result)
-
-let force_with_blocking_check t ~on_blocking =
+let force_impl ?on_blocking t =
   Fiber.of_thunk (fun () ->
       match t.state with
       | Forced ivar -> (
-        on_blocking () >>= function
-        | Ok () -> Fiber.Ivar.read ivar >>| Result.ok
-        | Error _ as error -> Fiber.return error)
+        match on_blocking with
+        | None -> Fiber.Ivar.read ivar >>| Result.ok
+        | Some on_blocking -> (
+          on_blocking () >>= function
+          | Ok () -> Fiber.Ivar.read ivar >>| Result.ok
+          | Error _ as error -> Fiber.return error))
       | Not_forced { must_not_raise } ->
         let ivar = Fiber.Ivar.create () in
         t.state <- Forced ivar;
         let* result = must_not_raise () in
         let+ () = Fiber.Ivar.fill ivar result in
         Ok result)
+
+let force t =
+  force_impl t >>| function
+  | Ok res -> res
+  | Error (_ : Nothing.t) -> .
+
+let force_with_blocking_check t ~on_blocking = force_impl t ~on_blocking

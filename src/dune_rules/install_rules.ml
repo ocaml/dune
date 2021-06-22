@@ -296,7 +296,7 @@ end = struct
         >>| List.map ~f:(fun entry -> (name, entry))
       | Coq_stanza.Theory.T coqlib ->
         Coq_rules.install_rules ~sctx ~dir coqlib
-        >>| List.map ~f:(fun entry -> name, entry)
+        >>| List.map ~f:(fun (pkg, entry) -> (Package.name pkg, entry))
       | Dune_file.Documentation d ->
         let* dc = Dir_contents.get sctx ~dir in
         let+ mlds = Dir_contents.mlds dc d in

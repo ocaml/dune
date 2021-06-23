@@ -29,7 +29,11 @@ end
 module With_instrumentation : sig
   type t =
     | Ordinary of Without_instrumentation.t
-    | Instrumentation_backend of (Loc.t * Lib_name.t) * Dep_conf.t list
+    | Instrumentation_backend of
+        { libname : Loc.t * Lib_name.t
+        ; deps : Dep_conf.t list
+        ; flags : String_with_vars.t list
+        }
 end
 
 val decode : Without_instrumentation.t t Dune_lang.Decoder.t

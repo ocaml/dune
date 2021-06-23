@@ -31,6 +31,9 @@ unreleased - 2.9 branch
 - Disable some warnings on Coq 8.14 and `(lang coq (>= 0.3))` due to
   the rework of the Coq "native" compilation system (#4760, @ejgallego)
 
+- Fix a bug where instrumentation flags would be added even if the
+  instrumentatation was disabled (@nojb, #4770)
+
 2.8.5 (28/03/2021)
 ------------------
 

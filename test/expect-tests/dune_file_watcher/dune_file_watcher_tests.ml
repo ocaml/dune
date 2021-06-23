@@ -88,12 +88,12 @@ let%expect_test _ =
     Dune_file_watcher.create_external ~debounce_interval:None
       ~scheduler:
         { spawn_thread = (fun f -> ignore (Thread.create f () : Thread.t))
-        ; thread_safe_send_events =
-            (fun events ->
+        ; thread_safe_send_emit_events_job =
+            (fun job ->
               Mutex.lock mutex;
+              let events = job () in
               events_buffer := !events_buffer @ events;
               Mutex.unlock mutex)
-        ; thread_safe_send_job = (fun _job -> assert false)
         }
       ~root:Path.root
   in
@@ -105,9 +105,9 @@ let%expect_test _ =
           events_buffer := [];
           Some
             (List.map list ~f:(function
-              | Inotify_event _ -> assert false
               | Dune_file_watcher.Event.Sync -> assert false
-              | Dune_file_watcher.Event.File_changed file -> file
+              | Dune_file_watcher.Event.Queue_overflow -> assert false
+              | Dune_file_watcher.Event.Fs_memo_event { path; kind = _ } -> path
               | Dune_file_watcher.Event.Watcher_terminated -> assert false)))
   in
   let print_events n = print_events ~try_to_get_events ~expected:n in

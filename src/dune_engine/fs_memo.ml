@@ -154,61 +154,24 @@ let invalidate_path_and_its_parent path =
     | None -> Memo.Invalidation.empty
     | Some path -> invalidate_path path)
 
-module Event = struct
-  (* Here are some idealized assumptions about events:
+(* CR-someday amokhov: The way we currently treat file system events is simple
+   and robust but doesn't take advantage of all the information we receive. Here
+   are some ideas for future optimisation:
 
-     - If a file is renamed, we receive [Created] and [Deleted] events with
-     corresponding paths.
+   - Don't invalidate [path_exists] queries on [File_changed] events.
 
-     - If a directory is renamed then in addition to the [Created] and [Deleted]
-     events for the directory itself, we receive events about all file and
-     directory paths in the corresponding file tree.
+   - If a [path_exists] query currently returns [true] and we receive a
+   corresponding [File_deleted] event, we can change the query's result to
+   [false] without rerunning the [Path.exists] function (and vice versa).
 
-     - Similarly, if a directory is deleted, we receive the [Deleted] event for
-     the directory itself, as well as deletion events for all watched paths in
-     the corresponding file tree.
-
-     Not all of these assumptions currently hold. In particular, directory
-     renames probably just give "created" and "deleted" for the directory
-     itself, which means we are not correctly handling directory renames. *)
-  type kind =
-    | Created
-    | Deleted
-    | File_changed
-    | Unknown  (** Treated conservatively as any possible event. *)
-
-  type t =
-    { path : Path.t
-    ; kind : kind
-    }
-
-  let create ~kind ~path =
-    if Path.is_in_build_dir path then
-      Code_error.raise "Fs_memo.Event.create called on a build path" [];
-    { path; kind }
-
-  (* CR-someday amokhov: The way we currently treat file system events is simple
-     and robust but doesn't take advantage of all the information we receive.
-     Here are some ideas for future optimisation:
-
-     - Don't invalidate [path_exists] queries on [File_changed] events.
-
-     - If a [path_exists] query currently returns [true] and we receive a
-     corresponding [File_deleted] event, we can change the query's result to
-     [false] without rerunning the [Path.exists] function (and vice versa).
-
-     - Similarly, the result of [dir_contents] queries can be updated without
-     calling [Path.readdir_unsorted_with_kinds]: we know which file or directory
-     should be added to or removed from the result. *)
-  let handle { kind; path } : Memo.Invalidation.t =
-    match kind with
-    | File_changed -> invalidate_path path
-    | Created
-    | Deleted
-    | Unknown ->
-      invalidate_path_and_its_parent path
-
-  let path t = t.path
-
-  let kind t = t.kind
-end
+   - Similarly, the result of [dir_contents] queries can be updated without
+   calling [Path.readdir_unsorted_with_kinds]: we know which file or directory
+   should be added to or removed from the result. *)
+let handle_fs_event ({ kind; path } : Dune_file_watcher.Fs_memo_event.t) :
+    Memo.Invalidation.t =
+  match kind with
+  | File_changed -> invalidate_path path
+  | Created
+  | Deleted
+  | Unknown ->
+    invalidate_path_and_its_parent path

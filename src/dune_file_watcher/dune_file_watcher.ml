@@ -19,21 +19,91 @@ type kind =
 type t =
   { shutdown : [ `Kill of Pid.t | `No_op ]
   ; kind : kind
+        (* CR-someday amokhov: The way we handle "ignored files" using this
+           mutable table is fragile and also wrong. We use [ignored_files] for
+           the [(mode promote)] feature: if a file is promoted, we call
+           [ignore_next_file_change_event] so that the upcoming file-change
+           event does not invalidate the current build. However, instead of
+           ignoring the events, we should merely postpone them and restart the
+           build to take the promoted files into account if need be. *)
+        (* The [ignored_files] table should be accessed in the scheduler thread. *)
+  ; ignored_files : (string, unit) Table.t
   }
+
+module Fs_memo_event = struct
+  type kind =
+    | Created
+    | Deleted
+    | File_changed
+    | Unknown  (** Treated conservatively as any possible event. *)
+
+  type t =
+    { path : Path.t
+    ; kind : kind
+    }
+
+  let create ~kind ~path =
+    if Path.is_in_build_dir path then
+      Code_error.raise "Fs_memo.Event.create called on a build path" [];
+    { path; kind }
+end
 
 module Event = struct
   type t =
-    | File_changed of Path.t
-    | Inotify_event of Inotify_lib.Event.t
+    | Fs_memo_event of Fs_memo_event.t
+    | Queue_overflow
     | Sync
     | Watcher_terminated
 end
 
+(* [process_inotify_event] needs to run in the scheduler thread because it
+   accesses [t.ignored_files]. *)
+let process_inotify_event ~ignored_files
+    (event : Async_inotify_for_dune.Async_inotify.Event.t) : Event.t list =
+  let should_ignore =
+    List.exists (inotify_event_paths event) ~f:(fun path ->
+        let path = Path.of_string path in
+        let abs_path = Path.to_absolute_filename path in
+        if Table.mem ignored_files abs_path then (
+          (* only use ignored record once *)
+          Table.remove ignored_files abs_path;
+          true
+        ) else
+          false)
+  in
+  if should_ignore then
+    []
+  else
+    match event with
+    | Created path ->
+      let path = Path.of_string path in
+      [ Fs_memo_event (Fs_memo_event.create ~kind:Created ~path) ]
+    | Unlinked path ->
+      let path = Path.of_string path in
+      [ Fs_memo_event (Fs_memo_event.create ~kind:Deleted ~path) ]
+    | Modified path ->
+      let path = Path.of_string path in
+      [ Fs_memo_event (Fs_memo_event.create ~kind:File_changed ~path) ]
+    | Moved move -> (
+      match move with
+      | Away path ->
+        let path = Path.of_string path in
+        [ Fs_memo_event (Fs_memo_event.create ~kind:Deleted ~path) ]
+      | Into path ->
+        let path = Path.of_string path in
+        [ Fs_memo_event (Fs_memo_event.create ~kind:Created ~path) ]
+      | Move (from, to_) ->
+        let from = Path.of_string from in
+        let to_ = Path.of_string to_ in
+        [ Fs_memo_event (Fs_memo_event.create ~kind:Deleted ~path:from)
+        ; Fs_memo_event (Fs_memo_event.create ~kind:Created ~path:to_)
+        ])
+    | Queue_overflow -> [ Event.Queue_overflow ]
+
 module Scheduler = struct
   type t =
     { spawn_thread : (unit -> unit) -> unit
-    ; thread_safe_send_events : Event.t list -> unit
-    ; thread_safe_send_job : (unit -> unit) -> unit
+    ; thread_safe_send_emit_events_job : (unit -> Event.t list) -> unit
     }
 end
 
@@ -246,80 +316,87 @@ let spawn_external_watcher ~root ~backend =
   Option.iter stderr ~f:Unix.close;
   ((r_stdout, parse_line, wait), pid)
 
-let create_inotifylib_watcher ~(scheduler : Scheduler.t) =
+let create_inotifylib_watcher ~ignored_files ~(scheduler : Scheduler.t) =
   let special_file_for_inotify_sync = special_file_for_inotify_sync () in
   Inotify_lib.create ~spawn_thread:scheduler.spawn_thread
     ~modify_event_selector:`Closed_writable_fd
     ~send_emit_events_job_to_scheduler:(fun f ->
-      scheduler.thread_safe_send_job (fun () ->
+      scheduler.thread_safe_send_emit_events_job (fun () ->
           let events = f () in
-          let events =
-            List.map events ~f:(fun event ->
-                match (event : Inotify_lib.Event.t) with
-                | Modified path
-                  when Path.equal (Path.of_string path)
-                         (Path.build special_file_for_inotify_sync) ->
-                  Event.Sync
-                | event -> Event.Inotify_event event)
-          in
-          (* this runs in the scheduler thread already, so we don't really need
-             the "thread_safe_" part, but it doesn't hurt either *)
-          scheduler.thread_safe_send_events events))
+          List.concat_map events ~f:(fun event ->
+              match (event : Inotify_lib.Event.t) with
+              | Modified path
+                when Path.equal (Path.of_string path)
+                       (Path.build special_file_for_inotify_sync) ->
+                [ Event.Sync ]
+              | event -> process_inotify_event ~ignored_files event)))
     ~log_error:(fun error -> Console.print [ Pp.text error ])
 
+let special_file_for_inotify_sync_absolute =
+  lazy
+    (Path.to_absolute_filename (Path.build (special_file_for_inotify_sync ())))
+
+let is_special_file_for_inotify_sync (path : Path.t) =
+  match path with
+  | In_source_tree _ -> false
+  | External _ ->
+    String.equal (Path.to_string path)
+      (Lazy.force special_file_for_inotify_sync_absolute)
+  | In_build_dir build_path ->
+    Path.Build.( = ) build_path (special_file_for_inotify_sync ())
+
 let create_no_buffering ~(scheduler : Scheduler.t) ~root ~backend =
-  let special_file_for_inotify_sync = special_file_for_inotify_sync () in
+  let ignored_files = Table.create (module String) 64 in
   let (pipe, parse_line, wait), pid = spawn_external_watcher ~root ~backend in
   let worker_thread pipe =
     let buffer = Buffer.create ~capacity:buffer_capacity in
-    let special_file_for_inotify_sync_absolute =
-      Path.to_absolute_filename (Path.build special_file_for_inotify_sync)
-    in
     while true do
-      let lines =
+      (* the job must run on the scheduler thread because it accesses
+         [ignored_files] *)
+      let job =
         match Buffer.read_lines buffer pipe with
-        | `End_of_file _remaining -> [ Event.Watcher_terminated ]
+        | `End_of_file _remaining -> fun () -> [ Event.Watcher_terminated ]
         | `Ok lines ->
-          List.map lines ~f:(fun line ->
-              match parse_line line with
-              | Error s -> failwith s
-              | Ok path_s -> (
-                let path = Path.of_string path_s in
-                match path with
-                | In_source_tree _ -> Event.File_changed path
-                | External _ ->
-                  if String.equal path_s special_file_for_inotify_sync_absolute
-                  then
-                    Event.Sync
+          fun () ->
+            List.concat_map lines ~f:(fun line ->
+                match parse_line line with
+                | Error s -> failwith s
+                | Ok path_s ->
+                  let path = Path.of_string path_s in
+                  if is_special_file_for_inotify_sync path then
+                    [ Event.Sync ]
                   else
-                    Event.File_changed path
-                | In_build_dir build_path ->
-                  if Path.Build.( = ) build_path special_file_for_inotify_sync
-                  then
-                    Event.Sync
-                  else
-                    Event.File_changed path))
+                    let abs_path = Path.to_absolute_filename path in
+                    if Table.mem ignored_files abs_path then (
+                      (* only use ignored record once *)
+                      Table.remove ignored_files abs_path;
+                      []
+                    ) else
+                      [ Fs_memo_event
+                          (Fs_memo_event.create ~kind:File_changed ~path)
+                      ])
       in
-      scheduler.thread_safe_send_events lines
+      scheduler.thread_safe_send_emit_events_job job
     done
   in
   scheduler.spawn_thread (fun () -> worker_thread pipe);
   { shutdown = `Kill pid
   ; kind = Coarse { wait_for_watches_established = wait }
+  ; ignored_files
   }
 
 let with_buffering ~create ~(scheduler : Scheduler.t) ~debounce_interval =
-  let files_changed = ref [] in
+  let jobs = ref [] in
   let event_mtx = Mutex.create () in
   let event_cv = Condition.create () in
   let res =
-    let thread_safe_send_events lines =
+    let thread_safe_send_emit_events_job job =
       Mutex.lock event_mtx;
-      files_changed := List.rev_append lines !files_changed;
+      jobs := job :: !jobs;
       Condition.signal event_cv;
       Mutex.unlock event_mtx
     in
-    let scheduler = { scheduler with thread_safe_send_events } in
+    let scheduler = { scheduler with thread_safe_send_emit_events_job } in
     create ~scheduler
   in
   (* The buffer thread is used to avoid flooding the main thread with file
@@ -336,13 +413,14 @@ let with_buffering ~create ~(scheduler : Scheduler.t) ~debounce_interval =
      [debounce_interval] *)
   let rec buffer_thread () =
     Mutex.lock event_mtx;
-    while List.is_empty !files_changed do
+    while List.is_empty !jobs do
       Condition.wait event_cv event_mtx
     done;
-    let files = !files_changed in
-    files_changed := [];
+    let jobs_batch = List.rev !jobs in
+    jobs := [];
     Mutex.unlock event_mtx;
-    scheduler.thread_safe_send_events files;
+    scheduler.thread_safe_send_emit_events_job (fun () ->
+        List.concat_map jobs_batch ~f:(fun job -> job ()));
     Thread.delay debounce_interval;
     buffer_thread ()
   in
@@ -359,10 +437,11 @@ let create_external ~root ~debounce_interval ~scheduler ~backend =
 
 let create_inotifylib ~scheduler =
   prepare_sync ();
-  let inotify = create_inotifylib_watcher ~scheduler in
+  let ignored_files = Table.create (module String) 64 in
+  let inotify = create_inotifylib_watcher ~ignored_files ~scheduler in
   Inotify_lib.add inotify
     (Path.to_string (Path.build (special_file_for_inotify_sync ())));
-  { kind = Fine { inotify }; shutdown = `No_op }
+  { kind = Fine { inotify }; shutdown = `No_op; ignored_files }
 
 let create_default ~scheduler =
   match select_watcher_backend ~use_inotify_lib:true with
@@ -403,3 +482,7 @@ module For_tests = struct
 
   let resume t = Unix.kill (Pid.to_int (pid t)) Sys.sigcont
 end
+
+let ignore_next_file_change_event t path =
+  assert (Path.is_in_source_tree path);
+  Table.set t.ignored_files (Path.to_absolute_filename path) ()

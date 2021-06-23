@@ -107,7 +107,11 @@ end
 module With_instrumentation = struct
   type t =
     | Ordinary of Without_instrumentation.t
-    | Instrumentation_backend of (Loc.t * Lib_name.t) * Dep_conf.t list
+    | Instrumentation_backend of
+        { libname : Loc.t * Lib_name.t
+        ; deps : Dep_conf.t list
+        ; flags : String_with_vars.t list
+        }
 end
 
 let decode =
@@ -224,20 +228,23 @@ module Per_module = struct
     else
       No_preprocessing
 
-  let add_instrumentation t ~loc ~flags:flags' ~deps libname =
+  let add_instrumentation t ~loc ~flags ~deps libname =
     Per_module.map t ~f:(fun pp ->
         match pp with
         | No_preprocessing ->
           let pps =
-            [ With_instrumentation.Instrumentation_backend (libname, deps) ]
+            [ With_instrumentation.Instrumentation_backend
+                { libname; deps; flags }
+            ]
           in
-          let staged = false in
-          Pps { loc; pps; flags = flags'; staged }
-        | Pps { loc; pps; flags; staged } ->
+          Pps { loc; pps; flags = []; staged = false }
+        | Pps ({ pps; _ } as t) ->
           let pps =
-            With_instrumentation.Instrumentation_backend (libname, deps) :: pps
+            With_instrumentation.Instrumentation_backend
+              { libname; deps; flags }
+            :: pps
           in
-          Pps { loc; pps; flags = flags @ flags'; staged }
+          Pps { t with pps }
         | Action (loc, _)
         | Future_syntax loc ->
           User_error.raise ~loc
@@ -256,7 +263,7 @@ module Per_module = struct
   let with_instrumentation t ~instrumentation_backend =
     let f = function
       | With_instrumentation.Ordinary libname -> Resolve.return (Some libname)
-      | With_instrumentation.Instrumentation_backend (libname, _deps) ->
+      | With_instrumentation.Instrumentation_backend { libname; _ } ->
         instrumentation_backend libname
     in
     Per_module.map_resolve t ~f:(filter_map_resolve ~f)
@@ -265,7 +272,8 @@ module Per_module = struct
     let open Resolve.O in
     let f = function
       | With_instrumentation.Ordinary _ -> Resolve.return []
-      | With_instrumentation.Instrumentation_backend (libname, deps) -> (
+      | With_instrumentation.Instrumentation_backend
+          { libname; deps; flags = _ } -> (
         instrumentation_backend libname >>| function
         | Some _ -> deps
         | None -> [])

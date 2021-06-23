@@ -119,10 +119,11 @@ end
 module Event : sig
   type build_input_change =
     | Sync
-    | Fs_event of Fs_memo.Event.t
+    | Fs_event of Dune_file_watcher.Fs_memo_event.t
     | Invalidation of Memo.Invalidation.t
 
   type t =
+    | File_watcher_task of (unit -> Dune_file_watcher.Event.t list)
     | Build_inputs_changed of build_input_change Nonempty_list.t
     | File_system_watcher_terminated
     | Job_completed of job * Proc.Process_info.t
@@ -141,9 +142,6 @@ module Event : sig
         returned first. *)
     val next : t -> event
 
-    (** Ignore the ne next file change event about this file. *)
-    val ignore_next_file_change_event : t -> Path.t -> unit
-
     (** Pending worker tasks *)
     val pending_worker_tasks : t -> int
 
@@ -157,7 +155,12 @@ module Event : sig
 
     val register_worker_task_started : t -> unit
 
-    (** Send an event to the main thread. *)
+    val send_file_watcher_task :
+      t -> (unit -> Dune_file_watcher.Event.t list) -> unit
+
+    (** It's a bit weird to have both this and [send_file_watcher_task]. The
+        reason is that [send_file_watcher_task] uses [send_file_watcher_events]
+        internally. *)
     val send_file_watcher_events : t -> Dune_file_watcher.Event.t list -> unit
 
     val send_invalidation_event : t -> Memo.Invalidation.t -> unit
@@ -172,10 +175,11 @@ module Event : sig
 end = struct
   type build_input_change =
     | Sync
-    | Fs_event of Fs_memo.Event.t
+    | Fs_event of Dune_file_watcher.Fs_memo_event.t
     | Invalidation of Memo.Invalidation.t
 
   type t =
+    | File_watcher_task of (unit -> Dune_file_watcher.Event.t list)
     | Build_inputs_changed of build_input_change Nonempty_list.t
     | File_system_watcher_terminated
     | Job_completed of job * Proc.Process_info.t
@@ -194,18 +198,11 @@ end = struct
 
     type t =
       { jobs_completed : (job * Proc.Process_info.t) Queue.t
+      ; file_watcher_tasks : (unit -> Dune_file_watcher.Event.t list) Queue.t
       ; mutable invalidation_events : Invalidation_event.t list
       ; mutable signals : Signal.Set.t
       ; mutex : Mutex.t
       ; cond : Condition.t
-            (* CR-soon amokhov: The way we handle "ignored files" using this
-               mutable table is fragile and also wrong. We use [ignored_files]
-               for the [(mode promote)] feature: if a file is promoted, we call
-               [ignore_next_file_change_event] so that the upcoming file-change
-               event does not invalidate the current build. However, instead of
-               ignoring the events, we should merely postpone them and restart
-               the build to take the promoted files into account if need be. *)
-      ; ignored_files : (string, unit) Table.t
       ; mutable pending_jobs : int
       ; mutable pending_worker_tasks : int
       ; worker_tasks_completed : Fiber.fill Queue.t
@@ -216,20 +213,20 @@ end = struct
 
     let create stats =
       let jobs_completed = Queue.create () in
+      let file_watcher_tasks = Queue.create () in
       let worker_tasks_completed = Queue.create () in
       let invalidation_events = [] in
       let signals = Signal.Set.empty in
       let mutex = Mutex.create () in
       let cond = Condition.create () in
-      let ignored_files = Table.create (module String) 64 in
       let pending_jobs = 0 in
       let pending_worker_tasks = 0 in
       { jobs_completed
+      ; file_watcher_tasks
       ; invalidation_events
       ; signals
       ; mutex
       ; cond
-      ; ignored_files
       ; pending_jobs
       ; worker_tasks_completed
       ; pending_worker_tasks
@@ -242,10 +239,6 @@ end = struct
 
     let register_worker_task_started q =
       q.pending_worker_tasks <- q.pending_worker_tasks + 1
-
-    let ignore_next_file_change_event q path =
-      assert (Path.is_in_source_tree path);
-      Table.set q.ignored_files (Path.to_absolute_filename path) ()
 
     let add_event q f =
       Mutex.lock q.mutex;
@@ -274,6 +267,8 @@ end = struct
 
       val signal : t
 
+      val file_watcher_task : t
+
       val invalidation : t
 
       val jobs_completed : t
@@ -298,6 +293,10 @@ end = struct
             q.signals <- Signal.Set.remove q.signals signal;
             Signal signal)
 
+      let file_watcher_task q =
+        Option.map (Queue.pop q.file_watcher_tasks) ~f:(fun job ->
+            File_watcher_task job)
+
       let invalidation q =
         match q.invalidation_events with
         | [] -> None
@@ -305,22 +304,16 @@ end = struct
           q.invalidation_events <- [];
           let terminated = ref false in
           let events =
-            List.filter_map events ~f:(function
-              | Filesystem_event Sync -> Some (Sync : build_input_change)
+            List.concat_map events ~f:(function
+              | Filesystem_event Sync -> [ (Sync : build_input_change) ]
               | Invalidation invalidation ->
-                Some (Invalidation invalidation : build_input_change)
+                [ (Invalidation invalidation : build_input_change) ]
               | Filesystem_event Watcher_terminated ->
                 terminated := true;
-                None
-              | Filesystem_event (File_changed path) ->
-                let abs_path = Path.to_absolute_filename path in
-                if Table.mem q.ignored_files abs_path then (
-                  (* only use ignored record once *)
-                  Table.remove q.ignored_files abs_path;
-                  None
-                ) else
-                  (* CR-soon amokhov: Generate more precise events. *)
-                  Some (Fs_event (Fs_memo.Event.create ~kind:Unknown ~path)))
+                []
+              | Filesystem_event (Fs_memo_event event) -> [ Fs_event event ]
+              | Filesystem_event Queue_overflow ->
+                [ Invalidation Memo.Invalidation.clear_caches ])
           in
           match !terminated with
           | true -> Some File_system_watcher_terminated
@@ -357,12 +350,13 @@ end = struct
               (chain
                  (* Event sources are listed in priority order. Signals are the
                     highest priority to maximize responsiveness to Ctrl+C.
-                    [worker_tasks_completed] and [invalidation] is used for
-                    reacting to user input, so their latency is also important.
-                    [jobs_completed] and [yield] are where the bulk of the work
-                    is done, so they are the lowest priority to avoid starving
-                    other things. *)
+                    [file_watcher_task], [worker_tasks_completed] and
+                    [invalidation] are used for reacting to user input, so their
+                    latency is also important. [jobs_completed] and [yield] are
+                    where the bulk of the work is done, so they are the lowest
+                    priority to avoid starving other things. *)
                  [ signal
+                 ; file_watcher_task
                  ; invalidation
                  ; worker_tasks_completed
                  ; jobs_completed
@@ -401,6 +395,9 @@ end = struct
 
     let send_signal q signal =
       add_event q (fun q -> q.signals <- Signal.Set.add q.signals signal)
+
+    let send_file_watcher_task q job =
+      add_event q (fun q -> Queue.push q.file_watcher_tasks job)
 
     let pending_jobs q = q.pending_jobs
 
@@ -650,6 +647,7 @@ type t =
   ; job_throttle : Fiber.Throttle.t
   ; events : Event.Queue.t
   ; process_watcher : Process_watcher.t
+  ; file_watcher : Dune_file_watcher.t option
   }
 
 let t : t Fiber.Var.t = Fiber.Var.create ()
@@ -670,9 +668,13 @@ let yield_if_there_are_pending_events () =
 let () =
   Memo.yield_if_there_are_pending_events := yield_if_there_are_pending_events
 
-let ignore_for_watch p =
+let ignore_for_watch path =
   let+ t = t () in
-  Event.Queue.ignore_next_file_change_event t.events p
+  match t.file_watcher with
+  | None -> ()
+  | Some file_watcher ->
+    assert (Path.is_in_source_tree path);
+    Dune_file_watcher.ignore_next_file_change_event file_watcher path
 
 exception Build_cancelled
 
@@ -733,28 +735,34 @@ let kill_and_wait_for_all_processes t =
 
 let prepare (config : Config.t) ~(handler : Handler.t) =
   let events = Event.Queue.create config.stats in
-  (* The signal watcher must be initialized first so that signals are blocked in
-     all threads. *)
-  Signal_watcher.init events;
-  let process_watcher = Process_watcher.init events in
-  let t =
-    { status =
-        (* Slightly weird initialization happening here: for polling mode we
-           initialize in "Building" state, immediately switch to Standing_by and
-           then back to "Building". It would make more sense to start in
-           "Stand_by" from the start. We can't "just" switch the initial value
-           here because then the non-polling mode would run in "Standing_by"
-           mode, which is even weirder. *)
-        Building
-    ; job_throttle = Fiber.Throttle.create config.concurrency
-    ; process_watcher
-    ; events
-    ; config
-    ; handler
-    }
-  in
-  global := Some t;
-  t
+  (* We return the scheduler in chunks to resolve the dependency cycle
+     (scheduler wants to know the file_watcher, file_watcher wants to send
+     events to scheduler) *)
+  ( events
+  , fun ~file_watcher ->
+      (* The signal watcher must be initialized first so that signals are
+         blocked in all threads. *)
+      Signal_watcher.init events;
+      let process_watcher = Process_watcher.init events in
+      let t =
+        { status =
+            (* Slightly weird initialization happening here: for polling mode we
+               initialize in "Building" state, immediately switch to Standing_by
+               and then back to "Building". It would make more sense to start in
+               "Stand_by" from the start. We can't "just" switch the initial
+               value here because then the non-polling mode would run in
+               "Standing_by" mode, which is even weirder. *)
+            Building
+        ; job_throttle = Fiber.Throttle.create config.concurrency
+        ; process_watcher
+        ; events
+        ; config
+        ; handler
+        ; file_watcher
+        }
+      in
+      global := Some t;
+      t )
 
 module Run_once : sig
   type run_error =
@@ -774,7 +782,7 @@ end = struct
     let handle_event event =
       match (event : Event.build_input_change) with
       | Invalidation invalidation -> invalidation
-      | Fs_event event -> Fs_memo.Event.handle event
+      | Fs_event event -> Fs_memo.handle_fs_event event
       | Sync -> Memo.Invalidation.empty
     in
     let invalidation =
@@ -803,6 +811,10 @@ end = struct
     t.handler t.config Tick;
     match Event.Queue.next t.events with
     | Job_completed (job, proc_info) -> Fiber.Fill (job.ivar, proc_info)
+    | File_watcher_task job ->
+      let events = job () in
+      Event.Queue.send_file_watcher_events t.events events;
+      iter t
     | Build_inputs_changed events -> (
       let invalidation =
         (handle_invalidation_events events : Memo.Invalidation.t)
@@ -922,7 +934,7 @@ module Run = struct
   exception Build_cancelled = Build_cancelled
 
   type file_watcher =
-    | Detect_external
+    | Automatic
     | No_watcher
 
   module Event_queue = Event.Queue
@@ -1047,20 +1059,22 @@ module Run = struct
 
   let go config ?(file_watcher = No_watcher)
       ~(on_event : Config.t -> Handler.Event.t -> unit) run =
-    let t = prepare config ~handler:on_event in
-    let watcher =
+    let events, prepare = prepare config ~handler:on_event in
+    let file_watcher =
       match file_watcher with
       | No_watcher -> None
-      | Detect_external ->
+      | Automatic ->
         Some
           (Dune_file_watcher.create_default
              ~scheduler:
                { spawn_thread = Thread.spawn
-               ; thread_safe_send_events =
-                   (fun files_changed ->
-                     Event_queue.send_file_watcher_events t.events files_changed)
+               ; thread_safe_send_emit_events_job =
+                   (fun job -> Event_queue.send_file_watcher_task events job)
                })
     in
+    let t = prepare ~file_watcher in
+    let initial_invalidation = Fs_memo.init ~dune_file_watcher:file_watcher in
+    Memo.reset initial_invalidation;
     let result =
       match Run_once.run_and_cleanup t run with
       | Ok a -> Result.Ok a
@@ -1075,8 +1089,10 @@ module Run = struct
       | Error (Exn exn_with_bt) ->
         Error (exn_with_bt.exn, Some exn_with_bt.backtrace)
     in
-    Option.iter watcher ~f:(fun watcher ->
-        ignore (wait_for_process t (Dune_file_watcher.pid watcher) : _ Fiber.t));
+    Option.iter file_watcher ~f:(fun watcher ->
+        match Dune_file_watcher.shutdown watcher with
+        | `Kill pid -> ignore (wait_for_process t pid : _ Fiber.t)
+        | `No_op -> ());
     ignore (kill_and_wait_for_all_processes t : saw_signal);
     match result with
     | Ok a -> a

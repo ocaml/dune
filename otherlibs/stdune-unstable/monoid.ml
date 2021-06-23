@@ -1,5 +1,7 @@
 module type Basic = Monoid_intf.Basic
 
+module type S = Monoid_intf.S
+
 module Make (M : Basic) : Monoid_intf.S with type t = M.t = struct
   include M
 

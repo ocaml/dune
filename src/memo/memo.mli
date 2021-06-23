@@ -180,9 +180,7 @@ module Invalidation : sig
 
   type t
 
-  val empty : t
-
-  val combine : t -> t -> t
+  include Monoid.S with type t := t
 
   val is_empty : t -> bool
 

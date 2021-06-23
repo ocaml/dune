@@ -49,7 +49,7 @@ module Run : sig
   end
 
   type file_watcher =
-    | Detect_external
+    | Automatic
     | No_watcher
 
   (** Raised when [go] terminates due to the user requesting a shutdown via rpc.

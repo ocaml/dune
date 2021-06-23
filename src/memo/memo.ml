@@ -1266,20 +1266,26 @@ module Invalidation = struct
       | Clear_caches -> Dyn.Variant ("Clear_caches", [])
   end
 
-  (* Represented as a tree mainly to get a tail-recursive execution. *)
-  type t =
-    | Empty
-    | Leaf of Leaf.t
-    | Combine of t * t
+  module T = struct
+    (* Represented as a tree mainly to get a tail-recursive execution. *)
+    type t =
+      | Empty
+      | Leaf of Leaf.t
+      | Combine of t * t
 
-  let empty : t = Empty
+    let empty : t = Empty
 
-  let combine a b =
-    match (a, b) with
-    | Empty, x
-    | x, Empty ->
-      x
-    | x, y -> Combine (x, y)
+    let combine a b =
+      match (a, b) with
+      | Empty, x
+      | x, Empty ->
+        x
+      | x, y -> Combine (x, y)
+  end
+
+  include T
+
+  include (Monoid.Make (T) : Monoid.S with type t := t)
 
   let execute_leaf = function
     | Leaf.Invalidate_node node -> invalidate_dep_node node

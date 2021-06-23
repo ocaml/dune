@@ -342,9 +342,11 @@ module Value = struct
 end
 
 module Dag : Dag.S with type value := Dep_node_without_state.packed =
-Dag.Make (struct
-  type t = Dep_node_without_state.packed
-end)
+  Dag.Make
+    (struct
+      type t = Dep_node_without_state.packed
+    end)
+    ()
 
 module Cache_lookup = struct
   (* Looking up a value cached in a previous run can fail in three possible
@@ -577,9 +579,8 @@ module Stack_frame_with_state = struct
   type ('i, 'o) unpacked =
     { without_state : ('i, 'o) Dep_node_without_state.t
     ; dag_node : Dag.node Lazy.t
-    ; (* We expect the size of this set to be small in practice, so using [Set]
-         should be cheaper than [Table]. *)
-      mutable children_added_to_dag : Int.Set.t
+    ; (* CR-soon amokhov: Benchmark if it's worth switching to [Dag.Id.Table.t]. *)
+      mutable children_added_to_dag : Dag.Id.Set.t
     ; phase : phase
     ; (* [deps_rev] are accumulated only when [phase = Compute] *)
       mutable deps_rev : Dep_node.packed list
@@ -618,8 +619,6 @@ module Call_stack = struct
     Fiber.Var.set call_stack_var stack (fun () -> Implicit_output.forbid f)
 end
 
-let global_dep_dag = Dag.create ()
-
 module Sample_attempt = struct
   include Sample_attempt0
 
@@ -634,7 +633,7 @@ module Sample_attempt = struct
           ({ dag_node = (lazy caller_dag_node); _ } as frame)
         :: stack -> (
         let dag_node_id = Dag.node_id dag_node in
-        match Int.Set.mem frame.children_added_to_dag dag_node_id with
+        match Dag.Id.Set.mem frame.children_added_to_dag dag_node_id with
         | true ->
           (* Here we know that the current [frame] has already been traversed in
              a previous [add_path_to] call. Therefore, the DAG already contains
@@ -642,19 +641,17 @@ module Sample_attempt = struct
              traversal. We might as well stop here and save time. *)
           Ok ()
         | false -> (
-          match
-            Dag.add_assuming_missing global_dep_dag caller_dag_node dag_node
-          with
+          match Dag.add_assuming_missing caller_dag_node dag_node with
           | exception Dag.Cycle cycle ->
             Error (List.map cycle ~f:(fun dag_node -> dag_node.Dag.data))
           | () -> (
             if !Counters.enabled then
               incr Counters.edges_in_cycle_detection_graph;
             let not_traversed_before =
-              Int.Set.is_empty frame.children_added_to_dag
+              Dag.Id.Set.is_empty frame.children_added_to_dag
             in
             frame.children_added_to_dag <-
-              Int.Set.add frame.children_added_to_dag dag_node_id;
+              Dag.Id.Set.add frame.children_added_to_dag dag_node_id;
             match not_traversed_before with
             | false ->
               (* Same optimisation as above. *)
@@ -1086,7 +1083,7 @@ end = struct
     let dag_node : Dag.node Lazy.t =
       lazy
         (if !Counters.enabled then incr Counters.nodes_in_cycle_detection_graph;
-         { info = Dag.create_node_info global_dep_dag
+         { info = Dag.create_node_info ()
          ; data = Dep_node_without_state.T dep_node.without_state
          })
     in
@@ -1098,7 +1095,7 @@ end = struct
               ; phase = Restore_from_cache
               ; deps_rev = []
               ; dag_node
-              ; children_added_to_dag = Int.Set.empty
+              ; children_added_to_dag = Dag.Id.Set.empty
               }
           in
           Call_stack.push_frame frame (fun () ->
@@ -1127,7 +1124,7 @@ end = struct
                 ; phase = Compute
                 ; deps_rev = []
                 ; dag_node
-                ; children_added_to_dag = Int.Set.empty
+                ; children_added_to_dag = Dag.Id.Set.empty
                 }
             in
             Call_stack.push_frame frame (fun () ->

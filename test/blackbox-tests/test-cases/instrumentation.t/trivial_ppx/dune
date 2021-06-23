@@ -1,0 +1,6 @@
+(library
+ (name trivial_ppx)
+ (public_name trivial.ppx)
+ (kind ppx_rewriter)
+ (libraries ppxlib)
+ (modules trivial_ppx))

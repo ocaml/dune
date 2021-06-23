@@ -2,7 +2,7 @@ open! Stdune
 open Import
 
 let wait_for_server common =
-  match (Dune_rpc.Where.get (), Common.rpc common) with
+  match (Dune_rpc_impl.Where.get (), Common.rpc common) with
   | None, None -> User_error.raise [ Pp.text "rpc server not running" ]
   | Some p, Some _ ->
     User_error.raise
@@ -78,15 +78,18 @@ let wait_term =
 let establish_client_session ~common ~wait =
   let open Fiber.O in
   let once () =
-    let where = Dune_rpc.Where.get () in
+    let where = Dune_rpc_impl.Where.get () in
     match where with
     | None -> Fiber.return None
     | Some where -> (
       let* client = Dune_rpc_impl.Run.Connect.csexp_client where in
       let+ session = Csexp_rpc.Client.connect client in
       match session with
-      | Error _ -> None
-      | Ok session -> Some (client, session))
+      | Ok session -> Some (client, session)
+      | Error exn ->
+        Console.print
+          [ Pp.text "failed to connect:"; Exn_with_backtrace.pp exn ];
+        None)
   in
   establish_connection_or_raise ~wait ~common once
 

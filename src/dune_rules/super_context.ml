@@ -402,6 +402,7 @@ let dump_env t ~dir =
   let ocaml_flags = get_node t ~dir >>= Env_node.ocaml_flags in
   let foreign_flags = get_node t ~dir >>| Env_node.foreign_flags in
   let menhir_flags = get_node t ~dir >>| Env_node.menhir_flags in
+  let coq_flags = get_node t ~dir >>= Env_node.coq in
   let open Action_builder.O in
   let+ o_dump =
     let* ocaml_flags = Action_builder.memo_build ocaml_flags in
@@ -417,8 +418,12 @@ let dump_env t ~dir =
     let+ flags = Action_builder.memo_build_join menhir_flags in
     [ ("menhir_flags", flags) ]
     |> List.map ~f:Dune_lang.Encoder.(pair string (list string))
+  and+ coq_dump =
+    let+ flags = Action_builder.memo_build_join coq_flags in
+    [ ("coq_flags", flags) ]
+    |> List.map ~f:Dune_lang.Encoder.(pair string (list string))
   in
-  List.concat [ o_dump; c_dump; menhir_dump ]
+  List.concat [ o_dump; c_dump; menhir_dump; coq_dump ]
 
 let resolve_program t ~dir ?hint ~loc bin =
   let t = t.env_tree in

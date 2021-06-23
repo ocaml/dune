@@ -153,6 +153,8 @@ Unreleased
 - Fix `root_module` when used with preprocessing (#4683, fixes #4682,
   @rgrinberg, @CraigFe)
 
+- Display Coq profile flags in `dune printenv` (#4767, @ejgallego)
+
 2.9.0 (unreleased)
 ------------------
 

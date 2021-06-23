@@ -1880,3 +1880,109 @@ let%expect_test "Test Memo.clear_cache" =
     Memo: 4/4 computed/total nodes, 4/2 traversed/total edges
     Memo's cycle detection graph: 0/0 nodes/edges
   |}]
+
+(* In the first run, the dependency structure is: A -> B -> C -> current run.
+
+   In the second run, it's: A -> X -> B -> X, i.e. there is a dependency cycle.
+
+   We force the computation of A and C in parallel, and make C yield, so that B
+   gets blocked waiting for C to eventually complete. As a result, during the
+   restore_from_cache phase in the second run, the cycle detection algorithm
+   will add the path A -> B -> C to the DAG. Then, in the compute phase, B will
+   get blocked on X, adding the path A -> X -> B -> X to the DAG, detecting the
+   cycle. If the two phases are not cleanly separated, the second path might get
+   cut down to just B -> X, hiding the cycle and leading to a deadlock. *)
+let%expect_test "restore_from_cache and compute phases are well-separated" =
+  let task_c =
+    Memo.create "C"
+      ~input:(module Int)
+      (fun input ->
+        printf "Started evaluating C\n";
+        let* () =
+          Memo.Build.of_reproducible_fiber (Fiber.of_thunk Scheduler.yield)
+        in
+        let+ (_ : Run.t) = Memo.current_run () in
+        printf "Evaluated C\n";
+        input + 1)
+  in
+  let task_x_fdecl = Fdecl.create (fun _ -> Dyn.Opaque) in
+  let task_b =
+    let memory_b = ref 0 in
+    Memo.create "B"
+      ~input:(module Int)
+      (fun input ->
+        printf "Started evaluating B\n";
+        let+ result =
+          match !memory_b with
+          | 0 -> Memo.exec task_c input
+          | _ -> Memo.exec (Fdecl.get task_x_fdecl) input
+        in
+        incr memory_b;
+        printf "B = %d\n" result;
+        printf "Evaluated B\n";
+        result)
+  in
+  let task_a =
+    let memory_a = ref 0 in
+    Memo.create "A"
+      ~input:(module Int)
+      (fun input ->
+        printf "Started evaluating A\n";
+        let+ result =
+          match !memory_a with
+          | 0 -> Memo.exec task_b input
+          | _ -> Memo.exec (Fdecl.get task_x_fdecl) input
+        in
+        incr memory_a;
+        printf "A = %d\n" result;
+        printf "Evaluated A\n";
+        result)
+  in
+  let task_x =
+    Memo.create "X"
+      ~input:(module Int)
+      (fun input ->
+        printf "Started evaluating X\n";
+        let+ result = Memo.exec task_b input in
+        printf "Evaluated X\n";
+        result)
+  in
+  Fdecl.set task_x_fdecl task_x;
+  Memo.Perf_counters.reset ();
+  let (_results : int * int) =
+    Scheduler.run
+      (Fiber.fork_and_join
+         (fun () -> Memo.Build.run (Memo.exec task_c 0))
+         (fun () -> Memo.Build.run (Memo.exec task_a 0)))
+  in
+  [%expect
+    {|
+    Started evaluating C
+    Started evaluating A
+    Started evaluating B
+    Evaluated C
+    B = 1
+    Evaluated B
+    A = 1
+    Evaluated A
+  |}];
+  print_perf_counters ();
+  [%expect {| 4/4 computed/total nodes, 3/3 traversed/total edges |}];
+  Memo.reset Invalidation.empty;
+  (match
+     Scheduler.run
+       (Fiber.fork_and_join
+          (fun () -> Memo.Build.run (Memo.exec task_c 0))
+          (fun () -> Memo.Build.run (Memo.exec task_a 0)))
+   with
+  | (_result : int * int) -> ()
+  | exception Test_scheduler.Never -> print_endline "Deadlock!");
+  [%expect
+    {|
+    Started evaluating C
+    Started evaluating A
+    Started evaluating X
+    Started evaluating B
+    Evaluated C
+    Deadlock!
+  |}]

@@ -71,10 +71,10 @@ module Where = struct
 
     val read_file : string -> string Fiber.t
 
-    val readlink : string -> string Fiber.t
+    val readlink : string -> string option Fiber.t
 
     val analyze_path :
-      string -> [ `Symlink | `Unix_socket | `Normal_file | `Other ] Fiber.t
+      string -> [ `Unix_socket | `Normal_file | `Other ] Fiber.t
   end) =
   struct
     let default ~build_dir =
@@ -87,28 +87,37 @@ module Where = struct
       let open Fiber.O in
       match Sys.getenv _DUNE_RPC with
       | Some d -> Fiber.return (Some (of_string d))
-      | None ->
+      | None -> (
         let of_file f =
           let+ contents = Sys.read_file f in
           Some (of_string contents)
         in
         let file = Filename.concat build_dir rpc_socket_relative_to_build_dir in
-        let rec loop file symlink_depth =
-          let* analyze = Sys.analyze_path file in
-          match analyze with
-          | `Symlink ->
-            if String.length file < 104 then
-              of_file file
-            else if symlink_depth > 0 then
-              let* link = Sys.readlink file in
-              loop link (symlink_depth - 1)
-            else
-              of_file file
-          | `Other -> Fiber.return None
-          | `Unix_socket -> Fiber.return (Some (`Unix file))
-          | `Normal_file -> of_file file
-        in
-        loop file 5
+        let* analyze = Sys.analyze_path file in
+        match analyze with
+        | `Other -> Fiber.return None
+        | `Normal_file -> of_file file
+        | `Unix_socket -> (
+          let unix file = Fiber.return (Some (`Unix file)) in
+          if String.length file < 104 then
+            unix file
+          else
+            let* readlink = Sys.readlink file in
+            match readlink with
+            | None -> unix file
+            | Some p ->
+              let shorter s1 s2 =
+                if String.length s1 > String.length s2 then
+                  s2
+                else
+                  s1
+              in
+              unix
+                (shorter file
+                   (if Filename.is_relative p then
+                     Filename.concat (Filename.dirname file) p
+                   else
+                     p))))
   end
 end
 

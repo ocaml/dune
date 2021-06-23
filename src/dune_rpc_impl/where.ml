@@ -18,16 +18,18 @@ module Where =
 
       let is_win32 () = Sys.win32
 
-      let read_file s = Io.String_path.read_file s
+      let read_file f = Io.String_path.read_file f
 
-      let readlink s = Unix.readlink s
+      let readlink s =
+        match Unix.readlink s with
+        | s -> Some s
+        | exception Unix.Unix_error (Unix.EINVAL, _, _) -> None
 
       let analyze_path s =
         if Sys.file_exists s then
-          let stat = Unix.lstat s in
+          let stat = Unix.stat s in
           match stat.st_kind with
           | Unix.S_SOCK -> `Unix_socket
-          | Unix.S_LNK -> `Symlink
           | _ -> `Normal_file
         else
           `Other

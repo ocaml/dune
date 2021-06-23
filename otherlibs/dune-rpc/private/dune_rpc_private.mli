@@ -144,10 +144,10 @@ module Where : sig
 
     val read_file : string -> string Fiber.t
 
-    val readlink : string -> string Fiber.t
+    val readlink : string -> string option Fiber.t
 
     val analyze_path :
-      string -> [ `Symlink | `Unix_socket | `Normal_file | `Other ] Fiber.t
+      string -> [ `Unix_socket | `Normal_file | `Other ] Fiber.t
   end) : S with type 'a fiber := 'a Fiber.t
 end
 

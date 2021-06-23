@@ -12,43 +12,49 @@ let dune_prog =
      Bin.which ~path "dune" |> Option.value_exn |> Path.to_absolute_filename)
 
 let init_chan ~root_dir =
-  let argv = [ "dune"; "rpc"; "init"; "--wait"; "--root"; root_dir ] in
-  let stdout_i, stdout_w = Unix.pipe ~cloexec:true () in
-  let stdin_i, stdin_w = Unix.pipe ~cloexec:true () in
-  let pid =
-    Spawn.spawn ~prog:(Lazy.force dune_prog) ~argv ~stdout:stdout_w
-      ~stdin:stdin_i ()
-    |> Pid.of_int
+  let build_dir = Filename.concat root_dir "_build" in
+  let once () =
+    match Dune_rpc_impl.Where.Where.get ~build_dir with
+    | None -> Fiber.return None
+    | Some where -> (
+      let* client = Dune_rpc_impl.Run.Connect.csexp_client where in
+      let+ res = Csexp_rpc.Client.connect client in
+      match res with
+      | Ok s -> Some s
+      | Error _ -> None)
   in
-  (pid, Unix.in_channel_of_descr stdout_i, Unix.out_channel_of_descr stdin_w)
+  let rec loop thread =
+    let* res = once () in
+    match res with
+    | Some res ->
+      (match thread with
+      | None -> ()
+      | Some th -> Scheduler.Worker.stop th);
+      Fiber.return res
+    | None ->
+      let* thread =
+        match thread with
+        | None -> Scheduler.Worker.create ()
+        | Some th -> Fiber.return th
+      in
+      let* () =
+        Scheduler.Worker.task_exn thread ~f:(fun () -> Unix.sleepf 0.2)
+      in
+      loop (Some thread)
+  in
+  loop None
 
 let run_client ?handler f =
-  let pid, in_, out = init_chan ~root_dir:"." in
-  let close =
-    lazy
-      (close_out_noerr out;
-       close_in_noerr in_)
+  let* chan = init_chan ~root_dir:"." in
+  let initialize =
+    let id = Dune_rpc.Id.make (Atom "test") in
+    Dune_rpc.Initialize.Request.create ~id
   in
-  Fiber.fork_and_join_unit
-    (fun () ->
-      let+ _ = Scheduler.wait_for_process pid in
-      Lazy.force close)
-    (fun () ->
-      let* chan = Session.create ~socket:false in_ out in
-      let initialize =
-        let id = Dune_rpc.Id.make (Atom "test") in
-        Dune_rpc.Initialize.Request.create ~id
-      in
-      let+ res =
-        Client.connect ?handler chan initialize ~f:(fun client ->
-            Fiber.finalize
-              (fun () -> f client)
-              ~finally:
-                (Client.notification client
-                   Dune_rpc.Public.Notification.shutdown))
-      in
-      Lazy.force close;
-      res)
+  Client.connect ?handler chan initialize ~f:(fun client ->
+      Fiber.finalize
+        (fun () -> f client)
+        ~finally:
+          (Client.notification client Dune_rpc.Public.Notification.shutdown))
 
 let read_lines in_ =
   let* reader = Scheduler.Worker.create () in
@@ -352,7 +358,8 @@ let%expect_test "optional promotion" =
       )
     ]
     "(alias foo)";
-  [%expect{|
+  [%expect
+    {|
     subscribing to notifications
     Building (alias foo)
     [ "Add"

@@ -581,6 +581,17 @@ let%expect_test "Memo.Poly" =
     "hi again" -> [ "hi again" ]
     |}]
 
+let print_cycle_error cycle_error =
+  let frames = Memo.Cycle_error.get cycle_error in
+  printf "Dependency cycle detected:\n";
+  List.iteri frames ~f:(fun i frame ->
+      let called_by =
+        match i with
+        | 0 -> ""
+        | _ -> "called by "
+      in
+      printf "- %s%s\n" called_by (Dyn.to_string (Stack_frame.to_dyn frame)))
+
 let print_result arg res =
   let res =
     Result.map_error res
@@ -589,17 +600,8 @@ let print_result arg res =
            ~f:
              (Exn_with_backtrace.map ~f:(fun exn ->
                   match exn with
-                  | Memo.Cycle_error.E cycle_error ->
-                    let frames = Memo.Cycle_error.get cycle_error in
-                    printf "Dependency cycle detected:\n";
-                    List.iteri frames ~f:(fun i frame ->
-                        let called_by =
-                          match i with
-                          | 0 -> ""
-                          | _ -> "called by "
-                        in
-                        printf "- %s%s\n" called_by
-                          (Dyn.to_string (Stack_frame.to_dyn frame)));
+                  | Memo.Cycle_error.E error ->
+                    print_cycle_error error;
                     exn
                   | _ -> exn)))
   in
@@ -1976,13 +1978,18 @@ let%expect_test "restore_from_cache and compute phases are well-separated" =
           (fun () -> Memo.Build.run (Memo.exec task_a 0)))
    with
   | (_result : int * int) -> ()
-  | exception Test_scheduler.Never -> print_endline "Deadlock!");
+  | exception Test_scheduler.Never -> print_endline "Deadlock!"
+  | exception (Memo.Error.E error as exn) -> (
+    match Memo.Error.get error with
+    | Memo.Cycle_error.E error -> print_cycle_error error
+    | _ -> raise exn));
   [%expect
     {|
     Started evaluating C
     Started evaluating A
     Started evaluating X
     Started evaluating B
-    Evaluated C
-    Deadlock!
+    Dependency cycle detected:
+    - ("B", 0)
+    - called by ("X", 0)
   |}]

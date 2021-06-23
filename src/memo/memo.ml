@@ -580,7 +580,7 @@ module Stack_frame_with_state = struct
     ; (* We expect the size of this set to be small in practice, so using [Set]
          should be cheaper than [Table]. *)
       mutable children_added_to_dag : Int.Set.t
-    ; mutable phase : phase
+    ; phase : phase
     ; (* [deps_rev] are accumulated only when [phase = Compute] *)
       mutable deps_rev : Dep_node.packed list
     }
@@ -1051,7 +1051,6 @@ end = struct
         -> 'o Cached_value.t Fiber.t =
    fun dep_node cache_lookup_failure (T frame) ->
     let compute_value_and_deps_rev () =
-      frame.phase <- Compute;
       let* () = !yield_if_there_are_pending_events () in
       let+ res =
         report_and_collect_errors (fun () ->
@@ -1091,17 +1090,17 @@ end = struct
          ; data = Dep_node_without_state.T dep_node.without_state
          })
     in
-    let frame : Stack_frame_with_state.t =
-      T
-        { without_state = dep_node.without_state
-        ; phase = Restore_from_cache
-        ; deps_rev = []
-        ; dag_node
-        ; children_added_to_dag = Int.Set.empty
-        }
-    in
     let restore_from_cache =
       Once.create ~must_not_raise:(fun () ->
+          let frame : Stack_frame_with_state.t =
+            T
+              { without_state = dep_node.without_state
+              ; phase = Restore_from_cache
+              ; deps_rev = []
+              ; dag_node
+              ; children_added_to_dag = Int.Set.empty
+              }
+          in
           Call_stack.push_frame frame (fun () ->
               let+ restore_result =
                 restore_from_cache dep_node.last_cached_value
@@ -1122,6 +1121,15 @@ end = struct
           Once.force restore_from_cache >>= function
           | Ok cached_value -> Fiber.return cached_value
           | Failure cache_lookup_failure ->
+            let frame : Stack_frame_with_state.t =
+              T
+                { without_state = dep_node.without_state
+                ; phase = Compute
+                ; deps_rev = []
+                ; dag_node
+                ; children_added_to_dag = Int.Set.empty
+                }
+            in
             Call_stack.push_frame frame (fun () ->
                 dep_node.last_cached_value <- None;
                 let+ cached_value =

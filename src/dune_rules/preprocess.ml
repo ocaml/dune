@@ -84,10 +84,11 @@ let filter_map_resolve t ~f =
   match t with
   | Pps t ->
     let+ pps = Resolve.List.filter_map t.pps ~f in
+    let pps, flags = List.split pps in
     if pps = [] then
       No_preprocessing
     else
-      Pps { t with pps }
+      Pps { t with pps; flags = t.flags @ List.flatten flags }
   | (No_preprocessing | Action _ | Future_syntax _) as t -> Resolve.return t
 
 let fold_resolve t ~init ~f =
@@ -262,9 +263,15 @@ module Per_module = struct
 
   let with_instrumentation t ~instrumentation_backend =
     let f = function
-      | With_instrumentation.Ordinary libname -> Resolve.return (Some libname)
-      | With_instrumentation.Instrumentation_backend { libname; _ } ->
-        instrumentation_backend libname
+      | With_instrumentation.Ordinary libname ->
+        Resolve.return (Some (libname, []))
+      | With_instrumentation.Instrumentation_backend { libname; flags; _ } ->
+        Resolve.map
+          ~f:(fun backend ->
+            match backend with
+            | None -> None
+            | Some backend -> Some (backend, flags))
+          (instrumentation_backend libname)
     in
     Per_module.map_resolve t ~f:(filter_map_resolve ~f)
 

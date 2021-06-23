@@ -678,7 +678,7 @@ module Library = struct
            User_error.raise ~loc:stanza_loc
              [ Pp.text
                  (if dune_version >= (1, 1) then
-                   "supply at least least one of name or public_name fields"
+                   "supply at least one of name or public_name fields"
                  else
                    "name field is missing")
              ]

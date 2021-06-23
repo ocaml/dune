@@ -40,7 +40,7 @@ end
 
 module Drpc = struct
   module Client =
-    Dune_rpc.Client
+    Dune_rpc.Client.Make
       (struct
         include Fiber
 

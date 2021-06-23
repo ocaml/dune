@@ -101,7 +101,7 @@ module Scheduler = struct
   let go_with_rpc_server_and_console_status_reporting ~(common : Common.t)
       ~config:dune_config run =
     let stats = Common.stats common in
-    let rpc_where = Some (Dune_rpc_private.Where.default ()) in
+    let rpc_where = Some (Dune_rpc_impl.Where.default ()) in
     let config = Dune_config.for_scheduler dune_config rpc_where stats in
     let file_watcher = Common.file_watcher common in
     let run =

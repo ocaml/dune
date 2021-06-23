@@ -4,9 +4,7 @@ module V1 = struct
   module Id = Id
   module Response = Response
   module Initialize = Initialize.Request
-  module Where = Where
   module Call = Call
-  module Client = Client
   module Loc = Loc
   module Target = Target
   module Diagnostic = Diagnostic
@@ -14,43 +12,29 @@ module V1 = struct
   module Progress = Progress
   module Subscribe = Subscribe
   module Message = Message
+  module Where = Where
   include Public
 
-  module type S = sig
-    type t
-
-    type 'a fiber
-
-    type chan
-
-    module Handler : sig
+  module Client = struct
+    module type S = sig
       type t
 
-      val create :
-           ?log:(Message.t -> unit fiber)
-        -> ?diagnostic:(Diagnostic.Event.t list -> unit fiber)
-        -> ?build_event:(Build.Event.t -> unit fiber)
-        -> ?build_progress:(Progress.t -> unit fiber)
-        -> ?abort:(Message.t -> unit fiber)
-        -> unit
-        -> t
-    end
+      type 'a fiber
 
-    val request :
-         ?id:Id.t
-      -> t
-      -> ('a, 'b) Request.t
-      -> 'a
-      -> ('b, Response.Error.t) result fiber
+      type chan
 
-    val notification : t -> 'a Notification.t -> 'a -> unit fiber
+      module Handler : sig
+        type t
 
-    module Batch : sig
-      type t
-
-      type client
-
-      val create : client -> t
+        val create :
+             ?log:(Message.t -> unit fiber)
+          -> ?diagnostic:(Diagnostic.Event.t list -> unit fiber)
+          -> ?build_event:(Build.Event.t -> unit fiber)
+          -> ?build_progress:(Progress.t -> unit fiber)
+          -> ?abort:(Message.t -> unit fiber)
+          -> unit
+          -> t
+      end
 
       val request :
            ?id:Id.t
@@ -59,17 +43,36 @@ module V1 = struct
         -> 'a
         -> ('b, Response.Error.t) result fiber
 
-      val notification : t -> 'a Notification.t -> 'a -> unit
+      val notification : t -> 'a Notification.t -> 'a -> unit fiber
 
-      val submit : t -> unit fiber
+      module Batch : sig
+        type t
+
+        type client
+
+        val create : client -> t
+
+        val request :
+             ?id:Id.t
+          -> t
+          -> ('a, 'b) Request.t
+          -> 'a
+          -> ('b, Response.Error.t) result fiber
+
+        val notification : t -> 'a Notification.t -> 'a -> unit
+
+        val submit : t -> unit fiber
+      end
+      with type client := t
+
+      val connect :
+           ?handler:Handler.t
+        -> chan
+        -> Initialize.t
+        -> f:(t -> 'a fiber)
+        -> 'a fiber
     end
-    with type client := t
 
-    val connect :
-         ?handler:Handler.t
-      -> chan
-      -> Initialize.t
-      -> f:(t -> 'a fiber)
-      -> 'a fiber
+    module Make = Client.Make
   end
 end

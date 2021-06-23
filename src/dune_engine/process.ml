@@ -395,28 +395,37 @@ end = struct
   type t = (int, error) result
 
   type output =
-    { with_color : User_message.Style.t Pp.t
-    ; without_color : string
-    }
+    | No_output
+    | Has_output of
+        { with_color : User_message.Style.t Pp.t
+        ; without_color : string
+        ; has_embedded_location : bool
+        }
+
+  let has_embedded_location = function
+    | No_output -> false
+    | Has_output t -> t.has_embedded_location
 
   let parse_output = function
-    | "" -> None
+    | "" -> No_output
     | s ->
-      Some
-        (let with_color =
-           Pp.map_tags (Ansi_color.parse s) ~f:(fun styles ->
-               User_message.Style.Ansi_styles styles)
-         in
-         let without_color = Ansi_color.strip s in
-         { with_color; without_color })
+      let with_color =
+        Pp.map_tags (Ansi_color.parse s) ~f:(fun styles ->
+            User_message.Style.Ansi_styles styles)
+      in
+      let without_color = Ansi_color.strip s in
+      let has_embedded_location =
+        String.is_prefix ~prefix:"File " without_color
+      in
+      Has_output { with_color; without_color; has_embedded_location }
 
   (* In this module, we don't need the "Error: " prefix given that it is already
      included in the error message from the command. *)
-  let fail ~output ~purpose ~dir ~has_embedded_location paragraphs =
+  let fail ~output ~purpose ~dir paragraphs =
     let paragraphs : User_message.Style.t Pp.t list =
       match output with
-      | None -> paragraphs
-      | Some output -> paragraphs @ [ output.with_color ]
+      | No_output -> paragraphs
+      | Has_output output -> paragraphs @ [ output.with_color ]
     in
     let dir =
       match dir with
@@ -426,34 +435,27 @@ end = struct
     let loc, annots = loc_and_annots_of_purpose purpose in
     let annots = With_directory_annot.make dir :: annots in
     let annots =
-      if has_embedded_location then
+      if has_embedded_location output then
         User_error.Annot.Has_embedded_location.make () :: annots
       else
         annots
     in
     raise (User_error.E (User_message.make ?loc paragraphs, annots))
 
-  (* Check if the command output starts with a location, ignoring ansi escape
-     sequences *)
-  let outputs_starts_with_location s = String.is_prefix s ~prefix:"File "
-
   let handle_verbose t ~id ~purpose ~output ~command_line ~dir =
     let open Pp.O in
     let output = parse_output output in
-    let has_embedded_location =
-      match output with
-      | None -> false
-      | Some output -> outputs_starts_with_location output.without_color
-    in
     match t with
     | Ok n ->
-      Option.iter output ~f:(fun output ->
-          Console.print_user_message
-            (User_message.make
-               [ Pp.tag User_message.Style.Kwd (Pp.verbatim "Output")
-                 ++ pp_id id ++ Pp.char ':'
-               ; output.with_color
-               ]));
+      (match output with
+      | No_output -> ()
+      | Has_output output ->
+        Console.print_user_message
+          (User_message.make
+             [ Pp.tag User_message.Style.Kwd (Pp.verbatim "Output")
+               ++ pp_id id ++ Pp.char ':'
+             ; output.with_color
+             ]));
       n
     | Error err ->
       let msg =
@@ -461,7 +463,7 @@ end = struct
         | Failed n -> sprintf "exited with code %d" n
         | Signaled signame -> sprintf "got signal %s" signame
       in
-      fail ~output ~purpose ~dir ~has_embedded_location
+      fail ~output ~purpose ~dir
         [ Pp.tag User_message.Style.Kwd (Pp.verbatim "Command")
           ++ Pp.space ++ pp_id id ++ Pp.space ++ Pp.text msg ++ Pp.char ':'
         ; Pp.tag User_message.Style.Prompt (Pp.char '$')
@@ -471,7 +473,8 @@ end = struct
   let handle_non_verbose t ~verbosity ~purpose ~output ~prog ~command_line ~dir
       ~has_unexpected_stdout ~has_unexpected_stderr =
     let open Pp.O in
-    let has_embedded_location = outputs_starts_with_location output in
+    let output = parse_output output in
+    let has_embedded_location = has_embedded_location output in
     let show_command =
       let show_full_command_on_error =
         !Clflags.always_show_command_line
@@ -482,7 +485,6 @@ end = struct
       in
       show_full_command_on_error || not has_embedded_location
     in
-    let output = parse_output output in
     let _, progname, _ = Fancy.split_prog prog in
     let progname_and_purpose tag =
       let progname = sprintf "%12s" progname in
@@ -492,7 +494,9 @@ end = struct
     match t with
     | Ok n ->
       (if
-       Option.is_some output
+       (match output with
+       | No_output -> false
+       | Has_output _ -> true)
        || (match verbosity with
           | Scheduler.Config.Display.Short -> true
           | Quiet -> false
@@ -504,8 +508,8 @@ end = struct
       then
         let output =
           match output with
-          | None -> []
-          | Some output -> [ output.with_color ]
+          | No_output -> []
+          | Has_output output -> [ output.with_color ]
         in
         Console.print_user_message
           (User_message.make
@@ -532,9 +536,9 @@ end = struct
                 (String.enumerate_and unexpected_outputs)
             | _ -> sprintf "(exit %d)" n
           else
-            fail ~output ~purpose ~dir ~has_embedded_location []
+            fail ~output ~purpose ~dir []
       in
-      fail ~output ~purpose ~dir ~has_embedded_location
+      fail ~output ~purpose ~dir
         [ progname_and_purpose Error ++ Pp.char ' '
           ++ Pp.tag User_message.Style.Error (Pp.verbatim msg)
         ; Pp.tag User_message.Style.Details (Pp.verbatim command_line)

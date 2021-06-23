@@ -92,15 +92,21 @@ module V1 = struct
 
         let read_file s = Lwt_io.with_file ~mode:Input s Lwt_io.read
 
-        let readlink s = Lwt_unix.readlink s
+        let readlink s =
+          Lwt.catch
+            (fun () ->
+              let+ res = Lwt_unix.readlink s in
+              Some res)
+            (function
+              | Unix.Unix_error (Unix.EINVAL, _, _) -> Lwt.return_none
+              | exn -> Lwt.fail exn)
 
         let analyze_path s =
           Lwt.try_bind
-            (fun () -> Lwt_unix.lstat s)
+            (fun () -> Lwt_unix.stat s)
             (fun stat ->
               Lwt.return
                 (match stat.st_kind with
-                | Unix.S_LNK -> `Symlink
                 | Unix.S_SOCK -> `Unix_socket
                 | _ -> `Normal_file))
             (fun _ -> Lwt.return `Other)

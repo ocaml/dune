@@ -839,7 +839,7 @@ let dump_stack () =
   let+ pp = pp_stack () in
   Console.print [ pp ]
 
-let get_cached_value_in_current_cycle (dep_node : _ Dep_node.t) =
+let get_cached_value_in_current_run (dep_node : _ Dep_node.t) =
   match dep_node.last_cached_value with
   | None -> None
   | Some cv ->
@@ -854,7 +854,7 @@ module Cached_value = struct
   let capture_deps ~deps_rev =
     if !Debug.check_invariants then
       List.iter deps_rev ~f:(function Dep_node.T dep_node ->
-          (match get_cached_value_in_current_cycle dep_node with
+          (match get_cached_value_in_current_run dep_node with
           | None ->
             let reason =
               match dep_node.last_cached_value with
@@ -1199,7 +1199,7 @@ end = struct
   and start_considering :
         'i 'o. ('i, 'o) Dep_node.t -> 'o Cached_value.t Sample_attempt.t =
    fun dep_node ->
-    match get_cached_value_in_current_cycle dep_node with
+    match get_cached_value_in_current_run dep_node with
     | Some cv -> Finished cv
     | None -> (
       match currently_considering dep_node.state with
@@ -1538,7 +1538,7 @@ module For_tests = struct
     match Store.find t.cache inp with
     | None -> None
     | Some dep_node -> (
-      match get_cached_value_in_current_cycle dep_node with
+      match get_cached_value_in_current_run dep_node with
       | None -> None
       | Some cv ->
         Some

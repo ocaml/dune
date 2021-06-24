@@ -611,21 +611,15 @@ module Call_stack = struct
     >>| List.map ~f:(fun (Stack_frame_with_state.T t) ->
             Dep_node_without_state.T t.without_state)
 
-  let get_call_stack_tip () = get_call_stack () >>| List.hd_opt
-
   let push_frame (frame : Stack_frame_with_state.t) f =
     let* stack = get_call_stack () in
     let stack = frame :: stack in
     Fiber.Var.set call_stack_var stack (fun () -> Implicit_output.forbid f)
-end
-
-module Sample_attempt = struct
-  include Sample_attempt0
 
   (* Add all edges leading from the root of the call stack to [dag_node] to the
      cycle detection DAG. *)
   let add_path_to ~dag_node =
-    let+ stack = Call_stack.get_call_stack () in
+    let+ stack = get_call_stack () in
     let rec add_path_impl stack dag_node =
       match stack with
       | [] -> Ok ()
@@ -660,45 +654,45 @@ module Sample_attempt = struct
     in
     add_path_impl stack (Lazy.force dag_node)
 
-  let force_and_check_for_cycles once dag_node =
-    Once.force_with_blocking_check once ~on_blocking:(fun () ->
-        add_path_to ~dag_node)
-
   (* Add a dependency on the [dep_node] from the caller, if there is one. *)
-  let add_dep_from_caller dep_node =
-    let+ caller = Call_stack.get_call_stack_tip () in
-    match caller with
-    | None -> ()
-    | Some (Stack_frame_with_state.T caller) -> (
-      match caller.phase with
-      | Restore_from_cache -> ()
-      | Compute -> caller.deps_rev <- Dep_node.T dep_node :: caller.deps_rev)
+  let add_dep_from_caller =
+    let get_call_stack_tip () = get_call_stack () >>| List.hd_opt in
+    fun dep_node ->
+      let+ caller = get_call_stack_tip () in
+      match caller with
+      | None -> ()
+      | Some (Stack_frame_with_state.T caller) -> (
+        match caller.phase with
+        | Restore_from_cache -> ()
+        | Compute -> caller.deps_rev <- Dep_node.T dep_node :: caller.deps_rev)
+end
+
+module Sample_attempt = struct
+  include Sample_attempt0
+
+  let force_and_check_for_cycles once ~dag_node =
+    Once.force_with_blocking_check once ~on_blocking:(fun () ->
+        Call_stack.add_path_to ~dag_node)
+
+  let add_dep_from_caller_if_ok ~dep_node result =
+    result >>= function
+    | Ok _ as ok -> Call_stack.add_dep_from_caller dep_node >>> Fiber.return ok
+    | Error _ as error -> Fiber.return error
 
   let restore dep_node sample_attempt =
-    let* result =
-      match sample_attempt with
+    add_dep_from_caller_if_ok ~dep_node
+      (match sample_attempt with
       | Finished cached_value ->
         Fiber.return (Ok (Cache_lookup.Result.Ok cached_value))
       | Running { result; dag_node } ->
-        force_and_check_for_cycles result.restore_from_cache dag_node
-    in
-    let+ () =
-      Build0.Result.iter result ~f:(fun _ok -> add_dep_from_caller dep_node)
-    in
-    result
+        force_and_check_for_cycles result.restore_from_cache ~dag_node)
 
-  (* CR-soon amokhov: Get rid of code duplication. *)
   let compute dep_node sample_attempt =
-    let* result =
-      match sample_attempt with
+    add_dep_from_caller_if_ok ~dep_node
+      (match sample_attempt with
       | Finished cached_value -> Fiber.return (Ok cached_value)
       | Running { result; dag_node } ->
-        force_and_check_for_cycles result.compute dag_node
-    in
-    let+ () =
-      Build0.Result.iter result ~f:(fun _ok -> add_dep_from_caller dep_node)
-    in
-    result
+        force_and_check_for_cycles result.compute ~dag_node)
 end
 
 module Error_handler : sig

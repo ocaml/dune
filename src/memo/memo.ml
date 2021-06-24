@@ -738,6 +738,66 @@ module Call_stack = struct
       | Some caller -> Stack_frame_with_state.add_dep caller ~dep_node
 end
 
+(* This module contains the essence of our cycle detection algorithm. Briefly,
+   the idea is as follows: whenever we are about to get blocked to wait for the
+   result of a computation that is currently running, we add the current call
+   stack to the cycle detection DAG. If this creates a cycle, we stop and report
+   a "dependency cycle" error; otherwise, we proceed with the blocking.
+
+   Below are some notes on how/why this algorithm works.
+
+   By "computation", we mean execution of a fiber. To share computation results
+   between multiple concurrent readers, we use [Once.t], which is a thin wrapper
+   around [Fiber.t] that executes the underlying fiber at most once. The first
+   reader "forces" the fiber and eventually gets the result, while other readers
+   subscribe to the future result of the computation via a [Fiber.Ivar.t]. This
+   blocks their execution and can lead to a deadlock if there is a dependency
+   cycle between different computations. To check for cycles *before* getting
+   blocked, a reader can use [Once.force_with_blocking_check].
+
+   One simple algorithm to check for cycles is to create a DAG node for every
+   computation, and add a DAG edge whenever a computation would like to read the
+   result of another unfinished computation. If adding an edge creates a cycle,
+   then we stop and report an error instead of getting blocked and deadlocked.
+   This algorithm is simple and it works, and Memo used it in the past. However,
+   the resulting DAG was often large, and so cycle detection was taking ~35% of
+   incremental zero rebuilds. As an optimisation, we developed another algorithm
+   described below.
+
+   The DAG produced by the above algorithm can contain many uninteresting nodes
+   and edges. For example, every node will have at least one incoming edge that
+   is added when the corresponding computation was initially "forced". But these
+   "forcing edges" cannot cause deadlocks by themselves; in fact, if there is no
+   parallelism, there may be no "blocking edges" at all, and the above algorithm
+   would add all those forcing edges for nothing.
+
+   Here is an optimisation idea. Since blocking edges are the real cause of
+   deadlocks, we will focus our attention on them: when we hit a blocking edge,
+   we will add it to the DAG *along with the path that led us to it*. This path
+   is readily available to us in the form of the call stack.
+
+   Here is a proof sketch that this algorithm finds all possible cycles. We are
+   going to make use of the following three observations:
+
+   (1) If there is a cycle, it must contain at least one blocking edge.
+
+   (2) Every path that we are going to add to the DAG will contain a sequence of
+   forcing edges followed by one blocking edge.
+
+   (3) Every node has at most one incoming forcing edge.
+
+   Now consider a reachable cycle in our computation graph. It contains at least
+   one blocking edge (1) and some number of forcing edges. All blocking edges of
+   the cycle will be added to the DAG because our algorithm unconditionally adds
+   them. What about the remaining forcing edges of the cycle? We claim that they
+   must be added to the DAG together with the blocking edges, because they will
+   be on the corresponding call stacks. This follows from (2) and (3): indeed,
+   if a blocking edge is preceded by a sequence of forcing edges on the cycle,
+   then there is only one possible call stack that contains that blocking edge
+   and it must pass through that sequence of forcing edges. There is no freedom
+   when we retrace the forcing edges back, since there is always at most one to
+   choose from. Therefore, our algorithm will add all the edges of the cycle to
+   the DAG: both blocking and forcing ones. *)
 module Sample_attempt = struct
   include Sample_attempt0
 

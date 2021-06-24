@@ -571,24 +571,97 @@ module State = M.State
 module Dep_node = M.Dep_node
 module Deps = M.Deps
 
-module Stack_frame_with_state = struct
+module Stack_frame_with_state : sig
+  type phase =
+    | Restore_from_cache
+    | Compute
+
+  type t
+
+  val to_dyn : t -> Dyn.t
+
+  (* CR-someday amokhov: Shall we stop reusing DAG nodes? It used to be good
+     optimisation, but now that we do not create a DAG node for every [Dep_node]
+     it's probably useless. Dropping it will require some refactoring though. *)
+  (* Create a new stack frame related to restoring or computing a [dep_node]. By
+     providing a [dag_node], it is possible to reuse it instead of creating a
+     new one. We currently reuse the same DAG node for [Restore_from_cache] and
+     [Compute] phases of the same [dep_node]. *)
+  val create :
+       ?dag_node:Dag.node Lazy.t
+    -> phase
+    -> dep_node:_ Dep_node_without_state.t
+    -> t
+
+  val dep_node : t -> Dep_node_without_state.packed
+
+  val dag_node : t -> Dag.node Lazy.t
+
+  (* This function accumulates dependencies of frames from the [Compute] phase.
+     Calling it for a [Restore_from_cache] frame is a no-op. *)
+  val add_dep : t -> dep_node:_ Dep_node.t -> unit
+
+  val deps_rev : t -> Dep_node.packed list
+
+  val children_added_to_dag : t -> Dag.Id.Set.t
+
+  val record_child_added_to_dag : t -> dag_node_id:Dag.Id.t -> unit
+end = struct
   type phase =
     | Restore_from_cache
     | Compute
 
   type ('i, 'o) unpacked =
-    { without_state : ('i, 'o) Dep_node_without_state.t
+    { dep_node : ('i, 'o) Dep_node_without_state.t
     ; dag_node : Dag.node Lazy.t
     ; (* CR-soon amokhov: Benchmark if it's worth switching to [Dag.Id.Table.t]. *)
       mutable children_added_to_dag : Dag.Id.Set.t
     ; phase : phase
-    ; (* [deps_rev] are accumulated only when [phase = Compute] *)
+    ; (* [deps_rev] are accumulated only when [phase = Compute], see [add_dep] *)
       mutable deps_rev : Dep_node.packed list
     }
 
   type t = T : ('i, 'o) unpacked -> t
 
-  let to_dyn (T t) = Stack_frame_without_state.to_dyn (T t.without_state)
+  let to_dyn (T t) = Stack_frame_without_state.to_dyn (T t.dep_node)
+
+  let create ?dag_node phase ~dep_node =
+    let dag_node : Dag.node Lazy.t =
+      match dag_node with
+      | Some dag_node -> dag_node
+      | None ->
+        lazy
+          (if !Counters.enabled then
+             incr Counters.nodes_in_cycle_detection_graph;
+           { info = Dag.create_node_info ()
+           ; data = Dep_node_without_state.T dep_node
+           })
+    in
+    T
+      { dep_node
+      ; phase
+      ; deps_rev = []
+      ; dag_node
+      ; children_added_to_dag = Dag.Id.Set.empty
+      }
+    [@@inline]
+
+  let dep_node (T t) = Dep_node_without_state.T t.dep_node
+
+  let dag_node (T t) = t.dag_node
+
+  let add_dep (T t) ~dep_node =
+    match t.phase with
+    | Restore_from_cache -> ()
+    | Compute -> t.deps_rev <- Dep_node.T dep_node :: t.deps_rev
+
+  let deps_rev (T t) = t.deps_rev
+
+  let record_child_added_to_dag (T t) ~dag_node_id =
+    t.children_added_to_dag <-
+      Dag.Id.Set.add t.children_added_to_dag dag_node_id
+
+  let children_added_to_dag (T t) = t.children_added_to_dag
 end
 
 module To_open = struct
@@ -607,9 +680,7 @@ module Call_stack = struct
     Fiber.Var.get call_stack_var >>| Option.value ~default:[]
 
   let get_call_stack_without_state () =
-    get_call_stack ()
-    >>| List.map ~f:(fun (Stack_frame_with_state.T t) ->
-            Dep_node_without_state.T t.without_state)
+    get_call_stack () >>| List.map ~f:Stack_frame_with_state.dep_node
 
   let push_frame (frame : Stack_frame_with_state.t) f =
     let* stack = get_call_stack () in
@@ -623,11 +694,12 @@ module Call_stack = struct
     let rec add_path_impl stack dag_node =
       match stack with
       | [] -> Ok ()
-      | Stack_frame_with_state.T
-          ({ dag_node = (lazy caller_dag_node); _ } as frame)
-        :: stack -> (
+      | frame :: stack -> (
         let dag_node_id = Dag.node_id dag_node in
-        match Dag.Id.Set.mem frame.children_added_to_dag dag_node_id with
+        let children_added_to_dag =
+          Stack_frame_with_state.children_added_to_dag frame
+        in
+        match Dag.Id.Set.mem children_added_to_dag dag_node_id with
         | true ->
           (* Here we know that the current [frame] has already been traversed in
              a previous [add_path_to] call. Therefore, the DAG already contains
@@ -635,6 +707,9 @@ module Call_stack = struct
              traversal. We might as well stop here and save time. *)
           Ok ()
         | false -> (
+          let caller_dag_node =
+            Lazy.force (Stack_frame_with_state.dag_node frame)
+          in
           match Dag.add_assuming_missing caller_dag_node dag_node with
           | exception Dag.Cycle cycle ->
             Error (List.map cycle ~f:(fun dag_node -> dag_node.Dag.data))
@@ -642,15 +717,14 @@ module Call_stack = struct
             if !Counters.enabled then
               incr Counters.edges_in_cycle_detection_graph;
             let not_traversed_before =
-              Dag.Id.Set.is_empty frame.children_added_to_dag
+              Dag.Id.Set.is_empty children_added_to_dag
             in
-            frame.children_added_to_dag <-
-              Dag.Id.Set.add frame.children_added_to_dag dag_node_id;
+            Stack_frame_with_state.record_child_added_to_dag frame ~dag_node_id;
             match not_traversed_before with
+            | true -> add_path_impl stack caller_dag_node
             | false ->
-              (* Same optimisation as above. *)
-              Ok ()
-            | true -> add_path_impl stack caller_dag_node)))
+              (* Same optimisation as above: no need to traverse again. *)
+              Ok ())))
     in
     add_path_impl stack (Lazy.force dag_node)
 
@@ -661,10 +735,7 @@ module Call_stack = struct
       let+ caller = get_call_stack_tip () in
       match caller with
       | None -> ()
-      | Some (Stack_frame_with_state.T caller) -> (
-        match caller.phase with
-        | Restore_from_cache -> ()
-        | Compute -> caller.deps_rev <- Dep_node.T dep_node :: caller.deps_rev)
+      | Some caller -> Stack_frame_with_state.add_dep caller ~dep_node
 end
 
 module Sample_attempt = struct
@@ -1040,7 +1111,7 @@ end = struct
         'i 'o.    ('i, 'o) Dep_node.t
         -> 'o Cached_value.t Cache_lookup.Failure.t -> Stack_frame_with_state.t
         -> 'o Cached_value.t Fiber.t =
-   fun dep_node cache_lookup_failure (T frame) ->
+   fun dep_node cache_lookup_failure frame ->
     let compute_value_and_deps_rev () =
       let* () = !yield_if_there_are_pending_events () in
       let+ res =
@@ -1052,7 +1123,7 @@ end = struct
         | Ok res -> Value.Ok res
         | Error errors -> Error errors
       in
-      let deps_rev = frame.deps_rev in
+      let deps_rev = Stack_frame_with_state.deps_rev frame in
       if !Counters.enabled then
         Counters.edges_traversed :=
           !Counters.edges_traversed + List.length deps_rev;
@@ -1074,25 +1145,13 @@ end = struct
         'i 'o. ('i, 'o) Dep_node.t -> 'o Cached_value.t Sample_attempt.t =
    fun dep_node ->
     if !Counters.enabled then incr Counters.nodes_considered;
-    let dag_node : Dag.node Lazy.t =
-      lazy
-        (if !Counters.enabled then incr Counters.nodes_in_cycle_detection_graph;
-         { info = Dag.create_node_info ()
-         ; data = Dep_node_without_state.T dep_node.without_state
-         })
+    let restore_from_cache_frame =
+      Stack_frame_with_state.create Restore_from_cache
+        ~dep_node:dep_node.without_state
     in
     let restore_from_cache =
       Once.create ~must_not_raise:(fun () ->
-          let frame : Stack_frame_with_state.t =
-            T
-              { without_state = dep_node.without_state
-              ; phase = Restore_from_cache
-              ; deps_rev = []
-              ; dag_node
-              ; children_added_to_dag = Dag.Id.Set.empty
-              }
-          in
-          Call_stack.push_frame frame (fun () ->
+          Call_stack.push_frame restore_from_cache_frame (fun () ->
               let+ restore_result =
                 restore_from_cache dep_node.last_cached_value
               in
@@ -1105,6 +1164,7 @@ end = struct
               | Failure _ -> ());
               restore_result))
     in
+    let dag_node = Stack_frame_with_state.dag_node restore_from_cache_frame in
     let compute =
       Once.create ~must_not_raise:(fun () ->
           (* We do not use [Once.force_with_blocking_check] here because cycle
@@ -1112,19 +1172,14 @@ end = struct
           Once.force restore_from_cache >>= function
           | Ok cached_value -> Fiber.return cached_value
           | Failure cache_lookup_failure ->
-            let frame : Stack_frame_with_state.t =
-              T
-                { without_state = dep_node.without_state
-                ; phase = Compute
-                ; deps_rev = []
-                ; dag_node
-                ; children_added_to_dag = Dag.Id.Set.empty
-                }
+            let compute_frame =
+              Stack_frame_with_state.create Compute
+                ~dep_node:dep_node.without_state ~dag_node
             in
-            Call_stack.push_frame frame (fun () ->
+            Call_stack.push_frame compute_frame (fun () ->
                 dep_node.last_cached_value <- None;
                 let+ cached_value =
-                  compute dep_node cache_lookup_failure frame
+                  compute dep_node cache_lookup_failure compute_frame
                 in
                 dep_node.last_cached_value <- Some cached_value;
                 dep_node.state <- Not_considering;

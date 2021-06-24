@@ -127,7 +127,7 @@ let%expect_test "warning" =
                     "
           ; message = "unused variable x.\n\
                        "
-          ; severity = Warning { code = 26; name = "unused-var" }
+          ; severity = Warning { code = Some 26; name = "unused-var" }
           }
     ; related = []
     } |}]

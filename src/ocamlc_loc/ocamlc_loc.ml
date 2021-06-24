@@ -4,7 +4,7 @@ module Dyn = Stdune.Dyn
 type severity =
   | Error
   | Warning of
-      { code : int
+      { code : int option (* codes are available starting 4.12 *)
       ; name : string
       }
 
@@ -33,7 +33,8 @@ let dyn_of_severity =
   function
   | Error -> constr "Error" []
   | Warning { code; name } ->
-    constr "Warning" [ record [ ("code", int code); ("name", string name) ] ]
+    constr "Warning"
+      [ record [ ("code", (option int) code); ("name", string name) ] ]
 
 let dyn_of_message =
   let open Dyn.Encoder in
@@ -99,10 +100,13 @@ let message_re =
       seq
         [ str "Warning "
         ; group (rep1 digit)
-        ; rep1 space
-        ; char '['
-        ; group (rep1 (compl [ char ']' ]))
-        ; char ']'
+        ; opt
+            (seq
+               [ rep1 space
+               ; char '['
+               ; group (rep1 (compl [ char ']' ]))
+               ; char ']'
+               ])
         ]
     in
     let severity = seq [ alt [ bol; bos ]; alt [ error; warning ]; char ':' ] in
@@ -132,7 +136,12 @@ let parse_message msg =
       if Re.Mark.test group error_marker then
         Error
       else
-        let code = int_of_string (Re.Group.get group 2) in
+        let code =
+          if Re.Group.test group 2 then
+            Some (int_of_string (Re.Group.get group 2))
+          else
+            None
+        in
         let name = Re.Group.get group 3 in
         Warning { code; name }
     in

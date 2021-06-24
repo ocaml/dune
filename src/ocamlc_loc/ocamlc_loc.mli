@@ -7,7 +7,7 @@ type loc =
 type severity =
   | Error
   | Warning of
-      { code : int
+      { code : int option
       ; name : string
       }
 

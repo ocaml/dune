@@ -2,7 +2,7 @@ Since version 0.2 the mdx stanza supports a more genereic `deps` field.
 A deprecation warning is raised if using the olf `packages` field.
 
   $ cat >dune-project <<EOF
-  > (lang dune 2.8)
+  > (lang dune 3.0)
   > (using mdx 0.2)
   > EOF
 

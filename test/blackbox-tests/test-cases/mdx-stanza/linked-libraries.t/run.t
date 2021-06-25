@@ -1,7 +1,7 @@
 Since 0.2 you can use the `libraries` field to have them linked into the test executable
 
   $ cat >dune-project <<EOF
-  > (lang dune 2.8)
+  > (lang dune 3.0)
   > (using mdx 0.2)
   > EOF
 

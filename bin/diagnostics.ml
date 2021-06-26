@@ -1,8 +1,6 @@
 open! Stdune
 open Import
 
-let on_notification _ = Fiber.return ()
-
 let format_diagnostic (err : Dune_rpc_private.Diagnostic.t) : User_message.t =
   let prefix =
     Option.map err.severity ~f:(fun sev ->
@@ -36,7 +34,6 @@ let exec common =
     Dune_rpc_impl.Run.client where
       (Dune_rpc_private.Initialize.Request.create
          ~id:(Dune_rpc_private.Id.make (Sexp.Atom "diagnostics_cmd")))
-      ~on_notification
       ~f:(fun cli ->
         Dune_rpc_impl.Client.request cli
           Dune_rpc_private.Public.Request.diagnostics ())

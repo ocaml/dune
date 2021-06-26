@@ -520,13 +520,6 @@ module Client = struct
         -> t
     end
 
-    val connect_raw :
-         chan
-      -> Initialize.Request.t
-      -> on_notification:(Call.t -> unit fiber)
-      -> f:(t -> 'a fiber)
-      -> 'a fiber
-
     val connect :
          ?handler:Handler.t
       -> chan
@@ -927,10 +920,6 @@ module Client = struct
         Handler.on_notification handler ~version:initialize.version
       in
       connect_raw chan initialize ~f ~on_notification
-
-    let connect_raw chan init ~on_notification ~f =
-      let chan = Chan.of_chan chan in
-      connect_raw chan init ~on_notification ~f
 
     let connect ?handler chan init ~f =
       let chan = Chan.of_chan chan in

@@ -134,11 +134,11 @@ module Connect = struct
   let csexp_client p = Csexp_rpc.Client.create (Where.to_socket p)
 end
 
-let client p init ~on_notification ~f =
+let client ?handler p init ~f =
   let open Fiber.O in
   let* c = Connect.csexp_client p in
   let* session = Csexp_rpc.Client.connect_exn c in
-  Client.connect_raw session init ~on_notification ~f
+  Client.connect ?handler session init ~f
 
-let client_with_session init ~session ~on_notification ~f =
-  Client.connect_raw session init ~on_notification ~f
+let client_with_session ?handler init ~session ~f =
+  Client.connect ?handler session init ~f

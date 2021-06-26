@@ -143,7 +143,6 @@ module Status = struct
     Dune_rpc_impl.Run.client where
       (Dune_rpc.Initialize.Request.create
          ~id:(Dune_rpc.Id.make (Sexp.Atom "status")))
-      ~on_notification:(fun _ -> assert false)
       ~f:(fun session ->
         let open Fiber.O in
         let+ response =
@@ -176,7 +175,6 @@ module Build = struct
     Dune_rpc_impl.Run.client_with_session ~session
       (Dune_rpc.Initialize.Request.create
          ~id:(Dune_rpc.Id.make (Sexp.Atom "build")))
-      ~on_notification:(fun _ -> assert false)
       ~f:(fun session ->
         let open Fiber.O in
         let+ response =
@@ -212,14 +210,12 @@ module Ping = struct
            [ Pp.text "Server appears to be responding normally" ])
     | Error e -> raise_rpc_error e
 
-  let on_notification _ = Fiber.return ()
-
   let exec common =
     let where = wait_for_server common in
     Dune_rpc_impl.Run.client where
       (Dune_rpc_private.Initialize.Request.create
          ~id:(Dune_rpc_private.Id.make (Sexp.Atom "ping_cmd")))
-      ~on_notification ~f:send_ping
+      ~f:send_ping
 
   let info =
     let doc = "Ping the build server running in the current directory" in

@@ -331,13 +331,6 @@ module Client : sig
         -> t
     end
 
-    val connect_raw :
-         chan
-      -> Initialize.Request.t
-      -> on_notification:(Call.t -> unit fiber)
-      -> f:(t -> 'a fiber)
-      -> 'a fiber
-
     val connect :
          ?handler:Handler.t
       -> chan

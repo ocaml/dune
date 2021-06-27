@@ -7,6 +7,7 @@ Test when sites name which are ocaml keyword
   > (package
   >  (name my-package)
   >  (sites (lib include)))
+  > EOF
 
   $ cat >dune <<EOF
   > (library (name lib) (libraries dune-site dune-site.plugins))
@@ -14,6 +15,6 @@ Test when sites name which are ocaml keyword
   > (generate_sites_module
   >  (module sites)
   >  (plugins (my-package include)))
-
+  > EOF
 
   $ dune build

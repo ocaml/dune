@@ -644,7 +644,7 @@ end = struct
 
   let add_dep (T t) ~dep_node =
     match t.phase with
-    | Restore_from_cache -> ()
+    | Restore_from_cache -> assert false
     | Compute -> t.deps_rev <- Dep_node.T dep_node :: t.deps_rev
 
   let deps_rev (T t) = t.deps_rev
@@ -800,22 +800,24 @@ module Sample_attempt = struct
   let add_dep_from_caller_if_ok ~dep_node result =
     result >>= function
     | Ok _ as ok -> Call_stack.add_dep_from_caller dep_node >>> Fiber.return ok
-    | Error _ as error -> Fiber.return error
+    | Error _cycle as error -> Fiber.return error
 
-  let restore dep_node sample_attempt =
-    add_dep_from_caller_if_ok ~dep_node
-      (match sample_attempt with
-      | Finished cached_value ->
-        Fiber.return (Ok (Cache_lookup.Result.Ok cached_value))
-      | Running { result; dag_node } ->
-        force_and_check_for_cycles result.restore_from_cache ~dag_node)
+  let restore_without_adding_dep sample_attempt =
+    match sample_attempt with
+    | Finished cached_value ->
+      Fiber.return (Ok (Cache_lookup.Result.Ok cached_value))
+    | Running { result; dag_node } ->
+      force_and_check_for_cycles result.restore_from_cache ~dag_node
+
+  let compute_without_adding_dep sample_attempt =
+    match sample_attempt with
+    | Finished cached_value -> Fiber.return (Ok cached_value)
+    | Running { result; dag_node } ->
+      force_and_check_for_cycles result.compute ~dag_node
 
   let compute dep_node sample_attempt =
     add_dep_from_caller_if_ok ~dep_node
-      (match sample_attempt with
-      | Finished cached_value -> Fiber.return (Ok cached_value)
-      | Running { result; dag_node } ->
-        force_and_check_for_cycles result.compute ~dag_node)
+      (compute_without_adding_dep sample_attempt)
 end
 
 module Error_handler : sig
@@ -1120,7 +1122,7 @@ end = struct
               | false -> (
                 (* If [dep] has no cutoff, it is sufficient to check whether it
                    is up to date. If not, we must recompute [last_cached_value]. *)
-                consider_and_restore_from_cache dep
+                consider_and_restore_from_cache_without_adding_dep dep
                 >>| function
                 | Ok cached_value_of_dep -> (
                   (* The [Changed] branch will be taken if [cached_value]'s node
@@ -1142,7 +1144,7 @@ end = struct
                    check whether it is up to date: even if it isn't, after we
                    recompute it, the resulting value may remain unchanged,
                    allowing us to skip recomputing the [last_cached_value]. *)
-                consider_and_compute dep
+                consider_and_compute_without_adding_dep dep
                 >>| function
                 | Ok cached_value_of_dep -> (
                   (* Note: [cached_value_of_dep.value] will be [Cancelled _] if
@@ -1275,12 +1277,19 @@ end = struct
     let sample_attempt = start_considering dep_node in
     Sample_attempt.compute dep_node sample_attempt
 
-  and consider_and_restore_from_cache :
+  and consider_and_compute_without_adding_dep :
+        'i 'o.    ('i, 'o) Dep_node.t
+        -> ('o Cached_value.t, Cycle_error.t) result Fiber.t =
+   fun dep_node ->
+    let sample_attempt = start_considering dep_node in
+    Sample_attempt.compute_without_adding_dep sample_attempt
+
+  and consider_and_restore_from_cache_without_adding_dep :
         'i 'o.    ('i, 'o) Dep_node.t
         -> 'o Cached_value.t Cache_lookup.Result.t Fiber.t =
    fun dep_node ->
     let sample_attempt = start_considering dep_node in
-    Sample_attempt.restore dep_node sample_attempt >>| function
+    Sample_attempt.restore_without_adding_dep sample_attempt >>| function
     | Ok res -> res
     | Error dependency_cycle ->
       Cache_lookup.Result.Failure (Cancelled { dependency_cycle })

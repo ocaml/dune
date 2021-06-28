@@ -582,13 +582,16 @@ module Stack_frame_with_state : sig
 
   (* CR-someday amokhov: Shall we stop reusing DAG nodes? It used to be good
      optimisation, but now that we do not create a DAG node for every [Dep_node]
-     it's probably useless. Dropping it will require some refactoring though. *)
+     it's probably useless. Dropping it will require some refactoring though.
+
+     aalekseyev: yeah, this reuse of DAG nodes is suspicious and I wish we got
+     rid of it. *)
   (* Create a new stack frame related to restoring or computing a [dep_node]. By
      providing a [dag_node], it is possible to reuse it instead of creating a
      new one. We currently reuse the same DAG node for [Restore_from_cache] and
      [Compute] phases of the same [dep_node]. *)
   val create :
-       ?dag_node:Dag.node Lazy.t
+       dag_node:Dag.node Lazy.t
     -> phase
     -> dep_node:_ Dep_node_without_state.t
     -> t
@@ -625,18 +628,7 @@ end = struct
 
   let to_dyn (T t) = Stack_frame_without_state.to_dyn (T t.dep_node)
 
-  let create ?dag_node phase ~dep_node =
-    let dag_node : Dag.node Lazy.t =
-      match dag_node with
-      | Some dag_node -> dag_node
-      | None ->
-        lazy
-          (if !Counters.enabled then
-             incr Counters.nodes_in_cycle_detection_graph;
-           { info = Dag.create_node_info ()
-           ; data = Dep_node_without_state.T dep_node
-           })
-    in
+  let create ~dag_node phase ~dep_node =
     T
       { dep_node
       ; phase
@@ -1086,6 +1078,14 @@ end = struct
       else
         Not_considering
 
+  let create_dag_node dep_node =
+    lazy
+      (if !Counters.enabled then incr Counters.nodes_in_cycle_detection_graph;
+       ({ info = Dag.create_node_info ()
+        ; data = Dep_node_without_state.T dep_node
+        }
+         : Dag.node))
+
   let rec restore_from_cache :
             'o.    'o Cached_value.t option
             -> 'o Cached_value.t Cache_lookup.Result.t Fiber.t =
@@ -1205,8 +1205,9 @@ end = struct
         'i 'o. ('i, 'o) Dep_node.t -> 'o Cached_value.t Sample_attempt.t =
    fun dep_node ->
     if !Counters.enabled then incr Counters.nodes_considered;
+    let dag_node = create_dag_node dep_node.without_state in
     let restore_from_cache_frame =
-      Stack_frame_with_state.create Restore_from_cache
+      Stack_frame_with_state.create Restore_from_cache ~dag_node
         ~dep_node:dep_node.without_state
     in
     let restore_from_cache =
@@ -1233,8 +1234,8 @@ end = struct
           | Ok cached_value -> Fiber.return cached_value
           | Failure cache_lookup_failure ->
             let compute_frame =
-              Stack_frame_with_state.create Compute
-                ~dep_node:dep_node.without_state ~dag_node
+              Stack_frame_with_state.create Compute ~dag_node
+                ~dep_node:dep_node.without_state
             in
             Call_stack.push_frame compute_frame (fun () ->
                 dep_node.last_cached_value <- None;

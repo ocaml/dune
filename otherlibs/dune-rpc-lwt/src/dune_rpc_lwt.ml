@@ -108,7 +108,8 @@ module V1 = struct
               Lwt.return
                 (match stat.st_kind with
                 | Unix.S_SOCK -> `Unix_socket
-                | _ -> `Normal_file))
+                | S_REG -> `Normal_file
+                | _ -> `Other))
             (fun _ -> Lwt.return `Other)
       end)
 

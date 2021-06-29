@@ -618,6 +618,33 @@ end = struct
     { dep_node : ('i, 'o) Dep_node_without_state.t
     ; dag_node : Dag.node Lazy.t
     ; (* CR-soon amokhov: Benchmark if it's worth switching to [Dag.Id.Table.t]. *)
+      (* CR-someday aalekseyev: This children_added_to_dag table serves dual
+         purpose:
+
+         1. to guarantee that we never add the same edge twice to the
+         cycle-detection DAG
+
+         2. to mark the "forcing" stacks in the computation DAG that were
+         already added to the cycle detection graph
+
+         Now consider that we have up to two stacks per cycle-detection DAG
+         node, so it makess a difference if something is per-dag-node or
+         per-stack.
+
+         It's clear that (1) needs to be per-cycle-detection-DAG-node, while (2)
+         needs to be per-computation (so per-stack).
+
+         By making them both per-stack here I'm suspecting we're opening the
+         door to a bug where we can end up adding the same edge twice. Maybe we
+         can have
+
+         X -[validate]-> A -[validate]-> B
+
+         followed by
+
+         Y -[compute]-> A -[compute]-> B
+
+         and then the edge A->B will be added twice. *)
       mutable children_added_to_dag : Dag.Id.Set.t
     ; phase : phase
     ; (* [deps_rev] are accumulated only when [phase = Compute], see [add_dep] *)
@@ -793,17 +820,15 @@ module Sample_attempt = struct
   include Sample_attempt0
 
   let force_and_check_for_cycles once ~dag_node =
-    (* CR-someday aalekseyev:
-       It's weird that we have to take [dag_node] as a parameter
-       here even though the stack frame itself is available in the closure that [once]
-       is holding. I think either of these would be an improvement:
-       - Make [once] aware of that [Stack_frame_with_state] instead of embedding it
-       into a closure, and extract it here
-       - Make [once] aware of the whole "cycle detection algorithm" and do everything
-       for us.
-       Once we have access to that stack frame, I think the logic in [add_path_to] will be
-       simpler (we can mark the stack frame itself as "added" instead of inferring that
-       from the table entry). *)
+    (* CR-someday aalekseyev: It's weird that we have to take [dag_node] as a
+       parameter here even though the stack frame itself is available in the
+       closure that [once] is holding. I think either of these would be an
+       improvement: - Make [once] aware of that [Stack_frame_with_state] instead
+       of embedding it into a closure, and extract it here - Make [once] aware
+       of the whole "cycle detection algorithm" and do everything for us. Once
+       we have access to that stack frame, I think the logic in [add_path_to]
+       will be simpler (we can mark the stack frame itself as "added" instead of
+       inferring that from the table entry). *)
     Once.force_with_blocking_check once ~on_blocking:(fun () ->
         Call_stack.add_path_to ~dag_node)
 

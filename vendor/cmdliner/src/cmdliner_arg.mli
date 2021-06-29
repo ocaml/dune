@@ -41,6 +41,8 @@ val flag : info -> bool t
 val flag_all : info -> bool list t
 val vflag : 'a -> ('a * info) list -> 'a t
 val vflag_all : 'a list -> ('a * info) list -> 'a list t
+val alias : string list -> info -> bool t
+val alias_opt : (string -> string list) -> info -> bool t
 val opt : ?vopt:'a -> 'a converter -> 'a -> info -> 'a t
 val opt_all : ?vopt:'a -> 'a converter -> 'a list -> info -> 'a list t
 

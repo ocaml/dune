@@ -34,6 +34,16 @@ unreleased - 2.9 branch
 - Fix a bug where instrumentation flags would be added even if the
   instrumentatation was disabled (@nojb, #4770)
 
+- Fix #4682: option `-p` takes now precedence on environement variable
+  `DUNE_PROFILE` (#4730, #4774, @bobot, reported by @dra27 #4632)
+
+- Fix installation with opam of package with dune sites. The `.install` file is
+  now produced by a local `dune install` during the build phase (#4730, #4645,
+  @bobot, reported by @kit-ty-kate #4198)
+
+- Fix multiple issues in the sites feature (#4730, #4645 @bobot, reported by @Lelio-Brun
+  #4219, by @Kakadu #4325, by @toots #4415)
+
 2.8.5 (28/03/2021)
 ------------------
 

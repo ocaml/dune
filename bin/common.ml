@@ -327,7 +327,10 @@ module Options_implied_by_dash_p = struct
       let doc =
         "Promote the generated <package>.install files to the source tree"
       in
-      Arg.(value & flag & info [ "promote-install-files" ] ~docs ~doc)
+      Arg.(
+        last
+        & opt_all ~vopt:true bool [ false ]
+        & info [ "promote-install-files" ] ~docs ~doc)
     in
     { root
     ; only_packages = None
@@ -339,36 +342,34 @@ module Options_implied_by_dash_p = struct
     ; promote_install_files
     }
 
-  let release_options =
-    { root = Some "."
-    ; only_packages = None
-    ; ignore_promoted_rules = true
-    ; config_file = No_config
-    ; profile = Some Profile.Release
-    ; default_target =
-        Arg.Dep.alias_rec ~dir:Path.Local.root Dune_engine.Alias.Name.install
-    ; always_show_command_line = true
-    ; promote_install_files = true
-    }
-
   let dash_dash_release =
-    let+ (_ : bool) =
-      Arg.(
-        value & flag
-        & info [ "release" ] ~docs ~docv:"PACKAGES"
-            ~doc:
-              "Put $(b,dune) into a reproducible $(i,release) mode. This is in \
-               fact a shorthand for $(b,--root . --ignore-promoted-rules \
-               --no-config --profile release --always-show-command-line \
-               --promote-install-files --default-target @install). You should \
-               use this option for release builds. For instance, you must use \
-               this option in your $(i,<package>.opam) files. Except if you \
-               already use $(b,-p), as $(b,-p) implies this option.")
-    in
-    release_options
+    Arg.(
+      value
+      & alias
+          [ "--root"
+          ; "."
+          ; "--ignore-promoted-rules"
+          ; "--no-config"
+          ; "--profile"
+          ; "release"
+          ; "--always-show-command-line"
+          ; "--promote-install-files"
+          ; "--default-target"
+          ; "@install"
+          ]
+      & info [ "release" ] ~docs ~docv:"PACKAGES"
+          ~doc:
+            "Put $(b,dune) into a reproducible $(i,release) mode. This is in \
+             fact a shorthand for $(b,--root . --ignore-promoted-rules \
+             --no-config --profile release --always-show-command-line \
+             --promote-install-files --default-target @install). You should \
+             use this option for release builds. For instance, you must use \
+             this option in your $(i,<package>.opam) files. Except if you \
+             already use $(b,-p), as $(b,-p) implies this option.")
 
   let options =
-    let+ t = one_of options dash_dash_release
+    let+ t = options
+    and+ _ = dash_dash_release
     and+ only_packages =
       let+ names =
         Arg.(
@@ -390,36 +391,29 @@ module Options_implied_by_dash_p = struct
     { t with only_packages }
 
   let dash_p =
-    let+ pkgs, args =
-      Term.with_used_args
-        Arg.(
-          value
-          & opt (some packages) None
-          & info
-              [ "p"; "for-release-of-packages" ]
-              ~docs ~docv:"PACKAGES"
-              ~doc:
-                "Shorthand for $(b,--release --only-packages PACKAGE). You \
-                 must use this option in your $(i,<package>.opam) files, in \
-                 order to build only what's necessary when your project \
-                 contains multiple packages as well as getting reproducible \
-                 builds.")
-    in
-    { release_options with
-      only_packages =
-        Option.map pkgs ~f:(fun names ->
-            Only_packages.create ~names ~command_line_option:(List.hd args))
-    }
+    Term.with_used_args
+      Arg.(
+        value
+        & alias_opt (fun s -> [ "--release"; "--only-packages"; s ])
+        & info
+            [ "p"; "for-release-of-packages" ]
+            ~docs ~docv:"PACKAGES"
+            ~doc:
+              "Shorthand for $(b,--release --only-packages PACKAGE). You must \
+               use this option in your $(i,<package>.opam) files, in order to \
+               build only what's necessary when your project contains multiple \
+               packages as well as getting reproducible builds.")
 
   let term =
-    let+ t = one_of options dash_p
+    let+ t = options
+    and+ _ = dash_p
     and+ profile =
       let doc =
         "Build profile. $(b,dev) if unspecified or $(b,release) if -p is set."
       in
       Arg.(
-        value
-        & opt (some profile) None
+        last
+        & opt_all (some profile) [ None ]
         & info [ "profile" ] ~docs
             ~env:(Arg.env_var ~doc "DUNE_PROFILE")
             ~doc:
@@ -427,18 +421,6 @@ module Options_implied_by_dash_p = struct
                  "Select the build profile, for instance $(b,dev) or \
                   $(b,release). The default is $(b,%s)."
                  (Profile.to_string Dune_rules.Profile.default)))
-    and+ no_promote_install_files =
-      let doc =
-        "Do not promote the generated <package>.install files to the source \
-         tree"
-      in
-      Arg.(value & flag & info [ "no-promote-install-files" ] ~docs ~doc)
-    in
-    let t =
-      { t with
-        promote_install_files =
-          (not no_promote_install_files) && t.promote_install_files
-      }
     in
     match profile with
     | None -> t

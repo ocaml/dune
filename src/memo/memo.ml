@@ -624,7 +624,7 @@ end = struct
       mutable deps_rev : Dep_node.packed list
     }
 
-  type t = T : ('i, 'o) unpacked -> t
+  type t = T : ('i, 'o) unpacked -> t [@@unboxed]
 
   let to_dyn (T t) = Stack_frame_without_state.to_dyn (T t.dep_node)
 
@@ -636,7 +636,6 @@ end = struct
       ; dag_node
       ; children_added_to_dag = Dag.Id.Set.empty
       }
-    [@@inline]
 
   let dep_node (T t) = Dep_node_without_state.T t.dep_node
 

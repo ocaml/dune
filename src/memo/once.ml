@@ -22,9 +22,13 @@ let force_impl ?on_blocking t =
         match on_blocking with
         | None -> Fiber.Ivar.read ivar >>| Result.ok
         | Some on_blocking -> (
-          on_blocking () >>= function
-          | Ok () -> Fiber.Ivar.read ivar >>| Result.ok
-          | Error _ as error -> Fiber.return error))
+          let* res = Fiber.Ivar.peek ivar in
+          match res with
+          | Some res -> Fiber.return (Ok res)
+          | None -> (
+            on_blocking () >>= function
+            | Ok () -> Fiber.Ivar.read ivar >>| Result.ok
+            | Error _ as error -> Fiber.return error)))
       | Not_forced { must_not_raise } ->
         let ivar = Fiber.Ivar.create () in
         t.state <- Forced ivar;

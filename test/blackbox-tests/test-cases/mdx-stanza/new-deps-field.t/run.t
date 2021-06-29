@@ -4,6 +4,7 @@ A deprecation warning is raised if using the olf `packages` field.
   $ cat >dune-project <<EOF
   > (lang dune 3.0)
   > (using mdx 0.2)
+  > (cram disable)
   > EOF
 
   $ dune runtest

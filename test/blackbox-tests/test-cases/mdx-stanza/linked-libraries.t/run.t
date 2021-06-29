@@ -3,6 +3,7 @@ Since 0.2 you can use the `libraries` field to have them linked into the test ex
   $ cat >dune-project <<EOF
   > (lang dune 3.0)
   > (using mdx 0.2)
+  > (cram disable)
   > EOF
 
   $ dune runtest

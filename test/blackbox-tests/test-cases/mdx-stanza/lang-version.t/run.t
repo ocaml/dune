@@ -26,6 +26,7 @@ The version 0.2 requires dune 3.0
   $ cat >dune-project <<EOF
   > (lang dune 2.9)
   > (using mdx 0.2)
+  > (cram disable)
   > EOF
   $ dune build @install
   File "dune-project", line 2, characters 11-14:

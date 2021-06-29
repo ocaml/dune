@@ -793,6 +793,17 @@ module Sample_attempt = struct
   include Sample_attempt0
 
   let force_and_check_for_cycles once ~dag_node =
+    (* CR-someday aalekseyev:
+       It's weird that we have to take [dag_node] as a parameter
+       here even though the stack frame itself is available in the closure that [once]
+       is holding. I think either of these would be an improvement:
+       - Make [once] aware of that [Stack_frame_with_state] instead of embedding it
+       into a closure, and extract it here
+       - Make [once] aware of the whole "cycle detection algorithm" and do everything
+       for us.
+       Once we have access to that stack frame, I think the logic in [add_path_to] will be
+       simpler (we can mark the stack frame itself as "added" instead of inferring that
+       from the table entry). *)
     Once.force_with_blocking_check once ~on_blocking:(fun () ->
         Call_stack.add_path_to ~dag_node)
 

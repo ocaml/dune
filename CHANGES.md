@@ -162,7 +162,7 @@ Unreleased
 - Allow depending on `ocamldoc` library when `ocamlfind` is not installed.
   (#4811, fixes #4809, @nojb)
 
-2.9.0 (unreleased)
+2.9.0 (29/06/2021)
 ------------------
 
 - Add `(enabled_if ...)` to `(mdx ...)` (#4434, @emillon)

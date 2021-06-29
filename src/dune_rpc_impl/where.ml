@@ -26,12 +26,11 @@ module Where =
         | exception Unix.Unix_error (Unix.EINVAL, _, _) -> None
 
       let analyze_path s =
-        if Sys.file_exists s then
-          let stat = Unix.stat s in
-          match stat.st_kind with
-          | Unix.S_SOCK -> `Unix_socket
-          | _ -> `Normal_file
-        else
+        match (Unix.stat s).st_kind with
+        | Unix.S_SOCK -> `Unix_socket
+        | S_REG -> `Normal_file
+        | _
+        | (exception Unix.Unix_error (Unix.ENOENT, _, _)) ->
           `Other
     end)
 

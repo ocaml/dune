@@ -1,9 +1,9 @@
 open! Stdune
 open Import
 
-type 'a mode = 'a Rule.eval_mode =
-  | Lazy : unit mode
-  | Eager : Dep.Fact.t mode
+type 'a eval_mode = 'a Rule.eval_mode =
+  | Lazy : unit eval_mode
+  | Eager : Dep.Fact.t eval_mode
 
 module T = struct
   type 'a t =
@@ -310,14 +310,14 @@ let dep_on_alias_rec name context_name dir =
 open Memo.Build.O
 
 let register_action_deps :
-    type a. a mode -> Dep.Set.t -> a Dep.Map.t Memo.Build.t =
+    type a. a eval_mode -> Dep.Set.t -> a Dep.Map.t Memo.Build.t =
  fun mode deps ->
   match mode with
   | Eager -> Build_system.build_deps deps
   | Lazy -> Memo.Build.return deps
 
 let register_action_dep_pred :
-    type a. a mode -> File_selector.t -> (Path.Set.t * a) Memo.Build.t =
+    type a. a eval_mode -> File_selector.t -> (Path.Set.t * a) Memo.Build.t =
  fun mode g ->
   match mode with
   | Eager ->
@@ -328,13 +328,13 @@ let register_action_dep_pred :
     let+ files = Build_system.eval_pred g in
     (files, ())
 
-let union : type a. a mode -> a Dep.Map.t -> a Dep.Map.t -> a Dep.Map.t =
+let union : type a. a eval_mode -> a Dep.Map.t -> a Dep.Map.t -> a Dep.Map.t =
  fun mode a b ->
   match mode with
   | Lazy -> Dep.Set.union a b
   | Eager -> Dep.Facts.union a b
 
-let rec run : type a b. a t -> b mode -> (a * b Dep.Map.t) Memo.Build.t =
+let rec run : type a b. a t -> b eval_mode -> (a * b Dep.Map.t) Memo.Build.t =
  fun t mode ->
   match t with
   | Pure x -> Memo.Build.return (x, Dep.Map.empty)

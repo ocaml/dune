@@ -77,7 +77,9 @@ end = struct
               >>= Memo.Build.parallel_map ~f:(fun (loc, definition) ->
                       Memo.push_stack_frame
                         (fun () ->
-                           (Build_system.dep_on_alias_definition definition).f Lazy >>| snd)
+                          (Build_system.dep_on_alias_definition definition).f
+                            Lazy
+                          >>| snd)
                         ~human_readable_description:(fun () ->
                           Alias.describe alias ~loc))
             in

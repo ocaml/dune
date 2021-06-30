@@ -1229,8 +1229,8 @@ and Exported : sig
 
   val build_alias_memo : (Alias.t, Dep.Fact.Files.t) Memo.t [@@warning "-32"]
 
-  val dep_on_alias_definition : Rules.Dir_rules.Alias_spec.item -> unit Rule.thunk
-
+  val dep_on_alias_definition :
+    Rules.Dir_rules.Alias_spec.item -> unit Rule.thunk
 end = struct
   open Used_recursively
 
@@ -2121,14 +2121,17 @@ end = struct
       in
       Path.Build.Map.find_exn targets path
 
-  let dep_on_anonymous_action (x : Rule.Anonymous_action.t Rule.thunk) : _ Rule.thunk = {
-    f = fun (type m) (mode : m Rule.eval_mode) -> match mode with
-      | Lazy -> Memo.Build.return ((), Dep.Map.empty)
-      | Eager ->
-        let* action, facts = x.f Eager in
-        let+ () = execute_action action ~observing_facts:facts in
-        ((), Dep.Map.empty)
-  }
+  let dep_on_anonymous_action (x : Rule.Anonymous_action.t Rule.thunk) :
+      _ Rule.thunk =
+    { f =
+        (fun (type m) (mode : m Rule.eval_mode) ->
+          match mode with
+          | Lazy -> Memo.Build.return ((), Dep.Map.empty)
+          | Eager ->
+            let* action, facts = x.f Eager in
+            let+ () = execute_action action ~observing_facts:facts in
+            ((), Dep.Map.empty))
+    }
 
   let dep_on_alias_definition (definition : Rules.Dir_rules.Alias_spec.item) =
     match definition with
@@ -2139,11 +2142,10 @@ end = struct
     let+ l =
       get_alias_definition alias
       >>= Memo.Build.parallel_map ~f:(fun (loc, definition) ->
-        Memo.push_stack_frame
-          (fun () ->
-             (dep_on_alias_definition definition).f Eager >>| snd)
-          ~human_readable_description:(fun () ->
-            Alias.describe alias ~loc))
+              Memo.push_stack_frame
+                (fun () -> (dep_on_alias_definition definition).f Eager >>| snd)
+                ~human_readable_description:(fun () ->
+                  Alias.describe alias ~loc))
     in
     Dep.Facts.group_paths_as_fact_files l
 

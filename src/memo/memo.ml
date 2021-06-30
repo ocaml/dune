@@ -768,30 +768,35 @@ end
 
    Below are some notes on how/why this algorithm works.
 
-   By "computation", we mean execution of a fiber. To share computation results
-   between multiple concurrent readers, we use [Once.t], which is a thin wrapper
-   around [Fiber.t] that executes the underlying fiber at most once. The first
-   reader "forces" the fiber and eventually gets the result, while other readers
-   subscribe to the future result of the computation via a [Fiber.Ivar.t]. This
-   blocks their execution and can lead to a deadlock if there is a dependency
-   cycle between different computations. To check for cycles *before* getting
-   blocked, a reader can use [Once.force_with_blocking_check].
+   By "computation" we mean execution of a "shared fiber", which we represent by
+   a [Once.t]. Such computations can be in one of three states: not started,
+   running, and finished. Multiple readers may want the result of a computation:
+   the first reader "forces" its execution (moving it to the running state), and
+   subsequent readers either get blocked if the computation is still running, or
+   get the cached result if the computation has finished. Blocking can lead to a
+   deadlock if there is a dependency cycle between different computations. We
+   therefore need to check for cycles *before* getting blocked.
 
    One simple algorithm to check for cycles is to create a DAG node for every
    computation, and add a DAG edge whenever a computation would like to read the
-   result of another unfinished computation. If adding an edge creates a cycle,
-   then we stop and report an error instead of getting blocked and deadlocked.
+   result of another computation. If adding an edge creates a cycle, then we
+   stop and report an error instead of getting blocked and deadlocked.
+
+   A simple optimisation is to skip adding an edge when reading the result of a
+   computation that has already finished, since a computation can't finish if it
+   participates in a dependency cycle.
+
    This algorithm is simple and it works, and Memo used it in the past. However,
    the resulting DAG was often large, and so cycle detection was taking ~35% of
-   incremental zero rebuilds. As an optimisation, we developed another algorithm
-   described below.
+   incremental zero rebuilds. As a further optimisation, we developed another
+   algorithm described below.
 
    The DAG produced by the above algorithm can contain many uninteresting nodes
    and edges. For example, every node will have at least one incoming edge that
    is added when the corresponding computation was initially "forced". But these
-   "forcing edges" cannot cause deadlocks by themselves; in fact, if there is no
-   parallelism, there may be no "blocking edges" at all, and the above algorithm
-   would add all those forcing edges for nothing.
+   "forcing edges" cannot cause deadlocks by themselves because the fiber that
+   forces a computation is not blocked, so it will keep making progress until it
+   encounters a blocking edge.
 
    Here is an optimisation idea. Since blocking edges are the real cause of
    deadlocks, we will focus our attention on them: when we hit a blocking edge,

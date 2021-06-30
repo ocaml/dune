@@ -506,6 +506,8 @@ module Client = struct
 
     val notification : t -> 'a Decl.notification -> 'a -> unit fiber
 
+    val disconnected : t -> unit fiber
+
     module Batch : sig
       type t
 
@@ -592,13 +594,24 @@ module Client = struct
         ; write : Sexp.t list option -> unit Fiber.t
         ; mutable closed_read : bool
         ; mutable closed_write : bool
+        ; on_close : unit Fiber.Ivar.t
         }
 
       let of_chan c =
-        { read = (fun () -> Chan.read c)
+        let on_close = Fiber.Ivar.create () in
+        let read () =
+          let* result = Chan.read c in
+          match result with
+          | None ->
+            let+ () = Fiber.Ivar.fill on_close () in
+            None
+          | _ -> Fiber.return result
+        in
+        { read
         ; write = (fun s -> Chan.write c s)
         ; closed_read = false
         ; closed_write = false
+        ; on_close
         }
 
       let write t s =
@@ -771,6 +784,8 @@ module Client = struct
     let notification (type a) t (decl : a Decl.notification) (n : a) =
       make_notification t decl n (fun call ->
           send t (Some [ Notification call ]))
+
+    let disconnected t = Fiber.Ivar.read t.chan.on_close
 
     module Batch = struct
       type nonrec t =

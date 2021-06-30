@@ -434,11 +434,7 @@ let prefix_rules prefix ~f =
              let open O in
              prefix >>> Thunk rule.action
            in
-           let action =
-             Rule.memoize_thunk "Action_builder.prefix_rules"
-               { f = (fun mode -> run t mode) }
-           in
-           Rule.set_action rule action))
+           Rule.set_action rule { f = (fun mode -> run t mode) }))
   in
   res
 

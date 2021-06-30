@@ -157,7 +157,9 @@ let make ?(sandbox = Sandbox_config.default) ?(mode = Mode.Standard) ~context
   in
   { id = Id.gen (); targets; context; action; mode; info; loc; dir }
 
-let set_action t action = { t with action }
+let set_action t action =
+  let action = memoize_thunk "Rule.set_action" action in
+  { t with action }
 
 let find_source_dir rule =
   let _, src_dir = Path.Build.extract_build_context_dir_exn rule.dir in

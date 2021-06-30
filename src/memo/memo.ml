@@ -617,7 +617,11 @@ end = struct
   type ('i, 'o) unpacked =
     { dep_node : ('i, 'o) Dep_node_without_state.t
     ; dag_node : Dag.node Lazy.t
-    ; (* CR-soon amokhov: Benchmark if it's worth switching to [Dag.Id.Table.t]. *)
+    ; (* CR-soon amokhov: Benchmark if it's worth switching to [Dag.Id.Table.t].
+         For now, I chose to use [Dag.Id.Set.t] for two reasons: (i) we don't
+         have hash sets in Stdune and using [unit] hash tables is disturbing;
+         (ii) the new cycle detection algorithm reduces the size of the DAG, so
+         [children_added_to_dag] will often be empty or small. *)
       (* CR-someday aalekseyev: This children_added_to_dag table serves dual
          purpose:
 
@@ -628,7 +632,7 @@ end = struct
          already added to the cycle detection graph
 
          Now consider that we have up to two stacks per cycle-detection DAG
-         node, so it makess a difference if something is per-dag-node or
+         node, so it makes a difference if something is per-dag-node or
          per-stack.
 
          It's clear that (1) needs to be per-cycle-detection-DAG-node, while (2)

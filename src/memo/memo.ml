@@ -1262,7 +1262,6 @@ end = struct
               | Failure _ -> ());
               restore_result))
     in
-    let dag_node = Stack_frame_with_state.dag_node restore_from_cache_frame in
     let compute =
       Once.create ~must_not_raise:(fun () ->
           (* We do not use [Once.force_with_blocking_check] here because cycle

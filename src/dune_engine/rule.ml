@@ -49,16 +49,35 @@ end
 
 module Id = Id.Make ()
 
-type facts_or_deps =
-  | Facts of Dep.Facts.t
-  | Deps of Dep.Set.t
+type 'a eval_mode =
+  | Lazy : unit eval_mode
+  | Eager : Dep.Fact.t eval_mode
+
+type 'a thunk = { f : 'm. 'm eval_mode -> ('a * 'm Dep.Map.t) Memo.Build.t }
+[@@unboxed]
+
+let force_lazy_or_eager :
+    type a b.
+       a eval_mode
+    -> (b * Dep.Set.t) Memo.Lazy.t
+    -> (b * Dep.Facts.t) Memo.Lazy.t
+    -> (b * a Dep.Map.t) Memo.Build.t =
+ fun mode lazy_ eager ->
+  match mode with
+  | Lazy -> Memo.Lazy.force lazy_
+  | Eager -> Memo.Lazy.force eager
+
+let memoize_thunk name x =
+  let lazy_ = Memo.lazy_ ~name (fun () -> x.f Lazy)
+  and eager = Memo.lazy_ ~name (fun () -> x.f Eager) in
+  { f = (fun mode -> force_lazy_or_eager mode lazy_ eager) }
 
 module T = struct
   type t =
     { id : Id.t
     ; context : Build_context.t option
     ; targets : Path.Build.Set.t
-    ; action : (Action.Full.t * facts_or_deps) Memo.Lazy.t
+    ; action : Action.Full.t thunk
     ; mode : Mode.t
     ; info : Info.t
     ; loc : Loc.t
@@ -81,19 +100,25 @@ include T
 module O = Comparable.Make (T)
 module Set = O.Set
 
+let add_sandbox_config :
+    type a. a eval_mode -> Sandbox_config.t -> a Dep.Map.t -> a Dep.Map.t =
+ fun mode sandbox map ->
+  let dep = Dep.sandbox_config sandbox in
+  match mode with
+  | Lazy -> Dep.Set.add map dep
+  | Eager -> Dep.Map.set map dep Dep.Fact.nothing
+
 let make ?(sandbox = Sandbox_config.default) ?(mode = Mode.Standard) ~context
     ?(info = Info.Internal) ~targets action =
   let open Memo.Build.O in
   let action =
-    Memo.lazy_ ~name:"Rule.make" (fun () ->
-        let+ action, facts_or_deps = action in
-        let dep = Dep.sandbox_config sandbox in
-        let facts_or_deps =
-          match facts_or_deps with
-          | Facts facts -> Facts (Dep.Map.add_exn facts dep Dep.Fact.nothing)
-          | Deps deps -> Deps (Dep.Set.add deps dep)
-        in
-        (action, facts_or_deps))
+    memoize_thunk "Rule.make"
+      { f =
+          (fun mode ->
+            let+ action, deps = action.f mode in
+            let deps = add_sandbox_config mode sandbox deps in
+            (action, deps))
+      }
   in
   let dir =
     match Path.Build.Set.choose targets with

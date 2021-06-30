@@ -331,7 +331,7 @@ let make_rule t ?sandbox ?mode ?(locks = []) ?loc ~dir
   Rule.make ?sandbox ?mode ~info:(Rule.Info.of_loc_opt loc)
     ~context:(Some (Context.build_context t.context))
     ~targets
-    (Action_builder.run' build)
+    { f = (fun mode -> Action_builder.run build mode) }
 
 let add_rule t ?sandbox ?mode ?locks ?loc ~dir build =
   let rule = make_rule t ?sandbox ?mode ?locks ?loc ~dir build in
@@ -346,10 +346,11 @@ let add_rules t ?sandbox ~dir builds =
   Memo.Build.parallel_iter builds ~f:(add_rule t ?sandbox ~dir)
 
 let add_alias_action t alias ~dir ~loc ?(locks = []) action =
+  let build = make_full_action t action ~locks ~dir in
   Rules.Produce.Alias.add_action
     ~context:(Context.build_context t.context)
     alias ~loc
-    (Action_builder.run' (make_full_action t action ~locks ~dir))
+    { f = (fun mode -> Action_builder.run build mode) }
 
 let build_dir_is_vendored build_dir =
   match Path.Build.drop_build_context build_dir with

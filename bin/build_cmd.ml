@@ -7,7 +7,7 @@ let run_build_system ~common ~(request : unit Action_builder.t) () =
     (fun () ->
       Build_system.run (fun () ->
           let open Memo.Build.O in
-          let+ (), _facts = Action_builder.run request in
+          let+ (), _facts = Action_builder.run request Eager in
           ()))
     ~finally:(fun () ->
       (if Common.print_metrics common then

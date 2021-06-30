@@ -376,8 +376,8 @@ let dot_merlin sctx ~dir ~more_src_dirs ~expander (t : Unprocessed.t) =
   let open Memo.Build.O in
   let merlin_file = Merlin_ident.merlin_file_path dir t.ident in
   let* () =
-    Path.Set.singleton (Path.build merlin_file)
-    |> Rules.Produce.Alias.add_static_deps (Alias.check ~dir)
+    Action_builder.add_alias_deps (Alias.check ~dir)
+      (Action_builder.path (Path.build merlin_file))
   in
   let merlin = Unprocessed.process t sctx ~more_src_dirs ~expander in
   let action =

@@ -28,12 +28,15 @@ let implicit_default_alias dir =
           Alias.Name.install
       in
       Some
-        (let open Memo.Build.O in
-        Action_builder.run'
-          (Action_builder.dep_on_alias_rec default_alias
-             (Context_name.of_string ctx_name)
-             dir)
-        >>| snd))
+        { Rule.f =
+            (fun mode ->
+              Action_builder.run
+                (Action_builder.ignore
+                   (Action_builder.dep_on_alias_rec default_alias
+                      (Context_name.of_string ctx_name)
+                      dir))
+                mode)
+        })
 
 let init ~stats ~sandboxing_preference ~cache_config ~cache_debug_flags ~handler
     =

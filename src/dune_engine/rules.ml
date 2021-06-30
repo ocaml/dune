@@ -5,8 +5,8 @@ module Id = Id.Make ()
 module Dir_rules = struct
   module Alias_spec = struct
     type item =
-      | Deps of Rule.facts_or_deps Memo.Build.t
-      | Action of (Rule.Anonymous_action.t * Rule.facts_or_deps) Memo.Build.t
+      | Deps of unit Rule.thunk
+      | Action of Rule.Anonymous_action.t Rule.thunk
 
     type t = { expansions : (Loc.t * item) Appendable_list.t } [@@unboxed]
 
@@ -147,26 +147,20 @@ module Produce = struct
             Appendable_list.singleton (loc, Dir_rules.Alias_spec.Deps expansion)
         }
 
-    let add_static_deps t ?(loc = Loc.none) deps =
-      let expansion =
-        Memo.Build.return (Rule.Deps (Dep.Set.of_files_set deps))
-      in
-      alias t
-        { expansions =
-            Appendable_list.singleton (loc, Dir_rules.Alias_spec.Deps expansion)
-        }
-
     let add_action t ~context ~loc action =
       let action =
-        let open Memo.Build.O in
-        let+ action, facts = action in
-        ( { Rule.Anonymous_action.context = Some context
-          ; action
-          ; loc
-          ; dir = Alias.dir t
-          ; alias = Some (Alias.name t)
-          }
-        , facts )
+        { Rule.f =
+            (fun mode ->
+              let open Memo.Build.O in
+              let+ action, deps = action.Rule.f mode in
+              ( { Rule.Anonymous_action.context = Some context
+                ; action
+                ; loc
+                ; dir = Alias.dir t
+                ; alias = Some (Alias.name t)
+                }
+              , deps ))
+        }
       in
       alias t
         { expansions =

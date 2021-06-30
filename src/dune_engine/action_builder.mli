@@ -288,16 +288,18 @@ val add_alias_deps : Alias.t -> ?loc:Stdune.Loc.t -> unit t -> unit Memo.Build.t
 
 (** {1 Execution} *)
 
-(** Execute an action builder. Returns the result and the trace of the
-    dependencies. *)
-val run : 'a t -> ('a * Dep.Facts.t) Memo.Build.t
+(** Execution mode.
 
-(** Same as [run] but returns a dependency set instead of set of facts if the
-    module is in "lazy mode". *)
-val run' : 'a t -> ('a * Rule.facts_or_deps) Memo.Build.t
+    In [Lazy] mode, dependencies are only collected. In [Eager] mode,
+    dependencies are build as soon as they are recorded and their facts are
+    returned.
 
-(** Switch this module to "lazy" mode. In this mode, [exec'] will always return
-    [Deps _] rather than [Facts _]. It also means that when calling [exec], the
-    building of dependencies will start later than in normal mode, which could
-    result is less parallelism. *)
-val set_lazy_mode : unit -> unit
+    If you want to both evaluate an action builder and build the collected
+    dependencies, using [Eager] mode will increase parallelism. If you only want
+    to know the set of dependencies, using [Lazy] will avoid unnecessary work. *)
+type 'a mode = 'a Rule.eval_mode =
+  | Lazy : unit mode
+  | Eager : Dep.Fact.t mode
+
+(** Execute an action builder. *)
+val run : 'a t -> 'b mode -> ('a * 'b Dep.Map.t) Memo.Build.t

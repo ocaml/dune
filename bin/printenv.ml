@@ -77,7 +77,7 @@ let term =
       in
       Build_system.run_exn (fun () ->
           let open Memo.Build.O in
-          let+ res, _facts = Action_builder.run request in
+          let+ res, _facts = Action_builder.run request Eager in
           res)
       >>| function
       | [ (_, env) ] -> Format.printf "%a" (pp ~fields) env

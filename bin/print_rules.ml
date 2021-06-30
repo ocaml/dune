@@ -62,10 +62,6 @@ end = struct
   module Rule_top_closure =
     Top_closure.Make (Non_evaluated_rule.Id.Set) (Memo.Build)
 
-  let deps_only : Dune_engine.Rule.facts_or_deps -> Dep.Set.t = function
-    | Deps deps -> deps
-    | Facts facts -> Dep.Map.map facts ~f:ignore
-
   module rec Expand : sig
     val alias : Alias.t -> Path.Set.t Memo.Build.t
 
@@ -83,7 +79,7 @@ end = struct
                         (fun () ->
                           match definition with
                           | Dune_engine.Rules.Dir_rules.Alias_spec.Deps x ->
-                            x >>| deps_only
+                            x.f Lazy >>| snd
                           | Action _ -> Memo.Build.return Dep.Set.empty)
                         ~human_readable_description:(fun () ->
                           Alias.describe alias ~loc))
@@ -111,8 +107,7 @@ end = struct
       Memo.create "evaluate-rule"
         ~input:(module Non_evaluated_rule)
         (fun rule ->
-          let* action, deps = Memo.Lazy.force rule.action in
-          let deps = deps_only deps in
+          let* action, deps = rule.action.f Lazy in
           let* expanded_deps = Expand.deps deps in
           Memo.Build.return
             { Rule.id = rule.id
@@ -135,8 +130,7 @@ end = struct
               | Some rule -> evaluate_rule rule >>| Option.some)
       >>| List.filter_map ~f:Fun.id
     in
-    let* (), deps = Action_builder.run' request in
-    let deps = deps_only deps in
+    let* (), deps = Action_builder.run request Lazy in
     let* root_rules = rules_of_deps deps in
     Rule_top_closure.top_closure root_rules
       ~key:(fun rule -> rule.Rule.id)
@@ -240,7 +234,6 @@ let term =
   let out = Option.map ~f:Path.of_string out in
   Scheduler.go ~common ~config (fun () ->
       let open Fiber.O in
-      Dune_engine.Action_builder.set_lazy_mode ();
       let* setup = Import.Main.setup () in
       Build_system.run_exn (fun () ->
           let open Memo.Build.O in

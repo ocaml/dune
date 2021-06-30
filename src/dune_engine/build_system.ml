@@ -389,8 +389,7 @@ type t =
   ; stats : Dune_stats.t option
   ; cache_config : Dune_cache.Config.t
   ; cache_debug_flags : Cache_debug_flags.t
-  ; implicit_default_alias :
-      Path.Build.t -> Rule.facts_or_deps Memo.Build.t option Memo.Build.t
+  ; implicit_default_alias : Path.Build.t -> unit Rule.thunk option Memo.Build.t
   }
 
 let t = Fdecl.create Dyn.Encoder.opaque
@@ -684,6 +683,24 @@ let no_rule_found t ~loc fn =
 
 (* +-------------------- Adding rules to the system --------------------+ *)
 
+let source_file_digest path =
+  Fs_memo.path_exists path >>= function
+  | true ->
+    let+ d = Fs_memo.file_digest path in
+    d
+  | false ->
+    let+ loc = Rule_fn.loc () in
+    User_error.raise ?loc
+      [ Pp.textf "File unavailable: %s" (Path.to_string_maybe_quoted path) ]
+
+let eval_source_file : type a. a Rule.eval_mode -> Path.t -> a Memo.Build.t =
+ fun mode path ->
+  match mode with
+  | Lazy -> Memo.Build.return ()
+  | Eager ->
+    let+ d = source_file_digest path in
+    Dep.Fact.file path d
+
 module rec Load_rules : sig
   val load_dir : dir:Path.t -> Loaded.t Memo.Build.t
 
@@ -703,14 +720,17 @@ end = struct
     Path.Source.Set.to_list_map non_target_source_files ~f:(fun path ->
         let ctx_path = Path.Build.append_source ctx_dir path in
         let build =
-          let path = Path.source path in
-          Memo.Build.return
-            ( { Action.Full.action = Action.copy path ctx_path
-              ; env = Env.empty
-              ; locks = []
-              ; can_go_in_shared_cache = true
-              }
-            , Rule.Deps (Dep.Set.singleton (Dep.file path)) )
+          { Rule.f =
+              (fun mode ->
+                let path = Path.source path in
+                let+ fact = eval_source_file mode path in
+                ( { Action.Full.action = Action.copy path ctx_path
+                  ; env = Env.empty
+                  ; locks = []
+                  ; can_go_in_shared_cache = true
+                  }
+                , Dep.Map.singleton (Dep.file path) fact ))
+          }
         in
         Rule.make
         (* There's an [assert false] in [prepare_managed_paths] that blows up if
@@ -1127,14 +1147,8 @@ let get_rule_or_source t path =
       let* loc = Rule_fn.loc () in
       no_rule_found t ~loc path
   else
-    Fs_memo.path_exists path >>= function
-    | true ->
-      let+ d = Fs_memo.file_digest path in
-      Source d
-    | false ->
-      let+ loc = Rule_fn.loc () in
-      User_error.raise ?loc
-        [ Pp.textf "File unavailable: %s" (Path.to_string_maybe_quoted path) ]
+    let+ d = source_file_digest path in
+    Source d
 
 module Source_tree_map_reduce =
   Source_tree.Dir.Make_map_reduce (Memo.Build) (Monoid.Union (Path.Build.Set))
@@ -1179,7 +1193,7 @@ module type Rec = sig
 
   val build_deps : Dep.Set.t -> Dep.Facts.t Memo.Build.t
 
-  val build_facts_or_deps : Rule.facts_or_deps -> Dep.Facts.t Memo.Build.t
+  val eval_deps : 'a Rule.eval_mode -> Dep.Set.t -> 'a Dep.Map.t Memo.Build.t
 
   val execute_rule : Rule.t -> rule_execution_result Memo.Build.t
 
@@ -1242,9 +1256,12 @@ end = struct
   let build_deps deps =
     Dep.Map.parallel_map deps ~f:(fun dep () -> build_dep dep)
 
-  let build_facts_or_deps = function
-    | Rule.Facts facts -> Memo.Build.return facts
-    | Deps deps -> build_deps deps
+  let eval_deps :
+      type a. a Rule.eval_mode -> Dep.Set.t -> a Dep.Map.t Memo.Build.t =
+   fun mode deps ->
+    match mode with
+    | Lazy -> Memo.Build.return deps
+    | Eager -> build_deps deps
 
   let select_sandbox_mode (config : Sandbox_config.t) ~loc
       ~sandboxing_preference =
@@ -1583,8 +1600,7 @@ end = struct
        [Source_tree.execution_parameters_of_dir] is memoized, and the result is
        not expected to change often, so we do not sacrifise too much performance
        here by executing it sequentially. *)
-    let* action, deps = Memo.Lazy.force action in
-    let* deps = build_facts_or_deps deps in
+    let* action, deps = action.f Eager in
     let wrap_fiber f =
       Memo.Build.of_reproducible_fiber
         (if Loc.is_none loc then
@@ -1978,7 +1994,11 @@ end = struct
           | Some loc -> From_dune_file loc
           | None -> Internal)
         ~targets:(Path.Build.Set.singleton target)
-        (Memo.Build.return (action, Rule.Deps deps))
+        { f =
+            (fun mode ->
+              let+ deps = eval_deps mode deps in
+              (action, deps))
+        }
     in
     let+ { deps = _; targets = _ } =
       execute_rule_impl rule
@@ -2105,13 +2125,11 @@ end = struct
               Memo.push_stack_frame
                 (fun () ->
                   match definition with
-                  | Rules.Dir_rules.Alias_spec.Deps x ->
-                    x >>= build_facts_or_deps
+                  | Rules.Dir_rules.Alias_spec.Deps x -> x.f Eager >>| snd
                   | Action x ->
-                    let* action, facts_or_deps = x in
-                    let* facts = build_facts_or_deps facts_or_deps in
+                    let* action, facts = x.f Eager in
                     let* () = execute_action action ~observing_facts:facts in
-                    Memo.Build.return Dep.Facts.empty)
+                    Memo.Build.return Dep.Map.empty)
                 ~human_readable_description:(fun () ->
                   Alias.describe alias ~loc))
     in

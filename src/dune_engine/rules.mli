@@ -12,8 +12,8 @@ module Dir_rules : sig
 
   module Alias_spec : sig
     type item =
-      | Deps of Rule.facts_or_deps Memo.Build.t
-      | Action of (Rule.Anonymous_action.t * Rule.facts_or_deps) Memo.Build.t
+      | Deps of unit Rule.thunk
+      | Action of Rule.Anonymous_action.t Rule.thunk
 
     type t = { expansions : (Loc.t * item) Appendable_list.t } [@@unboxed]
   end
@@ -62,13 +62,7 @@ module Produce : sig
         registered by [deps] are considered as a part of alias expansion of
         [alias]. *)
     val add_deps :
-         t
-      -> ?loc:Stdune.Loc.t
-      -> Rule.facts_or_deps Memo.Build.t
-      -> unit Memo.Build.t
-
-    val add_static_deps :
-      t -> ?loc:Stdune.Loc.t -> Path.Set.t -> unit Memo.Build.t
+      t -> ?loc:Stdune.Loc.t -> unit Rule.thunk -> unit Memo.Build.t
 
     (** [add_action store alias ~stamp action] arrange things so that [action]
         is executed as part of the build of alias [alias]. [stamp] is any
@@ -77,7 +71,7 @@ module Produce : sig
          t
       -> context:Build_context.t
       -> loc:Loc.t option
-      -> (Action.Full.t * Rule.facts_or_deps) Memo.Build.t
+      -> Action.Full.t Rule.thunk
       -> unit Memo.Build.t
   end
 end

@@ -109,7 +109,7 @@ val init :
   -> rule_generator:(module Rule_generator)
   -> handler:Handler.t option
   -> implicit_default_alias:
-       (Path.Build.t -> Rule.facts_or_deps Memo.Build.t option Memo.Build.t)
+       (Path.Build.t -> unit Rule.thunk option Memo.Build.t)
   -> unit
 
 (** {2 Primitive for rule generations} *)

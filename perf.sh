@@ -8,7 +8,7 @@ set -e
 # TEST_COMMIT=01a6b7e01d0082c44553692648aad3d81820dfa2
 
 TEST_REPO=https://github.com/ocaml/dune
-TEST_COMMIT=79a27e50dbd440ce0348d24174fb3cb8a0492ec3
+TEST_COMMIT=dedd7039d65e0d801706a1d9c12e895f4b5fcdc3
 
 dune() {
   TIMEFORMAT=$'real %Rs\nuser %Us\nsys  %Ss\n'; time ../_build/default/bin/main.exe "$@" --root=. > /dev/null

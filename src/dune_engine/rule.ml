@@ -59,17 +59,17 @@ type 'a thunk = { f : 'm. 'm eval_mode -> ('a * 'm Dep.Map.t) Memo.Build.t }
 let force_lazy_or_eager :
     type a b.
        a eval_mode
-    -> (b * Dep.Set.t) Memo.Lazy.t
-    -> (b * Dep.Facts.t) Memo.Lazy.t
+    -> (b * Dep.Set.t) Memo.Lazy.t Lazy.t
+    -> (b * Dep.Facts.t) Memo.Lazy.t Lazy.t
     -> (b * a Dep.Map.t) Memo.Build.t =
  fun mode lazy_ eager ->
   match mode with
-  | Lazy -> Memo.Lazy.force lazy_
-  | Eager -> Memo.Lazy.force eager
+  | Lazy -> Memo.Lazy.force (Lazy.force lazy_)
+  | Eager -> Memo.Lazy.force (Lazy.force eager)
 
 let memoize_thunk name x =
-  let lazy_ = Memo.lazy_ ~name (fun () -> x.f Lazy)
-  and eager = Memo.lazy_ ~name (fun () -> x.f Eager) in
+  let lazy_ = lazy (Memo.lazy_ ~name (fun () -> x.f Lazy))
+  and eager = lazy (Memo.lazy_ ~name (fun () -> x.f Eager)) in
   { f = (fun mode -> force_lazy_or_eager mode lazy_ eager) }
 
 module T = struct

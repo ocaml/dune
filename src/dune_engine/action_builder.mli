@@ -222,37 +222,6 @@ val create_file :
 (** Merge a list of actions accumulating the sets of their targets. *)
 val progn : Action.t With_targets.t list -> Action.t With_targets.t
 
-(** Execute an action. You can think of [action t] as a convenient way of
-    declaring an anonymous build rule and depending on its outcome. While the
-    return type is [unit], the action might fail. So the outcome here is success
-    or failure. This function is commonly used for attaching tests to an alias.
-
-    Note that any dependency declared in [t] is treated as a dependency of the
-    action returned by [t], rather than the action currently being computed.
-    More precisely, in the following code:
-
-    {[
-      let+ () = Action_builder.path p1
-      and+ () =
-        Action_builder.action
-          (let+ () = Action_builder.path p2 in
-           act2)
-      in
-      act1
-    ]}
-
-    Dune assumes that:
-
-    - [act1] will read [p1]
-    - [act2] will read [p2]
-
-    When passing [--force] to Dune, these are exactly the actions that will be
-    re-executed. *)
-val action : Rule.Anonymous_action.t t -> unit t
-
-(** Same as [action], but captures the output of the action. *)
-val action_stdout : Rule.Anonymous_action.t t -> string t
-
 (** [goal t] ignores all facts that have been accumulated about the dependencies
     of [t]. For example, [goal (path p)] declares that a path [p] contributes to
     the "goal" of the resulting action builder, which means [p] must be built,

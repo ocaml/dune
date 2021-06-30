@@ -27,8 +27,6 @@ module T = struct
     | Memo_build : 'a Memo.Build.t -> 'a t
     | Dyn_memo_build : 'a Memo.Build.t t -> 'a t
     | Goal : 'a t -> 'a t
-    | Action : Rule.Anonymous_action.t t -> unit t
-    | Action_stdout : Rule.Anonymous_action.t t -> string t
     | Push_stack_frame :
         (unit -> User_message.Style.t Pp.t) * (unit -> 'a t)
         -> 'a t
@@ -163,10 +161,6 @@ let paths_existing paths =
 let fail x = Fail x
 
 let source_tree ~dir = Source_tree dir
-
-let action t = Action t
-
-let action_stdout t = Action_stdout t
 
 (* CR-someday amokhov: The set of targets is accumulated using information from
    multiple sources by calling [Path.Build.Set.union] and hence occasionally
@@ -400,17 +394,6 @@ let rec run : type a b. a t -> b eval_mode -> (a * b Dep.Map.t) Memo.Build.t =
   | Goal t ->
     let+ a, (_irrelevant_for_goals : b Dep.Map.t) = run t mode in
     (a, Dep.Map.empty)
-  | Action t -> (
-    match mode with
-    | Eager ->
-      let* act, facts = run t Eager in
-      let+ () = Build_system.execute_action ~observing_facts:facts act in
-      ((), Dep.Map.empty)
-    | Lazy -> Memo.Build.return ((), Dep.Map.empty))
-  | Action_stdout t ->
-    let* act, facts = run t Eager in
-    let+ s = Build_system.execute_action_stdout ~observing_facts:facts act in
-    (s, Dep.Map.empty)
   | Push_stack_frame (human_readable_description, f) ->
     Memo.push_stack_frame ~human_readable_description (fun () ->
         run (f ()) mode)

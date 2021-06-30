@@ -1228,6 +1228,9 @@ and Exported : sig
   val build_file_memo : (Path.t, Digest.t) Memo.t [@@warning "-32"]
 
   val build_alias_memo : (Alias.t, Dep.Fact.Files.t) Memo.t [@@warning "-32"]
+
+  val dep_on_alias_definition : Rules.Dir_rules.Alias_spec.item -> unit Rule.thunk
+
 end = struct
   open Used_recursively
 
@@ -1594,7 +1597,7 @@ end = struct
         Source_tree.execution_parameters_of_dir dir
       | _ -> Execution_parameters.default
     in
-    (* Note: we do not run the bellow in parallel with the above: if we fail to
+    (* Note: we do not run the below in parallel with the above: if we fail to
        compute action execution parameters, we have no use for the action and
        might as well fail early, skipping unnecessary dependencies. The function
        [Source_tree.execution_parameters_of_dir] is memoized, and the result is
@@ -2118,20 +2121,29 @@ end = struct
       in
       Path.Build.Map.find_exn targets path
 
+  let dep_on_anonymous_action (x : Rule.Anonymous_action.t Rule.thunk) : _ Rule.thunk = {
+    f = fun (type m) (mode : m Rule.eval_mode) -> match mode with
+      | Lazy -> Memo.Build.return ((), Dep.Map.empty)
+      | Eager ->
+        let* action, facts = x.f Eager in
+        let+ () = execute_action action ~observing_facts:facts in
+        ((), Dep.Map.empty)
+  }
+
+  let dep_on_alias_definition (definition : Rules.Dir_rules.Alias_spec.item) =
+    match definition with
+    | Deps x -> x
+    | Action x -> dep_on_anonymous_action x
+
   let build_alias_impl alias =
     let+ l =
       get_alias_definition alias
       >>= Memo.Build.parallel_map ~f:(fun (loc, definition) ->
-              Memo.push_stack_frame
-                (fun () ->
-                  match definition with
-                  | Rules.Dir_rules.Alias_spec.Deps x -> x.f Eager >>| snd
-                  | Action x ->
-                    let* action, facts = x.f Eager in
-                    let* () = execute_action action ~observing_facts:facts in
-                    Memo.Build.return Dep.Map.empty)
-                ~human_readable_description:(fun () ->
-                  Alias.describe alias ~loc))
+        Memo.push_stack_frame
+          (fun () ->
+             (dep_on_alias_definition definition).f Eager >>| snd)
+          ~human_readable_description:(fun () ->
+            Alias.describe alias ~loc))
     in
     Dep.Facts.group_paths_as_fact_files l
 
@@ -2214,6 +2226,10 @@ end = struct
 end
 
 open Exported
+
+type alias_definition = Rules.Dir_rules.Alias_spec.item
+
+let dep_on_alias_definition = dep_on_alias_definition
 
 let eval_pred = Pred.eval
 

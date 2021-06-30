@@ -13,7 +13,20 @@ module Dir_rules : sig
   module Alias_spec : sig
     type item =
       | Deps of unit Rule.thunk
-      | Action of Rule.Anonymous_action.t Rule.thunk
+      |
+      (** Execute an action. You can think of [action t] as a convenient way of
+          declaring an anonymous build rule and depending on its outcome. While this
+          action does not produce any value observable by the rest of the build rules,
+          the action can fail. So its outcome is success or failure.
+          This mechanism is commonly used for attaching tests to an alias.
+
+          Note that any dependency declared in [t] is treated as a dependency of the
+          action returned by [t], rather than anything that depends on the
+          alias containing the action.
+
+          When passing [--force] to Dune, these are exactly the actions that will be
+          re-executed. *)
+        Action of Rule.Anonymous_action.t Rule.thunk
 
     type t = { expansions : (Loc.t * item) Appendable_list.t } [@@unboxed]
   end

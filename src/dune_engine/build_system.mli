@@ -165,9 +165,13 @@ val execute_action_stdout :
 (** Return the rule that has the given file has target, if any *)
 val get_rule : Path.t -> Rule.t option Memo.Build.t
 
+type alias_definition
+
+val dep_on_alias_definition : alias_definition -> unit Rule.thunk
+
 (** Return the definition of an alias *)
 val get_alias_definition :
-  Alias.t -> (Loc.t * Rules.Dir_rules.Alias_spec.item) list Memo.Build.t
+  Alias.t -> (Loc.t * alias_definition) list Memo.Build.t
 
 (** List of all buildable targets. *)
 val all_targets : unit -> Path.Build.Set.t Memo.Build.t

@@ -77,10 +77,7 @@ end = struct
               >>= Memo.Build.parallel_map ~f:(fun (loc, definition) ->
                       Memo.push_stack_frame
                         (fun () ->
-                          match definition with
-                          | Dune_engine.Rules.Dir_rules.Alias_spec.Deps x ->
-                            x.f Lazy >>| snd
-                          | Action _ -> Memo.Build.return Dep.Set.empty)
+                           (Build_system.dep_on_alias_definition definition).f Lazy >>| snd)
                         ~human_readable_description:(fun () ->
                           Alias.describe alias ~loc))
             in

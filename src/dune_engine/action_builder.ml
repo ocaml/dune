@@ -23,7 +23,6 @@ module T = struct
     | Dyn_paths : ('a * Path.Set.t) t -> 'a t
     | Dyn_deps : ('a * Dep.Set.t) t -> 'a t
     | Fail : fail -> _ t
-    | Memo : 'a memo -> 'a t
     | Deps : Dep.Set.t -> unit t
     | Memo_build : 'a Memo.Build.t -> 'a t
     | Dyn_memo_build : 'a Memo.Build.t t -> 'a t
@@ -34,13 +33,6 @@ module T = struct
         (unit -> User_message.Style.t Pp.t) * (unit -> 'a t)
         -> 'a t
     | Thunk : 'a Rule.thunk -> 'a t
-
-  and 'a memo =
-    { name : string
-    ; t : 'a t
-    ; mutable lazy_ : ('a * Dep.Set.t) Memo.Lazy.t option
-    ; mutable eager : ('a * Dep.Facts.t) Memo.Lazy.t option
-    }
 
   let return x = Pure x
 
@@ -170,8 +162,6 @@ let paths_existing paths =
 
 let fail x = Fail x
 
-let memoize name t = Memo { name; t; lazy_ = None; eager = None }
-
 let source_tree ~dir = Source_tree dir
 
 let action t = Action t
@@ -187,7 +177,7 @@ let action_stdout t = Action_stdout t
    Another improvement is to cache [Path.Build.Set.to_list targets] which is
    currently performed multiple times on the very same
    [Action_builder.With_targets.t]. *)
-module With_targets = struct
+module With_targets0 = struct
   type nonrec 'a t =
     { build : 'a t
     ; targets : Path.Build.Set.t
@@ -244,16 +234,14 @@ module With_targets = struct
     add ~targets:[ fn ]
       (let+ s = s in
        Action.Write_file (fn, perm, s))
-
-  let memoize name t = { build = memoize name t.build; targets = t.targets }
 end
 
-let with_targets build ~targets : _ With_targets.t =
+let with_targets build ~targets : _ With_targets0.t =
   { build; targets = Path.Build.Set.of_list targets }
 
-let with_targets_set build ~targets : _ With_targets.t = { build; targets }
+let with_targets_set build ~targets : _ With_targets0.t = { build; targets }
 
-let with_no_targets build : _ With_targets.t =
+let with_no_targets build : _ With_targets0.t =
   { build; targets = Path.Build.Set.empty }
 
 let write_file ?(perm = Action.File_perm.Normal) fn s =
@@ -279,8 +267,8 @@ let create_file ?(perm = Action.File_perm.Normal) fn =
     (return (Action.Redirect_out (Stdout, fn, perm, Action.empty)))
 
 let progn ts =
-  let open With_targets.O in
-  let+ actions = With_targets.all ts in
+  let open With_targets0.O in
+  let+ actions = With_targets0.all ts in
   Action.Progn actions
 
 let goal t = Goal t
@@ -390,22 +378,6 @@ let rec run : type a b. a t -> b eval_mode -> (a * b Dep.Map.t) Memo.Build.t =
     Build_system.file_exists p >>= function
     | true -> run then_ mode
     | false -> run else_ mode)
-  | Memo m -> (
-    match mode with
-    | Lazy -> (
-      match m.lazy_ with
-      | Some x -> Memo.Lazy.force x
-      | None ->
-        let x = Memo.lazy_ ~name:m.name (fun () -> run m.t Lazy) in
-        m.lazy_ <- Some x;
-        Memo.Lazy.force x)
-    | Eager -> (
-      match m.eager with
-      | Some x -> Memo.Lazy.force x
-      | None ->
-        let x = Memo.lazy_ ~name:m.name (fun () -> run m.t Eager) in
-        m.eager <- Some x;
-        Memo.Lazy.force x))
   | Memo_build f ->
     let+ f = f in
     (f, Dep.Map.empty)
@@ -443,6 +415,15 @@ let rec run : type a b. a t -> b eval_mode -> (a * b Dep.Map.t) Memo.Build.t =
     Memo.push_stack_frame ~human_readable_description (fun () ->
         run (f ()) mode)
   | Thunk { f } -> f mode
+
+let memoize name t =
+  Thunk (Rule.memoize_thunk name { f = (fun mode -> run t mode) })
+
+module With_targets = struct
+  include With_targets0
+
+  let memoize name t = { build = memoize name t.build; targets = t.targets }
+end
 
 let prefix_rules prefix ~f =
   let* res, rules = Rules.collect f in

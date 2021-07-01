@@ -140,5 +140,5 @@ let gen_rules sctx t ~dir ~scope =
   let* () =
     Super_context.add_alias_action sctx ~dir ~loc:(Some loc) cinaps_alias action
   in
-  Action_builder.add_alias_deps (Alias.runtest ~dir)
+  Rules.Produce.Alias.add_deps (Alias.runtest ~dir)
     (Action_builder.alias cinaps_alias)

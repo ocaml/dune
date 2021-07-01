@@ -1,6 +1,7 @@
 open! Stdune
 open Import
 open Memo.Build.O
+module Action_builder = Action_builder0
 
 module Fs : sig
   (** A memoized version of [mkdir] that avoids calling [mkdir] multiple times
@@ -389,7 +390,8 @@ type t =
   ; stats : Dune_stats.t option
   ; cache_config : Dune_cache.Config.t
   ; cache_debug_flags : Cache_debug_flags.t
-  ; implicit_default_alias : Path.Build.t -> unit Rule.thunk option Memo.Build.t
+  ; implicit_default_alias :
+      Path.Build.t -> unit Action_builder.t option Memo.Build.t
   }
 
 let t = Fdecl.create Dyn.Encoder.opaque
@@ -693,7 +695,8 @@ let source_file_digest path =
     User_error.raise ?loc
       [ Pp.textf "File unavailable: %s" (Path.to_string_maybe_quoted path) ]
 
-let eval_source_file : type a. a Rule.eval_mode -> Path.t -> a Memo.Build.t =
+let eval_source_file :
+    type a. a Action_builder.eval_mode -> Path.t -> a Memo.Build.t =
  fun mode path ->
   match mode with
   | Lazy -> Memo.Build.return ()
@@ -720,17 +723,18 @@ end = struct
     Path.Source.Set.to_list_map non_target_source_files ~f:(fun path ->
         let ctx_path = Path.Build.append_source ctx_dir path in
         let build =
-          { Rule.f =
-              (fun mode ->
-                let path = Path.source path in
-                let+ fact = eval_source_file mode path in
-                ( { Action.Full.action = Action.copy path ctx_path
-                  ; env = Env.empty
-                  ; locks = []
-                  ; can_go_in_shared_cache = true
-                  }
-                , Dep.Map.singleton (Dep.file path) fact ))
-          }
+          Action_builder.of_thunk
+            { f =
+                (fun mode ->
+                  let path = Path.source path in
+                  let+ fact = eval_source_file mode path in
+                  ( { Action.Full.action = Action.copy path ctx_path
+                    ; env = Env.empty
+                    ; locks = []
+                    ; can_go_in_shared_cache = true
+                    }
+                  , Dep.Map.singleton (Dep.file path) fact ))
+            }
         in
         Rule.make
         (* There's an [assert false] in [prepare_managed_paths] that blows up if
@@ -1193,7 +1197,8 @@ module type Rec = sig
 
   val build_deps : Dep.Set.t -> Dep.Facts.t Memo.Build.t
 
-  val eval_deps : 'a Rule.eval_mode -> Dep.Set.t -> 'a Dep.Map.t Memo.Build.t
+  val eval_deps :
+    'a Action_builder.eval_mode -> Dep.Set.t -> 'a Dep.Map.t Memo.Build.t
 
   val execute_rule : Rule.t -> rule_execution_result Memo.Build.t
 
@@ -1230,7 +1235,7 @@ and Exported : sig
   val build_alias_memo : (Alias.t, Dep.Fact.Files.t) Memo.t [@@warning "-32"]
 
   val dep_on_alias_definition :
-    Rules.Dir_rules.Alias_spec.item -> unit Rule.thunk
+    Rules.Dir_rules.Alias_spec.item -> unit Action_builder.t
 end = struct
   open Used_recursively
 
@@ -1260,7 +1265,8 @@ end = struct
     Dep.Map.parallel_map deps ~f:(fun dep () -> build_dep dep)
 
   let eval_deps :
-      type a. a Rule.eval_mode -> Dep.Set.t -> a Dep.Map.t Memo.Build.t =
+      type a.
+      a Action_builder.eval_mode -> Dep.Set.t -> a Dep.Map.t Memo.Build.t =
    fun mode deps ->
     match mode with
     | Lazy -> Memo.Build.return deps
@@ -1603,7 +1609,7 @@ end = struct
        [Source_tree.execution_parameters_of_dir] is memoized, and the result is
        not expected to change often, so we do not sacrifise too much performance
        here by executing it sequentially. *)
-    let* action, deps = action.f Eager in
+    let* action, deps = Action_builder.run action Eager in
     let wrap_fiber f =
       Memo.Build.of_reproducible_fiber
         (if Loc.is_none loc then
@@ -1997,11 +2003,12 @@ end = struct
           | Some loc -> From_dune_file loc
           | None -> Internal)
         ~targets:(Path.Build.Set.singleton target)
-        { f =
-            (fun mode ->
-              let+ deps = eval_deps mode deps in
-              (action, deps))
-        }
+        (Action_builder.of_thunk
+           { f =
+               (fun mode ->
+                 let+ deps = eval_deps mode deps in
+                 (action, deps))
+           })
     in
     let+ { deps = _; targets = _ } =
       execute_rule_impl rule
@@ -2121,17 +2128,18 @@ end = struct
       in
       Path.Build.Map.find_exn targets path
 
-  let dep_on_anonymous_action (x : Rule.Anonymous_action.t Rule.thunk) :
-      _ Rule.thunk =
-    { f =
-        (fun (type m) (mode : m Rule.eval_mode) ->
-          match mode with
-          | Lazy -> Memo.Build.return ((), Dep.Map.empty)
-          | Eager ->
-            let* action, facts = x.f Eager in
-            let+ () = execute_action action ~observing_facts:facts in
-            ((), Dep.Map.empty))
-    }
+  let dep_on_anonymous_action (x : Rule.Anonymous_action.t Action_builder.t) :
+      _ Action_builder.t =
+    Action_builder.of_thunk
+      { f =
+          (fun (type m) (mode : m Action_builder.eval_mode) ->
+            match mode with
+            | Lazy -> Memo.Build.return ((), Dep.Map.empty)
+            | Eager ->
+              let* action, facts = Action_builder.run x Eager in
+              let+ () = execute_action action ~observing_facts:facts in
+              ((), Dep.Map.empty))
+      }
 
   let dep_on_alias_definition (definition : Rules.Dir_rules.Alias_spec.item) =
     match definition with
@@ -2143,7 +2151,9 @@ end = struct
       get_alias_definition alias
       >>= Memo.Build.parallel_map ~f:(fun (loc, definition) ->
               Memo.push_stack_frame
-                (fun () -> (dep_on_alias_definition definition).f Eager >>| snd)
+                (fun () ->
+                  Action_builder.run (dep_on_alias_definition definition) Eager
+                  >>| snd)
                 ~human_readable_description:(fun () ->
                   Alias.describe alias ~loc))
     in

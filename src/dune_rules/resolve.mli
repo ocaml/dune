@@ -88,7 +88,7 @@
       | Ok libs -> gen_rules libs
       | Error () ->
         let fail = Action_builder.ignore (Resolve.read libs) in
-        Action_builder.prefix_rules fail ~f:(fun () -> gen_rules libs)
+        Rules.prefix_rules fail ~f:(fun () -> gen_rules libs)
     ]} *)
 
 open Stdune

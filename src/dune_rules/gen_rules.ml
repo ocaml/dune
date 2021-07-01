@@ -220,7 +220,7 @@ let define_all_alias ~dir ~scope ~js_targets =
     File_selector.create ~dir:(Path.build dir) ~only_generated_files pred
     |> Action_builder.paths_matching_unit ~loc:Loc.none
   in
-  Action_builder.add_alias_deps (Alias.all ~dir) deps
+  Rules.Produce.Alias.add_deps (Alias.all ~dir) deps
 
 let gen_rules sctx dir_contents cctxs expander
     { Dir_with_dune.src_dir; ctx_dir; data = stanzas; scope; dune_version = _ }
@@ -232,7 +232,7 @@ let gen_rules sctx dir_contents cctxs expander
           ~f:(Expander.No_deps.expand_str expander)
         >>| Path.build)
     >>= fun files ->
-    Action_builder.add_alias_deps (Alias.all ~dir:ctx_dir)
+    Rules.Produce.Alias.add_deps (Alias.all ~dir:ctx_dir)
       (Action_builder.paths files)
   in
   let* { For_stanza.merlin = merlins

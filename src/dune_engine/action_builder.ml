@@ -1,145 +1,11 @@
 open! Stdune
 open Import
-
-type 'a eval_mode = 'a Rule.eval_mode =
-  | Lazy : unit eval_mode
-  | Eager : Dep.Fact.t eval_mode
-
-let union : type a. a eval_mode -> a Dep.Map.t -> a Dep.Map.t -> a Dep.Map.t =
- fun mode a b ->
-  match mode with
-  | Lazy -> Dep.Set.union a b
-  | Eager -> Dep.Facts.union a b
-
-let union_all mode l = List.fold_left l ~init:Dep.Map.empty ~f:(union mode)
-
-module T = struct
-  open Memo.Build.O
-
-  type 'a t = 'a Rule.thunk =
-    { f : 'm. 'm eval_mode -> ('a * 'm Dep.Map.t) Memo.Build.t }
-  [@@unboxed]
-
-  let return x = { f = (fun _mode -> Memo.Build.return (x, Dep.Map.empty)) }
-
-  let map t ~f =
-    { f =
-        (fun mode ->
-          let+ x, deps = t.f mode in
-          (f x, deps))
-    }
-
-  let bind t ~f =
-    { f =
-        (fun mode ->
-          let* x, deps1 = t.f mode in
-          let+ y, deps2 = (f x).f mode in
-          (y, union mode deps1 deps2))
-    }
-
-  let both x y =
-    { f =
-        (fun mode ->
-          let+ x, deps1 = x.f mode
-          and+ y, deps2 = y.f mode in
-          ((x, y), union mode deps1 deps2))
-    }
-
-  let all xs =
-    { f =
-        (fun mode ->
-          let+ res = Memo.Build.parallel_map xs ~f:(fun x -> x.f mode) in
-          let res, facts = List.split res in
-          (res, union_all mode facts))
-    }
-
-  let memo_build m =
-    { f =
-        (fun _mode ->
-          let+ x = m in
-          (x, Dep.Map.empty))
-    }
-
-  module O = struct
-    let ( >>> ) a b =
-      { f =
-          (fun mode ->
-            let+ ((), deps_a), (b, deps_b) =
-              Memo.Build.fork_and_join (fun () -> a.f mode) (fun () -> b.f mode)
-            in
-            (b, union mode deps_a deps_b))
-      }
-
-    let ( >>= ) t f = bind t ~f
-
-    let ( >>| ) t f = map t ~f
-
-    let ( and+ ) = both
-
-    let ( and* ) = both
-
-    let ( let+ ) t f = map t ~f
-
-    let ( let* ) t f = bind t ~f
-  end
-
-  module List = struct
-    let map l ~f =
-      { f =
-          (fun mode ->
-            let+ res = Memo.Build.parallel_map l ~f:(fun x -> (f x).f mode) in
-            let res, deps = List.split res in
-            (res, union_all mode deps))
-      }
-
-    let concat_map l ~f =
-      { f =
-          (fun mode ->
-            let+ res = Memo.Build.parallel_map l ~f:(fun x -> (f x).f mode) in
-            let res, deps = List.split res in
-            (List.concat res, union_all mode deps))
-      }
-  end
-end
-
-module Expander = String_with_vars.Make_expander (T)
-include T
+include Action_builder0
 open O
 
 open struct
   module List = Stdune.List
 end
-
-let run t mode = t.f mode
-
-let memoize = Rule.memoize_thunk
-
-let ignore x = map x ~f:ignore
-
-let map2 x y ~f =
-  let+ x = x
-  and+ y = y in
-  f x y
-
-let push_stack_frame ~human_readable_description f =
-  { f =
-      (fun mode ->
-        Memo.push_stack_frame ~human_readable_description (fun () ->
-            (f ()).f mode))
-  }
-
-let delayed f =
-  let+ () = return () in
-  f ()
-
-let all_unit (xs : unit t list) =
-  { f =
-      (fun mode ->
-        let open Memo.Build.O in
-        let+ res = Memo.Build.parallel_map xs ~f:(fun x -> x.f mode) in
-        let deps = List.map res ~f:snd in
-        ((), union_all mode deps))
-  }
 
 let register_action_deps :
     type a. a eval_mode -> Dep.Set.t -> a Dep.Map.t Memo.Build.t =
@@ -149,23 +15,25 @@ let register_action_deps :
   | Lazy -> Memo.Build.return deps
 
 let deps d =
-  { f =
-      (fun mode ->
-        let open Memo.Build.O in
-        let+ deps = register_action_deps mode d in
-        ((), deps))
-  }
+  of_thunk
+    { f =
+        (fun mode ->
+          let open Memo.Build.O in
+          let+ deps = register_action_deps mode d in
+          ((), deps))
+    }
 
 let dep d = deps (Dep.Set.singleton d)
 
 let dyn_deps t =
-  { f =
-      (fun mode ->
-        let open Memo.Build.O in
-        let* (x, deps), deps_x = t.f mode in
-        let+ deps = register_action_deps mode deps in
-        (x, union mode deps deps_x))
-  }
+  of_thunk
+    { f =
+        (fun mode ->
+          let open Memo.Build.O in
+          let* (x, deps), deps_x = run t mode in
+          let+ deps = register_action_deps mode deps in
+          (x, Deps_or_facts.union mode deps deps_x))
+    }
 
 let path p = deps (Dep.Set.singleton (Dep.file p))
 
@@ -188,7 +56,8 @@ let paths_matching :
     let+ files = Build_system.eval_pred g in
     (files, Dep.Set.singleton (Dep.file_selector g))
 
-let paths_matching ~loc:_ g = { f = (fun mode -> paths_matching g mode) }
+let paths_matching ~loc:_ g =
+  of_thunk { f = (fun mode -> paths_matching g mode) }
 
 let paths_matching_unit ~loc g = ignore (paths_matching ~loc g)
 
@@ -209,20 +78,22 @@ let env_var s = deps (Dep.Set.singleton (Dep.env s))
 let alias a = dep (Dep.alias a)
 
 let contents p =
-  { f =
-      (fun _mode ->
-        let open Memo.Build.O in
-        let+ x = Build_system.read_file p ~f:Io.read_file in
-        (x, Dep.Map.empty))
-  }
+  of_thunk
+    { f =
+        (fun _mode ->
+          let open Memo.Build.O in
+          let+ x = Build_system.read_file p ~f:Io.read_file in
+          (x, Dep.Map.empty))
+    }
 
 let lines_of p =
-  { f =
-      (fun _mode ->
-        let open Memo.Build.O in
-        let+ x = Build_system.read_file p ~f:Io.lines_of_file in
-        (x, Dep.Map.empty))
-  }
+  of_thunk
+    { f =
+        (fun _mode ->
+          let open Memo.Build.O in
+          let+ x = Build_system.read_file p ~f:Io.lines_of_file in
+          (x, Dep.Map.empty))
+    }
 
 let strings p =
   let f x =
@@ -244,13 +115,14 @@ let read_sexp p =
   Dune_lang.Parser.parse_string s ~fname:(Path.to_string p) ~mode:Single
 
 let if_file_exists p ~then_ ~else_ =
-  { f =
-      (fun mode ->
-        let open Memo.Build.O in
-        Build_system.file_exists p >>= function
-        | true -> then_.f mode
-        | false -> else_.f mode)
-  }
+  of_thunk
+    { f =
+        (fun mode ->
+          let open Memo.Build.O in
+          Build_system.file_exists p >>= function
+          | true -> run then_ mode
+          | false -> run else_ mode)
+    }
 
 let file_exists p = if_file_exists p ~then_:(return true) ~else_:(return false)
 
@@ -263,50 +135,15 @@ let fail x =
   let+ () = return () in
   x.fail ()
 
-type ('input, 'output) memo =
-  { lazy_ : ('input, 'output * Dep.Set.t) Memo.t Lazy.t
-  ; eager : ('input, 'output * Dep.Facts.t) Memo.t Lazy.t
-  }
-
-let create_memo name ~input ?cutoff ?human_readable_description f =
-  let lazy_ =
-    lazy
-      (let cutoff =
-         Option.map cutoff ~f:(fun f (a, deps1) (b, deps2) ->
-             f a b && Dep.Set.equal deps1 deps2)
-       in
-       let name = name ^ "(lazy)" in
-       Memo.create name ~input ?cutoff ?human_readable_description (fun x ->
-           (f x).f Lazy))
-  and eager =
-    lazy
-      (let cutoff =
-         Option.map cutoff ~f:(fun f (a, facts1) (b, facts2) ->
-             f a b && Dep.Map.equal facts1 facts2 ~equal:Dep.Fact.equal)
-       in
-       Memo.create name ~input ?cutoff ?human_readable_description (fun x ->
-           (f x).f Eager))
-  in
-  { lazy_; eager }
-
-let exec_memo :
-    type i o m.
-    (i, o) memo -> i -> m eval_mode -> (o * m Dep.Map.t) Memo.Build.t =
- fun memo i mode ->
-  match mode with
-  | Lazy -> Memo.exec (Lazy.force memo.lazy_) i
-  | Eager -> Memo.exec (Lazy.force memo.eager) i
-
-let exec_memo m i = { f = (fun mode -> exec_memo m i mode) }
-
 let source_tree ~dir =
-  { f =
-      (fun mode ->
-        let open Memo.Build.O in
-        let* deps, paths = Dep.Set.source_tree_with_file_set dir in
-        let+ deps = register_action_deps mode deps in
-        (paths, deps))
-  }
+  of_thunk
+    { f =
+        (fun mode ->
+          let open Memo.Build.O in
+          let* deps, paths = Dep.Set.source_tree_with_file_set dir in
+          let+ deps = register_action_deps mode deps in
+          (paths, deps))
+    }
 
 (* CR-someday amokhov: The set of targets is accumulated using information from
    multiple sources by calling [Path.Build.Set.union] and hence occasionally
@@ -413,41 +250,24 @@ let progn ts =
   let+ actions = With_targets.all ts in
   Action.Progn actions
 
-let goal t =
-  { f =
-      (fun mode ->
-        let open Memo.Build.O in
-        let+ a, (_irrelevant_for_goals : _ Dep.Map.t) = t.f mode in
-        (a, Dep.Map.empty))
-  }
-
-let memo_build_join f =
-  { f =
-      (fun mode ->
-        let open Memo.Build.O in
-        let* t = f in
-        t.f mode)
-  }
-
-let dyn_memo_build f = f >>= memo_build
-
 let dyn_memo_build_deps t = dyn_deps (dyn_memo_build t)
 
 let dep_on_alias_if_exists alias =
-  { f =
-      (fun mode ->
-        let open Memo.Build.O in
-        let* definition = Build_system.alias_exists alias in
-        match definition with
-        | false -> Memo.Build.return (false, Dep.Map.empty)
-        | true ->
-          let deps = Dep.Set.singleton (Dep.alias alias) in
-          let+ deps = register_action_deps mode deps in
-          (true, deps))
-  }
+  of_thunk
+    { f =
+        (fun mode ->
+          let open Memo.Build.O in
+          let* definition = Build_system.alias_exists alias in
+          match definition with
+          | false -> Memo.Build.return (false, Dep.Map.empty)
+          | true ->
+            let deps = Dep.Set.singleton (Dep.alias alias) in
+            let+ deps = register_action_deps mode deps in
+            (true, deps))
+    }
 
 module Source_tree_map_reduce =
-  Source_tree.Dir.Make_map_reduce (T) (Monoid.Exists)
+  Source_tree.Dir.Make_map_reduce (Action_builder0) (Monoid.Exists)
 
 let dep_on_alias_rec name context_name dir =
   let build_dir = Context_name.build_dir context_name in
@@ -457,20 +277,3 @@ let dep_on_alias_rec name context_name dir =
   in
   Source_tree_map_reduce.map_reduce dir
     ~traverse:Sub_dirs.Status.Set.normal_only ~f
-
-let prefix_rules prefix ~f =
-  let open Memo.Build.O in
-  let* res, rules = Rules.collect f in
-  let+ () =
-    Rules.produce
-      (Rules.map_rules rules ~f:(fun (rule : Rule.t) ->
-           let t =
-             let open O in
-             prefix >>> rule.action
-           in
-           Rule.set_action rule t))
-  in
-  res
-
-let add_alias_deps alias ?loc t =
-  Rules.Produce.Alias.add_deps alias ?loc { f = (fun mode -> run t mode) }

@@ -831,7 +831,7 @@ let install_rules sctx (package : Package.t) =
     let context = Context.build_context ctx in
     let target_alias = Alias.package_install ~context ~pkg:package in
     let open Action_builder.O in
-    Action_builder.add_alias_deps target_alias
+    Rules.Produce.Alias.add_deps target_alias
       (Action_builder.dyn_deps
          (let+ packages = packages
           and+ () = Action_builder.deps (Dep.Set.of_files_set files) in
@@ -904,7 +904,7 @@ let memo =
       let path = Package_paths.build_dir ctx package in
       let install_alias = Alias.install ~dir:path in
       let install_file = Path.relative (Path.build path) install_fn in
-      Action_builder.add_alias_deps install_alias
+      Rules.Produce.Alias.add_deps install_alias
         (Action_builder.path install_file)
     else
       Memo.Build.return ()

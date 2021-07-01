@@ -105,7 +105,7 @@ let user_rule sctx ?extra_bindings ~dir ~expander (rule : Rule.t) =
     | Alias_with_targets (alias, alias_target) ->
       let* () =
         let alias = Alias.make alias ~dir in
-        Action_builder.add_alias_deps alias
+        Rules.Produce.Alias.add_deps alias
           (Action_builder.path (Path.build alias_target))
       in
       add_user_rule sctx ~dir ~rule ~action ~expander
@@ -195,7 +195,7 @@ let copy_files sctx ~dir ~expander ~src_dir (def : Copy_files.t) =
   let+ () =
     Memo.Build.Option.iter def.alias ~f:(fun alias ->
         let alias = Alias.make alias ~dir in
-        Action_builder.add_alias_deps alias (Action_builder.path_set targets))
+        Rules.Produce.Alias.add_deps alias (Action_builder.path_set targets))
   in
   targets
 
@@ -213,7 +213,7 @@ let alias sctx ?extra_bindings ~dir ~expander (alias_conf : Alias_conf.t) =
     match alias_conf.action with
     | None ->
       let builder, _expander = Dep_conf_eval.named ~expander alias_conf.deps in
-      Action_builder.add_alias_deps alias ?loc builder
+      Rules.Produce.Alias.add_deps alias ?loc builder
     | Some (action_loc, action) ->
       let* locks = interpret_locks ~expander alias_conf.locks in
       let action =

@@ -23,4 +23,4 @@ let with_lib_deps (t : Context.t) compile_info ~dir ~f =
     else
       Action_builder.return ()
   in
-  Action_builder.prefix_rules prefix ~f
+  Rules.prefix_rules prefix ~f

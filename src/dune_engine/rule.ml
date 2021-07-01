@@ -1,5 +1,6 @@
 open! Stdune
 open Import
+module Action_builder = Action_builder0
 
 module Info = struct
   type t =
@@ -49,35 +50,12 @@ end
 
 module Id = Id.Make ()
 
-type 'a eval_mode =
-  | Lazy : unit eval_mode
-  | Eager : Dep.Fact.t eval_mode
-
-type 'a thunk = { f : 'm. 'm eval_mode -> ('a * 'm Dep.Map.t) Memo.Build.t }
-[@@unboxed]
-
-let force_lazy_or_eager :
-    type a b.
-       a eval_mode
-    -> (b * Dep.Set.t) Memo.Lazy.t Lazy.t
-    -> (b * Dep.Facts.t) Memo.Lazy.t Lazy.t
-    -> (b * a Dep.Map.t) Memo.Build.t =
- fun mode lazy_ eager ->
-  match mode with
-  | Lazy -> Memo.Lazy.force (Lazy.force lazy_)
-  | Eager -> Memo.Lazy.force (Lazy.force eager)
-
-let memoize_thunk name x =
-  let lazy_ = lazy (Memo.lazy_ ~name (fun () -> x.f Lazy))
-  and eager = lazy (Memo.lazy_ ~name (fun () -> x.f Eager)) in
-  { f = (fun mode -> force_lazy_or_eager mode lazy_ eager) }
-
 module T = struct
   type t =
     { id : Id.t
     ; context : Build_context.t option
     ; targets : Path.Build.Set.t
-    ; action : Action.Full.t thunk
+    ; action : Action.Full.t Action_builder.t
     ; mode : Mode.t
     ; info : Info.t
     ; loc : Loc.t
@@ -101,7 +79,9 @@ module O = Comparable.Make (T)
 module Set = O.Set
 
 let add_sandbox_config :
-    type a. a eval_mode -> Sandbox_config.t -> a Dep.Map.t -> a Dep.Map.t =
+    type a.
+    a Action_builder.eval_mode -> Sandbox_config.t -> a Dep.Map.t -> a Dep.Map.t
+    =
  fun mode sandbox map ->
   let dep = Dep.sandbox_config sandbox in
   match mode with
@@ -112,13 +92,14 @@ let make ?(sandbox = Sandbox_config.default) ?(mode = Mode.Standard) ~context
     ?(info = Info.Internal) ~targets action =
   let open Memo.Build.O in
   let action =
-    memoize_thunk "Rule.make"
-      { f =
-          (fun mode ->
-            let+ action, deps = action.f mode in
-            let deps = add_sandbox_config mode sandbox deps in
-            (action, deps))
-      }
+    Action_builder.memoize "Rule.make"
+      (Action_builder.of_thunk
+         { f =
+             (fun mode ->
+               let+ action, deps = Action_builder.run action mode in
+               let deps = add_sandbox_config mode sandbox deps in
+               (action, deps))
+         })
   in
   let dir =
     match Path.Build.Set.choose targets with
@@ -158,7 +139,7 @@ let make ?(sandbox = Sandbox_config.default) ?(mode = Mode.Standard) ~context
   { id = Id.gen (); targets; context; action; mode; info; loc; dir }
 
 let set_action t action =
-  let action = memoize_thunk "Rule.set_action" action in
+  let action = Action_builder.memoize "Rule.set_action" action in
   { t with action }
 
 let find_source_dir rule =

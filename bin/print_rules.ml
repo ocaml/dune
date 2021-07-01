@@ -77,7 +77,8 @@ end = struct
               >>= Memo.Build.parallel_map ~f:(fun (loc, definition) ->
                       Memo.push_stack_frame
                         (fun () ->
-                          (Build_system.dep_on_alias_definition definition).f
+                          Action_builder.run
+                            (Build_system.dep_on_alias_definition definition)
                             Lazy
                           >>| snd)
                         ~human_readable_description:(fun () ->
@@ -106,7 +107,7 @@ end = struct
       Memo.create "evaluate-rule"
         ~input:(module Non_evaluated_rule)
         (fun rule ->
-          let* action, deps = rule.action.f Lazy in
+          let* action, deps = Action_builder.run rule.action Lazy in
           let* expanded_deps = Expand.deps deps in
           Memo.Build.return
             { Rule.id = rule.id

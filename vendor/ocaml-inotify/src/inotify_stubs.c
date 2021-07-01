@@ -17,7 +17,6 @@
 #include <errno.h>
 #include <string.h>
 #include <stdio.h>
-#include <unistd.h>
 #include <limits.h>
 #include <caml/mlvalues.h>
 #include <caml/memory.h>
@@ -30,6 +29,7 @@
 
 #ifdef __linux__
 
+#include <unistd.h>
 #include <features.h>
 #include <sys/inotify.h>
 

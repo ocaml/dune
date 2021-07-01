@@ -739,6 +739,8 @@ let load_opam_file file name =
   ; sites = Section.Site.Map.empty
   }
 
+let equal = Poly.equal
+
 let missing_deps (t : t) ~effective_deps =
   let specified_deps =
     List.map t.depends ~f:(fun (dep : Dependency.t) -> dep.name)

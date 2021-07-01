@@ -58,6 +58,8 @@ type t =
   | Ppx_deriver of Ppx_args.t
   | Ppx_rewriter of Ppx_args.t
 
+let equal = Poly.equal
+
 let to_dyn x =
   let open Dyn.Encoder in
   match x with

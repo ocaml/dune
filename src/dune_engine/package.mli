@@ -148,6 +148,8 @@ type t =
   ; sites : Section.t Section.Site.Map.t
   }
 
+val equal : t -> t -> bool
+
 val name : t -> Name.t
 
 val dir : t -> Path.Source.t

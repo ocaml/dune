@@ -32,6 +32,8 @@ type 'path t
 
 val of_local : Path.Build.t t -> Path.t t
 
+val equal : 'a t -> 'a t -> bool
+
 (** The source_root directory *)
 val dir : 'path t -> 'path
 

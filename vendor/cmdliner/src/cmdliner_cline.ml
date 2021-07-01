@@ -104,8 +104,8 @@ let parse_opt_args ~peek_opts optidx cl args =
           | Some v, (Cmdliner_info.Flag | Opt_vopt _) when is_short_opt name ->
             None, ("-" ^ v) :: args
           | Some _, _ -> value, args
-          | None, Cmdliner_info.Flag -> value, args
-          | None, _ ->
+          | None, (Cmdliner_info.Flag | Cmdliner_info.Opt_vopt _) -> value, args
+          | None, Cmdliner_info.Opt ->
               match args with
               | [] -> None, args
               | v :: rest -> if is_opt v then None, args else Some v, rest

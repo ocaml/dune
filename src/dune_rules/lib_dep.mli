@@ -24,6 +24,8 @@ type t =
   | Re_export of (Loc.t * Lib_name.t)
   | Select of Select.t
 
+val equal : t -> t -> bool
+
 val to_dyn : t -> Dyn.t
 
 val direct : Loc.t * Lib_name.t -> t

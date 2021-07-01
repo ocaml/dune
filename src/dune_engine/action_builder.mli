@@ -210,7 +210,7 @@ val create_memo :
   -> ('i -> 'o t)
   -> ('i, 'o) memo
 
-(** Same as [Memo.exec] for for [Action_builder]'s memo *)
+(** Same as [Memo.exec] but for [Action_builder]'s memos *)
 val exec_memo : ('i, 'o) memo -> 'i -> 'o t
 
 (** Create a file with the given contents. *)

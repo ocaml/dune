@@ -83,11 +83,11 @@ let gen_rules_output sctx (config : Format_config.t) ~version ~dialects
           (module Path.Source.Set)
           ~f:setup_formatting
   in
-  Rules.Produce.Alias.add_static_deps alias_formatted Path.Set.empty
+  Action_builder.add_alias_deps alias_formatted (Action_builder.return ())
 
 let gen_rules ~dir =
   let output_dir = Path.Build.relative dir formatted in
   let alias = Alias.fmt ~dir in
   let alias_formatted = Alias.fmt ~dir:output_dir in
-  Rules.Produce.Alias.add_deps alias
+  Action_builder.add_alias_deps alias
     (Action_builder.dep (Dep.alias alias_formatted))

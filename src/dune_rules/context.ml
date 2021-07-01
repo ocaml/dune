@@ -870,47 +870,57 @@ let gen_configurator_rules t =
     Rules.Produce.rule
       (Rule.make ~context:None
          ~targets:(Path.Build.Set.singleton fn)
-         (let open Action_builder.O in
-         let+ () = Action_builder.return () in
-         { Action.Full.action =
-             Action.write_file fn
-               (List.map
-                  ~f:(fun x -> Dune_lang.to_string x ^ "\n")
-                  (let open Dune_lang.Encoder in
-                  record_fields
-                    [ field "ocamlc" string ocamlc
-                    ; field_l "ocaml_config_vars" (pair string string)
-                        ocaml_config_vars
-                    ])
-               |> String.concat ~sep:"")
-         ; env = Env.empty
-         ; locks = []
-         ; can_go_in_shared_cache = true
-         }))
+         { f =
+             (fun mode ->
+               Action_builder.run
+                 (let open Action_builder.O in
+                 let+ () = Action_builder.return () in
+                 { Action.Full.action =
+                     Action.write_file fn
+                       (List.map
+                          ~f:(fun x -> Dune_lang.to_string x ^ "\n")
+                          (let open Dune_lang.Encoder in
+                          record_fields
+                            [ field "ocamlc" string ocamlc
+                            ; field_l "ocaml_config_vars" (pair string string)
+                                ocaml_config_vars
+                            ])
+                       |> String.concat ~sep:"")
+                 ; env = Env.empty
+                 ; locks = []
+                 ; can_go_in_shared_cache = true
+                 })
+                 mode)
+         })
   in
   let fn = configurator_v2 t in
   Rules.Produce.rule
     (Rule.make ~context:None
        ~targets:(Path.Build.Set.singleton fn)
-       (let open Action_builder.O in
-       let+ () = Action_builder.return () in
-       { Action.Full.action =
-           Action.write_file fn
-             (Csexp.to_string
-                (let open Sexp in
-                let ocaml_config_vars =
-                  Sexp.List
-                    (List.map ocaml_config_vars ~f:(fun (k, v) ->
-                         List [ Atom k; Atom v ]))
-                in
-                List
-                  [ List [ Atom "ocamlc"; Atom ocamlc ]
-                  ; List [ Atom "ocaml_config_vars"; ocaml_config_vars ]
-                  ]))
-       ; env = Env.empty
-       ; locks = []
-       ; can_go_in_shared_cache = true
-       }))
+       { f =
+           (fun mode ->
+             Action_builder.run
+               (let open Action_builder.O in
+               let+ () = Action_builder.return () in
+               { Action.Full.action =
+                   Action.write_file fn
+                     (Csexp.to_string
+                        (let open Sexp in
+                        let ocaml_config_vars =
+                          Sexp.List
+                            (List.map ocaml_config_vars ~f:(fun (k, v) ->
+                                 List [ Atom k; Atom v ]))
+                        in
+                        List
+                          [ List [ Atom "ocamlc"; Atom ocamlc ]
+                          ; List [ Atom "ocaml_config_vars"; ocaml_config_vars ]
+                          ]))
+               ; env = Env.empty
+               ; locks = []
+               ; can_go_in_shared_cache = true
+               })
+               mode)
+       })
 
 let force_configurator_files =
   Memo.lazy_ (fun () ->
@@ -919,4 +929,5 @@ let force_configurator_files =
         List.concat_map ctxs ~f:(fun t ->
             [ Path.build (configurator_v1 t); Path.build (configurator_v2 t) ])
       in
-      Build_system.build (Action_builder.paths files))
+      Memo.Build.parallel_iter files ~f:(fun file ->
+          Build_system.build_file file >>| ignore))

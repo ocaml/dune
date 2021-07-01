@@ -11,8 +11,25 @@ module Dir_rules : sig
   val union : t -> t -> t
 
   module Alias_spec : sig
-    type t = { expansions : (Loc.t * unit Action_builder.t) Appendable_list.t }
-    [@@unboxed]
+    type item =
+      | Deps of unit Rule.thunk
+      | (* Execute an action. You can think of [action t] as a convenient way of
+           declaring an anonymous build rule and depending on its outcome. While
+           this action does not produce any value observable by the rest of the
+           build rules, the action can fail. So its outcome is success or
+           failure. This mechanism is commonly used for attaching tests to an
+           alias.
+
+           Note that any dependency declared in [t] is treated as a dependency
+           of the action returned by [t], rather than anything that depends on
+           the alias containing the action.
+
+           When passing [--force] to Dune, these are exactly the actions that
+           will be re-executed. *)
+          Action of
+          Rule.Anonymous_action.t Rule.thunk
+
+    type t = { expansions : (Loc.t * item) Appendable_list.t } [@@unboxed]
   end
 
   (** A ready to process view of the rules of a directory *)
@@ -59,10 +76,7 @@ module Produce : sig
         registered by [deps] are considered as a part of alias expansion of
         [alias]. *)
     val add_deps :
-      t -> ?loc:Stdune.Loc.t -> unit Action_builder.t -> unit Memo.Build.t
-
-    val add_static_deps :
-      t -> ?loc:Stdune.Loc.t -> Path.Set.t -> unit Memo.Build.t
+      t -> ?loc:Stdune.Loc.t -> unit Rule.thunk -> unit Memo.Build.t
 
     (** [add_action store alias ~stamp action] arrange things so that [action]
         is executed as part of the build of alias [alias]. [stamp] is any
@@ -71,7 +85,7 @@ module Produce : sig
          t
       -> context:Build_context.t
       -> loc:Loc.t option
-      -> Action.Full.t Action_builder.t
+      -> Action.Full.t Rule.thunk
       -> unit Memo.Build.t
   end
 end

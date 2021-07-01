@@ -62,39 +62,6 @@ end = struct
   module Rule_top_closure =
     Top_closure.Make (Non_evaluated_rule.Id.Set) (Memo.Build)
 
-  (* Evaluate a rule without building the action dependencies *)
-  module Eval_action_builder = Action_builder.Make_exec (struct
-    type fact = unit
-
-    let merge_facts = Dep.Set.union
-
-    let read_file p ~f =
-      let+ _digest = Build_system.build_file p in
-      f p
-
-    let register_action_deps deps = Memo.Build.return deps
-
-    let register_action_dep_pred g =
-      let+ ps = Build_system.eval_pred g in
-      (ps, ())
-
-    let file_exists = Build_system.file_exists
-
-    let alias_exists = Build_system.alias_exists
-
-    let execute_action ~observing_facts:_ _act =
-      (* We don't need to execute this action to compute the final action. *)
-      (* jeremiedimino: but maybe we should capture it somehow, it seems
-         relevant to display in the output of [dune rules] *)
-      Memo.Build.return ()
-
-    let execute_action_stdout ~observing_facts:deps act =
-      let* facts = Build_system.build_deps deps in
-      Build_system.execute_action_stdout ~observing_facts:facts act
-  end)
-
-  let eval_build_request = Eval_action_builder.exec
-
   module rec Expand : sig
     val alias : Alias.t -> Path.Set.t Memo.Build.t
 
@@ -110,8 +77,9 @@ end = struct
               >>= Memo.Build.parallel_map ~f:(fun (loc, definition) ->
                       Memo.push_stack_frame
                         (fun () ->
-                          let+ (), deps = eval_build_request definition in
-                          deps)
+                          (Build_system.dep_on_alias_definition definition).f
+                            Lazy
+                          >>| snd)
                         ~human_readable_description:(fun () ->
                           Alias.describe alias ~loc))
             in
@@ -138,7 +106,7 @@ end = struct
       Memo.create "evaluate-rule"
         ~input:(module Non_evaluated_rule)
         (fun rule ->
-          let* action, deps = eval_build_request rule.action in
+          let* action, deps = rule.action.f Lazy in
           let* expanded_deps = Expand.deps deps in
           Memo.Build.return
             { Rule.id = rule.id
@@ -161,7 +129,7 @@ end = struct
               | Some rule -> evaluate_rule rule >>| Option.some)
       >>| List.filter_map ~f:Fun.id
     in
-    let* (), deps = Eval_action_builder.exec request in
+    let* (), deps = Action_builder.run request Lazy in
     let* root_rules = rules_of_deps deps in
     Rule_top_closure.top_closure root_rules
       ~key:(fun rule -> rule.Rule.id)

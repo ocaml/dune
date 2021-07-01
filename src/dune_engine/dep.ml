@@ -280,7 +280,7 @@ module Set = struct
 
   let singleton dep = singleton dep ()
 
-  let add t x = add_exn t x ()
+  let add t x = set t x ()
 
   let of_list = Map.of_list_unit
 

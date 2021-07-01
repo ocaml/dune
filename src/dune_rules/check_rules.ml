@@ -18,7 +18,7 @@ let add_obj_dir sctx ~obj_dir =
       let dir = Path.build (Obj_dir.byte_dir obj_dir) in
       File_selector.create ~dir dev_files
     in
-    Rules.Produce.Alias.add_deps
+    Action_builder.add_alias_deps
       (Alias.check ~dir:(Obj_dir.dir obj_dir))
       (Action_builder.paths_matching_unit ~loc:(Loc.of_pos __POS__) dir_glob)
   else
@@ -28,6 +28,6 @@ let add_files sctx ~dir files =
   if (Super_context.context sctx).merlin then
     let alias = Alias.check ~dir in
     let files = Path.Set.of_list files in
-    Rules.Produce.Alias.add_static_deps alias files
+    Action_builder.add_alias_deps alias (Action_builder.path_set files)
   else
     Memo.Build.return ()

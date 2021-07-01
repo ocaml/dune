@@ -4,7 +4,11 @@ open Import
 let run_build_system ~common ~(request : unit Action_builder.t) () =
   let build_started = Unix.gettimeofday () in
   Fiber.finalize
-    (fun () -> Build_system.run (fun () -> Build_system.build request))
+    (fun () ->
+      Build_system.run (fun () ->
+          let open Memo.Build.O in
+          let+ (), _facts = Action_builder.run request Eager in
+          ()))
     ~finally:(fun () ->
       (if Common.print_metrics common then
         let gc_stat = Gc.quick_stat () in

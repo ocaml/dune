@@ -136,7 +136,7 @@ end = struct
   let alias ctx m = alias ~dir:(Paths.odocs ctx m)
 
   let setup_deps ctx m files =
-    Rules.Produce.Alias.add_static_deps (alias ctx m) files
+    Action_builder.add_alias_deps (alias ctx m) (Action_builder.path_set files)
 end
 
 let odoc_ext = ".odoc"
@@ -512,9 +512,9 @@ let setup_lib_html_rules_def =
     in
     let html_files = List.map ~f:(fun o -> Path.build o.html_file) odocs in
     let static_html = List.map ~f:Path.build (static_html ctx) in
-    Rules.Produce.Alias.add_static_deps
+    Action_builder.add_alias_deps
       (Dep.html_alias ctx (Lib lib))
-      (Path.Set.of_list (List.rev_append static_html html_files))
+      (Action_builder.paths (List.rev_append static_html html_files))
   in
   Memo.With_implicit_output.create "setup-library-html-rules"
     ~implicit_output:Rules.implicit_output
@@ -572,9 +572,9 @@ let setup_pkg_html_rules_def =
       let odocs = List.concat (pkg_odocs :: lib_odocs) in
       let html_files = List.map ~f:(fun o -> Path.build o.html_file) odocs in
       let static_html = List.map ~f:Path.build (static_html ctx) in
-      Rules.Produce.Alias.add_static_deps
+      Action_builder.add_alias_deps
         (Dep.html_alias ctx (Pkg pkg))
-        (Path.Set.of_list (List.rev_append static_html html_files)))
+        (Action_builder.paths (List.rev_append static_html html_files)))
 
 let setup_pkg_html_rules sctx ~pkg ~libs : unit Memo.Build.t =
   Memo.With_implicit_output.exec setup_pkg_html_rules_def (sctx, pkg, libs)
@@ -587,7 +587,7 @@ let setup_package_aliases sctx (pkg : Package.t) =
     let dir = Path.Build.append_source ctx.build_dir pkg_dir in
     Alias.doc ~dir
   in
-  Rules.Produce.Alias.add_deps alias
+  Action_builder.add_alias_deps alias
     (Action_builder.deps
        (Dep.html_alias ctx (Pkg name)
         ::
@@ -697,7 +697,7 @@ let global_rules sctx =
         (* setup @doc to build the correct html for the package *)
         setup_package_aliases sctx pkg)
   in
-  Rules.Produce.Alias.add_deps
+  Action_builder.add_alias_deps
     (Alias.private_doc ~dir:ctx.build_dir)
     (Action_builder.deps
        (stanzas

@@ -199,6 +199,20 @@ val fail : fail -> _ t
     result is computed only once. *)
 val memoize : string -> 'a t -> 'a t
 
+type ('input, 'output) memo
+
+(** Same as [Memo.create] but for [Action_builder] *)
+val create_memo :
+     string
+  -> input:(module Memo.Input with type t = 'i)
+  -> ?cutoff:('o -> 'o -> bool)
+  -> ?human_readable_description:('i -> User_message.Style.t Pp.t)
+  -> ('i -> 'o t)
+  -> ('i, 'o) memo
+
+(** Same as [Memo.exec] but for [Action_builder]'s memos *)
+val exec_memo : ('i, 'o) memo -> 'i -> 'o t
+
 (** Create a file with the given contents. *)
 val write_file :
   ?perm:Action.File_perm.t -> Path.Build.t -> string -> Action.t With_targets.t

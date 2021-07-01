@@ -114,6 +114,8 @@ module Fact = struct
         ; ("digest", Digest.to_dyn digest)
         ]
 
+    let compare a b = Digest.compare a.digest b.digest
+
     let equal a b = Digest.equal a.digest b.digest
 
     let paths t = t.files
@@ -179,6 +181,30 @@ module Fact = struct
       | Alias of Digest.t
   end
 
+  let compare a b =
+    match (a, b) with
+    | Nothing, Nothing -> Ordering.Eq
+    | Nothing, _ -> Lt
+    | _, Nothing -> Gt
+    | File (f1, d1), File (f2, d2) -> (
+      match Path.compare f1 f2 with
+      | Eq -> Digest.compare d1 d2
+      | ne -> ne)
+    | File _, _ -> Lt
+    | _, File _ -> Gt
+    | File_selector (d1, f1), File_selector (d2, f2) -> (
+      match Dyn.compare d1 d2 with
+      | Eq -> Files.compare f1 f2
+      | ne -> ne)
+    | File_selector _, _ -> Lt
+    | _, File_selector _ -> Gt
+    | Alias f1, Alias f2 -> Files.compare f1 f2
+
+  let equal a b =
+    match compare a b with
+    | Eq -> true
+    | _ -> false
+
   let nothing = Nothing
 
   let file fn digest = File (fn, digest)
@@ -199,6 +225,8 @@ module Facts = struct
     Map.union a b ~f:(fun _ a b ->
         assert (a = b);
         Some a)
+
+  let union_all xs = List.fold_left xs ~init:Map.empty ~f:union
 
   let paths t =
     Map.fold t ~init:Path.Map.empty ~f:(fun fact acc ->
@@ -278,6 +306,8 @@ module Set = struct
 
   include T
 
+  let equal a b = equal a b ~equal:(fun () () -> true)
+
   let singleton dep = singleton dep ()
 
   let add t x = set t x ()
@@ -290,7 +320,7 @@ module Set = struct
 
   let to_list = keys
 
-  let of_files = List.fold_left ~init:empty ~f:(fun acc f -> add acc (file f))
+  let of_files l = of_list_map l ~f:file
 
   let of_files_set =
     Path.Set.fold ~init:empty ~f:(fun f acc -> add acc (file f))

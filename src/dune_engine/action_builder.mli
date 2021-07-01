@@ -3,9 +3,7 @@
 open! Stdune
 open! Import
 
-include module type of struct
-  include Action_builder0
-end
+include module type of Action_builder0
 
 module With_targets : sig
   type 'a build

@@ -31,20 +31,6 @@ module Counters = struct
     edges_in_cycle_detection_graph := 0
 end
 
-type 'a build = 'a Fiber.t
-
-module type Build = sig
-  include Monad
-
-  module List : sig
-    val map : 'a list -> f:('a -> 'b t) -> 'b list t
-
-    val concat_map : 'a list -> f:('a -> 'b list t) -> 'b list t
-  end
-
-  val memo_build : 'a build -> 'a t
-end
-
 module Build0 = struct
   include Fiber
 
@@ -1672,4 +1658,20 @@ module Run = struct
 
     let current = Run.current
   end
+end
+
+(* By placing this definition at the end of the file we prevent Merlin from
+   using [build] instead of [Fiber.t] when showing types throughout this file. *)
+type 'a build = 'a Fiber.t
+
+module type Build = sig
+  include Monad
+
+  module List : sig
+    val map : 'a list -> f:('a -> 'b t) -> 'b list t
+
+    val concat_map : 'a list -> f:('a -> 'b list t) -> 'b list t
+  end
+
+  val memo_build : 'a build -> 'a t
 end

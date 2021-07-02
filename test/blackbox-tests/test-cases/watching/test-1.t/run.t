@@ -1,7 +1,7 @@
   $ DUNE_RUNNING=0
 
   $ start_dune () {
-  >  ((dune build "$@" --watch=passive > dune-output 2>&1) || (echo exit $? >> dune-output)) &
+  >  ((dune build "$@" --passive-watch-mode > dune-output 2>&1) || (echo exit $? >> dune-output)) &
   >   DUNE_PID=$!;
   >   DUNE_RUNNING=1;
   > }

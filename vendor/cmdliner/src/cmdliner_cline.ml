@@ -101,7 +101,7 @@ let parse_opt_args ~peek_opts optidx cl args =
       match Cmdliner_trie.find optidx name with
       | `Ok a ->
           let value, args = match value, Cmdliner_info.arg_opt_kind a with
-          | Some v, (Cmdliner_info.Flag | Opt_vopt _) when is_short_opt name ->
+          | Some v, (Cmdliner_info.Flag) when is_short_opt name ->
             None, ("-" ^ v) :: args
           | Some _, _ -> value, args
           | None, Cmdliner_info.Flag -> value, args

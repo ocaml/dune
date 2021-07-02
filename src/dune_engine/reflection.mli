@@ -6,7 +6,9 @@ module Rule : sig
     { id : Rule.Id.t
     ; dir : Path.Build.t
     ; deps : Dep.Set.t
-    ; expanded_deps : Path.Set.t
+    ; (* [expanded_deps] skips over non-file dependencies, such as: environment
+         variables, universe, glob listings, sandbox requirements *)
+      expanded_deps : Path.Set.t
     ; targets : Path.Build.Set.t
     ; context : Build_context.t option
     ; action : Action.t

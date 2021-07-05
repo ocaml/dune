@@ -147,14 +147,18 @@ module Dep_node_without_state = struct
 
   type packed = T : (_, _) t -> packed [@@unboxed]
 
-  let name_hum t =
-    match t.spec.name with
-    | Some name -> name
-    | None -> "<unnamed>"
-
   let input_to_dyn (type i) (node : (i, _) t) =
     let (module Input : Store_intf.Input with type t = i) = node.spec.input in
     Input.to_dyn node.input
+
+  let to_dyn t =
+    Dyn.Tuple
+      [ String
+          (match t.spec.name with
+          | Some name -> name
+          | None -> "<unnamed>")
+      ; input_to_dyn t
+      ]
 end
 
 module Stack_frame_without_state = struct
@@ -166,8 +170,7 @@ module Stack_frame_without_state = struct
 
   let input (T t) = input_to_dyn t
 
-  let to_dyn (T t) =
-    Dyn.Tuple [ String (Dep_node_without_state.name_hum t); input_to_dyn t ]
+  let to_dyn (T t) = Dep_node_without_state.to_dyn t
 
   let id (T a) = a.id
 
@@ -556,8 +559,11 @@ let _print_dep_node ?prefix (dep_node : _ Dep_node.t) =
     | None -> ""
     | Some prefix -> prefix ^ " "
   in
-  Format.printf "%s%s\n" prefix
-    (Dep_node_without_state.name_hum dep_node.without_state)
+  let msg =
+    sprintf "%s%s\n" prefix
+      (Dep_node_without_state.to_dyn dep_node.without_state |> Dyn.to_string)
+  in
+  Console.print [ Pp.text msg ]
 
 module Stack_frame_with_state : sig
   type phase =
@@ -621,8 +627,11 @@ end = struct
          For the purpose (2) a simple [bool] could suffice instead, but we can't
          ensure (1) without an explicit set representation. *)
       mutable children_added_to_dag : Dag.Id.Set.t
-    ; phase : phase
-    ; (* [deps_rev] are accumulated only when [phase = Compute], see [add_dep] *)
+    ; (* The only purpose of storing [phase] is to ensure (via an [assert]) that
+         we are accumulating dependencies only during the [Compute] phase. We
+         can drop it if we find a way to statically guarantee this property. *)
+      phase : phase
+    ; (* [deps_rev] are accumulated only when [phase = Compute], see [add_dep]. *)
       mutable deps_rev : Dep_node.packed list
     }
 

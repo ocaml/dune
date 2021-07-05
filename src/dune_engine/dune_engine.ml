@@ -60,3 +60,4 @@ module Reversible_digest = Reversible_digest
 module Report_errors_config = Report_errors_config
 module Watch_mode_config = Watch_mode_config
 module Compound_user_error = Compound_user_error
+module Reflection = Reflection

@@ -1,7 +1,7 @@
 (*---------------------------------------------------------------------------
    Copyright (c) 2011 Daniel C. Bünzli. All rights reserved.
    Distributed under the ISC license, see terms at the end of the file.
-   cmdliner v1.0.4-27-gb4f5656
+   cmdliner v1.0.4-31-gb5d6161
   ---------------------------------------------------------------------------*)
 
 (** Declarative definition of command line interfaces.
@@ -22,7 +22,7 @@
     use. Open the module to use it, it defines only three modules in
     your scope.
 
-    {e v1.0.4-27-gb4f5656 — {{:http://erratique.ch/software/cmdliner }homepage}} *)
+    {e v1.0.4-31-gb5d6161 — {{:http://erratique.ch/software/cmdliner }homepage}} *)
 
 (** {1:top Interface} *)
 
@@ -1290,7 +1290,7 @@ let cmd =
     `S Manpage.s_see_also; `P "$(b,rmdir)(1), $(b,unlink)(2)" ]
   in
   Term.(const rm $ prompt $ recursive $ files),
-  Term.info "rm" ~version:"v1.0.4-27-gb4f5656" ~doc ~exits:Term.default_exits ~man
+  Term.info "rm" ~version:"v1.0.4-31-gb5d6161" ~doc ~exits:Term.default_exits ~man
 
 let () = Term.(exit @@ eval cmd)
 ]}
@@ -1360,7 +1360,7 @@ let cmd =
       `P "Email them to <hehey at example.org>."; ]
   in
   Term.(ret (const cp $ verbose $ recurse $ force $ srcs $ dest)),
-  Term.info "cp" ~version:"v1.0.4-27-gb4f5656" ~doc ~exits ~man ~man_xrefs
+  Term.info "cp" ~version:"v1.0.4-31-gb5d6161" ~doc ~exits ~man ~man_xrefs
 
 let () = Term.(exit @@ eval cmd)
 ]}
@@ -1633,7 +1633,7 @@ let default_cmd =
   let exits = Term.default_exits in
   let man = help_secs in
   Term.(ret (const (fun _ -> `Help (`Pager, None)) $ copts_t)),
-  Term.info "darcs" ~version:"v1.0.4-27-gb4f5656" ~doc ~sdocs ~exits ~man
+  Term.info "darcs" ~version:"v1.0.4-31-gb5d6161" ~doc ~sdocs ~exits ~man
 
 let cmds = [initialize_cmd; record_cmd; help_cmd]
 

@@ -1249,7 +1249,12 @@ end = struct
        the [compute] computation but we still create it and carry around in the
        [Considering] state. To speed things up, we could make it lazy or switch
        to two "considering" states: [Restore_from_cache] and [Compute]. This
-       needs some benchmarking. *)
+       needs some benchmarking.
+
+       aalekeseyev: I wish we just made the representation of non-forced
+       [Computation] cheap instead of trying to avoid it. There's no reason for
+       it to be more expensive than the lazy we'd be replacing it with (both
+       just need to allocate a tuple with the info needed in the future). *)
     let compute =
       Computation.create ~phase:Compute ~dep_node:dep_node.without_state
         (fun stack_frame ->

@@ -117,7 +117,7 @@ let run_dump_out ~prog ~argv =
 
 let run_server ~root_dir =
   run ~prog:(Lazy.force dune_prog)
-    ~argv:[ "build"; "--watch=passive"; "--root"; root_dir ]
+    ~argv:[ "build"; "--passive-watch-mode"; "--root"; root_dir ]
 
 let dune_build client what =
   printfn "Building %s" what;

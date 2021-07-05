@@ -367,6 +367,12 @@ end
    shared fibers and DAG nodes are garbage collected because we no longer hold
    any references to them. *)
 module Computation0 = struct
+  (* CR-someday aalekseyev: It's weird to carry a [dag_node] separately from
+     [once] even though the stack frame itself is available in the closure that
+     [t.once] is holding. This is probably not the only inefficiency introduced
+     by this [Computation -> Once -> Ivar] tower. If we collapsed the whole
+     tower into one module I think we could avoid a bunch of useless runtime
+     work. *)
   type 'a t =
     { once : 'a Once.t
     ; dag_node : Dag.node Lazy.t
@@ -604,8 +610,7 @@ end = struct
          have hash sets in Stdune and using [unit] hash tables is disturbing;
          (ii) the new cycle detection algorithm reduces the size of the DAG, so
          [children_added_to_dag] will often be empty or small. *)
-      (* CR-someday aalekseyev: This children_added_to_dag table serves dual
-         purpose:
+      (* This children_added_to_dag table serves dual purpose:
 
          1. to guarantee that we never add the same edge twice to the
          cycle-detection DAG
@@ -613,24 +618,8 @@ end = struct
          2. to mark the "forcing" stacks in the computation DAG that were
          already added to the cycle detection graph
 
-         Now consider that we have up to two stacks per cycle-detection DAG
-         node, so it makes a difference if something is per-dag-node or
-         per-stack.
-
-         It's clear that (1) needs to be per-cycle-detection-DAG-node, while (2)
-         needs to be per-computation (so per-stack).
-
-         By making them both per-stack here I'm suspecting we're opening the
-         door to a bug where we can end up adding the same edge twice. Maybe we
-         can have
-
-         X -[validate]-> A -[validate]-> B
-
-         followed by
-
-         Y -[compute]-> A -[compute]-> B
-
-         and then the edge A->B will be added twice. *)
+         For the purpose (2) a simple [bool] could suffice instead, but we can't
+         ensure (1) without an explicit set representation. *)
       mutable children_added_to_dag : Dag.Id.Set.t
     ; phase : phase
     ; (* [deps_rev] are accumulated only when [phase = Compute], see [add_dep] *)
@@ -853,18 +842,6 @@ module Computation = struct
     { once; dag_node }
 
   let evaluate_and_check_for_cycles t =
-    (* CR-someday aalekseyev: It's weird that we have to take [dag_node] as a
-       parameter here even though the stack frame itself is available in the
-       closure that [t.once] is holding. I think either of these would be an
-       improvement:
-
-       - Make [t.once] aware of that [Stack_frame_with_state] instead of
-       embedding it into a closure, and extract it here;
-
-       - Make [t.once] aware of the whole "cycle detection algorithm" and do
-       everything for us. Once we have access to that stack frame, I think the
-       logic in [add_path_to] will be simpler (we can mark the stack frame
-       itself as "added" instead of inferring that from the table entry). *)
     Once.force t.once ~on_blocking:(fun () ->
         Call_stack.add_path_to ~dag_node:t.dag_node)
 end

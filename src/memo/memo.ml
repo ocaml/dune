@@ -1119,7 +1119,8 @@ end = struct
          : Dag.node))
 
   let rec restore_from_cache :
-            'o.    'o Cached_value.t option
+            'o.
+               'o Cached_value.t option
             -> 'o Cached_value.t Cache_lookup.Result.t Fiber.t =
    fun last_cached_value ->
     match last_cached_value with
@@ -1200,8 +1201,10 @@ end = struct
           Failure (Cancelled { dependency_cycle })))
 
   and compute :
-        'i 'o.    ('i, 'o) Dep_node.t
-        -> 'o Cached_value.t Cache_lookup.Failure.t -> Stack_frame_with_state.t
+        'i 'o.
+           ('i, 'o) Dep_node.t
+        -> 'o Cached_value.t Cache_lookup.Failure.t
+        -> Stack_frame_with_state.t
         -> 'o Cached_value.t Fiber.t =
    fun dep_node cache_lookup_failure frame ->
     let compute_value_and_deps_rev () =
@@ -1300,22 +1303,24 @@ end = struct
         Running { dag_node; result })
 
   and consider_and_compute :
-        'i 'o.    ('i, 'o) Dep_node.t
-        -> ('o Cached_value.t, Cycle_error.t) result Fiber.t =
+        'i 'o.
+        ('i, 'o) Dep_node.t -> ('o Cached_value.t, Cycle_error.t) result Fiber.t
+      =
    fun dep_node ->
     let sample_attempt = start_considering dep_node in
     Sample_attempt.compute dep_node sample_attempt
 
   and consider_and_compute_without_adding_dep :
-        'i 'o.    ('i, 'o) Dep_node.t
-        -> ('o Cached_value.t, Cycle_error.t) result Fiber.t =
+        'i 'o.
+        ('i, 'o) Dep_node.t -> ('o Cached_value.t, Cycle_error.t) result Fiber.t
+      =
    fun dep_node ->
     let sample_attempt = start_considering dep_node in
     Sample_attempt.compute_without_adding_dep sample_attempt
 
   and consider_and_restore_from_cache_without_adding_dep :
-        'i 'o.    ('i, 'o) Dep_node.t
-        -> 'o Cached_value.t Cache_lookup.Result.t Fiber.t =
+        'i 'o.
+        ('i, 'o) Dep_node.t -> 'o Cached_value.t Cache_lookup.Result.t Fiber.t =
    fun dep_node ->
     let sample_attempt = start_considering dep_node in
     Sample_attempt.restore_without_adding_dep sample_attempt >>| function

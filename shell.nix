@@ -10,7 +10,7 @@ in pkgs.mkShell {
   buildInputs = (with pkgs; [
     coreutils
     # we prefer tools from outside our opam build plan to minimize conflicts
-    ocamlformat_0_17_0
+    ocamlformat_0_18_0
     ocamlPackages.ocaml-lsp
     git
     mercurial # for tests

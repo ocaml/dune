@@ -66,7 +66,9 @@ let read_lines in_ =
     | Error `Stopped -> assert false
     | Error (`Exn e) ->
       (match e.exn with
-      | End_of_file -> ()
+      | End_of_file
+      | Sys_error _ ->
+        ()
       | _ ->
         Format.eprintf "Error reading channel: %a@.%!"
           Exn_with_backtrace.pp_uncaught e);

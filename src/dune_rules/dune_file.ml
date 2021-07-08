@@ -256,7 +256,7 @@ module Buildable = struct
                        (libname, flags))
                   and+ deps =
                     field "deps" ~default:[]
-                      (Dune_lang.Syntax.since Stanza.syntax (3, 0)
+                      (Dune_lang.Syntax.since Stanza.syntax (2, 9)
                       >>> repeat Dep_conf.decode)
                   in
                   (backend, deps))))

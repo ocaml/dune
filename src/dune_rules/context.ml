@@ -919,4 +919,5 @@ let force_configurator_files =
         List.concat_map ctxs ~f:(fun t ->
             [ Path.build (configurator_v1 t); Path.build (configurator_v2 t) ])
       in
-      Build_system.build (Action_builder.paths files))
+      Memo.Build.parallel_iter files ~f:(fun file ->
+          Build_system.build_file file >>| ignore))

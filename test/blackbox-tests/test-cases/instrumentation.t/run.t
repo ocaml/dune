@@ -109,8 +109,8 @@ We also check that we can declare dependencies to the ppx.
   File "dune", line 6, characters 65-83:
   6 |  (instrumentation (backend hello -place Spain -file input/input) (deps input/input)))
                                                                        ^^^^^^^^^^^^^^^^^^
-  Error: 'deps' is only available since version 3.0 of the dune language.
-  Please update your dune-project file to have (lang dune 3.0).
+  Error: 'deps' is only available since version 2.9 of the dune language.
+  Please update your dune-project file to have (lang dune 2.9).
   [1]
 
   $ cat >dune-project <<EOF

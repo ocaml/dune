@@ -24,8 +24,8 @@ Too many drivers
   File "dune", line 6, characters 13-28:
   6 |  (preprocess (pps ppx1 ppx2)))
                    ^^^^^^^^^^^^^^^
-  Error: Too many incompatible ppx drivers were found: foo.driver2 and
-  foo.driver1.
+  Error: Too many incompatible ppx drivers were found: foo.driver1 and
+  foo.driver2.
   [1]
 
 Not compatible with Dune

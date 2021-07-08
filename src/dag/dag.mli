@@ -16,4 +16,4 @@ module type Value = Dag_intf.Value
 
 module type S = Dag_intf.S
 
-module Make (Value : Value) : S with type value := Value.t
+module Make (Value : Value) () : S with type value := Value.t

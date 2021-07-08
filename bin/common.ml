@@ -793,17 +793,36 @@ let term =
             "Force actions associated to aliases to be re-executed even\n\
             \                   if their dependencies haven't changed.")
   and+ watch =
-    let watch_arg_name = "watch" in
-    Arg.(
-      value
-      & opt ~vopt:(Dune_engine.Watch_mode_config.Yes Eager)
-          (simple_arg_conv ~to_string:Dune_engine.Watch_mode_config.to_string
-             ~of_string:Dune_engine.Watch_mode_config.of_string)
-          Dune_engine.Watch_mode_config.No
-      & info [ watch_arg_name; "w" ]
-          ~doc:
-            "Instead of terminating build after completion, wait continuously \
-             for file changes.")
+    let+ res =
+      one_of
+        (let+ watch =
+           Arg.(
+             value & flag
+             & info [ "watch"; "w" ]
+                 ~doc:
+                   "Instead of terminating build after completion, wait \
+                    continuously for file changes.")
+         in
+         if watch then
+           Some Dune_engine.Watch_mode_config.Eager
+         else
+           None)
+        (let+ watch =
+           Arg.(
+             value & flag
+             & info [ "passive-watch-mode" ]
+                 ~doc:
+                   "Similar to [--watch], but only start a build when \
+                    instructed externally by an RPC.")
+         in
+         if watch then
+           Some Dune_engine.Watch_mode_config.Passive
+         else
+           None)
+    in
+    match res with
+    | None -> Dune_engine.Watch_mode_config.No
+    | Some mode -> Dune_engine.Watch_mode_config.Yes mode
   and+ print_metrics =
     Arg.(
       value & flag

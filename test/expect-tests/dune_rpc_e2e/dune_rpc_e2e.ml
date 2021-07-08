@@ -66,9 +66,7 @@ let read_lines in_ =
     | Error `Stopped -> assert false
     | Error (`Exn e) ->
       (match e.exn with
-      | End_of_file
-      | Sys_error _ ->
-        ()
+      | End_of_file -> ()
       | _ ->
         Format.eprintf "Error reading channel: %a@.%!"
           Exn_with_backtrace.pp_uncaught e);
@@ -76,6 +74,7 @@ let read_lines in_ =
   in
   let+ res = loop [] in
   Scheduler.Worker.stop reader;
+  close_in_noerr in_;
   res
 
 let run ~prog ~argv =
@@ -91,8 +90,6 @@ let run ~prog ~argv =
   Unix.close stderr_w;
   ( pid
   , (let+ proc = Scheduler.wait_for_process ~timeout:3.0 (Pid.of_int pid) in
-     Unix.close stdout_i;
-     Unix.close stderr_i;
      if proc.status <> Unix.WEXITED 0 then
        let name = sprintf "%s %s" prog (String.concat ~sep:" " argv) in
        match proc.status with

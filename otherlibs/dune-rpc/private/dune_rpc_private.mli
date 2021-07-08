@@ -298,6 +298,8 @@ module Client : sig
 
     val notification : t -> 'a Decl.notification -> 'a -> unit fiber
 
+    val disconnected : t -> unit fiber
+
     module Batch : sig
       type t
 

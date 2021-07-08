@@ -333,7 +333,7 @@ let handler (t : t Fdecl.t) : 'a Dune_rpc_server.Handler.t =
               (* cwong: This is technically a lie, but the alternative is
                  minting a new [Not_started] variant that is not substantively
                  different *)
-              Build.Event.Start
+              Build.Event.Waiting
           in
           Fiber.Pool.task t.pool ~f:(fun () ->
               let+ () =

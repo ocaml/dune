@@ -158,9 +158,9 @@ module V1 : sig
     type t =
       | Waiting
       | In_progress of
-        { complete : int
-        ; remaining : int
-        }
+          { complete : int
+          ; remaining : int
+          }
       | Failed
       | Interrupted
       | Success

@@ -1297,8 +1297,8 @@ end = struct
       | false -> start_considering dep_node (* reconsider stale computation *))
 
   and consider_and_restore_from_cache_without_adding_dep :
-        'i 'o.    ('i, 'o) Dep_node.t
-        -> 'o Cached_value.t Cache_lookup.Result.t Fiber.t =
+        'i 'o.
+        ('i, 'o) Dep_node.t -> 'o Cached_value.t Cache_lookup.Result.t Fiber.t =
    fun dep_node ->
     match get_cached_value_in_current_run dep_node with
     | Some cached_value -> Fiber.return (Cache_lookup.Result.Ok cached_value)
@@ -1322,7 +1322,8 @@ end = struct
 
   and consider_and_compute :
         'i 'o.
-        ('i, 'o) Dep_node.t -> ('o Cached_value.t, Cycle_error.t) result Fiber.t =
+        ('i, 'o) Dep_node.t -> ('o Cached_value.t, Cycle_error.t) result Fiber.t
+      =
    fun dep_node ->
     consider_and_compute_without_adding_dep dep_node >>= function
     | Ok _ as ok -> Call_stack.add_dep_from_caller dep_node >>> Fiber.return ok

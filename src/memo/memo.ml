@@ -496,7 +496,7 @@ module M = struct
       go (Array.length t - 1)
   end
 
-  (* Why do we store a [run] in [Considering_state]?
+  (* Why do we store a [run] in [State]?
 
      It is possible for a computation to remain in the [Considering] state after
      the current run is complete. This happens if the [restore_from_cache] step
@@ -513,22 +513,17 @@ module M = struct
      references to the corresponding computations, allowing them to be garbage
      collected. Note: some stale computations may never be restarted, e.g. if
      they end up getting forever stuck behind an inactive conditional. *)
-  and Considering_state : sig
-    type 'a t =
-      { run : Run.t
-      ; restore_from_cache :
-          'a Cached_value.t Cache_lookup.Result.t Computation0.t
-      ; compute : 'a Cached_value.t Computation0.t
-      }
-  end =
-    Considering_state
-
   and State : sig
     type 'a t =
       (* [Considering] marks computations currently being considered, i.e. whose
          result we currently attempt to restore from the cache or recompute. *)
       | Not_considering
-      | Considering of 'a Considering_state.t
+      | Considering of
+          { run : Run.t
+          ; restore_from_cache :
+              'a Cached_value.t Cache_lookup.Result.t Computation0.t
+          ; compute : 'a Cached_value.t Computation0.t
+          }
   end =
     State
 
@@ -547,7 +542,6 @@ module M = struct
     Dep_node
 end
 
-module Considering_state = M.Considering_state
 module State = M.State
 module Dep_node = M.Dep_node
 module Deps = M.Deps
@@ -1229,7 +1223,11 @@ end = struct
       | true -> Cached_value.create value ~deps_rev
       | false -> Cached_value.confirm_old_value ~deps_rev old_cv)
 
-  and start_considering : 'i 'o. ('i, 'o) Dep_node.t -> 'o Considering_state.t =
+  and start_considering :
+        'i 'o.
+           ('i, 'o) Dep_node.t
+        -> 'o Cached_value.t Cache_lookup.Result.t Computation.t
+           * 'o Cached_value.t Computation.t =
    fun dep_node ->
     if !Counters.enabled then incr Counters.nodes_considered;
     let restore_from_cache =
@@ -1281,19 +1279,21 @@ end = struct
             );
             cached_value)
     in
-    let considering_state =
-      { Considering_state.run = Run.current (); restore_from_cache; compute }
-    in
-    dep_node.state <- Considering considering_state;
-    considering_state
+    dep_node.state <-
+      Considering { run = Run.current (); restore_from_cache; compute };
+    (restore_from_cache, compute)
 
-  and consider : 'i 'o. ('i, 'o) Dep_node.t -> 'o Considering_state.t =
+  and consider :
+        'i 'o.
+           ('i, 'o) Dep_node.t
+        -> 'o Cached_value.t Cache_lookup.Result.t Computation.t
+           * 'o Cached_value.t Computation.t =
    fun dep_node ->
     match dep_node.state with
     | Not_considering -> start_considering dep_node
-    | Considering ({ run; _ } as considering_state) -> (
+    | Considering { run; restore_from_cache; compute } -> (
       match Run.is_current run with
-      | true -> considering_state
+      | true -> (restore_from_cache, compute)
       | false -> start_considering dep_node (* reconsider stale computation *))
 
   and consider_and_restore_from_cache_without_adding_dep :
@@ -1303,8 +1303,8 @@ end = struct
     match get_cached_value_in_current_run dep_node with
     | Some cached_value -> Fiber.return (Cache_lookup.Result.Ok cached_value)
     | None -> (
-      let computation = (consider dep_node).restore_from_cache in
-      Computation.evaluate_and_check_for_cycles computation >>| function
+      let restore_from_cache = fst (consider dep_node) in
+      Computation.evaluate_and_check_for_cycles restore_from_cache >>| function
       | Ok res -> res
       | Error dependency_cycle ->
         Cache_lookup.Result.Failure (Cancelled { dependency_cycle }))
@@ -1317,8 +1317,8 @@ end = struct
     match get_cached_value_in_current_run dep_node with
     | Some cached_value -> Fiber.return (Ok cached_value)
     | None ->
-      let computation = (consider dep_node).compute in
-      Computation.evaluate_and_check_for_cycles computation
+      let compute = snd (consider dep_node) in
+      Computation.evaluate_and_check_for_cycles compute
 
   and consider_and_compute :
         'i 'o.

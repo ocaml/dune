@@ -75,15 +75,13 @@ module Wait_for_fs_clock_to_advance = struct
 end
 
 module Cat = struct
-  type t = File of Path.t
-
   let name = "cat"
 
   let of_args = function
-    | [ file ] -> File (Path.of_filename_relative_to_initial_cwd file)
+    | [ file ] -> file
     | _ -> raise (Arg.Bad "Usage: dune_cmd cat <file>")
 
-  let run (File p) = print_string (Io.read_file p)
+  let run p = print_string (Io.String_path.read_file p)
 
   let () = register name of_args run
 end

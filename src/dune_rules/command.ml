@@ -131,17 +131,11 @@ module Args = struct
 
   let memo t =
     let memo =
-      Memo.create "Command.Args.memo"
+      Action_builder.create_memo "Command.Args.memo"
         ~input:(module Path)
-        (fun dir ->
-          Memo.Build.return
-            (Action_builder.memoize "Command.Args.memo"
-               (expand_no_targets ~dir t)))
+        (fun dir -> expand_no_targets ~dir t)
     in
-    Expand
-      (fun ~dir ->
-        let open Action_builder.O in
-        Action_builder.memo_build (Memo.exec memo dir) >>= Fun.id)
+    Expand (fun ~dir -> Action_builder.exec_memo memo dir)
 end
 
 module Ml_kind = struct

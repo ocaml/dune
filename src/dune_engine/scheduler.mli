@@ -120,7 +120,7 @@ val t : unit -> t Fiber.t
 val with_job_slot : (Config.t -> 'a Fiber.t) -> 'a Fiber.t
 
 (** Wait for the following process to terminate *)
-val wait_for_process : Pid.t -> Proc.Process_info.t Fiber.t
+val wait_for_process : ?timeout:float -> Pid.t -> Proc.Process_info.t Fiber.t
 
 val yield_if_there_are_pending_events : unit -> unit Fiber.t
 
@@ -138,3 +138,8 @@ val running_jobs_count : t -> int
 val shutdown : unit -> unit Fiber.t
 
 val inject_memo_invalidation : Memo.Invalidation.t -> unit Fiber.t
+
+(** [sleep duration] wait for [duration] to elapse. Sleepers are checked for
+    wake up at a rate of once per 0.1 seconds. So [duration] should be at least
+    this long. *)
+val sleep : float -> unit Fiber.t

@@ -74,6 +74,7 @@ let read_lines in_ =
   in
   let+ res = loop [] in
   Scheduler.Worker.stop reader;
+  close_in_noerr in_;
   res
 
 let run ~prog ~argv =
@@ -88,9 +89,7 @@ let run ~prog ~argv =
   Unix.close stdout_w;
   Unix.close stderr_w;
   ( pid
-  , (let+ proc = Scheduler.wait_for_process (Pid.of_int pid) in
-     Unix.close stdout_i;
-     Unix.close stderr_i;
+  , (let+ proc = Scheduler.wait_for_process ~timeout:3.0 (Pid.of_int pid) in
      if proc.status <> Unix.WEXITED 0 then
        let name = sprintf "%s %s" prog (String.concat ~sep:" " argv) in
        match proc.status with
@@ -117,7 +116,7 @@ let run_dump_out ~prog ~argv =
 
 let run_server ~root_dir =
   run ~prog:(Lazy.force dune_prog)
-    ~argv:[ "build"; "--watch=passive"; "--root"; root_dir ]
+    ~argv:[ "build"; "--passive-watch-mode"; "--root"; root_dir ]
 
 let dune_build client what =
   printfn "Building %s" what;
@@ -194,6 +193,16 @@ let setup_diagnostics f =
         | None -> path
         | Some s -> "$CWD" ^ s
       in
+      let sanitize_pp pp = Pp.verbatim (Format.asprintf "%a@." Pp.to_fmt pp) in
+      let sanitize_loc =
+        let sanitize_position (p : Lexing.position) =
+          { p with pos_fname = sanitize_path p.pos_fname }
+        in
+        fun (loc : Loc.t) ->
+          { Loc.start = sanitize_position loc.start
+          ; stop = sanitize_position loc.stop
+          }
+      in
       (* function to remove remove pp tags and hide junk from paths *)
       let sanitize (d : Dune_rpc.Diagnostic.t) =
         let directory = Option.map d.directory ~f:sanitize_path in
@@ -203,10 +212,19 @@ let setup_diagnostics f =
               let in_source = sanitize_path p.in_source in
               { Dune_rpc.Diagnostic.Promotion.in_build; in_source })
         in
+        let related =
+          List.map d.related
+            ~f:(fun (related : Dune_rpc.Diagnostic.Related.t) ->
+              let loc = sanitize_loc related.loc in
+              let message = sanitize_pp related.message in
+              { Dune_rpc.Diagnostic.Related.message; loc })
+        in
         { d with
-          message = Pp.verbatim (Format.asprintf "%a@." Pp.to_fmt d.message)
+          message = sanitize_pp d.message
+        ; loc = Option.map d.loc ~f:sanitize_loc
         ; directory
         ; promotion
+        ; related
         }
       in
       let on_diagnostic_event (e : Dune_rpc.Diagnostic.Event.t) =
@@ -275,19 +293,76 @@ let%expect_test "related error" =
     [ "Add"
     ; [ [ "directory"; "$CWD" ]
       ; [ "id"; "0" ]
+      ; [ "loc"
+        ; [ [ "start"
+            ; [ [ "pos_bol"; "0" ]
+              ; [ "pos_cnum"; "0" ]
+              ; [ "pos_fname"; "$CWD/foo.ml" ]
+              ; [ "pos_lnum"; "1" ]
+              ]
+            ]
+          ; [ "stop"
+            ; [ [ "pos_bol"; "0" ]
+              ; [ "pos_cnum"; "0" ]
+              ; [ "pos_fname"; "$CWD/foo.ml" ]
+              ; [ "pos_lnum"; "1" ]
+              ]
+            ]
+          ]
+        ]
       ; [ "message"
         ; [ "Verbatim"
-          ; "File \"foo.ml\", line 1:\n\
-             Error: The implementation foo.ml\n\
+          ; "The implementation foo.ml\n\
             \       does not match the interface .foo.objs/byte/foo.cmi:\n\
             \       Values do not match: val x : bool is not included in val x : int\n\
-            \       File \"foo.mli\", line 1, characters 0-11: Expected declaration\n\
-            \       File \"foo.ml\", line 1, characters 4-5: Actual declaration\n\
              "
           ]
         ]
       ; [ "promotion"; [] ]
-      ; [ "related"; [] ]
+      ; [ "related"
+        ; [ [ [ "loc"
+              ; [ [ "start"
+                  ; [ [ "pos_bol"; "0" ]
+                    ; [ "pos_cnum"; "0" ]
+                    ; [ "pos_fname"; "$CWD/foo.mli" ]
+                    ; [ "pos_lnum"; "1" ]
+                    ]
+                  ]
+                ; [ "stop"
+                  ; [ [ "pos_bol"; "0" ]
+                    ; [ "pos_cnum"; "11" ]
+                    ; [ "pos_fname"; "$CWD/foo.mli" ]
+                    ; [ "pos_lnum"; "1" ]
+                    ]
+                  ]
+                ]
+              ]
+            ; [ "message"; [ "Verbatim"; "Expected declaration\n\
+                                          " ] ]
+            ]
+          ; [ [ "loc"
+              ; [ [ "start"
+                  ; [ [ "pos_bol"; "0" ]
+                    ; [ "pos_cnum"; "4" ]
+                    ; [ "pos_fname"; "$CWD/foo.ml" ]
+                    ; [ "pos_lnum"; "1" ]
+                    ]
+                  ]
+                ; [ "stop"
+                  ; [ [ "pos_bol"; "0" ]
+                    ; [ "pos_cnum"; "5" ]
+                    ; [ "pos_fname"; "$CWD/foo.ml" ]
+                    ; [ "pos_lnum"; "1" ]
+                    ]
+                  ]
+                ]
+              ]
+            ; [ "message"; [ "Verbatim"; "Actual declaration\n\
+                                          \n\
+                                          " ] ]
+            ]
+          ]
+        ]
       ; [ "targets"; [] ]
       ]
     ]
@@ -513,13 +588,28 @@ let%expect_test "create and fix error" =
         [ "Add"
         ; [ [ "directory"; "$CWD" ]
           ; [ "id"; "0" ]
+          ; [ "loc"
+            ; [ [ "start"
+                ; [ [ "pos_bol"; "0" ]
+                  ; [ "pos_cnum"; "23" ]
+                  ; [ "pos_fname"; "$CWD/foo.ml" ]
+                  ; [ "pos_lnum"; "1" ]
+                  ]
+                ]
+              ; [ "stop"
+                ; [ [ "pos_bol"; "0" ]
+                  ; [ "pos_cnum"; "26" ]
+                  ; [ "pos_fname"; "$CWD/foo.ml" ]
+                  ; [ "pos_lnum"; "1" ]
+                  ]
+                ]
+              ]
+            ]
           ; [ "message"
             ; [ "Verbatim"
-              ; "File \"foo.ml\", line 1, characters 23-26:\n\
-                 1 | let () = print_endline 123\n\
-                \                           ^^^\n\
-                 Error: This expression has type int but an expression was expected of type\n\
+              ; "This expression has type int but an expression was expected of type\n\
                 \         string\n\
+                 \n\
                  "
               ]
             ]
@@ -538,13 +628,28 @@ let%expect_test "create and fix error" =
         [ "Remove"
         ; [ [ "directory"; "$CWD" ]
           ; [ "id"; "0" ]
+          ; [ "loc"
+            ; [ [ "start"
+                ; [ [ "pos_bol"; "0" ]
+                  ; [ "pos_cnum"; "23" ]
+                  ; [ "pos_fname"; "$CWD/foo.ml" ]
+                  ; [ "pos_lnum"; "1" ]
+                  ]
+                ]
+              ; [ "stop"
+                ; [ [ "pos_bol"; "0" ]
+                  ; [ "pos_cnum"; "26" ]
+                  ; [ "pos_fname"; "$CWD/foo.ml" ]
+                  ; [ "pos_lnum"; "1" ]
+                  ]
+                ]
+              ]
+            ]
           ; [ "message"
             ; [ "Verbatim"
-              ; "File \"foo.ml\", line 1, characters 23-26:\n\
-                 1 | let () = print_endline 123\n\
-                \                           ^^^\n\
-                 Error: This expression has type int but an expression was expected of type\n\
+              ; "This expression has type int but an expression was expected of type\n\
                 \         string\n\
+                 \n\
                  "
               ]
             ]

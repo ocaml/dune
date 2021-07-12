@@ -32,26 +32,15 @@ let raise_rpc_error (e : Dune_rpc_private.Response.Error.t) =
 
 let retry_loop once =
   let open Fiber.O in
-  let rec loop sleeper =
+  let rec loop () =
     let* res = once () in
     match res with
-    | Some result ->
-      (match sleeper with
-      | None -> ()
-      | Some s -> Scheduler.Worker.stop s);
-      Fiber.return result
+    | Some result -> Fiber.return result
     | None ->
-      let* sleeper =
-        match sleeper with
-        | None -> Scheduler.Worker.create ()
-        | Some sleeper -> Fiber.return sleeper
-      in
-      let* () =
-        Scheduler.Worker.task_exn sleeper ~f:(fun () -> Unix.sleepf 0.2)
-      in
-      loop (Some sleeper)
+      let* () = Scheduler.sleep 0.2 in
+      loop ()
   in
-  loop None
+  loop ()
 
 let establish_connection_or_raise ~wait ~common once =
   let open Fiber.O in

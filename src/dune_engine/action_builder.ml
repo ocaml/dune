@@ -1,149 +1,99 @@
 open! Stdune
 open Import
-
-module Action_desc = struct
-  type nonrec t =
-    { context : Build_context.t option
-    ; action : Action.Full.t
-    ; loc : Loc.t option
-    ; dir : Path.Build.t
-    ; alias : Alias.Name.t option
-    }
-end
-
-module T = struct
-  type 'a t =
-    | Pure : 'a -> 'a t
-    | Map : ('a -> 'b) * 'a t -> 'b t
-    | Bind : 'a t * ('a -> 'b t) -> 'b t
-    | Both : 'a t * 'b t -> ('a * 'b) t
-    | Seq : unit t * 'b t -> 'b t
-    | All : 'a t list -> 'a list t
-    | Map2 : ('a -> 'b -> 'c) * 'a t * 'b t -> 'c t
-    | Paths_glob : File_selector.t -> Path.Set.t t
-    | Source_tree : Path.t -> Path.Set.t t
-    | Dep_on_alias_if_exists : Alias.t -> bool t
-    | If_file_exists : Path.t * 'a t * 'a t -> 'a t
-    | Contents : Path.t -> string t
-    | Lines_of : Path.t -> string list t
-    | Dyn_paths : ('a * Path.Set.t) t -> 'a t
-    | Dyn_deps : ('a * Dep.Set.t) t -> 'a t
-    | Fail : fail -> _ t
-    | Memo : 'a memo -> 'a t
-    | Deps : Dep.Set.t -> unit t
-    | Memo_build : 'a Memo.Build.t -> 'a t
-    | Dyn_memo_build : 'a Memo.Build.t t -> 'a t
-    | Goal : 'a t -> 'a t
-    | Action : Action_desc.t t -> unit t
-    | Action_stdout : Action_desc.t t -> string t
-    | Push_stack_frame :
-        (unit -> User_message.Style.t Pp.t) * (unit -> 'a t)
-        -> 'a t
-
-  and 'a memo =
-    { name : string
-    ; id : 'a Type_eq.Id.t
-    ; t : 'a t
-    }
-
-  let return x = Pure x
-
-  let map x ~f = Map (f, x)
-
-  let bind x ~f = Bind (x, f)
-
-  let both x y = Both (x, y)
-
-  let all xs = All xs
-
-  let memo_build f = Memo_build f
-
-  module O = struct
-    let ( >>> ) a b = Seq (a, b)
-
-    let ( >>= ) t f = Bind (t, f)
-
-    let ( >>| ) t f = Map (f, t)
-
-    let ( and+ ) a b = Both (a, b)
-
-    let ( and* ) a b = Both (a, b)
-
-    let ( let+ ) t f = Map (f, t)
-
-    let ( let* ) t f = Bind (t, f)
-  end
-
-  open O
-
-  module List = struct
-    let map l ~f = all (List.map l ~f)
-
-    let concat_map l ~f = map l ~f >>| List.concat
-  end
-end
-
-module Expander = String_with_vars.Make_expander (T)
-include T
+include Action_builder0
 open O
 
 open struct
   module List = Stdune.List
 end
 
-let ignore x = Map (Fun.const (), x)
+let register_action_deps :
+    type a. a eval_mode -> Dep.Set.t -> a Dep.Map.t Memo.Build.t =
+ fun mode deps ->
+  match mode with
+  | Eager -> Build_system.build_deps deps
+  | Lazy -> Memo.Build.return deps
 
-let map2 x y ~f = Map2 (f, x, y)
+let deps d =
+  of_thunk
+    { f =
+        (fun mode ->
+          let open Memo.Build.O in
+          let+ deps = register_action_deps mode d in
+          ((), deps))
+    }
 
-let push_stack_frame ~human_readable_description f =
-  Push_stack_frame (human_readable_description, f)
+let dep d = deps (Dep.Set.singleton d)
 
-let delayed f = Map (f, Pure ())
+let dyn_deps t =
+  of_thunk
+    { f =
+        (fun mode ->
+          let open Memo.Build.O in
+          let* (x, deps), deps_x = run t mode in
+          let+ deps = register_action_deps mode deps in
+          (x, Deps_or_facts.union mode deps deps_x))
+    }
 
-let all_unit xs =
-  let+ (_ : unit list) = all xs in
-  ()
+let path p = deps (Dep.Set.singleton (Dep.file p))
 
-let deps d = Deps d
+let paths ps = deps (Dep.Set.of_files ps)
 
-let dep d = Deps (Dep.Set.singleton d)
+let path_set ps = deps (Dep.Set.of_files_set ps)
 
-let dyn_deps x = Dyn_deps x
+let paths_matching :
+    type a.
+    File_selector.t -> a eval_mode -> (Path.Set.t * a Dep.Map.t) Memo.Build.t =
+ fun g mode ->
+  let open Memo.Build.O in
+  match mode with
+  | Eager ->
+    let+ files = Build_system.build_pred g in
+    ( Path.Map.keys (Dep.Fact.Files.paths files) |> Path.Set.of_list
+    , Dep.Map.singleton (Dep.file_selector g) (Dep.Fact.file_selector g files)
+    )
+  | Lazy ->
+    let+ files = Build_system.eval_pred g in
+    (files, Dep.Set.singleton (Dep.file_selector g))
 
-let path p = Deps (Dep.Set.singleton (Dep.file p))
+let paths_matching ~loc:_ g =
+  of_thunk { f = (fun mode -> paths_matching g mode) }
 
-let paths ps = Deps (Dep.Set.of_files ps)
-
-let path_set ps = Deps (Dep.Set.of_files_set ps)
-
-let paths_matching ~loc:_ dir_glob = Paths_glob dir_glob
-
-let paths_matching_unit ~loc:_ dir_glob = ignore (Paths_glob dir_glob)
+let paths_matching_unit ~loc g = ignore (paths_matching ~loc g)
 
 let dyn_paths paths =
-  Dyn_paths
-    (let+ x, paths = paths in
-     (x, Path.Set.of_list paths))
+  dyn_deps (paths >>| fun (x, paths) -> (x, Dep.Set.of_files paths))
 
 let dyn_paths_unit paths =
-  Dyn_paths
-    (let+ paths = paths in
-     ((), Path.Set.of_list paths))
+  dyn_deps (paths >>| fun paths -> ((), Dep.Set.of_files paths))
 
-let dyn_path_set paths = Dyn_paths paths
+let dyn_path_set paths =
+  dyn_deps (paths >>| fun (x, paths) -> (x, Dep.Set.of_files_set paths))
 
 let dyn_path_set_reuse paths =
-  Dyn_paths
-    (let+ paths = paths in
-     (paths, paths))
+  dyn_deps (paths >>| fun paths -> (paths, Dep.Set.of_files_set paths))
 
-let env_var s = Deps (Dep.Set.singleton (Dep.env s))
+let env_var s = deps (Dep.Set.singleton (Dep.env s))
 
 let alias a = dep (Dep.alias a)
 
-let contents p = Contents p
+let contents p =
+  of_thunk
+    { f =
+        (fun _mode ->
+          let open Memo.Build.O in
+          let+ x = Build_system.read_file p ~f:Io.read_file in
+          (x, Dep.Map.empty))
+    }
 
-let lines_of p = Lines_of p
+let lines_of p =
+  of_thunk
+    { f =
+        (fun _mode ->
+          let open Memo.Build.O in
+          let+ x = Build_system.read_file p ~f:Io.lines_of_file in
+          (x, Dep.Map.empty))
+    }
 
 let strings p =
   let f x =
@@ -157,13 +107,22 @@ let strings p =
         ]
     | Ok s -> s
   in
-  Map ((fun l -> List.map l ~f), lines_of p)
+  let+ l = lines_of p in
+  List.map l ~f
 
 let read_sexp p =
   let+ s = contents p in
   Dune_lang.Parser.parse_string s ~fname:(Path.to_string p) ~mode:Single
 
-let if_file_exists p ~then_ ~else_ = If_file_exists (p, then_, else_)
+let if_file_exists p ~then_ ~else_ =
+  of_thunk
+    { f =
+        (fun mode ->
+          let open Memo.Build.O in
+          Build_system.file_exists p >>= function
+          | true -> run then_ mode
+          | false -> run else_ mode)
+    }
 
 let file_exists p = if_file_exists p ~then_:(return true) ~else_:(return false)
 
@@ -172,15 +131,19 @@ let paths_existing paths =
     (List.map paths ~f:(fun file ->
          if_file_exists file ~then_:(path file) ~else_:(return ())))
 
-let fail x = Fail x
+let fail x =
+  let+ () = return () in
+  x.fail ()
 
-let memoize name t = Memo { name; id = Type_eq.Id.create (); t }
-
-let source_tree ~dir = Source_tree dir
-
-let action t = Action t
-
-let action_stdout t = Action_stdout t
+let source_tree ~dir =
+  of_thunk
+    { f =
+        (fun mode ->
+          let open Memo.Build.O in
+          let* deps, paths = Dep.Set.source_tree_with_file_set dir in
+          let+ deps = register_action_deps mode deps in
+          (paths, deps))
+    }
 
 (* CR-someday amokhov: The set of targets is accumulated using information from
    multiple sources by calling [Path.Build.Set.union] and hence occasionally
@@ -199,7 +162,7 @@ module With_targets = struct
 
   let map_build t ~f = { t with build = f t.build }
 
-  let return x = { build = Pure x; targets = Path.Build.Set.empty }
+  let return x = { build = return x; targets = Path.Build.Set.empty }
 
   let add t ~targets =
     { build = t.build
@@ -209,17 +172,17 @@ module With_targets = struct
   let map { build; targets } ~f = { build = map build ~f; targets }
 
   let map2 x y ~f =
-    { build = Map2 (f, x.build, y.build)
+    { build = map2 x.build y.build ~f
     ; targets = Path.Build.Set.union x.targets y.targets
     }
 
   let both x y =
-    { build = Both (x.build, y.build)
+    { build = both x.build y.build
     ; targets = Path.Build.Set.union x.targets y.targets
     }
 
   let seq x y =
-    { build = Seq (x.build, y.build)
+    { build = x.build >>> y.build
     ; targets = Path.Build.Set.union x.targets y.targets
     }
 
@@ -242,7 +205,7 @@ module With_targets = struct
           ~f:(fun (xs, set) x ->
             (x.build :: xs, Path.Build.Set.union set x.targets))
       in
-      { build = All (List.rev build); targets }
+      { build = all (List.rev build); targets }
 
   let write_file_dyn ?(perm = Action.File_perm.Normal) fn s =
     add ~targets:[ fn ]
@@ -287,18 +250,24 @@ let progn ts =
   let+ actions = With_targets.all ts in
   Action.Progn actions
 
-let goal t = Goal t
-
-let memo_build_join f = Memo_build f |> bind ~f:Fun.id
-
-let dyn_memo_build f = Dyn_memo_build f
-
 let dyn_memo_build_deps t = dyn_deps (dyn_memo_build t)
 
-let dep_on_alias_if_exists t = Dep_on_alias_if_exists t
+let dep_on_alias_if_exists alias =
+  of_thunk
+    { f =
+        (fun mode ->
+          let open Memo.Build.O in
+          let* definition = Build_system.alias_exists alias in
+          match definition with
+          | false -> Memo.Build.return (false, Dep.Map.empty)
+          | true ->
+            let deps = Dep.Set.singleton (Dep.alias alias) in
+            let+ deps = register_action_deps mode deps in
+            (true, deps))
+    }
 
 module Source_tree_map_reduce =
-  Source_tree.Dir.Make_map_reduce (T) (Monoid.Exists)
+  Source_tree.Dir.Make_map_reduce (Action_builder0) (Monoid.Exists)
 
 let dep_on_alias_rec name context_name dir =
   let build_dir = Context_name.build_dir context_name in
@@ -308,144 +277,3 @@ let dep_on_alias_rec name context_name dir =
   in
   Source_tree_map_reduce.map_reduce dir
     ~traverse:Sub_dirs.Status.Set.normal_only ~f
-
-(* Execution *)
-
-module Make_exec (Build_deps : sig
-  type fact
-
-  val merge_facts : fact Dep.Map.t -> fact Dep.Map.t -> fact Dep.Map.t
-
-  val read_file : Path.t -> f:(Path.t -> 'a) -> 'a Memo.Build.t
-
-  val register_action_deps : Dep.Set.t -> fact Dep.Map.t Memo.Build.t
-
-  val register_action_dep_pred :
-    File_selector.t -> (Path.Set.t * fact) Memo.Build.t
-
-  val file_exists : Path.t -> bool Memo.Build.t
-
-  val alias_exists : Alias.t -> bool Memo.Build.t
-
-  val execute_action :
-    observing_facts:fact Dep.Map.t -> Action_desc.t -> unit Memo.Build.t
-
-  val execute_action_stdout :
-    observing_facts:fact Dep.Map.t -> Action_desc.t -> string Memo.Build.t
-end) =
-struct
-  module rec Execution : sig
-    val exec : 'a t -> ('a * Build_deps.fact Dep.Map.t) Memo.Build.t
-  end = struct
-    module Function = struct
-      type 'a input = 'a memo
-
-      type 'a output = 'a * Build_deps.fact Dep.Map.t
-
-      let name = "exec-memo"
-
-      let id m = m.id
-
-      let to_dyn m = Dyn.String m.name
-
-      let eval m = Execution.exec m.t
-    end
-
-    module Memo_poly = Memo.Poly (Function)
-    open Memo.Build.O
-
-    let merge_facts = Build_deps.merge_facts
-
-    let rec exec : type a. a t -> (a * Build_deps.fact Dep.Map.t) Memo.Build.t =
-      function
-      | Pure x -> Memo.Build.return (x, Dep.Map.empty)
-      | Map (f, a) ->
-        let+ a, deps_a = exec a in
-        (f a, deps_a)
-      | Both (a, b) ->
-        let+ (a, deps_a), (b, deps_b) =
-          Memo.Build.fork_and_join (fun () -> exec a) (fun () -> exec b)
-        in
-        ((a, b), merge_facts deps_a deps_b)
-      | Seq (a, b) ->
-        let+ ((), deps_a), (b, deps_b) =
-          Memo.Build.fork_and_join (fun () -> exec a) (fun () -> exec b)
-        in
-        (b, merge_facts deps_a deps_b)
-      | Map2 (f, a, b) ->
-        let+ (a, deps_a), (b, deps_b) =
-          Memo.Build.fork_and_join (fun () -> exec a) (fun () -> exec b)
-        in
-        (f a b, merge_facts deps_a deps_b)
-      | All xs ->
-        let+ res = Memo.Build.parallel_map xs ~f:exec in
-        let res, deps = List.split res in
-        (res, List.fold_left deps ~init:Dep.Map.empty ~f:merge_facts)
-      | Deps deps ->
-        let+ deps = Build_deps.register_action_deps deps in
-        ((), deps)
-      | Paths_glob g ->
-        let+ ps, fact = Build_deps.register_action_dep_pred g in
-        (ps, Dep.Map.singleton (Dep.file_selector g) fact)
-      | Source_tree dir ->
-        let* deps, paths = Dep.Set.source_tree_with_file_set dir in
-        let+ deps = Build_deps.register_action_deps deps in
-        (paths, deps)
-      | Contents p ->
-        let+ x = Build_deps.read_file p ~f:Io.read_file in
-        (x, Dep.Map.empty)
-      | Lines_of p ->
-        let+ x = Build_deps.read_file p ~f:Io.lines_of_file in
-        (x, Dep.Map.empty)
-      | Dyn_paths t ->
-        let* (x, paths), deps_x = exec t in
-        let deps = Dep.Set.of_files_set paths in
-        let+ deps = Build_deps.register_action_deps deps in
-        (x, merge_facts deps deps_x)
-      | Dyn_deps t ->
-        let* (x, deps), deps_x = exec t in
-        let+ deps = Build_deps.register_action_deps deps in
-        (x, merge_facts deps deps_x)
-      | Fail { fail } -> fail ()
-      | If_file_exists (p, then_, else_) -> (
-        Build_deps.file_exists p >>= function
-        | true -> exec then_
-        | false -> exec else_)
-      | Memo m -> Memo_poly.eval m
-      | Memo_build f ->
-        let+ f = f in
-        (f, Dep.Map.empty)
-      | Dyn_memo_build f ->
-        let* f, deps = exec f in
-        let+ f = f in
-        (f, deps)
-      | Bind (t, f) ->
-        let* x, deps0 = exec t in
-        let+ r, deps1 = exec (f x) in
-        (r, merge_facts deps0 deps1)
-      | Dep_on_alias_if_exists alias -> (
-        let* definition = Build_deps.alias_exists alias in
-        match definition with
-        | false -> Memo.Build.return (false, Dep.Map.empty)
-        | true ->
-          let deps = Dep.Set.singleton (Dep.alias alias) in
-          let+ deps = Build_deps.register_action_deps deps in
-          (true, deps))
-      | Goal t ->
-        let+ a, (_irrelevant_for_goals : Build_deps.fact Dep.Map.t) = exec t in
-        (a, Dep.Map.empty)
-      | Action t ->
-        let* act, facts = exec t in
-        let+ () = Build_deps.execute_action ~observing_facts:facts act in
-        ((), Dep.Map.empty)
-      | Action_stdout t ->
-        let* act, facts = exec t in
-        let+ s = Build_deps.execute_action_stdout ~observing_facts:facts act in
-        (s, Dep.Map.empty)
-      | Push_stack_frame (human_readable_description, f) ->
-        Memo.push_stack_frame ~human_readable_description (fun () ->
-            exec (f ()))
-  end
-
-  include Execution
-end

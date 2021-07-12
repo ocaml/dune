@@ -13,3 +13,5 @@ include User_error.Annot.S with type payload := t
 
 val make :
   main:User_message.t -> related:User_message.t list -> User_error.Annot.t
+
+val parse_output : dir:Path.t -> string -> User_error.Annot.t option

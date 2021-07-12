@@ -436,7 +436,15 @@ end = struct
     let annots = With_directory_annot.make dir :: annots in
     let annots =
       if has_embedded_location output then
-        User_error.Annot.Has_embedded_location.make () :: annots
+        let annots = User_error.Annot.Has_embedded_location.make () :: annots in
+        match
+          match output with
+          | No_output -> None
+          | Has_output output ->
+            Compound_user_error.parse_output ~dir output.without_color
+        with
+        | None -> annots
+        | Some annot -> annot :: annots
       else
         annots
     in

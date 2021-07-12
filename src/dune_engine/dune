@@ -28,6 +28,7 @@
   dune_rpc_server
   thread_worker
   spawn
+  ocamlc_loc
   dune_file_watcher
   ocaml_inotify
   async_inotify_for_dune)

@@ -130,6 +130,7 @@ module Event : sig
     | Signal of Signal.t
     | Worker_task of Fiber.fill
     | Yield of unit Fiber.Ivar.t
+    | Timer of Fiber.fill
 
   module Queue : sig
     type t
@@ -169,6 +170,8 @@ module Event : sig
 
     val send_signal : t -> Signal.t -> unit
 
+    val send_timers_completed : t -> Fiber.fill Nonempty_list.t -> unit
+
     val yield_if_there_are_pending_events : t -> unit Fiber.t
   end
   with type event := t
@@ -186,6 +189,7 @@ end = struct
     | Signal of Signal.t
     | Worker_task of Fiber.fill
     | Yield of unit Fiber.Ivar.t
+    | Timer of Fiber.fill
 
   module Invalidation_event = struct
     type t =
@@ -206,6 +210,7 @@ end = struct
       ; mutable pending_jobs : int
       ; mutable pending_worker_tasks : int
       ; worker_tasks_completed : Fiber.fill Queue.t
+      ; timers : Fiber.fill Queue.t
       ; stats : Dune_stats.t option
       ; mutable got_event : bool
       ; mutable yield : unit Fiber.Ivar.t option
@@ -221,9 +226,11 @@ end = struct
       let cond = Condition.create () in
       let pending_jobs = 0 in
       let pending_worker_tasks = 0 in
+      let timers = Queue.create () in
       { jobs_completed
       ; file_watcher_tasks
       ; invalidation_events
+      ; timers
       ; signals
       ; mutex
       ; cond
@@ -276,6 +283,8 @@ end = struct
       val worker_tasks_completed : t
 
       val yield : t
+
+      val timers : t
 
       val chain : t list -> t
 
@@ -337,6 +346,9 @@ end = struct
             q.yield <- None;
             Yield ivar)
 
+      let timers q =
+        Option.map (Queue.pop q.timers) ~f:(fun timer -> Timer timer)
+
       let chain list q = List.find_map list ~f:(fun f -> f q)
     end
 
@@ -361,6 +373,7 @@ end = struct
                  ; worker_tasks_completed
                  ; jobs_completed
                  ; yield
+                 ; timers
                  ]))
             q
         with
@@ -399,6 +412,10 @@ end = struct
     let send_file_watcher_task q job =
       add_event q (fun q -> Queue.push q.file_watcher_tasks job)
 
+    let send_timers_completed q timers =
+      add_event q (fun q ->
+          Nonempty_list.to_list timers |> List.iter ~f:(Queue.push q.timers))
+
     let pending_jobs q = q.pending_jobs
 
     let pending_worker_tasks q = q.pending_worker_tasks
@@ -413,6 +430,8 @@ module Process_watcher : sig
 
   (** Register a new running job. *)
   val register_job : t -> job -> unit
+
+  val is_running : t -> Pid.t -> bool
 
   (** Send the following signal to all running processes. *)
   val killall : t -> int -> unit
@@ -430,6 +449,12 @@ end = struct
     ; events : Event.Queue.t
     ; mutable running_count : int
     }
+
+  let is_running t pid =
+    Mutex.lock t.mutex;
+    let res = Table.mem t.table pid in
+    Mutex.unlock t.mutex;
+    res
 
   module Process_table : sig
     val add : t -> job -> unit
@@ -640,8 +665,100 @@ module Handler = struct
   type t = Config.t -> Event.t -> unit
 end
 
+module Alarm_clock : sig
+  type t
+
+  val create : Event.Queue.t -> frequency:float -> t
+
+  type alarm
+
+  val await : alarm -> [ `Finished | `Cancelled ] Fiber.t
+
+  val cancel : t -> alarm -> unit
+
+  val sleep : t -> float -> alarm
+
+  val close : t -> unit
+end = struct
+  type alarm = [ `Finished | `Cancelled ] Fiber.Ivar.t
+
+  type t =
+    { events : Event.Queue.t
+    ; mutex : Mutex.t
+    ; frequency : float
+    ; mutable alarms : (float * [ `Finished | `Cancelled ] Fiber.Ivar.t) list
+    ; mutable active : bool
+    }
+
+  let await = Fiber.Ivar.read
+
+  let cancel t alarm =
+    Mutex.lock t.mutex;
+    let found = ref false in
+    t.alarms <-
+      List.filter t.alarms ~f:(fun (_, alarm') ->
+          let eq = alarm' == alarm in
+          if eq then found := true;
+          not eq);
+    Mutex.unlock t.mutex;
+    if !found then
+      Event.Queue.send_timers_completed t.events
+        [ Fiber.Fill (alarm, `Cancelled) ]
+
+  let polling_loop t () =
+    let rec loop () =
+      match t.active with
+      | false -> ()
+      | true ->
+        let now = Unix.gettimeofday () in
+        let expired, active =
+          List.partition_map t.alarms ~f:(fun (expiration, ivar) ->
+              if now > expiration then
+                Left (Fiber.Fill (ivar, `Finished))
+              else
+                Right (expiration, ivar))
+        in
+        t.alarms <- active;
+        Mutex.unlock t.mutex;
+        (match Nonempty_list.of_list expired with
+        | None -> ()
+        | Some expired -> Event.Queue.send_timers_completed t.events expired);
+        Thread.delay t.frequency;
+        Mutex.lock t.mutex;
+        loop ()
+    in
+    Mutex.lock t.mutex;
+    loop ();
+    t.alarms <- [];
+    Mutex.unlock t.mutex
+
+  let create events ~frequency =
+    let t =
+      { events; active = true; alarms = []; frequency; mutex = Mutex.create () }
+    in
+    Thread.spawn (polling_loop t);
+    t
+
+  let sleep t duration =
+    Mutex.lock t.mutex;
+    let ivar = Fiber.Ivar.create () in
+    if not t.active then (
+      Mutex.unlock t.mutex;
+      Code_error.raise "cannot schedule timers after close" []
+    );
+    t.alarms <- (duration +. Unix.gettimeofday (), ivar) :: t.alarms;
+    Mutex.unlock t.mutex;
+    ivar
+
+  let close t =
+    Mutex.lock t.mutex;
+    t.active <- false;
+    Mutex.unlock t.mutex
+end
+
 type t =
   { config : Config.t
+  ; alarm_clock : Alarm_clock.t Lazy.t
   ; mutable status : status
   ; handler : Handler.t
   ; job_throttle : Fiber.Throttle.t
@@ -759,6 +876,7 @@ let prepare (config : Config.t) ~(handler : Handler.t) =
         ; config
         ; handler
         ; file_watcher
+        ; alarm_clock = lazy (Alarm_clock.create events ~frequency:0.1)
         }
       in
       global := Some t;
@@ -857,7 +975,9 @@ end = struct
             t.status <- Waiting_for_inotify_sync (invalidation, ivar);
             iter t
           )))
-    | Worker_task fill -> fill
+    | Timer fill
+    | Worker_task fill ->
+      fill
     | File_system_watcher_terminated ->
       filesystem_watcher_terminated ();
       raise (Abort Already_reported)
@@ -1094,15 +1214,13 @@ module Run = struct
         | `Kill pid -> ignore (wait_for_process t pid : _ Fiber.t)
         | `No_op -> ());
     ignore (kill_and_wait_for_all_processes t : saw_signal);
+    if Lazy.is_val t.alarm_clock then
+      Alarm_clock.close (Lazy.force t.alarm_clock);
     match result with
     | Ok a -> a
     | Error (exn, None) -> Exn.raise exn
     | Error (exn, Some bt) -> Exn.raise_with_backtrace exn bt
 end
-
-let wait_for_process pid =
-  let* t = t () in
-  wait_for_process t pid
 
 let shutdown () =
   let+ t = t () in
@@ -1113,3 +1231,33 @@ let inject_memo_invalidation invalidation =
   let* t = t () in
   Event.Queue.send_invalidation_event t.events invalidation;
   Fiber.return ()
+
+let wait_for_process_with_timeout t pid ~timeout =
+  Fiber.of_thunk (fun () ->
+      let sleep = Alarm_clock.sleep (Lazy.force t.alarm_clock) timeout in
+      Fiber.fork_and_join_unit
+        (fun () ->
+          let+ res = Alarm_clock.await sleep in
+          if res = `Finished && Process_watcher.is_running t.process_watcher pid
+          then
+            Unix.kill (Pid.to_int pid) Sys.sigkill)
+        (fun () ->
+          let+ res = wait_for_process t pid in
+          Alarm_clock.cancel (Lazy.force t.alarm_clock) sleep;
+          res))
+
+let wait_for_process ?timeout pid =
+  let* t = t () in
+  match timeout with
+  | None -> wait_for_process t pid
+  | Some timeout -> wait_for_process_with_timeout t pid ~timeout
+
+let sleep duration =
+  let* t = t () in
+  let alarm_clock = Lazy.force t.alarm_clock in
+  let+ res = Alarm_clock.await (Alarm_clock.sleep alarm_clock duration) in
+  match res with
+  | `Finished -> ()
+  | `Cancelled ->
+    (* cancellation mechanism isn't exposed to the user *)
+    assert false

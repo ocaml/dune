@@ -2,6 +2,7 @@
 
 open! Stdune
 open! Import
+module Action_builder := Action_builder0
 
 module Info : sig
   type t =
@@ -83,7 +84,7 @@ val make :
   -> Action.Full.t Action_builder.t
   -> t
 
-val with_prefix : t -> build:unit Action_builder.t -> t
+val set_action : t -> Action.Full.t Action_builder.t -> t
 
 val loc : t -> Loc.t
 
@@ -91,3 +92,17 @@ val loc : t -> Loc.t
     rule.dir. Eg. [src/dune] for a rule with dir
     [_build/default/src/dune/.dune.objs]. *)
 val find_source_dir : t -> Source_tree.Dir.t Memo.Build.t
+
+module Anonymous_action : sig
+  (* jeremiedimino: this type correspond to a subset of [Rule.t]. We should
+     eventually share the code. *)
+  type t =
+    { context : Build_context.t option
+    ; action : Action.Full.t
+    ; loc : Loc.t option
+    ; dir : Path.Build.t
+          (** Directory the action is attached to. This is the directory where
+              the outcome of the action will be cached. *)
+    ; alias : Alias.Name.t option  (** For better error messages *)
+    }
+end

@@ -1,7 +1,7 @@
 (*---------------------------------------------------------------------------
    Copyright (c) 2011 Daniel C. Bünzli. All rights reserved.
    Distributed under the ISC license, see terms at the end of the file.
-   cmdliner v1.0.4-27-gb4f5656
+   cmdliner v1.0.4-31-gb5d6161
   ---------------------------------------------------------------------------*)
 
 (* A command line stores pre-parsed information about the command
@@ -101,7 +101,7 @@ let parse_opt_args ~peek_opts optidx cl args =
       match Cmdliner_trie.find optidx name with
       | `Ok a ->
           let value, args = match value, Cmdliner_info.arg_opt_kind a with
-          | Some v, (Cmdliner_info.Flag | Opt_vopt _) when is_short_opt name ->
+          | Some v, (Cmdliner_info.Flag) when is_short_opt name ->
             None, ("-" ^ v) :: args
           | Some _, _ -> value, args
           | None, Cmdliner_info.Flag -> value, args

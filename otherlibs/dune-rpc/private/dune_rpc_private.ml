@@ -385,13 +385,15 @@ end
 module Build = struct
   module Event = struct
     type t =
+      | Waiting
       | Start
       | Finish
       | Fail
       | Interrupt
 
     let all =
-      [ ("start", Start)
+      [ ("waiting", Waiting)
+      ; ("start", Start)
       ; ("finish", Finish)
       ; ("fail", Fail)
       ; ("interrupt", Interrupt)

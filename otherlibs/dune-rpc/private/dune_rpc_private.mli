@@ -248,6 +248,7 @@ end
 module Build : sig
   module Event : sig
     type t =
+      | Waiting
       | Start
       | Finish
       | Fail

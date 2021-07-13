@@ -361,6 +361,12 @@ module Handler = struct
   let report_progress t ~rule_done ~rule_total =
     t.build_progress ~complete:rule_done ~remaining:(rule_total - rule_done)
 
+  let last_event : event option ref = ref None
+
+  let report_build_event t evt =
+    last_event := Some evt;
+    t.build_event evt
+
   let do_nothing =
     { error = (fun _ -> Fiber.return ())
     ; build_progress = (fun ~complete:_ ~remaining:_ -> Fiber.return ())
@@ -2326,7 +2332,7 @@ let run f =
       t.handler.error (List.map old_errors ~f:(fun x -> Handler.Remove x))
   in
   let f () =
-    let* () = t.handler.build_event Start in
+    let* () = Handler.report_build_event t.handler Start in
     let build_end_status_reported = ref false in
     let* res =
       Fiber.collect_errors (fun () ->
@@ -2337,7 +2343,7 @@ let run f =
                 Fiber.return ()
               else (
                 build_end_status_reported := true;
-                t.handler.build_event
+                Handler.report_build_event t.handler
                   (if caused_by_cancellation exn then
                     Interrupt
                   else
@@ -2350,7 +2356,7 @@ let run f =
         if !build_end_status_reported then
           Fiber.return ()
         else
-          t.handler.build_event Finish
+          Handler.report_build_event t.handler Finish
       in
       Ok res
     | Error exns ->
@@ -2441,3 +2447,5 @@ let get_current_progress () =
 let targets_of = targets_of
 
 let all_targets () = all_targets (t ())
+
+let last_event () = !Handler.last_event

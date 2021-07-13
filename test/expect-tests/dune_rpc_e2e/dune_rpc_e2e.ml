@@ -23,26 +23,13 @@ let init_chan ~root_dir =
       | Ok s -> Some s
       | Error _ -> None)
   in
-  let rec loop thread =
+  let rec loop () =
     let* res = once () in
     match res with
-    | Some res ->
-      (match thread with
-      | None -> ()
-      | Some th -> Scheduler.Worker.stop th);
-      Fiber.return res
-    | None ->
-      let* thread =
-        match thread with
-        | None -> Scheduler.Worker.create ()
-        | Some th -> Fiber.return th
-      in
-      let* () =
-        Scheduler.Worker.task_exn thread ~f:(fun () -> Unix.sleepf 0.2)
-      in
-      loop (Some thread)
+    | Some res -> Fiber.return res
+    | None -> Scheduler.sleep 0.2 >>= loop
   in
-  loop None
+  loop ()
 
 let run_client ?handler f =
   let* chan = init_chan ~root_dir:"." in

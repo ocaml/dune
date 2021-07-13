@@ -14,5 +14,6 @@ val gen_rules :
      t
   -> sctx:Super_context.t
   -> dir:Path.Build.t
+  -> scope:Scope.t
   -> expander:Expander.t
   -> unit Memo.Build.t

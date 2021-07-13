@@ -234,8 +234,7 @@ end
 
 module Id : sig
   type t =
-    { unique_id : int
-    ; path : Path.t
+    { path : Path.t
     ; name : Lib_name.t
     }
 
@@ -260,35 +259,29 @@ module Id : sig
 end = struct
   module T = struct
     type t =
-      { unique_id : int
-      ; path : Path.t
+      { path : Path.t
       ; name : Lib_name.t
       }
 
-    let compare t1 t2 = Int.compare t1.unique_id t2.unique_id
+    let compare t { path; name } =
+      match Lib_name.compare t.name name with
+      | Eq -> Path.compare t.path path
+      | e -> e
 
-    let to_dyn { unique_id = _; path; name } =
+    let to_dyn { path; name } =
       let open Dyn.Encoder in
       record [ ("path", Path.to_dyn path); ("name", Lib_name.to_dyn name) ]
   end
 
   include T
 
-  let to_dep_path_lib { path; name; unique_id = _ } =
-    { Dep_path.Entry.Lib.path; name }
+  let to_dep_path_lib { path; name } = { Dep_path.Entry.Lib.path; name }
 
   include (Comparator.Operators (T) : Comparator.OPS with type t := T.t)
 
-  let gen_unique_id =
-    let next = ref 0 in
-    fun () ->
-      let n = !next in
-      next := n + 1;
-      n
+  let hash { path; name } = Tuple.T2.hash Path.hash Lib_name.hash (path, name)
 
-  let hash t = t.unique_id
-
-  let make ~path ~name = { unique_id = gen_unique_id (); path; name }
+  let make ~path ~name = { path; name }
 
   include Comparable.Make (T)
   module Top_closure = Top_closure.Make (Set) (Resolve)

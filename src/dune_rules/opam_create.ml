@@ -288,7 +288,7 @@ let add_rule sctx ~project ~pkg =
   in
   let deps = Path.Set.singleton (Path.build opam_path) in
   Memo.Build.sequential_iter aliases ~f:(fun alias ->
-      Action_builder.add_alias_deps alias (Action_builder.path_set deps))
+      Rules.Produce.Alias.add_deps alias (Action_builder.path_set deps))
 
 let add_rules sctx ~dir =
   let project = Super_context.find_scope_by_dir sctx dir |> Scope.project in

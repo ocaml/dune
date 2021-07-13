@@ -45,6 +45,8 @@ module V1 = struct
 
       val notification : t -> 'a Notification.t -> 'a -> unit fiber
 
+      val disconnected : t -> unit fiber
+
       module Batch : sig
         type t
 

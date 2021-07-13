@@ -1,12 +1,13 @@
 open! Stdune
+module Action_builder = Action_builder0
 
 module Id = Id.Make ()
 
 module Dir_rules = struct
   module Alias_spec = struct
     type item =
-      | Deps of unit Rule.thunk
-      | Action of Rule.Anonymous_action.t Rule.thunk
+      | Deps of unit Action_builder.t
+      | Action of Rule.Anonymous_action.t Action_builder.t
 
     type t = { expansions : (Loc.t * item) Appendable_list.t } [@@unboxed]
 
@@ -149,17 +150,13 @@ module Produce = struct
 
     let add_action t ~context ~loc action =
       let action =
-        { Rule.f =
-            (fun mode ->
-              let open Memo.Build.O in
-              let+ action, deps = action.Rule.f mode in
-              ( { Rule.Anonymous_action.context = Some context
-                ; action
-                ; loc
-                ; dir = Alias.dir t
-                ; alias = Some (Alias.name t)
-                }
-              , deps ))
+        let open Action_builder.O in
+        let+ action = action in
+        { Rule.Anonymous_action.context = Some context
+        ; action
+        ; loc
+        ; dir = Alias.dir t
+        ; alias = Some (Alias.name t)
         }
       in
       alias t
@@ -214,3 +211,17 @@ let find t p =
     match Path.Build.Map.find t p with
     | Some dir_rules -> (dir_rules : Dir_rules.Nonempty.t :> Dir_rules.t)
     | None -> Dir_rules.empty)
+
+let prefix_rules prefix ~f =
+  let open Memo.Build.O in
+  let* res, rules = collect f in
+  let+ () =
+    produce
+      (map_rules rules ~f:(fun (rule : Rule.t) ->
+           let t =
+             let open Action_builder.O in
+             prefix >>> rule.action
+           in
+           Rule.set_action rule t))
+  in
+  res

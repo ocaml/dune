@@ -2,6 +2,7 @@
 
 open! Stdune
 open! Import
+module Action_builder := Action_builder0
 
 (** {1 Setup} *)
 
@@ -109,7 +110,7 @@ val init :
   -> rule_generator:(module Rule_generator)
   -> handler:Handler.t option
   -> implicit_default_alias:
-       (Path.Build.t -> unit Rule.thunk option Memo.Build.t)
+       (Path.Build.t -> unit Action_builder.t option Memo.Build.t)
   -> unit
 
 (** {2 Primitive for rule generations} *)
@@ -167,7 +168,7 @@ val get_rule : Path.t -> Rule.t option Memo.Build.t
 
 type alias_definition
 
-val dep_on_alias_definition : alias_definition -> unit Rule.thunk
+val dep_on_alias_definition : alias_definition -> unit Action_builder.t
 
 (** Return the definition of an alias *)
 val get_alias_definition :

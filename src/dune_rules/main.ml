@@ -28,15 +28,10 @@ let implicit_default_alias dir =
           Alias.Name.install
       in
       Some
-        { Rule.f =
-            (fun mode ->
-              Action_builder.run
-                (Action_builder.ignore
-                   (Action_builder.dep_on_alias_rec default_alias
-                      (Context_name.of_string ctx_name)
-                      dir))
-                mode)
-        })
+        (Action_builder.ignore
+           (Action_builder.dep_on_alias_rec default_alias
+              (Context_name.of_string ctx_name)
+              dir)))
 
 let init ~stats ~sandboxing_preference ~cache_config ~cache_debug_flags ~handler
     =

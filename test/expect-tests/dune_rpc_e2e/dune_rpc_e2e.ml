@@ -74,6 +74,7 @@ let read_lines in_ =
   in
   let+ res = loop [] in
   Scheduler.Worker.stop reader;
+  close_in_noerr in_;
   res
 
 let run ~prog ~argv =
@@ -89,8 +90,6 @@ let run ~prog ~argv =
   Unix.close stderr_w;
   ( pid
   , (let+ proc = Scheduler.wait_for_process ~timeout:3.0 (Pid.of_int pid) in
-     Unix.close stdout_i;
-     Unix.close stderr_i;
      if proc.status <> Unix.WEXITED 0 then
        let name = sprintf "%s %s" prog (String.concat ~sep:" " argv) in
        match proc.status with
@@ -117,7 +116,7 @@ let run_dump_out ~prog ~argv =
 
 let run_server ~root_dir =
   run ~prog:(Lazy.force dune_prog)
-    ~argv:[ "build"; "--watch=passive"; "--root"; root_dir ]
+    ~argv:[ "build"; "--passive-watch-mode"; "--root"; root_dir ]
 
 let dune_build client what =
   printfn "Building %s" what;

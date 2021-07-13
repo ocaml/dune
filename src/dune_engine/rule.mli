@@ -2,6 +2,7 @@
 
 open! Stdune
 open! Import
+module Action_builder := Action_builder0
 
 module Info : sig
   type t =
@@ -55,29 +56,11 @@ module Id : sig
   module Set : Set.S with type elt = t
 end
 
-(** Evaluation mode for actions.
-
-    In [Lazy] mode, dependencies are only collected. In [Eager] mode,
-    dependencies are build as soon as they are recorded and their facts are
-    returned.
-
-    If you want to both evaluate an action builder and build the collected
-    dependencies, using [Eager] mode will increase parallelism. If you only want
-    to know the set of dependencies, using [Lazy] will avoid unnecessary work. *)
-type 'a eval_mode =
-  | Lazy : unit eval_mode
-  | Eager : Dep.Fact.t eval_mode
-
-type 'a thunk = { f : 'm. 'm eval_mode -> ('a * 'm Dep.Map.t) Memo.Build.t }
-[@@unboxed]
-
-val memoize_thunk : string -> 'a thunk -> 'a thunk
-
 type t = private
   { id : Id.t
   ; context : Build_context.t option
   ; targets : Path.Build.Set.t
-  ; action : Action.Full.t thunk
+  ; action : Action.Full.t Action_builder.t
   ; mode : Mode.t
   ; info : Info.t
   ; loc : Loc.t
@@ -98,10 +81,10 @@ val make :
   -> context:Build_context.t option
   -> ?info:Info.t
   -> targets:Path.Build.Set.t
-  -> Action.Full.t thunk
+  -> Action.Full.t Action_builder.t
   -> t
 
-val set_action : t -> Action.Full.t thunk -> t
+val set_action : t -> Action.Full.t Action_builder.t -> t
 
 val loc : t -> Loc.t
 

@@ -777,7 +777,11 @@ module Client = struct
       | true -> k call
       | false ->
         let err =
-          Response.Error.create ~payload:call.params
+          let payload =
+            Sexp.record
+              [ ("method", Atom call.method_); ("params", call.params) ]
+          in
+          Response.Error.create ~payload
             ~message:"notification sent while connection is dead"
             ~kind:Code_error ()
         in

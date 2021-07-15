@@ -568,16 +568,7 @@ module Stack_frame_with_state : sig
 
   val to_dyn : t -> Dyn.t
 
-  (* CR-someday amokhov: Shall we stop reusing DAG nodes? It used to be good
-     optimisation, but now that we do not create a DAG node for every [Dep_node]
-     it's probably useless. Dropping it will require some refactoring though.
-
-     aalekseyev: yeah, this reuse of DAG nodes is suspicious and I wish we got
-     rid of it. *)
-  (* Create a new stack frame related to restoring or computing a [dep_node]. By
-     providing a [dag_node], it is possible to reuse it instead of creating a
-     new one. We currently reuse the same DAG node for [Restore_from_cache] and
-     [Compute] phases of the same [dep_node]. *)
+  (* Create a new stack frame related to restoring or computing a [dep_node]. *)
   val create :
        dag_node:Dag.node Lazy.t
     -> phase
@@ -588,8 +579,8 @@ module Stack_frame_with_state : sig
 
   val dag_node : t -> Dag.node Lazy.t
 
-  (* This function accumulates dependencies of frames from the [Compute] phase.
-     Calling it for a [Restore_from_cache] frame is a no-op. *)
+  (* This function accumulates dependencies of frames in the [Compute] phase.
+     Calling it in the [Restore_from_cache] frame raises an exception. *)
   val add_dep : t -> dep_node:_ Dep_node.t -> unit
 
   val deps_rev : t -> Dep_node.packed list
@@ -605,21 +596,22 @@ end = struct
   type ('i, 'o) unpacked =
     { dep_node : ('i, 'o) Dep_node_without_state.t
     ; dag_node : Dag.node Lazy.t
-    ; (* CR-soon amokhov: Benchmark if it's worth switching to [Dag.Id.Table.t].
-         For now, I chose to use [Dag.Id.Set.t] for two reasons: (i) we don't
-         have hash sets in Stdune and using [unit] hash tables is disturbing;
-         (ii) the new cycle detection algorithm reduces the size of the DAG, so
-         [children_added_to_dag] will often be empty or small. *)
-      (* This children_added_to_dag table serves dual purpose:
+    ; (* This [children_added_to_dag] table serves dual purpose:
 
-         1. to guarantee that we never add the same edge twice to the
-         cycle-detection DAG
+         (1) guarantee that we never add the same edge twice to the cycle
+         detection graph;
 
-         2. to mark the "forcing" stacks in the computation DAG that were
-         already added to the cycle detection graph
+         (2) to mark the "forcing" stacks in the computation graph that were
+         already added to the cycle detection graph.
 
          For the purpose (2) a simple [bool] could suffice instead, but we can't
-         ensure (1) without an explicit set representation. *)
+         ensure (1) without an explicit set representation.
+
+         Implementation note: We use [Dag.Id.Set.t] instead of [Dag.Id.Table.t]
+         for two reasons: (i) the new cycle detection algorithm reduces the size
+         of the DAG, so [children_added_to_dag] will often be empty or small,
+         and in these cases [Set] is fast enough; (ii) we don't have hash sets
+         in Stdune and using [unit] hash maps is disturbing. *)
       mutable children_added_to_dag : Dag.Id.Set.t
     ; (* The only purpose of storing [phase] is to ensure (via an [assert]) that
          we are accumulating dependencies only during the [Compute] phase. We

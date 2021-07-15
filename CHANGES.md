@@ -5,6 +5,9 @@
 
 - Fix compilation on Haiku (#4885, @Sylvain78)
 
+- Allow depending on `ocamldoc` library when `ocamlfind` is not installed.
+  (#4811, fixes #4809, @nojb)
+
 2.9.0 (29/06/2021)
 ------------------
 

@@ -159,6 +159,9 @@ Unreleased
   field and the possibility to statically link `libraries` in the test
   executable. (#3956, fixes #3955)
 
+- Allow depending on `ocamldoc` library when `ocamlfind` is not installed.
+  (#4811, fixes #4809, @nojb)
+
 2.9.0 (unreleased)
 ------------------
 

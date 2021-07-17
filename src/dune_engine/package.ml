@@ -138,6 +138,10 @@ module Dependency = struct
         | QVar of string
         | Var of string
 
+      let encode = function
+        | QVar v -> Dune_lang.Encoder.string v
+        | Var v -> Dune_lang.Encoder.string (":" ^ v)
+
       let decode =
         let open Dune_lang.Decoder in
         let+ s = string in
@@ -163,6 +167,16 @@ module Dependency = struct
       | Bop of Op.t * Var.t * Var.t
       | And of t list
       | Or of t list
+
+    let rec encode c =
+      let open Dune_lang.Encoder in
+      match c with
+      | Bvar x -> Var.encode x
+      | Uop (op, x) -> pair Op.encode Var.encode (op, x)
+      | Bop (op, x, y) -> triple Op.encode Var.encode Var.encode (op, x, y)
+      | And conjuncts ->
+        list sexp (string "and" :: List.map ~f:encode conjuncts)
+      | Or disjuncts -> list sexp (string "or" :: List.map ~f:encode disjuncts)
 
     let decode =
       let open Dune_lang.Decoder in
@@ -218,6 +232,10 @@ module Dependency = struct
     { name : Name.t
     ; constraint_ : Constraint.t option
     }
+
+  let encode { name; constraint_ } =
+    let open Dune_lang.Encoder in
+    list sexp [ Name.encode name; option Constraint.encode constraint_ ]
 
   let decode =
     let open Dune_lang.Decoder in

@@ -547,6 +547,41 @@ let name t = t.id.name
 
 let dir t = t.id.dir
 
+let encode
+    { id = _
+    ; loc = _
+    ; has_opam_file = _
+    ; synopsis
+    ; description
+    ; depends
+    ; conflicts
+    ; depopts
+    ; info
+    ; version
+    ; tags
+    ; deprecated_package_names
+    ; sites
+    } =
+  let open Dune_lang.Encoder in
+  let fields =
+    record_fields
+      [ field_o "synopsis" string synopsis
+      ; field_o "description" string description
+      ; field_l "depends" Dependency.encode depends
+      ; field_l "conflicts" Dependency.encode conflicts
+      ; field_l "depopts" Dependency.encode depopts
+      ; field_o "version" string version
+      ; field_l "tags" string tags
+      ; field_l "deprecated_package_names" Name.encode
+          (Name.Map.keys deprecated_package_names)
+      ; field_l "sits"
+          (pair Section.Site.encode Section.encode)
+          (Section.Site.Map.to_list sites)
+      ]
+    @ Info.encode info
+  in
+  constr "package" (list sexp) fields
+
 let decode ~dir =
   let open Dune_lang.Decoder in
   let name_map syntax of_list_map to_string name decode print_value error_msg =

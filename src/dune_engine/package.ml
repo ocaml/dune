@@ -125,6 +125,11 @@ module Dependency = struct
       | Gt -> `Gt
       | Lt -> `Lt
       | Neq -> `Neq
+
+    let encode x =
+      let f (_, op) = equal x op in
+      (* Assumes the [map] is complete, so exception is impossible *)
+      List.find_exn ~f map |> fst |> Dune_lang.Encoder.string
   end
 
   module Constraint = struct

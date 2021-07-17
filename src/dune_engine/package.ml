@@ -94,6 +94,17 @@ module Dependency = struct
       | Lt
       | Neq
 
+    let equal a b =
+      match (a, b) with
+      | Eq, Eq
+      | Gte, Gte
+      | Lte, Lte
+      | Gt, Gt
+      | Lt, Lt
+      | Neq, Neq ->
+        true
+      | _ -> false
+
     let map =
       [ ("=", Eq); (">=", Gte); ("<=", Lte); (">", Gt); ("<", Lt); ("<>", Neq) ]
 

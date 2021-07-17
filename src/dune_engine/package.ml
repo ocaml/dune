@@ -356,6 +356,12 @@ module Source_kind = struct
              let constr = to_string kind in
              (constr, decode))
 
+    let encode { user; repo; kind } =
+      let forge = to_string kind in
+      let path = repo ^ "/" ^ user in
+      let open Dune_lang.Encoder in
+      pair string string (forge, path)
+
     let to_string { user; repo; kind } =
       sprintf "git+https://%s/%s/%s.git" (host_of_kind kind) user repo
   end
@@ -373,6 +379,12 @@ module Source_kind = struct
   let to_string = function
     | Host h -> Host.to_string h
     | Url u -> u
+
+  let encode =
+    let open Dune_lang.Encoder in
+    function
+    | Url url -> pair string string ("uri", url)
+    | Host host -> Host.encode host
 
   let decode =
     let open Dune_lang.Decoder in

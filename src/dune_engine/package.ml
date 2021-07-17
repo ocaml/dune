@@ -452,6 +452,26 @@ module Info = struct
       ; ("authors", option (list string) authors)
       ]
 
+  let encode
+      { source
+      ; authors
+      ; license
+      ; homepage
+      ; documentation
+      ; bug_reports
+      ; maintainers
+      } =
+    let open Dune_lang.Encoder in
+    record_fields
+      [ field_o "source" Source_kind.encode source
+      ; field_o "authors" (list string) authors
+      ; field_o "license" string license
+      ; field_o "homepage" string homepage
+      ; field_o "documentation" string documentation
+      ; field_o "bug_reports" string bug_reports
+      ; field_o "maintainers" (list string) maintainers
+      ]
+
   let decode ?since () =
     let open Dune_lang.Decoder in
     let v default = Option.value since ~default in

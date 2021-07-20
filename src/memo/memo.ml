@@ -10,9 +10,7 @@ end
 module Counters = struct
   let enabled = ref false
 
-  let nodes_considered = ref 0
-
-  let edges_considered = ref 0
+  let nodes_restored = ref 0
 
   let nodes_computed = ref 0
 
@@ -23,8 +21,7 @@ module Counters = struct
   let edges_in_cycle_detection_graph = ref 0
 
   let reset () =
-    nodes_considered := 0;
-    edges_considered := 0;
+    nodes_restored := 0;
     nodes_computed := 0;
     edges_traversed := 0;
     nodes_in_cycle_detection_graph := 0;
@@ -303,8 +300,7 @@ module Collect_errors_monoid = struct
   include Monoid.Make (T)
 end
 
-(* A value calculated during a "sample attempt". A sample attempt can fail for
-   two reasons:
+(* Restoring or computing a value can fail for two reasons:
 
    - [Error]: the user-supplied function that was called to compute the value
    raised one or more exceptions recorded in the [Collect_errors_monoid.t].
@@ -366,25 +362,10 @@ module Cache_lookup = struct
 end
 
 (* A "computation" is a shared fiber represented by a [Once.t] together with a
-   DAG node, which we use to detect dependency cycles.
-
-   When a run completes, most computations are garbage collected because we no
-   longer hold any references to them. Some may survive and become "stale", for
-   example, if the [restore_from_cache] step fails but the node's parent loses
-   interest in the node and never proceeds to the [compute] step.
-
-   To distinguish between "current" and "stale" computations, we store the [run]
-   in which the computation had started. In this way, before subscribing to a
-   computation, we can check if it corresponds to the current run, and if not,
-   restart it from scratch.
-
-   Once all stale computations have been restarted, we should hold no more
-   references to the corresponding computations, allowing them to be garbage
-   collected. Note: some stale computations may never be restarted, e.g. if they
-   end up getting forever stuck behind an inactive conditional. *)
+   DAG node, which we use to detect dependency cycles. When a run completes, all
+   computations are garbage collected because we no longer hold any references
+   to them. *)
 module Computation0 = struct
-  (* CR-someday amokhov: It would be great to tighten the interface to make it
-     impossible to read a stale computation. *)
   (* CR-someday aalekseyev: It's weird to carry a [dag_node] separately from
      [once] even though the stack frame itself is available in the closure that
      [t.once] is holding. This is probably not the only inefficiency introduced
@@ -394,10 +375,7 @@ module Computation0 = struct
   type 'a t =
     { once : 'a Once.t
     ; dag_node : Dag.node Lazy.t
-    ; run : Run.t
     }
-
-  let is_current { run; _ } = Run.is_current run
 end
 
 (* Checking dependencies of a node can lead to one of these outcomes:
@@ -504,27 +482,61 @@ module M = struct
 
     let changed_or_not t ~f =
       let rec go index =
-        if index < 0 then
+        if index < 0 then (
+          if !Counters.enabled then
+            Counters.edges_traversed :=
+              !Counters.edges_traversed + Array.length t;
           Fiber.return Changed_or_not.Unchanged
-        else
+        ) else
           f t.(index) >>= function
           | Changed_or_not.Unchanged -> go (index - 1)
-          | (Changed | Cancelled _) as res -> Fiber.return res
+          | (Changed | Cancelled _) as res ->
+            if !Counters.enabled then
+              Counters.edges_traversed :=
+                !Counters.edges_traversed + (Array.length t - index);
+            Fiber.return res
       in
       go (Array.length t - 1)
   end
 
-  (* When the node is in the [Computing] state, [cache_lookup_failure] contains
-     the reason for running the computation. *)
+  (** The following state transition diagram shows how a node's state changes
+      during a build run. After a run completes, every node is guaranteed to end
+      up in one of these three states.
+
+      - [No_value]: the node has no value and it wasn't computed during the run,
+        because it is unreachable.
+
+      - [Old_value]: the node is known to be out of date and it wasn't computed
+        during the run, because it is unreachable.
+
+      - [Cached_value]: if the cached value's [run] is current then the node is
+        up to date; otherwise, it wasn't restored during the run, because it is
+        unreachable.
+
+      {v
+            ┌──────────┐     ┌───────────┐     ┌──────────────┐
+            │ No_value ├─────► Computing ├─────► Cached_value │
+            └──────────┘     └─────▲─────┘     └────┬───▲─────┘
+                                   │                │   │
+                                   │                │   │
+                             ┌─────┴─────┐     ┌────▼───┴─────┐
+                             │ Old_value ◄─────┤   Restoring  │
+                             └───────────┘     └──────────────┘
+      v}
+
+      Between runs, there can be additional state transitions; for example, we
+      can invalidate a node by setting its state to [No_value]. *)
   and State : sig
     type 'a t =
-      | Not_considering
+      | No_value
+      | Old_value of 'a Cached_value.t
+      | Cached_value of 'a Cached_value.t
       | Restoring of
           { restore_from_cache :
               'a Cached_value.t Cache_lookup.Result.t Computation0.t
           }
       | Computing of
-          { cache_lookup_failure : 'a Cached_value.t Cache_lookup.Failure.t
+          { old_value : 'a Cached_value.t option
           ; compute : 'a Cached_value.t Computation0.t
           }
   end =
@@ -534,7 +546,6 @@ module M = struct
     type ('i, 'o) t =
       { without_state : ('i, 'o) Dep_node_without_state.t
       ; mutable state : 'o State.t
-      ; mutable last_cached_value : 'o Cached_value.t option
       ; (* This field caches the value of [without_state.spec.allow_cutoff] to
            avoid jumping through two more pointers in a tight loop. *)
         has_cutoff : bool
@@ -556,11 +567,10 @@ let _print_dep_node ?prefix (dep_node : _ Dep_node.t) =
     | None -> ""
     | Some prefix -> prefix ^ " "
   in
-  let msg =
-    sprintf "%s%s\n" prefix
-      (Dep_node_without_state.to_dyn dep_node.without_state |> Dyn.to_string)
-  in
-  Console.print [ Pp.text msg ]
+  (* Printing via [Console.print] leads to incorrectly interleaving messages
+     with the diagnostic [printf] output in [memoize_tests]. *)
+  Format.printf "%s%s\n" prefix
+    (Dep_node_without_state.to_dyn dep_node.without_state |> Dyn.to_string)
 
 module Stack_frame_with_state : sig
   type phase =
@@ -813,7 +823,7 @@ module Computation = struct
              the [fiber] is to let the latter get the discovered dependencies. *)
           Call_stack.push_frame frame (fun () -> fiber frame))
     in
-    { once; dag_node; run = Run.current () }
+    { once; dag_node }
 
   let evaluate_and_check_for_cycles t =
     Once.force t.once ~on_blocking:(fun () ->
@@ -894,13 +904,17 @@ let dump_stack () =
   Console.print [ pp ]
 
 let get_cached_value_in_current_run (dep_node : _ Dep_node.t) =
-  match dep_node.last_cached_value with
-  | None -> None
-  | Some cv ->
+  match dep_node.state with
+  | Cached_value cv ->
     if Run.is_current cv.last_validated_at then
       Some cv
     else
       None
+  | No_value
+  | Old_value _
+  | Restoring _
+  | Computing _ ->
+    None
 
 module Cached_value = struct
   include M.Cached_value
@@ -911,9 +925,12 @@ module Cached_value = struct
           (match get_cached_value_in_current_run dep_node with
           | None ->
             let reason =
-              match dep_node.last_cached_value with
-              | None -> "(no value)"
-              | Some _ -> "(old run)"
+              match dep_node.state with
+              | No_value -> "(no value)"
+              | Old_value _ -> "(old value)"
+              | Cached_value _ -> "(old run)"
+              | Restoring _ -> "(restoring)"
+              | Computing _ -> "(computing)"
             in
             Code_error.raise
               ("Attempted to create a cached value based on some stale inputs "
@@ -982,27 +999,33 @@ end
 
 (* There are two approaches to invalidating memoization nodes. Currently, when a
    node is invalidated by calling [invalidate_dep_node], only the node itself is
-   marked as "changed" (by setting [node.last_cached_value] to [None]). Then,
-   the whole graph is marked as "possibly changed" by calling [Run.restart ()],
-   which in O(1) time makes all [last_validated_at : Run.t] values out of date.
-   In the subsequent computation phase, the whole graph is traversed from top to
-   bottom to discover "actual changes" and recompute all the nodes affected by
-   these changes. One disadvantage of this approach is that the whole graph
-   needs to be traversed even if only a small part of it depends on the set of
-   invalidated nodes.
+   marked as "changed" (by setting [node.state] to [No_value]). Then, the whole
+   graph is marked as "possibly changed" by calling [Run.restart ()] that makes
+   all remaining [last_validated_at : Run.t] values out of date in O(1) time. In
+   the next run, the whole graph is traversed from top to bottom to discover
+   "actual changes" and recompute all the nodes affected by these changes. One
+   disadvantage of this approach is that the whole graph needs to be traversed
+   even if only a small part of it depends on the set of invalidated nodes.
 
-   An alternative approach is as follows. Whenever the [invalidate_dep_node]
-   function is called, we recursively mark all of its reverse dependencies as
-   "possibly changed". Then, in the computation phase, we only need to traverse
-   the marked part of graph (instead of the whole graph as we do currently). One
-   disadvantage of this approach is that every node needs to store a list of its
-   reverse dependencies, which introduces cyclic memory references and
-   complicates garbage collection.
+   An alternative approach is as follows. When [invalidate_dep_node] is called,
+   recursively mark all of its reverse dependencies as "possibly changed". Then,
+   in the next run, traverse only the marked part of graph (instead of the whole
+   graph as we do currently). One disadvantage of this approach is that every
+   node needs to store a list of its reverse dependencies, which introduces
+   cyclic memory references and complicates garbage collection. Another issue is
+   that recursively marking all reverse dependencies as "possibly changed" can
+   still result in marking too much, because there is no way to take the cutoff
+   predicate into account when propagating "possible changes".
 
    Is it worth switching from the current approach to the alternative? It's best
    to answer this question by benchmarking. This is not urgent but is worth
    documenting in the code. *)
-let invalidate_dep_node (node : _ Dep_node.t) = node.last_cached_value <- None
+let invalidate_dep_node (node : _ Dep_node.t) =
+  (* CR-someday amokhov: We could assert that the [state] can't be [Restoring]
+     or [Computing] here, to catch unexpected [invalidate_dep_node] calls. *)
+  (* CR-someday amokhov: We could set the [state] to [Old_value] so that the
+     cutoff could still fire. *)
+  node.state <- No_value
 
 let invalidate_store = Store.iter ~f:invalidate_dep_node
 
@@ -1034,8 +1057,7 @@ let make_dep_node ~spec ~input : _ Dep_node.t =
     { id = Id.gen (); input; spec }
   in
   { without_state = dep_node_without_state
-  ; last_cached_value = None
-  ; state = Not_considering
+  ; state = No_value
   ; has_cutoff =
       (match spec.allow_cutoff with
       | Yes _equal -> true
@@ -1073,144 +1095,127 @@ module Exec : sig
 end = struct
   let rec restore_from_cache :
             'o.
-               'o Cached_value.t option
+               cached_value:'o Cached_value.t
             -> 'o Cached_value.t Cache_lookup.Result.t Fiber.t =
-   fun last_cached_value ->
-    match last_cached_value with
-    | None -> Fiber.return (Cache_lookup.Result.Failure Not_found)
-    | Some cached_value -> (
-      match cached_value.value with
-      | Cancelled _dependency_cycle ->
-        (* Dependencies of cancelled computations are not accurate, so we can't
-           use [deps_changed] in this case. *)
-        Fiber.return (Cache_lookup.Result.Failure Not_found)
-      | Error { reproducible = false; _ } ->
-        (* We do not cache non-reproducible errors. *)
-        Fiber.return (Cache_lookup.Result.Failure Not_found)
-      | Ok _
-      | Error { reproducible = true; _ } -> (
-        (* We cache reproducible errors just like normal values. We assume that
-           all [Memo] computations are deterministic, which means if we rerun a
-           computation that previously raised a set of errors on the same inputs
-           then we expect to get the same set of errors back and might as well
-           skip the unnecessary work. The downside is that if a computation is
-           non-deterministic, there is no way to force rerunning it, apart from
-           changing some of its dependencies. *)
-        let+ deps_changed =
-          (* Make sure [f] gets inlined to avoid unnecessary closure allocations
-             and improve stack traces in profiling. *)
-          Deps.changed_or_not cached_value.deps
-            ~f:(fun [@inline] (Dep_node.T dep) ->
-              if !Counters.enabled then incr Counters.edges_traversed;
-              match dep.has_cutoff with
-              | false -> (
-                (* If [dep] has no cutoff, it is sufficient to check whether it
-                   is up to date. If not, we must recompute [last_cached_value]. *)
-                consider_and_restore_from_cache_without_adding_dep dep
-                >>| function
-                | Ok cached_value_of_dep -> (
-                  (* The [Changed] branch will be taken if [cached_value]'s node
-                     was skipped in the previous run (it was unreachable), while
-                     [dep] wasn't skipped and [cached_value_of_dep] changed. *)
-                  match
-                    Run.compare cached_value_of_dep.last_changed_at
-                      cached_value.last_validated_at
-                  with
-                  | Gt -> Changed_or_not.Changed
-                  | Eq
-                  | Lt ->
-                    Unchanged)
-                | Failure (Cancelled { dependency_cycle }) ->
-                  Cancelled { dependency_cycle }
-                | Failure (Not_found | Out_of_date _) -> Changed)
-              | true -> (
-                (* If [dep] has a cutoff predicate, it is not sufficient to
-                   check whether it is up to date: even if it isn't, after we
-                   recompute it, the resulting value may remain unchanged,
-                   allowing us to skip recomputing the [last_cached_value]. *)
-                consider_and_compute_without_adding_dep dep
-                >>| function
-                | Ok cached_value_of_dep -> (
-                  (* Note: [cached_value_of_dep.value] will be [Cancelled _] if
-                     [dep] itself doesn't introduce a dependency cycle but one
-                     of its transitive dependencies does. In this case, the
-                     value will be new, so we will take the [Changed] branch. *)
-                  match
-                    Run.compare cached_value_of_dep.last_changed_at
-                      cached_value.last_validated_at
-                  with
-                  | Gt -> Changed_or_not.Changed
-                  | Eq
-                  | Lt ->
-                    Unchanged)
-                | Error dependency_cycle -> Cancelled { dependency_cycle }))
-        in
-        match deps_changed with
-        | Unchanged ->
-          cached_value.last_validated_at <- Run.current ();
-          Cache_lookup.Result.Ok cached_value
-        | Changed -> Failure (Out_of_date cached_value)
-        | Cancelled { dependency_cycle } ->
-          Failure (Cancelled { dependency_cycle })))
+   fun ~cached_value ->
+    match cached_value.value with
+    | Cancelled _dependency_cycle ->
+      (* Dependencies of cancelled computations are not accurate (in fact, they
+         are set to [Deps.empty]), so we can't use [deps_changed] in this case. *)
+      Fiber.return (Cache_lookup.Result.Failure Not_found)
+    | Error { reproducible = false; _ } ->
+      (* We do not cache non-reproducible errors. *)
+      Fiber.return (Cache_lookup.Result.Failure Not_found)
+    | Ok _
+    | Error { reproducible = true; _ } -> (
+      (* We cache reproducible errors just like normal values. We assume that
+         all [Memo] computations are deterministic, which means if we rerun a
+         computation that previously raised a set of errors on the same inputs
+         then we expect to get the same set of errors back and might as well
+         skip the unnecessary work. The downside is that if a computation is in
+         fact non-deterministic, there is no way to force rerunning it, apart
+         from changing some of its dependencies. *)
+      let+ deps_changed =
+        (* Make sure [f] gets inlined to avoid unnecessary closure allocations
+           and improve stack traces in profiling. *)
+        Deps.changed_or_not cached_value.deps
+          ~f:(fun [@inline] (Dep_node.T dep) ->
+            if !Counters.enabled then incr Counters.edges_traversed;
+            match dep.has_cutoff with
+            | false -> (
+              (* If [dep] has no cutoff, it is sufficient to check whether it is
+                 up to date. If not, we must recompute the [cached_value]. *)
+              consider_and_restore_from_cache_without_adding_dep dep
+              >>| function
+              | Ok cached_value_of_dep -> (
+                (* The [Changed] branch will be taken if [cached_value]'s node
+                   was skipped in the previous run (it was unreachable), while
+                   [dep] wasn't skipped and [cached_value_of_dep] changed. *)
+                match
+                  Run.compare cached_value_of_dep.last_changed_at
+                    cached_value.last_validated_at
+                with
+                | Gt -> Changed_or_not.Changed
+                | Eq
+                | Lt ->
+                  Unchanged)
+              | Failure (Cancelled { dependency_cycle }) ->
+                Cancelled { dependency_cycle }
+              | Failure (Not_found | Out_of_date _) -> Changed)
+            | true -> (
+              (* If [dep] has a cutoff predicate, it is not sufficient to check
+                 whether it is up to date: even if it isn't, after we recompute
+                 it, the resulting value may remain unchanged, allowing us to
+                 skip recomputing the [cached_value]. *)
+              consider_and_compute_without_adding_dep dep
+              >>| function
+              | Ok cached_value_of_dep -> (
+                (* Note: [cached_value_of_dep.value] will be [Cancelled _] if
+                   [dep] itself doesn't introduce a dependency cycle but one of
+                   its transitive dependencies does. In this case, the value
+                   will be new, so we will take the [Changed] branch. *)
+                match
+                  Run.compare cached_value_of_dep.last_changed_at
+                    cached_value.last_validated_at
+                with
+                | Gt -> Changed_or_not.Changed
+                | Eq
+                | Lt ->
+                  Unchanged)
+              | Error dependency_cycle -> Cancelled { dependency_cycle }))
+      in
+      match deps_changed with
+      | Unchanged ->
+        cached_value.last_validated_at <- Run.current ();
+        Cache_lookup.Result.Ok cached_value
+      | Changed -> Failure (Out_of_date cached_value)
+      | Cancelled { dependency_cycle } ->
+        Failure (Cancelled { dependency_cycle }))
 
   and compute :
         'i 'o.
-           ('i, 'o) Dep_node.t
-        -> 'o Cached_value.t Cache_lookup.Failure.t
-        -> Stack_frame_with_state.t
+           dep_node:('i, 'o) Dep_node.t
+        -> old_value:'o Cached_value.t option
+        -> stack_frame:Stack_frame_with_state.t
         -> 'o Cached_value.t Fiber.t =
-   fun dep_node cache_lookup_failure frame ->
-    let compute_value_and_deps_rev () =
-      let* () = !yield_if_there_are_pending_events () in
-      let+ res =
-        report_and_collect_errors (fun () ->
-            dep_node.without_state.spec.f dep_node.without_state.input)
-      in
-      let value =
-        match res with
-        | Ok res -> Value.Ok res
-        | Error errors -> Error errors
-      in
-      let deps_rev = Stack_frame_with_state.deps_rev frame in
-      if !Counters.enabled then
-        Counters.edges_traversed :=
-          !Counters.edges_traversed + List.length deps_rev;
-      (value, deps_rev)
+   fun ~dep_node ~old_value ~stack_frame ->
+    let* () = !yield_if_there_are_pending_events () in
+    let+ res =
+      report_and_collect_errors (fun () ->
+          dep_node.without_state.spec.f dep_node.without_state.input)
     in
-    match cache_lookup_failure with
-    | Cancelled { dependency_cycle } ->
-      (* If restoring from cache failed with a dependency cycle, and the node's
-         function is deterministic (as it should be), then we're going to hit
-         the same cycle when trying to recompute the result. Here, we return the
-         dependency cycle as is. This helps us to work around the limitation of
-         the cycle detection library that can't detect the same cycle twice. *)
-      Fiber.return (Cached_value.create_cancelled ~dependency_cycle)
-    | Not_found ->
-      let+ value, deps_rev = compute_value_and_deps_rev () in
-      Cached_value.create value ~deps_rev
-    | Out_of_date (old_cv : _ Cached_value.t) -> (
-      let+ value, deps_rev = compute_value_and_deps_rev () in
+    let value =
+      match res with
+      | Ok res -> Value.Ok res
+      | Error errors -> Error errors
+    in
+    let deps_rev = Stack_frame_with_state.deps_rev stack_frame in
+    match old_value with
+    | None -> Cached_value.create value ~deps_rev
+    | Some old_cv -> (
       match Cached_value.value_changed dep_node old_cv.value value with
       | true -> Cached_value.create value ~deps_rev
       | false -> Cached_value.confirm_old_value ~deps_rev old_cv)
 
   and start_restoring :
         'i 'o.
-           ('i, 'o) Dep_node.t
+           dep_node:('i, 'o) Dep_node.t
+        -> cached_value:'o Cached_value.t
         -> 'o Cached_value.t Cache_lookup.Result.t Computation.t =
-   fun dep_node ->
-    if !Counters.enabled then incr Counters.nodes_considered;
+   fun ~dep_node ~cached_value ->
     let restore_from_cache =
       Computation.create ~phase:Restore_from_cache
         ~dep_node:dep_node.without_state (fun _stack_frame ->
-          let+ restore_result = restore_from_cache dep_node.last_cached_value in
+          let+ restore_result = restore_from_cache ~cached_value in
+          if !Counters.enabled then incr Counters.nodes_restored;
           (match restore_result with
-          | Ok cached_value ->
-            dep_node.state <- Not_considering;
-            if !Counters.enabled then
-              Counters.edges_considered :=
-                !Counters.edges_considered + Deps.length cached_value.deps
-          | Failure _ -> ());
+          | Ok cached_value -> dep_node.state <- Cached_value cached_value
+          | Failure Not_found -> dep_node.state <- No_value
+          | Failure (Cancelled { dependency_cycle }) ->
+            dep_node.state <-
+              Cached_value (Cached_value.create_cancelled ~dependency_cycle)
+          | Failure (Out_of_date old_value) ->
+            dep_node.state <- Old_value old_value);
           restore_result)
     in
     dep_node.state <- Restoring { restore_from_cache };
@@ -1218,86 +1223,93 @@ end = struct
 
   and start_computing :
         'i 'o.
-           ('i, 'o) Dep_node.t
-        -> 'o Cached_value.t Cache_lookup.Failure.t
+           dep_node:('i, 'o) Dep_node.t
+        -> old_value:'o Cached_value.t option
         -> 'o Cached_value.t Computation.t =
-   fun dep_node cache_lookup_failure ->
+   fun ~dep_node ~old_value ->
     let compute =
       Computation.create ~phase:Compute ~dep_node:dep_node.without_state
         (fun stack_frame ->
-          dep_node.last_cached_value <- None;
-          let+ cached_value =
-            compute dep_node cache_lookup_failure stack_frame
-          in
-          dep_node.last_cached_value <- Some cached_value;
-          dep_node.state <- Not_considering;
+          let+ cached_value = compute ~dep_node ~old_value ~stack_frame in
           if !Counters.enabled then (
             incr Counters.nodes_computed;
-            Counters.edges_considered :=
-              !Counters.edges_considered + Deps.length cached_value.deps
+            Counters.edges_traversed :=
+              !Counters.edges_traversed + Deps.length cached_value.deps
           );
+          dep_node.state <- Cached_value cached_value;
           cached_value)
     in
-    dep_node.state <- Computing { cache_lookup_failure; compute };
+    dep_node.state <- Computing { old_value; compute };
     compute
 
   and consider_and_restore_from_cache_without_adding_dep :
         'i 'o.
         ('i, 'o) Dep_node.t -> 'o Cached_value.t Cache_lookup.Result.t Fiber.t =
    fun dep_node ->
-    match get_cached_value_in_current_run dep_node with
-    | Some cached_value -> Fiber.return (Cache_lookup.Result.Ok cached_value)
-    | None -> (
-      let of_restoring restore_from_cache =
-        Computation.evaluate_and_check_for_cycles restore_from_cache
-        >>| function
-        | Ok res -> res
-        | Error dependency_cycle ->
-          Cache_lookup.Result.Failure (Cancelled { dependency_cycle })
-      in
-      match dep_node.state with
-      | Restoring { restore_from_cache }
-        when Computation.is_current restore_from_cache ->
-        of_restoring restore_from_cache
-      | Computing { cache_lookup_failure; compute }
-        when Computation.is_current compute ->
-        Fiber.return (Cache_lookup.Result.Failure cache_lookup_failure)
-      | Not_considering
-      | Restoring _
-      | Computing _ ->
-        of_restoring (start_restoring dep_node))
+    let of_restoring restore_from_cache =
+      Computation.evaluate_and_check_for_cycles restore_from_cache >>| function
+      | Ok res -> res
+      | Error dependency_cycle ->
+        Cache_lookup.Result.Failure (Cancelled { dependency_cycle })
+    in
+    match dep_node.state with
+    | No_value -> Fiber.return (Cache_lookup.Result.Failure Not_found)
+    | Old_value old_value ->
+      Fiber.return (Cache_lookup.Result.Failure (Out_of_date old_value))
+    | Cached_value cached_value ->
+      if Run.is_current cached_value.last_validated_at then
+        Fiber.return (Cache_lookup.Result.Ok cached_value)
+      else
+        of_restoring (start_restoring ~dep_node ~cached_value)
+    | Restoring { restore_from_cache } -> of_restoring restore_from_cache
+    | Computing { old_value = None; _ } ->
+      Fiber.return (Cache_lookup.Result.Failure Not_found)
+    | Computing { old_value = Some old_value; _ } ->
+      Fiber.return (Cache_lookup.Result.Failure (Out_of_date old_value))
 
   and consider_and_compute_without_adding_dep :
         'i 'o.
         ('i, 'o) Dep_node.t -> ('o Cached_value.t, Cycle_error.t) result Fiber.t
       =
    fun dep_node ->
-    match get_cached_value_in_current_run dep_node with
-    | Some cached_value -> Fiber.return (Ok cached_value)
-    | None -> (
-      let of_computing compute =
-        Computation.evaluate_and_check_for_cycles compute
-      in
-      let of_restoring restore_from_cache =
-        Computation.evaluate_and_check_for_cycles restore_from_cache
-        >>= function
-        | Error _ as cycle_error -> Fiber.return cycle_error
-        | Ok cache_lookup_result -> (
-          match (cache_lookup_result : _ Cache_lookup.Result.t) with
-          | Ok cached_value -> Fiber.return (Ok cached_value)
-          | Failure cache_lookup_failure ->
-            of_computing (start_computing dep_node cache_lookup_failure))
-      in
-      match dep_node.state with
-      | Restoring { restore_from_cache }
-        when Computation.is_current restore_from_cache ->
-        of_restoring restore_from_cache
-      | Computing { compute; _ } when Computation.is_current compute ->
-        of_computing compute
-      | Not_considering
-      | Restoring _
-      | Computing _ ->
-        of_restoring (start_restoring dep_node))
+    let of_computing compute =
+      Computation.evaluate_and_check_for_cycles compute >>| function
+      | Ok _ as result -> result
+      | Error dependency_cycle as result ->
+        dep_node.state <-
+          Cached_value (Cached_value.create_cancelled ~dependency_cycle);
+        result
+    in
+    let of_restoring restore_from_cache =
+      Computation.evaluate_and_check_for_cycles restore_from_cache >>= function
+      | Error dependency_cycle
+      | Ok (Cache_lookup.Result.Failure (Cancelled { dependency_cycle })) ->
+        (* If restoring from cache failed with a dependency cycle error, and the
+           node's function is deterministic (as it should be), then we're going
+           to hit the same cycle when trying to recompute the result. Hence, we
+           return the cycle error as is. Note that apart from saving some work,
+           this also helps us work around the limitation of the cycle detection
+           library that can't detect the same cycle twice. *)
+        dep_node.state <-
+          Cached_value (Cached_value.create_cancelled ~dependency_cycle);
+        Fiber.return (Error dependency_cycle)
+      | Ok (Ok cached_value) -> Fiber.return (Ok cached_value)
+      | Ok (Failure Not_found) ->
+        of_computing (start_computing ~dep_node ~old_value:None)
+      | Ok (Failure (Out_of_date old_value)) ->
+        of_computing (start_computing ~dep_node ~old_value:(Some old_value))
+    in
+    match dep_node.state with
+    | No_value -> of_computing (start_computing ~dep_node ~old_value:None)
+    | Old_value old_value ->
+      of_computing (start_computing ~dep_node ~old_value:(Some old_value))
+    | Cached_value cached_value ->
+      if Run.is_current cached_value.last_validated_at then
+        Fiber.return (Ok cached_value)
+      else
+        of_restoring (start_restoring ~dep_node ~cached_value)
+    | Restoring { restore_from_cache } -> of_restoring restore_from_cache
+    | Computing { compute; _ } -> of_computing compute
 
   and consider_and_compute :
         'i 'o.
@@ -1306,7 +1318,7 @@ end = struct
    fun dep_node ->
     consider_and_compute_without_adding_dep dep_node >>= function
     | Ok _ as ok -> Call_stack.add_dep_from_caller dep_node >>> Fiber.return ok
-    | Error _cycle as error -> Fiber.return error
+    | Error _dependency_cycle as error -> Fiber.return error
 
   let exec_dep_node (dep_node : _ Dep_node.t) =
     Fiber.of_thunk (fun () ->
@@ -1576,41 +1588,36 @@ let reset invalidation =
 module Perf_counters = struct
   let enable () = Counters.enabled := true
 
-  let nodes_in_current_run () = !Counters.nodes_considered
-
-  let edges_in_current_run () = !Counters.edges_considered
+  let nodes_restored_in_current_run () = !Counters.nodes_restored
 
   let nodes_computed_in_current_run () = !Counters.nodes_computed
 
   let edges_traversed_in_current_run () = !Counters.edges_traversed
 
   let nodes_for_cycle_detection_in_current_run () =
-    !Counters.edges_in_cycle_detection_graph
+    !Counters.nodes_in_cycle_detection_graph
 
   let edges_for_cycle_detection_in_current_run () =
     !Counters.edges_in_cycle_detection_graph
 
   let report_for_current_run () =
     let memo =
-      sprintf "Memo: %d/%d computed/total nodes, %d/%d traversed/total edges"
+      sprintf "Memo graph: %d/%d restored/computed nodes, %d traversed edges"
+        (nodes_restored_in_current_run ())
         (nodes_computed_in_current_run ())
-        (nodes_in_current_run ())
         (edges_traversed_in_current_run ())
-        (edges_in_current_run ())
     in
     let cycle_detection =
-      sprintf "Memo's cycle detection graph: %d/%d nodes/edges"
+      sprintf "Memo cycle detection graph: %d/%d nodes/edges"
         (nodes_for_cycle_detection_in_current_run ())
         (edges_for_cycle_detection_in_current_run ())
     in
     String.concat ~sep:"\n" [ memo; cycle_detection ]
 
   let assert_invariants () =
-    assert (nodes_computed_in_current_run () <= nodes_in_current_run ());
-    assert (edges_in_current_run () <= edges_traversed_in_current_run ());
-    assert (edges_traversed_in_current_run () <= 2 * edges_in_current_run ());
     assert (
-      nodes_for_cycle_detection_in_current_run () <= 2 * nodes_in_current_run ());
+      nodes_for_cycle_detection_in_current_run ()
+      <= nodes_computed_in_current_run () + nodes_restored_in_current_run ());
     assert (
       edges_for_cycle_detection_in_current_run ()
       <= edges_traversed_in_current_run ())

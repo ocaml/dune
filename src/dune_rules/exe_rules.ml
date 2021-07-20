@@ -190,8 +190,7 @@ let executables_rules ~sctx ~dir ~expander ~dir_contents ~scope ~compile_info
       let link_flags =
         let link_deps = Dep_conf_eval.unnamed ~expander exes.link_deps in
         link_deps
-        >>> Expander.expand_and_eval_set expander exes.link_flags
-              ~standard
+        >>> Expander.expand_and_eval_set expander exes.link_flags ~standard
       in
       let+ flags = link_flags
       and+ ctypes_cclib_flags =
@@ -208,13 +207,12 @@ let executables_rules ~sctx ~dir ~expander ~dir_contents ~scope ~compile_info
              (* XXX: don't these need the msvc hack being done in lib_rules? *)
              (* XXX: also the Command.quote_args being done in lib_rules? *)
              List.map foreign_archives ~f:(fun archive ->
-               let lib = Foreign.Archive.lib_file ~archive ~dir ~ext_lib in
-               Command.Args.S [ A "-cclib"; Dep (Path.build lib) ]))
-        (* XXX: don't these need the msvc hack being done in lib_rules? *)
-        (* XXX: also the Command.quote_args being done in lib_rules? *)
+                 let lib = Foreign.Archive.lib_file ~archive ~dir ~ext_lib in
+                 Command.Args.S [ A "-cclib"; Dep (Path.build lib) ]))
+          (* XXX: don't these need the msvc hack being done in lib_rules? *)
+          (* XXX: also the Command.quote_args being done in lib_rules? *)
         ; Command.Args.As
-            (List.concat_map ctypes_cclib_flags ~f:(fun f ->
-               ["-cclib"; f]))
+            (List.concat_map ctypes_cclib_flags ~f:(fun f -> [ "-cclib"; f ]))
         ]
     in
     let* o_files =
@@ -222,30 +220,28 @@ let executables_rules ~sctx ~dir ~expander ~dir_contents ~scope ~compile_info
         ~requires_compile
     in
     let* () = Check_rules.add_files sctx ~dir o_files in
-    begin
-      let buildable = exes.Executables.buildable in
-      match buildable.Buildable.ctypes with
-      | None ->
-        Exe.build_and_link_many cctx ~programs ~linkages ~link_args ~o_files
-          ~promote:exes.promote ~embed_in_plugin_libraries
-      | Some _ctypes ->
-        (* Ctypes stubgen builds utility .exe files that need to share modules
-           with this compilation context.  To support that, we extract the
-           one-time run bits from [Exe.build_and_link_many] and run them here,
-           then pass that to the [Exe.link_many] call here as well as the
-           Ctypes_rules.  This dance is done to avoid triggering duplicate rule
-           exceptions. *)
-        let* dep_graphs =
-          Dep_rules.rules cctx ~modules:(Compilation_context.modules cctx)
-        in
-        let* () =
-          let loc = fst (List.hd exes.Executables.names) in
-          Ctypes_rules.gen_rules ~dep_graphs ~cctx ~buildable ~loc ~sctx ~scope ~dir
-        in
-        let* () = Module_compilation.build_all cctx ~dep_graphs in
-        Exe.link_many ~programs ~dep_graphs ~linkages ~link_args ~o_files
-          ~promote:exes.promote ~embed_in_plugin_libraries cctx
-    end
+    let buildable = exes.Executables.buildable in
+    match buildable.Buildable.ctypes with
+    | None ->
+      Exe.build_and_link_many cctx ~programs ~linkages ~link_args ~o_files
+        ~promote:exes.promote ~embed_in_plugin_libraries
+    | Some _ctypes ->
+      (* Ctypes stubgen builds utility .exe files that need to share modules
+         with this compilation context. To support that, we extract the one-time
+         run bits from [Exe.build_and_link_many] and run them here, then pass
+         that to the [Exe.link_many] call here as well as the Ctypes_rules. This
+         dance is done to avoid triggering duplicate rule exceptions. *)
+      let* dep_graphs =
+        Dep_rules.rules cctx ~modules:(Compilation_context.modules cctx)
+      in
+      let* () =
+        let loc = fst (List.hd exes.Executables.names) in
+        Ctypes_rules.gen_rules ~dep_graphs ~cctx ~buildable ~loc ~sctx ~scope
+          ~dir
+      in
+      let* () = Module_compilation.build_all cctx ~dep_graphs in
+      Exe.link_many ~programs ~dep_graphs ~linkages ~link_args ~o_files
+        ~promote:exes.promote ~embed_in_plugin_libraries cctx
   in
   ( cctx
   , Merlin.make ~requires:requires_compile ~stdlib_dir ~flags ~modules

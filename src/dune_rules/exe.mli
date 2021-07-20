@@ -39,8 +39,8 @@ end
 
 (** Build and link one or more executables *)
 
-(* [link_many] is like [build_and_link_many], but it allows you to share
-   modules between executables without requiring an intermediate library. *)
+(* [link_many] is like [build_and_link_many], but it allows you to share modules
+   between executables without requiring an intermediate library. *)
 val link_many :
      ?link_args:Command.Args.without_targets Command.Args.t Action_builder.t
   -> ?o_files:Path.t list

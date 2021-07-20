@@ -230,8 +230,8 @@ module Buildable = struct
     and+ version = Dune_lang.Syntax.get_exn Stanza.syntax
     and+ ctypes =
       field_o "ctypes"
-         (Dune_lang.Syntax.since Ctypes_stanza.syntax (0, 1)
-         >>> Ctypes_stanza.decode)
+        (Dune_lang.Syntax.since Ctypes_stanza.syntax (0, 1)
+        >>> Ctypes_stanza.decode)
     and+ loc_instrumentation, instrumentation =
       located
         (multi_field "instrumentation"
@@ -288,8 +288,10 @@ module Buildable = struct
     in
     let libraries =
       let ctypes_libraries =
-        if Option.is_none ctypes then []
-        else Ctypes_stubs.libraries_needed_for_ctypes ~loc:Loc.none
+        if Option.is_none ctypes then
+          []
+        else
+          Ctypes_stubs.libraries_needed_for_ctypes ~loc:Loc.none
       in
       libraries @ ctypes_libraries
     in
@@ -298,13 +300,14 @@ module Buildable = struct
       | None -> foreign_stubs
       | Some (ctypes : Ctypes_stanza.t) ->
         let init = foreign_stubs in
-        List.fold_left ctypes.function_description ~init ~f:(fun foreign_stubs fd ->
-          Ctypes_stubs.add ~loc
-            ~parsing_context:(Dune_project.parsing_context project)
-            ~external_library_name:ctypes.external_library_name
-            ~functor_:fd.Ctypes_stanza.Function_description.functor_
-            ~instance:fd.Ctypes_stanza.Function_description.instance
-            ~add_stubs ~foreign_stubs)
+        List.fold_left ctypes.function_description ~init
+          ~f:(fun foreign_stubs fd ->
+            Ctypes_stubs.add ~loc
+              ~parsing_context:(Dune_project.parsing_context project)
+              ~external_library_name:ctypes.external_library_name
+              ~functor_:fd.Ctypes_stanza.Function_description.functor_
+              ~instance:fd.Ctypes_stanza.Function_description.instance
+              ~add_stubs ~foreign_stubs)
     in
     let foreign_archives = Option.value ~default:[] foreign_archives in
     let foreign_archives =
@@ -502,7 +505,6 @@ module Mode_conf = struct
           y
     end
 
-
     let eval_detailed t ~has_native =
       let exists = function
         | Best
@@ -538,7 +540,6 @@ module Mode_conf = struct
       eval_detailed t ~has_native |> Mode.Dict.map ~f:Option.is_some
   end
 end
-
 
 module Library = struct
   module Wrapped = struct

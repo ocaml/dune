@@ -20,12 +20,13 @@ val add :
      loc:Loc.t
   -> parsing_context:Univ_map.t
   -> external_library_name:string
-  -> add_stubs:(Foreign_language.t
-                -> loc:Loc.t
-                -> names:Ordered_set_lang.t option
-                -> flags:Ordered_set_lang.Unexpanded.t option
-                -> Foreign.Stubs.t list
-                -> Foreign.Stubs.t list)
+  -> add_stubs:
+       (   Foreign_language.t
+        -> loc:Loc.t
+        -> names:Ordered_set_lang.t option
+        -> flags:Ordered_set_lang.Unexpanded.t option
+        -> Foreign.Stubs.t list
+        -> Foreign.Stubs.t list)
   -> functor_:Module_name.t
   -> instance:Module_name.t
   -> foreign_stubs:Foreign.Stubs.t list

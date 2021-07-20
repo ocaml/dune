@@ -82,7 +82,7 @@ let build_lib (lib : Library.t) ~native_archives ~sctx ~expander ~flags ~dir
                   | Native -> native_archives)
               ; Dyn
                   (Action_builder.map ctypes_cclib_flags ~f:(fun x ->
-                     Command.quote_args "-cclib" (map_cclibs x)))
+                       Command.quote_args "-cclib" (map_cclibs x)))
               ]))
 
 let gen_wrapped_compat_modules (lib : Library.t) cctx =
@@ -328,7 +328,7 @@ let setup_build_archives (lib : Dune_file.Library.t) ~cctx
   let cm_files =
     let excluded_modules =
       (* ctypes type_gen and function_gen scripts should not be included in the
-         library.  Otherwise they will spew stuff to stdout on library load. *)
+         library. Otherwise they will spew stuff to stdout on library load. *)
       match lib.buildable.ctypes with
       | Some ctypes -> Ctypes_rules.non_installable_modules ctypes
       | None -> []
@@ -483,9 +483,8 @@ let rules (lib : Library.t) ~sctx ~dir_contents ~dir ~expander ~scope =
       match buildable.Buildable.ctypes with
       | None -> Memo.Build.return ()
       | Some _ctypes ->
-        Ctypes_rules.gen_rules
-          ~loc:(fst lib.Library.name)
-          ~cctx ~dep_graphs ~buildable ~sctx ~scope ~dir
+        Ctypes_rules.gen_rules ~loc:(fst lib.Library.name) ~cctx ~dep_graphs
+          ~buildable ~sctx ~scope ~dir
     in
     library_rules lib ~cctx ~source_modules ~dir_contents ~compile_info
       ~dep_graphs

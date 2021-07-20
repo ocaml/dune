@@ -272,7 +272,6 @@ module Unexpanded = struct
     ; context
     }
 
-
   let field ?check name =
     let decode =
       match check with

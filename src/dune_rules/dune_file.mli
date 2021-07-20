@@ -73,8 +73,11 @@ module Public_lib : sig
   (** Package it is part of *)
   val package : t -> Package.t
 
-  val make : allow_deprecated_names:bool -> Dune_project.t ->
-    (Loc.t * Lib_name.t) -> (t, User_message.t) result
+  val make :
+       allow_deprecated_names:bool
+    -> Dune_project.t
+    -> Loc.t * Lib_name.t
+    -> (t, User_message.t) result
 end
 
 module Mode_conf : sig
@@ -105,6 +108,7 @@ module Mode_conf : sig
 
   module Set : sig
     type mode_conf = t
+
     type nonrec t = Kind.t option Map.t
 
     val of_list : (mode_conf * Kind.t) list -> t
@@ -118,7 +122,6 @@ module Mode_conf : sig
     val eval_detailed : t -> has_native:bool -> Details.t Mode.Dict.t
 
     val eval : t -> has_native:bool -> Mode.Dict.Set.t
-
   end
 end
 

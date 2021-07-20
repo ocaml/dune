@@ -221,8 +221,8 @@ let link_js ~name ~cm_files ~promote cctx =
   Jsoo_rules.build_exe cctx ~js_of_ocaml ~src ~cm:top_sorted_cms
     ~flags:(Command.Args.dyn flags) ~promote
 
-let link_many ?link_args ?o_files ?(embed_in_plugin_libraries=[]) ~dep_graphs
-      ~programs ~linkages ~promote cctx =
+let link_many ?link_args ?o_files ?(embed_in_plugin_libraries = []) ~dep_graphs
+    ~programs ~linkages ~promote cctx =
   let dep_graphs : Dep_graph.t Ml_kind.Dict.t = dep_graphs in
   let open Memo.Build.O in
   let modules = Compilation_context.modules cctx in
@@ -254,17 +254,17 @@ let link_many ?link_args ?o_files ?(embed_in_plugin_libraries=[]) ~dep_graphs
             link_exe cctx ~loc ~name ~linkage ~cm_files ~link_time_code_gen
               ~promote ?link_args ?o_files))
 
-let build_and_link_many ?link_args ?o_files ?embed_in_plugin_libraries
-      ~programs ~linkages ~promote cctx =
+let build_and_link_many ?link_args ?o_files ?embed_in_plugin_libraries ~programs
+    ~linkages ~promote cctx =
   let open Memo.Build.O in
   let modules = Compilation_context.modules cctx in
   let* dep_graphs = Dep_rules.rules cctx ~modules in
   let* () = Module_compilation.build_all cctx ~dep_graphs in
-  link_many ?link_args ?o_files ?embed_in_plugin_libraries ~dep_graphs
-    ~programs ~linkages ~promote cctx
+  link_many ?link_args ?o_files ?embed_in_plugin_libraries ~dep_graphs ~programs
+    ~linkages ~promote cctx
 
-let build_and_link ?link_args ?o_files ?embed_in_plugin_libraries
-      ~program ~linkages ~promote cctx =
+let build_and_link ?link_args ?o_files ?embed_in_plugin_libraries ~program
+    ~linkages ~promote cctx =
   build_and_link_many ?link_args ?o_files ?embed_in_plugin_libraries
     ~programs:[ program ] ~linkages ~promote cctx
 

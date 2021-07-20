@@ -155,7 +155,19 @@ Unreleased
 
 - Display Coq profile flags in `dune printenv` (#4767, @ejgallego)
 
-2.9.0 (unreleased)
+- Introduce mdx stanza 0.2, requiring mdx >= 1.9.0, with a new generic `deps`
+  field and the possibility to statically link `libraries` in the test
+  executable. (#3956, fixes #3955)
+
+- Allow depending on `ocamldoc` library when `ocamlfind` is not installed.
+  (#4811, fixes #4809, @nojb)
+
+2.9.1 (unreleased)
+------------------
+
+- Don't use `subst --root` in Opam files (#4806, @MisterDA)
+
+2.9.0 (29/06/2021)
 ------------------
 
 - Add `(enabled_if ...)` to `(mdx ...)` (#4434, @emillon)

@@ -23,26 +23,13 @@ let init_chan ~root_dir =
       | Ok s -> Some s
       | Error _ -> None)
   in
-  let rec loop thread =
+  let rec loop () =
     let* res = once () in
     match res with
-    | Some res ->
-      (match thread with
-      | None -> ()
-      | Some th -> Scheduler.Worker.stop th);
-      Fiber.return res
-    | None ->
-      let* thread =
-        match thread with
-        | None -> Scheduler.Worker.create ()
-        | Some th -> Fiber.return th
-      in
-      let* () =
-        Scheduler.Worker.task_exn thread ~f:(fun () -> Unix.sleepf 0.2)
-      in
-      loop (Some thread)
+    | Some res -> Fiber.return res
+    | None -> Scheduler.sleep 0.2 >>= loop
   in
-  loop None
+  loop ()
 
 let run_client ?handler f =
   let* chan = init_chan ~root_dir:"." in
@@ -74,6 +61,7 @@ let read_lines in_ =
   in
   let+ res = loop [] in
   Scheduler.Worker.stop reader;
+  close_in_noerr in_;
   res
 
 let run ~prog ~argv =
@@ -89,8 +77,6 @@ let run ~prog ~argv =
   Unix.close stderr_w;
   ( pid
   , (let+ proc = Scheduler.wait_for_process ~timeout:3.0 (Pid.of_int pid) in
-     Unix.close stdout_i;
-     Unix.close stderr_i;
      if proc.status <> Unix.WEXITED 0 then
        let name = sprintf "%s %s" prog (String.concat ~sep:" " argv) in
        match proc.status with

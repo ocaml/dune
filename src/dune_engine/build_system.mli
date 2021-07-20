@@ -199,3 +199,6 @@ module Progress : sig
 end
 
 val get_current_progress : unit -> Progress.t
+
+(** Returns the last event reported to the handler *)
+val last_event : unit -> Handler.event option

@@ -57,7 +57,7 @@ open! Stdune
 
 module Buildable = Dune_file.Buildable
 module Library =  Dune_file.Library
-module Ctypes = Dune_file.Ctypes
+module Ctypes = Ctypes_stanza
 
 module Stanza_util = struct
 
@@ -610,7 +610,7 @@ let ctypes_cclib_flags ~standard ~scope ~expander ~buildable =
     let ctypes_c_library_flags =
       let path_to_sexp_file =
         Ctypes_stubs.c_library_flags
-          ~external_library_name:ctypes.Dune_file.Ctypes.external_library_name
+          ~external_library_name:ctypes.Ctypes.external_library_name
       in
       let parsing_context =
         let project = Scope.project scope in

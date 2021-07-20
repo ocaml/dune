@@ -258,7 +258,6 @@ module Executables : sig
     ; forbidden_libraries : (Loc.t * Lib_name.t) list
     ; bootstrap_info : string option
     ; enabled_if : Blang.t
-    ; sub_systems : Sub_system_info.t Sub_system_name.Map.t
     ; dune_version : Dune_lang.Syntax.Version.t
     }
 

@@ -1381,7 +1381,6 @@ module Executables = struct
     ; forbidden_libraries : (Loc.t * Lib_name.t) list
     ; bootstrap_info : string option
     ; enabled_if : Blang.t
-    ; sub_systems : Sub_system_info.t Sub_system_name.Map.t
     ; dune_version : Dune_lang.Syntax.Version.t
     }
 
@@ -1450,9 +1449,6 @@ module Executables = struct
         Dune_lang.Syntax.Version.Infix.(syntax_version >= (2, 6))
       in
       Enabled_if.decode ~allowed_vars ~is_error ~since:(Some (2, 3)) ()
-    and+ sub_systems =
-      let* () = return () in
-      Sub_system_info.record_parser ()
     in
     fun names ~multi ->
       let has_public_name = Names.has_public_name names in
@@ -1511,7 +1507,6 @@ module Executables = struct
       ; bootstrap_info
       ; enabled_if
       ; dune_version
-      ; sub_systems
       }
 
   let single, multi =
@@ -1858,9 +1853,6 @@ module Tests = struct
               ( Dune_lang.Syntax.since Stanza.syntax (2, 0)
                 >>> repeat (located Lib_name.decode) )
               ~default:[]
-          and+ sub_systems =
-            let* () = return () in
-            Sub_system_info.record_parser ()
           in
           { exes =
               { Executables.link_flags
@@ -1877,7 +1869,6 @@ module Tests = struct
               ; bootstrap_info = None
               ; enabled_if
               ; dune_version
-              ; sub_systems
               }
           ; locks
           ; package

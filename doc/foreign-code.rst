@@ -67,10 +67,20 @@ path.
 Stub Generation with Ctypes
 ---------------------------
 
-It is possible to use the ctypes_ stanza to generate bindings for C libraries
-without writing any C code.
+Beginning in dune 3.0, it is possible to use the ctypes_ stanza to generate
+bindings for C libraries without writing any C code.
 
-You need only provide two OCaml modules, named ``Type_description`` and
+To begin, you must declare the ctypes extension in your ``dune-project`` file.
+
+.. code:: scheme
+
+  (lang dune 3.0)
+  (using ctypes 0.1)
+
+Note that dune support for this feature is experimental and is not subject
+to backward compatibility guarantees.
+
+Next, you need only provide two OCaml modules, named ``Type_description`` and
 ``Function_description`` which describe the types, values and functions you
 want to access in the C library from OCaml.  Additionally, you must list any C
 headers and a method for resolving build and link flags.

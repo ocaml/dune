@@ -1838,7 +1838,8 @@ module Tests = struct
           and+ link_flags = Ordered_set_lang.Unexpanded.field "link_flags"
           and+ names = names
           and+ package = field_o "package" Stanza_common.Pkg.decode
-          and+ locks = field "locks" (repeat String_with_vars.decode) ~default:[]
+          and+ locks =
+            field "locks" (repeat String_with_vars.decode) ~default:[]
           and+ modes =
             field "modes" Executables.Link_mode.Map.decode
               ~default:Executables.Link_mode.Map.default_for_tests
@@ -1846,12 +1847,12 @@ module Tests = struct
             Enabled_if.decode ~allowed_vars:Any ~since:(Some (1, 4)) ()
           and+ action =
             field_o "action"
-              ( Dune_lang.Syntax.since ~fatal:false Stanza.syntax (1, 2)
-                >>> Action_dune_lang.decode )
+              (Dune_lang.Syntax.since ~fatal:false Stanza.syntax (1, 2)
+              >>> Action_dune_lang.decode)
           and+ forbidden_libraries =
             field "forbidden_libraries"
-              ( Dune_lang.Syntax.since Stanza.syntax (2, 0)
-                >>> repeat (located Lib_name.decode) )
+              (Dune_lang.Syntax.since Stanza.syntax (2, 0)
+              >>> repeat (located Lib_name.decode))
               ~default:[]
           in
           { exes =

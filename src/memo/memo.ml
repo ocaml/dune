@@ -1275,6 +1275,20 @@ end = struct
           Cached_value (Cached_value.create_cancelled ~dependency_cycle);
         result
     in
+    let state_transition ~of_restoring =
+      match dep_node.state with
+      | Out_of_date { old_value = None } ->
+        of_computing (start_computing ~dep_node ~old_value:None)
+      | Out_of_date { old_value = Some old_value } ->
+        of_computing (start_computing ~dep_node ~old_value:(Some old_value))
+      | Cached_value cached_value ->
+        if Run.is_current cached_value.last_validated_at then
+          Fiber.return (Ok cached_value)
+        else
+          of_restoring (start_restoring ~dep_node ~cached_value)
+      | Restoring { restore_from_cache } -> of_restoring restore_from_cache
+      | Computing { compute; _ } -> of_computing compute
+    in
     let of_restoring restore_from_cache =
       Computation.evaluate_and_check_for_cycles restore_from_cache >>= function
       | Error dependency_cycle
@@ -1289,22 +1303,14 @@ end = struct
           Cached_value (Cached_value.create_cancelled ~dependency_cycle);
         Fiber.return (Error dependency_cycle)
       | Ok (Ok cached_value) -> Fiber.return (Ok cached_value)
-      | Ok (Failure (Out_of_date { old_value })) ->
-        (* CR amokhov: Here we can call [start_computing] more than once. *)
-        of_computing (start_computing ~dep_node ~old_value)
+      | Ok (Failure (Out_of_date _)) ->
+        (* Why not simply call [of_computing (start_computing ...)] below? That
+           could lead to calling [start_computing] more than once for the same
+           node. We therefore call [state_transition] again, to reuse [compute]
+           if we are in the [Computing] state already. *)
+        state_transition ~of_restoring:(fun _ -> assert false)
     in
-    match dep_node.state with
-    | Out_of_date { old_value = None } ->
-      of_computing (start_computing ~dep_node ~old_value:None)
-    | Out_of_date { old_value = Some old_value } ->
-      of_computing (start_computing ~dep_node ~old_value:(Some old_value))
-    | Cached_value cached_value ->
-      if Run.is_current cached_value.last_validated_at then
-        Fiber.return (Ok cached_value)
-      else
-        of_restoring (start_restoring ~dep_node ~cached_value)
-    | Restoring { restore_from_cache } -> of_restoring restore_from_cache
-    | Computing { compute; _ } -> of_computing compute
+    state_transition ~of_restoring
 
   and consider_and_compute :
         'i 'o.

@@ -87,3 +87,45 @@ of its dependencies were optional.
   -> required by %{exe:bar.exe} at dune:3
   -> required by alias run-x in dune:1
   [1]
+
+  $ cd ..
+
+When an optional binray is absent, the parent binary should be present. This is
+consistent with how libraries work. #4786 notes that this sort of shadowing is
+present even if the binary is not optional.
+
+  $ mkdir optional-binary-absent
+  $ cd optional-binary-absent
+  $ cat >dune-project <<EOF
+  > (lang dune 3.0)
+  > (package (name myfoo))
+  > EOF
+
+  $ mkdir exe
+  $ cat >exe/bar.ml <<EOF
+  > print_endline "hello world"
+  > EOF
+  $ cat >exe/dune <<EOF
+  > (executable
+  >  (public_name dunetestbar)
+  >  (libraries doesnotexistatall)
+  >  (name bar))
+  > EOF
+
+  $ cat >dune <<EOF
+  > (rule
+  >  (alias run-x)
+  >  (action (echo "binary path: %{bin:dunetestbar}")))
+  > EOF
+
+  $ mkdir bin
+  $ cat >bin/dunetestbar <<EOF
+  > /usr/bin/env bash
+  > echo shadow
+  > EOF
+  $ chmod +x ./bin/dunetestbar
+
+  $ PATH=./bin:$PATH dune build @run-x
+  binary path: $TESTCASE_ROOT/optional-binary-absent/./bin/dunetestbar
+
+  $ cd ..

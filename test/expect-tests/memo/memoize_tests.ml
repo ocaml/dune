@@ -22,7 +22,7 @@ let () = Memo.Debug.check_invariants := true
 
 let print_perf_counters () =
   printf "%s\n" (Memo.Perf_counters.report_for_current_run ());
-  if false then Memo.Perf_counters.assert_invariants ()
+  Memo.Perf_counters.assert_invariants ()
 
 let string_fn_create name =
   Memo.create name ~input:(module String) ~cutoff:String.equal

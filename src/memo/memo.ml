@@ -371,7 +371,11 @@ module Computation0 = struct
      [t.once] is holding. This is probably not the only inefficiency introduced
      by this [Computation -> Once -> Ivar] tower. If we collapsed the whole
      tower into one module I think we could avoid a bunch of useless runtime
-     work. *)
+     work.
+
+     amokhov: We used to force computations some time after their creation but
+     now we do that immediately. It seems like we can now switch to just using
+     [Ivar.t], collapsing one level in this tower. *)
   type 'a t =
     { once : 'a Once.t
     ; dag_node : Dag.node Lazy.t
@@ -527,6 +531,8 @@ module M = struct
       Between runs, there can be additional state transitions; for example, we
       can invalidate a node by setting its state to [No_value]. *)
   and State : sig
+    (* CR amokhov: Merge [No_value] and [Old_value], and do a similar change to
+       [Not_found] and [Out_of_date], for symmetry. *)
     type 'a t =
       | No_value
       | Old_value of 'a Cached_value.t
@@ -1295,6 +1301,7 @@ end = struct
         Fiber.return (Error dependency_cycle)
       | Ok (Ok cached_value) -> Fiber.return (Ok cached_value)
       | Ok (Failure Not_found) ->
+        (* CR amokhov: Here/below we can call [start_computing] more than once. *)
         of_computing (start_computing ~dep_node ~old_value:None)
       | Ok (Failure (Out_of_date old_value)) ->
         of_computing (start_computing ~dep_node ~old_value:(Some old_value))

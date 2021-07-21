@@ -336,21 +336,21 @@ module Cache_lookup = struct
   (* Looking up a value cached in a previous run can fail in three possible
      ways:
 
-     - [Not_found]: either the value has never been computed before, or the last
-     computation attempt failed.
+     - [Out_of_date {old_value = None}]: either the value has never been
+     computed before, or the last computation attempt failed.
 
-     - [Out_of_date]: we found a value computed in a previous run but it is out
-     of date because one of its dependencies changed; we return the old value so
-     that it can be compared with a new one to support the early cutoff.
+     - [Out_of_date {old_value = Some _}]: we found a value computed in a
+     previous run but it is out of date because one of its dependencies changed;
+     we return the old value so that it can be compared with a new one to
+     support the early cutoff.
 
      - [Cancelled _]: the cache lookup attempt has been cancelled because of a
      dependency cycle. This outcome indicates that a dependency cycle has been
      introduced in the current run. If a cycle existed in a previous run, the
-     outcome would have been [Not_found] instead. *)
+     outcome would have been [Out_of_date {old_value = None}] instead. *)
   module Failure = struct
     type 'a t =
-      | Not_found
-      | Out_of_date of 'a
+      | Out_of_date of { old_value : 'a option }
       | Cancelled of { dependency_cycle : Cycle_error.t }
   end
 
@@ -505,12 +505,9 @@ module M = struct
 
   (** The following state transition diagram shows how a node's state changes
       during a build run. After a run completes, every node is guaranteed to end
-      up in one of these three states.
+      up in one of these two states.
 
-      - [No_value]: the node has no value and it wasn't computed during the run,
-        because it is unreachable.
-
-      - [Old_value]: the node is known to be out of date and it wasn't computed
+      - [Out_of_date]: the node is known to be out of date; it wasn't computed
         during the run, because it is unreachable.
 
       - [Cached_value]: if the cached value's [run] is current then the node is
@@ -518,24 +515,20 @@ module M = struct
         unreachable.
 
       {v
-            ┌──────────┐     ┌───────────┐     ┌──────────────┐
-            │ No_value ├─────► Computing ├─────► Cached_value │
-            └──────────┘     └─────▲─────┘     └────┬───▲─────┘
-                                   │                │   │
-                                   │                │   │
-                             ┌─────┴─────┐     ┌────▼───┴─────┐
-                             │ Old_value ◄─────┤   Restoring  │
-                             └───────────┘     └──────────────┘
+            ┌─────────────┐    ┌───────────┐    ┌──────────────┐
+            │ Out_of_date ├────► Computing ├────► Cached_value │
+            └──────▲──────┘    └───────────┘    └────┬───▲─────┘
+                   │                                 │   │
+                   │                            ┌────▼───┴─────┐
+                   └────────────────────────────┤   Restoring  │
+                                                └──────────────┘
       v}
 
       Between runs, there can be additional state transitions; for example, we
-      can invalidate a node by setting its state to [No_value]. *)
+      can invalidate a node by setting its state to [Out_of_date]. *)
   and State : sig
-    (* CR amokhov: Merge [No_value] and [Old_value], and do a similar change to
-       [Not_found] and [Out_of_date], for symmetry. *)
     type 'a t =
-      | No_value
-      | Old_value of 'a Cached_value.t
+      | Out_of_date of { old_value : 'a Cached_value.t option }
       | Cached_value of 'a Cached_value.t
       | Restoring of
           { restore_from_cache :
@@ -916,8 +909,7 @@ let get_cached_value_in_current_run (dep_node : _ Dep_node.t) =
       Some cv
     else
       None
-  | No_value
-  | Old_value _
+  | Out_of_date _
   | Restoring _
   | Computing _ ->
     None
@@ -932,8 +924,7 @@ module Cached_value = struct
           | None ->
             let reason =
               match dep_node.state with
-              | No_value -> "(no value)"
-              | Old_value _ -> "(old value)"
+              | Out_of_date _ -> "(out of date)"
               | Cached_value _ -> "(old run)"
               | Restoring _ -> "(restoring)"
               | Computing _ -> "(computing)"
@@ -1029,9 +1020,9 @@ end
 let invalidate_dep_node (node : _ Dep_node.t) =
   (* CR-someday amokhov: We could assert that the [state] can't be [Restoring]
      or [Computing] here, to catch unexpected [invalidate_dep_node] calls. *)
-  (* CR-someday amokhov: We could set the [state] to [Old_value] so that the
-     cutoff could still fire. *)
-  node.state <- No_value
+  (* CR-someday amokhov: We could set [old_value] to [Some] so that the cutoff
+     could still fire. *)
+  node.state <- Out_of_date { old_value = None }
 
 let invalidate_store = Store.iter ~f:invalidate_dep_node
 
@@ -1063,7 +1054,7 @@ let make_dep_node ~spec ~input : _ Dep_node.t =
     { id = Id.gen (); input; spec }
   in
   { without_state = dep_node_without_state
-  ; state = No_value
+  ; state = Out_of_date { old_value = None }
   ; has_cutoff =
       (match spec.allow_cutoff with
       | Yes _equal -> true
@@ -1108,10 +1099,12 @@ end = struct
     | Cancelled _dependency_cycle ->
       (* Dependencies of cancelled computations are not accurate (in fact, they
          are set to [Deps.empty]), so we can't use [deps_changed] in this case. *)
-      Fiber.return (Cache_lookup.Result.Failure Not_found)
+      Fiber.return
+        (Cache_lookup.Result.Failure (Out_of_date { old_value = None }))
     | Error { reproducible = false; _ } ->
       (* We do not cache non-reproducible errors. *)
-      Fiber.return (Cache_lookup.Result.Failure Not_found)
+      Fiber.return
+        (Cache_lookup.Result.Failure (Out_of_date { old_value = None }))
     | Ok _
     | Error { reproducible = true; _ } -> (
       (* We cache reproducible errors just like normal values. We assume that
@@ -1147,7 +1140,7 @@ end = struct
                   Unchanged)
               | Failure (Cancelled { dependency_cycle }) ->
                 Cancelled { dependency_cycle }
-              | Failure (Not_found | Out_of_date _) -> Changed)
+              | Failure (Out_of_date _) -> Changed)
             | true -> (
               (* If [dep] has a cutoff predicate, it is not sufficient to check
                  whether it is up to date: even if it isn't, after we recompute
@@ -1174,7 +1167,7 @@ end = struct
       | Unchanged ->
         cached_value.last_validated_at <- Run.current ();
         Cache_lookup.Result.Ok cached_value
-      | Changed -> Failure (Out_of_date cached_value)
+      | Changed -> Failure (Out_of_date { old_value = Some cached_value })
       | Cancelled { dependency_cycle } ->
         Failure (Cancelled { dependency_cycle }))
 
@@ -1216,12 +1209,11 @@ end = struct
           if !Counters.enabled then incr Counters.nodes_restored;
           (match restore_result with
           | Ok cached_value -> dep_node.state <- Cached_value cached_value
-          | Failure Not_found -> dep_node.state <- No_value
           | Failure (Cancelled { dependency_cycle }) ->
             dep_node.state <-
               Cached_value (Cached_value.create_cancelled ~dependency_cycle)
-          | Failure (Out_of_date old_value) ->
-            dep_node.state <- Old_value old_value);
+          | Failure (Out_of_date { old_value }) ->
+            dep_node.state <- Out_of_date { old_value });
           restore_result)
     in
     dep_node.state <- Restoring { restore_from_cache };
@@ -1259,19 +1251,16 @@ end = struct
         Cache_lookup.Result.Failure (Cancelled { dependency_cycle })
     in
     match dep_node.state with
-    | No_value -> Fiber.return (Cache_lookup.Result.Failure Not_found)
-    | Old_value old_value ->
-      Fiber.return (Cache_lookup.Result.Failure (Out_of_date old_value))
+    | Out_of_date { old_value } ->
+      Fiber.return (Cache_lookup.Result.Failure (Out_of_date { old_value }))
     | Cached_value cached_value ->
       if Run.is_current cached_value.last_validated_at then
         Fiber.return (Cache_lookup.Result.Ok cached_value)
       else
         of_restoring (start_restoring ~dep_node ~cached_value)
     | Restoring { restore_from_cache } -> of_restoring restore_from_cache
-    | Computing { old_value = None; _ } ->
-      Fiber.return (Cache_lookup.Result.Failure Not_found)
-    | Computing { old_value = Some old_value; _ } ->
-      Fiber.return (Cache_lookup.Result.Failure (Out_of_date old_value))
+    | Computing { old_value; _ } ->
+      Fiber.return (Cache_lookup.Result.Failure (Out_of_date { old_value }))
 
   and consider_and_compute_without_adding_dep :
         'i 'o.
@@ -1300,15 +1289,14 @@ end = struct
           Cached_value (Cached_value.create_cancelled ~dependency_cycle);
         Fiber.return (Error dependency_cycle)
       | Ok (Ok cached_value) -> Fiber.return (Ok cached_value)
-      | Ok (Failure Not_found) ->
-        (* CR amokhov: Here/below we can call [start_computing] more than once. *)
-        of_computing (start_computing ~dep_node ~old_value:None)
-      | Ok (Failure (Out_of_date old_value)) ->
-        of_computing (start_computing ~dep_node ~old_value:(Some old_value))
+      | Ok (Failure (Out_of_date { old_value })) ->
+        (* CR amokhov: Here we can call [start_computing] more than once. *)
+        of_computing (start_computing ~dep_node ~old_value)
     in
     match dep_node.state with
-    | No_value -> of_computing (start_computing ~dep_node ~old_value:None)
-    | Old_value old_value ->
+    | Out_of_date { old_value = None } ->
+      of_computing (start_computing ~dep_node ~old_value:None)
+    | Out_of_date { old_value = Some old_value } ->
       of_computing (start_computing ~dep_node ~old_value:(Some old_value))
     | Cached_value cached_value ->
       if Run.is_current cached_value.last_validated_at then

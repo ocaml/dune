@@ -5,24 +5,24 @@ loaded.
 Then generate cstubs for it, build an executable that uses those cstubs, and
 run the executable that tests the library through the cstubs.
 
-This test tries a single function description stanza.
+This test also tests multiple function description modules.
 
-  $ cd stubgen/libexample
+  $ cd libexample
   $ make -s -f Makefile.unix
-  $ cd ../..
+  $ cd ..
 
   $ cat >libexample.pc <<EOF
-  > prefix=$PWD/stubgen/libexample
-  > exec_prefix=$PWD/stubgen/libexample
-  > libdir=$PWD/stubgen/libexample
-  > includedir=$PWD/stubgen/libexample
+  > prefix=$PWD/libexample
+  > exec_prefix=$PWD/libexample
+  > libdir=$PWD/libexample
+  > includedir=$PWD/libexample
   > Name: libexample
   > Description: An example library for testing dune ctypes
   > Requires:
   > Version: 1.00.00
-  > Libs: -L$PWD/stubgen/libexample -lexample
-  > Cflags: -I$PWD/stubgen/libexample
+  > Libs: -L$PWD/libexample -lexample
+  > Cflags: -I$PWD/libexample
   > EOF
 
-  $ LD_LIBRARY_PATH="$PWD/stubgen/libexample" PKG_CONFIG_PATH="$PWD:$PKG_CONFIG_PATH" dune exec ./example.exe
-  4
+  $ LD_LIBRARY_PATH="$PWD/libexample" PKG_CONFIG_PATH="$PKG_CONFIG_PATH:$PWD" dune exec ./example.exe
+  6

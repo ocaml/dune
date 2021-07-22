@@ -1,0 +1,19 @@
+(executable
+  (name example)
+  (flags (:standard -w -9-27))
+  (ctypes
+    (external_library_name libexample)
+    (build_flags_resolver pkg_config)
+    (headers (include "example.h"))
+    (type_description
+      (instance Types)
+      (functor Type_description))
+    (function_description
+      (concurrency unlocked)
+      (instance Functions_unlocked)
+      (functor Function_description_unlocked))
+    (function_description
+      (concurrency sequential)
+      (instance Functions_sequential)
+      (functor Function_description_sequential))
+    (generated_entry_point C)))

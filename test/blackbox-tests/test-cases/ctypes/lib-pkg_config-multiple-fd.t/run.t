@@ -5,7 +5,8 @@ loaded.
 Then generate cstubs for it, build an executable that uses those cstubs, and
 run the executable that tests the library through the cstubs.
 
-This test tries a single function description stanza.
+This test tries multiple function description modules, one locked and one
+unlocked.
 
   $ cd stubgen/libexample
   $ make -s -f Makefile.unix
@@ -25,4 +26,4 @@ This test tries a single function description stanza.
   > EOF
 
   $ LD_LIBRARY_PATH="$PWD/stubgen/libexample" PKG_CONFIG_PATH="$PWD:$PKG_CONFIG_PATH" dune exec ./example.exe
-  4
+  6

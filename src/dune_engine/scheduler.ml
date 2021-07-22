@@ -67,6 +67,12 @@ module Signal = struct
     | Quit
     | Term
 
+  let to_dyn t : Dyn.t =
+    match t with
+    | Int -> Variant ("Int", [])
+    | Quit -> Variant ("Quit", [])
+    | Term -> Variant ("Term", [])
+
   let compare : t -> t -> Ordering.t = Poly.compare
 
   include Comparable.Make (struct
@@ -74,7 +80,7 @@ module Signal = struct
 
     let compare = compare
 
-    let to_dyn _ = Dyn.opaque
+    let to_dyn = to_dyn
   end)
 
   let all = [ Int; Quit; Term ]
@@ -115,6 +121,29 @@ module Thread = struct
     ()
 end
 
+module Shutdown_reason = struct
+  module T = struct
+    type t =
+      | Shutdown
+      | Signal of Signal.t
+
+    let to_dyn t =
+      match t with
+      | Shutdown -> Dyn.Variant ("Shutdown", [])
+      | Signal signal -> Dyn.Variant ("Signal", [ Signal.to_dyn signal ])
+
+    let compare a b =
+      match (a, b) with
+      | Shutdown, Shutdown -> Eq
+      | Shutdown, _ -> Lt
+      | _, Shutdown -> Gt
+      | Signal a, Signal b -> Signal.compare a b
+  end
+
+  include T
+  include Comparable.Make (T)
+end
+
 (** The event queue *)
 module Event : sig
   type build_input_change =
@@ -127,7 +156,7 @@ module Event : sig
     | Build_inputs_changed of build_input_change Nonempty_list.t
     | File_system_watcher_terminated
     | Job_completed of job * Proc.Process_info.t
-    | Signal of Signal.t
+    | Shutdown of Shutdown_reason.t
     | Worker_task of Fiber.fill
     | Yield of unit Fiber.Ivar.t
     | Timer of Fiber.fill
@@ -168,7 +197,7 @@ module Event : sig
 
     val send_job_completed : t -> job -> Proc.Process_info.t -> unit
 
-    val send_signal : t -> Signal.t -> unit
+    val send_signal : t -> Shutdown_reason.t -> unit
 
     val send_timers_completed : t -> Fiber.fill Nonempty_list.t -> unit
 
@@ -186,7 +215,7 @@ end = struct
     | Build_inputs_changed of build_input_change Nonempty_list.t
     | File_system_watcher_terminated
     | Job_completed of job * Proc.Process_info.t
-    | Signal of Signal.t
+    | Shutdown of Shutdown_reason.t
     | Worker_task of Fiber.fill
     | Yield of unit Fiber.Ivar.t
     | Timer of Fiber.fill
@@ -204,7 +233,7 @@ end = struct
       { jobs_completed : (job * Proc.Process_info.t) Queue.t
       ; file_watcher_tasks : (unit -> Dune_file_watcher.Event.t list) Queue.t
       ; mutable invalidation_events : Invalidation_event.t list
-      ; mutable signals : Signal.Set.t
+      ; mutable signals : Shutdown_reason.Set.t
       ; mutex : Mutex.t
       ; cond : Condition.t
       ; mutable pending_jobs : int
@@ -221,7 +250,7 @@ end = struct
       let file_watcher_tasks = Queue.create () in
       let worker_tasks_completed = Queue.create () in
       let invalidation_events = [] in
-      let signals = Signal.Set.empty in
+      let signals = Shutdown_reason.Set.empty in
       let mutex = Mutex.create () in
       let cond = Condition.create () in
       let pending_jobs = 0 in
@@ -298,9 +327,9 @@ end = struct
 
       let signal : t =
        fun q ->
-        Option.map (Signal.Set.choose q.signals) ~f:(fun signal ->
-            q.signals <- Signal.Set.remove q.signals signal;
-            Signal signal)
+        Option.map (Shutdown_reason.Set.choose q.signals) ~f:(fun signal ->
+            q.signals <- Shutdown_reason.Set.remove q.signals signal;
+            Shutdown signal)
 
       let file_watcher_task q =
         Option.map (Queue.pop q.file_watcher_tasks) ~f:(fun job ->
@@ -407,7 +436,8 @@ end = struct
       add_event q (fun q -> Queue.push q.jobs_completed (job, proc_info))
 
     let send_signal q signal =
-      add_event q (fun q -> q.signals <- Signal.Set.add q.signals signal)
+      add_event q (fun q ->
+          q.signals <- Shutdown_reason.Set.add q.signals signal)
 
     let send_file_watcher_task q job =
       add_event q (fun q -> Queue.push q.file_watcher_tasks job)
@@ -606,7 +636,7 @@ end = struct
     let wait_signal = Staged.unstage (signal_waiter ()) in
     while true do
       let signal = wait_signal () in
-      Event.Queue.send_signal q signal;
+      Event.Queue.send_signal q (Signal signal);
       match signal with
       | Int
       | Quit
@@ -829,7 +859,10 @@ let global = ref None
 
 let got_signal signal =
   if !Log.verbose then
-    Log.info [ Pp.textf "Got signal %s, exiting." (Signal.name signal) ]
+    match (signal : Shutdown_reason.t) with
+    | Shutdown -> Log.info [ Pp.textf "Shutting down." ]
+    | Signal signal ->
+      Log.info [ Pp.textf "Got signal %s, exiting." (Signal.name signal) ]
 
 let filesystem_watcher_terminated () =
   Log.info [ Pp.textf "Filesystem watcher terminated, exiting." ]
@@ -843,7 +876,7 @@ let kill_and_wait_for_all_processes t =
   let saw_signal = ref Ok in
   while Event.Queue.pending_jobs t.events > 0 do
     match Event.Queue.next t.events with
-    | Signal signal ->
+    | Shutdown signal ->
       got_signal signal;
       saw_signal := Got_signal
     | _ -> ()
@@ -981,7 +1014,7 @@ end = struct
     | File_system_watcher_terminated ->
       filesystem_watcher_terminated ();
       raise (Abort Already_reported)
-    | Signal signal ->
+    | Shutdown signal ->
       got_signal signal;
       raise (Abort Already_reported)
     | Yield ivar -> Fill (ivar, ())
@@ -1225,7 +1258,7 @@ end
 let shutdown () =
   let+ t = t () in
   t.status <- Shutting_down;
-  Event.Queue.send_signal t.events Quit
+  Event.Queue.send_signal t.events Shutdown
 
 let inject_memo_invalidation invalidation =
   let* t = t () in

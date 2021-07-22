@@ -157,6 +157,7 @@ module V1 : sig
   module Build : sig
     module Event : sig
       type t =
+        | Waiting
         | Start
         | Finish
         | Fail
@@ -243,6 +244,11 @@ module V1 : sig
         -> ('b, Response.Error.t) result fiber
 
       val notification : t -> 'a Notification.t -> 'a -> unit fiber
+
+      (** [disconnected client] produces a fiber that only becomes determined
+          when the session is ended from the server side (such as if the build
+          server is killed entirely). *)
+      val disconnected : t -> unit fiber
 
       module Batch : sig
         type t

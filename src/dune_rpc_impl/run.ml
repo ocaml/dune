@@ -19,6 +19,9 @@ module Symlink_socket : sig
 
   val create : Path.t -> t
 
+  (* Actually create the symlink (if necessary). This function is idempotent *)
+  val link : t -> unit
+
   val cleanup : t -> unit
 
   val socket : t -> Path.t
@@ -30,12 +33,15 @@ end = struct
     { symlink : Path.t option
     ; socket : Path.t
     ; cleanup : unit Lazy.t
+    ; link : unit Lazy.t
     }
+
+  let link t = Lazy.force t.link
 
   let make_cleanup ~symlink ~socket =
     lazy
-      (Path.unlink_no_err socket;
-       Option.iter symlink ~f:Path.unlink_no_err)
+      (Option.iter symlink ~f:Path.unlink_no_err;
+       Path.unlink_no_err socket)
 
   let cleanup t = Lazy.force t.cleanup
 
@@ -43,7 +49,7 @@ end = struct
     let desired_path_s = Path.to_string desired_path in
     if String.length desired_path_s <= max_path_length then
       let cleanup = make_cleanup ~symlink:None ~socket:desired_path in
-      { symlink = None; socket = desired_path; cleanup }
+      { symlink = None; socket = desired_path; cleanup; link = lazy () }
     else
       let socket =
         let dir =
@@ -54,16 +60,16 @@ end = struct
         in
         Temp.temp_file ~dir ~prefix:"" ~suffix:"dune"
       in
-      let () =
+      let link =
         let dest =
           let from = Path.external_ (Path.External.cwd ()) in
           Path.mkdir_p (Path.parent_exn desired_path);
           Path.reach_for_running ~from desired_path
         in
-        Unix.symlink (Path.to_string socket) dest
+        lazy (Unix.symlink (Path.to_string socket) dest)
       in
       let cleanup = make_cleanup ~symlink:(Some desired_path) ~socket in
-      let t = { symlink = Some desired_path; socket; cleanup } in
+      let t = { symlink = Some desired_path; socket; cleanup; link } in
       at_exit (fun () -> Lazy.force cleanup);
       t
 
@@ -114,6 +120,7 @@ let run config stats =
             Fiber.fork_and_join_unit
               (fun () ->
                 let* sessions = Csexp_rpc.Server.serve t.server in
+                Option.iter t.symlink_socket ~f:Symlink_socket.link;
                 let* () = Server.serve sessions t.stats t.handler in
                 Fiber.Pool.stop t.pool)
               (fun () -> Fiber.Pool.run t.pool))

@@ -72,6 +72,13 @@ let diagnostic_of_error : Build_system.Error.t -> Dune_rpc_private.Diagnostic.t
         dir
   }
 
+let rpc_event_of_build_event : Build_system.Handler.event -> Build.Event.t =
+  function
+  | Start -> Build.Event.Start
+  | Finish -> Finish
+  | Interrupt -> Interrupt
+  | Fail -> Fail
+
 (* TODO un-copy-paste from dune/bin/arg.ml *)
 let dep_parser =
   let open Dune_engine in
@@ -298,14 +305,45 @@ let handler (t : t Fdecl.t) : 'a Dune_rpc_server.Handler.t =
       let* running = Fiber.Pool.running t.pool in
       match running with
       | false -> Fiber.return ()
-      | true ->
-        let errors = Build_system.errors () in
-        Fiber.Pool.task t.pool ~f:(fun () ->
-            let events =
-              List.map errors ~f:(fun (e : Build_system.Error.t) ->
-                  Diagnostic.Event.Add (diagnostic_of_error e))
-            in
-            Session.notification session Server_notifications.diagnostic events)
+      | true -> (
+        match sub with
+        | Subscribe.Diagnostics ->
+          let errors = Build_system.errors () in
+          Fiber.Pool.task t.pool ~f:(fun () ->
+              let events =
+                List.map errors ~f:(fun (e : Build_system.Error.t) ->
+                    Diagnostic.Event.Add (diagnostic_of_error e))
+              in
+              Session.notification session Server_notifications.diagnostic
+                events)
+        | Build_progress ->
+          let current_progress : Build_system.Progress.t =
+            Build_system.get_current_progress ()
+          in
+          let progress : Dune_rpc_private.Progress.t =
+            let complete = current_progress.number_of_rules_executed in
+            { complete
+            ; remaining = current_progress.number_of_rules_discovered - complete
+            }
+          in
+          let last_event =
+            match Build_system.last_event () with
+            | Some evt -> rpc_event_of_build_event evt
+            | None ->
+              (* cwong: This is technically a lie, but the alternative is
+                 minting a new [Not_started] variant that is not substantively
+                 different *)
+              Build.Event.Waiting
+          in
+          Fiber.Pool.task t.pool ~f:(fun () ->
+              let+ () =
+                Session.notification session Server_notifications.progress
+                  progress
+              and+ () =
+                Session.notification session Server_notifications.build_event
+                  last_event
+              in
+              ()))
     in
     let cb = Handler.callback' (Handler.public ~since:(1, 0) ()) subscribe in
     Handler.notification rpc cb Public.Notification.subscribe
@@ -366,13 +404,7 @@ let build_progress t ~complete ~remaining =
 
 let build_event t (event : Build_system.Handler.event) =
   let t = Fdecl.get t in
-  let notification =
-    match event with
-    | Start -> Build.Event.Start
-    | Finish -> Finish
-    | Interrupt -> Interrupt
-    | Fail -> Fail
-  in
+  let notification = rpc_event_of_build_event event in
   task t (fun () ->
       Subscribers.notify t.subscribers Build_progress ~f:(fun session ->
           Session.notification session Server_notifications.build_event

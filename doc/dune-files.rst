@@ -1858,7 +1858,10 @@ Note that this feature is still experimental and needs to be enabled in your
 
 .. code:: scheme
 
-  (using mdx 0.1)
+  (using mdx 0.2)
+
+.. note:: Version ``0.2`` of the stanza requires mdx ``1.9.0``.
+
 
 The syntax is as follows:
 
@@ -1872,23 +1875,40 @@ Where ``<optional-fields>`` are:
   list of globs (see the :ref:`Glob language specification <glob>` ).
   It defaults to ``*.md``.
 
-- ``(packages <packages>)`` are the local dune packages that your documentation
-  code blocks depend on. I.e. if your documentation examples depend on a public
-  executable or library defined from a local package, it has to be specified in
-  the stanza.
+- ``(deps <deps-conf list>)`` to specify the dependencies
+  of your documentation code blocks. See the :ref:`deps-field` section for more
+  details.
 
 - ``(preludes <files>)`` are the prelude files you want to pass to MDX.
   See `MDX's documentation <https://github.com/realworldocaml/mdx>`__ for more
   details on preludes.
 
-- ``(enabled_if <blang expression>)`` is the same as the corresponding field of
-  `library`_.
+- ``(libraries <libraries>)`` are libraries that should be
+  statically linked in the MDX test executable.
 
-- ``(package <package>)`` specifies which package to attach this stanza to
-  (similarly to when ``(package)`` is attached to a ``(rule)`` stanza. When
-  ``-p`` is passed, ``(mdx)`` stanzas with an other package will be ignored.
-  Note that this is feature is completely separate from ``(packages)``, which
-  specifies some dependencies.
+- ``(enabled_if <blang expression>)``  is the same as the 
+  corresponding field of `library`_.
+
+- ``(package <package>)`` specifies which package to attach
+  this stanza to (similarly to when ``(package)`` is attached to a ``(rule)``
+  stanza. When  ``-p`` is passed, ``(mdx)`` stanzas with an other package will
+  be ignored. Note that this is feature is completely separate from 
+  ``(packages)``, which specifies some dependencies.
+
+Upgrading from version 0.1
+~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+- The 0.2 version of the stanza requires at least mdx 1.9.0. If you encounter
+  an error such as, ``ocaml-mdx: unknown command `dune-gen'``, then you
+  should upgrade mdx.  
+
+- The field ``(packages <packages>)`` is deprecated in version 0.2. You can
+  use package items in the generic ``deps`` field instead:
+  ``(deps (package <package>) ... (package <package>))``
+
+- You can use the new ``libraries`` field to directly link libraries in the test
+  executable and remove the need for ``#require`` directives in your
+  documentation code blocks.
 
 .. _plugin:
 

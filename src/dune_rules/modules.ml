@@ -768,7 +768,9 @@ let rec obj_map : 'a. t -> f:(Sourced_module.t -> 'a) -> 'a Module.Obj_map.t =
           assert false)
 
 let obj_map_build :
-      'a.    t -> f:(Sourced_module.t -> 'a Memo.Build.t)
+      'a.
+         t
+      -> f:(Sourced_module.t -> 'a Memo.Build.t)
       -> 'a Module.Obj_map.t Memo.Build.t =
  fun t ~f ->
   Module.Obj_map_traversals.parallel_map (obj_map t ~f) ~f:(fun _ x -> x)

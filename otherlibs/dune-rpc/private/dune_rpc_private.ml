@@ -389,13 +389,15 @@ end
 module Build = struct
   module Event = struct
     type t =
+      | Waiting
       | Start
       | Finish
       | Fail
       | Interrupt
 
     let all =
-      [ ("start", Start)
+      [ ("waiting", Waiting)
+      ; ("start", Start)
       ; ("finish", Finish)
       ; ("fail", Fail)
       ; ("interrupt", Interrupt)
@@ -510,6 +512,8 @@ module Client = struct
 
     val notification : t -> 'a Decl.notification -> 'a -> unit fiber
 
+    val disconnected : t -> unit fiber
+
     module Batch : sig
       type t
 
@@ -596,13 +600,24 @@ module Client = struct
         ; write : Sexp.t list option -> unit Fiber.t
         ; mutable closed_read : bool
         ; mutable closed_write : bool
+        ; disconnected : unit Fiber.Ivar.t
         }
 
       let of_chan c =
-        { read = (fun () -> Chan.read c)
+        let disconnected = Fiber.Ivar.create () in
+        let read () =
+          let* result = Chan.read c in
+          match result with
+          | None ->
+            let+ () = Fiber.Ivar.fill disconnected () in
+            None
+          | _ -> Fiber.return result
+        in
+        { read
         ; write = (fun s -> Chan.write c s)
         ; closed_read = false
         ; closed_write = false
+        ; disconnected
         }
 
       let write t s =
@@ -766,7 +781,11 @@ module Client = struct
       | true -> k call
       | false ->
         let err =
-          Response.Error.create ~payload:call.params
+          let payload =
+            Sexp.record
+              [ ("method", Atom call.method_); ("params", call.params) ]
+          in
+          Response.Error.create ~payload
             ~message:"notification sent while connection is dead"
             ~kind:Code_error ()
         in
@@ -775,6 +794,8 @@ module Client = struct
     let notification (type a) t (decl : a Decl.notification) (n : a) =
       make_notification t decl n (fun call ->
           send t (Some [ Notification call ]))
+
+    let disconnected t = Fiber.Ivar.read t.chan.disconnected
 
     module Batch = struct
       type nonrec t =

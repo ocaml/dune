@@ -672,12 +672,13 @@ let run_internal ?dir ?(stdout_to = Io.stdout) ?(stderr_to = Io.stderr)
         let stderr = Io.fd stderr_to in
         let stdin = Io.fd stdin_from in
         let env =
-          (* CR-someday aalekseyev:
-             Is it really a good idea to populate DUNE_RPC by default in all actions?
-             It's super-confusing if the test ends up shutting down the dune that runs it.
-             For now I'm working around it by unsetting DUNE_RPC in tests, but
-             we should have a more general solution, along the lines of sandboxing
-             for environments. (unset everything except things the action depends on) *)
+          (* CR-someday aalekseyev: Is it really a good idea to populate
+             DUNE_RPC by default in all actions? It's super-confusing if the
+             test ends up shutting down the dune that runs it. For now I'm
+             working around it by unsetting DUNE_RPC in tests, but we should
+             have a more general solution, along the lines of sandboxing for
+             environments. (unset everything except things the action depends
+             on) *)
           env |> Dtemp.add_to_env |> Scheduler.Config.add_to_env config
         in
         let env = Env.to_unix env |> Spawn.Env.of_list in

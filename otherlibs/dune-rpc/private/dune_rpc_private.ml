@@ -87,37 +87,36 @@ module Where = struct
 
     let get_ignore_env ~build_dir : t option Fiber.t =
       let open Fiber.O in
-      (
-        let of_file f =
-          let+ contents = Sys.read_file f in
-          Some (of_string contents)
-        in
-        let file = Filename.concat build_dir rpc_socket_relative_to_build_dir in
-        let* analyze = Sys.analyze_path file in
-        match analyze with
-        | `Other -> Fiber.return None
-        | `Normal_file -> of_file file
-        | `Unix_socket -> (
-            let unix file = Fiber.return (Some (`Unix file)) in
-            if String.length file < 104 then
-              unix file
-            else
-              let* readlink = Sys.readlink file in
-              match readlink with
-              | None -> unix file
-              | Some p ->
-                let shorter s1 s2 =
-                  if String.length s1 > String.length s2 then
-                    s2
-                  else
-                    s1
-                in
-                unix
-                  (shorter file
-                     (if Filename.is_relative p then
-                        Filename.concat (Filename.dirname file) p
-                      else
-                        p))))
+      let of_file f =
+        let+ contents = Sys.read_file f in
+        Some (of_string contents)
+      in
+      let file = Filename.concat build_dir rpc_socket_relative_to_build_dir in
+      let* analyze = Sys.analyze_path file in
+      match analyze with
+      | `Other -> Fiber.return None
+      | `Normal_file -> of_file file
+      | `Unix_socket -> (
+        let unix file = Fiber.return (Some (`Unix file)) in
+        if String.length file < 104 then
+          unix file
+        else
+          let* readlink = Sys.readlink file in
+          match readlink with
+          | None -> unix file
+          | Some p ->
+            let shorter s1 s2 =
+              if String.length s1 > String.length s2 then
+                s2
+              else
+                s1
+            in
+            unix
+              (shorter file
+                 (if Filename.is_relative p then
+                   Filename.concat (Filename.dirname file) p
+                 else
+                   p)))
 
     let get ~build_dir : t option Fiber.t =
       match Sys.getenv _DUNE_RPC with

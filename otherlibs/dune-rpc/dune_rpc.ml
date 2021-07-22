@@ -12,6 +12,7 @@ module V1 = struct
   module Progress = Progress
   module Subscribe = Subscribe
   module Message = Message
+
   module Where = struct
     include Where
 
@@ -23,6 +24,7 @@ module V1 = struct
       val default : build_dir:string -> t
     end
   end
+
   include Public
 
   module Client = struct

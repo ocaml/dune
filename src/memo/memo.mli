@@ -447,6 +447,10 @@ module Perf_counters : sig
       exceed [edges_traversed_in_current_run]. *)
   val edges_for_cycle_detection_in_current_run : unit -> int
 
+  (** Number of paths added to the cycle detection DAG in the current run. Each
+      path is a sequence of "forcing" edges followed by a "blocking" edge. *)
+  val paths_for_cycle_detection_in_current_run : unit -> int
+
   (** A concise summary of performance counters. *)
   val report_for_current_run : unit -> string
 

@@ -128,4 +128,32 @@ present even if the binary is not optional.
   $ PATH=./bin:$PATH dune build @run-x
   binary path: $TESTCASE_ROOT/optional-binary-absent/./bin/dunetestbar
 
+Optional on the executable should be respected:
+
+  $ cat >exe/dune <<EOF
+  > (executable
+  >  (public_name dunetestbar)
+  >  (libraries does-not-exist)
+  >  (optional)
+  >  (name bar))
+  > EOF
+
+  $ PATH=./bin:$PATH dune build @run-x
+
+In the same way as enabled_if:
+
+  $ cat >exe/dune <<EOF
+  > (executable
+  >  (public_name dunetestbar)
+  >  (enabled_if false)
+  >  (name bar))
+  > EOF
+
+  $ PATH=./bin:$PATH dune build @run-x
+  Error: No rule found for install bin/dunetestbar
+  -> required by %{bin:dunetestbar} at dune:3
+  -> required by alias run-x in dune:1
+  [1]
+
   $ cd ..
+

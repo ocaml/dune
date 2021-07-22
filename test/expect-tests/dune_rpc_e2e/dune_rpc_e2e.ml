@@ -14,7 +14,7 @@ let dune_prog =
 let init_chan ~root_dir =
   let build_dir = Filename.concat root_dir "_build" in
   let once () =
-    match Dune_rpc_impl.Where.Where.get ~build_dir with
+    match Dune_rpc_impl.Where.Where.get_ignore_env ~build_dir with
     | None -> Fiber.return None
     | Some where -> (
       let* client = Dune_rpc_impl.Run.Connect.csexp_client where in

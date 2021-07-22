@@ -1,3 +1,5 @@
+  $ unset DUNE_RPC
+
   $ DUNE_RUNNING=0
 
   $ start_dune () {
@@ -20,7 +22,7 @@
   > }
 
   $ build () {
-  >   with_timeout dune rpc build --wait "$@"
+  >   with_timeout dune rpc build --root . --wait "$@"
   > }
 
 ----------------------------------------------------------------------------------
@@ -78,7 +80,8 @@
   $ cat _build/default/y
   new-contents3
 
-  $ with_timeout dune shutdown
+  $ with_timeout dune shutdown --root=.
+
   $ cat dune-output
   waiting for inotify sync
   waited for inotify sync

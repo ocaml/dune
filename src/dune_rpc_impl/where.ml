@@ -42,8 +42,6 @@ let root =
 
 let get () = Where.get ~build_dir:(Lazy.force root)
 
-let get_ignore_env () = Where.get ~build_dir:(Lazy.force root)
-
 let default () = Where.default ~build_dir:(Lazy.force root)
 
 let to_socket = function

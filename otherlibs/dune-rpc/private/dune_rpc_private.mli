@@ -124,14 +124,6 @@ module Where : sig
 
     val get : build_dir:string -> t option fiber
 
-    (* [get_ignore_env] is like [get], except it ignores the environment
-       variable DUNE_RPC. It's kinda silly to define this, considering [getenv]
-       is already overridable, but it was a path of least resistance since
-       [getenv] in [dune_rpc_impl] is not convenient to customize. The goal here
-       is to ignore the DUNE_RPC variable inherited from parent dune (see
-       test/expect-tests/dune_rpc_e2e/dune_rpc_e2e.ml for an example) *)
-    val get_ignore_env : build_dir:string -> t option fiber
-
     val default : build_dir:string -> t
   end
 

@@ -12,19 +12,7 @@ module V1 = struct
   module Progress = Progress
   module Subscribe = Subscribe
   module Message = Message
-
-  module Where = struct
-    include Where
-
-    module type S = sig
-      type 'a fiber
-
-      val get : build_dir:string -> t option fiber
-
-      val default : build_dir:string -> t
-    end
-  end
-
+  module Where = Where
   include Public
 
   module Client = struct

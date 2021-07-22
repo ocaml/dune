@@ -213,8 +213,8 @@ let%expect_test _ =
   print_perf_counters ();
   [%expect
     {|
-      Memo: 2001/2001 computed/total nodes, 3998/3998 traversed/total edges
-      Memo's cycle detection graph: 0/0 nodes/edges
+      Memo graph: 0/2001 restored/computed nodes, 3998 traversed edges
+      Memo cycle detection graph: 0/0/0 nodes/edges/paths
   |}]
 
 let make_f name = Memo.create name ~cutoff:String.equal
@@ -417,8 +417,8 @@ let%expect_test "fib linked list" =
   print_perf_counters ();
   [%expect
     {|
-    Memo: 8/8 computed/total nodes, 18/18 traversed/total edges
-    Memo's cycle detection graph: 0/0 nodes/edges
+    Memo graph: 0/8 restored/computed nodes, 18 traversed edges
+    Memo cycle detection graph: 0/0/0 nodes/edges/paths
   |}]
 
 let%expect_test "previously_evaluated_cell" =
@@ -746,8 +746,8 @@ let%expect_test "diamond with non-uniform cutoff structure" =
     Evaluated after_yes_cutoff: 2
     Evaluated summit with offset 0: 4
     f 0 = Ok 4
-    Memo: 7/7 computed/total nodes, 7/7 traversed/total edges
-    Memo's cycle detection graph: 0/0 nodes/edges
+    Memo graph: 0/7 restored/computed nodes, 7 traversed edges
+    Memo cycle detection graph: 0/0/0 nodes/edges/paths
   |}];
   Memo.Perf_counters.reset ();
   evaluate_and_print summit 1;
@@ -757,8 +757,8 @@ let%expect_test "diamond with non-uniform cutoff structure" =
     Started evaluating summit with offset 1
     Evaluated summit with offset 1: 5
     f 1 = Ok 5
-    Memo: 1/1 computed/total nodes, 2/2 traversed/total edges
-    Memo's cycle detection graph: 0/0 nodes/edges
+    Memo graph: 0/1 restored/computed nodes, 2 traversed edges
+    Memo cycle detection graph: 0/0/0 nodes/edges/paths
   |}];
   Memo.reset Memo.Invalidation.empty;
   evaluate_and_print summit 0;
@@ -774,8 +774,8 @@ let%expect_test "diamond with non-uniform cutoff structure" =
     Started evaluating yes_cutoff
     Evaluated yes_cutoff: 1
     f 0 = Ok 4
-    Memo: 5/7 computed/total nodes, 11/7 traversed/total edges
-    Memo's cycle detection graph: 0/0 nodes/edges
+    Memo graph: 6/5 restored/computed nodes, 18 traversed edges
+    Memo cycle detection graph: 0/0/0 nodes/edges/paths
   |}];
   Memo.Perf_counters.reset ();
   evaluate_and_print summit 1;
@@ -783,8 +783,8 @@ let%expect_test "diamond with non-uniform cutoff structure" =
   [%expect
     {|
     f 1 = Ok 5
-    Memo: 0/1 computed/total nodes, 2/2 traversed/total edges
-    Memo's cycle detection graph: 0/0 nodes/edges
+    Memo graph: 1/0 restored/computed nodes, 4 traversed edges
+    Memo cycle detection graph: 0/0/0 nodes/edges/paths
   |}];
   Memo.Perf_counters.reset ();
   evaluate_and_print summit 2;
@@ -794,8 +794,8 @@ let%expect_test "diamond with non-uniform cutoff structure" =
     Started evaluating summit with offset 2
     Evaluated summit with offset 2: 6
     f 2 = Ok 6
-    Memo: 1/1 computed/total nodes, 2/2 traversed/total edges
-    Memo's cycle detection graph: 0/0 nodes/edges
+    Memo graph: 0/1 restored/computed nodes, 2 traversed edges
+    Memo cycle detection graph: 0/0/0 nodes/edges/paths
   |}]
 
 (* The test below sets up the following situation:
@@ -886,8 +886,8 @@ let%expect_test "dynamic cycles with non-uniform cutoff structure" =
   print_perf_counters ();
   [%expect
     {|
-    Memo: 0/0 computed/total nodes, 0/0 traversed/total edges
-    Memo's cycle detection graph: 0/0 nodes/edges
+    Memo graph: 0/0 restored/computed nodes, 0 traversed edges
+    Memo cycle detection graph: 0/0/0 nodes/edges/paths
   |}];
   Memo.Perf_counters.reset ();
   evaluate_and_print summit_no_cutoff 0;
@@ -909,8 +909,8 @@ let%expect_test "dynamic cycles with non-uniform cutoff structure" =
     Evaluated incrementing_chain_4_yes_cutoff: 5
     Evaluated the summit with input 0: 5
     f 0 = Ok 5
-    Memo: 7/7 computed/total nodes, 7/7 traversed/total edges
-    Memo's cycle detection graph: 0/0 nodes/edges
+    Memo graph: 0/7 restored/computed nodes, 7 traversed edges
+    Memo cycle detection graph: 0/0/0 nodes/edges/paths
   |}];
   Memo.Perf_counters.reset ();
   evaluate_and_print summit_yes_cutoff 0;
@@ -930,8 +930,8 @@ let%expect_test "dynamic cycles with non-uniform cutoff structure" =
     Evaluated incrementing_chain_4_no_cutoff: 5
     Evaluated the summit with input 0: 5
     f 0 = Ok 5
-    Memo: 6/6 computed/total nodes, 6/6 traversed/total edges
-    Memo's cycle detection graph: 0/0 nodes/edges
+    Memo graph: 0/6 restored/computed nodes, 6 traversed edges
+    Memo cycle detection graph: 0/0/0 nodes/edges/paths
   |}];
   Memo.Perf_counters.reset ();
   evaluate_and_print summit_no_cutoff 2;
@@ -941,8 +941,8 @@ let%expect_test "dynamic cycles with non-uniform cutoff structure" =
     Started evaluating the summit with input 2
     Evaluated the summit with input 2: 7
     f 2 = Ok 7
-    Memo: 1/1 computed/total nodes, 1/1 traversed/total edges
-    Memo's cycle detection graph: 0/0 nodes/edges
+    Memo graph: 0/1 restored/computed nodes, 1 traversed edges
+    Memo cycle detection graph: 0/0/0 nodes/edges/paths
   |}];
   Memo.Perf_counters.reset ();
   evaluate_and_print summit_yes_cutoff 2;
@@ -952,8 +952,8 @@ let%expect_test "dynamic cycles with non-uniform cutoff structure" =
     Started evaluating the summit with input 2
     Evaluated the summit with input 2: 7
     f 2 = Ok 7
-    Memo: 1/1 computed/total nodes, 1/1 traversed/total edges
-    Memo's cycle detection graph: 0/0 nodes/edges
+    Memo graph: 0/1 restored/computed nodes, 1 traversed edges
+    Memo cycle detection graph: 0/0/0 nodes/edges/paths
   |}];
   Memo.reset Memo.Invalidation.empty;
   evaluate_and_print summit_no_cutoff 0;
@@ -989,8 +989,8 @@ let%expect_test "dynamic cycles with non-uniform cutoff structure" =
               ; backtrace = ""
               }
             ]
-    Memo: 9/9 computed/total nodes, 16/8 traversed/total edges
-    Memo's cycle detection graph: 7/7 nodes/edges
+    Memo graph: 8/8 restored/computed nodes, 23 traversed edges
+    Memo cycle detection graph: 6/5/1 nodes/edges/paths
   |}];
   Memo.Perf_counters.reset ();
   evaluate_and_print summit_yes_cutoff 0;
@@ -1024,8 +1024,8 @@ let%expect_test "dynamic cycles with non-uniform cutoff structure" =
               ; backtrace = ""
               }
             ]
-    Memo: 7/7 computed/total nodes, 14/7 traversed/total edges
-    Memo's cycle detection graph: 8/8 nodes/edges
+    Memo graph: 7/6 restored/computed nodes, 20 traversed edges
+    Memo cycle detection graph: 6/5/1 nodes/edges/paths
   |}];
   Memo.Perf_counters.reset ();
   evaluate_and_print summit_no_cutoff 2;
@@ -1052,8 +1052,8 @@ let%expect_test "dynamic cycles with non-uniform cutoff structure" =
               ; backtrace = ""
               }
             ]
-    Memo: 0/0 computed/total nodes, 0/0 traversed/total edges
-    Memo's cycle detection graph: 0/0 nodes/edges
+    Memo graph: 0/0 restored/computed nodes, 0 traversed edges
+    Memo cycle detection graph: 0/0/0 nodes/edges/paths
   |}];
   Memo.Perf_counters.reset ();
   evaluate_and_print summit_yes_cutoff 2;
@@ -1080,8 +1080,8 @@ let%expect_test "dynamic cycles with non-uniform cutoff structure" =
               ; backtrace = ""
               }
             ]
-    Memo: 0/0 computed/total nodes, 0/0 traversed/total edges
-    Memo's cycle detection graph: 0/0 nodes/edges
+    Memo graph: 0/0 restored/computed nodes, 0 traversed edges
+    Memo cycle detection graph: 0/0/0 nodes/edges/paths
   |}];
   Memo.reset Memo.Invalidation.empty;
   evaluate_and_print summit_no_cutoff 0;
@@ -1103,8 +1103,8 @@ let%expect_test "dynamic cycles with non-uniform cutoff structure" =
     Started evaluating the summit with input 0
     Evaluated the summit with input 0: 7
     f 0 = Ok 7
-    Memo: 8/8 computed/total nodes, 14/7 traversed/total edges
-    Memo's cycle detection graph: 0/0 nodes/edges
+    Memo graph: 7/8 restored/computed nodes, 21 traversed edges
+    Memo cycle detection graph: 0/0/0 nodes/edges/paths
   |}];
   Memo.Perf_counters.reset ();
   evaluate_and_print summit_yes_cutoff 0;
@@ -1124,8 +1124,8 @@ let%expect_test "dynamic cycles with non-uniform cutoff structure" =
     Evaluated incrementing_chain_4_no_cutoff: 7
     Evaluated the summit with input 0: 7
     f 0 = Ok 7
-    Memo: 6/6 computed/total nodes, 12/6 traversed/total edges
-    Memo's cycle detection graph: 0/0 nodes/edges
+    Memo graph: 6/6 restored/computed nodes, 18 traversed edges
+    Memo cycle detection graph: 0/0/0 nodes/edges/paths
   |}];
   Memo.Perf_counters.reset ();
   evaluate_and_print summit_no_cutoff 2;
@@ -1135,8 +1135,8 @@ let%expect_test "dynamic cycles with non-uniform cutoff structure" =
     Started evaluating the summit with input 2
     Evaluated the summit with input 2: 9
     f 2 = Ok 9
-    Memo: 1/1 computed/total nodes, 1/1 traversed/total edges
-    Memo's cycle detection graph: 0/0 nodes/edges
+    Memo graph: 1/1 restored/computed nodes, 1 traversed edges
+    Memo cycle detection graph: 0/0/0 nodes/edges/paths
   |}];
   Memo.Perf_counters.reset ();
   evaluate_and_print summit_yes_cutoff 2;
@@ -1146,11 +1146,19 @@ let%expect_test "dynamic cycles with non-uniform cutoff structure" =
     Started evaluating the summit with input 2
     Evaluated the summit with input 2: 9
     f 2 = Ok 9
-    Memo: 1/1 computed/total nodes, 1/1 traversed/total edges
-    Memo's cycle detection graph: 0/0 nodes/edges
+    Memo graph: 1/1 restored/computed nodes, 1 traversed edges
+    Memo cycle detection graph: 0/0/0 nodes/edges/paths
   |}]
 
-let%expect_test "deadlocks when creating a cycle twice" =
+(* This test used to demonstrate possible deadlocks in Memo because it led to
+   creating the same cycle twice in the cycle detection graph, which is not
+   supported by our incremental cycle detection library. Since then we made some
+   changes to Memo that make it impossible to create the same cycle twice,
+   because the first cycle creation is cached. *)
+(* CR-someday amokhov: Note that it may still be possible to trigger deadlocks
+   in Memo by creating two different cycles in the same build run. It would be
+   nice to add a test demonstrating this scenario. *)
+let%expect_test "No deadlocks when creating the same cycle twice" =
   let fdecl_base = Fdecl.create (fun _ -> Dyn.Opaque) in
   let cycle_creator =
     create ~with_cutoff:true "cycle_creator" (fun () ->
@@ -1202,22 +1210,46 @@ let%expect_test "deadlocks when creating a cycle twice" =
     Started evaluating middle
     Started evaluating base
     Started evaluating cycle_creator
-    f 0 = Error [ { exn = "Exit"; backtrace = "" } ]
+    Dependency cycle detected:
+    - ("cycle_creator", ())
+    - called by ("base", ())
+    f 0 = Error
+            [ { exn = "Cycle_error.E [ (\"cycle_creator\", ()); (\"base\", ()) ]"
+              ; backtrace = ""
+              }
+            ]
     Started evaluating summit
-    f 1 = Error [ { exn = "Exit"; backtrace = "" } ]
+    Dependency cycle detected:
+    - ("cycle_creator", ())
+    - called by ("base", ())
+    f 1 = Error
+            [ { exn = "Cycle_error.E [ (\"cycle_creator\", ()); (\"base\", ()) ]"
+              ; backtrace = ""
+              }
+            ]
   |}];
   Memo.reset Memo.Invalidation.empty;
   evaluate_and_print summit 0;
   evaluate_and_print summit 2;
   [%expect
     {|
+    Dependency cycle detected:
+    - ("base", ())
+    - called by ("cycle_creator", ())
+    f 0 = Error
+            [ { exn = "Cycle_error.E [ (\"base\", ()); (\"cycle_creator\", ()) ]"
+              ; backtrace = ""
+              }
+            ]
     Started evaluating summit
-    Started evaluating middle
-    Started evaluating base
-    Started evaluating cycle_creator
-    f 0 = Error [ { exn = "Exit"; backtrace = "" } ]
-    Started evaluating summit
-    f 2 = Error [ { exn = "Exit"; backtrace = "" } ]
+    Dependency cycle detected:
+    - ("base", ())
+    - called by ("cycle_creator", ())
+    f 2 = Error
+            [ { exn = "Cycle_error.E [ (\"base\", ()); (\"cycle_creator\", ()) ]"
+              ; backtrace = ""
+              }
+            ]
   |}]
 
 let lazy_rec ~name f =
@@ -1302,8 +1334,8 @@ let%expect_test "Nested nodes with cutoff are recomputed optimally" =
     Evaluated middle: 1
     Evaluated summit: 2
     f 1 = Ok 2
-    Memo: 8/8 computed/total nodes, 7/7 traversed/total edges
-    Memo's cycle detection graph: 0/0 nodes/edges
+    Memo graph: 0/8 restored/computed nodes, 7 traversed edges
+    Memo cycle detection graph: 0/0/0 nodes/edges/paths
   |}];
   Memo.reset Memo.Invalidation.empty;
   evaluate_and_print summit 0;
@@ -1328,8 +1360,8 @@ let%expect_test "Nested nodes with cutoff are recomputed optimally" =
     Evaluated middle: 2
     Evaluated summit: 4
     f 2 = Ok 4
-    Memo: 8/10 computed/total nodes, 11/7 traversed/total edges
-    Memo's cycle detection graph: 0/0 nodes/edges
+    Memo graph: 4/8 restored/computed nodes, 15 traversed edges
+    Memo cycle detection graph: 0/0/0 nodes/edges/paths
   |}]
 
 (* In addition to its direct purpose, this test also: (i) demonstrates what
@@ -1450,8 +1482,8 @@ let%expect_test "Abandoned node with no cutoff is recomputed" =
     *** Captured last base ***
     Evaluated summit: 1
     f 0 = Ok 1
-    Memo: 4/4 computed/total nodes, 4/4 traversed/total edges
-    Memo's cycle detection graph: 0/0 nodes/edges
+    Memo graph: 0/4 restored/computed nodes, 4 traversed edges
+    Memo cycle detection graph: 0/0/0 nodes/edges/paths
   |}];
   Memo.reset Memo.Invalidation.empty;
   evaluate_and_print summit 0;
@@ -1467,8 +1499,8 @@ let%expect_test "Abandoned node with no cutoff is recomputed" =
     *** Abandoned captured base ***
     Evaluated summit: 0
     f 0 = Ok 0
-    Memo: 4/5 computed/total nodes, 6/3 traversed/total edges
-    Memo's cycle detection graph: 0/0 nodes/edges
+    Memo graph: 3/4 restored/computed nodes, 9 traversed edges
+    Memo cycle detection graph: 0/0/0 nodes/edges/paths
   |}];
   (* At this point, [captured_base] is a stale computation: [restore_from_cache]
      failed but [compute] never started. *)
@@ -1492,8 +1524,8 @@ let%expect_test "Abandoned node with no cutoff is recomputed" =
     Evaluated base: 4
     Evaluated summit: 4
     f 0 = Ok 4
-    Memo: 5/6 computed/total nodes, 9/5 traversed/total edges
-    Memo's cycle detection graph: 0/0 nodes/edges
+    Memo graph: 3/5 restored/computed nodes, 11 traversed edges
+    Memo cycle detection graph: 0/0/0 nodes/edges/paths
   |}]
 
 let print_exns f =
@@ -1605,8 +1637,8 @@ let%expect_test "reproducible errors are cached" =
     f -5 = Error [ { exn = "(Failure \"Negative input -5\")"; backtrace = "" } ]
     Started evaluating 0
     f 0 = Error [ { exn = "(Failure \"Zero input\")"; backtrace = "" } ]
-    Memo: 3/3 computed/total nodes, 0/0 traversed/total edges
-    Memo's cycle detection graph: 0/0 nodes/edges
+    Memo graph: 0/3 restored/computed nodes, 0 traversed edges
+    Memo cycle detection graph: 0/0/0 nodes/edges/paths
   |}];
   Memo.Perf_counters.reset ();
   evaluate_and_print f 5;
@@ -1620,8 +1652,8 @@ let%expect_test "reproducible errors are cached" =
     f 5 = Ok 25
     f -5 = Error [ { exn = "(Failure \"Negative input -5\")"; backtrace = "" } ]
     f 0 = Error [ { exn = "(Failure \"Zero input\")"; backtrace = "" } ]
-    Memo: 0/0 computed/total nodes, 0/0 traversed/total edges
-    Memo's cycle detection graph: 0/0 nodes/edges
+    Memo graph: 0/0 restored/computed nodes, 0 traversed edges
+    Memo cycle detection graph: 0/0/0 nodes/edges/paths
   |}];
   Memo.reset Memo.Invalidation.empty;
   evaluate_and_print f 5;
@@ -1636,8 +1668,8 @@ let%expect_test "reproducible errors are cached" =
     f -5 = Error [ { exn = "(Failure \"Negative input -5\")"; backtrace = "" } ]
     Started evaluating 0
     f 0 = Error [ { exn = "(Failure \"Zero input\")"; backtrace = "" } ]
-    Memo: 1/3 computed/total nodes, 0/0 traversed/total edges
-    Memo's cycle detection graph: 0/0 nodes/edges
+    Memo graph: 3/1 restored/computed nodes, 0 traversed edges
+    Memo cycle detection graph: 0/0/0 nodes/edges/paths
   |}]
 
 let%expect_test "errors work with early cutoff" =
@@ -1694,8 +1726,8 @@ let%expect_test "errors work with early cutoff" =
     [negate] Started evaluating 200
     [divide] Started evaluating 200
     f 200 = Error [ { exn = "Input_too_large <first run>"; backtrace = "" } ]
-    Memo: 7/7 computed/total nodes, 6/6 traversed/total edges
-    Memo's cycle detection graph: 0/0 nodes/edges
+    Memo graph: 0/7 restored/computed nodes, 6 traversed edges
+    Memo cycle detection graph: 0/0/0 nodes/edges/paths
   |}];
   Memo.reset Memo.Invalidation.empty;
   evaluate_and_print f 0;
@@ -1717,8 +1749,8 @@ let%expect_test "errors work with early cutoff" =
     [divide] Started evaluating 200
     [negate] Started evaluating 200
     f 200 = Error [ { exn = "Input_too_large <second run>"; backtrace = "" } ]
-    Memo: 5/7 computed/total nodes, 10/6 traversed/total edges
-    Memo's cycle detection graph: 0/0 nodes/edges
+    Memo graph: 6/5 restored/computed nodes, 16 traversed edges
+    Memo cycle detection graph: 0/0/0 nodes/edges/paths
   |}]
 
 (* This test uses non-deterministic tasks to show that adding old dependency
@@ -1783,8 +1815,8 @@ let%expect_test "Test that there are no spurious cycles" =
   print_perf_counters ();
   [%expect
     {|
-    Memo: 2/2 computed/total nodes, 1/1 traversed/total edges
-    Memo's cycle detection graph: 0/0 nodes/edges
+    Memo graph: 0/2 restored/computed nodes, 1 traversed edges
+    Memo cycle detection graph: 0/0/0 nodes/edges/paths
   |}];
   Memo.reset (Memo.Cell.invalidate (Memo.cell task_b 0));
   evaluate_and_print task_a 0;
@@ -1851,8 +1883,8 @@ let%expect_test "Test Memo.clear_cache" =
   print_perf_counters ();
   [%expect
     {|
-    Memo: 4/4 computed/total nodes, 2/2 traversed/total edges
-    Memo's cycle detection graph: 0/0 nodes/edges
+    Memo graph: 0/4 restored/computed nodes, 2 traversed edges
+    Memo cycle detection graph: 0/0/0 nodes/edges/paths
   |}];
   let invalidation = Memo.Invalidation.invalidate_cache add_one in
   Memo.reset invalidation;
@@ -1879,8 +1911,8 @@ let%expect_test "Test Memo.clear_cache" =
   print_perf_counters ();
   [%expect
     {|
-    Memo: 4/4 computed/total nodes, 4/2 traversed/total edges
-    Memo's cycle detection graph: 0/0 nodes/edges
+    Memo graph: 2/4 restored/computed nodes, 6 traversed edges
+    Memo cycle detection graph: 0/0/0 nodes/edges/paths
   |}]
 
 (* In the first run, the dependency structure is: A -> B -> C -> current run.
@@ -1971,8 +2003,8 @@ let%expect_test "restore_from_cache and compute phases are well-separated" =
   print_perf_counters ();
   [%expect
     {|
-    Memo: 4/4 computed/total nodes, 3/3 traversed/total edges
-    Memo's cycle detection graph: 2/2 nodes/edges |}];
+    Memo graph: 0/4 restored/computed nodes, 3 traversed edges
+    Memo cycle detection graph: 3/2/1 nodes/edges/paths |}];
   Memo.reset Invalidation.empty;
   (match
      Scheduler.run

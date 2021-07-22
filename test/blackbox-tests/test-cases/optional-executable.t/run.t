@@ -120,13 +120,17 @@ present even if the binary is not optional.
 
   $ mkdir bin
   $ cat >bin/dunetestbar <<EOF
-  > /usr/bin/env bash
+  > #!/usr/bin/env bash
   > echo shadow
   > EOF
   $ chmod +x ./bin/dunetestbar
 
   $ PATH=./bin:$PATH dune build @run-x
-  binary path: $TESTCASE_ROOT/optional-binary-absent/./bin/dunetestbar
+  File "exe/dune", line 3, characters 12-29:
+  3 |  (libraries doesnotexistatall)
+                  ^^^^^^^^^^^^^^^^^
+  Error: Library "doesnotexistatall" not found.
+  [1]
 
 Optional on the executable should be respected:
 
@@ -139,6 +143,7 @@ Optional on the executable should be respected:
   > EOF
 
   $ PATH=./bin:$PATH dune build @run-x
+  binary path: $TESTCASE_ROOT/optional-binary-absent/./bin/dunetestbar
 
 In the same way as enabled_if:
 
@@ -149,11 +154,8 @@ In the same way as enabled_if:
   >  (name bar))
   > EOF
 
-  $ PATH=./bin:$PATH dune build @run-x
-  Error: No rule found for install bin/dunetestbar
-  -> required by %{bin:dunetestbar} at dune:3
-  -> required by alias run-x in dune:1
-  [1]
+  $ PATH=./bin:$PATH dune build @run-x --force
+  binary path: $TESTCASE_ROOT/optional-binary-absent/./bin/dunetestbar
 
   $ cd ..
 

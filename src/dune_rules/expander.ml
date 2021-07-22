@@ -731,6 +731,11 @@ module With_reduced_var_set = struct
   let expand_str_partial ~context ~dir sw =
     String_with_vars.expand_as_much_as_possible ~dir:(Path.build dir) sw
       ~f:(expand_pform_opt ~context ~bindings:Pform.Map.empty ~dir)
+
+  let eval_blang ~context ~dir blang =
+    Blang.eval
+      ~f:(expand_pform ~context ~bindings:Pform.Map.empty ~dir)
+      ~dir:(Path.build dir) blang
 end
 
 let expand_and_eval_set t set ~standard =
@@ -744,9 +749,7 @@ let expand_and_eval_set t set ~standard =
   Ordered_set_lang.eval set ~standard ~eq:String.equal ~parse:(fun ~loc:_ s ->
       s)
 
-let eval_blang t = function
-  | Blang.Const x -> Memo.Build.return x (* common case *)
-  | blang ->
-    Blang.eval blang ~dir:(Path.build t.dir) ~f:(No_deps.expand_pform t)
+let eval_blang t blang =
+  Blang.eval ~f:(No_deps.expand_pform t) ~dir:(Path.build t.dir) blang
 
 let find_package t pkg = t.find_package pkg

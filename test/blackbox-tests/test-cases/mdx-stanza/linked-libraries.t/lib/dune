@@ -1,0 +1,3 @@
+(library
+ (name private_lib)
+ (modules private_lib))

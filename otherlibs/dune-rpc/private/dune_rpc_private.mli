@@ -248,6 +248,7 @@ end
 module Build : sig
   module Event : sig
     type t =
+      | Waiting
       | Start
       | Finish
       | Fail
@@ -297,6 +298,8 @@ module Client : sig
       -> ('b, Response.Error.t) result fiber
 
     val notification : t -> 'a Decl.notification -> 'a -> unit fiber
+
+    val disconnected : t -> unit fiber
 
     module Batch : sig
       type t

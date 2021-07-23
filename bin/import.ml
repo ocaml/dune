@@ -37,13 +37,12 @@ module Main : sig
     include Dune_rules.Main
   end
 
-  val setup : unit -> build_system Fiber.t
+  val setup : unit -> build_system Memo.Build.t Fiber.t
 end = struct
   include Dune_rules.Main
 
   let setup () =
     let open Fiber.O in
-    let* setup = Memo.Build.run (get ()) in
     let* scheduler = Scheduler.t () in
     Console.Status_line.set_live (fun () ->
         let progression = Build_system.get_current_progress () in
@@ -53,7 +52,7 @@ end = struct
                 progression.number_of_rules_executed
                 progression.number_of_rules_discovered
                 (Scheduler.running_jobs_count scheduler))));
-    Fiber.return setup
+    Fiber.return (Memo.Build.of_thunk get)
 end
 
 module Scheduler = struct

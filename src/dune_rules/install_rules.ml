@@ -208,8 +208,10 @@ end = struct
     Option.some_if
       (match (stanza : Stanza.t) with
       | Dune_file.Library lib ->
-        (not lib.optional)
+        ((not lib.optional)
         || Lib.DB.available (Scope.libs scope) (Dune_file.Library.best_name lib)
+        )
+        && Expander.eval_blang expander lib.enabled_if
       | Dune_file.Documentation _ -> true
       | Dune_file.Install { enabled_if; _ } ->
         Expander.eval_blang expander enabled_if

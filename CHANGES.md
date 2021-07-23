@@ -1,3 +1,8 @@
+unreleased - 2.9 branch
+-----------------------
+
+- Fix `(enabled_if ...)` for installed libraries (#4824, fixes #4821, @dra27)
+
 2.9.0 (29/06/2021)
 ------------------
 

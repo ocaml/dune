@@ -53,7 +53,6 @@ This makes it easy to make sure that the dune won't finish before we're able to 
 
   $ ((x=0; while [ ! -f _build/build-finished ]; do x=$((x+1)); echo "$x-unstable" > z; mv z x; sleep 0.01; done) & build y; touch _build/build-finished; wait)
   Failure
-  $ if [ -f _build/default/y ]; then cat _build/default/y; fi
 
   $ echo new-contents2 > x
 

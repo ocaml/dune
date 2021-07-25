@@ -124,6 +124,8 @@ module Info : sig
 
   val to_dyn : t Dyn.Encoder.t
 
+  val encode_fields : t -> Dune_lang.t list
+
   val decode :
        ?since:Dune_lang.Syntax.Version.t
     -> unit

@@ -177,3 +177,5 @@ val info : t -> Package.Info.t
     [dune-project] file. *)
 val update_execution_parameters :
   t -> Execution_parameters.t -> Execution_parameters.t
+
+val encode : t Dune_lang.Encoder.t

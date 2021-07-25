@@ -451,7 +451,7 @@ module Info = struct
       ; ("authors", option (list string) authors)
       ]
 
-  let encode
+  let encode_fields
       { source
       ; authors
       ; license
@@ -563,6 +563,7 @@ let encode
     } =
   let open Dune_lang.Encoder in
   let fields =
+    Info.encode_fields info @
     record_fields
       [ field_o "synopsis" string synopsis
       ; field_o "description" string description
@@ -577,7 +578,6 @@ let encode
           (pair Section.Site.encode Section.encode)
           (Section.Site.Map.to_list sites)
       ]
-    @ Info.encode info
   in
   constr "package" (list sexp) fields
 

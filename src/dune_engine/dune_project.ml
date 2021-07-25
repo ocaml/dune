@@ -15,6 +15,8 @@ module Name : sig
 
   val to_string_hum : t -> string
 
+  val encode : t Dune_lang.Encoder.t
+
   val decode : t Dune_lang.Decoder.t
 
   val to_encoded_string : t -> string
@@ -95,6 +97,8 @@ end = struct
         ^ String.map (Path.Source.to_string p) ~f:(function
             | '/' -> '.'
             | c -> c)
+
+  let encode n = Dune_lang.Encoder.string (to_string_hum n)
 
   let of_encoded_string =
     let invalid s =
@@ -534,6 +538,19 @@ module Toggle = struct
     | Enable -> true
     | Disable -> false
 
+  let of_bool = function
+    | true -> Enable
+    | false -> Disable
+
+  let encode t =
+    let open Dune_lang.Encoder in
+    let v =
+      match t with
+      | Enable -> "enable"
+      | Disable -> "disable"
+    in
+    string v
+
   let decode =
     let open Dune_lang.Decoder in
     map_validate string ~f:(function
@@ -552,6 +569,92 @@ module Toggle = struct
 end
 
 let anonymous ~dir = infer ~dir Package.Name.Map.empty
+
+let encode : t Dune_lang.Encoder.t =
+ fun { name
+     ; version
+     ; dune_version
+     ; info
+     ; packages
+     ; extension_args
+     ; implicit_transitive_deps
+     ; wrapped_executables
+     ; executables_implicit_empty_intf
+     ; accept_alternative_dune_file_name
+     ; generate_opam_files
+     ; use_standard_c_and_cxx_flags
+     ; dialects
+     ; explicit_js_mode
+     ; format_config
+     ; strict_package_deps
+     ; cram
+     ; file_key = _
+     ; parsing_context = _
+     ; stanza_parser = _
+     ; project_file = _
+     ; root = _
+     } ->
+  let open Dune_lang.Encoder in
+  let lang = Lang.get_exn "dune" in
+  let extension_args : Dune_lang.t list =
+    let _ = extension_args in
+    raise (Failure "TODO")
+  in
+  let flags =
+    let flag name value default =
+      if Bool.equal value (default ~lang) then
+        None
+      else
+        Some (constr name bool value)
+    in
+    (* Flags that don't take a boolean for some reason *)
+    let flag' name v =
+      if v then
+        Some (list string [ name ])
+      else
+        None
+    in
+    List.filter_opt
+      [ flag "generate_opam_files" generate_opam_files (fun ~lang:_ ->
+            not generate_opam_files)
+      ; flag "implicit_transitive_deps" implicit_transitive_deps
+          implicit_transitive_deps_default
+      ; flag "wrapped_executables" wrapped_executables
+          wrapped_executables_default
+      ; flag "executables_implicit_empty_intf" executables_implicit_empty_intf
+          executables_implicit_empty_intf_default
+      ; flag "strict_package_deps" strict_package_deps
+          strict_package_deps_default
+      ; flag' "accept_alternative_dune_file_name"
+          accept_alternative_dune_file_name
+      ; flag' "explicit_js_mode" explicit_js_mode
+        (* Two other ways of dealing with flags *)
+      ; Option.map use_standard_c_and_cxx_flags
+          ~f:(constr "use_standard_c_and_cxx_flags" bool)
+      ; (if Bool.equal cram (cram_default ~lang) then
+          None
+        else
+          Some (constr "cram" Toggle.encode (Toggle.of_bool cram)))
+      ]
+  in
+  let lang_stanza =
+    constr "lang" (list sexp)
+      [ string "dune"; Dune_lang.Syntax.Version.encode dune_version ]
+  in
+  let dialects =
+    Dialect.DB.fold ~f:(fun d ls -> Dialect.encode d :: ls) ~init:[] dialects
+  in
+  let formatting =
+    Option.bind format_config ~f:Format_config.encode_opt |> Option.to_list
+  in
+  let packages =
+    Package.Name.Map.values packages
+    |> List.map ~f:(fun p -> Package.encode p |> sexp)
+  in
+  list sexp
+    ([ lang_stanza; Name.encode name; option string version ]
+    @ Package.Info.encode_fields info
+    @ flags @ extension_args @ formatting @ dialects @ packages)
 
 let parse ~dir ~lang ~opam_packages ~file ~dir_status =
   String_with_vars.set_decoding_env

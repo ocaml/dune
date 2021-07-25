@@ -55,6 +55,18 @@ Sets the version of the project:
 
     (version <version>)
 
+cram
+----
+
+Enable or disable cram-style tests for the project. See :ref:`cram-tests` for
+details.
+
+.. code:: scheme
+
+   (cram <status>)
+
+Where status is either ``enabled`` or ``disabled``.
+
 .. _implicit_transitive_deps:
 
 implicit_transitive_deps

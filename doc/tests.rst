@@ -469,6 +469,8 @@ which displays nicer looking diffs that the standard ``diff``
 tool. You can change that by passing ``--diff-command CMD`` to
 dune.
 
+.. _cram-tests:
+
 Cram Tests
 ==========
 

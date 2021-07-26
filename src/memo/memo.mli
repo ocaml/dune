@@ -58,6 +58,8 @@ module Build : sig
       and it will therefore be re-executed on every build run. *)
   val of_non_reproducible_fiber : 'a Fiber.t -> 'a t
 
+  val of_thunk : (unit -> 'a t) -> 'a t
+
   val return : 'a -> 'a t
 
   (** Combine results of two computations executed in sequence. *)

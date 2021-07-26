@@ -30,7 +30,10 @@ let run_build_system ~common ~request =
     (fun () ->
       Cached_digest.invalidate_cached_timestamps ();
       let* setup = setup () in
-      let request = request setup in
+      let request =
+        Action_builder.bind (Action_builder.memo_build setup) ~f:(fun setup ->
+            request setup)
+      in
       run_build_system ~common ~request ())
     ~finally:(fun () ->
       Hooks.End_of_build.run ();

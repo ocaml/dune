@@ -47,6 +47,7 @@ let term =
   Scheduler.go ~common ~config (fun () ->
       let open Fiber.O in
       let* setup = Import.Main.setup () in
+      let* setup = Memo.Build.run setup in
       let sctx = Import.Main.find_scontext_exn setup ~name:context in
       let context = Dune_rules.Super_context.context sctx in
       let dir =

@@ -35,6 +35,7 @@ let term =
       let* setup = Import.Main.setup () in
       Build_system.run_exn (fun () ->
           let open Memo.Build.O in
+          let* setup = setup in
           let sctx =
             Dune_engine.Context_name.Map.find setup.scontexts ctx_name
             |> Option.value_exn

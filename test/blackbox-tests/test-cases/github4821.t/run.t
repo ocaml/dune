@@ -5,11 +5,10 @@
   $ cat > dune <<EOF
   > (library (name foo) (public_name foo) (enabled_if false))
   > EOF
-  $ export DUNE_BUILD_DIR=$(mktemp -d -t github4821XXXXXX);
-  > dune build @install;
-  > cat $DUNE_BUILD_DIR/default/foo.install | sed s#$DUNE_BUILD_DIR#DUNE_BUILD_DIR#g;
+  $ dune build @install;
+  > cat _build/default/foo.install;
   lib: [
-    "DUNE_BUILD_DIR/install/default/lib/foo/META"
-    "DUNE_BUILD_DIR/install/default/lib/foo/dune-package"
-    "DUNE_BUILD_DIR/install/default/lib/foo/opam"
+    "_build/install/default/lib/foo/META"
+    "_build/install/default/lib/foo/dune-package"
+    "_build/install/default/lib/foo/opam"
   ]

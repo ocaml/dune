@@ -3,7 +3,7 @@ in the same dune file, but require different ppx specifications
 
   $ dune build @all --profile release
   $ dune ocaml-merlin --dump-config=$(pwd) |
-  > sed 's#'$(opam config var prefix)'#OPAM_PREFIX#'
+  > sed 's#'$(opam var prefix)'#OPAM_PREFIX#'
   Usesppx1
   ((STDLIB OPAM_PREFIX/lib/ocaml)
    (EXCLUDE_QUERY_DIR)

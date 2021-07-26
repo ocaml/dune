@@ -152,8 +152,7 @@ let read_opam_config_var ~env (var : string) : string option Fiber.t =
   match Memo.Lazy.force opam with
   | None -> Fiber.return None
   | Some fn -> (
-    Process.run_capture (Accept Predicate_lang.any) fn ~env
-      [ "config"; "var"; var ]
+    Process.run_capture (Accept Predicate_lang.any) fn ~env [ "var"; var ]
     >>| function
     | Ok s -> Some (String.trim s)
     | Error _ -> None)

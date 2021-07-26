@@ -1,3 +1,8 @@
+unreleased - 2.9 branch
+-----------------------
+
+- Eliminate deprecation warning from opam 2.1 by using `opam var` instead of `opam config var` (#4828 @dra27)
+
 2.9.0 (29/06/2021)
 ------------------
 

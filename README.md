@@ -107,7 +107,7 @@ The recommended way to install dune is via the [opam package manager][opam]:
 $ opam install dune
 ```
 
-If you are new to opam, make sure to run `eval $(opam config env)` to
+If you are new to opam, make sure to run `eval $(opam env)` to
 make `dune` available in your `PATH`. The dune binary is self
 contained and relocatable, so you can safely copy it somewhere else to
 make it permanently available.

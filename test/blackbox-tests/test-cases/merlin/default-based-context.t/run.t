@@ -1,5 +1,5 @@
   $ export BUILD_PATH_PREFIX_MAP=\
-  > "OPAM_PREFIX=$(opam config var prefix):$BUILD_PATH_PREFIX_MAP"
+  > "OPAM_PREFIX=$(opam var prefix):$BUILD_PATH_PREFIX_MAP"
 
 If Merlin field is absent, default context is chosen
 

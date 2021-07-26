@@ -1,4 +1,4 @@
-  $ opam_prefix="$(opam config var prefix)"
+  $ opam_prefix="$(opam var prefix)"
   $ export BUILD_PATH_PREFIX_MAP="/OPAM_PREFIX=$opam_prefix:$BUILD_PATH_PREFIX_MAP"
 
 `dune install` should handle destination directories that don't exist

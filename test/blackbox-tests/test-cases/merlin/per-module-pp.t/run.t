@@ -4,7 +4,7 @@ We dump the config for Foo and Bar modules but the pp.exe preprocessor
 should appear only once since only Foo is using it.
 
   $ dune ocaml-merlin --dump-config=$(pwd) |
-  > sed 's#'$(opam config var prefix)'#OPAM_PREFIX#'
+  > sed 's#'$(opam var prefix)'#OPAM_PREFIX#'
   Foo
   ((STDLIB OPAM_PREFIX/lib/ocaml)
    (EXCLUDE_QUERY_DIR)

@@ -503,7 +503,7 @@ context:
 
 #. if an explicit ``--prefix <path>`` argument is passed, use this path
 #. if ``opam`` is present in the ``PATH`` and is configured, use the
-   output of ``opam config var prefix``
+   output of ``opam var prefix``
 #. otherwise, take the parent of the directory where ``ocamlc`` was found.
 
 As an exception to this rule, library files might be copied to a

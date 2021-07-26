@@ -16,7 +16,7 @@ library also has more than one src dir.
 
   $ dune build lib2/.merlin-conf/lib-lib2
   $ dune ocaml-merlin --dump-config=$(pwd)/lib2 |
-  > sed 's#'$(opam config var prefix)'#OPAM_PREFIX#'
+  > sed 's#'$(opam var prefix)'#OPAM_PREFIX#'
   Lib2
   ((STDLIB OPAM_PREFIX/lib/ocaml)
    (EXCLUDE_QUERY_DIR)

@@ -18,7 +18,7 @@ We call `$(opam switch show)` so that this test always uses an existing switch
   lib-foo
 
   $ dune ocaml-merlin --dump-config="$(pwd)" |
-  > sed 's#'$(opam config var prefix)'#OPAM_PREFIX#'
+  > sed 's#'$(opam var prefix)'#OPAM_PREFIX#'
   Foo
   ((STDLIB OPAM_PREFIX/lib/ocaml)
    (EXCLUDE_QUERY_DIR)

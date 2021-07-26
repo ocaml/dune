@@ -1,7 +1,7 @@
 CRAM sanitization
   $ dune build ./exe/.merlin-conf/exe-x --profile release
   $ dune ocaml-merlin --dump-config=$(pwd)/exe |
-  > sed 's#'$(opam config var prefix)'#OPAM_PREFIX#'
+  > sed 's#'$(opam var prefix)'#OPAM_PREFIX#'
   X
   ((STDLIB OPAM_PREFIX/lib/ocaml)
    (EXCLUDE_QUERY_DIR)
@@ -26,7 +26,7 @@ CRAM sanitization
 
   $ dune build ./lib/.merlin-conf/lib-foo ./lib/.merlin-conf/lib-bar --profile release
   $ dune ocaml-merlin --dump-config=$(pwd)/lib |
-  > sed 's#'$(opam config var prefix)'#OPAM_PREFIX#'
+  > sed 's#'$(opam var prefix)'#OPAM_PREFIX#'
   File
   ((STDLIB OPAM_PREFIX/lib/ocaml)
    (EXCLUDE_QUERY_DIR)
@@ -111,7 +111,7 @@ Make sure pp flag is correct and variables are expanded
 
   $ dune build ./pp-with-expand/.merlin-conf/exe-foobar --profile release
   $ dune ocaml-merlin --dump-config=$(pwd)/pp-with-expand |
-  > sed 's#'$(opam config var prefix)'#OPAM_PREFIX#'
+  > sed 's#'$(opam var prefix)'#OPAM_PREFIX#'
   Foobar
   ((STDLIB OPAM_PREFIX/lib/ocaml)
    (EXCLUDE_QUERY_DIR)
@@ -128,7 +128,7 @@ Make sure pp flag is correct and variables are expanded
 Check hash of executables names if more than one
   $ dune build ./exes/.merlin-conf/exe-x-6562915302827c6dce0630390bfa68b7
   $ dune ocaml-merlin --dump-config=$(pwd)/exes |
-  > sed 's#'$(opam config var prefix)'#OPAM_PREFIX#'
+  > sed 's#'$(opam var prefix)'#OPAM_PREFIX#'
   Y
   ((STDLIB OPAM_PREFIX/lib/ocaml)
    (EXCLUDE_QUERY_DIR)

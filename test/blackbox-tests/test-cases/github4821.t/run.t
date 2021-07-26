@@ -1,3 +1,4 @@
+Ensure that a public, non-optional library can be disabled.
   $ touch foo.opam
   $ cat > dune-project<<EOF
   > (lang dune 2.0)

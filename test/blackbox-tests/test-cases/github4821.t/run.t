@@ -7,9 +7,6 @@ Ensure that a public, non-optional library can be disabled.
   > (library (name foo) (public_name foo) (enabled_if false))
   > EOF
   $ dune build @install;
-  > cat _build/default/foo.install;
-  lib: [
-    "_build/install/default/lib/foo/META"
-    "_build/install/default/lib/foo/dune-package"
-    "_build/install/default/lib/foo/opam"
-  ]
+  > cat _build/install/default/lib/foo/dune-package;
+  (lang dune 2.9)
+  (name foo)

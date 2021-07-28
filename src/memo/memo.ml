@@ -1091,8 +1091,6 @@ let report_and_collect_errors f =
 let yield_if_there_are_pending_events = ref Fiber.return
 
 module Exec : sig
-  (* [exec_dep_node] is a variant of [restore_from_cache_and_compute_if_needed]
-     but with a simpler type, convenient for external usage. *)
   val exec_dep_node : ('i, 'o) Dep_node.t -> 'o Fiber.t
 end = struct
   let rec restore_from_cache :
@@ -1139,12 +1137,12 @@ end = struct
                 Fiber.return Changed_or_not.Unchanged)
             | Failure (Cancelled { dependency_cycle }) ->
               Fiber.return (Changed_or_not.Cancelled { dependency_cycle })
-            | Failure (Out_of_date _) -> (
+            | Failure (Out_of_date _old_value) -> (
               match dep.has_cutoff with
               | false ->
-                Fiber.return Changed_or_not.Changed
                 (* If [dep] has no cutoff, it is sufficient to check whether it
                    is up to date. If not, we must recompute the [cached_value]. *)
+                Fiber.return Changed_or_not.Changed
               | true -> (
                 (* If [dep] has a cutoff predicate, it is not sufficient to
                    check whether it is up to date: even if it isn't, after we
@@ -1281,35 +1279,29 @@ end = struct
           Cached_value (Cached_value.create_cancelled ~dependency_cycle);
         result)
 
-  and restore_from_cache_and_compute_if_needed :
-        'i 'o.
-        ('i, 'o) Dep_node.t -> ('o Cached_value.t, Cycle_error.t) result Fiber.t
-      =
+  let exec_dep_node : 'i 'o. ('i, 'o) Dep_node.t -> 'o Fiber.t =
    fun dep_node ->
-    let* result =
-      consider_and_restore_from_cache_without_adding_dep dep_node >>= function
-      | Ok cached_value -> Fiber.return (Ok cached_value)
-      | Failure (Cancelled { dependency_cycle }) ->
-        (* If restoring from cache failed with a dependency cycle error, and the
-           node's function is deterministic (as it should be), then we're going
-           to hit the same cycle when trying to recompute the result. Hence, we
-           return the cycle error as is. Note that apart from saving some work,
-           this also helps us work around the limitation of the cycle detection
-           library that can't detect the same cycle twice. *)
-        dep_node.state <-
-          Cached_value (Cached_value.create_cancelled ~dependency_cycle);
-        Fiber.return (Error dependency_cycle)
-      | Failure (Out_of_date _) ->
-        consider_and_compute_without_adding_dep dep_node
-    in
-    match result with
-    | Ok _ as ok -> Call_stack.add_dep_from_caller dep_node >>> Fiber.return ok
-    | Error _dependency_cycle as error -> Fiber.return error
-
-  let exec_dep_node (dep_node : _ Dep_node.t) =
     Fiber.of_thunk (fun () ->
-        restore_from_cache_and_compute_if_needed dep_node >>= function
+        let* result =
+          consider_and_restore_from_cache_without_adding_dep dep_node
+          >>= function
+          | Ok cached_value -> Fiber.return (Ok cached_value)
+          | Failure (Cancelled { dependency_cycle }) ->
+            (* If restoring from cache failed with a cycle error, and the node's
+               function is deterministic (as it should be), then we will hit the
+               same cycle when trying to recompute the result. We therefore
+               return the cycle error as is. Note that apart from saving some
+               work, this also helps us work around the limitation of the cycle
+               detection library that can't detect the same cycle twice. *)
+            dep_node.state <-
+              Cached_value (Cached_value.create_cancelled ~dependency_cycle);
+            Fiber.return (Error dependency_cycle)
+          | Failure (Out_of_date _) ->
+            consider_and_compute_without_adding_dep dep_node
+        in
+        match result with
         | Ok res ->
+          let* () = Call_stack.add_dep_from_caller dep_node in
           let stack_frame = Dep_node_without_state.T dep_node.without_state in
           Value.get_exn res.value ~stack_frame
         | Error cycle_error -> raise (Cycle_error.E cycle_error))

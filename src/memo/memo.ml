@@ -1124,7 +1124,6 @@ end = struct
            and improve stack traces in profiling. *)
         Deps.changed_or_not cached_value.deps
           ~f:(fun [@inline] (Dep_node.T dep) ->
-            if !Counters.enabled then incr Counters.edges_traversed;
             match dep.has_cutoff with
             | false -> (
               (* If [dep] has no cutoff, it is sufficient to check whether it is

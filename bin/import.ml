@@ -74,14 +74,16 @@ module Scheduler = struct
     | Scheduler.Run.Event.Tick -> Console.Status_line.refresh ()
     | Scheduler.Run.Event.Source_files_changed -> maybe_clear_screen dune_config
     | Build_interrupted ->
-      let status_line =
-        Some
-          (Pp.seq
-             (* XXX Why do we print "Had errors"? The user simply edited a file *)
-             (Pp.tag User_message.Style.Error (Pp.verbatim "Had errors"))
-             (Pp.verbatim ", killing current build..."))
-      in
-      Console.Status_line.set_constant status_line
+      Console.Status_line.set_live (fun () ->
+          let progression = Build_system.get_current_progress () in
+          Some
+            (Pp.seq
+               (Pp.tag User_message.Style.Error
+                  (Pp.verbatim "Source files changed"))
+               (Pp.verbatim
+                  (sprintf ", restarting current build... (%u/%u)"
+                     progression.number_of_rules_executed
+                     progression.number_of_rules_discovered))))
     | Build_finish build_result ->
       let message =
         match build_result with

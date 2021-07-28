@@ -1091,8 +1091,8 @@ let report_and_collect_errors f =
 let yield_if_there_are_pending_events = ref Fiber.return
 
 module Exec : sig
-  (* [exec_dep_node] is a variant of [consider_and_compute] but with a simpler
-     type, convenient for external usage. *)
+  (* [exec_dep_node] is a variant of [restore_from_cache_and_compute_if_needed]
+     but with a simpler type, convenient for external usage. *)
   val exec_dep_node : ('i, 'o) Dep_node.t -> 'o Fiber.t
 end = struct
   let rec restore_from_cache :
@@ -1266,33 +1266,29 @@ end = struct
         ('i, 'o) Dep_node.t -> ('o Cached_value.t, Cycle_error.t) result Fiber.t
       =
    fun dep_node ->
-    let state_transition ~of_restoring =
-      match dep_node.state with
-      | Out_of_date { old_value } ->
-        start_computing ~dep_node ~old_value >>| Result.ok
-      | Cached_value cached_value ->
-        if Run.is_current cached_value.last_validated_at then
-          Fiber.return (Ok cached_value)
-        else
-          start_restoring ~dep_node ~cached_value >>= of_restoring
-      | Restoring { restore_from_cache } -> (
-        Computation.read_but_first_check_for_cycles restore_from_cache
-        >>= function
-        | Error dependency_cycle ->
-          dep_node.state <-
-            Cached_value (Cached_value.create_cancelled ~dependency_cycle);
-          Fiber.return (Error dependency_cycle)
-        | Ok restore_result -> of_restoring restore_result)
-      | Computing { compute; _ } -> (
-        Computation.read_but_first_check_for_cycles compute >>| function
-        | Ok _ as result -> result
-        | Error dependency_cycle as result ->
-          dep_node.state <-
-            Cached_value (Cached_value.create_cancelled ~dependency_cycle);
-          result)
-    in
-    let of_restoring = function
-      | Cache_lookup.Result.Ok cached_value -> Fiber.return (Ok cached_value)
+    match dep_node.state with
+    | Out_of_date { old_value } ->
+      start_computing ~dep_node ~old_value >>| Result.ok
+    | Cached_value cached_value ->
+      assert (Run.is_current cached_value.last_validated_at);
+      Fiber.return (Ok cached_value)
+    | Restoring _ -> assert false
+    | Computing { compute; _ } -> (
+      Computation.read_but_first_check_for_cycles compute >>| function
+      | Ok _ as result -> result
+      | Error dependency_cycle as result ->
+        dep_node.state <-
+          Cached_value (Cached_value.create_cancelled ~dependency_cycle);
+        result)
+
+  and restore_from_cache_and_compute_if_needed :
+        'i 'o.
+        ('i, 'o) Dep_node.t -> ('o Cached_value.t, Cycle_error.t) result Fiber.t
+      =
+   fun dep_node ->
+    let* result =
+      consider_and_restore_from_cache_without_adding_dep dep_node >>= function
+      | Ok cached_value -> Fiber.return (Ok cached_value)
       | Failure (Cancelled { dependency_cycle }) ->
         (* If restoring from cache failed with a dependency cycle error, and the
            node's function is deterministic (as it should be), then we're going
@@ -1304,24 +1300,15 @@ end = struct
           Cached_value (Cached_value.create_cancelled ~dependency_cycle);
         Fiber.return (Error dependency_cycle)
       | Failure (Out_of_date _) ->
-        (* We call [state_transition] again, to reuse [compute] if we moved to
-           the [Computing] state while being blocked on restoring from cache. *)
-        state_transition ~of_restoring:(fun _ -> assert false)
+        consider_and_compute_without_adding_dep dep_node
     in
-    state_transition ~of_restoring
-
-  and consider_and_compute :
-        'i 'o.
-        ('i, 'o) Dep_node.t -> ('o Cached_value.t, Cycle_error.t) result Fiber.t
-      =
-   fun dep_node ->
-    consider_and_compute_without_adding_dep dep_node >>= function
+    match result with
     | Ok _ as ok -> Call_stack.add_dep_from_caller dep_node >>> Fiber.return ok
     | Error _dependency_cycle as error -> Fiber.return error
 
   let exec_dep_node (dep_node : _ Dep_node.t) =
     Fiber.of_thunk (fun () ->
-        consider_and_compute dep_node >>= function
+        restore_from_cache_and_compute_if_needed dep_node >>= function
         | Ok res ->
           let stack_frame = Dep_node_without_state.T dep_node.without_state in
           Value.get_exn res.value ~stack_frame

@@ -1167,7 +1167,9 @@ module Run = struct
         let handle_outcome (outcome : Build_outcome.t) =
           match outcome with
           | Shutdown -> Fiber.return Shutdown
-          | Cancelled_due_to_file_changes -> Fiber.return Proceed
+          | Cancelled_due_to_file_changes ->
+            t.handler t.config Source_files_changed;
+            Fiber.return Proceed
           | Finished _res ->
             let ivar = Fiber.Ivar.create () in
             t.status <- Waiting_for_file_changes ivar;

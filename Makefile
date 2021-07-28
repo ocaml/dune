@@ -67,7 +67,7 @@ dev-switch:
 	opam update
 # Ensuring that either a dev switch already exists or a new one is created
 	[[ $(shell opam switch show) == $(shell pwd) ]] || \
-		opam switch create -y . 4.11.1 --deps-only --with-test
+		opam switch create -y . 4.12.0 --deps-only --with-test
 	opam install -y $(TEST_DEPS) $(DEV_DEPS)
 
 test: $(BIN)

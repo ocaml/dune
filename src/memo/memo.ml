@@ -1259,18 +1259,19 @@ end = struct
     | Computing { old_value; _ } ->
       Fiber.return (Cache_lookup.Result.Failure (Out_of_date { old_value }))
 
+  (* This function assumes that restoring the value from cache failed, which
+     means we can only be in two possible states: [Out_of_date] or [Computing]. *)
   and consider_and_compute_without_adding_dep :
         'i 'o.
         ('i, 'o) Dep_node.t -> ('o Cached_value.t, Cycle_error.t) result Fiber.t
       =
    fun dep_node ->
     match dep_node.state with
+    | Cached_value _
+    | Restoring _ ->
+      assert false
     | Out_of_date { old_value } ->
       start_computing ~dep_node ~old_value >>| Result.ok
-    | Cached_value cached_value ->
-      assert (Run.is_current cached_value.last_validated_at);
-      Fiber.return (Ok cached_value)
-    | Restoring _ -> assert false
     | Computing { compute; _ } -> (
       Computation.read_but_first_check_for_cycles compute >>| function
       | Ok _ as result -> result

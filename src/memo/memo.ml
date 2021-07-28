@@ -1124,48 +1124,48 @@ end = struct
            and improve stack traces in profiling. *)
         Deps.changed_or_not cached_value.deps
           ~f:(fun [@inline] (Dep_node.T dep) ->
-            match dep.has_cutoff with
-            | false -> (
-              (* If [dep] has no cutoff, it is sufficient to check whether it is
-                 up to date. If not, we must recompute the [cached_value]. *)
-              consider_and_restore_from_cache_without_adding_dep dep
-              >>| function
-              | Ok cached_value_of_dep -> (
-                (* The [Changed] branch will be taken if [cached_value]'s node
-                   was skipped in the previous run (it was unreachable), while
-                   [dep] wasn't skipped and [cached_value_of_dep] changed. *)
-                match
-                  Run.compare cached_value_of_dep.last_changed_at
-                    cached_value.last_validated_at
-                with
-                | Gt -> Changed_or_not.Changed
-                | Eq
-                | Lt ->
-                  Unchanged)
-              | Failure (Cancelled { dependency_cycle }) ->
-                Cancelled { dependency_cycle }
-              | Failure (Out_of_date _) -> Changed)
-            | true -> (
-              (* If [dep] has a cutoff predicate, it is not sufficient to check
-                 whether it is up to date: even if it isn't, after we recompute
-                 it, the resulting value may remain unchanged, allowing us to
-                 skip recomputing the [cached_value]. *)
-              consider_and_compute_without_adding_dep dep
-              >>| function
-              | Ok cached_value_of_dep -> (
-                (* Note: [cached_value_of_dep.value] will be [Cancelled _] if
-                   [dep] itself doesn't introduce a dependency cycle but one of
-                   its transitive dependencies does. In this case, the value
-                   will be new, so we will take the [Changed] branch. *)
-                match
-                  Run.compare cached_value_of_dep.last_changed_at
-                    cached_value.last_validated_at
-                with
-                | Gt -> Changed_or_not.Changed
-                | Eq
-                | Lt ->
-                  Unchanged)
-              | Error dependency_cycle -> Cancelled { dependency_cycle }))
+            consider_and_restore_from_cache_without_adding_dep dep >>= function
+            | Ok cached_value_of_dep -> (
+              (* The [Changed] branch will be taken if [cached_value]'s node was
+                 skipped in the previous run (it was unreachable), while [dep]
+                 wasn't skipped and [cached_value_of_dep] changed. *)
+              match
+                Run.compare cached_value_of_dep.last_changed_at
+                  cached_value.last_validated_at
+              with
+              | Gt -> Fiber.return Changed_or_not.Changed
+              | Eq
+              | Lt ->
+                Fiber.return Changed_or_not.Unchanged)
+            | Failure (Cancelled { dependency_cycle }) ->
+              Fiber.return (Changed_or_not.Cancelled { dependency_cycle })
+            | Failure (Out_of_date _) -> (
+              match dep.has_cutoff with
+              | false ->
+                Fiber.return Changed_or_not.Changed
+                (* If [dep] has no cutoff, it is sufficient to check whether it
+                   is up to date. If not, we must recompute the [cached_value]. *)
+              | true -> (
+                (* If [dep] has a cutoff predicate, it is not sufficient to
+                   check whether it is up to date: even if it isn't, after we
+                   recompute it, the resulting value may remain unchanged,
+                   allowing us to skip recomputing the [cached_value]. *)
+                consider_and_compute_without_adding_dep dep
+                >>| function
+                | Ok cached_value_of_dep -> (
+                  (* Note: [cached_value_of_dep.value] will be [Cancelled _] if
+                     [dep] itself doesn't introduce a dependency cycle but one
+                     of its transitive dependencies does. In this case, the
+                     value will be new, so we will take the [Changed] branch. *)
+                  match
+                    Run.compare cached_value_of_dep.last_changed_at
+                      cached_value.last_validated_at
+                  with
+                  | Gt -> Changed_or_not.Changed
+                  | Eq
+                  | Lt ->
+                    Unchanged)
+                | Error dependency_cycle -> Cancelled { dependency_cycle })))
       in
       match deps_changed with
       | Unchanged ->

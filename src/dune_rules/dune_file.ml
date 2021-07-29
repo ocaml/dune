@@ -1351,8 +1351,6 @@ module Executables = struct
 
     let plugin = make Best Plugin
 
-    let installable_modes = [ exe; native; byte ]
-
     let simple_representations =
       [ ("exe", exe)
       ; ("object", object_)
@@ -1432,6 +1430,13 @@ module Executables = struct
 
     module O = Comparable.Make (T)
 
+    let installable_modes =
+      [ ((0, 0), exe)
+      ; ((0, 0), native)
+      ; ((0, 0), byte)
+      ; ((3, 6), Byte_complete)
+      ]
+
     module Map = struct
       include O.Map
 
@@ -1467,7 +1472,28 @@ module Executables = struct
       let default_for_tests ~version =
         if version < (3, 0) then byte_and_exe else singleton exe Loc.none
 
-      let best_install_mode t = List.find ~f:(mem t) installable_modes
+      let best_install_mode t ~(dune_version : Syntax.Version.t) =
+        let rec loop acc = function
+          | [] -> acc
+          | (since, mode) :: rest -> (
+            match mem t mode with
+            | false -> loop acc rest
+            | true ->
+              if dune_version < since then
+                loop (Some (`Unavailable_until (since, mode))) rest
+              else Some (`Found mode))
+        in
+        match loop None installable_modes with
+        | None -> None
+        | Some (`Found f) -> Some f
+        | Some (`Unavailable_until (since, mode)) ->
+          let what =
+            List.find_map simple_representations ~f:(fun (rep, mode') ->
+                Option.some_if (Ordering.is_eq (T.compare mode mode')) rep)
+            |> Option.value_exn
+          in
+          let loc = find_exn t mode in
+          Syntax.Error.since loc Stanza.syntax since ~what
     end
   end
 
@@ -1549,17 +1575,14 @@ module Executables = struct
          fname)
     and+ enabled_if =
       let allowed_vars = Enabled_if.common_vars ~since:(2, 3) in
-      let* syntax_version = Dune_lang.Syntax.get_exn Stanza.syntax in
-      let is_error =
-        Dune_lang.Syntax.Version.Infix.(syntax_version >= (2, 6))
-      in
+      let is_error = Dune_lang.Syntax.Version.Infix.(dune_version >= (2, 6)) in
       Enabled_if.decode ~allowed_vars ~is_error ~since:(Some (2, 3)) ()
     in
     fun names ~multi ->
       let has_public_name = Names.has_public_name names in
       let private_names = Names.names names in
       let install_conf =
-        match Link_mode.Map.best_install_mode modes with
+        match Link_mode.Map.best_install_mode ~dune_version modes with
         | None when has_public_name ->
           User_error.raise ~loc:buildable.loc
             [ Pp.textf "No installable mode found for %s."
@@ -1567,14 +1590,19 @@ module Executables = struct
             ; Pp.text
                 "When public_name is set, one of the following modes is \
                  required:"
-            ; Pp.enumerate Link_mode.installable_modes ~f:(fun mode ->
+            ; Pp.enumerate
+                (List.filter_map Link_mode.installable_modes
+                   ~f:(fun (since, mode) ->
+                     Option.some_if (dune_version >= since) mode))
+                ~f:(fun mode ->
                   Pp.verbatim (Dune_lang.to_string (Link_mode.encode mode)))
             ]
         | None -> None
         | Some mode ->
           let ext =
             match mode with
-            | Byte_complete | Other { mode = Byte; _ } -> ".bc"
+            | Byte_complete -> ".bc.exe"
+            | Other { mode = Byte; _ } -> ".bc"
             | Other { mode = Native | Best; _ } -> ".exe"
           in
           Names.install_conf names ~ext ~enabled_if

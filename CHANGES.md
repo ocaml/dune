@@ -1,6 +1,8 @@
 Unreleased
 ----------
 
+- Allow `Byte_complete` binaries to be installable (#4873, @AltGr, @rgrinberg)
+
 - Revive `$ dune external-lib-deps` under `$ dune describe external-lib-deps`.
   (#6045, @moyodiallo)
 

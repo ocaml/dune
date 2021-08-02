@@ -1,6 +1,8 @@
 Unreleased
 ----------
 
+- Fixes `opam` META file requires entry for private libs (#4841, fixes #4839, @toots)
+
 - Fixes `dune exec` not adding .exe on Windows (#4371, fixes #3322, @MisterDA)
 
 - Allow multiple cinaps stanzas in the same directory (#4460, @rgrinberg)

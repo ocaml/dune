@@ -62,7 +62,7 @@ Note the name mangling convention in the META file:
   package "bar" (
     directory = "bar"
     description = ""
-    requires = "secret"
+    requires = "foo.__private__.secret"
     archive(byte) = "foo.cma"
     archive(native) = "foo.cmxa"
     plugin(byte) = "foo.cma"

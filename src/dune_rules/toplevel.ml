@@ -68,36 +68,33 @@ type t =
 let make ~cctx ~source ~preprocess = { cctx; source; preprocess }
 
 let pp_flags t =
+  let open Action_builder.O in
   let open Pp.O in
   let sctx = Compilation_context.super_context t.cctx in
   let scope = Compilation_context.scope t.cctx in
   let expander = Compilation_context.expander t.cctx in
   match t.preprocess with
-  | Pps { loc; pps; flags; staged = _ } -> (
-    match
-      Resolve.peek
-        (Preprocessing.get_ppx_driver sctx ~loc ~expander ~lib_name:None ~flags
-           ~scope pps)
-    with
-    | Error () -> Pp.nop
-    | Ok (exe, flags) ->
-      let ppx =
-        Dyn.Encoder.list Dyn.Encoder.string
-          [ Path.to_absolute_filename (Path.build exe) :: "--as-ppx" :: flags
-            |> String.concat ~sep:" "
-          ]
-      in
-      (* Set Clflags.all_ppx for dune utop, and Compenv.first_ppx for custom
-         toplevels because Topmain.main() resets Clflags.all_ppx. *)
-      Pp.vbox ~indent:2
-        (Pp.verbatim "Clflags.all_ppx :=" ++ Pp.cut ++ Dyn.pp ppx)
-      ++ Pp.verbatim ";" ++ Pp.newline
-      ++ Pp.verbatim "Compenv.first_ppx :="
-      ++ Pp.cut ++ Dyn.pp ppx ++ Pp.verbatim ";" ++ Pp.newline)
+  | Pps { loc; pps; flags; staged = _ } ->
+    let+ exe, flags =
+      Preprocessing.get_ppx_driver sctx ~loc ~expander ~lib_name:None ~flags
+        ~scope pps
+    in
+    let ppx =
+      Dyn.Encoder.list Dyn.Encoder.string
+        [ Path.to_absolute_filename (Path.build exe) :: "--as-ppx" :: flags
+          |> String.concat ~sep:" "
+        ]
+    in
+    (* Set Clflags.all_ppx for dune utop, and Compenv.first_ppx for custom
+       toplevels because Topmain.main() resets Clflags.all_ppx. *)
+    Pp.vbox ~indent:2 (Pp.verbatim "Clflags.all_ppx :=" ++ Pp.cut ++ Dyn.pp ppx)
+    ++ Pp.verbatim ";" ++ Pp.newline
+    ++ Pp.verbatim "Compenv.first_ppx :="
+    ++ Pp.cut ++ Dyn.pp ppx ++ Pp.verbatim ";" ++ Pp.newline
   | Action _
   | Future_syntax _ ->
     assert false (* Error in parsing *)
-  | No_preprocessing -> Pp.nop
+  | No_preprocessing -> Action_builder.return Pp.nop
 
 let setup_module_rules t =
   let dir = Compilation_context.dir t.cctx in
@@ -105,17 +102,16 @@ let setup_module_rules t =
   let path = Source.source_path t.source in
   let requires_compile = Compilation_context.requires_compile t.cctx in
   let main_ml =
+    let open Action_builder.O in
     Action_builder.write_file_dyn path
-      (Resolve.read
-         (let open Resolve.O in
-         let* libs = requires_compile in
-         let include_dirs =
-           Path.Set.to_list (Lib.L.include_paths libs Mode.Byte)
-         in
-         let pp_ppx = pp_flags t in
-         let pp_dirs = Source.pp_ml t.source ~include_dirs in
-         let pp = Pp.seq pp_ppx pp_dirs in
-         Resolve.return (Format.asprintf "%a@." Pp.to_fmt pp)))
+      (let* libs = Resolve.read requires_compile in
+       let include_dirs =
+         Path.Set.to_list (Lib.L.include_paths libs Mode.Byte)
+       in
+       let* pp_ppx = pp_flags t in
+       let pp_dirs = Source.pp_ml t.source ~include_dirs in
+       let pp = Pp.seq pp_ppx pp_dirs in
+       Action_builder.return (Format.asprintf "%a@." Pp.to_fmt pp))
   in
   Super_context.add_rule sctx ~dir main_ml
 

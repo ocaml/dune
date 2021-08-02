@@ -31,7 +31,7 @@ module DB : sig
     -> modules_of_lib:
          (dir:Path.Build.t -> name:Lib_name.t -> Modules.t Memo.Build.t) Fdecl.t
     -> Dune_file.t list
-    -> t * Lib.DB.t
+    -> (t * Lib.DB.t) Memo.Build.t
 
   val find_by_dir : t -> Path.Build.t -> scope
 

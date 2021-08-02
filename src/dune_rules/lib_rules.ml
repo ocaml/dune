@@ -180,7 +180,7 @@ let ocamlmklib ~loc ~c_library_flags ~sctx ~dir ~expander ~o_files ~archive_name
        "optional targets", allowing us to run [ocamlmklib] with the [-failsafe]
        flag, which always produces the static target and sometimes produces the
        dynamic target too. *)
-    Memo.Build.if_ ctx.dynamically_linked_foreign_archives (fun () ->
+    Memo.Build.when_ ctx.dynamically_linked_foreign_archives (fun () ->
         build ~sandbox:Sandbox_config.needs_sandboxing ~custom:false
           [ dynamic_target ])
 
@@ -320,9 +320,9 @@ let setup_build_archives (lib : Dune_file.Library.t) ~cctx
      [Obj_dir]. That's fragile and will break if the layout of the object
      directory changes *)
   let dir = Obj_dir.dir obj_dir in
-  let native_archives =
+  let* native_archives =
     let lib_config = ctx.lib_config in
-    let lib_info = Library.to_lib_info lib ~dir ~lib_config in
+    let+ lib_info = Library.to_lib_info lib ~dir ~lib_config in
     Lib_info.eval_native_archives_exn lib_info ~modules:(Some modules)
   in
   let cm_files =
@@ -342,7 +342,7 @@ let setup_build_archives (lib : Dune_file.Library.t) ~cctx
           ~cm_files)
   and* () =
     (* Build *.cma.js *)
-    Memo.Build.if_ modes.byte (fun () ->
+    Memo.Build.when_ modes.byte (fun () ->
         let action_with_targets =
           let src =
             Library.archive lib ~dir ~ext:(Mode.compiled_lib_ext Mode.Byte)
@@ -359,7 +359,7 @@ let setup_build_archives (lib : Dune_file.Library.t) ~cctx
             action_with_targets
             >>= Super_context.add_rule sctx ~dir ~loc:lib.buildable.loc))
   in
-  Memo.Build.if_
+  Memo.Build.when_
     (Dynlink_supported.By_the_os.get natdynlink_supported && modes.native)
     (fun () -> build_shared ~native_archives ~sctx lib ~dir ~flags)
 
@@ -429,12 +429,12 @@ let library_rules (lib : Library.t) ~cctx ~source_modules ~dir_contents
   and* () = Module_compilation.build_all cctx ~dep_graphs
   and* expander = Super_context.expander sctx ~dir in
   let+ () =
-    Memo.Build.if_
+    Memo.Build.when_
       (not (Library.is_virtual lib))
       (fun () -> setup_build_archives lib ~cctx ~dep_graphs ~expander ~scope)
   and+ () =
     let vlib_stubs_o_files = Vimpl.vlib_stubs_o_files vimpl in
-    Memo.Build.if_
+    Memo.Build.when_
       (Library.has_foreign lib || List.is_non_empty vlib_stubs_o_files)
       (fun () ->
         build_stubs lib ~cctx ~dir ~expander ~requires:requires_compile

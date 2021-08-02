@@ -27,7 +27,7 @@ let man =
 
 let info = Term.info "rules" ~doc ~man
 
-let print_rule_makefile ppf (rule : Build_system.For_command_line.Rule.t) =
+let print_rule_makefile ppf (rule : Dune_engine.Reflection.Rule.t) =
   let action =
     Action.For_shell.Progn
       [ Mkdir (Path.to_string (Path.build rule.dir))
@@ -44,7 +44,7 @@ let print_rule_makefile ppf (rule : Build_system.For_command_line.Rule.t) =
           Format.fprintf ppf "@ %s" (Path.to_string dep)))
     Pp.to_fmt (Action_to_sh.pp action)
 
-let print_rule_sexp ppf (rule : Build_system.For_command_line.Rule.t) =
+let print_rule_sexp ppf (rule : Dune_engine.Reflection.Rule.t) =
   let sexp_of_action action =
     Action.for_shell action |> Action.For_shell.encode
   in
@@ -111,8 +111,9 @@ let term =
   Scheduler.go ~common ~config (fun () ->
       let open Fiber.O in
       let* setup = Import.Main.setup () in
-      Build_system.run (fun () ->
+      Build_system.run_exn (fun () ->
           let open Memo.Build.O in
+          let* setup = setup in
           let* request =
             match targets with
             | [] ->
@@ -121,13 +122,11 @@ let term =
                       Path.build p :: acc)
               >>| Action_builder.paths
             | _ ->
-              Target.resolve_targets_exn (Common.root common) config setup
-                targets
-              >>| Target.request
+              Memo.Build.return
+                (Target.interpret_targets (Common.root common) config setup
+                   targets)
           in
-          let+ rules =
-            Build_system.For_command_line.evaluate_rules ~request ~recursive
-          in
+          let+ rules = Dune_engine.Reflection.eval ~request ~recursive in
           let print oc =
             let ppf = Format.formatter_of_out_channel oc in
             Syntax.print_rules syntax ppf rules

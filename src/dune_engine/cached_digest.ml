@@ -124,7 +124,7 @@ let dump () =
         P.dump db_file (Lazy.force cache))
   )
 
-let () = Hooks.End_of_build.always dump
+let () = at_exit dump
 
 let invalidate_cached_timestamps () =
   (if Lazy.is_val cache then

@@ -20,11 +20,11 @@ module Session : sig
       writing *)
   type t
 
-  val create : in_channel -> out_channel -> t Fiber.t
+  val create : socket:bool -> in_channel -> out_channel -> t Fiber.t
 
   (* [write t x] writes the s-expression when [x] is [Some sexp], and closes the
      session if [x = None ] *)
-  val write : t -> Sexp.t option -> unit Fiber.t
+  val write : t -> Sexp.t list option -> unit Fiber.t
 
   (** If [read] returns [None], the session is closed and all subsequent reads
       will return [None] *)
@@ -39,7 +39,9 @@ module Client : sig
 
   val stop : t -> unit
 
-  val connect : t -> Session.t Fiber.t
+  val connect_exn : t -> Session.t Fiber.t
+
+  val connect : t -> (Session.t, Exn_with_backtrace.t) result Fiber.t
 end
 
 module Server : sig

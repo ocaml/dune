@@ -6,25 +6,77 @@ type who_is_responsible_for_the_error =
   | User
   | Developer
 
-let get_user_message = function
-  | User_error.E (msg, _) -> (User, msg)
-  | Code_error.E e ->
-    let open Pp.O in
-    ( Developer
-    , User_message.make ?loc:e.loc
+type error =
+  { responsible : who_is_responsible_for_the_error
+  ; msg : User_message.t
+  ; has_embedded_location : bool
+  }
+
+let code_error ~loc ~dyn_without_loc =
+  let open Pp.O in
+  { responsible = Developer
+  ; msg =
+      User_message.make ?loc
         [ Pp.tag User_message.Style.Error
             (Pp.textf
                "Internal error, please report upstream including the contents \
                 of _build/log.")
         ; Pp.text "Description:"
-        ; Pp.box ~indent:2
-            (Pp.verbatim "  " ++ Dyn.pp (Code_error.to_dyn_without_loc e))
-        ] )
+        ; Pp.box ~indent:2 (Pp.verbatim "  " ++ Dyn.pp dyn_without_loc)
+        ]
+  ; has_embedded_location = false
+  }
+
+let get_error_from_exn = function
+  | Memo.Cycle_error.E raw_cycle -> (
+    let cycle =
+      Memo.Cycle_error.get raw_cycle
+      |> List.filter_map ~f:Memo.Stack_frame.human_readable_description
+    in
+    match List.last cycle with
+    | None ->
+      let frames = Memo.Cycle_error.get raw_cycle in
+      code_error ~loc:None
+        ~dyn_without_loc:
+          (Dyn.Tuple
+             [ String "internal dependency cycle"
+             ; Record
+                 [ ("frames", Dyn.Encoder.(list Memo.Stack_frame.to_dyn) frames)
+                 ]
+             ])
+    | Some last ->
+      let first = List.hd cycle in
+      let cycle =
+        if last = first then
+          cycle
+        else
+          last :: cycle
+      in
+      { responsible = User
+      ; msg =
+          User_message.make ~prefix:User_error.prefix
+            [ Pp.text "Dependency cycle between:"
+            ; Pp.chain cycle ~f:(fun p -> p)
+            ]
+      ; has_embedded_location = false
+      })
+  | User_error.E (msg, annots) ->
+    let has_embedded_location = User_error.has_embed_location annots in
+    { responsible = User; msg; has_embedded_location }
+  | Code_error.E e ->
+    code_error ~loc:e.loc ~dyn_without_loc:(Code_error.to_dyn_without_loc e)
   | Unix.Unix_error (err, func, fname) ->
-    ( User
-    , User_error.make
-        [ Pp.textf "%s: %s: %s" func fname (Unix.error_message err) ] )
-  | Sys_error msg -> (User, User_error.make [ Pp.text msg ])
+    { responsible = User
+    ; msg =
+        User_error.make
+          [ Pp.textf "%s: %s: %s" func fname (Unix.error_message err) ]
+    ; has_embedded_location = false
+    }
+  | Sys_error msg ->
+    { responsible = User
+    ; msg = User_error.make [ Pp.text msg ]
+    ; has_embedded_location = false
+    }
   | exn ->
     let open Pp.O in
     let s = Printexc.to_string exn in
@@ -41,7 +93,10 @@ let get_user_message = function
         let stop = { start with pos_cnum = stop } in
         (Some { Loc.start; stop }, Pp.text s)
     in
-    (Developer, User_message.make ?loc [ pp ])
+    { responsible = Developer
+    ; msg = User_message.make ?loc [ pp ]
+    ; has_embedded_location = Option.is_some loc
+    }
 
 let i_must_not_crash =
   let reported = ref false in
@@ -67,6 +122,18 @@ let report_backtraces b = report_backtraces_flag := b
 
 let print_memo_stacks = ref false
 
+let format_memo_stack pps =
+  match pps with
+  | [] -> None
+  | _ ->
+    Some
+      (Pp.vbox
+         (Pp.concat ~sep:Pp.cut
+            (List.map pps ~f:(fun pp ->
+                 Pp.box ~indent:3
+                   (Pp.seq (Pp.verbatim "-> ")
+                      (Pp.seq (Pp.text "required by ") pp))))))
+
 let report { Exn_with_backtrace.exn; backtrace } =
   let exn, memo_stack =
     match exn with
@@ -76,12 +143,7 @@ let report { Exn_with_backtrace.exn; backtrace } =
   match exn with
   | Already_reported -> ()
   | _ ->
-    let who_is_responsible, msg = get_user_message exn in
-    let has_embed_location =
-      match exn with
-      | User_error.E (_, annots) -> User_error.has_embed_location annots
-      | _ -> false
-    in
+    let { responsible; msg; has_embedded_location } = get_error_from_exn exn in
     let msg =
       if msg.loc = Some Loc.none then
         { msg with loc = None }
@@ -92,7 +154,7 @@ let report { Exn_with_backtrace.exn; backtrace } =
       { msg with paragraphs = msg.paragraphs @ pp }
     in
     let msg =
-      if who_is_responsible = User && not !report_backtraces_flag then
+      if responsible = User && not !report_backtraces_flag then
         msg
       else
         append msg
@@ -106,7 +168,7 @@ let report { Exn_with_backtrace.exn; backtrace } =
       else
         match msg.loc with
         | None ->
-          if has_embed_location then
+          if has_embedded_location then
             []
           else
             memo_stack
@@ -119,19 +181,15 @@ let report { Exn_with_backtrace.exn; backtrace } =
             memo_stack
     in
     let memo_stack =
-      match
-        List.filter_map memo_stack
-          ~f:Memo.Stack_frame.human_readable_description
-      with
-      | [] -> None
-      | pps ->
-        Some
-          (Pp.vbox
-             (Pp.concat ~sep:Pp.cut
-                (List.map pps ~f:(fun pp ->
-                     Pp.box ~indent:3
-                       (Pp.seq (Pp.verbatim "-> ")
-                          (Pp.seq (Pp.text "required by ") pp))))))
+      match responsible with
+      | User ->
+        format_memo_stack
+          (List.filter_map memo_stack
+             ~f:Memo.Stack_frame.human_readable_description)
+      | Developer ->
+        format_memo_stack
+          (List.map memo_stack ~f:(fun frame ->
+               Dyn.pp (Memo.Stack_frame.to_dyn frame)))
     in
     let msg =
       match memo_stack with
@@ -139,7 +197,7 @@ let report { Exn_with_backtrace.exn; backtrace } =
       | Some pp -> append msg [ pp ]
     in
     let msg =
-      match who_is_responsible with
+      match responsible with
       | User -> msg
       | Developer -> append msg (i_must_not_crash ())
     in

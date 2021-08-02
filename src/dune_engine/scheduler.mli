@@ -49,7 +49,7 @@ module Run : sig
   end
 
   type file_watcher =
-    | Detect_external
+    | Automatic
     | No_watcher
 
   (** Raised when [go] terminates due to the user requesting a shutdown via rpc.
@@ -57,14 +57,32 @@ module Run : sig
       cases *)
   exception Shutdown_requested
 
-  (** Runs [once] in a loop, executing [finally] after every iteration, even if
-      Fiber.Never was encountered.
+  exception Build_cancelled
+
+  type step = (unit, [ `Already_reported ]) Result.t Fiber.t
+
+  (** [poll once] runs [once] in a loop.
 
       If any source files change in the middle of iteration, it gets canceled.
 
       If [shutdown] is called, the current build will be canceled and new builds
       will not start. *)
-  val poll : (unit -> [ `Continue | `Stop ] Fiber.t) -> unit Fiber.t
+  val poll : step -> unit Fiber.t
+
+  module Build_outcome_for_rpc : sig
+    type t =
+      | Success
+      | Failure
+  end
+
+  (** [poll_passive] is similar to [poll], but it can be used to drive the
+      polling loop explicitly instead of starting new iterations automatically.
+
+      The fiber [get_build_request] is run at the beginning of every iteration
+      to wait for the build signal. *)
+  val poll_passive :
+       get_build_request:(step * Build_outcome_for_rpc.t Fiber.Ivar.t) Fiber.t
+    -> unit Fiber.t
 
   val go :
        Config.t
@@ -85,6 +103,10 @@ module Worker : sig
     -> f:(unit -> 'a)
     -> ('a, [ `Exn of Exn_with_backtrace.t | `Stopped ]) result Fiber.t
 
+  (** Should be used for tasks never raise and always complete before stop is
+      called *)
+  val task_exn : t -> f:(unit -> 'a) -> 'a Fiber.t
+
   val stop : t -> unit
 end
 
@@ -98,7 +120,9 @@ val t : unit -> t Fiber.t
 val with_job_slot : (Config.t -> 'a Fiber.t) -> 'a Fiber.t
 
 (** Wait for the following process to terminate *)
-val wait_for_process : Pid.t -> Proc.Process_info.t Fiber.t
+val wait_for_process : ?timeout:float -> Pid.t -> Proc.Process_info.t Fiber.t
+
+val yield_if_there_are_pending_events : unit -> unit Fiber.t
 
 (** Make the scheduler ignore next change to a certain file in watch mode.
 
@@ -112,3 +136,10 @@ val running_jobs_count : t -> int
 (** Start the shutdown sequence. Among other things, it causes Dune to cancel
     the current build and stop accepting RPC clients. *)
 val shutdown : unit -> unit Fiber.t
+
+val inject_memo_invalidation : Memo.Invalidation.t -> unit Fiber.t
+
+(** [sleep duration] wait for [duration] to elapse. Sleepers are checked for
+    wake up at a rate of once per 0.1 seconds. So [duration] should be at least
+    this long. *)
+val sleep : float -> unit Fiber.t

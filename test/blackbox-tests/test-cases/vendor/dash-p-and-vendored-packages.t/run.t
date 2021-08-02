@@ -49,5 +49,5 @@ Asking to keep "bar" makes no sense since it is vendored:
 
   $ dune exec -p foo,bar ./foo.exe
   Error: Package bar is vendored and so will never be masked. It is redundant
-  to pass it to -p.
+  to pass it to --only-packages.
   [1]

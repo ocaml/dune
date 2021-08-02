@@ -21,7 +21,11 @@ type t =
 
 val true_ : t
 
-val eval : t -> dir:Path.t -> f:Value.t list String_with_vars.expander -> bool
+val eval :
+     t
+  -> dir:Path.t
+  -> f:Value.t list Memo.Build.t String_with_vars.expander
+  -> bool Memo.Build.t
 
 val to_dyn : t -> Dyn.t
 

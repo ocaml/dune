@@ -656,7 +656,34 @@ let wrapped_compat = function
     Module_name.Map.empty
   | Wrapped w -> w.wrapped_compat
 
+let rec fold_user_available t ~f ~init =
+  match t with
+  | Stdlib w -> Stdlib.fold w ~init ~f
+  | Singleton m -> f m init
+  | Wrapped { modules; _ }
+  | Unwrapped modules ->
+    Module_name.Map.fold modules ~init ~f
+  | Impl { impl; vlib = _ } ->
+    (* XXX shouldn't we folding over [vlib] as well? *)
+    fold_user_available impl ~f ~init
+
+let is_user_written m =
+  match Module.kind m with
+  | Root -> false
+  | Wrapped_compat
+  | Alias ->
+    (* Logically, this shold be [acc]. But this is unreachable these are stored
+       separately *)
+    assert false
+  | _ -> true
+
 let rec fold_user_written t ~f ~init =
+  let f m acc =
+    if is_user_written m then
+      f m acc
+    else
+      acc
+  in
   match t with
   | Stdlib w -> Stdlib.fold w ~init ~f
   | Singleton m -> f m init
@@ -666,6 +693,12 @@ let rec fold_user_written t ~f ~init =
   | Impl { impl; vlib = _ } -> fold_user_written impl ~f ~init
 
 let rec map_user_written t ~f =
+  let f m =
+    if is_user_written m then
+      f m
+    else
+      Memo.Build.return m
+  in
   let open Memo.Build.O in
   match t with
   | Singleton m ->
@@ -735,7 +768,9 @@ let rec obj_map : 'a. t -> f:(Sourced_module.t -> 'a) -> 'a Module.Obj_map.t =
           assert false)
 
 let obj_map_build :
-      'a.    t -> f:(Sourced_module.t -> 'a Memo.Build.t)
+      'a.
+         t
+      -> f:(Sourced_module.t -> 'a Memo.Build.t)
       -> 'a Module.Obj_map.t Memo.Build.t =
  fun t ~f ->
   Module.Obj_map_traversals.parallel_map (obj_map t ~f) ~f:(fun _ x -> x)

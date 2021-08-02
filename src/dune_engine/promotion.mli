@@ -1,9 +1,20 @@
 open! Stdune
 
+module Annot : sig
+  type t =
+    { in_source : Path.Source.t
+    ; in_build : Path.Build.t
+    }
+
+  include User_error.Annot.S with type payload := t
+end
+
 module File : sig
   type t
 
   val to_dyn : t -> Dyn.t
+
+  val in_staging_area : Path.Source.t -> Path.Build.t
 
   (** Register an intermediate file to promote. The build path may point to the
       sandbox and the file will be moved to the staging area. *)

@@ -37,7 +37,7 @@ val host : t -> t
 val any_package : t -> Package.Name.t -> Expander.any_package option
 
 val get_site_of_packages :
-  t -> pkg:Package.Name.t -> site:Section.Site.t -> Section.t
+  t -> loc:Loc.t -> pkg:Package.Name.t -> site:Section.Site.t -> Section.t
 
 module Lib_entry : sig
   type t =
@@ -85,7 +85,7 @@ val local_binaries :
 val odoc : t -> dir:Path.Build.t -> Env_node.Odoc.t Memo.Build.t
 
 (** coq config in the corresponding [(env)] stanza. *)
-val coq : t -> dir:Path.Build.t -> Env_node.Coq.t Memo.Build.t
+val coq : t -> dir:Path.Build.t -> Env_node.Coq.t Action_builder.t Memo.Build.t
 
 (** Formatting settings in the corresponding [(env)] stanza. *)
 val format_config : t -> dir:Path.Build.t -> Format_config.t Memo.Build.t
@@ -128,7 +128,7 @@ val add_rules :
 
 val add_alias_action :
      t
-  -> Build_system.Alias.t
+  -> Alias.t
   -> dir:Path.Build.t
   -> loc:Loc.t option
   -> ?locks:Path.t list

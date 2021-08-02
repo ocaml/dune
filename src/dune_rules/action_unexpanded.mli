@@ -33,7 +33,7 @@ val expand :
   -> targets_dir:Path.Build.t
   -> targets:Path.Build.t Targets.t
   -> expander:Expander.t
-  -> Action.t Action_builder.With_targets.t
+  -> Action.t Action_builder.With_targets.t Memo.Build.t
 
 (** [what] as the same meaning as the argument of
     [Expander.Expanding_what.User_action_without_targets] *)

@@ -1,7 +1,7 @@
 (*---------------------------------------------------------------------------
    Copyright (c) 2011 Daniel C. Bünzli. All rights reserved.
    Distributed under the ISC license, see terms at the end of the file.
-   cmdliner v1.0.4-27-gb4f5656
+   cmdliner v1.0.4-31-gb5d6161
   ---------------------------------------------------------------------------*)
 
 (** Command line arguments as terms. *)
@@ -41,6 +41,8 @@ val flag : info -> bool t
 val flag_all : info -> bool list t
 val vflag : 'a -> ('a * info) list -> 'a t
 val vflag_all : 'a list -> ('a * info) list -> 'a list t
+val alias : string list -> info -> bool t
+val alias_opt : (string -> string list) -> info -> bool t
 val opt : ?vopt:'a -> 'a converter -> 'a -> info -> 'a t
 val opt_all : ?vopt:'a -> 'a converter -> 'a list -> info -> 'a list t
 

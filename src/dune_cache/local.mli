@@ -57,7 +57,9 @@ val store_artifacts :
 
 (** Restore targets produced by a rule with a given digest. If successful, this
     operation will restore the targets on disk, in the [target_dir] directory,
-    and will also return their paths and digests. *)
+    and will also return their paths and digests. The caller is responsible for
+    removing stale versions of the targets, if any, before calling this
+    function. *)
 val restore_artifacts :
      mode:Dune_cache_storage.Mode.t
   -> rule_digest:Digest.t

@@ -1,0 +1,10 @@
+(mdx
+ (files doc-a.md)
+ (package a))
+
+(mdx
+ (files doc-b.md)
+ (package b))
+
+(mdx
+ (files doc-nopkg.md))

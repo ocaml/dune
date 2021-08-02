@@ -5,3 +5,7 @@
 (alias
  (name everywhere)
  (deps (alias_rec x)))
+
+(alias
+ (name alias-depending-on-unknown-alias)
+ (deps (alias unknown-alias)))

@@ -13,6 +13,7 @@ for this feature.
   $ dune build --root dynamic
   Entering directory 'dynamic'
   Error: No rule found for foo
+  -> required by %{read:foo} at dune:3
   -> required by alias default in dune:1
   [1]
 

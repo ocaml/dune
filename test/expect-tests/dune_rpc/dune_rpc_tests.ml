@@ -23,7 +23,12 @@ module Chan = struct
 
   let create () = { in_ = Fiber.Stream.pipe (); out = Fiber.Stream.pipe () }
 
-  let write t s = Fiber.Stream.Out.write (snd t.out) s
+  let write t s =
+    match s with
+    | None -> Fiber.Stream.Out.write (snd t.out) None
+    | Some s ->
+      Fiber.sequential_iter s ~f:(fun s ->
+          Fiber.Stream.Out.write (snd t.out) (Some s))
 
   let read t = Fiber.Stream.In.read (fst t.in_)
 
@@ -35,7 +40,7 @@ end
 
 module Drpc = struct
   module Client =
-    Dune_rpc.Client
+    Dune_rpc.Client.Make
       (struct
         include Fiber
 
@@ -46,10 +51,6 @@ module Drpc = struct
       (Chan)
 
   module Server = Dune_rpc_server.Make (Chan)
-
-  let connect_raw = Client.connect_raw
-
-  let serve = Server.serve
 end
 
 open Drpc
@@ -63,16 +64,18 @@ let setup_client_server () =
   let connect () = Chan.connect client_chan server_chan in
   (client_chan, sessions, connect)
 
-let test ?(on_notification = fun _ -> assert false) ~client ~handler ~init () =
+let test ~client ~handler ~init () =
   let run =
     let client_chan, sessions, connect = setup_client_server () in
     let client () =
-      Drpc.connect_raw client_chan init ~on_notification ~f:(fun c ->
+      Drpc.Client.connect client_chan init ~f:(fun c ->
           let* () = client c in
           Chan.write client_chan None)
     in
     let server () =
-      let+ () = Drpc.serve sessions None (Dune_rpc_server.make handler) in
+      let+ () =
+        Drpc.Server.serve sessions None (Dune_rpc_server.make handler)
+      in
       printfn "server: finished."
     in
     Fiber.parallel_iter [ connect; client; server ] ~f:(fun f -> f ())
@@ -101,10 +104,11 @@ let%expect_test "invalid client version" =
   [%expect.unreachable]
   [@@expect.uncaught_exn
     {|
-  ( "{ payload = Some [ [ \"supported versions until\"; [ \"2\"; \"0\" ] ] ]\
-   \n; message = \"Unsupported version\"\
-   \n; kind = Version_error\
-   \n}")
+  ( "Response.E\
+   \n  { payload = Some [ [ \"supported versions until\"; [ \"2\"; \"0\" ] ] ]\
+   \n  ; message = \"Unsupported version\"\
+   \n  ; kind = Version_error\
+   \n  }")
   Trailing output
   ---------------
   server: finished. |}]

@@ -55,6 +55,8 @@ val fold_user_written : t -> f:(Module.t -> 'acc -> 'acc) -> init:'acc -> 'acc
 val map_user_written :
   t -> f:(Module.t -> Module.t Memo.Build.t) -> t Memo.Build.t
 
+val fold_user_available : t -> f:(Module.t -> 'acc -> 'acc) -> init:'acc -> 'acc
+
 (** Returns all the compatibility modules. *)
 val wrapped_compat : t -> Module.Name_map.t
 

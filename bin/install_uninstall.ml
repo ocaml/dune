@@ -346,8 +346,20 @@ let package_is_vendored (pkg : Dune_engine.Package.t) =
   let dir = Package.dir pkg in
   Memo.Build.run (Dune_engine.Source_tree.is_vendored dir)
 
+type what =
+  | Install
+  | Uninstall
+
+let pp_what fmt = function
+  | Install -> Format.pp_print_string fmt "Install"
+  | Uninstall -> Format.pp_print_string fmt "Uninstall"
+
+let cmd_what = function
+  | Install -> "install"
+  | Uninstall -> "uninstall"
+
 let install_uninstall ~what =
-  let doc = sprintf "%s packages." (String.capitalize what) in
+  let doc = Format.asprintf "%a packages." pp_what what in
   let name_ = Arg.info [] ~docv:"PACKAGE" in
   let term =
     let+ common = Common.term
@@ -384,6 +396,17 @@ let install_uninstall ~what =
         "When passed, manually override the directory to install man pages"
       in
       Arg.(value & opt (some string) None & info [ "mandir" ] ~docv:"PATH" ~doc)
+    and+ docdir =
+      let doc =
+        "When passed, manually override the directory to install documentation"
+      in
+      Arg.(value & opt (some string) None & info [ "docdir" ] ~docv:"PATH" ~doc)
+    and+ etcdir =
+      let doc =
+        "When passed, manually override the directory to install configuration \
+         files"
+      in
+      Arg.(value & opt (some string) None & info [ "etcdir" ] ~docv:"PATH" ~doc)
     and+ dry_run =
       Arg.(
         value & flag
@@ -396,6 +419,14 @@ let install_uninstall ~what =
             ~doc:
               "Make the binaries relocatable (the installation directory can \
                be moved).")
+    and+ create_install_files =
+      Arg.(
+        value & flag
+        & info [ "create-install-files" ]
+            ~doc:
+              "Do not directly install, but create install files in the root \
+               directory and create substituted files if needed in destdir \
+               (_destdir by default).")
     and+ pkgs = Arg.(value & pos_all package_name [] name_)
     and+ context =
       Arg.(
@@ -467,8 +498,8 @@ let install_uninstall ~what =
                  multiple contexts!"
             ]
         | _ -> ());
-        let module CMap = Map.Make (Context) in
         let install_files_by_context =
+          let module CMap = Map.Make (Context) in
           CMap.of_list_multi install_files
           |> CMap.to_list_map ~f:(fun context install_files ->
                  let entries_per_package =
@@ -498,6 +529,13 @@ let install_uninstall ~what =
                  in
                  (context, entries_per_package))
         in
+        let destdir =
+          if create_install_files then
+            Some (Option.value ~default:"_destdir" destdir)
+          else
+            destdir
+        in
+        let open Fiber.O in
         let (module Ops) = file_operations ~dry_run ~workspace in
         let files_deleted_in = ref Path.Set.empty in
         let+ () =
@@ -506,6 +544,18 @@ let install_uninstall ~what =
               (match mandir with
               | Some _ -> mandir
               | None -> Dune_rules.Setup.mandir)
+          in
+          let docdir =
+            Option.map ~f:Path.of_string
+              (match docdir with
+              | Some _ -> docdir
+              | None -> Dune_rules.Setup.docdir)
+          in
+          let etcdir =
+            Option.map ~f:Path.of_string
+              (match etcdir with
+              | Some _ -> etcdir
+              | None -> Dune_rules.Setup.etcdir)
           in
           Fiber.sequential_iter install_files_by_context
             ~f:(fun (context, entries_per_package) ->
@@ -516,36 +566,66 @@ let install_uninstall ~what =
               let conf =
                 Dune_rules.Artifact_substitution.conf_for_install ~relocatable
                   ~default_ocamlpath:context.default_ocamlpath
-                  ~stdlib_dir:context.stdlib_dir ~prefix ~libdir ~mandir
+                  ~stdlib_dir:context.stdlib_dir ~prefix ~libdir ~mandir ~docdir
+                  ~etcdir
               in
               Fiber.sequential_iter entries_per_package
                 ~f:(fun (package, entries) ->
                   let paths =
                     Install.Section.Paths.make ~package ~destdir:prefix ?libdir
-                      ?mandir ()
+                      ?mandir ?docdir ?etcdir ()
                   in
-                  Fiber.sequential_iter entries ~f:(fun entry ->
-                      let special_file = Special_file.of_entry entry in
-                      let dst =
-                        Install.Entry.relative_installed_path entry ~paths
-                        |> interpret_destdir ~destdir
-                      in
-                      let dir = Path.parent_exn dst in
-                      if what = "install" then (
-                        Ops.remove_if_exists dst;
-                        print_line "Installing %s"
-                          (Path.to_string_maybe_quoted dst);
-                        Ops.mkdir_p dir;
-                        let executable =
-                          Section.should_set_executable_bit entry.section
+                  let+ entries =
+                    Fiber.sequential_map entries ~f:(fun entry ->
+                        let special_file = Special_file.of_entry entry in
+                        let dst =
+                          Install.Entry.relative_installed_path entry ~paths
+                          |> interpret_destdir ~destdir
                         in
-                        Ops.copy_file ~src:entry.src ~dst ~executable
-                          ~special_file ~package ~conf
-                      ) else (
-                        Ops.remove_if_exists dst;
-                        files_deleted_in := Path.Set.add !files_deleted_in dir;
-                        Fiber.return ()
-                      ))))
+                        let dir = Path.parent_exn dst in
+                        match what with
+                        | Install ->
+                          let* copy =
+                            match special_file with
+                            | _ when not create_install_files ->
+                              Fiber.return true
+                            | None ->
+                              Dune_rules.Artifact_substitution.test_file
+                                ~src:entry.src ()
+                            | Some Special_file.META
+                            | Some Special_file.Dune_package ->
+                              Fiber.return true
+                          in
+                          let msg =
+                            if create_install_files then
+                              "Copying to"
+                            else
+                              "Installing"
+                          in
+                          if copy then
+                            let* () =
+                              Ops.remove_if_exists dst;
+                              print_line "%s %s" msg
+                                (Path.to_string_maybe_quoted dst);
+                              Ops.mkdir_p dir;
+                              let executable =
+                                Section.should_set_executable_bit entry.section
+                              in
+                              Ops.copy_file ~src:entry.src ~dst ~executable
+                                ~special_file ~package ~conf
+                            in
+                            Fiber.return (Install.Entry.set_src entry dst)
+                          else
+                            Fiber.return entry
+                        | Uninstall ->
+                          Ops.remove_if_exists dst;
+                          files_deleted_in := Path.Set.add !files_deleted_in dir;
+                          Fiber.return entry)
+                  in
+                  if create_install_files then
+                    let fn = resolve_package_install workspace package in
+                    Io.write_file (Path.source fn)
+                      (Install.gen_install_file entries)))
         in
         Path.Set.to_list !files_deleted_in
         (* This [List.rev] is to ensure we process children directories before
@@ -553,8 +633,8 @@ let install_uninstall ~what =
         |> List.rev
         |> List.iter ~f:Ops.remove_dir_if_empty)
   in
-  (term, Cmdliner.Term.info what ~doc ~man:Common.help_secs)
+  (term, Cmdliner.Term.info (cmd_what what) ~doc ~man:Common.help_secs)
 
-let install = install_uninstall ~what:"install"
+let install = install_uninstall ~what:Install
 
-let uninstall = install_uninstall ~what:"uninstall"
+let uninstall = install_uninstall ~what:Uninstall

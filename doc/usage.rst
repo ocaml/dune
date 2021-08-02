@@ -537,6 +537,11 @@ no difference.
 Note that ``--prefix`` and ``--libdir`` are only supported if a single build
 context is in use.
 
+Note that ``dune install`` (and Dune's ``configure``) support
+additional parameters to override install directories in addition to
+``--prefix``, in particular, ``--mandir``, ``--docdir``, and
+``--etcdir`` are supported
+
 Relocation Mode
 ---------------
 
@@ -593,6 +598,8 @@ built. Preprocessing directives and other flags will be commented out and must
 be un-commented afterward. This feature does not aim at writing exact or correct
 ``.merlin`` files, its sole purpose is to lessen the burden of writing the
 configuration from scratch.
+
+.. _merlin-filenames:
 
 Non-standard filenames
 ----------------------

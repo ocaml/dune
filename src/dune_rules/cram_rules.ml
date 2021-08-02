@@ -42,8 +42,9 @@ let missing_run_t (error : Cram_test.t) =
 
 let test_rule ~sctx ~expander ~dir (spec : effective)
     (test : (Cram_test.t, Source_tree.Dir.error) result) =
+  let open Memo.Build.O in
   let module Alias_rules = Simple_rules.Alias_rules in
-  let enabled = Expander.eval_blang expander (Blang.And spec.enabled_if) in
+  let* enabled = Expander.eval_blang expander (Blang.And spec.enabled_if) in
   let loc = Some spec.loc in
   let aliases = Alias.Name.Set.to_list_map spec.alias ~f:(Alias.make ~dir) in
   match test with
@@ -143,7 +144,7 @@ let rules ~sctx ~expander ~dir tests =
             | false -> acc
             | true ->
               let* acc = acc in
-              let+ deps =
+              let* deps =
                 match spec.deps with
                 | None -> Memo.Build.return acc.deps
                 | Some deps ->
@@ -165,15 +166,13 @@ let rules ~sctx ~expander ~dir tests =
                 | Some (p : Package.t) ->
                   Package.Name.Set.add acc.packages (Package.Id.name p.id)
               in
-              let locks =
+              let+ locks =
                 (* Locks must be relative to the cram stanza directory and not
                    the individual tests direcories *)
-                List.fold_left ~init:acc.locks
-                  ~f:(fun acc lock ->
-                    Expander.Static.expand_str expander lock
-                    |> Path.relative (Path.build dir)
-                    |> Path.Set.add acc)
-                  spec.locks
+                Memo.Build.List.map spec.locks ~f:(fun lock ->
+                    Expander.No_deps.expand_str expander lock
+                    >>| Path.relative (Path.build dir))
+                >>| Path.Set.of_list >>| Path.Set.union acc.locks
               in
               { acc with enabled_if; locks; deps; alias; packages })
       in
@@ -182,7 +181,7 @@ let rules ~sctx ~expander ~dir tests =
       | None -> test_rule ()
       | Some only ->
         let only = Package.Name.Map.keys only |> Package.Name.Set.of_list in
-        Memo.Build.if_
+        Memo.Build.when_
           (Package.Name.Set.is_empty effective.packages
           || Package.Name.Set.(not (is_empty (inter only effective.packages))))
           test_rule)

@@ -6,5 +6,6 @@
   -> required by _build/default/b/b.vo
   -> required by _build/install/default/lib/coq/user-contrib/b/b.vo
   -> required by _build/default/cvendor.install
+  -> required by %{read:cvendor.install} at dune:3
   -> required by alias default in dune:1
   [1]

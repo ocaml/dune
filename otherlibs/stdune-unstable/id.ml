@@ -3,7 +3,9 @@ module type S = sig
 
   module Set : Set.S with type elt = t
 
-  module Map : Map_intf.S with type key = t
+  module Map : Map.S with type key = t
+
+  module Table : Hashtbl.S with type key = t
 
   val gen : unit -> t
 
@@ -23,6 +25,7 @@ end
 module Make () : S = struct
   module Set = Int.Set
   module Map = Int.Map
+  module Table = Hashtbl.Make (Int)
 
   type t = int
 

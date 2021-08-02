@@ -14,11 +14,13 @@ library also has more than one src dir.
   > (library (name lib2) (libraries lib1) (modules ()))
   > EOF
 
+  $ opam_prefix="$(ocamlc -where)"
+  $ export BUILD_PATH_PREFIX_MAP="/OPAM_PREFIX=$opam_prefix:$BUILD_PATH_PREFIX_MAP"
+
   $ dune build lib2/.merlin-conf/lib-lib2
-  $ dune ocaml-merlin --dump-config=$(pwd)/lib2 |
-  > sed 's#'$(opam config var prefix)'#OPAM_PREFIX#'
+  $ dune ocaml-merlin --dump-config=$(pwd)/lib2
   Lib2
-  ((STDLIB OPAM_PREFIX/lib/ocaml)
+  ((STDLIB /OPAM_PREFIX)
    (EXCLUDE_QUERY_DIR)
    (B
     $TESTCASE_ROOT/_build/default/lib1/.lib1.objs/byte)

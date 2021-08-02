@@ -1,0 +1,5 @@
+(executable
+ (name main)
+ (root_module root)
+ (libraries unix)
+ (preprocess (pps ppx)))

@@ -137,7 +137,7 @@ module Status_line = struct
     | Some pp ->
       (* Always put the status line inside a horizontal box to force the
          [Format] module to prefer a single line. In particular, it seems that
-         [Format.pp_print_text] split sthe line before the last word, unless it
+         [Format.pp_print_text] split the line before the last word, unless it
          is succeeded by a space. This seems like a bug in [Format] and putting
          the whole thing into a [hbox] works around this bug.
 

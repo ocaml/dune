@@ -92,6 +92,10 @@ val parallel_map : 'a list -> f:('a -> 'b t) -> 'b list t
 (** Like [all] but executes the fibers concurrently. *)
 val all_concurrently : 'a t list -> 'a list t
 
+(** Like [all_concurrently] but is specialized for [unit] fibers. The advantage
+    being that it doesn't allocate a return list. *)
+val all_concurrently_unit : unit t list -> unit t
+
 (** Iter over a list in parallel. *)
 val parallel_iter : 'a list -> f:('a -> unit t) -> unit t
 

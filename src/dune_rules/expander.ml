@@ -14,6 +14,39 @@ module Expanding_what = struct
     | User_action_without_targets of { what : string }
 end
 
+module Deps = struct
+  module T = struct
+    type 'a t =
+      | Without of 'a Memo.Build.t
+      | With of 'a Action_builder.t
+
+    let return x = Without (Memo.Build.return x)
+
+    let map t ~f =
+      match t with
+      | Without t -> Without (Memo.Build.map t ~f)
+      | With t -> With (Action_builder.map t ~f)
+
+    let both a b =
+      match (a, b) with
+      | Without a, Without b -> Without (Memo.Build.both a b)
+      | With a, With b -> With (Action_builder.both a b)
+      | Without a, With b ->
+        With (Action_builder.both (Action_builder.memo_build a) b)
+      | With a, Without b ->
+        With (Action_builder.both a (Action_builder.memo_build b))
+  end
+
+  include T
+  include Applicative.Make (T)
+
+  let action_builder = function
+    | Without x -> Action_builder.memo_build x
+    | With x -> x
+end
+
+type value = Value.t list Deps.t
+
 type t =
   { dir : Path.Build.t
   ; env : Env.t
@@ -21,12 +54,11 @@ type t =
   ; lib_artifacts : Artifacts.Public_libs.t
   ; lib_artifacts_host : Artifacts.Public_libs.t
   ; bin_artifacts_host : Artifacts.Bin.t
-  ; bindings : Value.t list Action_builder.t Pform.Map.t
+  ; bindings : value Pform.Map.t
   ; scope : Scope.t
   ; scope_host : Scope.t
   ; c_compiler : string
   ; context : Context.t
-  ; artifacts_dynamic : bool
   ; lookup_artifacts :
       (dir:Path.Build.t -> Ml_sources.Artifacts.t Memo.Build.t) option
   ; foreign_flags :
@@ -55,8 +87,6 @@ let set_scope t ~scope = { t with scope }
 
 let set_bin_artifacts t ~bin_artifacts_host = { t with bin_artifacts_host }
 
-let set_artifacts_dynamic t artifacts_dynamic = { t with artifacts_dynamic }
-
 let set_lookup_ml_sources t ~f = { t with lookup_artifacts = Some f }
 
 let set_expanding_what t x = { t with expanding_what = x }
@@ -80,7 +110,8 @@ let add_bindings_full t ~bindings =
 
 let add_bindings t ~bindings =
   add_bindings_full t
-    ~bindings:(Pform.Map.map bindings ~f:(fun v -> Action_builder.return v))
+    ~bindings:
+      (Pform.Map.map bindings ~f:(fun v -> Deps.Without (Memo.Build.return v)))
 
 let path p = [ Value.Path p ]
 
@@ -204,10 +235,10 @@ let relative ~source d s =
     (Path.Build.relative ~error_loc:(Dune_lang.Template.Pform.loc source) d s)
 
 type nonrec expansion_result =
-  | Direct of Value.t list Action_builder.t
-  | Need_full_expander of (t -> Value.t list Action_builder.t)
+  | Direct of value
+  | Need_full_expander of (t -> value)
 
-let static v = Direct (Action_builder.return v)
+let static v = Direct (Without (Memo.Build.return v))
 
 let[@inline never] invalid_use_of_target_variable t
     ~(source : Dune_lang.Template.Pform.t) ~var_multiplicity =
@@ -269,13 +300,15 @@ let expand_pform_gen ~(context : Context.t) ~bindings ~dir ~source
       | Ocamlc -> static (path context.ocamlc)
       | Ocamlopt -> static (get_prog context.ocamlopt)
       | Make ->
+        let open Memo.Build.O in
         Direct
-          (Action_builder.memo_build (context.which "make") >>| function
-           | None ->
-             Utils.program_not_found ~context:context.name
-               ~loc:(Some (Dune_lang.Template.Pform.loc source))
-               "make"
-           | Some p -> path p)
+          (Without
+             (context.which "make" >>| function
+              | None ->
+                Utils.program_not_found ~context:context.name
+                  ~loc:(Some (Dune_lang.Template.Pform.loc source))
+                  "make"
+              | Some p -> path p))
       | Cpp -> static (strings (c_compiler_and_flags context @ [ "-E" ]))
       | Pa_cpp ->
         static
@@ -319,18 +352,21 @@ let expand_pform_gen ~(context : Context.t) ~bindings ~dir ~source
       | Project_root ->
         Need_full_expander
           (fun t ->
-            Action_builder.return
-              [ Value.Dir (Path.build (Scope.root t.scope)) ])
+            Without
+              (Memo.Build.return
+                 [ Value.Dir (Path.build (Scope.root t.scope)) ]))
       | Cc ->
         Need_full_expander
           (fun t ->
-            let* cc = Action_builder.memo_build (cc t) in
-            cc.c)
+            With
+              (let* cc = Action_builder.memo_build (cc t) in
+               cc.c))
       | Cxx ->
         Need_full_expander
           (fun t ->
-            let* cc = Action_builder.memo_build (cc t) in
-            cc.cxx)
+            With
+              (let* cc = Action_builder.memo_build (cc t) in
+               cc.cxx))
       | Ccomp_type ->
         static
           (string
@@ -364,176 +400,220 @@ let expand_pform_gen ~(context : Context.t) ~bindings ~dir ~source
             | Some (var, default) -> (
               match Env.Var.Map.find t.local_env var with
               | Some v ->
-                let+ v = v in
-                string v
+                With
+                  (let+ v = v in
+                   string v)
               | None ->
-                Action_builder.return
-                  (string (Option.value ~default (Env.get t.env var)))))
+                Without
+                  (Memo.Build.return
+                     (string (Option.value ~default (Env.get t.env var))))))
       | Version ->
         Need_full_expander
-          (fun t -> Action_builder.return (expand_version t ~source s))
+          (fun t -> Without (Memo.Build.return (expand_version t ~source s)))
       | Artifact a ->
-        Need_full_expander
-          (fun t ->
-            if t.artifacts_dynamic then
-              let* () = Action_builder.return () in
-              expand_artifact ~source t a s
-            else
-              expand_artifact ~source t a s)
+        Need_full_expander (fun t -> With (expand_artifact ~source t a s))
       | Path_no_dep ->
         (* This case is for %{path-no-dep:...} which was only allowed inside
            jbuild files *)
         assert false
       | Exe ->
-        Need_full_expander (fun t -> dep (map_exe t (relative ~source t.dir s)))
-      | Dep -> Need_full_expander (fun t -> dep (relative ~source t.dir s))
+        Need_full_expander
+          (fun t -> With (dep (map_exe t (relative ~source t.dir s))))
+      | Dep ->
+        Need_full_expander (fun t -> With (dep (relative ~source t.dir s)))
       | Bin ->
         Need_full_expander
           (fun t ->
-            let* prog =
-              Action_builder.memo_build
-                (Artifacts.Bin.binary
-                   ~loc:(Some (Dune_lang.Template.Pform.loc source))
-                   t.bin_artifacts_host s)
-            in
-            dep (Action.Prog.ok_exn prog))
+            With
+              (let* prog =
+                 Action_builder.memo_build
+                   (Artifacts.Bin.binary
+                      ~loc:(Some (Dune_lang.Template.Pform.loc source))
+                      t.bin_artifacts_host s)
+               in
+               dep (Action.Prog.ok_exn prog)))
       | Lib { lib_exec; lib_private } ->
         Need_full_expander
           (fun t ->
-            let lib, file =
-              let loc = Dune_lang.Template.Pform.loc source in
-              match String.lsplit2 s ~on:':' with
-              | None ->
-                User_error.raise ~loc
-                  [ Pp.textf "invalid %%{lib:...} form: %s" s ]
-              | Some (lib, f) -> (Lib_name.parse_string_exn (loc, lib), f)
-            in
-            let scope =
-              if lib_exec then
-                t.scope_host
-              else
-                t.scope
-            in
-            let p =
-              let open Resolve.O in
-              if lib_private then
-                let* lib =
-                  Lib.DB.resolve (Scope.libs scope)
-                    (Dune_lang.Template.Pform.loc source, lib)
-                in
-                let current_project = Scope.project t.scope
-                and referenced_project =
-                  Lib.info lib |> Lib_info.status |> Lib_info.Status.project
-                in
-                if
-                  Option.equal Dune_project.equal (Some current_project)
-                    referenced_project
-                then
-                  Resolve.return
-                    (Path.relative (Lib_info.src_dir (Lib.info lib)) file)
-                else
-                  Resolve.fail
-                    (User_error.make
-                       ~loc:(Dune_lang.Template.Pform.loc source)
-                       [ Pp.textf
-                           "The variable \"lib%s-private\" can only refer to \
-                            libraries within the same project. The current \
-                            project's name is %S, but the reference is to %s."
-                           (if lib_exec then
-                             "exec"
-                           else
-                             "")
-                           (Dune_project.Name.to_string_hum
-                              (Dune_project.name current_project))
-                           (match referenced_project with
-                           | None -> "an external library"
-                           | Some project ->
-                             Dune_project.name project
-                             |> Dune_project.Name.to_string_hum |> String.quoted)
-                       ])
-              else
-                let artifacts =
-                  if lib_exec then
-                    t.lib_artifacts_host
-                  else
-                    t.lib_artifacts
-                in
-                Artifacts.Public_libs.file_of_lib artifacts
-                  ~loc:(Dune_lang.Template.Pform.loc source)
-                  ~lib ~file
-            in
-            match Resolve.peek p with
-            | Ok p ->
-              if
-                (not lib_exec) || (not Sys.win32)
-                || Filename.extension s = ".exe"
-              then
-                dep p
-              else
-                let p_exe = Path.extend_basename p ~suffix:".exe" in
-                Action_builder.if_file_exists p_exe ~then_:(dep p_exe)
-                  ~else_:(dep p)
-            | Error () ->
-              let p =
-                let open Resolve.O in
-                if lib_private || not (Lib.DB.available (Scope.libs scope) lib)
-                then
-                  p >>| fun _ -> assert false
-                else
-                  Resolve.fail
-                    (User_error.make
-                       ~loc:(Dune_lang.Template.Pform.loc source)
-                       [ Pp.textf
-                           "The library %S is not public. The variable \
-                            \"lib%s\" expands to the file's installation path \
-                            which is not defined for private libraries."
-                           (Lib_name.to_string lib)
-                           (if lib_exec then
-                             "exec"
-                           else
-                             "")
-                       ])
-              in
-              Resolve.read p)
+            With
+              (let lib, file =
+                 let loc = Dune_lang.Template.Pform.loc source in
+                 match String.lsplit2 s ~on:':' with
+                 | None ->
+                   User_error.raise ~loc
+                     [ Pp.textf "invalid %%{lib:...} form: %s" s ]
+                 | Some (lib, f) -> (Lib_name.parse_string_exn (loc, lib), f)
+               in
+               let scope =
+                 if lib_exec then
+                   t.scope_host
+                 else
+                   t.scope
+               in
+               let p =
+                 let open Resolve.O in
+                 if lib_private then
+                   let* lib =
+                     Lib.DB.resolve (Scope.libs scope)
+                       (Dune_lang.Template.Pform.loc source, lib)
+                   in
+                   let current_project = Scope.project t.scope
+                   and referenced_project =
+                     Lib.info lib |> Lib_info.status |> Lib_info.Status.project
+                   in
+                   if
+                     Option.equal Dune_project.equal (Some current_project)
+                       referenced_project
+                   then
+                     Resolve.return
+                       (Path.relative (Lib_info.src_dir (Lib.info lib)) file)
+                   else
+                     Resolve.fail
+                       (User_error.make
+                          ~loc:(Dune_lang.Template.Pform.loc source)
+                          [ Pp.textf
+                              "The variable \"lib%s-private\" can only refer \
+                               to libraries within the same project. The \
+                               current project's name is %S, but the reference \
+                               is to %s."
+                              (if lib_exec then
+                                "exec"
+                              else
+                                "")
+                              (Dune_project.Name.to_string_hum
+                                 (Dune_project.name current_project))
+                              (match referenced_project with
+                              | None -> "an external library"
+                              | Some project ->
+                                Dune_project.name project
+                                |> Dune_project.Name.to_string_hum
+                                |> String.quoted)
+                          ])
+                 else
+                   let artifacts =
+                     if lib_exec then
+                       t.lib_artifacts_host
+                     else
+                       t.lib_artifacts
+                   in
+                   Artifacts.Public_libs.file_of_lib artifacts
+                     ~loc:(Dune_lang.Template.Pform.loc source)
+                     ~lib ~file
+               in
+               match Resolve.peek p with
+               | Ok p ->
+                 if
+                   (not lib_exec) || (not Sys.win32)
+                   || Filename.extension s = ".exe"
+                 then
+                   dep p
+                 else
+                   let p_exe = Path.extend_basename p ~suffix:".exe" in
+                   Action_builder.if_file_exists p_exe ~then_:(dep p_exe)
+                     ~else_:(dep p)
+               | Error () ->
+                 let p =
+                   let open Resolve.O in
+                   if
+                     lib_private
+                     || not (Lib.DB.available (Scope.libs scope) lib)
+                   then
+                     p >>| fun _ -> assert false
+                   else
+                     Resolve.fail
+                       (User_error.make
+                          ~loc:(Dune_lang.Template.Pform.loc source)
+                          [ Pp.textf
+                              "The library %S is not public. The variable \
+                               \"lib%s\" expands to the file's installation \
+                               path which is not defined for private \
+                               libraries."
+                              (Lib_name.to_string lib)
+                              (if lib_exec then
+                                "exec"
+                              else
+                                "")
+                          ])
+                 in
+                 Resolve.read p))
       | Lib_available ->
         Need_full_expander
           (fun t ->
-            let lib =
-              Lib_name.parse_string_exn (Dune_lang.Template.Pform.loc source, s)
-            in
-            Action_builder.return
-              (Lib.DB.available (Scope.libs t.scope) lib
-              |> string_of_bool |> string))
+            Without
+              (let lib =
+                 Lib_name.parse_string_exn
+                   (Dune_lang.Template.Pform.loc source, s)
+               in
+               Memo.Build.return
+                 (Lib.DB.available (Scope.libs t.scope) lib
+                 |> string_of_bool |> string)))
       | Read ->
         let path = relative ~source dir s in
-        Direct (Action_builder.map (Action_builder.contents path) ~f:string)
+        Direct
+          (With (Action_builder.map (Action_builder.contents path) ~f:string))
       | Read_lines ->
         let path = relative ~source dir s in
-        Direct (Action_builder.map (Action_builder.lines_of path) ~f:strings)
+        Direct
+          (With (Action_builder.map (Action_builder.lines_of path) ~f:strings))
       | Read_strings ->
         let path = relative ~source dir s in
-        Direct (Action_builder.map (Action_builder.strings path) ~f:strings)))
+        Direct
+          (With (Action_builder.map (Action_builder.strings path) ~f:strings))))
 
 (* Make sure to delay exceptions *)
 let expand_pform_gen ~context ~bindings ~dir ~source pform =
   match expand_pform_gen ~context ~bindings ~source ~dir pform with
   | exception (User_error.E _ as exn) ->
-    Direct (Action_builder.fail { fail = (fun () -> reraise exn) })
+    Direct
+      (Without
+         (let open Memo.Build.O in
+         let+ () = Memo.Build.return () in
+         reraise exn))
   | Direct _ as x -> x
   | Need_full_expander f ->
     Need_full_expander
       (fun t ->
         try f t with
         | User_error.E _ as exn ->
-          Action_builder.fail { fail = (fun () -> reraise exn) })
+          Without
+            (let open Memo.Build.O in
+            let+ () = Memo.Build.return () in
+            reraise exn))
+
+let describe_source ~source =
+  Pp.textf "%s at %s"
+    (Dune_lang.Template.Pform.to_string source)
+    (Loc.to_file_colon_line source.loc)
 
 let expand_pform t ~source pform =
-  match
-    expand_pform_gen ~context:t.context ~bindings:t.bindings ~dir:t.dir ~source
-      pform
-  with
-  | Direct v -> v
-  | Need_full_expander f -> f t
+  Action_builder.push_stack_frame
+    (fun () ->
+      match
+        match
+          expand_pform_gen ~context:t.context ~bindings:t.bindings ~dir:t.dir
+            ~source pform
+        with
+        | Direct v -> v
+        | Need_full_expander f -> f t
+      with
+      | With x -> x
+      | Without x -> Action_builder.memo_build x)
+    ~human_readable_description:(fun () -> describe_source ~source)
+
+let expand_pform_no_deps t ~source pform =
+  Memo.push_stack_frame
+    (fun () ->
+      match
+        match
+          expand_pform_gen ~context:t.context ~bindings:t.bindings ~dir:t.dir
+            ~source pform
+        with
+        | Direct v -> v
+        | Need_full_expander f -> f t
+      with
+      | With _ -> isn't_allowed_in_this_position ~source
+      | Without x -> x)
+    ~human_readable_description:(fun () -> describe_source ~source)
 
 let expand t ~mode template =
   Action_builder.Expander.expand ~dir:(Path.build t.dir) ~mode template
@@ -552,7 +632,6 @@ let make ~scope ~scope_host ~(context : Context.t) ~lib_artifacts
   ; bin_artifacts_host
   ; c_compiler = Ocaml_config.c_compiler context.ocaml_config
   ; context
-  ; artifacts_dynamic = false
   ; lookup_artifacts = None
   ; foreign_flags =
       (fun ~dir ->
@@ -570,62 +649,93 @@ let expand_str t sw =
   let+ v = expand t ~mode:Single sw in
   Value.to_string v ~dir:(Path.build t.dir)
 
-module Static = struct
-  let expand_pform t ~source pform =
-    match Action_builder.static_eval (expand_pform t ~source pform) with
-    | Some (v, _) -> v
-    | None -> isn't_allowed_in_this_position ~source
+module No_deps = struct
+  open Memo.Build.O
 
-  let expand t ~mode template =
-    String_with_vars.expand ~dir:(Path.build t.dir) ~mode template
-      ~f:(expand_pform t)
+  let expand_pform = expand_pform_no_deps
+
+  let expand t ~mode sw =
+    String_with_vars.expand ~dir:(Path.build t.dir) ~mode sw ~f:(expand_pform t)
 
   let expand_path t sw =
-    let v = expand t ~mode:Single sw in
+    let+ v = expand t ~mode:Single sw in
     Value.to_path v ~error_loc:(String_with_vars.loc sw) ~dir:(Path.build t.dir)
 
   let expand_str t sw =
-    let v = expand t ~mode:Single sw in
+    let+ v = expand t ~mode:Single sw in
     Value.to_string v ~dir:(Path.build t.dir)
+end
 
-  module Or_exn = struct
-    let expand_path t sw = Result.try_with (fun () -> expand_path t sw)
+module With_deps_if_necessary = struct
+  open Deps.O
+  module E = String_with_vars.Make_expander (Deps)
 
-    let expand_str t sw = Result.try_with (fun () -> expand_str t sw)
-  end
-
-  module With_reduced_var_set = struct
-    let expand_pform_opt ~(context : Context.t) ~dir ~source pform =
+  let expand_pform t ~source pform : _ Deps.t =
+    match
       match
-        expand_pform_gen ~context ~bindings:Pform.Map.empty ~dir ~source pform
+        expand_pform_gen ~context:t.context ~bindings:t.bindings ~dir:t.dir
+          ~source pform
       with
-      | Direct v -> (
-        match Action_builder.static_eval v with
-        | Some (v, _) -> Some v
-        | None -> None)
-      | Need_full_expander _ -> None
+      | Direct v -> v
+      | Need_full_expander f -> f t
+    with
+    | Without t ->
+      Without
+        (Memo.push_stack_frame
+           (fun () -> t)
+           ~human_readable_description:(fun () -> describe_source ~source))
+    | With t ->
+      With
+        (Action_builder.push_stack_frame
+           (fun () -> t)
+           ~human_readable_description:(fun () -> describe_source ~source))
 
-    let expand_pform ~context ~dir ~source pform =
-      match expand_pform_opt ~context ~dir ~source pform with
-      | Some v -> v
-      | None -> isn't_allowed_in_this_position ~source
+  let expand t ~mode sw =
+    E.expand ~dir:(Path.build t.dir) ~mode sw ~f:(expand_pform t)
 
-    let expand ~(context : Context.t) ~dir ~mode template =
-      String_with_vars.expand ~dir:(Path.build dir) ~mode template
-        ~f:(expand_pform ~context ~dir)
+  let expand_path t sw =
+    let+ v = expand t ~mode:Single sw in
+    Value.to_path v ~error_loc:(String_with_vars.loc sw) ~dir:(Path.build t.dir)
 
-    let expand_path ~context ~dir sw =
-      let v = expand ~context ~dir ~mode:Single sw in
-      Value.to_path v ~error_loc:(String_with_vars.loc sw) ~dir:(Path.build dir)
+  let expand_str t sw =
+    let+ v = expand t ~mode:Single sw in
+    Value.to_string v ~dir:(Path.build t.dir)
+end
 
-    let expand_str ~context ~dir sw =
-      let v = expand ~context ~dir ~mode:Single sw in
-      Value.to_string v ~dir:(Path.build dir)
+module With_reduced_var_set = struct
+  open Memo.Build.O
 
-    let expand_str_partial ~context ~dir sw =
-      String_with_vars.expand_as_much_as_possible sw ~dir:(Path.build dir)
-        ~f:(expand_pform_opt ~context ~dir)
-  end
+  let expand_pform_opt ~context ~bindings ~dir ~source pform =
+    let open Memo.Build.O in
+    Memo.push_stack_frame
+      (fun () ->
+        match expand_pform_gen ~context ~bindings ~dir ~source pform with
+        | Need_full_expander _
+        | Direct (With _) ->
+          Memo.Build.return None
+        | Direct (Without x) -> x >>| Option.some)
+      ~human_readable_description:(fun () -> describe_source ~source)
+
+  let expand_pform ~context ~bindings ~dir ~source pform =
+    expand_pform_opt ~context ~bindings ~dir ~source pform >>| function
+    | Some v -> v
+    | None -> isn't_allowed_in_this_position ~source
+
+  let expand_str ~context ~dir sw =
+    let+ v =
+      String_with_vars.expand ~dir:(Path.build dir) ~mode:Single sw
+        ~f:(expand_pform ~context ~bindings:Pform.Map.empty ~dir)
+    in
+    Value.to_string v ~dir:(Path.build dir)
+
+  let expand_str_partial ~context ~dir sw =
+    String_with_vars.expand_as_much_as_possible ~dir:(Path.build dir) sw
+      ~f:(expand_pform_opt ~context ~bindings:Pform.Map.empty ~dir)
+
+  let eval_blang ~context ~dir blang =
+    Blang.eval
+      ~f:(expand_pform ~context ~bindings:Pform.Map.empty ~dir)
+      ~dir:(Path.build dir) blang
 end
 
 let expand_and_eval_set t set ~standard =
@@ -639,8 +749,7 @@ let expand_and_eval_set t set ~standard =
   Ordered_set_lang.eval set ~standard ~eq:String.equal ~parse:(fun ~loc:_ s ->
       s)
 
-let eval_blang t = function
-  | Blang.Const x -> x (* common case *)
-  | blang -> Blang.eval blang ~dir:(Path.build t.dir) ~f:(Static.expand_pform t)
+let eval_blang t blang =
+  Blang.eval ~f:(No_deps.expand_pform t) ~dir:(Path.build t.dir) blang
 
 let find_package t pkg = t.find_package pkg

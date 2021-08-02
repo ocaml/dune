@@ -33,8 +33,9 @@ let term =
   Scheduler.go ~common ~config (fun () ->
       let open Fiber.O in
       let* setup = Import.Main.setup () in
-      Build_system.run (fun () ->
+      Build_system.run_exn (fun () ->
           let open Memo.Build.O in
+          let* setup = setup in
           let sctx =
             Dune_engine.Context_name.Map.find setup.scontexts ctx_name
             |> Option.value_exn
@@ -57,8 +58,8 @@ let term =
           in
           let* files = link_deps requires in
           let* () =
-            Build_system.build
-              (Target.request (List.map files ~f:(fun f -> Target.File f)))
+            Memo.Build.parallel_iter files ~f:(fun file ->
+                Build_system.build_file file >>| ignore)
           in
           let files_to_load =
             List.filter files ~f:(fun p ->

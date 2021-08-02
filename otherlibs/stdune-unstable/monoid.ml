@@ -1,5 +1,7 @@
 module type Basic = Monoid_intf.Basic
 
+module type S = Monoid_intf.S
+
 module Make (M : Basic) : Monoid_intf.S with type t = M.t = struct
   include M
 
@@ -139,12 +141,24 @@ end)
   let combine f g x = M.combine (f x) (g x)
 end)
 
-module Endofunction (A : sig
-  type t
-end) : Monoid_intf.S with type t = A.t -> A.t = Make (struct
-  type t = A.t -> A.t
+module Endofunction = struct
+  module Left (A : sig
+    type t
+  end) : Monoid_intf.S with type t = A.t -> A.t = Make (struct
+    type t = A.t -> A.t
 
-  let empty x = x
+    let empty x = x
 
-  let combine f g x = f (g x)
-end)
+    let combine f g x = g (f x)
+  end)
+
+  module Right (A : sig
+    type t
+  end) : Monoid_intf.S with type t = A.t -> A.t = Make (struct
+    type t = A.t -> A.t
+
+    let empty x = x
+
+    let combine f g x = f (g x)
+  end)
+end

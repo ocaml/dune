@@ -329,16 +329,34 @@ let rec exec t ~ectx ~eenv =
         | Some (_, file) -> Path.Untracked.exists (Path.source file)
       in
       let+ () =
+        let in_source_or_target =
+          is_copied_from_source_tree file1 || not (Path.Untracked.exists file1)
+        in
+        let source_file =
+          snd
+            (Option.value_exn
+               (Path.extract_build_context_dir_maybe_sandboxed file1))
+        in
         Fiber.finalize
           (fun () ->
+            let annot =
+              Promotion.Annot.make
+                { Promotion.Annot.in_source = source_file
+                ; in_build =
+                    (if optional && in_source_or_target then
+                      Promotion.File.in_staging_area source_file
+                    else
+                      file2)
+                }
+            in
             if mode = Binary then
-              User_error.raise
+              User_error.raise ~annots:[ annot ]
                 [ Pp.textf "Files %s and %s differ."
                     (Path.to_string_maybe_quoted file1)
                     (Path.to_string_maybe_quoted (Path.build file2))
                 ]
             else
-              Print_diff.print file1 (Path.build file2)
+              Print_diff.print annot file1 (Path.build file2)
                 ~skip_trailing_cr:(mode = Text && Sys.win32))
           ~finally:(fun () ->
             (match optional with
@@ -346,26 +364,13 @@ let rec exec t ~ectx ~eenv =
               (* Promote if in the source tree or not a target. The second case
                  means that the diffing have been done with the empty file *)
               if
-                (is_copied_from_source_tree file1
-                || not (Path.Untracked.exists file1))
+                in_source_or_target
                 && not (is_copied_from_source_tree (Path.build file2))
               then
-                Promotion.File.register_dep
-                  ~source_file:
-                    (snd
-                       (Option.value_exn
-                          (Path.extract_build_context_dir_maybe_sandboxed file1)))
-                  ~correction_file:file2
+                Promotion.File.register_dep ~source_file ~correction_file:file2
             | true ->
-              if
-                is_copied_from_source_tree file1
-                || not (Path.Untracked.exists file1)
-              then
-                Promotion.File.register_intermediate
-                  ~source_file:
-                    (snd
-                       (Option.value_exn
-                          (Path.extract_build_context_dir_maybe_sandboxed file1)))
+              if in_source_or_target then
+                Promotion.File.register_intermediate ~source_file
                   ~correction_file:file2
               else
                 remove_intermediate_file ());

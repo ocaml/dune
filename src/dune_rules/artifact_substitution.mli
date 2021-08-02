@@ -37,6 +37,8 @@ val conf_for_install :
   -> prefix:Path.t
   -> libdir:Path.t option
   -> mandir:Path.t option
+  -> docdir:Path.t option
+  -> etcdir:Path.t option
   -> conf
 
 val conf_dummy : conf
@@ -78,3 +80,6 @@ val copy :
 
 (** Produce the string that would replace the placeholder with the given value .*)
 val encode_replacement : len:int -> repl:string -> string
+
+(** test if a file is in the given file *)
+val test_file : src:Path.t -> unit -> bool Fiber.t

@@ -1,5 +1,6 @@
 open! Stdune
 open Import
+module Action_builder = Action_builder0
 
 module Info = struct
   type t =
@@ -77,12 +78,28 @@ include T
 module O = Comparable.Make (T)
 module Set = O.Set
 
+let add_sandbox_config :
+    type a.
+    a Action_builder.eval_mode -> Sandbox_config.t -> a Dep.Map.t -> a Dep.Map.t
+    =
+ fun mode sandbox map ->
+  let dep = Dep.sandbox_config sandbox in
+  match mode with
+  | Lazy -> Dep.Set.add map dep
+  | Eager -> Dep.Map.set map dep Dep.Fact.nothing
+
 let make ?(sandbox = Sandbox_config.default) ?(mode = Mode.Standard) ~context
     ?(info = Info.Internal) ~targets action =
-  let open Action_builder.O in
+  let open Memo.Build.O in
   let action =
     Action_builder.memoize "Rule.make"
-      (Action_builder.dep (Dep.sandbox_config sandbox) >>> action)
+      (Action_builder.of_thunk
+         { f =
+             (fun mode ->
+               let+ action, deps = Action_builder.run action mode in
+               let deps = add_sandbox_config mode sandbox deps in
+               (action, deps))
+         })
   in
   let dir =
     match Path.Build.Set.choose targets with
@@ -121,13 +138,20 @@ let make ?(sandbox = Sandbox_config.default) ?(mode = Mode.Standard) ~context
   in
   { id = Id.gen (); targets; context; action; mode; info; loc; dir }
 
-let with_prefix t ~build =
-  { t with
-    action =
-      (let open Action_builder.O in
-      Action_builder.memoize "Rule.with_prefix" (build >>> t.action))
-  }
+let set_action t action =
+  let action = Action_builder.memoize "Rule.set_action" action in
+  { t with action }
 
 let find_source_dir rule =
   let _, src_dir = Path.Build.extract_build_context_dir_exn rule.dir in
   Source_tree.nearest_dir src_dir
+
+module Anonymous_action = struct
+  type t =
+    { context : Build_context.t option
+    ; action : Action.Full.t
+    ; loc : Loc.t option
+    ; dir : Path.Build.t
+    ; alias : Alias.Name.t option
+    }
+end

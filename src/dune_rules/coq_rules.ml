@@ -96,6 +96,16 @@ let select_native_mode ~sctx ~(buildable : Buildable.t) =
   else
     snd buildable.mode
 
+let rec resolve_first lib_db = function
+  | [] -> assert false
+  | [ n ] -> Lib.DB.resolve lib_db (Loc.none, Lib_name.of_string n)
+  | n :: l -> (
+    match
+      Lib.DB.resolve_when_exists lib_db (Loc.none, Lib_name.of_string n)
+    with
+    | Some l -> l
+    | None -> resolve_first lib_db l)
+
 module Context = struct
   type 'a t =
     { coqdep : Action.Prog.t
@@ -110,7 +120,7 @@ module Context = struct
     ; scope : Scope.t
     ; boot_type : Bootstrap.t
     ; build_dir : Path.Build.t
-    ; profile_flags : Ordered_set_lang.Unexpanded.t
+    ; profile_flags : string list Action_builder.t
     ; mode : Coq_mode.t
     ; native_includes : Path.Set.t Resolve.t
     ; native_theory_includes : Path.Build.Set.t Resolve.t
@@ -120,13 +130,8 @@ module Context = struct
     let dir = Path.build (snd t.coqc) in
     Command.run ~dir ?stdout_to (fst t.coqc) args
 
-  let standard_coq_flags = Action_builder.return [ "-q" ]
-
   let coq_flags t =
-    let standard = standard_coq_flags in
-    let standard =
-      Expander.expand_and_eval_set t.expander t.profile_flags ~standard
-    in
+    let standard = t.profile_flags in
     Expander.expand_and_eval_set t.expander t.buildable.flags ~standard
 
   let theories_flags =
@@ -163,7 +168,13 @@ module Context = struct
     | Coq_mode.Legacy -> Command.Args.As []
     | Coq_mode.VoOnly ->
       Command.Args.As
-        [ "-w"; "-native-compiler-disabled"; "-native-compiler"; "ondemand" ]
+        [ "-w"
+        ; "-deprecated-native-compiler-option"
+        ; "-w"
+        ; "-native-compiler-disabled"
+        ; "-native-compiler"
+        ; "ondemand"
+        ]
     | Coq_mode.Native ->
       let args =
         let open Resolve.O in
@@ -179,7 +190,8 @@ module Context = struct
         in
         (* This dir is relative to the file, by default [.coq-native/] *)
         Command.Args.S
-          [ Command.Args.As [ "-native-output-dir"; "." ]
+          [ Command.Args.As [ "-w"; "-deprecated-native-compiler-option" ]
+          ; Command.Args.As [ "-native-output-dir"; "." ]
           ; Command.Args.As [ "-native-compiler"; "on" ]
           ; Command.Args.S (List.rev native_include_ml_args)
           ; Command.Args.S (List.rev native_include_theory_output)
@@ -239,7 +251,7 @@ module Context = struct
     in
     let mode = select_native_mode ~sctx ~buildable in
     let native_includes =
-      Lib.DB.resolve lib_db (Loc.none, Lib_name.of_string "coq.kernel")
+      resolve_first lib_db [ "coq-core.kernel"; "coq.kernel" ]
       |> Resolve.map ~f:(fun lib -> Util.coq_nativelib_cmi_dirs [ lib ])
     in
     let+ native_theory_includes =
@@ -509,7 +521,7 @@ let install_rules ~sctx ~dir s =
       else
         coq_plugins_install_rules ~scope ~package ~dst_dir s
     in
-    let wrapper_name = dst_suffix in
+    let wrapper_name = Coq_lib_name.wrapper name in
     let to_path f = Path.reach ~from:(Path.build dir) (Path.build f) in
     let to_dst f = Path.Local.to_string @@ Path.Local.relative dst_dir f in
     let make_entry (orig_file : Path.Build.t) (dst_file : string) =

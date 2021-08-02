@@ -21,6 +21,7 @@ module Section_with_site : sig
     | Site of
         { pkg : Package.Name.t
         ; site : Section.Site.t
+        ; loc : Loc.t
         }
 
   val to_string : t -> string
@@ -55,6 +56,8 @@ module Section : sig
       -> destdir:Path.t
       -> ?libdir:Path.t
       -> ?mandir:Path.t
+      -> ?docdir:Path.t
+      -> ?etcdir:Path.t
       -> unit
       -> t
 
@@ -83,7 +86,10 @@ module Entry : sig
   val make_with_site :
        Section_with_site.t
     -> ?dst:string
-    -> (pkg:Package.Name.t -> site:Dune_section.Site.t -> Section.t)
+    -> (   loc:Loc.t
+        -> pkg:Package.Name.t
+        -> site:Dune_section.Site.t
+        -> Section.t)
     -> Path.Build.t
     -> Path.Build.t t
 
@@ -92,9 +98,9 @@ module Entry : sig
   val relative_installed_path : _ t -> paths:Section.Paths.t -> Path.t
 
   val add_install_prefix :
-    Path.Build.t t -> paths:Section.Paths.t -> prefix:Path.t -> Path.Build.t t
+    'a t -> paths:Section.Paths.t -> prefix:Path.t -> 'a t
 
-  val compare : Path.Build.t t -> Path.Build.t t -> Ordering.t
+  val compare : ('a -> 'a -> Ordering.t) -> 'a t -> 'a t -> Ordering.t
 end
 
 (** Same as Entry, but the destination can be in the site of a package *)
@@ -106,8 +112,8 @@ module Entry_with_site : sig
     }
 end
 
-val files : Path.Build.t Entry.t list -> Path.Set.t
+val files : Path.t Entry.t list -> Path.Set.t
 
-val gen_install_file : Path.Build.t Entry.t list -> string
+val gen_install_file : Path.t Entry.t list -> string
 
 val load_install_file : Path.t -> Path.t Entry.t list

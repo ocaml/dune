@@ -256,12 +256,12 @@ let any_package_aux ~packages ~context pkg =
 let any_package t pkg =
   any_package_aux ~packages:t.packages ~context:t.context pkg
 
-let get_site_of_packages_aux ~any_package ~pkg ~site =
+let get_site_of_packages_aux ~loc ~any_package ~pkg ~site =
   let find_site sites ~pkg ~site =
     match Section.Site.Map.find sites site with
     | Some section -> section
     | None ->
-      User_error.raise
+      User_error.raise ~loc
         [ Pp.textf "Package %s doesn't define a site %s"
             (Package.Name.to_string pkg)
             (Section.Site.to_string site)
@@ -271,11 +271,11 @@ let get_site_of_packages_aux ~any_package ~pkg ~site =
   | Some (Expander.Local p) -> find_site p.Package.sites ~pkg ~site
   | Some (Expander.Installed p) -> find_site p.sites ~pkg ~site
   | None ->
-    User_error.raise
+    User_error.raise ~loc
       [ Pp.textf "The package %s is not found" (Package.Name.to_string pkg) ]
 
-let get_site_of_packages t ~pkg ~site =
-  get_site_of_packages_aux ~any_package:(any_package t) ~pkg ~site
+let get_site_of_packages t ~loc ~pkg ~site =
+  get_site_of_packages_aux ~loc ~any_package:(any_package t) ~pkg ~site
 
 let lib_entries_of_package t pkg_name =
   Package.Name.Map.find t.lib_entries_by_package pkg_name
@@ -345,10 +345,10 @@ let add_rules t ?sandbox ~dir builds =
   Memo.Build.parallel_iter builds ~f:(add_rule t ?sandbox ~dir)
 
 let add_alias_action t alias ~dir ~loc ?(locks = []) action =
+  let build = make_full_action t action ~locks ~dir in
   Rules.Produce.Alias.add_action
     ~context:(Context.build_context t.context)
-    alias ~loc
-    (make_full_action t action ~locks ~dir)
+    alias ~loc build
 
 let build_dir_is_vendored build_dir =
   match Path.Build.drop_build_context build_dir with
@@ -402,6 +402,7 @@ let dump_env t ~dir =
   let ocaml_flags = get_node t ~dir >>= Env_node.ocaml_flags in
   let foreign_flags = get_node t ~dir >>| Env_node.foreign_flags in
   let menhir_flags = get_node t ~dir >>| Env_node.menhir_flags in
+  let coq_flags = get_node t ~dir >>= Env_node.coq in
   let open Action_builder.O in
   let+ o_dump =
     let* ocaml_flags = Action_builder.memo_build ocaml_flags in
@@ -417,8 +418,12 @@ let dump_env t ~dir =
     let+ flags = Action_builder.memo_build_join menhir_flags in
     [ ("menhir_flags", flags) ]
     |> List.map ~f:Dune_lang.Encoder.(pair string (list string))
+  and+ coq_dump =
+    let+ flags = Action_builder.memo_build_join coq_flags in
+    [ ("coq_flags", flags) ]
+    |> List.map ~f:Dune_lang.Encoder.(pair string (list string))
   in
-  List.concat [ o_dump; c_dump; menhir_dump ]
+  List.concat [ o_dump; c_dump; menhir_dump; coq_dump ]
 
 let resolve_program t ~dir ?hint ~loc bin =
   let t = t.env_tree in
@@ -426,19 +431,19 @@ let resolve_program t ~dir ?hint ~loc bin =
   Artifacts.Bin.binary ?hint ~loc bin_artifacts bin
 
 let get_installed_binaries stanzas ~(context : Context.t) =
-  let open Resolve.O in
+  let open Memo.Build.O in
   let install_dir = Local_install_path.bin_dir ~context:context.name in
   let expand_str ~dir sw =
-    Expander.Static.With_reduced_var_set.expand_str ~context ~dir sw
+    Expander.With_reduced_var_set.expand_str ~context ~dir sw
   in
   let expand_str_partial ~dir sw =
-    Expander.Static.With_reduced_var_set.expand_str_partial ~context ~dir sw
+    Expander.With_reduced_var_set.expand_str_partial ~context ~dir sw
   in
-  Resolve.List.map stanzas ~f:(fun (d : _ Dir_with_dune.t) ->
-      Resolve.List.map d.data ~f:(fun stanza ->
+  Memo.Build.List.map stanzas ~f:(fun (d : _ Dir_with_dune.t) ->
+      Memo.Build.List.map d.data ~f:(fun stanza ->
           let binaries_from_install files =
-            List.fold_left files ~init:Path.Build.Set.empty ~f:(fun acc fb ->
-                let p =
+            Memo.Build.List.map files ~f:(fun fb ->
+                let+ p =
                   File_binding.Unexpanded.destination_relative_to_install_path
                     fb ~section:Bin
                     ~expand:(expand_str ~dir:d.ctx_dir)
@@ -446,38 +451,51 @@ let get_installed_binaries stanzas ~(context : Context.t) =
                 in
                 let p = Path.Local.of_string (Install.Dst.to_string p) in
                 if Path.Local.is_root (Path.Local.parent_exn p) then
-                  Path.Build.Set.add acc (Path.Build.append_local install_dir p)
+                  Some (Path.Build.append_local install_dir p)
                 else
-                  acc)
+                  None)
+            >>| List.filter_map ~f:Fun.id >>| Path.Build.Set.of_list
           in
           match (stanza : Stanza.t) with
           | Dune_file.Install { section = Section Bin; files; _ } ->
-            Resolve.return (binaries_from_install files)
+            binaries_from_install files
           | Dune_file.Executables
               ({ install_conf = Some { section = Section Bin; files; _ }; _ } as
-              exes) ->
-            let+ compile_info =
-              let project = Scope.project d.scope in
-              let dune_version = Dune_project.dune_version project in
-              let+ pps =
-                Preprocess.Per_module.with_instrumentation
-                  exes.buildable.preprocess
-                  ~instrumentation_backend:
-                    (Lib.DB.instrumentation_backend (Scope.libs d.scope))
-                >>| Preprocess.Per_module.pps
-              in
-              Lib.DB.resolve_user_written_deps_for_exes (Scope.libs d.scope)
-                exes.names exes.buildable.libraries ~pps ~dune_version
-                ~allow_overlaps:exes.buildable.allow_overlapping_dependencies
+              exes) -> (
+            let* enabled_if =
+              Expander.With_reduced_var_set.eval_blang ~context ~dir:d.ctx_dir
+                exes.enabled_if
             in
-            let available =
-              Resolve.is_ok (Lib.Compile.direct_requires compile_info)
-            in
-            if available then
-              binaries_from_install files
-            else
-              Path.Build.Set.empty
-          | _ -> Resolve.return Path.Build.Set.empty)
+            match enabled_if with
+            | false -> Memo.Build.return Path.Build.Set.empty
+            | true -> (
+              match exes.optional with
+              | false -> binaries_from_install files
+              | true ->
+                let* compile_info =
+                  let project = Scope.project d.scope in
+                  let dune_version = Dune_project.dune_version project in
+                  let+ pps =
+                    Resolve.read_memo_build
+                      (Preprocess.Per_module.with_instrumentation
+                         exes.buildable.preprocess
+                         ~instrumentation_backend:
+                           (Lib.DB.instrumentation_backend (Scope.libs d.scope)))
+                    >>| Preprocess.Per_module.pps
+                  in
+                  Lib.DB.resolve_user_written_deps_for_exes (Scope.libs d.scope)
+                    exes.names exes.buildable.libraries ~pps ~dune_version
+                    ~allow_overlaps:
+                      exes.buildable.allow_overlapping_dependencies
+                in
+                let available =
+                  Resolve.is_ok (Lib.Compile.direct_requires compile_info)
+                in
+                if available then
+                  binaries_from_install files
+                else
+                  Memo.Build.return Path.Build.Set.empty))
+          | _ -> Memo.Build.return Path.Build.Set.empty)
       >>| Path.Build.Set.union_all)
   >>| Path.Build.Set.union_all
 
@@ -533,7 +551,7 @@ let create ~(context : Context.t) ~host ~projects ~packages ~stanzas =
     Lib.DB.create_from_findlib context.findlib ~lib_config ~projects_by_package
   in
   let modules_of_lib_for_scope = Fdecl.create Dyn.Encoder.opaque in
-  let scopes, public_libs =
+  let* scopes, public_libs =
     Scope.DB.create_from_stanzas ~projects ~projects_by_package ~context
       ~installed_libs ~modules_of_lib:modules_of_lib_for_scope stanzas
   in
@@ -553,9 +571,7 @@ let create ~(context : Context.t) ~host ~projects ~packages ~stanzas =
         (stanzas.Dir_with_dune.ctx_dir, stanzas))
   in
   let* artifacts =
-    let+ local_bins =
-      Resolve.read_memo_build (get_installed_binaries ~context stanzas)
-    in
+    let+ local_bins = get_installed_binaries ~context stanzas in
     Artifacts.create context ~public_libs ~local_bins
   in
   let any_package = any_package_aux ~packages ~context in
@@ -583,15 +599,15 @@ let create ~(context : Context.t) ~host ~projects ~packages ~stanzas =
   let package_sections =
     Dir_with_dune.deep_fold stanzas ~init:Package.Name.Map.empty
       ~f:(fun _ stanza acc ->
-        let add_in_package_sites acc pkg site =
-          let section = get_site_of_packages_aux ~any_package ~pkg ~site in
+        let add_in_package_sites acc pkg site loc =
+          let section = get_site_of_packages_aux ~loc ~any_package ~pkg ~site in
           add_in_package_section acc pkg section
         in
         match stanza with
-        | Dune_file.Install { section = Site { pkg; site }; _ } ->
-          add_in_package_sites acc pkg site
-        | Dune_file.Plugin { site = _, (pkg, site); _ } ->
-          add_in_package_sites acc pkg site
+        | Dune_file.Install { section = Site { pkg; site; loc }; _ } ->
+          add_in_package_sites acc pkg site loc
+        | Dune_file.Plugin { site = loc, (pkg, site); _ } ->
+          add_in_package_sites acc pkg site loc
         | _ -> acc)
   in
   (* Add the site of the local package: it should only useful for making sure

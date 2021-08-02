@@ -10,7 +10,11 @@ module Dyn = Dyn
 module Int = Int
 module Poly = Poly
 module Code_error = Code_error
-module Path = Path
+
+module Path = struct
+  (* we don't want to depend on build or source directories here *)
+end
+
 module Env = Env
 module Comparable = Comparable
 module Result = Result

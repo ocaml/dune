@@ -262,7 +262,7 @@ module Buildable = struct
                        (libname, flags))
                   and+ deps =
                     field "deps" ~default:[]
-                      (Dune_lang.Syntax.since Stanza.syntax (3, 0)
+                      (Dune_lang.Syntax.since Stanza.syntax (2, 9)
                       >>> repeat Dep_conf.decode)
                   in
                   (backend, deps))))
@@ -710,7 +710,7 @@ module Library = struct
            User_error.raise ~loc:stanza_loc
              [ Pp.text
                  (if dune_version >= (1, 1) then
-                   "supply at least least one of name or public_name fields"
+                   "supply at least one of name or public_name fields"
                  else
                    "name field is missing")
              ]
@@ -821,7 +821,12 @@ module Library = struct
         false
     in
     Obj_dir.make_lib ~dir
-      ~has_private_modules:(t.private_modules <> None)
+      ~has_private_modules:
+        ((* TODO instead of this fragile approximation, we should be looking at
+            [Modules.t] and deciding. Unfortunately, [Obj_dir.t] is currently
+            used in some places where [Modules.t] is not yet constructed. *)
+         t.private_modules <> None
+        || t.buildable.root_module <> None)
       ~private_lib (snd t.name)
 
   let main_module_name t : Lib_info.Main_module_name.t =
@@ -838,6 +843,7 @@ module Library = struct
       ~lib_config:
         ({ Lib_config.has_native; ext_lib; ext_dll; natdynlink_supported; _ } as
         lib_config) =
+    let open Memo.Build.O in
     let obj_dir = obj_dir ~dir conf in
     let archive ?(dir = dir) ext = archive conf ~dir ~ext in
     let modes = Mode_conf.Set.eval ~has_native conf.modes in
@@ -910,12 +916,12 @@ module Library = struct
     in
     let main_module_name = main_module_name conf in
     let name = best_name conf in
-    let enabled =
-      let enabled_if_result =
+    let+ enabled =
+      let+ enabled_if_result =
         Blang.eval conf.enabled_if ~dir:(Path.build dir)
           ~f:(fun ~source:_ pform ->
             let value = Lib_config.get_for_enabled_if lib_config pform in
-            [ String value ])
+            Memo.Build.return [ Value.String value ])
       in
       if not enabled_if_result then
         Lib_info.Enabled_status.Disabled_because_of_enabled_if

@@ -4,3 +4,5 @@
  (mode native)
  (modules :standard)
  (synopsis "Test Coq library"))
+
+(include_subdirs qualified)

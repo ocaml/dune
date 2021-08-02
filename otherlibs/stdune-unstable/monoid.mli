@@ -1,32 +1,34 @@
 module type Basic = Monoid_intf.Basic
 
+module type S = Monoid_intf.S
+
 (** This functor extends the basic definition of a monoid by adding a convenient
     operator synonym [( @ ) = combine], as well as derived functions [reduce]
     and [map_reduce]. *)
-module Make (M : Basic) : Monoid_intf.S with type t = M.t
+module Make (M : Basic) : S with type t = M.t
 [@@inlined always]
 
 (** The monoid you get with [empty = false] and [combine = ( || )]. *)
-module Exists : Monoid_intf.S with type t = bool
+module Exists : S with type t = bool
 
 (** The monoid you get with [empty = true] and [combine = ( && )]. *)
-module Forall : Monoid_intf.S with type t = bool
+module Forall : S with type t = bool
 
 (** The string concatenation monoid with [empty = ""] and [combine = ( ^ )]. *)
-module String : Monoid_intf.S with type t = string
+module String : S with type t = string
 
 (** The list monoid with [empty = \[\]] and [combine = ( @ )]. *)
 module List (M : sig
   type t
-end) : Monoid_intf.S with type t = M.t list
+end) : S with type t = M.t list
 
 (** The list monoid with [empty = \[\]] and [combine = ( @ )]. *)
 module Appendable_list (M : sig
   type t
-end) : Monoid_intf.S with type t = M.t Appendable_list.t
+end) : S with type t = M.t Appendable_list.t
 
 (** The trivial monoid with [empty = ()] and [combine () () = ()]. *)
-module Unit : Monoid_intf.S with type t = Unit.t
+module Unit : S with type t = Unit.t
 
 (** The addition monoid with [empty = zero] and [combine = ( + )]. *)
 module Add (M : sig
@@ -35,7 +37,7 @@ module Add (M : sig
   val zero : t
 
   val ( + ) : t -> t -> t
-end) : Monoid_intf.S with type t = M.t
+end) : S with type t = M.t
 
 (** The multiplication monoid with [empty = one] and [combine = ( * )]. *)
 module Mul (M : sig
@@ -44,7 +46,7 @@ module Mul (M : sig
   val one : t
 
   val ( * ) : t -> t -> t
-end) : Monoid_intf.S with type t = M.t
+end) : S with type t = M.t
 
 (** The union monoid with [empty = M.empty] and [combine = M.union]. *)
 module Union (M : sig
@@ -53,17 +55,17 @@ module Union (M : sig
   val empty : t
 
   val union : t -> t -> t
-end) : Monoid_intf.S with type t = M.t
+end) : S with type t = M.t
 
 (** The product of monoids where pairs are combined component-wise. *)
 module Product (A : Monoid_intf.Basic) (B : Monoid_intf.Basic) :
-  Monoid_intf.S with type t = A.t * B.t
+  S with type t = A.t * B.t
 
 (** Same as [Product] but for 3 monoids. *)
 module Product3
     (A : Monoid_intf.Basic)
     (B : Monoid_intf.Basic)
-    (C : Monoid_intf.Basic) : Monoid_intf.S with type t = A.t * B.t * C.t
+    (C : Monoid_intf.Basic) : S with type t = A.t * B.t * C.t
 
 (** Functions that return a monoid form the following monoid:
 
@@ -72,12 +74,25 @@ module Product3
 module Function (A : sig
   type t
 end)
-(M : Monoid_intf.Basic) : Monoid_intf.S with type t = A.t -> M.t
+(M : Monoid_intf.Basic) : S with type t = A.t -> M.t
 
-(** Endofunctions, i.e., functions of type [t -> t] form the following monoid:
+(** Endofunctions, i.e., functions of type [t -> t], form two monoids. *)
+module Endofunction : sig
+  (** The left-to-right function composition monoid, where the argument is first
+      passed to the leftmost function:
 
-    - empty = fun x -> x
-    - combine f g = fun x -> f (g x) *)
-module Endofunction (A : sig
-  type t
-end) : Monoid_intf.S with type t = A.t -> A.t
+      - empty = fun x -> x
+      - combine f g = fun x -> g (f x) *)
+  module Left (A : sig
+    type t
+  end) : S with type t = A.t -> A.t
+
+  (** The right-to-left function composition monoid, where the argument is first
+      passed to the rightmost function:
+
+      - empty = fun x -> x
+      - combine f g = fun x -> f (g x) *)
+  module Right (A : sig
+    type t
+  end) : S with type t = A.t -> A.t
+end

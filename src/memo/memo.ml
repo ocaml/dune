@@ -1,50 +1,40 @@
 open! Stdune
 open Fiber.O
 
-let track_locations_of_lazy_values = ref false
+module Debug = struct
+  let track_locations_of_lazy_values = ref false
+
+  let check_invariants = ref false
+end
 
 module Counters = struct
   let enabled = ref false
 
-  let nodes_considered = ref 0
-
-  let edges_considered = ref 0
+  let nodes_restored = ref 0
 
   let nodes_computed = ref 0
 
   let edges_traversed = ref 0
 
+  let nodes_in_cycle_detection_graph = ref 0
+
+  let edges_in_cycle_detection_graph = ref 0
+
+  let paths_in_cycle_detection_graph = ref 0
+
   let reset () =
-    nodes_considered := 0;
-    edges_considered := 0;
+    nodes_restored := 0;
     nodes_computed := 0;
-    edges_traversed := 0
-
-  let record_newly_considered_node ~edges ~computed =
-    incr nodes_considered;
-    edges_considered := !edges_considered + edges;
-    if computed then incr nodes_computed
-
-  let record_new_edge_traversals ~count =
-    edges_traversed := !edges_traversed + count
-end
-
-type 'a build = 'a Fiber.t
-
-module type Build = sig
-  include Monad
-
-  module List : sig
-    val map : 'a list -> f:('a -> 'b t) -> 'b list t
-  end
-
-  val memo_build : 'a build -> 'a t
+    edges_traversed := 0;
+    nodes_in_cycle_detection_graph := 0;
+    edges_in_cycle_detection_graph := 0;
+    paths_in_cycle_detection_graph := 0
 end
 
 module Build0 = struct
   include Fiber
 
-  let if_ x y =
+  let when_ x y =
     match x with
     | true -> y ()
     | false -> return ()
@@ -77,6 +67,8 @@ module Build0 = struct
 
   module List = struct
     let map = parallel_map
+
+    let concat_map l ~f = map l ~f >>| List.concat
   end
 
   let memo_build = Fun.id
@@ -97,9 +89,11 @@ end
 module Spec = struct
   type ('i, 'o) t =
     { name : string option
+    ; (* If the field [witness] precedes any of the functional values ([input]
+         and [f]), then polymorphic comparison actually works for [Spec.t]s. *)
+      witness : 'i Type_eq.Id.t
     ; input : (module Store_intf.Input with type t = 'i)
     ; allow_cutoff : 'o Allow_cutoff.t
-    ; witness : 'i Type_eq.Id.t
     ; f : 'i -> 'o Fiber.t
     ; human_readable_description : ('i -> User_message.Style.t Pp.t) option
     }
@@ -107,7 +101,7 @@ module Spec = struct
   let create ~name ~input ~human_readable_description ~cutoff f =
     let name =
       match name with
-      | None when !track_locations_of_lazy_values ->
+      | None when !Debug.track_locations_of_lazy_values ->
         Option.map
           (Caller_id.get ~skip:[ __FILE__ ])
           ~f:(fun loc ->
@@ -142,17 +136,30 @@ end
 
 module Dep_node_without_state = struct
   type ('i, 'o) t =
-    { spec : ('i, 'o) Spec.t
+    { id : Id.t
+          (* If [id] is placed first in this data structure, then polymorphic
+             comparison for dep nodes works fine regardless of the other fields.
+             At the moment polymorphic comparison is used for [Exn_set], but we
+             hope to change that. *)
+    ; spec : ('i, 'o) Spec.t
     ; input : 'i
-    ; id : Id.t
     }
 
   type packed = T : (_, _) t -> packed [@@unboxed]
-end
 
-let ser_input (type i) (node : (i, _) Dep_node_without_state.t) =
-  let (module Input : Store_intf.Input with type t = i) = node.spec.input in
-  Input.to_dyn node.input
+  let input_to_dyn (type i) (node : (i, _) t) =
+    let (module Input : Store_intf.Input with type t = i) = node.spec.input in
+    Input.to_dyn node.input
+
+  let to_dyn t =
+    Dyn.Tuple
+      [ String
+          (match t.spec.name with
+          | Some name -> name
+          | None -> "<unnamed>")
+      ; input_to_dyn t
+      ]
+end
 
 module Stack_frame_without_state = struct
   open Dep_node_without_state
@@ -161,16 +168,23 @@ module Stack_frame_without_state = struct
 
   let name (T t) = t.spec.name
 
-  let input (T t) = ser_input t
+  let input (T t) = input_to_dyn t
 
-  let to_dyn t =
-    Dyn.Tuple
-      [ String
-          (match name t with
-          | Some name -> name
-          | None -> "<unnamed>")
-      ; input t
-      ]
+  let to_dyn (T t) = Dep_node_without_state.to_dyn t
+
+  let id (T a) = a.id
+
+  let equal (T a) (T b) = Id.equal a.id b.id
+end
+
+module Cycle_error = struct
+  type t = Stack_frame_without_state.t list
+
+  exception E of t
+
+  let get t = t
+
+  let to_dyn = Dyn.Encoder.list Stack_frame_without_state.to_dyn
 end
 
 module Error = struct
@@ -181,29 +195,78 @@ module Error = struct
 
   exception E of t
 
-  let get t = t.exn
+  let rotate_cycle ~is_desired_head cycle =
+    match
+      List.split_while cycle ~f:(fun elem -> not (is_desired_head elem))
+    with
+    | _, [] -> None
+    | prefix, suffix -> Some (suffix @ prefix)
 
-  let stack t = List.rev t.rev_stack
+  let shorten_stack_leading_to_cycle ~rev_stack cycle =
+    let ids_in_cycle =
+      List.map cycle ~f:Stack_frame_without_state.id |> Id.Set.of_list
+    in
+    match
+      List.split_while
+        ~f:(fun frame ->
+          not (Id.Set.mem ids_in_cycle (Stack_frame_without_state.id frame)))
+        rev_stack
+    with
+    | rev_stack, [] -> (rev_stack, cycle)
+    | rev_stack, node_in_cycle :: _ ->
+      let cycle =
+        rotate_cycle
+          ~is_desired_head:(Stack_frame_without_state.equal node_in_cycle)
+          (List.rev cycle)
+        |> Option.value_exn |> List.rev
+      in
+      (rev_stack, cycle)
+
+  let get_exn_and_stack t =
+    match t.exn with
+    | Cycle_error.E cycle ->
+      let rev_stack, cycle =
+        shorten_stack_leading_to_cycle ~rev_stack:t.rev_stack cycle
+      in
+      (Cycle_error.E cycle, List.rev rev_stack)
+    | exn -> (exn, List.rev t.rev_stack)
+
+  let get t = fst (get_exn_and_stack t)
+
+  let stack t = snd (get_exn_and_stack t)
 
   let extend_stack exn ~stack_frame =
     E
       (match exn with
       | E t -> { t with rev_stack = stack_frame :: t.rev_stack }
       | _ -> { exn; rev_stack = [ stack_frame ] })
-end
 
-module Cycle_error = struct
-  type t = Stack_frame_without_state.t list
-
-  exception E of t
-
-  let get t = t
+  let to_dyn t =
+    let open Dyn.Encoder in
+    record
+      [ ("exn", Exn.to_dyn t.exn)
+      ; ("stack", Dyn.Encoder.list Stack_frame_without_state.to_dyn (stack t))
+      ]
 end
 
 (* The user can wrap exceptions into the [Non_reproducible] constructor to tell
    Memo that they shouldn't be cached. We will catch them, unwrap, and re-raise
    without the wrapper. *)
 exception Non_reproducible of exn
+
+let () =
+  Printexc.register_printer (fun exn ->
+      let dyn =
+        let open Dyn.Encoder in
+        match exn with
+        | Error.E err -> Some (constr "Memo.Error.E" [ Error.to_dyn err ])
+        | Cycle_error.E frames ->
+          Some (constr "Cycle_error.E" [ Cycle_error.to_dyn frames ])
+        | Non_reproducible exn ->
+          Some (constr "Memo.Non_reproducible" [ Exn.to_dyn exn ])
+        | _ -> None
+      in
+      Option.map dyn ~f:Dyn.to_string)
 
 module Exn_comparable = Comparable.Make (struct
   type t = Exn_with_backtrace.t
@@ -220,13 +283,30 @@ end)
 
 module Exn_set = Exn_comparable.Set
 
-(* A value calculated during a "sample attempt". A sample attempt can fail for
-   two reasons:
+module Collect_errors_monoid = struct
+  module T = struct
+    type t =
+      { exns : Exn_set.t
+      ; reproducible : bool
+      }
+
+    let empty = { exns = Exn_set.empty; reproducible = true }
+
+    let combine { exns = exns1; reproducible = reproducible1 }
+        { exns = exns2; reproducible = reproducible2 } =
+      { exns = Exn_set.union exns1 exns2
+      ; reproducible = reproducible1 && reproducible2
+      }
+  end
+
+  include T
+  include Monoid.Make (T)
+end
+
+(* Restoring or computing a value can fail for two reasons:
 
    - [Error]: the user-supplied function that was called to compute the value
-   raised one or more exceptions recorded in the [Exn_set.t]. If any of those
-   exceptions was marked as [Non_reproducible], the [reproducible] field will be
-   set to [false].
+   raised one or more exceptions recorded in the [Collect_errors_monoid.t].
 
    - [Cancelled]: the attempt was cancelled due to a dependency cycle.
 
@@ -235,10 +315,7 @@ module Exn_set = Exn_comparable.Set
 module Value = struct
   type 'a t =
     | Ok of 'a
-    | Error of
-        { exns : Exn_set.t
-        ; reproducible : bool
-        }
+    | Error of Collect_errors_monoid.t
     | Cancelled of { dependency_cycle : Cycle_error.t }
 
   let get_exn t ~stack_frame =
@@ -248,125 +325,35 @@ module Value = struct
       Fiber.reraise_all
         (Exn_set.to_list_map exns ~f:(fun exn ->
              { exn with exn = Error.extend_stack exn.exn ~stack_frame }))
-    | Cancelled { dependency_cycle } ->
-      raise (Error.extend_stack (Cycle_error.E dependency_cycle) ~stack_frame)
+    | Cancelled { dependency_cycle } -> raise (Cycle_error.E dependency_cycle)
 end
 
 module Dag : Dag.S with type value := Dep_node_without_state.packed =
-Dag.Make (struct
-  type t = Dep_node_without_state.packed
-end)
-
-(* [Value_id] is an identifier allocated every time a node value is computed and
-   found to be different from before.
-
-   The clients then use [Value_id] to see if the value have changed since the
-   previous value they observed. This means we don't need to run the cutoff
-   comparison at every client.
-
-   There is a downside, though: if the value changes from x to y, and then back
-   to x, then the [Value_id] changes without the value actually changing, which
-   is a shame. So we should test and see if [Value_id] is worth keeping or it's
-   better to just evaluate the cutoff multiple times. *)
-module Value_id : sig
-  type t
-
-  val create : unit -> t
-
-  val equal : t -> t -> bool
-
-  val to_dyn : t -> Dyn.t
-end = struct
-  type t = int
-
-  let to_dyn = Int.to_dyn
-
-  let next = ref 0
-
-  let create () =
-    let res = !next in
-    next := res + 1;
-    res
-
-  let equal = Int.equal
-end
-
-let _ = Value_id.to_dyn
-
-(* Dependencies of a value accumulated so far. All of them are added to the DAG
-   of sample attempts to detect cycles.
-
-   We start accumulating dependencies during the [restore_from_cache] step. Some
-   of them may turn out to be "phantom", i.e. we used to depend on them but do
-   not depend on them anymore. This happens when the [restore_from_cache] step
-   fails and we fall back to recomputing the value, which can lead to a new set
-   of dependencies.
-
-   Once we move to the [compute] step, we start accumulating actual dependencies
-   of the value in [compute_deps]. The list of dependencies is stored in the
-   reversed order for efficient updates.
-
-   After the [compute] step has finished, [compute_deps] are stored in the
-   resulting [Cached_value.t]. *)
-module Deps_so_far = struct
-  type 'node deps =
-    | Compute_not_started
-    | Compute_started of { deps_reversed : 'node list }
-
-  (* Some of the [added_to_dag] nodes also need to be added to [compute_deps]. *)
-  type status = { added_to_compute_deps : bool } [@@unboxed]
-
-  type 'node t =
-    { mutable added_to_dag : status Id.Map.t
-    ; mutable compute_deps : 'node deps
-    }
-
-  let create () =
-    { added_to_dag = Id.Map.empty; compute_deps = Compute_not_started }
-
-  let start_compute t = t.compute_deps <- Compute_started { deps_reversed = [] }
-
-  (* Add a new dependency [node] to [added_to_dag] and also to [compute_deps] if
-     [Compute_started] and the dependency hasn't been added before. *)
-  let add_dep t node_id node =
-    t.added_to_dag <-
-      Id.Map.update t.added_to_dag node_id ~f:(fun status ->
-          match (t.compute_deps, status) with
-          | Compute_not_started, _ -> Some { added_to_compute_deps = false }
-          | _, Some { added_to_compute_deps } when added_to_compute_deps ->
-            status
-          | Compute_started { deps_reversed }, _ ->
-            t.compute_deps <-
-              Compute_started { deps_reversed = node :: deps_reversed };
-            Some { added_to_compute_deps = true })
-
-  let get_compute_deps_rev t =
-    match t.compute_deps with
-    | Compute_not_started ->
-      Code_error.raise
-        "get_compute_deps_rev called in the Compute_not_started state" []
-    | Compute_started { deps_reversed } -> deps_reversed
-end
+  Dag.Make
+    (struct
+      type t = Dep_node_without_state.packed
+    end)
+    ()
 
 module Cache_lookup = struct
   (* Looking up a value cached in a previous run can fail in three possible
      ways:
 
-     - [Not_found]: either the value has never been computed before, or the last
-     computation attempt failed.
+     - [Out_of_date {old_value = None}]: either the value has never been
+     computed before, or the last computation attempt failed.
 
-     - [Out_of_date]: we found a value computed in a previous run but it is out
-     of date because one of its dependencies changed; we return the old value so
-     that it can be compared with a new one to support the early cutoff.
+     - [Out_of_date {old_value = Some _}]: we found a value computed in a
+     previous run but it is out of date because one of its dependencies changed;
+     we return the old value so that it can be compared with a new one to
+     support the early cutoff.
 
      - [Cancelled _]: the cache lookup attempt has been cancelled because of a
      dependency cycle. This outcome indicates that a dependency cycle has been
      introduced in the current run. If a cycle existed in a previous run, the
-     outcome would have been [Not_found] instead. *)
+     outcome would have been [Out_of_date {old_value = None}] instead. *)
   module Failure = struct
     type 'a t =
-      | Not_found
-      | Out_of_date of 'a
+      | Out_of_date of { old_value : 'a option }
       | Cancelled of { dependency_cycle : Cycle_error.t }
   end
 
@@ -377,92 +364,62 @@ module Cache_lookup = struct
   end
 end
 
-(* A fiber that can be shared but is still computed at most once. An equivalent
-   of ['a Lazy.t] but for asynchronous computations. *)
-module Once = struct
-  type 'a state =
-    | Not_forced of { must_not_raise : unit -> 'a Fiber.t }
-    | Forced of 'a Fiber.Ivar.t
-
-  type 'a t = { mutable state : 'a state }
-
-  (* If a given thunk does in fact raise an exception, forcing it will propagate
-     the exception to the first caller, and leave all subsequent callers stuck,
-     forever waiting for the unfilled [Ivar.t]. *)
-  let create ~must_not_raise = { state = Not_forced { must_not_raise } }
-
-  (* Note that side effects of the shared fiber will happen only when the fiber
-     returned by [force t] is executed. *)
-  let force t =
-    Fiber.of_thunk (fun () ->
-        match t.state with
-        | Forced ivar ->
-          let+ res = Fiber.Ivar.read ivar in
-          res
-        | Not_forced { must_not_raise } ->
-          let ivar = Fiber.Ivar.create () in
-          t.state <- Forced ivar;
-          let* result = must_not_raise () in
-          let+ () = Fiber.Ivar.fill ivar result in
-          result)
-
-  (* Like a monadic bind but [f_must_not_raise] returns a [Fiber.t], not a [t]. *)
-  let and_then t ~f_must_not_raise =
-    create ~must_not_raise:(fun () -> Fiber.bind (force t) ~f:f_must_not_raise)
+(* A "computation" is represented by an [ivar], filled when the computation is
+   finished, and a [dag_node], used for cycle detection before getting blocked
+   on reading the [ivar]. When a run completes, all computations are garbage
+   collected because we no longer hold any references to them. *)
+module Computation0 = struct
+  type 'a t =
+    { ivar : 'a Fiber.Ivar.t
+    ; dag_node : Dag.node Lazy.t
+    }
 end
 
-(* An attempt to sample the current value of a node. It's an "attempt" because
-   it can fail due to a dependency cycle.
+(* Checking dependencies of a node can lead to one of these outcomes:
 
-   A sample attempt begins its life in the [Running] state. Multiple readers can
-   concurrently subscribe to the (possibly future) [result] of the attempt using
-   the [restore] and [compute] functions. If the attempt succeeds, it goes to
-   the [Finished] state.
+   - [Unchanged]: all the dependencies of the current node are up to date and we
+   can therefore skip recomputing the node and can reuse the value computed in
+   the previous run.
 
-   To detect dependency cycles, we maintain a DAG of [Running] sample attempts.
-   [Finished] attempts do not need to be in the DAG but currently they remain
-   there until the end of the current run. When the run completes, the DAG is
-   garbage collected because we no longer hold any references to its nodes. *)
-module Sample_attempt = struct
-  module Result = struct
-    type 'a t =
-      { restore_from_cache : 'a Cache_lookup.Result.t Once.t
-      ; compute : 'a Once.t
-      }
-  end
+   - [Changed]: one of the dependencies has changed since the previous run and
+   the current node should therefore be recomputed.
 
-  type 'a t =
-    | Finished of 'a
-    | Running of
-        { dag_node : Dag.node
-        ; result : 'a Result.t
-        }
-
-  let restore = function
-    | Finished cached_value ->
-      Fiber.return (Cache_lookup.Result.Ok cached_value)
-    | Running { result; _ } -> Once.force result.restore_from_cache
-
-  let compute = function
-    | Finished cached_value -> Fiber.return cached_value
-    | Running { result; _ } -> Once.force result.compute
+   - [Cancelled _]: one of the dependencies leads to a dependency cycle. In this
+   case, there is no point in recomputing the current node: it's impossible to
+   bring its dependencies up to date! *)
+module Changed_or_not = struct
+  type t =
+    | Unchanged
+    | Changed
+    | Cancelled of { dependency_cycle : Cycle_error.t }
 end
 
 module M = struct
+  (* A [value] along with some additional information that allows us to check
+     whether the it is up to date or needs to be recomputed. *)
   module rec Cached_value : sig
-    type 'o t =
-      { value : 'o Value.t
-      ; (* The value id, used to check that the value is the same. *)
-        id : Value_id.t
-      ; (* When was last computed or confirmed unchanged *)
-        mutable last_validated_at : Run.t
-      ; (* The values stored in [deps] must have been calculated at
-           [last_validated_at] too.
+    type 'a t =
+      { value : 'a Value.t
+      ; (* We store [last_changed_at] and [last_validated_at] for early cutoff.
+           See Section 5.2.2 of "Build Systems a la Carte: Theory and Practice"
+           for more details (https://doi.org/10.1017/S0956796820000088).
 
-           In fact the set of deps can change over the lifetime of
-           [Cached_value] even if the [value] and [id] do not change. This can
-           happen if the value gets re-computed, but a cutoff prevents us from
-           updating the value id.
+           - [last_changed_at] is the run when the value changed last time.
+
+           - [last_validated_at] is the run when the value was last confirmed as
+           up to date. Invariant: [last_changed_at <= last_validated_at].
+
+           Consider a dependency [dep] of a node [caller].
+
+           If [dep.last_changed_at > caller.last_validated_at], then the [dep]'s
+           value has changed since it had been previously used by the [caller]
+           and therefore the [caller] needs to be recomputed. *)
+        last_changed_at : Run.t
+      ; mutable last_validated_at : Run.t
+      ; (* The list of dependencies [deps], as captured at [last_validated_at].
+           Note that the list of dependencies can change over the lifetime of
+           [Cached_value]: this happens if the value gets re-computed but is
+           declared unchanged by the cutoff check.
 
            Note that [deps] should be listed in the order in which they were
            depended on to avoid recomputations of the dependencies that are no
@@ -484,49 +441,95 @@ module M = struct
            listed [g 0] first, we would recompute it and the work wouldn't be
            wasted since [f 0] does depend on it.
 
-           aalekseyev: now we have a more stringent requirement: [deps] must be
-           a linearisation of dependency causality order, otherwise the
-           validation algorithm may create spurious dependency cycles. *)
-        mutable deps : Last_dep.t list
+           Another important reason to list [deps] according to a linearisation
+           of the dependency order is to eliminate spurious dependency cycles. *)
+        mutable deps : Deps.t
       }
   end =
     Cached_value
 
-  and Running_state : sig
-    type t =
-      { deps_so_far : Dep_node.packed Deps_so_far.t
-      ; dag_node : Dag.node
-      }
-  end =
-    Running_state
+  and Deps : sig
+    type t
 
-  (* Why do we store a [run] in the [Considering] state?
+    val create : deps_rev:Dep_node.packed list -> t
 
-     It is possible for a computation to remain in the [Considering] state after
-     the current run is complete. This happens if the [restore_from_cache] step
-     fails, and the parent node recreates all dependencies from scratch in the
-     subsequent [compute] step. We call computations that become stuck in the
-     [Considering] state "stale computations".
+    val empty : t
 
-     To distinguish between "current" and "stale" computations, we store the
-     [run] in which the computation had started. In this way, before subscribing
-     to a [sample_attempt_result], we can check if it corresponds to the current
-     run, and if not, restart the sample attempt from scratch. This is what the
-     function [currently_considering] does.
+    val length : t -> int
 
-     Once all stale computations have been restarted, we should hold no more
-     references to the corresponding [sample_attempt_result]s, allowing them to
-     be garbage collected. Note: some stale computations may never be restarted,
-     e.g. if they end up getting forever stuck behind an inactive conditional. *)
+    val to_list : t -> Dep_node.packed list
+
+    val changed_or_not :
+         t
+      -> f:(Dep_node.packed -> Changed_or_not.t Fiber.t)
+      -> Changed_or_not.t Fiber.t
+  end = struct
+    (* The array is stored reversed to avoid reversing the list in [create]. We
+       need to be careful about traversing the array in the right order in the
+       functions [to_list] and [changed_or_not]. *)
+    type t = Dep_node.packed array
+
+    let create ~deps_rev = Array.of_list deps_rev
+
+    let empty = Array.init 0 ~f:(fun _ -> assert false)
+
+    let length = Array.length
+
+    let to_list = Array.fold_left ~init:[] ~f:(fun acc x -> x :: acc)
+
+    let changed_or_not t ~f =
+      let rec go index =
+        if index < 0 then (
+          if !Counters.enabled then
+            Counters.edges_traversed :=
+              !Counters.edges_traversed + Array.length t;
+          Fiber.return Changed_or_not.Unchanged
+        ) else
+          f t.(index) >>= function
+          | Changed_or_not.Unchanged -> go (index - 1)
+          | (Changed | Cancelled _) as res ->
+            if !Counters.enabled then
+              Counters.edges_traversed :=
+                !Counters.edges_traversed + (Array.length t - index);
+            Fiber.return res
+      in
+      go (Array.length t - 1)
+  end
+
+  (** The following state transition diagram shows how a node's state changes
+      during a build run. After a run completes, every node is guaranteed to end
+      up in one of these two states.
+
+      - [Out_of_date]: the node is known to be out of date; it wasn't computed
+        during the run, because it is unreachable.
+
+      - [Cached_value]: if the cached value's [run] is current then the node is
+        up to date; otherwise, it wasn't restored during the run, because it is
+        unreachable.
+
+      {v
+            ┌─────────────┐    ┌───────────┐    ┌──────────────┐
+            │ Out_of_date ├────► Computing ├────► Cached_value │
+            └──────▲──────┘    └───────────┘    └────┬───▲─────┘
+                   │                                 │   │
+                   │                            ┌────▼───┴─────┐
+                   └────────────────────────────┤   Restoring  │
+                                                └──────────────┘
+      v}
+
+      Between runs, there can be additional state transitions; for example, we
+      can invalidate a node by setting its state to [Out_of_date]. *)
   and State : sig
-    type 'o t =
-      (* [Considering] marks computations currently being considered, i.e. whose
-         result we currently attempt to restore from the cache or recompute. *)
-      | Not_considering
-      | Considering of
-          { run : Run.t
-          ; running : Running_state.t
-          ; sample_attempt_result : 'o Cached_value.t Sample_attempt.Result.t
+    type 'a t =
+      | Out_of_date of { old_value : 'a Cached_value.t option }
+      | Cached_value of 'a Cached_value.t
+      | Restoring of
+          { restore_from_cache :
+              'a Cached_value.t Cache_lookup.Result.t Computation0.t
+          }
+      | Computing of
+          { old_value : 'a Cached_value.t option
+          ; compute : 'a Cached_value.t Computation0.t
           }
   end =
     State
@@ -535,65 +538,123 @@ module M = struct
     type ('i, 'o) t =
       { without_state : ('i, 'o) Dep_node_without_state.t
       ; mutable state : 'o State.t
-      ; mutable last_cached_value : 'o Cached_value.t option
+      ; (* This field caches the value of [without_state.spec.allow_cutoff] to
+           avoid jumping through two more pointers in a tight loop. *)
+        has_cutoff : bool
       }
 
     type packed = T : (_, _) t -> packed [@@unboxed]
   end =
     Dep_node
-
-  (* We store the [Value_id.t] of the last [Cached_value.t] value we depended on
-     to support early cutoff.
-
-     Consider a dependency [T (dep, value_id) : Last_dep.t] of a node [caller].
-
-     If [dep.last_cached_value.id <> value_id] then the early cutoff fails, i.e.
-     the value that the caller had previously used has changed and received a
-     new identifier, which means the caller needs to be recomputed.
-
-     Note that we can achieve the same early cutoff behaviour by switching to
-     storing two runs in each [Cached_value.t] instead of just one:
-
-     - [last_validated_at : Run.t], which we store already, and
-
-     - [last_changed_at : Run.t], which records the run when the value changed
-     last time, with the invariant [last_changed_at <= last_validated_at].
-
-     If [dep.last_changed_at > caller.last_validated_at], then the value has
-     changed since it had been previously used by the caller, and therefore the
-     caller needs to be recomputed. This new condition is equivalent to the
-     above condition [dep.last_cached_value.id <> value_id] but doesn't require
-     storing value identifiers in [Last_dep.t].
-
-     See Section 5.2.2 of "Build Systems a la Carte: Theory and Practice" for
-     more details on this optimisation (it is worth checking out the scenario
-     described in Fig. 7).
-
-     Historical remark: previously [Last_dep.t] stored [Value.t] instead of just
-     the corresponding [Value_id.t], which means we had to compare the current
-     value and the value recorded in [Last_dep] in every run. By switching to
-     storing the [Value_id.t], the (potentially expensive) value comparisons
-     were replaced with cheap comparisons of their integer identifiers. *)
-  and Last_dep : sig
-    type t = T : ('a, 'b) Dep_node.t * Value_id.t -> t
-  end =
-    Last_dep
 end
 
 module State = M.State
-module Running_state = M.Running_state
 module Dep_node = M.Dep_node
-module Last_dep = M.Last_dep
+module Deps = M.Deps
 
-module Stack_frame_with_state = struct
+(* For debugging *)
+let _print_dep_node ?prefix (dep_node : _ Dep_node.t) =
+  let prefix =
+    match prefix with
+    | None -> ""
+    | Some prefix -> prefix ^ " "
+  in
+  (* Printing via [Console.print] leads to incorrectly interleaving messages
+     with the diagnostic [printf] output in [memoize_tests]. *)
+  Format.printf "%s%s\n" prefix
+    (Dep_node_without_state.to_dyn dep_node.without_state |> Dyn.to_string)
+
+module Stack_frame_with_state : sig
+  type phase =
+    | Restore_from_cache
+    | Compute
+
+  type t
+
+  val to_dyn : t -> Dyn.t
+
+  (* Create a new stack frame related to restoring or computing a [dep_node]. *)
+  val create :
+       dag_node:Dag.node Lazy.t
+    -> phase
+    -> dep_node:_ Dep_node_without_state.t
+    -> t
+
+  val dep_node : t -> Dep_node_without_state.packed
+
+  val dag_node : t -> Dag.node Lazy.t
+
+  (* This function accumulates dependencies of frames in the [Compute] phase.
+     Calling it in the [Restore_from_cache] frame raises an exception. *)
+  val add_dep : t -> dep_node:_ Dep_node.t -> unit
+
+  val deps_rev : t -> Dep_node.packed list
+
+  val children_added_to_dag : t -> Dag.Id.Set.t
+
+  val record_child_added_to_dag : t -> dag_node_id:Dag.Id.t -> unit
+end = struct
+  type phase =
+    | Restore_from_cache
+    | Compute
+
   type ('i, 'o) unpacked =
-    { without_state : ('i, 'o) Dep_node_without_state.t
-    ; running_state : Running_state.t
+    { dep_node : ('i, 'o) Dep_node_without_state.t
+    ; dag_node : Dag.node Lazy.t
+    ; (* This [children_added_to_dag] table serves dual purpose:
+
+         (1) guarantee that we never add the same edge twice to the cycle
+         detection graph;
+
+         (2) to mark the "forcing" stacks in the computation graph that were
+         already added to the cycle detection graph.
+
+         For the purpose (2) a simple [bool] could suffice instead, but we can't
+         ensure (1) without an explicit set representation.
+
+         Implementation note: We use [Dag.Id.Set.t] instead of [Dag.Id.Table.t]
+         for two reasons: (i) the new cycle detection algorithm reduces the size
+         of the DAG, so [children_added_to_dag] will often be empty or small,
+         and in these cases [Set] is fast enough; (ii) we don't have hash sets
+         in Stdune and using [unit] hash maps is disturbing. *)
+      mutable children_added_to_dag : Dag.Id.Set.t
+    ; (* The only purpose of storing [phase] is to ensure (via an [assert]) that
+         we are accumulating dependencies only during the [Compute] phase. We
+         can drop it if we find a way to statically guarantee this property. *)
+      phase : phase
+    ; (* [deps_rev] are accumulated only when [phase = Compute], see [add_dep]. *)
+      mutable deps_rev : Dep_node.packed list
     }
 
-  type t = T : ('i, 'o) unpacked -> t
+  type t = T : ('i, 'o) unpacked -> t [@@unboxed]
 
-  let to_dyn (T t) = Stack_frame_without_state.to_dyn (T t.without_state)
+  let to_dyn (T t) = Stack_frame_without_state.to_dyn (T t.dep_node)
+
+  let create ~dag_node phase ~dep_node =
+    T
+      { dep_node
+      ; phase
+      ; deps_rev = []
+      ; dag_node
+      ; children_added_to_dag = Dag.Id.Set.empty
+      }
+
+  let dep_node (T t) = Dep_node_without_state.T t.dep_node
+
+  let dag_node (T t) = t.dag_node
+
+  let add_dep (T t) ~dep_node =
+    match t.phase with
+    | Restore_from_cache -> assert false
+    | Compute -> t.deps_rev <- Dep_node.T dep_node :: t.deps_rev
+
+  let deps_rev (T t) = t.deps_rev
+
+  let record_child_added_to_dag (T t) ~dag_node_id =
+    t.children_added_to_dag <-
+      Dag.Id.Set.add t.children_added_to_dag dag_node_id
+
+  let children_added_to_dag (T t) = t.children_added_to_dag
 end
 
 module To_open = struct
@@ -602,26 +663,236 @@ end
 
 open To_open
 
-let global_dep_dag = Dag.create ()
-
 module Call_stack = struct
+  type t = Stack_frame_with_state.t list
+
   (* The variable holding the call stack for the current context. *)
-  let call_stack_var = Fiber.Var.create ()
+  let call_stack_var : t Fiber.Var.t = Fiber.Var.create ()
 
   let get_call_stack () =
     Fiber.Var.get call_stack_var >>| Option.value ~default:[]
 
   let get_call_stack_without_state () =
-    get_call_stack ()
-    >>| List.map ~f:(fun (Stack_frame_with_state.T t) ->
-            Dep_node_without_state.T t.without_state)
-
-  let get_call_stack_tip () = get_call_stack () >>| List.hd_opt
+    get_call_stack () >>| List.map ~f:Stack_frame_with_state.dep_node
 
   let push_frame (frame : Stack_frame_with_state.t) f =
     let* stack = get_call_stack () in
     let stack = frame :: stack in
     Fiber.Var.set call_stack_var stack (fun () -> Implicit_output.forbid f)
+
+  (* Add all edges leading from the root of the call stack to [dag_node] to the
+     cycle detection DAG. *)
+  let add_path_to ~dag_node : (unit, Cycle_error.t) result Fiber.t =
+    let+ stack = get_call_stack () in
+    let rec add_path_impl stack dag_node =
+      match stack with
+      | [] -> Ok ()
+      | frame :: stack -> (
+        let dag_node_id = Dag.node_id dag_node in
+        let children_added_to_dag =
+          Stack_frame_with_state.children_added_to_dag frame
+        in
+        match Dag.Id.Set.mem children_added_to_dag dag_node_id with
+        | true ->
+          (* Here we know that the current [frame] has already been traversed in
+             a previous [add_path_to] call. Therefore, the DAG already contains
+             all the edges that we will discover by continuing the recursive
+             traversal. We might as well stop here and save time. *)
+          Ok ()
+        | false -> (
+          let caller_dag_node =
+            Lazy.force (Stack_frame_with_state.dag_node frame)
+          in
+          match Dag.add_assuming_missing caller_dag_node dag_node with
+          | exception Dag.Cycle cycle ->
+            Error (List.map cycle ~f:(fun dag_node -> dag_node.Dag.data))
+          | () -> (
+            if !Counters.enabled then
+              incr Counters.edges_in_cycle_detection_graph;
+            let not_traversed_before =
+              Dag.Id.Set.is_empty children_added_to_dag
+            in
+            Stack_frame_with_state.record_child_added_to_dag frame ~dag_node_id;
+            match not_traversed_before with
+            | true -> add_path_impl stack caller_dag_node
+            | false ->
+              (* Same optimisation as above: no need to traverse again. *)
+              Ok ())))
+    in
+    if !Counters.enabled then incr Counters.paths_in_cycle_detection_graph;
+    add_path_impl stack (Lazy.force dag_node)
+
+  (* Add a dependency on the [dep_node] from the caller, if there is one. *)
+  let add_dep_from_caller =
+    let get_call_stack_tip () = get_call_stack () >>| List.hd_opt in
+    fun dep_node ->
+      let+ caller = get_call_stack_tip () in
+      match caller with
+      | None -> ()
+      | Some caller -> Stack_frame_with_state.add_dep caller ~dep_node
+end
+
+(* This module contains the essence of our cycle detection algorithm. Briefly,
+   the idea is as follows: whenever we are about to get blocked to wait for the
+   result of a computation that is currently running, we add the current call
+   stack to the cycle detection DAG. If this creates a cycle, we stop and report
+   a "dependency cycle" error; otherwise, we proceed with the blocking.
+
+   Below are some notes on how/why this algorithm works.
+
+   By "computation" we mean execution of a "shared fiber", which we represent by
+   a [Computation.t]. Computations can be in one of three states: not started,
+   running, and finished. Multiple readers may want the result of a computation:
+   the first reader "forces" its execution (moving it to the running state), and
+   subsequent readers either get blocked if the computation is still running, or
+   get the cached result if the computation has finished. Blocking can lead to a
+   deadlock if there is a dependency cycle between different computations. We
+   therefore need to check for cycles *before* getting blocked.
+
+   One simple algorithm to check for cycles is to create a DAG node for every
+   computation, and add a DAG edge whenever a computation would like to read the
+   result of another computation. If adding an edge creates a cycle, then we
+   stop and report an error instead of getting blocked and deadlocked.
+
+   A simple optimisation is to skip adding an edge when reading the result of a
+   computation that has already finished, since a computation can't finish if it
+   participates in a dependency cycle.
+
+   This algorithm is simple and it works, and Memo used it in the past. However,
+   the resulting DAG was often large, and so cycle detection was taking ~35% of
+   incremental zero rebuilds. As a further optimisation, we developed another
+   algorithm described below.
+
+   The DAG produced by the above algorithm can contain many uninteresting nodes
+   and edges. For example, every node will have at least one incoming edge that
+   is added when the corresponding computation was initially "forced". But these
+   "forcing edges" cannot cause deadlocks by themselves because the fiber that
+   forces a computation is not blocked, so it will keep making progress until it
+   encounters a blocking edge.
+
+   Here is an optimisation idea. Since blocking edges are the real cause of
+   deadlocks, we will focus our attention on them: when we hit a blocking edge,
+   we will add it to the DAG *along with the path that led us to it*. This path
+   is readily available to us in the form of the call stack.
+
+   Here is a proof sketch that this algorithm finds all possible cycles. We are
+   going to make use of the following three observations:
+
+   (1) If there is a cycle, it must contain at least one blocking edge.
+
+   (2) Every path that we are going to add to the DAG will contain a sequence of
+   forcing edges followed by one blocking edge.
+
+   (3) Every node has at most one incoming forcing edge. In other words, forcing
+   edges form a forest.
+
+   Now consider a reachable cycle in our computation graph. It contains at least
+   one blocking edge (1) and some number of forcing edges. All blocking edges of
+   the cycle will be added to the DAG because our algorithm unconditionally adds
+   them. What about the remaining forcing edges of the cycle? We claim that they
+   must be added to the DAG together with the blocking edges, because they will
+   be on the corresponding call stacks. This follows from (2) and (3): indeed,
+   if a blocking edge is preceded by a sequence of forcing edges on the cycle,
+   then there is only one possible call stack that contains that blocking edge
+   and it must pass through that sequence of forcing edges. There is no freedom
+   when we retrace the forcing edges back, since there is always at most one to
+   choose from. Therefore, our algorithm will add all the edges of the cycle to
+   the DAG: both blocking and forcing ones. *)
+module Computation = struct
+  include Computation0
+
+  let create ~dep_node =
+    let ivar = Fiber.Ivar.create () in
+    let dag_node =
+      lazy
+        (if !Counters.enabled then incr Counters.nodes_in_cycle_detection_graph;
+         ({ info = Dag.create_node_info ()
+          ; data = Dep_node_without_state.T dep_node
+          }
+           : Dag.node))
+    in
+    { ivar; dag_node }
+
+  (* Each computation should be forced exactly once. Not forcing it will lead to
+     a deadlock. Forcing it twice will lead to [Fiber.Ivar.fill] raising. *)
+  let force { ivar; dag_node } ~phase ~dep_node fiber =
+    let frame = Stack_frame_with_state.create phase ~dag_node ~dep_node in
+    let* result =
+      (* The only reason we make the stack [frame] available to the [fiber] is
+         to let the latter get the discovered dependencies [deps_rev]. *)
+      Call_stack.push_frame frame (fun () -> fiber frame)
+    in
+    let+ () = Fiber.Ivar.fill ivar result in
+    result
+
+  let read_but_first_check_for_cycles { ivar; dag_node } =
+    Fiber.Ivar.peek ivar >>= function
+    | Some res -> Fiber.return (Ok res)
+    | None -> (
+      Call_stack.add_path_to ~dag_node >>= function
+      | Ok () -> Fiber.Ivar.read ivar >>| Result.ok
+      | Error _ as cycle_error -> Fiber.return cycle_error)
+end
+
+module Error_handler : sig
+  val is_set : bool Fiber.t
+
+  val report_error : Exn_with_backtrace.t -> unit Fiber.t
+
+  val with_error_handler :
+    (Exn_with_backtrace.t -> unit Fiber.t) -> (unit -> 'a Fiber.t) -> 'a Fiber.t
+end = struct
+  type t = Exn_with_backtrace.t -> unit Fiber.t
+
+  let var : t Fiber.Var.t = Fiber.Var.create ()
+
+  let is_set = Fiber.map (Fiber.Var.get var) ~f:Option.is_some
+
+  let get_exn = Fiber.Var.get_exn var
+
+  let report_error error =
+    let open Fiber.O in
+    let* handler = get_exn in
+    let* stack = Call_stack.get_call_stack_without_state () in
+    let error =
+      Exn_with_backtrace.map error ~f:(fun exn ->
+          List.fold_left stack ~init:exn ~f:(fun exn stack_frame ->
+              Error.extend_stack exn ~stack_frame))
+    in
+    Fiber.map
+      (Fiber.collect_errors (fun () -> handler error))
+      ~f:(function
+        | Ok () -> ()
+        | Error e ->
+          (* Unfortunately, by re-raising an exception here we're violating some
+             Memo invariants and causing more confusing exceptions, but
+             hopefully this code_error will be a hint. *)
+          Code_error.raise "Memo error handler raised an exception"
+            [ ("exns", Dyn.Encoder.list Exn_with_backtrace.to_dyn e) ])
+
+  let deduplicate_errors f =
+    let reported = ref Exn_set.empty in
+    fun exn ->
+      if Exn_set.mem !reported exn then
+        Fiber.return ()
+      else (
+        reported := Exn_set.add !reported exn;
+        f exn
+      )
+
+  let with_error_handler t f =
+    Fiber.of_thunk (fun () ->
+        (* [with_error_handler] runs once for every incremental run, so calling
+           [deduplicate_errors] afresh here makes sure that we re-report all
+           errors*)
+        let t = deduplicate_errors t in
+        Fiber.bind (Fiber.Var.get var) ~f:(function
+          | None -> Fiber.Var.set var t f
+          | Some _handler ->
+            Code_error.raise
+              "Memo.run_with_error_handler: an error handler is already \
+               installed"
+              []))
 end
 
 let pp_stack () =
@@ -636,53 +907,60 @@ let dump_stack () =
   let+ pp = pp_stack () in
   Console.print [ pp ]
 
-let get_cached_value_in_current_cycle (dep_node : _ Dep_node.t) =
-  match dep_node.last_cached_value with
-  | None -> None
-  | Some cv ->
+let get_cached_value_in_current_run (dep_node : _ Dep_node.t) =
+  match dep_node.state with
+  | Cached_value cv ->
     if Run.is_current cv.last_validated_at then
       Some cv
     else
       None
+  | Out_of_date _
+  | Restoring _
+  | Computing _ ->
+    None
 
 module Cached_value = struct
   include M.Cached_value
 
-  let capture_dep_values ~deps_rev =
-    List.rev_map deps_rev ~f:(function Dep_node.T dep_node ->
-        (match get_cached_value_in_current_cycle dep_node with
-        | None ->
-          let reason =
-            match dep_node.last_cached_value with
-            | None -> "(no value)"
-            | Some _ -> "(old run)"
-          in
-          Code_error.raise
-            ("Attempted to create a cached value based on some stale inputs "
-           ^ reason)
-            []
-        | Some cv -> Last_dep.T (dep_node, cv.id)))
+  let capture_deps ~deps_rev =
+    if !Debug.check_invariants then
+      List.iter deps_rev ~f:(function Dep_node.T dep_node ->
+          (match get_cached_value_in_current_run dep_node with
+          | None ->
+            let reason =
+              match dep_node.state with
+              | Out_of_date _ -> "(out of date)"
+              | Cached_value _ -> "(old run)"
+              | Restoring _ -> "(restoring)"
+              | Computing _ -> "(computing)"
+            in
+            Code_error.raise
+              ("Attempted to create a cached value based on some stale inputs "
+             ^ reason)
+              []
+          | Some _up_to_date_cached_value -> ()));
+    Deps.create ~deps_rev
 
   let create x ~deps_rev =
-    { deps = capture_dep_values ~deps_rev
-    ; value = x
+    { value = x
+    ; last_changed_at = Run.current ()
     ; last_validated_at = Run.current ()
-    ; id = Value_id.create ()
+    ; deps = capture_deps ~deps_rev
     }
 
   (* Dependencies of cancelled computations are not accurate, so we store the
      empty list of [deps] in this case. In future, it would be better to
      refactor the code to avoid storing the list altogether in this case. *)
   let create_cancelled ~dependency_cycle =
-    { deps = []
-    ; value = Cancelled { dependency_cycle }
+    { value = Cancelled { dependency_cycle }
+    ; last_changed_at = Run.current ()
     ; last_validated_at = Run.current ()
-    ; id = Value_id.create ()
+    ; deps = Deps.empty
     }
 
   let confirm_old_value t ~deps_rev =
     t.last_validated_at <- Run.current ();
-    t.deps <- capture_dep_values ~deps_rev;
+    t.deps <- capture_deps ~deps_rev;
     t
 
   let value_changed (node : _ Dep_node.t) prev_value cur_value =
@@ -700,42 +978,6 @@ module Cached_value = struct
       , Error { exns = cur_exns; reproducible = true } ) ->
       not (Exn_set.equal prev_exns cur_exns)
 end
-
-(* Add a dependency on the [dep_node] from the caller, if there is one. Returns
-   an [Error] if the new dependency would introduce a dependency cycle. *)
-let add_dep_from_caller (type i o) (dep_node : (i, o) Dep_node.t)
-    (sample_attempt : _ Sample_attempt.t) =
-  let* caller = Call_stack.get_call_stack_tip () in
-  match caller with
-  | None -> Fiber.return (Ok ())
-  | Some (Stack_frame_with_state.T caller) -> (
-    let deps_so_far_of_caller = caller.running_state.deps_so_far in
-    match
-      Id.Map.mem deps_so_far_of_caller.added_to_dag dep_node.without_state.id
-    with
-    | true ->
-      Deps_so_far.add_dep deps_so_far_of_caller dep_node.without_state.id
-        (Dep_node.T dep_node);
-      Fiber.return (Ok ())
-    | false -> (
-      let cycle_error =
-        match sample_attempt with
-        | Finished _ -> None
-        | Running { dag_node; _ } -> (
-          match
-            Dag.add_assuming_missing global_dep_dag
-              caller.running_state.dag_node dag_node
-          with
-          | () -> None
-          | exception Dag.Cycle cycle ->
-            Some (List.map cycle ~f:(fun dag_node -> dag_node.Dag.data)))
-      in
-      match cycle_error with
-      | None ->
-        Deps_so_far.add_dep deps_so_far_of_caller dep_node.without_state.id
-          (Dep_node.T dep_node);
-        Fiber.return (Ok ())
-      | Some cycle -> Fiber.return (Error cycle)))
 
 type ('input, 'output) t =
   { spec : ('input, 'output) Spec.t
@@ -757,12 +999,46 @@ module Stack_frame = struct
     Option.map t.spec.human_readable_description ~f:(fun f -> f t.input)
 end
 
+(* There are two approaches to invalidating memoization nodes. Currently, when a
+   node is invalidated by calling [invalidate_dep_node], only the node itself is
+   marked as "changed" (by setting [node.state] to [No_value]). Then, the whole
+   graph is marked as "possibly changed" by calling [Run.restart ()] that makes
+   all remaining [last_validated_at : Run.t] values out of date in O(1) time. In
+   the next run, the whole graph is traversed from top to bottom to discover
+   "actual changes" and recompute all the nodes affected by these changes. One
+   disadvantage of this approach is that the whole graph needs to be traversed
+   even if only a small part of it depends on the set of invalidated nodes.
+
+   An alternative approach is as follows. When [invalidate_dep_node] is called,
+   recursively mark all of its reverse dependencies as "possibly changed". Then,
+   in the next run, traverse only the marked part of graph (instead of the whole
+   graph as we do currently). One disadvantage of this approach is that every
+   node needs to store a list of its reverse dependencies, which introduces
+   cyclic memory references and complicates garbage collection. Another issue is
+   that recursively marking all reverse dependencies as "possibly changed" can
+   still result in marking too much, because there is no way to take the cutoff
+   predicate into account when propagating "possible changes".
+
+   Is it worth switching from the current approach to the alternative? It's best
+   to answer this question by benchmarking. This is not urgent but is worth
+   documenting in the code. *)
+let invalidate_dep_node (node : _ Dep_node.t) =
+  (* CR-someday amokhov: We could assert that the [state] can't be [Restoring]
+     or [Computing] here, to catch unexpected [invalidate_dep_node] calls. *)
+  (* CR-someday amokhov: We could set [old_value] to [Some] so that the cutoff
+     could still fire. *)
+  node.state <- Out_of_date { old_value = None }
+
+let invalidate_store = Store.iter ~f:invalidate_dep_node
+
 let create_with_cache (type i o) name ~cache ~input ~cutoff
     ~human_readable_description (f : i -> o Fiber.t) =
   let spec =
     Spec.create ~name:(Some name) ~input ~cutoff ~human_readable_description f
   in
-  Caches.register ~clear:(fun () -> Store.clear cache);
+  Caches.register ~clear:(fun () ->
+      Store.clear cache;
+      invalidate_store cache);
   { cache; spec }
 
 let create_with_store (type i) name
@@ -774,7 +1050,7 @@ let create_with_store (type i) name
 let create (type i) name ~input:(module Input : Input with type t = i) ?cutoff
     ?human_readable_description f =
   (* This mutable table is safe: the implementation tracks all dependencies. *)
-  let cache = Store.of_table (Table.create (module Input) 16) in
+  let cache = Store.of_table (Table.create (module Input) 2) in
   let input = (module Input : Store_intf.Input with type t = i) in
   create_with_cache name ~cache ~input ~cutoff ~human_readable_description f
 
@@ -783,8 +1059,11 @@ let make_dep_node ~spec ~input : _ Dep_node.t =
     { id = Id.gen (); input; spec }
   in
   { without_state = dep_node_without_state
-  ; last_cached_value = None
-  ; state = Not_considering
+  ; state = Out_of_date { old_value = None }
+  ; has_cutoff =
+      (match spec.allow_cutoff with
+      | Yes _equal -> true
+      | No -> false)
   }
 
 let dep_node (t : (_, _) t) input =
@@ -795,306 +1074,326 @@ let dep_node (t : (_, _) t) input =
     Store.set t.cache input dep_node;
     dep_node
 
-(* Checking dependencies of a node can lead to one of these outcomes:
+let report_and_collect_errors f =
+  Fiber.map_reduce_errors
+    (module Collect_errors_monoid)
+    ~on_error:(fun exn ->
+      let exn, reproducible =
+        match exn with
+        | { Exn_with_backtrace.exn = Non_reproducible exn; backtrace } ->
+          ({ Exn_with_backtrace.exn; backtrace }, false)
+        | exn -> (exn, true)
+      in
+      let+ () = Error_handler.report_error exn in
+      ({ exns = Exn_set.singleton exn; reproducible } : Collect_errors_monoid.t))
+    f
 
-   - [Unchanged]: all the dependencies of the current node are up to date and we
-   can therefore skip recomputing the node and can reuse the value computed in
-   the previous run.
-
-   - [Changed]: one of the dependencies has changed since the previous run and
-   the current node should therefore be recomputed.
-
-   - [Cycle_error _]: one of the dependencies leads to a dependency cycle. In
-   this case, there is no point in recomputing the current node: it's impossible
-   to bring its dependencies up to date! *)
-module Changed_or_not = struct
-  type t =
-    | Unchanged
-    | Changed
-    | Cancelled of { dependency_cycle : Cycle_error.t }
-end
+let yield_if_there_are_pending_events = ref Fiber.return
 
 module Exec : sig
-  (* [exec_dep_node] is a variant of [consider_and_compute] but with a simpler
-     type, convenient for external usage. *)
   val exec_dep_node : ('i, 'o) Dep_node.t -> 'o Fiber.t
 end = struct
-  let currently_considering (v : _ State.t) : _ State.t =
-    match v with
-    | Not_considering -> Not_considering
-    | Considering { run; _ } as running ->
-      if Run.is_current run then
-        running
-      else
-        Not_considering
-
   let rec restore_from_cache :
-            'o.    'o Cached_value.t option
+            'o.
+               cached_value:'o Cached_value.t
             -> 'o Cached_value.t Cache_lookup.Result.t Fiber.t =
-   fun last_cached_value ->
-    match last_cached_value with
-    | None -> Fiber.return (Cache_lookup.Result.Failure Not_found)
-    | Some cached_value -> (
-      match cached_value.value with
-      | Cancelled _dependency_cycle ->
-        (* Dependencies of cancelled computations are not accurate, so we can't
-           use [deps_changed] in this case. *)
-        Fiber.return (Cache_lookup.Result.Failure Not_found)
-      | Error { reproducible = false; _ } ->
-        (* We do not cache non-reproducible errors. *)
-        Fiber.return (Cache_lookup.Result.Failure Not_found)
-      | Ok _
-      | Error { reproducible = true; _ } -> (
-        (* We cache reproducible errors just like normal values. We assume that
-           all [Memo] computations are deterministic, which means if we rerun a
-           computation that previously raised a set of errors on the same inputs
-           then we expect to get the same set of errors back and might as well
-           skip the unnecessary work. The downside is that if a computation is
-           non-deterministic, there is no way to force rerunning it, apart from
-           changing some of its dependencies. *)
-        let+ deps_changed =
-          let rec go deps =
-            match deps with
-            | [] -> Fiber.return Changed_or_not.Unchanged
-            | Last_dep.T (dep, v_id) :: deps -> (
-              if !Counters.enabled then
-                Counters.record_new_edge_traversals ~count:1;
-              match dep.without_state.spec.allow_cutoff with
-              | No -> (
+   fun ~cached_value ->
+    match cached_value.value with
+    | Cancelled _dependency_cycle ->
+      (* Dependencies of cancelled computations are not accurate (in fact, they
+         are set to [Deps.empty]), so we can't use [deps_changed] in this case. *)
+      Fiber.return
+        (Cache_lookup.Result.Failure (Out_of_date { old_value = None }))
+    | Error { reproducible = false; _ } ->
+      (* We do not cache non-reproducible errors. *)
+      Fiber.return
+        (Cache_lookup.Result.Failure (Out_of_date { old_value = None }))
+    | Ok _
+    | Error { reproducible = true; _ } -> (
+      (* We cache reproducible errors just like normal values. We assume that
+         all [Memo] computations are deterministic, which means if we rerun a
+         computation that previously raised a set of errors on the same inputs
+         then we expect to get the same set of errors back and might as well
+         skip the unnecessary work. The downside is that if a computation is in
+         fact non-deterministic, there is no way to force rerunning it, apart
+         from changing some of its dependencies. *)
+      let+ deps_changed =
+        (* Make sure [f] gets inlined to avoid unnecessary closure allocations
+           and improve stack traces in profiling. *)
+        Deps.changed_or_not cached_value.deps
+          ~f:(fun [@inline] (Dep_node.T dep) ->
+            consider_and_restore_from_cache_without_adding_dep dep >>= function
+            | Ok cached_value_of_dep -> (
+              (* The [Changed] branch will be taken if [cached_value]'s node was
+                 skipped in the previous run (it was unreachable), while [dep]
+                 wasn't skipped and [cached_value_of_dep] changed. *)
+              match
+                Run.compare cached_value_of_dep.last_changed_at
+                  cached_value.last_validated_at
+              with
+              | Gt -> Fiber.return Changed_or_not.Changed
+              | Eq
+              | Lt ->
+                Fiber.return Changed_or_not.Unchanged)
+            | Failure (Cancelled { dependency_cycle }) ->
+              Fiber.return (Changed_or_not.Cancelled { dependency_cycle })
+            | Failure (Out_of_date _old_value) -> (
+              match dep.has_cutoff with
+              | false ->
                 (* If [dep] has no cutoff, it is sufficient to check whether it
-                   is up to date. If not, we must recompute [last_cached_value]. *)
-                let* restore_result = consider_and_restore_from_cache dep in
-                match restore_result with
-                | Ok cached_value_of_dep -> (
-                  (* Here we know that [dep] can be restored from the cache, so
-                     how can [v_id] be different from [cached_value_of_dep.id]?
-                     Good question! This can happen if [cached_value]'s node was
-                     skipped in the previous run (because it was unreachable),
-                     while [dep] wasn't skipped and its value changed. In the
-                     current run, [cached_value] is therefore stale. We learn
-                     this when we see that the [cached_value_of_dep] is not as
-                     recorded when computing [cached_value]. *)
-                  match Value_id.equal cached_value_of_dep.id v_id with
-                  | true -> go deps
-                  | false -> Fiber.return Changed_or_not.Changed)
-                | Failure (Cancelled { dependency_cycle }) ->
-                  Fiber.return (Changed_or_not.Cancelled { dependency_cycle })
-                | Failure (Not_found | Out_of_date _) ->
-                  Fiber.return Changed_or_not.Changed)
-              | Yes _equal -> (
+                   is up to date. If not, we must recompute the [cached_value]. *)
+                Fiber.return Changed_or_not.Changed
+              | true -> (
                 (* If [dep] has a cutoff predicate, it is not sufficient to
                    check whether it is up to date: even if it isn't, after we
-                   recompute it, the resulting [Value_id] may remain unchanged,
-                   allowing us to skip recomputing [last_cached_value]. *)
-                consider_and_compute dep
-                >>= function
-                | Error dependency_cycle ->
-                  Fiber.return (Changed_or_not.Cancelled { dependency_cycle })
-                | Ok cached_value -> (
-                  let* cached_value = cached_value in
-                  (* Note that [cached_value.value] will be [Cancelled _] if
+                   recompute it, the resulting value may remain unchanged,
+                   allowing us to skip recomputing the [cached_value]. *)
+                consider_and_compute_without_adding_dep dep
+                >>| function
+                | Ok cached_value_of_dep -> (
+                  (* Note: [cached_value_of_dep.value] will be [Cancelled _] if
                      [dep] itself doesn't introduce a dependency cycle but one
                      of its transitive dependencies does. In this case, the
-                     value [id] will be new, so we will take the [false] branch. *)
-                  match Value_id.equal cached_value.id v_id with
-                  | true -> go deps
-                  | false -> Fiber.return Changed_or_not.Changed)))
-          in
-          go cached_value.deps
-        in
-        match deps_changed with
-        | Unchanged ->
-          cached_value.last_validated_at <- Run.current ();
-          Cache_lookup.Result.Ok cached_value
-        | Changed -> Failure (Out_of_date cached_value)
-        | Cancelled { dependency_cycle } ->
-          Failure (Cancelled { dependency_cycle })))
+                     value will be new, so we will take the [Changed] branch. *)
+                  match
+                    Run.compare cached_value_of_dep.last_changed_at
+                      cached_value.last_validated_at
+                  with
+                  | Gt -> Changed_or_not.Changed
+                  | Eq
+                  | Lt ->
+                    Unchanged)
+                | Error dependency_cycle -> Cancelled { dependency_cycle })))
+      in
+      match deps_changed with
+      | Unchanged ->
+        cached_value.last_validated_at <- Run.current ();
+        Cache_lookup.Result.Ok cached_value
+      | Changed -> Failure (Out_of_date { old_value = Some cached_value })
+      | Cancelled { dependency_cycle } ->
+        Failure (Cancelled { dependency_cycle }))
 
   and compute :
-        'i 'o.    ('i, 'o) Dep_node.t
-        -> 'o Cached_value.t Cache_lookup.Failure.t
-        -> Dep_node.packed Deps_so_far.t -> 'o Cached_value.t Fiber.t =
-   fun dep_node cache_lookup_failure deps_so_far ->
-    Deps_so_far.start_compute deps_so_far;
-    let compute_value_and_deps_rev () =
-      (* One consequence of using [Fiber.collect_errors] is that memoized
-         functions don't report errors promptly; instead, errors are reported
-         only once all child fibers terminate. To solve this, one might hope to
-         use [Fiber.with_error_handler] but the details are unclear. *)
-      let+ res =
-        Fiber.collect_errors (fun () ->
-            dep_node.without_state.spec.f dep_node.without_state.input)
-      in
-      let value =
-        match res with
-        | Ok res -> Value.Ok res
-        | Error exns ->
-          (* CR-someday amokhov: Here we remove error duplicates that can appear
-             due to diamond dependencies. We could add [Fiber.collect_error_set]
-             that returns a set of errors instead of a list, to get rid of the
-             duplicates as early as possible. *)
-          let exns, reproducible =
-            List.fold_left exns ~init:(Exn_set.empty, true)
-              ~f:(fun (acc, acc_reproducible) exn ->
-                let exn, acc_reproducible =
-                  match exn with
-                  | { Exn_with_backtrace.exn = Non_reproducible exn; backtrace }
-                    ->
-                    ({ Exn_with_backtrace.exn; backtrace }, false)
-                  | exn -> (exn, acc_reproducible)
-                in
-                (Exn_set.add acc exn, acc_reproducible))
-          in
-          Error { exns; reproducible }
-      in
-      let deps_rev = Deps_so_far.get_compute_deps_rev deps_so_far in
-      if !Counters.enabled then
-        Counters.record_new_edge_traversals ~count:(List.length deps_rev);
-      (value, deps_rev)
+        'i 'o.
+           dep_node:('i, 'o) Dep_node.t
+        -> old_value:'o Cached_value.t option
+        -> stack_frame:Stack_frame_with_state.t
+        -> 'o Cached_value.t Fiber.t =
+   fun ~dep_node ~old_value ~stack_frame ->
+    let* () = !yield_if_there_are_pending_events () in
+    let+ res =
+      report_and_collect_errors (fun () ->
+          dep_node.without_state.spec.f dep_node.without_state.input)
     in
-    match cache_lookup_failure with
-    | Cancelled { dependency_cycle } ->
-      Fiber.return (Cached_value.create_cancelled ~dependency_cycle)
-    | Not_found ->
-      let+ value, deps_rev = compute_value_and_deps_rev () in
-      Cached_value.create value ~deps_rev
-    | Out_of_date (old_cv : _ Cached_value.t) -> (
-      let+ value, deps_rev = compute_value_and_deps_rev () in
+    let value =
+      match res with
+      | Ok res -> Value.Ok res
+      | Error errors -> Error errors
+    in
+    let deps_rev = Stack_frame_with_state.deps_rev stack_frame in
+    match old_value with
+    | None -> Cached_value.create value ~deps_rev
+    | Some old_cv -> (
       match Cached_value.value_changed dep_node old_cv.value value with
       | true -> Cached_value.create value ~deps_rev
       | false -> Cached_value.confirm_old_value ~deps_rev old_cv)
 
-  and newly_considering :
-        'i 'o. ('i, 'o) Dep_node.t -> 'o Cached_value.t Sample_attempt.t =
-   fun dep_node ->
-    let dag_node : Dag.node =
-      { info = Dag.create_node_info global_dep_dag
-      ; data = Dep_node_without_state.T dep_node.without_state
-      }
-    in
-    let running_state : Running_state.t =
-      { dag_node; deps_so_far = Deps_so_far.create () }
-    in
-    let frame : Stack_frame_with_state.t =
-      T { without_state = dep_node.without_state; running_state }
-    in
-    let stop_considering ~(cached_value : _ Cached_value.t) ~computed =
-      dep_node.state <- Not_considering;
-      if !Counters.enabled then
-        Counters.record_newly_considered_node
-          ~edges:(List.length cached_value.deps)
-          ~computed
-    in
-    let restore_from_cache =
-      Once.create ~must_not_raise:(fun () ->
-          Call_stack.push_frame frame (fun () ->
-              let+ restore_result =
-                restore_from_cache dep_node.last_cached_value
-              in
-              (match restore_result with
-              | Ok cached_value ->
-                stop_considering ~cached_value ~computed:false
-              | Failure _ -> ());
-              restore_result))
-    in
-    let compute =
-      Once.and_then restore_from_cache ~f_must_not_raise:(function
-        | Ok cached_value -> Fiber.return cached_value
-        | Failure cache_lookup_failure ->
-          Call_stack.push_frame frame (fun () ->
-              dep_node.last_cached_value <- None;
-              let+ cached_value =
-                compute dep_node cache_lookup_failure running_state.deps_so_far
-              in
-              dep_node.last_cached_value <- Some cached_value;
-              stop_considering ~cached_value ~computed:true;
-              cached_value))
-    in
-    let result : _ Sample_attempt.Result.t = { restore_from_cache; compute } in
-    dep_node.state <-
-      Considering
-        { run = Run.current ()
-        ; running = running_state
-        ; sample_attempt_result = result
-        };
-    Sample_attempt.Running { dag_node; result }
-
-  and start_considering :
-        'i 'o. ('i, 'o) Dep_node.t -> 'o Cached_value.t Sample_attempt.t =
-   fun dep_node ->
-    match currently_considering dep_node.state with
-    | Not_considering -> (
-      match get_cached_value_in_current_cycle dep_node with
-      | None -> newly_considering dep_node
-      | Some cv -> Finished cv)
-    | Considering
-        { running = { dag_node; deps_so_far = _ }
-        ; sample_attempt_result = result
-        ; _
-        } ->
-      Running { dag_node; result }
-
-  and consider :
-        'i 'o.    ('i, 'o) Dep_node.t
-        -> ('o Cached_value.t Sample_attempt.t, Cycle_error.t) result Fiber.t =
-   fun dep_node ->
-    let sample_attempt = start_considering dep_node in
-    add_dep_from_caller dep_node sample_attempt
-    >>| Result.map ~f:(fun () -> sample_attempt)
-
-  and consider_and_compute :
-        'i 'o.    ('i, 'o) Dep_node.t
-        -> ('o Cached_value.t Fiber.t, Cycle_error.t) result Fiber.t =
-   fun dep_node -> consider dep_node >>| Result.map ~f:Sample_attempt.compute
-
-  and consider_and_restore_from_cache :
-        'i 'o.    ('i, 'o) Dep_node.t
+  and start_restoring :
+        'i 'o.
+           dep_node:('i, 'o) Dep_node.t
+        -> cached_value:'o Cached_value.t
         -> 'o Cached_value.t Cache_lookup.Result.t Fiber.t =
-   fun dep_node ->
-    consider dep_node >>= function
-    | Ok sample_attempt -> Sample_attempt.restore sample_attempt
-    | Error dependency_cycle ->
-      Fiber.return
-        (Cache_lookup.Result.Failure (Cancelled { dependency_cycle }))
+   fun ~dep_node ~cached_value ->
+    let computation = Computation.create ~dep_node:dep_node.without_state in
+    dep_node.state <- Restoring { restore_from_cache = computation };
+    Computation.force computation ~phase:Restore_from_cache
+      ~dep_node:dep_node.without_state (fun _stack_frame ->
+        let+ restore_result = restore_from_cache ~cached_value in
+        if !Counters.enabled then incr Counters.nodes_restored;
+        (match restore_result with
+        | Ok cached_value -> dep_node.state <- Cached_value cached_value
+        | Failure (Cancelled { dependency_cycle }) ->
+          dep_node.state <-
+            Cached_value (Cached_value.create_cancelled ~dependency_cycle)
+        | Failure (Out_of_date { old_value }) ->
+          dep_node.state <- Out_of_date { old_value });
+        restore_result)
 
-  let exec_dep_node (dep_node : _ Dep_node.t) =
+  and start_computing :
+        'i 'o.
+           dep_node:('i, 'o) Dep_node.t
+        -> old_value:'o Cached_value.t option
+        -> 'o Cached_value.t Fiber.t =
+   fun ~dep_node ~old_value ->
+    let computation = Computation.create ~dep_node:dep_node.without_state in
+    dep_node.state <- Computing { old_value; compute = computation };
+    Computation.force computation ~phase:Compute
+      ~dep_node:dep_node.without_state (fun stack_frame ->
+        let+ cached_value = compute ~dep_node ~old_value ~stack_frame in
+        if !Counters.enabled then (
+          incr Counters.nodes_computed;
+          Counters.edges_traversed :=
+            !Counters.edges_traversed + Deps.length cached_value.deps
+        );
+        dep_node.state <- Cached_value cached_value;
+        cached_value)
+
+  and consider_and_restore_from_cache_without_adding_dep :
+        'i 'o.
+        ('i, 'o) Dep_node.t -> 'o Cached_value.t Cache_lookup.Result.t Fiber.t =
+   fun dep_node ->
+    match dep_node.state with
+    | Out_of_date { old_value } ->
+      Fiber.return (Cache_lookup.Result.Failure (Out_of_date { old_value }))
+    | Cached_value cached_value ->
+      if Run.is_current cached_value.last_validated_at then
+        Fiber.return (Cache_lookup.Result.Ok cached_value)
+      else
+        start_restoring ~dep_node ~cached_value
+    | Restoring { restore_from_cache } -> (
+      Computation.read_but_first_check_for_cycles restore_from_cache
+      >>| function
+      | Ok res -> res
+      | Error dependency_cycle ->
+        Cache_lookup.Result.Failure (Cancelled { dependency_cycle }))
+    | Computing { old_value; _ } ->
+      Fiber.return (Cache_lookup.Result.Failure (Out_of_date { old_value }))
+
+  (* This function assumes that restoring the value from cache failed, which
+     means we can only be in two possible states: [Out_of_date] or [Computing]. *)
+  and consider_and_compute_without_adding_dep :
+        'i 'o.
+        ('i, 'o) Dep_node.t -> ('o Cached_value.t, Cycle_error.t) result Fiber.t
+      =
+   fun dep_node ->
+    match dep_node.state with
+    | Cached_value _
+    | Restoring _ ->
+      assert false
+    | Out_of_date { old_value } ->
+      start_computing ~dep_node ~old_value >>| Result.ok
+    | Computing { compute; _ } -> (
+      Computation.read_but_first_check_for_cycles compute >>| function
+      | Ok _ as result -> result
+      | Error dependency_cycle as result ->
+        dep_node.state <-
+          Cached_value (Cached_value.create_cancelled ~dependency_cycle);
+        result)
+
+  let exec_dep_node : 'i 'o. ('i, 'o) Dep_node.t -> 'o Fiber.t =
+   fun dep_node ->
     Fiber.of_thunk (fun () ->
-        let stack_frame = Dep_node_without_state.T dep_node.without_state in
-        consider_and_compute dep_node >>= function
+        let* result =
+          consider_and_restore_from_cache_without_adding_dep dep_node
+          >>= function
+          | Ok cached_value -> Fiber.return (Ok cached_value)
+          | Failure (Cancelled { dependency_cycle }) ->
+            (* If restoring from cache failed with a cycle error, and the node's
+               function is deterministic (as it should be), then we will hit the
+               same cycle when trying to recompute the result. We therefore
+               return the cycle error as is. Note that apart from saving some
+               work, this also helps us work around the limitation of the cycle
+               detection library that can't detect the same cycle twice. *)
+            dep_node.state <-
+              Cached_value (Cached_value.create_cancelled ~dependency_cycle);
+            Fiber.return (Error dependency_cycle)
+          | Failure (Out_of_date _) ->
+            consider_and_compute_without_adding_dep dep_node
+        in
+        match result with
         | Ok res ->
-          let* res = res in
+          let* () = Call_stack.add_dep_from_caller dep_node in
+          let stack_frame = Dep_node_without_state.T dep_node.without_state in
           Value.get_exn res.value ~stack_frame
-        | Error cycle_error ->
-          raise (Error.extend_stack (Cycle_error.E cycle_error) ~stack_frame))
+        | Error cycle_error -> raise (Cycle_error.E cycle_error))
 end
 
 let exec (type i o) (t : (i, o) t) i = Exec.exec_dep_node (dep_node t i)
 
 let get_call_stack = Call_stack.get_call_stack_without_state
 
-(* There are two approaches to invalidating memoization nodes. Currently, when a
-   node is invalidated by calling [invalidate_dep_node], only the node itself is
-   marked as "changed" (by setting [node.last_cached_value] to [None]). Then,
-   the whole graph is marked as "possibly changed" by calling [Run.restart ()],
-   which in O(1) time makes all [last_validated_at : Run.t] values out of date.
-   In the subsequent computation phase, the whole graph is traversed from top to
-   bottom to discover "actual changes" and recompute all the nodes affected by
-   these changes. One disadvantage of this approach is that the whole graph
-   needs to be traversed even if only a small part of it depends on the set of
-   invalidated nodes.
+module Invalidation = struct
+  type ('i, 'o) memo = ('i, 'o) t
 
-   An alternative approach is as follows. Whenever the [invalidate_dep_node]
-   function is called, we recursively mark all of its reverse dependencies as
-   "possibly changed". Then, in the computation phase, we only need to traverse
-   the marked part of graph (instead of the whole graph as we do currently). One
-   disadvantage of this approach is that every node needs to store a list of its
-   reverse dependencies, which introduces cyclic memory references and
-   complicates garbage collection.
+  module Leaf = struct
+    type t =
+      | Invalidate_node : _ Dep_node.t -> t
+      | Clear_cache : ('input, ('input, 'output) Dep_node.t) Store.t -> t
+      | Clear_caches
 
-   Is it worth switching from the current approach to the alternative? It's best
-   to answer this question by benchmarking. This is not urgent but is worth
-   documenting in the code. *)
-let invalidate_dep_node (node : _ Dep_node.t) = node.last_cached_value <- None
+    let to_dyn (t : t) =
+      match t with
+      | Invalidate_node node ->
+        Stack_frame_without_state.to_dyn (T node.without_state)
+      | Clear_cache _ -> Dyn.Variant ("Clear_cache", [ Dyn.Opaque ])
+      | Clear_caches -> Dyn.Variant ("Clear_caches", [])
+  end
+
+  module T = struct
+    (* Represented as a tree mainly to get a tail-recursive execution. *)
+    type t =
+      | Empty
+      | Leaf of Leaf.t
+      | Combine of t * t
+
+    let empty : t = Empty
+
+    let combine a b =
+      match (a, b) with
+      | Empty, x
+      | x, Empty ->
+        x
+      | x, y -> Combine (x, y)
+  end
+
+  include T
+
+  include (Monoid.Make (T) : Monoid.S with type t := t)
+
+  let execute_leaf = function
+    | Leaf.Invalidate_node node -> invalidate_dep_node node
+    | Clear_cache store -> invalidate_store store
+    | Clear_caches -> Caches.clear ()
+
+  let rec execute x xs =
+    match x with
+    | Empty -> execute_list xs
+    | Leaf f ->
+      execute_leaf f;
+      execute_list xs
+    | Combine (x, y) -> execute x (y :: xs)
+
+  and execute_list = function
+    | [] -> ()
+    | x :: xs -> execute x xs
+
+  let rec to_list_x_xs x xs acc =
+    match x with
+    | Empty -> to_list_xs xs acc
+    | Leaf f -> to_list_xs xs (f :: acc)
+    | Combine (x, y) -> to_list_x_xs x (y :: xs) acc
+
+  and to_list_xs xs acc =
+    match xs with
+    | [] -> acc
+    | x :: xs -> to_list_x_xs x xs acc
+
+  let to_list t = to_list_x_xs t [] []
+
+  let to_dyn t = Dyn.List (List.map (to_list t) ~f:Leaf.to_dyn)
+
+  let execute x = execute x []
+
+  let is_empty = function
+    | Empty -> true
+    | _ -> false
+
+  let clear_caches = Leaf Clear_caches
+
+  let invalidate_cache { cache; _ } = Leaf (Clear_cache cache)
+
+  let invalidate_node (node : _ Dep_node.t) = Leaf (Invalidate_node node)
+end
 
 module Current_run = struct
   let f () = Run.current () |> Build0.return
@@ -1103,7 +1402,7 @@ module Current_run = struct
 
   let exec () = exec memo ()
 
-  let invalidate () = invalidate_dep_node (dep_node memo ())
+  let invalidate () = Invalidation.invalidate_node (dep_node memo ())
 end
 
 let current_run () = Current_run.exec ()
@@ -1115,11 +1414,28 @@ module Build = struct
     let* (_ : Run.t) = current_run () in
     fiber
 
+  let is_top_level =
+    let+ is_set = Error_handler.is_set in
+    not is_set
+
+  let run_with_error_handler t ~handle_error_no_raise =
+    Error_handler.with_error_handler handle_error_no_raise (fun () ->
+        let* res = report_and_collect_errors (fun () -> t) in
+        match res with
+        | Ok ok -> Fiber.return ok
+        | Error ({ exns; reproducible = _ } : Collect_errors_monoid.t) ->
+          Fiber.reraise_all (Exn_set.to_list exns))
+
   let run t =
-    let* res = Fiber.collect_errors (fun () -> t) in
-    match res with
-    | Ok res -> Fiber.return res
-    | Error exns -> Fiber.reraise_all (Exn_set.of_list exns |> Exn_set.to_list)
+    let* is_top_level = is_top_level in
+    (* CR-someday aalekseyev: I think this automagical detection of toplevel
+       calls is weird. My hunch is that having separate functions for toplevel
+       and non-toplevel [run] would be better. *)
+    match is_top_level with
+    | true ->
+      run_with_error_handler t ~handle_error_no_raise:(fun _exn ->
+          Fiber.return ())
+    | false -> t
 end
 
 module With_implicit_output = struct
@@ -1145,7 +1461,7 @@ module Cell = struct
 
   let read = Exec.exec_dep_node
 
-  let invalidate = invalidate_dep_node
+  let invalidate = Invalidation.invalidate_node
 end
 
 let cell = dep_node
@@ -1156,16 +1472,14 @@ end
 
 module Implicit_output = Implicit_output
 
-let lazy_cell ?cutoff ?human_readable_description f =
+let lazy_cell ?cutoff ?name ?human_readable_description f =
   let spec =
-    Spec.create ~name:None
-      ~input:(module Unit)
-      ~cutoff ~human_readable_description f
+    Spec.create ~name ~input:(module Unit) ~cutoff ~human_readable_description f
   in
   make_dep_node ~spec ~input:()
 
-let lazy_ ?cutoff ?human_readable_description f =
-  let cell = lazy_cell ?cutoff ?human_readable_description f in
+let lazy_ ?cutoff ?name ?human_readable_description f =
+  let cell = lazy_cell ?cutoff ?name ?human_readable_description f in
   fun () -> Cell.read cell
 
 let push_stack_frame ~human_readable_description f =
@@ -1182,8 +1496,6 @@ module Lazy = struct
 
   let map t ~f = create (fun () -> Fiber.map ~f (t ()))
 end
-
-module Run = Run
 
 module Poly (Function : sig
   type 'a input
@@ -1236,46 +1548,62 @@ struct
 end
 
 let incremental_mode_enabled =
-  match Sys.getenv_opt "DUNE_WATCHING_MODE_INCREMENTAL" with
-  | Some "true" -> true
-  | Some "false"
-  | None ->
-    false
-  | Some _ ->
-    User_error.raise
-      [ Pp.text "Invalid value of DUNE_WATCHING_MODE_INCREMENTAL" ]
+  ref
+    (match Sys.getenv_opt "DUNE_WATCHING_MODE_INCREMENTAL" with
+    | Some "true" -> true
+    | Some "false"
+    | None ->
+      false
+    | Some _ ->
+      User_error.raise
+        [ Pp.text "Invalid value of DUNE_WATCHING_MODE_INCREMENTAL" ])
 
-let restart_current_run () =
-  Current_run.invalidate ();
+let reset invalidation =
+  Invalidation.execute
+    (Invalidation.combine invalidation (Current_run.invalidate ()));
   Run.restart ();
   Counters.reset ()
-
-let reset () =
-  restart_current_run ();
-  if not incremental_mode_enabled then Caches.clear ()
 
 module Perf_counters = struct
   let enable () = Counters.enabled := true
 
-  let nodes_in_current_run () = !Counters.nodes_considered
-
-  let edges_in_current_run () = !Counters.edges_considered
+  let nodes_restored_in_current_run () = !Counters.nodes_restored
 
   let nodes_computed_in_current_run () = !Counters.nodes_computed
 
   let edges_traversed_in_current_run () = !Counters.edges_traversed
 
+  let nodes_for_cycle_detection_in_current_run () =
+    !Counters.nodes_in_cycle_detection_graph
+
+  let edges_for_cycle_detection_in_current_run () =
+    !Counters.edges_in_cycle_detection_graph
+
+  let paths_for_cycle_detection_in_current_run () =
+    !Counters.paths_in_cycle_detection_graph
+
   let report_for_current_run () =
-    sprintf "%d/%d computed/total nodes, %d/%d traversed/total edges"
-      (nodes_computed_in_current_run ())
-      (nodes_in_current_run ())
-      (edges_traversed_in_current_run ())
-      (edges_in_current_run ())
+    let memo =
+      sprintf "Memo graph: %d/%d restored/computed nodes, %d traversed edges"
+        (nodes_restored_in_current_run ())
+        (nodes_computed_in_current_run ())
+        (edges_traversed_in_current_run ())
+    in
+    let cycle_detection =
+      sprintf "Memo cycle detection graph: %d/%d/%d nodes/edges/paths"
+        (nodes_for_cycle_detection_in_current_run ())
+        (edges_for_cycle_detection_in_current_run ())
+        (paths_for_cycle_detection_in_current_run ())
+    in
+    String.concat ~sep:"\n" [ memo; cycle_detection ]
 
   let assert_invariants () =
-    assert (nodes_computed_in_current_run () <= nodes_in_current_run ());
-    assert (edges_in_current_run () <= edges_traversed_in_current_run ());
-    assert (edges_traversed_in_current_run () <= 2 * edges_in_current_run ())
+    assert (
+      nodes_for_cycle_detection_in_current_run ()
+      <= nodes_computed_in_current_run () + nodes_restored_in_current_run ());
+    assert (
+      edges_for_cycle_detection_in_current_run ()
+      <= edges_traversed_in_current_run ())
 
   let reset () = Counters.reset ()
 end
@@ -1285,14 +1613,42 @@ module For_tests = struct
     match Store.find t.cache inp with
     | None -> None
     | Some dep_node -> (
-      match get_cached_value_in_current_cycle dep_node with
+      match get_cached_value_in_current_run dep_node with
       | None -> None
       | Some cv ->
         Some
-          (List.map cv.deps ~f:(fun (Last_dep.T (dep, _value)) ->
-               (dep.without_state.spec.name, ser_input dep.without_state))))
+          (Deps.to_list cv.deps
+          |> List.map ~f:(fun (Dep_node.T dep) ->
+                 ( dep.without_state.spec.name
+                 , Dep_node_without_state.input_to_dyn dep.without_state ))))
 
   let clear_memoization_caches () = Caches.clear ()
 end
 
 module Store = Store_intf
+
+module Run = struct
+  type t = Run.t
+
+  module For_tests = struct
+    let compare = Run.compare
+
+    let current = Run.current
+  end
+end
+
+(* By placing this definition at the end of the file we prevent Merlin from
+   using [build] instead of [Fiber.t] when showing types throughout this file. *)
+type 'a build = 'a Fiber.t
+
+module type Build = sig
+  include Monad
+
+  module List : sig
+    val map : 'a list -> f:('a -> 'b t) -> 'b list t
+
+    val concat_map : 'a list -> f:('a -> 'b list t) -> 'b list t
+  end
+
+  val memo_build : 'a build -> 'a t
+end

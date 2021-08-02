@@ -1,5 +1,6 @@
 open Stdune
 open Fiber.O
+module Log = Dune_util.Log
 
 module Worker = struct
   include Dune_engine.Scheduler.Worker
@@ -19,110 +20,122 @@ let debug = Option.is_some (Env.get Env.initial "DUNE_RPC_DEBUG")
 module Session = struct
   module Id = Session_id
 
-  type kind =
-    | Socket
-    | Channel
+  type state =
+    | Closed
+    | Open of
+        { out_channel : out_channel
+        ; in_channel : in_channel
+        ; socket : bool
+        ; writer : Worker.t
+        ; reader : Worker.t
+        }
 
   type t =
-    { out_channel : out_channel
-    ; in_channel : in_channel
-    ; id : Id.t
-    ; mutable writer : Worker.t option
-    ; mutable reader : Worker.t option
-    ; kind : kind
+    { id : Id.t
+    ; mutable state : state
     }
 
-  let create_full kind in_channel out_channel =
-    if debug then Format.eprintf ">> NEW SESSION@.";
-    let reader_ref = ref None in
-    let+ t =
-      let* reader = Worker.create () in
-      let+ writer = Worker.create () in
-      let id = Id.gen () in
-      { in_channel
-      ; out_channel
-      ; id
-      ; reader = Some reader
-      ; writer = Some writer
-      ; kind
-      }
-    in
-    reader_ref := Some t.reader;
-    t
-
-  let create in_channel out_channel = create_full Channel in_channel out_channel
+  let create ~socket in_channel out_channel =
+    let id = Id.gen () in
+    if debug then
+      Log.info [ Pp.textf "RPC created new session %d" (Id.to_int id) ];
+    let* reader = Worker.create () in
+    let+ writer = Worker.create () in
+    let state = Open { in_channel; out_channel; reader; writer; socket } in
+    { id; state }
 
   let string_of_packet = function
     | None -> "EOF"
-    | Some csexp -> Csexp.to_string csexp
+    | Some csexp -> Sexp.to_string csexp
+
+  let string_of_packets = function
+    | None -> "EOF"
+    | Some sexps -> String.concat ~sep:" " (List.map ~f:Sexp.to_string sexps)
+
+  let close t =
+    match t.state with
+    | Closed -> ()
+    | Open { in_channel; out_channel; reader; writer; socket } ->
+      Worker.stop reader;
+      Worker.stop writer;
+      (* with a socket, there's only one fd. We make sure to close it only once.
+         with dune rpc init, we have two separate fd's (stdin/stdout) so we must
+         close both. *)
+      if not socket then close_in_noerr in_channel;
+      close_out_noerr out_channel;
+      t.state <- Closed
 
   let read t =
     let debug res =
-      if debug then Format.eprintf "<< %s@." (string_of_packet res)
+      if debug then
+        Log.info
+          [ Pp.verbatim ("RPC <<\n" ^ string_of_packet res); Pp.text "<<" ]
     in
-    match t.reader with
-    | None ->
+    match t.state with
+    | Closed ->
       debug None;
       Fiber.return None
-    | Some reader ->
+    | Open { reader; in_channel; _ } ->
       let rec read () =
-        try Csexp.input_opt t.in_channel with
-        | Unix.Unix_error (_, _, _) -> Ok None
-        | Sys_error _ -> Ok None
-        | Sys_blocked_io -> read ()
-        | e -> reraise e
+        match Csexp.input_opt in_channel with
+        | exception Unix.Unix_error (_, _, _) -> None
+        | exception Sys_error _ -> None
+        | exception Sys_blocked_io -> read ()
+        | Ok None -> None
+        | Ok (Some csexp) -> Some csexp
+        | Error _ -> None
       in
       let+ res = Worker.task reader ~f:read in
       let res =
         match res with
-        | Error (`Exn _)
-        | Error `Stopped ->
-          Worker.stop reader;
-          t.reader <- None;
+        | Error (`Exn _) ->
+          close t;
           None
-        | Ok res -> (
-          match res with
-          | Ok (Some _ as s) -> s
-          | Error _
-          | Ok None ->
-            Worker.stop reader;
-            t.reader <- None;
-            None)
+        | Error `Stopped -> None
+        | Ok None ->
+          close t;
+          None
+        | Ok (Some sexp) -> Some sexp
       in
       debug res;
       res
 
-  let write t sexp =
-    if debug then Format.eprintf ">> %s@." (string_of_packet sexp);
-    match t.writer with
-    | None ->
-      Code_error.raise "attempting to write to a closed channel"
-        [ ("sexp", (Dyn.Encoder.option Sexp.to_dyn) sexp) ]
-    | Some writer -> (
-      let+ res =
-        Worker.task writer
-          ~f:
-            (match sexp with
-            | Some sexp ->
-              fun () ->
-                Csexp.to_channel t.out_channel sexp;
-                flush t.out_channel
-            | None -> (
-              match t.kind with
-              | Channel -> fun () -> close_out_noerr t.out_channel
-              | Socket -> (
-                fun () ->
-                  let fd = Unix.descr_of_out_channel t.out_channel in
-                  try Unix.shutdown fd Unix.SHUTDOWN_SEND with
-                  | Unix.Unix_error _ -> ())))
-      in
-      match res with
-      | Ok () -> ()
-      | Error `Stopped -> assert false
-      | Error (`Exn e) ->
-        t.writer <- None;
-        Worker.stop writer;
-        Exn_with_backtrace.reraise e)
+  let write t sexps =
+    if debug then
+      Log.info
+        [ Pp.verbatim ("RPC >>\n" ^ string_of_packets sexps); Pp.text ">>" ];
+    match t.state with
+    | Closed -> (
+      match sexps with
+      | None -> Fiber.return ()
+      | Some sexps ->
+        Code_error.raise "attempting to write to a closed channel"
+          [ ("sexp", Dyn.Encoder.(list Sexp.to_dyn) sexps) ])
+    | Open { writer; out_channel; socket; _ } -> (
+      match sexps with
+      | None ->
+        (if socket then
+          try
+            (* TODO this hack is temporary until we get rid of dune rpc init *)
+            Unix.shutdown
+              (Unix.descr_of_out_channel out_channel)
+              Unix.SHUTDOWN_ALL
+          with
+          | Unix.Unix_error (_, _, _) -> ());
+        close t;
+        Fiber.return ()
+      | Some sexps -> (
+        let+ res =
+          Worker.task writer ~f:(fun () ->
+              List.iter sexps ~f:(Csexp.to_channel out_channel);
+              flush out_channel)
+        in
+        match res with
+        | Ok () -> ()
+        | Error `Stopped -> assert false
+        | Error (`Exn e) ->
+          close t;
+          Exn_with_backtrace.reraise e))
 end
 
 let close_fd_no_error fd =
@@ -156,7 +169,7 @@ module Server = struct
       | _ -> ());
       Unix.bind fd sockaddr;
       Unix.listen fd backlog;
-      let r_interrupt_accept, w_interrupt_accept = Unix.pipe () in
+      let r_interrupt_accept, w_interrupt_accept = Unix.pipe ~cloexec:true () in
       Unix.set_nonblock r_interrupt_accept;
       let buf = Bytes.make 1 '0' in
       { fd; sockaddr; r_interrupt_accept; w_interrupt_accept; buf }
@@ -218,11 +231,23 @@ module Server = struct
     let loop () =
       let* accept = accept () in
       match accept with
-      | Error _
+      | Error `Stopped ->
+        Log.info [ Pp.text "RPC stopped accepting." ];
+        Fiber.return None
+      | Error (`Exn exn) ->
+        Log.info
+          [ Pp.text "RPC accept failed. Server will not accept new clients"
+          ; Exn_with_backtrace.pp exn
+          ];
+        Fiber.return None
       | Ok None ->
+        Log.info
+          [ Pp.text
+              "RPC accepted the last client. No more clients will be accepted."
+          ];
         Fiber.return None
       | Ok (Some (in_, out)) ->
-        let+ session = Session.create_full Socket in_ out in
+        let+ session = Session.create ~socket:true in_ out in
         Some session
     in
     Fiber.Stream.In.create loop
@@ -262,25 +287,42 @@ module Client = struct
 
   type t =
     { mutable transport : Transport.t option
-    ; async : Worker.t
+    ; mutable async : Worker.t option
     ; sockaddr : Unix.sockaddr
     }
 
   let create sockaddr =
     let+ async = Worker.create () in
-    { sockaddr; async; transport = None }
+    { sockaddr; async = Some async; transport = None }
 
   let connect t =
-    let* in_, out =
-      Worker.task_exn t.async ~f:(fun () ->
-          let transport = Transport.create t.sockaddr in
-          t.transport <- Some transport;
-          let client = Transport.connect transport in
-          let out = Unix.out_channel_of_descr client in
-          let in_ = Unix.in_channel_of_descr client in
-          (in_, out))
-    in
-    Session.create in_ out
+    match t.async with
+    | None ->
+      Code_error.raise "connection already established with the client" []
+    | Some async -> (
+      t.async <- None;
+      let* task =
+        Worker.task async ~f:(fun () ->
+            let transport = Transport.create t.sockaddr in
+            t.transport <- Some transport;
+            let client = Transport.connect transport in
+            let out = Unix.out_channel_of_descr client in
+            let in_ = Unix.in_channel_of_descr client in
+            (in_, out))
+      in
+      Worker.stop async;
+      match task with
+      | Error `Stopped -> assert false
+      | Error (`Exn exn) -> Fiber.return (Error exn)
+      | Ok (in_, out) ->
+        let+ res = Session.create ~socket:true in_ out in
+        Ok res)
+
+  let connect_exn t =
+    let+ res = connect t in
+    match res with
+    | Ok s -> s
+    | Error e -> Exn_with_backtrace.reraise e
 
   let stop t = Option.iter t.transport ~f:Transport.close
 end

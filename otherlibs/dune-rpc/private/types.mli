@@ -58,6 +58,14 @@ module Response : sig
       ; kind : kind
       }
 
+    val to_dyn : t -> Dyn.t
+
+    val payload : t -> Sexp.t option
+
+    val message : t -> string
+
+    val kind : t -> kind
+
     exception E of t
 
     val create : ?payload:Sexp.t -> kind:kind -> message:string -> unit -> t

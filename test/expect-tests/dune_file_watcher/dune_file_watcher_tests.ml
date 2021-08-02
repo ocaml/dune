@@ -85,12 +85,13 @@ let%expect_test _ =
   in
   let events_buffer = ref [] in
   let watcher =
-    Dune_file_watcher.create ~debounce_interval:None
+    Dune_file_watcher.create_external ~debounce_interval:None
       ~scheduler:
         { spawn_thread = (fun f -> ignore (Thread.create f () : Thread.t))
-        ; thread_safe_send_events =
-            (fun events ->
+        ; thread_safe_send_emit_events_job =
+            (fun job ->
               Mutex.lock mutex;
+              let events = job () in
               events_buffer := !events_buffer @ events;
               Mutex.unlock mutex)
         }
@@ -104,11 +105,13 @@ let%expect_test _ =
           events_buffer := [];
           Some
             (List.map list ~f:(function
-              | Dune_file_watcher.Event.File_changed file -> file
+              | Dune_file_watcher.Event.Sync -> assert false
+              | Dune_file_watcher.Event.Queue_overflow -> assert false
+              | Dune_file_watcher.Event.Fs_memo_event { path; kind = _ } -> path
               | Dune_file_watcher.Event.Watcher_terminated -> assert false)))
   in
   let print_events n = print_events ~try_to_get_events ~expected:n in
-  Dune_file_watcher.wait_watches_established_blocking watcher;
+  Dune_file_watcher.wait_for_initial_watches_established_blocking watcher;
   Stdio.Out_channel.write_all "x" ~data:"x";
   print_events 1;
   [%expect {|

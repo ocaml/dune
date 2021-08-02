@@ -51,7 +51,7 @@ let setup_copy_rules_for_impl ~sctx ~dir vimpl =
   let open Memo.Build.O in
   let copy_objs src =
     copy_obj_file src Cmi
-    >>> Memo.Build.if_
+    >>> Memo.Build.when_
           (Module.visibility src = Public
           && Obj_dir.need_dedicated_public_dir impl_obj_dir)
           (fun () ->
@@ -62,9 +62,9 @@ let setup_copy_rules_for_impl ~sctx ~dir vimpl =
               Obj_dir.Module.cm_public_file_exn vlib_obj_dir src ~kind:Cmi
             in
             copy_to_obj_dir ~src ~dst)
-    >>> Memo.Build.if_ (Module.has src ~ml_kind:Impl) (fun () ->
-            Memo.Build.if_ byte (fun () -> copy_obj_file src Cmo)
-            >>> Memo.Build.if_ native (fun () ->
+    >>> Memo.Build.when_ (Module.has src ~ml_kind:Impl) (fun () ->
+            Memo.Build.when_ byte (fun () -> copy_obj_file src Cmo)
+            >>> Memo.Build.when_ native (fun () ->
                     copy_obj_file src Cmx
                     >>>
                     let object_file dir =

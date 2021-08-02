@@ -387,6 +387,7 @@ let ppx_driver_exe sctx libs =
   ppx_exe sctx ~key
 
 let get_cookies ~loc ~expander ~lib_name libs =
+  let open Memo.Build.O in
   let expander, library_name_cookie =
     match lib_name with
     | None -> (expander, None)
@@ -399,48 +400,50 @@ let get_cookies ~loc ~expander ~lib_name libs =
       , Some ("library-name", (library_name, Lib_name.of_local (loc, lib_name)))
       )
   in
-  match
-    List.concat_map libs ~f:(fun t ->
+  let+ cookies =
+    Memo.Build.List.concat_map libs ~f:(fun t ->
         let info = Lib.info t in
         let kind = Lib_info.kind info in
         match kind with
-        | Normal -> []
+        | Normal -> Memo.Build.return []
         | Ppx_rewriter { cookies }
         | Ppx_deriver { cookies } ->
-          List.map
+          Memo.Build.List.map
             ~f:(fun { Lib_kind.Ppx_args.Cookie.name; value } ->
-              (name, (Expander.Static.expand_str expander value, Lib.name t)))
+              let+ value = Expander.No_deps.expand_str expander value in
+              (name, (value, Lib.name t)))
             cookies)
-    |> (fun l ->
-         match library_name_cookie with
-         | None -> l
-         | Some cookie -> cookie :: l)
-    |> String.Map.of_list_reducei
-         ~f:(fun name ((val1, lib1) as res) (val2, lib2) ->
-           if String.equal val1 val2 then
-             res
-           else
-             let lib1 = Lib_name.to_string lib1 in
-             let lib2 = Lib_name.to_string lib2 in
-             User_error.raise ~loc
-               [ Pp.textf
-                   "%s and %s have inconsistent requests for cookie %S; %s \
-                    requests %S and %s requests %S"
-                   lib1 lib2 name lib1 val1 lib2 val2
-               ])
-    |> String.Map.foldi ~init:[] ~f:(fun name (value, _) acc ->
-           (name, value) :: acc)
-    |> List.rev
-    |> List.concat_map ~f:(fun (name, value) ->
-           [ "--cookie"; sprintf "%s=%S" name value ])
-  with
-  | x -> Resolve.return x
-  | exception User_error.E (msg, []) -> Resolve.fail msg
+  in
+  cookies
+  |> (fun l ->
+       match library_name_cookie with
+       | None -> l
+       | Some cookie -> cookie :: l)
+  |> String.Map.of_list_reducei
+       ~f:(fun name ((val1, lib1) as res) (val2, lib2) ->
+         if String.equal val1 val2 then
+           res
+         else
+           let lib1 = Lib_name.to_string lib1 in
+           let lib2 = Lib_name.to_string lib2 in
+           User_error.raise ~loc
+             [ Pp.textf
+                 "%s and %s have inconsistent requests for cookie %S; %s \
+                  requests %S and %s requests %S"
+                 lib1 lib2 name lib1 val1 lib2 val2
+             ])
+  |> String.Map.to_list_map ~f:(fun name (value, _) ->
+         [ "--cookie"; sprintf "%s=%S" name value ])
+  |> List.concat
 
 let ppx_driver_and_flags_internal sctx ~loc ~expander ~lib_name ~flags libs =
-  let open Resolve.O in
-  let flags = List.map ~f:(Expander.Static.expand_str expander) flags in
-  let+ cookies = get_cookies ~loc ~lib_name ~expander libs in
+  let open Action_builder.O in
+  let* flags =
+    Action_builder.List.map ~f:(Expander.expand_str expander) flags
+  in
+  let+ cookies =
+    Action_builder.memo_build (get_cookies ~loc ~lib_name ~expander libs)
+  in
   let sctx = SC.host sctx in
   (ppx_driver_exe sctx libs, flags @ cookies)
 
@@ -448,8 +451,7 @@ let ppx_driver_and_flags sctx ~lib_name ~expander ~scope ~loc ~flags pps =
   let open Action_builder.O in
   let* libs = Resolve.read (Lib.DB.resolve_pps (Scope.libs scope) pps) in
   let* exe, flags =
-    Resolve.read
-      (ppx_driver_and_flags_internal sctx ~loc ~expander ~lib_name ~flags libs)
+    ppx_driver_and_flags_internal sctx ~loc ~expander ~lib_name ~flags libs
   in
   let* libs = Resolve.read (Lib.closure libs ~linking:true) in
   let+ driver =
@@ -608,7 +610,7 @@ let make sctx ~dir ~expander ~lint ~preprocess ~preprocessor_deps
           let open Memo.Build.O in
           let* ast = setup_dialect_rules sctx ~dir ~expander m in
           let+ () =
-            Memo.Build.if_ lint (fun () -> lint_module ~ast ~source:m)
+            Memo.Build.when_ lint (fun () -> lint_module ~ast ~source:m)
           in
           ast
       | Action (loc, action) ->
@@ -626,7 +628,7 @@ let make sctx ~dir ~expander ~lint ~preprocess ~preprocessor_deps
             >>= setup_dialect_rules sctx ~dir ~expander
           in
           let+ () =
-            Memo.Build.if_ lint (fun () -> lint_module ~ast ~source:m)
+            Memo.Build.when_ lint (fun () -> lint_module ~ast ~source:m)
           in
           ast
       | Pps { loc; pps; flags; staged } ->
@@ -650,7 +652,7 @@ let make sctx ~dir ~expander ~lint ~preprocess ~preprocessor_deps
             let open Memo.Build.O in
             let* ast = setup_dialect_rules sctx ~dir ~expander m in
             let* () =
-              Memo.Build.if_ lint (fun () -> lint_module ~ast ~source:m)
+              Memo.Build.when_ lint (fun () -> lint_module ~ast ~source:m)
             in
             pped_module ast ~f:(fun ml_kind src dst ->
                 SC.add_rule ~sandbox:Sandbox_config.no_special_requirements sctx
@@ -708,14 +710,14 @@ let make sctx ~dir ~expander ~lint ~preprocess ~preprocessor_deps
             let open Memo.Build.O in
             let* ast = setup_dialect_rules sctx ~dir ~expander m in
             let+ () =
-              Memo.Build.if_ lint (fun () -> lint_module ~ast ~source:m)
+              Memo.Build.when_ lint (fun () -> lint_module ~ast ~source:m)
             in
             Module.set_pp ast pp)
   |> Pp_spec.make
 
 let get_ppx_driver sctx ~loc ~expander ~scope ~lib_name ~flags pps =
-  let open Resolve.O in
-  let* libs = Lib.DB.resolve_pps (Scope.libs scope) pps in
+  let open Action_builder.O in
+  let* libs = Resolve.read (Lib.DB.resolve_pps (Scope.libs scope) pps) in
   ppx_driver_and_flags_internal sctx ~loc ~expander ~lib_name ~flags libs
 
 let ppx_exe sctx ~scope pp =

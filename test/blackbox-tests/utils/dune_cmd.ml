@@ -75,15 +75,13 @@ module Wait_for_fs_clock_to_advance = struct
 end
 
 module Cat = struct
-  type t = File of Path.t
-
   let name = "cat"
 
   let of_args = function
-    | [ file ] -> File (Path.of_filename_relative_to_initial_cwd file)
+    | [ file ] -> file
     | _ -> raise (Arg.Bad "Usage: dune_cmd cat <file>")
 
-  let run (File p) = print_string (Io.read_file p)
+  let run p = print_string (Io.String_path.read_file p)
 
   let () = register name of_args run
 end
@@ -259,6 +257,45 @@ module Rewrite_path = struct
     with
     | Error msg -> failwith msg
     | Ok map -> print_string (Build_path_prefix_map.rewrite map path)
+
+  let () = register name of_args run
+end
+
+module Find_by_contents = struct
+  let name = "find-file-by-contents-regexp"
+
+  let of_args = function
+    | [ path; contents_regexp ] -> (path, Str.regexp contents_regexp)
+    | _ ->
+      raise
+        (Arg.Bad "Usage: dune_cmd find-files-by-contents-regexp <path> <regexp>")
+
+  let rec find_files ~dir regexp : _ list =
+    List.concat_map
+      (List.sort (Sys.readdir dir |> Array.to_list) ~compare:String.compare)
+      ~f:(fun name ->
+        let path = Filename.concat dir name in
+        let stats = Unix.stat path in
+        match stats.st_kind with
+        | S_DIR -> find_files ~dir:path regexp
+        | S_REG ->
+          let s = Io.String_path.read_file path in
+          if Str.string_match regexp s 0 then
+            [ Printf.sprintf "%s\n" path ]
+          else
+            []
+        | _other -> [])
+
+  let run (dir, regexp) =
+    match find_files ~dir regexp with
+    | [] ->
+      Format.eprintf "No files found matching pattern@.%!";
+      exit 1
+    | [ res ] -> Printf.printf "%s\n" res
+    | _ :: _ as files ->
+      Format.eprintf "Multiple files found matching pattern@.%!";
+      List.iter files ~f:(fun file -> Printf.printf "%s\n%!" file);
+      exit 1
 
   let () = register name of_args run
 end

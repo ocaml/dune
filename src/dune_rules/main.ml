@@ -10,6 +10,29 @@ type build_system =
   ; scontexts : Super_context.t Context_name.Map.t
   }
 
+let implicit_default_alias dir =
+  let open Memo.Build.O in
+  match Path.Build.extract_build_context dir with
+  | None -> Memo.Build.return None
+  | Some (ctx_name, src_dir) -> (
+    Source_tree.find_dir src_dir >>| function
+    | None -> None
+    | Some dir ->
+      let default_alias =
+        let dune_version =
+          Source_tree.Dir.project dir |> Dune_project.dune_version
+        in
+        if dune_version >= (2, 0) then
+          Alias.Name.all
+        else
+          Alias.Name.install
+      in
+      Some
+        (Action_builder.ignore
+           (Action_builder.dep_on_alias_rec default_alias
+              (Context_name.of_string ctx_name)
+              dir)))
+
 let init ~stats ~sandboxing_preference ~cache_config ~cache_debug_flags ~handler
     =
   let promote_source ?chmod ~src ~dst ctx =
@@ -31,7 +54,7 @@ let init ~stats ~sandboxing_preference ~cache_config ~cache_debug_flags ~handler
            Workspace.workspace () >>| Workspace.build_contexts))
     ~cache_config ~cache_debug_flags
     ~rule_generator:(module Gen_rules)
-    ~handler
+    ~handler ~implicit_default_alias
 
 let get () =
   let open Memo.Build.O in

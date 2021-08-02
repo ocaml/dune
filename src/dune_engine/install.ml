@@ -86,6 +86,7 @@ module Section_with_site = struct
     | Site of
         { pkg : Package.Name.t
         ; site : Section.Site.t
+        ; loc : Loc.t
         }
 
   (* let compare : t -> t -> Ordering.t = Poly.compare *)
@@ -94,12 +95,12 @@ module Section_with_site = struct
     let open Dyn.Encoder in
     match x with
     | Section s -> constr "Section" [ Section.to_dyn s ]
-    | Site { pkg; site } ->
+    | Site { pkg; site; loc = _ } ->
       constr "Section" [ Package.Name.to_dyn pkg; Section.Site.to_dyn site ]
 
   let to_string = function
     | Section s -> Section.to_string s
-    | Site { pkg; site } ->
+    | Site { pkg; site; loc = _ } ->
       sprintf "(site %s %s)"
         (Package.Name.to_string pkg)
         (Section.Site.to_string site)
@@ -111,15 +112,15 @@ module Section_with_site = struct
        |> List.map ~f:(fun (k, d) -> (k, return (Section d))))
       @ [ ( "site"
           , Dune_lang.Syntax.since Section.dune_site_syntax (0, 1)
-            >>> pair Package.Name.decode Section.Site.decode
-            >>| fun (pkg, site) -> Site { pkg; site } )
+            >>> located (pair Package.Name.decode Section.Site.decode)
+            >>| fun (loc, (pkg, site)) -> Site { pkg; site; loc } )
         ])
 
   let encode =
     let open Dune_lang.Encoder in
     function
     | Section s -> Section.encode s
-    | Site { pkg; site } ->
+    | Site { pkg; site; loc = _ } ->
       constr "site" (pair Package.Name.encode Section.Site.encode) (pkg, site)
 end
 
@@ -143,14 +144,19 @@ module Section = struct
       ; man : Path.t
       }
 
+    (* FIXME: we should handle all directories uniformly, instead of
+       special-casing etcdir, mandir, and docdir as of today [which was done for
+       convenience of backporting] *)
     let make ~package ~destdir ?(libdir = Path.relative destdir "lib")
-        ?(mandir = Path.relative destdir "man") () =
+        ?(mandir = Path.relative destdir "man")
+        ?(docdir = Path.relative destdir "doc")
+        ?(etcdir = Path.relative destdir "etc") () =
       let package = Package.Name.to_string package in
       let lib_root = libdir in
       let libexec_root = libdir in
       let share_root = Path.relative destdir "share" in
-      let etc_root = Path.relative destdir "etc" in
-      let doc_root = Path.relative destdir "doc" in
+      let etc_root = etcdir in
+      let doc_root = docdir in
       { lib_root
       ; libexec_root
       ; share_root
@@ -202,13 +208,13 @@ module Entry = struct
     ; section : Section.t
     }
 
-  let compare x y =
+  let compare compare_src x y =
     match Section.compare x.section y.section with
     | (Lt | Gt) as c -> c
     | Eq -> (
       match Dst.compare x.dst y.dst with
       | (Lt | Gt) as c -> c
-      | Eq -> Path.Build.compare x.src y.src)
+      | Eq -> compare_src x.src y.src)
 
   let adjust_dst_gen =
     let error (source_pform : Dune_lang.Template.Pform.t) =
@@ -275,8 +281,8 @@ module Entry = struct
   let make_with_site section ?dst get_section src =
     match section with
     | Section_with_site.Section section -> make section ?dst src
-    | Site { pkg; site } ->
-      let section = get_section ~pkg ~site in
+    | Site { pkg; site; loc } ->
+      let section = get_section ~loc ~pkg ~site in
       let dst = adjust_dst' ~src ~dst ~section in
       let dst = Dst.add_prefix (Section.Site.to_string site) dst in
       let dst_with_pkg_prefix =
@@ -337,12 +343,10 @@ module Entry_with_site = struct
 end
 
 let files entries =
-  Path.Set.of_list_map entries ~f:(fun (entry : Path.Build.t Entry.t) ->
-      Path.build entry.src)
+  Path.Set.of_list_map entries ~f:(fun (entry : Path.t Entry.t) -> entry.src)
 
 let group entries =
-  List.map entries ~f:(fun (entry : Path.Build.t Entry.t) ->
-      (entry.section, entry))
+  List.map entries ~f:(fun (entry : _ Entry.t) -> (entry.section, entry))
   |> Section.Map.of_list_multi
 
 let gen_install_file entries =
@@ -350,12 +354,11 @@ let gen_install_file entries =
   let pr fmt = Printf.bprintf buf (fmt ^^ "\n") in
   Section.Map.iteri (group entries) ~f:(fun section entries ->
       pr "%s: [" (Section.to_string section);
-      List.sort ~compare:Entry.compare entries
-      |> List.iter ~f:(fun (e : Path.Build.t Entry.t) ->
-             let src = Path.to_string (Path.build e.src) in
+      List.sort ~compare:(Entry.compare Path.compare) entries
+      |> List.iter ~f:(fun (e : Path.t Entry.t) ->
+             let src = Path.to_string e.src in
              match
-               Dst.to_install_file
-                 ~src_basename:(Path.Build.basename e.src)
+               Dst.to_install_file ~src_basename:(Path.basename e.src)
                  ~section:e.section e.dst
              with
              | None -> pr "  %S" src

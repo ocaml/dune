@@ -1,7 +1,7 @@
 (*---------------------------------------------------------------------------
    Copyright (c) 2011 Daniel C. Bünzli. All rights reserved.
    Distributed under the ISC license, see terms at the end of the file.
-   cmdliner v1.0.4-27-gb4f5656
+   cmdliner v1.0.4-31-gb5d6161
   ---------------------------------------------------------------------------*)
 
 let rev_compare n0 n1 = compare n1 n0
@@ -83,6 +83,35 @@ let arg_to_args = Cmdliner_info.Args.singleton
 let list_to_args f l =
   let add acc v = Cmdliner_info.Args.add (f v) acc in
   List.fold_left add Cmdliner_info.Args.empty l
+
+let alias_opt aliases a =
+  let a = Cmdliner_info.arg_make_opt ~absent:Err ~kind:Opt a in
+  let aliases = (fun f -> function
+    | None -> Error (Cmdliner_msg.err_opt_value_missing f)
+    | Some o -> Ok (aliases o)) in
+  let a = Cmdliner_info.arg_aliases ~aliases a in
+  if Cmdliner_info.arg_is_pos a then invalid_arg err_not_opt else
+  let convert ei cl = match Cmdliner_cline.opt_arg cl a with
+  | [] -> try_env ei a Cmdliner_base.env_bool_parse ~absent:false
+  | [_, _, None] -> Ok true
+  | [_, f, Some v] -> Ok true
+  | (_, f, _) :: (_ ,g, _) :: _  -> err (Cmdliner_msg.err_opt_repeated f g)
+  in
+  arg_to_args a, convert
+
+let alias aliases a =
+  let aliases = (fun f -> function
+    | Some v -> Error (Cmdliner_msg.err_flag_value f v)
+    | None -> Ok aliases) in
+  let a = Cmdliner_info.arg_aliases ~aliases a in
+  if Cmdliner_info.arg_is_pos a then invalid_arg err_not_opt else
+  let convert ei cl = match Cmdliner_cline.opt_arg cl a with
+  | [] -> try_env ei a Cmdliner_base.env_bool_parse ~absent:false
+  | [_, _, None] -> Ok true
+  | [_, f, Some v] -> err (Cmdliner_msg.err_flag_value f v)
+  | (_, f, _) :: (_ ,g, _) :: _  -> err (Cmdliner_msg.err_opt_repeated f g)
+  in
+  arg_to_args a, convert
 
 let flag a =
   if Cmdliner_info.arg_is_pos a then invalid_arg err_not_opt else
@@ -286,6 +315,14 @@ let last (args, convert) =
   let convert ei cl = match convert ei cl with
   | Ok [] -> err_arg_missing args
   | Ok l -> Ok (List.hd (List.rev l))
+  | Error _ as e -> e
+  in
+  args, convert
+
+let last_or_none (args, convert) =
+  let convert ei cl = match convert ei cl with
+  | Ok [] -> Ok None
+  | Ok l -> Ok (Some (List.hd (List.rev l)))
   | Error _ as e -> e
   in
   args, convert

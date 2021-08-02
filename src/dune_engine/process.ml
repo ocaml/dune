@@ -360,23 +360,73 @@ let pp_id id =
   let open Pp.O in
   Pp.char '[' ++ Pp.tag User_message.Style.Id (Pp.textf "%d" id) ++ Pp.char ']'
 
-module Exit_status = struct
+module Exit_status : sig
   type error =
     | Failed of int
     | Signaled of string
 
   type t = (int, error) result
 
+  val handle_verbose :
+       ('a, error) result
+    -> id:int
+    -> purpose:purpose
+    -> output:string
+    -> command_line:User_message.Style.t Pp.t
+    -> dir:With_directory_annot.payload option
+    -> 'a
+
+  val handle_non_verbose :
+       ('a, error) result
+    -> verbosity:Scheduler.Config.Display.verbosity
+    -> purpose:purpose
+    -> output:string
+    -> prog:string
+    -> command_line:string
+    -> dir:With_directory_annot.payload option
+    -> has_unexpected_stdout:bool
+    -> has_unexpected_stderr:bool
+    -> 'a
+end = struct
+  type error =
+    | Failed of int
+    | Signaled of string
+
+  type t = (int, error) result
+
+  type output =
+    | No_output
+    | Has_output of
+        { with_color : User_message.Style.t Pp.t
+        ; without_color : string
+        ; has_embedded_location : bool
+        }
+
+  let has_embedded_location = function
+    | No_output -> false
+    | Has_output t -> t.has_embedded_location
+
   let parse_output = function
-    | "" -> None
+    | "" -> No_output
     | s ->
-      Some
-        (Pp.map_tags (Ansi_color.parse s) ~f:(fun styles ->
-             User_message.Style.Ansi_styles styles))
+      let with_color =
+        Pp.map_tags (Ansi_color.parse s) ~f:(fun styles ->
+            User_message.Style.Ansi_styles styles)
+      in
+      let without_color = Ansi_color.strip s in
+      let has_embedded_location =
+        String.is_prefix ~prefix:"File " without_color
+      in
+      Has_output { with_color; without_color; has_embedded_location }
 
   (* In this module, we don't need the "Error: " prefix given that it is already
      included in the error message from the command. *)
-  let fail ~purpose ~dir ~has_embedded_location paragraphs =
+  let fail ~output ~purpose ~dir paragraphs =
+    let paragraphs : User_message.Style.t Pp.t list =
+      match output with
+      | No_output -> paragraphs
+      | Has_output output -> paragraphs @ [ output.with_color ]
+    in
     let dir =
       match dir with
       | None -> Path.of_string (Sys.getcwd ())
@@ -385,45 +435,35 @@ module Exit_status = struct
     let loc, annots = loc_and_annots_of_purpose purpose in
     let annots = With_directory_annot.make dir :: annots in
     let annots =
-      if has_embedded_location then
-        User_error.Annot.Has_embedded_location.make () :: annots
+      if has_embedded_location output then
+        let annots = User_error.Annot.Has_embedded_location.make () :: annots in
+        match
+          match output with
+          | No_output -> None
+          | Has_output output ->
+            Compound_user_error.parse_output ~dir output.without_color
+        with
+        | None -> annots
+        | Some annot -> annot :: annots
       else
         annots
     in
     raise (User_error.E (User_message.make ?loc paragraphs, annots))
 
-  (* Check if the command output starts with a location, ignoring ansi escape
-     sequences *)
-  let outputs_starts_with_location =
-    let rec loop s pos len prefix =
-      match prefix with
-      | [] -> true
-      | c :: rest -> (
-        pos < len
-        &&
-        match s.[pos] with
-        | '\027' -> (
-          match String.index_from s pos 'm' with
-          | None -> false
-          | Some pos -> loop s (pos + 1) len prefix)
-        | c' -> c = c' && loop s (pos + 1) len rest)
-    in
-    fun output ->
-      loop output 0 (String.length output) [ 'F'; 'i'; 'l'; 'e'; ' ' ]
-
   let handle_verbose t ~id ~purpose ~output ~command_line ~dir =
     let open Pp.O in
-    let has_embedded_location = outputs_starts_with_location output in
     let output = parse_output output in
     match t with
     | Ok n ->
-      Option.iter output ~f:(fun output ->
-          Console.print_user_message
-            (User_message.make
-               [ Pp.tag User_message.Style.Kwd (Pp.verbatim "Output")
-                 ++ pp_id id ++ Pp.char ':'
-               ; output
-               ]));
+      (match output with
+      | No_output -> ()
+      | Has_output output ->
+        Console.print_user_message
+          (User_message.make
+             [ Pp.tag User_message.Style.Kwd (Pp.verbatim "Output")
+               ++ pp_id id ++ Pp.char ':'
+             ; output.with_color
+             ]));
       n
     | Error err ->
       let msg =
@@ -431,18 +471,18 @@ module Exit_status = struct
         | Failed n -> sprintf "exited with code %d" n
         | Signaled signame -> sprintf "got signal %s" signame
       in
-      fail ~purpose ~dir ~has_embedded_location
-        (Pp.tag User_message.Style.Kwd (Pp.verbatim "Command")
-         ++ Pp.space ++ pp_id id ++ Pp.space ++ Pp.text msg ++ Pp.char ':'
-         ::
-         Pp.tag User_message.Style.Prompt (Pp.char '$')
-         ++ Pp.char ' ' ++ command_line
-         :: Option.to_list output)
+      fail ~output ~purpose ~dir
+        [ Pp.tag User_message.Style.Kwd (Pp.verbatim "Command")
+          ++ Pp.space ++ pp_id id ++ Pp.space ++ Pp.text msg ++ Pp.char ':'
+        ; Pp.tag User_message.Style.Prompt (Pp.char '$')
+          ++ Pp.char ' ' ++ command_line
+        ]
 
   let handle_non_verbose t ~verbosity ~purpose ~output ~prog ~command_line ~dir
       ~has_unexpected_stdout ~has_unexpected_stderr =
     let open Pp.O in
-    let has_embedded_location = outputs_starts_with_location output in
+    let output = parse_output output in
+    let has_embedded_location = has_embedded_location output in
     let show_command =
       let show_full_command_on_error =
         !Clflags.always_show_command_line
@@ -453,7 +493,6 @@ module Exit_status = struct
       in
       show_full_command_on_error || not has_embedded_location
     in
-    let output = parse_output output in
     let _, progname, _ = Fancy.split_prog prog in
     let progname_and_purpose tag =
       let progname = sprintf "%12s" progname in
@@ -462,27 +501,35 @@ module Exit_status = struct
     in
     match t with
     | Ok n ->
-      if
-        Option.is_some output
-        || (match verbosity with
-           | Scheduler.Config.Display.Short -> true
-           | Quiet -> false
-           | Verbose -> assert false)
-           &&
-           match purpose with
-           | Internal_job _ -> false
-           | Build_job _ -> true
+      (if
+       (match output with
+       | No_output -> false
+       | Has_output _ -> true)
+       || (match verbosity with
+          | Scheduler.Config.Display.Short -> true
+          | Quiet -> false
+          | Verbose -> assert false)
+          &&
+          match purpose with
+          | Internal_job _ -> false
+          | Build_job _ -> true
       then
+        let output =
+          match output with
+          | No_output -> []
+          | Has_output output -> [ output.with_color ]
+        in
         Console.print_user_message
           (User_message.make
              (if show_command then
-               progname_and_purpose Ok :: Option.to_list output
+               progname_and_purpose Ok :: output
              else
-               Option.to_list output));
+               output)));
       n
     | Error err ->
       let msg =
         match err with
+        | Signaled signame -> sprintf "(got signal %s)" signame
         | Failed n ->
           if show_command then
             let unexpected_outputs =
@@ -497,15 +544,13 @@ module Exit_status = struct
                 (String.enumerate_and unexpected_outputs)
             | _ -> sprintf "(exit %d)" n
           else
-            fail ~purpose ~dir ~has_embedded_location (Option.to_list output)
-        | Signaled signame -> sprintf "(got signal %s)" signame
+            fail ~output ~purpose ~dir []
       in
-      fail ~purpose ~dir ~has_embedded_location
-        (progname_and_purpose Error ++ Pp.char ' '
-         ++ Pp.tag User_message.Style.Error (Pp.verbatim msg)
-         ::
-         Pp.tag User_message.Style.Details (Pp.verbatim command_line)
-         :: Option.to_list output)
+      fail ~output ~purpose ~dir
+        [ progname_and_purpose Error ++ Pp.char ' '
+          ++ Pp.tag User_message.Style.Error (Pp.verbatim msg)
+        ; Pp.tag User_message.Style.Details (Pp.verbatim command_line)
+        ]
 end
 
 let report_process_start stats ~id ~prog ~args ~now =

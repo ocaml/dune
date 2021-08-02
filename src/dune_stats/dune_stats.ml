@@ -141,10 +141,8 @@ let record_gc_and_fd stats =
   let () =
     let common = Event.common_fields ~name:"gc" ~ts () in
     let args =
-      let stat = Gc.stat () in
-      [ ("live_words", `Int stat.live_words)
-      ; ("free_words", `Int stat.free_words)
-      ; ("stack_size", `Int stat.stack_size)
+      let stat = Gc.quick_stat () in
+      [ ("stack_size", `Int stat.stack_size)
       ; ("heap_words", `Int stat.heap_words)
       ; ("top_heap_words", `Int stat.top_heap_words)
       ; ("minor_words", `Float stat.minor_words)

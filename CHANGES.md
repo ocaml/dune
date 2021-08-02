@@ -34,8 +34,6 @@ Unreleased
 - Dune no longer automatically create or edit `dune-project` files
   (#4239, fixes #4108, @jeremiedimino)
 
-- Add support for instrumentation dependencies (#4210, fixes #3983, @nojb)
-
 - Cleanup temporary files after running `$ dune exec`. (#4260, fixes #4243,
   @rgrinberg)
 
@@ -96,8 +94,6 @@ Unreleased
   stderr of actions must be empty. This allows to reduce the noise of
   large builds (#4422, #4515, @jeremiedimino)
 
-- Add the possibility to use `locks` with the cram tests stanza (#4397, @voodoos)
-
 - The `@all` alias no longer depends directly on copies of files from the source
   directory (#4461, @nojb)
 
@@ -144,13 +140,82 @@ Unreleased
 - Make Dune display the progress indicator in all output modes except quiet
   (#4618, @aalekseyev)
 
-2.9.0 (unreleased)
+- Do not log `live_words` and `free_words` in trace file. This allows using
+  `Gc.quick_stat` which does not scan the heap. (#4643, @emillon)
+
+- Don't let command run by Dune observe the environment variable
+  `INSIDE_EMACS` in order to improve reproducibility (#4680,
+  @jeremiedimino)
+
+- Fix `root_module` when used in public libraries (#4685, fixes #4684,
+  @rgrinberg, @CraigFe)
+
+- Fix `root_module` when used with preprocessing (#4683, fixes #4682,
+  @rgrinberg, @CraigFe)
+
+- Display Coq profile flags in `dune printenv` (#4767, @ejgallego)
+
+- Introduce mdx stanza 0.2, requiring mdx >= 1.9.0, with a new generic `deps`
+  field and the possibility to statically link `libraries` in the test
+  executable. (#3956, fixes #3955)
+
+- Allow depending on `ocamldoc` library when `ocamlfind` is not installed.
+  (#4811, fixes #4809, @nojb)
+
+- Improve lookup of optional or disabled binaries. Previously, we'd treat every
+  executable with missing libraries as optional. Now, we treat make sure to
+  look at the library's optional or enabled_if status (#4786).
+
+2.9.1 (unreleased)
 ------------------
+
+- Don't use `subst --root` in Opam files (#4806, @MisterDA)
+
+2.9.0 (29/06/2021)
+------------------
+
+- Add `(enabled_if ...)` to `(mdx ...)` (#4434, @emillon)
+
+- Add support for instrumentation dependencies (#4210, fixes #3983, @nojb)
+
+- Add the possibility to use `locks` with the cram tests stanza (#4397, @voodoos)
 
 - Allow to set up merlin in a variant of the default context
   (#4145, @TheLortex, @voodoos)
 
-- Add `(enabled_if ...)` to `(mdx ...)` (#4434, @emillon)
+- Add `(package ...)` to `(mdx ...)` (#4691, fixes #3756, @emillon)
+
+- Handle renaming of `coq.kernel` library to `coq-core.kernel` in Coq 8.14 (#4713, @proux01)
+
+- Fix generation of merlin configuration when using `(include_subdirs
+  unqualified)` on Windows (#4745, @nojb)
+
+- Fix bug for the install of Coq native files when using `(include_subdirs qualified)`
+  (#4753, @ejgallego)
+
+- Allow users to specify install target directories for `doc` and
+  `etc` sections. We add new options `--docdir` and `--etcdir` to both
+  Dune's configure and `dune install` command. (#4744, fixes #4723,
+  @ejgallego, thanks to @JasonGross for reporting this issue)
+
+- Fix issue where Dune would ignore `(env ... (coq (flags ...)))`
+  declarations appearing in `dune` files (#4749, fixes #4566, @ejgallego @rgrinberg)
+
+- Disable some warnings on Coq 8.14 and `(lang coq (>= 0.3))` due to
+  the rework of the Coq "native" compilation system (#4760, @ejgallego)
+
+- Fix a bug where instrumentation flags would be added even if the
+  instrumentatation was disabled (@nojb, #4770)
+
+- Fix #4682: option `-p` takes now precedence on environement variable
+  `DUNE_PROFILE` (#4730, #4774, @bobot, reported by @dra27 #4632)
+
+- Fix installation with opam of package with dune sites. The `.install` file is
+  now produced by a local `dune install` during the build phase (#4730, #4645,
+  @bobot, reported by @kit-ty-kate #4198)
+
+- Fix multiple issues in the sites feature (#4730, #4645 @bobot, reported by @Lelio-Brun
+  #4219, by @Kakadu #4325, by @toots #4415)
 
 2.8.5 (28/03/2021)
 ------------------

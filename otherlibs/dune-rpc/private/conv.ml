@@ -419,6 +419,18 @@ let six a b c d e f =
     (fun ((a, b, c), (d, e, f)) -> (a, b, c, d, e, f))
     (fun (a, b, c, d, e, f) -> ((a, b, c), (d, e, f)))
 
+let seven a b c d e f g =
+  iso
+    (both (three a b c) (four d e f g))
+    (fun ((a, b, c), (d, e, f, g)) -> (a, b, c, d, e, f, g))
+    (fun (a, b, c, d, e, f, g) -> ((a, b, c), (d, e, f, g)))
+
+let eight a b c d e f g h =
+  iso
+    (both (four a b c d) (four e f g h))
+    (fun ((a, b, c, d), (e, f, g, h)) -> (a, b, c, d, e, f, g, h))
+    (fun (a, b, c, d, e, f, g, h) -> ((a, b, c, d), (e, f, g, h)))
+
 let sexp = Sexp
 
 let required x = Required x

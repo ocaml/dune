@@ -190,19 +190,36 @@ let get_ctx (path : Path.Build.t) =
     | None -> None
     | Some ctx -> Some (ctx, Path.Source.of_local sub))
 
-let describe alias =
-  match get_ctx alias.dir with
-  | None ->
-    sprintf "invalid-alias %s"
-      (Path.Build.to_string (fully_qualified_name alias))
-  | Some (ctx, dir_in_context) ->
-    let ctx_suffix name =
-      if Context_name.is_default name then
-        ""
+let describe ?(loc = Loc.none) alias =
+  let open Pp.O in
+  let pp =
+    match get_ctx alias.dir with
+    | None ->
+      Pp.textf "invalid-alias %s"
+        (Path.Build.to_string (fully_qualified_name alias))
+    | Some (ctx, dir_in_context) ->
+      let pp =
+        Pp.textf "alias "
+        ++ Pp.verbatim
+             (Path.Source.to_string_maybe_quoted
+                (Path.Source.relative dir_in_context
+                   (Name.to_string alias.name)))
+      in
+      if Context_name.is_default ctx then
+        pp
       else
-        sprintf " (context %s)" (Context_name.to_string name)
-    in
-    sprintf "%s%s"
-      (Path.Source.to_string_maybe_quoted
-         (Path.Source.relative dir_in_context (Name.to_string alias.name)))
-      (ctx_suffix ctx)
+        pp ++ Pp.textf " (context %s)" (Context_name.to_string ctx)
+  in
+  if Loc.is_none loc then
+    pp
+  else
+    pp ++ Pp.textf " in %s" (Loc.to_file_colon_line loc)
+
+let package_install ~(context : Build_context.t) ~(pkg : Package.t) =
+  let dir =
+    let dir = Package.dir pkg in
+    Path.Build.append_source context.build_dir dir
+  in
+  let name = Package.name pkg in
+  sprintf ".%s-files" (Package.Name.to_string name)
+  |> Name.of_string |> make ~dir

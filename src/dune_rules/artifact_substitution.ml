@@ -77,7 +77,7 @@ let conf_of_context (context : Context.t option) =
     }
 
 let conf_for_install ~relocatable ~default_ocamlpath ~stdlib_dir ~prefix ~libdir
-    ~mandir =
+    ~mandir ~docdir ~etcdir =
   let get_vcs = Source_tree.nearest_vcs in
   let hardcoded_ocaml_path =
     if relocatable then
@@ -87,7 +87,8 @@ let conf_for_install ~relocatable ~default_ocamlpath ~stdlib_dir ~prefix ~libdir
   in
   let get_location section package =
     let paths =
-      Install.Section.Paths.make ~package ~destdir:prefix ?libdir ?mandir ()
+      Install.Section.Paths.make ~package ~destdir:prefix ?libdir ?mandir
+        ?docdir ?etcdir ()
     in
     Install.Section.Paths.get paths section
   in
@@ -414,6 +415,15 @@ let buf_len = max_len
 
 let buf = Bytes.create buf_len
 
+type _ mode =
+  | Test : bool mode
+  | Copy :
+      { input_file : Path.t
+      ; output : bytes -> int -> int -> unit
+      ; conf : conf
+      }
+      -> unit mode
+
 (** The copy algorithm works as follow:
 
     {v
@@ -452,9 +462,10 @@ output the replacement        |                                             |
  |                                                                          |
  \--------------------------------------------------------------------------/
     v} *)
-let copy ~conf ~input_file ~input ~output =
+let parse : type a. input:_ -> mode:a mode -> a Fiber.t =
+ fun ~input ~mode ->
   let open Fiber.O in
-  let rec loop scanner_state ~beginning_of_data ~pos ~end_of_data =
+  let rec loop scanner_state ~beginning_of_data ~pos ~end_of_data : a Fiber.t =
     let scanner_state = Scanner.run scanner_state ~buf ~pos ~end_of_data in
     let placeholder_start =
       match scanner_state with
@@ -469,29 +480,35 @@ let copy ~conf ~input_file ~input ~output =
     (* All the data before [placeholder_start] can be sent to the output
        immediately since we know for sure that they are not part of a
        placeholder *)
-    if placeholder_start > beginning_of_data then
-      output buf beginning_of_data (placeholder_start - beginning_of_data);
+    (match mode with
+    | Test -> ()
+    | Copy { output; _ } ->
+      if placeholder_start > beginning_of_data then
+        output buf beginning_of_data (placeholder_start - beginning_of_data));
     let leftover = end_of_data - placeholder_start in
     match scanner_state with
     | Scan_placeholder (placeholder_start, len) when len <= leftover -> (
       let placeholder = Bytes.sub_string buf ~pos:placeholder_start ~len in
       match decode placeholder with
-      | Some t ->
-        let* s = eval t ~conf in
-        (if !Clflags.debug_artifact_substitution then
-          let open Pp.O in
-          Console.print
-            [ Pp.textf "Found placeholder in %s:"
-                (Path.to_string_maybe_quoted input_file)
-            ; Pp.enumerate ~f:Fun.id
-                [ Pp.text "placeholder: " ++ Dyn.pp (to_dyn t)
-                ; Pp.text "evaluates to: " ++ Dyn.pp (String s)
-                ]
-            ]);
-        let s = encode_replacement ~len ~repl:s in
-        output (Bytes.unsafe_of_string s) 0 len;
-        let pos = placeholder_start + len in
-        loop Scan0 ~beginning_of_data:pos ~pos ~end_of_data
+      | Some t -> (
+        match mode with
+        | Test -> Fiber.return true
+        | Copy { output; input_file; conf } ->
+          let* s = eval t ~conf in
+          (if !Clflags.debug_artifact_substitution then
+            let open Pp.O in
+            Console.print
+              [ Pp.textf "Found placeholder in %s:"
+                  (Path.to_string_maybe_quoted input_file)
+              ; Pp.enumerate ~f:Fun.id
+                  [ Pp.text "placeholder: " ++ Dyn.pp (to_dyn t)
+                  ; Pp.text "evaluates to: " ++ Dyn.pp (String s)
+                  ]
+              ]);
+          let s = encode_replacement ~len ~repl:s in
+          output (Bytes.unsafe_of_string s) 0 len;
+          let pos = placeholder_start + len in
+          loop Scan0 ~beginning_of_data:pos ~pos ~end_of_data)
       | None ->
         (* Restart just after [prefix] since we know for sure that a placeholder
            cannot start before that. *)
@@ -523,23 +540,42 @@ let copy ~conf ~input_file ~input ~output =
           (* There might still be another placeholder after this invalid one
              with a length that is too long *)
           loop Scan0 ~beginning_of_data:0 ~pos:prefix_len ~end_of_data:leftover
-        | _ ->
-          (* Nothing more to read; [leftover] is definitely not the beginning of
-             a placeholder, send it and end the copy *)
-          output buf 0 leftover;
-          Fiber.return ())
+        | _ -> (
+          match mode with
+          | Test -> Fiber.return false
+          | Copy { output; _ } ->
+            (* Nothing more to read; [leftover] is definitely not the beginning
+               of a placeholder, send it and end the copy *)
+            output buf 0 leftover;
+            Fiber.return ()))
       | n ->
         loop scanner_state ~beginning_of_data:0 ~pos:leftover
           ~end_of_data:(leftover + n))
   in
   match input buf 0 buf_len with
-  | 0 -> Fiber.return ()
+  | 0 -> (
+    match mode with
+    | Test -> Fiber.return false
+    | Copy _ -> Fiber.return ())
   | n -> loop Scan0 ~beginning_of_data:0 ~pos:0 ~end_of_data:n
 
+let copy ~conf ~input_file ~input ~output =
+  parse ~input ~mode:(Copy { conf; input_file; output })
+
 let copy_file ~conf ?chmod ~src ~dst () =
-  let ic, oc = Io.setup_copy ?chmod ~src ~dst () in
+  let open Fiber.O in
+  let* ic, oc = Fiber.return (Io.setup_copy ?chmod ~src ~dst ()) in
   Fiber.finalize
     ~finally:(fun () ->
       Io.close_both (ic, oc);
       Fiber.return ())
     (fun () -> copy ~conf ~input_file:src ~input:(input ic) ~output:(output oc))
+
+let test_file ~src () =
+  let open Fiber.O in
+  let* ic = Fiber.return (Io.open_in src) in
+  Fiber.finalize
+    ~finally:(fun b ->
+      Io.close_in ic;
+      Fiber.return b)
+    (fun () -> parse ~input:(input ic) ~mode:Test)

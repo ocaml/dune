@@ -131,10 +131,7 @@ end = struct
     (* Interpret a few stanzas in order to determine the list of files generated
        by the user. *)
     let* expander =
-      let+ expander =
-        Super_context.expander sctx ~dir >>| add_sources_to_expander sctx
-      in
-      Expander.set_artifacts_dynamic expander true
+      Super_context.expander sctx ~dir >>| add_sources_to_expander sctx
     in
     let+ generated_files =
       Memo.Build.parallel_map stanzas ~f:(fun stanza ->

@@ -1,63 +1,87 @@
 open Stdune
 open Import
 
-let run_build_system ~common ~(targets : unit -> Target.t list Memo.Build.t) =
+let run_build_system ~common ~(request : unit Action_builder.t) () =
   let build_started = Unix.gettimeofday () in
   Fiber.finalize
     (fun () ->
       Build_system.run (fun () ->
           let open Memo.Build.O in
-          let* targets = targets () in
-          Build_system.build (Target.request targets)))
+          let+ (), _facts = Action_builder.run request Eager in
+          ()))
     ~finally:(fun () ->
       (if Common.print_metrics common then
         let gc_stat = Gc.quick_stat () in
         Console.print_user_message
           (User_message.make
              [ Pp.textf "%s" (Memo.Perf_counters.report_for_current_run ())
-             ; Pp.textf "(%.2f sec, %d heap words)"
+             ; Pp.textf "(%.2fs total, %.2fs digests, %.1fM heap words)"
                  (Unix.gettimeofday () -. build_started)
-                 gc_stat.heap_words
+                 (Metrics.Timer.read_seconds Digest.generic_timer)
+                 (float_of_int gc_stat.heap_words /. 1_000_000.)
              ]));
       Fiber.return ())
 
-let run_build_command_poll ~(common : Common.t) ~config ~targets ~setup =
-  let open Fiber.O in
-  let every () =
-    Cached_digest.invalidate_cached_timestamps ();
-    let* setup = setup () in
-    let* targets =
-      match
-        let open Option.O in
-        let* rpc = Common.rpc common in
-        Dune_rpc_impl.Server.pending_build_action rpc
-      with
-      | None -> Fiber.return (fun () -> targets setup)
-      | Some (Build (targets, ivar)) ->
-        let+ () = Fiber.Ivar.fill ivar Accepted in
-        fun () ->
-          Target.resolve_targets_exn (Common.root common) config setup targets
-    in
-    let+ () = run_build_system ~common ~targets in
-    `Continue
-  in
-  Scheduler.poll ~common ~config ~every ~finally:Hooks.End_of_build.run
+let setup () = Import.Main.setup ()
 
-let run_build_command_once ~(common : Common.t) ~config ~targets ~setup =
+let run_build_system ~common ~request =
+  let open Fiber.O in
+  Fiber.finalize
+    (fun () ->
+      Cached_digest.invalidate_cached_timestamps ();
+      let* setup = setup () in
+      let request =
+        Action_builder.bind (Action_builder.memo_build setup) ~f:(fun setup ->
+            request setup)
+      in
+      run_build_system ~common ~request ())
+    ~finally:(fun () ->
+      Hooks.End_of_build.run ();
+      Fiber.return ())
+
+let run_build_command_poll_eager ~(common : Common.t) ~config ~request : unit =
+  Import.Scheduler.go_with_rpc_server_and_console_status_reporting ~common
+    ~config (fun () -> Scheduler.Run.poll (run_build_system ~common ~request))
+
+let run_build_command_poll_passive ~(common : Common.t) ~config ~request:_ :
+    unit =
+  (* CR-someday aalekseyev: It would've been better to complain if [request] is
+     non-empty, but we can't check that here because [request] is a function.*)
+  let open Fiber.O in
+  match Common.rpc common with
+  | None ->
+    Code_error.raise
+      "Attempted to start a passive polling mode without an RPC server" []
+  | Some rpc ->
+    Import.Scheduler.go_with_rpc_server_and_console_status_reporting ~common
+      ~config (fun () ->
+        Scheduler.Run.poll_passive
+          ~get_build_request:
+            (let+ (Build (targets, ivar)) =
+               Dune_rpc_impl.Server.pending_build_action rpc
+             in
+             let request setup =
+               Target.interpret_targets (Common.root common) config setup
+                 targets
+             in
+             (run_build_system ~common ~request, ivar)))
+
+let run_build_command_once ~(common : Common.t) ~config ~request =
   let open Fiber.O in
   let once () =
-    let* setup = setup () in
-    run_build_system ~common ~targets:(fun () -> targets setup)
+    let+ res = run_build_system ~common ~request in
+    match res with
+    | Error `Already_reported -> raise Dune_util.Report_error.Already_reported
+    | Ok () -> ()
   in
   Scheduler.go ~common ~config once
 
-let run_build_command ~(common : Common.t) ~config ~targets =
-  let setup () = Import.Main.setup () in
-  (if Common.watch common then
-    run_build_command_poll
-  else
-    run_build_command_once)
-    ~setup ~common ~config ~targets
+let run_build_command ~(common : Common.t) ~config ~request =
+  (match Common.watch common with
+  | Yes Eager -> run_build_command_poll_eager
+  | Yes Passive -> run_build_command_poll_passive
+  | No -> run_build_command_once)
+    ~common ~config ~request
 
 let runtest =
   let doc = "Run tests." in
@@ -80,15 +104,15 @@ let runtest =
     let+ common = Common.term
     and+ dirs = Arg.(value & pos_all string [ "." ] name_) in
     let config = Common.init common in
-    let targets (setup : Import.Main.build_system) =
-      Memo.Build.return
-      @@ List.map dirs ~f:(fun dir ->
+    let request (setup : Import.Main.build_system) =
+      Action_builder.all_unit
+        (List.map dirs ~f:(fun dir ->
              let dir = Path.(relative root) (Common.prefix_target common dir) in
-             Target.Alias
-               (Alias.in_dir ~name:Dune_engine.Alias.Name.runtest
-                  ~recursive:true ~contexts:setup.contexts dir))
+             Alias.in_dir ~name:Dune_engine.Alias.Name.runtest ~recursive:true
+               ~contexts:setup.contexts dir
+             |> Alias.request))
     in
-    run_build_command ~common ~config ~targets
+    run_build_command ~common ~config ~request
   in
   (term, Term.info "runtest" ~doc ~man)
 
@@ -121,9 +145,9 @@ let build =
       | _ :: _ -> targets
     in
     let config = Common.init common in
-    let targets setup =
-      Target.resolve_targets_exn (Common.root common) config setup targets
+    let request setup =
+      Target.interpret_targets (Common.root common) config setup targets
     in
-    run_build_command ~common ~config ~targets
+    run_build_command ~common ~config ~request
   in
   (term, Term.info "build" ~doc ~man)

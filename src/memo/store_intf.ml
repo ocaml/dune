@@ -18,6 +18,8 @@ module type S = sig
   val set : 'a t -> key -> 'a -> unit
 
   val find : 'a t -> key -> 'a option
+
+  val iter : 'a t -> f:('a -> unit) -> unit
 end
 
 module type Instance = sig
@@ -32,6 +34,8 @@ module type Instance = sig
   val set : t -> key -> value -> unit
 
   val find : t -> key -> value option
+
+  val iter : t -> f:(value -> unit) -> unit
 
   val store : t
 end

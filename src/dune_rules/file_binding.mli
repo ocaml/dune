@@ -26,18 +26,18 @@ module Unexpanded : sig
     -> f:(String_with_vars.t -> string Memo.Build.t)
     -> Expanded.t Memo.Build.t
 
-  val expand_static :
-    t -> dir:Path.Build.t -> f:(String_with_vars.t -> string) -> Expanded.t
-
   val expand_src :
-    t -> dir:Path.Build.t -> f:(String_with_vars.t -> string) -> Path.Build.t
+       t
+    -> dir:Path.Build.t
+    -> f:(String_with_vars.t -> string Memo.Build.t)
+    -> Path.Build.t Memo.Build.t
 
   val destination_relative_to_install_path :
        t
     -> section:Install.Section.t
-    -> expand:(String_with_vars.t -> string)
-    -> expand_partial:(String_with_vars.t -> String_with_vars.t)
-    -> Install.Dst.t
+    -> expand:(String_with_vars.t -> string Memo.Build.t)
+    -> expand_partial:(String_with_vars.t -> String_with_vars.t Memo.Build.t)
+    -> Install.Dst.t Memo.Build.t
 
   module L : sig
     val decode : t list Dune_lang.Decoder.t

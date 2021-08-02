@@ -53,7 +53,15 @@ module Config = struct
   let add_to_env t env =
     match t.rpc with
     | None -> env
-    | Some where -> Dune_rpc.Where.add_to_env where env
+    | Some where ->
+      if true then
+        env
+      else
+        (* This is disabled because setting DUNE_RPC in tests breaks inner dune
+           invocations. We should come up with a better design for this feature,
+           or a way to cleanly work around it and prevent "unauthorized" access
+           where the test shuts down a dune that's running it. *)
+        Dune_rpc.Where.add_to_env where env
 end
 
 type job =
@@ -67,6 +75,12 @@ module Signal = struct
     | Quit
     | Term
 
+  let to_dyn t : Dyn.t =
+    match t with
+    | Int -> Variant ("Int", [])
+    | Quit -> Variant ("Quit", [])
+    | Term -> Variant ("Term", [])
+
   let compare : t -> t -> Ordering.t = Poly.compare
 
   include Comparable.Make (struct
@@ -74,7 +88,7 @@ module Signal = struct
 
     let compare = compare
 
-    let to_dyn _ = Dyn.opaque
+    let to_dyn = to_dyn
   end)
 
   let all = [ Int; Quit; Term ]
@@ -115,14 +129,45 @@ module Thread = struct
     ()
 end
 
+module Shutdown_reason = struct
+  module T = struct
+    type t =
+      | Shutdown
+      | Signal of Signal.t
+
+    let to_dyn t =
+      match t with
+      | Shutdown -> Dyn.Variant ("Shutdown", [])
+      | Signal signal -> Dyn.Variant ("Signal", [ Signal.to_dyn signal ])
+
+    let compare a b =
+      match (a, b) with
+      | Shutdown, Shutdown -> Eq
+      | Shutdown, _ -> Lt
+      | _, Shutdown -> Gt
+      | Signal a, Signal b -> Signal.compare a b
+  end
+
+  include T
+  include Comparable.Make (T)
+end
+
 (** The event queue *)
 module Event : sig
+  type build_input_change =
+    | Sync
+    | Fs_event of Dune_file_watcher.Fs_memo_event.t
+    | Invalidation of Memo.Invalidation.t
+
   type t =
-    | File_system_changed of Fs_memo.Event.t Nonempty_list.t
+    | File_watcher_task of (unit -> Dune_file_watcher.Event.t list)
+    | Build_inputs_changed of build_input_change Nonempty_list.t
     | File_system_watcher_terminated
     | Job_completed of job * Proc.Process_info.t
-    | Signal of Signal.t
+    | Shutdown of Shutdown_reason.t
     | Worker_task of Fiber.fill
+    | Yield of unit Fiber.Ivar.t
+    | Timer of Fiber.fill
 
   module Queue : sig
     type t
@@ -134,9 +179,6 @@ module Event : sig
     (** Return the next event. File changes event are always flattened and
         returned first. *)
     val next : t -> event
-
-    (** Ignore the ne next file change event about this file. *)
-    val ignore_next_file_change_event : t -> Path.t -> unit
 
     (** Pending worker tasks *)
     val pending_worker_tasks : t -> int
@@ -151,63 +193,90 @@ module Event : sig
 
     val register_worker_task_started : t -> unit
 
-    (** Send an event to the main thread. *)
+    val send_file_watcher_task :
+      t -> (unit -> Dune_file_watcher.Event.t list) -> unit
+
+    (** It's a bit weird to have both this and [send_file_watcher_task]. The
+        reason is that [send_file_watcher_task] uses [send_file_watcher_events]
+        internally. *)
     val send_file_watcher_events : t -> Dune_file_watcher.Event.t list -> unit
+
+    val send_invalidation_event : t -> Memo.Invalidation.t -> unit
 
     val send_job_completed : t -> job -> Proc.Process_info.t -> unit
 
-    val send_signal : t -> Signal.t -> unit
+    val send_signal : t -> Shutdown_reason.t -> unit
+
+    val send_timers_completed : t -> Fiber.fill Nonempty_list.t -> unit
+
+    val yield_if_there_are_pending_events : t -> unit Fiber.t
   end
   with type event := t
 end = struct
+  type build_input_change =
+    | Sync
+    | Fs_event of Dune_file_watcher.Fs_memo_event.t
+    | Invalidation of Memo.Invalidation.t
+
   type t =
-    | File_system_changed of Fs_memo.Event.t Nonempty_list.t
+    | File_watcher_task of (unit -> Dune_file_watcher.Event.t list)
+    | Build_inputs_changed of build_input_change Nonempty_list.t
     | File_system_watcher_terminated
     | Job_completed of job * Proc.Process_info.t
-    | Signal of Signal.t
+    | Shutdown of Shutdown_reason.t
     | Worker_task of Fiber.fill
+    | Yield of unit Fiber.Ivar.t
+    | Timer of Fiber.fill
+
+  module Invalidation_event = struct
+    type t =
+      | Invalidation of Memo.Invalidation.t
+      | Filesystem_event of Dune_file_watcher.Event.t
+  end
 
   module Queue = struct
+    type event = t
+
     type t =
       { jobs_completed : (job * Proc.Process_info.t) Queue.t
-      ; mutable file_watcher_events : Dune_file_watcher.Event.t list
-      ; mutable signals : Signal.Set.t
+      ; file_watcher_tasks : (unit -> Dune_file_watcher.Event.t list) Queue.t
+      ; mutable invalidation_events : Invalidation_event.t list
+      ; mutable signals : Shutdown_reason.Set.t
       ; mutex : Mutex.t
       ; cond : Condition.t
-            (* CR-soon amokhov: The way we handle "ignored files" using this
-               mutable table is fragile and also wrong. We use [ignored_files]
-               for the [(mode promote)] feature: if a file is promoted, we call
-               [ignore_next_file_change_event] so that the upcoming file-change
-               event does not invalidate the current build. However, instead of
-               ignoring the events, we should merely postpone them and restart
-               the build to take the promoted files into account if need be. *)
-      ; ignored_files : (string, unit) Table.t
       ; mutable pending_jobs : int
       ; mutable pending_worker_tasks : int
       ; worker_tasks_completed : Fiber.fill Queue.t
+      ; timers : Fiber.fill Queue.t
       ; stats : Dune_stats.t option
+      ; mutable got_event : bool
+      ; mutable yield : unit Fiber.Ivar.t option
       }
 
     let create stats =
       let jobs_completed = Queue.create () in
+      let file_watcher_tasks = Queue.create () in
       let worker_tasks_completed = Queue.create () in
-      let file_watcher_events = [] in
-      let signals = Signal.Set.empty in
+      let invalidation_events = [] in
+      let signals = Shutdown_reason.Set.empty in
       let mutex = Mutex.create () in
       let cond = Condition.create () in
-      let ignored_files = Table.create (module String) 64 in
       let pending_jobs = 0 in
       let pending_worker_tasks = 0 in
+      let timers = Queue.create () in
       { jobs_completed
-      ; file_watcher_events
+      ; file_watcher_tasks
+      ; invalidation_events
+      ; timers
       ; signals
       ; mutex
       ; cond
-      ; ignored_files
       ; pending_jobs
       ; worker_tasks_completed
       ; pending_worker_tasks
       ; stats
+      ; got_event = false
+      ; yield = None
       }
 
     let register_job_started q = q.pending_jobs <- q.pending_jobs + 1
@@ -215,95 +284,175 @@ end = struct
     let register_worker_task_started q =
       q.pending_worker_tasks <- q.pending_worker_tasks + 1
 
-    let ignore_next_file_change_event q path =
-      assert (Path.is_in_source_tree path);
-      Table.set q.ignored_files (Path.to_absolute_filename path) ()
+    let add_event q f =
+      Mutex.lock q.mutex;
+      f q;
+      if not q.got_event then (
+        q.got_event <- true;
+        Condition.signal q.cond
+      );
+      Mutex.unlock q.mutex
 
-    let available q =
-      not
-        (List.is_empty q.file_watcher_events
-        && Queue.is_empty q.jobs_completed
-        && Signal.Set.is_empty q.signals
-        && Queue.is_empty q.worker_tasks_completed)
+    let yield_if_there_are_pending_events q =
+      if Config.inside_dune || not q.got_event then
+        Fiber.return ()
+      else
+        match q.yield with
+        | Some ivar -> Fiber.Ivar.read ivar
+        | None ->
+          let ivar = Fiber.Ivar.create () in
+          q.yield <- Some ivar;
+          Fiber.Ivar.read ivar
+
+    module Event_source : sig
+      type queue := t
+
+      type t
+
+      val signal : t
+
+      val file_watcher_task : t
+
+      val invalidation : t
+
+      val jobs_completed : t
+
+      val worker_tasks_completed : t
+
+      val yield : t
+
+      val timers : t
+
+      val chain : t list -> t
+
+      val run : t -> queue -> event option
+    end = struct
+      type queue = t
+
+      type t = queue -> event option
+
+      let run t q = t q
+
+      let signal : t =
+       fun q ->
+        Option.map (Shutdown_reason.Set.choose q.signals) ~f:(fun signal ->
+            q.signals <- Shutdown_reason.Set.remove q.signals signal;
+            Shutdown signal)
+
+      let file_watcher_task q =
+        Option.map (Queue.pop q.file_watcher_tasks) ~f:(fun job ->
+            File_watcher_task job)
+
+      let invalidation q =
+        match q.invalidation_events with
+        | [] -> None
+        | events -> (
+          q.invalidation_events <- [];
+          let terminated = ref false in
+          let events =
+            List.concat_map events ~f:(function
+              | Filesystem_event Sync -> [ (Sync : build_input_change) ]
+              | Invalidation invalidation ->
+                [ (Invalidation invalidation : build_input_change) ]
+              | Filesystem_event Watcher_terminated ->
+                terminated := true;
+                []
+              | Filesystem_event (Fs_memo_event event) -> [ Fs_event event ]
+              | Filesystem_event Queue_overflow ->
+                [ Invalidation Memo.Invalidation.clear_caches ])
+          in
+          match !terminated with
+          | true -> Some File_system_watcher_terminated
+          | false ->
+            Option.map (Nonempty_list.of_list events) ~f:(fun events ->
+                Build_inputs_changed events))
+
+      let jobs_completed q =
+        Option.map (Queue.pop q.jobs_completed) ~f:(fun (job, proc_info) ->
+            q.pending_jobs <- q.pending_jobs - 1;
+            assert (q.pending_jobs >= 0);
+            Job_completed (job, proc_info))
+
+      let worker_tasks_completed q =
+        Option.map (Queue.pop q.worker_tasks_completed) ~f:(fun fill ->
+            q.pending_worker_tasks <- q.pending_worker_tasks - 1;
+            Worker_task fill)
+
+      let yield q =
+        Option.map q.yield ~f:(fun ivar ->
+            q.yield <- None;
+            Yield ivar)
+
+      let timers q =
+        Option.map (Queue.pop q.timers) ~f:(fun timer -> Timer timer)
+
+      let chain list q = List.find_map list ~f:(fun f -> f q)
+    end
 
     let next q =
       Option.iter q.stats ~f:Dune_stats.record_gc_and_fd;
       Mutex.lock q.mutex;
       let rec loop () =
-        while not (available q) do
-          Condition.wait q.cond q.mutex
-        done;
-        match Signal.Set.choose q.signals with
-        | Some signal ->
-          q.signals <- Signal.Set.remove q.signals signal;
-          Signal signal
-        | None -> (
-          match q.file_watcher_events with
-          | [] -> (
-            match Queue.pop q.jobs_completed with
-            | None ->
-              q.pending_worker_tasks <- q.pending_worker_tasks - 1;
-              Worker_task (Queue.pop_exn q.worker_tasks_completed)
-            | Some (job, proc_info) ->
-              q.pending_jobs <- q.pending_jobs - 1;
-              assert (q.pending_jobs >= 0);
-              Job_completed (job, proc_info))
-          | events -> (
-            q.file_watcher_events <- [];
-            let terminated = ref false in
-            let events =
-              List.filter_map events ~f:(function
-                | Watcher_terminated ->
-                  terminated := true;
-                  None
-                | File_changed path ->
-                  let abs_path = Path.to_absolute_filename path in
-                  if Table.mem q.ignored_files abs_path then (
-                    (* only use ignored record once *)
-                    Table.remove q.ignored_files abs_path;
-                    None
-                  ) else
-                    (* CR-soon amokhov: Generate more precise events. *)
-                    Some (Fs_memo.Event.create ~kind:Unknown ~path))
-            in
-            match !terminated with
-            | true -> File_system_watcher_terminated
-            | false -> (
-              match Nonempty_list.of_list events with
-              | None -> loop ()
-              | Some events -> File_system_changed events)))
+        match
+          Event_source.(
+            run
+              (chain
+                 (* Event sources are listed in priority order. Signals are the
+                    highest priority to maximize responsiveness to Ctrl+C.
+                    [file_watcher_task], [worker_tasks_completed] and
+                    [invalidation] are used for reacting to user input, so their
+                    latency is also important. [jobs_completed] and [yield] are
+                    where the bulk of the work is done, so they are the lowest
+                    priority to avoid starving other things. *)
+                 [ signal
+                 ; file_watcher_task
+                 ; invalidation
+                 ; worker_tasks_completed
+                 ; jobs_completed
+                 ; yield
+                 ; timers
+                 ]))
+            q
+        with
+        | None -> wait ()
+        | Some event -> event
+      and wait () =
+        q.got_event <- false;
+        Condition.wait q.cond q.mutex;
+        loop ()
       in
       let ev = loop () in
       Mutex.unlock q.mutex;
       ev
 
     let send_worker_task_completed q event =
-      Mutex.lock q.mutex;
-      let avail = available q in
-      Queue.push q.worker_tasks_completed event;
-      if not avail then Condition.signal q.cond;
-      Mutex.unlock q.mutex
+      add_event q (fun q -> Queue.push q.worker_tasks_completed event)
+
+    let send_invalidation_events q events =
+      add_event q (fun q ->
+          q.invalidation_events <- List.rev_append events q.invalidation_events)
 
     let send_file_watcher_events q files =
-      Mutex.lock q.mutex;
-      let avail = available q in
-      q.file_watcher_events <- List.rev_append files q.file_watcher_events;
-      if not avail then Condition.signal q.cond;
-      Mutex.unlock q.mutex
+      send_invalidation_events q
+        (List.map files ~f:(fun file : Invalidation_event.t ->
+             Filesystem_event file))
+
+    let send_invalidation_event q invalidation =
+      send_invalidation_events q [ Invalidation invalidation ]
 
     let send_job_completed q job proc_info =
-      Mutex.lock q.mutex;
-      let avail = available q in
-      Queue.push q.jobs_completed (job, proc_info);
-      if not avail then Condition.signal q.cond;
-      Mutex.unlock q.mutex
+      add_event q (fun q -> Queue.push q.jobs_completed (job, proc_info))
 
     let send_signal q signal =
-      Mutex.lock q.mutex;
-      let avail = available q in
-      q.signals <- Signal.Set.add q.signals signal;
-      if not avail then Condition.signal q.cond;
-      Mutex.unlock q.mutex
+      add_event q (fun q ->
+          q.signals <- Shutdown_reason.Set.add q.signals signal)
+
+    let send_file_watcher_task q job =
+      add_event q (fun q -> Queue.push q.file_watcher_tasks job)
+
+    let send_timers_completed q timers =
+      add_event q (fun q ->
+          Nonempty_list.to_list timers |> List.iter ~f:(Queue.push q.timers))
 
     let pending_jobs q = q.pending_jobs
 
@@ -319,6 +468,8 @@ module Process_watcher : sig
 
   (** Register a new running job. *)
   val register_job : t -> job -> unit
+
+  val is_running : t -> Pid.t -> bool
 
   (** Send the following signal to all running processes. *)
   val killall : t -> int -> unit
@@ -336,6 +487,12 @@ end = struct
     ; events : Event.Queue.t
     ; mutable running_count : int
     }
+
+  let is_running t pid =
+    Mutex.lock t.mutex;
+    let res = Table.mem t.table pid in
+    Mutex.unlock t.mutex;
+    res
 
   module Process_table : sig
     val add : t -> job -> unit
@@ -471,7 +628,7 @@ end = struct
 
   let signal_waiter () =
     if Sys.win32 then (
-      let r, w = Unix.pipe () in
+      let r, w = Unix.pipe ~cloexec:true () in
       let buf = Bytes.create 1 in
       Sys.set_signal Sys.sigint
         (Signal_handle (fun _ -> assert (Unix.write w buf 0 1 = 1)));
@@ -487,7 +644,7 @@ end = struct
     let wait_signal = Staged.unstage (signal_waiter ()) in
     while true do
       let signal = wait_signal () in
-      Event.Queue.send_signal q signal;
+      Event.Queue.send_signal q (Signal signal);
       match signal with
       | Int
       | Quit
@@ -509,19 +666,26 @@ end = struct
   let init q = ignore (Thread.create run q : Thread.t)
 end
 
-type waiting_for_file_changes =
-  | Shutdown_requested
-  | File_system_changed
-
 type status =
-  (* Waiting for file changes to start a new a build *)
-  | Waiting_for_file_changes of waiting_for_file_changes Fiber.Ivar.t
-  (* Running a build *)
-  | Building
-  (* Cancellation requested. Build jobs are immediately rejected in this state *)
-  | Restarting_build
-  (* Shut down requested. No new new builds will start *)
-  | Shutting_down
+  | (* Ready to start the next build. Waiting for a signal from the user, the
+       test harness, or the polling loop. The payload is the collection of
+       filesystem events. *)
+      Standing_by of
+      Memo.Invalidation.t
+  | (* Waiting for file changes to start a new a build *)
+      Waiting_for_file_changes of
+      Memo.Invalidation.t Fiber.Ivar.t
+  | (* Waiting for the propagation of inotify events to finish before starting a
+       build. *)
+      Waiting_for_inotify_sync of
+      Memo.Invalidation.t * unit Fiber.Ivar.t
+  | (* Running a build *)
+      Building
+  | (* Cancellation requested. Build jobs are immediately rejected in this state *)
+      Restarting_build of
+      Memo.Invalidation.t
+  | (* Shut down requested. No new new builds will start *)
+      Shutting_down
 
 module Handler = struct
   module Event = struct
@@ -539,36 +703,147 @@ module Handler = struct
   type t = Config.t -> Event.t -> unit
 end
 
+module Alarm_clock : sig
+  type t
+
+  val create : Event.Queue.t -> frequency:float -> t
+
+  type alarm
+
+  val await : alarm -> [ `Finished | `Cancelled ] Fiber.t
+
+  val cancel : t -> alarm -> unit
+
+  val sleep : t -> float -> alarm
+
+  val close : t -> unit
+end = struct
+  type alarm = [ `Finished | `Cancelled ] Fiber.Ivar.t
+
+  type t =
+    { events : Event.Queue.t
+    ; mutex : Mutex.t
+    ; frequency : float
+    ; mutable alarms : (float * [ `Finished | `Cancelled ] Fiber.Ivar.t) list
+    ; mutable active : bool
+    }
+
+  let await = Fiber.Ivar.read
+
+  let cancel t alarm =
+    Mutex.lock t.mutex;
+    let found = ref false in
+    t.alarms <-
+      List.filter t.alarms ~f:(fun (_, alarm') ->
+          let eq = alarm' == alarm in
+          if eq then found := true;
+          not eq);
+    Mutex.unlock t.mutex;
+    if !found then
+      Event.Queue.send_timers_completed t.events
+        [ Fiber.Fill (alarm, `Cancelled) ]
+
+  let polling_loop t () =
+    let rec loop () =
+      match t.active with
+      | false -> ()
+      | true ->
+        let now = Unix.gettimeofday () in
+        let expired, active =
+          List.partition_map t.alarms ~f:(fun (expiration, ivar) ->
+              if now > expiration then
+                Left (Fiber.Fill (ivar, `Finished))
+              else
+                Right (expiration, ivar))
+        in
+        t.alarms <- active;
+        Mutex.unlock t.mutex;
+        (match Nonempty_list.of_list expired with
+        | None -> ()
+        | Some expired -> Event.Queue.send_timers_completed t.events expired);
+        Thread.delay t.frequency;
+        Mutex.lock t.mutex;
+        loop ()
+    in
+    Mutex.lock t.mutex;
+    loop ();
+    t.alarms <- [];
+    Mutex.unlock t.mutex
+
+  let create events ~frequency =
+    let t =
+      { events; active = true; alarms = []; frequency; mutex = Mutex.create () }
+    in
+    Thread.spawn (polling_loop t);
+    t
+
+  let sleep t duration =
+    Mutex.lock t.mutex;
+    let ivar = Fiber.Ivar.create () in
+    if not t.active then (
+      Mutex.unlock t.mutex;
+      Code_error.raise "cannot schedule timers after close" []
+    );
+    t.alarms <- (duration +. Unix.gettimeofday (), ivar) :: t.alarms;
+    Mutex.unlock t.mutex;
+    ivar
+
+  let close t =
+    Mutex.lock t.mutex;
+    t.active <- false;
+    Mutex.unlock t.mutex
+end
+
 type t =
   { config : Config.t
+  ; alarm_clock : Alarm_clock.t Lazy.t
   ; mutable status : status
   ; handler : Handler.t
   ; job_throttle : Fiber.Throttle.t
   ; events : Event.Queue.t
   ; process_watcher : Process_watcher.t
+  ; file_watcher : Dune_file_watcher.t option
   }
 
 let t : t Fiber.Var.t = Fiber.Var.create ()
 
 let set x f = Fiber.Var.set t x f
 
+let t_opt () = Fiber.Var.get t
+
 let t () = Fiber.Var.get_exn t
 
 let running_jobs_count t = Event.Queue.pending_jobs t.events
 
-let ignore_for_watch p =
+let yield_if_there_are_pending_events () =
+  t_opt () >>= function
+  | None -> Fiber.return ()
+  | Some t -> Event.Queue.yield_if_there_are_pending_events t.events
+
+let () =
+  Memo.yield_if_there_are_pending_events := yield_if_there_are_pending_events
+
+let ignore_for_watch path =
   let+ t = t () in
-  Event.Queue.ignore_next_file_change_event t.events p
+  match t.file_watcher with
+  | None -> ()
+  | Some file_watcher ->
+    assert (Path.is_in_source_tree path);
+    Dune_file_watcher.ignore_next_file_change_event file_watcher path
+
+exception Build_cancelled
 
 let with_job_slot f =
   let* t = t () in
   let raise_if_cancelled () =
     match t.status with
-    | Restarting_build
+    | Restarting_build _
     | Shutting_down ->
-      raise (Memo.Non_reproducible (Failure "Build cancelled"))
+      raise (Memo.Non_reproducible Build_cancelled)
     | Building -> ()
-    | Waiting_for_file_changes _ ->
+    | Waiting_for_file_changes _
+    | Waiting_for_inotify_sync _
+    | Standing_by _ ->
       (* At this stage, we're not running a build, so we shouldn't be running
          tasks here. *)
       assert false
@@ -592,7 +867,10 @@ let global = ref None
 
 let got_signal signal =
   if !Log.verbose then
-    Log.info [ Pp.textf "Got signal %s, exiting." (Signal.name signal) ]
+    match (signal : Shutdown_reason.t) with
+    | Shutdown -> Log.info [ Pp.textf "Shutting down." ]
+    | Signal signal ->
+      Log.info [ Pp.textf "Got signal %s, exiting." (Signal.name signal) ]
 
 let filesystem_watcher_terminated () =
   Log.info [ Pp.textf "Filesystem watcher terminated, exiting." ]
@@ -606,7 +884,7 @@ let kill_and_wait_for_all_processes t =
   let saw_signal = ref Ok in
   while Event.Queue.pending_jobs t.events > 0 do
     match Event.Queue.next t.events with
-    | Signal signal ->
+    | Shutdown signal ->
       got_signal signal;
       saw_signal := Got_signal
     | _ -> ()
@@ -615,21 +893,35 @@ let kill_and_wait_for_all_processes t =
 
 let prepare (config : Config.t) ~(handler : Handler.t) =
   let events = Event.Queue.create config.stats in
-  (* The signal watcher must be initialized first so that signals are blocked in
-     all threads. *)
-  Signal_watcher.init events;
-  let process_watcher = Process_watcher.init events in
-  let t =
-    { status = Building
-    ; job_throttle = Fiber.Throttle.create config.concurrency
-    ; process_watcher
-    ; events
-    ; config
-    ; handler
-    }
-  in
-  global := Some t;
-  t
+  (* We return the scheduler in chunks to resolve the dependency cycle
+     (scheduler wants to know the file_watcher, file_watcher wants to send
+     events to scheduler) *)
+  ( events
+  , fun ~file_watcher ->
+      (* The signal watcher must be initialized first so that signals are
+         blocked in all threads. *)
+      Signal_watcher.init events;
+      let process_watcher = Process_watcher.init events in
+      let t =
+        { status =
+            (* Slightly weird initialization happening here: for polling mode we
+               initialize in "Building" state, immediately switch to Standing_by
+               and then back to "Building". It would make more sense to start in
+               "Stand_by" from the start. We can't "just" switch the initial
+               value here because then the non-polling mode would run in
+               "Standing_by" mode, which is even weirder. *)
+            Building
+        ; job_throttle = Fiber.Throttle.create config.concurrency
+        ; process_watcher
+        ; events
+        ; config
+        ; handler
+        ; file_watcher
+        ; alarm_clock = lazy (Alarm_clock.create events ~frequency:0.1)
+        }
+      in
+      global := Some t;
+      t )
 
 module Run_once : sig
   type run_error =
@@ -645,6 +937,29 @@ end = struct
 
   exception Abort of run_error
 
+  let handle_invalidation_events events =
+    let handle_event event =
+      match (event : Event.build_input_change) with
+      | Invalidation invalidation -> invalidation
+      | Fs_event event -> Fs_memo.handle_fs_event event
+      | Sync -> Memo.Invalidation.empty
+    in
+    let invalidation =
+      let events = Nonempty_list.to_list events in
+      List.fold_left events ~init:Memo.Invalidation.empty ~f:(fun acc event ->
+          Memo.Invalidation.combine acc (handle_event event))
+    in
+    match !Memo.incremental_mode_enabled with
+    | true -> invalidation
+    | false ->
+      (* In this mode, we do not assume that all file system dependencies are
+         declared correctly and therefore conservatively require a rebuild.
+
+         The fact that the [events] list is non-empty justifies clearing the
+         caches. *)
+      let (_ : _ Nonempty_list.t) = events in
+      Memo.Invalidation.clear_caches
+
   (** This function is the heart of the scheduler. It makes progress in
       executing fibers by doing the following:
 
@@ -652,55 +967,65 @@ end = struct
       - starting cancellations
       - terminating the scheduler on signals *)
   let rec iter (t : t) =
-    if
-      (match t.status with
-      | Waiting_for_file_changes _ ->
-        (* In polling mode, there are no pending jobs while we are waiting for
-           file changes *)
-        false
-      | _ -> true)
-      && Event.Queue.pending_jobs t.events = 0
-      && (* CR-someday aalekseyev: Deadlock detection is pretty much useless
-            when RPC is in use because there's pretty much always a "pending"
-            call to [accept] that makes this condition false. We should probably
-            make deadlock detection more aggressive by not taking into account
-            the Ivars waiting for user input (such as [accept]) if the build is
-            in progress. *)
-      Event.Queue.pending_worker_tasks t.events = 0
-    then
-      raise
-        (Abort
-           (Exn
-              (Exn_with_backtrace.try_with_never_returns (fun () ->
-                   Code_error.raise "Deadlock" []))))
-    else (
-      t.handler t.config Tick;
-      match Event.Queue.next t.events with
-      | Job_completed (job, proc_info) -> Fiber.Fill (job.ivar, proc_info)
-      | File_system_changed events -> (
-        match (Fs_memo.handle events : Fs_memo.Rebuild_required.t) with
-        | No -> iter t (* Ignore the event *)
-        | Yes -> (
-          match t.status with
-          | Shutting_down
-          | Restarting_build ->
-            (* We're already cancelling build, so file change events don't
-               matter *)
+    t.handler t.config Tick;
+    match Event.Queue.next t.events with
+    | Job_completed (job, proc_info) -> Fiber.Fill (job.ivar, proc_info)
+    | File_watcher_task job ->
+      let events = job () in
+      Event.Queue.send_file_watcher_events t.events events;
+      iter t
+    | Build_inputs_changed events -> (
+      let invalidation =
+        (handle_invalidation_events events : Memo.Invalidation.t)
+      in
+      let have_sync =
+        List.exists (Nonempty_list.to_list events) ~f:(function
+          | (Sync : Event.build_input_change) -> true
+          | _ -> false)
+      in
+      match Memo.Invalidation.is_empty invalidation && not have_sync with
+      | true -> iter t (* Ignore the event *)
+      | false -> (
+        match t.status with
+        | Shutting_down -> iter t
+        | Restarting_build prev_invalidation ->
+          t.status <-
+            Restarting_build
+              (Memo.Invalidation.combine prev_invalidation invalidation);
+          (* We're already cancelling build, so file change events don't matter *)
+          iter t
+        | Standing_by prev_invalidation ->
+          t.status <-
+            Standing_by
+              (Memo.Invalidation.combine prev_invalidation invalidation);
+          iter t
+        | Building ->
+          t.handler t.config Build_interrupted;
+          t.status <- Restarting_build invalidation;
+          Process_watcher.killall t.process_watcher Sys.sigkill;
+          iter t
+        | Waiting_for_file_changes ivar -> Fill (ivar, invalidation)
+        | Waiting_for_inotify_sync (prev_invalidation, ivar) ->
+          let invalidation =
+            Memo.Invalidation.combine prev_invalidation invalidation
+          in
+          if have_sync then (
+            t.status <- Standing_by invalidation;
+            Fill (ivar, ())
+          ) else (
+            t.status <- Waiting_for_inotify_sync (invalidation, ivar);
             iter t
-          | Building ->
-            t.handler t.config Build_interrupted;
-            t.status <- Restarting_build;
-            Process_watcher.killall t.process_watcher Sys.sigkill;
-            iter t
-          | Waiting_for_file_changes ivar -> Fill (ivar, File_system_changed)))
-      | Worker_task fill -> fill
-      | File_system_watcher_terminated ->
-        filesystem_watcher_terminated ();
-        raise (Abort Already_reported)
-      | Signal signal ->
-        got_signal signal;
-        raise (Abort Already_reported)
-    )
+          )))
+    | Timer fill
+    | Worker_task fill ->
+      fill
+    | File_system_watcher_terminated ->
+      filesystem_watcher_terminated ();
+      raise (Abort Already_reported)
+    | Shutdown signal ->
+      got_signal signal;
+      raise (Abort Already_reported)
+    | Yield ivar -> Fill (ivar, ())
 
   let run t f : _ result =
     let fiber =
@@ -756,84 +1081,163 @@ module Worker = struct
       match res with
       | Error exn -> Error (`Exn exn)
       | Ok e -> Ok e)
+
+  let task_exn t ~f =
+    let+ res = task t ~f in
+    match res with
+    | Ok a -> a
+    | Error `Stopped ->
+      Code_error.raise "Scheduler.Worker.task_exn: worker stopped" []
+    | Error (`Exn e) -> Exn_with_backtrace.reraise e
 end
 
 module Run = struct
+  exception Build_cancelled = Build_cancelled
+
   type file_watcher =
-    | Detect_external
+    | Automatic
     | No_watcher
 
   module Event_queue = Event.Queue
   module Event = Handler.Event
 
-  let poll step =
-    let* t = t () in
-    let rec loop () : unit Fiber.t =
-      t.status <- Building;
-      let* res =
-        let on_error exn =
-          (match t.status with
-          | Building -> Dune_util.Report_error.report exn
-          | Shutting_down
-          | Restarting_build ->
-            ()
-          | Waiting_for_file_changes _ ->
-            (* We are inside a build, so we aren't waiting for a file change
-               event *)
-            assert false);
-          Fiber.return ()
-        in
-        Fiber.map_reduce_errors (module Monoid.Unit) ~on_error step
+  module Build_outcome = struct
+    type t =
+      | Shutdown
+      | Cancelled_due_to_file_changes
+      | Finished of (unit, [ `Already_reported ]) Result.t
+  end
+
+  let poll_iter t step =
+    (match t.status with
+    | Standing_by invalidations ->
+      if false then
+        Console.print
+          [ Pp.text "Invalidating:"
+          ; Dyn.pp (Memo.Invalidation.to_dyn invalidations)
+          ];
+      Memo.reset invalidations
+    | _ ->
+      Code_error.raise "[poll_iter]: expected the build status [Standing_by]" []);
+    t.status <- Building;
+    let+ res = step in
+    match t.status with
+    | Waiting_for_file_changes _
+    | Waiting_for_inotify_sync _
+    | Standing_by _ ->
+      (* We just finished a build, so there's no way this was set *)
+      assert false
+    | Shutting_down -> Build_outcome.Shutdown
+    | Restarting_build invalidations ->
+      t.status <- Standing_by invalidations;
+      Build_outcome.Cancelled_due_to_file_changes
+    | Building ->
+      let build_result : Handler.Event.build_result =
+        match res with
+        | Error `Already_reported -> Failure
+        | Ok _ -> Success
       in
-      match t.status with
-      | Waiting_for_file_changes _ ->
-        (* We just finished a build, so there's no way this was set *)
-        assert false
-      | Shutting_down -> Fiber.return ()
-      | Restarting_build ->
-        Memo.reset ();
-        loop ()
-      | Building -> (
-        let build_result : Handler.Event.build_result =
-          match res with
-          | Error _ -> Failure
-          | Ok _ -> Success
-        in
-        t.handler t.config (Build_finish build_result);
-        let ivar = Fiber.Ivar.create () in
-        t.status <- Waiting_for_file_changes ivar;
-        let* next = Fiber.Ivar.read ivar in
-        match next with
-        | Shutdown_requested -> Fiber.return ()
-        | File_system_changed -> (
-          Memo.reset ();
-          t.handler t.config Source_files_changed;
-          match res with
-          | Error _
-          | Ok `Continue ->
-            loop ()
-          | Ok `Stop -> Fiber.return ()))
+      t.handler t.config (Build_finish build_result);
+      t.status <- Standing_by Memo.Invalidation.empty;
+      Build_outcome.Finished res
+
+  type handle_outcome_result =
+    | Shutdown
+    | Proceed
+
+  type step = (unit, [ `Already_reported ]) Result.t Fiber.t
+
+  let poll_gen ~get_build_request =
+    let* t = t () in
+    (match t.status with
+    | Building -> t.status <- Standing_by Memo.Invalidation.empty
+    | _ -> assert false);
+    let rec loop () =
+      let* (build_request : step), handle_outcome = get_build_request t in
+      let* res = poll_iter t build_request in
+      let* next = handle_outcome res in
+      match next with
+      | Shutdown -> Fiber.return ()
+      | Proceed -> loop ()
     in
     loop ()
+
+  let poll step =
+    poll_gen ~get_build_request:(fun (t : t) ->
+        let handle_outcome (outcome : Build_outcome.t) =
+          match outcome with
+          | Shutdown -> Fiber.return Shutdown
+          | Cancelled_due_to_file_changes ->
+            t.handler t.config Source_files_changed;
+            Fiber.return Proceed
+          | Finished _res ->
+            let ivar = Fiber.Ivar.create () in
+            t.status <- Waiting_for_file_changes ivar;
+            let* invalidations = Fiber.Ivar.read ivar in
+            t.status <- Standing_by invalidations;
+            t.handler t.config Source_files_changed;
+            Fiber.return Proceed
+        in
+        Fiber.return (step, handle_outcome))
+
+  let wait_for_inotify_sync t =
+    let ivar = Fiber.Ivar.create () in
+    match t.status with
+    | Standing_by invalidation ->
+      t.status <- Waiting_for_inotify_sync (invalidation, ivar);
+      Fiber.Ivar.read ivar
+    | _ -> assert false
+
+  let do_inotify_sync t =
+    Dune_file_watcher.emit_sync ();
+    Console.print [ Pp.text "waiting for inotify sync" ];
+    let+ () = wait_for_inotify_sync t in
+    Console.print [ Pp.text "waited for inotify sync" ]
+
+  module Build_outcome_for_rpc = struct
+    type t =
+      | Success
+      | Failure
+  end
+
+  let poll_passive ~get_build_request =
+    poll_gen ~get_build_request:(fun t ->
+        let* request, response_ivar = get_build_request in
+        let+ () = do_inotify_sync t in
+        let handle_outcome (res : Build_outcome.t) =
+          let+ () =
+            Fiber.Ivar.fill response_ivar
+              (match res with
+              | Finished (Ok _) -> Build_outcome_for_rpc.Success
+              | Finished (Error _)
+              | Cancelled_due_to_file_changes
+              | Shutdown ->
+                Build_outcome_for_rpc.Failure)
+          in
+          Proceed
+        in
+        (request, handle_outcome))
 
   exception Shutdown_requested
 
   let go config ?(file_watcher = No_watcher)
       ~(on_event : Config.t -> Handler.Event.t -> unit) run =
-    let t = prepare config ~handler:on_event in
-    let watcher =
+    let events, prepare = prepare config ~handler:on_event in
+    let file_watcher =
       match file_watcher with
       | No_watcher -> None
-      | Detect_external ->
+      | Automatic ->
         Some
           (Dune_file_watcher.create_default
              ~scheduler:
                { spawn_thread = Thread.spawn
-               ; thread_safe_send_events =
-                   (fun files_changed ->
-                     Event_queue.send_file_watcher_events t.events files_changed)
+               ; thread_safe_send_emit_events_job =
+                   (fun job -> Event_queue.send_file_watcher_task events job)
                })
     in
+    let t = prepare ~file_watcher in
+    let initial_invalidation = Fs_memo.init ~dune_file_watcher:file_watcher in
+    Memo.reset initial_invalidation;
     let result =
       match Run_once.run_and_cleanup t run with
       | Ok a -> Result.Ok a
@@ -848,26 +1252,55 @@ module Run = struct
       | Error (Exn exn_with_bt) ->
         Error (exn_with_bt.exn, Some exn_with_bt.backtrace)
     in
-    Option.iter watcher ~f:(fun watcher ->
-        ignore (wait_for_process t (Dune_file_watcher.pid watcher) : _ Fiber.t));
+    Option.iter file_watcher ~f:(fun watcher ->
+        match Dune_file_watcher.shutdown watcher with
+        | `Kill pid -> ignore (wait_for_process t pid : _ Fiber.t)
+        | `No_op -> ());
     ignore (kill_and_wait_for_all_processes t : saw_signal);
+    if Lazy.is_val t.alarm_clock then
+      Alarm_clock.close (Lazy.force t.alarm_clock);
     match result with
     | Ok a -> a
     | Error (exn, None) -> Exn.raise exn
     | Error (exn, Some bt) -> Exn.raise_with_backtrace exn bt
 end
 
-let wait_for_process pid =
-  let* t = t () in
-  wait_for_process t pid
-
 let shutdown () =
-  let* t = t () in
-  let fill_file_changes =
-    match t.status with
-    | Waiting_for_file_changes ivar -> Fiber.Ivar.fill ivar Shutdown_requested
-    | _ -> Fiber.return ()
-  in
+  let+ t = t () in
   t.status <- Shutting_down;
-  Process_watcher.killall t.process_watcher Sys.sigkill;
-  fill_file_changes
+  Event.Queue.send_signal t.events Shutdown
+
+let inject_memo_invalidation invalidation =
+  let* t = t () in
+  Event.Queue.send_invalidation_event t.events invalidation;
+  Fiber.return ()
+
+let wait_for_process_with_timeout t pid ~timeout =
+  Fiber.of_thunk (fun () ->
+      let sleep = Alarm_clock.sleep (Lazy.force t.alarm_clock) timeout in
+      Fiber.fork_and_join_unit
+        (fun () ->
+          let+ res = Alarm_clock.await sleep in
+          if res = `Finished && Process_watcher.is_running t.process_watcher pid
+          then
+            Unix.kill (Pid.to_int pid) Sys.sigkill)
+        (fun () ->
+          let+ res = wait_for_process t pid in
+          Alarm_clock.cancel (Lazy.force t.alarm_clock) sleep;
+          res))
+
+let wait_for_process ?timeout pid =
+  let* t = t () in
+  match timeout with
+  | None -> wait_for_process t pid
+  | Some timeout -> wait_for_process_with_timeout t pid ~timeout
+
+let sleep duration =
+  let* t = t () in
+  let alarm_clock = Lazy.force t.alarm_clock in
+  let+ res = Alarm_clock.await (Alarm_clock.sleep alarm_clock duration) in
+  match res with
+  | `Finished -> ()
+  | `Cancelled ->
+    (* cancellation mechanism isn't exposed to the user *)
+    assert false

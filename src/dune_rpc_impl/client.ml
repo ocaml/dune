@@ -1,5 +1,5 @@
 include
-  Dune_rpc_private.Client
+  Dune_rpc_private.Client.Make
     (struct
       include Fiber
 

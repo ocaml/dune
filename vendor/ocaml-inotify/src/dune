@@ -1,0 +1,5 @@
+(library
+ (name ocaml_inotify)
+ (wrapped   true)
+ (foreign_stubs (language c) (names inotify_stubs))
+ (flags     (-w -3-6-27-32-33-35-50)))

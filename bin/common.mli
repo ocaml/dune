@@ -10,7 +10,7 @@ val stats : t -> Dune_stats.t option
 
 val print_metrics : t -> bool
 
-val watch : t -> bool
+val watch : t -> Dune_engine.Watch_mode_config.t
 
 val file_watcher : t -> Dune_engine.Scheduler.Run.file_watcher
 

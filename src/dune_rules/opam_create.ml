@@ -42,6 +42,21 @@ let default_build_command =
   ]
 ]
 |}))
+  and from_2_9 =
+    lazy
+      (Opam_file.parse_value
+         (Lexbuf.from_string ~fname:"<internal>"
+            {|
+[
+  [ "dune" "subst" ] {dev}
+  [ "dune" "build" "-p" name "-j" jobs "--promote-install-files" "false"
+      "@install"
+      "@runtest" {with-test}
+      "@doc" {with-doc}
+  ]
+  [ "dune" "install" "-p" name "--create-install-files" name ]
+]
+|}))
   in
   fun project ->
     Lazy.force
@@ -49,8 +64,10 @@ let default_build_command =
         before_1_11
       else if Dune_project.dune_version project < (2, 7) then
         from_1_11_before_2_7
+      else if Dune_project.dune_version project < (2, 9) then
+        from_2_7
       else
-        from_2_7)
+        from_2_9)
 
 let package_fields
     { Package.synopsis
@@ -271,11 +288,11 @@ let add_rule sctx ~project ~pkg =
   in
   let deps = Path.Set.singleton (Path.build opam_path) in
   Memo.Build.sequential_iter aliases ~f:(fun alias ->
-      Rules.Produce.Alias.add_static_deps alias deps)
+      Rules.Produce.Alias.add_deps alias (Action_builder.path_set deps))
 
 let add_rules sctx ~dir =
   let project = Super_context.find_scope_by_dir sctx dir |> Scope.project in
-  Memo.Build.if_ (Dune_project.generate_opam_files project) (fun () ->
+  Memo.Build.when_ (Dune_project.generate_opam_files project) (fun () ->
       let packages = Dune_project.packages project in
       Package.Name.Map_traversals.parallel_iter packages
         ~f:(fun _name (pkg : Package.t) -> add_rule sctx ~project ~pkg))

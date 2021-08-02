@@ -15,7 +15,7 @@ module Session = struct
   type 'a t =
     { queries : Packet.Query.t Fiber.Stream.In.t
     ; id : Id.t
-    ; send : Packet.Reply.t option -> unit Fiber.t
+    ; send : Packet.Reply.t list option -> unit Fiber.t
     ; mutable state : 'a state
     }
 
@@ -46,7 +46,7 @@ module Session = struct
     let call =
       { Call.params = Conv.to_sexp decl.req n; method_ = decl.method_ }
     in
-    t.send (Some (Notification call))
+    t.send (Some [ Notification call ])
 
   let request_close t = t.send None
 
@@ -155,7 +155,7 @@ module H = struct
           ~message:"Notification unexpected. You must initialize first."
       | Request (id, call) -> (
         match Initialize.Request.of_call ~version:t.version call with
-        | Error e -> session.send (Some (Response (id, Error e)))
+        | Error e -> session.send (Some [ Response (id, Error e) ])
         | Ok init ->
           if Initialize.Request.version init > t.version then
             let response =
@@ -169,7 +169,7 @@ module H = struct
                 (Response.Error.create ~payload ~kind:Version_error
                    ~message:"Unsupported version" ())
             in
-            session.send (Some (Response (id, response)))
+            session.send (Some [ Response (id, response) ])
           else
             let* a = t.on_init session init in
             let () =
@@ -181,7 +181,7 @@ module H = struct
                   (Initialize.Response.to_response
                      (Initialize.Response.create ()))
               in
-              session.send (Some (Response (id, response)))
+              session.send (Some [ Response (id, response) ])
             in
             let* () =
               Fiber.Stream.In.parallel_iter session.queries
@@ -211,7 +211,7 @@ module H = struct
                     Event.emit
                       (Message { kind; meth_; stage = Stop })
                       stats session.id;
-                    session.send (Some (Response (id, response))))
+                    session.send (Some [ Response (id, response) ]))
             in
             let* () = Session.request_close session in
             let+ () = t.on_terminate session in
@@ -396,7 +396,7 @@ let create_sequence f ~version conv =
 module Make (S : sig
   type t
 
-  val write : t -> Sexp.t option -> unit Fiber.t
+  val write : t -> Sexp.t list option -> unit Fiber.t
 
   val read : t -> Sexp.t option Fiber.t
 end) =
@@ -406,8 +406,8 @@ struct
   let serve sessions stats server =
     Fiber.Stream.In.parallel_iter sessions ~f:(fun session ->
         let session =
-          let send packet =
-            Option.map packet ~f:(Conv.to_sexp Packet.Reply.sexp)
+          let send packets =
+            Option.map packets ~f:(List.map ~f:(Conv.to_sexp Packet.Reply.sexp))
             |> S.write session
           in
           let queries =
@@ -419,15 +419,29 @@ struct
         in
         let id = session#id in
         Event.emit (Session Start) stats id;
-        let+ res = Fiber.collect_errors (fun () -> session#start) in
+        let+ res =
+          Fiber.map_reduce_errors
+            (module Monoid.Unit)
+            (fun () -> session#start)
+            ~on_error:(fun exn ->
+              (* TODO report errors in dune_stats as well *)
+              let msg =
+                User_error.make
+                  [ Pp.textf "encountered error serving rpc client (id %d)"
+                      (Session.Id.to_int id)
+                  ; Exn_with_backtrace.pp exn
+                  ]
+              in
+              let e = { exn with exn = User_error.E (msg, []) } in
+              Dune_util.Report_error.report e;
+              Fiber.return ())
+        in
         Event.emit (Session Stop) stats id;
         match res with
         | Ok () -> ()
-        | Error exns ->
-          Dune_util.Log.info
-            [ Pp.text "fatal error when serving rpc client"
-            ; Pp.concat_map ~sep:Pp.newline exns ~f:Exn_with_backtrace.pp
-            ])
+        | Error () ->
+          (* already reported above *)
+          ())
 end
 
 module Handler = H.Builder

@@ -15,7 +15,7 @@ let resolve_link ~dir path file =
     User_error.raise
       [ Pp.textf "Unable to resolve symlink %s" (Path.to_string path) ]
 
-let print ?(skip_trailing_cr = Sys.win32) path1 path2 =
+let print ?(skip_trailing_cr = Sys.win32) annot path1 path2 =
   let dir, file1, file2 =
     match
       ( Path.extract_build_context_dir_maybe_sandboxed path1
@@ -31,7 +31,7 @@ let print ?(skip_trailing_cr = Sys.win32) path1 path2 =
   in
   let file1, file2 = Path.(to_string file1, to_string file2) in
   let fallback () =
-    User_error.raise ~loc
+    User_error.raise ~loc ~annots:[ annot ]
       [ Pp.textf "Files %s and %s differ."
           (Path.to_string_maybe_quoted (Path.drop_optional_sandbox_root path1))
           (Path.to_string_maybe_quoted (Path.drop_optional_sandbox_root path2))
@@ -73,7 +73,7 @@ let print ?(skip_trailing_cr = Sys.win32) path1 path2 =
         (String.quote_for_shell file2)
     in
     let* () = run_process sh [ arg; cmd ] in
-    User_error.raise ~loc
+    User_error.raise ~loc ~annots:[ annot ]
       [ Pp.textf "command reported no differences: %s"
           (if Path.is_root dir then
             cmd

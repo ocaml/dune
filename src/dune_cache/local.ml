@@ -192,46 +192,67 @@ module Artifacts = struct
         let result = store_metadata ~mode ~rule_digest ~metadata:[] artifacts in
         Store_artifacts_result.of_store_result ~artifacts result)
 
-  let restore =
-    let exception Metadata_entry_missing in
-    fun ~mode ~rule_digest ~target_dir ->
-      Restore_result.bind (list ~rule_digest)
-        ~f:(fun (entries : Metadata_entry.t list) ->
-          match
-            List.map entries
-              ~f:(fun { Metadata_entry.file_name; file_digest } ->
-                let path_in_build_dir =
-                  Path.Build.relative target_dir file_name
-                in
-                Path.Build.unlink_no_err path_in_build_dir;
-                let path_in_cache = file_path ~file_digest in
-                let restore () =
-                  let path_in_build_dir = Path.build path_in_build_dir in
-                  match (mode : Dune_cache_storage.Mode.t) with
-                  | Hardlink -> (
-                    try
-                      link_even_if_there_are_too_many_links_already
-                        ~src:path_in_cache ~dst:path_in_build_dir
-                    with
-                    | Unix.Unix_error (Unix.ENOENT, _, _) ->
-                      raise Metadata_entry_missing)
-                  | Copy -> (
-                    try
-                      Io.copy_file ~src:path_in_cache ~dst:path_in_build_dir ()
-                    with
-                    | Sys_error _ -> raise Metadata_entry_missing)
-                in
-                restore ();
-                (path_in_build_dir, file_digest))
-          with
-          | artifacts -> Restored artifacts
-          | exception Metadata_entry_missing ->
-            (* We reach this point when one of the entries mentioned in the
-               metadata is missing. The trimmer will eventually delete such
-               "broken" metadata, so it is reasonable to consider that this
-               [rule_digest] is not found in the cache. *)
-            Not_found_in_cache
-          | exception e -> Error e)
+  let rec fold_list_result l ~init ~f =
+    match l with
+    | [] -> Ok init
+    | x :: xs -> (
+      match f init x with
+      | Ok acc -> fold_list_result xs ~init:acc ~f
+      | Error e -> Error e)
+
+  let create_all_or_nothing ~create ~destroy list =
+    fold_list_result list ~init:[] ~f:(fun acc x ->
+        match create x with
+        | Error e ->
+          List.iter acc ~f:destroy;
+          Error e
+        | Ok v -> Ok (v :: acc))
+    |> Result.map ~f:List.rev
+
+  type file_restore_error =
+    | Not_found
+    | Other of exn
+
+  let restore ~mode ~rule_digest ~target_dir =
+    Restore_result.bind (list ~rule_digest)
+      ~f:(fun (entries : Metadata_entry.t list) ->
+        match
+          create_all_or_nothing entries
+            ~destroy:(fun (path_in_build_dir, _digest) ->
+              Path.Build.unlink_no_err path_in_build_dir)
+            ~create:(fun { Metadata_entry.file_name; file_digest } ->
+              let path_in_build_dir =
+                Path.Build.relative target_dir file_name
+              in
+              let path_in_cache = file_path ~file_digest in
+              match (mode : Dune_cache_storage.Mode.t) with
+              | Hardlink -> (
+                match
+                  link_even_if_there_are_too_many_links_already
+                    ~src:path_in_cache
+                    ~dst:(Path.build path_in_build_dir)
+                with
+                | exception Unix.Unix_error (Unix.ENOENT, _, _) ->
+                  Error (Not_found : file_restore_error)
+                | exception exn -> Error (Other exn)
+                | () -> Ok (path_in_build_dir, file_digest))
+              | Copy -> (
+                match
+                  Io.copy_file ~src:path_in_cache
+                    ~dst:(Path.build path_in_build_dir)
+                    ()
+                with
+                | exception Sys_error _ -> Error Not_found
+                | () -> Ok (path_in_build_dir, file_digest)))
+        with
+        | Ok artifacts -> Restored artifacts
+        | Error Not_found ->
+          (* We reach this point when one of the entries mentioned in the
+             metadata is missing. The trimmer will eventually delete such
+             "broken" metadata, so it is reasonable to consider that this
+             [rule_digest] is not found in the cache. *)
+          Not_found_in_cache
+        | Error (Other e) -> Error e)
 end
 
 let store_artifacts = Artifacts.store

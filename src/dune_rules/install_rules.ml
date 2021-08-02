@@ -95,7 +95,7 @@ end = struct
     let loc = lib.buildable.loc in
     let ctx = Super_context.context sctx in
     let lib_config = ctx.lib_config in
-    let info = Dune_file.Library.to_lib_info lib ~dir ~lib_config in
+    let* info = Dune_file.Library.to_lib_info lib ~dir ~lib_config in
     let obj_dir = Lib_info.obj_dir info in
     let make_entry section ?sub_dir ?dst fn =
       ( Some loc
@@ -214,31 +214,32 @@ end = struct
                (Dune_file.Library.best_name lib))
       | Dune_file.Documentation _ -> Memo.Build.return true
       | Dune_file.Install { enabled_if; _ } ->
-        Memo.Build.return (Expander.eval_blang expander enabled_if)
+        Expander.eval_blang expander enabled_if
       | Dune_file.Plugin _ -> Memo.Build.return true
-      | Dune_file.Executables ({ install_conf = Some _; _ } as exes) ->
-        if not (Expander.eval_blang expander exes.enabled_if) then
-          Memo.Build.return false
-        else if not exes.optional then
-          Memo.Build.return true
-        else
-          let+ compile_info =
-            let dune_version =
-              Scope.project scope |> Dune_project.dune_version
+      | Dune_file.Executables ({ install_conf = Some _; _ } as exes) -> (
+        Expander.eval_blang expander exes.enabled_if >>= function
+        | false -> Memo.Build.return false
+        | true ->
+          if not exes.optional then
+            Memo.Build.return true
+          else
+            let+ compile_info =
+              let dune_version =
+                Scope.project scope |> Dune_project.dune_version
+              in
+              let+ pps =
+                Resolve.read_memo_build
+                  (Preprocess.Per_module.with_instrumentation
+                     exes.buildable.preprocess
+                     ~instrumentation_backend:
+                       (Lib.DB.instrumentation_backend (Scope.libs scope)))
+                >>| Preprocess.Per_module.pps
+              in
+              Lib.DB.resolve_user_written_deps_for_exes (Scope.libs scope)
+                exes.names exes.buildable.libraries ~pps ~dune_version
+                ~allow_overlaps:exes.buildable.allow_overlapping_dependencies
             in
-            let+ pps =
-              Resolve.read_memo_build
-                (Preprocess.Per_module.with_instrumentation
-                   exes.buildable.preprocess
-                   ~instrumentation_backend:
-                     (Lib.DB.instrumentation_backend (Scope.libs scope)))
-              >>| Preprocess.Per_module.pps
-            in
-            Lib.DB.resolve_user_written_deps_for_exes (Scope.libs scope)
-              exes.names exes.buildable.libraries ~pps ~dune_version
-              ~allow_overlaps:exes.buildable.allow_overlapping_dependencies
-          in
-          Resolve.is_ok (Lib.Compile.direct_requires compile_info)
+            Resolve.is_ok (Lib.Compile.direct_requires compile_info))
       | Coq_stanza.Theory.T d -> Memo.Build.return (Option.is_some d.package)
       | _ -> Memo.Build.return false
     in
@@ -323,20 +324,19 @@ end = struct
                 | Dune_file.Install i
                 | Dune_file.Executables { install_conf = Some i; _ } ->
                   let path_expander =
-                    File_binding.Unexpanded.expand_static ~dir
-                      ~f:(Expander.Static.expand_str expander)
+                    File_binding.Unexpanded.expand ~dir
+                      ~f:(Expander.No_deps.expand_str expander)
                   in
                   let section = i.section in
-                  Memo.Build.return
-                    (List.map i.files ~f:(fun unexpanded ->
-                         let fb = path_expander unexpanded in
-                         let loc = File_binding.Expanded.src_loc fb in
-                         let src = File_binding.Expanded.src fb in
-                         let dst = File_binding.Expanded.dst fb in
-                         ( Some loc
-                         , Install.Entry.make_with_site section
-                             (Super_context.get_site_of_packages sctx)
-                             src ?dst )))
+                  Memo.Build.List.map i.files ~f:(fun unexpanded ->
+                      let+ fb = path_expander unexpanded in
+                      let loc = File_binding.Expanded.src_loc fb in
+                      let src = File_binding.Expanded.src fb in
+                      let dst = File_binding.Expanded.dst fb in
+                      ( Some loc
+                      , Install.Entry.make_with_site section
+                          (Super_context.get_site_of_packages sctx)
+                          src ?dst ))
                 | Dune_file.Library lib ->
                   let sub_dir = Dune_file.Library.sub_dir lib in
                   let* dir_contents = Dir_contents.get sctx ~dir in
@@ -375,7 +375,7 @@ end = struct
               each section. It feels like we should just do this here once and
               for all. *)
            List.sort entries ~compare:(fun (_, a) (_, b) ->
-               Install.Entry.compare a b))
+               Install.Entry.compare Path.Build.compare a b))
 
   let stanzas_to_entries =
     let memo =
@@ -734,7 +734,7 @@ let symlink_installed_artifacts_to_build_install sctx
         Super_context.add_rule sctx ~loc ~dir:ctx.build_dir
           (Action_builder.symlink ~src:(Path.build entry.src) ~dst)
       in
-      Install.Entry.set_src entry dst)
+      Install.Entry.set_src entry (Path.build dst))
 
 let promote_install_file (ctx : Context.t) =
   !Clflags.promote_install_files
@@ -829,9 +829,7 @@ let install_rules sctx (package : Package.t) =
   in
   let* () =
     let context = Context.build_context ctx in
-    let target_alias =
-      Build_system.Alias.package_install ~context ~pkg:package
-    in
+    let target_alias = Alias.package_install ~context ~pkg:package in
     let open Action_builder.O in
     Rules.Produce.Alias.add_deps target_alias
       (Action_builder.dyn_deps
@@ -846,8 +844,7 @@ let install_rules sctx (package : Package.t) =
                        (Super_context.packages sctx)
                        name
                    in
-                   Build_system.Alias.package_install ~context ~pkg |> Dep.alias)
-          )))
+                   Alias.package_install ~context ~pkg |> Dep.alias) )))
   in
   let action =
     let install_file =
@@ -907,8 +904,8 @@ let memo =
       let path = Package_paths.build_dir ctx package in
       let install_alias = Alias.install ~dir:path in
       let install_file = Path.relative (Path.build path) install_fn in
-      Rules.Produce.Alias.add_static_deps install_alias
-        (Path.Set.singleton install_file)
+      Rules.Produce.Alias.add_deps install_alias
+        (Action_builder.path install_file)
     else
       Memo.Build.return ()
   in

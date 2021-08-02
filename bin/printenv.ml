@@ -50,6 +50,7 @@ let term =
   Scheduler.go ~common ~config (fun () ->
       let open Fiber.O in
       let* setup = Import.Main.setup () in
+      let* setup = Memo.Build.run setup in
       let dir = Path.of_string dir in
       let checked = Util.check_path setup.contexts dir in
       let request =
@@ -75,7 +76,11 @@ let term =
             User_error.raise
               [ Pp.text "Environment is not defined in install dirs" ])
       in
-      Build_system.run (fun () -> Build_system.build request) >>| function
+      Build_system.run_exn (fun () ->
+          let open Memo.Build.O in
+          let+ res, _facts = Action_builder.run request Eager in
+          res)
+      >>| function
       | [ (_, env) ] -> Format.printf "%a" (pp ~fields) env
       | l ->
         List.iter l ~f:(fun (name, env) ->

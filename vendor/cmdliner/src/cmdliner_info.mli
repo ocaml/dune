@@ -1,7 +1,7 @@
 (*---------------------------------------------------------------------------
    Copyright (c) 2011 Daniel C. Bünzli. All rights reserved.
    Distributed under the ISC license, see terms at the end of the file.
-   cmdliner v1.0.4-27-gb4f5656
+   cmdliner v1.0.4-31-gb5d6161
   ---------------------------------------------------------------------------*)
 
 (** Terms, argument, env vars information.
@@ -56,6 +56,7 @@ val arg_opt_names : arg -> string list (* has dashes *)
 val arg_opt_name_sample : arg -> string (* warning must be an opt arg *)
 val arg_opt_kind : arg -> opt_kind
 val arg_pos : arg -> pos_kind
+val arg_alias : arg -> string -> string option -> (string list, string) Result.t
 
 val arg_make_req : arg -> arg
 val arg_make_all_opts : arg -> arg
@@ -63,6 +64,7 @@ val arg_make_opt : absent:arg_absence -> kind:opt_kind -> arg -> arg
 val arg_make_opt_all : absent:arg_absence -> kind:opt_kind -> arg -> arg
 val arg_make_pos : pos:pos_kind -> arg -> arg
 val arg_make_pos_abs : absent:arg_absence -> pos:pos_kind -> arg -> arg
+val arg_aliases : aliases:(string -> string option -> (string list, string) Result.t) -> arg -> arg
 
 val arg_is_opt : arg -> bool
 val arg_is_pos : arg -> bool

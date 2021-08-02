@@ -68,11 +68,12 @@ We also check that we can pass arguments to the ppx.
   > (executable
   >  (name main)
   >  (modules main)
+  >  (preprocess (pps trivial.ppx))
   >  (instrumentation (backend hello -place Spain)))
   > EOF
   $ dune build --instrument-with hello
-  File "dune", line 4, characters 33-39:
-  4 |  (instrumentation (backend hello -place Spain)))
+  File "dune", line 5, characters 33-39:
+  5 |  (instrumentation (backend hello -place Spain)))
                                        ^^^^^^
   Error: The possibility to pass arguments to instrumentation backends is only
   available since version 2.8 of the dune language. Please update your
@@ -85,6 +86,13 @@ We also check that we can pass arguments to the ppx.
   $ dune build --instrument-with hello
   $ _build/default/main.exe
   Hello from Spain (<none>)!
+
+Check that we do not pass the instrumentation flags when the instrumentation is
+disabled. If the flags were passed with the instrumentation disabled, the
+following command would fail (as the flags would be passed to the "trivial"
+ppx).
+
+  $ dune build
 
 We also check that we can declare dependencies to the ppx.
 
@@ -101,8 +109,8 @@ We also check that we can declare dependencies to the ppx.
   File "dune", line 6, characters 65-83:
   6 |  (instrumentation (backend hello -place Spain -file input/input) (deps input/input)))
                                                                        ^^^^^^^^^^^^^^^^^^
-  Error: 'deps' is only available since version 3.0 of the dune language.
-  Please update your dune-project file to have (lang dune 3.0).
+  Error: 'deps' is only available since version 2.9 of the dune language.
+  Please update your dune-project file to have (lang dune 2.9).
   [1]
 
   $ cat >dune-project <<EOF
@@ -177,7 +185,7 @@ Next, we check the backend can be used when it is installed.
   > EOF
   $ cat >installed/main.ml <<EOF
   > EOF
-  $ OCAMLPATH=$PWD/_install/lib dune build --root installed
+  $ OCAMLPATH=$PWD/_install/lib:$OCAMLPATH dune build --root installed
   Entering directory 'installed'
   $ installed/_build/default/main.exe
   Hello from Main!

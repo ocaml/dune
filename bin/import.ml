@@ -32,12 +32,17 @@ include Common.Let_syntax
 
 let in_group (t, info) = (Term.Group.Term t, info)
 
-module Main = struct
+module Main : sig
+  include module type of struct
+    include Dune_rules.Main
+  end
+
+  val setup : unit -> build_system Memo.Build.t Fiber.t
+end = struct
   include Dune_rules.Main
 
   let setup () =
     let open Fiber.O in
-    let* setup = Memo.Build.run (get ()) in
     let* scheduler = Scheduler.t () in
     Console.Status_line.set_live (fun () ->
         let progression = Build_system.get_current_progress () in
@@ -47,7 +52,7 @@ module Main = struct
                 progression.number_of_rules_executed
                 progression.number_of_rules_discovered
                 (Scheduler.running_jobs_count scheduler))));
-    Fiber.return setup
+    Fiber.return (Memo.Build.of_thunk get)
 end
 
 module Scheduler = struct
@@ -69,14 +74,16 @@ module Scheduler = struct
     | Scheduler.Run.Event.Tick -> Console.Status_line.refresh ()
     | Scheduler.Run.Event.Source_files_changed -> maybe_clear_screen dune_config
     | Build_interrupted ->
-      let status_line =
-        Some
-          (Pp.seq
-             (* XXX Why do we print "Had errors"? The user simply edited a file *)
-             (Pp.tag User_message.Style.Error (Pp.verbatim "Had errors"))
-             (Pp.verbatim ", killing current build..."))
-      in
-      Console.Status_line.set_constant status_line
+      Console.Status_line.set_live (fun () ->
+          let progression = Build_system.get_current_progress () in
+          Some
+            (Pp.seq
+               (Pp.tag User_message.Style.Error
+                  (Pp.verbatim "Source files changed"))
+               (Pp.verbatim
+                  (sprintf ", restarting current build... (%u/%u)"
+                     progression.number_of_rules_executed
+                     progression.number_of_rules_discovered))))
     | Build_finish build_result ->
       let message =
         match build_result with
@@ -92,16 +99,13 @@ module Scheduler = struct
     let config = Dune_config.for_scheduler dune_config None stats in
     Scheduler.Run.go config ~on_event:(on_event dune_config) f
 
-  let poll ~(common : Common.t) ~config:dune_config ~every ~finally =
+  let go_with_rpc_server_and_console_status_reporting ~(common : Common.t)
+      ~config:dune_config run =
     let stats = Common.stats common in
-    let rpc_where = Some (Dune_rpc_private.Where.default ()) in
+    let rpc_where = Some (Dune_rpc_impl.Where.default ()) in
     let config = Dune_config.for_scheduler dune_config rpc_where stats in
     let file_watcher = Common.file_watcher common in
     let run =
-      let run () =
-        Scheduler.Run.poll (fun () ->
-            Fiber.finalize every ~finally:(fun () -> Fiber.return (finally ())))
-      in
       match Common.rpc common with
       | None -> run
       | Some rpc ->

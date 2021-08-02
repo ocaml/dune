@@ -37,7 +37,7 @@ type t =
     orig_args : string list
   ; rpc : Dune_rpc_impl.Server.t option
   ; default_target : Arg.Dep.t (* For build & runtest only *)
-  ; watch : bool
+  ; watch : Dune_engine.Watch_mode_config.t
   ; print_metrics : bool
   ; stats_trace_file : string option
   ; always_show_command_line : bool
@@ -46,6 +46,7 @@ type t =
   ; file_watcher : Dune_engine.Scheduler.Run.file_watcher
   ; workspace_config : Dune_rules.Workspace.Clflags.t
   ; cache_debug_flags : Dune_engine.Cache_debug_flags.t
+  ; report_errors_config : Dune_engine.Report_errors_config.t
   }
 
 let capture_outputs t = t.capture_outputs
@@ -176,6 +177,7 @@ let init ?log_file c =
     ~handler:(Option.map c.rpc ~f:Dune_rpc_impl.Server.build_handler);
   Only_packages.Clflags.set c.only_packages;
   Dune_util.Report_error.print_memo_stacks := c.debug_dep_path;
+  Clflags.report_errors_config := c.report_errors_config;
   Clflags.debug_findlib := c.debug_findlib;
   Clflags.debug_backtraces c.debug_backtraces;
   Clflags.debug_artifact_substitution := c.debug_artifact_substitution;
@@ -396,7 +398,10 @@ module Options_implied_by_dash_p = struct
       let doc =
         "Promote the generated <package>.install files to the source tree"
       in
-      Arg.(value & flag & info [ "promote-install-files" ] ~docs ~doc)
+      Arg.(
+        last
+        & opt_all ~vopt:true bool [ false ]
+        & info [ "promote-install-files" ] ~docs ~doc)
     in
     { root
     ; only_packages = No_restriction
@@ -408,36 +413,34 @@ module Options_implied_by_dash_p = struct
     ; promote_install_files
     }
 
-  let release_options =
-    { root = Some "."
-    ; only_packages = No_restriction
-    ; ignore_promoted_rules = true
-    ; config_from_config_file = Dune_config.Partial.empty
-    ; profile = Some Profile.Release
-    ; default_target =
-        Arg.Dep.alias_rec ~dir:Path.Local.root Dune_engine.Alias.Name.install
-    ; always_show_command_line = true
-    ; promote_install_files = true
-    }
-
   let dash_dash_release =
-    let+ (_ : bool) =
-      Arg.(
-        value & flag
-        & info [ "release" ] ~docs ~docv:"PACKAGES"
-            ~doc:
-              "Put $(b,dune) into a reproducible $(i,release) mode. This is in \
-               fact a shorthand for $(b,--root . --ignore-promoted-rules \
-               --no-config --profile release --always-show-command-line \
-               --promote-install-files --default-target @install). You should \
-               use this option for release builds. For instance, you must use \
-               this option in your $(i,<package>.opam) files. Except if you \
-               already use $(b,-p), as $(b,-p) implies this option.")
-    in
-    release_options
+    Arg.(
+      value
+      & alias
+          [ "--root"
+          ; "."
+          ; "--ignore-promoted-rules"
+          ; "--no-config"
+          ; "--profile"
+          ; "release"
+          ; "--always-show-command-line"
+          ; "--promote-install-files"
+          ; "--default-target"
+          ; "@install"
+          ]
+      & info [ "release" ] ~docs ~docv:"PACKAGES"
+          ~doc:
+            "Put $(b,dune) into a reproducible $(i,release) mode. This is in \
+             fact a shorthand for $(b,--root . --ignore-promoted-rules \
+             --no-config --profile release --always-show-command-line \
+             --promote-install-files --default-target @install). You should \
+             use this option for release builds. For instance, you must use \
+             this option in your $(i,<package>.opam) files. Except if you \
+             already use $(b,-p), as $(b,-p) implies this option.")
 
   let options =
-    let+ t = one_of options dash_dash_release
+    let+ t = options
+    and+ _ = dash_dash_release
     and+ only_packages =
       let+ names =
         Arg.(
@@ -461,37 +464,29 @@ module Options_implied_by_dash_p = struct
     { t with only_packages }
 
   let dash_p =
-    let+ pkgs, args =
-      Term.with_used_args
-        Arg.(
-          value
-          & opt (some packages) None
-          & info
-              [ "p"; "for-release-of-packages" ]
-              ~docs ~docv:"PACKAGES"
-              ~doc:
-                "Shorthand for $(b,--release --only-packages PACKAGE). You \
-                 must use this option in your $(i,<package>.opam) files, in \
-                 order to build only what's necessary when your project \
-                 contains multiple packages as well as getting reproducible \
-                 builds.")
-    in
-    { release_options with
-      only_packages =
-        (match pkgs with
-        | None -> No_restriction
-        | Some names -> Restrict { names; command_line_option = List.hd args })
-    }
+    Term.with_used_args
+      Arg.(
+        value
+        & alias_opt (fun s -> [ "--release"; "--only-packages"; s ])
+        & info
+            [ "p"; "for-release-of-packages" ]
+            ~docs ~docv:"PACKAGES"
+            ~doc:
+              "Shorthand for $(b,--release --only-packages PACKAGE). You must \
+               use this option in your $(i,<package>.opam) files, in order to \
+               build only what's necessary when your project contains multiple \
+               packages as well as getting reproducible builds.")
 
   let term =
-    let+ t = one_of options dash_p
+    let+ t = options
+    and+ _ = dash_p
     and+ profile =
       let doc =
         "Build profile. $(b,dev) if unspecified or $(b,release) if -p is set."
       in
       Arg.(
-        value
-        & opt (some profile) None
+        last
+        & opt_all (some profile) [ None ]
         & info [ "profile" ] ~docs
             ~env:(Arg.env_var ~doc "DUNE_PROFILE")
             ~doc:
@@ -523,6 +518,11 @@ let display_term =
             {|Control the display mode of Dune.
          See $(b,dune-config\(5\)) for more details.|})
 
+let simple_arg_conv ~to_string ~of_string =
+  Arg.conv
+    ( (fun s -> Result.map_error (of_string s) ~f:(fun s -> `Msg s))
+    , fun pp x -> Format.pp_print_string pp (to_string x) )
+
 let shared_with_config_file =
   let docs = copts_sect in
   let+ concurrency =
@@ -540,12 +540,8 @@ let shared_with_config_file =
           ~doc:{|Run no more than $(i,JOBS) commands simultaneously.|})
   and+ sandboxing_preference =
     let arg =
-      Arg.conv
-        ( (fun s ->
-            Result.map_error (Dune_engine.Sandbox_mode.of_string s) ~f:(fun s ->
-                `Msg s))
-        , fun pp x ->
-            Format.pp_print_string pp (Dune_engine.Sandbox_mode.to_string x) )
+      simple_arg_conv ~of_string:Dune_engine.Sandbox_mode.of_string
+        ~to_string:Dune_engine.Sandbox_mode.to_string
     in
     Arg.(
       value
@@ -797,12 +793,36 @@ let term =
             "Force actions associated to aliases to be re-executed even\n\
             \                   if their dependencies haven't changed.")
   and+ watch =
-    Arg.(
-      value & flag
-      & info [ "watch"; "w" ]
-          ~doc:
-            "Instead of terminating build after completion, wait continuously \
-             for file changes.")
+    let+ res =
+      one_of
+        (let+ watch =
+           Arg.(
+             value & flag
+             & info [ "watch"; "w" ]
+                 ~doc:
+                   "Instead of terminating build after completion, wait \
+                    continuously for file changes.")
+         in
+         if watch then
+           Some Dune_engine.Watch_mode_config.Eager
+         else
+           None)
+        (let+ watch =
+           Arg.(
+             value & flag
+             & info [ "passive-watch-mode" ]
+                 ~doc:
+                   "Similar to [--watch], but only start a build when \
+                    instructed externally by an RPC.")
+         in
+         if watch then
+           Some Dune_engine.Watch_mode_config.Passive
+         else
+           None)
+    in
+    match res with
+    | None -> Dune_engine.Watch_mode_config.No
+    | Some mode -> Dune_engine.Watch_mode_config.Yes mode
   and+ print_metrics =
     Arg.(
       value & flag
@@ -884,10 +904,10 @@ let term =
       value
       & opt
           (enum
-             [ ("automatic", Dune_engine.Scheduler.Run.Detect_external)
+             [ ("automatic", Dune_engine.Scheduler.Run.Automatic)
              ; ("manual", No_watcher)
              ])
-          Detect_external
+          Automatic
       & info [ "file-watcher" ] ~doc)
   and+ wait_for_filesystem_clock =
     Arg.(
@@ -902,14 +922,33 @@ let term =
              that it doesn't need to drop anything. You should probably not \
              care about this option; it is mostly useful for Dune developers \
              to make Dune tests of the digest cache more reproducible.")
-  and+ cache_debug_flags = cache_debug_flags_term in
+  and+ cache_debug_flags = cache_debug_flags_term
+  and+ report_errors_config =
+    Arg.(
+      value
+      & opt
+          (enum
+             [ ("early", Dune_engine.Report_errors_config.Early)
+             ; ("deterministic", Deterministic)
+             ; ("twice", Twice)
+             ])
+          Dune_engine.Report_errors_config.default
+      & info [ "error-reporting" ]
+          ~doc:
+            "Controls when the build errors are reported.\n\
+             $(b,early) - report errors as soon as they are discovered.\n\
+             $(b,deterministic) - report errors at the end of the build in a \
+             deterministic order.\n\
+             $(b,twice) - report each error twice: once as soon as the error \
+             is discovered and then again at the end of the build, in a \
+             deterministic order.")
+  in
   let build_dir = Option.value ~default:default_build_dir build_dir in
   let root = Workspace_root.create ~specified_by_user:root in
   let rpc =
-    if watch then
-      Some (Dune_rpc_impl.Server.create ())
-    else
-      None
+    match watch with
+    | Yes _ -> Some (Dune_rpc_impl.Server.create ())
+    | No -> None
   in
   let stats =
     Option.map stats_trace_file ~f:(fun f ->
@@ -918,7 +957,10 @@ let term =
         stats)
   in
   if store_digest_preimage then Dune_engine.Reversible_digest.enable ();
-  if print_metrics then Memo.Perf_counters.enable ();
+  if print_metrics then (
+    Memo.Perf_counters.enable ();
+    Metrics.enable ()
+  );
   { debug_dep_path
   ; debug_findlib
   ; debug_backtraces
@@ -954,6 +996,7 @@ let term =
       ; config_from_config_file
       }
   ; cache_debug_flags
+  ; report_errors_config
   }
 
 let set_rpc t rpc = { t with rpc = Some rpc }

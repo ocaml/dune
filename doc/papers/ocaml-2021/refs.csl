@@ -1,0 +1,69 @@
+<?xml version="1.0" encoding="utf-8"?>
+<style xmlns="http://purl.org/net/xbiblio/csl" class="in-text" version="1.0">
+  <info>
+    <title>A bibliography style mostly inspired by ACM-Reference-Format</title>
+    <id>andrey-mokhov-personal-csl</id>
+    <author>
+      <name>Andrey Mokhov</name>
+      <email>andrey.mokhov@gmail.com</email>
+    </author>
+    <category citation-format="author-date"/>
+    <category field="engineering"/>
+    <category field="science"/>
+    <updated>2021-05-20</updated>
+    <rights license="http://creativecommons.org/licenses/by-sa/3.0/">This work is licensed under a Creative Commons Attribution-ShareAlike 3.0 License</rights>
+  </info>
+  <macro name="author-family-name">
+    <names variable="author">
+      <name form="short" and="text" delimiter=", "/>
+    </names>
+  </macro>
+  <macro name="author-full-name">
+    <names variable="author">
+      <name form="long" and="text" delimiter=", "/>
+    </names>
+  </macro>
+  <macro name="issued-year">
+    <choose>
+      <if variable="issued">
+        <date variable="issued">
+          <date-part name="year"/>
+        </date>
+      </if>
+      <else>
+        <text term="no date"/>
+      </else>
+    </choose>
+  </macro>
+  <citation et-al-min="3" et-al-use-first="1">
+    <sort>
+      <key macro="author-family-name"/>
+      <key macro="issued-year"/>
+    </sort>
+    <layout prefix="[" suffix="]" delimiter="; ">
+      <group delimiter=", ">
+        <text macro="author-family-name"/>
+        <text macro="issued-year"/>
+      </group>
+    </layout>
+  </citation>
+  <bibliography>
+    <sort>
+      <key macro="author-full-name"/>
+      <key macro="issued-year"/>
+      <key variable="title" />
+    </sort>
+    <layout>
+      <text macro="author-full-name" suffix=". " />
+      <text variable="title" quotes="true" font-style="italic" suffix="." />
+      <text variable="container-title" prefix=" " suffix="." />
+      <group suffix=".">
+        <text variable="volume" prefix=" vol. " />
+        <text variable="issue" prefix=" (" suffix=")"/>
+        <text variable="page" prefix=", pp. " />
+      </group>
+      <text variable="note" prefix=" " />
+      <text macro="issued-year" prefix=" (" suffix=") " />
+    </layout>
+  </bibliography>
+</style>

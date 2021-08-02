@@ -1,12 +1,4 @@
-(** An expander is able to expand any dune template. It has two modes of
-    expansion:
-
-    1. Static. In this mode it will only expand variables that do not introduce
-    dependencies
-
-    2. Dynamic. In this mode, the expander will record dependencies that are
-    introduced by forms it has failed to expand. Later, these dependenceis can
-    be filled for a full expansion.*)
+(** An expander is able to expand any dune template. *)
 
 open! Dune_engine
 open Import
@@ -49,8 +41,6 @@ val set_scope : t -> scope:Scope.t -> t
 
 val set_bin_artifacts : t -> bin_artifacts_host:Artifacts.Bin.t -> t
 
-val set_artifacts_dynamic : t -> bool -> t
-
 val set_lookup_ml_sources :
   t -> f:(dir:Path.Build.t -> Ml_sources.Artifacts.t Memo.Build.t) -> t
 
@@ -75,8 +65,19 @@ val set_expanding_what : t -> Expanding_what.t -> t
     such bindings. *)
 val add_bindings : t -> bindings:Value.t list Pform.Map.t -> t
 
-val add_bindings_full :
-  t -> bindings:Value.t list Action_builder.t Pform.Map.t -> t
+module Deps : sig
+  type 'a t =
+    | Without of 'a Memo.Build.t
+    | With of 'a Action_builder.t
+
+  include Applicative with type 'a t := 'a t
+
+  val action_builder : 'a t -> 'a Action_builder.t
+end
+
+type value = Value.t list Deps.t
+
+val add_bindings_full : t -> bindings:value Pform.Map.t -> t
 
 val extend_env : t -> env:Env.t -> t
 
@@ -92,34 +93,46 @@ val expand_str : t -> String_with_vars.t -> string Action_builder.t
 
 val expand_pform : t -> Value.t list Action_builder.t String_with_vars.expander
 
-module Static : sig
-  val expand : t -> mode:'a String_with_vars.Mode.t -> String_with_vars.t -> 'a
+module No_deps : sig
+  (** Same as [expand_xxx] but disallow percent forms that introduce action
+      dependencies, such as [%{dep:...}] *)
 
-  val expand_path : t -> String_with_vars.t -> Path.t
+  val expand_pform : t -> Value.t list Memo.Build.t String_with_vars.expander
 
-  val expand_str : t -> String_with_vars.t -> string
+  val expand :
+       t
+    -> mode:'a String_with_vars.Mode.t
+    -> String_with_vars.t
+    -> 'a Memo.Build.t
 
-  val expand_pform : t -> Value.t list String_with_vars.expander
+  val expand_path : t -> String_with_vars.t -> Path.t Memo.Build.t
 
-  module With_reduced_var_set : sig
-    val expand_path :
-      context:Context.t -> dir:Path.Build.t -> String_with_vars.t -> Path.t
+  val expand_str : t -> String_with_vars.t -> string Memo.Build.t
+end
 
-    val expand_str :
-      context:Context.t -> dir:Path.Build.t -> String_with_vars.t -> string
+module With_deps_if_necessary : sig
+  (** Same as [expand_xxx] but stay in the [Memo.Build] monad if possible. *)
 
-    val expand_str_partial :
-         context:Context.t
-      -> dir:Path.Build.t
-      -> String_with_vars.t
-      -> String_with_vars.t
-  end
+  val expand_path : t -> String_with_vars.t -> Path.t Deps.t
 
-  module Or_exn : sig
-    val expand_path : t -> String_with_vars.t -> Path.t Or_exn.t
+  val expand_str : t -> String_with_vars.t -> string Deps.t
+end
 
-    val expand_str : t -> String_with_vars.t -> string Or_exn.t
-  end
+module With_reduced_var_set : sig
+  val expand_str :
+       context:Context.t
+    -> dir:Path.Build.t
+    -> String_with_vars.t
+    -> string Memo.Build.t
+
+  val expand_str_partial :
+       context:Context.t
+    -> dir:Path.Build.t
+    -> String_with_vars.t
+    -> String_with_vars.t Memo.Build.t
+
+  val eval_blang :
+    context:Context.t -> dir:Path.Build.t -> Blang.t -> bool Memo.Build.t
 end
 
 (** Expand forms of the form (:standard \ foo bar). Expansion is only possible
@@ -131,7 +144,7 @@ val expand_and_eval_set :
   -> standard:string list Action_builder.t
   -> string list Action_builder.t
 
-val eval_blang : t -> Blang.t -> bool
+val eval_blang : t -> Blang.t -> bool Memo.Build.t
 
 val map_exe : t -> Path.t -> Path.t
 

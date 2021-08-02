@@ -142,7 +142,7 @@ let build_cm cctx ~(js_of_ocaml : Dune_file.Js_of_ocaml.t) ~src ~target =
     None
 
 let setup_separate_compilation_rules sctx components =
-  Memo.Build.if_ (separate_compilation_enabled sctx) (fun () ->
+  Memo.Build.when_ (separate_compilation_enabled sctx) (fun () ->
       match components with
       | []
       | _ :: _ :: _ ->

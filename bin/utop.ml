@@ -20,33 +20,32 @@ let term =
     Common.context_arg ~doc:{|Select context where to build/run utop.|}
   and+ args = Arg.(value & pos_right 0 string [] (Arg.info [] ~docv:"ARGS")) in
   let config = Common.init common in
-  if not (Path.is_directory (Path.of_string (Common.prefix_target common dir)))
-  then
+  let dir = Common.prefix_target common dir in
+  if not (Path.is_directory (Path.of_string dir)) then
     User_error.raise
       [ Pp.textf "cannot find directory: %s" (String.maybe_quoted dir) ];
-  let utop_target = Arg.Dep.file (Filename.concat dir Utop.utop_exe) in
+  let utop_target = Filename.concat dir Utop.utop_exe in
   let sctx, utop_path =
     Scheduler.go ~common ~config (fun () ->
         let open Fiber.O in
         let* setup = Import.Main.setup () in
-        Build_system.run (fun () ->
+        Build_system.run_exn (fun () ->
             let open Memo.Build.O in
+            let* setup = setup in
             let context = Import.Main.find_context_exn setup ~name:ctx_name in
             let sctx = Import.Main.find_scontext_exn setup ~name:ctx_name in
-            let setup = { setup with contexts = [ context ] } in
-            let* target =
-              Target.resolve_target (Common.root common) ~setup utop_target
-              >>| function
-              | Error _ ->
-                User_error.raise
-                  [ Pp.textf "no library is defined in %s"
-                      (String.maybe_quoted dir)
-                  ]
-              | Ok [ File target ] -> target
-              | Ok _ -> assert false
+            let utop_target =
+              Path.build (Path.Build.relative context.build_dir utop_target)
             in
-            let+ () = Build_system.build (Target.request [ File target ]) in
-            (sctx, Path.to_string target)))
+            Build_system.is_target utop_target >>= function
+            | false ->
+              User_error.raise
+                [ Pp.textf "no library is defined in %s"
+                    (String.maybe_quoted dir)
+                ]
+            | true ->
+              let+ _digest = Build_system.build_file utop_target in
+              (sctx, Path.to_string utop_target)))
   in
   Hooks.End_of_build.run ();
   restore_cwd_and_execve common utop_path (utop_path :: args)

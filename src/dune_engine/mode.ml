@@ -116,8 +116,8 @@ module Dict = struct
 
     let iter_concurrently t ~f =
       let open Memo.Build.O in
-      let+ () = Memo.Build.if_ t.byte (fun () -> f Byte)
-      and+ () = Memo.Build.if_ t.native (fun () -> f Native) in
+      let+ () = Memo.Build.when_ t.byte (fun () -> f Byte)
+      and+ () = Memo.Build.when_ t.native (fun () -> f Native) in
       ()
   end
 

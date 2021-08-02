@@ -310,20 +310,18 @@ module Unprocessed = struct
     | Action (loc, (action : Action_dune_lang.t)) ->
       pp_flag_of_action ~expander ~loc ~action
     | No_preprocessing -> Action_builder.return None
-    | Pps { loc; pps; flags; staged = _ } -> (
-      match
-        Resolve.peek
-          (Preprocessing.get_ppx_driver sctx ~loc ~expander ~lib_name:libname
-             ~flags ~scope pps)
-      with
-      | Error () -> Action_builder.return None
-      | Ok (exe, flags) ->
-        let args =
-          Path.to_absolute_filename (Path.build exe) :: "--as-ppx" :: flags
-          |> List.map ~f:quote_if_needed
-          |> String.concat ~sep:" "
-        in
-        Action_builder.return (Some Processed.{ flag = "-ppx"; args }))
+    | Pps { loc; pps; flags; staged = _ } ->
+      let open Action_builder.O in
+      let* exe, flags =
+        Preprocessing.get_ppx_driver sctx ~loc ~expander ~lib_name:libname
+          ~flags ~scope pps
+      in
+      let args =
+        Path.to_absolute_filename (Path.build exe) :: "--as-ppx" :: flags
+        |> List.map ~f:quote_if_needed
+        |> String.concat ~sep:" "
+      in
+      Action_builder.return (Some Processed.{ flag = "-ppx"; args })
 
   let process
       { modules
@@ -378,8 +376,8 @@ let dot_merlin sctx ~dir ~more_src_dirs ~expander (t : Unprocessed.t) =
   let open Memo.Build.O in
   let merlin_file = Merlin_ident.merlin_file_path dir t.ident in
   let* () =
-    Path.Set.singleton (Path.build merlin_file)
-    |> Rules.Produce.Alias.add_static_deps (Alias.check ~dir)
+    Rules.Produce.Alias.add_deps (Alias.check ~dir)
+      (Action_builder.path (Path.build merlin_file))
   in
   let merlin = Unprocessed.process t sctx ~more_src_dirs ~expander in
   let action =
@@ -390,7 +388,7 @@ let dot_merlin sctx ~dir ~more_src_dirs ~expander (t : Unprocessed.t) =
   SC.add_rule sctx ~dir action
 
 let add_rules sctx ~dir ~more_src_dirs ~expander merlin =
-  Memo.Build.if_ (SC.context sctx).merlin (fun () ->
+  Memo.Build.when_ (SC.context sctx).merlin (fun () ->
       dot_merlin sctx ~more_src_dirs ~expander ~dir merlin)
 
 include Unprocessed

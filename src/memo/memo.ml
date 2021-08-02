@@ -371,9 +371,13 @@ module Lazy_dag_node = struct
 
   let create () = ref None
 
-  let force t ~dep_node =
+  let force t ~(dep_node : _ Dep_node_without_state.t) =
     match !t with
-    | Some dag_node -> dag_node
+    | Some (({ data = T dep_node_passed_first; _ } : Dag.node) as dag_node) ->
+      (* CR-someday amokhov: It would be great to restructure the code to rule
+         out the potential inconsistency between [dep_node]s passed to [force]. *)
+      assert (Id.equal dep_node.id dep_node_passed_first.id);
+      dag_node
     | None ->
       let (dag_node : Dag.node) =
         if !Counters.enabled then incr Counters.nodes_in_cycle_detection_graph;

@@ -107,9 +107,9 @@ let process_inotify_event ~ignored_files
           true
         ) else
           false)
-    || List.for_all all_paths ~f:(fun (path, _) ->
+    || List.for_all all_paths ~f:(fun path ->
            let path = Path.of_string path in
-           let abs_path = Path.to_absolute_filename path in
+           let abs_path = Path.to_string path in
            should_exclude abs_path)
   in
   if should_ignore then

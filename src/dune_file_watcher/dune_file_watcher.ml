@@ -56,12 +56,30 @@ module Event = struct
     | Watcher_terminated
 end
 
+let exclude_patterns =
+  [ {|/_opam|}
+  ; {|/_esy|}
+  ; {|/\..+|}
+  ; {|~$|}
+  ; {|/#[^#]*#$|}
+  ; {|4913|} (* https://github.com/neovim/neovim/issues/3460 *)
+  ]
+
+module Re = Dune_re
+
+let exclude_regex =
+  Re.compile
+    (Re.alt (List.map exclude_patterns ~f:(fun pattern -> Re.Posix.re pattern)))
+
+let should_exclude path = Re.execp exclude_regex path
+
 (* [process_inotify_event] needs to run in the scheduler thread because it
    accesses [t.ignored_files]. *)
 let process_inotify_event ~ignored_files
     (event : Async_inotify_for_dune.Async_inotify.Event.t) : Event.t list =
   let should_ignore =
-    List.exists (inotify_event_paths event) ~f:(fun path ->
+    let all_paths = inotify_event_paths event in
+    List.exists all_paths ~f:(fun path ->
         let path = Path.of_string path in
         let abs_path = Path.to_absolute_filename path in
         if Table.mem ignored_files abs_path then (
@@ -70,6 +88,10 @@ let process_inotify_event ~ignored_files
           true
         ) else
           false)
+    || List.for_all all_paths ~f:(fun path ->
+           let path = Path.of_string path in
+           let abs_path = Path.to_string path in
+           should_exclude abs_path)
   in
   if should_ignore then
     []
@@ -179,15 +201,6 @@ let special_file_for_inotify_sync =
   fun () -> Lazy.force path
 
 let command ~root ~backend =
-  let exclude_patterns =
-    [ {|/_opam|}
-    ; {|/_esy|}
-    ; {|/\..+|}
-    ; {|~$|}
-    ; {|/#[^#]*#$|}
-    ; {|4913|} (* https://github.com/neovim/neovim/issues/3460 *)
-    ]
-  in
   let exclude_paths =
     (* These paths should already exist on the filesystem when the watches are
        initially set up, otherwise the @<path> has no effect for inotifywait. If

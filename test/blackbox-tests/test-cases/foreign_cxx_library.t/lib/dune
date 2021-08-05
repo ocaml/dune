@@ -1,0 +1,9 @@
+(library
+ (name hello_world)
+ (foreign_archives hello_world)
+ (c_library_flags -lstdc++))
+
+(foreign_library
+ (archive_name hello_world)
+ (language cxx)
+ (names hello_world))

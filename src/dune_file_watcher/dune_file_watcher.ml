@@ -107,7 +107,7 @@ let process_inotify_event ~ignored_files
           true
         ) else
           false)
-    || List.for_all all_paths ~f:(fun path ->
+    || List.for_all all_paths ~f:(fun (path, _event) ->
            let path = Path.of_string path in
            let abs_path = Path.to_string path in
            should_exclude abs_path)

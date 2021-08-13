@@ -174,8 +174,7 @@ module Dependency = struct
       | Bvar x -> Var.encode x
       | Uop (op, x) -> pair Op.encode Var.encode (op, x)
       | Bop (op, x, y) -> triple Op.encode Var.encode Var.encode (op, x, y)
-      | And conjuncts ->
-        list sexp (string "and" :: List.map ~f:encode conjuncts)
+      | And conjuncts -> list sexp (string "and" :: List.map ~f:encode conjuncts)
       | Or disjuncts -> list sexp (string "or" :: List.map ~f:encode disjuncts)
 
     let decode =

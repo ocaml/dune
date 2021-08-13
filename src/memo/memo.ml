@@ -375,7 +375,8 @@ module Lazy_dag_node = struct
     match !t with
     | Some (({ data = T dep_node_passed_first; _ } : Dag.node) as dag_node) ->
       (* CR-someday amokhov: It would be great to restructure the code to rule
-         out the potential inconsistency between [dep_node]s passed to [force]. *)
+         out the potential inconsistency between [dep_node]s passed to
+         [force]. *)
       assert (Id.equal dep_node.id dep_node_passed_first.id);
       dag_node
     | None ->
@@ -470,7 +471,8 @@ module M = struct
            wasted since [f 0] does depend on it.
 
            Another important reason to list [deps] according to a linearisation
-           of the dependency order is to eliminate spurious dependency cycles. *)
+           of the dependency order is to eliminate spurious dependency
+           cycles. *)
         mutable deps : Deps.t
       }
   end =
@@ -650,7 +652,8 @@ end = struct
          we are accumulating dependencies only during the [Compute] phase. We
          can drop it if we find a way to statically guarantee this property. *)
       phase : phase
-    ; (* [deps_rev] are accumulated only when [phase = Compute], see [add_dep]. *)
+    ; (* [deps_rev] are accumulated only when [phase = Compute], see
+         [add_dep]. *)
       mutable deps_rev : Dep_node.packed list
     }
 
@@ -1116,7 +1119,8 @@ end = struct
     match cached_value.value with
     | Cancelled _dependency_cycle ->
       (* Dependencies of cancelled computations are not accurate (in fact, they
-         are set to [Deps.empty]), so we can't use [deps_changed] in this case. *)
+         are set to [Deps.empty]), so we can't use [deps_changed] in this
+         case. *)
       Fiber.return
         (Cache_lookup.Result.Failure (Out_of_date { old_value = None }))
     | Error { reproducible = false; _ } ->
@@ -1156,7 +1160,8 @@ end = struct
               match dep.has_cutoff with
               | false ->
                 (* If [dep] has no cutoff, it is sufficient to check whether it
-                   is up to date. If not, we must recompute the [cached_value]. *)
+                   is up to date. If not, we must recompute the
+                   [cached_value]. *)
                 Fiber.return Changed_or_not.Changed
               | true -> (
                 (* If [dep] has a cutoff predicate, it is not sufficient to
@@ -1279,7 +1284,8 @@ end = struct
       Fiber.return (Cache_lookup.Result.Failure (Out_of_date { old_value }))
 
   (* This function assumes that restoring the value from cache failed, which
-     means we can only be in two possible states: [Out_of_date] or [Computing]. *)
+     means we can only be in two possible states: [Out_of_date] or
+     [Computing]. *)
   and consider_and_compute_without_adding_dep :
         'i 'o.
         ('i, 'o) Dep_node.t -> ('o Cached_value.t, Cycle_error.t) result Fiber.t
@@ -1659,7 +1665,8 @@ module Run = struct
 end
 
 (* By placing this definition at the end of the file we prevent Merlin from
-   using [build] instead of [Fiber.t] when showing types throughout this file. *)
+   using [build] instead of [Fiber.t] when showing types throughout this
+   file. *)
 type 'a build = 'a Fiber.t
 
 module type Build = sig

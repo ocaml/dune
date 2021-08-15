@@ -43,7 +43,7 @@ let target_hint (_setup : Dune_rules.Main.build_system) path =
   let candidates = String.Set.of_list candidates |> String.Set.to_list in
   User_message.did_you_mean (Path.to_string path) ~candidates
 
-let resolve_path path ~(setup : Dune_rules.Main.build_system) =
+let resolve_path ctx path ~(setup : Dune_rules.Main.build_system) =
   let open Memo.Build.O in
   let checked = Util.check_path setup.contexts path in
   let can't_build path =
@@ -54,34 +54,29 @@ let resolve_path path ~(setup : Dune_rules.Main.build_system) =
     Dune_engine.Source_tree.dir_exists src >>| function
     | true ->
       Some
-        [ Alias
-            (Alias.in_dir ~name:Dune_engine.Alias.Name.default ~recursive:true
-               ~contexts:setup.contexts path)
-        ]
+        (Alias
+           (Alias.in_dir ~name:Dune_engine.Alias.Name.default ~recursive:true
+              ~contexts:setup.contexts path))
     | false -> None
   in
   let build () =
     Build_system.is_target path >>= function
-    | true -> Memo.Build.return (Ok [ File path ])
+    | true -> Memo.Build.return (Ok (File path))
     | false -> can't_build path
   in
   match checked with
-  | External _ -> Memo.Build.return (Ok [ File path ])
+  | External _ -> Memo.Build.return (Ok (File path))
   | In_source_dir src -> (
     as_source_dir src >>= function
     | Some res -> Memo.Build.return (Ok res)
     | None -> (
-      Memo.Build.parallel_map setup.contexts ~f:(fun ctx ->
-          let path =
-            Path.append_source (Path.build ctx.Context.build_dir) src
-          in
-          Build_system.is_target path >>| function
-          | true -> Some (File path)
-          | false -> None)
-      >>| List.filter_map ~f:Fun.id
+      (let path = Path.append_source (Path.build ctx.Context.build_dir) src in
+       Build_system.is_target path >>| function
+       | true -> Some (File path)
+       | false -> None)
       >>= function
-      | [] -> can't_build path
-      | l -> Memo.Build.return (Ok l)))
+      | None -> can't_build path
+      | Some l -> Memo.Build.return (Ok l)))
   | In_build_dir (_ctx, src) -> (
     as_source_dir src >>= function
     | Some res -> Memo.Build.return (Ok res)
@@ -109,10 +104,10 @@ let expand_path (root : Workspace_root.t)
 let resolve_alias root ~recursive sv ~(setup : Dune_rules.Main.build_system) =
   match Dune_engine.String_with_vars.text_only sv with
   | Some s ->
-    Ok [ Alias (Alias.of_string root ~recursive s ~contexts:setup.contexts) ]
+    Ok (Alias (Alias.of_string root ~recursive s ~contexts:setup.contexts))
   | None -> Error [ Pp.text "alias cannot contain variables" ]
 
-let resolve_target root ~setup target =
+let resolve_target root ctx ~setup target =
   match target with
   | Dune_rules.Dep_conf.Alias sv as dep ->
     Action_builder.return
@@ -125,13 +120,9 @@ let resolve_target root ~setup target =
          ~f:(fun hints -> (dep, hints))
          (resolve_alias root ~recursive:true sv ~setup))
   | File sv as dep ->
-    let f ctx =
-      let* path = expand_path root ~setup ctx sv in
-      Action_builder.memo_build (resolve_path path ~setup)
-      >>| Result.map_error ~f:(fun hints -> (dep, hints))
-    in
-    Action_builder.List.map setup.contexts ~f
-    >>| Result.List.concat_map ~f:Fun.id
+    let* path = expand_path root ~setup ctx sv in
+    Action_builder.memo_build (resolve_path ctx path ~setup)
+    >>| Result.map_error ~f:(fun hints -> (dep, hints))
   | dep -> Action_builder.return (Error (dep, []))
 
 let resolve_targets root (config : Dune_config.t)
@@ -140,7 +131,22 @@ let resolve_targets root (config : Dune_config.t)
   | [] -> Action_builder.return []
   | _ ->
     let+ targets =
-      Action_builder.List.map user_targets ~f:(resolve_target root ~setup)
+      Action_builder.List.map user_targets ~f:(fun target ->
+          (* Check all expansions of a target in all contexts *)
+          let+ possible_expansions =
+            Action_builder.List.map setup.contexts ~f:(fun ctx ->
+                resolve_target root ctx ~setup target)
+          in
+          (* If [found] is populated, then we found at least one context
+             containing the target *)
+          let found, errs =
+            List.partition_map possible_expansions ~f:(function
+              | Ok l -> Either.Left l
+              | Error _ as e -> Right e)
+          in
+          match found with
+          | [] -> Result.List.concat_map ~f:Fun.id errs
+          | _ -> Ok found)
     in
     if config.display.verbosity = Verbose then
       Log.info

@@ -152,7 +152,7 @@ repositories:
 
 .. code:: bash
 
-          git describe --always --dirty
+          git describe --always --dirty --abbrev=7
 
 which produces a human readable version string of the form
 ``<version>-<commits-since-version>-<hash>[-dirty]``.

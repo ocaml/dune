@@ -168,6 +168,9 @@ Unreleased
   executable with missing libraries as optional. Now, we treat make sure to
   look at the library's optional or enabled_if status (#4786).
 
+- Always use 7 char hash prefix in build info version (#4857, @jberdine, fixes
+  #4855)
+
 2.9.1 (unreleased)
 ------------------
 

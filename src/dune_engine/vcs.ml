@@ -116,7 +116,8 @@ let make_fun name ~git ~hg =
 let describe =
   Staged.unstage
   @@ make_fun "vcs-describe"
-       ~git:(fun t -> run_git t [ "describe"; "--always"; "--dirty" ])
+       ~git:(fun t ->
+         run_git t [ "describe"; "--always"; "--dirty"; "--abbrev=7" ])
        ~hg:(fun x ->
          let open Fiber.O in
          let+ res = hg_describe x in

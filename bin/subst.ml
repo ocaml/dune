@@ -26,12 +26,12 @@ let man =
      ^ {|) strings by the version obtained from the vcs. Currently only git is
             supported and the version is obtained from the output of:|}
       )
-  ; `Pre {|  \$ git describe --always --dirty|}
+  ; `Pre {|  \$ git describe --always --dirty --abbrev=7|}
   ; `P
       {|$(b,dune subst) substitutes the variables that topkg substitutes with
           the default configuration:|}
   ; var "NAME" "the name of the project (from the dune-project file)"
-  ; var "VERSION" "output of $(b,git describe --always --dirty)"
+  ; var "VERSION" "output of $(b,git describe --always --dirty --abbrev=7)"
   ; var "VERSION_NUM"
       ("same as $(b," ^ literal_version
      ^ ") but with a potential leading 'v' or 'V' dropped")

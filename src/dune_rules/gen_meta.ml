@@ -89,7 +89,14 @@ let gen_lib pub_name lib ~path ~version =
     | Ppx_deriver _ ->
       [ Pos "ppx_driver" ]
   in
-  let to_names = Lib_name.Set.of_list_map ~f:Lib.name in
+  let name lib =
+    let name = Lib.name lib in
+    match Lib_info.status (Lib.info lib) with
+    | Private (_, Some pkg) ->
+      Lib_name.mangled (Package.name pkg) (Lib_name.to_local_exn name)
+    | _ -> name
+  in
+  let to_names = Lib_name.Set.of_list_map ~f:name in
   let* lib_deps = Resolve.read_memo_build (Lib.requires lib) >>| to_names in
   let* ppx_rt_deps =
     Resolve.read_memo_build (Lib.ppx_runtime_deps lib) >>| to_names

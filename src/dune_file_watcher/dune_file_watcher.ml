@@ -1,16 +1,24 @@
 open! Stdune
 module Inotify_lib = Async_inotify_for_dune.Async_inotify
 
-let inotify_event_paths (event : Inotify_lib.Event.t) =
+type path_event =
+  | Created
+  | Moved_into
+  | Unlinked
+  | Moved_away
+  | Modified
+
+let decompose_inotify_event (event : Inotify_lib.Event.t) =
   match event with
-  | Created path
-  | Unlinked path
-  | Modified path
-  | Moved (Away path)
-  | Moved (Into path) ->
-    [ path ]
-  | Moved (Move (from, to_)) -> [ from; to_ ]
+  | Created path -> [ (path, Created) ]
+  | Unlinked path -> [ (path, Unlinked) ]
+  | Modified path -> [ (path, Modified) ]
+  | Moved (Away path) -> [ (path, Moved_away) ]
+  | Moved (Into path) -> [ (path, Moved_into) ]
+  | Moved (Move (from, to_)) -> [ (from, Moved_away); (to_, Moved_into) ]
   | Queue_overflow -> []
+
+let inotify_event_paths event = List.map ~f:fst (decompose_inotify_event event)
 
 type kind =
   | Coarse of { wait_for_watches_established : unit -> unit }
@@ -26,7 +34,8 @@ type t =
            event does not invalidate the current build. However, instead of
            ignoring the events, we should merely postpone them and restart the
            build to take the promoted files into account if need be. *)
-        (* The [ignored_files] table should be accessed in the scheduler thread. *)
+        (* The [ignored_files] table should be accessed in the scheduler
+           thread. *)
   ; ignored_files : (string, unit) Table.t
   }
 
@@ -56,20 +65,53 @@ module Event = struct
     | Watcher_terminated
 end
 
+let exclude_patterns =
+  [ {|/_opam|}
+  ; {|/_esy|}
+  ; {|/\..+|}
+  ; {|~$|}
+  ; {|/#[^#]*#$|}
+  ; {|4913|} (* https://github.com/neovim/neovim/issues/3460 *)
+  ]
+
+module Re = Dune_re
+
+let exclude_regex =
+  Re.compile
+    (Re.alt (List.map exclude_patterns ~f:(fun pattern -> Re.Posix.re pattern)))
+
+let should_exclude path = Re.execp exclude_regex path
+
 (* [process_inotify_event] needs to run in the scheduler thread because it
    accesses [t.ignored_files]. *)
 let process_inotify_event ~ignored_files
     (event : Async_inotify_for_dune.Async_inotify.Event.t) : Event.t list =
   let should_ignore =
-    List.exists (inotify_event_paths event) ~f:(fun path ->
+    let all_paths = decompose_inotify_event event in
+    List.exists all_paths ~f:(fun (path, event) ->
         let path = Path.of_string path in
         let abs_path = Path.to_absolute_filename path in
         if Table.mem ignored_files abs_path then (
-          (* only use ignored record once *)
-          Table.remove ignored_files abs_path;
+          (match event with
+          | Created
+          | Unlinked
+          | Moved_away ->
+            (* The event is a part of promotion, but not the last step. The
+               typical sequence is [Created] followed by [Modified]. *)
+            ()
+          | Modified
+          | Moved_into ->
+            (* Got the final event in promotion sequence. With the current
+               promotion implementation the event will be [Modified], but if we
+               use renaming instead then [Moved_into] can be expected. *)
+            Table.remove ignored_files abs_path);
           true
         ) else
           false)
+    || List.for_all all_paths ~f:(fun (path, _event) ->
+           let path = Path.of_string path in
+           let abs_path = Path.to_string path in
+           should_exclude abs_path)
   in
   if should_ignore then
     []
@@ -179,15 +221,6 @@ let special_file_for_inotify_sync =
   fun () -> Lazy.force path
 
 let command ~root ~backend =
-  let exclude_patterns =
-    [ {|/_opam|}
-    ; {|/_esy|}
-    ; {|/\..+|}
-    ; {|~$|}
-    ; {|/#[^#]*#$|}
-    ; {|4913|} (* https://github.com/neovim/neovim/issues/3460 *)
-    ]
-  in
   let exclude_paths =
     (* These paths should already exist on the filesystem when the watches are
        initially set up, otherwise the @<path> has no effect for inotifywait. If
@@ -468,7 +501,8 @@ let add_watch t path =
   match t.kind with
   | Coarse _ ->
     (* Here we assume that the path is already being watched because the coarse
-       file watchers are expected to watch all the source files from the start *)
+       file watchers are expected to watch all the source files from the
+       start *)
     ()
   | Fine { inotify } -> Inotify_lib.add inotify (Path.to_string path)
 

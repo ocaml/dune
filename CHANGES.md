@@ -1,6 +1,8 @@
 Unreleased
 ----------
 
+- Fixes `opam` META file requires entry for private libs (#4841, fixes #4839, @toots)
+
 - Fixes `dune exec` not adding .exe on Windows (#4371, fixes #3322, @MisterDA)
 
 - Allow multiple cinaps stanzas in the same directory (#4460, @rgrinberg)
@@ -161,6 +163,13 @@ Unreleased
 
 - Allow depending on `ocamldoc` library when `ocamlfind` is not installed.
   (#4811, fixes #4809, @nojb)
+
+- Improve lookup of optional or disabled binaries. Previously, we'd treat every
+  executable with missing libraries as optional. Now, we treat make sure to
+  look at the library's optional or enabled_if status (#4786).
+
+- Always use 7 char hash prefix in build info version (#4857, @jberdine, fixes
+  #4855)
 
 2.9.1 (unreleased)
 ------------------

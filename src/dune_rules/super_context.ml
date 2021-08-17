@@ -461,29 +461,40 @@ let get_installed_binaries stanzas ~(context : Context.t) =
             binaries_from_install files
           | Dune_file.Executables
               ({ install_conf = Some { section = Section Bin; files; _ }; _ } as
-              exes) ->
-            let* compile_info =
-              let project = Scope.project d.scope in
-              let dune_version = Dune_project.dune_version project in
-              let+ pps =
-                Resolve.read_memo_build
-                  (Preprocess.Per_module.with_instrumentation
-                     exes.buildable.preprocess
-                     ~instrumentation_backend:
-                       (Lib.DB.instrumentation_backend (Scope.libs d.scope)))
-                >>| Preprocess.Per_module.pps
-              in
-              Lib.DB.resolve_user_written_deps_for_exes (Scope.libs d.scope)
-                exes.names exes.buildable.libraries ~pps ~dune_version
-                ~allow_overlaps:exes.buildable.allow_overlapping_dependencies
+              exes) -> (
+            let* enabled_if =
+              Expander.With_reduced_var_set.eval_blang ~context ~dir:d.ctx_dir
+                exes.enabled_if
             in
-            let available =
-              Resolve.is_ok (Lib.Compile.direct_requires compile_info)
-            in
-            if available then
-              binaries_from_install files
-            else
-              Memo.Build.return Path.Build.Set.empty
+            match enabled_if with
+            | false -> Memo.Build.return Path.Build.Set.empty
+            | true -> (
+              match exes.optional with
+              | false -> binaries_from_install files
+              | true ->
+                let* compile_info =
+                  let project = Scope.project d.scope in
+                  let dune_version = Dune_project.dune_version project in
+                  let+ pps =
+                    Resolve.read_memo_build
+                      (Preprocess.Per_module.with_instrumentation
+                         exes.buildable.preprocess
+                         ~instrumentation_backend:
+                           (Lib.DB.instrumentation_backend (Scope.libs d.scope)))
+                    >>| Preprocess.Per_module.pps
+                  in
+                  Lib.DB.resolve_user_written_deps_for_exes (Scope.libs d.scope)
+                    exes.names exes.buildable.libraries ~pps ~dune_version
+                    ~allow_overlaps:
+                      exes.buildable.allow_overlapping_dependencies
+                in
+                let available =
+                  Resolve.is_ok (Lib.Compile.direct_requires compile_info)
+                in
+                if available then
+                  binaries_from_install files
+                else
+                  Memo.Build.return Path.Build.Set.empty))
           | _ -> Memo.Build.return Path.Build.Set.empty)
       >>| Path.Build.Set.union_all)
   >>| Path.Build.Set.union_all

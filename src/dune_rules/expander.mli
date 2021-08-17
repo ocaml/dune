@@ -130,6 +130,9 @@ module With_reduced_var_set : sig
     -> dir:Path.Build.t
     -> String_with_vars.t
     -> String_with_vars.t Memo.Build.t
+
+  val eval_blang :
+    context:Context.t -> dir:Path.Build.t -> Blang.t -> bool Memo.Build.t
 end
 
 (** Expand forms of the form (:standard \ foo bar). Expansion is only possible

@@ -50,6 +50,7 @@ let term =
   Scheduler.go ~common ~config (fun () ->
       let open Fiber.O in
       let* setup = Import.Main.setup () in
+      let* setup = Memo.Build.run setup in
       let dir = Path.of_string dir in
       let checked = Util.check_path setup.contexts dir in
       let request =

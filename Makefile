@@ -22,7 +22,7 @@ mdx \
 menhir \
 "merlin>=3.4.0" \
 ocamlfind \
-ocamlformat.0.18.0 \
+ocamlformat.0.19.0 \
 "odoc>=1.5.0" \
 "ppx_expect>=v0.14" \
 ppx_inline_test \
@@ -67,7 +67,7 @@ dev-switch:
 	opam update
 # Ensuring that either a dev switch already exists or a new one is created
 	[[ $(shell opam switch show) == $(shell pwd) ]] || \
-		opam switch create -y . 4.11.1 --deps-only --with-test
+		opam switch create -y . 4.12.0 --deps-only --with-test
 	opam install -y $(TEST_DEPS) $(DEV_DEPS)
 
 test: $(BIN)

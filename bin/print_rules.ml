@@ -113,6 +113,7 @@ let term =
       let* setup = Import.Main.setup () in
       Build_system.run_exn (fun () ->
           let open Memo.Build.O in
+          let* setup = setup in
           let* request =
             match targets with
             | [] ->

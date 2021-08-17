@@ -697,7 +697,8 @@ module Build_info = struct
       if not (Sys.file_exists ".git") then
         Fiber.return None
       else
-        Process.try_run_and_capture "git" [ "describe"; "--always"; "--dirty" ]
+        Process.try_run_and_capture "git"
+          [ "describe"; "--always"; "--dirty"; "--abbrev=7" ]
         >>| function
         | Some s -> Some (String.trim s)
         | None -> None)

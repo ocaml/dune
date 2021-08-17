@@ -418,7 +418,7 @@ git, dune-release invokes this command to find out the version:
 
 .. code:: bash
 
-    $ git describe --always --dirty
+    $ git describe --always --dirty --abbrev=7
     1.0+beta9-79-g29e9b37
 
 Projects using dune usually only need dune-release for creating and
@@ -434,7 +434,7 @@ project.
 More precisely, it replaces all the following watermarks in source files:
 
 - ``NAME``, the name of the project
-- ``VERSION``, output of ``git describe --always --dirty``
+- ``VERSION``, output of ``git describe --always --dirty --abbrev=7``
 - ``VERSION_NUM``, same as ``VERSION`` but with a potential leading
   ``v`` or ``V`` dropped
 - ``VCS_COMMIT_ID``, commit hash from the vcs

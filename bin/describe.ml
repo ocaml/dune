@@ -310,6 +310,7 @@ let term =
   Scheduler.go ~common ~config (fun () ->
       let open Fiber.O in
       let* setup = Import.Main.setup () in
+      let* setup = Memo.Build.run setup in
       let context = Import.Main.find_context_exn setup ~name:context_name in
       let+ res = Memo.Build.run (What.describe what setup context) in
       match format with

@@ -2,9 +2,9 @@
 Quickstart
 **********
 
-This document gives simple usage examples of dune. You can also look at
+This document gives simple usage examples of Dune. You can also look at
 `examples <https://github.com/ocaml/dune/tree/master/example>`__ for complete
-examples of projects using dune.
+examples of projects using Dune.
 
 Building a Hello World Program
 ==============================
@@ -37,6 +37,7 @@ step with ``dune exec ./hello_world.exe``.
 Building a Hello World Program Using Lwt
 ========================================
 
+Lwt is a concurrent libary in OCaml. 
 In a directory of your choice, write this ``dune`` file:
 
 .. code:: scheme
@@ -89,7 +90,7 @@ And build it with:
 
 The executable will be built as ``_build/default/hello_world.exe``
 
-Defining a Library Using Lwt and ocaml-re
+Defining a Library Using Lwt and ``ocaml-re``
 =========================================
 
 Write this ``dune`` file:
@@ -108,7 +109,7 @@ Outside of the library, module ``Foo`` will be accessible as
 You can then use this library in any other directory by adding ``mylib``
 to the ``(libraries ...)`` field.
 
-Building a Hello World Program in byte-code
+Building a Hello World Program in Bytecode
 ============================================
 
 In a directory of your choice, write this ``dune`` file:
@@ -116,7 +117,7 @@ In a directory of your choice, write this ``dune`` file:
 .. code:: scheme
 
     ;; This declares the hello_world executable implemented by hello_world.ml
-    ;; to be build as native (.exe) or byte-code (.bc) version.
+    ;; to be build as native (.exe) or bytecode (.bc) version.
     (executable
      (name hello_world)
      (modes byte exe))
@@ -135,7 +136,7 @@ And build it with:
 
 The executable will be built as ``_build/default/hello_world.bc``.
 The executable can be built and run in a single
-step with ``dune exec ./hello_world.bc``. This byte-code version allows the usage of 
+step with ``dune exec ./hello_world.bc``. This bytecode version allows the usage of 
 ``ocamldebug``.
 
 Setting the OCaml Compilation Flags Globally
@@ -159,7 +160,7 @@ can be selected from the command line with ``--profile foo`` or from a
 
     (profile foo)
 
-Using cppo
+Using Cppo
 ==========
 
 Add this field to your ``library`` or ``executable`` stanzas:
@@ -175,7 +176,7 @@ declare the dependency to this file via:
 
     (preprocessor_deps config.h)
 
-Using the .cppo.ml Style Like the ocamlbuild Plugin
+Using the ``.cppo.ml`` Style Like the ``ocamlbuild`` Plugin
 ---------------------------------------------------
 
 Write this in your ``dune`` file:
@@ -206,7 +207,7 @@ this ``dune`` file:
       (flags -I/blah/include))
      (c_library_flags (-lblah)))
 
-Defining a Library with C Stubs using pkg-config
+Defining a Library with C Stubs using ``pkg-config``
 ================================================
 
 Same context as before, but using ``pkg-config`` to query the

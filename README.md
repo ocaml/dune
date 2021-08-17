@@ -49,21 +49,21 @@ etc.
 
 Dune itself is fast, has very low overhead, and supports parallel
 builds on all platforms. It has no system dependencies. OCaml is all you need
-to build dune and packages using dune. You don't need
+to build Dune and packages using Dune. You don't need
 `make` or `bash`, as long as the packages themselves don't use `bash`
 explicitly.
 
 In particular, one can install OCaml on Windows with a binary installer
-and then use only the Windows Console to build dune and packages
-using dune.
+and then use only the Windows Console to build Dune and packages
+using Dune.
 
 Strengths
 ---------
 
 ### Composable
 
-Take *n* repositories that use dune and arrange them in any way on the
-file system. The result is still a single repository that dune
+Take *n* repositories that use Dune and arrange them in any way on the
+file system. The result is still a single repository that Dune
 knows how to build at once.
 
 This make simultaneous development on multiple packages trivial.
@@ -101,14 +101,14 @@ projects using OCaml 4.02.3 or greater.
 Installation
 ------------
 
-We recommended installing dune via the [opam package manager][opam]:
+We recommended installing Dune via the [opam package manager][opam]:
 
 ```sh
 $ opam install dune
 ```
 
 If you are new to opam, make sure to run `eval $(opam config env)` to
-make `dune` available in your `PATH`. The dune binary is self-contained 
+make `dune` available in your `PATH`. The `dune` binary is self-contained 
 and relocatable, so you can safely copy it somewhere else to
 make it permanently available.
 
@@ -139,14 +139,14 @@ hard-coding it at compilation time.
 Support
 -------
 
-If you have questions about dune, you can send an email to
+If you have questions about Dune, you can send an email to
 ocaml-core@googlegroups.com or [open a ticket on GitHub][issues].
 
 
 Migration from Jbuilder
 -----------------------
 
-Dune was formerly known as Jbuilder. Migration from jbuilder to dune is
+Dune was formerly known as Jbuilder. Migration from Jbuilder to Dune is
 described in the [manual](http://dune.readthedocs.io/en/latest/migration.html).
 
 Status
@@ -155,4 +155,4 @@ Status
 Dune is fairly stable and used by the majority of packages on
 opam. Note that dune retains backward compatibility with Jbuilder, and
 in particular, existing Jbuilder projects will continue to be buildable
-with dune.
+with Dune.

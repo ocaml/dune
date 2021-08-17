@@ -3,9 +3,12 @@ open Fiber.O
 module Scheduler = Dune_engine.Scheduler
 module Dune_rpc = Dune_rpc_private
 module Request = Dune_rpc.Public.Request
+module Diagnostic = Dune_rpc.Diagnostic
 module Client = Dune_rpc_impl.Client
 module Session = Csexp_rpc.Session
 module Config = Dune_util.Config
+
+let () = Dune_util.Log.init ~file:(Out_channel stderr) ()
 
 let dune_prog =
   lazy
@@ -73,11 +76,11 @@ let run ~prog ~argv =
     Spawn.spawn ~prog ~argv ~stdout:stdout_w ~stderr:stderr_w
       ~stdin:(Lazy.force Config.dev_null_in)
       ()
+    |> Pid.of_int
   in
   Unix.close stdout_w;
   Unix.close stderr_w;
-  ( pid
-  , (let+ proc = Scheduler.wait_for_process ~timeout:3.0 (Pid.of_int pid) in
+  ( (let+ proc = Scheduler.wait_for_process ~timeout:3.0 pid in
      if proc.status <> Unix.WEXITED 0 then
        let name = sprintf "%s %s" prog (String.concat ~sep:" " argv) in
        match proc.status with
@@ -86,21 +89,6 @@ let run ~prog ~argv =
        | _ -> assert false)
   , read_lines stdout_i
   , read_lines stderr_i )
-
-let run_dump_out ~prog ~argv =
-  let _pid, finish, stdout, stderr = run ~prog ~argv in
-  let me =
-    sprintf "%s %s" (Filename.basename prog) (String.concat argv ~sep:" ")
-  in
-  let print what =
-    let+ what = what in
-    let what = String.trim what in
-    if what <> "" then printfn "%s > %s" me what
-  in
-  Fiber.fork_and_join_unit
-    (fun () -> finish)
-    (fun () ->
-      Fiber.fork_and_join_unit (fun () -> print stdout) (fun () -> print stderr))
 
 let run_server ~root_dir =
   run ~prog:(Lazy.force dune_prog)
@@ -121,21 +109,21 @@ let dune_build client what =
 
 let test f =
   let root_dir = "." in
-  let _server_pid, run_server, server_stdout, server_stderr =
-    run_server ~root_dir
-  in
+  let run_server, server_stdout, server_stderr = run_server ~root_dir in
   let+ stdout, stderr =
     Fiber.fork_and_join_unit
       (fun () -> Fiber.fork_and_join_unit (fun () -> run_server) f)
       (fun () ->
         Fiber.fork_and_join (fun () -> server_stdout) (fun () -> server_stderr))
   in
+  (* We wait until the tests finish to print stdout and stderr for determinism.
+     But this has the disadvantage that the fiber above will not always
+     terminate for failed tests. Thus, the output below will never be shown. *)
   if stdout <> "" then printfn "stdout:\n%s" stdout;
   if stderr <> "" then printfn "stderr:\n%s" stderr
 
-let cwd = Sys.getcwd ()
-
 let run =
+  let cwd = Sys.getcwd () in
   let config =
     { Scheduler.Config.concurrency = 1
     ; display = { verbosity = Quiet; status_line = false }
@@ -145,11 +133,17 @@ let run =
   in
   fun run ->
     let dir = Temp.create Dir ~prefix:"dune" ~suffix:"rpc_test" in
+    let run () =
+      Fiber.with_error_handler run ~on_error:(fun exn ->
+          Exn_with_backtrace.pp_uncaught Format.err_formatter exn;
+          Format.pp_print_flush Format.err_formatter ();
+          Exn_with_backtrace.reraise exn)
+    in
     Exn.protect
       ~finally:(fun () -> Sys.chdir cwd)
       ~f:(fun () ->
         Sys.chdir (Path.to_string dir);
-        Scheduler.Run.go config run ~timeout:3.0 ~on_event:(fun _ _ -> ()))
+        Scheduler.Run.go config run ~timeout:5.0 ~on_event:(fun _ _ -> ()))
 
 let%expect_test "turn on and shutdown" =
   let test () =
@@ -172,50 +166,55 @@ let%expect_test "turn on and shutdown" =
 let files =
   List.iter ~f:(fun (f, contents) -> Io.String_path.write_file f contents)
 
-let setup_diagnostics f =
-  let exec () =
-    let on_diagnostic_event =
-      let cwd = Sys.getcwd () in
-      let sanitize_path path =
-        match String.drop_prefix path ~prefix:cwd with
-        | None -> path
-        | Some s -> "$CWD" ^ s
-      in
-      let sanitize_pp pp = Pp.verbatim (Format.asprintf "%a@." Pp.to_fmt pp) in
-      let sanitize_loc =
-        let sanitize_position (p : Lexing.position) =
-          { p with pos_fname = sanitize_path p.pos_fname }
-        in
-        fun (loc : Loc.t) ->
-          { Loc.start = sanitize_position loc.start
-          ; stop = sanitize_position loc.stop
-          }
-      in
-      (* function to remove remove pp tags and hide junk from paths *)
-      let sanitize (d : Dune_rpc.Diagnostic.t) =
-        let directory = Option.map d.directory ~f:sanitize_path in
-        let promotion =
-          List.map d.promotion ~f:(fun (p : Dune_rpc.Diagnostic.Promotion.t) ->
-              let in_build = sanitize_path p.in_build in
-              let in_source = sanitize_path p.in_source in
-              { Dune_rpc.Diagnostic.Promotion.in_build; in_source })
-        in
-        let related =
-          List.map d.related
-            ~f:(fun (related : Dune_rpc.Diagnostic.Related.t) ->
-              let loc = sanitize_loc related.loc in
-              let message = sanitize_pp related.message in
-              { Dune_rpc.Diagnostic.Related.message; loc })
-        in
-        { d with
-          message = sanitize_pp d.message
-        ; loc = Option.map d.loc ~f:sanitize_loc
-        ; directory
-        ; promotion
-        ; related
-        }
-      in
-      fun (e : Dune_rpc.Diagnostic.Event.t) ->
+let on_diagnostic_event diagnostics =
+  let cwd = Sys.getcwd () in
+  let sanitize_path path =
+    match String.drop_prefix path ~prefix:cwd with
+    | None -> path
+    | Some s -> "$CWD" ^ s
+  in
+  let sanitize_pp pp = Pp.verbatim (Format.asprintf "%a@." Pp.to_fmt pp) in
+  let sanitize_loc =
+    let sanitize_position (p : Lexing.position) =
+      { p with pos_fname = sanitize_path p.pos_fname }
+    in
+    fun (loc : Loc.t) ->
+      { Loc.start = sanitize_position loc.start
+      ; stop = sanitize_position loc.stop
+      }
+  in
+  (* function to remove remove pp tags and hide junk from paths *)
+  let map_event (d : Diagnostic.Event.t) f : Diagnostic.Event.t =
+    match d with
+    | Remove e -> Remove (f e)
+    | Add e -> Add (f e)
+  in
+  let sanitize (d : Dune_rpc.Diagnostic.t) =
+    let directory = Option.map d.directory ~f:sanitize_path in
+    let promotion =
+      List.map d.promotion ~f:(fun (p : Dune_rpc.Diagnostic.Promotion.t) ->
+          let in_build = sanitize_path p.in_build in
+          let in_source = sanitize_path p.in_source in
+          { Dune_rpc.Diagnostic.Promotion.in_build; in_source })
+    in
+    let related =
+      List.map d.related ~f:(fun (related : Dune_rpc.Diagnostic.Related.t) ->
+          let loc = sanitize_loc related.loc in
+          let message = sanitize_pp related.message in
+          { Dune_rpc.Diagnostic.Related.message; loc })
+    in
+    { d with
+      message = sanitize_pp d.message
+    ; loc = Option.map d.loc ~f:sanitize_loc
+    ; directory
+    ; promotion
+    ; related
+    }
+  in
+  if List.is_empty diagnostics then
+    print_endline "<no diagnostics>"
+  else
+    List.iter diagnostics ~f:(fun (e : Diagnostic.Event.t) ->
         (match e with
         | Remove _ -> ()
         | Add e ->
@@ -225,43 +224,43 @@ let setup_diagnostics f =
                  if not (Sys.file_exists path) then
                    printfn "FAILURE: promotion file %s does not exist"
                      (sanitize_path path)));
-        let e =
-          match e with
-          | Add e -> Dune_rpc.Diagnostic.Event.Add (sanitize e)
-          | Remove e -> Remove (sanitize e)
-        in
-        printfn "%s" (Dyn.to_string (Dune_rpc.Diagnostic.Event.to_dyn e))
-    in
+        let e = map_event e sanitize in
+        printfn "%s" (Dyn.to_string (Dune_rpc.Diagnostic.Event.to_dyn e)))
+
+let setup_diagnostics f =
+  let exec () =
     run_client (fun client ->
         (* First we test for regular errors *)
         files [ ("dune-project", "(lang dune 3.0)") ];
-        let* sub, stream =
-          printfn "subscribing to diagnostics";
-          Client.subscribe client Dune_rpc.Sub.diagnostic
-        in
-        Fiber.fork_and_join_unit
-          (fun () ->
-            let* () = f client in
-            Client.Subscription.cancel sub)
-          (fun () ->
-            Fiber.Stream.In.sequential_iter stream ~f:(fun des ->
-                List.iter des ~f:on_diagnostic_event;
-                Fiber.return ())))
+        f client)
   in
   run (fun () -> test exec)
 
+let print_diagnostics poll =
+  let+ res = Client.Stream.next poll in
+  match res with
+  | None -> printfn "client: no more diagnostics"
+  | Some diag -> on_diagnostic_event diag
+
 let diagnostic_with_build setup target =
-  setup_diagnostics (fun client ->
-      files setup;
-      dune_build client target)
+  let exec () =
+    run_client (fun client ->
+        (* First we test for regular errors *)
+        files (("dune-project", "(lang dune 3.0)") :: setup);
+        let* () = dune_build client target in
+        let poll = Client.poll client Dune_rpc.Sub.diagnostic in
+        let* () = print_diagnostics poll in
+        Client.Stream.cancel poll)
+  in
+  run (fun () -> test exec)
 
 let%expect_test "error in dune file" =
   diagnostic_with_build [ ("dune", "(library (name foo))") ] "foo.cma";
   [%expect
     {|
-    subscribing to diagnostics
     Building foo.cma
     Build foo.cma succeeded
+    <no diagnostics>
     stderr:
     waiting for inotify sync
     waited for inotify sync
@@ -276,8 +275,8 @@ let%expect_test "related error" =
     "foo.cma";
   [%expect
     {|
-    subscribing to diagnostics
     Building foo.cma
+    Build foo.cma failed
     [ "Add"
     ; [ [ "directory"; "$CWD" ]
       ; [ "id"; "0" ]
@@ -354,7 +353,6 @@ let%expect_test "related error" =
       ; [ "targets"; [] ]
       ]
     ]
-    Build foo.cma failed
     stderr:
     waiting for inotify sync
     waited for inotify sync
@@ -379,8 +377,8 @@ let%expect_test "promotion" =
     "(alias foo)";
   [%expect
     {|
-    subscribing to diagnostics
     Building (alias foo)
+    Build (alias foo) failed
     [ "Add"
     ; [ [ "id"; "0" ]
       ; [ "loc"
@@ -417,7 +415,6 @@ let%expect_test "promotion" =
       ; [ "targets"; [] ]
       ]
     ]
-    Build (alias foo) failed
     stderr:
     waiting for inotify sync
     waited for inotify sync
@@ -442,8 +439,8 @@ let%expect_test "optional promotion" =
     "(alias foo)";
   [%expect
     {|
-    subscribing to diagnostics
     Building (alias foo)
+    Build (alias foo) failed
     FAILURE: promotion file $CWD/_build/default/output.actual does not exist
     [ "Add"
     ; [ [ "id"; "0" ]
@@ -481,7 +478,6 @@ let%expect_test "optional promotion" =
       ; [ "targets"; [] ]
       ]
     ]
-    Build (alias foo) failed
     stderr:
     waiting for inotify sync
     waited for inotify sync
@@ -498,9 +494,9 @@ let%expect_test "warning detection" =
     "./foo.exe";
   [%expect
     {|
-    subscribing to diagnostics
     Building ./foo.exe
     Build ./foo.exe succeeded
+    <no diagnostics>
     stderr:
     waiting for inotify sync
     waited for inotify sync
@@ -516,51 +512,50 @@ let%expect_test "error from user rule" =
     "./foo";
   [%expect
     {|
-      subscribing to diagnostics
-      Building ./foo
-      [ "Add"
-      ; [ [ "id"; "0" ]
-        ; [ "loc"
-          ; [ [ "start"
-              ; [ [ "pos_bol"; "0" ]
-                ; [ "pos_cnum"; "0" ]
-                ; [ "pos_fname"; "dune" ]
-                ; [ "pos_lnum"; "1" ]
-                ]
+    Building ./foo
+    Build ./foo failed
+    [ "Add"
+    ; [ [ "id"; "0" ]
+      ; [ "loc"
+        ; [ [ "start"
+            ; [ [ "pos_bol"; "0" ]
+              ; [ "pos_cnum"; "0" ]
+              ; [ "pos_fname"; "dune" ]
+              ; [ "pos_lnum"; "1" ]
               ]
-            ; [ "stop"
-              ; [ [ "pos_bol"; "0" ]
-                ; [ "pos_cnum"; "49" ]
-                ; [ "pos_fname"; "dune" ]
-                ; [ "pos_lnum"; "1" ]
-                ]
+            ]
+          ; [ "stop"
+            ; [ [ "pos_bol"; "0" ]
+              ; [ "pos_cnum"; "49" ]
+              ; [ "pos_fname"; "dune" ]
+              ; [ "pos_lnum"; "1" ]
               ]
             ]
           ]
-        ; [ "message"
-          ; [ "Verbatim"
-            ; "Error: Rule failed to generate the following\n\
-               targets:- foo\n\
-               "
-            ]
-          ]
-        ; [ "promotion"; [] ]
-        ; [ "related"; [] ]
-        ; [ "targets"; [] ]
         ]
+      ; [ "message"
+        ; [ "Verbatim"
+          ; "Error: Rule failed to generate the following\n\
+             targets:- foo\n\
+             "
+          ]
+        ]
+      ; [ "promotion"; [] ]
+      ; [ "related"; [] ]
+      ; [ "targets"; [] ]
       ]
-      Build ./foo failed
-      stderr:
-      waiting for inotify sync
-      waited for inotify sync
-              bash foo
-      foobar
-      File "dune", line 1, characters 0-49:
-      1 | (rule (target foo) (action (bash "echo foobar")))
-          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-      Error: Rule failed to generate the following targets:
-      - foo
-      Had errors, waiting for filesystem changes... |}]
+    ]
+    stderr:
+    waiting for inotify sync
+    waited for inotify sync
+            bash foo
+    foobar
+    File "dune", line 1, characters 0-49:
+    1 | (rule (target foo) (action (bash "echo foobar")))
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    Error: Rule failed to generate the following targets:
+    - foo
+    Had errors, waiting for filesystem changes... |}]
 
 let%expect_test "create and fix error" =
   setup_diagnostics (fun client ->
@@ -568,11 +563,14 @@ let%expect_test "create and fix error" =
         [ ("dune", "(executable (name foo))")
         ; ("foo.ml", "let () = print_endline 123")
         ];
+      let poll = Client.poll client Dune_rpc.Sub.diagnostic in
       let* () = dune_build client "./foo.exe" in
+      [%expect {|
+        Building ./foo.exe
+        Build ./foo.exe failed |}];
+      let* () = print_diagnostics poll in
       [%expect
         {|
-        subscribing to diagnostics
-        Building ./foo.exe
         [ "Add"
         ; [ [ "directory"; "$CWD" ]
           ; [ "id"; "0" ]
@@ -605,14 +603,16 @@ let%expect_test "create and fix error" =
           ; [ "related"; [] ]
           ; [ "targets"; [] ]
           ]
-        ]
-        Build ./foo.exe failed |}];
-
+        ] |}];
       files [ ("foo.ml", "let () = print_endline \"foo\"") ];
-      let+ () = dune_build client "./foo.exe" in
+      let* () = dune_build client "./foo.exe" in
       [%expect
         {|
         Building ./foo.exe
+        Build ./foo.exe succeeded |}];
+      let+ () = print_diagnostics poll in
+      [%expect
+        {|
         [ "Remove"
         ; [ [ "directory"; "$CWD" ]
           ; [ "id"; "0" ]
@@ -645,8 +645,7 @@ let%expect_test "create and fix error" =
           ; [ "related"; [] ]
           ; [ "targets"; [] ]
           ]
-        ]
-        Build ./foo.exe succeeded |}]);
+        ] |}]);
   [%expect
     {|
     stderr:

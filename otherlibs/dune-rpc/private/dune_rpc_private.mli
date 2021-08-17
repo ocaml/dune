@@ -232,6 +232,8 @@ module Diagnostic : sig
     ; related : Related.t list
     }
 
+  val to_dyn : t -> Stdune.Dyn.t
+
   val related : t -> Related.t list
 
   val id : t -> Id.t
@@ -290,9 +292,17 @@ module Sub : sig
 
   val diagnostic : Diagnostic.Event.t list t
 
-  val cancel : Id.t Decl.notification
+  val poll : 'a t -> (Id.t, 'a option) Decl.request
 
-  val subscribe : (string, unit) Decl.request
+  val poll_cancel : _ t -> Id.t Decl.notification
+
+  module Id : sig
+    type t
+
+    val compare : t -> t -> int
+  end
+
+  val id : _ t -> Id.t
 end
 
 module Client : sig
@@ -300,8 +310,6 @@ module Client : sig
     type t
 
     type 'a fiber
-
-    type 'a stream
 
     type chan
 
@@ -316,14 +324,15 @@ module Client : sig
 
     val disconnected : t -> unit fiber
 
-    module Subscription : sig
-      type t
+    module Stream : sig
+      type 'a t
 
-      val cancel : t -> unit fiber
+      val cancel : _ t -> unit fiber
+
+      val next : 'a t -> 'a option fiber
     end
 
-    val subscribe :
-      ?id:Id.t -> t -> 'a Sub.t -> (Subscription.t * 'a stream) fiber
+    val poll : ?id:Id.t -> t -> 'a Sub.t -> 'a Stream.t
 
     module Batch : sig
       type t
@@ -350,8 +359,6 @@ module Client : sig
 
       val create :
            ?log:(Message.t -> unit fiber)
-        -> ?diagnostic:(Diagnostic.Event.t list -> unit fiber)
-        -> ?build_progress:(Progress.t -> unit fiber)
         -> ?abort:(Message.t -> unit fiber)
         -> unit
         -> t
@@ -392,8 +399,6 @@ module Client : sig
       val read : 'a t -> 'a fiber
 
       val fill : 'a t -> 'a -> unit fiber
-
-      val peek : 'a t -> 'a option fiber
     end
     with type 'a fiber := 'a t
   end) (Chan : sig
@@ -402,25 +407,7 @@ module Client : sig
     val write : t -> Csexp.t list option -> unit Fiber.t
 
     val read : t -> Csexp.t option Fiber.t
-  end) (Stream : sig
-    module Out : sig
-      type 'a t
-
-      val write : 'a t -> 'a -> unit Fiber.t
-
-      val close : 'a t -> unit Fiber.t
-    end
-
-    module In : sig
-      type 'a t
-    end
-
-    val create : unit -> 'a In.t * 'a Out.t
-  end) :
-    S
-      with type 'a fiber := 'a Fiber.t
-       and type chan := Chan.t
-       and type 'a stream := 'a Stream.In.t
+  end) : S with type 'a fiber := 'a Fiber.t and type chan := Chan.t
 end
 
 module Packet : sig
@@ -481,6 +468,4 @@ module Server_notifications : sig
   val log : Message.t Decl.notification
 
   val abort : Message.t Decl.notification
-
-  val update_sub : 'a Sub.t -> (Id.t * 'a option) Decl.notification
 end

@@ -2,49 +2,29 @@ open Stdune
 open Dune_rpc_private
 open Fiber.O
 
-module Subscription = struct
+module Session_id = Stdune.Id.Make ()
+
+module Poller = struct
   module Id = Stdune.Id.Make ()
 
-  type 'a t =
-    { send : 'a option -> unit Fiber.t
-    ; finished : unit Fiber.Ivar.t
-    ; mutable active : bool
-    ; id : Id.t
+  type t =
+    { id : Id.t
+    ; sub_id : Sub.Id.t
+    ; session_id : Session_id.t
     }
 
-  let to_dyn t = Id.to_dyn t.id
+  let create session_id sub_id = { id = Id.gen (); sub_id; session_id }
 
-  type packed = E : _ t -> packed
+  let to_dyn { id; sub_id = _; session_id = _ } = Id.to_dyn id
+
+  let sub_id t = t.sub_id
 
   let compare x y = Id.compare x.id y.id
-
-  let compare_packed (E x) (E y) = Id.compare x.id y.id
-
-  let finished t = Fiber.Ivar.read t.finished
-
-  let active t = t.active
-
-  let finish' t ~by_ =
-    Fiber.of_thunk (fun () ->
-        match t.active with
-        | false -> Fiber.return ()
-        | true -> (
-          t.active <- false;
-          match by_ with
-          | `Client -> Fiber.Ivar.fill t.finished ()
-          | `Server ->
-            Fiber.fork_and_join_unit (Fiber.Ivar.fill t.finished) (fun () ->
-                t.send None)))
-
-  let finish = finish' ~by_:`Server
-
-  let update t a =
-    if not t.active then
-      Code_error.raise "trying to update an inactive subscription" [];
-    t.send (Some a)
 end
 
 module Session = struct
+  module Id = Session_id
+
   type 'a state =
     | Uninitialized
     | Initialized of
@@ -53,18 +33,14 @@ module Session = struct
         ; closed : bool
         }
 
-  module Id = Stdune.Id.Make ()
-
   type 'a t =
     { queries : Packet.Query.t Fiber.Stream.In.t
     ; id : Id.t
     ; send : Packet.Reply.t list option -> unit Fiber.t
     ; pool : Fiber.Pool.t
     ; mutable state : 'a state
-    ; mutable subscriptions : Subscription.packed Dune_rpc_private.Id.Map.t
+    ; mutable pollers : Poller.t Dune_rpc_private.Id.Map.t
     }
-
-  let subscriptions t = Dune_rpc_private.Id.Map.values t.subscriptions
 
   let set t state =
     match t.state with
@@ -91,8 +67,8 @@ module Session = struct
     ; send
     ; state = Uninitialized
     ; id = Id.gen ()
-    ; subscriptions = Dune_rpc_private.Id.Map.empty
     ; pool = Fiber.Pool.create ()
+    ; pollers = Dune_rpc_private.Id.Map.empty
     }
 
   let notification t (decl : _ Decl.notification) n =
@@ -121,25 +97,26 @@ module Session = struct
       in
       constr "Initialized" [ record ]
 
-  let to_dyn f { id; state; subscriptions = _; queries = _; send = _; pool = _ }
-      =
+  let to_dyn f { id; state; queries = _; send = _; pool = _; pollers = _ } =
     let open Dyn.Encoder in
     record [ ("id", Id.to_dyn id); ("state", dyn_of_state f state) ]
 
-  let create_subscription t client_id sub =
-    let decl = Server_notifications.update_sub sub in
-    let send v = notification t decl (client_id, v) in
-    let sub =
-      { Subscription.send
-      ; finished = Fiber.Ivar.create ()
-      ; active = true
-      ; id = Subscription.Id.gen ()
-      }
-    in
-    t.subscriptions <-
-      Dune_rpc_private.Id.Map.add_exn t.subscriptions client_id
-        (Subscription.E sub);
-    sub
+  let find_or_create_poller t (sub_id : Sub.Id.t) id =
+    match Dune_rpc_private.Id.Map.find t.pollers id with
+    | Some poller -> poller
+    | None ->
+      let poller = Poller.create t.id sub_id in
+      t.pollers <- Dune_rpc_private.Id.Map.add_exn t.pollers id poller;
+      poller
+
+  let cancel_poller t id =
+    match Dune_rpc_private.Id.Map.find t.pollers id with
+    | None -> None
+    | Some poller ->
+      t.pollers <- Dune_rpc_private.Id.Map.remove t.pollers id;
+      Some poller
+
+  let has_poller t (poller : Poller.t) = Id.equal t.id poller.session_id
 end
 
 type message_kind =
@@ -315,18 +292,9 @@ module H = struct
     type 's r_handler =
       | R : ('s, 'a, 'b) callback * ('a, 'b) Decl.request -> 's r_handler
 
-    type 's sub =
-      | Sub :
-          info
-          * 'a Sub.t
-          * ('s Session.t -> 'init Fiber.t)
-          * ('s Session.t -> 'init -> 'a Subscription.t -> unit Fiber.t)
-          -> 's sub
-
     type 's t =
       { mutable notification_handlers : 's n_handler list
       ; mutable request_handlers : 's r_handler list
-      ; mutable subscriptions : 's sub list String.Map.t
       ; on_init : 's Session.t -> Initialize.Request.t -> 's Fiber.t
       ; on_terminate : 's Session.t -> unit Fiber.t
       ; version : int * int
@@ -343,69 +311,19 @@ module H = struct
             | None -> true
             | Some until -> version <= until))
 
-    let on_subscribe_request subscriptions =
-      let callback =
-        let info = public ~since:(3, 0) () in
-        let f session req_id what =
-          let req_id = Option.value_exn req_id in
-          match String.Map.find subscriptions what with
-          | None ->
-            let err =
-              let payload = Sexp.record [ ("what", Sexp.Atom what) ] in
-              Response.Error.create ~kind:Invalid_request ~payload
-                ~message:"Unknown subscription" ()
-            in
-            raise (Response.Error.E err)
-          | Some subs -> (
-            match
-              let version = (Session.initialize session).version in
-              find_cb subs ~version ~info:(fun (Sub (a, _, _, _)) -> a)
-            with
-            | None ->
-              abort session ~message:"No subscription matching version."
-                ~payload:(Sexp.record [ ("subscription", Atom what) ])
-            | Some (Sub (_info, sub, on_subscribe, init_subscription)) ->
-              let* init = on_subscribe session in
-              let subscription =
-                Session.create_subscription session req_id sub
-              in
-              Fiber.Pool.task session.pool ~f:(fun () ->
-                  init_subscription session init subscription))
-        in
-        { info; f }
-      in
-      R (callback, Sub.subscribe)
-
-    let on_unsubscribe_notification () =
-      let callback =
-        let info = public ~since:(3, 0) () in
-        let f (session : _ Session.t) _no_req_id sub_id =
-          match Id.Map.find session.subscriptions sub_id with
-          | None ->
-            (* TODO warn the user this is a no-op *)
-            Fiber.return ()
-          | Some (Subscription.E sub) -> Subscription.finish' sub ~by_:`Client
-        in
-        { info; f }
-      in
-      N (callback, Sub.cancel)
-
     let to_handler
         { on_init
         ; notification_handlers
         ; request_handlers
         ; version
         ; on_terminate
-        ; subscriptions
         } =
       let request_handlers, notification_handlers =
         let r = Table.create (module String) 16 in
         let n = Table.create (module String) 16 in
-        List.iter (on_unsubscribe_notification () :: notification_handlers)
-          ~f:(fun (N (cb, decl)) ->
+        List.iter notification_handlers ~f:(fun (N (cb, decl)) ->
             Table.Multi.cons n decl.method_ (N (cb, decl)));
-        List.iter (on_subscribe_request subscriptions :: request_handlers)
-          ~f:(fun (R (cb, decl)) ->
+        List.iter request_handlers ~f:(fun (R (cb, decl)) ->
             Table.Multi.cons r decl.method_ (R (cb, decl)));
         (* TODO This all needs proper validation. It shouldn't be possible for
            the same methods to overlap versions *)
@@ -485,7 +403,6 @@ module H = struct
       ; on_init
       ; version
       ; on_terminate
-      ; subscriptions = String.Map.empty
       }
 
     let request (t : _ t) cb decl =
@@ -494,11 +411,27 @@ module H = struct
     let notification (t : _ t) cb decl =
       t.notification_handlers <- N (cb, decl) :: t.notification_handlers
 
-    let subscription (t : _ t) info (sub : _ Sub.t) ~on_subscribe ~subscription
-        =
-      t.subscriptions <-
-        String.Map.Multi.cons t.subscriptions sub.name
-          (Sub (info, sub, on_subscribe, subscription))
+    let poll (t : _ t) info (sub : _ Sub.t) ~on_poll ~on_cancel =
+      let on_poll session id =
+        let poller = Session.find_or_create_poller session (Sub.id sub) id in
+        let+ res = on_poll session poller in
+        let () =
+          match res with
+          | Some _ -> ()
+          | None ->
+            let _ = Session.cancel_poller session id in
+            ()
+        in
+        res
+      in
+      let on_cancel session id =
+        let poller = Session.cancel_poller session id in
+        match poller with
+        | None -> Fiber.return () (* XXX log *)
+        | Some poller -> on_cancel session poller
+      in
+      request t (callback' info on_poll) (Sub.poll sub);
+      notification t (callback' info on_cancel) (Sub.poll_cancel sub)
   end
 end
 

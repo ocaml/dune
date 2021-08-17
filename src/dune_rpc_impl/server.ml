@@ -2,10 +2,10 @@ open! Stdune
 open Fiber.O
 open Dune_rpc_server
 module Dune_rpc = Dune_rpc_private
-module Subscribe = Dune_rpc.Subscribe
 module Initialize = Dune_rpc.Initialize
 module Public = Dune_rpc.Public
 module Server_notifications = Dune_rpc.Server_notifications
+module Sub = Dune_rpc.Sub
 module Progress = Dune_rpc.Progress
 module Id = Dune_rpc.Id
 module Diagnostic = Dune_rpc.Diagnostic
@@ -26,62 +26,6 @@ end
 
 type pending_build_action =
   | Build of Dep_conf.t list * Build_outcome.t Fiber.Ivar.t
-
-let absolutize_paths ~dir (loc : Loc.t) =
-  let make_path name =
-    Path.to_absolute_filename
-      (if Filename.is_relative name then
-        Path.append_local dir (Path.Local.parse_string_exn ~loc name)
-      else
-        Path.of_string name)
-  in
-  { Loc.start = { loc.start with pos_fname = make_path loc.start.pos_fname }
-  ; stop = { loc.stop with pos_fname = make_path loc.stop.pos_fname }
-  }
-
-let diagnostic_of_error : Build_system.Error.t -> Dune_rpc_private.Diagnostic.t
-    =
- fun m ->
-  let message, related, dir = Build_system.Error.info m in
-  let make_loc loc =
-    match dir with
-    | None -> loc
-    | Some dir -> absolutize_paths ~dir loc
-  in
-  let loc = Option.map message.loc ~f:make_loc in
-  let make_message pars = Pp.map_tags (Pp.concat pars) ~f:(fun _ -> ()) in
-  let id = Build_system.Error.id m |> Diagnostic.Id.create in
-  let promotion =
-    match Build_system.Error.promotion m with
-    | None -> []
-    | Some { in_source; in_build } ->
-      [ { Diagnostic.Promotion.in_source =
-            Path.to_absolute_filename (Path.source in_source)
-        ; in_build = Path.to_absolute_filename (Path.build in_build)
-        }
-      ]
-  in
-  let related =
-    List.map related ~f:(fun (related : User_message.t) ->
-        { Dune_rpc_private.Diagnostic.Related.message =
-            make_message related.paragraphs
-        ; loc = make_loc (Option.value_exn related.loc)
-        })
-  in
-  { severity = None
-  ; id
-  ; targets = []
-  ; message = make_message message.paragraphs
-  ; loc
-  ; promotion
-  ; related
-  ; directory =
-      Option.map
-        ~f:(fun p ->
-          Path.to_absolute_filename
-            (Path.drop_optional_build_context_maybe_sandboxed p))
-        dir
-  }
 
 (* TODO un-copy-paste from dune/bin/arg.ml *)
 let dep_parser =
@@ -129,108 +73,6 @@ module Session_comparable = Comparable.Make (struct
 end)
 
 module Session_set = Session_comparable.Set
-
-module Subscribers : sig
-  type t
-
-  type _ what =
-    | Diagnostic : Diagnostic.Event.t list what
-    | Progress : Progress.t what
-
-  val empty : t
-
-  val remove : t -> 'a what -> 'a Subscription.t -> t
-
-  (** Remove all subscriptions of a sesssion *)
-  val remove_session : t -> Client.t Session.t -> t
-
-  val add : t -> 'a what -> 'a Subscription.t -> t
-
-  val notify : t -> 'a what -> 'a -> unit Fiber.t
-end = struct
-  module S = struct
-    let compare = Subscription.compare
-
-    let to_dyn x = Subscription.to_dyn x
-  end
-
-  module Progress_subs_comparable = Comparable.Make (struct
-    type t = Progress.t Subscription.t
-
-    include S
-  end)
-
-  module Progress_subs = Progress_subs_comparable.Set
-
-  module Diagnostic_subs_comparable = Comparable.Make (struct
-    type t = Diagnostic.Event.t list Subscription.t
-
-    include S
-  end)
-
-  module Diagnostic_subs = Diagnostic_subs_comparable.Set
-  module Session_map = Session_comparable.Map
-
-  module Sub_comparable = Comparable.Make (struct
-    type t = Subscription.packed
-
-    let compare x y = Subscription.compare_packed x y
-
-    let to_dyn (Subscription.E x) = Subscription.to_dyn x
-  end)
-
-  module Sub_map = Sub_comparable.Map
-
-  type t =
-    { build_progress : Progress.t Subscription.t Sub_map.t
-    ; diagnostic : Diagnostic.Event.t list Subscription.t Sub_map.t
-    }
-
-  type _ what =
-    | Diagnostic : Diagnostic.Event.t list what
-    | Progress : Progress.t what
-
-  let empty = { build_progress = Sub_map.empty; diagnostic = Sub_map.empty }
-
-  let with_sub_map (type a b) t (what : a what)
-      ~(f : a Subscription.t Sub_map.t -> b * a Subscription.t Sub_map.t) :
-      b * t =
-    match what with
-    | Progress ->
-      let res, build_progress = f t.build_progress in
-      (res, { t with build_progress })
-    | Diagnostic ->
-      let res, diagnostic = f t.diagnostic in
-      (res, { t with diagnostic })
-
-  let modify t what ~f =
-    let (), res = with_sub_map t what ~f:(fun map -> ((), f map)) in
-    res
-
-  let add (type a) t (what : a what) (sub : a Subscription.t) =
-    let key = Subscription.E sub in
-    modify t what ~f:(fun map -> Sub_map.add_exn map key sub)
-
-  let remove (type a) t (what : a what) (sub : a Subscription.t) =
-    let key = Subscription.E sub in
-    modify t what ~f:(fun map -> Sub_map.remove map key)
-
-  let remove_session t session =
-    Session.subscriptions session
-    |> List.fold_left ~init:t ~f:(fun t sub ->
-           { build_progress = Sub_map.remove t.build_progress sub
-           ; diagnostic = Sub_map.remove t.diagnostic sub
-           })
-
-  let notify (type a) t (what : a what) (a : a) =
-    let fiber, _map =
-      with_sub_map t what ~f:(fun map ->
-          ( Sub_map.values map
-            |> Fiber.parallel_iter ~f:(fun sub -> Subscription.update sub a)
-          , map ))
-    in
-    fiber
-end
 
 (** Primitive unbounded FIFO channel. Reads are blocking. Writes are not
     blocking. At most one read is allowed at a time. *)
@@ -287,7 +129,7 @@ type t =
       (Dep_conf.t list * Build_outcome.t Fiber.Ivar.t) Job_queue.t
   ; build_handler : Build_system.Handler.t
   ; pool : Fiber.Pool.t
-  ; mutable subscribers : Subscribers.t
+  ; long_poll : Long_poll.t
   ; mutable clients : Session_set.t
   }
 
@@ -302,8 +144,7 @@ let handler (t : t Fdecl.t) : 'a Dune_rpc_server.Handler.t =
   in
   let on_terminate session =
     let t = Fdecl.get t in
-    t.subscribers <- Subscribers.remove_session t.subscribers session;
-    Fiber.return ()
+    Long_poll.disconnect_session t.long_poll session
   in
   let rpc =
     Handler.create ~on_terminate ~on_init
@@ -363,48 +204,23 @@ let handler (t : t Fdecl.t) : 'a Dune_rpc_server.Handler.t =
   in
   let () =
     let info = Handler.public ~since:(3, 0) () in
-    Handler.subscription rpc info Sub.progress
-      ~on_subscribe:(fun _ -> Fiber.return ())
-      ~subscription:(fun _session () sub ->
-        let t = Fdecl.get t in
-        let* () =
-          let event =
-            match Build_system.last_event () with
-            | Some Fail -> Progress.Failed
-            | Some Interrupt -> Interrupted
-            | Some Finish -> Success
-            | None -> Progress.Waiting
-            | Some Start ->
-              let current_progress : Build_system.Progress.t =
-                Build_system.get_current_progress ()
-              in
-              let complete = current_progress.number_of_rules_executed in
-              In_progress
-                { complete
-                ; remaining =
-                    current_progress.number_of_rules_discovered - complete
-                }
-          in
-          Subscription.update sub event
-        in
-        t.subscribers <- Subscribers.add t.subscribers Progress sub;
-        let+ () = Subscription.finished sub in
-        t.subscribers <- Subscribers.remove t.subscribers Progress sub)
+    Handler.poll rpc info Sub.progress
+      ~on_cancel:(fun _session poller ->
+        let p = Long_poll.progress (Fdecl.get t).long_poll in
+        Long_poll.Instance.client_cancel p poller)
+      ~on_poll:(fun _session poller ->
+        let p = Long_poll.progress (Fdecl.get t).long_poll in
+        Long_poll.Instance.poll p poller)
   in
   let () =
     let info = Handler.public ~since:(3, 0) () in
-    Handler.subscription rpc info Sub.diagnostic
-      ~on_subscribe:(fun _ -> Fiber.return ())
-      ~subscription:(fun _session () sub ->
-        let t = Fdecl.get t in
-        let* () =
-          Build_system.errors ()
-          |> List.map ~f:(fun e -> Diagnostic.Event.Add (diagnostic_of_error e))
-          |> Subscription.update sub
-        in
-        t.subscribers <- Subscribers.add t.subscribers Diagnostic sub;
-        let+ () = Subscription.finished sub in
-        t.subscribers <- Subscribers.remove t.subscribers Diagnostic sub)
+    Handler.poll rpc info Sub.diagnostic
+      ~on_cancel:(fun _session poller ->
+        let p = Long_poll.diagnostic (Fdecl.get t).long_poll in
+        Long_poll.Instance.client_cancel p poller)
+      ~on_poll:(fun _session poller ->
+        let p = Long_poll.diagnostic (Fdecl.get t).long_poll in
+        Long_poll.Instance.poll p poller)
   in
   let () =
     let f () =
@@ -422,7 +238,7 @@ let handler (t : t Fdecl.t) : 'a Dune_rpc_server.Handler.t =
     let cb =
       let f () =
         Build_system.errors ()
-        |> List.map ~f:diagnostic_of_error
+        |> List.map ~f:Diagnostics.diagnostic_of_error
         |> Fiber.return
       in
       Handler.callback (Handler.public ~since:(1, 0) ()) f
@@ -485,11 +301,7 @@ let task t f =
 let error t errors =
   let t = Fdecl.get t in
   task t (fun () ->
-      List.map errors ~f:(fun (e : Build_system.Handler.error) ->
-          match e with
-          | Add x -> Diagnostic.Event.Add (diagnostic_of_error x)
-          | Remove x -> Remove (diagnostic_of_error x))
-      |> Subscribers.notify t.subscribers Diagnostic)
+      Long_poll.Instance.update (Long_poll.diagnostic t.long_poll) errors)
 
 let progress_of_build_event : Build_system.Handler.event -> Progress.t =
   function
@@ -501,14 +313,14 @@ let progress_of_build_event : Build_system.Handler.event -> Progress.t =
 let build_progress t ~complete ~remaining =
   let t = Fdecl.get t in
   task t (fun () ->
-      let notification = Progress.In_progress { complete; remaining } in
-      Subscribers.notify t.subscribers Progress notification)
+      let progress = Progress.In_progress { complete; remaining } in
+      Long_poll.Instance.update (Long_poll.progress t.long_poll) progress)
 
 let build_event t (event : Build_system.Handler.event) =
   let t = Fdecl.get t in
+  let progress = progress_of_build_event event in
   task t (fun () ->
-      let notification = progress_of_build_event event in
-      Subscribers.notify t.subscribers Progress notification)
+      Long_poll.Instance.update (Long_poll.progress t.long_poll) progress)
 
 let create () =
   let t = Fdecl.create Dyn.Encoder.opaque in
@@ -520,13 +332,14 @@ let create () =
     Build_system.Handler.create ~error:(error t)
       ~build_progress:(build_progress t) ~build_event:(build_event t)
   in
+  let long_poll = Long_poll.create () in
   let res =
     { config
     ; pending_build_jobs
-    ; subscribers = Subscribers.empty
     ; clients = Session_set.empty
     ; build_handler
     ; pool
+    ; long_poll
     }
   in
   Fdecl.set t res;

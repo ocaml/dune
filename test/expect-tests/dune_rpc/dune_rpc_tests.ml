@@ -39,9 +39,7 @@ module Chan = struct
 end
 
 module Drpc = struct
-  module Client =
-    Dune_rpc.Client.Make (Dune_rpc_impl.Client.Fiber) (Chan)
-      (Dune_rpc_impl.Client.Stream)
+  module Client = Dune_rpc.Client.Make (Dune_rpc_impl.Client.Fiber) (Chan)
   module Server = Dune_rpc_server.Make (Chan)
 end
 
@@ -226,9 +224,9 @@ let%expect_test "versioning public methods" =
     client: error invalid version
     server: finished. |}]
 
-let%test_module "subscription" =
+let%test_module "long polling" =
   (module struct
-    let sub_decl = { Dune_rpc_private.Sub.elem = Conv.string; name = "pulse" }
+    let sub_decl = { Dune_rpc_private.Sub.elem = Conv.int; name = "pulse" }
 
     let version = (3, 0)
 
@@ -239,67 +237,74 @@ let%test_module "subscription" =
     let server f =
       let rpc = rpc () in
       let () =
-        let on_subscribe _ = Fiber.return 42 in
-        let subscription _ _ sub = f sub in
+        let on_poll _session poller = f poller in
+        let on_cancel _session _poll =
+          printfn "server: polling cancelled";
+          Fiber.return ()
+        in
         let info = Handler.public ~since:(3, 0) () in
-        Handler.subscription rpc info sub_decl ~on_subscribe ~subscription
+        Handler.poll rpc info sub_decl ~on_poll ~on_cancel
       in
       rpc
 
-    let run_client client on_next =
-      printfn "client: making subscription";
-      let* sub, stream = Client.subscribe client sub_decl in
-      let+ () =
-        Fiber.Stream.In.sequential_iter stream ~f:(fun a -> on_next a sub)
-      in
-      printfn "subscription terminated"
-
-    let%expect_test "subscription - client cancel" =
+    let%expect_test "long polling - client side termination" =
       let client client =
-        let count = ref 0 in
-        run_client client (fun v active_sub ->
-            if !count = 2 then
-              Client.Subscription.cancel active_sub
-            else (
-              printfn "client: update %s received" v;
-              incr count;
-              Fiber.return ()
-            ))
+        let poller = Client.poll client sub_decl in
+        let req () =
+          let+ res = Client.Stream.next poller in
+          match res with
+          | None -> printfn "client: no more values"
+          | Some a -> printfn "client: received %d" a
+        in
+        let* () = req () in
+        let* () = req () in
+        Client.Stream.cancel poller
       in
       let handler =
-        server (fun sub ->
-            let* () = Subscription.update sub "first" in
-            let* () = Subscription.update sub "second" in
-            let* () = Subscription.update sub "third" in
-            Subscription.finished sub)
+        let state = ref 0 in
+        server (fun _poller ->
+            incr state;
+            Fiber.return (Some !state))
       in
       test ~init ~client ~handler ();
       [%expect
         {|
-    client: making subscription
-    client: update first received
-    client: update second received
-    subscription terminated
+    client: received 1
+    client: received 2
+    server: polling cancelled
     server: finished. |}]
 
-    let%expect_test "subscription - server cancel" =
+    let%expect_test "long polling - server side termination" =
       let client client =
-        run_client client (fun v _ ->
-            printfn "client: update %s received" v;
-            Fiber.return ())
+        printfn "client: long polling";
+        let poller = Client.poll client sub_decl in
+        let+ () =
+          Fiber.repeat_while ~init:() ~f:(fun () ->
+              let+ res = Client.Stream.next poller in
+              match res with
+              | None -> None
+              | Some a ->
+                printfn "client: received %d" a;
+                Some ())
+        in
+        printfn "client: subscription terminated"
       in
       let handler =
-        server (fun sub ->
-            let* () = Subscription.update sub "first" in
-            let* () = Subscription.update sub "second" in
-            Subscription.finish sub)
+        let state = ref 0 in
+        server (fun _poller ->
+            incr state;
+            Fiber.return
+              (if !state = 3 then
+                None
+              else
+                Some !state))
       in
       test ~init ~client ~handler ();
       [%expect
         {|
-    client: making subscription
-    client: update first received
-    client: update second received
-    subscription terminated
+    client: long polling
+    client: received 1
+    client: received 2
+    client: subscription terminated
     server: finished. |}]
   end)

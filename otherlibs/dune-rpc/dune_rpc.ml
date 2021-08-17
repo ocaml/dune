@@ -21,8 +21,6 @@ module V1 = struct
 
       type 'a fiber
 
-      type 'a stream
-
       type chan
 
       module Handler : sig
@@ -30,8 +28,6 @@ module V1 = struct
 
         val create :
              ?log:(Message.t -> unit fiber)
-          -> ?diagnostic:(Diagnostic.Event.t list -> unit fiber)
-          -> ?build_progress:(Progress.t -> unit fiber)
           -> ?abort:(Message.t -> unit fiber)
           -> unit
           -> t
@@ -48,14 +44,15 @@ module V1 = struct
 
       val disconnected : t -> unit fiber
 
-      module Subscription : sig
-        type t
+      module Stream : sig
+        type 'a t
 
-        val cancel : t -> unit fiber
+        val cancel : _ t -> unit fiber
+
+        val next : 'a t -> 'a option fiber
       end
 
-      val subscribe :
-        ?id:Id.t -> t -> 'a Sub.t -> (Subscription.t * 'a stream) fiber
+      val poll : ?id:Id.t -> t -> 'a Sub.t -> 'a Stream.t
 
       module Batch : sig
         type t

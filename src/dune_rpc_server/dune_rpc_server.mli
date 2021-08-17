@@ -1,32 +1,14 @@
 open Stdune
 open Dune_rpc_private
 
-module Subscription : sig
-  (** Represents a live subscription for values of type ['a] *)
+module Poller : sig
+  type t
 
-  type 'a t
+  val to_dyn : t -> Dyn.t
 
-  type packed = E : _ t -> packed
+  val compare : t -> t -> Ordering.t
 
-  val compare_packed : packed -> packed -> Ordering.t
-
-  val to_dyn : _ t -> Dyn.t
-
-  val compare : 'a t -> 'a t -> Ordering.t
-
-  (** Send the next value in the subscription *)
-  val update : 'a t -> 'a -> unit Fiber.t
-
-  (** Signal that this subscription is terminated. It is an error to call
-      [update] after [finish]. Subsequent calls to [finish ] do nothing. *)
-  val finish : _ t -> unit Fiber.t
-
-  (** Checks if the subscription is still active. A subscription can be
-      terminated either by calling [finish] or waiting for the client to
-      terminate it. It is illegal to call [update] if [active] returns [false] *)
-  val active : _ t -> bool
-
-  val finished : _ t -> unit Fiber.t
+  val sub_id : t -> Sub.Id.t
 end
 
 module Session : sig
@@ -54,9 +36,9 @@ module Session : sig
 
   val request_close : 'a t -> unit Fiber.t
 
-  val subscriptions : _ t -> Subscription.packed list
-
   val to_dyn : ('a -> Dyn.t) -> 'a t -> Dyn.t
+
+  val has_poller : _ t -> Poller.t -> bool
 end
 
 module Handler : sig
@@ -111,12 +93,12 @@ module Handler : sig
   val notification :
     's t -> ('s, 'a, unit) callback -> 'a Decl.notification -> unit
 
-  val subscription :
+  val poll :
        's t
     -> info
     -> 'a Sub.t
-    -> on_subscribe:('s Session.t -> 'init Fiber.t)
-    -> subscription:('s Session.t -> 'init -> 'a Subscription.t -> unit Fiber.t)
+    -> on_poll:('s Session.t -> Poller.t -> 'a option Fiber.t)
+    -> on_cancel:('s Session.t -> Poller.t -> unit Fiber.t)
     -> unit
 end
 

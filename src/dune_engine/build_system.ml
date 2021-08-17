@@ -292,7 +292,7 @@ module Error = struct
     ; id : Id.t
     }
 
-  let id t = Id.to_int t.id
+  let id t = t.id
 
   let extract_dir annot =
     Process.With_directory_annot.check annot
@@ -2431,6 +2431,13 @@ module Progress = struct
     { number_of_rules_discovered : int
     ; number_of_rules_executed : int
     }
+
+  let complete t = t.number_of_rules_executed
+
+  let remaining t = t.number_of_rules_discovered - t.number_of_rules_executed
+
+  let is_determined { number_of_rules_discovered; number_of_rules_executed } =
+    number_of_rules_discovered <> 0 || number_of_rules_executed <> 0
 end
 
 let get_current_progress () =

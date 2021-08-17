@@ -223,8 +223,6 @@ module V1 : sig
 
       type 'a fiber
 
-      type 'a stream
-
       type chan
 
       module Handler : sig
@@ -232,11 +230,6 @@ module V1 : sig
 
         val create :
              ?log:(Message.t -> unit fiber)
-          -> ?diagnostic:(Diagnostic.Event.t list -> unit fiber)
-               (** Called whenever diagnostics are added or removed. When
-                   subscribing to diagnostics, this function will immediately be
-                   called with the current set of diagnostics. *)
-          -> ?build_progress:(Progress.t -> unit fiber)
           -> ?abort:(Message.t -> unit fiber)
                (** If [abort] is called, the server has terminated the
                    connection due to a protcol error. This should never be
@@ -261,14 +254,23 @@ module V1 : sig
           server is killed entirely). *)
       val disconnected : t -> unit fiber
 
-      module Subscription : sig
-        type t
+      module Stream : sig
+        (** Control for a polling loop *)
 
-        val cancel : t -> unit fiber
+        type 'a t
+
+        (** [cancel t] notify the server that we are stopping our polling loop.
+            It is an error to call [next] after [cancel] *)
+        val cancel : _ t -> unit fiber
+
+        (** [next t] poll for the next value. It is an error to call [next]
+            again until the previous [next] terminated. If [next] returns
+            [None], subsequent calls to [next] is forbidden. *)
+        val next : 'a t -> 'a option fiber
       end
 
-      val subscribe :
-        ?id:Id.t -> t -> 'a Sub.t -> (Subscription.t * 'a stream) fiber
+      (** [poll client sub] Initialize a polling loop for [sub] *)
+      val poll : ?id:Id.t -> t -> 'a Sub.t -> 'a Stream.t
 
       module Batch : sig
         type t
@@ -329,8 +331,6 @@ module V1 : sig
         val read : 'a t -> 'a fiber
 
         val fill : 'a t -> 'a -> unit fiber
-
-        val peek : 'a t -> 'a option fiber
       end
       with type 'a fiber := 'a t
     end) (Chan : sig
@@ -344,25 +344,7 @@ module V1 : sig
          returned as [Some sexp], otherwise [None] is returned and the session
          is closed. *)
       val read : t -> Csexp.t option Fiber.t
-    end) (Stream : sig
-      module Out : sig
-        type 'a t
-
-        val write : 'a t -> 'a -> unit Fiber.t
-
-        val close : 'a t -> unit Fiber.t
-      end
-
-      module In : sig
-        type 'a t
-      end
-
-      val create : unit -> 'a In.t * 'a Out.t
-    end) :
-      S
-        with type 'a fiber := 'a Fiber.t
-         and type chan := Chan.t
-         and type 'a stream := 'a Stream.In.t
+    end) : S with type 'a fiber := 'a Fiber.t and type chan := Chan.t
   end
 
   module Where : sig

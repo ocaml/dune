@@ -5,7 +5,6 @@ module V1 : sig
     Client.S
       with type 'a fiber := 'a Lwt.t
        and type chan := Lwt_io.input_channel * Lwt_io.output_channel
-       and type 'a stream := 'a Lwt_stream.t
 
   module Where : Where.S with type 'a fiber := 'a Lwt.t
 

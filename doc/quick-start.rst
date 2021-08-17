@@ -6,7 +6,7 @@ This document gives simple usage examples of dune. You can also look at
 `examples <https://github.com/ocaml/dune/tree/master/example>`__ for complete
 examples of projects using dune.
 
-Building a hello world program
+Building a Hello World Program
 ==============================
 
 In a directory of your choice, write this ``dune`` file:
@@ -34,7 +34,7 @@ native code executables will have the ``.exe`` extension on all platforms
 (including non-Windows systems). The executable can be built and run in a single
 step with ``dune exec ./hello_world.exe``.
 
-Building a hello world program using Lwt
+Building a Hello World Program Using Lwt
 ========================================
 
 In a directory of your choice, write this ``dune`` file:
@@ -59,7 +59,7 @@ And build it with:
 
 The executable will be built as ``_build/default/hello_world.exe``
 
-Building a hello world program using Core and Jane Street PPXs
+Building a Hello World Program Using Core and Jane Street PPXs
 ==============================================================
 
 Write this ``dune`` file:
@@ -89,7 +89,7 @@ And build it with:
 
 The executable will be built as ``_build/default/hello_world.exe``
 
-Defining a library using Lwt and ocaml-re
+Defining a Library Using Lwt and ocaml-re
 =========================================
 
 Write this ``dune`` file:
@@ -108,7 +108,7 @@ Outside of the library, module ``Foo`` will be accessible as
 You can then use this library in any other directory by adding ``mylib``
 to the ``(libraries ...)`` field.
 
-Building a hello world program in byte-code
+Building a Hello World Program in byte-code
 ============================================
 
 In a directory of your choice, write this ``dune`` file:
@@ -138,7 +138,7 @@ The executable can be built and run in a single
 step with ``dune exec ./hello_world.bc``. This byte-code version allows the usage of 
 ``ocamldebug``.
 
-Setting the OCaml compilation flags globally
+Setting the OCaml Compilation Flags Globally
 ============================================
 
 Write this ``dune`` file at the root of your project:
@@ -175,7 +175,7 @@ declare the dependency to this file via:
 
     (preprocessor_deps config.h)
 
-Using the .cppo.ml style like the ocamlbuild plugin
+Using the .cppo.ml Style Like the ocamlbuild Plugin
 ---------------------------------------------------
 
 Write this in your ``dune`` file:
@@ -187,7 +187,7 @@ Write this in your ``dune`` file:
      (deps    (:first-dep foo.cppo.ml) <other files that foo.ml includes>)
      (action  (run %{bin:cppo} %{first-dep} -o %{targets})))
 
-Defining a library with C stubs
+Defining a Library with C Stubs
 ===============================
 
 Assuming you have a file called ``mystubs.c``, that you need to pass
@@ -206,7 +206,7 @@ this ``dune`` file:
       (flags -I/blah/include))
      (c_library_flags (-lblah)))
 
-Defining a library with C stubs using pkg-config
+Defining a Library with C Stubs using pkg-config
 ================================================
 
 Same context as before, but using ``pkg-config`` to query the
@@ -263,7 +263,7 @@ as well as this ``discover.ml`` file:
     C.Flags.write_sexp "c_library_flags.sexp" conf.libs)
 
 
-Using a custom code generator
+Using a Custom Code Generator
 =============================
 
 To generate a file ``foo.ml`` using a program from another directory:
@@ -275,7 +275,7 @@ To generate a file ``foo.ml`` using a program from another directory:
      (deps    (:gen ../generator/gen.exe))
      (action  (run %{gen} -o %{targets})))
 
-Defining tests
+Defining Tests
 ==============
 
 Write this in your ``dune`` file:
@@ -302,7 +302,7 @@ using:
 
     dune promote
 
-Building a custom toplevel
+Building a Custom Toplevel
 ==========================
 
 A toplevel is simply an executable calling ``Topmain.main ()`` and linked with

@@ -55,8 +55,8 @@ let%expect_test "Memo.run_with_error_handler" =
   let trace1, trace2 =
     Scheduler.run
       (Fiber.fork_and_join
-         (fun () -> run_memo_and_collect_errors (Memo.Lazy.force n1))
-         (fun () -> run_memo_and_collect_errors (Memo.Lazy.force n2)))
+         (fun () -> run_memo_and_collect_errors (fun () -> Memo.Lazy.force n1))
+         (fun () -> run_memo_and_collect_errors (fun () -> Memo.Lazy.force n2)))
   in
   let print_trace l =
     List.iter (List.rev l) ~f:(fun (what, when_) ->

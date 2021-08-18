@@ -3,6 +3,9 @@ Unreleased
 
 - Fix plugins with dot in the name (#5182, @bobot, review @rgrinberg)
 
+- Don't generate the dune-site build part when not needed (#4861, @bobot,
+  review @kit-ty-kate)
+
 - Fix installation of implementations of virtual libraries (#5150, fix #3636,
   @rgrinberg)
 

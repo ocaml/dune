@@ -371,12 +371,10 @@ And the opam file will be generated as expected
       name
       "-j"
       jobs
-      "--promote-install-files=false"
       "@install"
       "@runtest" {with-test}
       "@doc" {with-doc}
     ]
-    ["dune" "install" "-p" name "--create-install-files" name]
   ]
   dev-repo: "git+https://github.com/username/reponame.git"
 
@@ -480,12 +478,10 @@ And the opam file will be generated as expected
       name
       "-j"
       jobs
-      "--promote-install-files=false"
       "@install"
       "@runtest" {with-test}
       "@doc" {with-doc}
     ]
-    ["dune" "install" "-p" name "--create-install-files" name]
   ]
   dev-repo: "git+https://github.com/username/reponame.git"
 

@@ -5,6 +5,10 @@ type t =
   | Disabled
   | Enabled
 
+let is_enabled = function
+  | Enabled -> true
+  | Disabled -> false
+
 let to_string = function
   | Disabled -> "disabled"
   | Enabled -> "enabled"

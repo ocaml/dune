@@ -57,20 +57,41 @@ let default_build_command =
   [ "dune" "install" "-p" name "--create-install-files" name ]
 ]
 |}))
-  and from_3_0_without_subst =
+  and from_3_0 ~with_subst ~with_sites =
+    let subst =
+      if with_subst then
+        {|  [ "dune" "subst" ] {dev} |}
+      else
+        ""
+    in
+    let promote_install_files =
+      if with_sites then
+        {|  "--promote-install-files=false" |}
+      else
+        ""
+    in
+    let install =
+      if with_sites then
+        {| [ "dune" "install" "-p" name "--create-install-files" name ] |}
+      else
+        ""
+    in
     lazy
       (Opam_file.parse_value
          (Lexbuf.from_string ~fname:"<internal>"
-            {|
+            (Printf.sprintf
+               {|
 [
-  [ "dune" "build" "-p" name "-j" jobs "--promote-install-files" "false"
+  %s
+  [ "dune" "build" "-p" name "-j" jobs %s
       "@install"
       "@runtest" {with-test}
       "@doc" {with-doc}
   ]
-  [ "dune" "install" "-p" name "--create-install-files" name ]
+  %s
 ]
-|}))
+|}
+               subst promote_install_files install)))
   in
   fun project ->
     Lazy.force
@@ -83,9 +104,11 @@ let default_build_command =
       else if Dune_project.dune_version project < (3, 0) then
         from_2_9
       else
-        match Dune_project.subst_config project with
-        | Disabled -> from_3_0_without_subst
-        | Enabled -> from_2_9)
+        from_3_0
+          ~with_subst:
+            (Subst_config.is_enabled (Dune_project.subst_config project))
+          ~with_sites:
+            Dune_project.(is_extension_set project dune_site_extension))
 
 let package_fields
     { Package.synopsis

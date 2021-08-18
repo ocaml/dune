@@ -2,6 +2,8 @@ type t =
   | Disabled
   | Enabled
 
+val is_enabled : t -> bool
+
 val to_dyn : t -> Dyn.t
 
 val encode : t Dune_lang.Encoder.t

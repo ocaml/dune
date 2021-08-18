@@ -1460,8 +1460,9 @@ module Build = struct
        and non-toplevel [run] would be better. *)
     match is_top_level with
     | true ->
-      run_with_error_handler (fun () -> t) ~handle_error_no_raise:(fun _exn ->
-          Fiber.return ())
+      run_with_error_handler
+        (fun () -> t)
+        ~handle_error_no_raise:(fun _exn -> Fiber.return ())
     | false -> t
 end
 

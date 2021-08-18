@@ -171,6 +171,8 @@ val get_exn : unit -> (t, 'k) Dune_lang.Decoder.parser
     written in dune-project. *)
 val find_extension_args : t -> 'a Extension.t -> 'a option
 
+val is_extension_set : t -> 'a Extension.t -> bool
+
 val set_parsing_context : t -> 'a Dune_lang.Decoder.t -> 'a Dune_lang.Decoder.t
 
 val implicit_transitive_deps : t -> bool
@@ -195,3 +197,5 @@ val update_execution_parameters :
   t -> Execution_parameters.t -> Execution_parameters.t
 
 val encode : t -> Dune_lang.t list
+
+val dune_site_extension : unit Extension.t

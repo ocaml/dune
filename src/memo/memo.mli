@@ -42,7 +42,7 @@ module Build : sig
       each error through individual dependency edges instead of sending errors
       directly to the handler in scope. *)
   val run_with_error_handler :
-       'a t
+       (unit -> 'a t)
     -> handle_error_no_raise:(Exn_with_backtrace.t -> unit Fiber.t)
     -> 'a Fiber.t
 

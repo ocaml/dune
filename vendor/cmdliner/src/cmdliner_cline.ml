@@ -60,15 +60,18 @@ let arg_info_indexes args =
 let is_opt s = String.length s > 1 && s.[0] = '-'
 let is_short_opt s = String.length s = 2 && s.[0] = '-'
 
-let parse_opt_arg s = (* (name, value) of opt arg, assert len > 1. *)
+let parse_opt_arg s = (* (name, value | short_opts) of opt arg,
+                         assert len > 1. *)
   let l = String.length s in
   if s.[1] <> '-' then (* short opt *)
-    if l = 2 then s, None else
-    String.sub s 0 2, Some (String.sub s 2 (l - 2)) (* with glued opt arg *)
+    if l = 2 then s, `None else
+    if s.[2] = '=' then
+      String.sub s 0 2, `Value (String.sub s 3 (l - 3)) (* with glued opt arg *)
+    else String.sub s 0 2, `Short_opt (String.sub s 2 (l - 2))
   else try (* long opt *)
     let i = String.index s '=' in
-    String.sub s 0 i, Some (String.sub s (i + 1) (l - i - 1))
-  with Not_found -> s, None
+    String.sub s 0 i, `Value (String.sub s (i + 1) (l - i - 1))
+  with Not_found -> s, `None
 
 let hint_matching_opt optidx s =
   (* hint options that could match [s] in [optidx]. FIXME explain this is
@@ -97,15 +100,20 @@ let parse_opt_args ~peek_opts optidx cl args =
   | "--" :: args -> List.rev errs, cl, (List.rev_append pargs args)
   | s :: args ->
       if not (is_opt s) then loop errs (k + 1) cl (s :: pargs) args else
-      let name, value = parse_opt_arg s in
+      let name, value_or_opts = parse_opt_arg s in
       match Cmdliner_trie.find optidx name with
       | `Ok a ->
+          let value,args = match value_or_opts, Cmdliner_info.arg_opt_kind a with
+          | `None, _ -> None, args
+          | `Value v, _ -> Some v, args
+          | `Short_opt v, (Cmdliner_info.Flag | Opt_vopt _) ->
+            None,("-" ^ v) :: args
+          | `Short_opt v, Cmdliner_info.Opt -> Some v, args
+          in
           let value, args = match value, Cmdliner_info.arg_opt_kind a with
-          | Some v, (Cmdliner_info.Flag) when is_short_opt name ->
-            None, ("-" ^ v) :: args
-          | Some _, _ -> value, args
-          | None, Cmdliner_info.Flag -> value, args
-          | None, _ ->
+            | Some _, _ -> value, args
+            | None, (Cmdliner_info.Flag| Opt_vopt _) -> None, args
+            | None, Cmdliner_info.Opt ->
               match args with
               | [] -> None, args
               | v :: rest -> if is_opt v then None, args else Some v, rest

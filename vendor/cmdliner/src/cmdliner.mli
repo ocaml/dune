@@ -1168,14 +1168,17 @@ The value of an option can be specified in three different ways.
 {ul
 {- As the next token on the command line: ["-o a.out"], ["--output a.out"].}
 {- Glued to a short name: ["-oa.out"].}
+{- Glued to a short name after an equal character: ["-o=a.out"].}
 {- Glued to a long name after an equal character: ["--output=a.out"].}}
 
 Glued forms are especially useful if the value itself starts with a
-dash as is the case for negative numbers, ["--min=-10"].
+dash as is the case for negative numbers, ["--min=-10"]. In the case
+of an optional argument with an optional value (see the [~vopt] argument of
+{!Arg.opt}) only the forms with an equal character are allowed.
 
 An optional argument without a value is either a {e flag} (see
-{!Arg.flag}, {!Arg.vflag}) or an optional argument with an optional
-value (see the [~vopt] argument of {!Arg.opt}).
+{!Arg.flag}, {!Arg.vflag}) or an optional argument with an absent optional
+value.
 
 Short flags can be grouped together to share a single dash and the
 group can end with a short option. For example assuming ["-v"] and
@@ -1193,8 +1196,7 @@ Positional arguments are tokens on the command line that are not
 option names and are not the value of an optional argument. They are
 numbered from left to right starting with zero.
 
-Since positional arguments may be mistaken as the optional value of an
-optional argument or they may need to look like option names, anything
+Since positional arguments may need to look like option names, anything
 that follows the special token ["--"] on the command line is
 considered to be a positional argument.
 

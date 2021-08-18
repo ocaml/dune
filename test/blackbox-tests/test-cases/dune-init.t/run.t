@@ -31,7 +31,7 @@ Clean up the library tests
 
 Can init library with a specified public name
 
-  $ dune init lib test_lib ./_test_lib_dir --public test_lib_public_name
+  $ dune init lib test_lib ./_test_lib_dir --public=test_lib_public_name
   Success: initialized library component named test_lib
   $ cat ./_test_lib_dir/dune
   (library

@@ -2341,7 +2341,7 @@ let run f =
     let build_end_status_reported = ref false in
     let* res =
       Fiber.collect_errors (fun () ->
-          Memo.Build.run_with_error_handler (Memo.Build.of_thunk f)
+        Memo.Build.run_with_error_handler f
             ~handle_error_no_raise:(fun exn ->
               let* () = report_early_exn exn in
               if !build_end_status_reported then

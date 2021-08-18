@@ -2350,11 +2350,11 @@ let run f =
     | Error exns ->
       handle_final_exns exns;
       let final_status =
-        List.fold_left exns ~init:Fail ~f:(fun _ exn ->
+        List.fold_left exns ~init:Handler.Fail ~f:(fun _ exn ->
             if caused_by_cancellation exn then
-              Interrupt
+              Handler.Interrupt
             else
-              Fail)
+              Handler.Fail)
       in
       let+ () = Handler.report_build_event t.handler final_status in
       Error `Already_reported

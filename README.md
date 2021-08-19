@@ -3,7 +3,7 @@ Dune - A Composable Build System
 
 Dune is a build system designed for OCaml/Reason projects only. It
 focuses on providing the user with a consistent experience and takes
-care of most low-level details of an OCaml compilation. It's merely necessary 
+care of most low-level details of OCaml compilations. It's merely necessary 
 to provide a description of your project, and dune will
 do the rest.
 

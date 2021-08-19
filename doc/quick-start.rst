@@ -9,30 +9,52 @@ examples of projects using Dune.
 Building a Hello World Program
 ==============================
 
-In a directory of your choice, write this ``dune`` file:
+Since OCaml is a compiler language, first create a ``dune`` file in Nano, Vim, 
+or your preferred text editor. Declare the ``hello_world`` executable by including following stanza 
+(shown below). Name this initial file ``dune`` and save it in a directory of your choice. 
 
 .. code:: scheme
 
-    ;; This declares the hello_world executable implemented by hello_world.ml
     (executable
      (name hello_world))
 
-This ``hello_world.ml`` file:
+Create a second file containing the following code and name it ``hello_world.ml`` (including 
+the .ml extension). It will implement the executable stanza in the ``dune`` file when built. 
 
 .. code:: ocaml
 
     print_endline "Hello, world!"
 
-And build it with:
+Next, build your new program in a shell using this command:
 
 .. code:: bash
 
     dune build hello_world.exe
 
-The executable will be built as ``_build/default/hello_world.exe``. Note that
+The executable will create a directory called "build" and create the 
+program: ``_build/default/hello_world.exe``. Note that
 native code executables will have the ``.exe`` extension on all platforms
-(including non-Windows systems). The executable can be built and run in a single
+(including non-Windows systems). 
+
+Finall, run it with the following command to see that it worked. In 
+fact, the executable can both be built and run in a single
 step with ``dune exec ./hello_world.exe``.
+
+Please note: if you have Dune, opam, and OCaml installed, but you 
+get an error that the ``dune`` command isn't recognized, it will be necessary 
+to run ``eval $(opam config env)`` to enable Dune in your directory. Find more 
+information in the `Dune ReadMe  <https://github.com/ocaml/dune>`.
+
+Verify OCaml installation with ``ocaml -version``
+Verify opam installation with ``opam --version``
+
+If you still get an error that the ``dune`` command isn't recognized, try running 
+the following in this order:
+``opam switch create . ocaml-base-compiler``
+``opam install merlin ocp-indent dune utop``
+Then run ``eval $(opam config env)`` again before trying to build and run 
+your new hello_world.exe program. 
+
 
 Building a Hello World Program Using Lwt
 ========================================

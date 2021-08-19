@@ -2338,34 +2338,25 @@ let run f =
   in
   let f () =
     let* () = Handler.report_build_event t.handler Start in
-    let build_end_status_reported = ref false in
     let* res =
       Fiber.collect_errors (fun () ->
-          Memo.Build.run_with_error_handler f ~handle_error_no_raise:(fun exn ->
-              let* () = report_early_exn exn in
-              if !build_end_status_reported then
-                Fiber.return ()
-              else (
-                build_end_status_reported := true;
-                Handler.report_build_event t.handler
-                  (if caused_by_cancellation exn then
-                    Interrupt
-                  else
-                    Fail)
-              )))
+          Memo.Build.run_with_error_handler f
+            ~handle_error_no_raise:report_early_exn)
     in
     match res with
     | Ok res ->
-      let+ () =
-        if !build_end_status_reported then
-          Fiber.return ()
-        else
-          Handler.report_build_event t.handler Finish
-      in
+      let+ () = Handler.report_build_event t.handler Finish in
       Ok res
     | Error exns ->
       handle_final_exns exns;
-      Fiber.return (Error `Already_reported)
+      let final_status =
+        if List.exists exns ~f:caused_by_cancellation then
+          Handler.Interrupt
+        else
+          Fail
+      in
+      let+ () = Handler.report_build_event t.handler final_status in
+      Error `Already_reported
   in
   Fiber.Mutex.with_lock t.build_mutex f
 

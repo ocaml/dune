@@ -28,6 +28,7 @@ module Source_tree = Source_tree
 module Opam_file = Opam_file
 module Action_dune_lang = Action_dune_lang
 module Format_config = Format_config
+module Subst_config = Subst_config
 module Dune_lexer = Dune_lexer
 module Predicate_lang = Predicate_lang
 module Section = Section

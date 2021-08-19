@@ -310,6 +310,19 @@ let subst vcs =
           [ Pp.text "dune subst must be executed from the root of the project."
           ]
   in
+  (match Dune_project.subst_config dune_project.project with
+  | Dune_engine.Subst_config.Disabled ->
+    User_error.raise
+      [ Pp.text
+          "dune subst has been disabled in this project. Any use of it is \
+           forbidden."
+      ]
+      ~hints:
+        [ Pp.text
+            "If you wish to re-enable it, change to (subst enabled) in the \
+             dune-project file."
+        ]
+  | Dune_engine.Subst_config.Enabled -> ());
   let info =
     let loc, name =
       match dune_project.name with

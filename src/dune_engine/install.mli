@@ -78,6 +78,22 @@ module Entry : sig
     ; section : Section.t
     }
 
+  module Sourced : sig
+    type source =
+      | User of Loc.t
+      | Dune
+
+    type entry
+
+    type nonrec t =
+      { source : source
+      ; entry : entry
+      }
+
+    val create : ?loc:Loc.t -> entry -> t
+  end
+  with type entry := Path.Build.t t
+
   val adjust_dst :
     src:String_with_vars.t -> dst:string option -> section:Section.t -> Dst.t
 
@@ -110,6 +126,12 @@ module Entry_with_site : sig
     ; dst : Dst.t
     ; section : Section_with_site.t
     }
+end
+
+module Metadata : sig
+  type 'src t =
+    | DefaultEntry of 'src Entry.t
+    | UserDefinedEntry of 'src Entry.t
 end
 
 val files : Path.t Entry.t list -> Path.Set.t

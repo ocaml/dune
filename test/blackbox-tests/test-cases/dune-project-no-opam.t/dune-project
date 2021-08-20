@@ -1,10 +1,12 @@
-(lang dune 1.10)
+(lang dune 3.0)
 (name foo)
 
 (package
- (name foo))
+ (name foo)
+ (allow_empty))
 
 (package
- (name bar))
+ (name bar)
+ (allow_empty))
 
 (generate_opam_files false)

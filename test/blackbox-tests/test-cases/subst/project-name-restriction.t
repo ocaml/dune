@@ -20,6 +20,12 @@ doesn't verify that this is the case
   $ git tag -a 1.0 -m 1.0
 
   $ dune build @all
+  Warning: The package baz does not have any user defined stanzas attached to
+  it. If this is intentional, add (allow_empty) to the package definition in
+  the dune-project file
+  Warning: The package foo does not have any user defined stanzas attached to
+  it. If this is intentional, add (allow_empty) to the package definition in
+  the dune-project file
 
   $ dune subst
   File "dune-project", line 2, characters 6-9:

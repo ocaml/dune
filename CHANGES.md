@@ -1,6 +1,10 @@
 Unreleased
 ----------
 
+- Warn on empty packages for projects < 3.0 and disallow them starting from 3.0
+  Empty packages may be re-enabled by adding the `(allow_empty)` to the package
+  stanza in the dune-project file. (#4867, fix #2882, @kit-ty-kate, @rgrinberg)
+
 - Add `link_flags` field to the `executable` field of `inline_tests` (#5088,
   fix #1530, @jvillard)
 

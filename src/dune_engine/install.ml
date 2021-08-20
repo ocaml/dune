@@ -208,6 +208,25 @@ module Entry = struct
     ; section : Section.t
     }
 
+  module Sourced = struct
+    type source =
+      | User of Loc.t
+      | Dune
+
+    type nonrec t =
+      { source : source
+      ; entry : Path.Build.t t
+      }
+
+    let create ?loc entry =
+      { source =
+          (match loc with
+          | None -> Dune
+          | Some loc -> User loc)
+      ; entry
+      }
+  end
+
   let compare compare_src x y =
     match Section.compare x.section y.section with
     | (Lt | Gt) as c -> c
@@ -342,6 +361,12 @@ module Entry_with_site = struct
     ; dst : Dst.t
     ; section : Section_with_site.t
     }
+end
+
+module Metadata = struct
+  type 'src t =
+    | DefaultEntry of 'src Entry.t
+    | UserDefinedEntry of 'src Entry.t
 end
 
 let files entries =

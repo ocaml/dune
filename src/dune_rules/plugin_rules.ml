@@ -52,4 +52,4 @@ let install_rules ~sctx ~dir ({ name; site = loc, (pkg, site); _ } as t) =
         (Super_context.get_site_of_packages sctx)
         meta
     in
-    [ (Some loc, entry) ]
+    [ Install.Entry.Sourced.create ~loc entry ]

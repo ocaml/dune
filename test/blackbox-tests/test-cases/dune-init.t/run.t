@@ -171,10 +171,26 @@ Can add multiple libraries in the same directory
   (library
    (name test_lib2)
    (libraries test_lib1))
+  $ cat ./_test_lib/dune-project
+  cat: ./_test_lib/dune-project: No such file or directory
+  [1]
+
+Can build the multiple library project but fails because empty
+
+  $ echo '(lang dune 3.0)' > ./_test_lib/dune-project
+  $ (cd _test_lib && touch test_lib1.opam && dune build)
+  Error: The package test_lib1 does not have any user defined stanzas attached
+  to it. If this is intentional, add (allow_empty) to the package definition in
+  the dune-project file
+  -> required by _build/default/test_lib1.install
+  -> required by alias all
+  -> required by alias default
+  [1]
 
 Can build the multiple library project
 
-  $ (cd _test_lib && touch test_lib1.opam && dune build)
+  $ echo '(package (name test_lib1) (allow_empty))' >> ./_test_lib/dune-project
+  $ (cd _test_lib && dune build)
 
 Clan up the multiple library project
 

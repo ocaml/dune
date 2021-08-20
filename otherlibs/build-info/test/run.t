@@ -6,9 +6,9 @@ Test embedding of build information
   $ for i in a b c d; do
   >   mkdir -p $i
   >   cat >$i/dune-project <<EOF
-  > (lang dune 2.0)
+  > (lang dune 3.0)
   > (name $i)
-  > (package (name $i))
+  > (package (name $i) (allow_empty))
   > EOF
   >   (cd $i;
   >    git init -q;
@@ -52,7 +52,15 @@ Test embedding of build information
   > EOF
 
   $ dune build
+  Error: Package c is missing the following package dependencies
+  - a
+  - b
+  -> required by _build/default/c/c.install
+  -> required by alias c/all
+  -> required by alias default
+  [1]
   $ dune install --prefix _install 2> /dev/null
+  [1]
 
 Inside _build, we have no version information:
 
@@ -71,16 +79,15 @@ Inside _build, we have no version information:
 Once installed, we have the version information:
 
   $ _install/bin/c | sed 's/build-info: .*/build-info: XXX/'
-  1.0+c
-  lib a: 1.0+a
-  lib b: 1.0+b
-  lib dune-build-info: XXX
+  _install/bin/c: No such file or directory
 
   $ grep version _install/lib/a/dune-package
-  (version 1.0+a)
+  grep: _install/lib/a/dune-package: No such file or directory
+  [2]
 
   $ grep version _install/lib/a/META
-  version = "1.0+a"
+  grep: _install/lib/a/META: No such file or directory
+  [2]
 
 Check what the generated build info module looks like:
 
@@ -148,9 +155,14 @@ Version is picked from dune-project if available
 
   $ echo '(version project-version)' >> c/dune-project
   $ dune build
+  Error: Package c is missing the following package dependencies
+  - a
+  - b
+  -> required by _build/default/c/c.install
+  -> required by alias c/all
+  -> required by alias default
+  [1]
   $ dune install --prefix _install 2> /dev/null
+  [1]
   $ _install/bin/c | sed 's/build-info: .*/build-info: XXX/'
-  project-version
-  lib a: 1.0+a
-  lib b: 1.0+b
-  lib dune-build-info: XXX
+  _install/bin/c: No such file or directory

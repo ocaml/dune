@@ -1,4 +1,5 @@
   $ dune build @all
+  Warning: The package stub is empty.
   $ dune build @runtest 2>&1 | dune_cmd sanitize
   OK: ./static.exe
   OK: ./static.bc

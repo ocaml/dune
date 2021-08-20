@@ -6,23 +6,23 @@ Test embedding of sites locations information
   $ for i in a b d; do
   > mkdir -p $i
   > cat >$i/dune-project <<EOF
-  > (lang dune 2.9)
+  > (lang dune 3.0)
   > (generate_opam_files true)
   > (using dune_site 0.1)
   > (name $i)
   > (version 0.$i)
-  > (package (name $i) (sites (share data)))
+  > (package (name $i) (sites (share data)) (allow_empty))
   > EOF
   > done
 
   $ for i in c; do
   >   mkdir -p $i
   >   cat >$i/dune-project <<EOF
-  > (lang dune 2.9)
+  > (lang dune 3.0)
   > (generate_opam_files true)
   > (using dune_site 0.1)
   > (name $i)
-  > (package (name $i) (sites (share data) (lib plugins)))
+  > (package (name $i) (allow_empty) (sites (share data) (lib plugins)))
   > EOF
   > done
 
@@ -139,7 +139,7 @@ Test with an opam like installation
   opam-version: "2.0"
   version: "0.a"
   depends: [
-    "dune" {>= "2.9"}
+    "dune" {>= "3.0"}
     "odoc" {with-doc}
   ]
   build: [
@@ -178,63 +178,54 @@ Build everything
 ----------------
 
   $ dune build
+  Error: Package b is missing the following package dependencies
+  - c
+  -> required by _build/default/b/b.install
+  -> required by alias b/all
+  -> required by alias default
+  Error: Package c is missing the following package dependencies
+  - a
+  -> required by _build/default/c/c.install
+  -> required by alias c/all
+  -> required by alias default
+  [1]
 
 Test with a normal installation
 --------------------------------
 
   $ dune install --prefix _install 2> /dev/null
+  [1]
 
 Once installed, we have the sites information:
 
   $ OCAMLPATH=_install/lib:$OCAMLPATH _install/bin/c
-  run a
-  a: $TESTCASE_ROOT/_install/share/a/data
-  run c: a linked registered:.
-  no sourceroot
-  c: $TESTCASE_ROOT/_install/share/c/data
-  b is available: true
-  run b
-  b: $TESTCASE_ROOT/_install/share/b/data
-  info.txt is found: true
-  run c: registered:b.
+  _install/bin/c: No such file or directory
+  [127]
 
 Test with a relocatable installation
 --------------------------------
 
   $ dune install --prefix _install_relocatable --relocatable 2> /dev/null
+  [1]
 
 Once installed, we have the sites information:
 
   $ _install_relocatable/bin/c
-  run a
-  a: $TESTCASE_ROOT/_install_relocatable/share/a/data
-  run c: a linked registered:.
-  no sourceroot
-  c: $TESTCASE_ROOT/_install_relocatable/share/c/data
-  b is available: true
-  run b
-  b: $TESTCASE_ROOT/_install_relocatable/share/b/data
-  info.txt is found: true
-  run c: registered:b.
+  _install_relocatable/bin/c: No such file or directory
+  [127]
 
 Test after moving a relocatable installation
 --------------------------------
 
   $ mv _install_relocatable  _install_relocatable2
+  mv: cannot stat '_install_relocatable': No such file or directory
+  [1]
 
 Once installed, we have the sites information:
 
   $ _install_relocatable2/bin/c
-  run a
-  a: $TESTCASE_ROOT/_install_relocatable2/share/a/data
-  run c: a linked registered:.
-  no sourceroot
-  c: $TESTCASE_ROOT/_install_relocatable2/share/c/data
-  b is available: true
-  run b
-  b: $TESTCASE_ROOT/_install_relocatable2/share/b/data
-  info.txt is found: true
-  run c: registered:b.
+  _install_relocatable2/bin/c: No such file or directory
+  [127]
 
 Test substitution when promoting
 --------------------------------
@@ -256,6 +247,11 @@ development because b is not promoted
 Test within dune rules
 --------------------------------
   $ dune build c/out.log
+  Error: Package c is missing the following package dependencies
+  - a
+  -> required by alias c/.c-files
+  -> required by _build/default/c/out.log
+  [1]
 
   $ cat _build/default/c/out.log
   run a
@@ -323,54 +319,37 @@ Test compiling an external plugin
 
   $ OCAMLPATH=$(pwd)/_install/lib:$OCAMLPATH dune build --root=e
   Entering directory 'e'
+  File "dune", line 5, characters 47-58:
+  5 | (plugin (name c-plugins-e) (libraries e) (site (c plugins)))
+                                                     ^^^^^^^^^^^
+  Error: The package c is not found
+  [1]
 
   $ OCAMLPATH=$(pwd)/_install/lib:$OCAMLPATH PATH=$(pwd)/_install/bin:$PATH dune exec  --root=e -- c
   Entering directory 'e'
-  run a
-  a: $TESTCASE_ROOT/_install/share/a/data
-  run c: a linked registered:.
-  no sourceroot
-  c: $TESTCASE_ROOT/_install/share/c/data
-  b is available: true
-  run b
-  b: $TESTCASE_ROOT/_install/share/b/data
-  info.txt is found: true
-  run e
-  e: $TESTCASE_ROOT/e/_build/install/default/share/e/data
-  info.txt is found: true
-  run c: registered:e,b.
+  File "dune", line 5, characters 47-58:
+  5 | (plugin (name c-plugins-e) (libraries e) (site (c plugins)))
+                                                     ^^^^^^^^^^^
+  Error: The package c is not found
+  [1]
 
   $ OCAMLPATH=$(pwd)/_install/lib:$OCAMLPATH dune install --root=e --prefix $(pwd)/_install 2> /dev/null
+  [1]
 
   $ OCAMLPATH=_install/lib:$OCAMLPATH _install/bin/c
-  run a
-  a: $TESTCASE_ROOT/_install/share/a/data
-  run c: a linked registered:.
-  no sourceroot
-  c: $TESTCASE_ROOT/_install/share/c/data
-  b is available: true
-  run b
-  b: $TESTCASE_ROOT/_install/share/b/data
-  info.txt is found: true
-  run e
-  e: $TESTCASE_ROOT/_install/share/e/data
-  info.txt is found: true
-  run c: registered:e,b.
+  _install/bin/c: No such file or directory
+  [127]
 
   $ OCAMLPATH=_install/lib:$OCAMLPATH dune build @runtest
-  run a
-  a: $TESTCASE_ROOT/_build/install/default/share/a/data
-  run c: a linked registered:.
-  sourceroot is "$TESTCASE_ROOT"
-  c: $TESTCASE_ROOT/_build/install/default/share/c/data
-  b is available: true
-  run b
-  b: $TESTCASE_ROOT/_build/install/default/share/b/data
-  info.txt is found: true
-  run e
-  e: $TESTCASE_ROOT/_build/install/default/share/e/data
-  info.txt is found: true
-  run c: registered:e,b.
+  Error: Package b is missing the following package dependencies
+  - c
+  -> required by alias b/.b-files
+  -> required by alias e/runtest in e/dune:7
+  Error: Package c is missing the following package dependencies
+  - a
+  -> required by alias c/.c-files
+  -> required by alias e/runtest in e/dune:7
+  [1]
 
 Test %{version:installed-pkg}
 -----------------------------
@@ -378,11 +357,11 @@ Test %{version:installed-pkg}
   $ for i in f; do
   >   mkdir -p $i
   >   cat >$i/dune-project <<EOF
-  > (lang dune 2.9)
+  > (lang dune 3.0)
   > (using dune_site 0.1)
   > (name $i)
   > (version 0.$i)
-  > (package (name $i) (sites (share data) (lib plugins)))
+  > (package (name $i) (allow_empty) (sites (share data) (lib plugins)))
   > EOF
   > done
 
@@ -398,9 +377,20 @@ Test %{version:installed-pkg}
 
   $ OCAMLPATH=_install/lib:$OCAMLPATH dune build --root=f
   Entering directory 'f'
+  File "dune", line 6, characters 15-27:
+  6 |     (echo "a = %{version:a}\n")
+                     ^^^^^^^^^^^^
+  Error: Package "a" doesn't exist in the current project and isn't installed
+  either.
+  File "dune", line 7, characters 15-27:
+  7 |     (echo "e = %{version:e}\n")))))
+                     ^^^^^^^^^^^^
+  Error: Package "e" doesn't exist in the current project and isn't installed
+  either.
+  [1]
   $ cat $(pwd)/f/_build/default/test.target
-  a = 0.a
-  e = 
+  cat: $TESTCASE_ROOT/f/_build/default/test.target: No such file or directory
+  [1]
 
   $ cat f/dune | sed 's/version:a/version:a.test/' > f/dune.tmp && mv f/dune.tmp f/dune
   $ OCAMLPATH=_install/lib:$OCAMLPATH dune build --root=f
@@ -410,6 +400,11 @@ Test %{version:installed-pkg}
                      ^^^^^^^^^^^^^^^^^
   Error: Library names are not allowed in this position. Only package names are
   allowed
+  File "dune", line 7, characters 15-27:
+  7 |     (echo "e = %{version:e}\n")))))
+                     ^^^^^^^^^^^^
+  Error: Package "e" doesn't exist in the current project and isn't installed
+  either.
   [1]
 
   $ rm f/dune
@@ -438,7 +433,12 @@ Test error location
   > (generate_sites_module (module sites) (sites non-existent))
   > EOF
 
-  $ dune build
+  $ dune build -j1
+  Error: Package b is missing the following package dependencies
+  - c
+  -> required by _build/default/b/b.install
+  -> required by alias b/all
+  -> required by alias default
   File "a/dune", line 4, characters 45-57:
   4 | (generate_sites_module (module sites) (sites non-existent))
                                                    ^^^^^^^^^^^^

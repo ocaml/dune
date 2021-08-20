@@ -1,7 +1,7 @@
 Ensure that a public, non-optional library can be disabled.
-  $ touch foo.opam
   $ cat > dune-project<<EOF
-  > (lang dune 2.0)
+  > (lang dune 3.0)
+  > (package (name foo) (allow_empty))
   > EOF
   $ cat > dune <<EOF
   > (library (name foo) (public_name foo) (enabled_if false))
@@ -13,4 +13,4 @@ Ensure that a public, non-optional library can be disabled.
   (sections
    (lib
     $TESTCASE_ROOT/_build/install/default/lib/foo))
-  (files (lib (META dune-package opam)))
+  (files (lib (META dune-package)))

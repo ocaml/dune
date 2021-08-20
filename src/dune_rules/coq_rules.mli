@@ -21,7 +21,7 @@ val install_rules :
      sctx:Super_context.t
   -> dir:Path.Build.t
   -> Theory.t
-  -> (Loc.t option * Path.Build.t Install.Entry.t) list Memo.Build.t
+  -> Install.Entry.Sourced.t list Memo.Build.t
 
 val coqpp_rules :
      sctx:Super_context.t

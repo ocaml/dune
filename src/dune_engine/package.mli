@@ -151,6 +151,7 @@ type t =
   ; tags : string list
   ; deprecated_package_names : Loc.t Name.Map.t
   ; sites : Section.t Section.Site.Map.t
+  ; allow_empty : bool
   }
 
 val equal : t -> t -> bool

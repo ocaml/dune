@@ -2,10 +2,11 @@ Test when sites name which are ocaml keyword
 ---------------------------------
 
   $ cat >dune-project <<EOF
-  > (lang dune 2.9)
+  > (lang dune 3.0)
   > (using dune_site 0.1)
   > (package
   >  (name my-package)
+  >  (allow_empty)
   >  (sites (lib include)))
   > EOF
 

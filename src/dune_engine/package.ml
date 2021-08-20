@@ -555,6 +555,7 @@ type t =
   ; tags : string list
   ; deprecated_package_names : Loc.t Name.Map.t
   ; sites : Section.t Section.Site.Map.t
+  ; allow_empty : bool
   }
 
 (* Package name are globally unique, so we can reasonably expect that there will
@@ -580,6 +581,7 @@ let encode (name : Name.t)
     ; tags
     ; deprecated_package_names
     ; sites
+    ; allow_empty
     } =
   let open Dune_lang.Encoder in
   let fields =
@@ -598,6 +600,7 @@ let encode (name : Name.t)
         ; field_l "sits"
             (pair Section.Site.encode Section.encode)
             (Section.Site.Map.to_list sites)
+        ; field_b "allow_empty" allow_empty
         ]
   in
   list sexp (string "package" :: fields)
@@ -638,6 +641,9 @@ let decode ~dir =
          Section.Site.Map.of_list_map Section.Site.to_string "sites"
          (pair Section.decode Section.Site.decode)
          Section.to_string "Site location name"
+     and+ allow_empty =
+       field_b "allow_empty"
+         ~check:(Dune_lang.Syntax.since Stanza.syntax (3, 0))
      in
      let id = { Id.name; dir } in
      { id
@@ -653,6 +659,7 @@ let decode ~dir =
      ; tags
      ; deprecated_package_names
      ; sites
+     ; allow_empty
      }
 
 let to_dyn
@@ -669,6 +676,7 @@ let to_dyn
     ; loc = _
     ; deprecated_package_names
     ; sites
+    ; allow_empty
     } =
   let open Dyn.Encoder in
   record
@@ -685,6 +693,7 @@ let to_dyn
     ; ( "deprecated_package_names"
       , Name.Map.to_dyn Loc.to_dyn_hum deprecated_package_names )
     ; ("sites", Section.Site.Map.to_dyn Section.to_dyn sites)
+    ; ("allow_empty", Bool allow_empty)
     ]
 
 let opam_file t = Path.Source.relative t.id.dir (Name.opam_fn t.id.name)
@@ -716,6 +725,7 @@ let default name dir =
   ; tags = [ "topics"; "to describe"; "your"; "project" ]
   ; deprecated_package_names = Name.Map.empty
   ; sites = Section.Site.Map.empty
+  ; allow_empty = false
   }
 
 let load_opam_file file name =
@@ -780,6 +790,7 @@ let load_opam_file file name =
   ; tags = Option.value (get_many "tags") ~default:[]
   ; deprecated_package_names = Name.Map.empty
   ; sites = Section.Site.Map.empty
+  ; allow_empty = false
   }
 
 let equal = Poly.equal

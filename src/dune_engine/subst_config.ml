@@ -13,9 +13,7 @@ let to_dyn conf =
   | Disabled -> string "disabled"
   | Enabled -> string "enabled"
 
-let decoder =
-  keyword "disabled" >>> return Disabled
-  <|> (keyword "enabled" >>> return Enabled)
+let decoder = enum [ ("disabled", Disabled); ("enabled", Enabled) ]
 
 let field ~since =
   field_o "subst" (Dune_lang.Syntax.since Stanza.syntax since >>> decoder)

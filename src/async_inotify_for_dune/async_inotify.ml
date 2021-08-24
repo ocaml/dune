@@ -162,14 +162,14 @@ let pump_events t ~spawn_thread =
   let fd = t.fd in
   let () =
     spawn_thread (fun () ->
-        while true do
-          let _, _, _ =
-            UnixLabels.select ~read:[ fd ] ~write:[] ~except:[] ~timeout:(-1.)
-          in
+      while true do
+        match UnixLabels.select ~read:[ fd ] ~write:[] ~except:[] ~timeout:(-1.) with
+        | _, _, _ ->
           let events = Inotify.read fd in
           t.send_emit_events_job_to_scheduler (fun () ->
-              process_raw_events t events)
-        done)
+            process_raw_events t events)
+        | exception (Unix.Unix_error (EINTR, _, _)) -> ()
+      done)
   in
   ()
 

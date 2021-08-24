@@ -171,6 +171,10 @@ Unreleased
 - Always use 7 char hash prefix in build info version (#4857, @jberdine, fixes
   #4855)
 
+- Allow to explicitly disable/enable the use of `dune subst` by adding a
+  new `(subst <disable|enable>)` stanza to the `dune-project` file.
+  (#4864, @kit-ty-kate)
+
 2.9.1 (unreleased)
 ------------------
 

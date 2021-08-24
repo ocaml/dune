@@ -106,4 +106,29 @@ Test subst and files with unicode (#3879)
   (version 1.0)
   (package (name foo) (authors "John Doe <john@doe.com>"))
 
+  $ cat > dune-project <<EOF
+  > (lang dune 3.0)
+  > (name foo)
+  > (version 1.0)
+  > (package (name foo) (authors "John Doe <john@doe.com>"))
+  > (subst disabled)
+  > EOF
+
+  $ dune subst
+  Error: dune subst has been disabled in this project. Any use of it is
+  forbidden.
+  Hint: If you wish to re-enable it, change to (subst enabled) in the
+  dune-project file.
+  [1]
+
+  $ cat > dune-project <<EOF
+  > (lang dune 3.0)
+  > (name foo)
+  > (version 1.0)
+  > (package (name foo) (authors "John Doe <john@doe.com>"))
+  > (subst enabled)
+  > EOF
+
+  $ dune subst
+
   $ rm -rf .git

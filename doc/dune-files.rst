@@ -1,5 +1,5 @@
 ****************
-Stanza reference
+Stanza Reference
 ****************
 
 dune-project
@@ -22,24 +22,24 @@ using
 -----
 
 The language of configuration files read by Dune can be extended to support
-additional stanzas (eg. ``menhir``, ``coq.theory``, ``mdx``). This is done by
-adding a line such as:
+additional stanzas (eg., ``menhir``, ``coq.theory``, ``mdx``). This is done by
+adding a line in the ``dune-project`` file, such as:
 
 .. code:: scheme
 
     (using <plugin> <version>)
 
-in the ``dune-project`` file where ``<plugin>`` is the name of the plugin that
-defines this stanza and ``<version>`` describes the version of the configuration
-language. Note that this version has nothing to do with the version of the
+Here, ``<plugin>`` is the name of the plugin that
+defines this stanza and ``<version>`` describes the configuration language's version. 
+Note that this version has nothing to do with the version of the
 associated tool or library. In particular, adding a ``using`` stanza will not
-result in a build dependency in the generated ``.opam`` file, see
+result in a build dependency in the generated ``.opam`` file. See
 :ref:`generate_opam_files <generate_opam_files>`.
 
 name
 ----
 
-Sets the name of the project. This is used by :ref:`dune subst <dune-subst>`
+Sets the name of the project. It's used by :ref:`dune subst <dune-subst>`
 and error messages.
 
 .. code:: scheme
@@ -60,26 +60,26 @@ Sets the version of the project:
 implicit_transitive_deps
 ------------------------
 
-By default, dune allows transitive dependencies of dependencies to be used
-directly when compiling OCaml. However, this setting can be controlled per
+By default, Dune allows transitive dependencies of dependencies used 
+when compiling OCaml; however, this setting can be controlled per
 project:
 
 .. code:: scheme
 
     (implicit_transitive_deps <bool>)
 
-When set to ``false``, all dependencies that are directly used by a library
-or an executable must be directly added in the ``libraries`` field. We
-recommend users to experiment with this mode and report any problems.
+When set to ``false``, all dependencies directly used by a library
+or an executable must be added in the ``libraries`` field. We
+recommend users experiment with this mode and report any problems.
 
 Note that you must use ``threads.posix`` instead of ``threads`` when using this
-mode. This is not an important limitation as ``threads.vm`` are deprecated
+mode. This isn't an important limitation, as ``threads.vm`` are deprecated
 anyways.
 
 In some situations, it's desirable to selectively preserve the
-behavior of transitive dependencies being available to users of a
+behavior of transitive dependencies' availability to users of a
 library. For example, if we define a library ``foo_more``, that
-extends ``foo``, we might want users of ``foo_more`` to immediately
+extends ``foo``, we might want ``foo_more`` users to immediately
 have ``foo`` available as well. To do this, we must define the
 dependency on ``foo`` as re-exported:
 
@@ -94,20 +94,20 @@ dependency on ``foo`` as re-exported:
 wrapped_executables
 -------------------
 
-Executables are made of compilation units whose names may collide with the
-compilation units of libraries. To avoid this possibility, dune prefixes these
+Executables are made of compilation units whose names may collide with libraries' 
+compilation units. To avoid this possibility, Dune prefixes these
 compilation unit names with ``Dune__exe__``. This is entirely transparent to
-users except for when such executables are debugged. In which case the mangled
+users except when such executables are debugged. In which case, the mangled
 names will be visible in the debugger.
 
-Starting from dune 1.11, an option is available to turn on/off name mangling for
-executables on a per project basis:
+Starting from Dune 1.11, an option is available to turn on/off name mangling for
+executables on a per-project basis:
 
 .. code:: scheme
 
     (wrapped_executables <bool>)
 
-Starting from dune 2.0, dune mangles compilation units of executables by
+Starting with Dune 2.0, Dune mangles compilation units of executables by
 default. However, this can still be turned off using ``(wrapped_executables
 false)``
 
@@ -117,12 +117,12 @@ executables_implicit_empty_intf
 -------------------------------
 
 By default, executables defined via ``(executables(s) ...)`` or ``(test(s)
-...)`` stanzas are compiled with the interface file provided (e.g. ``.mli`` or
+...)`` stanzas are compiled with the interface file provided (e.g., ``.mli`` or
 ``rei``). Since these modules cannot be used as library dependencies, it's
 common to give them empty interface files to strengthen the compiler's ability
 to detect unused values in these modules.
 
-Starting from dune 2.9, an option is available to automatically generate empty
+Starting from Dune 2.9, an option is available to automatically generate empty
 interface files for executables and tests that don't already have them:
 
 .. code:: scheme
@@ -135,7 +135,7 @@ explicit_js_mode
 ----------------
 
 Traditionally, JavaScript targets were defined for every bytecode executable.
-This was not very precise and did not interact well with the ``@all`` alias.
+This wasn't very precise and didn't interact well with the ``@all`` alias.
 
 You can opt out of this behaviour by using:
 
@@ -144,11 +144,11 @@ You can opt out of this behaviour by using:
     (explicit_js_mode)
 
 When this mode is enabled, an explicit ``js`` mode needs to be added to the
-``(modes ...)`` field of executables in order to trigger JavaScript
+``(modes ...)`` field of executables in order to trigger the JavaScript
 compilation. Explicit JS targets declared like this will be attached to the
 ``@all`` alias.
 
-Starting from dune 2.0 this behaviour is the default, and there is no way to
+Starting with Dune 2.0, this behaviour is the default, and there is no way to
 disable it.
 
 .. _dialect:
@@ -156,11 +156,11 @@ disable it.
 dialect
 -------
 
-A dialect is an alternative frontend to OCaml (such as ReasonML). It is
+A dialect is an alternative frontend to OCaml (such as ReasonML). It's
 described by a pair of file extensions, one corresponding to interfaces and one
 to implementations.
 
-A dialect can use the standard OCaml syntax or it can specify an action to
+A dialect can use the standard OCaml syntax, or it can specify an action to
 convert from a custom syntax to a binary OCaml abstract syntax tree.
 
 Similarly, a dialect can specify a custom formatter to implement the ``@fmt``
@@ -183,30 +183,30 @@ way to specify custom file extensions for OCaml code.
 ``<name>`` is the name of the dialect being defined. It must be unique in a
 given project.
 
-``(extension <string>)`` specifies the file extension used for this dialect, for
-interfaces and implementations. The extension string must not contain any dots,
+For interfaces and implementations, ``(extension <string>)`` specifies the file extension used for this dialect. 
+The extension string must not contain any dots 
 and be unique in a given project (so that a given extension can be mapped back
 to a corresponding dialect).
 
 ``<optional fields>`` are:
 
-- ``(preprocess <action>)`` is the action to run to produce a valid OCaml
-  abstract syntax tree. It is expected to read the file given in the variable
+- Run ``(preprocess <action>)`` to produce a valid OCaml
+  abstract syntax tree. It's expected to read the file given in the variable
   named ``input-file`` and output a *binary* abstract syntax tree on its
   standard output. See :ref:`preprocessing-actions` for more information.
 
-  If the field is not present, it is assumed that the corresponding source code
+  If the field isn't present, it's assumed that the corresponding source code
   is already valid OCaml code and can be passed to the OCaml compiler as-is.
 
 
-- ``(format <action>)`` is the action to run to format source code for this
+- Run ``(format <action>)`` to format source code for this
   dialect. The action is expected to read the file given in the variable named
   ``input-file`` and output the formatted source code on its standard
   output. For more information. See :ref:`formatting-main` for more information.
 
-  If the field is not present, then if ``(preprocess <action>)`` is not present
-  (so that the dialect consists of valid OCaml code), then by default the
-  dialect will be formatted as any other OCaml code. Otherwise no special
+  If the field is not present, then ``(preprocess <action>)`` is also not present
+  (so that the dialect consists of valid OCaml code). In that case, the
+  dialect will be formatted as any other OCaml code by default. Otherwise no special
   formatting will be done.
 
 .. _formatting:
@@ -214,7 +214,7 @@ to a corresponding dialect).
 formatting
 ----------
 
-Starting in dune 2.0, :ref:`formatting-main` is automatically enabled. This can be
+Starting in Dune 2.0, :ref:`formatting-main` is automatically enabled. This can be
 controlled by using
 
 .. code:: scheme
@@ -234,7 +234,7 @@ generate_opam_files
 -------------------
 
 Dune is able to use metadata specified in the ``dune-project`` file to generate
-``.opam`` files, see :ref:`opam-generation`. To enable this integration, add the
+``.opam`` files (see :ref:`opam-generation`). To enable this integration, add the
 following field to the ``dune-project`` file:
 
 .. code:: scheme
@@ -244,25 +244,25 @@ following field to the ``dune-project`` file:
 Dune uses the following global fields to set the metadata for all packages
 defined in the project:
 
-- ``(license <name>)`` - Specifies the license of the project, ideally as an
+- ``(license <name>)`` - specifies the license of the project, ideally as an
   identifier from the `SPDX License List <https://spdx.org/licenses/>`__
 
-- ``(authors <authors>)`` - A list of authors
+- ``(authors <authors>)`` - a list of authors
 
-- ``(maintainers <maintainers>)`` - A list of maintainers
+- ``(maintainers <maintainers>)`` - a list of maintainers
 
 - ``(source <source>)`` - where the source is specified two ways:
   ``(github <user/repo>)`` or ``(uri <uri>)``
 
-- ``(bug_reports <url>)`` - Where to report bugs. This defaults to the GitHub
-  issue tracker if the source is specified as a GitHub repository
+- ``(bug_reports <url>)`` - where to report bugs. This defaults to the GitHub
+  issue tracker, if the source is specified as a GitHub repository.
 
-- ``(homepage <url>)`` - The homepage of the project
+- ``(homepage <url>)`` - the homepage of the project
 
-- ``(documentation <url>)`` - Where the documentation is hosted
+- ``(documentation <url>)`` - where the documentation is hosted
 
-With this fields in, every time dune is called to execute some rules (either via
-``dune build``, ``dune runtest`` or something else), the opam files get
+With these fields, every time one calls Dune to execute some rules (either via
+``dune build``, ``dune runtest``, or something else), the opam files get
 generated.
 
 Some or all of these fields may be overridden for each package of the project, see
@@ -278,36 +278,36 @@ It contains the following fields:
 
 - ``(name <string>)`` is the name of the package. This must be specified.
 
-- ``(synopsis <string>)`` is a short package description
+- ``(synopsis <string>)`` is a short package description.
 
-- ``(description <string>)`` is a longer package description
+- ``(description <string>)`` is a longer package description.
 
-- ``(depends <dep-specification>)`` are package dependencies
+- ``(depends <dep-specification>)`` are package dependencies.
 
-- ``(conflicts <dep-specification)`` are package conflicts
+- ``(conflicts <dep-specification)`` are package conflicts.
 
-- ``(depopts <dep-specification)`` are optional package dependencies
+- ``(depopts <dep-specification)`` are optional package dependencies.
 
-- ``(tags <tags>)`` are the list of tags for the package
+- ``(tags <tags>)`` are the list of tags for the package.
 
 - ``(deprecated_package_names <name list>)`` is a list of names that can be used
   with the :ref:`deprecated-library-name` stanza to migrate legacy libraries
-  from other build systems which do not follow Dune's convention of prefixing
-  the public name of the library with the package name.
+  from other build systems that don't follow Dune's convention of prefixing
+  the library's public name with the package name.
 
 - ``(license <name>)``, ``(authors <authors>)``, ``(maintainers
   <maintainers>)``, ``(source <source>)``, ``(bug_reports <url>)``, ``(homepage
-  <url>)``, ``(documentation <url>)`` are the same (and take precedence over)
-  the corresponding global fields. These fields are available since Dune 2.0.
+  <url>)``, and ``(documentation <url>)`` are the same (and take precedence over)
+  the corresponding global fields. These fields have been available since Dune 2.0.
 
 - ``(sites (<section> <name>) ...)`` define a site named ``<name>`` in the
   section ``<section>``.
 
-Adding libraries to different packages is done via  ``public_name`` field. See
+Adding libraries to different packages is done via the ``public_name`` field. See
 :ref:`library` section for details.
 
 The list of dependencies ``<dep-specification>`` is modeled after opam's own
-language: The syntax is as a list of the following elements:
+language. The syntax is a list of the following elements:
 
 .. code::
 
@@ -325,7 +325,7 @@ language: The syntax is as a list of the following elements:
 
    dep-specification = dep+
 
-Note that the use of a ``using`` stanza (see :ref:`using <using>`) does not
+Note that the use of a ``using`` stanza (see :ref:`using <using>`) doesn't
 automatically add the associated library or tool as a dependency. They have to
 be added explicitly.
 
@@ -334,7 +334,7 @@ be added explicitly.
 use_standard_c_and_cxx_flags
 ----------------------------
 
-Since Dune 2.8, it is possible to deactivate the systematic prepending of flags
+Since Dune 2.8, it's possible to deactivate the systematic prepending of flags
 coming from ``ocamlc -config`` to the C compiler command line. This is done
 adding the following field to the ``dune-project`` file:
 
@@ -342,17 +342,17 @@ adding the following field to the ``dune-project`` file:
 
     (use_standard_c_and_cxx_flags true)
 
-In this mode, dune will populate the ``:standard`` set of C flags with the
+In this mode, Dune will populate the ``:standard`` set of C flags with the
 content of ``ocamlc_cflags`` and  ``ocamlc_cppflags``. These flags can be
 completed or overridden using the :ref:`ordered-set-language`.
 
 accept_alternative_dune_file_name
 ---------------------------------
 
-Since Dune 3.0, it is possible to use the alternative file name ``dune-file``
+Since Dune 3.0, it's possible to use the alternative file name ``dune-file``
 instead of ``dune`` to specify the build. This may be useful to avoid problems
-with ``dune`` files which have the executable permission in a directory that
-happens to be in the ``PATH`` (this can unwittingly happen under Windows).
+with Dune files that have the executable permission in a directory 
+in the ``PATH``, which can unwittingly happen in Windows.
 
 The feature must be enabled explicitly by adding the following field to
 ``dune-project``:
@@ -368,13 +368,12 @@ over ``dune``.
 dune
 ====
 
-``dune`` files are the main part of dune. They are used to describe libraries,
-executables, tests, and everything dune needs to know about.
+Dune files are the main part of Dune. They are used to describe libraries,
+executables, tests, and everything Dune needs to know about.
 
-The syntax of ``dune`` files is described in :ref:`metadata-format` section.
+The syntax of Dune files is described in :ref:`metadata-format` section.
 
-``dune`` files are composed of stanzas. For instance a typical
-``dune`` looks like:
+Dune files are composed of stanzas, as shown below:
 
 .. code:: lisp
 
@@ -387,7 +386,7 @@ The syntax of ``dune`` files is described in :ref:`metadata-format` section.
      (deps   generator/gen.exe)
      (action (run %{deps} -o %{target})))
 
-The following sections describe the available stanzas and their meaning.
+The following sections describe the available stanzas and their meanings.
 
 jbuild_version
 --------------
@@ -413,155 +412,155 @@ format of library stanzas is as follows:
 names of the archive files generated for the library as well as the
 module name under which the library will be available, unless
 ``(wrapped false)`` is used (see below). It must be a valid OCaml
-module name but doesn't need to start with a uppercase letter.
+module name, but it doesn't need to start with an uppercase letter.
 
 For instance, the modules of a library named ``foo`` will be
-available as ``Foo.XXX`` outside of ``foo`` itself. It is however
-allowed to write an explicit ``Foo`` module, in which case this will
-be the interface of the library and you are free to expose only the
+available as ``Foo.XXX``, outside of ``foo`` itself; however, it is
+allowed to write an explicit ``Foo`` module, which will 
+be the library interface. You are free to expose only the
 modules you want.
 
-Note that by default libraries and other things that consume
+Please note: by default, libraries and other things that consume
 OCaml/Reason modules only consume modules from the directory where the
 stanza appear. In order to declare a multi-directory library, you need
 to use the :ref:`include_subdirs` stanza.
 
 ``<optional-fields>`` are:
 
-- ``(public_name <name>)`` this is the name under which the library can be
-  referred to as a dependency when it is not part of the current workspace,
-  i.e. when it is installed. Without a ``(public_name ...)`` field, the library
-  will not be installed by dune. The public name must start by the package
-  name it is part of and optionally followed by a dot and anything else you
-  want. The package name must be one of the packages that dune knows about,
+- ``(public_name <name>)`` - the name under which the library can be
+  referred as a dependency when it's not part of the current workspace,
+  i.e., when it's installed. Without a ``(public_name ...)`` field, the library
+  won't be installed by Dune. The public name must start with the package
+  name it's part of and optionally followed by a dot, then anything else you
+  want. The package name must also be one of the packages that Dune knows about,
   as determined by the :ref:`opam-files`
 
-- ``(package <package>)`` Install private library under the specified package.
+- ``(package <package>)`` installs a private library under the specified package.
   Such a library is now usable by public libraries defined in the same project.
-  The findlib name for this library will be ``<package>.__private__.<name>``,
-  however the library's interface will be hidden from consumers outside the
+  The ``findlib`` name for this library will be ``<package>.__private__.<name>``;
+  however, the library's interface will be hidden from consumers outside the
   project.
 
 - ``(synopsis <string>)`` should give a one-line description of the library.
   This is used by tools that list installed libraries
 
 - ``(modules <modules>)`` specifies what modules are part of the library. By
-  default dune will use all the .ml/.re files in the same directory as the
-  ``dune`` file. This include ones that are present in the file system as well
+  default, Dune will use all the ``.ml/.re`` files in the same directory as the
+  ``dune`` file. This includes ones present in the file system as well
   as ones generated by user rules. You can restrict this list by using a
-  ``(modules <modules>)`` field. ``<modules>`` uses the :ref:`ordered-set-language`
-  where elements are module names and don't need to start with a uppercase
-  letter. For instance to exclude module ``Foo``: ``(modules (:standard \
+  ``(modules <modules>)`` field. ``<modules>`` uses the :ref:`ordered-set-language`, 
+  where elements are module names and don't need to start with an uppercase
+  letter. For instance, to exclude module ``Foo``, use ``(modules (:standard \
   foo))``
 
-- ``(libraries <library-dependencies>)`` is used to specify the dependencies
-  of the library. See the section about :ref:`library-deps` for more details
+- ``(libraries <library-dependencies>)`` specifies the library's dependencies. 
+  See the section about :ref:`library-deps` for more details.
 
-- ``(wrapped <boolean>)`` specifies whether the modules of the library should be
-  available only through the top-level library module, or should all be exposed
-  at the top level. The default is ``true`` and it is highly recommended to keep
+- ``(wrapped <boolean>)`` specifies whether the library modules should be
+  available only through the top-level library module, or if they should all be exposed
+  at the top level. The default is ``true``, and it's highly recommended to keep
   it this way. Because OCaml top-level modules must all be unique when linking
   an executables, polluting the top-level namespace will make your library
   unusable with other libraries if there is a module name clash. This option is
   only intended for libraries that manually prefix all their modules by the
-  library name and to ease porting of existing projects to dune
+  library name and to ease porting of existing projects to Dune.
 
-- ``(wrapped (transition <message>))`` Is the same as ``(wrapped true)`` except
-  that it will also generate unwrapped (not prefixed by the library name)
+- ``(wrapped (transition <message>))`` is the same as ``(wrapped true)``, except 
+  it will also generate unwrapped (not prefixed by the library name)
   modules to preserve compatibility. This is useful for libraries that would
   like to transition from ``(wrapped false)`` to ``(wrapped true)`` without
-  breaking compatibility for users. The ``<message>`` will be included in the
-  deprecation notice for the unwrapped modules.
+  breaking compatibility for users. The deprecation notices for the unwrapped 
+  modules will include ``<message>``.
 
-- ``(preprocess <preprocess-spec>)`` specifies how to preprocess files if
-  needed. The default is ``no_preprocessing``. Other options are described in the
-  :ref:`preprocessing-spec` section
+- ``(preprocess <preprocess-spec>)`` specifies how to preprocess files when
+  needed. The default is ``no_preprocessing``, and other options are described in the
+  :ref:`preprocessing-spec` section.
 
-- ``(preprocessor_deps (<deps-conf list>))`` specifies extra dependencies of the
-  preprocessor, for instance if the preprocessor reads a generated file. The
+- ``(preprocessor_deps (<deps-conf list>))`` specifies extra preprocessor dependencies 
+  preprocessor, i.e., if the preprocessor reads a generated file. The
   specification of dependencies is described in the :ref:`deps-field`
-  section
+  section.
 
-- ``(optional)``, if present it indicates that the library should only be built
+- ``(optional)`` - if present, it indicates that the library should only be built
   and installed if all the dependencies are available, either in the workspace
-  or in the installed world. You can use this to provide extra features without
+  or in the installed world. Use this to provide extra features without
   adding hard dependencies to your project
 
-- ``(foreign_stubs <foreign-stubs-spec>)`` specifies foreign source files, e.g.
+- ``(foreign_stubs <foreign-stubs-spec>)`` specifies foreign source files, e.g.,
   C or C++ stubs, to be compiled and packaged together with the library. See
   the section :ref:`foreign-sources-and-archives` for more details. This field
-  replaces the now deleted fields ``c_names``, ``c_flags``, ``cxx_names``
+  replaces the now-deleted fields ``c_names``, ``c_flags``, ``cxx_names``,
   and ``cxx_flags``.
 
 - ``(foreign_archives <foreign-archives-list>)`` specifies archives of foreign
   object files to be packaged with the library. See the section
-  :ref:`foreign-archives` for more details. This field replaces the now
-  deleted field ``self_build_stubs_archive``.
+  :ref:`foreign-archives` for more details. This field replaces the now-deleted 
+  field ``self_build_stubs_archive``.
 
-- ``(install_c_headers (<names>))``, if your library has public C header files
+- ``(install_c_headers (<names>))`` - if your library has public C header files
   that must be installed, you must list them in this field, without the ``.h``
-  extension
+  extension.
 
-- ``(modes <modes>)`` modes which should be built by default. The
+- ``(modes <modes>)`` is for modes which should be built by default. The
   most common use for this feature is to disable native compilation
   when writing libraries for the OCaml toplevel. The following modes
-  are available: ``byte``, ``native`` and ``best``. ``best`` is
-  ``native`` or ``byte`` when native compilation is not available
+  are available: ``byte``, ``native``, and ``best``. ``best`` is
+  ``native`` or ``byte`` when native compilation isn't available.
 
-- ``(no_dynlink)`` is to disable dynamic linking of the library. This is for
-  advanced use only, by default you shouldn't set this option
+- ``(no_dynlink)`` disables dynamic linking of the library. This is for
+  advanced use only. By default, you shouldn't set this option.
 
-- ``(kind <kind>)`` is the kind of the library. The default is ``normal``, other
-  available choices are ``ppx_rewriter`` and ``ppx_deriver`` and must be set
+- ``(kind <kind>)`` sets the type of library. The default is ``normal``, but other
+  available choices are ``ppx_rewriter`` and ``ppx_deriver``. They must be set
   when the library is intended to be used as a ppx rewriter or a ``[@@deriving
-  ...]`` plugin. The reason why ``ppx_rewriter`` and ``ppx_deriver`` are split
-  is historical and hopefully we won't need two options soon. Both ppx kinds
-  support an optional field ``(cookies <cookies>)`` where ``<cookies>`` is a
+  ...]`` plugin. The reason ``ppx_rewriter`` and ``ppx_deriver`` are split
+  is historical, and hopefully we won't need two options soon. Both ppx kinds
+  support an optional field: ``(cookies <cookies>)``, where ``<cookies>`` is a
   list of pairs ``(<name> <value>)`` with ``<name>`` being the cookie name and
-  ``<value>`` is a string that supports :ref:`variables` evaluated
-  by each invocation of the preprocessor (note: libraries that share
-  cookies with the same name should agree on their expanded value)
+  ``<value>`` a string that supports :ref:`variables` evaluated
+  by each preprocessor invocation (note: libraries that share
+  cookies with the same name should agree on their expanded value).
 
-- ``(ppx_runtime_libraries (<library-names>))`` is for when the library is a ppx
-  rewriter or a ``[@@deriving ...]`` plugin and has runtime dependencies. You
-  need to specify these runtime dependencies here
+- ``(ppx_runtime_libraries (<library-names>))`` is for when the library is a ``ppx
+  rewriter`` or a ``[@@deriving ...]`` plugin, and has runtime dependencies. You
+  need to specify these runtime dependencies here.
 
 - ``(virtual_deps (<opam-packages>)``. Sometimes opam packages enable a specific
-  feature only if another package is installed. This is for instance the case of
-  ``ctypes`` which will only install ``ctypes.foreign`` if the dummy
+  feature only if another package is installed. For instance, the case of
+  ``ctypes`` will only install ``ctypes.foreign`` if the dummy
   ``ctypes-foreign`` package is installed. You can specify such virtual
-  dependencies here. You don't need to do so unless you use dune to
-  synthesize the ``depends`` and ``depopts`` sections of your opam file
+  dependencies here, but you don't need to do so unless you use Dune to
+  synthesize the ``depends`` and ``depopts`` sections of your opam file.
 
-- ``js_of_ocaml`` sets options for JavaScript compilation, see :ref:`jsoo-field`
+- ``js_of_ocaml`` sets options for JavaScript compilation, see :ref:`jsoo-field`.
 
-- ``flags``, ``ocamlc_flags`` and ``ocamlopt_flags``. See the section about
+- For ``flags``, ``ocamlc_flags``, and ``ocamlopt_flags``, see the section about
   :ref:`ocaml-flags`
 
-- ``(library_flags (<flags>))`` is a list of flags that are passed as it to
+- ``(library_flags (<flags>))`` is a list of flags passed to 
   ``ocamlc`` and ``ocamlopt`` when building the library archive files. You can
-  use this to specify ``-linkall`` for instance. ``<flags>`` is a list of
-  strings supporting :ref:`variables`
+  use this to specify ``-linkall``, for instance. ``<flags>`` is a list of
+  strings supporting :ref:`variables`.
 
-- ``(c_library_flags <flags>)`` specifies the flags to pass to the C compiler
+- ``(c_library_flags <flags>)`` specifies the flags passed to the C compiler
   when constructing the library archive file for the C stubs. ``<flags>`` uses
   the :ref:`ordered-set-language` and supports ``(:include ...)`` forms. When you
-  are writing bindings for a C library named ``bar``, you should typically write
+  write bindings for a C library named ``bar``, you should typically write
   ``-lbar`` here, or whatever flags are necessary to link against this
-  library
+  library.
 
 - ``(modules_without_implementation <modules>)`` specifies a list of
   modules that have only a ``.mli`` or ``.rei`` but no ``.ml`` or
   ``.re`` file. Such modules are usually referred as *mli only
   modules*. They are not officially supported by the OCaml compiler,
   however they are commonly used. Such modules must only define
-  types. Since it is not reasonably possible for dune to check
-  that this is the case, dune requires the user to explicitly list
+  types. Since it isn't reasonably possible for Dune to check 
+  this is the case, Dune requires the user to explicitly list
   such modules to avoid surprises.  Note that the
-  ``modules_without_implementation`` field is not merged in ``modules``, which
+  ``modules_without_implementation`` field isn't merged in ``modules``, which
   represents the total set of modules in a library. If a directory has more
-  than one stanza and thus a ``modules`` field must be specified, ``<modules>``
-  still need to be added in ``modules``.
+  than one stanza, and thus a ``modules`` field must be specified, ``<modules>``
+  still needs to be added in ``modules``.
 
 - ``(private_modules <modules>)`` specifies a list of modules that will be
   marked as private. Private modules are inaccessible from outside the libraries

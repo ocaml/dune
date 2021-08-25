@@ -593,6 +593,7 @@ let encode : t Dune_lang.Encoder.t =
      ; stanza_parser = _
      ; project_file = _
      ; root = _
+     ; subst_config = _
      } ->
   let open Dune_lang.Encoder in
   let lang = Lang.get_exn "dune" in
@@ -949,7 +950,6 @@ let set_parsing_context t parser =
 let wrapped_executables t = t.wrapped_executables
 
 let executables_implicit_empty_intf t = t.executables_implicit_empty_intf
-
 let accept_alternative_dune_file_name t = t.accept_alternative_dune_file_name
 
 let () =

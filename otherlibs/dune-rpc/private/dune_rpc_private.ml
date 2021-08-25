@@ -151,6 +151,42 @@ module Loc = struct
     iso (record (both start stop)) to_ from
 end
 
+module Decl = struct
+  include Decl
+
+  let request_registry = Stdune.String.Table.create 16
+
+  let request ~method_ generations =
+    let open Stdune in
+    let generations_to_register =
+      List.fold_left generations ~init:Int.Set.empty ~f:(fun acc (n, _) ->
+          Int.Set.add acc n)
+    in
+    let prior_registered_generations =
+      match String.Table.find request_registry method_ with
+      | None -> Int.Set.empty
+      | Some s -> s
+    in
+    let duplicate_generations =
+      Int.Set.inter generations_to_register prior_registered_generations
+    in
+    let () =
+      if Int.Set.is_empty duplicate_generations then
+        String.Table.set request_registry method_
+          (Int.Set.union generations_to_register prior_registered_generations)
+      else
+        Code_error.raise
+          ("attempted to register duplicate generations for RPC method "
+         ^ method_)
+          [ ("duplicated", Int.Set.to_dyn duplicate_generations) ]
+    in
+    request ~method_ generations
+
+  let known_requests () =
+    Stdune.String.Table.foldi request_registry ~init:Stdune.String.Map.empty
+      ~f:(fun method_ vs acc -> Stdune.String.Map.add_exn acc method_ vs)
+end
+
 module Target = struct
   type t =
     | Path of string
@@ -454,10 +490,16 @@ module Public = struct
   module Request = struct
     type ('a, 'b) t = ('a, 'b) Decl.request
 
-    let ping = Decl.request ~method_:"ping" Conv.unit Conv.unit
+    let ping =
+      Decl.request ~method_:"ping"
+        [ (1, Decl.Generation.current_request Conv.unit Conv.unit) ]
 
     let diagnostics =
-      Decl.request ~method_:"diagnostics" Conv.unit (Conv.list Diagnostic.sexp)
+      Decl.request ~method_:"diagnostics"
+        [ ( 1
+          , Decl.Generation.current_request Conv.unit
+              (Conv.list Diagnostic.sexp) )
+        ]
   end
 
   module Notification = struct
@@ -470,6 +512,15 @@ module Public = struct
     let unsubscribe = Decl.notification ~method_:"unsubscribe" Subscribe.sexp
   end
 end
+
+let default_version_menu =
+  Stdune.String.Map.of_list_exn
+    [ ("ping", 1)
+    ; ("diagnostics", 1)
+    ; ("shutdown", 1)
+    ; ("subscribe", 1)
+    ; ("unsubscribe", 1)
+    ]
 
 module Server_notifications = struct
   let abort = Decl.notification ~method_:"notify/abort" Message.sexp
@@ -641,6 +692,18 @@ module Client = struct
       ; requests : (Id.t, Response.t Fiber.Ivar.t) Table.t
       ; on_notification : Call.t -> unit Fiber.t
       ; initialize : Initialize.Request.t
+      ; (* This [Ivar] is acting as a [Fiber]-safe [Fdecl] analogue.
+
+           The core issue is that the client needs to be aware of the version
+           menu to correctly decode versioned responses from the server.
+           However, the client needs to exist to send the initial session
+           initialization request to kick off the version negotiation in the
+           first place.
+
+           To break this cycle, we first construct the client with an empty
+           [Ivar], which must be filled before any user code is run (guaranteed
+           by the monadic Fiber interface). *)
+        method_menu : int Stdune.String.Map.t Fiber.Ivar.t
       ; mutable next_id : int
       ; mutable running : bool
       }
@@ -706,6 +769,7 @@ module Client = struct
       ; next_id = 0
       ; initialize
       ; running = true
+      ; method_menu = Fiber.Ivar.create ()
       }
 
     let prepare_request t (id, req) =
@@ -736,14 +800,35 @@ module Client = struct
         let* () = send t (Some [ Request (id, req) ]) in
         Fiber.Ivar.read ivar
 
-    let parse_response t (decl : _ Decl.request) = function
+    let lookup_method_versioned t (decl : _ Decl.request) =
+      let+ method_menu = Fiber.Ivar.read t.method_menu in
+      let generation = Stdune.String.Map.find_exn method_menu decl.method_ in
+      Decl.Generations.lookup decl.generations generation
+
+    let parse_response t (decl : ('req, 'resp) Decl.request) = function
       | Error e -> Fiber.return (Error e)
       | Ok res -> (
-        match Conv.of_sexp decl.resp ~version:t.initialize.version res with
-        | Ok s -> Fiber.return (Ok s)
-        | Error e ->
-          terminate_with_error t "response not matched by decl"
-            [ ("e", Conv.dyn_of_error e) ])
+        let* generation = lookup_method_versioned t decl in
+        match generation with
+        | None ->
+          (* cwong: I'm not actually convinced this case can happen, as it would
+             mean that we managed to send a request via the menu but we don't
+             have the right version to parse the response? *)
+          let error =
+            Response.Error.create ~payload:res
+              ~message:
+                "BUG: got response to request with version that doesn't exist"
+              ~kind:Response.Error.Version_error ()
+          in
+          Fiber.return (Error error)
+        | Some (T gen : ('req, 'resp) Decl.Generation.t) -> (
+          match Conv.of_sexp gen.resp ~version:t.initialize.version res with
+          | Ok s ->
+            let resp = gen.upgrade_resp s in
+            Fiber.return (Ok resp)
+          | Error e ->
+            terminate_with_error t "response not matched by decl"
+              [ ("e", Conv.dyn_of_error e) ]))
 
     let gen_id t = function
       | Some id -> id
@@ -754,11 +839,22 @@ module Client = struct
 
     let request ?id t (decl : _ Decl.request) req =
       let id = gen_id t id in
-      let req =
-        { Call.params = Conv.to_sexp decl.req req; method_ = decl.method_ }
-      in
-      let* res = request_untyped t (id, req) in
-      parse_response t decl res
+      let* generation = lookup_method_versioned t decl in
+      match generation with
+      | None ->
+        let error =
+          Response.Error.create
+            ~message:
+              ("The build server and client have no compatible versions for \
+                method " ^ decl.method_)
+            ~kind:Response.Error.Version_error ()
+        in
+        Fiber.return (Error error)
+      | Some (T gen) ->
+        let params = Conv.to_sexp gen.req (gen.downgrade_req req) in
+        let req = { Call.params; method_ = decl.method_ } in
+        let* res = request_untyped t (id, req) in
+        parse_response t decl res
 
     let make_notification (type a) t (decl : a Decl.notification) (n : a) k =
       let call =
@@ -799,16 +895,27 @@ module Client = struct
       let request (type a b) ?id t (decl : (a, b) Decl.request) (req : a) :
           (b, _) result Fiber.t =
         let id = gen_id t.client id in
-        let req =
-          { Call.params = Conv.to_sexp decl.req req; method_ = decl.method_ }
-        in
-        let ivar = prepare_request t.client (id, req) in
-        match ivar with
-        | Error e -> Fiber.return (Error e)
-        | Ok ivar ->
-          t.pending <- Packet.Query.Request (id, req) :: t.pending;
-          let* res = Fiber.Ivar.read ivar in
-          parse_response t.client decl res
+        let* generation = lookup_method_versioned t.client decl in
+        match generation with
+        | None ->
+          let error =
+            Response.Error.create
+              ~message:
+                ("The build server and client have no compatible versions for \
+                  method " ^ decl.method_)
+              ~kind:Response.Error.Version_error ()
+          in
+          Fiber.return (Error error)
+        | Some (T gen) -> (
+          let params = Conv.to_sexp gen.req (gen.downgrade_req req) in
+          let req = { Call.params; method_ = decl.method_ } in
+          let ivar = prepare_request t.client (id, req) in
+          match ivar with
+          | Error e -> Fiber.return (Error e)
+          | Ok ivar ->
+            t.pending <- Packet.Query.Request (id, req) :: t.pending;
+            let* res = Fiber.Ivar.read ivar in
+            parse_response t.client decl res)
 
       let submit t =
         let pending = List.rev t.pending in
@@ -925,7 +1032,37 @@ module Client = struct
         match init with
         | Error e -> raise (Response.Error.E e)
         | Ok csexp ->
-          let _resp = Conv.of_sexp Initialize.Response.sexp csexp in
+          let* menu =
+            match
+              Conv.of_sexp ~version:initialize.version Initialize.Response.sexp
+                csexp
+            with
+            | Error e -> raise (Invalid_session e)
+            | Ok Compatibility -> Fiber.return default_version_menu
+            | Ok (Supports_versioning ()) -> (
+              let id = Id.make (List [ Atom "version menu" ]) in
+              let supported_versions =
+                let request =
+                  Version_negotiation.Request.create
+                    (Stdune.String.Map.to_list_map
+                       ~f:(fun key set -> (key, Stdune.Int.Set.to_list set))
+                       (Decl.known_requests ()))
+                in
+                Version_negotiation.Request.to_call request
+              in
+              let+ resp = request_untyped client (id, supported_versions) in
+              match resp with
+              | Error e -> raise (Response.Error.E e)
+              | Ok sexp -> (
+                match
+                  Conv.of_sexp ~version:initialize.version
+                    Version_negotiation.Response.sexp sexp
+                with
+                | Error e -> raise (Invalid_session e)
+                | Ok (Selected methods) -> Stdune.String.Map.of_list_exn methods
+                ))
+          in
+          let* () = Fiber.Ivar.fill client.method_menu menu in
           let+ res =
             Fiber.finalize
               (fun () -> f client)

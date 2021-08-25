@@ -72,9 +72,9 @@ module Handler : sig
       need this? *)
   val callback : info -> ('a -> 'b Fiber.t) -> ('s, 'a, 'b) callback
 
-  (** [request handler callback decl] Add a request to [handler] using
+  (** [implement_request handler callback decl] Add a request to [handler] using
       [callback] as the implementation and [decl] as the metadata *)
-  val request : 's t -> ('s, 'a, 'b) callback -> ('a, 'b) Decl.request -> unit
+  val implement_request : 's t -> ('s, 'a, 'b) callback -> ('a, 'b) Decl.request -> unit
 
   (** [notification handler callback decl] Add a notification to [handler] using
       [callback] as the implementation and [decl] as the metadata *)

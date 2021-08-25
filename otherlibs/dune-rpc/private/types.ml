@@ -172,6 +172,8 @@ module Initialize = struct
 
     let create ~id = { version = Version.latest; id }
 
+    let method_name = "initialize"
+
     let sexp =
       let open Conv in
       let version = field "version" (required Version.sexp) in
@@ -181,11 +183,10 @@ module Initialize = struct
       record (iso (both version id) to_ from)
 
     let of_call { Call.method_; params } ~version =
-      match method_ with
-      | "initialize" ->
+      if String.equal method_ method_name then
         Conv.of_sexp sexp ~version params
         |> Result.map_error ~f:Response.Error.of_conv
-      | _ ->
+      else
         let message = "initialize request expected" in
         Error (Response.Error.create ~message ~kind:Invalid_request ())
 
@@ -195,13 +196,74 @@ module Initialize = struct
   end
 
   module Response = struct
-    type t = unit
+    type t =
+      | Compatibility
+      | Supports_versioning of unit
 
-    let sexp = Conv.unit
+    let sexp =
+      let open Conv in
+      let real_sexp = record (field "supports_versioning" (required unit)) in
+      iso
+        (either_untagged unit real_sexp)
+        (function
+          | Left () -> Compatibility
+          | Right () -> Supports_versioning ())
+        (function
+          | Compatibility -> Left ()
+          | Supports_versioning () -> Right ())
 
-    let create () = ()
+    (* We should never send the [Compatibility] variant, since it's for
+       backwards compatibility with Dune servers that predate the runtime
+       versioning. *)
+    let create () = Supports_versioning ()
 
-    let to_response () = Conv.to_sexp sexp ()
+    let to_response t = Conv.to_sexp sexp t
+  end
+end
+
+module Version_negotiation = struct
+  module Request = struct
+    type t = Menu of (string * int list) list
+
+    let method_name = "version_menu"
+
+    let create menu = Menu menu
+
+    let sexp =
+      Conv.(
+        iso
+          (list (pair string (list int)))
+          (fun x -> Menu x)
+          (function
+            | Menu x -> x))
+
+    let to_call t =
+      let params = Conv.to_sexp sexp t in
+      { Call.method_ = method_name; params }
+
+    let of_call { Call.method_; params } ~version =
+      if String.equal method_ method_name then
+        Conv.of_sexp sexp ~version params
+        |> Result.map_error ~f:Response.Error.of_conv
+      else
+        let message = "version negotiation request expected" in
+        Error (Response.Error.create ~message ~kind:Invalid_request ())
+  end
+
+  module Response = struct
+    type t = Selected of (string * int) list
+
+    let sexp =
+      Conv.(
+        iso
+          (list (pair string int))
+          (fun x -> Selected x)
+          (function
+            | Selected x -> x))
+
+    let create x = Selected x
+
+    let to_response t = Conv.to_sexp sexp t
   end
 end
 
@@ -296,10 +358,50 @@ module Packet = struct
 end
 
 module Decl = struct
+  module Generation = struct
+    type ('wire_req, 'wire_resp, 'real_req, 'real_resp) conv =
+      { req : 'wire_req Conv.value
+      ; resp : 'wire_resp Conv.value
+      ; upgrade_req : 'wire_req -> 'real_req
+      ; downgrade_req : 'real_req -> 'wire_req
+      ; upgrade_resp : 'wire_resp -> 'real_resp
+      ; downgrade_resp : 'real_resp -> 'wire_resp
+      }
+
+    type (_, _) t =
+      | T :
+          ('wire_req, 'wire_resp, 'real_req, 'real_resp) conv
+          -> ('real_req, 'real_resp) t
+
+    let current_request req resp =
+      let id x = x in
+      T
+        { req
+        ; resp
+        ; upgrade_req = id
+        ; downgrade_req = id
+        ; upgrade_resp = id
+        ; downgrade_resp = id
+        }
+
+    let prior_request req resp ~upgrade_req ~downgrade_req ~upgrade_resp
+        ~downgrade_resp =
+      T { req; resp; upgrade_req; downgrade_req; upgrade_resp; downgrade_resp }
+  end
+
+  module Generations = struct
+    type ('req, 'resp) t = ('req, 'resp) Generation.t Stdune.Int.Map.t
+
+    let of_list_exn = Stdune.Int.Map.of_list_exn
+
+    let lookup = Stdune.Int.Map.find
+
+    let iter = Stdune.Int.Map.iteri
+  end
+
   type ('req, 'resp) request =
     { method_ : string
-    ; req : 'req Conv.value
-    ; resp : 'resp Conv.value
+    ; generations : ('req, 'resp) Generations.t
     }
 
   type 'req notification =
@@ -309,5 +411,6 @@ module Decl = struct
 
   let notification ~method_ req = { method_; req }
 
-  let request ~method_ req resp = { method_; req; resp }
+  let request ~method_ generations =
+    { method_; generations = Generations.of_list_exn generations }
 end

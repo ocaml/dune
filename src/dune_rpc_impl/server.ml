@@ -81,8 +81,13 @@ let dep_parser =
 module Decl = struct
   module Decl = Decl
 
+  (* cwong: Why is this declared twice (both here and in [decl.ml]?) *)
   let build =
-    Decl.request ~method_:"build" Conv.(list string) Build_outcome.sexp
+    Decl.request ~method_:"build"
+      [ ( 1
+        , Decl.Generation.current_request Conv.(list string) Build_outcome.sexp
+        )
+      ]
 
   let shutdown = Decl.notification ~method_:"shutdown" Conv.unit
 
@@ -96,7 +101,9 @@ module Decl = struct
       iso (list Id.sexp) to_ from
   end
 
-  let status = Decl.request ~method_:"status" Conv.unit Status.sexp
+  let status =
+    Decl.request ~method_:"status"
+      [ (1, Decl.Generation.current_request Conv.unit Status.sexp) ]
 end
 
 module Client = struct
@@ -231,7 +238,7 @@ let handler (t : t Fdecl.t) : 'a Dune_rpc_server.Handler.t =
       ~version:Dune_rpc_private.Version.latest ()
   in
   let () =
-    Handler.request rpc
+    Handler.implement_request rpc
       (Handler.callback (Handler.public ~since:(1, 0) ()) Fiber.return)
       Public.Request.ping
   in
@@ -255,7 +262,9 @@ let handler (t : t Fdecl.t) : 'a Dune_rpc_server.Handler.t =
       in
       Fiber.Ivar.read ivar
     in
-    Handler.request rpc (Handler.callback Handler.private_ build) Decl.build
+    Handler.implement_request rpc
+      (Handler.callback Handler.private_ build)
+      Decl.build
   in
   let () =
     let rec cancel_pending_jobs () =
@@ -343,7 +352,7 @@ let handler (t : t Fdecl.t) : 'a Dune_rpc_server.Handler.t =
       Fiber.return { Decl.Status.clients }
     in
     let cb = Handler.callback Handler.private_ f in
-    Handler.request rpc cb Decl.status
+    Handler.implement_request rpc cb Decl.status
   in
   let () =
     let cb =
@@ -354,7 +363,7 @@ let handler (t : t Fdecl.t) : 'a Dune_rpc_server.Handler.t =
       in
       Handler.callback (Handler.public ~since:(1, 0) ()) f
     in
-    Handler.request rpc cb Public.Request.diagnostics
+    Handler.implement_request rpc cb Public.Request.diagnostics
   in
   rpc
 

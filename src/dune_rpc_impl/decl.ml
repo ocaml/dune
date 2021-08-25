@@ -8,7 +8,10 @@ module Build_outcome = struct
   let sexp = Conv.enum [ ("Success", Success); ("Failure", Failure) ]
 end
 
-let build = Decl.request ~method_:"build" Conv.(list string) Build_outcome.sexp
+let build =
+  Decl.request ~method_:"build"
+    [ (1, Decl.Generation.current_request Conv.(list string) Build_outcome.sexp)
+    ]
 
 let shutdown = Decl.notification ~method_:"shutdown" Conv.unit
 
@@ -22,4 +25,6 @@ module Status = struct
     iso (list Id.sexp) to_ from
 end
 
-let status = Decl.request ~method_:"status" Conv.unit Status.sexp
+let status =
+  Decl.request ~method_:"status"
+    [ (1, Decl.Generation.current_request Conv.unit Status.sexp) ]

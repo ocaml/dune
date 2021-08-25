@@ -137,6 +137,9 @@ type ('a, 'kind) t =
       ('a, fields) t
       * ('b, fields) t
       -> (('a, 'b) Either.t, fields) t
+  | Either_untagged :
+      ('a, values) t * ('b, values) t
+      -> (('a, 'b) Either.t, values) t
   | Record : ('a, fields) t -> ('a, values) t
 
 and ('a, 'arg) constr =
@@ -257,6 +260,12 @@ let to_sexp : 'a. ('a, values) t -> 'a -> Sexp.t =
       match a with
       | Left a -> loop x a
       | Right a -> loop y a)
+    (* We can't share this code with [Either] above because of GADT "type will
+       escape its scope" reasons. *)
+    | Either_untagged (x, y) -> (
+      match a with
+      | Left a -> loop x a
+      | Right a -> loop y a)
     | Sum (_, constr) ->
       let (Case (a, constr)) = constr a in
       let arg = loop constr.arg a in
@@ -346,6 +355,14 @@ let of_sexp : 'a. ('a, values) t -> version:int * int -> Sexp.t -> 'a =
        | Of_sexp _ ->
          let a, y = loop y ctx in
          (Right a, y))
+     | Either_untagged (x, y) -> (
+       try
+         let a, x = loop x ctx in
+         (Left a, x)
+       with
+       | Of_sexp _ ->
+         let a, y = loop y ctx in
+         (Right a, y))
      | Iso (t, f, _) ->
        let a, k = loop t ctx in
        (f a, k)
@@ -386,6 +403,8 @@ let of_sexp conv ~version sexp =
 let record r = Record r
 
 let either x y = Either (x, y)
+
+let either_untagged x y = Either_untagged (x, y)
 
 let iso a t f = Iso (a, t, f)
 

@@ -89,11 +89,66 @@ module Initialize : sig
   end
 end
 
+module Version_negotiation : sig
+  module Request : sig
+    type t = private Menu of (string * int list) list
+
+    val create : (string * int list) list -> t
+
+    val sexp : t Conv.value
+
+    val of_call : Call.t -> version:int * int -> (t, Response.Error.t) result
+  end
+
+  module Response : sig
+    type t
+
+    val create : (string * int) list -> t
+
+    val sexp : t Conv.value
+  end
+end
+
 module Decl : sig
+  module Generation : sig
+    type ('wire_req, 'wire_resp, 'real_req, 'real_resp) conv = private
+      { req : 'wire_req Conv.value
+      ; resp : 'wire_resp Conv.value
+      ; upgrade_req : 'wire_req -> 'real_req
+      ; downgrade_req : 'real_req -> 'wire_req
+      ; upgrade_resp : 'wire_resp -> 'real_resp
+      ; downgrade_resp : 'real_resp -> 'wire_resp
+      }
+
+    type (_, _) t = private
+      | T :
+          ('wire_req, 'wire_resp, 'real_req, 'real_resp) conv
+          -> ('real_req, 'real_resp) t
+
+    val current_request : 'req Conv.value -> 'resp Conv.value -> ('req, 'resp) t
+
+    val prior_request :
+         'wire_req Conv.value
+      -> 'wire_resp Conv.value
+      -> upgrade_req:('wire_req -> 'real_req)
+      -> downgrade_req:('real_req -> 'wire_req)
+      -> upgrade_resp:('wire_resp -> 'real_resp)
+      -> downgrade_resp:('real_resp -> 'wire_resp)
+      -> ('real_req, 'real_resp) t
+  end
+
+  module Generations : sig
+    type ('req, 'resp) t
+
+    val lookup : ('req, 'resp) t -> int -> ('req, 'resp) Generation.t option
+
+    val iter :
+      ('req, 'resp) t -> f:(int -> ('req, 'resp) Generation.t -> unit) -> unit
+  end
+
   type ('req, 'resp) request =
     { method_ : string
-    ; req : 'req Conv.value
-    ; resp : 'resp Conv.value
+    ; generations : ('req, 'resp) Generations.t
     }
 
   type 'req notification =
@@ -101,11 +156,17 @@ module Decl : sig
     ; req : 'req Conv.value
     }
 
+  val known_requests : unit -> Stdune.Int.Set.t Stdune.String.Map.t
+
   val notification : method_:string -> 'a Conv.value -> 'a notification
 
   val request :
-    method_:string -> 'a Conv.value -> 'b Conv.value -> ('a, 'b) request
+       method_:string
+    -> (int * ('req, 'resp) Generation.t) list
+    -> ('req, 'resp) request
 end
+
+val default_version_menu : int Stdune.String.Map.t
 
 module Where : sig
   type t =

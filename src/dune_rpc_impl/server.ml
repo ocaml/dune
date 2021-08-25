@@ -1,17 +1,14 @@
 open! Stdune
 open Fiber.O
 open Dune_rpc_server
+
+(* cwong: Does the [Decl] module here need to exist at all? *)
+module Unshadow_decl = Decl
 open Dune_rpc_private
+module Decl = Unshadow_decl
 module Dep_conf = Dune_rules.Dep_conf
 module Build_system = Dune_engine.Build_system
-
-module Build_outcome = struct
-  type t = Dune_engine.Scheduler.Run.Build_outcome_for_rpc.t =
-    | Success
-    | Failure
-
-  let sexp = Conv.enum [ ("Success", Success); ("Failure", Failure) ]
-end
+module Build_outcome = Decl.Build_outcome
 
 type pending_build_action =
   | Build of Dep_conf.t list * Build_outcome.t Fiber.Ivar.t
@@ -77,34 +74,6 @@ let dep_parser =
   let open Dune_engine in
   Dune_lang.Syntax.set Stanza.syntax (Active Stanza.latest_version)
     Dep_conf.decode
-
-module Decl = struct
-  module Decl = Decl
-
-  (* cwong: Why is this declared twice (both here and in [decl.ml]?) *)
-  let build =
-    Decl.request ~method_:"build"
-      [ ( 1
-        , Decl.Generation.current_request Conv.(list string) Build_outcome.sexp
-        )
-      ]
-
-  let shutdown = Decl.notification ~method_:"shutdown" Conv.unit
-
-  module Status = struct
-    type t = { clients : Id.t list }
-
-    let sexp =
-      let open Conv in
-      let to_ clients = { clients } in
-      let from { clients } = clients in
-      iso (list Id.sexp) to_ from
-  end
-
-  let status =
-    Decl.request ~method_:"status"
-      [ (1, Decl.Generation.current_request Conv.unit Status.sexp) ]
-end
 
 module Client = struct
   type t = { mutable next_id : int }

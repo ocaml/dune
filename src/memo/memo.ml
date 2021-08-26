@@ -1584,7 +1584,7 @@ let incremental_mode_enabled =
       | Some "true" -> true
       | Some "false"
       | None ->
-        false
+        true
       | Some _ ->
         User_error.raise
           [ Pp.text "Invalid value of DUNE_WATCHING_MODE_INCREMENTAL" ])

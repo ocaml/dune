@@ -645,7 +645,40 @@ let%expect_test "create and fix error" =
           ; [ "targets"; [] ]
           ]
         ]
-        Build ./foo.exe succeeded |}]);
+        [ "Add"
+        ; [ [ "directory"; "$CWD" ]
+          ; [ "id"; "1" ]
+          ; [ "loc"
+            ; [ [ "start"
+                ; [ [ "pos_bol"; "0" ]
+                  ; [ "pos_cnum"; "23" ]
+                  ; [ "pos_fname"; "$CWD/foo.ml" ]
+                  ; [ "pos_lnum"; "1" ]
+                  ]
+                ]
+              ; [ "stop"
+                ; [ [ "pos_bol"; "0" ]
+                  ; [ "pos_cnum"; "26" ]
+                  ; [ "pos_fname"; "$CWD/foo.ml" ]
+                  ; [ "pos_lnum"; "1" ]
+                  ]
+                ]
+              ]
+            ]
+          ; [ "message"
+            ; [ "Verbatim"
+              ; "This expression has type int but an expression was expected of type\n\
+                \         string\n\
+                 \n\
+                 "
+              ]
+            ]
+          ; [ "promotion"; [] ]
+          ; [ "related"; [] ]
+          ; [ "targets"; [] ]
+          ]
+        ]
+        Build ./foo.exe failed |}]);
   [%expect
     {|
     stderr:
@@ -659,4 +692,9 @@ let%expect_test "create and fix error" =
     Had errors, waiting for filesystem changes...
     waiting for inotify sync
     waited for inotify sync
-    Success, waiting for filesystem changes... |}]
+    File "foo.ml", line 1, characters 23-26:
+    1 | let () = print_endline 123
+                               ^^^
+    Error: This expression has type int but an expression was expected of type
+             string
+    Had errors, waiting for filesystem changes... |}]

@@ -1578,15 +1578,18 @@ struct
 end
 
 let incremental_mode_enabled =
-  ref
-    (match Sys.getenv_opt "DUNE_WATCHING_MODE_INCREMENTAL" with
-    | Some "true" -> true
-    | Some "false"
-    | None ->
-      false
-    | Some _ ->
-      User_error.raise
-        [ Pp.text "Invalid value of DUNE_WATCHING_MODE_INCREMENTAL" ])
+  let res =
+    lazy
+      (match Env.get Env.initial "DUNE_WATCHING_MODE_INCREMENTAL" with
+      | Some "true" -> true
+      | Some "false"
+      | None ->
+        false
+      | Some _ ->
+        User_error.raise
+          [ Pp.text "Invalid value of DUNE_WATCHING_MODE_INCREMENTAL" ])
+  in
+  fun () -> Stdlib.Lazy.force res
 
 let reset invalidation =
   Invalidation.execute

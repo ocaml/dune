@@ -950,7 +950,7 @@ end = struct
       List.fold_left events ~init:Memo.Invalidation.empty ~f:(fun acc event ->
           Memo.Invalidation.combine acc (handle_event event))
     in
-    match !Memo.incremental_mode_enabled with
+    match Memo.incremental_mode_enabled () with
     | true -> invalidation
     | false ->
       (* In this mode, we do not assume that all file system dependencies are

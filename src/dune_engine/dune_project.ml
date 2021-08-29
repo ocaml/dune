@@ -588,12 +588,13 @@ let encode : t Dune_lang.Encoder.t =
      ; format_config
      ; strict_package_deps
      ; cram
+     ; subst_config
+     (* Metadata that is derived from, but not represented in dune-project files *)
      ; file_key = _
      ; parsing_context = _
      ; stanza_parser = _
      ; project_file = _
      ; root = _
-     ; subst_config = _
      } ->
   let open Dune_lang.Encoder in
   let lang = Lang.get_exn "dune" in
@@ -652,10 +653,11 @@ let encode : t Dune_lang.Encoder.t =
     Package.Name.Map.values packages
     |> List.map ~f:(fun p -> Package.encode p |> sexp)
   in
+  let subst_config = Option.map subst_config ~f:(fun x -> (constr "subst" Subst_config.encode x)) |> Option.to_list in
   list sexp
     ([ lang_stanza; Name.encode name; option string version ]
     @ Package.Info.encode_fields info
-    @ flags @ extension_args @ formatting @ dialects @ packages)
+    @ flags @ extension_args @ formatting @ dialects @ packages @ subst_config)
 
 let parse ~dir ~lang ~opam_packages ~file ~dir_status =
   String_with_vars.set_decoding_env

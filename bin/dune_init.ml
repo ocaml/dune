@@ -230,8 +230,6 @@ module Component = struct
           | Exec
           | Lib
 
-        (* TODO(shonfeder) Add custom templates *)
-
         let of_string = function
           | "executable" -> Some Exec
           | "library" -> Some Lib
@@ -353,6 +351,7 @@ module Component = struct
   let add_stanza_to_dune_file ~(project : Dune_project.t) ~dir stanza =
     File.load_dune_file ~path:dir |> File.Stanza.add project stanza
 
+  (* Functions to make the various components, represented as lists of files *)
   module Make = struct
     let bin ({ context; common; options } : Options.Executable.t Options.t) =
       let dir = context.dir in

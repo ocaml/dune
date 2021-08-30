@@ -6,6 +6,15 @@ module Inherited = struct
     | This of 'a
     | From of (Loc.t * Lib_name.t)
 
+  let equal f x y =
+    match (x, y) with
+    | This x, This y -> f x y
+    | From (x, y), From (x', y') ->
+      Tuple.T2.equal Loc.equal Lib_name.equal (x, y) (x', y')
+    | This _, From _
+    | From _, This _ ->
+      false
+
   let to_dyn f x =
     let open Dyn.Encoder in
     match x with
@@ -15,6 +24,8 @@ end
 
 module Main_module_name = struct
   type t = Module_name.t option Inherited.t
+
+  let equal = Inherited.equal (Option.equal Module_name.equal)
 
   let to_dyn x = Inherited.to_dyn (Dyn.Encoder.option Module_name.to_dyn) x
 end
@@ -141,6 +152,8 @@ module Special_builtin_support = struct
     | Configurator of Configurator.t
     | Dune_site of Dune_site.t
 
+  let equal (x : t) (y : t) = Poly.equal x y
+
   let to_dyn x =
     let open Dyn.Encoder in
     match x with
@@ -185,6 +198,16 @@ module Status = struct
     | Public of Dune_project.t * Package.t
     | Private of Dune_project.t * Package.t option
 
+  let equal x y =
+    match (x, y) with
+    | Installed_private, Installed_private -> true
+    | Installed, Installed -> true
+    | Public (x, y), Public (x', y') ->
+      Dune_project.equal x x' && Package.equal y y'
+    | Private (x, y), Private (x', y') ->
+      Dune_project.equal x x' && Option.equal Package.equal y y'
+    | _, _ -> false
+
   let to_dyn x =
     let open Dyn.Encoder in
     match x with
@@ -218,6 +241,14 @@ module Source = struct
     | Local
     | External of 'a
 
+  let equal f x y =
+    match (x, y) with
+    | Local, Local -> true
+    | External x, External y -> f x y
+    | External _, Local
+    | Local, External _ ->
+      false
+
   let to_dyn f x =
     let open Dyn.Encoder in
     match x with
@@ -236,6 +267,8 @@ module Enabled_status = struct
     | Optional
     | Disabled_because_of_enabled_if
 
+  let equal (x : t) (y : t) = Poly.equal x y
+
   let to_dyn x =
     let open Dyn.Encoder in
     match x with
@@ -248,6 +281,12 @@ end
 type 'path native_archives =
   | Needs_module_info of 'path
   | Files of 'path list
+
+let equal_native_archives f x y =
+  match (x, y) with
+  | Needs_module_info x, Needs_module_info y -> f x y
+  | Files x, Files y -> List.equal f x y
+  | _, _ -> false
 
 let dyn_of_native_archives path =
   let open Dyn.Encoder in
@@ -299,6 +338,98 @@ type 'path t =
   ; instrumentation_backend : (Loc.t * Lib_name.t) option
   ; path_kind : 'path path
   }
+
+let equal (type a) (t : a t)
+    { loc
+    ; name
+    ; kind
+    ; status
+    ; src_dir
+    ; orig_src_dir
+    ; obj_dir
+    ; version
+    ; synopsis
+    ; archives
+    ; plugins
+    ; foreign_objects
+    ; foreign_archives
+    ; native_archives
+    ; foreign_dll_files
+    ; jsoo_runtime
+    ; jsoo_archive
+    ; requires
+    ; ppx_runtime_deps
+    ; preprocess
+    ; enabled
+    ; virtual_deps
+    ; dune_version
+    ; sub_systems
+    ; virtual_
+    ; entry_modules
+    ; implements
+    ; default_implementation
+    ; wrapped
+    ; main_module_name
+    ; modes
+    ; special_builtin_support
+    ; exit_module
+    ; instrumentation_backend
+    ; path_kind
+    } =
+  let path_equal : a -> a -> bool =
+    match (path_kind : a path) with
+    | Local -> Path.Build.equal
+    | External -> Path.equal
+  in
+  Loc.equal t.loc loc && Lib_name.equal t.name name
+  && Lib_kind.equal t.kind kind
+  && Status.equal status t.status
+  && path_equal src_dir t.src_dir
+  && Option.equal path_equal orig_src_dir t.orig_src_dir
+  && Obj_dir.equal obj_dir t.obj_dir
+  && Option.equal String.equal version t.version
+  && Option.equal String.equal synopsis t.synopsis
+  && Mode.Dict.equal (List.equal path_equal) archives t.archives
+  && Mode.Dict.equal (List.equal path_equal) plugins t.plugins
+  && Source.equal (List.equal path_equal) foreign_objects t.foreign_objects
+  && List.equal path_equal foreign_archives t.foreign_archives
+  && equal_native_archives path_equal native_archives t.native_archives
+  && List.equal path_equal foreign_dll_files t.foreign_dll_files
+  && List.equal path_equal jsoo_runtime t.jsoo_runtime
+  && Option.equal path_equal jsoo_archive t.jsoo_archive
+  && List.equal Lib_dep.equal requires t.requires
+  && List.equal
+       (Tuple.T2.equal Loc.equal Lib_name.equal)
+       ppx_runtime_deps t.ppx_runtime_deps
+  && Preprocess.Per_module.equal Preprocess.With_instrumentation.equal
+       preprocess t.preprocess
+  && Enabled_status.equal enabled t.enabled
+  && List.equal
+       (Tuple.T2.equal Loc.equal Lib_name.equal)
+       virtual_deps t.virtual_deps
+  && Option.equal Dune_lang.Syntax.Version.equal dune_version t.dune_version
+  && Sub_system_name.Map.equal ~equal:Sub_system_info.equal sub_systems
+       t.sub_systems
+  && Option.equal (Source.equal Modules.equal) virtual_ t.virtual_
+  && Source.equal
+       (Or_exn.equal (List.equal Module_name.equal))
+       entry_modules t.entry_modules
+  && Option.equal
+       (Tuple.T2.equal Loc.equal Lib_name.equal)
+       implements t.implements
+  && Option.equal
+       (Tuple.T2.equal Loc.equal Lib_name.equal)
+       default_implementation t.default_implementation
+  && Option.equal (Inherited.equal Wrapped.equal) wrapped t.wrapped
+  && Main_module_name.equal main_module_name t.main_module_name
+  && Mode.Dict.Set.equal modes t.modes
+  && Option.equal Special_builtin_support.equal special_builtin_support
+       t.special_builtin_support
+  && Option.equal Module_name.equal exit_module t.exit_module
+  && Option.equal
+       (Tuple.T2.equal Loc.equal Lib_name.equal)
+       instrumentation_backend t.instrumentation_backend
+  && Poly.equal path_kind t.path_kind
 
 let name t = t.name
 

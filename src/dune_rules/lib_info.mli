@@ -244,3 +244,5 @@ val create :
 val package : _ t -> Package.Name.t option
 
 val to_dyn : 'path Dyn.Encoder.t -> 'path t Dyn.Encoder.t
+
+val equal : 'a t -> 'a t -> bool

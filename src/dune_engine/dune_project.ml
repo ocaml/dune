@@ -152,6 +152,7 @@ type t =
   ; dialects : Dialect.DB.t
   ; explicit_js_mode : bool
   ; format_config : Format_config.t option
+  ; subst_config : Subst_config.t option
   ; strict_package_deps : bool
   ; cram : bool
   }
@@ -207,6 +208,7 @@ let to_dyn
     ; dialects
     ; explicit_js_mode
     ; format_config
+    ; subst_config
     ; strict_package_deps
     ; cram
     } =
@@ -232,6 +234,7 @@ let to_dyn
     ; ("dialects", Dialect.DB.to_dyn dialects)
     ; ("explicit_js_mode", bool explicit_js_mode)
     ; ("format_config", option Format_config.to_dyn format_config)
+    ; ("subst_config", option Subst_config.to_dyn subst_config)
     ; ("strict_package_deps", bool strict_package_deps)
     ; ("cram", bool cram)
     ]
@@ -460,6 +463,8 @@ let format_config t =
   let version = dune_version t in
   Format_config.of_config ~ext ~dune_lang ~version
 
+let subst_config t = Subst_config.of_config t.subst_config
+
 let default_name ~dir ~(packages : Package.t Package.Name.Map.t) =
   match Package.Name.Map.min_binding packages with
   | None -> Name.anonymous dir
@@ -515,6 +520,7 @@ let infer ~dir packages =
   ; dialects = Dialect.DB.builtin
   ; explicit_js_mode
   ; format_config = None
+  ; subst_config = None
   ; strict_package_deps
   ; cram
   }
@@ -614,6 +620,7 @@ let parse ~dir ~lang ~opam_packages ~file ~dir_status =
           field_o_b "explicit_js_mode"
             ~check:(Dune_lang.Syntax.since Stanza.syntax (1, 11))
         and+ format_config = Format_config.field ~since:(2, 0)
+        and+ subst_config = Subst_config.field ~since:(3, 0)
         and+ strict_package_deps =
           field_o_b "strict_package_deps"
             ~check:(Dune_lang.Syntax.since Stanza.syntax (2, 3))
@@ -796,6 +803,7 @@ let parse ~dir ~lang ~opam_packages ~file ~dir_status =
         ; dialects
         ; explicit_js_mode
         ; format_config
+        ; subst_config
         ; strict_package_deps
         ; cram
         }))

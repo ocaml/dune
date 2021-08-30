@@ -57,6 +57,20 @@ let default_build_command =
   [ "dune" "install" "-p" name "--create-install-files" name ]
 ]
 |}))
+  and from_3_0_without_subst =
+    lazy
+      (Opam_file.parse_value
+         (Lexbuf.from_string ~fname:"<internal>"
+            {|
+[
+  [ "dune" "build" "-p" name "-j" jobs "--promote-install-files" "false"
+      "@install"
+      "@runtest" {with-test}
+      "@doc" {with-doc}
+  ]
+  [ "dune" "install" "-p" name "--create-install-files" name ]
+]
+|}))
   in
   fun project ->
     Lazy.force
@@ -66,8 +80,12 @@ let default_build_command =
         from_1_11_before_2_7
       else if Dune_project.dune_version project < (2, 9) then
         from_2_7
+      else if Dune_project.dune_version project < (3, 0) then
+        from_2_9
       else
-        from_2_9)
+        match Dune_project.subst_config project with
+        | Disabled -> from_3_0_without_subst
+        | Enabled -> from_2_9)
 
 let package_fields
     { Package.synopsis

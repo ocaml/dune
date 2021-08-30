@@ -40,3 +40,5 @@ val record_parser :
      Dune_lang.Decoder.parser
 
 val get : Sub_system_name.t -> (module S)
+
+val equal : t -> t -> bool

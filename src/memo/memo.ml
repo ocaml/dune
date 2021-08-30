@@ -66,6 +66,8 @@ module Build0 = struct
   end
 
   module List = struct
+    include Monad.List (Fiber)
+
     let map = parallel_map
 
     let concat_map l ~f = map l ~f >>| List.concat
@@ -1447,7 +1449,7 @@ module Build = struct
 
   let run_with_error_handler t ~handle_error_no_raise =
     Error_handler.with_error_handler handle_error_no_raise (fun () ->
-        let* res = report_and_collect_errors (fun () -> t) in
+        let* res = report_and_collect_errors t in
         match res with
         | Ok ok -> Fiber.return ok
         | Error ({ exns; reproducible = _ } : Collect_errors_monoid.t) ->
@@ -1460,8 +1462,9 @@ module Build = struct
        and non-toplevel [run] would be better. *)
     match is_top_level with
     | true ->
-      run_with_error_handler t ~handle_error_no_raise:(fun _exn ->
-          Fiber.return ())
+      run_with_error_handler
+        (fun () -> t)
+        ~handle_error_no_raise:(fun _exn -> Fiber.return ())
     | false -> t
 end
 
@@ -1670,13 +1673,9 @@ end
 type 'a build = 'a Fiber.t
 
 module type Build = sig
-  include Monad
+  include Monad.S
 
-  module List : sig
-    val map : 'a list -> f:('a -> 'b t) -> 'b list t
-
-    val concat_map : 'a list -> f:('a -> 'b list t) -> 'b list t
-  end
+  module List : Monad.List with type 'a t := 'a t
 
   val memo_build : 'a build -> 'a t
 end

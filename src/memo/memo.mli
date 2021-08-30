@@ -3,13 +3,9 @@ open! Stdune
 type 'a build
 
 module type Build = sig
-  include Monad
+  include Monad.S
 
-  module List : sig
-    val map : 'a list -> f:('a -> 'b t) -> 'b list t
-
-    val concat_map : 'a list -> f:('a -> 'b list t) -> 'b list t
-  end
+  module List : Monad.List with type 'a t := 'a t
 
   val memo_build : 'a build -> 'a t
 end
@@ -42,7 +38,7 @@ module Build : sig
       each error through individual dependency edges instead of sending errors
       directly to the handler in scope. *)
   val run_with_error_handler :
-       'a t
+       (unit -> 'a t)
     -> handle_error_no_raise:(Exn_with_backtrace.t -> unit Fiber.t)
     -> 'a Fiber.t
 

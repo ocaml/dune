@@ -431,6 +431,16 @@ module Info = struct
     ; maintainers = None
     }
 
+  let default =
+    { source = Some (Host {kind = Source_kind.Host.Github; user = "username"; repo = "reponame"})
+    ; license = Some "LICENSE"
+    ; authors = Some ["Author Name"]
+    ; homepage = Some "url/to/home/page"
+    ; bug_reports = Some "url/to/issue/tracker"
+    ; documentation = Some "url/to/documentation"
+    ; maintainers = Some ["Maintainer Name"]
+    }
+
   let to_dyn
       { source
       ; license
@@ -674,6 +684,22 @@ let file ~dir ~name = Path.relative dir (Name.to_string name ^ opam_ext)
 
 let deprecated_meta_file t name =
   Path.Source.relative t.id.dir (Name.meta_fn name)
+
+let default name dir =
+  { id = { name = Name.make name; dir  }
+  ; loc = Loc.none
+  ; version = None
+  ; synopsis = Some "A short synopsis"
+  ; description = Some "A longer description"
+  ; depends = []
+  ; conflicts = []
+  ; info = Info.empty
+  ; depopts = []
+  ; has_opam_file = false
+  ; tags = []
+  ; deprecated_package_names = Name.Map.empty
+  ; sites = Section.Site.Map.empty
+  }
 
 let load_opam_file file name =
   let open Option.O in

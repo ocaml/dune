@@ -483,7 +483,7 @@ let default_name ~dir ~(packages : Package.t Package.Name.Map.t) =
       User_error.raise ~loc:pkg.loc
         [ Pp.textf "%S is not a valid Dune project name." name ])
 
-let infer ~dir packages =
+let infer ~dir ?(info=Package.Info.empty) packages =
   let lang = get_dune_lang () in
   let name = default_name ~dir ~packages in
   let project_file = Path.Source.relative dir filename in
@@ -503,7 +503,7 @@ let infer ~dir packages =
   { name
   ; packages
   ; root
-  ; info = Package.Info.empty
+  ; info
   ; version = None
   ; dune_version = lang.version
   ; implicit_transitive_deps
@@ -568,9 +568,9 @@ module Toggle = struct
     field_o name decode
 end
 
-let anonymous ~dir = infer ~dir Package.Name.Map.empty
+let anonymous ~dir ?info ?(packages=Package.Name.Map.empty) () = infer ~dir ?info packages
 
-let encode : t Dune_lang.Encoder.t =
+let encode : t -> Dune_lang.t list =
  fun { name
      ; version
      ; dune_version
@@ -600,7 +600,8 @@ let encode : t Dune_lang.Encoder.t =
   let lang = Lang.get_exn "dune" in
   let extension_args : Dune_lang.t list =
     let _ = extension_args in
-    raise (Failure "TODO")
+    (* TODO *)
+    []
   in
   let flags =
     let flag name value default =
@@ -654,10 +655,9 @@ let encode : t Dune_lang.Encoder.t =
     |> List.map ~f:(fun p -> Package.encode p |> sexp)
   in
   let subst_config = Option.map subst_config ~f:(fun x -> (constr "subst" Subst_config.encode x)) |> Option.to_list in
-  list sexp
-    ([ lang_stanza; Name.encode name; option string version ]
-    @ Package.Info.encode_fields info
-    @ flags @ extension_args @ formatting @ dialects @ packages @ subst_config)
+  ([ lang_stanza; Name.encode name; option string version ]
+   @ Package.Info.encode_fields info
+   @ flags @ extension_args @ formatting @ dialects @ packages @ subst_config)
 
 let parse ~dir ~lang ~opam_packages ~file ~dir_status =
   String_with_vars.set_decoding_env

@@ -130,8 +130,13 @@ val load :
   -> dir_status:Sub_dirs.Status.t
   -> t option
 
-(** Create an anonymous project with no package rooted at the given directory *)
-val anonymous : dir:Path.Source.t -> t
+(** Create an anonymous project at the given directory
+
+   Optional arguments:
+
+   - [info] defaults to the empty package info
+   - [package] defaults to the empty map of packages *)
+val anonymous : dir:Path.Source.t -> ?info:Package.Info.t -> ?packages:(Package.t Package.Name.Map.t) -> unit -> t
 
 (** "dune-project" *)
 val filename : string
@@ -178,4 +183,4 @@ val info : t -> Package.Info.t
 val update_execution_parameters :
   t -> Execution_parameters.t -> Execution_parameters.t
 
-val encode : t Dune_lang.Encoder.t
+val encode : t -> Dune_lang.t list

@@ -120,6 +120,9 @@ module Info : sig
 
   val maintainers : t -> string list option
 
+  (** Default package info (e.g., fore use in initializaing projects) *)
+  val default : t
+
   val empty : t
 
   val to_dyn : t Dyn.Encoder.t
@@ -173,6 +176,9 @@ val to_dyn : t -> Dyn.t
 val hash : t -> int
 
 val is_opam_file : Path.t -> bool
+
+(** Construct a default package (e.g., for projects initialization) *)
+val default : string -> Path.Source.t -> t
 
 (** Construct a package description from an opam file. *)
 val load_opam_file : Path.Source.t -> Name.t -> t

@@ -674,6 +674,13 @@ the standard BUILD_PATH_PREFIX_MAP_ environment variable. For example:
    $ echo $HOME
    $HOME
 
+Note: Unlike dune's version of cram, the original specification for cram
+supports regular expression and glob filtering for matching output. We chose
+not to implement this feature because it breaks the test, diff, accept cycle.
+With regex or glob matching, the output must now be manually inspected and
+possibly updated. We consider the postprocessing approach described here as
+superior and will not introduce output matchers.
+
 .. _ppx_inline_test:       https://github.com/janestreet/ppx_inline_test
 .. _ppx_expect:            https://github.com/janestreet/ppx_expect
 .. _qtest:                 https://github.com/vincent-hugot/qtest

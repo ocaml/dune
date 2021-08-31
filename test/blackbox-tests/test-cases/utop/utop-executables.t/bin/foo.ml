@@ -1,0 +1,2 @@
+module Bar = Bar
+

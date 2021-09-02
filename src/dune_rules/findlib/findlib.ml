@@ -576,23 +576,28 @@ end = struct
             Ok builtin))
       | dir :: dirs -> (
         let dir = Path.relative dir (Package.Name.to_string name) in
-        let dune = Path.relative dir Dune_package.fn in
-        let* exists =
-          let+ exists = Fs_memo.path_exists dune in
-          if exists then
-            Dune_package.Or_meta.load dune
-          else
-            Ok Dune_package.Or_meta.Use_meta
-        in
-        match exists with
-        | Error e ->
-          Memo.Build.return (Error (Unavailable_reason.Invalid_dune_package e))
-        | Ok (Dune_package.Or_meta.Dune_package p) -> Memo.Build.return (Ok p)
-        | Ok Use_meta -> (
-          let open Memo.Build.O in
-          lookup_and_load_one_dir db ~dir ~name >>= function
-          | None -> loop dirs
-          | Some p -> Memo.Build.return (Ok p)))
+        let* dir_exists = Fs_memo.path_exists dir in
+        if not dir_exists then
+          loop dirs
+        else
+          let dune = Path.relative dir Dune_package.fn in
+          let* exists =
+            let+ exists = Fs_memo.path_exists dune in
+            if exists then
+              Dune_package.Or_meta.load dune
+            else
+              Ok Dune_package.Or_meta.Use_meta
+          in
+          match exists with
+          | Error e ->
+            Memo.Build.return
+              (Error (Unavailable_reason.Invalid_dune_package e))
+          | Ok (Dune_package.Or_meta.Dune_package p) -> Memo.Build.return (Ok p)
+          | Ok Use_meta -> (
+            let open Memo.Build.O in
+            lookup_and_load_one_dir db ~dir ~name >>= function
+            | None -> loop dirs
+            | Some p -> Memo.Build.return (Ok p)))
     in
     loop db.paths
 end

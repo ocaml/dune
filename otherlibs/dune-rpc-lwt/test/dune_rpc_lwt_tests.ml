@@ -68,9 +68,12 @@ let%expect_test "run and connect" =
            let* res = Client.request t Request.ping () in
            match res with
            | Error _ -> failwith "unexpected"
-           | Ok () ->
+           | Ok () -> (
              print_endline "received ping. shutting down.";
-             Client.notification t Notification.shutdown ())
+             let+ result = Client.notification t Notification.shutdown () in
+             match result with
+             | Error e -> raise (Response.Error.E e)
+             | Ok () -> ()))
      in
      let run_build =
        let+ res = build#status in

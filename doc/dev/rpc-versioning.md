@@ -22,18 +22,18 @@ This is a working document and will be updated as the design evolves.
     goal of runtime RPC versioning is to allow clients and servers to
     disagree on a model type without preventing them from interacting.
 
-- A **wire type** is the type sent between actors for one direction of
-    a procedure. This is negotiated for each procedure at
-    session-start time, and must be agreed upon by both actors. In normal
-    usage, one actor will use the model types for a procedure as the
-    wire types as well, with the counterparty performing the
-    conversions as necessary.
+- A **wire type** for a procedure is the logical type sent "over the
+    wire" for one direction of a procedure. The end result of
+    negotiating a version for a procedure is to select a wire type
+    known to both the client and the server. Typically, the older of
+    the two model types will be chosen as the wire type,
 
 - A **generation** of a procedure is the set of wire types
-    corresponding to each direction of a procedure, along with upgrade
-    and downgrade functions transforming the wire types to the model
-    types and vice versa. Each generation is associated with
-    a *version number*, which should be unique within a procedure.
+    corresponding to each direction of a procedure, along with the
+    de/serialisation logic and upgrade and downgrade functions
+    transforming the wire types to the model types and vice versa.
+    Each generation is associated with a *version number*, which
+    should be unique within a procedure.
 
 - The **menu** is a mapping from method names to the particular
     generations that will be used for each procedure for a particular
@@ -73,9 +73,9 @@ multiple iterations of Dune (which may be older or newer than the
 editor plugin itself).
 
 The main goal of the system, then, is to ensure that both the server
-and client applications can be programmed against their own model types
-for each procedure as if there was no version mismatch, with all
-conversions being performed under the hood.
+and client applications can be programmed against the current model
+types for each procedure, with all backwards- or forwards- conversions
+happening under the hood.
 
 ## Protocol
 

@@ -236,7 +236,8 @@ module V1 : sig
         -> 'a
         -> ('b, Response.Error.t) result fiber
 
-      val notification : t -> 'a Notification.t -> 'a -> unit fiber
+      val notification :
+        t -> 'a Notification.t -> 'a -> (unit, Response.Error.t) result fiber
 
       (** [disconnected client] produces a fiber that only becomes determined
           when the session is ended from the server side (such as if the build
@@ -257,7 +258,8 @@ module V1 : sig
           -> 'a
           -> ('b, Response.Error.t) result fiber
 
-        val notification : t -> 'a Notification.t -> 'a -> unit
+        val notification :
+          t -> 'a Notification.t -> 'a -> (unit, Response.Error.t) result fiber
 
         val submit : t -> unit fiber
       end

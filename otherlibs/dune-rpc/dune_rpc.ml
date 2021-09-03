@@ -41,7 +41,8 @@ module V1 = struct
         -> 'a
         -> ('b, Response.Error.t) result fiber
 
-      val notification : t -> 'a Notification.t -> 'a -> unit fiber
+      val notification :
+        t -> 'a Notification.t -> 'a -> (unit, Response.Error.t) result fiber
 
       val disconnected : t -> unit fiber
 
@@ -59,7 +60,8 @@ module V1 = struct
           -> 'a
           -> ('b, Response.Error.t) result fiber
 
-        val notification : t -> 'a Notification.t -> 'a -> unit
+        val notification :
+          t -> 'a Notification.t -> 'a -> (unit, Response.Error.t) result fiber
 
         val submit : t -> unit fiber
       end

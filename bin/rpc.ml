@@ -129,21 +129,44 @@ module Status = struct
     client_term common @@ fun common ->
     let where = wait_for_server common in
     printfn "Server is listening on %s" (Dune_rpc.Where.to_string where);
-    printfn "ID's of connected clients (include this one):";
+    printfn "Connected clients (including this one):\n";
     Dune_rpc_impl.Run.client where
       (Dune_rpc.Initialize.Request.create
          ~id:(Dune_rpc.Id.make (Sexp.Atom "status")))
       ~f:(fun session ->
         let open Fiber.O in
         let+ response =
-          Dune_rpc_impl.Client.request session Dune_rpc_impl.Decl.status ()
+          Dune_rpc_impl.Client.request session
+            Dune_rpc_private.Procedures.Internal.status_decl ()
         in
         match response with
         | Error error -> report_error error
         | Ok { clients } ->
-          List.iter clients ~f:(fun client ->
-              let sexp = Dune_rpc.Conv.to_sexp Dune_rpc.Id.sexp client in
-              Sexp.to_string sexp |> print_endline))
+          List.iter clients ~f:(fun (client, menu) ->
+              let id =
+                let sexp = Dune_rpc.Conv.to_sexp Dune_rpc.Id.sexp client in
+                Sexp.to_string sexp
+              in
+              let message =
+                match (menu : Dune_rpc_private.Status.Menu.t) with
+                | Uninitialized ->
+                  User_message.make
+                    [ Pp.textf "Client [%s], conducting version negotiation" id
+                    ]
+                | Compatibility ->
+                  User_message.make
+                    [ Pp.textf "Client [%s] in compabitility mode" id ]
+                | Menu menu ->
+                  User_message.make
+                    [ Pp.box ~indent:2
+                        (Pp.concat ~sep:Pp.newline
+                           (Pp.textf
+                              "Client [%s] with the following RPC versions:" id
+                           :: List.map menu ~f:(fun (method_, version) ->
+                                  Pp.textf "%s: %d" method_ version)))
+                    ]
+              in
+              User_message.print message))
 
   let info =
     let doc = "show active connections" in
@@ -167,7 +190,8 @@ module Build = struct
       ~f:(fun session ->
         let open Fiber.O in
         let+ response =
-          Dune_rpc_impl.Client.request session Dune_rpc_impl.Decl.build targets
+          Dune_rpc_impl.Client.request session
+            Dune_rpc.Procedures.Internal.build_decl targets
         in
         match response with
         | Error (error : Dune_rpc_private.Response.Error.t) ->

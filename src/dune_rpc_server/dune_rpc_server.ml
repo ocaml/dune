@@ -1,6 +1,14 @@
 open Stdune
 open Dune_rpc_private
 
+module V = Versioned.Make (struct
+  include Fiber
+
+  let parallel_iter t ~f =
+    let stream = Fiber.Stream.In.create t in
+    Fiber.Stream.In.parallel_iter stream ~f
+end)
+
 module Session = struct
   type 'a state =
     | Uninitialized
@@ -12,65 +20,120 @@ module Session = struct
 
   module Id = Stdune.Id.Make ()
 
+  module Stage1 = struct
+    type 'a t =
+      { queries : Packet.Query.t Fiber.Stream.In.t
+      ; id : Id.t
+      ; send : Packet.Reply.t list option -> unit Fiber.t
+      ; mutable state : 'a state
+      ; mutable on_upgrade : (Versioned.Menu.t -> unit) option
+      }
+
+    let set t state =
+      match t.state with
+      | Initialized s -> t.state <- Initialized { s with state }
+      | Uninitialized -> Code_error.raise "set: state not available" []
+
+    let get t =
+      match t.state with
+      | Initialized s -> s.state
+      | Uninitialized -> Code_error.raise "get: state not available" []
+
+    let active t =
+      match t.state with
+      | Uninitialized -> true
+      | Initialized s -> s.closed
+
+    let initialize t =
+      match t.state with
+      | Initialized s -> s.init
+      | Uninitialized -> Code_error.raise "initialize: request not available" []
+
+    let create ~queries ~send =
+      { queries
+      ; send
+      ; state = Uninitialized
+      ; id = Id.gen ()
+      ; on_upgrade = None
+      }
+
+    let request_close t = t.send None
+
+    let close t =
+      match t.state with
+      | Uninitialized -> assert false
+      | Initialized s -> t.state <- Initialized { s with closed = true }
+
+    let id t = t.id
+
+    let send t packets = t.send packets
+
+    let compare x y = Id.compare x.id y.id
+
+    let dyn_of_state f =
+      let open Dyn.Encoder in
+      function
+      | Uninitialized -> constr "Uninitialized" []
+      | Initialized { init; state; closed } ->
+        let record =
+          record
+            [ ("init", opaque init)
+            ; ("state", f state)
+            ; ("closed", bool closed)
+            ]
+        in
+        constr "Initialized" [ record ]
+
+    let to_dyn f { id; state; queries = _; send = _; on_upgrade = _ } =
+      let open Dyn.Encoder in
+      record [ ("id", Id.to_dyn id); ("state", dyn_of_state f state) ]
+
+    let register_upgrade_callback t f = t.on_upgrade <- Some f
+  end
+
   type 'a t =
-    { queries : Packet.Query.t Fiber.Stream.In.t
-    ; id : Id.t
-    ; send : Packet.Reply.t list option -> unit Fiber.t
-    ; mutable state : 'a state
+    { base : 'a Stage1.t
+    ; handler : 'a t V.Handler.t
     }
 
-  let set t state =
-    match t.state with
-    | Initialized s -> t.state <- Initialized { s with state }
-    | Uninitialized -> Code_error.raise "set: state not available" []
+  let get t = Stage1.get t.base
 
-  let get t =
-    match t.state with
-    | Initialized s -> s.state
-    | Uninitialized -> Code_error.raise "get: state not available" []
+  let set t = Stage1.set t.base
 
-  let active t =
-    match t.state with
-    | Uninitialized -> true
-    | Initialized s -> s.closed
+  let active t = Stage1.active t.base
 
-  let initialize t =
-    match t.state with
-    | Initialized s -> s.init
-    | Uninitialized -> Code_error.raise "initialize: request not available" []
+  let initialize t = Stage1.initialize t.base
 
-  let create ~queries ~send =
-    { queries; send; state = Uninitialized; id = Id.gen () }
+  let close t = Stage1.close t.base
 
-  let notification t (decl : _ Decl.notification) n =
-    let call =
-      { Call.params = Conv.to_sexp decl.req n; method_ = decl.method_ }
+  let request_close t = Stage1.request_close t.base
+
+  let compare x y = Stage1.compare x.base y.base
+
+  let send t = Stage1.send t.base
+
+  let queries t = t.base.queries
+
+  let id t = t.base.id
+
+  let of_stage1 base handler menu =
+    let () =
+      match base.Stage1.on_upgrade with
+      | Some f -> f menu
+      | None -> ()
     in
-    t.send (Some [ Notification call ])
+    { base; handler }
 
-  let request_close t = t.send None
+  let notification t decl n =
+    match V.Handler.prepare_notification t.handler decl n with
+    | Error _ ->
+      (* cwong: What to do here? *)
+      Fiber.return ()
+    | Ok sexp -> send t (Some [ Notification sexp ])
 
-  let close t =
-    match t.state with
-    | Uninitialized -> assert false
-    | Initialized s -> t.state <- Initialized { s with closed = true }
-
-  let compare x y = Id.compare x.id y.id
-
-  let dyn_of_state f =
-    let open Dyn.Encoder in
-    function
-    | Uninitialized -> constr "Uninitialized" []
-    | Initialized { init; state; closed } ->
-      let record =
-        record
-          [ ("init", opaque init); ("state", f state); ("closed", bool closed) ]
-      in
-      constr "Initialized" [ record ]
-
-  let to_dyn f { id; state; queries = _; send = _ } =
-    let open Dyn.Encoder in
-    record [ ("id", Id.to_dyn id); ("state", dyn_of_state f state) ]
+  let to_dyn f t =
+    Dyn.Record
+      [ ("handler", Dyn.String "<handler>"); ("base", Stage1.to_dyn f t.base) ]
 end
 
 type message_kind =
@@ -126,63 +189,39 @@ module Event = struct
         Dune_stats.emit stats event)
 end
 
-module Version_menu : sig
-  type t
-
-  val default : t
-
-  val lookup : t -> string -> int option
-
-  val select_common_versions :
-       server_versions:Int.Set.t String.Map.t
-    -> client_versions:(string * int list) list
-    -> t option
-end = struct
-  type t = int String.Map.t
-
-  let default = default_version_menu
-
-  let lookup = String.Map.find
-
-  let select_common_versions ~server_versions ~client_versions =
-    let selected_versions =
-      List.filter_map client_versions ~f:(fun (method_, client_versions) ->
-          let client_versions = Int.Set.of_list client_versions in
-          let open Option.O in
-          let* server_versions = String.Map.find server_versions method_ in
-          let+ greatest_common_version =
-            Int.Set.max_elt (Int.Set.inter client_versions server_versions)
-          in
-          (method_, greatest_common_version))
-    in
-    match selected_versions with
-    | [] -> None
-    | _ :: _ -> Some (String.Map.of_list_exn selected_versions)
-end
-
 module H = struct
-  type 'a t =
-    { on_request :
-        'a Session.t -> Version_menu.t -> Request.t -> Response.t Fiber.t
-    ; on_notification : 'a Session.t -> Call.t -> unit Fiber.t
-    ; on_init : 'a Session.t -> Initialize.Request.t -> 'a Fiber.t
+  type 'a base =
+    { on_init : 'a Session.Stage1.t -> Initialize.Request.t -> 'a Fiber.t
     ; on_terminate : 'a Session.t -> unit Fiber.t
-    ; implemented_request_versions : Int.Set.t String.Map.t
     ; version : int * int
     }
 
-  let abort ?payload session ~message =
-    let open Fiber.O in
-    let* () =
-      Session.notification session Server_notifications.abort
-        { Message.message; payload }
-    in
-    session.send None
+  type 'a stage1 =
+    { base : 'a base
+    ; to_handler : Versioned.Menu.t -> 'a Session.t V.Handler.t
+    ; known_versions : Int.Set.t String.Map.t
+    }
 
-  let run_session (type a) (t : a t) stats (session : a Session.t) menu =
+  type 'a t =
+    { base : 'a base
+    ; handler : 'a Session.t V.Handler.t
+    }
+
+  let abort ?payload (session : _ Session.Stage1.t) ~message =
+    let open Fiber.O in
+    let msg = { Message.message; payload } in
+    let call =
+      { Call.params = Message.to_sexp_unversioned msg
+      ; method_ = "notify/abort"
+      }
+    in
+    let* () = Session.Stage1.send session (Some [ Notification call ]) in
+    Session.Stage1.send session None
+
+  let run_session (type a) (t : a t) stats (session : a Session.t) =
     let open Fiber.O in
     let* () =
-      Fiber.Stream.In.parallel_iter session.queries
+      Fiber.Stream.In.parallel_iter (Session.queries session)
         ~f:(fun (message : Packet.Query.t) ->
           let meth_ =
             match message with
@@ -193,21 +232,45 @@ module H = struct
           match message with
           | Notification n ->
             let kind = Notification in
-            Event.emit (Message { kind; meth_; stage = Start }) stats session.id;
-            let+ () = t.on_notification session n in
-            Event.emit (Message { kind; meth_; stage = Stop }) stats session.id
+            Event.emit
+              (Message { kind; meth_; stage = Start })
+              stats (Session.id session);
+            let+ result = V.Handler.handle_notification t.handler session n in
+            let () =
+              match result with
+              | Error e ->
+                Code_error.raise "received badly-versioned notification"
+                  [ ( "notification"
+                    , Dyn.Record
+                        [ ("method_", Dyn.String n.method_)
+                        ; ("params", Sexp.to_dyn n.params)
+                        ] )
+                  ; ("description", Response.Error.to_dyn e)
+                  ]
+              | Ok r -> r
+            in
+            Event.emit
+              (Message { kind; meth_; stage = Stop })
+              stats (Session.id session)
           | Request (id, r) ->
             let kind = Request id in
-            Event.emit (Message { kind; meth_; stage = Start }) stats session.id;
-            let* response = t.on_request session menu (id, r) in
-            Event.emit (Message { kind; meth_; stage = Stop }) stats session.id;
-            session.send (Some [ Response (id, response) ]))
+            Event.emit
+              (Message { kind; meth_; stage = Start })
+              stats (Session.id session);
+            let* response =
+              V.Handler.handle_request t.handler session (id, r)
+            in
+            Event.emit
+              (Message { kind; meth_; stage = Stop })
+              stats (Session.id session);
+            Session.send session (Some [ Response (id, response) ]))
     in
     let* () = Session.request_close session in
-    let+ () = t.on_terminate session in
+    let+ () = t.base.on_terminate session in
     Session.close session
 
-  let negotiate_version (type a) (t : a t) stats (session : a Session.t) =
+  let negotiate_version (type a) (t : a stage1) stats
+      (session : a Session.Stage1.t) =
     let open Fiber.O in
     let* query = Fiber.Stream.In.read session.queries in
     match query with
@@ -220,19 +283,30 @@ module H = struct
             "Notification unexpected. You must complete version negotiation \
              first."
       | Request (id, call) -> (
-        match Version_negotiation.Request.of_call ~version:t.version call with
+        match
+          Version_negotiation.Request.of_call ~version:t.base.version call
+        with
         | Error e -> session.send (Some [ Response (id, Error e) ])
         | Ok (Menu client_versions) -> (
           match
-            Version_menu.select_common_versions
-              ~server_versions:t.implemented_request_versions ~client_versions
+            Versioned.Menu.select_common ~remote_versions:client_versions
+              ~local_versions:t.known_versions
           with
-          | Some menu -> run_session t stats session menu
+          | Some menu ->
+            let response =
+              Version_negotiation.(
+                Conv.to_sexp Response.sexp
+                  (Response.create (Versioned.Menu.to_list menu)))
+            in
+            let* () = session.send (Some [ Response (id, Ok response) ]) in
+            let handler = t.to_handler menu in
+            run_session { base = t.base; handler } stats
+              (Session.of_stage1 session handler menu)
           | None ->
             abort session
               ~message:"Server and client have no method versions in common")))
 
-  let handle (type a) (t : a t) stats (session : a Session.t) =
+  let handle (type a) (t : a stage1) stats (session : a Session.Stage1.t) =
     let open Fiber.O in
     let* query = Fiber.Stream.In.read session.queries in
     match query with
@@ -243,7 +317,7 @@ module H = struct
         abort session
           ~message:"Notification unexpected. You must initialize first."
       | Request (id, call) -> (
-        match Initialize.Request.of_call ~version:t.version call with
+        match Initialize.Request.of_call ~version:t.base.version call with
         | Error e -> session.send (Some [ Response (id, Error e) ])
         | Ok init ->
           let major, minor = Initialize.Request.version init in
@@ -252,8 +326,10 @@ module H = struct
              failed out if [(major, minor) > t.version], so we can bypass that
              behavior by having versioning-enabled clients send a negative minor
              version prior to the 3.2 release. *)
-          let supports_versioning = major > 3 || minor < 0 || minor > 1 in
-          let* a = t.on_init session init in
+          let supports_versioning =
+            (major, minor) >= (3, 1) || major < 0 || minor < 0
+          in
+          let* a = t.base.on_init session init in
           let () =
             session.state <- Initialized { init; state = a; closed = false }
           in
@@ -268,191 +344,53 @@ module H = struct
           if supports_versioning then
             negotiate_version t stats session
           else
-            run_session t stats session Version_menu.default))
+            let handler = t.to_handler Versioned.Menu.default in
+            let t = { base = t.base; handler } in
+            run_session t stats
+              (Session.of_stage1 session handler Versioned.Menu.default)))
 
   module Builder = struct
-    type info =
-      | Private
-      | Public of
-          { since : int * int
-          ; until : (int * int) option
-          }
-
-    let private_ = Private
-
-    let public ?until ~since () = Public { since; until }
-
-    type ('state, 'req, 'resp) callback =
-      { info : info
-      ; f : 'state Session.t -> 'req -> 'resp Fiber.t
-      }
-
-    let callback' info f = { info; f }
-
-    let callback info f =
-      let f _ x = f x in
-      { info; f }
-
-    type 's n_handler =
-      | N : ('s, 'a, unit) callback * 'a Decl.notification -> 's n_handler
-
-    (* For [Builder] *)
-    type 's r_handler =
-      | R : ('s, 'a, 'b) callback * ('a, 'b) Decl.request -> 's r_handler
-
-    (* For actual use *)
-    type 's r_handler' =
-      | R' :
-          int * ('s, 'a, 'b) callback * ('a, 'b) Decl.Generation.t
-          -> 's r_handler'
-
     type 's t =
-      { mutable notification_handlers : 's n_handler list
-      ; mutable request_handlers : 's r_handler list
-      ; on_init : 's Session.t -> Initialize.Request.t -> 's Fiber.t
+      { builder : 's Session.t V.Builder.t
       ; on_terminate : 's Session.t -> unit Fiber.t
+      ; on_init : 's Session.Stage1.t -> Initialize.Request.t -> 's Fiber.t
       ; version : int * int
       }
 
-    let to_handler
-        { on_init
-        ; notification_handlers
-        ; request_handlers
-        ; version
-        ; on_terminate
-        } =
-      let request_handlers, notification_handlers =
-        let r = Table.create (module String) 16 in
-        let n = Table.create (module String) 16 in
-        (* TODO: This all needs proper validation. Currently, we only check that
-           individual version declarations (in [Decl]) don't overlap, but we
-           also need to ensure that no generation is implemented twice. *)
-        List.iter notification_handlers ~f:(fun (N (cb, decl)) ->
-            Table.Multi.cons n decl.method_ (N (cb, decl)));
-        List.iter request_handlers ~f:(fun (R (cb, decl)) ->
-            Decl.Generations.iter decl.Decl.generations ~f:(fun version gen ->
-                Table.Multi.cons r decl.method_ (R' (version, cb, gen))));
-        (r, n)
+    let to_handler { builder; on_terminate; on_init; version } =
+      let to_handler menu =
+        V.Builder.to_handler builder
+          ~session_version:(fun s -> (Session.initialize s).version)
+          ~menu
       in
-      let find_cb cbs ~version ~info =
-        List.find cbs ~f:(fun cb ->
-            match info cb with
-            | Private -> true
-            | Public { since; until } -> (
-              version >= since
-              &&
-              match until with
-              | None -> true
-              | Some until -> version <= until))
+      let known_versions =
+        String.Map.of_list_map_exn
+          ~f:(fun (name, gens) -> (name, Int.Set.of_list gens))
+          (V.Builder.registered_procedures builder)
       in
-      let no_method_version_error ~method_ ~infos:_ =
-        let payload = Sexp.record [ ("method", Atom method_) ] in
-        Response.Error.create ~kind:Version_error
-          ~message:"no method matching this client version" ~payload ()
-      in
-      let on_notification session (n : Call.t) =
-        let version = Initialize.Request.version (Session.initialize session) in
-        match Table.find notification_handlers n.method_ with
-        | None ->
-          abort session ~message:"invalid notification"
-            ~payload:(Sexp.record [ ("method", Atom n.method_) ])
-        | Some [] -> assert false (* not possible *)
-        | Some cbs -> (
-          match find_cb cbs ~info:(fun (N (cb, _)) -> cb.info) ~version with
-          | None ->
-            abort session ~message:"No notification matching version."
-              ~payload:(Sexp.record [ ("method", Atom n.method_) ])
-          | Some (N (cb, v)) -> (
-            match Conv.of_sexp v.req ~version n.params with
-            | Ok v -> cb.f session v
-            | Error _ ->
-              abort session ~message:"Invalid notification payload"
-                ~payload:
-                  (Sexp.record
-                     [ ("method", Atom n.method_); ("payload", n.params) ])))
-      in
-      let on_request session menu (_id, (n : Call.t)) =
-        let version = Initialize.Request.version (Session.initialize session) in
-        match
-          ( Table.find request_handlers n.method_
-          , Version_menu.lookup menu n.method_ )
-        with
-        | None, _ ->
-          let payload = Sexp.record [ ("method", Atom n.method_) ] in
-          Fiber.return
-            (Error
-               (Response.Error.create ~kind:Invalid_request
-                  ~message:"invalid method" ~payload ()))
-        | _, None ->
-          let payload = Sexp.record [ ("method", Atom n.method_) ] in
-          Fiber.return
-            (Error
-               (Response.Error.create ~kind:Version_error
-                  ~message:"client and server have no common version for method"
-                  ~payload ()))
-        | Some [], _ -> assert false (* not possible *)
-        | Some cbs, Some v -> (
-          match List.find cbs ~f:(fun (R' (v', _, _)) -> v == v') with
-          | None ->
-            Fiber.return
-              (Error (no_method_version_error ~method_:n.method_ ~infos:cbs))
-          | Some (R' (_, cb, T gen)) -> (
-            match Conv.of_sexp gen.req ~version n.params with
-            | Error e -> Fiber.return (Error (Response.Error.of_conv e))
-            | Ok input -> (
-              let open Fiber.O in
-              let input = gen.upgrade_req input in
-              let+ r = Fiber.collect_errors (fun () -> cb.f session input) in
-              match r with
-              | Ok s -> Ok (Conv.to_sexp gen.resp (gen.downgrade_resp s))
-              | Error
-                  [ { Exn_with_backtrace.exn = Response.Error.E e
-                    ; backtrace = _
-                    }
-                  ] ->
-                Error e
-              | Error xs ->
-                let payload =
-                  Sexp.List
-                    (List.map xs ~f:(fun x ->
-                         Exn_with_backtrace.to_dyn x |> Sexp.of_dyn))
-                in
-                Error
-                  (Response.Error.create ~kind:Code_error
-                     ~message:"server error" ~payload ()))))
-      in
-      { on_request
-      ; on_notification
-      ; on_init
-      ; version
-      ; on_terminate
-      ; implemented_request_versions = String.Map.empty
-      }
+      { to_handler; base = { on_init; on_terminate; version }; known_versions }
 
     let create ?(on_terminate = fun _ -> Fiber.return ()) ~on_init ~version () =
-      { request_handlers = []
-      ; notification_handlers = []
-      ; on_init
-      ; version
-      ; on_terminate
-      }
+      { builder = V.Builder.create (); on_init; on_terminate; version }
 
-    let implement_request (t : _ t) cb decl =
-      t.request_handlers <- R (cb, decl) :: t.request_handlers
+    let implement_request (t : _ t) = V.Builder.implement_request t.builder
 
-    let notification (t : _ t) cb decl =
-      t.notification_handlers <- N (cb, decl) :: t.notification_handlers
+    let implement_notification (t : _ t) =
+      V.Builder.implement_notification t.builder
+
+    let declare_notification (t : _ t) =
+      V.Builder.declare_notification t.builder
   end
 end
 
-type t = Server : 'a H.t -> t
+type t = Server : 'a H.stage1 -> t
 
 let make h = Server (H.Builder.to_handler h)
 
-let version (Server h) = h.version
+let version (Server h) = h.base.version
 
 let new_session (Server handler) stats ~queries ~send =
-  let session = Session.create ~queries ~send in
+  let session = Session.Stage1.create ~queries ~send in
   object
     method id = session.id
 

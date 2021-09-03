@@ -1,14 +1,9 @@
 open! Stdune
 open Fiber.O
 open Dune_rpc_server
-
-(* cwong: Does the [Decl] module here need to exist at all? *)
-module Unshadow_decl = Decl
 open Dune_rpc_private
-module Decl = Unshadow_decl
 module Dep_conf = Dune_rules.Dep_conf
 module Build_system = Dune_engine.Build_system
-module Build_outcome = Decl.Build_outcome
 
 type pending_build_action =
   | Build of Dep_conf.t list * Build_outcome.t Fiber.Ivar.t
@@ -125,6 +120,32 @@ module Subscribers = struct
     Fiber.parallel_iter_set (module Session_set) set ~f
 end
 
+module Clients = struct
+  type entry =
+    { session : Client.t Session.Stage1.t
+    ; mutable menu : Versioned.Menu.t option
+    }
+
+  type t = entry Session.Id.Map.t
+
+  let empty = Session.Id.Map.empty
+
+  let add_session t (session : _ Session.Stage1.t) =
+    let id = Session.Stage1.id session in
+    let result = { menu = None; session } in
+    Session.Stage1.register_upgrade_callback session (fun menu ->
+        result.menu <- Some menu);
+    Session.Id.Map.add_exn t id result
+
+  let remove_session t (session : _ Session.t) =
+    let id = Session.id session in
+    Session.Id.Map.remove t id
+
+  let to_list = Session.Id.Map.to_list
+
+  let to_list_map = Session.Id.Map.to_list_map
+end
+
 (** Primitive unbounded FIFO channel. Reads are blocking. Writes are not
     blocking. At most one read is allowed at a time. *)
 module Job_queue : sig
@@ -181,7 +202,7 @@ type t =
   ; build_handler : Build_system.Handler.t
   ; pool : Fiber.Pool.t
   ; mutable subscribers : Subscribers.t
-  ; mutable clients : Session_set.t
+  ; mutable clients : Clients.t
   }
 
 let build_handler t = t.build_handler
@@ -190,7 +211,7 @@ let handler (t : t Fdecl.t) : 'a Dune_rpc_server.Handler.t =
   let on_init session (_ : Initialize.Request.t) =
     let t = Fdecl.get t in
     let client = Client.create () in
-    t.clients <- Session_set.add t.clients session;
+    t.clients <- Clients.add_session t.clients session;
     Fiber.return client
   in
   let on_terminate session =
@@ -199,7 +220,7 @@ let handler (t : t Fdecl.t) : 'a Dune_rpc_server.Handler.t =
       [ Subscribe.Diagnostics; Build_progress ]
       |> List.fold_left ~init:t.subscribers ~f:(fun acc which ->
              Subscribers.remove acc which session);
-    t.clients <- Session_set.remove t.clients session;
+    t.clients <- Clients.remove_session t.clients session;
     Fiber.return ()
   in
   let rpc =
@@ -207,12 +228,10 @@ let handler (t : t Fdecl.t) : 'a Dune_rpc_server.Handler.t =
       ~version:Dune_rpc_private.Version.latest ()
   in
   let () =
-    Handler.implement_request rpc
-      (Handler.callback (Handler.public ~since:(1, 0) ()) Fiber.return)
-      Public.Request.ping
+    Handler.implement_request rpc Procedures.Public.ping (fun _ -> Fiber.return)
   in
   let () =
-    let build targets =
+    let build _ targets =
       let ivar = Fiber.Ivar.create () in
       let targets =
         List.map targets ~f:(fun s ->
@@ -231,9 +250,7 @@ let handler (t : t Fdecl.t) : 'a Dune_rpc_server.Handler.t =
       in
       Fiber.Ivar.read ivar
     in
-    Handler.implement_request rpc
-      (Handler.callback Handler.private_ build)
-      Decl.build
+    Handler.implement_request rpc Procedures.Internal.build build
   in
   let () =
     let rec cancel_pending_jobs () =
@@ -243,22 +260,19 @@ let handler (t : t Fdecl.t) : 'a Dune_rpc_server.Handler.t =
         let* () = Fiber.Ivar.fill job Build_outcome.Failure in
         cancel_pending_jobs ()
     in
-    let shutdown () =
+    let shutdown _ () =
       let t = Fdecl.get t in
       let terminate_sessions () =
         Fiber.fork_and_join_unit cancel_pending_jobs (fun () ->
-            Fiber.parallel_iter_set
-              (module Session_set)
-              t.clients ~f:Session.request_close)
+            Fiber.parallel_iter (Clients.to_list t.clients)
+              ~f:(fun (_, entry) -> Session.Stage1.request_close entry.session))
       in
       let shutdown () =
         Fiber.fork_and_join_unit Dune_engine.Scheduler.shutdown Run.stop
       in
       Fiber.fork_and_join_unit terminate_sessions shutdown
     in
-    Handler.notification rpc
-      (Handler.callback Handler.private_ shutdown)
-      Decl.shutdown
+    Handler.implement_notification rpc Procedures.Public.shutdown shutdown
   in
   let () =
     let unsubscribe session (sub : Subscribe.t) =
@@ -266,8 +280,7 @@ let handler (t : t Fdecl.t) : 'a Dune_rpc_server.Handler.t =
       t.subscribers <- Subscribers.remove t.subscribers sub session;
       Fiber.return ()
     in
-    let cb = Handler.callback' (Handler.public ~since:(1, 0) ()) unsubscribe in
-    Handler.notification rpc cb Public.Notification.unsubscribe
+    Handler.implement_notification rpc Procedures.Public.unsubscribe unsubscribe
   in
   let () =
     let subscribe session (sub : Subscribe.t) =
@@ -285,8 +298,10 @@ let handler (t : t Fdecl.t) : 'a Dune_rpc_server.Handler.t =
                 List.map errors ~f:(fun (e : Build_system.Error.t) ->
                     Diagnostic.Event.Add (diagnostic_of_error e))
               in
-              Session.notification session Server_notifications.diagnostic
-                events)
+              ignore
+                (Session.notification session Server_notifications.diagnostic
+                   events);
+              Fiber.return ())
         | Build_progress ->
           let evt =
             match Build_system.last_event () with
@@ -308,31 +323,27 @@ let handler (t : t Fdecl.t) : 'a Dune_rpc_server.Handler.t =
           Fiber.Pool.task t.pool ~f:(fun () ->
               Session.notification session Server_notifications.progress evt))
     in
-    let cb = Handler.callback' (Handler.public ~since:(1, 0) ()) subscribe in
-    Handler.notification rpc cb Public.Notification.subscribe
+    Handler.implement_notification rpc Procedures.Public.subscribe subscribe
   in
   let () =
-    let f () =
+    let f _ () =
       let t = Fdecl.get t in
       let clients =
-        Session_set.to_list_map t.clients ~f:(fun session ->
-            Session.initialize session |> Initialize.Request.id)
+        Clients.to_list_map t.clients ~f:(fun _id (entry : Clients.entry) ->
+            ( Initialize.Request.id (Session.Stage1.initialize entry.session)
+            , match entry.menu with
+              | None -> Status.Menu.Uninitialized
+              | Some menu -> Menu (Versioned.Menu.to_list menu) ))
       in
-      Fiber.return { Decl.Status.clients }
+      Fiber.return { Status.clients }
     in
-    let cb = Handler.callback Handler.private_ f in
-    Handler.implement_request rpc cb Decl.status
+    Handler.implement_request rpc Procedures.Internal.status f
   in
   let () =
-    let cb =
-      let f () =
-        Build_system.errors ()
-        |> List.map ~f:diagnostic_of_error
-        |> Fiber.return
-      in
-      Handler.callback (Handler.public ~since:(1, 0) ()) f
+    let f _ () =
+      Build_system.errors () |> List.map ~f:diagnostic_of_error |> Fiber.return
     in
-    Handler.implement_request rpc cb Public.Request.diagnostics
+    Handler.implement_request rpc Procedures.Public.diagnostics f
   in
   rpc
 
@@ -394,7 +405,7 @@ let create () =
     { config
     ; pending_build_jobs
     ; subscribers = Subscribers.empty
-    ; clients = Session_set.empty
+    ; clients = Clients.empty
     ; build_handler
     ; pool
     }

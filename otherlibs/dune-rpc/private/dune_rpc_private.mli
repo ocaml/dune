@@ -109,65 +109,6 @@ module Version_negotiation : sig
   end
 end
 
-module Decl : sig
-  module Generation : sig
-    type ('wire_req, 'wire_resp, 'real_req, 'real_resp) conv = private
-      { req : 'wire_req Conv.value
-      ; resp : 'wire_resp Conv.value
-      ; upgrade_req : 'wire_req -> 'real_req
-      ; downgrade_req : 'real_req -> 'wire_req
-      ; upgrade_resp : 'wire_resp -> 'real_resp
-      ; downgrade_resp : 'real_resp -> 'wire_resp
-      }
-
-    type (_, _) t = private
-      | T :
-          ('wire_req, 'wire_resp, 'real_req, 'real_resp) conv
-          -> ('real_req, 'real_resp) t
-
-    val current_request : 'req Conv.value -> 'resp Conv.value -> ('req, 'resp) t
-
-    val prior_request :
-         'wire_req Conv.value
-      -> 'wire_resp Conv.value
-      -> upgrade_req:('wire_req -> 'real_req)
-      -> downgrade_req:('real_req -> 'wire_req)
-      -> upgrade_resp:('wire_resp -> 'real_resp)
-      -> downgrade_resp:('real_resp -> 'wire_resp)
-      -> ('real_req, 'real_resp) t
-  end
-
-  module Generations : sig
-    type ('req, 'resp) t
-
-    val lookup : ('req, 'resp) t -> int -> ('req, 'resp) Generation.t option
-
-    val iter :
-      ('req, 'resp) t -> f:(int -> ('req, 'resp) Generation.t -> unit) -> unit
-  end
-
-  type ('req, 'resp) request =
-    { method_ : string
-    ; generations : ('req, 'resp) Generations.t
-    }
-
-  type 'req notification =
-    { method_ : string
-    ; req : 'req Conv.value
-    }
-
-  val known_requests : unit -> Stdune.Int.Set.t Stdune.String.Map.t
-
-  val notification : method_:string -> 'a Conv.value -> 'a notification
-
-  val request :
-       method_:string
-    -> (int * ('req, 'resp) Generation.t) list
-    -> ('req, 'resp) request
-end
-
-val default_version_menu : int Stdune.String.Map.t
-
 module Where : sig
   type t =
     [ `Unix of string
@@ -327,12 +268,80 @@ module Message : sig
   val payload : t -> Csexp.t option
 
   val message : t -> string
+
+  val to_sexp_unversioned : t -> Csexp.t
 end
 
 module Subscribe : sig
   type t =
     | Diagnostics
     | Build_progress
+end
+
+module Build_outcome : sig
+  type t =
+    | Success
+    | Failure
+end
+
+module Status : sig
+  module Menu : sig
+    type t =
+      | Uninitialized
+      | Menu of (string * int) list
+      | Compatibility
+  end
+
+  type t = { clients : (Id.t * Menu.t) list }
+end
+
+module Decl : sig
+  module Request : sig
+    type ('a, 'b) t
+
+    type ('a, 'b) witness
+  end
+
+  module Notification : sig
+    type 'a t
+
+    type 'a witness
+  end
+
+  type ('a, 'b) request = ('a, 'b) Request.t
+
+  type 'a notification = 'a Notification.t
+end
+
+module type Fiber = sig
+  type 'a t
+
+  val return : 'a -> 'a t
+
+  val fork_and_join_unit : (unit -> unit t) -> (unit -> 'a t) -> 'a t
+
+  val parallel_iter : (unit -> 'a option t) -> f:('a -> unit t) -> unit t
+
+  val finalize : (unit -> 'a t) -> finally:(unit -> unit t) -> 'a t
+
+  module O : sig
+    val ( let* ) : 'a t -> ('a -> 'b t) -> 'b t
+
+    val ( let+ ) : 'a t -> ('a -> 'b) -> 'b t
+  end
+
+  module Ivar : sig
+    type 'a fiber
+
+    type 'a t
+
+    val create : unit -> 'a t
+
+    val read : 'a t -> 'a fiber
+
+    val fill : 'a t -> 'a -> unit fiber
+  end
+  with type 'a fiber := 'a t
 end
 
 module Client : sig
@@ -346,11 +355,15 @@ module Client : sig
     val request :
          ?id:Id.t
       -> t
-      -> ('a, 'b) Decl.request
+      -> ('a, 'b) Decl.Request.witness
       -> 'a
       -> ('b, Response.Error.t) result fiber
 
-    val notification : t -> 'a Decl.notification -> 'a -> unit fiber
+    val notification :
+         t
+      -> 'a Decl.Notification.witness
+      -> 'a
+      -> (unit, Response.Error.t) result fiber
 
     val disconnected : t -> unit fiber
 
@@ -364,11 +377,15 @@ module Client : sig
       val request :
            ?id:Id.t
         -> t
-        -> ('a, 'b) Decl.request
+        -> ('a, 'b) Decl.Request.witness
         -> 'a
         -> ('b, Response.Error.t) result fiber
 
-      val notification : t -> 'a Decl.notification -> 'a -> unit
+      val notification :
+           t
+        -> 'a Decl.Notification.witness
+        -> 'a
+        -> (unit, Response.Error.t) result fiber
 
       val submit : t -> unit fiber
     end
@@ -394,42 +411,14 @@ module Client : sig
       -> 'a fiber
   end
 
-  module Make (Fiber : sig
-    type 'a t
+  module Make
+      (Fiber : Fiber) (Chan : sig
+        type t
 
-    val return : 'a -> 'a t
+        val write : t -> Csexp.t list option -> unit Fiber.t
 
-    val fork_and_join_unit : (unit -> unit t) -> (unit -> 'a t) -> 'a t
-
-    val parallel_iter : (unit -> 'a option t) -> f:('a -> unit t) -> unit t
-
-    val finalize : (unit -> 'a t) -> finally:(unit -> unit t) -> 'a t
-
-    module O : sig
-      val ( let* ) : 'a t -> ('a -> 'b t) -> 'b t
-
-      val ( let+ ) : 'a t -> ('a -> 'b) -> 'b t
-    end
-
-    module Ivar : sig
-      type 'a fiber
-
-      type 'a t
-
-      val create : unit -> 'a t
-
-      val read : 'a t -> 'a fiber
-
-      val fill : 'a t -> 'a -> unit fiber
-    end
-    with type 'a fiber := 'a t
-  end) (Chan : sig
-    type t
-
-    val write : t -> Csexp.t list option -> unit Fiber.t
-
-    val read : t -> Csexp.t option Fiber.t
-  end) : S with type 'a fiber := 'a Fiber.t and type chan := Chan.t
+        val read : t -> Csexp.t option Fiber.t
+      end) : S with type 'a fiber := 'a Fiber.t and type chan := Chan.t
 end
 
 module Packet : sig
@@ -458,11 +447,137 @@ module Version : sig
   val sexp : t Conv.value
 end
 
+module Versioned : sig
+  module Menu : sig
+    type t
+
+    val default : t
+
+    (** For each method known by both local and remote, choose the highest
+        common version number. Returns [None] if the resulting menu would be
+        empty. *)
+    val select_common :
+         local_versions:Stdune.Int.Set.t Stdune.String.Map.t
+      -> remote_versions:(string * int list) list
+      -> t option
+
+    val of_list : (string * int) list -> (t, string * int * int) result
+
+    val to_list : t -> (string * int) list
+
+    val to_dyn : t -> Stdune.Dyn.t
+  end
+
+  module Make (Fiber : Fiber) : sig
+    module Handler : sig
+      type 'state t
+
+      val handle_request : 'state t -> 'state -> Request.t -> Response.t Fiber.t
+
+      val handle_notification :
+        'state t -> 'state -> Call.t -> (unit, Response.Error.t) result Fiber.t
+
+      val prepare_request :
+           'a t
+        -> ('req, 'resp) Decl.Request.witness
+        -> 'req
+        -> ( Call.t * (Csexp.t -> ('resp, Response.Error.t) result)
+           , Response.Error.t )
+           result
+
+      val prepare_notification :
+           'a t
+        -> 'payload Decl.Notification.witness
+        -> 'payload
+        -> (Call.t, Response.Error.t) result
+    end
+
+    module Builder : sig
+      type 'state t
+
+      val to_handler :
+           'state t
+        -> session_version:('state -> int * int)
+        -> menu:Menu.t
+        -> 'state Handler.t
+
+      val create : unit -> 'state t
+
+      val registered_procedures : 'a t -> (string * int list) list
+
+      (** A *declaration* of a procedure is a claim that this side of the
+          session is able to *initiate* that procedure. Correspondingly,
+          *implementing* a procedure enables you to *receive* that procedure
+          (and probably do something in response).
+
+          Currently, attempting to both implement and declare the same procedure
+          in the same builder will raise. While there is nothing fundamentally
+          wrong with allowing this, it is simpler for the initial version
+          negotiation to treat all method names uniformly, rather than
+          specifying whether a given (set of) generation(s) is implemented or
+          declared.
+
+          Finally, attempting to declare or implement the same generation twice
+          will also raise. *)
+      val declare_notification : 'state t -> 'payload Decl.notification -> unit
+
+      val declare_request : 'state t -> ('req, 'resp) Decl.request -> unit
+
+      val implement_notification :
+           'state t
+        -> 'payload Decl.notification
+        -> ('state -> 'payload -> unit Fiber.t)
+        -> unit
+
+      val implement_request :
+           'state t
+        -> ('req, 'resp) Decl.request
+        -> ('state -> 'req -> 'resp Fiber.t)
+        -> unit
+    end
+  end
+end
+
+module Procedures : sig
+  (** Procedures with generations for server impl *)
+  module Public : sig
+    val ping : (unit, unit) Decl.Request.t
+
+    val diagnostics : (unit, Diagnostic.t list) Decl.Request.t
+
+    val shutdown : unit Decl.Notification.t
+
+    val subscribe : Subscribe.t Decl.Notification.t
+
+    val unsubscribe : Subscribe.t Decl.Notification.t
+  end
+
+  module Internal : sig
+    val build : (string list, Build_outcome.t) Decl.Request.t
+
+    val build_decl : (string list, Build_outcome.t) Decl.Request.witness
+
+    val status : (unit, Status.t) Decl.Request.t
+
+    val status_decl : (unit, Status.t) Decl.Request.witness
+  end
+
+  module Server_side : sig
+    val abort : Message.t Decl.Notification.t
+
+    val log : Message.t Decl.Notification.t
+
+    val progress : Progress.t Decl.Notification.t
+
+    val diagnostic : Diagnostic.Event.t list Decl.Notification.t
+  end
+end
+
 module Public : sig
   (** Public requests and notifications *)
 
   module Request : sig
-    type ('a, 'b) t = ('a, 'b) Decl.request
+    type ('a, 'b) t = ('a, 'b) Decl.Request.witness
 
     val ping : (unit, unit) t
 
@@ -470,7 +585,7 @@ module Public : sig
   end
 
   module Notification : sig
-    type 'a t = 'a Decl.notification
+    type 'a t = 'a Decl.Notification.witness
 
     val subscribe : Subscribe.t t
 
@@ -483,11 +598,11 @@ end
 module Server_notifications : sig
   (** Notification sent from server to client *)
 
-  val diagnostic : Diagnostic.Event.t list Decl.notification
+  val diagnostic : Diagnostic.Event.t list Decl.Notification.witness
 
-  val progress : Progress.t Decl.notification
+  val progress : Progress.t Decl.Notification.witness
 
-  val log : Message.t Decl.notification
+  val log : Message.t Decl.Notification.witness
 
-  val abort : Message.t Decl.notification
+  val abort : Message.t Decl.Notification.witness
 end

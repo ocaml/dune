@@ -170,7 +170,15 @@ module Initialize = struct
 
     let id t = t.id
 
-    let create ~id = { version = Version.latest; id }
+    let create ~id =
+      let version =
+        let major, minor = Version.latest in
+        if (major, minor) < (3, 1) then
+          (-major, minor)
+        else
+          Version.latest
+      in
+      { version; id }
 
     let method_name = "initialize"
 
@@ -358,6 +366,11 @@ module Packet = struct
 end
 
 module Decl = struct
+  type 'gen t =
+    { method_ : string
+    ; key : 'gen Int.Map.t Stdune.Univ_map.Key.t
+    }
+
   module Generation = struct
     type ('wire_req, 'wire_resp, 'real_req, 'real_resp) conv =
       { req : 'wire_req Conv.value
@@ -372,45 +385,202 @@ module Decl = struct
       | T :
           ('wire_req, 'wire_resp, 'real_req, 'real_resp) conv
           -> ('real_req, 'real_resp) t
+  end
 
-    let current_request req resp =
+  module Request = struct
+    module type S = sig
+      type req
+
+      type resp
+
+      type wire_req
+
+      type wire_resp
+
+      val version : int
+
+      val req : wire_req Conv.value
+
+      val resp : wire_resp Conv.value
+
+      val upgrade_req : wire_req -> req
+
+      val downgrade_req : req -> wire_req
+
+      val upgrade_resp : wire_resp -> resp
+
+      val downgrade_resp : resp -> wire_resp
+    end
+
+    type ('req, 'resp) gen = int * ('req, 'resp) Generation.t
+
+    let make_gen (type req resp)
+        (module M : S with type req = req and type resp = resp) =
+      let open M in
+      ( version
+      , Generation.T
+          { req
+          ; resp
+          ; upgrade_req
+          ; downgrade_req
+          ; upgrade_resp
+          ; downgrade_resp
+          } )
+
+    let gen_to_dyn _ = Dyn.String "<generation>"
+
+    type ('req, 'resp) witness = ('req, 'resp) Generation.t t
+
+    type nonrec ('req, 'resp) t =
+      { decl : ('req, 'resp) witness
+      ; generations : ('req, 'resp) gen list
+      }
+
+    let make ~method_ ~generations =
+      { generations
+      ; decl =
+          { method_
+          ; key =
+              Stdune.Univ_map.Key.create ~name:method_
+                (Int.Map.to_dyn gen_to_dyn)
+          }
+      }
+  end
+
+  module Notification = struct
+    module type S = sig
+      type model
+
+      type wire
+
+      val version : int
+
+      val sexp : wire Conv.value
+
+      val upgrade : wire -> model
+
+      val downgrade : model -> wire
+    end
+
+    type 'payload gen = int * ('payload, unit) Generation.t
+
+    let make_gen (type payload) (module M : S with type model = payload) =
+      let open M in
       let id x = x in
-      T
-        { req
-        ; resp
-        ; upgrade_req = id
-        ; downgrade_req = id
-        ; upgrade_resp = id
-        ; downgrade_resp = id
-        }
+      ( version
+      , Generation.T
+          { req = sexp
+          ; resp = Conv.unit
+          ; upgrade_req = upgrade
+          ; downgrade_req = downgrade
+          ; upgrade_resp = id
+          ; downgrade_resp = id
+          } )
 
-    let prior_request req resp ~upgrade_req ~downgrade_req ~upgrade_resp
-        ~downgrade_resp =
-      T { req; resp; upgrade_req; downgrade_req; upgrade_resp; downgrade_resp }
+    let gen_to_dyn _ = Dyn.String "<generation>"
+
+    type 'payload witness = ('payload, unit) Generation.t t
+
+    type nonrec 'payload t =
+      { decl : 'payload witness
+      ; generations : 'payload gen list
+      }
+
+    let make ~method_ ~generations =
+      { generations
+      ; decl =
+          { method_
+          ; key =
+              Stdune.Univ_map.Key.create ~name:method_
+                (Int.Map.to_dyn gen_to_dyn)
+          }
+      }
   end
 
-  module Generations = struct
-    type ('req, 'resp) t = ('req, 'resp) Generation.t Stdune.Int.Map.t
+  type ('a, 'b) request = ('a, 'b) Request.t
 
-    let of_list_exn = Stdune.Int.Map.of_list_exn
+  type 'a notification = 'a Notification.t
+end
 
-    let lookup = Stdune.Int.Map.find
+module type Fiber = sig
+  type 'a t
 
-    let iter = Stdune.Int.Map.iteri
+  val return : 'a -> 'a t
+
+  val fork_and_join_unit : (unit -> unit t) -> (unit -> 'a t) -> 'a t
+
+  val parallel_iter : (unit -> 'a option t) -> f:('a -> unit t) -> unit t
+
+  val finalize : (unit -> 'a t) -> finally:(unit -> unit t) -> 'a t
+
+  module O : sig
+    val ( let* ) : 'a t -> ('a -> 'b t) -> 'b t
+
+    val ( let+ ) : 'a t -> ('a -> 'b) -> 'b t
   end
 
-  type ('req, 'resp) request =
-    { method_ : string
-    ; generations : ('req, 'resp) Generations.t
-    }
+  module Ivar : sig
+    type 'a fiber
 
-  type 'req notification =
-    { method_ : string
-    ; req : 'req Conv.value
-    }
+    type 'a t
 
-  let notification ~method_ req = { method_; req }
+    val create : unit -> 'a t
 
-  let request ~method_ generations =
-    { method_; generations = Generations.of_list_exn generations }
+    val read : 'a t -> 'a fiber
+
+    val fill : 'a t -> 'a -> unit fiber
+  end
+  with type 'a fiber := 'a t
+end
+
+module type Sys = sig
+  type 'a fiber
+
+  val getenv : string -> string option
+
+  val is_win32 : unit -> bool
+
+  val read_file : string -> string fiber
+
+  val readlink : string -> string option fiber
+
+  val analyze_path : string -> [ `Unix_socket | `Normal_file | `Other ] fiber
+end
+
+(* Internal RPC request types *)
+
+module Build_outcome = struct
+  type t =
+    | Success
+    | Failure
+
+  let sexp = Conv.enum [ ("Success", Success); ("Failure", Failure) ]
+end
+
+module Status = struct
+  module Menu = struct
+    type t =
+      | Uninitialized
+      | Menu of (string * int) list
+      | Compatibility
+
+    let sexp =
+      let open Conv in
+      let menu = constr "menu" (list (pair string int)) (fun m -> Menu m) in
+      let compat = constr "compatibility" unit (fun () -> Compatibility) in
+      let uninitialized = constr "stage1" unit (fun () -> Uninitialized) in
+      let variants = [ econstr menu; econstr compat ] in
+      sum variants (function
+        | Uninitialized -> case () uninitialized
+        | Menu m -> case m menu
+        | Compatibility -> case () compat)
+  end
+
+  type t = { clients : (Id.t * Menu.t) list }
+
+  let sexp =
+    let open Conv in
+    let to_ clients = { clients } in
+    let from { clients } = clients in
+    iso (list (pair Id.sexp Menu.sexp)) to_ from
 end

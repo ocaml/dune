@@ -99,9 +99,9 @@ val either : ('a, fields) t -> ('b, fields) t -> (('a, 'b) Either.t, fields) t
 
 (** For "untagged" sums, with no field name disambiguators.
 
-    Note that, when decoding according to {v either_untagged l r v}, {v l v}
-    will be attempted first, then {v r v}. This means that cases in which the
-    same sexp may be valid as both, a {v Left v} variant will be produced.
+    Note that, when decoding according to [either_untagged l r], [l] will be
+    attempted first, then [r]. This means that cases in which the same sexp may
+    be valid as both, a [Left] variant will be produced.
 
     You should avoid using this where possible. Its primary use case is when
     writing code that is generic over multiple different possible generations of
@@ -121,10 +121,9 @@ val either : ('a, fields) t -> ('b, fields) t -> (('a, 'b) Either.t, fields) t
 
     To correctly decode the request, A must be able to parse both versions. If
     this happens before session version information is available (maybe as part
-    of the version negotiation itself), the only way to do so is to attempt to
-    decode as both, and proceed in the succeeding case.
-*)
-val either_untagged : ('a, values) t -> ('b, values) t -> (('a, 'b) Either.t, values) t
+    of the version negotiation itself), the only way to do so is to attempt to *)
+val either_untagged :
+  ('a, values) t -> ('b, values) t -> (('a, 'b) Either.t, values) t
 
 (** {2 parsing sums} *)
 

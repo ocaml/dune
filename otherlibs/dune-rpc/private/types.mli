@@ -181,8 +181,13 @@ module Packet : sig
 end
 
 module Decl : sig
+  type 'gen t =
+    { method_ : string
+    ; key : 'gen Int.Map.t Stdune.Univ_map.Key.t
+    }
+
   module Generation : sig
-    type ('wire_req, 'wire_resp, 'real_req, 'real_resp) conv = private
+    type ('wire_req, 'wire_resp, 'real_req, 'real_resp) conv =
       { req : 'wire_req Conv.value
       ; resp : 'wire_resp Conv.value
       ; upgrade_req : 'wire_req -> 'real_req
@@ -191,46 +196,153 @@ module Decl : sig
       ; downgrade_resp : 'real_resp -> 'wire_resp
       }
 
-    type (_, _) t = private
+    type (_, _) t =
       | T :
           ('wire_req, 'wire_resp, 'real_req, 'real_resp) conv
           -> ('real_req, 'real_resp) t
-
-    val current_request : 'req Conv.value -> 'resp Conv.value -> ('req, 'resp) t
-
-    val prior_request :
-         'wire_req Conv.value
-      -> 'wire_resp Conv.value
-      -> upgrade_req:('wire_req -> 'real_req)
-      -> downgrade_req:('real_req -> 'wire_req)
-      -> upgrade_resp:('wire_resp -> 'real_resp)
-      -> downgrade_resp:('real_resp -> 'wire_resp)
-      -> ('real_req, 'real_resp) t
   end
 
-  module Generations : sig
-    type ('req, 'resp) t
+  module Request : sig
+    module type S = sig
+      type req
 
-    val lookup : ('req, 'resp) t -> int -> ('req, 'resp) Generation.t option
+      type resp
 
-    val iter :
-      ('req, 'resp) t -> f:(int -> ('req, 'resp) Generation.t -> unit) -> unit
+      type wire_req
+
+      type wire_resp
+
+      val version : int
+
+      val req : wire_req Conv.value
+
+      val resp : wire_resp Conv.value
+
+      val upgrade_req : wire_req -> req
+
+      val downgrade_req : req -> wire_req
+
+      val upgrade_resp : wire_resp -> resp
+
+      val downgrade_resp : resp -> wire_resp
+    end
+
+    type ('req, 'resp) gen = int * ('req, 'resp) Generation.t
+
+    val make_gen :
+      (module S with type req = 'req and type resp = 'resp) -> ('req, 'resp) gen
+
+    type ('req, 'resp) witness = ('req, 'resp) Generation.t t
+
+    type nonrec ('req, 'resp) t =
+      { decl : ('req, 'resp) witness
+      ; generations : ('req, 'resp) gen list
+      }
+
+    val make :
+      method_:string -> generations:('req, 'resp) gen list -> ('req, 'resp) t
   end
 
-  type ('req, 'resp) request =
-    { method_ : string
-    ; generations : ('req, 'resp) Generations.t
-    }
+  module Notification : sig
+    module type S = sig
+      type model
 
-  type 'req notification =
-    { method_ : string
-    ; req : 'req Conv.value
-    }
+      type wire
 
-  val notification : method_:string -> 'a Conv.value -> 'a notification
+      val version : int
 
-  val request :
-       method_:string
-    -> (int * ('req, 'resp) Generation.t) list
-    -> ('req, 'resp) request
+      val sexp : wire Conv.value
+
+      val upgrade : wire -> model
+
+      val downgrade : model -> wire
+    end
+
+    type 'payload gen = int * ('payload, unit) Generation.t
+
+    val make_gen : (module S with type model = 'payload) -> 'payload gen
+
+    type 'payload witness = ('payload, unit) Generation.t t
+
+    type nonrec 'payload t =
+      { decl : 'payload witness
+      ; generations : 'payload gen list
+      }
+
+    val make : method_:string -> generations:'payload gen list -> 'payload t
+  end
+
+  type ('a, 'b) request = ('a, 'b) Request.t
+
+  type 'a notification = 'a Notification.t
+end
+
+module type Fiber = sig
+  type 'a t
+
+  val return : 'a -> 'a t
+
+  val fork_and_join_unit : (unit -> unit t) -> (unit -> 'a t) -> 'a t
+
+  val parallel_iter : (unit -> 'a option t) -> f:('a -> unit t) -> unit t
+
+  val finalize : (unit -> 'a t) -> finally:(unit -> unit t) -> 'a t
+
+  module O : sig
+    val ( let* ) : 'a t -> ('a -> 'b t) -> 'b t
+
+    val ( let+ ) : 'a t -> ('a -> 'b) -> 'b t
+  end
+
+  module Ivar : sig
+    type 'a fiber
+
+    type 'a t
+
+    val create : unit -> 'a t
+
+    val read : 'a t -> 'a fiber
+
+    val fill : 'a t -> 'a -> unit fiber
+  end
+  with type 'a fiber := 'a t
+end
+
+module type Sys = sig
+  type 'a fiber
+
+  val getenv : string -> string option
+
+  val is_win32 : unit -> bool
+
+  val read_file : string -> string fiber
+
+  val readlink : string -> string option fiber
+
+  val analyze_path : string -> [ `Unix_socket | `Normal_file | `Other ] fiber
+end
+
+(* Internal RPC request types *)
+
+module Build_outcome : sig
+  type t =
+    | Success
+    | Failure
+
+  val sexp : (t, Conv.values) Conv.t
+end
+
+module Status : sig
+  module Menu : sig
+    type t =
+      | Uninitialized
+      | Menu of (string * int) list
+      | Compatibility
+
+    val sexp : (t, Conv.values) Conv.t
+  end
+
+  type t = { clients : (Id.t * Menu.t) list }
+
+  val sexp : (t, Conv.values) Conv.t
 end

@@ -1,6 +1,9 @@
 open Import
 module Conv = Conv
+module Versioned = Versioned
+module Procedures = Procedures
 include Types
+include Exported_types
 
 module Where = struct
   type t =
@@ -64,18 +67,8 @@ module Where = struct
 
       val ( let+ ) : 'a t -> ('a -> 'b) -> 'b t
     end
-  end) (Sys : sig
-    val getenv : string -> string option
-
-    val is_win32 : unit -> bool
-
-    val read_file : string -> string Fiber.t
-
-    val readlink : string -> string option Fiber.t
-
-    val analyze_path :
-      string -> [ `Unix_socket | `Normal_file | `Other ] Fiber.t
-  end) =
+  end)
+  (Sys : Sys with type 'a fiber := 'a Fiber.t) =
   struct
     let default ~build_dir =
       if Sys.is_win32 () then
@@ -121,417 +114,36 @@ module Where = struct
   end
 end
 
-module Loc = struct
-  include Loc
-
-  let start t = t.start
-
-  let stop t = t.stop
-
-  let pos_sexp =
-    let open Conv in
-    let to_ (pos_fname, pos_lnum, pos_bol, pos_cnum) =
-      { Lexing.pos_fname; pos_lnum; pos_bol; pos_cnum }
-    in
-    let from { Lexing.pos_fname; pos_lnum; pos_bol; pos_cnum } =
-      (pos_fname, pos_lnum, pos_bol, pos_cnum)
-    in
-    let pos_fname = field "pos_fname" (required string) in
-    let pos_lnum = field "pos_lnum" (required int) in
-    let pos_bol = field "pos_bol" (required int) in
-    let pos_cnum = field "pos_cnum" (required int) in
-    iso (record (four pos_fname pos_lnum pos_bol pos_cnum)) to_ from
-
-  let sexp =
-    let open Conv in
-    let to_ (start, stop) = { start; stop } in
-    let from { start; stop } = (start, stop) in
-    let start = field "start" (required pos_sexp) in
-    let stop = field "stop" (required pos_sexp) in
-    iso (record (both start stop)) to_ from
-end
-
-module Decl = struct
-  include Decl
-
-  let request_registry = Stdune.String.Table.create 16
-
-  let request ~method_ generations =
-    let open Stdune in
-    let generations_to_register =
-      List.fold_left generations ~init:Int.Set.empty ~f:(fun acc (n, _) ->
-          Int.Set.add acc n)
-    in
-    let prior_registered_generations =
-      match String.Table.find request_registry method_ with
-      | None -> Int.Set.empty
-      | Some s -> s
-    in
-    let duplicate_generations =
-      Int.Set.inter generations_to_register prior_registered_generations
-    in
-    let () =
-      if Int.Set.is_empty duplicate_generations then
-        String.Table.set request_registry method_
-          (Int.Set.union generations_to_register prior_registered_generations)
-      else
-        Code_error.raise
-          ("attempted to register duplicate generations for RPC method "
-         ^ method_)
-          [ ("duplicated", Int.Set.to_dyn duplicate_generations) ]
-    in
-    request ~method_ generations
-
-  let known_requests () =
-    Stdune.String.Table.foldi request_registry ~init:Stdune.String.Map.empty
-      ~f:(fun method_ vs acc -> Stdune.String.Map.add_exn acc method_ vs)
-end
-
-module Target = struct
-  type t =
-    | Path of string
-    | Alias of string
-    | Library of string
-    | Executables of string list
-    | Preprocess of string list
-    | Loc of Loc.t
-
-  let sexp =
-    let open Conv in
-    let path = constr "Path" string (fun p -> Path p) in
-    let alias = constr "Alias" string (fun a -> Alias a) in
-    let lib = constr "Library" string (fun l -> Library l) in
-    let executables =
-      constr "Executables" (list string) (fun es -> Executables es)
-    in
-    let preprocess =
-      constr "Preprocess" (list string) (fun ps -> Preprocess ps)
-    in
-    let loc = constr "Loc" Loc.sexp (fun l -> Loc l) in
-    sum
-      [ econstr path
-      ; econstr alias
-      ; econstr lib
-      ; econstr executables
-      ; econstr preprocess
-      ; econstr loc
-      ] (function
-      | Path p -> case p path
-      | Alias a -> case a alias
-      | Library l -> case l lib
-      | Executables es -> case es executables
-      | Preprocess ps -> case ps preprocess
-      | Loc l -> case l loc)
-end
-
-module Diagnostic = struct
-  type severity =
-    | Error
-    | Warning
-
-  module Promotion = struct
-    type t =
-      { in_build : string
-      ; in_source : string
-      }
-
-    let in_build t = t.in_build
-
-    let in_source t = t.in_source
-
-    let sexp =
-      let open Conv in
-      let from { in_build; in_source } = (in_build, in_source) in
-      let to_ (in_build, in_source) = { in_build; in_source } in
-      let in_build = field "in_build" (required string) in
-      let in_source = field "in_source" (required string) in
-      iso (record (both in_build in_source)) to_ from
-  end
-
-  let sexp_pp : (unit Stdune.Pp.t, Conv.values) Conv.t =
-    let open Conv in
-    let open Stdune.Pp.Ast in
-    let nop = constr "Nop" unit (fun () -> Nop) in
-    let verbatim = constr "Verbatim" string (fun s -> Verbatim s) in
-    let char = constr "Char" char (fun c -> Char c) in
-    let newline = constr "Newline" unit (fun () -> Newline) in
-    let t_fdecl = Fdecl.create Dyn.Encoder.opaque in
-    let t = fdecl t_fdecl in
-    let text = constr "Text" string (fun s -> Text s) in
-    let seq = constr "Seq" (pair t t) (fun (x, y) -> Seq (x, y)) in
-    let concat =
-      constr "Concat" (pair t (list t)) (fun (x, y) -> Concat (x, y))
-    in
-    let box = constr "Box" (pair int t) (fun (x, y) -> Box (x, y)) in
-    let vbox = constr "Vbox" (pair int t) (fun (x, y) -> Vbox (x, y)) in
-    let hbox = constr "Hbox" t (fun t -> Hbox t) in
-    let hvbox = constr "Hvbox" (pair int t) (fun (x, y) -> Hvbox (x, y)) in
-    let hovbox = constr "Hovbox" (pair int t) (fun (x, y) -> Hovbox (x, y)) in
-    let break =
-      constr "Break"
-        (pair (triple string int string) (triple string int string))
-        (fun (x, y) -> Break (x, y))
-    in
-    let tag = constr "Tag" t (fun t -> Tag ((), t)) in
-    let conv =
-      sum
-        [ econstr nop
-        ; econstr verbatim
-        ; econstr char
-        ; econstr newline
-        ; econstr text
-        ; econstr seq
-        ; econstr concat
-        ; econstr box
-        ; econstr vbox
-        ; econstr hbox
-        ; econstr hvbox
-        ; econstr hovbox
-        ; econstr break
-        ; econstr tag
-        ] (function
-        | Nop -> case () nop
-        | Seq (x, y) -> case (x, y) seq
-        | Concat (x, y) -> case (x, y) concat
-        | Box (i, t) -> case (i, t) box
-        | Vbox (i, t) -> case (i, t) vbox
-        | Hbox t -> case t hbox
-        | Hvbox (i, t) -> case (i, t) hvbox
-        | Hovbox (i, t) -> case (i, t) hovbox
-        | Verbatim s -> case s verbatim
-        | Char c -> case c char
-        | Break (x, y) -> case (x, y) break
-        | Newline -> case () newline
-        | Text s -> case s text
-        | Tag ((), t) -> case t tag)
-    in
-    Fdecl.set t_fdecl conv;
-    let to_ast x =
-      match Pp.to_ast x with
-      | Ok s -> s
-      | Error () ->
-        (* We don't use the format constructor in dune. *)
-        assert false
-    in
-    iso (Fdecl.get t_fdecl) Pp.of_ast to_ast
-
-  module Id = struct
-    type t = int
-
-    let compare (a : t) (b : t) = compare a b
-
-    let hash (t : t) = Hashtbl.hash t
-
-    let create t : t = t
-
-    let sexp = Conv.int
-  end
-
-  module Related = struct
-    type t =
-      { message : unit Pp.t
-      ; loc : Loc.t
-      }
-
-    let message t = t.message
-
-    let loc t = t.loc
-
-    let sexp =
-      let open Conv in
-      let loc = field "loc" (required Loc.sexp) in
-      let message = field "message" (required sexp_pp) in
-      let to_ (loc, message) = { loc; message } in
-      let from { loc; message } = (loc, message) in
-      iso (record (both loc message)) to_ from
-  end
-
-  type t =
-    { targets : Target.t list
-    ; id : Id.t
-    ; message : unit Stdune.Pp.t
-    ; loc : Loc.t option
-    ; severity : severity option
-    ; promotion : Promotion.t list
-    ; directory : string option
-    ; related : Related.t list
-    }
-
-  let loc t = t.loc
-
-  let message t = t.message
-
-  let severity t = t.severity
-
-  let promotion t = t.promotion
-
-  let targets t = t.targets
-
-  let directory t = t.directory
-
-  let related t = t.related
-
-  let id t = t.id
-
-  let sexp_severity =
-    let open Conv in
-    enum [ ("error", Error); ("warning", Warning) ]
-
-  let sexp =
-    let open Conv in
-    let from
-        { targets; message; loc; severity; promotion; directory; id; related } =
-      (targets, message, loc, severity, promotion, directory, id, related)
-    in
-    let to_ (targets, message, loc, severity, promotion, directory, id, related)
-        =
-      { targets; message; loc; severity; promotion; directory; id; related }
-    in
-    let loc = field "loc" (optional Loc.sexp) in
-    let message = field "message" (required sexp_pp) in
-    let targets = field "targets" (required (list Target.sexp)) in
-    let severity = field "severity" (optional sexp_severity) in
-    let directory = field "directory" (optional string) in
-    let promotion = field "promotion" (required (list Promotion.sexp)) in
-    let id = field "id" (required Id.sexp) in
-    let related = field "related" (required (list Related.sexp)) in
-    iso
-      (record
-         (eight targets message loc severity promotion directory id related))
-      to_ from
-
-  module Event = struct
-    type nonrec t =
-      | Add of t
-      | Remove of t
-
-    let sexp =
-      let diagnostic = sexp in
-      let open Conv in
-      let add = constr "Add" diagnostic (fun a -> Add a) in
-      let remove = constr "Remove" diagnostic (fun a -> Remove a) in
-      sum [ econstr add; econstr remove ] (function
-        | Add t -> case t add
-        | Remove t -> case t remove)
-
-    let to_dyn t = Sexp.to_dyn (Conv.to_sexp sexp t)
-  end
-end
-
-module Progress = struct
-  type t =
-    | Waiting
-    | In_progress of
-        { complete : int
-        ; remaining : int
-        }
-    | Failed
-    | Interrupted
-    | Success
-
-  let sexp =
-    let open Conv in
-    let waiting = constr "waiting" unit (fun () -> Waiting) in
-    let failed = constr "failed" unit (fun () -> Failed) in
-    let in_progress =
-      let complete = field "complete" (required int) in
-      let remaining = field "remaining" (required int) in
-      constr "in_progress"
-        (record (both complete remaining))
-        (fun (complete, remaining) -> In_progress { complete; remaining })
-    in
-    let interrupted = constr "interrupted" unit (fun () -> Interrupted) in
-    let success = constr "success" unit (fun () -> Success) in
-    let constrs =
-      List.map ~f:econstr [ waiting; failed; interrupted; success ]
-      @ [ econstr in_progress ]
-    in
-    let serialize = function
-      | Waiting -> case () waiting
-      | In_progress { complete; remaining } ->
-        case (complete, remaining) in_progress
-      | Failed -> case () failed
-      | Interrupted -> case () interrupted
-      | Success -> case () success
-    in
-    sum constrs serialize
-end
-
-module Message = struct
-  type t =
-    { payload : Sexp.t option
-    ; message : string
-    }
-
-  let payload t = t.payload
-
-  let message t = t.message
-
-  let sexp =
-    let open Conv in
-    let from { payload; message } = (payload, message) in
-    let to_ (payload, message) = { payload; message } in
-    let payload = field "payload" (optional sexp) in
-    let message = field "message" (required string) in
-    iso (record (both payload message)) to_ from
-end
-
-module Subscribe = struct
-  type t =
-    | Diagnostics
-    | Build_progress
-
-  let sexp =
-    Conv.enum
-      [ ("Diagnostics", Diagnostics); ("Build_progress", Build_progress) ]
-end
+module Decl = Decl
 
 module Public = struct
   module Request = struct
-    type ('a, 'b) t = ('a, 'b) Decl.request
+    type ('a, 'b) t = ('a, 'b) Decl.Request.witness
 
-    let ping =
-      Decl.request ~method_:"ping"
-        [ (1, Decl.Generation.current_request Conv.unit Conv.unit) ]
+    let ping = Procedures.Public.ping.decl
 
-    let diagnostics =
-      Decl.request ~method_:"diagnostics"
-        [ ( 1
-          , Decl.Generation.current_request Conv.unit
-              (Conv.list Diagnostic.sexp) )
-        ]
+    let diagnostics = Procedures.Public.diagnostics.decl
   end
 
   module Notification = struct
-    type 'a t = 'a Decl.notification
+    type 'a t = 'a Decl.Notification.witness
 
-    let shutdown = Decl.notification ~method_:"shutdown" Conv.unit
+    let shutdown = Procedures.Public.shutdown.decl
 
-    let subscribe = Decl.notification ~method_:"subscribe" Subscribe.sexp
+    let subscribe = Procedures.Public.subscribe.decl
 
-    let unsubscribe = Decl.notification ~method_:"unsubscribe" Subscribe.sexp
+    let unsubscribe = Procedures.Public.unsubscribe.decl
   end
 end
 
-let default_version_menu =
-  Stdune.String.Map.of_list_exn
-    [ ("ping", 1)
-    ; ("diagnostics", 1)
-    ; ("shutdown", 1)
-    ; ("subscribe", 1)
-    ; ("unsubscribe", 1)
-    ]
-
 module Server_notifications = struct
-  let abort = Decl.notification ~method_:"notify/abort" Message.sexp
+  let abort = Procedures.Server_side.abort.decl
 
-  let diagnostic =
-    let open Conv in
-    Decl.notification ~method_:"notify/diagnostic" (list Diagnostic.Event.sexp)
+  let diagnostic = Procedures.Server_side.diagnostic.decl
 
-  let log = Decl.notification ~method_:"notify/log" Message.sexp
+  let log = Procedures.Server_side.log.decl
 
-  let progress = Decl.notification ~method_:"notify/progress" Progress.sexp
+  let progress = Procedures.Server_side.progress.decl
 end
 
 module Client = struct
@@ -545,11 +157,15 @@ module Client = struct
     val request :
          ?id:Id.t
       -> t
-      -> ('a, 'b) Decl.request
+      -> ('a, 'b) Public.Request.t
       -> 'a
       -> ('b, Response.Error.t) result fiber
 
-    val notification : t -> 'a Decl.notification -> 'a -> unit fiber
+    val notification :
+         t
+      -> 'a Public.Notification.t
+      -> 'a
+      -> (unit, Response.Error.t) result fiber
 
     val disconnected : t -> unit fiber
 
@@ -563,11 +179,15 @@ module Client = struct
       val request :
            ?id:Id.t
         -> t
-        -> ('a, 'b) Decl.request
+        -> ('a, 'b) Public.Request.t
         -> 'a
         -> ('b, Response.Error.t) result fiber
 
-      val notification : t -> 'a Decl.notification -> 'a -> unit
+      val notification :
+           t
+        -> 'a Public.Notification.t
+        -> 'a
+        -> (unit, Response.Error.t) result fiber
 
       val submit : t -> unit fiber
     end
@@ -631,6 +251,7 @@ module Client = struct
   end) =
   struct
     open Fiber.O
+    module V = Versioned.Make (Fiber)
 
     module Chan = struct
       type t =
@@ -690,22 +311,16 @@ module Client = struct
     type t =
       { chan : Chan.t
       ; requests : (Id.t, Response.t Fiber.Ivar.t) Table.t
-      ; on_notification : Call.t -> unit Fiber.t
       ; initialize : Initialize.Request.t
-      ; (* This [Ivar] is acting as a [Fiber]-safe [Fdecl] analogue.
-
-           The core issue is that the client needs to be aware of the version
-           menu to correctly decode versioned responses from the server.
-           However, the client needs to exist to send the initial session
-           initialization request to kick off the version negotiation in the
-           first place.
-
-           To break this cycle, we first construct the client with an empty
-           [Ivar], which must be filled before any user code is run (guaranteed
-           by the monadic Fiber interface). *)
-        method_menu : int Stdune.String.Map.t Fiber.Ivar.t
       ; mutable next_id : int
       ; mutable running : bool
+      ; mutable handler_initialized : bool
+      ; (* We need this field to be an Ivar to ensure that any typed
+           communications are correctly versioned. The contract of the [Fiber]
+           interface ensures that this will be filled before any user code is
+           run. *)
+        handler : unit V.Handler.t Fiber.t
+      ; on_preemptive_abort : Message.t -> unit Fiber.t
       }
 
     (* When the client is terminated via this function, the session is
@@ -746,7 +361,7 @@ module Client = struct
         (fun () -> terminate t)
         (fun () -> Code_error.raise message info)
 
-    let send t (packet : Packet.Query.t list option) =
+    let send conn (packet : Packet.Query.t list option) =
       let sexps =
         Option.map packet
           ~f:
@@ -759,21 +374,22 @@ module Client = struct
                 in
                 Conv.to_sexp conv (id, request)))
       in
-      Chan.write t.chan sexps
+      Chan.write conn.chan sexps
 
-    let create ~chan ~initialize ~on_notification =
+    let create ~chan ~initialize ~handler ~on_preemptive_abort =
       let requests = Table.create (module Id) 16 in
       { chan
       ; requests
-      ; on_notification
       ; next_id = 0
       ; initialize
       ; running = true
-      ; method_menu = Fiber.Ivar.create ()
+      ; handler_initialized = false
+      ; handler
+      ; on_preemptive_abort
       }
 
-    let prepare_request t (id, req) =
-      match t.running with
+    let prepare_request conn (id, req) =
+      match conn.running with
       | false ->
         let err =
           let payload =
@@ -788,47 +404,26 @@ module Client = struct
         Error err
       | true ->
         let ivar = Fiber.Ivar.create () in
-        (match Table.add t.requests id ivar with
+        (match Table.add conn.requests id ivar with
         | Ok () -> ()
         | Error _ -> Code_error.raise "duplicate id" [ ("id", Id.to_dyn id) ]);
         Ok ivar
 
-    let request_untyped t (id, req) =
-      match prepare_request t (id, req) with
+    let request_untyped conn (id, req) =
+      match prepare_request conn (id, req) with
       | Error e -> Fiber.return (Error e)
       | Ok ivar ->
-        let* () = send t (Some [ Request (id, req) ]) in
+        let* () = send conn (Some [ Request (id, req) ]) in
         Fiber.Ivar.read ivar
 
-    let lookup_method_versioned t (decl : _ Decl.request) =
-      let+ method_menu = Fiber.Ivar.read t.method_menu in
-      let generation = Stdune.String.Map.find_exn method_menu decl.method_ in
-      Decl.Generations.lookup decl.generations generation
-
-    let parse_response t (decl : ('req, 'resp) Decl.request) = function
+    let parse_response t decode = function
       | Error e -> Fiber.return (Error e)
       | Ok res -> (
-        let* generation = lookup_method_versioned t decl in
-        match generation with
-        | None ->
-          (* cwong: I'm not actually convinced this case can happen, as it would
-             mean that we managed to send a request via the menu but we don't
-             have the right version to parse the response? *)
-          let error =
-            Response.Error.create ~payload:res
-              ~message:
-                "BUG: got response to request with version that doesn't exist"
-              ~kind:Response.Error.Version_error ()
-          in
-          Fiber.return (Error error)
-        | Some (T gen : ('req, 'resp) Decl.Generation.t) -> (
-          match Conv.of_sexp gen.resp ~version:t.initialize.version res with
-          | Ok s ->
-            let resp = gen.upgrade_resp s in
-            Fiber.return (Ok resp)
-          | Error e ->
-            terminate_with_error t "response not matched by decl"
-              [ ("e", Conv.dyn_of_error e) ]))
+        match decode res with
+        | Ok s -> Fiber.return (Ok s)
+        | Error e ->
+          terminate_with_error t "response not matched by decl"
+            [ ("e", Response.Error.to_dyn e) ])
 
     let gen_id t = function
       | Some id -> id
@@ -837,46 +432,41 @@ module Client = struct
         t.next_id <- t.next_id + 1;
         Id.make id
 
-    let request ?id t (decl : _ Decl.request) req =
+    let request ?id t (decl : _ Decl.Request.witness) req =
       let id = gen_id t id in
-      let* generation = lookup_method_versioned t decl in
-      match generation with
-      | None ->
-        let error =
-          Response.Error.create
-            ~message:
-              ("The build server and client have no compatible versions for \
-                method " ^ decl.method_)
-            ~kind:Response.Error.Version_error ()
-        in
-        Fiber.return (Error error)
-      | Some (T gen) ->
-        let params = Conv.to_sexp gen.req (gen.downgrade_req req) in
-        let req = { Call.params; method_ = decl.method_ } in
+      let* handler = t.handler in
+      match V.Handler.prepare_request handler decl req with
+      | Error e -> Fiber.return (Error e)
+      | Ok (req, decode) ->
         let* res = request_untyped t (id, req) in
-        parse_response t decl res
+        parse_response t decode res
 
-    let make_notification (type a) t (decl : a Decl.notification) (n : a) k =
-      let call =
-        { Call.params = Conv.to_sexp decl.req n; method_ = decl.method_ }
-      in
-      match t.running with
-      | true -> k call
-      | false ->
-        let err =
-          let payload =
-            Sexp.record
-              [ ("method", Atom call.method_); ("params", call.params) ]
+    let prepare_notification (type a) t (decl : a Decl.Notification.witness)
+        (n : a) ~on_success ~on_failure =
+      let* handler = t.handler in
+      match V.Handler.prepare_notification handler decl n with
+      | Error e -> on_failure e
+      | Ok call -> (
+        match t.running with
+        | true -> on_success call
+        | false ->
+          let err =
+            let payload =
+              Sexp.record
+                [ ("method", Atom call.method_); ("params", call.params) ]
+            in
+            Response.Error.create ~payload
+              ~message:"notification sent while connection is dead"
+              ~kind:Code_error ()
           in
-          Response.Error.create ~payload
-            ~message:"notification sent while connection is dead"
-            ~kind:Code_error ()
-        in
-        raise (Response.Error.E err)
+          raise (Response.Error.E err))
 
-    let notification (type a) t (decl : a Decl.notification) (n : a) =
-      make_notification t decl n (fun call ->
-          send t (Some [ Notification call ]))
+    let notification (type a) t (decl : a Decl.Notification.witness) (n : a) =
+      prepare_notification t decl n
+        ~on_success:(fun call ->
+          let+ () = send t (Some [ Notification call ]) in
+          Ok ())
+        ~on_failure:(fun e -> Fiber.return (Error e))
 
     let disconnected t = Fiber.Ivar.read t.chan.disconnected
 
@@ -889,33 +479,26 @@ module Client = struct
       let create client = { client; pending = [] }
 
       let notification t n a =
-        make_notification t.client n a (fun call ->
-            t.pending <- Notification call :: t.pending)
+        prepare_notification t.client n a
+          ~on_success:(fun call ->
+            t.pending <- Notification call :: t.pending;
+            Fiber.return (Ok ()))
+          ~on_failure:(fun e -> Fiber.return (Error e))
 
-      let request (type a b) ?id t (decl : (a, b) Decl.request) (req : a) :
-          (b, _) result Fiber.t =
+      let request (type a b) ?id t (decl : (a, b) Decl.Request.witness)
+          (req : a) : (b, _) result Fiber.t =
         let id = gen_id t.client id in
-        let* generation = lookup_method_versioned t.client decl in
-        match generation with
-        | None ->
-          let error =
-            Response.Error.create
-              ~message:
-                ("The build server and client have no compatible versions for \
-                  method " ^ decl.method_)
-              ~kind:Response.Error.Version_error ()
-          in
-          Fiber.return (Error error)
-        | Some (T gen) -> (
-          let params = Conv.to_sexp gen.req (gen.downgrade_req req) in
-          let req = { Call.params; method_ = decl.method_ } in
-          let ivar = prepare_request t.client (id, req) in
+        let* handler = t.client.handler in
+        match V.Handler.prepare_request handler decl req with
+        | Error e -> Fiber.return (Error e)
+        | Ok (call, decode) -> (
+          let ivar = prepare_request t.client (id, call) in
           match ivar with
           | Error e -> Fiber.return (Error e)
           | Ok ivar ->
-            t.pending <- Packet.Query.Request (id, req) :: t.pending;
+            t.pending <- Packet.Query.Request (id, call) :: t.pending;
             let* res = Fiber.Ivar.read ivar in
-            parse_response t.client decl res)
+            parse_response t.client decode res)
 
       let submit t =
         let pending = List.rev t.pending in
@@ -926,7 +509,29 @@ module Client = struct
     let read_packets t packets =
       let* () =
         Fiber.parallel_iter packets ~f:(function
-          | Packet.Reply.Notification n -> t.on_notification n
+          | Packet.Reply.Notification n -> (
+            if
+              String.equal n.method_ Procedures.Server_side.abort.decl.method_
+              && not t.handler_initialized
+            then
+              match
+                Conv.of_sexp ~version:t.initialize.version Message.sexp n.params
+              with
+              | Ok msg -> t.on_preemptive_abort msg
+              | Error _ ->
+                Code_error.raise
+                  "fatal: server aborted connection, but couldn't parse reason"
+                  [ ("reason", Sexp.to_dyn n.params) ]
+            else
+              let* handler = t.handler in
+              let* result = V.Handler.handle_notification handler () n in
+              match result with
+              | Error e ->
+                terminate_with_error t "received bad notification from server"
+                  [ ("error", Response.Error.to_dyn e)
+                  ; ("notification", Call.to_dyn n)
+                  ]
+              | Ok () -> Fiber.return ())
           | Response (id, response) -> (
             match Table.find t.requests id with
             | Some ivar ->
@@ -946,29 +551,6 @@ module Client = struct
         ; diagnostic : Diagnostic.Event.t list -> unit Fiber.t
         ; build_progress : Progress.t -> unit Fiber.t
         }
-
-      let on_notification { log; abort; diagnostic; build_progress } ~version =
-        let table = Table.create (module String) 16 in
-        let to_callback (decl : _ Decl.notification) f payload =
-          match Conv.of_sexp decl.req payload ~version with
-          | Ok s -> f s
-          | Error error ->
-            Code_error.raise "invalid notification"
-              [ ("error", Conv.dyn_of_error error) ]
-        in
-        let add (decl : _ Decl.notification) f =
-          Table.add_exn table decl.method_ (to_callback decl f)
-        in
-        add Server_notifications.diagnostic diagnostic;
-        add Server_notifications.log log;
-        add Server_notifications.abort abort;
-        add Server_notifications.progress build_progress;
-        fun { Call.method_; params } ->
-          match Table.find table method_ with
-          | None ->
-            Code_error.raise "invalid method from server"
-              [ ("method_", Dyn.Encoder.string method_) ]
-          | Some v -> v params
 
       let log { Message.payload; message } =
         (match payload with
@@ -1011,8 +593,28 @@ module Client = struct
         t
     end
 
-    let connect_raw chan (initialize : Initialize.Request.t) ~on_notification ~f
-        =
+    let setup_versioning ~(handler : Handler.t) =
+      let open V in
+      let t : _ Builder.t = Builder.create () in
+      Builder.declare_request t Procedures.Public.ping;
+      Builder.declare_request t Procedures.Public.diagnostics;
+      Builder.declare_notification t Procedures.Public.shutdown;
+      Builder.declare_notification t Procedures.Public.subscribe;
+      Builder.declare_notification t Procedures.Public.unsubscribe;
+      Builder.declare_request t Procedures.Internal.status;
+      Builder.declare_request t Procedures.Internal.build;
+      Builder.implement_notification t Procedures.Server_side.abort (fun () ->
+          handler.abort);
+      Builder.implement_notification t Procedures.Server_side.log (fun () ->
+          handler.log);
+      Builder.implement_notification t Procedures.Server_side.progress
+        (fun () -> handler.build_progress);
+      Builder.implement_notification t Procedures.Server_side.diagnostic
+        (fun () -> handler.diagnostic);
+      t
+
+    let connect_raw chan (initialize : Initialize.Request.t)
+        ~(handler : Handler.t) ~f =
       let packets () =
         let+ read = Chan.read chan in
         Option.map read ~f:(fun sexp ->
@@ -1022,7 +624,11 @@ module Client = struct
             | Error e -> raise (Invalid_session e)
             | Ok message -> message)
       in
-      let client = create ~initialize ~chan ~on_notification in
+      let builder = setup_versioning ~handler in
+      let on_preemptive_abort = handler.abort in
+      let handler_var = Fiber.Ivar.create () in
+      let handler = Fiber.Ivar.read handler_var in
+      let client = create ~initialize ~chan ~handler ~on_preemptive_abort in
       let run () =
         let* init =
           let id = Id.make (List [ Atom "initialize" ]) in
@@ -1038,15 +644,13 @@ module Client = struct
                 csexp
             with
             | Error e -> raise (Invalid_session e)
-            | Ok Compatibility -> Fiber.return default_version_menu
+            | Ok Compatibility -> Fiber.return Versioned.Menu.default
             | Ok (Supports_versioning ()) -> (
               let id = Id.make (List [ Atom "version menu" ]) in
               let supported_versions =
                 let request =
                   Version_negotiation.Request.create
-                    (Stdune.String.Map.to_list_map
-                       ~f:(fun key set -> (key, Stdune.Int.Set.to_list set))
-                       (Decl.known_requests ()))
+                    (V.Builder.registered_procedures builder)
                 in
                 Version_negotiation.Request.to_call request
               in
@@ -1059,10 +663,23 @@ module Client = struct
                     Version_negotiation.Response.sexp sexp
                 with
                 | Error e -> raise (Invalid_session e)
-                | Ok (Selected methods) -> Stdune.String.Map.of_list_exn methods
-                ))
+                | Ok (Selected methods) -> (
+                  match Versioned.Menu.of_list methods with
+                  | Ok m -> m
+                  | Error (method_, a, b) ->
+                    Code_error.raise
+                      "server responded with invalid version menu"
+                      [ ( "duplicated"
+                        , Dyn.Tuple [ Dyn.String method_; Dyn.Int a; Dyn.Int b ]
+                        )
+                      ])))
           in
-          let* () = Fiber.Ivar.fill client.method_menu menu in
+          let handler =
+            V.Builder.to_handler builder
+              ~session_version:(fun () -> client.initialize.version)
+              ~menu
+          in
+          let* () = Fiber.Ivar.fill handler_var handler in
           let+ res =
             Fiber.finalize
               (fun () -> f client)
@@ -1074,10 +691,7 @@ module Client = struct
 
     let connect ?(handler = Handler.default) chan
         (initialize : Initialize.Request.t) ~f =
-      let on_notification =
-        Handler.on_notification handler ~version:initialize.version
-      in
-      connect_raw chan initialize ~f ~on_notification
+      connect_raw chan initialize ~handler ~f
 
     let connect ?handler chan init ~f =
       let chan = Chan.of_chan chan in

@@ -13,6 +13,7 @@ module V1 = struct
   module Sub = Sub
   module Message = Message
   module Where = Where
+  module Registry = Registry
   include Public
 
   module Client = struct

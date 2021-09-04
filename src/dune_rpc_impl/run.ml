@@ -1,5 +1,6 @@
 open Stdune
 module Scheduler = Dune_engine.Scheduler
+module Registry = Dune_rpc_private.Registry
 
 module Config = struct
   type t =
@@ -8,6 +9,7 @@ module Config = struct
         { handler : Dune_rpc_server.t
         ; pool : Fiber.Pool.t
         ; backlog : int
+        ; root : string
         }
 end
 
@@ -54,9 +56,15 @@ end = struct
       let socket =
         let dir =
           Path.of_string
-            (match Xdg.runtime_dir with
-            | Some p -> p
-            | None -> Filename.get_temp_dir_name ())
+            (match Xdg.runtime_dir (Lazy.force Dune_util.xdg) with
+            | None -> Filename.get_temp_dir_name ()
+            | Some p ->
+              let p = Filename.concat p "dune/s" in
+              (match Fpath.mkdir_p p with
+              | Already_exists
+              | Created ->
+                ());
+              p)
         in
         Temp.temp_file ~dir ~prefix:"" ~suffix:"dune"
       in
@@ -85,6 +93,7 @@ type t =
       ; where : Dune_rpc_private.Where.t
       ; stats : Dune_stats.t option
       ; symlink_socket : Symlink_socket.t option
+      ; root : string
       }
 
 let t_var : t Fiber.Var.t = Fiber.Var.create ()
@@ -94,7 +103,7 @@ module Server = Dune_rpc_server.Make (Csexp_rpc.Session)
 let of_config config stats =
   match config with
   | Config.Client -> Client
-  | Config.Server { handler; backlog; pool } ->
+  | Config.Server { handler; backlog; pool; root } ->
     let where = Where.default () in
     let real_where, symlink_socket =
       match where with
@@ -106,7 +115,7 @@ let of_config config stats =
         , Some symlink_socket )
     in
     let server = Csexp_rpc.Server.create real_where ~backlog in
-    Server { server; handler; where; symlink_socket; stats; pool }
+    Server { server; handler; where; symlink_socket; stats; pool; root }
 
 let run config stats =
   let t = of_config config stats in
@@ -114,17 +123,50 @@ let run config stats =
       match t with
       | Client -> Fiber.return ()
       | Server t ->
+        let cleanup_registry = ref None in
+        let run_cleanup_registry () =
+          match !cleanup_registry with
+          | None -> ()
+          | Some path ->
+            Fpath.unlink_no_err path;
+            cleanup_registry := None
+        in
+        let with_print_errors f () =
+          Fiber.with_error_handler f ~on_error:(fun exn ->
+              Format.eprintf "%a@." Exn_with_backtrace.pp_uncaught exn;
+              Exn_with_backtrace.reraise exn)
+        in
         Fiber.finalize
-          (fun () ->
-            let open Fiber.O in
-            Fiber.fork_and_join_unit
-              (fun () ->
-                let* sessions = Csexp_rpc.Server.serve t.server in
-                Option.iter t.symlink_socket ~f:Symlink_socket.link;
-                let* () = Server.serve sessions t.stats t.handler in
-                Fiber.Pool.stop t.pool)
-              (fun () -> Fiber.Pool.run t.pool))
+          (with_print_errors (fun () ->
+               let open Fiber.O in
+               Fiber.fork_and_join_unit
+                 (fun () ->
+                   let* sessions = Csexp_rpc.Server.serve t.server in
+                   Option.iter t.symlink_socket ~f:Symlink_socket.link;
+                   let () =
+                     let (`Caller_should_write { Registry.File.path; contents })
+                         =
+                       let registry_config =
+                         Registry.Config.create (Lazy.force Dune_util.xdg)
+                       in
+                       let dune =
+                         let pid = Unix.getpid () in
+                         Registry.Dune.create ~where:t.where ~root:t.root ~pid
+                       in
+                       Registry.Config.register registry_config dune
+                     in
+                     let (_ : Fpath.mkdir_p_result) =
+                       Fpath.mkdir_p (Filename.dirname path)
+                     in
+                     Io.String_path.write_file path contents;
+                     cleanup_registry := Some path;
+                     at_exit run_cleanup_registry
+                   in
+                   let* () = Server.serve sessions t.stats t.handler in
+                   Fiber.Pool.stop t.pool)
+                 (fun () -> Fiber.Pool.run t.pool)))
           ~finally:(fun () ->
+            run_cleanup_registry ();
             Option.iter t.symlink_socket ~f:Symlink_socket.cleanup;
             Fiber.return ()))
 

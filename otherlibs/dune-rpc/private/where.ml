@@ -7,6 +7,8 @@ type t =
 
 let default_port = 8587
 
+let compare = Poly.compare
+
 let of_dbus { Dbus_address.name; args } =
   match name with
   | "unix" ->
@@ -41,7 +43,24 @@ let to_dbus : t -> Dbus_address.t = function
     let port = string_of_int port in
     { name = "tcp"; args = [ ("host", host); ("port", port) ] }
 
+let to_dyn : t -> Dyn.t =
+  let open Dyn.Encoder in
+  function
+  | `Unix s -> constr "Unix" [ string s ]
+  | `Ip (`Host host, `Port port) ->
+    constr "Ip" [ constr "Host" [ string host ]; constr "Port" [ int port ] ]
+
 let to_string t = Dbus_address.to_string (to_dbus t)
+
+let sexp : t Conv.value =
+  let open Conv in
+  (* TODO of_string should raise the right error *)
+  iso Conv.string
+    (fun s ->
+      match of_string s with
+      | Error e -> failwith e
+      | Ok s -> s)
+    to_string
 
 let add_to_env t env =
   let value = to_string t in

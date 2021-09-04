@@ -388,4 +388,61 @@ module V1 : sig
         string -> ([ `Unix_socket | `Normal_file | `Other ], exn) result Fiber.t
     end) : S with type 'a fiber := 'a Fiber.t
   end
+
+  module Registry : sig
+    module File : sig
+      type t =
+        { path : string
+        ; contents : string
+        }
+    end
+
+    module Dune : sig
+      type t
+
+      val where : t -> Where.t
+
+      val root : t -> string
+    end
+
+    module Config : sig
+      type t
+
+      val create : Xdg.t -> t
+
+      val watch_dir : t -> string
+    end
+
+    type t
+
+    val current : t -> Dune.t list
+
+    type refresh =
+      { added : Dune.t list
+      ; removed : Dune.t list
+      ; errored : (string * exn) list
+      }
+
+    module Poll (Fiber : sig
+      type 'a t
+
+      val return : 'a -> 'a t
+
+      val parallel_map : 'a list -> f:('a -> 'b t) -> 'b list t
+
+      module O : sig
+        val ( let* ) : 'a t -> ('a -> 'b t) -> 'b t
+
+        val ( let+ ) : 'a t -> ('a -> 'b) -> 'b t
+      end
+    end) (IO : sig
+      val scandir : string -> (string list, exn) result Fiber.t
+
+      val stat : string -> ([ `Mtime of float ], exn) result Fiber.t
+
+      val read_file : string -> (string, exn) result Fiber.t
+    end) : sig
+      val poll : t -> (refresh, exn) result Fiber.t
+    end
+  end
 end

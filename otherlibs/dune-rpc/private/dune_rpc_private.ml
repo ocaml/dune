@@ -1,7 +1,8 @@
 open Import
 module Conv = Conv
-include Types
 module Where = Where
+module Registry = Registry
+include Types
 
 module Loc = struct
   include Loc

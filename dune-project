@@ -157,6 +157,11 @@ understood by dune language."))
  (description "Dynamic type"))
 
 (package
+ (name xdg)
+ (synopsis "XDG Base Directory Specification")
+ (description "https://specifications.freedesktop.org/basedir-spec/basedir-spec-latest.html"))
+
+(package
  (name stdune-unstable)
  (synopsis "Dune's unstable standard library")
  (depends

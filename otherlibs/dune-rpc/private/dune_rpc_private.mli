@@ -2,6 +2,8 @@ module Conv : module type of Conv
 
 module Where : module type of Where
 
+module Registry : module type of Registry
+
 module Id : sig
   type t
 

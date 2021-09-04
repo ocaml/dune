@@ -27,6 +27,8 @@ val initial : t
 
 val to_unix : t -> string list
 
+val of_unix : string array -> t
+
 val get : t -> Var.t -> string option
 
 val extend : t -> vars:string Map.t -> t

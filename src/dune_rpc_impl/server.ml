@@ -322,12 +322,12 @@ let build_event t (event : Build_system.Handler.event) =
   task t (fun () ->
       Long_poll.Instance.update (Long_poll.progress t.long_poll) progress)
 
-let create () =
+let create ~root =
   let t = Fdecl.create Dyn.Encoder.opaque in
   let pending_build_jobs = Job_queue.create () in
   let handler = Dune_rpc_server.make (handler t) in
   let pool = Fiber.Pool.create () in
-  let config = Run.Config.Server { handler; backlog = 10; pool } in
+  let config = Run.Config.Server { handler; backlog = 10; pool; root } in
   let build_handler =
     Build_system.Handler.create ~error:(error t)
       ~build_progress:(build_progress t) ~build_event:(build_event t)

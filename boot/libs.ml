@@ -15,6 +15,7 @@ let local_libraries =
   ; ("src/fiber", Some "Fiber", false, None)
   ; ("src/memo", Some "Memo", false, None)
   ; ("otherlibs/xdg", Some "Xdg", false, None)
+  ; ("src/dune_util", Some "Dune_util", false, None)
   ; ("src/dune_cache_storage", Some "Dune_cache_storage", false, None)
   ; ("src/dune_cache", Some "Dune_cache", false, None)
   ; ("vendor/re/src", Some "Dune_re", false, None)
@@ -25,7 +26,6 @@ let local_libraries =
   ; ("src/chrome_trace", Some "Chrome_trace", false, None)
   ; ("vendor/spawn/src", Some "Spawn", false, None)
   ; ("src/dune_stats", Some "Dune_stats", false, None)
-  ; ("src/dune_util", Some "Dune_util", false, None)
   ; ("src/meta_parser", Some "Dune_meta_parser", false, None)
   ; ("src/section", Some "Dune_section", false, None)
   ; ("vendor/build_path_prefix_map/src", Some "Build_path_prefix_map", false,

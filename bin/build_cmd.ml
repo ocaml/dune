@@ -1,28 +1,28 @@
 open Stdune
 open Import
 
-let run_build_system ~common ~(request : unit Action_builder.t) () =
-  let build_started = Unix.gettimeofday () in
-  Fiber.finalize
-    (fun () ->
-      Build_system.run (fun () ->
-          let open Memo.Build.O in
-          let+ (), _facts = Action_builder.run request Eager in
-          ()))
-    ~finally:(fun () ->
-      (if Common.print_metrics common then
-        let gc_stat = Gc.quick_stat () in
-        Console.print_user_message
-          (User_message.make
-             [ Pp.textf "%s" (Memo.Perf_counters.report_for_current_run ())
-             ; Pp.textf "(%.2fs total, %.2fs digests, %.1fM heap words)"
-                 (Unix.gettimeofday () -. build_started)
-                 (Metrics.Timer.read_seconds Digest.generic_timer)
-                 (float_of_int gc_stat.heap_words /. 1_000_000.)
-             ]));
-      Fiber.return ())
-
 let run_build_system ~common ~request =
+  let run ~(request : unit Action_builder.t) =
+    let build_started = Unix.gettimeofday () in
+    Fiber.finalize
+      (fun () ->
+        Build_system.run (fun () ->
+            let open Memo.Build.O in
+            let+ (), _facts = Action_builder.run request Eager in
+            ()))
+      ~finally:(fun () ->
+        (if Common.print_metrics common then
+          let gc_stat = Gc.quick_stat () in
+          Console.print_user_message
+            (User_message.make
+               [ Pp.textf "%s" (Memo.Perf_counters.report_for_current_run ())
+               ; Pp.textf "(%.2fs total, %.2fs digests, %.1fM heap words)"
+                   (Unix.gettimeofday () -. build_started)
+                   (Metrics.Timer.read_seconds Digest.generic_timer)
+                   (float_of_int gc_stat.heap_words /. 1_000_000.)
+               ]));
+        Fiber.return ())
+  in
   let open Fiber.O in
   Fiber.finalize
     (fun () ->
@@ -32,7 +32,7 @@ let run_build_system ~common ~request =
         Action_builder.bind (Action_builder.memo_build setup) ~f:(fun setup ->
             request setup)
       in
-      run_build_system ~common ~request ())
+      run ~request)
     ~finally:(fun () ->
       Hooks.End_of_build.run ();
       Fiber.return ())

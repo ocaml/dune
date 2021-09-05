@@ -483,7 +483,7 @@ let default_name ~dir ~(packages : Package.t Package.Name.Map.t) =
       User_error.raise ~loc:pkg.loc
         [ Pp.textf "%S is not a valid Dune project name." name ])
 
-let infer ~dir ?(info=Package.Info.empty) packages =
+let infer ~dir ?(info = Package.Info.empty) packages =
   let lang = get_dune_lang () in
   let name = default_name ~dir ~packages in
   let project_file = Path.Source.relative dir filename in
@@ -568,7 +568,8 @@ module Toggle = struct
     field_o name decode
 end
 
-let anonymous ~dir ?info ?(packages=Package.Name.Map.empty) () = infer ~dir ?info packages
+let anonymous ~dir ?info ?(packages = Package.Name.Map.empty) () =
+  infer ~dir ?info packages
 
 let encode : t -> Dune_lang.t list =
  fun { name
@@ -576,7 +577,6 @@ let encode : t -> Dune_lang.t list =
      ; dune_version
      ; info
      ; packages
-     ; extension_args
      ; implicit_transitive_deps
      ; wrapped_executables
      ; executables_implicit_empty_intf
@@ -589,20 +589,19 @@ let encode : t -> Dune_lang.t list =
      ; strict_package_deps
      ; cram
      ; subst_config
-     (* Metadata that is derived from, but not represented in dune-project files *)
-     ; file_key = _
+     (* TODO: These three fields all get parsed out from the `using` stanza,
+        bu twe don't need them for project initialization. They should be
+        reconstructed if you ever want full encoding tho. *)
+     ; extension_args = _
      ; parsing_context = _
      ; stanza_parser = _
+     (* Metadata about the dune-project file, but not in it *)
+     ; file_key = _
      ; project_file = _
      ; root = _
      } ->
   let open Dune_lang.Encoder in
   let lang = Lang.get_exn "dune" in
-  let extension_args : Dune_lang.t list =
-    let _ = extension_args in
-    (* TODO *)
-    []
-  in
   let flags =
     let flag name value default =
       if Bool.equal value (default ~lang) then
@@ -641,8 +640,8 @@ let encode : t -> Dune_lang.t list =
       ]
   in
   let lang_stanza =
-    constr "lang" (list sexp)
-      [ string "dune"; Dune_lang.Syntax.Version.encode dune_version ]
+    list sexp
+      [ string "lang"; string "dune"; Dune_lang.Syntax.Version.encode dune_version ]
   in
   let dialects =
     Dialect.DB.fold ~f:(fun d ls -> Dialect.encode d :: ls) ~init:[] dialects
@@ -651,13 +650,18 @@ let encode : t -> Dune_lang.t list =
     Option.bind format_config ~f:Format_config.encode_opt |> Option.to_list
   in
   let packages =
-    Package.Name.Map.values packages
-    |> List.map ~f:(fun p -> Package.encode p |> sexp)
+    Package.Name.Map.to_list_map packages
+    ~f:(fun (name, package) -> (Package.encode name package))
   in
-  let subst_config = Option.map subst_config ~f:(fun x -> (constr "subst" Subst_config.encode x)) |> Option.to_list in
-  ([ lang_stanza; Name.encode name; option string version ]
-   @ Package.Info.encode_fields info
-   @ flags @ extension_args @ formatting @ dialects @ packages @ subst_config)
+  let subst_config =
+    Option.map subst_config ~f:(fun x -> constr "subst" Subst_config.encode x)
+    |> Option.to_list
+  in
+  let name = constr "name" Name.encode name in
+  let version = Option.map ~f:(constr "version" string) version |> Option.to_list in
+  [ lang_stanza; name ] @ version
+  @ Package.Info.encode_fields info
+  @ flags @ formatting @ dialects @ packages @ subst_config
 
 let parse ~dir ~lang ~opam_packages ~file ~dir_status =
   String_with_vars.set_decoding_env
@@ -952,6 +956,7 @@ let set_parsing_context t parser =
 let wrapped_executables t = t.wrapped_executables
 
 let executables_implicit_empty_intf t = t.executables_implicit_empty_intf
+
 let accept_alternative_dune_file_name t = t.accept_alternative_dune_file_name
 
 let () =

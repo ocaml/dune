@@ -302,6 +302,8 @@ Can init and build a new executable project
   dune
   test_exec_proj.ml
 
+  $ cat dune-project
+
   $ dune exec --root test_exec_proj ./bin/main.exe
   Entering directory 'test_exec_proj'
   Hello, World!

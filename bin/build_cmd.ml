@@ -22,14 +22,12 @@ let run_build_system ~common ~(request : unit Action_builder.t) () =
              ]));
       Fiber.return ())
 
-let setup () = Import.Main.setup ()
-
 let run_build_system ~common ~request =
   let open Fiber.O in
   Fiber.finalize
     (fun () ->
       Cached_digest.invalidate_cached_timestamps ();
-      let* setup = setup () in
+      let* setup = Import.Main.setup () in
       let request =
         Action_builder.bind (Action_builder.memo_build setup) ~f:(fun setup ->
             request setup)

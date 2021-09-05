@@ -556,7 +556,7 @@ let name t = t.id.name
 
 let dir t = t.id.dir
 
-let encode
+let encode name
     { id = _
     ; loc = _
     ; has_opam_file = _
@@ -575,7 +575,8 @@ let encode
   let fields =
     Info.encode_fields info @
     record_fields
-      [ field_o "synopsis" string synopsis
+      [ field "name" string name
+      ; field_o "synopsis" string synopsis
       ; field_o "description" string description
       ; field_l "depends" Dependency.encode depends
       ; field_l "conflicts" Dependency.encode conflicts

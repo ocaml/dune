@@ -469,6 +469,12 @@ module Public = struct
         iso (record (both uri contents)) to_ from
       in
       Decl.request ~method_:"format-dune-file" conv Conv.string
+
+    let promote =
+      let input =
+        Conv.iso Conv.string (fun x -> `Path x) (fun (`Path x) -> x)
+      in
+      Decl.request ~method_:"promote" input Conv.unit
   end
 
   module Notification = struct

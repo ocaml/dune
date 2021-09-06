@@ -1,6 +1,9 @@
 Unreleased
 ----------
 
+- Generate a `dune-project` when initializing projects with `dune init proj ...`
+  (#4881, closes #4367, @shonfeder)
+
 - Allow spaces in the directory argument of the `subdir` stanza (#4943, fixes
   #4907, @rgrinberg)
 

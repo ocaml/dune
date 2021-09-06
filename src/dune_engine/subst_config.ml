@@ -7,7 +7,7 @@ type t =
 
 let to_string = function
   | Disabled -> "disabled"
-  | Enabled ->  "enabled"
+  | Enabled -> "enabled"
 
 let to_dyn conf = to_string conf |> Dyn.Encoder.string
 

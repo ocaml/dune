@@ -136,11 +136,16 @@ val load :
 
 (** Create an anonymous project at the given directory
 
-   Optional arguments:
+    Optional arguments:
 
-   - [info] defaults to the empty package info
-   - [package] defaults to the empty map of packages *)
-val anonymous : dir:Path.Source.t -> ?info:Package.Info.t -> ?packages:(Package.t Package.Name.Map.t) -> unit -> t
+    - [info] defaults to the empty package info
+    - [package] defaults to the empty map of packages *)
+val anonymous :
+     dir:Path.Source.t
+  -> ?info:Package.Info.t
+  -> ?packages:Package.t Package.Name.Map.t
+  -> unit
+  -> t
 
 (** "dune-project" *)
 val filename : string

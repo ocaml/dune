@@ -183,13 +183,14 @@ let implicit_transitive_deps t = t.implicit_transitive_deps
 
 let generate_opam_files t = t.generate_opam_files
 
-let set_generate_opam_files generate_opam_files t = {t with generate_opam_files}
+let set_generate_opam_files generate_opam_files t =
+  { t with generate_opam_files }
 
 let use_standard_c_and_cxx_flags t = t.use_standard_c_and_cxx_flags
 
 let dialects t = t.dialects
 
-let set_dialects dialects t = {t with dialects}
+let set_dialects dialects t = { t with dialects }
 
 let explicit_js_mode t = t.explicit_js_mode
 
@@ -459,7 +460,8 @@ let strict_package_deps_default ~(lang : Lang.Instance.t) =
 
 let explicit_js_mode_default ~(lang : Lang.Instance.t) = lang.version >= (2, 0)
 
-let accept_alternative_dune_file_name_default ~(lang : Lang.Instance.t) = lang.version >= (3, 0)
+let accept_alternative_dune_file_name_default ~(lang : Lang.Instance.t) =
+  lang.version >= (3, 0)
 
 let cram_default ~(lang : Lang.Instance.t) = lang.version >= (3, 0)
 
@@ -468,8 +470,6 @@ let use_standard_c_and_cxx_flags_default ~(lang : Lang.Instance.t) =
     Some true
   else
     None
-
-
 
 let format_extension_key =
   Extension.register Format_config.syntax Format_config.dparse_args
@@ -599,13 +599,13 @@ let encode : t -> Dune_lang.t list =
      ; strict_package_deps
      ; cram
      ; subst_config
-     (* TODO: These three fields all get parsed out from the `using` stanza,
-        bu twe don't need them for project initialization. They should be
-        reconstructed if you ever want full encoding tho. *)
+       (* TODO: These three fields all get parsed out from the `using` stanza,
+          bu twe don't need them for project initialization. They should be
+          reconstructed if you ever want full encoding tho. *)
      ; extension_args = _
      ; parsing_context = _
-     ; stanza_parser = _
-     (* Metadata about the dune-project file, but not in it *)
+     ; stanza_parser =
+         _ (* Metadata about the dune-project file, but not in it *)
      ; file_key = _
      ; project_file = _
      ; root = _
@@ -638,16 +638,21 @@ let encode : t -> Dune_lang.t list =
       ; flag "strict_package_deps" strict_package_deps
           strict_package_deps_default
       ; flag' "accept_alternative_dune_file_name"
-          accept_alternative_dune_file_name accept_alternative_dune_file_name_default
+          accept_alternative_dune_file_name
+          accept_alternative_dune_file_name_default
       ; flag' "explicit_js_mode" explicit_js_mode explicit_js_mode_default
         (* Two other ways of dealing with flags *)
       ; (match use_standard_c_and_cxx_flags with
-         | None -> None
-         | Some b ->
-           if not (Option.equal Bool.equal (Some b) (use_standard_c_and_cxx_flags_default ~lang)) then
-             Some (constr "use_standard_c_and_cxx_flags" bool b)
-           else
-             None)
+        | None -> None
+        | Some b ->
+          if
+            not
+              (Option.equal Bool.equal (Some b)
+                 (use_standard_c_and_cxx_flags_default ~lang))
+          then
+            Some (constr "use_standard_c_and_cxx_flags" bool b)
+          else
+            None)
       ; (if Bool.equal cram (cram_default ~lang) then
           None
         else
@@ -656,7 +661,10 @@ let encode : t -> Dune_lang.t list =
   in
   let lang_stanza =
     list sexp
-      [ string "lang"; string "dune"; Dune_lang.Syntax.Version.encode dune_version ]
+      [ string "lang"
+      ; string "dune"
+      ; Dune_lang.Syntax.Version.encode dune_version
+      ]
   in
   let dialects =
     Dialect.DB.fold ~f:(fun d ls -> Dialect.encode d :: ls) ~init:[] dialects
@@ -665,15 +673,17 @@ let encode : t -> Dune_lang.t list =
     Option.bind format_config ~f:Format_config.encode_opt |> Option.to_list
   in
   let packages =
-    Package.Name.Map.to_list_map packages
-    ~f:(fun name package -> (Package.encode name package))
+    Package.Name.Map.to_list_map packages ~f:(fun name package ->
+        Package.encode name package)
   in
   let subst_config =
     Option.map subst_config ~f:(fun x -> constr "subst" Subst_config.encode x)
     |> Option.to_list
   in
   let name = constr "name" Name.encode name in
-  let version = Option.map ~f:(constr "version" string) version |> Option.to_list in
+  let version =
+    Option.map ~f:(constr "version" string) version |> Option.to_list
+  in
   [ lang_stanza; name ] @ version
   @ Package.Info.encode_fields info
   @ flags @ formatting @ dialects @ packages @ subst_config

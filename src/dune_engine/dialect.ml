@@ -11,19 +11,21 @@ module File_kind = struct
   let encode { kind; extension; preprocess; format } =
     let open Dune_lang.Encoder in
     let kind =
-      string @@
+      string
+      @@
       match kind with
       | Ml_kind.Impl -> "implementation"
       | Ml_kind.Intf -> "interface"
     in
-    list sexp (kind ::
-      record_fields
-         [ field "extension" string extension
-         ; field_o "preprocess" Action_dune_lang.encode
-             (Option.map ~f:snd preprocess)
-         ; field_o "format" Action_dune_lang.encode
-             (Option.map ~f:(fun (_, x, _) -> x) format)
-         ])
+    list sexp
+      (kind
+      :: record_fields
+           [ field "extension" string extension
+           ; field_o "preprocess" Action_dune_lang.encode
+               (Option.map ~f:snd preprocess)
+           ; field_o "format" Action_dune_lang.encode
+               (Option.map ~f:(fun (_, x, _) -> x) format)
+           ])
 
   let to_dyn { kind; extension; preprocess; format } =
     let open Dyn.Encoder in

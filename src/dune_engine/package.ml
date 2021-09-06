@@ -236,8 +236,7 @@ module Dependency = struct
     let open Dune_lang.Encoder in
     match constraint_ with
     | None -> Name.encode name
-    | Some c ->
-    pair Name.encode Constraint.encode (name, c)
+    | Some c -> pair Name.encode Constraint.encode (name, c)
 
   let decode =
     let open Dune_lang.Decoder in
@@ -435,13 +434,19 @@ module Info = struct
     }
 
   let default =
-    { source = Some (Host {kind = Source_kind.Host.Github; user = "username"; repo = "reponame"})
+    { source =
+        Some
+          (Host
+             { kind = Source_kind.Host.Github
+             ; user = "username"
+             ; repo = "reponame"
+             })
     ; license = Some "LICENSE"
-    ; authors = Some ["Author Name"]
+    ; authors = Some [ "Author Name" ]
     ; homepage = Some "https://url/to/home/page"
     ; bug_reports = Some "https://url/to/issue/tracker"
     ; documentation = Some "https://url/to/documentation"
-    ; maintainers = Some ["Maintainer Name"]
+    ; maintainers = Some [ "Maintainer Name" ]
     }
 
   let to_dyn
@@ -576,22 +581,22 @@ let encode (name : Name.t)
     } =
   let open Dune_lang.Encoder in
   let fields =
-    Info.encode_fields info @
-    record_fields
-      [ field "name" Name.encode name
-      ; field_o "synopsis" string synopsis
-      ; field_o "description" string description
-      ; field_l "depends" Dependency.encode depends
-      ; field_l "conflicts" Dependency.encode conflicts
-      ; field_l "depopts" Dependency.encode depopts
-      ; field_o "version" string version
-      ; field "tags" (list string) ~default:[] tags
-      ; field_l "deprecated_package_names" Name.encode
-          (Name.Map.keys deprecated_package_names)
-      ; field_l "sits"
-          (pair Section.Site.encode Section.encode)
-          (Section.Site.Map.to_list sites)
-      ]
+    Info.encode_fields info
+    @ record_fields
+        [ field "name" Name.encode name
+        ; field_o "synopsis" string synopsis
+        ; field_o "description" string description
+        ; field_l "depends" Dependency.encode depends
+        ; field_l "conflicts" Dependency.encode conflicts
+        ; field_l "depopts" Dependency.encode depopts
+        ; field_o "version" string version
+        ; field "tags" (list string) ~default:[] tags
+        ; field_l "deprecated_package_names" Name.encode
+            (Name.Map.keys deprecated_package_names)
+        ; field_l "sits"
+            (pair Section.Site.encode Section.encode)
+            (Section.Site.Map.to_list sites)
+        ]
   in
   list sexp (string "package" :: fields)
 
@@ -692,11 +697,11 @@ let deprecated_meta_file t name =
 let default name dir =
   let depends =
     let open Dependency in
-    [ {name = Name.of_string "ocaml"; constraint_ = None}
-    ; {name = Name.of_string "dune"; constraint_ = None}
+    [ { name = Name.of_string "ocaml"; constraint_ = None }
+    ; { name = Name.of_string "dune"; constraint_ = None }
     ]
   in
-  { id = { name = Name.make name; dir  }
+  { id = { name = Name.make name; dir }
   ; loc = Loc.none
   ; version = None
   ; synopsis = Some "A short synopsis"
@@ -706,7 +711,7 @@ let default name dir =
   ; info = Info.empty
   ; depopts = []
   ; has_opam_file = false
-  ; tags = ["topics"; "to describe"; "your"; "project"]
+  ; tags = [ "topics"; "to describe"; "your"; "project" ]
   ; deprecated_package_names = Name.Map.empty
   ; sites = Section.Site.Map.empty
   }

@@ -110,5 +110,5 @@ let to_dyn (t : t) =
 let to_dyns (t : t) =
   Int.Map.values t
   |> List.map ~f:(fun (Binding.T (key, v)) ->
-    let (module K) = key in
-    (K.name, K.to_dyn v))
+         let (module K) = key in
+         (K.name, K.to_dyn v))

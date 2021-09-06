@@ -2,6 +2,8 @@
 Stanza reference
 ****************
 
+.. _dune-project:
+
 dune-project
 ============
 
@@ -397,6 +399,8 @@ Note that ``dune`` continues to be accepted even after enabling this option, but
 if a file named ``dune-file`` is found in a directory, it will take precedence
 over ``dune``.
 
+.. _dune-files:
+
 dune
 ====
 
@@ -687,6 +691,8 @@ The ``old_public_name`` can also be one of the names declared in the
 library whose name is not prefixed by the package name. Such a library cannot be
 defined in Dune, but other build systems allow it and this feature is meant to
 help migration from those systems.
+
+.. _executable:
 
 executable
 ----------

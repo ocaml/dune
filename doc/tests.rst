@@ -1,3 +1,5 @@
+.. _writing-tests:
+
 *************************
 Writing and running tests
 *************************

@@ -599,13 +599,16 @@ let encode : t -> Dune_lang.t list =
      ; strict_package_deps
      ; cram
      ; subst_config
-       (* TODO: These three fields all get parsed out from the `using` stanza,
-          bu twe don't need them for project initialization. They should be
-          reconstructed if you ever want full encoding tho. *)
+       (* The next three fields all get parsed out from the `using` stanza, but
+          we don't need them for project initialization. They should be
+          reconstructed if you ever want a full encoding of the project record
+          tho. *)
      ; extension_args = _
      ; parsing_context = _
      ; stanza_parser =
-         _ (* Metadata about the dune-project file, but not in it *)
+         _
+         (* The next three fields hold metadata that is about the dune-project
+            file, but not represented in its content *)
      ; file_key = _
      ; project_file = _
      ; root = _

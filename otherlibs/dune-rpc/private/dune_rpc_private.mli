@@ -409,6 +409,8 @@ module Public : sig
 
     val format_dune_file :
       ([ `Path of string ] * [ `Contents of string ], string) t
+
+    val promote : ([ `Path of string ], unit) t
   end
 
   module Notification : sig

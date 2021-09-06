@@ -697,3 +697,51 @@ let%expect_test "formatting dune files" =
     Formatted (absolute):
     (library
      (name foo)) |}]
+
+let%expect_test "promoting dune files" =
+  let exec () =
+    run_client (fun client ->
+        (* First we test for regular errors *)
+        let fname = "x" in
+        let promoted = "x.gen" in
+        files
+          [ ("dune-project", "(lang dune 3.0)")
+          ; ("x", "titi")
+          ; ( "dune"
+            , sprintf
+                {|
+(rule (alias foo) (action (diff %s %s)))
+(rule (with-stdout-to %s (echo "toto")))
+|}
+                fname promoted promoted )
+          ];
+        let* () = dune_build client "(alias foo)" in
+        [%expect
+          {|
+          Building (alias foo)
+          Build (alias foo) failed |}];
+        print_endline "attempting to promote";
+        let+ res = Client.request client Request.promote (`Path fname) in
+        (match res with
+        | Ok () ->
+          let contents = Io.String_path.read_file fname in
+          printfn "promoted file contents:\n%s" contents
+        | Error e ->
+          Format.eprintf "Error formatting:@.%s@."
+            (Dyn.to_string (Dune_rpc.Response.Error.to_dyn e)));
+        [%expect
+          {|
+          attempting to promote
+          promoted file contents:
+          toto |}])
+  in
+  run (fun () -> test exec);
+  [%expect
+    {|
+    stderr:
+    waiting for inotify sync
+    waited for inotify sync
+    File "x", line 1, characters 0-0:
+    Error: Files _build/default/x and _build/default/x.gen differ.
+    Had errors, waiting for filesystem changes...
+    Promoting _build/default/x.gen to x. |}]

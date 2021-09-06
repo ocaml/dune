@@ -120,7 +120,7 @@ module Info : sig
 
   val maintainers : t -> string list option
 
-  (** Default package info (e.g., fore use in initializaing projects) *)
+  (** Default package info (e.g., for project initialization ) *)
   val default : t
 
   val empty : t
@@ -177,7 +177,7 @@ val hash : t -> int
 
 val is_opam_file : Path.t -> bool
 
-(** Construct a default package (e.g., for projects initialization) *)
+(** Construct a default package (e.g., for project initialization) *)
 val default : string -> Path.Source.t -> t
 
 (** Construct a package description from an opam file. *)

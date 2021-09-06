@@ -161,7 +161,7 @@ val dir : t -> Path.Source.t
 
 val file : dir:Path.t -> name:Name.t -> Path.t
 
-val encode : t Dune_lang.Encoder.t
+val encode : Name.t -> t Dune_lang.Encoder.t
 
 val decode : dir:Path.Source.t -> t Dune_lang.Decoder.t
 

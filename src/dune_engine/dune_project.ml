@@ -183,9 +183,13 @@ let implicit_transitive_deps t = t.implicit_transitive_deps
 
 let generate_opam_files t = t.generate_opam_files
 
+let set_generate_opam_files generate_opam_files t = {t with generate_opam_files}
+
 let use_standard_c_and_cxx_flags t = t.use_standard_c_and_cxx_flags
 
 let dialects t = t.dialects
+
+let set_dialects dialects t = {t with dialects}
 
 let explicit_js_mode t = t.explicit_js_mode
 
@@ -455,7 +459,17 @@ let strict_package_deps_default ~(lang : Lang.Instance.t) =
 
 let explicit_js_mode_default ~(lang : Lang.Instance.t) = lang.version >= (2, 0)
 
+let accept_alternative_dune_file_name_default ~(lang : Lang.Instance.t) = lang.version >= (3, 0)
+
 let cram_default ~(lang : Lang.Instance.t) = lang.version >= (3, 0)
+
+let use_standard_c_and_cxx_flags_default ~(lang : Lang.Instance.t) =
+  if lang.version >= (3, 0) then
+    Some true
+  else
+    None
+
+
 
 let format_extension_key =
   Extension.register Format_config.syntax Format_config.dparse_args
@@ -515,11 +529,7 @@ let infer ~dir ?(info = Package.Info.empty) packages =
   ; extension_args
   ; parsing_context
   ; generate_opam_files = false
-  ; use_standard_c_and_cxx_flags =
-      (if lang.version < (3, 0) then
-        None
-      else
-        Some true)
+  ; use_standard_c_and_cxx_flags = use_standard_c_and_cxx_flags_default ~lang
   ; file_key
   ; dialects = Dialect.DB.builtin
   ; explicit_js_mode
@@ -610,8 +620,8 @@ let encode : t -> Dune_lang.t list =
         Some (constr name bool value)
     in
     (* Flags that don't take a boolean for some reason *)
-    let flag' name v =
-      if v then
+    let flag' name v default =
+      if v && not (Bool.equal (default ~lang) v) then
         Some (list string [ name ])
       else
         None
@@ -628,11 +638,16 @@ let encode : t -> Dune_lang.t list =
       ; flag "strict_package_deps" strict_package_deps
           strict_package_deps_default
       ; flag' "accept_alternative_dune_file_name"
-          accept_alternative_dune_file_name
-      ; flag' "explicit_js_mode" explicit_js_mode
+          accept_alternative_dune_file_name accept_alternative_dune_file_name_default
+      ; flag' "explicit_js_mode" explicit_js_mode explicit_js_mode_default
         (* Two other ways of dealing with flags *)
-      ; Option.map use_standard_c_and_cxx_flags
-          ~f:(constr "use_standard_c_and_cxx_flags" bool)
+      ; (match use_standard_c_and_cxx_flags with
+         | None -> None
+         | Some b ->
+           if not (Option.equal Bool.equal (Some b) (use_standard_c_and_cxx_flags_default ~lang)) then
+             Some (constr "use_standard_c_and_cxx_flags" bool b)
+           else
+             None)
       ; (if Bool.equal cram (cram_default ~lang) then
           None
         else
@@ -651,7 +666,7 @@ let encode : t -> Dune_lang.t list =
   in
   let packages =
     Package.Name.Map.to_list_map packages
-    ~f:(fun (name, package) -> (Package.encode name package))
+    ~f:(fun name package -> (Package.encode name package))
   in
   let subst_config =
     Option.map subst_config ~f:(fun x -> constr "subst" Subst_config.encode x)

@@ -348,16 +348,21 @@ module Component = struct
     let test common (() : Options.Test.t) = make "test" common []
 
     (* A list of CSTs for dune-project file content *)
-    let dune_project dir (common: Options.Common.t) =
+    let dune_project ?(opam_file_gen=true) dir (common: Options.Common.t) =
       let package = Package.default (Atom.to_string common.name) dir in
       let packages = Package.Name.Map.singleton (Package.name package)  package in
       let info = Package.Info.default in
       Dune_project.anonymous ~dir ~packages ~info ()
+      |> Dune_project.set_dialects Dialect.DB.empty
+      |> Dune_project.set_generate_opam_files opam_file_gen
       |> Dune_project.encode
       |> List.map ~f:(fun exp ->
         exp
         |> Dune_lang.Ast.add_loc ~loc:Loc.none
         |> Cst.concrete)
+      |> fun cst -> List.append cst
+                      [Cst.Comment (Loc.none,
+                                    [" See the complete stanza docs at https://dune.readthedocs.io/en/stable/dune-files.html#dune-project"])]
   end
 
   (* TODO Support for merging in changes to an existing stanza *)
@@ -404,8 +409,12 @@ module Component = struct
       let files = [ test_dune; test_ml ] in
       [ { dir; files } ]
 
-    let dune_project_file dir ({ context; common; options = _ } : Options.Project.t Options.t) =
-      let content = Stanza_cst.dune_project Path.(as_in_source_tree_exn context.dir) common in
+    let dune_project_file dir ({ context; common; options } : Options.Project.t Options.t) =
+      let opam_file_gen = match options.pkg with
+        | Opam -> true
+        | Esy  -> false
+      in
+      let content = Stanza_cst.dune_project ~opam_file_gen Path.(as_in_source_tree_exn context.dir) common in
       File.Dune {path = dir; content; name = "dune-project"}
 
     let proj_exec dir

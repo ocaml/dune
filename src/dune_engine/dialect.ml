@@ -9,14 +9,15 @@ module File_kind = struct
     }
 
   let encode { kind; extension; preprocess; format } =
+    let open Dune_lang.Encoder in
     let kind =
+      string @@
       match kind with
       | Ml_kind.Impl -> "implementation"
       | Ml_kind.Intf -> "interface"
     in
-    let open Dune_lang.Encoder in
-    constr kind (list sexp)
-      (record_fields
+    list sexp (kind ::
+      record_fields
          [ field "extension" string extension
          ; field_o "preprocess" Action_dune_lang.encode
              (Option.map ~f:snd preprocess)
@@ -60,7 +61,7 @@ let encode { name; file_kinds } =
       [ Dict.get file_kinds Intf; Dict.get file_kinds Impl ]
   in
   let fields = record_fields [ field "name" string name ] @ file_kind_stanzas in
-  constr "dialect" (list sexp) fields
+  list sexp (string "dialect" :: fields)
 
 let decode =
   let open Dune_lang.Decoder in

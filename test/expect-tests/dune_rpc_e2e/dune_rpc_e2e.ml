@@ -681,22 +681,24 @@ let%expect_test "formatting dune files" =
               (Dyn.to_string (Dune_rpc.Response.Error.to_dyn e))
         in
         let* () = run "./dune" "relative" in
-        run (Filename.concat (Sys.getcwd ()) "dune") "absolute")
+        [%expect
+          {|
+          Unformatted:
+          (
+          library (name foo
+          ))
+          Formatted (relative):
+          (library
+           (name foo)) |}];
+        let+ () = run (Filename.concat (Sys.getcwd ()) "dune") "absolute" in
+        [%expect
+          {|
+          Formatted (absolute):
+          (library
+           (name foo)) |}])
   in
   run (fun () -> test exec);
-  [%expect
-    {|
-    Unformatted:
-    (
-    library (name foo
-    ))
-    Formatted (relative):
-    (library
-     (name foo))
-
-    Formatted (absolute):
-    (library
-     (name foo)) |}]
+  [%expect {| |}]
 
 let%expect_test "promoting dune files" =
   let exec () =

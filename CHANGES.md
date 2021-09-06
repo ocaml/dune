@@ -1,6 +1,9 @@
 Unreleased
 ----------
 
+- Include dependencies of executables when creating toplevels (either `dune
+  top` or `dune utop`) (#4882, fixes #4872, @Gopiancode)
+
 - Fixes `opam` META file requires entry for private libs (#4841, fixes #4839, @toots)
 
 - Fixes `dune exec` not adding .exe on Windows (#4371, fixes #3322, @MisterDA)

@@ -2,6 +2,7 @@ open Stdune
 open Fiber.O
 module Scheduler = Dune_engine.Scheduler
 module Dune_rpc = Dune_rpc_private
+module Request = Dune_rpc.Public.Request
 module Client = Dune_rpc_impl.Client
 module Session = Csexp_rpc.Session
 module Config = Dune_util.Config
@@ -660,3 +661,39 @@ let%expect_test "create and fix error" =
     waiting for inotify sync
     waited for inotify sync
     Success, waiting for filesystem changes... |}]
+
+let%expect_test "formatting dune files" =
+  let exec () =
+    run_client (fun client ->
+        (* First we test for regular errors *)
+        files [ ("dune-project", "(lang dune 3.0)") ];
+        let unformatted = "(\nlibrary (name foo\n))" in
+        printfn "Unformatted:\n%s" unformatted;
+        let run uri what =
+          let+ res =
+            Client.request client Request.format_dune_file
+              (`Path uri, `Contents unformatted)
+          in
+          match res with
+          | Ok s -> printfn "Formatted (%s):\n%s" what s
+          | Error e ->
+            Format.eprintf "Error formatting:@.%s@."
+              (Dyn.to_string (Dune_rpc.Response.Error.to_dyn e))
+        in
+        let* () = run "./dune" "relative" in
+        run (Filename.concat (Sys.getcwd ()) "dune") "absolute")
+  in
+  run (fun () -> test exec);
+  [%expect
+    {|
+    Unformatted:
+    (
+    library (name foo
+    ))
+    Formatted (relative):
+    (library
+     (name foo))
+
+    Formatted (absolute):
+    (library
+     (name foo)) |}]

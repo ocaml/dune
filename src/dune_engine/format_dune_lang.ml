@@ -90,6 +90,13 @@ let write_file ~version ~path sexps =
   in
   Io.with_file_out ~binary:true path ~f
 
+let format_string ~version input =
+  match parse_lexbuf (Lexing.from_string input) with
+  | OCaml_syntax _ ->
+    User_error.raise [ Pp.text "OCaml syntax is not supported." ]
+  | Sexps sexps ->
+    Format.asprintf "%a%!" Pp.to_fmt (pp_top_sexps ~version sexps)
+
 let format_file ~version ~input ~output =
   let with_output f =
     match output with

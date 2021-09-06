@@ -458,6 +458,17 @@ module Public = struct
 
     let diagnostics =
       Decl.request ~method_:"diagnostics" Conv.unit (Conv.list Diagnostic.sexp)
+
+    let format_dune_file =
+      let conv =
+        let open Conv in
+        let uri = field "uri" (required string) in
+        let contents = field "contents" (required string) in
+        let to_ (uri, contents) = (`Path uri, `Contents contents) in
+        let from (`Path uri, `Contents contents) = (uri, contents) in
+        iso (record (both uri contents)) to_ from
+      in
+      Decl.request ~method_:"format-dune-file" conv Conv.string
   end
 
   module Notification = struct

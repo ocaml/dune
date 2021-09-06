@@ -4,6 +4,8 @@ type dune_file =
   | OCaml_syntax of Loc.t
   | Sexps of Dune_lang.Cst.t list
 
+val format_string : version:Dune_lang.Syntax.Version.t -> string -> string
+
 (** Read a file into its concrete syntax *)
 val parse_file : Path.t option -> dune_file
 

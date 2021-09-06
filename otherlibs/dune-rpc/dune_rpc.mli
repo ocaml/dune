@@ -197,6 +197,9 @@ module V1 : sig
     val ping : (unit, unit) t
 
     val diagnostics : (unit, Diagnostic.t list) t
+
+    val format_dune_file :
+      ([ `Path of string ] * [ `Contents of string ], string) t
   end
 
   module Client : sig

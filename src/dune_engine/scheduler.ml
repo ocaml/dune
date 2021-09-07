@@ -542,7 +542,7 @@ end = struct
     Mutex.lock t.mutex;
     Process_table.iter t ~f:(fun job ->
         try Unix.kill (Pid.to_int job.pid) signal with
-        | Unix.Unix_error -> ());
+        | Unix.Unix_error _ -> ());
     Mutex.unlock t.mutex
 
   exception Finished of Proc.Process_info.t

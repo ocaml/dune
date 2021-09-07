@@ -208,10 +208,9 @@ module V1 : sig
 
     val diagnostics : (unit, Diagnostic.t list) t
 
-    val format_dune_file :
-      ([ `Path of Path.t ] * [ `Contents of string ], string) t
+    val format_dune_file : (Path.t * [ `Contents of string ], string) t
 
-    val promote : ([ `Path of Path.t ], unit) t
+    val promote : (Path.t, unit) t
   end
 
   module Client : sig

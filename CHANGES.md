@@ -166,9 +166,6 @@ Unreleased
   field and the possibility to statically link `libraries` in the test
   executable. (#3956, fixes #3955)
 
-- Allow depending on `ocamldoc` library when `ocamlfind` is not installed.
-  (#4811, fixes #4809, @nojb)
-
 - Improve lookup of optional or disabled binaries. Previously, we'd treat every
   executable with missing libraries as optional. Now, we treat make sure to
   look at the library's optional or enabled_if status (#4786).
@@ -180,14 +177,20 @@ Unreleased
   new `(subst <disable|enable>)` stanza to the `dune-project` file.
   (#4864, @kit-ty-kate)
 
-2.9.1 (unreleased)
+2.9.1 (07/09/2021)
 ------------------
 
 - Don't use `subst --root` in Opam files (#4806, @MisterDA)
 
 - Fix compilation on Haiku (#4885, @Sylvain78)
 
+- Allow depending on `ocamldoc` library when `ocamlfind` is not installed.
+  (#4811, fixes #4809, @nojb)
+
 - Fix `(enabled_if ...)` for installed libraries (#4824, fixes #4821, @dra27)
+
+- Create more future-proof opam files using `--promote-install-files=false`
+  (#4860, @bobot)
 
 2.9.0 (29/06/2021)
 ------------------

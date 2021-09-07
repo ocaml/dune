@@ -159,36 +159,49 @@ module Response = struct
   let to_dyn = Result.to_dyn Sexp.to_dyn Error.to_dyn
 end
 
+module Protocol = struct
+  type t = int
+
+  let latest_version = 0
+
+  let sexp = Conv.int
+end
+
 module Initialize = struct
   module Request = struct
     type t =
-      { version : int * int
+      { dune_version : Version.t
+      ; protocol_version : Protocol.t
       ; id : Id.t
       }
 
-    let version t = t.version
+    let dune_version t = t.dune_version
+
+    let protocol_version t = t.protocol_version
 
     let id t = t.id
 
     let create ~id =
-      let version =
-        let major, minor = Version.latest in
-        if (major, minor) < (3, 1) then
-          (-major, minor)
-        else
-          Version.latest
-      in
-      { version; id }
+      let dune_version = Version.latest in
+      let protocol_version = Protocol.latest_version in
+      { dune_version; protocol_version; id }
 
     let method_name = "initialize"
 
     let sexp =
       let open Conv in
-      let version = field "version" (required Version.sexp) in
+      let dune_version = field "dune_version" (required Version.sexp) in
+      let protocol_version =
+        field "protocol_version" (required Protocol.sexp)
+      in
       let id = Id.required_field in
-      let to_ (version, id) = { version; id } in
-      let from { version; id } = (version, id) in
-      record (iso (both version id) to_ from)
+      let to_ (dune_version, protocol_version, id) =
+        { dune_version; protocol_version; id }
+      in
+      let from { dune_version; protocol_version; id } =
+        (dune_version, protocol_version, id)
+      in
+      record (iso (three dune_version protocol_version id) to_ from)
 
     let of_call { Call.method_; params } ~version =
       if String.equal method_ method_name then
@@ -204,26 +217,11 @@ module Initialize = struct
   end
 
   module Response = struct
-    type t =
-      | Compatibility
-      | Supports_versioning of unit
+    type t = unit
 
-    let sexp =
-      let open Conv in
-      let real_sexp = record (field "supports_versioning" (required unit)) in
-      iso
-        (either_untagged unit real_sexp)
-        (function
-          | Left () -> Compatibility
-          | Right () -> Supports_versioning ())
-        (function
-          | Compatibility -> Left ()
-          | Supports_versioning () -> Right ())
+    let sexp = Conv.unit
 
-    (* We should never send the [Compatibility] variant, since it's for
-       backwards compatibility with Dune servers that predate the runtime
-       versioning. *)
-    let create () = Supports_versioning ()
+    let create () = ()
 
     let to_response t = Conv.to_sexp sexp t
   end
@@ -445,6 +443,8 @@ module Decl = struct
                 (Int.Map.to_dyn gen_to_dyn)
           }
       }
+
+    let witness t = t.decl
   end
 
   module Notification = struct
@@ -495,6 +495,8 @@ module Decl = struct
                 (Int.Map.to_dyn gen_to_dyn)
           }
       }
+
+    let witness t = t.decl
   end
 
   type ('a, 'b) request = ('a, 'b) Request.t
@@ -562,18 +564,15 @@ module Status = struct
     type t =
       | Uninitialized
       | Menu of (string * int) list
-      | Compatibility
 
     let sexp =
       let open Conv in
       let menu = constr "menu" (list (pair string int)) (fun m -> Menu m) in
-      let compat = constr "compatibility" unit (fun () -> Compatibility) in
       let uninitialized = constr "stage1" unit (fun () -> Uninitialized) in
-      let variants = [ econstr menu; econstr compat ] in
+      let variants = [ econstr menu; econstr uninitialized ] in
       sum variants (function
         | Uninitialized -> case () uninitialized
-        | Menu m -> case m menu
-        | Compatibility -> case () compat)
+        | Menu m -> case m menu)
   end
 
   type t = { clients : (Id.t * Menu.t) list }

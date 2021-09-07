@@ -65,13 +65,16 @@ end
 module Initialize : sig
   module Request : sig
     type t =
-      { version : int * int
+      { dune_version : int * int
+      ; protocol_version : int
       ; id : Id.t
       }
 
     val create : id:Id.t -> t
 
-    val version : t -> int * int
+    val dune_version : t -> int * int
+
+    val protocol_version : t -> int
 
     val id : t -> Id.t
 
@@ -289,7 +292,6 @@ module Status : sig
     type t =
       | Uninitialized
       | Menu of (string * int) list
-      | Compatibility
   end
 
   type t = { clients : (Id.t * Menu.t) list }
@@ -300,17 +302,87 @@ module Decl : sig
     type ('a, 'b) t
 
     type ('a, 'b) witness
+
+    val witness : ('a, 'b) t -> ('a, 'b) witness
   end
 
   module Notification : sig
     type 'a t
 
     type 'a witness
+
+    val witness : 'a t -> 'a witness
   end
 
   type ('a, 'b) request = ('a, 'b) Request.t
 
   type 'a notification = 'a Notification.t
+
+  module For_tests : sig
+    module Request : sig
+      module type S = sig
+        type req
+
+        type resp
+
+        type wire_req
+
+        type wire_resp
+
+        val version : int
+
+        val req : wire_req Conv.value
+
+        val resp : wire_resp Conv.value
+
+        val upgrade_req : wire_req -> req
+
+        val downgrade_req : req -> wire_req
+
+        val upgrade_resp : wire_resp -> resp
+
+        val downgrade_resp : resp -> wire_resp
+      end
+
+      type ('req, 'resp) gen
+
+      val make_gen :
+           (module S with type req = 'req and type resp = 'resp)
+        -> ('req, 'resp) gen
+
+      val make :
+           method_:string
+        -> generations:('req, 'resp) gen list
+        -> ('req, 'resp) Request.t
+    end
+
+    module Notification : sig
+      module type S = sig
+        type model
+
+        type wire
+
+        val version : int
+
+        val sexp : wire Conv.value
+
+        val upgrade : wire -> model
+
+        val downgrade : model -> wire
+      end
+
+      type 'payload gen
+
+      val make_gen : (module S with type model = 'payload) -> 'payload gen
+
+      type 'payload t
+
+      val make :
+           method_:string
+        -> generations:'payload gen list
+        -> 'payload Notification.t
+    end
+  end
 end
 
 module type Fiber = sig
@@ -409,6 +481,20 @@ module Client : sig
       -> Initialize.Request.t
       -> f:(t -> 'a fiber)
       -> 'a fiber
+
+    module For_tests : sig
+      type proc =
+        | Request : ('a, 'b) Decl.request -> proc
+        | Notification : 'a Decl.notification -> proc
+
+      val connect :
+           ?handler:Handler.t
+        -> extra_procedures:proc list
+        -> chan
+        -> Initialize.Request.t
+        -> f:(t -> 'a fiber)
+        -> 'a fiber
+    end
   end
 
   module Make
@@ -443,6 +529,14 @@ module Version : sig
   type t = int * int
 
   val latest : t
+
+  val sexp : t Conv.value
+end
+
+module Protocol : sig
+  type t = int
+
+  val latest_version : t
 
   val sexp : t Conv.value
 end
@@ -555,11 +649,7 @@ module Procedures : sig
   module Internal : sig
     val build : (string list, Build_outcome.t) Decl.Request.t
 
-    val build_decl : (string list, Build_outcome.t) Decl.Request.witness
-
     val status : (unit, Status.t) Decl.Request.t
-
-    val status_decl : (unit, Status.t) Decl.Request.witness
   end
 
   module Server_side : sig

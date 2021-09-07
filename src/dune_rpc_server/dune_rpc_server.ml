@@ -320,34 +320,24 @@ module H = struct
         match Initialize.Request.of_call ~version:t.base.version call with
         | Error e -> session.send (Some [ Response (id, Error e) ])
         | Ok init ->
-          let major, minor = Initialize.Request.version init in
-          (* This is a gigantic hack to ensure that clients prior to the 3.2
-             release can have access to versioning if needed. The old check
-             failed out if [(major, minor) > t.version], so we can bypass that
-             behavior by having versioning-enabled clients send a negative minor
-             version prior to the 3.2 release. *)
-          let supports_versioning =
-            (major, minor) >= (3, 1) || major < 0 || minor < 0
-          in
-          let* a = t.base.on_init session init in
-          let () =
-            session.state <- Initialized { init; state = a; closed = false }
-          in
-          let* () =
-            let response =
-              Ok
-                (Initialize.Response.to_response
-                   (Initialize.Response.create ()))
-            in
-            session.send (Some [ Response (id, response) ])
-          in
-          if supports_versioning then
-            negotiate_version t stats session
+          let protocol_ver = Initialize.Request.protocol_version init in
+          if protocol_ver != Protocol.latest_version then
+            abort session
+              ~message:"The server and client use incompatible protocols."
           else
-            let handler = t.to_handler Versioned.Menu.default in
-            let t = { base = t.base; handler } in
-            run_session t stats
-              (Session.of_stage1 session handler Versioned.Menu.default)))
+            let* a = t.base.on_init session init in
+            let () =
+              session.state <- Initialized { init; state = a; closed = false }
+            in
+            let* () =
+              let response =
+                Ok
+                  (Initialize.Response.to_response
+                     (Initialize.Response.create ()))
+              in
+              session.send (Some [ Response (id, response) ])
+            in
+            negotiate_version t stats session))
 
   module Builder = struct
     type 's t =
@@ -360,7 +350,7 @@ module H = struct
     let to_handler { builder; on_terminate; on_init; version } =
       let to_handler menu =
         V.Builder.to_handler builder
-          ~session_version:(fun s -> (Session.initialize s).version)
+          ~session_version:(fun s -> (Session.initialize s).dune_version)
           ~menu
       in
       let known_versions =

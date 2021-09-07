@@ -114,7 +114,13 @@ module Where = struct
   end
 end
 
-module Decl = Decl
+module Decl = struct
+  include Decl
+
+  module For_tests = struct
+    include Decl
+  end
+end
 
 module Public = struct
   module Request = struct
@@ -211,6 +217,20 @@ module Client = struct
       -> Initialize.Request.t
       -> f:(t -> 'a fiber)
       -> 'a fiber
+
+    module For_tests : sig
+      type proc =
+        | Request : ('a, 'b) Decl.request -> proc
+        | Notification : 'a Decl.notification -> proc
+
+      val connect :
+           ?handler:Handler.t
+        -> extra_procedures:proc list
+        -> chan
+        -> Initialize.Request.t
+        -> f:(t -> 'a fiber)
+        -> 'a fiber
+    end
   end
 
   module Make (Fiber : sig
@@ -515,7 +535,8 @@ module Client = struct
               && not t.handler_initialized
             then
               match
-                Conv.of_sexp ~version:t.initialize.version Message.sexp n.params
+                Conv.of_sexp ~version:t.initialize.dune_version Message.sexp
+                  n.params
               with
               | Ok msg -> t.on_preemptive_abort msg
               | Error _ ->
@@ -593,7 +614,11 @@ module Client = struct
         t
     end
 
-    let setup_versioning ~(handler : Handler.t) =
+    type proc' =
+      | Request : ('a, 'b) Decl.request -> proc'
+      | Notification : 'a Decl.notification -> proc'
+
+    let setup_versioning ~(handler : Handler.t) ~extra_procedures =
       let open V in
       let t : _ Builder.t = Builder.create () in
       Builder.declare_request t Procedures.Public.ping;
@@ -611,20 +636,26 @@ module Client = struct
         (fun () -> handler.build_progress);
       Builder.implement_notification t Procedures.Server_side.diagnostic
         (fun () -> handler.diagnostic);
+      List.iter
+        ~f:(function
+          | Request r -> Builder.declare_request t r
+          | Notification n -> Builder.declare_notification t n)
+        extra_procedures;
       t
 
     let connect_raw chan (initialize : Initialize.Request.t)
-        ~(handler : Handler.t) ~f =
+        ~(extra_procedures : proc' list) ~(handler : Handler.t) ~f =
       let packets () =
         let+ read = Chan.read chan in
         Option.map read ~f:(fun sexp ->
             match
-              Conv.of_sexp Packet.Reply.sexp ~version:initialize.version sexp
+              Conv.of_sexp Packet.Reply.sexp ~version:initialize.dune_version
+                sexp
             with
             | Error e -> raise (Invalid_session e)
             | Ok message -> message)
       in
-      let builder = setup_versioning ~handler in
+      let builder = setup_versioning ~handler ~extra_procedures in
       let on_preemptive_abort = handler.abort in
       let handler_var = Fiber.Ivar.create () in
       let handler = Fiber.Ivar.read handler_var in
@@ -640,12 +671,11 @@ module Client = struct
         | Ok csexp ->
           let* menu =
             match
-              Conv.of_sexp ~version:initialize.version Initialize.Response.sexp
-                csexp
+              Conv.of_sexp ~version:initialize.dune_version
+                Initialize.Response.sexp csexp
             with
             | Error e -> raise (Invalid_session e)
-            | Ok Compatibility -> Fiber.return Versioned.Menu.default
-            | Ok (Supports_versioning ()) -> (
+            | Ok _resp -> (
               let id = Id.make (List [ Atom "version menu" ]) in
               let supported_versions =
                 let request =
@@ -659,7 +689,7 @@ module Client = struct
               | Error e -> raise (Response.Error.E e)
               | Ok sexp -> (
                 match
-                  Conv.of_sexp ~version:initialize.version
+                  Conv.of_sexp ~version:initialize.dune_version
                     Version_negotiation.Response.sexp sexp
                 with
                 | Error e -> raise (Invalid_session e)
@@ -676,7 +706,7 @@ module Client = struct
           in
           let handler =
             V.Builder.to_handler builder
-              ~session_version:(fun () -> client.initialize.version)
+              ~session_version:(fun () -> client.initialize.dune_version)
               ~menu
           in
           let* () = Fiber.Ivar.fill handler_var handler in
@@ -691,10 +721,19 @@ module Client = struct
 
     let connect ?(handler = Handler.default) chan
         (initialize : Initialize.Request.t) ~f =
-      connect_raw chan initialize ~handler ~f
+      connect_raw chan initialize ~handler ~extra_procedures:[] ~f
 
     let connect ?handler chan init ~f =
       let chan = Chan.of_chan chan in
       connect ?handler chan init ~f
+
+    module For_tests = struct
+      type proc = proc' =
+        | Request : ('a, 'b) Decl.request -> proc
+        | Notification : 'a Decl.notification -> proc
+
+      let connect ?(handler = Handler.default) ~extra_procedures chan init ~f =
+        connect_raw (Chan.of_chan chan) init ~handler ~extra_procedures ~f
+    end
   end
 end

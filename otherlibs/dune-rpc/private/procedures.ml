@@ -171,8 +171,8 @@ module Internal = struct
 
     type resp = Status.t
 
-    module V2 = struct
-      let version = 2
+    module V1 = struct
+      let version = 1
 
       type nonrec req = req
 
@@ -195,54 +195,14 @@ module Internal = struct
       let downgrade_resp = id
     end
 
-    module V1 = struct
-      let version = 1
-
-      type nonrec req = req
-
-      type nonrec resp = resp
-
-      type wire_req = req
-
-      type wire_resp = { clients : Id.t list }
-
-      let req = Conv.unit
-
-      let resp =
-        let open Conv in
-        let to_ clients = { clients } in
-        let from { clients } = clients in
-        iso (list Id.sexp) to_ from
-
-      let upgrade_req = id
-
-      let downgrade_req = id
-
-      let upgrade_resp { clients } =
-        Status.
-          { clients =
-              List.map (fun id -> (id, Status.Menu.Compatibility)) clients
-          }
-
-      let downgrade_resp Status.{ clients } =
-        { clients = List.map (fun (id, _) -> id) clients }
-    end
-
     let decl =
       Decl.Request.make ~method_:"status"
-        ~generations:
-          [ Decl.Request.make_gen (module V1)
-          ; Decl.Request.make_gen (module V2)
-          ]
+        ~generations:[ Decl.Request.make_gen (module V1) ]
   end
 
   let build = Build.decl
 
-  let build_decl = build.Decl.Request.decl
-
   let status = Status.decl
-
-  let status_decl = status.Decl.Request.decl
 end
 
 module Server_side = struct

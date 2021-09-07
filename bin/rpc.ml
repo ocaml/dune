@@ -123,6 +123,8 @@ let report_error error =
   Printf.printf "Error: %s\n%!"
     (Dyn.to_string (Dune_rpc_private.Response.Error.to_dyn error))
 
+let witness = Dune_rpc_private.Decl.Request.witness
+
 module Status = struct
   let term =
     let+ (common : Common.t) = Common.term in
@@ -137,7 +139,8 @@ module Status = struct
         let open Fiber.O in
         let+ response =
           Dune_rpc_impl.Client.request session
-            Dune_rpc_private.Procedures.Internal.status_decl ()
+            (witness Dune_rpc_private.Procedures.Internal.status)
+            ()
         in
         match response with
         | Error error -> report_error error
@@ -153,9 +156,6 @@ module Status = struct
                   User_message.make
                     [ Pp.textf "Client [%s], conducting version negotiation" id
                     ]
-                | Compatibility ->
-                  User_message.make
-                    [ Pp.textf "Client [%s] in compabitility mode" id ]
                 | Menu menu ->
                   User_message.make
                     [ Pp.box ~indent:2
@@ -191,7 +191,8 @@ module Build = struct
         let open Fiber.O in
         let+ response =
           Dune_rpc_impl.Client.request session
-            Dune_rpc.Procedures.Internal.build_decl targets
+            (witness Dune_rpc.Procedures.Internal.build)
+            targets
         in
         match response with
         | Error (error : Dune_rpc_private.Response.Error.t) ->

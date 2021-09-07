@@ -84,10 +84,19 @@ module Request : sig
   type t = Id.t * Call.t
 end
 
+module Protocol : sig
+  type t = int
+
+  val latest_version : t
+
+  val sexp : t Conv.value
+end
+
 module Initialize : sig
   module Request : sig
     type t =
-      { version : int * int
+      { dune_version : int * int
+      ; protocol_version : int
       ; id : Id.t
       }
 
@@ -95,7 +104,9 @@ module Initialize : sig
 
     val of_call : Call.t -> version:int * int -> (t, Response.Error.t) result
 
-    val version : t -> int * int
+    val dune_version : t -> int * int
+
+    val protocol_version : t -> int
 
     val id : t -> Id.t
 
@@ -103,11 +114,7 @@ module Initialize : sig
   end
 
   module Response : sig
-    type t = private
-      (* The [Compatibility] variant is for compatibility with older versions of
-         Dune. If we receive it, we can then initiate version negotiation. *)
-      | Compatibility
-      | Supports_versioning of unit
+    type t
 
     val create : unit -> t
 
@@ -241,6 +248,8 @@ module Decl : sig
 
     val make :
       method_:string -> generations:('req, 'resp) gen list -> ('req, 'resp) t
+
+    val witness : ('a, 'b) t -> ('a, 'b) witness
   end
 
   module Notification : sig
@@ -270,6 +279,8 @@ module Decl : sig
       }
 
     val make : method_:string -> generations:'payload gen list -> 'payload t
+
+    val witness : 'a t -> 'a witness
   end
 
   type ('a, 'b) request = ('a, 'b) Request.t
@@ -337,7 +348,6 @@ module Status : sig
     type t =
       | Uninitialized
       | Menu of (string * int) list
-      | Compatibility
 
     val sexp : (t, Conv.values) Conv.t
   end

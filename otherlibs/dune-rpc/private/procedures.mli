@@ -16,11 +16,7 @@ end
 module Internal : sig
   val build : (string list, Build_outcome.t) Decl.Request.t
 
-  val build_decl : (string list, Build_outcome.t) Decl.Request.witness
-
   val status : (unit, Status.t) Decl.Request.t
-
-  val status_decl : (unit, Status.t) Decl.Request.witness
 end
 
 module Server_side : sig

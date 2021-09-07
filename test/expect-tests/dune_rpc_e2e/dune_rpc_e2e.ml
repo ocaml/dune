@@ -40,8 +40,13 @@ let run_client ?handler f =
   Client.connect ?handler chan initialize ~f:(fun client ->
       Fiber.finalize
         (fun () -> f client)
-        ~finally:
-          (Client.notification client Dune_rpc.Public.Notification.shutdown))
+        ~finally:(fun () ->
+          let+ result =
+            Client.notification client Dune_rpc.Public.Notification.shutdown ()
+          in
+          match result with
+          | Ok () -> ()
+          | Error e -> raise (Dune_rpc.Response.Error.E e)))
 
 let read_lines in_ =
   let* reader = Scheduler.Worker.create () in
@@ -107,7 +112,11 @@ let run_server ~root_dir =
 
 let dune_build client what =
   printfn "Building %s" what;
-  let+ res = Client.request client Dune_rpc_impl.Decl.build [ what ] in
+  let+ res =
+    Client.request client
+      (Dune_rpc.Decl.Request.witness Dune_rpc.Procedures.Internal.build)
+      [ what ]
+  in
   match res with
   | Error e ->
     Format.eprintf "Error building %s:@.%s@." what
@@ -240,12 +249,14 @@ let setup_diagnostics f =
     run_client ~handler (fun client ->
         (* First we test for regular errors *)
         files [ ("dune-project", "(lang dune 3.0)") ];
-        let* () =
+        let* result =
           printfn "subscribing to notifications";
           Client.notification client Dune_rpc.Public.Notification.subscribe
             Diagnostics
         in
-        f client)
+        match result with
+        | Error e -> raise (Dune_rpc.Response.Error.E e)
+        | Ok () -> f client)
   in
   run (fun () -> test exec)
 

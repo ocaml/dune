@@ -1577,20 +1577,6 @@ struct
   let eval x = exec memo (Key.T x) >>| Value.get ~input_with_matching_id:x
 end
 
-let incremental_mode_enabled =
-  let res =
-    lazy
-      (match Env.get Env.initial "DUNE_WATCHING_MODE_INCREMENTAL" with
-      | None
-      | Some "true" ->
-        true
-      | Some "false" -> false
-      | Some _ ->
-        User_error.raise
-          [ Pp.text "Invalid value of DUNE_WATCHING_MODE_INCREMENTAL" ])
-  in
-  fun () -> Stdlib.Lazy.force res
-
 let reset invalidation =
   Invalidation.execute
     (Invalidation.combine invalidation (Current_run.invalidate ()));

@@ -267,9 +267,21 @@ let builtins ~stdlib_dir ~version:ocaml_version =
     }
   in
   let graphics = simple "graphics" [] ~dir:"+" in
+  let ocamldoc =
+    simple "ocamldoc" [ "compiler-libs" ] ~dir:"+ocamldoc" ~kind:[]
+  in
   let libs =
     let base =
-      [ stdlib; compiler_libs; str; unix; bigarray; threads; dynlink; bytes ]
+      [ stdlib
+      ; compiler_libs
+      ; str
+      ; unix
+      ; bigarray
+      ; threads
+      ; dynlink
+      ; bytes
+      ; ocamldoc
+      ]
     in
     let base =
       if Ocaml_version.pervasives_includes_result ocaml_version then

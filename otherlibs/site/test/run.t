@@ -142,7 +142,7 @@ Test with an opam like installation
     "odoc" {with-doc}
   ]
   build: [
-    ["dune" "subst" "--root" "."] {dev}
+    ["dune" "subst"] {dev}
     [
       "dune"
       "build"
@@ -150,8 +150,7 @@ Test with an opam like installation
       name
       "-j"
       jobs
-      "--promote-install-files"
-      "false"
+      "--promote-install-files=false"
       "@install"
       "@runtest" {with-test}
       "@doc" {with-doc}
@@ -159,7 +158,7 @@ Test with an opam like installation
     ["dune" "install" "-p" name "--create-install-files" name]
   ]
 
-  $ dune build -p a --promote-install-files "false" @install
+  $ dune build -p a --promote-install-files=false @install
 
   $ test -e a/a.install
   [1]

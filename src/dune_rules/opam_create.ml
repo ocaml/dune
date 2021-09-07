@@ -48,8 +48,8 @@ let default_build_command =
          (Lexbuf.from_string ~fname:"<internal>"
             {|
 [
-  [ "dune" "subst" "--root" "." ] {dev}
-  [ "dune" "build" "-p" name "-j" jobs "--promote-install-files" "false"
+  [ "dune" "subst" ] {dev}
+  [ "dune" "build" "-p" name "-j" jobs "--promote-install-files=false"
       "@install"
       "@runtest" {with-test}
       "@doc" {with-doc}

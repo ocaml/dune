@@ -383,7 +383,7 @@ let handler (t : t Fdecl.t) : 'a Dune_rpc_server.Handler.t =
   in
   let () =
     let cb =
-      let f (`Path path, `Contents contents) =
+      let f (path, `Contents contents) =
         let+ version =
           Memo.Build.run
             (let open Memo.Build.O in
@@ -401,7 +401,7 @@ let handler (t : t Fdecl.t) : 'a Dune_rpc_server.Handler.t =
   in
   let () =
     let cb =
-      let f (`Path path) =
+      let f path =
         let files = source_path_of_string path in
         Promotion.promote_files_registered_in_last_run
           (These ([ files ], ignore));

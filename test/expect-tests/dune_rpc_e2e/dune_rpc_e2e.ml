@@ -672,7 +672,7 @@ let%expect_test "formatting dune files" =
         let run uri what =
           let+ res =
             Client.request client Request.format_dune_file
-              (`Path uri, `Contents unformatted)
+              (uri, `Contents unformatted)
           in
           match res with
           | Ok s -> printfn "Formatted (%s):\n%s" what s
@@ -729,7 +729,7 @@ let%expect_test "promoting dune files" =
         print_endline "attempting to promote";
         let+ res =
           Client.request client Request.promote
-            (`Path Dune_rpc.Path.(relative dune_root fname))
+            Dune_rpc.Path.(relative dune_root fname)
         in
         (match res with
         | Ok () ->

@@ -478,17 +478,15 @@ module Public = struct
     let format_dune_file =
       let conv =
         let open Conv in
-        let uri = field "uri" (required string) in
+        let path = field "path" (required string) in
         let contents = field "contents" (required string) in
-        let to_ (uri, contents) = (`Path uri, `Contents contents) in
-        let from (`Path uri, `Contents contents) = (uri, contents) in
-        iso (record (both uri contents)) to_ from
+        let to_ (path, contents) = (path, `Contents contents) in
+        let from (path, `Contents contents) = (path, contents) in
+        iso (record (both path contents)) to_ from
       in
       Decl.request ~method_:"format-dune-file" conv Conv.string
 
-    let promote =
-      let input = Conv.iso Path.sexp (fun x -> `Path x) (fun (`Path x) -> x) in
-      Decl.request ~method_:"promote" input Conv.unit
+    let promote = Decl.request ~method_:"promote" Path.sexp Conv.unit
   end
 
   module Notification = struct

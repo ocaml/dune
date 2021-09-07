@@ -258,7 +258,27 @@ module H = struct
               (Message { kind; meth_; stage = Start })
               stats (Session.id session);
             let* response =
-              V.Handler.handle_request t.handler session (id, r)
+              let+ result =
+                Fiber.collect_errors (fun () ->
+                    V.Handler.handle_request t.handler session (id, r))
+              in
+              match result with
+              | Ok r -> r
+              | Error
+                  [ { Exn_with_backtrace.exn = Response.Error.E e
+                    ; backtrace = _
+                    }
+                  ] ->
+                Error e
+              | Error xs ->
+                let payload =
+                  Sexp.List
+                    (List.map xs ~f:(fun x ->
+                         Exn_with_backtrace.to_dyn x |> Sexp.of_dyn))
+                in
+                Error
+                  (Response.Error.create ~kind:Code_error
+                     ~message:"server error" ~payload ())
             in
             Event.emit
               (Message { kind; meth_; stage = Stop })

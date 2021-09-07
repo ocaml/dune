@@ -187,6 +187,8 @@ Unreleased
 
 - Fix compilation on Haiku (#4885, @Sylvain78)
 
+- Fix `(enabled_if ...)` for installed libraries (#4824, fixes #4821, @dra27)
+
 2.9.0 (29/06/2021)
 ------------------
 

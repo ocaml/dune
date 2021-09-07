@@ -1,4 +1,4 @@
-2.9.1 (unreleased)
+2.9.1 (07/09/2021)
 ------------------
 
 - Don't use `subst --root` in Opam files (#4806, @MisterDA)
@@ -7,8 +7,11 @@
 
 - Allow depending on `ocamldoc` library when `ocamlfind` is not installed.
   (#4811, fixes #4809, @nojb)
-  
+
 - Fix `(enabled_if ...)` for installed libraries (#4824, fixes #4821, @dra27)
+
+- Create more future-proof opam files using `--promote-install-files=false`
+  (#4860, @bobot)
 
 2.9.0 (29/06/2021)
 ------------------

@@ -64,11 +64,19 @@ let setup_client_server () =
   let connect () = Chan.connect client_chan server_chan in
   (client_chan, sessions, connect)
 
-let test ~client ~handler ~init () =
+let test ?(extra_procedures = []) ?no_real_methods ~client ~handler ~init () =
+  let () =
+    match no_real_methods with
+    | None ->
+      Handler.implement_notification handler Procedures.Public.shutdown
+        (fun _ _ -> raise (Failure "shutdown called"))
+    | Some () -> ()
+  in
   let run =
     let client_chan, sessions, connect = setup_client_server () in
     let client () =
-      Drpc.Client.connect client_chan init ~f:(fun c ->
+      Drpc.Client.For_tests.connect client_chan init ~extra_procedures
+        ~f:(fun c ->
           let* () = client c in
           Chan.write client_chan None)
     in
@@ -83,7 +91,10 @@ let test ~client ~handler ~init () =
   Scheduler.run (Scheduler.create ()) run
 
 let init ?(id = Id.make (Csexp.Atom "test-client")) ?(version = (1, 1)) () =
-  { Initialize.Request.version; id }
+  { Initialize.Request.dune_version = version
+  ; protocol_version = Protocol.latest_version
+  ; id
+  }
 
 let%expect_test "initialize scheduler with rpc" =
   let handler = Handler.create ~on_init ~version:(2, 0) () in
@@ -97,58 +108,86 @@ let%expect_test "initialize scheduler with rpc" =
     client: connected. now terminating
     server: finished. |}]
 
-let%expect_test "invalid client version" =
+let%expect_test "no methods in common" =
   let handler = Handler.create ~on_init ~version:(2, 0) () in
   let init = init ~version:(2, 5) () in
-  test ~init ~client:(fun _ -> assert false) ~handler ();
+  test ~init ~no_real_methods:() ~client:(fun _ -> assert false) ~handler ();
   [%expect.unreachable]
   [@@expect.uncaught_exn
     {|
-  ( "Response.E\
-   \n  { payload = Some [ [ \"supported versions until\"; [ \"2\"; \"0\" ] ] ]\
-   \n  ; message = \"Unsupported version\"\
-   \n  ; kind = Version_error\
-   \n  }")
+  (Failure
+    "Fatal error from server: Server and client have no method versions in common")
   Trailing output
   ---------------
   server: finished. |}]
 
-let%expect_test "call private method" =
-  let decl = Decl.request ~method_:"double" Conv.int Conv.int in
+let simple_request (type a b) ?(version = 1) ~method_
+    (req : (a, Conv.values) Conv.t) (resp : (b, Conv.values) Conv.t) =
+  let module V1 = struct
+    let version = version
+
+    type req = a
+
+    type resp = b
+
+    type wire_req = a
+
+    type wire_resp = b
+
+    let req = req
+
+    let resp = resp
+
+    let upgrade_req x = x
+
+    let downgrade_req x = x
+
+    let upgrade_resp x = x
+
+    let downgrade_resp x = x
+  end in
+  Decl.For_tests.Request.make ~method_
+    ~generations:[ Decl.For_tests.Request.make_gen (module V1) ]
+
+let%expect_test "call method with matching versions" =
+  let decl = simple_request ~method_:"double" Conv.int Conv.int in
   let handler =
     let rpc = Handler.create ~on_init ~version:(1, 1) () in
     let () =
-      let cb =
-        Handler.callback Handler.private_ (fun x ->
-            if x = 0 then
-              raise
-                (Response.Error.E
-                   (Response.Error.create ~kind:Invalid_request
-                      ~message:"0 not allowed" ()))
-            else
-              Fiber.return (x + x))
+      let cb _ x =
+        if x = 0 then
+          raise
+            (Response.Error.E
+               (Response.Error.create ~kind:Invalid_request
+                  ~message:"0 not allowed" ()))
+        else
+          Fiber.return (x + x)
       in
-      Handler.request rpc cb decl
+      Handler.implement_request rpc decl cb
     in
     rpc
   in
+  let witness = Decl.Request.witness decl in
   let client client =
     printfn "client: sending request";
-    let* resp = Client.request client decl 5 in
+    let* resp = Client.request client witness 5 in
     (match resp with
     | Error _ -> assert false
     | Ok s -> printfn "client: result %d" s);
     printfn "client: sending invalid request";
-    let* resp = Client.request client decl 0 in
+    let* resp = Client.request client witness 0 in
     (match resp with
     | Error e -> printfn "client: error %s" e.message
     | Ok _ -> assert false);
     Fiber.return ()
   in
   let init =
-    { Initialize.Request.version = (1, 1); id = Id.make (Atom "test-client") }
+    { Initialize.Request.dune_version = (1, 1)
+    ; protocol_version = Protocol.latest_version
+    ; id = Id.make (Atom "test-client")
+    }
   in
-  test ~init ~client ~handler ();
+  test ~init ~client ~handler ~extra_procedures:[ Request decl ] ();
   [%expect
     {|
     client: sending request
@@ -157,79 +196,223 @@ let%expect_test "call private method" =
     client: error 0 not allowed
     server: finished. |}]
 
-let%expect_test "versioning public methods" =
-  let decl = Decl.request ~method_:"double" Conv.int Conv.int in
+let%expect_test "call method with no matching versions" =
+  let decl = simple_request ~method_:"double" Conv.int Conv.int in
   let handler =
     let rpc = Handler.create ~on_init ~version:(2, 0) () in
     let () =
-      let cb =
-        Handler.callback
-          (Handler.public ~since:(1, 5) ~until:(2, 0) ())
-          (fun x -> Fiber.return (x + x))
-      in
-      Handler.request rpc cb decl
+      let cb _ x = Fiber.return (x + x) in
+      Handler.implement_request rpc decl cb
     in
     rpc
   in
   let client client =
     printfn "client: sending request";
-    let* resp = Client.request client decl 0 in
+    let* resp = Client.request client (Decl.Request.witness decl) 0 in
     (match resp with
     | Error e -> printfn "client: error %s" e.message
     | Ok _ -> assert false);
     Fiber.return ()
   in
   let init =
-    { Initialize.Request.version = (1, 1); id = Id.make (Atom "test-client") }
+    { Initialize.Request.dune_version = (1, 1)
+    ; protocol_version = Protocol.latest_version
+    ; id = Id.make (Atom "test-client")
+    }
   in
-  test ~init ~client ~handler ();
+  let decl' = simple_request ~method_:"double" ~version:2 Conv.int Conv.int in
+  test ~init ~client ~handler ~extra_procedures:[ Request decl' ] ();
   [%expect
     {|
     client: sending request
-    client: error no method matching this client version
+    client: error invalid method
     server: finished. |}]
 
-let%expect_test "versioning public methods" =
-  let decl =
-    let input =
+module Add = struct
+  type req =
+    { x : int
+    ; y : int
+    ; others : int list
+    }
+
+  type resp =
+    | No_others of int
+    | With_others of
+        { xy : int
+        ; all : int
+        }
+
+  module V1_only = struct
+    let version = 1
+
+    type req = int * int
+
+    type resp = int
+
+    type wire_req = int * int
+
+    type wire_resp = int
+
+    let req = Conv.pair Conv.int Conv.int
+
+    let resp = Conv.int
+
+    let upgrade_req x = x
+
+    let downgrade_req x = x
+
+    let upgrade_resp x = x
+
+    let downgrade_resp x = x
+  end
+
+  module V1 = struct
+    let version = 1
+
+    type nonrec req = req
+
+    type nonrec resp = resp
+
+    type wire_req = int * int
+
+    type wire_resp = int
+
+    let req = Conv.pair Conv.int Conv.int
+
+    let resp = Conv.int
+
+    let upgrade_req (x, y) = { x; y; others = [] }
+
+    let downgrade_req { x; y; others = _ } = (x, y)
+
+    let upgrade_resp x = No_others x
+
+    let downgrade_resp = function
+      | No_others x -> x
+      | With_others { xy; all = _ } -> xy
+  end
+
+  module V2 = struct
+    let version = 2
+
+    type nonrec req = req
+
+    type nonrec resp = resp
+
+    type wire_req = req
+
+    type wire_resp = resp
+
+    let req =
       let open Conv in
-      record
-        (both
-           (field "x" (required int))
-           (field "y" (optional (version int ~since:(2, 0)))))
-    in
-    Decl.request ~method_:"add" input Conv.int
-  in
+      let parse =
+        record
+          (three
+             (field "x" (required int))
+             (field "y" (required int))
+             (field "others" (required (list int))))
+      in
+      let to_ (x, y, others) = { x; y; others } in
+      let from { x; y; others } = (x, y, others) in
+      iso parse to_ from
+
+    let resp =
+      let open Conv in
+      let no_others = constr "no_others" int (fun x -> No_others x) in
+      let with_others =
+        constr "with_others" (pair int int) (fun (xy, all) ->
+            With_others { xy; all })
+      in
+      sum [ econstr no_others; econstr with_others ] (function
+        | No_others x -> case x no_others
+        | With_others { xy; all } -> case (xy, all) with_others)
+
+    let upgrade_req x = x
+
+    let downgrade_req x = x
+
+    let upgrade_resp x = x
+
+    let downgrade_resp x = x
+  end
+end
+
+let add_v1_only =
+  Decl.For_tests.Request.make ~method_:"add"
+    ~generations:[ Decl.For_tests.Request.make_gen (module Add.V1_only) ]
+
+let add_v1_v2 =
+  Decl.For_tests.Request.make ~method_:"add"
+    ~generations:
+      [ Decl.For_tests.Request.make_gen (module Add.V1)
+      ; Decl.For_tests.Request.make_gen (module Add.V2)
+      ]
+
+let%expect_test "client is newer than server" =
   let handler =
     let rpc = Handler.create ~on_init ~version:(2, 0) () in
     let () =
-      let cb =
-        Handler.callback
-          (Handler.public ~since:(1, 5) ())
-          (fun (x, y) -> Fiber.return (x + Option.value y ~default:x))
-      in
-      Handler.request rpc cb decl
+      let cb _ (x, y) = Fiber.return (x + y) in
+      Handler.implement_request rpc add_v1_only cb
     in
     rpc
   in
   let client client =
     printfn "client: sending request";
-    let* resp = Client.request client decl (10, None) in
-    (match resp with
-    | Error _ -> assert false
-    | Ok x -> printfn "client: %d" x);
-    let+ resp = Client.request client decl (10, Some 20) in
+    let+ resp =
+      Client.request client
+        (Decl.Request.witness add_v1_v2)
+        { x = 10; y = 15; others = [ -25 ] }
+    in
     match resp with
-    | Error e -> printfn "client: error %s" e.message
-    | Ok _ -> ()
+    | Error _ -> assert false
+    | Ok (With_others _) -> assert false
+    | Ok (No_others x) -> printfn "client: %d" x
   in
   let init =
-    { Initialize.Request.version = (1, 9); id = Id.make (Atom "test-client") }
+    { Initialize.Request.dune_version = (1, 9)
+    ; protocol_version = Protocol.latest_version
+    ; id = Id.make (Atom "test-client")
+    }
   in
-  test ~init ~client ~handler ();
+  test ~extra_procedures:[ Request add_v1_v2 ] ~init ~client ~handler ();
   [%expect
     {|
     client: sending request
-    client: 20
-    client: error invalid version
+    client: 25
+    server: finished. |}]
+
+let%expect_test "client is older than server" =
+  let handler =
+    let rpc = Handler.create ~on_init ~version:(2, 0) () in
+    let () =
+      let cb _ { Add.x; y; others } =
+        match others with
+        | [] -> Fiber.return (Add.No_others (x + y))
+        | _ :: _ -> assert false
+      in
+      Handler.implement_request rpc add_v1_v2 cb
+    in
+    rpc
+  in
+  let client client =
+    printfn "client: sending request";
+    let+ resp =
+      Client.request client (Decl.Request.witness add_v1_only) (20, 30)
+    in
+    match resp with
+    | Error _ -> assert false
+    | Ok x -> printfn "client: %d" x
+  in
+  let init =
+    { Initialize.Request.dune_version = (1, 9)
+    ; protocol_version = Protocol.latest_version
+    ; id = Id.make (Atom "test-client")
+    }
+  in
+  test ~extra_procedures:[ Request add_v1_only ] ~init ~client ~handler ();
+  [%expect
+    {|
+    client: sending request
+    client: 50
     server: finished. |}]

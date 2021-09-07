@@ -1,7 +1,15 @@
 open! Stdune
 open Fiber.O
 open Dune_rpc_server
-open Dune_rpc_private
+module Dune_rpc = Dune_rpc_private
+module Subscribe = Dune_rpc.Subscribe
+module Initialize = Dune_rpc.Initialize
+module Public = Dune_rpc.Public
+module Server_notifications = Dune_rpc.Server_notifications
+module Progress = Dune_rpc.Progress
+module Id = Dune_rpc.Id
+module Diagnostic = Dune_rpc.Diagnostic
+module Conv = Dune_rpc.Conv
 module Dep_conf = Dune_rules.Dep_conf
 module Source_tree = Dune_engine.Source_tree
 module Build_system = Dune_engine.Build_system
@@ -82,7 +90,7 @@ let dep_parser =
     Dep_conf.decode
 
 module Decl = struct
-  module Decl = Decl
+  module Decl = Dune_rpc.Decl
 
   let build =
     Decl.request ~method_:"build" Conv.(list string) Build_outcome.sexp

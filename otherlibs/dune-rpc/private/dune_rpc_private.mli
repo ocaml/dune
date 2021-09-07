@@ -172,6 +172,16 @@ module Target : sig
     | Loc of Loc.t
 end
 
+module Path : sig
+  type t = string
+
+  val dune_root : t
+
+  val absolute : string -> t
+
+  val relative : t -> string -> t
+end
+
 module Diagnostic : sig
   type severity =
     | Error
@@ -408,9 +418,9 @@ module Public : sig
     val diagnostics : (unit, Diagnostic.t list) t
 
     val format_dune_file :
-      ([ `Path of string ] * [ `Contents of string ], string) t
+      ([ `Path of Path.t ] * [ `Contents of string ], string) t
 
-    val promote : ([ `Path of string ], unit) t
+    val promote : ([ `Path of Path.t ], unit) t
   end
 
   module Notification : sig

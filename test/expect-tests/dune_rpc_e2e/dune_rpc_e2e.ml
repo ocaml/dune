@@ -680,7 +680,7 @@ let%expect_test "formatting dune files" =
             Format.eprintf "Error formatting:@.%s@."
               (Dyn.to_string (Dune_rpc.Response.Error.to_dyn e))
         in
-        let* () = run "./dune" "relative" in
+        let* () = run Dune_rpc.Path.(relative dune_root "dune") "relative" in
         [%expect
           {|
           Unformatted:
@@ -690,7 +690,11 @@ let%expect_test "formatting dune files" =
           Formatted (relative):
           (library
            (name foo)) |}];
-        let+ () = run (Filename.concat (Sys.getcwd ()) "dune") "absolute" in
+        let+ () =
+          run
+            (Dune_rpc.Path.absolute (Filename.concat (Sys.getcwd ()) "dune"))
+            "absolute"
+        in
         [%expect
           {|
           Formatted (absolute):
@@ -723,7 +727,10 @@ let%expect_test "promoting dune files" =
           Building (alias foo)
           Build (alias foo) failed |}];
         print_endline "attempting to promote";
-        let+ res = Client.request client Request.promote (`Path fname) in
+        let+ res =
+          Client.request client Request.promote
+            (`Path Dune_rpc.Path.(relative dune_root fname))
+        in
         (match res with
         | Ok () ->
           let contents = Io.String_path.read_file fname in

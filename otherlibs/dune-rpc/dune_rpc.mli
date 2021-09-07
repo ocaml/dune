@@ -79,6 +79,16 @@ module V1 : sig
     val stop : t -> Lexing.position
   end
 
+  module Path : sig
+    type t
+
+    val dune_root : t
+
+    val absolute : string -> t
+
+    val relative : t -> string -> t
+  end
+
   module Target : sig
     type t =
       | Path of string
@@ -199,9 +209,9 @@ module V1 : sig
     val diagnostics : (unit, Diagnostic.t list) t
 
     val format_dune_file :
-      ([ `Path of string ] * [ `Contents of string ], string) t
+      ([ `Path of Path.t ] * [ `Contents of string ], string) t
 
-    val promote : ([ `Path of string ], unit) t
+    val promote : ([ `Path of Path.t ], unit) t
   end
 
   module Client : sig

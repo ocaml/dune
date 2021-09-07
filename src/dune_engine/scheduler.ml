@@ -541,32 +541,8 @@ end = struct
   let killall t signal =
     Mutex.lock t.mutex;
     Process_table.iter t ~f:(fun job ->
-        match Sys.win32 with
-        | false -> (
-          (* Send to the entire process group so that any child processes
-             created by the job are also terminated.
-
-             Here we could consider sending a signal to the job process directly
-             in addition to sending it to the process group. This is what GNU
-             [timeout] does, for example.
-
-             The upside would be that we deliver the signal to that process even
-             if it changes its process group. This upside is small because
-             moving between the process groups is a very unusual thing to do
-             (creation of a new process group is not a problem for us, unlike
-             for [timeout]).
-
-             The downside is that it's more complicated, but also that by
-             sending the signal twice we're greatly increasing the existing race
-             condition where we call [wait] in parallel with [kill]. *)
-          try Unix.kill (-Pid.to_int job.pid) signal with
-          | Unix.Unix_error _ -> ())
-        | true -> (
-          (* Process groups are not supported on Windows (or even if they are,
-             [spawn] does not know how to use them), so we're only sending the
-             signal to the job itself. *)
-          try Unix.kill (Pid.to_int job.pid) signal with
-          | Unix.Unix_error _ -> ()));
+        try Unix.kill (Pid.to_int job.pid) signal with
+        | Unix.Unix_error -> ());
     Mutex.unlock t.mutex
 
   exception Finished of Proc.Process_info.t
@@ -905,7 +881,7 @@ type saw_signal =
   | Got_signal
 
 let kill_and_wait_for_all_processes t =
-  Process_watcher.killall t.process_watcher Sys.sigint;
+  Process_watcher.killall t.process_watcher Sys.sigkill;
   let saw_signal = ref Ok in
   while Event.Queue.pending_jobs t.events > 0 do
     match Event.Queue.next t.events with
@@ -1028,8 +1004,7 @@ end = struct
         | Building ->
           t.handler t.config Build_interrupted;
           t.status <- Restarting_build invalidation;
-          (* CR-someday cwong: Fix [unified_tests] to handle sigterm instead *)
-          Process_watcher.killall t.process_watcher Sys.sigint;
+          Process_watcher.killall t.process_watcher Sys.sigkill;
           iter t
         | Waiting_for_file_changes ivar -> Fill (ivar, invalidation)
         | Waiting_for_inotify_sync (prev_invalidation, ivar) ->
@@ -1249,8 +1224,6 @@ module Run = struct
 
   let go config ?(file_watcher = No_watcher)
       ~(on_event : Config.t -> Handler.Event.t -> unit) run =
-    (* cwong: should this go here? *)
-    let () = Sys.set_signal Sys.sigpipe Sys.Signal_ignore in
     let events, prepare = prepare config ~handler:on_event in
     let file_watcher =
       match file_watcher with

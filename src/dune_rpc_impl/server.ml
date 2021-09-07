@@ -345,6 +345,12 @@ let handler (t : t Fdecl.t) : 'a Dune_rpc_server.Handler.t =
     in
     Handler.implement_request rpc Procedures.Public.diagnostics f
   in
+  let () =
+    Handler.declare_notification rpc Procedures.Server_side.abort;
+    Handler.declare_notification rpc Procedures.Server_side.log;
+    Handler.declare_notification rpc Procedures.Server_side.progress;
+    Handler.declare_notification rpc Procedures.Server_side.diagnostic
+  in
   rpc
 
 let task t f =

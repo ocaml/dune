@@ -49,7 +49,7 @@ let default_build_command =
             {|
 [
   [ "dune" "subst" ] {dev}
-  [ "dune" "build" "-p" name "-j" jobs "--promote-install-files" "false"
+  [ "dune" "build" "-p" name "-j" jobs "--promote-install-files=false"
       "@install"
       "@runtest" {with-test}
       "@doc" {with-doc}

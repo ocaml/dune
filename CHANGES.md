@@ -183,6 +183,8 @@ Unreleased
 
 - Don't use `subst --root` in Opam files (#4806, @MisterDA)
 
+- Fix compilation on Haiku (#4885, @Sylvain78)
+
 2.9.0 (29/06/2021)
 ------------------
 

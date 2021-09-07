@@ -151,8 +151,7 @@ Test with an opam like installation
       name
       "-j"
       jobs
-      "--promote-install-files"
-      "false"
+      "--promote-install-files=false"
       "@install"
       "@runtest" {with-test}
       "@doc" {with-doc}
@@ -162,7 +161,7 @@ Test with an opam like installation
 
   $ dune subst
 
-  $ dune build -p a --promote-install-files "false" @install @runtest @doc
+  $ dune build -p a --promote-install-files=false @install @runtest @doc
 
   $ test -e a/a.install
   [1]

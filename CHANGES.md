@@ -1,6 +1,8 @@
 Unreleased
 ----------
 
+- Add a `%{toolchain}` expansion variable (#4899, fixes #3949, @rgrinberg)
+
 - Include dependencies of executables when creating toplevels (either `dune
   top` or `dune utop`) (#4882, fixes #4872, @Gopiancode)
 

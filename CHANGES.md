@@ -7,6 +7,8 @@
 
 - Allow depending on `ocamldoc` library when `ocamlfind` is not installed.
   (#4811, fixes #4809, @nojb)
+  
+- Fix `(enabled_if ...)` for installed libraries (#4824, fixes #4821, @dra27)
 
 2.9.0 (29/06/2021)
 ------------------

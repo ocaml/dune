@@ -51,6 +51,9 @@ jobs:
       OCAML_VERSION: ${{ matrix.ocaml-version }}
       OS: ${{ matrix.os }}
       CONFIGURATOR: ${{ matrix.configurator }}
+      # This is needed to have the CI run OK in OSX now it seems, as
+      # it is using opam 2.1
+      OPAMCLI: "2.0"
 
     runs-on: ${{ matrix.os }}
 

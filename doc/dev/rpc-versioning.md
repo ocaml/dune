@@ -85,8 +85,7 @@ number corresponding to the overall RPC version the client will use.
 If this number is determined to be versioning-compatible (see
 [Session versioning](#session-versioning)), the server will respond
 with a token instructing the client to initiate version negotiation.
-Otherwise, the server will fall back to [compatibility
-mode](#compatibility-mode).
+Otherwise, the server will respond with an error.
 
 Upon receiving this token, the client will initiate version
 negotiation by sending a list of `(method-name, generations)`
@@ -128,49 +127,20 @@ be the identity function on the side that is older.
 
 ## Miscellaneous implementation notes
 
-### Compatibility mode
-
-To ensure compatibility with pre-versioning servers and clients, both
-the server and client will also expose a "compatibility mode", which
-eschews version negotation and assumes a version menu consisting of
-exactly the methods and versions exposed at the time the runtime
-versioning system was first implemented. We will call this menu the
-*compatibility menu*.
-
-The client and server handle this slightly differently. Previously,
-servers responded to initialization requests with a unit `()`. If the
-client receives this unit (instead of a `versioning_supported`
-token), it will not send its list of known versions and act as if the
-server had sent back the compatibility menu.
-
-If the server detects that the client does not support runtime
-versioning (see [Session versioning](#session-versioning)), it will
-send a unit (thus fulfilling the expectations of the legacy client),
-then use the compatibility menu when performing de/serialization. This
-may cause issues in the further future, if a later version of Dune
-decides to drop implementations for a procedure version contained in
-the compatibility menu entirely, but it is questionable at best
-whether this will pose a problem in practice.
-
 ### Session versioning
 
 In addition to version numbers existing for each procedure version,
-there is also a version number associated with the session as a whole,
-which is sent as part of session initialization. This number is the
-version of the RPC system entirely in a `MAJOR.MINOR` format
-(serialized as an `int * int` pair). At the time of this writing, the
-current version number is 3.0. This version number is used to
-determine whether versioning is enabled. Namely, whether it is greater
-than or equal to 3.2.
+there are two further version numbers associated with the session as
+a whole which are sent as part of session initialization.
 
-Prior to the implementation of runtime versioning, the server would
-reject clients with a later session version than the server's. To
-enable newer, runtime-versioning enabled clients to connect to older
-servers, then, we implemented a bit of a hack in which the number
-`(-3,0)` would be sent by versioning-enabled clients on version 3.0
-(this is necessary for some internal Jane Street clients). More
-generally, the current implementation treats any version number with
-a negative major or minor version as versioning-compatible.
+The first is the version of Dune each side purports to be as
+a `MAJOR.MINOR` number (serialized as an `int * int` pair). This is
+not currently checked.
+
+Next is a version of the initial handshake protocol to be used. This
+takes the form of a single `int`. In the future, if the initial
+negotation protocol changes, this value can be adjusted and checked to
+account for this.
 
 ### Error handling
 
@@ -182,10 +152,8 @@ complicates one-way communications (for example, the server must
 swallow errors and clients must be upgraded to handle version errors
 on notifications, which were previously infallible).
 
-Finally, the versioning protocol itself must be either
-versioned separately or stabilised (see [Compatibility
-mode](#compatibility-mode) for some ways that this has already been
-done).
+Finally, the versioning protocol itself must be either versioned
+separately or stabilised (see [Session versioning](#session-versioning).
 
 ### Tweaks
 
@@ -209,6 +177,4 @@ done).
         error), then the procedure proceeds as before. This approach
         trades startup and lookup overhead for a constant
         per-communication overhead. It also makes distinguishing "no
-        such method exists" and "no common versions" simpler. However,
-        it would mean that the per-procedure protocol is now different
-        if either actor compatibility mode.
+        such method exists" and "no common versions" simpler.

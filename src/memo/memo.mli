@@ -3,13 +3,9 @@ open! Stdune
 type 'a build
 
 module type Build = sig
-  include Monad
+  include Monad.S
 
-  module List : sig
-    val map : 'a list -> f:('a -> 'b t) -> 'b list t
-
-    val concat_map : 'a list -> f:('a -> 'b list t) -> 'b list t
-  end
+  module List : Monad.List with type 'a t := 'a t
 
   val memo_build : 'a build -> 'a t
 end
@@ -200,11 +196,6 @@ end
     removes the values specified by [Invalidation.t] from the memoization cache,
     and advances the current run. *)
 val reset : Invalidation.t -> unit
-
-(** Returns [true] if the user enabled the incremental mode via the environment
-    variable [DUNE_WATCHING_MODE_INCREMENTAL], and we should therefore assume
-    that the build system tracks all relevant side effects in the [Build] monad. *)
-val incremental_mode_enabled : bool ref
 
 module type Input = sig
   type t

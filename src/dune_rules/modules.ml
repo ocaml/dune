@@ -395,6 +395,8 @@ and impl =
   ; vlib : t
   }
 
+let equal (x : t) (y : t) = Poly.equal x y
+
 let rec encode t =
   let open Dune_lang in
   match t with

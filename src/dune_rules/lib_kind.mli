@@ -20,4 +20,6 @@ type t =
 
 val to_dyn : t Stdune.Dyn.Encoder.t
 
+val equal : t -> t -> bool
+
 include Dune_lang.Conv.S with type t := t

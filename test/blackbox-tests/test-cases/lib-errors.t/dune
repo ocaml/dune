@@ -19,10 +19,3 @@
  (modules cycle))
 
 (rule (with-stdout-to cycle.ml (echo "")))
-
-(executable
- (name select_error)
- (libraries (select x from))
- (modules select_error))
-
-(rule (with-stdout-to select_error.ml (echo "")))

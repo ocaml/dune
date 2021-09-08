@@ -129,6 +129,10 @@ module Public = struct
     let ping = Procedures.Public.ping.decl
 
     let diagnostics = Procedures.Public.diagnostics.decl
+
+    let format_dune_file = Procedures.Public.format_dune_file.decl
+
+    let promote = Procedures.Public.promote.decl
   end
 
   module Notification = struct
@@ -626,6 +630,8 @@ module Client = struct
       Builder.declare_notification t Procedures.Public.shutdown;
       Builder.declare_notification t Procedures.Public.subscribe;
       Builder.declare_notification t Procedures.Public.unsubscribe;
+      Builder.declare_request t Procedures.Public.format_dune_file;
+      Builder.declare_request t Procedures.Public.promote;
       Builder.declare_request t Procedures.Internal.status;
       Builder.declare_request t Procedures.Internal.build;
       Builder.implement_notification t Procedures.Server_side.abort (fun () ->

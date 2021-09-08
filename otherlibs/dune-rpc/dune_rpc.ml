@@ -8,6 +8,7 @@ module V1 = struct
   module Loc = Loc
   module Target = Target
   module Diagnostic = Diagnostic
+  module Path = Path
   module Progress = Progress
   module Subscribe = Subscribe
   module Message = Message

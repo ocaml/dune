@@ -188,10 +188,11 @@ module Server = struct
         in
         if inter then
           None
-        else if accept then
+        else if accept then (
           let fd, _ = Unix.accept ~cloexec:true t.fd in
+          Unix.clear_nonblock fd;
           Some fd
-        else
+        ) else
           assert false
       | _, _, _ -> assert false
       | exception Unix.Unix_error (Unix.EAGAIN, _, _) -> accept t

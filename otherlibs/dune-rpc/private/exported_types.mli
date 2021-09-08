@@ -23,6 +23,18 @@ module Target : sig
   val sexp : (t, Conv.values) Conv.t
 end
 
+module Path : sig
+  type t = string
+
+  val dune_root : t
+
+  val absolute : string -> t
+
+  val relative : t -> string -> t
+
+  val sexp : t Conv.value
+end
+
 module Diagnostic : sig
   type severity =
     | Error

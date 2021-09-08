@@ -18,6 +18,8 @@ type 'a t =
   | Pps of 'a Pps.t
   | Future_syntax of Loc.t
 
+val equal : ('a -> 'a -> bool) -> 'a t -> 'a t -> bool
+
 val map : 'a t -> f:('a -> 'b) -> 'b t
 
 module Without_instrumentation : sig
@@ -34,6 +36,8 @@ module With_instrumentation : sig
         ; deps : Dep_conf.t list
         ; flags : String_with_vars.t list
         }
+
+  val equal : t -> t -> bool
 end
 
 val decode : Without_instrumentation.t t Dune_lang.Decoder.t
@@ -64,6 +68,8 @@ module Per_module : sig
 
   type 'a t = 'a preprocess Module_name.Per_item.t
 
+  val equal : ('a -> 'a -> bool) -> 'a t -> 'a t -> bool
+
   val decode : Without_instrumentation.t t Dune_lang.Decoder.t
 
   val no_preprocessing : unit -> 'a t
@@ -92,13 +98,15 @@ module Per_module : sig
   val with_instrumentation :
        With_instrumentation.t t
     -> instrumentation_backend:
-         (Loc.t * Lib_name.t -> Without_instrumentation.t option Resolve.t)
-    -> Without_instrumentation.t t Resolve.t
+         (   Loc.t * Lib_name.t
+          -> Without_instrumentation.t option Resolve.Build.t)
+    -> Without_instrumentation.t t Resolve.Build.t
 
   val instrumentation_deps :
        With_instrumentation.t t
     -> instrumentation_backend:
-         (Loc.t * Lib_name.t -> Without_instrumentation.t option Resolve.t)
-    -> Dep_conf.t list Resolve.t
+         (   Loc.t * Lib_name.t
+          -> Without_instrumentation.t option Resolve.Build.t)
+    -> Dep_conf.t list Resolve.Build.t
 end
 with type 'a preprocess := 'a t

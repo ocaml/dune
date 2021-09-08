@@ -11,6 +11,11 @@ module Public : sig
   val subscribe : Subscribe.t Decl.Notification.t
 
   val unsubscribe : Subscribe.t Decl.Notification.t
+
+  val format_dune_file :
+    (Path.t * [ `Contents of string ], string) Decl.Request.t
+
+  val promote : (Path.t, unit) Decl.Request.t
 end
 
 module Internal : sig

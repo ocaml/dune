@@ -67,6 +67,22 @@ module Target = struct
       | Loc l -> case l loc)
 end
 
+module Path = struct
+  type t = string
+
+  let sexp = Conv.string
+
+  let dune_root = "."
+
+  let absolute abs =
+    if Filename.is_relative abs then
+      Code_error.raise "Path.absolute: accepts only absolute paths"
+        [ ("abs", Dyn.Encoder.string abs) ];
+    abs
+
+  let relative = Filename.concat
+end
+
 module Diagnostic = struct
   type severity =
     | Error

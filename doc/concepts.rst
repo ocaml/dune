@@ -872,9 +872,9 @@ This is controlled by:
 Locks
 =====
 
-Given two rules that are independent, dune will assume that there
-associated action can be run concurrently. Two rules are considered
-independent if none of them depend on the other, either directly or
+Given two rules that are independent, dune will assume that their
+associated actions can be run concurrently. Two rules are considered
+independent if neither of them depend on the other, either directly or
 through a chain of dependencies. This basic assumption allows dune to
 parallelize the build.
 

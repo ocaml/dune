@@ -66,6 +66,8 @@ module Build0 = struct
   end
 
   module List = struct
+    include Monad.List (Fiber)
+
     let map = parallel_map
 
     let concat_map l ~f = map l ~f >>| List.concat
@@ -1575,17 +1577,6 @@ struct
   let eval x = exec memo (Key.T x) >>| Value.get ~input_with_matching_id:x
 end
 
-let incremental_mode_enabled =
-  ref
-    (match Sys.getenv_opt "DUNE_WATCHING_MODE_INCREMENTAL" with
-    | Some "true" -> true
-    | Some "false"
-    | None ->
-      false
-    | Some _ ->
-      User_error.raise
-        [ Pp.text "Invalid value of DUNE_WATCHING_MODE_INCREMENTAL" ])
-
 let reset invalidation =
   Invalidation.execute
     (Invalidation.combine invalidation (Current_run.invalidate ()));
@@ -1671,13 +1662,9 @@ end
 type 'a build = 'a Fiber.t
 
 module type Build = sig
-  include Monad
+  include Monad.S
 
-  module List : sig
-    val map : 'a list -> f:('a -> 'b t) -> 'b list t
-
-    val concat_map : 'a list -> f:('a -> 'b list t) -> 'b list t
-  end
+  module List : Monad.List with type 'a t := 'a t
 
   val memo_build : 'a build -> 'a t
 end

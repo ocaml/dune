@@ -177,6 +177,16 @@ module Target : sig
     | Loc of Loc.t
 end
 
+module Path : sig
+  type t = string
+
+  val dune_root : t
+
+  val absolute : string -> t
+
+  val relative : t -> string -> t
+end
+
 module Diagnostic : sig
   type severity =
     | Error
@@ -644,6 +654,11 @@ module Procedures : sig
     val subscribe : Subscribe.t Decl.Notification.t
 
     val unsubscribe : Subscribe.t Decl.Notification.t
+
+    val format_dune_file :
+      (Path.t * [ `Contents of string ], string) Decl.Request.t
+
+    val promote : (Path.t, unit) Decl.Request.t
   end
 
   module Internal : sig
@@ -672,6 +687,10 @@ module Public : sig
     val ping : (unit, unit) t
 
     val diagnostics : (unit, Diagnostic.t list) t
+
+    val format_dune_file : (Path.t * [ `Contents of string ], string) t
+
+    val promote : (Path.t, unit) t
   end
 
   module Notification : sig

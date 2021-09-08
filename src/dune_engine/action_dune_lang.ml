@@ -109,3 +109,5 @@ let decode =
         ]
 
 let to_dyn a = Dune_lang.to_dyn (encode a)
+
+let equal x y = Poly.equal x y

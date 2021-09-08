@@ -3,6 +3,8 @@
  (inline_tests
   (deps
    (package dune)))
+ (enabled_if
+  (= %{system} linux))
  (libraries
   dune_rpc_private
   dune_util

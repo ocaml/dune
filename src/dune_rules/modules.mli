@@ -7,6 +7,8 @@ type t
 
 val to_dyn : t -> Dyn.t
 
+val equal : t -> t -> bool
+
 val lib :
      src_dir:Path.Build.t
   -> main_module_name:Module_name.t option

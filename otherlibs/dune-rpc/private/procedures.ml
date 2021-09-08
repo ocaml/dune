@@ -124,6 +124,72 @@ module Public = struct
         ~generations:[ Decl.Notification.make_gen (module V1) ]
   end
 
+  module Format_dune_file = struct
+    module V1 = struct
+      let version = 1
+
+      type req = Path.t * [ `Contents of string ]
+
+      type resp = string
+
+      type wire_req = Path.t * [ `Contents of string ]
+
+      type wire_resp = string
+
+      let req =
+        let open Conv in
+        let path = field "path" (required string) in
+        let contents = field "contents" (required string) in
+        let to_ (path, contents) = (path, `Contents contents) in
+        let from (path, `Contents contents) = (path, contents) in
+        iso (record (both path contents)) to_ from
+
+      let resp = Conv.string
+
+      let upgrade_req = id
+
+      let downgrade_req = id
+
+      let upgrade_resp = id
+
+      let downgrade_resp = id
+    end
+
+    let decl =
+      Decl.Request.make ~method_:"format-dune-file"
+        ~generations:[ Decl.Request.make_gen (module V1) ]
+  end
+
+  module Promote = struct
+    module V1 = struct
+      let version = 1
+
+      type req = Path.t
+
+      type resp = unit
+
+      type wire_req = Path.t
+
+      type wire_resp = unit
+
+      let req = Path.sexp
+
+      let resp = Conv.unit
+
+      let upgrade_req = id
+
+      let downgrade_req = id
+
+      let upgrade_resp = id
+
+      let downgrade_resp = id
+    end
+
+    let decl =
+      Decl.Request.make ~method_:"promote"
+        ~generations:[ Decl.Request.make_gen (module V1) ]
+  end
+
   let ping = Ping.decl
 
   let diagnostics = Diagnostics.decl
@@ -133,6 +199,10 @@ module Public = struct
   let unsubscribe = Unsubscribe.decl
 
   let shutdown = Shutdown.decl
+
+  let format_dune_file = Format_dune_file.decl
+
+  let promote = Promote.decl
 end
 
 module Internal = struct

@@ -945,21 +945,9 @@ end = struct
       | Fs_event event -> Fs_memo.handle_fs_event event
       | Sync -> Memo.Invalidation.empty
     in
-    let invalidation =
-      let events = Nonempty_list.to_list events in
-      List.fold_left events ~init:Memo.Invalidation.empty ~f:(fun acc event ->
-          Memo.Invalidation.combine acc (handle_event event))
-    in
-    match !Memo.incremental_mode_enabled with
-    | true -> invalidation
-    | false ->
-      (* In this mode, we do not assume that all file system dependencies are
-         declared correctly and therefore conservatively require a rebuild.
-
-         The fact that the [events] list is non-empty justifies clearing the
-         caches. *)
-      let (_ : _ Nonempty_list.t) = events in
-      Memo.Invalidation.clear_caches
+    let events = Nonempty_list.to_list events in
+    List.fold_left events ~init:Memo.Invalidation.empty ~f:(fun acc event ->
+        Memo.Invalidation.combine acc (handle_event event))
 
   (** This function is the heart of the scheduler. It makes progress in
       executing fibers by doing the following:

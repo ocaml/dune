@@ -6,8 +6,8 @@
       ocamlopt lib/.p.objs/native/p.{cmx,o}
         ocamlc bin/.blah.eobjs/byte/blah.{cmi,cmo,cmt}
       ocamlopt lib/.p.objs/native/p.{cmx,o} [default.foo]
-        ocamlc bin/.blah.eobjs/byte/blah.{cmi,cmo,cmt} [default.foo]
         ocamlc lib/p.cma [default.foo]
+        ocamlc bin/.blah.eobjs/byte/blah.{cmi,cmo,cmt} [default.foo]
       ocamlopt lib/p.{a,cmxa}
       ocamlopt bin/.blah.eobjs/native/blah.{cmx,o}
       ocamlopt lib/p.{a,cmxa} [default.foo]

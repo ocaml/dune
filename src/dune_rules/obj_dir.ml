@@ -401,6 +401,18 @@ module Module = struct
     in
     obj_file t m ~kind:Cmi ~ext
 
+  let cmti_public_file t m =
+    let ext =
+      Ml_kind.cmt_ext
+        (match Module.file m ~ml_kind:Intf with
+        | None -> Impl
+        | Some _ -> Intf)
+    in
+    let base = public_cmi_dir t in
+    let obj_name = Module.obj_name m in
+    let fname = Module_name.Unique.artifact_filename obj_name ~ext in
+    relative t base fname
+
   let odoc t m =
     let obj_name = Module.obj_name m in
     let basename = Module_name.Unique.artifact_filename obj_name ~ext:".odoc" in

@@ -116,6 +116,8 @@ module Module : sig
   (** Either the .cmti, or .cmt if the module has no interface *)
   val cmti_file : 'path t -> Module.t -> 'path
 
+  val cmti_public_file : 'path t -> Module.t -> 'path
+
   val odoc : 'path t -> Module.t -> 'path
 
   module L : sig

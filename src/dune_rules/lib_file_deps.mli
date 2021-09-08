@@ -3,6 +3,8 @@ open! Dune_engine
 module Group : sig
   type t =
     | Cmi
+    | Cmt
+    | Cmti
     | Cmx
     | Header
 end

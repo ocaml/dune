@@ -42,10 +42,20 @@ let copy_interface ~sctx ~dir ~obj_dir m =
     (Module.visibility m <> Visibility.Private
     && Obj_dir.need_dedicated_public_dir obj_dir)
     (fun () ->
-      SC.add_rule sctx ~dir
-        (Action_builder.symlink
-           ~src:(Path.build (Obj_dir.Module.cm_file_exn obj_dir m ~kind:Cmi))
-           ~dst:(Obj_dir.Module.cm_public_file_exn obj_dir m ~kind:Cmi)))
+      let symlink ~src ~dst =
+        SC.add_rule sctx ~dir (Action_builder.symlink ~src ~dst)
+      in
+      Memo.Build.fork_and_join_unit
+        (fun () ->
+          let src =
+            Path.build (Obj_dir.Module.cm_file_exn obj_dir m ~kind:Cmi)
+          in
+          let dst = Obj_dir.Module.cm_public_file_exn obj_dir m ~kind:Cmi in
+          symlink ~src ~dst)
+        (fun () ->
+          let src = Path.build (Obj_dir.Module.cmti_file obj_dir m) in
+          let dst = Obj_dir.Module.cmti_public_file obj_dir m in
+          symlink ~src ~dst))
 
 let build_cm cctx ~dep_graphs ~precompiled_cmi ~cm_kind (m : Module.t) ~phase =
   let sctx = CC.super_context cctx in

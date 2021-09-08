@@ -15,7 +15,7 @@ module Includes = struct
            (let+ libs = requires in
             Command.Args.S
               [ iflags libs Byte
-              ; Hidden_deps (Lib_file_deps.deps libs ~groups:[ Cmi ])
+              ; Hidden_deps (Lib_file_deps.deps libs ~groups:[ Cmi; Cmt; Cmti ])
               ]))
     in
     let cmx_includes =

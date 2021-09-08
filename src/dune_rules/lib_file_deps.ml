@@ -4,19 +4,26 @@ open Stdune
 module Group = struct
   type t =
     | Cmi
+    | Cmt
+    | Cmti
     | Cmx
     | Header
 
-  let all = [ Cmi; Cmx; Header ]
+  let all = [ Cmi; Cmt; Cmti; Cmx; Header ]
 
   let ext = function
     | Cmi -> Cm_kind.ext Cmi
+    | Cmt -> Dune_util.Ml_kind.(cmt_ext Impl)
+    | Cmti -> Dune_util.Ml_kind.(cmt_ext Intf)
     | Cmx -> Cm_kind.ext Cmx
     | Header -> Foreign_language.header_extension
 
   let obj_dir t obj_dir =
     match t with
-    | Cmi -> Obj_dir.public_cmi_dir obj_dir
+    | Cmi
+    | Cmt
+    | Cmti ->
+      Obj_dir.public_cmi_dir obj_dir
     | Cmx -> Obj_dir.native_dir obj_dir
     | Header -> Obj_dir.dir obj_dir
 

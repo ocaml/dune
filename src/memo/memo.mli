@@ -197,11 +197,6 @@ end
     and advances the current run. *)
 val reset : Invalidation.t -> unit
 
-(** Returns [true] if the user enabled the incremental mode via the environment
-    variable [DUNE_WATCHING_MODE_INCREMENTAL], and we should therefore assume
-    that the build system tracks all relevant side effects in the [Build] monad. *)
-val incremental_mode_enabled : bool ref
-
 module type Input = sig
   type t
 

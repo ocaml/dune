@@ -371,7 +371,16 @@ let expand_pform_gen ~(context : Context.t) ~bindings ~dir ~source
       | Ccomp_type ->
         static
           (string
-             (Ocaml_config.Ccomp_type.to_string context.lib_config.ccomp_type)))
+             (Ocaml_config.Ccomp_type.to_string context.lib_config.ccomp_type))
+      | Toolchain ->
+        static
+          (string
+             (match context.findlib_toolchain with
+             | Some toolchain -> Context_name.to_string toolchain
+             | None ->
+               let loc = Dune_lang.Template.Pform.loc source in
+               User_error.raise ~loc
+                 [ Pp.text "No toolchain defined for this context" ])))
     | Macro (macro, s) -> (
       match macro with
       | Ocaml_config ->

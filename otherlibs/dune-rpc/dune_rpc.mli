@@ -79,6 +79,16 @@ module V1 : sig
     val stop : t -> Lexing.position
   end
 
+  module Path : sig
+    type t
+
+    val dune_root : t
+
+    val absolute : string -> t
+
+    val relative : t -> string -> t
+  end
+
   module Target : sig
     type t =
       | Path of string
@@ -197,6 +207,14 @@ module V1 : sig
     val ping : (unit, unit) t
 
     val diagnostics : (unit, Diagnostic.t list) t
+
+    (** format a [dune], [dune-project], or a [dune-workspace] file. The full
+        path to the file is necessary so that dune knows the formatting options
+        for the project this file is in *)
+    val format_dune_file : (Path.t * [ `Contents of string ], string) t
+
+    (** Promote a file. *)
+    val promote : (Path.t, unit) t
   end
 
   module Client : sig

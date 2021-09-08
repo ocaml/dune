@@ -188,6 +188,22 @@ module Target = struct
       | Loc l -> case l loc)
 end
 
+module Path = struct
+  type t = string
+
+  let sexp = Conv.string
+
+  let dune_root = "."
+
+  let absolute abs =
+    if Filename.is_relative abs then
+      Code_error.raise "Path.absolute: accepts only absolute paths"
+        [ ("abs", Dyn.Encoder.string abs) ];
+    abs
+
+  let relative = Filename.concat
+end
+
 module Diagnostic = struct
   type severity =
     | Error
@@ -458,6 +474,19 @@ module Public = struct
 
     let diagnostics =
       Decl.request ~method_:"diagnostics" Conv.unit (Conv.list Diagnostic.sexp)
+
+    let format_dune_file =
+      let conv =
+        let open Conv in
+        let path = field "path" (required string) in
+        let contents = field "contents" (required string) in
+        let to_ (path, contents) = (path, `Contents contents) in
+        let from (path, `Contents contents) = (path, contents) in
+        iso (record (both path contents)) to_ from
+      in
+      Decl.request ~method_:"format-dune-file" conv Conv.string
+
+    let promote = Decl.request ~method_:"promote" Path.sexp Conv.unit
   end
 
   module Notification = struct

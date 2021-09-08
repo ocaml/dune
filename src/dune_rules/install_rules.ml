@@ -208,10 +208,15 @@ end = struct
     let+ keep =
       match (stanza : Stanza.t) with
       | Dune_file.Library lib ->
-        if lib.optional then
-          Lib.DB.available (Scope.libs scope) (Dune_file.Library.best_name lib)
+        let* enabled_if = Expander.eval_blang expander lib.enabled_if in
+        if enabled_if then
+          if lib.optional then
+            Lib.DB.available (Scope.libs scope)
+              (Dune_file.Library.best_name lib)
+          else
+            Memo.Build.return true
         else
-          Memo.Build.return true
+          Memo.Build.return false
       | Dune_file.Documentation _ -> Memo.Build.return true
       | Dune_file.Install { enabled_if; _ } ->
         Expander.eval_blang expander enabled_if

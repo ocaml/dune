@@ -1,9 +1,20 @@
 open! Stdune
 open Fiber.O
 open Dune_rpc_server
-open Dune_rpc_private
+module Dune_rpc = Dune_rpc_private
+module Subscribe = Dune_rpc.Subscribe
+module Initialize = Dune_rpc.Initialize
+module Public = Dune_rpc.Public
+module Server_notifications = Dune_rpc.Server_notifications
+module Progress = Dune_rpc.Progress
+module Id = Dune_rpc.Id
+module Diagnostic = Dune_rpc.Diagnostic
+module Conv = Dune_rpc.Conv
 module Dep_conf = Dune_rules.Dep_conf
+module Source_tree = Dune_engine.Source_tree
 module Build_system = Dune_engine.Build_system
+module Dune_project = Dune_engine.Dune_project
+module Promotion = Dune_engine.Promotion
 
 module Build_outcome = struct
   type t = Dune_engine.Scheduler.Run.Build_outcome_for_rpc.t =
@@ -79,7 +90,7 @@ let dep_parser =
     Dep_conf.decode
 
 module Decl = struct
-  module Decl = Decl
+  module Decl = Dune_rpc.Decl
 
   let build =
     Decl.request ~method_:"build" Conv.(list string) Build_outcome.sexp
@@ -355,6 +366,50 @@ let handler (t : t Fdecl.t) : 'a Dune_rpc_server.Handler.t =
       Handler.callback (Handler.public ~since:(1, 0) ()) f
     in
     Handler.request rpc cb Public.Request.diagnostics
+  in
+  let source_path_of_string path =
+    if Filename.is_relative path then
+      Path.Source.(relative root path)
+    else
+      let source_root =
+        Path.to_absolute_filename (Path.source Path.Source.root)
+      in
+      match String.drop_prefix path ~prefix:source_root with
+      | None ->
+        User_error.raise [ Pp.textf "path isn't available in workspace" ]
+      | Some s ->
+        let s = String.drop_prefix_if_exists s ~prefix:"/" in
+        Path.Source.(relative root s)
+  in
+  let () =
+    let cb =
+      let f (path, `Contents contents) =
+        let+ version =
+          Memo.Build.run
+            (let open Memo.Build.O in
+            let source_path = source_path_of_string path in
+            let+ dir = Source_tree.nearest_dir source_path in
+            let project = Source_tree.Dir.project dir in
+            Dune_project.dune_version project)
+        in
+        let module Format_dune_lang = Dune_engine.Format_dune_lang in
+        Format_dune_lang.format_string ~version contents
+      in
+      Handler.callback (Handler.public ~since:(1, 0) ()) f
+    in
+    Handler.request rpc cb Public.Request.format_dune_file
+  in
+  let () =
+    let cb =
+      let f path =
+        let files = source_path_of_string path in
+        Promotion.promote_files_registered_in_last_run
+          (These ([ files ], ignore));
+        Fiber.return ()
+      in
+      Handler.callback (Handler.public ~since:(1, 0) ()) f
+    in
+    Handler.request rpc cb Public.Request.promote
   in
   rpc
 

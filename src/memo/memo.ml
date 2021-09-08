@@ -1577,17 +1577,6 @@ struct
   let eval x = exec memo (Key.T x) >>| Value.get ~input_with_matching_id:x
 end
 
-let incremental_mode_enabled =
-  ref
-    (match Sys.getenv_opt "DUNE_WATCHING_MODE_INCREMENTAL" with
-    | Some "true" -> true
-    | Some "false"
-    | None ->
-      false
-    | Some _ ->
-      User_error.raise
-        [ Pp.text "Invalid value of DUNE_WATCHING_MODE_INCREMENTAL" ])
-
 let reset invalidation =
   Invalidation.execute
     (Invalidation.combine invalidation (Current_run.invalidate ()));

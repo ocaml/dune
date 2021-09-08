@@ -1,0 +1,6 @@
+(library
+  (name lib)
+  (wrapped false)
+  (modules l i p)
+  (modules_without_implementation i)
+  (private_modules p))

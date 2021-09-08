@@ -255,6 +255,58 @@ end = struct
     List.exists [ "README"; "LICENSE"; "CHANGE"; "HISTORY" ] ~f:(fun prefix ->
         String.is_prefix fn ~prefix)
 
+  let stanza_to_entries ~sctx ~dir ~scope ~expander stanza =
+    let* stanza_and_package =
+      let+ stanza = keep_if expander stanza ~scope in
+      let open Option.O in
+      let* stanza = stanza in
+      let+ package = Dune_file.stanza_package stanza in
+      (stanza, package)
+    in
+    match stanza_and_package with
+    | None -> Memo.Build.return None
+    | Some (stanza, package) ->
+      let new_entries =
+        match (stanza : Stanza.t) with
+        | Dune_file.Install i
+        | Dune_file.Executables { install_conf = Some i; _ } ->
+          let path_expander =
+            File_binding.Unexpanded.expand ~dir
+              ~f:(Expander.No_deps.expand_str expander)
+          in
+          let section = i.section in
+          Memo.Build.List.map i.files ~f:(fun unexpanded ->
+              let* fb = path_expander unexpanded in
+              let loc = File_binding.Expanded.src_loc fb in
+              let src = File_binding.Expanded.src fb in
+              let dst = File_binding.Expanded.dst fb in
+              let+ entry =
+                Install.Entry.make_with_site section
+                  (Super_context.get_site_of_packages sctx)
+                  src ?dst
+              in
+              (Some loc, entry))
+        | Dune_file.Library lib ->
+          let sub_dir = Dune_file.Library.sub_dir lib in
+          let* dir_contents = Dir_contents.get sctx ~dir in
+          lib_install_files sctx ~scope ~dir ~sub_dir lib ~dir_contents
+        | Coq_stanza.Theory.T coqlib ->
+          Coq_rules.install_rules ~sctx ~dir coqlib
+        | Dune_file.Documentation d ->
+          let* dc = Dir_contents.get sctx ~dir in
+          let+ mlds = Dir_contents.mlds dc d in
+          List.map mlds ~f:(fun mld ->
+              ( None
+              , Install.Entry.make
+                  ~dst:(sprintf "odoc-pages/%s" (Path.Build.basename mld))
+                  Section.Doc mld ))
+        | Dune_file.Plugin t -> Plugin_rules.install_rules ~sctx ~dir t
+        | _ -> Memo.Build.return []
+      in
+      let name = Package.name package in
+      let+ entries = new_entries in
+      Some (name, entries)
+
   let stanzas_to_entries sctx =
     let ctx = Super_context.context sctx in
     let stanzas = Super_context.stanzas sctx in
@@ -316,57 +368,7 @@ end = struct
           let named_entries =
             let { Dir_with_dune.ctx_dir = dir; scope; _ } = d in
             let* expander = Super_context.expander sctx ~dir in
-            let* stanza_and_package =
-              let+ stanza = keep_if expander stanza ~scope in
-              let open Option.O in
-              let* stanza = stanza in
-              let+ package = Dune_file.stanza_package stanza in
-              (stanza, package)
-            in
-            match stanza_and_package with
-            | None -> Memo.Build.return None
-            | Some (stanza, package) ->
-              let new_entries =
-                match (stanza : Stanza.t) with
-                | Dune_file.Install i
-                | Dune_file.Executables { install_conf = Some i; _ } ->
-                  let path_expander =
-                    File_binding.Unexpanded.expand ~dir
-                      ~f:(Expander.No_deps.expand_str expander)
-                  in
-                  let section = i.section in
-                  Memo.Build.List.map i.files ~f:(fun unexpanded ->
-                      let* fb = path_expander unexpanded in
-                      let loc = File_binding.Expanded.src_loc fb in
-                      let src = File_binding.Expanded.src fb in
-                      let dst = File_binding.Expanded.dst fb in
-                      let+ entry =
-                        Install.Entry.make_with_site section
-                          (Super_context.get_site_of_packages sctx)
-                          src ?dst
-                      in
-                      (Some loc, entry))
-                | Dune_file.Library lib ->
-                  let sub_dir = Dune_file.Library.sub_dir lib in
-                  let* dir_contents = Dir_contents.get sctx ~dir in
-                  lib_install_files sctx ~scope ~dir ~sub_dir lib ~dir_contents
-                | Coq_stanza.Theory.T coqlib ->
-                  Coq_rules.install_rules ~sctx ~dir coqlib
-                | Dune_file.Documentation d ->
-                  let* dc = Dir_contents.get sctx ~dir in
-                  let+ mlds = Dir_contents.mlds dc d in
-                  List.map mlds ~f:(fun mld ->
-                      ( None
-                      , Install.Entry.make
-                          ~dst:
-                            (sprintf "odoc-pages/%s" (Path.Build.basename mld))
-                          Section.Doc mld ))
-                | Dune_file.Plugin t -> Plugin_rules.install_rules ~sctx ~dir t
-                | _ -> Memo.Build.return []
-              in
-              let name = Package.name package in
-              let+ entries = new_entries in
-              Some (name, entries)
+            stanza_to_entries ~sctx ~dir ~scope ~expander stanza
           in
           named_entries :: acc)
       |> Memo.Build.parallel_map ~f:Fun.id

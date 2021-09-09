@@ -1827,7 +1827,7 @@ end = struct
                 let* targets_and_digests =
                   (* Step IV. Store results to the shared cache and if that step
                      fails, post-process targets by removing write permissions
-                     and computing their digets. *)
+                     and computing their digests. *)
                   match t.cache_config with
                   | Enabled { storage_mode = mode; reproducibility_check = _ }
                     when can_go_in_shared_cache -> (
@@ -1836,7 +1836,7 @@ end = struct
                         ~action:action.action
                     in
                     match targets_and_digests with
-                    | Some targets_and_digets -> targets_and_digets
+                    | Some targets_and_digests -> targets_and_digests
                     | None ->
                       compute_target_digests_or_raise_error execution_parameters
                         ~loc targets)

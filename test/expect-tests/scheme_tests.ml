@@ -144,7 +144,7 @@ let print_rules scheme ~dir =
       print "inconsistent laziness behavior:";
       print "naive calls:";
       print_log calls1;
-      print "[evalulate] calls:";
+      print "[evaluate] calls:";
       print_log calls2
     ) else (
       print "calls:";
@@ -190,7 +190,7 @@ let%expect_test _ =
 inconsistent laziness behavior:
 naive calls:
     <none>
-[evalulate] calls:
+[evaluate] calls:
     t:thunk
 rules:
     <none>
@@ -203,7 +203,7 @@ let%expect_test _ =
 inconsistent laziness behavior:
 naive calls:
     <none>
-[evalulate] calls:
+[evaluate] calls:
     t:thunk
 rules:
     <none>

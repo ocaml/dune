@@ -1160,7 +1160,7 @@ end = struct
                        Error.make ~loc
                          [ Pp.textf
                              "default implementation belongs to package %s \
-                              while virtual libarary belongs to package %s. \
+                              while virtual library belongs to package %s. \
                               This is impossible\n"
                              (Package.Name.to_string p)
                              (Package.Name.to_string p')

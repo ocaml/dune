@@ -24,6 +24,6 @@ A default implementation of a library must belong to the same package
   6 |  (default_implementation def_i))
                                ^^^^^
   Error: default implementation belongs to package dummyfoo2 while virtual
-  libarary belongs to package dummyfoo1. This is impossible
+  library belongs to package dummyfoo1. This is impossible
   
   [1]

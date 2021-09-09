@@ -59,7 +59,7 @@ your new hello_world.exe program.
 Building a Hello World Program Using Lwt
 ========================================
 
-Lwt is a concurrent libary in OCaml. 
+Lwt is a concurrent library in OCaml. 
 In a directory of your choice, write this ``dune`` file:
 
 .. code:: scheme

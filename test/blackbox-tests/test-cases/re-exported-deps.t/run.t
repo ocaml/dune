@@ -2,7 +2,7 @@ dependencies can be exported transitively:
   $ dune exec ./foo.exe --root transitive
   Entering directory 'transitive'
 
-transtive deps expressed in the dune-package
+transitive deps expressed in the dune-package
 
   $ dune build @install --root transitive
   Entering directory 'transitive'

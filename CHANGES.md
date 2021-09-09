@@ -1075,7 +1075,7 @@ Unreleased
 1.11.2 (20/08/2019)
 -------------------
 
-- Remove the optimisation of passing `-nodynlink` for executalbes when
+- Remove the optimisation of passing `-nodynlink` for executables when
   not necessary. It seems to be breaking things (see #2527, @diml)
 
 - Fix invalid library names in `dune-package` files. Only public names should

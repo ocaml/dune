@@ -483,7 +483,7 @@ Unreleased
 - Formatting of dune files is now done in the executing dune process instead of
   in a separate process. (#3536, @nojb)
 
-- Add a `--debug-artifact-substution` flag to help debug problem with
+- Add a `--debug-artifact-substitution` flag to help debug problem with
   version not being captured by `dune-build-info` (#3589,
   @jeremiedimino)
 

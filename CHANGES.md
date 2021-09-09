@@ -2120,7 +2120,7 @@ Unreleased
 - Add a `Configurator.V1.Flags` module that improves the flag reading/writing
   API (#840, @avsm)
 
-- Add a `tests` stanza that simlpified defining regular and expect tests
+- Add a `tests` stanza that simplified defining regular and expect tests
   (#822, @rgrinberg)
 
 - Change the `subst` subcommand to lookup the project name from the

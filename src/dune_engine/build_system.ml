@@ -1618,7 +1618,7 @@ end = struct
        compute action execution parameters, we have no use for the action and
        might as well fail early, skipping unnecessary dependencies. The function
        [Source_tree.execution_parameters_of_dir] is memoized, and the result is
-       not expected to change often, so we do not sacrifise too much performance
+       not expected to change often, so we do not sacrifice too much performance
        here by executing it sequentially. *)
     let* action, deps = Action_builder.run action Eager in
     let wrap_fiber f =

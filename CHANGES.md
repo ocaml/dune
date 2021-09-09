@@ -1170,7 +1170,7 @@ Unreleased
 - Fix coloring of error messages from the compiler (@diml, #2384)
 
 - Add warning `66` to default set of warnings starting for dune projects with
-  language verison >= `1.11` (@rgrinberg, @diml, fixes #2299)
+  language version >= `1.11` (@rgrinberg, @diml, fixes #2299)
 
 - Add (dialect ...) stanza
   (@nojb, #2404)

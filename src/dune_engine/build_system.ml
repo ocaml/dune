@@ -823,29 +823,29 @@ end = struct
         | Ignore_source_files ->
           true
         | Fallback ->
-          let source_files_for_targtes =
+          let source_files_for_targets =
             (* All targets are in [dir] and we know it correspond to a directory
                of a build context since there are source files to copy, so this
                call can't fail. *)
             Path.Build.Set.to_list rule.targets
             |> Path.Source.Set.of_list_map ~f:Path.Build.drop_build_context_exn
           in
-          if Path.Source.Set.is_subset source_files_for_targtes ~of_:to_copy
+          if Path.Source.Set.is_subset source_files_for_targets ~of_:to_copy
           then
             (* All targets are present *)
             false
           else if
             Path.Source.Set.is_empty
-              (Path.Source.Set.inter source_files_for_targtes to_copy)
+              (Path.Source.Set.inter source_files_for_targets to_copy)
           then
             (* No target is present *)
             true
           else
             let absent_targets =
-              Path.Source.Set.diff source_files_for_targtes to_copy
+              Path.Source.Set.diff source_files_for_targets to_copy
             in
             let present_targets =
-              Path.Source.Set.diff source_files_for_targtes absent_targets
+              Path.Source.Set.diff source_files_for_targets absent_targets
             in
             User_error.raise ~loc:(Rule.loc rule)
               [ Pp.text

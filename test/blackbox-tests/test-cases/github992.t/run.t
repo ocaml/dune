@@ -1,4 +1,4 @@
-Variaous regression tests fixed by ocaml/dune#992
+Various regression tests fixed by ocaml/dune#992
 
 Interaction of (menhir ...) and -p
 ----------------------------------

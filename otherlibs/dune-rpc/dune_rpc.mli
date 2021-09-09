@@ -232,7 +232,7 @@ module V1 : sig
              ?log:(Message.t -> unit fiber)
           -> ?abort:(Message.t -> unit fiber)
                (** If [abort] is called, the server has terminated the
-                   connection due to a protcol error. This should never be
+                   connection due to a protocol error. This should never be
                    called unless there's a bug. *)
           -> unit
           -> t

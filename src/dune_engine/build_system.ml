@@ -2036,7 +2036,7 @@ end = struct
       execute_action_generic_stage2_impl
 
   let execute_action_generic ~observing_facts act ~capture_stdout =
-    (* We memoize the execution of anonymous actions, both via the persisetent
+    (* We memoize the execution of anonymous actions, both via the persistent
        mechanism for not re-running build rules between invocations of [dune
        build] and via [Memo]. The former is done by producing a normal build
        rule on the fly for the anonymous action.

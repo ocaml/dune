@@ -123,7 +123,7 @@ let%expect_test "execution context of ivars" =
     var value 42
     () |}]
 
-let%expect_test "fiber vars are preseved across yields" =
+let%expect_test "fiber vars are preserved across yields" =
   let var = Fiber.Var.create () in
   let fiber th () =
     let* v = Fiber.Var.get var in

@@ -26,7 +26,7 @@ let term =
             "Prints the entire content of the merlin configuration for the \
              given folder in a user friendly form. This is for testing and \
              debugging purposes only and should not be considered as a stable \
-             ouptut.")
+             output.")
   in
   let common = Common.set_print_directory common false in
   let config = Common.init common ~log_file:No_log_file in

@@ -36,7 +36,7 @@ program: ``_build/default/hello_world.exe``. Note that
 native code executables will have the ``.exe`` extension on all platforms
 (including non-Windows systems). 
 
-Finall, run it with the following command to see that it worked. In 
+Finally, run it with the following command to see that it worked. In 
 fact, the executable can both be built and run in a single
 step with ``dune exec ./hello_world.exe``.
 

@@ -1150,7 +1150,7 @@ Unreleased
   @TheLortex, review by @rgrinberg)
 
 - Add a variable `%{ignoring_promoted_rules}` that is `true` when
-  `--ingore-promoted-rules` is passed on the command line and false
+  `--ignore-promoted-rules` is passed on the command line and false
   otherwise (#2382, @diml)
 
 - Fix a bug in `future_syntax` where the characters `@` and `&` were

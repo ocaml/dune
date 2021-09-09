@@ -36,7 +36,7 @@ module V1 : sig
   module Id : sig
     (** Id's for requests, responses, sessions.
 
-        Id's are permitted to be arbtirary s-expressions to allow users pick
+        Id's are permitted to be arbitrary s-expressions to allow users pick
         descriptive tokens to ease debugging. *)
 
     type t

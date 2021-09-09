@@ -139,7 +139,7 @@ module Library : sig
 end
 
 (** A foreign source file that has a [path] and all information of the
-    corresponnding [Foreign.Stubs.t] declaration. *)
+    corresponding [Foreign.Stubs.t] declaration. *)
 module Source : sig
   type t =
     { stubs : Stubs.t

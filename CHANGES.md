@@ -1030,7 +1030,7 @@ Unreleased
   name. (#2696, @nojb)
 
 - The fields `license`, `authors`, `maintainers`, `source`, `bug_reports`,
-  `homepage`, and `documentation` of `dune-project` can now be overriden on a
+  `homepage`, and `documentation` of `dune-project` can now be overridden on a
   per-package basis. (#2774, @nojb)
 
 - Change the default `modes` field of executables to `(mode exe)`. If

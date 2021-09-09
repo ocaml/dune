@@ -1371,7 +1371,7 @@ end = struct
         Dune_stats.emit stats event)
 
   (** A type isomorphic to Result, but without the negative connotations
-      assotiated with the word Error. *)
+      associated with the word Error. *)
   module Cache_result = struct
     type ('hit, 'miss) t =
       | Hit of 'hit

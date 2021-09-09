@@ -111,7 +111,7 @@ module Common = struct
     (sexps, comments)
 
   (* Return a mapping [Path.t -> Dune_lang.Ast.t list] containing [path] and all
-     the files in includes, recursiverly *)
+     the files in includes, recursively *)
   let scan_included_files path =
     let files = ref Path.Source.Map.empty in
     let rec iter path =

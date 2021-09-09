@@ -71,7 +71,7 @@ end
 
     - the command line arguments
     - the contents of the workspace file
-    - the contehts of the user configuration file
+    - the contents of the user configuration file
     - the default values *)
 type t = private
   { merlin_context : Context_name.t option

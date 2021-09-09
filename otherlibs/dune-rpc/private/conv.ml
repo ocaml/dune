@@ -140,7 +140,7 @@ type ('a, 'kind) t =
   | Record : ('a, fields) t -> ('a, values) t
 
 and ('a, 'arg) constr =
-  { (* TODO allow consturctors without an argument *)
+  { (* TODO allow constructors without an argument *)
     name : string
   ; arg : ('arg, values) t
   ; inj : 'arg -> 'a
@@ -187,7 +187,7 @@ let string =
       | Atom s -> s
       | List _ as list ->
         raise_of_sexp ~payload:[ ("list", list) ]
-          "string: expected atom. receieved list")
+          "string: expected atom. received list")
     , fun s -> Atom s )
 
 let int =

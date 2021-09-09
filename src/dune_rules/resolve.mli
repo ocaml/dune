@@ -16,7 +16,7 @@
 
     {2 Reading resolve values}
 
-    You should use [read] or [args] on [Resove.t] values inside code that
+    You should use [read] or [args] on [Resolve.t] values inside code that
     compute the action of a rule. By doing so, any error will be propagated only
     at the point where the rule is actually being executed. For instance:
 

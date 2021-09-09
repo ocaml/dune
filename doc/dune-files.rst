@@ -1943,7 +1943,7 @@ present, and which libraries it will load.
 
    (plugin
     (name <name>)
-    (libraries <libaries>)
+    (libraries <libraries>)
     (site (<package> <site name>))
     (<optional-fields>))
 

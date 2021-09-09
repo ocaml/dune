@@ -305,7 +305,7 @@ let term =
       value & pos_all string []
       & info [] ~docv:"STRING"
           ~doc:
-            "What to describe. The syntax of this desciption is tied to the \
+            "What to describe. The syntax of this description is tied to the \
              version passed to $(b,--lang)")
   and+ context_name = Common.context_arg ~doc:"Build context to use."
   and+ format = Format.arg

@@ -1,6 +1,6 @@
 ----------------------------------------------------------------------------------
 Testsuite for https://github.com/ocaml/dune/issues/3046
-`dune init` should raise proper errors when syntacticaly invalid arguments
+`dune init` should raise proper errors when syntactically invalid arguments
 are given as parameters
 ----------------------------------------------------------------------------------
 

@@ -291,7 +291,7 @@ let ocamlc_i ?(flags = []) ~deps cctx (m : Module.t) ~output =
    for namespacing at the moment, in order to expose module `X` of library `foo`
    as `Foo.X`, Dune does the following:
 
-   - it compiles x.ml to Foo__X.cmo, Foo__X.cmx, Foo__X.o, ... - it implictly
+   - it compiles x.ml to Foo__X.cmo, Foo__X.cmx, Foo__X.o, ... - it implicitly
    exposes a module alias [module X = Foo__X] to all the modules of the `foo`
    library
 

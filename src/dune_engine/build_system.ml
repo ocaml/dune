@@ -823,29 +823,29 @@ end = struct
         | Ignore_source_files ->
           true
         | Fallback ->
-          let source_files_for_targtes =
+          let source_files_for_targets =
             (* All targets are in [dir] and we know it correspond to a directory
                of a build context since there are source files to copy, so this
                call can't fail. *)
             Path.Build.Set.to_list rule.targets
             |> Path.Source.Set.of_list_map ~f:Path.Build.drop_build_context_exn
           in
-          if Path.Source.Set.is_subset source_files_for_targtes ~of_:to_copy
+          if Path.Source.Set.is_subset source_files_for_targets ~of_:to_copy
           then
             (* All targets are present *)
             false
           else if
             Path.Source.Set.is_empty
-              (Path.Source.Set.inter source_files_for_targtes to_copy)
+              (Path.Source.Set.inter source_files_for_targets to_copy)
           then
             (* No target is present *)
             true
           else
             let absent_targets =
-              Path.Source.Set.diff source_files_for_targtes to_copy
+              Path.Source.Set.diff source_files_for_targets to_copy
             in
             let present_targets =
-              Path.Source.Set.diff source_files_for_targtes absent_targets
+              Path.Source.Set.diff source_files_for_targets absent_targets
             in
             User_error.raise ~loc:(Rule.loc rule)
               [ Pp.text
@@ -918,7 +918,7 @@ end = struct
     (* If a [.merlin] file is present in the [Promoted_to_delete] set but not in
        the [Source_files_to_ignore] that means the rule that ordered its
        promotion is no more valid. This would happen when upgrading to Dune 2.8
-       from ealier version without and building uncleaned projects. We delete
+       from earlier version without and building uncleaned projects. We delete
        these leftover files here. *)
     let merlin_file = ".merlin" in
     let source_dir = Path.Build.drop_build_context_exn dir in
@@ -1371,7 +1371,7 @@ end = struct
         Dune_stats.emit stats event)
 
   (** A type isomorphic to Result, but without the negative connotations
-      assotiated with the word Error. *)
+      associated with the word Error. *)
   module Cache_result = struct
     type ('hit, 'miss) t =
       | Hit of 'hit
@@ -1618,7 +1618,7 @@ end = struct
        compute action execution parameters, we have no use for the action and
        might as well fail early, skipping unnecessary dependencies. The function
        [Source_tree.execution_parameters_of_dir] is memoized, and the result is
-       not expected to change often, so we do not sacrifise too much performance
+       not expected to change often, so we do not sacrifice too much performance
        here by executing it sequentially. *)
     let* action, deps = Action_builder.run action Eager in
     let wrap_fiber f =
@@ -1827,7 +1827,7 @@ end = struct
                 let* targets_and_digests =
                   (* Step IV. Store results to the shared cache and if that step
                      fails, post-process targets by removing write permissions
-                     and computing their digets. *)
+                     and computing their digests. *)
                   match t.cache_config with
                   | Enabled { storage_mode = mode; reproducibility_check = _ }
                     when can_go_in_shared_cache -> (
@@ -1836,7 +1836,7 @@ end = struct
                         ~action:action.action
                     in
                     match targets_and_digests with
-                    | Some targets_and_digets -> targets_and_digets
+                    | Some targets_and_digests -> targets_and_digests
                     | None ->
                       compute_target_digests_or_raise_error execution_parameters
                         ~loc targets)
@@ -2036,7 +2036,7 @@ end = struct
       execute_action_generic_stage2_impl
 
   let execute_action_generic ~observing_facts act ~capture_stdout =
-    (* We memoize the execution of anonymous actions, both via the persisetent
+    (* We memoize the execution of anonymous actions, both via the persistent
        mechanism for not re-running build rules between invocations of [dune
        build] and via [Memo]. The former is done by producing a normal build
        rule on the fly for the anonymous action.

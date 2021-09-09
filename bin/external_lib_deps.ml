@@ -6,7 +6,7 @@ let doc = "Removed command."
 let man =
   [ `S "DESCRIPTION"
   ; `P
-      "This subcommand used to print out anapproximate set of external \
+      "This subcommand used to print out an approximate set of external \
        libraries that were required for building a given set of targets, \
        without running the build. While this feature was useful, over time the \
        quality of approximation had degraded and the cost of maintenance had \

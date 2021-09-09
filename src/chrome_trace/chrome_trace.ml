@@ -108,7 +108,7 @@ module Event = struct
         ; sort_index : int
         }
 
-  (* TODO support flow, samples, referemces, memory dumps *)
+  (* TODO support flow, samples, references, memory dumps *)
   type t =
     | Counter of common_fields * args * Id.t option
     | Duration_start of common_fields * args * Id.t option

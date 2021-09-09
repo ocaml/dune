@@ -36,7 +36,7 @@ module V1 : sig
   module Id : sig
     (** Id's for requests, responses, sessions.
 
-        Id's are permitted to be arbtirary s-expressions to allow users pick
+        Id's are permitted to be arbitrary s-expressions to allow users pick
         descriptive tokens to ease debugging. *)
 
     type t
@@ -232,7 +232,7 @@ module V1 : sig
              ?log:(Message.t -> unit fiber)
           -> ?abort:(Message.t -> unit fiber)
                (** If [abort] is called, the server has terminated the
-                   connection due to a protcol error. This should never be
+                   connection due to a protocol error. This should never be
                    called unless there's a bug. *)
           -> unit
           -> t

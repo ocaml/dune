@@ -226,9 +226,9 @@ Unreleased
   the rework of the Coq "native" compilation system (#4760, @ejgallego)
 
 - Fix a bug where instrumentation flags would be added even if the
-  instrumentatation was disabled (@nojb, #4770)
+  instrumentation was disabled (@nojb, #4770)
 
-- Fix #4682: option `-p` takes now precedence on environement variable
+- Fix #4682: option `-p` takes now precedence on environment variable
   `DUNE_PROFILE` (#4730, #4774, @bobot, reported by @dra27 #4632)
 
 - Fix installation with opam of package with dune sites. The `.install` file is
@@ -483,7 +483,7 @@ Unreleased
 - Formatting of dune files is now done in the executing dune process instead of
   in a separate process. (#3536, @nojb)
 
-- Add a `--debug-artifact-substution` flag to help debug problem with
+- Add a `--debug-artifact-substitution` flag to help debug problem with
   version not being captured by `dune-build-info` (#3589,
   @jeremiedimino)
 
@@ -630,7 +630,7 @@ Unreleased
 - [coq] Support for theory dependencies and compositional builds using
   new field `(theories ...)` (#2053, @ejgallego, @rgrinberg)
 
-- From now on, each version of a syntax extension must be explicitely tied to a
+- From now on, each version of a syntax extension must be explicitly tied to a
   minimum version of the dune language. Inconsistent versions in a
   `dune-project` will trigger a warning for version <=2.4 and an error for
   versions >2.4 of the dune language. (#3270, fixes #2957, @voodoos)
@@ -908,7 +908,7 @@ Unreleased
 - Define (paths ...) fields in (context ...) definitions in order to set or
   extend any PATH-like variable in the context environment. (#2426, @nojb)
 
-- The `diff` action will always normalize newlines before diffing. Perviousy, it
+- The `diff` action will always normalize newlines before diffing. Previously, it
   would not do this normalization for rules defined in jbuild files. (#2457,
   @rgrinberg)
 
@@ -1024,13 +1024,13 @@ Unreleased
 - Add (deprecated_package_names) field to (package) declaration in
   dune-project. The names declared here can be used in the (old_public_name)
   field of (deprecated_library_name) stanza. These names are interpreted as
-  library names (not prefixed by a package name) and appropiate redirections are
-  setup in their META files. This feaure is meant to migrate old libraries which
+  library names (not prefixed by a package name) and appropriate redirections are
+  setup in their META files. This feature is meant to migrate old libraries which
   do not follow Dune's convention of prefixing libraries with the package
   name. (#2696, @nojb)
 
 - The fields `license`, `authors`, `maintainers`, `source`, `bug_reports`,
-  `homepage`, and `documentation` of `dune-project` can now be overriden on a
+  `homepage`, and `documentation` of `dune-project` can now be overridden on a
   per-package basis. (#2774, @nojb)
 
 - Change the default `modes` field of executables to `(mode exe)`. If
@@ -1075,7 +1075,7 @@ Unreleased
 1.11.2 (20/08/2019)
 -------------------
 
-- Remove the optimisation of passing `-nodynlink` for executalbes when
+- Remove the optimisation of passing `-nodynlink` for executables when
   not necessary. It seems to be breaking things (see #2527, @diml)
 
 - Fix invalid library names in `dune-package` files. Only public names should
@@ -1150,7 +1150,7 @@ Unreleased
   @TheLortex, review by @rgrinberg)
 
 - Add a variable `%{ignoring_promoted_rules}` that is `true` when
-  `--ingore-promoted-rules` is passed on the command line and false
+  `--ignore-promoted-rules` is passed on the command line and false
   otherwise (#2382, @diml)
 
 - Fix a bug in `future_syntax` where the characters `@` and `&` were
@@ -1170,7 +1170,7 @@ Unreleased
 - Fix coloring of error messages from the compiler (@diml, #2384)
 
 - Add warning `66` to default set of warnings starting for dune projects with
-  language verison >= `1.11` (@rgrinberg, @diml, fixes #2299)
+  language version >= `1.11` (@rgrinberg, @diml, fixes #2299)
 
 - Add (dialect ...) stanza
   (@nojb, #2404)
@@ -2120,7 +2120,7 @@ Unreleased
 - Add a `Configurator.V1.Flags` module that improves the flag reading/writing
   API (#840, @avsm)
 
-- Add a `tests` stanza that simlpified defining regular and expect tests
+- Add a `tests` stanza that simplified defining regular and expect tests
   (#822, @rgrinberg)
 
 - Change the `subst` subcommand to lookup the project name from the
@@ -2847,7 +2847,7 @@ Unreleased
 - Added support for aliases (#7, @rgrinberg)
 
 - Added support for compiling against multiple opam switch
-  simultaneously by writing a `jbuild-worspace` file
+  simultaneously by writing a `jbuild-workspace` file
 
 - Added support for OCaml 4.02.3
 

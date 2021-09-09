@@ -72,7 +72,7 @@ Without extension, prebuild
   $ dune exec -- ./example.exe
   Hello, Arrakis!
 
-Without extention, clean state
+Without extension, clean state
 ==============================
 
   $ sed -i.bak 's/Arrakis/World/' example.ml

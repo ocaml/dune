@@ -16,7 +16,7 @@ module Linkage : sig
 
   val equal : t -> t -> bool
 
-  (** Byte compilation, exetension [.bc] *)
+  (** Byte compilation, extension [.bc] *)
   val byte : t
 
   (** Native compilation, extension [.exe] *)

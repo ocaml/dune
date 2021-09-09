@@ -31,8 +31,8 @@ val init : ?log_file:Dune_util.Log.File.t -> t -> Dune_config.t
     commands. *)
 val examples : (string * string) list -> Cmdliner.Manpage.block
 
-(** [command_synopsis subcommands] is a custom [SYNOPSIS] manpage section listing
-    the given [subcommands]. Each subcommand is prefixed with the `dune`
+(** [command_synopsis subcommands] is a custom [SYNOPSIS] manpage section
+    listing the given [subcommands]. Each subcommand is prefixed with the `dune`
     top-level command. *)
 val command_synopsis : string list -> Cmdliner.Manpage.block list
 

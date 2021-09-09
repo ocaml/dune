@@ -92,8 +92,8 @@ let%expect_test "run and connect" =
     dune build finished with 0 |}]
 
 module Logger = struct
-  (* A little helper to make the output from the client and server deterministic.
-     Log messages are batched and outputted at the end. *)
+  (* A little helper to make the output from the client and server
+     deterministic. Log messages are batched and outputted at the end. *)
   type t =
     { mutable messages : string list
     ; name : string

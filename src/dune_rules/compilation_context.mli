@@ -13,9 +13,9 @@ type t
 
 (** Sets whether [-opaque] is going to be used during compilation. This
     constructs a different dependency graph for native executables. In
-    particular, we can omit dependency on .cmx files. For mli only modules,
-    this setting is ignored and is always set when it's available. As there are
-    no .cmx files for such modules anyway *)
+    particular, we can omit dependency on .cmx files. For mli only modules, this
+    setting is ignored and is always set when it's available. As there are no
+    .cmx files for such modules anyway *)
 type opaque =
   | Explicit of bool  (** Set directly by the caller *)
   | Inherit_from_settings

@@ -908,7 +908,7 @@ Unreleased
 - Define (paths ...) fields in (context ...) definitions in order to set or
   extend any PATH-like variable in the context environment. (#2426, @nojb)
 
-- The `diff` action will always normalize newlines before diffing. Perviousy, it
+- The `diff` action will always normalize newlines before diffing. Previously, it
   would not do this normalization for rules defined in jbuild files. (#2457,
   @rgrinberg)
 

@@ -2847,7 +2847,7 @@ Unreleased
 - Added support for aliases (#7, @rgrinberg)
 
 - Added support for compiling against multiple opam switch
-  simultaneously by writing a `jbuild-worspace` file
+  simultaneously by writing a `jbuild-workspace` file
 
 - Added support for OCaml 4.02.3
 

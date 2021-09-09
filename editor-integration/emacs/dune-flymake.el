@@ -53,7 +53,7 @@ characters \\([0-9]+\\)-\\([0-9]+\\): +\\([^\n]*\\)$"
 
 (defun dune-flymake-create-lint-script ()
   "Create the lint script if it does not exist.
-This is nedded as long as https://github.com/ocaml/dune/issues/241
+This is needed as long as https://github.com/ocaml/dune/issues/241
 is not fixed."
   (unless (file-exists-p dune-flymake-program)
     (let ((dir (file-name-directory dune-program))

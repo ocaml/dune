@@ -630,7 +630,7 @@ Unreleased
 - [coq] Support for theory dependencies and compositional builds using
   new field `(theories ...)` (#2053, @ejgallego, @rgrinberg)
 
-- From now on, each version of a syntax extension must be explicitely tied to a
+- From now on, each version of a syntax extension must be explicitly tied to a
   minimum version of the dune language. Inconsistent versions in a
   `dune-project` will trigger a warning for version <=2.4 and an error for
   versions >2.4 of the dune language. (#3270, fixes #2957, @voodoos)

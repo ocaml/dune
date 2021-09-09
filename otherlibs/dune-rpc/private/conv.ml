@@ -140,7 +140,7 @@ type ('a, 'kind) t =
   | Record : ('a, fields) t -> ('a, values) t
 
 and ('a, 'arg) constr =
-  { (* TODO allow consturctors without an argument *)
+  { (* TODO allow constructors without an argument *)
     name : string
   ; arg : ('arg, values) t
   ; inj : 'arg -> 'a

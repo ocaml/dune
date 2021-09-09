@@ -918,7 +918,7 @@ end = struct
     (* If a [.merlin] file is present in the [Promoted_to_delete] set but not in
        the [Source_files_to_ignore] that means the rule that ordered its
        promotion is no more valid. This would happen when upgrading to Dune 2.8
-       from ealier version without and building uncleaned projects. We delete
+       from earlier version without and building uncleaned projects. We delete
        these leftover files here. *)
     let merlin_file = ".merlin" in
     let source_dir = Path.Build.drop_build_context_exn dir in

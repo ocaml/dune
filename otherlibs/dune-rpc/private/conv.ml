@@ -187,7 +187,7 @@ let string =
       | Atom s -> s
       | List _ as list ->
         raise_of_sexp ~payload:[ ("list", list) ]
-          "string: expected atom. receieved list")
+          "string: expected atom. received list")
     , fun s -> Atom s )
 
 let int =

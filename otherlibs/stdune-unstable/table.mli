@@ -8,7 +8,7 @@
     This means that if you want a hash table generic over the type of keys, you
     don't have to put your type inside a functor.
 
-    Unlike the polymorphich hashtable ([('k, 'v) Hashtbl.t]), this does not use
+    Unlike the polymorphic hashtable ([('k, 'v) Hashtbl.t]), this does not use
     polymorphic hash and polymorphic equality, so this module does respect
     abstraction boundaries. *)
 

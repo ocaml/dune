@@ -1,7 +1,7 @@
 open! Dune_engine
 open Stdune
 
-(** The default environment in which to run commands. The environemnt of
+(** The default environment in which to run commands. The environment of
     individual build contexts augment this environment. *)
 val env : unit -> Env.t
 

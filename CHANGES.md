@@ -228,7 +228,7 @@ Unreleased
 - Fix a bug where instrumentation flags would be added even if the
   instrumentatation was disabled (@nojb, #4770)
 
-- Fix #4682: option `-p` takes now precedence on environement variable
+- Fix #4682: option `-p` takes now precedence on environment variable
   `DUNE_PROFILE` (#4730, #4774, @bobot, reported by @dra27 #4632)
 
 - Fix installation with opam of package with dune sites. The `.install` file is

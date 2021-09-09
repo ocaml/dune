@@ -298,7 +298,7 @@ let check_fdo_support has_native ocfg ~name =
          experimental and will be removed when ocamlfdo is fully integrated into
          the toolchain. When using a dev version of ocamlopt that does not
          support the required options, fdo builds will fail because the compiler
-         won't recongnize the options. Normals builds won't be affected. *) )
+         won't recognize the options. Normals builds won't be affected. *) )
   else if not (Ocaml_version.supports_split_at_emit version) then
     if not (Ocaml_version.supports_function_sections version) then
       err ()

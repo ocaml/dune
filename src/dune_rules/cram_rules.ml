@@ -168,7 +168,7 @@ let rules ~sctx ~expander ~dir tests =
               in
               let+ locks =
                 (* Locks must be relative to the cram stanza directory and not
-                   the individual tests direcories *)
+                   the individual tests directories *)
                 Memo.Build.List.map spec.locks ~f:(fun lock ->
                     Expander.No_deps.expand_str expander lock
                     >>| Path.relative (Path.build dir))

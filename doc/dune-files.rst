@@ -18,8 +18,8 @@ Additionally, they can contains the following stanzas.
 
 .. _using:
 
-Using
------
+`using`
+-------
 
 The language of configuration files read by Dune can be extended to support
 additional stanzas (eg., ``menhir``, ``coq.theory``, ``mdx``). This is done by
@@ -457,7 +457,7 @@ to use the :ref:`include_subdirs` stanza.
 
 - ``(package <package>)`` installs a private library under the specified package.
   Such a library is now usable by public libraries defined in the same project.
-  The ``findlib`` name for this library will be ``<package>.__private__.<name>``;
+  The Findlib name for this library will be ``<package>.__private__.<name>``;
   however, the library's interface will be hidden from consumers outside the
   project.
 

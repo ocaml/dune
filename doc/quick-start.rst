@@ -112,7 +112,7 @@ And build it with:
 
 The executable will be built as ``_build/default/hello_world.exe``
 
-Defining a Library Using Lwt and ``ocaml-re``
+Defining a Library Using Lwt and ocaml-re
 =========================================
 
 Write this ``dune`` file:

@@ -14,7 +14,7 @@ module Config : sig
 end
 
 (** Stop accepting new rpc connections. Fiber returns when all existing
-    connetions terminate *)
+    connections terminate *)
 val stop : unit -> unit Fiber.t
 
 val run : Config.t -> Dune_stats.t option -> unit Fiber.t

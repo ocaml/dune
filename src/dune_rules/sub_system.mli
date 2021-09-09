@@ -25,7 +25,7 @@ end
 
     - connect the parser to the [dune] file parser
 
-    - connect the metatada generator [M.to_sexp] so that metadata are included
+    - connect the metadata generator [M.to_sexp] so that metadata are included
       in installed [<lib>.dune] files *)
 module Register_backend (M : Backend) : Registered_backend with type t := M.t
 

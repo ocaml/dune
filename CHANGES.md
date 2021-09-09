@@ -226,7 +226,7 @@ Unreleased
   the rework of the Coq "native" compilation system (#4760, @ejgallego)
 
 - Fix a bug where instrumentation flags would be added even if the
-  instrumentatation was disabled (@nojb, #4770)
+  instrumentation was disabled (@nojb, #4770)
 
 - Fix #4682: option `-p` takes now precedence on environment variable
   `DUNE_PROFILE` (#4730, #4774, @bobot, reported by @dra27 #4632)

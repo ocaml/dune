@@ -108,7 +108,7 @@ Declaring an instrumentation backend
 
 Instrumentation backends are libraries with the special field
 ``(instrumentation.backend)``. This field instructs Dune that the library can be
-used as an intrumentation backend and also provides the parameters that are
+used as an instrumentation backend and also provides the parameters that are
 specific to this backend.
 
 Currently, Dune will only support ``ppx`` instrumentation tools, and the

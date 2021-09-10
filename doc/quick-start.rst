@@ -36,17 +36,17 @@ program: ``_build/default/hello_world.exe``. Note that
 native code executables will have the ``.exe`` extension on all platforms
 (including non-Windows systems). 
 
-Finally, run it with the following command to see that it worked. In 
+Finall, run it with the following command to see that it worked. In 
 fact, the executable can both be built and run in a single
 step with ``dune exec ./hello_world.exe``.
 
-Please note: if you have Dune, opam, and OCaml installed, but you 
+Please note: if you have Dune, Opam, and OCaml installed, but you 
 get an error that the ``dune`` command isn't recognized, it will be necessary 
 to run ``eval $(opam config env)`` to enable Dune in your directory. Find more 
 information in the `Dune ReadMe  <https://github.com/ocaml/dune>`.
 
 Verify OCaml installation with ``ocaml -version``
-Verify opam installation with ``opam --version``
+Verify Opam installation with ``opam --version``
 
 If you still get an error that the ``dune`` command isn't recognized, try running 
 the following in this order:
@@ -59,7 +59,7 @@ your new hello_world.exe program.
 Building a Hello World Program Using Lwt
 ========================================
 
-Lwt is a concurrent library in OCaml. 
+Lwt is a concurrent libary in OCaml. 
 In a directory of your choice, write this ``dune`` file:
 
 .. code:: scheme

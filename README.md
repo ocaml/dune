@@ -4,7 +4,7 @@ Dune - A Composable Build System
 Dune is a build system designed for OCaml/Reason projects only. It
 focuses on providing the user with a consistent experience and takes
 care of most low-level details of OCaml compilations. It's merely necessary 
-to provide a description of your project, and dune will
+to provide a description of your project, and Dune will
 do the rest.
 
 It implements a scheme that's inspired from the one used inside Jane
@@ -44,7 +44,7 @@ Overview
 Dune reads project metadata from `dune` files, which are either
 static files in a simple S-expression syntax or OCaml scripts. It uses
 this information to setup build rules, generate configuration files
-for development tools such as [merlin][merlin], handle installation,
+for development tools such as [Merlin][merlin], handle installation,
 etc.
 
 Dune itself is fast, has very low overhead, and supports parallel

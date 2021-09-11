@@ -115,8 +115,6 @@ module Where : sig
     | `Ip of [ `Host of string ] * [ `Port of int ]
     ]
 
-  val of_string : string -> t
-
   val to_string : t -> string
 
   val add_to_env : t -> Stdune.Env.t -> Stdune.Env.t

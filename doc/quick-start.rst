@@ -18,7 +18,7 @@ inline help available from ``dune init --help``.
 Initializing an Executable
 --------------------------
 
-To initialize a project to build an executable program, run the following
+To initialize a project that will build an executable program, run the following
 (replacing ``project_name`` with the name of your project):
 
 .. code:: shell

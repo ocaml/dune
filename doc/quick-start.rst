@@ -10,7 +10,7 @@ Initializing Projects
 =====================
 
 The following subsections illustrate basic usage of the ``dune init proj``
-subcommand. For more documentation see :ref:`initializing_components` and the
+subcommand. For more documentation, see :ref:`initializing_components` and the
 inline help available from ``dune init --help``.
 
 .. _initializing-an-executable:

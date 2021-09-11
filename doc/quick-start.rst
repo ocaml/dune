@@ -25,7 +25,7 @@ To initialize a project that will build an executable program, run the following
 
     dune init proj project_name
 
-This will create a directory for the project that includes the following contents:
+This create a project directory that includes the following contents:
 
 .. code::
 

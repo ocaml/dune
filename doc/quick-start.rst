@@ -6,7 +6,7 @@ This document gives simple usage examples of Dune. You can also look at
 `examples <https://github.com/ocaml/dune/tree/master/example>`__ for complete
 examples of projects using Dune.
 
-Initializing projects
+Initializing Projects
 =====================
 
 The following subsections illustrate basic usage of the ``dune init proj``
@@ -15,7 +15,7 @@ inline help available from ``dune init --help``.
 
 .. _initializing-an-executable:
 
-Initializing an executable
+Initializing an Executable
 --------------------------
 
 To initialize a project to build an executable program, run the following
@@ -93,7 +93,7 @@ which you can dive deeper into Dune's capabilities:
 * The ``dune`` files in each directory specify the component to be built with
   the files in that directory. For details on dune files, see :ref:`dune-files`.
 
-Initializing a library
+Initializing a Library
 --------------------------
 
 To initialize a project for an ocaml library, run the following (replacing

@@ -443,10 +443,11 @@ module Info = struct
              })
     ; license = Some "LICENSE"
     ; authors = Some [ "Author Name" ]
-    ; homepage = Some "https://url/to/home/page"
-    ; bug_reports = Some "https://url/to/issue/tracker"
-    ; documentation = Some "https://url/to/documentation"
     ; maintainers = Some [ "Maintainer Name" ]
+    ; documentation = Some "https://url/to/documentation"
+    (* homepage and bug_reports are inferred from the source *)
+    ; homepage = None
+    ; bug_reports = None
     }
 
   let to_dyn

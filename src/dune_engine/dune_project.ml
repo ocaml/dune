@@ -687,9 +687,9 @@ let encode : t -> Dune_lang.t list =
   let version =
     Option.map ~f:(constr "version" string) version |> Option.to_list
   in
-  [ lang_stanza; name ] @ version
+  [ lang_stanza; name ] @ flags @ version
   @ Package.Info.encode_fields info
-  @ flags @ formatting @ dialects @ packages @ subst_config
+  @ formatting @ dialects @ packages @ subst_config
 
 let parse ~dir ~lang ~opam_packages ~file ~dir_status =
   String_with_vars.set_decoding_env

@@ -315,6 +315,8 @@ In particular, the dune-project file has the expected content:
   
   (name test_exec_proj)
   
+  (generate_opam_files true)
+  
   (source
    (github username/reponame))
   
@@ -324,13 +326,7 @@ In particular, the dune-project file has the expected content:
   
   (license LICENSE)
   
-  (homepage https://url/to/home/page)
-  
   (documentation https://url/to/documentation)
-  
-  (bug_reports https://url/to/issue/tracker)
-  
-  (generate_opam_files true)
   
   (package
    (name test_exec_proj)
@@ -358,9 +354,9 @@ And the opam file will be generated as expected
   authors: ["Author Name"]
   license: "LICENSE"
   tags: ["topics" "to describe" "your" "project"]
-  homepage: "https://url/to/home/page"
+  homepage: "https://github.com/username/reponame"
   doc: "https://url/to/documentation"
-  bug-reports: "https://url/to/issue/tracker"
+  bug-reports: "https://github.com/username/reponame/issues"
   depends: [
     "ocaml"
     "dune" {>= "3.0"}
@@ -375,8 +371,7 @@ And the opam file will be generated as expected
       name
       "-j"
       jobs
-      "--promote-install-files"
-      "false"
+      "--promote-install-files=false"
       "@install"
       "@runtest" {with-test}
       "@doc" {with-doc}
@@ -424,6 +419,8 @@ In particular, the dune-project file has the expected content:
   
   (name test_lib_proj)
   
+  (generate_opam_files true)
+  
   (source
    (github username/reponame))
   
@@ -433,13 +430,7 @@ In particular, the dune-project file has the expected content:
   
   (license LICENSE)
   
-  (homepage https://url/to/home/page)
-  
   (documentation https://url/to/documentation)
-  
-  (bug_reports https://url/to/issue/tracker)
-  
-  (generate_opam_files true)
   
   (package
    (name test_lib_proj)
@@ -472,9 +463,9 @@ And the opam file will be generated as expected
   authors: ["Author Name"]
   license: "LICENSE"
   tags: ["topics" "to describe" "your" "project"]
-  homepage: "https://url/to/home/page"
+  homepage: "https://github.com/username/reponame"
   doc: "https://url/to/documentation"
-  bug-reports: "https://url/to/issue/tracker"
+  bug-reports: "https://github.com/username/reponame/issues"
   depends: [
     "ocaml"
     "dune" {>= "3.0"}
@@ -489,8 +480,7 @@ And the opam file will be generated as expected
       name
       "-j"
       jobs
-      "--promote-install-files"
-      "false"
+      "--promote-install-files=false"
       "@install"
       "@runtest" {with-test}
       "@doc" {with-doc}

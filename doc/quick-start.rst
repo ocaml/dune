@@ -96,14 +96,14 @@ which you can dive deeper into Dune's capabilities:
 Initializing a Library
 --------------------------
 
-To initialize a project for an ocaml library, run the following (replacing
+To initialize a project for an OCaml library, run the following (replacing
 ``project_name`` with the name of your project):
 
 .. code:: shell
 
     dune init proj --kind=lib project_name
 
-This will create a directory for the project that includes the following contents:
+This create a project directory that includes the following contents:
 
 .. code::
 
@@ -135,7 +135,7 @@ You can run your tests with:
    dune test
 
 
-All of the sub-components generated are the same as those described in
+All of the subcomponents generated are the same as those described in
 :ref:`initializing-an-executable`, with the following exceptions:
 
 * There is no ``bin`` directory generated.

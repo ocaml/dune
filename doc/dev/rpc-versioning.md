@@ -121,7 +121,7 @@ performed in reverse, sending the value back to the sender, completing
 the procedure.
 
 Barring strange circumstances (such as a client declaring a generation
-with a newer version number than the type exposed in `dune-rpc.mli`), it
+with a newer version number than the type exposed in `dune_rpc.mli`), it
 is always the case that the transformation from wire to model types will
 be the identity function on the side that is older.
 

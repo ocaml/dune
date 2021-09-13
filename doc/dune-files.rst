@@ -18,8 +18,8 @@ Additionally, they can contains the following stanzas.
 
 .. _using:
 
-using
------
+`using`
+-------
 
 The language of configuration files read by Dune can be extended to support
 additional stanzas (eg., ``menhir``, ``coq.theory``, ``mdx``). This is done by
@@ -437,7 +437,7 @@ to use the :ref:`include_subdirs` stanza.
 
 - ``(package <package>)`` installs a private library under the specified package.
   Such a library is now usable by public libraries defined in the same project.
-  The ``findlib`` name for this library will be ``<package>.__private__.<name>``;
+  The ``Findlib`` name for this library will be ``<package>.__private__.<name>``;
   however, the library's interface will be hidden from consumers outside the
   project.
 
@@ -1841,7 +1841,7 @@ command to workaround problems with the output directory isn't
 allowed when using extraction from Dune; moreover the ``Cd`` command
 will be deprecated in Coq v8.12.
 
-mdx (Since 2.4)
+MDX (Since 2.4)
 ---------------
 
 MDX is a tool that helps you keep your markdown documentation up-to-date by

@@ -97,34 +97,6 @@ val record : ('a, fields) t -> ('a, values) t
 
 val either : ('a, fields) t -> ('b, fields) t -> (('a, 'b) Either.t, fields) t
 
-(** For "untagged" sums, with no field name disambiguators.
-
-    Note that, when decoding according to [either_untagged l r], [l] will be
-    attempted first, then [r]. This means that cases in which the same sexp may
-    be valid as both, a [Left] variant will be produced.
-
-    You should avoid using this where possible. Its primary use case is when
-    writing code that is generic over multiple different possible generations of
-    a protocol, where the counterparty may be unaware of the existence of later
-    versions.
-
-    For example, consider multiple versions of a request being sent from two
-    different clients:
-
-    {v
-    B (version 1) ->-.
-                      \
-                       A (server)
-                      /
-    C (version 2) ->-'
-    v}
-
-    To correctly decode the request, A must be able to parse both versions. If
-    this happens before session version information is available (maybe as part
-    of the version negotiation itself), the only way to do so is to attempt to *)
-val either_untagged :
-  ('a, values) t -> ('b, values) t -> (('a, 'b) Either.t, values) t
-
 (** {2 parsing sums} *)
 
 type ('a, 'arg) constr

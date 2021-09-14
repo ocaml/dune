@@ -243,7 +243,7 @@ module Add = struct
       ~resp:Conv.int ~upgrade_req ~downgrade_req ~upgrade_resp ~downgrade_resp
       ~version:1
 
-  module V2 = struct
+  let v2 =
     let req =
       let open Conv in
       let parse =
@@ -256,7 +256,7 @@ module Add = struct
       let to_ (x, y, others) = { x; y; others } in
       let from { x; y; others } = (x, y, others) in
       iso parse to_ from
-
+    in
     let resp =
       let open Conv in
       let no_others = constr "no_others" int (fun x -> No_others x) in
@@ -267,9 +267,7 @@ module Add = struct
       sum [ econstr no_others; econstr with_others ] (function
         | No_others x -> case x no_others
         | With_others { xy; all } -> case (xy, all) with_others)
-  end
-
-  let v2 =
+    in
     Decl.For_tests.Request.make_current_gen ~req:V2.req ~resp:V2.resp ~version:2
 end
 

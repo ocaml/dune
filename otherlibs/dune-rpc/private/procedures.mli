@@ -18,12 +18,6 @@ module Public : sig
   val promote : (Path.t, unit) Decl.Request.t
 end
 
-module Internal : sig
-  val build : (string list, Build_outcome.t) Decl.Request.t
-
-  val status : (unit, Status.t) Decl.Request.t
-end
-
 module Server_side : sig
   val abort : Message.t Decl.Notification.t
 

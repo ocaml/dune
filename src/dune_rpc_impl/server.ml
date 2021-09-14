@@ -8,8 +8,6 @@ module Public = Dune_rpc.Public
 module Versioned = Dune_rpc.Versioned
 module Server_notifications = Dune_rpc.Server_notifications
 module Progress = Dune_rpc.Progress
-module Build_outcome = Dune_rpc.Build_outcome
-module Status = Dune_rpc.Status
 module Procedures = Dune_rpc.Procedures
 module Id = Dune_rpc.Id
 module Diagnostic = Dune_rpc.Diagnostic
@@ -19,6 +17,8 @@ module Source_tree = Dune_engine.Source_tree
 module Build_system = Dune_engine.Build_system
 module Dune_project = Dune_engine.Dune_project
 module Promotion = Dune_engine.Promotion
+module Build_outcome = Decl.Build_outcome
+module Status = Decl.Status
 
 type pending_build_action =
   | Build of Dep_conf.t list * Build_outcome.t Fiber.Ivar.t
@@ -271,7 +271,7 @@ let handler (t : t Fdecl.t) : 'a Dune_rpc_server.Handler.t =
       in
       Fiber.Ivar.read ivar
     in
-    Handler.implement_request rpc Procedures.Internal.build build
+    Handler.implement_request rpc Decl.build build
   in
   let () =
     let rec cancel_pending_jobs () =
@@ -358,7 +358,7 @@ let handler (t : t Fdecl.t) : 'a Dune_rpc_server.Handler.t =
       in
       Fiber.return { Status.clients }
     in
-    Handler.implement_request rpc Procedures.Internal.status f
+    Handler.implement_request rpc Decl.status f
   in
   let () =
     let f _ () =

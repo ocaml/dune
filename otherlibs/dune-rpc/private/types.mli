@@ -336,27 +336,3 @@ module type Sys = sig
 
   val analyze_path : string -> [ `Unix_socket | `Normal_file | `Other ] fiber
 end
-
-(* Internal RPC request types *)
-
-module Build_outcome : sig
-  type t =
-    | Success
-    | Failure
-
-  val sexp : (t, Conv.values) Conv.t
-end
-
-module Status : sig
-  module Menu : sig
-    type t =
-      | Uninitialized
-      | Menu of (Method_name.t * Method_version.t) list
-
-    val sexp : (t, Conv.values) Conv.t
-  end
-
-  type t = { clients : (Id.t * Menu.t) list }
-
-  val sexp : (t, Conv.values) Conv.t
-end

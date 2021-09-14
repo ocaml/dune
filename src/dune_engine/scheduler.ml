@@ -1185,7 +1185,7 @@ module Run = struct
     Console.print [ Pp.text "waited for inotify sync" ]
 
   module Build_outcome_for_rpc = struct
-    type t = Dune_rpc.Build_outcome.t =
+    type t =
       | Success
       | Failure
   end

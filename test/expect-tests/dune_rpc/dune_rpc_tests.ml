@@ -64,7 +64,7 @@ let setup_client_server () =
   let connect () = Chan.connect client_chan server_chan in
   (client_chan, sessions, connect)
 
-let test ?(extra_procedures = []) ?no_real_methods ~client ~handler ~init () =
+let test ?(private_menu = []) ?no_real_methods ~client ~handler ~init () =
   let () =
     match no_real_methods with
     | None ->
@@ -75,8 +75,7 @@ let test ?(extra_procedures = []) ?no_real_methods ~client ~handler ~init () =
   let run =
     let client_chan, sessions, connect = setup_client_server () in
     let client () =
-      Drpc.Client.For_tests.connect client_chan init ~extra_procedures
-        ~f:(fun c ->
+      Drpc.Client.connect_with_menu client_chan init ~private_menu ~f:(fun c ->
           let* () = client c in
           Chan.write client_chan None)
     in
@@ -123,8 +122,8 @@ let%expect_test "no methods in common" =
 
 let simple_request (type a b) ?(version = 1) ~method_
     (req : (a, Conv.values) Conv.t) (resp : (b, Conv.values) Conv.t) =
-  let v = Decl.For_tests.Request.make_current_gen ~req ~resp ~version in
-  Decl.For_tests.Request.make ~method_ ~generations:[ v ]
+  let v = Decl.Request.make_current_gen ~req ~resp ~version in
+  Decl.Request.make ~method_ ~generations:[ v ]
 
 let%expect_test "call method with matching versions" =
   let decl = simple_request ~method_:"double" Conv.int Conv.int in
@@ -164,7 +163,7 @@ let%expect_test "call method with matching versions" =
     ; id = Id.make (Atom "test-client")
     }
   in
-  test ~init ~client ~handler ~extra_procedures:[ Request decl ] ();
+  test ~init ~client ~handler ~private_menu:[ Request decl ] ();
   [%expect
     {|
     client: sending request
@@ -198,7 +197,7 @@ let%expect_test "call method with no matching versions" =
     }
   in
   let decl' = simple_request ~method_:"double" ~version:2 Conv.int Conv.int in
-  test ~init ~client ~handler ~extra_procedures:[ Request decl' ] ();
+  test ~init ~client ~handler ~private_menu:[ Request decl' ] ();
   [%expect
     {|
     client: sending request
@@ -226,7 +225,7 @@ module Add = struct
   end
 
   let v1_only =
-    Decl.For_tests.Request.make_current_gen
+    Decl.Request.make_current_gen
       ~req:(Conv.pair Conv.int Conv.int)
       ~resp:Conv.int ~version:1
 
@@ -238,7 +237,7 @@ module Add = struct
       | No_others x -> x
       | With_others { xy; all = _ } -> xy
     in
-    Decl.For_tests.Request.make_gen
+    Decl.Request.make_gen
       ~req:(Conv.pair Conv.int Conv.int)
       ~resp:Conv.int ~upgrade_req ~downgrade_req ~upgrade_resp ~downgrade_resp
       ~version:1
@@ -268,14 +267,12 @@ module Add = struct
         | No_others x -> case x no_others
         | With_others { xy; all } -> case (xy, all) with_others)
     in
-    Decl.For_tests.Request.make_current_gen ~req ~resp ~version:2
+    Decl.Request.make_current_gen ~req ~resp ~version:2
 end
 
-let add_v1_only =
-  Decl.For_tests.Request.make ~method_:"add" ~generations:[ Add.v1_only ]
+let add_v1_only = Decl.Request.make ~method_:"add" ~generations:[ Add.v1_only ]
 
-let add_v1_v2 =
-  Decl.For_tests.Request.make ~method_:"add" ~generations:[ Add.v1; Add.v2 ]
+let add_v1_v2 = Decl.Request.make ~method_:"add" ~generations:[ Add.v1; Add.v2 ]
 
 let%expect_test "client is newer than server" =
   let handler =
@@ -304,7 +301,7 @@ let%expect_test "client is newer than server" =
     ; id = Id.make (Atom "test-client")
     }
   in
-  test ~extra_procedures:[ Request add_v1_v2 ] ~init ~client ~handler ();
+  test ~private_menu:[ Request add_v1_v2 ] ~init ~client ~handler ();
   [%expect
     {|
     client: sending request
@@ -339,7 +336,7 @@ let%expect_test "client is older than server" =
     ; id = Id.make (Atom "test-client")
     }
   in
-  test ~extra_procedures:[ Request add_v1_only ] ~init ~client ~handler ();
+  test ~private_menu:[ Request add_v1_only ] ~init ~client ~handler ();
   [%expect
     {|
     client: sending request

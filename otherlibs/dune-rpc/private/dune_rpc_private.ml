@@ -216,26 +216,24 @@ module Client = struct
         -> t
     end
 
+    type proc =
+      | Request : ('a, 'b) Decl.request -> proc
+      | Notification : 'a Decl.notification -> proc
+
+    val connect_with_menu :
+         ?handler:Handler.t
+      -> private_menu:proc list
+      -> chan
+      -> Initialize.Request.t
+      -> f:(t -> 'a fiber)
+      -> 'a fiber
+
     val connect :
          ?handler:Handler.t
       -> chan
       -> Initialize.Request.t
       -> f:(t -> 'a fiber)
       -> 'a fiber
-
-    module For_tests : sig
-      type proc =
-        | Request : ('a, 'b) Decl.request -> proc
-        | Notification : 'a Decl.notification -> proc
-
-      val connect :
-           ?handler:Handler.t
-        -> extra_procedures:proc list
-        -> chan
-        -> Initialize.Request.t
-        -> f:(t -> 'a fiber)
-        -> 'a fiber
-    end
   end
 
   module Make (Fiber : sig
@@ -619,11 +617,11 @@ module Client = struct
         t
     end
 
-    type proc' =
-      | Request : ('a, 'b) Decl.request -> proc'
-      | Notification : 'a Decl.notification -> proc'
+    type proc =
+      | Request : ('a, 'b) Decl.request -> proc
+      | Notification : 'a Decl.notification -> proc
 
-    let setup_versioning ~(handler : Handler.t) ~extra_procedures =
+    let setup_versioning ?(private_menu = []) ~(handler : Handler.t) () =
       let open V in
       let t : _ Builder.t = Builder.create () in
       Builder.declare_request t Procedures.Public.ping;
@@ -633,8 +631,6 @@ module Client = struct
       Builder.declare_notification t Procedures.Public.unsubscribe;
       Builder.declare_request t Procedures.Public.format_dune_file;
       Builder.declare_request t Procedures.Public.promote;
-      Builder.declare_request t Procedures.Internal.status;
-      Builder.declare_request t Procedures.Internal.build;
       Builder.implement_notification t Procedures.Server_side.abort (fun () ->
           handler.abort);
       Builder.implement_notification t Procedures.Server_side.log (fun () ->
@@ -647,11 +643,11 @@ module Client = struct
         ~f:(function
           | Request r -> Builder.declare_request t r
           | Notification n -> Builder.declare_notification t n)
-        extra_procedures;
+        private_menu;
       t
 
     let connect_raw chan (initialize : Initialize.Request.t)
-        ~(extra_procedures : proc' list) ~(handler : Handler.t) ~f =
+        ~(private_menu : proc list) ~(handler : Handler.t) ~f =
       let packets () =
         let+ read = Chan.read chan in
         Option.map read ~f:(fun sexp ->
@@ -662,7 +658,7 @@ module Client = struct
             | Error e -> raise (Invalid_session e)
             | Ok message -> message)
       in
-      let builder = setup_versioning ~handler ~extra_procedures in
+      let builder = setup_versioning ~handler ~private_menu () in
       let on_preemptive_abort = handler.abort in
       let handler_var = Fiber.Ivar.create () in
       let handler = Fiber.Ivar.read handler_var in
@@ -726,21 +722,10 @@ module Client = struct
       in
       Fiber.fork_and_join_unit (fun () -> read_packets client packets) run
 
-    let connect ?(handler = Handler.default) chan
-        (initialize : Initialize.Request.t) ~f =
-      connect_raw chan initialize ~handler ~extra_procedures:[] ~f
+    let connect_with_menu ?(handler = Handler.default) ~private_menu chan init
+        ~f =
+      connect_raw (Chan.of_chan chan) init ~handler ~private_menu ~f
 
-    let connect ?handler chan init ~f =
-      let chan = Chan.of_chan chan in
-      connect ?handler chan init ~f
-
-    module For_tests = struct
-      type proc = proc' =
-        | Request : ('a, 'b) Decl.request -> proc
-        | Notification : 'a Decl.notification -> proc
-
-      let connect ?(handler = Handler.default) ~extra_procedures chan init ~f =
-        connect_raw (Chan.of_chan chan) init ~handler ~extra_procedures ~f
-    end
+    let connect = connect_with_menu ~private_menu:[]
   end
 end

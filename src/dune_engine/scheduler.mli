@@ -70,7 +70,7 @@ module Run : sig
   val poll : step -> unit Fiber.t
 
   module Build_outcome_for_rpc : sig
-    type t = Dune_rpc.Build_outcome.t =
+    type t =
       | Success
       | Failure
   end

@@ -115,7 +115,7 @@ let dune_build client what =
   printfn "Building %s" what;
   let+ res =
     Client.request client
-      (Dune_rpc.Decl.Request.witness Dune_rpc.Procedures.Internal.build)
+      (Dune_rpc.Decl.Request.witness Dune_rpc_impl.Decl.build)
       [ what ]
   in
   match res with

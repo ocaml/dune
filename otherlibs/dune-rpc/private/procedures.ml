@@ -75,27 +75,6 @@ module Public = struct
   let promote = Promote.decl
 end
 
-module Internal = struct
-  module Build = struct
-    let v1 =
-      Decl.Request.make_current_gen ~req:(Conv.list Conv.string)
-        ~resp:Build_outcome.sexp ~version:1
-
-    let decl = Decl.Request.make ~method_:"build" ~generations:[ v1 ]
-  end
-
-  module Status = struct
-    let v1 =
-      Decl.Request.make_current_gen ~req:Conv.unit ~resp:Status.sexp ~version:1
-
-    let decl = Decl.Request.make ~method_:"status" ~generations:[ v1 ]
-  end
-
-  let build = Build.decl
-
-  let status = Status.decl
-end
-
 module Server_side = struct
   module Abort = struct
     let v1 = Decl.Notification.make_current_gen ~conv:Message.sexp ~version:1

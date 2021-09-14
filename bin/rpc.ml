@@ -139,7 +139,7 @@ module Status = struct
         let open Fiber.O in
         let+ response =
           Dune_rpc_impl.Client.request session
-            (witness Dune_rpc_private.Procedures.Internal.status)
+            (witness Dune_rpc_impl.Decl.status)
             ()
         in
         match response with
@@ -151,7 +151,7 @@ module Status = struct
                 Sexp.to_string sexp
               in
               let message =
-                match (menu : Dune_rpc_private.Status.Menu.t) with
+                match (menu : Dune_rpc_impl.Decl.Status.Menu.t) with
                 | Uninitialized ->
                   User_message.make
                     [ Pp.textf "Client [%s], conducting version negotiation" id
@@ -191,7 +191,7 @@ module Build = struct
         let open Fiber.O in
         let+ response =
           Dune_rpc_impl.Client.request session
-            (witness Dune_rpc.Procedures.Internal.build)
+            (witness Dune_rpc_impl.Decl.build)
             targets
         in
         match response with

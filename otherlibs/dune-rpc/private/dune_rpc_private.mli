@@ -291,25 +291,30 @@ module Subscribe : sig
     | Build_progress
 end
 
-module Build_outcome : sig
-  type t =
-    | Success
-    | Failure
-end
-
-module Status : sig
-  module Menu : sig
-    type t =
-      | Uninitialized
-      | Menu of (string * int) list
-  end
-
-  type t = { clients : (Id.t * Menu.t) list }
-end
-
 module Decl : sig
   module Request : sig
+    type ('req, 'resp) gen
+
+    val make_gen :
+         req:'wire_req Conv.value
+      -> resp:'wire_resp Conv.value
+      -> upgrade_req:('wire_req -> 'req)
+      -> downgrade_req:('req -> 'wire_req)
+      -> upgrade_resp:('wire_resp -> 'resp)
+      -> downgrade_resp:('resp -> 'wire_resp)
+      -> version:int
+      -> ('req, 'resp) gen
+
+    val make_current_gen :
+         req:'req Conv.value
+      -> resp:'resp Conv.value
+      -> version:int
+      -> ('req, 'resp) gen
+
     type ('a, 'b) t
+
+    val make :
+      method_:string -> generations:('req, 'resp) gen list -> ('req, 'resp) t
 
     type ('a, 'b) witness
 
@@ -317,7 +322,20 @@ module Decl : sig
   end
 
   module Notification : sig
+    type 'payload gen
+
+    val make_gen :
+         conv:'wire Conv.value
+      -> upgrade:('wire -> 'model)
+      -> downgrade:('model -> 'wire)
+      -> version:int
+      -> 'model gen
+
+    val make_current_gen : conv:'a Conv.value -> version:int -> 'a gen
+
     type 'a t
+
+    val make : method_:string -> generations:'payload gen list -> 'payload t
 
     type 'a witness
 
@@ -327,53 +345,6 @@ module Decl : sig
   type ('a, 'b) request = ('a, 'b) Request.t
 
   type 'a notification = 'a Notification.t
-
-  module For_tests : sig
-    module Request : sig
-      type ('req, 'resp) gen
-
-      val make_gen :
-           req:'wire_req Conv.value
-        -> resp:'wire_resp Conv.value
-        -> upgrade_req:('wire_req -> 'req)
-        -> downgrade_req:('req -> 'wire_req)
-        -> upgrade_resp:('wire_resp -> 'resp)
-        -> downgrade_resp:('resp -> 'wire_resp)
-        -> version:int
-        -> ('req, 'resp) gen
-
-      val make_current_gen :
-           req:'req Conv.value
-        -> resp:'resp Conv.value
-        -> version:int
-        -> ('req, 'resp) gen
-
-      val make :
-           method_:string
-        -> generations:('req, 'resp) gen list
-        -> ('req, 'resp) Request.t
-    end
-
-    module Notification : sig
-      type 'payload gen
-
-      val make_gen :
-           conv:'wire Conv.value
-        -> upgrade:('wire -> 'model)
-        -> downgrade:('model -> 'wire)
-        -> version:int
-        -> 'model gen
-
-      val make_current_gen : conv:'a Conv.value -> version:int -> 'a gen
-
-      type 'payload t
-
-      val make :
-           method_:string
-        -> generations:'payload gen list
-        -> 'payload Notification.t
-    end
-  end
 end
 
 module type Fiber = sig
@@ -466,26 +437,24 @@ module Client : sig
         -> t
     end
 
+    type proc =
+      | Request : ('a, 'b) Decl.request -> proc
+      | Notification : 'a Decl.notification -> proc
+
+    val connect_with_menu :
+         ?handler:Handler.t
+      -> private_menu:proc list
+      -> chan
+      -> Initialize.Request.t
+      -> f:(t -> 'a fiber)
+      -> 'a fiber
+
     val connect :
          ?handler:Handler.t
       -> chan
       -> Initialize.Request.t
       -> f:(t -> 'a fiber)
       -> 'a fiber
-
-    module For_tests : sig
-      type proc =
-        | Request : ('a, 'b) Decl.request -> proc
-        | Notification : 'a Decl.notification -> proc
-
-      val connect :
-           ?handler:Handler.t
-        -> extra_procedures:proc list
-        -> chan
-        -> Initialize.Request.t
-        -> f:(t -> 'a fiber)
-        -> 'a fiber
-    end
   end
 
   module Make
@@ -639,12 +608,6 @@ module Procedures : sig
       (Path.t * [ `Contents of string ], string) Decl.Request.t
 
     val promote : (Path.t, unit) Decl.Request.t
-  end
-
-  module Internal : sig
-    val build : (string list, Build_outcome.t) Decl.Request.t
-
-    val status : (unit, Status.t) Decl.Request.t
   end
 
   module Server_side : sig

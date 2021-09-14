@@ -134,7 +134,7 @@ understood by dune language."))
 
 (package
  (name dune-rpc)
- (depends (stdune-unstable (= :version)) (pp (>= 1.1.0)) csexp)
+ (depends (stdune-unstable (= :version)) (pp (>= 1.1.0)) csexp dyn)
  (synopsis "Communicate with dune using rpc")
  (description "Library to connect and control a running dune instance"))
 
@@ -150,10 +150,19 @@ understood by dune language."))
  (description "Specialization of dune-rpc to Lwt"))
 
 (package
+ (name dyn)
+ (synopsis "Dynamic type")
+ (depends
+  (ocaml (>= 4.08.0))
+  pp)
+ (description "Dynamic type"))
+
+(package
  (name stdune-unstable)
  (synopsis "Dune's unstable standard library")
  (depends
   (ocaml (>= 4.08.0))
+  dyn
   pp
   csexp)
  (description "This library offers no backwards compatibility guarantees. Use at your own risk."))

@@ -14,7 +14,7 @@ module Where = struct
     match name with
     | "unix" ->
       let path = Option.value_exn (List.assoc args "path") in
-      `Unix path
+      Ok (`Unix path)
     | "tcp" ->
       let port =
         match List.assoc args "port" with
@@ -22,13 +22,17 @@ module Where = struct
         | Some p -> int_of_string p
       in
       let addr = List.assoc args "host" |> Option.value_exn in
-      `Ip (`Host addr, `Port port)
-    | _ -> failwith "invalid connection type"
+      Ok (`Ip (`Host addr, `Port port))
+    | _ -> Error "invalid connection type"
 
-  let of_string s =
+  let of_string s : (t, string) result =
     match Dbus_address.of_string s with
-    | Error _ -> failwith ("invalid address format " ^ s)
+    | Error _ -> Error ("invalid address format " ^ s)
     | Ok s -> of_dbus s
+
+  type error = Invalid_where of string
+
+  exception E of error
 
   let rpc_socket_relative_to_build_dir = "rpc/dune"
 
@@ -49,7 +53,7 @@ module Where = struct
   module type S = sig
     type 'a fiber
 
-    val get : build_dir:string -> t option fiber
+    val get : build_dir:string -> (t option, exn) result fiber
 
     val default : build_dir:string -> t
   end
@@ -69,12 +73,12 @@ module Where = struct
 
     val is_win32 : unit -> bool
 
-    val read_file : string -> string Fiber.t
+    val read_file : string -> (string, exn) result Fiber.t
 
-    val readlink : string -> string option Fiber.t
+    val readlink : string -> (string option, exn) result Fiber.t
 
     val analyze_path :
-      string -> [ `Unix_socket | `Normal_file | `Other ] Fiber.t
+      string -> ([ `Unix_socket | `Normal_file | `Other ], exn) result Fiber.t
   end) =
   struct
     let default ~build_dir =
@@ -83,26 +87,41 @@ module Where = struct
       else
         `Unix (Filename.concat build_dir rpc_socket_relative_to_build_dir)
 
-    let get ~build_dir : t option Fiber.t =
+    let ( let** ) x f =
+      let open Fiber.O in
+      let* x = x in
+      match x with
+      | Error e -> Fiber.return (Error e)
+      | Ok x -> f x
+
+    let get ~build_dir : (t option, exn) result Fiber.t =
       let open Fiber.O in
       match Sys.getenv _DUNE_RPC with
-      | Some d -> Fiber.return (Some (of_string d))
+      | Some d -> (
+        match of_string d with
+        | Ok s -> Fiber.return (Ok (Some s))
+        | Error e -> Fiber.return (Error (E (Invalid_where e))))
       | None -> (
         let of_file f =
           let+ contents = Sys.read_file f in
-          Some (of_string contents)
+          match contents with
+          | Error e -> Error e
+          | Ok contents -> (
+            match of_string contents with
+            | Error e -> Error (E (Invalid_where e))
+            | Ok s -> Ok (Some s))
         in
         let file = Filename.concat build_dir rpc_socket_relative_to_build_dir in
-        let* analyze = Sys.analyze_path file in
+        let** analyze = Sys.analyze_path file in
         match analyze with
-        | `Other -> Fiber.return None
+        | `Other -> Fiber.return (Ok None)
         | `Normal_file -> of_file file
         | `Unix_socket -> (
-          let unix file = Fiber.return (Some (`Unix file)) in
+          let unix file = Fiber.return (Ok (Some (`Unix file))) in
           if String.length file < 104 then
             unix file
           else
-            let* readlink = Sys.readlink file in
+            let** readlink = Sys.readlink file in
             match readlink with
             | None -> unix file
             | Some p ->

@@ -90,16 +90,17 @@ module V1 = struct
 
         let is_win32 () = Sys.win32
 
-        let read_file s = Lwt_io.with_file ~mode:Input s Lwt_io.read
+        let read_file s : (string, exn) result Lwt.t =
+          Lwt_result.catch (Lwt_io.with_file ~mode:Input s Lwt_io.read)
 
         let readlink s =
           Lwt.catch
             (fun () ->
               let+ res = Lwt_unix.readlink s in
-              Some res)
+              Ok (Some res))
             (function
-              | Unix.Unix_error (Unix.EINVAL, _, _) -> Lwt.return_none
-              | exn -> Lwt.fail exn)
+              | Unix.Unix_error (Unix.EINVAL, _, _) -> Lwt.return (Ok None)
+              | exn -> Lwt.return (Error exn))
 
         let analyze_path s =
           Lwt.try_bind
@@ -107,10 +108,10 @@ module V1 = struct
             (fun stat ->
               Lwt.return
                 (match stat.st_kind with
-                | Unix.S_SOCK -> `Unix_socket
-                | S_REG -> `Normal_file
-                | _ -> `Other))
-            (fun _ -> Lwt.return `Other)
+                | Unix.S_SOCK -> Ok `Unix_socket
+                | S_REG -> Ok `Normal_file
+                | _ -> Ok `Other))
+            (fun e -> Lwt.return (Error e))
       end)
 
   let connect_chan where =

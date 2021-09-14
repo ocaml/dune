@@ -141,6 +141,7 @@ understood by dune language."))
 (package
  (name dune-rpc-lwt)
  (depends
+  result
   (dune-rpc (= :version))
   (stdune-unstable (= :version))
   (csexp (>= 1.4.0))

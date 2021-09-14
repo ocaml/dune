@@ -353,10 +353,14 @@ module V1 : sig
       | `Ip of [ `Host of string ] * [ `Port of int ]
       ]
 
+    type error = Invalid_where of string
+
+    exception E of error
+
     module type S = sig
       type 'a fiber
 
-      val get : build_dir:string -> t option fiber
+      val get : build_dir:string -> (t option, exn) result fiber
 
       val default : build_dir:string -> t
     end
@@ -376,12 +380,12 @@ module V1 : sig
 
       val is_win32 : unit -> bool
 
-      val read_file : string -> string Fiber.t
+      val read_file : string -> (string, exn) result Fiber.t
 
-      val readlink : string -> string option Fiber.t
+      val readlink : string -> (string option, exn) result Fiber.t
 
       val analyze_path :
-        string -> [ `Unix_socket | `Normal_file | `Other ] Fiber.t
+        string -> ([ `Unix_socket | `Normal_file | `Other ], exn) result Fiber.t
     end) : S with type 'a fiber := 'a Fiber.t
   end
 end

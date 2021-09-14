@@ -1,3 +1,6 @@
+(** Types exposed to end-user consumers of [dune_rpc.mli]. This module should
+    never use any Stdune types. *)
+
 module Loc : sig
   type t = Stdune.Loc.t =
     { start : Lexing.position

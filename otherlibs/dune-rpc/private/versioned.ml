@@ -226,9 +226,11 @@ module Make (Fiber : Fiber) = struct
                   match Univ_map.find declaration_table key with
                   | None ->
                     Code_error.raise
-                      ("versioning: method in [known_" ^ which
-                     ^ "_table] without actually being declared")
-                      [ ("method_", Dyn.String name) ]
+                      "versioning: method found in versioning table without \
+                       actually being declared"
+                      [ ("method_", Dyn.String name)
+                      ; ("table", Dyn.String ("known_" ^ which ^ "_table"))
+                      ]
                   | Some listing -> Method_version.Map.keys listing @ acc)
             in
             (name, generations) :: acc)
@@ -344,8 +346,9 @@ module Make (Fiber : Fiber) = struct
 
     let raise_version_bug ~method_ ~selected ~verb ~known =
       Code_error.raise
-        ("bug with version negotiation; selected " ^ verb ^ " method version")
-        [ ("method", Dyn.String method_)
+        "bug with version negotiation; selected bad method version"
+        [ ("why", Dyn.String ("version is " ^ verb))
+        ; ("method", Dyn.String method_)
         ; ( "implemented versions"
           , Dyn.List (List.map ~f:(fun i -> Dyn.Int i) known) )
         ; ("selected version", Dyn.Int selected)

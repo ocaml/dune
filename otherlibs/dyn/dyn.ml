@@ -46,7 +46,7 @@ let string_in_ocaml_syntax str =
   (* CR-someday aalekseyev: should use the method from
      [Dune_lang.prepare_formatter] so that the formatter can fit multiple lines
      on one line. *)
-  match String_split.split ~on:'\n' str with
+  match String.split_on_char ~sep:'\n' str with
   | [] -> assert false
   | first :: rest -> (
     match unsnoc rest with
@@ -164,4 +164,4 @@ type dyn = t
 
 let hash = Stdlib.Hashtbl.hash
 
-let compare x y = Ordering.of_int (compare x y)
+let compare x y = compare x y

@@ -58,7 +58,7 @@ val pp : t -> _ Pp.t
 
 val opaque : t
 
-val compare : t -> t -> Ordering.t
+val compare : t -> t -> int
 
 val hash : t -> int
 

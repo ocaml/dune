@@ -155,12 +155,12 @@ module Encoder = struct
 
   let unknown _ = String "<unknown>"
 
-  let opaque _ = String "<opaque>"
+  let opaque _ = Opaque
 
   let constr s args = Variant (s, args)
 end
 
-let opaque = String "<opaque>"
+let opaque = Opaque
 
 type dyn = t
 

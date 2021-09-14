@@ -138,7 +138,7 @@ end
 module Clients = struct
   type entry =
     { session : Client.t Session.Stage1.t
-    ; mutable menu : Versioned.Menu.t option
+    ; mutable menu : Dune_rpc.Menu.t option
     }
 
   type t = entry Session.Id.Map.t
@@ -354,7 +354,7 @@ let handler (t : t Fdecl.t) : 'a Dune_rpc_server.Handler.t =
             ( Initialize.Request.id (Session.Stage1.initialize entry.session)
             , match entry.menu with
               | None -> Status.Menu.Uninitialized
-              | Some menu -> Menu (Versioned.Menu.to_list menu) ))
+              | Some menu -> Menu (Dune_rpc.Menu.to_list menu) ))
       in
       Fiber.return { Status.clients }
     in

@@ -1,6 +1,7 @@
 open Import
 module Conv = Conv
 module Versioned = Versioned
+module Menu = Menu
 module Procedures = Procedures
 include Types
 include Exported_types
@@ -700,7 +701,7 @@ module Client = struct
                 with
                 | Error e -> raise (Invalid_session e)
                 | Ok (Selected methods) -> (
-                  match Versioned.Menu.of_list methods with
+                  match Menu.of_list methods with
                   | Ok m -> m
                   | Error (method_, a, b) ->
                     Code_error.raise

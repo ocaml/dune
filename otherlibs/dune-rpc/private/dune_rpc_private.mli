@@ -532,27 +532,26 @@ module Protocol : sig
   val sexp : t Conv.value
 end
 
+module Menu : sig
+  type t
+
+  val default : t
+
+  (** For each method known by both local and remote, choose the highest common
+      version number. Returns [None] if the resulting menu would be empty. *)
+  val select_common :
+       local_versions:Stdune.Int.Set.t Stdune.String.Map.t
+    -> remote_versions:(string * int list) list
+    -> t option
+
+  val of_list : (string * int) list -> (t, string * int * int) result
+
+  val to_list : t -> (string * int) list
+
+  val to_dyn : t -> Stdune.Dyn.t
+end
+
 module Versioned : sig
-  module Menu : sig
-    type t
-
-    val default : t
-
-    (** For each method known by both local and remote, choose the highest
-        common version number. Returns [None] if the resulting menu would be
-        empty. *)
-    val select_common :
-         local_versions:Stdune.Int.Set.t Stdune.String.Map.t
-      -> remote_versions:(string * int list) list
-      -> t option
-
-    val of_list : (string * int) list -> (t, string * int * int) result
-
-    val to_list : t -> (string * int) list
-
-    val to_dyn : t -> Stdune.Dyn.t
-  end
-
   module Make (Fiber : Fiber) : sig
     module Handler : sig
       type 'state t

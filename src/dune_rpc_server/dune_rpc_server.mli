@@ -59,7 +59,7 @@ module Session : sig
         times for the same session will override previous invocations.
 
         The registered callback is guaranteed to be called at most once. *)
-    val register_upgrade_callback : _ t -> (Versioned.Menu.t -> unit) -> unit
+    val register_upgrade_callback : _ t -> (Menu.t -> unit) -> unit
   end
 end
 

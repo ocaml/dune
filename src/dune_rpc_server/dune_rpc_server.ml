@@ -26,7 +26,7 @@ module Session = struct
       ; id : Id.t
       ; send : Packet.Reply.t list option -> unit Fiber.t
       ; mutable state : 'a state
-      ; mutable on_upgrade : (Versioned.Menu.t -> unit) option
+      ; mutable on_upgrade : (Menu.t -> unit) option
       }
 
     let set t state =
@@ -198,7 +198,7 @@ module H = struct
 
   type 'a stage1 =
     { base : 'a base
-    ; to_handler : Versioned.Menu.t -> 'a Session.t V.Handler.t
+    ; to_handler : Menu.t -> 'a Session.t V.Handler.t
     ; known_versions : Int.Set.t String.Map.t
     }
 
@@ -309,14 +309,13 @@ module H = struct
         | Error e -> session.send (Some [ Response (id, Error e) ])
         | Ok (Menu client_versions) -> (
           match
-            Versioned.Menu.select_common ~remote_versions:client_versions
+            Menu.select_common ~remote_versions:client_versions
               ~local_versions:t.known_versions
           with
           | Some menu ->
             let response =
               Version_negotiation.(
-                Conv.to_sexp Response.sexp
-                  (Response.create (Versioned.Menu.to_list menu)))
+                Conv.to_sexp Response.sexp (Response.create (Menu.to_list menu)))
             in
             let* () = session.send (Some [ Response (id, Ok response) ]) in
             let handler = t.to_handler menu in

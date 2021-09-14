@@ -1,0 +1,43 @@
+type t =
+  [ `Unix of string
+  | `Ip of [ `Host of string ] * [ `Port of int ]
+  ]
+
+val to_string : t -> string
+
+val add_to_env : t -> Stdune.Env.t -> Stdune.Env.t
+
+module type S = sig
+  type 'a fiber
+
+  val get : build_dir:string -> (t option, exn) result fiber
+
+  val default : build_dir:string -> t
+end
+
+type error = Invalid_where of string
+
+exception E of error
+
+module Make (Fiber : sig
+  type 'a t
+
+  val return : 'a -> 'a t
+
+  module O : sig
+    val ( let* ) : 'a t -> ('a -> 'b t) -> 'b t
+
+    val ( let+ ) : 'a t -> ('a -> 'b) -> 'b t
+  end
+end) (Sys : sig
+  val getenv : string -> string option
+
+  val is_win32 : unit -> bool
+
+  val read_file : string -> (string, exn) result Fiber.t
+
+  val readlink : string -> (string option, exn) result Fiber.t
+
+  val analyze_path :
+    string -> ([ `Unix_socket | `Normal_file | `Other ], exn) result Fiber.t
+end) : S with type 'a fiber := 'a Fiber.t

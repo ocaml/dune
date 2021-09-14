@@ -48,8 +48,6 @@ module Encoder : sig
 
   val record : (string * dyn) list -> dyn
 
-  val unknown : _ t
-
   val opaque : _ t
 
   val constr : string -> dyn list -> dyn

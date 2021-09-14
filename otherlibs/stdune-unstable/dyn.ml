@@ -153,8 +153,6 @@ module Encoder = struct
 
   let record r = Record r
 
-  let unknown _ = String "<unknown>"
-
   let opaque _ = Opaque
 
   let constr s args = Variant (s, args)

@@ -30,11 +30,29 @@ module Version : sig
   val sexp : t Conv.value
 end
 
+module Method_name : sig
+  type t = string
+
+  val sexp : t Conv.value
+
+  module Map = Stdune.String.Map
+  module Table = Stdune.String.Table
+end
+
+module Method_version : sig
+  type t = int
+
+  val sexp : t Conv.value
+
+  module Set = Stdune.Int.Set
+  module Map = Stdune.Int.Map
+end
+
 module Call : sig
   (** Represents a single rpc call. Request or notification. *)
 
   type t =
-    { method_ : string
+    { method_ : Method_name.t
     ; params : Sexp.t
     }
 
@@ -189,7 +207,7 @@ end
 
 module Decl : sig
   type 'gen t =
-    { method_ : string
+    { method_ : Method_name.t
     ; key : 'gen Int.Map.t Stdune.Univ_map.Key.t
     }
 
@@ -219,7 +237,7 @@ module Decl : sig
 
       type wire_resp
 
-      val version : int
+      val version : Method_version.t
 
       val req : wire_req Conv.value
 
@@ -234,7 +252,7 @@ module Decl : sig
       val downgrade_resp : resp -> wire_resp
     end
 
-    type ('req, 'resp) gen = int * ('req, 'resp) Generation.t
+    type ('req, 'resp) gen = Method_version.t * ('req, 'resp) Generation.t
 
     val make_gen :
       (module S with type req = 'req and type resp = 'resp) -> ('req, 'resp) gen
@@ -247,7 +265,9 @@ module Decl : sig
       }
 
     val make :
-      method_:string -> generations:('req, 'resp) gen list -> ('req, 'resp) t
+         method_:Method_name.t
+      -> generations:('req, 'resp) gen list
+      -> ('req, 'resp) t
 
     val witness : ('a, 'b) t -> ('a, 'b) witness
   end
@@ -258,7 +278,7 @@ module Decl : sig
 
       type wire
 
-      val version : int
+      val version : Method_version.t
 
       val sexp : wire Conv.value
 
@@ -278,7 +298,8 @@ module Decl : sig
       ; generations : 'payload gen list
       }
 
-    val make : method_:string -> generations:'payload gen list -> 'payload t
+    val make :
+      method_:Method_name.t -> generations:'payload gen list -> 'payload t
 
     val witness : 'a t -> 'a witness
   end
@@ -347,7 +368,7 @@ module Status : sig
   module Menu : sig
     type t =
       | Uninitialized
-      | Menu of (string * int) list
+      | Menu of (Method_name.t * Method_version.t) list
 
     val sexp : (t, Conv.values) Conv.t
   end

@@ -5,7 +5,7 @@ open Types
    as of commit [3cd240e], which the initial versioning implementation was based
    on. *)
 let compatibility_menu =
-  Stdune.String.Map.of_list_exn
+  Method_name.Map.of_list_exn
     [ ("ping", 1)
     ; ("diagnostics", 1)
     ; ("shutdown", 1)
@@ -20,30 +20,31 @@ let compatibility_menu =
     ]
 
 module Menu = struct
-  type t = int String.Map.t
+  type t = Method_version.t Method_name.Map.t
 
   let default = compatibility_menu
 
   let select_common ~local_versions ~remote_versions =
     let selected_versions =
       List.filter_map remote_versions ~f:(fun (method_, remote_versions) ->
-          let remote_versions = Int.Set.of_list remote_versions in
+          let remote_versions = Method_version.Set.of_list remote_versions in
           let open Option.O in
-          let* local_versions = String.Map.find local_versions method_ in
+          let* local_versions = Method_name.Map.find local_versions method_ in
           let+ greatest_common_version =
-            Int.Set.max_elt (Int.Set.inter remote_versions local_versions)
+            Method_version.Set.max_elt
+              (Method_version.Set.inter remote_versions local_versions)
           in
           (method_, greatest_common_version))
     in
     match selected_versions with
     | [] -> None
-    | _ :: _ -> Some (String.Map.of_list_exn selected_versions)
+    | _ :: _ -> Some (Method_name.Map.of_list_exn selected_versions)
 
-  let of_list = String.Map.of_list
+  let of_list = Method_name.Map.of_list
 
-  let to_list = String.Map.to_list
+  let to_list = Method_name.Map.to_list
 
-  let to_dyn = String.Map.to_dyn Int.to_dyn
+  let to_dyn = Method_name.Map.to_dyn Int.to_dyn
 end
 
 module Make (Fiber : Fiber) = struct
@@ -89,7 +90,7 @@ module Make (Fiber : Fiber) = struct
     (* A [('req, 'resp) Decl.Generation.t] contains the information necessary to
        convert from a [Csexp.t] to a ['req]. The [_handler] packings are to
        enable storing the callbacks in a homogeneous data structure (namely, the
-       [String.Table.t]. It's alright to erase these types, because these
+       [Method_name.Table.t]. It's alright to erase these types, because these
        callbacks are intended to be used by the receiving endpoint, which only
        sees a [Csexp.t], and we only discover the correct type to deserialize to
        at runtime. *)
@@ -106,7 +107,7 @@ module Make (Fiber : Fiber) = struct
     (* Pack a universal map key. See below. We can afford to erase the type of
        the key, because we only care about the keyset of the stored generation
        listing. *)
-    type packed = T : 'a Int.Map.t Univ_map.Key.t -> packed
+    type packed = T : 'a Method_version.Map.t Univ_map.Key.t -> packed
 
     (* The declarations and implementations serve dual purposes with dual
        requirements.
@@ -129,16 +130,19 @@ module Make (Fiber : Fiber) = struct
        mapping of all known keys and their associated method names, which we use
        to construct the initial version menu, then discard. *)
     type 'state t =
-      { mutable declared_requests : packed list String.Map.t * Univ_map.t
-      ; mutable declared_notifications : packed list String.Map.t * Univ_map.t
-      ; implemented_requests : 'state r_handler Int.Map.t String.Table.t
-      ; implemented_notifications : 'state n_handler Int.Map.t String.Table.t
+      { mutable declared_requests : packed list Method_name.Map.t * Univ_map.t
+      ; mutable declared_notifications :
+          packed list Method_name.Map.t * Univ_map.t
+      ; implemented_requests :
+          'state r_handler Method_version.Map.t Method_name.Table.t
+      ; implemented_notifications :
+          'state n_handler Method_version.Map.t Method_name.Table.t
       }
 
     (* A [('state, 'key, 'output) field_witness] is a first-class representation
        of a field of a ['state t]. Each field is morally a mutable table holding
-       ['output Int.Map.t]s (mapping generation numbers to ['output]s), indexed
-       by ['key]s.
+       ['output Method_version.Map.t]s (mapping generation numbers to
+       ['output]s), indexed by ['key]s.
 
        The mental model isn't strictly correct (mostly due to needing the "all
        known registered keys" hack described above), but is accurate enough that
@@ -161,19 +165,22 @@ module Make (Fiber : Fiber) = struct
     type (_, _, _) field_witness =
       | Declared_requests
           : ( _
-            , string * ('req, 'resp) Decl.Generation.t Int.Map.t Univ_map.Key.t
+            , Method_name.t
+              * ('req, 'resp) Decl.Generation.t Method_version.Map.t
+                Univ_map.Key.t
             , ('req, 'resp) Decl.Generation.t )
             field_witness
       | Declared_notifs
           : ( _
-            , string * ('a, unit) Decl.Generation.t Int.Map.t Univ_map.Key.t
+            , Method_name.t
+              * ('a, unit) Decl.Generation.t Method_version.Map.t Univ_map.Key.t
             , ('a, unit) Decl.Generation.t )
             field_witness
       | Impl_requests : ('state, string, 'state r_handler) field_witness
       | Impl_notifs : ('state, string, 'state n_handler) field_witness
 
     let get (type st a b) (t : st t) (witness : (st, a, b) field_witness)
-        (key : a) : b Int.Map.t option =
+        (key : a) : b Method_version.Map.t option =
       match witness with
       | Declared_requests ->
         let _, key = key in
@@ -183,26 +190,27 @@ module Make (Fiber : Fiber) = struct
         let _, key = key in
         let _, table = t.declared_notifications in
         Univ_map.find table key
-      | Impl_requests -> String.Table.find t.implemented_requests key
-      | Impl_notifs -> String.Table.find t.implemented_notifications key
+      | Impl_requests -> Method_name.Table.find t.implemented_requests key
+      | Impl_notifs -> Method_name.Table.find t.implemented_notifications key
 
     let set (type st a b) (t : st t) (witness : (st, a, b) field_witness)
-        (key : a) (value : b Int.Map.t) =
+        (key : a) (value : b Method_version.Map.t) =
       match witness with
       | Declared_requests ->
         let name, key = key in
         let known_keys, table = t.declared_requests in
         t.declared_requests <-
-          ( String.Map.add_multi known_keys name (T key)
+          ( Method_name.Map.add_multi known_keys name (T key)
           , Univ_map.set table key value )
       | Declared_notifs ->
         let name, key = key in
         let known_keys, table = t.declared_notifications in
         t.declared_notifications <-
-          ( String.Map.add_multi known_keys name (T key)
+          ( Method_name.Map.add_multi known_keys name (T key)
           , Univ_map.set table key value )
-      | Impl_requests -> String.Table.set t.implemented_requests key value
-      | Impl_notifs -> String.Table.set t.implemented_notifications key value
+      | Impl_requests -> Method_name.Table.set t.implemented_requests key value
+      | Impl_notifs ->
+        Method_name.Table.set t.implemented_notifications key value
 
     let registered_procedures
         { declared_requests = declared_request_keys, declared_request_table
@@ -212,7 +220,7 @@ module Make (Fiber : Fiber) = struct
         ; implemented_notifications
         } =
       let batch_declarations which declared_keys declaration_table =
-        String.Map.foldi declared_keys ~init:[] ~f:(fun name keys acc ->
+        Method_name.Map.foldi declared_keys ~init:[] ~f:(fun name keys acc ->
             let generations =
               List.fold_left keys ~init:[] ~f:(fun acc (T key) ->
                   match Univ_map.find declaration_table key with
@@ -221,7 +229,7 @@ module Make (Fiber : Fiber) = struct
                       ("versioning: method in [known_" ^ which
                      ^ "_table] without actually being declared")
                       [ ("method_", Dyn.String name) ]
-                  | Some listing -> Int.Map.keys listing @ acc)
+                  | Some listing -> Method_version.Map.keys listing @ acc)
             in
             (name, generations) :: acc)
       in
@@ -234,8 +242,8 @@ module Make (Fiber : Fiber) = struct
           declared_notification_table
       in
       let batch_implementations table =
-        String.Table.foldi table ~init:[] ~f:(fun name listing acc ->
-            (name, Int.Map.keys listing) :: acc)
+        Method_name.Table.foldi table ~init:[] ~f:(fun name listing acc ->
+            (name, Method_version.Map.keys listing) :: acc)
       in
       let implemented_requests = batch_implementations implemented_requests in
       let implemented_notifications =
@@ -249,10 +257,10 @@ module Make (Fiber : Fiber) = struct
         ]
 
     let create () =
-      let declared_requests = (String.Map.empty, Univ_map.empty) in
-      let declared_notifications = (String.Map.empty, Univ_map.empty) in
-      let implemented_requests = String.Table.create 16 in
-      let implemented_notifications = String.Table.create 16 in
+      let declared_requests = (Method_name.Map.empty, Univ_map.empty) in
+      let declared_notifications = (Method_name.Map.empty, Univ_map.empty) in
+      let implemented_requests = Method_name.Table.create 16 in
+      let implemented_notifications = Method_name.Table.create 16 in
       { declared_requests
       ; declared_notifications
       ; implemented_requests
@@ -270,24 +278,24 @@ module Make (Fiber : Fiber) = struct
       in
       let prior_registered_generations =
         match get t registry registry_key with
-        | None -> Int.Map.empty
+        | None -> Method_version.Map.empty
         | Some s -> s
       in
       let all_generations, duplicate_generations =
         List.fold_left generations
-          ~init:(prior_registered_generations, Int.Set.empty)
+          ~init:(prior_registered_generations, Method_version.Set.empty)
           ~f:(fun (acc, dups) (n, gen) ->
-            match Int.Map.add acc n (pack gen) with
-            | Error _ -> (acc, Int.Set.add dups n)
+            match Method_version.Map.add acc n (pack gen) with
+            | Error _ -> (acc, Method_version.Set.add dups n)
             | Ok acc' -> (acc', dups))
       in
-      if Int.Set.is_empty duplicate_generations then
+      if Method_version.Set.is_empty duplicate_generations then
         set t registry registry_key all_generations
       else
         Code_error.raise
           "attempted to register duplicate generations for RPC method"
           [ ("method", Dyn.String method_)
-          ; ("duplicated", Int.Set.to_dyn duplicate_generations)
+          ; ("duplicated", Method_version.Set.to_dyn duplicate_generations)
           ]
 
     let declare_request t proc =
@@ -320,7 +328,7 @@ module Make (Fiber : Fiber) = struct
         ~pack:(fun n -> N (f, n))
 
     let lookup_method_generic t ~menu ~table ~key ~method_ k s =
-      match (get t table key, String.Map.find menu method_) with
+      match (get t table key, Method_name.Map.find menu method_) with
       | None, _ ->
         let payload = Sexp.record [ ("method", Atom method_) ] in
         k
@@ -350,10 +358,11 @@ module Make (Fiber : Fiber) = struct
           ~method_:n.method_
           (fun e -> Fiber.return (Error e))
           (fun (handlers, version) ->
-            match Int.Map.find handlers version with
+            match Method_version.Map.find handlers version with
             | None ->
               raise_version_bug ~method_:n.method_ ~selected:version
-                ~verb:"unimplemented" ~known:(Int.Map.keys handlers)
+                ~verb:"unimplemented"
+                ~known:(Method_version.Map.keys handlers)
             | Some (R (f, T gen)) -> (
               match
                 Conv.of_sexp gen.req ~version:(session_version state) n.params
@@ -368,10 +377,11 @@ module Make (Fiber : Fiber) = struct
           ~method_:n.method_
           (fun e -> Fiber.return (Error e))
           (fun (handlers, version) ->
-            match Int.Map.find handlers version with
+            match Method_version.Map.find handlers version with
             | None ->
               raise_version_bug ~method_:n.method_ ~selected:version
-                ~verb:"unimplemented" ~known:(Int.Map.keys handlers)
+                ~verb:"unimplemented"
+                ~known:(Method_version.Map.keys handlers)
             | Some (N (f, T gen)) -> (
               match
                 Conv.of_sexp gen.req ~version:(session_version state) n.params
@@ -391,10 +401,10 @@ module Make (Fiber : Fiber) = struct
           ~key:(method_, decl.key) ~method_
           (fun e -> Error e)
           (fun (decls, version) ->
-            match Int.Map.find decls version with
+            match Method_version.Map.find decls version with
             | None ->
               raise_version_bug ~method_ ~selected:version ~verb:"undeclared"
-                ~known:(Int.Map.keys decls)
+                ~known:(Method_version.Map.keys decls)
             | Some (T gen) ->
               Ok
                 ( { Call.method_
@@ -413,10 +423,10 @@ module Make (Fiber : Fiber) = struct
           ~key:(method_, decl.key) ~method_
           (fun e -> Error e)
           (fun (decls, version) ->
-            match Int.Map.find decls version with
+            match Method_version.Map.find decls version with
             | None ->
               raise_version_bug ~method_ ~selected:version ~verb:"undeclared"
-                ~known:(Int.Map.keys decls)
+                ~known:(Method_version.Map.keys decls)
             | Some (T gen) ->
               Ok
                 { Call.method_

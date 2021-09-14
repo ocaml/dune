@@ -12,13 +12,15 @@ module Menu : sig
   (** For each method known by both local and remote, choose the highest common
       version number. Returns [None] if the resulting menu would be empty. *)
   val select_common :
-       local_versions:Int.Set.t String.Map.t
-    -> remote_versions:(string * int list) list
+       local_versions:Method_version.Set.t Method_name.Map.t
+    -> remote_versions:(Method_name.t * Method_version.t list) list
     -> t option
 
-  val of_list : (string * int) list -> (t, string * int * int) result
+  val of_list :
+       (Method_name.t * Method_version.t) list
+    -> (t, Method_name.t * Method_version.t * Method_version.t) result
 
-  val to_list : t -> (string * int) list
+  val to_list : t -> (Method_name.t * Method_version.t) list
 
   val to_dyn : t -> Dyn.t
 end
@@ -52,13 +54,14 @@ module Make (Fiber : Fiber) : sig
 
     val to_handler :
          'state t
-      -> session_version:('state -> int * int)
+      -> session_version:('state -> Version.t)
       -> menu:Menu.t
       -> 'state Handler.t
 
     val create : unit -> 'state t
 
-    val registered_procedures : 'a t -> (string * int list) list
+    val registered_procedures :
+      'a t -> (Method_name.t * Method_version.t list) list
 
     (** A *declaration* of a procedure is a claim that this side of the session
         is able to *initiate* that procedure. Correspondingly, *implementing* a

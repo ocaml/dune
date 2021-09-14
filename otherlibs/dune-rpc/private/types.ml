@@ -41,9 +41,27 @@ module Version = struct
     pair int int
 end
 
+module Method_name = struct
+  type t = string
+
+  let sexp : t Conv.value = Conv.string
+
+  module Map = String.Map
+  module Table = String.Table
+end
+
+module Method_version = struct
+  type t = int
+
+  let sexp = Conv.int
+
+  module Set = Int.Set
+  module Map = Int.Map
+end
+
 module Call = struct
   type t =
-    { method_ : string
+    { method_ : Method_name.t
     ; params : Sexp.t
     }
 
@@ -57,7 +75,7 @@ module Call = struct
     let open Conv in
     let to_ (method_, params) = { method_; params } in
     let from { method_; params } = (method_, params) in
-    let method_ = field "method" (required string) in
+    let method_ = field "method" (required Method_name.sexp) in
     let params = field "params" (required sexp) in
     iso (both method_ params) to_ from
 end
@@ -365,7 +383,7 @@ end
 
 module Decl = struct
   type 'gen t =
-    { method_ : string
+    { method_ : Method_name.t
     ; key : 'gen Int.Map.t Stdune.Univ_map.Key.t
     }
 
@@ -395,7 +413,7 @@ module Decl = struct
 
       type wire_resp
 
-      val version : int
+      val version : Method_version.t
 
       val req : wire_req Conv.value
 
@@ -410,7 +428,7 @@ module Decl = struct
       val downgrade_resp : resp -> wire_resp
     end
 
-    type ('req, 'resp) gen = int * ('req, 'resp) Generation.t
+    type ('req, 'resp) gen = Method_version.t * ('req, 'resp) Generation.t
 
     let make_gen (type req resp)
         (module M : S with type req = req and type resp = resp) =
@@ -453,7 +471,7 @@ module Decl = struct
 
       type wire
 
-      val version : int
+      val version : Method_version.t
 
       val sexp : wire Conv.value
 
@@ -462,7 +480,7 @@ module Decl = struct
       val downgrade : model -> wire
     end
 
-    type 'payload gen = int * ('payload, unit) Generation.t
+    type 'payload gen = Method_version.t * ('payload, unit) Generation.t
 
     let make_gen (type payload) (module M : S with type model = payload) =
       let open M in

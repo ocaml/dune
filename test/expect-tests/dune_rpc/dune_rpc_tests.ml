@@ -268,7 +268,7 @@ module Add = struct
         | No_others x -> case x no_others
         | With_others { xy; all } -> case (xy, all) with_others)
     in
-    Decl.For_tests.Request.make_current_gen ~req:V2.req ~resp:V2.resp ~version:2
+    Decl.For_tests.Request.make_current_gen ~req ~resp ~version:2
 end
 
 let add_v1_only =

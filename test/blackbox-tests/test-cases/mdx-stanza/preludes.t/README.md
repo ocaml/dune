@@ -3,7 +3,7 @@ code in the toplevel environments before checking a document. To do that
 you can set the prelude field of the stanza: `(preludes <prelude_file> ...)`.
 
 ```ocaml
-# x
+# x;;
 - : int = 1
 ```
 
@@ -12,11 +12,11 @@ Different environment can have their own prelude. This is set using the
 Here x and why are set in `alt.ml`.
 
 ```ocaml env=a
-# x + y
+# x + y;;
 - : int = 11
 ```
 
 ```ocaml env=b
-# x + y
+# x + y;;
 - : int = 21
 ```

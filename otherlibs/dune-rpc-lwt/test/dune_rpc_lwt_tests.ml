@@ -10,9 +10,10 @@ let connect ~root_dir =
   let build_dir = Filename.concat root_dir "_build" in
   let* res = Where.get ~build_dir in
   match res with
-  | None ->
+  | Error e -> Lwt.fail e
+  | Ok None ->
     Lwt.fail_with (sprintf "unable to establish to connection in %s" build_dir)
-  | Some w -> connect_chan w
+  | Ok (Some w) -> connect_chan w
 
 let build_watch ~root_dir ~suppress_stderr =
   Lwt_process.open_process_none ~stdin:`Close

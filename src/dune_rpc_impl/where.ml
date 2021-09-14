@@ -18,20 +18,22 @@ module Where =
 
       let is_win32 () = Sys.win32
 
-      let read_file f = Io.String_path.read_file f
+      let read_file f = Ok (Io.String_path.read_file f)
 
       let readlink s =
         match Unix.readlink s with
-        | s -> Some s
-        | exception Unix.Unix_error (Unix.EINVAL, _, _) -> None
+        | s -> Ok (Some s)
+        | exception Unix.Unix_error (Unix.EINVAL, _, _) -> Ok None
+        | exception (Unix.Unix_error _ as e) -> Error e
 
       let analyze_path s =
         match (Unix.stat s).st_kind with
-        | Unix.S_SOCK -> `Unix_socket
-        | S_REG -> `Normal_file
+        | Unix.S_SOCK -> Ok `Unix_socket
+        | S_REG -> Ok `Normal_file
         | _
         | (exception Unix.Unix_error (Unix.ENOENT, _, _)) ->
-          `Other
+          Ok `Other
+        | exception (Unix.Unix_error _ as e) -> Error e
     end)
 
 let root =
@@ -40,7 +42,11 @@ let root =
        (Path.build Path.Build.root)
        ~from:(Path.external_ Path.External.initial_cwd))
 
-let get () = Where.get ~build_dir:(Lazy.force root)
+let get () =
+  match Where.get ~build_dir:(Lazy.force root) with
+  | Ok s -> s
+  | Error exn ->
+    User_error.raise [ Pp.text "Unable to find dune rpc address"; Exn.pp exn ]
 
 let default () = Where.default ~build_dir:(Lazy.force root)
 

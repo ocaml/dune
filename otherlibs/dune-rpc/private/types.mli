@@ -58,7 +58,7 @@ module Call : sig
 
   val to_dyn : t -> Dyn.t
 
-  val create : ?params:Sexp.t -> method_:string -> unit -> t
+  val create : ?params:Sexp.t -> method_:Method_name.t -> unit -> t
 
   val fields : (t, Conv.fields) Conv.t
 end
@@ -228,34 +228,23 @@ module Decl : sig
   end
 
   module Request : sig
-    module type S = sig
-      type req
-
-      type resp
-
-      type wire_req
-
-      type wire_resp
-
-      val version : Method_version.t
-
-      val req : wire_req Conv.value
-
-      val resp : wire_resp Conv.value
-
-      val upgrade_req : wire_req -> req
-
-      val downgrade_req : req -> wire_req
-
-      val upgrade_resp : wire_resp -> resp
-
-      val downgrade_resp : resp -> wire_resp
-    end
-
     type ('req, 'resp) gen = Method_version.t * ('req, 'resp) Generation.t
 
     val make_gen :
-      (module S with type req = 'req and type resp = 'resp) -> ('req, 'resp) gen
+         req:'wire_req Conv.value
+      -> resp:'wire_resp Conv.value
+      -> upgrade_req:('wire_req -> 'req)
+      -> downgrade_req:('req -> 'wire_req)
+      -> upgrade_resp:('wire_resp -> 'resp)
+      -> downgrade_resp:('resp -> 'wire_resp)
+      -> version:Method_version.t
+      -> ('req, 'resp) gen
+
+    val make_current_gen :
+         req:'req Conv.value
+      -> resp:'resp Conv.value
+      -> version:Method_version.t
+      -> ('req, 'resp) gen
 
     type ('req, 'resp) witness = ('req, 'resp) Generation.t t
 
@@ -273,23 +262,17 @@ module Decl : sig
   end
 
   module Notification : sig
-    module type S = sig
-      type model
+    type 'payload gen = Method_version.t * ('payload, unit) Generation.t
 
-      type wire
+    val make_gen :
+         conv:'wire Conv.value
+      -> upgrade:('wire -> 'model)
+      -> downgrade:('model -> 'wire)
+      -> version:Method_version.t
+      -> 'model gen
 
-      val version : Method_version.t
-
-      val sexp : wire Conv.value
-
-      val upgrade : wire -> model
-
-      val downgrade : model -> wire
-    end
-
-    type 'payload gen = int * ('payload, unit) Generation.t
-
-    val make_gen : (module S with type model = 'payload) -> 'payload gen
+    val make_current_gen :
+      conv:'model Conv.value -> version:Method_version.t -> 'model gen
 
     type 'payload witness = ('payload, unit) Generation.t t
 

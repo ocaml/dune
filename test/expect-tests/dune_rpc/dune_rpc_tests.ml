@@ -123,31 +123,8 @@ let%expect_test "no methods in common" =
 
 let simple_request (type a b) ?(version = 1) ~method_
     (req : (a, Conv.values) Conv.t) (resp : (b, Conv.values) Conv.t) =
-  let module V1 = struct
-    let version = version
-
-    type req = a
-
-    type resp = b
-
-    type wire_req = a
-
-    type wire_resp = b
-
-    let req = req
-
-    let resp = resp
-
-    let upgrade_req x = x
-
-    let downgrade_req x = x
-
-    let upgrade_resp x = x
-
-    let downgrade_resp x = x
-  end in
-  Decl.For_tests.Request.make ~method_
-    ~generations:[ Decl.For_tests.Request.make_gen (module V1) ]
+  let v = Decl.For_tests.Request.make_current_gen ~req ~resp ~version in
+  Decl.For_tests.Request.make ~method_ ~generations:[ v ]
 
 let%expect_test "call method with matching versions" =
   let decl = simple_request ~method_:"double" Conv.int Conv.int in
@@ -243,66 +220,30 @@ module Add = struct
         }
 
   module V1_only = struct
-    let version = 1
-
-    type req = int * int
-
-    type resp = int
-
-    type wire_req = int * int
-
-    type wire_resp = int
-
     let req = Conv.pair Conv.int Conv.int
 
     let resp = Conv.int
-
-    let upgrade_req x = x
-
-    let downgrade_req x = x
-
-    let upgrade_resp x = x
-
-    let downgrade_resp x = x
   end
 
-  module V1 = struct
-    let version = 1
+  let v1_only =
+    Decl.For_tests.Request.make_current_gen
+      ~req:(Conv.pair Conv.int Conv.int)
+      ~resp:Conv.int ~version:1
 
-    type nonrec req = req
-
-    type nonrec resp = resp
-
-    type wire_req = int * int
-
-    type wire_resp = int
-
-    let req = Conv.pair Conv.int Conv.int
-
-    let resp = Conv.int
-
-    let upgrade_req (x, y) = { x; y; others = [] }
-
-    let downgrade_req { x; y; others = _ } = (x, y)
-
-    let upgrade_resp x = No_others x
-
+  let v1 =
+    let upgrade_req (x, y) = { x; y; others = [] } in
+    let downgrade_req { x; y; others = _ } = (x, y) in
+    let upgrade_resp x = No_others x in
     let downgrade_resp = function
       | No_others x -> x
       | With_others { xy; all = _ } -> xy
-  end
+    in
+    Decl.For_tests.Request.make_gen
+      ~req:(Conv.pair Conv.int Conv.int)
+      ~resp:Conv.int ~upgrade_req ~downgrade_req ~upgrade_resp ~downgrade_resp
+      ~version:1
 
   module V2 = struct
-    let version = 2
-
-    type nonrec req = req
-
-    type nonrec resp = resp
-
-    type wire_req = req
-
-    type wire_resp = resp
-
     let req =
       let open Conv in
       let parse =
@@ -326,27 +267,17 @@ module Add = struct
       sum [ econstr no_others; econstr with_others ] (function
         | No_others x -> case x no_others
         | With_others { xy; all } -> case (xy, all) with_others)
-
-    let upgrade_req x = x
-
-    let downgrade_req x = x
-
-    let upgrade_resp x = x
-
-    let downgrade_resp x = x
   end
+
+  let v2 =
+    Decl.For_tests.Request.make_current_gen ~req:V2.req ~resp:V2.resp ~version:2
 end
 
 let add_v1_only =
-  Decl.For_tests.Request.make ~method_:"add"
-    ~generations:[ Decl.For_tests.Request.make_gen (module Add.V1_only) ]
+  Decl.For_tests.Request.make ~method_:"add" ~generations:[ Add.v1_only ]
 
 let add_v1_v2 =
-  Decl.For_tests.Request.make ~method_:"add"
-    ~generations:
-      [ Decl.For_tests.Request.make_gen (module Add.V1)
-      ; Decl.For_tests.Request.make_gen (module Add.V2)
-      ]
+  Decl.For_tests.Request.make ~method_:"add" ~generations:[ Add.v1; Add.v2 ]
 
 let%expect_test "client is newer than server" =
   let handler =

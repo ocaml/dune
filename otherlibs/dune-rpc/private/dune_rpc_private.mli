@@ -330,34 +330,22 @@ module Decl : sig
 
   module For_tests : sig
     module Request : sig
-      module type S = sig
-        type req
-
-        type resp
-
-        type wire_req
-
-        type wire_resp
-
-        val version : int
-
-        val req : wire_req Conv.value
-
-        val resp : wire_resp Conv.value
-
-        val upgrade_req : wire_req -> req
-
-        val downgrade_req : req -> wire_req
-
-        val upgrade_resp : wire_resp -> resp
-
-        val downgrade_resp : resp -> wire_resp
-      end
-
       type ('req, 'resp) gen
 
       val make_gen :
-           (module S with type req = 'req and type resp = 'resp)
+           req:'wire_req Conv.value
+        -> resp:'wire_resp Conv.value
+        -> upgrade_req:('wire_req -> 'req)
+        -> downgrade_req:('req -> 'wire_req)
+        -> upgrade_resp:('wire_resp -> 'resp)
+        -> downgrade_resp:('resp -> 'wire_resp)
+        -> version:int
+        -> ('req, 'resp) gen
+
+      val make_current_gen :
+           req:'req Conv.value
+        -> resp:'resp Conv.value
+        -> version:int
         -> ('req, 'resp) gen
 
       val make :
@@ -367,23 +355,16 @@ module Decl : sig
     end
 
     module Notification : sig
-      module type S = sig
-        type model
-
-        type wire
-
-        val version : int
-
-        val sexp : wire Conv.value
-
-        val upgrade : wire -> model
-
-        val downgrade : model -> wire
-      end
-
       type 'payload gen
 
-      val make_gen : (module S with type model = 'payload) -> 'payload gen
+      val make_gen :
+           conv:'wire Conv.value
+        -> upgrade:('wire -> 'model)
+        -> downgrade:('model -> 'wire)
+        -> version:int
+        -> 'model gen
+
+      val make_current_gen : conv:'a Conv.value -> version:int -> 'a gen
 
       type 'payload t
 

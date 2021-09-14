@@ -404,35 +404,10 @@ module Decl = struct
   end
 
   module Request = struct
-    module type S = sig
-      type req
-
-      type resp
-
-      type wire_req
-
-      type wire_resp
-
-      val version : Method_version.t
-
-      val req : wire_req Conv.value
-
-      val resp : wire_resp Conv.value
-
-      val upgrade_req : wire_req -> req
-
-      val downgrade_req : req -> wire_req
-
-      val upgrade_resp : wire_resp -> resp
-
-      val downgrade_resp : resp -> wire_resp
-    end
-
     type ('req, 'resp) gen = Method_version.t * ('req, 'resp) Generation.t
 
-    let make_gen (type req resp)
-        (module M : S with type req = req and type resp = resp) =
-      let open M in
+    let make_gen ~req ~resp ~upgrade_req ~downgrade_req ~upgrade_resp
+        ~downgrade_resp ~version =
       ( version
       , Generation.T
           { req
@@ -442,6 +417,11 @@ module Decl = struct
           ; upgrade_resp
           ; downgrade_resp
           } )
+
+    let make_current_gen ~req ~resp ~version =
+      let id x = x in
+      make_gen ~req ~resp ~upgrade_req:id ~downgrade_req:id ~upgrade_resp:id
+        ~downgrade_resp:id ~version
 
     let gen_to_dyn _ = Dyn.String "<generation>"
 
@@ -466,34 +446,24 @@ module Decl = struct
   end
 
   module Notification = struct
-    module type S = sig
-      type model
-
-      type wire
-
-      val version : Method_version.t
-
-      val sexp : wire Conv.value
-
-      val upgrade : wire -> model
-
-      val downgrade : model -> wire
-    end
-
     type 'payload gen = Method_version.t * ('payload, unit) Generation.t
 
-    let make_gen (type payload) (module M : S with type model = payload) =
-      let open M in
+    let make_gen (type a b) ~(conv : a Conv.value) ~(upgrade : a -> b)
+        ~(downgrade : b -> a) ~version : b gen =
       let id x = x in
       ( version
       , Generation.T
-          { req = sexp
+          { req = conv
           ; resp = Conv.unit
           ; upgrade_req = upgrade
           ; downgrade_req = downgrade
           ; upgrade_resp = id
           ; downgrade_resp = id
           } )
+
+    let make_current_gen (type a) ~(conv : a Conv.value) ~version : a gen =
+      let id x = x in
+      make_gen ~conv ~upgrade:id ~downgrade:id ~version
 
     let gen_to_dyn _ = Dyn.String "<generation>"
 

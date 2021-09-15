@@ -708,6 +708,12 @@ module Client = struct
     let setup_versioning ?(private_menu = []) ~(handler : Handler.t) () =
       let open V in
       let t : _ Builder.t = Builder.create () in
+      (* CR-soon cwong: It is a *huge* footgun that you have to remember to
+         declare a request here, or via [private_menu], and there is no
+         mechanism to warn you if you forget. The closest thing is either seeing
+         that [dune rpc status] does not report the new procedure, or need to
+         deal with the [Notification_error.t], which contains some good context,
+         but very little to indicate this specific problem. *)
       Builder.declare_request t Procedures.Public.ping;
       Builder.declare_request t Procedures.Public.diagnostics;
       Builder.declare_notification t Procedures.Public.shutdown;

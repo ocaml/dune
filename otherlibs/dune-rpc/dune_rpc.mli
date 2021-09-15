@@ -190,8 +190,26 @@ module V1 : sig
     val message : t -> string
   end
 
+  (** A [Negotiation_error] is returned on the client-side when a request or
+      notification is determined to be invalid due to version negotiation (no
+      known method or no common version). *)
+  module Negotiation_error : sig
+    type t
+
+    val payload : t -> Csexp.t option
+
+    val message : t -> string
+
+    exception E of t
+  end
+
   module Notification : sig
     type 'a t
+
+    (** An ['a versioned] is a witness that the client and server share a common
+        version for a method. This is to avoid needing to perform the
+        negotiation per call. *)
+    type 'a versioned
 
     val subscribe : Subscribe.t t
 
@@ -203,6 +221,9 @@ module V1 : sig
 
   module Request : sig
     type ('a, 'b) t
+
+    (** See [Notification.version]. *)
+    type ('a, 'b) versioned
 
     val ping : (unit, unit) t
 
@@ -245,17 +266,33 @@ module V1 : sig
           -> t
       end
 
+      (** [prepare_request client r] checks the request [r] against the
+          negotiated version menu, giving a versioned request as a result.
+
+          This function does not initiate any communication with the server.
+          However, as this function must check the version menu, it cannot
+          complete until after version negotiation, and so returns a [fiber]. *)
+      val prepare_request :
+           t
+        -> ('a, 'b) Request.t
+        -> (('a, 'b) Request.versioned, Negotiation_error.t) result fiber
+
+      (** See [prepare_request]. *)
+      val prepare_notification :
+           t
+        -> 'a Notification.t
+        -> ('a Notification.versioned, Negotiation_error.t) result fiber
+
       (** [request ?id client decl req] send a request [req] specified by [decl]
           to [client]. If [id] is [None], it will be automatically generated. *)
       val request :
            ?id:Id.t
         -> t
-        -> ('a, 'b) Request.t
+        -> ('a, 'b) Request.versioned
         -> 'a
         -> ('b, Response.Error.t) result fiber
 
-      val notification :
-        t -> 'a Notification.t -> 'a -> (unit, Response.Error.t) result fiber
+      val notification : t -> 'a Notification.versioned -> 'a -> unit fiber
 
       (** [disconnected client] produces a fiber that only becomes determined
           when the session is ended from the server side (such as if the build
@@ -272,12 +309,11 @@ module V1 : sig
         val request :
              ?id:Id.t
           -> t
-          -> ('a, 'b) Request.t
+          -> ('a, 'b) Request.versioned
           -> 'a
           -> ('b, Response.Error.t) result fiber
 
-        val notification :
-          t -> 'a Notification.t -> 'a -> (unit, Response.Error.t) result fiber
+        val notification : t -> 'a Notification.versioned -> 'a -> unit
 
         val submit : t -> unit fiber
       end

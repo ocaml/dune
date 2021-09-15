@@ -125,6 +125,15 @@ let simple_request (type a b) ?(version = 1) ~method_
   let v = Decl.Request.make_current_gen ~req ~resp ~version in
   Decl.Request.make ~method_ ~generations:[ v ]
 
+let request_exn client witness n =
+  let* staged = Client.prepare_request client witness in
+  let staged =
+    match staged with
+    | Ok s -> s
+    | Error e -> raise (Dune_rpc.Negotiation_error.E e)
+  in
+  Client.request client staged n
+
 let%expect_test "call method with matching versions" =
   let decl = simple_request ~method_:"double" Conv.int Conv.int in
   let handler =
@@ -146,12 +155,12 @@ let%expect_test "call method with matching versions" =
   let witness = Decl.Request.witness decl in
   let client client =
     printfn "client: sending request";
-    let* resp = Client.request client witness 5 in
+    let* resp = request_exn client witness 5 in
     (match resp with
     | Error _ -> assert false
     | Ok s -> printfn "client: result %d" s);
     printfn "client: sending invalid request";
-    let* resp = Client.request client witness 0 in
+    let* resp = request_exn client witness 0 in
     (match resp with
     | Error e -> printfn "client: error %s" e.message
     | Ok _ -> assert false);
@@ -184,7 +193,7 @@ let%expect_test "call method with no matching versions" =
   in
   let client client =
     printfn "client: sending request";
-    let* resp = Client.request client (Decl.Request.witness decl) 0 in
+    let* resp = request_exn client (Decl.Request.witness decl) 0 in
     (match resp with
     | Error e -> printfn "client: error %s" e.message
     | Ok _ -> assert false);
@@ -286,7 +295,7 @@ let%expect_test "client is newer than server" =
   let client client =
     printfn "client: sending request";
     let+ resp =
-      Client.request client
+      request_exn client
         (Decl.Request.witness add_v1_v2)
         { x = 10; y = 15; others = [ -25 ] }
     in
@@ -324,7 +333,7 @@ let%expect_test "client is older than server" =
   let client client =
     printfn "client: sending request";
     let+ resp =
-      Client.request client (Decl.Request.witness add_v1_only) (20, 30)
+      request_exn client (Decl.Request.witness add_v1_only) (20, 30)
     in
     match resp with
     | Error _ -> assert false

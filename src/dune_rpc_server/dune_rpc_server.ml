@@ -125,11 +125,12 @@ module Session = struct
     { base; handler }
 
   let notification t decl n =
-    match V.Handler.prepare_notification t.handler decl n with
+    match V.Handler.prepare_notification t.handler decl with
     | Error _ ->
       (* cwong: What to do here? *)
       Fiber.return ()
-    | Ok sexp -> send t (Some [ Notification sexp ])
+    | Ok { Versioned.Staged.encode } ->
+      send t (Some [ Notification (encode n) ])
 
   let to_dyn f t =
     Dyn.Record

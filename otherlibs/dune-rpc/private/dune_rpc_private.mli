@@ -27,6 +27,16 @@ module Call : sig
   val create : ?params:Csexp.t -> method_:string -> unit -> t
 end
 
+module Negotiation_error : sig
+  type t
+
+  val payload : t -> Csexp.t option
+
+  val message : t -> string
+
+  exception E of t
+end
+
 module Request : sig
   type t = Id.t * Call.t
 end
@@ -378,6 +388,36 @@ module type Fiber = sig
   with type 'a fiber := 'a t
 end
 
+module Public : sig
+  (** Public requests and notifications *)
+
+  module Request : sig
+    type ('a, 'b) t = ('a, 'b) Decl.Request.witness
+
+    type ('a, 'b) versioned = ('a, 'b) Versioned.Staged.request
+
+    val ping : (unit, unit) t
+
+    val diagnostics : (unit, Diagnostic.t list) t
+
+    val format_dune_file : (Path.t * [ `Contents of string ], string) t
+
+    val promote : (Path.t, unit) t
+  end
+
+  module Notification : sig
+    type 'a t = 'a Decl.Notification.witness
+
+    type 'a versioned = 'a Versioned.Staged.notification
+
+    val subscribe : Subscribe.t t
+
+    val unsubscribe : Subscribe.t t
+
+    val shutdown : unit t
+  end
+end
+
 module Client : sig
   module type S = sig
     type t
@@ -386,18 +426,24 @@ module Client : sig
 
     type chan
 
+    val prepare_request :
+         t
+      -> ('a, 'b) Decl.Request.witness
+      -> (('a, 'b) Versioned.Staged.request, Negotiation_error.t) result fiber
+
+    val prepare_notification :
+         t
+      -> 'a Decl.Notification.witness
+      -> ('a Versioned.Staged.notification, Negotiation_error.t) result fiber
+
     val request :
          ?id:Id.t
       -> t
-      -> ('a, 'b) Decl.Request.witness
+      -> ('a, 'b) Versioned.Staged.request
       -> 'a
       -> ('b, Response.Error.t) result fiber
 
-    val notification :
-         t
-      -> 'a Decl.Notification.witness
-      -> 'a
-      -> (unit, Response.Error.t) result fiber
+    val notification : t -> 'a Versioned.Staged.notification -> 'a -> unit fiber
 
     val disconnected : t -> unit fiber
 
@@ -411,15 +457,11 @@ module Client : sig
       val request :
            ?id:Id.t
         -> t
-        -> ('a, 'b) Decl.Request.witness
+        -> ('a, 'b) Versioned.Staged.request
         -> 'a
         -> ('b, Response.Error.t) result fiber
 
-      val notification :
-           t
-        -> 'a Decl.Notification.witness
-        -> 'a
-        -> (unit, Response.Error.t) result fiber
+      val notification : t -> 'a Versioned.Staged.notification -> 'a -> unit
 
       val submit : t -> unit fiber
     end
@@ -521,6 +563,15 @@ module Menu : sig
 end
 
 module Versioned : sig
+  module Staged : sig
+    type ('req, 'resp) request =
+      { encode_req : 'req -> Call.t
+      ; decode_resp : Csexp.t -> ('resp, Response.Error.t) result
+      }
+
+    type 'payload notification = { encode : 'payload -> Call.t }
+  end
+
   module Make (Fiber : Fiber) : sig
     module Handler : sig
       type 'state t
@@ -533,16 +584,12 @@ module Versioned : sig
       val prepare_request :
            'a t
         -> ('req, 'resp) Decl.Request.witness
-        -> 'req
-        -> ( Call.t * (Csexp.t -> ('resp, Response.Error.t) result)
-           , Response.Error.t )
-           result
+        -> (('req, 'resp) Staged.request, Negotiation_error.t) result
 
       val prepare_notification :
            'a t
         -> 'payload Decl.Notification.witness
-        -> 'payload
-        -> (Call.t, Response.Error.t) result
+        -> ('payload Staged.notification, Negotiation_error.t) result
     end
 
     module Builder : sig
@@ -618,32 +665,6 @@ module Procedures : sig
     val progress : Progress.t Decl.Notification.t
 
     val diagnostic : Diagnostic.Event.t list Decl.Notification.t
-  end
-end
-
-module Public : sig
-  (** Public requests and notifications *)
-
-  module Request : sig
-    type ('a, 'b) t = ('a, 'b) Decl.Request.witness
-
-    val ping : (unit, unit) t
-
-    val diagnostics : (unit, Diagnostic.t list) t
-
-    val format_dune_file : (Path.t * [ `Contents of string ], string) t
-
-    val promote : (Path.t, unit) t
-  end
-
-  module Notification : sig
-    type 'a t = 'a Decl.Notification.witness
-
-    val subscribe : Subscribe.t t
-
-    val unsubscribe : Subscribe.t t
-
-    val shutdown : unit t
   end
 end
 

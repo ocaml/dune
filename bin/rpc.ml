@@ -30,6 +30,13 @@ let raise_rpc_error (e : Dune_rpc_private.Response.Error.t) =
     ; Pp.textf "%s (error kind: %s)" e.message (interpret_kind e.kind)
     ]
 
+let request_exn client witness n =
+  let open Fiber.O in
+  let* decl = Dune_rpc_impl.Client.prepare_request client witness in
+  match decl with
+  | Error e -> raise (Dune_rpc_private.Negotiation_error.E e)
+  | Ok decl -> Dune_rpc_impl.Client.request client decl n
+
 let retry_loop once =
   let open Fiber.O in
   let rec loop () =
@@ -138,9 +145,7 @@ module Status = struct
       ~f:(fun session ->
         let open Fiber.O in
         let+ response =
-          Dune_rpc_impl.Client.request session
-            (witness Dune_rpc_impl.Decl.status)
-            ()
+          request_exn session (witness Dune_rpc_impl.Decl.status) ()
         in
         match response with
         | Error error -> report_error error
@@ -190,9 +195,7 @@ module Build = struct
       ~f:(fun session ->
         let open Fiber.O in
         let+ response =
-          Dune_rpc_impl.Client.request session
-            (witness Dune_rpc_impl.Decl.build)
-            targets
+          request_exn session (witness Dune_rpc_impl.Decl.build) targets
         in
         match response with
         | Error (error : Dune_rpc_private.Response.Error.t) ->
@@ -213,9 +216,7 @@ end
 module Ping = struct
   let send_ping cli =
     let open Fiber.O in
-    let+ response =
-      Dune_rpc_impl.Client.request cli Dune_rpc_private.Public.Request.ping ()
-    in
+    let+ response = request_exn cli Dune_rpc_private.Public.Request.ping () in
     match response with
     | Ok () ->
       User_message.print

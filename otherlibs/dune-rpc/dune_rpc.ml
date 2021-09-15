@@ -3,6 +3,7 @@ module V1 = struct
   open Dune_rpc_private
   module Id = Id
   module Response = Response
+  module Negotiation_error = Negotiation_error
   module Initialize = Initialize.Request
   module Call = Call
   module Loc = Loc
@@ -35,15 +36,24 @@ module V1 = struct
           -> t
       end
 
+      val prepare_request :
+           t
+        -> ('a, 'b) Request.t
+        -> (('a, 'b) Public.Request.versioned, Negotiation_error.t) result fiber
+
+      val prepare_notification :
+           t
+        -> 'a Notification.t
+        -> ('a Notification.versioned, Negotiation_error.t) result fiber
+
       val request :
            ?id:Id.t
         -> t
-        -> ('a, 'b) Request.t
+        -> ('a, 'b) Request.versioned
         -> 'a
         -> ('b, Response.Error.t) result fiber
 
-      val notification :
-        t -> 'a Notification.t -> 'a -> (unit, Response.Error.t) result fiber
+      val notification : t -> 'a Notification.versioned -> 'a -> unit fiber
 
       val disconnected : t -> unit fiber
 
@@ -57,12 +67,11 @@ module V1 = struct
         val request :
              ?id:Id.t
           -> t
-          -> ('a, 'b) Request.t
+          -> ('a, 'b) Request.versioned
           -> 'a
           -> ('b, Response.Error.t) result fiber
 
-        val notification :
-          t -> 'a Notification.t -> 'a -> (unit, Response.Error.t) result fiber
+        val notification : t -> 'a Notification.versioned -> 'a -> unit
 
         val submit : t -> unit fiber
       end

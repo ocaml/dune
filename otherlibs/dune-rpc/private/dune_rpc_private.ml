@@ -5,6 +5,7 @@ module Menu = Menu
 module Procedures = Procedures
 include Types
 include Exported_types
+module Negotiation_error = Versioned.Negotiation_error
 
 module Where = struct
   type t =
@@ -115,17 +116,13 @@ module Where = struct
   end
 end
 
-module Decl = struct
-  include Decl
-
-  module For_tests = struct
-    include Decl
-  end
-end
+module Decl = Decl
 
 module Public = struct
   module Request = struct
     type ('a, 'b) t = ('a, 'b) Decl.Request.witness
+
+    type ('a, 'b) versioned = ('a, 'b) Versioned.Staged.request
 
     let ping = Procedures.Public.ping.decl
 
@@ -138,6 +135,8 @@ module Public = struct
 
   module Notification = struct
     type 'a t = 'a Decl.Notification.witness
+
+    type 'a versioned = 'a Versioned.Staged.notification
 
     let shutdown = Procedures.Public.shutdown.decl
 
@@ -165,18 +164,30 @@ module Client = struct
 
     type chan
 
+    val prepare_request :
+         t
+      -> ('a, 'b) Public.Request.t
+      -> ( ('a, 'b) Public.Request.versioned
+         , Versioned.Negotiation_error.t )
+         result
+         fiber
+
+    val prepare_notification :
+         t
+      -> 'a Public.Notification.t
+      -> ( 'a Public.Notification.versioned
+         , Versioned.Negotiation_error.t )
+         result
+         fiber
+
     val request :
          ?id:Id.t
       -> t
-      -> ('a, 'b) Public.Request.t
+      -> ('a, 'b) Public.Request.versioned
       -> 'a
       -> ('b, Response.Error.t) result fiber
 
-    val notification :
-         t
-      -> 'a Public.Notification.t
-      -> 'a
-      -> (unit, Response.Error.t) result fiber
+    val notification : t -> 'a Public.Notification.versioned -> 'a -> unit fiber
 
     val disconnected : t -> unit fiber
 
@@ -190,15 +201,11 @@ module Client = struct
       val request :
            ?id:Id.t
         -> t
-        -> ('a, 'b) Public.Request.t
+        -> ('a, 'b) Public.Request.versioned
         -> 'a
         -> ('b, Response.Error.t) result fiber
 
-      val notification :
-           t
-        -> 'a Public.Notification.t
-        -> 'a
-        -> (unit, Response.Error.t) result fiber
+      val notification : t -> 'a Public.Notification.versioned -> 'a -> unit
 
       val submit : t -> unit fiber
     end
@@ -411,7 +418,7 @@ module Client = struct
       ; on_preemptive_abort
       }
 
-    let prepare_request conn (id, req) =
+    let prepare_request' conn (id, req) =
       match conn.running with
       | false ->
         let err =
@@ -433,7 +440,7 @@ module Client = struct
         Ok ivar
 
     let request_untyped conn (id, req) =
-      match prepare_request conn (id, req) with
+      match prepare_request' conn (id, req) with
       | Error e -> Fiber.return (Error e)
       | Ok ivar ->
         let* () = send conn (Some [ Request (id, req) ]) in
@@ -455,41 +462,43 @@ module Client = struct
         t.next_id <- t.next_id + 1;
         Id.make id
 
-    let request ?id t (decl : _ Decl.Request.witness) req =
+    let prepare_request t (decl : _ Decl.Request.witness) =
+      let+ handler = t.handler in
+      V.Handler.prepare_request handler decl
+
+    let request ?id t ({ encode_req; decode_resp } : _ Versioned.Staged.request)
+        req =
       let id = gen_id t id in
-      let* handler = t.handler in
-      match V.Handler.prepare_request handler decl req with
-      | Error e -> Fiber.return (Error e)
-      | Ok (req, decode) ->
-        let* res = request_untyped t (id, req) in
-        parse_response t decode res
+      let req = encode_req req in
+      let* res = request_untyped t (id, req) in
+      parse_response t decode_resp res
 
-    let prepare_notification (type a) t (decl : a Decl.Notification.witness)
-        (n : a) ~on_success ~on_failure =
-      let* handler = t.handler in
-      match V.Handler.prepare_notification handler decl n with
-      | Error e -> on_failure e
-      | Ok call -> (
-        match t.running with
-        | true -> on_success call
-        | false ->
-          let err =
-            let payload =
-              Sexp.record
-                [ ("method", Atom call.method_); ("params", call.params) ]
-            in
-            Response.Error.create ~payload
-              ~message:"notification sent while connection is dead"
-              ~kind:Code_error ()
+    let prepare_notification (type a) t (decl : a Decl.Notification.witness) =
+      let+ handler = t.handler in
+      V.Handler.prepare_notification handler decl
+
+    let make_notification (type a) t
+        ({ encode } : a Versioned.Staged.notification) (n : a)
+        (k : Call.t -> 'a) : 'a =
+      let call = encode n in
+      match t.running with
+      | true -> k call
+      | false ->
+        let err =
+          let payload =
+            Sexp.record
+              [ ("method", Atom call.method_); ("params", call.params) ]
           in
-          raise (Response.Error.E err))
+          Response.Error.create ~payload
+            ~message:"notification sent while connection is dead"
+            ~kind:Code_error ()
+        in
+        raise (Response.Error.E err)
 
-    let notification (type a) t (decl : a Decl.Notification.witness) (n : a) =
-      prepare_notification t decl n
-        ~on_success:(fun call ->
-          let+ () = send t (Some [ Notification call ]) in
-          Ok ())
-        ~on_failure:(fun e -> Fiber.return (Error e))
+    let notification (type a) t (stg : a Versioned.Staged.notification) (n : a)
+        =
+      make_notification t stg n (fun call ->
+          send t (Some [ Notification call ]))
 
     let disconnected t = Fiber.Ivar.read t.chan.disconnected
 
@@ -502,26 +511,21 @@ module Client = struct
       let create client = { client; pending = [] }
 
       let notification t n a =
-        prepare_notification t.client n a
-          ~on_success:(fun call ->
-            t.pending <- Notification call :: t.pending;
-            Fiber.return (Ok ()))
-          ~on_failure:(fun e -> Fiber.return (Error e))
+        make_notification t.client n a (fun call ->
+            t.pending <- Notification call :: t.pending)
 
-      let request (type a b) ?id t (decl : (a, b) Decl.Request.witness)
+      let request (type a b) ?id t
+          ({ encode_req; decode_resp } : (a, b) Versioned.Staged.request)
           (req : a) : (b, _) result Fiber.t =
         let id = gen_id t.client id in
-        let* handler = t.client.handler in
-        match V.Handler.prepare_request handler decl req with
+        let call = encode_req req in
+        let ivar = prepare_request' t.client (id, call) in
+        match ivar with
         | Error e -> Fiber.return (Error e)
-        | Ok (call, decode) -> (
-          let ivar = prepare_request t.client (id, call) in
-          match ivar with
-          | Error e -> Fiber.return (Error e)
-          | Ok ivar ->
-            t.pending <- Packet.Query.Request (id, call) :: t.pending;
-            let* res = Fiber.Ivar.read ivar in
-            parse_response t.client decode res)
+        | Ok ivar ->
+          t.pending <- Packet.Query.Request (id, call) :: t.pending;
+          let* res = Fiber.Ivar.read ivar in
+          parse_response t.client decode_resp res
 
       let submit t =
         let pending = List.rev t.pending in

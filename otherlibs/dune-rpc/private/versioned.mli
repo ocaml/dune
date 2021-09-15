@@ -4,6 +4,25 @@
 open Stdune
 open Types
 
+module Negotiation_error : sig
+  type t
+
+  val payload : t -> Csexp.t option
+
+  val message : t -> string
+
+  exception E of t
+end
+
+module Staged : sig
+  type ('req, 'resp) request =
+    { encode_req : 'req -> Call.t
+    ; decode_resp : Csexp.t -> ('resp, Response.Error.t) result
+    }
+
+  type 'payload notification = { encode : 'payload -> Call.t }
+end
+
 module Make (Fiber : Fiber) : sig
   module Handler : sig
     type 'state t
@@ -16,16 +35,12 @@ module Make (Fiber : Fiber) : sig
     val prepare_request :
          'a t
       -> ('req, 'resp) Decl.Request.witness
-      -> 'req
-      -> ( Call.t * (Csexp.t -> ('resp, Response.Error.t) result)
-         , Response.Error.t )
-         result
+      -> (('req, 'resp) Staged.request, Negotiation_error.t) result
 
     val prepare_notification :
          'a t
       -> 'payload Decl.Notification.witness
-      -> 'payload
-      -> (Call.t, Response.Error.t) result
+      -> ('payload Staged.notification, Negotiation_error.t) result
   end
 
   module Builder : sig

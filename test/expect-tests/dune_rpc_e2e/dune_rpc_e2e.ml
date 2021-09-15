@@ -32,6 +32,24 @@ let init_chan ~root_dir =
   in
   loop ()
 
+let request_exn client witness n =
+  let* staged = Client.prepare_request client witness in
+  let staged =
+    match staged with
+    | Ok s -> s
+    | Error e -> raise (Dune_rpc.Negotiation_error.E e)
+  in
+  Client.request client staged n
+
+let notification_exn client witness n =
+  let* staged = Client.prepare_notification client witness in
+  let staged =
+    match staged with
+    | Ok s -> s
+    | Error e -> raise (Dune_rpc.Negotiation_error.E e)
+  in
+  Client.notification client staged n
+
 let run_client ?handler f =
   let* chan = init_chan ~root_dir:"." in
   let initialize =
@@ -42,12 +60,7 @@ let run_client ?handler f =
       Fiber.finalize
         (fun () -> f client)
         ~finally:(fun () ->
-          let+ result =
-            Client.notification client Dune_rpc.Public.Notification.shutdown ()
-          in
-          match result with
-          | Ok () -> ()
-          | Error e -> raise (Dune_rpc.Response.Error.E e)))
+          notification_exn client Dune_rpc.Public.Notification.shutdown ()))
 
 let read_lines in_ =
   let* reader = Scheduler.Worker.create () in
@@ -114,7 +127,7 @@ let run_server ~root_dir =
 let dune_build client what =
   printfn "Building %s" what;
   let+ res =
-    Client.request client
+    request_exn client
       (Dune_rpc.Decl.Request.witness Dune_rpc_impl.Decl.build)
       [ what ]
   in
@@ -250,14 +263,12 @@ let setup_diagnostics f =
     run_client ~handler (fun client ->
         (* First we test for regular errors *)
         files [ ("dune-project", "(lang dune 3.0)") ];
-        let* result =
-          printfn "subscribing to notifications";
-          Client.notification client Dune_rpc.Public.Notification.subscribe
+        printfn "subscribing to notifications";
+        let* () =
+          notification_exn client Dune_rpc.Public.Notification.subscribe
             Diagnostics
         in
-        match result with
-        | Error e -> raise (Dune_rpc.Response.Error.E e)
-        | Ok () -> f client)
+        f client)
   in
   run (fun () -> test exec)
 
@@ -682,7 +693,7 @@ let%expect_test "formatting dune files" =
         printfn "Unformatted:\n%s" unformatted;
         let run uri what =
           let+ res =
-            Client.request client Request.format_dune_file
+            request_exn client Request.format_dune_file
               (uri, `Contents unformatted)
           in
           match res with
@@ -739,7 +750,7 @@ let%expect_test "promoting dune files" =
           Build (alias foo) failed |}];
         print_endline "attempting to promote";
         let+ res =
-          Client.request client Request.promote
+          request_exn client Request.promote
             Dune_rpc.Path.(relative dune_root fname)
         in
         (match res with

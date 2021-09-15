@@ -1,6 +1,33 @@
 open Stdune
 open Types
 
+module Negotiation_error = struct
+  type t =
+    { payload : Csexp.t option
+    ; message : string
+    }
+
+  let payload t = t.payload
+
+  let message t = t.message
+
+  let create ?payload ~message () = { payload; message }
+
+  exception E of t
+
+  let to_response_error { payload; message } =
+    Response.Error.create ~kind:Version_error ?payload ~message ()
+end
+
+module Staged = struct
+  type ('req, 'resp) request =
+    { encode_req : 'req -> Call.t
+    ; decode_resp : Csexp.t -> ('resp, Response.Error.t) result
+    }
+
+  type 'payload notification = { encode : 'payload -> Call.t }
+end
+
 module Make (Fiber : Fiber) = struct
   module Handler = struct
     type 'state t =
@@ -13,16 +40,12 @@ module Make (Fiber : Fiber) = struct
           'req 'resp.
              Menu.t
           -> ('req, 'resp) Decl.Request.witness
-          -> 'req
-          -> ( Call.t * (Csexp.t -> ('resp, Response.Error.t) result)
-             , Response.Error.t )
-             result
+          -> (('req, 'resp) Staged.request, Negotiation_error.t) result
       ; prepare_notification :
           'a.
              Menu.t
           -> 'a Decl.Notification.witness
-          -> 'a
-          -> (Call.t, Response.Error.t) result
+          -> ('a Staged.notification, Negotiation_error.t) result
       }
 
     let handle_request t = t.handle_request t.menu
@@ -287,13 +310,11 @@ module Make (Fiber : Fiber) = struct
       match (get t table key, Method_name.Map.find menu method_) with
       | None, _ ->
         let payload = Sexp.record [ ("method", Atom method_) ] in
-        k
-          (Response.Error.create ~kind:Invalid_request ~message:"invalid method"
-             ~payload ())
+        k (Negotiation_error.create ~message:"invalid method" ~payload ())
       | _, None ->
         let payload = Sexp.record [ ("method", Atom method_) ] in
         k
-          (Response.Error.create ~kind:Version_error
+          (Negotiation_error.create
              ~message:"remote and local have no common version for method"
              ~payload ())
       | Some subtable, Some version -> s (subtable, version)
@@ -301,7 +322,7 @@ module Make (Fiber : Fiber) = struct
     let raise_version_bug ~method_ ~selected ~verb ~known =
       Code_error.raise
         "bug with version negotiation; selected bad method version"
-        [ ("why", Dyn.String ("version is " ^ verb))
+        [ ("message", Dyn.String ("version is " ^ verb))
         ; ("method", Dyn.String method_)
         ; ( "implemented versions"
           , Dyn.List (List.map ~f:(fun i -> Dyn.Int i) known) )
@@ -313,7 +334,8 @@ module Make (Fiber : Fiber) = struct
       let handle_request menu state (_id, (n : Call.t)) =
         lookup_method_generic t ~menu ~table:Impl_requests ~key:n.method_
           ~method_:n.method_
-          (fun e -> Fiber.return (Error e))
+          (fun e ->
+            Fiber.return (Error (Negotiation_error.to_response_error e)))
           (fun (handlers, version) ->
             match Method_version.Map.find handlers version with
             | None ->
@@ -332,7 +354,8 @@ module Make (Fiber : Fiber) = struct
       let handle_notification menu state (n : Call.t) =
         lookup_method_generic t ~menu ~table:Impl_notifs ~key:n.method_
           ~method_:n.method_
-          (fun e -> Fiber.return (Error e))
+          (fun e ->
+            Fiber.return (Error (Negotiation_error.to_response_error e)))
           (fun (handlers, version) ->
             match Method_version.Map.find handlers version with
             | None ->
@@ -348,11 +371,8 @@ module Make (Fiber : Fiber) = struct
                 let+ () = f state (gen.upgrade_req req) in
                 Ok ()))
       in
-      let prepare_request (type a b) menu (decl : (a, b) Decl.Request.witness)
-          (req : a) :
-          ( Call.t * (Csexp.t -> (b, Response.Error.t) result)
-          , Response.Error.t )
-          result =
+      let prepare_request (type a b) menu (decl : (a, b) Decl.Request.witness) :
+          ((a, b) Staged.request, Negotiation_error.t) result =
         let method_ = decl.Decl.method_ in
         lookup_method_generic t ~menu ~table:Declared_requests
           ~key:(method_, decl.key) ~method_
@@ -363,18 +383,21 @@ module Make (Fiber : Fiber) = struct
               raise_version_bug ~method_ ~selected:version ~verb:"undeclared"
                 ~known:(Method_version.Map.keys decls)
             | Some (T gen) ->
-              Ok
-                ( { Call.method_
-                  ; params = Conv.to_sexp gen.req (gen.downgrade_req req)
-                  }
-                , fun sexp ->
-                    match Conv.of_sexp gen.resp ~version:(3, 0) sexp with
-                    | Ok resp -> Ok (gen.upgrade_resp resp)
-                    | Error e -> Error (Response.Error.of_conv e) ))
+              let encode_req (req : a) =
+                { Call.method_
+                ; params = Conv.to_sexp gen.req (gen.downgrade_req req)
+                }
+              in
+              let decode_resp sexp =
+                match Conv.of_sexp gen.resp ~version:(3, 0) sexp with
+                | Ok resp -> Ok (gen.upgrade_resp resp)
+                | Error e -> Error (Response.Error.of_conv e)
+              in
+              Ok { Staged.encode_req; decode_resp })
       in
       let prepare_notification (type a) menu
-          (decl : a Decl.Notification.witness) (req : a) :
-          (Call.t, Response.Error.t) result =
+          (decl : a Decl.Notification.witness) :
+          (a Staged.notification, Negotiation_error.t) result =
         let method_ = decl.Decl.method_ in
         lookup_method_generic t ~menu ~table:Declared_notifs
           ~key:(method_, decl.key) ~method_
@@ -385,10 +408,12 @@ module Make (Fiber : Fiber) = struct
               raise_version_bug ~method_ ~selected:version ~verb:"undeclared"
                 ~known:(Method_version.Map.keys decls)
             | Some (T gen) ->
-              Ok
+              let encode (req : a) =
                 { Call.method_
                 ; params = Conv.to_sexp gen.req (gen.downgrade_req req)
-                })
+                }
+              in
+              Ok { Staged.encode })
       in
       fun ~menu ->
         { Handler.menu

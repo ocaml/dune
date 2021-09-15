@@ -65,15 +65,26 @@ let%expect_test "run and connect" =
        let* rpc = rpc in
        Client.connect rpc initialize ~f:(fun t ->
            print_endline "started session";
-           let* res = Client.request t Request.ping () in
+           let* ping = Client.prepare_request t Request.ping in
+           let ping =
+             match ping with
+             | Ok p -> p
+             | Error _ -> assert false
+           in
+           let* res = Client.request t ping () in
            match res with
            | Error _ -> failwith "unexpected"
-           | Ok () -> (
+           | Ok () ->
              print_endline "received ping. shutting down.";
-             let+ result = Client.notification t Notification.shutdown () in
-             match result with
-             | Error e -> raise (Response.Error.E e)
-             | Ok () -> ()))
+             let* shutdown =
+               Client.prepare_notification t Notification.shutdown
+             in
+             let shutdown =
+               match shutdown with
+               | Ok s -> s
+               | Error _ -> assert false
+             in
+             Client.notification t shutdown ())
      in
      let run_build =
        let+ res = build#status in

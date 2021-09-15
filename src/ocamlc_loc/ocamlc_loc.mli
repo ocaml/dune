@@ -25,6 +25,6 @@ type report =
   ; related : (loc * message) list
   }
 
-val dyn_of_report : report -> Stdune.Dyn.t
+val dyn_of_report : report -> Dyn.t
 
 val parse : string -> report list

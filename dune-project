@@ -143,7 +143,6 @@ understood by dune language."))
  (depends
   result
   (dune-rpc (= :version))
-  (stdune-unstable (= :version))
   (csexp (>= 1.4.0))
   lwt)
  (synopsis "Communicate with dune using rpc and Lwt")

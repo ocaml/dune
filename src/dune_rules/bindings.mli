@@ -2,8 +2,6 @@
     are used in the dependency specification language for example *)
 open! Dune_engine
 
-open Stdune
-
 type 'a one =
   | Unnamed of 'a
   | Named of string * 'a list

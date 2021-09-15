@@ -7,7 +7,7 @@ module Id : sig
 
   val sexp : t Conv.value
 
-  val to_dyn : t -> Stdune.Dyn.t
+  val to_dyn : t -> Dyn.t
 
   val equal : t -> t -> bool
 
@@ -56,7 +56,7 @@ module Response : sig
 
     exception E of t
 
-    val to_dyn : t -> Stdune.Dyn.t
+    val to_dyn : t -> Dyn.t
 
     val of_conv : Conv.error -> t
 
@@ -190,7 +190,7 @@ module Diagnostic : sig
     ; related : Related.t list
     }
 
-  val to_dyn : t -> Stdune.Dyn.t
+  val to_dyn : t -> Dyn.t
 
   val related : t -> Related.t list
 
@@ -213,7 +213,7 @@ module Diagnostic : sig
       | Add of t
       | Remove of t
 
-    val to_dyn : t -> Stdune.Dyn.t
+    val to_dyn : t -> Dyn.t
   end
 end
 

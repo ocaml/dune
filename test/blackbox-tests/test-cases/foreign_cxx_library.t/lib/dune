@@ -1,9 +1,17 @@
+; (library
+;  (name hello_world)
+;  (foreign_archives foreign_hello_world)
+;  (c_library_flags -lstdc++))
+
+; (foreign_library
+;  (archive_name foreign_hello_world)
+;  (language cxx)
+;  (names foreign_hello_world))
+
 (library
  (name hello_world)
- (foreign_archives hello_world)
- (c_library_flags -lstdc++))
-
-(foreign_library
- (archive_name hello_world)
- (language cxx)
- (names hello_world))
+ (foreign_stubs
+  (language cxx)
+  (names foreign_hello_world))
+; (c_library_flags -lstdc++)
+)

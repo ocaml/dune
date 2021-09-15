@@ -177,6 +177,11 @@ Unreleased
   new `(subst <disable|enable>)` stanza to the `dune-project` file.
   (#4864, @kit-ty-kate)
 
+- Simplify the way `dune` discovers the root of the workspace. It now
+  stops at the first `dune-workspace` file it encounters, and fails if
+  it finds neither a `dune-workspace` nor a `dune-project` file
+  (#4921, fixes #4459, @jeremiedimino)
+
 - No longer reference deprecated Toploop functions when using dune files in
   OCaml syntax. (#4834, fixes #4830, @nojb)
 

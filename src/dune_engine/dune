@@ -5,6 +5,7 @@
  (libraries
   unix
   stdune
+  dyn
   fiber
   incremental_cycles
   dag

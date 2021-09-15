@@ -1,5 +1,3 @@
-open! Stdune
-open Import
 open Dune_lang.Decoder
 
 (* Can be extended later if needed *)

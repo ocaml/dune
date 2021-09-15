@@ -49,7 +49,6 @@ module Unit = Unit
 module Monad = Monad
 module State = State
 module Monoid = Monoid
-module Dyn = Dyn
 module Float = Float
 module Tuple = Tuple
 module Poly = Poly

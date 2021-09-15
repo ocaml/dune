@@ -192,10 +192,11 @@ let%expect_test "call method with no matching versions" =
     rpc
   in
   let client client =
-    printfn "client: sending request";
-    let* resp = request_exn client (Decl.Request.witness decl) 0 in
+    printfn "client: preparing request";
+    let* resp = Client.prepare_request client (Decl.Request.witness decl) in
     (match resp with
-    | Error e -> printfn "client: error %s" e.message
+    | Error e ->
+      printfn "client: error %s" (Dune_rpc.Negotiation_error.message e)
     | Ok _ -> assert false);
     Fiber.return ()
   in
@@ -209,7 +210,7 @@ let%expect_test "call method with no matching versions" =
   test ~init ~client ~handler ~private_menu:[ Request decl' ] ();
   [%expect
     {|
-    client: sending request
+    client: preparing request
     client: error invalid method
     server: finished. |}]
 

@@ -56,7 +56,10 @@ let run_client ?handler f =
     let id = Dune_rpc.Id.make (Atom "test") in
     Dune_rpc.Initialize.Request.create ~id
   in
-  Client.connect ?handler chan initialize ~f:(fun client ->
+  Client.connect_with_menu ?handler chan initialize
+    ~private_menu:
+      [ Request Dune_rpc_impl.Decl.build; Request Dune_rpc_impl.Decl.status ]
+    ~f:(fun client ->
       Fiber.finalize
         (fun () -> f client)
         ~finally:(fun () ->

@@ -56,6 +56,9 @@ module Buildable : sig
 
   (** Check if the buildable has any foreign stubs or archives. *)
   val has_foreign : t -> bool
+
+  (** Check if the buildable has any foreign cxx stubs. *)
+  val has_foreign_cxx : t -> bool
 end
 
 module Public_lib : sig
@@ -159,6 +162,9 @@ module Library : sig
   (** Check if the library has any foreign stubs or archives. *)
   val has_foreign : t -> bool
 
+  (** Check if the buildable has any foreign cxx stubs. *)
+  val has_foreign_cxx : t -> bool
+
   (** The list of all foreign archives, including the foreign stubs archive. *)
   val foreign_archives : t -> Foreign.Archive.t list
 
@@ -257,6 +263,9 @@ module Executables : sig
 
   (** Check if the executables have any foreign stubs or archives. *)
   val has_foreign : t -> bool
+
+  (** Check if the buildable has any foreign cxx stubs. *)
+  val has_foreign_cxx : t -> bool
 
   val obj_dir : t -> dir:Path.Build.t -> Path.Build.t Obj_dir.t
 end

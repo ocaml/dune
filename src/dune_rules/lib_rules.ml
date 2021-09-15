@@ -43,9 +43,12 @@ let build_lib (lib : Library.t) ~native_archives ~sctx ~expander ~flags ~dir
         Action_builder.paths (Cm_files.unsorted_objects_and_cms cm_files ~mode)
       in
       let ocaml_flags = Ocaml_flags.get flags mode in
+      let default_cclibs = if Library.has_foreign_cxx lib then
+          [ "-lstdc++" ]
+        else [] in
       let cclibs =
         Expander.expand_and_eval_set expander lib.c_library_flags
-          ~standard:(Action_builder.return [])
+          ~standard:(Action_builder.return default_cclibs)
       in
       let library_flags =
         Expander.expand_and_eval_set expander lib.library_flags
@@ -109,7 +112,7 @@ let gen_wrapped_compat_modules (lib : Library.t) cctx =
       |> Super_context.add_rule sctx ~loc ~dir:(Compilation_context.dir cctx))
 
 (* Rules for building static and dynamic libraries using [ocamlmklib]. *)
-let ocamlmklib ~loc ~c_library_flags ~sctx ~dir ~expander ~o_files ~archive_name
+let ocamlmklib ~loc ~c_library_flags ~has_cxx ~sctx ~dir ~expander ~o_files ~archive_name
     ~build_targets_together =
   let ctx = Super_context.context sctx in
   let { Lib_config.ext_lib; ext_dll; _ } = ctx.lib_config in
@@ -120,7 +123,8 @@ let ocamlmklib ~loc ~c_library_flags ~sctx ~dir ~expander ~o_files ~archive_name
     Super_context.add_rule sctx ~sandbox ~dir ~loc
       (let cclibs_args =
          Expander.expand_and_eval_set expander c_library_flags
-           ~standard:(Action_builder.return [])
+           ~standard:(Action_builder.return
+                        (if has_cxx then [ "-lstdc++" ] else []))
        in
        let ctx = Super_context.context sctx in
        Command.run ~dir:(Path.build ctx.build_dir) ctx.ocamlmklib
@@ -194,8 +198,10 @@ let foreign_rules (library : Foreign.Library.t) ~sctx ~expander ~dir
     |> Memo.Build.parallel_map ~f:(Memo.Build.map ~f:Path.build)
   in
   let* () = Check_rules.add_files sctx ~dir o_files in
+  let has_cxx = library.stubs.language = Foreign_language.Cxx in
   ocamlmklib ~archive_name ~loc:library.stubs.loc
-    ~c_library_flags:Ordered_set_lang.Unexpanded.standard ~sctx ~dir ~expander
+    ~c_library_flags:Ordered_set_lang.Unexpanded.standard ~has_cxx
+    ~sctx ~dir ~expander
     ~o_files ~build_targets_together:false
 
 (* Build a required set of archives for an OCaml library. *)
@@ -213,6 +219,7 @@ let build_stubs lib ~cctx ~dir ~expander ~requires ~dir_contents
     |> Memo.Build.parallel_map ~f:(Memo.Build.map ~f:Path.build)
   in
   let* () = Check_rules.add_files sctx ~dir lib_o_files in
+  let has_cxx = Library.has_foreign_cxx lib in
   match vlib_stubs_o_files @ lib_o_files with
   | [] -> Memo.Build.return ()
   | o_files ->
@@ -225,7 +232,8 @@ let build_stubs lib ~cctx ~dir ~expander ~requires ~dir_contents
       && Dynlink_supported.get lib.dynlink ctx.supports_shared_libraries
     in
     ocamlmklib ~archive_name ~loc:lib.buildable.loc ~sctx ~expander ~dir
-      ~o_files ~c_library_flags:lib.c_library_flags ~build_targets_together
+      ~o_files ~c_library_flags:lib.c_library_flags ~has_cxx
+      ~build_targets_together
 
 let build_shared lib ~native_archives ~sctx ~dir ~flags =
   let ctx = Super_context.context sctx in

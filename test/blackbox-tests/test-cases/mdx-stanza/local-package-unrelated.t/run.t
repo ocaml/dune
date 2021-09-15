@@ -3,7 +3,7 @@ Dune does not fail if the `packages` are not available at evaluation time
 
   $ dune build -p unrelated-package
 
-Dune fails if the `packages` are not avaliable at execution time
+Dune fails if the `packages` are not available at execution time
 
   $ dune runtest -p unrelated-package
   File "dune", line 3, characters 11-14:

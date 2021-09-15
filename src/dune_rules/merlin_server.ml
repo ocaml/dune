@@ -33,7 +33,7 @@ end
 
 (* [make_relative_to_root p] will check that [Path.root] is a prefix of the
    absolute path [p] and remove it if that is the case. Under Windows and Cygwin
-   environement both paths are lowarcased before the comparison *)
+   environment both paths are lowarcased before the comparison *)
 let make_relative_to_root p =
   let prefix = Path.(to_absolute_filename root) in
   let p = Path.(to_absolute_filename p) in

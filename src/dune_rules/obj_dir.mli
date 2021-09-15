@@ -14,7 +14,7 @@
 
     In the rest of this API, "local" and "external" have their usual Dune
     meaning: "local" is for libraries or executables that are local to the
-    current worksapce and "extenal" for libraries that are part of the installed
+    current workspace and "external" for libraries that are part of the installed
     world.
 
     For local libraries, the path are reported as [Path.Build.t] values given

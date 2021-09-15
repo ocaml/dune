@@ -1,5 +1,5 @@
 we're getting an acceptable error message when adding a macro form in an
-inappropariate place:
+inappropriate place:
 
   $ dune build
   File "dune", line 1, characters 12-21:

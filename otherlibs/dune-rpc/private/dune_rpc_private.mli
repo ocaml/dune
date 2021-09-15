@@ -16,6 +16,8 @@ module Id : sig
   val to_sexp : t -> Csexp.t
 
   module Set : Stdune.Set.S with type elt = t
+
+  module Map : Stdune.Map.S with type key = t
 end
 
 module Call : sig
@@ -245,6 +247,8 @@ module Diagnostic : sig
     ; related : Related.t list
     }
 
+  val to_dyn : t -> Stdune.Dyn.t
+
   val related : t -> Related.t list
 
   val id : t -> Id.t
@@ -293,12 +297,6 @@ module Message : sig
   val message : t -> string
 
   val to_sexp_unversioned : t -> Csexp.t
-end
-
-module Subscribe : sig
-  type t =
-    | Diagnostics
-    | Build_progress
 end
 
 module Decl : sig
@@ -357,6 +355,70 @@ module Decl : sig
   type 'a notification = 'a Notification.t
 end
 
+module Procedures : sig
+  (** Procedures with generations for server impl *)
+  module Public : sig
+    val ping : (unit, unit) Decl.Request.t
+
+    val diagnostics : (unit, Diagnostic.t list) Decl.Request.t
+
+    val shutdown : unit Decl.Notification.t
+
+    val format_dune_file :
+      (Path.t * [ `Contents of string ], string) Decl.Request.t
+
+    val promote : (Path.t, unit) Decl.Request.t
+  end
+
+  module Server_side : sig
+    val abort : Message.t Decl.Notification.t
+
+    val log : Message.t Decl.Notification.t
+  end
+
+  module Poll : sig
+    type 'a t
+
+    val poll : 'a t -> (Id.t, 'a option) Decl.Request.t
+
+    val cancel : 'a t -> Id.t Decl.Notification.t
+
+    module Name : sig
+      type t
+
+      val make : string -> t
+
+      val compare : t -> t -> int
+    end
+
+    val name : 'a t -> Name.t
+
+    val make : Name.t -> (Id.t, 'a option) Decl.Request.gen list -> 'a t
+
+    val progress : Progress.t t
+
+    val diagnostic : Diagnostic.Event.t list t
+  end
+end
+
+module Sub : sig
+  type 'a t
+
+  val of_procedure : 'a Procedures.Poll.t -> 'a t
+
+  val poll : 'a t -> (Id.t, 'a option) Decl.Request.witness
+
+  val poll_cancel : 'a t -> Id.t Decl.Notification.witness
+
+  module Id : sig
+    type t
+
+    val compare : t -> t -> int
+  end
+
+  val id : 'a t -> Id.t
+end
+
 module type Fiber = sig
   type 'a t
 
@@ -410,11 +472,15 @@ module Public : sig
 
     type 'a versioned = 'a Versioned.Staged.notification
 
-    val subscribe : Subscribe.t t
-
-    val unsubscribe : Subscribe.t t
-
     val shutdown : unit t
+  end
+
+  module Sub : sig
+    type 'a t = 'a Sub.t
+
+    val diagnostic : Diagnostic.Event.t list t
+
+    val progress : Progress.t t
   end
 end
 
@@ -447,6 +513,20 @@ module Client : sig
 
     val disconnected : t -> unit fiber
 
+    module Stream : sig
+      type 'a t
+
+      val cancel : _ t -> unit fiber
+
+      val next : 'a t -> 'a option fiber
+    end
+
+    val poll :
+         ?id:Id.t
+      -> t
+      -> 'a Sub.t
+      -> ('a Stream.t, Negotiation_error.t) result fiber
+
     module Batch : sig
       type t
 
@@ -472,8 +552,6 @@ module Client : sig
 
       val create :
            ?log:(Message.t -> unit fiber)
-        -> ?diagnostic:(Diagnostic.Event.t list -> unit fiber)
-        -> ?build_progress:(Progress.t -> unit fiber)
         -> ?abort:(Message.t -> unit fiber)
         -> unit
         -> t
@@ -482,6 +560,7 @@ module Client : sig
     type proc =
       | Request : ('a, 'b) Decl.request -> proc
       | Notification : 'a Decl.notification -> proc
+      | Poll : 'a Procedures.Poll.t -> proc
 
     val connect_with_menu :
          ?handler:Handler.t
@@ -638,42 +717,8 @@ module Versioned : sig
   end
 end
 
-module Procedures : sig
-  (** Procedures with generations for server impl *)
-  module Public : sig
-    val ping : (unit, unit) Decl.Request.t
-
-    val diagnostics : (unit, Diagnostic.t list) Decl.Request.t
-
-    val shutdown : unit Decl.Notification.t
-
-    val subscribe : Subscribe.t Decl.Notification.t
-
-    val unsubscribe : Subscribe.t Decl.Notification.t
-
-    val format_dune_file :
-      (Path.t * [ `Contents of string ], string) Decl.Request.t
-
-    val promote : (Path.t, unit) Decl.Request.t
-  end
-
-  module Server_side : sig
-    val abort : Message.t Decl.Notification.t
-
-    val log : Message.t Decl.Notification.t
-
-    val progress : Progress.t Decl.Notification.t
-
-    val diagnostic : Diagnostic.Event.t list Decl.Notification.t
-  end
-end
-
 module Server_notifications : sig
   (** Notification sent from server to client *)
-
-  val diagnostic : Diagnostic.Event.t list Decl.Notification.witness
-
-  val progress : Progress.t Decl.Notification.witness
 
   val log : Message.t Decl.Notification.witness
 

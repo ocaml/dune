@@ -118,6 +118,26 @@ end
 
 module Decl = Decl
 
+module Sub = struct
+  type 'a t =
+    { poll : (Id.t, 'a option) Decl.Request.witness
+    ; cancel : Id.t Decl.Notification.witness
+    ; id : Procedures.Poll.Name.t
+    }
+
+  let of_procedure p =
+    let open Procedures.Poll in
+    { poll = (poll p).decl; cancel = (cancel p).decl; id = name p }
+
+  let poll t = t.poll
+
+  let poll_cancel t = t.cancel
+
+  module Id = Procedures.Poll.Name
+
+  let id t = t.id
+end
+
 module Public = struct
   module Request = struct
     type ('a, 'b) t = ('a, 'b) Decl.Request.witness
@@ -139,21 +159,21 @@ module Public = struct
     type 'a versioned = 'a Versioned.Staged.notification
 
     let shutdown = Procedures.Public.shutdown.decl
+  end
 
-    let subscribe = Procedures.Public.subscribe.decl
+  module Sub = struct
+    type 'a t = 'a Sub.t
 
-    let unsubscribe = Procedures.Public.unsubscribe.decl
+    let diagnostic = Sub.of_procedure Procedures.Poll.diagnostic
+
+    let progress = Sub.of_procedure Procedures.Poll.progress
   end
 end
 
 module Server_notifications = struct
   let abort = Procedures.Server_side.abort.decl
 
-  let diagnostic = Procedures.Server_side.diagnostic.decl
-
   let log = Procedures.Server_side.log.decl
-
-  let progress = Procedures.Server_side.progress.decl
 end
 
 module Client = struct
@@ -191,6 +211,20 @@ module Client = struct
 
     val disconnected : t -> unit fiber
 
+    module Stream : sig
+      type 'a t
+
+      val cancel : _ t -> unit fiber
+
+      val next : 'a t -> 'a option fiber
+    end
+
+    val poll :
+         ?id:Id.t
+      -> t
+      -> 'a Sub.t
+      -> ('a Stream.t, Negotiation_error.t) result fiber
+
     module Batch : sig
       type t
 
@@ -216,8 +250,6 @@ module Client = struct
 
       val create :
            ?log:(Message.t -> unit fiber)
-        -> ?diagnostic:(Diagnostic.Event.t list -> unit fiber)
-        -> ?build_progress:(Progress.t -> unit fiber)
         -> ?abort:(Message.t -> unit fiber)
         -> unit
         -> t
@@ -226,6 +258,7 @@ module Client = struct
     type proc =
       | Request : ('a, 'b) Decl.request -> proc
       | Notification : 'a Decl.notification -> proc
+      | Poll : 'a Procedures.Poll.t -> proc
 
     val connect_with_menu :
          ?handler:Handler.t
@@ -502,6 +535,68 @@ module Client = struct
 
     let disconnected t = Fiber.Ivar.read t.chan.disconnected
 
+    module Stream = struct
+      type nonrec 'a t =
+        { poll : (Id.t, 'a option) Versioned.Staged.request
+        ; cancel : Id.t Versioned.Staged.notification
+        ; client : t
+        ; id : Id.t
+        ; mutable next_pending : bool
+        ; mutable counter : int
+        ; mutable active : bool
+        }
+
+      let create sub client id =
+        let+ handler = client.handler in
+        let open Result.O in
+        let+ poll = V.Handler.prepare_request handler (Sub.poll sub)
+        and+ cancel =
+          V.Handler.prepare_notification handler (Sub.poll_cancel sub)
+        in
+        { poll
+        ; cancel
+        ; client
+        ; id
+        ; counter = 0
+        ; active = true
+        ; next_pending = false
+        }
+
+      let check_active t =
+        if not t.active then
+          Code_error.raise "polling is inactive" [ ("id", Id.to_dyn t.id) ]
+
+      let next t =
+        check_active t;
+        if t.next_pending then
+          Code_error.raise "Poll.next: previous Poll.next did not terminate yet"
+            [];
+        t.next_pending <- true;
+        let id =
+          Sexp.record
+            [ ("poll", Id.to_sexp t.id)
+            ; ("i", Sexp.Atom (string_of_int t.counter))
+            ]
+          |> Id.make
+        in
+        let+ res = request ~id t.client t.poll t.id in
+        t.next_pending <- false;
+        match res with
+        | Ok res -> res
+        | Error e ->
+          (* cwong: Should this really be a raise? *)
+          raise (Response.Error.E e)
+
+      let cancel t =
+        check_active t;
+        t.active <- false;
+        notification t.client t.cancel t.id
+    end
+
+    let poll ?id client sub =
+      let id = gen_id client id in
+      Stream.create sub client id
+
     module Batch = struct
       type nonrec t =
         { client : t
@@ -573,11 +668,9 @@ module Client = struct
       terminate t
 
     module Handler = struct
-      type t =
+      type nonrec t =
         { log : Message.t -> unit Fiber.t
         ; abort : Message.t -> unit Fiber.t
-        ; diagnostic : Diagnostic.Event.t list -> unit Fiber.t
-        ; build_progress : Progress.t -> unit Fiber.t
         }
 
       let log { Message.payload; message } =
@@ -587,31 +680,17 @@ module Client = struct
           Format.eprintf "%s: %s@." message (Sexp.to_string payload));
         Fiber.return ()
 
-      let diagnostic _ = failwith "unexpected diagnostic notification"
-
-      let build_progress _ = failwith "unexpected build progress notification"
-
       let abort { Message.payload = _; message } =
         failwith ("Fatal error from server: " ^ message)
 
-      let default = { log; diagnostic; build_progress; abort }
+      let default = { log; abort }
 
-      let create ?log ?diagnostic ?build_progress ?abort () =
+      let create ?log ?abort () =
         let t =
           let t = default in
           match log with
           | None -> t
           | Some log -> { t with log }
-        in
-        let t =
-          match diagnostic with
-          | None -> t
-          | Some diagnostic -> { t with diagnostic }
-        in
-        let t =
-          match build_progress with
-          | None -> t
-          | Some build_progress -> { t with build_progress }
         in
         let t =
           match abort with
@@ -624,6 +703,7 @@ module Client = struct
     type proc =
       | Request : ('a, 'b) Decl.request -> proc
       | Notification : 'a Decl.notification -> proc
+      | Poll : 'a Procedures.Poll.t -> proc
 
     let setup_versioning ?(private_menu = []) ~(handler : Handler.t) () =
       let open V in
@@ -631,22 +711,23 @@ module Client = struct
       Builder.declare_request t Procedures.Public.ping;
       Builder.declare_request t Procedures.Public.diagnostics;
       Builder.declare_notification t Procedures.Public.shutdown;
-      Builder.declare_notification t Procedures.Public.subscribe;
-      Builder.declare_notification t Procedures.Public.unsubscribe;
       Builder.declare_request t Procedures.Public.format_dune_file;
       Builder.declare_request t Procedures.Public.promote;
       Builder.implement_notification t Procedures.Server_side.abort (fun () ->
           handler.abort);
       Builder.implement_notification t Procedures.Server_side.log (fun () ->
           handler.log);
-      Builder.implement_notification t Procedures.Server_side.progress
-        (fun () -> handler.build_progress);
-      Builder.implement_notification t Procedures.Server_side.diagnostic
-        (fun () -> handler.diagnostic);
+      Builder.declare_request t Procedures.Poll.(poll diagnostic);
+      Builder.declare_request t Procedures.Poll.(poll progress);
+      Builder.declare_notification t Procedures.Poll.(cancel diagnostic);
+      Builder.declare_notification t Procedures.Poll.(cancel progress);
       List.iter
         ~f:(function
           | Request r -> Builder.declare_request t r
-          | Notification n -> Builder.declare_notification t n)
+          | Notification n -> Builder.declare_notification t n
+          | Poll p ->
+            Builder.declare_request t (Procedures.Poll.poll p);
+            Builder.declare_notification t (Procedures.Poll.cancel p))
         private_menu;
       t
 
@@ -717,12 +798,9 @@ module Client = struct
               ~menu
           in
           let* () = Fiber.Ivar.fill handler_var handler in
-          let+ res =
-            Fiber.finalize
-              (fun () -> f client)
-              ~finally:(fun () -> Chan.write chan None)
-          in
-          res
+          Fiber.finalize
+            (fun () -> f client)
+            ~finally:(fun () -> Chan.write chan None)
       in
       Fiber.fork_and_join_unit (fun () -> read_packets client packets) run
 

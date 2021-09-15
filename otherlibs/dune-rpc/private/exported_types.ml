@@ -259,6 +259,8 @@ module Diagnostic = struct
          (eight targets message loc severity promotion directory id related))
       to_ from
 
+  let to_dyn t = Sexp.to_dyn (Conv.to_sexp sexp t)
+
   module Event = struct
     type nonrec t =
       | Add of t
@@ -335,14 +337,4 @@ module Message = struct
     iso (record (both payload message)) to_ from
 
   let to_sexp_unversioned = Conv.to_sexp sexp
-end
-
-module Subscribe = struct
-  type t =
-    | Diagnostics
-    | Build_progress
-
-  let sexp =
-    Conv.enum
-      [ ("Diagnostics", Diagnostics); ("Build_progress", Build_progress) ]
 end

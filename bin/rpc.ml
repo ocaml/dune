@@ -185,7 +185,7 @@ module Build = struct
     let name_ = Arg.info [] ~docv:"TARGET" in
     let+ (common : Common.t) = Common.term
     and+ wait = wait_term
-    and+ targets = Arg.(value & pos_all string [] name_) in
+    and+ _targets = Arg.(value & pos_all string [] name_) in
     client_term common @@ fun common ->
     let open Fiber.O in
     let* _client, session = establish_client_session ~common ~wait in
@@ -195,13 +195,12 @@ module Build = struct
       ~f:(fun session ->
         let open Fiber.O in
         let+ response =
-          request_exn session (witness Dune_rpc_impl.Decl.build) targets
+          request_exn session (witness Dune_rpc_impl.Decl.status) ()
         in
         match response with
         | Error (error : Dune_rpc_private.Response.Error.t) ->
           report_error error
-        | Ok Failure -> print_endline "Failure"
-        | Ok Success -> print_endline "Success")
+        | Ok _ -> print_endline "Success")
 
   let info =
     let doc =

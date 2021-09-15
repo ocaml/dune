@@ -45,7 +45,7 @@ Then we create a workspace with some_package2
   $ cd ..
 
 Then we try to build a library that uses some_package1 which in turn
-depends on the overalpping some_package2:
+depends on the overlapping some_package2:
   $ mkdir proj2
   $ cd proj2
   $ cat >dune-project <<EOF

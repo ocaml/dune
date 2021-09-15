@@ -204,7 +204,7 @@ let encode ?(min_len = 0) t =
   let s = sprintf "%s%u%s" prefix len suffix in
   s ^ String.make (len - String.length s) '%'
 
-(* This function is not called very often, so the focus is on readibility rather
+(* This function is not called very often, so the focus is on readability rather
    than speed. *)
 let decode s =
   let fail () = raise_notrace Exit in

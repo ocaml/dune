@@ -460,6 +460,8 @@ end = struct
   end
 end
 
+module Event_queue = Event.Queue
+
 module Process_watcher : sig
   (** Initialize the process watcher thread. *)
   type t
@@ -1210,7 +1212,7 @@ module Run = struct
 
   exception Shutdown_requested
 
-  let go config ?(file_watcher = No_watcher)
+  let go config ?timeout ?(file_watcher = No_watcher)
       ~(on_event : Config.t -> Handler.Event.t -> unit) run =
     let events, prepare = prepare config ~handler:on_event in
     let file_watcher =
@@ -1229,6 +1231,23 @@ module Run = struct
     let initial_invalidation = Fs_memo.init ~dune_file_watcher:file_watcher in
     Memo.reset initial_invalidation;
     let result =
+      let run =
+        match timeout with
+        | None -> run
+        | Some timeout ->
+          fun () ->
+            let sleep = Alarm_clock.sleep (Lazy.force t.alarm_clock) timeout in
+            Fiber.fork_and_join_unit
+              (fun () ->
+                let+ res = Alarm_clock.await sleep in
+                match res with
+                | `Finished -> Event_queue.send_signal t.events Shutdown
+                | `Cancelled -> ())
+              (fun () ->
+                Fiber.finalize run ~finally:(fun () ->
+                    Alarm_clock.cancel (Lazy.force t.alarm_clock) sleep;
+                    Fiber.return ()))
+      in
       match Run_once.run_and_cleanup t run with
       | Ok a -> Result.Ok a
       | Error Already_reported ->

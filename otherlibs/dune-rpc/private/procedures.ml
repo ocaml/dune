@@ -18,18 +18,6 @@ module Public = struct
     let decl = Decl.Request.make ~method_:"diagnostics" ~generations:[ v1 ]
   end
 
-  module Subscribe_ = struct
-    let v1 = Decl.Notification.make_current_gen ~conv:Subscribe.sexp ~version:1
-
-    let decl = Decl.Notification.make ~method_:"subscribe" ~generations:[ v1 ]
-  end
-
-  module Unsubscribe = struct
-    let v1 = Decl.Notification.make_current_gen ~conv:Subscribe.sexp ~version:1
-
-    let decl = Decl.Notification.make ~method_:"unsubscribe" ~generations:[ v1 ]
-  end
-
   module Shutdown = struct
     let v1 = Decl.Notification.make_current_gen ~conv:Conv.unit ~version:1
 
@@ -64,10 +52,6 @@ module Public = struct
 
   let diagnostics = Diagnostics.decl
 
-  let subscribe = Subscribe_.decl
-
-  let unsubscribe = Unsubscribe.decl
-
   let shutdown = Shutdown.decl
 
   let format_dune_file = Format_dune_file.decl
@@ -89,28 +73,66 @@ module Server_side = struct
     let decl = Decl.Notification.make ~method_:"notify/log" ~generations:[ v1 ]
   end
 
-  module Progress = struct
-    let v1 = Decl.Notification.make_current_gen ~conv:Progress.sexp ~version:1
-
-    let decl =
-      Decl.Notification.make ~method_:"notify/progress" ~generations:[ v1 ]
-  end
-
-  module Diagnostic = struct
-    let v1 =
-      Decl.Notification.make_current_gen
-        ~conv:(Conv.list Diagnostic.Event.sexp)
-        ~version:1
-
-    let decl =
-      Decl.Notification.make ~method_:"notify/diagnostic" ~generations:[ v1 ]
-  end
-
   let abort = Abort.decl
 
   let log = Log.decl
+end
 
-  let progress = Progress.decl
+(* TODO: This is pretty clunky, make a better interface. *)
+module Poll = struct
+  let cancel_gen = Decl.Notification.make_current_gen ~conv:Id.sexp ~version:1
 
-  let diagnostic = Diagnostic.decl
+  module Name = struct
+    type t = string
+
+    let make t = t
+
+    let compare = Stdlib.String.compare
+  end
+
+  type 'a t =
+    { poll : (Id.t, 'a option) Decl.request
+    ; cancel : Id.t Decl.notification
+    ; name : Name.t
+    }
+
+  let make name generations =
+    let poll = Decl.Request.make ~method_:("poll/" ^ name) ~generations in
+    let cancel =
+      Decl.Notification.make ~method_:("cancel-poll/" ^ name)
+        ~generations:[ cancel_gen ]
+    in
+    { poll; cancel; name }
+
+  let poll t = t.poll
+
+  let cancel t = t.cancel
+
+  let name t = t.name
+
+  module Progress = struct
+    let name = "progress"
+
+    let v1 =
+      Decl.Request.make_current_gen ~req:Id.sexp
+        ~resp:(Conv.option Progress.sexp)
+        ~version:1
+  end
+
+  module Diagnostic = struct
+    let name = "diagnostic"
+
+    let v1 =
+      Decl.Request.make_current_gen ~req:Id.sexp
+        ~resp:(Conv.option (Conv.list Diagnostic.Event.sexp))
+        ~version:1
+  end
+
+  let progress =
+    let open Progress in
+    make name [ v1 ]
+
+  let diagnostic =
+    let open Diagnostic in
+    make name [ v1 ]
 end

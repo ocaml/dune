@@ -140,7 +140,7 @@ type ('a, 'kind) t =
   | Record : ('a, fields) t -> ('a, values) t
 
 and ('a, 'arg) constr =
-  { (* TODO allow consturctors without an argument *)
+  { (* TODO allow constructors without an argument *)
     name : string
   ; arg : ('arg, values) t
   ; inj : 'arg -> 'a
@@ -187,7 +187,7 @@ let string =
       | Atom s -> s
       | List _ as list ->
         raise_of_sexp ~payload:[ ("list", list) ]
-          "string: expected atom. receieved list")
+          "string: expected atom. received list")
     , fun s -> Atom s )
 
 let int =
@@ -210,6 +210,13 @@ let unit =
       | List [] -> ()
       | _ -> raise_of_sexp "expected empty list")
     , fun () -> List [] )
+
+let option x =
+  let none = constr "None" unit (fun () -> None) in
+  let some = constr "Some" x (fun x -> Some x) in
+  sum [ econstr none; econstr some ] (function
+    | None -> case () none
+    | Some s -> case s some)
 
 let char =
   Iso

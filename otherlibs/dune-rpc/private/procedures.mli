@@ -8,10 +8,6 @@ module Public : sig
 
   val shutdown : unit Decl.Notification.t
 
-  val subscribe : Subscribe.t Decl.Notification.t
-
-  val unsubscribe : Subscribe.t Decl.Notification.t
-
   val format_dune_file :
     (Path.t * [ `Contents of string ], string) Decl.Request.t
 
@@ -22,8 +18,28 @@ module Server_side : sig
   val abort : Message.t Decl.Notification.t
 
   val log : Message.t Decl.Notification.t
+end
 
-  val progress : Progress.t Decl.Notification.t
+module Poll : sig
+  type 'a t
 
-  val diagnostic : Diagnostic.Event.t list Decl.Notification.t
+  val poll : 'a t -> (Id.t, 'a option) Decl.Request.t
+
+  val cancel : 'a t -> Id.t Decl.Notification.t
+
+  module Name : sig
+    type t
+
+    val make : string -> t
+
+    val compare : t -> t -> int
+  end
+
+  val make : Name.t -> (Id.t, 'a option) Decl.Request.gen list -> 'a t
+
+  val name : 'a t -> Name.t
+
+  val progress : Progress.t t
+
+  val diagnostic : Diagnostic.Event.t list t
 end

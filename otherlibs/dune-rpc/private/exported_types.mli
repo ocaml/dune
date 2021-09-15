@@ -108,6 +108,8 @@ module Diagnostic : sig
 
   val directory : t -> string option
 
+  val to_dyn : t -> Stdune.Dyn.t
+
   module Event : sig
     type nonrec t =
       | Add of t
@@ -148,12 +150,4 @@ module Message : sig
   val sexp : (t, Conv.values) Conv.t
 
   val to_sexp_unversioned : t -> Csexp.t
-end
-
-module Subscribe : sig
-  type t =
-    | Diagnostics
-    | Build_progress
-
-  val sexp : (t, Conv.values) Conv.t
 end

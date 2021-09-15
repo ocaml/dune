@@ -39,17 +39,7 @@ module Chan = struct
 end
 
 module Drpc = struct
-  module Client =
-    Dune_rpc.Client.Make
-      (struct
-        include Fiber
-
-        let parallel_iter t ~f =
-          let stream = Fiber.Stream.In.create t in
-          Fiber.Stream.In.parallel_iter stream ~f
-      end)
-      (Chan)
-
+  module Client = Dune_rpc.Client.Make (Dune_rpc_impl.Client.Fiber) (Chan)
   module Server = Dune_rpc_server.Make (Chan)
 end
 
@@ -352,3 +342,106 @@ let%expect_test "client is older than server" =
     client: sending request
     client: 50
     server: finished. |}]
+
+let%test_module "long polling" =
+  (module struct
+    let v1 =
+      Decl.Request.make_current_gen ~req:Id.sexp ~resp:(Conv.option Conv.int)
+        ~version:1
+
+    let sub_proc =
+      Dune_rpc.Procedures.Poll.make
+        (Dune_rpc.Procedures.Poll.Name.make "pulse")
+        [ v1 ]
+
+    let sub_decl = Sub.of_procedure sub_proc
+
+    let version = (3, 0)
+
+    let init = init ~version ()
+
+    let rpc () = Handler.create ~on_init ~version ()
+
+    let server f =
+      let rpc = rpc () in
+      let () =
+        let on_poll _session poller = f poller in
+        let on_cancel _session _poll =
+          printfn "server: polling cancelled";
+          Fiber.return ()
+        in
+        Handler.implement_poll rpc sub_proc ~on_poll ~on_cancel
+      in
+      rpc
+
+    let%expect_test "long polling - client side termination" =
+      let client client =
+        let* poller = Client.poll client sub_decl in
+        let poller =
+          match poller with
+          | Ok p -> p
+          | Error e -> raise (Negotiation_error.E e)
+        in
+        let req () =
+          let+ res = Client.Stream.next poller in
+          match res with
+          | None -> printfn "client: no more values"
+          | Some a -> printfn "client: received %d" a
+        in
+        let* () = req () in
+        let* () = req () in
+        Client.Stream.cancel poller
+      in
+      let handler =
+        let state = ref 0 in
+        server (fun _poller ->
+            incr state;
+            Fiber.return (Some !state))
+      in
+      test ~init ~client ~handler ~private_menu:[ Poll sub_proc ] ();
+      [%expect
+        {|
+    client: received 1
+    client: received 2
+    server: polling cancelled
+    server: finished. |}]
+
+    let%expect_test "long polling - server side termination" =
+      let client client =
+        printfn "client: long polling";
+        let* poller = Client.poll client sub_decl in
+        let poller =
+          match poller with
+          | Ok p -> p
+          | Error e -> raise (Negotiation_error.E e)
+        in
+        let+ () =
+          Fiber.repeat_while ~init:() ~f:(fun () ->
+              let+ res = Client.Stream.next poller in
+              match res with
+              | None -> None
+              | Some a ->
+                printfn "client: received %d" a;
+                Some ())
+        in
+        printfn "client: subscription terminated"
+      in
+      let handler =
+        let state = ref 0 in
+        server (fun _poller ->
+            incr state;
+            Fiber.return
+              (if !state = 3 then
+                None
+              else
+                Some !state))
+      in
+      test ~init ~client ~handler ~private_menu:[ Poll sub_proc ] ();
+      [%expect
+        {|
+    client: long polling
+    client: received 1
+    client: received 2
+    client: subscription terminated
+    server: finished. |}]
+  end)

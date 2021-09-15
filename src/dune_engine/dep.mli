@@ -141,7 +141,7 @@ module Set : sig
 
   (** Same as [source_tree] but also return the set of files as a set. Because
       of the special care for empty directories, the set of dependencies
-      returned contains dependencies other than [File]. So exracting the set of
+      returned contains dependencies other than [File]. So extracting the set of
       files from the dependency set is a bit awkward. This is why this function
       exist. *)
   val source_tree_with_file_set : Path.t -> (t * Path.Set.t) Memo.Build.t

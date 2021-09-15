@@ -1,5 +1,26 @@
 open Stdune
 open Dune_rpc_private
+open Fiber.O
+
+module Session_id = Stdune.Id.Make ()
+
+module Poller = struct
+  module Id = Stdune.Id.Make ()
+
+  type t =
+    { id : Id.t
+    ; name : Procedures.Poll.Name.t
+    ; session_id : Session_id.t
+    }
+
+  let create session_id name = { id = Id.gen (); name; session_id }
+
+  let to_dyn { id; name = _; session_id = _ } = Id.to_dyn id
+
+  let name t = t.name
+
+  let compare x y = Id.compare x.id y.id
+end
 
 module V = Versioned.Make (struct
   include Fiber
@@ -10,6 +31,8 @@ module V = Versioned.Make (struct
 end)
 
 module Session = struct
+  module Id = Session_id
+
   type 'a state =
     | Uninitialized
     | Initialized of
@@ -18,13 +41,12 @@ module Session = struct
         ; closed : bool
         }
 
-  module Id = Stdune.Id.Make ()
-
   module Stage1 = struct
     type 'a t =
       { queries : Packet.Query.t Fiber.Stream.In.t
       ; id : Id.t
       ; send : Packet.Reply.t list option -> unit Fiber.t
+      ; pool : Fiber.Pool.t
       ; mutable state : 'a state
       ; mutable on_upgrade : (Menu.t -> unit) option
       }
@@ -55,6 +77,7 @@ module Session = struct
       ; state = Uninitialized
       ; id = Id.gen ()
       ; on_upgrade = None
+      ; pool = Fiber.Pool.create ()
       }
 
     let request_close t = t.send None
@@ -84,7 +107,8 @@ module Session = struct
         in
         constr "Initialized" [ record ]
 
-    let to_dyn f { id; state; queries = _; send = _; on_upgrade = _ } =
+    let to_dyn f { id; state; queries = _; send = _; on_upgrade = _; pool = _ }
+        =
       let open Dyn.Encoder in
       record [ ("id", Id.to_dyn id); ("state", dyn_of_state f state) ]
 
@@ -94,6 +118,7 @@ module Session = struct
   type 'a t =
     { base : 'a Stage1.t
     ; handler : 'a t V.Handler.t
+    ; mutable pollers : Poller.t Dune_rpc_private.Id.Map.t
     }
 
   let get t = Stage1.get t.base
@@ -122,7 +147,7 @@ module Session = struct
       | Some f -> f menu
       | None -> ()
     in
-    { base; handler }
+    { base; handler; pollers = Dune_rpc_private.Id.Map.empty }
 
   let notification t decl n =
     match V.Handler.prepare_notification t.handler decl with
@@ -135,6 +160,23 @@ module Session = struct
   let to_dyn f t =
     Dyn.Record
       [ ("handler", Dyn.String "<handler>"); ("base", Stage1.to_dyn f t.base) ]
+
+  let find_or_create_poller t (name : Procedures.Poll.Name.t) id =
+    match Dune_rpc_private.Id.Map.find t.pollers id with
+    | Some poller -> poller
+    | None ->
+      let poller = Poller.create t.base.id name in
+      t.pollers <- Dune_rpc_private.Id.Map.add_exn t.pollers id poller;
+      poller
+
+  let cancel_poller t id =
+    match Dune_rpc_private.Id.Map.find t.pollers id with
+    | None -> None
+    | Some poller ->
+      t.pollers <- Dune_rpc_private.Id.Map.remove t.pollers id;
+      Some poller
+
+  let has_poller t (poller : Poller.t) = Id.equal t.base.id poller.session_id
 end
 
 type message_kind =
@@ -390,12 +432,37 @@ module H = struct
 
     let declare_notification (t : _ t) =
       V.Builder.declare_notification t.builder
+
+    let implement_poll (t : _ t) (sub : _ Procedures.Poll.t) ~on_poll ~on_cancel
+        =
+      let on_poll session id =
+        let poller =
+          Session.find_or_create_poller session (Procedures.Poll.name sub) id
+        in
+        let+ res = on_poll session poller in
+        let () =
+          match res with
+          | Some _ -> ()
+          | None ->
+            let _ = Session.cancel_poller session id in
+            ()
+        in
+        res
+      in
+      let on_cancel session id =
+        let poller = Session.cancel_poller session id in
+        match poller with
+        | None -> Fiber.return () (* XXX log *)
+        | Some poller -> on_cancel session poller
+      in
+      implement_request t (Procedures.Poll.poll sub) on_poll;
+      implement_notification t (Procedures.Poll.cancel sub) on_cancel
   end
 end
 
 type t = Server : 'a H.stage1 -> t
 
-let make h = Server (H.Builder.to_handler h)
+let make (type a) (h : a H.Builder.t) : t = Server (H.Builder.to_handler h)
 
 let version (Server h) = h.base.version
 
@@ -404,14 +471,18 @@ let new_session (Server handler) stats ~queries ~send =
   object
     method id = session.id
 
-    method start = H.handle handler stats session
+    method start =
+      Fiber.fork_and_join_unit
+        (fun () -> Fiber.Pool.run session.pool)
+        (fun () ->
+          let* () = H.handle handler stats session in
+          Fiber.Pool.stop session.pool)
   end
 
 exception Invalid_session of Conv.error
 
 let create_sequence f ~version conv =
   let read () =
-    let open Fiber.O in
     let+ read = f () in
     Option.map read ~f:(fun sexp ->
         match Conv.of_sexp conv ~version sexp with

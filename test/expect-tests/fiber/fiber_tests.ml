@@ -123,7 +123,7 @@ let%expect_test "execution context of ivars" =
     var value 42
     () |}]
 
-let%expect_test "fiber vars are preseved across yields" =
+let%expect_test "fiber vars are preserved across yields" =
   let var = Fiber.Var.create () in
   let fiber th () =
     let* v = Fiber.Var.get var in
@@ -929,7 +929,7 @@ let%expect_test "all_concurrently_unit" =
              Fiber.all_concurrently_unit [ print 1; fail ])
        in
        match res with
-       | Error [ { exn = Exit; _ } ] -> printfn "successfully caught errror"
+       | Error [ { exn = Exit; _ } ] -> printfn "successfully caught error"
        | Ok () -> assert false
        | Error _ -> assert false
      in
@@ -937,5 +937,5 @@ let%expect_test "all_concurrently_unit" =
   [%expect
     {|
     print: 1
-    successfully caught errror
+    successfully caught error
     multi element list |}]

@@ -49,7 +49,7 @@ module Execution_context : sig
   (* Add [n] references to the current execution context *)
   val add_refs : int -> unit
 
-  (* Decrese the reference count of the current execution context *)
+  (* Decrease the reference count of the current execution context *)
   val deref : unit -> unit
 
   (* [wait_errors f] executes [f ()] inside a new execution contexts. Returns a

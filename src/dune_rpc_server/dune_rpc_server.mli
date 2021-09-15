@@ -1,6 +1,16 @@
 open Stdune
 open Dune_rpc_private
 
+module Poller : sig
+  type t
+
+  val to_dyn : t -> Dyn.t
+
+  val compare : t -> t -> Ordering.t
+
+  val name : t -> Procedures.Poll.Name.t
+end
+
 module Session : sig
   module Id : Stdune.Id.S
 
@@ -31,6 +41,8 @@ module Session : sig
   val request_close : 'a t -> unit Fiber.t
 
   val to_dyn : ('a -> Dyn.t) -> 'a t -> Dyn.t
+
+  val has_poller : _ t -> Poller.t -> bool
 
   (** A ['a Session.Stage1.t] represents a session prior to version negotiation.
 
@@ -98,6 +110,13 @@ module Handler : sig
   (** [declare_notification handler decl] Declares that this server may send
       notifications according to metadata [decl]. *)
   val declare_notification : 's t -> 'a Decl.notification -> unit
+
+  val implement_poll :
+       's t
+    -> 'a Procedures.Poll.t
+    -> on_poll:('s Session.t -> Poller.t -> 'a option Fiber.t)
+    -> on_cancel:('s Session.t -> Poller.t -> unit Fiber.t)
+    -> unit
 end
 
 type t

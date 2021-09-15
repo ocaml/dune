@@ -11,7 +11,6 @@ module V1 = struct
   module Diagnostic = Diagnostic
   module Path = Path
   module Progress = Progress
-  module Subscribe = Subscribe
   module Message = Message
   module Where = Where
   include Public
@@ -29,8 +28,6 @@ module V1 = struct
 
         val create :
              ?log:(Message.t -> unit fiber)
-          -> ?diagnostic:(Diagnostic.Event.t list -> unit fiber)
-          -> ?build_progress:(Progress.t -> unit fiber)
           -> ?abort:(Message.t -> unit fiber)
           -> unit
           -> t
@@ -56,6 +53,20 @@ module V1 = struct
       val notification : t -> 'a Notification.versioned -> 'a -> unit fiber
 
       val disconnected : t -> unit fiber
+
+      module Stream : sig
+        type 'a t
+
+        val cancel : _ t -> unit fiber
+
+        val next : 'a t -> 'a option fiber
+      end
+
+      val poll :
+           ?id:Id.t
+        -> t
+        -> 'a Sub.t
+        -> ('a Stream.t, Negotiation_error.t) result fiber
 
       module Batch : sig
         type t

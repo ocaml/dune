@@ -55,7 +55,7 @@ struct
     match find t key with
     | None -> set t key data
     | Some _ ->
-      Code_error.raise "Hastbl.add_exn: key already exists"
+      Code_error.raise "Hashtbl.add_exn: key already exists"
         [ ("key", H.to_dyn key) ]
 
   let add t key data =

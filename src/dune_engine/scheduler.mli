@@ -86,6 +86,7 @@ module Run : sig
 
   val go :
        Config.t
+    -> ?timeout:float
     -> ?file_watcher:file_watcher
     -> on_event:(Config.t -> Event.t -> unit)
     -> (unit -> 'a Fiber.t)

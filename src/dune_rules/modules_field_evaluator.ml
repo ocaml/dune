@@ -192,7 +192,7 @@ let check_invalid_module_listing ~(buildable : Buildable.t) ~intf_only ~modules
     print
       [ Pp.text "These modules are supposed to be implemented:" ]
       vmodule_impl_intf_only_exclusion
-      [ Pp.text "They cannot be intferface only" ];
+      [ Pp.text "They cannot be interface only" ];
     print
       [ Pp.text "These modules are virtual modules implementations:" ]
       private_impl_of_vmodule

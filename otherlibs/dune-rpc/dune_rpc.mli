@@ -36,7 +36,7 @@ module V1 : sig
   module Id : sig
     (** Id's for requests, responses, sessions.
 
-        Id's are permitted to be arbtirary s-expressions to allow users pick
+        Id's are permitted to be arbitrary s-expressions to allow users pick
         descriptive tokens to ease debugging. *)
 
     type t
@@ -176,10 +176,12 @@ module V1 : sig
       | Success
   end
 
-  module Subscribe : sig
-    type t =
-      | Diagnostics
-      | Build_progress
+  module Sub : sig
+    type 'a t
+
+    val progress : Progress.t t
+
+    val diagnostic : Diagnostic.Event.t list t
   end
 
   module Message : sig
@@ -210,10 +212,6 @@ module V1 : sig
         version for a method. This is to avoid needing to perform the
         negotiation per call. *)
     type 'a versioned
-
-    val subscribe : Subscribe.t t
-
-    val unsubscribe : Subscribe.t t
 
     (** Request dune to shutdown. The current build job will be cancelled. *)
     val shutdown : unit t
@@ -253,14 +251,9 @@ module V1 : sig
 
         val create :
              ?log:(Message.t -> unit fiber)
-          -> ?diagnostic:(Diagnostic.Event.t list -> unit fiber)
-               (** Called whenever diagnostics are added or removed. When
-                   subscribing to diagnostics, this function will immediately be
-                   called with the current set of diagnostics. *)
-          -> ?build_progress:(Progress.t -> unit fiber)
           -> ?abort:(Message.t -> unit fiber)
                (** If [abort] is called, the server has terminated the
-                   connection due to a protcol error. This should never be
+                   connection due to a protocol error. This should never be
                    called unless there's a bug. *)
           -> unit
           -> t
@@ -298,6 +291,28 @@ module V1 : sig
           when the session is ended from the server side (such as if the build
           server is killed entirely). *)
       val disconnected : t -> unit fiber
+
+      module Stream : sig
+        (** Control for a polling loop *)
+
+        type 'a t
+
+        (** [cancel t] notify the server that we are stopping our polling loop.
+            It is an error to call [next] after [cancel] *)
+        val cancel : _ t -> unit fiber
+
+        (** [next t] poll for the next value. It is an error to call [next]
+            again until the previous [next] terminated. If [next] returns
+            [None], subsequent calls to [next] is forbidden. *)
+        val next : 'a t -> 'a option fiber
+      end
+
+      (** [poll client sub] Initialize a polling loop for [sub] *)
+      val poll :
+           ?id:Id.t
+        -> t
+        -> 'a Sub.t
+        -> ('a Stream.t, Negotiation_error.t) result fiber
 
       module Batch : sig
         type t

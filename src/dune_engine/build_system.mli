@@ -9,6 +9,18 @@ module Action_builder := Action_builder0
 (** {2 Creation} *)
 
 module Error : sig
+  module Id : sig
+    type t
+
+    module Map : Map.S with type key = t
+
+    val compare : t -> t -> Ordering.t
+
+    val to_int : t -> int
+
+    val to_dyn : t -> Dyn.t
+  end
+
   (** Errors when building a target *)
   type t
 
@@ -16,7 +28,7 @@ module Error : sig
 
   val promotion : t -> Promotion.Annot.t option
 
-  val id : t -> int
+  val id : t -> Id.t
 end
 
 (** The current set of active errors *)
@@ -196,6 +208,12 @@ module Progress : sig
     { number_of_rules_discovered : int
     ; number_of_rules_executed : int
     }
+
+  val complete : t -> int
+
+  val remaining : t -> int
+
+  val is_determined : t -> bool
 end
 
 val get_current_progress : unit -> Progress.t

@@ -70,7 +70,7 @@ val split : t -> on:char -> t list
 
 val split_lines : t -> t list
 
-(** Escace ONLY one character. {!escape} also escapes '\n',... and transforms
+(** Escape ONLY one character. {!escape} also escapes '\n',... and transforms
     all chars above '~' into '\xxx' which is not suitable for UTF-8 strings. *)
 val escape_only : char -> t -> t
 

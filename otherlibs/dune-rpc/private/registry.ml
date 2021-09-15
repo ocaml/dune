@@ -179,6 +179,9 @@ struct
     else
       let++ results =
         let** contents = IO.scandir dir in
+        let contents =
+          List.filter contents ~f:(fun fname -> fname <> "." && fname <> "..")
+        in
         let+ res =
           Fiber.parallel_map contents ~f:(fun fname ->
               let path = Filename.concat dir fname in

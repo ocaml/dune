@@ -132,25 +132,25 @@ end) : S with type 'a fiber := 'a Fiber.t = struct
       match analyze with
       | `Other -> Fiber.return (Ok None)
       | `Normal_file -> of_file file
-      | `Unix_socket -> (
+      | `Unix_socket ->
         let unix file = Fiber.return (Ok (Some (`Unix file))) in
         if String.length file < 104 then
           unix file
         else
           let** readlink = IO.readlink file in
-          match readlink with
-          | None -> unix file
-          | Some p ->
-            let shorter s1 s2 =
-              if String.length s1 > String.length s2 then
-                s2
-              else
-                s1
-            in
-            unix
-              (shorter file
-                 (if Filename.is_relative p then
-                   Filename.concat (Filename.dirname file) p
-                 else
-                   p))))
+          unix
+            (match readlink with
+            | None -> file
+            | Some p ->
+              let shorter s1 s2 =
+                if String.length s1 > String.length s2 then
+                  s2
+                else
+                  s1
+              in
+              shorter file
+                (if Filename.is_relative p then
+                  Filename.concat (Filename.dirname file) p
+                else
+                  p)))
 end

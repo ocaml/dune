@@ -7,7 +7,7 @@ module Where = Where
 module Registry = Registry
 include Types
 include Exported_types
-module Negotiation_error = Versioned.Negotiation_error
+module Version_error = Versioned.Version_error
 module Decl = Decl
 
 module Sub = struct
@@ -80,12 +80,12 @@ module Client = struct
       val prepare_request :
            t
         -> ('a, 'b) Decl.Request.witness
-        -> (('a, 'b) request, Negotiation_error.t) result fiber
+        -> (('a, 'b) request, Version_error.t) result fiber
 
       val prepare_notification :
            t
         -> 'a Decl.Notification.witness
-        -> ('a notification, Negotiation_error.t) result fiber
+        -> ('a notification, Version_error.t) result fiber
     end
 
     val request :
@@ -108,10 +108,7 @@ module Client = struct
     end
 
     val poll :
-         ?id:Id.t
-      -> t
-      -> 'a Sub.t
-      -> ('a Stream.t, Negotiation_error.t) result fiber
+      ?id:Id.t -> t -> 'a Sub.t -> ('a Stream.t, Version_error.t) result fiber
 
     module Batch : sig
       type t

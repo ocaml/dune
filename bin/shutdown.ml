@@ -10,7 +10,7 @@ let send_shutdown cli =
   in
   match decl with
   | Ok decl -> Dune_rpc_impl.Client.notification cli decl ()
-  | Error e -> raise (Dune_rpc_private.Negotiation_error.E e)
+  | Error e -> raise (Dune_rpc_private.Version_error.E e)
 
 let exec common =
   let where = Rpc.wait_for_server common in

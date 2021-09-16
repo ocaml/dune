@@ -1,7 +1,7 @@
 open Stdune
 open Types
 
-module Negotiation_error = struct
+module Version_error = struct
   type t =
     { payload : Csexp.t option
     ; message : string
@@ -16,7 +16,7 @@ module Negotiation_error = struct
   exception E of t
 
   let to_response_error { payload; message } =
-    Response.Error.create ~kind:Version_error ?payload ~message ()
+    Response.Error.create ~kind:Invalid_request ?payload ~message ()
 end
 
 module Staged = struct
@@ -40,12 +40,12 @@ module Make (Fiber : Fiber) = struct
           'req 'resp.
              Menu.t
           -> ('req, 'resp) Decl.Request.witness
-          -> (('req, 'resp) Staged.request, Negotiation_error.t) result
+          -> (('req, 'resp) Staged.request, Version_error.t) result
       ; prepare_notification :
           'a.
              Menu.t
           -> 'a Decl.Notification.witness
-          -> ('a Staged.notification, Negotiation_error.t) result
+          -> ('a Staged.notification, Version_error.t) result
       }
 
     let handle_request t = t.handle_request t.menu
@@ -310,11 +310,11 @@ module Make (Fiber : Fiber) = struct
       match (get t table key, Method_name.Map.find menu method_) with
       | None, _ ->
         let payload = Sexp.record [ ("method", Atom method_) ] in
-        k (Negotiation_error.create ~message:"invalid method" ~payload ())
+        k (Version_error.create ~message:"invalid method" ~payload ())
       | _, None ->
         let payload = Sexp.record [ ("method", Atom method_) ] in
         k
-          (Negotiation_error.create
+          (Version_error.create
              ~message:"remote and local have no common version for method"
              ~payload ())
       | Some subtable, Some version -> s (subtable, version)
@@ -334,8 +334,7 @@ module Make (Fiber : Fiber) = struct
       let handle_request menu state (_id, (n : Call.t)) =
         lookup_method_generic t ~menu ~table:Impl_requests ~key:n.method_
           ~method_:n.method_
-          (fun e ->
-            Fiber.return (Error (Negotiation_error.to_response_error e)))
+          (fun e -> Fiber.return (Error (Version_error.to_response_error e)))
           (fun (handlers, version) ->
             match Method_version.Map.find handlers version with
             | None ->
@@ -354,8 +353,7 @@ module Make (Fiber : Fiber) = struct
       let handle_notification menu state (n : Call.t) =
         lookup_method_generic t ~menu ~table:Impl_notifs ~key:n.method_
           ~method_:n.method_
-          (fun e ->
-            Fiber.return (Error (Negotiation_error.to_response_error e)))
+          (fun e -> Fiber.return (Error (Version_error.to_response_error e)))
           (fun (handlers, version) ->
             match Method_version.Map.find handlers version with
             | None ->
@@ -372,7 +370,7 @@ module Make (Fiber : Fiber) = struct
                 Ok ()))
       in
       let prepare_request (type a b) menu (decl : (a, b) Decl.Request.witness) :
-          ((a, b) Staged.request, Negotiation_error.t) result =
+          ((a, b) Staged.request, Version_error.t) result =
         let method_ = decl.Decl.method_ in
         lookup_method_generic t ~menu ~table:Declared_requests
           ~key:(method_, decl.key) ~method_
@@ -397,7 +395,7 @@ module Make (Fiber : Fiber) = struct
       in
       let prepare_notification (type a) menu
           (decl : a Decl.Notification.witness) :
-          (a Staged.notification, Negotiation_error.t) result =
+          (a Staged.notification, Version_error.t) result =
         let method_ = decl.Decl.method_ in
         lookup_method_generic t ~menu ~table:Declared_notifs
           ~key:(method_, decl.key) ~method_

@@ -41,7 +41,7 @@ let exec common =
             Dune_rpc_private.Public.Request.diagnostics
         in
         match decl with
-        | Error e -> raise (Dune_rpc_private.Negotiation_error.E e)
+        | Error e -> raise (Dune_rpc_private.Version_error.E e)
         | Ok decl -> Client.request cli decl ())
   in
   match errors with

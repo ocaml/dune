@@ -120,7 +120,7 @@ let request_exn client witness n =
   let staged =
     match staged with
     | Ok s -> s
-    | Error e -> raise (Dune_rpc.Negotiation_error.E e)
+    | Error e -> raise (Dune_rpc.Version_error.E e)
   in
   Client.request client staged n
 
@@ -187,8 +187,7 @@ let%expect_test "call method with no matching versions" =
       Client.Versioned.prepare_request client (Decl.Request.witness decl)
     in
     (match resp with
-    | Error e ->
-      printfn "client: error %s" (Dune_rpc.Negotiation_error.message e)
+    | Error e -> printfn "client: error %s" (Dune_rpc.Version_error.message e)
     | Ok _ -> assert false);
     Fiber.return ()
   in
@@ -382,7 +381,7 @@ let%test_module "long polling" =
         let poller =
           match poller with
           | Ok p -> p
-          | Error e -> raise (Negotiation_error.E e)
+          | Error e -> raise (Version_error.E e)
         in
         let req () =
           let+ res = Client.Stream.next poller in
@@ -415,7 +414,7 @@ let%test_module "long polling" =
         let poller =
           match poller with
           | Ok p -> p
-          | Error e -> raise (Negotiation_error.E e)
+          | Error e -> raise (Version_error.E e)
         in
         let+ () =
           Fiber.repeat_while ~init:() ~f:(fun () ->

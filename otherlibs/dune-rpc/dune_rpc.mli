@@ -49,7 +49,6 @@ module V1 : sig
       type kind =
         | Invalid_request
         | Code_error
-        | Version_error
 
       type t
 
@@ -192,10 +191,10 @@ module V1 : sig
     val message : t -> string
   end
 
-  (** A [Negotiation_error] is returned on the client-side when a request or
+  (** A [Version_error] is returned on the client-side when a request or
       notification is determined to be invalid due to version negotiation (no
       known method or no common version). *)
-  module Negotiation_error : sig
+  module Version_error : sig
     type t
 
     val payload : t -> Csexp.t option
@@ -277,13 +276,13 @@ module V1 : sig
         val prepare_request :
              t
           -> ('a, 'b) Request.t
-          -> (('a, 'b) request, Negotiation_error.t) result fiber
+          -> (('a, 'b) request, Version_error.t) result fiber
 
         (** See [prepare_request]. *)
         val prepare_notification :
              t
           -> 'a Notification.t
-          -> ('a notification, Negotiation_error.t) result fiber
+          -> ('a notification, Version_error.t) result fiber
       end
 
       (** [request ?id client decl req] send a request [req] specified by [decl]
@@ -319,10 +318,7 @@ module V1 : sig
 
       (** [poll client sub] Initialize a polling loop for [sub] *)
       val poll :
-           ?id:Id.t
-        -> t
-        -> 'a Sub.t
-        -> ('a Stream.t, Negotiation_error.t) result fiber
+        ?id:Id.t -> t -> 'a Sub.t -> ('a Stream.t, Version_error.t) result fiber
 
       module Batch : sig
         type t

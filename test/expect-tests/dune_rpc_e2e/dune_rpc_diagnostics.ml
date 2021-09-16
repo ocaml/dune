@@ -103,7 +103,7 @@ let poll_exn client decl =
   let+ poll = Client.poll client decl in
   match poll with
   | Ok p -> p
-  | Error e -> raise (Dune_rpc.Negotiation_error.E e)
+  | Error e -> raise (Dune_rpc.Version_error.E e)
 
 let print_diagnostics poll =
   let+ res = Client.Stream.next poll in
@@ -534,7 +534,7 @@ let request_exn client req n =
   let* staged = Client.Versioned.prepare_request client req in
   match staged with
   | Ok req -> Client.request client req n
-  | Error e -> raise (Dune_rpc.Negotiation_error.E e)
+  | Error e -> raise (Dune_rpc.Version_error.E e)
 
 let%expect_test "formatting dune files" =
   let exec _pid =

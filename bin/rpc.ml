@@ -22,7 +22,6 @@ let client_term common f =
 let interpret_kind = function
   | Dune_rpc_private.Response.Error.Invalid_request -> "Invalid_request"
   | Code_error -> "Code_error"
-  | Version_error -> "Version_error"
 
 let raise_rpc_error (e : Dune_rpc_private.Response.Error.t) =
   User_error.raise
@@ -34,7 +33,7 @@ let request_exn client witness n =
   let open Fiber.O in
   let* decl = Dune_rpc_impl.Client.Versioned.prepare_request client witness in
   match decl with
-  | Error e -> raise (Dune_rpc_private.Negotiation_error.E e)
+  | Error e -> raise (Dune_rpc_private.Version_error.E e)
   | Ok decl -> Dune_rpc_impl.Client.request client decl n
 
 let retry_loop once =

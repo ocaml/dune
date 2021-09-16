@@ -4,7 +4,7 @@
 open Stdune
 open Types
 
-module Negotiation_error : sig
+module Version_error : sig
   type t
 
   val payload : t -> Csexp.t option
@@ -35,12 +35,12 @@ module Make (Fiber : Fiber) : sig
     val prepare_request :
          'a t
       -> ('req, 'resp) Decl.Request.witness
-      -> (('req, 'resp) Staged.request, Negotiation_error.t) result
+      -> (('req, 'resp) Staged.request, Version_error.t) result
 
     val prepare_notification :
          'a t
       -> 'payload Decl.Notification.witness
-      -> ('payload Staged.notification, Negotiation_error.t) result
+      -> ('payload Staged.notification, Version_error.t) result
   end
 
   module Builder : sig

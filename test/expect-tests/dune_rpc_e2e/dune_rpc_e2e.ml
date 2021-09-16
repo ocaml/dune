@@ -42,7 +42,7 @@ let request_exn client witness n =
   let staged =
     match staged with
     | Ok s -> s
-    | Error e -> raise (Dune_rpc.Negotiation_error.E e)
+    | Error e -> raise (Dune_rpc.Version_error.E e)
   in
   Client.request client staged n
 
@@ -51,7 +51,7 @@ let notification_exn client witness n =
   let staged =
     match staged with
     | Ok s -> s
-    | Error e -> raise (Dune_rpc.Negotiation_error.E e)
+    | Error e -> raise (Dune_rpc.Version_error.E e)
   in
   Client.notification client staged n
 

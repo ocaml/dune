@@ -33,7 +33,7 @@ module Call : sig
   val create : ?params:Csexp.t -> method_:string -> unit -> t
 end
 
-module Negotiation_error : sig
+module Version_error : sig
   type t
 
   val payload : t -> Csexp.t option
@@ -52,7 +52,6 @@ module Response : sig
     type kind =
       | Invalid_request
       | Code_error
-      | Version_error
 
     type t =
       { payload : Csexp.t option
@@ -455,12 +454,12 @@ module Client : sig
       val prepare_request :
            t
         -> ('a, 'b) Decl.Request.witness
-        -> (('a, 'b) request, Negotiation_error.t) result fiber
+        -> (('a, 'b) request, Version_error.t) result fiber
 
       val prepare_notification :
            t
         -> 'a Decl.Notification.witness
-        -> ('a notification, Negotiation_error.t) result fiber
+        -> ('a notification, Version_error.t) result fiber
     end
 
     val request :
@@ -483,10 +482,7 @@ module Client : sig
     end
 
     val poll :
-         ?id:Id.t
-      -> t
-      -> 'a Sub.t
-      -> ('a Stream.t, Negotiation_error.t) result fiber
+      ?id:Id.t -> t -> 'a Sub.t -> ('a Stream.t, Version_error.t) result fiber
 
     module Batch : sig
       type t
@@ -624,12 +620,12 @@ module Versioned : sig
       val prepare_request :
            'a t
         -> ('req, 'resp) Decl.Request.witness
-        -> (('req, 'resp) Staged.request, Negotiation_error.t) result
+        -> (('req, 'resp) Staged.request, Version_error.t) result
 
       val prepare_notification :
            'a t
         -> 'payload Decl.Notification.witness
-        -> ('payload Staged.notification, Negotiation_error.t) result
+        -> ('payload Staged.notification, Version_error.t) result
     end
 
     module Builder : sig

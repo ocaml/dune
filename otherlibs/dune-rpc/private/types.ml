@@ -90,14 +90,12 @@ module Response = struct
     type kind =
       | Invalid_request
       | Code_error
-      | Version_error
 
     let dyn_of_kind =
       let open Dyn.Encoder in
       function
       | Invalid_request -> constr "Invalid_request" []
       | Code_error -> constr "Code_error" []
-      | Version_error -> constr "Version_error" []
 
     type t =
       { payload : Sexp.t option
@@ -124,7 +122,8 @@ module Response = struct
       | Parse_error { payload; message } ->
         { message; payload = make_payload payload; kind = Invalid_request }
       | Version_error { payload; message; since = _; until = _ } ->
-        { message; payload = make_payload payload; kind = Version_error }
+        (* cwong: Should we even still include this? *)
+        { message; payload = make_payload payload; kind = Code_error }
 
     let sexp =
       let open Conv in
@@ -136,7 +135,6 @@ module Response = struct
              (enum
                 [ ("Invalid_request", Invalid_request)
                 ; ("Code_error", Code_error)
-                ; ("Version_error", Version_error)
                 ]))
       in
       record

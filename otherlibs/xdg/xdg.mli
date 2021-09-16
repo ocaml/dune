@@ -18,4 +18,4 @@ val cache_dir : t -> string
 (** The directory where the application should store socket files. *)
 val runtime_dir : t -> string option
 
-val of_assoc : ?win32:bool -> (string * string) list -> t
+val create : ?win32:bool -> env:(string -> string option) -> unit -> t

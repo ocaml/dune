@@ -70,7 +70,11 @@ let%expect_test "turn on dune watch and wait until the connection is listed" =
     let xdg_runtime_dir = Filename.concat "." runtime_dir in
     let config =
       Registry.Config.create
-        (Xdg.of_assoc [ ("XDG_RUNTIME_DIR", xdg_runtime_dir) ])
+        (Xdg.create
+           ~env:(function
+             | "XDG_RUNTIME_DIR" -> Some xdg_runtime_dir
+             | _ -> None)
+           ())
     in
     let poll = Registry.create config in
     let+ dune =

@@ -21,7 +21,7 @@ module type S = sig
     -> build_dir:string
     -> (t option, exn) result fiber
 
-  val default : ?is_win32:bool -> build_dir:string -> unit -> t
+  val default : ?win32:bool -> build_dir:string -> unit -> t
 end
 
 type error = Invalid_where of string

@@ -74,10 +74,10 @@ module type S = sig
     -> build_dir:string
     -> (t option, exn) result fiber
 
-  val default : ?is_win32:bool -> build_dir:string -> unit -> t
+  val default : ?win32:bool -> build_dir:string -> unit -> t
 end
 
-let is_win32 = Sys.win32
+let win32 = Sys.win32
 
 module Make (Fiber : sig
   type 'a t
@@ -97,8 +97,8 @@ end) (IO : sig
   val analyze_path :
     string -> ([ `Unix_socket | `Normal_file | `Other ], exn) result Fiber.t
 end) : S with type 'a fiber := 'a Fiber.t = struct
-  let default ?(is_win32 = is_win32) ~build_dir () =
-    if is_win32 then
+  let default ?(win32 = win32) ~build_dir () =
+    if win32 then
       `Ip (`Host "0.0.0.0", `Port default_port)
     else
       `Unix (Filename.concat build_dir rpc_socket_relative_to_build_dir)

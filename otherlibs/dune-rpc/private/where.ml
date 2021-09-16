@@ -9,18 +9,31 @@ let default_port = 8587
 
 let compare = Poly.compare
 
+let ( let* ) x f =
+  match x with
+  | Ok s -> f s
+  | Error _ as e -> e
+
 let of_dbus { Dbus_address.name; args } =
   match name with
-  | "unix" ->
-    let path = Option.value_exn (List.assoc args "path") in
-    Ok (`Unix path)
+  | "unix" -> (
+    match List.assoc args "path" with
+    | None -> Error "missing path field"
+    | Some path -> Ok (`Unix path))
   | "tcp" ->
-    let port =
+    let* port =
       match List.assoc args "port" with
-      | None -> default_port
-      | Some p -> int_of_string p
+      | None -> Ok default_port
+      | Some p -> (
+        match int_of_string p with
+        | exception Failure _ -> Error "invalid port"
+        | s -> Ok s)
     in
-    let addr = List.assoc args "host" |> Option.value_exn in
+    let* addr =
+      match List.assoc args "host" with
+      | None -> Error "missing host field"
+      | Some host -> Ok host
+    in
     Ok (`Ip (`Host addr, `Port port))
   | _ -> Error "invalid connection type"
 

@@ -49,7 +49,6 @@ module V1 : sig
       type kind =
         | Invalid_request
         | Code_error
-        | Version_error
 
       type t
 
@@ -192,6 +191,19 @@ module V1 : sig
     val message : t -> string
   end
 
+  (** A [Version_error] is returned on the client-side when a request or
+      notification is determined to be invalid due to version negotiation (no
+      known method or no common version). *)
+  module Version_error : sig
+    type t
+
+    val payload : t -> Csexp.t option
+
+    val message : t -> string
+
+    exception E of t
+  end
+
   module Notification : sig
     type 'a t
 
@@ -238,16 +250,51 @@ module V1 : sig
           -> t
       end
 
+      (** Individual RPC procedures are versioned beyond the larger API version.
+          At session startup, the server and client exchange version information
+          for each method ("negotiation"), setting on a common version for each
+          (if possible) to produce a "version menu".
+
+          To initiate a method, then, that method must be looked up in the
+          version menu to determine the correct protocol for this session. This
+          module stages this pattern to share the lookup for all calls to the
+          same procedure.
+
+          For lower-level design details, see [doc/dev/rpc-versioning.md] in the
+          main dune repository. *)
+      module Versioned : sig
+        type 'a notification
+
+        type ('a, 'b) request
+
+        (** [prepare_request client r] checks the request [r] against the
+            negotiated version menu, giving a versioned request as a result.
+
+            This function does not initiate any communication with the server.
+            However, as this function must check the version menu, it cannot
+            complete until after version negotiation, and so returns a [fiber]. *)
+        val prepare_request :
+             t
+          -> ('a, 'b) Request.t
+          -> (('a, 'b) request, Version_error.t) result fiber
+
+        (** See [prepare_request]. *)
+        val prepare_notification :
+             t
+          -> 'a Notification.t
+          -> ('a notification, Version_error.t) result fiber
+      end
+
       (** [request ?id client decl req] send a request [req] specified by [decl]
           to [client]. If [id] is [None], it will be automatically generated. *)
       val request :
            ?id:Id.t
         -> t
-        -> ('a, 'b) Request.t
+        -> ('a, 'b) Versioned.request
         -> 'a
         -> ('b, Response.Error.t) result fiber
 
-      val notification : t -> 'a Notification.t -> 'a -> unit fiber
+      val notification : t -> 'a Versioned.notification -> 'a -> unit fiber
 
       (** [disconnected client] produces a fiber that only becomes determined
           when the session is ended from the server side (such as if the build
@@ -270,7 +317,8 @@ module V1 : sig
       end
 
       (** [poll client sub] Initialize a polling loop for [sub] *)
-      val poll : ?id:Id.t -> t -> 'a Sub.t -> 'a Stream.t
+      val poll :
+        ?id:Id.t -> t -> 'a Sub.t -> ('a Stream.t, Version_error.t) result fiber
 
       module Batch : sig
         type t
@@ -282,11 +330,11 @@ module V1 : sig
         val request :
              ?id:Id.t
           -> t
-          -> ('a, 'b) Request.t
+          -> ('a, 'b) Versioned.request
           -> 'a
           -> ('b, Response.Error.t) result fiber
 
-        val notification : t -> 'a Notification.t -> 'a -> unit
+        val notification : t -> 'a Versioned.notification -> 'a -> unit
 
         val submit : t -> unit fiber
       end

@@ -99,6 +99,12 @@ let setup_diagnostics f =
   in
   run (fun () -> with_dune_watch exec)
 
+let poll_exn client decl =
+  let+ poll = Client.poll client decl in
+  match poll with
+  | Ok p -> p
+  | Error e -> raise (Dune_rpc.Version_error.E e)
+
 let print_diagnostics poll =
   let+ res = Client.Stream.next poll in
   match res with
@@ -111,7 +117,7 @@ let diagnostic_with_build setup target =
         (* First we test for regular errors *)
         files (("dune-project", "(lang dune 3.0)") :: setup);
         let* () = dune_build client target in
-        let poll = Client.poll client Sub.diagnostic in
+        let* poll = poll_exn client Dune_rpc.Public.Sub.diagnostic in
         let* () = print_diagnostics poll in
         Client.Stream.cancel poll)
   in
@@ -426,7 +432,7 @@ let%expect_test "create and fix error" =
         [ ("dune", "(executable (name foo))")
         ; ("foo.ml", "let () = print_endline 123")
         ];
-      let poll = Client.poll client Sub.diagnostic in
+      let* poll = poll_exn client Dune_rpc.Public.Sub.diagnostic in
       let* () = dune_build client "./foo.exe" in
       [%expect {|
         Building ./foo.exe
@@ -524,6 +530,12 @@ let%expect_test "create and fix error" =
     waited for inotify sync
     Success, waiting for filesystem changes... |}]
 
+let request_exn client req n =
+  let* staged = Client.Versioned.prepare_request client req in
+  match staged with
+  | Ok req -> Client.request client req n
+  | Error e -> raise (Dune_rpc.Version_error.E e)
+
 let%expect_test "formatting dune files" =
   let exec _pid =
     run_client (fun client ->
@@ -533,7 +545,7 @@ let%expect_test "formatting dune files" =
         printfn "Unformatted:\n%s" unformatted;
         let run uri what =
           let+ res =
-            Client.request client Request.format_dune_file
+            request_exn client Request.format_dune_file
               (uri, `Contents unformatted)
           in
           match res with
@@ -590,7 +602,7 @@ let%expect_test "promoting dune files" =
           Build (alias foo) failed |}];
         print_endline "attempting to promote";
         let+ res =
-          Client.request client Request.promote
+          request_exn client Request.promote
             Dune_rpc.Path.(relative dune_root fname)
         in
         (match res with

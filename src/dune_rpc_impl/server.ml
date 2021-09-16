@@ -4,9 +4,11 @@ open Dune_rpc_server
 module Dune_rpc = Dune_rpc_private
 module Initialize = Dune_rpc.Initialize
 module Public = Dune_rpc.Public
+module Versioned = Dune_rpc.Versioned
 module Server_notifications = Dune_rpc.Server_notifications
 module Sub = Dune_rpc.Sub
 module Progress = Dune_rpc.Progress
+module Procedures = Dune_rpc.Procedures
 module Id = Dune_rpc.Id
 module Diagnostic = Dune_rpc.Diagnostic
 module Conv = Dune_rpc.Conv
@@ -15,14 +17,8 @@ module Source_tree = Dune_engine.Source_tree
 module Build_system = Dune_engine.Build_system
 module Dune_project = Dune_engine.Dune_project
 module Promotion = Dune_engine.Promotion
-
-module Build_outcome = struct
-  type t = Dune_engine.Scheduler.Run.Build_outcome_for_rpc.t =
-    | Success
-    | Failure
-
-  let sexp = Conv.enum [ ("Success", Success); ("Failure", Failure) ]
-end
+module Build_outcome = Decl.Build_outcome
+module Status = Decl.Status
 
 type pending_build_action =
   | Build of Dep_conf.t list * Build_outcome.t Fiber.Ivar.t
@@ -32,27 +28,6 @@ let dep_parser =
   let open Dune_engine in
   Dune_lang.Syntax.set Stanza.syntax (Active Stanza.latest_version)
     Dep_conf.decode
-
-module Decl = struct
-  module Decl = Dune_rpc.Decl
-
-  let build =
-    Decl.request ~method_:"build" Conv.(list string) Build_outcome.sexp
-
-  let shutdown = Decl.notification ~method_:"shutdown" Conv.unit
-
-  module Status = struct
-    type t = { clients : Id.t list }
-
-    let sexp =
-      let open Conv in
-      let to_ clients = { clients } in
-      let from { clients } = clients in
-      iso (list Id.sexp) to_ from
-  end
-
-  let status = Decl.request ~method_:"status" Conv.unit Status.sexp
-end
 
 module Client = struct
   type t = { mutable next_id : int }
@@ -73,6 +48,32 @@ module Session_comparable = Comparable.Make (struct
 end)
 
 module Session_set = Session_comparable.Set
+
+module Clients = struct
+  type entry =
+    { session : Client.t Session.Stage1.t
+    ; mutable menu : Dune_rpc.Menu.t option
+    }
+
+  type t = entry Session.Id.Map.t
+
+  let empty = Session.Id.Map.empty
+
+  let add_session t (session : _ Session.Stage1.t) =
+    let id = Session.Stage1.id session in
+    let result = { menu = None; session } in
+    Session.Stage1.register_upgrade_callback session (fun menu ->
+        result.menu <- Some menu);
+    Session.Id.Map.add_exn t id result
+
+  let remove_session t (session : _ Session.t) =
+    let id = Session.id session in
+    Session.Id.Map.remove t id
+
+  let to_list = Session.Id.Map.to_list
+
+  let to_list_map = Session.Id.Map.to_list_map
+end
 
 (** Primitive unbounded FIFO channel. Reads are blocking. Writes are not
     blocking. At most one read is allowed at a time. *)
@@ -130,7 +131,7 @@ type t =
   ; build_handler : Build_system.Handler.t
   ; pool : Fiber.Pool.t
   ; long_poll : Long_poll.t
-  ; mutable clients : Session_set.t
+  ; mutable clients : Clients.t
   }
 
 let build_handler t = t.build_handler
@@ -139,11 +140,12 @@ let handler (t : t Fdecl.t) : 'a Dune_rpc_server.Handler.t =
   let on_init session (_ : Initialize.Request.t) =
     let t = Fdecl.get t in
     let client = Client.create () in
-    t.clients <- Session_set.add t.clients session;
+    t.clients <- Clients.add_session t.clients session;
     Fiber.return client
   in
   let on_terminate session =
     let t = Fdecl.get t in
+    t.clients <- Clients.remove_session t.clients session;
     Long_poll.disconnect_session t.long_poll session
   in
   let rpc =
@@ -151,12 +153,14 @@ let handler (t : t Fdecl.t) : 'a Dune_rpc_server.Handler.t =
       ~version:Dune_rpc_private.Version.latest ()
   in
   let () =
-    Handler.request rpc
-      (Handler.callback (Handler.public ~since:(1, 0) ()) Fiber.return)
-      Public.Request.ping
+    Handler.declare_notification rpc Procedures.Server_side.abort;
+    Handler.declare_notification rpc Procedures.Server_side.log
   in
   let () =
-    let build targets =
+    Handler.implement_request rpc Procedures.Public.ping (fun _ -> Fiber.return)
+  in
+  let () =
+    let build _ targets =
       let ivar = Fiber.Ivar.create () in
       let targets =
         List.map targets ~f:(fun s ->
@@ -175,7 +179,7 @@ let handler (t : t Fdecl.t) : 'a Dune_rpc_server.Handler.t =
       in
       Fiber.Ivar.read ivar
     in
-    Handler.request rpc (Handler.callback Handler.private_ build) Decl.build
+    Handler.implement_request rpc Decl.build build
   in
   let () =
     let rec cancel_pending_jobs () =
@@ -185,26 +189,22 @@ let handler (t : t Fdecl.t) : 'a Dune_rpc_server.Handler.t =
         let* () = Fiber.Ivar.fill job Build_outcome.Failure in
         cancel_pending_jobs ()
     in
-    let shutdown () =
+    let shutdown _ () =
       let t = Fdecl.get t in
       let terminate_sessions () =
         Fiber.fork_and_join_unit cancel_pending_jobs (fun () ->
-            Fiber.parallel_iter_set
-              (module Session_set)
-              t.clients ~f:Session.request_close)
+            Fiber.parallel_iter (Clients.to_list t.clients)
+              ~f:(fun (_, entry) -> Session.Stage1.request_close entry.session))
       in
       let shutdown () =
         Fiber.fork_and_join_unit Dune_engine.Scheduler.shutdown Run.stop
       in
       Fiber.fork_and_join_unit terminate_sessions shutdown
     in
-    Handler.notification rpc
-      (Handler.callback Handler.private_ shutdown)
-      Decl.shutdown
+    Handler.implement_notification rpc Procedures.Public.shutdown shutdown
   in
   let () =
-    let info = Handler.public ~since:(3, 0) () in
-    Handler.poll rpc info Sub.progress
+    Handler.implement_poll rpc Procedures.Poll.progress
       ~on_cancel:(fun _session poller ->
         let p = Long_poll.progress (Fdecl.get t).long_poll in
         Long_poll.Instance.client_cancel p poller)
@@ -213,8 +213,7 @@ let handler (t : t Fdecl.t) : 'a Dune_rpc_server.Handler.t =
         Long_poll.Instance.poll p poller)
   in
   let () =
-    let info = Handler.public ~since:(3, 0) () in
-    Handler.poll rpc info Sub.diagnostic
+    Handler.implement_poll rpc Procedures.Poll.diagnostic
       ~on_cancel:(fun _session poller ->
         let p = Long_poll.diagnostic (Fdecl.get t).long_poll in
         Long_poll.Instance.client_cancel p poller)
@@ -223,27 +222,26 @@ let handler (t : t Fdecl.t) : 'a Dune_rpc_server.Handler.t =
         Long_poll.Instance.poll p poller)
   in
   let () =
-    let f () =
+    let f _ () =
       let t = Fdecl.get t in
       let clients =
-        Session_set.to_list_map t.clients ~f:(fun session ->
-            Session.initialize session |> Initialize.Request.id)
+        Clients.to_list_map t.clients ~f:(fun _id (entry : Clients.entry) ->
+            ( Initialize.Request.id (Session.Stage1.initialize entry.session)
+            , match entry.menu with
+              | None -> Status.Menu.Uninitialized
+              | Some menu -> Menu (Dune_rpc.Menu.to_list menu) ))
       in
-      Fiber.return { Decl.Status.clients }
+      Fiber.return { Status.clients }
     in
-    let cb = Handler.callback Handler.private_ f in
-    Handler.request rpc cb Decl.status
+    Handler.implement_request rpc Decl.status f
   in
   let () =
-    let cb =
-      let f () =
-        Build_system.errors ()
-        |> List.map ~f:Diagnostics.diagnostic_of_error
-        |> Fiber.return
-      in
-      Handler.callback (Handler.public ~since:(1, 0) ()) f
+    let f _ () =
+      Build_system.errors ()
+      |> List.map ~f:Diagnostics.diagnostic_of_error
+      |> Fiber.return
     in
-    Handler.request rpc cb Public.Request.diagnostics
+    Handler.implement_request rpc Procedures.Public.diagnostics f
   in
   let source_path_of_string path =
     if Filename.is_relative path then
@@ -260,34 +258,27 @@ let handler (t : t Fdecl.t) : 'a Dune_rpc_server.Handler.t =
         Path.Source.(relative root s)
   in
   let () =
-    let cb =
-      let f (path, `Contents contents) =
-        let+ version =
-          Memo.Build.run
-            (let open Memo.Build.O in
-            let source_path = source_path_of_string path in
-            let+ dir = Source_tree.nearest_dir source_path in
-            let project = Source_tree.Dir.project dir in
-            Dune_project.dune_version project)
-        in
-        let module Format_dune_lang = Dune_engine.Format_dune_lang in
-        Format_dune_lang.format_string ~version contents
+    let f _ (path, `Contents contents) =
+      let+ version =
+        Memo.Build.run
+          (let open Memo.Build.O in
+          let source_path = source_path_of_string path in
+          let+ dir = Source_tree.nearest_dir source_path in
+          let project = Source_tree.Dir.project dir in
+          Dune_project.dune_version project)
       in
-      Handler.callback (Handler.public ~since:(1, 0) ()) f
+      let module Format_dune_lang = Dune_engine.Format_dune_lang in
+      Format_dune_lang.format_string ~version contents
     in
-    Handler.request rpc cb Public.Request.format_dune_file
+    Handler.implement_request rpc Procedures.Public.format_dune_file f
   in
   let () =
-    let cb =
-      let f path =
-        let files = source_path_of_string path in
-        Promotion.promote_files_registered_in_last_run
-          (These ([ files ], ignore));
-        Fiber.return ()
-      in
-      Handler.callback (Handler.public ~since:(1, 0) ()) f
+    let f _ path =
+      let files = source_path_of_string path in
+      Promotion.promote_files_registered_in_last_run (These ([ files ], ignore));
+      Fiber.return ()
     in
-    Handler.request rpc cb Public.Request.promote
+    Handler.implement_request rpc Procedures.Public.promote f
   in
   rpc
 
@@ -336,7 +327,7 @@ let create ~root =
   let res =
     { config
     ; pending_build_jobs
-    ; clients = Session_set.empty
+    ; clients = Clients.empty
     ; build_handler
     ; pool
     ; long_poll

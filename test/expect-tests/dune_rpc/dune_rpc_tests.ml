@@ -54,11 +54,18 @@ let setup_client_server () =
   let connect () = Chan.connect client_chan server_chan in
   (client_chan, sessions, connect)
 
-let test ~client ~handler ~init () =
+let test ?(private_menu = []) ?no_real_methods ~client ~handler ~init () =
+  let () =
+    match no_real_methods with
+    | None ->
+      Handler.implement_notification handler Procedures.Public.shutdown
+        (fun _ _ -> raise (Failure "shutdown called"))
+    | Some () -> ()
+  in
   let run =
     let client_chan, sessions, connect = setup_client_server () in
     let client () =
-      Drpc.Client.connect client_chan init ~f:(fun c ->
+      Drpc.Client.connect_with_menu client_chan init ~private_menu ~f:(fun c ->
           let* () = client c in
           Chan.write client_chan None)
     in
@@ -73,7 +80,10 @@ let test ~client ~handler ~init () =
   Scheduler.run (Scheduler.create ()) run
 
 let init ?(id = Id.make (Csexp.Atom "test-client")) ?(version = (1, 1)) () =
-  { Initialize.Request.version; id }
+  { Initialize.Request.dune_version = version
+  ; protocol_version = Protocol.latest_version
+  ; id
+  }
 
 let%expect_test "initialize scheduler with rpc" =
   let handler = Handler.create ~on_init ~version:(2, 0) () in
@@ -87,58 +97,72 @@ let%expect_test "initialize scheduler with rpc" =
     client: connected. now terminating
     server: finished. |}]
 
-let%expect_test "invalid client version" =
+let%expect_test "no methods in common" =
   let handler = Handler.create ~on_init ~version:(2, 0) () in
   let init = init ~version:(2, 5) () in
-  test ~init ~client:(fun _ -> assert false) ~handler ();
+  test ~init ~no_real_methods:() ~client:(fun _ -> assert false) ~handler ();
   [%expect.unreachable]
   [@@expect.uncaught_exn
     {|
-  ( "Response.E\
-   \n  { payload = Some [ [ \"supported versions until\"; [ \"2\"; \"0\" ] ] ]\
-   \n  ; message = \"Unsupported version\"\
-   \n  ; kind = Version_error\
-   \n  }")
+  (Failure
+    "Fatal error from server: Server and client have no method versions in common")
   Trailing output
   ---------------
   server: finished. |}]
 
-let%expect_test "call private method" =
-  let decl = Decl.request ~method_:"double" Conv.int Conv.int in
+let simple_request (type a b) ?(version = 1) ~method_
+    (req : (a, Conv.values) Conv.t) (resp : (b, Conv.values) Conv.t) =
+  let v = Decl.Request.make_current_gen ~req ~resp ~version in
+  Decl.Request.make ~method_ ~generations:[ v ]
+
+let request_exn client witness n =
+  let* staged = Client.Versioned.prepare_request client witness in
+  let staged =
+    match staged with
+    | Ok s -> s
+    | Error e -> raise (Dune_rpc.Version_error.E e)
+  in
+  Client.request client staged n
+
+let%expect_test "call method with matching versions" =
+  let decl = simple_request ~method_:"double" Conv.int Conv.int in
   let handler =
     let rpc = Handler.create ~on_init ~version:(1, 1) () in
     let () =
-      let cb =
-        Handler.callback Handler.private_ (fun x ->
-            if x = 0 then
-              raise
-                (Response.Error.E
-                   (Response.Error.create ~kind:Invalid_request
-                      ~message:"0 not allowed" ()))
-            else
-              Fiber.return (x + x))
+      let cb _ x =
+        if x = 0 then
+          raise
+            (Response.Error.E
+               (Response.Error.create ~kind:Invalid_request
+                  ~message:"0 not allowed" ()))
+        else
+          Fiber.return (x + x)
       in
-      Handler.request rpc cb decl
+      Handler.implement_request rpc decl cb
     in
     rpc
   in
+  let witness = Decl.Request.witness decl in
   let client client =
     printfn "client: sending request";
-    let* resp = Client.request client decl 5 in
+    let* resp = request_exn client witness 5 in
     (match resp with
     | Error _ -> assert false
     | Ok s -> printfn "client: result %d" s);
     printfn "client: sending invalid request";
-    let* resp = Client.request client decl 0 in
+    let* resp = request_exn client witness 0 in
     (match resp with
     | Error e -> printfn "client: error %s" e.message
     | Ok _ -> assert false);
     Fiber.return ()
   in
   let init =
-    { Initialize.Request.version = (1, 1); id = Id.make (Atom "test-client") }
+    { Initialize.Request.dune_version = (1, 1)
+    ; protocol_version = Protocol.latest_version
+    ; id = Id.make (Atom "test-client")
+    }
   in
-  test ~init ~client ~handler ();
+  test ~init ~client ~handler ~private_menu:[ Request decl ] ();
   [%expect
     {|
     client: sending request
@@ -147,86 +171,191 @@ let%expect_test "call private method" =
     client: error 0 not allowed
     server: finished. |}]
 
-let%expect_test "versioning public methods" =
-  let decl = Decl.request ~method_:"double" Conv.int Conv.int in
+let%expect_test "call method with no matching versions" =
+  let decl = simple_request ~method_:"double" Conv.int Conv.int in
   let handler =
     let rpc = Handler.create ~on_init ~version:(2, 0) () in
     let () =
-      let cb =
-        Handler.callback
-          (Handler.public ~since:(1, 5) ~until:(2, 0) ())
-          (fun x -> Fiber.return (x + x))
-      in
-      Handler.request rpc cb decl
+      let cb _ x = Fiber.return (x + x) in
+      Handler.implement_request rpc decl cb
     in
     rpc
   in
   let client client =
-    printfn "client: sending request";
-    let* resp = Client.request client decl 0 in
+    printfn "client: preparing request";
+    let* resp =
+      Client.Versioned.prepare_request client (Decl.Request.witness decl)
+    in
     (match resp with
-    | Error e -> printfn "client: error %s" e.message
+    | Error e -> printfn "client: error %s" (Dune_rpc.Version_error.message e)
     | Ok _ -> assert false);
     Fiber.return ()
   in
   let init =
-    { Initialize.Request.version = (1, 1); id = Id.make (Atom "test-client") }
+    { Initialize.Request.dune_version = (1, 1)
+    ; protocol_version = Protocol.latest_version
+    ; id = Id.make (Atom "test-client")
+    }
   in
-  test ~init ~client ~handler ();
+  let decl' = simple_request ~method_:"double" ~version:2 Conv.int Conv.int in
+  test ~init ~client ~handler ~private_menu:[ Request decl' ] ();
   [%expect
     {|
-    client: sending request
-    client: error no method matching this client version
+    client: preparing request
+    client: error invalid method
     server: finished. |}]
 
-let%expect_test "versioning public methods" =
-  let decl =
-    let input =
-      let open Conv in
-      record
-        (both
-           (field "x" (required int))
-           (field "y" (optional (version int ~since:(2, 0)))))
+module Add = struct
+  type req =
+    { x : int
+    ; y : int
+    ; others : int list
+    }
+
+  type resp =
+    | No_others of int
+    | With_others of
+        { xy : int
+        ; all : int
+        }
+
+  module V1_only = struct
+    let req = Conv.pair Conv.int Conv.int
+
+    let resp = Conv.int
+  end
+
+  let v1_only =
+    Decl.Request.make_current_gen
+      ~req:(Conv.pair Conv.int Conv.int)
+      ~resp:Conv.int ~version:1
+
+  let v1 =
+    let upgrade_req (x, y) = { x; y; others = [] } in
+    let downgrade_req { x; y; others = _ } = (x, y) in
+    let upgrade_resp x = No_others x in
+    let downgrade_resp = function
+      | No_others x -> x
+      | With_others { xy; all = _ } -> xy
     in
-    Decl.request ~method_:"add" input Conv.int
-  in
+    Decl.Request.make_gen
+      ~req:(Conv.pair Conv.int Conv.int)
+      ~resp:Conv.int ~upgrade_req ~downgrade_req ~upgrade_resp ~downgrade_resp
+      ~version:1
+
+  let v2 =
+    let req =
+      let open Conv in
+      let parse =
+        record
+          (three
+             (field "x" (required int))
+             (field "y" (required int))
+             (field "others" (required (list int))))
+      in
+      let to_ (x, y, others) = { x; y; others } in
+      let from { x; y; others } = (x, y, others) in
+      iso parse to_ from
+    in
+    let resp =
+      let open Conv in
+      let no_others = constr "no_others" int (fun x -> No_others x) in
+      let with_others =
+        constr "with_others" (pair int int) (fun (xy, all) ->
+            With_others { xy; all })
+      in
+      sum [ econstr no_others; econstr with_others ] (function
+        | No_others x -> case x no_others
+        | With_others { xy; all } -> case (xy, all) with_others)
+    in
+    Decl.Request.make_current_gen ~req ~resp ~version:2
+end
+
+let add_v1_only = Decl.Request.make ~method_:"add" ~generations:[ Add.v1_only ]
+
+let add_v1_v2 = Decl.Request.make ~method_:"add" ~generations:[ Add.v1; Add.v2 ]
+
+let%expect_test "client is newer than server" =
   let handler =
     let rpc = Handler.create ~on_init ~version:(2, 0) () in
     let () =
-      let cb =
-        Handler.callback
-          (Handler.public ~since:(1, 5) ())
-          (fun (x, y) -> Fiber.return (x + Option.value y ~default:x))
-      in
-      Handler.request rpc cb decl
+      let cb _ (x, y) = Fiber.return (x + y) in
+      Handler.implement_request rpc add_v1_only cb
     in
     rpc
   in
   let client client =
     printfn "client: sending request";
-    let* resp = Client.request client decl (10, None) in
-    (match resp with
-    | Error _ -> assert false
-    | Ok x -> printfn "client: %d" x);
-    let+ resp = Client.request client decl (10, Some 20) in
+    let+ resp =
+      request_exn client
+        (Decl.Request.witness add_v1_v2)
+        { x = 10; y = 15; others = [ -25 ] }
+    in
     match resp with
-    | Error e -> printfn "client: error %s" e.message
-    | Ok _ -> ()
+    | Error _ -> assert false
+    | Ok (With_others _) -> assert false
+    | Ok (No_others x) -> printfn "client: %d" x
   in
   let init =
-    { Initialize.Request.version = (1, 9); id = Id.make (Atom "test-client") }
+    { Initialize.Request.dune_version = (1, 9)
+    ; protocol_version = Protocol.latest_version
+    ; id = Id.make (Atom "test-client")
+    }
   in
-  test ~init ~client ~handler ();
+  test ~private_menu:[ Request add_v1_v2 ] ~init ~client ~handler ();
   [%expect
     {|
     client: sending request
-    client: 20
-    client: error invalid version
+    client: 25
+    server: finished. |}]
+
+let%expect_test "client is older than server" =
+  let handler =
+    let rpc = Handler.create ~on_init ~version:(2, 0) () in
+    let () =
+      let cb _ { Add.x; y; others } =
+        match others with
+        | [] -> Fiber.return (Add.No_others (x + y))
+        | _ :: _ -> assert false
+      in
+      Handler.implement_request rpc add_v1_v2 cb
+    in
+    rpc
+  in
+  let client client =
+    printfn "client: sending request";
+    let+ resp =
+      request_exn client (Decl.Request.witness add_v1_only) (20, 30)
+    in
+    match resp with
+    | Error _ -> assert false
+    | Ok x -> printfn "client: %d" x
+  in
+  let init =
+    { Initialize.Request.dune_version = (1, 9)
+    ; protocol_version = Protocol.latest_version
+    ; id = Id.make (Atom "test-client")
+    }
+  in
+  test ~private_menu:[ Request add_v1_only ] ~init ~client ~handler ();
+  [%expect
+    {|
+    client: sending request
+    client: 50
     server: finished. |}]
 
 let%test_module "long polling" =
   (module struct
-    let sub_decl = { Dune_rpc_private.Sub.elem = Conv.int; name = "pulse" }
+    let v1 =
+      Decl.Request.make_current_gen ~req:Id.sexp ~resp:(Conv.option Conv.int)
+        ~version:1
+
+    let sub_proc =
+      Dune_rpc.Procedures.Poll.make
+        (Dune_rpc.Procedures.Poll.Name.make "pulse")
+        [ v1 ]
+
+    let sub_decl = Sub.of_procedure sub_proc
 
     let version = (3, 0)
 
@@ -242,14 +371,18 @@ let%test_module "long polling" =
           printfn "server: polling cancelled";
           Fiber.return ()
         in
-        let info = Handler.public ~since:(3, 0) () in
-        Handler.poll rpc info sub_decl ~on_poll ~on_cancel
+        Handler.implement_poll rpc sub_proc ~on_poll ~on_cancel
       in
       rpc
 
     let%expect_test "long polling - client side termination" =
       let client client =
-        let poller = Client.poll client sub_decl in
+        let* poller = Client.poll client sub_decl in
+        let poller =
+          match poller with
+          | Ok p -> p
+          | Error e -> raise (Version_error.E e)
+        in
         let req () =
           let+ res = Client.Stream.next poller in
           match res with
@@ -266,7 +399,7 @@ let%test_module "long polling" =
             incr state;
             Fiber.return (Some !state))
       in
-      test ~init ~client ~handler ();
+      test ~init ~client ~handler ~private_menu:[ Poll sub_proc ] ();
       [%expect
         {|
     client: received 1
@@ -277,7 +410,12 @@ let%test_module "long polling" =
     let%expect_test "long polling - server side termination" =
       let client client =
         printfn "client: long polling";
-        let poller = Client.poll client sub_decl in
+        let* poller = Client.poll client sub_decl in
+        let poller =
+          match poller with
+          | Ok p -> p
+          | Error e -> raise (Version_error.E e)
+        in
         let+ () =
           Fiber.repeat_while ~init:() ~f:(fun () ->
               let+ res = Client.Stream.next poller in
@@ -299,7 +437,7 @@ let%test_module "long polling" =
               else
                 Some !state))
       in
-      test ~init ~client ~handler ();
+      test ~init ~client ~handler ~private_menu:[ Poll sub_proc ] ();
       [%expect
         {|
     client: long polling

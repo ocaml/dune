@@ -37,17 +37,38 @@ let init_chan ~root_dir =
   in
   loop ()
 
+let request_exn client witness n =
+  let* staged = Client.Versioned.prepare_request client witness in
+  let staged =
+    match staged with
+    | Ok s -> s
+    | Error e -> raise (Dune_rpc.Version_error.E e)
+  in
+  Client.request client staged n
+
+let notification_exn client witness n =
+  let* staged = Client.Versioned.prepare_notification client witness in
+  let staged =
+    match staged with
+    | Ok s -> s
+    | Error e -> raise (Dune_rpc.Version_error.E e)
+  in
+  Client.notification client staged n
+
 let run_client ?handler f =
   let* chan = init_chan ~root_dir:"." in
   let initialize =
     let id = Dune_rpc.Id.make (Atom "test") in
     Dune_rpc.Initialize.Request.create ~id
   in
-  Client.connect ?handler chan initialize ~f:(fun client ->
+  Client.connect_with_menu ?handler chan initialize
+    ~private_menu:
+      [ Request Dune_rpc_impl.Decl.build; Request Dune_rpc_impl.Decl.status ]
+    ~f:(fun client ->
       Fiber.finalize
         (fun () -> f client)
-        ~finally:
-          (Client.notification client Dune_rpc.Public.Notification.shutdown))
+        ~finally:(fun () ->
+          notification_exn client Dune_rpc.Public.Notification.shutdown ()))
 
 let read_lines in_ =
   let* reader = Scheduler.Worker.create () in
@@ -105,7 +126,11 @@ let run_server ?env ~root_dir () =
 
 let dune_build client what =
   printfn "Building %s" what;
-  let+ res = Client.request client Dune_rpc_impl.Decl.build [ what ] in
+  let+ res =
+    request_exn client
+      (Dune_rpc.Decl.Request.witness Dune_rpc_impl.Decl.build)
+      [ what ]
+  in
   match res with
   | Error e ->
     Format.eprintf "Error building %s:@.%s@." what

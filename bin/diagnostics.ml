@@ -1,5 +1,6 @@
 open! Stdune
 open Import
+module Client = Dune_rpc_impl.Client
 
 let format_diagnostic (err : Dune_rpc_private.Diagnostic.t) : User_message.t =
   let prefix =
@@ -35,8 +36,13 @@ let exec common =
       (Dune_rpc_private.Initialize.Request.create
          ~id:(Dune_rpc_private.Id.make (Sexp.Atom "diagnostics_cmd")))
       ~f:(fun cli ->
-        Dune_rpc_impl.Client.request cli
-          Dune_rpc_private.Public.Request.diagnostics ())
+        let* decl =
+          Client.Versioned.prepare_request cli
+            Dune_rpc_private.Public.Request.diagnostics
+        in
+        match decl with
+        | Error e -> raise (Dune_rpc_private.Version_error.E e)
+        | Ok decl -> Client.request cli decl ())
   in
   match errors with
   | Ok errors ->

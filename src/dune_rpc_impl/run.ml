@@ -187,7 +187,11 @@ let client ?handler p init ~f =
   let open Fiber.O in
   let* c = Connect.csexp_client p in
   let* session = Csexp_rpc.Client.connect_exn c in
-  Client.connect ?handler session init ~f
+  Client.connect_with_menu ?handler
+    ~private_menu:[ Request Decl.build; Request Decl.status ]
+    session init ~f
 
 let client_with_session ?handler init ~session ~f =
-  Client.connect ?handler session init ~f
+  Client.connect_with_menu ?handler
+    ~private_menu:[ Request Decl.build; Request Decl.status ]
+    session init ~f

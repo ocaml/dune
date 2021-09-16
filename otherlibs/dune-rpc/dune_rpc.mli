@@ -395,12 +395,19 @@ module V1 : sig
       | `Ip of [ `Host of string ] * [ `Port of int ]
       ]
 
+    type error = Invalid_where of string
+
+    exception E of error
+
     module type S = sig
       type 'a fiber
 
-      val get : build_dir:string -> t option fiber
+      val get :
+           env:(string -> string option)
+        -> build_dir:string
+        -> (t option, exn) result fiber
 
-      val default : build_dir:string -> t
+      val default : ?win32:bool -> build_dir:string -> unit -> t
     end
 
     module Make (Fiber : sig
@@ -413,17 +420,76 @@ module V1 : sig
 
         val ( let+ ) : 'a t -> ('a -> 'b) -> 'b t
       end
-    end) (Sys : sig
-      val getenv : string -> string option
+    end) (IO : sig
+      val read_file : string -> (string, exn) result Fiber.t
 
-      val is_win32 : unit -> bool
-
-      val read_file : string -> string Fiber.t
-
-      val readlink : string -> string option Fiber.t
+      val readlink : string -> (string option, exn) result Fiber.t
 
       val analyze_path :
-        string -> [ `Unix_socket | `Normal_file | `Other ] Fiber.t
+        string -> ([ `Unix_socket | `Normal_file | `Other ], exn) result Fiber.t
     end) : S with type 'a fiber := 'a Fiber.t
+  end
+
+  module Registry : sig
+    module File : sig
+      type t =
+        { path : string
+        ; contents : string
+        }
+    end
+
+    module Dune : sig
+      type t
+
+      val where : t -> Where.t
+
+      val root : t -> string
+    end
+
+    module Config : sig
+      type t
+
+      val create : Xdg.t -> t
+
+      val watch_dir : t -> string
+    end
+
+    type t
+
+    val create : Config.t -> t
+
+    val current : t -> Dune.t list
+
+    module Refresh : sig
+      type t
+
+      val added : t -> Dune.t list
+
+      val removed : t -> Dune.t list
+
+      val errored : t -> (string * exn) list
+    end
+
+    module Poll (Fiber : sig
+      type 'a t
+
+      val return : 'a -> 'a t
+
+      val parallel_map : 'a list -> f:('a -> 'b t) -> 'b list t
+
+      module O : sig
+        val ( let* ) : 'a t -> ('a -> 'b t) -> 'b t
+
+        val ( let+ ) : 'a t -> ('a -> 'b) -> 'b t
+      end
+    end) (IO : sig
+      val scandir : string -> (string list, exn) result Fiber.t
+
+      val stat : string -> ([ `Mtime of float ], exn) result Fiber.t
+
+      val read_file : string -> (string, exn) result Fiber.t
+    end) : sig
+      val poll : t -> (Refresh.t, exn) result Fiber.t
+    end
   end
 end

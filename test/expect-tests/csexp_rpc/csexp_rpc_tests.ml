@@ -14,8 +14,8 @@ let server where = Server.create where ~backlog:10
 let client where = Csexp_rpc.Client.create where
 
 module Logger = struct
-  (* A little helper to make the output from the client and server deterministic.
-     Log messages are batched and outputted at the end. *)
+  (* A little helper to make the output from the client and server
+     deterministic. Log messages are batched and outputted at the end. *)
   type t =
     { mutable messages : string list
     ; name : string

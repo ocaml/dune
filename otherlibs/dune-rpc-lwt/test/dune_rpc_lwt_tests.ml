@@ -8,11 +8,13 @@ open Dune_rpc_lwt.V1
 
 let connect ~root_dir =
   let build_dir = Filename.concat root_dir "_build" in
-  let* res = Where.get ~build_dir in
+  let env = Env.get Env.initial in
+  let* res = Where.get ~env ~build_dir in
   match res with
-  | None ->
+  | Error e -> Lwt.fail e
+  | Ok None ->
     Lwt.fail_with (sprintf "unable to establish to connection in %s" build_dir)
-  | Some w -> connect_chan w
+  | Ok (Some w) -> connect_chan w
 
 let build_watch ~root_dir ~suppress_stderr =
   Lwt_process.open_process_none ~stdin:`Close
@@ -106,8 +108,8 @@ let%expect_test "run and connect" =
     dune build finished with 0 |}]
 
 module Logger = struct
-  (* A little helper to make the output from the client and server deterministic.
-     Log messages are batched and outputted at the end. *)
+  (* A little helper to make the output from the client and server
+     deterministic. Log messages are batched and outputted at the end. *)
   type t =
     { mutable messages : string list
     ; name : string

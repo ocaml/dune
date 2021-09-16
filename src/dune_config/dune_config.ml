@@ -363,8 +363,9 @@ let decode =
 let decode_fields_of_workspace_file = decode_generic ~min_dune_version:(3, 0)
 
 let user_config_file =
+  let config_dir = Xdg.config_dir (Lazy.force Dune_util.xdg) in
   Path.relative
-    (Path.of_filename_relative_to_initial_cwd Xdg.config_dir)
+    (Path.of_filename_relative_to_initial_cwd config_dir)
     "dune/config"
 
 include Dune_lang.Versioned_file.Make (struct

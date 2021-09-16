@@ -1,5 +1,4 @@
-(** Types exposed to end-user consumers of [dune_rpc.mli]. This module should
-    never use any Stdune types. *)
+(** Types exposed to end-user consumers of [dune_rpc.mli]. *)
 
 module Loc : sig
   type t = Stdune.Loc.t =
@@ -108,14 +107,14 @@ module Diagnostic : sig
 
   val directory : t -> string option
 
-  val to_dyn : t -> Stdune.Dyn.t
+  val to_dyn : t -> Dyn.t
 
   module Event : sig
     type nonrec t =
       | Add of t
       | Remove of t
 
-    val to_dyn : t -> Stdune.Dyn.t
+    val to_dyn : t -> Dyn.t
 
     val sexp : (t, Conv.values) Conv.t
   end

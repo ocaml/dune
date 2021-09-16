@@ -6,6 +6,7 @@
  (libraries
   unix
   csexp
+  (re_export dyn)
   (re_export pp)
   dune_filesystem_stubs)
  (foreign_stubs

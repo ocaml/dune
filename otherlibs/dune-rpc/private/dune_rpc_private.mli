@@ -1,11 +1,15 @@
 module Conv : module type of Conv
 
+module Where : module type of Where
+
+module Registry : module type of Registry
+
 module Id : sig
   type t
 
   val sexp : t Conv.value
 
-  val to_dyn : t -> Stdune.Dyn.t
+  val to_dyn : t -> Dyn.t
 
   val equal : t -> t -> bool
 
@@ -64,7 +68,7 @@ module Response : sig
 
     exception E of t
 
-    val to_dyn : t -> Stdune.Dyn.t
+    val to_dyn : t -> Dyn.t
 
     val of_conv : Conv.error -> t
 
@@ -122,50 +126,6 @@ module Version_negotiation : sig
 
     val sexp : t Conv.value
   end
-end
-
-module Where : sig
-  type t =
-    [ `Unix of string
-    | `Ip of [ `Host of string ] * [ `Port of int ]
-    ]
-
-  val of_string : string -> t
-
-  val to_string : t -> string
-
-  val add_to_env : t -> Stdune.Env.t -> Stdune.Env.t
-
-  module type S = sig
-    type 'a fiber
-
-    val get : build_dir:string -> t option fiber
-
-    val default : build_dir:string -> t
-  end
-
-  module Make (Fiber : sig
-    type 'a t
-
-    val return : 'a -> 'a t
-
-    module O : sig
-      val ( let* ) : 'a t -> ('a -> 'b t) -> 'b t
-
-      val ( let+ ) : 'a t -> ('a -> 'b) -> 'b t
-    end
-  end) (Sys : sig
-    val getenv : string -> string option
-
-    val is_win32 : unit -> bool
-
-    val read_file : string -> string Fiber.t
-
-    val readlink : string -> string option Fiber.t
-
-    val analyze_path :
-      string -> [ `Unix_socket | `Normal_file | `Other ] Fiber.t
-  end) : S with type 'a fiber := 'a Fiber.t
 end
 
 module Loc : sig
@@ -247,7 +207,7 @@ module Diagnostic : sig
     ; related : Related.t list
     }
 
-  val to_dyn : t -> Stdune.Dyn.t
+  val to_dyn : t -> Dyn.t
 
   val related : t -> Related.t list
 
@@ -270,7 +230,7 @@ module Diagnostic : sig
       | Add of t
       | Remove of t
 
-    val to_dyn : t -> Stdune.Dyn.t
+    val to_dyn : t -> Dyn.t
   end
 end
 
@@ -638,7 +598,7 @@ module Menu : sig
 
   val to_list : t -> (string * int) list
 
-  val to_dyn : t -> Stdune.Dyn.t
+  val to_dyn : t -> Dyn.t
 end
 
 module Versioned : sig

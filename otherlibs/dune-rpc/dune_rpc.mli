@@ -360,7 +360,10 @@ module V1 : sig
     module type S = sig
       type 'a fiber
 
-      val get : build_dir:string -> (t option, exn) result fiber
+      val get :
+           env:(string * string) list
+        -> build_dir:string
+        -> (t option, exn) result fiber
 
       val default : ?is_win32:bool -> build_dir:string -> unit -> t
     end
@@ -376,8 +379,6 @@ module V1 : sig
         val ( let+ ) : 'a t -> ('a -> 'b) -> 'b t
       end
     end) (Sys : sig
-      val getenv : string -> string option
-
       val read_file : string -> (string, exn) result Fiber.t
 
       val readlink : string -> (string option, exn) result Fiber.t

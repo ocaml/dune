@@ -85,8 +85,6 @@ module V1 = struct
     Where.Make
       (Fiber)
       (struct
-        let getenv s = Sys.getenv_opt s
-
         let read_file s : (string, exn) result Lwt.t =
           Lwt_result.catch (Lwt_io.with_file ~mode:Input s Lwt_io.read)
 

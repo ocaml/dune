@@ -69,7 +69,10 @@ let add_to_env t env =
 module type S = sig
   type 'a fiber
 
-  val get : build_dir:string -> (t option, exn) result fiber
+  val get :
+       env:(string * string) list
+    -> build_dir:string
+    -> (t option, exn) result fiber
 
   val default : ?is_win32:bool -> build_dir:string -> unit -> t
 end
@@ -87,16 +90,13 @@ module Make (Fiber : sig
     val ( let+ ) : 'a t -> ('a -> 'b) -> 'b t
   end
 end) (Sys : sig
-  val getenv : string -> string option
-
   val read_file : string -> (string, exn) result Fiber.t
 
   val readlink : string -> (string option, exn) result Fiber.t
 
   val analyze_path :
     string -> ([ `Unix_socket | `Normal_file | `Other ], exn) result Fiber.t
-end) =
-struct
+end) : S with type 'a fiber := 'a Fiber.t = struct
   let default ?(is_win32 = is_win32) ~build_dir () =
     if is_win32 then
       `Ip (`Host "0.0.0.0", `Port default_port)
@@ -110,9 +110,9 @@ struct
     | Error e -> Fiber.return (Error e)
     | Ok x -> f x
 
-  let get ~build_dir : (t option, exn) result Fiber.t =
+  let get ~env ~build_dir : (t option, exn) result Fiber.t =
     let open Fiber.O in
-    match Sys.getenv _DUNE_RPC with
+    match List.assoc_opt _DUNE_RPC env with
     | Some d -> (
       match of_string d with
       | Ok s -> Fiber.return (Ok (Some s))

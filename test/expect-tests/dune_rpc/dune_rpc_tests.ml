@@ -116,7 +116,7 @@ let simple_request (type a b) ?(version = 1) ~method_
   Decl.Request.make ~method_ ~generations:[ v ]
 
 let request_exn client witness n =
-  let* staged = Client.prepare_request client witness in
+  let* staged = Client.Versioned.prepare_request client witness in
   let staged =
     match staged with
     | Ok s -> s
@@ -183,7 +183,9 @@ let%expect_test "call method with no matching versions" =
   in
   let client client =
     printfn "client: preparing request";
-    let* resp = Client.prepare_request client (Decl.Request.witness decl) in
+    let* resp =
+      Client.Versioned.prepare_request client (Decl.Request.witness decl)
+    in
     (match resp with
     | Error e ->
       printfn "client: error %s" (Dune_rpc.Negotiation_error.message e)

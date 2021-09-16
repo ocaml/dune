@@ -37,7 +37,8 @@ let exec common =
          ~id:(Dune_rpc_private.Id.make (Sexp.Atom "diagnostics_cmd")))
       ~f:(fun cli ->
         let* decl =
-          Client.prepare_request cli Dune_rpc_private.Public.Request.diagnostics
+          Client.Versioned.prepare_request cli
+            Dune_rpc_private.Public.Request.diagnostics
         in
         match decl with
         | Error e -> raise (Dune_rpc_private.Negotiation_error.E e)

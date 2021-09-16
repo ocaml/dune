@@ -34,24 +34,30 @@ module V1 = struct
           -> t
       end
 
-      val prepare_request :
-           t
-        -> ('a, 'b) Request.t
-        -> (('a, 'b) Public.Request.versioned, Negotiation_error.t) result fiber
+      module Versioned : sig
+        type 'a notification
 
-      val prepare_notification :
-           t
-        -> 'a Notification.t
-        -> ('a Notification.versioned, Negotiation_error.t) result fiber
+        type ('a, 'b) request
+
+        val prepare_request :
+             t
+          -> ('a, 'b) Request.t
+          -> (('a, 'b) request, Negotiation_error.t) result fiber
+
+        val prepare_notification :
+             t
+          -> 'a Notification.t
+          -> ('a notification, Negotiation_error.t) result fiber
+      end
 
       val request :
            ?id:Id.t
         -> t
-        -> ('a, 'b) Request.versioned
+        -> ('a, 'b) Versioned.request
         -> 'a
         -> ('b, Response.Error.t) result fiber
 
-      val notification : t -> 'a Notification.versioned -> 'a -> unit fiber
+      val notification : t -> 'a Versioned.notification -> 'a -> unit fiber
 
       val disconnected : t -> unit fiber
 
@@ -79,11 +85,11 @@ module V1 = struct
         val request :
              ?id:Id.t
           -> t
-          -> ('a, 'b) Request.versioned
+          -> ('a, 'b) Versioned.request
           -> 'a
           -> ('b, Response.Error.t) result fiber
 
-        val notification : t -> 'a Notification.versioned -> 'a -> unit
+        val notification : t -> 'a Versioned.notification -> 'a -> unit
 
         val submit : t -> unit fiber
       end

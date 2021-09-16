@@ -412,11 +412,8 @@ end
 
 module Public : sig
   (** Public requests and notifications *)
-
   module Request : sig
     type ('a, 'b) t = ('a, 'b) Decl.Request.witness
-
-    type ('a, 'b) versioned = ('a, 'b) Versioned.Staged.request
 
     val ping : (unit, unit) t
 
@@ -429,8 +426,6 @@ module Public : sig
 
   module Notification : sig
     type 'a t = 'a Decl.Notification.witness
-
-    type 'a versioned = 'a Versioned.Staged.notification
 
     val shutdown : unit t
   end
@@ -452,24 +447,30 @@ module Client : sig
 
     type chan
 
-    val prepare_request :
-         t
-      -> ('a, 'b) Decl.Request.witness
-      -> (('a, 'b) Versioned.Staged.request, Negotiation_error.t) result fiber
+    module Versioned : sig
+      type ('a, 'b) request = ('a, 'b) Versioned.Staged.request
 
-    val prepare_notification :
-         t
-      -> 'a Decl.Notification.witness
-      -> ('a Versioned.Staged.notification, Negotiation_error.t) result fiber
+      type 'a notification = 'a Versioned.Staged.notification
+
+      val prepare_request :
+           t
+        -> ('a, 'b) Decl.Request.witness
+        -> (('a, 'b) request, Negotiation_error.t) result fiber
+
+      val prepare_notification :
+           t
+        -> 'a Decl.Notification.witness
+        -> ('a notification, Negotiation_error.t) result fiber
+    end
 
     val request :
          ?id:Id.t
       -> t
-      -> ('a, 'b) Versioned.Staged.request
+      -> ('a, 'b) Versioned.request
       -> 'a
       -> ('b, Response.Error.t) result fiber
 
-    val notification : t -> 'a Versioned.Staged.notification -> 'a -> unit fiber
+    val notification : t -> 'a Versioned.notification -> 'a -> unit fiber
 
     val disconnected : t -> unit fiber
 
@@ -497,11 +498,11 @@ module Client : sig
       val request :
            ?id:Id.t
         -> t
-        -> ('a, 'b) Versioned.Staged.request
+        -> ('a, 'b) Versioned.request
         -> 'a
         -> ('b, Response.Error.t) result fiber
 
-      val notification : t -> 'a Versioned.Staged.notification -> 'a -> unit
+      val notification : t -> 'a Versioned.notification -> 'a -> unit
 
       val submit : t -> unit fiber
     end

@@ -531,7 +531,7 @@ let%expect_test "create and fix error" =
     Success, waiting for filesystem changes... |}]
 
 let request_exn client req n =
-  let* staged = Client.prepare_request client req in
+  let* staged = Client.Versioned.prepare_request client req in
   match staged with
   | Ok req -> Client.request client req n
   | Error e -> raise (Dune_rpc.Negotiation_error.E e)

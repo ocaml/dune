@@ -38,7 +38,7 @@ let init_chan ~root_dir =
   loop ()
 
 let request_exn client witness n =
-  let* staged = Client.prepare_request client witness in
+  let* staged = Client.Versioned.prepare_request client witness in
   let staged =
     match staged with
     | Ok s -> s
@@ -47,7 +47,7 @@ let request_exn client witness n =
   Client.request client staged n
 
 let notification_exn client witness n =
-  let* staged = Client.prepare_notification client witness in
+  let* staged = Client.Versioned.prepare_notification client witness in
   let staged =
     match staged with
     | Ok s -> s

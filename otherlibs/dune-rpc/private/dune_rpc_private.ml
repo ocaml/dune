@@ -34,8 +34,6 @@ module Public = struct
   module Request = struct
     type ('a, 'b) t = ('a, 'b) Decl.Request.witness
 
-    type ('a, 'b) versioned = ('a, 'b) Versioned.Staged.request
-
     let ping = Procedures.Public.ping.decl
 
     let diagnostics = Procedures.Public.diagnostics.decl
@@ -47,8 +45,6 @@ module Public = struct
 
   module Notification = struct
     type 'a t = 'a Decl.Notification.witness
-
-    type 'a versioned = 'a Versioned.Staged.notification
 
     let shutdown = Procedures.Public.shutdown.decl
   end
@@ -76,30 +72,30 @@ module Client = struct
 
     type chan
 
-    val prepare_request :
-         t
-      -> ('a, 'b) Public.Request.t
-      -> ( ('a, 'b) Public.Request.versioned
-         , Versioned.Negotiation_error.t )
-         result
-         fiber
+    module Versioned : sig
+      type ('a, 'b) request = ('a, 'b) Versioned.Staged.request
 
-    val prepare_notification :
-         t
-      -> 'a Public.Notification.t
-      -> ( 'a Public.Notification.versioned
-         , Versioned.Negotiation_error.t )
-         result
-         fiber
+      type 'a notification = 'a Versioned.Staged.notification
+
+      val prepare_request :
+           t
+        -> ('a, 'b) Decl.Request.witness
+        -> (('a, 'b) request, Negotiation_error.t) result fiber
+
+      val prepare_notification :
+           t
+        -> 'a Decl.Notification.witness
+        -> ('a notification, Negotiation_error.t) result fiber
+    end
 
     val request :
          ?id:Id.t
       -> t
-      -> ('a, 'b) Public.Request.versioned
+      -> ('a, 'b) Versioned.request
       -> 'a
       -> ('b, Response.Error.t) result fiber
 
-    val notification : t -> 'a Public.Notification.versioned -> 'a -> unit fiber
+    val notification : t -> 'a Versioned.notification -> 'a -> unit fiber
 
     val disconnected : t -> unit fiber
 
@@ -127,11 +123,11 @@ module Client = struct
       val request :
            ?id:Id.t
         -> t
-        -> ('a, 'b) Public.Request.versioned
+        -> ('a, 'b) Versioned.request
         -> 'a
         -> ('b, Response.Error.t) result fiber
 
-      val notification : t -> 'a Public.Notification.versioned -> 'a -> unit
+      val notification : t -> 'a Versioned.notification -> 'a -> unit
 
       val submit : t -> unit fiber
     end
@@ -387,24 +383,28 @@ module Client = struct
         t.next_id <- t.next_id + 1;
         Id.make id
 
-    let prepare_request t (decl : _ Decl.Request.witness) =
-      let+ handler = t.handler in
-      V.Handler.prepare_request handler decl
+    module Versioned = struct
+      type ('a, 'b) request = ('a, 'b) Versioned.Staged.request
 
-    let request ?id t ({ encode_req; decode_resp } : _ Versioned.Staged.request)
-        req =
+      type 'a notification = 'a Versioned.Staged.notification
+
+      let prepare_request t (decl : _ Decl.Request.witness) =
+        let+ handler = t.handler in
+        V.Handler.prepare_request handler decl
+
+      let prepare_notification (type a) t (decl : a Decl.Notification.witness) =
+        let+ handler = t.handler in
+        V.Handler.prepare_notification handler decl
+    end
+
+    let request ?id t ({ encode_req; decode_resp } : _ Versioned.request) req =
       let id = gen_id t id in
       let req = encode_req req in
       let* res = request_untyped t (id, req) in
       parse_response t decode_resp res
 
-    let prepare_notification (type a) t (decl : a Decl.Notification.witness) =
-      let+ handler = t.handler in
-      V.Handler.prepare_notification handler decl
-
-    let make_notification (type a) t
-        ({ encode } : a Versioned.Staged.notification) (n : a)
-        (k : Call.t -> 'a) : 'a =
+    let make_notification (type a) t ({ encode } : a Versioned.notification)
+        (n : a) (k : Call.t -> 'a) : 'a =
       let call = encode n in
       match t.running with
       | true -> k call
@@ -420,8 +420,7 @@ module Client = struct
         in
         raise (Response.Error.E err)
 
-    let notification (type a) t (stg : a Versioned.Staged.notification) (n : a)
-        =
+    let notification (type a) t (stg : a Versioned.notification) (n : a) =
       make_notification t stg n (fun call ->
           send t (Some [ Notification call ]))
 
@@ -429,8 +428,8 @@ module Client = struct
 
     module Stream = struct
       type nonrec 'a t =
-        { poll : (Id.t, 'a option) Versioned.Staged.request
-        ; cancel : Id.t Versioned.Staged.notification
+        { poll : (Id.t, 'a option) Versioned.request
+        ; cancel : Id.t Versioned.notification
         ; client : t
         ; id : Id.t
         ; mutable next_pending : bool
@@ -502,8 +501,8 @@ module Client = struct
             t.pending <- Notification call :: t.pending)
 
       let request (type a b) ?id t
-          ({ encode_req; decode_resp } : (a, b) Versioned.Staged.request)
-          (req : a) : (b, _) result Fiber.t =
+          ({ encode_req; decode_resp } : (a, b) Versioned.request) (req : a) :
+          (b, _) result Fiber.t =
         let id = gen_id t.client id in
         let call = encode_req req in
         let ivar = prepare_request' t.client (id, call) in

@@ -5,7 +5,7 @@ module Client = Dune_rpc_impl.Client
 let send_shutdown cli =
   let open Fiber.O in
   let* decl =
-    Client.prepare_notification cli
+    Client.Versioned.prepare_notification cli
       Dune_rpc_private.Public.Notification.shutdown
   in
   match decl with

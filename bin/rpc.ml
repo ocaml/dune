@@ -32,7 +32,7 @@ let raise_rpc_error (e : Dune_rpc_private.Response.Error.t) =
 
 let request_exn client witness n =
   let open Fiber.O in
-  let* decl = Dune_rpc_impl.Client.prepare_request client witness in
+  let* decl = Dune_rpc_impl.Client.Versioned.prepare_request client witness in
   match decl with
   | Error e -> raise (Dune_rpc_private.Negotiation_error.E e)
   | Ok decl -> Dune_rpc_impl.Client.request client decl n

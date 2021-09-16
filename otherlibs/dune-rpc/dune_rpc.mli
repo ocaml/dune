@@ -362,7 +362,7 @@ module V1 : sig
 
       val get : build_dir:string -> (t option, exn) result fiber
 
-      val default : build_dir:string -> t
+      val default : ?is_win32:bool -> build_dir:string -> unit -> t
     end
 
     module Make (Fiber : sig
@@ -377,8 +377,6 @@ module V1 : sig
       end
     end) (Sys : sig
       val getenv : string -> string option
-
-      val is_win32 : unit -> bool
 
       val read_file : string -> (string, exn) result Fiber.t
 

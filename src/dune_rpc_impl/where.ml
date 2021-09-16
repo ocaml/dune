@@ -16,8 +16,6 @@ module Where =
     (struct
       let getenv = Env.get Env.initial
 
-      let is_win32 () = Sys.win32
-
       let read_file f = Ok (Io.String_path.read_file f)
 
       let readlink s =
@@ -48,7 +46,7 @@ let get () =
   | Error exn ->
     User_error.raise [ Pp.text "Unable to find dune rpc address"; Exn.pp exn ]
 
-let default () = Where.default ~build_dir:(Lazy.force root)
+let default () = Where.default ~build_dir:(Lazy.force root) ()
 
 let to_socket = function
   | `Unix p -> Unix.ADDR_UNIX p

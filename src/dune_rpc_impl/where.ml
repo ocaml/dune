@@ -14,8 +14,6 @@ module Where =
       end
     end)
     (struct
-      let getenv = Env.get Env.initial
-
       let read_file f = Ok (Io.String_path.read_file f)
 
       let readlink s =
@@ -41,7 +39,8 @@ let root =
        ~from:(Path.external_ Path.External.initial_cwd))
 
 let get () =
-  match Where.get ~build_dir:(Lazy.force root) with
+  let env = Env.initial |> Env.to_map |> Env.Map.to_list in
+  match Where.get ~env ~build_dir:(Lazy.force root) with
   | Ok s -> s
   | Error exn ->
     User_error.raise [ Pp.text "Unable to find dune rpc address"; Exn.pp exn ]

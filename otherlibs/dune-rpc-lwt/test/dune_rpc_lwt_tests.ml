@@ -8,7 +8,8 @@ open Dune_rpc_lwt.V1
 
 let connect ~root_dir =
   let build_dir = Filename.concat root_dir "_build" in
-  let* res = Where.get ~build_dir in
+  let env = Env.initial |> Env.to_map |> Env.Map.to_list in
+  let* res = Where.get ~env ~build_dir in
   match res with
   | Error e -> Lwt.fail e
   | Ok None ->

@@ -48,7 +48,7 @@ end = struct
   let cleanup t = Lazy.force t.cleanup
 
   let create desired_path =
-    let desired_path_s = Path.to_string desired_path in
+    let desired_path_s = Path.to_absolute_filename desired_path in
     if String.length desired_path_s <= max_path_length then
       let cleanup = make_cleanup ~symlink:None ~socket:desired_path in
       { symlink = None; socket = desired_path; cleanup; link = lazy () }

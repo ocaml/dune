@@ -32,20 +32,21 @@ module Where =
         | exception (Unix.Unix_error _ as e) -> Error e
     end)
 
-let root =
+let build_dir =
   lazy
-    (Path.reach
-       (Path.build Path.Build.root)
-       ~from:(Path.external_ Path.External.initial_cwd))
+    (let build_dir = Path.Build.to_string Path.Build.root in
+     match String.drop_prefix build_dir ~prefix:(Sys.getcwd () ^ "/") with
+     | None -> build_dir
+     | Some s -> Filename.concat "." s)
 
 let get () =
   let env = Env.initial |> Env.to_map |> Env.Map.to_list in
-  match Where.get ~env ~build_dir:(Lazy.force root) with
+  match Where.get ~env ~build_dir:(Lazy.force build_dir) with
   | Ok s -> s
   | Error exn ->
     User_error.raise [ Pp.text "Unable to find dune rpc address"; Exn.pp exn ]
 
-let default () = Where.default ~build_dir:(Lazy.force root) ()
+let default () = Where.default ~build_dir:(Lazy.force build_dir) ()
 
 let to_socket = function
   | `Unix p -> Unix.ADDR_UNIX p

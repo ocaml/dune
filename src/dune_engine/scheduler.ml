@@ -106,7 +106,13 @@ module Signal = struct
   let name t = Signal.name (to_int t)
 end
 
-module Thread = struct
+module Thread : sig
+  val spawn : (unit -> 'a) -> unit
+
+  val delay : float -> unit
+
+  val wait_signal : int list -> int
+end = struct
   include Thread
 
   let block_signals =
@@ -608,7 +614,7 @@ end = struct
       ; running_count = 0
       }
     in
-    ignore (Thread.create run t : Thread.t);
+    Thread.spawn (fun () -> run t);
     t
 end
 
@@ -665,7 +671,7 @@ end = struct
         if n = 3 then sys_exit 1
     done
 
-  let init q = ignore (Thread.create run q : Thread.t)
+  let init q = Thread.spawn (fun () -> run q)
 end
 
 type status =

@@ -89,7 +89,7 @@ module Make (Fiber : sig
 
     val ( let+ ) : 'a t -> ('a -> 'b) -> 'b t
   end
-end) (Sys : sig
+end) (IO : sig
   val read_file : string -> (string, exn) result Fiber.t
 
   val readlink : string -> (string option, exn) result Fiber.t
@@ -119,7 +119,7 @@ end) : S with type 'a fiber := 'a Fiber.t = struct
       | Error e -> Fiber.return (Error (E (Invalid_where e))))
     | None -> (
       let of_file f =
-        let+ contents = Sys.read_file f in
+        let+ contents = IO.read_file f in
         match contents with
         | Error e -> Error e
         | Ok contents -> (
@@ -128,7 +128,7 @@ end) : S with type 'a fiber := 'a Fiber.t = struct
           | Ok s -> Ok (Some s))
       in
       let file = Filename.concat build_dir rpc_socket_relative_to_build_dir in
-      let** analyze = Sys.analyze_path file in
+      let** analyze = IO.analyze_path file in
       match analyze with
       | `Other -> Fiber.return (Ok None)
       | `Normal_file -> of_file file
@@ -137,7 +137,7 @@ end) : S with type 'a fiber := 'a Fiber.t = struct
         if String.length file < 104 then
           unix file
         else
-          let** readlink = Sys.readlink file in
+          let** readlink = IO.readlink file in
           match readlink with
           | None -> unix file
           | Some p ->

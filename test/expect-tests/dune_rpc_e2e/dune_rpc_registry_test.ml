@@ -84,12 +84,12 @@ let%expect_test "turn on dune watch and wait until the connection is listed" =
                 let+ refresh = Poll_active.poll poll in
                 match refresh with
                 | Error _ -> None
-                | Ok { Registry.added; removed; errored } -> (
-                  if List.is_non_empty removed then
+                | Ok r -> (
+                  if List.is_non_empty (Registry.Refresh.removed r) then
                     Code_error.raise "removed should be empty" [];
-                  if List.is_non_empty errored then
+                  if List.is_non_empty (Registry.Refresh.errored r) then
                     Code_error.raise "errored should be empty" [];
-                  match added with
+                  match Registry.Refresh.added r with
                   | [ a ] -> Some a
                   | [] -> None
                   | _ :: _ ->

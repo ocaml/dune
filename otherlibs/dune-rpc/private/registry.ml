@@ -122,11 +122,21 @@ let create config = { config; last_mtime = None; current = [] }
 
 let current t = t.current
 
-type refresh =
-  { added : Dune.t list
-  ; removed : Dune.t list
-  ; errored : (string * exn) list
-  }
+module Refresh = struct
+  type t =
+    { added : Dune.t list
+    ; removed : Dune.t list
+    ; errored : (string * exn) list
+    }
+
+  let empty = { added = []; removed = []; errored = [] }
+
+  let added t = t.added
+
+  let removed t = t.removed
+
+  let errored t = t.errored
+end
 
 module Poll (Fiber : sig
   type 'a t
@@ -149,8 +159,6 @@ end) (IO : sig
 end) =
 struct
   open Fiber.O
-
-  let empty_refresh = { added = []; removed = []; errored = [] }
 
   let ( let** ) x f =
     let* x = x in
@@ -175,7 +183,7 @@ struct
         false
     in
     if skip then
-      Fiber.return (Ok empty_refresh)
+      Fiber.return (Ok Refresh.empty)
     else
       let++ results =
         let** contents = IO.scandir dir in
@@ -208,7 +216,7 @@ struct
       let module Set = Dune.Set in
       let new_current = Set.of_list new_current in
       let current = Set.of_list current in
-      { added = Set.to_list (Set.diff new_current current)
+      { Refresh.added = Set.to_list (Set.diff new_current current)
       ; removed = Set.to_list (Set.diff current new_current)
       ; errored
       }

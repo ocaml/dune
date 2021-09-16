@@ -42,11 +42,15 @@ val create : Config.t -> t
 
 val current : t -> Dune.t list
 
-type refresh =
-  { added : Dune.t list
-  ; removed : Dune.t list
-  ; errored : (string * exn) list
-  }
+module Refresh : sig
+  type t
+
+  val added : t -> Dune.t list
+
+  val removed : t -> Dune.t list
+
+  val errored : t -> (string * exn) list
+end
 
 module Poll (Fiber : sig
   type 'a t
@@ -67,5 +71,5 @@ end) (IO : sig
 
   val read_file : string -> (string, exn) result Fiber.t
 end) : sig
-  val poll : t -> (refresh, exn) result Fiber.t
+  val poll : t -> (Refresh.t, exn) result Fiber.t
 end

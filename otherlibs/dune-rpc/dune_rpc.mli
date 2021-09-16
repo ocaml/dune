@@ -378,7 +378,7 @@ module V1 : sig
 
         val ( let+ ) : 'a t -> ('a -> 'b) -> 'b t
       end
-    end) (Sys : sig
+    end) (IO : sig
       val read_file : string -> (string, exn) result Fiber.t
 
       val readlink : string -> (string option, exn) result Fiber.t

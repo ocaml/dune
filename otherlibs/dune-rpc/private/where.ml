@@ -70,7 +70,7 @@ module type S = sig
   type 'a fiber
 
   val get :
-       env:(string * string) list
+       env:(string -> string option)
     -> build_dir:string
     -> (t option, exn) result fiber
 
@@ -112,7 +112,7 @@ end) : S with type 'a fiber := 'a Fiber.t = struct
 
   let get ~env ~build_dir : (t option, exn) result Fiber.t =
     let open Fiber.O in
-    match List.assoc_opt _DUNE_RPC env with
+    match env _DUNE_RPC with
     | Some d -> (
       match of_string d with
       | Ok s -> Fiber.return (Ok (Some s))

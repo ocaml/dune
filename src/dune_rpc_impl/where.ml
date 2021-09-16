@@ -40,7 +40,7 @@ let build_dir =
      | Some s -> Filename.concat "." s)
 
 let get () =
-  let env = Env.initial |> Env.to_map |> Env.Map.to_list in
+  let env = Env.get Env.initial in
   match Where.get ~env ~build_dir:(Lazy.force build_dir) with
   | Ok s -> s
   | Error exn ->

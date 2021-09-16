@@ -11,8 +11,7 @@ open Stdune
 let xdg =
   lazy
     (let env_map =
-       let env = Env.to_map Env.initial in
-       Env.Map.update env "HOME" ~f:(function
+       Env.update Env.initial ~var:"HOME" ~f:(function
          | Some _ as s -> s
          | None -> (
            let uid = Unix.getuid () in
@@ -20,4 +19,4 @@ let xdg =
            | exception Not_found -> None
            | s -> Some s.pw_dir))
      in
-     Xdg.of_assoc (Env.Map.to_list env_map))
+     Xdg.create ~env:(Env.get env_map) ())

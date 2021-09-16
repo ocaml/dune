@@ -1,5 +1,5 @@
 type t =
-  { env : (string * string) list
+  { env : string -> string option
   ; win32 : bool
   ; home_dir : string
   ; mutable cache_dir : string
@@ -11,7 +11,7 @@ type t =
 let ( / ) = Filename.concat
 
 let make t env_var unix_default win32_default =
-  match List.assoc_opt env_var t.env with
+  match t.env env_var with
   | Some s -> s
   | None ->
     if t.win32 then
@@ -31,22 +31,22 @@ let data_dir t =
   let home = t.home_dir in
   make t "XDG_DATA_HOME"
     (home / ".local" / "share")
-    (match List.assoc_opt "AppData" t.env with
+    (match t.env "AppData" with
     | Some s -> s
     | None -> "")
 
-let of_assoc ?win32 env =
+let create ?win32 ~env () =
   let win32 =
     match win32 with
     | None -> Sys.win32
     | Some s -> s
   in
   let home_dir =
-    match List.assoc_opt "HOME" env with
+    match env "HOME" with
     | Some s -> s
     | None ->
       if win32 then
-        match List.assoc_opt "AppData" env with
+        match env "AppData" with
         | None -> ""
         | Some s -> s
       else
@@ -65,7 +65,7 @@ let of_assoc ?win32 env =
   t.cache_dir <- cache_dir t;
   t.config_dir <- config_dir t;
   t.data_dir <- data_dir t;
-  t.runtime_dir <- List.assoc_opt "XDG_RUNTIME_DIR" env;
+  t.runtime_dir <- env "XDG_RUNTIME_DIR";
   t
 
 let home_dir t = t.home_dir

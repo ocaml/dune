@@ -361,7 +361,7 @@ module V1 : sig
       type 'a fiber
 
       val get :
-           env:(string * string) list
+           env:(string -> string option)
         -> build_dir:string
         -> (t option, exn) result fiber
 

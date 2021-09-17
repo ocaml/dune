@@ -72,7 +72,7 @@ let memo =
 let invalidate_path path =
   match Memo.Expert.previously_evaluated_cell memo path with
   | None -> Memo.Invalidation.empty
-  | Some cell -> Memo.Cell.invalidate cell
+  | Some cell -> Memo.Cell.invalidate ~reason:(Path_changed path) cell
 
 let init ~dune_file_watcher =
   match !t_ref with

@@ -1344,18 +1344,59 @@ let get_call_stack = Call_stack.get_call_stack_without_state
 module Invalidation = struct
   type ('i, 'o) memo = ('i, 'o) t
 
-  module Leaf = struct
+  (* This is currently used only for informing the user about the reason for
+     restarting a build. *)
+  module Reason = struct
+    (* CR-someday amokhov: Add other reasons, e.g. a watched environment
+       variable changed. *)
     type t =
-      | Invalidate_node : _ Dep_node.t -> t
-      | Clear_cache : ('input, ('input, 'output) Dep_node.t) Store.t -> t
+      | Unknown
+      | Path_changed of Path.t
+      | Event_queue_overflow
+      | Upgrade
+      | Test
+
+    let to_dyn = function
+      | Unknown -> Dyn.Variant ("Unknown", [])
+      | Path_changed path -> Dyn.Variant ("Path_changed", [ Path.to_dyn path ])
+      | Event_queue_overflow -> Dyn.Variant ("Event_queue_overflow", [])
+      | Upgrade -> Dyn.Variant ("Upgrade", [])
+      | Test -> Dyn.Variant ("Test", [])
+
+    let to_string_hum = function
+      | Unknown -> None
+      | Path_changed path -> Some (Path.to_string path ^ " changed")
+      | Event_queue_overflow ->
+        Some "Event queue overflow; full rebuild required"
+      | Upgrade -> Some "Dune upgrader initiated a full rebuild"
+      | Test -> Some "Rebuild initiated by an internal testsuite"
+  end
+
+  module Leaf = struct
+    type kind =
+      | Invalidate_node : _ Dep_node.t -> kind
+      | Clear_cache : ('input, ('input, 'output) Dep_node.t) Store.t -> kind
       | Clear_caches
 
-    let to_dyn (t : t) =
-      match t with
-      | Invalidate_node node ->
-        Stack_frame_without_state.to_dyn (T node.without_state)
-      | Clear_cache _ -> Dyn.Variant ("Clear_cache", [ Dyn.Opaque ])
-      | Clear_caches -> Dyn.Variant ("Clear_caches", [])
+    type t =
+      { kind : kind
+      ; reason : Reason.t
+      }
+
+    let to_dyn { kind; reason } =
+      let kind =
+        match kind with
+        | Invalidate_node dep_node ->
+          Dyn.Variant
+            ( "Invalidate_node"
+            , [ Stack_frame_without_state.to_dyn (T dep_node.without_state) ] )
+        | Clear_cache _ -> Dyn.Variant ("Clear_cache", [ Dyn.Opaque ])
+        | Clear_caches -> Dyn.Variant ("Clear_caches", [])
+      in
+      let reason = Reason.to_dyn reason in
+      Dyn.Tuple [ kind; reason ]
+
+    let to_string_hum { reason; _ } = Reason.to_string_hum reason
   end
 
   module T = struct
@@ -1379,8 +1420,9 @@ module Invalidation = struct
 
   include (Monoid.Make (T) : Monoid.S with type t := t)
 
-  let execute_leaf = function
-    | Leaf.Invalidate_node node -> invalidate_dep_node node
+  let execute_leaf { Leaf.kind; _ } =
+    match kind with
+    | Invalidate_node dep_node -> invalidate_dep_node dep_node
     | Clear_cache store -> invalidate_store store
     | Clear_caches -> Caches.clear ()
 
@@ -1411,17 +1453,45 @@ module Invalidation = struct
 
   let to_dyn t = Dyn.List (List.map (to_list t) ~f:Leaf.to_dyn)
 
+  let details_hum ?(max_elements = 5) t =
+    assert (max_elements > 0);
+    let details =
+      List.filter_map ~f:Leaf.to_string_hum (to_list t)
+      |> String.Set.of_list |> String.Set.to_list
+    in
+    (* CR-someday amokhov: Right now we just take first [max_elements] elements
+       from the sorted list, but we could prioritise some reasons over others,
+       e.g. if there is a global reset because of [Event_queue_overflow], it may
+       be better to ensure that this reason is included. *)
+    match List.truncate ~max_length:max_elements details with
+    | `Not_truncated details -> details
+    | `Truncated truncated_details -> (
+      let extra_message =
+        let remaining_details = List.length details - max_elements in
+        let plural =
+          match remaining_details > 1 with
+          | true -> "s"
+          | false -> ""
+        in
+        sprintf " (plus %d more change%s)" remaining_details plural
+      in
+      match List.destruct_last truncated_details with
+      | None -> assert false
+      | Some (all_but_last, last) -> all_but_last @ [ last ^ extra_message ])
+
   let execute x = execute x []
 
   let is_empty = function
     | Empty -> true
     | _ -> false
 
-  let clear_caches = Leaf Clear_caches
+  let clear_caches ~reason = Leaf { kind = Clear_caches; reason }
 
-  let invalidate_cache { cache; _ } = Leaf (Clear_cache cache)
+  let invalidate_cache ~reason { cache; _ } =
+    Leaf { kind = Clear_cache cache; reason }
 
-  let invalidate_node (node : _ Dep_node.t) = Leaf (Invalidate_node node)
+  let invalidate_node ~reason (dep_node : _ Dep_node.t) =
+    Leaf { kind = Invalidate_node dep_node; reason }
 end
 
 module Current_run = struct
@@ -1431,7 +1501,8 @@ module Current_run = struct
 
   let exec () = exec memo ()
 
-  let invalidate () = Invalidation.invalidate_node (dep_node memo ())
+  let invalidate ~reason =
+    Invalidation.invalidate_node ~reason (dep_node memo ())
 end
 
 let current_run () = Current_run.exec ()
@@ -1578,8 +1649,11 @@ struct
 end
 
 let reset invalidation =
+  (* We rely on [invalidation] to list the actual reasons for the reset, which
+     justifies the [~reason:Unknown] below. *)
+  let invalidate_current_run = Current_run.invalidate ~reason:Test in
   Invalidation.execute
-    (Invalidation.combine invalidation (Current_run.invalidate ()));
+    (Invalidation.combine invalidation invalidate_current_run);
   Run.restart ();
   Counters.reset ()
 

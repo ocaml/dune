@@ -105,8 +105,6 @@ module Make (Fiber : sig
 end) (IO : sig
   val read_file : string -> (string, exn) result Fiber.t
 
-  val readlink : string -> (string option, exn) result Fiber.t
-
   val analyze_path :
     string -> ([ `Unix_socket | `Normal_file | `Other ], exn) result Fiber.t
 end) : S with type 'a fiber := 'a Fiber.t = struct
@@ -126,10 +124,11 @@ end) : S with type 'a fiber := 'a Fiber.t = struct
   let get ~env ~build_dir : (t option, exn) result Fiber.t =
     let open Fiber.O in
     match env _DUNE_RPC with
-    | Some d -> (
-      match of_string d with
-      | Ok s -> Fiber.return (Ok (Some s))
-      | Error e -> Fiber.return (Error (E (Invalid_where e))))
+    | Some d ->
+      Fiber.return
+        (match of_string d with
+        | Ok s -> Ok (Some s)
+        | Error e -> Error (E (Invalid_where e)))
     | None -> (
       let of_file f =
         let+ contents = IO.read_file f in
@@ -145,25 +144,5 @@ end) : S with type 'a fiber := 'a Fiber.t = struct
       match analyze with
       | `Other -> Fiber.return (Ok None)
       | `Normal_file -> of_file file
-      | `Unix_socket ->
-        let unix file = Fiber.return (Ok (Some (`Unix file))) in
-        if String.length file < 104 then
-          unix file
-        else
-          let** readlink = IO.readlink file in
-          unix
-            (match readlink with
-            | None -> file
-            | Some p ->
-              let shorter s1 s2 =
-                if String.length s1 > String.length s2 then
-                  s2
-                else
-                  s1
-              in
-              shorter file
-                (if Filename.is_relative p then
-                  Filename.concat (Filename.dirname file) p
-                else
-                  p)))
+      | `Unix_socket -> Fiber.return (Ok (Some (`Unix file))))
 end

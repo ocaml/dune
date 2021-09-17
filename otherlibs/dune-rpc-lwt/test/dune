@@ -3,6 +3,9 @@
  (inline_tests
   (deps
    (package dune)))
+ (foreign_stubs
+  (language c)
+  (names realpath_stubs))
  (libraries
   dune_rpc
   csexp_rpc

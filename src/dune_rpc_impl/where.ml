@@ -16,12 +16,6 @@ module Where =
     (struct
       let read_file f = Ok (Io.String_path.read_file f)
 
-      let readlink s =
-        match Unix.readlink s with
-        | s -> Ok (Some s)
-        | exception Unix.Unix_error (Unix.EINVAL, _, _) -> Ok None
-        | exception (Unix.Unix_error _ as e) -> Error e
-
       let analyze_path s =
         match (Unix.stat s).st_kind with
         | Unix.S_SOCK -> Ok `Unix_socket

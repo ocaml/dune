@@ -6,6 +6,8 @@ open Lwt.Syntax
 open Dune_rpc.V1
 open Dune_rpc_lwt.V1
 
+external realpath : string -> string = "dune_realpath"
+
 let connect ~root_dir =
   let build_dir = Filename.concat root_dir "_build" in
   let env = Env.get Env.initial in
@@ -14,7 +16,24 @@ let connect ~root_dir =
   | Error e -> Lwt.fail e
   | Ok None ->
     Lwt.fail_with (sprintf "unable to establish to connection in %s" build_dir)
-  | Ok (Some w) -> connect_chan w
+  | Ok (Some where) ->
+    let where =
+      match where with
+      | `Unix addr ->
+        (* this hackery is needed because the temp dir we wrote the socket to is
+           symlinked on a mac *)
+        let addr =
+          match realpath addr with
+          | s -> s
+          | exception Unix.Unix_error _ -> addr
+        in
+        `Unix
+          (match String.drop_prefix addr ~prefix:(Sys.getcwd () ^ "/") with
+          | None -> addr
+          | Some addr -> Filename.concat "." addr)
+      | _ as s -> s
+    in
+    connect_chan where
 
 let build_watch ~root_dir ~suppress_stderr =
   Lwt_process.open_process_none ~stdin:`Close

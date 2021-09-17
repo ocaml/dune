@@ -36,6 +36,15 @@
  (files   dune-describe.1))
 
 (rule
+ (with-stdout-to dune-diagnostics.1
+  (run dune diagnostics --help=groff)))
+
+(install
+ (section man)
+ (package dune)
+ (files   dune-diagnostics.1))
+
+(rule
  (with-stdout-to dune-exec.1
   (run dune exec --help=groff)))
 

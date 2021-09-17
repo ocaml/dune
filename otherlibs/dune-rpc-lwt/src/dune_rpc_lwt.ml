@@ -88,15 +88,6 @@ module V1 = struct
         let read_file s : (string, exn) result Lwt.t =
           Lwt_result.catch (Lwt_io.with_file ~mode:Input s Lwt_io.read)
 
-        let readlink s =
-          Lwt.catch
-            (fun () ->
-              let+ res = Lwt_unix.readlink s in
-              Ok (Some res))
-            (function
-              | Unix.Unix_error (Unix.EINVAL, _, _) -> Lwt.return (Ok None)
-              | exn -> Lwt.return (Error exn))
-
         let analyze_path s =
           Lwt.try_bind
             (fun () -> Lwt_unix.stat s)

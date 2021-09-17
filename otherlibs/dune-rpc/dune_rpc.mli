@@ -429,8 +429,6 @@ module V1 : sig
     end) (IO : sig
       val read_file : string -> (string, exn) result Fiber.t
 
-      val readlink : string -> (string option, exn) result Fiber.t
-
       val analyze_path :
         string -> ([ `Unix_socket | `Normal_file | `Other ], exn) result Fiber.t
     end) : S with type 'a fiber := 'a Fiber.t

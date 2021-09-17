@@ -1,4 +1,7 @@
 (library
  (name csexp_rpc)
  (synopsis "Threaded client & server that uses csexp for communication")
- (libraries stdune dune_util csexp dune_engine fiber))
+ (libraries stdune dune_util csexp dune_engine fiber)
+ (foreign_stubs
+  (language c)
+  (names pthread_chdir_stubs)))

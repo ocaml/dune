@@ -8,12 +8,16 @@ module Poller : sig
 
   val compare : t -> t -> Ordering.t
 
-  val sub_id : t -> Sub.Id.t
+  val name : t -> Procedures.Poll.Name.t
 end
 
 module Session : sig
+  module Id : Stdune.Id.S
+
   (** Session representing a connected client with a custom state. *)
   type 'a t
+
+  val id : _ t -> Id.t
 
   (* [initialize session] returns the initialize request used to initialize this
      session *)
@@ -30,7 +34,7 @@ module Session : sig
 
   (** [notification session n a] Send notification [a] defined by [n] to
       [session] *)
-  val notification : _ t -> 'a Decl.notification -> 'a -> unit Fiber.t
+  val notification : _ t -> 'a Decl.Notification.witness -> 'a -> unit Fiber.t
 
   val compare : 'a t -> 'a t -> Ordering.t
 
@@ -39,6 +43,36 @@ module Session : sig
   val to_dyn : ('a -> Dyn.t) -> 'a t -> Dyn.t
 
   val has_poller : _ t -> Poller.t -> bool
+
+  (** A ['a Session.Stage1.t] represents a session prior to version negotiation.
+
+      Used during initialization. *)
+  module Stage1 : sig
+    type 'a t
+
+    val id : _ t -> Id.t
+
+    val initialize : _ t -> Initialize.Request.t
+
+    val get : 'a t -> 'a
+
+    val set : 'a t -> 'a -> unit
+
+    val active : _ t -> bool
+
+    val compare : 'a t -> 'a t -> Ordering.t
+
+    val request_close : 'a t -> unit Fiber.t
+
+    val to_dyn : ('a -> Dyn.t) -> 'a t -> Dyn.t
+
+    (** Register a callback to be called once version negotiation has concluded.
+        At most one callback can be set at once; calling this function multiple
+        times for the same session will override previous invocations.
+
+        The registered callback is guaranteed to be called at most once. *)
+    val register_upgrade_callback : _ t -> (Menu.t -> unit) -> unit
+  end
 end
 
 module Handler : sig
@@ -49,22 +83,11 @@ module Handler : sig
 
   type 'a t
 
-  (** information about a request or notification *)
-  type info
-
-  (** this request/notification is private and will be only be used internally
-      by dune *)
-  val private_ : info
-
-  (** [public ?until ~since ()] request/notification available [since] and until
-      [until] (if it's provided) *)
-  val public : ?until:int * int -> since:int * int -> unit -> info
-
   val create :
        ?on_terminate:('a Session.t -> unit Fiber.t)
          (** Termination hook. It is guaranteed that the session state will not
              modified after this function is called *)
-    -> on_init:('a Session.t -> Initialize.Request.t -> 'a Fiber.t)
+    -> on_init:('a Session.Stage1.t -> Initialize.Request.t -> 'a Fiber.t)
          (** Initiation hook. It's guaranteed to be called before any
              requests/notifications. It's job is to initialize the session
              state. *)
@@ -73,30 +96,24 @@ module Handler : sig
     -> unit
     -> 'a t
 
-  (** Callback function for requests or notifications *)
-  type ('state, 'input, 'output) callback
-
-  (** Create a callback that can access the input and current session. *)
-  val callback' :
-    info -> ('s Session.t -> 'a -> 'b Fiber.t) -> ('s, 'a, 'b) callback
-
-  (** Create a callback that can only access the input. XXX perhaps we don't
-      need this? *)
-  val callback : info -> ('a -> 'b Fiber.t) -> ('s, 'a, 'b) callback
-
-  (** [request handler callback decl] Add a request to [handler] using
+  (** [implement_request handler decl callback] Add a request to [handler] using
       [callback] as the implementation and [decl] as the metadata *)
-  val request : 's t -> ('s, 'a, 'b) callback -> ('a, 'b) Decl.request -> unit
+  val implement_request :
+    's t -> ('a, 'b) Decl.request -> ('s Session.t -> 'a -> 'b Fiber.t) -> unit
 
-  (** [notification handler callback decl] Add a notification to [handler] using
-      [callback] as the implementation and [decl] as the metadata *)
-  val notification :
-    's t -> ('s, 'a, unit) callback -> 'a Decl.notification -> unit
+  (** [implement_notification handler decl callback] Add a notification to
+      [handler] using [callback] as the implementation and [decl] as the
+      metadata *)
+  val implement_notification :
+    's t -> 'a Decl.notification -> ('s Session.t -> 'a -> unit Fiber.t) -> unit
 
-  val poll :
+  (** [declare_notification handler decl] Declares that this server may send
+      notifications according to metadata [decl]. *)
+  val declare_notification : 's t -> 'a Decl.notification -> unit
+
+  val implement_poll :
        's t
-    -> info
-    -> 'a Sub.t
+    -> 'a Procedures.Poll.t
     -> on_poll:('s Session.t -> Poller.t -> 'a option Fiber.t)
     -> on_cancel:('s Session.t -> Poller.t -> unit Fiber.t)
     -> unit

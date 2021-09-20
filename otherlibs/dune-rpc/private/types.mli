@@ -32,17 +32,35 @@ module Version : sig
   val sexp : t Conv.value
 end
 
+module Method_name : sig
+  type t = string
+
+  val sexp : t Conv.value
+
+  module Map = Stdune.String.Map
+  module Table = Stdune.String.Table
+end
+
+module Method_version : sig
+  type t = int
+
+  val sexp : t Conv.value
+
+  module Set = Stdune.Int.Set
+  module Map = Stdune.Int.Map
+end
+
 module Call : sig
   (** Represents a single rpc call. Request or notification. *)
 
   type t =
-    { method_ : string
+    { method_ : Method_name.t
     ; params : Sexp.t
     }
 
   val to_dyn : t -> Dyn.t
 
-  val create : ?params:Sexp.t -> method_:string -> unit -> t
+  val create : ?params:Sexp.t -> method_:Method_name.t -> unit -> t
 
   val fields : (t, Conv.fields) Conv.t
 end
@@ -52,7 +70,6 @@ module Response : sig
     type kind =
       | Invalid_request
       | Code_error
-      | Version_error
 
     type t =
       { payload : Sexp.t option
@@ -86,10 +103,19 @@ module Request : sig
   type t = Id.t * Call.t
 end
 
+module Protocol : sig
+  type t = int
+
+  val latest_version : t
+
+  val sexp : t Conv.value
+end
+
 module Initialize : sig
   module Request : sig
     type t =
-      { version : int * int
+      { dune_version : int * int
+      ; protocol_version : int
       ; id : Id.t
       }
 
@@ -97,7 +123,9 @@ module Initialize : sig
 
     val of_call : Call.t -> version:int * int -> (t, Response.Error.t) result
 
-    val version : t -> int * int
+    val dune_version : t -> int * int
+
+    val protocol_version : t -> int
 
     val id : t -> Id.t
 
@@ -108,6 +136,30 @@ module Initialize : sig
     type t
 
     val create : unit -> t
+
+    val to_response : t -> Sexp.t
+
+    val sexp : t Conv.value
+  end
+end
+
+module Version_negotiation : sig
+  module Request : sig
+    type t = private Menu of (string * int list) list
+
+    val create : (string * int list) list -> t
+
+    val sexp : t Conv.value
+
+    val to_call : t -> Call.t
+
+    val of_call : Call.t -> version:Version.t -> (t, Response.Error.t) result
+  end
+
+  module Response : sig
+    type t = private Selected of (string * int) list
+
+    val create : (string * int) list -> t
 
     val to_response : t -> Sexp.t
 
@@ -155,19 +207,133 @@ module Packet : sig
 end
 
 module Decl : sig
-  type ('req, 'resp) request =
-    { method_ : string
-    ; req : 'req Conv.value
-    ; resp : 'resp Conv.value
+  type 'gen t =
+    { method_ : Method_name.t
+    ; key : 'gen Int.Map.t Stdune.Univ_map.Key.t
     }
 
-  type 'req notification =
-    { method_ : string
-    ; req : 'req Conv.value
-    }
+  module Generation : sig
+    type ('wire_req, 'wire_resp, 'real_req, 'real_resp) conv =
+      { req : 'wire_req Conv.value
+      ; resp : 'wire_resp Conv.value
+      ; upgrade_req : 'wire_req -> 'real_req
+      ; downgrade_req : 'real_req -> 'wire_req
+      ; upgrade_resp : 'wire_resp -> 'real_resp
+      ; downgrade_resp : 'real_resp -> 'wire_resp
+      }
 
-  val notification : method_:string -> 'a Conv.value -> 'a notification
+    type (_, _) t =
+      | T :
+          ('wire_req, 'wire_resp, 'real_req, 'real_resp) conv
+          -> ('real_req, 'real_resp) t
+  end
 
-  val request :
-    method_:string -> 'a Conv.value -> 'b Conv.value -> ('a, 'b) request
+  module Request : sig
+    type ('req, 'resp) gen = Method_version.t * ('req, 'resp) Generation.t
+
+    val make_gen :
+         req:'wire_req Conv.value
+      -> resp:'wire_resp Conv.value
+      -> upgrade_req:('wire_req -> 'req)
+      -> downgrade_req:('req -> 'wire_req)
+      -> upgrade_resp:('wire_resp -> 'resp)
+      -> downgrade_resp:('resp -> 'wire_resp)
+      -> version:Method_version.t
+      -> ('req, 'resp) gen
+
+    val make_current_gen :
+         req:'req Conv.value
+      -> resp:'resp Conv.value
+      -> version:Method_version.t
+      -> ('req, 'resp) gen
+
+    type ('req, 'resp) witness = ('req, 'resp) Generation.t t
+
+    type nonrec ('req, 'resp) t =
+      { decl : ('req, 'resp) witness
+      ; generations : ('req, 'resp) gen list
+      }
+
+    val make :
+         method_:Method_name.t
+      -> generations:('req, 'resp) gen list
+      -> ('req, 'resp) t
+
+    val witness : ('a, 'b) t -> ('a, 'b) witness
+  end
+
+  module Notification : sig
+    type 'payload gen = Method_version.t * ('payload, unit) Generation.t
+
+    val make_gen :
+         conv:'wire Conv.value
+      -> upgrade:('wire -> 'model)
+      -> downgrade:('model -> 'wire)
+      -> version:Method_version.t
+      -> 'model gen
+
+    val make_current_gen :
+      conv:'model Conv.value -> version:Method_version.t -> 'model gen
+
+    type 'payload witness = ('payload, unit) Generation.t t
+
+    type nonrec 'payload t =
+      { decl : 'payload witness
+      ; generations : 'payload gen list
+      }
+
+    val make :
+      method_:Method_name.t -> generations:'payload gen list -> 'payload t
+
+    val witness : 'a t -> 'a witness
+  end
+
+  type ('a, 'b) request = ('a, 'b) Request.t
+
+  type 'a notification = 'a Notification.t
+end
+
+module type Fiber = sig
+  type 'a t
+
+  val return : 'a -> 'a t
+
+  val fork_and_join_unit : (unit -> unit t) -> (unit -> 'a t) -> 'a t
+
+  val parallel_iter : (unit -> 'a option t) -> f:('a -> unit t) -> unit t
+
+  val finalize : (unit -> 'a t) -> finally:(unit -> unit t) -> 'a t
+
+  module O : sig
+    val ( let* ) : 'a t -> ('a -> 'b t) -> 'b t
+
+    val ( let+ ) : 'a t -> ('a -> 'b) -> 'b t
+  end
+
+  module Ivar : sig
+    type 'a fiber
+
+    type 'a t
+
+    val create : unit -> 'a t
+
+    val read : 'a t -> 'a fiber
+
+    val fill : 'a t -> 'a -> unit fiber
+  end
+  with type 'a fiber := 'a t
+end
+
+module type Sys = sig
+  type 'a fiber
+
+  val getenv : string -> string option
+
+  val is_win32 : unit -> bool
+
+  val read_file : string -> string fiber
+
+  val readlink : string -> string option fiber
+
+  val analyze_path : string -> [ `Unix_socket | `Normal_file | `Other ] fiber
 end

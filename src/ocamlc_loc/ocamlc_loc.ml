@@ -1,5 +1,4 @@
 module Re = Dune_re
-module Dyn = Stdune.Dyn
 
 type severity =
   | Error

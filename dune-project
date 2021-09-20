@@ -134,25 +134,39 @@ understood by dune language."))
 
 (package
  (name dune-rpc)
- (depends (stdune-unstable (= :version)) (pp (>= 1.1.0)) csexp)
+ (depends csexp dyn xdg (stdune-unstable (= :version)) (pp (>= 1.1.0)))
  (synopsis "Communicate with dune using rpc")
  (description "Library to connect and control a running dune instance"))
 
 (package
  (name dune-rpc-lwt)
  (depends
+  result
   (dune-rpc (= :version))
-  (stdune-unstable (= :version))
   (csexp (>= 1.4.0))
   lwt)
  (synopsis "Communicate with dune using rpc and Lwt")
  (description "Specialization of dune-rpc to Lwt"))
 
 (package
+ (name dyn)
+ (synopsis "Dynamic type")
+ (depends
+  (ocaml (>= 4.08.0))
+  pp)
+ (description "Dynamic type"))
+
+(package
+ (name xdg)
+ (synopsis "XDG Base Directory Specification")
+ (description "https://specifications.freedesktop.org/basedir-spec/basedir-spec-latest.html"))
+
+(package
  (name stdune-unstable)
  (synopsis "Dune's unstable standard library")
  (depends
   (ocaml (>= 4.08.0))
+  dyn
   pp
   csexp)
  (description "This library offers no backwards compatibility guarantees. Use at your own risk."))

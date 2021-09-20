@@ -1,6 +1,3 @@
-open! Stdune
-open Import
-
 type t =
   | Disabled
   | Enabled

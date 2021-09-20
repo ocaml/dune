@@ -8,11 +8,13 @@ open Dune_rpc_lwt.V1
 
 let connect ~root_dir =
   let build_dir = Filename.concat root_dir "_build" in
-  let* res = Where.get ~build_dir in
+  let env = Env.get Env.initial in
+  let* res = Where.get ~env ~build_dir in
   match res with
-  | None ->
+  | Error e -> Lwt.fail e
+  | Ok None ->
     Lwt.fail_with (sprintf "unable to establish to connection in %s" build_dir)
-  | Some w -> connect_chan w
+  | Ok (Some w) -> connect_chan w
 
 let build_watch ~root_dir ~suppress_stderr =
   Lwt_process.open_process_none ~stdin:`Close
@@ -65,12 +67,26 @@ let%expect_test "run and connect" =
        let* rpc = rpc in
        Client.connect rpc initialize ~f:(fun t ->
            print_endline "started session";
-           let* res = Client.request t Request.ping () in
+           let* ping = Client.Versioned.prepare_request t Request.ping in
+           let ping =
+             match ping with
+             | Ok p -> p
+             | Error _ -> assert false
+           in
+           let* res = Client.request t ping () in
            match res with
            | Error _ -> failwith "unexpected"
            | Ok () ->
              print_endline "received ping. shutting down.";
-             Client.notification t Notification.shutdown ())
+             let* shutdown =
+               Client.Versioned.prepare_notification t Notification.shutdown
+             in
+             let shutdown =
+               match shutdown with
+               | Ok s -> s
+               | Error _ -> assert false
+             in
+             Client.notification t shutdown ())
      in
      let run_build =
        let+ res = build#status in

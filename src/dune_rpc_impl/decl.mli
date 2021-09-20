@@ -1,18 +1,29 @@
 open Dune_rpc_private
-open Dune_rpc_private.Decl
+
+(* Internal RPC requests *)
 
 module Build_outcome : sig
   type t = Dune_engine.Scheduler.Run.Build_outcome_for_rpc.t =
     | Success
     | Failure
+
+  val sexp : (t, Conv.values) Conv.t
 end
-
-val build : (string list, Build_outcome.t) request
-
-val shutdown : unit notification
 
 module Status : sig
-  type t = { clients : Id.t list }
+  module Menu : sig
+    type t =
+      | Uninitialized
+      | Menu of (string * int) list
+
+    val sexp : (t, Conv.values) Conv.t
+  end
+
+  type t = { clients : (Id.t * Menu.t) list }
+
+  val sexp : (t, Conv.values) Conv.t
 end
 
-val status : (unit, Status.t) request
+val build : (string list, Build_outcome.t) Decl.Request.t
+
+val status : (unit, Status.t) Decl.Request.t

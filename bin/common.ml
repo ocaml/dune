@@ -947,7 +947,7 @@ let term =
   let root = Workspace_root.create ~specified_by_user:root in
   let rpc =
     match watch with
-    | Yes _ -> Some (Dune_rpc_impl.Server.create ())
+    | Yes _ -> Some (Dune_rpc_impl.Server.create ~root:root.dir)
     | No -> None
   in
   let stats =

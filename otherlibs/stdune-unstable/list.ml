@@ -229,3 +229,14 @@ let split_while xs ~f =
     | t -> (rev acc, t)
   in
   loop [] xs
+
+let truncate ~max_length xs =
+  let rec loop acc length xs =
+    if length >= max_length then
+      `Truncated (rev acc)
+    else
+      match xs with
+      | [] -> `Not_truncated (rev acc)
+      | hd :: tl -> loop (hd :: acc) (length + 1) tl
+  in
+  loop [] 0 xs

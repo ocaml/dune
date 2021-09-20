@@ -58,21 +58,24 @@ end
 module Scheduler = struct
   include Dune_engine.Scheduler
 
-  let maybe_clear_screen (dune_config : Dune_config.t) =
+  let maybe_clear_screen ~details_hum (dune_config : Dune_config.t) =
     match dune_config.terminal_persistence with
     | Clear_on_rebuild -> Console.reset ()
     | Preserve ->
       Console.print_user_message
         (User_message.make
-           [ Pp.nop
-           ; Pp.tag User_message.Style.Success
-               (Pp.verbatim "********** NEW BUILD **********")
-           ; Pp.nop
-           ])
+           (List.map details_hum ~f:(fun reason_hum ->
+                Pp.tag User_message.Style.Details (Pp.verbatim reason_hum))
+           @ [ Pp.nop
+             ; Pp.tag User_message.Style.Success
+                 (Pp.verbatim "********** NEW BUILD **********")
+             ; Pp.nop
+             ]))
 
   let on_event dune_config _config = function
     | Scheduler.Run.Event.Tick -> Console.Status_line.refresh ()
-    | Scheduler.Run.Event.Source_files_changed -> maybe_clear_screen dune_config
+    | Source_files_changed { details_hum } ->
+      maybe_clear_screen ~details_hum dune_config
     | Build_interrupted ->
       Console.Status_line.set_live (fun () ->
           let progression = Build_system.get_current_progress () in

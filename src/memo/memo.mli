@@ -180,16 +180,45 @@ module Invalidation : sig
 
   include Monoid.S with type t := t
 
+  (** Reasons for invalidating a node or cache, currently used only to inform
+      the user why Dune is restarting, see [reasons_hum].
+
+      - [Unknown]: This should only be used in situations where the reason is
+        provided by other parts of the invalidation data structure. We should
+        strive to be able to always explain the user the reason for a restart.
+
+      - [Path_changed]: Dune restarted because a path it watched changed.
+
+      - [Event_queue_overflow]: Dune file watcher's queue overflow, which
+        requires a full rebuild.
+
+      - [Upgrade]: Dune upgrader initiated a full rebuild.
+
+      - [Test]: Use this reason in testsuites. *)
+  module Reason : sig
+    type t =
+      | Unknown
+      | Path_changed of Path.t
+      | Event_queue_overflow
+      | Upgrade
+      | Test
+  end
+
   val is_empty : t -> bool
 
   (** Clear all memoization tables. We use it if the incremental mode is not
       enabled. *)
-  val clear_caches : t
+  val clear_caches : reason:Reason.t -> t
 
   (** Invalidate all computations stored in a given [memo] table. *)
-  val invalidate_cache : _ memo -> t
+  val invalidate_cache : reason:Reason.t -> _ memo -> t
 
   val to_dyn : t -> Dyn.t
+
+  (** A list of human-readable strings explaining the reasons for invalidation.
+      The list is truncated to [max_elements] elements, with [max_elements = 5]
+      by default. Raises if [max_elements <= 0]. *)
+  val details_hum : ?max_elements:int -> t -> string list
 end
 
 (** Notify the memoization system that the build system has restarted. This
@@ -375,7 +404,7 @@ module Cell : sig
 
   (** Mark this cell as invalid, forcing recomputation of this value. The
       consumers may be recomputed or not, depending on early cutoff. *)
-  val invalidate : _ t -> Invalidation.t
+  val invalidate : reason:Invalidation.Reason.t -> _ t -> Invalidation.t
 end
 
 (** Create a "memoization cell" that focuses on a single input/output pair of a

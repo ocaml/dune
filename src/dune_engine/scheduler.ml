@@ -365,7 +365,9 @@ end = struct
                 []
               | Filesystem_event (Fs_memo_event event) -> [ Fs_event event ]
               | Filesystem_event Queue_overflow ->
-                [ Invalidation Memo.Invalidation.clear_caches ])
+                [ Invalidation
+                    (Memo.Invalidation.clear_caches ~reason:Event_queue_overflow)
+                ])
           in
           match !terminated with
           | true -> Some File_system_watcher_terminated
@@ -704,7 +706,7 @@ module Handler = struct
 
     type t =
       | Tick
-      | Source_files_changed
+      | Source_files_changed of { details_hum : string list }
       | Build_interrupted
       | Build_finish of build_result
   end
@@ -1102,7 +1104,7 @@ module Run = struct
   module Build_outcome = struct
     type t =
       | Shutdown
-      | Cancelled_due_to_file_changes
+      | Cancelled_due_to_file_changes of { details_hum : string list }
       | Finished of (unit, [ `Already_reported ]) Result.t
   end
 
@@ -1128,7 +1130,8 @@ module Run = struct
     | Shutting_down -> Build_outcome.Shutdown
     | Restarting_build invalidations ->
       t.status <- Standing_by invalidations;
-      Build_outcome.Cancelled_due_to_file_changes
+      let details_hum = Memo.Invalidation.details_hum invalidations in
+      Build_outcome.Cancelled_due_to_file_changes { details_hum }
     | Building ->
       let build_result : Handler.Event.build_result =
         match res with
@@ -1165,15 +1168,16 @@ module Run = struct
         let handle_outcome (outcome : Build_outcome.t) =
           match outcome with
           | Shutdown -> Fiber.return Shutdown
-          | Cancelled_due_to_file_changes ->
-            t.handler t.config Source_files_changed;
+          | Cancelled_due_to_file_changes { details_hum } ->
+            t.handler t.config (Source_files_changed { details_hum });
             Fiber.return Proceed
           | Finished _res ->
             let ivar = Fiber.Ivar.create () in
             t.status <- Waiting_for_file_changes ivar;
             let* invalidations = Fiber.Ivar.read ivar in
             t.status <- Standing_by invalidations;
-            t.handler t.config Source_files_changed;
+            let details_hum = Memo.Invalidation.details_hum invalidations in
+            t.handler t.config (Source_files_changed { details_hum });
             Fiber.return Proceed
         in
         Fiber.return (step, handle_outcome))
@@ -1208,7 +1212,7 @@ module Run = struct
               (match res with
               | Finished (Ok _) -> Build_outcome_for_rpc.Success
               | Finished (Error _)
-              | Cancelled_due_to_file_changes
+              | Cancelled_due_to_file_changes _
               | Shutdown ->
                 Build_outcome_for_rpc.Failure)
           in

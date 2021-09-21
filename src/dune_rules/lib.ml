@@ -309,12 +309,7 @@ module T = struct
     ; project : Dune_project.t option
     ; (* these fields cannot be forced until the library is instantiated *)
       default_implementation : t Resolve.t Memo.Lazy.t option
-    ; (* This is mutable to avoid this error:
-
-         {[ This kind of expression is not allowed as right-hand side of `let
-         rec' }] *)
-      mutable sub_systems :
-        Sub_system0.Instance.t Memo.Lazy.t Sub_system_name.Map.t
+    ; sub_systems : Sub_system0.Instance.t Memo.Lazy.t Sub_system_name.Map.t
     ; modules : Modules.t Memo.Lazy.t option
     ; src_dirs : Path.Set.t Memo.Lazy.t
     }
@@ -1231,34 +1226,35 @@ end = struct
             Path.Set.map ~f:Path.drop_optional_build_context
               (Modules.source_dirs modules))
     in
-    let t =
-      let open Resolve.O in
-      let resolved_selects = resolved >>| fun r -> r.selects in
-      let pps = resolved >>= fun r -> r.pps in
-      let re_exports = resolved >>= fun r -> r.re_exports in
-      { info
-      ; name
-      ; unique_id
-      ; requires
-      ; ppx_runtime_deps
-      ; pps
-      ; resolved_selects
-      ; re_exports
-      ; user_written_deps = Lib_info.user_written_deps info
-      ; sub_systems = Sub_system_name.Map.empty
-      ; implements
-      ; default_implementation
-      ; lib_config = db.lib_config
-      ; project
-      ; modules
-      ; src_dirs
-      }
+    let rec t =
+      lazy
+        (let open Resolve.O in
+        let resolved_selects = resolved >>| fun r -> r.selects in
+        let pps = resolved >>= fun r -> r.pps in
+        let re_exports = resolved >>= fun r -> r.re_exports in
+        { info
+        ; name
+        ; unique_id
+        ; requires
+        ; ppx_runtime_deps
+        ; pps
+        ; resolved_selects
+        ; re_exports
+        ; user_written_deps = Lib_info.user_written_deps info
+        ; implements
+        ; default_implementation
+        ; lib_config = db.lib_config
+        ; project
+        ; modules
+        ; src_dirs
+        ; sub_systems =
+            Sub_system_name.Map.mapi (Lib_info.sub_systems info)
+              ~f:(fun name info ->
+                Memo.Lazy.create (fun () ->
+                    Sub_system.instantiate name info (Lazy.force t) ~resolve))
+        })
     in
-    t.sub_systems <-
-      Lib_info.sub_systems info
-      |> Sub_system_name.Map.mapi ~f:(fun name info ->
-             Memo.Lazy.create (fun () ->
-                 Sub_system.instantiate name info t ~resolve));
+    let t = Lazy.force t in
     let res =
       let hidden =
         match hidden with

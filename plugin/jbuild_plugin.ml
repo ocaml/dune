@@ -1,12 +1,15 @@
 let () =
-  Hashtbl.add Toploop.directive_table "require"
-    (Toploop.Directive_string ignore);
-  Hashtbl.add Toploop.directive_table "use"
-    (Toploop.Directive_string
+  let open Toploop in
+  let add_directive name desc =
+    add_directive name desc { section = ""; doc = "" }
+  in
+  add_directive "require" (Directive_string ignore);
+  add_directive "use"
+    (Directive_string
        (fun _ ->
          failwith "#use is not allowed inside a dune file in OCaml syntax"));
-  Hashtbl.add Toploop.directive_table "use_mod"
-    (Toploop.Directive_string
+  add_directive "use_mod"
+    (Directive_string
        (fun _ ->
          failwith "#use is not allowed inside a dune file in OCaml syntax"))
 

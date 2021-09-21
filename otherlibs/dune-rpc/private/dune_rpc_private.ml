@@ -692,6 +692,7 @@ module Client = struct
               ~menu
           in
           let* () = Fiber.Ivar.fill handler_var handler in
+          client.handler_initialized <- true;
           Fiber.finalize
             (fun () -> f client)
             ~finally:(fun () -> Chan.write chan None)

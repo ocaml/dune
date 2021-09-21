@@ -1,3 +1,9 @@
+Unreleased
+----------
+
+- No longer reference deprecated Toploop functions when using dune files in
+  OCaml syntax. (#4834, fixes #4830, @nojb)
+
 2.9.1 (07/09/2021)
 ------------------
 

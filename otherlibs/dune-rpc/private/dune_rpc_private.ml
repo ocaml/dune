@@ -691,8 +691,8 @@ module Client = struct
               ~session_version:(fun () -> client.initialize.dune_version)
               ~menu
           in
-          let* () = Fiber.Ivar.fill handler_var handler in
           client.handler_initialized <- true;
+          let* () = Fiber.Ivar.fill handler_var handler in
           Fiber.finalize
             (fun () -> f client)
             ~finally:(fun () -> Chan.write chan None)

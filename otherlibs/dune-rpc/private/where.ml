@@ -46,7 +46,7 @@ type error = Invalid_where of string
 
 exception E of error
 
-let rpc_socket_relative_to_build_dir = "rpc/dune"
+let rpc_socket_relative_to_build_dir = ".rpc/dune"
 
 let _DUNE_RPC = "DUNE_RPC"
 

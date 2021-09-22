@@ -128,4 +128,5 @@
  ; see https://github.com/ocaml/dune/pull/4728
  (cram
   (enabled_if
-   (<> "macosx" %{ocaml-config:system}))))
+   (<> "macosx" %{ocaml-config:system}))
+  (deps helpers.sh)))

@@ -766,15 +766,17 @@ struct
   let map_reduce ~traverse ~f =
     let* root = M.memo_build (root ()) in
     let nb_path_visited = ref 0 in
-    Console.Status_line.set_live (fun () ->
-        Some (Pp.textf "Scanned %i directories" !nb_path_visited));
+    let overlay =
+      Console.Status_line.add_overlay
+        (Live (fun () -> Pp.textf "Scanned %i directories" !nb_path_visited))
+    in
     let+ res =
       map_reduce root ~traverse ~f:(fun dir ->
           incr nb_path_visited;
           if !nb_path_visited mod 100 = 0 then Console.Status_line.refresh ();
           f dir)
     in
-    Console.Status_line.set_constant None;
+    Console.Status_line.remove_overlay overlay;
     res
 end
 

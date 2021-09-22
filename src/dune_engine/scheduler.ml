@@ -1048,7 +1048,7 @@ end = struct
 
   let run_and_cleanup t f =
     let res = run t f in
-    Console.Status_line.set_constant None;
+    Console.Status_line.clear ();
     match kill_and_wait_for_all_processes t with
     | Got_signal -> Error Already_reported
     | Ok -> res

@@ -117,9 +117,9 @@ let delete_very_recent_entries () =
 let dump () =
   if !needs_dumping && Path.build_dir_exists () then (
     needs_dumping := false;
-    Console.Status_line.set_live_temporarily
-      (fun () -> Some (Pp.hbox (Pp.text "Saving digest db...")))
-      (fun () ->
+    Console.Status_line.with_overlay
+      (Live (fun () -> Pp.hbox (Pp.text "Saving digest db...")))
+      ~f:(fun () ->
         delete_very_recent_entries ();
         P.dump db_file (Lazy.force cache))
   )

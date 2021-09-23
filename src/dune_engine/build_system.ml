@@ -208,9 +208,9 @@ end = struct
   let dump () =
     if !needs_dumping && Path.build_dir_exists () then (
       needs_dumping := false;
-      Console.Status_line.set_live_temporarily
-        (fun () -> Some (Pp.hbox (Pp.text "Saving build trace db...")))
-        (fun () -> P.dump file (Lazy.force t))
+      Console.Status_line.with_overlay
+        (Live (fun () -> Pp.hbox (Pp.text "Saving build trace db...")))
+        ~f:(fun () -> P.dump file (Lazy.force t))
     )
 
   (* CR-someday amokhov: If this happens to be executed after we've cleared the

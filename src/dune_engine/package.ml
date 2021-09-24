@@ -433,7 +433,7 @@ module Info = struct
     ; maintainers = None
     }
 
-  let default =
+  let example =
     { source =
         Some
           (Host

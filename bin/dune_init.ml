@@ -353,7 +353,7 @@ module Component = struct
       let packages =
         Package.Name.Map.singleton (Package.name package) package
       in
-      let info = Package.Info.default in
+      let info = Package.Info.example in
       Dune_project.anonymous ~dir ~packages ~info ()
       |> Dune_project.set_dialects Dialect.DB.empty
       |> Dune_project.set_generate_opam_files opam_file_gen

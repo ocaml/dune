@@ -120,8 +120,8 @@ module Info : sig
 
   val maintainers : t -> string list option
 
-  (** Default package info (e.g., for project initialization ) *)
-  val default : t
+  (** example package info (used for project initialization ) *)
+  val example : t
 
   val empty : t
 

@@ -25,7 +25,7 @@ To initialize a project that will build an executable program, run the following
 
     dune init proj project_name
 
-This create a project directory that includes the following contents:
+This creates a project directory that includes the following contents:
 
 .. code::
 
@@ -103,7 +103,7 @@ To initialize a project for an OCaml library, run the following (replacing
 
     dune init proj --kind=lib project_name
 
-This create a project directory that includes the following contents:
+This creates a project directory that includes the following contents:
 
 .. code::
 

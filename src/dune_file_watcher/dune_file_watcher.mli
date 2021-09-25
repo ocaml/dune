@@ -34,6 +34,8 @@ module Fs_memo_event : sig
     { path : Path.t
     ; kind : kind
     }
+
+  val to_dyn : t -> Dyn.t
 end
 
 module Event : sig

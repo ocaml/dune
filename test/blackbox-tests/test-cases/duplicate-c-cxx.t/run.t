@@ -16,10 +16,10 @@ c_names and cxx_names with overlapping names in the same stanza
 c_names with overlapping names in different stanzas
   $ dune build --root diff-stanza @all 2>&1 | dune_cmd sanitize
   Entering directory 'diff-stanza'
-  File "dune", line 9, characters 10-13:
-  9 |  (c_names foo))
+  File "dune", line 4, characters 10-13:
+  4 |  (c_names foo))
                 ^^^
   Error: Multiple definitions for the same object file "foo$ext_obj". See another
-  definition at dune:4.
+  definition at dune:9.
   Hint: You can avoid the name clash by renaming one of the objects, or by
   placing it into a different directory.

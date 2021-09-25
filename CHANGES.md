@@ -1,6 +1,9 @@
 Unreleased
 ----------
 
+- Fix `foreign_stubs` inside a `tests` stanza. Previously, dune would crash
+  when this field was present (#4942, fix #4946, @rgrinberg)
+
 - Add the `enabled_if` field to `inline_tests` within the `library` stanza.
   This allows us to disable executing the inline tests while still allowing for
   compilation (#4939, @rgrinberg)

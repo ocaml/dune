@@ -310,11 +310,11 @@ Testsuite for the (foreign_library ...) stanza.
   > EOF
 
   $ ./sdune build
-  File "lib/dune", line 6, characters 1-22:
-  6 |  (archive_name addmul)
+  File "lib/dune", line 2, characters 1-22:
+  2 |  (archive_name addmul)
        ^^^^^^^^^^^^^^^^^^^^^
   Error: Multiple foreign libraries with the same archive name "addmul"; the
-  name has already been taken in lib/dune:2.
+  name has already been taken in lib/dune:6.
   [1]
 
 ----------------------------------------------------------------------------------

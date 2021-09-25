@@ -124,23 +124,25 @@ let check_no_qualified (loc, include_subdirs) =
 
 let make (d : _ Dir_with_dune.t) ~(sources : Foreign.Sources.Unresolved.t)
     ~(lib_config : Lib_config.t) =
-  let libs, exes =
-    List.filter_partition_map d.data ~f:(fun stanza ->
+  let libs, foreign_libs, exes =
+    List.fold_left d.data ~init:([], [], [])
+      ~f:(fun ((libs, foreign_libs, exes) as acc) stanza ->
         match (stanza : Stanza.t) with
         | Library lib ->
           let all = eval_foreign_stubs d lib.buildable.foreign_stubs ~sources in
-          Left (Left (lib, all))
+          ((lib, all) :: libs, foreign_libs, exes)
         | Foreign_library library ->
           let all = eval_foreign_stubs d [ library.stubs ] ~sources in
-          Left (Right (library.archive_name, (library.archive_name_loc, all)))
-        | Executables exes ->
-          let all =
-            eval_foreign_stubs d exes.buildable.foreign_stubs ~sources
-          in
-          Right (exes, all)
-        | _ -> Skip)
+          ( libs
+          , (library.archive_name, (library.archive_name_loc, all))
+            :: foreign_libs
+          , exes )
+        | Executables exe
+        | Tests { exes = exe; _ } ->
+          let all = eval_foreign_stubs d exe.buildable.foreign_stubs ~sources in
+          (libs, foreign_libs, (exe, all) :: exes)
+        | _ -> acc)
   in
-  let libs, foreign_libs = List.partition_map libs ~f:Fun.id in
   let libraries =
     match
       Lib_name.Map.of_list_map libs ~f:(fun (lib, m) ->

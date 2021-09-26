@@ -37,7 +37,14 @@ let filteri l ~f =
   in
   filteri l 0
 
-let concat_map t ~f = ListLabels.concat_map t ~f
+let concat_map t ~f =
+  let rec aux f acc = function
+    | [] -> rev acc
+    | x :: l ->
+      let xs = f x in
+      aux f (rev_append xs acc) l
+  in
+  aux f [] t
 
 let unordered_concat =
   let rec outer acc = function

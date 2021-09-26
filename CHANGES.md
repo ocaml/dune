@@ -1,6 +1,9 @@
 Unreleased
 ----------
 
+- Allow spaces in the directory argument of the `subdir` stanza (#4943, fixes
+  #4907, @rgrinberg)
+
 - Add a `%{toolchain}` expansion variable (#4899, fixes #3949, @rgrinberg)
 
 - Include dependencies of executables when creating toplevels (either `dune

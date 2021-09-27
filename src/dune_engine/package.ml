@@ -444,8 +444,9 @@ module Info = struct
     ; license = Some "LICENSE"
     ; authors = Some [ "Author Name" ]
     ; maintainers = Some [ "Maintainer Name" ]
-    ; documentation = Some "https://url/to/documentation"
-    (* homepage and bug_reports are inferred from the source *)
+    ; documentation =
+        Some "https://url/to/documentation"
+        (* homepage and bug_reports are inferred from the source *)
     ; homepage = None
     ; bug_reports = None
     }

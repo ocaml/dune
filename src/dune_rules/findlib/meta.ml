@@ -238,7 +238,6 @@ let builtins ~stdlib_dir ~version:ocaml_version =
   in
   let dynlink = simple "dynlink" [] ~dir:"+" in
   let bytes = dummy "bytes" in
-  let result = dummy "result" in
   let uchar = dummy "uchar" in
   let seq = dummy "seq" in
   let threads =
@@ -292,12 +291,6 @@ let builtins ~stdlib_dir ~version:ocaml_version =
       ; bytes
       ; ocamldoc
       ]
-    in
-    let base =
-      if Ocaml_version.pervasives_includes_result ocaml_version then
-        result :: base
-      else
-        base
     in
     let base =
       if Ocaml_version.stdlib_includes_uchar ocaml_version then

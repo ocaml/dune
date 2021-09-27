@@ -20,8 +20,6 @@ let supports_response_file version = version >= (4, 05, 0)
 
 let ocamlmklib_supports_response_file version = version >= (4, 08, 0)
 
-let pervasives_includes_result version = version >= (4, 03, 0)
-
 let stdlib_includes_uchar version = version >= (4, 03, 0)
 
 let stdlib_includes_bigarray version = version >= (4, 07, 0)

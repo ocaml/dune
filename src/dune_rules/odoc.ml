@@ -237,14 +237,11 @@ let odoc_include_flags ctx pkg requires =
     (let open Resolve.O in
     let+ libs = requires in
     let paths =
-      libs
-      |> List.fold_left
-           ~f:(fun paths lib ->
-             match Lib.Local.of_lib lib with
-             | None -> paths
-             | Some lib ->
-               Path.Set.add paths (Path.build (Paths.odocs ctx (Lib lib))))
-           ~init:Path.Set.empty
+      List.fold_left libs ~init:Path.Set.empty ~f:(fun paths lib ->
+          match Lib.Local.of_lib lib with
+          | None -> paths
+          | Some lib ->
+            Path.Set.add paths (Path.build (Paths.odocs ctx (Lib lib))))
     in
     let paths =
       match pkg with
@@ -357,8 +354,8 @@ let setup_toplevel_index_rule sctx =
              | Some v -> sp {| <span class="version">%s</span>|} v
            in
            Some (sp "<li>%s%s</li>" link version_suffix))
+    |> String.concat ~sep:"\n      "
   in
-  let list_items = String.concat ~sep:"\n      " list_items in
   let html =
     sp
       {|<!DOCTYPE html>
@@ -586,13 +583,12 @@ let setup_package_aliases sctx (pkg : Package.t) =
     let dir = Path.Build.append_source ctx.build_dir pkg_dir in
     Alias.doc ~dir
   in
-  Rules.Produce.Alias.add_deps alias
-    (Action_builder.deps
-       (Dep.html_alias ctx (Pkg name)
-        :: (libs_of_pkg sctx ~pkg:name
-           |> List.map ~f:(fun lib -> Dep.html_alias ctx (Lib lib)))
-       |> Dune_engine.Dep.Set.of_list_map ~f:(fun f -> Dune_engine.Dep.alias f)
-       ))
+  Dep.html_alias ctx (Pkg name)
+  :: (libs_of_pkg sctx ~pkg:name
+     |> List.map ~f:(fun lib -> Dep.html_alias ctx (Lib lib)))
+  |> Dune_engine.Dep.Set.of_list_map ~f:(fun f -> Dune_engine.Dep.alias f)
+  |> Action_builder.deps
+  |> Rules.Produce.Alias.add_deps alias
 
 let entry_modules_by_lib sctx lib =
   let info = Lib.Local.info lib in
@@ -670,9 +666,8 @@ let setup_package_odoc_rules_def =
         if String.Map.mem mlds "index" then
           Memo.Build.return mlds
         else
-          let entry_modules = entry_modules ~pkg in
           let gen_mld = Paths.gen_mld_dir ctx pkg ++ "index.mld" in
-          let* entry_modules = entry_modules sctx in
+          let* entry_modules = entry_modules sctx ~pkg in
           let+ () =
             add_rule sctx
               (Action_builder.write_file gen_mld
@@ -701,19 +696,18 @@ let global_rules sctx =
         setup_package_aliases sctx pkg)
   in
   let* action =
-    stanzas
-    |> Memo.Build.List.concat_map ~f:(fun (w : _ Dir_with_dune.t) ->
-           Memo.Build.List.filter_map w.data ~f:(function
-             | Dune_file.Library (l : Dune_file.Library.t) -> (
-               match l.visibility with
-               | Public _ -> Memo.Build.return None
-               | Private _ ->
-                 let scope = SC.find_scope_by_dir sctx w.ctx_dir in
-                 Library.best_name l
-                 |> Lib.DB.find_even_when_hidden (Scope.libs scope)
-                 >>| fun lib ->
-                 Option.value_exn lib |> Lib.Local.of_lib_exn |> Option.some)
-             | _ -> Memo.Build.return None))
+    Memo.Build.List.concat_map stanzas ~f:(fun (w : _ Dir_with_dune.t) ->
+        Memo.Build.List.filter_map w.data ~f:(function
+          | Dune_file.Library (l : Dune_file.Library.t) -> (
+            match l.visibility with
+            | Public _ -> Memo.Build.return None
+            | Private _ ->
+              let scope = SC.find_scope_by_dir sctx w.ctx_dir in
+              Library.best_name l
+              |> Lib.DB.find_even_when_hidden (Scope.libs scope)
+              >>| fun lib ->
+              Option.value_exn lib |> Lib.Local.of_lib_exn |> Option.some)
+          | _ -> Memo.Build.return None))
     >>| Dune_engine.Dep.Set.of_list_map ~f:(fun (lib : Lib.Local.t) ->
             Lib lib |> Dep.html_alias ctx |> Dune_engine.Dep.alias)
   in

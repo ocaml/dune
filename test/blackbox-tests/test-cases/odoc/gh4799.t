@@ -15,6 +15,3 @@ Private libraries attached to packages shouldn't be displayed in the index
   $ dune build @doc
   $ cat _build/default/_doc/_mlds/foo/index.mld
   {0 foo index}
-  {1 Library foo}
-  The entry point of this library is the module:
-  {!module-Foo}.

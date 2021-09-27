@@ -1,6 +1,9 @@
 Unreleased
 ----------
 
+- Do not list private libraries in package listings (#4945, fixes #4799,
+  @rgrinberg)
+
 - Fix `foreign_stubs` inside a `tests` stanza. Previously, dune would crash
   when this field was present (#4942, fix #4946, @rgrinberg)
 

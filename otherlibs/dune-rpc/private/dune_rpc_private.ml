@@ -245,15 +245,24 @@ module Client = struct
           t.read ()
     end
 
-    exception Invalid_session of Conv.error
+    type abort =
+      | Invalid_session of Conv.error
+      | Server_aborted of Message.t
+
+    exception Abort of abort
 
     let () =
       Printexc.register_printer (function
-        | Invalid_session error ->
-          Some
-            (Dyn.to_string
-               (Dyn.Encoder.constr "Invalid_session"
-                  [ Conv.dyn_of_error error ]))
+        | Abort error ->
+          let dyn =
+            match error with
+            | Invalid_session e ->
+              Dyn.Encoder.constr "Invalid_session" [ Conv.dyn_of_error e ]
+            | Server_aborted e ->
+              Dyn.Encoder.constr "Server_aborted"
+                [ Sexp.to_dyn (Message.to_sexp_unversioned e) ]
+          in
+          Some (Dyn.to_string dyn)
         | _ -> None)
 
     type t =
@@ -568,8 +577,7 @@ module Client = struct
           Format.eprintf "%s: %s@." message (Sexp.to_string payload));
         Fiber.return ()
 
-      let abort { Message.payload = _; message } =
-        failwith ("Fatal error from server: " ^ message)
+      let abort m = raise (Abort (Server_aborted m))
 
       let default = { log; abort }
 
@@ -634,7 +642,7 @@ module Client = struct
               Conv.of_sexp Packet.Reply.sexp ~version:initialize.dune_version
                 sexp
             with
-            | Error e -> raise (Invalid_session e)
+            | Error e -> raise (Abort (Invalid_session e))
             | Ok message -> message)
       in
       let builder = setup_versioning ~handler ~private_menu () in
@@ -656,7 +664,7 @@ module Client = struct
               Conv.of_sexp ~version:initialize.dune_version
                 Initialize.Response.sexp csexp
             with
-            | Error e -> raise (Invalid_session e)
+            | Error e -> raise (Abort (Invalid_session e))
             | Ok _resp -> (
               let id = Id.make (List [ Atom "version menu" ]) in
               let supported_versions =
@@ -674,7 +682,7 @@ module Client = struct
                   Conv.of_sexp ~version:initialize.dune_version
                     Version_negotiation.Response.sexp sexp
                 with
-                | Error e -> raise (Invalid_session e)
+                | Error e -> raise (Abort (Invalid_session e))
                 | Ok (Selected methods) -> (
                   match Menu.of_list methods with
                   | Ok m -> m

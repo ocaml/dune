@@ -104,8 +104,8 @@ let%expect_test "no methods in common" =
   [%expect.unreachable]
   [@@expect.uncaught_exn
     {|
-  (Failure
-    "Fatal error from server: Server and client have no method versions in common")
+  ( "Server_aborted\
+   \n  [ [ \"message\"; \"Server and client have no method versions in common\" ] ]")
   Trailing output
   ---------------
   server: finished. |}]

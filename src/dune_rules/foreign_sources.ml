@@ -125,32 +125,39 @@ let check_no_qualified (loc, include_subdirs) =
 let make (d : _ Dir_with_dune.t) ~(sources : Foreign.Sources.Unresolved.t)
     ~(lib_config : Lib_config.t) =
   let libs, foreign_libs, exes =
-    List.fold_left d.data ~init:([], [], [])
-      ~f:(fun ((libs, foreign_libs, exes) as acc) stanza ->
-        match (stanza : Stanza.t) with
-        | Library lib ->
-          let all = eval_foreign_stubs d lib.buildable.foreign_stubs ~sources in
-          ((lib, all) :: libs, foreign_libs, exes)
-        | Foreign_library library ->
-          let all = eval_foreign_stubs d [ library.stubs ] ~sources in
-          ( libs
-          , (library.archive_name, (library.archive_name_loc, all))
-            :: foreign_libs
-          , exes )
-        | Executables exe
-        | Tests { exes = exe; _ } ->
-          let all = eval_foreign_stubs d exe.buildable.foreign_stubs ~sources in
-          (libs, foreign_libs, (exe, all) :: exes)
-        | _ -> acc)
+    let libs, foreign_libs, exes =
+      List.fold_left d.data ~init:([], [], [])
+        ~f:(fun ((libs, foreign_libs, exes) as acc) stanza ->
+          match (stanza : Stanza.t) with
+          | Library lib ->
+            let all =
+              eval_foreign_stubs d lib.buildable.foreign_stubs ~sources
+            in
+            ((lib, all) :: libs, foreign_libs, exes)
+          | Foreign_library library ->
+            let all = eval_foreign_stubs d [ library.stubs ] ~sources in
+            ( libs
+            , (library.archive_name, (library.archive_name_loc, all))
+              :: foreign_libs
+            , exes )
+          | Executables exe
+          | Tests { exes = exe; _ } ->
+            let all =
+              eval_foreign_stubs d exe.buildable.foreign_stubs ~sources
+            in
+            (libs, foreign_libs, (exe, all) :: exes)
+          | _ -> acc)
+    in
+    List.(rev libs, rev foreign_libs, rev exes)
   in
   let () =
     let objects =
-      List.unordered_concat
-        [ List.rev_map libs ~f:snd
-        ; List.rev_map foreign_libs ~f:(fun (_, (_, sources)) -> sources)
-        ; List.rev_map exes ~f:snd
+      List.concat
+        [ List.map libs ~f:snd
+        ; List.map foreign_libs ~f:(fun (_, (_, sources)) -> sources)
+        ; List.map exes ~f:snd
         ]
-      |> List.unordered_concat_map ~f:(fun sources ->
+      |> List.concat_map ~f:(fun sources ->
              String.Map.to_list_map sources ~f:(fun _ (loc, source) ->
                  (Foreign.Source.object_name source ^ lib_config.ext_obj, loc)))
     in

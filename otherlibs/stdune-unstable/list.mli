@@ -18,10 +18,6 @@ val filteri : 'a t -> f:(int -> 'a -> bool) -> 'a t
 
 val concat_map : 'a t -> f:('a -> 'b t) -> 'b t
 
-val unordered_concat : 'a t t -> 'a t
-
-val unordered_concat_map : 'a t -> f:('a -> 'b t) -> 'b t
-
 val partition_map : 'a t -> f:('a -> ('b, 'c) Either.t) -> 'b t * 'c t
 
 val rev_map_append : 'a t -> 'b t -> f:('a -> 'b) -> 'b t

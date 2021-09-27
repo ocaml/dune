@@ -46,26 +46,6 @@ let concat_map t ~f =
   in
   aux f [] t
 
-let unordered_concat =
-  let rec outer acc = function
-    | [] -> acc
-    | x :: xs -> inner acc xs x
-  and inner acc ys = function
-    | [] -> outer acc ys
-    | x :: xs -> inner (x :: acc) ys xs
-  in
-  fun l -> outer [] l
-
-let unordered_concat_map =
-  let rec outer ~f acc = function
-    | [] -> acc
-    | x :: xs -> inner ~f acc xs (f x)
-  and inner ~f acc ys = function
-    | [] -> outer ~f acc ys
-    | x :: xs -> inner ~f (x :: acc) ys xs
-  in
-  fun l ~f -> outer ~f [] l
-
 let rec rev_map_append l1 l2 ~f =
   match l1 with
   | [] -> l2

@@ -568,12 +568,7 @@ end = struct
       | [] -> (
         match Package.Name.to_string name with
         | "dune" -> Memo.Build.return (Ok builtin_for_dune)
-        | _ -> (
-          match Package.Name.Map.find db.builtins name with
-          | None -> Memo.Build.return (Error Unavailable_reason.Not_found)
-          | Some meta ->
-            let+ builtin = load_builtin db meta in
-            Ok builtin))
+        | _ -> Memo.Build.return (Error Unavailable_reason.Not_found))
       | dir :: dirs -> (
         let dir = Path.relative dir (Package.Name.to_string name) in
         let* dir_exists = Fs_memo.path_exists dir in
@@ -599,7 +594,11 @@ end = struct
             | None -> loop dirs
             | Some p -> Memo.Build.return (Ok p)))
     in
-    loop db.paths
+    match Package.Name.Map.find db.builtins name with
+    | None -> loop db.paths
+    | Some meta ->
+      let+ builtin = load_builtin db meta in
+      Ok builtin
 end
 
 let memo =

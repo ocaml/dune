@@ -603,7 +603,12 @@ let entry_modules_by_lib sctx lib =
   >>| Modules.entry_modules
 
 let entry_modules sctx ~pkg =
-  let l = libs_of_pkg sctx ~pkg in
+  let l =
+    libs_of_pkg sctx ~pkg
+    |> List.filter ~f:(fun lib ->
+           Lib.Local.info lib |> Lib_info.status |> Lib_info.Status.is_private
+           |> not)
+  in
   let+ l =
     Memo.Build.parallel_map l ~f:(fun l ->
         let+ m = entry_modules_by_lib sctx l in

@@ -68,3 +68,6 @@ val ocamlopt_always_calls_library_linker : t -> bool
 
 (** Whether [Sys.opaque_identity] is in the standard library *)
 val has_sys_opaque_identity : t -> bool
+
+(** Whether [vmthreads] exists *)
+val has_vmthreads : t -> bool

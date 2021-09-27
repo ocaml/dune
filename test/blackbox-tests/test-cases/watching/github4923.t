@@ -31,10 +31,9 @@ how to build x.exe:
   $ touch b/blah
 
   $ build x.exe
-  Failure
+  Success
   $ _build/default/x.exe
-  _build/default/x.exe: not found
-  [127]
+  Hello, world!
 
   $ stop_dune
   waiting for inotify sync
@@ -42,5 +41,4 @@ how to build x.exe:
   Success, waiting for filesystem changes...
   waiting for inotify sync
   waited for inotify sync
-  Error: Don't know how to build x.exe
-  Had errors, waiting for filesystem changes...
+  Success, waiting for filesystem changes...

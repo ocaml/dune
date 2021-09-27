@@ -14,10 +14,7 @@ module Dune_file : sig
 
   type t
 
-  (** We release the memory taken by s-exps as soon as it is used, unless
-      [kind = Ocaml_script]. In which case that optimization is incorrect as we
-      need to re-parse in every context. *)
-  val get_static_sexp_and_possibly_destroy : t -> Dune_lang.Ast.t list
+  val get_static_sexp : t -> Dune_lang.Ast.t list
 
   val kind : t -> kind
 

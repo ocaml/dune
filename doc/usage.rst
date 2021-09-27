@@ -9,9 +9,6 @@ This section describe usage of dune from the shell.
 Initializing components
 =======================
 
-NOTE: The ``dune init`` command is still under development and subject to
-change.
-
 Dune's ``init`` subcommand provides limited support for generating dune file
 stanzas and folder structures to define components. ``dune init`` can be used to
 quickly add new projects, libraries, tests, or executables without having to

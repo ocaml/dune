@@ -13,7 +13,6 @@ module Kind : sig
 
   val to_string : t -> string
 
-  (* val kind_strings : string list *)
   val commands : (string * t) list
 end
 
@@ -32,6 +31,7 @@ end
 module Component : sig
   (** Options determining the details of a generated component *)
   module Options : sig
+    (** The common options shared by all components *)
     module Common : sig
       type t =
         { name : Dune_lang.Atom.t
@@ -46,10 +46,12 @@ module Component : sig
 
     val public_name_to_string : public_name -> string
 
+    (** Options for executable components *)
     module Executable : sig
       type t = { public : public_name option }
     end
 
+    (** Options for library components *)
     module Library : sig
       type t =
         { public : public_name option
@@ -57,12 +59,15 @@ module Component : sig
         }
     end
 
+    (** Options for test components *)
     module Test : sig
       (** NOTE: no options supported yet *)
       type t = unit
     end
 
+    (** Options for project components (which consist of several sub-components) *)
     module Project : sig
+      (** Determines whether this is a library project or an executable project *)
       module Template : sig
         type t =
           | Exec
@@ -96,7 +101,7 @@ module Component : sig
       }
   end
 
-  (** The supported types of components *)
+  (** All the the supported types of components *)
   type 'options t =
     | Executable : Options.Executable.t Options.t -> Options.Executable.t t
     | Library : Options.Library.t Options.t -> Options.Library.t t

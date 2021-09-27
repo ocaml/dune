@@ -568,7 +568,7 @@ end = struct
         Dune_project.load ~dir:path ~files:readdir.files
           ~infer_from_opam_files:true ~dir_status
       with
-      | None -> Dune_project.anonymous ~dir:path
+      | None -> Dune_project.anonymous ~dir:path ()
       | Some p -> p
     in
     let* readdir = Readdir.filter_files readdir project in

@@ -2,6 +2,8 @@
 Stanza reference
 ****************
 
+.. _dune-project:
+
 dune-project
 ============
 
@@ -54,6 +56,18 @@ Sets the version of the project:
 .. code:: scheme
 
     (version <version>)
+
+cram
+----
+
+Enable or disable cram-style tests for the project. See :ref:`cram-tests` for
+details.
+
+.. code:: scheme
+
+   (cram <status>)
+
+Where status is either ``enabled`` or ``disabled``.
 
 .. _implicit_transitive_deps:
 
@@ -385,6 +399,8 @@ Note that ``dune`` continues to be accepted even after enabling this option, but
 if a file named ``dune-file`` is found in a directory, it will take precedence
 over ``dune``.
 
+.. _dune-files:
+
 dune
 ====
 
@@ -675,6 +691,8 @@ The ``old_public_name`` can also be one of the names declared in the
 library whose name is not prefixed by the package name. Such a library cannot be
 defined in Dune, but other build systems allow it and this feature is meant to
 help migration from those systems.
+
+.. _executable:
 
 executable
 ----------

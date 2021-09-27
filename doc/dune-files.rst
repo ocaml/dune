@@ -2,7 +2,7 @@
 Stanza Reference
 ****************
 
-Dune-Project
+dune-project
 ============
 
 These files are used to mark the root of projects as well as define project-wide
@@ -36,7 +36,7 @@ associated tool or library. In particular, adding a ``using`` stanza will not
 result in a build dependency in the generated ``.opam`` file. See
 :ref:`generate_opam_files <generate_opam_files>`.
 
-Name
+name
 ----
 
 Sets the name of the project. It's used by :ref:`dune subst <dune-subst>`
@@ -46,7 +46,7 @@ and error messages.
 
     (name <name>)
 
-Version
+version
 -------
 
 Sets the version of the project:
@@ -57,7 +57,7 @@ Sets the version of the project:
 
 .. _implicit_transitive_deps:
 
-Implicit Transitive Deps
+implicit_transitive_deps
 ------------------------
 
 By default, Dune allows transitive dependencies of dependencies used 
@@ -91,7 +91,7 @@ dependency on ``foo`` as re-exported:
 
 .. _wrapped-executables:
 
-Wrapped Executables
+wrapped_executables
 -------------------
 
 Executables are made of compilation units whose names may collide with libraries' 
@@ -113,7 +113,7 @@ false)``
 
 .. _executables_implicit_empty_intf:
 
-Executables Implicit Empty Intf
+executables_implicit_empty_intf
 -------------------------------
 
 By default, executables defined via ``(executables(s) ...)`` or ``(test(s)
@@ -131,7 +131,7 @@ interface files for executables and tests that don't already have them:
 
 .. _explicit-js-mode:
 
-Explicit JS Mode
+explicit_js_mode
 ----------------
 
 Traditionally, JavaScript targets were defined for every bytecode executable.
@@ -153,7 +153,7 @@ disable it.
 
 .. _dialect:
 
-Dialect
+dialect
 -------
 
 A dialect is an alternative frontend to OCaml (such as ReasonML). It's
@@ -211,7 +211,7 @@ to a corresponding dialect).
 
 .. _formatting:
 
-Formatting
+formatting
 ----------
 
 Starting in Dune 2.0, :ref:`formatting-main` is automatically enabled. This can be
@@ -230,7 +230,7 @@ where ``<setting>`` is one of:
 
 .. _generate_opam_files:
 
-Generate Opam Files
+generate_opam_files
 -------------------
 
 Dune is able to use metadata specified in the ``dune-project`` file to generate
@@ -270,7 +270,7 @@ Some or all of these fields may be overridden for each package of the project, s
 
 .. _package:
 
-Package
+package
 -------
 
 Package specific information is specified in the ``(package <package>)`` stanza.
@@ -331,7 +331,7 @@ be added explicitly.
 
 .. _always-add-cflags:
 
-Use Standard C and CXX Flags
+use_standard_c_and_cxx_flags
 ----------------------------
 
 Since Dune 2.8, it's possible to deactivate the systematic prepending of flags
@@ -346,7 +346,7 @@ In this mode, Dune will populate the ``:standard`` set of C flags with the
 content of ``ocamlc_cflags`` and  ``ocamlc_cppflags``. These flags can be
 completed or overridden using the :ref:`ordered-set-language`.
 
-Accept Alternative Dune Filename
+accept_alternative_dune_file_name
 ---------------------------------
 
 Since Dune 3.0, it's possible to use the alternative filename ``dune-file``
@@ -365,7 +365,7 @@ Note that ``dune`` continues to be accepted even after enabling this option, but
 if a file named ``dune-file`` is found in a directory, it will take precedence
 over ``dune``.
 
-Dune
+dune
 ====
 
 ``dune`` files are the main part of Dune. They are used to describe libraries,
@@ -388,7 +388,7 @@ The syntax of ``dune`` files is described in :ref:`metadata-format` section.
 
 The following sections describe the available stanzas and their meanings.
 
-Jbuild Version
+jbuild_version
 --------------
 
 Deprecated. This stanza is no longer used and will be removed in the
@@ -396,7 +396,7 @@ future.
 
 .. _library:
 
-Library
+library
 -------
 
 The ``library`` stanza must be used to describe OCaml libraries. The
@@ -599,7 +599,7 @@ using ``(c_flags (:include ...))`` and ``(c_library_flags (:include ...))``.
 
 .. _foreign_library:
 
-Foreign Library
+foreign_library
 ---------------
 
 The ``foreign_library`` stanza describes archives of separately compiled
@@ -609,7 +609,7 @@ further details and examples.
 
 .. _jsoo-field:
 
-JS of OCaml
+js_of_ocaml
 ~~~~~~~~~~~
 
 In ``library`` and ``executables`` stanzas, you can specify ``js_of_ocaml``
@@ -633,7 +633,7 @@ See :ref:`jsoo` for more information.
 
 .. _deprecated-library-name:
 
-Deprecated Library Name
+deprecated_library_name
 -----------------------
 
 The ``deprecated_library_name`` stanza enables redirecting an old
@@ -658,7 +658,7 @@ library whose name is not prefixed by the package name. Such a library cannot be
 defined in Dune, but other build systems allow it. This feature is meant to
 help migration from those systems.
 
-Executable
+executable
 ----------
 
 The ``executable`` stanza must be used to describe an executable. The
@@ -887,7 +887,7 @@ run ``.bc`` files during the build. Run the ``.bc.exe`` or
 Lastly, note that ``.bc`` executables cannot contain C stubs. If your
 executable contains C stubs you may want to use ``(modes exe)``.
 
-Executables
+executables
 -----------
 
 There is a very subtle difference in the naming of these stanzas. One is 
@@ -908,7 +908,7 @@ The list of names must be of the same length as the list in the
   ``(names ...)`` field. Moreover, you can use ``-`` for executables that
   shouldn't be installed.
 
-Rule
+rule
 ----
 
 The ``rule`` stanza is used to create custom user rules. It tells Dune how
@@ -958,7 +958,7 @@ Please note: contrary to makefiles or other build systems, user rules currently
 don't support patterns, such as a rule to produce ``%.y`` from ``%.x`` for any
 given ``%``. This might be supported in the future.
 
-Modes
+modes
 ~~~~~
 
 By default, a rule's target must not exist in the source tree because 
@@ -1047,7 +1047,7 @@ stanza is rejected by Dune:
 
     (rule (copy a b.%{read:file}))
 
-Ocamllex
+ocamllex
 --------
 
 ``(ocamllex <names>)`` is essentially a shorthand for:
@@ -1070,7 +1070,7 @@ To use a different rule mode, use the long form:
 
 .. _ocamlyacc:
 
-Ocamlyacc
+ocamlyacc
 ---------
 
 ``(ocamlyacc <names>)`` is essentially a shorthand for:
@@ -1093,7 +1093,7 @@ To use a different rule mode, use the long form:
 
 .. _menhir:
 
-Menhir
+menhir
 ------
 
 A ``menhir`` stanza is available to support the Menhir parser generator.
@@ -1135,7 +1135,7 @@ target for the module.
 .. _menhir-git: https://gitlab.inria.fr/fpottier/menhir
 
 
-Cinaps
+cinaps
 ------
 
 A ``cinaps`` stanza is available to support the ``cinaps`` tool.  See
@@ -1144,7 +1144,7 @@ details.
 
 .. _documentation-stanza:
 
-Documentation
+documentation
 -------------
 
 Additional manual pages may be attached to packages using the ``documentation``
@@ -1170,7 +1170,7 @@ For more information, see :ref:`documentation`.
 
 .. _alias-stanza:
 
-Alias
+alias
 -----
 
 The ``alias`` stanza adds dependencies to an alias or specifies an action
@@ -1227,7 +1227,7 @@ tests.
 
 .. _install:
 
-Install
+install
 -------
 
 Dune supports installing packages on the system, i.e., copying freshly built
@@ -1304,7 +1304,7 @@ stanza, Dune implicitly adds the ``.exe`` extension to the destination,
 if the source file has extension ``.exe`` or ``.bc`` and if it's not 
 already present
 
-Copy Files
+copy_files
 ----------
 
 The ``copy_files`` and ``copy_files#`` stanzas specify that
@@ -1348,7 +1348,7 @@ The difference between ``copy_files`` and ``copy_files#`` is the same
 as the difference between the ``copy`` and ``copy#`` actions. See the
 :ref:`user-actions` section for more details.
 
-Include
+include
 -------
 
 The ``include`` stanza allows including the contents of another file in the
@@ -1377,7 +1377,7 @@ With this ``dune`` file, running Dune as follows will replace the
 
 .. _tests-stanza:
 
-Tests
+tests
 -----
 
 The ``tests`` stanza allows one to easily define multiple tests. For example, we
@@ -1415,7 +1415,7 @@ running Dune ``runtest`` you can use the following stanza:
 Starting from Dune 2.9, it's possible to automatically generate empty interface
 files for test executables. See `executables_implicit_empty_intf`_.
 
-Test
+test
 ----
 
 The ``test`` stanza is the singular form of ``tests``. The only difference is
@@ -1431,7 +1431,7 @@ The ``name`` field is singular, and the same optional fields are supported.
 
 .. _dune-env:
 
-Env
+env
 ---
 
 The ``env`` stanza allows one to modify the environment. The syntax is as
@@ -1491,7 +1491,7 @@ Fields supported in ``<settings>`` are:
 
 .. _dune-subdirs:
 
-Dirs (Since 1.6)
+dirs (Since 1.6)
 -------------------
 
 The ``dirs`` stanza allows specifying the subdirectories Dune will
@@ -1521,7 +1521,7 @@ ignored subdirectories.
 
 .. _dune-data_only_dirs:
 
-Data-Only Dirs (Since 1.6)
+data_only_dirs (Since 1.6)
 --------------------------
 
 Dune allows the user to treat directories as *data only*. ``dune`` files in these
@@ -1540,7 +1540,7 @@ Example:
 
 .. _dune-ignored_subdirs:
 
-Ignored Subdirs (Deprecated in 1.6)
+ignored_subdirs (Deprecated in 1.6)
 -----------------------------------
 
 One may also specify *data only* directories using the ``ignored_subdirs``
@@ -1564,7 +1564,7 @@ instead of this stanza. For example:
 
 .. _dune-vendored_dirs:
 
-Vendored Dirs (Since 1.11)
+vendored_dirs (Since 1.11)
 --------------------------
 
 Dune supports vendoring other Dune-based projects natively, since simply
@@ -1588,7 +1588,7 @@ Libraries and executables in vendored directories will also be built with a ``-w
 
 .. _include_subdirs:
 
-Include Subdirs
+include_subdirs
 ---------------
 
 The ``include_subdirs`` stanza is used to control how Dune considers
@@ -1625,7 +1625,7 @@ where ``<x>`` is not ``no`` to contain one of the following stanzas:
 - ``executable(s)``
 - ``test(s)``
 
-Toplevel
+toplevel
 --------
 
 The ``toplevel`` stanza allows one to define custom toplevels. Custom toplevels
@@ -1649,7 +1649,7 @@ run this toplevel with:
 of `library`_. Currently, ``action`` and ``future_syntax`` are not supported
 in the toplevel.
 
-Subdir
+subdir
 ------
 
 The ``subdir`` stanza can be used to evaluate stanzas in sub directories. This is
@@ -1664,14 +1664,14 @@ target will be created in ``a/b/bar``:
    (subdir foo (rule (with-stdout-to bar (echo baz))))
    (subdir a/b (rule (with-stdout-to bar (echo baz))))
 
-External Variant
+external_variant
 -----------------
 
 This stanza was experimental and removed in Dune 2.6. See :ref:`dune-variants`.
 
 .. _coq-theory:
 
-Coq.theory
+coq.theory
 ----------
 
 Dune is also able to build Coq developments. A Coq project is a mix of
@@ -1792,7 +1792,7 @@ Limitations
   ``coqdep``. See the template at
   <https://github.com/ejgallego/coq-plugin-template>
 
-Coq.pp
+coq.pp
 ------
 
 Coq plugin writers usually need to write ``.mlg`` files to extend Coq
@@ -1812,7 +1812,7 @@ which for each ``g_mod`` in ``<mlg_list>`` is equivalent to:
      (deps (:mlg-file g_mod.mlg))
      (action (run coqpp %{mlg-file})))
 
-Coq.extraction
+coq.extraction
 --------------
 
 Coq may be instructed to *extract* OCaml sources as part of the compilation
@@ -1915,7 +1915,7 @@ Upgrading from Version 0.1
 
 .. _plugin:
 
-Plugin (Since 2.8)
+plugin (Since 2.8)
 ------------------
 
 Plugins are a way to load OCaml libraries at runtime. The ``plugin`` stanza
@@ -1944,7 +1944,7 @@ The loading of the plugin is done using the facilities generated by
 
 .. _generate_sites_module:
 
-Generate Sites Module (Since 2.8)
+generate_sites_module (Since 2.8)
 ---------------------------------
 
 Dune proposes some facilities for dealing with :ref:`sites` in a program. The
@@ -2005,7 +2005,7 @@ to the library or executable which use the module (cf. :ref:`plugins`).
 
 .. _dune-workspace:
 
-Dune Workspace
+dune-workspace
 ==============
 
 By default, a workspace has only one build context named ``default`` which
@@ -2045,7 +2045,7 @@ containing exactly:
 This allows you to use an empty ``dune-workspace`` file to mark the root of your
 project.
 
-Profile
+profile
 -------
 
 The build profile can be selected in the ``dune-workspace`` file by write a
@@ -2057,14 +2057,14 @@ The build profile can be selected in the ``dune-workspace`` file by write a
 
 Note that the command line option ``--profile`` has precedence over this stanza.
 
-Env
+env
 ---
 
 The ``env`` stanza can be used to set the base environment for all contexts in
 this workspace. This environment has the lowest precedence of all other ``env``
 stanzas. The syntax for this stanza is the same as Dune's :ref:`dune-env` stanza.
 
-Context
+context
 -------
 
 The ``(context ...)`` stanza declares a build context. The argument

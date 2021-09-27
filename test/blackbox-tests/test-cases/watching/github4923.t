@@ -24,9 +24,9 @@ a file in watch mode.
   $ _build/default/x.exe
   Hello, world!
 
-Currently, adding a new file while Dune is running in watching
-corrupts Dune's internal state. For instance, here it seems to forget
-how to build x.exe:
+In the past, adding a new file while Dune was running in watching mode
+was corrupting Dune's internal state. For instance, here it no longer
+knew how to build x.exe. This is now fixed.
 
   $ touch b/blah
 

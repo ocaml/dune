@@ -1110,13 +1110,7 @@ module Run = struct
 
   let poll_iter t step =
     (match t.status with
-    | Standing_by invalidations ->
-      if false then
-        Console.print
-          [ Pp.text "Invalidating:"
-          ; Dyn.pp (Memo.Invalidation.to_dyn invalidations)
-          ];
-      Memo.reset invalidations
+    | Standing_by invalidations -> Memo.reset invalidations
     | _ ->
       Code_error.raise "[poll_iter]: expected the build status [Standing_by]" []);
     t.status <- Building;

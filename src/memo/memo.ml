@@ -1653,7 +1653,7 @@ end
 let reset invalidation =
   (* We rely on [invalidation] to list the actual reasons for the reset, which
      justifies the [~reason:Unknown] below. *)
-  let invalidate_current_run = Current_run.invalidate ~reason:Test in
+  let invalidate_current_run = Current_run.invalidate ~reason:Unknown in
   Invalidation.execute
     (Invalidation.combine invalidation invalidate_current_run);
   Run.restart ();

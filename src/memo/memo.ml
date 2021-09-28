@@ -1356,13 +1356,6 @@ module Invalidation = struct
       | Upgrade
       | Test
 
-    let to_dyn = function
-      | Unknown -> Dyn.Variant ("Unknown", [])
-      | Path_changed path -> Dyn.Variant ("Path_changed", [ Path.to_dyn path ])
-      | Event_queue_overflow -> Dyn.Variant ("Event_queue_overflow", [])
-      | Upgrade -> Dyn.Variant ("Upgrade", [])
-      | Test -> Dyn.Variant ("Test", [])
-
     let to_string_hum = function
       | Unknown -> None
       | Path_changed path -> Some (Path.to_string path ^ " changed")
@@ -1382,19 +1375,6 @@ module Invalidation = struct
       { kind : kind
       ; reason : Reason.t
       }
-
-    let to_dyn { kind; reason } =
-      let kind =
-        match kind with
-        | Invalidate_node dep_node ->
-          Dyn.Variant
-            ( "Invalidate_node"
-            , [ Stack_frame_without_state.to_dyn (T dep_node.without_state) ] )
-        | Clear_cache _ -> Dyn.Variant ("Clear_cache", [ Dyn.Opaque ])
-        | Clear_caches -> Dyn.Variant ("Clear_caches", [])
-      in
-      let reason = Reason.to_dyn reason in
-      Dyn.Tuple [ kind; reason ]
 
     let to_string_hum { reason; _ } = Reason.to_string_hum reason
   end
@@ -1450,8 +1430,6 @@ module Invalidation = struct
     | x :: xs -> to_list_x_xs x xs acc
 
   let to_list t = to_list_x_xs t [] []
-
-  let to_dyn t = Dyn.List (List.map (to_list t) ~f:Leaf.to_dyn)
 
   let details_hum ?(max_elements = 5) t =
     assert (max_elements > 0);
@@ -1653,7 +1631,7 @@ end
 let reset invalidation =
   (* We rely on [invalidation] to list the actual reasons for the reset, which
      justifies the [~reason:Unknown] below. *)
-  let invalidate_current_run = Current_run.invalidate ~reason:Test in
+  let invalidate_current_run = Current_run.invalidate ~reason:Unknown in
   Invalidation.execute
     (Invalidation.combine invalidation invalidate_current_run);
   Run.restart ();

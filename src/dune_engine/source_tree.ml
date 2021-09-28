@@ -34,21 +34,9 @@ end
 module Dune_file = struct
   module Plain = struct
     type t =
-      { mutable contents : Sub_dirs.Dir_map.per_dir
+      { contents : Sub_dirs.Dir_map.per_dir
       ; for_subdirs : Sub_dirs.Dir_map.t
       }
-
-    (** It's also possible to add GC for:
-
-        - [contents.subdir_status]
-        - [consumed nodes of for_subdirs]
-
-        We don't do this for now because the benefits are likely small.*)
-
-    let get_sexp_and_destroy t =
-      let result = t.contents.sexps in
-      t.contents <- { t.contents with sexps = [] };
-      result
   end
 
   let fname = "dune"
@@ -66,10 +54,7 @@ module Dune_file = struct
       plain : Plain.t
     }
 
-  let get_static_sexp_and_possibly_destroy t =
-    match t.kind with
-    | Ocaml_script -> t.plain.contents.sexps
-    | Plain -> Plain.get_sexp_and_destroy t.plain
+  let get_static_sexp t = t.plain.contents.sexps
 
   let kind t = t.kind
 

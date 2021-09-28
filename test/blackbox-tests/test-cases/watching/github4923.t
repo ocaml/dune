@@ -24,17 +24,16 @@ a file in watch mode.
   $ _build/default/x.exe
   Hello, world!
 
-Currently, adding a new file while Dune is running in watching
-corrupts Dune's internal state. For instance, here it seems to forget
-how to build x.exe:
+In the past, adding a new file while Dune was running in watching mode
+was corrupting Dune's internal state. For instance, here it no longer
+knew how to build x.exe. This is now fixed.
 
   $ touch b/blah
 
   $ build x.exe
-  Failure
+  Success
   $ _build/default/x.exe
-  _build/default/x.exe: not found
-  [127]
+  Hello, world!
 
   $ stop_dune
   waiting for inotify sync
@@ -42,5 +41,4 @@ how to build x.exe:
   Success, waiting for filesystem changes...
   waiting for inotify sync
   waited for inotify sync
-  Error: Don't know how to build x.exe
-  Had errors, waiting for filesystem changes...
+  Success, waiting for filesystem changes...

@@ -213,8 +213,6 @@ module Invalidation : sig
   (** Invalidate all computations stored in a given [memo] table. *)
   val invalidate_cache : reason:Reason.t -> _ memo -> t
 
-  val to_dyn : t -> Dyn.t
-
   (** A list of human-readable strings explaining the reasons for invalidation.
       The list is truncated to [max_elements] elements, with [max_elements = 5]
       by default. Raises if [max_elements <= 0]. *)

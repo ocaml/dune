@@ -57,6 +57,10 @@ set of predicates:
   it is linked as part of a driver or meant to add a ``-ppx`` argument
   to the compiler, choose the former behavior
 
+Note that Dune does not read *installed* ``META`` files for libraries
+distributed with the compiler (as these files are not installed by the compiler
+itself, but installed by `ocamlfind`, and are not always perfectly
+accurate). Instead Dune uses its own internal database for this information.
 
 Dynamic loading of packages with findlib
 ========================================

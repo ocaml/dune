@@ -9,14 +9,12 @@ CRAM sanitization
   X
   ((STDLIB /OCAMLC_WHERE)
    (EXCLUDE_QUERY_DIR)
-   (B lib/bytes)
    (B lib/findlib)
    (B /OCAMLC_WHERE)
    (B
     $TESTCASE_ROOT/_build/default/exe/.x.eobjs/byte)
    (B
     $TESTCASE_ROOT/_build/default/lib/.foo.objs/public_cmi)
-   (S lib/bytes)
    (S lib/findlib)
    (S /OCAMLC_WHERE)
    (S
@@ -65,12 +63,10 @@ CRAM sanitization
   Privmod
   ((STDLIB /OCAMLC_WHERE)
    (EXCLUDE_QUERY_DIR)
-   (B lib/bytes)
    (B lib/findlib)
    (B /OCAMLC_WHERE)
    (B
     $TESTCASE_ROOT/_build/default/lib/.foo.objs/byte)
-   (S lib/bytes)
    (S lib/findlib)
    (S /OCAMLC_WHERE)
    (S
@@ -87,12 +83,10 @@ CRAM sanitization
   Foo
   ((STDLIB /OCAMLC_WHERE)
    (EXCLUDE_QUERY_DIR)
-   (B lib/bytes)
    (B lib/findlib)
    (B /OCAMLC_WHERE)
    (B
     $TESTCASE_ROOT/_build/default/lib/.foo.objs/byte)
-   (S lib/bytes)
    (S lib/findlib)
    (S /OCAMLC_WHERE)
    (S

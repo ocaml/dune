@@ -238,27 +238,31 @@ let builtins ~stdlib_dir ~version:ocaml_version =
   in
   let dynlink = simple "dynlink" [] ~dir:"+" in
   let bytes = dummy "bytes" in
-  let result = dummy "result" in
   let uchar = dummy "uchar" in
   let seq = dummy "seq" in
   let threads =
     { name = Some (Lib_name.of_string "threads")
     ; entries =
-        [ version
-        ; main_modules [ "thread" ]
-        ; requires ~preds:[ Pos "mt"; Pos "mt_vm" ] [ "threads.vm" ]
-        ; requires ~preds:[ Pos "mt"; Pos "mt_posix" ] [ "threads.posix" ]
-        ; directory "+"
-        ; rule "type_of_threads" [] Set "posix"
-        ; rule "error" [ Neg "mt" ] Set "Missing -thread or -vmthread switch"
-        ; rule "error"
-            [ Neg "mt_vm"; Neg "mt_posix" ]
-            Set "Missing -thread or -vmthread switch"
-        ; Package
-            (simple "vm" [ "unix" ] ~dir:"+vmthreads" ~archive_name:"threads")
-        ; Package
-            (simple "posix" [ "unix" ] ~dir:"+threads" ~archive_name:"threads")
-        ]
+        ([ version
+         ; main_modules [ "thread" ]
+         ; requires ~preds:[ Pos "mt"; Pos "mt_vm" ] [ "threads.vm" ]
+         ; requires ~preds:[ Pos "mt"; Pos "mt_posix" ] [ "threads.posix" ]
+         ; directory "+"
+         ; rule "type_of_threads" [] Set "posix"
+         ; rule "error" [ Neg "mt" ] Set "Missing -thread or -vmthread switch"
+         ; rule "error"
+             [ Neg "mt_vm"; Neg "mt_posix" ]
+             Set "Missing -thread or -vmthread switch"
+         ; Package
+             (simple "posix" [ "unix" ] ~dir:"+threads" ~archive_name:"threads")
+         ]
+        @
+        if Ocaml_version.has_vmthreads ocaml_version then
+          [ Package
+              (simple "vm" [ "unix" ] ~dir:"+vmthreads" ~archive_name:"threads")
+          ]
+        else
+          [])
     }
   in
   let num =
@@ -287,12 +291,6 @@ let builtins ~stdlib_dir ~version:ocaml_version =
       ; bytes
       ; ocamldoc
       ]
-    in
-    let base =
-      if Ocaml_version.pervasives_includes_result ocaml_version then
-        result :: base
-      else
-        base
     in
     let base =
       if Ocaml_version.stdlib_includes_uchar ocaml_version then

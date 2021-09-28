@@ -20,8 +20,6 @@ let supports_response_file version = version >= (4, 05, 0)
 
 let ocamlmklib_supports_response_file version = version >= (4, 08, 0)
 
-let pervasives_includes_result version = version >= (4, 03, 0)
-
 let stdlib_includes_uchar version = version >= (4, 03, 0)
 
 let stdlib_includes_bigarray version = version >= (4, 07, 0)
@@ -49,3 +47,5 @@ let custom_or_output_complete_exe version =
 let ocamlopt_always_calls_library_linker version = version < (4, 12, 0)
 
 let has_sys_opaque_identity version = version >= (4, 3, 0)
+
+let has_vmthreads version = version < (4, 9, 0)

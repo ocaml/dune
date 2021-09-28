@@ -29,9 +29,6 @@ val supports_response_file : t -> bool
 (** Does ocamlmklib support [-args0]? *)
 val ocamlmklib_supports_response_file : t -> bool
 
-(** Whether [Pervasives] includes the [result] type *)
-val pervasives_includes_result : t -> bool
-
 (** Whether the standard library includes the [Uchar] module *)
 val stdlib_includes_uchar : t -> bool
 
@@ -68,3 +65,6 @@ val ocamlopt_always_calls_library_linker : t -> bool
 
 (** Whether [Sys.opaque_identity] is in the standard library *)
 val has_sys_opaque_identity : t -> bool
+
+(** Whether [vmthreads] exists *)
+val has_vmthreads : t -> bool

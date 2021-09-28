@@ -14,6 +14,10 @@ let ( let* ) x f =
   | Ok s -> f s
   | Error _ as e -> e
 
+type error = Invalid_where of string
+
+exception E of error
+
 let of_dbus { Dbus_address.name; args } =
   match name with
   | "unix" -> (
@@ -37,14 +41,13 @@ let of_dbus { Dbus_address.name; args } =
     Ok (`Ip (`Host addr, `Port port))
   | _ -> Error "invalid connection type"
 
-let of_string s : (t, string) result =
+let of_string s : (t, exn) result =
   match Dbus_address.of_string s with
-  | Error _ -> Error ("invalid address format " ^ s)
-  | Ok s -> of_dbus s
-
-type error = Invalid_where of string
-
-exception E of error
+  | Error _ -> Error (E (Invalid_where ("invalid address format " ^ s)))
+  | Ok s -> (
+    match of_dbus s with
+    | Ok s -> Ok s
+    | Error e -> Error (E (Invalid_where e)))
 
 let rpc_socket_relative_to_build_dir = ".rpc/dune"
 
@@ -67,13 +70,7 @@ let to_string t = Dbus_address.to_string (to_dbus t)
 
 let sexp : t Conv.value =
   let open Conv in
-  (* TODO of_string should raise the right error *)
-  iso Conv.string
-    (fun s ->
-      match of_string s with
-      | Error e -> failwith e
-      | Ok s -> s)
-    to_string
+  iso_result Conv.string of_string to_string
 
 let add_to_env t env =
   let value = to_string t in
@@ -128,7 +125,7 @@ end) : S with type 'a fiber := 'a Fiber.t = struct
       Fiber.return
         (match of_string d with
         | Ok s -> Ok (Some s)
-        | Error e -> Error (E (Invalid_where e)))
+        | Error exn -> Error exn)
     | None -> (
       let of_file f =
         let+ contents = IO.read_file f in
@@ -136,7 +133,7 @@ end) : S with type 'a fiber := 'a Fiber.t = struct
         | Error e -> Error e
         | Ok contents -> (
           match of_string contents with
-          | Error e -> Error (E (Invalid_where e))
+          | Error e -> Error e
           | Ok s -> Ok (Some s))
       in
       let file = Filename.concat build_dir rpc_socket_relative_to_build_dir in

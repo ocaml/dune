@@ -116,6 +116,9 @@ type version =
 
 type ('a, 'kind) t =
   | Iso : ('a, 'kind) t * ('a -> 'b) * ('b -> 'a) -> ('b, 'kind) t
+  | Iso_result :
+      ('a, 'kind) t * ('a -> ('b, exn) result) * ('b -> 'a)
+      -> ('b, 'kind) t
   | Version : ('a, 'kind) t * version -> ('a, 'kind) t
   | Both :
       (* Invariant: field names must be different *)
@@ -255,6 +258,7 @@ let to_sexp : 'a. ('a, values) t -> 'a -> Sexp.t =
         match a with
         | None -> Fields.empty
         | Some a -> Fields.of_field name (loop t a)))
+    | Iso_result (t, _, from) -> loop t (from a)
     | Iso (t, _, from) -> loop t (from a)
     | Both (x, y) ->
       let x = loop x (fst a) in
@@ -356,6 +360,11 @@ let of_sexp : 'a. ('a, values) t -> version:int * int -> Sexp.t -> 'a =
      | Iso (t, f, _) ->
        let a, k = loop t ctx in
        (f a, k)
+     | Iso_result (t, f, _) -> (
+       let a, k = loop t ctx in
+       match f a with
+       | Error exn -> raise exn
+       | Ok a -> (a, k))
      | Both (x, y) ->
        let a, Fields k = loop x ctx in
        let b, k = loop y k in
@@ -395,6 +404,8 @@ let record r = Record r
 let either x y = Either (x, y)
 
 let iso a t f = Iso (a, t, f)
+
+let iso_result a t f = Iso_result (a, t, f)
 
 let version ?until t ~since = Version (t, { until; since })
 

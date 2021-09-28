@@ -150,6 +150,9 @@ let to_explicit { loc; enabled_for } =
   | Enabled_for.All -> None
   | Only l -> Some { loc; enabled_for = l }
 
+let encode_opt t =
+  to_explicit t |> Option.map ~f:(fun c -> encode_explicit c.enabled_for)
+
 let of_config ~ext ~dune_lang ~version =
   let dune2 = version >= (2, 0) in
   match (ext, dune_lang, dune2) with

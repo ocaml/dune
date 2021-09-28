@@ -1,3 +1,5 @@
+.. _writing-tests:
+
 *************************
 Writing and running tests
 *************************
@@ -467,7 +469,9 @@ This provides a nice way of dealing with the usual *write code*,
 Note that if available, the diffing is done using the patdiff_ tool,
 which displays nicer looking diffs that the standard ``diff``
 tool. You can change that by passing ``--diff-command CMD`` to
-dune.
+Dune.
+
+.. _cram-tests:
 
 Cram Tests
 ==========

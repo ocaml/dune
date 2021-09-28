@@ -245,7 +245,7 @@ module V1 : sig
           -> ?abort:(Message.t -> unit fiber)
                (** If [abort] is called, the server has terminated the
                    connection due to a protocol error. This should never be
-                   called unless there's a bug. *)
+                   called unless there's a server side bug. *)
           -> unit
           -> t
       end

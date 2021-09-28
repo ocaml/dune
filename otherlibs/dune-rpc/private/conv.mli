@@ -31,6 +31,9 @@ val enum : (string * 'a) list -> ('a, values) t
 
 val iso : ('a, 'k) t -> ('a -> 'b) -> ('b -> 'a) -> ('b, 'k) t
 
+val iso_result :
+  ('a, 'k) t -> ('a -> ('b, exn) result) -> ('b -> 'a) -> ('b, 'k) t
+
 val version : ?until:int * int -> ('a, 'k) t -> since:int * int -> ('a, 'k) t
 
 (** {2 parsing records} *)

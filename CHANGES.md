@@ -1,6 +1,13 @@
 Unreleased
 ----------
 
+- Add the `enabled_if` field to `inline_tests` within the `library` stanza.
+  This allows us to disable executing the inline tests while still allowing for
+  compilation (#4939, @rgrinberg)
+
+- Generate a `dune-project` when initializing projects with `dune init proj ...`
+  (#4881, closes #4367, @shonfeder)
+
 - Allow spaces in the directory argument of the `subdir` stanza (#4943, fixes
   #4907, @rgrinberg)
 

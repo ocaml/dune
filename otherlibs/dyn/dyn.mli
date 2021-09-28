@@ -1,3 +1,5 @@
+(** Dyn stands for "dynamic values". The Dyn.t type is a representation of OCaml
+    values such that they can be processed without knowing their type. *)
 type t =
   | Opaque
   | Unit

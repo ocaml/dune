@@ -234,7 +234,9 @@ module Dependency = struct
 
   let encode { name; constraint_ } =
     let open Dune_lang.Encoder in
-    list sexp [ Name.encode name; option Constraint.encode constraint_ ]
+    match constraint_ with
+    | None -> Name.encode name
+    | Some c -> pair Name.encode Constraint.encode (name, c)
 
   let decode =
     let open Dune_lang.Decoder in
@@ -357,7 +359,7 @@ module Source_kind = struct
 
     let encode { user; repo; kind } =
       let forge = to_string kind in
-      let path = repo ^ "/" ^ user in
+      let path = user ^ "/" ^ repo in
       let open Dune_lang.Encoder in
       pair string string (forge, path)
 
@@ -431,6 +433,24 @@ module Info = struct
     ; maintainers = None
     }
 
+  let example =
+    { source =
+        Some
+          (Host
+             { kind = Source_kind.Host.Github
+             ; user = "username"
+             ; repo = "reponame"
+             })
+    ; license = Some "LICENSE"
+    ; authors = Some [ "Author Name" ]
+    ; maintainers = Some [ "Maintainer Name" ]
+    ; documentation =
+        Some "https://url/to/documentation"
+        (* homepage and bug_reports are inferred from the source *)
+    ; homepage = None
+    ; bug_reports = None
+    }
+
   let to_dyn
       { source
       ; license
@@ -451,7 +471,7 @@ module Info = struct
       ; ("authors", option (list string) authors)
       ]
 
-  let encode
+  let encode_fields
       { source
       ; authors
       ; license
@@ -463,12 +483,12 @@ module Info = struct
     let open Dune_lang.Encoder in
     record_fields
       [ field_o "source" Source_kind.encode source
-      ; field_o "authors" (list string) authors
+      ; field_l "authors" string (Option.value ~default:[] authors)
+      ; field_l "maintainers" string (Option.value ~default:[] maintainers)
       ; field_o "license" string license
       ; field_o "homepage" string homepage
       ; field_o "documentation" string documentation
       ; field_o "bug_reports" string bug_reports
-      ; field_o "maintainers" (list string) maintainers
       ]
 
   let decode ?since () =
@@ -546,7 +566,7 @@ let name t = t.id.name
 
 let dir t = t.id.dir
 
-let encode
+let encode (name : Name.t)
     { id = _
     ; loc = _
     ; has_opam_file = _
@@ -563,23 +583,24 @@ let encode
     } =
   let open Dune_lang.Encoder in
   let fields =
-    record_fields
-      [ field_o "synopsis" string synopsis
-      ; field_o "description" string description
-      ; field_l "depends" Dependency.encode depends
-      ; field_l "conflicts" Dependency.encode conflicts
-      ; field_l "depopts" Dependency.encode depopts
-      ; field_o "version" string version
-      ; field_l "tags" string tags
-      ; field_l "deprecated_package_names" Name.encode
-          (Name.Map.keys deprecated_package_names)
-      ; field_l "sits"
-          (pair Section.Site.encode Section.encode)
-          (Section.Site.Map.to_list sites)
-      ]
-    @ Info.encode info
+    Info.encode_fields info
+    @ record_fields
+        [ field "name" Name.encode name
+        ; field_o "synopsis" string synopsis
+        ; field_o "description" string description
+        ; field_l "depends" Dependency.encode depends
+        ; field_l "conflicts" Dependency.encode conflicts
+        ; field_l "depopts" Dependency.encode depopts
+        ; field_o "version" string version
+        ; field "tags" (list string) ~default:[] tags
+        ; field_l "deprecated_package_names" Name.encode
+            (Name.Map.keys deprecated_package_names)
+        ; field_l "sits"
+            (pair Section.Site.encode Section.encode)
+            (Section.Site.Map.to_list sites)
+        ]
   in
-  constr "package" (list sexp) fields
+  list sexp (string "package" :: fields)
 
 let decode ~dir =
   let open Dune_lang.Decoder in
@@ -674,6 +695,28 @@ let file ~dir ~name = Path.relative dir (Name.to_string name ^ opam_ext)
 
 let deprecated_meta_file t name =
   Path.Source.relative t.id.dir (Name.meta_fn name)
+
+let default name dir =
+  let depends =
+    let open Dependency in
+    [ { name = Name.of_string "ocaml"; constraint_ = None }
+    ; { name = Name.of_string "dune"; constraint_ = None }
+    ]
+  in
+  { id = { name = Name.make name; dir }
+  ; loc = Loc.none
+  ; version = None
+  ; synopsis = Some "A short synopsis"
+  ; description = Some "A longer description"
+  ; depends
+  ; conflicts = []
+  ; info = Info.empty
+  ; depopts = []
+  ; has_opam_file = false
+  ; tags = [ "topics"; "to describe"; "your"; "project" ]
+  ; deprecated_package_names = Name.Map.empty
+  ; sites = Section.Site.Map.empty
+  }
 
 let load_opam_file file name =
   let open Option.O in

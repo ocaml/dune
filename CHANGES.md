@@ -1,6 +1,9 @@
 Unreleased
 ----------
 
+- Fix missing -linkall flag when linking library dune-sites.plugin
+  ( #4348, @kakadu, @bobot, reported by @kakadu)
+
 - No longer reference deprecated Toploop functions when using dune files in
   OCaml syntax. (#4834, fixes #4830, @nojb)
 

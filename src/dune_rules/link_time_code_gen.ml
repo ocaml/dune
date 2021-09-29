@@ -300,8 +300,7 @@ let handle_special_libs cctx =
               ~precompiled_cmi:true
           in
           process_libs libs
-            ~to_link_rev:
-              (LM.Lib lib :: Module (obj_dir, module_) :: to_link_rev)
-            ~force_linkall))
+            ~to_link_rev:(LM.Lib lib :: Module (obj_dir, module_) :: to_link_rev)
+            ~force_linkall:true))
   in
   process_libs all_libs ~to_link_rev:[] ~force_linkall:false

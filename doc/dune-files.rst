@@ -626,6 +626,11 @@ to use the :ref:`include_subdirs` stanza.
   is useful whenever a library is shadowed by a local module. The library may
   then still be accessible via this root module
 
+- ``(empty_module_interface_if_absent)`` causes the generation of empty
+  interfaces for every module that does not have an interface file already.
+  Useful when modules are used solely for their side-effects. This field is
+  available since the 3.0 version of the dune language.
+
 Note that when binding C libraries, dune doesn't provide special support for
 tools such as ``pkg-config``, however it integrates easily with
 :ref:`configurator` by
@@ -824,6 +829,11 @@ files for executables. See `executables_implicit_empty_intf`_.
   libraries are linked in. Note that you may need to also use the ``-linkall``
   flag if some of the libraries listed here are not referenced from any of the
   plugin modules.
+
+- ``(empty_module_interface_if_absent)`` causes the generation of empty
+  interfaces for every module that does not have an interface file already.
+  Useful when modules are used solely for their side-effects. This field is
+  available since the 3.0 version of the dune language.
 
 Linking modes
 ~~~~~~~~~~~~~

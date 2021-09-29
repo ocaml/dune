@@ -4,7 +4,7 @@
  (public_name plugin1.plugin1_impl)
  (name plugin1_impl)
  (modules plugin1_impl)
- (libraries app.MyControls app.register threads))
+ (libraries app.MyControls app.register result threads))
 
 (plugin
  (name plugin1)

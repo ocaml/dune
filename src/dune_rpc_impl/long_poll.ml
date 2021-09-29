@@ -97,9 +97,9 @@ module Build_system = Dune_engine.Build_system
 module Progress = struct
   module Progress = Dune_rpc.Progress
 
-  (* If [Some], this particular poller hasn't seen this update yet. We need to
-     track this to prevent repeatedly sending the same event. *)
-  type state = Progress.t option
+  type state =
+    | Next_update of Progress.t
+    | Already_seen
 
   type response = Progress.t
 
@@ -131,20 +131,20 @@ module Progress = struct
 
   let init_state () =
     match Build_system.last_event () with
-    | Some evt -> Some (progress_of_build_event evt)
-    | None -> Some (current ())
+    | Some evt -> Next_update (progress_of_build_event evt)
+    | None -> Next_update (current ())
 
-  let reset _ = None
+  let reset _ = Already_seen
 
   let on_rest_request _poller = function
-    | None -> `Delay
-    | Some last_event ->
+    | Already_seen -> `Delay
+    | Next_update last_event ->
       if is_transient last_event then
         `Delay
       else
         `Respond last_event
 
-  let on_update_inactive evt _ = Some (Some evt)
+  let on_update_inactive evt _ = Some (Next_update evt)
 
   let on_update_waiting u = u
 end

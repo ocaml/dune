@@ -26,9 +26,6 @@ val to_string_raw : t -> string
 
 val generic : 'a -> t
 
-(** The total time spent in the function [generic] during the current build. *)
-val generic_timer : Metrics.Timer.t
-
 (** Digest a file and its stats. Does something sensible for directories. *)
 val file_with_stats : Path.t -> Unix.stats -> t
 

@@ -389,6 +389,13 @@ let parallel_iter_set (type a s)
   | 1 -> f (Option.value_exn (S.min_elt t)) k
   | n -> parallel_iter_generic ~n ~iter:(S.iter t) ~f k
 
+let record_metrics t ~tag =
+  of_thunk (fun () ->
+      let timer = Metrics.Timer.start tag in
+      let+ res = t in
+      Metrics.Timer.stop timer;
+      res)
+
 module Make_map_traversals (Map : Map.S) = struct
   let parallel_iter t ~f k =
     match Map.cardinal t with

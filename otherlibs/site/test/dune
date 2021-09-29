@@ -1,4 +1,5 @@
 (cram
+ (applies_to :whole_subtree)
  (deps
   (package dune)
   (package dune-site)))

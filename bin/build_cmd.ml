@@ -1,27 +1,35 @@
 open Stdune
 open Import
 
+let with_metrics ~common f =
+  let start_time = Unix.gettimeofday () in
+  Fiber.finalize f ~finally:(fun () ->
+      let duration = Unix.gettimeofday () -. start_time in
+      (if Common.print_metrics common then
+        let gc_stat = Gc.quick_stat () in
+        Console.print_user_message
+          (User_message.make
+             ([ Pp.textf "%s" (Memo.Perf_counters.report_for_current_run ())
+              ; Pp.textf "(%.2fs total, %.1fM heap words)" duration
+                  (float_of_int gc_stat.heap_words /. 1_000_000.)
+              ; Pp.text "Timers:"
+              ]
+             @ List.map
+                 ~f:
+                   (fun (timer, { Metrics.Timer.Measure.cumulative_time; count })
+                        ->
+                   Pp.textf "%s - time spent = %.2fs, count = %d" timer
+                     cumulative_time count)
+                 (String.Map.to_list (Metrics.Timer.aggregated_timers ())))));
+      Fiber.return ())
+
 let run_build_system ~common ~request =
   let run ~(request : unit Action_builder.t) =
-    let build_started = Unix.gettimeofday () in
-    Fiber.finalize
-      (fun () ->
+    with_metrics ~common (fun () ->
         Build_system.run (fun () ->
             let open Memo.Build.O in
             let+ (), _facts = Action_builder.run request Eager in
             ()))
-      ~finally:(fun () ->
-        (if Common.print_metrics common then
-          let gc_stat = Gc.quick_stat () in
-          Console.print_user_message
-            (User_message.make
-               [ Pp.textf "%s" (Memo.Perf_counters.report_for_current_run ())
-               ; Pp.textf "(%.2fs total, %.2fs digests, %.1fM heap words)"
-                   (Unix.gettimeofday () -. build_started)
-                   (Metrics.Timer.read_seconds Digest.generic_timer)
-                   (float_of_int gc_stat.heap_words /. 1_000_000.)
-               ]));
-        Fiber.return ())
   in
   let open Fiber.O in
   Fiber.finalize

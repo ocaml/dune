@@ -55,8 +55,6 @@ let string = Impl.string
 
 let to_string_raw s = s
 
-let generic_timer = Metrics.Timer.create ()
-
 (* We use [No_sharing] to avoid generating different digests for inputs that
    differ only in how they share internal values. Without [No_sharing], if a
    command line contains duplicate flags, such as multiple occurrences of the
@@ -64,7 +62,7 @@ let generic_timer = Metrics.Timer.create ()
    on whether the corresponding strings ["-I"] point to the same memory location
    or to different memory locations. *)
 let generic a =
-  Metrics.Timer.record generic_timer ~f:(fun () ->
+  Metrics.Timer.record "generic_digest" ~f:(fun () ->
       string (Marshal.to_string a [ No_sharing ]))
 
 let file_with_executable_bit ~executable path =

@@ -1,3 +1,8 @@
+type warning =
+  { code : int
+  ; name : string
+  }
+
 type loc =
   { path : string
   ; line : [ `Single of int | `Range of int * int ]
@@ -6,10 +11,7 @@ type loc =
 
 type severity =
   | Error
-  | Warning of
-      { code : int option
-      ; name : string
-      }
+  | Warning of warning option
 
 type message =
   | Raw of string

@@ -97,7 +97,8 @@ module Build_system = Dune_engine.Build_system
 module Progress = struct
   module Progress = Dune_rpc.Progress
 
-  (* If [Some], this particular poller hasn't seen this update yet. *)
+  (* If [Some], this particular poller hasn't seen this update yet. We need to
+     track this to prevent repeatedly sending the same event. *)
   type state = Progress.t option
 
   type response = Progress.t
@@ -105,9 +106,11 @@ module Progress = struct
   type update = Progress.t
 
   (* Certain progress states are expected to be "transient", i.e., a new update
-     is expected to come soon. In those cases, it's okay to `Delay any new polls
-     until that update arrives. However, the build system will also spend a lot
-     of time on certain "final states" (namely, Failure and Success), *)
+     is expected to come soon. In those cases, it's okay to [`Delay] any new
+     polls until that update arrives. However, the build system will also spend
+     a lot of time on certain "final states" (namely, Failure and Success), and
+     [`Delay]ing those will cause any new polls to hang until a new build is
+     started. *)
   let is_transient : Progress.t -> bool = function
     | Progress.Waiting
     | Interrupted

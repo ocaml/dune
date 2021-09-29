@@ -1,7 +1,7 @@
 open! Stdune
 open Fiber.O
 open Dune_rpc_server
-module Dune_rpc = Dune_rpc_private
+open Import
 module Initialize = Dune_rpc.Initialize
 module Public = Dune_rpc.Public
 module Versioned = Dune_rpc.Versioned
@@ -293,13 +293,6 @@ let error t errors =
   let t = Fdecl.get t in
   task t (fun () ->
       Long_poll.Instance.update (Long_poll.diagnostic t.long_poll) errors)
-
-let progress_of_build_event : Build_system.Handler.event -> Progress.t =
-  function
-  | Start -> Progress.In_progress { complete = 0; remaining = 0 }
-  | Finish -> Success
-  | Interrupt -> Interrupted
-  | Fail -> Failed
 
 let build_progress t ~complete ~remaining =
   let t = Fdecl.get t in

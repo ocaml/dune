@@ -1,6 +1,6 @@
 open! Stdune
 open Dune_rpc_server
-module Dune_rpc = Dune_rpc_private
+open Import
 module Poll_comparable = Comparable.Make (Poller)
 module Poll_map = Poll_comparable.Map
 
@@ -46,8 +46,7 @@ module Instance = struct
       match T.Spec.on_rest_request poller s with
       | `Respond r ->
         T.waiters :=
-          Poll_map.set !T.waiters poller
-            (No_active_request (T.Spec.init_state ()));
+          Poll_map.set !T.waiters poller (No_active_request (T.Spec.reset ()));
         Fiber.return (Some r)
       | `Delay ->
         let ivar = Fiber.Ivar.create () in
@@ -98,13 +97,28 @@ module Build_system = Dune_engine.Build_system
 module Progress = struct
   module Progress = Dune_rpc.Progress
 
-  type state = unit
+  type state =
+    | Next_update of Progress.t
+    | Already_seen
 
   type response = Progress.t
 
   type update = Progress.t
 
-  let init_state () = ()
+  (* Certain progress states are expected to be "transient", i.e., a new update
+     is expected to come soon. In those cases, it's okay to [`Delay] any new
+     polls until that update arrives. However, the build system will also spend
+     a lot of time on certain "final states" (namely, Failure and Success), and
+     [`Delay]ing those will cause any new polls to hang until a new build is
+     started. *)
+  let is_transient : Progress.t -> bool = function
+    | Progress.Waiting
+    | Interrupted
+    | In_progress _ ->
+      true
+    | Success
+    | Failed ->
+      false
 
   let current () : Progress.t =
     let p = Build_system.get_current_progress () in
@@ -115,9 +129,22 @@ module Progress = struct
       let remaining = Build_system.Progress.remaining p in
       In_progress { complete; remaining }
 
-  let on_rest_request _poller () = `Delay
+  let init_state () =
+    match Build_system.last_event () with
+    | Some evt -> Next_update (progress_of_build_event evt)
+    | None -> Next_update (current ())
 
-  let on_update_inactive _ () = None
+  let reset _ = Already_seen
+
+  let on_rest_request _poller = function
+    | Already_seen -> `Delay
+    | Next_update last_event ->
+      if is_transient last_event then
+        `Delay
+      else
+        `Respond last_event
+
+  let on_update_inactive evt _ = Some (Next_update evt)
 
   let on_update_waiting u = u
 end
@@ -174,6 +201,8 @@ module Diagnostic = struct
            Diagnostic.Event.Add (Diagnostics.diagnostic_of_error e))
 
   let init_state () = Pending_diagnostics.empty
+
+  let reset () = init_state ()
 
   let on_rest_request _poller pd =
     if Pending_diagnostics.is_empty pd then

@@ -41,7 +41,7 @@ module Dune = struct
   module C = Comparable.Make (T)
   module Set = C.Set
 
-  let _equal x y = Ordering.is_eq (compare x y)
+  let compare x y = Ordering.to_int (compare x y)
 
   let create ~where ~root ~pid = { where; root; pid }
 

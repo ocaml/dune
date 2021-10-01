@@ -445,6 +445,10 @@ module V1 : sig
     module Dune : sig
       type t
 
+      val to_dyn : t -> Dyn.t
+
+      val compare : t -> t -> int
+
       val where : t -> Where.t
 
       val root : t -> string

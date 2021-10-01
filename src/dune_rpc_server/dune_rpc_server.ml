@@ -400,7 +400,7 @@ module H = struct
         | Error e -> session.send (Some [ Response (id, Error e) ])
         | Ok init ->
           let protocol_ver = Initialize.Request.protocol_version init in
-          if protocol_ver != Protocol.latest_version then
+          if protocol_ver <> Protocol.latest_version then
             abort session
               ~message:"The server and client use incompatible protocols."
           else

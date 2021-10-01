@@ -89,7 +89,8 @@ module Session = struct
 
     let closed t =
       match t.state with
-      | Uninitialized -> true
+      | Uninitialized ->
+        Code_error.raise "closed: called on uninitialized session" []
       | Initialized { closed; _ } -> closed
 
     let id t = t.id

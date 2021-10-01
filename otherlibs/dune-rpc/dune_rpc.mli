@@ -435,13 +435,6 @@ module V1 : sig
   end
 
   module Registry : sig
-    module File : sig
-      type t =
-        { path : string
-        ; contents : string
-        }
-    end
-
     module Dune : sig
       type t
 

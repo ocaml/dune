@@ -34,6 +34,8 @@ module Path : sig
 
   val relative : t -> string -> t
 
+  val to_string_absolute : t -> string
+
   val sexp : t Conv.value
 end
 

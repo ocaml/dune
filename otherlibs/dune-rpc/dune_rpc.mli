@@ -86,6 +86,8 @@ module V1 : sig
     val absolute : string -> t
 
     val relative : t -> string -> t
+
+    val to_string_absolute : t -> string
   end
 
   module Target : sig
@@ -225,6 +227,8 @@ module V1 : sig
 
     (** Promote a file. *)
     val promote : (Path.t, unit) t
+
+    val build_dir : (unit, Path.t) t
   end
 
   module Client : sig

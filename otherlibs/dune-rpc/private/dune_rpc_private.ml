@@ -41,6 +41,8 @@ module Public = struct
     let format_dune_file = Procedures.Public.format_dune_file.decl
 
     let promote = Procedures.Public.promote.decl
+
+    let build_dir = Procedures.Public.build_dir.decl
   end
 
   module Notification = struct

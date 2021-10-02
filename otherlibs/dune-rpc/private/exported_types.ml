@@ -74,6 +74,8 @@ module Path = struct
 
   let dune_root = "."
 
+  let to_string_absolute x = x
+
   let absolute abs =
     if Filename.is_relative abs then
       Code_error.raise "Path.absolute: accepts only absolute paths"

@@ -280,6 +280,10 @@ let handler (t : t Fdecl.t) : 'a Dune_rpc_server.Handler.t =
     in
     Handler.implement_request rpc Procedures.Public.promote f
   in
+  let () =
+    let f _ () = Fiber.return Path.Build.(to_string root) in
+    Handler.implement_request rpc Procedures.Public.build_dir f
+  in
   rpc
 
 let task t f =

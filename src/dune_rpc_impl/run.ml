@@ -69,7 +69,17 @@ let run config stats =
                        in
                        let dune =
                          let pid = Unix.getpid () in
-                         Registry.Dune.create ~where:t.where ~root:t.root ~pid
+                         let where =
+                           match t.where with
+                           | `Ip (host, port) -> `Ip (host, port)
+                           | `Unix a ->
+                             `Unix
+                               (if Filename.is_relative a then
+                                 Filename.concat (Sys.getcwd ()) a
+                               else
+                                 a)
+                         in
+                         Registry.Dune.create ~where ~root:t.root ~pid
                        in
                        Registry.Config.register registry_config dune
                      in

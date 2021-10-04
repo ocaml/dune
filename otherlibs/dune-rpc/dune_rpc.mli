@@ -435,15 +435,12 @@ module V1 : sig
   end
 
   module Registry : sig
-    module File : sig
-      type t =
-        { path : string
-        ; contents : string
-        }
-    end
-
     module Dune : sig
       type t
+
+      val to_dyn : t -> Dyn.t
+
+      val compare : t -> t -> int
 
       val where : t -> Where.t
 

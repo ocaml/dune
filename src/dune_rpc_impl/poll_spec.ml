@@ -13,6 +13,9 @@ module type S = sig
   (** initialize a new state for a waiting client *)
   val init_state : unit -> state
 
+  (** called after the state is used to produce a response *)
+  val reset : unit -> state
+
   (** subsequent request by a long poller. may be delayed until the next update *)
   val on_rest_request :
     Dune_rpc_server.Poller.t -> state -> [ `Delay | `Respond of response ]

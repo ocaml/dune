@@ -46,10 +46,22 @@ module Fs_memo_event = struct
     | File_changed
     | Unknown  (** Treated conservatively as any possible event. *)
 
+  let dyn_of_kind kind =
+    Dyn.Encoder.string
+      (match kind with
+      | Created -> "Created"
+      | Deleted -> "Deleted"
+      | File_changed -> "File_changed"
+      | Unknown -> "Unknown")
+
   type t =
     { path : Path.t
     ; kind : kind
     }
+
+  let to_dyn { path; kind } =
+    let open Dyn.Encoder in
+    record [ ("path", Path.to_dyn path); ("kind", dyn_of_kind kind) ]
 
   let create ~kind ~path =
     if Path.is_in_build_dir path then
@@ -193,29 +205,6 @@ module Buffer = struct
          List.rev !lines)
 end
 
-module Inotifywait = struct
-  let wait_for_watches_established stderr =
-    let buffer = Buffer.create ~capacity:65536 in
-    let rec loop () =
-      match Buffer.read_lines buffer stderr with
-      | `End_of_file _last_line -> `Error
-      | `Ok lines ->
-        if List.exists lines ~f:(String.equal "Watches established.") then
-          `Established
-        else
-          loop ()
-    in
-    loop ()
-
-  let parse_message s =
-    match String.drop_prefix ~prefix:"e:" s with
-    | None -> Error "invalid message (prefix missing)"
-    | Some event -> (
-      match String.lsplit2 ~on:':' event with
-      | Some (_kind, path) -> Ok path
-      | None -> Error "invalid message (event type missing)")
-end
-
 let special_file_for_inotify_sync =
   let path = lazy (Path.Build.relative Path.Build.root "dune-inotify-sync") in
   fun () -> Lazy.force path
@@ -236,26 +225,6 @@ let command ~root ~backend =
     Path.Build.to_string (special_file_for_inotify_sync ())
   in
   match backend with
-  | `Inotifywait inotifywait ->
-    (* On Linux, use inotifywait. *)
-    let excludes = String.concat ~sep:"|" exclude_patterns in
-    ( inotifywait
-    , List.concat
-        [ [ "-r"; root ]
-          (* excluding with "@" is more efficient that using --exclude because
-             it avoids creating inotify watches altogether, while --exclude
-             merely filters the events after they are generated *)
-        ; List.map exclude_paths ~f:(fun path ->
-              "@" ^ Filename.concat root path)
-        ; [ inotify_special_path ]
-        ; [ "--exclude"; excludes ]
-        ; [ "-e"; "close_write" ]
-        ; [ "-e"; "delete" ]
-        ; [ "--format"; "e:%e:%w%f" ]
-        ; [ "-m" ]
-        ]
-    , Inotifywait.parse_message
-    , Some Inotifywait.wait_for_watches_established )
   | `Fswatch fswatch ->
     (* On all other platforms, try to use fswatch. fswatch's event filtering is
        not reliable (at least on Linux), so don't try to use it, instead act on
@@ -282,43 +251,25 @@ let command ~root ~backend =
       ]
       @ [ "--include"; inotify_special_path ]
       @ excludes
-    , (fun s -> Ok s)
-    , None )
+    , fun s -> Ok s )
 
-let select_watcher_backend ~use_inotify_lib =
+let fswatch_backend () =
   let try_fswatch () =
     Option.map
       (Bin.which ~path:(Env.path Env.initial) "fswatch")
       ~f:(fun fswatch -> `Fswatch fswatch)
   in
-  let try_inotifywait () =
-    Option.map
-      (Bin.which ~path:(Env.path Env.initial) "inotifywait")
-      ~f:(fun inotifywait -> `Inotifywait inotifywait)
-  in
-  let error str = User_error.raise [ Pp.text str ] in
-  match Sys.linux with
-  | false -> (
-    match try_fswatch () with
-    | Some res -> res
-    | None -> error "Please install fswatch to enable watch mode.")
-  | true -> (
-    if use_inotify_lib then (
-      assert (Ocaml_inotify.Inotify.supported_by_the_os ());
-      `Inotify_lib
-    ) else
-      match try_inotifywait () with
-      | Some res -> res
-      | None -> (
-        match try_fswatch () with
-        | Some res -> res
-        | None ->
-          User_error.raise
-            [ Pp.text
-                "Please install inotifywait to enable watch mode. If \
-                 inotifywait is unavailable, fswatch may also be used but will \
-                 result in a worse experience."
-            ]))
+  match try_fswatch () with
+  | Some res -> res
+  | None ->
+    User_error.raise [ Pp.text "Please install fswatch to enable watch mode." ]
+
+let select_watcher_backend () =
+  if Sys.linux then (
+    assert (Ocaml_inotify.Inotify.supported_by_the_os ());
+    `Inotify_lib
+  ) else
+    fswatch_backend ()
 
 let emit_sync () =
   Io.write_file (Path.build (special_file_for_inotify_sync ())) "z"
@@ -329,21 +280,11 @@ let prepare_sync () =
 
 let spawn_external_watcher ~root ~backend =
   prepare_sync ();
-  let prog, args, parse_line, wait_for_start = command ~root ~backend in
+  let prog, args, parse_line = command ~root ~backend in
   let prog = Path.to_absolute_filename prog in
   let argv = prog :: args in
   let r_stdout, w_stdout = Unix.pipe () in
-  let stderr, wait =
-    match wait_for_start with
-    | None -> (None, fun () -> ())
-    | Some wait -> (
-      let r_stderr, w_stderr = Unix.pipe () in
-      ( Some w_stderr
-      , fun () ->
-          match wait r_stderr with
-          | `Error -> failwith "error waiting for watches to be established"
-          | `Established -> () ))
-  in
+  let stderr, wait = (None, fun () -> ()) in
   let pid = Spawn.spawn () ~prog ~argv ~stdout:w_stdout ?stderr |> Pid.of_int in
   Unix.close w_stdout;
   Option.iter stderr ~f:Unix.close;
@@ -477,17 +418,16 @@ let create_inotifylib ~scheduler =
   { kind = Fine { inotify }; shutdown = `No_op; ignored_files }
 
 let create_default ~scheduler =
-  match select_watcher_backend ~use_inotify_lib:true with
-  | (`Inotifywait _ | `Fswatch _) as backend ->
+  match select_watcher_backend () with
+  | `Fswatch _ as backend ->
     create_external ~scheduler ~root:Path.root
       ~debounce_interval:(Some 0.5 (* seconds *)) ~backend
   | `Inotify_lib -> create_inotifylib ~scheduler
 
 let create_external ~root ~debounce_interval ~scheduler =
-  match select_watcher_backend ~use_inotify_lib:false with
-  | (`Inotifywait _ | `Fswatch _) as backend ->
+  match fswatch_backend () with
+  | `Fswatch _ as backend ->
     create_external ~root ~debounce_interval ~scheduler ~backend
-  | `Inotify_lib -> assert false
 
 let wait_for_initial_watches_established_blocking t =
   match t.kind with

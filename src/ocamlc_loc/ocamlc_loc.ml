@@ -1,11 +1,17 @@
 module Re = Dune_re
 
+type warning =
+  { code : int
+  ; name : string
+  }
+
+let dyn_of_warning { code; name } =
+  let open Dyn.Encoder in
+  record [ ("code", int code); ("name", string name) ]
+
 type severity =
   | Error
-  | Warning of
-      { code : int option (* codes are available starting 4.12 *)
-      ; name : string
-      }
+  | Warning of warning option
 
 type message =
   | Raw of string
@@ -31,9 +37,7 @@ let dyn_of_severity =
   let open Dyn.Encoder in
   function
   | Error -> constr "Error" []
-  | Warning { code; name } ->
-    constr "Warning"
-      [ record [ ("code", (option int) code); ("name", string name) ] ]
+  | Warning w -> constr "Warning" [ option dyn_of_warning w ]
 
 let dyn_of_message =
   let open Dyn.Encoder in
@@ -98,13 +102,15 @@ let message_re =
     let warning =
       seq
         [ str "Warning "
-        ; group (rep1 digit)
         ; opt
             (seq
-               [ rep1 space
-               ; char '['
-               ; group (rep1 (compl [ char ']' ]))
-               ; char ']'
+               [ group (rep1 digit)
+               ; seq
+                   [ rep1 space
+                   ; char '['
+                   ; group (rep1 (compl [ char ']' ]))
+                   ; char ']'
+                   ]
                ])
         ]
     in
@@ -134,15 +140,12 @@ let parse_message msg =
     let severity =
       if Re.Mark.test group error_marker then
         Error
-      else
-        let code =
-          if Re.Group.test group 2 then
-            Some (int_of_string (Re.Group.get group 2))
-          else
-            None
-        in
+      else if Re.Group.(test group 2 && test group 3) then
+        let code = int_of_string (Re.Group.get group 2) in
         let name = Re.Group.get group 3 in
-        Warning { code; name }
+        Warning (Some { code; name })
+      else
+        Warning None
     in
     Structured { file_excerpt; severity; message = Re.Group.get group 4 }
 

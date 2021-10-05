@@ -61,7 +61,7 @@ let make ~dir ~inherit_from ~scope ~config_stanza ~profile ~expander
   let inherited ~field ~root extend =
     Memo.lazy_ (fun () ->
         (match inherit_from with
-        | None -> Memo.Build.return root
+        | None -> Memo.Lazy.force root
         | Some t -> Memo.Lazy.force t >>= field)
         >>= extend)
   in
@@ -77,7 +77,7 @@ let make ~dir ~inherit_from ~scope ~config_stanza ~profile ~expander
         | Some x -> Memo.Build.return x)
   in
   let local_binaries =
-    inherited ~field:local_binaries ~root:[] (fun binaries ->
+    inherited ~field:local_binaries ~root:(Memo.Lazy.of_val []) (fun binaries ->
         let+ expanded =
           Memo.Build.sequential_map config.binaries
             ~f:
@@ -90,7 +90,8 @@ let make ~dir ~inherit_from ~scope ~config_stanza ~profile ~expander
         binaries @ expanded)
   in
   let external_env =
-    inherited ~field:external_env ~root:default_env (fun env ->
+    inherited ~field:external_env ~root:(Memo.Lazy.of_val default_env)
+      (fun env ->
         let env, have_binaries =
           (Env.extend_env env config.env_vars, List.is_non_empty config.binaries)
         in
@@ -101,15 +102,17 @@ let make ~dir ~inherit_from ~scope ~config_stanza ~profile ~expander
           Memo.Build.return env)
   in
   let bin_artifacts =
-    inherited ~field:bin_artifacts ~root:default_bin_artifacts (fun binaries ->
+    inherited ~field:bin_artifacts
+      ~root:(Memo.Lazy.of_val default_bin_artifacts) (fun binaries ->
         let+ local_binaries = Memo.Lazy.force local_binaries in
         Artifacts.Bin.add_binaries binaries ~dir local_binaries)
   in
   let ocaml_flags =
     let default_ocaml_flags =
-      let project = Scope.project scope in
-      let dune_version = Dune_project.dune_version project in
-      Ocaml_flags.default ~profile ~dune_version
+      Memo.lazy_ (fun () ->
+          let project = Scope.project scope in
+          let dune_version = Dune_project.dune_version project in
+          Memo.Build.return (Ocaml_flags.default ~profile ~dune_version))
     in
     inherited ~field:ocaml_flags ~root:default_ocaml_flags (fun flags ->
         let+ expander = Memo.Lazy.force expander in
@@ -123,10 +126,11 @@ let make ~dir ~inherit_from ~scope ~config_stanza ~profile ~expander
     | { inline_tests = None; _ } ->
       inherited ~field:inline_tests Memo.Build.return
         ~root:
-          (if Profile.is_inline_test profile then
-            Dune_env.Stanza.Inline_tests.Enabled
-          else
-            Disabled)
+          (Memo.Lazy.of_val
+             (if Profile.is_inline_test profile then
+               Dune_env.Stanza.Inline_tests.Enabled
+             else
+               Disabled))
   in
   let foreign_flags lang =
     let field t =
@@ -135,7 +139,10 @@ let make ~dir ~inherit_from ~scope ~config_stanza ~profile ~expander
     Action_builder.memo_build_join
       (Memo.Lazy.force
          (inherited ~field
-            ~root:(Foreign_language.Dict.get default_context_flags lang)
+            ~root:
+              (Memo.lazy_ (fun () ->
+                   let+ flags = Memo.Lazy.force default_context_flags in
+                   Foreign_language.Dict.get flags lang))
             (fun flags ->
               let+ expander = Memo.Lazy.force expander in
               let expander = Expander.set_dir expander ~dir in
@@ -148,7 +155,7 @@ let make ~dir ~inherit_from ~scope ~config_stanza ~profile ~expander
   let menhir_flags =
     inherited
       ~field:(fun t -> Memo.Build.return (menhir_flags t))
-      ~root:(Action_builder.return [])
+      ~root:(Memo.Lazy.of_val (Action_builder.return []))
       (fun flags ->
         let+ expander = Memo.Lazy.force expander in
         let expander = Expander.set_dir expander ~dir in
@@ -161,11 +168,11 @@ let make ~dir ~inherit_from ~scope ~config_stanza ~profile ~expander
       (* DUNE3: Enable for dev profile in the future *)
       { warnings = Nonfatal }
     in
-    inherited ~field:odoc ~root (fun { warnings } ->
+    inherited ~field:odoc ~root:(Memo.Lazy.of_val root) (fun { warnings } ->
         Memo.Build.return
           { warnings = Option.value config.odoc.warnings ~default:warnings })
   in
-  let default_coq_flags = Action_builder.return [ "-q" ] in
+  let default_coq_flags = Memo.Lazy.of_val (Action_builder.return [ "-q" ]) in
   let coq : Coq.t Action_builder.t Memo.Lazy.t =
     inherited ~field:coq ~root:default_coq_flags (fun flags ->
         let+ expander = Memo.Lazy.force expander in

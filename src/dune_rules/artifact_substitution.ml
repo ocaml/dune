@@ -61,9 +61,11 @@ let conf_of_context (context : Context.t option) =
     }
   | Some context ->
     let get_location = Install.Section.Paths.get_local_location context.name in
-    let get_config_path = function
-      | Sourceroot -> Some (Path.source Path.Source.root)
-      | Stdlib -> Some context.stdlib_dir
+    let get_config_path t =
+      Some
+        (match t with
+        | Sourceroot -> Path.source Path.Source.root
+        | Stdlib -> (Result.ok_exn context.lib_config.ocaml).stdlib_dir)
     in
     let hardcoded_ocaml_path =
       let install_dir = Local_install_path.dir ~context:context.name in

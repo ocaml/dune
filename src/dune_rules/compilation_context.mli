@@ -99,4 +99,6 @@ val bin_annot : t -> bool
 
 val without_bin_annot : t -> t
 
+val ocaml_lib_config : t -> Lib_config.ocaml
+
 val root_module_entries : t -> Module_name.t list Action_builder.t

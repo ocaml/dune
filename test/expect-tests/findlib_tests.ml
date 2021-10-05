@@ -19,26 +19,21 @@ let print_pkg ppf pkg =
   Format.fprintf ppf "<package:%s>" (Lib_name.to_string name)
 
 let findlib =
-  let lib_config : Lib_config.t =
-    { has_native = true
-    ; ext_lib = ".a"
+  let lib_config : Lib_config.ocaml =
+    { Lib_config.ext_lib = ".a"
     ; ext_obj = ".o"
     ; os_type = Ocaml_config.Os_type.Other ""
     ; architecture = ""
     ; system = ""
     ; model = ""
-    ; natdynlink_supported = Dynlink_supported.By_the_os.of_bool true
     ; ext_dll = ".so"
     ; stdlib_dir = Path.root
     ; ccomp_type = Other "gcc"
-    ; profile = Profile.Dev
     ; ocaml_version_string = "4.02.3"
     ; ocaml_version = Ocaml_version.make (4, 2, 3)
-    ; instrument_with = []
-    ; context_name = Context_name.of_string "default"
     }
   in
-  Findlib.create ~paths:[ db_path ] ~lib_config
+  Findlib.create ~paths:[ db_path ] ~lib_config:(Ok lib_config)
 
 let%expect_test _ =
   let pkg =

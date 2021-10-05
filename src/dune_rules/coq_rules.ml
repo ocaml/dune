@@ -122,7 +122,7 @@ module Context = struct
     ; build_dir : Path.Build.t
     ; profile_flags : string list Action_builder.t
     ; mode : Coq_mode.t
-    ; native_includes : Path.Set.t Resolve.t
+    ; native_includes : Path.Set.t Resolve.t Memo.Lazy.t
     ; native_theory_includes : Path.Build.Set.t Resolve.t
     }
 
@@ -177,8 +177,10 @@ module Context = struct
         ]
     | Coq_mode.Native ->
       let args =
+        let open Memo.Build.O in
+        let+ native_includes = Memo.Lazy.force cctx.native_includes in
         let open Resolve.O in
-        let* native_includes = cctx.native_includes in
+        let* native_includes = native_includes in
         let include_ dir acc = Command.Args.Path dir :: A "-nI" :: acc in
         let native_include_ml_args =
           Path.Set.fold native_includes ~init:[] ~f:include_
@@ -197,7 +199,7 @@ module Context = struct
           ; Command.Args.S (List.rev native_include_theory_output)
           ]
       in
-      Resolve.args args
+      Resolve.Build.args args
 
   (* compute include flags and mlpack rules *)
   let setup_ml_deps ~lib_db libs theories =
@@ -251,10 +253,11 @@ module Context = struct
       setup_ml_deps ~lib_db buildable.libraries theories_deps
     in
     let mode = select_native_mode ~sctx ~buildable in
-    let* native_includes =
+    let native_includes =
       let open Resolve.Build.O in
-      resolve_first lib_db [ "coq-core.kernel"; "coq.kernel" ] >>| fun lib ->
-      Util.coq_nativelib_cmi_dirs [ lib ]
+      Memo.lazy_ (fun () ->
+          resolve_first lib_db [ "coq-core.kernel"; "coq.kernel" ]
+          >>| fun lib -> Util.coq_nativelib_cmi_dirs [ lib ])
     in
     let+ native_theory_includes =
       setup_native_theory_includes ~sctx ~mode ~theories_deps ~theory_dirs

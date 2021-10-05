@@ -40,6 +40,8 @@ module Prog : sig
 
     val raise : t -> _
 
+    val to_exn : t -> exn
+
     val user_message : t -> User_message.t
   end
 

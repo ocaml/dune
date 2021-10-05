@@ -3,7 +3,8 @@ open! Stdune
 open Import
 
 let default_context_flags (ctx : Context.t) ~project =
-  let cflags = Ocaml_config.ocamlc_cflags ctx.ocaml_config in
+  let ocaml_config = Result.ok_exn ctx.ocaml_config in
+  let cflags = Ocaml_config.ocamlc_cflags ocaml_config in
   let cxxflags =
     List.filter cflags ~f:(fun s -> not (String.is_prefix s ~prefix:"-std="))
   in
@@ -13,7 +14,7 @@ let default_context_flags (ctx : Context.t) ~project =
     | Some false ->
       (Action_builder.return cflags, Action_builder.return cxxflags)
     | Some true ->
-      let c = cflags @ Ocaml_config.ocamlc_cppflags ctx.ocaml_config in
+      let c = cflags @ Ocaml_config.ocamlc_cppflags ocaml_config in
       let cxx =
         let open Action_builder.O in
         let+ db_flags = Cxx_flags.get_flags ctx.build_dir in
@@ -131,7 +132,10 @@ end = struct
     in
     let config_stanza = get_env_stanza t ~dir in
     let project = Scope.project scope in
-    let default_context_flags = default_context_flags t.context ~project in
+    let default_context_flags =
+      Memo.lazy_ (fun () ->
+          Memo.Build.return (default_context_flags t.context ~project))
+    in
     let expander_for_artifacts =
       Memo.lazy_ (fun () ->
           let+ external_env = external_env t ~dir in
@@ -244,12 +248,12 @@ let to_dyn t = Context.to_dyn t.context
 
 let host t = Option.value t.host ~default:t
 
-let any_package_aux ~packages ~context pkg =
+let any_package_aux ~packages ~(context : Context.t) pkg =
   match Package.Name.Map.find packages pkg with
   | Some p -> Memo.Build.return (Some (Expander.Local p))
   | None -> (
     let open Memo.Build.O in
-    Findlib.find_root_package context.Context.findlib pkg >>| function
+    Findlib.find_root_package context.findlib pkg >>| function
     | Ok p -> Some (Expander.Installed p)
     | Error Not_found -> None
     | Error (Invalid_dune_package exn) -> Exn.raise exn)
@@ -671,7 +675,10 @@ let create ~(context : Context.t) ~host ~projects ~packages ~stanzas =
           let dir = context.build_dir in
           let scope = Scope.DB.find_by_dir scopes dir in
           let project = Scope.project scope in
-          let default_context_flags = default_context_flags context ~project in
+          let default_context_flags =
+            Memo.lazy_ (fun () ->
+                Memo.Build.return (default_context_flags context ~project))
+          in
           let expander_for_artifacts =
             Memo.lazy_ (fun () ->
                 Code_error.raise

@@ -39,7 +39,8 @@ let setup_copy_rules_for_impl ~sctx ~dir vimpl =
   let copy_to_obj_dir ~src ~dst =
     add_rule ~loc:(Loc.of_pos __POS__) (Action_builder.symlink ~src ~dst)
   in
-  let { Lib_config.has_native; ext_obj; _ } = ctx.lib_config in
+  let has_native = ctx.lib_config.has_native in
+  let ext_obj = (Result.ok_exn ctx.lib_config.ocaml).ext_obj in
   let { Mode.Dict.byte; native } =
     Dune_file.Mode_conf.Set.eval impl.modes ~has_native
   in
@@ -122,9 +123,13 @@ let impl sctx ~(lib : Dune_file.Library.t) ~scope =
                  ~instrumentation_backend:
                    (Lib.DB.instrumentation_backend (Scope.libs scope)))
           in
+          let lib_config =
+            Result.ok_exn (Super_context.context sctx).lib_config.ocaml
+          in
           let* modules =
             let pp_spec =
-              Pp_spec.make preprocess (Super_context.context sctx).version
+              let ocaml_version = lib_config.ocaml_version in
+              Pp_spec.make preprocess ocaml_version
             in
             Dir_contents.ocaml dir_contents
             >>| Ml_sources.modules ~for_:(Library name)
@@ -132,7 +137,7 @@ let impl sctx ~(lib : Dune_file.Library.t) ~scope =
                     Memo.Build.return (Pp_spec.pped_module pp_spec m))
           in
           let+ foreign_objects =
-            let ext_obj = (Super_context.context sctx).lib_config.ext_obj in
+            let ext_obj = lib_config.ext_obj in
             let dir = Obj_dir.obj_dir (Lib.Local.obj_dir vlib) in
             let+ foreign_sources = Dir_contents.foreign_sources dir_contents in
             foreign_sources

@@ -305,7 +305,8 @@ module Unprocessed = struct
     let scope = Expander.scope expander in
     match
       Preprocess.remove_future_syntax preprocess ~for_:Merlin
-        (Super_context.context sctx).version
+        (Result.ok_exn (Super_context.context sctx).lib_config.ocaml)
+          .ocaml_version
     with
     | Action (loc, (action : Action_dune_lang.t)) ->
       pp_flag_of_action ~expander ~loc ~action

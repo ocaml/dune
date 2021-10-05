@@ -159,7 +159,9 @@ let make (d : _ Dir_with_dune.t) ~(sources : Foreign.Sources.Unresolved.t)
         ]
       |> List.concat_map ~f:(fun sources ->
              String.Map.to_list_map sources ~f:(fun _ (loc, source) ->
-                 (Foreign.Source.object_name source ^ lib_config.ext_obj, loc)))
+                 ( Foreign.Source.object_name source
+                   ^ (Result.ok_exn lib_config.ocaml).ext_obj
+                 , loc )))
     in
     match String.Map.of_list objects with
     | Ok _ -> ()

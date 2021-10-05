@@ -72,9 +72,9 @@ type t = private
   ; path : Path.t list  (** [OCAML_TOPLEVEL_PATH] *)
   ; toplevel_path : Path.t option
         (** Ocaml bin directory with all ocaml tools *)
-  ; ocaml_bin : Path.t
+  ; ocaml_bin : Path.t Or_exn.t
   ; ocaml : Action.Prog.t
-  ; ocamlc : Path.t
+  ; ocamlc : Action.Prog.t
   ; ocamlopt : Action.Prog.t
   ; ocamldep : Action.Prog.t
   ; ocamlmklib : Action.Prog.t
@@ -83,11 +83,9 @@ type t = private
   ; findlib : Findlib.t
   ; findlib_toolchain : Context_name.t option  (** Misc *)
   ; default_ocamlpath : Path.t list
-  ; arch_sixtyfour : bool
-  ; ocaml_config : Ocaml_config.t
-  ; ocaml_config_vars : Ocaml_config.Vars.t
-  ; version : Ocaml_version.t
-  ; stdlib_dir : Path.t
+  ; arch_sixtyfour : bool Or_exn.t
+  ; ocaml_config : Ocaml_config.t Or_exn.t
+  ; ocaml_config_vars : Ocaml_config.Vars.t Or_exn.t
   ; supports_shared_libraries : Dynlink_supported.By_the_os.t
   ; which : string -> Path.t option Memo.Build.t
         (** Given a program name, e.g. ["ocaml"], find the path to a preferred

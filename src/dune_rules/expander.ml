@@ -57,7 +57,7 @@ type t =
   ; bindings : value Pform.Map.t
   ; scope : Scope.t
   ; scope_host : Scope.t
-  ; c_compiler : string
+  ; c_compiler : string Or_exn.t
   ; context : Context.t
   ; lookup_artifacts :
       (dir:Path.Build.t -> Ml_sources.Artifacts.t Memo.Build.t) option
@@ -221,15 +221,16 @@ let cc t =
   Memo.Build.map (t.foreign_flags ~dir:t.dir) ~f:(fun cc ->
       Foreign_language.Dict.map cc ~f:(fun cc ->
           let+ flags = cc in
-          strings (t.c_compiler :: flags)))
+          strings (Result.ok_exn t.c_compiler :: flags)))
 
 let get_prog = function
   | Ok p -> path p
   | Error err -> Action.Prog.Not_found.raise err
 
 let c_compiler_and_flags (context : Context.t) =
-  Ocaml_config.c_compiler context.ocaml_config
-  :: Ocaml_config.ocamlc_cflags context.ocaml_config
+  let ocaml_config = Result.ok_exn context.ocaml_config in
+  Ocaml_config.c_compiler ocaml_config
+  :: Ocaml_config.ocamlc_cflags ocaml_config
 
 let relative ~source d s =
   Path.build
@@ -298,7 +299,7 @@ let expand_pform_gen ~(context : Context.t) ~bindings ~dir ~source
           (fun t ->
             invalid_use_of_target_variable t ~source ~var_multiplicity:Multiple)
       | Ocaml -> static (get_prog context.ocaml)
-      | Ocamlc -> static (path context.ocamlc)
+      | Ocamlc -> static (get_prog context.ocamlc)
       | Ocamlopt -> static (get_prog context.ocamlopt)
       | Make ->
         let open Memo.Build.O in
@@ -317,22 +318,41 @@ let expand_pform_gen ~(context : Context.t) ~bindings ~dir ~source
              (c_compiler_and_flags context
              @ [ "-undef"; "-traditional"; "-x"; "c"; "-E" ]))
       | Arch_sixtyfour ->
-        static (string (string_of_bool context.arch_sixtyfour))
-      | Ocaml_bin_dir -> static [ Dir context.ocaml_bin ]
+        let arch_sixtyfour = Result.ok_exn context.arch_sixtyfour in
+        static (string (string_of_bool arch_sixtyfour))
+      | Ocaml_bin_dir ->
+        let ocaml_bin = Result.ok_exn context.ocaml_bin in
+        static [ Dir ocaml_bin ]
       | Ocaml_version ->
-        static (string (Ocaml_config.version_string context.ocaml_config))
-      | Ocaml_stdlib_dir -> static (string (Path.to_string context.stdlib_dir))
+        let ocaml_config = Result.ok_exn context.ocaml_config in
+        static (string (Ocaml_config.version_string ocaml_config))
+      | Ocaml_stdlib_dir ->
+        let stdlib_dir = (Result.ok_exn context.lib_config.ocaml).stdlib_dir in
+        static (string (Path.to_string stdlib_dir))
       | Dev_null -> static (string (Path.to_string Config.dev_null))
-      | Ext_obj -> static (string context.lib_config.ext_obj)
-      | Ext_asm -> static (string (Ocaml_config.ext_asm context.ocaml_config))
-      | Ext_lib -> static (string context.lib_config.ext_lib)
-      | Ext_dll -> static (string context.lib_config.ext_dll)
-      | Ext_exe -> static (string (Ocaml_config.ext_exe context.ocaml_config))
+      | Ext_obj ->
+        let lib_config = Result.ok_exn context.lib_config.ocaml in
+        static (string lib_config.ext_obj)
+      | Ext_asm ->
+        let ocaml_config = Result.ok_exn context.ocaml_config in
+        static (string (Ocaml_config.ext_asm ocaml_config))
+      | Ext_lib ->
+        let lib_config = Result.ok_exn context.lib_config.ocaml in
+        static (string lib_config.ext_lib)
+      | Ext_dll ->
+        let lib_config = Result.ok_exn context.lib_config.ocaml in
+        static (string lib_config.ext_dll)
+      | Ext_exe ->
+        let ocaml_config = Result.ok_exn context.ocaml_config in
+        static (string (Ocaml_config.ext_exe ocaml_config))
       | Ext_plugin ->
         static
           (string
              (Mode.plugin_ext
-                (if Ocaml_config.natdynlink_supported context.ocaml_config then
+                (if
+                 Dynlink_supported.By_the_os.get
+                   context.lib_config.natdynlink_supported
+                then
                   Mode.Native
                 else
                   Mode.Byte)))
@@ -340,14 +360,20 @@ let expand_pform_gen ~(context : Context.t) ~bindings ~dir ~source
       | Workspace_root -> static [ Value.Dir (Path.build context.build_dir) ]
       | Context_name -> static (string (Context_name.to_string context.name))
       | Os_type ->
+        let ocaml_config = Result.ok_exn context.ocaml_config in
         static
           (string
              (Ocaml_config.Os_type.to_string
-                (Ocaml_config.os_type context.ocaml_config)))
+                (Ocaml_config.os_type ocaml_config)))
       | Architecture ->
-        static (string (Ocaml_config.architecture context.ocaml_config))
-      | System -> static (string (Ocaml_config.system context.ocaml_config))
-      | Model -> static (string (Ocaml_config.model context.ocaml_config))
+        let ocaml_config = Result.ok_exn context.ocaml_config in
+        static (string (Ocaml_config.architecture ocaml_config))
+      | System ->
+        let ocaml_config = Result.ok_exn context.ocaml_config in
+        static (string (Ocaml_config.system ocaml_config))
+      | Model ->
+        let ocaml_config = Result.ok_exn context.ocaml_config in
+        static (string (Ocaml_config.model ocaml_config))
       | Ignoring_promoted_rules ->
         static (string (string_of_bool !Clflags.ignore_promoted_rules))
       | Project_root ->
@@ -369,9 +395,9 @@ let expand_pform_gen ~(context : Context.t) ~bindings ~dir ~source
               (let* cc = Action_builder.memo_build (cc t) in
                cc.cxx))
       | Ccomp_type ->
+        let lib_config = Result.ok_exn context.lib_config.ocaml in
         static
-          (string
-             (Ocaml_config.Ccomp_type.to_string context.lib_config.ccomp_type))
+          (string (Ocaml_config.Ccomp_type.to_string lib_config.ccomp_type))
       | Toolchain ->
         static
           (string
@@ -384,8 +410,9 @@ let expand_pform_gen ~(context : Context.t) ~bindings ~dir ~source
     | Macro (macro, s) -> (
       match macro with
       | Ocaml_config ->
+        let ocaml_config = Result.ok_exn context.ocaml_config in
         static
-          (match Ocaml_config.by_name context.ocaml_config s with
+          (match Ocaml_config.by_name ocaml_config s with
           | None ->
             User_error.raise
               ~loc:(Dune_lang.Template.Pform.loc source)
@@ -647,7 +674,7 @@ let make ~scope ~scope_host ~(context : Context.t) ~lib_artifacts
   ; lib_artifacts
   ; lib_artifacts_host
   ; bin_artifacts_host
-  ; c_compiler = Ocaml_config.c_compiler context.ocaml_config
+  ; c_compiler = Result.map context.ocaml_config ~f:Ocaml_config.c_compiler
   ; context
   ; lookup_artifacts = None
   ; foreign_flags =

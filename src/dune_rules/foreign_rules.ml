@@ -103,7 +103,7 @@ let build_c ~kind ~sctx ~dir ~expander ~include_flags (loc, src, dst) =
   let project = Super_context.find_scope_by_dir sctx dir |> Scope.project in
   let use_standard_flags = Dune_project.use_standard_c_and_cxx_flags project in
   let base_flags =
-    let cfg = ctx.ocaml_config in
+    let cfg = Result.ok_exn ctx.ocaml_config in
     match kind with
     | Foreign_language.C -> (
       match use_standard_flags with
@@ -152,10 +152,11 @@ let build_c ~kind ~sctx ~dir ~expander ~include_flags (loc, src, dst) =
     |> Action_builder.map ~f:(List.append base_flags)
   and* c_compiler =
     Super_context.resolve_program ~loc:None ~dir sctx
-      (Ocaml_config.c_compiler ctx.ocaml_config)
+      (Ocaml_config.c_compiler (Result.ok_exn ctx.ocaml_config))
   in
+  let lib_config = Result.ok_exn ctx.lib_config.ocaml in
   let output_param =
-    match ctx.lib_config.ccomp_type with
+    match lib_config.ccomp_type with
     | Msvc -> [ Command.Args.Concat ("", [ A "/Fo"; Target dst ]) ]
     | Other _ -> [ A "-o"; Target dst ]
   in
@@ -171,7 +172,7 @@ let build_c ~kind ~sctx ~dir ~expander ~include_flags (loc, src, dst) =
           produced in the current directory *)
        Command.run ~dir:(Path.build dir) c_compiler
          ([ Command.Args.dyn with_user_and_std_flags
-          ; S [ A "-I"; Path ctx.stdlib_dir ]
+          ; S [ A "-I"; Path (Result.ok_exn ctx.lib_config.ocaml).stdlib_dir ]
           ; include_flags
           ]
          @ output_param @ [ A "-c"; Dep src ]))
@@ -182,7 +183,6 @@ let build_c ~kind ~sctx ~dir ~expander ~include_flags (loc, src, dst) =
    looks like it's a list of libraries we depend on. *)
 let build_o_files ~sctx ~foreign_sources ~(dir : Path.Build.t) ~expander
     ~requires ~dir_contents =
-  let ctx = Super_context.context sctx in
   let all_dirs = Dir_contents.dirs dir_contents in
   let h_files =
     List.fold_left all_dirs ~init:[] ~f:(fun acc dc ->
@@ -206,8 +206,10 @@ let build_o_files ~sctx ~foreign_sources ~(dir : Path.Build.t) ~expander
             ])
       ]
   in
+  let ctx = Super_context.context sctx in
+  let lib_config = Result.ok_exn ctx.lib_config.ocaml in
   String.Map.to_list_map foreign_sources ~f:(fun obj (loc, src) ->
-      let dst = Path.Build.relative dir (obj ^ ctx.lib_config.ext_obj) in
+      let dst = Path.Build.relative dir (obj ^ lib_config.ext_obj) in
       let stubs = src.Foreign.Source.stubs in
       let extra_flags = include_dir_flags ~expander ~dir src.stubs in
       let extra_deps =

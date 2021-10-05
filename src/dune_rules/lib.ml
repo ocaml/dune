@@ -305,7 +305,7 @@ module T = struct
     ; resolved_selects : Resolved_select.t list Resolve.t
     ; user_written_deps : Dune_file.Lib_deps.t
     ; implements : t Resolve.t option
-    ; lib_config : Lib_config.t
+    ; lib_config : Lib_config.ocaml Or_exn.t
     ; project : Dune_project.t option
     ; (* these fields cannot be forced until the library is instantiated *)
       default_implementation : t Resolve.t Memo.Lazy.t option
@@ -374,7 +374,7 @@ type db =
   { parent : db option
   ; resolve : Lib_name.t -> resolve_result Memo.Build.t
   ; all : Lib_name.t list Memo.Lazy.t
-  ; lib_config : Lib_config.t
+  ; lib_config : Lib_config.ocaml Or_exn.t
   ; instrument_with : Lib_name.t list
   ; modules_of_lib :
       (dir:Path.Build.t -> name:Lib_name.t -> Modules.t Memo.Build.t) Fdecl.t
@@ -390,7 +390,7 @@ and resolve_result =
       Redirect of
       db option * (Loc.t * Lib_name.t)
 
-let lib_config (t : lib) = t.lib_config
+let lib_config (t : lib) = Result.ok_exn t.lib_config
 
 let name t = t.name
 
@@ -530,7 +530,8 @@ module Link_params = struct
           Path.extend_basename obj_name ~suffix:(Cm_kind.ext Cmo) :: hidden_deps
         | Native ->
           Path.extend_basename obj_name ~suffix:(Cm_kind.ext Cmx)
-          :: Path.extend_basename obj_name ~suffix:t.lib_config.ext_obj
+          :: Path.extend_basename obj_name
+               ~suffix:(Result.ok_exn t.lib_config).ext_obj
           :: hidden_deps)
     in
     { deps; hidden_deps; include_dirs }
@@ -585,7 +586,7 @@ module L = struct
     in
     match ts with
     | [] -> dirs
-    | x :: _ -> Path.Set.remove dirs x.lib_config.stdlib_dir
+    | x :: _ -> Path.Set.remove dirs (Result.ok_exn x.lib_config).stdlib_dir
 
   let include_flags ?project ts mode =
     to_iflags (include_paths ?project ts mode)
@@ -598,7 +599,7 @@ module L = struct
     in
     match ts with
     | [] -> dirs
-    | x :: _ -> Path.Set.remove dirs x.lib_config.stdlib_dir
+    | x :: _ -> Path.Set.remove dirs (Result.ok_exn x.lib_config).stdlib_dir
 
   let c_include_flags ts = to_iflags (c_include_paths ts)
 
@@ -661,7 +662,7 @@ module Lib_and_module = struct
   module L = struct
     type nonrec t = t list
 
-    let link_flags ts ~(lib_config : Lib_config.t) ~mode =
+    let link_flags ts ~(lib_config : Lib_config.ocaml) ~mode =
       let open Action_builder.O in
       Command.Args.Dyn
         (let+ l =
@@ -1906,12 +1907,12 @@ module DB = struct
   (* CR-someday amokhov: this whole module should be rewritten using the
      memoization framework instead of using mutable state. *)
   let create ~parent ~resolve ~projects_by_package ~all ~modules_of_lib
-      ~lib_config () =
+      ~(lib_config : Lib_config.t) () =
     { parent
     ; resolve
     ; all = Memo.lazy_ all
-    ; lib_config
-    ; instrument_with = lib_config.Lib_config.instrument_with
+    ; lib_config = lib_config.ocaml
+    ; instrument_with = lib_config.instrument_with
     ; projects_by_package
     ; modules_of_lib
     }

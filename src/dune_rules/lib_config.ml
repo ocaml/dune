@@ -1,23 +1,27 @@
 open! Dune_engine
 open! Stdune
 
-type t =
-  { has_native : bool
-  ; ext_lib : string
+type ocaml =
+  { ext_lib : string
   ; ext_obj : string
   ; os_type : Ocaml_config.Os_type.t
   ; architecture : string
   ; system : string
-  ; model : string
-  ; natdynlink_supported : Dynlink_supported.By_the_os.t
+  ; model : string  (** Native dynlink *)
   ; ext_dll : string
   ; stdlib_dir : Path.t
   ; ccomp_type : Ocaml_config.Ccomp_type.t
-  ; profile : Profile.t
   ; ocaml_version_string : string
   ; ocaml_version : Ocaml_version.t
+  }
+
+type t =
+  { has_native : bool
+  ; natdynlink_supported : Dynlink_supported.By_the_os.t
+  ; profile : Profile.t
   ; instrument_with : Lib_name.t list
   ; context_name : Context_name.t
+  ; ocaml : ocaml Or_exn.t
   }
 
 let allowed_in_enabled_if =
@@ -33,20 +37,25 @@ let allowed_in_enabled_if =
 
 let get_for_enabled_if t (pform : Pform.t) =
   match pform with
-  | Var Architecture -> t.architecture
-  | Var System -> t.system
-  | Var Model -> t.model
-  | Var Os_type -> Ocaml_config.Os_type.to_string t.os_type
-  | Var Ccomp_type -> Ocaml_config.Ccomp_type.to_string t.ccomp_type
-  | Var Profile -> Profile.to_string t.profile
-  | Var Ocaml_version -> t.ocaml_version_string
-  | Var Context_name -> Context_name.to_string t.context_name
+  | Var Architecture -> Result.map t.ocaml ~f:(fun ocaml -> ocaml.architecture)
+  | Var System -> Result.map t.ocaml ~f:(fun ocaml -> ocaml.system)
+  | Var Model -> Result.map t.ocaml ~f:(fun ocaml -> ocaml.model)
+  | Var Os_type ->
+    Result.map t.ocaml ~f:(fun ocaml ->
+        Ocaml_config.Os_type.to_string ocaml.os_type)
+  | Var Ccomp_type ->
+    Result.map t.ocaml ~f:(fun ocaml ->
+        Ocaml_config.Ccomp_type.to_string ocaml.ccomp_type)
+  | Var Profile -> Ok (Profile.to_string t.profile)
+  | Var Ocaml_version ->
+    Result.map t.ocaml ~f:(fun ocaml -> ocaml.ocaml_version_string)
+  | Var Context_name -> Ok (Context_name.to_string t.context_name)
   | _ ->
     Code_error.raise "Lib_config.get_for_enabled_if: var not allowed"
       [ ("var", Pform.to_dyn pform) ]
 
-let linker_can_create_empty_archives t =
-  match t.ccomp_type with
+let linker_can_create_empty_archives ocaml =
+  match ocaml.ccomp_type with
   | Msvc -> false
   | Other _ -> true
 

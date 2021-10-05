@@ -30,7 +30,9 @@ module Prog = struct
       in
       Utils.program_not_found_message ?hint ~loc ~context program
 
-    let raise t = raise (User_error.E (user_message t, []))
+    let to_exn t = User_error.E (user_message t, [])
+
+    let raise t = raise (to_exn t)
 
     let to_dyn { context; program; hint; loc = _ } =
       let open Dyn.Encoder in

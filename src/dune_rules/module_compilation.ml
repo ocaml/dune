@@ -52,6 +52,7 @@ let build_cm cctx ~dep_graphs ~precompiled_cmi ~cm_kind (m : Module.t) ~phase =
   let dir = CC.dir cctx in
   let obj_dir = CC.obj_dir cctx in
   let ctx = SC.context sctx in
+  let lib_config = CC.ocaml_lib_config cctx in
   let stdlib = CC.stdlib cctx in
   let mode = Mode.of_cm_kind cm_kind in
   let sandbox =
@@ -69,7 +70,7 @@ let build_cm cctx ~dep_graphs ~precompiled_cmi ~cm_kind (m : Module.t) ~phase =
   let+ src = Module.file m ~ml_kind in
   let dst = Obj_dir.Module.cm_file_exn obj_dir m ~kind:cm_kind in
   let obj =
-    Obj_dir.Module.obj_file obj_dir m ~kind:Cmx ~ext:ctx.lib_config.ext_obj
+    Obj_dir.Module.obj_file obj_dir m ~kind:Cmx ~ext:lib_config.ext_obj
   in
   let linear =
     Obj_dir.Module.obj_file obj_dir m ~kind:Cmx ~ext:Fdo.linear_ext
@@ -140,7 +141,12 @@ let build_cm cctx ~dep_graphs ~precompiled_cmi ~cm_kind (m : Module.t) ~phase =
   in
   let opaque_arg =
     let intf_only = cm_kind = Cmi && not (Module.has m ~ml_kind:Impl) in
-    if opaque || (intf_only && Ocaml_version.supports_opaque_for_mli ctx.version)
+    let ocaml_version =
+      (Compilation_context.ocaml_lib_config cctx).ocaml_version
+    in
+    if
+      opaque
+      || (intf_only && Ocaml_version.supports_opaque_for_mli ocaml_version)
     then
       Command.Args.A "-opaque"
     else
@@ -214,9 +220,11 @@ let build_module ~dep_graphs ?(precompiled_cmi = false) cctx m =
     build_cm cctx m ~dep_graphs ~precompiled_cmi ~cm_kind:Cmo ~phase:None
   and* () =
     let ctx = CC.context cctx in
+    let ocaml_version = (CC.ocaml_lib_config cctx).ocaml_version in
+    let ocaml_config = Result.ok_exn ctx.ocaml_config in
     let can_split =
-      Ocaml_version.supports_split_at_emit ctx.version
-      || Ocaml_config.is_dev_version ctx.ocaml_config
+      Ocaml_version.supports_split_at_emit ocaml_version
+      || Ocaml_config.is_dev_version ocaml_config
     in
     match (ctx.fdo_target_exe, can_split) with
     | None, _ ->
@@ -273,7 +281,7 @@ let ocamlc_i ?(flags = []) ~deps cctx (m : Module.t) ~output =
        Action_builder.with_no_targets cm_deps
        >>> Action_builder.With_targets.map
              ~f:(Action.with_stdout_to output)
-             (Command.run (Ok ctx.ocamlc) ~dir:(Path.build ctx.build_dir)
+             (Command.run ctx.ocamlc ~dir:(Path.build ctx.build_dir)
                 [ Command.Args.dyn ocaml_flags
                 ; A "-I"
                 ; Path (Path.build (Obj_dir.byte_dir obj_dir))

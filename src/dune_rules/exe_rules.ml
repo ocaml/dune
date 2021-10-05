@@ -172,7 +172,8 @@ let executables_rules ~sctx ~dir ~expander ~dir_contents ~scope ~compile_info
       ~modules ~flags ~requires_link ~requires_compile ~preprocessing:pp
       ~js_of_ocaml ~opaque:Inherit_from_settings ~package:exes.package
   in
-  let stdlib_dir = ctx.Context.stdlib_dir in
+  let lib_config = Result.ok_exn ctx.lib_config.ocaml in
+  let stdlib_dir = lib_config.stdlib_dir in
   let* requires_compile = Compilation_context.requires_compile cctx in
   let* preprocess =
     Resolve.Build.read_memo_build
@@ -195,7 +196,7 @@ let executables_rules ~sctx ~dir ~expander ~dir_contents ~scope ~compile_info
       Command.Args.S
         [ Command.Args.As flags
         ; Command.Args.S
-            (let ext_lib = ctx.lib_config.ext_lib in
+            (let ext_lib = lib_config.ext_lib in
              let foreign_archives =
                exes.buildable.foreign_archives |> List.map ~f:snd
              in

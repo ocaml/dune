@@ -35,7 +35,7 @@ let build_lib (lib : Library.t) ~native_archives ~sctx ~expander ~flags ~dir
       in
       let map_cclibs =
         (* https://github.com/ocaml/dune/issues/119 *)
-        match ctx.lib_config.ccomp_type with
+        match (Result.ok_exn ctx.lib_config.ocaml).ccomp_type with
         | Msvc -> msvc_hack_cclibs
         | Other _ -> Fun.id
       in
@@ -112,7 +112,9 @@ let gen_wrapped_compat_modules (lib : Library.t) cctx =
 let ocamlmklib ~loc ~c_library_flags ~sctx ~dir ~expander ~o_files ~archive_name
     ~build_targets_together =
   let ctx = Super_context.context sctx in
-  let { Lib_config.ext_lib; ext_dll; _ } = ctx.lib_config in
+  let { Lib_config.ext_lib; ext_dll; ccomp_type; _ } =
+    Result.ok_exn ctx.lib_config.ocaml
+  in
   let static_target =
     Foreign.Archive.Name.lib_file archive_name ~dir ~ext_lib
   in
@@ -137,7 +139,7 @@ let ocamlmklib ~loc ~c_library_flags ~sctx ~dir ~expander ~o_files ~archive_name
                 case, but we pass them unconditionally for simplicity. *)
              (Action_builder.map cclibs_args ~f:(fun cclibs ->
                   (* https://github.com/ocaml/dune/issues/119 *)
-                  match ctx.lib_config.ccomp_type with
+                  match ccomp_type with
                   | Msvc ->
                     let cclibs = msvc_hack_cclibs cclibs in
                     Command.quote_args "-ldopt" cclibs
@@ -230,7 +232,8 @@ let build_stubs lib ~cctx ~dir ~expander ~requires ~dir_contents
 let build_shared lib ~native_archives ~sctx ~dir ~flags =
   let ctx = Super_context.context sctx in
   Memo.Build.Result.iter ctx.ocamlopt ~f:(fun ocamlopt ->
-      let ext_lib = ctx.lib_config.ext_lib in
+      let lib_config = Result.ok_exn ctx.lib_config.ocaml in
+      let ext_lib = lib_config.ext_lib in
       let src =
         let ext = Mode.compiled_lib_ext Native in
         Path.build (Library.archive lib ~dir ~ext)
@@ -278,7 +281,8 @@ let setup_build_archives (lib : Dune_file.Library.t) ~cctx
   let js_of_ocaml = lib.buildable.js_of_ocaml in
   let sctx = Compilation_context.super_context cctx in
   let ctx = Compilation_context.context cctx in
-  let { Lib_config.ext_obj; natdynlink_supported; _ } = ctx.lib_config in
+  let natdynlink_supported = ctx.lib_config.natdynlink_supported in
+  let ext_obj = (Result.ok_exn ctx.lib_config.ocaml).ext_obj in
   let impl_only = Modules.impl_only modules in
   let open Memo.Build.O in
   let* () =
@@ -405,7 +409,7 @@ let library_rules (lib : Library.t) ~cctx ~source_modules ~dir_contents
   let dir = Compilation_context.dir cctx in
   let scope = Compilation_context.scope cctx in
   let* requires_compile = Compilation_context.requires_compile cctx in
-  let stdlib_dir = (Compilation_context.context cctx).Context.stdlib_dir in
+  let stdlib_dir = (Compilation_context.ocaml_lib_config cctx).stdlib_dir in
   let* dep_graphs = Dep_rules.rules cctx ~modules
   and* () =
     Memo.Build.Option.iter vimpl

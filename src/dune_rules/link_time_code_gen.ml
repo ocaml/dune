@@ -162,7 +162,7 @@ let build_info_code cctx ~libs ~api_version =
         (Lib.name lib, v))
   in
   let context = CC.context cctx in
-  let ocaml_version = Ocaml_version.of_ocaml_config context.ocaml_config in
+  let ocaml_version = (Result.ok_exn context.lib_config.ocaml).ocaml_version in
   let buf = Buffer.create 1024 in
   (* Parse the replacement format described in [artifact_substitution.ml]. *)
   pr buf "let eval s =";
@@ -301,7 +301,7 @@ let handle_special_libs cctx =
             if plugins then
               Action_builder.return
                 (dune_site_plugins_code ~libs:all_libs
-                   ~builtins:(Findlib.builtins ctx.Context.findlib))
+                   ~builtins:(Findlib.builtins ctx.findlib))
             else
               Action_builder.return (dune_site_code ())
           in

@@ -13,7 +13,7 @@ val to_dyn : t -> Dyn.t
     or the [name] if not. *)
 val name : t -> Lib_name.t
 
-val lib_config : t -> Lib_config.t
+val lib_config : t -> Lib_config.ocaml
 
 val implements : t -> t Resolve.Build.t option
 
@@ -111,7 +111,7 @@ module Lib_and_module : sig
     val of_libs : lib list -> t
 
     val link_flags :
-      t -> lib_config:Lib_config.t -> mode:Link_mode.t -> _ Command.Args.t
+      t -> lib_config:Lib_config.ocaml -> mode:Link_mode.t -> _ Command.Args.t
   end
 end
 with type lib := t

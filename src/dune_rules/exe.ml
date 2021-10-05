@@ -30,11 +30,13 @@ module Linkage = struct
 
   let native = { mode = Native; ext = ".exe"; flags = [] }
 
-  let custom context =
+  let custom (context : Context.t) =
     { mode = Byte_with_stubs_statically_linked_in
     ; ext = ".exe"
     ; flags =
-        [ Ocaml_version.custom_or_output_complete_exe context.Context.version ]
+        [ Ocaml_version.custom_or_output_complete_exe
+            (Result.ok_exn context.lib_config.ocaml).ocaml_version
+        ]
     }
 
   let native_or_custom (context : Context.t) =
@@ -81,14 +83,16 @@ module Linkage = struct
           else
             Byte_with_stubs_statically_linked_in)
     in
+    let { Lib_config.ext_obj; ext_dll; ocaml_version; _ } =
+      Result.ok_exn ctx.lib_config.ocaml
+    in
     let ext =
-      Dune_file.Executables.Link_mode.extension m ~loc
-        ~ext_obj:ctx.lib_config.ext_obj ~ext_dll:ctx.lib_config.ext_dll
+      Dune_file.Executables.Link_mode.extension m ~loc ~ext_obj ~ext_dll
     in
     let flags =
       match m with
       | Byte_complete ->
-        [ Ocaml_version.custom_or_output_complete_exe ctx.version ]
+        [ Ocaml_version.custom_or_output_complete_exe ocaml_version ]
       | Other { kind; _ } -> (
         match kind with
         | C -> c_flags
@@ -96,7 +100,7 @@ module Linkage = struct
         | Exe -> (
           match link_mode with
           | Byte_with_stubs_statically_linked_in ->
-            [ Ocaml_version.custom_or_output_complete_exe ctx.version ]
+            [ Ocaml_version.custom_or_output_complete_exe ocaml_version ]
           | _ -> [])
         | Object -> o_flags
         | Plugin -> (
@@ -104,8 +108,9 @@ module Linkage = struct
           | Native -> cmxs_flags
           | _ -> cma_flags)
         | Shared_object -> (
+          let ocaml_config = Result.ok_exn ctx.ocaml_config in
           let so_flags =
-            let os_type = Ocaml_config.os_type ctx.ocaml_config in
+            let os_type = Ocaml_config.os_type ocaml_config in
             if os_type = Win32 then
               so_flags_windows
             else
@@ -116,7 +121,7 @@ module Linkage = struct
             (* The compiler doesn't pass these flags in native mode. This looks
                like a bug in the compiler. *)
             let native_c_libraries =
-              Ocaml_config.native_c_libraries ctx.ocaml_config
+              Ocaml_config.native_c_libraries ocaml_config
             in
             List.concat_map native_c_libraries ~f:(fun flag ->
                 [ "-cclib"; flag ])
@@ -189,7 +194,8 @@ let link_exe ~loc ~name ~(linkage : Linkage.t) ~cm_files ~link_time_code_gen
                     else
                       [])
                 ; Lib.Lib_and_module.L.link_flags to_link
-                    ~lib_config:ctx.lib_config ~mode:linkage.mode
+                    ~lib_config:(Result.ok_exn ctx.lib_config.ocaml)
+                    ~mode:linkage.mode
                 ])
           ; Deps o_files
           ; Dyn
@@ -228,18 +234,20 @@ let build_and_link_many ~programs ~linkages ~promote ?link_args ?o_files
   let* dep_graphs = Dep_rules.rules cctx ~modules in
   let* () = Module_compilation.build_all cctx ~dep_graphs
   and* link_time_code_gen = Link_time_code_gen.handle_special_libs cctx in
+  let ext_obj =
+    let sctx = CC.super_context cctx in
+    let ctx = SC.context sctx in
+    (Result.ok_exn ctx.lib_config.ocaml).ext_obj
+  in
   Memo.Build.parallel_iter programs
     ~f:(fun { Program.name; main_module_name; loc } ->
       let cm_files =
-        let sctx = CC.super_context cctx in
-        let ctx = SC.context sctx in
         let obj_dir = CC.obj_dir cctx in
         let top_sorted_modules =
           let main = Option.value_exn (Modules.find modules main_module_name) in
           Dep_graph.top_closed_implementations dep_graphs.impl [ main ]
         in
-        Cm_files.make ~obj_dir ~modules ~top_sorted_modules
-          ~ext_obj:ctx.lib_config.ext_obj
+        Cm_files.make ~obj_dir ~modules ~top_sorted_modules ~ext_obj
       in
       Memo.Build.parallel_iter linkages ~f:(fun linkage ->
           if linkage = Linkage.js then

@@ -25,7 +25,8 @@ val make :
   -> profile:Profile.t
   -> expander:Expander.t Memo.Lazy.t
   -> expander_for_artifacts:Expander.t Memo.Lazy.t
-  -> default_context_flags:string list Action_builder.t Foreign_language.Dict.t
+  -> default_context_flags:
+       string list Action_builder.t Foreign_language.Dict.t Memo.Lazy.t
   -> default_env:Env.t
   -> default_bin_artifacts:Artifacts.Bin.t
   -> t

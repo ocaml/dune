@@ -173,26 +173,23 @@ let builtin_for_dune : Dune_package.t =
 
 module DB = struct
   type t =
-    { stdlib_dir : Path.t
-    ; paths : Path.t list
+    { paths : Path.t list
     ; builtins : Meta.Simplified.t Package.Name.Map.t
-    ; lib_config : Lib_config.t
+    ; lib_config : Lib_config.ocaml Or_exn.t
     }
 
-  let equal t { stdlib_dir; paths; builtins; lib_config } =
-    Path.equal t.stdlib_dir stdlib_dir
-    && List.equal Path.equal t.paths paths
+  let equal t { paths; builtins; lib_config } =
+    List.equal Path.equal t.paths paths
     && Package.Name.Map.equal ~equal:Meta.Simplified.equal t.builtins builtins
-    && Lib_config.equal t.lib_config lib_config
+    && Poly.equal t.lib_config lib_config
 
-  let hash { stdlib_dir; paths; builtins; lib_config } =
+  let hash { paths; builtins; lib_config } =
     Poly.hash
-      ( Path.hash stdlib_dir
-      , List.hash Path.hash paths
+      ( List.hash Path.hash paths
       , Package.Name.Map.to_list builtins
         |> List.hash (fun (k, v) ->
                Tuple.T2.hash Package.Name.hash Meta.Simplified.hash (k, v))
-      , Lib_config.hash lib_config )
+      , Poly.hash lib_config )
 end
 
 type t = DB.t
@@ -223,7 +220,9 @@ end = struct
       }
 
     val to_dune_library :
-      t -> lib_config:Lib_config.t -> Dune_package.Lib.t Memo.Build.t
+         t
+      -> lib_config:Lib_config.ocaml Or_exn.t
+      -> Dune_package.Lib.t Memo.Build.t
 
     val exists : t -> is_builtin:bool -> bool Memo.Build.t
   end = struct
@@ -299,7 +298,7 @@ end = struct
           | { byte; native } ->
             Memo.Build.List.exists (byte @ native) ~f:Fs_memo.path_exists)
 
-    let to_dune_library t ~(lib_config : Lib_config.t) =
+    let to_dune_library t ~(lib_config : Lib_config.ocaml Or_exn.t) =
       let loc = Loc.in_file t.meta_file in
       let add_loc x = (loc, x) in
       let dot_dune_file =
@@ -382,24 +381,27 @@ end = struct
 
                But it seems to be too invasive *)
             ([], [])
-          | Ok res ->
-            let foreign_archives, native_archives =
-              List.rev_filter_partition_map res ~f:(fun (f, _) ->
-                  let ext = Filename.extension f in
-                  if ext = lib_config.ext_lib then
-                    let file = Path.relative t.dir f in
-                    if
-                      String.is_prefix f
-                        ~prefix:Foreign.Archive.Name.lib_file_prefix
-                    then
-                      Left file
+          | Ok res -> (
+            match lib_config with
+            | Error _ -> ([], [])
+            | Ok lib_config ->
+              let foreign_archives, native_archives =
+                List.rev_filter_partition_map res ~f:(fun (f, _) ->
+                    let ext = Filename.extension f in
+                    if ext = lib_config.ext_lib then
+                      let file = Path.relative t.dir f in
+                      if
+                        String.is_prefix f
+                          ~prefix:Foreign.Archive.Name.lib_file_prefix
+                      then
+                        Left file
+                      else
+                        Right file
                     else
-                      Right file
-                  else
-                    Skip)
-            in
-            let sort = List.sort ~compare:Path.compare in
-            (sort foreign_archives, sort native_archives)
+                      Skip)
+              in
+              let sort = List.sort ~compare:Path.compare in
+              (sort foreign_archives, sort native_archives))
         in
         let entry_modules =
           Lib_info.Source.External
@@ -465,7 +467,8 @@ end = struct
           dir
         | Some pkg_dir ->
           if pkg_dir.[0] = '+' || pkg_dir.[0] = '^' then
-            Path.relative db.stdlib_dir (String.drop pkg_dir 1)
+            Path.relative (Result.ok_exn db.lib_config).stdlib_dir
+              (String.drop pkg_dir 1)
           else if Filename.is_relative pkg_dir then
             Path.relative dir pkg_dir
           else
@@ -521,8 +524,8 @@ end = struct
     let* meta = Meta.load meta_file ~name:(Some name) in
     dune_package_of_meta db ~dir ~meta_file ~meta
 
-  let load_builtin db meta =
-    dune_package_of_meta db ~dir:db.stdlib_dir
+  let load_builtin (db : DB.t) meta =
+    dune_package_of_meta db ~dir:(Result.ok_exn db.lib_config).stdlib_dir
       ~meta_file:(Path.of_string "<internal>")
       ~meta
 
@@ -677,14 +680,19 @@ let all_packages t =
            (Dune_package.Entry.name a)
            (Dune_package.Entry.name b))
 
-let create ~paths ~(lib_config : Lib_config.t) : t =
-  let stdlib_dir = lib_config.stdlib_dir in
-  let version = lib_config.ocaml_version in
-  { DB.stdlib_dir
-  ; paths
-  ; builtins = Meta.builtins ~stdlib_dir ~version
-  ; lib_config
-  }
+let create ~paths ~(lib_config : Lib_config.ocaml Or_exn.t) : t =
+  let builtins =
+    match lib_config with
+    | Error _ ->
+      (* the builtins aren't going to be very useful without an ocaml compiler
+         anyway *)
+      Opam_package.Name.Map.empty
+    | Ok lib_config ->
+      let stdlib_dir = lib_config.stdlib_dir in
+      let version = lib_config.ocaml_version in
+      Meta.builtins ~stdlib_dir ~version
+  in
+  { DB.paths; builtins; lib_config }
 
 let all_broken_packages t =
   let+ packages = load_all_packages t in

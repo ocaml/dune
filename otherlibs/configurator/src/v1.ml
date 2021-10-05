@@ -335,6 +335,8 @@ let create_from_inside_dune ~dest_dir ~log ~build_dir ~name =
     | None -> Temp.create_temp_dir ~prefix:"ocaml-configurator" ~suffix:""
   in
   let { ocamlc; vars = ocamlc_config } =
+    (* TODO don't read this stuff so eagerly. We should at least try to work if
+       ocamlc is absent *)
     read_dot_dune_configurator_file ~build_dir
   in
   let ocamlc_config_cmd = Process.command_line ocamlc [ "-config" ] in

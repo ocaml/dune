@@ -1,6 +1,9 @@
 Unreleased
 ----------
 
+- The OCaml compiler is now optional in workspaces that do not invoke it. This
+  is mainly useful for pure coq projects. (#4964, fix #4433, @rgrinberg)
+
 - Fix `foreign_stubs` inside a `tests` stanza. Previously, dune would crash
   when this field was present (#4942, fix #4946, @rgrinberg)
 

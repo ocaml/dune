@@ -131,7 +131,8 @@ end = struct
               in
               make_entry Lib source ?dst))
     in
-    let { Lib_config.has_native; ext_obj; _ } = lib_config in
+    let has_native = lib_config.has_native in
+    let ext_obj = (Result.ok_exn lib_config.ocaml).ext_obj in
     let modes = Dune_file.Mode_conf.Set.eval lib.modes ~has_native in
     let { Mode.Dict.byte; native } = modes in
     let module_files =
@@ -182,7 +183,11 @@ end = struct
           other_cm_files)
     in
     let* lib_files, dll_files =
-      let+ lib_files = lib_files ~dir ~dir_contents ~lib_config info in
+      let+ lib_files =
+        lib_files ~dir ~dir_contents
+          ~lib_config:(Result.ok_exn lib_config.ocaml)
+          info
+      in
       let dll_files = dll_files ~modes ~dynlink:lib.dynlink ~ctx info in
       (lib_files, dll_files)
     in
@@ -473,7 +478,7 @@ end = struct
               foreign_sources
               |> Foreign_sources.for_lib ~name
               |> Foreign.Sources.object_files ~dir
-                   ~ext_obj:ctx.lib_config.ext_obj
+                   ~ext_obj:(Result.ok_exn ctx.lib_config.ocaml).ext_obj
               |> List.map ~f:Path.build
             and* modules =
               Dir_contents.ocaml dir_contents

@@ -809,9 +809,11 @@ module Library = struct
 
   let to_lib_info conf ~dir
       ~lib_config:
-        ({ Lib_config.has_native; ext_lib; ext_dll; natdynlink_supported; _ } as
+        ({ Lib_config.has_native; ocaml; natdynlink_supported; _ } as
         lib_config) =
     let open Memo.Build.O in
+    let ocaml = Result.ok_exn ocaml in
+    let { Lib_config.ext_dll; ext_lib; ocaml_version; _ } = ocaml in
     let obj_dir = obj_dir ~dir conf in
     let archive ?(dir = dir) ext = archive conf ~dir ~ext in
     let modes = Mode_conf.Set.eval ~has_native conf.modes in
@@ -842,9 +844,8 @@ module Library = struct
         Lib_info.Files []
       else if
         Option.is_some conf.implements
-        || Lib_config.linker_can_create_empty_archives lib_config
-           && Ocaml_version.ocamlopt_always_calls_library_linker
-                lib_config.ocaml_version
+        || Lib_config.linker_can_create_empty_archives ocaml
+           && Ocaml_version.ocamlopt_always_calls_library_linker ocaml_version
       then
         Lib_info.Files [ archive ]
       else
@@ -888,7 +889,9 @@ module Library = struct
       let+ enabled_if_result =
         Blang.eval conf.enabled_if ~dir:(Path.build dir)
           ~f:(fun ~source:_ pform ->
-            let value = Lib_config.get_for_enabled_if lib_config pform in
+            let value =
+              Result.ok_exn (Lib_config.get_for_enabled_if lib_config pform)
+            in
             Memo.Build.return [ Value.String value ])
       in
       if not enabled_if_result then

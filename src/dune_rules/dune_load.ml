@@ -51,9 +51,10 @@ end = struct
 
   let write oc ~(context : Context.t) ~target ~exec_dir ~plugin ~plugin_contents
       =
+    let ocaml_config = Result.ok_exn context.ocaml_config in
     let ocamlc_config =
       let vars =
-        Ocaml_config.to_list context.ocaml_config
+        Ocaml_config.to_list ocaml_config
         |> List.map ~f:(fun (k, v) -> (k, Ocaml_config.Value.to_string v))
       in
       let longest = String.longest_map vars ~f:fst in
@@ -68,7 +69,7 @@ end = struct
         let ocamlc_config = [ %s ]
         |}
         (Context_name.to_string context.name)
-        (Ocaml_config.version_string context.ocaml_config)
+        (Ocaml_config.version_string ocaml_config)
         (Path.reach ~from:exec_dir (Path.build target))
         ocamlc_config
     in

@@ -51,7 +51,8 @@ let eval_opaque (context : Context.t) = function
   | Explicit b -> b
   | Inherit_from_settings ->
     Profile.is_dev context.profile
-    && Ocaml_version.supports_opaque_for_mli context.version
+    && Ocaml_version.supports_opaque_for_mli
+         (Result.ok_exn context.lib_config.ocaml).ocaml_version
 
 type t =
   { super_context : Super_context.t
@@ -171,7 +172,10 @@ let for_alias_module t =
     (* If the compiler reads the cmi for module alias even with [-w -49
        -no-alias-deps], we must sandbox the build of the alias module since the
        modules it references are built after. *)
-    if Ocaml_version.always_reads_alias_cmi ctx.version then
+    if
+      Ocaml_version.always_reads_alias_cmi
+        (Result.ok_exn ctx.lib_config.ocaml).ocaml_version
+    then
       Sandbox_config.needs_sandboxing
     else
       Sandbox_config.no_special_requirements
@@ -204,7 +208,8 @@ let for_module_generated_at_link_time cctx ~requires ~module_ =
     (* Cmi's of link time generated modules are compiled with -opaque, hence
        their implementation must also be compiled with -opaque *)
     let ctx = Super_context.context cctx.super_context in
-    Ocaml_version.supports_opaque_for_mli ctx.version
+    Ocaml_version.supports_opaque_for_mli
+      (Result.ok_exn ctx.lib_config.ocaml).ocaml_version
   in
   (* [modules] adds the wrong prefix "dune__exe__" but it's not used anyway *)
   let modules = Modules.singleton_exe module_ in
@@ -238,3 +243,6 @@ let root_module_entries t =
         Action_builder.memo_build (Lib.entry_module_names lib) >>= Resolve.read)
   in
   Action_builder.return (List.concat l)
+
+let ocaml_lib_config t =
+  Result.ok_exn (Super_context.context t.super_context).lib_config.ocaml

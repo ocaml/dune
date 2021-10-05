@@ -10,4 +10,5 @@
 
 (cram
  (applies_to :whole_subtree)
+ (deps %{bin:coqc} %{bin:coqdep})
  (alias all-coq-tests))

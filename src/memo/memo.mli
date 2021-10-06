@@ -483,6 +483,7 @@ module Perf_counters : sig
 end
 
 module Expert : sig
+  (* CR-someday amokhov: We no longer need this function, so can delete it. *)
   (** Like [cell] but returns [Nothing] if the given memoized function has never
       been evaluated on the specified input. We use [previously_evaluated_cell]
       to skip unnecessary rebuilds when receiving file system events for files

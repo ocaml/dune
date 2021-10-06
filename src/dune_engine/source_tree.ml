@@ -23,7 +23,8 @@ module File = struct
 
   let dummy = { ino = 0; dev = 0 }
 
-  let of_stats (st : Unix.stats) = { ino = st.st_ino; dev = st.st_dev }
+  let of_stats (st : Fs_cache.Reduced_stats.t) =
+    { ino = st.st_ino; dev = st.st_dev }
 
   module Map = Map.Make (T)
 

@@ -22,6 +22,7 @@ type t =
   ; debug_backtraces : bool
   ; debug_artifact_substitution : bool
   ; debug_digests : bool
+  ; debug_fs_cache : bool
   ; wait_for_filesystem_clock : bool
   ; root : Workspace_root.t
   ; only_packages : Only_packages.Clflags.t
@@ -180,6 +181,7 @@ let init ?log_file c =
   Clflags.debug_backtraces c.debug_backtraces;
   Clflags.debug_artifact_substitution := c.debug_artifact_substitution;
   Clflags.debug_digests := c.debug_digests;
+  Clflags.debug_fs_cache := c.debug_fs_cache;
   Clflags.wait_for_filesystem_clock := c.wait_for_filesystem_clock;
   Clflags.capture_outputs := c.capture_outputs;
   Clflags.diff_command := c.diff_command;
@@ -733,6 +735,11 @@ let term =
       value & flag
       & info [ "debug-digests" ] ~docs
           ~doc:"Explain why Dune decides to re-digest some files")
+  and+ debug_fs_cache =
+    Arg.(
+      value & flag
+      & info [ "debug-fs-cache" ] ~docs
+          ~doc:"Print debugging info about cached file-system operations")
   and+ store_digest_preimage =
     Arg.(
       value & flag
@@ -964,6 +971,7 @@ let term =
   ; debug_backtraces
   ; debug_artifact_substitution
   ; debug_digests
+  ; debug_fs_cache
   ; wait_for_filesystem_clock
   ; capture_outputs = not no_buffer
   ; root

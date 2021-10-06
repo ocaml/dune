@@ -34,6 +34,8 @@ module File_kind : sig
   val to_string : t -> string
 
   val to_string_hum : t -> string
+
+  val equal : t -> t -> bool
 end
 
 (** [read_directory_with_kinds] is similar to [Sys.readdir], while additionally

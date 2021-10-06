@@ -10,6 +10,8 @@ module Digest_result : sig
     | Unix_error of Unix_error.Detailed.t  (** Can't be [ENOENT]. *)
     | Error of exn
 
+  val equal : t -> t -> bool
+
   val to_option : t -> Digest.t option
 end
 
@@ -20,6 +22,11 @@ module Untracked : sig
   (** Digest the contents of a source or external file. This function doesn't
       track the source file. For a tracked version, see [fs_memo.mli]. *)
   val source_or_external_file : Path.t -> Digest_result.t
+
+  (** Invalidate the cached [mtime] value. This causes the subsequent call to
+      [source_or_external_file] to incur an additional [stat] call to read the
+      current [mtime]. *)
+  val invalidate_cached_timestamp : Path.t -> unit
 end
 
 (** Same as [build_file], but forces the digest of the file to be re-computed.

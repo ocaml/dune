@@ -19,6 +19,7 @@ bug-reports: "https://github.com/ocaml/dune/issues"
 depends: [
   "dune" {>= "2.8"}
   "csexp" {>= "1.4.0"}
+  "pp"
   "stdune-unstable" {= version}
   "ocaml" {>= "4.08"}
   "odoc" {with-doc}

@@ -21,12 +21,15 @@ let decompose_inotify_event (event : Inotify_lib.Event.t) =
 let inotify_event_paths event = List.map ~f:fst (decompose_inotify_event event)
 
 type kind =
-  | Coarse of { wait_for_watches_established : unit -> unit }
-  | Fine of { inotify : Inotify_lib.t }
+  | Fswatch of
+      { pid : Pid.t
+      ; wait_for_watches_established : unit -> unit
+      }
+  | Fsevents of Fsevents.t
+  | Inotify of Inotify_lib.t
 
 type t =
-  { shutdown : [ `Kill of Pid.t | `No_op ]
-  ; kind : kind
+  { kind : kind
         (* CR-someday amokhov: The way we handle "ignored files" using this
            mutable table is fragile and also wrong. We use [ignored_files] for
            the [(mode promote)] feature: if a file is promoted, we call
@@ -161,7 +164,15 @@ module Scheduler = struct
     }
 end
 
-let shutdown t = t.shutdown
+let shutdown t =
+  match t.kind with
+  | Fswatch { pid; _ } -> `Kill pid
+  | Inotify _ -> `No_op
+  | Fsevents fsevents ->
+    `Thunk
+      (fun () ->
+        List.iter [ Fsevents.stop; Fsevents.break; Fsevents.destroy ]
+          ~f:(fun f -> f fsevents))
 
 let buffer_capacity = 65536
 
@@ -208,6 +219,19 @@ end
 let special_file_for_inotify_sync =
   let path = lazy (Path.Build.relative Path.Build.root "dune-inotify-sync") in
   fun () -> Lazy.force path
+
+let special_file_for_inotify_sync_absolute =
+  lazy
+    (Path.to_absolute_filename (Path.build (special_file_for_inotify_sync ())))
+
+let is_special_file_for_inotify_sync (path : Path.t) =
+  match path with
+  | In_source_tree _ -> false
+  | External _ ->
+    String.equal (Path.to_string path)
+      (Lazy.force special_file_for_inotify_sync_absolute)
+  | In_build_dir build_path ->
+    Path.Build.( = ) build_path (special_file_for_inotify_sync ())
 
 let command ~root ~backend =
   let exclude_paths =
@@ -268,7 +292,9 @@ let select_watcher_backend () =
   if Sys.linux then (
     assert (Ocaml_inotify.Inotify.supported_by_the_os ());
     `Inotify_lib
-  ) else
+  ) else if Fsevents.available () then
+    `Fsevents
+  else
     fswatch_backend ()
 
 let emit_sync () =
@@ -305,19 +331,6 @@ let create_inotifylib_watcher ~ignored_files ~(scheduler : Scheduler.t) =
                 [ Event.Sync ]
               | event -> process_inotify_event ~ignored_files event)))
     ~log_error:(fun error -> Console.print [ Pp.text error ])
-
-let special_file_for_inotify_sync_absolute =
-  lazy
-    (Path.to_absolute_filename (Path.build (special_file_for_inotify_sync ())))
-
-let is_special_file_for_inotify_sync (path : Path.t) =
-  match path with
-  | In_source_tree _ -> false
-  | External _ ->
-    String.equal (Path.to_string path)
-      (Lazy.force special_file_for_inotify_sync_absolute)
-  | In_build_dir build_path ->
-    Path.Build.( = ) build_path (special_file_for_inotify_sync ())
 
 let create_no_buffering ~(scheduler : Scheduler.t) ~root ~backend =
   let ignored_files = Table.create (module String) 64 in
@@ -356,10 +369,7 @@ let create_no_buffering ~(scheduler : Scheduler.t) ~root ~backend =
     done
   in
   scheduler.spawn_thread (fun () -> worker_thread pipe);
-  { shutdown = `Kill pid
-  ; kind = Coarse { wait_for_watches_established = wait }
-  ; ignored_files
-  }
+  { kind = Fswatch { pid; wait_for_watches_established = wait }; ignored_files }
 
 let with_buffering ~create ~(scheduler : Scheduler.t) ~debounce_interval =
   let jobs = ref [] in
@@ -403,6 +413,67 @@ let with_buffering ~create ~(scheduler : Scheduler.t) ~debounce_interval =
   scheduler.spawn_thread buffer_thread;
   res
 
+let create_inotifylib ~scheduler =
+  prepare_sync ();
+  let ignored_files = Table.create (module String) 64 in
+  let inotify = create_inotifylib_watcher ~ignored_files ~scheduler in
+  Inotify_lib.add inotify
+    (Path.to_string (Path.build (special_file_for_inotify_sync ())));
+  { kind = Inotify inotify; ignored_files }
+
+let create_fsevents ~(scheduler : Scheduler.t) =
+  let ignored_files = Table.create (module String) 64 in
+  let fsevents =
+    let paths = [ Path.to_string Path.root ] in
+    Fsevents.create ~paths ~latency:0.2 ~f:(fun _ events ->
+        scheduler.thread_safe_send_emit_events_job (fun () ->
+            List.filter_map events ~f:(fun event ->
+                let path =
+                  Fsevents.Event.path event |> Path.of_string
+                  |> Path.Expert.try_localize_external
+                in
+                let action = Fsevents.Event.action event in
+                if is_special_file_for_inotify_sync path then
+                  match action with
+                  | Unknown
+                  | Create
+                  | Modify ->
+                    Some Event.Sync
+                  | Remove -> None
+                else if Path.is_in_build_dir path then
+                  (* we cannot ignore the build dir by setting the exclusion
+                     path because we'd miss the sync events *)
+                  None
+                else
+                  let kind =
+                    match action with
+                    | Unknown -> Fs_memo_event.Unknown
+                    | Create -> Created
+                    | Remove -> Deleted
+                    | Modify ->
+                      if Fsevents.Event.kind event = File then
+                        File_changed
+                      else
+                        Unknown
+                  in
+                  Some (Event.Fs_memo_event { Fs_memo_event.kind; path }))))
+  in
+  scheduler.spawn_thread (fun () ->
+      Fsevents.start fsevents;
+      match Fsevents.loop fsevents with
+      | Ok () -> ()
+      | Error exn ->
+        Code_error.raise "fsevents callback raised" [ ("exn", Exn.to_dyn exn) ]);
+  Fsevents.set_exclusion_paths fsevents
+    ~paths:
+      ((* For now, we don't ignore the build directroy because we want to
+          receive events from the special event sync event *)
+       [ "_esy"; "_opam"; ".git"; ".hg" ]
+      |> List.rev_map ~f:(fun base ->
+             let path = Path.relative (Path.source Path.Source.root) base in
+             Path.to_absolute_filename path));
+  { kind = Fsevents fsevents; ignored_files }
+
 let create_external ~root ~debounce_interval ~scheduler ~backend =
   match debounce_interval with
   | None -> create_no_buffering ~root ~scheduler ~backend
@@ -411,48 +482,38 @@ let create_external ~root ~debounce_interval ~scheduler ~backend =
       ~create:(create_no_buffering ~root)
       ~backend
 
-let create_inotifylib ~scheduler =
-  prepare_sync ();
-  let ignored_files = Table.create (module String) 64 in
-  let inotify = create_inotifylib_watcher ~ignored_files ~scheduler in
-  Inotify_lib.add inotify
-    (Path.to_string (Path.build (special_file_for_inotify_sync ())));
-  { kind = Fine { inotify }; shutdown = `No_op; ignored_files }
-
 let create_default ~scheduler =
   match select_watcher_backend () with
   | `Fswatch _ as backend ->
     create_external ~scheduler ~root:Path.root
       ~debounce_interval:(Some 0.5 (* seconds *)) ~backend
+  | `Fsevents -> create_fsevents ~scheduler
   | `Inotify_lib -> create_inotifylib ~scheduler
-
-let create_external ~root ~debounce_interval ~scheduler =
-  match fswatch_backend () with
-  | `Fswatch _ as backend ->
-    create_external ~root ~debounce_interval ~scheduler ~backend
 
 let wait_for_initial_watches_established_blocking t =
   match t.kind with
-  | Coarse { wait_for_watches_established } -> wait_for_watches_established ()
-  | Fine { inotify = _ } ->
+  | Fswatch c -> c.wait_for_watches_established ()
+  | Fsevents _
+  | Inotify _ ->
     (* no initial watches needed: all watches should be set up at the time just
        before file access *)
     ()
 
 let add_watch t path =
   match t.kind with
-  | Coarse _ ->
+  | Fsevents _
+  | Fswatch _ ->
     (* Here we assume that the path is already being watched because the coarse
        file watchers are expected to watch all the source files from the
        start *)
     ()
-  | Fine { inotify } -> Inotify_lib.add inotify (Path.to_string path)
+  | Inotify inotify -> Inotify_lib.add inotify (Path.to_string path)
 
 module For_tests = struct
   let pid t =
-    match t.shutdown with
-    | `Kill pid -> pid
-    | `No_op -> failwith "don't know how to suspend an inotifylib watcher"
+    match t.kind with
+    | Fswatch c -> c.pid
+    | _ -> failwith "pid unavailable"
 
   let suspend t = Unix.kill (Pid.to_int (pid t)) Sys.sigstop
 

@@ -18,6 +18,16 @@ let rule sctx compile (exes : Dune_file.Executables.t) () =
         | Some x -> Left x
         | None -> Right lib)
   in
+  let link_flags =
+    (* additional link flags keyed by the platform *)
+    [ ( "macosx"
+      , [ "-cclib"
+        ; "-framework Foundation"
+        ; "-cclib"
+        ; "-framework CoreServices"
+        ] )
+    ]
+  in
   let+ locals =
     Memo.Build.parallel_map locals ~f:(fun x ->
         let info = Lib.Local.info x in
@@ -57,6 +67,10 @@ let rule sctx compile (exes : Dune_file.Executables.t) () =
                  (List.map externals ~f:(fun x -> Lib.name x |> Lib_name.to_dyn)))
           ; Pp.nop
           ; def "local_libraries" (List locals)
+          ; Pp.nop
+          ; def "link_flags"
+              (let open Dyn.Encoder in
+              list (pair string (list string)) link_flags)
           ]))
 
 let gen_rules sctx (exes : Dune_file.Executables.t) ~dir compile =

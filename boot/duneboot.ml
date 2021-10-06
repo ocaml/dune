@@ -1068,7 +1068,7 @@ let common_build_args name ~external_includes ~external_libraries =
     ; external_libraries
     ]
 
-let build ~ocaml_config ~dependencies ~c_files
+let build ~ocaml_config ~dependencies ~c_files ~link_flags
     { target = name, main; external_libraries; _ } =
   let ext_obj =
     try StringMap.find "ext_obj" ocaml_config with
@@ -1126,10 +1126,10 @@ let build ~ocaml_config ~dependencies ~c_files
     (List.concat
        [ common_build_args name ~external_includes ~external_libraries
        ; obj_files
-       ; [ "-args"; "compiled_ml_files" ]
+       ; [ "-args"; "compiled_ml_files" ] @ link_flags
        ])
 
-let build_with_single_command ~ocaml_config:_ ~dependencies ~c_files
+let build_with_single_command ~ocaml_config:_ ~dependencies ~c_files ~link_flags
     { target = name, main; external_libraries; _ } =
   let external_libraries, external_includes =
     resolve_externals external_libraries
@@ -1140,7 +1140,7 @@ let build_with_single_command ~ocaml_config:_ ~dependencies ~c_files
        [ common_build_args name ~external_includes ~external_libraries
        ; [ "-no-alias-deps"; "-w"; "-49" ]
        ; c_files
-       ; [ "-args"; "mods_list" ]
+       ; [ "-args"; "mods_list" ] @ link_flags
        ])
 
 let rec rm_rf fn =
@@ -1161,12 +1161,20 @@ let main () =
     List.map ~f:(fun (_, _, c_files) -> c_files) libraries |> List.concat
   in
   get_dependencies libraries >>= fun dependencies ->
+  let link_flags =
+    match StringMap.find_opt "system" ocaml_config with
+    | None -> assert false
+    | Some platform -> (
+      match List.assoc_opt platform Libs.link_flags with
+      | None -> []
+      | Some flags -> flags)
+  in
   let build =
     if concurrency = 1 || Sys.win32 then
       build_with_single_command
     else
       build
   in
-  build ~ocaml_config ~dependencies ~c_files task
+  build ~ocaml_config ~dependencies ~c_files ~link_flags task
 
 let () = Fiber.run (main ())

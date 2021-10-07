@@ -20,6 +20,7 @@ depends: [
   "dune" {>= "2.8"}
   "csexp" {>= "1.4.0"}
   "pp"
+  "dyn"
   "stdune-unstable" {= version}
   "ocaml" {>= "4.08"}
   "odoc" {with-doc}

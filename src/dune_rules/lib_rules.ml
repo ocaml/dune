@@ -375,7 +375,13 @@ let cctx (lib : Library.t) ~sctx ~source_modules ~dir ~expander ~scope
       ~lib_name:(Some (snd lib.name))
   in
   let+ modules =
-    Modules.map_user_written source_modules ~f:(Pp_spec.pp_module pp)
+    let add_empty_intf = lib.buildable.empty_module_interface_if_absent in
+    Modules.map_user_written source_modules ~f:(fun m ->
+        let* m = Pp_spec.pp_module pp m in
+        if add_empty_intf && not (Module.has m ~ml_kind:Intf) then
+          Module_compilation.with_empty_intf ~sctx ~dir m
+        else
+          Memo.Build.return m)
   in
   let modules = Vimpl.impl_modules vimpl modules in
   let requires_compile = Lib.Compile.direct_requires compile_info in

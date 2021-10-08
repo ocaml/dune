@@ -201,6 +201,9 @@ Unreleased
 - Dune no longer reads installed META files for libraries distributed with the
   compiler, instead using its own internal database. (#4946, @nojb)
 
+- Add support for `(empty_module_interface_if_absent)` in executable and library
+  stanzas. (#4955, @nojb)
+
 2.9.1 (07/09/2021)
 ------------------
 

@@ -111,8 +111,6 @@ module Source : sig
   val descendant : t -> of_:t -> t option
 
   val to_local : t -> Local.t
-
-  val of_external : External.t -> t option
 end
 
 module Permissions : sig
@@ -401,3 +399,11 @@ val chmod : t -> mode:int -> unit
 
 (** Attempts to resolve a symlink. Returns [None] if the path isn't a symlink *)
 val follow_symlink : t -> (t, Fpath.follow_symlink_error) result
+
+module Expert : sig
+  (** Attempt to convert external paths to source/build paths. Don't use this
+      function unless strictly necessary. It's not completely reliable and we
+      only use it out of necessity to work with file watchers that insist on
+      spitting absolute paths *)
+  val try_localize_external : t -> t
+end

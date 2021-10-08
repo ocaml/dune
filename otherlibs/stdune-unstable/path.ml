@@ -1271,22 +1271,6 @@ module Source = struct
   let is_in_build_dir s = is_in_build_dir (path_of_local s)
 
   let to_local t = t
-
-  let drop_absolute_prefix ~prefix p =
-    match String.drop_prefix ~prefix:(Kind.to_absolute_filename prefix) p with
-    | None -> None
-    | Some "" -> Some Local.root
-    | Some p ->
-      Some
-        (Local.of_string
-           (if is_dir_sep p.[0] then
-             String.drop p 1
-           else
-             p))
-
-  let of_external p =
-    let p = External.to_string p in
-    drop_absolute_prefix ~prefix:(Kind.In_source_dir Local.root) p
 end
 
 let set_of_source_paths set =
@@ -1311,3 +1295,35 @@ let chmod t ~mode = Unix.chmod (to_string t) mode
 
 let follow_symlink path =
   Fpath.follow_symlink (to_string path) |> Result.map ~f:of_string
+
+module Expert = struct
+  let drop_absolute_prefix ~prefix p =
+    match String.drop_prefix ~prefix:(Kind.to_absolute_filename prefix) p with
+    | None -> None
+    | Some "" -> Some Local.root
+    | Some p ->
+      Some
+        (Local.of_string
+           (if is_dir_sep p.[0] then
+             String.drop p 1
+           else
+             p))
+
+  let try_localize_external ext =
+    let p = External.to_string ext in
+    match Fdecl.get Build.build_dir with
+    | External s -> (
+      match drop_absolute_prefix ~prefix:(Kind.External s) p with
+      | Some s -> Some (in_build_dir s)
+      | None ->
+        drop_absolute_prefix ~prefix:(Kind.In_source_dir Local.root) p
+        |> Option.map ~f:in_source_tree)
+    | In_source_dir _ ->
+      drop_absolute_prefix ~prefix:(Kind.In_source_dir Local.root) p
+      |> Option.map ~f:make_local_path
+
+  let try_localize_external t =
+    match t with
+    | External e -> Option.value ~default:t (try_localize_external e)
+    | _ -> t
+end

@@ -66,6 +66,8 @@ executable was built.
  (name dune-private-libs)
  (depends
   (csexp (>= 1.4.0))
+  pp
+  dyn
   (stdune-unstable (= :version))
   (ocaml (>= 4.08)))
  (synopsis "Private libraries of Dune")

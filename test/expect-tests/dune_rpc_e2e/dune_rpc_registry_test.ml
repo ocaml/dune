@@ -1,5 +1,6 @@
 open Stdune
 open Fiber.O
+module Where = Dune_rpc_private.Where
 module Registry = Dune_rpc_private.Registry
 module Scheduler = Dune_engine.Scheduler
 open Dune_rpc_e2e
@@ -107,10 +108,20 @@ let%expect_test "turn on dune watch and wait until the connection is listed" =
     | None -> printfn "[FAILURE] unable to find connection"
     | Some dune ->
       let root = Registry.Dune.root dune in
-      printfn "[PASS] found %s" root
+      let where =
+        match Registry.Dune.where dune with
+        | `Ip (host, port) -> `Ip (host, port)
+        | `Unix path ->
+          let cwd = Sys.getcwd () in
+          `Unix
+            (match String.drop_prefix path ~prefix:cwd with
+            | None -> path
+            | Some s -> "$CWD" ^ s)
+      in
+      printfn "[PASS] found %s at %s" root (Where.to_string where)
   in
   run case;
   [%expect
     {|
     $PATH/dune build --passive-watch-mode --root . returned 1
-    [PASS] found . |}]
+    [PASS] found . at unix:path=%24CWD/_build/.rpc/dune |}]

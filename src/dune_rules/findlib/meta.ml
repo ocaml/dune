@@ -163,7 +163,7 @@ let main_modules names =
   |> String.concat ~sep:" " |> rule "main_modules" [] Set
 
 let builtins ~stdlib_dir ~version:ocaml_version =
-  let version = version "[distributed with Ocaml]" in
+  let version = version "[distributed with OCaml]" in
   let simple name ?(labels = false) ?dir ?archive_name ?kind ?exists_if_ext deps
       =
     let archive_name =

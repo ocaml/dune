@@ -70,6 +70,18 @@ module Local : sig
   val explode : t -> string list
 end
 
+module External : sig
+  include Path_intf.S
+
+  val initial_cwd : t
+
+  val cwd : unit -> t
+
+  val relative : t -> string -> t
+
+  val mkdir_p : ?perms:int -> t -> unit
+end
+
 (** In the source section of the current workspace. *)
 module Source : sig
   type w
@@ -99,18 +111,8 @@ module Source : sig
   val descendant : t -> of_:t -> t option
 
   val to_local : t -> Local.t
-end
 
-module External : sig
-  include Path_intf.S
-
-  val initial_cwd : t
-
-  val cwd : unit -> t
-
-  val relative : t -> string -> t
-
-  val mkdir_p : ?perms:int -> t -> unit
+  val of_external : External.t -> t option
 end
 
 module Permissions : sig

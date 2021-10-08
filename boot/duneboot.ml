@@ -727,7 +727,7 @@ module Build_info = struct
       List.map task.local_libraries ~f:(fun (name, _, _, _) ->
           (name, "version"))
       @ List.map task.external_libraries ~f:(fun name ->
-            (name, {|Some "[distributed with Ocaml]"|}))
+            (name, {|Some "[distributed with OCaml]"|}))
       |> List.sort ~cmp:(fun (a, _) (b, _) -> String.compare a b)
     in
     prlist "statically_linked_libraries" libs ~f:(fun (name, v) ->

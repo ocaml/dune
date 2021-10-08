@@ -336,7 +336,14 @@ let create_no_buffering ~(scheduler : Scheduler.t) ~root ~backend =
                 match parse_line line with
                 | Error s -> failwith s
                 | Ok path_s ->
-                  let path = Path.of_string path_s in
+                  let path =
+                    match Path.of_string path_s with
+                    | (In_source_tree _ | In_build_dir _) as p -> p
+                    | External e as p -> (
+                      match Path.Source.of_external e with
+                      | None -> p
+                      | Some e -> Path.source e)
+                  in
                   if is_special_file_for_inotify_sync path then
                     [ Event.Sync ]
                   else

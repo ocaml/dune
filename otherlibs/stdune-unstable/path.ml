@@ -1271,6 +1271,22 @@ module Source = struct
   let is_in_build_dir s = is_in_build_dir (path_of_local s)
 
   let to_local t = t
+
+  let drop_absolute_prefix ~prefix p =
+    match String.drop_prefix ~prefix:(Kind.to_absolute_filename prefix) p with
+    | None -> None
+    | Some "" -> Some Local.root
+    | Some p ->
+      Some
+        (Local.of_string
+           (if is_dir_sep p.[0] then
+             String.drop p 1
+           else
+             p))
+
+  let of_external p =
+    let p = External.to_string p in
+    drop_absolute_prefix ~prefix:(Kind.In_source_dir Local.root) p
 end
 
 let set_of_source_paths set =

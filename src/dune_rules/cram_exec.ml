@@ -185,7 +185,11 @@ type metadata_entry =
   ; build_path_prefix_map : string
   }
 
-type full_block_result = block_result * metadata_entry
+type metadata_result =
+  | Present of metadata_entry
+  | Missing_unreachable
+
+type full_block_result = block_result * metadata_result
 
 type sh_script =
   { script : Path.t
@@ -198,7 +202,12 @@ let read_exit_codes_and_prefix_maps file =
   let s =
     match file with
     | None -> ""
-    | Some file -> Io.read_file ~binary:true file
+    | Some file -> (
+      try Io.read_file ~binary:true file with
+      | Sys_error _ ->
+        (* a script where the first command immediately exits might not produce
+           the metadata file *)
+        "")
   in
   let rec loop acc = function
     | exit_code :: build_path_prefix_map :: entries ->
@@ -231,9 +240,11 @@ let read_and_attach_exit_codes (sh_script : sh_script) :
     | (Cram_lexer.Comment _ as comment) :: blocks, _ ->
       loop (comment :: acc) entries blocks
     | Command block_result :: blocks, metadata_entry :: entries ->
-      loop (Command (block_result, metadata_entry) :: acc) entries blocks
-    | Cram_lexer.Command _ :: _, [] ->
-      Code_error.raise "command without metadata" []
+      loop
+        (Command (block_result, Present metadata_entry) :: acc)
+        entries blocks
+    | Cram_lexer.Command block_result :: blocks, [] ->
+      loop (Command (block_result, Missing_unreachable) :: acc) entries blocks
     | [], _ :: _ -> Code_error.raise "more blocks than metadata" []
   in
   loop [] metadata_entries sh_script.cram_to_output
@@ -276,19 +287,21 @@ let rewrite_paths build_path_prefix_map ~parent_script ~command_script s =
     |> Re.replace_string error_msg ~by:""
 
 let sanitize ~parent_script cram_to_output :
-    (block_result * metadata_entry * string) Cram_lexer.block list =
+    (block_result * metadata_result * string) Cram_lexer.block list =
   List.map cram_to_output ~f:(fun (t : (block_result * _) Cram_lexer.block) ->
       match t with
       | Cram_lexer.Comment t -> Cram_lexer.Comment t
-      | Command
-          (block_result, ({ build_path_prefix_map; exit_code = _ } as entry)) ->
+      | Command (block_result, metadata) ->
         let output =
-          Io.read_file ~binary:false block_result.output_file
-          |> Ansi_color.strip
-          |> rewrite_paths ~parent_script ~command_script:block_result.script
-               build_path_prefix_map
+          match metadata with
+          | Missing_unreachable -> "***** UNREACHABLE *****"
+          | Present { build_path_prefix_map; exit_code = _ } ->
+            Io.read_file ~binary:false block_result.output_file
+            |> Ansi_color.strip
+            |> rewrite_paths ~parent_script ~command_script:block_result.script
+                 build_path_prefix_map
         in
-        Command (block_result, entry, output))
+        Command (block_result, metadata, output))
 
 (* Compose user written cram stanzas to output *)
 let compose_cram_output (cram_to_output : _ Cram_lexer.block list) =
@@ -304,10 +317,8 @@ let compose_cram_output (cram_to_output : _ Cram_lexer.block list) =
   List.iter cram_to_output ~f:(fun block ->
       match (block : _ Cram_lexer.block) with
       | Comment lines -> List.iter lines ~f:add_line
-      | Command
-          ( { command; output_file = _; script = _ }
-          , { exit_code; build_path_prefix_map = _ }
-          , output ) -> (
+      | Command ({ command; output_file = _; script = _ }, metadata, output)
+        -> (
         List.iteri command ~f:(fun i line ->
             let line =
               sprintf "%c %s"
@@ -320,9 +331,12 @@ let compose_cram_output (cram_to_output : _ Cram_lexer.block list) =
             add_line_prefixed_with_two_space line);
         String.split_lines output
         |> List.iter ~f:add_line_prefixed_with_two_space;
-        match exit_code with
-        | 0 -> ()
-        | n -> add_line_prefixed_with_two_space (sprintf "[%d]" n)));
+        match metadata with
+        | Missing_unreachable
+        | Present { exit_code = 0; build_path_prefix_map = _ } ->
+          ()
+        | Present { exit_code; build_path_prefix_map = _ } ->
+          add_line_prefixed_with_two_space (sprintf "[%d]" exit_code)));
   Buffer.contents buf
 
 let create_sh_script cram_stanzas ~temp_dir : sh_script Fiber.t =
@@ -367,6 +381,7 @@ let create_sh_script cram_stanzas ~temp_dir : sh_script Fiber.t =
         ; script = user_shell_code_file
         }
   in
+  fprln oc "trap 'exit 0' EXIT";
   let+ cram_to_output = Fiber.sequential_map ~f:loop cram_stanzas in
   close_out oc;
   let command_count = !i in

@@ -8,18 +8,24 @@ Syntax error inside a cram command
   >   $ foo-bar() { true; }
   > EOF
 
-  $ cd_sed='s/cd.*\&\&.*.sh/cd $DIR \&\& $SUBTEST.sh/'
-  $ dune runtest --auto-promote 2>&1 | sed -E -e 's/.+\.sh:/$SUBTEST.sh:/' -e "$cd_sed"
-            sh (internal) (exit 2)
-  (cd $DIR && $SUBTEST.sh)
+  $ dune runtest --auto-promote 2>&1 | sed -E -e 's/.+\.sh:/$SUBTEST.sh:/' -e 's/cd.*\&\&.*.sh/cd $DIR \&\& $SUBTEST.sh/'
+            sh (internal)
   $SUBTEST.sh: line 1: `foo-bar': not a valid identifier
-  -> required by alias runtest
+  File "t1.t", line 1, characters 0-0:
+  Error: Files _build/default/t1.t and _build/default/t1.t.corrected differ.
+  Promoting _build/default/t1.t.corrected to t1.t.
 
   $ cat >t1.t <<EOF
   >   $ exit 1
   >   $ echo foobar
   > EOF
-  $ dune runtest --auto-promote 2>&1 | sed -E -e "$cd_sed"
-            sh (internal) (exit 1)
-  (cd $DIR && $SUBTEST.sh)
-  -> required by alias runtest
+  $ dune runtest --auto-promote
+  File "t1.t", line 1, characters 0-0:
+  Error: Files _build/default/t1.t and _build/default/t1.t.corrected differ.
+  Promoting _build/default/t1.t.corrected to t1.t.
+  [1]
+  $ cat t1.t
+    $ exit 1
+    ***** UNREACHABLE *****
+    $ echo foobar
+    ***** UNREACHABLE *****

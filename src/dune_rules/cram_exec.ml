@@ -357,7 +357,7 @@ let create_sh_script cram_stanzas ~temp_dir : sh_script Fiber.t =
       let+ user_shell_code_output_file_sh_path =
         sh_path user_shell_code_output_file
       in
-      fprln oc ". %s > %s 2>&1" user_shell_code_file_sh_path
+      fprln oc "2>&1 . %s > %s" user_shell_code_file_sh_path
         user_shell_code_output_file_sh_path;
       fprln oc {|printf "%%d\0%%s\0" $? "$%s" >> %s|}
         Action_exec._BUILD_PATH_PREFIX_MAP metadata_file_sh_path;

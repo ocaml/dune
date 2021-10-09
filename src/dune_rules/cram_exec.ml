@@ -111,10 +111,13 @@ let translate_path_for_sh =
    On Windows, we still generate a [sh] script so we need to quote using Unix
    conventions. *)
 let quote_for_sh fn =
+  (* we lose some portability as [$'] isn't posix. I don't see a better way to
+     do this *)
   let buf = Buffer.create (String.length fn + 2) in
-  Buffer.add_char buf '\'';
+  Buffer.add_string buf "$'";
   String.iter fn ~f:(function
-    | '\'' -> Buffer.add_string buf "'\\''"
+    | '\'' -> Buffer.add_string buf "\'"
+    | '\\' -> Buffer.add_string buf "\\\\"
     | c -> Buffer.add_char buf c);
   Buffer.add_char buf '\'';
   Buffer.contents buf
@@ -353,7 +356,7 @@ let create_sh_script cram_stanzas ~temp_dir : sh_script Fiber.t =
       in
       fprln oc ". %s > %s 2>&1" user_shell_code_file_sh_path
         user_shell_code_output_file_sh_path;
-      fprln oc {|printf "%%d\0%%s\0" $? $%s >> %s|}
+      fprln oc {|printf "%%d\0%%s\0" $? "$%s" >> %s|}
         Action_exec._BUILD_PATH_PREFIX_MAP metadata_file_sh_path;
       Cram_lexer.Command
         { command = lines

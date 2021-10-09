@@ -8,8 +8,8 @@ Syntax error inside a cram command
   >   $ foo-bar() { true; }
   > EOF
 
-  $ dune runtest --auto-promote
+  $ dune runtest --auto-promote 2>&1 | sed -E -e 's/.+\.sh:/$SUBTEST.sh:/' -e 's/cd.*\&\&.*.sh/cd $DIR \&\& $SUBTEST.sh/'
             sh (internal) (exit 2)
-  (cd _build/.sandbox/cdb38568b2ab5eaeeab253debbcff1a1/default && /run/current-system/sw/bin/sh /var/folders/nc/x9_nmmsj0rjbfyzxb_kjk6qr0000gn/T/build_75e3fc_dune/dune_cram_b748db_.t1.t/main.sh)
+  (cd $DIR && $SUBTEST.sh)
+  $SUBTEST.sh: line 1: `foo-bar': not a valid identifier
   -> required by alias runtest
-  [1]

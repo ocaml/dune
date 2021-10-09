@@ -10,6 +10,9 @@ Unreleased
 
 - Allow spaces in cram test paths (#4980, fixes #4162, @rgrinberg)
 
+- Improve error handling of misbehaving cram scripts. (#4981, fix #4230,
+  @rgrinberg)
+
 - Fix `foreign_stubs` inside a `tests` stanza. Previously, dune would crash
   when this field was present (#4942, fix #4946, @rgrinberg)
 
